@@ -139,7 +139,7 @@ public class KillClogPlugin extends Plugin
     private void addLookupMenuEntry(MenuEntry[] existing, String playerName)
     {
         client.getMenu().createMenuEntry(1)
-            .setOption("<col=c8a04e>Kill Clog</col> Lookup")
+            .setOption("<col=ffffff>Kill Clog</col> Lookup")
             .setTarget("<col=ffffff>" + playerName + "</col>")
             .setType(MenuAction.RUNELITE)
             .onClick(e -> SwingUtilities.invokeLater(() ->
