@@ -742,7 +742,7 @@ public class KillClogPanel extends PluginPanel
                     }
                     else
                     {
-                        html.append("<span style='color:#ff6666;'>\u2717 ");
+                        html.append("<span style='color:#888888;'>\u25a1 ");
                         html.append(escapeHtml(itemName));
                         html.append("</span><br>");
                     }
