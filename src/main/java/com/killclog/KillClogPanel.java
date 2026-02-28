@@ -276,7 +276,7 @@ public class KillClogPanel extends PluginPanel
         // Collection log sync notice — shown above search bar when player has no clog data
         clogNotice.setFont(FontManager.getRunescapeSmallFont());
         clogNotice.setAlignmentX(Component.CENTER_ALIGNMENT);
-        clogNotice.setVisible(false);
+        clogNotice.setText(" "); // always visible to hold space — text swaps, layout never shifts
         panel.add(clogNotice);
 
         // Search row
@@ -490,7 +490,7 @@ public class KillClogPanel extends PluginPanel
         // Clear previous results
         hiscoreResult = null;
         clogResult = null;
-        clogNotice.setVisible(false);
+        clogNotice.setText(" ");
 
         // Reset all labels to "--" and restore original icons
         for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
@@ -575,7 +575,6 @@ public class KillClogPanel extends PluginPanel
                     {
                         clogNotice.setText("<html><font color='#cc4444'>No collection log \u2014 sync at </font>"
                             + "<font color='#c6c6c6'>templeosrs.com</font></html>");
-                        clogNotice.setVisible(true);
                     }
                 })
             ).exceptionally(ex ->
