@@ -11,8 +11,6 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -160,9 +158,6 @@ public class KillClogPanel extends PluginPanel
     private final JButton lookupButton = new JButton("\uD83D\uDD0D");
     private final JLabel statusLabel = new JLabel(" ");
     private final JLabel clogNotice = new JLabel();
-    private final JButton highlighterToggle = new JButton();
-    // Session-level toggle state — separate from config so config controls button visibility
-    private boolean highlighterOn = true;
 
     // Track labels for updating after lookup
     private final Map<HiscoreSkill, JLabel> bossLabels = new LinkedHashMap<>();
@@ -316,16 +311,11 @@ public class KillClogPanel extends PluginPanel
         panel.add(searchRow);
         panel.add(Box.createVerticalStrut(4));
 
-        // Status row: label left, highlighter toggle right-aligned
+        // Status label
         statusLabel.setFont(FontManager.getRunescapeSmallFont());
         statusLabel.setForeground(TEXT_DIM);
         statusLabel.setIconTextGap(3);
-        setupHighlighterToggle();
-        JPanel statusRow = new JPanel(new BorderLayout(4, 0));
-        statusRow.setBackground(ColorScheme.DARK_GRAY_COLOR);
-        statusRow.add(statusLabel, BorderLayout.CENTER);
-        statusRow.add(highlighterToggle, BorderLayout.EAST);
-        panel.add(statusRow);
+        panel.add(statusLabel);
 
         return panel;
     }
@@ -342,72 +332,6 @@ public class KillClogPanel extends PluginPanel
         }
 
         return grid;
-    }
-
-    private void setupHighlighterToggle()
-    {
-        highlighterToggle.setText("\u25cf"); // ● circle — color indicates on/off state
-        highlighterToggle.setFont(FontManager.getRunescapeSmallFont());
-        highlighterToggle.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        highlighterToggle.setFocusPainted(false);
-        highlighterToggle.setContentAreaFilled(true);
-        highlighterToggle.setPreferredSize(new java.awt.Dimension(20, 20));
-        highlighterToggle.setMinimumSize(new java.awt.Dimension(20, 20));
-        highlighterToggle.setMaximumSize(new java.awt.Dimension(20, 20));
-        highlighterToggle.setToolTipText("<html>Hover: Preview<br>Click: Toggle</html>");
-        highlighterToggle.setVisible(config.completionistHighlighter());
-        updateToggleAppearance(highlighterOn);
-
-        highlighterToggle.addActionListener(e ->
-        {
-            highlighterOn = !highlighterOn;
-            updateToggleAppearance(highlighterOn);
-            applyHighlighterState(highlighterOn);
-        });
-
-        highlighterToggle.addMouseListener(new MouseAdapter()
-        {
-            @Override
-            public void mousePressed(MouseEvent e)
-            {
-                // Green dot + lowered bevel on press regardless of current state
-                highlighterToggle.setForeground(config.completedClogColor());
-                highlighterToggle.setBorder(BorderFactory.createLoweredBevelBorder());
-            }
-
-            @Override
-            public void mouseEntered(MouseEvent e)
-            {
-                if (!highlighterOn)
-                {
-                    // Preview ON state: green dot + apply highlighter colors
-                    highlighterToggle.setForeground(config.completedClogColor());
-                    applyHighlighterState(true);
-                }
-                else
-                {
-                    // ON state: gray dot hints you can click to turn off
-                    highlighterToggle.setForeground(ColorScheme.MEDIUM_GRAY_COLOR);
-                }
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e)
-            {
-                // Revert dot and KC colors to session state
-                updateToggleAppearance(highlighterOn);
-                applyHighlighterState(highlighterOn);
-            }
-        });
-    }
-
-    private void updateToggleAppearance(boolean enabled)
-    {
-        highlighterToggle.setForeground(
-            enabled ? config.completedClogColor() : ColorScheme.MEDIUM_GRAY_COLOR);
-        highlighterToggle.setBorder(enabled
-            ? BorderFactory.createLoweredBevelBorder()
-            : BorderFactory.createRaisedBevelBorder());
     }
 
     private JPanel makeBossCell(HiscoreSkill boss)
@@ -699,7 +623,7 @@ public class KillClogPanel extends PluginPanel
 
     private void applyCompletionistColors()
     {
-        applyHighlighterState(config.completionistHighlighter() && highlighterOn);
+        applyHighlighterState(config.completionistHighlighter());
     }
 
     /**
@@ -1007,18 +931,13 @@ public class KillClogPanel extends PluginPanel
     }
 
     /**
-     * Toggle the in-panel highlighter on/off (called by keybind).
-     * No-ops if the feature is disabled in settings.
+     * Toggle the Completionist's Highlighter on/off (called by keybind).
+     * Persists the new state to config.
      */
     public void toggleHighlighter()
     {
-        if (!config.completionistHighlighter())
-        {
-            return;
-        }
-        highlighterOn = !highlighterOn;
-        updateToggleAppearance(highlighterOn);
-        applyHighlighterState(highlighterOn);
+        boolean newState = !config.completionistHighlighter();
+        configManager.setConfiguration("killclog", "completionistHighlighter", newState);
     }
 
     /**
@@ -1029,9 +948,7 @@ public class KillClogPanel extends PluginPanel
     {
         if ("completionistHighlighter".equals(key))
         {
-            boolean featureEnabled = config.completionistHighlighter();
-            highlighterToggle.setVisible(featureEnabled);
-            applyHighlighterState(featureEnabled && highlighterOn);
+            applyHighlighterState(config.completionistHighlighter());
         }
     }
 
