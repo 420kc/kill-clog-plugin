@@ -4,7 +4,9 @@ import java.awt.AlphaComposite;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Graphics;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
@@ -24,6 +26,7 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -195,10 +198,53 @@ public class KillClogPanel extends PluginPanel
         c.insets = new Insets(0, 0, 0, 0);
         add(buildBossGrid(), c);
 
-        // Smooth scrolling on PluginPanel's scroll pane
+        // Explicitly configure PluginPanel's scroll pane with RuneLite scrollbar UI
         JScrollPane sp = getScrollPane();
         if (sp != null)
         {
+            sp.setBorder(null);
+            sp.setViewportBorder(null);
+            sp.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+            sp.getViewport().setBackground(ColorScheme.DARK_GRAY_COLOR);
+            sp.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI()
+            {
+                @Override
+                protected void configureScrollBarColors()
+                {
+                    thumbColor = new Color(70, 70, 70);
+                    trackColor = ColorScheme.DARKER_GRAY_COLOR;
+                }
+                @Override
+                protected void paintThumb(Graphics g, JComponent c, Rectangle thumbBounds)
+                {
+                    if (thumbBounds.isEmpty() || !scrollbar.isEnabled())
+                    {
+                        return;
+                    }
+                    g.setColor(isThumbRollover() ? new Color(110, 110, 110) : thumbColor);
+                    g.fillRect(thumbBounds.x, thumbBounds.y, thumbBounds.width, thumbBounds.height);
+                }
+                @Override
+                protected JButton createDecreaseButton(int orientation)
+                {
+                    return makeZeroButton();
+                }
+                @Override
+                protected JButton createIncreaseButton(int orientation)
+                {
+                    return makeZeroButton();
+                }
+                private JButton makeZeroButton()
+                {
+                    JButton btn = new JButton();
+                    java.awt.Dimension d = new java.awt.Dimension(0, 0);
+                    btn.setPreferredSize(d);
+                    btn.setMinimumSize(d);
+                    btn.setMaximumSize(d);
+                    return btn;
+                }
+            });
+            sp.getVerticalScrollBar().setPreferredSize(new java.awt.Dimension(7, 0));
             sp.getVerticalScrollBar().setUnitIncrement(16);
         }
     }
@@ -472,10 +518,18 @@ public class KillClogPanel extends PluginPanel
                 hiscoreResult = result;
 
                 int totalBossKc = calculateTotalBossKc(result);
+                int totalLevel = result.getTotalLevel();
+                boolean isMaxed = totalLevel >= 2376;
                 String kcColor = totalBossKc == 0 ? "#ff4444" : "#c6c6c6";
+                String totalHtml = totalLevel > 0
+                    ? "<font color='#555555'> | </font><font color='"
+                        + (isMaxed ? "#4caf6e" : "#c6c6c6") + "'>"
+                        + (isMaxed ? "Maxed" : totalLevel + " total")
+                        + "</font>"
+                    : "";
                 statusLabel.setText("<html><font color='" + kcColor + "'>" + escapeHtml(player)
                     + "</font><font color='#555555'> | </font><font color='" + kcColor + "'>"
-                    + formatKc(totalBossKc) + " kc</font></html>");
+                    + formatKc(totalBossKc) + " kc</font>" + totalHtml + "</html>");
                 statusLabel.setForeground(null);
                 updateStatusIcon(result.getAccountType());
                 playerInput.setText("");
