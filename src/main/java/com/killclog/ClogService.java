@@ -203,13 +203,21 @@ public class ClogService
             try
             {
                 JsonObject root = GSON.fromJson(json, JsonObject.class);
-                JsonObject bossesObj = root.getAsJsonObject("bosses");
-                if (bossesObj == null)
+                Type type = new TypeToken<Map<String, List<Integer>>>(){}.getType();
+                Map<String, List<Integer>> categories = new HashMap<>();
+                for (String section : new String[]{"bosses", "raids", "minigames", "other"})
+                {
+                    JsonObject sectionObj = root.getAsJsonObject(section);
+                    if (sectionObj != null)
+                    {
+                        Map<String, List<Integer>> sectionMap = GSON.fromJson(sectionObj, type);
+                        categories.putAll(sectionMap);
+                    }
+                }
+                if (categories.isEmpty())
                 {
                     return null;
                 }
-                Type type = new TypeToken<Map<String, List<Integer>>>(){}.getType();
-                Map<String, List<Integer>> categories = GSON.fromJson(bossesObj, type);
                 cachedCategories = categories;
                 return categories;
             }
