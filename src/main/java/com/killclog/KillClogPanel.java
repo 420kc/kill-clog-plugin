@@ -146,6 +146,8 @@ public class KillClogPanel extends PluginPanel
     private final JLabel statusLabel = new JLabel(" ");
     private final JLabel clogNotice = new JLabel();
     private final JButton highlighterToggle = new JButton();
+    // Session-level toggle state — separate from config so config controls button visibility
+    private boolean highlighterOn = true;
 
     // Track labels for updating after lookup
     private final Map<HiscoreSkill, JLabel> bossLabels = new LinkedHashMap<>();
@@ -272,10 +274,7 @@ public class KillClogPanel extends PluginPanel
         playerInput.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         playerInput.setForeground(Color.WHITE);
         playerInput.setCaretColor(Color.WHITE);
-        playerInput.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(ColorScheme.MEDIUM_GRAY_COLOR),
-            new EmptyBorder(0, 6, 0, 6)
-        ));
+        playerInput.setBorder(new EmptyBorder(0, 6, 0, 6));
         playerInput.setPreferredSize(new java.awt.Dimension(0, 30));
         playerInput.addActionListener(e -> doLookup());
         searchRow.add(playerInput, BorderLayout.CENTER);
@@ -348,16 +347,15 @@ public class KillClogPanel extends PluginPanel
         highlighterToggle.setPreferredSize(new java.awt.Dimension(20, 20));
         highlighterToggle.setMinimumSize(new java.awt.Dimension(20, 20));
         highlighterToggle.setMaximumSize(new java.awt.Dimension(20, 20));
-        highlighterToggle.setToolTipText(
-            "<html>Completionist's Highlighter<br>Hover to preview \u2022 Click to toggle</html>");
-        updateToggleAppearance(config.completionistHighlighter());
+        highlighterToggle.setToolTipText("<html>Hover: Preview<br>Click: Toggle</html>");
+        highlighterToggle.setVisible(config.completionistHighlighter());
+        updateToggleAppearance(highlighterOn);
 
         highlighterToggle.addActionListener(e ->
         {
-            boolean newState = !config.completionistHighlighter();
-            configManager.setConfiguration("killclog", "completionistHighlighter", newState);
-            updateToggleAppearance(newState);
-            applyHighlighterState(newState);
+            highlighterOn = !highlighterOn;
+            updateToggleAppearance(highlighterOn);
+            applyHighlighterState(highlighterOn);
         });
 
         highlighterToggle.addMouseListener(new MouseAdapter()
@@ -373,7 +371,7 @@ public class KillClogPanel extends PluginPanel
             @Override
             public void mouseEntered(MouseEvent e)
             {
-                if (!config.completionistHighlighter())
+                if (!highlighterOn)
                 {
                     // Preview ON state: green dot + apply highlighter colors
                     highlighterToggle.setForeground(config.completedClogColor());
@@ -389,9 +387,9 @@ public class KillClogPanel extends PluginPanel
             @Override
             public void mouseExited(MouseEvent e)
             {
-                // Revert dot and KC colors to persisted state
-                updateToggleAppearance(config.completionistHighlighter());
-                applyHighlighterState(config.completionistHighlighter());
+                // Revert dot and KC colors to session state
+                updateToggleAppearance(highlighterOn);
+                applyHighlighterState(highlighterOn);
             }
         });
     }
@@ -691,7 +689,7 @@ public class KillClogPanel extends PluginPanel
 
     private void applyCompletionistColors()
     {
-        applyHighlighterState(config.completionistHighlighter());
+        applyHighlighterState(config.completionistHighlighter() && highlighterOn);
     }
 
     /**
@@ -995,6 +993,20 @@ public class KillClogPanel extends PluginPanel
 
             html.append("</body></html>");
             label.setToolTipText(html.toString());
+        }
+    }
+
+    /**
+     * Called when Kill Clog config changes at runtime.
+     * Updates toggle button visibility when "Enable Highlighter" is toggled in settings.
+     */
+    public void onConfigChanged(String key)
+    {
+        if ("completionistHighlighter".equals(key))
+        {
+            boolean featureEnabled = config.completionistHighlighter();
+            highlighterToggle.setVisible(featureEnabled);
+            applyHighlighterState(featureEnabled && highlighterOn);
         }
     }
 

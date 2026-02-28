@@ -12,6 +12,7 @@ import net.runelite.api.MenuEntry;
 import net.runelite.api.Player;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.MenuOpened;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.plugins.Plugin;
@@ -97,6 +98,16 @@ public class KillClogPlugin extends Plugin
                 }
             }
         }
+    }
+
+    @Subscribe
+    public void onConfigChanged(ConfigChanged event)
+    {
+        if (!event.getGroup().equals("killclog"))
+        {
+            return;
+        }
+        SwingUtilities.invokeLater(() -> panel.onConfigChanged(event.getKey()));
     }
 
     /**
