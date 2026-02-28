@@ -155,7 +155,7 @@ public class KillClogPlugin extends Plugin
                     String playerName = Text.removeTags(target).trim();
                     if (!playerName.isEmpty())
                     {
-                        addLookupMenuEntry(entries, playerName);
+                        addLookupMenuEntry(playerName);
                         return;
                     }
                 }
@@ -163,7 +163,7 @@ public class KillClogPlugin extends Plugin
         }
     }
 
-    private void addLookupMenuEntry(MenuEntry[] existing, String playerName)
+    private void addLookupMenuEntry(String playerName)
     {
         client.getMenu().createMenuEntry(1)
             .setOption("<col=ffffff>Kill Clog</col> Lookup")

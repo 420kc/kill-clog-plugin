@@ -156,7 +156,9 @@ public class KillClogPanel extends PluginPanel
 
     private final JTextField playerInput = new JTextField();
     private final JButton lookupButton = new JButton("\uD83D\uDD0D");
-    private final JLabel statusLabel = new JLabel(" ");
+    private final JLabel statusNameLabel = new JLabel(" ");
+    private final JLabel statusTotalLabel = new JLabel();
+    private final JLabel statusKcLabel = new JLabel();
     private final JLabel clogNotice = new JLabel();
 
     // Track labels for updating after lookup
@@ -270,12 +272,13 @@ public class KillClogPanel extends PluginPanel
 
         // Collection log sync notice — shown above search bar when player has no clog data
         clogNotice.setFont(FontManager.getRunescapeSmallFont());
-        clogNotice.setAlignmentX(Component.CENTER_ALIGNMENT);
+        clogNotice.setAlignmentX(Component.LEFT_ALIGNMENT);
         clogNotice.setText(" "); // always visible to hold space — text swaps, layout never shifts
         panel.add(clogNotice);
 
         // Search row
         JPanel searchRow = new JPanel(new BorderLayout(5, 0));
+        searchRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         searchRow.setBackground(ColorScheme.DARK_GRAY_COLOR);
 
         // Dark search bar
@@ -311,11 +314,25 @@ public class KillClogPanel extends PluginPanel
         panel.add(searchRow);
         panel.add(Box.createVerticalStrut(4));
 
-        // Status label
-        statusLabel.setFont(FontManager.getRunescapeSmallFont());
-        statusLabel.setForeground(TEXT_DIM);
-        statusLabel.setIconTextGap(3);
-        panel.add(statusLabel);
+        // Status row: [badge+name LEFT] [total CENTER] [kc RIGHT]
+        JPanel statusRow = new JPanel(new BorderLayout());
+        statusRow.setBackground(ColorScheme.DARK_GRAY_COLOR);
+        statusRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+
+        statusNameLabel.setFont(FontManager.getRunescapeSmallFont());
+        statusNameLabel.setForeground(TEXT_DIM);
+        statusNameLabel.setIconTextGap(3);
+
+        statusTotalLabel.setFont(FontManager.getRunescapeSmallFont());
+        statusTotalLabel.setHorizontalAlignment(JLabel.CENTER);
+
+        statusKcLabel.setFont(FontManager.getRunescapeSmallFont());
+        statusKcLabel.setHorizontalAlignment(JLabel.RIGHT);
+
+        statusRow.add(statusNameLabel, BorderLayout.WEST);
+        statusRow.add(statusTotalLabel, BorderLayout.CENTER);
+        statusRow.add(statusKcLabel, BorderLayout.EAST);
+        panel.add(statusRow);
 
         return panel;
     }
@@ -398,17 +415,21 @@ public class KillClogPanel extends PluginPanel
         String player = playerInput.getText().trim();
         if (player.isEmpty())
         {
-            statusLabel.setIcon(null);
-            statusLabel.setText("Enter RSN");
-            statusLabel.setForeground(TEXT_DIM);
+            statusNameLabel.setIcon(null);
+            statusNameLabel.setText("Enter RSN");
+            statusNameLabel.setForeground(TEXT_DIM);
+            statusTotalLabel.setText("");
+            statusKcLabel.setText("");
             return;
         }
 
         final int thisLookup = ++lookupVersion;
         int searchIdx = ThreadLocalRandom.current().nextInt(SEARCHING_MESSAGES.length);
-        statusLabel.setText(String.format(SEARCHING_MESSAGES[searchIdx], player));
-        statusLabel.setForeground(TEXT_DIM);
-        statusLabel.setIcon(null);
+        statusNameLabel.setText(String.format(SEARCHING_MESSAGES[searchIdx], player));
+        statusNameLabel.setForeground(TEXT_DIM);
+        statusNameLabel.setIcon(null);
+        statusTotalLabel.setText("");
+        statusKcLabel.setText("");
         lookupButton.setEnabled(false);
 
         // Clear previous results
@@ -439,10 +460,10 @@ public class KillClogPanel extends PluginPanel
 
                 if (result == null)
                 {
-                    statusLabel.setIcon(null);
+                    statusNameLabel.setIcon(null);
                     int notFoundIdx = ThreadLocalRandom.current().nextInt(NOT_FOUND_MESSAGES.length);
-                    statusLabel.setText(String.format(NOT_FOUND_MESSAGES[notFoundIdx], player));
-                    statusLabel.setForeground(config.notFoundColor());
+                    statusNameLabel.setText(String.format(NOT_FOUND_MESSAGES[notFoundIdx], player));
+                    statusNameLabel.setForeground(config.notFoundColor());
                     return;
                 }
 
@@ -451,19 +472,29 @@ public class KillClogPanel extends PluginPanel
                 int totalBossKc = calculateTotalBossKc(result);
                 int totalLevel = result.getTotalLevel();
                 boolean isMaxed = totalLevel >= 2376;
-                String sbHex = toHex(config.statusBarColor());
-                String kcColor = totalBossKc == 0 ? "#ff4444" : sbHex;
-                String totalHtml = totalLevel > 0
-                    ? "<font color='#555555'> | </font><font color='"
-                        + (isMaxed ? "#4caf6e" : sbHex) + "'>"
-                        + (isMaxed ? "Maxed" : totalLevel + " total")
-                        + "</font>"
-                    : "";
-                statusLabel.setText("<html><font color='" + kcColor + "'>" + escapeHtml(player)
-                    + "</font><font color='#555555'> | </font><font color='" + kcColor + "'>"
-                    + formatKc(totalBossKc) + " kc</font>" + totalHtml + "</html>");
-                statusLabel.setForeground(null);
+
+                statusNameLabel.setText(player);
+                statusNameLabel.setForeground(config.statusBarColor());
                 updateStatusIcon(result.getAccountType());
+
+                if (isMaxed)
+                {
+                    statusTotalLabel.setText("Maxed");
+                    statusTotalLabel.setForeground(config.completedClogColor());
+                }
+                else if (totalLevel > 0)
+                {
+                    statusTotalLabel.setText(String.valueOf(totalLevel));
+                    statusTotalLabel.setForeground(config.inProgressClogColor());
+                }
+                else
+                {
+                    statusTotalLabel.setText("");
+                }
+
+                statusKcLabel.setText(formatKc(totalBossKc) + " kc");
+                statusKcLabel.setForeground(config.statusBarColor());
+
                 playerInput.setText("");
 
                 applyCompletionistColors();
@@ -474,8 +505,11 @@ public class KillClogPanel extends PluginPanel
             SwingUtilities.invokeLater(() ->
             {
                 lookupButton.setEnabled(true);
-                statusLabel.setText("Lookup failed");
-                statusLabel.setForeground(TEXT_DIM);
+                statusNameLabel.setText("Lookup failed");
+                statusNameLabel.setForeground(TEXT_DIM);
+                statusNameLabel.setIcon(null);
+                statusTotalLabel.setText("");
+                statusKcLabel.setText("");
             });
             return null;
         });
@@ -525,18 +559,18 @@ public class KillClogPanel extends PluginPanel
                 resource = "ultimate_ironman.png";
                 break;
             default:
-                statusLabel.setIcon(null);
+                statusNameLabel.setIcon(null);
                 return;
         }
 
         try
         {
             BufferedImage img = ImageUtil.loadImageResource(HiscorePanel.class, resource);
-            statusLabel.setIcon(new ImageIcon(ImageUtil.resizeImage(img, 15, 15)));
+            statusNameLabel.setIcon(new ImageIcon(ImageUtil.resizeImage(img, 15, 15)));
         }
         catch (Exception e)
         {
-            statusLabel.setIcon(null);
+            statusNameLabel.setIcon(null);
         }
     }
 
@@ -942,7 +976,6 @@ public class KillClogPanel extends PluginPanel
 
     /**
      * Called when Kill Clog config changes at runtime.
-     * Updates toggle button visibility when "Enable Highlighter" is toggled in settings.
      */
     public void onConfigChanged(String key)
     {
@@ -983,9 +1016,5 @@ public class KillClogPanel extends PluginPanel
                    .replace("\"", "&quot;");
     }
 
-    private static String toHex(java.awt.Color c)
-    {
-        return String.format("#%02x%02x%02x", c.getRed(), c.getGreen(), c.getBlue());
-    }
 
 }
