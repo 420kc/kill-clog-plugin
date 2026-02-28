@@ -5,7 +5,12 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Graphics2D;
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
 import java.awt.GridLayout;
+import java.awt.Insets;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -43,6 +48,8 @@ import org.apache.commons.lang3.StringUtils;
 public class KillClogPanel extends PluginPanel
 {
     private static final Color TEXT_DIM = new Color(160, 160, 160);
+    // Explicit bright-but-not-white for KC labels with kills — avoids LIGHT_GRAY_COLOR bleed
+    private static final Color KC_COLOR = new Color(215, 215, 215);
 
     // Boss display order matching vanilla RuneLite hiscores
     private static final HiscoreSkill[] BOSSES = {
@@ -135,7 +142,7 @@ public class KillClogPanel extends PluginPanel
     private final JButton lookupButton = new JButton("\uD83D\uDD0D");
     private final JLabel statusLabel = new JLabel(" ");
     private final JLabel clogNotice = new JLabel();
-    private final JPanel resultsPanel = new JPanel();
+    private final JButton highlighterToggle = new JButton();
 
     // Track labels for updating after lookup
     private final Map<HiscoreSkill, JLabel> bossLabels = new LinkedHashMap<>();
@@ -156,7 +163,7 @@ public class KillClogPanel extends PluginPanel
                          SpriteManager spriteManager,
                          ItemManager itemManager, ClientThread clientThread)
     {
-        super(false);
+        super(); // PluginPanel wraps in JScrollPane with RuneLite-styled scrollbar
         this.hiscoreService = hiscoreService;
         this.clogService = clogService;
         this.config = config;
@@ -169,15 +176,31 @@ public class KillClogPanel extends PluginPanel
         originalDismissDelay = ToolTipManager.sharedInstance().getDismissDelay();
         ToolTipManager.sharedInstance().setDismissDelay(15000);
 
-        setLayout(new BorderLayout());
+        // Match native HiscorePanel structure
+        setBorder(new EmptyBorder(10, 10, 0, 10));
         setBackground(ColorScheme.DARK_GRAY_COLOR);
-        setBorder(null);
+        setLayout(new GridBagLayout());
 
-        add(buildSearchPanel(), BorderLayout.NORTH);
+        GridBagConstraints c = new GridBagConstraints();
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.gridx = 0;
+        c.gridy = 0;
+        c.weightx = 1;
+        c.weighty = 0;
+        c.insets = new Insets(0, 0, 5, 0);
 
-        JScrollPane scroll = buildResultsScroll();
-        scroll.setBorder(null);
-        add(scroll, BorderLayout.CENTER);
+        add(buildSearchPanel(), c);
+
+        c.gridy++;
+        c.insets = new Insets(0, 0, 0, 0);
+        add(buildBossGrid(), c);
+
+        // Smooth scrolling on PluginPanel's scroll pane
+        JScrollPane sp = getScrollPane();
+        if (sp != null)
+        {
+            sp.getVerticalScrollBar().setUnitIncrement(16);
+        }
     }
 
     private JPanel buildSearchPanel()
@@ -185,12 +208,11 @@ public class KillClogPanel extends PluginPanel
         JPanel panel = new JPanel();
         panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
         panel.setBackground(ColorScheme.DARK_GRAY_COLOR);
-        panel.setBorder(new EmptyBorder(10, 10, 5, 10));
+        panel.setBorder(null);
 
         // Title
         JLabel title = new JLabel("Kill Clog");
         title.setFont(FontManager.getRunescapeFont().deriveFont(16f));
-        title.setForeground(Color.WHITE);
         title.setAlignmentX(Component.CENTER_ALIGNMENT);
         panel.add(title);
         panel.add(Box.createVerticalStrut(8));
@@ -235,12 +257,16 @@ public class KillClogPanel extends PluginPanel
         panel.add(searchRow);
         panel.add(Box.createVerticalStrut(4));
 
-        // Status
+        // Status row: label left, highlighter toggle right-aligned
         statusLabel.setFont(FontManager.getRunescapeSmallFont());
         statusLabel.setForeground(TEXT_DIM);
         statusLabel.setIconTextGap(3);
-        statusLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panel.add(statusLabel);
+        setupHighlighterToggle();
+        JPanel statusRow = new JPanel(new BorderLayout(4, 0));
+        statusRow.setBackground(ColorScheme.DARK_GRAY_COLOR);
+        statusRow.add(statusLabel, BorderLayout.CENTER);
+        statusRow.add(highlighterToggle, BorderLayout.EAST);
+        panel.add(statusRow);
 
         // Collection log sync notice (hidden by default)
         clogNotice.setFont(FontManager.getRunescapeSmallFont());
@@ -252,23 +278,7 @@ public class KillClogPanel extends PluginPanel
         return panel;
     }
 
-    private JScrollPane buildResultsScroll()
-    {
-        resultsPanel.setLayout(new BoxLayout(resultsPanel, BoxLayout.Y_AXIS));
-        resultsPanel.setBackground(ColorScheme.DARK_GRAY_COLOR);
-        resultsPanel.setBorder(new EmptyBorder(5, 5, 10, 5));
-
-        // Build the static boss grid immediately (shows "--" until lookup)
-        buildBossGrid();
-
-        JScrollPane scroll = new JScrollPane(resultsPanel);
-        scroll.setBackground(ColorScheme.DARK_GRAY_COLOR);
-        scroll.getVerticalScrollBar().setUnitIncrement(16);
-        scroll.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
-        return scroll;
-    }
-
-    private void buildBossGrid()
+    private JPanel buildBossGrid()
     {
         JPanel grid = new JPanel(new GridLayout(0, 3));
         grid.setBackground(ColorScheme.DARKER_GRAY_COLOR);
@@ -279,7 +289,74 @@ public class KillClogPanel extends PluginPanel
             grid.add(cell);
         }
 
-        resultsPanel.add(grid);
+        return grid;
+    }
+
+    private void setupHighlighterToggle()
+    {
+        highlighterToggle.setText("\u25cf"); // ● circle — color indicates on/off state
+        highlighterToggle.setFont(FontManager.getRunescapeSmallFont());
+        highlighterToggle.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        highlighterToggle.setFocusPainted(false);
+        highlighterToggle.setContentAreaFilled(true);
+        highlighterToggle.setPreferredSize(new java.awt.Dimension(20, 20));
+        highlighterToggle.setMinimumSize(new java.awt.Dimension(20, 20));
+        highlighterToggle.setMaximumSize(new java.awt.Dimension(20, 20));
+        highlighterToggle.setToolTipText(
+            "<html>Completionist's Highlighter<br>Hover to preview \u2022 Click to toggle</html>");
+        updateToggleAppearance(config.completionistHighlighter());
+
+        highlighterToggle.addActionListener(e ->
+        {
+            boolean newState = !config.completionistHighlighter();
+            configManager.setConfiguration("killclog", "completionistHighlighter", newState);
+            updateToggleAppearance(newState);
+            applyHighlighterState(newState);
+        });
+
+        highlighterToggle.addMouseListener(new MouseAdapter()
+        {
+            @Override
+            public void mousePressed(MouseEvent e)
+            {
+                // Green dot + lowered bevel on press regardless of current state
+                highlighterToggle.setForeground(config.completedClogColor());
+                highlighterToggle.setBorder(BorderFactory.createLoweredBevelBorder());
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent e)
+            {
+                if (!config.completionistHighlighter())
+                {
+                    // Preview ON state: green dot + apply highlighter colors
+                    highlighterToggle.setForeground(config.completedClogColor());
+                    applyHighlighterState(true);
+                }
+                else
+                {
+                    // ON state: gray dot hints you can click to turn off
+                    highlighterToggle.setForeground(ColorScheme.MEDIUM_GRAY_COLOR);
+                }
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e)
+            {
+                // Revert dot and KC colors to persisted state
+                updateToggleAppearance(config.completionistHighlighter());
+                applyHighlighterState(config.completionistHighlighter());
+            }
+        });
+    }
+
+    private void updateToggleAppearance(boolean enabled)
+    {
+        highlighterToggle.setForeground(
+            enabled ? config.completedClogColor() : ColorScheme.MEDIUM_GRAY_COLOR);
+        highlighterToggle.setBorder(enabled
+            ? BorderFactory.createLoweredBevelBorder()
+            : BorderFactory.createRaisedBevelBorder());
     }
 
     private JPanel makeBossCell(HiscoreSkill boss)
@@ -395,15 +472,14 @@ public class KillClogPanel extends PluginPanel
                 hiscoreResult = result;
 
                 int totalBossKc = calculateTotalBossKc(result);
-                String kcColor = totalBossKc == 0 ? "#ff4444" : "#ffffff";
+                String kcColor = totalBossKc == 0 ? "#ff4444" : "#c6c6c6";
                 statusLabel.setText("<html><font color='" + kcColor + "'>" + escapeHtml(player)
                     + "</font><font color='#555555'> | </font><font color='" + kcColor + "'>"
                     + formatKc(totalBossKc) + " kc</font></html>");
-                statusLabel.setForeground(Color.WHITE);
+                statusLabel.setForeground(null);
                 updateStatusIcon(result.getAccountType());
                 playerInput.setText("");
 
-                updateBossLabels(result);
                 applyCompletionistColors();
                 updateTooltips();
             })
@@ -548,7 +624,7 @@ public class KillClogPanel extends PluginPanel
             boolean hasKc = kc > 0;
 
             label.setText(pad(kc <= 0 ? "--" : formatKc(kc)));
-            label.setForeground(hasKc ? Color.WHITE : ColorScheme.LIGHT_GRAY_COLOR);
+            label.setForeground(hasKc ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
 
             // Dim icon for bosses with no KC
             ImageIcon orig = originalIcons.get(skill);
@@ -559,17 +635,33 @@ public class KillClogPanel extends PluginPanel
         }
     }
 
-    /**
-     * Apply completionist highlighter colors to boss KC labels based on collection log status.
-     * Requires both hiscore and clog results. No-op if either is missing or feature is disabled.
-     */
     private void applyCompletionistColors()
     {
-        if (!config.completionistHighlighter() || hiscoreResult == null || clogResult == null)
+        applyHighlighterState(config.completionistHighlighter());
+    }
+
+    /**
+     * Reset boss labels to their base state, then optionally apply completionist colors.
+     * Used both for live updates and for hover preview on the toggle button.
+     */
+    private void applyHighlighterState(boolean enabled)
+    {
+        if (hiscoreResult == null)
         {
             return;
         }
+        updateBossLabels(hiscoreResult);
+        if (enabled && clogResult != null)
+        {
+            applyCompletionistColorsInner();
+        }
+    }
 
+    /**
+     * Apply completionist highlighter colors — assumes hiscoreResult and clogResult are non-null.
+     */
+    private void applyCompletionistColorsInner()
+    {
         for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
         {
             HiscoreSkill skill = entry.getKey();
