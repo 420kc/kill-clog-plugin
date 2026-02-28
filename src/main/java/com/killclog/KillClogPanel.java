@@ -1007,6 +1007,21 @@ public class KillClogPanel extends PluginPanel
     }
 
     /**
+     * Toggle the in-panel highlighter on/off (called by keybind).
+     * No-ops if the feature is disabled in settings.
+     */
+    public void toggleHighlighter()
+    {
+        if (!config.completionistHighlighter())
+        {
+            return;
+        }
+        highlighterOn = !highlighterOn;
+        updateToggleAppearance(highlighterOn);
+        applyHighlighterState(highlighterOn);
+    }
+
+    /**
      * Called when Kill Clog config changes at runtime.
      * Updates toggle button visibility when "Enable Highlighter" is toggled in settings.
      */

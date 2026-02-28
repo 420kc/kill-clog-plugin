@@ -15,6 +15,8 @@ import net.runelite.api.events.MenuOpened;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.input.KeyManager;
+import net.runelite.client.util.HotkeyListener;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
@@ -42,7 +44,19 @@ public class KillClogPlugin extends Plugin
     @Inject
     private KillClogPanel panel;
 
+    @Inject
+    private KeyManager keyManager;
+
     private NavigationButton navButton;
+
+    private final HotkeyListener highlighterHotkey = new HotkeyListener(() -> config.highlighterKeybind())
+    {
+        @Override
+        public void hotkeyPressed()
+        {
+            SwingUtilities.invokeLater(() -> panel.toggleHighlighter());
+        }
+    };
 
     @Provides
     KillClogConfig provideConfig(ConfigManager configManager)
@@ -61,6 +75,7 @@ public class KillClogPlugin extends Plugin
             .build();
 
         clientToolbar.addNavigation(navButton);
+        keyManager.registerKeyListener(highlighterHotkey);
 
         String defaultPlayer = config.defaultPlayer();
         if (!defaultPlayer.isEmpty())
@@ -79,6 +94,7 @@ public class KillClogPlugin extends Plugin
     protected void shutDown()
     {
         clientToolbar.removeNavigation(navButton);
+        keyManager.unregisterKeyListener(highlighterHotkey);
         SwingUtilities.invokeLater(() -> panel.shutdown());
         log.info("Kill Clog plugin stopped");
     }

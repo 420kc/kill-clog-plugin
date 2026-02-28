@@ -5,6 +5,7 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
+import net.runelite.client.config.Keybind;
 
 @ConfigGroup("killclog")
 public interface KillClogConfig extends Config
@@ -88,6 +89,18 @@ public interface KillClogConfig extends Config
     default boolean completionistHighlighter()
     {
         return true;
+    }
+
+    @ConfigItem(
+        keyName = "highlighterKeybind",
+        name = "Toggle Keybind",
+        description = "Shortcut key to toggle the Completionist's Highlighter",
+        section = "completionist",
+        position = 1
+    )
+    default Keybind highlighterKeybind()
+    {
+        return Keybind.NOT_SET;
     }
 
     @ConfigItem(
