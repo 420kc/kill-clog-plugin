@@ -56,7 +56,7 @@ public class KillClogPanel extends PluginPanel
     private static final Color KC_COLOR = new Color(215, 215, 215);
 
     private static final String[] SEARCHING_MESSAGES = {
-        "Putting together a search party for %s...",
+        "Throwing a search party for %s...",
         "Moving mountains to find %s...",
         "Have you seen %s? I haven't...",
         "Deliberating on %s's whereabouts...",
@@ -273,12 +273,11 @@ public class KillClogPanel extends PluginPanel
         panel.setBackground(ColorScheme.DARK_GRAY_COLOR);
         panel.setBorder(null);
 
-        // Title
-        JLabel title = new JLabel("Kill Clog");
-        title.setFont(FontManager.getRunescapeFont().deriveFont(16f));
-        title.setAlignmentX(Component.CENTER_ALIGNMENT);
-        panel.add(title);
-        panel.add(Box.createVerticalStrut(8));
+        // Collection log sync notice — shown above search bar when player has no clog data
+        clogNotice.setFont(FontManager.getRunescapeSmallFont());
+        clogNotice.setAlignmentX(Component.CENTER_ALIGNMENT);
+        clogNotice.setVisible(false);
+        panel.add(clogNotice);
 
         // Search row
         JPanel searchRow = new JPanel(new BorderLayout(5, 0));
@@ -327,13 +326,6 @@ public class KillClogPanel extends PluginPanel
         statusRow.add(statusLabel, BorderLayout.CENTER);
         statusRow.add(highlighterToggle, BorderLayout.EAST);
         panel.add(statusRow);
-
-        // Collection log sync notice (hidden by default)
-        clogNotice.setFont(FontManager.getRunescapeSmallFont());
-        clogNotice.setForeground(new Color(180, 180, 100));
-        clogNotice.setAlignmentX(Component.CENTER_ALIGNMENT);
-        clogNotice.setVisible(false);
-        panel.add(clogNotice);
 
         return panel;
     }
@@ -581,7 +573,8 @@ public class KillClogPanel extends PluginPanel
                     }
                     else
                     {
-                        clogNotice.setText("No collection log \u2014 sync at templeosrs.com");
+                        clogNotice.setText("<html><font color='#cc4444'>No collection log \u2014 sync at </font>"
+                            + "<font color='#c6c6c6'>templeosrs.com</font></html>");
                         clogNotice.setVisible(true);
                     }
                 })
