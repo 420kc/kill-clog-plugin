@@ -65,6 +65,9 @@ public class KillClogPanel extends PluginPanel
         "WANTED: %s",
         "%s has gone AWOL",
         "%s must be touching grass",
+        "%s? Never heard of 'em.",
+        "%s has left the building",
+        "%s who?",
     };
 
     // Boss display order matching vanilla RuneLite hiscores
@@ -155,7 +158,7 @@ public class KillClogPanel extends PluginPanel
     private final ClientThread clientThread;
 
     private final JTextField playerInput = new JTextField();
-    private final JButton lookupButton = new JButton("\uD83D\uDD0D");
+    private final JButton lookupButton = new JButton("GO");
     private final JLabel statusNameLabel = new JLabel(" ");
     private final JLabel statusTotalLabel = new JLabel();
     private final JLabel statusKcLabel = new JLabel();
@@ -211,6 +214,15 @@ public class KillClogPanel extends PluginPanel
         c.gridy++;
         c.insets = new Insets(0, 0, 0, 0);
         add(buildBossGrid(), c);
+
+        // Collection log sync notice — below boss grid
+        c.gridy++;
+        c.insets = new Insets(5, 0, 0, 0);
+        clogNotice.setFont(FontManager.getRunescapeSmallFont());
+        clogNotice.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        clogNotice.setHorizontalAlignment(JLabel.CENTER);
+        clogNotice.setText(" ");
+        add(clogNotice, c);
 
         // Explicitly configure PluginPanel's scroll pane with RuneLite scrollbar UI
         JScrollPane sp = getScrollPane();
@@ -270,12 +282,6 @@ public class KillClogPanel extends PluginPanel
         panel.setBackground(ColorScheme.DARK_GRAY_COLOR);
         panel.setBorder(null);
 
-        // Collection log sync notice — shown above search bar when player has no clog data
-        clogNotice.setFont(FontManager.getRunescapeSmallFont());
-        clogNotice.setAlignmentX(Component.LEFT_ALIGNMENT);
-        clogNotice.setText(" "); // always visible to hold space — text swaps, layout never shifts
-        panel.add(clogNotice);
-
         // Search row
         JPanel searchRow = new JPanel(new BorderLayout(5, 0));
         searchRow.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -291,6 +297,7 @@ public class KillClogPanel extends PluginPanel
         playerInput.addActionListener(e -> doLookup());
         searchRow.add(playerInput, BorderLayout.CENTER);
 
+        lookupButton.setFont(FontManager.getRunescapeSmallFont());
         lookupButton.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         lookupButton.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         lookupButton.setBorder(BorderFactory.createRaisedBevelBorder());
@@ -480,12 +487,13 @@ public class KillClogPanel extends PluginPanel
                 if (isMaxed)
                 {
                     statusTotalLabel.setText("Maxed");
-                    statusTotalLabel.setForeground(config.completedClogColor());
+                    statusTotalLabel.setForeground(config.completionistHighlighter()
+                        ? config.completedClogColor() : config.statusBarColor());
                 }
                 else if (totalLevel > 0)
                 {
                     statusTotalLabel.setText(String.valueOf(totalLevel));
-                    statusTotalLabel.setForeground(config.inProgressClogColor());
+                    statusTotalLabel.setForeground(config.statusBarColor());
                 }
                 else
                 {
@@ -531,8 +539,7 @@ public class KillClogPanel extends PluginPanel
                     }
                     else
                     {
-                        clogNotice.setText("<html><font color='#cc4444'>No collection log \u2014 sync at </font>"
-                            + "<font color='#c6c6c6'>templeosrs.com</font></html>");
+                        clogNotice.setText("Sync at TempleOSRS");
                     }
                 })
             ).exceptionally(ex ->
@@ -675,6 +682,13 @@ public class KillClogPanel extends PluginPanel
         {
             applyCompletionistColorsInner();
         }
+
+        // Update "Maxed" color in status bar
+        if ("Maxed".equals(statusTotalLabel.getText()))
+        {
+            statusTotalLabel.setForeground(enabled
+                ? config.completedClogColor() : config.statusBarColor());
+        }
     }
 
     /**
@@ -815,6 +829,13 @@ public class KillClogPanel extends PluginPanel
 
     private void updateTooltipsInner()
     {
+        String obtainedColor = "#4caf6e";
+        if (config.completionistHighlighter())
+        {
+            Color c = config.completedClogColor();
+            obtainedColor = String.format("#%02x%02x%02x", c.getRed(), c.getGreen(), c.getBlue());
+        }
+
         for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
         {
             HiscoreSkill skill = entry.getKey();
@@ -928,7 +949,7 @@ public class KillClogPanel extends PluginPanel
                     if (hasItem)
                     {
                         int count = obtainedCounts.getOrDefault(itemId, 1);
-                        html.append("<span style='color:#4caf6e;'>\u2713 ");
+                        html.append("<span style='color:").append(obtainedColor).append(";'>\u2713 ");
                         html.append(escapeHtml(itemName));
                         if (count > 1)
                         {
@@ -949,7 +970,7 @@ public class KillClogPanel extends PluginPanel
                 for (ClogResult.ClogItem item : obtained)
                 {
                     String itemName = clogResult.getItemName(item.getId());
-                    html.append("<span style='color:#4caf6e;'>\u2713 ");
+                    html.append("<span style='color:").append(obtainedColor).append(";'>\u2713 ");
                     html.append(escapeHtml(itemName));
                     if (item.getCount() > 1)
                     {
