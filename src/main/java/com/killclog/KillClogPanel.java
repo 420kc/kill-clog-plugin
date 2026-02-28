@@ -20,6 +20,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ThreadLocalRandom;
 import javax.inject.Inject;
 import javax.swing.BorderFactory;
 import javax.swing.Box;
@@ -53,6 +54,20 @@ public class KillClogPanel extends PluginPanel
     private static final Color TEXT_DIM = new Color(160, 160, 160);
     // Explicit bright-but-not-white for KC labels with kills — avoids LIGHT_GRAY_COLOR bleed
     private static final Color KC_COLOR = new Color(215, 215, 215);
+
+    private static final String[] SEARCHING_MESSAGES = {
+        "Putting together a search party for %s...",
+        "Moving mountains to find %s...",
+        "Have you seen %s? I haven't...",
+        "Deliberating on %s's whereabouts...",
+        "Searching high and low for %s...",
+    };
+
+    private static final String[] NOT_FOUND_MESSAGES = {
+        "WANTED: %s",
+        "%s has gone AWOL",
+        "%s must be touching grass",
+    };
 
     // Boss display order matching vanilla RuneLite hiscores
     private static final HiscoreSkill[] BOSSES = {
@@ -474,7 +489,8 @@ public class KillClogPanel extends PluginPanel
         }
 
         final int thisLookup = ++lookupVersion;
-        statusLabel.setText("Looking up " + player + "...");
+        int searchIdx = ThreadLocalRandom.current().nextInt(SEARCHING_MESSAGES.length);
+        statusLabel.setText(String.format(SEARCHING_MESSAGES[searchIdx], player));
         statusLabel.setForeground(TEXT_DIM);
         statusLabel.setIcon(null);
         lookupButton.setEnabled(false);
@@ -508,8 +524,9 @@ public class KillClogPanel extends PluginPanel
                 if (result == null)
                 {
                     statusLabel.setIcon(null);
-                    statusLabel.setText("Player not found");
-                    statusLabel.setForeground(TEXT_DIM);
+                    int notFoundIdx = ThreadLocalRandom.current().nextInt(NOT_FOUND_MESSAGES.length);
+                    statusLabel.setText(String.format(NOT_FOUND_MESSAGES[notFoundIdx], player));
+                    statusLabel.setForeground(config.notFoundColor());
                     return;
                 }
 
@@ -518,10 +535,11 @@ public class KillClogPanel extends PluginPanel
                 int totalBossKc = calculateTotalBossKc(result);
                 int totalLevel = result.getTotalLevel();
                 boolean isMaxed = totalLevel >= 2376;
-                String kcColor = totalBossKc == 0 ? "#ff4444" : "#c6c6c6";
+                String sbHex = toHex(config.statusBarColor());
+                String kcColor = totalBossKc == 0 ? "#ff4444" : sbHex;
                 String totalHtml = totalLevel > 0
                     ? "<font color='#555555'> | </font><font color='"
-                        + (isMaxed ? "#4caf6e" : "#c6c6c6") + "'>"
+                        + (isMaxed ? "#4caf6e" : sbHex) + "'>"
                         + (isMaxed ? "Maxed" : totalLevel + " total")
                         + "</font>"
                     : "";
@@ -1039,6 +1057,11 @@ public class KillClogPanel extends PluginPanel
                    .replace("<", "&lt;")
                    .replace(">", "&gt;")
                    .replace("\"", "&quot;");
+    }
+
+    private static String toHex(java.awt.Color c)
+    {
+        return String.format("#%02x%02x%02x", c.getRed(), c.getGreen(), c.getBlue());
     }
 
 }

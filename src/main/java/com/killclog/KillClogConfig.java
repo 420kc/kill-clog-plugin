@@ -47,6 +47,28 @@ public interface KillClogConfig extends Config
         return true;
     }
 
+    @ConfigItem(
+        keyName = "statusBarColor",
+        name = "Status Bar",
+        description = "Color of player name and kill count in the status bar",
+        position = 3
+    )
+    default Color statusBarColor()
+    {
+        return new Color(198, 198, 198);
+    }
+
+    @ConfigItem(
+        keyName = "notFoundColor",
+        name = "Player Not on Hiscores",
+        description = "Color of the message shown when a player cannot be found",
+        position = 4
+    )
+    default Color notFoundColor()
+    {
+        return new Color(160, 160, 160);
+    }
+
     // --- Completionist's Highlighter ---
 
     @ConfigSection(
