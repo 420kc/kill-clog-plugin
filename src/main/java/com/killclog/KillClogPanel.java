@@ -204,7 +204,10 @@ public class KillClogPanel extends PluginPanel
         playerInput.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         playerInput.setForeground(Color.WHITE);
         playerInput.setCaretColor(Color.WHITE);
-        playerInput.setBorder(BorderFactory.createLineBorder(ColorScheme.MEDIUM_GRAY_COLOR));
+        playerInput.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createLineBorder(ColorScheme.MEDIUM_GRAY_COLOR),
+            new EmptyBorder(0, 6, 0, 6)
+        ));
         playerInput.setPreferredSize(new java.awt.Dimension(0, 30));
         playerInput.addActionListener(e -> doLookup());
         searchRow.add(playerInput, BorderLayout.CENTER);
@@ -401,6 +404,7 @@ public class KillClogPanel extends PluginPanel
                 playerInput.setText("");
 
                 updateBossLabels(result);
+                applyCompletionistColors();
                 updateTooltips();
             })
         ).exceptionally(ex ->
@@ -422,6 +426,7 @@ public class KillClogPanel extends PluginPanel
                 {
                     if (thisLookup != lookupVersion) return; // stale result
                     clogResult = result;
+                    applyCompletionistColors();
                     updateTooltips();
                     if (result != null)
                     {
@@ -550,6 +555,72 @@ public class KillClogPanel extends PluginPanel
             if (orig != null)
             {
                 label.setIcon(hasKc ? orig : new ImageIcon(createDimmedImage(orig)));
+            }
+        }
+    }
+
+    /**
+     * Apply completionist highlighter colors to boss KC labels based on collection log status.
+     * Requires both hiscore and clog results. No-op if either is missing or feature is disabled.
+     */
+    private void applyCompletionistColors()
+    {
+        if (!config.completionistHighlighter() || hiscoreResult == null || clogResult == null)
+        {
+            return;
+        }
+
+        for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
+        {
+            HiscoreSkill skill = entry.getKey();
+            JLabel label = entry.getValue();
+
+            String hiscoreName = NAME_OVERRIDES.getOrDefault(skill.getName(), skill.getName());
+            int kc = hiscoreResult.getKc(hiscoreName);
+
+            if (kc <= 0)
+            {
+                continue;
+            }
+
+            String category = ClogService.bossToCategory(hiscoreName);
+            List<ClogResult.ClogItem> obtained = clogResult.getObtainedItems().get(category);
+            List<Integer> allItems = clogResult.getCategoryItems().get(category);
+
+            if (allItems == null || allItems.isEmpty())
+            {
+                continue;
+            }
+
+            Set<Integer> obtainedIds = new HashSet<>();
+            if (obtained != null)
+            {
+                for (ClogResult.ClogItem item : obtained)
+                {
+                    obtainedIds.add(item.getId());
+                }
+            }
+
+            int obtainedCount = 0;
+            for (int itemId : allItems)
+            {
+                if (obtainedIds.contains(itemId))
+                {
+                    obtainedCount++;
+                }
+            }
+
+            if (obtainedCount == allItems.size())
+            {
+                label.setForeground(config.completedClogColor());
+            }
+            else if (obtainedCount == 0)
+            {
+                label.setForeground(config.emptyClogColor());
+            }
+            else
+            {
+                label.setForeground(config.inProgressClogColor());
             }
         }
     }

@@ -1,8 +1,10 @@
 package com.killclog;
 
+import java.awt.Color;
 import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
+import net.runelite.client.config.ConfigSection;
 
 @ConfigGroup("killclog")
 public interface KillClogConfig extends Config
@@ -10,7 +12,8 @@ public interface KillClogConfig extends Config
     @ConfigItem(
         keyName = "defaultPlayer",
         name = "Default Player",
-        description = "Player name to look up on startup (leave blank to use logged-in character)"
+        description = "Player name to look up on startup (leave blank to use logged-in character)",
+        position = 0
     )
     default String defaultPlayer()
     {
@@ -25,7 +28,8 @@ public interface KillClogConfig extends Config
             + "1. Install the 'TempleOSRS' plugin from the Plugin Hub<br>"
             + "2. Open your collection log in-game<br>"
             + "3. Click the sync button in the top-right corner<br><br>"
-            + "Players without a TempleOSRS profile will show KC only.</html>"
+            + "Players without a TempleOSRS profile will show KC only.</html>",
+        position = 1
     )
     default boolean showCollectionLog()
     {
@@ -35,10 +39,68 @@ public interface KillClogConfig extends Config
     @ConfigItem(
         keyName = "playerMenuLookup",
         name = "Player Menu Lookup",
-        description = "Add 'Kill Clog Lookup' to right-click menu on players"
+        description = "Add 'Kill Clog Lookup' to right-click menu on players",
+        position = 2
     )
     default boolean playerMenuLookup()
     {
         return true;
+    }
+
+    // --- Completionist's Highlighter ---
+
+    @ConfigSection(
+        name = "Completionist's Highlighter",
+        description = "Color KC numbers based on collection log completion",
+        position = 10
+    )
+    String completionistSection = "completionist";
+
+    @ConfigItem(
+        keyName = "completionistHighlighter",
+        name = "Enable Highlighter",
+        description = "Color boss KC numbers based on collection log completion status",
+        section = "completionist",
+        position = 0
+    )
+    default boolean completionistHighlighter()
+    {
+        return true;
+    }
+
+    @ConfigItem(
+        keyName = "completedClogColor",
+        name = "Completed",
+        description = "Color for bosses with all collection log items obtained",
+        section = "completionist",
+        position = 1
+    )
+    default Color completedClogColor()
+    {
+        return new Color(76, 175, 110);
+    }
+
+    @ConfigItem(
+        keyName = "inProgressClogColor",
+        name = "In Progress",
+        description = "Color for bosses with some collection log items obtained",
+        section = "completionist",
+        position = 2
+    )
+    default Color inProgressClogColor()
+    {
+        return new Color(200, 170, 60);
+    }
+
+    @ConfigItem(
+        keyName = "emptyClogColor",
+        name = "Empty",
+        description = "Color for bosses with kills but no collection log items obtained",
+        section = "completionist",
+        position = 3
+    )
+    default Color emptyClogColor()
+    {
+        return new Color(192, 80, 80);
     }
 }
