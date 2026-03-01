@@ -6,32 +6,32 @@ Reimagine your boss log.
 
 ## Features
 
-### Boss KC Grid
-Three-column boss grid with kill count for every boss on the hiscores. Account type is auto-detected and displayed with the correct badge (Regular, Ironman, HCIM, UIM, De-Ironed).
+### Grand Unified Search Theory
+No more searching the wrong hiscores. One search bar, one search. Account type is auto-detected and the correct helmet is applied to the RSN (Regular, Ironman, HCIM, UIM, De-Ironed).
 
 ### Collection Log Tooltips
-Hover any boss to see your collection log progress. Obtained items show as green checkmarks, missing items as gray squares. Item counts are shown for duplicates.
+Kills and collections in the same place. Hover any boss to see your collection log progress. Obtained items marked with green checkmarks, missing items with empty checkboxes. Item counts are shown for duplicates.
 
 ![Tooltip screenshot](https://raw.githubusercontent.com/420kc/kill-clog-plugin/master/screenshots/tooltip.png)
 
 ### Completionist's Highlighter
-Boss cells light up based on your collection log completion:
+Boss kill counts colored by your collection log completion:
 - **Green** — all items obtained
 - **Amber** — some items obtained
 - **Red** — kills but no drops yet
 
-All three colors are fully configurable. Toggle with a configurable keybind.
+All three colors are fully configurable and toggled with a keybind.
 
 ![Highlighter screenshot](https://raw.githubusercontent.com/420kc/kill-clog-plugin/master/screenshots/highlighter.png)
 
 ### Status Bar
-At a glance: account badge + player name, total collection log count, and total level.
+At a glance: account badge + player name, collections obtained, and total level. Rotating search and not-found messages for mild amusement.
 
 ## How It Works
 - Type a player name and press Enter to look up any account
 - Right-click any player in-game and select "Kill Clog Lookup"
 - Your RSN auto-fills when you log in
-- Collection log data is pulled from [TempleOSRS](https://templeosrs.com) — make sure your account is synced
+- Collection log data is pulled from [TempleOSRS](https://templeosrs.com) — install the TempleOSRS plugin, open your collection log in-game, and click the sync button in the top right
 
 ## Configuration
 
@@ -40,7 +40,7 @@ At a glance: account badge + player name, total collection log count, and total 
 | Default Player | RSN to look up on panel open |
 | Show Collection Log | Enable/disable clog tooltips |
 | Player Menu Lookup | Add "Kill Clog Lookup" to right-click menu |
-| Completionist's Highlighter | Color boss cells by clog completion |
+| Completionist's Highlighter | Color boss kill counts by clog completion |
 | Highlighter Keybind | Key to toggle the highlighter |
 | Status Bar Color | Color for player name and stats |
 | Not Found Color | Color for "player not found" messages |

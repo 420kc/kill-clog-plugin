@@ -4,12 +4,14 @@ import java.awt.AlphaComposite;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
+import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -23,6 +25,7 @@ import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -183,7 +186,7 @@ public class KillClogPanel extends PluginPanel
                          SpriteManager spriteManager,
                          ItemManager itemManager, ClientThread clientThread)
     {
-        super(); // PluginPanel wraps in JScrollPane with RuneLite-styled scrollbar
+        super(true); // wrap in JScrollPane — RuneLite applies FlatLaf scrollbar
         this.hiscoreService = hiscoreService;
         this.clogService = clogService;
         this.config = config;
@@ -223,11 +226,53 @@ public class KillClogPanel extends PluginPanel
             RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         add(clogNotice, c);
 
-        // Configure PluginPanel's scroll pane — RuneLite applies its scrollbar UI via FlatLaf
+        // Configure PluginPanel's scroll pane with custom scrollbar
         JScrollPane sp = getScrollPane();
         if (sp != null)
         {
+            sp.setBorder(null);
+            sp.setViewportBorder(null);
             sp.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+            sp.getViewport().setBackground(ColorScheme.DARK_GRAY_COLOR);
+            sp.getVerticalScrollBar().setUI(new javax.swing.plaf.basic.BasicScrollBarUI()
+            {
+                @Override
+                protected void configureScrollBarColors()
+                {
+                    thumbColor = new Color(70, 70, 70);
+                    trackColor = ColorScheme.DARKER_GRAY_COLOR;
+                }
+                @Override
+                protected void paintThumb(Graphics g, JComponent c, Rectangle thumbBounds)
+                {
+                    if (thumbBounds.isEmpty() || !scrollbar.isEnabled())
+                    {
+                        return;
+                    }
+                    g.setColor(isThumbRollover() ? new Color(110, 110, 110) : thumbColor);
+                    g.fillRect(thumbBounds.x, thumbBounds.y, thumbBounds.width, thumbBounds.height);
+                }
+                @Override
+                protected JButton createDecreaseButton(int orientation)
+                {
+                    return makeZeroButton();
+                }
+                @Override
+                protected JButton createIncreaseButton(int orientation)
+                {
+                    return makeZeroButton();
+                }
+                private JButton makeZeroButton()
+                {
+                    JButton btn = new JButton();
+                    java.awt.Dimension d = new java.awt.Dimension(0, 0);
+                    btn.setPreferredSize(d);
+                    btn.setMinimumSize(d);
+                    btn.setMaximumSize(d);
+                    return btn;
+                }
+            });
+            sp.getVerticalScrollBar().setPreferredSize(new java.awt.Dimension(7, 0));
             sp.getVerticalScrollBar().setUnitIncrement(16);
         }
     }
@@ -877,7 +922,10 @@ public class KillClogPanel extends PluginPanel
             {
                 StringBuilder tooltip = new StringBuilder("<html>");
                 tooltip.append(escapeHtml(bossName));
-                tooltip.append(formatRankHtml(rank));
+                if (rank > 0)
+                {
+                    tooltip.append("<span style='float:right;'>").append(formatRankHtml(rank)).append("</span>");
+                }
                 tooltip.append("</html>");
                 label.setToolTipText(tooltip.toString());
                 continue;
@@ -894,7 +942,10 @@ public class KillClogPanel extends PluginPanel
             {
                 StringBuilder tooltip = new StringBuilder("<html>");
                 tooltip.append(escapeHtml(bossName));
-                tooltip.append(formatRankHtml(rank));
+                if (rank > 0)
+                {
+                    tooltip.append("<span style='float:right;'>").append(formatRankHtml(rank)).append("</span>");
+                }
                 tooltip.append("</html>");
                 label.setToolTipText(tooltip.toString());
                 continue;
