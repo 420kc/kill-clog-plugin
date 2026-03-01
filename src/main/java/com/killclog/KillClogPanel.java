@@ -50,7 +50,6 @@ import org.apache.commons.lang3.StringUtils;
 public class KillClogPanel extends PluginPanel
 {
     private static final Color TEXT_DIM = new Color(160, 160, 160);
-    // Explicit bright-but-not-white for KC labels with kills — avoids LIGHT_GRAY_COLOR bleed
     private static final Color KC_COLOR = new Color(215, 215, 215);
 
     private static final String[] SEARCHING_MESSAGES = {
@@ -167,15 +166,17 @@ public class KillClogPanel extends PluginPanel
     // Track labels for updating after lookup
     private final Map<HiscoreSkill, JLabel> bossLabels = new LinkedHashMap<>();
 
-    // Store original icons for dimming/restoring
+    // Store original and dimmed icons
     private final Map<HiscoreSkill, ImageIcon> originalIcons = new LinkedHashMap<>();
+    private final Map<HiscoreSkill, ImageIcon> dimmedIcons = new LinkedHashMap<>();
 
     // Current lookup state
     private HiscoreResult hiscoreResult;
     private ClogResult clogResult;
+    private boolean showingNotFound;
 
-    // Original tooltip dismiss delay to restore on shutdown
-    private final int originalDismissDelay;
+    // Original tooltip dismiss delay to restore when panel deactivates
+    private int originalDismissDelay;
 
     @Inject
     public KillClogPanel(HiscoreService hiscoreService, ClogService clogService,
@@ -191,10 +192,6 @@ public class KillClogPanel extends PluginPanel
         this.spriteManager = spriteManager;
         this.itemManager = itemManager;
         this.clientThread = clientThread;
-
-        // Keep tooltips visible longer for reading item lists
-        originalDismissDelay = ToolTipManager.sharedInstance().getDismissDelay();
-        ToolTipManager.sharedInstance().setDismissDelay(15000);
 
         // Match native HiscorePanel structure
         setBorder(new EmptyBorder(10, 10, 0, 10));
@@ -380,6 +377,7 @@ public class KillClogPanel extends PluginPanel
                 ImageIcon icon = new ImageIcon(scaled);
                 label.setIcon(icon);
                 originalIcons.put(boss, icon);
+                dimmedIcons.put(boss, new ImageIcon(createDimmedImage(icon)));
             }));
 
         bossLabels.put(boss, label);
@@ -442,6 +440,7 @@ public class KillClogPanel extends PluginPanel
         // Clear previous results
         hiscoreResult = null;
         clogResult = null;
+        showingNotFound = false;
         clogNotice.setText(" ");
 
         // Reset all labels to "--" and restore original icons
@@ -471,6 +470,7 @@ public class KillClogPanel extends PluginPanel
                     int notFoundIdx = ThreadLocalRandom.current().nextInt(NOT_FOUND_MESSAGES.length);
                     statusNameLabel.setText(String.format(NOT_FOUND_MESSAGES[notFoundIdx], player));
                     statusNameLabel.setForeground(config.notFoundColor());
+                    showingNotFound = true;
                     return;
                 }
 
@@ -657,7 +657,7 @@ public class KillClogPanel extends PluginPanel
             ImageIcon orig = originalIcons.get(skill);
             if (orig != null)
             {
-                label.setIcon(hasKc ? orig : new ImageIcon(createDimmedImage(orig)));
+                label.setIcon(hasKc ? orig : dimmedIcons.get(skill));
             }
         }
     }
@@ -692,6 +692,39 @@ public class KillClogPanel extends PluginPanel
     }
 
     /**
+     * Build the set of obtained item IDs for a clog category.
+     */
+    private Set<Integer> getObtainedIds(String category)
+    {
+        Set<Integer> ids = new HashSet<>();
+        List<ClogResult.ClogItem> obtained = clogResult.getObtainedItems().get(category);
+        if (obtained != null)
+        {
+            for (ClogResult.ClogItem item : obtained)
+            {
+                ids.add(item.getId());
+            }
+        }
+        return ids;
+    }
+
+    /**
+     * Count how many items in allItems are in the obtained set.
+     */
+    private static int countObtained(List<Integer> allItems, Set<Integer> obtainedIds)
+    {
+        int count = 0;
+        for (int id : allItems)
+        {
+            if (obtainedIds.contains(id))
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    /**
      * Apply completionist highlighter colors — assumes hiscoreResult and clogResult are non-null.
      */
     private void applyCompletionistColorsInner()
@@ -710,7 +743,6 @@ public class KillClogPanel extends PluginPanel
             }
 
             String category = ClogService.bossToCategory(hiscoreName);
-            List<ClogResult.ClogItem> obtained = clogResult.getObtainedItems().get(category);
             List<Integer> allItems = clogResult.getCategoryItems().get(category);
 
             if (allItems == null || allItems.isEmpty())
@@ -718,23 +750,8 @@ public class KillClogPanel extends PluginPanel
                 continue;
             }
 
-            Set<Integer> obtainedIds = new HashSet<>();
-            if (obtained != null)
-            {
-                for (ClogResult.ClogItem item : obtained)
-                {
-                    obtainedIds.add(item.getId());
-                }
-            }
-
-            int obtainedCount = 0;
-            for (int itemId : allItems)
-            {
-                if (obtainedIds.contains(itemId))
-                {
-                    obtainedCount++;
-                }
-            }
+            Set<Integer> obtainedIds = getObtainedIds(category);
+            int obtainedCount = countObtained(allItems, obtainedIds);
 
             if (obtainedCount == allItems.size())
             {
@@ -888,36 +905,20 @@ public class KillClogPanel extends PluginPanel
                 continue;
             }
 
-            Set<Integer> obtainedIds = new HashSet<>();
+            Set<Integer> obtainedIds = getObtainedIds(category);
             Map<Integer, Integer> obtainedCounts = new LinkedHashMap<>();
             if (obtained != null)
             {
                 for (ClogResult.ClogItem item : obtained)
                 {
-                    obtainedIds.add(item.getId());
                     obtainedCounts.put(item.getId(), item.getCount());
                 }
             }
 
             int totalItems = allItems != null ? allItems.size() : obtainedIds.size();
-            int obtainedCount = 0;
-
-            if (allItems != null)
-            {
-                for (int itemId : allItems)
-                {
-                    if (obtainedIds.contains(itemId))
-                    {
-                        obtainedCount++;
-                    }
-                }
-            }
-            else
-            {
-                obtainedCount = obtainedIds.size();
-            }
-
-            boolean isComplete = totalItems > 0 && obtainedCount == totalItems;
+            int obtainedCount = allItems != null
+                ? countObtained(allItems, obtainedIds)
+                : obtainedIds.size();
 
             StringBuilder html = new StringBuilder();
             html.append("<html><body style='padding:4px;'>");
@@ -1000,14 +1001,50 @@ public class KillClogPanel extends PluginPanel
      */
     public void onConfigChanged(String key)
     {
-        if ("completionistHighlighter".equals(key))
+        switch (key)
         {
-            applyHighlighterState(config.completionistHighlighter());
+            case "completionistHighlighter":
+            case "completedClogColor":
+            case "inProgressClogColor":
+            case "emptyClogColor":
+                applyHighlighterState(config.completionistHighlighter());
+                updateTooltips();
+                break;
+            case "statusBarColor":
+                if (hiscoreResult != null)
+                {
+                    statusNameLabel.setForeground(config.statusBarColor());
+                    statusKcLabel.setForeground(config.statusBarColor());
+                    if (!"Maxed".equals(statusTotalLabel.getText()))
+                    {
+                        statusTotalLabel.setForeground(config.statusBarColor());
+                    }
+                }
+                break;
+            case "notFoundColor":
+                if (showingNotFound)
+                {
+                    statusNameLabel.setForeground(config.notFoundColor());
+                }
+                break;
         }
     }
 
+    @Override
+    public void onActivate()
+    {
+        originalDismissDelay = ToolTipManager.sharedInstance().getDismissDelay();
+        ToolTipManager.sharedInstance().setDismissDelay(15000);
+    }
+
+    @Override
+    public void onDeactivate()
+    {
+        ToolTipManager.sharedInstance().setDismissDelay(originalDismissDelay);
+    }
+
     /**
-     * Restore global state modified by this panel.
+     * Safety net — restore tooltip delay if plugin is disabled while panel is active.
      */
     public void shutdown()
     {

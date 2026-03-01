@@ -27,7 +27,7 @@ import net.runelite.client.util.Text;
 @Slf4j
 @PluginDescriptor(
     name = "Kill Clog",
-    description = "Boss kill count tracker with collection log tooltips and parallelized account type detection",
+    description = "Boss log overhaul with clog tooltips and completion colors",
     tags = {"boss", "kc", "kill count", "collection log", "pvm", "hiscore", "ironman"}
 )
 public class KillClogPlugin extends Plugin

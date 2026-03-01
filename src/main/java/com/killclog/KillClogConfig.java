@@ -108,7 +108,7 @@ public interface KillClogConfig extends Config
         name = "Completed",
         description = "Color for bosses with all collection log items obtained",
         section = "completionist",
-        position = 1
+        position = 2
     )
     default Color completedClogColor()
     {
@@ -120,7 +120,7 @@ public interface KillClogConfig extends Config
         name = "In Progress",
         description = "Color for bosses with some collection log items obtained",
         section = "completionist",
-        position = 2
+        position = 3
     )
     default Color inProgressClogColor()
     {
@@ -132,7 +132,7 @@ public interface KillClogConfig extends Config
         name = "Empty",
         description = "Color for bosses with kills but no collection log items obtained",
         section = "completionist",
-        position = 3
+        position = 4
     )
     default Color emptyClogColor()
     {
