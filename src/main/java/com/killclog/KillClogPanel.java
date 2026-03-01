@@ -30,7 +30,6 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
-import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 import javax.swing.border.EmptyBorder;
@@ -44,6 +43,7 @@ import net.runelite.client.plugins.hiscore.HiscorePanel;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
+import net.runelite.client.ui.components.IconTextField;
 import net.runelite.client.util.ImageUtil;
 import org.apache.commons.lang3.StringUtils;
 
@@ -157,12 +157,12 @@ public class KillClogPanel extends PluginPanel
     private final ItemManager itemManager;
     private final ClientThread clientThread;
 
-    private final JTextField playerInput = new JTextField();
-    private final JButton lookupButton = new JButton("GO");
+    private final IconTextField searchBar = new IconTextField();
     private final JLabel statusNameLabel = new JLabel(" ");
     private final JLabel statusTotalLabel = new JLabel();
     private final JLabel statusKcLabel = new JLabel();
     private final JLabel clogNotice = new JLabel();
+    private ImageIcon skillsIcon;
 
     // Track labels for updating after lookup
     private final Map<HiscoreSkill, JLabel> bossLabels = new LinkedHashMap<>();
@@ -283,43 +283,31 @@ public class KillClogPanel extends PluginPanel
         panel.setBackground(ColorScheme.DARK_GRAY_COLOR);
         panel.setBorder(null);
 
-        // Search row
-        JPanel searchRow = new JPanel(new BorderLayout(5, 0));
-        searchRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-        searchRow.setBackground(ColorScheme.DARK_GRAY_COLOR);
+        // Search bar — matches native HiscorePanel (IconTextField with magnifying glass)
+        searchBar.setIcon(IconTextField.Icon.SEARCH);
+        searchBar.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        searchBar.setHoverBackgroundColor(ColorScheme.DARK_GRAY_HOVER_COLOR);
+        searchBar.setPreferredSize(new java.awt.Dimension(0, 30));
+        searchBar.setAlignmentX(Component.LEFT_ALIGNMENT);
+        searchBar.addActionListener(e -> doLookup());
 
-        // Dark search bar
-        playerInput.setToolTipText("Enter RSN");
-        playerInput.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        playerInput.setForeground(Color.WHITE);
-        playerInput.setCaretColor(Color.WHITE);
-        playerInput.setBorder(new EmptyBorder(0, 6, 0, 6));
-        playerInput.setPreferredSize(new java.awt.Dimension(0, 30));
-        playerInput.addActionListener(e -> doLookup());
-        searchRow.add(playerInput, BorderLayout.CENTER);
-
-        lookupButton.setFont(FontManager.getRunescapeSmallFont());
-        lookupButton.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        lookupButton.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-        lookupButton.setBorder(BorderFactory.createRaisedBevelBorder());
-        lookupButton.setFocusPainted(false);
-        lookupButton.setContentAreaFilled(true);
-        lookupButton.setPreferredSize(new java.awt.Dimension(30, 30));
-        lookupButton.addActionListener(e -> doLookup());
-        lookupButton.getModel().addChangeListener(e ->
+        // Configure internals: white text + greyscale AA, remove clear/suggest buttons
+        removeClearButtons(searchBar);
+        for (Component c : searchBar.getComponents())
         {
-            if (lookupButton.getModel().isPressed())
+            if (c instanceof net.runelite.client.ui.components.FlatTextField)
             {
-                lookupButton.setBorder(BorderFactory.createLoweredBevelBorder());
+                javax.swing.JTextField tf =
+                    ((net.runelite.client.ui.components.FlatTextField) c).getTextField();
+                tf.setForeground(Color.WHITE);
+                tf.setCaretColor(Color.WHITE);
+                tf.putClientProperty(
+                    RenderingHints.KEY_TEXT_ANTIALIASING,
+                    RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
             }
-            else
-            {
-                lookupButton.setBorder(BorderFactory.createRaisedBevelBorder());
-            }
-        });
-        searchRow.add(lookupButton, BorderLayout.EAST);
+        }
 
-        panel.add(searchRow);
+        panel.add(searchBar);
         panel.add(Box.createVerticalStrut(4));
 
         // Status row: [badge+name LEFT] [total CENTER] [kc RIGHT]
@@ -342,6 +330,7 @@ public class KillClogPanel extends PluginPanel
 
         statusKcLabel.setFont(FontManager.getRunescapeSmallFont());
         statusKcLabel.setHorizontalAlignment(JLabel.RIGHT);
+        statusKcLabel.setIconTextGap(3);
         statusKcLabel.putClientProperty(
             RenderingHints.KEY_TEXT_ANTIALIASING,
             RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
@@ -350,6 +339,17 @@ public class KillClogPanel extends PluginPanel
         statusRow.add(statusTotalLabel, BorderLayout.CENTER);
         statusRow.add(statusKcLabel, BorderLayout.EAST);
         panel.add(statusRow);
+
+        // Cache skills icon for total level display
+        try
+        {
+            BufferedImage img = ImageUtil.loadImageResource(HiscorePanel.class, "overall.png");
+            skillsIcon = new ImageIcon(ImageUtil.resizeImage(img, 13, 13));
+        }
+        catch (Exception e)
+        {
+            skillsIcon = null;
+        }
 
         return panel;
     }
@@ -429,20 +429,21 @@ public class KillClogPanel extends PluginPanel
 
     public void setPlayerName(String name)
     {
-        playerInput.setText(name);
+        searchBar.setText(name);
     }
 
     private volatile int lookupVersion = 0;
 
     public void doLookup()
     {
-        String player = playerInput.getText().trim();
+        String player = searchBar.getText().trim();
         if (player.isEmpty())
         {
             statusNameLabel.setIcon(null);
             statusNameLabel.setText("Enter RSN");
             statusNameLabel.setForeground(TEXT_DIM);
             statusTotalLabel.setText("");
+            statusKcLabel.setIcon(null);
             statusKcLabel.setText("");
             return;
         }
@@ -453,8 +454,9 @@ public class KillClogPanel extends PluginPanel
         statusNameLabel.setForeground(TEXT_DIM);
         statusNameLabel.setIcon(null);
         statusTotalLabel.setText("");
+        statusKcLabel.setIcon(null);
         statusKcLabel.setText("");
-        lookupButton.setEnabled(false);
+        searchBar.setIcon(IconTextField.Icon.LOADING_DARKER);
 
         // Clear previous results
         hiscoreResult = null;
@@ -481,7 +483,7 @@ public class KillClogPanel extends PluginPanel
             SwingUtilities.invokeLater(() ->
             {
                 if (thisLookup != lookupVersion) return; // stale result
-                lookupButton.setEnabled(true);
+                searchBar.setIcon(IconTextField.Icon.SEARCH);
 
                 if (result == null)
                 {
@@ -490,12 +492,12 @@ public class KillClogPanel extends PluginPanel
                     statusNameLabel.setText(String.format(NOT_FOUND_MESSAGES[notFoundIdx], player));
                     statusNameLabel.setForeground(config.notFoundColor());
                     showingNotFound = true;
+                    searchBar.setText("");
                     return;
                 }
 
                 hiscoreResult = result;
 
-                int totalBossKc = calculateTotalBossKc(result);
                 int totalLevel = result.getTotalLevel();
                 boolean isMaxed = totalLevel >= 2376;
 
@@ -503,26 +505,27 @@ public class KillClogPanel extends PluginPanel
                 statusNameLabel.setForeground(config.statusBarColor());
                 updateStatusIcon(result.getAccountType());
 
-                if (isMaxed)
+                // RIGHT zone: skills icon + total level (2376 = maxed, colored when highlighter on)
+                if (totalLevel > 0)
                 {
-                    statusTotalLabel.setText("Maxed");
-                    statusTotalLabel.setForeground(config.completionistHighlighter()
+                    statusKcLabel.setIcon(skillsIcon);
+                    statusKcLabel.setText(String.valueOf(totalLevel));
+                    statusKcLabel.setForeground(isMaxed && config.completionistHighlighter()
                         ? config.completedClogColor() : config.statusBarColor());
-                }
-                else if (totalLevel > 0)
-                {
-                    statusTotalLabel.setText(String.valueOf(totalLevel));
-                    statusTotalLabel.setForeground(config.statusBarColor());
                 }
                 else
                 {
-                    statusTotalLabel.setText("");
+                    statusKcLabel.setIcon(null);
+                    statusKcLabel.setText("");
                 }
 
-                statusKcLabel.setText(formatKc(totalBossKc) + " kc");
-                statusKcLabel.setForeground(config.statusBarColor());
+                // CENTER zone: clog X/Y (populated when clog data arrives, or now if already here)
+                if (clogResult != null)
+                {
+                    updateClogStatus(clogResult);
+                }
 
-                playerInput.setText("");
+                searchBar.setText("");
 
                 applyCompletionistColors();
                 updateTooltips();
@@ -531,11 +534,13 @@ public class KillClogPanel extends PluginPanel
         {
             SwingUtilities.invokeLater(() ->
             {
-                lookupButton.setEnabled(true);
+                searchBar.setIcon(IconTextField.Icon.SEARCH);
+                searchBar.setText("");
                 statusNameLabel.setText("Lookup failed");
                 statusNameLabel.setForeground(TEXT_DIM);
                 statusNameLabel.setIcon(null);
                 statusTotalLabel.setText("");
+                statusKcLabel.setIcon(null);
                 statusKcLabel.setText("");
             });
             return null;
@@ -555,6 +560,12 @@ public class KillClogPanel extends PluginPanel
                     {
                         // Resolve untradeable item names via game cache on client thread
                         resolveUntradeableNames(result);
+
+                        // Populate CENTER zone with total clog X/Y (only if hiscore already loaded)
+                        if (hiscoreResult != null)
+                        {
+                            updateClogStatus(result);
+                        }
                     }
                     else
                     {
@@ -702,10 +713,10 @@ public class KillClogPanel extends PluginPanel
             applyCompletionistColorsInner();
         }
 
-        // Update "Maxed" color in status bar
-        if ("Maxed".equals(statusTotalLabel.getText()))
+        // Update maxed (2376) color in status bar (now in RIGHT zone)
+        if ("2376".equals(statusKcLabel.getText()))
         {
-            statusTotalLabel.setForeground(enabled
+            statusKcLabel.setForeground(enabled
                 ? config.completedClogColor() : config.statusBarColor());
         }
     }
@@ -1033,10 +1044,10 @@ public class KillClogPanel extends PluginPanel
                 if (hiscoreResult != null)
                 {
                     statusNameLabel.setForeground(config.statusBarColor());
-                    statusKcLabel.setForeground(config.statusBarColor());
-                    if (!"Maxed".equals(statusTotalLabel.getText()))
+                    statusTotalLabel.setForeground(config.statusBarColor());
+                    if (!"2376".equals(statusKcLabel.getText()))
                     {
-                        statusTotalLabel.setForeground(config.statusBarColor());
+                        statusKcLabel.setForeground(config.statusBarColor());
                     }
                 }
                 break;
@@ -1070,20 +1081,63 @@ public class KillClogPanel extends PluginPanel
         ToolTipManager.sharedInstance().setDismissDelay(originalDismissDelay);
     }
 
-    private int calculateTotalBossKc(HiscoreResult result)
+    private void updateClogStatus(ClogResult result)
     {
-        int total = 0;
-        for (HiscoreSkill boss : BOSSES)
+        int[] totals = calculateTotalClog(result);
+        if (totals[1] > 0)
         {
-            String hiscoreName = NAME_OVERRIDES.getOrDefault(boss.getName(), boss.getName());
-            int kc = result.getKc(hiscoreName);
-            if (kc > 0)
+            statusTotalLabel.setText(totals[0] + "/" + totals[1]);
+            statusTotalLabel.setForeground(config.statusBarColor());
+        }
+    }
+
+    /**
+     * Recursively remove all JButtons from a container (strips IconTextField clear/suggest buttons).
+     * Removal prevents updateContextButton() from re-showing them on text entry.
+     */
+    private static void removeClearButtons(java.awt.Container container)
+    {
+        for (Component c : container.getComponents())
+        {
+            if (c instanceof JButton)
             {
-                total += kc;
+                container.remove(c);
+            }
+            else if (c instanceof java.awt.Container)
+            {
+                removeClearButtons((java.awt.Container) c);
             }
         }
-        return total;
     }
+
+    /**
+     * Calculate total collection log progress from category data.
+     * Returns [obtained, total] — no dedup needed, categories are unique in Temple data.
+     */
+    private static int[] calculateTotalClog(ClogResult result)
+    {
+        int totalItems = 0;
+        Set<Integer> allObtained = new HashSet<>();
+
+        for (Map.Entry<String, List<Integer>> entry : result.getCategoryItems().entrySet())
+        {
+            String category = entry.getKey();
+            totalItems += entry.getValue().size();
+
+            List<ClogResult.ClogItem> obtained = result.getObtainedItems().get(category);
+            if (obtained != null)
+            {
+                for (ClogResult.ClogItem item : obtained)
+                {
+                    allObtained.add(item.getId());
+                }
+            }
+        }
+
+        return new int[]{allObtained.size(), totalItems};
+    }
+
+
 
     private static String escapeHtml(String text)
     {
