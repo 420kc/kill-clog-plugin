@@ -7,6 +7,7 @@ import java.awt.Component;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.awt.RenderingHints;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
@@ -219,6 +220,9 @@ public class KillClogPanel extends PluginPanel
         clogNotice.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         clogNotice.setHorizontalAlignment(JLabel.CENTER);
         clogNotice.setText(" ");
+        clogNotice.putClientProperty(
+            RenderingHints.KEY_TEXT_ANTIALIASING,
+            RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         add(clogNotice, c);
 
         // Explicitly configure PluginPanel's scroll pane with RuneLite scrollbar UI
@@ -326,12 +330,21 @@ public class KillClogPanel extends PluginPanel
         statusNameLabel.setFont(FontManager.getRunescapeSmallFont());
         statusNameLabel.setForeground(TEXT_DIM);
         statusNameLabel.setIconTextGap(3);
+        statusNameLabel.putClientProperty(
+            RenderingHints.KEY_TEXT_ANTIALIASING,
+            RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
         statusTotalLabel.setFont(FontManager.getRunescapeSmallFont());
         statusTotalLabel.setHorizontalAlignment(JLabel.CENTER);
+        statusTotalLabel.putClientProperty(
+            RenderingHints.KEY_TEXT_ANTIALIASING,
+            RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
         statusKcLabel.setFont(FontManager.getRunescapeSmallFont());
         statusKcLabel.setHorizontalAlignment(JLabel.RIGHT);
+        statusKcLabel.putClientProperty(
+            RenderingHints.KEY_TEXT_ANTIALIASING,
+            RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
         statusRow.add(statusNameLabel, BorderLayout.WEST);
         statusRow.add(statusTotalLabel, BorderLayout.CENTER);
@@ -363,6 +376,12 @@ public class KillClogPanel extends PluginPanel
         label.setText(pad("--"));
         label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         label.setIconTextGap(4);
+
+        // Force greyscale AA — GASP resolution is broken on Windows,
+        // resolves to LCD subpixel instead of greyscale despite font GASP table
+        label.putClientProperty(
+            RenderingHints.KEY_TEXT_ANTIALIASING,
+            RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
         // Load boss sprite asynchronously
         spriteManager.getSpriteAsync(boss.getSpriteId(), 0, sprite ->
@@ -1073,6 +1092,5 @@ public class KillClogPanel extends PluginPanel
                    .replace(">", "&gt;")
                    .replace("\"", "&quot;");
     }
-
 
 }
