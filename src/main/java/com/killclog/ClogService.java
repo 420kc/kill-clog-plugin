@@ -205,7 +205,7 @@ public class ClogService
                 JsonObject root = GSON.fromJson(json, JsonObject.class);
                 Type type = new TypeToken<Map<String, List<Integer>>>(){}.getType();
                 Map<String, List<Integer>> categories = new HashMap<>();
-                for (String section : new String[]{"bosses", "raids", "minigames", "other"})
+                for (String section : new String[]{"bosses", "raids", "clues", "minigames", "other"})
                 {
                     JsonObject sectionObj = root.getAsJsonObject(section);
                     if (sectionObj != null)

@@ -61,7 +61,7 @@ public interface KillClogConfig extends Config
 
     @ConfigItem(
         keyName = "notFoundColor",
-        name = "Player Not on Hiscores",
+        name = "Player Not Found",
         description = "Color of the message shown when a player cannot be found",
         position = 4
     )

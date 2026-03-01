@@ -87,7 +87,7 @@ public class KillClogPlugin extends Plugin
             });
         }
 
-        log.info("Kill Clog plugin started");
+        log.debug("Kill Clog plugin started");
     }
 
     @Override
@@ -96,7 +96,7 @@ public class KillClogPlugin extends Plugin
         clientToolbar.removeNavigation(navButton);
         keyManager.unregisterKeyListener(highlighterHotkey);
         SwingUtilities.invokeLater(() -> panel.shutdown());
-        log.info("Kill Clog plugin stopped");
+        log.debug("Kill Clog plugin stopped");
     }
 
     @Subscribe
@@ -155,7 +155,7 @@ public class KillClogPlugin extends Plugin
                     String playerName = Text.removeTags(target).trim();
                     if (!playerName.isEmpty())
                     {
-                        addLookupMenuEntry(playerName);
+                        addLookupMenuEntry(playerName, target);
                         return;
                     }
                 }
@@ -163,11 +163,11 @@ public class KillClogPlugin extends Plugin
         }
     }
 
-    private void addLookupMenuEntry(String playerName)
+    private void addLookupMenuEntry(String playerName, String coloredTarget)
     {
         client.getMenu().createMenuEntry(1)
             .setOption("<col=ffffff>Kill Clog</col> Lookup")
-            .setTarget("<col=ffffff>" + playerName + "</col>")
+            .setTarget(coloredTarget)
             .setType(MenuAction.RUNELITE)
             .onClick(e -> SwingUtilities.invokeLater(() ->
             {
