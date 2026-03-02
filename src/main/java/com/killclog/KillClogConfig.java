@@ -11,14 +11,14 @@ import net.runelite.client.config.Keybind;
 public interface KillClogConfig extends Config
 {
     @ConfigItem(
-        keyName = "defaultPlayer",
-        name = "Default Player",
-        description = "Player name to look up on startup (leave blank to use logged-in character)",
+        keyName = "autoLookupOnLogin",
+        name = "Auto-Lookup on Login",
+        description = "Automatically look up your stats when you log in",
         position = 0
     )
-    default String defaultPlayer()
+    default boolean autoLookupOnLogin()
     {
-        return "";
+        return true;
     }
 
     @ConfigItem(
@@ -40,7 +40,7 @@ public interface KillClogConfig extends Config
     @ConfigItem(
         keyName = "playerMenuLookup",
         name = "Player Menu Lookup",
-        description = "Add 'Kill Clog Lookup' to right-click menu on players",
+        description = "Add 'Kill Clog' to right-click menu on players",
         position = 2
     )
     default boolean playerMenuLookup()
@@ -49,26 +49,16 @@ public interface KillClogConfig extends Config
     }
 
     @ConfigItem(
-        keyName = "statusBarColor",
-        name = "Status Bar",
-        description = "Color of player name and kill count in the status bar",
+        keyName = "infoBarColor",
+        name = "Info Bar",
+        description = "Color of player name and stats in the info bar",
         position = 3
     )
-    default Color statusBarColor()
+    default Color infoBarColor()
     {
         return new Color(198, 198, 198);
     }
 
-    @ConfigItem(
-        keyName = "notFoundColor",
-        name = "Player Not Found",
-        description = "Color of the message shown when a player cannot be found",
-        position = 4
-    )
-    default Color notFoundColor()
-    {
-        return new Color(160, 160, 160);
-    }
 
     // --- Completionist's Highlighter ---
 

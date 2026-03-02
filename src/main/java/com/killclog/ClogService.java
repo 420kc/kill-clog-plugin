@@ -37,6 +37,8 @@ public class ClogService
         "https://templeosrs.com/api/collection-log/categories.php";
     private static final String TEMPLE_PLAYER_URL =
         "https://templeosrs.com/api/collection-log/player_collection_log.php";
+    private static final String TEMPLE_STATS_URL =
+        "https://templeosrs.com/api/player_stats.php";
     private static final String WIKI_MAPPING_URL =
         "https://prices.runescape.wiki/api/v1/osrs/mapping";
 
@@ -113,7 +115,7 @@ public class ClogService
     {
         String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
 
-        CompletableFuture<Map<String, List<ClogResult.ClogItem>>> playerFuture =
+        CompletableFuture<PlayerClogData> playerFuture =
             fetchPlayerClog(encoded);
         CompletableFuture<Map<String, List<Integer>>> categoriesFuture =
             fetchCategories();
@@ -123,24 +125,40 @@ public class ClogService
         return CompletableFuture.allOf(playerFuture, categoriesFuture, namesFuture)
             .thenApply(v ->
             {
-                Map<String, List<ClogResult.ClogItem>> obtained = playerFuture.join();
+                PlayerClogData playerData = playerFuture.join();
                 Map<String, List<Integer>> categories = categoriesFuture.join();
                 Map<Integer, String> names = namesFuture.join();
 
-                if (obtained == null)
+                if (playerData == null)
                 {
                     return null;
                 }
 
                 return new ClogResult(
-                    obtained,
+                    playerData.canonicalName,
+                    playerData.obtainedItems,
                     categories != null ? categories : new HashMap<>(),
-                    names != null ? names : new HashMap<>()
+                    names != null ? names : new HashMap<>(),
+                    playerData.lastChanged
                 );
             });
     }
 
-    private CompletableFuture<Map<String, List<ClogResult.ClogItem>>> fetchPlayerClog(String encodedPlayer)
+    private static class PlayerClogData
+    {
+        final String canonicalName;
+        final Map<String, List<ClogResult.ClogItem>> obtainedItems;
+        final String lastChanged;
+
+        PlayerClogData(String canonicalName, Map<String, List<ClogResult.ClogItem>> obtainedItems, String lastChanged)
+        {
+            this.canonicalName = canonicalName;
+            this.obtainedItems = obtainedItems;
+            this.lastChanged = lastChanged;
+        }
+    }
+
+    private CompletableFuture<PlayerClogData> fetchPlayerClog(String encodedPlayer)
     {
         String url = TEMPLE_PLAYER_URL + "?player=" + encodedPlayer + "&categories=all";
         return httpGetAsync(url).thenApply(json ->
@@ -157,6 +175,19 @@ public class ClogService
                 {
                     return null;
                 }
+
+                String canonicalName = null;
+                if (data.has("player_name_with_capitalization"))
+                {
+                    canonicalName = data.get("player_name_with_capitalization").getAsString();
+                }
+
+                String lastChanged = null;
+                if (data.has("last_changed"))
+                {
+                    lastChanged = data.get("last_changed").getAsString();
+                }
+
                 JsonObject itemsObj = data.getAsJsonObject("items");
                 Map<String, List<ClogResult.ClogItem>> result = new HashMap<>();
 
@@ -177,7 +208,7 @@ public class ClogService
                     result.put(category, itemList);
                 }
 
-                return result;
+                return new PlayerClogData(canonicalName, result, lastChanged);
             }
             catch (Exception e)
             {
@@ -187,7 +218,7 @@ public class ClogService
         });
     }
 
-    private CompletableFuture<Map<String, List<Integer>>> fetchCategories()
+    private synchronized CompletableFuture<Map<String, List<Integer>>> fetchCategories()
     {
         if (cachedCategories != null)
         {
@@ -229,7 +260,7 @@ public class ClogService
         });
     }
 
-    private CompletableFuture<Map<Integer, String>> fetchItemNames()
+    private synchronized CompletableFuture<Map<Integer, String>> fetchItemNames()
     {
         if (cachedItemNames != null)
         {
@@ -262,6 +293,43 @@ public class ClogService
             catch (Exception e)
             {
                 log.debug("Failed to parse item names: {}", e.getMessage());
+                return null;
+            }
+        });
+    }
+
+    /**
+     * Fetch only the canonical player name from TempleOSRS player stats.
+     * Lightweight fallback when clog data is unavailable.
+     */
+    public CompletableFuture<String> lookupCanonicalName(String playerName)
+    {
+        String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
+        String url = TEMPLE_STATS_URL + "?player=" + encoded;
+        return httpGetAsync(url).thenApply(json ->
+        {
+            if (json == null)
+            {
+                return null;
+            }
+            try
+            {
+                JsonObject root = GSON.fromJson(json, JsonObject.class);
+                JsonObject data = root.getAsJsonObject("data");
+                if (data == null)
+                {
+                    return null;
+                }
+                JsonObject info = data.getAsJsonObject("info");
+                if (info != null && info.has("player_name_with_capitalization"))
+                {
+                    return info.get("player_name_with_capitalization").getAsString();
+                }
+                return null;
+            }
+            catch (Exception e)
+            {
+                log.debug("Failed to parse canonical name: {}", e.getMessage());
                 return null;
             }
         });

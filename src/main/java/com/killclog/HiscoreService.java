@@ -28,10 +28,13 @@ public class HiscoreService
     private static final String BASE_URL = "https://secure.runescape.com/m=";
     private static final String SUFFIX = "/index_lite.ws?player=";
 
-    // Boss names in the order they appear in hiscores (after skills + activities)
-    // 25 skills + 20 minigames/activities = bosses start at index 45
+    // Hiscore CSV layout: 25 skills + 20 minigames/activities, then bosses.
+    // If Jagex adds a new skill or activity above bosses, this index must shift.
     private static final int BOSS_START_INDEX = 45;
-    // Boss names in hiscore CSV order — must match Jagex's exact order
+
+    // Boss names in hiscore CSV order — must match Jagex's exact alphabetical order.
+    // Bosses without a HiscoreSkill enum (e.g. Brutus) are parsed here but mapped
+    // via PENDING_BOSSES or NAME_OVERRIDES in KillClogPanel.
     private static final String[] BOSS_NAMES = {
         "Abyssal Sire", "Alchemical Hydra", "Amoxliatl", "Araxxor",
         "Artio", "Barrows Chests", "Brutus", "Bryophyta", "Callisto",
@@ -114,10 +117,6 @@ public class HiscoreService
         if (ironBody != null && ironXp == regXp && regXp > 0)
         {
             return AccountType.IRONMAN;
-        }
-        if (ironBody != null && regXp > 0 && ironXp > 0 && ironXp != regXp)
-        {
-            return AccountType.DE_IRONED;
         }
         return AccountType.REGULAR;
     }

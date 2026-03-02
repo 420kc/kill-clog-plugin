@@ -2,50 +2,78 @@
 
 Reimagine your boss log.
 
-![Kill Clog panel screenshot](https://raw.githubusercontent.com/420kc/kill-clog-plugin/master/screenshots/panel.png)
+<table>
+  <tr>
+    <td><img src="screenshots/panel.png" alt="Kill Clog panel"></td>
+    <td><img src="hover-interaction.gif" alt="Hover interaction"></td>
+  </tr>
+</table>
 
 ## Features
 
-### Grand Unified Search Theory
-No more searching the wrong hiscores. One search bar, one search. Account type is auto-detected and the correct helmet is applied to the RSN (Regular, Ironman, HCIM, UIM, De-Ironed).
+### Unified Account Type Search
+
+No more flipping between HiScores tabs. Unified search supports automatic account type detection and displays it next to the username (Regular/Iron/HCIM/UIM).
 
 ### Collection Log Tooltips
-Kills and collections in the same place. Hover any boss to see your collection log progress. Obtained items marked with green checkmarks, missing items with empty checkboxes. Item counts are shown for duplicates.
 
-![Tooltip screenshot](https://raw.githubusercontent.com/420kc/kill-clog-plugin/master/screenshots/tooltip.png)
+Hover any boss to see their full collection log in familiar native layout. Shows Obtained items, missing items, duplicate counts, and kill count ranks.
+
+![Tooltip](screenshots/tooltip.png)
 
 ### Completionist's Highlighter
-Boss kill counts colored by your collection log completion:
-- **Green** — all items obtained
-- **Amber** — some items obtained
-- **Red** — kills but no drops yet
 
-All three colors are fully configurable and toggled with a keybind.
+Every boss KC number is colored by collection log completion:
 
-![Highlighter screenshot](https://raw.githubusercontent.com/420kc/kill-clog-plugin/master/screenshots/highlighter.png)
+- **Completed** = all unique items obtained
+- **In Progress** = at least one item obtained
+- **Empty** = kills but no uniques logged yet
 
-### Status Bar
-At a glance: account badge + player name, collections obtained, and total level. Rotating search and not-found messages for mild amusement.
+All three colors are configurable and have a keybind toggle for on/off (unset by default).
 
-## How It Works
-- Type a player name and press Enter to look up any account
-- Right-click any player in-game and select "Kill Clog Lookup"
-- Your RSN auto-fills when you log in
-- Collection log data is pulled from [TempleOSRS](https://templeosrs.com) — install the TempleOSRS plugin, open your collection log in-game, and click the sync button in the top right
+<table>
+  <tr>
+    <td><img src="screenshots/highlighter-off.png" alt="Highlighter off"></td>
+    <td><img src="screenshots/highlighter-on.png" alt="Highlighter on"></td>
+  </tr>
+</table>
+
+### Info Bar
+
+Name, badge, clog count, and total level at a glance. Rotating search and not-found messages for mild amusement.
+
+## Setup
+
+Collection log data comes from [TempleOSRS](https://templeosrs.com). To sync:
+
+1. Install the **TempleOSRS** plugin from the Plugin Hub
+2. Open your collection log in-game
+3. Click the **Temple sync button** in the top right
+
+Your last sync date shows at the bottom of the panel in gray (or red if the collection log data is older than 90 days). See the [TempleOSRS guide](https://templeosrs.com/faq.php#CATEGORY_06) for more details.
+
+No Temple data? Tooltips hide gracefully and Kill Clog works as a clean boss kill count panel on its own.
+
+## Usage
+
+- Type a name and press Enter.
+- Right-click any player in-game and select **Kill Clog** to look them up.
+- Any player who has synced their collection log with TempleOSRS will have Collection Log tooltips enabled when you search for them.
 
 ## Configuration
 
 | Setting | Description |
-|---------|-------------|
-| Default Player | RSN to look up on panel open |
-| Show Collection Log | Enable/disable clog tooltips |
-| Player Menu Lookup | Add "Kill Clog Lookup" to right-click menu |
-| Completionist's Highlighter | Color boss kill counts by clog completion |
-| Highlighter Keybind | Key to toggle the highlighter |
-| Status Bar Color | Color for player name and stats |
-| Not Found Color | Color for "player not found" messages |
-| Completed / In Progress / Empty | Highlighter colors (fully configurable) |
+|---|---|
+| Auto-Lookup on Login | Look up your own stats on login |
+| Show Collection Log | Enable or disable clog tooltips |
+| Player Menu Lookup | Add "Kill Clog" to the right-click player menu |
+| Info Bar Color | Color for RSN, Collection Count, and Total Level |
+| Enable Highlighter | Color boss KC by collection log completion |
+| Toggle Keybind | Shortcut to toggle the highlighter |
+| Completed / In Progress / Empty | Highlighter colors, fully configurable |
 
-## Reporting an Issue
+![Config](screenshots/config.png)
 
-Found a bug or have a suggestion? [Open an issue](https://github.com/420kc/kill-clog-plugin/issues) on GitHub.
+## Issues
+
+Bugs/Questions? [Open an issue](https://github.com/420kc/kill-clog-plugin/issues) on GitHub.

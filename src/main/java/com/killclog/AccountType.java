@@ -5,6 +5,5 @@ public enum AccountType
     REGULAR,
     IRONMAN,
     HARDCORE_IRONMAN,
-    ULTIMATE_IRONMAN,
-    DE_IRONED
+    ULTIMATE_IRONMAN
 }
