@@ -101,14 +101,26 @@ public class KillClogPlugin extends Plugin
         log.debug("Kill Clog plugin stopped");
     }
 
+    private boolean pendingAutoLookup = false;
+
     @Subscribe
     public void onGameStateChanged(GameStateChanged event)
     {
         if (event.getGameState() == GameState.LOGGED_IN && config.autoLookupOnLogin())
         {
+            pendingAutoLookup = true;
+        }
+    }
+
+    @Subscribe
+    public void onGameTick(net.runelite.api.events.GameTick event)
+    {
+        if (pendingAutoLookup)
+        {
             Player local = client.getLocalPlayer();
             if (local != null && local.getName() != null)
             {
+                pendingAutoLookup = false;
                 String name = local.getName();
                 SwingUtilities.invokeLater(() ->
                 {
