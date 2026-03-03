@@ -42,8 +42,6 @@ public class ClogService
     private static final String WIKI_MAPPING_URL =
         "https://prices.runescape.wiki/api/v1/osrs/mapping";
 
-    private static final Gson GSON = new Gson();
-
     // Boss name -> TempleOSRS category key overrides
     private static final Map<String, String> BOSS_CATEGORY_OVERRIDES = new LinkedHashMap<>();
     static
@@ -83,15 +81,17 @@ public class ClogService
     }
 
     private final OkHttpClient httpClient;
+    private final Gson gson;
 
     // Cached data (loaded once per session)
     private volatile Map<String, List<Integer>> cachedCategories;
     private volatile Map<Integer, String> cachedItemNames;
 
     @Inject
-    public ClogService(OkHttpClient httpClient)
+    public ClogService(OkHttpClient httpClient, Gson gson)
     {
         this.httpClient = httpClient;
+        this.gson = gson;
     }
 
     /**
@@ -169,7 +169,7 @@ public class ClogService
             }
             try
             {
-                JsonObject root = GSON.fromJson(json, JsonObject.class);
+                JsonObject root = gson.fromJson(json, JsonObject.class);
                 JsonObject data = root.getAsJsonObject("data");
                 if (data == null || !data.has("items"))
                 {
@@ -233,7 +233,7 @@ public class ClogService
             }
             try
             {
-                JsonObject root = GSON.fromJson(json, JsonObject.class);
+                JsonObject root = gson.fromJson(json, JsonObject.class);
                 Type type = new TypeToken<Map<String, List<Integer>>>(){}.getType();
                 Map<String, List<Integer>> categories = new HashMap<>();
                 for (String section : new String[]{"bosses", "raids", "clues", "minigames", "other"})
@@ -241,7 +241,7 @@ public class ClogService
                     JsonObject sectionObj = root.getAsJsonObject(section);
                     if (sectionObj != null)
                     {
-                        Map<String, List<Integer>> sectionMap = GSON.fromJson(sectionObj, type);
+                        Map<String, List<Integer>> sectionMap = gson.fromJson(sectionObj, type);
                         categories.putAll(sectionMap);
                     }
                 }
@@ -275,7 +275,7 @@ public class ClogService
             }
             try
             {
-                JsonArray arr = GSON.fromJson(json, JsonArray.class);
+                JsonArray arr = gson.fromJson(json, JsonArray.class);
                 Map<Integer, String> names = new HashMap<>();
 
                 for (JsonElement elem : arr)
@@ -314,7 +314,7 @@ public class ClogService
             }
             try
             {
-                JsonObject root = GSON.fromJson(json, JsonObject.class);
+                JsonObject root = gson.fromJson(json, JsonObject.class);
                 JsonObject data = root.getAsJsonObject("data");
                 if (data == null)
                 {
