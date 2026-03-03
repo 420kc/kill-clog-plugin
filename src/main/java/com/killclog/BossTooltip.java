@@ -43,6 +43,9 @@ public class BossTooltip extends JToolTip
     private static final Color CLOG_YELLOW = new Color(255, 255, 0);
     private static final Color QTY_COLOR = new Color(255, 255, 0);
     private static final Color QTY_SHADOW = new Color(0, 0, 0);
+    private static final Color ITEM_HOVER_BG = new Color(80, 70, 50);
+
+    private int hoveredItemIndex = -1;
 
     private String bossName;
     private int rank;
@@ -57,6 +60,33 @@ public class BossTooltip extends JToolTip
     {
         setOpaque(false);
         setBorder(null);
+
+        addMouseMotionListener(new java.awt.event.MouseMotionAdapter()
+        {
+            @Override
+            public void mouseMoved(java.awt.event.MouseEvent e)
+            {
+                int idx = getItemIndexAt(e.getX(), e.getY());
+                if (idx != hoveredItemIndex)
+                {
+                    hoveredItemIndex = idx;
+                    repaint();
+                }
+            }
+        });
+
+        addMouseListener(new java.awt.event.MouseAdapter()
+        {
+            @Override
+            public void mouseExited(java.awt.event.MouseEvent e)
+            {
+                if (hoveredItemIndex != -1)
+                {
+                    hoveredItemIndex = -1;
+                    repaint();
+                }
+            }
+        });
     }
 
     /**
@@ -115,6 +145,43 @@ public class BossTooltip extends JToolTip
         int width = gridWidth + inset * 2;
 
         return new Dimension(width, height);
+    }
+
+    private int getItemIndexAt(int mx, int my)
+    {
+        if (allItemIds == null || allItemIds.isEmpty())
+        {
+            return -1;
+        }
+
+        int inset = BORDER + MARGIN;
+        int detailLines = rank > 0 ? 2 : 1;
+        int headerHeight = NAME_LINE_HEIGHT + detailLines * LINE_HEIGHT;
+        int sepY = inset + headerHeight + SEPARATOR_GAP;
+        int gridStartY = sepY + 1 + SEPARATOR_GAP;
+
+        int relX = mx - inset;
+        int relY = my - gridStartY;
+        if (relX < 0 || relY < 0)
+        {
+            return -1;
+        }
+
+        int cellSize = SPRITE_SIZE + PADDING;
+        int col = relX / cellSize;
+        int row = relY / cellSize;
+        if (col >= GRID_COLS)
+        {
+            return -1;
+        }
+
+        int idx = row * GRID_COLS + col;
+        if (idx >= allItemIds.size())
+        {
+            return -1;
+        }
+
+        return idx;
     }
 
     @Override
@@ -201,6 +268,14 @@ public class BossTooltip extends JToolTip
                 int row = i / GRID_COLS;
                 int x = inset + col * (SPRITE_SIZE + PADDING);
                 int y = gridStartY + row * (SPRITE_SIZE + PADDING);
+
+                // Hover highlight
+                if (i == hoveredItemIndex)
+                {
+                    g2.setComposite(AlphaComposite.SrcOver);
+                    g2.setColor(ITEM_HOVER_BG);
+                    g2.fillRect(x - 1, y - 1, SPRITE_SIZE + 2, SPRITE_SIZE + 2);
+                }
 
                 int itemId = allItemIds.get(i);
                 boolean obtained = obtainedIds.contains(itemId);

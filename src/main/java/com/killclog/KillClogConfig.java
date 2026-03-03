@@ -102,7 +102,7 @@ public interface KillClogConfig extends Config
     )
     default Color completedClogColor()
     {
-        return new Color(76, 175, 110);
+        return new Color(9, 175, 208);
     }
 
     @ConfigItem(
@@ -114,7 +114,7 @@ public interface KillClogConfig extends Config
     )
     default Color inProgressClogColor()
     {
-        return new Color(200, 170, 60);
+        return new Color(255, 250, 0);
     }
 
     @ConfigItem(
@@ -126,6 +126,6 @@ public interface KillClogConfig extends Config
     )
     default Color emptyClogColor()
     {
-        return new Color(192, 80, 80);
+        return new Color(168, 181, 42);
     }
 }

@@ -173,7 +173,15 @@ public class KillClogPanel extends PluginPanel
     private final JLabel clogNotice = new JLabel();
     private final JLabel syncLabel = new JLabel();
     private ImageIcon skillsIcon;
+    private ImageIcon maxCapeIcon;
+    private ImageIcon infernalCapeIcon;
+    private ImageIcon infernalMaxCapeIcon;
     private ImageIcon clogBookIcon;
+
+    // Collection log tier icons — bronze through gilded
+    private static final String[] CLOG_TIERS = {"bronze", "iron", "steel", "black", "mithril", "adamant", "rune", "dragon", "gilded"};
+    private static final int[] CLOG_TIER_THRESHOLDS = {100, 300, 500, 700, 900, 1000, 1100, 1200};
+    private final Map<String, ImageIcon> clogTierIcons = new LinkedHashMap<>();
 
     // Track labels for updating after lookup
     private final Map<HiscoreSkill, JLabel> bossLabels = new LinkedHashMap<>();
@@ -193,6 +201,10 @@ public class KillClogPanel extends PluginPanel
 
     // Original tooltip dismiss delay to restore when panel deactivates
     private int originalDismissDelay = ToolTipManager.sharedInstance().getDismissDelay();
+
+    // Hover tint lock — keeps cell highlighted while its tooltip is showing
+    private JPanel hoveredCell;
+    private javax.swing.Timer hoverExitTimer;
 
     @Inject
     public KillClogPanel(HiscoreService hiscoreService, ClogService clogService,
@@ -344,12 +356,51 @@ public class KillClogPanel extends PluginPanel
         }
         try
         {
+            BufferedImage img = ImageUtil.loadImageResource(KillClogPanel.class, "max_cape.png");
+            maxCapeIcon = new ImageIcon(ImageUtil.resizeImage(img, 10, 18));
+        }
+        catch (Exception e)
+        {
+            maxCapeIcon = null;
+        }
+        try
+        {
+            BufferedImage img = ImageUtil.loadImageResource(KillClogPanel.class, "infernal_cape.png");
+            infernalCapeIcon = new ImageIcon(ImageUtil.resizeImage(img, 10, 18));
+        }
+        catch (Exception e)
+        {
+            infernalCapeIcon = null;
+        }
+        try
+        {
+            BufferedImage img = ImageUtil.loadImageResource(KillClogPanel.class, "infernal_max_cape.png");
+            infernalMaxCapeIcon = new ImageIcon(ImageUtil.resizeImage(img, 10, 18));
+        }
+        catch (Exception e)
+        {
+            infernalMaxCapeIcon = null;
+        }
+        try
+        {
             BufferedImage img = ImageUtil.loadImageResource(KillClogPanel.class, "clog_book.png");
             clogBookIcon = new ImageIcon(img);
         }
         catch (Exception e)
         {
             clogBookIcon = null;
+        }
+        for (String tier : CLOG_TIERS)
+        {
+            try
+            {
+                BufferedImage img = ImageUtil.loadImageResource(KillClogPanel.class, "clog_" + tier + ".png");
+                clogTierIcons.put(tier, new ImageIcon(ImageUtil.resizeImage(img, 13, 13)));
+            }
+            catch (Exception e)
+            {
+                // Tier icon missing — fall back to clogBookIcon at display time
+            }
         }
 
         return panel;
@@ -383,6 +434,42 @@ public class KillClogPanel extends PluginPanel
                     tip.setData(data.bossName, data.rank, data.obtainedCount,
                         data.totalItems, data.allItemIds, data.obtainedIds,
                         data.obtainedCounts, itemManager);
+
+                    // Keep cell hover tint while tooltip is active
+                    JPanel parentCell = (JPanel) this.getParent();
+                    tip.addMouseListener(new java.awt.event.MouseAdapter()
+                    {
+                        @Override
+                        public void mouseEntered(java.awt.event.MouseEvent e)
+                        {
+                            if (hoverExitTimer != null) hoverExitTimer.stop();
+                        }
+
+                        @Override
+                        public void mouseExited(java.awt.event.MouseEvent e)
+                        {
+                            if (hoveredCell == parentCell)
+                            {
+                                hoveredCell = null;
+                                parentCell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                            }
+                        }
+                    });
+
+                    // Handle tooltip auto-dismiss (15s timeout)
+                    tip.addHierarchyListener(e ->
+                    {
+                        if ((e.getChangeFlags() & java.awt.event.HierarchyEvent.SHOWING_CHANGED) != 0
+                            && !tip.isShowing())
+                        {
+                            if (hoveredCell == parentCell)
+                            {
+                                hoveredCell = null;
+                                parentCell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                            }
+                        }
+                    });
+
                     return tip;
                 }
                 return super.createToolTip();
@@ -428,13 +515,29 @@ public class KillClogPanel extends PluginPanel
             @Override
             public void mouseEntered(java.awt.event.MouseEvent e)
             {
+                if (hoverExitTimer != null) hoverExitTimer.stop();
+                if (hoveredCell != null && hoveredCell != cell)
+                {
+                    hoveredCell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                }
+                hoveredCell = cell;
                 cell.setBackground(CELL_HOVER);
             }
 
             @Override
             public void mouseExited(java.awt.event.MouseEvent e)
             {
-                cell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                if (hoverExitTimer != null) hoverExitTimer.stop();
+                hoverExitTimer = new javax.swing.Timer(150, evt ->
+                {
+                    if (hoveredCell == cell)
+                    {
+                        hoveredCell = null;
+                        cell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                    }
+                });
+                hoverExitTimer.setRepeats(false);
+                hoverExitTimer.start();
             }
         });
 
@@ -540,10 +643,29 @@ public class KillClogPanel extends PluginPanel
                 infoNameLabel.setForeground(config.infoBarColor());
                 updateInfoIcon(result.getAccountType());
 
-                // RIGHT zone: skills icon + total level
+                // RIGHT zone: total level icon progression
+                // skills → infernal cape (Zuk KC) → max cape (2376) → infernal max cape (2376 + Zuk)
                 if (totalLevel > 0)
                 {
-                    infoKcLabel.setIcon(skillsIcon);
+                    int zukKc = result.getKc("TzKal-Zuk");
+                    ImageIcon levelIcon;
+                    if (totalLevel >= 2376 && zukKc >= 1 && infernalMaxCapeIcon != null)
+                    {
+                        levelIcon = infernalMaxCapeIcon;
+                    }
+                    else if (totalLevel >= 2376 && maxCapeIcon != null)
+                    {
+                        levelIcon = maxCapeIcon;
+                    }
+                    else if (zukKc >= 1 && infernalCapeIcon != null)
+                    {
+                        levelIcon = infernalCapeIcon;
+                    }
+                    else
+                    {
+                        levelIcon = skillsIcon;
+                    }
+                    infoKcLabel.setIcon(levelIcon);
                     infoKcLabel.setText(String.valueOf(totalLevel));
                     infoKcLabel.setForeground(config.infoBarColor());
                 }
@@ -1094,10 +1216,46 @@ public class KillClogPanel extends PluginPanel
         int[] totals = calculateTotalClog(result);
         if (totals[0] > 0)
         {
-            infoTotalLabel.setIcon(clogBookIcon);
+            ImageIcon tierIcon = getClogTierIcon(totals[0], totals[1]);
+            infoTotalLabel.setIcon(tierIcon != null ? tierIcon : clogBookIcon);
             infoTotalLabel.setText(String.valueOf(totals[0]));
             infoTotalLabel.setForeground(config.infoBarColor());
         }
+    }
+
+    /**
+     * Get the collection log tier icon for a given obtained count.
+     */
+    private ImageIcon getClogTierIcon(int obtained, int totalSlots)
+    {
+        String tier = getClogTierName(obtained, totalSlots);
+        return tier != null ? clogTierIcons.get(tier) : null;
+    }
+
+    /**
+     * Resolve the collection log tier name for a given obtained count.
+     * Bronze through Dragon are fixed thresholds; Gilded is 90% of total slots
+     * rounded down to the nearest 25.
+     */
+    static String getClogTierName(int obtained, int totalSlots)
+    {
+        // Gilded: 90% of total slots rounded down to nearest 25
+        int gildedThreshold = (int) (totalSlots * 0.9) / 25 * 25;
+        if (obtained >= gildedThreshold)
+        {
+            return "gilded";
+        }
+
+        // Dragon down to Bronze — find highest qualifying tier
+        for (int i = CLOG_TIER_THRESHOLDS.length - 1; i >= 0; i--)
+        {
+            if (obtained >= CLOG_TIER_THRESHOLDS[i])
+            {
+                return CLOG_TIERS[i];
+            }
+        }
+
+        return null;
     }
 
     /**
