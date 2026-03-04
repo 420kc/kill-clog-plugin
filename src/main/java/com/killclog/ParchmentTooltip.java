@@ -20,7 +20,11 @@ public class ParchmentTooltip extends JToolTip
 {
     private static final int MARGIN = 8;
     private static final int LINE_HEIGHT = 14;
+    private static final int ICON_GAP = 4;
     private static final Color OSRS_ORANGE = new Color(255, 152, 31);
+
+    // Optional inline icon drawn on both sides of text
+    private BufferedImage inlineIcon;
 
     // Fallback programmatic border
     static final int FALLBACK_BORDER = 3;
@@ -75,6 +79,11 @@ public class ParchmentTooltip extends JToolTip
         setBorder(null);
     }
 
+    public void setInlineIcon(BufferedImage icon)
+    {
+        this.inlineIcon = icon;
+    }
+
     @Override
     public Dimension getPreferredSize()
     {
@@ -94,8 +103,15 @@ public class ParchmentTooltip extends JToolTip
             maxWidth = Math.max(maxWidth, fm.stringWidth(line));
         }
 
+        // Account for inline icon on left side of text
+        int iconExtra = 0;
+        if (inlineIcon != null)
+        {
+            iconExtra = inlineIcon.getWidth() + ICON_GAP;
+        }
+
         int inset = getBorderThickness() + MARGIN;
-        int width = maxWidth + inset * 2;
+        int width = maxWidth + iconExtra + inset * 2;
         int height = lines.length * LINE_HEIGHT + inset * 2;
 
         return new Dimension(width, height);
@@ -121,11 +137,20 @@ public class ParchmentTooltip extends JToolTip
         {
             FontMetrics fm = g2.getFontMetrics();
             int inset = getBorderThickness() + MARGIN;
+            int iconOffset = inlineIcon != null ? inlineIcon.getWidth() + ICON_GAP : 0;
             String[] lines = text.split("\n");
             int y = inset + fm.getAscent();
             for (String line : lines)
             {
-                g2.drawString(line, inset, y);
+                int textX = inset + iconOffset;
+
+                if (inlineIcon != null)
+                {
+                    int iconY = y - fm.getAscent() + (LINE_HEIGHT - inlineIcon.getHeight()) / 2;
+                    g2.drawImage(inlineIcon, inset, iconY, null);
+                }
+
+                g2.drawString(line, textX, y);
                 y += LINE_HEIGHT;
             }
         }

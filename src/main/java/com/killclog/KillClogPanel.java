@@ -170,7 +170,16 @@ public class KillClogPanel extends PluginPanel
     private final ClientThread clientThread;
 
     private final IconTextField searchBar = new IconTextField();
-    private final JLabel infoNameLabel = new JLabel(" ");
+    private final JLabel infoNameLabel = new JLabel(" ")
+    {
+        @Override
+        public javax.swing.JToolTip createToolTip()
+        {
+            ParchmentTooltip tip = new ParchmentTooltip();
+            tip.setComponent(this);
+            return tip;
+        }
+    };
     private final JLabel infoTotalLabel = new JLabel()
     {
         @Override
@@ -199,6 +208,11 @@ public class KillClogPanel extends PluginPanel
         {
             ParchmentTooltip tip = new ParchmentTooltip();
             tip.setComponent(this);
+            // Stale data — show baguette flanking the text
+            if (getIcon() == eagleEyeIcon && staleBaguetteImage != null)
+            {
+                tip.setInlineIcon(staleBaguetteImage);
+            }
             return tip;
         }
     };
@@ -208,8 +222,10 @@ public class KillClogPanel extends PluginPanel
     private ImageIcon infernalMaxCapeIcon;
     private ImageIcon clogBookIcon;
     private ImageIcon staleBaguetteIcon;
+    private BufferedImage staleBaguetteImage;
     private ImageIcon rigourIcon;
     private ImageIcon sharpEyeIcon;
+    private ImageIcon eagleEyeIcon;
 
     // Collection log tier icons — bronze through gilded
     private static final String[] CLOG_TIERS = {"bronze", "iron", "steel", "black", "mithril", "adamant", "rune", "dragon", "gilded"};
@@ -244,7 +260,8 @@ public class KillClogPanel extends PluginPanel
     private PluginManager pluginManager;
     private NameAutocompleter nameAutocompleter;
     private FourTwentyMode fourTwentyMode = FourTwentyMode.OFF;
-    private JLabel fourTwentyButton;
+    private boolean has420Plugin;
+    private JLabel thermyLabel;
 
     @Inject
     public KillClogPanel(HiscoreService hiscoreService, ClogService clogService,
@@ -293,62 +310,6 @@ public class KillClogPanel extends PluginPanel
             RenderingHints.KEY_TEXT_ANTIALIASING,
             RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         add(clogNotice, c);
-
-        // Bottom row: [420 button LEFT] [sync date CENTER]
-        c.gridy++;
-        c.insets = new Insets(2, 0, 0, 0);
-
-        JPanel bottomRow = new JPanel(new BorderLayout());
-        bottomRow.setBackground(ColorScheme.DARK_GRAY_COLOR);
-
-        // 420 button — hidden until setPluginManager detects FourTwentyKcPlugin
-        fourTwentyButton = new JLabel()
-        {
-            @Override
-            public javax.swing.JToolTip createToolTip()
-            {
-                ParchmentTooltip tip = new ParchmentTooltip();
-                tip.setComponent(this);
-                return tip;
-            }
-        };
-        fourTwentyButton.setFont(FontManager.getRunescapeSmallFont());
-        fourTwentyButton.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-        fourTwentyButton.setToolTipText("420 mode: OFF");
-        fourTwentyButton.putClientProperty(
-            RenderingHints.KEY_TEXT_ANTIALIASING,
-            RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        fourTwentyButton.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
-        fourTwentyButton.addMouseListener(new java.awt.event.MouseAdapter()
-        {
-            @Override
-            public void mousePressed(java.awt.event.MouseEvent e)
-            {
-                cycleFourTwentyMode();
-            }
-        });
-        try
-        {
-            BufferedImage herb = ImageUtil.loadImageResource(KillClogPanel.class, "herblore.png");
-            fourTwentyButton.setIcon(new ImageIcon(ImageUtil.resizeImage(herb, 15, 15)));
-        }
-        catch (Exception e)
-        {
-            fourTwentyButton.setText("420");
-        }
-        fourTwentyButton.setVisible(false);
-        bottomRow.add(fourTwentyButton, BorderLayout.WEST);
-
-        syncLabel.setFont(FontManager.getRunescapeSmallFont());
-        syncLabel.setForeground(SYNC_COLOR);
-        syncLabel.setHorizontalAlignment(JLabel.CENTER);
-        syncLabel.setText(" ");
-        syncLabel.putClientProperty(
-            RenderingHints.KEY_TEXT_ANTIALIASING,
-            RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        bottomRow.add(syncLabel, BorderLayout.CENTER);
-
-        add(bottomRow, c);
 
         // Configure PluginPanel's scroll pane with custom scrollbar
         JScrollPane sp = getScrollPane();
@@ -432,8 +393,25 @@ public class KillClogPanel extends PluginPanel
             RenderingHints.KEY_TEXT_ANTIALIASING,
             RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
+        // Sync icon sits beside clog count (or alone when no data)
+        syncLabel.setFont(FontManager.getRunescapeSmallFont());
+        syncLabel.setForeground(SYNC_COLOR);
+        syncLabel.setIconTextGap(2);
+        syncLabel.putClientProperty(
+            RenderingHints.KEY_TEXT_ANTIALIASING,
+            RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+        JPanel clogPanel = new JPanel();
+        clogPanel.setLayout(new BoxLayout(clogPanel, BoxLayout.X_AXIS));
+        clogPanel.setOpaque(false);
+        clogPanel.add(Box.createHorizontalGlue());
+        clogPanel.add(infoTotalLabel);
+        clogPanel.add(Box.createHorizontalStrut(4));
+        clogPanel.add(syncLabel);
+        clogPanel.add(Box.createHorizontalGlue());
+
         infoRow.add(infoNameLabel, BorderLayout.WEST);
-        infoRow.add(infoTotalLabel, BorderLayout.CENTER);
+        infoRow.add(clogPanel, BorderLayout.CENTER);
         infoRow.add(infoKcLabel, BorderLayout.EAST);
         panel.add(infoRow);
 
@@ -486,7 +464,8 @@ public class KillClogPanel extends PluginPanel
         try
         {
             BufferedImage img = ImageUtil.loadImageResource(KillClogPanel.class, "stale_baguette.png");
-            staleBaguetteIcon = new ImageIcon(ImageUtil.resizeImage(img, 13, 12));
+            staleBaguetteImage = ImageUtil.resizeImage(img, 13, 12);
+            staleBaguetteIcon = new ImageIcon(staleBaguetteImage);
         }
         catch (Exception e)
         {
@@ -509,6 +488,15 @@ public class KillClogPanel extends PluginPanel
         catch (Exception e)
         {
             sharpEyeIcon = null;
+        }
+        try
+        {
+            BufferedImage img = ImageUtil.loadImageResource(KillClogPanel.class, "eagle_eye.png");
+            eagleEyeIcon = new ImageIcon(ImageUtil.resizeImage(img, 13, 13));
+        }
+        catch (Exception e)
+        {
+            eagleEyeIcon = null;
         }
         for (String tier : CLOG_TIERS)
         {
@@ -627,6 +615,23 @@ public class KillClogPanel extends PluginPanel
 
         bossLabels.put(boss, label);
 
+        // Secret 420 mode toggle on Thermonuclear Smoke Devil
+        if (boss == HiscoreSkill.THERMONUCLEAR_SMOKE_DEVIL)
+        {
+            thermyLabel = label;
+            label.addMouseListener(new java.awt.event.MouseAdapter()
+            {
+                @Override
+                public void mousePressed(java.awt.event.MouseEvent e)
+                {
+                    if (has420Plugin)
+                    {
+                        cycleFourTwentyMode();
+                    }
+                }
+            });
+        }
+
         JPanel cell = new JPanel();
         cell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         cell.setBorder(new EmptyBorder(2, 0, 2, 0));
@@ -718,27 +723,29 @@ public class KillClogPanel extends PluginPanel
     public void setPluginManager(PluginManager pluginManager)
     {
         this.pluginManager = pluginManager;
-        // Show 420 button if 420 kc plugin is loaded
-        if (fourTwentyButton != null)
+        has420Plugin = pluginManager.getPlugins().stream()
+            .anyMatch(p -> p.getClass().getSimpleName().equals("FourTwentyKcPlugin"));
+        if (has420Plugin && thermyLabel != null)
         {
-            boolean has420 = pluginManager.getPlugins().stream()
-                .anyMatch(p -> p.getClass().getSimpleName().equals("FourTwentyKcPlugin"));
-            fourTwentyButton.setVisible(has420);
+            thermyLabel.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
         }
     }
 
     public void setFourTwentyVisible(boolean visible)
     {
-        if (fourTwentyButton != null)
+        has420Plugin = visible;
+        if (thermyLabel != null)
         {
-            fourTwentyButton.setVisible(visible);
-            if (!visible)
+            thermyLabel.setCursor(visible
+                ? new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR)
+                : java.awt.Cursor.getDefaultCursor());
+        }
+        if (!visible)
+        {
+            fourTwentyMode = FourTwentyMode.OFF;
+            if (hiscoreResult != null)
             {
-                fourTwentyMode = FourTwentyMode.OFF;
-                if (hiscoreResult != null)
-                {
-                    applyHighlighterState(config.completionistHighlighter());
-                }
+                applyHighlighterState(config.completionistHighlighter());
             }
         }
     }
@@ -751,12 +758,15 @@ public class KillClogPanel extends PluginPanel
         if (player.isEmpty())
         {
             infoNameLabel.setIcon(null);
+            infoNameLabel.setToolTipText(null);
             infoNameLabel.setText("Enter RSN");
             infoNameLabel.setForeground(TEXT_DIM);
             infoTotalLabel.setIcon(null);
             infoTotalLabel.setText("");
             infoKcLabel.setIcon(null);
             infoKcLabel.setText("");
+            syncLabel.setIcon(null);
+            syncLabel.setToolTipText(null);
             return;
         }
 
@@ -765,6 +775,7 @@ public class KillClogPanel extends PluginPanel
         infoNameLabel.setText(String.format(SEARCHING_MESSAGES[searchIdx], player));
         infoNameLabel.setForeground(TEXT_DIM);
         infoNameLabel.setIcon(null);
+        infoNameLabel.setToolTipText(null);
         infoTotalLabel.setIcon(null);
         infoTotalLabel.setText("");
         infoKcLabel.setIcon(null);
@@ -778,7 +789,7 @@ public class KillClogPanel extends PluginPanel
         showingNotFound = false;
         tooltipDataMap.clear();
         clogNotice.setText(" ");
-        syncLabel.setText(" ");
+        syncLabel.setText("");
         syncLabel.setIcon(null);
         syncLabel.setToolTipText(null);
 
@@ -863,10 +874,11 @@ public class KillClogPanel extends PluginPanel
                     infoKcLabel.setText("");
                 }
 
-                // CENTER zone: clog X/Y (populated when clog data arrives, or now if already here)
+                // CENTER zone: clog X/Y + sync icon (populated when clog data arrives, or now if already here)
                 if (clogResult != null)
                 {
                     updateClogInfo(clogResult);
+                    updateSyncLabel(clogResult.getLastChanged());
                 }
 
                 searchBar.setText("");
@@ -923,7 +935,11 @@ public class KillClogPanel extends PluginPanel
                             updateClogInfo(result);
                         }
 
-                        updateSyncLabel(result.getLastChanged());
+                        // Only show sync icon once hiscore has loaded (searching is done)
+                        if (hiscoreResult != null)
+                        {
+                            updateSyncLabel(result.getLastChanged());
+                        }
                     }
                     else
                     {
@@ -935,7 +951,10 @@ public class KillClogPanel extends PluginPanel
                         {
                             clogNotice.setText(" ");
                         }
-                        updateSyncLabel(null);
+                        if (hiscoreResult != null)
+                        {
+                            updateSyncLabel(null);
+                        }
                         // Fallback: fetch canonical name from Temple player stats
                         fetchCanonicalName(player, thisLookup);
                     }
@@ -974,19 +993,24 @@ public class KillClogPanel extends PluginPanel
     private void updateInfoIcon(AccountType type)
     {
         String resource;
+        String tooltip;
         switch (type)
         {
             case IRONMAN:
                 resource = "ironman.png";
+                tooltip = "Ironman";
                 break;
             case HARDCORE_IRONMAN:
                 resource = "hardcore_ironman.png";
+                tooltip = "Hardcore Ironman";
                 break;
             case ULTIMATE_IRONMAN:
                 resource = "ultimate_ironman.png";
+                tooltip = "Ultimate Ironman";
                 break;
             default:
                 infoNameLabel.setIcon(null);
+                infoNameLabel.setToolTipText(null);
                 return;
         }
 
@@ -994,10 +1018,12 @@ public class KillClogPanel extends PluginPanel
         {
             BufferedImage img = ImageUtil.loadImageResource(HiscorePanel.class, resource);
             infoNameLabel.setIcon(new ImageIcon(ImageUtil.resizeImage(img, 15, 15)));
+            infoNameLabel.setToolTipText(tooltip);
         }
         catch (Exception e)
         {
             infoNameLabel.setIcon(null);
+            infoNameLabel.setToolTipText(null);
         }
     }
 
@@ -1346,26 +1372,6 @@ public class KillClogPanel extends PluginPanel
         FourTwentyMode[] modes = FourTwentyMode.values();
         fourTwentyMode = modes[(fourTwentyMode.ordinal() + 1) % modes.length];
 
-        switch (fourTwentyMode)
-        {
-            case OFF:
-                fourTwentyButton.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-                fourTwentyButton.setToolTipText("420 mode: OFF");
-                break;
-            case GREEN_420S:
-                fourTwentyButton.setForeground(FOUR_TWENTY_GREEN);
-                fourTwentyButton.setToolTipText("420s glow green");
-                break;
-            case CAP_420:
-                fourTwentyButton.setForeground(FOUR_TWENTY_GREEN);
-                fourTwentyButton.setToolTipText("All KCs capped at 420");
-                break;
-            case ALL_420:
-                fourTwentyButton.setForeground(FOUR_TWENTY_GREEN);
-                fourTwentyButton.setToolTipText("Everything is 420");
-                break;
-        }
-
         // Reapply labels with new mode
         applyHighlighterState(config.completionistHighlighter());
     }
@@ -1454,7 +1460,7 @@ public class KillClogPanel extends PluginPanel
 
             if (daysAgo > STALE_DAYS)
             {
-                syncLabel.setIcon(staleBaguetteIcon);
+                syncLabel.setIcon(eagleEyeIcon);
             }
             else
             {
