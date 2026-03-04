@@ -47,6 +47,10 @@ import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.hiscore.HiscorePanel;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
+import java.awt.Cursor;
+import java.awt.Dimension;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.IconTextField;
 import net.runelite.client.util.ImageUtil;
@@ -81,6 +85,8 @@ public class KillClogPanel extends PluginPanel
 
     // Boss display order matching vanilla RuneLite hiscores.
     // Must stay in sync with BOSS_NAMES in HiscoreService.
+    // New boss? Add HiscoreSkill.BOSS_NAME here alphabetically once RuneLite adds the enum.
+    // See BOSS_NAMES comment in HiscoreService for full playbook.
     private static final HiscoreSkill[] BOSSES = {
         HiscoreSkill.ABYSSAL_SIRE,
         HiscoreSkill.ALCHEMICAL_HYDRA,
@@ -159,6 +165,22 @@ public class KillClogPanel extends PluginPanel
     {
         NAME_OVERRIDES.put("Calvar'ion", "Cal'varion");
     }
+
+    // Activities shown in the collapsible grid (10 cells, matching native RuneLite order).
+    // Individual clue tiers have spriteId -1, so they're excluded from the grid
+    // and instead shown in the Clue Scrolls (all) tooltip.
+    private static final HiscoreSkill[] ACTIVITIES = {
+        HiscoreSkill.CLUE_SCROLL_ALL,
+        HiscoreSkill.LEAGUE_POINTS,
+        HiscoreSkill.LAST_MAN_STANDING,
+        HiscoreSkill.SOUL_WARS_ZEAL,
+        HiscoreSkill.RIFTS_CLOSED,
+        HiscoreSkill.COLOSSEUM_GLORY,
+        HiscoreSkill.COLLECTIONS_LOGGED,
+        HiscoreSkill.BOUNTY_HUNTER_ROGUE,
+        HiscoreSkill.BOUNTY_HUNTER_HUNTER,
+        HiscoreSkill.PVP_ARENA_RANK,
+    };
 
     private final HiscoreService hiscoreService;
     private final ClogService clogService;
@@ -239,10 +261,18 @@ public class KillClogPanel extends PluginPanel
 
     // Track labels for updating after lookup
     private final Map<HiscoreSkill, JLabel> bossLabels = new LinkedHashMap<>();
+    private final Map<HiscoreSkill, JLabel> activityLabels = new LinkedHashMap<>();
 
     // Store original and dimmed icons
     private final Map<HiscoreSkill, ImageIcon> originalIcons = new LinkedHashMap<>();
     private final Map<HiscoreSkill, ImageIcon> dimmedIcons = new LinkedHashMap<>();
+
+    // Activities toggle bar
+    private JPanel activitiesGrid;
+    private JLabel toggleArrow;
+    private ImageIcon arrowUpIcon;
+    private ImageIcon arrowDownIcon;
+    private boolean activitiesExpanded;
 
     // Current lookup state
     private HiscoreResult hiscoreResult;
@@ -297,6 +327,34 @@ public class KillClogPanel extends PluginPanel
             }
         });
 
+        // Sort arrow sprites for activities toggle
+        spriteManager.getSpriteAsync(1050, 0, sprite ->
+            SwingUtilities.invokeLater(() ->
+            {
+                if (sprite != null)
+                {
+                    arrowUpIcon = new ImageIcon(sprite);
+                    if (activitiesExpanded && toggleArrow != null)
+                    {
+                        toggleArrow.setIcon(arrowUpIcon);
+                    }
+                }
+            }));
+        spriteManager.getSpriteAsync(1051, 0, sprite ->
+            SwingUtilities.invokeLater(() ->
+            {
+                if (sprite != null)
+                {
+                    arrowDownIcon = new ImageIcon(sprite);
+                    if (!activitiesExpanded && toggleArrow != null)
+                    {
+                        toggleArrow.setIcon(arrowDownIcon);
+                    }
+                }
+            }));
+
+        activitiesExpanded = config.activitiesExpanded();
+
         // Match native HiscorePanel structure
         setBorder(new EmptyBorder(10, 10, 0, 10));
         setBackground(ColorScheme.DARK_GRAY_COLOR);
@@ -312,8 +370,18 @@ public class KillClogPanel extends PluginPanel
 
         add(buildSearchPanel(), c);
 
+        // Toggle bar for activities section
         c.gridy++;
         c.insets = new Insets(0, 0, 0, 0);
+        add(buildToggleBar(), c);
+
+        // Activities grid (starts hidden unless config says expanded)
+        c.gridy++;
+        activitiesGrid = buildActivitiesGrid();
+        activitiesGrid.setVisible(activitiesExpanded);
+        add(activitiesGrid, c);
+
+        c.gridy++;
         add(buildBossGrid(), c);
 
         // Collection log sync notice — below boss grid
@@ -529,6 +597,181 @@ public class KillClogPanel extends PluginPanel
         }
 
         return panel;
+    }
+
+    private JPanel buildToggleBar()
+    {
+        JPanel bar = new JPanel();
+        bar.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        bar.setLayout(new GridBagLayout());
+        bar.setPreferredSize(new Dimension(0, 14));
+        bar.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        toggleArrow = new JLabel();
+        toggleArrow.setIcon(activitiesExpanded ? arrowUpIcon : arrowDownIcon);
+        bar.add(toggleArrow);
+
+        bar.addMouseListener(new MouseAdapter()
+        {
+            @Override
+            public void mousePressed(MouseEvent e)
+            {
+                activitiesExpanded = !activitiesExpanded;
+                activitiesGrid.setVisible(activitiesExpanded);
+                toggleArrow.setIcon(activitiesExpanded ? arrowUpIcon : arrowDownIcon);
+                configManager.setConfiguration("killclog", "activitiesExpanded", activitiesExpanded);
+                revalidate();
+            }
+        });
+
+        return bar;
+    }
+
+    private JPanel buildActivitiesGrid()
+    {
+        JPanel grid = new JPanel(new GridLayout(0, 3));
+        grid.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+
+        for (HiscoreSkill activity : ACTIVITIES)
+        {
+            grid.add(makeActivityCell(activity));
+        }
+
+        return grid;
+    }
+
+    private JPanel makeActivityCell(HiscoreSkill activity)
+    {
+        JLabel label = new JLabel()
+        {
+            @Override
+            public javax.swing.JToolTip createToolTip()
+            {
+                ParchmentTooltip tip = new ParchmentTooltip();
+                tip.setComponent(this);
+                return tip;
+            }
+        };
+        label.setToolTipText(activity.getName());
+        label.setFont(FontManager.getRunescapeSmallFont());
+        label.setText(pad("--"));
+        label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        label.setIconTextGap(4);
+        label.putClientProperty(
+            RenderingHints.KEY_TEXT_ANTIALIASING,
+            RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+        // Load activity sprite asynchronously
+        if (activity.getSpriteId() != -1)
+        {
+            spriteManager.getSpriteAsync(activity.getSpriteId(), 0, sprite ->
+                SwingUtilities.invokeLater(() ->
+                {
+                    if (sprite != null)
+                    {
+                        BufferedImage scaled = ImageUtil.resizeImage(
+                            ImageUtil.resizeCanvas(sprite, 25, 25), 20, 20);
+                        label.setIcon(new ImageIcon(scaled));
+                    }
+                }));
+        }
+
+        activityLabels.put(activity, label);
+
+        JPanel cell = new JPanel();
+        cell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        cell.setBorder(new EmptyBorder(2, 0, 2, 0));
+        cell.add(label);
+
+        label.addMouseListener(new MouseAdapter()
+        {
+            @Override
+            public void mouseEntered(MouseEvent e)
+            {
+                if (hoverExitTimer != null) hoverExitTimer.stop();
+                if (hoveredCell != null && hoveredCell != cell)
+                {
+                    hoveredCell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                }
+                hoveredCell = cell;
+                cell.setBackground(CELL_HOVER);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e)
+            {
+                if (hoverExitTimer != null) hoverExitTimer.stop();
+                hoverExitTimer = new javax.swing.Timer(150, evt ->
+                {
+                    if (hoveredCell == cell)
+                    {
+                        hoveredCell = null;
+                        cell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                    }
+                });
+                hoverExitTimer.setRepeats(false);
+                hoverExitTimer.start();
+            }
+        });
+
+        return cell;
+    }
+
+    private void updateActivityLabels(HiscoreResult result)
+    {
+        for (Map.Entry<HiscoreSkill, JLabel> entry : activityLabels.entrySet())
+        {
+            HiscoreSkill activity = entry.getKey();
+            JLabel label = entry.getValue();
+
+            int score = result.getActivityScore(activity.getName());
+            label.setText(pad(score <= 0 ? "--" : formatKc(score)));
+            label.setForeground(score > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
+
+            // Clue Scrolls (all) gets a special per-tier tooltip
+            if (activity == HiscoreSkill.CLUE_SCROLL_ALL)
+            {
+                label.setToolTipText(buildClueTooltip(result));
+            }
+            else
+            {
+                int rank = result.getActivityRank(activity.getName());
+                label.setToolTipText(rank > 0
+                    ? activity.getName() + "\nRank: " + String.format("%,d", rank)
+                    : activity.getName());
+            }
+        }
+    }
+
+    private String buildClueTooltip(HiscoreResult result)
+    {
+        StringBuilder sb = new StringBuilder("Clue Scrolls");
+        int allScore = result.getActivityScore("Clue Scrolls (all)");
+        if (allScore > 0)
+        {
+            sb.append(": ").append(String.format("%,d", allScore));
+        }
+
+        String[] tiers = {"Beginner", "Easy", "Medium", "Hard", "Elite", "Master"};
+        String[] keys = {
+            "Clue Scrolls (beginner)", "Clue Scrolls (easy)", "Clue Scrolls (medium)",
+            "Clue Scrolls (hard)", "Clue Scrolls (elite)", "Clue Scrolls (master)"
+        };
+
+        for (int i = 0; i < tiers.length; i++)
+        {
+            int tierScore = result.getActivityScore(keys[i]);
+            sb.append("\n").append(tiers[i]).append(": ");
+            sb.append(tierScore > 0 ? String.format("%,d", tierScore) : "--");
+        }
+
+        int rank = result.getActivityRank("Clue Scrolls (all)");
+        if (rank > 0)
+        {
+            sb.append("\nRank: ").append(String.format("%,d", rank));
+        }
+
+        return sb.toString();
     }
 
     private JPanel buildBossGrid()
@@ -841,6 +1084,13 @@ public class KillClogPanel extends PluginPanel
                 label.setIcon(orig);
             }
         }
+        for (Map.Entry<HiscoreSkill, JLabel> entry : activityLabels.entrySet())
+        {
+            JLabel label = entry.getValue();
+            label.setText(pad("--"));
+            label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+            label.setToolTipText(entry.getKey().getName());
+        }
         // Fire hiscore lookup
         hiscoreService.lookup(player).thenAccept(result ->
             SwingUtilities.invokeLater(() ->
@@ -929,6 +1179,7 @@ public class KillClogPanel extends PluginPanel
 
                 searchBar.setText("");
 
+                updateActivityLabels(result);
                 applyCompletionistColors();
                 updateTooltips();
             })

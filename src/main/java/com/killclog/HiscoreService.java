@@ -28,11 +28,27 @@ public class HiscoreService
     private static final String BASE_URL = "https://secure.runescape.com/m=";
     private static final String SUFFIX = "/index_lite.ws?player=";
 
-    // Hiscore CSV layout: 25 skills + 20 minigames/activities, then bosses.
-    // If Jagex adds a new skill or activity above bosses, this index must shift.
+    // Hiscore CSV layout: 25 skills + 16 activities + 4 unused, then bosses.
+    // If Jagex adds a new skill or activity above bosses, these indices must shift.
+    private static final int ACTIVITY_START_INDEX = 25;
     private static final int BOSS_START_INDEX = 45;
 
+    // Activity names in hiscore CSV order (lines 25-40)
+    private static final String[] ACTIVITY_NAMES = {
+        "League Points", "Bounty Hunter - Hunter", "Bounty Hunter - Rogue",
+        "Clue Scrolls (all)", "Clue Scrolls (beginner)", "Clue Scrolls (easy)",
+        "Clue Scrolls (medium)", "Clue Scrolls (hard)", "Clue Scrolls (elite)",
+        "Clue Scrolls (master)", "LMS - Rank", "PvP Arena - Rank",
+        "Soul Wars Zeal", "Rifts closed", "Colosseum Glory", "Collections Logged"
+    };
+
     // Boss names in hiscore CSV order — must match Jagex's exact alphabetical order.
+    // NEW BOSS PLAYBOOK: When Jagex adds a boss to hiscores:
+    //   1. Add name here in alphabetical order
+    //   2. Wait for RuneLite to add HiscoreSkill enum (check latest.release jar)
+    //   3. Add HiscoreSkill.BOSS_NAME to BOSSES[] in KillClogPanel (alphabetical)
+    //   4. If HiscoreSkill.getName() != CSV name, add to NAME_OVERRIDES
+    //   5. If Temple uses non-standard category key, add to BOSS_CATEGORY_OVERRIDES in ClogService
     private static final String[] BOSS_NAMES = {
         "Abyssal Sire", "Alchemical Hydra", "Amoxliatl", "Araxxor",
         "Artio", "Barrows Chests", "Brutus", "Bryophyta", "Callisto",
@@ -157,6 +173,8 @@ public class HiscoreService
         String[] lines = body.trim().split("\n");
         Map<String, Integer> bossKills = new LinkedHashMap<>();
         Map<String, Integer> bossRanks = new LinkedHashMap<>();
+        Map<String, Integer> activityScores = new LinkedHashMap<>();
+        Map<String, Integer> activityRanks = new LinkedHashMap<>();
 
         int totalLevel = 0;
         long totalXp = 0;
@@ -169,6 +187,28 @@ public class HiscoreService
         catch (Exception ignored) {}
 
         int combatLevel = calculateCombatLevel(lines);
+
+        for (int i = 0; i < ACTIVITY_NAMES.length; i++)
+        {
+            int lineIdx = ACTIVITY_START_INDEX + i;
+            if (lineIdx >= lines.length)
+            {
+                break;
+            }
+            try
+            {
+                String[] parts = lines[lineIdx].split(",");
+                int rank = Integer.parseInt(parts[0]);
+                int score = Integer.parseInt(parts[1]);
+                activityScores.put(ACTIVITY_NAMES[i], score);
+                activityRanks.put(ACTIVITY_NAMES[i], rank);
+            }
+            catch (Exception e)
+            {
+                activityScores.put(ACTIVITY_NAMES[i], -1);
+                activityRanks.put(ACTIVITY_NAMES[i], -1);
+            }
+        }
 
         for (int i = 0; i < BOSS_NAMES.length; i++)
         {
@@ -192,7 +232,8 @@ public class HiscoreService
             }
         }
 
-        return new HiscoreResult(type, bossKills, bossRanks, totalLevel, totalXp, combatLevel);
+        return new HiscoreResult(type, bossKills, bossRanks, activityScores, activityRanks,
+            totalLevel, totalXp, combatLevel);
     }
 
     /**

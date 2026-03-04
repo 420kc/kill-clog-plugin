@@ -94,6 +94,17 @@ public interface KillClogConfig extends Config
     }
 
     @ConfigItem(
+        keyName = "activitiesExpanded",
+        name = "",
+        description = "",
+        hidden = true
+    )
+    default boolean activitiesExpanded()
+    {
+        return false;
+    }
+
+    @ConfigItem(
         keyName = "completedClogColor",
         name = "Completed",
         description = "Color for bosses with all collection log items obtained",
