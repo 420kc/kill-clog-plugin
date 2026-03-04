@@ -329,13 +329,13 @@ public class KillClogPanel extends PluginPanel
             }
         });
 
-        // Sort arrow sprites for activities toggle
+        // Sort arrow sprites for activities toggle (desaturated to gray)
         spriteManager.getSpriteAsync(1050, 0, sprite ->
             SwingUtilities.invokeLater(() ->
             {
                 if (sprite != null)
                 {
-                    arrowUpIcon = new ImageIcon(sprite);
+                    arrowUpIcon = new ImageIcon(toGrayscale(sprite));
                     if (activitiesExpanded && toggleArrow != null)
                     {
                         toggleArrow.setIcon(arrowUpIcon);
@@ -347,7 +347,7 @@ public class KillClogPanel extends PluginPanel
             {
                 if (sprite != null)
                 {
-                    arrowDownIcon = new ImageIcon(sprite);
+                    arrowDownIcon = new ImageIcon(toGrayscale(sprite));
                     if (!activitiesExpanded && toggleArrow != null)
                     {
                         toggleArrow.setIcon(arrowDownIcon);
@@ -368,17 +368,18 @@ public class KillClogPanel extends PluginPanel
         c.gridy = 0;
         c.weightx = 1;
         c.weighty = 0;
-        c.insets = new Insets(0, 0, 5, 0);
+        c.insets = new Insets(0, 0, 2, 0);
 
-        add(buildSearchPanel(), c);
-
-        // Toggle bar for activities section
-        c.gridy++;
-        c.insets = new Insets(0, 0, 0, 0);
+        // Toggle bar above search — lighter gray background
         add(buildToggleBar(), c);
+
+        c.gridy++;
+        c.insets = new Insets(0, 0, 5, 0);
+        add(buildSearchPanel(), c);
 
         // Activities grid in a clip wrapper for slide animation
         c.gridy++;
+        c.insets = new Insets(0, 0, 0, 0);
         activitiesGrid = buildActivitiesGrid();
         activitiesClip = new JPanel(new BorderLayout())
         {
@@ -618,7 +619,7 @@ public class KillClogPanel extends PluginPanel
     private JPanel buildToggleBar()
     {
         JPanel bar = new JPanel();
-        bar.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        bar.setBackground(ColorScheme.DARK_GRAY_COLOR);
         bar.setLayout(new GridBagLayout());
         bar.setPreferredSize(new Dimension(0, 14));
         bar.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
@@ -1623,6 +1624,26 @@ public class KillClogPanel extends PluginPanel
         g2.dispose();
 
         return dimmed;
+    }
+
+    private static BufferedImage toGrayscale(BufferedImage src)
+    {
+        BufferedImage gray = new BufferedImage(
+            src.getWidth(), src.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < src.getHeight(); y++)
+        {
+            for (int x = 0; x < src.getWidth(); x++)
+            {
+                int argb = src.getRGB(x, y);
+                int a = (argb >> 24) & 0xff;
+                int r = (argb >> 16) & 0xff;
+                int g = (argb >> 8) & 0xff;
+                int b = argb & 0xff;
+                int lum = (int) (0.299 * r + 0.587 * g + 0.114 * b);
+                gray.setRGB(x, y, (a << 24) | (lum << 16) | (lum << 8) | lum);
+            }
+        }
+        return gray;
     }
 
     private void updateTooltips()
