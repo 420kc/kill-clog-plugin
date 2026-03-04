@@ -180,6 +180,7 @@ public class KillClogPanel extends PluginPanel
     private ImageIcon infernalCapeIcon;
     private ImageIcon infernalMaxCapeIcon;
     private ImageIcon clogBookIcon;
+    private ImageIcon staleBaguetteIcon;
 
     // Collection log tier icons — bronze through gilded
     private static final String[] CLOG_TIERS = {"bronze", "iron", "steel", "black", "mithril", "adamant", "rune", "dragon", "gilded"};
@@ -336,8 +337,8 @@ public class KillClogPanel extends PluginPanel
         searchBar.setAlignmentX(Component.LEFT_ALIGNMENT);
         searchBar.addActionListener(e -> doLookup());
 
-        // Configure internals: white text + greyscale AA, remove clear/suggest buttons
-        removeClearButtons(searchBar);
+        // Configure internals: white text + greyscale AA, transparent clear button
+        styleSearchButtons(searchBar);
         for (Component c : searchBar.getComponents())
         {
             if (c instanceof net.runelite.client.ui.components.FlatTextField)
@@ -349,6 +350,10 @@ public class KillClogPanel extends PluginPanel
                 tf.putClientProperty(
                     RenderingHints.KEY_TEXT_ANTIALIASING,
                     RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+            }
+            else if (c instanceof java.awt.Container)
+            {
+                styleSearchButtons((java.awt.Container) c);
             }
         }
 
@@ -432,6 +437,15 @@ public class KillClogPanel extends PluginPanel
         catch (Exception e)
         {
             clogBookIcon = null;
+        }
+        try
+        {
+            BufferedImage img = ImageUtil.loadImageResource(KillClogPanel.class, "stale_baguette.png");
+            staleBaguetteIcon = new ImageIcon(ImageUtil.resizeImage(img, 13, 12));
+        }
+        catch (Exception e)
+        {
+            staleBaguetteIcon = null;
         }
         for (String tier : CLOG_TIERS)
         {
@@ -1327,6 +1341,8 @@ public class KillClogPanel extends PluginPanel
         if (lastChanged == null || lastChanged.isEmpty())
         {
             syncLabel.setText(" ");
+            syncLabel.setIcon(null);
+            syncLabel.setToolTipText(null);
             return;
         }
 
@@ -1337,12 +1353,26 @@ public class KillClogPanel extends PluginPanel
             long daysAgo = ChronoUnit.DAYS.between(syncTime, LocalDateTime.now());
 
             DateTimeFormatter display = DateTimeFormatter.ofPattern("MMM d, yyyy");
-            syncLabel.setText("Synced " + syncTime.format(display));
-            syncLabel.setForeground(daysAgo > STALE_DAYS ? NOT_FOUND : SYNC_COLOR);
+            String tooltip = "Last update: " + syncTime.format(display);
+            syncLabel.setText("");
+            syncLabel.setToolTipText(tooltip);
+
+            if (daysAgo > STALE_DAYS)
+            {
+                syncLabel.setIcon(staleBaguetteIcon);
+            }
+            else
+            {
+                // Fresh icon — placeholder until chosen
+                syncLabel.setIcon(null);
+                syncLabel.setText(" ");
+            }
         }
         catch (DateTimeParseException e)
         {
             syncLabel.setText(" ");
+            syncLabel.setIcon(null);
+            syncLabel.setToolTipText(null);
         }
     }
 
@@ -1394,20 +1424,23 @@ public class KillClogPanel extends PluginPanel
     }
 
     /**
-     * Recursively remove all JButtons from a container (strips IconTextField clear/suggest buttons).
-     * Removal prevents updateContextButton() from re-showing them on text entry.
+     * Recursively style all JButtons in a container to be transparent
+     * (removes white background from IconTextField clear/suggest buttons).
      */
-    private static void removeClearButtons(java.awt.Container container)
+    private static void styleSearchButtons(java.awt.Container container)
     {
         for (Component c : container.getComponents())
         {
             if (c instanceof JButton)
             {
-                container.remove(c);
+                JButton btn = (JButton) c;
+                btn.setOpaque(false);
+                btn.setContentAreaFilled(false);
+                btn.setBorderPainted(false);
             }
             else if (c instanceof java.awt.Container)
             {
-                removeClearButtons((java.awt.Container) c);
+                styleSearchButtons((java.awt.Container) c);
             }
         }
     }
