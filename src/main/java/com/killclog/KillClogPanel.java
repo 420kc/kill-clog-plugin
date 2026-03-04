@@ -212,6 +212,7 @@ public class KillClogPanel extends PluginPanel
 
     // 420 mode — unlocked when 420 kc plugin is loaded
     private PluginManager pluginManager;
+    private NameAutocompleter nameAutocompleter;
     private FourTwentyMode fourTwentyMode = FourTwentyMode.OFF;
     private JLabel fourTwentyButton;
 
@@ -624,6 +625,13 @@ public class KillClogPanel extends PluginPanel
         searchBar.setText(name);
     }
 
+    public void setNameAutocompleter(NameAutocompleter autocompleter)
+    {
+        this.nameAutocompleter = autocompleter;
+        autocompleter.setSearchBar(searchBar);
+        searchBar.addKeyListener(autocompleter);
+    }
+
     public void setPluginManager(PluginManager pluginManager)
     {
         this.pluginManager = pluginManager;
@@ -721,6 +729,10 @@ public class KillClogPanel extends PluginPanel
                 }
 
                 hiscoreResult = result;
+                if (nameAutocompleter != null)
+                {
+                    nameAutocompleter.addToSearchHistory(player);
+                }
 
                 int totalLevel = result.getTotalLevel();
 

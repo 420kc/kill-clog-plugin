@@ -58,6 +58,9 @@ public class KillClogPlugin extends Plugin
     @Inject
     private PluginManager pluginManager;
 
+    @Inject
+    private NameAutocompleter nameAutocompleter;
+
     private NavigationButton navButton;
 
     private final HotkeyListener highlighterHotkey = new HotkeyListener(() -> config.highlighterKeybind())
@@ -87,6 +90,7 @@ public class KillClogPlugin extends Plugin
 
         clientToolbar.addNavigation(navButton);
         panel.setPluginManager(pluginManager);
+        panel.setNameAutocompleter(nameAutocompleter);
         keyManager.registerKeyListener(highlighterHotkey);
 
         if (config.playerMenuLookup())
