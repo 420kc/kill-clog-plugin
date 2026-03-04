@@ -405,8 +405,8 @@ public class KillClogPanel extends PluginPanel
         }
         try
         {
-            BufferedImage img = ImageUtil.loadImageResource(KillClogPanel.class, "max_cape.png");
-            maxCapeIcon = new ImageIcon(ImageUtil.resizeImage(img, 10, 18));
+            BufferedImage img = ImageUtil.loadImageResource(KillClogPanel.class, "clan_maxed.png");
+            maxCapeIcon = new ImageIcon(img);
         }
         catch (Exception e)
         {
@@ -414,8 +414,8 @@ public class KillClogPanel extends PluginPanel
         }
         try
         {
-            BufferedImage img = ImageUtil.loadImageResource(KillClogPanel.class, "infernal_cape.png");
-            infernalCapeIcon = new ImageIcon(ImageUtil.resizeImage(img, 10, 18));
+            BufferedImage img = ImageUtil.loadImageResource(KillClogPanel.class, "clan_tzkal.png");
+            infernalCapeIcon = new ImageIcon(img);
         }
         catch (Exception e)
         {
@@ -423,8 +423,8 @@ public class KillClogPanel extends PluginPanel
         }
         try
         {
-            BufferedImage img = ImageUtil.loadImageResource(KillClogPanel.class, "infernal_max_cape.png");
-            infernalMaxCapeIcon = new ImageIcon(ImageUtil.resizeImage(img, 10, 18));
+            BufferedImage img = ImageUtil.loadImageResource(KillClogPanel.class, "clan_infernal_max.png");
+            infernalMaxCapeIcon = new ImageIcon(img);
         }
         catch (Exception e)
         {
