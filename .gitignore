@@ -4,3 +4,15 @@ build/
 *.iml
 out/
 bin/
+
+# Claude
+CLAUDE.md
+docs/
+.claude/
+
+# Dev artifacts
+assets/
+cfr.jar
+decompiled/
+node_modules/
+native_autocompleter_bytecode.txt
