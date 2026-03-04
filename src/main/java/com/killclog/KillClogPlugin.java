@@ -13,10 +13,12 @@ import net.runelite.api.Player;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.events.PluginChanged;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.input.KeyManager;
 import net.runelite.client.menus.MenuManager;
+import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.util.HotkeyListener;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -53,6 +55,9 @@ public class KillClogPlugin extends Plugin
     @Inject
     private Provider<MenuManager> menuManager;
 
+    @Inject
+    private PluginManager pluginManager;
+
     private NavigationButton navButton;
 
     private final HotkeyListener highlighterHotkey = new HotkeyListener(() -> config.highlighterKeybind())
@@ -81,6 +86,7 @@ public class KillClogPlugin extends Plugin
             .build();
 
         clientToolbar.addNavigation(navButton);
+        panel.setPluginManager(pluginManager);
         keyManager.registerKeyListener(highlighterHotkey);
 
         if (config.playerMenuLookup())
@@ -128,6 +134,15 @@ public class KillClogPlugin extends Plugin
                     panel.doLookup();
                 });
             }
+        }
+    }
+
+    @Subscribe
+    public void onPluginChanged(PluginChanged event)
+    {
+        if (event.getPlugin().getClass().getSimpleName().equals("FourTwentyKcPlugin"))
+        {
+            SwingUtilities.invokeLater(() -> panel.setFourTwentyVisible(event.isLoaded()));
         }
     }
 

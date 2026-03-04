@@ -42,6 +42,8 @@ import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.SpriteManager;
 import net.runelite.client.hiscore.HiscoreSkill;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.plugins.Plugin;
+import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.hiscore.HiscorePanel;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
@@ -58,6 +60,7 @@ public class KillClogPanel extends PluginPanel
     private static final Color KC_COLOR = new Color(215, 215, 215);
     private static final Color CELL_HOVER = new Color(41, 41, 41);
     private static final Color SYNC_COLOR = new Color(102, 102, 102);
+    private static final Color FOUR_TWENTY_GREEN = new Color(30, 200, 30);
     private static final long STALE_DAYS = 90;
 
     private static final String[] SEARCHING_MESSAGES = {
@@ -206,6 +209,11 @@ public class KillClogPanel extends PluginPanel
     private JPanel hoveredCell;
     private javax.swing.Timer hoverExitTimer;
 
+    // 420 mode — unlocked when 420 kc plugin is loaded
+    private PluginManager pluginManager;
+    private FourTwentyMode fourTwentyMode = FourTwentyMode.OFF;
+    private JLabel fourTwentyButton;
+
     @Inject
     public KillClogPanel(HiscoreService hiscoreService, ClogService clogService,
                          KillClogConfig config, ConfigManager configManager,
@@ -252,9 +260,42 @@ public class KillClogPanel extends PluginPanel
             RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
         add(clogNotice, c);
 
-        // Last synced date — below clog notice
+        // Bottom row: [420 button LEFT] [sync date CENTER]
         c.gridy++;
         c.insets = new Insets(2, 0, 0, 0);
+
+        JPanel bottomRow = new JPanel(new BorderLayout());
+        bottomRow.setBackground(ColorScheme.DARK_GRAY_COLOR);
+
+        // 420 button — hidden until setPluginManager detects FourTwentyKcPlugin
+        fourTwentyButton = new JLabel();
+        fourTwentyButton.setFont(FontManager.getRunescapeSmallFont());
+        fourTwentyButton.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        fourTwentyButton.setToolTipText("420 mode: OFF");
+        fourTwentyButton.putClientProperty(
+            RenderingHints.KEY_TEXT_ANTIALIASING,
+            RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+        fourTwentyButton.setCursor(new java.awt.Cursor(java.awt.Cursor.HAND_CURSOR));
+        fourTwentyButton.addMouseListener(new java.awt.event.MouseAdapter()
+        {
+            @Override
+            public void mousePressed(java.awt.event.MouseEvent e)
+            {
+                cycleFourTwentyMode();
+            }
+        });
+        try
+        {
+            BufferedImage herb = ImageUtil.loadImageResource(KillClogPanel.class, "herblore.png");
+            fourTwentyButton.setIcon(new ImageIcon(ImageUtil.resizeImage(herb, 15, 15)));
+        }
+        catch (Exception e)
+        {
+            fourTwentyButton.setText("420");
+        }
+        fourTwentyButton.setVisible(false);
+        bottomRow.add(fourTwentyButton, BorderLayout.WEST);
+
         syncLabel.setFont(FontManager.getRunescapeSmallFont());
         syncLabel.setForeground(SYNC_COLOR);
         syncLabel.setHorizontalAlignment(JLabel.CENTER);
@@ -262,7 +303,9 @@ public class KillClogPanel extends PluginPanel
         syncLabel.putClientProperty(
             RenderingHints.KEY_TEXT_ANTIALIASING,
             RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-        add(syncLabel, c);
+        bottomRow.add(syncLabel, BorderLayout.CENTER);
+
+        add(bottomRow, c);
 
         // Configure PluginPanel's scroll pane with custom scrollbar
         JScrollPane sp = getScrollPane();
@@ -565,6 +608,34 @@ public class KillClogPanel extends PluginPanel
     public void setPlayerName(String name)
     {
         searchBar.setText(name);
+    }
+
+    public void setPluginManager(PluginManager pluginManager)
+    {
+        this.pluginManager = pluginManager;
+        // Show 420 button if 420 kc plugin is loaded
+        if (fourTwentyButton != null)
+        {
+            boolean has420 = pluginManager.getPlugins().stream()
+                .anyMatch(p -> p.getClass().getSimpleName().equals("FourTwentyKcPlugin"));
+            fourTwentyButton.setVisible(has420);
+        }
+    }
+
+    public void setFourTwentyVisible(boolean visible)
+    {
+        if (fourTwentyButton != null)
+        {
+            fourTwentyButton.setVisible(visible);
+            if (!visible)
+            {
+                fourTwentyMode = FourTwentyMode.OFF;
+                if (hiscoreResult != null)
+                {
+                    applyHighlighterState(config.completionistHighlighter());
+                }
+            }
+        }
     }
 
     private volatile int lookupVersion = 0;
@@ -883,6 +954,35 @@ public class KillClogPanel extends PluginPanel
             {
                 label.setIcon(hasKc ? orig : dimmedIcons.get(skill));
             }
+
+            // Apply 420 mode on top of base state
+            switch (fourTwentyMode)
+            {
+                case GREEN_420S:
+                    if (kc == 420)
+                    {
+                        label.setForeground(FOUR_TWENTY_GREEN);
+                    }
+                    break;
+                case CAP_420:
+                    if (kc > 0)
+                    {
+                        int display = Math.min(kc, 420);
+                        label.setText(pad(formatKc(display)));
+                        if (display == 420)
+                        {
+                            label.setForeground(FOUR_TWENTY_GREEN);
+                        }
+                    }
+                    break;
+                case ALL_420:
+                    if (kc > 0)
+                    {
+                        label.setText(pad("420"));
+                        label.setForeground(FOUR_TWENTY_GREEN);
+                    }
+                    break;
+            }
         }
 
     }
@@ -960,6 +1060,12 @@ public class KillClogPanel extends PluginPanel
 
     private void applyCompletionistColorToLabel(JLabel label, String hiscoreName)
     {
+        // 420 mode green wins over highlighter colors
+        if (fourTwentyMode != FourTwentyMode.OFF && FOUR_TWENTY_GREEN.equals(label.getForeground()))
+        {
+            return;
+        }
+
         int kc = hiscoreResult.getKc(hiscoreName);
         if (kc <= 0)
         {
@@ -1125,6 +1231,35 @@ public class KillClogPanel extends PluginPanel
             label.setToolTipText(" ");
         }
 
+    }
+
+    private void cycleFourTwentyMode()
+    {
+        FourTwentyMode[] modes = FourTwentyMode.values();
+        fourTwentyMode = modes[(fourTwentyMode.ordinal() + 1) % modes.length];
+
+        switch (fourTwentyMode)
+        {
+            case OFF:
+                fourTwentyButton.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+                fourTwentyButton.setToolTipText("420 mode: OFF");
+                break;
+            case GREEN_420S:
+                fourTwentyButton.setForeground(FOUR_TWENTY_GREEN);
+                fourTwentyButton.setToolTipText("420s glow green");
+                break;
+            case CAP_420:
+                fourTwentyButton.setForeground(FOUR_TWENTY_GREEN);
+                fourTwentyButton.setToolTipText("All KCs capped at 420");
+                break;
+            case ALL_420:
+                fourTwentyButton.setForeground(FOUR_TWENTY_GREEN);
+                fourTwentyButton.setToolTipText("Everything is 420");
+                break;
+        }
+
+        // Reapply labels with new mode
+        applyHighlighterState(config.completionistHighlighter());
     }
 
     /**
