@@ -269,10 +269,12 @@ public class KillClogPanel extends PluginPanel
 
     // Activities toggle bar
     private JPanel activitiesGrid;
+    private JPanel activitiesClip;
     private JLabel toggleArrow;
     private ImageIcon arrowUpIcon;
     private ImageIcon arrowDownIcon;
     private boolean activitiesExpanded;
+    private javax.swing.Timer slideTimer;
 
     // Current lookup state
     private HiscoreResult hiscoreResult;
@@ -375,11 +377,25 @@ public class KillClogPanel extends PluginPanel
         c.insets = new Insets(0, 0, 0, 0);
         add(buildToggleBar(), c);
 
-        // Activities grid (starts hidden unless config says expanded)
+        // Activities grid in a clip wrapper for slide animation
         c.gridy++;
         activitiesGrid = buildActivitiesGrid();
-        activitiesGrid.setVisible(activitiesExpanded);
-        add(activitiesGrid, c);
+        activitiesClip = new JPanel(new BorderLayout())
+        {
+            @Override
+            public Dimension getPreferredSize()
+            {
+                return new Dimension(
+                    activitiesGrid.getPreferredSize().width,
+                    super.getPreferredSize().height);
+            }
+        };
+        activitiesClip.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        activitiesClip.add(activitiesGrid, BorderLayout.NORTH);
+        int fullHeight = activitiesExpanded ? activitiesGrid.getPreferredSize().height : 0;
+        activitiesClip.setPreferredSize(new Dimension(0, fullHeight));
+        activitiesClip.setVisible(activitiesExpanded);
+        add(activitiesClip, c);
 
         c.gridy++;
         add(buildBossGrid(), c);
@@ -616,15 +632,57 @@ public class KillClogPanel extends PluginPanel
             @Override
             public void mousePressed(MouseEvent e)
             {
-                activitiesExpanded = !activitiesExpanded;
-                activitiesGrid.setVisible(activitiesExpanded);
-                toggleArrow.setIcon(activitiesExpanded ? arrowUpIcon : arrowDownIcon);
-                configManager.setConfiguration("killclog", "activitiesExpanded", activitiesExpanded);
-                revalidate();
+                toggleActivities();
             }
         });
 
         return bar;
+    }
+
+    private void toggleActivities()
+    {
+        if (slideTimer != null && slideTimer.isRunning())
+        {
+            slideTimer.stop();
+        }
+
+        activitiesExpanded = !activitiesExpanded;
+        toggleArrow.setIcon(activitiesExpanded ? arrowUpIcon : arrowDownIcon);
+        configManager.setConfiguration("killclog", "activitiesExpanded", activitiesExpanded);
+
+        int targetHeight = activitiesExpanded ? activitiesGrid.getPreferredSize().height : 0;
+        int startHeight = activitiesClip.getPreferredSize().height;
+
+        if (activitiesExpanded)
+        {
+            activitiesClip.setVisible(true);
+        }
+
+        long duration = 150;
+        long startTime = System.currentTimeMillis();
+
+        slideTimer = new javax.swing.Timer(12, null);
+        slideTimer.addActionListener(e ->
+        {
+            long elapsed = System.currentTimeMillis() - startTime;
+            float progress = Math.min(1f, (float) elapsed / duration);
+            // Ease-out: 1 - (1-t)^2
+            float eased = 1f - (1f - progress) * (1f - progress);
+
+            int height = startHeight + Math.round((targetHeight - startHeight) * eased);
+            activitiesClip.setPreferredSize(new Dimension(0, height));
+            revalidate();
+
+            if (progress >= 1f)
+            {
+                slideTimer.stop();
+                if (!activitiesExpanded)
+                {
+                    activitiesClip.setVisible(false);
+                }
+            }
+        });
+        slideTimer.start();
     }
 
     private JPanel buildActivitiesGrid()
