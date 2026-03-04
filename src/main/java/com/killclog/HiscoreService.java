@@ -28,14 +28,20 @@ public class HiscoreService
     private static final String BASE_URL = "https://secure.runescape.com/m=";
     private static final String SUFFIX = "/index_lite.ws?player=";
 
-    // Hiscore CSV layout: 25 skills + 16 activities + 4 unused, then bosses.
+    // Hiscore CSV layout: 25 skills + 20 activities, then bosses.
     // If Jagex adds a new skill or activity above bosses, these indices must shift.
     private static final int ACTIVITY_START_INDEX = 25;
     private static final int BOSS_START_INDEX = 45;
 
-    // Activity names in hiscore CSV order (lines 25-40)
+    // Activity names in hiscore CSV order (lines 25-44).
+    // Includes deprecated entries (Grid Points, Deadman Points, BH Legacy) that
+    // still occupy CSV lines — must be present so indices align correctly.
     private static final String[] ACTIVITY_NAMES = {
-        "League Points", "Bounty Hunter - Hunter", "Bounty Hunter - Rogue",
+        "Grid Points",
+        "League Points",
+        "Deadman Points",
+        "Bounty Hunter - Hunter", "Bounty Hunter - Rogue",
+        "Bounty Hunter (Legacy) - Hunter", "Bounty Hunter (Legacy) - Rogue",
         "Clue Scrolls (all)", "Clue Scrolls (beginner)", "Clue Scrolls (easy)",
         "Clue Scrolls (medium)", "Clue Scrolls (hard)", "Clue Scrolls (elite)",
         "Clue Scrolls (master)", "LMS - Rank", "PvP Arena - Rank",
