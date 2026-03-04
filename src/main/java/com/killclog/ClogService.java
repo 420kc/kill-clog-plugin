@@ -82,16 +82,18 @@ public class ClogService
 
     private final OkHttpClient httpClient;
     private final Gson gson;
+    private final LocalClogCache localClogCache;
 
     // Cached data (loaded once per session)
     private volatile Map<String, List<Integer>> cachedCategories;
     private volatile Map<Integer, String> cachedItemNames;
 
     @Inject
-    public ClogService(OkHttpClient httpClient, Gson gson)
+    public ClogService(OkHttpClient httpClient, Gson gson, LocalClogCache localClogCache)
     {
         this.httpClient = httpClient;
         this.gson = gson;
+        this.localClogCache = localClogCache;
     }
 
     /**
@@ -113,6 +115,18 @@ public class ClogService
      */
     public CompletableFuture<ClogResult> lookup(String playerName)
     {
+        return lookup(playerName, false);
+    }
+
+    public CompletableFuture<ClogResult> lookup(String playerName, boolean isLocalPlayer)
+    {
+        if (isLocalPlayer && localClogCache.hasData() && localClogCache.isFor(playerName))
+        {
+            log.debug("Using local clog cache for self-lookup: {}", playerName);
+            return fetchItemNames().thenApply(names ->
+                localClogCache.toClogResult(names != null ? names : new HashMap<>()));
+        }
+
         String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
 
         CompletableFuture<PlayerClogData> playerFuture =

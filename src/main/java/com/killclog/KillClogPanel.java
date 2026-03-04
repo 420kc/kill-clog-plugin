@@ -199,6 +199,7 @@ public class KillClogPanel extends PluginPanel
     private ClogResult clogResult;
     private String canonicalPlayerName;
     private boolean showingNotFound;
+    private String loggedInPlayerName;
 
     // Sprite tooltip data per boss (populated when clog data is available)
     private final Map<HiscoreSkill, TooltipData> tooltipDataMap = new LinkedHashMap<>();
@@ -626,6 +627,17 @@ public class KillClogPanel extends PluginPanel
         searchBar.setText(name);
     }
 
+    public void setLoggedInPlayer(String name)
+    {
+        this.loggedInPlayerName = name;
+    }
+
+    private boolean isLocalPlayer(String lookupName)
+    {
+        return loggedInPlayerName != null && lookupName != null
+            && loggedInPlayerName.equalsIgnoreCase(lookupName);
+    }
+
     public void setNameAutocompleter(NameAutocompleter autocompleter)
     {
         this.nameAutocompleter = autocompleter;
@@ -755,23 +767,29 @@ public class KillClogPanel extends PluginPanel
                 {
                     int zukKc = result.getKc("TzKal-Zuk");
                     ImageIcon levelIcon;
+                    String levelTooltip;
                     if (totalLevel >= 2376 && zukKc >= 1 && infernalMaxCapeIcon != null)
                     {
                         levelIcon = infernalMaxCapeIcon;
+                        levelTooltip = "Infernally Maxed";
                     }
                     else if (totalLevel >= 2376 && maxCapeIcon != null)
                     {
                         levelIcon = maxCapeIcon;
+                        levelTooltip = "Maxed";
                     }
                     else if (zukKc >= 1 && infernalCapeIcon != null)
                     {
                         levelIcon = infernalCapeIcon;
+                        levelTooltip = "Infernal";
                     }
                     else
                     {
                         levelIcon = skillsIcon;
+                        levelTooltip = null;
                     }
                     infoKcLabel.setIcon(levelIcon);
+                    infoKcLabel.setToolTipText(levelTooltip);
                     infoKcLabel.setText(String.valueOf(totalLevel));
                     infoKcLabel.setForeground(config.infoBarColor());
                 }
@@ -812,7 +830,7 @@ public class KillClogPanel extends PluginPanel
         // Fire clog lookup in parallel (if enabled)
         if (config.showCollectionLog())
         {
-            clogService.lookup(player).thenAccept(result ->
+            clogService.lookup(player, isLocalPlayer(player)).thenAccept(result ->
                 SwingUtilities.invokeLater(() ->
                 {
                     if (thisLookup != lookupVersion) return; // stale result
@@ -845,7 +863,14 @@ public class KillClogPanel extends PluginPanel
                     }
                     else
                     {
-                        clogNotice.setText("Sync at TempleOSRS");
+                        if (isLocalPlayer(player))
+                        {
+                            clogNotice.setText("Open your Collection Log");
+                        }
+                        else
+                        {
+                            clogNotice.setText("Sync at TempleOSRS");
+                        }
                         // Fallback: fetch canonical name from Temple player stats
                         fetchCanonicalName(player, thisLookup);
                     }
@@ -1384,9 +1409,7 @@ public class KillClogPanel extends PluginPanel
             }
             else
             {
-                // Fresh icon — placeholder until chosen
                 syncLabel.setIcon(null);
-                syncLabel.setText(" ");
             }
         }
         catch (DateTimeParseException e)
