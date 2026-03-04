@@ -1429,6 +1429,7 @@ public class KillClogPanel extends PluginPanel
             infoTotalLabel.setIcon(tierIcon != null ? tierIcon : clogBookIcon);
             infoTotalLabel.setText(String.valueOf(totals[0]));
             infoTotalLabel.setForeground(config.infoBarColor());
+            infoTotalLabel.setToolTipText(getClogTierTooltip(totals[0], totals[1]));
         }
     }
 
@@ -1465,6 +1466,63 @@ public class KillClogPanel extends PluginPanel
         }
 
         return null;
+    }
+
+    /**
+     * Build tooltip text for the collection log tier icon.
+     * Format: "Dragon - 1200+ [88 more until Gilded]"
+     */
+    static String getClogTierTooltip(int obtained, int totalSlots)
+    {
+        int gildedThreshold = (int) (totalSlots * 0.9) / 25 * 25;
+        String currentTier = getClogTierName(obtained, totalSlots);
+
+        if (currentTier == null)
+        {
+            // Below Bronze
+            int needed = CLOG_TIER_THRESHOLDS[0] - obtained;
+            return needed + " more until Bronze";
+        }
+
+        // Capitalize tier name
+        String tierDisplay = currentTier.substring(0, 1).toUpperCase() + currentTier.substring(1);
+
+        if ("gilded".equals(currentTier))
+        {
+            return tierDisplay + " - " + gildedThreshold + "+";
+        }
+
+        // Find current tier index and compute next tier threshold
+        int tierIndex = -1;
+        for (int i = 0; i < CLOG_TIERS.length; i++)
+        {
+            if (CLOG_TIERS[i].equals(currentTier))
+            {
+                tierIndex = i;
+                break;
+            }
+        }
+
+        // Current tier's threshold
+        int currentThreshold = CLOG_TIER_THRESHOLDS[tierIndex];
+
+        // Next tier info
+        int nextThreshold;
+        String nextTierName;
+        if (tierIndex + 1 < CLOG_TIER_THRESHOLDS.length)
+        {
+            nextThreshold = CLOG_TIER_THRESHOLDS[tierIndex + 1];
+            nextTierName = CLOG_TIERS[tierIndex + 1].substring(0, 1).toUpperCase() + CLOG_TIERS[tierIndex + 1].substring(1);
+        }
+        else
+        {
+            // Dragon → Gilded
+            nextThreshold = gildedThreshold;
+            nextTierName = "Gilded";
+        }
+
+        int needed = nextThreshold - obtained;
+        return tierDisplay + " - " + currentThreshold + "+ [" + needed + " more until " + nextTierName + "]";
     }
 
     /**
