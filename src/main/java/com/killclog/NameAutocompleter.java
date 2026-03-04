@@ -2,102 +2,51 @@ package com.killclog;
 
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.SwingUtilities;
+import javax.swing.text.BadLocationException;
+import javax.swing.text.Document;
 import javax.swing.text.JTextComponent;
+import com.google.common.collect.EvictingQueue;
+import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.Actor;
 import net.runelite.api.Client;
 import net.runelite.api.Friend;
 import net.runelite.api.FriendContainer;
 import net.runelite.api.FriendsChatManager;
 import net.runelite.api.FriendsChatMember;
-import net.runelite.api.Player;
+import net.runelite.api.Nameable;
 import net.runelite.api.WorldView;
-import net.runelite.api.clan.ClanChannel;
-import net.runelite.api.clan.ClanChannelMember;
 import net.runelite.api.clan.ClanMember;
 import net.runelite.api.clan.ClanSettings;
-import net.runelite.client.ui.components.IconTextField;
-import net.runelite.client.util.Text;
 
 /**
  * Autocompletes player names in the search bar from friends, clan, and nearby players.
- * Mirrors the native HiscorePanel NameAutocompleter behavior.
+ * Faithful reproduction of the native HiscorePanel NameAutocompleter.
  */
+@Slf4j
 @Singleton
 public class NameAutocompleter implements KeyListener
 {
-    private static final int MAX_HISTORY = 25;
+    private static final String NBSP = Character.toString('\u00a0');
     private static final Pattern INVALID_CHARS = Pattern.compile("[^a-zA-Z0-9_ -]");
-    private static final String NBSP = "\u00a0";
+    private static final int MAX_SEARCH_HISTORY = 25;
+
+    private final Client client;
+    private final EvictingQueue<String> searchHistory = EvictingQueue.create(MAX_SEARCH_HISTORY);
+    private String autocompleteName;
+    private Pattern autocompleteNamePattern;
 
     @Inject
-    private Client client;
-
-    private final ArrayDeque<String> searchHistory = new ArrayDeque<>(MAX_HISTORY);
-    private IconTextField searchBar;
-
-    public void setSearchBar(IconTextField searchBar)
+    private NameAutocompleter(Client client)
     {
-        this.searchBar = searchBar;
-    }
-
-    public void addToSearchHistory(String name)
-    {
-        searchHistory.remove(name.toLowerCase());
-        searchHistory.addFirst(name.toLowerCase());
-        while (searchHistory.size() > MAX_HISTORY)
-        {
-            searchHistory.removeLast();
-        }
-    }
-
-    @Override
-    public void keyTyped(KeyEvent e)
-    {
-        if (searchBar == null)
-        {
-            return;
-        }
-
-        char typed = e.getKeyChar();
-        if (typed == KeyEvent.CHAR_UNDEFINED || typed == '\b' || typed == '\n' || typed == '\r')
-        {
-            return;
-        }
-
-        // Get the text field component to check selection state
-        JTextComponent textComponent = getTextComponent();
-        if (textComponent == null)
-        {
-            return;
-        }
-
-        // Build what the text will be after this keystroke
-        String current = textComponent.getText();
-        int selStart = textComponent.getSelectionStart();
-        int selEnd = textComponent.getSelectionEnd();
-        String nameStart = (current.substring(0, selStart) + typed + current.substring(selEnd)).trim();
-
-        if (nameStart.isEmpty() || INVALID_CHARS.matcher(nameStart).find())
-        {
-            return;
-        }
-
-        String match = findAutocompleteName(nameStart);
-        if (match != null)
-        {
-            final int caretPos = nameStart.length();
-            SwingUtilities.invokeLater(() ->
-            {
-                textComponent.setText(match);
-                textComponent.setSelectionStart(caretPos);
-                textComponent.setSelectionEnd(match.length());
-            });
-            e.consume();
-        }
+        this.client = client;
     }
 
     @Override
@@ -110,118 +59,180 @@ public class NameAutocompleter implements KeyListener
     {
     }
 
-    private JTextComponent getTextComponent()
+    @Override
+    public void keyTyped(KeyEvent e)
     {
-        for (java.awt.Component c : searchBar.getComponents())
+        JTextComponent input = (JTextComponent) e.getSource();
+        String inputText = input.getText();
+
+        if (input.getSelectionEnd() != inputText.length())
         {
-            if (c instanceof net.runelite.client.ui.components.FlatTextField)
+            return;
+        }
+
+        String charToInsert = Character.toString(e.getKeyChar());
+        if (INVALID_CHARS.matcher(charToInsert).find() || INVALID_CHARS.matcher(inputText).find())
+        {
+            return;
+        }
+
+        if (autocompleteName != null && autocompleteNamePattern.matcher(inputText).matches())
+        {
+            if (isExpectedNext(input, charToInsert))
             {
-                return ((net.runelite.client.ui.components.FlatTextField) c).getTextField();
+                try
+                {
+                    int insertIndex = input.getSelectionStart();
+                    Document doc = input.getDocument();
+                    doc.remove(insertIndex, 1);
+                    doc.insertString(insertIndex, charToInsert, null);
+                    input.select(insertIndex + 1, input.getSelectionEnd());
+                }
+                catch (BadLocationException ex)
+                {
+                    log.warn("Could not insert character.", ex);
+                }
+                e.consume();
+            }
+            else
+            {
+                newAutocomplete(e);
             }
         }
-        return null;
+        else
+        {
+            newAutocomplete(e);
+        }
     }
 
-    private String findAutocompleteName(String nameStart)
+    private void newAutocomplete(KeyEvent e)
     {
-        String lower = nameStart.toLowerCase();
+        JTextComponent input = (JTextComponent) e.getSource();
+        String inputText = input.getText();
+        String nameStart = inputText.substring(0, input.getSelectionStart()) + e.getKeyChar();
+
+        if (findAutocompleteName(nameStart))
+        {
+            String name = autocompleteName;
+            SwingUtilities.invokeLater(() ->
+            {
+                try
+                {
+                    input.getDocument().insertString(nameStart.length(), name.substring(nameStart.length()), null);
+                    input.select(nameStart.length(), name.length());
+                }
+                catch (BadLocationException ex)
+                {
+                    log.warn("Could not autocomplete name.", ex);
+                }
+            });
+        }
+    }
+
+    private boolean findAutocompleteName(String nameStart)
+    {
+        Pattern pattern = Pattern.compile("(?i)^" + nameStart.replaceAll("[ _-]", "[ _" + NBSP + "-]") + ".+?");
 
         // 1. Search history
-        for (String name : searchHistory)
-        {
-            if (name.toLowerCase().startsWith(lower))
-            {
-                return name;
-            }
-        }
+        Optional<String> match = searchHistory.stream()
+            .filter(n -> pattern.matcher(n).matches())
+            .findFirst();
 
         // 2. Friends list
-        FriendContainer friends = client.getFriendContainer();
-        if (friends != null)
+        if (!match.isPresent())
         {
-            for (Friend f : friends.getMembers())
+            FriendContainer friendContainer = client.getFriendContainer();
+            if (friendContainer != null)
             {
-                String name = Text.toJagexName(f.getName());
-                if (name.toLowerCase().startsWith(lower))
-                {
-                    return name;
-                }
+                match = Arrays.stream(friendContainer.getMembers())
+                    .map(Nameable::getName)
+                    .filter(n -> pattern.matcher(n).matches())
+                    .findFirst();
             }
         }
 
         // 3. Friends chat
-        FriendsChatManager fc = client.getFriendsChatManager();
-        if (fc != null)
+        if (!match.isPresent())
         {
-            for (FriendsChatMember m : fc.getMembers())
+            FriendsChatManager friendsChatManager = client.getFriendsChatManager();
+            if (friendsChatManager != null)
             {
-                String name = Text.toJagexName(m.getName());
-                if (name.toLowerCase().startsWith(lower))
-                {
-                    return name;
-                }
+                match = Arrays.stream(friendsChatManager.getMembers())
+                    .map(Nameable::getName)
+                    .filter(n -> pattern.matcher(n).matches())
+                    .findFirst();
             }
         }
 
-        // 4. Clan channel
-        ClanChannel clan = client.getClanChannel();
-        if (clan != null)
+        // 4. Clan settings (regular, group ironman, guest)
+        if (!match.isPresent())
         {
-            for (ClanChannelMember m : clan.getMembers())
-            {
-                String name = Text.toJagexName(m.getName());
-                if (name.toLowerCase().startsWith(lower))
-                {
-                    return name;
-                }
-            }
+            ClanSettings[] clanSettings = new ClanSettings[]{
+                client.getClanSettings(0),
+                client.getClanSettings(1),
+                client.getGuestClanSettings()
+            };
+            match = Arrays.stream(clanSettings)
+                .filter(Objects::nonNull)
+                .flatMap(cs -> cs.getMembers().stream())
+                .map(ClanMember::getName)
+                .filter(n -> pattern.matcher(n).matches())
+                .findFirst();
         }
 
-        // 5. Clan settings (offline members)
-        ClanSettings clanSettings = client.getClanSettings();
-        if (clanSettings != null)
+        // 5. Nearby players
+        if (!match.isPresent())
         {
-            for (ClanMember m : clanSettings.getMembers())
-            {
-                String name = Text.toJagexName(m.getName());
-                if (name.toLowerCase().startsWith(lower))
-                {
-                    return name;
-                }
-            }
+            WorldView wv = client.getTopLevelWorldView();
+            match = wv.players().stream()
+                .filter(Objects::nonNull)
+                .map(Actor::getName)
+                .filter(Objects::nonNull)
+                .filter(n -> pattern.matcher(n).matches())
+                .findFirst();
         }
 
-        // 6. Guest clan
-        ClanChannel guestClan = client.getGuestClanChannel();
-        if (guestClan != null)
+        if (match.isPresent())
         {
-            for (ClanChannelMember m : guestClan.getMembers())
-            {
-                String name = Text.toJagexName(m.getName());
-                if (name.toLowerCase().startsWith(lower))
-                {
-                    return name;
-                }
-            }
+            autocompleteName = match.get().replace(NBSP, " ");
+            autocompleteNamePattern = Pattern.compile("(?i)^" + autocompleteName.replaceAll("[ _-]", "[ _-]") + "$");
+        }
+        else
+        {
+            autocompleteName = null;
+            autocompleteNamePattern = null;
         }
 
-        // 7. Nearby players
-        WorldView wv = client.getTopLevelWorldView();
-        if (wv != null)
+        return match.isPresent();
+    }
+
+    void addToSearchHistory(@NonNull String name)
+    {
+        if (!searchHistory.contains(name))
         {
-            for (Player p : wv.players())
+            searchHistory.offer(name);
+        }
+    }
+
+    private boolean isExpectedNext(JTextComponent input, String nextChar)
+    {
+        String expected;
+        if (input.getSelectionStart() < input.getSelectionEnd())
+        {
+            try
             {
-                if (p != null && p.getName() != null)
-                {
-                    String name = Text.toJagexName(p.getName());
-                    if (name.toLowerCase().startsWith(lower))
-                    {
-                        return name;
-                    }
-                }
+                expected = input.getText(input.getSelectionStart(), 1);
+            }
+            catch (BadLocationException ex)
+            {
+                log.warn("Could not get first character from input selection.", ex);
+                return false;
             }
         }
-
-        return null;
+        else
+        {
+            expected = "";
+        }
+        return nextChar.equalsIgnoreCase(expected);
     }
 }

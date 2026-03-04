@@ -346,6 +346,7 @@ public class KillClogPanel extends PluginPanel
             {
                 javax.swing.JTextField tf =
                     ((net.runelite.client.ui.components.FlatTextField) c).getTextField();
+                tf.setFont(FontManager.getRunescapeFont());
                 tf.setForeground(Color.WHITE);
                 tf.setCaretColor(Color.WHITE);
                 tf.putClientProperty(
@@ -628,8 +629,16 @@ public class KillClogPanel extends PluginPanel
     public void setNameAutocompleter(NameAutocompleter autocompleter)
     {
         this.nameAutocompleter = autocompleter;
-        autocompleter.setSearchBar(searchBar);
-        searchBar.addKeyListener(autocompleter);
+        // Register on the inner JTextField so e.getSource() returns a JTextComponent
+        for (Component c : searchBar.getComponents())
+        {
+            if (c instanceof net.runelite.client.ui.components.FlatTextField)
+            {
+                ((net.runelite.client.ui.components.FlatTextField) c).getTextField()
+                    .addKeyListener(autocompleter);
+                break;
+            }
+        }
     }
 
     public void setPluginManager(PluginManager pluginManager)
