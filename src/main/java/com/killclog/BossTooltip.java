@@ -201,10 +201,10 @@ public class BossTooltip extends JToolTip
             return;
         }
 
-        Font nameFont = FontManager.getRunescapeFont();
+        Font nameFont = FontManager.getRunescapeBoldFont();
         Font font = FontManager.getRunescapeSmallFont();
 
-        // Row 1: Boss name (regular font — one size up from small)
+        // Row 1: Boss name (bold font — matches native clog header)
         g2.setFont(nameFont);
         FontMetrics nfm = g2.getFontMetrics();
         int lineY = inset + nfm.getAscent();

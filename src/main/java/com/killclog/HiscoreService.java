@@ -33,8 +33,6 @@ public class HiscoreService
     private static final int BOSS_START_INDEX = 45;
 
     // Boss names in hiscore CSV order — must match Jagex's exact alphabetical order.
-    // Bosses without a HiscoreSkill enum (e.g. Brutus) are parsed here but mapped
-    // via PENDING_BOSSES or NAME_OVERRIDES in KillClogPanel.
     private static final String[] BOSS_NAMES = {
         "Abyssal Sire", "Alchemical Hydra", "Amoxliatl", "Araxxor",
         "Artio", "Barrows Chests", "Brutus", "Bryophyta", "Callisto",
@@ -170,6 +168,8 @@ public class HiscoreService
         }
         catch (Exception ignored) {}
 
+        int combatLevel = calculateCombatLevel(lines);
+
         for (int i = 0; i < BOSS_NAMES.length; i++)
         {
             int lineIdx = BOSS_START_INDEX + i;
@@ -192,7 +192,42 @@ public class HiscoreService
             }
         }
 
-        return new HiscoreResult(type, bossKills, bossRanks, totalLevel, totalXp);
+        return new HiscoreResult(type, bossKills, bossRanks, totalLevel, totalXp, combatLevel);
+    }
+
+    /**
+     * Calculate combat level from hiscore CSV skill lines.
+     * Skills: 1=Attack, 2=Defence, 3=Strength, 4=Hitpoints, 5=Ranged, 6=Prayer, 7=Magic
+     */
+    private int calculateCombatLevel(String[] lines)
+    {
+        try
+        {
+            int attack = parseSkillLevel(lines, 1);
+            int defence = parseSkillLevel(lines, 2);
+            int strength = parseSkillLevel(lines, 3);
+            int hitpoints = parseSkillLevel(lines, 4);
+            int ranged = parseSkillLevel(lines, 5);
+            int prayer = parseSkillLevel(lines, 6);
+            int magic = parseSkillLevel(lines, 7);
+
+            double base = 0.25 * (defence + hitpoints + Math.floor(prayer / 2.0));
+            double melee = 0.325 * (attack + strength);
+            double range = 0.325 * (Math.floor(ranged * 3.0 / 2.0));
+            double mage = 0.325 * (Math.floor(magic * 3.0 / 2.0));
+
+            return (int) Math.floor(base + Math.max(melee, Math.max(range, mage)));
+        }
+        catch (Exception e)
+        {
+            return -1;
+        }
+    }
+
+    private int parseSkillLevel(String[] lines, int lineIndex)
+    {
+        String[] parts = lines[lineIndex].split(",");
+        return Integer.parseInt(parts[1]);
     }
 
     private CompletableFuture<String> fetchAsync(String hiscoreKey, String encodedPlayer)

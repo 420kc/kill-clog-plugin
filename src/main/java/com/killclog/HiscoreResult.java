@@ -12,15 +12,18 @@ public class HiscoreResult
     private final Map<String, Integer> bossRanks;
     private final int totalLevel;
     private final long totalXp;
+    private final int combatLevel;
 
     public HiscoreResult(AccountType accountType, Map<String, Integer> bossKills,
-                         Map<String, Integer> bossRanks, int totalLevel, long totalXp)
+                         Map<String, Integer> bossRanks, int totalLevel, long totalXp,
+                         int combatLevel)
     {
         this.accountType = accountType;
         this.bossKills = bossKills;
         this.bossRanks = bossRanks;
         this.totalLevel = totalLevel;
         this.totalXp = totalXp;
+        this.combatLevel = combatLevel;
     }
 
     public AccountType getAccountType()
@@ -46,6 +49,11 @@ public class HiscoreResult
     public long getTotalXp()
     {
         return totalXp;
+    }
+
+    public int getCombatLevel()
+    {
+        return combatLevel;
     }
 
     public int getKc(String bossName)

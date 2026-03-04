@@ -80,9 +80,7 @@ public class KillClogPanel extends PluginPanel
     };
 
     // Boss display order matching vanilla RuneLite hiscores.
-    // Must stay in sync with BOSS_NAMES in HiscoreService (which includes bosses
-    // not yet in the HiscoreSkill enum, like Brutus — those are parsed from CSV
-    // but can't appear here until RuneLite adds the enum entry).
+    // Must stay in sync with BOSS_NAMES in HiscoreService.
     private static final HiscoreSkill[] BOSSES = {
         HiscoreSkill.ABYSSAL_SIRE,
         HiscoreSkill.ALCHEMICAL_HYDRA,
@@ -90,6 +88,7 @@ public class KillClogPanel extends PluginPanel
         HiscoreSkill.ARAXXOR,
         HiscoreSkill.ARTIO,
         HiscoreSkill.BARROWS_CHESTS,
+        HiscoreSkill.BRUTUS,
         HiscoreSkill.BRYOPHYTA,
         HiscoreSkill.CALLISTO,
         HiscoreSkill.CALVARION,
@@ -187,6 +186,12 @@ public class KillClogPanel extends PluginPanel
         {
             ParchmentTooltip tip = new ParchmentTooltip();
             tip.setComponent(this);
+            for (Map.Entry<String, ImageIcon> entry : clogTierIcons.entrySet())
+            {
+                tip.putIcon(entry.getKey(), iconToImage(entry.getValue()));
+            }
+            tip.putIcon("rigour", iconToImage(rigourIcon));
+            tip.putIcon("eagle_eye", iconToImage(eagleEyeIcon));
             return tip;
         }
     };
@@ -197,6 +202,10 @@ public class KillClogPanel extends PluginPanel
         {
             ParchmentTooltip tip = new ParchmentTooltip();
             tip.setComponent(this);
+            if (combatLevelImage != null)
+            {
+                tip.putIcon("combat", combatLevelImage);
+            }
             return tip;
         }
     };
@@ -208,11 +217,6 @@ public class KillClogPanel extends PluginPanel
         {
             ParchmentTooltip tip = new ParchmentTooltip();
             tip.setComponent(this);
-            // Stale data — show baguette flanking the text
-            if (getIcon() == eagleEyeIcon && staleBaguetteImage != null)
-            {
-                tip.setInlineIcon(staleBaguetteImage);
-            }
             return tip;
         }
     };
@@ -223,6 +227,7 @@ public class KillClogPanel extends PluginPanel
     private ImageIcon clogBookIcon;
     private ImageIcon staleBaguetteIcon;
     private BufferedImage staleBaguetteImage;
+    private BufferedImage combatLevelImage;
     private ImageIcon rigourIcon;
     private ImageIcon sharpEyeIcon;
     private ImageIcon eagleEyeIcon;
@@ -242,7 +247,9 @@ public class KillClogPanel extends PluginPanel
     // Current lookup state
     private HiscoreResult hiscoreResult;
     private ClogResult clogResult;
+    private boolean clogLookupDone;
     private String canonicalPlayerName;
+    private String clogLastChanged;
     private boolean showingNotFound;
     private String loggedInPlayerName;
 
@@ -279,6 +286,16 @@ public class KillClogPanel extends PluginPanel
         this.clientThread = clientThread;
 
         ParchmentTooltip.loadBorderSprites(spriteManager);
+
+        // Combat level icon (crossed swords, sprite 168)
+        spriteManager.getSpriteAsync(168, 0, sprite ->
+        {
+            if (sprite != null)
+            {
+                combatLevelImage = ImageUtil.resizeImage(
+                    ImageUtil.resizeCanvas(sprite, 25, 25), 13, 13);
+            }
+        });
 
         // Match native HiscorePanel structure
         setBorder(new EmptyBorder(10, 10, 0, 10));
@@ -676,6 +693,20 @@ public class KillClogPanel extends PluginPanel
         return StringUtils.leftPad(text, 4);
     }
 
+    private static BufferedImage iconToImage(ImageIcon icon)
+    {
+        if (icon == null)
+        {
+            return null;
+        }
+        BufferedImage img = new BufferedImage(
+            icon.getIconWidth(), icon.getIconHeight(), BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = img.createGraphics();
+        icon.paintIcon(null, g, 0, 0);
+        g.dispose();
+        return img;
+    }
+
     private static String formatKc(int kc)
     {
         if (kc >= 1_000_000)
@@ -780,11 +811,15 @@ public class KillClogPanel extends PluginPanel
         infoTotalLabel.setText("");
         infoKcLabel.setIcon(null);
         infoKcLabel.setText("");
+        syncLabel.setIcon(null);
+        syncLabel.setToolTipText(null);
         searchBar.setIcon(IconTextField.Icon.LOADING_DARKER);
 
         // Clear previous results
         hiscoreResult = null;
         clogResult = null;
+        clogLookupDone = false;
+        clogLastChanged = null;
         canonicalPlayerName = null;
         showingNotFound = false;
         tooltipDataMap.clear();
@@ -841,6 +876,7 @@ public class KillClogPanel extends PluginPanel
                 if (totalLevel > 0)
                 {
                     int zukKc = result.getKc("TzKal-Zuk");
+                    int combatLevel = result.getCombatLevel();
                     ImageIcon levelIcon;
                     String levelTooltip;
                     if (totalLevel >= 2376 && zukKc >= 1 && infernalMaxCapeIcon != null)
@@ -863,6 +899,12 @@ public class KillClogPanel extends PluginPanel
                         levelIcon = skillsIcon;
                         levelTooltip = null;
                     }
+                    // Append combat level to tooltip ({combat} icon drawn by ParchmentTooltip)
+                    if (combatLevel > 0)
+                    {
+                        levelTooltip = (levelTooltip != null ? levelTooltip + "\n" : "")
+                            + "{combat}" + combatLevel;
+                    }
                     infoKcLabel.setIcon(levelIcon);
                     infoKcLabel.setToolTipText(levelTooltip);
                     infoKcLabel.setText(String.valueOf(totalLevel));
@@ -879,6 +921,10 @@ public class KillClogPanel extends PluginPanel
                 {
                     updateClogInfo(clogResult);
                     updateSyncLabel(clogResult.getLastChanged());
+                }
+                else if (clogLookupDone)
+                {
+                    updateSyncLabel(null);
                 }
 
                 searchBar.setText("");
@@ -911,6 +957,7 @@ public class KillClogPanel extends PluginPanel
                 {
                     if (thisLookup != lookupVersion) return; // stale result
                     clogResult = result;
+                    clogLookupDone = true;
                     applyCompletionistColors();
                     updateTooltips();
                     if (result != null)
@@ -1438,41 +1485,21 @@ public class KillClogPanel extends PluginPanel
 
     private void updateSyncLabel(String lastChanged)
     {
+        clogLastChanged = lastChanged;
+
         if (lastChanged == null || lastChanged.isEmpty())
         {
-            // No Temple data — sharp eye
+            // No Temple data — sharp eye stays visible in info bar
             syncLabel.setText("");
             syncLabel.setIcon(sharpEyeIcon);
             syncLabel.setToolTipText("Not synced to TempleOSRS");
             return;
         }
 
-        try
-        {
-            DateTimeFormatter parser = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            LocalDateTime syncTime = LocalDateTime.parse(lastChanged, parser);
-            long daysAgo = ChronoUnit.DAYS.between(syncTime, LocalDateTime.now());
-
-            DateTimeFormatter display = DateTimeFormatter.ofPattern("MMM d, yyyy");
-            String tooltip = "Last update: " + syncTime.format(display);
-            syncLabel.setText("");
-            syncLabel.setToolTipText(tooltip);
-
-            if (daysAgo > STALE_DAYS)
-            {
-                syncLabel.setIcon(eagleEyeIcon);
-            }
-            else
-            {
-                syncLabel.setIcon(rigourIcon);
-            }
-        }
-        catch (DateTimeParseException e)
-        {
-            syncLabel.setText("");
-            syncLabel.setIcon(sharpEyeIcon);
-            syncLabel.setToolTipText("Not synced to TempleOSRS");
-        }
+        // Has Temple data — sync info moves into clog tier tooltip, clear info bar icon
+        syncLabel.setText("");
+        syncLabel.setIcon(null);
+        syncLabel.setToolTipText(null);
     }
 
     private void updateClogInfo(ClogResult result)
@@ -1484,7 +1511,41 @@ public class KillClogPanel extends PluginPanel
             infoTotalLabel.setIcon(tierIcon != null ? tierIcon : clogBookIcon);
             infoTotalLabel.setText(String.valueOf(totals[0]));
             infoTotalLabel.setForeground(config.infoBarColor());
-            infoTotalLabel.setToolTipText(getClogTierTooltip(totals[0], totals[1]));
+
+            String tooltip = getClogTierTooltip(totals[0], totals[1]);
+            String syncLine = buildSyncTooltipLine(clogLastChanged);
+            if (syncLine != null)
+            {
+                tooltip = tooltip + "\n" + syncLine;
+            }
+            infoTotalLabel.setToolTipText(tooltip);
+        }
+    }
+
+    /**
+     * Build the sync freshness line for the clog tier tooltip.
+     * Returns "{rigour}Last update: date" or "{eagle_eye}Last update: date", or null.
+     */
+    private String buildSyncTooltipLine(String lastChanged)
+    {
+        if (lastChanged == null || lastChanged.isEmpty())
+        {
+            return null;
+        }
+
+        try
+        {
+            DateTimeFormatter parser = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            LocalDateTime syncTime = LocalDateTime.parse(lastChanged, parser);
+            long daysAgo = ChronoUnit.DAYS.between(syncTime, LocalDateTime.now());
+
+            DateTimeFormatter display = DateTimeFormatter.ofPattern("MMM d, yyyy");
+            String icon = daysAgo > STALE_DAYS ? "{eagle_eye}" : "{rigour}";
+            return icon + "Last update: " + syncTime.format(display);
+        }
+        catch (DateTimeParseException e)
+        {
+            return null;
         }
     }
 
@@ -1525,7 +1586,8 @@ public class KillClogPanel extends PluginPanel
 
     /**
      * Build tooltip text for the collection log tier icon.
-     * Format: "Dragon - 1200+ [88 more until Gilded]"
+     * Uses {tierName} placeholders for inline tier icons.
+     * Format: "1100-1199: {rune} 18 until {dragon}"
      */
     static String getClogTierTooltip(int obtained, int totalSlots)
     {
@@ -1536,15 +1598,12 @@ public class KillClogPanel extends PluginPanel
         {
             // Below Bronze
             int needed = CLOG_TIER_THRESHOLDS[0] - obtained;
-            return needed + " more until Bronze";
+            return needed + " until {bronze}";
         }
-
-        // Capitalize tier name
-        String tierDisplay = currentTier.substring(0, 1).toUpperCase() + currentTier.substring(1);
 
         if ("gilded".equals(currentTier))
         {
-            return tierDisplay + " - " + gildedThreshold + "+";
+            return gildedThreshold + "+: {gilded}";
         }
 
         // Find current tier index and compute next tier threshold
@@ -1558,26 +1617,25 @@ public class KillClogPanel extends PluginPanel
             }
         }
 
-        // Current tier's threshold
         int currentThreshold = CLOG_TIER_THRESHOLDS[tierIndex];
 
-        // Next tier info
+        // Next tier
         int nextThreshold;
-        String nextTierName;
+        String nextTier;
         if (tierIndex + 1 < CLOG_TIER_THRESHOLDS.length)
         {
             nextThreshold = CLOG_TIER_THRESHOLDS[tierIndex + 1];
-            nextTierName = CLOG_TIERS[tierIndex + 1].substring(0, 1).toUpperCase() + CLOG_TIERS[tierIndex + 1].substring(1);
+            nextTier = CLOG_TIERS[tierIndex + 1];
         }
         else
         {
-            // Dragon → Gilded
             nextThreshold = gildedThreshold;
-            nextTierName = "Gilded";
+            nextTier = "gilded";
         }
 
         int needed = nextThreshold - obtained;
-        return tierDisplay + " - " + currentThreshold + "+ [" + needed + " more until " + nextTierName + "]";
+        String range = currentThreshold + "-" + (nextThreshold - 1);
+        return range + ": {" + currentTier + "} " + needed + " until {" + nextTier + "}";
     }
 
     /**

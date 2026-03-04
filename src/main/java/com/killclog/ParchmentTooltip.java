@@ -8,23 +8,31 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.swing.JToolTip;
 import net.runelite.client.game.SpriteManager;
 import net.runelite.client.ui.FontManager;
 
 /**
  * Parchment-styled text tooltip with game-extracted stone border.
+ * Supports inline icon placeholders via {key} tokens in tooltip text.
  * Also provides shared painting methods for BossTooltip.
  */
 public class ParchmentTooltip extends JToolTip
 {
     private static final int MARGIN = 8;
     private static final int LINE_HEIGHT = 14;
-    private static final int ICON_GAP = 4;
+    private static final int ICON_GAP = 2;
     private static final Color OSRS_ORANGE = new Color(255, 152, 31);
+    private static final Pattern ICON_TOKEN = Pattern.compile("\\{([^}]+)\\}");
 
-    // Optional inline icon drawn on both sides of text
-    private BufferedImage inlineIcon;
+    // Icon map for {key} placeholders in tooltip text
+    private final Map<String, BufferedImage> iconMap = new HashMap<>();
 
     // Fallback programmatic border
     static final int FALLBACK_BORDER = 3;
@@ -79,9 +87,96 @@ public class ParchmentTooltip extends JToolTip
         setBorder(null);
     }
 
-    public void setInlineIcon(BufferedImage icon)
+    /**
+     * Register an icon for use as {key} placeholder in tooltip text.
+     */
+    public void putIcon(String key, BufferedImage icon)
     {
-        this.inlineIcon = icon;
+        if (icon != null)
+        {
+            iconMap.put(key, icon);
+        }
+    }
+
+    /**
+     * A segment of a tooltip line — either text or an icon.
+     */
+    private static class Segment
+    {
+        final String text;       // null if icon
+        final BufferedImage icon; // null if text
+
+        Segment(String text)
+        {
+            this.text = text;
+            this.icon = null;
+        }
+
+        Segment(BufferedImage icon)
+        {
+            this.text = null;
+            this.icon = icon;
+        }
+    }
+
+    /**
+     * Parse a line into segments of text and icons.
+     * "{rune}" tokens become icon segments; everything else is text.
+     */
+    private List<Segment> parseSegments(String line)
+    {
+        List<Segment> segments = new ArrayList<>();
+        Matcher m = ICON_TOKEN.matcher(line);
+        int lastEnd = 0;
+
+        while (m.find())
+        {
+            if (m.start() > lastEnd)
+            {
+                segments.add(new Segment(line.substring(lastEnd, m.start())));
+            }
+
+            String key = m.group(1);
+            BufferedImage icon = iconMap.get(key);
+            if (icon != null)
+            {
+                segments.add(new Segment(icon));
+            }
+            else
+            {
+                // Unknown key — render as text
+                segments.add(new Segment(m.group(0)));
+            }
+
+            lastEnd = m.end();
+        }
+
+        if (lastEnd < line.length())
+        {
+            segments.add(new Segment(line.substring(lastEnd)));
+        }
+
+        return segments;
+    }
+
+    /**
+     * Measure the pixel width of a parsed line.
+     */
+    private int measureSegments(List<Segment> segments, FontMetrics fm)
+    {
+        int width = 0;
+        for (Segment seg : segments)
+        {
+            if (seg.icon != null)
+            {
+                width += seg.icon.getWidth() + ICON_GAP;
+            }
+            else
+            {
+                width += fm.stringWidth(seg.text);
+            }
+        }
+        return width;
     }
 
     @Override
@@ -100,18 +195,12 @@ public class ParchmentTooltip extends JToolTip
         int maxWidth = 0;
         for (String line : lines)
         {
-            maxWidth = Math.max(maxWidth, fm.stringWidth(line));
-        }
-
-        // Account for inline icon on left side of text
-        int iconExtra = 0;
-        if (inlineIcon != null)
-        {
-            iconExtra = inlineIcon.getWidth() + ICON_GAP;
+            List<Segment> segments = parseSegments(line);
+            maxWidth = Math.max(maxWidth, measureSegments(segments, fm));
         }
 
         int inset = getBorderThickness() + MARGIN;
-        int width = maxWidth + iconExtra + inset * 2;
+        int width = maxWidth + inset * 2;
         int height = lines.length * LINE_HEIGHT + inset * 2;
 
         return new Dimension(width, height);
@@ -137,20 +226,29 @@ public class ParchmentTooltip extends JToolTip
         {
             FontMetrics fm = g2.getFontMetrics();
             int inset = getBorderThickness() + MARGIN;
-            int iconOffset = inlineIcon != null ? inlineIcon.getWidth() + ICON_GAP : 0;
             String[] lines = text.split("\n");
             int y = inset + fm.getAscent();
+
             for (String line : lines)
             {
-                int textX = inset + iconOffset;
+                int x = inset;
+                List<Segment> segments = parseSegments(line);
 
-                if (inlineIcon != null)
+                for (Segment seg : segments)
                 {
-                    int iconY = y - fm.getAscent() + (LINE_HEIGHT - inlineIcon.getHeight()) / 2;
-                    g2.drawImage(inlineIcon, inset, iconY, null);
+                    if (seg.icon != null)
+                    {
+                        int iconY = y - fm.getAscent() + (LINE_HEIGHT - seg.icon.getHeight()) / 2;
+                        g2.drawImage(seg.icon, x, iconY, null);
+                        x += seg.icon.getWidth() + ICON_GAP;
+                    }
+                    else
+                    {
+                        g2.drawString(seg.text, x, y);
+                        x += fm.stringWidth(seg.text);
+                    }
                 }
 
-                g2.drawString(line, textX, y);
                 y += LINE_HEIGHT;
             }
         }
