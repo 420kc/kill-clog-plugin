@@ -29,9 +29,9 @@ public class ParchmentTooltip extends JToolTip
     private static final Color BORDER_INNER = new Color(84, 72, 53);
     private static final Color FALLBACK_BG = new Color(60, 50, 35);
 
-    // Border sprites — 9-slice from game (UNKNOWN_BORDER set)
+    // Border sprites — 9-slice from game (side panel dark stone set)
     private static BufferedImage cornerTL, cornerTR, cornerBL, cornerBR;
-    private static BufferedImage edgeH, edgeV;
+    private static BufferedImage edgeTop, edgeBottom, edgeLeft, edgeRight;
     private static volatile boolean spritesLoaded;
 
     /**
@@ -40,20 +40,23 @@ public class ParchmentTooltip extends JToolTip
      */
     public static void loadBorderSprites(SpriteManager spriteManager)
     {
-        // UNKNOWN_BORDER sprites — classic OSRS stone window frame
-        spriteManager.getSpriteAsync(991, 0, img -> { cornerTL = img; checkSprites(); });
-        spriteManager.getSpriteAsync(992, 0, img -> { cornerTR = img; checkSprites(); });
-        spriteManager.getSpriteAsync(993, 0, img -> { cornerBL = img; checkSprites(); });
-        spriteManager.getSpriteAsync(994, 0, img -> { cornerBR = img; checkSprites(); });
-        spriteManager.getSpriteAsync(987, 0, img -> { edgeH = img; checkSprites(); });
-        spriteManager.getSpriteAsync(988, 0, img -> { edgeV = img; checkSprites(); });
+        // BOTTOM_LINE_MODE_SIDE_PANEL — dark stone border
+        spriteManager.getSpriteAsync(824, 0, img -> { cornerTL = img; checkSprites(); });
+        spriteManager.getSpriteAsync(825, 0, img -> { cornerTR = img; checkSprites(); });
+        spriteManager.getSpriteAsync(826, 0, img -> { cornerBL = img; checkSprites(); });
+        spriteManager.getSpriteAsync(827, 0, img -> { cornerBR = img; checkSprites(); });
+        spriteManager.getSpriteAsync(820, 0, img -> { edgeTop = img; checkSprites(); });
+        spriteManager.getSpriteAsync(821, 0, img -> { edgeLeft = img; checkSprites(); });
+        spriteManager.getSpriteAsync(822, 0, img -> { edgeBottom = img; checkSprites(); });
+        spriteManager.getSpriteAsync(823, 0, img -> { edgeRight = img; checkSprites(); });
     }
 
     private static void checkSprites()
     {
         spritesLoaded = cornerTL != null && cornerTR != null
             && cornerBL != null && cornerBR != null
-            && edgeH != null && edgeV != null;
+            && edgeTop != null && edgeBottom != null
+            && edgeLeft != null && edgeRight != null;
     }
 
     /**
@@ -166,39 +169,43 @@ public class ParchmentTooltip extends JToolTip
         g2.drawImage(cornerBR, w - cornerBR.getWidth(), h - cornerBR.getHeight(), null);
 
         // Top edge — tile between corners
-        int ew = edgeH.getWidth();
-        int eh = edgeH.getHeight();
-        for (int x = cw; x < w - cw; x += ew)
+        int tew = edgeTop.getWidth();
+        int teh = edgeTop.getHeight();
+        for (int x = cw; x < w - cw; x += tew)
         {
-            int drawW = Math.min(ew, w - cw - x);
-            g2.drawImage(edgeH, x, 0, x + drawW, eh,
-                0, 0, drawW, eh, null);
+            int drawW = Math.min(tew, w - cw - x);
+            g2.drawImage(edgeTop, x, 0, x + drawW, teh,
+                0, 0, drawW, teh, null);
         }
 
         // Bottom edge
-        for (int x = cw; x < w - cw; x += ew)
+        int bew = edgeBottom.getWidth();
+        int beh = edgeBottom.getHeight();
+        for (int x = cw; x < w - cw; x += bew)
         {
-            int drawW = Math.min(ew, w - cw - x);
-            g2.drawImage(edgeH, x, h - eh, x + drawW, h,
-                0, 0, drawW, eh, null);
+            int drawW = Math.min(bew, w - cw - x);
+            g2.drawImage(edgeBottom, x, h - beh, x + drawW, h,
+                0, 0, drawW, beh, null);
         }
 
         // Left edge — tile between corners
-        int vw = edgeV.getWidth();
-        int vh = edgeV.getHeight();
-        for (int y = ch; y < h - ch; y += vh)
+        int lew = edgeLeft.getWidth();
+        int leh = edgeLeft.getHeight();
+        for (int y = ch; y < h - ch; y += leh)
         {
-            int drawH = Math.min(vh, h - ch - y);
-            g2.drawImage(edgeV, 0, y, vw, y + drawH,
-                0, 0, vw, drawH, null);
+            int drawH = Math.min(leh, h - ch - y);
+            g2.drawImage(edgeLeft, 0, y, lew, y + drawH,
+                0, 0, lew, drawH, null);
         }
 
         // Right edge
-        for (int y = ch; y < h - ch; y += vh)
+        int rew = edgeRight.getWidth();
+        int reh = edgeRight.getHeight();
+        for (int y = ch; y < h - ch; y += reh)
         {
-            int drawH = Math.min(vh, h - ch - y);
-            g2.drawImage(edgeV, w - vw, y, w, y + drawH,
-                0, 0, vw, drawH, null);
+            int drawH = Math.min(reh, h - ch - y);
+            g2.drawImage(edgeRight, w - rew, y, w, y + drawH,
+                0, 0, rew, drawH, null);
         }
     }
 }

@@ -181,7 +181,16 @@ public class KillClogPanel extends PluginPanel
             return tip;
         }
     };
-    private final JLabel infoKcLabel = new JLabel();
+    private final JLabel infoKcLabel = new JLabel()
+    {
+        @Override
+        public javax.swing.JToolTip createToolTip()
+        {
+            ParchmentTooltip tip = new ParchmentTooltip();
+            tip.setComponent(this);
+            return tip;
+        }
+    };
     private final JLabel clogNotice = new JLabel();
     private final JLabel syncLabel = new JLabel()
     {
@@ -199,6 +208,8 @@ public class KillClogPanel extends PluginPanel
     private ImageIcon infernalMaxCapeIcon;
     private ImageIcon clogBookIcon;
     private ImageIcon staleBaguetteIcon;
+    private ImageIcon rigourIcon;
+    private ImageIcon sharpEyeIcon;
 
     // Collection log tier icons — bronze through gilded
     private static final String[] CLOG_TIERS = {"bronze", "iron", "steel", "black", "mithril", "adamant", "rune", "dragon", "gilded"};
@@ -400,6 +411,7 @@ public class KillClogPanel extends PluginPanel
 
         infoNameLabel.setFont(FontManager.getRunescapeSmallFont());
         infoNameLabel.setForeground(TEXT_DIM);
+        infoNameLabel.setBorder(new EmptyBorder(0, 4, 0, 0));
         infoNameLabel.setIconTextGap(3);
         infoNameLabel.putClientProperty(
             RenderingHints.KEY_TEXT_ANTIALIASING,
@@ -414,6 +426,7 @@ public class KillClogPanel extends PluginPanel
 
         infoKcLabel.setFont(FontManager.getRunescapeSmallFont());
         infoKcLabel.setHorizontalAlignment(JLabel.RIGHT);
+        infoKcLabel.setBorder(new EmptyBorder(0, 0, 0, 4));
         infoKcLabel.setIconTextGap(3);
         infoKcLabel.putClientProperty(
             RenderingHints.KEY_TEXT_ANTIALIASING,
@@ -478,6 +491,24 @@ public class KillClogPanel extends PluginPanel
         catch (Exception e)
         {
             staleBaguetteIcon = null;
+        }
+        try
+        {
+            BufferedImage img = ImageUtil.loadImageResource(KillClogPanel.class, "rigour.png");
+            rigourIcon = new ImageIcon(ImageUtil.resizeImage(img, 13, 13));
+        }
+        catch (Exception e)
+        {
+            rigourIcon = null;
+        }
+        try
+        {
+            BufferedImage img = ImageUtil.loadImageResource(KillClogPanel.class, "sharp_eye.png");
+            sharpEyeIcon = new ImageIcon(ImageUtil.resizeImage(img, 13, 13));
+        }
+        catch (Exception e)
+        {
+            sharpEyeIcon = null;
         }
         for (String tier : CLOG_TIERS)
         {
@@ -561,7 +592,9 @@ public class KillClogPanel extends PluginPanel
 
                     return tip;
                 }
-                return super.createToolTip();
+                ParchmentTooltip fallback = new ParchmentTooltip();
+                fallback.setComponent(this);
+                return fallback;
             }
         };
         label.setToolTipText(boss.getName());
@@ -746,6 +779,8 @@ public class KillClogPanel extends PluginPanel
         tooltipDataMap.clear();
         clogNotice.setText(" ");
         syncLabel.setText(" ");
+        syncLabel.setIcon(null);
+        syncLabel.setToolTipText(null);
 
         // Reset all labels to "--" and restore original icons
         for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
@@ -898,8 +933,9 @@ public class KillClogPanel extends PluginPanel
                         }
                         else
                         {
-                            clogNotice.setText("Sync at TempleOSRS");
+                            clogNotice.setText(" ");
                         }
+                        updateSyncLabel(null);
                         // Fallback: fetch canonical name from Temple player stats
                         fetchCanonicalName(player, thisLookup);
                     }
@@ -1219,15 +1255,6 @@ public class KillClogPanel extends PluginPanel
         }
     }
 
-    private static String formatRankHtml(int rank)
-    {
-        if (rank <= 0)
-        {
-            return "";
-        }
-        return " <span style='color:#ffffff;'>#" + String.format("%,d", rank) + "</span>";
-    }
-
     private void updateTooltipsInner()
     {
         tooltipDataMap.clear();
@@ -1248,17 +1275,13 @@ public class KillClogPanel extends PluginPanel
                 rank = hiscoreResult.getRank(hiscoreName);
             }
 
-            // If no clog data or config disabled, show simple HTML tooltip
+            // If no clog data or config disabled, show simple text tooltip
             if (clogResult == null || !config.showCollectionLog())
             {
-                StringBuilder tooltip = new StringBuilder("<html>");
-                tooltip.append(escapeHtml(bossName));
-                if (rank > 0)
-                {
-                    tooltip.append("<span style='float:right;'>").append(formatRankHtml(rank)).append("</span>");
-                }
-                tooltip.append("</html>");
-                label.setToolTipText(tooltip.toString());
+                String tooltip = rank > 0
+                    ? bossName + "\nRank: " + String.format("%,d", rank)
+                    : bossName;
+                label.setToolTipText(tooltip);
                 continue;
             }
 
@@ -1267,17 +1290,13 @@ public class KillClogPanel extends PluginPanel
             List<ClogResult.ClogItem> obtained = clogResult.getObtainedItems().get(category);
             List<Integer> allItems = clogResult.getCategoryItems().get(category);
 
-            // No clog data for this boss — simple HTML tooltip
+            // No clog data for this boss — simple text tooltip
             if ((obtained == null || obtained.isEmpty()) && (allItems == null || allItems.isEmpty()))
             {
-                StringBuilder tooltip = new StringBuilder("<html>");
-                tooltip.append(escapeHtml(bossName));
-                if (rank > 0)
-                {
-                    tooltip.append("<span style='float:right;'>").append(formatRankHtml(rank)).append("</span>");
-                }
-                tooltip.append("</html>");
-                label.setToolTipText(tooltip.toString());
+                String tooltip = rank > 0
+                    ? bossName + "\nRank: " + String.format("%,d", rank)
+                    : bossName;
+                label.setToolTipText(tooltip);
                 continue;
             }
 
@@ -1415,9 +1434,10 @@ public class KillClogPanel extends PluginPanel
     {
         if (lastChanged == null || lastChanged.isEmpty())
         {
-            syncLabel.setText(" ");
-            syncLabel.setIcon(null);
-            syncLabel.setToolTipText(null);
+            // No Temple data — sharp eye
+            syncLabel.setText("");
+            syncLabel.setIcon(sharpEyeIcon);
+            syncLabel.setToolTipText("Not synced to TempleOSRS");
             return;
         }
 
@@ -1438,14 +1458,14 @@ public class KillClogPanel extends PluginPanel
             }
             else
             {
-                syncLabel.setIcon(null);
+                syncLabel.setIcon(rigourIcon);
             }
         }
         catch (DateTimeParseException e)
         {
-            syncLabel.setText(" ");
-            syncLabel.setIcon(null);
-            syncLabel.setToolTipText(null);
+            syncLabel.setText("");
+            syncLabel.setIcon(sharpEyeIcon);
+            syncLabel.setToolTipText("Not synced to TempleOSRS");
         }
     }
 
@@ -1601,14 +1621,6 @@ public class KillClogPanel extends PluginPanel
         }
 
         return new int[]{allObtained.size(), totalItems};
-    }
-
-    private static String escapeHtml(String text)
-    {
-        return text.replace("&", "&amp;")
-                   .replace("<", "&lt;")
-                   .replace(">", "&gt;")
-                   .replace("\"", "&quot;");
     }
 
     /**
