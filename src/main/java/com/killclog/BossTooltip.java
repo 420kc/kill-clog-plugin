@@ -27,16 +27,11 @@ public class BossTooltip extends JToolTip
     private static final int SPRITE_SIZE = 32;
     private static final int GRID_COLS = 5;
     private static final int PADDING = 4;
-    private static final int BORDER = 3; // 3-tone stone border
     private static final int MARGIN = 8; // inside the border
     private static final int LINE_HEIGHT = 14;
     private static final int NAME_LINE_HEIGHT = 18;
     private static final int SEPARATOR_GAP = 6; // space around the header separator line
 
-    private static final Color BG_COLOR = new Color(60, 50, 35);
-    private static final Color BORDER_OUTER = new Color(26, 26, 26);
-    private static final Color BORDER_MID = new Color(61, 51, 34);
-    private static final Color BORDER_INNER = new Color(84, 72, 53);
     private static final Color SEPARATOR_COLOR = new Color(80, 70, 50);
     private static final Color OSRS_ORANGE = new Color(255, 152, 31);
     private static final Color CLOG_GREEN = new Color(0, 255, 0);
@@ -139,7 +134,7 @@ public class BossTooltip extends JToolTip
         int gridWidth = GRID_COLS * (SPRITE_SIZE + PADDING) - PADDING;
         int gridHeight = spriteRows * (SPRITE_SIZE + PADDING) - PADDING;
 
-        int inset = BORDER + MARGIN;
+        int inset = ParchmentTooltip.getBorderThickness() + MARGIN;
         // header + separator line + gap above/below + grid
         int height = inset + headerHeight + SEPARATOR_GAP + 1 + SEPARATOR_GAP + gridHeight + inset;
         int width = gridWidth + inset * 2;
@@ -154,7 +149,7 @@ public class BossTooltip extends JToolTip
             return -1;
         }
 
-        int inset = BORDER + MARGIN;
+        int inset = ParchmentTooltip.getBorderThickness() + MARGIN;
         int detailLines = rank > 0 ? 2 : 1;
         int headerHeight = NAME_LINE_HEIGHT + detailLines * LINE_HEIGHT;
         int sepY = inset + headerHeight + SEPARATOR_GAP;
@@ -191,19 +186,11 @@ public class BossTooltip extends JToolTip
 
         int w = getWidth();
         int h = getHeight();
-        int inset = BORDER + MARGIN;
+        int inset = ParchmentTooltip.getBorderThickness() + MARGIN;
 
-        // Background
-        g2.setColor(BG_COLOR);
-        g2.fillRect(0, 0, w, h);
-
-        // 3-tone stone border — dark outer, warm mid, lighter inner
-        g2.setColor(BORDER_OUTER);
-        g2.drawRect(0, 0, w - 1, h - 1);
-        g2.setColor(BORDER_MID);
-        g2.drawRect(1, 1, w - 3, h - 3);
-        g2.setColor(BORDER_INNER);
-        g2.drawRect(2, 2, w - 5, h - 5);
+        // Parchment background + stone border (shared with ParchmentTooltip)
+        ParchmentTooltip.paintParchmentFill(g2, w, h);
+        ParchmentTooltip.paintStoneBorder(g2, w, h);
 
         g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
             RenderingHints.VALUE_TEXT_ANTIALIAS_ON);

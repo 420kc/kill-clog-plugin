@@ -171,10 +171,28 @@ public class KillClogPanel extends PluginPanel
 
     private final IconTextField searchBar = new IconTextField();
     private final JLabel infoNameLabel = new JLabel(" ");
-    private final JLabel infoTotalLabel = new JLabel();
+    private final JLabel infoTotalLabel = new JLabel()
+    {
+        @Override
+        public javax.swing.JToolTip createToolTip()
+        {
+            ParchmentTooltip tip = new ParchmentTooltip();
+            tip.setComponent(this);
+            return tip;
+        }
+    };
     private final JLabel infoKcLabel = new JLabel();
     private final JLabel clogNotice = new JLabel();
-    private final JLabel syncLabel = new JLabel();
+    private final JLabel syncLabel = new JLabel()
+    {
+        @Override
+        public javax.swing.JToolTip createToolTip()
+        {
+            ParchmentTooltip tip = new ParchmentTooltip();
+            tip.setComponent(this);
+            return tip;
+        }
+    };
     private ImageIcon skillsIcon;
     private ImageIcon maxCapeIcon;
     private ImageIcon infernalCapeIcon;
@@ -232,6 +250,8 @@ public class KillClogPanel extends PluginPanel
         this.itemManager = itemManager;
         this.clientThread = clientThread;
 
+        ParchmentTooltip.loadBorderSprites(spriteManager);
+
         // Match native HiscorePanel structure
         setBorder(new EmptyBorder(10, 10, 0, 10));
         setBackground(ColorScheme.DARK_GRAY_COLOR);
@@ -271,7 +291,16 @@ public class KillClogPanel extends PluginPanel
         bottomRow.setBackground(ColorScheme.DARK_GRAY_COLOR);
 
         // 420 button — hidden until setPluginManager detects FourTwentyKcPlugin
-        fourTwentyButton = new JLabel();
+        fourTwentyButton = new JLabel()
+        {
+            @Override
+            public javax.swing.JToolTip createToolTip()
+            {
+                ParchmentTooltip tip = new ParchmentTooltip();
+                tip.setComponent(this);
+                return tip;
+            }
+        };
         fourTwentyButton.setFont(FontManager.getRunescapeSmallFont());
         fourTwentyButton.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         fourTwentyButton.setToolTipText("420 mode: OFF");
