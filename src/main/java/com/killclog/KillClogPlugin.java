@@ -114,8 +114,8 @@ public class KillClogPlugin extends Plugin
         clientToolbar.removeNavigation(navButton);
         keyManager.unregisterKeyListener(highlighterHotkey);
         menuManager.get().removePlayerMenuItem(MENU_OPTION);
-        localClogCache.shutdown();
         SwingUtilities.invokeLater(() -> panel.shutdown());
+        localClogCache.shutdown();
         log.debug("Kill Clog plugin stopped");
     }
 

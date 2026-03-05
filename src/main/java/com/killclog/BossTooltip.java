@@ -19,18 +19,22 @@ import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.AsyncBufferedImage;
 
 /**
- * Custom tooltip that paints item sprites in a grid for boss collection log data.
+ * Custom tooltip that paints item sprites in a grid for boss/activity collection log data.
  * Uses Graphics2D painting instead of HTML to reliably render item images.
+ *
+ * <p>Standard 5-column layout: {@code new BossTooltip()}
+ * <p>Wide 10-column layout for large clue tiers: {@code new BossTooltip(10)}
  */
 public class BossTooltip extends JToolTip
 {
+    private static final int DEFAULT_COLS = 5;
+
     private static final int SPRITE_SIZE = 32;
-    private static final int GRID_COLS = 5;
     private static final int PADDING = 4;
-    private static final int MARGIN = 8; // inside the border
+    private static final int MARGIN = 8;
     private static final int LINE_HEIGHT = 14;
     private static final int NAME_LINE_HEIGHT = 18;
-    private static final int SEPARATOR_GAP = 6; // space around the header separator line
+    private static final int SEPARATOR_GAP = 6;
 
     private static final Color SEPARATOR_COLOR = new Color(80, 70, 50);
     private static final Color OSRS_ORANGE = new Color(255, 152, 31);
@@ -40,6 +44,7 @@ public class BossTooltip extends JToolTip
     private static final Color QTY_SHADOW = new Color(0, 0, 0);
     private static final Color ITEM_HOVER_BG = new Color(80, 70, 50);
 
+    private final int gridCols;
     private int hoveredItemIndex = -1;
 
     private String bossName;
@@ -51,8 +56,16 @@ public class BossTooltip extends JToolTip
     private Map<Integer, Integer> obtainedCounts;
     private ItemManager itemManager;
 
+    /** Standard 5-column tooltip. */
     public BossTooltip()
     {
+        this(DEFAULT_COLS);
+    }
+
+    /** Configurable column count — use {@code 10} for wide clue-tier grids. */
+    public BossTooltip(int gridCols)
+    {
+        this.gridCols = gridCols;
         setOpaque(false);
         setBorder(null);
 
@@ -86,6 +99,7 @@ public class BossTooltip extends JToolTip
 
     /**
      * Populate tooltip data before display.
+     * Registers async repaint callbacks so sprites appear as they load.
      */
     public void setData(String bossName, int rank, int obtainedCount, int totalItems,
                         List<Integer> allItemIds, Set<Integer> obtainedIds,
@@ -100,21 +114,20 @@ public class BossTooltip extends JToolTip
         this.obtainedCounts = obtainedCounts;
         this.itemManager = itemManager;
 
-
-
-        // Register onLoaded callbacks so tooltip repaints when async sprites finish loading
-        if (allItemIds != null && itemManager != null)
+        if (allItemIds == null || itemManager == null)
         {
-            for (int itemId : allItemIds)
+            return;
+        }
+
+        for (int itemId : allItemIds)
+        {
+            int count = obtainedIds != null && obtainedIds.contains(itemId)
+                ? obtainedCounts.getOrDefault(itemId, 1) : 1;
+            BufferedImage img = itemManager.getImage(itemId, count, false);
+            if (img instanceof AsyncBufferedImage)
             {
-                int count = obtainedIds != null && obtainedIds.contains(itemId)
-                    ? obtainedCounts.getOrDefault(itemId, 1) : 1;
-                BufferedImage img = itemManager.getImage(itemId, count, false);
-                if (img instanceof AsyncBufferedImage)
-                {
-                    ((AsyncBufferedImage) img).onLoaded(() ->
-                        SwingUtilities.invokeLater(this::repaint));
-                }
+                ((AsyncBufferedImage) img).onLoaded(() ->
+                    SwingUtilities.invokeLater(this::repaint));
             }
         }
     }
@@ -130,12 +143,11 @@ public class BossTooltip extends JToolTip
         int detailLines = rank > 0 ? 2 : 1;
         int headerHeight = NAME_LINE_HEIGHT + detailLines * LINE_HEIGHT;
 
-        int spriteRows = (allItemIds.size() + GRID_COLS - 1) / GRID_COLS;
-        int gridWidth = GRID_COLS * (SPRITE_SIZE + PADDING) - PADDING;
+        int spriteRows = (allItemIds.size() + gridCols - 1) / gridCols;
+        int gridWidth = gridCols * (SPRITE_SIZE + PADDING) - PADDING;
         int gridHeight = spriteRows * (SPRITE_SIZE + PADDING) - PADDING;
 
         int inset = ParchmentTooltip.getBorderThickness() + MARGIN;
-        // header + separator line + gap above/below + grid
         int height = inset + headerHeight + SEPARATOR_GAP + 1 + SEPARATOR_GAP + gridHeight + inset;
         int width = gridWidth + inset * 2;
 
@@ -165,30 +177,23 @@ public class BossTooltip extends JToolTip
         int cellSize = SPRITE_SIZE + PADDING;
         int col = relX / cellSize;
         int row = relY / cellSize;
-        if (col >= GRID_COLS)
+        if (col >= gridCols)
         {
             return -1;
         }
 
-        int idx = row * GRID_COLS + col;
-        if (idx >= allItemIds.size())
-        {
-            return -1;
-        }
-
-        return idx;
+        int idx = row * gridCols + col;
+        return idx < allItemIds.size() ? idx : -1;
     }
 
     @Override
     protected void paintComponent(Graphics g)
     {
         Graphics2D g2 = (Graphics2D) g.create();
-
         int w = getWidth();
         int h = getHeight();
         int inset = ParchmentTooltip.getBorderThickness() + MARGIN;
 
-        // Parchment background + stone border (shared with ParchmentTooltip)
         ParchmentTooltip.paintParchmentFill(g2, w, h);
         ParchmentTooltip.paintStoneBorder(g2, w, h);
 
@@ -201,21 +206,16 @@ public class BossTooltip extends JToolTip
             return;
         }
 
-        Font nameFont = FontManager.getRunescapeBoldFont();
-        Font font = FontManager.getRunescapeSmallFont();
-
-        // Row 1: Boss name (bold font — matches native clog header)
-        g2.setFont(nameFont);
+        // Row 1: boss name (bold)
+        g2.setFont(FontManager.getRunescapeBoldFont());
         FontMetrics nfm = g2.getFontMetrics();
         int lineY = inset + nfm.getAscent();
         g2.setColor(OSRS_ORANGE);
         g2.drawString(bossName, inset, lineY);
 
-        // Switch to small font for detail rows
-        g2.setFont(font);
+        // Row 2: "Obtained: X/Y"
+        g2.setFont(FontManager.getRunescapeSmallFont());
         FontMetrics fm = g2.getFontMetrics();
-
-        // Row 2: "Obtained: " (orange) + X/Y (green/yellow)
         lineY += NAME_LINE_HEIGHT;
         String obtainedLabel = "Obtained: ";
         g2.setColor(OSRS_ORANGE);
@@ -225,38 +225,35 @@ public class BossTooltip extends JToolTip
         g2.setColor(obtainedCount >= totalItems && totalItems > 0 ? CLOG_GREEN : CLOG_YELLOW);
         g2.drawString(countText, inset + labelWidth, lineY);
 
-        // Row 3: "Rank: " (orange) + number (white)
+        // Row 3 (optional): "Rank: N"
         if (rank > 0)
         {
             lineY += LINE_HEIGHT;
             String rankLabel = "Rank: ";
             g2.setColor(OSRS_ORANGE);
             g2.drawString(rankLabel, inset, lineY);
-            int rankLabelWidth = fm.stringWidth(rankLabel);
             g2.setColor(Color.WHITE);
-            g2.drawString(String.format("%,d", rank), inset + rankLabelWidth, lineY);
+            g2.drawString(String.format("%,d", rank), inset + fm.stringWidth(rankLabel), lineY);
         }
 
-        // Header separator line
+        // Separator
         int headerLines = rank > 0 ? 3 : 2;
         int sepY = inset + NAME_LINE_HEIGHT + (headerLines - 1) * LINE_HEIGHT + SEPARATOR_GAP;
         g2.setColor(SEPARATOR_COLOR);
         g2.drawLine(inset, sepY, w - inset - 1, sepY);
 
-        // Item sprite grid
+        // Item grid
         if (allItemIds != null && itemManager != null)
         {
             int gridStartY = sepY + 1 + SEPARATOR_GAP;
-            Font qtyFont = font;
 
             for (int i = 0; i < allItemIds.size(); i++)
             {
-                int col = i % GRID_COLS;
-                int row = i / GRID_COLS;
+                int col = i % gridCols;
+                int row = i / gridCols;
                 int x = inset + col * (SPRITE_SIZE + PADDING);
                 int y = gridStartY + row * (SPRITE_SIZE + PADDING);
 
-                // Hover highlight
                 if (i == hoveredItemIndex)
                 {
                     g2.setComposite(AlphaComposite.SrcOver);
@@ -271,38 +268,25 @@ public class BossTooltip extends JToolTip
                 BufferedImage sprite = itemManager.getImage(itemId, count, false);
                 if (sprite != null)
                 {
-                    if (obtained)
-                    {
-                        g2.setComposite(AlphaComposite.SrcOver);
-                    }
-                    else
-                    {
-                        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
-                    }
+                    g2.setComposite(obtained
+                        ? AlphaComposite.SrcOver
+                        : AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
 
-                    // Center sprite in cell
                     int sx = x + (SPRITE_SIZE - sprite.getWidth()) / 2;
                     int sy = y + (SPRITE_SIZE - sprite.getHeight()) / 2;
                     g2.drawImage(sprite, sx, sy, null);
-
                     g2.setComposite(AlphaComposite.SrcOver);
                 }
 
-                // Quantity overlay — top-left corner, matching native OSRS clog
+                // Quantity overlay — top-left, matching native OSRS clog
                 if (obtained && count > 1)
                 {
-                    g2.setFont(qtyFont);
                     FontMetrics qfm = g2.getFontMetrics();
                     String qtyText = String.valueOf(count);
-                    int qx = x;
-                    int qy = y + qfm.getAscent();
-
-                    // Shadow
                     g2.setColor(QTY_SHADOW);
-                    g2.drawString(qtyText, qx + 1, qy + 1);
-                    // Text
+                    g2.drawString(qtyText, x + 1, y + qfm.getAscent() + 1);
                     g2.setColor(QTY_COLOR);
-                    g2.drawString(qtyText, qx, qy);
+                    g2.drawString(qtyText, x, y + qfm.getAscent());
                 }
             }
         }

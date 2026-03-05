@@ -20,9 +20,16 @@ import net.runelite.client.RuneLite;
 
 /**
  * Multi-account, disk-backed collection log cache.
- * Stores per-player clog data in ~/.runelite/kill-clog/ as JSON files.
+ *
+ * <p>Stores per-player clog data in {@code ~/.runelite/kill-clog/} as JSON files.
  * Populated incrementally as any logged-in player browses their collection log in-game.
  * Persists across client restarts — any account ever browsed is available permanently.
+ *
+ * <p>Disk writes are dispatched to a single background thread to avoid blocking the
+ * game client thread ({@code onScriptPostFired} calls {@link #putCategory}).
+ *
+ * <p>Note: the in-memory player map is not evicted. In practice the number of distinct
+ * looked-up players per session is small, so unbounded growth is not a concern.
  */
 @Slf4j
 @Singleton
@@ -32,18 +39,26 @@ public class LocalClogCache
 
     private final Map<String, PlayerClogData> players = new ConcurrentHashMap<>();
     private final Gson gson;
+    private volatile String activePlayerName;
+
+    /** Single-threaded executor for all disk I/O — keeps the client thread unblocked. */
     private final ExecutorService diskWriter = Executors.newSingleThreadExecutor(r ->
     {
         Thread t = new Thread(r, "kill-clog-disk");
         t.setDaemon(true);
         return t;
     });
-    private volatile String activePlayerName;
 
     @Inject
     public LocalClogCache(Gson gson)
     {
         this.gson = gson;
+    }
+
+    /** Call from plugin shutDown() to flush any pending writes cleanly. */
+    public void shutdown()
+    {
+        diskWriter.shutdown();
     }
 
     public void setActivePlayer(String name)
@@ -63,14 +78,16 @@ public class LocalClogCache
             if (loaded != null)
             {
                 players.put(key, loaded);
-                log.debug("Loaded persistent clog cache for '{}' ({} categories)", name, loaded.categories.size());
+                log.debug("Loaded persistent clog cache for '{}' ({} categories)",
+                    name, loaded.categories.size());
             }
         }
 
         log.debug("Active clog player set to: {}", name);
     }
 
-    public void putCategory(String categoryKey, List<Integer> allItemIds, List<ClogResult.ClogItem> obtained)
+    public void putCategory(String categoryKey, List<Integer> allItemIds,
+                            List<ClogResult.ClogItem> obtained)
     {
         if (activePlayerName == null)
         {
@@ -87,7 +104,6 @@ public class LocalClogCache
             return d;
         });
 
-        // Ensure canonical name is set (may have been loaded from disk with different casing)
         data.playerName = activePlayerName;
         data.lastUpdated = Instant.now().toString();
         data.categories.put(categoryKey, new ArrayList<>(allItemIds));
@@ -96,7 +112,10 @@ public class LocalClogCache
         log.debug("Cached clog category '{}' for '{}': {}/{} obtained",
             categoryKey, activePlayerName, obtained.size(), allItemIds.size());
 
-        saveToDisk(activePlayerName, data);
+        // Snapshot for async write — captures data state at this moment
+        final String playerName = activePlayerName;
+        final PlayerClogData snapshot = shallowCopy(data);
+        diskWriter.execute(() -> saveToDisk(playerName, snapshot));
     }
 
     public boolean isActivePlayer(String name)
@@ -121,11 +140,11 @@ public class LocalClogCache
         data.obtained = new HashMap<>();
         data.categories = new HashMap<>();
 
-        for (Map.Entry<String, List<ClogResult.ClogItem>> entry : result.getObtainedItems().entrySet())
+        for (Map.Entry<String, List<ClogResult.ClogItem>> entry
+            : result.getObtainedItems().entrySet())
         {
             String cat = entry.getKey();
             data.obtained.put(cat, new ArrayList<>(entry.getValue()));
-
             List<Integer> catItems = result.getCategoryItems().get(cat);
             if (catItems != null)
             {
@@ -134,7 +153,8 @@ public class LocalClogCache
         }
 
         players.put(key, data);
-        saveToDisk(name, data);
+        final PlayerClogData snapshot = shallowCopy(data);
+        diskWriter.execute(() -> saveToDisk(name, snapshot));
         log.debug("Cached Temple data for '{}' ({} categories)", name, data.obtained.size());
     }
 
@@ -146,19 +166,17 @@ public class LocalClogCache
         }
 
         String key = playerName.toLowerCase();
-
-        // Check memory first
         if (players.containsKey(key))
         {
             return true;
         }
 
-        // Try loading from disk
         PlayerClogData loaded = loadFromDisk(playerName);
         if (loaded != null)
         {
             players.put(key, loaded);
-            log.debug("Lazy-loaded persistent clog cache for '{}' ({} categories)", playerName, loaded.categories.size());
+            log.debug("Lazy-loaded persistent clog cache for '{}' ({} categories)",
+                playerName, loaded.categories.size());
             return true;
         }
 
@@ -172,14 +190,13 @@ public class LocalClogCache
             return null;
         }
 
-        String key = playerName.toLowerCase();
-        PlayerClogData data = players.get(key);
+        PlayerClogData data = players.get(playerName.toLowerCase());
         if (data == null)
         {
             return null;
         }
 
-        // Defensive copies
+        // Defensive copies — callers may mutate their maps
         Map<String, List<ClogResult.ClogItem>> obtainedCopy = new HashMap<>();
         for (Map.Entry<String, List<ClogResult.ClogItem>> entry : data.obtained.entrySet())
         {
@@ -197,38 +214,31 @@ public class LocalClogCache
             obtainedCopy,
             categoriesCopy,
             itemNames != null ? itemNames : new HashMap<>(),
-            null // no lastChanged for local data
+            null // no lastChanged for local-only data
         );
     }
 
+    // --- Disk I/O (runs on diskWriter thread only) ---
+
     private void saveToDisk(String playerName, PlayerClogData data)
     {
-        diskWriter.execute(() ->
+        try
         {
-            try
+            if (!CACHE_DIR.exists())
             {
-                if (!CACHE_DIR.exists())
-                {
-                    CACHE_DIR.mkdirs();
-                }
-
-                File file = getCacheFile(playerName);
-                try (FileWriter writer = new FileWriter(file))
-                {
-                    gson.toJson(data, writer);
-                }
-                log.debug("Saved clog cache to disk: {}", file.getName());
+                CACHE_DIR.mkdirs();
             }
-            catch (IOException e)
+            File file = getCacheFile(playerName);
+            try (FileWriter writer = new FileWriter(file))
             {
-                log.warn("Failed to save clog cache for '{}': {}", playerName, e.getMessage());
+                gson.toJson(data, writer);
             }
-        });
-    }
-
-    public void shutdown()
-    {
-        diskWriter.shutdown();
+            log.debug("Saved clog cache to disk: {}", file.getName());
+        }
+        catch (IOException e)
+        {
+            log.warn("Failed to save clog cache for '{}': {}", playerName, e.getMessage());
+        }
     }
 
     private PlayerClogData loadFromDisk(String playerName)
@@ -238,7 +248,6 @@ public class LocalClogCache
         {
             return null;
         }
-
         try (FileReader reader = new FileReader(file))
         {
             PlayerClogData data = gson.fromJson(reader, PlayerClogData.class);
@@ -251,17 +260,26 @@ public class LocalClogCache
         {
             log.warn("Failed to load clog cache for '{}': {}", playerName, e.getMessage());
         }
-
         return null;
     }
 
     private File getCacheFile(String playerName)
     {
-        // Sanitize: lowercase, replace spaces with underscores, strip non-alphanumeric
         String sanitized = playerName.toLowerCase()
             .replace(' ', '_')
             .replaceAll("[^a-z0-9_-]", "");
         return new File(CACHE_DIR, sanitized + ".json");
+    }
+
+    /** Shallow copy sufficient for async disk write — lists are already copied in callers. */
+    private static PlayerClogData shallowCopy(PlayerClogData src)
+    {
+        PlayerClogData copy = new PlayerClogData();
+        copy.playerName = src.playerName;
+        copy.lastUpdated = src.lastUpdated;
+        copy.categories = new HashMap<>(src.categories);
+        copy.obtained = new HashMap<>(src.obtained);
+        return copy;
     }
 
     private static class PlayerClogData
