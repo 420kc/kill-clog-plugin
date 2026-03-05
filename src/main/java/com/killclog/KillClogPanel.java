@@ -195,6 +195,28 @@ public class KillClogPanel extends PluginPanel
     private static final int THIRD_AGE_ITEM_ID = 10348;
     private static final int GILDED_ITEM_ID = 3481;
 
+    // Activity -> Temple clog category for highlighter coloring
+    private static final Map<HiscoreSkill, String> ACTIVITY_CLOG_CATEGORIES = new LinkedHashMap<>();
+    static
+    {
+        ACTIVITY_CLOG_CATEGORIES.put(HiscoreSkill.SOUL_WARS_ZEAL, "soul_wars");
+        ACTIVITY_CLOG_CATEGORIES.put(HiscoreSkill.RIFTS_CLOSED, "guardians_of_the_rift");
+        ACTIVITY_CLOG_CATEGORIES.put(HiscoreSkill.LAST_MAN_STANDING, "last_man_standing");
+        ACTIVITY_CLOG_CATEGORIES.put(HiscoreSkill.COLOSSEUM_GLORY, "fortis_colosseum");
+    }
+
+    // Clue tier -> Temple clog category
+    private static final Map<HiscoreSkill, String> CLUE_CLOG_CATEGORIES = new LinkedHashMap<>();
+    static
+    {
+        CLUE_CLOG_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_BEGINNER, "beginner_treasure_trails");
+        CLUE_CLOG_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_EASY, "easy_treasure_trails");
+        CLUE_CLOG_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_MEDIUM, "medium_treasure_trails");
+        CLUE_CLOG_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_HARD, "hard_treasure_trails");
+        CLUE_CLOG_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_ELITE, "elite_treasure_trails");
+        CLUE_CLOG_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_MASTER, "master_treasure_trails");
+    }
+
     private final HiscoreService hiscoreService;
     private final ClogService clogService;
     private final KillClogConfig config;
@@ -2200,6 +2222,7 @@ public class KillClogPanel extends PluginPanel
             return;
         }
         updateBossLabels(hiscoreResult);
+        updateActivityLabels(hiscoreResult);
         if (enabled && clogResult != null)
         {
             applyCompletionistColorsInner();
@@ -2253,6 +2276,73 @@ public class KillClogPanel extends PluginPanel
             applyCompletionistColorToLabel(label, hiscoreName);
         }
 
+        // Activity cells with clog categories
+        for (Map.Entry<HiscoreSkill, String> entry : ACTIVITY_CLOG_CATEGORIES.entrySet())
+        {
+            JLabel label = activityLabels.get(entry.getKey());
+            if (label != null)
+            {
+                applyCompletionistColorToCategory(label, entry.getValue(),
+                    hiscoreResult.getActivityScore(entry.getKey().getName()));
+            }
+        }
+
+        // Clue tier cells
+        for (Map.Entry<HiscoreSkill, String> entry : CLUE_CLOG_CATEGORIES.entrySet())
+        {
+            JLabel label = clueTierLabels.get(entry.getKey());
+            if (label != null)
+            {
+                applyCompletionistColorToCategory(label, entry.getValue(),
+                    hiscoreResult.getActivityScore(entry.getKey().getName()));
+            }
+        }
+
+        // Clue All — aggregate across all 6 tier categories
+        JLabel clueAllLabel = activityLabels.get(HiscoreSkill.CLUE_SCROLL_ALL);
+        if (clueAllLabel != null)
+        {
+            int allScore = hiscoreResult.getActivityScore(HiscoreSkill.CLUE_SCROLL_ALL.getName());
+            if (allScore > 0)
+            {
+                int totalItems = 0;
+                int totalObtained = 0;
+                for (String cat : CLUE_CLOG_CATEGORIES.values())
+                {
+                    List<Integer> items = clogResult.getCategoryItems().get(cat);
+                    if (items != null)
+                    {
+                        totalItems += items.size();
+                        totalObtained += countObtained(items, getObtainedIds(cat));
+                    }
+                }
+                if (totalItems > 0)
+                {
+                    if (totalObtained == totalItems)
+                    {
+                        clueAllLabel.setForeground(config.completedClogColor());
+                    }
+                    else if (totalObtained == 0)
+                    {
+                        clueAllLabel.setForeground(config.emptyClogColor());
+                    }
+                    else
+                    {
+                        clueAllLabel.setForeground(config.inProgressClogColor());
+                    }
+                }
+            }
+        }
+
+        // 3rd Age / Gilded cells
+        if (thirdAgeLabel != null)
+        {
+            applyCompletionistColorToRareCell(thirdAgeLabel, CLOG_THIRD_AGE);
+        }
+        if (gildedLabel != null)
+        {
+            applyCompletionistColorToRareCell(gildedLabel, CLOG_GILDED);
+        }
     }
 
     private void applyCompletionistColorToLabel(JLabel label, String hiscoreName)
@@ -2272,6 +2362,67 @@ public class KillClogPanel extends PluginPanel
         String category = ClogService.bossToCategory(hiscoreName);
         List<Integer> allItems = clogResult.getCategoryItems().get(category);
 
+        if (allItems == null || allItems.isEmpty())
+        {
+            return;
+        }
+
+        Set<Integer> obtainedIds = getObtainedIds(category);
+        int obtainedCount = countObtained(allItems, obtainedIds);
+
+        if (obtainedCount == allItems.size())
+        {
+            label.setForeground(config.completedClogColor());
+        }
+        else if (obtainedCount == 0)
+        {
+            label.setForeground(config.emptyClogColor());
+        }
+        else
+        {
+            label.setForeground(config.inProgressClogColor());
+        }
+    }
+
+    /**
+     * Apply highlighter color to an activity/clue label using a direct Temple category key.
+     */
+    private void applyCompletionistColorToCategory(JLabel label, String category, int score)
+    {
+        if (score <= 0)
+        {
+            return;
+        }
+
+        List<Integer> allItems = clogResult.getCategoryItems().get(category);
+        if (allItems == null || allItems.isEmpty())
+        {
+            return;
+        }
+
+        Set<Integer> obtainedIds = getObtainedIds(category);
+        int obtainedCount = countObtained(allItems, obtainedIds);
+
+        if (obtainedCount == allItems.size())
+        {
+            label.setForeground(config.completedClogColor());
+        }
+        else if (obtainedCount == 0)
+        {
+            label.setForeground(config.emptyClogColor());
+        }
+        else
+        {
+            label.setForeground(config.inProgressClogColor());
+        }
+    }
+
+    /**
+     * Apply highlighter color to 3rd Age / Gilded cells (no hiscore score — always apply if clog data exists).
+     */
+    private void applyCompletionistColorToRareCell(JLabel label, String category)
+    {
+        List<Integer> allItems = clogResult.getCategoryItems().get(category);
         if (allItems == null || allItems.isEmpty())
         {
             return;
