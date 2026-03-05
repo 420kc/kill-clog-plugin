@@ -723,16 +723,16 @@ public class KillClogPanel extends PluginPanel
         grid.setLayout(new BoxLayout(grid, BoxLayout.Y_AXIS));
         grid.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
-        // Row 1: [Clue All*] [League Points] [LMS]
+        // Row 1: [Clue All] [3rd Age] [Gilded]
         JPanel row1 = new JPanel(new GridLayout(1, 3));
         row1.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         row1.setAlignmentX(0f);
         row1.add(makeActivityCell(HiscoreSkill.CLUE_SCROLL_ALL));
-        row1.add(makeActivityCell(HiscoreSkill.LEAGUE_POINTS));
-        row1.add(makeActivityCell(HiscoreSkill.LAST_MAN_STANDING));
+        row1.add(makeClueRareCell("3rd Age", THIRD_AGE_ITEM_ID, CLOG_THIRD_AGE, true));
+        row1.add(makeClueRareCell("Gilded", GILDED_ITEM_ID, CLOG_GILDED, false));
         grid.add(row1);
 
-        // Clue tier rows — always visible
+        // Row 2-3: Clue tiers
         JPanel clueRow1 = new JPanel(new GridLayout(1, 3));
         clueRow1.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         clueRow1.setAlignmentX(0f);
@@ -749,17 +749,7 @@ public class KillClogPanel extends PluginPanel
         clueRow2.add(makeClueTierCell(CLUE_TIERS[5], CLUE_TIER_ITEM_IDS[5]));
         grid.add(clueRow2);
 
-        JPanel clueRow3 = new JPanel(new GridLayout(1, 3));
-        clueRow3.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        clueRow3.setAlignmentX(0f);
-        clueRow3.add(makeClueRareCell("3rd Age", THIRD_AGE_ITEM_ID, CLOG_THIRD_AGE, true));
-        clueRow3.add(makeClueRareCell("Gilded", GILDED_ITEM_ID, CLOG_GILDED, false));
-        JPanel emptyClueCell = new JPanel();
-        emptyClueCell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        clueRow3.add(emptyClueCell);
-        grid.add(clueRow3);
-
-        // Remaining activities
+        // Row 4-6: Remaining activities + League Points + LMS at bottom
         JPanel rest = new JPanel(new GridLayout(0, 3));
         rest.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         rest.setAlignmentX(0f);
@@ -767,7 +757,8 @@ public class KillClogPanel extends PluginPanel
             HiscoreSkill.SOUL_WARS_ZEAL, HiscoreSkill.RIFTS_CLOSED,
             HiscoreSkill.COLOSSEUM_GLORY, HiscoreSkill.COLLECTIONS_LOGGED,
             HiscoreSkill.BOUNTY_HUNTER_ROGUE, HiscoreSkill.BOUNTY_HUNTER_HUNTER,
-            HiscoreSkill.PVP_ARENA_RANK})
+            HiscoreSkill.PVP_ARENA_RANK, HiscoreSkill.LEAGUE_POINTS,
+            HiscoreSkill.LAST_MAN_STANDING})
         {
             if (activity == HiscoreSkill.COLLECTIONS_LOGGED)
             {
