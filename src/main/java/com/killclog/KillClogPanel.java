@@ -14,6 +14,7 @@ import java.awt.Insets;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -195,6 +196,53 @@ public class KillClogPanel extends PluginPanel
     private static final int THIRD_AGE_ITEM_ID = 10348;
     private static final int GILDED_ITEM_ID = 3481;
 
+    // Native clog rare categories — hardcoded item IDs (Temple doesn't have these)
+    private static final String RARE_HARD = "hard_rare";
+    private static final String RARE_ELITE = "elite_rare";
+    private static final String RARE_MASTER = "master_rare";
+
+    private static final int[] HARD_RARE_ITEMS = {
+        // 3rd age melee + range + mage + amulet (13)
+        10350, 10348, 10346, 23242, 10352,
+        10334, 10330, 10332, 10336,
+        10342, 10338, 10340, 10344,
+        // Gilded melee (11)
+        3486, 3481, 3483, 3485, 3488,
+        20146, 20149, 20152, 20155, 20158, 20161
+    };
+
+    private static final int[] ELITE_RARE_ITEMS = {
+        // 3rd age melee + range + mage + amulet + weapons + cloak (17)
+        10350, 10348, 10346, 23242, 10352,
+        10334, 10330, 10332, 10336,
+        10342, 10338, 10340, 10344,
+        12426, 12422, 12437, 12424,
+        // All gilded (20)
+        3486, 3481, 3483, 3485, 3488,
+        20146, 20149, 20152, 20155, 20158, 20161,
+        12389, 12391, 23258, 23261, 23264, 23267,
+        23276, 23279, 23282,
+        // Lava dragon mask, Ring of nature
+        12371, 20005
+    };
+
+    private static final int[] MASTER_RARE_ITEMS = {
+        // All 3rd age (23)
+        10350, 10348, 10346, 23242, 10352,
+        10334, 10330, 10332, 10336,
+        10342, 10338, 10340, 10344,
+        12426, 12422, 12437, 12424,
+        23336, 23339, 23345, 23342,
+        20014, 20011,
+        // All gilded (20)
+        3486, 3481, 3483, 3485, 3488,
+        20146, 20149, 20152, 20155, 20158, 20161,
+        12389, 12391, 23258, 23261, 23264, 23267,
+        23276, 23279, 23282,
+        // Bucket helm (g), Ring of coins
+        20059, 20017
+    };
+
     // Activity -> Temple clog category for highlighter coloring
     private static final Map<HiscoreSkill, String> ACTIVITY_CLOG_CATEGORIES = new LinkedHashMap<>();
     static
@@ -304,6 +352,9 @@ public class KillClogPanel extends PluginPanel
     private final Map<HiscoreSkill, JLabel> clueTierLabels = new LinkedHashMap<>();
     private JLabel thirdAgeLabel;
     private JLabel gildedLabel;
+    private JLabel hardRareLabel;
+    private JLabel eliteRareLabel;
+    private JLabel masterRareLabel;
     private TooltipData thirdAgeTooltipData;
     private TooltipData gildedTooltipData;
     private ImageIcon collectionsLoggedOrigIcon;
@@ -317,8 +368,10 @@ public class KillClogPanel extends PluginPanel
     private boolean showingNotFound;
     private String loggedInPlayerName;
 
-    // Sprite tooltip data per boss (populated when clog data is available)
+    // Sprite tooltip data per boss/activity (populated when clog data is available)
     private final Map<HiscoreSkill, TooltipData> tooltipDataMap = new LinkedHashMap<>();
+    // Sprite tooltip data for custom rare categories (keyed by RARE_HARD etc.)
+    private final Map<String, TooltipData> customRareTooltipMap = new LinkedHashMap<>();
 
     // Original tooltip dismiss delay to restore when panel deactivates
     private int originalDismissDelay = ToolTipManager.sharedInstance().getDismissDelay();
@@ -749,7 +802,16 @@ public class KillClogPanel extends PluginPanel
         clueRow2.add(makeClueTierCell(CLUE_TIERS[5], CLUE_TIER_ITEM_IDS[5]));
         grid.add(clueRow2);
 
-        // Row 4-6: Remaining activities + League Points + LMS at bottom
+        // Row 4: [Hard Rare] [Elite Rare] [Master Rare]
+        JPanel rareRow = new JPanel(new GridLayout(1, 3));
+        rareRow.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        rareRow.setAlignmentX(0f);
+        rareRow.add(makeCustomRareCell("Hard Rare", CLUE_TIER_ITEM_IDS[3], RARE_HARD, HARD_RARE_ITEMS));
+        rareRow.add(makeCustomRareCell("Elite Rare", CLUE_TIER_ITEM_IDS[4], RARE_ELITE, ELITE_RARE_ITEMS));
+        rareRow.add(makeCustomRareCell("Master Rare", CLUE_TIER_ITEM_IDS[5], RARE_MASTER, MASTER_RARE_ITEMS));
+        grid.add(rareRow);
+
+        // Row 5-7: Remaining activities + League Points + LMS at bottom
         JPanel rest = new JPanel(new GridLayout(0, 3));
         rest.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         rest.setAlignmentX(0f);
@@ -1141,6 +1203,131 @@ public class KillClogPanel extends PluginPanel
         return cell;
     }
 
+    /**
+     * Create a cell for a custom rare category (Hard/Elite/Master Rare).
+     * These categories don't exist in Temple — item IDs are hardcoded from the native clog.
+     */
+    private JPanel makeCustomRareCell(String name, int iconItemId, String rareKey, int[] itemIds)
+    {
+        JLabel label = new JLabel()
+        {
+            @Override
+            public javax.swing.JToolTip createToolTip()
+            {
+                TooltipData data = customRareTooltipMap.get(rareKey);
+                if (data != null)
+                {
+                    BossTooltip tip = new BossTooltip();
+                    tip.setComponent(this);
+                    tip.setData(data.bossName, data.rank, data.obtainedCount,
+                        data.totalItems, data.allItemIds, data.obtainedIds,
+                        data.obtainedCounts, itemManager);
+
+                    JPanel parentCell = (JPanel) this.getParent();
+                    tip.addMouseListener(new java.awt.event.MouseAdapter()
+                    {
+                        @Override
+                        public void mouseEntered(java.awt.event.MouseEvent e)
+                        {
+                            if (hoverExitTimer != null) hoverExitTimer.stop();
+                        }
+
+                        @Override
+                        public void mouseExited(java.awt.event.MouseEvent e)
+                        {
+                            if (hoveredCell == parentCell)
+                            {
+                                hoveredCell = null;
+                                parentCell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                            }
+                        }
+                    });
+
+                    tip.addHierarchyListener(e ->
+                    {
+                        if ((e.getChangeFlags() & java.awt.event.HierarchyEvent.SHOWING_CHANGED) != 0
+                            && !tip.isShowing())
+                        {
+                            if (hoveredCell == parentCell)
+                            {
+                                hoveredCell = null;
+                                parentCell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                            }
+                        }
+                    });
+
+                    return tip;
+                }
+                ParchmentTooltip fallback = new ParchmentTooltip();
+                fallback.setComponent(this);
+                return fallback;
+            }
+        };
+        label.setFont(FontManager.getRunescapeSmallFont());
+        label.setText(pad("--"));
+        label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        label.setIconTextGap(4);
+        label.setToolTipText(name);
+        label.putClientProperty(
+            RenderingHints.KEY_TEXT_ANTIALIASING,
+            RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+        BufferedImage img = itemManager.getImage(iconItemId, 1, false);
+        if (img != null)
+        {
+            label.setIcon(new ImageIcon(ImageUtil.resizeImage(img, 20, 20)));
+            if (img instanceof AsyncBufferedImage)
+            {
+                ((AsyncBufferedImage) img).onLoaded(() ->
+                    SwingUtilities.invokeLater(() ->
+                        label.setIcon(new ImageIcon(ImageUtil.resizeImage(
+                            itemManager.getImage(iconItemId, 1, false), 20, 20)))));
+            }
+        }
+
+        if (RARE_HARD.equals(rareKey)) hardRareLabel = label;
+        else if (RARE_ELITE.equals(rareKey)) eliteRareLabel = label;
+        else if (RARE_MASTER.equals(rareKey)) masterRareLabel = label;
+
+        JPanel cell = new JPanel();
+        cell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        cell.setBorder(new EmptyBorder(2, 0, 2, 0));
+        cell.add(label);
+
+        label.addMouseListener(new MouseAdapter()
+        {
+            @Override
+            public void mouseEntered(MouseEvent e)
+            {
+                if (hoverExitTimer != null) hoverExitTimer.stop();
+                if (hoveredCell != null && hoveredCell != cell)
+                {
+                    hoveredCell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                }
+                hoveredCell = cell;
+                cell.setBackground(CELL_HOVER);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e)
+            {
+                if (hoverExitTimer != null) hoverExitTimer.stop();
+                hoverExitTimer = new javax.swing.Timer(150, evt ->
+                {
+                    if (hoveredCell == cell)
+                    {
+                        hoveredCell = null;
+                        cell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                    }
+                });
+                hoverExitTimer.setRepeats(false);
+                hoverExitTimer.start();
+            }
+        });
+
+        return cell;
+    }
+
     private JPanel makeCollectionsLoggedCell()
     {
         HiscoreSkill activity = HiscoreSkill.COLLECTIONS_LOGGED;
@@ -1313,6 +1500,9 @@ public class KillClogPanel extends PluginPanel
     {
         updateClueRareCell(thirdAgeLabel, "3rd Age", CLOG_THIRD_AGE, result, true);
         updateClueRareCell(gildedLabel, "Gilded", CLOG_GILDED, result, false);
+        updateCustomRareCell(hardRareLabel, "Hard Rare", RARE_HARD, HARD_RARE_ITEMS, result);
+        updateCustomRareCell(eliteRareLabel, "Elite Rare", RARE_ELITE, ELITE_RARE_ITEMS, result);
+        updateCustomRareCell(masterRareLabel, "Master Rare", RARE_MASTER, MASTER_RARE_ITEMS, result);
     }
 
     private void updateClueRareCell(JLabel label, String name, String clogCategory,
@@ -1380,6 +1570,76 @@ public class KillClogPanel extends PluginPanel
         }
 
         // Activate BossTooltip
+        label.setToolTipText(" ");
+    }
+
+    /**
+     * Update a custom rare cell by scanning obtained items across ALL Temple categories.
+     * These categories don't exist in Temple, so we match our hardcoded item IDs
+     * against whatever the player has obtained anywhere.
+     */
+    private void updateCustomRareCell(JLabel label, String name, String rareKey,
+                                       int[] itemIds, ClogResult result)
+    {
+        if (label == null)
+        {
+            return;
+        }
+
+        // Build a flat set of all obtained item IDs across every Temple category
+        Set<Integer> allObtainedGlobal = new HashSet<>();
+        Map<Integer, Integer> allCountsGlobal = new HashMap<>();
+        for (List<ClogResult.ClogItem> catObtained : result.getObtainedItems().values())
+        {
+            for (ClogResult.ClogItem item : catObtained)
+            {
+                allObtainedGlobal.add(item.getId());
+                allCountsGlobal.merge(item.getId(), item.getCount(), Integer::max);
+            }
+        }
+
+        // Match against our hardcoded item list
+        List<Integer> allItemsList = new ArrayList<>();
+        Set<Integer> obtainedIds = new HashSet<>();
+        Map<Integer, Integer> obtainedCounts = new LinkedHashMap<>();
+        for (int id : itemIds)
+        {
+            allItemsList.add(id);
+            if (allObtainedGlobal.contains(id))
+            {
+                obtainedIds.add(id);
+                obtainedCounts.put(id, allCountsGlobal.getOrDefault(id, 1));
+            }
+        }
+
+        int obtainedCount = obtainedIds.size();
+        label.setText(pad(obtainedCount + "/" + allItemsList.size()));
+        label.setForeground(KC_COLOR);
+
+        TooltipData data = new TooltipData();
+        data.bossName = name;
+        data.rank = -1;
+        data.obtainedCount = obtainedCount;
+        data.totalItems = allItemsList.size();
+        data.allItemIds = allItemsList;
+        data.obtainedIds = obtainedIds;
+        data.obtainedCounts = obtainedCounts;
+
+        customRareTooltipMap.put(rareKey, data);
+
+        // Pre-load item images
+        for (int itemId : allItemsList)
+        {
+            int count = obtainedIds.contains(itemId)
+                ? obtainedCounts.getOrDefault(itemId, 1) : 1;
+            BufferedImage img = itemManager.getImage(itemId, count, false);
+            if (img instanceof AsyncBufferedImage)
+            {
+                ((AsyncBufferedImage) img).onLoaded(() ->
+                    SwingUtilities.invokeLater(() -> {}));
+            }
+        }
+
         label.setToolTipText(" ");
     }
 
@@ -1695,6 +1955,7 @@ public class KillClogPanel extends PluginPanel
         canonicalPlayerName = null;
         showingNotFound = false;
         tooltipDataMap.clear();
+        customRareTooltipMap.clear();
         clogNotice.setText(" ");
 
         // Reset all labels to "--" and restore original icons
@@ -1746,6 +2007,19 @@ public class KillClogPanel extends PluginPanel
         }
         thirdAgeTooltipData = null;
         gildedTooltipData = null;
+        // Reset custom rare cells
+        for (JLabel rareLabel : new JLabel[]{hardRareLabel, eliteRareLabel, masterRareLabel})
+        {
+            if (rareLabel != null)
+            {
+                rareLabel.setText(pad("--"));
+                rareLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+                rareLabel.setToolTipText(null);
+            }
+        }
+        if (hardRareLabel != null) hardRareLabel.setToolTipText("Hard Rare");
+        if (eliteRareLabel != null) eliteRareLabel.setToolTipText("Elite Rare");
+        if (masterRareLabel != null) masterRareLabel.setToolTipText("Master Rare");
         // Fire hiscore lookup
         hiscoreService.lookup(player).thenAccept(result ->
             SwingUtilities.invokeLater(() ->
@@ -2218,6 +2492,10 @@ public class KillClogPanel extends PluginPanel
         {
             applyCompletionistColorToRareCell(gildedLabel, CLOG_GILDED);
         }
+        // Custom rare cells
+        applyCompletionistColorToCustomRare(hardRareLabel, RARE_HARD);
+        applyCompletionistColorToCustomRare(eliteRareLabel, RARE_ELITE);
+        applyCompletionistColorToCustomRare(masterRareLabel, RARE_MASTER);
     }
 
     private void applyCompletionistColorToLabel(JLabel label, String hiscoreName)
@@ -2320,6 +2598,32 @@ public class KillClogPanel extends PluginPanel
         }
     }
 
+    private void applyCompletionistColorToCustomRare(JLabel label, String rareKey)
+    {
+        if (label == null)
+        {
+            return;
+        }
+        TooltipData data = customRareTooltipMap.get(rareKey);
+        if (data == null)
+        {
+            return;
+        }
+
+        if (data.obtainedCount == data.totalItems)
+        {
+            label.setForeground(config.completedClogColor());
+        }
+        else if (data.obtainedCount == 0)
+        {
+            label.setForeground(config.emptyClogColor());
+        }
+        else
+        {
+            label.setForeground(config.inProgressClogColor());
+        }
+    }
+
     /**
      * Create a dimmed version of an icon at ~30% opacity.
      */
@@ -2376,6 +2680,7 @@ public class KillClogPanel extends PluginPanel
     private void updateTooltipsInner()
     {
         tooltipDataMap.clear();
+        customRareTooltipMap.clear();
 
         for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
         {
@@ -2814,13 +3119,13 @@ public class KillClogPanel extends PluginPanel
      */
     private static int[] calculateTotalClog(ClogResult result)
     {
-        int totalItems = 0;
+        Set<Integer> allItems = new HashSet<>();
         Set<Integer> allObtained = new HashSet<>();
 
         for (Map.Entry<String, List<Integer>> entry : result.getCategoryItems().entrySet())
         {
             String category = entry.getKey();
-            totalItems += entry.getValue().size();
+            allItems.addAll(entry.getValue());
 
             List<ClogResult.ClogItem> obtained = result.getObtainedItems().get(category);
             if (obtained != null)
@@ -2832,7 +3137,7 @@ public class KillClogPanel extends PluginPanel
             }
         }
 
-        return new int[]{allObtained.size(), totalItems};
+        return new int[]{allObtained.size(), allItems.size()};
     }
 
     /**
