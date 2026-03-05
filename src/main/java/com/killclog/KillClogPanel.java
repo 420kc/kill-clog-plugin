@@ -806,9 +806,9 @@ public class KillClogPanel extends PluginPanel
         JPanel rareRow = new JPanel(new GridLayout(1, 3));
         rareRow.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         rareRow.setAlignmentX(0f);
-        rareRow.add(makeCustomRareCell("Hard Rare", CLUE_TIER_ITEM_IDS[3], RARE_HARD, HARD_RARE_ITEMS));
-        rareRow.add(makeCustomRareCell("Elite Rare", CLUE_TIER_ITEM_IDS[4], RARE_ELITE, ELITE_RARE_ITEMS));
-        rareRow.add(makeCustomRareCell("Master Rare", CLUE_TIER_ITEM_IDS[5], RARE_MASTER, MASTER_RARE_ITEMS));
+        rareRow.add(makeCustomRareCell("Hard (Rare)", CLUE_TIER_ITEM_IDS[3], RARE_HARD, HARD_RARE_ITEMS));
+        rareRow.add(makeCustomRareCell("Elite (Rare)", CLUE_TIER_ITEM_IDS[4], RARE_ELITE, ELITE_RARE_ITEMS));
+        rareRow.add(makeCustomRareCell("Master (Rare)", CLUE_TIER_ITEM_IDS[5], RARE_MASTER, MASTER_RARE_ITEMS));
         grid.add(rareRow);
 
         // Row 5-7: Remaining activities + League Points + LMS at bottom
@@ -1500,9 +1500,9 @@ public class KillClogPanel extends PluginPanel
     {
         updateClueRareCell(thirdAgeLabel, "3rd Age", CLOG_THIRD_AGE, result, true);
         updateClueRareCell(gildedLabel, "Gilded", CLOG_GILDED, result, false);
-        updateCustomRareCell(hardRareLabel, "Hard Rare", RARE_HARD, HARD_RARE_ITEMS, result);
-        updateCustomRareCell(eliteRareLabel, "Elite Rare", RARE_ELITE, ELITE_RARE_ITEMS, result);
-        updateCustomRareCell(masterRareLabel, "Master Rare", RARE_MASTER, MASTER_RARE_ITEMS, result);
+        updateCustomRareCell(hardRareLabel, "Hard (Rare)", RARE_HARD, HARD_RARE_ITEMS, result);
+        updateCustomRareCell(eliteRareLabel, "Elite (Rare)", RARE_ELITE, ELITE_RARE_ITEMS, result);
+        updateCustomRareCell(masterRareLabel, "Master (Rare)", RARE_MASTER, MASTER_RARE_ITEMS, result);
     }
 
     private void updateClueRareCell(JLabel label, String name, String clogCategory,
@@ -1535,8 +1535,8 @@ public class KillClogPanel extends PluginPanel
 
         int obtainedCount = countObtained(allItems, obtainedIds);
 
-        label.setText(pad(obtainedCount + "/" + allItems.size()));
-        label.setForeground(KC_COLOR);
+        label.setText(pad(obtainedCount > 0 ? formatKc(obtainedCount) : "--"));
+        label.setForeground(obtainedCount > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
 
         TooltipData data = new TooltipData();
         data.bossName = name;
@@ -1613,8 +1613,8 @@ public class KillClogPanel extends PluginPanel
         }
 
         int obtainedCount = obtainedIds.size();
-        label.setText(pad(obtainedCount + "/" + allItemsList.size()));
-        label.setForeground(KC_COLOR);
+        label.setText(pad(obtainedCount > 0 ? formatKc(obtainedCount) : "--"));
+        label.setForeground(obtainedCount > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
 
         TooltipData data = new TooltipData();
         data.bossName = name;
@@ -2017,9 +2017,9 @@ public class KillClogPanel extends PluginPanel
                 rareLabel.setToolTipText(null);
             }
         }
-        if (hardRareLabel != null) hardRareLabel.setToolTipText("Hard Rare");
-        if (eliteRareLabel != null) eliteRareLabel.setToolTipText("Elite Rare");
-        if (masterRareLabel != null) masterRareLabel.setToolTipText("Master Rare");
+        if (hardRareLabel != null) hardRareLabel.setToolTipText("Hard (Rare)");
+        if (eliteRareLabel != null) eliteRareLabel.setToolTipText("Elite (Rare)");
+        if (masterRareLabel != null) masterRareLabel.setToolTipText("Master (Rare)");
         // Fire hiscore lookup
         hiscoreService.lookup(player).thenAccept(result ->
             SwingUtilities.invokeLater(() ->
@@ -2680,7 +2680,6 @@ public class KillClogPanel extends PluginPanel
     private void updateTooltipsInner()
     {
         tooltipDataMap.clear();
-        customRareTooltipMap.clear();
 
         for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
         {
