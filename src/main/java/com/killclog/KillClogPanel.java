@@ -53,6 +53,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.IconTextField;
+import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
 import org.apache.commons.lang3.StringUtils;
 
@@ -182,6 +183,18 @@ public class KillClogPanel extends PluginPanel
         HiscoreSkill.PVP_ARENA_RANK,
     };
 
+    private static final HiscoreSkill[] CLUE_TIERS = {
+        HiscoreSkill.CLUE_SCROLL_BEGINNER, HiscoreSkill.CLUE_SCROLL_EASY,
+        HiscoreSkill.CLUE_SCROLL_MEDIUM, HiscoreSkill.CLUE_SCROLL_HARD,
+        HiscoreSkill.CLUE_SCROLL_ELITE, HiscoreSkill.CLUE_SCROLL_MASTER,
+    };
+
+    private static final String CLOG_THIRD_AGE = "third_age";
+    private static final String CLOG_GILDED = "gilded";
+    private static final int[] CLUE_TIER_ITEM_IDS = {23182, 2677, 2801, 2722, 12073, 19835};
+    private static final int THIRD_AGE_ITEM_ID = 10348;
+    private static final int GILDED_ITEM_ID = 3481;
+
     private final HiscoreService hiscoreService;
     private final ClogService clogService;
     private final KillClogConfig config;
@@ -276,6 +289,18 @@ public class KillClogPanel extends PluginPanel
     private boolean activitiesExpanded;
     private javax.swing.Timer slideTimer;
 
+    // Clue expansion state
+    private JPanel clueRow1;
+    private JPanel clueRow2;
+    private JPanel clueRow3;
+    private boolean clueExpanded;
+    private final Map<HiscoreSkill, JLabel> clueTierLabels = new LinkedHashMap<>();
+    private JLabel thirdAgeLabel;
+    private JLabel gildedLabel;
+    private TooltipData thirdAgeTooltipData;
+    private TooltipData gildedTooltipData;
+    private ImageIcon collectionsLoggedOrigIcon;
+
     // Current lookup state
     private HiscoreResult hiscoreResult;
     private ClogResult clogResult;
@@ -356,6 +381,7 @@ public class KillClogPanel extends PluginPanel
             }));
 
         activitiesExpanded = config.activitiesExpanded();
+        clueExpanded = config.clueExpanded();
 
         // Match native HiscorePanel structure
         setBorder(new EmptyBorder(10, 10, 0, 10));
@@ -386,9 +412,22 @@ public class KillClogPanel extends PluginPanel
             @Override
             public Dimension getPreferredSize()
             {
-                return new Dimension(
-                    activitiesGrid.getPreferredSize().width,
-                    super.getPreferredSize().height);
+                int h;
+                if (slideTimer != null && slideTimer.isRunning())
+                {
+                    // During activities toggle animation, use interpolated height
+                    h = super.getPreferredSize().height;
+                }
+                else if (activitiesExpanded)
+                {
+                    // When expanded and stable, follow grid content dynamically
+                    h = activitiesGrid.getPreferredSize().height;
+                }
+                else
+                {
+                    h = 0;
+                }
+                return new Dimension(activitiesGrid.getPreferredSize().width, h);
             }
         };
         activitiesClip.setBackground(ColorScheme.DARKER_GRAY_COLOR);
@@ -647,12 +686,14 @@ public class KillClogPanel extends PluginPanel
             slideTimer.stop();
         }
 
+        // Capture current height BEFORE toggling state (getPreferredSize depends on activitiesExpanded)
+        int startHeight = activitiesClip.getPreferredSize().height;
+
         activitiesExpanded = !activitiesExpanded;
         toggleArrow.setIcon(activitiesExpanded ? arrowUpIcon : arrowDownIcon);
         configManager.setConfiguration("killclog", "activitiesExpanded", activitiesExpanded);
 
         int targetHeight = activitiesExpanded ? activitiesGrid.getPreferredSize().height : 0;
-        int startHeight = activitiesClip.getPreferredSize().height;
 
         if (activitiesExpanded)
         {
@@ -688,13 +729,69 @@ public class KillClogPanel extends PluginPanel
 
     private JPanel buildActivitiesGrid()
     {
-        JPanel grid = new JPanel(new GridLayout(0, 3));
+        JPanel grid = new JPanel();
+        grid.setLayout(new BoxLayout(grid, BoxLayout.Y_AXIS));
         grid.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
-        for (HiscoreSkill activity : ACTIVITIES)
+        // Row 1: [Clue All*] [League Points] [LMS]
+        JPanel row1 = new JPanel(new GridLayout(1, 3));
+        row1.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        row1.setAlignmentX(0f);
+        row1.add(makeClueAllCell());
+        row1.add(makeActivityCell(HiscoreSkill.LEAGUE_POINTS));
+        row1.add(makeActivityCell(HiscoreSkill.LAST_MAN_STANDING));
+        grid.add(row1);
+
+        // Clue tier rows — toggled visible/invisible, no nested clip
+        clueRow1 = new JPanel(new GridLayout(1, 3));
+        clueRow1.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        clueRow1.setAlignmentX(0f);
+        clueRow1.add(makeClueTierCell(CLUE_TIERS[0], CLUE_TIER_ITEM_IDS[0]));
+        clueRow1.add(makeClueTierCell(CLUE_TIERS[1], CLUE_TIER_ITEM_IDS[1]));
+        clueRow1.add(makeClueTierCell(CLUE_TIERS[2], CLUE_TIER_ITEM_IDS[2]));
+        clueRow1.setVisible(clueExpanded);
+        grid.add(clueRow1);
+
+        clueRow2 = new JPanel(new GridLayout(1, 3));
+        clueRow2.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        clueRow2.setAlignmentX(0f);
+        clueRow2.add(makeClueTierCell(CLUE_TIERS[3], CLUE_TIER_ITEM_IDS[3]));
+        clueRow2.add(makeClueTierCell(CLUE_TIERS[4], CLUE_TIER_ITEM_IDS[4]));
+        clueRow2.add(makeClueTierCell(CLUE_TIERS[5], CLUE_TIER_ITEM_IDS[5]));
+        clueRow2.setVisible(clueExpanded);
+        grid.add(clueRow2);
+
+        clueRow3 = new JPanel(new GridLayout(1, 3));
+        clueRow3.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        clueRow3.setAlignmentX(0f);
+        clueRow3.add(makeClueRareCell("3rd Age", THIRD_AGE_ITEM_ID, CLOG_THIRD_AGE, true));
+        clueRow3.add(makeClueRareCell("Gilded", GILDED_ITEM_ID, CLOG_GILDED, false));
+        JPanel emptyClueCell = new JPanel();
+        emptyClueCell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        clueRow3.add(emptyClueCell);
+        clueRow3.setVisible(clueExpanded);
+        grid.add(clueRow3);
+
+        // Remaining activities
+        JPanel rest = new JPanel(new GridLayout(0, 3));
+        rest.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        rest.setAlignmentX(0f);
+        for (HiscoreSkill activity : new HiscoreSkill[]{
+            HiscoreSkill.SOUL_WARS_ZEAL, HiscoreSkill.RIFTS_CLOSED,
+            HiscoreSkill.COLOSSEUM_GLORY, HiscoreSkill.COLLECTIONS_LOGGED,
+            HiscoreSkill.BOUNTY_HUNTER_ROGUE, HiscoreSkill.BOUNTY_HUNTER_HUNTER,
+            HiscoreSkill.PVP_ARENA_RANK})
         {
-            grid.add(makeActivityCell(activity));
+            if (activity == HiscoreSkill.COLLECTIONS_LOGGED)
+            {
+                rest.add(makeCollectionsLoggedCell());
+            }
+            else
+            {
+                rest.add(makeActivityCell(activity));
+            }
         }
+        grid.add(rest);
 
         return grid;
     }
@@ -776,6 +873,439 @@ public class KillClogPanel extends PluginPanel
         return cell;
     }
 
+    private JPanel makeClueAllCell()
+    {
+        HiscoreSkill activity = HiscoreSkill.CLUE_SCROLL_ALL;
+        JLabel label = new JLabel()
+        {
+            @Override
+            public javax.swing.JToolTip createToolTip()
+            {
+                ParchmentTooltip tip = new ParchmentTooltip();
+                tip.setComponent(this);
+                return tip;
+            }
+        };
+        label.setToolTipText(activity.getName() + clueExpandHint());
+        label.setFont(FontManager.getRunescapeSmallFont());
+        label.setText(pad("--"));
+        label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        label.setIconTextGap(4);
+        label.putClientProperty(
+            RenderingHints.KEY_TEXT_ANTIALIASING,
+            RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+        if (activity.getSpriteId() != -1)
+        {
+            spriteManager.getSpriteAsync(activity.getSpriteId(), 0, sprite ->
+                SwingUtilities.invokeLater(() ->
+                {
+                    if (sprite != null)
+                    {
+                        BufferedImage scaled = ImageUtil.resizeImage(
+                            ImageUtil.resizeCanvas(sprite, 25, 25), 20, 20);
+                        label.setIcon(new ImageIcon(scaled));
+                    }
+                }));
+        }
+
+        activityLabels.put(activity, label);
+
+        JPanel cell = new JPanel();
+        cell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        cell.setBorder(new EmptyBorder(2, 0, 2, 0));
+        cell.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        cell.add(label);
+
+        MouseAdapter clueMouseAdapter = new MouseAdapter()
+        {
+            @Override
+            public void mouseEntered(MouseEvent e)
+            {
+                if (hoverExitTimer != null) hoverExitTimer.stop();
+                if (hoveredCell != null && hoveredCell != cell)
+                {
+                    hoveredCell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                }
+                hoveredCell = cell;
+                cell.setBackground(CELL_HOVER);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e)
+            {
+                if (hoverExitTimer != null) hoverExitTimer.stop();
+                hoverExitTimer = new javax.swing.Timer(150, evt ->
+                {
+                    if (hoveredCell == cell)
+                    {
+                        hoveredCell = null;
+                        cell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                    }
+                });
+                hoverExitTimer.setRepeats(false);
+                hoverExitTimer.start();
+            }
+
+            @Override
+            public void mousePressed(MouseEvent e)
+            {
+                toggleClueExpansion();
+            }
+        };
+        cell.addMouseListener(clueMouseAdapter);
+        label.addMouseListener(clueMouseAdapter);
+
+        return cell;
+    }
+
+    private String clueExpandHint()
+    {
+        return "\n{w}" + (clueExpanded ? "Click to Collapse" : "Click to Expand");
+    }
+
+    private JPanel makeClueTierCell(HiscoreSkill tier, int itemId)
+    {
+        JLabel label = new JLabel()
+        {
+            @Override
+            public javax.swing.JToolTip createToolTip()
+            {
+                ParchmentTooltip tip = new ParchmentTooltip();
+                tip.setComponent(this);
+                return tip;
+            }
+        };
+        label.setFont(FontManager.getRunescapeSmallFont());
+        label.setText(pad("--"));
+        label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        label.setIconTextGap(4);
+        label.setToolTipText(tier.getName());
+        label.putClientProperty(
+            RenderingHints.KEY_TEXT_ANTIALIASING,
+            RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+        BufferedImage img = itemManager.getImage(itemId, 1, false);
+        if (img != null)
+        {
+            label.setIcon(new ImageIcon(ImageUtil.resizeImage(img, 20, 20)));
+            if (img instanceof AsyncBufferedImage)
+            {
+                ((AsyncBufferedImage) img).onLoaded(() ->
+                    SwingUtilities.invokeLater(() ->
+                        label.setIcon(new ImageIcon(ImageUtil.resizeImage(
+                            itemManager.getImage(itemId, 1, false), 20, 20)))));
+            }
+        }
+
+        clueTierLabels.put(tier, label);
+
+        JPanel cell = new JPanel();
+        cell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        cell.setBorder(new EmptyBorder(2, 0, 2, 0));
+        cell.add(label);
+
+        label.addMouseListener(new MouseAdapter()
+        {
+            @Override
+            public void mouseEntered(MouseEvent e)
+            {
+                if (hoverExitTimer != null) hoverExitTimer.stop();
+                if (hoveredCell != null && hoveredCell != cell)
+                {
+                    hoveredCell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                }
+                hoveredCell = cell;
+                cell.setBackground(CELL_HOVER);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e)
+            {
+                if (hoverExitTimer != null) hoverExitTimer.stop();
+                hoverExitTimer = new javax.swing.Timer(150, evt ->
+                {
+                    if (hoveredCell == cell)
+                    {
+                        hoveredCell = null;
+                        cell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                    }
+                });
+                hoverExitTimer.setRepeats(false);
+                hoverExitTimer.start();
+            }
+        });
+
+        return cell;
+    }
+
+    private JPanel makeClueRareCell(String name, int itemId, String clogCategory, boolean isThirdAge)
+    {
+        JLabel label = new JLabel()
+        {
+            @Override
+            public javax.swing.JToolTip createToolTip()
+            {
+                TooltipData data = isThirdAge ? thirdAgeTooltipData : gildedTooltipData;
+                if (data != null)
+                {
+                    BossTooltip tip = new BossTooltip();
+                    tip.setComponent(this);
+                    tip.setData(data.bossName, data.rank, data.obtainedCount,
+                        data.totalItems, data.allItemIds, data.obtainedIds,
+                        data.obtainedCounts, itemManager);
+
+                    JPanel parentCell = (JPanel) this.getParent();
+                    tip.addMouseListener(new java.awt.event.MouseAdapter()
+                    {
+                        @Override
+                        public void mouseEntered(java.awt.event.MouseEvent e)
+                        {
+                            if (hoverExitTimer != null) hoverExitTimer.stop();
+                        }
+
+                        @Override
+                        public void mouseExited(java.awt.event.MouseEvent e)
+                        {
+                            if (hoveredCell == parentCell)
+                            {
+                                hoveredCell = null;
+                                parentCell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                            }
+                        }
+                    });
+
+                    tip.addHierarchyListener(e ->
+                    {
+                        if ((e.getChangeFlags() & java.awt.event.HierarchyEvent.SHOWING_CHANGED) != 0
+                            && !tip.isShowing())
+                        {
+                            if (hoveredCell == parentCell)
+                            {
+                                hoveredCell = null;
+                                parentCell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                            }
+                        }
+                    });
+
+                    return tip;
+                }
+                ParchmentTooltip fallback = new ParchmentTooltip();
+                fallback.setComponent(this);
+                return fallback;
+            }
+        };
+        label.setFont(FontManager.getRunescapeSmallFont());
+        label.setText(pad("--"));
+        label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        label.setIconTextGap(4);
+        label.setToolTipText(name);
+        label.putClientProperty(
+            RenderingHints.KEY_TEXT_ANTIALIASING,
+            RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+        BufferedImage img = itemManager.getImage(itemId, 1, false);
+        if (img != null)
+        {
+            label.setIcon(new ImageIcon(ImageUtil.resizeImage(img, 20, 20)));
+            if (img instanceof AsyncBufferedImage)
+            {
+                ((AsyncBufferedImage) img).onLoaded(() ->
+                    SwingUtilities.invokeLater(() ->
+                        label.setIcon(new ImageIcon(ImageUtil.resizeImage(
+                            itemManager.getImage(itemId, 1, false), 20, 20)))));
+            }
+        }
+
+        if (isThirdAge)
+        {
+            thirdAgeLabel = label;
+        }
+        else
+        {
+            gildedLabel = label;
+        }
+
+        JPanel cell = new JPanel();
+        cell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        cell.setBorder(new EmptyBorder(2, 0, 2, 0));
+        cell.add(label);
+
+        label.addMouseListener(new MouseAdapter()
+        {
+            @Override
+            public void mouseEntered(MouseEvent e)
+            {
+                if (hoverExitTimer != null) hoverExitTimer.stop();
+                if (hoveredCell != null && hoveredCell != cell)
+                {
+                    hoveredCell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                }
+                hoveredCell = cell;
+                cell.setBackground(CELL_HOVER);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e)
+            {
+                if (hoverExitTimer != null) hoverExitTimer.stop();
+                hoverExitTimer = new javax.swing.Timer(150, evt ->
+                {
+                    if (hoveredCell == cell)
+                    {
+                        hoveredCell = null;
+                        cell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                    }
+                });
+                hoverExitTimer.setRepeats(false);
+                hoverExitTimer.start();
+            }
+        });
+
+        return cell;
+    }
+
+    private JPanel makeCollectionsLoggedCell()
+    {
+        HiscoreSkill activity = HiscoreSkill.COLLECTIONS_LOGGED;
+        JLabel label = new JLabel()
+        {
+            @Override
+            public javax.swing.JToolTip createToolTip()
+            {
+                ParchmentTooltip tip = new ParchmentTooltip();
+                tip.setComponent(this);
+                for (Map.Entry<String, ImageIcon> entry : clogTierIcons.entrySet())
+                {
+                    tip.putIcon(entry.getKey(), iconToImage(entry.getValue()));
+                }
+                tip.putIcon("rigour", iconToImage(rigourIcon));
+                tip.putIcon("eagle_eye", iconToImage(eagleEyeIcon));
+                return tip;
+            }
+        };
+        label.setToolTipText(activity.getName());
+        label.setFont(FontManager.getRunescapeSmallFont());
+        label.setText(pad("--"));
+        label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        label.setIconTextGap(4);
+        label.putClientProperty(
+            RenderingHints.KEY_TEXT_ANTIALIASING,
+            RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+
+        if (activity.getSpriteId() != -1)
+        {
+            spriteManager.getSpriteAsync(activity.getSpriteId(), 0, sprite ->
+                SwingUtilities.invokeLater(() ->
+                {
+                    if (sprite != null)
+                    {
+                        BufferedImage scaled = ImageUtil.resizeImage(
+                            ImageUtil.resizeCanvas(sprite, 25, 25), 20, 20);
+                        collectionsLoggedOrigIcon = new ImageIcon(scaled);
+                        label.setIcon(collectionsLoggedOrigIcon);
+                    }
+                }));
+        }
+
+        activityLabels.put(activity, label);
+
+        JPanel cell = new JPanel();
+        cell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        cell.setBorder(new EmptyBorder(2, 0, 2, 0));
+        cell.add(label);
+
+        label.addMouseListener(new MouseAdapter()
+        {
+            @Override
+            public void mouseEntered(MouseEvent e)
+            {
+                if (hoverExitTimer != null) hoverExitTimer.stop();
+                if (hoveredCell != null && hoveredCell != cell)
+                {
+                    hoveredCell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                }
+                hoveredCell = cell;
+                cell.setBackground(CELL_HOVER);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e)
+            {
+                if (hoverExitTimer != null) hoverExitTimer.stop();
+                hoverExitTimer = new javax.swing.Timer(150, evt ->
+                {
+                    if (hoveredCell == cell)
+                    {
+                        hoveredCell = null;
+                        cell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                    }
+                });
+                hoverExitTimer.setRepeats(false);
+                hoverExitTimer.start();
+            }
+        });
+
+        return cell;
+    }
+
+    private void toggleClueExpansion()
+    {
+        if (slideTimer != null && slideTimer.isRunning())
+        {
+            slideTimer.stop();
+        }
+
+        clueExpanded = !clueExpanded;
+        configManager.setConfiguration("killclog", "clueExpanded", clueExpanded);
+
+        // Update Clue All tooltip with new expand/collapse hint
+        JLabel clueAllLabel = activityLabels.get(HiscoreSkill.CLUE_SCROLL_ALL);
+        if (clueAllLabel != null)
+        {
+            String current = clueAllLabel.getToolTipText();
+            if (current != null)
+            {
+                int hintIdx = current.indexOf("\n{w}Click to");
+                String base = hintIdx >= 0 ? current.substring(0, hintIdx) : current;
+                clueAllLabel.setToolTipText(base + clueExpandHint());
+            }
+        }
+
+        // Capture current height before toggling row visibility
+        int startHeight = activitiesClip.getPreferredSize().height;
+
+        // Toggle clue row visibility — BoxLayout skips invisible components
+        clueRow1.setVisible(clueExpanded);
+        clueRow2.setVisible(clueExpanded);
+        clueRow3.setVisible(clueExpanded);
+
+        // Target = new grid height with rows shown/hidden
+        int targetHeight = activitiesGrid.getPreferredSize().height;
+
+        // Animate activitiesClip from current → target (reuse slideTimer)
+        long duration = 150;
+        long startTime = System.currentTimeMillis();
+
+        slideTimer = new javax.swing.Timer(12, null);
+        slideTimer.addActionListener(e ->
+        {
+            long elapsed = System.currentTimeMillis() - startTime;
+            float progress = Math.min(1f, (float) elapsed / duration);
+            float eased = 1f - (1f - progress) * (1f - progress);
+
+            int height = startHeight + Math.round((targetHeight - startHeight) * eased);
+            activitiesClip.setPreferredSize(new Dimension(0, height));
+            revalidate();
+
+            if (progress >= 1f)
+            {
+                slideTimer.stop();
+            }
+        });
+        slideTimer.start();
+    }
+
     private void updateActivityLabels(HiscoreResult result)
     {
         for (Map.Entry<HiscoreSkill, JLabel> entry : activityLabels.entrySet())
@@ -790,15 +1320,33 @@ public class KillClogPanel extends PluginPanel
             // Clue Scrolls (all) gets a special per-tier tooltip
             if (activity == HiscoreSkill.CLUE_SCROLL_ALL)
             {
-                label.setToolTipText(buildClueTooltip(result));
+                label.setToolTipText(buildClueTooltip(result) + clueExpandHint());
             }
             else
             {
                 int rank = result.getActivityRank(activity.getName());
                 label.setToolTipText(rank > 0
-                    ? activity.getName() + "\nRank: " + String.format("%,d", rank)
+                    ? activity.getName() + "\nRank: {w}" + String.format("%,d", rank)
                     : activity.getName());
             }
+        }
+
+        // Update clue tier labels
+        for (Map.Entry<HiscoreSkill, JLabel> entry : clueTierLabels.entrySet())
+        {
+            HiscoreSkill tier = entry.getKey();
+            JLabel label = entry.getValue();
+
+            int score = result.getActivityScore(tier.getName());
+            label.setText(pad(score <= 0 ? "--" : formatKc(score)));
+            label.setForeground(score > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
+
+            String shortName = tier.getName().replace("Clue Scrolls (", "").replace(")", "");
+            shortName = shortName.substring(0, 1).toUpperCase() + shortName.substring(1);
+            int rank = result.getActivityRank(tier.getName());
+            label.setToolTipText(rank > 0
+                ? shortName + "\nRank: {w}" + String.format("%,d", rank)
+                : shortName);
         }
     }
 
@@ -808,7 +1356,7 @@ public class KillClogPanel extends PluginPanel
         int allScore = result.getActivityScore("Clue Scrolls (all)");
         if (allScore > 0)
         {
-            sb.append(": ").append(String.format("%,d", allScore));
+            sb.append(": {w}").append(String.format("%,d", allScore));
         }
 
         String[] tiers = {"Beginner", "Easy", "Medium", "Hard", "Elite", "Master"};
@@ -820,17 +1368,121 @@ public class KillClogPanel extends PluginPanel
         for (int i = 0; i < tiers.length; i++)
         {
             int tierScore = result.getActivityScore(keys[i]);
-            sb.append("\n").append(tiers[i]).append(": ");
+            sb.append("\n").append(tiers[i]).append(": {w}");
             sb.append(tierScore > 0 ? String.format("%,d", tierScore) : "--");
         }
 
         int rank = result.getActivityRank("Clue Scrolls (all)");
         if (rank > 0)
         {
-            sb.append("\nRank: ").append(String.format("%,d", rank));
+            sb.append("\nRank: {w}").append(String.format("%,d", rank));
         }
 
         return sb.toString();
+    }
+
+    private void updateClueRareCells(ClogResult result)
+    {
+        updateClueRareCell(thirdAgeLabel, "3rd Age", CLOG_THIRD_AGE, result, true);
+        updateClueRareCell(gildedLabel, "Gilded", CLOG_GILDED, result, false);
+    }
+
+    private void updateClueRareCell(JLabel label, String name, String clogCategory,
+                                    ClogResult result, boolean isThirdAge)
+    {
+        if (label == null)
+        {
+            return;
+        }
+
+        List<Integer> allItems = result.getCategoryItems().get(clogCategory);
+        List<ClogResult.ClogItem> obtained = result.getObtainedItems().get(clogCategory);
+
+        if (allItems == null || allItems.isEmpty())
+        {
+            label.setToolTipText(name);
+            return;
+        }
+
+        Set<Integer> obtainedIds = new HashSet<>();
+        Map<Integer, Integer> obtainedCounts = new LinkedHashMap<>();
+        if (obtained != null)
+        {
+            for (ClogResult.ClogItem item : obtained)
+            {
+                obtainedIds.add(item.getId());
+                obtainedCounts.put(item.getId(), item.getCount());
+            }
+        }
+
+        int obtainedCount = countObtained(allItems, obtainedIds);
+
+        label.setText(pad(obtainedCount + "/" + allItems.size()));
+        label.setForeground(KC_COLOR);
+
+        TooltipData data = new TooltipData();
+        data.bossName = name;
+        data.rank = -1;
+        data.obtainedCount = obtainedCount;
+        data.totalItems = allItems.size();
+        data.allItemIds = allItems;
+        data.obtainedIds = obtainedIds;
+        data.obtainedCounts = obtainedCounts;
+
+        if (isThirdAge)
+        {
+            thirdAgeTooltipData = data;
+        }
+        else
+        {
+            gildedTooltipData = data;
+        }
+
+        // Pre-load item images
+        for (int itemId : allItems)
+        {
+            int count = obtainedIds.contains(itemId)
+                ? obtainedCounts.getOrDefault(itemId, 1) : 1;
+            BufferedImage img = itemManager.getImage(itemId, count, false);
+            if (img instanceof AsyncBufferedImage)
+            {
+                ((AsyncBufferedImage) img).onLoaded(() ->
+                    SwingUtilities.invokeLater(() -> {}));
+            }
+        }
+
+        // Activate BossTooltip
+        label.setToolTipText(" ");
+    }
+
+    private void updateCollectionsLoggedCell(ClogResult result)
+    {
+        JLabel label = activityLabels.get(HiscoreSkill.COLLECTIONS_LOGGED);
+        if (label == null)
+        {
+            return;
+        }
+
+        int[] totals = calculateTotalClog(result);
+        if (totals[0] > 0)
+        {
+            ImageIcon tierIcon = getClogTierIcon(totals[0], totals[1]);
+            if (tierIcon != null)
+            {
+                BufferedImage scaled = ImageUtil.resizeImage(iconToImage(tierIcon), 20, 20);
+                label.setIcon(new ImageIcon(scaled));
+            }
+            label.setText(pad(formatKc(totals[0])));
+            label.setForeground(KC_COLOR);
+
+            String tooltip = getClogTierTooltip(totals[0], totals[1]);
+            String syncLine = buildSyncTooltipLine(clogLastChanged);
+            if (syncLine != null)
+            {
+                tooltip = tooltip + "\n" + syncLine;
+            }
+            label.setToolTipText(tooltip);
+        }
     }
 
     private JPanel buildBossGrid()
@@ -1148,8 +1800,42 @@ public class KillClogPanel extends PluginPanel
             JLabel label = entry.getValue();
             label.setText(pad("--"));
             label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+            String tip = entry.getKey().getName();
+            if (entry.getKey() == HiscoreSkill.CLUE_SCROLL_ALL)
+            {
+                tip += clueExpandHint();
+            }
+            label.setToolTipText(tip);
+        }
+        // Reset Collections Logged to original sprite icon
+        JLabel clogCell = activityLabels.get(HiscoreSkill.COLLECTIONS_LOGGED);
+        if (clogCell != null && collectionsLoggedOrigIcon != null)
+        {
+            clogCell.setIcon(collectionsLoggedOrigIcon);
+        }
+        // Reset clue tier labels
+        for (Map.Entry<HiscoreSkill, JLabel> entry : clueTierLabels.entrySet())
+        {
+            JLabel label = entry.getValue();
+            label.setText(pad("--"));
+            label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
             label.setToolTipText(entry.getKey().getName());
         }
+        // Reset 3rd Age / Gilded cells
+        if (thirdAgeLabel != null)
+        {
+            thirdAgeLabel.setText(pad("--"));
+            thirdAgeLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+            thirdAgeLabel.setToolTipText("3rd Age");
+        }
+        if (gildedLabel != null)
+        {
+            gildedLabel.setText(pad("--"));
+            gildedLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+            gildedLabel.setToolTipText("Gilded");
+        }
+        thirdAgeTooltipData = null;
+        gildedTooltipData = null;
         // Fire hiscore lookup
         hiscoreService.lookup(player).thenAccept(result ->
             SwingUtilities.invokeLater(() ->
@@ -1286,7 +1972,10 @@ public class KillClogPanel extends PluginPanel
                         // Resolve untradeable item names via game cache on client thread
                         resolveUntradeableNames(result);
 
-                        // Populate CENTER zone with total clog X/Y (only if hiscore already loaded)
+                        // Update clue rare cells (3rd Age, Gilded) — only needs clog data
+                        updateClueRareCells(result);
+
+                        // Populate clog data in activities tray (only if hiscore already loaded)
                         if (hiscoreResult != null)
                         {
                             updateClogInfo(result);
@@ -1819,37 +2508,52 @@ public class KillClogPanel extends PluginPanel
 
         if (lastChanged == null || lastChanged.isEmpty())
         {
-            // No Temple data — sharp eye stays visible in info bar
             syncLabel.setText("");
             syncLabel.setIcon(sharpEyeIcon);
             syncLabel.setToolTipText("Not synced to TempleOSRS");
             return;
         }
 
-        // Has Temple data — sync info moves into clog tier tooltip, clear info bar icon
-        syncLabel.setText("");
-        syncLabel.setIcon(null);
-        syncLabel.setToolTipText(null);
+        try
+        {
+            DateTimeFormatter parser = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+            LocalDateTime syncTime = LocalDateTime.parse(lastChanged, parser);
+            long daysAgo = ChronoUnit.DAYS.between(syncTime, LocalDateTime.now());
+
+            ImageIcon icon;
+            if (daysAgo <= 7)
+            {
+                icon = rigourIcon;
+            }
+            else if (daysAgo <= STALE_DAYS)
+            {
+                icon = eagleEyeIcon;
+            }
+            else
+            {
+                icon = sharpEyeIcon;
+            }
+
+            syncLabel.setText("");
+            syncLabel.setIcon(icon);
+            DateTimeFormatter display = DateTimeFormatter.ofPattern("MMM d, yyyy");
+            syncLabel.setToolTipText("Last update: " + syncTime.format(display));
+        }
+        catch (DateTimeParseException e)
+        {
+            syncLabel.setText("");
+            syncLabel.setIcon(sharpEyeIcon);
+            syncLabel.setToolTipText("Not synced to TempleOSRS");
+        }
     }
 
     private void updateClogInfo(ClogResult result)
     {
-        int[] totals = calculateTotalClog(result);
-        if (totals[0] > 0)
-        {
-            ImageIcon tierIcon = getClogTierIcon(totals[0], totals[1]);
-            infoTotalLabel.setIcon(tierIcon != null ? tierIcon : clogBookIcon);
-            infoTotalLabel.setText(String.valueOf(totals[0]));
-            infoTotalLabel.setForeground(config.infoBarColor());
-
-            String tooltip = getClogTierTooltip(totals[0], totals[1]);
-            String syncLine = buildSyncTooltipLine(clogLastChanged);
-            if (syncLine != null)
-            {
-                tooltip = tooltip + "\n" + syncLine;
-            }
-            infoTotalLabel.setToolTipText(tooltip);
-        }
+        updateCollectionsLoggedCell(result);
+        // Clear info bar clog display — clog data now lives in activities tray
+        infoTotalLabel.setIcon(null);
+        infoTotalLabel.setText("");
+        infoTotalLabel.setToolTipText(null);
     }
 
     /**

@@ -99,23 +99,34 @@ public class ParchmentTooltip extends JToolTip
     }
 
     /**
-     * A segment of a tooltip line — either text or an icon.
+     * A segment of a tooltip line — text, icon, or color switch.
+     * Use {w} in tooltip text to switch to white for score values.
      */
     private static class Segment
     {
-        final String text;       // null if icon
-        final BufferedImage icon; // null if text
+        final String text;       // null if icon or color
+        final BufferedImage icon; // null if text or color
+        final Color color;       // null if text or icon
 
         Segment(String text)
         {
             this.text = text;
             this.icon = null;
+            this.color = null;
         }
 
         Segment(BufferedImage icon)
         {
             this.text = null;
             this.icon = icon;
+            this.color = null;
+        }
+
+        Segment(Color color)
+        {
+            this.text = null;
+            this.icon = null;
+            this.color = color;
         }
     }
 
@@ -137,15 +148,22 @@ public class ParchmentTooltip extends JToolTip
             }
 
             String key = m.group(1);
-            BufferedImage icon = iconMap.get(key);
-            if (icon != null)
+            if ("w".equals(key))
             {
-                segments.add(new Segment(icon));
+                segments.add(new Segment(Color.WHITE));
             }
             else
             {
-                // Unknown key — render as text
-                segments.add(new Segment(m.group(0)));
+                BufferedImage icon = iconMap.get(key);
+                if (icon != null)
+                {
+                    segments.add(new Segment(icon));
+                }
+                else
+                {
+                    // Unknown key — render as text
+                    segments.add(new Segment(m.group(0)));
+                }
             }
 
             lastEnd = m.end();
@@ -167,7 +185,11 @@ public class ParchmentTooltip extends JToolTip
         int width = 0;
         for (Segment seg : segments)
         {
-            if (seg.icon != null)
+            if (seg.color != null)
+            {
+                // Color switch — no width
+            }
+            else if (seg.icon != null)
             {
                 width += seg.icon.getWidth() + ICON_GAP;
             }
@@ -232,11 +254,16 @@ public class ParchmentTooltip extends JToolTip
             for (String line : lines)
             {
                 int x = inset;
+                g2.setColor(OSRS_ORANGE);
                 List<Segment> segments = parseSegments(line);
 
                 for (Segment seg : segments)
                 {
-                    if (seg.icon != null)
+                    if (seg.color != null)
+                    {
+                        g2.setColor(seg.color);
+                    }
+                    else if (seg.icon != null)
                     {
                         int iconY = y - fm.getAscent() + (LINE_HEIGHT - seg.icon.getHeight()) / 2;
                         g2.drawImage(seg.icon, x, iconY, null);
