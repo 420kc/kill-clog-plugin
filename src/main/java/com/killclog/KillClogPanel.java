@@ -34,6 +34,7 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JToolTip;
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 import javax.swing.border.EmptyBorder;
@@ -790,17 +791,17 @@ public class KillClogPanel extends PluginPanel
         JPanel clueRow1 = new JPanel(new GridLayout(1, 3));
         clueRow1.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         clueRow1.setAlignmentX(0f);
-        clueRow1.add(makeClueTierCell(CLUE_TIERS[0], CLUE_TIER_ITEM_IDS[0]));
-        clueRow1.add(makeClueTierCell(CLUE_TIERS[1], CLUE_TIER_ITEM_IDS[1]));
-        clueRow1.add(makeClueTierCell(CLUE_TIERS[2], CLUE_TIER_ITEM_IDS[2]));
+        clueRow1.add(makeClueTierCell(CLUE_TIERS[0], CLUE_TIER_ITEM_IDS[0], false));
+        clueRow1.add(makeClueTierCell(CLUE_TIERS[1], CLUE_TIER_ITEM_IDS[1], true));
+        clueRow1.add(makeClueTierCell(CLUE_TIERS[2], CLUE_TIER_ITEM_IDS[2], true));
         grid.add(clueRow1);
 
         JPanel clueRow2 = new JPanel(new GridLayout(1, 3));
         clueRow2.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         clueRow2.setAlignmentX(0f);
-        clueRow2.add(makeClueTierCell(CLUE_TIERS[3], CLUE_TIER_ITEM_IDS[3]));
-        clueRow2.add(makeClueTierCell(CLUE_TIERS[4], CLUE_TIER_ITEM_IDS[4]));
-        clueRow2.add(makeClueTierCell(CLUE_TIERS[5], CLUE_TIER_ITEM_IDS[5]));
+        clueRow2.add(makeClueTierCell(CLUE_TIERS[3], CLUE_TIER_ITEM_IDS[3], true));
+        clueRow2.add(makeClueTierCell(CLUE_TIERS[4], CLUE_TIER_ITEM_IDS[4], false));
+        clueRow2.add(makeClueTierCell(CLUE_TIERS[5], CLUE_TIER_ITEM_IDS[5], false));
         grid.add(clueRow2);
 
         // Row 4: [Hard Rare] [Elite Rare] [Master Rare]
@@ -959,7 +960,7 @@ public class KillClogPanel extends PluginPanel
     }
 
 
-    private JPanel makeClueTierCell(HiscoreSkill tier, int itemId)
+    private JPanel makeClueTierCell(HiscoreSkill tier, int itemId, boolean wide)
     {
         JLabel label = new JLabel()
         {
@@ -969,11 +970,25 @@ public class KillClogPanel extends PluginPanel
                 TooltipData data = tooltipDataMap.get(tier);
                 if (data != null)
                 {
-                    BossTooltip tip = new BossTooltip();
-                    tip.setComponent(this);
-                    tip.setData(data.bossName, data.rank, data.obtainedCount,
-                        data.totalItems, data.allItemIds, data.obtainedIds,
-                        data.obtainedCounts, itemManager);
+                    final JToolTip tip;
+                    if (wide)
+                    {
+                        WideBossTooltip wt = new WideBossTooltip();
+                        wt.setComponent(this);
+                        wt.setData(data.bossName, data.rank, data.obtainedCount,
+                            data.totalItems, data.allItemIds, data.obtainedIds,
+                            data.obtainedCounts, itemManager);
+                        tip = wt;
+                    }
+                    else
+                    {
+                        BossTooltip bt = new BossTooltip();
+                        bt.setComponent(this);
+                        bt.setData(data.bossName, data.rank, data.obtainedCount,
+                            data.totalItems, data.allItemIds, data.obtainedIds,
+                            data.obtainedCounts, itemManager);
+                        tip = bt;
+                    }
 
                     JPanel parentCell = (JPanel) this.getParent();
                     tip.addMouseListener(new java.awt.event.MouseAdapter()
@@ -2065,7 +2080,7 @@ public class KillClogPanel extends PluginPanel
                     if (totalLevel >= 2376 && zukKc >= 1 && infernalMaxCapeIcon != null)
                     {
                         levelIcon = infernalMaxCapeIcon;
-                        levelTooltip = "Infernally Maxed";
+                        levelTooltip = "Maxed TzKal";
                     }
                     else if (totalLevel >= 2376 && maxCapeIcon != null)
                     {
@@ -2082,11 +2097,11 @@ public class KillClogPanel extends PluginPanel
                         levelIcon = skillsIcon;
                         levelTooltip = null;
                     }
-                    // Append combat level to tooltip ({combat} icon drawn by ParchmentTooltip)
+                    // Prepend combat level to tooltip ({combat} icon drawn by ParchmentTooltip)
                     if (combatLevel > 0)
                     {
-                        levelTooltip = (levelTooltip != null ? levelTooltip + "\n" : "")
-                            + "{combat}" + combatLevel;
+                        String combatLine = "{c}{combat}{w}" + combatLevel;
+                        levelTooltip = combatLine + (levelTooltip != null ? "\n" + levelTooltip : "");
                     }
                     infoKcLabel.setIcon(levelIcon);
                     infoKcLabel.setToolTipText(levelTooltip);

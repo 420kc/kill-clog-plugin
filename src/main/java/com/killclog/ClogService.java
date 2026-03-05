@@ -89,6 +89,10 @@ public class ClogService
     private volatile Map<String, List<Integer>> cachedCategories;
     private volatile Map<Integer, String> cachedItemNames;
 
+    // In-flight futures — prevents duplicate HTTP requests from concurrent callers
+    private volatile CompletableFuture<Map<String, List<Integer>>> categoriesFlight;
+    private volatile CompletableFuture<Map<Integer, String>> namesFlight;
+
     @Inject
     public ClogService(OkHttpClient httpClient, Gson gson, LocalClogCache localClogCache, KillClogConfig config)
     {
@@ -248,84 +252,120 @@ public class ClogService
         });
     }
 
-    private synchronized CompletableFuture<Map<String, List<Integer>>> fetchCategories()
+    private CompletableFuture<Map<String, List<Integer>>> fetchCategories()
     {
         if (cachedCategories != null)
         {
             return CompletableFuture.completedFuture(cachedCategories);
         }
 
-        return httpGetAsync(TEMPLE_CATEGORIES_URL).thenApply(json ->
+        synchronized (this)
         {
-            if (json == null)
+            if (cachedCategories != null)
             {
-                return null;
+                return CompletableFuture.completedFuture(cachedCategories);
             }
-            try
+            if (categoriesFlight != null)
             {
-                JsonObject root = gson.fromJson(json, JsonObject.class);
-                Type type = new TypeToken<Map<String, List<Integer>>>(){}.getType();
-                Map<String, List<Integer>> categories = new HashMap<>();
-                for (String section : new String[]{"bosses", "raids", "clues", "minigames", "other"})
+                return categoriesFlight;
+            }
+
+            categoriesFlight = httpGetAsync(TEMPLE_CATEGORIES_URL).thenApply(json ->
+            {
+                try
                 {
-                    JsonObject sectionObj = root.getAsJsonObject(section);
-                    if (sectionObj != null)
+                    if (json == null)
                     {
-                        Map<String, List<Integer>> sectionMap = gson.fromJson(sectionObj, type);
-                        categories.putAll(sectionMap);
+                        return null;
                     }
+                    JsonObject root = gson.fromJson(json, JsonObject.class);
+                    Type type = new TypeToken<Map<String, List<Integer>>>(){}.getType();
+                    Map<String, List<Integer>> categories = new HashMap<>();
+                    for (String section : new String[]{"bosses", "raids", "clues", "minigames", "other"})
+                    {
+                        JsonObject sectionObj = root.getAsJsonObject(section);
+                        if (sectionObj != null)
+                        {
+                            Map<String, List<Integer>> sectionMap = gson.fromJson(sectionObj, type);
+                            categories.putAll(sectionMap);
+                        }
+                    }
+                    if (categories.isEmpty())
+                    {
+                        return null;
+                    }
+                    cachedCategories = categories;
+                    return categories;
                 }
-                if (categories.isEmpty())
+                catch (Exception e)
                 {
+                    log.debug("Failed to parse clog categories: {}", e.getMessage());
                     return null;
                 }
-                cachedCategories = categories;
-                return categories;
-            }
-            catch (Exception e)
-            {
-                log.debug("Failed to parse clog categories: {}", e.getMessage());
-                return null;
-            }
-        });
+                finally
+                {
+                    categoriesFlight = null;
+                }
+            });
+
+            return categoriesFlight;
+        }
     }
 
-    private synchronized CompletableFuture<Map<Integer, String>> fetchItemNames()
+    private CompletableFuture<Map<Integer, String>> fetchItemNames()
     {
         if (cachedItemNames != null)
         {
             return CompletableFuture.completedFuture(cachedItemNames);
         }
 
-        return httpGetAsync(WIKI_MAPPING_URL).thenApply(json ->
+        synchronized (this)
         {
-            if (json == null)
+            if (cachedItemNames != null)
             {
-                return null;
+                return CompletableFuture.completedFuture(cachedItemNames);
             }
-            try
+            if (namesFlight != null)
             {
-                JsonArray arr = gson.fromJson(json, JsonArray.class);
-                Map<Integer, String> names = new HashMap<>();
+                return namesFlight;
+            }
 
-                for (JsonElement elem : arr)
+            namesFlight = httpGetAsync(WIKI_MAPPING_URL).thenApply(json ->
+            {
+                try
                 {
-                    JsonObject obj = elem.getAsJsonObject();
-                    if (obj.has("id") && obj.has("name"))
+                    if (json == null)
                     {
-                        names.put(obj.get("id").getAsInt(), obj.get("name").getAsString());
+                        return null;
                     }
-                }
+                    JsonArray arr = gson.fromJson(json, JsonArray.class);
+                    Map<Integer, String> names = new HashMap<>();
 
-                cachedItemNames = names;
-                return names;
-            }
-            catch (Exception e)
-            {
-                log.debug("Failed to parse item names: {}", e.getMessage());
-                return null;
-            }
-        });
+                    for (JsonElement elem : arr)
+                    {
+                        JsonObject obj = elem.getAsJsonObject();
+                        if (obj.has("id") && obj.has("name"))
+                        {
+                            names.put(obj.get("id").getAsInt(), obj.get("name").getAsString());
+                        }
+                    }
+
+                    cachedItemNames = names;
+                    return names;
+                }
+                catch (Exception e)
+                {
+                    log.debug("Failed to parse item names: {}", e.getMessage());
+                    return null;
+                }
+                finally
+                {
+                    namesFlight = null;
+                }
+            });
+
+            return namesFlight;
+        }
     }
 
     /**

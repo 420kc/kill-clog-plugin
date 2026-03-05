@@ -152,6 +152,10 @@ public class ParchmentTooltip extends JToolTip
             {
                 segments.add(new Segment(Color.WHITE));
             }
+            else if ("c".equals(key))
+            {
+                // Center marker — handled during painting, no segment added
+            }
             else
             {
                 BufferedImage icon = iconMap.get(key);
@@ -217,7 +221,8 @@ public class ParchmentTooltip extends JToolTip
         int maxWidth = 0;
         for (String line : lines)
         {
-            List<Segment> segments = parseSegments(line);
+            String measureLine = line.startsWith("{c}") ? line.substring(3) : line;
+            List<Segment> segments = parseSegments(measureLine);
             maxWidth = Math.max(maxWidth, measureSegments(segments, fm));
         }
 
@@ -253,9 +258,12 @@ public class ParchmentTooltip extends JToolTip
 
             for (String line : lines)
             {
-                int x = inset;
+                boolean centered = line.startsWith("{c}");
+                String renderLine = centered ? line.substring(3) : line;
                 g2.setColor(OSRS_ORANGE);
-                List<Segment> segments = parseSegments(line);
+                List<Segment> segments = parseSegments(renderLine);
+                int lineWidth = measureSegments(segments, fm);
+                int x = centered ? (w - lineWidth) / 2 : inset;
 
                 for (Segment seg : segments)
                 {

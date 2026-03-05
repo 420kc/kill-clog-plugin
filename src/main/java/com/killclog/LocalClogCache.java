@@ -11,6 +11,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +32,12 @@ public class LocalClogCache
 
     private final Map<String, PlayerClogData> players = new ConcurrentHashMap<>();
     private final Gson gson;
+    private final ExecutorService diskWriter = Executors.newSingleThreadExecutor(r ->
+    {
+        Thread t = new Thread(r, "kill-clog-disk");
+        t.setDaemon(true);
+        return t;
+    });
     private volatile String activePlayerName;
 
     @Inject
@@ -195,24 +203,32 @@ public class LocalClogCache
 
     private void saveToDisk(String playerName, PlayerClogData data)
     {
-        try
+        diskWriter.execute(() ->
         {
-            if (!CACHE_DIR.exists())
+            try
             {
-                CACHE_DIR.mkdirs();
-            }
+                if (!CACHE_DIR.exists())
+                {
+                    CACHE_DIR.mkdirs();
+                }
 
-            File file = getCacheFile(playerName);
-            try (FileWriter writer = new FileWriter(file))
-            {
-                gson.toJson(data, writer);
+                File file = getCacheFile(playerName);
+                try (FileWriter writer = new FileWriter(file))
+                {
+                    gson.toJson(data, writer);
+                }
+                log.debug("Saved clog cache to disk: {}", file.getName());
             }
-            log.debug("Saved clog cache to disk: {}", file.getName());
-        }
-        catch (IOException e)
-        {
-            log.warn("Failed to save clog cache for '{}': {}", playerName, e.getMessage());
-        }
+            catch (IOException e)
+            {
+                log.warn("Failed to save clog cache for '{}': {}", playerName, e.getMessage());
+            }
+        });
+    }
+
+    public void shutdown()
+    {
+        diskWriter.shutdown();
     }
 
     private PlayerClogData loadFromDisk(String playerName)
