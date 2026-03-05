@@ -148,8 +148,14 @@ public class BossTooltip extends JToolTip
         int gridHeight = spriteRows * (SPRITE_SIZE + PADDING) - PADDING;
 
         int inset = ParchmentTooltip.getBorderThickness() + MARGIN;
+
+        // Flex width to accommodate long boss names (e.g. "Chambers of Xeric: Challenge Mode")
+        FontMetrics nfm = getFontMetrics(FontManager.getRunescapeBoldFont());
+        int titleWidth = bossName != null ? nfm.stringWidth(bossName) : 0;
+        int contentWidth = Math.max(gridWidth, titleWidth);
+
         int height = inset + headerHeight + SEPARATOR_GAP + 1 + SEPARATOR_GAP + gridHeight + inset;
-        int width = gridWidth + inset * 2;
+        int width = contentWidth + inset * 2;
 
         return new Dimension(width, height);
     }

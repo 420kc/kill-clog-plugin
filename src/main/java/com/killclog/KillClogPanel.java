@@ -296,8 +296,6 @@ public class KillClogPanel extends PluginPanel
             {
                 tip.putIcon(entry.getKey(), iconToImage(entry.getValue()));
             }
-            tip.putIcon("rigour", iconToImage(rigourIcon));
-            tip.putIcon("eagle_eye", iconToImage(eagleEyeIcon));
             return tip;
         }
     };
@@ -321,16 +319,13 @@ public class KillClogPanel extends PluginPanel
     private ImageIcon maxCapeIcon;
     private ImageIcon infernalCapeIcon;
     private ImageIcon infernalMaxCapeIcon;
-    private ImageIcon clogBookIcon;
-    private ImageIcon staleBaguetteIcon;
-    private BufferedImage staleBaguetteImage;
     private BufferedImage combatLevelImage;
-    private ImageIcon rigourIcon;
-    private ImageIcon sharpEyeIcon;
-    private ImageIcon eagleEyeIcon;
 
     private static final String[] CLOG_TIERS = {
         "bronze", "iron", "steel", "black", "mithril", "adamant", "rune", "dragon", "gilded"
+    };
+    private static final int[] CLOG_TIER_ITEM_IDS = {
+        30579, 30581, 30583, 30585, 30587, 30589, 30591, 30593, 30595
     };
     private static final int[] CLOG_TIER_THRESHOLDS = {100, 300, 500, 700, 900, 1000, 1100, 1200};
     private final Map<String, ImageIcon> clogTierIcons = new LinkedHashMap<>();
@@ -573,7 +568,7 @@ public class KillClogPanel extends PluginPanel
         infoRow.add(infoKcLabel, BorderLayout.EAST);
         panel.add(infoRow);
 
-        loadInfoBarIcons();
+        loadRuntimeIcons();
         return panel;
     }
 
@@ -586,49 +581,48 @@ public class KillClogPanel extends PluginPanel
             RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
     }
 
-    private void loadInfoBarIcons()
+    private void loadRuntimeIcons()
     {
-        skillsIcon = loadIcon(HiscorePanel.class, "overall.png", 13, 13);
-        maxCapeIcon = loadIcon(KillClogPanel.class, "clan_maxed.png", -1, -1);
-        infernalCapeIcon = loadIcon(KillClogPanel.class, "clan_tzkal.png", -1, -1);
-        infernalMaxCapeIcon = loadIcon(KillClogPanel.class, "clan_infernal_max.png", -1, -1);
-        clogBookIcon = loadIcon(KillClogPanel.class, "clog_book.png", -1, -1);
-        rigourIcon = loadIcon(KillClogPanel.class, "rigour.png", 13, 13);
-        sharpEyeIcon = loadIcon(KillClogPanel.class, "sharp_eye.png", 13, 13);
-        eagleEyeIcon = loadIcon(KillClogPanel.class, "eagle_eye.png", 13, 13);
-
+        // RuneLite's own Apache 2.0 resource — safe to bundle-load
         try
         {
-            BufferedImage img = ImageUtil.loadImageResource(KillClogPanel.class, "stale_baguette.png");
-            staleBaguetteImage = ImageUtil.resizeImage(img, 13, 12);
-            staleBaguetteIcon = new ImageIcon(staleBaguetteImage);
+            BufferedImage img = ImageUtil.loadImageResource(HiscorePanel.class, "overall.png");
+            skillsIcon = new ImageIcon(ImageUtil.resizeImage(img, 13, 13));
         }
         catch (Exception e)
         {
-            staleBaguetteIcon = null;
+            skillsIcon = null;
         }
 
-        for (String tier : CLOG_TIERS)
+        // Cape icons + clog tier icons via ItemManager (game items, loaded at runtime)
+        clientThread.invokeLater(() ->
         {
-            ImageIcon icon = loadIcon(KillClogPanel.class, "clog_" + tier + ".png", 13, 13);
-            if (icon != null)
+            loadItemIcon(13280, 13, 13, icon -> maxCapeIcon = icon);
+            loadItemIcon(21295, 13, 13, icon -> infernalCapeIcon = icon);
+            loadItemIcon(21284, 13, 13, icon -> infernalMaxCapeIcon = icon);
+
+            for (int i = 0; i < CLOG_TIERS.length; i++)
             {
-                clogTierIcons.put(tier, icon);
+                final String tier = CLOG_TIERS[i];
+                loadItemIcon(CLOG_TIER_ITEM_IDS[i], 13, 13, icon ->
+                    clogTierIcons.put(tier, icon));
             }
-        }
+        });
     }
 
-    /** Load an image resource and optionally resize. Returns null if missing. */
-    private static ImageIcon loadIcon(Class<?> clazz, String name, int w, int h)
+    private void loadItemIcon(int itemId, int w, int h, java.util.function.Consumer<ImageIcon> setter)
     {
-        try
+        BufferedImage img = itemManager.getImage(itemId, 1, false);
+        if (img instanceof AsyncBufferedImage)
         {
-            BufferedImage img = ImageUtil.loadImageResource(clazz, name);
-            return new ImageIcon(w > 0 ? ImageUtil.resizeImage(img, w, h) : img);
+            ((AsyncBufferedImage) img).onLoaded(() ->
+                SwingUtilities.invokeLater(() ->
+                    setter.accept(new ImageIcon(ImageUtil.resizeImage(img, w, h)))));
         }
-        catch (Exception e)
+        else
         {
-            return null;
+            SwingUtilities.invokeLater(() ->
+                setter.accept(new ImageIcon(ImageUtil.resizeImage(img, w, h))));
         }
     }
 
@@ -1004,8 +998,6 @@ public class KillClogPanel extends PluginPanel
                 {
                     tip.putIcon(entry.getKey(), iconToImage(entry.getValue()));
                 }
-                tip.putIcon("rigour", iconToImage(rigourIcon));
-                tip.putIcon("eagle_eye", iconToImage(eagleEyeIcon));
                 return tip;
             }
         };
@@ -2115,9 +2107,17 @@ public class KillClogPanel extends PluginPanel
                 infoNameLabel.setToolTipText(null);
                 return;
         }
-        ImageIcon icon = loadIcon(HiscorePanel.class, resource, 15, 15);
-        infoNameLabel.setIcon(icon);
-        infoNameLabel.setToolTipText(icon != null ? tooltip : null);
+        try
+        {
+            BufferedImage img = ImageUtil.loadImageResource(HiscorePanel.class, resource);
+            infoNameLabel.setIcon(new ImageIcon(ImageUtil.resizeImage(img, 15, 15)));
+            infoNameLabel.setToolTipText(tooltip);
+        }
+        catch (Exception e)
+        {
+            infoNameLabel.setIcon(null);
+            infoNameLabel.setToolTipText(null);
+        }
     }
 
     private void resolveUntradeableNames(ClogResult result)
