@@ -596,8 +596,9 @@ public class KillClogPanel extends PluginPanel
             RenderingHints.KEY_TEXT_ANTIALIASING,
             RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
-        // Activities toggle arrow in info bar center
+        // Activities toggle arrow in info bar center — hidden until first lookup
         toggleArrow = new JLabel();
+        toggleArrow.setVisible(false);
         toggleArrow.setIcon(activitiesExpanded ? arrowUpIcon : arrowDownIcon);
         toggleArrow.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         toggleArrow.addMouseListener(new MouseAdapter()
@@ -1919,32 +1920,36 @@ public class KillClogPanel extends PluginPanel
 
     private volatile int lookupVersion = 0;
 
-    public void doLookup()
+    /**
+     * Set the info bar to message-only mode. Hides all data components
+     * (total level, KC, toggle arrow) and shows only the message text.
+     * Single point of control — add new info bar components here.
+     */
+    private void setInfoBarMessage(String text, Color color)
     {
-        String player = searchBar.getText().trim();
-        if (player.isEmpty())
-        {
-            infoNameLabel.setIcon(null);
-            infoNameLabel.setToolTipText(null);
-            infoNameLabel.setText("Enter RSN");
-            infoNameLabel.setForeground(TEXT_DIM);
-            infoTotalLabel.setIcon(null);
-            infoTotalLabel.setText("");
-            infoKcLabel.setIcon(null);
-            infoKcLabel.setText("");
-            return;
-        }
-
-        final int thisLookup = ++lookupVersion;
-        int searchIdx = ThreadLocalRandom.current().nextInt(SEARCHING_MESSAGES.length);
-        infoNameLabel.setText(String.format(SEARCHING_MESSAGES[searchIdx], player));
-        infoNameLabel.setForeground(TEXT_DIM);
+        infoNameLabel.setText(text);
+        infoNameLabel.setForeground(color);
         infoNameLabel.setIcon(null);
         infoNameLabel.setToolTipText(null);
         infoTotalLabel.setIcon(null);
         infoTotalLabel.setText("");
         infoKcLabel.setIcon(null);
         infoKcLabel.setText("");
+        toggleArrow.setVisible(false);
+    }
+
+    public void doLookup()
+    {
+        String player = searchBar.getText().trim();
+        if (player.isEmpty())
+        {
+            setInfoBarMessage("Enter RSN", TEXT_DIM);
+            return;
+        }
+
+        final int thisLookup = ++lookupVersion;
+        int searchIdx = ThreadLocalRandom.current().nextInt(SEARCHING_MESSAGES.length);
+        setInfoBarMessage(String.format(SEARCHING_MESSAGES[searchIdx], player), TEXT_DIM);
         searchBar.setIcon(IconTextField.Icon.LOADING_DARKER);
 
         // Clear previous results
@@ -2029,10 +2034,8 @@ public class KillClogPanel extends PluginPanel
 
                 if (result == null)
                 {
-                    infoNameLabel.setIcon(null);
                     int notFoundIdx = ThreadLocalRandom.current().nextInt(NOT_FOUND_MESSAGES.length);
-                    infoNameLabel.setText(String.format(NOT_FOUND_MESSAGES[notFoundIdx], player));
-                    infoNameLabel.setForeground(NOT_FOUND);
+                    setInfoBarMessage(String.format(NOT_FOUND_MESSAGES[notFoundIdx], player), NOT_FOUND);
                     showingNotFound = true;
                     searchBar.setText("");
                     return;
@@ -2048,6 +2051,7 @@ public class KillClogPanel extends PluginPanel
 
                 infoNameLabel.setText(canonicalPlayerName != null ? canonicalPlayerName : player);
                 infoNameLabel.setForeground(config.infoBarColor());
+                toggleArrow.setVisible(true);
                 updateInfoIcon(result.getAccountType());
 
                 // RIGHT zone: total level icon progression
@@ -2113,13 +2117,7 @@ public class KillClogPanel extends PluginPanel
             {
                 searchBar.setIcon(IconTextField.Icon.SEARCH);
                 searchBar.setText("");
-                infoNameLabel.setText("Lookup failed");
-                infoNameLabel.setForeground(TEXT_DIM);
-                infoNameLabel.setIcon(null);
-                infoTotalLabel.setIcon(null);
-                infoTotalLabel.setText("");
-                infoKcLabel.setIcon(null);
-                infoKcLabel.setText("");
+                setInfoBarMessage("Lookup failed", TEXT_DIM);
             });
             return null;
         });
