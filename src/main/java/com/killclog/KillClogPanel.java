@@ -23,7 +23,6 @@ import java.util.Set;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
-import java.time.temporal.ChronoUnit;
 import java.util.concurrent.ThreadLocalRandom;
 import javax.inject.Inject;
 import javax.swing.Box;
@@ -68,7 +67,6 @@ public class KillClogPanel extends PluginPanel
     private static final Color KC_COLOR = new Color(215, 215, 215);
     private static final Color CELL_HOVER = new Color(41, 41, 41);
     private static final Color FOUR_TWENTY_GREEN = new Color(30, 200, 30);
-    private static final long STALE_DAYS = 90;
 
     private static final String[] SEARCHING_MESSAGES = {
         "Throwing a search party for %s...",
@@ -2013,9 +2011,7 @@ public class KillClogPanel extends PluginPanel
         {
             LocalDateTime syncTime = LocalDateTime.parse(lastChanged,
                 DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-            long daysAgo = ChronoUnit.DAYS.between(syncTime, LocalDateTime.now());
-            String icon = daysAgo > STALE_DAYS ? "{eagle_eye}" : "{rigour}";
-            return icon + "Last update: " + syncTime.format(DateTimeFormatter.ofPattern("MMM d, yyyy"));
+            return "Last update: " + syncTime.format(DateTimeFormatter.ofPattern("MMM d, yyyy"));
         }
         catch (DateTimeParseException e)
         {
