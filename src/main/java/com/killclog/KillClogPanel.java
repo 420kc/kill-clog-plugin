@@ -903,9 +903,53 @@ public class KillClogPanel extends PluginPanel
             @Override
             public javax.swing.JToolTip createToolTip()
             {
-                ParchmentTooltip tip = new ParchmentTooltip();
-                tip.setComponent(this);
-                return tip;
+                TooltipData data = tooltipDataMap.get(tier);
+                if (data != null)
+                {
+                    BossTooltip tip = new BossTooltip();
+                    tip.setComponent(this);
+                    tip.setData(data.bossName, data.rank, data.obtainedCount,
+                        data.totalItems, data.allItemIds, data.obtainedIds,
+                        data.obtainedCounts, itemManager);
+
+                    JPanel parentCell = (JPanel) this.getParent();
+                    tip.addMouseListener(new java.awt.event.MouseAdapter()
+                    {
+                        @Override
+                        public void mouseEntered(java.awt.event.MouseEvent e)
+                        {
+                            if (hoverExitTimer != null) hoverExitTimer.stop();
+                        }
+
+                        @Override
+                        public void mouseExited(java.awt.event.MouseEvent e)
+                        {
+                            if (hoveredCell == parentCell)
+                            {
+                                hoveredCell = null;
+                                parentCell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                            }
+                        }
+                    });
+
+                    tip.addHierarchyListener(e ->
+                    {
+                        if ((e.getChangeFlags() & java.awt.event.HierarchyEvent.SHOWING_CHANGED) != 0
+                            && !tip.isShowing())
+                        {
+                            if (hoveredCell == parentCell)
+                            {
+                                hoveredCell = null;
+                                parentCell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+                            }
+                        }
+                    });
+
+                    return tip;
+                }
+                ParchmentTooltip fallback = new ParchmentTooltip();
+                fallback.setComponent(this);
+                return fallback;
             }
         };
         label.setFont(FontManager.getRunescapeSmallFont());
@@ -2463,6 +2507,70 @@ public class KillClogPanel extends PluginPanel
             data.obtainedCounts = obtainedCounts;
 
             tooltipDataMap.put(activity, data);
+
+            for (int itemId : data.allItemIds)
+            {
+                int count = obtainedIds.contains(itemId)
+                    ? obtainedCounts.getOrDefault(itemId, 1) : 1;
+                itemManager.getImage(itemId, count, false);
+            }
+
+            label.setToolTipText(" ");
+        }
+
+        // Clue tier cells — sprite tooltips from CLUE_CLOG_CATEGORIES
+        for (Map.Entry<HiscoreSkill, String> entry : CLUE_CLOG_CATEGORIES.entrySet())
+        {
+            HiscoreSkill tier = entry.getKey();
+            String category = entry.getValue();
+            JLabel label = clueTierLabels.get(tier);
+            if (label == null || clogResult == null || !config.showCollectionLog())
+            {
+                continue;
+            }
+
+            List<ClogResult.ClogItem> obtained = clogResult.getObtainedItems().get(category);
+            List<Integer> allItems = clogResult.getCategoryItems().get(category);
+
+            if ((obtained == null || obtained.isEmpty()) && (allItems == null || allItems.isEmpty()))
+            {
+                continue;
+            }
+
+            Set<Integer> obtainedIds = getObtainedIds(category);
+            Map<Integer, Integer> obtainedCounts = new LinkedHashMap<>();
+            if (obtained != null)
+            {
+                for (ClogResult.ClogItem item : obtained)
+                {
+                    obtainedCounts.put(item.getId(), item.getCount());
+                }
+            }
+
+            int totalItems = allItems != null ? allItems.size() : obtainedIds.size();
+            int obtainedCount = allItems != null
+                ? countObtained(allItems, obtainedIds)
+                : obtainedIds.size();
+
+            int rank = -1;
+            if (hiscoreResult != null)
+            {
+                rank = hiscoreResult.getActivityRank(tier.getName());
+            }
+
+            String shortName = tier.getName().replace("Clue Scrolls (", "").replace(")", "");
+            shortName = shortName.substring(0, 1).toUpperCase() + shortName.substring(1);
+
+            TooltipData data = new TooltipData();
+            data.bossName = shortName;
+            data.rank = rank;
+            data.obtainedCount = obtainedCount;
+            data.totalItems = totalItems;
+            data.allItemIds = allItems != null ? allItems : new ArrayList<>(obtainedIds);
+            data.obtainedIds = obtainedIds;
+            data.obtainedCounts = obtainedCounts;
+
+            tooltipDataMap.put(tier, data);
 
             for (int itemId : data.allItemIds)
             {
