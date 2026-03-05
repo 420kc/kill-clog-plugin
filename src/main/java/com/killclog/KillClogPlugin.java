@@ -130,7 +130,7 @@ public class KillClogPlugin extends Plugin
             if (local != null && local.getName() != null)
             {
                 String name = local.getName();
-                localClogCache.setPlayerName(name);
+                localClogCache.setActivePlayer(name);
                 SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name));
             }
 
@@ -151,7 +151,7 @@ public class KillClogPlugin extends Plugin
             {
                 pendingAutoLookup = false;
                 String name = local.getName();
-                localClogCache.setPlayerName(name);
+                localClogCache.setActivePlayer(name);
                 SwingUtilities.invokeLater(() ->
                 {
                     panel.setLoggedInPlayer(name);
@@ -176,7 +176,7 @@ public class KillClogPlugin extends Plugin
             return;
         }
 
-        localClogCache.setPlayerName(local.getName());
+        localClogCache.setActivePlayer(local.getName());
 
         Widget header = client.getWidget(40697876);  // collection log category name
         Widget items = client.getWidget(40697893);    // collection log item grid
@@ -220,7 +220,7 @@ public class KillClogPlugin extends Plugin
             }
         }
 
-        if (!allItemIds.isEmpty())
+        if (!allItemIds.isEmpty() && config.localClogStorage() != LocalClogMode.OFF)
         {
             localClogCache.putCategory(categoryKey, allItemIds, obtained);
         }

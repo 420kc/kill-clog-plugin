@@ -83,17 +83,19 @@ public class ClogService
     private final OkHttpClient httpClient;
     private final Gson gson;
     private final LocalClogCache localClogCache;
+    private final KillClogConfig config;
 
     // Cached data (loaded once per session)
     private volatile Map<String, List<Integer>> cachedCategories;
     private volatile Map<Integer, String> cachedItemNames;
 
     @Inject
-    public ClogService(OkHttpClient httpClient, Gson gson, LocalClogCache localClogCache)
+    public ClogService(OkHttpClient httpClient, Gson gson, LocalClogCache localClogCache, KillClogConfig config)
     {
         this.httpClient = httpClient;
         this.gson = gson;
         this.localClogCache = localClogCache;
+        this.config = config;
     }
 
     /**
@@ -111,22 +113,24 @@ public class ClogService
 
     /**
      * Look up collection log data for a player.
-     * Fires 3 requests in parallel: player clog, categories (cached), item names (cached).
+     * Active player with widget-read data is served from cache (authoritative).
+     * Everyone else: try Temple, cache the result, fall back to persistent cache.
      */
     public CompletableFuture<ClogResult> lookup(String playerName)
     {
-        return lookup(playerName, false);
-    }
+        LocalClogMode mode = config.localClogStorage();
 
-    public CompletableFuture<ClogResult> lookup(String playerName, boolean isLocalPlayer)
-    {
-        if (isLocalPlayer && localClogCache.hasData() && localClogCache.isFor(playerName))
+        // Active player with widget-read data — authoritative, serve instantly
+        if (mode != LocalClogMode.OFF
+            && localClogCache.isActivePlayer(playerName)
+            && localClogCache.hasDataFor(playerName))
         {
-            log.debug("Using local clog cache for self-lookup: {}", playerName);
+            log.debug("Using local clog cache for active player: {}", playerName);
             return fetchItemNames().thenApply(names ->
-                localClogCache.toClogResult(names != null ? names : new HashMap<>()));
+                localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>()));
         }
 
+        // Try Temple, cache on success, fall back to persistent cache
         String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
 
         CompletableFuture<PlayerClogData> playerFuture =
@@ -143,18 +147,30 @@ public class ClogService
                 Map<String, List<Integer>> categories = categoriesFuture.join();
                 Map<Integer, String> names = namesFuture.join();
 
-                if (playerData == null)
+                if (playerData != null)
                 {
-                    return null;
+                    ClogResult result = new ClogResult(
+                        playerData.canonicalName,
+                        playerData.obtainedItems,
+                        categories != null ? categories : new HashMap<>(),
+                        names != null ? names : new HashMap<>(),
+                        playerData.lastChanged
+                    );
+                    if (mode == LocalClogMode.ALL)
+                    {
+                        localClogCache.cacheResult(result);
+                    }
+                    return result;
                 }
 
-                return new ClogResult(
-                    playerData.canonicalName,
-                    playerData.obtainedItems,
-                    categories != null ? categories : new HashMap<>(),
-                    names != null ? names : new HashMap<>(),
-                    playerData.lastChanged
-                );
+                // Temple failed — fall back to persistent cache
+                if (mode != LocalClogMode.OFF && localClogCache.hasDataFor(playerName))
+                {
+                    log.debug("Temple unavailable, using cached data for: {}", playerName);
+                    return localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>());
+                }
+
+                return null;
             });
     }
 

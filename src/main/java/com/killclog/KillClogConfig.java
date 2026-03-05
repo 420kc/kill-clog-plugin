@@ -38,10 +38,24 @@ public interface KillClogConfig extends Config
     }
 
     @ConfigItem(
+        keyName = "localClogStorage",
+        name = "Local Collection Log",
+        description = "<html>Cache collection log data to disk for instant lookups.<br>"
+            + "Data is stored in <b>.runelite/kill-clog/</b> as JSON files.<br><br>"
+            + "<b>Local browsing only</b> — saves categories you browse in-game<br>"
+            + "<b>All lookups</b> — also caches TempleOSRS results for any player</html>",
+        position = 2
+    )
+    default LocalClogMode localClogStorage()
+    {
+        return LocalClogMode.ALL;
+    }
+
+    @ConfigItem(
         keyName = "playerMenuLookup",
         name = "Player Menu Lookup",
         description = "Add 'Kill Clog' to right-click menu on players",
-        position = 2
+        position = 3
     )
     default boolean playerMenuLookup()
     {
@@ -52,7 +66,7 @@ public interface KillClogConfig extends Config
         keyName = "infoBarColor",
         name = "Info Bar",
         description = "Color of player name and stats in the info bar",
-        position = 3
+        position = 4
     )
     default Color infoBarColor()
     {
@@ -104,16 +118,7 @@ public interface KillClogConfig extends Config
         return false;
     }
 
-    @ConfigItem(
-        keyName = "clueExpanded",
-        name = "",
-        description = "",
-        hidden = true
-    )
-    default boolean clueExpanded()
-    {
-        return false;
-    }
+
 
     @ConfigItem(
         keyName = "completedClogColor",
