@@ -315,6 +315,7 @@ public class KillClogPanel extends PluginPanel
     };
     private static final int[] CLOG_TIER_THRESHOLDS = {100, 300, 500, 700, 900, 1000, 1100, 1200};
     private final Map<String, ImageIcon> clogTierIcons = new LinkedHashMap<>();
+    private final Map<String, ImageIcon> clogTierIconsLarge = new LinkedHashMap<>();
 
     private final Map<HiscoreSkill, JLabel> bossLabels = new LinkedHashMap<>();
     private final Map<HiscoreSkill, JLabel> activityLabels = new LinkedHashMap<>();
@@ -326,6 +327,8 @@ public class KillClogPanel extends PluginPanel
     private JPanel activitiesClip;
     private JPanel activitySeparator;
     private JLabel trayToggle;
+    private JLabel combatCell;
+    private JLabel totalLvlCell;
     private boolean activitiesExpanded;
     private Timer slideTimer;
 
@@ -620,8 +623,11 @@ public class KillClogPanel extends PluginPanel
             for (int i = 0; i < CLOG_TIERS.length; i++)
             {
                 final String tier = CLOG_TIERS[i];
-                loadItemIcon(CLOG_TIER_ITEM_IDS[i], 13, 13, icon ->
+                final int itemId = CLOG_TIER_ITEM_IDS[i];
+                loadItemIcon(itemId, 13, 13, icon ->
                     clogTierIcons.put(tier, icon));
+                loadItemIcon(itemId, 18, 18, icon ->
+                    clogTierIconsLarge.put(tier, icon));
             }
         });
     }
@@ -696,6 +702,44 @@ public class KillClogPanel extends PluginPanel
         JPanel grid = new JPanel();
         grid.setLayout(new BoxLayout(grid, BoxLayout.Y_AXIS));
         grid.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+
+        // Row 0: [Combat Level] [Total Level]
+        JPanel statsRow = new JPanel(new GridLayout(1, 2));
+        statsRow.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        statsRow.setAlignmentX(0f);
+
+        combatCell = new JLabel();
+        styleLabel(combatCell, "Combat");
+        spriteManager.getSpriteAsync(168, 0, sprite ->
+            SwingUtilities.invokeLater(() ->
+            {
+                if (sprite != null)
+                {
+                    combatCell.setIcon(new ImageIcon(ImageUtil.resizeImage(
+                        ImageUtil.resizeCanvas(sprite, 25, 25), 20, 20)));
+                }
+            }));
+        statsRow.add(wrapInCell(combatCell));
+
+        totalLvlCell = new JLabel();
+        styleLabel(totalLvlCell, "Total");
+        try
+        {
+            BufferedImage img = ImageUtil.loadImageResource(HiscorePanel.class, "overall.png");
+            totalLvlCell.setIcon(new ImageIcon(ImageUtil.resizeImage(img, 20, 20)));
+        }
+        catch (Exception e)
+        {
+            // overall.png not available
+        }
+        statsRow.add(wrapInCell(totalLvlCell));
+        grid.add(statsRow);
+
+        JPanel statsSep = new JPanel();
+        statsSep.setBackground(ColorScheme.DARK_GRAY_COLOR);
+        statsSep.setPreferredSize(new Dimension(0, 7));
+        statsSep.setAlignmentX(0f);
+        grid.add(statsSep);
 
         // Row 1: [Clue All] [3rd Age] [Gilded]
         JPanel row1 = new JPanel(new GridLayout(1, 3));
@@ -1114,6 +1158,20 @@ public class KillClogPanel extends PluginPanel
                 playerName.setForeground(config.infoBarColor());
                 updateInfoIcon(result.getAccountType());
 
+                int combatLevel = result.getCombatLevel();
+                if (combatLevel > 0)
+                {
+                    combatCell.setText(pad(String.valueOf(combatLevel)));
+                    combatCell.setForeground(KC_COLOR);
+                }
+
+                int totalLevel = result.getTotalLevel();
+                if (totalLevel > 0)
+                {
+                    totalLvlCell.setText(pad(String.valueOf(totalLevel)));
+                    totalLvlCell.setForeground(KC_COLOR);
+                }
+
                 if (clogResult != null)
                 {
                     updateClogCell(clogResult);
@@ -1214,6 +1272,11 @@ public class KillClogPanel extends PluginPanel
         clogInfoLabel.setIcon(null);
         clogInfoLabel.setText("");
         clogInfoLabel.setToolTipText(null);
+
+        combatCell.setText(pad("--"));
+        combatCell.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        totalLvlCell.setText(pad("--"));
+        totalLvlCell.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 
         resetLabelMap(clueTierLabels);
 
@@ -1482,10 +1545,11 @@ public class KillClogPanel extends PluginPanel
         int[] totals = sumClogTotals(result);
         if (totals[0] > 0)
         {
-            ImageIcon tierIcon = getClogTierIcon(totals[0], totals[1]);
-            if (tierIcon != null)
+            String tierName = getClogTierName(totals[0], totals[1]);
+            ImageIcon largeIcon = tierName != null ? clogTierIconsLarge.get(tierName) : null;
+            if (largeIcon != null)
             {
-                clogInfoLabel.setIcon(new ImageIcon(ImageUtil.resizeImage(iconToImage(tierIcon), 15, 15)));
+                clogInfoLabel.setIcon(largeIcon);
             }
             clogInfoLabel.setText(pad(formatKc(totals[0])));
             clogInfoLabel.setForeground(config.infoBarColor());
