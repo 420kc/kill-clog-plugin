@@ -220,7 +220,7 @@ public class KillClogPlugin extends Plugin
             }
         }
 
-        if (!allItemIds.isEmpty() && config.localClogStorage() != LocalClogMode.OFF)
+        if (!allItemIds.isEmpty() && config.clogSource() != ClogSource.TEMPLE)
         {
             localClogCache.putCategory(categoryKey, allItemIds, obtained);
         }

@@ -5,11 +5,11 @@ import lombok.RequiredArgsConstructor;
 
 @Getter
 @RequiredArgsConstructor
-public enum LocalClogMode
+public enum ClogSource
 {
-    OFF("Off"),
-    LOCAL_ONLY("Local browsing only"),
-    ALL("All lookups");
+    TEMPLE("TempleOSRS"),
+    LOCAL("Local"),
+    BOTH("Both");
 
     private final String name;
 

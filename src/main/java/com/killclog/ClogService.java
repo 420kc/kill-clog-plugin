@@ -122,16 +122,28 @@ public class ClogService
      */
     public CompletableFuture<ClogResult> lookup(String playerName)
     {
-        LocalClogMode mode = config.localClogStorage();
+        ClogSource source = config.clogSource();
+        boolean useLocal = source == ClogSource.LOCAL || source == ClogSource.BOTH;
 
         // Active player with widget-read data — authoritative, serve instantly
-        if (mode != LocalClogMode.OFF
+        if (useLocal
             && localClogCache.isActivePlayer(playerName)
             && localClogCache.hasDataFor(playerName))
         {
             log.debug("Using local clog cache for active player: {}", playerName);
             return fetchItemNames().thenApply(names ->
                 localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>()));
+        }
+
+        // Local-only mode — no Temple fetch, use cached data if available
+        if (source == ClogSource.LOCAL)
+        {
+            if (localClogCache.hasDataFor(playerName))
+            {
+                return fetchItemNames().thenApply(names ->
+                    localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>()));
+            }
+            return CompletableFuture.completedFuture(null);
         }
 
         // Try Temple, cache on success, fall back to persistent cache
@@ -160,7 +172,7 @@ public class ClogService
                         names != null ? names : new HashMap<>(),
                         playerData.lastChanged
                     );
-                    if (mode == LocalClogMode.ALL)
+                    if (useLocal)
                     {
                         localClogCache.cacheResult(result);
                     }
@@ -168,7 +180,7 @@ public class ClogService
                 }
 
                 // Temple failed — fall back to persistent cache
-                if (mode != LocalClogMode.OFF && localClogCache.hasDataFor(playerName))
+                if (useLocal && localClogCache.hasDataFor(playerName))
                 {
                     log.debug("Temple unavailable, using cached data for: {}", playerName);
                     return localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>());

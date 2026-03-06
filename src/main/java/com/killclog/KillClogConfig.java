@@ -22,33 +22,21 @@ public interface KillClogConfig extends Config
     }
 
     @ConfigItem(
-        keyName = "showCollectionLog",
-        name = "Show Collection Log",
-        description = "<html>Fetch collection log from TempleOSRS and show in tooltips.<br><br>"
-            + "<b>To sync your collection log:</b><br>"
+        keyName = "clogSource",
+        name = "Collection Log Source",
+        description = "<html>Where to load collection log data from.<br><br>"
+            + "<b>TempleOSRS</b> — Fetch from TempleOSRS. Requires synced profile.<br>"
+            + "<b>Local</b> — Browse your in-game collection log to build a local cache.<br>"
+            + "<b>Both</b> — Use TempleOSRS data and build a local cache.<br><br>"
+            + "<b>To sync with TempleOSRS:</b><br>"
             + "1. Install the 'TempleOSRS' plugin from the Plugin Hub<br>"
             + "2. Open your collection log in-game<br>"
-            + "3. Click the sync button in the top-right corner<br><br>"
-            + "Players without a TempleOSRS profile will show KC only.</html>",
+            + "3. Click the sync button in the top-right corner</html>",
         position = 1
     )
-    default boolean showCollectionLog()
+    default ClogSource clogSource()
     {
-        return true;
-    }
-
-    @ConfigItem(
-        keyName = "localClogStorage",
-        name = "Local Collection Log",
-        description = "<html>Cache collection log data to disk for instant lookups.<br>"
-            + "Data is stored in <b>.runelite/kill-clog/</b> as JSON files.<br><br>"
-            + "<b>Local browsing only</b> — saves categories you browse in-game<br>"
-            + "<b>All lookups</b> — also caches TempleOSRS results for any player</html>",
-        position = 2
-    )
-    default LocalClogMode localClogStorage()
-    {
-        return LocalClogMode.ALL;
+        return ClogSource.BOTH;
     }
 
     @ConfigItem(
@@ -74,14 +62,14 @@ public interface KillClogConfig extends Config
     }
 
     @ConfigItem(
-        keyName = "tooltipOnClick",
-        name = "Click to Show Tooltips",
-        description = "Show tooltips when clicking cells instead of hovering",
+        keyName = "tooltipMode",
+        name = "Tooltip Activation",
+        description = "How tooltips are triggered on boss and activity cells",
         position = 5
     )
-    default boolean tooltipOnClick()
+    default TooltipMode tooltipMode()
     {
-        return false;
+        return TooltipMode.HOVER;
     }
 
 
