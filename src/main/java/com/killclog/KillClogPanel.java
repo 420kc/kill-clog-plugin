@@ -726,7 +726,8 @@ public class KillClogPanel extends PluginPanel
         try
         {
             BufferedImage img = ImageUtil.loadImageResource(HiscorePanel.class, "overall.png");
-            totalLvlCell.setIcon(new ImageIcon(ImageUtil.resizeImage(img, 20, 20)));
+            totalLvlCell.setIcon(new ImageIcon(ImageUtil.resizeImage(
+                ImageUtil.resizeCanvas(img, 25, 25), 20, 20)));
         }
         catch (Exception e)
         {
@@ -776,16 +777,22 @@ public class KillClogPanel extends PluginPanel
         rareRow.add(makeCustomRareCell("Master (Rare)", CLUE_TIER_ITEM_IDS[5], RARE_MASTER, MASTER_RARE_ITEMS));
         grid.add(rareRow);
 
+        JPanel clueSep = new JPanel();
+        clueSep.setBackground(ColorScheme.DARK_GRAY_COLOR);
+        clueSep.setPreferredSize(new Dimension(0, 7));
+        clueSep.setAlignmentX(0f);
+        grid.add(clueSep);
+
         // Rows 5-7: Remaining activities
         JPanel rest = new JPanel(new GridLayout(0, 3));
         rest.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         rest.setAlignmentX(0f);
         for (HiscoreSkill activity : new HiscoreSkill[]{
+            HiscoreSkill.PVP_ARENA_RANK, HiscoreSkill.LEAGUE_POINTS,
+            HiscoreSkill.LAST_MAN_STANDING,
             HiscoreSkill.SOUL_WARS_ZEAL, HiscoreSkill.RIFTS_CLOSED,
             HiscoreSkill.COLOSSEUM_GLORY,
-            HiscoreSkill.BOUNTY_HUNTER_ROGUE, HiscoreSkill.BOUNTY_HUNTER_HUNTER,
-            HiscoreSkill.PVP_ARENA_RANK, HiscoreSkill.LEAGUE_POINTS,
-            HiscoreSkill.LAST_MAN_STANDING})
+            HiscoreSkill.BOUNTY_HUNTER_ROGUE, HiscoreSkill.BOUNTY_HUNTER_HUNTER})
         {
             rest.add(makeActivityCell(activity));
         }
@@ -1174,6 +1181,7 @@ public class KillClogPanel extends PluginPanel
 
                 if (clogResult != null)
                 {
+                    updateRares(clogResult);
                     updateClogCell(clogResult);
                 }
 
@@ -1216,9 +1224,9 @@ public class KillClogPanel extends PluginPanel
                             }
                         }
                         lookupItemNames(result);
-                        updateRares(result);
                         if (hiscoreResult != null)
                         {
+                            updateRares(result);
                             updateClogCell(result);
                         }
                     }
@@ -1709,9 +1717,13 @@ public class KillClogPanel extends PluginPanel
         if (hiscoreResult == null) return;
         updateBosses(hiscoreResult);
         updateActivities(hiscoreResult);
-        if (enabled && clogResult != null)
+        if (clogResult != null)
         {
-            colorCellsByCompletion();
+            updateRares(clogResult);
+            if (enabled)
+            {
+                colorCellsByCompletion();
+            }
         }
     }
 
