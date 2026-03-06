@@ -196,6 +196,12 @@ public class KillClogPanel extends PluginPanel
         HiscoreSkill.CLUE_SCROLL_ELITE, HiscoreSkill.CLUE_SCROLL_MASTER,
     };
 
+    // Activities without collection log categories — dimmed when highlighter is active
+    private static final Set<HiscoreSkill> NO_CLOG_ACTIVITIES = Set.of(
+        HiscoreSkill.LEAGUE_POINTS, HiscoreSkill.PVP_ARENA_RANK,
+        HiscoreSkill.BOUNTY_HUNTER_ROGUE, HiscoreSkill.BOUNTY_HUNTER_HUNTER
+    );
+
     private static final String CLOG_THIRD_AGE = "third_age";
     private static final String CLOG_GILDED = "gilded";
     private static final int[] CLUE_TIER_ITEM_IDS = {23182, 2677, 2801, 2722, 12073, 19835};
@@ -311,6 +317,8 @@ public class KillClogPanel extends PluginPanel
     private ImageIcon infernalCapeIcon;
     private ImageIcon infernalMaxCapeIcon;
     private BufferedImage combatLevelImage;
+    private ImageIcon closeIcon;
+    private ImageIcon closeIconHovered;
 
     private static final String[] CLOG_TIERS = {
         "bronze", "iron", "steel", "black", "mithril", "adamant", "rune", "dragon", "gilded"
@@ -403,7 +411,21 @@ public class KillClogPanel extends PluginPanel
             }
         });
 
-        // No sprite loading needed — hamburger icon is painted programmatically
+        // Close button sprites for click-to-reveal tooltips (535 = normal, 536 = hovered)
+        spriteManager.getSpriteAsync(535, 0, sprite ->
+        {
+            if (sprite != null)
+            {
+                closeIcon = new ImageIcon(ImageUtil.resizeImage(sprite, 20, 20));
+            }
+        });
+        spriteManager.getSpriteAsync(536, 0, sprite ->
+        {
+            if (sprite != null)
+            {
+                closeIconHovered = new ImageIcon(ImageUtil.resizeImage(sprite, 20, 20));
+            }
+        });
 
         activitiesExpanded = config.activitiesExpanded();
 
@@ -550,16 +572,22 @@ public class KillClogPanel extends PluginPanel
         panel.add(Box.createVerticalStrut(4));
 
         // Info bar: [badge+name LEFT] [hamburger CENTER] [tierIcon+clogCount RIGHT]
-        JPanel infoRow = new JPanel(new BorderLayout());
+        // GridBagLayout ensures playerName/clogInfoLabel fill remaining space
+        // while the hamburger always keeps its fixed center slot.
+        JPanel infoRow = new JPanel(new GridBagLayout());
         infoRow.setBackground(ColorScheme.DARK_GRAY_COLOR);
         infoRow.setAlignmentX(Component.LEFT_ALIGNMENT);
         infoRow.setPreferredSize(new Dimension(0, 18));
 
         configureBarLabel(playerName, JLabel.LEFT);
         playerName.setBorder(new EmptyBorder(0, 4, 0, 0));
+        playerName.setMinimumSize(new Dimension(0, 0));
+        playerName.setPreferredSize(new Dimension(0, 18));
 
         configureBarLabel(clogInfoLabel, JLabel.RIGHT);
         clogInfoLabel.setBorder(new EmptyBorder(0, 0, 0, 4));
+        clogInfoLabel.setMinimumSize(new Dimension(0, 0));
+        clogInfoLabel.setPreferredSize(new Dimension(0, 18));
 
         trayToggle = new JLabel();
         ImageIcon hamburgerIcon = new ImageIcon(makeHamburgerIcon(HAMBURGER_COLOR));
@@ -587,16 +615,29 @@ public class KillClogPanel extends PluginPanel
             }
         });
 
-        JPanel centerPanel = new JPanel();
-        centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.X_AXIS));
-        centerPanel.setOpaque(false);
-        centerPanel.add(Box.createHorizontalGlue());
-        centerPanel.add(trayToggle);
-        centerPanel.add(Box.createHorizontalGlue());
+        GridBagConstraints ibc = new GridBagConstraints();
+        ibc.gridy = 0;
+        ibc.fill = GridBagConstraints.HORIZONTAL;
+        ibc.anchor = GridBagConstraints.WEST;
 
-        infoRow.add(playerName, BorderLayout.WEST);
-        infoRow.add(centerPanel, BorderLayout.CENTER);
-        infoRow.add(clogInfoLabel, BorderLayout.EAST);
+        // Left: player name — takes remaining space, clips long text
+        ibc.gridx = 0;
+        ibc.weightx = 1.0;
+        infoRow.add(playerName, ibc);
+
+        // Center: hamburger — fixed width, never displaced
+        ibc.gridx = 1;
+        ibc.weightx = 0;
+        ibc.fill = GridBagConstraints.NONE;
+        ibc.anchor = GridBagConstraints.CENTER;
+        infoRow.add(trayToggle, ibc);
+
+        // Right: clog info — takes remaining space, clips long text
+        ibc.gridx = 2;
+        ibc.weightx = 1.0;
+        ibc.fill = GridBagConstraints.HORIZONTAL;
+        ibc.anchor = GridBagConstraints.EAST;
+        infoRow.add(clogInfoLabel, ibc);
         panel.add(infoRow);
 
         loadRuntimeIcons();
@@ -838,7 +879,9 @@ public class KillClogPanel extends PluginPanel
             @Override
             public void mouseClicked(MouseEvent e)
             {
-                if (config.tooltipOnClick() && label.getToolTipText() != null)
+                if (config.tooltipOnClick()
+                    && label.getToolTipText() != null
+                    && !Boolean.TRUE.equals(label.getClientProperty("noClog")))
                 {
                     showClickTooltip(label, cell);
                 }
@@ -933,11 +976,10 @@ public class KillClogPanel extends PluginPanel
         tip.setBounds(0, 0, tipSize.width, tipSize.height);
         wrapper.add(tip, JLayeredPane.DEFAULT_LAYER);
 
-        JLabel closeBtn = new JLabel("\u00d7");
-        closeBtn.setForeground(TEXT_DIM);
+        JLabel closeBtn = new JLabel(closeIcon != null ? closeIcon : new ImageIcon());
         closeBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        Dimension closeSz = closeBtn.getPreferredSize();
-        closeBtn.setBounds(tipSize.width - closeSz.width - 8, 6, closeSz.width, closeSz.height);
+        int btnSize = 20;
+        closeBtn.setBounds(tipSize.width - btnSize - 4, 4, btnSize, btnSize);
         closeBtn.addMouseListener(new MouseAdapter()
         {
             @Override
@@ -949,13 +991,13 @@ public class KillClogPanel extends PluginPanel
             @Override
             public void mouseEntered(MouseEvent e)
             {
-                closeBtn.setForeground(KC_COLOR);
+                if (closeIconHovered != null) closeBtn.setIcon(closeIconHovered);
             }
 
             @Override
             public void mouseExited(MouseEvent e)
             {
-                closeBtn.setForeground(TEXT_DIM);
+                if (closeIcon != null) closeBtn.setIcon(closeIcon);
             }
         });
         wrapper.add(closeBtn, JLayeredPane.PALETTE_LAYER);
@@ -1036,7 +1078,10 @@ public class KillClogPanel extends PluginPanel
         cell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         cell.setBorder(new EmptyBorder(2, 0, 2, 0));
         cell.add(label);
-        addCellHoverEffect(cell, label);
+        if (!Boolean.TRUE.equals(label.getClientProperty("noClog")))
+        {
+            addCellHoverEffect(cell, label);
+        }
         return cell;
     }
 
@@ -1063,10 +1108,21 @@ public class KillClogPanel extends PluginPanel
                 {
                     if (sprite != null)
                     {
-                        label.setIcon(new ImageIcon(ImageUtil.resizeImage(
-                            ImageUtil.resizeCanvas(sprite, 25, 25), 20, 20)));
+                        ImageIcon icon = new ImageIcon(ImageUtil.resizeImage(
+                            ImageUtil.resizeCanvas(sprite, 25, 25), 20, 20));
+                        label.setIcon(icon);
+                        if (NO_CLOG_ACTIVITIES.contains(activity))
+                        {
+                            originalIcons.put(activity, icon);
+                            dimmedIcons.put(activity, new ImageIcon(createDimmedImage(icon)));
+                        }
                     }
                 }));
+        }
+
+        if (NO_CLOG_ACTIVITIES.contains(activity))
+        {
+            label.putClientProperty("noClog", Boolean.TRUE);
         }
 
         activityLabels.put(activity, label);
@@ -1280,14 +1336,14 @@ public class KillClogPanel extends PluginPanel
                 if (combatLevel > 0)
                 {
                     combatCell.setText(pad(String.valueOf(combatLevel)));
-                    combatCell.setForeground(KC_COLOR);
+                    combatCell.setForeground(config.infoBarColor());
                 }
 
                 int totalLevel = result.getTotalLevel();
                 if (totalLevel > 0)
                 {
                     totalLvlCell.setText(pad(String.valueOf(totalLevel)));
-                    totalLvlCell.setForeground(KC_COLOR);
+                    totalLvlCell.setForeground(config.infoBarColor());
                     totalLvlCell.setToolTipText(" ");
                 }
 
@@ -1464,6 +1520,13 @@ public class KillClogPanel extends PluginPanel
 
             label.setText(pad(score <= 0 ? "--" : formatKc(score)));
             label.setForeground(score > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
+
+            // Restore original icon for no-clog activities (may have been dimmed)
+            ImageIcon orig = originalIcons.get(activity);
+            if (orig != null && NO_CLOG_ACTIVITIES.contains(activity))
+            {
+                label.setIcon(orig);
+            }
 
             if (activity == HiscoreSkill.CLUE_SCROLL_ALL)
             {
@@ -1823,6 +1886,10 @@ public class KillClogPanel extends PluginPanel
         if (hiscoreResult == null) return;
         updateBosses(hiscoreResult);
         updateActivities(hiscoreResult);
+        if (enabled)
+        {
+            dimNoClogActivities();
+        }
         if (clogResult != null)
         {
             updateRares(clogResult);
@@ -1830,6 +1897,10 @@ public class KillClogPanel extends PluginPanel
             {
                 colorCellsByCompletion();
             }
+        }
+        if (enabled)
+        {
+            colorEmptyCells();
         }
     }
 
@@ -1867,23 +1938,57 @@ public class KillClogPanel extends PluginPanel
             }
         }
 
-        // Dim activities without clog categories so colored cells pop
-        for (HiscoreSkill noClog : new HiscoreSkill[]{
-            HiscoreSkill.LEAGUE_POINTS, HiscoreSkill.PVP_ARENA_RANK,
-            HiscoreSkill.BOUNTY_HUNTER_ROGUE, HiscoreSkill.BOUNTY_HUNTER_HUNTER})
-        {
-            JLabel label = activityLabels.get(noClog);
-            if (label != null && hiscoreResult.getActivityScore(noClog.getName()) > 0)
-            {
-                label.setForeground(TEXT_DIM);
-            }
-        }
-
         if (thirdAgeCell != null) colorByCompletion(thirdAgeCell, CLOG_THIRD_AGE);
         if (gildedCell != null) colorByCompletion(gildedCell, CLOG_GILDED);
         colorCustomRare(hardRare, RARE_HARD);
         colorCustomRare(eliteRare, RARE_ELITE);
         colorCustomRare(masterRare, RARE_MASTER);
+    }
+
+    /** Dim activities without clog categories when highlighter is active. */
+    private void dimNoClogActivities()
+    {
+        for (HiscoreSkill noClog : NO_CLOG_ACTIVITIES)
+        {
+            JLabel label = activityLabels.get(noClog);
+            if (label == null) continue;
+
+            int score = hiscoreResult.getActivityScore(noClog.getName());
+            label.setForeground(score > 0 ? config.inProgressClogColor() : config.emptyClogColor());
+
+            ImageIcon dimmed = dimmedIcons.get(noClog);
+            if (dimmed != null)
+            {
+                label.setIcon(dimmed);
+            }
+        }
+    }
+
+    /** Recolor "--" cells to emptyClogColor when highlighter is active. */
+    private void colorEmptyCells()
+    {
+        for (JLabel label : bossLabels.values())
+        {
+            if (ColorScheme.LIGHT_GRAY_COLOR.equals(label.getForeground()))
+            {
+                label.setForeground(config.emptyClogColor());
+            }
+        }
+        for (Map.Entry<HiscoreSkill, JLabel> entry : activityLabels.entrySet())
+        {
+            if (!NO_CLOG_ACTIVITIES.contains(entry.getKey())
+                && ColorScheme.LIGHT_GRAY_COLOR.equals(entry.getValue().getForeground()))
+            {
+                entry.getValue().setForeground(config.emptyClogColor());
+            }
+        }
+        for (JLabel label : clueTierLabels.values())
+        {
+            if (ColorScheme.LIGHT_GRAY_COLOR.equals(label.getForeground()))
+            {
+                label.setForeground(config.emptyClogColor());
+            }
+        }
     }
 
     private void colorActivityCategories(Map<HiscoreSkill, String> categories, Map<HiscoreSkill, JLabel> labels)
@@ -2025,6 +2130,14 @@ public class KillClogPanel extends PluginPanel
                 {
                     playerName.setForeground(config.infoBarColor());
                     clogInfoLabel.setForeground(config.infoBarColor());
+                    if (hiscoreResult.getCombatLevel() > 0)
+                    {
+                        combatCell.setForeground(config.infoBarColor());
+                    }
+                    if (hiscoreResult.getTotalLevel() > 0)
+                    {
+                        totalLvlCell.setForeground(config.infoBarColor());
+                    }
                 }
                 break;
         }
