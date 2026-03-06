@@ -280,21 +280,21 @@ public class KillClogPanel extends PluginPanel
         @Override
         public JToolTip createToolTip()
         {
-            TextTooltip tip = new TextTooltip();
+            SummaryTooltip tip = new SummaryTooltip();
             tip.setComponent(this);
             return tip;
         }
     };
-    private final JLabel totalLvl = new JLabel()
+    private final JLabel clogInfoLabel = new JLabel()
     {
         @Override
         public JToolTip createToolTip()
         {
             TextTooltip tip = new TextTooltip();
             tip.setComponent(this);
-            if (combatLevelImage != null)
+            for (Map.Entry<String, ImageIcon> entry : clogTierIcons.entrySet())
             {
-                tip.putIcon("combat", combatLevelImage);
+                tip.putIcon(entry.getKey(), iconToImage(entry.getValue()));
             }
             return tip;
         }
@@ -337,8 +337,6 @@ public class KillClogPanel extends PluginPanel
     private JLabel masterRare;
     private TooltipData thirdAgeTooltipData;
     private TooltipData gildedTooltipData;
-    private ImageIcon clogTierIcon;
-
     // Current lookup state
     private HiscoreResult hiscoreResult;
     private ClogResult clogResult;
@@ -536,7 +534,7 @@ public class KillClogPanel extends PluginPanel
         panel.add(searchBar);
         panel.add(Box.createVerticalStrut(4));
 
-        // Info bar: [badge+name LEFT] [hamburger CENTER] [totalLvl RIGHT]
+        // Info bar: [badge+name LEFT] [hamburger CENTER] [tierIcon+clogCount RIGHT]
         JPanel infoRow = new JPanel(new BorderLayout());
         infoRow.setBackground(ColorScheme.DARK_GRAY_COLOR);
         infoRow.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -545,8 +543,8 @@ public class KillClogPanel extends PluginPanel
         configureBarLabel(playerName, JLabel.LEFT);
         playerName.setBorder(new EmptyBorder(0, 4, 0, 0));
 
-        configureBarLabel(totalLvl, JLabel.RIGHT);
-        totalLvl.setBorder(new EmptyBorder(0, 0, 0, 4));
+        configureBarLabel(clogInfoLabel, JLabel.RIGHT);
+        clogInfoLabel.setBorder(new EmptyBorder(0, 0, 0, 4));
 
         trayToggle = new JLabel();
         ImageIcon hamburgerIcon = new ImageIcon(makeHamburgerIcon(HAMBURGER_COLOR));
@@ -583,7 +581,7 @@ public class KillClogPanel extends PluginPanel
 
         infoRow.add(playerName, BorderLayout.WEST);
         infoRow.add(centerPanel, BorderLayout.CENTER);
-        infoRow.add(totalLvl, BorderLayout.EAST);
+        infoRow.add(clogInfoLabel, BorderLayout.EAST);
         panel.add(infoRow);
 
         loadRuntimeIcons();
@@ -740,14 +738,12 @@ public class KillClogPanel extends PluginPanel
         rest.setAlignmentX(0f);
         for (HiscoreSkill activity : new HiscoreSkill[]{
             HiscoreSkill.SOUL_WARS_ZEAL, HiscoreSkill.RIFTS_CLOSED,
-            HiscoreSkill.COLOSSEUM_GLORY, HiscoreSkill.COLLECTIONS_LOGGED,
+            HiscoreSkill.COLOSSEUM_GLORY,
             HiscoreSkill.BOUNTY_HUNTER_ROGUE, HiscoreSkill.BOUNTY_HUNTER_HUNTER,
             HiscoreSkill.PVP_ARENA_RANK, HiscoreSkill.LEAGUE_POINTS,
             HiscoreSkill.LAST_MAN_STANDING})
         {
-            rest.add(activity == HiscoreSkill.COLLECTIONS_LOGGED
-                ? makeClogCell()
-                : makeActivityCell(activity));
+            rest.add(makeActivityCell(activity));
         }
         grid.add(rest);
 
@@ -978,43 +974,6 @@ public class KillClogPanel extends PluginPanel
         return wrapInCell(label);
     }
 
-    private JPanel makeClogCell()
-    {
-        HiscoreSkill activity = HiscoreSkill.COLLECTIONS_LOGGED;
-        JLabel label = new JLabel()
-        {
-            @Override
-            public JToolTip createToolTip()
-            {
-                TextTooltip tip = new TextTooltip();
-                tip.setComponent(this);
-                for (Map.Entry<String, ImageIcon> entry : clogTierIcons.entrySet())
-                {
-                    tip.putIcon(entry.getKey(), iconToImage(entry.getValue()));
-                }
-                return tip;
-            }
-        };
-        styleLabel(label, activity.getName());
-
-        if (activity.getSpriteId() != -1)
-        {
-            spriteManager.getSpriteAsync(activity.getSpriteId(), 0, sprite ->
-                SwingUtilities.invokeLater(() ->
-                {
-                    if (sprite != null)
-                    {
-                        clogTierIcon = new ImageIcon(ImageUtil.resizeImage(
-                            ImageUtil.resizeCanvas(sprite, 25, 25), 20, 20));
-                        label.setIcon(clogTierIcon);
-                    }
-                }));
-        }
-
-        activityLabels.put(activity, label);
-        return wrapInCell(label);
-    }
-
     /** Set a label's icon from an item image, with async repaint on load. */
     private void setItemIcon(JLabel label, int itemId)
     {
@@ -1109,8 +1068,9 @@ public class KillClogPanel extends PluginPanel
         playerName.setForeground(color);
         playerName.setIcon(null);
         playerName.setToolTipText(null);
-        totalLvl.setIcon(null);
-        totalLvl.setText("");
+        clogInfoLabel.setIcon(null);
+        clogInfoLabel.setText("");
+        clogInfoLabel.setToolTipText(null);
     }
 
     public void doLookup()
@@ -1150,55 +1110,9 @@ public class KillClogPanel extends PluginPanel
                     nameAutocompleter.addToSearchHistory(player);
                 }
 
-                int totalLevel = result.getTotalLevel();
                 playerName.setText(rsn != null ? rsn : player);
                 playerName.setForeground(config.infoBarColor());
                 updateInfoIcon(result.getAccountType());
-
-                if (totalLevel > 0)
-                {
-                    int zukKc = result.getKc("TzKal-Zuk");
-                    int combatLevel = result.getCombatLevel();
-
-                    ImageIcon levelIcon;
-                    String levelTooltip;
-                    if (totalLevel >= 2376 && zukKc >= 1 && infernalMaxCapeIcon != null)
-                    {
-                        levelIcon = infernalMaxCapeIcon;
-                        levelTooltip = "Maxed TzKal";
-                    }
-                    else if (totalLevel >= 2376 && maxCapeIcon != null)
-                    {
-                        levelIcon = maxCapeIcon;
-                        levelTooltip = "Maxed";
-                    }
-                    else if (zukKc >= 1 && infernalCapeIcon != null)
-                    {
-                        levelIcon = infernalCapeIcon;
-                        levelTooltip = "Infernal";
-                    }
-                    else
-                    {
-                        levelIcon = skillsIcon;
-                        levelTooltip = null;
-                    }
-
-                    if (combatLevel > 0)
-                    {
-                        String combatLine = "{c}{combat}{w}" + combatLevel;
-                        levelTooltip = combatLine + (levelTooltip != null ? "\n" + levelTooltip : "");
-                    }
-
-                    totalLvl.setIcon(levelIcon);
-                    totalLvl.setToolTipText(levelTooltip);
-                    totalLvl.setText(String.valueOf(totalLevel));
-                    totalLvl.setForeground(config.infoBarColor());
-                }
-                else
-                {
-                    totalLvl.setIcon(null);
-                    totalLvl.setText("");
-                }
 
                 if (clogResult != null)
                 {
@@ -1297,11 +1211,9 @@ public class KillClogPanel extends PluginPanel
 
         resetLabelMap(activityLabels);
 
-        JLabel clogCell = activityLabels.get(HiscoreSkill.COLLECTIONS_LOGGED);
-        if (clogCell != null && clogTierIcon != null)
-        {
-            clogCell.setIcon(clogTierIcon);
-        }
+        clogInfoLabel.setIcon(null);
+        clogInfoLabel.setText("");
+        clogInfoLabel.setToolTipText(null);
 
         resetLabelMap(clueTierLabels);
 
@@ -1372,7 +1284,7 @@ public class KillClogPanel extends PluginPanel
             {
                 label.setToolTipText(buildClueTooltip(result));
             }
-            else if (activity != HiscoreSkill.COLLECTIONS_LOGGED)
+            else
             {
                 int rank = result.getActivityRank(activity.getName());
                 label.setToolTipText(rank > 0
@@ -1567,23 +1479,20 @@ public class KillClogPanel extends PluginPanel
 
     private void updateClogCell(ClogResult result)
     {
-        JLabel label = activityLabels.get(HiscoreSkill.COLLECTIONS_LOGGED);
-        if (label == null) return;
-
         int[] totals = sumClogTotals(result);
         if (totals[0] > 0)
         {
             ImageIcon tierIcon = getClogTierIcon(totals[0], totals[1]);
             if (tierIcon != null)
             {
-                label.setIcon(new ImageIcon(ImageUtil.resizeImage(iconToImage(tierIcon), 20, 20)));
+                clogInfoLabel.setIcon(new ImageIcon(ImageUtil.resizeImage(iconToImage(tierIcon), 15, 15)));
             }
-            label.setText(pad(formatKc(totals[0])));
-            label.setForeground(KC_COLOR);
+            clogInfoLabel.setText(pad(formatKc(totals[0])));
+            clogInfoLabel.setForeground(config.infoBarColor());
 
             String tooltip = getClogTierTooltip(totals[0], totals[1]);
             String syncLine = syncLine(clogLastChanged);
-            label.setToolTipText(syncLine != null ? tooltip + "\n" + syncLine : tooltip);
+            clogInfoLabel.setToolTipText(syncLine != null ? tooltip + "\n" + syncLine : tooltip);
         }
     }
 
@@ -1921,7 +1830,7 @@ public class KillClogPanel extends PluginPanel
                 if (hiscoreResult != null)
                 {
                     playerName.setForeground(config.infoBarColor());
-                    totalLvl.setForeground(config.infoBarColor());
+                    clogInfoLabel.setForeground(config.infoBarColor());
                 }
                 break;
         }
@@ -2037,37 +1946,32 @@ public class KillClogPanel extends PluginPanel
     private void updateInfoIcon(AccountType type)
     {
         String resource;
-        String tooltip;
         switch (type)
         {
             case IRONMAN:
                 resource = "ironman.png";
-                tooltip = "Ironman";
                 break;
             case HARDCORE_IRONMAN:
                 resource = "hardcore_ironman.png";
-                tooltip = "Hardcore Ironman";
                 break;
             case ULTIMATE_IRONMAN:
                 resource = "ultimate_ironman.png";
-                tooltip = "Ultimate Ironman";
                 break;
             default:
                 playerName.setIcon(null);
-                playerName.setToolTipText(null);
+                playerName.setToolTipText(" ");
                 return;
         }
         try
         {
             BufferedImage img = ImageUtil.loadImageResource(HiscorePanel.class, resource);
             playerName.setIcon(new ImageIcon(ImageUtil.resizeImage(img, 15, 15)));
-            playerName.setToolTipText(tooltip);
         }
         catch (Exception e)
         {
             playerName.setIcon(null);
-            playerName.setToolTipText(null);
         }
+        playerName.setToolTipText(" ");
     }
 
     private void lookupItemNames(ClogResult result)
