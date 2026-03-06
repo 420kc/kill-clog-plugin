@@ -442,9 +442,32 @@ public class KillClogPanel extends PluginPanel
         // Separator between activities and boss grid
         c.gridy++;
         activitySeparator = new JPanel();
-        activitySeparator.setPreferredSize(new Dimension(0, 2));
-        activitySeparator.setBackground(activitiesExpanded
-            ? ColorScheme.DARK_GRAY_COLOR : ColorScheme.MEDIUM_GRAY_COLOR);
+        activitySeparator.setBackground(ColorScheme.DARK_GRAY_COLOR);
+        activitySeparator.setPreferredSize(new Dimension(0, 7));
+        activitySeparator.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        Color sepNormal = ColorScheme.DARK_GRAY_COLOR;
+        Color sepHover = new Color(46, 46, 46);
+        activitySeparator.addMouseListener(new MouseAdapter()
+        {
+            @Override
+            public void mousePressed(MouseEvent e)
+            {
+                toggleActivities();
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent e)
+            {
+                activitySeparator.setBackground(sepHover);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e)
+            {
+                activitySeparator.setBackground(sepNormal);
+            }
+        });
+        activitySeparator.setVisible(activitiesExpanded);
         add(activitySeparator, c);
 
         c.gridy++;
@@ -526,7 +549,6 @@ public class KillClogPanel extends PluginPanel
         totalLvl.setBorder(new EmptyBorder(0, 0, 0, 4));
 
         trayToggle = new JLabel();
-        trayToggle.setVisible(false);
         ImageIcon hamburgerIcon = new ImageIcon(makeHamburgerIcon(HAMBURGER_COLOR));
         ImageIcon hamburgerHoverIcon = new ImageIcon(makeHamburgerIcon(HAMBURGER_HOVER_COLOR));
         trayToggle.setIcon(hamburgerIcon);
@@ -638,8 +660,7 @@ public class KillClogPanel extends PluginPanel
         configManager.setConfiguration("killclog", "activitiesExpanded", activitiesExpanded);
 
         int targetHeight = activitiesExpanded ? activitiesGrid.getPreferredSize().height : 0;
-        activitySeparator.setBackground(activitiesExpanded
-            ? ColorScheme.DARK_GRAY_COLOR : ColorScheme.MEDIUM_GRAY_COLOR);
+        activitySeparator.setVisible(activitiesExpanded);
         if (activitiesExpanded)
         {
             activitiesClip.setVisible(true);
@@ -665,6 +686,7 @@ public class KillClogPanel extends PluginPanel
                 if (!activitiesExpanded)
                 {
                     activitiesClip.setVisible(false);
+                    activitySeparator.setVisible(false);
                 }
             }
         });
@@ -1089,7 +1111,6 @@ public class KillClogPanel extends PluginPanel
         playerName.setToolTipText(null);
         totalLvl.setIcon(null);
         totalLvl.setText("");
-        trayToggle.setVisible(false);
     }
 
     public void doLookup()
@@ -1132,7 +1153,6 @@ public class KillClogPanel extends PluginPanel
                 int totalLevel = result.getTotalLevel();
                 playerName.setText(rsn != null ? rsn : player);
                 playerName.setForeground(config.infoBarColor());
-                trayToggle.setVisible(true);
                 updateInfoIcon(result.getAccountType());
 
                 if (totalLevel > 0)
