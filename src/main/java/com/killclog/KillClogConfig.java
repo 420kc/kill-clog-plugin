@@ -73,6 +73,17 @@ public interface KillClogConfig extends Config
         return new Color(198, 198, 198);
     }
 
+    @ConfigItem(
+        keyName = "tooltipOnClick",
+        name = "Click to Show Tooltips",
+        description = "Show tooltips when clicking cells instead of hovering",
+        position = 5
+    )
+    default boolean tooltipOnClick()
+    {
+        return false;
+    }
+
 
     // --- Completionist's Highlighter ---
 

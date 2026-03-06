@@ -33,6 +33,14 @@ public class HiscoreService
     private static final int ACTIVITY_START_INDEX = 25;
     private static final int BOSS_START_INDEX = 45;
 
+    // Skill names in hiscore CSV order (lines 1-24).
+    private static final String[] SKILL_NAMES = {
+        "attack", "defence", "strength", "hitpoints", "ranged", "prayer", "magic",
+        "cooking", "woodcutting", "fletching", "fishing", "firemaking", "crafting",
+        "smithing", "mining", "herblore", "agility", "thieving", "slayer",
+        "farming", "runecraft", "hunter", "construction", "sailing"
+    };
+
     // Activity names in hiscore CSV order (lines 25-44).
     // Includes deprecated entries (Grid Points, Deadman Points, BH Legacy) that
     // still occupy CSV lines — must be present so indices align correctly.
@@ -194,6 +202,24 @@ public class HiscoreService
 
         int combatLevel = calcCmbLvl(lines);
 
+        Map<String, Integer> skillLevels = new LinkedHashMap<>();
+        for (int i = 0; i < SKILL_NAMES.length; i++)
+        {
+            int lineIdx = 1 + i;
+            if (lineIdx >= lines.length)
+            {
+                break;
+            }
+            try
+            {
+                skillLevels.put(SKILL_NAMES[i], parseSkillLevel(lines, lineIdx));
+            }
+            catch (Exception e)
+            {
+                skillLevels.put(SKILL_NAMES[i], -1);
+            }
+        }
+
         for (int i = 0; i < ACTIVITY_NAMES.length; i++)
         {
             int lineIdx = ACTIVITY_START_INDEX + i;
@@ -239,7 +265,7 @@ public class HiscoreService
         }
 
         return new HiscoreResult(type, bossKills, bossRanks, activityScores, activityRanks,
-            totalLevel, totalXp, combatLevel);
+            skillLevels, totalLevel, totalXp, combatLevel);
     }
 
     /**

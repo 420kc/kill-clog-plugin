@@ -35,6 +35,8 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JToolTip;
+import javax.swing.Popup;
+import javax.swing.PopupFactory;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.ToolTipManager;
@@ -42,6 +44,7 @@ import javax.swing.border.EmptyBorder;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.game.SpriteManager;
 import net.runelite.client.hiscore.HiscoreSkill;
 import lombok.extern.slf4j.Slf4j;
@@ -52,6 +55,7 @@ import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import java.awt.Cursor;
 import java.awt.Dimension;
+import java.awt.Point;
 import java.awt.event.HierarchyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -352,6 +356,11 @@ public class KillClogPanel extends PluginPanel
 
     // Captured in onActivate(), restored in onDeactivate()/shutdown()
     private int defaultDismissDelay;
+    private int defaultInitialDelay = -1;
+
+    // Click-to-reveal tooltip state
+    private Popup activeClickPopup;
+    private JLabel activeClickLabel;
 
     // Hover tint state
     private JPanel hoveredCell;
@@ -368,7 +377,8 @@ public class KillClogPanel extends PluginPanel
     public KillClogPanel(HiscoreService hiscoreService, ClogService clogService,
                          KillClogConfig config, ConfigManager configManager,
                          SpriteManager spriteManager,
-                         ItemManager itemManager, ClientThread clientThread)
+                         ItemManager itemManager, ClientThread clientThread,
+                         SkillIconManager skillIconManager)
     {
         super(true); // wrap in JScrollPane
         this.hiscoreService = hiscoreService;
@@ -380,6 +390,7 @@ public class KillClogPanel extends PluginPanel
         this.clientThread = clientThread;
 
         NativeTooltip.loadSprites(spriteManager);
+        SkillsTooltip.loadIcons(skillIconManager);
 
         // Combat level icon (crossed swords, sprite 168)
         spriteManager.getSpriteAsync(168, 0, sprite ->
@@ -721,7 +732,17 @@ public class KillClogPanel extends PluginPanel
             }));
         statsRow.add(wrapInCell(combatCell));
 
-        totalLvlCell = new JLabel();
+        totalLvlCell = new JLabel()
+        {
+            @Override
+            public JToolTip createToolTip()
+            {
+                SkillsTooltip tip = new SkillsTooltip();
+                tip.setComponent(this);
+                tip.setData(hiscoreResult);
+                return tip;
+            }
+        };
         styleLabel(totalLvlCell, "Total");
         try
         {
@@ -814,6 +835,15 @@ public class KillClogPanel extends PluginPanel
         label.addMouseListener(new MouseAdapter()
         {
             @Override
+            public void mouseClicked(MouseEvent e)
+            {
+                if (config.tooltipOnClick() && label.getToolTipText() != null)
+                {
+                    showClickTooltip(label, cell);
+                }
+            }
+
+            @Override
             public void mouseEntered(MouseEvent e)
             {
                 if (hoverExitTimer != null) hoverExitTimer.stop();
@@ -878,6 +908,52 @@ public class KillClogPanel extends PluginPanel
         {
             hoveredCell = null;
             cell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        }
+    }
+
+    private void showClickTooltip(JLabel label, JPanel cell)
+    {
+        // Toggle off if clicking same cell
+        if (label == activeClickLabel && activeClickPopup != null)
+        {
+            hideClickTooltip();
+            return;
+        }
+
+        hideClickTooltip();
+
+        JToolTip tip = label.createToolTip();
+        tip.setTipText(label.getToolTipText());
+
+        // Position below cell, screen-bounds aware
+        Point loc = cell.getLocationOnScreen();
+        Dimension tipSize = tip.getPreferredSize();
+        Rectangle screen = cell.getGraphicsConfiguration().getBounds();
+
+        int x = loc.x;
+        int y = loc.y + cell.getHeight();
+
+        if (x + tipSize.width > screen.x + screen.width)
+        {
+            x = screen.x + screen.width - tipSize.width;
+        }
+        if (y + tipSize.height > screen.y + screen.height)
+        {
+            y = loc.y - tipSize.height;
+        }
+
+        activeClickPopup = PopupFactory.getSharedInstance().getPopup(cell, tip, x, y);
+        activeClickLabel = label;
+        activeClickPopup.show();
+    }
+
+    private void hideClickTooltip()
+    {
+        if (activeClickPopup != null)
+        {
+            activeClickPopup.hide();
+            activeClickPopup = null;
+            activeClickLabel = null;
         }
     }
 
@@ -1177,6 +1253,7 @@ public class KillClogPanel extends PluginPanel
                 {
                     totalLvlCell.setText(pad(String.valueOf(totalLevel)));
                     totalLvlCell.setForeground(KC_COLOR);
+                    totalLvlCell.setToolTipText(" ");
                 }
 
                 if (clogResult != null)
@@ -1257,6 +1334,7 @@ public class KillClogPanel extends PluginPanel
      */
     private void resetAllLabels()
     {
+        hideClickTooltip();
         hiscoreResult = null;
         clogResult = null;
         clogLastChanged = null;
@@ -1285,6 +1363,7 @@ public class KillClogPanel extends PluginPanel
         combatCell.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         totalLvlCell.setText(pad("--"));
         totalLvlCell.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        totalLvlCell.setToolTipText(null);
 
         resetLabelMap(clueTierLabels);
 
@@ -1918,18 +1997,36 @@ public class KillClogPanel extends PluginPanel
         // Capture current delay here, not at construction, to handle plugins that modify it
         defaultDismissDelay = ToolTipManager.sharedInstance().getDismissDelay();
         ToolTipManager.sharedInstance().setDismissDelay(15000);
+
+        if (config.tooltipOnClick())
+        {
+            defaultInitialDelay = ToolTipManager.sharedInstance().getInitialDelay();
+            ToolTipManager.sharedInstance().setInitialDelay(Integer.MAX_VALUE);
+        }
     }
 
     @Override
     public void onDeactivate()
     {
         ToolTipManager.sharedInstance().setDismissDelay(defaultDismissDelay);
+        if (defaultInitialDelay >= 0)
+        {
+            ToolTipManager.sharedInstance().setInitialDelay(defaultInitialDelay);
+            defaultInitialDelay = -1;
+        }
+        hideClickTooltip();
     }
 
     /** Safety net — restores tooltip delay if plugin is disabled while panel is active. */
     public void shutdown()
     {
         ToolTipManager.sharedInstance().setDismissDelay(defaultDismissDelay);
+        if (defaultInitialDelay >= 0)
+        {
+            ToolTipManager.sharedInstance().setInitialDelay(defaultInitialDelay);
+            defaultInitialDelay = -1;
+        }
+        hideClickTooltip();
     }
 
     private void cycleFourTwentyMode()
