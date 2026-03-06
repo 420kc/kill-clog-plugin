@@ -32,6 +32,7 @@ import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JToolTip;
@@ -925,9 +926,43 @@ public class KillClogPanel extends PluginPanel
         JToolTip tip = label.createToolTip();
         tip.setTipText(label.getToolTipText());
 
+        Dimension tipSize = tip.getPreferredSize();
+
+        // Wrap tooltip + close button in a layered pane
+        JLayeredPane wrapper = new JLayeredPane();
+        tip.setBounds(0, 0, tipSize.width, tipSize.height);
+        wrapper.add(tip, JLayeredPane.DEFAULT_LAYER);
+
+        JLabel closeBtn = new JLabel("\u00d7");
+        closeBtn.setForeground(TEXT_DIM);
+        closeBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+        Dimension closeSz = closeBtn.getPreferredSize();
+        closeBtn.setBounds(tipSize.width - closeSz.width - 8, 6, closeSz.width, closeSz.height);
+        closeBtn.addMouseListener(new MouseAdapter()
+        {
+            @Override
+            public void mouseClicked(MouseEvent e)
+            {
+                hideClickTooltip();
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent e)
+            {
+                closeBtn.setForeground(KC_COLOR);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e)
+            {
+                closeBtn.setForeground(TEXT_DIM);
+            }
+        });
+        wrapper.add(closeBtn, JLayeredPane.PALETTE_LAYER);
+        wrapper.setPreferredSize(tipSize);
+
         // Position below cell, screen-bounds aware
         Point loc = cell.getLocationOnScreen();
-        Dimension tipSize = tip.getPreferredSize();
         Rectangle screen = cell.getGraphicsConfiguration().getBounds();
 
         int x = loc.x;
@@ -942,7 +977,7 @@ public class KillClogPanel extends PluginPanel
             y = loc.y - tipSize.height;
         }
 
-        activeClickPopup = PopupFactory.getSharedInstance().getPopup(cell, tip, x, y);
+        activeClickPopup = PopupFactory.getSharedInstance().getPopup(cell, wrapper, x, y);
         activeClickLabel = label;
         activeClickPopup.show();
     }
@@ -1468,14 +1503,6 @@ public class KillClogPanel extends PluginPanel
             sb.append(": {w}").append(String.format("%,d", allScore));
         }
 
-        // Derive tier names from CLUE_CATEGORIES to stay in sync automatically
-        for (HiscoreSkill tier : CLUE_CATEGORIES.keySet())
-        {
-            int tierScore = result.getActivityScore(tier.getName());
-            sb.append("\n").append(capitalizeTier(tier)).append(": {w}");
-            sb.append(tierScore > 0 ? String.format("%,d", tierScore) : "--");
-        }
-
         int rank = result.getActivityRank(HiscoreSkill.CLUE_SCROLL_ALL.getName());
         if (rank > 0)
         {
@@ -1837,6 +1864,18 @@ public class KillClogPanel extends PluginPanel
             if (totalItems > 0)
             {
                 clueAllLabel.setForeground(clogColor(totalObtained, totalItems));
+            }
+        }
+
+        // Dim activities without clog categories so colored cells pop
+        for (HiscoreSkill noClog : new HiscoreSkill[]{
+            HiscoreSkill.LEAGUE_POINTS, HiscoreSkill.PVP_ARENA_RANK,
+            HiscoreSkill.BOUNTY_HUNTER_ROGUE, HiscoreSkill.BOUNTY_HUNTER_HUNTER})
+        {
+            JLabel label = activityLabels.get(noClog);
+            if (label != null && hiscoreResult.getActivityScore(noClog.getName()) > 0)
+            {
+                label.setForeground(TEXT_DIM);
             }
         }
 
