@@ -68,14 +68,14 @@ public class KillClogPanel extends PluginPanel
     private static final Color CELL_HOVER = new Color(41, 41, 41);
     private static final Color FOUR_TWENTY_GREEN = new Color(30, 200, 30);
 
-    private static final String[] SEARCHING_MESSAGES = {
+    private static final String[] SEARCH_MSGS = {
         "Throwing a search party for %s...",
         "Moving mountains to find %s...",
         "Deliberating on %s's whereabouts...",
         "Searching high and low for %s...",
     };
 
-    private static final String[] NOT_FOUND_MESSAGES = {
+    private static final String[] NOT_FOUND_MSGS = {
         "WANTED: %s",
         "%s has gone AWOL",
         "%s is touching grass",
@@ -243,25 +243,25 @@ public class KillClogPanel extends PluginPanel
     };
 
     // Activity -> Temple clog category for completionist highlighting
-    private static final Map<HiscoreSkill, String> ACTIVITY_CLOG_CATEGORIES = new LinkedHashMap<>();
+    private static final Map<HiscoreSkill, String> ACTIVITY_CATEGORIES = new LinkedHashMap<>();
     static
     {
-        ACTIVITY_CLOG_CATEGORIES.put(HiscoreSkill.SOUL_WARS_ZEAL, "soul_wars");
-        ACTIVITY_CLOG_CATEGORIES.put(HiscoreSkill.RIFTS_CLOSED, "guardians_of_the_rift");
-        ACTIVITY_CLOG_CATEGORIES.put(HiscoreSkill.LAST_MAN_STANDING, "last_man_standing");
-        ACTIVITY_CLOG_CATEGORIES.put(HiscoreSkill.COLOSSEUM_GLORY, "fortis_colosseum");
+        ACTIVITY_CATEGORIES.put(HiscoreSkill.SOUL_WARS_ZEAL, "soul_wars");
+        ACTIVITY_CATEGORIES.put(HiscoreSkill.RIFTS_CLOSED, "guardians_of_the_rift");
+        ACTIVITY_CATEGORIES.put(HiscoreSkill.LAST_MAN_STANDING, "last_man_standing");
+        ACTIVITY_CATEGORIES.put(HiscoreSkill.COLOSSEUM_GLORY, "fortis_colosseum");
     }
 
     // Clue tier -> Temple clog category
-    private static final Map<HiscoreSkill, String> CLUE_CLOG_CATEGORIES = new LinkedHashMap<>();
+    private static final Map<HiscoreSkill, String> CLUE_CATEGORIES = new LinkedHashMap<>();
     static
     {
-        CLUE_CLOG_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_BEGINNER, "beginner_treasure_trails");
-        CLUE_CLOG_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_EASY, "easy_treasure_trails");
-        CLUE_CLOG_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_MEDIUM, "medium_treasure_trails");
-        CLUE_CLOG_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_HARD, "hard_treasure_trails");
-        CLUE_CLOG_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_ELITE, "elite_treasure_trails");
-        CLUE_CLOG_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_MASTER, "master_treasure_trails");
+        CLUE_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_BEGINNER, "beginner_treasure_trails");
+        CLUE_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_EASY, "easy_treasure_trails");
+        CLUE_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_MEDIUM, "medium_treasure_trails");
+        CLUE_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_HARD, "hard_treasure_trails");
+        CLUE_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_ELITE, "elite_treasure_trails");
+        CLUE_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_MASTER, "master_treasure_trails");
     }
 
     private final HiscoreService hiscoreService;
@@ -342,8 +342,8 @@ public class KillClogPanel extends PluginPanel
     private boolean clogLookupDone;
     private String rsn;
     private String clogLastChanged;
-    private boolean showingNotFound;
-    private String loggedInPlayerName;
+    private boolean notFound;
+    private String localRsn;
 
     private final Map<HiscoreSkill, TooltipData> tooltipDataMap = new LinkedHashMap<>();
     private final Map<String, TooltipData> rareTooltips = new LinkedHashMap<>();
@@ -490,7 +490,7 @@ public class KillClogPanel extends PluginPanel
         searchBar.setAlignmentX(Component.LEFT_ALIGNMENT);
         searchBar.addActionListener(e -> doLookup());
 
-        styleSearchButtons(searchBar);
+        styleSearchBar(searchBar);
         for (Component c : searchBar.getComponents())
         {
             if (c instanceof net.runelite.client.ui.components.FlatTextField)
@@ -505,7 +505,7 @@ public class KillClogPanel extends PluginPanel
             }
             else if (c instanceof java.awt.Container)
             {
-                styleSearchButtons((java.awt.Container) c);
+                styleSearchBar((java.awt.Container) c);
             }
         }
         panel.add(searchBar);
@@ -1122,8 +1122,8 @@ public class KillClogPanel extends PluginPanel
         }
 
         final int thisLookup = ++lookupVersion;
-        int searchIdx = ThreadLocalRandom.current().nextInt(SEARCHING_MESSAGES.length);
-        setInfoBarMessage(String.format(SEARCHING_MESSAGES[searchIdx], player), TEXT_DIM);
+        int searchIdx = ThreadLocalRandom.current().nextInt(SEARCH_MSGS.length);
+        setInfoBarMessage(String.format(SEARCH_MSGS[searchIdx], player), TEXT_DIM);
         searchBar.setIcon(IconTextField.Icon.LOADING_DARKER);
 
         resetAllLabels();
@@ -1137,9 +1137,9 @@ public class KillClogPanel extends PluginPanel
 
                 if (result == null)
                 {
-                    int notFoundIdx = ThreadLocalRandom.current().nextInt(NOT_FOUND_MESSAGES.length);
-                    setInfoBarMessage(String.format(NOT_FOUND_MESSAGES[notFoundIdx], player), NOT_FOUND);
-                    showingNotFound = true;
+                    int notFoundIdx = ThreadLocalRandom.current().nextInt(NOT_FOUND_MSGS.length);
+                    setInfoBarMessage(String.format(NOT_FOUND_MSGS[notFoundIdx], player), NOT_FOUND);
+                    notFound = true;
                     searchBar.setText("");
                     return;
                 }
@@ -1207,7 +1207,7 @@ public class KillClogPanel extends PluginPanel
                 }
 
                 searchBar.setText("");
-                updateActivityLabels(result);
+                updateActivities(result);
                 colorCompletedCells();
                 updateTooltips();
             })
@@ -1247,7 +1247,7 @@ public class KillClogPanel extends PluginPanel
                             }
                         }
                         lookupItemNames(result);
-                        updateClueRareCells(result);
+                        updateRares(result);
                         if (hiscoreResult != null)
                         {
                             updateClogInfo(result);
@@ -1255,11 +1255,11 @@ public class KillClogPanel extends PluginPanel
                     }
                     else
                     {
-                        clogNotice.setText(loggedInPlayerName != null
-                            && loggedInPlayerName.equalsIgnoreCase(player)
+                        clogNotice.setText(localRsn != null
+                            && localRsn.equalsIgnoreCase(player)
                             ? "Open your Collection Log"
                             : " ");
-                        fetchCanonicalName(player, thisLookup);
+                        fetchRsn(player, thisLookup);
                     }
                 })
             ).exceptionally(ex ->
@@ -1270,7 +1270,7 @@ public class KillClogPanel extends PluginPanel
         }
         else
         {
-            fetchCanonicalName(player, thisLookup);
+            fetchRsn(player, thisLookup);
         }
     }
 
@@ -1285,7 +1285,7 @@ public class KillClogPanel extends PluginPanel
         clogLookupDone = false;
         clogLastChanged = null;
         rsn = null;
-        showingNotFound = false;
+        notFound = false;
         tooltipDataMap.clear();
         rareTooltips.clear();
         clogNotice.setText(" ");
@@ -1339,9 +1339,9 @@ public class KillClogPanel extends PluginPanel
         }
     }
 
-    private void fetchCanonicalName(String player, int thisLookup)
+    private void fetchRsn(String player, int thisLookup)
     {
-        clogService.lookupCanonicalName(player).thenAccept(name ->
+        clogService.lookupRsn(player).thenAccept(name ->
             SwingUtilities.invokeLater(() ->
             {
                 if (thisLookup != lookupVersion) return;
@@ -1361,7 +1361,7 @@ public class KillClogPanel extends PluginPanel
     // Label update methods
     // -------------------------------------------------------------------------
 
-    private void updateActivityLabels(HiscoreResult result)
+    private void updateActivities(HiscoreResult result)
     {
         for (Map.Entry<HiscoreSkill, JLabel> entry : activityLabels.entrySet())
         {
@@ -1393,7 +1393,7 @@ public class KillClogPanel extends PluginPanel
             label.setText(pad(score <= 0 ? "--" : formatKc(score)));
             label.setForeground(score > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
 
-            String shortName = capitalizeTierName(tier);
+            String shortName = capitalizeTier(tier);
             int rank = result.getActivityRank(tier.getName());
             label.setToolTipText(rank > 0
                 ? shortName + "\nRank: {w}" + String.format("%,d", rank)
@@ -1410,11 +1410,11 @@ public class KillClogPanel extends PluginPanel
             sb.append(": {w}").append(String.format("%,d", allScore));
         }
 
-        // Derive tier names from CLUE_CLOG_CATEGORIES to stay in sync automatically
-        for (HiscoreSkill tier : CLUE_CLOG_CATEGORIES.keySet())
+        // Derive tier names from CLUE_CATEGORIES to stay in sync automatically
+        for (HiscoreSkill tier : CLUE_CATEGORIES.keySet())
         {
             int tierScore = result.getActivityScore(tier.getName());
-            sb.append("\n").append(capitalizeTierName(tier)).append(": {w}");
+            sb.append("\n").append(capitalizeTier(tier)).append(": {w}");
             sb.append(tierScore > 0 ? String.format("%,d", tierScore) : "--");
         }
 
@@ -1427,13 +1427,13 @@ public class KillClogPanel extends PluginPanel
     }
 
     /** "Clue Scrolls (hard)" → "Hard" */
-    private static String capitalizeTierName(HiscoreSkill tier)
+    private static String capitalizeTier(HiscoreSkill tier)
     {
         String name = tier.getName().replace("Clue Scrolls (", "").replace(")", "");
         return Character.toUpperCase(name.charAt(0)) + name.substring(1);
     }
 
-    private void updateBossLabels(HiscoreResult result)
+    private void updateBosses(HiscoreResult result)
     {
         for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
         {
@@ -1477,16 +1477,16 @@ public class KillClogPanel extends PluginPanel
         }
     }
 
-    private void updateClueRareCells(ClogResult result)
+    private void updateRares(ClogResult result)
     {
-        updateClueRareCell(thirdAgeCell, "3rd Age", CLOG_THIRD_AGE, result, true);
-        updateClueRareCell(gildedCell, "Gilded", CLOG_GILDED, result, false);
-        updateCustomRareCell(hardRare, "Hard (Rare)", RARE_HARD, HARD_RARE_ITEMS, result);
-        updateCustomRareCell(eliteRare, "Elite (Rare)", RARE_ELITE, ELITE_RARE_ITEMS, result);
-        updateCustomRareCell(masterRare, "Master (Rare)", RARE_MASTER, MASTER_RARE_ITEMS, result);
+        updateClueRare(thirdAgeCell, "3rd Age", CLOG_THIRD_AGE, result, true);
+        updateClueRare(gildedCell, "Gilded", CLOG_GILDED, result, false);
+        updateCustomRare(hardRare, "Hard (Rare)", RARE_HARD, HARD_RARE_ITEMS, result);
+        updateCustomRare(eliteRare, "Elite (Rare)", RARE_ELITE, ELITE_RARE_ITEMS, result);
+        updateCustomRare(masterRare, "Master (Rare)", RARE_MASTER, MASTER_RARE_ITEMS, result);
     }
 
-    private void updateClueRareCell(JLabel label, String name, String clogCategory,
+    private void updateClueRare(JLabel label, String name, String clogCategory,
                                     ClogResult result, boolean isThirdAge)
     {
         if (label == null) return;
@@ -1529,7 +1529,7 @@ public class KillClogPanel extends PluginPanel
      * These categories don't exist in Temple, so we match hardcoded item IDs against
      * whatever the player has obtained anywhere in their clog.
      */
-    private void updateCustomRareCell(JLabel label, String name, String rareKey,
+    private void updateCustomRare(JLabel label, String name, String rareKey,
                                       int[] itemIds, ClogResult result)
     {
         if (label == null) return;
@@ -1599,7 +1599,7 @@ public class KillClogPanel extends PluginPanel
     {
         try
         {
-            updateTooltipsInner();
+            rebuildTooltips();
         }
         catch (Exception e)
         {
@@ -1607,7 +1607,7 @@ public class KillClogPanel extends PluginPanel
         }
     }
 
-    private void updateTooltipsInner()
+    private void rebuildTooltips()
     {
         tooltipDataMap.clear();
 
@@ -1644,7 +1644,7 @@ public class KillClogPanel extends PluginPanel
         }
 
         // Activity cells with clog categories
-        for (Map.Entry<HiscoreSkill, String> entry : ACTIVITY_CLOG_CATEGORIES.entrySet())
+        for (Map.Entry<HiscoreSkill, String> entry : ACTIVITY_CATEGORIES.entrySet())
         {
             HiscoreSkill activity = entry.getKey();
             JLabel label = activityLabels.get(activity);
@@ -1661,7 +1661,7 @@ public class KillClogPanel extends PluginPanel
         }
 
         // Clue tier cells
-        for (Map.Entry<HiscoreSkill, String> entry : CLUE_CLOG_CATEGORIES.entrySet())
+        for (Map.Entry<HiscoreSkill, String> entry : CLUE_CATEGORIES.entrySet())
         {
             HiscoreSkill tier = entry.getKey();
             JLabel label = clueTierLabels.get(tier);
@@ -1669,7 +1669,7 @@ public class KillClogPanel extends PluginPanel
 
             int rank = hiscoreResult != null
                 ? hiscoreResult.getActivityRank(tier.getName()) : -1;
-            TooltipData data = buildTooltipData(capitalizeTierName(tier), entry.getValue(), rank);
+            TooltipData data = buildTooltipData(capitalizeTier(tier), entry.getValue(), rank);
             if (data == null) continue;
 
             tooltipDataMap.put(tier, data);
@@ -1736,8 +1736,8 @@ public class KillClogPanel extends PluginPanel
     private void toggleHighlighter(boolean enabled)
     {
         if (hiscoreResult == null) return;
-        updateBossLabels(hiscoreResult);
-        updateActivityLabels(hiscoreResult);
+        updateBosses(hiscoreResult);
+        updateActivities(hiscoreResult);
         if (enabled && clogResult != null)
         {
             colorCellsByCompletion();
@@ -1753,7 +1753,7 @@ public class KillClogPanel extends PluginPanel
             colorBossCell(entry.getValue(), hiscoreName);
         }
 
-        for (Map.Entry<HiscoreSkill, String> entry : ACTIVITY_CLOG_CATEGORIES.entrySet())
+        for (Map.Entry<HiscoreSkill, String> entry : ACTIVITY_CATEGORIES.entrySet())
         {
             JLabel label = activityLabels.get(entry.getKey());
             if (label != null)
@@ -1763,7 +1763,7 @@ public class KillClogPanel extends PluginPanel
             }
         }
 
-        for (Map.Entry<HiscoreSkill, String> entry : CLUE_CLOG_CATEGORIES.entrySet())
+        for (Map.Entry<HiscoreSkill, String> entry : CLUE_CATEGORIES.entrySet())
         {
             JLabel label = clueTierLabels.get(entry.getKey());
             if (label != null)
@@ -1780,7 +1780,7 @@ public class KillClogPanel extends PluginPanel
         {
             int totalItems = 0;
             int totalObtained = 0;
-            for (String cat : CLUE_CLOG_CATEGORIES.values())
+            for (String cat : CLUE_CATEGORIES.values())
             {
                 List<Integer> items = clogResult.getCategoryItems().get(cat);
                 if (items != null)
@@ -1872,7 +1872,7 @@ public class KillClogPanel extends PluginPanel
 
     public void setLoggedInPlayer(String name)
     {
-        this.loggedInPlayerName = name;
+        this.localRsn = name;
     }
 
     public void setNameAutocompleter(NameAutocompleter autocompleter)
@@ -2246,7 +2246,7 @@ public class KillClogPanel extends PluginPanel
         return gray;
     }
 
-    private static void styleSearchButtons(java.awt.Container container)
+    private static void styleSearchBar(java.awt.Container container)
     {
         for (Component c : container.getComponents())
         {
@@ -2259,7 +2259,7 @@ public class KillClogPanel extends PluginPanel
             }
             else if (c instanceof java.awt.Container)
             {
-                styleSearchButtons((java.awt.Container) c);
+                styleSearchBar((java.awt.Container) c);
             }
         }
     }

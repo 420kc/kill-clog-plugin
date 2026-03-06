@@ -138,7 +138,7 @@ public class ClogService
         String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
 
         CompletableFuture<PlayerClogData> playerFuture =
-            fetchPlayerClog(encoded);
+            fetchClog(encoded);
         CompletableFuture<Map<String, List<Integer>>> categoriesFuture =
             fetchCategories();
         CompletableFuture<Map<Integer, String>> namesFuture =
@@ -192,10 +192,10 @@ public class ClogService
         }
     }
 
-    private CompletableFuture<PlayerClogData> fetchPlayerClog(String encodedPlayer)
+    private CompletableFuture<PlayerClogData> fetchClog(String encodedPlayer)
     {
         String url = TEMPLE_PLAYER_URL + "?player=" + encodedPlayer + "&categories=all";
-        return httpGetAsync(url).thenApply(json ->
+        return httpGet(url).thenApply(json ->
         {
             if (json == null)
             {
@@ -270,7 +270,7 @@ public class ClogService
                 return categoriesFlight;
             }
 
-            categoriesFlight = httpGetAsync(TEMPLE_CATEGORIES_URL).thenApply(json ->
+            categoriesFlight = httpGet(TEMPLE_CATEGORIES_URL).thenApply(json ->
             {
                 try
                 {
@@ -330,7 +330,7 @@ public class ClogService
                 return namesFlight;
             }
 
-            namesFlight = httpGetAsync(WIKI_MAPPING_URL).thenApply(json ->
+            namesFlight = httpGet(WIKI_MAPPING_URL).thenApply(json ->
             {
                 try
                 {
@@ -372,11 +372,11 @@ public class ClogService
      * Fetch only the canonical player name from TempleOSRS player stats.
      * Lightweight fallback when clog data is unavailable.
      */
-    public CompletableFuture<String> lookupCanonicalName(String playerName)
+    public CompletableFuture<String> lookupRsn(String playerName)
     {
         String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
         String url = TEMPLE_STATS_URL + "?player=" + encoded;
-        return httpGetAsync(url).thenApply(json ->
+        return httpGet(url).thenApply(json ->
         {
             if (json == null)
             {
@@ -405,7 +405,7 @@ public class ClogService
         });
     }
 
-    private CompletableFuture<String> httpGetAsync(String url)
+    private CompletableFuture<String> httpGet(String url)
     {
         log.debug("HTTP GET: {}", url);
         CompletableFuture<String> future = new CompletableFuture<>();

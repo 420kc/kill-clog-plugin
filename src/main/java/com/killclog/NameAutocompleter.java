@@ -36,12 +36,12 @@ public class NameAutocompleter implements KeyListener
 {
     private static final String NBSP = Character.toString('\u00a0');
     private static final Pattern INVALID_CHARS = Pattern.compile("[^a-zA-Z0-9_ -]");
-    private static final int MAX_SEARCH_HISTORY = 25;
+    private static final int MAX_HISTORY = 25;
 
     private final Client client;
-    private final EvictingQueue<String> searchHistory = EvictingQueue.create(MAX_SEARCH_HISTORY);
-    private String autocompleteName;
-    private Pattern autocompleteNamePattern;
+    private final EvictingQueue<String> searchHistory = EvictingQueue.create(MAX_HISTORY);
+    private String autofill;
+    private Pattern autofillPattern;
 
     @Inject
     private NameAutocompleter(Client client)
@@ -76,7 +76,7 @@ public class NameAutocompleter implements KeyListener
             return;
         }
 
-        if (autocompleteName != null && autocompleteNamePattern.matcher(inputText).matches())
+        if (autofill != null && autofillPattern.matcher(inputText).matches())
         {
             if (isExpectedNext(input, charToInsert))
             {
@@ -96,24 +96,24 @@ public class NameAutocompleter implements KeyListener
             }
             else
             {
-                newAutocomplete(e);
+                startAutofill(e);
             }
         }
         else
         {
-            newAutocomplete(e);
+            startAutofill(e);
         }
     }
 
-    private void newAutocomplete(KeyEvent e)
+    private void startAutofill(KeyEvent e)
     {
         JTextComponent input = (JTextComponent) e.getSource();
         String inputText = input.getText();
         String nameStart = inputText.substring(0, input.getSelectionStart()) + e.getKeyChar();
 
-        if (findAutocompleteName(nameStart))
+        if (findAutofill(nameStart))
         {
-            String name = autocompleteName;
+            String name = autofill;
             SwingUtilities.invokeLater(() ->
             {
                 try
@@ -129,7 +129,7 @@ public class NameAutocompleter implements KeyListener
         }
     }
 
-    private boolean findAutocompleteName(String nameStart)
+    private boolean findAutofill(String nameStart)
     {
         Pattern pattern = Pattern.compile("(?i)^" + nameStart.replaceAll("[ _-]", "[ _" + NBSP + "-]") + ".+?");
 
@@ -194,13 +194,13 @@ public class NameAutocompleter implements KeyListener
 
         if (match.isPresent())
         {
-            autocompleteName = match.get().replace(NBSP, " ");
-            autocompleteNamePattern = Pattern.compile("(?i)^" + autocompleteName.replaceAll("[ _-]", "[ _-]") + "$");
+            autofill = match.get().replace(NBSP, " ");
+            autofillPattern = Pattern.compile("(?i)^" + autofill.replaceAll("[ _-]", "[ _-]") + "$");
         }
         else
         {
-            autocompleteName = null;
-            autocompleteNamePattern = null;
+            autofill = null;
+            autofillPattern = null;
         }
 
         return match.isPresent();

@@ -39,7 +39,7 @@ public class LocalClogCache
 
     private final Map<String, PlayerClogData> players = new ConcurrentHashMap<>();
     private final Gson gson;
-    private volatile String activePlayerName;
+    private volatile String activePlayer;
 
     /** Single-threaded executor for all disk I/O — keeps the client thread unblocked. */
     private final ExecutorService diskWriter = Executors.newSingleThreadExecutor(r ->
@@ -65,11 +65,11 @@ public class LocalClogCache
     {
         if (name == null)
         {
-            activePlayerName = null;
+            activePlayer = null;
             return;
         }
 
-        activePlayerName = name;
+        activePlayer = name;
         String key = name.toLowerCase();
 
         if (!players.containsKey(key))
@@ -89,39 +89,39 @@ public class LocalClogCache
     public void putCategory(String categoryKey, List<Integer> allItemIds,
                             List<ClogResult.ClogItem> obtained)
     {
-        if (activePlayerName == null)
+        if (activePlayer == null)
         {
             return;
         }
 
-        String key = activePlayerName.toLowerCase();
+        String key = activePlayer.toLowerCase();
         PlayerClogData data = players.computeIfAbsent(key, k ->
         {
             PlayerClogData d = new PlayerClogData();
-            d.playerName = activePlayerName;
+            d.playerName = activePlayer;
             d.categories = new HashMap<>();
             d.obtained = new HashMap<>();
             return d;
         });
 
-        data.playerName = activePlayerName;
+        data.playerName = activePlayer;
         data.lastUpdated = Instant.now().toString();
         data.categories.put(categoryKey, new ArrayList<>(allItemIds));
         data.obtained.put(categoryKey, new ArrayList<>(obtained));
 
         log.debug("Cached clog category '{}' for '{}': {}/{} obtained",
-            categoryKey, activePlayerName, obtained.size(), allItemIds.size());
+            categoryKey, activePlayer, obtained.size(), allItemIds.size());
 
         // Snapshot for async write — captures data state at this moment
-        final String playerName = activePlayerName;
+        final String playerName = activePlayer;
         final PlayerClogData snapshot = shallowCopy(data);
         diskWriter.execute(() -> saveToDisk(playerName, snapshot));
     }
 
     public boolean isActivePlayer(String name)
     {
-        return activePlayerName != null && name != null
-            && activePlayerName.equalsIgnoreCase(name);
+        return activePlayer != null && name != null
+            && activePlayer.equalsIgnoreCase(name);
     }
 
     public void cacheResult(ClogResult result)

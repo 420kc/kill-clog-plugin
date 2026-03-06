@@ -192,7 +192,7 @@ public class HiscoreService
         }
         catch (Exception ignored) {}
 
-        int combatLevel = calculateCombatLevel(lines);
+        int combatLevel = calcCmbLvl(lines);
 
         for (int i = 0; i < ACTIVITY_NAMES.length; i++)
         {
@@ -246,7 +246,7 @@ public class HiscoreService
      * Calculate combat level from hiscore CSV skill lines.
      * Skills: 1=Attack, 2=Defence, 3=Strength, 4=Hitpoints, 5=Ranged, 6=Prayer, 7=Magic
      */
-    private int calculateCombatLevel(String[] lines)
+    private int calcCmbLvl(String[] lines)
     {
         try
         {
