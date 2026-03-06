@@ -69,6 +69,7 @@ public class KillClogPlugin extends Plugin
     private LocalClogCache localClogCache;
 
     private NavigationButton navButton;
+    private boolean pendingAutoLookup;
 
     private final HotkeyListener highlighterHotkey = new HotkeyListener(() -> config.highlighterKeybind())
     {
@@ -118,8 +119,6 @@ public class KillClogPlugin extends Plugin
         localClogCache.shutdown();
         log.debug("Kill Clog plugin stopped");
     }
-
-    private boolean pendingAutoLookup = false;
 
     @Subscribe
     public void onGameStateChanged(GameStateChanged event)

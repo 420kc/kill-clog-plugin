@@ -3,41 +3,34 @@ package com.killclog;
 import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.Font;
 import java.awt.FontMetrics;
-import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import javax.swing.JToolTip;
 import javax.swing.SwingUtilities;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.AsyncBufferedImage;
 
 /**
- * Custom tooltip that paints item sprites in a grid for boss/activity collection log data.
- * Uses Graphics2D painting instead of HTML to reliably render item images.
+ * Sprite grid tooltip for collection log data.
+ * Header with name, obtained count, rank, then item sprites in a configurable grid.
  *
- * <p>Standard 5-column layout: {@code new BossTooltip()}
- * <p>Wide 10-column layout for large clue tiers: {@code new BossTooltip(10)}
+ * <p>Standard 5-column layout: {@code new ImgTooltip()}
+ * <p>Wide 10-column layout for large clue tiers: {@code new ImgTooltip(10)}
  */
-public class BossTooltip extends JToolTip
+public class ImgTooltip extends NativeTooltip
 {
     private static final int DEFAULT_COLS = 5;
 
     private static final int SPRITE_SIZE = 32;
     private static final int PADDING = 4;
-    private static final int MARGIN = 8;
-    private static final int LINE_HEIGHT = 14;
     private static final int NAME_LINE_HEIGHT = 18;
     private static final int SEPARATOR_GAP = 6;
 
     private static final Color SEPARATOR_COLOR = new Color(80, 70, 50);
-    private static final Color OSRS_ORANGE = new Color(255, 152, 31);
     private static final Color CLOG_GREEN = new Color(0, 255, 0);
     private static final Color CLOG_YELLOW = new Color(255, 255, 0);
     private static final Color QTY_COLOR = new Color(255, 255, 0);
@@ -47,27 +40,25 @@ public class BossTooltip extends JToolTip
     private final int gridCols;
     private int hoveredItemIndex = -1;
 
-    private String bossName;
+    private String name;
     private int rank;
     private int obtainedCount;
     private int totalItems;
     private List<Integer> allItemIds;
     private Set<Integer> obtainedIds;
     private Map<Integer, Integer> obtainedCounts;
-    private ItemManager itemManager;
+    private BufferedImage[] sprites;
 
     /** Standard 5-column tooltip. */
-    public BossTooltip()
+    public ImgTooltip()
     {
         this(DEFAULT_COLS);
     }
 
     /** Configurable column count — use {@code 10} for wide clue-tier grids. */
-    public BossTooltip(int gridCols)
+    public ImgTooltip(int gridCols)
     {
         this.gridCols = gridCols;
-        setOpaque(false);
-        setBorder(null);
 
         addMouseMotionListener(new java.awt.event.MouseMotionAdapter()
         {
@@ -99,31 +90,34 @@ public class BossTooltip extends JToolTip
 
     /**
      * Populate tooltip data before display.
-     * Registers async repaint callbacks so sprites appear as they load.
+     * Holds strong references to sprites so they survive ItemManager cache eviction.
      */
-    public void setData(String bossName, int rank, int obtainedCount, int totalItems,
+    public void setData(String name, int rank, int obtainedCount, int totalItems,
                         List<Integer> allItemIds, Set<Integer> obtainedIds,
                         Map<Integer, Integer> obtainedCounts, ItemManager itemManager)
     {
-        this.bossName = bossName;
+        this.name = name;
         this.rank = rank;
         this.obtainedCount = obtainedCount;
         this.totalItems = totalItems;
         this.allItemIds = allItemIds;
         this.obtainedIds = obtainedIds;
         this.obtainedCounts = obtainedCounts;
-        this.itemManager = itemManager;
 
         if (allItemIds == null || itemManager == null)
         {
+            sprites = null;
             return;
         }
 
-        for (int itemId : allItemIds)
+        sprites = new BufferedImage[allItemIds.size()];
+        for (int i = 0; i < allItemIds.size(); i++)
         {
+            int itemId = allItemIds.get(i);
             int count = obtainedIds != null && obtainedIds.contains(itemId)
                 ? obtainedCounts.getOrDefault(itemId, 1) : 1;
             BufferedImage img = itemManager.getImage(itemId, count, false);
+            sprites[i] = img;
             if (img instanceof AsyncBufferedImage)
             {
                 ((AsyncBufferedImage) img).onLoaded(() ->
@@ -147,11 +141,10 @@ public class BossTooltip extends JToolTip
         int gridWidth = gridCols * (SPRITE_SIZE + PADDING) - PADDING;
         int gridHeight = spriteRows * (SPRITE_SIZE + PADDING) - PADDING;
 
-        int inset = ParchmentTooltip.getBorderThickness() + MARGIN;
+        int inset = getInset();
 
-        // Flex width to accommodate long boss names (e.g. "Chambers of Xeric: Challenge Mode")
         FontMetrics nfm = getFontMetrics(FontManager.getRunescapeBoldFont());
-        int titleWidth = bossName != null ? nfm.stringWidth(bossName) : 0;
+        int titleWidth = name != null ? nfm.stringWidth(name) : 0;
         int contentWidth = Math.max(gridWidth, titleWidth);
 
         int height = inset + headerHeight + SEPARATOR_GAP + 1 + SEPARATOR_GAP + gridHeight + inset;
@@ -167,7 +160,7 @@ public class BossTooltip extends JToolTip
             return -1;
         }
 
-        int inset = ParchmentTooltip.getBorderThickness() + MARGIN;
+        int inset = getInset();
         int detailLines = rank > 0 ? 2 : 1;
         int headerHeight = NAME_LINE_HEIGHT + detailLines * LINE_HEIGHT;
         int sepY = inset + headerHeight + SEPARATOR_GAP;
@@ -193,31 +186,21 @@ public class BossTooltip extends JToolTip
     }
 
     @Override
-    protected void paintComponent(Graphics g)
+    protected void paintContent(Graphics2D g2, int w, int h)
     {
-        Graphics2D g2 = (Graphics2D) g.create();
-        int w = getWidth();
-        int h = getHeight();
-        int inset = ParchmentTooltip.getBorderThickness() + MARGIN;
-
-        ParchmentTooltip.paintParchmentFill(g2, w, h);
-        ParchmentTooltip.paintStoneBorder(g2, w, h);
-
-        g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
-            RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-
-        if (bossName == null)
+        if (name == null)
         {
-            g2.dispose();
             return;
         }
 
-        // Row 1: boss name (bold)
+        int inset = getInset();
+
+        // Row 1: name (bold)
         g2.setFont(FontManager.getRunescapeBoldFont());
         FontMetrics nfm = g2.getFontMetrics();
         int lineY = inset + nfm.getAscent();
         g2.setColor(OSRS_ORANGE);
-        g2.drawString(bossName, inset, lineY);
+        g2.drawString(name, inset, lineY);
 
         // Row 2: "Obtained: X/Y"
         g2.setFont(FontManager.getRunescapeSmallFont());
@@ -249,7 +232,7 @@ public class BossTooltip extends JToolTip
         g2.drawLine(inset, sepY, w - inset - 1, sepY);
 
         // Item grid
-        if (allItemIds != null && itemManager != null)
+        if (allItemIds != null && sprites != null)
         {
             int gridStartY = sepY + 1 + SEPARATOR_GAP;
 
@@ -271,7 +254,7 @@ public class BossTooltip extends JToolTip
                 boolean obtained = obtainedIds.contains(itemId);
                 int count = obtained ? obtainedCounts.getOrDefault(itemId, 1) : 1;
 
-                BufferedImage sprite = itemManager.getImage(itemId, count, false);
+                BufferedImage sprite = i < sprites.length ? sprites[i] : null;
                 if (sprite != null)
                 {
                     g2.setComposite(obtained
@@ -296,7 +279,5 @@ public class BossTooltip extends JToolTip
                 }
             }
         }
-
-        g2.dispose();
     }
 }

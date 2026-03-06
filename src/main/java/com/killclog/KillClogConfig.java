@@ -133,11 +133,23 @@ public interface KillClogConfig extends Config
     }
 
     @ConfigItem(
+        keyName = "missing1Color",
+        name = "1 Away",
+        description = "Color for bosses missing exactly one collection log item",
+        section = "completionist",
+        position = 3
+    )
+    default Color missing1Color()
+    {
+        return new Color(120, 200, 220);
+    }
+
+    @ConfigItem(
         keyName = "inProgressClogColor",
         name = "In Progress",
         description = "Color for bosses with some collection log items obtained",
         section = "completionist",
-        position = 3
+        position = 4
     )
     default Color inProgressClogColor()
     {
@@ -149,7 +161,7 @@ public interface KillClogConfig extends Config
         name = "Empty",
         description = "Color for bosses with kills but no collection log items obtained",
         section = "completionist",
-        position = 4
+        position = 5
     )
     default Color emptyClogColor()
     {
