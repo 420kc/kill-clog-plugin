@@ -36,6 +36,7 @@ public class ImgTooltip extends NativeTooltip
     private static final Color QTY_COLOR = new Color(255, 255, 0);
     private static final Color QTY_SHADOW = new Color(0, 0, 0);
     private static final Color ITEM_HOVER_BG = new Color(80, 70, 50);
+    private static final Color NOTICE_COLOR = new Color(160, 160, 160);
 
     private final int gridCols;
     private int hoveredItemIndex = -1;
@@ -129,23 +130,38 @@ public class ImgTooltip extends NativeTooltip
     @Override
     public Dimension getPreferredSize()
     {
-        if (allItemIds == null || allItemIds.isEmpty())
-        {
-            return new Dimension(100, 30);
-        }
-
-        int detailLines = rank > 0 ? 2 : 1;
-        int headerHeight = NAME_LINE_HEIGHT + detailLines * LINE_HEIGHT;
-
-        int spriteRows = (allItemIds.size() + gridCols - 1) / gridCols;
-        int gridWidth = gridCols * (SPRITE_SIZE + PADDING) - PADDING;
-        int gridHeight = spriteRows * (SPRITE_SIZE + PADDING) - PADDING;
-
         int inset = getInset();
 
+        // Header: name + obtained + rank (always 3 lines)
+        int headerHeight = NAME_LINE_HEIGHT + 2 * LINE_HEIGHT;
+
         FontMetrics nfm = getFontMetrics(FontManager.getRunescapeBoldFont());
+        FontMetrics sfm = getFontMetrics(FontManager.getRunescapeSmallFont());
+        boolean hasItems = allItemIds != null && !allItemIds.isEmpty();
+
+        // Measure all text lines to find widest
         int titleWidth = name != null ? nfm.stringWidth(name) : 0;
-        int contentWidth = Math.max(gridWidth, titleWidth);
+        String obtainedText = "Obtained: " + (obtainedCount < 0 ? "?" : String.valueOf(obtainedCount)) + "/" + totalItems;
+        int obtainedWidth = sfm.stringWidth(obtainedText);
+        String rankText = rank > 0 ? "Rank: " + String.format("%,d", rank) : "Rank: Unranked";
+        int rankWidth = sfm.stringWidth(rankText);
+        int textWidth = Math.max(titleWidth, Math.max(obtainedWidth, rankWidth));
+
+        // Grid dimensions from item count (real items) or totalItems (no-data)
+        int itemCount = hasItems ? allItemIds.size() : totalItems;
+        int effectiveCols = Math.min(gridCols, Math.max(itemCount, 1));
+        int spriteRows = itemCount > 0
+            ? (itemCount + effectiveCols - 1) / effectiveCols : 1;
+        int gridWidth = effectiveCols * (SPRITE_SIZE + PADDING) - PADDING;
+        int gridHeight = spriteRows * (SPRITE_SIZE + PADDING) - PADDING;
+
+        if (!hasItems)
+        {
+            int noticeWidth = sfm.stringWidth("No TempleOSRS Data");
+            textWidth = Math.max(textWidth, noticeWidth);
+        }
+
+        int contentWidth = Math.max(gridWidth, textWidth);
 
         int height = inset + headerHeight + SEPARATOR_GAP + 1 + SEPARATOR_GAP + gridHeight + inset;
         int width = contentWidth + inset * 2;
@@ -161,8 +177,7 @@ public class ImgTooltip extends NativeTooltip
         }
 
         int inset = getInset();
-        int detailLines = rank > 0 ? 2 : 1;
-        int headerHeight = NAME_LINE_HEIGHT + detailLines * LINE_HEIGHT;
+        int headerHeight = NAME_LINE_HEIGHT + 2 * LINE_HEIGHT;
         int sepY = inset + headerHeight + SEPARATOR_GAP;
         int gridStartY = sepY + 1 + SEPARATOR_GAP;
 
@@ -202,34 +217,58 @@ public class ImgTooltip extends NativeTooltip
         g2.setColor(OSRS_ORANGE);
         g2.drawString(name, inset, lineY);
 
-        // Row 2: "Obtained: X/Y"
         g2.setFont(FontManager.getRunescapeSmallFont());
         FontMetrics fm = g2.getFontMetrics();
+        boolean hasItems = allItemIds != null && !allItemIds.isEmpty();
+
+        // Row 2: "Obtained: X/Y" or "Obtained: ?/Y"
         lineY += NAME_LINE_HEIGHT;
         String obtainedLabel = "Obtained: ";
         g2.setColor(OSRS_ORANGE);
         g2.drawString(obtainedLabel, inset, lineY);
         int labelWidth = fm.stringWidth(obtainedLabel);
-        String countText = obtainedCount + "/" + totalItems;
+        String countText = (obtainedCount < 0 ? "?" : String.valueOf(obtainedCount)) + "/" + totalItems;
         g2.setColor(obtainedCount >= totalItems && totalItems > 0 ? CLOG_GREEN : CLOG_YELLOW);
         g2.drawString(countText, inset + labelWidth, lineY);
 
-        // Row 3 (optional): "Rank: N"
+        // Rank line (always)
+        lineY += LINE_HEIGHT;
+        String rankLabel = "Rank: ";
+        g2.setColor(OSRS_ORANGE);
+        g2.drawString(rankLabel, inset, lineY);
         if (rank > 0)
         {
-            lineY += LINE_HEIGHT;
-            String rankLabel = "Rank: ";
-            g2.setColor(OSRS_ORANGE);
-            g2.drawString(rankLabel, inset, lineY);
             g2.setColor(Color.WHITE);
             g2.drawString(String.format("%,d", rank), inset + fm.stringWidth(rankLabel), lineY);
         }
+        else
+        {
+            g2.drawString("Unranked", inset + fm.stringWidth(rankLabel), lineY);
+        }
 
         // Separator
-        int headerLines = rank > 0 ? 3 : 2;
-        int sepY = inset + NAME_LINE_HEIGHT + (headerLines - 1) * LINE_HEIGHT + SEPARATOR_GAP;
+        int sepY = lineY + SEPARATOR_GAP;
         g2.setColor(SEPARATOR_COLOR);
         g2.drawLine(inset, sepY, w - inset - 1, sepY);
+
+        // No clog data — center notice in the grid area
+        if (allItemIds == null || allItemIds.isEmpty())
+        {
+            int gridStartY = sepY + 1 + SEPARATOR_GAP;
+            int itemCount = Math.max(totalItems, 1);
+            int effectiveCols = Math.min(gridCols, itemCount);
+            int spriteRows = (itemCount + effectiveCols - 1) / effectiveCols;
+            int gridHeight = spriteRows * (SPRITE_SIZE + PADDING) - PADDING;
+
+            g2.setFont(FontManager.getRunescapeSmallFont());
+            g2.setColor(NOTICE_COLOR);
+            String notice = "No TempleOSRS Data";
+            FontMetrics nfm2 = g2.getFontMetrics();
+            int nx = inset + (w - inset * 2 - nfm2.stringWidth(notice)) / 2;
+            int ny = gridStartY + (gridHeight - nfm2.getHeight()) / 2 + nfm2.getAscent();
+            g2.drawString(notice, nx, ny);
+            return;
+        }
 
         // Item grid
         if (allItemIds != null && sprites != null)

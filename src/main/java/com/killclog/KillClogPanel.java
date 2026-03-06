@@ -324,6 +324,7 @@ public class KillClogPanel extends PluginPanel
     // Activities tray
     private JPanel activitiesGrid;
     private JPanel activitiesClip;
+    private JPanel activitySeparator;
     private JLabel trayToggle;
     private boolean activitiesExpanded;
     private Timer slideTimer;
@@ -341,10 +342,8 @@ public class KillClogPanel extends PluginPanel
     // Current lookup state
     private HiscoreResult hiscoreResult;
     private ClogResult clogResult;
-    private boolean clogLookupDone;
     private String rsn;
     private String clogLastChanged;
-    private boolean notFound;
     private String localRsn;
 
     private final Map<HiscoreSkill, TooltipData> tooltipDataMap = new LinkedHashMap<>();
@@ -442,10 +441,11 @@ public class KillClogPanel extends PluginPanel
 
         // Separator between activities and boss grid
         c.gridy++;
-        JPanel separator = new JPanel();
-        separator.setPreferredSize(new Dimension(0, 2));
-        separator.setBackground(ColorScheme.MEDIUM_GRAY_COLOR);
-        add(separator, c);
+        activitySeparator = new JPanel();
+        activitySeparator.setPreferredSize(new Dimension(0, 2));
+        activitySeparator.setBackground(activitiesExpanded
+            ? ColorScheme.DARK_GRAY_COLOR : ColorScheme.MEDIUM_GRAY_COLOR);
+        add(activitySeparator, c);
 
         c.gridy++;
         add(buildBossGrid(), c);
@@ -527,7 +527,9 @@ public class KillClogPanel extends PluginPanel
 
         trayToggle = new JLabel();
         trayToggle.setVisible(false);
-        trayToggle.setIcon(new ImageIcon(makeHamburgerIcon()));
+        ImageIcon hamburgerIcon = new ImageIcon(makeHamburgerIcon(HAMBURGER_COLOR));
+        ImageIcon hamburgerHoverIcon = new ImageIcon(makeHamburgerIcon(HAMBURGER_HOVER_COLOR));
+        trayToggle.setIcon(hamburgerIcon);
         trayToggle.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         trayToggle.addMouseListener(new MouseAdapter()
         {
@@ -535,6 +537,18 @@ public class KillClogPanel extends PluginPanel
             public void mousePressed(MouseEvent e)
             {
                 toggleActivities();
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent e)
+            {
+                trayToggle.setIcon(hamburgerHoverIcon);
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e)
+            {
+                trayToggle.setIcon(hamburgerIcon);
             }
         });
 
@@ -579,9 +593,9 @@ public class KillClogPanel extends PluginPanel
         // Cape icons + clog tier icons via ItemManager (game items, loaded at runtime)
         clientThread.invokeLater(() ->
         {
-            loadItemIcon(13280, 13, 13, icon -> maxCapeIcon = icon);
-            loadItemIcon(21295, 13, 13, icon -> infernalCapeIcon = icon);
-            loadItemIcon(21284, 13, 13, icon -> infernalMaxCapeIcon = icon);
+            loadItemIcon(13280, 26, 26, icon -> maxCapeIcon = icon);
+            loadItemIcon(21295, 26, 26, icon -> infernalCapeIcon = icon);
+            loadItemIcon(21284, 26, 26, icon -> infernalMaxCapeIcon = icon);
 
             for (int i = 0; i < CLOG_TIERS.length; i++)
             {
@@ -624,6 +638,8 @@ public class KillClogPanel extends PluginPanel
         configManager.setConfiguration("killclog", "activitiesExpanded", activitiesExpanded);
 
         int targetHeight = activitiesExpanded ? activitiesGrid.getPreferredSize().height : 0;
+        activitySeparator.setBackground(activitiesExpanded
+            ? ColorScheme.DARK_GRAY_COLOR : ColorScheme.MEDIUM_GRAY_COLOR);
         if (activitiesExpanded)
         {
             activitiesClip.setVisible(true);
@@ -1103,7 +1119,6 @@ public class KillClogPanel extends PluginPanel
                 {
                     int notFoundIdx = ThreadLocalRandom.current().nextInt(NOT_FOUND_MSGS.length);
                     setInfoBarMessage(String.format(NOT_FOUND_MSGS[notFoundIdx], player), NOT_FOUND);
-                    notFound = true;
                     searchBar.setText("");
                     return;
                 }
@@ -1193,7 +1208,6 @@ public class KillClogPanel extends PluginPanel
                 {
                     if (thisLookup != lookupVersion) return;
                     clogResult = result;
-                    clogLookupDone = true;
                     clogLastChanged = result != null ? result.getLastChanged() : null;
                     colorCompletedCells();
                     updateTooltips();
@@ -1245,10 +1259,8 @@ public class KillClogPanel extends PluginPanel
     {
         hiscoreResult = null;
         clogResult = null;
-        clogLookupDone = false;
         clogLastChanged = null;
         rsn = null;
-        notFound = false;
         tooltipDataMap.clear();
         rareTooltips.clear();
         clogNotice.setText(" ");
@@ -1586,19 +1598,30 @@ public class KillClogPanel extends PluginPanel
             int kc = hiscoreResult != null ? hiscoreResult.getKc(hiscoreName) : -1;
             int rank = hiscoreResult != null ? hiscoreResult.getRank(hiscoreName) : -1;
 
+            String category = ClogService.bossToCategory(hiscoreName);
+
             if (clogResult == null || !config.showCollectionLog())
             {
-                label.setToolTipText(rank > 0
-                    ? bossName + "\nRank: {w}" + String.format("%,d", rank) : bossName);
+                int total = clogService.getCategoryItemCount(category);
+                tooltipDataMap.put(skill, new TooltipData(
+                    bossName, rank, -1, Math.max(total, 0),
+                    java.util.Collections.emptyList(),
+                    java.util.Collections.emptySet(),
+                    java.util.Collections.emptyMap()));
+                label.setToolTipText(" ");
                 continue;
             }
 
-            String category = ClogService.bossToCategory(hiscoreName);
             TooltipData data = buildTooltipData(bossName, category, rank);
             if (data == null)
             {
-                label.setToolTipText(rank > 0
-                    ? bossName + "\nRank: {w}" + String.format("%,d", rank) : bossName);
+                int total = clogService.getCategoryItemCount(category);
+                tooltipDataMap.put(skill, new TooltipData(
+                    bossName, rank, -1, Math.max(total, 0),
+                    java.util.Collections.emptyList(),
+                    java.util.Collections.emptySet(),
+                    java.util.Collections.emptyMap()));
+                label.setToolTipText(" ");
                 continue;
             }
 
@@ -2147,13 +2170,16 @@ public class KillClogPanel extends PluginPanel
         return dimmed;
     }
 
-    /** Paints a 12x10 hamburger icon — three 2px-thick horizontal lines, gray on transparent. */
-    private static BufferedImage makeHamburgerIcon()
+    private static final Color HAMBURGER_COLOR = new Color(70, 70, 70);
+    private static final Color HAMBURGER_HOVER_COLOR = new Color(83, 83, 83);
+
+    /** Paints a 12x10 hamburger icon — three 2px-thick horizontal lines on transparent. */
+    private static BufferedImage makeHamburgerIcon(Color barColor)
     {
         int w = 12, h = 10;
         BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
         Graphics2D g = img.createGraphics();
-        g.setColor(new Color(70, 70, 70));
+        g.setColor(barColor);
         g.fillRect(1, 0, w - 2, 2);   // top line
         g.fillRect(1, 4, w - 2, 2);   // middle line (1px gap)
         g.fillRect(1, 8, w - 2, 2);   // bottom line (1px gap)
