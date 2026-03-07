@@ -1257,13 +1257,7 @@ public class KillClogPanel extends PluginPanel
         {
             ((AsyncBufferedImage) img).onLoaded(() ->
                 SwingUtilities.invokeLater(() ->
-                {
-                    BufferedImage loaded = itemManager.getImage(itemId, 1, false);
-                    if (loaded != null)
-                    {
-                        label.setIcon(new ImageIcon(ImageUtil.resizeImage(loaded, 20, 20)));
-                    }
-                }));
+                    label.setIcon(new ImageIcon(ImageUtil.resizeImage(img, 20, 20)))));
         }
     }
 

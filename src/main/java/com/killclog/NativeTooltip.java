@@ -33,15 +33,15 @@ public abstract class NativeTooltip extends JToolTip
     // Close button sprites (535 normal, 536 hovered) — shared across all tooltips
     private static final int CLOSE_BTN_SIZE = 20;
     private static final int CLOSE_BTN_PAD = 4;
-    private static BufferedImage closeBtnNormal;
-    private static BufferedImage closeBtnHovered;
+    private static volatile BufferedImage closeBtnNormal;
+    private static volatile BufferedImage closeBtnHovered;
 
     // Tiled parchment background from game (sprite 297 = TRADEBACKING)
-    private static BufferedImage parchmentBg;
+    private static volatile BufferedImage parchmentBg;
 
     // 9-slice border sprites from game (dark stone side panel set)
-    private static BufferedImage cornerTL, cornerTR, cornerBL, cornerBR;
-    private static BufferedImage edgeTop, edgeBottom, edgeLeft, edgeRight;
+    private static volatile BufferedImage cornerTL, cornerTR, cornerBL, cornerBR;
+    private static volatile BufferedImage edgeTop, edgeBottom, edgeLeft, edgeRight;
     private static volatile boolean spritesLoaded;
 
     /**
