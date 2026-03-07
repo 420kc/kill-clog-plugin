@@ -18,8 +18,8 @@ import net.runelite.client.util.AsyncBufferedImage;
  * Sprite grid tooltip for collection log data.
  * Header (title, obtained, rank) via TitleTooltip, then auto-wrapping item grid.
  *
- * <p>Standard 5-column max: {@code new ImgTooltip()}
- * <p>Wide 10-column max for large clue tiers: {@code new ImgTooltip(10)}
+ * <p>Standard 5-column min: {@code new ImgTooltip()}
+ * <p>Wide 10-column min for large clue tiers: {@code new ImgTooltip(10)}
  */
 public class ImgTooltip extends TitleTooltip
 {
@@ -49,7 +49,7 @@ public class ImgTooltip extends TitleTooltip
         this(DEFAULT_COLS);
     }
 
-    /** Configurable max column count — use {@code 10} for wide clue-tier grids. */
+    /** Configurable min column count — use {@code 10} for wide clue-tier grids. */
     public ImgTooltip(int gridCols)
     {
         this.gridCols = gridCols;
@@ -123,12 +123,8 @@ public class ImgTooltip extends TitleTooltip
         int itemCount = hasItems ? allItemIds.size() : Math.max(totalItems, 1);
         int cellSize = SPRITE_SIZE + PADDING;
 
-        // 5 cols minimum for bosses, 10 for wide clue grids, expand for wider headers
-        int baseMin = gridCols > DEFAULT_COLS ? gridCols : DEFAULT_COLS;
-        int minCols = Math.min(baseMin, Math.max(itemCount, 1));
-        int fitCols = Math.max(minCols, (availableWidth + PADDING) / cellSize);
-        effectiveCols = Math.min(gridCols, fitCols);
-        effectiveCols = Math.min(effectiveCols, Math.max(itemCount, 1));
+        // Native parity: at least gridCols wide, expand to fill header-driven width
+        effectiveCols = Math.max(gridCols, (availableWidth + PADDING) / cellSize);
 
         int rows = (itemCount + effectiveCols - 1) / effectiveCols;
         int gridWidth = effectiveCols * cellSize - PADDING;
@@ -189,7 +185,6 @@ public class ImgTooltip extends TitleTooltip
 
                 if (i == hoveredItemIndex)
                 {
-                    g2.setComposite(AlphaComposite.SrcOver);
                     g2.setColor(ITEM_HOVER_BG);
                     g2.fillRect(x - 1, y - 1, SPRITE_SIZE + 2, SPRITE_SIZE + 2);
                 }

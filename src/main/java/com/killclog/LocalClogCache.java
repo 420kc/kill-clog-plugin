@@ -1,10 +1,12 @@
 package com.killclog;
 
 import com.google.gson.Gson;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -229,7 +231,7 @@ public class LocalClogCache
                 CACHE_DIR.mkdirs();
             }
             File file = getCacheFile(playerName);
-            try (FileWriter writer = new FileWriter(file))
+            try (BufferedWriter writer = Files.newBufferedWriter(file.toPath(), StandardCharsets.UTF_8))
             {
                 gson.toJson(data, writer);
             }
@@ -248,7 +250,7 @@ public class LocalClogCache
         {
             return null;
         }
-        try (FileReader reader = new FileReader(file))
+        try (BufferedReader reader = Files.newBufferedReader(file.toPath(), StandardCharsets.UTF_8))
         {
             PlayerClogData data = gson.fromJson(reader, PlayerClogData.class);
             if (data != null && data.categories != null && !data.categories.isEmpty())

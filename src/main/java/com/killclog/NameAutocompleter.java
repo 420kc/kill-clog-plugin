@@ -184,12 +184,15 @@ public class NameAutocompleter implements KeyListener
         if (!match.isPresent())
         {
             WorldView wv = client.getTopLevelWorldView();
-            match = wv.players().stream()
-                .filter(Objects::nonNull)
-                .map(Actor::getName)
-                .filter(Objects::nonNull)
-                .filter(n -> pattern.matcher(n).matches())
-                .findFirst();
+            if (wv != null)
+            {
+                match = wv.players().stream()
+                    .filter(Objects::nonNull)
+                    .map(Actor::getName)
+                    .filter(Objects::nonNull)
+                    .filter(n -> pattern.matcher(n).matches())
+                    .findFirst();
+            }
         }
 
         if (match.isPresent())
@@ -208,10 +211,8 @@ public class NameAutocompleter implements KeyListener
 
     void addToSearchHistory(@NonNull String name)
     {
-        if (!searchHistory.contains(name))
-        {
-            searchHistory.offer(name);
-        }
+        searchHistory.remove(name);
+        searchHistory.offer(name);
     }
 
     private boolean isExpectedNext(JTextComponent input, String nextChar)

@@ -22,10 +22,6 @@ public class TextTooltip extends NativeTooltip
     private static final int ICON_GAP = 2;
     private static final Pattern ICON_TOKEN = Pattern.compile("\\{([^}]+)\\}");
 
-    private static final Color CLOSE_RED = new Color(192, 80, 80);
-    private static final Color CLOSE_RED_HOVER = new Color(255, 96, 96);
-    private static final int TEXT_CLOSE_PAD = 4;
-
     private final Map<String, BufferedImage> iconMap = new HashMap<>();
 
     /**
@@ -210,39 +206,4 @@ public class TextTooltip extends NativeTooltip
         }
     }
 
-    // ── Small red "x" close button (inline with text, not the game sprite) ──
-
-    @Override
-    public int getHeaderRightPad()
-    {
-        if (getCloseAction() == null) return 0;
-        FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
-        return TEXT_CLOSE_PAD + fm.stringWidth("x") + TEXT_CLOSE_PAD;
-    }
-
-    @Override
-    protected boolean isInCloseButton(int mx, int my)
-    {
-        if (getCloseAction() == null) return false;
-        FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
-        int inset = getInset();
-        int xw = fm.stringWidth("x");
-        int bx = getWidth() - inset - TEXT_CLOSE_PAD - xw;
-        int by = inset;
-        return mx >= bx - TEXT_CLOSE_PAD && mx <= getWidth() - inset
-            && my >= by && my <= by + LINE_HEIGHT;
-    }
-
-    @Override
-    protected void paintCloseButton(Graphics2D g2, int w)
-    {
-        if (getCloseAction() == null) return;
-        g2.setFont(FontManager.getRunescapeSmallFont());
-        FontMetrics fm = g2.getFontMetrics();
-        int inset = getInset();
-        int x = w - inset - TEXT_CLOSE_PAD - fm.stringWidth("x");
-        int y = inset + fm.getAscent();
-        g2.setColor(isCloseHovered() ? CLOSE_RED_HOVER : CLOSE_RED);
-        g2.drawString("x", x, y);
-    }
 }

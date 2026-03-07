@@ -26,6 +26,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -76,6 +77,8 @@ public class KillClogPanel extends PluginPanel
     private static final Color NOT_FOUND = new Color(0x81, 0x09, 0x09);
     private static final Color KC_COLOR = new Color(215, 215, 215);
     private static final Color FOUR_TWENTY_GREEN = new Color(30, 200, 30);
+    private static final Color HAMBURGER_COLOR = new Color(70, 70, 70);
+    private static final Color HAMBURGER_HOVER_COLOR = new Color(83, 83, 83);
     private static final int MAX_TOTAL_LEVEL = 2376;
 
     /** Info bar text color — follows highlighter state. */
@@ -183,21 +186,6 @@ public class KillClogPanel extends PluginPanel
     {
         NAME_OVERRIDES.put("Calvar'ion", "Cal'varion");
     }
-
-    // Activities shown in the collapsible tray.
-    // Clue tiers (spriteId == -1) are excluded here and shown in the clue sub-tray instead.
-    private static final HiscoreSkill[] ACTIVITIES = {
-        HiscoreSkill.CLUE_SCROLL_ALL,
-        HiscoreSkill.LEAGUE_POINTS,
-        HiscoreSkill.LAST_MAN_STANDING,
-        HiscoreSkill.SOUL_WARS_ZEAL,
-        HiscoreSkill.RIFTS_CLOSED,
-        HiscoreSkill.COLOSSEUM_GLORY,
-        HiscoreSkill.COLLECTIONS_LOGGED,
-        HiscoreSkill.BOUNTY_HUNTER_ROGUE,
-        HiscoreSkill.BOUNTY_HUNTER_HUNTER,
-        HiscoreSkill.PVP_ARENA_RANK,
-    };
 
     private static final HiscoreSkill[] CLUE_TIERS = {
         HiscoreSkill.CLUE_SCROLL_BEGINNER, HiscoreSkill.CLUE_SCROLL_EASY,
@@ -1089,7 +1077,7 @@ public class KillClogPanel extends PluginPanel
      *
      * @param owner     the label whose parent cell drives hover tint
      * @param data      tooltip data, or null for text fallback
-     * @param gridCols  5 for standard, 10 for wide clue grids
+     * @param gridCols  min columns — 5 for standard, 10 for wide clue grids
      */
     private JToolTip makeSpriteTooltip(JLabel owner, TooltipData data, int gridCols)
     {
@@ -1826,9 +1814,9 @@ public class KillClogPanel extends PluginPanel
                 int total = clogService.getCategoryItemCount(category);
                 tooltipDataMap.put(skill, new TooltipData(
                     bossName, rank, -1, Math.max(total, 0),
-                    java.util.Collections.emptyList(),
-                    java.util.Collections.emptySet(),
-                    java.util.Collections.emptyMap()));
+                    Collections.emptyList(),
+                    Collections.emptySet(),
+                    Collections.emptyMap()));
                 label.setToolTipText(" ");
                 continue;
             }
@@ -1839,9 +1827,9 @@ public class KillClogPanel extends PluginPanel
                 int total = clogService.getCategoryItemCount(category);
                 tooltipDataMap.put(skill, new TooltipData(
                     bossName, rank, -1, Math.max(total, 0),
-                    java.util.Collections.emptyList(),
-                    java.util.Collections.emptySet(),
-                    java.util.Collections.emptyMap()));
+                    Collections.emptyList(),
+                    Collections.emptySet(),
+                    Collections.emptyMap()));
                 label.setToolTipText(" ");
                 continue;
             }
@@ -2568,9 +2556,6 @@ public class KillClogPanel extends PluginPanel
         src.setRGB(0, 0, src.getWidth(), src.getHeight(), pixels, 0, src.getWidth());
         return src;
     }
-
-    private static final Color HAMBURGER_COLOR = new Color(70, 70, 70);
-    private static final Color HAMBURGER_HOVER_COLOR = new Color(83, 83, 83);
 
     /** Paints a 12x10 hamburger icon — three 2px-thick horizontal lines on transparent. */
     private static BufferedImage makeHamburgerIcon(Color barColor)

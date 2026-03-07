@@ -39,7 +39,7 @@ public abstract class NativeTooltip extends JToolTip
     // Tiled parchment background from game (sprite 297 = TRADEBACKING)
     private static volatile BufferedImage parchmentBg;
 
-    // 9-slice border sprites from game (dark stone side panel set)
+    // 9-slice border sprites from game (iron rivets — native collection log style)
     private static volatile BufferedImage cornerTL, cornerTR, cornerBL, cornerBR;
     private static volatile BufferedImage edgeTop, edgeBottom, edgeLeft, edgeRight;
     private static volatile boolean spritesLoaded;
@@ -51,16 +51,15 @@ public abstract class NativeTooltip extends JToolTip
     public static void loadSprites(SpriteManager spriteManager)
     {
         spriteManager.getSpriteAsync(297, 0, img -> parchmentBg = img);
-        spriteManager.getSpriteAsync(535, 0, img -> closeBtnNormal = scaleSprite(img, CLOSE_BTN_SIZE));
-        spriteManager.getSpriteAsync(536, 0, img -> closeBtnHovered = scaleSprite(img, CLOSE_BTN_SIZE));
-        spriteManager.getSpriteAsync(824, 0, img -> { cornerTL = img; checkSprites(); });
-        spriteManager.getSpriteAsync(825, 0, img -> { cornerTR = img; checkSprites(); });
-        spriteManager.getSpriteAsync(826, 0, img -> { cornerBL = img; checkSprites(); });
-        spriteManager.getSpriteAsync(827, 0, img -> { cornerBR = img; checkSprites(); });
-        spriteManager.getSpriteAsync(820, 0, img -> { edgeTop = img; checkSprites(); });
-        spriteManager.getSpriteAsync(821, 0, img -> { edgeLeft = img; checkSprites(); });
-        spriteManager.getSpriteAsync(822, 0, img -> { edgeBottom = img; checkSprites(); });
-        spriteManager.getSpriteAsync(823, 0, img -> { edgeRight = img; checkSprites(); });
+        spriteManager.getSpriteAsync(831, 0, img -> closeBtnNormal = scaleSprite(img, CLOSE_BTN_SIZE));
+        spriteManager.getSpriteAsync(832, 0, img -> closeBtnHovered = scaleSprite(img, CLOSE_BTN_SIZE));
+        // Iron rivets: corners 310-313, edges 314 (horiz) + 315 (vert)
+        spriteManager.getSpriteAsync(310, 0, img -> { cornerTL = img; checkSprites(); });
+        spriteManager.getSpriteAsync(311, 0, img -> { cornerTR = img; checkSprites(); });
+        spriteManager.getSpriteAsync(312, 0, img -> { cornerBL = img; checkSprites(); });
+        spriteManager.getSpriteAsync(313, 0, img -> { cornerBR = img; checkSprites(); });
+        spriteManager.getSpriteAsync(314, 0, img -> { edgeTop = img; edgeBottom = rotate180(img); checkSprites(); });
+        spriteManager.getSpriteAsync(315, 0, img -> { edgeRight = img; edgeLeft = rotate180(img); checkSprites(); });
     }
 
     private static void checkSprites()
@@ -151,7 +150,7 @@ public abstract class NativeTooltip extends JToolTip
     {
         if (closeAction == null) return false;
         int bx = getWidth() - getInset() - CLOSE_BTN_SIZE;
-        int by = getInset();
+        int by = getInset() - 1;
         return mx >= bx && mx <= bx + CLOSE_BTN_SIZE
             && my >= by && my <= by + CLOSE_BTN_SIZE;
     }
@@ -195,7 +194,7 @@ public abstract class NativeTooltip extends JToolTip
      */
     protected abstract void paintContent(Graphics2D g2, int w, int h);
 
-    static void paintBackground(Graphics2D g2, int w, int h)
+    private static void paintBackground(Graphics2D g2, int w, int h)
     {
         if (parchmentBg != null)
         {
@@ -227,7 +226,7 @@ public abstract class NativeTooltip extends JToolTip
         BufferedImage sprite = closeBtnHover ? closeBtnHovered : closeBtnNormal;
         if (sprite == null) return;
         int x = w - getInset() - CLOSE_BTN_SIZE;
-        int y = getInset();
+        int y = getInset() - 1;
         g2.drawImage(sprite, x, y, null);
     }
 
@@ -243,7 +242,19 @@ public abstract class NativeTooltip extends JToolTip
         return scaled;
     }
 
-    static void paintBorder(Graphics2D g2, int w, int h)
+    private static BufferedImage rotate180(BufferedImage src)
+    {
+        if (src == null) return null;
+        int w = src.getWidth();
+        int h = src.getHeight();
+        BufferedImage rotated = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g = rotated.createGraphics();
+        g.drawImage(src, w, h, 0, 0, 0, 0, w, h, null);
+        g.dispose();
+        return rotated;
+    }
+
+    private static void paintBorder(Graphics2D g2, int w, int h)
     {
         if (!spritesLoaded)
         {

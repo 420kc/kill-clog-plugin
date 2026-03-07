@@ -254,7 +254,7 @@ public class SummaryTooltip extends TitleTooltip
         FontMetrics sfm = g2.getFontMetrics();
         String countStr = " (" + obtainedPetList.size() + "/" + totalPetCount + ")";
         boolean complete = obtainedPetList.size() >= totalPetCount;
-        g2.setColor(complete ? new Color(0, 255, 0) : OSRS_ORANGE);
+        g2.setColor(complete ? CLOG_GREEN : OSRS_ORANGE);
         g2.drawString(countStr, inset + bfm.stringWidth("Pets"), petsHeaderY);
 
         // Obtained pet sprite grid

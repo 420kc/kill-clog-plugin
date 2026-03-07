@@ -18,7 +18,7 @@ public abstract class TitleTooltip extends NativeTooltip
     private static final int SEPARATOR_GAP = 6;
     static final Color SEPARATOR_COLOR = new Color(80, 70, 50);
 
-    private static final Color CLOG_GREEN = new Color(0, 255, 0);
+    protected static final Color CLOG_GREEN = new Color(0, 255, 0);
     private static final Color CLOG_YELLOW = new Color(255, 255, 0);
 
     private String title;

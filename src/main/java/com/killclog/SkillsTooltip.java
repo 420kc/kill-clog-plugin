@@ -42,7 +42,6 @@ public class SkillsTooltip extends TitleTooltip
     };
 
     private static final Map<Skill, BufferedImage> icons = new LinkedHashMap<>();
-    private static volatile boolean iconsLoaded;
 
     private HiscoreResult result;
 
@@ -70,13 +69,12 @@ public class SkillsTooltip extends TitleTooltip
                 }
             }
         }
-        iconsLoaded = !icons.isEmpty();
     }
 
     public void setData(String rsn, HiscoreResult result)
     {
         this.result = result;
-        setTitle("Skill Summary");
+        setTitle(rsn != null ? rsn + "'s Skills" : "Skill Summary");
         if (result != null && result.getTotalXp() > 0)
         {
             setSubtitle("Total EXP: ", String.format("%,d", result.getTotalXp()), Color.WHITE);
