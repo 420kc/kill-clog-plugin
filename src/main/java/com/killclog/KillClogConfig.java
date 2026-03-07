@@ -72,7 +72,6 @@ public interface KillClogConfig extends Config
         return HoverStyle.OUTLINE;
     }
 
-
     // --- Progress Highlighter ---
 
     @ConfigSection(
@@ -116,8 +115,6 @@ public interface KillClogConfig extends Config
     {
         return false;
     }
-
-
 
     @ConfigItem(
         keyName = "infoBarColor",

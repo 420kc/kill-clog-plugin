@@ -1,7 +1,6 @@
 package com.killclog;
 
 import java.awt.AWTEvent;
-import java.awt.AlphaComposite;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -9,7 +8,6 @@ import java.awt.Container;
 import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Graphics;
-import java.awt.Graphics2D;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
@@ -27,7 +25,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -59,16 +56,16 @@ import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.game.SpriteManager;
 import net.runelite.client.hiscore.HiscoreSkill;
-import net.runelite.client.plugins.Plugin;
+import java.awt.event.AWTEventListener;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.hiscore.HiscorePanel;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
+import net.runelite.client.ui.components.FlatTextField;
 import net.runelite.client.ui.components.IconTextField;
 import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
-import org.apache.commons.lang3.StringUtils;
 
 @Slf4j
 public class KillClogPanel extends PluginPanel
@@ -281,6 +278,8 @@ public class KillClogPanel extends PluginPanel
     private final SpriteManager spriteManager;
     private final ItemManager itemManager;
     private final ClientThread clientThread;
+    private final TooltipDataBuilder tooltipDataBuilder;
+    private ProgressHighlighter highlighter;
 
     private final JLabel searchStatus = new JLabel(" ");
     private final IconTextField searchBar = new IconTextField();
@@ -318,7 +317,7 @@ public class KillClogPanel extends PluginPanel
             tip.setComponent(this);
             for (Map.Entry<String, ImageIcon> entry : clogTierIcons.entrySet())
             {
-                tip.putIcon(entry.getKey(), iconToImage(entry.getValue()));
+                tip.putIcon(entry.getKey(), ClogHelper.iconToImage(entry.getValue()));
             }
             return tip;
         }
@@ -328,13 +327,9 @@ public class KillClogPanel extends PluginPanel
     private BufferedImage maxCapeTip;
     private BufferedImage infernalCapeTip;
     private BufferedImage infernalMaxCapeTip;
-    private static final String[] CLOG_TIERS = {
-        "bronze", "iron", "steel", "black", "mithril", "adamant", "rune", "dragon", "gilded"
-    };
     private static final int[] CLOG_TIER_ITEM_IDS = {
         30579, 30581, 30583, 30585, 30587, 30589, 30591, 30593, 30595
     };
-    private static final int[] CLOG_TIER_THRESHOLDS = {100, 300, 500, 700, 900, 1000, 1100, 1200};
     private final Map<String, ImageIcon> clogTierIcons = new LinkedHashMap<>();
     private final Map<String, ImageIcon> clogTierIconsLarge = new LinkedHashMap<>();
 
@@ -378,7 +373,7 @@ public class KillClogPanel extends PluginPanel
     // Click-to-reveal tooltip state
     private Popup activeClickPopup;
     private JLabel activeClickLabel;
-    private java.awt.event.AWTEventListener clickDismissListener;
+    private AWTEventListener clickDismissListener;
     private JLabel clickDismissedLabel;
 
     // Hover state — 1px border outline
@@ -389,7 +384,6 @@ public class KillClogPanel extends PluginPanel
     private static final Color HOVER_TINT_BG = new Color(41, 41, 41);
 
     // 420 mode — unlocked when the 420 KC plugin is loaded
-    private PluginManager pluginManager;
     private NameAutocompleter nameAutocompleter;
     private FourTwentyMode fourTwentyMode = FourTwentyMode.OFF;
     private boolean has420Plugin;
@@ -410,6 +404,7 @@ public class KillClogPanel extends PluginPanel
         this.spriteManager = spriteManager;
         this.itemManager = itemManager;
         this.clientThread = clientThread;
+        this.tooltipDataBuilder = new TooltipDataBuilder(itemManager);
 
         NativeTooltip.loadSprites(spriteManager);
         SkillsTooltip.loadIcons(skillIconManager);
@@ -518,6 +513,16 @@ public class KillClogPanel extends PluginPanel
             sp.getVerticalScrollBar().setPreferredSize(new Dimension(7, 0));
             sp.getVerticalScrollBar().setUnitIncrement(16);
         }
+
+        highlighter = new ProgressHighlighter(
+            bossLabels, activityLabels, clueTierLabels,
+            NAME_OVERRIDES, ACTIVITY_CATEGORIES, CLUE_CATEGORIES,
+            NO_CLOG_ACTIVITIES, dimmedIcons, config,
+            thirdAgeCell, CLOG_THIRD_AGE,
+            gildedCell, CLOG_GILDED,
+            hardRare, RARE_HARD,
+            eliteRare, RARE_ELITE,
+            masterRare, RARE_MASTER);
     }
 
     // -------------------------------------------------------------------------
@@ -547,13 +552,13 @@ public class KillClogPanel extends PluginPanel
         searchBar.setAlignmentX(Component.LEFT_ALIGNMENT);
         searchBar.addActionListener(e -> doLookup());
 
-        styleSearchBar(searchBar);
+        ClogHelper.styleSearchBar(searchBar);
         for (Component c : searchBar.getComponents())
         {
-            if (c instanceof net.runelite.client.ui.components.FlatTextField)
+            if (c instanceof FlatTextField)
             {
                 javax.swing.JTextField tf =
-                    ((net.runelite.client.ui.components.FlatTextField) c).getTextField();
+                    ((FlatTextField) c).getTextField();
                 tf.setFont(FontManager.getRunescapeFont());
                 tf.setForeground(Color.WHITE);
                 tf.setCaretColor(Color.WHITE);
@@ -562,7 +567,7 @@ public class KillClogPanel extends PluginPanel
             }
             else if (c instanceof Container)
             {
-                styleSearchBar((Container) c);
+                ClogHelper.styleSearchBar((Container) c);
             }
         }
         panel.add(searchBar);
@@ -607,8 +612,8 @@ public class KillClogPanel extends PluginPanel
         clogInfoLabel.addMouseListener(infoBarClickHandler);
 
         trayToggle = new JLabel();
-        ImageIcon hamburgerIcon = new ImageIcon(makeHamburgerIcon(HAMBURGER_COLOR));
-        ImageIcon hamburgerHoverIcon = new ImageIcon(makeHamburgerIcon(HAMBURGER_HOVER_COLOR));
+        ImageIcon hamburgerIcon = new ImageIcon(ClogHelper.makeHamburgerIcon(HAMBURGER_COLOR));
+        ImageIcon hamburgerHoverIcon = new ImageIcon(ClogHelper.makeHamburgerIcon(HAMBURGER_HOVER_COLOR));
         trayToggle.setIcon(hamburgerIcon);
         trayToggle.setHorizontalAlignment(JLabel.CENTER);
         trayToggle.setVerticalAlignment(JLabel.CENTER);
@@ -683,9 +688,9 @@ public class KillClogPanel extends PluginPanel
             loadItemImage(21295, img -> infernalCapeTip = img);
             loadItemImage(21284, img -> infernalMaxCapeTip = img);
 
-            for (int i = 0; i < CLOG_TIERS.length; i++)
+            for (int i = 0; i < ClogHelper.CLOG_TIERS.length; i++)
             {
-                final String tier = CLOG_TIERS[i];
+                final String tier = ClogHelper.CLOG_TIERS[i];
                 final int itemId = CLOG_TIER_ITEM_IDS[i];
                 loadItemIcon(itemId, 13, 13, icon ->
                     clogTierIcons.put(tier, icon));
@@ -1152,7 +1157,7 @@ public class KillClogPanel extends PluginPanel
     private static void styleLabel(JLabel label, String tooltipText)
     {
         label.setFont(FontManager.getRunescapeSmallFont());
-        label.setText(pad("--"));
+        label.setText(ClogHelper.pad("--"));
         label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         label.setIconTextGap(4);
         label.setToolTipText(tooltipText);
@@ -1216,7 +1221,7 @@ public class KillClogPanel extends PluginPanel
                         if (NO_CLOG_ACTIVITIES.contains(activity))
                         {
                             originalIcons.put(activity, icon);
-                            dimmedIcons.put(activity, new ImageIcon(createDimmedImage(icon)));
+                            dimmedIcons.put(activity, new ImageIcon(ClogHelper.createDimmedImage(icon)));
                         }
                     }
                 }));
@@ -1345,7 +1350,7 @@ public class KillClogPanel extends PluginPanel
                 ImageIcon icon = new ImageIcon(scaled);
                 label.setIcon(icon);
                 originalIcons.put(boss, icon);
-                dimmedIcons.put(boss, new ImageIcon(createDimmedImage(icon)));
+                dimmedIcons.put(boss, new ImageIcon(ClogHelper.createDimmedImage(icon)));
             }));
 
         bossLabels.put(boss, label);
@@ -1434,14 +1439,14 @@ public class KillClogPanel extends PluginPanel
                 int combatLevel = result.getCombatLevel();
                 if (combatLevel > 0)
                 {
-                    combatCell.setText(pad(String.valueOf(combatLevel)));
+                    combatCell.setText(ClogHelper.pad(String.valueOf(combatLevel)));
                     combatCell.setForeground(getInfoColor());
                 }
 
                 int totalLevel = result.getTotalLevel();
                 if (totalLevel > 0)
                 {
-                    totalLvlCell.setText(pad(String.valueOf(totalLevel)));
+                    totalLvlCell.setText(ClogHelper.pad(String.valueOf(totalLevel)));
                     totalLvlCell.setForeground(getInfoColor());
                     totalLvlCell.setToolTipText(" ");
                 }
@@ -1535,7 +1540,7 @@ public class KillClogPanel extends PluginPanel
         for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
         {
             JLabel label = entry.getValue();
-            label.setText(pad("--"));
+            label.setText(ClogHelper.pad("--"));
             label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
             label.setToolTipText(" ");
             ImageIcon orig = originalIcons.get(entry.getKey());
@@ -1552,9 +1557,9 @@ public class KillClogPanel extends PluginPanel
         clogInfoLabel.setText("");
         clogInfoLabel.setToolTipText(null);
 
-        combatCell.setText(pad("--"));
+        combatCell.setText(ClogHelper.pad("--"));
         combatCell.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-        totalLvlCell.setText(pad("--"));
+        totalLvlCell.setText(ClogHelper.pad("--"));
         totalLvlCell.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         totalLvlCell.setToolTipText(null);
 
@@ -1573,7 +1578,7 @@ public class KillClogPanel extends PluginPanel
     {
         if (label != null)
         {
-            label.setText(pad("--"));
+            label.setText(ClogHelper.pad("--"));
             label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
             label.setToolTipText(name);
         }
@@ -1584,7 +1589,7 @@ public class KillClogPanel extends PluginPanel
         for (Map.Entry<HiscoreSkill, JLabel> entry : labels.entrySet())
         {
             JLabel label = entry.getValue();
-            label.setText(pad("--"));
+            label.setText(ClogHelper.pad("--"));
             label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
             label.setToolTipText(entry.getKey().getName());
         }
@@ -1620,7 +1625,7 @@ public class KillClogPanel extends PluginPanel
             JLabel label = entry.getValue();
             int score = result.getActivityScore(activity.getName());
 
-            label.setText(pad(score <= 0 ? "--" : formatKc(score)));
+            label.setText(ClogHelper.pad(score <= 0 ? "--" : ClogHelper.formatKc(score)));
             label.setForeground(score > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
 
             // Restore original icon for no-clog activities (may have been dimmed)
@@ -1648,7 +1653,7 @@ public class KillClogPanel extends PluginPanel
             HiscoreSkill tier = entry.getKey();
             JLabel label = entry.getValue();
             int score = result.getActivityScore(tier.getName());
-            label.setText(pad(score <= 0 ? "--" : formatKc(score)));
+            label.setText(ClogHelper.pad(score <= 0 ? "--" : ClogHelper.formatKc(score)));
             label.setForeground(score > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
 
             String shortName = capitalizeTier(tier);
@@ -1693,7 +1698,7 @@ public class KillClogPanel extends PluginPanel
             int kc = result.getBossKills().getOrDefault(hiscoreName, -1);
             boolean hasKc = kc > 0;
 
-            label.setText(pad(kc <= 0 ? "--" : formatKc(kc)));
+            label.setText(ClogHelper.pad(kc <= 0 ? "--" : ClogHelper.formatKc(kc)));
             label.setForeground(hasKc ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
 
             ImageIcon orig = originalIcons.get(skill);
@@ -1712,14 +1717,14 @@ public class KillClogPanel extends PluginPanel
                     if (kc > 0)
                     {
                         int display = Math.min(kc, 420);
-                        label.setText(pad(formatKc(display)));
+                        label.setText(ClogHelper.pad(ClogHelper.formatKc(display)));
                         if (display == 420) label.setForeground(FOUR_TWENTY_GREEN);
                     }
                     break;
                 case ALL_420:
                     if (kc > 0)
                     {
-                        label.setText(pad("420"));
+                        label.setText(ClogHelper.pad("420"));
                         label.setForeground(FOUR_TWENTY_GREEN);
                     }
                     break;
@@ -1741,32 +1746,15 @@ public class KillClogPanel extends PluginPanel
     {
         if (label == null) return;
 
-        List<Integer> allItems = result.getCategoryItems().get(clogCategory);
-        List<ClogResult.ClogItem> obtained = result.getObtainedItems().get(clogCategory);
-
-        if (allItems == null || allItems.isEmpty())
+        TooltipData data = tooltipDataBuilder.buildClueRareData(name, clogCategory, result);
+        if (data == null)
         {
             label.setToolTipText(name);
             return;
         }
 
-        Set<Integer> obtainedIds = new HashSet<>();
-        Map<Integer, Integer> obtainedCounts = new LinkedHashMap<>();
-        if (obtained != null)
-        {
-            for (ClogResult.ClogItem item : obtained)
-            {
-                obtainedIds.add(item.getId());
-                obtainedCounts.put(item.getId(), item.getCount());
-            }
-        }
-
-        int obtainedCount = countObtained(allItems, obtainedIds);
-        label.setText(pad(obtainedCount > 0 ? formatKc(obtainedCount) : "--"));
-        label.setForeground(obtainedCount > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
-
-        TooltipData data = new TooltipData(name, -1, obtainedCount,
-            allItems.size(), allItems, obtainedIds, obtainedCounts);
+        label.setText(ClogHelper.pad(data.obtainedCount > 0 ? ClogHelper.formatKc(data.obtainedCount) : "--"));
+        label.setForeground(data.obtainedCount > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
 
         if (isThirdAge) thirdAgeTooltipData = data;
         else gildedTooltipData = data;
@@ -1774,66 +1762,36 @@ public class KillClogPanel extends PluginPanel
         label.setToolTipText(" ");
     }
 
-    /**
-     * Update a custom rare cell by scanning obtained items across ALL Temple categories.
-     * These categories don't exist in Temple, so we match hardcoded item IDs against
-     * whatever the player has obtained anywhere in their clog.
-     */
     private void updateCustomRare(JLabel label, String name, String rareKey,
                                       int[] itemIds, ClogResult result)
     {
         if (label == null) return;
 
-        // Build a flat set of all obtained item IDs across every Temple category
-        Set<Integer> allObtainedGlobal = new HashSet<>();
-        Map<Integer, Integer> allCountsGlobal = new HashMap<>();
-        for (List<ClogResult.ClogItem> catObtained : result.getObtainedItems().values())
-        {
-            for (ClogResult.ClogItem item : catObtained)
-            {
-                allObtainedGlobal.add(item.getId());
-                allCountsGlobal.merge(item.getId(), item.getCount(), Integer::max);
-            }
-        }
+        TooltipData data = tooltipDataBuilder.buildCustomRareData(name, itemIds, result);
 
-        List<Integer> allItemsList = new ArrayList<>();
-        Set<Integer> obtainedIds = new HashSet<>();
-        Map<Integer, Integer> obtainedCounts = new LinkedHashMap<>();
-        for (int id : itemIds)
-        {
-            allItemsList.add(id);
-            if (allObtainedGlobal.contains(id))
-            {
-                obtainedIds.add(id);
-                obtainedCounts.put(id, allCountsGlobal.getOrDefault(id, 1));
-            }
-        }
+        label.setText(ClogHelper.pad(data.obtainedCount > 0 ? ClogHelper.formatKc(data.obtainedCount) : "--"));
+        label.setForeground(data.obtainedCount > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
 
-        int obtainedCount = obtainedIds.size();
-        label.setText(pad(obtainedCount > 0 ? formatKc(obtainedCount) : "--"));
-        label.setForeground(obtainedCount > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
-
-        rareTooltips.put(rareKey, new TooltipData(name, -1, obtainedCount,
-            allItemsList.size(), allItemsList, obtainedIds, obtainedCounts));
+        rareTooltips.put(rareKey, data);
 
         label.setToolTipText(" ");
     }
 
     private void updateClogCell(ClogResult result)
     {
-        int[] totals = sumClogTotals(result);
+        int[] totals = ClogHelper.sumClogTotals(result);
         if (totals[0] > 0)
         {
-            String tierName = getClogTierName(totals[0], totals[1]);
+            String tierName = ClogHelper.getClogTierName(totals[0], totals[1]);
             ImageIcon largeIcon = tierName != null ? clogTierIconsLarge.get(tierName) : null;
             if (largeIcon != null)
             {
-                clogInfoLabel.setIcon(new ImageIcon(createBoostedImage(largeIcon, 1.10f)));
+                clogInfoLabel.setIcon(new ImageIcon(ClogHelper.createBoostedImage(largeIcon, 1.10f)));
             }
-            clogInfoLabel.setText(pad(formatKc(totals[0])));
+            clogInfoLabel.setText(ClogHelper.pad(ClogHelper.formatKc(totals[0])));
             clogInfoLabel.setForeground(getInfoColor());
 
-            String tooltip = getClogTierTooltip(totals[0], totals[1]);
+            String tooltip = ClogHelper.getClogTierTooltip(totals[0], totals[1]);
             String syncLine = syncLine(clogLastChanged);
             clogInfoLabel.setToolTipText(syncLine != null ? tooltip + "\n" + syncLine : tooltip);
         }
@@ -1884,7 +1842,7 @@ public class KillClogPanel extends PluginPanel
                 continue;
             }
 
-            TooltipData data = buildTooltipData(bossName, category, rank);
+            TooltipData data = tooltipDataBuilder.buildTooltipData(bossName, category, rank, clogResult);
             if (data == null)
             {
                 int total = clogService.getCategoryItemCount(category);
@@ -1898,7 +1856,7 @@ public class KillClogPanel extends PluginPanel
             }
 
             tooltipDataMap.put(skill, data);
-            preloadItemImages(data);
+            tooltipDataBuilder.preloadItemImages(data);
             label.setToolTipText(" ");
         }
 
@@ -1919,60 +1877,15 @@ public class KillClogPanel extends PluginPanel
             if (label == null) continue;
 
             int rank = hiscoreResult != null ? hiscoreResult.getActivityRank(skill.getName()) : -1;
-            TooltipData data = buildTooltipData(nameOf.apply(skill), entry.getValue(), rank);
+            TooltipData data = tooltipDataBuilder.buildTooltipData(nameOf.apply(skill), entry.getValue(), rank, clogResult);
             if (data == null) continue;
 
             tooltipDataMap.put(skill, data);
-            preloadItemImages(data);
+            tooltipDataBuilder.preloadItemImages(data);
             label.setToolTipText(" ");
         }
     }
 
-    /**
-     * Build TooltipData for a clog category from the current clogResult.
-     * Returns null if no item data exists for the category.
-     */
-    private TooltipData buildTooltipData(String displayName, String category, int rank)
-    {
-        if (clogResult == null) return null;
-
-        List<ClogResult.ClogItem> obtained = clogResult.getObtainedItems().get(category);
-        List<Integer> allItems = clogResult.getCategoryItems().get(category);
-
-        if ((obtained == null || obtained.isEmpty()) && (allItems == null || allItems.isEmpty()))
-        {
-            return null;
-        }
-
-        Set<Integer> obtainedIds = getObtainedIds(category);
-        Map<Integer, Integer> obtainedCounts = new LinkedHashMap<>();
-        if (obtained != null)
-        {
-            for (ClogResult.ClogItem item : obtained)
-            {
-                obtainedCounts.put(item.getId(), item.getCount());
-            }
-        }
-
-        int totalItems = allItems != null ? allItems.size() : obtainedIds.size();
-        int obtainedCount = allItems != null
-            ? countObtained(allItems, obtainedIds) : obtainedIds.size();
-
-        List<Integer> itemList = allItems != null ? allItems : new ArrayList<>(obtainedIds);
-        return new TooltipData(displayName, rank, obtainedCount, totalItems,
-            itemList, obtainedIds, obtainedCounts);
-    }
-
-    /** Trigger async loads for all items in a tooltip — so they're cached by hover time. */
-    private void preloadItemImages(TooltipData data)
-    {
-        for (int itemId : data.allItemIds)
-        {
-            int count = data.obtainedIds.contains(itemId)
-                ? data.obtainedCounts.getOrDefault(itemId, 1) : 1;
-            itemManager.getImage(itemId, count, false);
-        }
-    }
 
     // -------------------------------------------------------------------------
     // Progress highlighter
@@ -2009,158 +1922,12 @@ public class KillClogPanel extends PluginPanel
             updateRares(clogResult);
             if (enabled)
             {
-                dimNoClogActivities();
-                colorCellsByCompletion();
-                colorEmptyCells();
+                highlighter.dimNoClogActivities(hiscoreResult);
+                highlighter.colorCellsByCompletion(hiscoreResult, clogResult,
+                    rareTooltips, fourTwentyMode, FOUR_TWENTY_GREEN);
+                highlighter.colorEmptyCells();
             }
         }
-    }
-
-    private void colorCellsByCompletion()
-    {
-        for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
-        {
-            HiscoreSkill skill = entry.getKey();
-            String hiscoreName = NAME_OVERRIDES.getOrDefault(skill.getName(), skill.getName());
-            colorBossCell(entry.getValue(), hiscoreName);
-        }
-
-        colorActivityCategories(ACTIVITY_CATEGORIES, activityLabels);
-        colorActivityCategories(CLUE_CATEGORIES, clueTierLabels);
-
-        // Clue All — aggregate across all 6 tier categories
-        JLabel clueAllLabel = activityLabels.get(HiscoreSkill.CLUE_SCROLL_ALL);
-        if (clueAllLabel != null
-            && hiscoreResult.getActivityScore(HiscoreSkill.CLUE_SCROLL_ALL.getName()) > 0)
-        {
-            int totalItems = 0;
-            int totalObtained = 0;
-            for (String cat : CLUE_CATEGORIES.values())
-            {
-                List<Integer> items = clogResult.getCategoryItems().get(cat);
-                if (items != null)
-                {
-                    totalItems += items.size();
-                    totalObtained += countObtained(items, getObtainedIds(cat));
-                }
-            }
-            if (totalItems > 0)
-            {
-                clueAllLabel.setForeground(clogColor(totalObtained, totalItems));
-            }
-        }
-
-        if (thirdAgeCell != null) colorByCompletion(thirdAgeCell, CLOG_THIRD_AGE);
-        if (gildedCell != null) colorByCompletion(gildedCell, CLOG_GILDED);
-        colorCustomRare(hardRare, RARE_HARD);
-        colorCustomRare(eliteRare, RARE_ELITE);
-        colorCustomRare(masterRare, RARE_MASTER);
-    }
-
-    /** Dim activities without clog categories when highlighter is active. */
-    private void dimNoClogActivities()
-    {
-        for (HiscoreSkill noClog : NO_CLOG_ACTIVITIES)
-        {
-            JLabel label = activityLabels.get(noClog);
-            if (label == null) continue;
-
-            int score = hiscoreResult.getActivityScore(noClog.getName());
-            label.setForeground(score > 0 ? config.inProgressClogColor() : config.emptyClogColor());
-
-            ImageIcon dimmed = dimmedIcons.get(noClog);
-            if (dimmed != null)
-            {
-                label.setIcon(dimmed);
-            }
-        }
-    }
-
-    /** Recolor "--" cells to emptyClogColor when highlighter is active. */
-    private void colorEmptyCells()
-    {
-        for (JLabel label : bossLabels.values())
-        {
-            if (ColorScheme.LIGHT_GRAY_COLOR.equals(label.getForeground()))
-            {
-                label.setForeground(config.emptyClogColor());
-            }
-        }
-        for (Map.Entry<HiscoreSkill, JLabel> entry : activityLabels.entrySet())
-        {
-            if (!NO_CLOG_ACTIVITIES.contains(entry.getKey())
-                && ColorScheme.LIGHT_GRAY_COLOR.equals(entry.getValue().getForeground()))
-            {
-                entry.getValue().setForeground(config.emptyClogColor());
-            }
-        }
-        for (JLabel label : clueTierLabels.values())
-        {
-            if (ColorScheme.LIGHT_GRAY_COLOR.equals(label.getForeground()))
-            {
-                label.setForeground(config.emptyClogColor());
-            }
-        }
-    }
-
-    private void colorActivityCategories(Map<HiscoreSkill, String> categories, Map<HiscoreSkill, JLabel> labels)
-    {
-        for (Map.Entry<HiscoreSkill, String> entry : categories.entrySet())
-        {
-            JLabel label = labels.get(entry.getKey());
-            if (label != null)
-            {
-                colorClogCell(label, entry.getValue(),
-                    hiscoreResult.getActivityScore(entry.getKey().getName()));
-            }
-        }
-    }
-
-    private void colorBossCell(JLabel label, String hiscoreName)
-    {
-        // 420 mode green wins over highlighter colors
-        if (fourTwentyMode != FourTwentyMode.OFF && FOUR_TWENTY_GREEN.equals(label.getForeground()))
-        {
-            return;
-        }
-
-        int kc = hiscoreResult.getKc(hiscoreName);
-        if (kc <= 0) return;
-
-        colorClogCell(label,
-            ClogService.bossToCategory(hiscoreName), kc);
-    }
-
-    private void colorClogCell(JLabel label, String category, int score)
-    {
-        if (score <= 0) return;
-        colorByCompletion(label, category);
-    }
-
-    private Color clogColor(int obtained, int total)
-    {
-        if (obtained == total) return config.completedClogColor();
-        if (obtained == total - 1 && total > 1) return config.missing1Color();
-        if (obtained == 0) return config.emptyClogColor();
-        return config.inProgressClogColor();
-    }
-
-    private void colorByCompletion(JLabel label, String category)
-    {
-        List<Integer> allItems = clogResult.getCategoryItems().get(category);
-        if (allItems == null || allItems.isEmpty()) return;
-
-        label.setForeground(clogColor(
-            countObtained(allItems, getObtainedIds(category)), allItems.size()));
-    }
-
-    private void colorCustomRare(JLabel label, String rareKey)
-    {
-        if (label == null) return;
-        TooltipData data = rareTooltips.get(rareKey);
-        if (data == null) return;
-
-        label.setForeground(clogColor(data.obtainedCount, data.totalItems));
     }
 
     // -------------------------------------------------------------------------
@@ -2182,9 +1949,9 @@ public class KillClogPanel extends PluginPanel
         this.nameAutocompleter = autocompleter;
         for (Component c : searchBar.getComponents())
         {
-            if (c instanceof net.runelite.client.ui.components.FlatTextField)
+            if (c instanceof FlatTextField)
             {
-                ((net.runelite.client.ui.components.FlatTextField) c).getTextField()
+                ((FlatTextField) c).getTextField()
                     .addKeyListener(autocompleter);
                 break;
             }
@@ -2193,7 +1960,6 @@ public class KillClogPanel extends PluginPanel
 
     public void setPluginManager(PluginManager pluginManager)
     {
-        this.pluginManager = pluginManager;
         has420Plugin = pluginManager.getPlugins().stream()
             .anyMatch(p -> p.getClass().getSimpleName().equals("FourTwentyKcPlugin"));
         if (has420Plugin && thermy != null)
@@ -2311,63 +2077,6 @@ public class KillClogPanel extends PluginPanel
         }
     }
 
-    private ImageIcon getClogTierIcon(int obtained, int totalSlots)
-    {
-        String tier = getClogTierName(obtained, totalSlots);
-        return tier != null ? clogTierIcons.get(tier) : null;
-    }
-
-    static String getClogTierName(int obtained, int totalSlots)
-    {
-        int gildedThreshold = (int) (totalSlots * 0.9) / 25 * 25;
-        if (obtained >= gildedThreshold) return "gilded";
-        for (int i = CLOG_TIER_THRESHOLDS.length - 1; i >= 0; i--)
-        {
-            if (obtained >= CLOG_TIER_THRESHOLDS[i]) return CLOG_TIERS[i];
-        }
-        return null;
-    }
-
-    static String getClogTierTooltip(int obtained, int totalSlots)
-    {
-        int gildedThreshold = (int) (totalSlots * 0.9) / 25 * 25;
-        String currentTier = getClogTierName(obtained, totalSlots);
-        String line1 = "Obtained: {w}" + obtained + "/" + totalSlots;
-
-        if (currentTier == null)
-        {
-            return line1 + "\n" + (CLOG_TIER_THRESHOLDS[0] - obtained) + " more until {bronze}";
-        }
-        if ("gilded".equals(currentTier))
-        {
-            return line1 + "\n" + gildedThreshold + "+: {gilded}";
-        }
-
-        int tierIndex = -1;
-        for (int i = 0; i < CLOG_TIERS.length; i++)
-        {
-            if (CLOG_TIERS[i].equals(currentTier)) { tierIndex = i; break; }
-        }
-
-        int currentThreshold = CLOG_TIER_THRESHOLDS[tierIndex];
-        int nextThreshold;
-        String nextTier;
-        if (tierIndex + 1 < CLOG_TIER_THRESHOLDS.length)
-        {
-            nextThreshold = CLOG_TIER_THRESHOLDS[tierIndex + 1];
-            nextTier = CLOG_TIERS[tierIndex + 1];
-        }
-        else
-        {
-            nextThreshold = gildedThreshold;
-            nextTier = "gilded";
-        }
-
-        return line1
-            + "\n" + currentThreshold + "-" + (nextThreshold - 1) + ": {" + currentTier + "}"
-            + "\n" + (nextThreshold - obtained) + " more until {" + nextTier + "}";
-    }
-
     // -------------------------------------------------------------------------
     // Info bar
     // -------------------------------------------------------------------------
@@ -2469,32 +2178,10 @@ public class KillClogPanel extends PluginPanel
         return null;
     }
 
-    private static String accountBadgeResource(AccountType type)
-    {
-        switch (type)
-        {
-            case IRONMAN: return "ironman.png";
-            case HARDCORE_IRONMAN: return "hardcore_ironman.png";
-            case ULTIMATE_IRONMAN: return "ultimate_ironman.png";
-            default: return null;
-        }
-    }
-
-    private static String accountLabel(AccountType type)
-    {
-        switch (type)
-        {
-            case IRONMAN: return "Ironman";
-            case HARDCORE_IRONMAN: return "Hardcore Ironman";
-            case ULTIMATE_IRONMAN: return "Ultimate Ironman";
-            default: return null;
-        }
-    }
-
     private BufferedImage getAccountBadge()
     {
         if (hiscoreResult == null) return null;
-        String resource = accountBadgeResource(hiscoreResult.getAccountType());
+        String resource = ClogHelper.accountBadgeResource(hiscoreResult.getAccountType());
         if (resource == null) return null;
         try
         {
@@ -2509,7 +2196,7 @@ public class KillClogPanel extends PluginPanel
     private String getAccountLabel()
     {
         if (hiscoreResult == null) return null;
-        return accountLabel(hiscoreResult.getAccountType());
+        return ClogHelper.accountLabel(hiscoreResult.getAccountType());
     }
 
     private String getPrestige()
@@ -2540,7 +2227,7 @@ public class KillClogPanel extends PluginPanel
 
     private void updateInfoIcon(AccountType type)
     {
-        String resource = accountBadgeResource(type);
+        String resource = ClogHelper.accountBadgeResource(type);
         if (resource == null)
         {
             playerName.setIcon(null);
@@ -2597,164 +2284,6 @@ public class KillClogPanel extends PluginPanel
         });
     }
 
-    // -------------------------------------------------------------------------
-    // Clog data helpers
-    // -------------------------------------------------------------------------
-
-    private Set<Integer> getObtainedIds(String category)
-    {
-        if (clogResult == null) return new HashSet<>();
-        Set<Integer> ids = new HashSet<>();
-        List<ClogResult.ClogItem> obtained = clogResult.getObtainedItems().get(category);
-        if (obtained != null)
-        {
-            for (ClogResult.ClogItem item : obtained) ids.add(item.getId());
-        }
-        return ids;
-    }
-
-    private static int countObtained(List<Integer> allItems, Set<Integer> obtainedIds)
-    {
-        int count = 0;
-        for (int id : allItems) if (obtainedIds.contains(id)) count++;
-        return count;
-    }
-
-    private static int[] sumClogTotals(ClogResult result)
-    {
-        Set<Integer> allItems = new HashSet<>();
-        Set<Integer> allObtained = new HashSet<>();
-        for (Map.Entry<String, List<Integer>> entry : result.getCategoryItems().entrySet())
-        {
-            allItems.addAll(entry.getValue());
-            List<ClogResult.ClogItem> obtained = result.getObtainedItems().get(entry.getKey());
-            if (obtained != null)
-            {
-                for (ClogResult.ClogItem item : obtained) allObtained.add(item.getId());
-            }
-        }
-        return new int[]{allObtained.size(), allItems.size()};
-    }
-
-    // -------------------------------------------------------------------------
-    // Image utilities
-    // -------------------------------------------------------------------------
-
-    private static String pad(String text)
-    {
-        return StringUtils.leftPad(text, 4);
-    }
-
-    private static BufferedImage iconToImage(ImageIcon icon)
-    {
-        if (icon == null) return null;
-        BufferedImage img = new BufferedImage(
-            icon.getIconWidth(), icon.getIconHeight(), BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g = img.createGraphics();
-        icon.paintIcon(null, g, 0, 0);
-        g.dispose();
-        return img;
-    }
-
-    private static String formatKc(int kc)
-    {
-        if (kc >= 1_000_000) return kc / 1_000_000 + "m";
-        if (kc >= 10_000) return kc / 1_000 + "k";
-        return String.valueOf(kc);
-    }
-
-    private static BufferedImage createDimmedImage(ImageIcon icon)
-    {
-        BufferedImage original = iconToImage(icon);
-        BufferedImage dimmed = new BufferedImage(
-            original.getWidth(), original.getHeight(), BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2 = dimmed.createGraphics();
-        g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
-        g2.drawImage(original, 0, 0, null);
-        g2.dispose();
-        return dimmed;
-    }
-
-    /**
-     * Boosts RGB channels by a multiplier (e.g. 1.10 = 10% brighter).
-     * Preserves hue and alpha — no white wash, just more vivid color.
-     */
-    private static BufferedImage createBoostedImage(ImageIcon icon, float factor)
-    {
-        BufferedImage src = iconToImage(icon);
-        int[] pixels = src.getRGB(0, 0, src.getWidth(), src.getHeight(), null, 0, src.getWidth());
-        for (int i = 0; i < pixels.length; i++)
-        {
-            int a = (pixels[i] >> 24) & 0xFF;
-            int r = Math.min(255, (int) (((pixels[i] >> 16) & 0xFF) * factor));
-            int gr = Math.min(255, (int) (((pixels[i] >> 8) & 0xFF) * factor));
-            int b = Math.min(255, (int) ((pixels[i] & 0xFF) * factor));
-            pixels[i] = (a << 24) | (r << 16) | (gr << 8) | b;
-        }
-        src.setRGB(0, 0, src.getWidth(), src.getHeight(), pixels, 0, src.getWidth());
-        return src;
-    }
-
-    /** Paints a 12x10 hamburger icon — three 2px-thick horizontal lines on transparent. */
-    private static BufferedImage makeHamburgerIcon(Color barColor)
-    {
-        int w = 12, h = 10;
-        BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g = img.createGraphics();
-        g.setColor(barColor);
-        g.fillRect(1, 0, w - 2, 2);   // top line
-        g.fillRect(1, 4, w - 2, 2);   // middle line (1px gap)
-        g.fillRect(1, 8, w - 2, 2);   // bottom line (1px gap)
-        g.dispose();
-        return img;
-    }
-
-    private static void styleSearchBar(Container container)
-    {
-        for (Component c : container.getComponents())
-        {
-            if (c instanceof JButton)
-            {
-                JButton btn = (JButton) c;
-                btn.setOpaque(false);
-                btn.setContentAreaFilled(false);
-                btn.setBorderPainted(false);
-            }
-            else if (c instanceof Container)
-            {
-                styleSearchBar((Container) c);
-            }
-        }
-    }
-
-    // -------------------------------------------------------------------------
-    // Data holders
-    // -------------------------------------------------------------------------
-
-    /** Immutable data holder for sprite tooltip content. */
-    private static final class TooltipData
-    {
-        final String name;
-        final int rank;
-        final int obtainedCount;
-        final int totalItems;
-        final List<Integer> allItemIds;
-        final Set<Integer> obtainedIds;
-        final Map<Integer, Integer> obtainedCounts;
-
-        TooltipData(String name, int rank, int obtainedCount, int totalItems,
-                    List<Integer> allItemIds, Set<Integer> obtainedIds,
-                    Map<Integer, Integer> obtainedCounts)
-        {
-            this.name = name;
-            this.rank = rank;
-            this.obtainedCount = obtainedCount;
-            this.totalItems = totalItems;
-            this.allItemIds = allItemIds;
-            this.obtainedIds = obtainedIds;
-            this.obtainedCounts = obtainedCounts;
-        }
-    }
 
     /** Minimal scrollbar — slim thumb, no arrow buttons, dark theme. */
     private static class MinimalScrollBarUI extends javax.swing.plaf.basic.BasicScrollBarUI

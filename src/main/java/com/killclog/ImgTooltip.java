@@ -5,6 +5,9 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.Map;
@@ -55,10 +58,10 @@ public class ImgTooltip extends TitleTooltip
     {
         this.gridCols = gridCols;
 
-        addMouseMotionListener(new java.awt.event.MouseMotionAdapter()
+        addMouseMotionListener(new MouseMotionAdapter()
         {
             @Override
-            public void mouseMoved(java.awt.event.MouseEvent e)
+            public void mouseMoved(MouseEvent e)
             {
                 int idx = getItemIndexAt(e.getX(), e.getY());
                 if (idx != hoveredItemIndex)
@@ -69,10 +72,10 @@ public class ImgTooltip extends TitleTooltip
             }
         });
 
-        addMouseListener(new java.awt.event.MouseAdapter()
+        addMouseListener(new MouseAdapter()
         {
             @Override
-            public void mouseExited(java.awt.event.MouseEvent e)
+            public void mouseExited(MouseEvent e)
             {
                 if (hoveredItemIndex != -1)
                 {

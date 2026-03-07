@@ -7,6 +7,7 @@ import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
 import javax.swing.JToolTip;
 import net.runelite.client.game.SpriteManager;
@@ -136,7 +137,7 @@ public abstract class NativeTooltip extends JToolTip
             }
         });
 
-        addMouseMotionListener(new java.awt.event.MouseMotionAdapter()
+        addMouseMotionListener(new MouseMotionAdapter()
         {
             @Override
             public void mouseMoved(MouseEvent e)
