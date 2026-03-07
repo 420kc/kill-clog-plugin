@@ -178,8 +178,8 @@ public class KillClogPlugin extends Plugin
 
         localClogCache.setActivePlayer(local.getName());
 
-        Widget header = client.getWidget(40697876);  // collection log category name
-        Widget items = client.getWidget(40697893);    // collection log item grid
+        Widget header = client.getWidget(40697876);  // (621 << 16) | 20 — clog category name
+        Widget items = client.getWidget(40697893);    // (621 << 16) | 37 — clog item grid
         if (header == null || items == null)
         {
             return;

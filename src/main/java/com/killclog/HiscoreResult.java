@@ -24,8 +24,8 @@ public class HiscoreResult
                          int totalLevel, long totalXp, int combatLevel)
     {
         this.accountType = accountType;
-        this.bossKills = bossKills;
-        this.bossRanks = bossRanks;
+        this.bossKills = bossKills != null ? bossKills : Collections.emptyMap();
+        this.bossRanks = bossRanks != null ? bossRanks : Collections.emptyMap();
         this.activityScores = activityScores != null ? activityScores : Collections.emptyMap();
         this.activityRanks = activityRanks != null ? activityRanks : Collections.emptyMap();
         this.skillLevels = skillLevels != null ? skillLevels : Collections.emptyMap();

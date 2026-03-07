@@ -5,15 +5,24 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Cursor;
+import java.awt.Dimension;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
-import java.awt.RenderingHints;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
+import java.awt.Point;
 import java.awt.Rectangle;
+import java.awt.RenderingHints;
+import java.awt.event.HierarchyEvent;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -21,9 +30,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.concurrent.ThreadLocalRandom;
 import javax.inject.Inject;
 import javax.swing.Box;
@@ -44,24 +50,18 @@ import javax.swing.ToolTipManager;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.game.SpriteManager;
 import net.runelite.client.hiscore.HiscoreSkill;
-import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.hiscore.HiscorePanel;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
-import java.awt.Cursor;
-import java.awt.Dimension;
-import java.awt.Point;
-import java.awt.event.HierarchyEvent;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import net.runelite.client.ui.PluginPanel;
 import net.runelite.client.ui.components.IconTextField;
 import net.runelite.client.util.AsyncBufferedImage;
@@ -99,7 +99,7 @@ public class KillClogPanel extends PluginPanel
     };
 
     // Boss display order matching vanilla RuneLite hiscores.
-    // Must stay in sync with BOSS_NAMES in HiscoreService.
+    // Must contain the same bosses as BOSS_NAMES in HiscoreService (order differs — this is display order, not CSV order).
     // New boss? Add HiscoreSkill.BOSS_NAME here alphabetically once RuneLite adds the enum.
     // See BOSS_NAMES comment in HiscoreService for the full update playbook.
     private static final HiscoreSkill[] BOSSES = {
@@ -301,8 +301,21 @@ public class KillClogPanel extends PluginPanel
         {
             SummaryTooltip tip = new SummaryTooltip();
             tip.setComponent(this);
-            String rsn = playerName.getText().trim();
-            tip.setData(rsn.isEmpty() ? "Player" : rsn);
+            String name = playerName.getText().trim();
+            tip.setData(
+                name.isEmpty() ? "Player" : name,
+                sumBossKills(),
+                getCapeImage(),
+                getAccountBadge(),
+                getAccountLabel(),
+                getPrestige()
+            );
+            if (clogResult != null)
+            {
+                List<Integer> allPets = clogResult.getCategoryItems().get("all_pets");
+                Set<Integer> obtainedPets = getObtainedPetIds();
+                tip.setPets(allPets, obtainedPets, itemManager);
+            }
             return tip;
         }
     };
@@ -322,11 +335,9 @@ public class KillClogPanel extends PluginPanel
     };
     private final JLabel clogNotice = new JLabel();
 
-    private ImageIcon skillsIcon;
-    private ImageIcon maxCapeIcon;
-    private ImageIcon infernalCapeIcon;
-    private ImageIcon infernalMaxCapeIcon;
-    private BufferedImage combatLevelImage;
+    private BufferedImage maxCapeTip;
+    private BufferedImage infernalCapeTip;
+    private BufferedImage infernalMaxCapeTip;
     private static final String[] CLOG_TIERS = {
         "bronze", "iron", "steel", "black", "mithril", "adamant", "rune", "dragon", "gilded"
     };
@@ -409,16 +420,6 @@ public class KillClogPanel extends PluginPanel
 
         NativeTooltip.loadSprites(spriteManager);
         SkillsTooltip.loadIcons(skillIconManager);
-
-        // Combat level icon (crossed swords, sprite 168)
-        spriteManager.getSpriteAsync(168, 0, sprite ->
-        {
-            if (sprite != null)
-            {
-                combatLevelImage = ImageUtil.resizeImage(
-                    ImageUtil.resizeCanvas(sprite, 25, 25), 13, 13);
-            }
-        });
 
         activitiesExpanded = config.activitiesExpanded();
 
@@ -616,6 +617,9 @@ public class KillClogPanel extends PluginPanel
         ImageIcon hamburgerIcon = new ImageIcon(makeHamburgerIcon(HAMBURGER_COLOR));
         ImageIcon hamburgerHoverIcon = new ImageIcon(makeHamburgerIcon(HAMBURGER_HOVER_COLOR));
         trayToggle.setIcon(hamburgerIcon);
+        trayToggle.setHorizontalAlignment(JLabel.CENTER);
+        trayToggle.setVerticalAlignment(JLabel.CENTER);
+        trayToggle.setPreferredSize(new Dimension(30, 18));
         trayToggle.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
         trayToggle.addMouseListener(new MouseAdapter()
         {
@@ -678,23 +682,13 @@ public class KillClogPanel extends PluginPanel
 
     private void loadRuntimeIcons()
     {
-        // RuneLite's own Apache 2.0 resource — safe to bundle-load
-        try
-        {
-            BufferedImage img = ImageUtil.loadImageResource(HiscorePanel.class, "overall.png");
-            skillsIcon = new ImageIcon(ImageUtil.resizeImage(img, 13, 13));
-        }
-        catch (Exception e)
-        {
-            skillsIcon = null;
-        }
-
-        // Cape icons + clog tier icons via ItemManager (game items, loaded at runtime)
+        // Cape + clog tier icons via ItemManager (game items, loaded at runtime)
         clientThread.invokeLater(() ->
         {
-            loadItemIcon(13280, 26, 26, icon -> maxCapeIcon = icon);
-            loadItemIcon(21295, 26, 26, icon -> infernalCapeIcon = icon);
-            loadItemIcon(21284, 26, 26, icon -> infernalMaxCapeIcon = icon);
+            // Tooltip cape icons — native aspect ratio, taller
+            loadItemImage(13280, img -> maxCapeTip = img);
+            loadItemImage(21295, img -> infernalCapeTip = img);
+            loadItemImage(21284, img -> infernalMaxCapeTip = img);
 
             for (int i = 0; i < CLOG_TIERS.length; i++)
             {
@@ -721,6 +715,20 @@ public class KillClogPanel extends PluginPanel
         {
             SwingUtilities.invokeLater(() ->
                 setter.accept(new ImageIcon(ImageUtil.resizeImage(img, w, h))));
+        }
+    }
+
+    private void loadItemImage(int itemId, java.util.function.Consumer<BufferedImage> setter)
+    {
+        BufferedImage img = itemManager.getImage(itemId, 1, false);
+        if (img instanceof AsyncBufferedImage)
+        {
+            ((AsyncBufferedImage) img).onLoaded(() ->
+                SwingUtilities.invokeLater(() -> setter.accept(img)));
+        }
+        else
+        {
+            SwingUtilities.invokeLater(() -> setter.accept(img));
         }
     }
 
@@ -1023,12 +1031,13 @@ public class KillClogPanel extends PluginPanel
 
         Dimension tipSize = tip.getPreferredSize();
 
-        // Position below cell, screen-bounds aware
-        Point loc = cell.getLocationOnScreen();
+        // Position below cell, aligned to label's x, screen-bounds aware
+        Point labelLoc = label.getLocationOnScreen();
+        Point cellLoc = cell.getLocationOnScreen();
         Rectangle screen = cell.getGraphicsConfiguration().getBounds();
 
-        int x = loc.x;
-        int y = loc.y + cell.getHeight();
+        int x = labelLoc.x;
+        int y = cellLoc.y + cell.getHeight();
 
         if (x + tipSize.width > screen.x + screen.width)
         {
@@ -1036,7 +1045,7 @@ public class KillClogPanel extends PluginPanel
         }
         if (y + tipSize.height > screen.y + screen.height)
         {
-            y = loc.y - tipSize.height;
+            y = cellLoc.y - tipSize.height;
         }
 
         activeClickPopup = PopupFactory.getSharedInstance().getPopup(cell, tip, x, y);
@@ -1468,6 +1477,10 @@ public class KillClogPanel extends PluginPanel
         }
 
         resetLabelMap(activityLabels);
+
+        playerName.setText(" ");
+        playerName.setIcon(null);
+        playerName.setToolTipText(null);
 
         clogInfoLabel.setIcon(null);
         clogInfoLabel.setText("");
@@ -1925,21 +1938,15 @@ public class KillClogPanel extends PluginPanel
 
         updateBosses(hiscoreResult);
         updateActivities(hiscoreResult);
-        if (enabled)
-        {
-            dimNoClogActivities();
-        }
         if (clogResult != null)
         {
             updateRares(clogResult);
             if (enabled)
             {
+                dimNoClogActivities();
                 colorCellsByCompletion();
+                colorEmptyCells();
             }
-        }
-        if (enabled)
-        {
-            colorEmptyCells();
         }
     }
 
@@ -2185,17 +2192,16 @@ public class KillClogPanel extends PluginPanel
     @Override
     public void onDeactivate()
     {
-        ToolTipManager.sharedInstance().setDismissDelay(defaultDismissDelay);
-        if (defaultInitialDelay >= 0)
-        {
-            ToolTipManager.sharedInstance().setInitialDelay(defaultInitialDelay);
-            defaultInitialDelay = -1;
-        }
-        hideClickTooltip();
+        restoreTooltipDefaults();
     }
 
     /** Safety net — restores tooltip delay if plugin is disabled while panel is active. */
     public void shutdown()
+    {
+        restoreTooltipDefaults();
+    }
+
+    private void restoreTooltipDefaults()
     {
         ToolTipManager.sharedInstance().setDismissDelay(defaultDismissDelay);
         if (defaultInitialDelay >= 0)
@@ -2292,6 +2298,98 @@ public class KillClogPanel extends PluginPanel
     // -------------------------------------------------------------------------
     // Info bar
     // -------------------------------------------------------------------------
+
+    private int sumBossKills()
+    {
+        if (hiscoreResult == null) return 0;
+        int total = 0;
+        for (int kc : hiscoreResult.getBossKills().values())
+        {
+            if (kc > 0) total += kc;
+        }
+        return total;
+    }
+
+    private BufferedImage getCapeImage()
+    {
+        if (hiscoreResult == null) return null;
+        boolean maxed = hiscoreResult.getTotalLevel() >= 2376;
+        boolean infernal = hiscoreResult.getKc("TzKal-Zuk") > 0;
+        if (maxed && infernal) return infernalMaxCapeTip;
+        if (maxed) return maxCapeTip;
+        if (infernal) return infernalCapeTip;
+        return null;
+    }
+
+    private BufferedImage getAccountBadge()
+    {
+        if (hiscoreResult == null) return null;
+        String resource;
+        switch (hiscoreResult.getAccountType())
+        {
+            case IRONMAN:
+                resource = "ironman.png";
+                break;
+            case HARDCORE_IRONMAN:
+                resource = "hardcore_ironman.png";
+                break;
+            case ULTIMATE_IRONMAN:
+                resource = "ultimate_ironman.png";
+                break;
+            default:
+                return null;
+        }
+        try
+        {
+            return ImageUtil.loadImageResource(HiscorePanel.class, resource);
+        }
+        catch (Exception e)
+        {
+            return null;
+        }
+    }
+
+    private String getAccountLabel()
+    {
+        if (hiscoreResult == null) return null;
+        switch (hiscoreResult.getAccountType())
+        {
+            case IRONMAN:
+                return "Ironman";
+            case HARDCORE_IRONMAN:
+                return "Hardcore Ironman";
+            case ULTIMATE_IRONMAN:
+                return "Ultimate Ironman";
+            default:
+                return null;
+        }
+    }
+
+    private String getPrestige()
+    {
+        if (hiscoreResult == null) return null;
+        boolean maxed = hiscoreResult.getTotalLevel() >= 2376;
+        boolean infernal = hiscoreResult.getKc("TzKal-Zuk") > 0;
+        if (maxed && infernal) return "Maxed Infernal";
+        if (maxed) return "Maxed";
+        if (infernal) return "Infernal";
+        return null;
+    }
+
+    private Set<Integer> getObtainedPetIds()
+    {
+        if (clogResult == null) return new HashSet<>();
+        List<ClogResult.ClogItem> pets = clogResult.getObtainedItems().get("all_pets");
+        Set<Integer> ids = new HashSet<>();
+        if (pets != null)
+        {
+            for (ClogResult.ClogItem item : pets)
+            {
+                ids.add(item.getId());
+            }
+        }
+        return ids;
+    }
 
     private void updateInfoIcon(AccountType type)
     {
@@ -2429,12 +2527,7 @@ public class KillClogPanel extends PluginPanel
 
     private static BufferedImage createDimmedImage(ImageIcon icon)
     {
-        BufferedImage original = new BufferedImage(
-            icon.getIconWidth(), icon.getIconHeight(), BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g = original.createGraphics();
-        icon.paintIcon(null, g, 0, 0);
-        g.dispose();
-
+        BufferedImage original = iconToImage(icon);
         BufferedImage dimmed = new BufferedImage(
             original.getWidth(), original.getHeight(), BufferedImage.TYPE_INT_ARGB);
         Graphics2D g2 = dimmed.createGraphics();
@@ -2444,19 +2537,13 @@ public class KillClogPanel extends PluginPanel
         return dimmed;
     }
 
-
     /**
      * Boosts RGB channels by a multiplier (e.g. 1.10 = 10% brighter).
      * Preserves hue and alpha — no white wash, just more vivid color.
      */
     private static BufferedImage createBoostedImage(ImageIcon icon, float factor)
     {
-        BufferedImage src = new BufferedImage(
-            icon.getIconWidth(), icon.getIconHeight(), BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g = src.createGraphics();
-        icon.paintIcon(null, g, 0, 0);
-        g.dispose();
-
+        BufferedImage src = iconToImage(icon);
         int[] pixels = src.getRGB(0, 0, src.getWidth(), src.getHeight(), null, 0, src.getWidth());
         for (int i = 0; i < pixels.length; i++)
         {

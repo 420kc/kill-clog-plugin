@@ -233,7 +233,7 @@ public class ImgTooltip extends TitleTooltip
         }
 
         int inset = getInset();
-        int gridStartY = inset + getHeaderHeight() + 6 + 1 + 6;
+        int gridStartY = inset + getHeaderZoneHeight();
 
         int relX = mx - inset;
         int relY = my - gridStartY;

@@ -28,7 +28,8 @@ public class HiscoreService
     private static final String BASE_URL = "https://secure.runescape.com/m=";
     private static final String SUFFIX = "/index_lite.ws?player=";
 
-    // Hiscore CSV layout: 25 skills + 20 activities, then bosses.
+    // Hiscore CSV layout: line 0 = Overall, lines 1-24 = 24 skills,
+    // lines 25-44 = 20 activities, then bosses.
     // If Jagex adds a new skill or activity above bosses, these indices must shift.
     private static final int ACTIVITY_START_INDEX = 25;
     private static final int BOSS_START_INDEX = 45;

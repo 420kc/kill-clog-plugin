@@ -43,7 +43,7 @@ public interface KillClogConfig extends Config
         keyName = "playerMenuLookup",
         name = "Player Menu Lookup",
         description = "Add 'Kill Clog' to right-click menu on players",
-        position = 3
+        position = 2
     )
     default boolean playerMenuLookup()
     {
@@ -54,7 +54,7 @@ public interface KillClogConfig extends Config
         keyName = "tooltipMode",
         name = "Tooltip Activation",
         description = "How tooltips are triggered on boss and activity cells",
-        position = 5
+        position = 3
     )
     default TooltipMode tooltipMode()
     {

@@ -94,7 +94,7 @@ public abstract class TitleTooltip extends NativeTooltip
      * Total header zone height including separator line and gaps.
      * Content starts at inset + this value.
      */
-    private int getHeaderZoneHeight()
+    protected int getHeaderZoneHeight()
     {
         return getHeaderHeight() + SEPARATOR_GAP + 1 + SEPARATOR_GAP;
     }
