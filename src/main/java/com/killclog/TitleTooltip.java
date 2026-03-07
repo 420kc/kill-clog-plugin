@@ -19,7 +19,7 @@ public abstract class TitleTooltip extends NativeTooltip
     static final Color SEPARATOR_COLOR = new Color(80, 70, 50);
 
     protected static final Color CLOG_GREEN = new Color(0, 255, 0);
-    private static final Color CLOG_YELLOW = new Color(255, 255, 0);
+    protected static final Color CLOG_YELLOW = new Color(255, 255, 0);
 
     private String title;
     private String subtitleLabel;
@@ -50,8 +50,13 @@ public abstract class TitleTooltip extends NativeTooltip
     public void setObtained(int obtained, int total)
     {
         String countPart = (obtained < 0 ? "?" : String.valueOf(obtained)) + "/" + total;
-        setSubtitle("Obtained: ", countPart,
-            (obtained >= total && total > 0) ? CLOG_GREEN : CLOG_YELLOW);
+        setSubtitle("Obtained: ", countPart, completionColor(obtained, total));
+    }
+
+    /** Green when obtained >= total, yellow otherwise. */
+    protected static Color completionColor(int obtained, int total)
+    {
+        return obtained >= total && total > 0 ? CLOG_GREEN : CLOG_YELLOW;
     }
 
     /** Set the rank line. 0 = "Unranked". */

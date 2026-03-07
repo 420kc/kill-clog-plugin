@@ -16,17 +16,15 @@ import net.runelite.client.util.ImageUtil;
 
 /**
  * Player summary tooltip on the info bar name label.
- * Centered "Player Summary" title, RSN + total kills with cape icon,
- * then obtained pet sprites below.
+ * Single-column stats, optional cape icon, then obtained pet sprites.
  */
 public class SummaryTooltip extends TitleTooltip
 {
-    private static final int CAPE_RIGHT_PAD = 4;
-    private static final int TEXT_CAPE_GAP = 8;
     private static final int PET_SIZE = 15;
     private static final int PET_PAD = 2;
     private static final int PET_COLS = 10;
     private static final int SECTION_GAP = 6;
+    private static final int CAPE_PAD = 4;
 
     private static final int BADGE_SIZE = 13;
     private static final int BADGE_GAP = 3;
@@ -60,7 +58,6 @@ public class SummaryTooltip extends TitleTooltip
     {
         this.totalPetCount = allPetIds != null ? allPetIds.size() : 0;
 
-        // Build ordered list of obtained pet IDs (preserving category order)
         obtainedPetList = new ArrayList<>();
         if (allPetIds != null && obtainedPetIds != null)
         {
@@ -75,7 +72,6 @@ public class SummaryTooltip extends TitleTooltip
 
         if (obtainedPetList.isEmpty()) return;
 
-        // Pre-load and pre-scale sprites + register repaint on async load
         petSprites = new BufferedImage[obtainedPetList.size()];
         for (int i = 0; i < obtainedPetList.size(); i++)
         {
@@ -93,21 +89,12 @@ public class SummaryTooltip extends TitleTooltip
         }
     }
 
-    /** Left column: RSN + optional account type + Overall Rank. */
-    private int getStatsHeight()
+    private int getStatsLines()
     {
-        int lines = 2; // RSN + Overall Rank
-        if (accountLabel != null) lines++;
-        return LINE_HEIGHT * lines;
-    }
-
-    /** Right column: optional prestige text + cape icon. */
-    private int getRightColumnHeight()
-    {
-        int h = 0;
-        if (prestige != null) h += LINE_HEIGHT * 2;
-        if (capeIcon != null) h += capeIcon.getHeight();
-        return h;
+        int lines = 1; // RSN
+        if (accountLabel != null || overallRank > 0) lines++;
+        if (prestige != null) lines += 2;
+        return lines;
     }
 
     private boolean hasPets()
@@ -127,7 +114,7 @@ public class SummaryTooltip extends TitleTooltip
     {
         FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
 
-        // Left column width — stats text
+        // Stats text width
         int textWidth = 0;
         if (rsn != null)
         {
@@ -135,41 +122,36 @@ public class SummaryTooltip extends TitleTooltip
             if (badgeIcon != null) rsnWidth += BADGE_SIZE + BADGE_GAP;
             textWidth = Math.max(textWidth, rsnWidth);
         }
-        if (accountLabel != null)
+        // Account type + rank line
+        String rankLine = buildRankLine();
+        if (rankLine != null)
         {
-            textWidth = Math.max(textWidth, fm.stringWidth(accountLabel));
-        }
-        textWidth = Math.max(textWidth, fm.stringWidth("Overall Rank: 999,999"));
-
-        // Right column width — prestige text + cape
-        int rightWidth = 0;
-        if (capeIcon != null)
-        {
-            rightWidth = capeIcon.getWidth() + CAPE_RIGHT_PAD;
+            textWidth = Math.max(textWidth, fm.stringWidth(rankLine));
         }
         if (prestige != null)
         {
-            rightWidth = Math.max(rightWidth,
-                Math.max(fm.stringWidth("Prestige:"), fm.stringWidth(prestige))
-                + CAPE_RIGHT_PAD);
+            textWidth = Math.max(textWidth, fm.stringWidth("Prestige:"));
+            textWidth = Math.max(textWidth, fm.stringWidth(prestige));
         }
 
-        int statsWidth = textWidth;
-        if (rightWidth > 0)
+        int statsHeight = LINE_HEIGHT * getStatsLines();
+
+        // Cape below stats
+        int capeHeight = 0;
+        if (capeIcon != null)
         {
-            statsWidth += TEXT_CAPE_GAP + rightWidth;
+            capeHeight = CAPE_PAD + capeIcon.getHeight();
+            textWidth = Math.max(textWidth, capeIcon.getWidth());
         }
 
-        int statsHeight = Math.max(getStatsHeight(), getRightColumnHeight());
-
-        // Pet grid width
+        // Pet grid
         int petCount = hasPets() ? obtainedPetList.size() : 0;
         int petGridWidth = petCount > 0
             ? Math.min(petCount, PET_COLS) * (PET_SIZE + PET_PAD) - PET_PAD
             : 0;
 
-        int contentWidth = Math.max(statsWidth, petGridWidth);
-        int contentHeight = statsHeight;
+        int contentWidth = Math.max(textWidth, petGridWidth);
+        int contentHeight = statsHeight + capeHeight;
 
         if (hasPets())
         {
@@ -187,43 +169,6 @@ public class SummaryTooltip extends TitleTooltip
         int inset = getInset();
         g2.setFont(FontManager.getRunescapeSmallFont());
         FontMetrics fm = g2.getFontMetrics();
-
-        int statsHeight = getStatsHeight();
-        int rightColHeight = getRightColumnHeight();
-        int sectionHeight = Math.max(statsHeight, rightColHeight);
-
-        // Right column — prestige text above cape icon, right-aligned
-        int rightX = -1;
-        if (capeIcon != null || prestige != null)
-        {
-            int rightWidth = 0;
-            if (capeIcon != null) rightWidth = capeIcon.getWidth();
-            if (prestige != null)
-            {
-                rightWidth = Math.max(rightWidth,
-                    Math.max(fm.stringWidth("Prestige:"), fm.stringWidth(prestige)));
-            }
-
-            rightX = w - inset - CAPE_RIGHT_PAD - rightWidth;
-            int rightY = startY + (sectionHeight - rightColHeight) / 2;
-
-            if (prestige != null)
-            {
-                g2.setColor(OSRS_ORANGE);
-                g2.drawString("Prestige:", rightX, rightY + fm.getAscent());
-                rightY += LINE_HEIGHT;
-                g2.setColor(Color.WHITE);
-                g2.drawString(prestige, rightX, rightY + fm.getAscent());
-                rightY += LINE_HEIGHT;
-            }
-
-            if (capeIcon != null)
-            {
-                g2.drawImage(capeIcon, rightX, rightY, null);
-            }
-        }
-
-        // Left column — RSN, account type, overall rank
         int lineY = startY + fm.getAscent();
 
         // RSN with optional badge
@@ -241,45 +186,60 @@ public class SummaryTooltip extends TitleTooltip
         }
         lineY += LINE_HEIGHT;
 
-        // Account type label (iron variants only)
-        if (accountLabel != null)
+        // Account type + #rank inline
+        if (accountLabel != null || overallRank > 0)
         {
-            g2.setColor(OSRS_ORANGE);
-            g2.drawString(accountLabel, inset, lineY);
+            int x = inset;
+            if (accountLabel != null)
+            {
+                g2.setColor(OSRS_ORANGE);
+                g2.drawString(accountLabel, x, lineY);
+                x += fm.stringWidth(accountLabel);
+            }
+            if (overallRank > 0)
+            {
+                String rankText = " #" + String.format("%,d", overallRank);
+                if (accountLabel == null) rankText = "#" + String.format("%,d", overallRank);
+                g2.setColor(Color.WHITE);
+                g2.drawString(rankText, x, lineY);
+            }
             lineY += LINE_HEIGHT;
         }
 
-        // Overall Rank
+        // Prestige
+        if (prestige != null)
         {
-            String label = "Overall Rank: ";
             g2.setColor(OSRS_ORANGE);
-            g2.drawString(label, inset, lineY);
-            if (overallRank > 0)
-            {
-                g2.setColor(Color.WHITE);
-                g2.drawString(String.format("%,d", overallRank), inset + fm.stringWidth(label), lineY);
-            }
-            else
-            {
-                g2.drawString("Unranked", inset + fm.stringWidth(label), lineY);
-            }
+            g2.drawString("Prestige:", inset, lineY);
+            lineY += LINE_HEIGHT;
+            g2.setColor(Color.WHITE);
+            g2.drawString(prestige, inset, lineY);
+            lineY += LINE_HEIGHT;
+        }
+
+        // Cape icon — centered below stats
+        int sectionBottom = lineY - fm.getAscent();
+        if (capeIcon != null)
+        {
+            int capeX = inset + (w - 2 * inset - capeIcon.getWidth()) / 2;
+            g2.drawImage(capeIcon, capeX, sectionBottom + CAPE_PAD, null);
+            sectionBottom += CAPE_PAD + capeIcon.getHeight();
         }
 
         if (!hasPets()) return;
 
-        // Separator between stats and pets
-        int sepY = startY + sectionHeight + SECTION_GAP;
+        // Separator
+        int sepY = sectionBottom + SECTION_GAP;
         g2.setColor(SEPARATOR_COLOR);
         g2.drawLine(inset, sepY, w - inset - 1, sepY);
 
         // "Pets: X" header
-        g2.setFont(FontManager.getRunescapeSmallFont());
         FontMetrics sfm = g2.getFontMetrics();
         int petsHeaderY = sepY + 1 + SECTION_GAP + sfm.getAscent();
         String petsLabel = "Pets: ";
         g2.setColor(OSRS_ORANGE);
         g2.drawString(petsLabel, inset, petsHeaderY);
-        g2.setColor(Color.WHITE);
+        g2.setColor(completionColor(obtainedPetList.size(), totalPetCount));
         g2.drawString(String.valueOf(obtainedPetList.size()), inset + sfm.stringWidth(petsLabel), petsHeaderY);
 
         FontMetrics bfm = g2.getFontMetrics(FontManager.getRunescapeBoldFont());
@@ -301,5 +261,16 @@ public class SummaryTooltip extends TitleTooltip
                 g2.drawImage(sprite, px, py, null);
             }
         }
+    }
+
+    private String buildRankLine()
+    {
+        if (accountLabel != null && overallRank > 0)
+        {
+            return accountLabel + " #" + String.format("%,d", overallRank);
+        }
+        if (accountLabel != null) return accountLabel;
+        if (overallRank > 0) return "#" + String.format("%,d", overallRank);
+        return null;
     }
 }

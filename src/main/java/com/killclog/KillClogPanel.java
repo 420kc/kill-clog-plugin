@@ -90,6 +90,10 @@ public class KillClogPanel extends PluginPanel
         "Moving mountains to find %s...",
         "Deliberating on %s's whereabouts...",
         "Searching high and low for %s...",
+        "Leaving no stone unturned for %s...",
+        "Hot on the trail of %s...",
+        "Scouring Gielinor for %s...",
+        "Putting out an APB on %s...",
     };
 
     private static final String[] NOT_FOUND_MSGS = {
@@ -99,6 +103,9 @@ public class KillClogPanel extends PluginPanel
         "%s? Never heard of 'em.",
         "%s who?",
         "Have you seen %s? I haven't...",
+        "404: %s not found",
+        "%s remains at large",
+        "Couldn't find %s. Tragic.",
     };
 
     // Boss display order matching vanilla RuneLite hiscores.
@@ -197,11 +204,6 @@ public class KillClogPanel extends PluginPanel
         HiscoreSkill.CLUE_SCROLL_ELITE, HiscoreSkill.CLUE_SCROLL_MASTER,
     };
 
-    // Activities without collection log categories — dimmed when highlighter is active
-    private static final Set<HiscoreSkill> NO_CLOG_ACTIVITIES = Set.of(
-        HiscoreSkill.LEAGUE_POINTS, HiscoreSkill.PVP_ARENA_RANK,
-        HiscoreSkill.BOUNTY_HUNTER_ROGUE, HiscoreSkill.BOUNTY_HUNTER_HUNTER
-    );
 
     private static final String CLOG_THIRD_AGE = "third_age";
     private static final String CLOG_GILDED = "gilded";
@@ -260,9 +262,7 @@ public class KillClogPanel extends PluginPanel
     private static final Map<HiscoreSkill, String> ACTIVITY_CATEGORIES = new LinkedHashMap<>();
     static
     {
-        ACTIVITY_CATEGORIES.put(HiscoreSkill.SOUL_WARS_ZEAL, "soul_wars");
         ACTIVITY_CATEGORIES.put(HiscoreSkill.RIFTS_CLOSED, "guardians_of_the_rift");
-        ACTIVITY_CATEGORIES.put(HiscoreSkill.LAST_MAN_STANDING, "last_man_standing");
         ACTIVITY_CATEGORIES.put(HiscoreSkill.COLOSSEUM_GLORY, "fortis_colosseum");
     }
 
@@ -320,11 +320,24 @@ public class KillClogPanel extends PluginPanel
         @Override
         public JToolTip createToolTip()
         {
-            TextTooltip tip = new TextTooltip();
+            ClogSummaryTooltip tip = new ClogSummaryTooltip();
             tip.setComponent(this);
-            for (Map.Entry<String, ImageIcon> entry : clogTierIcons.entrySet())
+            if (clogResult != null)
             {
-                tip.putIcon(entry.getKey(), ClogHelper.iconToImage(entry.getValue()));
+                int[] totals = ClogHelper.sumClogTotals(clogResult);
+                Map<String, BufferedImage> icons = new LinkedHashMap<>();
+                for (Map.Entry<String, ImageIcon> entry : clogTierIcons.entrySet())
+                {
+                    icons.put(entry.getKey(), ClogHelper.iconToImage(entry.getValue()));
+                }
+                tip.setTierData(totals[0], totals[1], icons);
+                String sync = syncLine(clogLastChanged);
+                if (sync != null) tip.setSyncText(sync);
+            }
+            else
+            {
+                tip.setNotice(hiscoreResult != null
+                    ? "No TempleOSRS Data" : "Nothing to see here! (Search for a player)");
             }
             return tip;
         }
@@ -344,6 +357,15 @@ public class KillClogPanel extends PluginPanel
     private final Map<HiscoreSkill, JLabel> activityLabels = new LinkedHashMap<>();
     private final Map<HiscoreSkill, ImageIcon> originalIcons = new LinkedHashMap<>();
     private final Map<HiscoreSkill, ImageIcon> dimmedIcons = new LinkedHashMap<>();
+    private JLabel pvpSummaryCell;
+    private final BufferedImage[] pvpActivityIcons = new BufferedImage[5];
+    private static final HiscoreSkill[] PVP_ACTIVITIES = {
+        HiscoreSkill.LAST_MAN_STANDING,
+        HiscoreSkill.SOUL_WARS_ZEAL,
+        HiscoreSkill.PVP_ARENA_RANK,
+        HiscoreSkill.BOUNTY_HUNTER_HUNTER,
+        HiscoreSkill.BOUNTY_HUNTER_ROGUE,
+    };
 
     // Activities tray
     private JPanel activitiesGrid;
@@ -523,8 +545,7 @@ public class KillClogPanel extends PluginPanel
 
         highlighter = new ProgressHighlighter(
             bossLabels, activityLabels, clueTierLabels,
-            NAME_OVERRIDES, ACTIVITY_CATEGORIES, CLUE_CATEGORIES,
-            NO_CLOG_ACTIVITIES, dimmedIcons, config);
+            NAME_OVERRIDES, ACTIVITY_CATEGORIES, CLUE_CATEGORIES, config);
     }
 
     // -------------------------------------------------------------------------
@@ -907,22 +928,14 @@ public class KillClogPanel extends PluginPanel
         clueSep.setAlignmentX(0f);
         grid.add(clueSep);
 
-        // Rows 5-7: Remaining activities
-        JPanel rest = new JPanel(new GridLayout(0, 3));
-        rest.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        rest.setAlignmentX(0f);
-        rest.add(makeActivityCell(HiscoreSkill.COLOSSEUM_GLORY));
-        rest.add(makeActivityCell(HiscoreSkill.SOUL_WARS_ZEAL));
-        rest.add(makeActivityCell(HiscoreSkill.LAST_MAN_STANDING));
-        rest.add(makeActivityCell(HiscoreSkill.RIFTS_CLOSED));
-        JPanel blank = new JPanel();
-        blank.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        rest.add(blank);
-        rest.add(makeActivityCell(HiscoreSkill.PVP_ARENA_RANK));
-        rest.add(makeActivityCell(HiscoreSkill.BOUNTY_HUNTER_ROGUE));
-        rest.add(makeActivityCell(HiscoreSkill.BOUNTY_HUNTER_HUNTER));
-        rest.add(makeActivityCell(HiscoreSkill.LEAGUE_POINTS));
-        grid.add(rest);
+        // Row 5: Colo | PvP Summary | GOTR
+        JPanel activityRow = new JPanel(new GridLayout(1, 3));
+        activityRow.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        activityRow.setAlignmentX(0f);
+        activityRow.add(makeActivityCell(HiscoreSkill.COLOSSEUM_GLORY));
+        activityRow.add(makePvpSummaryCell());
+        activityRow.add(makeActivityCell(HiscoreSkill.RIFTS_CLOSED));
+        grid.add(activityRow);
 
         return grid;
     }
@@ -959,7 +972,7 @@ public class KillClogPanel extends PluginPanel
                 if (hoveredCell == cell) return;
 
                 // Leaving a different cell — clear its hover first
-                if (hoveredCell != null) clearCellHover();
+                if (hoveredCell != null) resetCellHover();
 
                 hoveredCell = cell;
                 switch (config.hoverStyle())
@@ -986,7 +999,7 @@ public class KillClogPanel extends PluginPanel
                 {
                     if (hoveredCell == cell)
                     {
-                        clearCellHover();
+                        resetCellHover();
                         hoveredCell = null;
                     }
                 });
@@ -998,7 +1011,7 @@ public class KillClogPanel extends PluginPanel
         label.addMouseListener(hoverAdapter);
     }
 
-    private void clearCellHover()
+    private void resetCellHover()
     {
         if (hoveredCell != null)
         {
@@ -1046,7 +1059,7 @@ public class KillClogPanel extends PluginPanel
             {
                 return;
             }
-            clearCellHover();
+            resetCellHover();
             hoveredCell = null;
         }
     }
@@ -1174,10 +1187,7 @@ public class KillClogPanel extends PluginPanel
         cell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         cell.setBorder(CELL_BORDER);
         cell.add(label);
-        if (!Boolean.TRUE.equals(label.getClientProperty("noClog")))
-        {
-            addCellHoverEffect(cell, label);
-        }
+        addCellHoverEffect(cell, label);
         return cell;
     }
 
@@ -1200,7 +1210,8 @@ public class KillClogPanel extends PluginPanel
                     int rank = hiscoreResult != null
                         ? hiscoreResult.getActivityRank(activity.getName()) : -1;
                     tip.setRank(rank);
-                    tip.setNotice(" ");
+                    tip.setNotice(hiscoreResult != null
+                        ? " " : "Nothing to see here! (Search for a player)");
                     JPanel parentCell = (JPanel) this.getParent();
                     keepTooltipOnHover(tip, parentCell);
                     return tip;
@@ -1220,22 +1231,68 @@ public class KillClogPanel extends PluginPanel
                         ImageIcon icon = new ImageIcon(ImageUtil.resizeImage(
                             ImageUtil.resizeCanvas(sprite, 25, 25), 20, 20));
                         label.setIcon(icon);
-                        if (NO_CLOG_ACTIVITIES.contains(activity))
-                        {
-                            originalIcons.put(activity, icon);
-                            dimmedIcons.put(activity, new ImageIcon(ClogHelper.createDimmedImage(icon)));
-                        }
                     }
                 }));
         }
 
-        if (NO_CLOG_ACTIVITIES.contains(activity))
-        {
-            label.putClientProperty("noClog", Boolean.TRUE);
-        }
-
         activityLabels.put(activity, label);
         return wrapInCell(label);
+    }
+
+    private JPanel makePvpSummaryCell()
+    {
+        pvpSummaryCell = new JLabel()
+        {
+            @Override
+            public JToolTip createToolTip()
+            {
+                PvpSummaryTooltip tip = new PvpSummaryTooltip();
+                tip.setComponent(this);
+                tip.setIcons(pvpActivityIcons);
+                if (hiscoreResult != null)
+                {
+                    tip.setData(hiscoreResult, clogResult);
+                }
+                else
+                {
+                    tip.setNotice("Nothing to see here! (Search for a player)");
+                }
+                JPanel parentCell = (JPanel) this.getParent();
+                keepTooltipOnHover(tip, parentCell);
+                return tip;
+            }
+        };
+        styleLabel(pvpSummaryCell, "PvP Summary");
+
+        // Cell icon — PK skull
+        spriteManager.getSpriteAsync(439, 0, sprite ->
+            SwingUtilities.invokeLater(() ->
+            {
+                if (sprite != null)
+                {
+                    pvpSummaryCell.setIcon(new ImageIcon(ImageUtil.resizeImage(
+                        ImageUtil.resizeCanvas(sprite, 25, 25), 20, 20)));
+                }
+            }));
+
+        // Tooltip icons — one per PvP activity
+        for (int i = 0; i < PVP_ACTIVITIES.length; i++)
+        {
+            int spriteId = PVP_ACTIVITIES[i].getSpriteId();
+            if (spriteId == -1) continue;
+            final int idx = i;
+            spriteManager.getSpriteAsync(spriteId, 0, sprite ->
+                SwingUtilities.invokeLater(() ->
+                {
+                    if (sprite != null)
+                    {
+                        pvpActivityIcons[idx] = ImageUtil.resizeImage(
+                            ImageUtil.resizeCanvas(sprite, 25, 25), 13, 13);
+                    }
+                }));
+        }
+
+        return wrapInCell(pvpSummaryCell);
     }
 
     private JPanel makeClueTierCell(HiscoreSkill tier, int itemId, boolean wide)
@@ -1467,6 +1524,7 @@ public class KillClogPanel extends PluginPanel
         {
             SwingUtilities.invokeLater(() ->
             {
+                if (thisLookup != lookupVersion) return;
                 searchBar.setIcon(IconTextField.Icon.SEARCH);
                 searchBar.setText("");
                 setSearchStatus("Lookup failed", TEXT_DIM);
@@ -1565,6 +1623,10 @@ public class KillClogPanel extends PluginPanel
         totalLvlCell.setText(ClogHelper.pad("--"));
         totalLvlCell.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
         totalLvlCell.setToolTipText(null);
+        if (pvpSummaryCell != null)
+        {
+            pvpSummaryCell.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+        }
 
         resetLabelMap(clueTierLabels);
 
@@ -1631,13 +1693,6 @@ public class KillClogPanel extends PluginPanel
             label.setText(ClogHelper.pad(score <= 0 ? "--" : ClogHelper.formatKc(score)));
             label.setForeground(score > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
 
-            // Restore original icon for no-clog activities (may have been dimmed)
-            ImageIcon orig = originalIcons.get(activity);
-            if (orig != null && NO_CLOG_ACTIVITIES.contains(activity))
-            {
-                label.setIcon(orig);
-            }
-
             if (activity == HiscoreSkill.CLUE_SCROLL_ALL)
             {
                 label.setToolTipText(buildClueTooltip(result));
@@ -1649,6 +1704,14 @@ public class KillClogPanel extends PluginPanel
                     ? activity.getName() + "\nRank: {w}" + String.format("%,d", rank)
                     : activity.getName());
             }
+        }
+
+        // PvP summary cell — BH Hunter + BH Rogue total
+        if (pvpSummaryCell != null)
+        {
+            int bhTotal = Math.max(0, result.getActivityScore("Bounty Hunter - Hunter"))
+                + Math.max(0, result.getActivityScore("Bounty Hunter - Rogue"));
+            pvpSummaryCell.setText(ClogHelper.pad(bhTotal > 0 ? ClogHelper.formatKc(bhTotal) : "--"));
         }
 
         for (Map.Entry<HiscoreSkill, JLabel> entry : clueTierLabels.entrySet())
@@ -1902,7 +1965,7 @@ public class KillClogPanel extends PluginPanel
     private void toggleHighlighter(boolean enabled)
     {
         if (hiscoreResult == null) return;
-        clearCellHover();
+        resetCellHover();
         hoveredCell = null;
 
         // Info bar follows highlighter state
@@ -1925,7 +1988,6 @@ public class KillClogPanel extends PluginPanel
             updateRares(clogResult);
             if (enabled)
             {
-                highlighter.dimNoClogActivities(hiscoreResult);
                 highlighter.colorCellsByCompletion(hiscoreResult, clogResult,
                     rareTooltips, fourTwentyMode, FOUR_TWENTY_GREEN,
                     thirdAgeCell, CLOG_THIRD_AGE,
@@ -1934,8 +1996,44 @@ public class KillClogPanel extends PluginPanel
                     eliteRare, RARE_ELITE,
                     masterRare, RARE_MASTER);
                 highlighter.colorEmptyCells();
+                colorPvpCell(clogResult);
             }
         }
+    }
+
+    private void colorPvpCell(ClogResult clogResult)
+    {
+        if (pvpSummaryCell == null) return;
+        boolean lmsComplete = isCategoryComplete("last_man_standing", clogResult);
+        boolean swComplete = isCategoryComplete("soul_wars", clogResult);
+        if (lmsComplete && swComplete)
+        {
+            pvpSummaryCell.setForeground(config.completedClogColor());
+        }
+        else
+        {
+            int obtained = 0, total = 0;
+            for (String cat : new String[]{"last_man_standing", "soul_wars"})
+            {
+                List<Integer> items = clogResult.getCategoryItems().get(cat);
+                if (items != null)
+                {
+                    total += items.size();
+                    obtained += ClogHelper.countObtained(items, ClogHelper.getObtainedIds(cat, clogResult));
+                }
+            }
+            pvpSummaryCell.setForeground(total > 0
+                ? ClogHelper.clogColor(obtained, total, config)
+                : config.emptyClogColor());
+        }
+    }
+
+    private static boolean isCategoryComplete(String category, ClogResult clogResult)
+    {
+        List<Integer> items = clogResult.getCategoryItems().get(category);
+        if (items == null || items.isEmpty()) return false;
+        int obtained = ClogHelper.countObtained(items, ClogHelper.getObtainedIds(category, clogResult));
+        return obtained >= items.size();
     }
 
     // -------------------------------------------------------------------------
@@ -2015,7 +2113,7 @@ public class KillClogPanel extends PluginPanel
             case "hoverStyle":
             case "tooltipMode":
                 hideClickTooltip();
-                clearCellHover();
+                resetCellHover();
                 break;
         }
     }

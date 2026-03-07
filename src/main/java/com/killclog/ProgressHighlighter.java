@@ -3,8 +3,6 @@ package com.killclog;
 import java.awt.Color;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.ui.ColorScheme;
@@ -22,8 +20,6 @@ final class ProgressHighlighter
     private final Map<String, String> nameOverrides;
     private final Map<HiscoreSkill, String> activityCategories;
     private final Map<HiscoreSkill, String> clueCategories;
-    private final Set<HiscoreSkill> noClogActivities;
-    private final Map<HiscoreSkill, ImageIcon> dimmedIcons;
     private final KillClogConfig config;
 
     ProgressHighlighter(
@@ -33,8 +29,6 @@ final class ProgressHighlighter
         Map<String, String> nameOverrides,
         Map<HiscoreSkill, String> activityCategories,
         Map<HiscoreSkill, String> clueCategories,
-        Set<HiscoreSkill> noClogActivities,
-        Map<HiscoreSkill, ImageIcon> dimmedIcons,
         KillClogConfig config)
     {
         this.bossLabels = bossLabels;
@@ -43,8 +37,6 @@ final class ProgressHighlighter
         this.nameOverrides = nameOverrides;
         this.activityCategories = activityCategories;
         this.clueCategories = clueCategories;
-        this.noClogActivities = noClogActivities;
-        this.dimmedIcons = dimmedIcons;
         this.config = config;
     }
 
@@ -101,25 +93,6 @@ final class ProgressHighlighter
         colorCustomRare(masterRare, rareMaster, rareTooltips);
     }
 
-    /** Dim activities without clog categories when highlighter is active. */
-    void dimNoClogActivities(HiscoreResult hiscoreResult)
-    {
-        for (HiscoreSkill noClog : noClogActivities)
-        {
-            JLabel label = activityLabels.get(noClog);
-            if (label == null) continue;
-
-            int score = hiscoreResult.getActivityScore(noClog.getName());
-            label.setForeground(score > 0 ? config.inProgressClogColor() : config.emptyClogColor());
-
-            ImageIcon dimmed = dimmedIcons.get(noClog);
-            if (dimmed != null)
-            {
-                label.setIcon(dimmed);
-            }
-        }
-    }
-
     /** Recolor "--" cells to emptyClogColor when highlighter is active. */
     void colorEmptyCells()
     {
@@ -130,12 +103,11 @@ final class ProgressHighlighter
                 label.setForeground(config.emptyClogColor());
             }
         }
-        for (Map.Entry<HiscoreSkill, JLabel> entry : activityLabels.entrySet())
+        for (JLabel label : activityLabels.values())
         {
-            if (!noClogActivities.contains(entry.getKey())
-                && ColorScheme.LIGHT_GRAY_COLOR.equals(entry.getValue().getForeground()))
+            if (ColorScheme.LIGHT_GRAY_COLOR.equals(label.getForeground()))
             {
-                entry.getValue().setForeground(config.emptyClogColor());
+                label.setForeground(config.emptyClogColor());
             }
         }
         for (JLabel label : clueTierLabels.values())

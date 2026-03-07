@@ -110,10 +110,10 @@ public class PvmSummaryTooltip extends TitleTooltip
         int textWidth = 0;
         textWidth = Math.max(textWidth, fm.stringWidth("Combat: 126"));
         textWidth = Math.max(textWidth, fm.stringWidth("Total Kills: 999,999"));
-        textWidth = Math.max(textWidth, fm.stringWidth("Bosses: 99 / 99"));
+        textWidth = Math.max(textWidth, fm.stringWidth("Bosses killed: 99 / 99"));
         if (bossesCompleted >= 0)
         {
-            textWidth = Math.max(textWidth, fm.stringWidth("Completed: 99 / 99"));
+            textWidth = Math.max(textWidth, fm.stringWidth("Logs completed: 99 / 99"));
         }
         if (mostKilled != null)
         {
@@ -184,16 +184,18 @@ public class PvmSummaryTooltip extends TitleTooltip
             totalKills > 0 ? String.format("%,d", totalKills) : "--");
         y += LINE_HEIGHT;
 
-        // Bosses
-        drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Bosses: ",
-            bossesWithKc + "/" + totalBosses);
+        // Bosses killed
+        drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Bosses killed: ",
+            bossesWithKc + "/" + totalBosses,
+            completionColor(bossesWithKc, totalBosses));
         y += LINE_HEIGHT;
 
-        // Completed (clog only)
+        // Logs completed (clog only)
         if (bossesCompleted >= 0)
         {
-            drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Completed: ",
-                bossesCompleted + "/" + bossesWithClog);
+            drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Logs completed: ",
+                bossesCompleted + "/" + bossesWithClog,
+                completionColor(bossesCompleted, bossesWithClog));
             y += LINE_HEIGHT;
         }
 
@@ -202,7 +204,7 @@ public class PvmSummaryTooltip extends TitleTooltip
         {
             y += MOST_KILLED_GAP;
             g2.setColor(OSRS_ORANGE);
-            g2.drawString("Most Killed", inset, y + fm.getAscent());
+            g2.drawString("Most Killed:", inset, y + fm.getAscent());
             y += LINE_HEIGHT;
             g2.setColor(Color.WHITE);
             g2.drawString(mostKilled + " (" + String.format("%,d", mostKilledKc) + ")",
@@ -213,9 +215,15 @@ public class PvmSummaryTooltip extends TitleTooltip
     private void drawLabelValue(Graphics2D g2, FontMetrics fm, int x, int y,
                                 String label, String value)
     {
+        drawLabelValue(g2, fm, x, y, label, value, Color.WHITE);
+    }
+
+    private void drawLabelValue(Graphics2D g2, FontMetrics fm, int x, int y,
+                                String label, String value, Color valueColor)
+    {
         g2.setColor(OSRS_ORANGE);
         g2.drawString(label, x, y);
-        g2.setColor(Color.WHITE);
+        g2.setColor(valueColor);
         g2.drawString(value, x + fm.stringWidth(label), y);
     }
 }
