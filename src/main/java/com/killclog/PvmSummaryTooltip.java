@@ -186,14 +186,14 @@ public class PvmSummaryTooltip extends TitleTooltip
 
         // Bosses
         drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Bosses: ",
-            bossesWithKc + " / " + totalBosses);
+            bossesWithKc + "/" + totalBosses);
         y += LINE_HEIGHT;
 
         // Completed (clog only)
         if (bossesCompleted >= 0)
         {
             drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Completed: ",
-                bossesCompleted + " / " + bossesWithClog);
+                bossesCompleted + "/" + bossesWithClog);
             y += LINE_HEIGHT;
         }
 

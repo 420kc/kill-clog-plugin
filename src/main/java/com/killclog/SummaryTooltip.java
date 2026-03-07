@@ -32,7 +32,7 @@ public class SummaryTooltip extends TitleTooltip
     private static final int BADGE_GAP = 3;
 
     private String rsn;
-    private int totalKills;
+    private int overallRank;
     private BufferedImage capeIcon;
     private BufferedImage badgeIcon;
     private String accountLabel;
@@ -43,12 +43,12 @@ public class SummaryTooltip extends TitleTooltip
     private List<Integer> obtainedPetList;
     private BufferedImage[] petSprites;
 
-    public void setData(String rsn, int totalKills, BufferedImage capeIcon,
+    public void setData(String rsn, int overallRank, BufferedImage capeIcon,
                         BufferedImage badgeIcon, String accountLabel, String prestige)
     {
         setTitle("Player Summary");
         this.rsn = rsn;
-        this.totalKills = totalKills;
+        this.overallRank = overallRank;
         this.capeIcon = capeIcon;
         this.badgeIcon = badgeIcon != null
             ? ImageUtil.resizeImage(badgeIcon, BADGE_SIZE, BADGE_SIZE) : null;
@@ -95,7 +95,7 @@ public class SummaryTooltip extends TitleTooltip
 
     private int getStatsHeight()
     {
-        int lines = 3; // RSN + Prestige + Total Kills
+        int lines = 3; // RSN + Overall Rank + Prestige
         if (accountLabel != null) lines++;
         return LINE_HEIGHT * lines;
     }
@@ -129,9 +129,9 @@ public class SummaryTooltip extends TitleTooltip
         {
             textWidth = Math.max(textWidth, fm.stringWidth(accountLabel));
         }
+        textWidth = Math.max(textWidth, fm.stringWidth("Overall Rank: 999,999"));
         textWidth = Math.max(textWidth,
             fm.stringWidth("Prestige: " + (prestige != null ? prestige : "None")));
-        textWidth = Math.max(textWidth, fm.stringWidth("Total Kills: 999,999"));
 
         int statsWidth = textWidth;
         int statsHeight = getStatsHeight();
@@ -207,6 +207,23 @@ public class SummaryTooltip extends TitleTooltip
             lineY += LINE_HEIGHT;
         }
 
+        // Overall Rank
+        {
+            String label = "Overall Rank: ";
+            g2.setColor(OSRS_ORANGE);
+            g2.drawString(label, inset, lineY);
+            if (overallRank > 0)
+            {
+                g2.setColor(Color.WHITE);
+                g2.drawString(String.format("%,d", overallRank), inset + fm.stringWidth(label), lineY);
+            }
+            else
+            {
+                g2.drawString("Unranked", inset + fm.stringWidth(label), lineY);
+            }
+            lineY += LINE_HEIGHT;
+        }
+
         // Prestige
         {
             String label = "Prestige: ";
@@ -215,22 +232,6 @@ public class SummaryTooltip extends TitleTooltip
             g2.drawString(label, inset, lineY);
             g2.setColor(prestige != null ? Color.WHITE : OSRS_ORANGE);
             g2.drawString(value, inset + fm.stringWidth(label), lineY);
-            lineY += LINE_HEIGHT;
-        }
-
-        // Total Kills
-        if (totalKills > 0)
-        {
-            String label = "Total Kills: ";
-            g2.setColor(OSRS_ORANGE);
-            g2.drawString(label, inset, lineY);
-            g2.setColor(Color.WHITE);
-            g2.drawString(String.format("%,d", totalKills), inset + fm.stringWidth(label), lineY);
-        }
-        else
-        {
-            g2.setColor(OSRS_ORANGE);
-            g2.drawString("Total Kills: --", inset, lineY);
         }
 
         if (!hasPets()) return;

@@ -294,7 +294,7 @@ public class KillClogPanel extends PluginPanel
             String name = playerName.getText().trim();
             tip.setData(
                 name.isEmpty() ? "Player" : name,
-                sumBossKills(),
+                hiscoreResult != null ? hiscoreResult.getOverallRank() : -1,
                 getCapeImage(),
                 getAccountBadge(),
                 getAccountLabel(),
@@ -904,15 +904,17 @@ public class KillClogPanel extends PluginPanel
         JPanel rest = new JPanel(new GridLayout(0, 3));
         rest.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         rest.setAlignmentX(0f);
-        for (HiscoreSkill activity : new HiscoreSkill[]{
-            HiscoreSkill.PVP_ARENA_RANK, HiscoreSkill.LEAGUE_POINTS,
-            HiscoreSkill.LAST_MAN_STANDING,
-            HiscoreSkill.SOUL_WARS_ZEAL, HiscoreSkill.RIFTS_CLOSED,
-            HiscoreSkill.COLOSSEUM_GLORY,
-            HiscoreSkill.BOUNTY_HUNTER_ROGUE, HiscoreSkill.BOUNTY_HUNTER_HUNTER})
-        {
-            rest.add(makeActivityCell(activity));
-        }
+        rest.add(makeActivityCell(HiscoreSkill.COLOSSEUM_GLORY));
+        rest.add(makeActivityCell(HiscoreSkill.SOUL_WARS_ZEAL));
+        rest.add(makeActivityCell(HiscoreSkill.LAST_MAN_STANDING));
+        rest.add(makeActivityCell(HiscoreSkill.RIFTS_CLOSED));
+        JPanel blank = new JPanel();
+        blank.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        rest.add(blank);
+        rest.add(makeActivityCell(HiscoreSkill.PVP_ARENA_RANK));
+        rest.add(makeActivityCell(HiscoreSkill.BOUNTY_HUNTER_ROGUE));
+        rest.add(makeActivityCell(HiscoreSkill.BOUNTY_HUNTER_HUNTER));
+        rest.add(makeActivityCell(HiscoreSkill.LEAGUE_POINTS));
         grid.add(rest);
 
         return grid;
@@ -1183,6 +1185,19 @@ public class KillClogPanel extends PluginPanel
             @Override
             public JToolTip createToolTip()
             {
+                if (activity == HiscoreSkill.CLUE_SCROLL_ALL)
+                {
+                    ImgTooltip tip = new ImgTooltip();
+                    tip.setComponent(this);
+                    tip.setTitle(activity.getName());
+                    int rank = hiscoreResult != null
+                        ? hiscoreResult.getActivityRank(activity.getName()) : -1;
+                    tip.setRank(rank);
+                    tip.setNotice(" ");
+                    JPanel parentCell = (JPanel) this.getParent();
+                    keepTooltipOnHover(tip, parentCell);
+                    return tip;
+                }
                 return makeSpriteTooltip(this, tooltipDataMap.get(activity), 5, activity.getName());
             }
         };

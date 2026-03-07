@@ -193,9 +193,11 @@ public class HiscoreService
 
         int totalLevel = 0;
         long totalXp = 0;
+        int overallRank = -1;
         try
         {
             String[] overall = lines[0].split(",");
+            overallRank = Integer.parseInt(overall[0]);
             totalLevel = Integer.parseInt(overall[1]);
             totalXp = Long.parseLong(overall[2]);
         }
@@ -266,7 +268,7 @@ public class HiscoreService
         }
 
         return new HiscoreResult(type, bossKills, bossRanks, activityScores, activityRanks,
-            skillLevels, totalLevel, totalXp, combatLevel);
+            skillLevels, totalLevel, totalXp, combatLevel, overallRank);
     }
 
     /**
