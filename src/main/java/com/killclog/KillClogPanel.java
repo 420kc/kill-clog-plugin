@@ -177,6 +177,12 @@ public class KillClogPanel extends PluginPanel
         HiscoreSkill.ZULRAH,
     };
 
+    /** Number of boss cells in the panel grid. Used by tests to detect drift. */
+    static int bossCount()
+    {
+        return BOSSES.length;
+    }
+
     // HiscoreSkill.getName() -> boss name used in hiscore CSV data.
     // Only entries where the two differ are needed.
     private static final Map<String, String> NAME_OVERRIDES = new LinkedHashMap<>();
@@ -518,12 +524,7 @@ public class KillClogPanel extends PluginPanel
         highlighter = new ProgressHighlighter(
             bossLabels, activityLabels, clueTierLabels,
             NAME_OVERRIDES, ACTIVITY_CATEGORIES, CLUE_CATEGORIES,
-            NO_CLOG_ACTIVITIES, dimmedIcons, config,
-            thirdAgeCell, CLOG_THIRD_AGE,
-            gildedCell, CLOG_GILDED,
-            hardRare, RARE_HARD,
-            eliteRare, RARE_ELITE,
-            masterRare, RARE_MASTER);
+            NO_CLOG_ACTIVITIES, dimmedIcons, config);
     }
 
     // -------------------------------------------------------------------------
@@ -1511,6 +1512,7 @@ public class KillClogPanel extends PluginPanel
                 {
                     clogNotice.setText(localRsn != null
                         && localRsn.equalsIgnoreCase(player)
+                        && config.clogSource() != ClogSource.TEMPLE
                         ? "Open your Collection Log"
                         : " ");
                     fetchRsn(player, thisLookup);
@@ -1925,7 +1927,12 @@ public class KillClogPanel extends PluginPanel
             {
                 highlighter.dimNoClogActivities(hiscoreResult);
                 highlighter.colorCellsByCompletion(hiscoreResult, clogResult,
-                    rareTooltips, fourTwentyMode, FOUR_TWENTY_GREEN);
+                    rareTooltips, fourTwentyMode, FOUR_TWENTY_GREEN,
+                    thirdAgeCell, CLOG_THIRD_AGE,
+                    gildedCell, CLOG_GILDED,
+                    hardRare, RARE_HARD,
+                    eliteRare, RARE_ELITE,
+                    masterRare, RARE_MASTER);
                 highlighter.colorEmptyCells();
             }
         }
@@ -2004,6 +2011,11 @@ public class KillClogPanel extends PluginPanel
             case "clogSource":
                 toggleHighlighter(config.completionistHighlighter());
                 updateTooltips();
+                break;
+            case "hoverStyle":
+            case "tooltipMode":
+                hideClickTooltip();
+                clearCellHover();
                 break;
         }
     }

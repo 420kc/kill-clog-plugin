@@ -11,7 +11,8 @@ import net.runelite.client.ui.ColorScheme;
 
 /**
  * Color-setting logic for the completionist highlighter.
- * Constructor takes stable references; methods take per-lookup state.
+ * Constructor takes stable references (maps populated before construction);
+ * methods take per-lookup state and late-assigned labels.
  */
 final class ProgressHighlighter
 {
@@ -25,17 +26,6 @@ final class ProgressHighlighter
     private final Map<HiscoreSkill, ImageIcon> dimmedIcons;
     private final KillClogConfig config;
 
-    private final JLabel thirdAgeCell;
-    private final JLabel gildedCell;
-    private final JLabel hardRare;
-    private final JLabel eliteRare;
-    private final JLabel masterRare;
-    private final String clogThirdAge;
-    private final String clogGilded;
-    private final String rareHard;
-    private final String rareElite;
-    private final String rareMaster;
-
     ProgressHighlighter(
         Map<HiscoreSkill, JLabel> bossLabels,
         Map<HiscoreSkill, JLabel> activityLabels,
@@ -45,12 +35,7 @@ final class ProgressHighlighter
         Map<HiscoreSkill, String> clueCategories,
         Set<HiscoreSkill> noClogActivities,
         Map<HiscoreSkill, ImageIcon> dimmedIcons,
-        KillClogConfig config,
-        JLabel thirdAgeCell, String clogThirdAge,
-        JLabel gildedCell, String clogGilded,
-        JLabel hardRare, String rareHard,
-        JLabel eliteRare, String rareElite,
-        JLabel masterRare, String rareMaster)
+        KillClogConfig config)
     {
         this.bossLabels = bossLabels;
         this.activityLabels = activityLabels;
@@ -61,24 +46,20 @@ final class ProgressHighlighter
         this.noClogActivities = noClogActivities;
         this.dimmedIcons = dimmedIcons;
         this.config = config;
-        this.thirdAgeCell = thirdAgeCell;
-        this.gildedCell = gildedCell;
-        this.hardRare = hardRare;
-        this.eliteRare = eliteRare;
-        this.masterRare = masterRare;
-        this.clogThirdAge = clogThirdAge;
-        this.clogGilded = clogGilded;
-        this.rareHard = rareHard;
-        this.rareElite = rareElite;
-        this.rareMaster = rareMaster;
     }
 
     /**
      * Color boss, activity, clue tier, and rare cells by clog completion progress.
+     * Rare cell labels are passed per-call because they're assigned after construction.
      */
     void colorCellsByCompletion(HiscoreResult hiscoreResult, ClogResult clogResult,
                                 Map<String, TooltipData> rareTooltips,
-                                FourTwentyMode fourTwentyMode, Color fourTwentyGreen)
+                                FourTwentyMode fourTwentyMode, Color fourTwentyGreen,
+                                JLabel thirdAgeCell, String clogThirdAge,
+                                JLabel gildedCell, String clogGilded,
+                                JLabel hardRare, String rareHard,
+                                JLabel eliteRare, String rareElite,
+                                JLabel masterRare, String rareMaster)
     {
         for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
         {
@@ -217,7 +198,12 @@ final class ProgressHighlighter
     private void colorByCompletion(JLabel label, String category, ClogResult clogResult)
     {
         List<Integer> allItems = clogResult.getCategoryItems().get(category);
-        if (allItems == null || allItems.isEmpty()) return;
+        if (allItems == null || allItems.isEmpty())
+        {
+            // KC > 0 but no clog data for this category — treat as empty
+            label.setForeground(config.emptyClogColor());
+            return;
+        }
 
         label.setForeground(ClogHelper.clogColor(
             ClogHelper.countObtained(allItems, ClogHelper.getObtainedIds(category, clogResult)),

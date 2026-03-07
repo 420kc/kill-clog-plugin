@@ -93,11 +93,21 @@ public class SummaryTooltip extends TitleTooltip
         }
     }
 
+    /** Left column: RSN + optional account type + Overall Rank. */
     private int getStatsHeight()
     {
-        int lines = 3; // RSN + Overall Rank + Prestige
+        int lines = 2; // RSN + Overall Rank
         if (accountLabel != null) lines++;
         return LINE_HEIGHT * lines;
+    }
+
+    /** Right column: optional prestige text + cape icon. */
+    private int getRightColumnHeight()
+    {
+        int h = 0;
+        if (prestige != null) h += LINE_HEIGHT * 2;
+        if (capeIcon != null) h += capeIcon.getHeight();
+        return h;
     }
 
     private boolean hasPets()
@@ -117,7 +127,7 @@ public class SummaryTooltip extends TitleTooltip
     {
         FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
 
-        // Stats section width
+        // Left column width — stats text
         int textWidth = 0;
         if (rsn != null)
         {
@@ -130,17 +140,27 @@ public class SummaryTooltip extends TitleTooltip
             textWidth = Math.max(textWidth, fm.stringWidth(accountLabel));
         }
         textWidth = Math.max(textWidth, fm.stringWidth("Overall Rank: 999,999"));
-        textWidth = Math.max(textWidth,
-            fm.stringWidth("Prestige: " + (prestige != null ? prestige : "None")));
 
-        int statsWidth = textWidth;
-        int statsHeight = getStatsHeight();
-
+        // Right column width — prestige text + cape
+        int rightWidth = 0;
         if (capeIcon != null)
         {
-            statsWidth += TEXT_CAPE_GAP + capeIcon.getWidth() + CAPE_RIGHT_PAD;
-            statsHeight = Math.max(statsHeight, capeIcon.getHeight());
+            rightWidth = capeIcon.getWidth() + CAPE_RIGHT_PAD;
         }
+        if (prestige != null)
+        {
+            rightWidth = Math.max(rightWidth,
+                Math.max(fm.stringWidth("Prestige:"), fm.stringWidth(prestige))
+                + CAPE_RIGHT_PAD);
+        }
+
+        int statsWidth = textWidth;
+        if (rightWidth > 0)
+        {
+            statsWidth += TEXT_CAPE_GAP + rightWidth;
+        }
+
+        int statsHeight = Math.max(getStatsHeight(), getRightColumnHeight());
 
         // Pet grid width
         int petCount = hasPets() ? obtainedPetList.size() : 0;
@@ -153,9 +173,8 @@ public class SummaryTooltip extends TitleTooltip
 
         if (hasPets())
         {
-            FontMetrics bfm = getFontMetrics(FontManager.getRunescapeBoldFont());
             contentHeight += SECTION_GAP + 1 + SECTION_GAP
-                + bfm.getHeight() + PET_PAD
+                + fm.getHeight() + PET_PAD
                 + getPetGridHeight();
         }
 
@@ -170,18 +189,41 @@ public class SummaryTooltip extends TitleTooltip
         FontMetrics fm = g2.getFontMetrics();
 
         int statsHeight = getStatsHeight();
+        int rightColHeight = getRightColumnHeight();
+        int sectionHeight = Math.max(statsHeight, rightColHeight);
 
-        // Cape icon — right-aligned, vertically centered in stats section
-        if (capeIcon != null)
+        // Right column — prestige text above cape icon, right-aligned
+        int rightX = -1;
+        if (capeIcon != null || prestige != null)
         {
-            int capeW = capeIcon.getWidth();
-            int capeH = capeIcon.getHeight();
-            int capeSectionH = Math.max(statsHeight, capeH);
-            int capeX = w - inset - CAPE_RIGHT_PAD - capeW;
-            int capeY = startY + (capeSectionH - capeH) / 2;
-            g2.drawImage(capeIcon, capeX, capeY, null);
+            int rightWidth = 0;
+            if (capeIcon != null) rightWidth = capeIcon.getWidth();
+            if (prestige != null)
+            {
+                rightWidth = Math.max(rightWidth,
+                    Math.max(fm.stringWidth("Prestige:"), fm.stringWidth(prestige)));
+            }
+
+            rightX = w - inset - CAPE_RIGHT_PAD - rightWidth;
+            int rightY = startY + (sectionHeight - rightColHeight) / 2;
+
+            if (prestige != null)
+            {
+                g2.setColor(OSRS_ORANGE);
+                g2.drawString("Prestige:", rightX, rightY + fm.getAscent());
+                rightY += LINE_HEIGHT;
+                g2.setColor(Color.WHITE);
+                g2.drawString(prestige, rightX, rightY + fm.getAscent());
+                rightY += LINE_HEIGHT;
+            }
+
+            if (capeIcon != null)
+            {
+                g2.drawImage(capeIcon, rightX, rightY, null);
+            }
         }
 
+        // Left column — RSN, account type, overall rank
         int lineY = startY + fm.getAscent();
 
         // RSN with optional badge
@@ -221,42 +263,26 @@ public class SummaryTooltip extends TitleTooltip
             {
                 g2.drawString("Unranked", inset + fm.stringWidth(label), lineY);
             }
-            lineY += LINE_HEIGHT;
-        }
-
-        // Prestige
-        {
-            String label = "Prestige: ";
-            String value = prestige != null ? prestige : "None";
-            g2.setColor(OSRS_ORANGE);
-            g2.drawString(label, inset, lineY);
-            g2.setColor(prestige != null ? Color.WHITE : OSRS_ORANGE);
-            g2.drawString(value, inset + fm.stringWidth(label), lineY);
         }
 
         if (!hasPets()) return;
 
         // Separator between stats and pets
-        int capeSectionH = capeIcon != null
-            ? Math.max(statsHeight, capeIcon.getHeight())
-            : statsHeight;
-        int sepY = startY + capeSectionH + SECTION_GAP;
+        int sepY = startY + sectionHeight + SECTION_GAP;
         g2.setColor(SEPARATOR_COLOR);
         g2.drawLine(inset, sepY, w - inset - 1, sepY);
 
-        // "Pets (X/Y)" header
-        g2.setFont(FontManager.getRunescapeBoldFont());
-        FontMetrics bfm = g2.getFontMetrics();
-        int petsHeaderY = sepY + 1 + SECTION_GAP + bfm.getAscent();
-        g2.setColor(OSRS_ORANGE);
-        g2.drawString("Pets", inset, petsHeaderY);
-
+        // "Pets: X" header
         g2.setFont(FontManager.getRunescapeSmallFont());
         FontMetrics sfm = g2.getFontMetrics();
-        String countStr = " (" + obtainedPetList.size() + "/" + totalPetCount + ")";
-        boolean complete = obtainedPetList.size() >= totalPetCount;
-        g2.setColor(complete ? CLOG_GREEN : OSRS_ORANGE);
-        g2.drawString(countStr, inset + bfm.stringWidth("Pets"), petsHeaderY);
+        int petsHeaderY = sepY + 1 + SECTION_GAP + sfm.getAscent();
+        String petsLabel = "Pets: ";
+        g2.setColor(OSRS_ORANGE);
+        g2.drawString(petsLabel, inset, petsHeaderY);
+        g2.setColor(Color.WHITE);
+        g2.drawString(String.valueOf(obtainedPetList.size()), inset + sfm.stringWidth(petsLabel), petsHeaderY);
+
+        FontMetrics bfm = g2.getFontMetrics(FontManager.getRunescapeBoldFont());
 
         // Obtained pet sprite grid
         int gridY = petsHeaderY + PET_PAD + bfm.getDescent();

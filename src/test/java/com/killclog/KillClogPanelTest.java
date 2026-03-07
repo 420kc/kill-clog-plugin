@@ -106,4 +106,12 @@ public class KillClogPanelTest
         assertEquals("dragon", ClogHelper.getClogTierName(1200, 1700));
         assertEquals("gilded", ClogHelper.getClogTierName(1525, 1700));
     }
+
+    @Test
+    public void testBossArraysInSync()
+    {
+        assertEquals(
+            "BOSS_NAMES (HiscoreService) and BOSSES (KillClogPanel) have different lengths",
+            HiscoreService.bossCount(), KillClogPanel.bossCount());
+    }
 }

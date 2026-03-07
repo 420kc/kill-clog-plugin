@@ -87,6 +87,12 @@ public class HiscoreService
         "Yama", "Zalcano", "Zulrah"
     };
 
+    /** Number of boss entries in the hiscore CSV. Used by tests to detect drift. */
+    static int bossCount()
+    {
+        return BOSS_NAMES.length;
+    }
+
     private final OkHttpClient httpClient;
 
     @Inject
