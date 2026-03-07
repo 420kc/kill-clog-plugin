@@ -36,6 +36,7 @@ public class ImgTooltip extends TitleTooltip
     private final int gridCols;
     private int effectiveCols;
     private int hoveredItemIndex = -1;
+    private String notice = "No TempleOSRS Data";
 
     private int totalItems;
     private List<Integer> allItemIds;
@@ -116,6 +117,11 @@ public class ImgTooltip extends TitleTooltip
         }
     }
 
+    public void setNotice(String msg)
+    {
+        this.notice = msg;
+    }
+
     @Override
     protected Dimension getContentSize(int availableWidth)
     {
@@ -133,7 +139,7 @@ public class ImgTooltip extends TitleTooltip
         if (!hasItems)
         {
             FontMetrics sfm = getFontMetrics(FontManager.getRunescapeSmallFont());
-            int noticeWidth = sfm.stringWidth("No TempleOSRS Data");
+            int noticeWidth = sfm.stringWidth(notice);
             gridWidth = Math.max(gridWidth, noticeWidth);
         }
 
@@ -156,7 +162,7 @@ public class ImgTooltip extends TitleTooltip
         {
             g2.setFont(FontManager.getRunescapeSmallFont());
             g2.setColor(NOTICE_COLOR);
-            String notice = "No TempleOSRS Data";
+            String notice = this.notice;
             FontMetrics nfm = g2.getFontMetrics();
 
             int itemCount = Math.max(totalItems, 1);

@@ -838,7 +838,16 @@ public class KillClogPanel extends PluginPanel
         row1.add(makeClueRareCell("Gilded", GILDED_ITEM_ID, CLOG_GILDED, false));
         grid.add(row1);
 
-        // Rows 2-3: Clue tiers
+        // Row 2: Custom rare cells (casket icons)
+        JPanel rareRow = new JPanel(new GridLayout(1, 3));
+        rareRow.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+        rareRow.setAlignmentX(0f);
+        rareRow.add(makeCustomRareCell("Hard (Rare)", 20544, RARE_HARD, HARD_RARE_ITEMS));
+        rareRow.add(makeCustomRareCell("Elite (Rare)", 20543, RARE_ELITE, ELITE_RARE_ITEMS));
+        rareRow.add(makeCustomRareCell("Master (Rare)", 19836, RARE_MASTER, MASTER_RARE_ITEMS));
+        grid.add(rareRow);
+
+        // Rows 3-4: Clue tiers
         JPanel clueRow1 = new JPanel(new GridLayout(1, 3));
         clueRow1.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         clueRow1.setAlignmentX(0f);
@@ -854,15 +863,6 @@ public class KillClogPanel extends PluginPanel
         clueRow2.add(makeClueTierCell(CLUE_TIERS[4], CLUE_TIER_ITEM_IDS[4], false));
         clueRow2.add(makeClueTierCell(CLUE_TIERS[5], CLUE_TIER_ITEM_IDS[5], false));
         grid.add(clueRow2);
-
-        // Row 4: Custom rare cells
-        JPanel rareRow = new JPanel(new GridLayout(1, 3));
-        rareRow.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        rareRow.setAlignmentX(0f);
-        rareRow.add(makeCustomRareCell("Hard (Rare)", CLUE_TIER_ITEM_IDS[3], RARE_HARD, HARD_RARE_ITEMS));
-        rareRow.add(makeCustomRareCell("Elite (Rare)", CLUE_TIER_ITEM_IDS[4], RARE_ELITE, ELITE_RARE_ITEMS));
-        rareRow.add(makeCustomRareCell("Master (Rare)", CLUE_TIER_ITEM_IDS[5], RARE_MASTER, MASTER_RARE_ITEMS));
-        grid.add(rareRow);
 
         JPanel clueSep = new JPanel();
         clueSep.setBackground(ColorScheme.DARK_GRAY_COLOR);
@@ -1073,30 +1073,36 @@ public class KillClogPanel extends PluginPanel
     }
 
     /**
-     * Build a sprite tooltip for a cell, or fall back to TextTooltip if no data available.
+     * Build a sprite tooltip for a cell — always ImgTooltip, with contextual notice when no data.
      *
      * @param owner     the label whose parent cell drives hover tint
-     * @param data      tooltip data, or null for text fallback
+     * @param data      tooltip data, or null for notice-only display
      * @param gridCols  min columns — 5 for standard, 10 for wide clue grids
+     * @param name      display name shown as title when data is null
      */
-    private JToolTip makeSpriteTooltip(JLabel owner, TooltipData data, int gridCols)
+    private JToolTip makeSpriteTooltip(JLabel owner, TooltipData data, int gridCols, String name)
     {
         JPanel parentCell = (JPanel) owner.getParent();
+        ImgTooltip tip = new ImgTooltip(gridCols);
+        tip.setComponent(owner);
+
         if (data != null)
         {
-            ImgTooltip tip = new ImgTooltip(gridCols);
-            tip.setComponent(owner);
             tip.setTitle(data.name);
             tip.setObtained(data.obtainedCount, data.totalItems);
             tip.setRank(data.rank);
             tip.setItems(data.totalItems, data.allItemIds, data.obtainedIds,
                 data.obtainedCounts, itemManager);
-            keepTooltipOnHover(tip, parentCell);
-            return tip;
         }
-        TextTooltip fallback = new TextTooltip();
-        fallback.setComponent(owner);
-        return fallback;
+        else
+        {
+            tip.setTitle(name);
+            tip.setNotice(hiscoreResult != null
+                ? "No TempleOSRS Data" : "Enter RSN to begin");
+        }
+
+        keepTooltipOnHover(tip, parentCell);
+        return tip;
     }
 
     /** Apply standard grid cell styling — font, placeholder text, color, gap, AA hint. */
@@ -1136,7 +1142,7 @@ public class KillClogPanel extends PluginPanel
             @Override
             public JToolTip createToolTip()
             {
-                return makeSpriteTooltip(this, tooltipDataMap.get(activity), 5);
+                return makeSpriteTooltip(this, tooltipDataMap.get(activity), 5, activity.getName());
             }
         };
         styleLabel(label, activity.getName());
@@ -1171,12 +1177,13 @@ public class KillClogPanel extends PluginPanel
 
     private JPanel makeClueTierCell(HiscoreSkill tier, int itemId, boolean wide)
     {
+        String displayName = capitalizeTier(tier);
         JLabel label = new JLabel()
         {
             @Override
             public JToolTip createToolTip()
             {
-                return makeSpriteTooltip(this, tooltipDataMap.get(tier), wide ? 10 : 5);
+                return makeSpriteTooltip(this, tooltipDataMap.get(tier), wide ? 10 : 5, displayName);
             }
         };
         styleLabel(label, tier.getName());
@@ -1194,7 +1201,7 @@ public class KillClogPanel extends PluginPanel
             public JToolTip createToolTip()
             {
                 TooltipData data = isThirdAge ? thirdAgeTooltipData : gildedTooltipData;
-                return makeSpriteTooltip(this, data, 5);
+                return makeSpriteTooltip(this, data, 5, name);
             }
         };
         styleLabel(label, name);
@@ -1218,7 +1225,7 @@ public class KillClogPanel extends PluginPanel
             @Override
             public JToolTip createToolTip()
             {
-                return makeSpriteTooltip(this, rareTooltips.get(rareKey), 5);
+                return makeSpriteTooltip(this, rareTooltips.get(rareKey), 5, name);
             }
         };
         styleLabel(label, name);
@@ -1267,7 +1274,7 @@ public class KillClogPanel extends PluginPanel
             @Override
             public JToolTip createToolTip()
             {
-                return makeSpriteTooltip(this, tooltipDataMap.get(boss), 5);
+                return makeSpriteTooltip(this, tooltipDataMap.get(boss), 5, boss.getName());
             }
         };
         // Force greyscale AA — resolves to LCD subpixel on Windows without this
@@ -1474,7 +1481,7 @@ public class KillClogPanel extends PluginPanel
             JLabel label = entry.getValue();
             label.setText(pad("--"));
             label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-            label.setToolTipText(null);
+            label.setToolTipText(" ");
             ImageIcon orig = originalIcons.get(entry.getKey());
             if (orig != null) label.setIcon(orig);
         }
