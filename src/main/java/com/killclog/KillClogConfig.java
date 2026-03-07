@@ -53,7 +53,7 @@ public interface KillClogConfig extends Config
     @ConfigItem(
         keyName = "tooltipMode",
         name = "Tooltip Activation",
-        description = "How tooltips are triggered on boss and activity cells",
+        description = "How tooltips are triggered on boss and activity cells (hover or click-to-reveal)",
         position = 3
     )
     default TooltipMode tooltipMode()
