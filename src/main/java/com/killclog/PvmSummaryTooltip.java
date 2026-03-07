@@ -120,7 +120,7 @@ public class PvmSummaryTooltip extends TitleTooltip
             textWidth = Math.max(textWidth,
                 fm.stringWidth(mostKilled + " (" + String.format("%,d", mostKilledKc) + ")"));
         }
-        textWidth = Math.max(textWidth, fm.stringWidth("Megarares"));
+        textWidth = Math.max(textWidth, fm.stringWidth("Megarares:"));
 
         int contentWidth = Math.max(textWidth, spriteRowWidth);
         int separatorHeight = SEPARATOR_PAD + 1 + SEPARATOR_PAD;
@@ -139,7 +139,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 
         // "Megarares" subheader — left-aligned
         g2.setColor(OSRS_ORANGE);
-        g2.drawString("Megarares", inset, y + fm.getAscent());
+        g2.drawString("Megarares:", inset, y + fm.getAscent());
         y += LINE_HEIGHT;
 
         // 3 weapon sprites — horizontally centered
