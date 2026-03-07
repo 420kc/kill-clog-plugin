@@ -41,6 +41,11 @@ public class KillClogPlugin extends Plugin
 {
     private static final String MENU_OPTION = "Kill Clog";
 
+    // Collection log UI script + widget IDs
+    private static final int CLOG_SCRIPT_ID = 2731;
+    private static final int CLOG_HEADER_WIDGET = 40697876;  // (621 << 16) | 20
+    private static final int CLOG_ITEMS_WIDGET = 40697893;   // (621 << 16) | 37
+
     @Inject
     private Client client;
 
@@ -165,7 +170,7 @@ public class KillClogPlugin extends Plugin
     @Subscribe
     public void onScriptPostFired(ScriptPostFired event)
     {
-        if (event.getScriptId() != 2731)
+        if (event.getScriptId() != CLOG_SCRIPT_ID)
         {
             return;
         }
@@ -178,8 +183,8 @@ public class KillClogPlugin extends Plugin
 
         localClogCache.setActivePlayer(local.getName());
 
-        Widget header = client.getWidget(40697876);  // (621 << 16) | 20 — clog category name
-        Widget items = client.getWidget(40697893);    // (621 << 16) | 37 — clog item grid
+        Widget header = client.getWidget(CLOG_HEADER_WIDGET);
+        Widget items = client.getWidget(CLOG_ITEMS_WIDGET);
         if (header == null || items == null)
         {
             return;
