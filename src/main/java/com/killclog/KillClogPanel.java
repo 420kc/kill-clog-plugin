@@ -1,5 +1,6 @@
 package com.killclog;
 
+import java.awt.AWTEvent;
 import java.awt.AlphaComposite;
 import java.awt.BorderLayout;
 import java.awt.Color;
@@ -14,6 +15,7 @@ import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.Point;
+import java.awt.Toolkit;
 import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.event.HierarchyEvent;
@@ -388,6 +390,8 @@ public class KillClogPanel extends PluginPanel
     // Click-to-reveal tooltip state
     private Popup activeClickPopup;
     private JLabel activeClickLabel;
+    private java.awt.event.AWTEventListener clickDismissListener;
+    private JLabel clickDismissedLabel;
 
     // Hover state — 1px border outline
     private JPanel hoveredCell;
@@ -1011,19 +1015,19 @@ public class KillClogPanel extends PluginPanel
 
     private void showClickTooltip(JLabel label, JPanel cell)
     {
-        // Toggle off if clicking same cell
-        if (label == activeClickLabel && activeClickPopup != null)
+        // AWTEventListener dismissed this label on the same click — treat as toggle-off
+        if (label == clickDismissedLabel)
         {
-            hideClickTooltip();
+            clickDismissedLabel = null;
             return;
         }
+        clickDismissedLabel = null;
 
         hideClickTooltip();
 
         JToolTip tip = label.createToolTip();
         tip.setTipText(label.getToolTipText());
 
-        // Close button is now painted by NativeTooltip itself
         if (tip instanceof NativeTooltip)
         {
             ((NativeTooltip) tip).setCloseAction(() -> hideClickTooltip());
@@ -1051,10 +1055,27 @@ public class KillClogPanel extends PluginPanel
         activeClickPopup = PopupFactory.getSharedInstance().getPopup(cell, tip, x, y);
         activeClickLabel = label;
         activeClickPopup.show();
+
+        // Dismiss on next click anywhere
+        clickDismissListener = event ->
+        {
+            if (event.getID() == MouseEvent.MOUSE_PRESSED)
+            {
+                clickDismissedLabel = activeClickLabel;
+                hideClickTooltip();
+            }
+        };
+        Toolkit.getDefaultToolkit().addAWTEventListener(
+            clickDismissListener, AWTEvent.MOUSE_EVENT_MASK);
     }
 
     private void hideClickTooltip()
     {
+        if (clickDismissListener != null)
+        {
+            Toolkit.getDefaultToolkit().removeAWTEventListener(clickDismissListener);
+            clickDismissListener = null;
+        }
         if (activeClickPopup != null)
         {
             activeClickPopup.hide();
