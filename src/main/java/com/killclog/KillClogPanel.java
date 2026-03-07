@@ -36,7 +36,6 @@ import java.util.concurrent.ThreadLocalRandom;
 import javax.inject.Inject;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
-import javax.swing.Icon;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -77,6 +76,7 @@ public class KillClogPanel extends PluginPanel
     private static final Color NOT_FOUND = new Color(0x81, 0x09, 0x09);
     private static final Color KC_COLOR = new Color(215, 215, 215);
     private static final Color FOUR_TWENTY_GREEN = new Color(30, 200, 30);
+    private static final int MAX_TOTAL_LEVEL = 2376;
 
     /** Info bar text color — follows highlighter state. */
     private Color getInfoColor()
@@ -2222,6 +2222,13 @@ public class KillClogPanel extends PluginPanel
         restoreTooltipDefaults();
     }
 
+    @Override
+    public void removeNotify()
+    {
+        super.removeNotify();
+        hideClickTooltip();
+    }
+
     private void restoreTooltipDefaults()
     {
         ToolTipManager.sharedInstance().setDismissDelay(defaultDismissDelay);
@@ -2334,7 +2341,7 @@ public class KillClogPanel extends PluginPanel
     private BufferedImage getCapeImage()
     {
         if (hiscoreResult == null) return null;
-        boolean maxed = hiscoreResult.getTotalLevel() >= 2376;
+        boolean maxed = hiscoreResult.getTotalLevel() >= MAX_TOTAL_LEVEL;
         boolean infernal = hiscoreResult.getKc("TzKal-Zuk") > 0;
         if (maxed && infernal) return infernalMaxCapeTip;
         if (maxed) return maxCapeTip;
@@ -2342,24 +2349,33 @@ public class KillClogPanel extends PluginPanel
         return null;
     }
 
+    private static String accountBadgeResource(AccountType type)
+    {
+        switch (type)
+        {
+            case IRONMAN: return "ironman.png";
+            case HARDCORE_IRONMAN: return "hardcore_ironman.png";
+            case ULTIMATE_IRONMAN: return "ultimate_ironman.png";
+            default: return null;
+        }
+    }
+
+    private static String accountLabel(AccountType type)
+    {
+        switch (type)
+        {
+            case IRONMAN: return "Ironman";
+            case HARDCORE_IRONMAN: return "Hardcore Ironman";
+            case ULTIMATE_IRONMAN: return "Ultimate Ironman";
+            default: return null;
+        }
+    }
+
     private BufferedImage getAccountBadge()
     {
         if (hiscoreResult == null) return null;
-        String resource;
-        switch (hiscoreResult.getAccountType())
-        {
-            case IRONMAN:
-                resource = "ironman.png";
-                break;
-            case HARDCORE_IRONMAN:
-                resource = "hardcore_ironman.png";
-                break;
-            case ULTIMATE_IRONMAN:
-                resource = "ultimate_ironman.png";
-                break;
-            default:
-                return null;
-        }
+        String resource = accountBadgeResource(hiscoreResult.getAccountType());
+        if (resource == null) return null;
         try
         {
             return ImageUtil.loadImageResource(HiscorePanel.class, resource);
@@ -2373,23 +2389,13 @@ public class KillClogPanel extends PluginPanel
     private String getAccountLabel()
     {
         if (hiscoreResult == null) return null;
-        switch (hiscoreResult.getAccountType())
-        {
-            case IRONMAN:
-                return "Ironman";
-            case HARDCORE_IRONMAN:
-                return "Hardcore Ironman";
-            case ULTIMATE_IRONMAN:
-                return "Ultimate Ironman";
-            default:
-                return null;
-        }
+        return accountLabel(hiscoreResult.getAccountType());
     }
 
     private String getPrestige()
     {
         if (hiscoreResult == null) return null;
-        boolean maxed = hiscoreResult.getTotalLevel() >= 2376;
+        boolean maxed = hiscoreResult.getTotalLevel() >= MAX_TOTAL_LEVEL;
         boolean infernal = hiscoreResult.getKc("TzKal-Zuk") > 0;
         if (maxed && infernal) return "Maxed Infernal";
         if (maxed) return "Maxed";
@@ -2414,22 +2420,12 @@ public class KillClogPanel extends PluginPanel
 
     private void updateInfoIcon(AccountType type)
     {
-        String resource;
-        switch (type)
+        String resource = accountBadgeResource(type);
+        if (resource == null)
         {
-            case IRONMAN:
-                resource = "ironman.png";
-                break;
-            case HARDCORE_IRONMAN:
-                resource = "hardcore_ironman.png";
-                break;
-            case ULTIMATE_IRONMAN:
-                resource = "ultimate_ironman.png";
-                break;
-            default:
-                playerName.setIcon(null);
-                playerName.setToolTipText(" ");
-                return;
+            playerName.setIcon(null);
+            playerName.setToolTipText(" ");
+            return;
         }
         try
         {

@@ -50,7 +50,8 @@ public class SummaryTooltip extends TitleTooltip
         this.rsn = rsn;
         this.totalKills = totalKills;
         this.capeIcon = capeIcon;
-        this.badgeIcon = badgeIcon;
+        this.badgeIcon = badgeIcon != null
+            ? ImageUtil.resizeImage(badgeIcon, BADGE_SIZE, BADGE_SIZE) : null;
         this.accountLabel = accountLabel;
         this.prestige = prestige;
     }
@@ -74,16 +75,20 @@ public class SummaryTooltip extends TitleTooltip
 
         if (obtainedPetList.isEmpty()) return;
 
-        // Pre-load sprites + register repaint on async load
+        // Pre-load and pre-scale sprites + register repaint on async load
         petSprites = new BufferedImage[obtainedPetList.size()];
         for (int i = 0; i < obtainedPetList.size(); i++)
         {
             BufferedImage img = itemManager.getImage(obtainedPetList.get(i), 1, false);
-            petSprites[i] = img;
+            petSprites[i] = ImageUtil.resizeImage(img, PET_SIZE, PET_SIZE);
             if (img instanceof AsyncBufferedImage)
             {
+                final int idx = i;
                 ((AsyncBufferedImage) img).onLoaded(() ->
-                    SwingUtilities.invokeLater(this::repaint));
+                {
+                    petSprites[idx] = ImageUtil.resizeImage(img, PET_SIZE, PET_SIZE);
+                    SwingUtilities.invokeLater(this::repaint);
+                });
             }
         }
     }
@@ -186,8 +191,7 @@ public class SummaryTooltip extends TitleTooltip
             if (badgeIcon != null)
             {
                 int iconY = lineY - fm.getAscent() + (LINE_HEIGHT - BADGE_SIZE) / 2;
-                g2.drawImage(ImageUtil.resizeImage(badgeIcon, BADGE_SIZE, BADGE_SIZE),
-                    rsnX, iconY, null);
+                g2.drawImage(badgeIcon, rsnX, iconY, null);
                 rsnX += BADGE_SIZE + BADGE_GAP;
             }
             g2.setColor(Color.WHITE);
@@ -267,7 +271,7 @@ public class SummaryTooltip extends TitleTooltip
             BufferedImage sprite = petSprites[i];
             if (sprite != null)
             {
-                g2.drawImage(ImageUtil.resizeImage(sprite, PET_SIZE, PET_SIZE), px, py, null);
+                g2.drawImage(sprite, px, py, null);
             }
         }
     }
