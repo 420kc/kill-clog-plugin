@@ -78,10 +78,11 @@ public class KillClogPanel extends PluginPanel
     private static final Color HAMBURGER_HOVER_COLOR = new Color(83, 83, 83);
     private static final int MAX_TOTAL_LEVEL = 2376;
 
-    /** Info bar text color — follows highlighter state. */
+    /** Info bar text color — only applies when highlighter is active AND clog data exists. */
     private Color getInfoColor()
     {
-        return config.completionistHighlighter() ? config.infoBarColor() : KC_COLOR;
+        return config.completionistHighlighter() && clogResult != null
+            ? config.infoBarColor() : KC_COLOR;
     }
 
     private static final String[] SEARCH_MSGS = {
