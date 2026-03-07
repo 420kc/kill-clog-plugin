@@ -252,7 +252,7 @@ public class KillClogPanel extends PluginPanel
         20059, 20017
     };
 
-    // Activity -> Temple clog category for completionist highlighting
+    // Activity -> Temple clog category for progress highlighting
     private static final Map<HiscoreSkill, String> ACTIVITY_CATEGORIES = new LinkedHashMap<>();
     static
     {
@@ -386,6 +386,7 @@ public class KillClogPanel extends PluginPanel
     private Timer hoverExitTimer;
     private static final Border CELL_BORDER = new EmptyBorder(1, 1, 1, 1);
     private static final Color HOVER_OUTLINE_DIM = new Color(90, 90, 90);
+    private static final Color HOVER_TINT_BG = new Color(41, 41, 41);
 
     // 420 mode — unlocked when the 420 KC plugin is loaded
     private PluginManager pluginManager;
@@ -784,7 +785,36 @@ public class KillClogPanel extends PluginPanel
         statsRow.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         statsRow.setAlignmentX(0f);
 
-        combatCell = new JLabel();
+        combatCell = new JLabel()
+        {
+            @Override
+            public JToolTip createToolTip()
+            {
+                PvmSummaryTooltip tip = new PvmSummaryTooltip();
+                tip.setComponent(this);
+                tip.setData(
+                    hiscoreResult != null ? hiscoreResult.getCombatLevel() : 0,
+                    sumBossKills(),
+                    countBossesWithKc(),
+                    BOSSES.length,
+                    getMostKilledBoss(),
+                    getMostKilledKc()
+                );
+                if (clogResult != null)
+                {
+                    tip.setCompletion(countBossesCompleted(), countBossesWithClog());
+                }
+                tip.setMegarares(
+                    getClogItemCount("chambers_of_xeric", 20997),
+                    getClogItemCount("theatre_of_blood", 22486),
+                    getClogItemCount("tombs_of_amascut", 27277),
+                    itemManager
+                );
+                JPanel parentCell = (JPanel) this.getParent();
+                keepTooltipOnHover(tip, parentCell);
+                return tip;
+            }
+        };
         styleLabel(combatCell, "Combat");
         spriteManager.getSpriteAsync(168, 0, sprite ->
             SwingUtilities.invokeLater(() ->
@@ -919,14 +949,24 @@ public class KillClogPanel extends PluginPanel
                 // Re-entering the same cell — already outlined, just cancelled the exit timer
                 if (hoveredCell == cell) return;
 
-                // Leaving a different cell — clear its outline first
-                if (hoveredCell != null) clearCellOutline();
+                // Leaving a different cell — clear its hover first
+                if (hoveredCell != null) clearCellHover();
 
                 hoveredCell = cell;
-                Color fg = label.getForeground();
-                Color outline = (fg.equals(KC_COLOR) || fg.equals(ColorScheme.LIGHT_GRAY_COLOR))
-                    ? HOVER_OUTLINE_DIM : fg;
-                cell.setBorder(new MatteBorder(1, 1, 1, 1, outline));
+                switch (config.hoverStyle())
+                {
+                    case OUTLINE:
+                        Color fg = label.getForeground();
+                        Color outline = (fg.equals(KC_COLOR) || fg.equals(ColorScheme.LIGHT_GRAY_COLOR))
+                            ? HOVER_OUTLINE_DIM : fg;
+                        cell.setBorder(new MatteBorder(1, 1, 1, 1, outline));
+                        break;
+                    case TINT:
+                        cell.setBackground(HOVER_TINT_BG);
+                        break;
+                    case NONE:
+                        break;
+                }
             }
 
             @Override
@@ -937,7 +977,7 @@ public class KillClogPanel extends PluginPanel
                 {
                     if (hoveredCell == cell)
                     {
-                        clearCellOutline();
+                        clearCellHover();
                         hoveredCell = null;
                     }
                 });
@@ -949,11 +989,12 @@ public class KillClogPanel extends PluginPanel
         label.addMouseListener(hoverAdapter);
     }
 
-    private void clearCellOutline()
+    private void clearCellHover()
     {
         if (hoveredCell != null)
         {
             hoveredCell.setBorder(CELL_BORDER);
+            hoveredCell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
         }
     }
 
@@ -996,7 +1037,7 @@ public class KillClogPanel extends PluginPanel
             {
                 return;
             }
-            clearCellOutline();
+            clearCellHover();
             hoveredCell = null;
         }
     }
@@ -1098,7 +1139,7 @@ public class KillClogPanel extends PluginPanel
         {
             tip.setTitle(name);
             tip.setNotice(hiscoreResult != null
-                ? "No TempleOSRS Data" : "Enter RSN to begin");
+                ? "No TempleOSRS Data" : "Nothing to see here! (Search for a player)");
         }
 
         keepTooltipOnHover(tip, parentCell);
@@ -1919,7 +1960,7 @@ public class KillClogPanel extends PluginPanel
     }
 
     // -------------------------------------------------------------------------
-    // Completionist highlighter
+    // Progress highlighter
     // -------------------------------------------------------------------------
 
     private void colorCompletedCells()
@@ -1930,7 +1971,7 @@ public class KillClogPanel extends PluginPanel
     private void toggleHighlighter(boolean enabled)
     {
         if (hiscoreResult == null) return;
-        clearCellOutline();
+        clearCellHover();
         hoveredCell = null;
 
         // Info bar follows highlighter state
@@ -2325,6 +2366,81 @@ public class KillClogPanel extends PluginPanel
             if (kc > 0) total += kc;
         }
         return total;
+    }
+
+    private int countBossesWithKc()
+    {
+        if (hiscoreResult == null) return 0;
+        int count = 0;
+        for (int kc : hiscoreResult.getBossKills().values())
+        {
+            if (kc > 0) count++;
+        }
+        return count;
+    }
+
+    private String getMostKilledBoss()
+    {
+        if (hiscoreResult == null) return null;
+        String best = null;
+        int bestKc = 0;
+        for (Map.Entry<String, Integer> entry : hiscoreResult.getBossKills().entrySet())
+        {
+            if (entry.getValue() > bestKc)
+            {
+                bestKc = entry.getValue();
+                best = entry.getKey();
+            }
+        }
+        return best;
+    }
+
+    private int getMostKilledKc()
+    {
+        if (hiscoreResult == null) return 0;
+        int best = 0;
+        for (int kc : hiscoreResult.getBossKills().values())
+        {
+            if (kc > best) best = kc;
+        }
+        return best;
+    }
+
+    private int countBossesCompleted()
+    {
+        int count = 0;
+        for (HiscoreSkill skill : bossLabels.keySet())
+        {
+            TooltipData data = tooltipDataMap.get(skill);
+            if (data != null && data.totalItems > 0 && data.obtainedCount >= data.totalItems)
+            {
+                count++;
+            }
+        }
+        return count;
+    }
+
+    private int countBossesWithClog()
+    {
+        int count = 0;
+        for (HiscoreSkill skill : bossLabels.keySet())
+        {
+            TooltipData data = tooltipDataMap.get(skill);
+            if (data != null && data.totalItems > 0) count++;
+        }
+        return count;
+    }
+
+    private int getClogItemCount(String category, int itemId)
+    {
+        if (clogResult == null) return 0;
+        List<ClogResult.ClogItem> obtained = clogResult.getObtainedItems().get(category);
+        if (obtained == null) return 0;
+        for (ClogResult.ClogItem item : obtained)
+        {
+            if (item.getId() == itemId) return item.getCount();
+        }
+        return 0;
     }
 
     private BufferedImage getCapeImage()

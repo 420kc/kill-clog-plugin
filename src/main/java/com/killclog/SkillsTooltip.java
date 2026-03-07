@@ -74,7 +74,7 @@ public class SkillsTooltip extends TitleTooltip
     public void setData(String rsn, HiscoreResult result)
     {
         this.result = result;
-        setTitle(rsn != null ? rsn + "'s Skills" : "Skill Summary");
+        setTitle("Skill Summary");
         if (result != null && result.getTotalXp() > 0)
         {
             setSubtitle("Total EXP: ", String.format("%,d", result.getTotalXp()), Color.WHITE);
@@ -85,7 +85,7 @@ public class SkillsTooltip extends TitleTooltip
     protected Dimension getContentSize(int availableWidth)
     {
         FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
-        int maxLevelWidth = fm.stringWidth("2277");
+        int maxLevelWidth = Math.max(fm.stringWidth("99"), fm.stringWidth("--"));
         int cellWidth = ICON_SIZE + ICON_TEXT_GAP + maxLevelWidth;
         int totalWidth = cellWidth * COLS + COL_GAP * (COLS - 1);
         int totalHeight = ROW_HEIGHT * ROWS;
@@ -99,15 +99,17 @@ public class SkillsTooltip extends TitleTooltip
         FontMetrics fm = g2.getFontMetrics();
         int inset = getInset();
 
-        int maxLevelWidth = fm.stringWidth("2277");
+        int maxLevelWidth = Math.max(fm.stringWidth("99"), fm.stringWidth("--"));
         int cellWidth = ICON_SIZE + ICON_TEXT_GAP + maxLevelWidth;
+        int gridWidth = cellWidth * COLS + COL_GAP * (COLS - 1);
+        int gridOffsetX = inset + (w - 2 * inset - gridWidth) / 2;
 
         for (int row = 0; row < ROWS; row++)
         {
             for (int col = 0; col < COLS; col++)
             {
                 Skill skill = GRID[row][col];
-                int x = inset + col * (cellWidth + COL_GAP);
+                int x = gridOffsetX + col * (cellWidth + COL_GAP);
                 int y = startY + row * ROW_HEIGHT;
 
                 // Icon

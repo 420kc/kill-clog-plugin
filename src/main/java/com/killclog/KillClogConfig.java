@@ -61,11 +61,22 @@ public interface KillClogConfig extends Config
         return TooltipMode.HOVER;
     }
 
+    @ConfigItem(
+        keyName = "hoverStyle",
+        name = "Cell Hover",
+        description = "Visual feedback when hovering a cell. Outline uses the highlighter color, Tint subtly brightens the background.",
+        position = 4
+    )
+    default HoverStyle hoverStyle()
+    {
+        return HoverStyle.OUTLINE;
+    }
 
-    // --- Completionist's Highlighter ---
+
+    // --- Progress Highlighter ---
 
     @ConfigSection(
-        name = "Completionist's Highlighter",
+        name = "Progress Highlighter",
         description = "Color KC numbers based on collection log completion",
         position = 10
     )
@@ -86,7 +97,7 @@ public interface KillClogConfig extends Config
     @ConfigItem(
         keyName = "highlighterKeybind",
         name = "Toggle Keybind",
-        description = "Shortcut key to toggle the Completionist's Highlighter",
+        description = "Shortcut key to toggle the Progress Highlighter",
         section = "completionist",
         position = 1
     )
