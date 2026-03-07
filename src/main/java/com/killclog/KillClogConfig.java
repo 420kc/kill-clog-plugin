@@ -125,7 +125,7 @@ public interface KillClogConfig extends Config
     )
     default Color infoBarColor()
     {
-        return new Color(198, 198, 198);
+        return new Color(255, 255, 255);
     }
 
     @ConfigItem(
@@ -137,7 +137,7 @@ public interface KillClogConfig extends Config
     )
     default Color completedClogColor()
     {
-        return new Color(9, 175, 208);
+        return new Color(78, 240, 21);
     }
 
     @ConfigItem(
@@ -149,7 +149,7 @@ public interface KillClogConfig extends Config
     )
     default Color missing1Color()
     {
-        return new Color(120, 200, 220);
+        return new Color(41, 232, 253);
     }
 
     @ConfigItem(
@@ -161,7 +161,7 @@ public interface KillClogConfig extends Config
     )
     default Color inProgressClogColor()
     {
-        return new Color(255, 250, 0);
+        return new Color(255, 173, 0);
     }
 
     @ConfigItem(
@@ -173,6 +173,6 @@ public interface KillClogConfig extends Config
     )
     default Color emptyClogColor()
     {
-        return new Color(168, 181, 42);
+        return new Color(255, 87, 0);
     }
 }
