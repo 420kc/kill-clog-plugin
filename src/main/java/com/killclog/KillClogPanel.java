@@ -2477,6 +2477,7 @@ public class KillClogPanel extends PluginPanel
 
     private Set<Integer> getObtainedIds(String category)
     {
+        if (clogResult == null) return new HashSet<>();
         Set<Integer> ids = new HashSet<>();
         List<ClogResult.ClogItem> obtained = clogResult.getObtainedItems().get(category);
         if (obtained != null)
