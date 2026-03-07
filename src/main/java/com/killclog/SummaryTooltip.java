@@ -5,22 +5,26 @@ import java.awt.Graphics2D;
 
 /**
  * Player summary tooltip on the info bar name label.
- * Empty shell — content and layout designed in a follow-up session.
+ * Shows RSN as title via TitleTooltip. Body content TBD.
  */
-public class SummaryTooltip extends NativeTooltip
+public class SummaryTooltip extends TitleTooltip
 {
     private static final int SHELL_WIDTH = 120;
     private static final int SHELL_HEIGHT = 40;
 
-    @Override
-    public Dimension getPreferredSize()
+    public void setData(String rsn)
     {
-        int inset = getInset();
-        return new Dimension(SHELL_WIDTH + inset * 2, SHELL_HEIGHT + inset * 2);
+        setTitle(rsn);
     }
 
     @Override
-    protected void paintContent(Graphics2D g2, int w, int h)
+    protected Dimension getContentSize(int availableWidth)
+    {
+        return new Dimension(SHELL_WIDTH, SHELL_HEIGHT);
+    }
+
+    @Override
+    protected void paintBody(Graphics2D g2, int w, int h, int startY)
     {
         // Content TBD — empty shell for now
     }

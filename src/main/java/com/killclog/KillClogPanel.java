@@ -17,7 +17,6 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -34,7 +33,6 @@ import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
-import javax.swing.JLayeredPane;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JToolTip;
@@ -43,7 +41,9 @@ import javax.swing.PopupFactory;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.ToolTipManager;
+import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.MatteBorder;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
@@ -75,6 +75,12 @@ public class KillClogPanel extends PluginPanel
     private static final Color NOT_FOUND = new Color(0x81, 0x09, 0x09);
     private static final Color KC_COLOR = new Color(215, 215, 215);
     private static final Color FOUR_TWENTY_GREEN = new Color(30, 200, 30);
+
+    /** Info bar text color — follows highlighter state. */
+    private Color getInfoColor()
+    {
+        return config.completionistHighlighter() ? config.infoBarColor() : KC_COLOR;
+    }
 
     private static final String[] SEARCH_MSGS = {
         "Throwing a search party for %s...",
@@ -295,6 +301,8 @@ public class KillClogPanel extends PluginPanel
         {
             SummaryTooltip tip = new SummaryTooltip();
             tip.setComponent(this);
+            String rsn = playerName.getText().trim();
+            tip.setData(rsn.isEmpty() ? "Player" : rsn);
             return tip;
         }
     };
@@ -319,9 +327,6 @@ public class KillClogPanel extends PluginPanel
     private ImageIcon infernalCapeIcon;
     private ImageIcon infernalMaxCapeIcon;
     private BufferedImage combatLevelImage;
-    private ImageIcon closeIcon;
-    private ImageIcon closeIconHovered;
-
     private static final String[] CLOG_TIERS = {
         "bronze", "iron", "steel", "black", "mithril", "adamant", "rune", "dragon", "gilded"
     };
@@ -373,12 +378,11 @@ public class KillClogPanel extends PluginPanel
     private Popup activeClickPopup;
     private JLabel activeClickLabel;
 
-    // Hover state — sprite brightening
+    // Hover state — 1px border outline
     private JPanel hoveredCell;
-    private JLabel hoveredLabel;
-    private ImageIcon preHoverIcon;
     private Timer hoverExitTimer;
-    private final Map<ImageIcon, ImageIcon> brightenedCache = new IdentityHashMap<>();
+    private static final Border CELL_BORDER = new EmptyBorder(1, 1, 1, 1);
+    private static final Color HOVER_OUTLINE_DIM = new Color(90, 90, 90);
 
     // 420 mode — unlocked when the 420 KC plugin is loaded
     private PluginManager pluginManager;
@@ -413,22 +417,6 @@ public class KillClogPanel extends PluginPanel
             {
                 combatLevelImage = ImageUtil.resizeImage(
                     ImageUtil.resizeCanvas(sprite, 25, 25), 13, 13);
-            }
-        });
-
-        // Close button sprites for click-to-reveal tooltips (535 = normal, 536 = hovered)
-        spriteManager.getSpriteAsync(535, 0, sprite ->
-        {
-            if (sprite != null)
-            {
-                closeIcon = new ImageIcon(ImageUtil.resizeImage(sprite, 20, 20));
-            }
-        });
-        spriteManager.getSpriteAsync(536, 0, sprite ->
-        {
-            if (sprite != null)
-            {
-                closeIconHovered = new ImageIcon(ImageUtil.resizeImage(sprite, 20, 20));
             }
         });
 
@@ -530,6 +518,7 @@ public class KillClogPanel extends PluginPanel
             sp.setBorder(null);
             sp.setViewportBorder(null);
             sp.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+            sp.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
             sp.getViewport().setBackground(ColorScheme.DARK_GRAY_COLOR);
             sp.getVerticalScrollBar().setUI(new MinimalScrollBarUI());
             sp.getVerticalScrollBar().setPreferredSize(new Dimension(7, 0));
@@ -603,30 +592,25 @@ public class KillClogPanel extends PluginPanel
         clogInfoLabel.setMinimumSize(new Dimension(0, 0));
         clogInfoLabel.setPreferredSize(new Dimension(0, 18));
 
-        // Info bar labels always show hover tooltips, even in click-to-show mode.
-        // Temporarily restore normal delay on enter, re-suppress on exit.
-        MouseAdapter infoBarHoverOverride = new MouseAdapter()
+        // Info bar labels use click-to-show in click mode (same as boss cells).
+        // No special hover override — avoids ToolTipManager showImmediately cascade.
+        MouseAdapter infoBarClickHandler = new MouseAdapter()
         {
             @Override
-            public void mouseEntered(MouseEvent e)
+            public void mousePressed(MouseEvent e)
             {
-                if (defaultInitialDelay >= 0)
+                if (config.tooltipMode() == TooltipMode.CLICK)
                 {
-                    ToolTipManager.sharedInstance().setInitialDelay(defaultInitialDelay);
-                }
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e)
-            {
-                if (defaultInitialDelay >= 0)
-                {
-                    ToolTipManager.sharedInstance().setInitialDelay(Integer.MAX_VALUE);
+                    JLabel label = (JLabel) e.getSource();
+                    if (label.getToolTipText() != null)
+                    {
+                        showClickTooltip(label, infoRow);
+                    }
                 }
             }
         };
-        playerName.addMouseListener(infoBarHoverOverride);
-        clogInfoLabel.addMouseListener(infoBarHoverOverride);
+        playerName.addMouseListener(infoBarClickHandler);
+        clogInfoLabel.addMouseListener(infoBarClickHandler);
 
         trayToggle = new JLabel();
         ImageIcon hamburgerIcon = new ImageIcon(makeHamburgerIcon(HAMBURGER_COLOR));
@@ -820,7 +804,8 @@ public class KillClogPanel extends PluginPanel
             {
                 SkillsTooltip tip = new SkillsTooltip();
                 tip.setComponent(this);
-                tip.setData(hiscoreResult);
+                String rsn = playerName.getText().trim();
+                tip.setData(rsn.isEmpty() ? "Player" : rsn, hiscoreResult);
                 return tip;
             }
         };
@@ -908,23 +893,17 @@ public class KillClogPanel extends PluginPanel
     // -------------------------------------------------------------------------
 
     /**
-     * Wire hover effect onto a label inside a cell.
-     * Brightens the sprite icon on hover; 150ms debounced exit keeps it lit while tooltip is open.
-     *
-     * State machine:
-     *   IDLE → mouseEntered → HOVERED (save icon, brighten)
-     *   HOVERED → mouseExited → DEBOUNCING (150ms timer)
-     *   DEBOUNCING → timer fires → IDLE (restore icon)
-     *   DEBOUNCING → mouseEntered same cell → HOVERED (cancel timer, stay bright)
-     *   DEBOUNCING → mouseEntered diff cell → restore old, HOVERED on new
-     *   HOVERED → tooltip shows → keepTooltipOnHover stops timer on enter, restores on exit/hide
+     * Wire hover effect onto a cell panel.
+     * Shows a 1px border outline in the label's foreground color on hover.
+     * 150ms debounced exit keeps the outline while tooltip is open.
+     * Listeners on the cell (not the label) for full-cell hitbox.
      */
     private void addCellHoverEffect(JPanel cell, JLabel label)
     {
-        label.addMouseListener(new MouseAdapter()
+        MouseAdapter hoverAdapter = new MouseAdapter()
         {
             @Override
-            public void mouseClicked(MouseEvent e)
+            public void mousePressed(MouseEvent e)
             {
                 if (config.tooltipMode() == TooltipMode.CLICK && label.getToolTipText() != null)
                 {
@@ -937,21 +916,17 @@ public class KillClogPanel extends PluginPanel
             {
                 if (hoverExitTimer != null) hoverExitTimer.stop();
 
-                // Re-entering the same cell — already brightened, just cancelled the exit timer
+                // Re-entering the same cell — already outlined, just cancelled the exit timer
                 if (hoveredCell == cell) return;
 
-                // Leaving a different cell — restore its icon first
-                if (hoveredCell != null) restoreHoverIcon();
+                // Leaving a different cell — clear its outline first
+                if (hoveredCell != null) clearCellOutline();
 
                 hoveredCell = cell;
-                Icon icon = label.getIcon();
-                if (icon instanceof ImageIcon)
-                {
-                    preHoverIcon = (ImageIcon) icon;
-                    hoveredLabel = label;
-                    label.setIcon(brightenedCache.computeIfAbsent(preHoverIcon,
-                        k -> new ImageIcon(createBrightenedImage(k))));
-                }
+                Color fg = label.getForeground();
+                Color outline = (fg.equals(KC_COLOR) || fg.equals(ColorScheme.LIGHT_GRAY_COLOR))
+                    ? HOVER_OUTLINE_DIM : fg;
+                cell.setBorder(new MatteBorder(1, 1, 1, 1, outline));
             }
 
             @Override
@@ -962,23 +937,23 @@ public class KillClogPanel extends PluginPanel
                 {
                     if (hoveredCell == cell)
                     {
-                        restoreHoverIcon();
+                        clearCellOutline();
                         hoveredCell = null;
                     }
                 });
                 hoverExitTimer.setRepeats(false);
                 hoverExitTimer.start();
             }
-        });
+        };
+        cell.addMouseListener(hoverAdapter);
+        label.addMouseListener(hoverAdapter);
     }
 
-    private void restoreHoverIcon()
+    private void clearCellOutline()
     {
-        if (hoveredLabel != null && preHoverIcon != null)
+        if (hoveredCell != null)
         {
-            hoveredLabel.setIcon(preHoverIcon);
-            hoveredLabel = null;
-            preHoverIcon = null;
+            hoveredCell.setBorder(CELL_BORDER);
         }
     }
 
@@ -1021,7 +996,7 @@ public class KillClogPanel extends PluginPanel
             {
                 return;
             }
-            restoreHoverIcon();
+            clearCellOutline();
             hoveredCell = null;
         }
     }
@@ -1040,42 +1015,13 @@ public class KillClogPanel extends PluginPanel
         JToolTip tip = label.createToolTip();
         tip.setTipText(label.getToolTipText());
 
-        Dimension tipSize = tip.getPreferredSize();
-        int btnSize = 20;
-        int padRight = btnSize + 4; // room for close button
-
-        // Wrap tooltip + close button in a layered pane
-        int wrappedWidth = tipSize.width + padRight;
-        JLayeredPane wrapper = new JLayeredPane();
-        tip.setBounds(0, 0, wrappedWidth, tipSize.height);
-        tip.setPreferredSize(new Dimension(wrappedWidth, tipSize.height));
-        wrapper.add(tip, JLayeredPane.DEFAULT_LAYER);
-
-        JLabel closeBtn = new JLabel(closeIcon != null ? closeIcon : new ImageIcon());
-        closeBtn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        closeBtn.setBounds(wrappedWidth - btnSize - 4, 4, btnSize, btnSize);
-        closeBtn.addMouseListener(new MouseAdapter()
+        // Close button is now painted by NativeTooltip itself
+        if (tip instanceof NativeTooltip)
         {
-            @Override
-            public void mouseClicked(MouseEvent e)
-            {
-                hideClickTooltip();
-            }
+            ((NativeTooltip) tip).setCloseAction(() -> hideClickTooltip());
+        }
 
-            @Override
-            public void mouseEntered(MouseEvent e)
-            {
-                if (closeIconHovered != null) closeBtn.setIcon(closeIconHovered);
-            }
-
-            @Override
-            public void mouseExited(MouseEvent e)
-            {
-                if (closeIcon != null) closeBtn.setIcon(closeIcon);
-            }
-        });
-        wrapper.add(closeBtn, JLayeredPane.PALETTE_LAYER);
-        wrapper.setPreferredSize(new Dimension(wrappedWidth, tipSize.height));
+        Dimension tipSize = tip.getPreferredSize();
 
         // Position below cell, screen-bounds aware
         Point loc = cell.getLocationOnScreen();
@@ -1084,16 +1030,16 @@ public class KillClogPanel extends PluginPanel
         int x = loc.x;
         int y = loc.y + cell.getHeight();
 
-        if (x + wrappedWidth > screen.x + screen.width)
+        if (x + tipSize.width > screen.x + screen.width)
         {
-            x = screen.x + screen.width - wrappedWidth;
+            x = screen.x + screen.width - tipSize.width;
         }
         if (y + tipSize.height > screen.y + screen.height)
         {
             y = loc.y - tipSize.height;
         }
 
-        activeClickPopup = PopupFactory.getSharedInstance().getPopup(cell, wrapper, x, y);
+        activeClickPopup = PopupFactory.getSharedInstance().getPopup(cell, tip, x, y);
         activeClickLabel = label;
         activeClickPopup.show();
     }
@@ -1122,8 +1068,10 @@ public class KillClogPanel extends PluginPanel
         {
             ImgTooltip tip = new ImgTooltip(gridCols);
             tip.setComponent(owner);
-            tip.setData(data.name, data.rank, data.obtainedCount,
-                data.totalItems, data.allItemIds, data.obtainedIds,
+            tip.setTitle(data.name);
+            tip.setObtained(data.obtainedCount, data.totalItems);
+            tip.setRank(data.rank);
+            tip.setItems(data.totalItems, data.allItemIds, data.obtainedIds,
                 data.obtainedCounts, itemManager);
             keepTooltipOnHover(tip, parentCell);
             return tip;
@@ -1150,7 +1098,7 @@ public class KillClogPanel extends PluginPanel
     {
         JPanel cell = new JPanel();
         cell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-        cell.setBorder(new EmptyBorder(2, 0, 2, 0));
+        cell.setBorder(CELL_BORDER);
         cell.add(label);
         if (!Boolean.TRUE.equals(label.getClientProperty("noClog")))
         {
@@ -1405,21 +1353,21 @@ public class KillClogPanel extends PluginPanel
 
                 setSearchStatus(" ", TEXT_DIM);
                 playerName.setText(rsn != null ? rsn : player);
-                playerName.setForeground(config.infoBarColor());
+                playerName.setForeground(getInfoColor());
                 updateInfoIcon(result.getAccountType());
 
                 int combatLevel = result.getCombatLevel();
                 if (combatLevel > 0)
                 {
                     combatCell.setText(pad(String.valueOf(combatLevel)));
-                    combatCell.setForeground(config.infoBarColor());
+                    combatCell.setForeground(getInfoColor());
                 }
 
                 int totalLevel = result.getTotalLevel();
                 if (totalLevel > 0)
                 {
                     totalLvlCell.setText(pad(String.valueOf(totalLevel)));
-                    totalLvlCell.setForeground(config.infoBarColor());
+                    totalLvlCell.setForeground(getInfoColor());
                     totalLvlCell.setToolTipText(" ");
                 }
 
@@ -1804,7 +1752,7 @@ public class KillClogPanel extends PluginPanel
                 clogInfoLabel.setIcon(new ImageIcon(createBoostedImage(largeIcon, 1.10f)));
             }
             clogInfoLabel.setText(pad(formatKc(totals[0])));
-            clogInfoLabel.setForeground(config.infoBarColor());
+            clogInfoLabel.setForeground(getInfoColor());
 
             String tooltip = getClogTierTooltip(totals[0], totals[1]);
             String syncLine = syncLine(clogLastChanged);
@@ -1959,7 +1907,22 @@ public class KillClogPanel extends PluginPanel
     private void toggleHighlighter(boolean enabled)
     {
         if (hiscoreResult == null) return;
-        restoreHoverIcon();
+        clearCellOutline();
+        hoveredCell = null;
+
+        // Info bar follows highlighter state
+        Color infoColor = getInfoColor();
+        playerName.setForeground(infoColor);
+        clogInfoLabel.setForeground(infoColor);
+        if (hiscoreResult.getCombatLevel() > 0)
+        {
+            combatCell.setForeground(infoColor);
+        }
+        if (hiscoreResult.getTotalLevel() > 0)
+        {
+            totalLvlCell.setForeground(infoColor);
+        }
+
         updateBosses(hiscoreResult);
         updateActivities(hiscoreResult);
         if (enabled)
@@ -2197,24 +2160,10 @@ public class KillClogPanel extends PluginPanel
             case "missing1Color":
             case "inProgressClogColor":
             case "emptyClogColor":
+            case "infoBarColor":
             case "clogSource":
                 toggleHighlighter(config.completionistHighlighter());
                 updateTooltips();
-                break;
-            case "infoBarColor":
-                if (hiscoreResult != null)
-                {
-                    playerName.setForeground(config.infoBarColor());
-                    clogInfoLabel.setForeground(config.infoBarColor());
-                    if (hiscoreResult.getCombatLevel() > 0)
-                    {
-                        combatCell.setForeground(config.infoBarColor());
-                    }
-                    if (hiscoreResult.getTotalLevel() > 0)
-                    {
-                        totalLvlCell.setForeground(config.infoBarColor());
-                    }
-                }
                 break;
         }
     }
@@ -2495,18 +2444,6 @@ public class KillClogPanel extends PluginPanel
         return dimmed;
     }
 
-    private static BufferedImage createBrightenedImage(ImageIcon icon)
-    {
-        BufferedImage img = new BufferedImage(
-            icon.getIconWidth(), icon.getIconHeight(), BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g = img.createGraphics();
-        icon.paintIcon(null, g, 0, 0);
-        g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_ATOP, 0.125f));
-        g.setColor(Color.WHITE);
-        g.fillRect(0, 0, img.getWidth(), img.getHeight());
-        g.dispose();
-        return img;
-    }
 
     /**
      * Boosts RGB channels by a multiplier (e.g. 1.10 = 10% brighter).

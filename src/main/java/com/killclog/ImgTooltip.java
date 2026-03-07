@@ -16,47 +16,40 @@ import net.runelite.client.util.AsyncBufferedImage;
 
 /**
  * Sprite grid tooltip for collection log data.
- * Header with name, obtained count, rank, then item sprites in a configurable grid.
+ * Header (title, obtained, rank) via TitleTooltip, then auto-wrapping item grid.
  *
- * <p>Standard 5-column layout: {@code new ImgTooltip()}
- * <p>Wide 10-column layout for large clue tiers: {@code new ImgTooltip(10)}
+ * <p>Standard 5-column max: {@code new ImgTooltip()}
+ * <p>Wide 10-column max for large clue tiers: {@code new ImgTooltip(10)}
  */
-public class ImgTooltip extends NativeTooltip
+public class ImgTooltip extends TitleTooltip
 {
     private static final int DEFAULT_COLS = 5;
 
     private static final int SPRITE_SIZE = 32;
     private static final int PADDING = 4;
-    private static final int NAME_LINE_HEIGHT = 18;
-    private static final int SEPARATOR_GAP = 6;
 
-    private static final Color SEPARATOR_COLOR = new Color(80, 70, 50);
-    private static final Color CLOG_GREEN = new Color(0, 255, 0);
-    private static final Color CLOG_YELLOW = new Color(255, 255, 0);
     private static final Color QTY_COLOR = new Color(255, 255, 0);
     private static final Color QTY_SHADOW = new Color(0, 0, 0);
     private static final Color ITEM_HOVER_BG = new Color(80, 70, 50);
     private static final Color NOTICE_COLOR = new Color(160, 160, 160);
 
     private final int gridCols;
+    private int effectiveCols;
     private int hoveredItemIndex = -1;
 
-    private String name;
-    private int rank;
-    private int obtainedCount;
     private int totalItems;
     private List<Integer> allItemIds;
     private Set<Integer> obtainedIds;
     private Map<Integer, Integer> obtainedCounts;
     private BufferedImage[] sprites;
 
-    /** Standard 5-column tooltip. */
+    /** Standard 5-column max tooltip. */
     public ImgTooltip()
     {
         this(DEFAULT_COLS);
     }
 
-    /** Configurable column count — use {@code 10} for wide clue-tier grids. */
+    /** Configurable max column count — use {@code 10} for wide clue-tier grids. */
     public ImgTooltip(int gridCols)
     {
         this.gridCols = gridCols;
@@ -90,16 +83,12 @@ public class ImgTooltip extends NativeTooltip
     }
 
     /**
-     * Populate tooltip data before display.
+     * Set item grid data. Call after setTitle/setObtained/setRank.
      * Holds strong references to sprites so they survive ItemManager cache eviction.
      */
-    public void setData(String name, int rank, int obtainedCount, int totalItems,
-                        List<Integer> allItemIds, Set<Integer> obtainedIds,
-                        Map<Integer, Integer> obtainedCounts, ItemManager itemManager)
+    public void setItems(int totalItems, List<Integer> allItemIds, Set<Integer> obtainedIds,
+                         Map<Integer, Integer> obtainedCounts, ItemManager itemManager)
     {
-        this.name = name;
-        this.rank = rank;
-        this.obtainedCount = obtainedCount;
         this.totalItems = totalItems;
         this.allItemIds = allItemIds;
         this.obtainedIds = obtainedIds;
@@ -128,159 +117,75 @@ public class ImgTooltip extends NativeTooltip
     }
 
     @Override
-    public Dimension getPreferredSize()
+    protected Dimension getContentSize(int availableWidth)
     {
-        int inset = getInset();
-
-        // Header: name + obtained + rank (always 3 lines)
-        int headerHeight = NAME_LINE_HEIGHT + 2 * LINE_HEIGHT;
-
-        FontMetrics nfm = getFontMetrics(FontManager.getRunescapeBoldFont());
-        FontMetrics sfm = getFontMetrics(FontManager.getRunescapeSmallFont());
         boolean hasItems = allItemIds != null && !allItemIds.isEmpty();
+        int itemCount = hasItems ? allItemIds.size() : Math.max(totalItems, 1);
+        int cellSize = SPRITE_SIZE + PADDING;
 
-        // Measure all text lines to find widest
-        int titleWidth = name != null ? nfm.stringWidth(name) : 0;
-        String obtainedText = "Obtained: " + (obtainedCount < 0 ? "?" : String.valueOf(obtainedCount)) + "/" + totalItems;
-        int obtainedWidth = sfm.stringWidth(obtainedText);
-        String rankText = rank > 0 ? "Rank: " + String.format("%,d", rank) : "Rank: Unranked";
-        int rankWidth = sfm.stringWidth(rankText);
-        int textWidth = Math.max(titleWidth, Math.max(obtainedWidth, rankWidth));
+        // 5 cols minimum for bosses, 10 for wide clue grids, expand for wider headers
+        int baseMin = gridCols > DEFAULT_COLS ? gridCols : DEFAULT_COLS;
+        int minCols = Math.min(baseMin, Math.max(itemCount, 1));
+        int fitCols = Math.max(minCols, (availableWidth + PADDING) / cellSize);
+        effectiveCols = Math.min(gridCols, fitCols);
+        effectiveCols = Math.min(effectiveCols, Math.max(itemCount, 1));
 
-        // Grid dimensions from item count (real items) or totalItems (no-data)
-        int itemCount = hasItems ? allItemIds.size() : totalItems;
-        int effectiveCols = Math.min(gridCols, Math.max(itemCount, 1));
-        int spriteRows = itemCount > 0
-            ? (itemCount + effectiveCols - 1) / effectiveCols : 1;
-        int gridWidth = effectiveCols * (SPRITE_SIZE + PADDING) - PADDING;
-        int gridHeight = spriteRows * (SPRITE_SIZE + PADDING) - PADDING;
+        int rows = (itemCount + effectiveCols - 1) / effectiveCols;
+        int gridWidth = effectiveCols * cellSize - PADDING;
+        int gridHeight = rows * cellSize - PADDING;
 
         if (!hasItems)
         {
+            FontMetrics sfm = getFontMetrics(FontManager.getRunescapeSmallFont());
             int noticeWidth = sfm.stringWidth("No TempleOSRS Data");
-            textWidth = Math.max(textWidth, noticeWidth);
+            gridWidth = Math.max(gridWidth, noticeWidth);
         }
 
-        int contentWidth = Math.max(gridWidth, textWidth);
-
-        int height = inset + headerHeight + SEPARATOR_GAP + 1 + SEPARATOR_GAP + gridHeight + inset;
-        int width = contentWidth + inset * 2;
-
-        return new Dimension(width, height);
-    }
-
-    private int getItemIndexAt(int mx, int my)
-    {
-        if (allItemIds == null || allItemIds.isEmpty())
-        {
-            return -1;
-        }
-
-        int inset = getInset();
-        int headerHeight = NAME_LINE_HEIGHT + 2 * LINE_HEIGHT;
-        int sepY = inset + headerHeight + SEPARATOR_GAP;
-        int gridStartY = sepY + 1 + SEPARATOR_GAP;
-
-        int relX = mx - inset;
-        int relY = my - gridStartY;
-        if (relX < 0 || relY < 0)
-        {
-            return -1;
-        }
-
-        int cellSize = SPRITE_SIZE + PADDING;
-        int col = relX / cellSize;
-        int row = relY / cellSize;
-        if (col >= gridCols)
-        {
-            return -1;
-        }
-
-        int idx = row * gridCols + col;
-        return idx < allItemIds.size() ? idx : -1;
+        return new Dimension(gridWidth, gridHeight);
     }
 
     @Override
-    protected void paintContent(Graphics2D g2, int w, int h)
+    protected void paintBody(Graphics2D g2, int w, int h, int startY)
     {
-        if (name == null)
+        if (getTitle() == null)
         {
             return;
         }
 
         int inset = getInset();
-
-        // Row 1: name (bold)
-        g2.setFont(FontManager.getRunescapeBoldFont());
-        FontMetrics nfm = g2.getFontMetrics();
-        int lineY = inset + nfm.getAscent();
-        g2.setColor(OSRS_ORANGE);
-        g2.drawString(name, inset, lineY);
-
-        g2.setFont(FontManager.getRunescapeSmallFont());
-        FontMetrics fm = g2.getFontMetrics();
         boolean hasItems = allItemIds != null && !allItemIds.isEmpty();
 
-        // Row 2: "Obtained: X/Y" or "Obtained: ?/Y"
-        lineY += NAME_LINE_HEIGHT;
-        String obtainedLabel = "Obtained: ";
-        g2.setColor(OSRS_ORANGE);
-        g2.drawString(obtainedLabel, inset, lineY);
-        int labelWidth = fm.stringWidth(obtainedLabel);
-        String countText = (obtainedCount < 0 ? "?" : String.valueOf(obtainedCount)) + "/" + totalItems;
-        g2.setColor(obtainedCount >= totalItems && totalItems > 0 ? CLOG_GREEN : CLOG_YELLOW);
-        g2.drawString(countText, inset + labelWidth, lineY);
-
-        // Rank line (always)
-        lineY += LINE_HEIGHT;
-        String rankLabel = "Rank: ";
-        g2.setColor(OSRS_ORANGE);
-        g2.drawString(rankLabel, inset, lineY);
-        if (rank > 0)
-        {
-            g2.setColor(Color.WHITE);
-            g2.drawString(String.format("%,d", rank), inset + fm.stringWidth(rankLabel), lineY);
-        }
-        else
-        {
-            g2.drawString("Unranked", inset + fm.stringWidth(rankLabel), lineY);
-        }
-
-        // Separator
-        int sepY = lineY + SEPARATOR_GAP;
-        g2.setColor(SEPARATOR_COLOR);
-        g2.drawLine(inset, sepY, w - inset - 1, sepY);
-
         // No clog data — center notice in the grid area
-        if (allItemIds == null || allItemIds.isEmpty())
+        if (!hasItems)
         {
-            int gridStartY = sepY + 1 + SEPARATOR_GAP;
-            int itemCount = Math.max(totalItems, 1);
-            int effectiveCols = Math.min(gridCols, itemCount);
-            int spriteRows = (itemCount + effectiveCols - 1) / effectiveCols;
-            int gridHeight = spriteRows * (SPRITE_SIZE + PADDING) - PADDING;
-
             g2.setFont(FontManager.getRunescapeSmallFont());
             g2.setColor(NOTICE_COLOR);
             String notice = "No TempleOSRS Data";
-            FontMetrics nfm2 = g2.getFontMetrics();
-            int nx = inset + (w - inset * 2 - nfm2.stringWidth(notice)) / 2;
-            int ny = gridStartY + (gridHeight - nfm2.getHeight()) / 2 + nfm2.getAscent();
+            FontMetrics nfm = g2.getFontMetrics();
+
+            int itemCount = Math.max(totalItems, 1);
+            int cols = Math.min(effectiveCols, Math.max(itemCount, 1));
+            int rows = (itemCount + cols - 1) / cols;
+            int cellSize = SPRITE_SIZE + PADDING;
+            int gridHeight = rows * cellSize - PADDING;
+
+            int nx = inset + (w - inset * 2 - nfm.stringWidth(notice)) / 2;
+            int ny = startY + (gridHeight - nfm.getHeight()) / 2 + nfm.getAscent();
             g2.drawString(notice, nx, ny);
             return;
         }
 
-        // Item grid
-        if (allItemIds != null && sprites != null)
+        // Item grid with auto-wrapped columns
+        if (sprites != null)
         {
-            int gridStartY = sepY + 1 + SEPARATOR_GAP;
+            g2.setFont(FontManager.getRunescapeSmallFont());
 
             for (int i = 0; i < allItemIds.size(); i++)
             {
-                int col = i % gridCols;
-                int row = i / gridCols;
+                int col = i % effectiveCols;
+                int row = i / effectiveCols;
                 int x = inset + col * (SPRITE_SIZE + PADDING);
-                int y = gridStartY + row * (SPRITE_SIZE + PADDING);
+                int y = startY + row * (SPRITE_SIZE + PADDING);
 
                 if (i == hoveredItemIndex)
                 {
@@ -318,5 +223,34 @@ public class ImgTooltip extends NativeTooltip
                 }
             }
         }
+    }
+
+    private int getItemIndexAt(int mx, int my)
+    {
+        if (allItemIds == null || allItemIds.isEmpty())
+        {
+            return -1;
+        }
+
+        int inset = getInset();
+        int gridStartY = inset + getHeaderHeight() + 6 + 1 + 6;
+
+        int relX = mx - inset;
+        int relY = my - gridStartY;
+        if (relX < 0 || relY < 0)
+        {
+            return -1;
+        }
+
+        int cellSize = SPRITE_SIZE + PADDING;
+        int col = relX / cellSize;
+        int row = relY / cellSize;
+        if (col >= effectiveCols)
+        {
+            return -1;
+        }
+
+        int idx = row * effectiveCols + col;
+        return idx < allItemIds.size() ? idx : -1;
     }
 }

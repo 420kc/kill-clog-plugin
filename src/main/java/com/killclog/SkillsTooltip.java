@@ -14,10 +14,11 @@ import net.runelite.client.ui.FontManager;
 
 /**
  * 3x8 skill grid tooltip for the total level cell.
+ * Header shows "{RSN}'s Skill Sheet" via TitleTooltip.
  * Matches the in-game skills tab layout with icon + level per cell.
  */
 @Slf4j
-public class SkillsTooltip extends NativeTooltip
+public class SkillsTooltip extends TitleTooltip
 {
     private static final int COLS = 3;
     private static final int ROWS = 8;
@@ -72,28 +73,29 @@ public class SkillsTooltip extends NativeTooltip
         iconsLoaded = !icons.isEmpty();
     }
 
-    public void setData(HiscoreResult result)
+    public void setData(String rsn, HiscoreResult result)
     {
         this.result = result;
+        setTitle("Skill Summary");
+        if (result != null && result.getTotalXp() > 0)
+        {
+            setSubtitle("Total EXP: ", String.format("%,d", result.getTotalXp()), Color.WHITE);
+        }
     }
 
     @Override
-    public Dimension getPreferredSize()
+    protected Dimension getContentSize(int availableWidth)
     {
         FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
-        int inset = getInset();
-
-        // Measure widest column by checking all skill names at max level "2277"
         int maxLevelWidth = fm.stringWidth("2277");
         int cellWidth = ICON_SIZE + ICON_TEXT_GAP + maxLevelWidth;
         int totalWidth = cellWidth * COLS + COL_GAP * (COLS - 1);
         int totalHeight = ROW_HEIGHT * ROWS;
-
-        return new Dimension(totalWidth + inset * 2, totalHeight + inset * 2);
+        return new Dimension(totalWidth, totalHeight);
     }
 
     @Override
-    protected void paintContent(Graphics2D g2, int w, int h)
+    protected void paintBody(Graphics2D g2, int w, int h, int startY)
     {
         g2.setFont(FontManager.getRunescapeSmallFont());
         FontMetrics fm = g2.getFontMetrics();
@@ -108,7 +110,7 @@ public class SkillsTooltip extends NativeTooltip
             {
                 Skill skill = GRID[row][col];
                 int x = inset + col * (cellWidth + COL_GAP);
-                int y = inset + row * ROW_HEIGHT;
+                int y = startY + row * ROW_HEIGHT;
 
                 // Icon
                 BufferedImage icon = icons.get(skill);

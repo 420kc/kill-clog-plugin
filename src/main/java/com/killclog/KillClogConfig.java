@@ -51,17 +51,6 @@ public interface KillClogConfig extends Config
     }
 
     @ConfigItem(
-        keyName = "infoBarColor",
-        name = "Info Bar",
-        description = "Color of player name and stats in the info bar",
-        position = 4
-    )
-    default Color infoBarColor()
-    {
-        return new Color(198, 198, 198);
-    }
-
-    @ConfigItem(
         keyName = "tooltipMode",
         name = "Tooltip Activation",
         description = "How tooltips are triggered on boss and activity cells",
@@ -120,11 +109,23 @@ public interface KillClogConfig extends Config
 
 
     @ConfigItem(
+        keyName = "infoBarColor",
+        name = "Info Bar Color",
+        description = "Applies to RSN, clog count, combat level, and total level",
+        section = "completionist",
+        position = 2
+    )
+    default Color infoBarColor()
+    {
+        return new Color(198, 198, 198);
+    }
+
+    @ConfigItem(
         keyName = "completedClogColor",
         name = "Completed",
         description = "Color for bosses with all collection log items obtained",
         section = "completionist",
-        position = 2
+        position = 3
     )
     default Color completedClogColor()
     {
@@ -136,7 +137,7 @@ public interface KillClogConfig extends Config
         name = "1 Away",
         description = "Color for bosses missing exactly one collection log item",
         section = "completionist",
-        position = 3
+        position = 4
     )
     default Color missing1Color()
     {
@@ -148,7 +149,7 @@ public interface KillClogConfig extends Config
         name = "In Progress",
         description = "Color for bosses with some collection log items obtained",
         section = "completionist",
-        position = 4
+        position = 5
     )
     default Color inProgressClogColor()
     {
@@ -160,7 +161,7 @@ public interface KillClogConfig extends Config
         name = "Empty",
         description = "Color for bosses with kills but no collection log items obtained",
         section = "completionist",
-        position = 5
+        position = 6
     )
     default Color emptyClogColor()
     {
