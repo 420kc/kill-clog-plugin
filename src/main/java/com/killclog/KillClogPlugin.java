@@ -2,20 +2,24 @@ package com.killclog;
 
 import com.google.inject.Provides;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
-import java.util.ArrayList;
-import java.util.List;
 import net.runelite.api.Client;
+import net.runelite.api.EnumComposition;
 import net.runelite.api.GameState;
 import net.runelite.api.MenuAction;
 import net.runelite.api.Player;
+import net.runelite.api.StructComposition;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.ScriptPostFired;
-import net.runelite.api.widgets.Widget;
+import net.runelite.api.events.ScriptPreFired;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.PluginChanged;
 import net.runelite.client.config.ConfigManager;
@@ -41,10 +45,15 @@ public class KillClogPlugin extends Plugin
 {
 	private static final String MENU_OPTION = "Kill Clog";
 
-	// Collection log UI script + widget IDs
-	private static final int CLOG_SCRIPT_ID = 2731;
-	private static final int CLOG_HEADER_WIDGET = 40697876;  // (621 << 16) | 20
-	private static final int CLOG_ITEMS_WIDGET = 40697893;   // (621 << 16) | 37
+	// Bulk clog capture — script + widget + enum IDs
+	private static final int CLOG_SETUP_SCRIPT = 7797;
+	private static final int CLOG_ITEM_SCRIPT = 4100;
+	private static final int CLOG_SEARCH_WIDGET = 40697932;  // (621 << 16) | 76
+	private static final int ENUM_CLOG_TABS = 2102;
+	private static final int ENUM_NOTED_ITEMS = 3721;
+	private static final int PARAM_SUBTAB_ENUM = 683;
+	private static final int PARAM_CATEGORY_NAME = 689;
+	private static final int PARAM_CATEGORY_ITEMS = 690;
 
 	@Inject
 	private Client client;
@@ -75,6 +84,14 @@ public class KillClogPlugin extends Plugin
 
 	private NavigationButton navButton;
 	private boolean pendingAutoLookup;
+
+	// Bulk clog capture state (client thread only)
+	private Map<String, List<Integer>> enumCategoryMap;
+	private Map<Integer, String> itemToCategoryKey;
+	private boolean enumsParsed;
+	private boolean bulkCaptureActive;
+	private int bulkFinalizeTickCount = -1;
+	private final List<ClogResult.ClogItem> bulkObtained = new ArrayList<>();
 
 	private final HotkeyListener highlighterHotkey = new HotkeyListener(() -> config.highlighterKeybind())
 	{
@@ -122,6 +139,8 @@ public class KillClogPlugin extends Plugin
 		menuManager.get().removePlayerMenuItem(MENU_OPTION);
 		SwingUtilities.invokeLater(() -> panel.shutdown());
 		localClogCache.shutdown();
+		resetBulkCapture();
+		enumsParsed = false;
 		log.debug("Kill Clog plugin stopped");
 	}
 
@@ -139,10 +158,20 @@ public class KillClogPlugin extends Plugin
 				SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name));
 			}
 
+			if (!enumsParsed)
+			{
+				parseClogEnums();
+			}
+
 			if (config.autoLookupOnLogin())
 			{
 				pendingAutoLookup = true;
 			}
+		}
+		else if (event.getGameState() == GameState.LOGIN_SCREEN)
+		{
+			resetBulkCapture();
+			enumsParsed = false;
 		}
 	}
 
@@ -165,70 +194,37 @@ public class KillClogPlugin extends Plugin
 				});
 			}
 		}
+
+		if (bulkCaptureActive && bulkFinalizeTickCount > 0
+			&& client.getTickCount() >= bulkFinalizeTickCount)
+		{
+			finalizeBulkCapture();
+		}
 	}
 
 	@Subscribe
 	public void onScriptPostFired(ScriptPostFired event)
 	{
-		if (event.getScriptId() != CLOG_SCRIPT_ID)
+		if (event.getScriptId() == CLOG_SETUP_SCRIPT)
+		{
+			triggerBulkCapture();
+		}
+	}
+
+	@Subscribe
+	public void onScriptPreFired(ScriptPreFired event)
+	{
+		if (event.getScriptId() != CLOG_ITEM_SCRIPT || !bulkCaptureActive)
 		{
 			return;
 		}
 
-		Player local = client.getLocalPlayer();
-		if (local == null || local.getName() == null)
-		{
-			return;
-		}
+		int[] intStack = client.getIntStack();
+		int itemId = intStack[1];
+		int count = intStack[2];
 
-		localClogCache.setActivePlayer(local.getName());
-
-		Widget header = client.getWidget(CLOG_HEADER_WIDGET);
-		Widget items = client.getWidget(CLOG_ITEMS_WIDGET);
-		if (header == null || items == null)
-		{
-			return;
-		}
-
-		String headerText = header.getText();
-		if (headerText == null || headerText.isEmpty())
-		{
-			return;
-		}
-
-		Widget[] children = items.getChildren();
-		if (children == null || children.length == 0)
-		{
-			return;
-		}
-
-		String categoryKey = headerText.toLowerCase()
-			.replaceAll("[^a-z0-9]+", "_")
-			.replaceAll("^_|_$", "");
-
-		List<Integer> allItemIds = new ArrayList<>();
-		List<ClogResult.ClogItem> obtained = new ArrayList<>();
-
-		for (Widget child : children)
-		{
-			int itemId = child.getItemId();
-			if (itemId <= 0)
-			{
-				continue;
-			}
-			allItemIds.add(itemId);
-			// opacity 0 = obtained, opacity > 0 = not obtained
-			if (child.getOpacity() == 0)
-			{
-				int quantity = child.getItemQuantity();
-				obtained.add(new ClogResult.ClogItem(itemId, Math.max(quantity, 1), null));
-			}
-		}
-
-		if (!allItemIds.isEmpty() && config.clogSource() != ClogSource.TEMPLE)
-		{
-			localClogCache.putCategory(categoryKey, allItemIds, obtained);
-		}
+		bulkObtained.add(new ClogResult.ClogItem(itemId, count, null));
+		bulkFinalizeTickCount = client.getTickCount() + 3;
 	}
 
 	@Subscribe
@@ -282,6 +278,157 @@ public class KillClogPlugin extends Plugin
 				panel.doLookup();
 			});
 		}
+	}
+
+	// --- Bulk clog capture ---
+
+	private void parseClogEnums()
+	{
+		try
+		{
+			enumCategoryMap = new HashMap<>();
+			itemToCategoryKey = new HashMap<>();
+
+			EnumComposition tabs = client.getEnum(ENUM_CLOG_TABS);
+			EnumComposition noted = client.getEnum(ENUM_NOTED_ITEMS);
+
+			for (int tabKey : tabs.getKeys())
+			{
+				int tabStructId = tabs.getIntValue(tabKey);
+				StructComposition tabStruct = client.getStructComposition(tabStructId);
+				int subtabEnumId = tabStruct.getIntValue(PARAM_SUBTAB_ENUM);
+
+				EnumComposition subtabs = client.getEnum(subtabEnumId);
+				for (int subKey : subtabs.getKeys())
+				{
+					int catStructId = subtabs.getIntValue(subKey);
+					StructComposition catStruct = client.getStructComposition(catStructId);
+
+					String name = catStruct.getStringValue(PARAM_CATEGORY_NAME);
+					int itemsEnumId = catStruct.getIntValue(PARAM_CATEGORY_ITEMS);
+
+					if (name == null || itemsEnumId <= 0)
+					{
+						continue;
+					}
+
+					String categoryKey = name.toLowerCase()
+						.replaceAll("[^a-z0-9]+", "_")
+						.replaceAll("^_|_$", "");
+
+					EnumComposition itemsEnum = client.getEnum(itemsEnumId);
+					List<Integer> itemIds = new ArrayList<>();
+					for (int itemKey : itemsEnum.getKeys())
+					{
+						int itemId = itemsEnum.getIntValue(itemKey);
+						// Resolve noted/placeholder items to real IDs
+						int real = noted.getIntValue(itemId);
+						if (real > 0)
+						{
+							itemId = real;
+						}
+						itemIds.add(itemId);
+						itemToCategoryKey.put(itemId, categoryKey);
+					}
+
+					enumCategoryMap.put(categoryKey, itemIds);
+				}
+			}
+
+			enumsParsed = true;
+			log.info("Parsed clog enums: {} categories, {} items",
+				enumCategoryMap.size(), itemToCategoryKey.size());
+		}
+		catch (Exception e)
+		{
+			log.warn("Failed to parse clog enums", e);
+			enumsParsed = false;
+		}
+	}
+
+	private void triggerBulkCapture()
+	{
+		if (!enumsParsed || bulkCaptureActive)
+		{
+			return;
+		}
+
+		if (config.clogSource() == ClogSource.TEMPLE)
+		{
+			return;
+		}
+
+		Player local = client.getLocalPlayer();
+		if (local == null || local.getName() == null)
+		{
+			return;
+		}
+
+		bulkObtained.clear();
+		bulkCaptureActive = true;
+		bulkFinalizeTickCount = -1;
+
+		client.menuAction(-1, CLOG_SEARCH_WIDGET, MenuAction.CC_OP, 1, -1, "Search", null);
+		client.menuAction(-1, CLOG_SEARCH_WIDGET, MenuAction.CC_OP, 1, -1, "Back", null);
+
+		log.debug("Triggered bulk clog capture");
+	}
+
+	private void finalizeBulkCapture()
+	{
+		Player local = client.getLocalPlayer();
+		if (local == null || local.getName() == null)
+		{
+			resetBulkCapture();
+			return;
+		}
+
+		String name = local.getName();
+		localClogCache.setActivePlayer(name);
+
+		// Group obtained items by category
+		Map<String, List<ClogResult.ClogItem>> obtainedByCategory = new HashMap<>();
+
+		// Initialize ALL categories (even empty) so cacheResult stores them
+		for (String cat : enumCategoryMap.keySet())
+		{
+			obtainedByCategory.put(cat, new ArrayList<>());
+		}
+
+		for (ClogResult.ClogItem item : bulkObtained)
+		{
+			String cat = itemToCategoryKey.get(item.getId());
+			if (cat != null)
+			{
+				obtainedByCategory.get(cat).add(item);
+			}
+		}
+
+		// Copy category item lists from enum data
+		Map<String, List<Integer>> categoryItemsCopy = new HashMap<>();
+		for (Map.Entry<String, List<Integer>> entry : enumCategoryMap.entrySet())
+		{
+			categoryItemsCopy.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+		}
+
+		ClogResult result = new ClogResult(name, obtainedByCategory, categoryItemsCopy,
+			new HashMap<>(), null);
+		localClogCache.cacheResult(result);
+
+		int total = bulkObtained.size();
+		log.info("Bulk clog capture complete: {} items across {} categories for '{}'",
+			total, enumCategoryMap.size(), name);
+
+		resetBulkCapture();
+
+		SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(name));
+	}
+
+	private void resetBulkCapture()
+	{
+		bulkCaptureActive = false;
+		bulkFinalizeTickCount = -1;
+		bulkObtained.clear();
 	}
 
 	private BufferedImage getIcon()

@@ -24,11 +24,11 @@ import net.runelite.client.RuneLite;
  * Multi-account, disk-backed collection log cache.
  *
  * <p>Stores per-player clog data in {@code ~/.runelite/kill-clog/} as JSON files.
- * Populated incrementally as any logged-in player browses their collection log in-game.
- * Persists across client restarts — any account ever browsed is available permanently.
+ * Populated via bulk capture when the player opens their collection log in-game.
+ * Persists across client restarts — any account ever captured is available permanently.
  *
  * <p>Disk writes are dispatched to a single background thread to avoid blocking the
- * game client thread ({@code onScriptPostFired} calls {@link #putCategory}).
+ * game client thread.
  *
  * <p>Note: the in-memory player map is not evicted. In practice the number of distinct
  * looked-up players per session is small, so unbounded growth is not a concern.
@@ -86,38 +86,6 @@ public class LocalClogCache
 		}
 
 		log.debug("Active clog player set to: {}", name);
-	}
-
-	public void putCategory(String categoryKey, List<Integer> allItemIds,
-							List<ClogResult.ClogItem> obtained)
-	{
-		if (activePlayer == null)
-		{
-			return;
-		}
-
-		String key = activePlayer.toLowerCase();
-		PlayerClogData data = players.computeIfAbsent(key, k ->
-		{
-			PlayerClogData d = new PlayerClogData();
-			d.playerName = activePlayer;
-			d.categories = new ConcurrentHashMap<>();
-			d.obtained = new ConcurrentHashMap<>();
-			return d;
-		});
-
-		data.playerName = activePlayer;
-		data.lastUpdated = Instant.now().toString();
-		data.categories.put(categoryKey, new ArrayList<>(allItemIds));
-		data.obtained.put(categoryKey, new ArrayList<>(obtained));
-
-		log.debug("Cached clog category '{}' for '{}': {}/{} obtained",
-			categoryKey, activePlayer, obtained.size(), allItemIds.size());
-
-		// Snapshot for async write — captures data state at this moment
-		final String playerName = activePlayer;
-		final PlayerClogData snapshot = shallowCopy(data);
-		diskWriter.execute(() -> saveToDisk(playerName, snapshot));
 	}
 
 	public boolean isActivePlayer(String name)

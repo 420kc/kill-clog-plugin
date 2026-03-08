@@ -3,6 +3,7 @@ package com.killclog;
 import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.event.MouseAdapter;
@@ -86,6 +87,12 @@ public class ImgTooltip extends TitleTooltip
 				}
 			}
 		});
+	}
+
+	@Override
+	protected Font getTitleFont()
+	{
+		return TITLE_FONT_SMALL;
 	}
 
 	/**

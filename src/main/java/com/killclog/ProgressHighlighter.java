@@ -62,8 +62,7 @@ final class ProgressHighlighter
 
 		// Clue All — aggregate across all 6 tier categories
 		JLabel clueAllLabel = activityLabels.get(HiscoreSkill.CLUE_SCROLL_ALL);
-		if (clueAllLabel != null
-			&& hiscoreResult.getActivityScore(HiscoreSkill.CLUE_SCROLL_ALL.getName()) > 0)
+		if (clueAllLabel != null)
 		{
 			int totalItems = 0;
 			int totalObtained = 0;

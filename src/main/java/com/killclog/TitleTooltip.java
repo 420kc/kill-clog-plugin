@@ -18,6 +18,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	private static final int NAME_LINE_HEIGHT = 20;
 	private static final int SEPARATOR_GAP = 6;
 	private static final Font TITLE_FONT = FontManager.getRunescapeBoldFont().deriveFont(18f);
+	static final Font TITLE_FONT_SMALL = FontManager.getRunescapeBoldFont().deriveFont(16f);
 	static final Color SEPARATOR_COLOR = new Color(80, 70, 50);
 
 	protected static final Color CLOG_GREEN = new Color(0, 255, 0);
@@ -79,6 +80,12 @@ public abstract class TitleTooltip extends NativeTooltip
 		return title;
 	}
 
+	/** Override in subclasses that need a smaller title font. */
+	protected Font getTitleFont()
+	{
+		return TITLE_FONT;
+	}
+
 	/**
 	 * Number of pixel rows the header occupies (title + optional lines).
 	 * Does NOT include the separator gap below.
@@ -123,7 +130,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	{
 		int inset = getInset();
 
-		FontMetrics nfm = getFontMetrics(TITLE_FONT);
+		FontMetrics nfm = getFontMetrics(getTitleFont());
 		FontMetrics sfm = getFontMetrics(FontManager.getRunescapeSmallFont());
 
 		// Header text widths + close button padding drive minimum tooltip width.
@@ -164,7 +171,7 @@ public abstract class TitleTooltip extends NativeTooltip
 
 		int inset = getInset();
 		// Title (bold orange)
-		g2.setFont(TITLE_FONT);
+		g2.setFont(getTitleFont());
 		FontMetrics nfm = g2.getFontMetrics();
 		int lineY = inset + nfm.getAscent();
 		g2.setColor(OSRS_ORANGE);

@@ -45,3 +45,10 @@ task run(type: JavaExec) {
     mainClass = 'com.killclog.KillClogPluginTest'
     jvmArgs = ['-ea']
 }
+
+task runAlt(type: JavaExec) {
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.killclog.KillClogPluginTest'
+    jvmArgs = ['-ea']
+    args = ['--profile=alt']
+}

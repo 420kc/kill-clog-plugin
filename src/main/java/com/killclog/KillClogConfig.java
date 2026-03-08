@@ -26,8 +26,8 @@ public interface KillClogConfig extends Config
 		name = "Collection Log Source",
 		description = "<html>Where to load collection log data from.<br><br>"
 			+ "<b>TempleOSRS</b> — Fetch from TempleOSRS. Requires synced profile.<br>"
-			+ "<b>Local</b> — Browse your in-game collection log to build a local cache.<br>"
-			+ "<b>Both</b> — Use TempleOSRS data and build a local cache.<br><br>"
+			+ "<b>Local</b> — Open your collection log in-game to capture all data instantly.<br>"
+			+ "<b>Both</b> — Use TempleOSRS data and capture locally when you open your log.<br><br>"
 			+ "<b>To sync with TempleOSRS:</b><br>"
 			+ "1. Install the 'TempleOSRS' plugin from the Plugin Hub<br>"
 			+ "2. Open your collection log in-game<br>"

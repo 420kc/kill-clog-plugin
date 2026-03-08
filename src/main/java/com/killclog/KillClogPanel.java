@@ -2084,6 +2084,15 @@ public class KillClogPanel extends PluginPanel
 		this.localRsn = name;
 	}
 
+	public void onBulkCaptureComplete(String playerName)
+	{
+		String searchText = searchBar.getText().trim();
+		if (playerName.equalsIgnoreCase(searchText))
+		{
+			doLookup();
+		}
+	}
+
 	public void setNameAutocompleter(NameAutocompleter autocompleter)
 	{
 		this.nameAutocompleter = autocompleter;
