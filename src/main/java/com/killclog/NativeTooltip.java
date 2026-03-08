@@ -23,6 +23,7 @@ public abstract class NativeTooltip extends JToolTip
     static final int MARGIN = 8;
     static final int LINE_HEIGHT = 14;
     static final Color OSRS_ORANGE = new Color(255, 152, 31);
+    static final Color NOTICE_COLOR = new Color(160, 160, 160);
 
     // Programmatic fallback border
     private static final int BORDER_THICKNESS = 3;
@@ -97,11 +98,6 @@ public abstract class NativeTooltip extends JToolTip
     public void setCloseAction(Runnable action)
     {
         this.closeAction = action;
-    }
-
-    protected Runnable getCloseAction()
-    {
-        return closeAction;
     }
 
     protected NativeTooltip()
@@ -214,11 +210,6 @@ public abstract class NativeTooltip extends JToolTip
             g2.setColor(FALLBACK_BG);
             g2.fillRect(0, 0, w, h);
         }
-    }
-
-    protected boolean isCloseHovered()
-    {
-        return closeBtnHover;
     }
 
     protected void paintCloseButton(Graphics2D g2, int w)

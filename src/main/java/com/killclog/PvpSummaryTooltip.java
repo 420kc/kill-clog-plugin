@@ -18,7 +18,6 @@ public class PvpSummaryTooltip extends TitleTooltip
 {
     private static final int ICON_SIZE = 13;
     private static final int ICON_GAP = 4;
-    private static final Color NOTICE_COLOR = new Color(160, 160, 160);
 
     private int lmsScore;
     private int soulWarsScore;
@@ -62,13 +61,6 @@ public class PvpSummaryTooltip extends TitleTooltip
     {
         this.notice = notice;
         setTitle("PvP Summary");
-    }
-
-    /** Both LMS and Soul Wars clog categories fully completed. */
-    boolean isComplete()
-    {
-        return lmsObtained >= 0 && lmsObtained >= lmsTotal && lmsTotal > 0
-            && swObtained >= 0 && swObtained >= swTotal && swTotal > 0;
     }
 
     private static int[] clogCounts(String category, ClogResult clogResult)

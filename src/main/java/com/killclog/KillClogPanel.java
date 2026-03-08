@@ -722,16 +722,17 @@ public class KillClogPanel extends PluginPanel
                     clogTierIconsLarge.put(tier, icon));
             }
 
-            // Clue summary tooltip icons: 0=All, 1-6=tier scrolls, 7=Mimic
-            // All uses the same sprite as the cell; tiers use clue scroll items
-            int[] clueIconItems = {0, 23182, 2677, 2801, 2722, 12073, 19835, 23184};
-            for (int i = 1; i < clueIconItems.length; i++)
+            // Clue summary tooltip icons: 1-6=tier scrolls, 7=Mimic (0=All loaded via spriteManager below)
+            for (int i = 0; i < CLUE_TIER_ITEM_IDS.length; i++)
             {
-                final int idx = i;
-                loadItemImage(clueIconItems[i], img ->
+                final int idx = i + 1;
+                loadItemImage(CLUE_TIER_ITEM_IDS[i], img ->
                     clueIcons[idx] = ImageUtil.resizeImage(
                         ImageUtil.resizeCanvas(img, 25, 25), 13, 13));
             }
+            loadItemImage(23184, img ->
+                clueIcons[7] = ImageUtil.resizeImage(
+                    ImageUtil.resizeCanvas(img, 25, 25), 13, 13));
         });
 
         // Clue All icon via spriteManager (game sprite, not item)
@@ -889,8 +890,7 @@ public class KillClogPanel extends PluginPanel
             {
                 SkillsTooltip tip = new SkillsTooltip();
                 tip.setComponent(this);
-                String rsn = playerName.getText().trim();
-                tip.setData(rsn.isEmpty() ? "Player" : rsn, hiscoreResult);
+                tip.setData(hiscoreResult);
                 return tip;
             }
         };

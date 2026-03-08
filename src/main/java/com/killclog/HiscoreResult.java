@@ -46,21 +46,6 @@ public class HiscoreResult
         return bossKills;
     }
 
-    public Map<String, Integer> getBossRanks()
-    {
-        return bossRanks;
-    }
-
-    public Map<String, Integer> getActivityScores()
-    {
-        return activityScores;
-    }
-
-    public Map<String, Integer> getActivityRanks()
-    {
-        return activityRanks;
-    }
-
     public int getTotalLevel()
     {
         return totalLevel;
@@ -99,11 +84,6 @@ public class HiscoreResult
     public int getOverallRank()
     {
         return overallRank;
-    }
-
-    public Map<String, Integer> getSkillLevels()
-    {
-        return skillLevels;
     }
 
     public int getSkillLevel(String name)

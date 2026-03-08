@@ -17,7 +17,6 @@ public class ClueSummaryTooltip extends TitleTooltip
 {
     private static final int ICON_SIZE = 13;
     private static final int ICON_GAP = 4;
-    private static final Color NOTICE_COLOR = new Color(160, 160, 160);
 
     private static final HiscoreSkill[] CLUE_TIERS = {
         HiscoreSkill.CLUE_SCROLL_ALL,

@@ -1,6 +1,5 @@
 package com.killclog;
 
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
@@ -16,8 +15,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 {
     private static final int ICON_SIZE = 13;
     private static final int ICON_GAP = 3;
-    private static final Color NOTICE_COLOR = new Color(160, 160, 160);
-
     private String tierRange;
     private String tierName;
     private String progressText;

@@ -35,7 +35,6 @@ public class ImgTooltip extends TitleTooltip
     private static final Color QTY_COLOR = new Color(255, 255, 0);
     private static final Color QTY_SHADOW = new Color(0, 0, 0);
     private static final Color ITEM_HOVER_BG = new Color(80, 70, 50);
-    private static final Color NOTICE_COLOR = new Color(160, 160, 160);
 
     private final int gridCols;
     private final int spriteSize;

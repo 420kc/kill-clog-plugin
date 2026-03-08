@@ -14,7 +14,7 @@ import net.runelite.client.ui.FontManager;
 
 /**
  * 3x8 skill grid tooltip for the total level cell.
- * Header shows "{RSN}'s Skill Sheet" via TitleTooltip.
+ * Header shows "Skill Summary" + optional Total EXP via TitleTooltip.
  * Matches the in-game skills tab layout with icon + level per cell.
  */
 @Slf4j
@@ -71,7 +71,7 @@ public class SkillsTooltip extends TitleTooltip
         }
     }
 
-    public void setData(String rsn, HiscoreResult result)
+    public void setData(HiscoreResult result)
     {
         this.result = result;
         setTitle("Skill Summary");

@@ -54,11 +54,6 @@ public class ClogResult
         return categoryItems;
     }
 
-    public String getItemName(int id)
-    {
-        return itemNames.getOrDefault(id, "Item #" + id);
-    }
-
     public boolean hasItemName(int id)
     {
         return itemNames.containsKey(id);
