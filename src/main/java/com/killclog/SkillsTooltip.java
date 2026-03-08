@@ -124,7 +124,7 @@ public class SkillsTooltip extends TitleTooltip
 				int level = result != null ? result.getSkillLevel(skill.getName().toLowerCase()) : -1;
 				String text = level > 0 ? String.valueOf(level) : "--";
 				g2.setColor(level > 0 ? Color.WHITE : UNRANKED_COLOR);
-				int textX = x + ICON_SIZE + ICON_TEXT_GAP;
+				int textX = x + ICON_SIZE + ICON_TEXT_GAP + (maxLevelWidth - fm.stringWidth(text)) / 2;
 				int textY = y + (ROW_HEIGHT + fm.getAscent() - fm.getDescent()) / 2;
 				g2.drawString(text, textX, textY);
 			}

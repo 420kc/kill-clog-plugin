@@ -1,6 +1,7 @@
 package com.killclog;
 
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
@@ -14,8 +15,9 @@ import net.runelite.client.ui.FontManager;
  */
 public abstract class TitleTooltip extends NativeTooltip
 {
-	private static final int NAME_LINE_HEIGHT = 18;
+	private static final int NAME_LINE_HEIGHT = 20;
 	private static final int SEPARATOR_GAP = 6;
+	private static final Font TITLE_FONT = FontManager.getRunescapeBoldFont().deriveFont(18f);
 	static final Color SEPARATOR_COLOR = new Color(80, 70, 50);
 
 	protected static final Color CLOG_GREEN = new Color(0, 255, 0);
@@ -121,7 +123,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	{
 		int inset = getInset();
 
-		FontMetrics nfm = getFontMetrics(FontManager.getRunescapeBoldFont());
+		FontMetrics nfm = getFontMetrics(TITLE_FONT);
 		FontMetrics sfm = getFontMetrics(FontManager.getRunescapeSmallFont());
 
 		// Header text widths + close button padding drive minimum tooltip width.
@@ -162,7 +164,7 @@ public abstract class TitleTooltip extends NativeTooltip
 
 		int inset = getInset();
 		// Title (bold orange)
-		g2.setFont(FontManager.getRunescapeBoldFont());
+		g2.setFont(TITLE_FONT);
 		FontMetrics nfm = g2.getFontMetrics();
 		int lineY = inset + nfm.getAscent();
 		g2.setColor(OSRS_ORANGE);

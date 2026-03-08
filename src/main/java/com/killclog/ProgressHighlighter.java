@@ -18,7 +18,6 @@ final class ProgressHighlighter
 	private final Map<HiscoreSkill, JLabel> activityLabels;
 	private final Map<HiscoreSkill, JLabel> clueTierLabels;
 	private final Map<String, String> nameOverrides;
-	private final Map<HiscoreSkill, String> activityCategories;
 	private final Map<HiscoreSkill, String> clueCategories;
 	private final KillClogConfig config;
 
@@ -27,7 +26,6 @@ final class ProgressHighlighter
 		Map<HiscoreSkill, JLabel> activityLabels,
 		Map<HiscoreSkill, JLabel> clueTierLabels,
 		Map<String, String> nameOverrides,
-		Map<HiscoreSkill, String> activityCategories,
 		Map<HiscoreSkill, String> clueCategories,
 		KillClogConfig config)
 	{
@@ -35,7 +33,6 @@ final class ProgressHighlighter
 		this.activityLabels = activityLabels;
 		this.clueTierLabels = clueTierLabels;
 		this.nameOverrides = nameOverrides;
-		this.activityCategories = activityCategories;
 		this.clueCategories = clueCategories;
 		this.config = config;
 	}
@@ -61,7 +58,6 @@ final class ProgressHighlighter
 				fourTwentyMode, fourTwentyGreen);
 		}
 
-		colorActivityCategories(activityCategories, activityLabels, hiscoreResult, clogResult);
 		colorActivityCategories(clueCategories, clueTierLabels, hiscoreResult, clogResult);
 
 		// Clue All — aggregate across all 6 tier categories
