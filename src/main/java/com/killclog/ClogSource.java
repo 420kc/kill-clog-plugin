@@ -7,15 +7,15 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum ClogSource
 {
-    TEMPLE("TempleOSRS"),
-    LOCAL("Local"),
-    BOTH("Both");
+	TEMPLE("TempleOSRS"),
+	LOCAL("Local"),
+	BOTH("Both");
 
-    private final String name;
+	private final String name;
 
-    @Override
-    public String toString()
-    {
-        return name;
-    }
+	@Override
+	public String toString()
+	{
+		return name;
+	}
 }

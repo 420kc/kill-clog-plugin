@@ -14,121 +14,121 @@ import net.runelite.client.game.ItemManager;
  */
 final class TooltipDataBuilder
 {
-    private final ItemManager itemManager;
+	private final ItemManager itemManager;
 
-    TooltipDataBuilder(ItemManager itemManager)
-    {
-        this.itemManager = itemManager;
-    }
+	TooltipDataBuilder(ItemManager itemManager)
+	{
+		this.itemManager = itemManager;
+	}
 
-    /**
-     * Build TooltipData for a clog category.
-     * Returns null if no item data exists for the category.
-     */
-    TooltipData buildTooltipData(String displayName, String category, int rank, ClogResult clogResult)
-    {
-        if (clogResult == null) return null;
+	/**
+	 * Build TooltipData for a clog category.
+	 * Returns null if no item data exists for the category.
+	 */
+	TooltipData buildTooltipData(String displayName, String category, int rank, ClogResult clogResult)
+	{
+		if (clogResult == null) return null;
 
-        List<ClogResult.ClogItem> obtained = clogResult.getObtainedItems().get(category);
-        List<Integer> allItems = clogResult.getCategoryItems().get(category);
+		List<ClogResult.ClogItem> obtained = clogResult.getObtainedItems().get(category);
+		List<Integer> allItems = clogResult.getCategoryItems().get(category);
 
-        if ((obtained == null || obtained.isEmpty()) && (allItems == null || allItems.isEmpty()))
-        {
-            return null;
-        }
+		if ((obtained == null || obtained.isEmpty()) && (allItems == null || allItems.isEmpty()))
+		{
+			return null;
+		}
 
-        Set<Integer> obtainedIds = ClogHelper.getObtainedIds(category, clogResult);
-        Map<Integer, Integer> obtainedCounts = new LinkedHashMap<>();
-        if (obtained != null)
-        {
-            for (ClogResult.ClogItem item : obtained)
-            {
-                obtainedCounts.put(item.getId(), item.getCount());
-            }
-        }
+		Set<Integer> obtainedIds = ClogHelper.getObtainedIds(category, clogResult);
+		Map<Integer, Integer> obtainedCounts = new LinkedHashMap<>();
+		if (obtained != null)
+		{
+			for (ClogResult.ClogItem item : obtained)
+			{
+				obtainedCounts.put(item.getId(), item.getCount());
+			}
+		}
 
-        int totalItems = allItems != null ? allItems.size() : obtainedIds.size();
-        int obtainedCount = allItems != null
-            ? ClogHelper.countObtained(allItems, obtainedIds) : obtainedIds.size();
+		int totalItems = allItems != null ? allItems.size() : obtainedIds.size();
+		int obtainedCount = allItems != null
+			? ClogHelper.countObtained(allItems, obtainedIds) : obtainedIds.size();
 
-        List<Integer> itemList = allItems != null ? allItems : new ArrayList<>(obtainedIds);
-        return new TooltipData(displayName, rank, obtainedCount, totalItems,
-            itemList, obtainedIds, obtainedCounts);
-    }
+		List<Integer> itemList = allItems != null ? allItems : new ArrayList<>(obtainedIds);
+		return new TooltipData(displayName, rank, obtainedCount, totalItems,
+			itemList, obtainedIds, obtainedCounts);
+	}
 
-    /**
-     * Build TooltipData for a clue rare category (3rd Age / Gilded).
-     * Returns null if the category has no items.
-     */
-    TooltipData buildClueRareData(String name, String clogCategory, ClogResult clogResult)
-    {
-        List<Integer> allItems = clogResult.getCategoryItems().get(clogCategory);
-        List<ClogResult.ClogItem> obtained = clogResult.getObtainedItems().get(clogCategory);
+	/**
+	 * Build TooltipData for a clue rare category (3rd Age / Gilded).
+	 * Returns null if the category has no items.
+	 */
+	TooltipData buildClueRareData(String name, String clogCategory, ClogResult clogResult)
+	{
+		List<Integer> allItems = clogResult.getCategoryItems().get(clogCategory);
+		List<ClogResult.ClogItem> obtained = clogResult.getObtainedItems().get(clogCategory);
 
-        if (allItems == null || allItems.isEmpty())
-        {
-            return null;
-        }
+		if (allItems == null || allItems.isEmpty())
+		{
+			return null;
+		}
 
-        Set<Integer> obtainedIds = new HashSet<>();
-        Map<Integer, Integer> obtainedCounts = new LinkedHashMap<>();
-        if (obtained != null)
-        {
-            for (ClogResult.ClogItem item : obtained)
-            {
-                obtainedIds.add(item.getId());
-                obtainedCounts.put(item.getId(), item.getCount());
-            }
-        }
+		Set<Integer> obtainedIds = new HashSet<>();
+		Map<Integer, Integer> obtainedCounts = new LinkedHashMap<>();
+		if (obtained != null)
+		{
+			for (ClogResult.ClogItem item : obtained)
+			{
+				obtainedIds.add(item.getId());
+				obtainedCounts.put(item.getId(), item.getCount());
+			}
+		}
 
-        int obtainedCount = ClogHelper.countObtained(allItems, obtainedIds);
-        return new TooltipData(name, -1, obtainedCount,
-            allItems.size(), allItems, obtainedIds, obtainedCounts);
-    }
+		int obtainedCount = ClogHelper.countObtained(allItems, obtainedIds);
+		return new TooltipData(name, -1, obtainedCount,
+			allItems.size(), allItems, obtainedIds, obtainedCounts);
+	}
 
-    /**
-     * Build TooltipData for a custom rare category (Hard/Elite/Master Rare).
-     * Scans obtained items across ALL Temple categories.
-     */
-    TooltipData buildCustomRareData(String name, int[] itemIds, ClogResult clogResult)
-    {
-        Set<Integer> allObtainedGlobal = new HashSet<>();
-        Map<Integer, Integer> allCountsGlobal = new HashMap<>();
-        for (List<ClogResult.ClogItem> catObtained : clogResult.getObtainedItems().values())
-        {
-            for (ClogResult.ClogItem item : catObtained)
-            {
-                allObtainedGlobal.add(item.getId());
-                allCountsGlobal.merge(item.getId(), item.getCount(), Integer::max);
-            }
-        }
+	/**
+	 * Build TooltipData for a custom rare category (Hard/Elite/Master Rare).
+	 * Scans obtained items across ALL Temple categories.
+	 */
+	TooltipData buildCustomRareData(String name, int[] itemIds, ClogResult clogResult)
+	{
+		Set<Integer> allObtainedGlobal = new HashSet<>();
+		Map<Integer, Integer> allCountsGlobal = new HashMap<>();
+		for (List<ClogResult.ClogItem> catObtained : clogResult.getObtainedItems().values())
+		{
+			for (ClogResult.ClogItem item : catObtained)
+			{
+				allObtainedGlobal.add(item.getId());
+				allCountsGlobal.merge(item.getId(), item.getCount(), Integer::max);
+			}
+		}
 
-        List<Integer> allItemsList = new ArrayList<>();
-        Set<Integer> obtainedIds = new HashSet<>();
-        Map<Integer, Integer> obtainedCounts = new LinkedHashMap<>();
-        for (int id : itemIds)
-        {
-            allItemsList.add(id);
-            if (allObtainedGlobal.contains(id))
-            {
-                obtainedIds.add(id);
-                obtainedCounts.put(id, allCountsGlobal.getOrDefault(id, 1));
-            }
-        }
+		List<Integer> allItemsList = new ArrayList<>();
+		Set<Integer> obtainedIds = new HashSet<>();
+		Map<Integer, Integer> obtainedCounts = new LinkedHashMap<>();
+		for (int id : itemIds)
+		{
+			allItemsList.add(id);
+			if (allObtainedGlobal.contains(id))
+			{
+				obtainedIds.add(id);
+				obtainedCounts.put(id, allCountsGlobal.getOrDefault(id, 1));
+			}
+		}
 
-        int obtainedCount = obtainedIds.size();
-        return new TooltipData(name, -1, obtainedCount,
-            allItemsList.size(), allItemsList, obtainedIds, obtainedCounts);
-    }
+		int obtainedCount = obtainedIds.size();
+		return new TooltipData(name, -1, obtainedCount,
+			allItemsList.size(), allItemsList, obtainedIds, obtainedCounts);
+	}
 
-    /** Trigger async loads for all items in a tooltip — so they're cached by hover time. */
-    void preloadItemImages(TooltipData data)
-    {
-        for (int itemId : data.allItemIds)
-        {
-            int count = data.obtainedIds.contains(itemId)
-                ? data.obtainedCounts.getOrDefault(itemId, 1) : 1;
-            itemManager.getImage(itemId, count, false);
-        }
-    }
+	/** Trigger async loads for all items in a tooltip — so they're cached by hover time. */
+	void preloadItemImages(TooltipData data)
+	{
+		for (int itemId : data.allItemIds)
+		{
+			int count = data.obtainedIds.contains(itemId)
+				? data.obtainedCounts.getOrDefault(itemId, 1) : 1;
+			itemManager.getImage(itemId, count, false);
+		}
+	}
 }

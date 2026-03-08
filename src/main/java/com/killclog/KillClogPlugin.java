@@ -33,259 +33,259 @@ import net.runelite.client.util.Text;
 
 @Slf4j
 @PluginDescriptor(
-    name = "Kill Clog",
-    description = "Boss log overhaul with clog tooltips and completion colors",
-    tags = {"boss", "kc", "kill count", "collection log", "pvm", "hiscore", "ironman"}
+	name = "Kill Clog",
+	description = "Boss log overhaul with clog tooltips and completion colors",
+	tags = {"boss", "kc", "kill count", "collection log", "pvm", "hiscore", "ironman"}
 )
 public class KillClogPlugin extends Plugin
 {
-    private static final String MENU_OPTION = "Kill Clog";
+	private static final String MENU_OPTION = "Kill Clog";
 
-    // Collection log UI script + widget IDs
-    private static final int CLOG_SCRIPT_ID = 2731;
-    private static final int CLOG_HEADER_WIDGET = 40697876;  // (621 << 16) | 20
-    private static final int CLOG_ITEMS_WIDGET = 40697893;   // (621 << 16) | 37
+	// Collection log UI script + widget IDs
+	private static final int CLOG_SCRIPT_ID = 2731;
+	private static final int CLOG_HEADER_WIDGET = 40697876;  // (621 << 16) | 20
+	private static final int CLOG_ITEMS_WIDGET = 40697893;   // (621 << 16) | 37
 
-    @Inject
-    private Client client;
+	@Inject
+	private Client client;
 
-    @Inject
-    private KillClogConfig config;
+	@Inject
+	private KillClogConfig config;
 
-    @Inject
-    private ClientToolbar clientToolbar;
+	@Inject
+	private ClientToolbar clientToolbar;
 
-    @Inject
-    private KillClogPanel panel;
+	@Inject
+	private KillClogPanel panel;
 
-    @Inject
-    private KeyManager keyManager;
+	@Inject
+	private KeyManager keyManager;
 
-    @Inject
-    private Provider<MenuManager> menuManager;
+	@Inject
+	private Provider<MenuManager> menuManager;
 
-    @Inject
-    private PluginManager pluginManager;
+	@Inject
+	private PluginManager pluginManager;
 
-    @Inject
-    private NameAutocompleter nameAutocompleter;
+	@Inject
+	private NameAutocompleter nameAutocompleter;
 
-    @Inject
-    private LocalClogCache localClogCache;
+	@Inject
+	private LocalClogCache localClogCache;
 
-    private NavigationButton navButton;
-    private boolean pendingAutoLookup;
+	private NavigationButton navButton;
+	private boolean pendingAutoLookup;
 
-    private final HotkeyListener highlighterHotkey = new HotkeyListener(() -> config.highlighterKeybind())
-    {
-        @Override
-        public void hotkeyPressed()
-        {
-            SwingUtilities.invokeLater(() -> panel.toggleHighlighter());
-        }
-    };
+	private final HotkeyListener highlighterHotkey = new HotkeyListener(() -> config.highlighterKeybind())
+	{
+		@Override
+		public void hotkeyPressed()
+		{
+			SwingUtilities.invokeLater(() -> panel.toggleHighlighter());
+		}
+	};
 
-    @Provides
-    KillClogConfig provideConfig(ConfigManager configManager)
-    {
-        return configManager.getConfig(KillClogConfig.class);
-    }
+	@Provides
+	KillClogConfig provideConfig(ConfigManager configManager)
+	{
+		return configManager.getConfig(KillClogConfig.class);
+	}
 
-    @Override
-    protected void startUp()
-    {
-        navButton = NavigationButton.builder()
-            .tooltip("Kill Clog")
-            .icon(getIcon())
-            .priority(6)
-            .panel(panel)
-            .build();
+	@Override
+	protected void startUp()
+	{
+		navButton = NavigationButton.builder()
+			.tooltip("Kill Clog")
+			.icon(getIcon())
+			.priority(6)
+			.panel(panel)
+			.build();
 
-        clientToolbar.addNavigation(navButton);
-        panel.setPluginManager(pluginManager);
-        panel.setNameAutocompleter(nameAutocompleter);
-        keyManager.registerKeyListener(highlighterHotkey);
+		clientToolbar.addNavigation(navButton);
+		panel.setPluginManager(pluginManager);
+		panel.setNameAutocompleter(nameAutocompleter);
+		keyManager.registerKeyListener(highlighterHotkey);
 
-        if (config.playerMenuLookup())
-        {
-            menuManager.get().addPlayerMenuItem(MENU_OPTION);
-        }
+		if (config.playerMenuLookup())
+		{
+			menuManager.get().addPlayerMenuItem(MENU_OPTION);
+		}
 
-        log.debug("Kill Clog plugin started");
-    }
+		log.debug("Kill Clog plugin started");
+	}
 
-    @Override
-    protected void shutDown()
-    {
-        clientToolbar.removeNavigation(navButton);
-        keyManager.unregisterKeyListener(highlighterHotkey);
-        menuManager.get().removePlayerMenuItem(MENU_OPTION);
-        SwingUtilities.invokeLater(() -> panel.shutdown());
-        localClogCache.shutdown();
-        log.debug("Kill Clog plugin stopped");
-    }
+	@Override
+	protected void shutDown()
+	{
+		clientToolbar.removeNavigation(navButton);
+		keyManager.unregisterKeyListener(highlighterHotkey);
+		menuManager.get().removePlayerMenuItem(MENU_OPTION);
+		SwingUtilities.invokeLater(() -> panel.shutdown());
+		localClogCache.shutdown();
+		log.debug("Kill Clog plugin stopped");
+	}
 
-    @Subscribe
-    public void onGameStateChanged(GameStateChanged event)
-    {
-        if (event.getGameState() == GameState.LOGGED_IN)
-        {
-            // Always track logged-in player for local clog cache
-            Player local = client.getLocalPlayer();
-            if (local != null && local.getName() != null)
-            {
-                String name = local.getName();
-                localClogCache.setActivePlayer(name);
-                SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name));
-            }
+	@Subscribe
+	public void onGameStateChanged(GameStateChanged event)
+	{
+		if (event.getGameState() == GameState.LOGGED_IN)
+		{
+			// Always track logged-in player for local clog cache
+			Player local = client.getLocalPlayer();
+			if (local != null && local.getName() != null)
+			{
+				String name = local.getName();
+				localClogCache.setActivePlayer(name);
+				SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name));
+			}
 
-            if (config.autoLookupOnLogin())
-            {
-                pendingAutoLookup = true;
-            }
-        }
-    }
+			if (config.autoLookupOnLogin())
+			{
+				pendingAutoLookup = true;
+			}
+		}
+	}
 
-    @Subscribe
-    public void onGameTick(net.runelite.api.events.GameTick event)
-    {
-        if (pendingAutoLookup)
-        {
-            Player local = client.getLocalPlayer();
-            if (local != null && local.getName() != null)
-            {
-                pendingAutoLookup = false;
-                String name = local.getName();
-                localClogCache.setActivePlayer(name);
-                SwingUtilities.invokeLater(() ->
-                {
-                    panel.setLoggedInPlayer(name);
-                    panel.setPlayerName(name);
-                    panel.doLookup();
-                });
-            }
-        }
-    }
+	@Subscribe
+	public void onGameTick(net.runelite.api.events.GameTick event)
+	{
+		if (pendingAutoLookup)
+		{
+			Player local = client.getLocalPlayer();
+			if (local != null && local.getName() != null)
+			{
+				pendingAutoLookup = false;
+				String name = local.getName();
+				localClogCache.setActivePlayer(name);
+				SwingUtilities.invokeLater(() ->
+				{
+					panel.setLoggedInPlayer(name);
+					panel.setPlayerName(name);
+					panel.doLookup();
+				});
+			}
+		}
+	}
 
-    @Subscribe
-    public void onScriptPostFired(ScriptPostFired event)
-    {
-        if (event.getScriptId() != CLOG_SCRIPT_ID)
-        {
-            return;
-        }
+	@Subscribe
+	public void onScriptPostFired(ScriptPostFired event)
+	{
+		if (event.getScriptId() != CLOG_SCRIPT_ID)
+		{
+			return;
+		}
 
-        Player local = client.getLocalPlayer();
-        if (local == null || local.getName() == null)
-        {
-            return;
-        }
+		Player local = client.getLocalPlayer();
+		if (local == null || local.getName() == null)
+		{
+			return;
+		}
 
-        localClogCache.setActivePlayer(local.getName());
+		localClogCache.setActivePlayer(local.getName());
 
-        Widget header = client.getWidget(CLOG_HEADER_WIDGET);
-        Widget items = client.getWidget(CLOG_ITEMS_WIDGET);
-        if (header == null || items == null)
-        {
-            return;
-        }
+		Widget header = client.getWidget(CLOG_HEADER_WIDGET);
+		Widget items = client.getWidget(CLOG_ITEMS_WIDGET);
+		if (header == null || items == null)
+		{
+			return;
+		}
 
-        String headerText = header.getText();
-        if (headerText == null || headerText.isEmpty())
-        {
-            return;
-        }
+		String headerText = header.getText();
+		if (headerText == null || headerText.isEmpty())
+		{
+			return;
+		}
 
-        Widget[] children = items.getChildren();
-        if (children == null || children.length == 0)
-        {
-            return;
-        }
+		Widget[] children = items.getChildren();
+		if (children == null || children.length == 0)
+		{
+			return;
+		}
 
-        String categoryKey = headerText.toLowerCase()
-            .replaceAll("[^a-z0-9]+", "_")
-            .replaceAll("^_|_$", "");
+		String categoryKey = headerText.toLowerCase()
+			.replaceAll("[^a-z0-9]+", "_")
+			.replaceAll("^_|_$", "");
 
-        List<Integer> allItemIds = new ArrayList<>();
-        List<ClogResult.ClogItem> obtained = new ArrayList<>();
+		List<Integer> allItemIds = new ArrayList<>();
+		List<ClogResult.ClogItem> obtained = new ArrayList<>();
 
-        for (Widget child : children)
-        {
-            int itemId = child.getItemId();
-            if (itemId <= 0)
-            {
-                continue;
-            }
-            allItemIds.add(itemId);
-            // opacity 0 = obtained, opacity > 0 = not obtained
-            if (child.getOpacity() == 0)
-            {
-                int quantity = child.getItemQuantity();
-                obtained.add(new ClogResult.ClogItem(itemId, Math.max(quantity, 1)));
-            }
-        }
+		for (Widget child : children)
+		{
+			int itemId = child.getItemId();
+			if (itemId <= 0)
+			{
+				continue;
+			}
+			allItemIds.add(itemId);
+			// opacity 0 = obtained, opacity > 0 = not obtained
+			if (child.getOpacity() == 0)
+			{
+				int quantity = child.getItemQuantity();
+				obtained.add(new ClogResult.ClogItem(itemId, Math.max(quantity, 1)));
+			}
+		}
 
-        if (!allItemIds.isEmpty() && config.clogSource() != ClogSource.TEMPLE)
-        {
-            localClogCache.putCategory(categoryKey, allItemIds, obtained);
-        }
-    }
+		if (!allItemIds.isEmpty() && config.clogSource() != ClogSource.TEMPLE)
+		{
+			localClogCache.putCategory(categoryKey, allItemIds, obtained);
+		}
+	}
 
-    @Subscribe
-    public void onPluginChanged(PluginChanged event)
-    {
-        if (event.getPlugin().getClass().getSimpleName().equals("FourTwentyKcPlugin"))
-        {
-            SwingUtilities.invokeLater(() -> panel.setFourTwentyVisible(event.isLoaded()));
-        }
-    }
+	@Subscribe
+	public void onPluginChanged(PluginChanged event)
+	{
+		if (event.getPlugin().getClass().getSimpleName().equals("FourTwentyKcPlugin"))
+		{
+			SwingUtilities.invokeLater(() -> panel.setFourTwentyVisible(event.isLoaded()));
+		}
+	}
 
-    @Subscribe
-    public void onConfigChanged(ConfigChanged event)
-    {
-        if (!event.getGroup().equals("killclog"))
-        {
-            return;
-        }
+	@Subscribe
+	public void onConfigChanged(ConfigChanged event)
+	{
+		if (!event.getGroup().equals("killclog"))
+		{
+			return;
+		}
 
-        if (event.getKey().equals("playerMenuLookup"))
-        {
-            if (config.playerMenuLookup())
-            {
-                menuManager.get().addPlayerMenuItem(MENU_OPTION);
-            }
-            else
-            {
-                menuManager.get().removePlayerMenuItem(MENU_OPTION);
-            }
-        }
+		if (event.getKey().equals("playerMenuLookup"))
+		{
+			if (config.playerMenuLookup())
+			{
+				menuManager.get().addPlayerMenuItem(MENU_OPTION);
+			}
+			else
+			{
+				menuManager.get().removePlayerMenuItem(MENU_OPTION);
+			}
+		}
 
-        SwingUtilities.invokeLater(() -> panel.onConfigChanged(event.getKey()));
-    }
+		SwingUtilities.invokeLater(() -> panel.onConfigChanged(event.getKey()));
+	}
 
-    @Subscribe
-    public void onMenuOptionClicked(MenuOptionClicked event)
-    {
-        if (event.getMenuAction() == MenuAction.RUNELITE_PLAYER
-            && event.getMenuOption().equals(MENU_OPTION))
-        {
-            Player player = event.getMenuEntry().getPlayer();
-            if (player == null || player.getName() == null)
-            {
-                return;
-            }
+	@Subscribe
+	public void onMenuOptionClicked(MenuOptionClicked event)
+	{
+		if (event.getMenuAction() == MenuAction.RUNELITE_PLAYER
+			&& event.getMenuOption().equals(MENU_OPTION))
+		{
+			Player player = event.getMenuEntry().getPlayer();
+			if (player == null || player.getName() == null)
+			{
+				return;
+			}
 
-            String name = Text.toJagexName(player.getName());
-            SwingUtilities.invokeLater(() ->
-            {
-                panel.setPlayerName(name);
-                panel.doLookup();
-            });
-        }
-    }
+			String name = Text.toJagexName(player.getName());
+			SwingUtilities.invokeLater(() ->
+			{
+				panel.setPlayerName(name);
+				panel.doLookup();
+			});
+		}
+	}
 
-    private BufferedImage getIcon()
-    {
-        return ImageUtil.loadImageResource(getClass(), "icon.png");
-    }
+	private BufferedImage getIcon()
+	{
+		return ImageUtil.loadImageResource(getClass(), "icon.png");
+	}
 }

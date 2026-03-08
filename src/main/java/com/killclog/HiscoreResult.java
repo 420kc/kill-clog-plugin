@@ -8,86 +8,86 @@ import java.util.Map;
  */
 public class HiscoreResult
 {
-    private final AccountType accountType;
-    private final Map<String, Integer> bossKills;
-    private final Map<String, Integer> bossRanks;
-    private final Map<String, Integer> activityScores;
-    private final Map<String, Integer> activityRanks;
-    private final Map<String, Integer> skillLevels;
-    private final int totalLevel;
-    private final long totalXp;
-    private final int combatLevel;
-    private final int overallRank;
+	private final AccountType accountType;
+	private final Map<String, Integer> bossKills;
+	private final Map<String, Integer> bossRanks;
+	private final Map<String, Integer> activityScores;
+	private final Map<String, Integer> activityRanks;
+	private final Map<String, Integer> skillLevels;
+	private final int totalLevel;
+	private final long totalXp;
+	private final int combatLevel;
+	private final int overallRank;
 
-    public HiscoreResult(AccountType accountType, Map<String, Integer> bossKills,
-                         Map<String, Integer> bossRanks, Map<String, Integer> activityScores,
-                         Map<String, Integer> activityRanks, Map<String, Integer> skillLevels,
-                         int totalLevel, long totalXp, int combatLevel, int overallRank)
-    {
-        this.accountType = accountType;
-        this.bossKills = bossKills != null ? bossKills : Collections.emptyMap();
-        this.bossRanks = bossRanks != null ? bossRanks : Collections.emptyMap();
-        this.activityScores = activityScores != null ? activityScores : Collections.emptyMap();
-        this.activityRanks = activityRanks != null ? activityRanks : Collections.emptyMap();
-        this.skillLevels = skillLevels != null ? skillLevels : Collections.emptyMap();
-        this.totalLevel = totalLevel;
-        this.totalXp = totalXp;
-        this.combatLevel = combatLevel;
-        this.overallRank = overallRank;
-    }
+	public HiscoreResult(AccountType accountType, Map<String, Integer> bossKills,
+		Map<String, Integer> bossRanks, Map<String, Integer> activityScores,
+		Map<String, Integer> activityRanks, Map<String, Integer> skillLevels,
+		int totalLevel, long totalXp, int combatLevel, int overallRank)
+	{
+		this.accountType = accountType;
+		this.bossKills = bossKills != null ? bossKills : Collections.emptyMap();
+		this.bossRanks = bossRanks != null ? bossRanks : Collections.emptyMap();
+		this.activityScores = activityScores != null ? activityScores : Collections.emptyMap();
+		this.activityRanks = activityRanks != null ? activityRanks : Collections.emptyMap();
+		this.skillLevels = skillLevels != null ? skillLevels : Collections.emptyMap();
+		this.totalLevel = totalLevel;
+		this.totalXp = totalXp;
+		this.combatLevel = combatLevel;
+		this.overallRank = overallRank;
+	}
 
-    public AccountType getAccountType()
-    {
-        return accountType;
-    }
+	public AccountType getAccountType()
+	{
+		return accountType;
+	}
 
-    public Map<String, Integer> getBossKills()
-    {
-        return bossKills;
-    }
+	public Map<String, Integer> getBossKills()
+	{
+		return bossKills;
+	}
 
-    public int getTotalLevel()
-    {
-        return totalLevel;
-    }
+	public int getTotalLevel()
+	{
+		return totalLevel;
+	}
 
-    public long getTotalXp()
-    {
-        return totalXp;
-    }
+	public long getTotalXp()
+	{
+		return totalXp;
+	}
 
-    public int getCombatLevel()
-    {
-        return combatLevel;
-    }
+	public int getCombatLevel()
+	{
+		return combatLevel;
+	}
 
-    public int getKc(String bossName)
-    {
-        return bossKills.getOrDefault(bossName, -1);
-    }
+	public int getKc(String bossName)
+	{
+		return bossKills.getOrDefault(bossName, -1);
+	}
 
-    public int getRank(String bossName)
-    {
-        return bossRanks.getOrDefault(bossName, -1);
-    }
+	public int getRank(String bossName)
+	{
+		return bossRanks.getOrDefault(bossName, -1);
+	}
 
-    public int getActivityScore(String name)
-    {
-        return activityScores.getOrDefault(name, -1);
-    }
+	public int getActivityScore(String name)
+	{
+		return activityScores.getOrDefault(name, -1);
+	}
 
-    public int getActivityRank(String name)
-    {
-        return activityRanks.getOrDefault(name, -1);
-    }
+	public int getActivityRank(String name)
+	{
+		return activityRanks.getOrDefault(name, -1);
+	}
 
-    public int getOverallRank()
-    {
-        return overallRank;
-    }
+	public int getOverallRank()
+	{
+		return overallRank;
+	}
 
-    public int getSkillLevel(String name)
-    {
-        return skillLevels.getOrDefault(name, -1);
-    }
+	public int getSkillLevel(String name)
+	{
+		return skillLevels.getOrDefault(name, -1);
+	}
 }
