@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
@@ -103,9 +104,25 @@ public class HiscoreService
 
 	/**
 	 * Look up a player across all 4 hiscore endpoints in parallel.
-	 * Returns a CompletableFuture that resolves with the parsed result.
+	 * Retries once on transient failure (Jagex 502/503/rate-limit).
 	 */
 	public CompletableFuture<HiscoreResult> lookup(String playerName)
+	{
+		return attemptLookup(playerName).thenCompose(result ->
+		{
+			if (result != null)
+			{
+				return CompletableFuture.completedFuture(result);
+			}
+			CompletableFuture<HiscoreResult> retry = new CompletableFuture<>();
+			CompletableFuture.delayedExecutor(500, TimeUnit.MILLISECONDS)
+				.execute(() -> attemptLookup(playerName)
+					.whenComplete((r, ex) -> retry.complete(r)));
+			return retry;
+		});
+	}
+
+	private CompletableFuture<HiscoreResult> attemptLookup(String playerName)
 	{
 		String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
 
@@ -153,6 +170,15 @@ public class HiscoreService
 		{
 			return AccountType.IRONMAN;
 		}
+
+		// Fallback: regular endpoint failed but others succeeded
+		if (regXp <= 0)
+		{
+			if (uimBody != null && uimXp > 0) return AccountType.ULTIMATE_IRONMAN;
+			if (hcimBody != null && hcimXp > 0) return AccountType.HARDCORE_IRONMAN;
+			if (ironBody != null && ironXp > 0) return AccountType.IRONMAN;
+		}
+
 		return AccountType.REGULAR;
 	}
 

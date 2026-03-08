@@ -109,31 +109,31 @@ public class SummaryTooltip extends TitleTooltip
 		return rows * (PET_SIZE + PET_PAD) - PET_PAD;
 	}
 
+	private int getTextWidth(FontMetrics fm)
+	{
+		int tw = 0;
+		if (rsn != null)
+		{
+			int rsnW = fm.stringWidth(rsn);
+			if (badgeIcon != null) rsnW += BADGE_SIZE + BADGE_GAP;
+			tw = Math.max(tw, rsnW);
+		}
+		String rankLine = buildRankLine();
+		if (rankLine != null) tw = Math.max(tw, fm.stringWidth(rankLine));
+		if (prestige != null)
+		{
+			tw = Math.max(tw, fm.stringWidth("Prestige:"));
+			tw = Math.max(tw, fm.stringWidth(prestige));
+		}
+		return tw;
+	}
+
 	@Override
 	protected Dimension getContentSize(int availableWidth)
 	{
 		FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
 
-		// Stats text width
-		int textWidth = 0;
-		if (rsn != null)
-		{
-			int rsnWidth = fm.stringWidth(rsn);
-			if (badgeIcon != null) rsnWidth += BADGE_SIZE + BADGE_GAP;
-			textWidth = Math.max(textWidth, rsnWidth);
-		}
-		// Account type + rank line
-		String rankLine = buildRankLine();
-		if (rankLine != null)
-		{
-			textWidth = Math.max(textWidth, fm.stringWidth(rankLine));
-		}
-		if (prestige != null)
-		{
-			textWidth = Math.max(textWidth, fm.stringWidth("Prestige:"));
-			textWidth = Math.max(textWidth, fm.stringWidth(prestige));
-		}
-
+		int textWidth = getTextWidth(fm);
 		int statsHeight = LINE_HEIGHT * getStatsLines();
 
 		// Cape in right column beside stats
@@ -225,7 +225,9 @@ public class SummaryTooltip extends TitleTooltip
 		int sectionBottom = lineY - fm.getAscent();
 		if (capeIcon != null)
 		{
-			int capeX = w - inset - capeIcon.getWidth();
+			int textRight = inset + getTextWidth(fm);
+			int rightEdge = w - inset;
+			int capeX = textRight + (rightEdge - textRight - capeIcon.getWidth()) / 2;
 			int statsBlockHeight = LINE_HEIGHT * getStatsLines();
 			int capeY = startY + (statsBlockHeight - capeIcon.getHeight()) / 2;
 			g2.drawImage(capeIcon, capeX, capeY, null);
