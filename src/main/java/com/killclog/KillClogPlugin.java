@@ -221,7 +221,7 @@ public class KillClogPlugin extends Plugin
 			if (child.getOpacity() == 0)
 			{
 				int quantity = child.getItemQuantity();
-				obtained.add(new ClogResult.ClogItem(itemId, Math.max(quantity, 1)));
+				obtained.add(new ClogResult.ClogItem(itemId, Math.max(quantity, 1), null));
 			}
 		}
 

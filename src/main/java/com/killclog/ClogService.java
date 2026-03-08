@@ -248,7 +248,8 @@ public class ClogService
 						JsonObject obj = item.getAsJsonObject();
 						int id = obj.get("id").getAsInt();
 						int count = obj.has("count") ? obj.get("count").getAsInt() : 1;
-						itemList.add(new ClogResult.ClogItem(id, count));
+						String date = obj.has("date") ? obj.get("date").getAsString() : null;
+						itemList.add(new ClogResult.ClogItem(id, count, date));
 					}
 
 					result.put(category, itemList);

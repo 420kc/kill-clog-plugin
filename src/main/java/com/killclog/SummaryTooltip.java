@@ -154,11 +154,14 @@ public class SummaryTooltip extends TitleTooltip
 			? Math.max(statsHeight, capeIcon.getHeight())
 			: statsHeight;
 
-		if (hasPets())
+		if (totalPetCount > 0)
 		{
 			contentHeight += SECTION_GAP + 1 + SECTION_GAP
-				+ fm.getHeight() + PET_PAD
-				+ getPetGridHeight();
+				+ fm.getHeight() + PET_PAD;
+			if (hasPets())
+			{
+				contentHeight += getPetGridHeight();
+			}
 		}
 
 		return new Dimension(contentWidth, contentHeight);
@@ -229,7 +232,7 @@ public class SummaryTooltip extends TitleTooltip
 			sectionBottom = Math.max(sectionBottom, startY + Math.max(statsBlockHeight, capeIcon.getHeight()));
 		}
 
-		if (!hasPets()) return;
+		if (totalPetCount <= 0) return;
 
 		// Separator
 		int sepY = sectionBottom + SECTION_GAP;
@@ -240,10 +243,13 @@ public class SummaryTooltip extends TitleTooltip
 		FontMetrics sfm = g2.getFontMetrics();
 		int petsHeaderY = sepY + 1 + SECTION_GAP + sfm.getAscent();
 		String petsLabel = "Pets: ";
+		int obtainedCount = obtainedPetList != null ? obtainedPetList.size() : 0;
 		g2.setColor(OSRS_ORANGE);
 		g2.drawString(petsLabel, inset, petsHeaderY);
-		g2.setColor(completionColor(obtainedPetList.size(), totalPetCount));
-		g2.drawString(String.valueOf(obtainedPetList.size()), inset + sfm.stringWidth(petsLabel), petsHeaderY);
+		g2.setColor(completionColor(obtainedCount, totalPetCount));
+		g2.drawString(String.valueOf(obtainedCount), inset + sfm.stringWidth(petsLabel), petsHeaderY);
+
+		if (!hasPets()) return;
 
 		FontMetrics bfm = g2.getFontMetrics(FontManager.getRunescapeBoldFont());
 

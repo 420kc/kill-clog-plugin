@@ -1,28 +1,45 @@
 package com.killclog;
 
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.util.List;
 import java.util.Map;
+import javax.swing.SwingUtilities;
+import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
+import net.runelite.client.util.AsyncBufferedImage;
+import net.runelite.client.util.ImageUtil;
 
 /**
  * Clog summary tooltip on the info bar clog cell.
- * Title "Clog Summary", obtained subtitle, tier progress lines with icons.
+ * Title "Clog Summary", obtained subtitle, tier progress lines with icons,
+ * and recent obtained items at the bottom.
  */
 public class ClogSummaryTooltip extends TitleTooltip
 {
 	private static final int ICON_SIZE = 13;
 	private static final int ICON_GAP = 3;
+	private static final int SEPARATOR_PAD = 2;
+	private static final int SUBHEADER_HEIGHT = 16;
+	private static final int RECENT_SIZE = 24;
+	private static final int RECENT_PAD = 6;
+	private static final Color STALE_RED = new Color(255, 60, 60);
+
 	private String tierRange;
 	private String tierName;
 	private String progressText;
 	private String nextTierName;
-	private String syncText;
+	private String syncDate;
+	private boolean syncStale;
 
 	private Map<String, BufferedImage> tierIcons;
 	private String notice;
+
+	private BufferedImage[] recentSprites;
+	private int recentCount;
 
 	public void setTierData(int obtained, int totalSlots, Map<String, BufferedImage> tierIcons)
 	{
@@ -81,15 +98,41 @@ public class ClogSummaryTooltip extends TitleTooltip
 		nextTierName = nextTier;
 	}
 
-	public void setSyncText(String syncText)
+	public void setSyncData(String dateText, boolean stale)
 	{
-		this.syncText = syncText;
+		this.syncDate = dateText;
+		this.syncStale = stale;
 	}
 
 	public void setNotice(String notice)
 	{
 		this.notice = notice;
 		setTitle("Clog Summary");
+	}
+
+	public void setRecentItems(List<ClogResult.ClogItem> recentItems, ItemManager itemManager)
+	{
+		recentCount = recentItems.size();
+		if (recentCount == 0)
+		{
+			return;
+		}
+
+		recentSprites = new BufferedImage[recentCount];
+		for (int i = 0; i < recentCount; i++)
+		{
+			BufferedImage img = itemManager.getImage(recentItems.get(i).getId(), 1, false);
+			recentSprites[i] = ImageUtil.resizeImage(img, RECENT_SIZE, RECENT_SIZE);
+			if (img instanceof AsyncBufferedImage)
+			{
+				final int idx = i;
+				((AsyncBufferedImage) img).onLoaded(() ->
+				{
+					recentSprites[idx] = ImageUtil.resizeImage(img, RECENT_SIZE, RECENT_SIZE);
+					SwingUtilities.invokeLater(this::repaint);
+				});
+			}
+		}
 	}
 
 	@Override
@@ -113,17 +156,33 @@ public class ClogSummaryTooltip extends TitleTooltip
 		{
 			textWidth = Math.max(textWidth, fm.stringWidth(progressText) + iconWidth);
 		}
-		if (syncText != null)
+		String syncLabel = "Last update: ";
+		if (syncDate != null)
 		{
-			textWidth = Math.max(textWidth, fm.stringWidth(syncText));
+			textWidth = Math.max(textWidth, fm.stringWidth(syncLabel + syncDate));
 		}
 
 		int lines = 0;
 		if (tierRange != null) lines++;
 		if (progressText != null) lines++;
-		if (syncText != null) lines++;
+		if (syncDate != null) lines++;
 
-		return new Dimension(textWidth, LINE_HEIGHT * lines);
+		int contentHeight = LINE_HEIGHT * lines;
+
+		// Recent section
+		if (recentCount > 0)
+		{
+			FontMetrics bfm = getFontMetrics(FontManager.getRunescapeBoldFont());
+			int separatorHeight = SEPARATOR_PAD + 1 + SEPARATOR_PAD;
+			contentHeight += separatorHeight + SUBHEADER_HEIGHT + RECENT_SIZE;
+
+			int spriteRowWidth = recentCount * RECENT_SIZE
+				+ (recentCount - 1) * RECENT_PAD;
+			textWidth = Math.max(textWidth, spriteRowWidth);
+			textWidth = Math.max(textWidth, bfm.stringWidth("Recent"));
+		}
+
+		return new Dimension(textWidth, contentHeight);
 	}
 
 	@Override
@@ -156,16 +215,50 @@ public class ClogSummaryTooltip extends TitleTooltip
 			y += LINE_HEIGHT;
 		}
 
-		// Sync line
-		if (syncText != null)
+		// Sync line — label orange, date green or red
+		if (syncDate != null)
 		{
+			String label = "Last update: ";
 			g2.setColor(OSRS_ORANGE);
-			g2.drawString(syncText, inset, y + fm.getAscent());
+			g2.drawString(label, inset, y + fm.getAscent());
+			g2.setColor(syncStale ? STALE_RED : CLOG_GREEN);
+			g2.drawString(syncDate, inset + fm.stringWidth(label), y + fm.getAscent());
+			y += LINE_HEIGHT;
+		}
+
+		// Recent items section
+		if (recentCount > 0 && recentSprites != null)
+		{
+			// Separator
+			y += SEPARATOR_PAD;
+			g2.setColor(SEPARATOR_COLOR);
+			g2.drawLine(inset, y, w - inset - 1, y);
+			y += 1 + SEPARATOR_PAD;
+
+			// "Recent" subheader — bold
+			g2.setFont(FontManager.getRunescapeBoldFont());
+			FontMetrics bfm = g2.getFontMetrics();
+			g2.setColor(OSRS_ORANGE);
+			g2.drawString("Recent", inset, y + bfm.getAscent());
+			y += SUBHEADER_HEIGHT;
+
+			// Sprites — horizontally centered
+			int spriteRowWidth = recentCount * RECENT_SIZE
+				+ (recentCount - 1) * RECENT_PAD;
+			int spriteStartX = inset + (w - 2 * inset - spriteRowWidth) / 2;
+			for (int i = 0; i < recentCount; i++)
+			{
+				int sx = spriteStartX + i * (RECENT_SIZE + RECENT_PAD);
+				if (recentSprites[i] != null)
+				{
+					g2.drawImage(recentSprites[i], sx, y, null);
+				}
+			}
 		}
 	}
 
 	private void paintTierLine(Graphics2D g2, FontMetrics fm, int x, int y,
-								String text, String tier)
+		String text, String tier)
 	{
 		int textY = y + fm.getAscent();
 		g2.setColor(OSRS_ORANGE);

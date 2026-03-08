@@ -332,8 +332,10 @@ public class KillClogPanel extends PluginPanel
 					icons.put(entry.getKey(), ClogHelper.iconToImage(entry.getValue()));
 				}
 				tip.setTierData(totals[0], totals[1], icons);
-				String sync = syncLine(clogLastChanged);
-				if (sync != null) tip.setSyncText(sync);
+				boolean stale = isSyncStale(clogLastChanged, 90);
+				String sync = syncLine(clogLastChanged, stale);
+				if (sync != null) tip.setSyncData(sync, stale);
+				tip.setRecentItems(getRecentItems(4), itemManager);
 			}
 			else
 			{
@@ -867,6 +869,10 @@ public class KillClogPanel extends PluginPanel
 					getClogItemCount("tombs_of_amascut", 27277),
 					itemManager
 				);
+				if (hiscoreResult != null)
+				{
+					tip.setRaids(hiscoreResult, clogResult);
+				}
 				JPanel parentCell = (JPanel) this.getParent();
 				keepTooltipOnHover(tip, parentCell);
 				return tip;
@@ -915,7 +921,22 @@ public class KillClogPanel extends PluginPanel
 		statsSep.setAlignmentX(0f);
 		grid.add(statsSep);
 
-		// Row 1: [Clue All] [3rd Age] [Gilded]
+		// Activities row: Colo | PvP Summary | GOTR
+		JPanel activityRow = new JPanel(new GridLayout(1, 3));
+		activityRow.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		activityRow.setAlignmentX(0f);
+		activityRow.add(makeActivityCell(HiscoreSkill.COLOSSEUM_GLORY));
+		activityRow.add(makePvpSummaryCell());
+		activityRow.add(makeActivityCell(HiscoreSkill.RIFTS_CLOSED));
+		grid.add(activityRow);
+
+		JPanel actSep = new JPanel();
+		actSep.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		actSep.setPreferredSize(new Dimension(0, 7));
+		actSep.setAlignmentX(0f);
+		grid.add(actSep);
+
+		// Clue row 1: [Clue All] [3rd Age] [Gilded]
 		JPanel row1 = new JPanel(new GridLayout(1, 3));
 		row1.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		row1.setAlignmentX(0f);
@@ -924,7 +945,7 @@ public class KillClogPanel extends PluginPanel
 		row1.add(makeClueRareCell("Gilded", GILDED_ITEM_ID, CLOG_GILDED, false));
 		grid.add(row1);
 
-		// Row 2: Custom rare cells (casket icons)
+		// Clue row 2: Custom rare cells (casket icons)
 		JPanel rareRow = new JPanel(new GridLayout(1, 3));
 		rareRow.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		rareRow.setAlignmentX(0f);
@@ -933,7 +954,7 @@ public class KillClogPanel extends PluginPanel
 		rareRow.add(makeCustomRareCell("Master (Rare)", 19836, RARE_MASTER, MASTER_RARE_ITEMS));
 		grid.add(rareRow);
 
-		// Rows 3-4: Clue tiers
+		// Clue rows 3-4: Clue tiers
 		JPanel clueRow1 = new JPanel(new GridLayout(1, 3));
 		clueRow1.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		clueRow1.setAlignmentX(0f);
@@ -949,21 +970,6 @@ public class KillClogPanel extends PluginPanel
 		clueRow2.add(makeClueTierCell(CLUE_TIERS[4], CLUE_TIER_ITEM_IDS[4], false));
 		clueRow2.add(makeClueTierCell(CLUE_TIERS[5], CLUE_TIER_ITEM_IDS[5], false));
 		grid.add(clueRow2);
-
-		JPanel clueSep = new JPanel();
-		clueSep.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		clueSep.setPreferredSize(new Dimension(0, 7));
-		clueSep.setAlignmentX(0f);
-		grid.add(clueSep);
-
-		// Row 5: Colo | PvP Summary | GOTR
-		JPanel activityRow = new JPanel(new GridLayout(1, 3));
-		activityRow.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		activityRow.setAlignmentX(0f);
-		activityRow.add(makeActivityCell(HiscoreSkill.COLOSSEUM_GLORY));
-		activityRow.add(makePvpSummaryCell());
-		activityRow.add(makeActivityCell(HiscoreSkill.RIFTS_CLOSED));
-		grid.add(activityRow);
 
 		return grid;
 	}
@@ -2176,18 +2182,34 @@ public class KillClogPanel extends PluginPanel
 	// Clog tier logic
 	// -------------------------------------------------------------------------
 
-	private String syncLine(String lastChanged)
+	private String syncLine(String lastChanged, boolean stale)
 	{
 		if (lastChanged == null || lastChanged.isEmpty()) return null;
 		try
 		{
 			LocalDateTime syncTime = LocalDateTime.parse(lastChanged,
 				DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-			return "Last update: " + syncTime.format(DateTimeFormatter.ofPattern("MMM d, yyyy"));
+			String pattern = stale ? "MMM d ''yy" : "MMM d";
+			return syncTime.format(DateTimeFormatter.ofPattern(pattern));
 		}
 		catch (DateTimeParseException e)
 		{
 			return null;
+		}
+	}
+
+	private boolean isSyncStale(String lastChanged, int days)
+	{
+		if (lastChanged == null || lastChanged.isEmpty()) return true;
+		try
+		{
+			LocalDateTime syncTime = LocalDateTime.parse(lastChanged,
+				DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+			return syncTime.isBefore(LocalDateTime.now().minusDays(days));
+		}
+		catch (DateTimeParseException e)
+		{
+			return true;
 		}
 	}
 
@@ -2267,6 +2289,36 @@ public class KillClogPanel extends PluginPanel
 			if (data != null && data.totalItems > 0) count++;
 		}
 		return count;
+	}
+
+	private List<ClogResult.ClogItem> getRecentItems(int limit)
+	{
+		List<ClogResult.ClogItem> all = new ArrayList<>();
+		if (clogResult == null)
+		{
+			return all;
+		}
+		for (List<ClogResult.ClogItem> items : clogResult.getObtainedItems().values())
+		{
+			for (ClogResult.ClogItem item : items)
+			{
+				if (item.getDate() != null)
+				{
+					all.add(item);
+				}
+			}
+		}
+		all.sort((a, b) -> b.getDate().compareTo(a.getDate()));
+		List<ClogResult.ClogItem> unique = new ArrayList<>();
+		Set<Integer> seen = new HashSet<>();
+		for (ClogResult.ClogItem item : all)
+		{
+			if (seen.add(item.getId()) && unique.size() < limit)
+			{
+				unique.add(item);
+			}
+		}
+		return unique;
 	}
 
 	private int getClogItemCount(String category, int itemId)

@@ -73,11 +73,13 @@ public class ClogResult
 	{
 		private final int id;
 		private final int count;
+		private final String date;
 
-		public ClogItem(int id, int count)
+		public ClogItem(int id, int count, String date)
 		{
 			this.id = id;
 			this.count = count;
+			this.date = date;
 		}
 
 		public int getId()
@@ -88,6 +90,11 @@ public class ClogResult
 		public int getCount()
 		{
 			return count;
+		}
+
+		public String getDate()
+		{
+			return date;
 		}
 	}
 }
