@@ -127,10 +127,11 @@ public class ClogSummaryTooltip extends TitleTooltip
 			{
 				final int idx = i;
 				((AsyncBufferedImage) img).onLoaded(() ->
-				{
-					recentSprites[idx] = ImageUtil.resizeImage(img, RECENT_SIZE, RECENT_SIZE);
-					SwingUtilities.invokeLater(this::repaint);
-				});
+					SwingUtilities.invokeLater(() ->
+					{
+						recentSprites[idx] = ImageUtil.resizeImage(img, RECENT_SIZE, RECENT_SIZE);
+						repaint();
+					}));
 			}
 		}
 	}

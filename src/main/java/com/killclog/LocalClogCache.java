@@ -101,8 +101,8 @@ public class LocalClogCache
 		{
 			PlayerClogData d = new PlayerClogData();
 			d.playerName = activePlayer;
-			d.categories = new HashMap<>();
-			d.obtained = new HashMap<>();
+			d.categories = new ConcurrentHashMap<>();
+			d.obtained = new ConcurrentHashMap<>();
 			return d;
 		});
 
@@ -139,8 +139,8 @@ public class LocalClogCache
 		PlayerClogData data = new PlayerClogData();
 		data.playerName = name;
 		data.lastUpdated = Instant.now().toString();
-		data.obtained = new HashMap<>();
-		data.categories = new HashMap<>();
+		data.obtained = new ConcurrentHashMap<>();
+		data.categories = new ConcurrentHashMap<>();
 
 		for (Map.Entry<String, List<ClogResult.ClogItem>> entry
 			: result.getObtainedItems().entrySet())

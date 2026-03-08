@@ -81,10 +81,11 @@ public class SummaryTooltip extends TitleTooltip
 			{
 				final int idx = i;
 				((AsyncBufferedImage) img).onLoaded(() ->
-				{
-					petSprites[idx] = ImageUtil.resizeImage(img, PET_SIZE, PET_SIZE);
-					SwingUtilities.invokeLater(this::repaint);
-				});
+					SwingUtilities.invokeLater(() ->
+					{
+						petSprites[idx] = ImageUtil.resizeImage(img, PET_SIZE, PET_SIZE);
+						repaint();
+					}));
 			}
 		}
 	}

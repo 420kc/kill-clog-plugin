@@ -55,6 +55,7 @@ final class ClogHelper
 
 	static int[] clogCounts(String category, ClogResult clogResult)
 	{
+		if (clogResult == null) return null;
 		List<Integer> items = clogResult.getCategoryItems().get(category);
 		if (items == null || items.isEmpty()) return null;
 		Set<Integer> obtained = getObtainedIds(category, clogResult);

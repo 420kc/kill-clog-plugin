@@ -88,10 +88,11 @@ public class PvmSummaryTooltip extends TitleTooltip
 			{
 				final int idx = i;
 				((AsyncBufferedImage) img).onLoaded(() ->
-				{
-					weaponSprites[idx] = ImageUtil.resizeImage(img, WEAPON_SIZE, WEAPON_SIZE);
-					SwingUtilities.invokeLater(this::repaint);
-				});
+					SwingUtilities.invokeLater(() ->
+					{
+						weaponSprites[idx] = ImageUtil.resizeImage(img, WEAPON_SIZE, WEAPON_SIZE);
+						repaint();
+					}));
 			}
 		}
 	}
