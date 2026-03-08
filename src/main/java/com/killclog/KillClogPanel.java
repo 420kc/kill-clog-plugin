@@ -1482,6 +1482,7 @@ public class KillClogPanel extends PluginPanel
 	// -------------------------------------------------------------------------
 
 	private volatile int lookupVersion = 0;
+	private volatile boolean lookupInFlight = false;
 
 	/**
 	 * Single point of control for the info bar when no result data is available.
@@ -1496,12 +1497,16 @@ public class KillClogPanel extends PluginPanel
 	public void doLookup()
 	{
 		String player = searchBar.getText().trim();
-		if (player.isEmpty())
+		if (player.isEmpty() || lookupInFlight)
 		{
-			setSearchStatus("Enter RSN", TEXT_DIM);
+			if (!lookupInFlight)
+			{
+				setSearchStatus("Enter RSN", TEXT_DIM);
+			}
 			return;
 		}
 
+		lookupInFlight = true;
 		final int thisLookup = ++lookupVersion;
 		int searchIdx = ThreadLocalRandom.current().nextInt(SEARCH_MSGS.length);
 		setSearchStatus(String.format(SEARCH_MSGS[searchIdx], player), TEXT_DIM);
@@ -1514,6 +1519,7 @@ public class KillClogPanel extends PluginPanel
 			SwingUtilities.invokeLater(() ->
 			{
 				if (thisLookup != lookupVersion) return;
+				lookupInFlight = false;
 				searchBar.setIcon(IconTextField.Icon.SEARCH);
 
 				if (result == null)
@@ -1571,6 +1577,7 @@ public class KillClogPanel extends PluginPanel
 			SwingUtilities.invokeLater(() ->
 			{
 				if (thisLookup != lookupVersion) return;
+				lookupInFlight = false;
 				searchBar.setIcon(IconTextField.Icon.SEARCH);
 				searchBar.setText("");
 				setSearchStatus("Lookup failed", TEXT_DIM);
