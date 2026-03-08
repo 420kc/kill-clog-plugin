@@ -151,7 +151,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 		// Megarares section: bold subheader + sprite row
 		int spriteRowWidth = 3 * WEAPON_SIZE + 2 * WEAPON_PAD;
-		int megarareHeight = SUBHEADER_HEIGHT + WEAPON_SIZE;
+		int megarareHeight = SUBHEADER_HEIGHT + WEAPON_PAD + WEAPON_SIZE;
 
 		// Width
 		int textWidth = 0;
@@ -260,7 +260,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		bfm = g2.getFontMetrics();
 		g2.setColor(OSRS_ORANGE);
 		g2.drawString("Mega Rares", inset, y + bfm.getAscent());
-		y += SUBHEADER_HEIGHT;
+		y += SUBHEADER_HEIGHT + WEAPON_PAD;
 
 		// 3 weapon sprites — horizontally centered
 		g2.setFont(FontManager.getRunescapeSmallFont());

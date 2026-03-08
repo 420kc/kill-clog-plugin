@@ -156,7 +156,7 @@ public class HiscoreService
 		return AccountType.REGULAR;
 	}
 
-	private long extractTotalXp(String body)
+	/* package */ long extractTotalXp(String body)
 	{
 		if (body == null || body.isEmpty())
 		{
@@ -189,7 +189,7 @@ public class HiscoreService
 		}
 	}
 
-	private HiscoreResult parseHiscoreBody(String body, AccountType type)
+	/* package */ HiscoreResult parseHiscoreBody(String body, AccountType type)
 	{
 		String[] lines = body.trim().split("\n");
 		Map<String, Integer> bossKills = new LinkedHashMap<>();
@@ -283,7 +283,7 @@ public class HiscoreService
 	 * Calculate combat level from hiscore CSV skill lines.
 	 * Skills: 1=Attack, 2=Defence, 3=Strength, 4=Hitpoints, 5=Ranged, 6=Prayer, 7=Magic
 	 */
-	private int calcCmbLvl(String[] lines)
+	/* package */ int calcCmbLvl(String[] lines)
 	{
 		try
 		{

@@ -1316,8 +1316,8 @@ public class KillClogPanel extends PluginPanel
 			{
 				if (sprite != null)
 				{
-					pvpSummaryCell.setIcon(new ImageIcon(ImageUtil.resizeImage(
-						ImageUtil.resizeCanvas(sprite, 25, 25), 20, 20)));
+					pvpSummaryCell.setIcon(new ImageIcon(ImageUtil.resizeCanvas(
+						ImageUtil.resizeImage(sprite, 16, 16), 20, 20)));
 				}
 			}));
 
