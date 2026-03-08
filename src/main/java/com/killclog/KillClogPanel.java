@@ -1687,7 +1687,11 @@ public class KillClogPanel extends PluginPanel
 						: " ");
 					if (isSelf)
 					{
-						clogInfoLabel.setText(ClogHelper.pad("?"));
+						BufferedImage icon = ImageUtil.loadImageResource(
+							KillClogPlugin.class, "icon.png");
+						clogInfoLabel.setIcon(new ImageIcon(
+							ImageUtil.resizeImage(icon, 15, 15)));
+						clogInfoLabel.setText(ClogHelper.pad("Sync"));
 						clogInfoLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 						clogInfoLabel.setToolTipText(" ");
 					}
