@@ -16,19 +16,20 @@ import javax.swing.SwingUtilities;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.AsyncBufferedImage;
+import net.runelite.client.util.ImageUtil;
 
 /**
  * Sprite grid tooltip for collection log data.
  * Header (title, obtained, rank) via TitleTooltip, then auto-wrapping item grid.
  *
- * <p>Standard 5-column min: {@code new ImgTooltip()}
- * <p>Wide 10-column min for large clue tiers: {@code new ImgTooltip(10)}
+ * <p>Standard 32px sprites: {@code new ImgTooltip()}
+ * <p>Compact 15px sprites for dense grids: {@code new ImgTooltip(5, 15)}
  */
 public class ImgTooltip extends TitleTooltip
 {
     private static final int DEFAULT_COLS = 5;
 
-    private static final int SPRITE_SIZE = 32;
+    private static final int DEFAULT_SPRITE_SIZE = 32;
     private static final int PADDING = 4;
 
     private static final Color QTY_COLOR = new Color(255, 255, 0);
@@ -37,6 +38,7 @@ public class ImgTooltip extends TitleTooltip
     private static final Color NOTICE_COLOR = new Color(160, 160, 160);
 
     private final int gridCols;
+    private final int spriteSize;
     private int effectiveCols;
     private int hoveredItemIndex = -1;
     private String notice = "No TempleOSRS Data";
@@ -47,16 +49,23 @@ public class ImgTooltip extends TitleTooltip
     private Map<Integer, Integer> obtainedCounts;
     private BufferedImage[] sprites;
 
-    /** Standard 5-column max tooltip. */
+    /** Standard 5-column, 32px sprite tooltip. */
     public ImgTooltip()
     {
-        this(DEFAULT_COLS);
+        this(DEFAULT_COLS, DEFAULT_SPRITE_SIZE);
     }
 
-    /** Configurable min column count — use {@code 10} for wide clue-tier grids. */
+    /** Configurable min column count. */
     public ImgTooltip(int gridCols)
     {
+        this(gridCols, DEFAULT_SPRITE_SIZE);
+    }
+
+    /** Compact mode — smaller sprites for dense grids like clue tiers. */
+    public ImgTooltip(int gridCols, int spriteSize)
+    {
         this.gridCols = gridCols;
+        this.spriteSize = spriteSize;
 
         addMouseMotionListener(new MouseMotionAdapter()
         {
@@ -111,12 +120,17 @@ public class ImgTooltip extends TitleTooltip
             int count = obtainedIds != null && obtainedIds.contains(itemId)
                 ? obtainedCounts.getOrDefault(itemId, 1) : 1;
             BufferedImage img = itemManager.getImage(itemId, count, false);
-            sprites[i] = img;
+            final int idx = i;
             if (img instanceof AsyncBufferedImage)
             {
                 ((AsyncBufferedImage) img).onLoaded(() ->
-                    SwingUtilities.invokeLater(this::repaint));
+                    SwingUtilities.invokeLater(() ->
+                    {
+                        sprites[idx] = resizeSprite(img);
+                        repaint();
+                    }));
             }
+            sprites[i] = resizeSprite(img);
         }
     }
 
@@ -125,12 +139,23 @@ public class ImgTooltip extends TitleTooltip
         this.notice = msg;
     }
 
+    private BufferedImage resizeSprite(BufferedImage img)
+    {
+        if (img == null || spriteSize >= DEFAULT_SPRITE_SIZE)
+        {
+            return img;
+        }
+        return ImageUtil.resizeImage(
+            ImageUtil.resizeCanvas(img, DEFAULT_SPRITE_SIZE, DEFAULT_SPRITE_SIZE),
+            spriteSize, spriteSize);
+    }
+
     @Override
     protected Dimension getContentSize(int availableWidth)
     {
         boolean hasItems = allItemIds != null && !allItemIds.isEmpty();
         int itemCount = hasItems ? allItemIds.size() : Math.max(totalItems, 1);
-        int cellSize = SPRITE_SIZE + PADDING;
+        int cellSize = spriteSize + PADDING;
 
         // Native parity: at least gridCols wide, expand to fill header-driven width
         effectiveCols = Math.max(gridCols, (availableWidth + PADDING) / cellSize);
@@ -171,7 +196,7 @@ public class ImgTooltip extends TitleTooltip
             int itemCount = Math.max(totalItems, 1);
             int cols = Math.min(effectiveCols, Math.max(itemCount, 1));
             int rows = (itemCount + cols - 1) / cols;
-            int cellSize = SPRITE_SIZE + PADDING;
+            int cellSize = spriteSize + PADDING;
             int gridHeight = rows * cellSize - PADDING;
 
             int nx = inset + (w - inset * 2 - nfm.stringWidth(notice)) / 2;
@@ -184,18 +209,21 @@ public class ImgTooltip extends TitleTooltip
         if (sprites != null)
         {
             g2.setFont(FontManager.getRunescapeSmallFont());
+            int cellSize = spriteSize + PADDING;
+            int gridWidth = effectiveCols * cellSize - PADDING;
+            int gridOffsetX = inset + (w - 2 * inset - gridWidth) / 2;
 
             for (int i = 0; i < allItemIds.size(); i++)
             {
                 int col = i % effectiveCols;
                 int row = i / effectiveCols;
-                int x = inset + col * (SPRITE_SIZE + PADDING);
-                int y = startY + row * (SPRITE_SIZE + PADDING);
+                int x = gridOffsetX + col * cellSize;
+                int y = startY + row * cellSize;
 
                 if (i == hoveredItemIndex)
                 {
                     g2.setColor(ITEM_HOVER_BG);
-                    g2.fillRect(x - 1, y - 1, SPRITE_SIZE + 2, SPRITE_SIZE + 2);
+                    g2.fillRect(x - 1, y - 1, spriteSize + 2, spriteSize + 2);
                 }
 
                 int itemId = allItemIds.get(i);
@@ -209,14 +237,14 @@ public class ImgTooltip extends TitleTooltip
                         ? AlphaComposite.SrcOver
                         : AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
 
-                    int sx = x + (SPRITE_SIZE - sprite.getWidth()) / 2;
-                    int sy = y + (SPRITE_SIZE - sprite.getHeight()) / 2;
+                    int sx = x + (spriteSize - sprite.getWidth()) / 2;
+                    int sy = y + (spriteSize - sprite.getHeight()) / 2;
                     g2.drawImage(sprite, sx, sy, null);
                     g2.setComposite(AlphaComposite.SrcOver);
                 }
 
-                // Quantity overlay — top-left, matching native OSRS clog
-                if (obtained && count > 1)
+                // Quantity overlay — skip on compact sprites where text is unreadable
+                if (obtained && count > 1 && spriteSize >= DEFAULT_SPRITE_SIZE)
                 {
                     FontMetrics qfm = g2.getFontMetrics();
                     String qtyText = String.valueOf(count);
@@ -237,16 +265,19 @@ public class ImgTooltip extends TitleTooltip
         }
 
         int inset = getInset();
+        int w = getWidth();
         int gridStartY = inset + getHeaderZoneHeight();
+        int cellSize = spriteSize + PADDING;
+        int gridWidth = effectiveCols * cellSize - PADDING;
+        int gridOffsetX = inset + (w - 2 * inset - gridWidth) / 2;
 
-        int relX = mx - inset;
+        int relX = mx - gridOffsetX;
         int relY = my - gridStartY;
         if (relX < 0 || relY < 0)
         {
             return -1;
         }
 
-        int cellSize = SPRITE_SIZE + PADDING;
         int col = relX / cellSize;
         int row = relY / cellSize;
         if (col >= effectiveCols)

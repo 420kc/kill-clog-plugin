@@ -359,6 +359,7 @@ public class KillClogPanel extends PluginPanel
     private final Map<HiscoreSkill, ImageIcon> dimmedIcons = new LinkedHashMap<>();
     private JLabel pvpSummaryCell;
     private final BufferedImage[] pvpActivityIcons = new BufferedImage[5];
+    private final BufferedImage[] clueIcons = new BufferedImage[8];
     private static final HiscoreSkill[] PVP_ACTIVITIES = {
         HiscoreSkill.LAST_MAN_STANDING,
         HiscoreSkill.SOUL_WARS_ZEAL,
@@ -720,7 +721,33 @@ public class KillClogPanel extends PluginPanel
                 loadItemIcon(itemId, 18, 18, icon ->
                     clogTierIconsLarge.put(tier, icon));
             }
+
+            // Clue summary tooltip icons: 0=All, 1-6=tier scrolls, 7=Mimic
+            // All uses the same sprite as the cell; tiers use clue scroll items
+            int[] clueIconItems = {0, 23182, 2677, 2801, 2722, 12073, 19835, 23184};
+            for (int i = 1; i < clueIconItems.length; i++)
+            {
+                final int idx = i;
+                loadItemImage(clueIconItems[i], img ->
+                    clueIcons[idx] = ImageUtil.resizeImage(
+                        ImageUtil.resizeCanvas(img, 25, 25), 13, 13));
+            }
         });
+
+        // Clue All icon via spriteManager (game sprite, not item)
+        int allSpriteId = HiscoreSkill.CLUE_SCROLL_ALL.getSpriteId();
+        if (allSpriteId != -1)
+        {
+            spriteManager.getSpriteAsync(allSpriteId, 0, sprite ->
+                SwingUtilities.invokeLater(() ->
+                {
+                    if (sprite != null)
+                    {
+                        clueIcons[0] = ImageUtil.resizeImage(
+                            ImageUtil.resizeCanvas(sprite, 25, 25), 13, 13);
+                    }
+                }));
+        }
     }
 
     private void loadItemIcon(int itemId, int w, int h, java.util.function.Consumer<ImageIcon> setter)
@@ -1140,20 +1167,29 @@ public class KillClogPanel extends PluginPanel
      *
      * @param owner     the label whose parent cell drives hover tint
      * @param data      tooltip data, or null for notice-only display
-     * @param gridCols  min columns — 5 for standard, 10 for wide clue grids
+     * @param gridCols  min columns for the sprite grid
      * @param name      display name shown as title when data is null
      */
     private JToolTip makeSpriteTooltip(JLabel owner, TooltipData data, int gridCols, String name)
     {
+        return makeSpriteTooltip(owner, data, gridCols, name, false);
+    }
+
+    private JToolTip makeSpriteTooltip(JLabel owner, TooltipData data, int gridCols,
+                                        String name, boolean compact)
+    {
         JPanel parentCell = (JPanel) owner.getParent();
-        ImgTooltip tip = new ImgTooltip(gridCols);
+        ImgTooltip tip = compact ? new ImgTooltip(gridCols, 15) : new ImgTooltip(gridCols);
         tip.setComponent(owner);
 
         if (data != null)
         {
             tip.setTitle(data.name);
             tip.setObtained(data.obtainedCount, data.totalItems);
-            tip.setRank(data.rank);
+            if (data.rank > 0)
+            {
+                tip.setRank(data.rank);
+            }
             tip.setItems(data.totalItems, data.allItemIds, data.obtainedIds,
                 data.obtainedCounts, itemManager);
         }
@@ -1204,14 +1240,17 @@ public class KillClogPanel extends PluginPanel
             {
                 if (activity == HiscoreSkill.CLUE_SCROLL_ALL)
                 {
-                    ImgTooltip tip = new ImgTooltip();
+                    ClueSummaryTooltip tip = new ClueSummaryTooltip();
                     tip.setComponent(this);
-                    tip.setTitle(activity.getName());
-                    int rank = hiscoreResult != null
-                        ? hiscoreResult.getActivityRank(activity.getName()) : -1;
-                    tip.setRank(rank);
-                    tip.setNotice(hiscoreResult != null
-                        ? " " : "Nothing to see here! (Search for a player)");
+                    tip.setIcons(clueIcons);
+                    if (hiscoreResult != null)
+                    {
+                        tip.setData(hiscoreResult);
+                    }
+                    else
+                    {
+                        tip.setNotice("Nothing to see here! (Search for a player)");
+                    }
                     JPanel parentCell = (JPanel) this.getParent();
                     keepTooltipOnHover(tip, parentCell);
                     return tip;
@@ -1295,7 +1334,7 @@ public class KillClogPanel extends PluginPanel
         return wrapInCell(pvpSummaryCell);
     }
 
-    private JPanel makeClueTierCell(HiscoreSkill tier, int itemId, boolean wide)
+    private JPanel makeClueTierCell(HiscoreSkill tier, int itemId, boolean compact)
     {
         String displayName = capitalizeTier(tier);
         JLabel label = new JLabel()
@@ -1303,7 +1342,7 @@ public class KillClogPanel extends PluginPanel
             @Override
             public JToolTip createToolTip()
             {
-                return makeSpriteTooltip(this, tooltipDataMap.get(tier), wide ? 10 : 5, displayName);
+                return makeSpriteTooltip(this, tooltipDataMap.get(tier), compact ? 10 : 5, displayName, compact);
             }
         };
         styleLabel(label, tier.getName());
@@ -1695,7 +1734,7 @@ public class KillClogPanel extends PluginPanel
 
             if (activity == HiscoreSkill.CLUE_SCROLL_ALL)
             {
-                label.setToolTipText(buildClueTooltip(result));
+                label.setToolTipText(" ");
             }
             else
             {
@@ -1728,23 +1767,6 @@ public class KillClogPanel extends PluginPanel
                 ? shortName + "\nRank: {w}" + String.format("%,d", rank)
                 : shortName);
         }
-    }
-
-    private String buildClueTooltip(HiscoreResult result)
-    {
-        StringBuilder sb = new StringBuilder("Clue Scrolls");
-        int allScore = result.getActivityScore(HiscoreSkill.CLUE_SCROLL_ALL.getName());
-        if (allScore > 0)
-        {
-            sb.append(": {w}").append(String.format("%,d", allScore));
-        }
-
-        int rank = result.getActivityRank(HiscoreSkill.CLUE_SCROLL_ALL.getName());
-        if (rank > 0)
-        {
-            sb.append("\nRank: {w}").append(String.format("%,d", rank));
-        }
-        return sb.toString();
     }
 
     /** "Clue Scrolls (hard)" → "Hard" */

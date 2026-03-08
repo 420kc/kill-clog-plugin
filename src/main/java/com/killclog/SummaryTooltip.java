@@ -136,12 +136,11 @@ public class SummaryTooltip extends TitleTooltip
 
         int statsHeight = LINE_HEIGHT * getStatsLines();
 
-        // Cape below stats
-        int capeHeight = 0;
+        // Cape in right column beside stats
+        int capeColWidth = 0;
         if (capeIcon != null)
         {
-            capeHeight = CAPE_PAD + capeIcon.getHeight();
-            textWidth = Math.max(textWidth, capeIcon.getWidth());
+            capeColWidth = CAPE_PAD + capeIcon.getWidth();
         }
 
         // Pet grid
@@ -150,8 +149,10 @@ public class SummaryTooltip extends TitleTooltip
             ? Math.min(petCount, PET_COLS) * (PET_SIZE + PET_PAD) - PET_PAD
             : 0;
 
-        int contentWidth = Math.max(textWidth, petGridWidth);
-        int contentHeight = statsHeight + capeHeight;
+        int contentWidth = Math.max(textWidth + capeColWidth, petGridWidth);
+        int contentHeight = capeIcon != null
+            ? Math.max(statsHeight, capeIcon.getHeight())
+            : statsHeight;
 
         if (hasPets())
         {
@@ -217,13 +218,15 @@ public class SummaryTooltip extends TitleTooltip
             lineY += LINE_HEIGHT;
         }
 
-        // Cape icon — centered below stats
+        // Cape icon — right column, vertically centered against stats
         int sectionBottom = lineY - fm.getAscent();
         if (capeIcon != null)
         {
-            int capeX = inset + (w - 2 * inset - capeIcon.getWidth()) / 2;
-            g2.drawImage(capeIcon, capeX, sectionBottom + CAPE_PAD, null);
-            sectionBottom += CAPE_PAD + capeIcon.getHeight();
+            int capeX = w - inset - capeIcon.getWidth();
+            int statsBlockHeight = LINE_HEIGHT * getStatsLines();
+            int capeY = startY + (statsBlockHeight - capeIcon.getHeight()) / 2;
+            g2.drawImage(capeIcon, capeX, capeY, null);
+            sectionBottom = Math.max(sectionBottom, startY + Math.max(statsBlockHeight, capeIcon.getHeight()));
         }
 
         if (!hasPets()) return;
