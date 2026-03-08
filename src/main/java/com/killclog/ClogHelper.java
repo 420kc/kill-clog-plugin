@@ -53,6 +53,14 @@ final class ClogHelper
 		return count;
 	}
 
+	static int[] clogCounts(String category, ClogResult clogResult)
+	{
+		List<Integer> items = clogResult.getCategoryItems().get(category);
+		if (items == null || items.isEmpty()) return null;
+		Set<Integer> obtained = getObtainedIds(category, clogResult);
+		return new int[]{countObtained(items, obtained), items.size()};
+	}
+
 	static int[] sumClogTotals(ClogResult result)
 	{
 		Set<Integer> allItems = new HashSet<>();

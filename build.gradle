@@ -16,7 +16,9 @@ dependencies {
     compileOnly 'org.projectlombok:lombok:1.18.30'
     annotationProcessor 'org.projectlombok:lombok:1.18.30'
 
-    testImplementation files('../420kcp/build/libs/420-kc-plugin-1.0.0.jar')
+    if (file('../420kcp/build/libs/420-kc-plugin-1.0.0.jar').exists()) {
+        testImplementation files('../420kcp/build/libs/420-kc-plugin-1.0.0.jar')
+    }
     testImplementation 'junit:junit:4.13.2'
     testImplementation group: 'net.runelite', name: 'client', version: runeLiteVersion
     testImplementation group: 'net.runelite', name: 'jshell', version: runeLiteVersion

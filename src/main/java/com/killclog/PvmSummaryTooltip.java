@@ -6,8 +6,6 @@ import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
-import java.util.List;
-import java.util.Set;
 import javax.swing.SwingUtilities;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
@@ -109,36 +107,25 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 		if (clogResult != null)
 		{
-			int[] cox = clogCounts("chambers_of_xeric", clogResult);
+			int[] cox = ClogHelper.clogCounts("chambers_of_xeric", clogResult);
 			if (cox != null)
 			{
 				coxObtained = cox[0];
 				coxTotal = cox[1];
 			}
-			int[] tob = clogCounts("theatre_of_blood", clogResult);
+			int[] tob = ClogHelper.clogCounts("theatre_of_blood", clogResult);
 			if (tob != null)
 			{
 				tobObtained = tob[0];
 				tobTotal = tob[1];
 			}
-			int[] toa = clogCounts("tombs_of_amascut", clogResult);
+			int[] toa = ClogHelper.clogCounts("tombs_of_amascut", clogResult);
 			if (toa != null)
 			{
 				toaObtained = toa[0];
 				toaTotal = toa[1];
 			}
 		}
-	}
-
-	private static int[] clogCounts(String category, ClogResult clogResult)
-	{
-		List<Integer> items = clogResult.getCategoryItems().get(category);
-		if (items == null || items.isEmpty())
-		{
-			return null;
-		}
-		Set<Integer> obtained = ClogHelper.getObtainedIds(category, clogResult);
-		return new int[]{ClogHelper.countObtained(items, obtained), items.size()};
 	}
 
 	@Override

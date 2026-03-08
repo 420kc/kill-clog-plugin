@@ -48,12 +48,6 @@ public class ImgTooltip extends TitleTooltip
 	private Map<Integer, Integer> obtainedCounts;
 	private BufferedImage[] sprites;
 
-	/** Standard 5-column, 32px sprite tooltip. */
-	public ImgTooltip()
-	{
-		this(DEFAULT_COLS, DEFAULT_SPRITE_SIZE);
-	}
-
 	/** Configurable min column count. */
 	public ImgTooltip(int gridCols)
 	{

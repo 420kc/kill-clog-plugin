@@ -5,8 +5,6 @@ import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
-import java.util.List;
-import java.util.Set;
 import net.runelite.client.ui.FontManager;
 
 /**
@@ -45,13 +43,13 @@ public class PvpSummaryTooltip extends TitleTooltip
 
 		if (clogResult != null)
 		{
-			int[] lms = clogCounts("last_man_standing", clogResult);
+			int[] lms = ClogHelper.clogCounts("last_man_standing", clogResult);
 			if (lms != null)
 			{
 				lmsObtained = lms[0];
 				lmsTotal = lms[1];
 			}
-			int[] sw = clogCounts("soul_wars", clogResult);
+			int[] sw = ClogHelper.clogCounts("soul_wars", clogResult);
 			if (sw != null)
 			{
 				swObtained = sw[0];
@@ -71,16 +69,7 @@ public class PvpSummaryTooltip extends TitleTooltip
 		setTitle("PvP Summary");
 	}
 
-	private static int[] clogCounts(String category, ClogResult clogResult)
-	{
-		List<Integer> items = clogResult.getCategoryItems().get(category);
-		if (items == null || items.isEmpty())
-		{
-			return null;
-		}
-		Set<Integer> obtained = ClogHelper.getObtainedIds(category, clogResult);
-		return new int[]{ClogHelper.countObtained(items, obtained), items.size()};
-	}
+
 
 	@Override
 	protected Dimension getContentSize(int availableWidth)
