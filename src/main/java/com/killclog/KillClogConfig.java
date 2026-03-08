@@ -149,7 +149,7 @@ public interface KillClogConfig extends Config
     )
     default Color missing1Color()
     {
-        return new Color(41, 232, 253);
+        return new Color(202, 255, 0);
     }
 
     @ConfigItem(
