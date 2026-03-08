@@ -10,6 +10,7 @@ import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.EnumComposition;
 import net.runelite.api.GameState;
@@ -50,7 +51,6 @@ public class KillClogPlugin extends Plugin
 	private static final int CLOG_ITEM_SCRIPT = 4100;
 	private static final int CLOG_SEARCH_WIDGET = 40697932;  // (621 << 16) | 76
 	private static final int ENUM_CLOG_TABS = 2102;
-	private static final int ENUM_NOTED_ITEMS = 3721;
 	private static final int PARAM_SUBTAB_ENUM = 683;
 	private static final int PARAM_CATEGORY_NAME = 689;
 	private static final int PARAM_CATEGORY_ITEMS = 690;
@@ -155,7 +155,8 @@ public class KillClogPlugin extends Plugin
 			{
 				String name = local.getName();
 				localClogCache.setActivePlayer(name);
-				SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name));
+				AccountType acctType = mapAccountType(client.getAccountType());
+				SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name, acctType));
 			}
 
 			if (!enumsParsed)
@@ -186,9 +187,10 @@ public class KillClogPlugin extends Plugin
 				pendingAutoLookup = false;
 				String name = local.getName();
 				localClogCache.setActivePlayer(name);
+				AccountType acctType = mapAccountType(client.getAccountType());
 				SwingUtilities.invokeLater(() ->
 				{
-					panel.setLoggedInPlayer(name);
+					panel.setLoggedInPlayer(name, acctType);
 					panel.setPlayerName(name);
 					panel.doLookup();
 				});
@@ -220,8 +222,13 @@ public class KillClogPlugin extends Plugin
 		}
 
 		int[] intStack = client.getIntStack();
-		int itemId = intStack[1];
-		int count = intStack[2];
+		int intStackSize = client.getIntStackSize();
+		if (intStackSize < 2)
+		{
+			return;
+		}
+		int itemId = intStack[intStackSize - 2];
+		int count = intStack[intStackSize - 1];
 
 		bulkObtained.add(new ClogResult.ClogItem(itemId, count, null));
 		bulkFinalizeTickCount = client.getTickCount() + 3;
@@ -290,7 +297,6 @@ public class KillClogPlugin extends Plugin
 			itemToCategoryKey = new HashMap<>();
 
 			EnumComposition tabs = client.getEnum(ENUM_CLOG_TABS);
-			EnumComposition noted = client.getEnum(ENUM_NOTED_ITEMS);
 
 			for (int tabKey : tabs.getKeys())
 			{
@@ -321,12 +327,6 @@ public class KillClogPlugin extends Plugin
 					for (int itemKey : itemsEnum.getKeys())
 					{
 						int itemId = itemsEnum.getIntValue(itemKey);
-						// Resolve noted/placeholder items to real IDs
-						int real = noted.getIntValue(itemId);
-						if (real > 0)
-						{
-							itemId = real;
-						}
 						itemIds.add(itemId);
 						itemToCategoryKey.put(itemId, categoryKey);
 					}
@@ -360,6 +360,12 @@ public class KillClogPlugin extends Plugin
 
 		Player local = client.getLocalPlayer();
 		if (local == null || local.getName() == null)
+		{
+			return;
+		}
+
+		// Skip if local cache already exists for this player
+		if (localClogCache.hasDataFor(local.getName()))
 		{
 			return;
 		}
@@ -419,6 +425,11 @@ public class KillClogPlugin extends Plugin
 		log.info("Bulk clog capture complete: {} items across {} categories for '{}'",
 			total, enumCategoryMap.size(), name);
 
+		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+			"<col=4caf6e>Kill Clog:</col> Collection log captured — " + total
+				+ " items. Open the Kill Clog panel to view.",
+			null);
+
 		resetBulkCapture();
 
 		SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(name));
@@ -429,6 +440,25 @@ public class KillClogPlugin extends Plugin
 		bulkCaptureActive = false;
 		bulkFinalizeTickCount = -1;
 		bulkObtained.clear();
+	}
+
+	private AccountType mapAccountType(net.runelite.api.vars.AccountType rlType)
+	{
+		if (rlType == null)
+		{
+			return AccountType.REGULAR;
+		}
+		switch (rlType)
+		{
+			case IRONMAN:
+				return AccountType.IRONMAN;
+			case ULTIMATE_IRONMAN:
+				return AccountType.ULTIMATE_IRONMAN;
+			case HARDCORE_IRONMAN:
+				return AccountType.HARDCORE_IRONMAN;
+			default:
+				return AccountType.REGULAR;
+		}
 	}
 
 	private BufferedImage getIcon()

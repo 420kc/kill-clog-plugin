@@ -106,9 +106,9 @@ public class HiscoreService
 	 * Look up a player across all 4 hiscore endpoints in parallel.
 	 * Retries once on transient failure (Jagex 502/503/rate-limit).
 	 */
-	public CompletableFuture<HiscoreResult> lookup(String playerName)
+	public CompletableFuture<HiscoreResult> lookup(String playerName, AccountType knownType)
 	{
-		return attemptLookup(playerName).thenCompose(result ->
+		return attemptLookup(playerName, knownType).thenCompose(result ->
 		{
 			if (result != null)
 			{
@@ -116,13 +116,14 @@ public class HiscoreService
 			}
 			CompletableFuture<HiscoreResult> retry = new CompletableFuture<>();
 			CompletableFuture.delayedExecutor(500, TimeUnit.MILLISECONDS)
-				.execute(() -> attemptLookup(playerName)
+				.execute(() -> attemptLookup(playerName, knownType)
 					.whenComplete((r, ex) -> retry.complete(r)));
 			return retry;
 		});
 	}
 
-	private CompletableFuture<HiscoreResult> attemptLookup(String playerName)
+	private CompletableFuture<HiscoreResult> attemptLookup(String playerName,
+		AccountType knownType)
 	{
 		String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
 
@@ -139,7 +140,9 @@ public class HiscoreService
 				String ironBody = ironFuture.join();
 				String regBody = regFuture.join();
 
-				AccountType type = detectAccountType(uimBody, hcimBody, ironBody, regBody);
+				AccountType type = knownType != null
+					? knownType
+					: detectAccountType(uimBody, hcimBody, ironBody, regBody);
 
 				String bestBody = pickBestBody(type, uimBody, hcimBody, ironBody, regBody);
 				if (bestBody == null)

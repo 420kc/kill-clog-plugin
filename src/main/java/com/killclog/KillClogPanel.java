@@ -353,8 +353,18 @@ public class KillClogPanel extends PluginPanel
 			}
 			else
 			{
-				tip.setNotice(hiscoreResult != null
-					? "No TempleOSRS Data" : "Nothing to see here! (Search for a player)");
+				boolean isSelf = localRsn != null && rsn != null
+					&& localRsn.equalsIgnoreCase(rsn)
+					&& config.clogSource() != ClogSource.TEMPLE;
+				if (isSelf)
+				{
+					tip.setNotice("Open your Collection Log in-game to continue.");
+				}
+				else
+				{
+					tip.setNotice(hiscoreResult != null
+						? "No TempleOSRS Data" : "Nothing to see here! (Search for a player)");
+				}
 			}
 			return tip;
 		}
@@ -381,7 +391,6 @@ public class KillClogPanel extends PluginPanel
 		}
 	};
 	private final JLabel clogNotice = new JLabel();
-
 	private BufferedImage maxCapeTip;
 	private BufferedImage infernalCapeTip;
 	private BufferedImage infernalMaxCapeTip;
@@ -430,6 +439,7 @@ public class KillClogPanel extends PluginPanel
 	private String rsn;
 	private String clogLastChanged;
 	private String localRsn;
+	private AccountType localAccountType;
 
 	private final Map<HiscoreSkill, TooltipData> tooltipDataMap = new LinkedHashMap<>();
 	private final Map<String, TooltipData> rareTooltips = new LinkedHashMap<>();
@@ -1560,8 +1570,10 @@ public class KillClogPanel extends PluginPanel
 
 		resetAllLabels();
 
-		// Hiscore lookup
-		hiscoreService.lookup(player).thenAccept(result ->
+		// Hiscore lookup — pass known account type for self-lookups
+		AccountType knownType = (localRsn != null && localRsn.equalsIgnoreCase(player))
+			? localAccountType : null;
+		hiscoreService.lookup(player, knownType).thenAccept(result ->
 			SwingUtilities.invokeLater(() ->
 			{
 				if (thisLookup != lookupVersion) return;
@@ -1667,11 +1679,18 @@ public class KillClogPanel extends PluginPanel
 				}
 				else
 				{
-					clogNotice.setText(localRsn != null
+					boolean isSelf = localRsn != null
 						&& localRsn.equalsIgnoreCase(player)
-						&& config.clogSource() != ClogSource.TEMPLE
+						&& config.clogSource() != ClogSource.TEMPLE;
+					clogNotice.setText(isSelf
 						? "Open your Collection Log"
 						: " ");
+					if (isSelf)
+					{
+						clogInfoLabel.setText(ClogHelper.pad("?"));
+						clogInfoLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+						clogInfoLabel.setToolTipText(" ");
+					}
 					fetchRsn(player, thisLookup);
 				}
 			})
@@ -1693,10 +1712,9 @@ public class KillClogPanel extends PluginPanel
 		clogResult = null;
 		clogLastChanged = null;
 		rsn = null;
+		clogNotice.setText(" ");
 		tooltipDataMap.clear();
 		rareTooltips.clear();
-		clogNotice.setText(" ");
-
 		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
 		{
 			JLabel label = entry.getValue();
@@ -2079,18 +2097,16 @@ public class KillClogPanel extends PluginPanel
 		searchBar.setText(name);
 	}
 
-	public void setLoggedInPlayer(String name)
+	public void setLoggedInPlayer(String name, AccountType accountType)
 	{
 		this.localRsn = name;
+		this.localAccountType = accountType;
 	}
 
 	public void onBulkCaptureComplete(String playerName)
 	{
-		String searchText = searchBar.getText().trim();
-		if (playerName.equalsIgnoreCase(searchText))
-		{
-			doLookup();
-		}
+		searchBar.setText(playerName);
+		doLookup();
 	}
 
 	public void setNameAutocompleter(NameAutocompleter autocompleter)
