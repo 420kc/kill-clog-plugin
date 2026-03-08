@@ -150,11 +150,13 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 		if (tierRange != null)
 		{
-			textWidth = Math.max(textWidth, fm.stringWidth(tierRange) + iconWidth);
+			String label = tierName != null ? tierName.substring(0, 1).toUpperCase() + tierName.substring(1) : "";
+			textWidth = Math.max(textWidth, fm.stringWidth(tierRange) + iconWidth + ICON_GAP + fm.stringWidth(label));
 		}
 		if (progressText != null)
 		{
-			textWidth = Math.max(textWidth, fm.stringWidth(progressText) + iconWidth);
+			String label = nextTierName != null ? nextTierName.substring(0, 1).toUpperCase() + nextTierName.substring(1) : "";
+			textWidth = Math.max(textWidth, fm.stringWidth(progressText) + iconWidth + ICON_GAP + fm.stringWidth(label));
 		}
 		String syncLabel = "Last update: ";
 		if (syncDate != null)
@@ -270,6 +272,14 @@ public class ClogSummaryTooltip extends TitleTooltip
 		{
 			int iconY = y + (LINE_HEIGHT - icon.getHeight()) / 2;
 			g2.drawImage(icon, x, iconY, null);
+			x += icon.getWidth() + ICON_GAP;
+		}
+
+		if (tier != null)
+		{
+			String label = tier.substring(0, 1).toUpperCase() + tier.substring(1);
+			g2.setColor(OSRS_ORANGE);
+			g2.drawString(label, x, textY);
 		}
 	}
 }
