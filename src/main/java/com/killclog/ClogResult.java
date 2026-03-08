@@ -2,6 +2,7 @@ package com.killclog;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -15,8 +16,8 @@ public class ClogResult
     private final Map<String, List<ClogItem>> obtainedItems;
     /** category key -> all item IDs in that category */
     private final Map<String, List<Integer>> categoryItems;
-    /** item ID -> display name (concurrent: written from client thread, read from EDT) */
-    private final ConcurrentHashMap<Integer, String> itemNames;
+    /** item IDs whose names have been resolved (concurrent: written from client thread, read from EDT) */
+    private final Set<Integer> resolvedItemIds;
     /** When the player last synced clog data to TempleOSRS (from last_changed field) */
     private final String lastChanged;
 
@@ -30,7 +31,11 @@ public class ClogResult
         this.playerName = playerName;
         this.obtainedItems = obtainedItems;
         this.categoryItems = categoryItems;
-        this.itemNames = new ConcurrentHashMap<>(itemNames);
+        this.resolvedItemIds = ConcurrentHashMap.newKeySet();
+        if (itemNames != null)
+        {
+            resolvedItemIds.addAll(itemNames.keySet());
+        }
         this.lastChanged = lastChanged;
     }
 
@@ -54,14 +59,14 @@ public class ClogResult
         return categoryItems;
     }
 
-    public boolean hasItemName(int id)
+    public boolean isItemResolved(int id)
     {
-        return itemNames.containsKey(id);
+        return resolvedItemIds.contains(id);
     }
 
-    public void putItemName(int id, String name)
+    public void markItemResolved(int id)
     {
-        itemNames.put(id, name);
+        resolvedItemIds.add(id);
     }
 
     public static class ClogItem

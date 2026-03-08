@@ -48,6 +48,7 @@ import javax.swing.Timer;
 import javax.swing.ToolTipManager;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
+import javax.swing.plaf.basic.BasicScrollBarUI;
 import javax.swing.border.MatteBorder;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.callback.ClientThread;
@@ -1556,7 +1557,7 @@ public class KillClogPanel extends PluginPanel
                 }
 
                 searchBar.setText("");
-                colorCompletedCells();
+                toggleHighlighter(config.completionistHighlighter());
                 updateTooltips();
             })
         ).exceptionally(ex ->
@@ -1584,7 +1585,7 @@ public class KillClogPanel extends PluginPanel
                 if (thisLookup != lookupVersion) return;
                 clogResult = result;
                 clogLastChanged = result != null ? result.getLastChanged() : null;
-                colorCompletedCells();
+                toggleHighlighter(config.completionistHighlighter());
                 updateTooltips();
 
                 if (result != null)
@@ -1879,9 +1880,7 @@ public class KillClogPanel extends PluginPanel
             clogInfoLabel.setText(ClogHelper.pad(ClogHelper.formatKc(totals[0])));
             clogInfoLabel.setForeground(getInfoColor());
 
-            String tooltip = ClogHelper.getClogTierTooltip(totals[0], totals[1]);
-            String syncLine = syncLine(clogLastChanged);
-            clogInfoLabel.setToolTipText(syncLine != null ? tooltip + "\n" + syncLine : tooltip);
+            clogInfoLabel.setToolTipText(" ");
         }
     }
 
@@ -1890,18 +1889,6 @@ public class KillClogPanel extends PluginPanel
     // -------------------------------------------------------------------------
 
     private void updateTooltips()
-    {
-        try
-        {
-            rebuildTooltips();
-        }
-        catch (Exception e)
-        {
-            log.warn("Failed to update tooltips", e);
-        }
-    }
-
-    private void rebuildTooltips()
     {
         tooltipDataMap.clear();
 
@@ -1974,15 +1961,9 @@ public class KillClogPanel extends PluginPanel
         }
     }
 
-
     // -------------------------------------------------------------------------
     // Progress highlighter
     // -------------------------------------------------------------------------
-
-    private void colorCompletedCells()
-    {
-        toggleHighlighter(config.completionistHighlighter());
-    }
 
     private void toggleHighlighter(boolean enabled)
     {
@@ -2391,7 +2372,7 @@ public class KillClogPanel extends PluginPanel
         List<Integer> missing = new ArrayList<>();
         for (int id : allIds)
         {
-            if (!result.hasItemName(id)) missing.add(id);
+            if (!result.isItemResolved(id)) missing.add(id);
         }
         if (missing.isEmpty()) return;
 
@@ -2405,7 +2386,7 @@ public class KillClogPanel extends PluginPanel
                     String name = itemManager.getItemComposition(id).getName();
                     if (name != null && !name.isEmpty() && !name.equals("null") && !name.equals("Null"))
                     {
-                        result.putItemName(id, name);
+                        result.markItemResolved(id);
                     }
                 }
                 catch (Exception e)
@@ -2417,9 +2398,8 @@ public class KillClogPanel extends PluginPanel
         });
     }
 
-
     /** Minimal scrollbar — slim thumb, no arrow buttons, dark theme. */
-    private static class MinimalScrollBarUI extends javax.swing.plaf.basic.BasicScrollBarUI
+    private static class MinimalScrollBarUI extends BasicScrollBarUI
     {
         @Override
         protected void configureScrollBarColors()

@@ -92,46 +92,6 @@ final class ClogHelper
         return null;
     }
 
-    static String getClogTierTooltip(int obtained, int totalSlots)
-    {
-        int gildedThreshold = (int) (totalSlots * 0.9) / 25 * 25;
-        String currentTier = getClogTierName(obtained, totalSlots);
-        String line1 = "Obtained: {w}" + obtained + "/" + totalSlots;
-
-        if (currentTier == null)
-        {
-            return line1 + "\n" + (CLOG_TIER_THRESHOLDS[0] - obtained) + " more until {bronze}";
-        }
-        if ("gilded".equals(currentTier))
-        {
-            return line1 + "\n" + gildedThreshold + "+: {gilded}";
-        }
-
-        int tierIndex = -1;
-        for (int i = 0; i < CLOG_TIERS.length; i++)
-        {
-            if (CLOG_TIERS[i].equals(currentTier)) { tierIndex = i; break; }
-        }
-
-        int currentThreshold = CLOG_TIER_THRESHOLDS[tierIndex];
-        int nextThreshold;
-        String nextTier;
-        if (tierIndex + 1 < CLOG_TIER_THRESHOLDS.length)
-        {
-            nextThreshold = CLOG_TIER_THRESHOLDS[tierIndex + 1];
-            nextTier = CLOG_TIERS[tierIndex + 1];
-        }
-        else
-        {
-            nextThreshold = gildedThreshold;
-            nextTier = "gilded";
-        }
-
-        return line1
-            + "\n" + currentThreshold + "-" + (nextThreshold - 1) + ": {" + currentTier + "}"
-            + "\n" + (nextThreshold - obtained) + " more until {" + nextTier + "}";
-    }
-
     // -------------------------------------------------------------------------
     // Account helpers
     // -------------------------------------------------------------------------

@@ -17,10 +17,8 @@ import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
-import net.runelite.api.Friend;
 import net.runelite.api.FriendContainer;
 import net.runelite.api.FriendsChatManager;
-import net.runelite.api.FriendsChatMember;
 import net.runelite.api.Nameable;
 import net.runelite.api.WorldView;
 import net.runelite.api.clan.ClanMember;
@@ -28,7 +26,6 @@ import net.runelite.api.clan.ClanSettings;
 
 /**
  * Autocompletes player names in the search bar from friends, clan, and nearby players.
- * Faithful reproduction of the native HiscorePanel NameAutocompleter.
  */
 @Slf4j
 @Singleton
