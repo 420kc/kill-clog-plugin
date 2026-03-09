@@ -133,7 +133,7 @@ public class HiscoreService
 		CompletableFuture<String> regFuture = fetchAsync("hiscore_oldschool", encoded);
 
 		return CompletableFuture.allOf(uimFuture, hcimFuture, ironFuture, regFuture)
-			.thenApply(v ->
+			.thenCompose(v ->
 			{
 				String uimBody = uimFuture.join();
 				String hcimBody = hcimFuture.join();
@@ -144,13 +144,42 @@ public class HiscoreService
 					? knownType
 					: detectAccountType(uimBody, hcimBody, ironBody, regBody);
 
+				// HCIM detected without knownType — dead HCIMs have frozen XP on the
+				// HCIM table forever. If reg or iron failed, retry those two specifically
+				// before accepting HCIM. UIM is irrelevant (mutually exclusive).
+				if (knownType == null && type == AccountType.HARDCORE_IRONMAN
+					&& (regBody == null || ironBody == null))
+				{
+					log.debug("HCIM detected but reg/iron missing — retrying to confirm");
+					CompletableFuture<String> retryReg = regBody != null
+						? CompletableFuture.completedFuture(regBody)
+						: fetchAsync("hiscore_oldschool", encoded);
+					CompletableFuture<String> retryIron = ironBody != null
+						? CompletableFuture.completedFuture(ironBody)
+						: fetchAsync("hiscore_oldschool_ironman", encoded);
+
+					final String fUim = uimBody;
+					final String fHcim = hcimBody;
+					return CompletableFuture.allOf(retryReg, retryIron).thenApply(v2 ->
+					{
+						String confirmedReg = retryReg.join();
+						String confirmedIron = retryIron.join();
+						AccountType confirmedType = detectAccountType(
+							fUim, fHcim, confirmedIron, confirmedReg);
+						String body = pickBestBody(confirmedType,
+							fUim, fHcim, confirmedIron, confirmedReg);
+						return body != null ? parseHiscoreBody(body, confirmedType) : null;
+					});
+				}
+
 				String bestBody = pickBestBody(type, uimBody, hcimBody, ironBody, regBody);
 				if (bestBody == null)
 				{
-					return null;
+					return CompletableFuture.completedFuture(null);
 				}
 
-				return parseHiscoreBody(bestBody, type);
+				return CompletableFuture.completedFuture(
+					parseHiscoreBody(bestBody, type));
 			});
 	}
 
@@ -174,11 +203,12 @@ public class HiscoreService
 			return AccountType.IRONMAN;
 		}
 
-		// Fallback: regular endpoint failed but others succeeded
+		// Fallback: regular endpoint failed — cross-check specialty endpoints
+		// to avoid false positives from dead HCIMs/UIMs with frozen XP
 		if (regXp <= 0)
 		{
-			if (uimBody != null && uimXp > 0) return AccountType.ULTIMATE_IRONMAN;
-			if (hcimBody != null && hcimXp > 0) return AccountType.HARDCORE_IRONMAN;
+			if (uimBody != null && uimXp > 0 && uimXp == ironXp) return AccountType.ULTIMATE_IRONMAN;
+			if (hcimBody != null && hcimXp > 0 && hcimXp == ironXp) return AccountType.HARDCORE_IRONMAN;
 			if (ironBody != null && ironXp > 0) return AccountType.IRONMAN;
 		}
 
