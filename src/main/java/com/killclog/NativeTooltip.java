@@ -32,7 +32,17 @@ public abstract class NativeTooltip extends JToolTip
 	private static final Color BORDER_INNER = new Color(84, 72, 53);
 	private static final Color FALLBACK_BG = new Color(60, 50, 35);
 
-	// Close button sprites (535 normal, 536 hovered) — shared across all tooltips
+	// Sprite IDs — game interface elements
+	private static final int SPRITE_PARCHMENT = 297;
+	private static final int SPRITE_CLOSE = 831;
+	private static final int SPRITE_CLOSE_HOVER = 832;
+	private static final int SPRITE_CORNER_TL = 310;
+	private static final int SPRITE_CORNER_TR = 311;
+	private static final int SPRITE_CORNER_BL = 312;
+	private static final int SPRITE_CORNER_BR = 313;
+	private static final int SPRITE_EDGE_HORIZ = 314;
+	private static final int SPRITE_EDGE_VERT = 315;
+
 	private static final int CLOSE_BTN_SIZE = 20;
 	private static final int CLOSE_BTN_PAD = 4;
 	private static volatile BufferedImage closeBtnNormal;
@@ -52,37 +62,36 @@ public abstract class NativeTooltip extends JToolTip
 	 */
 	public static void loadSprites(SpriteManager spriteManager)
 	{
-		spriteManager.getSpriteAsync(297, 0, img -> parchmentBg = img);
-		spriteManager.getSpriteAsync(831, 0, img -> closeBtnNormal = scaleSprite(img, CLOSE_BTN_SIZE));
-		spriteManager.getSpriteAsync(832, 0, img -> closeBtnHovered = scaleSprite(img, CLOSE_BTN_SIZE));
-		// Iron rivets: corners 310-313, edges 314 (horiz) + 315 (vert)
-		spriteManager.getSpriteAsync(310, 0, img ->
+		spriteManager.getSpriteAsync(SPRITE_PARCHMENT, 0, img -> parchmentBg = img);
+		spriteManager.getSpriteAsync(SPRITE_CLOSE, 0, img -> closeBtnNormal = scaleSprite(img, CLOSE_BTN_SIZE));
+		spriteManager.getSpriteAsync(SPRITE_CLOSE_HOVER, 0, img -> closeBtnHovered = scaleSprite(img, CLOSE_BTN_SIZE));
+		spriteManager.getSpriteAsync(SPRITE_CORNER_TL, 0, img ->
 		{
 			cornerTL = img;
 			checkSprites();
 		});
-		spriteManager.getSpriteAsync(311, 0, img ->
+		spriteManager.getSpriteAsync(SPRITE_CORNER_TR, 0, img ->
 		{
 			cornerTR = img;
 			checkSprites();
 		});
-		spriteManager.getSpriteAsync(312, 0, img ->
+		spriteManager.getSpriteAsync(SPRITE_CORNER_BL, 0, img ->
 		{
 			cornerBL = img;
 			checkSprites();
 		});
-		spriteManager.getSpriteAsync(313, 0, img ->
+		spriteManager.getSpriteAsync(SPRITE_CORNER_BR, 0, img ->
 		{
 			cornerBR = img;
 			checkSprites();
 		});
-		spriteManager.getSpriteAsync(314, 0, img ->
+		spriteManager.getSpriteAsync(SPRITE_EDGE_HORIZ, 0, img ->
 		{
 			edgeTop = img;
 			edgeBottom = rotate180(img);
 			checkSprites();
 		});
-		spriteManager.getSpriteAsync(315, 0, img ->
+		spriteManager.getSpriteAsync(SPRITE_EDGE_VERT, 0, img ->
 		{
 			edgeRight = img;
 			edgeLeft = rotate180(img);

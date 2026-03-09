@@ -20,6 +20,8 @@ class ClogButtonOverlay extends Overlay implements MouseListener
 {
 	private static final int CLOG_INTERFACE = KillClogPlugin.CLOG_INTERFACE;
 	private static final int ICON_SIZE = 16;
+	private static final int BUTTON_RIGHT_OFFSET = 128;
+	private static final int BUTTON_TOP_OFFSET = 5;
 	private static final Color GREEN = new Color(76, 175, 110);
 	private static final long GREEN_DURATION_MS = 2000;
 
@@ -72,8 +74,8 @@ class ClogButtonOverlay extends Overlay implements MouseListener
 		int x, y;
 		if (header != null && !header.isHidden())
 		{
-			x = header.getCanvasLocation().getX() + header.getWidth() - 128;
-			y = header.getCanvasLocation().getY() + 5;
+			x = header.getCanvasLocation().getX() + header.getWidth() - BUTTON_RIGHT_OFFSET;
+			y = header.getCanvasLocation().getY() + BUTTON_TOP_OFFSET;
 		}
 		else
 		{

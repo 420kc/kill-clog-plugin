@@ -1858,6 +1858,12 @@ public class KillClogPanel extends PluginPanel
 	public void onBulkCaptureComplete(String name)
 	{
 		searchBar.setText(name);
+		if (lookupInFlight)
+		{
+			// Current lookup will finish soon — version it out and start fresh
+			lookupVersion++;
+			lookupInFlight = false;
+		}
 		doLookup();
 	}
 

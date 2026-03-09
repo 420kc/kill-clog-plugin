@@ -120,6 +120,9 @@ public class KillClogPlugin extends Plugin
 	private ClientThread clientThread;
 
 	@Inject
+	private ClogService clogService;
+
+	@Inject
 	private LocalClogCache localClogCache;
 
 	private NavigationButton navButton;
@@ -242,6 +245,8 @@ public class KillClogPlugin extends Plugin
 	{
 		if (event.getGameState() == GameState.LOGGED_IN)
 		{
+			clogService.clearTempleFailures();
+
 			// Always track logged-in player for local clog cache
 			Player local = client.getLocalPlayer();
 			if (local != null && local.getName() != null)
@@ -521,6 +526,18 @@ public class KillClogPlugin extends Plugin
 			categoryItemsCopy.put(entry.getKey(), new ArrayList<>(entry.getValue()));
 		}
 
+		// Guard against partial captures (e.g., player closed clog mid-sync)
+		if (bulk.clogCount > 0 && bulk.obtained.size() < bulk.clogCount / 2)
+		{
+			log.warn("Bulk capture incomplete: got {} of {} items, discarding",
+				bulk.obtained.size(), bulk.clogCount);
+			resetBulkCapture();
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+				"<col=4caf6e>Kill Clog:</col> Sync interrupted — open the collection log and try again.",
+				null);
+			return;
+		}
+
 		ClogResult result = new ClogResult(name, obtainedByCategory, categoryItemsCopy,
 			new HashMap<>(), null);
 		if (bulk.clogCount > 0)
@@ -542,26 +559,24 @@ public class KillClogPlugin extends Plugin
 				+ " items. Open the Kill Clog panel to view.",
 			null);
 
+		// Merge the buffered category before reset (captured when clog first opened)
+		String bufKey = bulk.bufferedCategoryKey;
+		List<Integer> bufItems = bulk.bufferedCategoryItems;
+		List<ClogResult.ClogItem> bufObtained = bulk.bufferedCategoryObtained;
 		resetBulkCapture();
 
-		// Merge the category that was visible when the clog opened
-		if (bulk.bufferedCategoryKey != null && bulk.bufferedCategoryItems != null)
+		if (bufKey != null && bufItems != null)
 		{
-			localClogCache.mergeCategory(name, bulk.bufferedCategoryKey,
-				bulk.bufferedCategoryItems, bulk.bufferedCategoryObtained);
-			int buffObt = bulk.bufferedCategoryObtained != null ? bulk.bufferedCategoryObtained.size() : 0;
-			int buffTotal = bulk.bufferedCategoryItems.size();
+			localClogCache.mergeCategory(name, bufKey, bufItems, bufObtained);
+			int buffObt = bufObtained != null ? bufObtained.size() : 0;
+			int buffTotal = bufItems.size();
 			log.debug("Merged buffered category '{}': {}/{} obtained",
-				bulk.bufferedCategoryKey, buffObt, buffTotal);
+				bufKey, buffObt, buffTotal);
 
 			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-				"<col=4caf6e>Kill Clog:</col> Updated " + bulk.bufferedCategoryKey
+				"<col=4caf6e>Kill Clog:</col> Updated " + bufKey
 					+ " — " + buffObt + "/" + buffTotal + " items",
 				null);
-
-			bulk.bufferedCategoryKey = null;
-			bulk.bufferedCategoryItems = null;
-			bulk.bufferedCategoryObtained = null;
 		}
 
 		clogButtonOverlay.flashGreen();

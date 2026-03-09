@@ -94,7 +94,7 @@ public class ClogService
 	private volatile CompletableFuture<Map<String, List<Integer>>> categoriesFlight;
 	private volatile CompletableFuture<Map<Integer, String>> namesFlight;
 
-	// Players whose Temple lookup failed this session — skip retries
+	// Players whose Temple lookup failed this session — skip retries, cleared on login
 	private final Set<String> templeFailures = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
 	@Inject
@@ -104,6 +104,12 @@ public class ClogService
 		this.gson = gson;
 		this.localClogCache = localClogCache;
 		this.config = config;
+	}
+
+	/** Clear the Temple failure blacklist (call on login). */
+	public void clearTempleFailures()
+	{
+		templeFailures.clear();
 	}
 
 	/**
