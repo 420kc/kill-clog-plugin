@@ -61,6 +61,18 @@ public class LocalClogCache
 	public void shutdown()
 	{
 		diskWriter.shutdown();
+		try
+		{
+			if (!diskWriter.awaitTermination(3, java.util.concurrent.TimeUnit.SECONDS))
+			{
+				diskWriter.shutdownNow();
+			}
+		}
+		catch (InterruptedException e)
+		{
+			diskWriter.shutdownNow();
+			Thread.currentThread().interrupt();
+		}
 	}
 
 	public void setActivePlayer(String name)
@@ -127,7 +139,7 @@ public class LocalClogCache
 		players.put(key, data);
 		final PlayerClogData snapshot = shallowCopy(data);
 		diskWriter.execute(() -> saveToDisk(name, snapshot));
-		log.debug("Cached Temple data for '{}' ({} categories)", name, data.obtained.size());
+		log.debug("Cached clog data for '{}' ({} categories)", name, data.obtained.size());
 	}
 
 	public void mergeCategory(String playerName, String categoryKey,

@@ -42,7 +42,7 @@ import net.runelite.client.util.Text;
 @Slf4j
 @PluginDescriptor(
 	name = "Kill Clog",
-	description = "Boss log overhaul with clog tooltips and completion colors",
+	description = "PvM/Clog-Focused HiScores Replacement",
 	tags = {"boss", "kc", "kill count", "collection log", "pvm", "hiscore", "ironman"}
 )
 public class KillClogPlugin extends Plugin
@@ -122,20 +122,36 @@ public class KillClogPlugin extends Plugin
 	private NavigationButton navButton;
 	private boolean pendingAutoLookup;
 
-	// Bulk clog capture state (client thread only)
+	// Enum-derived clog mappings (parsed once per session)
 	private Map<String, List<Integer>> enumCategoryMap;
 	private Map<Integer, List<String>> itemToCategoryKeys;
 	private boolean enumsParsed;
-	private boolean bulkCaptureActive;
-	private int bulkFinalizeTickCount = -1;
-	private int bulkClogCount = -1;
-	private int bulkClogTotal = -1;
-	private final List<ClogResult.ClogItem> bulkObtained = new ArrayList<>();
 
-	// Buffered category read — captured before bulk capture has cache data to merge into
-	private String bufferedCategoryKey;
-	private List<Integer> bufferedCategoryItems;
-	private List<ClogResult.ClogItem> bufferedCategoryObtained;
+	// Bulk clog capture state (client thread only)
+	private final BulkCaptureState bulk = new BulkCaptureState();
+
+	private static class BulkCaptureState
+	{
+		boolean active;
+		int finalizeTickCount = -1;
+		int clogCount = -1;
+		int clogTotal = -1;
+		final List<ClogResult.ClogItem> obtained = new ArrayList<>();
+
+		// Buffered category read — captured before bulk has cache data to merge into
+		String bufferedCategoryKey;
+		List<Integer> bufferedCategoryItems;
+		List<ClogResult.ClogItem> bufferedCategoryObtained;
+
+		void reset()
+		{
+			active = false;
+			finalizeTickCount = -1;
+			clogCount = -1;
+			clogTotal = -1;
+			obtained.clear();
+		}
+	}
 
 	private final HotkeyListener highlighterHotkey = new HotkeyListener(() -> config.highlighterKeybind())
 	{
@@ -271,8 +287,8 @@ public class KillClogPlugin extends Plugin
 			}
 		}
 
-		if (bulkCaptureActive && bulkFinalizeTickCount > 0
-			&& client.getTickCount() >= bulkFinalizeTickCount)
+		if (bulk.active && bulk.finalizeTickCount > 0
+			&& client.getTickCount() >= bulk.finalizeTickCount)
 		{
 			finalizeBulkCapture();
 		}
@@ -281,7 +297,7 @@ public class KillClogPlugin extends Plugin
 	@Subscribe
 	public void onScriptPreFired(ScriptPreFired event)
 	{
-		if (event.getScriptId() != CLOG_ITEM_SCRIPT || !bulkCaptureActive)
+		if (event.getScriptId() != CLOG_ITEM_SCRIPT || !bulk.active)
 		{
 			return;
 		}
@@ -300,8 +316,8 @@ public class KillClogPlugin extends Plugin
 		int itemId = (int) args[1];
 		int count = (int) args[2];
 
-		bulkObtained.add(new ClogResult.ClogItem(itemId, count, null));
-		bulkFinalizeTickCount = client.getTickCount() + 3;
+		bulk.obtained.add(new ClogResult.ClogItem(itemId, count, null));
+		bulk.finalizeTickCount = client.getTickCount() + 3;
 	}
 
 	@Subscribe
@@ -433,7 +449,7 @@ public class KillClogPlugin extends Plugin
 
 	private void triggerBulkCapture()
 	{
-		if (!enumsParsed || bulkCaptureActive)
+		if (!enumsParsed || bulk.active)
 		{
 			return;
 		}
@@ -450,16 +466,16 @@ public class KillClogPlugin extends Plugin
 			return;
 		}
 
-		bulkObtained.clear();
-		bulkCaptureActive = true;
-		bulkFinalizeTickCount = -1;
-		bulkClogCount = client.getVarpValue(VARP_CLOG_OBTAINED);
-		bulkClogTotal = client.getVarpValue(VARP_CLOG_TOTAL);
+		bulk.obtained.clear();
+		bulk.active = true;
+		bulk.finalizeTickCount = -1;
+		bulk.clogCount = client.getVarpValue(VARP_CLOG_OBTAINED);
+		bulk.clogTotal = client.getVarpValue(VARP_CLOG_TOTAL);
 
 		client.menuAction(-1, CLOG_SEARCH_WIDGET, MenuAction.CC_OP, 1, -1, "Search", null);
 		client.menuAction(-1, CLOG_SEARCH_WIDGET, MenuAction.CC_OP, 1, -1, "Back", null);
 
-		log.debug("Triggered bulk clog capture (game reports {} obtained)", bulkClogCount);
+		log.debug("Triggered bulk clog capture (game reports {} obtained)", bulk.clogCount);
 	}
 
 	private void finalizeBulkCapture()
@@ -483,7 +499,7 @@ public class KillClogPlugin extends Plugin
 			obtainedByCategory.put(cat, new ArrayList<>());
 		}
 
-		for (ClogResult.ClogItem item : bulkObtained)
+		for (ClogResult.ClogItem item : bulk.obtained)
 		{
 			List<String> cats = itemToCategoryKeys.get(item.getId());
 			if (cats != null)
@@ -504,17 +520,17 @@ public class KillClogPlugin extends Plugin
 
 		ClogResult result = new ClogResult(name, obtainedByCategory, categoryItemsCopy,
 			new HashMap<>(), null);
-		if (bulkClogCount > 0)
+		if (bulk.clogCount > 0)
 		{
-			result.setUniqueObtained(bulkClogCount);
+			result.setUniqueObtained(bulk.clogCount);
 		}
-		if (bulkClogTotal > 0)
+		if (bulk.clogTotal > 0)
 		{
-			result.setUniqueTotal(bulkClogTotal);
+			result.setUniqueTotal(bulk.clogTotal);
 		}
 		localClogCache.cacheResult(result);
 
-		int total = bulkObtained.size();
+		int total = bulk.obtained.size();
 		log.info("Bulk clog capture complete: {} items across {} categories for '{}'",
 			total, enumCategoryMap.size(), name);
 
@@ -526,23 +542,23 @@ public class KillClogPlugin extends Plugin
 		resetBulkCapture();
 
 		// Merge the category that was visible when the clog opened
-		if (bufferedCategoryKey != null && bufferedCategoryItems != null)
+		if (bulk.bufferedCategoryKey != null && bulk.bufferedCategoryItems != null)
 		{
-			localClogCache.mergeCategory(name, bufferedCategoryKey,
-				bufferedCategoryItems, bufferedCategoryObtained);
-			int buffObt = bufferedCategoryObtained != null ? bufferedCategoryObtained.size() : 0;
-			int buffTotal = bufferedCategoryItems.size();
+			localClogCache.mergeCategory(name, bulk.bufferedCategoryKey,
+				bulk.bufferedCategoryItems, bulk.bufferedCategoryObtained);
+			int buffObt = bulk.bufferedCategoryObtained != null ? bulk.bufferedCategoryObtained.size() : 0;
+			int buffTotal = bulk.bufferedCategoryItems.size();
 			log.debug("Merged buffered category '{}': {}/{} obtained",
-				bufferedCategoryKey, buffObt, buffTotal);
+				bulk.bufferedCategoryKey, buffObt, buffTotal);
 
 			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-				"<col=4caf6e>Kill Clog:</col> Updated " + bufferedCategoryKey
+				"<col=4caf6e>Kill Clog:</col> Updated " + bulk.bufferedCategoryKey
 					+ " — " + buffObt + "/" + buffTotal + " items",
 				null);
 
-			bufferedCategoryKey = null;
-			bufferedCategoryItems = null;
-			bufferedCategoryObtained = null;
+			bulk.bufferedCategoryKey = null;
+			bulk.bufferedCategoryItems = null;
+			bulk.bufferedCategoryObtained = null;
 		}
 
 		clogButtonOverlay.flashGreen();
@@ -702,9 +718,9 @@ public class KillClogPlugin extends Plugin
 		}
 		else
 		{
-			bufferedCategoryKey = categoryKey;
-			bufferedCategoryItems = new ArrayList<>(allItemIds);
-			bufferedCategoryObtained = new ArrayList<>(obtained);
+			bulk.bufferedCategoryKey = categoryKey;
+			bulk.bufferedCategoryItems = new ArrayList<>(allItemIds);
+			bulk.bufferedCategoryObtained = new ArrayList<>(obtained);
 
 			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
 				"<col=4caf6e>Kill Clog:</col> Buffered " + categoryName
@@ -716,11 +732,7 @@ public class KillClogPlugin extends Plugin
 
 	private void resetBulkCapture()
 	{
-		bulkCaptureActive = false;
-		bulkFinalizeTickCount = -1;
-		bulkClogCount = -1;
-		bulkClogTotal = -1;
-		bulkObtained.clear();
+		bulk.reset();
 	}
 
 	private AccountType mapAccountType(net.runelite.api.vars.AccountType rlType)

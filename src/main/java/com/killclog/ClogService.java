@@ -128,13 +128,17 @@ public class ClogService
 	 */
 	public CompletableFuture<ClogResult> lookup(String playerName)
 	{
-		// Local cache for active player — authoritative, serve instantly
-		if (localClogCache.isActivePlayer(playerName)
-			&& localClogCache.hasDataFor(playerName))
+		// Active player: local cache is authoritative — never fall back to Temple
+		if (localClogCache.isActivePlayer(playerName))
 		{
-			log.debug("Using local clog cache for active player: {}", playerName);
-			return fetchItemNames().thenApply(names ->
-				localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>()));
+			if (localClogCache.hasDataFor(playerName))
+			{
+				log.debug("Using local clog cache for active player: {}", playerName);
+				return fetchItemNames().thenApply(names ->
+					localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>()));
+			}
+			// No local cache yet — return null so panel shows sync prompt
+			return CompletableFuture.completedFuture(null);
 		}
 
 		// Skip Temple if it already failed for this player this session
