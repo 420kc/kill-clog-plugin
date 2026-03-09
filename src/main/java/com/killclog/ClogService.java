@@ -112,7 +112,8 @@ public class ClogService
 		{
 			return override;
 		}
-		return bossName.toLowerCase().replaceAll("[^a-z0-9]+", "_").replaceAll("^_|_$", "");
+		return bossName.toLowerCase().replace("'", "")
+			.replaceAll("[^a-z0-9]+", "_").replaceAll("^_|_$", "");
 	}
 
 	/**

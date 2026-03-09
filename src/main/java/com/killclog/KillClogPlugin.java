@@ -87,7 +87,7 @@ public class KillClogPlugin extends Plugin
 
 	// Bulk clog capture state (client thread only)
 	private Map<String, List<Integer>> enumCategoryMap;
-	private Map<Integer, String> itemToCategoryKey;
+	private Map<Integer, List<String>> itemToCategoryKeys;
 	private boolean enumsParsed;
 	private boolean bulkCaptureActive;
 	private int bulkFinalizeTickCount = -1;
@@ -299,7 +299,7 @@ public class KillClogPlugin extends Plugin
 		try
 		{
 			enumCategoryMap = new HashMap<>();
-			itemToCategoryKey = new HashMap<>();
+			itemToCategoryKeys = new HashMap<>();
 
 			EnumComposition tabs = client.getEnum(ENUM_CLOG_TABS);
 
@@ -323,9 +323,7 @@ public class KillClogPlugin extends Plugin
 						continue;
 					}
 
-					String categoryKey = name.toLowerCase()
-						.replaceAll("[^a-z0-9]+", "_")
-						.replaceAll("^_|_$", "");
+					String categoryKey = ClogService.bossToCategory(name);
 
 					EnumComposition itemsEnum = client.getEnum(itemsEnumId);
 					List<Integer> itemIds = new ArrayList<>();
@@ -333,7 +331,8 @@ public class KillClogPlugin extends Plugin
 					{
 						int itemId = itemsEnum.getIntValue(itemKey);
 						itemIds.add(itemId);
-						itemToCategoryKey.put(itemId, categoryKey);
+						itemToCategoryKeys.computeIfAbsent(itemId, k -> new ArrayList<>())
+							.add(categoryKey);
 					}
 
 					enumCategoryMap.put(categoryKey, itemIds);
@@ -342,7 +341,7 @@ public class KillClogPlugin extends Plugin
 
 			enumsParsed = true;
 			log.info("Parsed clog enums: {} categories, {} items",
-				enumCategoryMap.size(), itemToCategoryKey.size());
+				enumCategoryMap.size(), itemToCategoryKeys.size());
 		}
 		catch (Exception e)
 		{
@@ -408,10 +407,13 @@ public class KillClogPlugin extends Plugin
 
 		for (ClogResult.ClogItem item : bulkObtained)
 		{
-			String cat = itemToCategoryKey.get(item.getId());
-			if (cat != null)
+			List<String> cats = itemToCategoryKeys.get(item.getId());
+			if (cats != null)
 			{
-				obtainedByCategory.get(cat).add(item);
+				for (String cat : cats)
+				{
+					obtainedByCategory.get(cat).add(item);
+				}
 			}
 		}
 
