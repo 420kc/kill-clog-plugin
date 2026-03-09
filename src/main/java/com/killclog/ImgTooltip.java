@@ -42,6 +42,7 @@ public class ImgTooltip extends TitleTooltip
 	private int effectiveCols;
 	private int hoveredItemIndex = -1;
 	private String notice = "No TempleOSRS Data";
+	private BufferedImage noticeIcon;
 
 	private int totalItems;
 	private List<Integer> allItemIds;
@@ -139,6 +140,12 @@ public class ImgTooltip extends TitleTooltip
 		this.notice = msg;
 	}
 
+	public void setNotice(String msg, BufferedImage icon)
+	{
+		this.notice = msg;
+		this.noticeIcon = icon;
+	}
+
 	private BufferedImage resizeSprite(BufferedImage img)
 	{
 		if (img == null || spriteSize >= DEFAULT_SPRITE_SIZE)
@@ -168,6 +175,10 @@ public class ImgTooltip extends TitleTooltip
 		{
 			FontMetrics sfm = getFontMetrics(FontManager.getRunescapeSmallFont());
 			int noticeWidth = sfm.stringWidth(notice);
+			if (noticeIcon != null)
+			{
+				noticeWidth += noticeIcon.getWidth() + 3;
+			}
 			gridWidth = Math.max(gridWidth, noticeWidth);
 		}
 
@@ -199,8 +210,23 @@ public class ImgTooltip extends TitleTooltip
 			int cellSize = spriteSize + PADDING;
 			int gridHeight = rows * cellSize - PADDING;
 
-			int nx = inset + (w - inset * 2 - nfm.stringWidth(notice)) / 2;
+			int totalWidth = nfm.stringWidth(notice);
+			int iconW = 0;
+			if (noticeIcon != null)
+			{
+				iconW = noticeIcon.getWidth() + 3;
+				totalWidth += iconW;
+			}
+
+			int nx = inset + (w - inset * 2 - totalWidth) / 2;
 			int ny = startY + (gridHeight - nfm.getHeight()) / 2 + nfm.getAscent();
+
+			if (noticeIcon != null)
+			{
+				int iconY = ny - noticeIcon.getHeight() + nfm.getDescent();
+				g2.drawImage(noticeIcon, nx, iconY, null);
+				nx += iconW;
+			}
 			g2.drawString(notice, nx, ny);
 			return;
 		}

@@ -37,6 +37,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 	private Map<String, BufferedImage> tierIcons;
 	private String notice;
+	private BufferedImage noticeIcon;
 
 	private BufferedImage[] recentSprites;
 	private int recentCount;
@@ -110,6 +111,13 @@ public class ClogSummaryTooltip extends TitleTooltip
 		setTitle("Clog Summary");
 	}
 
+	public void setNotice(String notice, BufferedImage icon)
+	{
+		this.notice = notice;
+		this.noticeIcon = icon;
+		setTitle("Clog Summary");
+	}
+
 	public void setRecentItems(List<ClogResult.ClogItem> recentItems, ItemManager itemManager)
 	{
 		recentCount = recentItems.size();
@@ -143,7 +151,12 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 		if (notice != null)
 		{
-			return new Dimension(fm.stringWidth(notice), LINE_HEIGHT);
+			int nw = fm.stringWidth(notice);
+			if (noticeIcon != null)
+			{
+				nw += noticeIcon.getWidth() + 3;
+			}
+			return new Dimension(nw, LINE_HEIGHT);
 		}
 
 		int iconWidth = ICON_SIZE + ICON_GAP;
@@ -198,7 +211,14 @@ public class ClogSummaryTooltip extends TitleTooltip
 		if (notice != null)
 		{
 			g2.setColor(NOTICE_COLOR);
-			g2.drawString(notice, inset, startY + fm.getAscent());
+			int nx = inset;
+			g2.drawString(notice, nx, startY + fm.getAscent());
+			if (noticeIcon != null)
+			{
+				nx += fm.stringWidth(notice) + 3;
+				int iconY = startY + (LINE_HEIGHT - noticeIcon.getHeight()) / 2;
+				g2.drawImage(noticeIcon, nx, iconY, null);
+			}
 			return;
 		}
 

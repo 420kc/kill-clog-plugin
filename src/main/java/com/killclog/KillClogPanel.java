@@ -78,12 +78,24 @@ public class KillClogPanel extends PluginPanel
 	private static final Color HAMBURGER_COLOR = new Color(70, 70, 70);
 	private static final Color HAMBURGER_HOVER_COLOR = new Color(96, 96, 96);
 	private static final int MAX_TOTAL_LEVEL = 2376;
+	private static final String SYNC_NOTICE = "Open Collection Log and click";
+	private static final int SYNC_ICON_SIZE = 12;
 
 	/** Info bar text color — only applies when highlighter is active AND clog data exists. */
 	private Color getInfoColor()
 	{
 		return config.completionistHighlighter() && clogResult != null
 			? config.infoBarColor() : KC_COLOR;
+	}
+
+	private BufferedImage getSyncIcon()
+	{
+		if (syncNoticeIcon == null)
+		{
+			BufferedImage raw = ImageUtil.loadImageResource(KillClogPlugin.class, "icon.png");
+			syncNoticeIcon = ImageUtil.resizeImage(raw, SYNC_ICON_SIZE, SYNC_ICON_SIZE);
+		}
+		return syncNoticeIcon;
 	}
 
 	private static final String[] SEARCH_MSGS = {
@@ -384,7 +396,7 @@ public class KillClogPanel extends PluginPanel
 					&& config.clogSource() != ClogSource.TEMPLE;
 				if (isSelf)
 				{
-					tip.setNotice("Open your Collection Log in-game to continue.");
+					tip.setNotice(SYNC_NOTICE, getSyncIcon());
 				}
 				else
 				{
@@ -427,6 +439,7 @@ public class KillClogPanel extends PluginPanel
 	private final Map<String, ImageIcon> clogTierIconsLarge = new LinkedHashMap<>();
 
 	private JLabel refreshLabel;
+	private BufferedImage syncNoticeIcon;
 	private final Map<HiscoreSkill, JLabel> bossLabels = new LinkedHashMap<>();
 	private final Map<HiscoreSkill, JLabel> activityLabels = new LinkedHashMap<>();
 	private final Map<HiscoreSkill, ImageIcon> originalIcons = new LinkedHashMap<>();
@@ -1335,11 +1348,16 @@ public class KillClogPanel extends PluginPanel
 			boolean isSelfNoCache = hiscoreResult != null && localRsn != null
 				&& localRsn.equalsIgnoreCase(lookupPlayer)
 				&& config.clogSource() != ClogSource.TEMPLE;
-			tip.setNotice(isSelfNoCache
-				? "Open your Collection Log"
-				: hiscoreResult != null
+			if (isSelfNoCache)
+			{
+				tip.setNotice(SYNC_NOTICE, getSyncIcon());
+			}
+			else
+			{
+				tip.setNotice(hiscoreResult != null
 					? "No TempleOSRS Data"
 					: "Nothing to see here! (Search for a player)");
+			}
 		}
 
 		keepTooltipOnHover(tip, parentCell);
@@ -1799,9 +1817,16 @@ public class KillClogPanel extends PluginPanel
 				{
 					boolean isSelfClog = isSelf
 						&& config.clogSource() != ClogSource.TEMPLE;
-					clogNotice.setText(isSelfClog
-						? "Open your Collection Log"
-						: " ");
+					if (isSelfClog)
+				{
+					clogNotice.setText(SYNC_NOTICE);
+					clogNotice.setIcon(new javax.swing.ImageIcon(getSyncIcon()));
+				}
+				else
+				{
+					clogNotice.setText(" ");
+					clogNotice.setIcon(null);
+				}
 					if (isSelfClog)
 					{
 						BufferedImage icon = ImageUtil.loadImageResource(
@@ -1834,6 +1859,7 @@ public class KillClogPanel extends PluginPanel
 		clogLastChanged = null;
 		rsn = null;
 		clogNotice.setText(" ");
+		clogNotice.setIcon(null);
 		tooltipDataMap.clear();
 		rareTooltips.clear();
 		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
