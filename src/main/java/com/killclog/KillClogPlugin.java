@@ -221,14 +221,19 @@ public class KillClogPlugin extends Plugin
 			return;
 		}
 
-		int[] intStack = client.getIntStack();
-		int intStackSize = client.getIntStackSize();
-		if (intStackSize < 2)
+		if (event.getScriptEvent() == null || event.getScriptEvent().getArguments() == null)
 		{
 			return;
 		}
-		int itemId = intStack[intStackSize - 2];
-		int count = intStack[intStackSize - 1];
+
+		Object[] args = event.getScriptEvent().getArguments();
+		if (args.length < 3)
+		{
+			return;
+		}
+
+		int itemId = (int) args[1];
+		int count = (int) args[2];
 
 		bulkObtained.add(new ClogResult.ClogItem(itemId, count, null));
 		bulkFinalizeTickCount = client.getTickCount() + 3;
