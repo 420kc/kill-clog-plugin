@@ -178,8 +178,7 @@ public class KillClogPanel extends PluginPanel
 			else
 			{
 				boolean isSelf = localRsn != null && rsn != null
-					&& localRsn.equalsIgnoreCase(rsn)
-					&& config.clogSource() != ClogSource.TEMPLE;
+					&& localRsn.equalsIgnoreCase(rsn);
 				if (isSelf)
 				{
 					tip.setNotice(SYNC_NOTICE, getSyncIcon());
@@ -1171,8 +1170,7 @@ public class KillClogPanel extends PluginPanel
 			tip.setTitle(name);
 			String lookupPlayer = searchBar.getText().trim();
 			boolean isSelfNoCache = hiscoreResult != null && localRsn != null
-				&& localRsn.equalsIgnoreCase(lookupPlayer)
-				&& config.clogSource() != ClogSource.TEMPLE;
+				&& localRsn.equalsIgnoreCase(lookupPlayer);
 			if (isSelfNoCache)
 			{
 				tip.setNotice(SYNC_NOTICE, getSyncIcon());
@@ -1637,9 +1635,7 @@ public class KillClogPanel extends PluginPanel
 				}
 				else
 				{
-					boolean isSelfClog = isSelf
-						&& config.clogSource() != ClogSource.TEMPLE;
-					if (isSelfClog)
+					if (isSelf)
 					{
 						clogNotice.setText(SYNC_NOTICE);
 						clogNotice.setIcon(new ImageIcon(getSyncIcon()));
@@ -1953,8 +1949,7 @@ public class KillClogPanel extends PluginPanel
 			if (clogResult == null)
 			{
 				boolean selfNoCache = localRsn != null
-					&& localRsn.equalsIgnoreCase(searchBar.getText().trim())
-					&& config.clogSource() != ClogSource.TEMPLE;
+					&& localRsn.equalsIgnoreCase(searchBar.getText().trim());
 				if (!selfNoCache)
 				{
 					int total = clogService.getCategoryItemCount(category);
@@ -2140,7 +2135,6 @@ public class KillClogPanel extends PluginPanel
 			case "inProgressClogColor":
 			case "emptyClogColor":
 			case "infoBarColor":
-			case "clogSource":
 				toggleHighlighter(config.completionistHighlighter());
 				updateTooltips();
 				break;

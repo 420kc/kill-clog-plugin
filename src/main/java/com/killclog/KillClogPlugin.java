@@ -412,11 +412,6 @@ public class KillClogPlugin extends Plugin
 			return;
 		}
 
-		if (config.clogSource() == ClogSource.TEMPLE)
-		{
-			return;
-		}
-
 		Player local = client.getLocalPlayer();
 		if (local == null || local.getName() == null)
 		{
@@ -561,11 +556,6 @@ public class KillClogPlugin extends Plugin
 
 	private void captureVisibleCategory()
 	{
-		if (config.clogSource() == ClogSource.TEMPLE)
-		{
-			return;
-		}
-
 		Player local = client.getLocalPlayer();
 		if (local == null || local.getName() == null)
 		{

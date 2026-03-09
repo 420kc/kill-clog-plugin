@@ -22,24 +22,6 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "clogSource",
-		name = "Collection Log Source",
-		description = "<html>Where to load collection log data from.<br><br>"
-			+ "<b>TempleOSRS</b> — Fetch from TempleOSRS. Requires synced profile.<br>"
-			+ "<b>Local</b> — Open your collection log in-game to capture all data instantly.<br>"
-			+ "<b>Both</b> — Use TempleOSRS data and capture locally when you open your log.<br><br>"
-			+ "<b>To sync with TempleOSRS:</b><br>"
-			+ "1. Install the 'TempleOSRS' plugin from the Plugin Hub<br>"
-			+ "2. Open your collection log in-game<br>"
-			+ "3. Click the sync button in the top-right corner</html>",
-		position = 1
-	)
-	default ClogSource clogSource()
-	{
-		return ClogSource.BOTH;
-	}
-
-	@ConfigItem(
 		keyName = "playerMenuLookup",
 		name = "Player Menu Lookup",
 		description = "Add 'Kill Clog' to right-click menu on players",
@@ -129,14 +111,14 @@ public interface KillClogConfig extends Config
 
 	@ConfigItem(
 		keyName = "infoBarColor",
-		name = "Info Bar Color",
-		description = "Applies to RSN, clog count, combat level, and total level",
+		name = "Summary Bar Text",
+		description = "Colors the text of the Summary Bars (RSN, Clog Count, PvM, Total Level, and PvP)",
 		section = "completionist",
 		position = 2
 	)
 	default Color infoBarColor()
 	{
-		return new Color(255, 255, 255);
+		return new Color(255, 87, 0);
 	}
 
 	@ConfigItem(

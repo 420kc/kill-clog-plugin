@@ -54,12 +54,6 @@ class ClogButtonOverlay extends Overlay implements MouseListener
 			return null;
 		}
 
-		if (config.clogSource() == ClogSource.TEMPLE)
-		{
-			buttonBounds = null;
-			return null;
-		}
-
 		if (icon == null)
 		{
 			icon = ImageUtil.loadImageResource(KillClogPlugin.class, "icon.png");

@@ -128,12 +128,8 @@ public class ClogService
 	 */
 	public CompletableFuture<ClogResult> lookup(String playerName)
 	{
-		ClogSource source = config.clogSource();
-		boolean useLocal = source == ClogSource.LOCAL || source == ClogSource.BOTH;
-
-		// Active player with widget-read data — authoritative, serve instantly
-		if (useLocal
-			&& localClogCache.isActivePlayer(playerName)
+		// Local cache for active player — authoritative, serve instantly
+		if (localClogCache.isActivePlayer(playerName)
 			&& localClogCache.hasDataFor(playerName))
 		{
 			log.debug("Using local clog cache for active player: {}", playerName);
@@ -141,8 +137,9 @@ public class ClogService
 				localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>()));
 		}
 
-		// Local-only mode — no Temple fetch, use cached data if available
-		if (source == ClogSource.LOCAL)
+		// Skip Temple if it already failed for this player this session
+		String normalizedName = playerName.toLowerCase();
+		if (templeFailures.contains(normalizedName))
 		{
 			if (localClogCache.hasDataFor(playerName))
 			{
@@ -152,19 +149,7 @@ public class ClogService
 			return CompletableFuture.completedFuture(null);
 		}
 
-		// Skip Temple if it already failed for this player this session
-		String normalizedName = playerName.toLowerCase();
-		if (templeFailures.contains(normalizedName))
-		{
-			if (useLocal && localClogCache.hasDataFor(playerName))
-			{
-				return fetchItemNames().thenApply(names ->
-					localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>()));
-			}
-			return CompletableFuture.completedFuture(null);
-		}
-
-		// Try Temple, cache on success, fall back to persistent cache
+		// Temple for everyone else, local cache as fallback
 		String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
 
 		CompletableFuture<PlayerClogData> playerFuture =
@@ -190,16 +175,13 @@ public class ClogService
 						names != null ? names : new HashMap<>(),
 						playerData.lastChanged
 					);
-					if (useLocal)
-					{
-						localClogCache.cacheResult(result);
-					}
+					localClogCache.cacheResult(result);
 					return result;
 				}
 
-				// Temple failed — remember and fall back to persistent cache
+				// Temple failed — remember and fall back to local cache
 				templeFailures.add(normalizedName);
-				if (useLocal && localClogCache.hasDataFor(playerName))
+				if (localClogCache.hasDataFor(playerName))
 				{
 					log.debug("Temple unavailable, using cached data for: {}", playerName);
 					return localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>());
