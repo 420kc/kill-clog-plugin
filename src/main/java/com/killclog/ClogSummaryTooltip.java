@@ -30,7 +30,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 	private String tierRange;
 	private String tierName;
-	private String progressText;
+	private String progressCount;
 	private String nextTierName;
 	private String syncDate;
 	private boolean syncStale;
@@ -54,16 +54,16 @@ public class ClogSummaryTooltip extends TitleTooltip
 		{
 			tierRange = null;
 			tierName = null;
-			progressText = (ClogHelper.CLOG_TIER_THRESHOLDS[0] - obtained) + " more until";
+			progressCount = String.valueOf(ClogHelper.CLOG_TIER_THRESHOLDS[0] - obtained);
 			nextTierName = "bronze";
 			return;
 		}
 
 		if ("gilded".equals(currentTier))
 		{
-			tierRange = gildedThreshold + "+:";
+			tierRange = gildedThreshold + "+";
 			tierName = "gilded";
-			progressText = null;
+			progressCount = null;
 			nextTierName = null;
 			return;
 		}
@@ -92,9 +92,9 @@ public class ClogSummaryTooltip extends TitleTooltip
 			nextTier = "gilded";
 		}
 
-		tierRange = currentThreshold + "-" + (nextThreshold - 1) + ":";
+		tierRange = currentThreshold + "-" + (nextThreshold - 1);
 		tierName = currentTier;
-		progressText = (nextThreshold - obtained) + " more until";
+		progressCount = String.valueOf(nextThreshold - obtained);
 		nextTierName = nextTier;
 	}
 
@@ -151,13 +151,13 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 		if (tierRange != null)
 		{
-			String label = tierName != null ? tierName.substring(0, 1).toUpperCase() + tierName.substring(1) : "";
-			textWidth = Math.max(textWidth, fm.stringWidth(tierRange) + iconWidth + ICON_GAP + fm.stringWidth(label));
+			String label = capitalize(tierName) + ": ";
+			textWidth = Math.max(textWidth, iconWidth + fm.stringWidth(label) + fm.stringWidth(tierRange));
 		}
-		if (progressText != null)
+		if (progressCount != null)
 		{
-			String label = nextTierName != null ? nextTierName.substring(0, 1).toUpperCase() + nextTierName.substring(1) : "";
-			textWidth = Math.max(textWidth, fm.stringWidth(progressText) + iconWidth + ICON_GAP + fm.stringWidth(label));
+			String label = capitalize(nextTierName) + ": ";
+			textWidth = Math.max(textWidth, iconWidth + fm.stringWidth(label) + fm.stringWidth(progressCount + " more"));
 		}
 		String syncLabel = "Last update: ";
 		if (syncDate != null)
@@ -167,7 +167,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 		int lines = 0;
 		if (tierRange != null) lines++;
-		if (progressText != null) lines++;
+		if (progressCount != null) lines++;
 		if (syncDate != null) lines++;
 
 		int contentHeight = LINE_HEIGHT * lines;
@@ -204,17 +204,17 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 		int y = startY;
 
-		// Current tier range with icon
+		// Current tier: [icon] Rune: 1100-1199
 		if (tierRange != null)
 		{
-			paintTierLine(g2, fm, inset, y, tierRange, tierName);
+			paintTierLine(g2, fm, inset, y, tierName, tierRange, Color.WHITE, null);
 			y += LINE_HEIGHT;
 		}
 
-		// Progress to next tier with icon
-		if (progressText != null)
+		// Progress: [icon] Dragon: 18 more
+		if (progressCount != null)
 		{
-			paintTierLine(g2, fm, inset, y, progressText, nextTierName);
+			paintTierLine(g2, fm, inset, y, nextTierName, progressCount, Color.WHITE, " more");
 			y += LINE_HEIGHT;
 		}
 
@@ -260,13 +260,11 @@ public class ClogSummaryTooltip extends TitleTooltip
 		}
 	}
 
+	/** Draws: [icon] Tier: value [suffix] — value in valueColor, suffix in orange. */
 	private void paintTierLine(Graphics2D g2, FontMetrics fm, int x, int y,
-		String text, String tier)
+		String tier, String value, Color valueColor, String suffix)
 	{
 		int textY = y + fm.getAscent();
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString(text, x, textY);
-		x += fm.stringWidth(text) + ICON_GAP;
 
 		BufferedImage icon = tierIcons != null ? tierIcons.get(tier) : null;
 		if (icon != null)
@@ -276,11 +274,24 @@ public class ClogSummaryTooltip extends TitleTooltip
 			x += icon.getWidth() + ICON_GAP;
 		}
 
-		if (tier != null)
+		String label = capitalize(tier) + ": ";
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString(label, x, textY);
+		x += fm.stringWidth(label);
+
+		g2.setColor(valueColor);
+		g2.drawString(value, x, textY);
+		x += fm.stringWidth(value);
+
+		if (suffix != null)
 		{
-			String label = tier.substring(0, 1).toUpperCase() + tier.substring(1);
 			g2.setColor(OSRS_ORANGE);
-			g2.drawString(label, x, textY);
+			g2.drawString(suffix, x, textY);
 		}
+	}
+
+	private static String capitalize(String s)
+	{
+		return s == null || s.isEmpty() ? "" : s.substring(0, 1).toUpperCase() + s.substring(1);
 	}
 }
