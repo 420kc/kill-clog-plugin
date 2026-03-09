@@ -130,6 +130,30 @@ public class LocalClogCache
 		log.debug("Cached Temple data for '{}' ({} categories)", name, data.obtained.size());
 	}
 
+	public void mergeCategory(String playerName, String categoryKey,
+		List<Integer> allItems, List<ClogResult.ClogItem> obtained)
+	{
+		if (playerName == null)
+		{
+			return;
+		}
+
+		String key = playerName.toLowerCase();
+		PlayerClogData data = players.get(key);
+		if (data == null)
+		{
+			return;
+		}
+
+		data.categories.put(categoryKey, new ArrayList<>(allItems));
+		data.obtained.put(categoryKey, new ArrayList<>(obtained));
+
+		final PlayerClogData snapshot = shallowCopy(data);
+		diskWriter.execute(() -> saveToDisk(playerName, snapshot));
+		log.debug("Merged category '{}' for '{}': {}/{} obtained",
+			categoryKey, playerName, obtained.size(), allItems.size());
+	}
+
 	public boolean hasDataFor(String playerName)
 	{
 		if (playerName == null)

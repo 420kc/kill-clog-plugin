@@ -34,6 +34,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.util.ImageUtil;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.util.Text;
 
 @Slf4j
@@ -56,6 +57,11 @@ public class KillClogPlugin extends Plugin
 	private static final int PARAM_SUBTAB_ENUM = 683;
 	private static final int PARAM_CATEGORY_NAME = 689;
 	private static final int PARAM_CATEGORY_ITEMS = 690;
+
+	// Category widget reads — captures untradeable items script 4100 misses
+	private static final int SCRIPT_CLOG_DRAW = 2731;
+	private static final int CLOG_INTERFACE = 621;
+	private static final int CLOG_ITEMS_CHILD = 37;
 
 	// Synthetic clog categories — not in game cache enums
 	private static final int THIRD_AGE_RING = 23185;
@@ -113,6 +119,12 @@ public class KillClogPlugin extends Plugin
 	private int bulkClogCount = -1;
 	private int bulkClogTotal = -1;
 	private final List<ClogResult.ClogItem> bulkObtained = new ArrayList<>();
+
+	// Buffered category read — first category visible when clog opens (before Search→Back)
+	private boolean awaitingBuffer;
+	private String bufferedCategoryKey;
+	private List<Integer> bufferedCategoryItems;
+	private List<ClogResult.ClogItem> bufferedCategoryObtained;
 
 	private final HotkeyListener highlighterHotkey = new HotkeyListener(() -> config.highlighterKeybind())
 	{
@@ -230,7 +242,20 @@ public class KillClogPlugin extends Plugin
 	{
 		if (event.getScriptId() == CLOG_SETUP_SCRIPT)
 		{
+			awaitingBuffer = true;
 			triggerBulkCapture();
+		}
+		else if (event.getScriptId() == SCRIPT_CLOG_DRAW)
+		{
+			if (awaitingBuffer)
+			{
+				bufferVisibleCategory();
+				awaitingBuffer = false;
+			}
+			else
+			{
+				captureVisibleCategory();
+			}
 		}
 	}
 
@@ -486,12 +511,155 @@ public class KillClogPlugin extends Plugin
 
 		resetBulkCapture();
 
+		// Merge the category that was visible when the clog opened
+		if (bufferedCategoryKey != null && bufferedCategoryItems != null)
+		{
+			localClogCache.mergeCategory(name, bufferedCategoryKey,
+				bufferedCategoryItems, bufferedCategoryObtained);
+			int buffObt = bufferedCategoryObtained != null ? bufferedCategoryObtained.size() : 0;
+			int buffTotal = bufferedCategoryItems.size();
+			log.info("Merged buffered category '{}': {}/{} obtained",
+				bufferedCategoryKey, buffObt, buffTotal);
+
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+				"<col=4caf6e>Kill Clog:</col> Updated " + bufferedCategoryKey
+					+ " — " + buffObt + "/" + buffTotal + " items",
+				null);
+
+			bufferedCategoryKey = null;
+			bufferedCategoryItems = null;
+			bufferedCategoryObtained = null;
+		}
+
+		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+			"<col=4caf6e>Kill Clog:</col> Browse to other clog categories to capture untradeable items.",
+			null);
+
 		SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(name));
+	}
+
+	// --- Category widget reads (captures untradeable items script 4100 misses) ---
+
+	private static final int CLOG_HEADER_CHILD = 20;
+
+	/** Buffers the currently displayed category before Search→Back clears it. */
+	private void bufferVisibleCategory()
+	{
+		Widget header = client.getWidget(CLOG_INTERFACE, CLOG_HEADER_CHILD);
+		if (header == null || header.getText() == null || header.getText().isEmpty())
+		{
+			return;
+		}
+
+		Widget items = client.getWidget(CLOG_INTERFACE, CLOG_ITEMS_CHILD);
+		if (items == null)
+		{
+			return;
+		}
+
+		Widget[] children = items.getChildren();
+		if (children == null || children.length == 0)
+		{
+			return;
+		}
+
+		String categoryName = Text.removeTags(header.getText());
+		bufferedCategoryKey = ClogService.bossToCategory(categoryName);
+		bufferedCategoryItems = new ArrayList<>();
+		bufferedCategoryObtained = new ArrayList<>();
+
+		for (Widget child : children)
+		{
+			int itemId = child.getItemId();
+			if (itemId <= 0)
+			{
+				continue;
+			}
+			bufferedCategoryItems.add(itemId);
+			if (child.getOpacity() == 0)
+			{
+				int qty = child.getItemQuantity();
+				bufferedCategoryObtained.add(
+					new ClogResult.ClogItem(itemId, Math.max(qty, 1), null));
+			}
+		}
+
+		log.info("Buffered visible category '{}': {}/{} obtained",
+			bufferedCategoryKey,
+			bufferedCategoryObtained.size(), bufferedCategoryItems.size());
+	}
+
+	/** Passively captures any clog category the user browses to (script 2731). */
+	private void captureVisibleCategory()
+	{
+		if (config.clogSource() == ClogSource.TEMPLE)
+		{
+			return;
+		}
+
+		Player local = client.getLocalPlayer();
+		if (local == null || local.getName() == null)
+		{
+			return;
+		}
+
+		String name = local.getName();
+		if (!localClogCache.hasDataFor(name))
+		{
+			return;
+		}
+
+		Widget header = client.getWidget(CLOG_INTERFACE, CLOG_HEADER_CHILD);
+		if (header == null || header.getText() == null || header.getText().isEmpty())
+		{
+			return;
+		}
+
+		Widget items = client.getWidget(CLOG_INTERFACE, CLOG_ITEMS_CHILD);
+		if (items == null)
+		{
+			return;
+		}
+
+		Widget[] children = items.getChildren();
+		if (children == null || children.length == 0)
+		{
+			return;
+		}
+
+		String categoryName = Text.removeTags(header.getText());
+		String categoryKey = ClogService.bossToCategory(categoryName);
+
+		List<Integer> allItemIds = new ArrayList<>();
+		List<ClogResult.ClogItem> obtained = new ArrayList<>();
+
+		for (Widget child : children)
+		{
+			int itemId = child.getItemId();
+			if (itemId <= 0)
+			{
+				continue;
+			}
+			allItemIds.add(itemId);
+			if (child.getOpacity() == 0)
+			{
+				int qty = child.getItemQuantity();
+				obtained.add(new ClogResult.ClogItem(itemId, Math.max(qty, 1), null));
+			}
+		}
+
+		if (!allItemIds.isEmpty())
+		{
+			localClogCache.mergeCategory(name, categoryKey, allItemIds, obtained);
+			log.debug("Passive clog read '{}': {}/{} obtained",
+				categoryKey, obtained.size(), allItemIds.size());
+		}
 	}
 
 	private void resetBulkCapture()
 	{
 		bulkCaptureActive = false;
+		awaitingBuffer = false;
 		bulkFinalizeTickCount = -1;
 		bulkClogCount = -1;
 		bulkClogTotal = -1;

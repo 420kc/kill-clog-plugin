@@ -117,6 +117,17 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "seenSelfGreeting",
+		name = "",
+		description = "",
+		hidden = true
+	)
+	default boolean seenSelfGreeting()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "infoBarColor",
 		name = "Info Bar Color",
 		description = "Applies to RSN, clog count, combat level, and total level",

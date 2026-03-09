@@ -109,6 +109,30 @@ public class KillClogPanel extends PluginPanel
 		"Couldn't find %s. Tragic.",
 	};
 
+	private static final String[] SELF_MSGS = {
+		"Oh hey it's you again",
+		"%s returns for more",
+		"Welcome back %s",
+		"The usual?",
+		"Looking good, %s",
+		"Back for more?",
+		"Miss me?",
+		"%s checks in",
+	};
+
+	private static final String[] SELF_MSGS_RARE = {
+		"Today's the day. GL %s.",
+		"Main character energy",
+		"You again? Nice.",
+	};
+
+	private static final String[] SELF_MSGS_ULTRA = {
+		"%s the legend",
+		"One day this log will be full",
+	};
+
+	private static final Color SELF_SEARCH_COLOR = new Color(0x4c, 0xaf, 0x6e);
+
 	// Boss display order matching vanilla RuneLite hiscores.
 	// Must contain the same bosses as BOSS_NAMES in HiscoreService (order differs — this is display order, not CSV order).
 	// New boss? Add HiscoreSkill.BOSS_NAME here alphabetically once RuneLite adds the enum.
@@ -1550,6 +1574,31 @@ public class KillClogPanel extends PluginPanel
 		searchStatus.setForeground(color);
 	}
 
+	private String selfSearchMessage(String player)
+	{
+		if (!config.seenSelfGreeting())
+		{
+			configManager.setConfiguration("killclog", "seenSelfGreeting", true);
+			return "Hey, that's you!";
+		}
+
+		int roll = ThreadLocalRandom.current().nextInt(100);
+		String[] pool;
+		if (roll < 1)
+		{
+			pool = SELF_MSGS_ULTRA;
+		}
+		else if (roll < 10)
+		{
+			pool = SELF_MSGS_RARE;
+		}
+		else
+		{
+			pool = SELF_MSGS;
+		}
+		return String.format(pool[ThreadLocalRandom.current().nextInt(pool.length)], player);
+	}
+
 	public void doLookup()
 	{
 		String player = searchBar.getText().trim();
@@ -1564,8 +1613,18 @@ public class KillClogPanel extends PluginPanel
 
 		lookupInFlight = true;
 		final int thisLookup = ++lookupVersion;
-		int searchIdx = ThreadLocalRandom.current().nextInt(SEARCH_MSGS.length);
-		setSearchStatus(String.format(SEARCH_MSGS[searchIdx], player), TEXT_DIM);
+		final boolean isSelf = localRsn != null && localRsn.equalsIgnoreCase(player);
+		final boolean isFirstSelfGreeting = isSelf && !config.seenSelfGreeting();
+
+		if (isSelf)
+		{
+			setSearchStatus(selfSearchMessage(player), SELF_SEARCH_COLOR);
+		}
+		else
+		{
+			int searchIdx = ThreadLocalRandom.current().nextInt(SEARCH_MSGS.length);
+			setSearchStatus(String.format(SEARCH_MSGS[searchIdx], player), TEXT_DIM);
+		}
 		searchBar.setIcon(IconTextField.Icon.LOADING_DARKER);
 
 		resetAllLabels();
@@ -1600,7 +1659,10 @@ public class KillClogPanel extends PluginPanel
 					nameAutocompleter.addToSearchHistory(player);
 				}
 
-				setSearchStatus(" ", TEXT_DIM);
+				if (!isFirstSelfGreeting)
+				{
+					setSearchStatus(" ", TEXT_DIM);
+				}
 				playerName.setText(rsn != null ? rsn : player);
 				playerName.setForeground(getInfoColor());
 				updateInfoIcon(result.getAccountType());
@@ -1679,13 +1741,12 @@ public class KillClogPanel extends PluginPanel
 				}
 				else
 				{
-					boolean isSelf = localRsn != null
-						&& localRsn.equalsIgnoreCase(player)
+					boolean isSelfClog = isSelf
 						&& config.clogSource() != ClogSource.TEMPLE;
-					clogNotice.setText(isSelf
+					clogNotice.setText(isSelfClog
 						? "Open your Collection Log"
 						: " ");
-					if (isSelf)
+					if (isSelfClog)
 					{
 						BufferedImage icon = ImageUtil.loadImageResource(
 							KillClogPlugin.class, "icon.png");
