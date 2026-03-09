@@ -572,17 +572,47 @@ public class KillClogPlugin extends Plugin
 			return;
 		}
 
+		// 621:20 getDynamicChildren(): [0]=category name, [1]="Obtained: x/y", [2]="Boss kills: n"
 		Widget header = client.getWidget(CLOG_INTERFACE, CLOG_HEADER_CHILD);
 		if (header == null)
 		{
 			return;
 		}
-		String headerText = header.getText();
+		Widget[] headerKids = header.getDynamicChildren();
+		if (headerKids == null || headerKids.length < 2)
+		{
+			return;
+		}
+
+		String headerText = (headerKids[0] != null) ? headerKids[0].getText() : null;
 		if (headerText == null || headerText.isEmpty())
 		{
 			return;
 		}
 
+		String categoryName = Text.removeTags(headerText);
+		String categoryKey = ClogService.bossToCategory(categoryName);
+
+		// Parse "Obtained: x/y" from dynamic child [1]
+		int obtainedCount = -1;
+		int totalCount = -1;
+		if (headerKids.length >= 2 && headerKids[1] != null)
+		{
+			String obtainedText = Text.removeTags(headerKids[1].getText());
+			if (obtainedText != null)
+			{
+				// Format: "Obtained: 6/9" or similar
+				java.util.regex.Matcher m = java.util.regex.Pattern
+					.compile("(\\d+)/(\\d+)").matcher(obtainedText);
+				if (m.find())
+				{
+					obtainedCount = Integer.parseInt(m.group(1));
+					totalCount = Integer.parseInt(m.group(2));
+				}
+			}
+		}
+
+		// Read items from widget
 		Widget items = client.getWidget(CLOG_INTERFACE, CLOG_ITEMS_CHILD);
 		if (items == null)
 		{
@@ -594,9 +624,6 @@ public class KillClogPlugin extends Plugin
 		{
 			return;
 		}
-
-		String categoryName = Text.removeTags(header.getText());
-		String categoryKey = ClogService.bossToCategory(categoryName);
 
 		List<Integer> allItemIds = new ArrayList<>();
 		List<ClogResult.ClogItem> obtained = new ArrayList<>();
@@ -617,6 +644,34 @@ public class KillClogPlugin extends Plugin
 			}
 		}
 
+		// Infer untradeables: if obtained count from header > items we can see,
+		// the missing ones are untradeable items not visible in the widget
+		if (obtainedCount > obtained.size() && obtainedCount <= allItemIds.size())
+		{
+			int missing = obtainedCount - obtained.size();
+			for (int itemId : allItemIds)
+			{
+				boolean alreadyObtained = false;
+				for (ClogResult.ClogItem oi : obtained)
+				{
+					if (oi.getId() == itemId)
+					{
+						alreadyObtained = true;
+						break;
+					}
+				}
+				if (!alreadyObtained)
+				{
+					obtained.add(new ClogResult.ClogItem(itemId, 1, null));
+					missing--;
+					if (missing <= 0)
+					{
+						break;
+					}
+				}
+			}
+		}
+
 		if (allItemIds.isEmpty())
 		{
 			return;
@@ -626,11 +681,10 @@ public class KillClogPlugin extends Plugin
 		if (localClogCache.hasDataFor(name))
 		{
 			localClogCache.mergeCategory(name, categoryKey, allItemIds, obtained);
-			log.debug("Captured '{}': {}/{} obtained", categoryKey, obtained.size(), allItemIds.size());
 
 			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
 				"<col=4caf6e>Kill Clog:</col> Captured " + categoryName
-					+ " — " + obtained.size() + "/" + allItemIds.size() + " items",
+					+ " \u2014 " + obtained.size() + "/" + allItemIds.size() + " obtained",
 				null);
 			SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(name));
 		}
@@ -639,13 +693,11 @@ public class KillClogPlugin extends Plugin
 			bufferedCategoryKey = categoryKey;
 			bufferedCategoryItems = new ArrayList<>(allItemIds);
 			bufferedCategoryObtained = new ArrayList<>(obtained);
-			log.debug("Buffered '{}': {}/{} obtained (awaiting bulk capture)",
-				categoryKey, obtained.size(), allItemIds.size());
 
 			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
 				"<col=4caf6e>Kill Clog:</col> Buffered " + categoryName
-					+ " — " + obtained.size() + "/" + allItemIds.size()
-					+ " items (will merge after clog sync)",
+					+ " \u2014 " + obtained.size() + "/" + allItemIds.size()
+					+ " obtained (will merge after sync)",
 				null);
 		}
 	}
