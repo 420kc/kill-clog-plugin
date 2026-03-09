@@ -17,7 +17,7 @@ Streamlined PvM-focused HiScores Overhaul with Collection Log integration.
 | | | | |
 |:---:|:---:|:---:|:---:|
 | ![config-hover](screenshots/config-hover-outline.png) | ![tooltip-hover](screenshots/tooltip-hover.gif) | ![tooltip-click](screenshots/tooltip-click.gif) | ![config-click](screenshots/config-click-tint.png) |
-| Hover + Outline | | | Click + Tint |
+| | Hover + Outline | Click + Tint | |
 
 ## Summaries
 
