@@ -174,6 +174,32 @@ public class KillClogPlugin extends Plugin
 			menuManager.get().addPlayerMenuItem(MENU_OPTION);
 		}
 
+		// If installed mid-session, run login init on the client thread
+		if (client.getGameState() == GameState.LOGGED_IN)
+		{
+			clientThread.invokeLater(() ->
+			{
+				Player local = client.getLocalPlayer();
+				if (local != null && local.getName() != null)
+				{
+					String name = local.getName();
+					AccountType acctType = mapAccountType(client.getAccountType());
+					localClogCache.setActivePlayer(name);
+					SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name, acctType));
+				}
+
+				if (!enumsParsed)
+				{
+					parseClogEnums();
+				}
+
+				if (config.autoLookupOnLogin())
+				{
+					pendingAutoLookup = true;
+				}
+			});
+		}
+
 		log.debug("Kill Clog plugin started");
 	}
 

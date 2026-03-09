@@ -914,9 +914,9 @@ public class KillClogPanel extends PluginPanel
 		JPanel rareRow = new JPanel(new GridLayout(1, 3));
 		rareRow.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		rareRow.setAlignmentX(0f);
-		rareRow.add(makeCustomRareCell("Hard (Rare)", 20544, PanelData.RARE_HARD, PanelData.HARD_RARE_ITEMS));
-		rareRow.add(makeCustomRareCell("Elite (Rare)", 20543, PanelData.RARE_ELITE, PanelData.ELITE_RARE_ITEMS));
-		rareRow.add(makeCustomRareCell("Master (Rare)", 19836, PanelData.RARE_MASTER, PanelData.MASTER_RARE_ITEMS));
+		rareRow.add(makeCustomRareCell("Hard Treasure (Rare)", 20544, PanelData.RARE_HARD, PanelData.HARD_RARE_ITEMS));
+		rareRow.add(makeCustomRareCell("Elite Treasure (Rare)", 20543, PanelData.RARE_ELITE, PanelData.ELITE_RARE_ITEMS));
+		rareRow.add(makeCustomRareCell("Master Treasure (Rare)", 19836, PanelData.RARE_MASTER, PanelData.MASTER_RARE_ITEMS));
 		grid.add(rareRow);
 
 		// Clue rows 3-4: Clue tiers
@@ -1713,9 +1713,9 @@ public class KillClogPanel extends PluginPanel
 
 		resetRareCell(thirdAgeCell, "3rd Age");
 		resetRareCell(gildedCell, "Gilded");
-		resetRareCell(hardRare, "Hard (Rare)");
-		resetRareCell(eliteRare, "Elite (Rare)");
-		resetRareCell(masterRare, "Master (Rare)");
+		resetRareCell(hardRare, "Hard Treasure (Rare)");
+		resetRareCell(eliteRare, "Elite Treasure (Rare)");
+		resetRareCell(masterRare, "Master Treasure (Rare)");
 		thirdAgeTooltipData = null;
 		gildedTooltipData = null;
 	}
@@ -1866,9 +1866,9 @@ public class KillClogPanel extends PluginPanel
 	{
 		updateClueRare(thirdAgeCell, "3rd Age", PanelData.CLOG_THIRD_AGE, result, true);
 		updateClueRare(gildedCell, "Gilded", PanelData.CLOG_GILDED, result, false);
-		updateCustomRare(hardRare, "Hard (Rare)", PanelData.RARE_HARD, PanelData.HARD_RARE_ITEMS, result);
-		updateCustomRare(eliteRare, "Elite (Rare)", PanelData.RARE_ELITE, PanelData.ELITE_RARE_ITEMS, result);
-		updateCustomRare(masterRare, "Master (Rare)", PanelData.RARE_MASTER, PanelData.MASTER_RARE_ITEMS, result);
+		updateCustomRare(hardRare, "Hard Treasure (Rare)", PanelData.RARE_HARD, PanelData.HARD_RARE_ITEMS, result);
+		updateCustomRare(eliteRare, "Elite Treasure (Rare)", PanelData.RARE_ELITE, PanelData.ELITE_RARE_ITEMS, result);
+		updateCustomRare(masterRare, "Master Treasure (Rare)", PanelData.RARE_MASTER, PanelData.MASTER_RARE_ITEMS, result);
 	}
 
 	private void updateClueRare(JLabel label, String name, String clogCategory,
