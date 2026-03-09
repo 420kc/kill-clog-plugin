@@ -111,7 +111,7 @@ public class KillClogPanelTest
 	public void testBossArraysInSync()
 	{
 		assertEquals(
-			"BOSS_NAMES (HiscoreService) and BOSSES (KillClogPanel) have different lengths",
-			HiscoreService.bossCount(), KillClogPanel.bossCount());
+			"BOSS_NAMES (HiscoreService) and BOSSES (PanelData) have different lengths",
+			HiscoreService.bossCount(), PanelData.bossCount());
 	}
 }

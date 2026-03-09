@@ -8,7 +8,6 @@ import java.awt.Rectangle;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import javax.inject.Inject;
-import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.input.MouseListener;
@@ -17,7 +16,6 @@ import net.runelite.client.ui.overlay.OverlayLayer;
 import net.runelite.client.ui.overlay.OverlayPosition;
 import net.runelite.client.util.ImageUtil;
 
-@Slf4j
 class ClogButtonOverlay extends Overlay implements MouseListener
 {
 	private static final int CLOG_INTERFACE = 621;

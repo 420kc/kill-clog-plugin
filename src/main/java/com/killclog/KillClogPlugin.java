@@ -22,6 +22,7 @@ import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.ScriptPreFired;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.PluginChanged;
+import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.input.KeyManager;
@@ -59,6 +60,7 @@ public class KillClogPlugin extends Plugin
 	private static final int PARAM_CATEGORY_ITEMS = 690;
 
 	private static final int CLOG_INTERFACE = 621;
+	private static final int CLOG_HEADER_CHILD = 20;
 	private static final int CLOG_ITEMS_CHILD = 37;
 
 	// Synthetic clog categories — not in game cache enums
@@ -112,7 +114,7 @@ public class KillClogPlugin extends Plugin
 	private ClogButtonOverlay clogButtonOverlay;
 
 	@Inject
-	private net.runelite.client.callback.ClientThread clientThread;
+	private ClientThread clientThread;
 
 	@Inject
 	private LocalClogCache localClogCache;
@@ -382,7 +384,7 @@ public class KillClogPlugin extends Plugin
 			injectSynthetic("gilded", GILDED_ITEMS);
 
 			enumsParsed = true;
-			log.info("Parsed clog enums: {} categories, {} items",
+			log.debug("Parsed clog enums: {} categories, {} items",
 				enumCategoryMap.size(), itemToCategoryKeys.size());
 		}
 		catch (Exception e)
@@ -509,7 +511,7 @@ public class KillClogPlugin extends Plugin
 				bufferedCategoryItems, bufferedCategoryObtained);
 			int buffObt = bufferedCategoryObtained != null ? bufferedCategoryObtained.size() : 0;
 			int buffTotal = bufferedCategoryItems.size();
-			log.info("Merged buffered category '{}': {}/{} obtained",
+			log.debug("Merged buffered category '{}': {}/{} obtained",
 				bufferedCategoryKey, buffObt, buffTotal);
 
 			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
@@ -531,8 +533,6 @@ public class KillClogPlugin extends Plugin
 	}
 
 	// --- Sync button (overlay click) ---
-
-	private static final int CLOG_HEADER_CHILD = 20;
 
 	/**
 	 * Called by ClogButtonOverlay on click.
@@ -561,45 +561,37 @@ public class KillClogPlugin extends Plugin
 
 	private void captureVisibleCategory()
 	{
-		log.info("captureVisibleCategory: entered");
 		if (config.clogSource() == ClogSource.TEMPLE)
 		{
-			log.info("captureVisibleCategory: bailed — TEMPLE mode");
 			return;
 		}
 
 		Player local = client.getLocalPlayer();
 		if (local == null || local.getName() == null)
 		{
-			log.info("captureVisibleCategory: bailed — no local player");
 			return;
 		}
 
 		Widget header = client.getWidget(CLOG_INTERFACE, CLOG_HEADER_CHILD);
 		if (header == null)
 		{
-			log.info("captureVisibleCategory: bailed — header widget null");
 			return;
 		}
 		String headerText = header.getText();
 		if (headerText == null || headerText.isEmpty())
 		{
-			log.info("captureVisibleCategory: bailed — header text empty (widget exists but text='{}', hidden={})",
-				headerText, header.isHidden());
 			return;
 		}
 
 		Widget items = client.getWidget(CLOG_INTERFACE, CLOG_ITEMS_CHILD);
 		if (items == null)
 		{
-			log.info("captureVisibleCategory: bailed — items widget null");
 			return;
 		}
 
 		Widget[] children = items.getChildren();
 		if (children == null || children.length == 0)
 		{
-			log.info("captureVisibleCategory: bailed — items children null/empty");
 			return;
 		}
 
@@ -609,16 +601,10 @@ public class KillClogPlugin extends Plugin
 		List<Integer> allItemIds = new ArrayList<>();
 		List<ClogResult.ClogItem> obtained = new ArrayList<>();
 
-		log.info("captureVisibleCategory: category='{}', key='{}', children={}",
-			categoryName, categoryKey, children.length);
-
 		for (int i = 0; i < children.length; i++)
 		{
 			Widget child = children[i];
 			int itemId = child.getItemId();
-			log.info("  child[{}]: itemId={}, opacity={}, hidden={}, qty={}, type={}, text='{}'",
-				i, itemId, child.getOpacity(), child.isHidden(),
-				child.getItemQuantity(), child.getType(), child.getText());
 			if (itemId <= 0)
 			{
 				continue;
@@ -630,8 +616,6 @@ public class KillClogPlugin extends Plugin
 				obtained.add(new ClogResult.ClogItem(itemId, Math.max(qty, 1), null));
 			}
 		}
-
-		log.info("captureVisibleCategory: allItems={}, obtained={}", allItemIds, obtained.size());
 
 		if (allItemIds.isEmpty())
 		{

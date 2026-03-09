@@ -62,7 +62,7 @@ public class HiscoreService
 	// NEW BOSS PLAYBOOK: When Jagex adds a boss to hiscores:
 	//   1. Add name here in alphabetical order
 	//   2. Wait for RuneLite to add HiscoreSkill enum (check latest.release jar)
-	//   3. Add HiscoreSkill.BOSS_NAME to BOSSES[] in KillClogPanel (alphabetical)
+	//   3. Add HiscoreSkill.BOSS_NAME to BOSSES[] in PanelData (alphabetical)
 	//   4. If HiscoreSkill.getName() != CSV name, add to NAME_OVERRIDES
 	//   5. If Temple uses non-standard category key, add to BOSS_CATEGORY_OVERRIDES in ClogService
 	private static final String[] BOSS_NAMES = {
