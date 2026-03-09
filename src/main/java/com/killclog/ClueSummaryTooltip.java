@@ -17,6 +17,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 {
 	private static final int ICON_SIZE = 13;
 	private static final int ICON_GAP = 4;
+	private static final int COL_GAP = 6;
 
 	private static final HiscoreSkill[] CLUE_TIERS = {
 		HiscoreSkill.CLUE_SCROLL_ALL,
@@ -26,13 +27,14 @@ public class ClueSummaryTooltip extends TitleTooltip
 	};
 
 	private static final String[] LABELS = {
-		"All: ", "Beginner: ", "Easy: ", "Medium: ",
-		"Hard: ", "Elite: ", "Master: ",
+		"All", "Beginner", "Easy", "Medium",
+		"Hard", "Elite", "Master",
 	};
 
 	private final int[] scores = new int[7];
 	private final int[] ranks = new int[7];
 	private int mimicKc = -1;
+	private int mimicRank = -1;
 
 	private BufferedImage[] icons;
 	private String notice;
@@ -49,6 +51,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 		}
 
 		mimicKc = hiscoreResult.getKc("Mimic");
+		mimicRank = hiscoreResult.getRank("Mimic");
 
 		int allRank = ranks[0];
 		setRank(allRank);
@@ -75,15 +78,19 @@ public class ClueSummaryTooltip extends TitleTooltip
 			return new Dimension(fm.stringWidth(notice), LINE_HEIGHT);
 		}
 
-		int iconWidth = ICON_SIZE + ICON_GAP;
-		int textWidth = 0;
+		int iconCol = ICON_SIZE + ICON_GAP;
+		int labelCol = 0;
 		for (String label : LABELS)
 		{
-			textWidth = Math.max(textWidth, fm.stringWidth(label + "99,999  Rank: 99,999"));
+			labelCol = Math.max(labelCol, fm.stringWidth(label));
 		}
-		textWidth = Math.max(textWidth, fm.stringWidth("Mimic: 99,999"));
+		labelCol = Math.max(labelCol, fm.stringWidth("Mimic"));
+		int scoreCol = fm.stringWidth("99,999");
+		int rankTail = fm.stringWidth(" Rank: 99,999");
 
-		return new Dimension(iconWidth + textWidth, LINE_HEIGHT * 8);
+		int totalWidth = iconCol + labelCol + COL_GAP + scoreCol + rankTail;
+
+		return new Dimension(totalWidth, LINE_HEIGHT * 8);
 	}
 
 	@Override
@@ -100,15 +107,28 @@ public class ClueSummaryTooltip extends TitleTooltip
 			return;
 		}
 
+		// Compute column positions
+		int iconCol = ICON_SIZE + ICON_GAP;
+		int labelColW = 0;
+		for (String label : LABELS)
+		{
+			labelColW = Math.max(labelColW, fm.stringWidth(label));
+		}
+		labelColW = Math.max(labelColW, fm.stringWidth("Mimic"));
+		int scoreColW = fm.stringWidth("99,999");
+
+		int scoreRight = inset + iconCol + labelColW + COL_GAP + scoreColW;
+
 		int y = startY;
 		for (int i = 0; i < LABELS.length; i++)
 		{
-			paintLine(g2, fm, inset, y, icon(i), LABELS[i], scores[i], ranks[i]);
+			paintLine(g2, fm, inset, y, icon(i), LABELS[i], scores[i], ranks[i],
+				scoreRight);
 			y += LINE_HEIGHT;
 		}
 
-		// Mimic kills
-		paintLine(g2, fm, inset, y, icon(7), "Mimic: ", mimicKc, -1);
+		paintLine(g2, fm, inset, y, icon(7), "Mimic", mimicKc, mimicRank,
+			scoreRight);
 	}
 
 	private BufferedImage icon(int index)
@@ -117,7 +137,8 @@ public class ClueSummaryTooltip extends TitleTooltip
 	}
 
 	private void paintLine(Graphics2D g2, FontMetrics fm, int inset, int y,
-							BufferedImage icon, String label, int score, int rank)
+		BufferedImage icon, String label, int score, int rank,
+		int scoreRight)
 	{
 		int x = inset;
 		int textY = y + fm.getAscent();
@@ -126,37 +147,36 @@ public class ClueSummaryTooltip extends TitleTooltip
 		{
 			int iconY = y + (LINE_HEIGHT - ICON_SIZE) / 2;
 			g2.drawImage(icon, x, iconY, null);
-			x += ICON_SIZE + ICON_GAP;
 		}
+		x += ICON_SIZE + ICON_GAP;
 
-		// Label (orange)
+		// Col 1: tier label (left-aligned)
 		g2.setColor(OSRS_ORANGE);
 		g2.drawString(label, x, textY);
-		x += fm.stringWidth(label);
 
 		if (score <= 0)
 		{
+			// Col 2: "--" (right-aligned)
+			String dash = "--";
 			g2.setColor(Color.WHITE);
-			g2.drawString("--", x, textY);
+			g2.drawString(dash, scoreRight - fm.stringWidth(dash), textY);
 			return;
 		}
 
-		// Score (white)
+		// Col 2: score (right-aligned)
 		String scoreText = String.format("%,d", score);
 		g2.setColor(Color.WHITE);
-		g2.drawString(scoreText, x, textY);
-		x += fm.stringWidth(scoreText);
+		g2.drawString(scoreText, scoreRight - fm.stringWidth(scoreText), textY);
 
-		// Rank (orange label, white value)
 		if (rank > 0)
 		{
-			String rankLabel = "  Rank: ";
+			// Rank: number (flows after score column)
+			String rankTail = " Rank: " + String.format("%,d", rank);
 			g2.setColor(OSRS_ORANGE);
-			g2.drawString(rankLabel, x, textY);
-			x += fm.stringWidth(rankLabel);
-
+			g2.drawString(" Rank: ", scoreRight + 1, textY);
 			g2.setColor(Color.WHITE);
-			g2.drawString(String.format("%,d", rank), x, textY);
+			int rankNumX = scoreRight + 1 + fm.stringWidth(" Rank: ");
+			g2.drawString(String.format("%,d", rank), rankNumX, textY);
 		}
 	}
 }

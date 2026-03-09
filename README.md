@@ -26,7 +26,7 @@ One click to sync your log.
 Character Summaries. Info where you want it and not where you don't.
 | | | |
 |:---:|:---:|:---:|
-| ![summary-player-reg](screenshots/summary-player-reg.png) | ![summary-player-hcim](screenshots/summary-player-hcim.png) | ![summary-pvm](screenshots/summary-pvm.png) |
+| ![summary-clue](screenshots/summary-clue.png) | ![summary-player-hcim](screenshots/summary-player-hcim.png) | ![summary-pvm](screenshots/summary-pvm.png) |
 | ![summary-clog](screenshots/summary-clog.png) | ![summary-skills](screenshots/summary-skills.png) | ![summary-pvp](screenshots/summary-pvp.png) |
 
 ## Activities Tray
@@ -41,8 +41,6 @@ Informative | Focused
 
 Five fully-configurable colors: 4 tiers of collection log progress and a 5th configurable accent color for your Summaries.
 
-![player-menu](screenshots/player-menu.png)
-
 ## Configuration
 
 ![config](screenshots/config.png)
@@ -55,9 +53,15 @@ Tint | Outline | None
 
 Days of clicking the wrong HiScores tab and firing into the void are behind us. Enter your name and press enter. Kill Clog takes care of the rest. 
 
+![sys-messages](screenshots/sys-messages.png)
+
 Rotating system messages with a hint of personality
 
 ## TempleOSRS
 
-Designed to be used with automatic local cache. Built in TempleOSRS support allows you to see your friend's collection logs when you look them up provided they've synced their profile. 
+Designed to be used with automatic local cache. Built in TempleOSRS support allows you to see your friend's collection logs when you look them up provided they've synced their profile.
+
+---
+
+Questions or feedback? Open an issue on [GitHub](https://github.com/420kc/kill-clog-plugin/issues).
 
