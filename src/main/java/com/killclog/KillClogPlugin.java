@@ -545,10 +545,6 @@ public class KillClogPlugin extends Plugin
 			bufferedCategoryObtained = null;
 		}
 
-		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-			"<col=4caf6e>Kill Clog:</col> Browse to other clog categories to capture untradeable items.",
-			null);
-
 		clogButtonOverlay.flashGreen();
 		SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(name));
 	}
