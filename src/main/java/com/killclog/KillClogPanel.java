@@ -2050,13 +2050,14 @@ public class KillClogPanel extends PluginPanel
 			updateRares(clogResult);
 			if (enabled)
 			{
+				Map<String, JLabel> rareCells = new LinkedHashMap<>();
+				rareCells.put(PanelData.CLOG_THIRD_AGE, thirdAgeCell);
+				rareCells.put(PanelData.CLOG_GILDED, gildedCell);
+				rareCells.put(PanelData.RARE_HARD, hardRare);
+				rareCells.put(PanelData.RARE_ELITE, eliteRare);
+				rareCells.put(PanelData.RARE_MASTER, masterRare);
 				highlighter.colorCellsByCompletion(hiscoreResult, clogResult,
-					rareTooltips, fourTwentyMode, FOUR_TWENTY_GREEN,
-					thirdAgeCell, PanelData.CLOG_THIRD_AGE,
-					gildedCell, PanelData.CLOG_GILDED,
-					hardRare, PanelData.RARE_HARD,
-					eliteRare, PanelData.RARE_ELITE,
-					masterRare, PanelData.RARE_MASTER);
+					rareTooltips, rareCells, fourTwentyMode, FOUR_TWENTY_GREEN);
 				highlighter.colorEmptyCells();
 			}
 		}

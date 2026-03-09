@@ -11,9 +11,11 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.TreeMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -93,6 +95,9 @@ public class ClogService
 	private volatile CompletableFuture<Map<String, List<Integer>>> categoriesFlight;
 	private volatile CompletableFuture<Map<Integer, String>> namesFlight;
 
+	// Players whose Temple lookup failed this session — skip retries
+	private final Set<String> templeFailures = new HashSet<>();
+
 	@Inject
 	public ClogService(OkHttpClient httpClient, Gson gson, LocalClogCache localClogCache, KillClogConfig config)
 	{
@@ -147,6 +152,18 @@ public class ClogService
 			return CompletableFuture.completedFuture(null);
 		}
 
+		// Skip Temple if it already failed for this player this session
+		String normalizedName = playerName.toLowerCase();
+		if (templeFailures.contains(normalizedName))
+		{
+			if (useLocal && localClogCache.hasDataFor(playerName))
+			{
+				return fetchItemNames().thenApply(names ->
+					localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>()));
+			}
+			return CompletableFuture.completedFuture(null);
+		}
+
 		// Try Temple, cache on success, fall back to persistent cache
 		String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
 
@@ -180,7 +197,8 @@ public class ClogService
 					return result;
 				}
 
-				// Temple failed — fall back to persistent cache
+				// Temple failed — remember and fall back to persistent cache
+				templeFailures.add(normalizedName);
 				if (useLocal && localClogCache.hasDataFor(playerName))
 				{
 					log.debug("Temple unavailable, using cached data for: {}", playerName);

@@ -29,12 +29,6 @@ public class HiscoreService
 	private static final String BASE_URL = "https://secure.runescape.com/m=";
 	private static final String SUFFIX = "/index_lite.ws?player=";
 
-	// Hiscore CSV layout: line 0 = Overall, lines 1-24 = 24 skills,
-	// lines 25-44 = 20 activities, then bosses.
-	// If Jagex adds a new skill or activity above bosses, these indices must shift.
-	private static final int ACTIVITY_START_INDEX = 25;
-	private static final int BOSS_START_INDEX = 45;
-
 	// Skill names in hiscore CSV order (lines 1-24).
 	private static final String[] SKILL_NAMES = {
 		"attack", "defence", "strength", "hitpoints", "ranged", "prayer", "magic",
@@ -43,7 +37,7 @@ public class HiscoreService
 		"farming", "runecraft", "hunter", "construction", "sailing"
 	};
 
-	// Activity names in hiscore CSV order (lines 25-44).
+	// Activity names in hiscore CSV order.
 	// Includes deprecated entries (Grid Points, Deadman Points, BH Legacy) that
 	// still occupy CSV lines — must be present so indices align correctly.
 	private static final String[] ACTIVITY_NAMES = {
@@ -57,6 +51,11 @@ public class HiscoreService
 		"Clue Scrolls (master)", "LMS - Rank", "PvP Arena - Rank",
 		"Soul Wars Zeal", "Rifts closed", "Colosseum Glory", "Collections Logged"
 	};
+
+	// Hiscore CSV layout: line 0 = Overall, then skills, then activities, then bosses.
+	// Derived from array lengths so they can never go out of sync.
+	private static final int ACTIVITY_START_INDEX = 1 + SKILL_NAMES.length;
+	private static final int BOSS_START_INDEX = ACTIVITY_START_INDEX + ACTIVITY_NAMES.length;
 
 	// Boss names in hiscore CSV order — must match Jagex's exact alphabetical order.
 	// NEW BOSS PLAYBOOK: When Jagex adds a boss to hiscores:

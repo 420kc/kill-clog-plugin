@@ -191,7 +191,10 @@ final class LookupQueries
 			LocalDateTime syncTime = LocalDateTime.parse(lastChanged,
 				DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
 			String pattern = stale ? "MMM d ''yy" : "MMM d";
-			return syncTime.format(DateTimeFormatter.ofPattern(pattern));
+			String date = syncTime.format(DateTimeFormatter.ofPattern(pattern));
+			long days = java.time.Duration.between(syncTime, LocalDateTime.now()).toDays();
+			if (days < 1) return date;
+			return date + " (" + days + "d ago)";
 		}
 		catch (DateTimeParseException e)
 		{

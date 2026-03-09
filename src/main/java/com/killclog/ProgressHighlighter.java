@@ -39,16 +39,12 @@ final class ProgressHighlighter
 
 	/**
 	 * Color boss, activity, clue tier, and rare cells by clog completion progress.
-	 * Rare cell labels are passed per-call because they're assigned after construction.
+	 * Rare cells passed as category key → label map (assigned after construction).
 	 */
 	void colorCellsByCompletion(HiscoreResult hiscoreResult, ClogResult clogResult,
 								Map<String, TooltipData> rareTooltips,
-								FourTwentyMode fourTwentyMode, Color fourTwentyGreen,
-								JLabel thirdAgeCell, String clogThirdAge,
-								JLabel gildedCell, String clogGilded,
-								JLabel hardRare, String rareHard,
-								JLabel eliteRare, String rareElite,
-								JLabel masterRare, String rareMaster)
+								Map<String, JLabel> rareCells,
+								FourTwentyMode fourTwentyMode, Color fourTwentyGreen)
 	{
 		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
 		{
@@ -81,11 +77,21 @@ final class ProgressHighlighter
 			}
 		}
 
-		if (thirdAgeCell != null) colorByCompletion(thirdAgeCell, clogThirdAge, clogResult);
-		if (gildedCell != null) colorByCompletion(gildedCell, clogGilded, clogResult);
-		colorCustomRare(hardRare, rareHard, rareTooltips);
-		colorCustomRare(eliteRare, rareElite, rareTooltips);
-		colorCustomRare(masterRare, rareMaster, rareTooltips);
+		for (Map.Entry<String, JLabel> entry : rareCells.entrySet())
+		{
+			String key = entry.getKey();
+			JLabel label = entry.getValue();
+			if (label == null) continue;
+			TooltipData data = rareTooltips.get(key);
+			if (data != null)
+			{
+				colorCustomRare(label, key, rareTooltips);
+			}
+			else
+			{
+				colorByCompletion(label, key, clogResult);
+			}
+		}
 	}
 
 	/** Recolor "--" cells to emptyClogColor when highlighter is active. */
