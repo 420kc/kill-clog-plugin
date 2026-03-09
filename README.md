@@ -45,8 +45,8 @@ Five fully-configurable colors: 4 tiers of collection log progress and a 5th con
 
 ![config](screenshots/config.png)
 
-Self-search on Login
-Hover | Click
+Self-search on Login\
+Hover | Click\
 Tint | Outline | None
 
 ## Bonus
