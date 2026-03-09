@@ -208,6 +208,26 @@ final class ClogHelper
 		return img;
 	}
 
+	/** Paints a 15x15 circular refresh arrow — nearly full circle with arrowhead. */
+	static BufferedImage makeRefreshIcon(Color color)
+	{
+		int s = 15;
+		BufferedImage img = new BufferedImage(s, s, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = img.createGraphics();
+		g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+			java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+		g.setColor(color);
+		g.setStroke(new java.awt.BasicStroke(1.5f));
+		// Arc: nearly full circle (300 degrees), gap at top-right
+		g.drawArc(2, 2, 10, 10, 30, 300);
+		// Arrowhead at the end of the arc (top-right area)
+		int ax = 11, ay = 3;
+		g.drawLine(ax, ay, ax - 3, ay);
+		g.drawLine(ax, ay, ax, ay + 3);
+		g.dispose();
+		return img;
+	}
+
 	static void styleSearchBar(Container container)
 	{
 		for (Component c : container.getComponents())

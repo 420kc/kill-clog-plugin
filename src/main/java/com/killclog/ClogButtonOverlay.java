@@ -1,6 +1,7 @@
 package com.killclog;
 
 import java.awt.AlphaComposite;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
@@ -21,13 +22,17 @@ class ClogButtonOverlay extends Overlay implements MouseListener
 {
 	private static final int CLOG_INTERFACE = 621;
 	private static final int ICON_SIZE = 16;
+	private static final Color GREEN = new Color(76, 175, 110);
+	private static final long GREEN_DURATION_MS = 2000;
 
 	private final Client client;
 	private final KillClogPlugin plugin;
 	private final KillClogConfig config;
 
 	private BufferedImage icon;
+	private BufferedImage greenIcon;
 	private Rectangle buttonBounds;
+	private long greenUntil;
 
 	@Inject
 	ClogButtonOverlay(Client client, KillClogPlugin plugin, KillClogConfig config)
@@ -61,6 +66,14 @@ class ClogButtonOverlay extends Overlay implements MouseListener
 		{
 			icon = ImageUtil.loadImageResource(KillClogPlugin.class, "icon.png");
 			icon = ImageUtil.resizeImage(icon, ICON_SIZE, ICON_SIZE);
+
+			greenIcon = new BufferedImage(ICON_SIZE, ICON_SIZE, BufferedImage.TYPE_INT_ARGB);
+			Graphics2D g2 = greenIcon.createGraphics();
+			g2.drawImage(icon, 0, 0, null);
+			g2.setComposite(AlphaComposite.SrcAtop);
+			g2.setColor(GREEN);
+			g2.fillRect(0, 0, ICON_SIZE, ICON_SIZE);
+			g2.dispose();
 		}
 
 		Widget header = client.getWidget(CLOG_INTERFACE, 1);
@@ -82,7 +95,13 @@ class ClogButtonOverlay extends Overlay implements MouseListener
 			client.getMouseCanvasPosition().getX(),
 			client.getMouseCanvasPosition().getY());
 
-		if (hover)
+		boolean green = System.currentTimeMillis() < greenUntil;
+
+		if (green)
+		{
+			g.drawImage(greenIcon, x, y, null);
+		}
+		else if (hover)
 		{
 			g.drawImage(icon, x, y, null);
 		}
@@ -96,12 +115,16 @@ class ClogButtonOverlay extends Overlay implements MouseListener
 		return null;
 	}
 
+	void flashGreen()
+	{
+		greenUntil = System.currentTimeMillis() + GREEN_DURATION_MS;
+	}
+
 	@Override
 	public MouseEvent mousePressed(MouseEvent e)
 	{
 		if (buttonBounds != null && buttonBounds.contains(e.getPoint()))
 		{
-			log.debug("Sync button clicked at ({}, {})", e.getX(), e.getY());
 			plugin.onSyncClicked();
 			e.consume();
 		}

@@ -112,6 +112,9 @@ public class KillClogPlugin extends Plugin
 	private ClogButtonOverlay clogButtonOverlay;
 
 	@Inject
+	private net.runelite.client.callback.ClientThread clientThread;
+
+	@Inject
 	private LocalClogCache localClogCache;
 
 	private NavigationButton navButton;
@@ -523,6 +526,7 @@ public class KillClogPlugin extends Plugin
 			"<col=4caf6e>Kill Clog:</col> Browse to other clog categories to capture untradeable items.",
 			null);
 
+		clogButtonOverlay.flashGreen();
 		SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(name));
 	}
 
@@ -537,53 +541,65 @@ public class KillClogPlugin extends Plugin
 	 */
 	void onSyncClicked()
 	{
-		Player local = client.getLocalPlayer();
-		if (local == null || local.getName() == null)
+		clogButtonOverlay.flashGreen();
+		clientThread.invokeLater(() ->
 		{
-			return;
-		}
+			Player local = client.getLocalPlayer();
+			if (local == null || local.getName() == null)
+			{
+				return;
+			}
 
-		captureVisibleCategory();
+			captureVisibleCategory();
 
-		if (!localClogCache.hasDataFor(local.getName()))
-		{
-			triggerBulkCapture();
-		}
+			if (!localClogCache.hasDataFor(local.getName()))
+			{
+				triggerBulkCapture();
+			}
+		});
 	}
 
 	private void captureVisibleCategory()
 	{
+		log.info("captureVisibleCategory: entered");
 		if (config.clogSource() == ClogSource.TEMPLE)
 		{
+			log.info("captureVisibleCategory: bailed — TEMPLE mode");
 			return;
 		}
 
 		Player local = client.getLocalPlayer();
 		if (local == null || local.getName() == null)
 		{
+			log.info("captureVisibleCategory: bailed — no local player");
 			return;
 		}
 
 		Widget header = client.getWidget(CLOG_INTERFACE, CLOG_HEADER_CHILD);
 		if (header == null)
 		{
+			log.info("captureVisibleCategory: bailed — header widget null");
 			return;
 		}
 		String headerText = header.getText();
 		if (headerText == null || headerText.isEmpty())
 		{
+			log.info("captureVisibleCategory: bailed — header text empty (widget exists but text='{}', hidden={})",
+				headerText, header.isHidden());
 			return;
 		}
 
 		Widget items = client.getWidget(CLOG_INTERFACE, CLOG_ITEMS_CHILD);
 		if (items == null)
 		{
+			log.info("captureVisibleCategory: bailed — items widget null");
 			return;
 		}
 
 		Widget[] children = items.getChildren();
 		if (children == null || children.length == 0)
 		{
+			log.info("captureVisibleCategory: bailed — items children null/empty");
 			return;
 		}
 
@@ -593,9 +609,16 @@ public class KillClogPlugin extends Plugin
 		List<Integer> allItemIds = new ArrayList<>();
 		List<ClogResult.ClogItem> obtained = new ArrayList<>();
 
-		for (Widget child : children)
+		log.info("captureVisibleCategory: category='{}', key='{}', children={}",
+			categoryName, categoryKey, children.length);
+
+		for (int i = 0; i < children.length; i++)
 		{
+			Widget child = children[i];
 			int itemId = child.getItemId();
+			log.info("  child[{}]: itemId={}, opacity={}, hidden={}, qty={}, type={}, text='{}'",
+				i, itemId, child.getOpacity(), child.isHidden(),
+				child.getItemQuantity(), child.getType(), child.getText());
 			if (itemId <= 0)
 			{
 				continue;
@@ -607,6 +630,8 @@ public class KillClogPlugin extends Plugin
 				obtained.add(new ClogResult.ClogItem(itemId, Math.max(qty, 1), null));
 			}
 		}
+
+		log.info("captureVisibleCategory: allItems={}, obtained={}", allItemIds, obtained.size());
 
 		if (allItemIds.isEmpty())
 		{

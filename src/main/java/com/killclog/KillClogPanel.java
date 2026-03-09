@@ -107,6 +107,8 @@ public class KillClogPanel extends PluginPanel
 		"404: %s not found",
 		"%s remains at large",
 		"Couldn't find %s. Tragic.",
+		"%s was last seen at Doom. RIP.",
+		"%s probably got pk'd.",
 	};
 
 	private static final String[] SELF_MSGS = {
@@ -424,6 +426,7 @@ public class KillClogPanel extends PluginPanel
 	private final Map<String, ImageIcon> clogTierIcons = new LinkedHashMap<>();
 	private final Map<String, ImageIcon> clogTierIconsLarge = new LinkedHashMap<>();
 
+	private JLabel refreshLabel;
 	private final Map<HiscoreSkill, JLabel> bossLabels = new LinkedHashMap<>();
 	private final Map<HiscoreSkill, JLabel> activityLabels = new LinkedHashMap<>();
 	private final Map<HiscoreSkill, ImageIcon> originalIcons = new LinkedHashMap<>();
@@ -666,7 +669,52 @@ public class KillClogPanel extends PluginPanel
 				ClogHelper.styleSearchBar((Container) c);
 			}
 		}
-		panel.add(searchBar);
+		// Search row: [searchBar] [refresh icon]
+		JPanel searchRow = new JPanel(new BorderLayout(0, 0));
+		searchRow.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		searchRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+		searchRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+
+		refreshLabel = new JLabel();
+		ImageIcon refreshOff = new ImageIcon(ClogHelper.makeRefreshIcon(HAMBURGER_COLOR));
+		ImageIcon refreshOn = new ImageIcon(ClogHelper.makeRefreshIcon(HAMBURGER_HOVER_COLOR));
+		refreshLabel.setIcon(refreshOff);
+		refreshLabel.setPreferredSize(new Dimension(20, 30));
+		refreshLabel.setHorizontalAlignment(JLabel.CENTER);
+		refreshLabel.setVerticalAlignment(JLabel.CENTER);
+		refreshLabel.setOpaque(true);
+		refreshLabel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		refreshLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+		refreshLabel.setVisible(false);
+		refreshLabel.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mousePressed(MouseEvent e)
+			{
+				String name = playerName.getText().trim();
+				if (!name.isEmpty())
+				{
+					searchBar.setText(name);
+					doLookup();
+				}
+			}
+
+			@Override
+			public void mouseEntered(MouseEvent e)
+			{
+				refreshLabel.setIcon(refreshOn);
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e)
+			{
+				refreshLabel.setIcon(refreshOff);
+			}
+		});
+
+		searchRow.add(searchBar, BorderLayout.CENTER);
+		searchRow.add(refreshLabel, BorderLayout.EAST);
+		panel.add(searchRow);
 		panel.add(Box.createVerticalStrut(4));
 
 		// Info bar: [badge+name LEFT] [hamburger CENTER] [tierIcon+clogCount RIGHT]
@@ -1673,6 +1721,7 @@ public class KillClogPanel extends PluginPanel
 				playerName.setText(rsn != null ? rsn : player);
 				playerName.setForeground(getInfoColor());
 				updateInfoIcon(result.getAccountType());
+				refreshLabel.setVisible(true);
 
 				int combatLevel = result.getCombatLevel();
 				if (combatLevel > 0)
@@ -1802,6 +1851,7 @@ public class KillClogPanel extends PluginPanel
 		playerName.setText(" ");
 		playerName.setIcon(null);
 		playerName.setToolTipText(null);
+		refreshLabel.setVisible(false);
 
 		clogInfoLabel.setIcon(null);
 		clogInfoLabel.setText("");
