@@ -1283,8 +1283,15 @@ public class KillClogPanel extends PluginPanel
 		else
 		{
 			tip.setTitle(name);
-			tip.setNotice(hiscoreResult != null
-				? "No TempleOSRS Data" : "Nothing to see here! (Search for a player)");
+			String lookupPlayer = searchBar.getText().trim();
+			boolean isSelfNoCache = hiscoreResult != null && localRsn != null
+				&& localRsn.equalsIgnoreCase(lookupPlayer)
+				&& config.clogSource() != ClogSource.TEMPLE;
+			tip.setNotice(isSelfNoCache
+				? "Open your Collection Log"
+				: hiscoreResult != null
+					? "No TempleOSRS Data"
+					: "Nothing to see here! (Search for a player)");
 		}
 
 		keepTooltipOnHover(tip, parentCell);

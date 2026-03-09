@@ -19,15 +19,16 @@ import net.runelite.api.Player;
 import net.runelite.api.StructComposition;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.MenuOptionClicked;
-import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.ScriptPreFired;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.PluginChanged;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.input.KeyManager;
+import net.runelite.client.input.MouseManager;
 import net.runelite.client.menus.MenuManager;
 import net.runelite.client.plugins.PluginManager;
+import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.HotkeyListener;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -48,7 +49,6 @@ public class KillClogPlugin extends Plugin
 	private static final String MENU_OPTION = "Kill Clog";
 
 	// Bulk clog capture — script + widget + enum IDs
-	private static final int CLOG_SETUP_SCRIPT = 7797;
 	private static final int CLOG_ITEM_SCRIPT = 4100;
 	private static final int CLOG_SEARCH_WIDGET = 40697932;  // (621 << 16) | 76
 	private static final int ENUM_CLOG_TABS = 2102;
@@ -58,8 +58,6 @@ public class KillClogPlugin extends Plugin
 	private static final int PARAM_CATEGORY_NAME = 689;
 	private static final int PARAM_CATEGORY_ITEMS = 690;
 
-	// Category widget reads — captures untradeable items script 4100 misses
-	private static final int SCRIPT_CLOG_DRAW = 2731;
 	private static final int CLOG_INTERFACE = 621;
 	private static final int CLOG_ITEMS_CHILD = 37;
 
@@ -105,6 +103,15 @@ public class KillClogPlugin extends Plugin
 	private NameAutocompleter nameAutocompleter;
 
 	@Inject
+	private OverlayManager overlayManager;
+
+	@Inject
+	private MouseManager mouseManager;
+
+	@Inject
+	private ClogButtonOverlay clogButtonOverlay;
+
+	@Inject
 	private LocalClogCache localClogCache;
 
 	private NavigationButton navButton;
@@ -120,8 +127,7 @@ public class KillClogPlugin extends Plugin
 	private int bulkClogTotal = -1;
 	private final List<ClogResult.ClogItem> bulkObtained = new ArrayList<>();
 
-	// Buffered category read — first category visible when clog opens (before Search→Back)
-	private boolean awaitingBuffer;
+	// Buffered category read — captured before bulk capture has cache data to merge into
 	private String bufferedCategoryKey;
 	private List<Integer> bufferedCategoryItems;
 	private List<ClogResult.ClogItem> bufferedCategoryObtained;
@@ -152,6 +158,8 @@ public class KillClogPlugin extends Plugin
 			.build();
 
 		clientToolbar.addNavigation(navButton);
+		overlayManager.add(clogButtonOverlay);
+		mouseManager.registerMouseListener(clogButtonOverlay);
 		panel.setPluginManager(pluginManager);
 		panel.setNameAutocompleter(nameAutocompleter);
 		keyManager.registerKeyListener(highlighterHotkey);
@@ -168,6 +176,8 @@ public class KillClogPlugin extends Plugin
 	protected void shutDown()
 	{
 		clientToolbar.removeNavigation(navButton);
+		overlayManager.remove(clogButtonOverlay);
+		mouseManager.unregisterMouseListener(clogButtonOverlay);
 		keyManager.unregisterKeyListener(highlighterHotkey);
 		menuManager.get().removePlayerMenuItem(MENU_OPTION);
 		SwingUtilities.invokeLater(() -> panel.shutdown());
@@ -234,28 +244,6 @@ public class KillClogPlugin extends Plugin
 			&& client.getTickCount() >= bulkFinalizeTickCount)
 		{
 			finalizeBulkCapture();
-		}
-	}
-
-	@Subscribe
-	public void onScriptPostFired(ScriptPostFired event)
-	{
-		if (event.getScriptId() == CLOG_SETUP_SCRIPT)
-		{
-			awaitingBuffer = true;
-			triggerBulkCapture();
-		}
-		else if (event.getScriptId() == SCRIPT_CLOG_DRAW)
-		{
-			if (awaitingBuffer)
-			{
-				bufferVisibleCategory();
-				awaitingBuffer = false;
-			}
-			else
-			{
-				captureVisibleCategory();
-			}
 		}
 	}
 
@@ -538,58 +526,31 @@ public class KillClogPlugin extends Plugin
 		SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(name));
 	}
 
-	// --- Category widget reads (captures untradeable items script 4100 misses) ---
+	// --- Sync button (overlay click) ---
 
 	private static final int CLOG_HEADER_CHILD = 20;
 
-	/** Buffers the currently displayed category before Search→Back clears it. */
-	private void bufferVisibleCategory()
+	/**
+	 * Called by ClogButtonOverlay on click.
+	 * First click: buffers visible category + triggers bulk capture.
+	 * Subsequent clicks: captures visible category directly.
+	 */
+	void onSyncClicked()
 	{
-		Widget header = client.getWidget(CLOG_INTERFACE, CLOG_HEADER_CHILD);
-		if (header == null || header.getText() == null || header.getText().isEmpty())
+		Player local = client.getLocalPlayer();
+		if (local == null || local.getName() == null)
 		{
 			return;
 		}
 
-		Widget items = client.getWidget(CLOG_INTERFACE, CLOG_ITEMS_CHILD);
-		if (items == null)
+		captureVisibleCategory();
+
+		if (!localClogCache.hasDataFor(local.getName()))
 		{
-			return;
+			triggerBulkCapture();
 		}
-
-		Widget[] children = items.getChildren();
-		if (children == null || children.length == 0)
-		{
-			return;
-		}
-
-		String categoryName = Text.removeTags(header.getText());
-		bufferedCategoryKey = ClogService.bossToCategory(categoryName);
-		bufferedCategoryItems = new ArrayList<>();
-		bufferedCategoryObtained = new ArrayList<>();
-
-		for (Widget child : children)
-		{
-			int itemId = child.getItemId();
-			if (itemId <= 0)
-			{
-				continue;
-			}
-			bufferedCategoryItems.add(itemId);
-			if (child.getOpacity() == 0)
-			{
-				int qty = child.getItemQuantity();
-				bufferedCategoryObtained.add(
-					new ClogResult.ClogItem(itemId, Math.max(qty, 1), null));
-			}
-		}
-
-		log.info("Buffered visible category '{}': {}/{} obtained",
-			bufferedCategoryKey,
-			bufferedCategoryObtained.size(), bufferedCategoryItems.size());
 	}
 
-	/** Passively captures any clog category the user browses to (script 2731). */
 	private void captureVisibleCategory()
 	{
 		if (config.clogSource() == ClogSource.TEMPLE)
@@ -603,14 +564,13 @@ public class KillClogPlugin extends Plugin
 			return;
 		}
 
-		String name = local.getName();
-		if (!localClogCache.hasDataFor(name))
+		Widget header = client.getWidget(CLOG_INTERFACE, CLOG_HEADER_CHILD);
+		if (header == null)
 		{
 			return;
 		}
-
-		Widget header = client.getWidget(CLOG_INTERFACE, CLOG_HEADER_CHILD);
-		if (header == null || header.getText() == null || header.getText().isEmpty())
+		String headerText = header.getText();
+		if (headerText == null || headerText.isEmpty())
 		{
 			return;
 		}
@@ -648,18 +608,42 @@ public class KillClogPlugin extends Plugin
 			}
 		}
 
-		if (!allItemIds.isEmpty())
+		if (allItemIds.isEmpty())
+		{
+			return;
+		}
+
+		String name = local.getName();
+		if (localClogCache.hasDataFor(name))
 		{
 			localClogCache.mergeCategory(name, categoryKey, allItemIds, obtained);
-			log.debug("Passive clog read '{}': {}/{} obtained",
+			log.debug("Captured '{}': {}/{} obtained", categoryKey, obtained.size(), allItemIds.size());
+
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+				"<col=4caf6e>Kill Clog:</col> Captured " + categoryName
+					+ " — " + obtained.size() + "/" + allItemIds.size() + " items",
+				null);
+			SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(name));
+		}
+		else
+		{
+			bufferedCategoryKey = categoryKey;
+			bufferedCategoryItems = new ArrayList<>(allItemIds);
+			bufferedCategoryObtained = new ArrayList<>(obtained);
+			log.debug("Buffered '{}': {}/{} obtained (awaiting bulk capture)",
 				categoryKey, obtained.size(), allItemIds.size());
+
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+				"<col=4caf6e>Kill Clog:</col> Buffered " + categoryName
+					+ " — " + obtained.size() + "/" + allItemIds.size()
+					+ " items (will merge after clog sync)",
+				null);
 		}
 	}
 
 	private void resetBulkCapture()
 	{
 		bulkCaptureActive = false;
-		awaitingBuffer = false;
 		bulkFinalizeTickCount = -1;
 		bulkClogCount = -1;
 		bulkClogTotal = -1;
