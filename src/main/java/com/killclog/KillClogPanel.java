@@ -27,13 +27,13 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import javax.inject.Inject;
-import javax.swing.JTextField;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
+import javax.swing.JTextField;
 import javax.swing.JToolTip;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
@@ -60,7 +60,7 @@ public class KillClogPanel extends PluginPanel
 {
 	private static final Color TEXT_DIM = new Color(160, 160, 160);
 	private static final Color NOT_FOUND = new Color(0x81, 0x09, 0x09);
-	private static final Color KC_COLOR = new Color(215, 215, 215);
+	static final Color KC_COLOR = new Color(215, 215, 215);
 	private static final Color FOUR_TWENTY_GREEN = new Color(30, 200, 30);
 	private static final Color HAMBURGER_COLOR = new Color(70, 70, 70);
 	private static final Color HAMBURGER_HOVER_COLOR = new Color(96, 96, 96);
@@ -1204,7 +1204,6 @@ public class KillClogPanel extends PluginPanel
 				return makeSpriteTooltip(this, tooltipDataMap.get(boss), 5, boss.getName());
 			}
 		};
-		// Force greyscale AA — resolves to LCD subpixel on Windows without this
 		styleLabel(label, boss.getName());
 
 		spriteManager.getSpriteAsync(boss.getSpriteId(), 0, sprite ->
@@ -1308,8 +1307,7 @@ public class KillClogPanel extends PluginPanel
 		resetAllLabels();
 
 		// Hiscore lookup — pass known account type for self-lookups
-		AccountType knownType = (localRsn != null && localRsn.equalsIgnoreCase(player))
-			? localAccountType : null;
+		AccountType knownType = isSelf ? localAccountType : null;
 		hiscoreService.lookup(player, knownType).thenAccept(result ->
 			SwingUtilities.invokeLater(() ->
 			{
@@ -1857,9 +1855,9 @@ public class KillClogPanel extends PluginPanel
 		this.localAccountType = accountType;
 	}
 
-	public void onBulkCaptureComplete(String playerName)
+	public void onBulkCaptureComplete(String name)
 	{
-		searchBar.setText(playerName);
+		searchBar.setText(name);
 		doLookup();
 	}
 
@@ -1923,7 +1921,12 @@ public class KillClogPanel extends PluginPanel
 				updateTooltips();
 				break;
 			case "hoverStyle":
+				tooltipController.hideClickTooltip();
+				tooltipController.clearHoveredCell();
+				break;
 			case "tooltipMode":
+				tooltipController.restoreDefaults();
+				tooltipController.captureDefaults();
 				tooltipController.hideClickTooltip();
 				tooltipController.clearHoveredCell();
 				break;
@@ -1954,7 +1957,6 @@ public class KillClogPanel extends PluginPanel
 		super.removeNotify();
 		tooltipController.hideClickTooltip();
 	}
-
 
 	private void cycleFourTwentyMode()
 	{

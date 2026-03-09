@@ -2,9 +2,9 @@
 
 Streamlined PvM-focused HiScores Overhaul with Collection Log integration.
 
-One click to sync your log.
-
-![sync-path](screenshots/sync-path.gif)
+| One click to sync your log. | |
+|:---:|:---:|
+| ![sync-path](screenshots/sync-path.gif) | ![tooltip-boss](screenshots/tooltip-boss.png) |
 
 
 
@@ -18,8 +18,6 @@ One click to sync your log.
 |:---:|:---:|:---:|:---:|
 | ![config-hover](screenshots/config-hover-outline.png) | ![tooltip-hover](screenshots/tooltip-hover.gif) | ![tooltip-click](screenshots/tooltip-click.gif) | ![config-click](screenshots/config-click-tint.png) |
 | Hover + Outline | | | Click + Tint |
-
-![tooltip-boss](screenshots/tooltip-boss.png)
 
 ## Summaries
 
@@ -51,15 +49,15 @@ Tint | Outline | None
 
 ## Bonus
 
-Days of clicking the wrong HiScores tab and firing into the void are behind us. Enter your name and press enter. Kill Clog takes care of the rest. 
+Days of clicking the wrong HiScores tab and firing into the void are behind us. Search for a player and Kill Clog takes care of the rest. Ironman types are automatically identified and ranked among the correct set of HiScores (regular/iron/uim/hcim).   
 
 ![sys-messages](screenshots/sys-messages.png)
 
-Rotating system messages with a hint of personality
+Rotating system messages
 
 ## TempleOSRS
 
-Designed to be used with automatic local cache. Built in TempleOSRS support allows you to see your friend's collection logs when you look them up provided they've synced their profile.
+Kill Clog is built on local cache, but built-in TempleOSRS support allows you and your friends to see each others' collection logs right from your own accounts. For more on Temple, Visit www.TempleOSRS.com
 
 ---
 

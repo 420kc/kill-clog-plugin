@@ -18,25 +18,26 @@ import net.runelite.api.MenuAction;
 import net.runelite.api.Player;
 import net.runelite.api.StructComposition;
 import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.GameTick;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.ScriptPreFired;
-import net.runelite.client.events.ConfigChanged;
-import net.runelite.client.events.PluginChanged;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.events.PluginChanged;
 import net.runelite.client.input.KeyManager;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.menus.MenuManager;
-import net.runelite.client.plugins.PluginManager;
-import net.runelite.client.ui.overlay.OverlayManager;
-import net.runelite.client.util.HotkeyListener;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
+import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.ui.overlay.OverlayManager;
+import net.runelite.client.util.HotkeyListener;
 import net.runelite.client.util.ImageUtil;
-import net.runelite.api.widgets.Widget;
 import net.runelite.client.util.Text;
 
 @Slf4j
@@ -59,9 +60,11 @@ public class KillClogPlugin extends Plugin
 	private static final int PARAM_CATEGORY_NAME = 689;
 	private static final int PARAM_CATEGORY_ITEMS = 690;
 
-	private static final int CLOG_INTERFACE = 621;
+	static final int CLOG_INTERFACE = 621;
 	private static final int CLOG_HEADER_CHILD = 20;
 	private static final int CLOG_ITEMS_CHILD = 37;
+	private static final java.util.regex.Pattern OBTAINED_PATTERN =
+		java.util.regex.Pattern.compile("(\\d+)/(\\d+)");
 
 	// Synthetic clog categories — not in game cache enums
 	private static final int THIRD_AGE_RING = 23185;
@@ -267,7 +270,7 @@ public class KillClogPlugin extends Plugin
 	}
 
 	@Subscribe
-	public void onGameTick(net.runelite.api.events.GameTick event)
+	public void onGameTick(GameTick event)
 	{
 		if (pendingAutoLookup)
 		{
@@ -630,8 +633,7 @@ public class KillClogPlugin extends Plugin
 			if (obtainedText != null)
 			{
 				// Format: "Obtained: 6/9" or similar
-				java.util.regex.Matcher m = java.util.regex.Pattern
-					.compile("(\\d+)/(\\d+)").matcher(obtainedText);
+				java.util.regex.Matcher m = OBTAINED_PATTERN.matcher(obtainedText);
 				if (m.find())
 				{
 					obtainedCount = Integer.parseInt(m.group(1));

@@ -11,7 +11,6 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.TreeMap;
 import java.util.List;
 import java.util.Map;
@@ -96,7 +95,7 @@ public class ClogService
 	private volatile CompletableFuture<Map<Integer, String>> namesFlight;
 
 	// Players whose Temple lookup failed this session — skip retries
-	private final Set<String> templeFailures = new HashSet<>();
+	private final Set<String> templeFailures = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
 	@Inject
 	public ClogService(OkHttpClient httpClient, Gson gson, LocalClogCache localClogCache, KillClogConfig config)

@@ -31,7 +31,7 @@ class TooltipController
 	static final Border CELL_BORDER = new EmptyBorder(1, 1, 1, 1);
 	private static final Color HOVER_OUTLINE_DIM = new Color(90, 90, 90);
 	private static final Color HOVER_TINT_BG = new Color(41, 41, 41);
-	private static final Color KC_COLOR = new Color(215, 215, 215);
+	private static final Color KC_COLOR = KillClogPanel.KC_COLOR;
 
 	private final KillClogConfig config;
 
@@ -173,7 +173,7 @@ class TooltipController
 
 		if (tip instanceof NativeTooltip)
 		{
-			((NativeTooltip) tip).setCloseAction(() -> hideClickTooltip());
+			((NativeTooltip) tip).setCloseAction(this::hideClickTooltip);
 		}
 
 		Dimension tipSize = tip.getPreferredSize();

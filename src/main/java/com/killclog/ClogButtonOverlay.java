@@ -18,7 +18,7 @@ import net.runelite.client.util.ImageUtil;
 
 class ClogButtonOverlay extends Overlay implements MouseListener
 {
-	private static final int CLOG_INTERFACE = 621;
+	private static final int CLOG_INTERFACE = KillClogPlugin.CLOG_INTERFACE;
 	private static final int ICON_SIZE = 16;
 	private static final Color GREEN = new Color(76, 175, 110);
 	private static final long GREEN_DURATION_MS = 2000;

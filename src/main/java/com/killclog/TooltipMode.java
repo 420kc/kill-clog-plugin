@@ -10,11 +10,11 @@ public enum TooltipMode
 	HOVER("Hover"),
 	CLICK("Click");
 
-	private final String name;
+	private final String label;
 
 	@Override
 	public String toString()
 	{
-		return name;
+		return label;
 	}
 }
