@@ -682,23 +682,59 @@ public class KillClogPanel extends PluginPanel
 				ClogHelper.styleSearchBar((Container) c);
 			}
 		}
-		// Search row: [searchBar] [refresh icon]
-		JPanel searchRow = new JPanel(new BorderLayout(0, 0));
-		searchRow.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		searchRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-		searchRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-
+		// Refresh icon floats over the search bar's right edge.
+		// Icon = null when not hovered (invisible), shown on search area hover.
 		refreshLabel = new JLabel();
 		ImageIcon refreshOff = new ImageIcon(ClogHelper.makeRefreshIcon(HAMBURGER_COLOR));
 		ImageIcon refreshOn = new ImageIcon(ClogHelper.makeRefreshIcon(HAMBURGER_HOVER_COLOR));
-		refreshLabel.setIcon(refreshOff);
-		refreshLabel.setPreferredSize(new Dimension(20, 30));
 		refreshLabel.setHorizontalAlignment(JLabel.CENTER);
 		refreshLabel.setVerticalAlignment(JLabel.CENTER);
-		refreshLabel.setOpaque(true);
-		refreshLabel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		refreshLabel.setOpaque(false);
 		refreshLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		refreshLabel.setVisible(false);
+
+		JPanel searchRow = new JPanel(null)
+		{
+			@Override
+			public void doLayout()
+			{
+				int w = getWidth(), h = getHeight();
+				searchBar.setBounds(0, 0, w, h);
+				refreshLabel.setBounds(w - 22, 0, 22, h);
+			}
+		};
+		searchRow.setAlignmentX(Component.LEFT_ALIGNMENT);
+		searchRow.setPreferredSize(new Dimension(0, 30));
+		searchRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+		searchRow.add(refreshLabel);
+		searchRow.add(searchBar);
+
+		// searchBar hover → show dim refresh icon
+		searchBar.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseEntered(MouseEvent e)
+			{
+				if (refreshLabel.isVisible())
+				{
+					refreshLabel.setIcon(refreshOff);
+				}
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e)
+			{
+				SwingUtilities.invokeLater(() ->
+				{
+					if (searchRow.getMousePosition(true) == null)
+					{
+						refreshLabel.setIcon(null);
+					}
+				});
+			}
+		});
+
+		// refreshLabel hover → brighten, click → re-lookup
 		refreshLabel.addMouseListener(new MouseAdapter()
 		{
 			@Override
@@ -721,12 +757,20 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public void mouseExited(MouseEvent e)
 			{
-				refreshLabel.setIcon(refreshOff);
+				SwingUtilities.invokeLater(() ->
+				{
+					if (searchRow.getMousePosition(true) != null)
+					{
+						refreshLabel.setIcon(refreshOff);
+					}
+					else
+					{
+						refreshLabel.setIcon(null);
+					}
+				});
 			}
 		});
 
-		searchRow.add(searchBar, BorderLayout.CENTER);
-		searchRow.add(refreshLabel, BorderLayout.EAST);
 		panel.add(searchRow);
 		panel.add(Box.createVerticalStrut(4));
 
@@ -1878,6 +1922,7 @@ public class KillClogPanel extends PluginPanel
 		playerName.setIcon(null);
 		playerName.setToolTipText(null);
 		refreshLabel.setVisible(false);
+		refreshLabel.setIcon(null);
 
 		clogInfoLabel.setIcon(null);
 		clogInfoLabel.setText("");
@@ -2132,12 +2177,18 @@ public class KillClogPanel extends PluginPanel
 
 			if (clogResult == null)
 			{
-				int total = clogService.getCategoryItemCount(category);
-				tooltipDataMap.put(skill, new TooltipData(
-					bossName, rank, -1, Math.max(total, 0),
-					Collections.emptyList(),
-					Collections.emptySet(),
-					Collections.emptyMap()));
+				boolean selfNoCache = localRsn != null
+					&& localRsn.equalsIgnoreCase(searchBar.getText().trim())
+					&& config.clogSource() != ClogSource.TEMPLE;
+				if (!selfNoCache)
+				{
+					int total = clogService.getCategoryItemCount(category);
+					tooltipDataMap.put(skill, new TooltipData(
+						bossName, rank, -1, Math.max(total, 0),
+						Collections.emptyList(),
+						Collections.emptySet(),
+						Collections.emptyMap()));
+				}
 				label.setToolTipText(" ");
 				continue;
 			}
