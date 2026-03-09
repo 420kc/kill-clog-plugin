@@ -55,6 +55,23 @@ public class KillClogPlugin extends Plugin
 	private static final int PARAM_CATEGORY_NAME = 689;
 	private static final int PARAM_CATEGORY_ITEMS = 690;
 
+	// Synthetic clog categories — not in game cache enums
+	private static final int THIRD_AGE_RING = 23185;
+	private static final int[] THIRD_AGE_ITEMS = {
+		10350, 10348, 10346, 23242, 10352,
+		10334, 10330, 10332, 10336,
+		10342, 10338, 10340, 10344,
+		12426, 12422, 12437, 12424,
+		23336, 23339, 23345, 23342,
+		20014, 20011, THIRD_AGE_RING
+	};
+	private static final int[] GILDED_ITEMS = {
+		3486, 3481, 3483, 3485, 3488,
+		20146, 20149, 20152, 20155, 20158, 20161,
+		12389, 12391, 23258, 23261, 23264, 23267,
+		23276, 23279, 23282
+	};
+
 	@Inject
 	private Client client;
 
@@ -339,6 +356,11 @@ public class KillClogPlugin extends Plugin
 				}
 			}
 
+			// Synthetic categories not in game cache
+			injectSynthetic("mimic", new int[]{THIRD_AGE_RING});
+			injectSynthetic("third_age", THIRD_AGE_ITEMS);
+			injectSynthetic("gilded", GILDED_ITEMS);
+
 			enumsParsed = true;
 			log.info("Parsed clog enums: {} categories, {} items",
 				enumCategoryMap.size(), itemToCategoryKeys.size());
@@ -348,6 +370,17 @@ public class KillClogPlugin extends Plugin
 			log.warn("Failed to parse clog enums", e);
 			enumsParsed = false;
 		}
+	}
+
+	private void injectSynthetic(String key, int[] itemIds)
+	{
+		List<Integer> ids = new ArrayList<>(itemIds.length);
+		for (int id : itemIds)
+		{
+			ids.add(id);
+			itemToCategoryKeys.computeIfAbsent(id, k -> new ArrayList<>()).add(key);
+		}
+		enumCategoryMap.put(key, ids);
 	}
 
 	private void triggerBulkCapture()

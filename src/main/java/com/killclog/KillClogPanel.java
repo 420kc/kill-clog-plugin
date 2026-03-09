@@ -992,12 +992,12 @@ public class KillClogPanel extends PluginPanel
 		statsSep.setAlignmentX(0f);
 		grid.add(statsSep);
 
-		// Clue row 1: [Clue All] [3rd Age] [Gilded]
+		// Clue row 1: [3rd Age] [Clue Summary] [Gilded]
 		JPanel row1 = new JPanel(new GridLayout(1, 3));
 		row1.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		row1.setAlignmentX(0f);
-		row1.add(makeActivityCell(HiscoreSkill.CLUE_SCROLL_ALL));
 		row1.add(makeClueRareCell("3rd Age", THIRD_AGE_ITEM_ID, CLOG_THIRD_AGE, true));
+		row1.add(makeActivityCell(HiscoreSkill.CLUE_SCROLL_ALL));
 		row1.add(makeClueRareCell("Gilded", GILDED_ITEM_ID, CLOG_GILDED, false));
 		grid.add(row1);
 

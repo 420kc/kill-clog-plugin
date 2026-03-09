@@ -11,7 +11,7 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.LinkedHashMap;
+import java.util.TreeMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -43,7 +43,7 @@ public class ClogService
 		"https://prices.runescape.wiki/api/v1/osrs/mapping";
 
 	// Boss name -> TempleOSRS category key overrides
-	private static final Map<String, String> BOSS_CATEGORY_OVERRIDES = new LinkedHashMap<>();
+	private static final Map<String, String> BOSS_CATEGORY_OVERRIDES = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 	static
 	{
 		// Wilderness bosses with combined clog categories
