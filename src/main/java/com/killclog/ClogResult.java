@@ -20,6 +20,10 @@ public class ClogResult
 	private final Set<Integer> resolvedItemIds;
 	/** When the player last synced clog data to TempleOSRS (from last_changed field) */
 	private final String lastChanged;
+	/** Game-reported unique obtained count (varp 2943), or -1 if unavailable */
+	private int uniqueObtained = -1;
+	/** Game-reported total clog slots (varp 2944), or -1 if unavailable */
+	private int uniqueTotal = -1;
 
 	public ClogResult(
 		String playerName,
@@ -57,6 +61,26 @@ public class ClogResult
 	public Map<String, List<Integer>> getCategoryItems()
 	{
 		return categoryItems;
+	}
+
+	public int getUniqueObtained()
+	{
+		return uniqueObtained;
+	}
+
+	public void setUniqueObtained(int count)
+	{
+		this.uniqueObtained = count;
+	}
+
+	public int getUniqueTotal()
+	{
+		return uniqueTotal;
+	}
+
+	public void setUniqueTotal(int count)
+	{
+		this.uniqueTotal = count;
 	}
 
 	public boolean isItemResolved(int id)

@@ -107,6 +107,8 @@ public class LocalClogCache
 		PlayerClogData data = new PlayerClogData();
 		data.playerName = name;
 		data.lastUpdated = Instant.now().toString();
+		data.uniqueObtained = result.getUniqueObtained();
+		data.uniqueTotal = result.getUniqueTotal();
 		data.obtained = new ConcurrentHashMap<>();
 		data.categories = new ConcurrentHashMap<>();
 
@@ -179,13 +181,22 @@ public class LocalClogCache
 			categoriesCopy.put(entry.getKey(), new ArrayList<>(entry.getValue()));
 		}
 
-		return new ClogResult(
+		ClogResult result = new ClogResult(
 			data.playerName,
 			obtainedCopy,
 			categoriesCopy,
 			itemNames != null ? itemNames : new HashMap<>(),
 			null // no lastChanged for local-only data
 		);
+		if (data.uniqueObtained > 0)
+		{
+			result.setUniqueObtained(data.uniqueObtained);
+		}
+		if (data.uniqueTotal > 0)
+		{
+			result.setUniqueTotal(data.uniqueTotal);
+		}
+		return result;
 	}
 
 	// --- Disk I/O (runs on diskWriter thread only) ---
@@ -247,6 +258,8 @@ public class LocalClogCache
 		PlayerClogData copy = new PlayerClogData();
 		copy.playerName = src.playerName;
 		copy.lastUpdated = src.lastUpdated;
+		copy.uniqueObtained = src.uniqueObtained;
+		copy.uniqueTotal = src.uniqueTotal;
 		copy.categories = new HashMap<>(src.categories);
 		copy.obtained = new HashMap<>(src.obtained);
 		return copy;
@@ -256,6 +269,8 @@ public class LocalClogCache
 	{
 		String playerName;
 		String lastUpdated;
+		int uniqueObtained = -1;
+		int uniqueTotal = -1;
 		Map<String, List<Integer>> categories;
 		Map<String, List<ClogResult.ClogItem>> obtained;
 	}

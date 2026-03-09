@@ -51,6 +51,8 @@ public class KillClogPlugin extends Plugin
 	private static final int CLOG_ITEM_SCRIPT = 4100;
 	private static final int CLOG_SEARCH_WIDGET = 40697932;  // (621 << 16) | 76
 	private static final int ENUM_CLOG_TABS = 2102;
+	private static final int VARP_CLOG_OBTAINED = 2943;
+	private static final int VARP_CLOG_TOTAL = 2944;
 	private static final int PARAM_SUBTAB_ENUM = 683;
 	private static final int PARAM_CATEGORY_NAME = 689;
 	private static final int PARAM_CATEGORY_ITEMS = 690;
@@ -108,6 +110,8 @@ public class KillClogPlugin extends Plugin
 	private boolean enumsParsed;
 	private boolean bulkCaptureActive;
 	private int bulkFinalizeTickCount = -1;
+	private int bulkClogCount = -1;
+	private int bulkClogTotal = -1;
 	private final List<ClogResult.ClogItem> bulkObtained = new ArrayList<>();
 
 	private final HotkeyListener highlighterHotkey = new HotkeyListener(() -> config.highlighterKeybind())
@@ -410,11 +414,13 @@ public class KillClogPlugin extends Plugin
 		bulkObtained.clear();
 		bulkCaptureActive = true;
 		bulkFinalizeTickCount = -1;
+		bulkClogCount = client.getVarpValue(VARP_CLOG_OBTAINED);
+		bulkClogTotal = client.getVarpValue(VARP_CLOG_TOTAL);
 
 		client.menuAction(-1, CLOG_SEARCH_WIDGET, MenuAction.CC_OP, 1, -1, "Search", null);
 		client.menuAction(-1, CLOG_SEARCH_WIDGET, MenuAction.CC_OP, 1, -1, "Back", null);
 
-		log.debug("Triggered bulk clog capture");
+		log.debug("Triggered bulk clog capture (game reports {} obtained)", bulkClogCount);
 	}
 
 	private void finalizeBulkCapture()
@@ -459,6 +465,14 @@ public class KillClogPlugin extends Plugin
 
 		ClogResult result = new ClogResult(name, obtainedByCategory, categoryItemsCopy,
 			new HashMap<>(), null);
+		if (bulkClogCount > 0)
+		{
+			result.setUniqueObtained(bulkClogCount);
+		}
+		if (bulkClogTotal > 0)
+		{
+			result.setUniqueTotal(bulkClogTotal);
+		}
 		localClogCache.cacheResult(result);
 
 		int total = bulkObtained.size();
@@ -479,6 +493,8 @@ public class KillClogPlugin extends Plugin
 	{
 		bulkCaptureActive = false;
 		bulkFinalizeTickCount = -1;
+		bulkClogCount = -1;
+		bulkClogTotal = -1;
 		bulkObtained.clear();
 	}
 

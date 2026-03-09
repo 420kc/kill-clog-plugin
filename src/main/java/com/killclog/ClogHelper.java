@@ -75,7 +75,11 @@ final class ClogHelper
 				for (ClogResult.ClogItem item : obtained) allObtained.add(item.getId());
 			}
 		}
-		return new int[]{allObtained.size(), allItems.size()};
+		int obtained = result.getUniqueObtained() > 0
+			? result.getUniqueObtained() : allObtained.size();
+		int total = result.getUniqueTotal() > 0
+			? result.getUniqueTotal() : allItems.size();
+		return new int[]{obtained, total};
 	}
 
 	// -------------------------------------------------------------------------
