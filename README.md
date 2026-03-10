@@ -35,6 +35,12 @@ Data | Focus
 
 ## Progress Highlighter
 
+| | |
+|:---:|:---:|
+| ![highlighter-off](screenshots/highlighter-off.png) | ![highlighter-on](screenshots/highlighter-on.png) |
+
+Think of all the possibilities.
+
 Five fully-configurable colors: 4 tiers of collection log progress and a 5th configurable accent color for your Summaries.
 
 ## Configuration
