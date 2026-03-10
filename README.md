@@ -2,7 +2,7 @@
 
 Streamlined PvM-focused HiScores Overhaul with Collection Log integration.
 
-| One click to sync your log. | |
+| A single click. | |
 |:---:|:---:|
 | ![sync-path](screenshots/sync-path.gif) | ![tooltip-boss](screenshots/tooltip-boss.png) |
 
