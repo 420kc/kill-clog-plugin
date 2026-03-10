@@ -37,11 +37,9 @@ Data | Focus
 
 | | |
 |:---:|:---:|
-| ![highlighter-off](screenshots/highlighter-off.png) | ![highlighter-on](screenshots/highlighter-on.png) |
+| ![highlighter1](screenshots/highlighter1.png) | ![highlighter2](screenshots/highlighter2.png) |
 
-Think of all the possibilities.
-
-Five fully-configurable colors: 4 tiers of collection log progress and a 5th configurable accent color for your Summaries.
+<sub>16,777,216^5 ≈ **1.33 × 10^36** — 1,329,227,995,784,915,872,903,807,060,280,344,576 combinations.</sub>
 
 ## Configuration
 
