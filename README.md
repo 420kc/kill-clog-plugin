@@ -6,10 +6,6 @@ Streamlined PvM-focused HiScores Overhaul with Collection Log integration.
 |:---:|:---:|
 | ![sync-path](screenshots/sync-path.gif) | ![tooltip-boss](screenshots/tooltip-boss.png) |
 
-
-
-## Panel
-
 ![panel](screenshots/panel.png)
 
 ## Tooltips
