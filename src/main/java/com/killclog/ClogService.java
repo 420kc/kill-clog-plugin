@@ -182,7 +182,8 @@ public class ClogService
 						playerData.obtainedItems,
 						categories != null ? categories : new HashMap<>(),
 						names != null ? names : new HashMap<>(),
-						playerData.lastChanged
+						playerData.lastChanged,
+						playerData.accountType
 					);
 					localClogCache.cacheResult(result);
 					return result;
@@ -205,12 +206,44 @@ public class ClogService
 		final String canonicalName;
 		final Map<String, List<ClogResult.ClogItem>> obtainedItems;
 		final String lastChanged;
+		final AccountType accountType;
 
-		PlayerClogData(String canonicalName, Map<String, List<ClogResult.ClogItem>> obtainedItems, String lastChanged)
+		PlayerClogData(String canonicalName, Map<String, List<ClogResult.ClogItem>> obtainedItems,
+			String lastChanged, AccountType accountType)
 		{
 			this.canonicalName = canonicalName;
 			this.obtainedItems = obtainedItems;
 			this.lastChanged = lastChanged;
+			this.accountType = accountType;
+		}
+	}
+
+	/**
+	 * Parse Temple's game_mode string into our AccountType.
+	 * Returns null if the mode is unrecognized or absent.
+	 */
+	private static AccountType parseGameMode(String gameMode)
+	{
+		if (gameMode == null) return null;
+		switch (gameMode.toLowerCase())
+		{
+			case "1":  // Regular ironman
+			case "ironman":
+				return AccountType.IRONMAN;
+			case "2":  // Hardcore ironman
+			case "hardcore ironman":
+				return AccountType.HARDCORE_IRONMAN;
+			case "3":  // Ultimate ironman
+			case "ultimate ironman":
+				return AccountType.ULTIMATE_IRONMAN;
+			case "4":  // Group ironman
+			case "group ironman":
+				return AccountType.GROUP_IRONMAN;
+			case "5":  // Hardcore group ironman
+			case "hardcore group ironman":
+				return AccountType.HARDCORE_GROUP_IRONMAN;
+			default:
+				return null;
 		}
 	}
 
@@ -244,6 +277,12 @@ public class ClogService
 					lastChanged = data.get("last_changed").getAsString();
 				}
 
+				AccountType accountType = null;
+				if (data.has("game_mode") && !data.get("game_mode").isJsonNull())
+				{
+					accountType = parseGameMode(data.get("game_mode").getAsString());
+				}
+
 				JsonObject itemsObj = data.getAsJsonObject("items");
 				Map<String, List<ClogResult.ClogItem>> result = new HashMap<>();
 
@@ -265,7 +304,7 @@ public class ClogService
 					result.put(category, itemList);
 				}
 
-				return new PlayerClogData(canonicalName, result, lastChanged);
+				return new PlayerClogData(canonicalName, result, lastChanged, accountType);
 			}
 			catch (Exception e)
 			{

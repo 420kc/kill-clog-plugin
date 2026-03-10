@@ -257,6 +257,8 @@ public class KillClogPlugin extends Plugin
 				SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name, acctType));
 			}
 
+			loadGimBadges();
+
 			if (!enumsParsed)
 			{
 				parseClogEnums();
@@ -539,7 +541,7 @@ public class KillClogPlugin extends Plugin
 		}
 
 		ClogResult result = new ClogResult(name, obtainedByCategory, categoryItemsCopy,
-			new HashMap<>(), null);
+			new HashMap<>(), null, null);
 		if (bulk.clogCount > 0)
 		{
 			result.setUniqueObtained(bulk.clogCount);
@@ -766,9 +768,51 @@ public class KillClogPlugin extends Plugin
 				return AccountType.ULTIMATE_IRONMAN;
 			case HARDCORE_IRONMAN:
 				return AccountType.HARDCORE_IRONMAN;
+			case GROUP_IRONMAN:
+				return AccountType.GROUP_IRONMAN;
+			case HARDCORE_GROUP_IRONMAN:
+				return AccountType.HARDCORE_GROUP_IRONMAN;
 			default:
 				return AccountType.REGULAR;
 		}
+	}
+
+	private void loadGimBadges()
+	{
+		net.runelite.api.IndexedSprite[] modIcons = client.getModIcons();
+		if (modIcons == null) return;
+		BufferedImage gim = modIcons.length > ClogHelper.MODICON_GIM
+			? indexedSpriteToImage(modIcons[ClogHelper.MODICON_GIM]) : null;
+		BufferedImage hcgim = modIcons.length > ClogHelper.MODICON_HCGIM
+			? indexedSpriteToImage(modIcons[ClogHelper.MODICON_HCGIM]) : null;
+		ClogHelper.setGimBadges(gim, hcgim);
+	}
+
+	private static BufferedImage indexedSpriteToImage(net.runelite.api.IndexedSprite sprite)
+	{
+		if (sprite == null) return null;
+		int w = sprite.getWidth();
+		int h = sprite.getHeight();
+		if (w <= 0 || h <= 0) return null;
+		BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+		byte[] pixels = sprite.getPixels();
+		int[] palette = sprite.getPalette();
+		for (int y = 0; y < h; y++)
+		{
+			for (int x = 0; x < w; x++)
+			{
+				int idx = pixels[y * w + x] & 0xFF;
+				if (idx == 0)
+				{
+					img.setRGB(x, y, 0); // transparent
+				}
+				else
+				{
+					img.setRGB(x, y, 0xFF000000 | palette[idx]);
+				}
+			}
+		}
+		return img;
 	}
 
 	private BufferedImage getIcon()

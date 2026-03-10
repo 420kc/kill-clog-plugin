@@ -222,7 +222,8 @@ public class LocalClogCache
 			obtainedCopy,
 			categoriesCopy,
 			itemNames != null ? itemNames : new HashMap<>(),
-			null // no lastChanged for local-only data
+			null, // no lastChanged for local-only data
+			null  // no Temple account type for local data
 		);
 		if (data.uniqueObtained > 0)
 		{

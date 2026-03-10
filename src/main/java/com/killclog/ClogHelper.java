@@ -109,6 +109,27 @@ final class ClogHelper
 	// Account helpers
 	// -------------------------------------------------------------------------
 
+	// GIM modicon indices in the game's modicons sprite sheet
+	static final int MODICON_GIM = 41;
+	static final int MODICON_HCGIM = 42;
+
+	// Cached GIM badge images (loaded from game modicons at runtime)
+	private static volatile BufferedImage gimBadge;
+	private static volatile BufferedImage hcgimBadge;
+
+	static void setGimBadges(BufferedImage gim, BufferedImage hcgim)
+	{
+		gimBadge = gim;
+		hcgimBadge = hcgim;
+	}
+
+	static BufferedImage getGimBadge(AccountType type)
+	{
+		if (type == AccountType.GROUP_IRONMAN) return gimBadge;
+		if (type == AccountType.HARDCORE_GROUP_IRONMAN) return hcgimBadge;
+		return null;
+	}
+
 	static String accountBadgeResource(AccountType type)
 	{
 		switch (type)
@@ -116,6 +137,7 @@ final class ClogHelper
 			case IRONMAN: return "ironman.png";
 			case HARDCORE_IRONMAN: return "hardcore_ironman.png";
 			case ULTIMATE_IRONMAN: return "ultimate_ironman.png";
+			// GIM badges loaded from game modicons — use getGimBadge() instead
 			default: return null;
 		}
 	}
@@ -127,6 +149,8 @@ final class ClogHelper
 			case IRONMAN: return "Ironman";
 			case HARDCORE_IRONMAN: return "Hardcore Ironman";
 			case ULTIMATE_IRONMAN: return "Ultimate Ironman";
+			case GROUP_IRONMAN: return "Group Ironman";
+			case HARDCORE_GROUP_IRONMAN: return "Hardcore Group Ironman";
 			default: return null;
 		}
 	}

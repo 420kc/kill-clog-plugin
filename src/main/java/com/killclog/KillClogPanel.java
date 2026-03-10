@@ -1307,8 +1307,11 @@ public class KillClogPanel extends PluginPanel
 		resetAllLabels();
 
 		// Hiscore lookup — pass known account type for self-lookups
+		// GIMs only appear on regular hiscores, so tell hiscore service to skip the cascade
 		AccountType knownType = isSelf ? localAccountType : null;
-		hiscoreService.lookup(player, knownType).thenAccept(result ->
+		AccountType hiscoreType = knownType != null && knownType.name().contains("GROUP")
+			? AccountType.REGULAR : knownType;
+		hiscoreService.lookup(player, hiscoreType).thenAccept(result ->
 			SwingUtilities.invokeLater(() ->
 			{
 				if (thisLookup != lookupVersion) return;
@@ -1341,7 +1344,7 @@ public class KillClogPanel extends PluginPanel
 				}
 				playerName.setText(rsn != null ? rsn : player);
 				playerName.setForeground(getInfoColor());
-				updateInfoIcon(result.getAccountType());
+				updateInfoIcon(knownType != null ? knownType : result.getAccountType());
 				refreshLabel.setVisible(true);
 
 				int combatLevel = result.getCombatLevel();
@@ -1408,6 +1411,12 @@ public class KillClogPanel extends PluginPanel
 						{
 							playerName.setText(name);
 						}
+					}
+					// Temple detected GIM — update badge (hiscore can't tell GIM from regular)
+					AccountType templeType = result.getTempleAccountType();
+					if (templeType != null && templeType.name().contains("GROUP"))
+					{
+						updateInfoIcon(templeType);
 					}
 					lookupItemNames(result);
 					if (hiscoreResult != null)
@@ -1984,6 +1993,15 @@ public class KillClogPanel extends PluginPanel
 
 	private void updateInfoIcon(AccountType type)
 	{
+		// GIM badges loaded from game modicons at runtime
+		BufferedImage gimBadge = ClogHelper.getGimBadge(type);
+		if (gimBadge != null)
+		{
+			playerName.setIcon(new ImageIcon(ImageUtil.resizeImage(gimBadge, 15, 15)));
+			playerName.setToolTipText(" ");
+			return;
+		}
+
 		String resource = ClogHelper.accountBadgeResource(type);
 		if (resource == null)
 		{
