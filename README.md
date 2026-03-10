@@ -14,10 +14,10 @@ Streamlined PvM-focused HiScores Overhaul with Collection Log integration.
 
 ## Tooltips
 
-| | | | |
-|:---:|:---:|:---:|:---:|
-| ![config-hover](screenshots/config-hover-outline.png) | ![tooltip-hover](screenshots/tooltip-hover.gif) | ![tooltip-click](screenshots/tooltip-click.gif) | ![config-click](screenshots/config-click-tint.png) |
-| | Hover + Outline | Click + Tint | |
+| | |
+|:---:|:---:|
+| ![tooltip-hover](screenshots/tooltip-hover.gif) | ![tooltip-click](screenshots/tooltip-click.gif) |
+| Hover \| Outline | Click \| Tint |
 
 ## Summaries
 
@@ -33,7 +33,7 @@ Character Summaries. Info where you want it and not where you don't.
 |:---:|:---:|:---:|
 | ![tray-open](screenshots/tray-open.png) | ![tray-toggle](screenshots/tray-toggle.gif) | ![tray-closed](screenshots/tray-closed.png) |
 
-Informative | Focused
+Data | Focus
 
 ## Progress Highlighter
 
