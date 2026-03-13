@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.killclog.KillClogPanelTest" tests="13" skipped="0" failures="0" errors="0" timestamp="2026-03-13T19:16:39" hostname="420PC" time="0.003">
+  <properties/>
+  <testcase name="testClogTierExactBoundaries" classname="com.killclog.KillClogPanelTest" time="0.0"/>
+  <testcase name="testClogTierGildedScalesWithTotal" classname="com.killclog.KillClogPanelTest" time="0.0"/>
+  <testcase name="testClogTierBlack" classname="com.killclog.KillClogPanelTest" time="0.0"/>
+  <testcase name="testClogTierSteel" classname="com.killclog.KillClogPanelTest" time="0.0"/>
+  <testcase name="testClogTierBelowBronze" classname="com.killclog.KillClogPanelTest" time="0.0"/>
+  <testcase name="testClogTierBronze" classname="com.killclog.KillClogPanelTest" time="0.0"/>
+  <testcase name="testClogTierDragon" classname="com.killclog.KillClogPanelTest" time="0.0"/>
+  <testcase name="testClogTierGilded" classname="com.killclog.KillClogPanelTest" time="0.0"/>
+  <testcase name="testClogTierMithril" classname="com.killclog.KillClogPanelTest" time="0.0"/>
+  <testcase name="testClogTierIron" classname="com.killclog.KillClogPanelTest" time="0.0"/>
+  <testcase name="testClogTierRune" classname="com.killclog.KillClogPanelTest" time="0.0"/>
+  <testcase name="testBossArraysInSync" classname="com.killclog.KillClogPanelTest" time="0.002"/>
+  <testcase name="testClogTierAdamant" classname="com.killclog.KillClogPanelTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

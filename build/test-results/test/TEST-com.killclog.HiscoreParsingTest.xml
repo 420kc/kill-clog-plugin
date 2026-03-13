@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.killclog.HiscoreParsingTest" tests="20" skipped="0" failures="0" errors="0" timestamp="2026-03-13T19:16:39" hostname="420PC" time="0.009">
+  <properties/>
+  <testcase name="testExtractTotalXpNormal" classname="com.killclog.HiscoreParsingTest" time="0.001"/>
+  <testcase name="testParsePreservesAccountType" classname="com.killclog.HiscoreParsingTest" time="0.002"/>
+  <testcase name="testCalcCmbLvlFresh" classname="com.killclog.HiscoreParsingTest" time="0.0"/>
+  <testcase name="testCalcCmbLvlMaxed" classname="com.killclog.HiscoreParsingTest" time="0.0"/>
+  <testcase name="testExtractTotalXpMalformed" classname="com.killclog.HiscoreParsingTest" time="0.0"/>
+  <testcase name="testParseTruncatedNoBosses" classname="com.killclog.HiscoreParsingTest" time="0.0"/>
+  <testcase name="testParseMinimalBody" classname="com.killclog.HiscoreParsingTest" time="0.0"/>
+  <testcase name="testExtractTotalXpNull" classname="com.killclog.HiscoreParsingTest" time="0.0"/>
+  <testcase name="testParseUnrankedBoss" classname="com.killclog.HiscoreParsingTest" time="0.0"/>
+  <testcase name="testParseCombatLevel" classname="com.killclog.HiscoreParsingTest" time="0.0"/>
+  <testcase name="testParseSingleLine" classname="com.killclog.HiscoreParsingTest" time="0.0"/>
+  <testcase name="testParseActivityScores" classname="com.killclog.HiscoreParsingTest" time="0.0"/>
+  <testcase name="testExtractTotalXpEmpty" classname="com.killclog.HiscoreParsingTest" time="0.0"/>
+  <testcase name="testParseTruncatedPartialBosses" classname="com.killclog.HiscoreParsingTest" time="0.001"/>
+  <testcase name="testParseExtraLinesAtEnd" classname="com.killclog.HiscoreParsingTest" time="0.0"/>
+  <testcase name="testExtractTotalXpNonNumeric" classname="com.killclog.HiscoreParsingTest" time="0.002"/>
+  <testcase name="testCalcCmbLvlTooFewLines" classname="com.killclog.HiscoreParsingTest" time="0.0"/>
+  <testcase name="testParseMalformedBossLine" classname="com.killclog.HiscoreParsingTest" time="0.0"/>
+  <testcase name="testParseBossKills" classname="com.killclog.HiscoreParsingTest" time="0.0"/>
+  <testcase name="testParseNormalBody" classname="com.killclog.HiscoreParsingTest" time="0.001"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

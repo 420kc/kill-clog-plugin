@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="8.25">
+<file name="C:\Users\dylan\plugins\kcpdev\src\test\java\com\killclog\ClogHelperTest.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\test\java\com\killclog\HiscoreParsingTest.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\test\java\com\killclog\KillClogPanelTest.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\test\java\com\killclog\KillClogPluginTest.java">
+</file>
+</checkstyle>

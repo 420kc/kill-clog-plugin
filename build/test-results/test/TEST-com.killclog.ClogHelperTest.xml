@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.killclog.ClogHelperTest" tests="22" skipped="0" failures="0" errors="0" timestamp="2026-03-13T19:16:38" hostname="420PC" time="0.327">
+  <properties/>
+  <testcase name="testClogTierObtainedExceedsTotal" classname="com.killclog.ClogHelperTest" time="0.003"/>
+  <testcase name="testFormatKcSmall" classname="com.killclog.ClogHelperTest" time="0.0"/>
+  <testcase name="testGetObtainedIdsMissingCategory" classname="com.killclog.ClogHelperTest" time="0.0"/>
+  <testcase name="testClogCountsMissingCategory" classname="com.killclog.ClogHelperTest" time="0.0"/>
+  <testcase name="testClogCountsEmptyCategory" classname="com.killclog.ClogHelperTest" time="0.0"/>
+  <testcase name="testFormatKcMillions" classname="com.killclog.ClogHelperTest" time="0.003"/>
+  <testcase name="testPadLong" classname="com.killclog.ClogHelperTest" time="0.003"/>
+  <testcase name="testBossToCategorySpecialChars" classname="com.killclog.ClogHelperTest" time="0.314"/>
+  <testcase name="testBossToCategoryOverrides" classname="com.killclog.ClogHelperTest" time="0.001"/>
+  <testcase name="testClogTierZeroSlots" classname="com.killclog.ClogHelperTest" time="0.0"/>
+  <testcase name="testBossToCategoryAutoConvert" classname="com.killclog.ClogHelperTest" time="0.0"/>
+  <testcase name="testCountObtainedDuplicateIds" classname="com.killclog.ClogHelperTest" time="0.0"/>
+  <testcase name="testFormatKcThousands" classname="com.killclog.ClogHelperTest" time="0.0"/>
+  <testcase name="testClogCountsObtainedItemNotInCategory" classname="com.killclog.ClogHelperTest" time="0.001"/>
+  <testcase name="testCountObtainedEmpty" classname="com.killclog.ClogHelperTest" time="0.0"/>
+  <testcase name="testFormatKcNegative" classname="com.killclog.ClogHelperTest" time="0.001"/>
+  <testcase name="testFormatKcBoundaries" classname="com.killclog.ClogHelperTest" time="0.0"/>
+  <testcase name="testGetObtainedIdsNullResult" classname="com.killclog.ClogHelperTest" time="0.0"/>
+  <testcase name="testPadExact" classname="com.killclog.ClogHelperTest" time="0.0"/>
+  <testcase name="testPadShort" classname="com.killclog.ClogHelperTest" time="0.0"/>
+  <testcase name="testClogCountsPartialCompletion" classname="com.killclog.ClogHelperTest" time="0.0"/>
+  <testcase name="testClogTierOneSlot" classname="com.killclog.ClogHelperTest" time="0.0"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

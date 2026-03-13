@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="8.25">
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\AccountType.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\ClogButtonOverlay.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\ClogHelper.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\ClogResult.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\ClogService.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\ClogSummaryTooltip.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\ClueSummaryTooltip.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\FourTwentyMode.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\HiscoreResult.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\HiscoreService.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\HoverStyle.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\ImgTooltip.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\KillClogConfig.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\KillClogPanel.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\KillClogPlugin.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\LocalClogCache.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\LookupQueries.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\MinimalScrollBarUI.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\NameAutocompleter.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\NativeTooltip.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\PanelData.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\ProgressHighlighter.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\PvmSummaryTooltip.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\PvpSummaryTooltip.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\SearchMessages.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\SkillsTooltip.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\SummaryTooltip.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\TitleTooltip.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\TooltipController.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\TooltipData.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\TooltipDataBuilder.java">
+</file>
+<file name="C:\Users\dylan\plugins\kcpdev\src\main\java\com\killclog\TooltipMode.java">
+</file>
+</checkstyle>
