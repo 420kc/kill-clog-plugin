@@ -10,14 +10,13 @@ final class SearchMessages
 	}
 
 	static final String[] SEARCH = {
-		"Throwing a search party for %s...",
-		"Moving mountains to find %s...",
-		"Deliberating on %s's whereabouts...",
-		"Searching high and low for %s...",
-		"Leaving no stone unturned for %s...",
-		"Hot on the trail of %s...",
-		"Scouring Gielinor for %s...",
-		"Putting out an APB on %s...",
+		"Search party for %s...",
+		"Tracking down %s...",
+		"On %s's trail...",
+		"Searching for %s...",
+		"Scouring for %s...",
+		"Hot on %s's trail...",
+		"APB out on %s...",
 	};
 
 	static final String[] NOT_FOUND = {
@@ -26,11 +25,11 @@ final class SearchMessages
 		"%s is touching grass",
 		"%s? Never heard of 'em.",
 		"%s who?",
-		"Have you seen %s? I haven't...",
+		"Seen %s? I haven't...",
 		"404: %s not found",
 		"%s remains at large",
 		"Couldn't find %s. Tragic.",
-		"%s was last seen at Doom. RIP.",
+		"%s last seen at Doom. RIP.",
 		"%s probably got pk'd.",
 	};
 
@@ -57,4 +56,52 @@ final class SearchMessages
 	};
 
 	static final Color SELF_COLOR = new Color(0x4c, 0xaf, 0x6e);
+
+	static final String[] COMPARE_SEARCH = {
+		"Finding %s a rival...",
+		"Scouting for %s...",
+		"Pulling rival stats...",
+		"Lining up a challenger...",
+		"Sizing up the field...",
+	};
+
+	static final String[] COMPARE_NOT_FOUND = {
+		"No one showed for %s",
+		"%s's rival is MIA",
+		"%s wins by default.",
+		"%s remains uncontested",
+	};
+
+	/** Shown when blue = red and neither is self. */
+	static final String[] COMPARE_MIRROR = {
+		"%s vs %s. Bold.",
+		"%s's rival: %s",
+		"Mirror match.",
+		"%s challenges... %s?",
+	};
+
+	/** Shown when blue = red = self. */
+	static final String[] COMPARE_SELF_MIRROR = {
+		"You vs you. Classic.",
+		"%s's rival: %s",
+		"Know thyself, %s",
+		"The real fight, %s",
+	};
+
+	/** Shown when the blue (primary) player is self. %s = rival name, or two %s = blue + red. */
+	static final String[] COMPARE_SELF_BLUE = {
+		"Good luck vs %s!",
+		"%s vs %s: FIGHT!",
+		"Think you can take %s?",
+		"%s vs %s",
+		"You vs %s. Let's see it.",
+	};
+
+	/** Shown when the red (compare) player is self. %s = blue name, or two %s = blue + red. */
+	static final String[] COMPARE_SELF_RED = {
+		"Challenging yourself?",
+		"Can't escape you, %s",
+		"%s vs %s. Bold.",
+		"Nowhere to hide, %s",
+	};
 }
