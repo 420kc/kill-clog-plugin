@@ -20,6 +20,8 @@ public class ClogResult
 	private final Set<Integer> resolvedItemIds;
 	/** When the player last synced clog data to TempleOSRS (from last_changed field) */
 	private final String lastChanged;
+	/** Account type detected from Temple's game_mode, or null if unknown */
+	private final AccountType templeAccountType;
 	/** Game-reported unique obtained count (varp 2943), or -1 if unavailable */
 	private int uniqueObtained = -1;
 	/** Game-reported total clog slots (varp 2944), or -1 if unavailable */
@@ -30,7 +32,8 @@ public class ClogResult
 		Map<String, List<ClogItem>> obtainedItems,
 		Map<String, List<Integer>> categoryItems,
 		Map<Integer, String> itemNames,
-		String lastChanged)
+		String lastChanged,
+		AccountType templeAccountType)
 	{
 		this.playerName = playerName;
 		this.obtainedItems = obtainedItems;
@@ -41,6 +44,7 @@ public class ClogResult
 			resolvedItemIds.addAll(itemNames.keySet());
 		}
 		this.lastChanged = lastChanged;
+		this.templeAccountType = templeAccountType;
 	}
 
 	public String getPlayerName()
@@ -61,6 +65,11 @@ public class ClogResult
 	public Map<String, List<Integer>> getCategoryItems()
 	{
 		return categoryItems;
+	}
+
+	public AccountType getTempleAccountType()
+	{
+		return templeAccountType;
 	}
 
 	public int getUniqueObtained()

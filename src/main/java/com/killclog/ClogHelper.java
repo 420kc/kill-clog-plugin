@@ -109,6 +109,27 @@ final class ClogHelper
 	// Account helpers
 	// -------------------------------------------------------------------------
 
+	// GIM modicon indices in the game's modicons sprite sheet
+	static final int MODICON_GIM = 41;
+	static final int MODICON_HCGIM = 42;
+
+	// Cached GIM badge images (loaded from game modicons at runtime)
+	private static volatile BufferedImage gimBadge;
+	private static volatile BufferedImage hcgimBadge;
+
+	static void setGimBadges(BufferedImage gim, BufferedImage hcgim)
+	{
+		gimBadge = gim;
+		hcgimBadge = hcgim;
+	}
+
+	static BufferedImage getGimBadge(AccountType type)
+	{
+		if (type == AccountType.GROUP_IRONMAN) return gimBadge;
+		if (type == AccountType.HARDCORE_GROUP_IRONMAN) return hcgimBadge;
+		return null;
+	}
+
 	static String accountBadgeResource(AccountType type)
 	{
 		switch (type)
@@ -116,6 +137,7 @@ final class ClogHelper
 			case IRONMAN: return "ironman.png";
 			case HARDCORE_IRONMAN: return "hardcore_ironman.png";
 			case ULTIMATE_IRONMAN: return "ultimate_ironman.png";
+			// GIM badges loaded from game modicons — use getGimBadge() instead
 			default: return null;
 		}
 	}
@@ -127,6 +149,8 @@ final class ClogHelper
 			case IRONMAN: return "Ironman";
 			case HARDCORE_IRONMAN: return "Hardcore Ironman";
 			case ULTIMATE_IRONMAN: return "Ultimate Ironman";
+			case GROUP_IRONMAN: return "Group Ironman";
+			case HARDCORE_GROUP_IRONMAN: return "Hardcore Group Ironman";
 			default: return null;
 		}
 	}
@@ -206,6 +230,41 @@ final class ClogHelper
 		g.fillRect(1, 8, w - 2, 2);   // bottom line (1px gap)
 		g.dispose();
 		return img;
+	}
+
+	/** Paints a 15x15 split-color magnifying glass — left half blue, right half red. */
+	static BufferedImage makeCompareIcon(Color left, Color right, float brightness)
+	{
+		int s = 15;
+		BufferedImage img = new BufferedImage(s, s, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = img.createGraphics();
+		g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+			java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+		g.setStroke(new java.awt.BasicStroke(1.5f));
+		// Lens circle: center (6,5), radius 4
+		int cx = 6, cy = 5, r = 4;
+		// Left half (blue) — clip to left of center
+		g.setClip(0, 0, cx, s);
+		g.setColor(brighten(left, brightness));
+		g.drawOval(cx - r, cy - r, r * 2, r * 2);
+		// Right half (red) — clip to right of center
+		g.setClip(cx, 0, s, s);
+		g.setColor(brighten(right, brightness));
+		g.drawOval(cx - r, cy - r, r * 2, r * 2);
+		// Handle — no clip
+		g.setClip(null);
+		g.setColor(brighten(right, brightness));
+		g.drawLine(cx + 3, cy + 3, cx + 6, cy + 6);
+		g.dispose();
+		return img;
+	}
+
+	private static Color brighten(Color c, float factor)
+	{
+		int r = Math.min(255, (int) (c.getRed() * factor));
+		int g = Math.min(255, (int) (c.getGreen() * factor));
+		int b = Math.min(255, (int) (c.getBlue() * factor));
+		return new Color(r, g, b, c.getAlpha());
 	}
 
 	/** Paints a 15x15 circular refresh arrow — nearly full circle with arrowhead. */

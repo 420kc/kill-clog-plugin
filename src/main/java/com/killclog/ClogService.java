@@ -97,6 +97,10 @@ public class ClogService
 	// Players whose Temple lookup failed this session — skip retries, cleared on login
 	private final Set<String> templeFailures = java.util.concurrent.ConcurrentHashMap.newKeySet();
 
+	// Freshness gate — skip Temple if we fetched successfully within this window
+	private static final long CLOG_TTL_MS = 5 * 60 * 1000; // 5 minutes
+	private final Map<String, Long> clogFetchTimes = new java.util.concurrent.ConcurrentHashMap<>();
+
 	@Inject
 	public ClogService(OkHttpClient httpClient, Gson gson, LocalClogCache localClogCache, KillClogConfig config)
 	{
@@ -146,8 +150,19 @@ public class ClogService
 			return CompletableFuture.completedFuture(null);
 		}
 
-		// Skip Temple if it already failed for this player this session
+		// Fresh data — skip Temple if we fetched recently
 		String normalizedName = playerName.toLowerCase();
+		Long lastFetch = clogFetchTimes.get(normalizedName);
+		if (lastFetch != null && System.currentTimeMillis() - lastFetch < CLOG_TTL_MS
+			&& localClogCache.hasDataFor(playerName))
+		{
+			log.debug("Using fresh cached clog for '{}' ({}s old)",
+				playerName, (System.currentTimeMillis() - lastFetch) / 1000);
+			return fetchItemNames().thenApply(names ->
+				localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>()));
+		}
+
+		// Skip Temple if it already failed for this player this session
 		if (templeFailures.contains(normalizedName))
 		{
 			if (localClogCache.hasDataFor(playerName))
@@ -167,24 +182,38 @@ public class ClogService
 			fetchCategories();
 		CompletableFuture<Map<Integer, String>> namesFuture =
 			fetchItemNames();
+		CompletableFuture<AccountType> statsFuture =
+			fetchStatsAccountType(encoded);
 
-		return CompletableFuture.allOf(playerFuture, categoriesFuture, namesFuture)
+		return CompletableFuture.allOf(playerFuture, categoriesFuture, namesFuture, statsFuture)
 			.thenApply(v ->
 			{
 				PlayerClogData playerData = playerFuture.join();
 				Map<String, List<Integer>> categories = categoriesFuture.join();
 				Map<Integer, String> names = namesFuture.join();
+				AccountType statsType = statsFuture.join();
 
 				if (playerData != null)
 				{
+					// Clog endpoint returns game_mode 0 for GIMs —
+					// prefer stats endpoint when clog has no useful type
+					AccountType accountType = playerData.accountType;
+					if (statsType != null
+						&& (accountType == null || accountType == AccountType.REGULAR))
+					{
+						accountType = statsType;
+					}
+
 					ClogResult result = new ClogResult(
 						playerData.canonicalName,
 						playerData.obtainedItems,
 						categories != null ? categories : new HashMap<>(),
 						names != null ? names : new HashMap<>(),
-						playerData.lastChanged
+						playerData.lastChanged,
+						accountType
 					);
 					localClogCache.cacheResult(result);
+					clogFetchTimes.put(normalizedName, System.currentTimeMillis());
 					return result;
 				}
 
@@ -205,12 +234,44 @@ public class ClogService
 		final String canonicalName;
 		final Map<String, List<ClogResult.ClogItem>> obtainedItems;
 		final String lastChanged;
+		final AccountType accountType;
 
-		PlayerClogData(String canonicalName, Map<String, List<ClogResult.ClogItem>> obtainedItems, String lastChanged)
+		PlayerClogData(String canonicalName, Map<String, List<ClogResult.ClogItem>> obtainedItems,
+			String lastChanged, AccountType accountType)
 		{
 			this.canonicalName = canonicalName;
 			this.obtainedItems = obtainedItems;
 			this.lastChanged = lastChanged;
+			this.accountType = accountType;
+		}
+	}
+
+	/**
+	 * Parse Temple's game_mode string into our AccountType.
+	 * Returns null if the mode is unrecognized or absent.
+	 */
+	private static AccountType parseGameMode(String gameMode)
+	{
+		if (gameMode == null) return null;
+		switch (gameMode.toLowerCase())
+		{
+			case "1":  // Regular ironman
+			case "ironman":
+				return AccountType.IRONMAN;
+			case "2":  // Hardcore ironman
+			case "hardcore ironman":
+				return AccountType.HARDCORE_IRONMAN;
+			case "3":  // Ultimate ironman
+			case "ultimate ironman":
+				return AccountType.ULTIMATE_IRONMAN;
+			case "4":  // Group ironman
+			case "group ironman":
+				return AccountType.GROUP_IRONMAN;
+			case "5":  // Hardcore group ironman
+			case "hardcore group ironman":
+				return AccountType.HARDCORE_GROUP_IRONMAN;
+			default:
+				return null;
 		}
 	}
 
@@ -244,6 +305,12 @@ public class ClogService
 					lastChanged = data.get("last_changed").getAsString();
 				}
 
+				AccountType accountType = null;
+				if (data.has("game_mode") && !data.get("game_mode").isJsonNull())
+				{
+					accountType = parseGameMode(data.get("game_mode").getAsString());
+				}
+
 				JsonObject itemsObj = data.getAsJsonObject("items");
 				Map<String, List<ClogResult.ClogItem>> result = new HashMap<>();
 
@@ -265,7 +332,7 @@ public class ClogService
 					result.put(category, itemList);
 				}
 
-				return new PlayerClogData(canonicalName, result, lastChanged);
+				return new PlayerClogData(canonicalName, result, lastChanged, accountType);
 			}
 			catch (Exception e)
 			{
@@ -318,12 +385,15 @@ public class ClogService
 				{
 				}.getType();
 					Map<String, List<Integer>> categories = new HashMap<>();
-					for (String section : new String[]{"bosses", "raids", "clues", "minigames", "other"})
+					for (Map.Entry<String, JsonElement> entry : root.entrySet())
 					{
-						JsonObject sectionObj = root.getAsJsonObject(section);
-						if (sectionObj != null)
+						if (!entry.getValue().isJsonObject())
 						{
-							Map<String, List<Integer>> sectionMap = gson.fromJson(sectionObj, type);
+							continue;
+						}
+						Map<String, List<Integer>> sectionMap = gson.fromJson(entry.getValue(), type);
+						if (sectionMap != null)
+						{
 							categories.putAll(sectionMap);
 						}
 					}
@@ -403,6 +473,62 @@ public class ClogService
 
 			return namesFlight;
 		}
+	}
+
+	/**
+	 * Fetch account type from Temple stats endpoint.
+	 * The clog endpoint reports game_mode 0 for GIMs, but the stats
+	 * endpoint exposes a GIM field with the group ID.
+	 */
+	private CompletableFuture<AccountType> fetchStatsAccountType(String encodedPlayer)
+	{
+		String url = TEMPLE_STATS_URL + "?player=" + encodedPlayer;
+		return httpGet(url).thenApply(json ->
+		{
+			if (json == null)
+			{
+				return null;
+			}
+			try
+			{
+				JsonObject root = gson.fromJson(json, JsonObject.class);
+				JsonObject data = root.getAsJsonObject("data");
+				if (data == null)
+				{
+					return null;
+				}
+				JsonObject info = data.getAsJsonObject("info");
+				if (info == null)
+				{
+					return null;
+				}
+
+				if (info.has("Game mode") && !info.get("Game mode").isJsonNull())
+				{
+					AccountType type = parseGameMode(info.get("Game mode").getAsString());
+					if (type != null && type != AccountType.REGULAR)
+					{
+						return type;
+					}
+				}
+
+				if (info.has("GIM") && !info.get("GIM").isJsonNull())
+				{
+					int gimId = info.get("GIM").getAsInt();
+					if (gimId > 0)
+					{
+						return AccountType.GROUP_IRONMAN;
+					}
+				}
+
+				return null;
+			}
+			catch (Exception e)
+			{
+				log.debug("Failed to parse stats account type: {}", e.getMessage());
+				return null;
+			}
+		});
 	}
 
 	/**
