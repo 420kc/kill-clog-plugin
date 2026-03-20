@@ -121,6 +121,7 @@ public class LocalClogCache
 		data.lastUpdated = Instant.now().toString();
 		data.uniqueObtained = result.getUniqueObtained();
 		data.uniqueTotal = result.getUniqueTotal();
+		data.lastChanged = result.getLastChanged();
 		data.obtained = new ConcurrentHashMap<>();
 		data.categories = new ConcurrentHashMap<>();
 
@@ -164,6 +165,40 @@ public class LocalClogCache
 		diskWriter.execute(() -> saveToDisk(playerName, snapshot));
 		log.debug("Merged category '{}' for '{}': {}/{} obtained",
 			categoryKey, playerName, obtained.size(), allItems.size());
+	}
+
+	public void updateTotals(String playerName, int obtained, int total)
+	{
+		if (playerName == null)
+		{
+			return;
+		}
+
+		String key = playerName.toLowerCase();
+		PlayerClogData data = players.get(key);
+		if (data == null)
+		{
+			return;
+		}
+
+		boolean changed = false;
+		if (obtained > 0 && obtained != data.uniqueObtained)
+		{
+			data.uniqueObtained = obtained;
+			changed = true;
+		}
+		if (total > 0 && total != data.uniqueTotal)
+		{
+			data.uniqueTotal = total;
+			changed = true;
+		}
+
+		if (changed)
+		{
+			final PlayerClogData snapshot = shallowCopy(data);
+			diskWriter.execute(() -> saveToDisk(playerName, snapshot));
+			log.debug("Updated clog totals for '{}': {}/{}", playerName, obtained, total);
+		}
 	}
 
 	public boolean hasDataFor(String playerName)
@@ -222,7 +257,8 @@ public class LocalClogCache
 			obtainedCopy,
 			categoriesCopy,
 			itemNames != null ? itemNames : new HashMap<>(),
-			null // no lastChanged for local-only data
+			data.lastChanged,
+			null  // no Temple account type for local data
 		);
 		if (data.uniqueObtained > 0)
 		{
@@ -270,6 +306,12 @@ public class LocalClogCache
 			PlayerClogData data = gson.fromJson(reader, PlayerClogData.class);
 			if (data != null && data.categories != null && !data.categories.isEmpty())
 			{
+				// Gson deserializes to plain maps; wrap in ConcurrentHashMap
+				// so mergeCategory() and EDT reads can't collide.
+				data.categories = new ConcurrentHashMap<>(data.categories);
+				data.obtained = data.obtained != null
+					? new ConcurrentHashMap<>(data.obtained)
+					: new ConcurrentHashMap<>();
 				return data;
 			}
 		}
@@ -294,6 +336,7 @@ public class LocalClogCache
 		PlayerClogData copy = new PlayerClogData();
 		copy.playerName = src.playerName;
 		copy.lastUpdated = src.lastUpdated;
+		copy.lastChanged = src.lastChanged;
 		copy.uniqueObtained = src.uniqueObtained;
 		copy.uniqueTotal = src.uniqueTotal;
 		copy.categories = new HashMap<>(src.categories);
@@ -305,6 +348,7 @@ public class LocalClogCache
 	{
 		String playerName;
 		String lastUpdated;
+		String lastChanged;
 		int uniqueObtained = -1;
 		int uniqueTotal = -1;
 		Map<String, List<Integer>> categories;

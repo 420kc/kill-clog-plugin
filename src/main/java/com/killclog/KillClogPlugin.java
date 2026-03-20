@@ -4,8 +4,10 @@ import com.google.inject.Provides;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.swing.SwingUtilities;
@@ -146,6 +148,7 @@ public class KillClogPlugin extends Plugin
 
 		// Buffered category read — captured before bulk has cache data to merge into
 		String bufferedCategoryKey;
+		String bufferedCategoryName;
 		List<Integer> bufferedCategoryItems;
 		List<ClogResult.ClogItem> bufferedCategoryObtained;
 
@@ -156,6 +159,10 @@ public class KillClogPlugin extends Plugin
 			clogCount = -1;
 			clogTotal = -1;
 			obtained.clear();
+			bufferedCategoryKey = null;
+			bufferedCategoryName = null;
+			bufferedCategoryItems = null;
+			bufferedCategoryObtained = null;
 		}
 	}
 
@@ -210,6 +217,8 @@ public class KillClogPlugin extends Plugin
 					SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name, acctType));
 				}
 
+				loadGimBadges();
+
 				if (!enumsParsed)
 				{
 					parseClogEnums();
@@ -256,6 +265,8 @@ public class KillClogPlugin extends Plugin
 				AccountType acctType = mapAccountType(client.getAccountType());
 				SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name, acctType));
 			}
+
+			loadGimBadges();
 
 			if (!enumsParsed)
 			{
@@ -321,6 +332,10 @@ public class KillClogPlugin extends Plugin
 			return;
 		}
 
+		if (!(args[1] instanceof Integer) || !(args[2] instanceof Integer))
+		{
+			return;
+		}
 		int itemId = (int) args[1];
 		int count = (int) args[2];
 
@@ -331,6 +346,7 @@ public class KillClogPlugin extends Plugin
 	@Subscribe
 	public void onPluginChanged(PluginChanged event)
 	{
+		// String check — can't import FourTwentyKcPlugin directly (separate plugin)
 		if (event.getPlugin().getClass().getSimpleName().equals("FourTwentyKcPlugin"))
 		{
 			SwingUtilities.invokeLater(() -> panel.setFourTwentyVisible(event.isLoaded()));
@@ -539,7 +555,7 @@ public class KillClogPlugin extends Plugin
 		}
 
 		ClogResult result = new ClogResult(name, obtainedByCategory, categoryItemsCopy,
-			new HashMap<>(), null);
+			new HashMap<>(), null, null);
 		if (bulk.clogCount > 0)
 		{
 			result.setUniqueObtained(bulk.clogCount);
@@ -551,7 +567,7 @@ public class KillClogPlugin extends Plugin
 		localClogCache.cacheResult(result);
 
 		int total = bulk.obtained.size();
-		log.info("Bulk clog capture complete: {} items across {} categories for '{}'",
+		log.debug("Bulk clog capture complete: {} items across {} categories for '{}'",
 			total, enumCategoryMap.size(), name);
 
 		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
@@ -561,6 +577,7 @@ public class KillClogPlugin extends Plugin
 
 		// Merge the buffered category before reset (captured when clog first opened)
 		String bufKey = bulk.bufferedCategoryKey;
+		String bufName = bulk.bufferedCategoryName;
 		List<Integer> bufItems = bulk.bufferedCategoryItems;
 		List<ClogResult.ClogItem> bufObtained = bulk.bufferedCategoryObtained;
 		resetBulkCapture();
@@ -573,9 +590,10 @@ public class KillClogPlugin extends Plugin
 			log.debug("Merged buffered category '{}': {}/{} obtained",
 				bufKey, buffObt, buffTotal);
 
+			String displayName = bufName != null ? bufName : bufKey;
 			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-				"<col=4caf6e>Kill Clog:</col> Updated " + bufKey
-					+ " — " + buffObt + "/" + buffTotal + " items",
+				"<col=4caf6e>Kill Clog:</col> Updated " + displayName
+					+ " \u2014 " + buffObt + "/" + buffTotal + " items",
 				null);
 		}
 
@@ -693,21 +711,19 @@ public class KillClogPlugin extends Plugin
 		// the missing ones are untradeable items not visible in the widget
 		if (obtainedCount > obtained.size() && obtainedCount <= allItemIds.size())
 		{
+			Set<Integer> obtainedIds = new HashSet<>();
+			for (ClogResult.ClogItem oi : obtained)
+			{
+				obtainedIds.add(oi.getId());
+			}
+
 			int missing = obtainedCount - obtained.size();
 			for (int itemId : allItemIds)
 			{
-				boolean alreadyObtained = false;
-				for (ClogResult.ClogItem oi : obtained)
-				{
-					if (oi.getId() == itemId)
-					{
-						alreadyObtained = true;
-						break;
-					}
-				}
-				if (!alreadyObtained)
+				if (!obtainedIds.contains(itemId))
 				{
 					obtained.add(new ClogResult.ClogItem(itemId, 1, null));
+					obtainedIds.add(itemId);
 					missing--;
 					if (missing <= 0)
 					{
@@ -727,6 +743,14 @@ public class KillClogPlugin extends Plugin
 		{
 			localClogCache.mergeCategory(name, categoryKey, allItemIds, obtained);
 
+			// Re-read global clog totals from live varps (catches game updates + new items)
+			int liveObtained = client.getVarpValue(VARP_CLOG_OBTAINED);
+			int liveTotal = client.getVarpValue(VARP_CLOG_TOTAL);
+			if (liveObtained > 0 || liveTotal > 0)
+			{
+				localClogCache.updateTotals(name, liveObtained, liveTotal);
+			}
+
 			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
 				"<col=4caf6e>Kill Clog:</col> Captured " + categoryName
 					+ " \u2014 " + obtained.size() + "/" + allItemIds.size() + " obtained",
@@ -736,6 +760,7 @@ public class KillClogPlugin extends Plugin
 		else
 		{
 			bulk.bufferedCategoryKey = categoryKey;
+			bulk.bufferedCategoryName = categoryName;
 			bulk.bufferedCategoryItems = new ArrayList<>(allItemIds);
 			bulk.bufferedCategoryObtained = new ArrayList<>(obtained);
 
@@ -766,9 +791,51 @@ public class KillClogPlugin extends Plugin
 				return AccountType.ULTIMATE_IRONMAN;
 			case HARDCORE_IRONMAN:
 				return AccountType.HARDCORE_IRONMAN;
+			case GROUP_IRONMAN:
+				return AccountType.GROUP_IRONMAN;
+			case HARDCORE_GROUP_IRONMAN:
+				return AccountType.HARDCORE_GROUP_IRONMAN;
 			default:
 				return AccountType.REGULAR;
 		}
+	}
+
+	private void loadGimBadges()
+	{
+		net.runelite.api.IndexedSprite[] modIcons = client.getModIcons();
+		if (modIcons == null) return;
+		BufferedImage gim = modIcons.length > ClogHelper.MODICON_GIM
+			? indexedSpriteToImage(modIcons[ClogHelper.MODICON_GIM]) : null;
+		BufferedImage hcgim = modIcons.length > ClogHelper.MODICON_HCGIM
+			? indexedSpriteToImage(modIcons[ClogHelper.MODICON_HCGIM]) : null;
+		ClogHelper.setGimBadges(gim, hcgim);
+	}
+
+	private static BufferedImage indexedSpriteToImage(net.runelite.api.IndexedSprite sprite)
+	{
+		if (sprite == null) return null;
+		int w = sprite.getWidth();
+		int h = sprite.getHeight();
+		if (w <= 0 || h <= 0) return null;
+		BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+		byte[] pixels = sprite.getPixels();
+		int[] palette = sprite.getPalette();
+		for (int y = 0; y < h; y++)
+		{
+			for (int x = 0; x < w; x++)
+			{
+				int idx = pixels[y * w + x] & 0xFF;
+				if (idx == 0)
+				{
+					img.setRGB(x, y, 0); // transparent
+				}
+				else
+				{
+					img.setRGB(x, y, 0xFF000000 | palette[idx]);
+				}
+			}
+		}
+		return img;
 	}
 
 	private BufferedImage getIcon()
