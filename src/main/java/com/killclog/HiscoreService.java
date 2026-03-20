@@ -93,6 +93,12 @@ public class HiscoreService
 		return BOSS_NAMES.length;
 	}
 
+	/** Boss names in CSV order. Used by tests to validate PanelData consistency. */
+	static String[] bossNames()
+	{
+		return BOSS_NAMES;
+	}
+
 	private final OkHttpClient httpClient;
 
 	@Inject
@@ -222,7 +228,7 @@ public class HiscoreService
 		}
 		try
 		{
-			String firstLine = body.trim().split("\n")[0];
+			String firstLine = body.trim().split("\\r?\\n")[0];
 			String[] parts = firstLine.split(",");
 			return parts.length >= 3 ? Long.parseLong(parts[2]) : -1;
 		}
@@ -249,7 +255,13 @@ public class HiscoreService
 
 	/* package */ HiscoreResult parseHiscoreBody(String body, AccountType type)
 	{
-		String[] lines = body.trim().split("\n");
+		String[] lines = body.trim().split("\\r?\\n");
+		int expected = 1 + SKILL_NAMES.length + ACTIVITY_NAMES.length + BOSS_NAMES.length;
+		if (lines.length != expected)
+		{
+			log.warn("Hiscore CSV line count changed: expected {} but got {} — boss data may have shifted",
+				expected, lines.length);
+		}
 		Map<String, Integer> bossKills = new LinkedHashMap<>();
 		Map<String, Integer> bossRanks = new LinkedHashMap<>();
 		Map<String, Integer> activityScores = new LinkedHashMap<>();

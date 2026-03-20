@@ -254,6 +254,7 @@ public class ClogHelperTest
 			obtainedItems,
 			categoryItems,
 			new HashMap<>(),
+			null,
 			null
 		);
 	}

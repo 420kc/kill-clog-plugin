@@ -80,10 +80,11 @@ public class NameAutocompleter implements KeyListener
 				try
 				{
 					int insertIndex = input.getSelectionStart();
+					int selectionEnd = input.getSelectionEnd();
 					Document doc = input.getDocument();
 					doc.remove(insertIndex, 1);
 					doc.insertString(insertIndex, charToInsert, null);
-					input.select(insertIndex + 1, input.getSelectionEnd());
+					input.select(insertIndex + 1, selectionEnd);
 				}
 				catch (BadLocationException ex)
 				{

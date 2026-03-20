@@ -27,7 +27,6 @@ class ClogButtonOverlay extends Overlay implements MouseListener
 
 	private final Client client;
 	private final KillClogPlugin plugin;
-	private final KillClogConfig config;
 
 	private BufferedImage icon;
 	private BufferedImage greenIcon;
@@ -35,11 +34,10 @@ class ClogButtonOverlay extends Overlay implements MouseListener
 	private long greenUntil;
 
 	@Inject
-	ClogButtonOverlay(Client client, KillClogPlugin plugin, KillClogConfig config)
+	ClogButtonOverlay(Client client, KillClogPlugin plugin)
 	{
 		this.client = client;
 		this.plugin = plugin;
-		this.config = config;
 
 		setPosition(OverlayPosition.DYNAMIC);
 		setLayer(OverlayLayer.ABOVE_WIDGETS);
@@ -59,6 +57,10 @@ class ClogButtonOverlay extends Overlay implements MouseListener
 		if (icon == null)
 		{
 			icon = ImageUtil.loadImageResource(KillClogPlugin.class, "icon.png");
+			if (icon == null)
+			{
+				return null;
+			}
 			icon = ImageUtil.resizeImage(icon, ICON_SIZE, ICON_SIZE);
 
 			greenIcon = new BufferedImage(ICON_SIZE, ICON_SIZE, BufferedImage.TYPE_INT_ARGB);

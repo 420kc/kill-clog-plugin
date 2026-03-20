@@ -46,6 +46,11 @@ final class ProgressHighlighter
 								Map<String, JLabel> rareCells,
 								FourTwentyMode fourTwentyMode, Color fourTwentyGreen)
 	{
+		if (clogResult == null)
+		{
+			return;
+		}
+
 		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
 		{
 			HiscoreSkill skill = entry.getKey();

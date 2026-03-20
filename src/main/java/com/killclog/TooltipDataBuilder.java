@@ -62,6 +62,7 @@ final class TooltipDataBuilder
 	 */
 	TooltipData buildClueRareData(String name, String clogCategory, ClogResult clogResult)
 	{
+		if (clogResult == null) return null;
 		List<Integer> allItems = clogResult.getCategoryItems().get(clogCategory);
 		List<ClogResult.ClogItem> obtained = clogResult.getObtainedItems().get(clogCategory);
 
@@ -92,6 +93,7 @@ final class TooltipDataBuilder
 	 */
 	TooltipData buildCustomRareData(String name, int[] itemIds, ClogResult clogResult)
 	{
+		if (clogResult == null) return null;
 		Set<Integer> allObtainedGlobal = new HashSet<>();
 		Map<Integer, Integer> allCountsGlobal = new HashMap<>();
 		for (List<ClogResult.ClogItem> catObtained : clogResult.getObtainedItems().values())

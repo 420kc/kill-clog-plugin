@@ -1,5 +1,10 @@
 package com.killclog;
 
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+
+@Getter
+@RequiredArgsConstructor
 public enum HoverStyle
 {
 	OUTLINE("Outline"),
@@ -7,11 +12,6 @@ public enum HoverStyle
 	NONE("None");
 
 	private final String label;
-
-	HoverStyle(String label)
-	{
-		this.label = label;
-	}
 
 	@Override
 	public String toString()

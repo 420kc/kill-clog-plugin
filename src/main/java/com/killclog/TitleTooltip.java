@@ -28,6 +28,9 @@ public abstract class TitleTooltip extends NativeTooltip
 	private String subtitleLabel;
 	private String subtitleValue;
 	private Color subtitleColor;
+	private String infoLabel;
+	private String infoValue;
+	private Color infoColor;
 	private String rankText;
 
 	/** Set the bold orange title line (always required). */
@@ -62,6 +65,14 @@ public abstract class TitleTooltip extends NativeTooltip
 		return obtained >= total && total > 0 ? CLOG_GREEN : CLOG_YELLOW;
 	}
 
+	/** Set an extra info line below the subtitle. Label in orange, value in given color. */
+	public void setInfoLine(String label, String value, Color valueColor)
+	{
+		this.infoLabel = label;
+		this.infoValue = value;
+		this.infoColor = valueColor;
+	}
+
 	/** Set the rank line. 0 = "Unranked". */
 	public void setRank(int rank)
 	{
@@ -94,6 +105,10 @@ public abstract class TitleTooltip extends NativeTooltip
 	{
 		int h = NAME_LINE_HEIGHT;
 		if (subtitleLabel != null)
+		{
+			h += LINE_HEIGHT;
+		}
+		if (infoLabel != null)
 		{
 			h += LINE_HEIGHT;
 		}
@@ -138,8 +153,11 @@ public abstract class TitleTooltip extends NativeTooltip
 		int titleTextWidth = title != null ? nfm.stringWidth(title) : 0;
 		int subTextWidth = subtitleLabel != null
 			? sfm.stringWidth(subtitleLabel + subtitleValue) : 0;
+		int infoTextWidth = infoLabel != null
+			? sfm.stringWidth(infoLabel + infoValue) : 0;
 		int rnkTextWidth = rankText != null ? sfm.stringWidth("Rank: " + rankText) : 0;
-		int maxTextWidth = Math.max(titleTextWidth, Math.max(subTextWidth, rnkTextWidth));
+		int maxTextWidth = Math.max(titleTextWidth,
+			Math.max(subTextWidth, Math.max(infoTextWidth, rnkTextWidth)));
 		int headerMinWidth = maxTextWidth + getHeaderRightPad();
 
 		Dimension contentSize = getContentSize(Math.max(headerMinWidth, 1));
@@ -189,6 +207,17 @@ public abstract class TitleTooltip extends NativeTooltip
 			int labelWidth = fm.stringWidth(subtitleLabel);
 			g2.setColor(subtitleColor);
 			g2.drawString(subtitleValue, inset + labelWidth, lineY);
+		}
+
+		// Info line (e.g. Glory for Sol Heredit)
+		if (infoLabel != null)
+		{
+			lineY += LINE_HEIGHT;
+			g2.setColor(OSRS_ORANGE);
+			g2.drawString(infoLabel, inset, lineY);
+			int infoLabelWidth = fm.stringWidth(infoLabel);
+			g2.setColor(infoColor);
+			g2.drawString(infoValue, inset + infoLabelWidth, lineY);
 		}
 
 		// Rank line

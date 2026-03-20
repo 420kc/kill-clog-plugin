@@ -9,16 +9,24 @@ public class KillClogPluginTest
 	@SuppressWarnings("unchecked")
 	public static void main(String[] args) throws Exception
 	{
+		java.util.List<Class<? extends Plugin>> plugins = new java.util.ArrayList<>();
+		plugins.add(KillClogPlugin.class);
+		tryLoad(plugins, "com.fourtwentykc.FourTwentyKcPlugin");
+		tryLoad(plugins, "com.claudescape.ClaudescapePlugin");
+		ExternalPluginManager.loadBuiltin(plugins.toArray(new Class[0]));
+		RuneLite.main(args);
+	}
+
+	private static void tryLoad(java.util.List<Class<? extends Plugin>> list, String className)
+	{
 		try
 		{
-			Class<? extends Plugin> fourTwenty =
-				(Class<? extends Plugin>) Class.forName("com.fourtwentykc.FourTwentyKcPlugin");
-			ExternalPluginManager.loadBuiltin(KillClogPlugin.class, fourTwenty);
+			@SuppressWarnings("unchecked")
+			Class<? extends Plugin> cls = (Class<? extends Plugin>) Class.forName(className);
+			list.add(cls);
 		}
-		catch (ClassNotFoundException e)
+		catch (ClassNotFoundException ignored)
 		{
-			ExternalPluginManager.loadBuiltin(KillClogPlugin.class);
 		}
-		RuneLite.main(args);
 	}
 }

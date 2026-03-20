@@ -1,5 +1,9 @@
 package com.killclog;
 
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+import net.runelite.client.hiscore.HiscoreSkill;
 import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.*;
@@ -305,6 +309,27 @@ public class HiscoreParsingTest
 			service.parseHiscoreBody(body, AccountType.HARDCORE_IRONMAN).getAccountType());
 		assertEquals(AccountType.ULTIMATE_IRONMAN,
 			service.parseHiscoreBody(body, AccountType.ULTIMATE_IRONMAN).getAccountType());
+	}
+
+	// ---------------------------------------------------------------
+	// Boss data consistency — catches missing NAME_OVERRIDES
+	// ---------------------------------------------------------------
+
+	@Test
+	public void testAllPanelBossesMapToValidCsvNames()
+	{
+		Set<String> csvNames = new HashSet<>(Arrays.asList(HiscoreService.bossNames()));
+
+		for (HiscoreSkill boss : PanelData.BOSSES)
+		{
+			String displayName = boss.getName();
+			String csvName = PanelData.NAME_OVERRIDES.getOrDefault(displayName, displayName);
+			assertTrue(
+				"Boss '" + displayName + "' (mapped to '" + csvName + "') not found in BOSS_NAMES[]. " +
+				"Add a NAME_OVERRIDES entry if HiscoreSkill.getName() differs from the Jagex CSV name.",
+				csvNames.contains(csvName)
+			);
+		}
 	}
 
 	// ---------------------------------------------------------------
