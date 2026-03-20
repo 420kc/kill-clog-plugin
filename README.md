@@ -1,31 +1,38 @@
 # Kill Clog
 
-Streamlined PvM-focused HiScores Overhaul with Collection Log integration.
+PvM-Focused HiScores Overhaul with Collection Log Integration
 
-| One click to sync your log. | |
-|:---:|:---:|
-| ![sync-path](screenshots/sync-path.gif) | ![tooltip-boss](screenshots/tooltip-boss.png) |
+sync with a single click
 
+![sync-path](screenshots/sync-path.gif)
 
-
-## Panel
+![tooltip-boss](screenshots/tooltip-boss.png)
 
 ![panel](screenshots/panel.png)
 
 ## Tooltips
 
-| | | | |
-|:---:|:---:|:---:|:---:|
-| ![config-hover](screenshots/config-hover-outline.png) | ![tooltip-hover](screenshots/tooltip-hover.gif) | ![tooltip-click](screenshots/tooltip-click.gif) | ![config-click](screenshots/config-click-tint.png) |
-| Hover + Outline | | | Click + Tint |
+| | |
+|:---:|:---:|
+| ![tooltip-hover](screenshots/tooltip-hover.gif) | ![tooltip-click](screenshots/tooltip-click.gif) |
+| Hover \| Outline | Click \| Tint |
+
+## Player Comparison
+
+Go head-to-head with player comparisons
+
+![compare](screenshots/compareplayers.gif)
+
+| | |
+|:---:|:---:|
+| ![comp-cox](screenshots/cbcvs420kccox.png) | ![comp-rax](screenshots/alsoevsjabbaurax.png) |
 
 ## Summaries
 
-Character Summaries. Info where you want it and not where you don't.
 | | | |
 |:---:|:---:|:---:|
-| ![summary-clue](screenshots/summary-clue.png) | ![summary-player-hcim](screenshots/summary-player-hcim.png) | ![summary-pvm](screenshots/summary-pvm.png) |
-| ![summary-clog](screenshots/summary-clog.png) | ![summary-skills](screenshots/summary-skills.png) | ![summary-pvp](screenshots/summary-pvp.png) |
+| ![summary-player-hcim](screenshots/summary-player-hcim.png) | ![summary-skills](screenshots/summary-skills.png) | ![summary-clog](screenshots/summary-clog.png) |
+| ![summary-pvm](screenshots/summary-pvm.png) | ![summary-clue](screenshots/summary-clue.png) | ![summary-pvp](screenshots/summary-pvp.png) |
 
 ## Activities Tray
 
@@ -33,11 +40,15 @@ Character Summaries. Info where you want it and not where you don't.
 |:---:|:---:|:---:|
 | ![tray-open](screenshots/tray-open.png) | ![tray-toggle](screenshots/tray-toggle.gif) | ![tray-closed](screenshots/tray-closed.png) |
 
-Informative | Focused
+Data | Focus
 
 ## Progress Highlighter
 
-Five fully-configurable colors: 4 tiers of collection log progress and a 5th configurable accent color for your Summaries.
+| | |
+|:---:|:---:|
+| ![highlighter1](screenshots/highlighter1.png) | ![highlighter2](screenshots/highlighter2.png) |
+
+<sub>16,777,216^5 = 1,329,227,995,784,915,872,903,807,060,280,344,576 combinations</sub>
 
 ## Configuration
 
@@ -49,15 +60,23 @@ Tint | Outline | None
 
 ## Bonus
 
-Days of clicking the wrong HiScores tab and firing into the void are behind us. Search for a player and Kill Clog takes care of the rest. Ironman types are automatically identified and ranked among the correct set of HiScores (regular/iron/uim/hcim).   
+Days of clicking the wrong HiScores tab and firing into the void are behind us. Ironman types are automatically identified and ranked among the correct set of HiScores (regular/iron/uim/hcim/gim).   
 
 ![sys-messages](screenshots/sys-messages.png)
 
 Rotating system messages
 
+## Local Cache
+
+Player data is cached locally for fast repeat searches. Fresh data is fetched automatically if your cache is older than 5 minutes. To clear manually, delete files from `.runelite/kill-clog/`.
+
 ## TempleOSRS
 
-Kill Clog is built on local cache, but built-in TempleOSRS support allows you and your friends to see each others' collection logs right from your own accounts. For more on Temple, Visit www.TempleOSRS.com
+Your own collection log works out of the box. TempleOSRS integration lets you view friends' collection logs when you search them. Sync your collection log data at [TempleOSRS.com](https://templeosrs.com).
+
+## Updates
+
+If new collection log items are released in game updates, re-sync with the red trophy icon in your collection log.
 
 ---
 
