@@ -116,11 +116,25 @@ public class LocalClogCache
 		String name = result.getPlayerName();
 		String key = name.toLowerCase();
 
+		// Preserve varp-sourced totals if they're higher than what Temple reports
+		PlayerClogData existing = players.get(key);
+
 		PlayerClogData data = new PlayerClogData();
 		data.playerName = name;
 		data.lastUpdated = Instant.now().toString();
 		data.uniqueObtained = result.getUniqueObtained();
 		data.uniqueTotal = result.getUniqueTotal();
+		if (existing != null)
+		{
+			if (existing.uniqueObtained > data.uniqueObtained)
+			{
+				data.uniqueObtained = existing.uniqueObtained;
+			}
+			if (existing.uniqueTotal > data.uniqueTotal)
+			{
+				data.uniqueTotal = existing.uniqueTotal;
+			}
+		}
 		data.lastChanged = result.getLastChanged();
 		data.obtained = new ConcurrentHashMap<>();
 		data.categories = new ConcurrentHashMap<>();

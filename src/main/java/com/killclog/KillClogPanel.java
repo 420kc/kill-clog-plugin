@@ -145,6 +145,11 @@ public class KillClogPanel extends PluginPanel
 					icons.put(entry.getKey(), ClogHelper.iconToImage(entry.getValue()));
 				}
 				tip.setTierData(totals[0], totals[1], icons);
+				if (hiscoreResult != null)
+				{
+					int clogRank = hiscoreResult.getActivityRank("Collections Logged");
+					tip.setRank(clogRank);
+				}
 				boolean stale = LookupQueries.isSyncStale(clogLastChanged, 90);
 				String sync = LookupQueries.syncLine(clogLastChanged, stale);
 				if (sync != null) tip.setSyncData(sync, stale);
