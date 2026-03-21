@@ -131,6 +131,20 @@ public class ClogService
 	}
 
 	/**
+	 * Get a cached ClogResult immediately without any API calls.
+	 * Returns null if no local cache exists. Used for SWR rendering.
+	 */
+	public ClogResult getCachedResult(String playerName)
+	{
+		if (!localClogCache.hasDataFor(playerName))
+		{
+			return null;
+		}
+		Map<Integer, String> names = cachedItemNames;
+		return localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>());
+	}
+
+	/**
 	 * Look up collection log data for a player.
 	 * Active player with widget-read data is served from cache (authoritative).
 	 * Everyone else: try Temple, cache the result, fall back to persistent cache.

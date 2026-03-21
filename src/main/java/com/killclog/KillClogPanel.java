@@ -2022,12 +2022,46 @@ public class KillClogPanel extends PluginPanel
 			setSearchStatus(String.format(SearchMessages.SEARCH[searchIdx], player), TEXT_DIM);
 		}
 		searchBar.setIcon(IconTextField.Icon.LOADING_DARKER);
-
 		resetAllLabels();
 
 		// Hiscore lookup — pass known account type for self-lookups
 		// GIMs only appear on regular hiscores, so tell hiscore service to skip the cascade
 		AccountType knownType = isSelf ? localAccountType : null;
+
+		// Cache check: if hiscore cache is fresh, show cached data after a short
+		// delay to preserve the search feel. No API calls. If stale or missing,
+		// fire the full lookup.
+		HiscoreResult cachedHiscore = hiscoreService.getCached(player);
+		ClogResult cachedClog = clogService.getCachedResult(player);
+		if (cachedHiscore != null && !hiscoreService.isStale(player))
+		{
+			Timer revealTimer = new Timer(600, e ->
+			{
+				if (thisLookup != lookupVersion) return;
+				hiscoreResult = cachedHiscore;
+				lookupInFlight = false;
+				searchBar.setIcon(IconTextField.Icon.SEARCH);
+				if (nameAutocompleter != null)
+				{
+					nameAutocompleter.addToSearchHistory(player);
+				}
+				if (!isFirstSelfGreeting)
+				{
+					setSearchStatus(" ", TEXT_DIM);
+				}
+				renderHiscoreResult(cachedHiscore, player, isSelf, knownType);
+				if (cachedClog != null)
+				{
+					clogResult = cachedClog;
+					renderClogResult(cachedClog, isSelf, thisLookup);
+				}
+			});
+			revealTimer.setRepeats(false);
+			revealTimer.start();
+			return;
+		}
+
+		// Full API lookup — cache miss or stale
 		AccountType hiscoreType = knownType != null && knownType.isGroupIronman()
 			? AccountType.REGULAR : knownType;
 		hiscoreService.lookup(player, hiscoreType).thenAccept(result ->
@@ -2053,20 +2087,15 @@ public class KillClogPanel extends PluginPanel
 				}
 
 				hiscoreResult = result;
-				compareStatus.setText(" ");
 				if (nameAutocompleter != null)
 				{
 					nameAutocompleter.addToSearchHistory(player);
 				}
-
 				if (!isFirstSelfGreeting)
 				{
 					setSearchStatus(" ", TEXT_DIM);
 				}
-				playerName.setText(rsn != null ? rsn : player);
-				playerName.setForeground(getInfoColor());
-				updateComparePlaceholder(rsn != null ? rsn : player);
-				updateInfoIcon(knownType != null ? knownType : result.getAccountType());
+				renderHiscoreResult(result, player, isSelf, knownType);
 				// Clog may have arrived first with a GIM type hiscores can't detect
 				if (clogResult != null)
 				{
@@ -2075,34 +2104,9 @@ public class KillClogPanel extends PluginPanel
 					{
 						updateInfoIcon(templeType);
 					}
-				}
-				compareToggle.setVisible(true);
-				refreshLabel.setVisible(true);
-
-				int combatLevel = result.getCombatLevel();
-				if (combatLevel > 0)
-				{
-					combatCell.setText(ClogHelper.pad(String.valueOf(combatLevel)));
-					combatCell.setForeground(getInfoColor());
-				}
-
-				int totalLevel = result.getTotalLevel();
-				if (totalLevel > 0)
-				{
-					totalLvlCell.setText(ClogHelper.pad(String.valueOf(totalLevel)));
-					totalLvlCell.setForeground(getInfoColor());
-					totalLvlCell.setToolTipText(" ");
-				}
-
-				if (clogResult != null)
-				{
 					updateRares(clogResult);
 					updateClogCell(clogResult);
 				}
-
-				searchBar.setText("");
-				toggleHighlighter(config.completionistHighlighter());
-				updateTooltips();
 			})
 		).exceptionally(ex ->
 		{
@@ -2130,36 +2134,14 @@ public class KillClogPanel extends PluginPanel
 			{
 				if (thisLookup != lookupVersion) return;
 				clogResult = result;
-				clogLastChanged = result != null ? result.getLastChanged() : null;
 
 				if (result != null)
 				{
-					String name = result.getPlayerName();
-					if (name != null && !name.isEmpty())
-					{
-						rsn = name;
-						updateComparePlaceholder(name);
-						if (hiscoreResult != null)
-						{
-							playerName.setText(name);
-						}
-					}
-					// Temple detected GIM -- update badge (hiscores can't tell GIM from regular)
-					AccountType templeType = result.getTempleAccountType();
-					if (templeType != null && templeType.isGroupIronman()
-						&& hiscoreResult != null)
-					{
-						updateInfoIcon(templeType);
-					}
-					lookupItemNames(result);
-					if (hiscoreResult != null)
-					{
-						updateRares(result);
-						updateClogCell(result);
-					}
+					renderClogResult(result, isSelf, thisLookup);
 				}
 				else
 				{
+					clogLastChanged = null;
 					if (isSelf)
 					{
 						clogNotice.setText(SYNC_NOTICE);
@@ -2179,9 +2161,6 @@ public class KillClogPanel extends PluginPanel
 					}
 					fetchRsn(player, thisLookup);
 				}
-
-				toggleHighlighter(config.completionistHighlighter());
-				updateTooltips();
 			})
 		).exceptionally(ex ->
 		{
@@ -2249,6 +2228,71 @@ public class KillClogPanel extends PluginPanel
 		resetRareCell(masterRare, "Master Treasure (Rare)");
 		rareTooltips.remove(PanelData.CLOG_THIRD_AGE);
 		rareTooltips.remove(PanelData.CLOG_GILDED);
+	}
+
+	/**
+	 * Render hiscore data to the panel (extracted for cache/SWR reuse).
+	 */
+	private void renderHiscoreResult(HiscoreResult result, String player,
+		boolean isSelf, AccountType knownType)
+	{
+		compareStatus.setText(" ");
+		playerName.setText(rsn != null ? rsn : player);
+		playerName.setForeground(getInfoColor());
+		updateComparePlaceholder(rsn != null ? rsn : player);
+		updateInfoIcon(knownType != null ? knownType : result.getAccountType());
+		compareToggle.setVisible(true);
+		refreshLabel.setVisible(true);
+
+		int combatLevel = result.getCombatLevel();
+		if (combatLevel > 0)
+		{
+			combatCell.setText(ClogHelper.pad(String.valueOf(combatLevel)));
+			combatCell.setForeground(getInfoColor());
+		}
+
+		int totalLevel = result.getTotalLevel();
+		if (totalLevel > 0)
+		{
+			totalLvlCell.setText(ClogHelper.pad(String.valueOf(totalLevel)));
+			totalLvlCell.setForeground(getInfoColor());
+			totalLvlCell.setToolTipText(" ");
+		}
+
+		searchBar.setText("");
+		toggleHighlighter(config.completionistHighlighter());
+		updateTooltips();
+	}
+
+	/**
+	 * Render clog data to the panel (extracted for SWR reuse).
+	 */
+	private void renderClogResult(ClogResult result, boolean isSelf, int thisLookup)
+	{
+		clogLastChanged = result.getLastChanged();
+		String name = result.getPlayerName();
+		if (name != null && !name.isEmpty())
+		{
+			rsn = name;
+			updateComparePlaceholder(name);
+			if (hiscoreResult != null)
+			{
+				playerName.setText(name);
+			}
+		}
+		AccountType templeType = result.getTempleAccountType();
+		if (templeType != null && templeType.isGroupIronman() && hiscoreResult != null)
+		{
+			updateInfoIcon(templeType);
+		}
+		lookupItemNames(result);
+		if (hiscoreResult != null)
+		{
+			updateRares(result);
+			updateClogCell(result);
+		}
+		toggleHighlighter(config.completionistHighlighter());
+		updateTooltips();
 	}
 
 	private static void resetRareCell(JLabel label, String name)
@@ -2403,6 +2447,17 @@ public class KillClogPanel extends PluginPanel
 		updateCustomRare(masterRare, "Master Treasure (Rare)", PanelData.RARE_MASTER, PanelData.MASTER_RARE_ITEMS, result);
 	}
 
+	private Color rareColor(TooltipData data)
+	{
+		if (data.obtainedCount <= 0)
+		{
+			return config.completionistHighlighter()
+				? config.emptyClogColor() : ColorScheme.LIGHT_GRAY_COLOR;
+		}
+		return config.completionistHighlighter()
+			? ClogHelper.clogColor(data.obtainedCount, data.totalItems, config) : KC_COLOR;
+	}
+
 	private void updateClueRare(JLabel label, String name, String clogCategory,
 									ClogResult result, boolean isThirdAge)
 	{
@@ -2416,10 +2471,8 @@ public class KillClogPanel extends PluginPanel
 		}
 
 		label.setText(ClogHelper.pad(data.obtainedCount > 0 ? ClogHelper.formatKc(data.obtainedCount) : "--"));
-		label.setForeground(data.obtainedCount > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
-
 		rareTooltips.put(isThirdAge ? PanelData.CLOG_THIRD_AGE : PanelData.CLOG_GILDED, data);
-
+		label.setForeground(rareColor(data));
 		label.setToolTipText(" ");
 	}
 
@@ -2431,10 +2484,8 @@ public class KillClogPanel extends PluginPanel
 		TooltipData data = tooltipDataBuilder.buildCustomRareData(name, itemIds, result);
 
 		label.setText(ClogHelper.pad(data.obtainedCount > 0 ? ClogHelper.formatKc(data.obtainedCount) : "--"));
-		label.setForeground(data.obtainedCount > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
-
 		rareTooltips.put(rareKey, data);
-
+		label.setForeground(rareColor(data));
 		label.setToolTipText(" ");
 	}
 

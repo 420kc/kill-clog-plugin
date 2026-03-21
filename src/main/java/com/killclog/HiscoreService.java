@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -99,12 +100,54 @@ public class HiscoreService
 		return BOSS_NAMES;
 	}
 
+	// --- SWR cache ---
+	private static final long CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
+
+	private static class CachedResult
+	{
+		final HiscoreResult result;
+		final long timestamp;
+
+		CachedResult(HiscoreResult result, long timestamp)
+		{
+			this.result = result;
+			this.timestamp = timestamp;
+		}
+
+		boolean isStale()
+		{
+			return System.currentTimeMillis() - timestamp > CACHE_TTL_MS;
+		}
+	}
+
+	private final ConcurrentHashMap<String, CachedResult> cache = new ConcurrentHashMap<>();
+
 	private final OkHttpClient httpClient;
 
 	@Inject
 	public HiscoreService(OkHttpClient httpClient)
 	{
 		this.httpClient = httpClient;
+	}
+
+	/**
+	 * Get a cached result immediately, or null if none exists.
+	 * Used by the panel for stale-while-revalidate: show cached data
+	 * instantly, then fire a background refresh.
+	 */
+	public HiscoreResult getCached(String playerName)
+	{
+		CachedResult cached = cache.get(playerName.toLowerCase());
+		return cached != null ? cached.result : null;
+	}
+
+	/**
+	 * True if the cached result exists but is past TTL and should be refreshed.
+	 */
+	public boolean isStale(String playerName)
+	{
+		CachedResult cached = cache.get(playerName.toLowerCase());
+		return cached == null || cached.isStale();
 	}
 
 	/**
@@ -117,12 +160,22 @@ public class HiscoreService
 		{
 			if (result != null)
 			{
+				cache.put(playerName.toLowerCase(),
+					new CachedResult(result, System.currentTimeMillis()));
 				return CompletableFuture.completedFuture(result);
 			}
 			CompletableFuture<HiscoreResult> retry = new CompletableFuture<>();
 			CompletableFuture.delayedExecutor(500, TimeUnit.MILLISECONDS)
 				.execute(() -> attemptLookup(playerName, knownType)
-					.whenComplete((r, ex) -> retry.complete(r)));
+					.whenComplete((r, ex) ->
+					{
+						if (r != null)
+						{
+							cache.put(playerName.toLowerCase(),
+								new CachedResult(r, System.currentTimeMillis()));
+						}
+						retry.complete(r);
+					}));
 			return retry;
 		});
 	}
