@@ -21,7 +21,11 @@ import net.runelite.api.Player;
 import net.runelite.api.StructComposition;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
+import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.MenuOptionClicked;
+import net.runelite.api.widgets.ComponentID;
+import net.runelite.api.widgets.InterfaceID;
+import net.runelite.api.widgets.WidgetUtil;
 import net.runelite.api.events.ScriptPreFired;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
@@ -374,6 +378,44 @@ public class KillClogPlugin extends Plugin
 		}
 
 		SwingUtilities.invokeLater(() -> panel.onConfigChanged(event.getKey()));
+	}
+
+	@Subscribe
+	public void onMenuEntryAdded(MenuEntryAdded event)
+	{
+		if (!config.playerMenuLookup())
+		{
+			return;
+		}
+
+		if (event.getType() != MenuAction.CC_OP.getId()
+			&& event.getType() != MenuAction.CC_OP_LOW_PRIORITY.getId())
+		{
+			return;
+		}
+
+		int componentId = event.getActionParam1();
+		int groupId = WidgetUtil.componentToInterface(componentId);
+		String option = event.getOption();
+
+		if (groupId == InterfaceID.FRIEND_LIST && option.equals("Delete")
+			|| groupId == InterfaceID.IGNORE_LIST && option.equals("Delete")
+			|| groupId == InterfaceID.FRIENDS_CHAT && (option.equals("Add ignore") || option.equals("Remove friend"))
+			|| (componentId == ComponentID.CLAN_MEMBERS || componentId == ComponentID.CLAN_GUEST_MEMBERS)
+				&& (option.equals("Add ignore") || option.equals("Remove friend")))
+		{
+			String name = Text.toJagexName(Text.removeTags(event.getTarget()).trim());
+			client.createMenuEntry(-2)
+				.setOption(MENU_OPTION)
+				.setTarget(event.getTarget())
+				.setType(MenuAction.RUNELITE)
+				.setIdentifier(event.getIdentifier())
+				.onClick(e -> SwingUtilities.invokeLater(() ->
+				{
+					panel.setPlayerName(name);
+					panel.doLookup();
+				}));
+		}
 	}
 
 	@Subscribe
