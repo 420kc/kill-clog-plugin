@@ -415,6 +415,7 @@ public class KillClogPlugin extends Plugin
 				.setIdentifier(event.getIdentifier())
 				.onClick(e -> SwingUtilities.invokeLater(() ->
 				{
+					clientToolbar.openPanel(navButton);
 					panel.setPlayerName(name);
 					panel.doLookup();
 				}));
@@ -436,6 +437,7 @@ public class KillClogPlugin extends Plugin
 			String name = Text.toJagexName(player.getName());
 			SwingUtilities.invokeLater(() ->
 			{
+				clientToolbar.openPanel(navButton);
 				panel.setPlayerName(name);
 				panel.doLookup();
 			});
