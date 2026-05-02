@@ -68,11 +68,11 @@ Rotating system messages
 
 ## Local Cache
 
-Player data is cached locally for fast repeat searches. Fresh data is fetched automatically if your cache is older than 5 minutes. To clear manually, delete files from `.runelite/kill-clog/`.
+Player data is cached locally for fast repeat searches. Lookups under 5 minutes old serve from cache; older ones refresh on the next lookup. Clear manually by deleting files from `.runelite/kill-clog/`.
 
 ## TempleOSRS
 
-Your own collection log works out of the box. TempleOSRS integration lets you view friends' collection logs when you search them. Sync your collection log data at [TempleOSRS.com](https://templeosrs.com).
+Your collection log syncs locally with the red trophy icon — that data lives on your machine and never expires. Lookups for other players read from [TempleOSRS](https://templeosrs.com); anyone who hasn't synced their clog to Temple (via Temple's RuneLite plugin) won't have data available.
 
 ## Updates
 
