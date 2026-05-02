@@ -13,6 +13,7 @@ import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.RenderingHints;
+import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
@@ -2679,8 +2680,20 @@ public class KillClogPanel extends PluginPanel
 		{
 			if (c instanceof FlatTextField)
 			{
-				((FlatTextField) c).getTextField()
-					.addKeyListener(autocompleter);
+				JTextField textField = ((FlatTextField) c).getTextField();
+				// Idempotent: strip any prior NameAutocompleter before attaching.
+				// Plugin reload (toggle off/on, hub auto-update) re-runs startUp on the
+				// same panel singleton; without this, listeners stack and each keystroke
+				// fires the autocomplete twice — suggestion gets inserted as both
+				// highlighted suggestion AND committed text.
+				for (KeyListener kl : textField.getKeyListeners())
+				{
+					if (kl instanceof NameAutocompleter)
+					{
+						textField.removeKeyListener(kl);
+					}
+				}
+				textField.addKeyListener(autocompleter);
 				break;
 			}
 		}
