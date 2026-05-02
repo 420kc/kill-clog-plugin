@@ -4,7 +4,6 @@ import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
-import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics;
@@ -328,7 +327,6 @@ public class KillClogPanel extends PluginPanel
 		activitySeparator = new JPanel();
 		activitySeparator.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		activitySeparator.setPreferredSize(new Dimension(0, 7));
-		activitySeparator.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		Color sepNormal = ColorScheme.DARK_GRAY_COLOR;
 		Color sepHover = new Color(46, 46, 46);
 		activitySeparator.addMouseListener(new MouseAdapter()
@@ -377,7 +375,6 @@ public class KillClogPanel extends PluginPanel
 		compareToggle.setHorizontalAlignment(JLabel.CENTER);
 		compareToggle.setPreferredSize(new Dimension(15, 15));
 		compareToggle.setOpaque(false);
-		compareToggle.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		compareToggle.setToolTipText("Compare Player");
 		compareToggle.setVisible(false);
 		compareToggle.addMouseListener(new MouseAdapter()
@@ -486,7 +483,6 @@ public class KillClogPanel extends PluginPanel
 		refreshLabel.setHorizontalAlignment(JLabel.CENTER);
 		refreshLabel.setVerticalAlignment(JLabel.CENTER);
 		refreshLabel.setOpaque(false);
-		refreshLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		refreshLabel.setVisible(false);
 
 		JPanel searchRow = new JPanel(null)
@@ -643,7 +639,6 @@ public class KillClogPanel extends PluginPanel
 						|| (comparisonMode && (barLabel == clogInfoLabel || barLabel == playerName)))
 					{
 						barLabel.putClientProperty("underlined", true);
-						barLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 						barLabel.repaint();
 					}
 				}
@@ -652,7 +647,6 @@ public class KillClogPanel extends PluginPanel
 				public void mouseExited(MouseEvent e)
 				{
 					barLabel.putClientProperty("underlined", null);
-					barLabel.setCursor(Cursor.getDefaultCursor());
 					barLabel.repaint();
 				}
 			});
@@ -665,7 +659,6 @@ public class KillClogPanel extends PluginPanel
 		trayToggle.setHorizontalAlignment(JLabel.CENTER);
 		trayToggle.setVerticalAlignment(JLabel.CENTER);
 		trayToggle.setPreferredSize(new Dimension(30, 18));
-		trayToggle.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 		trayToggle.addMouseListener(new MouseAdapter()
 		{
 			@Override
@@ -1707,7 +1700,6 @@ public class KillClogPanel extends PluginPanel
 			clogInfoLabel.setText(compareRsn != null ? compareRsn : "");
 			clogInfoLabel.setForeground(COMPARE_RED);
 			clogInfoLabel.setToolTipText(null);
-			clogInfoLabel.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
 			clogInfoLabel.setHorizontalAlignment(JLabel.RIGHT);
 
 			// Red player badge — prefer Temple-derived type (catches GIM)
@@ -1723,7 +1715,6 @@ public class KillClogPanel extends PluginPanel
 		{
 			// Restore normal state
 			playerName.setForeground(getInfoColor());
-			clogInfoLabel.setCursor(Cursor.getDefaultCursor());
 			clogInfoLabel.setHorizontalAlignment(JLabel.RIGHT);
 
 			// Clog cell will be restored by updateClogCell if data exists
@@ -2703,21 +2694,11 @@ public class KillClogPanel extends PluginPanel
 	{
 		has420Plugin = pluginManager.getPlugins().stream()
 			.anyMatch(p -> p.getClass().getSimpleName().equals("FourTwentyKcPlugin"));
-		if (has420Plugin && thermy != null)
-		{
-			thermy.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-		}
 	}
 
 	public void setFourTwentyVisible(boolean visible)
 	{
 		has420Plugin = visible;
-		if (thermy != null)
-		{
-			thermy.setCursor(visible
-				? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-				: Cursor.getDefaultCursor());
-		}
 		if (!visible)
 		{
 			fourTwentyMode = FourTwentyMode.OFF;

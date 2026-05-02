@@ -1,7 +1,6 @@
 package com.killclog;
 
 import java.awt.Color;
-import java.awt.Cursor;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
@@ -194,9 +193,6 @@ public abstract class NativeTooltip extends JToolTip
 		if (inBtn != closeBtnHover)
 		{
 			closeBtnHover = inBtn;
-			setCursor(inBtn
-				? Cursor.getPredefinedCursor(Cursor.HAND_CURSOR)
-				: Cursor.getDefaultCursor());
 			repaint();
 		}
 	}
