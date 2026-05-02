@@ -44,12 +44,17 @@ public class LocalClogCache
 	private volatile String activePlayer;
 
 	/** Single-threaded executor for all disk I/O — keeps the client thread unblocked. */
-	private final ExecutorService diskWriter = Executors.newSingleThreadExecutor(r ->
+	private volatile ExecutorService diskWriter = newDiskWriter();
+
+	private static ExecutorService newDiskWriter()
 	{
-		Thread t = new Thread(r, "kill-clog-disk");
-		t.setDaemon(true);
-		return t;
-	});
+		return Executors.newSingleThreadExecutor(r ->
+		{
+			Thread t = new Thread(r, "kill-clog-disk");
+			t.setDaemon(true);
+			return t;
+		});
+	}
 
 	@Inject
 	public LocalClogCache(Gson gson)
@@ -57,20 +62,29 @@ public class LocalClogCache
 		this.gson = gson;
 	}
 
-	/** Call from plugin shutDown() to flush any pending writes cleanly. */
+	/**
+	 * Call from plugin shutDown() to flush any pending writes cleanly.
+	 *
+	 * <p>This is a {@code @Singleton} so the same instance survives plugin
+	 * reloads. Swap in a fresh executor before shutting the old one down so
+	 * any subsequent startUp() finds a live executor — without this, sync
+	 * silently fails with RejectedExecutionException after a plugin toggle.
+	 */
 	public void shutdown()
 	{
-		diskWriter.shutdown();
+		ExecutorService old = diskWriter;
+		diskWriter = newDiskWriter();
+		old.shutdown();
 		try
 		{
-			if (!diskWriter.awaitTermination(3, java.util.concurrent.TimeUnit.SECONDS))
+			if (!old.awaitTermination(3, java.util.concurrent.TimeUnit.SECONDS))
 			{
-				diskWriter.shutdownNow();
+				old.shutdownNow();
 			}
 		}
 		catch (InterruptedException e)
 		{
-			diskWriter.shutdownNow();
+			old.shutdownNow();
 			Thread.currentThread().interrupt();
 		}
 	}
