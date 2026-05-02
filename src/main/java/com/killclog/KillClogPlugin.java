@@ -401,7 +401,7 @@ public class KillClogPlugin extends Plugin
 		if (groupId == InterfaceID.FRIEND_LIST && option.equals("Delete")
 			|| groupId == InterfaceID.IGNORE_LIST && option.equals("Delete")
 			|| groupId == InterfaceID.FRIENDS_CHAT && (option.equals("Add ignore") || option.equals("Remove friend"))
-			|| groupId == InterfaceID.CHATBOX && (option.equals("Add ignore") || option.equals("Add friend"))
+			|| groupId == InterfaceID.CHATBOX && (option.equals("Add ignore") || option.equals("Message"))
 			|| groupId == InterfaceID.PRIVATE_CHAT && (option.equals("Add ignore") || option.equals("Message"))
 			|| groupId == InterfaceID.GROUP_IRON && (option.equals("Add ignore") || option.equals("Remove friend"))
 			|| (componentId == ComponentID.CLAN_MEMBERS || componentId == ComponentID.CLAN_GUEST_MEMBERS)
