@@ -19,7 +19,7 @@ import net.runelite.api.GameState;
 import net.runelite.api.MenuAction;
 import net.runelite.api.Player;
 import net.runelite.api.StructComposition;
-import net.runelite.api.Varbits;
+import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.MenuEntryAdded;
@@ -221,7 +221,7 @@ public class KillClogPlugin extends Plugin
 				if (local != null && local.getName() != null)
 				{
 					String name = local.getName();
-					AccountType acctType = mapAccountType(client.getVarbitValue(Varbits.ACCOUNT_TYPE));
+					AccountType acctType = mapAccountType(client.getVarbitValue(VarbitID.IRONMAN));
 					localClogCache.setActivePlayer(name);
 					SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name, acctType));
 				}
@@ -302,7 +302,7 @@ public class KillClogPlugin extends Plugin
 			{
 				String name = local.getName();
 				localClogCache.setActivePlayer(name);
-				AccountType acctType = mapAccountType(client.getVarbitValue(Varbits.ACCOUNT_TYPE));
+				AccountType acctType = mapAccountType(client.getVarbitValue(VarbitID.IRONMAN));
 				SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name, acctType));
 			}
 
@@ -338,7 +338,7 @@ public class KillClogPlugin extends Plugin
 				pendingAutoLookup = false;
 				String name = local.getName();
 				localClogCache.setActivePlayer(name);
-				AccountType acctType = mapAccountType(client.getVarbitValue(Varbits.ACCOUNT_TYPE));
+				AccountType acctType = mapAccountType(client.getVarbitValue(VarbitID.IRONMAN));
 				SwingUtilities.invokeLater(() ->
 				{
 					panel.setLoggedInPlayer(name, acctType);
@@ -862,7 +862,7 @@ public class KillClogPlugin extends Plugin
 		bulk.reset();
 	}
 
-	// Varbits.ACCOUNT_TYPE: 0=normal, 1=iron, 2=uim, 3=hcim, 4=gim, 5=hcgim
+	// VarbitID.IRONMAN: 0=normal, 1=iron, 2=uim, 3=hcim, 4=gim, 5=hcgim
 	private AccountType mapAccountType(int varbitValue)
 	{
 		switch (varbitValue)
