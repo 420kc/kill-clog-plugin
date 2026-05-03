@@ -45,13 +45,12 @@ public class LocalClogCache
 	private volatile String activePlayer;
 
 	/**
-	 * Single-threaded executor for all disk I/O — keeps the client thread unblocked.
+	 * Disk I/O — single-threaded executor + per-player coalesce window.
+	 * Bursts of category navigation collapse to one write per player.
 	 * Volatile so shutdown() can swap the reference visibly to concurrent submitters.
 	 */
-	private volatile ExecutorService diskWriter = newDiskWriter();
-
-	/** Coalesce window for per-player disk writes — bursts of category navigation collapse to one write per player. */
 	private static final long DEBOUNCE_MS = 500;
+	private volatile ExecutorService diskWriter = newDiskWriter();
 	private final Map<String, Runnable> pendingByPlayer = new ConcurrentHashMap<>();
 
 	private static ExecutorService newDiskWriter()
@@ -109,12 +108,9 @@ public class LocalClogCache
 	}
 
 	/**
-	 * Call from plugin shutDown() to flush any pending writes cleanly.
-	 *
-	 * <p>This is a {@code @Singleton} so the same instance survives plugin
-	 * reloads. Swap in a fresh executor before shutting the old one down so
-	 * any subsequent startUp() finds a live executor — without this, sync
-	 * silently fails with RejectedExecutionException after a plugin toggle.
+	 * Swap in a fresh executor before shutting down the old one — keeps a live
+	 * executor available for the next startUp(). Without this, the @Singleton
+	 * survives plugin reload but its executor would be permanently dead.
 	 */
 	public void shutdown()
 	{

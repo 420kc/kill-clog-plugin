@@ -93,7 +93,7 @@ public class ClogService
 	private volatile CompletableFuture<Map<String, List<Integer>>> categoriesFlight;
 	private volatile CompletableFuture<Map<Integer, String>> namesFlight;
 
-	// Players whose Temple lookup failed — value is failure timestamp, retried after TTL or login
+	// Failure cooldown gate — skip Temple if we failed within TEMPLE_FAILURE_TTL_MS (also cleared on login)
 	private static final long TEMPLE_FAILURE_TTL_MS = 3 * 60 * 1000; // 3 minutes — transient blips recover, sustained outages still respected
 	private final Map<String, Long> templeFailures = new java.util.concurrent.ConcurrentHashMap<>();
 
@@ -110,7 +110,7 @@ public class ClogService
 		this.config = config;
 	}
 
-	/** Clear the Temple failure blacklist (call on login). */
+	/** Clear all failure cooldowns immediately (called on login). TTL handles auto-expiry otherwise. */
 	public void clearTempleFailures()
 	{
 		templeFailures.clear();
