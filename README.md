@@ -68,7 +68,7 @@ Rotating system messages
 
 ## Local Cache
 
-Player data is cached locally for fast repeat searches. Lookups under 5 minutes old serve from cache; older ones refresh on the next lookup. Clear manually by deleting files from `.runelite/kill-clog/`.
+Player data is cached locally for fast repeat searches. Lookups under 5 minutes old serve from cache; older ones refresh on next search. Clear manually by deleting files from `.runelite/kill-clog/`.
 
 ## TempleOSRS
 
