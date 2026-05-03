@@ -351,6 +351,15 @@ public class KillClogPlugin extends Plugin
 				SwingUtilities.invokeLater(() ->
 				{
 					panel.setLoggedInPlayer(name, acctType);
+
+					// Don't overwrite the user's research — game fires LOGGED_IN on
+					// every world hop, so skip auto-lookup when they're viewing someone else
+					String displayed = panel.getDisplayedRsn();
+					if (displayed != null && !displayed.equalsIgnoreCase(name))
+					{
+						return;
+					}
+
 					panel.setPlayerName(name);
 					panel.doLookup();
 				});
