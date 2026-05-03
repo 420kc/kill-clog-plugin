@@ -44,8 +44,10 @@ public class LocalClogCache
 	private final Gson gson;
 	private volatile String activePlayer;
 
-	/** Single-threaded executor for all disk I/O — keeps the client thread unblocked.
-	 *  Volatile so shutdown() can swap the reference visibly to concurrent submitters. */
+	/**
+	 * Single-threaded executor for all disk I/O — keeps the client thread unblocked.
+	 * Volatile so shutdown() can swap the reference visibly to concurrent submitters.
+	 */
 	private volatile ExecutorService diskWriter = newDiskWriter();
 
 	private static ExecutorService newDiskWriter()
@@ -58,12 +60,7 @@ public class LocalClogCache
 		});
 	}
 
-	/**
-	 * Safe wrapper for disk-write submission. The shutdown swap-then-terminate
-	 * pattern leaves a microsecond window where a caller holding a stale
-	 * executor reference can hit RejectedExecutionException. The next sync
-	 * re-saves anything lost, so we just log and continue.
-	 */
+	/** Submit a disk write, swallowing rejections during the executor swap. The next sync re-saves anything lost. */
 	private void submitDiskWrite(Runnable task)
 	{
 		try

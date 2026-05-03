@@ -19,14 +19,14 @@ import net.runelite.api.GameState;
 import net.runelite.api.MenuAction;
 import net.runelite.api.Player;
 import net.runelite.api.StructComposition;
-import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.MenuOptionClicked;
-import net.runelite.api.gameval.InterfaceID;
-import net.runelite.api.widgets.WidgetUtil;
 import net.runelite.api.events.ScriptPreFired;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.VarbitID;
+import net.runelite.api.widgets.WidgetUtil;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
@@ -55,14 +55,6 @@ import net.runelite.client.util.Text;
 public class KillClogPlugin extends Plugin
 {
 	private static final String MENU_OPTION = "Kill Clog";
-
-	// Right-click menu option strings — used to filter which entries get a Kill Clog lookup
-	private static final String OPT_ADD_FRIEND = "Add friend";
-	private static final String OPT_ADD_IGNORE = "Add ignore";
-	private static final String OPT_REMOVE_FRIEND = "Remove friend";
-	private static final String OPT_REMOVE_IGNORE = "Remove ignore";
-	private static final String OPT_DELETE = "Delete";
-	private static final String OPT_MESSAGE = "Message";
 
 	// OSRS player right-click menu reserves indexes 4-7 for plugins (4 slots total)
 	private static final int FIRST_PLUGIN_PLAYER_SLOT = 4;
@@ -215,10 +207,7 @@ public class KillClogPlugin extends Plugin
 		panel.setNameAutocompleter(nameAutocompleter);
 		keyManager.registerKeyListener(highlighterHotkey);
 
-		if (config.playerMenuLookup())
-		{
-			menuManager.get().addPlayerMenuItem(MENU_OPTION);
-		}
+		setPlayerMenuItemEnabled(config.playerMenuLookup());
 
 		// If installed mid-session, run login init on the client thread
 		if (client.getGameState() == GameState.LOGGED_IN)
@@ -229,7 +218,7 @@ public class KillClogPlugin extends Plugin
 				if (local != null && local.getName() != null)
 				{
 					String name = local.getName();
-					AccountType acctType = mapAccountType(client.getVarbitValue(VarbitID.IRONMAN));
+					AccountType acctType = getLocalAccountType();
 					localClogCache.setActivePlayer(name);
 					SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name, acctType));
 				}
@@ -260,13 +249,25 @@ public class KillClogPlugin extends Plugin
 		overlayManager.remove(clogButtonOverlay);
 		mouseManager.unregisterMouseListener(clogButtonOverlay);
 		keyManager.unregisterKeyListener(highlighterHotkey);
-		menuManager.get().removePlayerMenuItem(MENU_OPTION);
+		setPlayerMenuItemEnabled(false);
 		SwingUtilities.invokeLater(() -> panel.shutdown());
 		localClogCache.shutdown();
 		resetBulkCapture();
 		enumsParsed = false;
 		playerMenuSlotWarned = false;
 		log.debug("Kill Clog plugin stopped");
+	}
+
+	private void setPlayerMenuItemEnabled(boolean enabled)
+	{
+		if (enabled)
+		{
+			menuManager.get().addPlayerMenuItem(MENU_OPTION);
+		}
+		else
+		{
+			menuManager.get().removePlayerMenuItem(MENU_OPTION);
+		}
 	}
 
 	/**
@@ -292,7 +293,7 @@ public class KillClogPlugin extends Plugin
 
 		playerMenuSlotWarned = true;
 		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-			"<col=4caf6e>Kill Clog:</col> Player right-click menu is full. "
+			"<col=4caf6e>Kill Clog:</col> Right-click menu is full. "
 				+ "Use the side panel or right-click names in chat instead.",
 			null);
 	}
@@ -310,7 +311,7 @@ public class KillClogPlugin extends Plugin
 			{
 				String name = local.getName();
 				localClogCache.setActivePlayer(name);
-				AccountType acctType = mapAccountType(client.getVarbitValue(VarbitID.IRONMAN));
+				AccountType acctType = getLocalAccountType();
 				SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name, acctType));
 			}
 
@@ -346,7 +347,7 @@ public class KillClogPlugin extends Plugin
 				pendingAutoLookup = false;
 				String name = local.getName();
 				localClogCache.setActivePlayer(name);
-				AccountType acctType = mapAccountType(client.getVarbitValue(VarbitID.IRONMAN));
+				AccountType acctType = getLocalAccountType();
 				SwingUtilities.invokeLater(() ->
 				{
 					panel.setLoggedInPlayer(name, acctType);
@@ -413,14 +414,7 @@ public class KillClogPlugin extends Plugin
 
 		if (event.getKey().equals("playerMenuLookup"))
 		{
-			if (config.playerMenuLookup())
-			{
-				menuManager.get().addPlayerMenuItem(MENU_OPTION);
-			}
-			else
-			{
-				menuManager.get().removePlayerMenuItem(MENU_OPTION);
-			}
+			setPlayerMenuItemEnabled(config.playerMenuLookup());
 		}
 
 		SwingUtilities.invokeLater(() -> panel.onConfigChanged(event.getKey()));
@@ -436,9 +430,17 @@ public class KillClogPlugin extends Plugin
 		});
 	}
 
+	// Right-click menu option strings — used to filter which entries get a Kill Clog lookup
+	private static final String OPT_ADD_FRIEND = "Add friend";
+	private static final String OPT_ADD_IGNORE = "Add ignore";
+	private static final String OPT_REMOVE_FRIEND = "Remove friend";
+	private static final String OPT_REMOVE_IGNORE = "Remove ignore";
+	private static final String OPT_DELETE = "Delete";
+	private static final String OPT_MESSAGE = "Message";
+
 	private static boolean isLookupEligible(int groupId, int componentId, String option)
 	{
-		// Clan tab has two sub-components in same interface, so check componentId
+		// Clan player lists live in two different interfaces — match by componentId, not groupId
 		if (componentId == InterfaceID.ClansSidepanel.PLAYERLIST
 			|| componentId == InterfaceID.ClansGuestSidepanel.PLAYERLIST)
 		{
@@ -887,23 +889,21 @@ public class KillClogPlugin extends Plugin
 		bulk.reset();
 	}
 
-	// VarbitID.IRONMAN: 0=normal, 1=iron, 2=uim, 3=hcim, 4=gim, 5=hcgim
+	private AccountType getLocalAccountType()
+	{
+		return mapAccountType(client.getVarbitValue(VarbitID.IRONMAN));
+	}
+
 	private AccountType mapAccountType(int varbitValue)
 	{
 		switch (varbitValue)
 		{
-			case 1:
-				return AccountType.IRONMAN;
-			case 2:
-				return AccountType.ULTIMATE_IRONMAN;
-			case 3:
-				return AccountType.HARDCORE_IRONMAN;
-			case 4:
-				return AccountType.GROUP_IRONMAN;
-			case 5:
-				return AccountType.HARDCORE_GROUP_IRONMAN;
-			default:
-				return AccountType.REGULAR;
+			case 1: return AccountType.IRONMAN;                 // iron
+			case 2: return AccountType.ULTIMATE_IRONMAN;        // uim
+			case 3: return AccountType.HARDCORE_IRONMAN;        // hcim
+			case 4: return AccountType.GROUP_IRONMAN;           // gim
+			case 5: return AccountType.HARDCORE_GROUP_IRONMAN;  // hcgim
+			default: return AccountType.REGULAR;
 		}
 	}
 
