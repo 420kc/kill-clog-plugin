@@ -56,6 +56,14 @@ public class KillClogPlugin extends Plugin
 {
 	private static final String MENU_OPTION = "Kill Clog";
 
+	// Right-click menu option strings — used to filter which entries get a Kill Clog lookup
+	private static final String OPT_ADD_FRIEND = "Add friend";
+	private static final String OPT_ADD_IGNORE = "Add ignore";
+	private static final String OPT_REMOVE_FRIEND = "Remove friend";
+	private static final String OPT_REMOVE_IGNORE = "Remove ignore";
+	private static final String OPT_DELETE = "Delete";
+	private static final String OPT_MESSAGE = "Message";
+
 	// OSRS player right-click menu reserves indexes 4-7 for plugins (4 slots total)
 	private static final int FIRST_PLUGIN_PLAYER_SLOT = 4;
 	private static final int LAST_PLUGIN_PLAYER_SLOT_EXCLUSIVE = 8;
@@ -418,6 +426,41 @@ public class KillClogPlugin extends Plugin
 		SwingUtilities.invokeLater(() -> panel.onConfigChanged(event.getKey()));
 	}
 
+	private void openPanelAndLookup(String name)
+	{
+		SwingUtilities.invokeLater(() ->
+		{
+			clientToolbar.openPanel(navButton);
+			panel.setPlayerName(name);
+			panel.doLookup();
+		});
+	}
+
+	private static boolean isLookupEligible(int groupId, int componentId, String option)
+	{
+		// Clan tab has two sub-components in same interface, so check componentId
+		if (componentId == InterfaceID.ClansSidepanel.PLAYERLIST
+			|| componentId == InterfaceID.ClansGuestSidepanel.PLAYERLIST)
+		{
+			return OPT_ADD_IGNORE.equals(option) || OPT_REMOVE_FRIEND.equals(option);
+		}
+		switch (groupId)
+		{
+			case InterfaceID.FRIENDS:
+			case InterfaceID.IGNORE:
+				return OPT_DELETE.equals(option);
+			case InterfaceID.CHATCHANNEL_CURRENT:
+				return OPT_ADD_IGNORE.equals(option) || OPT_REMOVE_FRIEND.equals(option);
+			case InterfaceID.CHATBOX:
+			case InterfaceID.PM_CHAT:
+				return OPT_ADD_IGNORE.equals(option) || OPT_MESSAGE.equals(option);
+			case InterfaceID.GIM_SIDEPANEL:
+				return OPT_ADD_FRIEND.equals(option) || OPT_REMOVE_FRIEND.equals(option) || OPT_REMOVE_IGNORE.equals(option);
+			default:
+				return false;
+		}
+	}
+
 	@Subscribe
 	public void onMenuEntryAdded(MenuEntryAdded event)
 	{
@@ -434,16 +477,8 @@ public class KillClogPlugin extends Plugin
 
 		int componentId = event.getActionParam1();
 		int groupId = WidgetUtil.componentToInterface(componentId);
-		String option = event.getOption();
 
-		if (groupId == InterfaceID.FRIENDS && option.equals("Delete")
-			|| groupId == InterfaceID.IGNORE && option.equals("Delete")
-			|| groupId == InterfaceID.CHATCHANNEL_CURRENT && (option.equals("Add ignore") || option.equals("Remove friend"))
-			|| groupId == InterfaceID.CHATBOX && (option.equals("Add ignore") || option.equals("Message"))
-			|| groupId == InterfaceID.PM_CHAT && (option.equals("Add ignore") || option.equals("Message"))
-			|| groupId == InterfaceID.GIM_SIDEPANEL && (option.equals("Add ignore") || option.equals("Remove friend"))
-			|| (componentId == InterfaceID.ClansSidepanel.PLAYERLIST || componentId == InterfaceID.ClansGuestSidepanel.PLAYERLIST)
-				&& (option.equals("Add ignore") || option.equals("Remove friend")))
+		if (isLookupEligible(groupId, componentId, event.getOption()))
 		{
 			String name = Text.toJagexName(Text.removeTags(event.getTarget()).trim());
 			client.getMenu().createMenuEntry(-2)
@@ -451,12 +486,7 @@ public class KillClogPlugin extends Plugin
 				.setTarget(event.getTarget())
 				.setType(MenuAction.RUNELITE)
 				.setIdentifier(event.getIdentifier())
-				.onClick(e -> SwingUtilities.invokeLater(() ->
-				{
-					clientToolbar.openPanel(navButton);
-					panel.setPlayerName(name);
-					panel.doLookup();
-				}));
+				.onClick(e -> openPanelAndLookup(name));
 		}
 	}
 
@@ -473,12 +503,7 @@ public class KillClogPlugin extends Plugin
 			}
 
 			String name = Text.toJagexName(player.getName());
-			SwingUtilities.invokeLater(() ->
-			{
-				clientToolbar.openPanel(navButton);
-				panel.setPlayerName(name);
-				panel.doLookup();
-			});
+			openPanelAndLookup(name);
 		}
 	}
 
