@@ -19,6 +19,7 @@ import net.runelite.api.GameState;
 import net.runelite.api.MenuAction;
 import net.runelite.api.Player;
 import net.runelite.api.StructComposition;
+import net.runelite.api.Varbits;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.MenuEntryAdded;
@@ -220,7 +221,7 @@ public class KillClogPlugin extends Plugin
 				if (local != null && local.getName() != null)
 				{
 					String name = local.getName();
-					AccountType acctType = mapAccountType(client.getAccountType());
+					AccountType acctType = mapAccountType(client.getVarbitValue(Varbits.ACCOUNT_TYPE));
 					localClogCache.setActivePlayer(name);
 					SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name, acctType));
 				}
@@ -301,7 +302,7 @@ public class KillClogPlugin extends Plugin
 			{
 				String name = local.getName();
 				localClogCache.setActivePlayer(name);
-				AccountType acctType = mapAccountType(client.getAccountType());
+				AccountType acctType = mapAccountType(client.getVarbitValue(Varbits.ACCOUNT_TYPE));
 				SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name, acctType));
 			}
 
@@ -337,7 +338,7 @@ public class KillClogPlugin extends Plugin
 				pendingAutoLookup = false;
 				String name = local.getName();
 				localClogCache.setActivePlayer(name);
-				AccountType acctType = mapAccountType(client.getAccountType());
+				AccountType acctType = mapAccountType(client.getVarbitValue(Varbits.ACCOUNT_TYPE));
 				SwingUtilities.invokeLater(() ->
 				{
 					panel.setLoggedInPlayer(name, acctType);
@@ -861,23 +862,20 @@ public class KillClogPlugin extends Plugin
 		bulk.reset();
 	}
 
-	private AccountType mapAccountType(net.runelite.api.vars.AccountType rlType)
+	// Varbits.ACCOUNT_TYPE: 0=normal, 1=iron, 2=uim, 3=hcim, 4=gim, 5=hcgim
+	private AccountType mapAccountType(int varbitValue)
 	{
-		if (rlType == null)
+		switch (varbitValue)
 		{
-			return AccountType.REGULAR;
-		}
-		switch (rlType)
-		{
-			case IRONMAN:
+			case 1:
 				return AccountType.IRONMAN;
-			case ULTIMATE_IRONMAN:
+			case 2:
 				return AccountType.ULTIMATE_IRONMAN;
-			case HARDCORE_IRONMAN:
+			case 3:
 				return AccountType.HARDCORE_IRONMAN;
-			case GROUP_IRONMAN:
+			case 4:
 				return AccountType.GROUP_IRONMAN;
-			case HARDCORE_GROUP_IRONMAN:
+			case 5:
 				return AccountType.HARDCORE_GROUP_IRONMAN;
 			default:
 				return AccountType.REGULAR;
