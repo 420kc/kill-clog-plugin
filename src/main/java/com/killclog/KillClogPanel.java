@@ -2652,6 +2652,12 @@ public class KillClogPanel extends PluginPanel
 		this.localAccountType = accountType;
 	}
 
+	/** Returns the RSN currently displayed in the panel, or null if no lookup is shown. */
+	public String getDisplayedRsn()
+	{
+		return rsn;
+	}
+
 	public void onBulkCaptureComplete(String name)
 	{
 		searchBar.setText(name);
