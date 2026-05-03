@@ -446,7 +446,7 @@ public class KillClogPlugin extends Plugin
 				&& (option.equals("Add ignore") || option.equals("Remove friend")))
 		{
 			String name = Text.toJagexName(Text.removeTags(event.getTarget()).trim());
-			client.createMenuEntry(-2)
+			client.getMenu().createMenuEntry(-2)
 				.setOption(MENU_OPTION)
 				.setTarget(event.getTarget())
 				.setType(MenuAction.RUNELITE)
