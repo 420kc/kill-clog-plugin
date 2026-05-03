@@ -50,6 +50,10 @@ public class LocalClogCache
 	 */
 	private volatile ExecutorService diskWriter = newDiskWriter();
 
+	/** Coalesce window for per-player disk writes — bursts of category navigation collapse to one write per player. */
+	private static final long DEBOUNCE_MS = 500;
+	private final Map<String, Runnable> pendingByPlayer = new ConcurrentHashMap<>();
+
 	private static ExecutorService newDiskWriter()
 	{
 		return Executors.newSingleThreadExecutor(r ->
@@ -60,15 +64,40 @@ public class LocalClogCache
 		});
 	}
 
-	/** Submit a disk write, swallowing rejections during the executor swap. The next sync re-saves anything lost. */
-	private void submitDiskWrite(Runnable task)
+	/**
+	 * Submit a disk write for a player, coalescing bursts within DEBOUNCE_MS into a single write.
+	 * The latest snapshot wins. Rejections during executor swap are swallowed; the next sync re-saves.
+	 */
+	private void submitDiskWrite(String playerName, Runnable task)
 	{
+		boolean wasFirst = pendingByPlayer.put(playerName, task) == null;
+		if (!wasFirst)
+		{
+			return;
+		}
 		try
 		{
-			diskWriter.execute(task);
+			diskWriter.execute(() ->
+			{
+				try
+				{
+					Thread.sleep(DEBOUNCE_MS);
+				}
+				catch (InterruptedException e)
+				{
+					Thread.currentThread().interrupt();
+				}
+				// Flush even if interrupted, so shutdown doesn't lose pending data
+				Runnable latest = pendingByPlayer.remove(playerName);
+				if (latest != null)
+				{
+					latest.run();
+				}
+			});
 		}
 		catch (RejectedExecutionException ignored)
 		{
+			pendingByPlayer.remove(playerName);
 			log.debug("Disk write rejected (executor shutting down)");
 		}
 	}
@@ -184,7 +213,7 @@ public class LocalClogCache
 
 		players.put(key, data);
 		final PlayerClogData snapshot = shallowCopy(data);
-		submitDiskWrite(() -> saveToDisk(name, snapshot));
+		submitDiskWrite(name, () -> saveToDisk(name, snapshot));
 		log.debug("Cached clog data for '{}' ({} categories)", name, data.obtained.size());
 	}
 
@@ -207,7 +236,7 @@ public class LocalClogCache
 		data.obtained.put(categoryKey, new ArrayList<>(obtained));
 
 		final PlayerClogData snapshot = shallowCopy(data);
-		submitDiskWrite(() -> saveToDisk(playerName, snapshot));
+		submitDiskWrite(playerName, () -> saveToDisk(playerName, snapshot));
 		log.debug("Merged category '{}' for '{}': {}/{} obtained",
 			categoryKey, playerName, obtained.size(), allItems.size());
 	}
@@ -241,7 +270,7 @@ public class LocalClogCache
 		if (changed)
 		{
 			final PlayerClogData snapshot = shallowCopy(data);
-			submitDiskWrite(() -> saveToDisk(playerName, snapshot));
+			submitDiskWrite(playerName, () -> saveToDisk(playerName, snapshot));
 			log.debug("Updated clog totals for '{}': {}/{}", playerName, obtained, total);
 		}
 	}
