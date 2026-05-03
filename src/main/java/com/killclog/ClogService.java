@@ -14,7 +14,6 @@ import java.util.HashMap;
 import java.util.TreeMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -94,8 +93,9 @@ public class ClogService
 	private volatile CompletableFuture<Map<String, List<Integer>>> categoriesFlight;
 	private volatile CompletableFuture<Map<Integer, String>> namesFlight;
 
-	// Players whose Temple lookup failed this session — skip retries, cleared on login
-	private final Set<String> templeFailures = java.util.concurrent.ConcurrentHashMap.newKeySet();
+	// Players whose Temple lookup failed — value is failure timestamp, retried after TTL or login
+	private static final long TEMPLE_FAILURE_TTL_MS = 3 * 60 * 1000; // 3 minutes — transient blips recover, sustained outages still respected
+	private final Map<String, Long> templeFailures = new java.util.concurrent.ConcurrentHashMap<>();
 
 	// Freshness gate — skip Temple if we fetched successfully within this window
 	private static final long CLOG_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -176,8 +176,9 @@ public class ClogService
 				localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>()));
 		}
 
-		// Skip Temple if it already failed for this player this session
-		if (templeFailures.contains(normalizedName))
+		// Skip Temple if it failed for this player within the cooldown window
+		Long failedAt = templeFailures.get(normalizedName);
+		if (failedAt != null && System.currentTimeMillis() - failedAt < TEMPLE_FAILURE_TTL_MS)
 		{
 			if (localClogCache.hasDataFor(playerName))
 			{
@@ -231,8 +232,8 @@ public class ClogService
 					return result;
 				}
 
-				// Temple failed — remember and fall back to local cache
-				templeFailures.add(normalizedName);
+				// Temple failed — remember timestamp and fall back to local cache
+				templeFailures.put(normalizedName, System.currentTimeMillis());
 				if (localClogCache.hasDataFor(playerName))
 				{
 					log.debug("Temple unavailable, using cached data for: {}", playerName);
