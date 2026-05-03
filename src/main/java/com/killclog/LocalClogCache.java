@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.RejectedExecutionException;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +44,8 @@ public class LocalClogCache
 	private final Gson gson;
 	private volatile String activePlayer;
 
-	/** Single-threaded executor for all disk I/O — keeps the client thread unblocked. */
+	/** Single-threaded executor for all disk I/O — keeps the client thread unblocked.
+	 *  Volatile so shutdown() can swap the reference visibly to concurrent submitters. */
 	private volatile ExecutorService diskWriter = newDiskWriter();
 
 	private static ExecutorService newDiskWriter()
@@ -54,6 +56,24 @@ public class LocalClogCache
 			t.setDaemon(true);
 			return t;
 		});
+	}
+
+	/**
+	 * Safe wrapper for disk-write submission. The shutdown swap-then-terminate
+	 * pattern leaves a microsecond window where a caller holding a stale
+	 * executor reference can hit RejectedExecutionException. The next sync
+	 * re-saves anything lost, so we just log and continue.
+	 */
+	private void submitDiskWrite(Runnable task)
+	{
+		try
+		{
+			diskWriter.execute(task);
+		}
+		catch (RejectedExecutionException ignored)
+		{
+			log.debug("Disk write rejected (executor shutting down)");
+		}
 	}
 
 	@Inject
@@ -167,7 +187,7 @@ public class LocalClogCache
 
 		players.put(key, data);
 		final PlayerClogData snapshot = shallowCopy(data);
-		diskWriter.execute(() -> saveToDisk(name, snapshot));
+		submitDiskWrite(() -> saveToDisk(name, snapshot));
 		log.debug("Cached clog data for '{}' ({} categories)", name, data.obtained.size());
 	}
 
@@ -190,7 +210,7 @@ public class LocalClogCache
 		data.obtained.put(categoryKey, new ArrayList<>(obtained));
 
 		final PlayerClogData snapshot = shallowCopy(data);
-		diskWriter.execute(() -> saveToDisk(playerName, snapshot));
+		submitDiskWrite(() -> saveToDisk(playerName, snapshot));
 		log.debug("Merged category '{}' for '{}': {}/{} obtained",
 			categoryKey, playerName, obtained.size(), allItems.size());
 	}
@@ -224,7 +244,7 @@ public class LocalClogCache
 		if (changed)
 		{
 			final PlayerClogData snapshot = shallowCopy(data);
-			diskWriter.execute(() -> saveToDisk(playerName, snapshot));
+			submitDiskWrite(() -> saveToDisk(playerName, snapshot));
 			log.debug("Updated clog totals for '{}': {}/{}", playerName, obtained, total);
 		}
 	}
