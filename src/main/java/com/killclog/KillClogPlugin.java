@@ -56,6 +56,10 @@ public class KillClogPlugin extends Plugin
 {
 	private static final String MENU_OPTION = "Kill Clog";
 
+	// OSRS player right-click menu reserves indexes 4-7 for plugins (4 slots total)
+	private static final int FIRST_PLUGIN_PLAYER_SLOT = 4;
+	private static final int LAST_PLUGIN_PLAYER_SLOT_EXCLUSIVE = 8;
+
 	// Bulk clog capture — script + widget + enum IDs
 	private static final int CLOG_ITEM_SCRIPT = 4100;
 	private static final int CLOG_SEARCH_WIDGET = 40697932;  // (621 << 16) | 76
@@ -233,6 +237,8 @@ public class KillClogPlugin extends Plugin
 				{
 					pendingAutoLookup = true;
 				}
+
+				warnIfPlayerMenuSlotUnavailable();
 			});
 		}
 
@@ -268,7 +274,7 @@ public class KillClogPlugin extends Plugin
 		}
 
 		String[] options = client.getPlayerOptions();
-		for (int i = 4; i < 8; i++)
+		for (int i = FIRST_PLUGIN_PLAYER_SLOT; i < LAST_PLUGIN_PLAYER_SLOT_EXCLUSIVE; i++)
 		{
 			if (MENU_OPTION.equals(options[i]))
 			{
@@ -278,8 +284,8 @@ public class KillClogPlugin extends Plugin
 
 		playerMenuSlotWarned = true;
 		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-			"<col=4caf6e>Kill Clog:</col> Player right-click slot unavailable (other plugins claimed all 4). "
-				+ "Right-click works on names in chat, friends, clan, and PM instead.",
+			"<col=4caf6e>Kill Clog:</col> Player right-click menu is full. "
+				+ "Use the side panel or right-click names in chat instead.",
 			null);
 	}
 
