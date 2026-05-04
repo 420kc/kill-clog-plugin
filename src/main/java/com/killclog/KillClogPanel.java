@@ -252,7 +252,6 @@ public class KillClogPanel extends PluginPanel
 	private NameAutocompleter nameAutocompleter;
 	private FourTwentyMode fourTwentyMode = FourTwentyMode.OFF;
 	private boolean has420Plugin;
-	private JLabel thermy;
 
 	@Inject
 	public KillClogPanel(HiscoreService hiscoreService, ClogService clogService,
@@ -1368,7 +1367,6 @@ public class KillClogPanel extends PluginPanel
 		// Secret 420 mode toggle on Thermonuclear Smoke Devil
 		if (boss == HiscoreSkill.THERMONUCLEAR_SMOKE_DEVIL)
 		{
-			thermy = label;
 			label.addMouseListener(new MouseAdapter()
 			{
 				@Override
