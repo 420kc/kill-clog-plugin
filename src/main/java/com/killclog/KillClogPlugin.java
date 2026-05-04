@@ -137,6 +137,8 @@ public class KillClogPlugin extends Plugin
 
 	private NavigationButton navButton;
 	private boolean pendingAutoLookup;
+	// VarbitID.IRONMAN can read 0 (REGULAR) on the same tick as LOGGED_IN dispatch — re-read on next tick to fix iron/GIM flash.
+	private boolean pendingAcctTypeRecheck;
 	private boolean playerMenuSlotWarned;
 
 	// Enum-derived clog mappings (parsed once per session)
@@ -221,6 +223,7 @@ public class KillClogPlugin extends Plugin
 					AccountType acctType = getLocalAccountType();
 					localClogCache.setActivePlayer(name);
 					SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name, acctType));
+					pendingAcctTypeRecheck = true;
 				}
 
 				loadGimBadges();
@@ -255,6 +258,8 @@ public class KillClogPlugin extends Plugin
 		resetBulkCapture();
 		enumsParsed = false;
 		playerMenuSlotWarned = false;
+		pendingAutoLookup = false;
+		pendingAcctTypeRecheck = false;
 		log.debug("Kill Clog plugin stopped");
 	}
 
@@ -313,6 +318,7 @@ public class KillClogPlugin extends Plugin
 				localClogCache.setActivePlayer(name);
 				AccountType acctType = getLocalAccountType();
 				SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name, acctType));
+				pendingAcctTypeRecheck = true;
 			}
 
 			loadGimBadges();
@@ -339,6 +345,18 @@ public class KillClogPlugin extends Plugin
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
+		if (pendingAcctTypeRecheck)
+		{
+			pendingAcctTypeRecheck = false;
+			Player local = client.getLocalPlayer();
+			if (local != null && local.getName() != null)
+			{
+				String name = local.getName();
+				AccountType acctType = getLocalAccountType();
+				SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name, acctType));
+			}
+		}
+
 		if (pendingAutoLookup)
 		{
 			Player local = client.getLocalPlayer();
