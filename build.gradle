@@ -49,29 +49,3 @@ task run(type: JavaExec) {
     mainClass = 'com.killclog.KillClogPluginTest'
     jvmArgs = ['-ea']
 }
-
-// Save current credentials under a name: gradlew saveCreds -Paccount=veci
-task saveCreds {
-    doLast {
-        def name = project.findProperty('account') ?: 'default'
-        def rlDir = new File(System.getProperty('user.home'), '.runelite')
-        def src = new File(rlDir, 'credentials.properties')
-        def dst = new File(rlDir, "credentials-${name}.properties")
-        if (!src.exists()) throw new GradleException("No credentials.properties found")
-        dst.text = src.text
-        println "Saved credentials as '${name}' -> ${dst.name}"
-    }
-}
-
-// Load saved credentials: gradlew loadCreds -Paccount=veci
-task loadCreds {
-    doLast {
-        def name = project.findProperty('account') ?: 'default'
-        def rlDir = new File(System.getProperty('user.home'), '.runelite')
-        def src = new File(rlDir, "credentials-${name}.properties")
-        def dst = new File(rlDir, 'credentials.properties')
-        if (!src.exists()) throw new GradleException("No saved credentials for '${name}'")
-        dst.text = src.text
-        println "Loaded '${name}' credentials -> credentials.properties"
-    }
-}
