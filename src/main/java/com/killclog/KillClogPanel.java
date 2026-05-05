@@ -500,7 +500,7 @@ public class KillClogPanel extends PluginPanel
 		searchRow.add(refreshLabel);
 		searchRow.add(searchBar);
 
-		// searchBar hover → show dim refresh icon
+		// searchBar hover → show dim refresh icon. Double-click on the magnifying-glass icon → look up self.
 		searchBar.addMouseListener(new MouseAdapter()
 		{
 			@Override
@@ -522,6 +522,17 @@ public class KillClogPanel extends PluginPanel
 						refreshLabel.setIcon(null);
 					}
 				});
+			}
+
+			@Override
+			public void mouseClicked(MouseEvent e)
+			{
+				// Match vanilla Hiscores: double-click the magnifying-glass icon to look up the logged-in player.
+				if (e.getClickCount() == 2 && e.getX() < 25 && localRsn != null && !localRsn.isEmpty())
+				{
+					searchBar.setText(localRsn);
+					doLookup();
+				}
 			}
 		});
 
