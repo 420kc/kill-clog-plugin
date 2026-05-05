@@ -139,6 +139,8 @@ public class KillClogPlugin extends Plugin
 	private boolean pendingAutoLookup;
 	// VarbitID.IRONMAN can read 0 (REGULAR) on the same tick as LOGGED_IN dispatch — re-read on next tick to fix iron/GIM flash.
 	private boolean pendingAcctTypeRecheck;
+	// LOGGED_IN fires on every world hop / teleport / region load. Auto-lookup is "on login" not "on every state transition" — gate per session.
+	private boolean hasAutoLookedUpThisSession;
 	private boolean playerMenuSlotWarned;
 
 	// Enum-derived clog mappings (parsed once per session)
@@ -233,7 +235,7 @@ public class KillClogPlugin extends Plugin
 					parseClogEnums();
 				}
 
-				if (config.autoLookupOnLogin())
+				if (config.autoLookupOnLogin() && !hasAutoLookedUpThisSession)
 				{
 					pendingAutoLookup = true;
 				}
@@ -260,6 +262,7 @@ public class KillClogPlugin extends Plugin
 		playerMenuSlotWarned = false;
 		pendingAutoLookup = false;
 		pendingAcctTypeRecheck = false;
+		hasAutoLookedUpThisSession = false;
 		log.debug("Kill Clog plugin stopped");
 	}
 
@@ -332,7 +335,7 @@ public class KillClogPlugin extends Plugin
 				parseClogEnums();
 			}
 
-			if (config.autoLookupOnLogin())
+			if (config.autoLookupOnLogin() && !hasAutoLookedUpThisSession)
 			{
 				pendingAutoLookup = true;
 			}
@@ -343,6 +346,7 @@ public class KillClogPlugin extends Plugin
 		{
 			resetBulkCapture();
 			enumsParsed = false;
+			hasAutoLookedUpThisSession = false;
 		}
 	}
 
@@ -367,6 +371,7 @@ public class KillClogPlugin extends Plugin
 			if (local != null && local.getName() != null)
 			{
 				pendingAutoLookup = false;
+				hasAutoLookedUpThisSession = true;
 				String name = local.getName();
 				localClogCache.setActivePlayer(name);
 				AccountType acctType = getLocalAccountType();
