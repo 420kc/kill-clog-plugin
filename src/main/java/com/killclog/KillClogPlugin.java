@@ -291,6 +291,10 @@ public class KillClogPlugin extends Plugin
 		}
 
 		String[] options = client.getPlayerOptions();
+		if (options == null || options.length < LAST_PLUGIN_PLAYER_SLOT_EXCLUSIVE)
+		{
+			return;
+		}
 		for (int i = FIRST_PLUGIN_PLAYER_SLOT; i < LAST_PLUGIN_PLAYER_SLOT_EXCLUSIVE; i++)
 		{
 			if (MENU_OPTION.equals(options[i]))
@@ -514,10 +518,15 @@ public class KillClogPlugin extends Plugin
 
 		if (isLookupEligible(groupId, componentId, event.getOption()))
 		{
-			String name = Text.toJagexName(Text.removeTags(event.getTarget()).trim());
+			String target = event.getTarget();
+			if (target == null)
+			{
+				return;
+			}
+			String name = Text.toJagexName(Text.removeTags(target).trim());
 			client.getMenu().createMenuEntry(-2)
 				.setOption(MENU_OPTION)
-				.setTarget(event.getTarget())
+				.setTarget(target)
 				.setType(MenuAction.RUNELITE)
 				.setIdentifier(event.getIdentifier())
 				.onClick(e -> openPanelAndLookup(name));

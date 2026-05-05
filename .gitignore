@@ -17,3 +17,4 @@ cfr.jar
 decompiled/
 node_modules/
 native_autocompleter_bytecode.txt
+*.zip

@@ -83,7 +83,6 @@ public class ClogService
 	private final OkHttpClient httpClient;
 	private final Gson gson;
 	private final LocalClogCache localClogCache;
-	private final KillClogConfig config;
 
 	// Cached data (loaded once per session)
 	private volatile Map<String, List<Integer>> cachedCategories;
@@ -102,12 +101,11 @@ public class ClogService
 	private final Map<String, Long> clogFetchTimes = new java.util.concurrent.ConcurrentHashMap<>();
 
 	@Inject
-	public ClogService(OkHttpClient httpClient, Gson gson, LocalClogCache localClogCache, KillClogConfig config)
+	public ClogService(OkHttpClient httpClient, Gson gson, LocalClogCache localClogCache)
 	{
 		this.httpClient = httpClient;
 		this.gson = gson;
 		this.localClogCache = localClogCache;
-		this.config = config;
 	}
 
 	/** Clear all failure cooldowns immediately (called on login). TTL handles auto-expiry otherwise. */

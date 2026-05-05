@@ -252,7 +252,6 @@ public class KillClogPanel extends PluginPanel
 	private NameAutocompleter nameAutocompleter;
 	private FourTwentyMode fourTwentyMode = FourTwentyMode.OFF;
 	private boolean has420Plugin;
-	private JLabel thermy;
 
 	@Inject
 	public KillClogPanel(HiscoreService hiscoreService, ClogService clogService,
@@ -501,7 +500,7 @@ public class KillClogPanel extends PluginPanel
 		searchRow.add(refreshLabel);
 		searchRow.add(searchBar);
 
-		// searchBar hover → show dim refresh icon
+		// searchBar hover → show dim refresh icon. Double-click on the magnifying-glass icon → look up self.
 		searchBar.addMouseListener(new MouseAdapter()
 		{
 			@Override
@@ -523,6 +522,17 @@ public class KillClogPanel extends PluginPanel
 						refreshLabel.setIcon(null);
 					}
 				});
+			}
+
+			@Override
+			public void mouseClicked(MouseEvent e)
+			{
+				// Match vanilla Hiscores: double-click the magnifying-glass icon to look up the logged-in player.
+				if (e.getClickCount() == 2 && e.getX() < 25 && localRsn != null && !localRsn.isEmpty())
+				{
+					searchBar.setText(localRsn);
+					doLookup();
+				}
 			}
 		});
 
@@ -1368,7 +1378,6 @@ public class KillClogPanel extends PluginPanel
 		// Secret 420 mode toggle on Thermonuclear Smoke Devil
 		if (boss == HiscoreSkill.THERMONUCLEAR_SMOKE_DEVIL)
 		{
-			thermy = label;
 			label.addMouseListener(new MouseAdapter()
 			{
 				@Override

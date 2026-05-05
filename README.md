@@ -17,6 +17,14 @@ sync with a single click
 | ![tooltip-hover](screenshots/tooltip-hover.gif) | ![tooltip-click](screenshots/tooltip-click.gif) |
 | Hover \| Outline | Click \| Tint |
 
+## Quick Lookup
+
+Right-click "Kill Clog" on any player name to look them up instantly — works on friends list, ignore list, friends chat, clan + guest clan, GIM panel, chatbox, and private messages. Side panel auto-opens.
+
+Double-click the magnifying-glass icon in the search bar to look up yourself.
+
+![player-menu](screenshots/player-menu.png)
+
 ## Player Comparison
 
 Go head-to-head with player comparisons
@@ -54,7 +62,7 @@ Data | Focus
 
 ![config](screenshots/config.png)
 
-Self-search on Login\
+Auto-Lookup on Login\
 Hover | Click\
 Tint | Outline | None
 

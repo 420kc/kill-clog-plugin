@@ -115,7 +115,26 @@ public class LocalClogCache
 	public void shutdown()
 	{
 		ExecutorService old = diskWriter;
-		diskWriter = newDiskWriter();
+		ExecutorService fresh = newDiskWriter();
+		diskWriter = fresh;
+
+		// Drain pending debounced writes to fresh; atomic remove-by-key prevents double-run with old executor's lambda.
+		for (String key : new ArrayList<>(pendingByPlayer.keySet()))
+		{
+			Runnable t = pendingByPlayer.remove(key);
+			if (t != null)
+			{
+				try
+				{
+					fresh.execute(t);
+				}
+				catch (RejectedExecutionException ignored)
+				{
+					t.run();
+				}
+			}
+		}
+
 		old.shutdown();
 		try
 		{
