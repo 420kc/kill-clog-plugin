@@ -2,9 +2,9 @@
 
 PvM-Focused HiScores Overhaul with Collection Log Integration
 
-sync with a single click
+Sync with one click of the chalice in your collection log 
 
-![sync-path](screenshots/sync-path.gif)
+![WATCH SYNC GIF](screenshots/sync-path.gif)
 
 ![tooltip-boss](screenshots/tooltip-boss.png)
 
@@ -14,22 +14,18 @@ sync with a single click
 
 | | |
 |:---:|:---:|
-| ![tooltip-hover](screenshots/tooltip-hover.gif) | ![tooltip-click](screenshots/tooltip-click.gif) |
+| ![WATCH GIF OF HOVER](screenshots/tooltip-hover.gif) | ![WATCH GIF OF CLICK MODE](screenshots/tooltip-click.gif) |
 | Hover \| Outline | Click \| Tint |
 
 ## Quick Lookup
 
-Right-click "Kill Clog" on any player name to look them up instantly — works on friends list, ignore list, friends chat, clan + guest clan, GIM panel, chatbox, and private messages. Side panel auto-opens.
-
-Double-click the magnifying-glass icon in the search bar to look up yourself.
+Right-click "Kill Clog" on any player or name to search them from your friends list, ignore list, friends chat, clan + guest clan, GIM panel, chatbox, and private messages.
 
 ![player-menu](screenshots/player-menu.png)
 
 ## Player Comparison
 
-Go head-to-head with player comparisons
-
-![compare](screenshots/compareplayers.gif)
+![comparison mode gif](screenshots/compareplayers.gif)
 
 | | |
 |:---:|:---:|
@@ -46,7 +42,7 @@ Go head-to-head with player comparisons
 
 | | | |
 |:---:|:---:|:---:|
-| ![tray-open](screenshots/tray-open.png) | ![tray-toggle](screenshots/tray-toggle.gif) | ![tray-closed](screenshots/tray-closed.png) |
+| ![tray-open](screenshots/tray-open.png) | ![watch gif](screenshots/tray-toggle.gif) | ![tray-closed](screenshots/tray-closed.png) |
 
 Data | Focus
 
@@ -54,21 +50,18 @@ Data | Focus
 
 | | |
 |:---:|:---:|
-| ![highlighter1](screenshots/highlighter1.png) | ![highlighter2](screenshots/highlighter2.png) |
+| ![highlighter1](screenshots/highlighter1.png) |
 
 <sub>16,777,216^5 = 1,329,227,995,784,915,872,903,807,060,280,344,576 combinations</sub>
 
-## Configuration
+## Settings
 
 ![config](screenshots/config.png)
 
-Auto-Lookup on Login\
-Hover | Click\
-Tint | Outline | None
 
 ## Bonus
 
-Days of clicking the wrong HiScores tab and firing into the void are behind us. Ironman types are automatically identified and ranked among the correct set of HiScores (regular/iron/uim/hcim/gim).   
+Account types are automatically identified and ranked among the relevant HiScores (regular/iron/uim/hcim). GIM Helmets are currently only visible to the logged-in GIM they belong to, but appear as regular accounts to others.
 
 ![sys-messages](screenshots/sys-messages.png)
 
@@ -76,17 +69,17 @@ Rotating system messages
 
 ## Local Cache
 
-Player data is cached locally for fast repeat searches. Lookups under 5 minutes old serve from cache; older ones refresh on next search. Clear manually by deleting files from `.runelite/kill-clog/`.
+Lookups under 5 minutes old serve from cache and older ones refresh on next search. Clear manually by deleting files from `.runelite/kill-clog/` or uninstalling and reinstalling the plugin.
 
-## TempleOSRS
+## Temple OSRS
 
-Your collection log syncs locally with the red trophy icon — that data lives on your machine and never expires. Lookups for other players read from [TempleOSRS](https://templeosrs.com); anyone who hasn't synced their clog to Temple (via Temple's RuneLite plugin) won't have data available.
+Collection log data for other players is obtained from TempleOSRS.com. Anyone who hasn't synced their clog to Temple via the Temple plugin will still display kill count and level hiscores, but will not have collection log data available.
 
 ## Updates
 
-If new collection log items are released in game updates, re-sync with the red trophy icon in your collection log.
+If new collection log items are released in game updates, re-sync with the red chalice icon in your collection log to obtain the new overall total in summary bar.
 
 ---
 
-Questions or feedback? Open an issue on [GitHub](https://github.com/420kc/kill-clog-plugin/issues).
+For questions or support Join "Kill Clog" FC in game or Open an issue on [GitHub](https://github.com/420kc/kill-clog-plugin/issues).
 
