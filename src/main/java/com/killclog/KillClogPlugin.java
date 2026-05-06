@@ -944,6 +944,7 @@ public class KillClogPlugin extends Plugin
 			case 3: return AccountType.HARDCORE_IRONMAN;        // hcim
 			case 4: return AccountType.GROUP_IRONMAN;           // gim
 			case 5: return AccountType.HARDCORE_GROUP_IRONMAN;  // hcgim
+			case 6: return AccountType.UNRANKED_GROUP_IRONMAN;  // unranked gim
 			default: return AccountType.REGULAR;
 		}
 	}
@@ -956,7 +957,9 @@ public class KillClogPlugin extends Plugin
 			? indexedSpriteToImage(modIcons[ClogHelper.MODICON_GIM]) : null;
 		BufferedImage hcgim = modIcons.length > ClogHelper.MODICON_HCGIM
 			? indexedSpriteToImage(modIcons[ClogHelper.MODICON_HCGIM]) : null;
-		ClogHelper.setGimBadges(gim, hcgim);
+		BufferedImage unrankedGim = modIcons.length > ClogHelper.MODICON_UNRANKED_GIM
+			? indexedSpriteToImage(modIcons[ClogHelper.MODICON_UNRANKED_GIM]) : null;
+		ClogHelper.setGimBadges(gim, hcgim, unrankedGim);
 	}
 
 	private static BufferedImage indexedSpriteToImage(net.runelite.api.IndexedSprite sprite)
