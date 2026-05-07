@@ -135,19 +135,10 @@ public class LocalClogCache
 			}
 		}
 
+		// Don't await termination. Would block RuneLite's plugin-shutdown thread.
+		// Pending tasks were drained to the fresh executor above; in-flight tasks
+		// on `old` complete on their own background threads.
 		old.shutdown();
-		try
-		{
-			if (!old.awaitTermination(3, java.util.concurrent.TimeUnit.SECONDS))
-			{
-				old.shutdownNow();
-			}
-		}
-		catch (InterruptedException e)
-		{
-			old.shutdownNow();
-			Thread.currentThread().interrupt();
-		}
 	}
 
 	public void setActivePlayer(String name)
