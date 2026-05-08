@@ -727,8 +727,7 @@ public class KillClogPlugin extends Plugin
 			displayCount, enumCategoryMap.size(), name, bulk.obtained.size());
 
 		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-			"<col=4caf6e>Kill Clog:</col> Collection log captured — " + displayCount
-				+ " items. Open the Kill Clog panel to view.",
+			"<col=4caf6e>Kill Clog:</col> " + displayCount + " items synced to Kill Clog",
 			null);
 
 		// Merge the buffered category before reset (captured when clog first opened)
