@@ -719,12 +719,15 @@ public class KillClogPlugin extends Plugin
 		}
 		localClogCache.cacheResult(result);
 
-		int total = bulk.obtained.size();
-		log.debug("Bulk clog capture complete: {} items across {} categories for '{}'",
-			total, enumCategoryMap.size(), name);
+		// Prefer the Jagex de-duped count (varp 2943) over the raw streamed count.
+		// Some items appear in multiple clog categories, so bulk.obtained.size() can
+		// exceed the player's actual unique obtained count.
+		int displayCount = bulk.clogCount > 0 ? bulk.clogCount : bulk.obtained.size();
+		log.debug("Bulk clog capture complete: {} items across {} categories for '{}' ({} streamed)",
+			displayCount, enumCategoryMap.size(), name, bulk.obtained.size());
 
 		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-			"<col=4caf6e>Kill Clog:</col> Collection log captured — " + total
+			"<col=4caf6e>Kill Clog:</col> Collection log captured — " + displayCount
 				+ " items. Open the Kill Clog panel to view.",
 			null);
 
