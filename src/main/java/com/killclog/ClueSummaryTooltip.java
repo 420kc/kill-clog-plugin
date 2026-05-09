@@ -86,7 +86,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 		}
 		labelCol = Math.max(labelCol, fm.stringWidth("Mimic"));
 		int scoreCol = fm.stringWidth("99,999");
-		int rankTail = fm.stringWidth(" Rank: 99,999");
+		int rankTail = fm.stringWidth(" Rank: 9,999,999") + 10;
 
 		int totalWidth = iconCol + labelCol + COL_GAP + scoreCol + rankTail;
 
