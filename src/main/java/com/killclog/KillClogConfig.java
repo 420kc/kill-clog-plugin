@@ -169,15 +169,4 @@ public interface KillClogConfig extends Config
 		return new Color(255, 87, 0);
 	}
 
-	// DEV-ONLY: revert before squash. Visual test rig for GIM helmet variants without owning each account type.
-	@ConfigItem(
-		keyName = "debugForceGimType",
-		name = "DEV: Force GIM type",
-		description = "",
-		hidden = true
-	)
-	default GimDebugOverride debugForceGimType()
-	{
-		return GimDebugOverride.OFF;
-	}
 }

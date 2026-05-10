@@ -1006,9 +1006,6 @@ public class KillClogPlugin extends Plugin
 
 	private AccountType getLocalAccountType()
 	{
-		// DEV-ONLY override: revert before squash to master.
-		AccountType override = config.debugForceGimType().toAccountType();
-		if (override != null) return override;
 		return mapAccountType(client.getVarbitValue(VarbitID.IRONMAN));
 	}
 
