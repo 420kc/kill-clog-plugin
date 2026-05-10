@@ -9,7 +9,6 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
-import net.runelite.api.ScriptID;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.game.ChatIconManager;
@@ -249,8 +248,12 @@ class KillClogChatCommand
 					}
 				}
 			}
-			chatMessage.getMessageNode().setValue(sb.toString());
-			client.runScript(ScriptID.BUILD_CHATBOX);
+			// setRuneLiteFormatMessage is the path that resolves <img=N> chat-icon tokens;
+			// setValue is the raw network text and skips token processing. refreshChat
+			// re-renders the visible chat after a post-display replacement. Mirrors
+			// RuneLite's first-party ChatCommandsPlugin.killCountLookup.
+			chatMessage.getMessageNode().setRuneLiteFormatMessage(sb.toString());
+			client.refreshChat();
 		};
 
 		for (ClogResult.ClogItem item : obtainedList)
@@ -308,8 +311,8 @@ class KillClogChatCommand
 	{
 		clientThread.invoke(() ->
 		{
-			chatMessage.getMessageNode().setValue(text);
-			client.runScript(ScriptID.BUILD_CHATBOX);
+			chatMessage.getMessageNode().setRuneLiteFormatMessage(text);
+			client.refreshChat();
 		});
 	}
 }
