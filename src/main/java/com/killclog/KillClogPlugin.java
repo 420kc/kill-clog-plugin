@@ -19,6 +19,7 @@ import net.runelite.api.GameState;
 import net.runelite.api.MenuAction;
 import net.runelite.api.Player;
 import net.runelite.api.StructComposition;
+import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.MenuEntryAdded;
@@ -142,6 +143,10 @@ public class KillClogPlugin extends Plugin
 	// LOGGED_IN fires on every world hop / teleport / region load. Auto-lookup is "on login" not "on every state transition" — gate per session.
 	private boolean hasAutoLookedUpThisSession;
 	private boolean playerMenuSlotWarned;
+
+	// Autosync — refresh self-lookup data when the player chats. Gated to one trigger per AUTOSYNC_INTERVAL_MS to avoid panel re-render flicker on every line.
+	private static final long AUTOSYNC_INTERVAL_MS = 5 * 60 * 1000;
+	private long lastAutoSyncMs;
 
 	// Enum-derived clog mappings (parsed once per session)
 	private Map<String, List<Integer>> enumCategoryMap;
@@ -348,6 +353,51 @@ public class KillClogPlugin extends Plugin
 			enumsParsed = false;
 			hasAutoLookedUpThisSession = false;
 		}
+	}
+
+	// Autosync — when the player sends a public chat line, opportunistically
+	// re-fetch self-lookup data so the panel stays current without an explicit
+	// /sync command. Gated to one trigger per AUTOSYNC_INTERVAL_MS, and only
+	// when the panel is actually displaying self (don't disrupt research on
+	// someone else). The underlying hiscore/clog services have their own short
+	// cache TTLs, so this is cheap when fresh — the gate is about UI churn.
+	@Subscribe
+	public void onChatMessage(ChatMessage event)
+	{
+		if (event.getType() != ChatMessageType.PUBLICCHAT)
+		{
+			return;
+		}
+		Player local = client.getLocalPlayer();
+		if (local == null || local.getName() == null)
+		{
+			return;
+		}
+		String localName = local.getName();
+		String sender = event.getName();
+		if (sender == null || !sender.equalsIgnoreCase(localName))
+		{
+			return;
+		}
+
+		long now = System.currentTimeMillis();
+		if (now - lastAutoSyncMs < AUTOSYNC_INTERVAL_MS)
+		{
+			return;
+		}
+
+		String displayed = panel.getDisplayedRsn();
+		if (displayed == null || !displayed.equalsIgnoreCase(localName))
+		{
+			return;
+		}
+
+		lastAutoSyncMs = now;
+		SwingUtilities.invokeLater(() ->
+		{
+			panel.setPlayerName(localName);
+			panel.doLookup();
+		});
 	}
 
 	@Subscribe
