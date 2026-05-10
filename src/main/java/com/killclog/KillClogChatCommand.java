@@ -217,8 +217,16 @@ class KillClogChatCommand
 			return;
 		}
 
+		// Pre-warm sprite cache on this bg thread so async loads have a head start
+		// before the client thread renders. ItemManager.getImage queues the load.
+		for (ClogResult.ClogItem item : obtainedList)
+		{
+			try { itemManager.getImage(item.getId(), 1, false); }
+			catch (Exception ignored) {}
+		}
+
 		// Icon registration + chat replacement both need the client thread.
-		clientThread.invoke(() ->
+		clientThread.invokeLater(() ->
 		{
 			StringBuilder sb = new StringBuilder();
 			sb.append(boss).append(": ").append(obtained).append("/").append(total);
@@ -241,8 +249,12 @@ class KillClogChatCommand
 
 	/**
 	 * Register the item's icon as a chat icon if not already cached. Returns the chat icon id
-	 * suitable for &lt;img=N&gt; tokens, or -1 if the icon isn't loadable.
-	 * Must be called from the client thread.
+	 * suitable for &lt;img=N&gt; tokens, or -1 if the icon isn't ready yet.
+	 *
+	 * itemManager.getImage returns an AsyncBufferedImage — first call yields a 0x0 placeholder
+	 * while the sprite loads from cache. We trigger the load (by calling getImage) but skip
+	 * registering until the image has real dimensions; subsequent !kclog invocations after the
+	 * sprite resolves will register cleanly. Must be called from the client thread.
 	 */
 	private int ensureIcon(int itemId)
 	{
@@ -251,14 +263,22 @@ class KillClogChatCommand
 		{
 			return cached;
 		}
-		BufferedImage img = itemManager.getImage(itemId);
-		if (img == null)
+		BufferedImage img = itemManager.getImage(itemId, 1, false);
+		if (img == null || img.getWidth() <= 0 || img.getHeight() <= 0)
 		{
 			return -1;
 		}
-		int iconId = chatIconManager.registerChatIcon(img);
-		loadedIcons.put(itemId, iconId);
-		return iconId;
+		try
+		{
+			int iconId = chatIconManager.registerChatIcon(img);
+			loadedIcons.put(itemId, iconId);
+			return iconId;
+		}
+		catch (IllegalArgumentException e)
+		{
+			// Image not actually ready despite non-zero dims; defer to next invocation.
+			return -1;
+		}
 	}
 
 	private void replaceText(ChatMessage chatMessage, String text)
