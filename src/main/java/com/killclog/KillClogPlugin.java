@@ -137,6 +137,12 @@ public class KillClogPlugin extends Plugin
 	@Inject
 	private LocalClogCache localClogCache;
 
+	@Inject
+	private net.runelite.client.chat.ChatCommandManager chatCommandManager;
+
+	@Inject
+	private KillClogChatCommand kclogCommand;
+
 	private NavigationButton navButton;
 	private boolean pendingAutoLookup;
 	// VarbitID.IRONMAN can read 0 (REGULAR) on the same tick as LOGGED_IN dispatch — re-read on next tick to fix iron/GIM flash.
@@ -229,6 +235,8 @@ public class KillClogPlugin extends Plugin
 
 		setPlayerMenuItemEnabled(config.playerMenuLookup());
 
+		chatCommandManager.registerCommandAsync(KillClogChatCommand.COMMAND, kclogCommand::handle);
+
 		// If installed mid-session, run login init on the client thread
 		if (client.getGameState() == GameState.LOGGED_IN)
 		{
@@ -271,6 +279,7 @@ public class KillClogPlugin extends Plugin
 		mouseManager.unregisterMouseListener(clogButtonOverlay);
 		keyManager.unregisterKeyListener(highlighterHotkey);
 		setPlayerMenuItemEnabled(false);
+		chatCommandManager.unregisterCommand(KillClogChatCommand.COMMAND);
 		SwingUtilities.invokeLater(() -> panel.shutdown());
 		localClogCache.shutdown();
 		resetBulkCapture();
