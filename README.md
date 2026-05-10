@@ -2,7 +2,13 @@
 
 PvM-Focused HiScores Overhaul with Collection Log Integration
 
-Kill Clog uses TempleOSRS to show public collection log data for player lookups. Like any website request, TempleOSRS receives your IP so it can send data back. Kill Clog does not collect passwords, tokens, bank data, account credentials, or private RuneLite data.
+When you click Install, RuneLite prompts a warning about your IP being sent to a 3rd-party server.
+
+![install-warning](screenshots/install-warning.png)
+
+The 3rd-party is [TempleOSRS](https://templeosrs.com). Kill Clog reads your public collection log data from there.
+
+Kill Clog never collects passwords, tokens, bank data, account credentials, or private RuneLite data. Source is fully public at [github.com/420kc/kill-clog-plugin](https://github.com/420kc/kill-clog-plugin) and open to audit.
 
 sync with a single click
 
