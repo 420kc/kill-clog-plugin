@@ -168,5 +168,4 @@ public interface KillClogConfig extends Config
 	{
 		return new Color(255, 87, 0);
 	}
-
 }

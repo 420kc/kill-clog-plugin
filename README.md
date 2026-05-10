@@ -43,7 +43,7 @@ Double-click the magnifying-glass icon in the search bar to look up yourself.
 
 `Vorkath: 2/14 missing [item] [item]`
 
-Both commands share the panel's cache. Common shorthand works (`vork`, `cox`, `tob`, `jad`, `nm`, `pnm`, `cg`, `thermy`, `cerb`, `huey`, etc.); partial typing falls through to substring match.
+Both commands share the panel's cache. Common shorthand works (`vork`, `cox`, `tob`, `jad`, `nm`, `pnm`, `cg`, `thermy`, `cerb`, `huey`, etc.). Partial typing falls through to substring match.
 
 ## Player Comparison
 

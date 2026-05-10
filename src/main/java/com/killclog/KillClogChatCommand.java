@@ -22,9 +22,10 @@ import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
 
 /**
- * Handler for the !kclog [boss] chat command. Replaces the user's chat line with their
- * collection log progress for the requested boss, plus inline sprite icons for every
- * unique already obtained. Reuses ClogService so the command shares the panel's cache.
+ * Handler for the !kclog [boss] and !missing [boss] chat commands. Both replace the user's
+ * chat line with collection log progress for the requested boss, plus inline sprite icons —
+ * !kclog renders obtained items, !missing renders the inverse (still-unobtained items).
+ * Reuses ClogService so the commands share the panel's cache.
  *
  * Registered async via ChatCommandManager so the lookup I/O runs off-thread. Chat-icon
  * registration and the message rewrite both jump to the client thread.
@@ -269,9 +270,18 @@ class KillClogChatCommand
 		if (missingMode)
 		{
 			Set<Integer> obtainedIds = new HashSet<>();
-			for (ClogResult.ClogItem item : obtainedList) obtainedIds.add(item.getId());
+			for (ClogResult.ClogItem item : obtainedList)
+			{
+				obtainedIds.add(item.getId());
+			}
 			List<Integer> missing = new ArrayList<>();
-			for (Integer id : totalList) if (!obtainedIds.contains(id)) missing.add(id);
+			for (Integer id : totalList)
+			{
+				if (!obtainedIds.contains(id))
+				{
+					missing.add(id);
+				}
+			}
 			if (missing.isEmpty())
 			{
 				replaceText(chatMessage, boss + ": complete");
@@ -283,7 +293,10 @@ class KillClogChatCommand
 		else
 		{
 			renderIds = new ArrayList<>(obtainedList.size());
-			for (ClogResult.ClogItem item : obtainedList) renderIds.add(item.getId());
+			for (ClogResult.ClogItem item : obtainedList)
+			{
+				renderIds.add(item.getId());
+			}
 			header = boss + ": " + obtainedList.size() + "/" + totalList.size();
 		}
 
