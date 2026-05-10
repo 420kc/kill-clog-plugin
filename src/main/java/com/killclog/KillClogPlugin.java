@@ -375,12 +375,12 @@ public class KillClogPlugin extends Plugin
 		}
 	}
 
-	// Autosync — when the player sends a public chat line, opportunistically
-	// re-fetch self-lookup data so the panel stays current without an explicit
-	// /sync command. Gated to one trigger per AUTOSYNC_INTERVAL_MS, and only
-	// when the panel is actually displaying self (don't disrupt research on
-	// someone else). The underlying hiscore/clog services have their own short
-	// cache TTLs, so this is cheap when fresh — the gate is about UI churn.
+	// Autosync — when the player sends any chat line, opportunistically re-fetch
+	// self-lookup data so the panel stays current without a manual refresh.
+	// Gated to one trigger per AUTOSYNC_INTERVAL_MS, and only when the panel is
+	// actually displaying self (don't disrupt research on someone else). The
+	// underlying hiscore/clog services have their own short cache TTLs so this
+	// is cheap when fresh — the gate is about UI churn.
 	@Subscribe
 	public void onChatMessage(ChatMessage event)
 	{

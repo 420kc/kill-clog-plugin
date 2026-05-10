@@ -21,11 +21,19 @@ sync with a single click
 
 ## Quick Lookup
 
-Right-click "Kill Clog" on any player name to look them up instantly — works on friends list, ignore list, friends chat, clan + guest clan, GIM panel, chatbox, and private messages. Side panel auto-opens.
+Right-click "Kill Clog" on any player name to look them up instantly. Works on friends list, ignore list, friends chat, clan + guest clan, GIM panel, chatbox, and private messages. Side panel auto-opens.
 
 Double-click the magnifying-glass icon in the search bar to look up yourself.
 
 ![player-menu](screenshots/player-menu.png)
+
+## Chat Commands
+
+`!kclog [boss]` in any chat tab replaces your line with your KC and collection log progress for that boss. Common shorthand works (`!kclog vork`, `!kclog cox`, `!kclog tob`, `!kclog jad`); partial typing falls through to substring match.
+
+`Kill Clog | Vorkath: 1,247 KC · 12/14 (1 away)`
+
+Lookups share the panel's cache, so the command stays fast.
 
 ## Player Comparison
 
@@ -78,11 +86,11 @@ Rotating system messages
 
 ## Local Cache
 
-Player data is cached locally for fast repeat searches. Lookups under 5 minutes old serve from cache; older ones refresh on next search. Clear manually by deleting files from `.runelite/kill-clog/`.
+Player data is cached locally for fast repeat searches. Lookups under 5 minutes old serve from cache; older ones refresh on next search. The panel also auto-refreshes your own data when you chat in-game, so a long session stays current without a manual lookup. Clear the cache manually by deleting files from `.runelite/kill-clog/`.
 
 ## TempleOSRS
 
-Your collection log syncs locally with the red trophy icon — that data lives on your machine and never expires. Lookups for other players read from [TempleOSRS](https://templeosrs.com); anyone who hasn't synced their clog to Temple (via Temple's RuneLite plugin) won't have data available.
+Your collection log syncs locally with the red trophy icon. That data lives on your machine and never expires. Lookups for other players read from [TempleOSRS](https://templeosrs.com); anyone who hasn't synced their clog to Temple (via Temple's RuneLite plugin) won't have data available.
 
 ## Updates
 

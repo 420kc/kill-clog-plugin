@@ -13,13 +13,12 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.util.Text;
 
 /**
- * Handler for the !kclog [boss] chat command — replaces the user's chat line with their KC
- * + collection log progress for the requested boss. Reuses HiscoreService and ClogService
+ * Handler for the !kclog [boss] chat command. Replaces the user's chat line with their KC
+ * and collection log progress for the requested boss. Reuses HiscoreService and ClogService
  * so the command shares the same caches and TTLs as the panel lookup.
  *
- * Pattern follows call-me-maple/collection-log-command's !log: registered async via
- * ChatCommandManager so the I/O runs off-thread, replacement applied via
- * MessageNode.setValue + BUILD_CHATBOX on the client thread.
+ * Registered async via ChatCommandManager so the I/O runs off-thread; the chat replacement
+ * is applied on the client thread via MessageNode.setValue + BUILD_CHATBOX.
  */
 @Slf4j
 @Singleton
