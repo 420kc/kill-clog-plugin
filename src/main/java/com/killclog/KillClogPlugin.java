@@ -3,6 +3,7 @@ package com.killclog;
 import com.google.inject.Provides;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -145,7 +146,17 @@ public class KillClogPlugin extends Plugin
 	private boolean playerMenuSlotWarned;
 
 	// Autosync — refresh self-lookup data when the player chats. Gated to one trigger per AUTOSYNC_INTERVAL_MS to avoid panel re-render flicker on every line.
+	// Trigger on any chat type the local player can SEND — public chat (the "Game" tab), friends/clan chat, outgoing PMs, autotyped lines.
+	// Incoming PMs (PRIVATECHAT) and server messages (GAMEMESSAGE) deliberately excluded — those don't signal "the player is active right now."
 	private static final long AUTOSYNC_INTERVAL_MS = 5 * 60 * 1000;
+	private static final Set<ChatMessageType> AUTOSYNC_CHAT_TYPES = EnumSet.of(
+		ChatMessageType.PUBLICCHAT,
+		ChatMessageType.FRIENDSCHAT,
+		ChatMessageType.CLAN_CHAT,
+		ChatMessageType.CLAN_GUEST_CHAT,
+		ChatMessageType.PRIVATECHATOUT,
+		ChatMessageType.AUTOTYPER
+	);
 	private long lastAutoSyncMs;
 
 	// Enum-derived clog mappings (parsed once per session)
@@ -364,7 +375,7 @@ public class KillClogPlugin extends Plugin
 	@Subscribe
 	public void onChatMessage(ChatMessage event)
 	{
-		if (event.getType() != ChatMessageType.PUBLICCHAT)
+		if (!AUTOSYNC_CHAT_TYPES.contains(event.getType()))
 		{
 			return;
 		}
