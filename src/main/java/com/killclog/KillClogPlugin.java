@@ -281,6 +281,7 @@ public class KillClogPlugin extends Plugin
 		keyManager.unregisterKeyListener(highlighterHotkey);
 		setPlayerMenuItemEnabled(false);
 		chatCommandManager.unregisterCommand(KillClogChatCommand.COMMAND);
+		kclogCommand.clear();
 		SwingUtilities.invokeLater(() -> panel.shutdown());
 		localClogCache.shutdown();
 		resetBulkCapture();

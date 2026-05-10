@@ -1,28 +1,36 @@
 package com.killclog;
 
+import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
+import net.runelite.api.IndexedSprite;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.client.callback.ClientThread;
-import net.runelite.client.game.ChatIconManager;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.util.AsyncBufferedImage;
+import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
 
 /**
- * Handler for the !kclog [boss] chat command. Replaces the user's chat line with their KC
- * and collection log progress for the requested boss. Reuses HiscoreService and ClogService
- * so the command shares the same caches and TTLs as the panel lookup.
+ * Handler for the !kclog [boss] chat command. Replaces the user's chat line with their
+ * collection log progress for the requested boss, plus inline sprite icons for every
+ * unique already obtained. Reuses ClogService so the command shares the panel's cache.
  *
- * Registered async via ChatCommandManager so the I/O runs off-thread; the chat replacement
- * is applied on the client thread via MessageNode.setValue + BUILD_CHATBOX.
+ * Registered async via ChatCommandManager so the lookup I/O runs off-thread. Chat-icon
+ * registration and the message rewrite both jump to the client thread.
+ *
+ * Icons are stored directly in client.getModIcons() (the same approach RuneLite's
+ * first-party ChatCommandsPlugin uses for !pets). ChatIconManager is bypassed because
+ * its registerChatIcon rejects AsyncBufferedImage and its index is only valid one tick
+ * after registration — neither plays well with on-demand item-cache sprites.
  */
 @Slf4j
 @Singleton
@@ -30,14 +38,17 @@ class KillClogChatCommand
 {
 	static final String COMMAND = "!kclog";
 
+	private static final int ICON_W = 18;
+	private static final int ICON_H = 16;
+
 	@Inject private Client client;
 	@Inject private ClientThread clientThread;
 	@Inject private ClogService clogService;
 	@Inject private ItemManager itemManager;
-	@Inject private ChatIconManager chatIconManager;
 
-	// itemId -> registered chat icon id. Each item only needs registering once per session.
-	private final Map<Integer, Integer> loadedIcons = new HashMap<>();
+	// itemId -> absolute index into client.getModIcons(). Persists for the plugin's lifetime;
+	// cleared in clear() on shutdown so a disable/enable cycle re-registers cleanly.
+	private final Map<Integer, Integer> itemIconIdx = new HashMap<>();
 
 	private static final Map<String, String> ALIASES = buildAliases();
 
@@ -218,93 +229,100 @@ class KillClogChatCommand
 		}
 
 		// Icon registration + chat replacement both need the client thread.
-		// AsyncBufferedImage loads the sprite from cache off-thread; if it isn't ready yet
-		// we register an onLoaded callback that fires when the worker finishes, then renders.
-		clientThread.invoke(() -> renderWithIcons(chatMessage, boss, obtained, total, obtainedList));
+		clientThread.invoke(() -> render(chatMessage, boss, obtained, total, obtainedList));
 	}
 
 	/**
-	 * Render the chat replacement, waiting for any unloaded item sprites via AsyncBufferedImage.onLoaded.
-	 * Runs on the client thread.
+	 * Reserve a mod-icon slot for every obtained item we haven't seen before, kick off the
+	 * async sprite loads, then write the response onto the player's MessageNode. Runs on the
+	 * client thread.
+	 *
+	 * setRuneLiteFormatMessage + refreshChat is the after-the-fact write path (the chat line
+	 * has already been drawn by the time !kclog's async lookup returns). Each onLoaded
+	 * callback also fires refreshChat so a sprite that streams in late repaints the line.
 	 */
-	private void renderWithIcons(ChatMessage chatMessage, String boss, int obtained, int total,
+	private void render(ChatMessage chatMessage, String boss, int obtained, int total,
 		List<ClogResult.ClogItem> obtainedList)
 	{
-		AtomicInteger pending = new AtomicInteger(0);
-		Runnable render = () ->
+		ensureIcons(obtainedList);
+
+		StringBuilder sb = new StringBuilder();
+		sb.append(boss).append(": ").append(obtained).append("/").append(total);
+		if (!obtainedList.isEmpty())
 		{
-			if (pending.get() > 0) return;
-			StringBuilder sb = new StringBuilder();
-			sb.append(boss).append(": ").append(obtained).append("/").append(total);
-			if (!obtainedList.isEmpty())
+			sb.append(" ");
+			for (ClogResult.ClogItem item : obtainedList)
 			{
-				sb.append(" ");
-				for (ClogResult.ClogItem item : obtainedList)
+				Integer idx = itemIconIdx.get(item.getId());
+				if (idx != null)
 				{
-					Integer iconId = loadedIcons.get(item.getId());
-					if (iconId != null)
-					{
-						sb.append("<img=").append(iconId).append(">");
-					}
+					sb.append("<img=").append(idx).append(">");
 				}
 			}
-			// setRuneLiteFormatMessage is the path that resolves <img=N> chat-icon tokens;
-			// setValue is the raw network text and skips token processing. refreshChat
-			// re-renders the visible chat after a post-display replacement. Mirrors
-			// RuneLite's first-party ChatCommandsPlugin.killCountLookup.
-			chatMessage.getMessageNode().setRuneLiteFormatMessage(sb.toString());
-			client.refreshChat();
-		};
-
-		for (ClogResult.ClogItem item : obtainedList)
-		{
-			final int itemId = item.getId();
-			if (loadedIcons.containsKey(itemId)) continue;
-
-			AsyncBufferedImage img;
-			try
-			{
-				img = (AsyncBufferedImage) itemManager.getImage(itemId, 1, false);
-			}
-			catch (Exception e)
-			{
-				continue;
-			}
-			if (img == null) continue;
-
-			if (img.getWidth() > 0 && img.getHeight() > 0)
-			{
-				registerSafe(itemId, img);
-			}
-			else
-			{
-				pending.incrementAndGet();
-				img.onLoaded(() -> clientThread.invoke(() ->
-				{
-					registerSafe(itemId, img);
-					pending.decrementAndGet();
-					render.run();
-				}));
-			}
 		}
-
-		render.run();
+		chatMessage.getMessageNode().setRuneLiteFormatMessage(sb.toString());
+		client.refreshChat();
 	}
 
-	private void registerSafe(int itemId, AsyncBufferedImage img)
+	/**
+	 * Grow client.getModIcons() once with a slot per never-before-seen itemId, then schedule
+	 * each sprite to write into its slot via AsyncBufferedImage.onLoaded.
+	 *
+	 * Pattern matches RuneLite ChatCommandsPlugin.loadPets — bypasses ChatIconManager because
+	 * (a) registerChatIcon rejects AsyncBufferedImage, (b) its index is populated one tick
+	 * later via invokeLater, so chatIconIndex returns -1 in the same call. Direct modIcons
+	 * manipulation keeps the index synchronously valid and accepts async images cleanly.
+	 */
+	private void ensureIcons(List<ClogResult.ClogItem> obtainedList)
 	{
-		try
+		List<Integer> needsRegister = new ArrayList<>();
+		for (ClogResult.ClogItem item : obtainedList)
 		{
-			// <img=N> chat tokens take the chat-icon INDEX, not the iconId returned by
-			// registerChatIcon. chatIconIndex(iconId) does the conversion; without it the
-			// token resolves to nothing.
-			int iconId = chatIconManager.registerChatIcon(img);
-			int chatIndex = chatIconManager.chatIconIndex(iconId);
-			loadedIcons.put(itemId, chatIndex);
+			int itemId = item.getId();
+			if (!itemIconIdx.containsKey(itemId))
+			{
+				needsRegister.add(itemId);
+			}
 		}
-		catch (IllegalArgumentException ignored)
+		if (needsRegister.isEmpty()) return;
+
+		IndexedSprite[] modIcons = client.getModIcons();
+		if (modIcons == null) return;
+		IndexedSprite[] grown = Arrays.copyOf(modIcons, modIcons.length + needsRegister.size());
+		final int base = modIcons.length;
+
+		for (int i = 0; i < needsRegister.size(); i++)
 		{
+			final int itemId = needsRegister.get(i);
+			final int slot = base + i;
+			itemIconIdx.put(itemId, slot);
+
+			final AsyncBufferedImage abi = itemManager.getImage(itemId);
+			abi.onLoaded(() ->
+			{
+				BufferedImage resized = ImageUtil.resizeImage(abi, ICON_W, ICON_H);
+				IndexedSprite sprite = ImageUtil.getImageIndexedSprite(resized, client);
+				// Re-fetch modIcons inside the callback — Jagex may swap the array between
+				// our setModIcons above and this callback firing.
+				IndexedSprite[] current = client.getModIcons();
+				if (current != null && slot < current.length)
+				{
+					current[slot] = sprite;
+					client.refreshChat();
+				}
+			});
 		}
+
+		client.setModIcons(grown);
+	}
+
+	/**
+	 * Drops cached mod-icon indices on plugin shutdown so a disable/enable cycle re-registers
+	 * against whatever modIcons looks like next time. Called from KillClogPlugin.shutDown.
+	 */
+	void clear()
+	{
+		itemIconIdx.clear();
 	}
 
 	private void replaceText(ChatMessage chatMessage, String text)
