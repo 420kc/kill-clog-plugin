@@ -29,9 +29,9 @@ Double-click the magnifying-glass icon in the search bar to look up yourself.
 
 ## Chat Commands
 
-`!kclog [boss]` in any chat tab replaces your line with your KC and collection log progress for that boss. Common shorthand works (`!kclog vork`, `!kclog cox`, `!kclog tob`, `!kclog jad`); partial typing falls through to substring match.
+`!kclog [boss]` in any chat tab replaces your line with your collection log progress for that boss, plus the inline sprites of every unique you've already obtained. Common shorthand works (`!kclog vork`, `!kclog cox`, `!kclog tob`, `!kclog jad`); partial typing falls through to substring match.
 
-`Kill Clog | Vorkath: 1,247 KC · 12/14 (1 away)`
+`Vorkath: 12/14 [item] [item] [item] ...`
 
 Lookups share the panel's cache, so the command stays fast.
 

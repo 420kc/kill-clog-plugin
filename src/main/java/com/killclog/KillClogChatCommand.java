@@ -292,9 +292,9 @@ class KillClogChatCommand
 	{
 		try
 		{
-			// registerChatIcon returns an iconId — to get the sprite index for <img=N>
-			// chat tokens we have to call chatIconIndex(iconId). Skipping that conversion
-			// is why the icons rendered as nothing in v1: <img=iconId> was a stale ref.
+			// <img=N> chat tokens take the chat-icon INDEX, not the iconId returned by
+			// registerChatIcon. chatIconIndex(iconId) does the conversion; without it the
+			// token resolves to nothing.
 			int iconId = chatIconManager.registerChatIcon(img);
 			int chatIndex = chatIconManager.chatIconIndex(iconId);
 			loadedIcons.put(itemId, chatIndex);
