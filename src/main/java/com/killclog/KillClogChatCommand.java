@@ -1,5 +1,7 @@
 package com.killclog;
 
+import java.awt.image.BufferedImage;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -10,6 +12,8 @@ import net.runelite.api.Client;
 import net.runelite.api.ScriptID;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.game.ChatIconManager;
+import net.runelite.client.game.ItemManager;
 import net.runelite.client.util.Text;
 
 /**
@@ -28,8 +32,12 @@ class KillClogChatCommand
 
 	@Inject private Client client;
 	@Inject private ClientThread clientThread;
-	@Inject private HiscoreService hiscoreService;
 	@Inject private ClogService clogService;
+	@Inject private ItemManager itemManager;
+	@Inject private ChatIconManager chatIconManager;
+
+	// itemId -> registered chat icon id. Each item only needs registering once per session.
+	private final Map<Integer, Integer> loadedIcons = new HashMap<>();
 
 	private static final Map<String, String> ALIASES = buildAliases();
 
@@ -145,14 +153,14 @@ class KillClogChatCommand
 
 	/**
 	 * Async handler. Runs on a background thread per ChatCommandManager.registerCommandAsync.
-	 * Blocking I/O (HiscoreService + ClogService futures) is fine here.
+	 * Blocking I/O (ClogService future) is fine here; UI work jumps to clientThread.
 	 */
 	void handle(ChatMessage chatMessage, String message)
 	{
 		String[] parts = message.split("\\s+", 2);
 		if (parts.length < 2 || parts[1].trim().isEmpty())
 		{
-			replace(chatMessage, "Kill Clog: usage !kclog <boss>");
+			replaceText(chatMessage, "usage !kclog <boss>");
 			return;
 		}
 
@@ -160,8 +168,7 @@ class KillClogChatCommand
 		String resolved = ALIASES.get(query);
 		if (resolved == null)
 		{
-			// Loose substring fallback so partial typing still works ("vork" → "Vorkath" already
-			// handled by alias; this catches things like "abyssal" → "Abyssal Sire").
+			// Loose substring fallback so partial typing still works ("abyssal" → "Abyssal Sire").
 			for (Map.Entry<String, String> e : ALIASES.entrySet())
 			{
 				String key = e.getKey();
@@ -174,69 +181,87 @@ class KillClogChatCommand
 		}
 		if (resolved == null)
 		{
-			replace(chatMessage, "Kill Clog: boss not recognized");
+			replaceText(chatMessage, "boss not recognized");
 			return;
 		}
 
 		String rsn = Text.sanitize(chatMessage.getName());
 		final String boss = resolved;
+		ClogResult cl;
 		try
 		{
-			HiscoreResult hs = hiscoreService.lookup(rsn, null).get();
-			ClogResult cl = clogService.lookup(rsn).get();
-			if (hs == null && cl == null)
-			{
-				replace(chatMessage, "Kill Clog | " + boss + ": lookup failed");
-				return;
-			}
-
-			int kc = hs != null ? hs.getKc(boss) : -1;
-			String kcStr = kc < 0 ? "—" : String.format("%,d", kc);
-
-			int obtained = 0;
-			int total = 0;
-			if (cl != null)
-			{
-				String categoryKey = ClogService.bossToCategory(boss);
-				List<ClogResult.ClogItem> obtainedList = cl.getObtainedItems().get(categoryKey);
-				List<Integer> totalList = cl.getCategoryItems().get(categoryKey);
-				obtained = obtainedList != null ? obtainedList.size() : 0;
-				total = totalList != null ? totalList.size() : 0;
-			}
-
-			String reply;
-			if (total == 0)
-			{
-				reply = String.format("Kill Clog | %s: %s KC", boss, kcStr);
-			}
-			else
-			{
-				String progress;
-				if (obtained >= total)
-				{
-					progress = "complete";
-				}
-				else if (total - obtained == 1)
-				{
-					progress = "1 away";
-				}
-				else
-				{
-					progress = (total - obtained) + " left";
-				}
-				reply = String.format("Kill Clog | %s: %s KC · %d/%d (%s)",
-					boss, kcStr, obtained, total, progress);
-			}
-			replace(chatMessage, reply);
+			cl = clogService.lookup(rsn).get();
 		}
 		catch (Exception e)
 		{
 			log.warn("!kclog lookup failed for {}", rsn, e);
-			replace(chatMessage, "Kill Clog | " + boss + ": lookup failed");
+			replaceText(chatMessage, boss + ": lookup failed");
+			return;
 		}
+
+		if (cl == null)
+		{
+			replaceText(chatMessage, boss + ": no clog data");
+			return;
+		}
+
+		String categoryKey = ClogService.bossToCategory(boss);
+		final List<ClogResult.ClogItem> obtainedList = cl.getObtainedItems().getOrDefault(categoryKey, Collections.emptyList());
+		final List<Integer> totalList = cl.getCategoryItems().getOrDefault(categoryKey, Collections.emptyList());
+		final int obtained = obtainedList.size();
+		final int total = totalList.size();
+
+		if (total == 0)
+		{
+			replaceText(chatMessage, boss + ": no clog items found");
+			return;
+		}
+
+		// Icon registration + chat replacement both need the client thread.
+		clientThread.invoke(() ->
+		{
+			StringBuilder sb = new StringBuilder();
+			sb.append(boss).append(": ").append(obtained).append("/").append(total);
+			if (!obtainedList.isEmpty())
+			{
+				sb.append(" ");
+				for (ClogResult.ClogItem item : obtainedList)
+				{
+					int iconId = ensureIcon(item.getId());
+					if (iconId >= 0)
+					{
+						sb.append("<img=").append(iconId).append(">");
+					}
+				}
+			}
+			chatMessage.getMessageNode().setValue(sb.toString());
+			client.runScript(ScriptID.BUILD_CHATBOX);
+		});
 	}
 
-	private void replace(ChatMessage chatMessage, String text)
+	/**
+	 * Register the item's icon as a chat icon if not already cached. Returns the chat icon id
+	 * suitable for &lt;img=N&gt; tokens, or -1 if the icon isn't loadable.
+	 * Must be called from the client thread.
+	 */
+	private int ensureIcon(int itemId)
+	{
+		Integer cached = loadedIcons.get(itemId);
+		if (cached != null)
+		{
+			return cached;
+		}
+		BufferedImage img = itemManager.getImage(itemId);
+		if (img == null)
+		{
+			return -1;
+		}
+		int iconId = chatIconManager.registerChatIcon(img);
+		loadedIcons.put(itemId, iconId);
+		return iconId;
+	}
+
+	private void replaceText(ChatMessage chatMessage, String text)
 	{
 		clientThread.invoke(() ->
 		{
