@@ -31,6 +31,7 @@ import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.WidgetUtil;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.chat.ChatCommandManager;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -138,7 +139,7 @@ public class KillClogPlugin extends Plugin
 	private LocalClogCache localClogCache;
 
 	@Inject
-	private net.runelite.client.chat.ChatCommandManager chatCommandManager;
+	private ChatCommandManager chatCommandManager;
 
 	@Inject
 	private KillClogChatCommand kclogCommand;
