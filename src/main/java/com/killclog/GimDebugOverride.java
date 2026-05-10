@@ -2,14 +2,17 @@ package com.killclog;
 
 // DEV-ONLY: revert before squash to master. Lets a developer test GIM helmet badge rendering
 // without owning a GIM/HCGIM/Unranked GIM account.
-enum GimDebugOverride
+// Public + public method visibility required because the config interface uses this as a
+// return type, and RuneLite's runtime config proxy lives in the unnamed module — can't
+// access package-private types from named packages under JDK 9+ module access rules.
+public enum GimDebugOverride
 {
 	OFF,
 	GIM,
 	HCGIM,
 	UNRANKED_GIM;
 
-	AccountType toAccountType()
+	public AccountType toAccountType()
 	{
 		switch (this)
 		{
