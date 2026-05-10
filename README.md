@@ -8,26 +8,46 @@ When you click Install, RuneLite prompts a warning about your IP being sent to a
 
 The 3rd-party is [TempleOSRS](https://templeosrs.com). Kill Clog reads your public collection log data from there.
 
-Kill Clog never collects passwords, tokens, bank data, account credentials, or private RuneLite data. Source is fully public at [github.com/420kc/kill-clog-plugin](https://github.com/420kc/kill-clog-plugin) and open to audit.
+Kill Clog never collects passwords, tokens, bank data, account credentials, or private RuneLite data. Source is public at [github.com/420kc/kill-clog-plugin](https://github.com/420kc/kill-clog-plugin) and open to audit.
 
-sync with a single click
+## Installation
+
+1. Install Kill Clog from the RuneLite Plugin Hub.
+   > Look for the red chalice icon in your sidebar tabs.
+   > Optional: disable the vanilla HiScores plugin to fully replace it.
+
+2. Install the TempleOSRS plugin.
+   > Lets players view each others' collection logs.
+
+## Sync
+
+1. Open your Collection Log in the game and open the Kill Clog side panel.
+
+2. Click the red chalice at the top to capture your clog.
+   > Flashes green, goes red, steady green when complete (1-2 sec).
+   > Don't miss the moment. Watch your KCs come alive.
+   > Chat confirms: `Kill Clog: N items synced to Kill Clog`.
 
 ![sync-path](screenshots/sync-path.gif)
 
-![tooltip-boss](screenshots/tooltip-boss.png)
+3. To make your clog visible to other Kill Clog users looking you up, sync to TempleOSRS via the TempleOSRS plugin's own sync button.
 
 ![panel](screenshots/panel.png)
 
 ## Tooltips
+
+Hover for an outline preview, click to lock a tint on a boss tile.
 
 | | |
 |:---:|:---:|
 | ![tooltip-hover](screenshots/tooltip-hover.gif) | ![tooltip-click](screenshots/tooltip-click.gif) |
 | Hover \| Outline | Click \| Tint |
 
+![tooltip-boss](screenshots/tooltip-boss.png)
+
 ## Quick Lookup
 
-Right-click "Kill Clog" on any player name to look them up instantly. Works on friends list, ignore list, friends chat, clan + guest clan, GIM panel, chatbox, and private messages. Side panel auto-opens.
+Right-click "Kill Clog" on any player name to look them up instantly. Works on friends list, ignore list, friends chat, clan + guest clan, GIM panel, chatbox, and private messages. The side panel auto-opens.
 
 Double-click the magnifying-glass icon in the search bar to look up yourself.
 
@@ -35,19 +55,23 @@ Double-click the magnifying-glass icon in the search bar to look up yourself.
 
 ## Chat Commands
 
-`!kclog [boss]` replaces your chat line with your collection log progress for that boss, plus the inline sprites of every unique already obtained.
+![chat-kclog](screenshots/chat-kclog.png)
+
+![chat-missing](screenshots/chat-missing.png)
+
+`!kclog [boss]` replaces your chat line with your collection log progress for that boss, plus the inline sprites of every unique you already have.
 
 `Vorkath: 12/14 [item] [item] [item] ...`
 
-`!missing [boss]` flips it: the count and sprites of everything still unobtained.
+`!missing [boss]` flips it. The count and sprites of everything still unobtained.
 
 `Vorkath: 2/14 missing [item] [item]`
 
-Both commands share the panel's cache. Common shorthand works (`vork`, `cox`, `tob`, `jad`, `nm`, `pnm`, `cg`, `thermy`, `cerb`, `huey`, etc.). Partial typing falls through to substring match.
+Common shorthand works (`vork`, `cox`, `tob`, `jad`, `nm`, `pnm`, `cg`, `thermy`, `cerb`, `huey`, and more). Partial typing falls through to substring match. Both commands share the panel's cache, so they stay fast.
 
 ## Player Comparison
 
-Go head-to-head with player comparisons
+Compare any two players side by side.
 
 ![compare](screenshots/compareplayers.gif)
 
@@ -57,6 +81,8 @@ Go head-to-head with player comparisons
 
 ## Summaries
 
+Six grouped readouts (player, skills, clog, PvM, clue, PvP).
+
 | | | |
 |:---:|:---:|:---:|
 | ![summary-player-hcim](screenshots/summary-player-hcim.png) | ![summary-skills](screenshots/summary-skills.png) | ![summary-clog](screenshots/summary-clog.png) |
@@ -64,13 +90,17 @@ Go head-to-head with player comparisons
 
 ## Activities Tray
 
+A second-row strip for non-boss content (Wintertodt, Tempoross, etc.). Toggle between data and focus modes.
+
 | | | |
 |:---:|:---:|:---:|
 | ![tray-open](screenshots/tray-open.png) | ![tray-toggle](screenshots/tray-toggle.gif) | ![tray-closed](screenshots/tray-closed.png) |
 
-Data | Focus
+Data \| Focus
 
 ## Progress Highlighter
+
+Outline every boss tile with the same completion state across the panel. Empty, In Progress, 1 Away, Completed.
 
 | | |
 |:---:|:---:|
@@ -82,31 +112,30 @@ Data | Focus
 
 ![config](screenshots/config.png)
 
-Auto-Lookup on Login\
-Hover | Click\
-Tint | Outline | None
+- Auto-Lookup on Login
+- Tooltip mode: Hover or Click
+- Highlight mode: Tint, Outline, or None
 
 ## Bonus
 
-Days of clicking the wrong HiScores tab and firing into the void are behind us. Ironman types are automatically identified and ranked among the correct set of HiScores (regular/iron/uim/hcim/gim).   
+Days of clicking the wrong HiScores tab and firing into the void are behind us. Ironman types are automatically identified and ranked among the correct set of HiScores (regular, iron, uim, hcim, gim).
 
 ![sys-messages](screenshots/sys-messages.png)
 
-Rotating system messages
+Rotating system messages.
 
 ## Local Cache
 
-Player data is cached locally for fast repeat searches. Lookups under 5 minutes old serve from cache; older ones refresh on next search. The panel also auto-refreshes your own data when you chat in-game, so a long session stays current without a manual lookup. Clear the cache manually by deleting files from `.runelite/kill-clog/`.
+Player data caches locally for fast repeat searches. Recent lookups (under 5 minutes) serve from memory. Older ones refresh on next search. Your own data also auto-refreshes when you chat in-game, so a long session stays current without a manual sync. Clear the cache by deleting files from `~/.runelite/kill-clog/`.
 
 ## TempleOSRS
 
-Your collection log syncs locally with the red trophy icon. That data lives on your machine and never expires. Lookups for other players read from [TempleOSRS](https://templeosrs.com); anyone who hasn't synced their clog to Temple (via Temple's RuneLite plugin) won't have data available.
+Your own collection log syncs locally via the red chalice. That data lives on your machine and never expires. Looking up other players uses [TempleOSRS](https://templeosrs.com). Anyone who hasn't synced their clog to Temple (via Temple's own RuneLite plugin) won't have clog data to show.
 
 ## Updates
 
-If new collection log items are released in game updates, re-sync with the red trophy icon in your collection log.
+If new collection log items are released in game updates, re-sync with the red chalice in your collection log.
 
 ---
 
 Questions or feedback? Open an issue on [GitHub](https://github.com/420kc/kill-clog-plugin/issues).
-
