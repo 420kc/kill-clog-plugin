@@ -35,11 +35,15 @@ Double-click the magnifying-glass icon in the search bar to look up yourself.
 
 ## Chat Commands
 
-`!kclog [boss]` in any chat tab replaces your line with your collection log progress for that boss, plus the inline sprites of every unique you've already obtained. Common shorthand works (`!kclog vork`, `!kclog cox`, `!kclog tob`, `!kclog jad`); partial typing falls through to substring match.
+`!kclog [boss]` replaces your chat line with your collection log progress for that boss, plus the inline sprites of every unique already obtained.
 
 `Vorkath: 12/14 [item] [item] [item] ...`
 
-Lookups share the panel's cache, so the command stays fast.
+`!missing [boss]` flips it: the count and sprites of everything still unobtained.
+
+`Vorkath: 2/14 missing [item] [item]`
+
+Both commands share the panel's cache. Common shorthand works (`vork`, `cox`, `tob`, `jad`, `nm`, `pnm`, `cg`, `thermy`, `cerb`, `huey`, etc.); partial typing falls through to substring match.
 
 ## Player Comparison
 

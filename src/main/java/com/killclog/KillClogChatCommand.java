@@ -5,8 +5,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +39,7 @@ import net.runelite.client.util.Text;
 class KillClogChatCommand
 {
 	static final String COMMAND = "!kclog";
+	static final String COMMAND_MISSING = "!missing";
 
 	private static final int ICON_W = 18;
 	private static final int ICON_H = 16;
@@ -152,7 +155,29 @@ class KillClogChatCommand
 		m.put("barrows", "Barrows Chests");
 		m.put("lunar", "Lunar Chests");
 		m.put("moons", "Lunar Chests");
+		m.put("perilous", "Lunar Chests");
+		m.put("perilous moons", "Lunar Chests");
 		m.put("nightmare", "Nightmare");
+		m.put("nm", "Nightmare");
+		m.put("pnm", "Phosani's Nightmare");
+		m.put("vorky", "Vorkath");
+		m.put("bryo", "Bryophyta");
+		m.put("hesp", "Hespori");
+		m.put("wt", "Wintertodt");
+		m.put("winter", "Wintertodt");
+		m.put("zal", "Zalcano");
+		m.put("tempo", "Tempoross");
+		m.put("krak", "Kraken");
+		m.put("abby", "Abyssal Sire");
+		m.put("ele", "Chaos Elemental");
+		m.put("fan", "Chaos Fanatic");
+		m.put("ven", "Venenatis");
+		m.put("venom", "Venenatis");
+		m.put("vet", "Vet'ion");
+		m.put("calv", "Cal'varion");
+		m.put("calli", "Callisto");
+		m.put("art", "Artio");
+		m.put("spin", "Spindel");
 		return m;
 	}
 
@@ -163,15 +188,28 @@ class KillClogChatCommand
 	}
 
 	/**
-	 * Async handler. Runs on a background thread per ChatCommandManager.registerCommandAsync.
-	 * Blocking I/O (ClogService future) is fine here; UI work jumps to clientThread.
+	 * !kclog handler — renders obtained items.
+	 * Async per ChatCommandManager.registerCommandAsync. Blocking I/O fine here, UI work jumps to clientThread.
 	 */
 	void handle(ChatMessage chatMessage, String message)
+	{
+		dispatch(chatMessage, message, false);
+	}
+
+	/**
+	 * !missing handler — renders unobtained items (the inverse view).
+	 */
+	void handleMissing(ChatMessage chatMessage, String message)
+	{
+		dispatch(chatMessage, message, true);
+	}
+
+	private void dispatch(ChatMessage chatMessage, String message, boolean missingMode)
 	{
 		String[] parts = message.split("\\s+", 2);
 		if (parts.length < 2 || parts[1].trim().isEmpty())
 		{
-			replaceText(chatMessage, "usage !kclog <boss>");
+			replaceText(chatMessage, "usage " + (missingMode ? COMMAND_MISSING : COMMAND) + " <boss>");
 			return;
 		}
 
@@ -205,7 +243,7 @@ class KillClogChatCommand
 		}
 		catch (Exception e)
 		{
-			log.warn("!kclog lookup failed for {}", rsn, e);
+			log.warn("clog lookup failed for {}", rsn, e);
 			replaceText(chatMessage, boss + ": lookup failed");
 			return;
 		}
@@ -219,41 +257,61 @@ class KillClogChatCommand
 		String categoryKey = ClogService.bossToCategory(boss);
 		final List<ClogResult.ClogItem> obtainedList = cl.getObtainedItems().getOrDefault(categoryKey, Collections.emptyList());
 		final List<Integer> totalList = cl.getCategoryItems().getOrDefault(categoryKey, Collections.emptyList());
-		final int obtained = obtainedList.size();
-		final int total = totalList.size();
 
-		if (total == 0)
+		if (totalList.isEmpty())
 		{
 			replaceText(chatMessage, boss + ": no clog items found");
 			return;
 		}
 
+		final List<Integer> renderIds;
+		final String header;
+		if (missingMode)
+		{
+			Set<Integer> obtainedIds = new HashSet<>();
+			for (ClogResult.ClogItem item : obtainedList) obtainedIds.add(item.getId());
+			List<Integer> missing = new ArrayList<>();
+			for (Integer id : totalList) if (!obtainedIds.contains(id)) missing.add(id);
+			if (missing.isEmpty())
+			{
+				replaceText(chatMessage, boss + ": complete");
+				return;
+			}
+			renderIds = missing;
+			header = boss + ": " + missing.size() + "/" + totalList.size() + " missing";
+		}
+		else
+		{
+			renderIds = new ArrayList<>(obtainedList.size());
+			for (ClogResult.ClogItem item : obtainedList) renderIds.add(item.getId());
+			header = boss + ": " + obtainedList.size() + "/" + totalList.size();
+		}
+
 		// Icon registration + chat replacement both need the client thread.
-		clientThread.invoke(() -> render(chatMessage, boss, obtained, total, obtainedList));
+		clientThread.invoke(() -> render(chatMessage, header, renderIds));
 	}
 
 	/**
-	 * Reserve a mod-icon slot for every obtained item we haven't seen before, kick off the
-	 * async sprite loads, then write the response onto the player's MessageNode. Runs on the
+	 * Reserve a mod-icon slot for every itemId we haven't seen before, kick off the async
+	 * sprite loads, then write the response onto the player's MessageNode. Runs on the
 	 * client thread.
 	 *
 	 * setRuneLiteFormatMessage + refreshChat is the after-the-fact write path (the chat line
-	 * has already been drawn by the time !kclog's async lookup returns). Each onLoaded
-	 * callback also fires refreshChat so a sprite that streams in late repaints the line.
+	 * has already been drawn by the time the async lookup returns). Each onLoaded callback
+	 * also fires refreshChat so a sprite that streams in late repaints the line.
 	 */
-	private void render(ChatMessage chatMessage, String boss, int obtained, int total,
-		List<ClogResult.ClogItem> obtainedList)
+	private void render(ChatMessage chatMessage, String header, List<Integer> itemIds)
 	{
-		ensureIcons(obtainedList);
+		ensureIcons(itemIds);
 
 		StringBuilder sb = new StringBuilder();
-		sb.append(boss).append(": ").append(obtained).append("/").append(total);
-		if (!obtainedList.isEmpty())
+		sb.append(header);
+		if (!itemIds.isEmpty())
 		{
 			sb.append(" ");
-			for (ClogResult.ClogItem item : obtainedList)
+			for (Integer id : itemIds)
 			{
-				Integer idx = itemIconIdx.get(item.getId());
+				Integer idx = itemIconIdx.get(id);
 				if (idx != null)
 				{
 					sb.append("<img=").append(idx).append(">");
@@ -273,12 +331,11 @@ class KillClogChatCommand
 	 * later via invokeLater, so chatIconIndex returns -1 in the same call. Direct modIcons
 	 * manipulation keeps the index synchronously valid and accepts async images cleanly.
 	 */
-	private void ensureIcons(List<ClogResult.ClogItem> obtainedList)
+	private void ensureIcons(List<Integer> itemIds)
 	{
 		List<Integer> needsRegister = new ArrayList<>();
-		for (ClogResult.ClogItem item : obtainedList)
+		for (Integer itemId : itemIds)
 		{
-			int itemId = item.getId();
 			if (!itemIconIdx.containsKey(itemId))
 			{
 				needsRegister.add(itemId);

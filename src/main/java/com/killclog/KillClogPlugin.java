@@ -237,6 +237,7 @@ public class KillClogPlugin extends Plugin
 		setPlayerMenuItemEnabled(config.playerMenuLookup());
 
 		chatCommandManager.registerCommandAsync(KillClogChatCommand.COMMAND, kclogCommand::handle);
+		chatCommandManager.registerCommandAsync(KillClogChatCommand.COMMAND_MISSING, kclogCommand::handleMissing);
 
 		// If installed mid-session, run login init on the client thread
 		if (client.getGameState() == GameState.LOGGED_IN)
@@ -281,6 +282,7 @@ public class KillClogPlugin extends Plugin
 		keyManager.unregisterKeyListener(highlighterHotkey);
 		setPlayerMenuItemEnabled(false);
 		chatCommandManager.unregisterCommand(KillClogChatCommand.COMMAND);
+		chatCommandManager.unregisterCommand(KillClogChatCommand.COMMAND_MISSING);
 		kclogCommand.clear();
 		SwingUtilities.invokeLater(() -> panel.shutdown());
 		localClogCache.shutdown();
