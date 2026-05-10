@@ -85,8 +85,8 @@ public class ClueSummaryTooltip extends TitleTooltip
 			labelCol = Math.max(labelCol, fm.stringWidth(label));
 		}
 		labelCol = Math.max(labelCol, fm.stringWidth("Mimic"));
-		int scoreCol = fm.stringWidth("99,999");
-		int rankTail = fm.stringWidth(" Rank: 99,999");
+		int scoreCol = fm.stringWidth("999,999");
+		int rankTail = fm.stringWidth(" Rank: 9,999,999") + 10;
 
 		int totalWidth = iconCol + labelCol + COL_GAP + scoreCol + rankTail;
 
@@ -115,7 +115,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 			labelColW = Math.max(labelColW, fm.stringWidth(label));
 		}
 		labelColW = Math.max(labelColW, fm.stringWidth("Mimic"));
-		int scoreColW = fm.stringWidth("99,999");
+		int scoreColW = fm.stringWidth("999,999");
 
 		int scoreRight = inset + iconCol + labelColW + COL_GAP + scoreColW;
 

@@ -3,6 +3,7 @@ package com.killclog;
 import com.google.inject.Provides;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -19,6 +20,7 @@ import net.runelite.api.GameState;
 import net.runelite.api.MenuAction;
 import net.runelite.api.Player;
 import net.runelite.api.StructComposition;
+import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.MenuEntryAdded;
@@ -29,6 +31,7 @@ import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.WidgetUtil;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.chat.ChatCommandManager;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
@@ -135,6 +138,12 @@ public class KillClogPlugin extends Plugin
 	@Inject
 	private LocalClogCache localClogCache;
 
+	@Inject
+	private ChatCommandManager chatCommandManager;
+
+	@Inject
+	private KillClogChatCommand kclogCommand;
+
 	private NavigationButton navButton;
 	private boolean pendingAutoLookup;
 	// VarbitID.IRONMAN can read 0 (REGULAR) on the same tick as LOGGED_IN dispatch — re-read on next tick to fix iron/GIM flash.
@@ -142,6 +151,20 @@ public class KillClogPlugin extends Plugin
 	// LOGGED_IN fires on every world hop / teleport / region load. Auto-lookup is "on login" not "on every state transition" — gate per session.
 	private boolean hasAutoLookedUpThisSession;
 	private boolean playerMenuSlotWarned;
+
+	// Autosync — refresh self-lookup data when the player chats. Gated to one trigger per AUTOSYNC_INTERVAL_MS to avoid panel re-render flicker on every line.
+	// Trigger on any chat type the local player can SEND — public chat (the "Game" tab), friends/clan chat, outgoing PMs, autotyped lines.
+	// Incoming PMs (PRIVATECHAT) and server messages (GAMEMESSAGE) deliberately excluded — those don't signal "the player is active right now."
+	private static final long AUTOSYNC_INTERVAL_MS = 5 * 60 * 1000;
+	private static final Set<ChatMessageType> AUTOSYNC_CHAT_TYPES = EnumSet.of(
+		ChatMessageType.PUBLICCHAT,
+		ChatMessageType.FRIENDSCHAT,
+		ChatMessageType.CLAN_CHAT,
+		ChatMessageType.CLAN_GUEST_CHAT,
+		ChatMessageType.PRIVATECHATOUT,
+		ChatMessageType.AUTOTYPER
+	);
+	private long lastAutoSyncMs;
 
 	// Enum-derived clog mappings (parsed once per session)
 	private Map<String, List<Integer>> enumCategoryMap;
@@ -213,6 +236,9 @@ public class KillClogPlugin extends Plugin
 
 		setPlayerMenuItemEnabled(config.playerMenuLookup());
 
+		chatCommandManager.registerCommandAsync(KillClogChatCommand.COMMAND, kclogCommand::handle);
+		chatCommandManager.registerCommandAsync(KillClogChatCommand.COMMAND_MISSING, kclogCommand::handleMissing);
+
 		// If installed mid-session, run login init on the client thread
 		if (client.getGameState() == GameState.LOGGED_IN)
 		{
@@ -255,6 +281,9 @@ public class KillClogPlugin extends Plugin
 		mouseManager.unregisterMouseListener(clogButtonOverlay);
 		keyManager.unregisterKeyListener(highlighterHotkey);
 		setPlayerMenuItemEnabled(false);
+		chatCommandManager.unregisterCommand(KillClogChatCommand.COMMAND);
+		chatCommandManager.unregisterCommand(KillClogChatCommand.COMMAND_MISSING);
+		kclogCommand.clear();
 		SwingUtilities.invokeLater(() -> panel.shutdown());
 		localClogCache.shutdown();
 		resetBulkCapture();
@@ -348,6 +377,51 @@ public class KillClogPlugin extends Plugin
 			enumsParsed = false;
 			hasAutoLookedUpThisSession = false;
 		}
+	}
+
+	// Autosync — when the player sends any chat line, opportunistically re-fetch
+	// self-lookup data so the panel stays current without a manual refresh.
+	// Gated to one trigger per AUTOSYNC_INTERVAL_MS, and only when the panel is
+	// actually displaying self (don't disrupt research on someone else). The
+	// underlying hiscore/clog services have their own short cache TTLs so this
+	// is cheap when fresh — the gate is about UI churn.
+	@Subscribe
+	public void onChatMessage(ChatMessage event)
+	{
+		if (!AUTOSYNC_CHAT_TYPES.contains(event.getType()))
+		{
+			return;
+		}
+		Player local = client.getLocalPlayer();
+		if (local == null || local.getName() == null)
+		{
+			return;
+		}
+		String localName = local.getName();
+		String sender = event.getName();
+		if (sender == null || !sender.equalsIgnoreCase(localName))
+		{
+			return;
+		}
+
+		long now = System.currentTimeMillis();
+		if (now - lastAutoSyncMs < AUTOSYNC_INTERVAL_MS)
+		{
+			return;
+		}
+
+		String displayed = panel.getDisplayedRsn();
+		if (displayed == null || !displayed.equalsIgnoreCase(localName))
+		{
+			return;
+		}
+
+		lastAutoSyncMs = now;
+		SwingUtilities.invokeLater(() ->
+		{
+			panel.setPlayerName(localName);
+			panel.doLookup();
+		});
 	}
 
 	@Subscribe
@@ -719,13 +793,15 @@ public class KillClogPlugin extends Plugin
 		}
 		localClogCache.cacheResult(result);
 
-		int total = bulk.obtained.size();
-		log.debug("Bulk clog capture complete: {} items across {} categories for '{}'",
-			total, enumCategoryMap.size(), name);
+		// Prefer the Jagex de-duped count (varp 2943) over the raw streamed count.
+		// Some items appear in multiple clog categories, so bulk.obtained.size() can
+		// exceed the player's actual unique obtained count.
+		int displayCount = bulk.clogCount > 0 ? bulk.clogCount : bulk.obtained.size();
+		log.debug("Bulk clog capture complete: {} items across {} categories for '{}' ({} streamed)",
+			displayCount, enumCategoryMap.size(), name, bulk.obtained.size());
 
 		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-			"<col=4caf6e>Kill Clog:</col> Collection log captured — " + total
-				+ " items. Open the Kill Clog panel to view.",
+			"<col=4caf6e>Kill Clog:</col> " + displayCount + " items synced to Kill Clog",
 			null);
 
 		// Merge the buffered category before reset (captured when clog first opened)
@@ -944,6 +1020,7 @@ public class KillClogPlugin extends Plugin
 			case 3: return AccountType.HARDCORE_IRONMAN;        // hcim
 			case 4: return AccountType.GROUP_IRONMAN;           // gim
 			case 5: return AccountType.HARDCORE_GROUP_IRONMAN;  // hcgim
+			case 6: return AccountType.UNRANKED_GROUP_IRONMAN;  // unranked gim
 			default: return AccountType.REGULAR;
 		}
 	}
@@ -956,7 +1033,9 @@ public class KillClogPlugin extends Plugin
 			? indexedSpriteToImage(modIcons[ClogHelper.MODICON_GIM]) : null;
 		BufferedImage hcgim = modIcons.length > ClogHelper.MODICON_HCGIM
 			? indexedSpriteToImage(modIcons[ClogHelper.MODICON_HCGIM]) : null;
-		ClogHelper.setGimBadges(gim, hcgim);
+		BufferedImage unrankedGim = modIcons.length > ClogHelper.MODICON_UNRANKED_GIM
+			? indexedSpriteToImage(modIcons[ClogHelper.MODICON_UNRANKED_GIM]) : null;
+		ClogHelper.setGimBadges(gim, hcgim, unrankedGim);
 	}
 
 	private static BufferedImage indexedSpriteToImage(net.runelite.api.IndexedSprite sprite)

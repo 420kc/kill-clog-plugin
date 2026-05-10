@@ -283,6 +283,9 @@ public class ClogService
 			case "5":  // Hardcore group ironman
 			case "hardcore group ironman":
 				return AccountType.HARDCORE_GROUP_IRONMAN;
+			case "6":  // Unranked group ironman
+			case "unranked group ironman":
+				return AccountType.UNRANKED_GROUP_IRONMAN;
 			default:
 				return null;
 		}

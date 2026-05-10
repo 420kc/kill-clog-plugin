@@ -109,24 +109,28 @@ final class ClogHelper
 	// Account helpers
 	// -------------------------------------------------------------------------
 
-	// GIM modicon indices in the game's modicons sprite sheet
-	static final int MODICON_GIM = 41;
-	static final int MODICON_HCGIM = 42;
+	// GIM modicon indices in the game's modicons sprite sheet (matches IconID enum in runelite-api)
+	static final int MODICON_GIM = 41;           // yellow trim
+	static final int MODICON_HCGIM = 42;         // red trim
+	static final int MODICON_UNRANKED_GIM = 43;  // green trim
 
 	// Cached GIM badge images (loaded from game modicons at runtime)
 	private static volatile BufferedImage gimBadge;
 	private static volatile BufferedImage hcgimBadge;
+	private static volatile BufferedImage unrankedGimBadge;
 
-	static void setGimBadges(BufferedImage gim, BufferedImage hcgim)
+	static void setGimBadges(BufferedImage gim, BufferedImage hcgim, BufferedImage unrankedGim)
 	{
 		gimBadge = gim;
 		hcgimBadge = hcgim;
+		unrankedGimBadge = unrankedGim;
 	}
 
 	static BufferedImage getGimBadge(AccountType type)
 	{
 		if (type == AccountType.GROUP_IRONMAN) return gimBadge;
 		if (type == AccountType.HARDCORE_GROUP_IRONMAN) return hcgimBadge;
+		if (type == AccountType.UNRANKED_GROUP_IRONMAN) return unrankedGimBadge;
 		return null;
 	}
 
