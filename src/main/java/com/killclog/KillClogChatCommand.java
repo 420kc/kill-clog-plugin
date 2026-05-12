@@ -12,8 +12,10 @@ import java.util.Set;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.IndexedSprite;
+import net.runelite.api.Player;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.game.ItemManager;
@@ -189,6 +191,28 @@ class KillClogChatCommand
 	}
 
 	/**
+	 * Resolve the player whose clog the command targets. In PRIVATECHATOUT,
+	 * chatMessage.getName() returns the recipient's name rather than the
+	 * sender's, so !kclog/!missing in an outgoing PM would have looked up the
+	 * wrong player. Self-lookup commands route to the local player when the
+	 * chat type is outgoing PM; every other type continues to use the sender
+	 * field, which is the local player for the channels where these commands
+	 * fire (PUBLICCHAT, FRIENDSCHAT, CLAN_CHAT, CLAN_GUEST_CHAT, AUTOTYPER).
+	 */
+	private String resolveTargetRsn(ChatMessage chatMessage)
+	{
+		if (chatMessage.getType() == ChatMessageType.PRIVATECHATOUT)
+		{
+			Player local = client.getLocalPlayer();
+			if (local != null && local.getName() != null)
+			{
+				return Text.sanitize(local.getName());
+			}
+		}
+		return Text.sanitize(chatMessage.getName());
+	}
+
+	/**
 	 * !kclog handler — renders obtained items.
 	 * Async per ChatCommandManager.registerCommandAsync. Blocking I/O fine here, UI work jumps to clientThread.
 	 */
@@ -235,7 +259,7 @@ class KillClogChatCommand
 			return;
 		}
 
-		String rsn = Text.sanitize(chatMessage.getName());
+		String rsn = resolveTargetRsn(chatMessage);
 		final String boss = resolved;
 		ClogResult cl;
 		try
