@@ -4,6 +4,14 @@ Kill Clog makes the hiscores flexier and tells the story instead of just the sta
 
 ![Kill Clog](screenshots/hero-vanilla-vs-killclog.png)
 
+## privacy and data
+
+Kill Clog never sends data to any server. Your clog stays on disk. Public lookups read [TempleOSRS](https://templeosrs.com).
+
+![install-warning](screenshots/install-warning.png)
+
+The install warning is about TempleOSRS, the only external request the plugin makes. Source is public at [github.com/420kc/kill-clog-plugin](https://github.com/420kc/kill-clog-plugin) and open to audit.
+
 ## installation
 
 1. Install Kill Clog from the RuneLite Plugin Hub.
@@ -24,12 +32,10 @@ Your local data auto-refreshes from collection log chat messages. Long sessions 
 
 ## tooltips
 
-Hover for an outline preview, click to lock a tint.
-
 | | |
 |:---:|:---:|
-| ![tooltip-hover](screenshots/tooltip-hover.gif) | ![tooltip-click](screenshots/tooltip-click.gif) |
-| Hover \| Outline | Click \| Tint |
+| ![tooltip-outline](screenshots/tooltip-hover.gif) | ![tooltip-tint](screenshots/tooltip-click.gif) |
+| Outline | Tint |
 
 ![tooltip-boss](screenshots/tooltip-boss.png)
 
@@ -75,7 +81,7 @@ Six grouped readouts: player, skills, clog, PvM, clue, PvP.
 
 ## activities tray
 
-A second-row strip of summary readouts. Menu icon in the info bar toggles it.
+toggle with menu button in summary bar
 
 | | | |
 |:---:|:---:|:---:|
@@ -83,17 +89,7 @@ A second-row strip of summary readouts. Menu icon in the info bar toggles it.
 
 ## progress highlighter
 
-Outline every boss tile with the same completion state across the panel. Empty, In Progress, 1 Away, Completed.
-
 <sub>16,777,216^5 = 1,329,227,995,784,915,872,903,807,060,280,344,576 combinations</sub>
-
-## account detection
-
-Ironman types resolve automatically against the right hiscores: regular, iron, uim, hcim, gim, hcgim.
-
-![sys-messages](screenshots/sys-messages.png)
-
-Rotating system messages.
 
 ## configuration
 
@@ -109,14 +105,6 @@ Rotating system messages.
 ## local cache
 
 Local cache for fast repeat searches (5-minute TTL). Clear by deleting `~/.runelite/kill-clog/`.
-
-## privacy and data
-
-Kill Clog never sends data to any server. Your clog stays on disk. Public lookups read [TempleOSRS](https://templeosrs.com).
-
-![install-warning](screenshots/install-warning.png)
-
-The install warning is about TempleOSRS, the only external request the plugin makes. Source is public at [github.com/420kc/kill-clog-plugin](https://github.com/420kc/kill-clog-plugin) and open to audit.
 
 ---
 
