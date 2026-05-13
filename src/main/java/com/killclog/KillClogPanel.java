@@ -229,9 +229,6 @@ public class KillClogPanel extends PluginPanel
 	private final ComparisonController comparison;
 
 	// Comparison mode
-	private HiscoreResult compareHiscoreResult;
-	private ClogResult compareClogResult;
-	private String compareRsn;
 	private volatile int compareLookupVersion = 0;
 	private volatile boolean compareLookupInFlight = false;
 	private final IconTextField compareSearchBar = new IconTextField();
@@ -626,7 +623,7 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public void mousePressed(MouseEvent e)
 			{
-				if (comparison.isComparisonMode() && compareRsn != null)
+				if (comparison.isComparisonMode() && comparison.getCompareRsn() != null)
 				{
 					swapToComparePlayer();
 					return;
@@ -1180,10 +1177,10 @@ public class KillClogPanel extends PluginPanel
 				if (comparison.isComparisonMode())
 				{
 					String category = PanelData.CLUE_CATEGORIES.get(tier);
-					int redRank = compareHiscoreResult != null
-						? compareHiscoreResult.getActivityRank(tier.getName()) : -1;
-					TooltipData redData = compareClogResult != null
-						? tooltipDataBuilder.buildTooltipData(displayName, category, redRank, compareClogResult)
+					int redRank = comparison.getCompareHiscoreResult() != null
+						? comparison.getCompareHiscoreResult().getActivityRank(tier.getName()) : -1;
+					TooltipData redData = comparison.getCompareClogResult() != null
+						? tooltipDataBuilder.buildTooltipData(displayName, category, redRank, comparison.getCompareClogResult())
 						: null;
 					return comparison.makeSpriteTooltip(this,
 						tooltipDataMap.get(tier), redData, displayName);
@@ -1426,9 +1423,6 @@ public class KillClogPanel extends PluginPanel
 		// own copies and fires onComparisonExit for the UI restoration.
 		compareLookupVersion++;
 		compareLookupInFlight = false;
-		compareHiscoreResult = null;
-		compareClogResult = null;
-		compareRsn = null;
 		comparison.exit();
 		comparison.syncCompareState(false, null, null, null);
 	}
@@ -1447,7 +1441,7 @@ public class KillClogPanel extends PluginPanel
 	/** Click red name in comparison mode — swap red player into solo view instantly. */
 	private void swapToComparePlayer()
 	{
-		comparison.swapToComparePlayer(compareHiscoreResult, compareClogResult, compareRsn);
+		comparison.swapToComparePlayer(comparison.getCompareHiscoreResult(), comparison.getCompareClogResult(), comparison.getCompareRsn());
 	}
 
 	@Override
@@ -1522,9 +1516,9 @@ public class KillClogPanel extends PluginPanel
 			compareLookupInFlight = false;
 			compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
 			compareSearchBar.setText("");
-			compareHiscoreResult = lookupSession.getHiscoreResult();
-			compareClogResult = lookupSession.getClogResult();
-			compareRsn = blueName;
+			comparison.setCompareHiscoreResult(lookupSession.getHiscoreResult());
+			comparison.setCompareClogResult(lookupSession.getClogResult());
+			comparison.setCompareRsn(blueName);
 			if (blueIsSelf)
 			{
 				setCompareStatus(SearchMessages.COMPARE_SELF_MIRROR, blueName, SearchMessages.SELF_COLOR);
@@ -1573,19 +1567,19 @@ public class KillClogPanel extends PluginPanel
 					return;
 				}
 
-				compareHiscoreResult = result;
+				comparison.setCompareHiscoreResult(result);
 
 				clogService.lookup(player).thenAccept(clogRes ->
 					SwingUtilities.invokeLater(() ->
 					{
 						if (thisLookup != compareLookupVersion) return;
-						compareClogResult = clogRes;
+						comparison.setCompareClogResult(clogRes);
 						if (clogRes != null)
 						{
 							lookupItemNames(clogRes);
 						}
-						compareRsn = clogRes != null && clogRes.getPlayerName() != null
-							? clogRes.getPlayerName() : player;
+						comparison.setCompareRsn(clogRes != null && clogRes.getPlayerName() != null
+							? clogRes.getPlayerName() : player);
 						activateComparisonMode();
 					})
 				).exceptionally(ex ->
@@ -1593,7 +1587,7 @@ public class KillClogPanel extends PluginPanel
 					SwingUtilities.invokeLater(() ->
 					{
 						if (thisLookup != compareLookupVersion) return;
-						compareRsn = player;
+						comparison.setCompareRsn(player);
 						activateComparisonMode();
 					});
 					return null;
@@ -1615,7 +1609,7 @@ public class KillClogPanel extends PluginPanel
 
 	private void activateComparisonMode()
 	{
-		comparison.syncCompareState(true, compareHiscoreResult, compareClogResult, compareRsn);
+		comparison.syncCompareState(true, comparison.getCompareHiscoreResult(), comparison.getCompareClogResult(), comparison.getCompareRsn());
 		comparison.enter();
 	}
 
@@ -1639,17 +1633,17 @@ public class KillClogPanel extends PluginPanel
 			playerName.setForeground(ComparisonController.COMPARE_BLUE);
 
 			// Red player — replaces clog label on right side, clickable to swap
-			clogInfoLabel.setText(compareRsn != null ? compareRsn : "");
+			clogInfoLabel.setText(comparison.getCompareRsn() != null ? comparison.getCompareRsn() : "");
 			clogInfoLabel.setForeground(ComparisonController.COMPARE_RED);
 			clogInfoLabel.setToolTipText(null);
 			clogInfoLabel.setHorizontalAlignment(JLabel.RIGHT);
 
 			// Red player badge — prefer Temple-derived type (catches GIM)
-			AccountType redType = compareClogResult != null
-				? compareClogResult.getTempleAccountType() : null;
-			if (redType == null && compareHiscoreResult != null)
+			AccountType redType = comparison.getCompareClogResult() != null
+				? comparison.getCompareClogResult().getTempleAccountType() : null;
+			if (redType == null && comparison.getCompareHiscoreResult() != null)
 			{
-				redType = compareHiscoreResult.getAccountType();
+				redType = comparison.getCompareHiscoreResult().getAccountType();
 			}
 			applyBadge(clogInfoLabel, redType);
 		}
@@ -1735,35 +1729,35 @@ public class KillClogPanel extends PluginPanel
 		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
 		{
 			String name = PanelData.NAME_OVERRIDES.getOrDefault(entry.getKey().getName(), entry.getKey().getName());
-			comparison.compareOrRestore(entry.getValue(), hiscoreKc(lookupSession.getHiscoreResult(), name), hiscoreKc(compareHiscoreResult, name));
+			comparison.compareOrRestore(entry.getValue(), hiscoreKc(lookupSession.getHiscoreResult(), name), hiscoreKc(comparison.getCompareHiscoreResult(), name));
 		}
 
 		// Activity cells
 		for (Map.Entry<HiscoreSkill, JLabel> entry : activityLabels.entrySet())
 		{
 			String name = entry.getKey().getName();
-			comparison.compareOrRestore(entry.getValue(), activityScore(lookupSession.getHiscoreResult(), name), activityScore(compareHiscoreResult, name));
+			comparison.compareOrRestore(entry.getValue(), activityScore(lookupSession.getHiscoreResult(), name), activityScore(comparison.getCompareHiscoreResult(), name));
 		}
 
 		// Clue tier cells
 		for (Map.Entry<HiscoreSkill, JLabel> entry : clueTierLabels.entrySet())
 		{
 			String name = entry.getKey().getName();
-			comparison.compareOrRestore(entry.getValue(), activityScore(lookupSession.getHiscoreResult(), name), activityScore(compareHiscoreResult, name));
+			comparison.compareOrRestore(entry.getValue(), activityScore(lookupSession.getHiscoreResult(), name), activityScore(comparison.getCompareHiscoreResult(), name));
 		}
 
 		// Combat level
 		comparison.compareOrRestore(combatCell,
 			lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getCombatLevel() : -1,
-			compareHiscoreResult != null ? compareHiscoreResult.getCombatLevel() : -1);
+			comparison.getCompareHiscoreResult() != null ? comparison.getCompareHiscoreResult().getCombatLevel() : -1);
 
 		// Total level
 		comparison.compareOrRestore(totalLvlCell,
 			lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getTotalLevel() : -1,
-			compareHiscoreResult != null ? compareHiscoreResult.getTotalLevel() : -1);
+			comparison.getCompareHiscoreResult() != null ? comparison.getCompareHiscoreResult().getTotalLevel() : -1);
 
 		// PvP summary
-		comparison.compareOrRestore(pvpSummaryCell, pvpTotal(lookupSession.getHiscoreResult()), pvpTotal(compareHiscoreResult));
+		comparison.compareOrRestore(pvpSummaryCell, pvpTotal(lookupSession.getHiscoreResult()), pvpTotal(comparison.getCompareHiscoreResult()));
 
 		// Clue rares — 3rd Age, Gilded
 		comparison.compareOrRestore(thirdAgeCell,

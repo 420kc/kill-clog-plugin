@@ -170,6 +170,24 @@ public class ComparisonController
 		this.compareRsn = compareRsn;
 	}
 
+	/** Per-field setter used by the panel-side doCompareLookup pipeline during the cut-2 transition; goes away once doCompareLookup itself migrates. */
+	public void setCompareHiscoreResult(@Nullable HiscoreResult result)
+	{
+		this.compareHiscoreResult = result;
+	}
+
+	/** Per-field setter used by the panel-side doCompareLookup pipeline during the cut-2 transition; goes away once doCompareLookup itself migrates. */
+	public void setCompareClogResult(@Nullable ClogResult result)
+	{
+		this.compareClogResult = result;
+	}
+
+	/** Per-field setter used by the panel-side doCompareLookup pipeline during the cut-2 transition; goes away once doCompareLookup itself migrates. */
+	public void setCompareRsn(@Nullable String rsn)
+	{
+		this.compareRsn = rsn;
+	}
+
 	// ── Lifecycle ─────────────────────────────────────────────────────────
 
 	/**
