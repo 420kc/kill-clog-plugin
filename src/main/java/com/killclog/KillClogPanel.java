@@ -228,9 +228,7 @@ public class KillClogPanel extends PluginPanel
 	private final LookupSession lookupSession;
 	private final ComparisonController comparison;
 
-	// Comparison mode
-	private volatile int compareLookupVersion = 0;
-	private volatile boolean compareLookupInFlight = false;
+	// Comparison mode widgets (state fields all live on the controller)
 	private final IconTextField compareSearchBar = new IconTextField();
 	private JTextField compareTextField;
 	private String comparePlaceholder = "Comparison";
@@ -1421,8 +1419,6 @@ public class KillClogPanel extends PluginPanel
 		// Mirror the reset on panel-side state until the cleanup pass migrates
 		// these fields off the panel; controller.exit() does the same on its
 		// own copies and fires onComparisonExit for the UI restoration.
-		compareLookupVersion++;
-		compareLookupInFlight = false;
 		comparison.exit();
 		comparison.syncCompareState(false, null, null, null);
 	}
@@ -1492,7 +1488,7 @@ public class KillClogPanel extends PluginPanel
 	private void doCompareLookup()
 	{
 		String player = compareSearchBar.getText().trim();
-		if (player.isEmpty() || player.equals(comparePlaceholder) || compareLookupInFlight)
+		if (player.isEmpty() || player.equals(comparePlaceholder) || comparison.isCompareLookupInFlight())
 		{
 			return;
 		}
@@ -1502,8 +1498,8 @@ public class KillClogPanel extends PluginPanel
 			return;
 		}
 
-		compareLookupInFlight = true;
-		final int thisLookup = ++compareLookupVersion;
+		comparison.setCompareLookupInFlight(true);
+		final int thisLookup = comparison.bumpCompareLookupVersion();
 		compareSearchBar.setIcon(IconTextField.Icon.LOADING_DARKER);
 		String blueName = playerName.getText().trim();
 		boolean blueIsSelf = localRsn != null && localRsn.equalsIgnoreCase(blueName);
@@ -1513,7 +1509,7 @@ public class KillClogPanel extends PluginPanel
 		if (samePlayer)
 		{
 			// Mirror: reuse existing data, no API calls
-			compareLookupInFlight = false;
+			comparison.setCompareLookupInFlight(false);
 			compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
 			compareSearchBar.setText("");
 			comparison.setCompareHiscoreResult(lookupSession.getHiscoreResult());
@@ -1555,8 +1551,8 @@ public class KillClogPanel extends PluginPanel
 		hiscoreService.lookup(player, null).thenAccept(result ->
 			SwingUtilities.invokeLater(() ->
 			{
-				if (thisLookup != compareLookupVersion) return;
-				compareLookupInFlight = false;
+				if (thisLookup != comparison.getCompareLookupVersion()) return;
+				comparison.setCompareLookupInFlight(false);
 
 				if (result == null)
 				{
@@ -1572,7 +1568,7 @@ public class KillClogPanel extends PluginPanel
 				clogService.lookup(player).thenAccept(clogRes ->
 					SwingUtilities.invokeLater(() ->
 					{
-						if (thisLookup != compareLookupVersion) return;
+						if (thisLookup != comparison.getCompareLookupVersion()) return;
 						comparison.setCompareClogResult(clogRes);
 						if (clogRes != null)
 						{
@@ -1586,7 +1582,7 @@ public class KillClogPanel extends PluginPanel
 				{
 					SwingUtilities.invokeLater(() ->
 					{
-						if (thisLookup != compareLookupVersion) return;
+						if (thisLookup != comparison.getCompareLookupVersion()) return;
 						comparison.setCompareRsn(player);
 						activateComparisonMode();
 					});
@@ -1597,8 +1593,8 @@ public class KillClogPanel extends PluginPanel
 		{
 			SwingUtilities.invokeLater(() ->
 			{
-				if (thisLookup != compareLookupVersion) return;
-				compareLookupInFlight = false;
+				if (thisLookup != comparison.getCompareLookupVersion()) return;
+				comparison.setCompareLookupInFlight(false);
 				compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
 				compareSearchBar.setText("");
 				setCompareStatus("Lookup failed", ComparisonController.COMPARE_RED);

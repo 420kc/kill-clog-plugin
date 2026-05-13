@@ -188,6 +188,18 @@ public class ComparisonController
 		this.compareRsn = rsn;
 	}
 
+	/** Transitional setter for the in-flight flag; goes away when doCompareLookup migrates. */
+	public void setCompareLookupInFlight(boolean inFlight)
+	{
+		this.compareLookupInFlight = inFlight;
+	}
+
+	/** Increment the compare lookup version stamp and return the new value. */
+	public int bumpCompareLookupVersion()
+	{
+		return ++compareLookupVersion;
+	}
+
 	// ── Lifecycle ─────────────────────────────────────────────────────────
 
 	/**
