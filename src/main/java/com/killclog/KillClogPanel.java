@@ -72,7 +72,7 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 	/** Info bar text color — only applies when highlighter is active AND clog data exists. */
 	private Color getInfoColor()
 	{
-		return config.completionistHighlighter() && clogResult != null
+		return config.completionistHighlighter() && lookupSession.getClogResult() != null
 			? config.infoBarColor() : KC_COLOR;
 	}
 
@@ -108,16 +108,16 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 			String name = playerName.getText().trim();
 			tip.setData(
 				name.isEmpty() ? "Player" : name,
-				hiscoreResult != null ? hiscoreResult.getOverallRank() : -1,
+				lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getOverallRank() : -1,
 				getCapeImage(),
-				LookupQueries.getAccountBadge(hiscoreResult),
-				LookupQueries.getAccountLabel(hiscoreResult),
-				LookupQueries.getPrestige(hiscoreResult)
+				LookupQueries.getAccountBadge(lookupSession.getHiscoreResult()),
+				LookupQueries.getAccountLabel(lookupSession.getHiscoreResult()),
+				LookupQueries.getPrestige(lookupSession.getHiscoreResult())
 			);
-			if (clogResult != null)
+			if (lookupSession.getClogResult() != null)
 			{
-				List<Integer> allPets = clogResult.getCategoryItems().get("all_pets");
-				Set<Integer> obtainedPets = LookupQueries.getObtainedPetIds(clogResult);
+				List<Integer> allPets = lookupSession.getClogResult().getCategoryItems().get("all_pets");
+				Set<Integer> obtainedPets = LookupQueries.getObtainedPetIds(lookupSession.getClogResult());
 				tip.setPets(allPets, obtainedPets, itemManager);
 			}
 			return tip;
@@ -137,24 +137,24 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 		{
 			ClogSummaryTooltip tip = new ClogSummaryTooltip();
 			tip.setComponent(this);
-			if (clogResult != null)
+			if (lookupSession.getClogResult() != null)
 			{
-				int[] totals = ClogHelper.sumClogTotals(clogResult);
+				int[] totals = ClogHelper.sumClogTotals(lookupSession.getClogResult());
 				Map<String, BufferedImage> icons = new LinkedHashMap<>();
 				for (Map.Entry<String, ImageIcon> entry : clogTierIcons.entrySet())
 				{
 					icons.put(entry.getKey(), ClogHelper.iconToImage(entry.getValue()));
 				}
 				tip.setTierData(totals[0], totals[1], icons);
-				if (hiscoreResult != null)
+				if (lookupSession.getHiscoreResult() != null)
 				{
-					int clogRank = hiscoreResult.getActivityRank("Collections Logged");
+					int clogRank = lookupSession.getHiscoreResult().getActivityRank("Collections Logged");
 					tip.setRank(clogRank);
 				}
-				boolean stale = LookupQueries.isSyncStale(clogLastChanged, 90);
-				String sync = LookupQueries.syncLine(clogLastChanged, stale);
+				boolean stale = LookupQueries.isSyncStale(lookupSession.getClogLastChanged(), 90);
+				String sync = LookupQueries.syncLine(lookupSession.getClogLastChanged(), stale);
 				if (sync != null) tip.setSyncData(sync, stale);
-				tip.setRecentItems(LookupQueries.getRecentItems(clogResult, 4), itemManager);
+				tip.setRecentItems(LookupQueries.getRecentItems(lookupSession.getClogResult(), 4), itemManager);
 			}
 			else
 			{
@@ -166,7 +166,7 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 				}
 				else
 				{
-					tip.setNotice(hiscoreResult != null
+					tip.setNotice(lookupSession.getHiscoreResult() != null
 						? "No TempleOSRS Data" : "Nothing to see here! (Search for a player)");
 				}
 			}
@@ -212,12 +212,9 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 	private JLabel hardRare;
 	private JLabel eliteRare;
 	private JLabel masterRare;
-	// Current lookup state
-	private HiscoreResult hiscoreResult;
-	private ClogResult clogResult;
+	// Current lookup state lives on lookupSession; rsn here is a separate
+	// display-name field set by fetchRsn for the playerName label.
 	private String rsn;
-	private String currentLookupRsn;
-	private String clogLastChanged;
 	private String localRsn;
 	private AccountType localAccountType;
 
@@ -874,28 +871,28 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 				PvmSummaryTooltip tip = new PvmSummaryTooltip();
 				tip.setComponent(this);
 				tip.setData(
-					hiscoreResult != null ? hiscoreResult.getCombatLevel() : 0,
-					LookupQueries.sumBossKills(hiscoreResult),
-					LookupQueries.countBossesWithKc(hiscoreResult),
+					lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getCombatLevel() : 0,
+					LookupQueries.sumBossKills(lookupSession.getHiscoreResult()),
+					LookupQueries.countBossesWithKc(lookupSession.getHiscoreResult()),
 					PanelData.BOSSES.length,
-					LookupQueries.getMostKilledBoss(hiscoreResult),
-					LookupQueries.getMostKilledKc(hiscoreResult)
+					LookupQueries.getMostKilledBoss(lookupSession.getHiscoreResult()),
+					LookupQueries.getMostKilledKc(lookupSession.getHiscoreResult())
 				);
-				if (clogResult != null)
+				if (lookupSession.getClogResult() != null)
 				{
 					tip.setCompletion(
 						LookupQueries.countBossesCompleted(tooltipDataMap, bossLabels.keySet()),
 						LookupQueries.countBossesWithClog(tooltipDataMap, bossLabels.keySet()));
 				}
 				tip.setMegarares(
-					LookupQueries.getClogItemCount(clogResult, "chambers_of_xeric", 20997),
-					LookupQueries.getClogItemCount(clogResult, "theatre_of_blood", 22486),
-					LookupQueries.getClogItemCount(clogResult, "tombs_of_amascut", 27277),
+					LookupQueries.getClogItemCount(lookupSession.getClogResult(), "chambers_of_xeric", 20997),
+					LookupQueries.getClogItemCount(lookupSession.getClogResult(), "theatre_of_blood", 22486),
+					LookupQueries.getClogItemCount(lookupSession.getClogResult(), "tombs_of_amascut", 27277),
 					itemManager
 				);
-				if (hiscoreResult != null)
+				if (lookupSession.getHiscoreResult() != null)
 				{
-					tip.setRaids(hiscoreResult, clogResult);
+					tip.setRaids(lookupSession.getHiscoreResult(), lookupSession.getClogResult());
 				}
 				JPanel parentCell = (JPanel) this.getParent();
 				tooltipController.keepTooltipOnHover(tip, parentCell);
@@ -921,7 +918,7 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 			{
 				SkillsTooltip tip = new SkillsTooltip();
 				tip.setComponent(this);
-				tip.setData(hiscoreResult);
+				tip.setData(lookupSession.getHiscoreResult());
 				return tip;
 			}
 		};
@@ -1023,15 +1020,15 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 		else
 		{
 			tip.setTitle(name);
-			boolean isSelfNoCache = hiscoreResult != null && localRsn != null
-				&& localRsn.equalsIgnoreCase(currentLookupRsn);
+			boolean isSelfNoCache = lookupSession.getHiscoreResult() != null && localRsn != null
+				&& localRsn.equalsIgnoreCase(lookupSession.getCurrentLookupRsn());
 			if (isSelfNoCache)
 			{
 				tip.setNotice(SYNC_NOTICE, getSyncIcon());
 			}
 			else
 			{
-				tip.setNotice(hiscoreResult != null
+				tip.setNotice(lookupSession.getHiscoreResult() != null
 					? "No TempleOSRS Data"
 					: "Nothing to see here! (Search for a player)");
 			}
@@ -1126,9 +1123,9 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 					ClueSummaryTooltip tip = new ClueSummaryTooltip();
 					tip.setComponent(this);
 					tip.setIcons(clueIcons);
-					if (hiscoreResult != null)
+					if (lookupSession.getHiscoreResult() != null)
 					{
-						tip.setData(hiscoreResult);
+						tip.setData(lookupSession.getHiscoreResult());
 					}
 					else
 					{
@@ -1171,9 +1168,9 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 				PvpSummaryTooltip tip = new PvpSummaryTooltip();
 				tip.setComponent(this);
 				tip.setIcons(pvpActivityIcons);
-				if (hiscoreResult != null)
+				if (lookupSession.getHiscoreResult() != null)
 				{
-					tip.setData(hiscoreResult, clogResult);
+					tip.setData(lookupSession.getHiscoreResult(), lookupSession.getClogResult());
 				}
 				else
 				{
@@ -1346,9 +1343,9 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 						boss.getName());
 				}
 				JToolTip tip = makeSpriteTooltip(this, tooltipDataMap.get(boss), 5, boss.getName());
-				if (boss == HiscoreSkill.SOL_HEREDIT && hiscoreResult != null && tip instanceof ImgTooltip)
+				if (boss == HiscoreSkill.SOL_HEREDIT && lookupSession.getHiscoreResult() != null && tip instanceof ImgTooltip)
 				{
-					int glory = hiscoreResult.getActivityScore("Colosseum Glory");
+					int glory = lookupSession.getHiscoreResult().getActivityScore("Colosseum Glory");
 					if (glory > 0)
 					{
 						((ImgTooltip) tip).setInfoLine("Glory: ",
@@ -1493,11 +1490,8 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 
 		exitComparisonMode();
 
-		hiscoreResult = swapHiscore;
-		clogResult = swapClog;
+		lookupSession.adoptState(swapHiscore, swapClog, swapName);
 		rsn = swapName;
-		currentLookupRsn = swapName;
-		clogLastChanged = swapClog != null ? swapClog.getLastChanged() : null;
 
 		playerName.setText(swapName != null ? swapName : "");
 		playerName.setForeground(getInfoColor());
@@ -1545,7 +1539,7 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 			return;
 		}
 
-		if (hiscoreResult == null)
+		if (lookupSession.getHiscoreResult() == null)
 		{
 			return;
 		}
@@ -1564,8 +1558,8 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 			compareLookupInFlight = false;
 			compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
 			compareSearchBar.setText("");
-			compareHiscoreResult = hiscoreResult;
-			compareClogResult = clogResult;
+			compareHiscoreResult = lookupSession.getHiscoreResult();
+			compareClogResult = lookupSession.getClogResult();
 			compareRsn = blueName;
 			if (blueIsSelf)
 			{
@@ -1726,9 +1720,9 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 			clogInfoLabel.setHorizontalAlignment(JLabel.RIGHT);
 
 			// Clog cell will be restored by updateClogCell if data exists
-			if (clogResult != null)
+			if (lookupSession.getClogResult() != null)
 			{
-				updateClogCell(clogResult);
+				updateClogCell(lookupSession.getClogResult());
 			}
 			else
 			{
@@ -1842,35 +1836,35 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
 		{
 			String name = PanelData.NAME_OVERRIDES.getOrDefault(entry.getKey().getName(), entry.getKey().getName());
-			compareOrRestore(entry.getValue(), hiscoreKc(hiscoreResult, name), hiscoreKc(compareHiscoreResult, name));
+			compareOrRestore(entry.getValue(), hiscoreKc(lookupSession.getHiscoreResult(), name), hiscoreKc(compareHiscoreResult, name));
 		}
 
 		// Activity cells
 		for (Map.Entry<HiscoreSkill, JLabel> entry : activityLabels.entrySet())
 		{
 			String name = entry.getKey().getName();
-			compareOrRestore(entry.getValue(), activityScore(hiscoreResult, name), activityScore(compareHiscoreResult, name));
+			compareOrRestore(entry.getValue(), activityScore(lookupSession.getHiscoreResult(), name), activityScore(compareHiscoreResult, name));
 		}
 
 		// Clue tier cells
 		for (Map.Entry<HiscoreSkill, JLabel> entry : clueTierLabels.entrySet())
 		{
 			String name = entry.getKey().getName();
-			compareOrRestore(entry.getValue(), activityScore(hiscoreResult, name), activityScore(compareHiscoreResult, name));
+			compareOrRestore(entry.getValue(), activityScore(lookupSession.getHiscoreResult(), name), activityScore(compareHiscoreResult, name));
 		}
 
 		// Combat level
 		compareOrRestore(combatCell,
-			hiscoreResult != null ? hiscoreResult.getCombatLevel() : -1,
+			lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getCombatLevel() : -1,
 			compareHiscoreResult != null ? compareHiscoreResult.getCombatLevel() : -1);
 
 		// Total level
 		compareOrRestore(totalLvlCell,
-			hiscoreResult != null ? hiscoreResult.getTotalLevel() : -1,
+			lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getTotalLevel() : -1,
 			compareHiscoreResult != null ? compareHiscoreResult.getTotalLevel() : -1);
 
 		// PvP summary
-		compareOrRestore(pvpSummaryCell, pvpTotal(hiscoreResult), pvpTotal(compareHiscoreResult));
+		compareOrRestore(pvpSummaryCell, pvpTotal(lookupSession.getHiscoreResult()), pvpTotal(compareHiscoreResult));
 
 		// Clue rares — 3rd Age, Gilded
 		compareOrRestore(thirdAgeCell,
@@ -2017,9 +2011,6 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 		tooltipController.hideClickTooltip();
 		if (comparisonMode) exitComparisonMode();
 		comparePanel.setVisible(false);
-		hiscoreResult = null;
-		clogResult = null;
-		clogLastChanged = null;
 		rsn = null;
 		clogNotice.setText(" ");
 		clogNotice.setIcon(null);
@@ -2108,24 +2099,23 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 	 */
 	private void renderClogResult(ClogResult result, boolean isSelf, int thisLookup)
 	{
-		clogLastChanged = result.getLastChanged();
 		String name = result.getPlayerName();
 		if (name != null && !name.isEmpty())
 		{
 			rsn = name;
 			updateComparePlaceholder(name);
-			if (hiscoreResult != null)
+			if (lookupSession.getHiscoreResult() != null)
 			{
 				playerName.setText(name);
 			}
 		}
 		AccountType templeType = result.getTempleAccountType();
-		if (templeType != null && templeType.isGroupIronman() && hiscoreResult != null)
+		if (templeType != null && templeType.isGroupIronman() && lookupSession.getHiscoreResult() != null)
 		{
 			updateInfoIcon(templeType);
 		}
 		lookupItemNames(result);
-		if (hiscoreResult != null)
+		if (lookupSession.getHiscoreResult() != null)
 		{
 			updateRares(result);
 			updateClogCell(result);
@@ -2165,7 +2155,7 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 				{
 					rsn = name;
 					updateComparePlaceholder(name);
-					if (hiscoreResult != null)
+					if (lookupSession.getHiscoreResult() != null)
 					{
 						playerName.setText(name);
 					}
@@ -2362,15 +2352,15 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 			String bossName = skill.getName();
 			String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(bossName, bossName);
 
-			int kc = hiscoreResult != null ? hiscoreResult.getKc(hiscoreName) : -1;
-			int rank = hiscoreResult != null ? hiscoreResult.getRank(hiscoreName) : -1;
+			int kc = lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getKc(hiscoreName) : -1;
+			int rank = lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getRank(hiscoreName) : -1;
 
 			String category = ClogService.bossToCategory(hiscoreName);
 
-			if (clogResult == null)
+			if (lookupSession.getClogResult() == null)
 			{
 				boolean selfNoCache = localRsn != null
-					&& localRsn.equalsIgnoreCase(currentLookupRsn);
+					&& localRsn.equalsIgnoreCase(lookupSession.getCurrentLookupRsn());
 				if (!selfNoCache)
 				{
 					int total = clogService.getCategoryItemCount(category);
@@ -2384,7 +2374,7 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 				continue;
 			}
 
-			TooltipData data = tooltipDataBuilder.buildTooltipData(bossName, category, rank, clogResult);
+			TooltipData data = tooltipDataBuilder.buildTooltipData(bossName, category, rank, lookupSession.getClogResult());
 			if (data == null)
 			{
 				int total = clogService.getCategoryItemCount(category);
@@ -2410,15 +2400,15 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 		Map<HiscoreSkill, JLabel> labels,
 		Function<HiscoreSkill, String> nameOf)
 	{
-		if (clogResult == null) return;
+		if (lookupSession.getClogResult() == null) return;
 		for (Map.Entry<HiscoreSkill, String> entry : categories.entrySet())
 		{
 			HiscoreSkill skill = entry.getKey();
 			JLabel label = labels.get(skill);
 			if (label == null) continue;
 
-			int rank = hiscoreResult != null ? hiscoreResult.getActivityRank(skill.getName()) : -1;
-			TooltipData data = tooltipDataBuilder.buildTooltipData(nameOf.apply(skill), entry.getValue(), rank, clogResult);
+			int rank = lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getActivityRank(skill.getName()) : -1;
+			TooltipData data = tooltipDataBuilder.buildTooltipData(nameOf.apply(skill), entry.getValue(), rank, lookupSession.getClogResult());
 			if (data == null) continue;
 
 			tooltipDataMap.put(skill, data);
@@ -2433,36 +2423,36 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 
 	private void toggleHighlighter(boolean enabled)
 	{
-		if (hiscoreResult == null) return;
+		if (lookupSession.getHiscoreResult() == null) return;
 		tooltipController.clearHoveredCell();
 
 		// Info bar follows highlighter state
 		Color infoColor = getInfoColor();
 		playerName.setForeground(infoColor);
 		clogInfoLabel.setForeground(infoColor);
-		if (hiscoreResult.getCombatLevel() > 0)
+		if (lookupSession.getHiscoreResult().getCombatLevel() > 0)
 		{
 			combatCell.setForeground(infoColor);
 		}
-		if (hiscoreResult.getTotalLevel() > 0)
+		if (lookupSession.getHiscoreResult().getTotalLevel() > 0)
 		{
 			totalLvlCell.setForeground(infoColor);
 		}
 		if (pvpSummaryCell != null)
 		{
-			int bhTotal = Math.max(0, hiscoreResult.getActivityScore("Bounty Hunter - Hunter"))
-				+ Math.max(0, hiscoreResult.getActivityScore("Bounty Hunter - Rogue"));
+			int bhTotal = Math.max(0, lookupSession.getHiscoreResult().getActivityScore("Bounty Hunter - Hunter"))
+				+ Math.max(0, lookupSession.getHiscoreResult().getActivityScore("Bounty Hunter - Rogue"));
 			if (bhTotal > 0)
 			{
 				pvpSummaryCell.setForeground(infoColor);
 			}
 		}
 
-		updateBosses(hiscoreResult);
-		updateActivities(hiscoreResult);
-		if (clogResult != null)
+		updateBosses(lookupSession.getHiscoreResult());
+		updateActivities(lookupSession.getHiscoreResult());
+		if (lookupSession.getClogResult() != null)
 		{
-			updateRares(clogResult);
+			updateRares(lookupSession.getClogResult());
 			if (enabled)
 			{
 				Map<String, JLabel> rareCells = new LinkedHashMap<>();
@@ -2471,7 +2461,7 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 				rareCells.put(PanelData.RARE_HARD, hardRare);
 				rareCells.put(PanelData.RARE_ELITE, eliteRare);
 				rareCells.put(PanelData.RARE_MASTER, masterRare);
-				highlighter.colorCellsByCompletion(hiscoreResult, clogResult,
+				highlighter.colorCellsByCompletion(lookupSession.getHiscoreResult(), lookupSession.getClogResult(),
 					rareTooltips, rareCells, fourTwentyMode, FOUR_TWENTY_GREEN);
 				highlighter.colorEmptyCells();
 			}
@@ -2552,7 +2542,7 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 		if (!visible)
 		{
 			fourTwentyMode = FourTwentyMode.OFF;
-			if (hiscoreResult != null) toggleHighlighter(config.completionistHighlighter());
+			if (lookupSession.getHiscoreResult() != null) toggleHighlighter(config.completionistHighlighter());
 		}
 	}
 
@@ -2622,9 +2612,9 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 
 	private BufferedImage getCapeImage()
 	{
-		if (hiscoreResult == null) return null;
-		boolean maxed = hiscoreResult.getTotalLevel() >= PanelData.MAX_TOTAL_LEVEL;
-		boolean infernal = hiscoreResult.getKc("TzKal-Zuk") > 0;
+		if (lookupSession.getHiscoreResult() == null) return null;
+		boolean maxed = lookupSession.getHiscoreResult().getTotalLevel() >= PanelData.MAX_TOTAL_LEVEL;
+		boolean infernal = lookupSession.getHiscoreResult().getKc("TzKal-Zuk") > 0;
 		if (maxed && infernal) return infernalMaxCapeTip;
 		if (maxed) return maxCapeTip;
 		if (infernal) return infernalCapeTip;
@@ -2731,8 +2721,8 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 
 	// ── LookupSession.Listener ───────────────────────────────────────────────
 	// Each method mirrors the matching chunk of the legacy doLookup body.
-	// Lookup state fields on the panel (hiscoreResult, clogResult,
-	// currentLookupRsn, clogLastChanged) are still updated here as well as in
+	// Lookup state fields on the panel (lookupSession.getHiscoreResult(), lookupSession.getClogResult(),
+	// lookupSession.getCurrentLookupRsn(), lookupSession.getClogLastChanged()) are still updated here as well as in
 	// the session, so the ~30 read sites scattered through the panel keep
 	// reading from local fields until a follow-up cleanup commit migrates
 	// them to session getters.
@@ -2740,7 +2730,6 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 	@Override
 	public void onLookupStart(String player, boolean isSelf, boolean isFirstSelfGreeting)
 	{
-		currentLookupRsn = player;
 		if (isSelf)
 		{
 			setSearchStatus(selfSearchMessage(player), SearchMessages.SELF_COLOR);
@@ -2758,7 +2747,6 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 	public void onCachedResult(String player, HiscoreResult hiscore, @Nullable ClogResult clog,
 		boolean isSelf, @Nullable AccountType knownType, boolean isFirstSelfGreeting)
 	{
-		hiscoreResult = hiscore;
 		searchBar.setIcon(IconTextField.Icon.SEARCH);
 		if (!isFirstSelfGreeting)
 		{
@@ -2767,7 +2755,6 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 		renderHiscoreResult(hiscore, player, isSelf, knownType);
 		if (clog != null)
 		{
-			clogResult = clog;
 			renderClogResult(clog, isSelf, lookupSession.getLookupVersion());
 		}
 	}
@@ -2776,7 +2763,6 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 	public void onHiscoreResult(String player, HiscoreResult hiscore,
 		boolean isSelf, @Nullable AccountType knownType, boolean isFirstSelfGreeting)
 	{
-		hiscoreResult = hiscore;
 		searchBar.setIcon(IconTextField.Icon.SEARCH);
 		if (!isFirstSelfGreeting)
 		{
@@ -2784,29 +2770,28 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 		}
 		renderHiscoreResult(hiscore, player, isSelf, knownType);
 		// Clog may have arrived first with a GIM type the hiscores can't detect
-		if (clogResult != null)
+		ClogResult clog = lookupSession.getClogResult();
+		if (clog != null)
 		{
-			AccountType templeType = clogResult.getTempleAccountType();
+			AccountType templeType = clog.getTempleAccountType();
 			if (templeType != null && templeType.isGroupIronman())
 			{
 				updateInfoIcon(templeType);
 			}
-			updateRares(clogResult);
-			updateClogCell(clogResult);
+			updateRares(clog);
+			updateClogCell(clog);
 		}
 	}
 
 	@Override
 	public void onClogResult(String player, @Nullable ClogResult clog, boolean isSelf, int lookupVersionAtFire)
 	{
-		clogResult = clog;
 		if (clog != null)
 		{
 			renderClogResult(clog, isSelf, lookupVersionAtFire);
 		}
 		else
 		{
-			clogLastChanged = null;
 			if (isSelf)
 			{
 				clogNotice.setText(SYNC_NOTICE);

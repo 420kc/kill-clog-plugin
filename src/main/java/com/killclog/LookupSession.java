@@ -245,6 +245,23 @@ public class LookupSession
 		}
 	}
 
+	/**
+	 * Replace the current lookup state without going through the async
+	 * pipeline. Used by the comparison swap path: when the user clicks the
+	 * red player in compare mode, the panel adopts the red player's already-
+	 * loaded results into the solo view in one synchronous step. Comparison
+	 * mode is cut 2 territory; this method is the minimum bridge that keeps
+	 * cut 1's field migration possible without dragging comparison along.
+	 */
+	public void adoptState(@Nullable HiscoreResult hiscore, @Nullable ClogResult clog,
+		@Nullable String name)
+	{
+		this.hiscoreResult = hiscore;
+		this.clogResult = clog;
+		this.currentLookupRsn = name;
+		this.clogLastChanged = clog != null ? clog.getLastChanged() : null;
+	}
+
 	// ── Read-only state ───────────────────────────────────────────────────
 	@Nullable
 	public HiscoreResult getHiscoreResult()
