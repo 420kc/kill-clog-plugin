@@ -98,6 +98,12 @@ public class ComparisonController
 
 		/** Trigger an async preload of item names referenced by the clog result. */
 		void preloadClogItemNames(ClogResult clog);
+
+		/** Apply an account-type badge to {@code label} (clog mode + GIM badges + standard hiscore badges). */
+		void applyBadge(javax.swing.JLabel label, @Nullable AccountType type);
+
+		/** Restore the clog info cell to single-player display. {@code clog} may be null. */
+		void restoreClogCellForCompare(@Nullable ClogResult clog);
 	}
 
 	// ── Constants ─────────────────────────────────────────────────────────
@@ -579,6 +585,42 @@ public class ComparisonController
 		{
 			label.setText(ClogHelper.pad("--"));
 			label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		}
+	}
+
+	/**
+	 * Render the comparison-mode info bar (blue name on the left, red name on
+	 * the right with an account-type badge), or restore single-player display
+	 * when comparison mode is off. Mirrors the legacy
+	 * {@code KillClogPanel.updateInfoBarForComparison}.
+	 */
+	public void updateInfoBar()
+	{
+		if (renderTarget == null)
+		{
+			return;
+		}
+		JLabel playerName = renderTarget.playerName();
+		JLabel clogInfoLabel = renderTarget.clogInfoLabel();
+		if (comparisonMode)
+		{
+			playerName.setForeground(COMPARE_BLUE);
+			clogInfoLabel.setText(compareRsn != null ? compareRsn : "");
+			clogInfoLabel.setForeground(COMPARE_RED);
+			clogInfoLabel.setToolTipText(null);
+			clogInfoLabel.setHorizontalAlignment(JLabel.RIGHT);
+			AccountType redType = compareClogResult != null ? compareClogResult.getTempleAccountType() : null;
+			if (redType == null && compareHiscoreResult != null)
+			{
+				redType = compareHiscoreResult.getAccountType();
+			}
+			renderTarget.applyBadge(clogInfoLabel, redType);
+		}
+		else
+		{
+			playerName.setForeground(renderTarget.getInfoColor());
+			clogInfoLabel.setHorizontalAlignment(JLabel.RIGHT);
+			renderTarget.restoreClogCellForCompare(lookupSession.getClogResult());
 		}
 	}
 

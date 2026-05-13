@@ -1417,7 +1417,7 @@ public class KillClogPanel extends PluginPanel
 		comparison.getCompareSearchBar().setIcon(IconTextField.Icon.SEARCH);
 		comparison.getCompareStatusLabel().setText(" ");
 		updateAllCellsForComparison();
-		updateInfoBarForComparison();
+		comparison.updateInfoBar();
 		toggleHighlighter(config.completionistHighlighter());
 	}
 
@@ -1475,54 +1475,13 @@ public class KillClogPanel extends PluginPanel
 		comparison.getCompareStatusLabel().setText(" ");
 		updateTooltips();
 		updateAllCellsForComparison();
-		updateInfoBarForComparison();
+		comparison.updateInfoBar();
 	}
 
-	/** Swap info bar to show blue name (left) and red name (right) with badges. */
-	private void updateInfoBarForComparison()
-	{
-		if (comparison.isComparisonMode())
-		{
-			// Blue player — left side
-			playerName.setForeground(ComparisonController.COMPARE_BLUE);
-
-			// Red player — replaces clog label on right side, clickable to swap
-			clogInfoLabel.setText(comparison.getCompareRsn() != null ? comparison.getCompareRsn() : "");
-			clogInfoLabel.setForeground(ComparisonController.COMPARE_RED);
-			clogInfoLabel.setToolTipText(null);
-			clogInfoLabel.setHorizontalAlignment(JLabel.RIGHT);
-
-			// Red player badge — prefer Temple-derived type (catches GIM)
-			AccountType redType = comparison.getCompareClogResult() != null
-				? comparison.getCompareClogResult().getTempleAccountType() : null;
-			if (redType == null && comparison.getCompareHiscoreResult() != null)
-			{
-				redType = comparison.getCompareHiscoreResult().getAccountType();
-			}
-			applyBadge(clogInfoLabel, redType);
-		}
-		else
-		{
-			// Restore normal state
-			playerName.setForeground(getInfoColor());
-			clogInfoLabel.setHorizontalAlignment(JLabel.RIGHT);
-
-			// Clog cell will be restored by updateClogCell if data exists
-			if (lookupSession.getClogResult() != null)
-			{
-				updateClogCell(lookupSession.getClogResult());
-			}
-			else
-			{
-				clogInfoLabel.setText("");
-				clogInfoLabel.setIcon(null);
-				clogInfoLabel.setToolTipText(null);
-			}
-		}
-	}
 
 	/** Apply account type badge to any label. */
-	private void applyBadge(JLabel label, AccountType type)
+	@Override
+	public void applyBadge(JLabel label, AccountType type)
 	{
 		if (type == null)
 		{
@@ -2174,7 +2133,7 @@ public class KillClogPanel extends PluginPanel
 		if (comparison.isComparisonMode())
 		{
 			updateAllCellsForComparison();
-			updateInfoBarForComparison();
+			comparison.updateInfoBar();
 		}
 	}
 
@@ -2611,5 +2570,20 @@ public class KillClogPanel extends PluginPanel
 	public void preloadClogItemNames(ClogResult clog)
 	{
 		lookupItemNames(clog);
+	}
+
+	@Override
+	public void restoreClogCellForCompare(ClogResult clog)
+	{
+		if (clog != null)
+		{
+			updateClogCell(clog);
+		}
+		else
+		{
+			clogInfoLabel.setText("");
+			clogInfoLabel.setIcon(null);
+			clogInfoLabel.setToolTipText(null);
+		}
 	}
 }
