@@ -1500,16 +1500,17 @@ public class KillClogPanel extends PluginPanel
 	/** Click red name in comparison mode — swap red player into solo view instantly. */
 	private void swapToComparePlayer()
 	{
-		HiscoreResult swapHiscore = compareHiscoreResult;
-		ClogResult swapClog = compareClogResult;
-		String swapName = compareRsn;
+		comparison.swapToComparePlayer(compareHiscoreResult, compareClogResult, compareRsn);
+	}
 
-		exitComparisonMode();
+	@Override
+	public void onSwapToRedPlayer(String newPrimaryRsn)
+	{
+		rsn = newPrimaryRsn;
+		HiscoreResult swapHiscore = lookupSession.getHiscoreResult();
+		ClogResult swapClog = lookupSession.getClogResult();
 
-		lookupSession.adoptState(swapHiscore, swapClog, swapName);
-		rsn = swapName;
-
-		playerName.setText(swapName != null ? swapName : "");
+		playerName.setText(newPrimaryRsn != null ? newPrimaryRsn : "");
 		playerName.setForeground(getInfoColor());
 		if (swapHiscore != null)
 		{
@@ -2865,11 +2866,6 @@ public class KillClogPanel extends PluginPanel
 
 	@Override
 	public void onComparisonEnter(String redRsn)
-	{
-	}
-
-	@Override
-	public void onSwapToRedPlayer(String newPrimaryRsn)
 	{
 	}
 

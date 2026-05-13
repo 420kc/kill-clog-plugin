@@ -179,15 +179,21 @@ public class ComparisonController
 	}
 
 	/**
-	 * Swap the red player into the primary slot. Calls
-	 * {@link LookupSession#adoptState} to push the red results into the
-	 * session, then fires {@code onSwapToRedPlayer} so the panel can
-	 * re-render. Body migrates from {@code KillClogPanel.swapToComparePlayer}
-	 * in cut 2 step 3.
+	 * Swap the red player into the primary slot. Calls {@link #exit()} to
+	 * tear down comparison state, then {@link LookupSession#adoptState} to
+	 * push the swapped data into the session, then fires
+	 * {@code onSwapToRedPlayer} so the panel can re-render the primary side.
+	 *
+	 * <p>State is taken as parameters during the cut-2 transition; once the
+	 * panel-side compare state fields are removed, the controller will read
+	 * its own fields directly.
 	 */
-	public void swapToComparePlayer()
+	public void swapToComparePlayer(@Nullable HiscoreResult swapHiscore,
+		@Nullable ClogResult swapClog, @Nullable String swapName)
 	{
-		throw new UnsupportedOperationException("ComparisonController.swapToComparePlayer not yet wired; tracked in REFACTOR-CUT-2-EXECUTION.md");
+		exit();
+		lookupSession.adoptState(swapHiscore, swapClog, swapName);
+		listener.onSwapToRedPlayer(swapName);
 	}
 
 	/**
