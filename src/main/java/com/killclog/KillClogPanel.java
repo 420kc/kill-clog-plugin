@@ -26,6 +26,7 @@ import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.swing.AbstractButton;
 import javax.swing.Box;
@@ -57,7 +58,7 @@ import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
 
 @Slf4j
-public class KillClogPanel extends PluginPanel
+public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 {
 	private static final Color TEXT_DIM = new Color(160, 160, 160);
 	private static final Color NOT_FOUND = new Color(0x81, 0x09, 0x09);
@@ -71,7 +72,7 @@ public class KillClogPanel extends PluginPanel
 	/** Info bar text color — only applies when highlighter is active AND clog data exists. */
 	private Color getInfoColor()
 	{
-		return config.completionistHighlighter() && clogResult != null
+		return config.completionistHighlighter() && lookupSession.getClogResult() != null
 			? config.infoBarColor() : KC_COLOR;
 	}
 
@@ -107,16 +108,16 @@ public class KillClogPanel extends PluginPanel
 			String name = playerName.getText().trim();
 			tip.setData(
 				name.isEmpty() ? "Player" : name,
-				hiscoreResult != null ? hiscoreResult.getOverallRank() : -1,
+				lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getOverallRank() : -1,
 				getCapeImage(),
-				LookupQueries.getAccountBadge(hiscoreResult),
-				LookupQueries.getAccountLabel(hiscoreResult),
-				LookupQueries.getPrestige(hiscoreResult)
+				LookupQueries.getAccountBadge(lookupSession.getHiscoreResult()),
+				LookupQueries.getAccountLabel(lookupSession.getHiscoreResult()),
+				LookupQueries.getPrestige(lookupSession.getHiscoreResult())
 			);
-			if (clogResult != null)
+			if (lookupSession.getClogResult() != null)
 			{
-				List<Integer> allPets = clogResult.getCategoryItems().get("all_pets");
-				Set<Integer> obtainedPets = LookupQueries.getObtainedPetIds(clogResult);
+				List<Integer> allPets = lookupSession.getClogResult().getCategoryItems().get("all_pets");
+				Set<Integer> obtainedPets = LookupQueries.getObtainedPetIds(lookupSession.getClogResult());
 				tip.setPets(allPets, obtainedPets, itemManager);
 			}
 			return tip;
@@ -136,24 +137,24 @@ public class KillClogPanel extends PluginPanel
 		{
 			ClogSummaryTooltip tip = new ClogSummaryTooltip();
 			tip.setComponent(this);
-			if (clogResult != null)
+			if (lookupSession.getClogResult() != null)
 			{
-				int[] totals = ClogHelper.sumClogTotals(clogResult);
+				int[] totals = ClogHelper.sumClogTotals(lookupSession.getClogResult());
 				Map<String, BufferedImage> icons = new LinkedHashMap<>();
 				for (Map.Entry<String, ImageIcon> entry : clogTierIcons.entrySet())
 				{
 					icons.put(entry.getKey(), ClogHelper.iconToImage(entry.getValue()));
 				}
 				tip.setTierData(totals[0], totals[1], icons);
-				if (hiscoreResult != null)
+				if (lookupSession.getHiscoreResult() != null)
 				{
-					int clogRank = hiscoreResult.getActivityRank("Collections Logged");
+					int clogRank = lookupSession.getHiscoreResult().getActivityRank("Collections Logged");
 					tip.setRank(clogRank);
 				}
-				boolean stale = LookupQueries.isSyncStale(clogLastChanged, 90);
-				String sync = LookupQueries.syncLine(clogLastChanged, stale);
+				boolean stale = LookupQueries.isSyncStale(lookupSession.getClogLastChanged(), 90);
+				String sync = LookupQueries.syncLine(lookupSession.getClogLastChanged(), stale);
 				if (sync != null) tip.setSyncData(sync, stale);
-				tip.setRecentItems(LookupQueries.getRecentItems(clogResult, 4), itemManager);
+				tip.setRecentItems(LookupQueries.getRecentItems(lookupSession.getClogResult(), 4), itemManager);
 			}
 			else
 			{
@@ -165,7 +166,7 @@ public class KillClogPanel extends PluginPanel
 				}
 				else
 				{
-					tip.setNotice(hiscoreResult != null
+					tip.setNotice(lookupSession.getHiscoreResult() != null
 						? "No TempleOSRS Data" : "Nothing to see here! (Search for a player)");
 				}
 			}
@@ -211,23 +212,17 @@ public class KillClogPanel extends PluginPanel
 	private JLabel hardRare;
 	private JLabel eliteRare;
 	private JLabel masterRare;
-	// Current lookup state
-	private HiscoreResult hiscoreResult;
-	private ClogResult clogResult;
+	// Current lookup state lives on lookupSession; rsn here is a separate
+	// display-name field set by fetchRsn for the playerName label.
 	private String rsn;
-	private String currentLookupRsn;
-	private String clogLastChanged;
 	private String localRsn;
 	private AccountType localAccountType;
 
 	private final Map<HiscoreSkill, TooltipData> tooltipDataMap = new LinkedHashMap<>();
 	private final Map<String, TooltipData> rareTooltips = new LinkedHashMap<>();
 
-	// Lookup versioning — prevents stale results from overwriting fresher ones
-	private volatile int lookupVersion = 0;
-	private volatile boolean lookupInFlight = false;
-
 	private final TooltipController tooltipController;
+	private final LookupSession lookupSession;
 
 	// Comparison mode
 	static final Color COMPARE_BLUE = new Color(91, 164, 207);
@@ -270,6 +265,7 @@ public class KillClogPanel extends PluginPanel
 		this.clientThread = clientThread;
 		this.tooltipDataBuilder = new TooltipDataBuilder(itemManager);
 		this.tooltipController = new TooltipController(config);
+		this.lookupSession = new LookupSession(hiscoreService, clogService, config, null, this);
 
 		NativeTooltip.loadSprites(spriteManager);
 		SkillsTooltip.loadIcons(skillIconManager);
@@ -875,28 +871,28 @@ public class KillClogPanel extends PluginPanel
 				PvmSummaryTooltip tip = new PvmSummaryTooltip();
 				tip.setComponent(this);
 				tip.setData(
-					hiscoreResult != null ? hiscoreResult.getCombatLevel() : 0,
-					LookupQueries.sumBossKills(hiscoreResult),
-					LookupQueries.countBossesWithKc(hiscoreResult),
+					lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getCombatLevel() : 0,
+					LookupQueries.sumBossKills(lookupSession.getHiscoreResult()),
+					LookupQueries.countBossesWithKc(lookupSession.getHiscoreResult()),
 					PanelData.BOSSES.length,
-					LookupQueries.getMostKilledBoss(hiscoreResult),
-					LookupQueries.getMostKilledKc(hiscoreResult)
+					LookupQueries.getMostKilledBoss(lookupSession.getHiscoreResult()),
+					LookupQueries.getMostKilledKc(lookupSession.getHiscoreResult())
 				);
-				if (clogResult != null)
+				if (lookupSession.getClogResult() != null)
 				{
 					tip.setCompletion(
 						LookupQueries.countBossesCompleted(tooltipDataMap, bossLabels.keySet()),
 						LookupQueries.countBossesWithClog(tooltipDataMap, bossLabels.keySet()));
 				}
 				tip.setMegarares(
-					LookupQueries.getClogItemCount(clogResult, "chambers_of_xeric", 20997),
-					LookupQueries.getClogItemCount(clogResult, "theatre_of_blood", 22486),
-					LookupQueries.getClogItemCount(clogResult, "tombs_of_amascut", 27277),
+					LookupQueries.getClogItemCount(lookupSession.getClogResult(), "chambers_of_xeric", 20997),
+					LookupQueries.getClogItemCount(lookupSession.getClogResult(), "theatre_of_blood", 22486),
+					LookupQueries.getClogItemCount(lookupSession.getClogResult(), "tombs_of_amascut", 27277),
 					itemManager
 				);
-				if (hiscoreResult != null)
+				if (lookupSession.getHiscoreResult() != null)
 				{
-					tip.setRaids(hiscoreResult, clogResult);
+					tip.setRaids(lookupSession.getHiscoreResult(), lookupSession.getClogResult());
 				}
 				JPanel parentCell = (JPanel) this.getParent();
 				tooltipController.keepTooltipOnHover(tip, parentCell);
@@ -922,7 +918,7 @@ public class KillClogPanel extends PluginPanel
 			{
 				SkillsTooltip tip = new SkillsTooltip();
 				tip.setComponent(this);
-				tip.setData(hiscoreResult);
+				tip.setData(lookupSession.getHiscoreResult());
 				return tip;
 			}
 		};
@@ -1024,15 +1020,15 @@ public class KillClogPanel extends PluginPanel
 		else
 		{
 			tip.setTitle(name);
-			boolean isSelfNoCache = hiscoreResult != null && localRsn != null
-				&& localRsn.equalsIgnoreCase(currentLookupRsn);
+			boolean isSelfNoCache = lookupSession.getHiscoreResult() != null && localRsn != null
+				&& localRsn.equalsIgnoreCase(lookupSession.getCurrentLookupRsn());
 			if (isSelfNoCache)
 			{
 				tip.setNotice(SYNC_NOTICE, getSyncIcon());
 			}
 			else
 			{
-				tip.setNotice(hiscoreResult != null
+				tip.setNotice(lookupSession.getHiscoreResult() != null
 					? "No TempleOSRS Data"
 					: "Nothing to see here! (Search for a player)");
 			}
@@ -1127,9 +1123,9 @@ public class KillClogPanel extends PluginPanel
 					ClueSummaryTooltip tip = new ClueSummaryTooltip();
 					tip.setComponent(this);
 					tip.setIcons(clueIcons);
-					if (hiscoreResult != null)
+					if (lookupSession.getHiscoreResult() != null)
 					{
-						tip.setData(hiscoreResult);
+						tip.setData(lookupSession.getHiscoreResult());
 					}
 					else
 					{
@@ -1172,9 +1168,9 @@ public class KillClogPanel extends PluginPanel
 				PvpSummaryTooltip tip = new PvpSummaryTooltip();
 				tip.setComponent(this);
 				tip.setIcons(pvpActivityIcons);
-				if (hiscoreResult != null)
+				if (lookupSession.getHiscoreResult() != null)
 				{
-					tip.setData(hiscoreResult, clogResult);
+					tip.setData(lookupSession.getHiscoreResult(), lookupSession.getClogResult());
 				}
 				else
 				{
@@ -1347,9 +1343,9 @@ public class KillClogPanel extends PluginPanel
 						boss.getName());
 				}
 				JToolTip tip = makeSpriteTooltip(this, tooltipDataMap.get(boss), 5, boss.getName());
-				if (boss == HiscoreSkill.SOL_HEREDIT && hiscoreResult != null && tip instanceof ImgTooltip)
+				if (boss == HiscoreSkill.SOL_HEREDIT && lookupSession.getHiscoreResult() != null && tip instanceof ImgTooltip)
 				{
-					int glory = hiscoreResult.getActivityScore("Colosseum Glory");
+					int glory = lookupSession.getHiscoreResult().getActivityScore("Colosseum Glory");
 					if (glory > 0)
 					{
 						((ImgTooltip) tip).setInfoLine("Glory: ",
@@ -1494,11 +1490,8 @@ public class KillClogPanel extends PluginPanel
 
 		exitComparisonMode();
 
-		hiscoreResult = swapHiscore;
-		clogResult = swapClog;
+		lookupSession.adoptState(swapHiscore, swapClog, swapName);
 		rsn = swapName;
-		currentLookupRsn = swapName;
-		clogLastChanged = swapClog != null ? swapClog.getLastChanged() : null;
 
 		playerName.setText(swapName != null ? swapName : "");
 		playerName.setForeground(getInfoColor());
@@ -1546,7 +1539,7 @@ public class KillClogPanel extends PluginPanel
 			return;
 		}
 
-		if (hiscoreResult == null)
+		if (lookupSession.getHiscoreResult() == null)
 		{
 			return;
 		}
@@ -1565,8 +1558,8 @@ public class KillClogPanel extends PluginPanel
 			compareLookupInFlight = false;
 			compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
 			compareSearchBar.setText("");
-			compareHiscoreResult = hiscoreResult;
-			compareClogResult = clogResult;
+			compareHiscoreResult = lookupSession.getHiscoreResult();
+			compareClogResult = lookupSession.getClogResult();
 			compareRsn = blueName;
 			if (blueIsSelf)
 			{
@@ -1727,9 +1720,9 @@ public class KillClogPanel extends PluginPanel
 			clogInfoLabel.setHorizontalAlignment(JLabel.RIGHT);
 
 			// Clog cell will be restored by updateClogCell if data exists
-			if (clogResult != null)
+			if (lookupSession.getClogResult() != null)
 			{
-				updateClogCell(clogResult);
+				updateClogCell(lookupSession.getClogResult());
 			}
 			else
 			{
@@ -1843,35 +1836,35 @@ public class KillClogPanel extends PluginPanel
 		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
 		{
 			String name = PanelData.NAME_OVERRIDES.getOrDefault(entry.getKey().getName(), entry.getKey().getName());
-			compareOrRestore(entry.getValue(), hiscoreKc(hiscoreResult, name), hiscoreKc(compareHiscoreResult, name));
+			compareOrRestore(entry.getValue(), hiscoreKc(lookupSession.getHiscoreResult(), name), hiscoreKc(compareHiscoreResult, name));
 		}
 
 		// Activity cells
 		for (Map.Entry<HiscoreSkill, JLabel> entry : activityLabels.entrySet())
 		{
 			String name = entry.getKey().getName();
-			compareOrRestore(entry.getValue(), activityScore(hiscoreResult, name), activityScore(compareHiscoreResult, name));
+			compareOrRestore(entry.getValue(), activityScore(lookupSession.getHiscoreResult(), name), activityScore(compareHiscoreResult, name));
 		}
 
 		// Clue tier cells
 		for (Map.Entry<HiscoreSkill, JLabel> entry : clueTierLabels.entrySet())
 		{
 			String name = entry.getKey().getName();
-			compareOrRestore(entry.getValue(), activityScore(hiscoreResult, name), activityScore(compareHiscoreResult, name));
+			compareOrRestore(entry.getValue(), activityScore(lookupSession.getHiscoreResult(), name), activityScore(compareHiscoreResult, name));
 		}
 
 		// Combat level
 		compareOrRestore(combatCell,
-			hiscoreResult != null ? hiscoreResult.getCombatLevel() : -1,
+			lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getCombatLevel() : -1,
 			compareHiscoreResult != null ? compareHiscoreResult.getCombatLevel() : -1);
 
 		// Total level
 		compareOrRestore(totalLvlCell,
-			hiscoreResult != null ? hiscoreResult.getTotalLevel() : -1,
+			lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getTotalLevel() : -1,
 			compareHiscoreResult != null ? compareHiscoreResult.getTotalLevel() : -1);
 
 		// PvP summary
-		compareOrRestore(pvpSummaryCell, pvpTotal(hiscoreResult), pvpTotal(compareHiscoreResult));
+		compareOrRestore(pvpSummaryCell, pvpTotal(lookupSession.getHiscoreResult()), pvpTotal(compareHiscoreResult));
 
 		// Clue rares — 3rd Age, Gilded
 		compareOrRestore(thirdAgeCell,
@@ -1998,176 +1991,15 @@ public class KillClogPanel extends PluginPanel
 	public void doLookup()
 	{
 		String player = searchBar.getText().trim();
-		if (player.isEmpty() || lookupInFlight)
+		if (player.isEmpty() || lookupSession.isLookupInFlight())
 		{
-			if (!lookupInFlight)
+			if (!lookupSession.isLookupInFlight())
 			{
 				setSearchStatus("Enter RSN", TEXT_DIM);
 			}
 			return;
 		}
-
-		lookupInFlight = true;
-		currentLookupRsn = player;
-		final int thisLookup = ++lookupVersion;
-		final boolean isSelf = localRsn != null && localRsn.equalsIgnoreCase(player);
-		final boolean isFirstSelfGreeting = isSelf && !config.seenSelfGreeting();
-
-		if (isSelf)
-		{
-			setSearchStatus(selfSearchMessage(player), SearchMessages.SELF_COLOR);
-		}
-		else
-		{
-			int searchIdx = ThreadLocalRandom.current().nextInt(SearchMessages.SEARCH.length);
-			setSearchStatus(String.format(SearchMessages.SEARCH[searchIdx], player), TEXT_DIM);
-		}
-		searchBar.setIcon(IconTextField.Icon.LOADING_DARKER);
-		resetAllLabels();
-
-		// Hiscore lookup — pass known account type for self-lookups
-		// GIMs only appear on regular hiscores, so tell hiscore service to skip the cascade
-		AccountType knownType = isSelf ? localAccountType : null;
-
-		// Cache check: if hiscore cache is fresh, show cached data after a short
-		// delay to preserve the search feel. No API calls. If stale or missing,
-		// fire the full lookup.
-		HiscoreResult cachedHiscore = hiscoreService.getCached(player);
-		ClogResult cachedClog = clogService.getCachedResult(player);
-		if (cachedHiscore != null && !hiscoreService.isStale(player))
-		{
-			Timer revealTimer = new Timer(600, e ->
-			{
-				if (thisLookup != lookupVersion) return;
-				hiscoreResult = cachedHiscore;
-				lookupInFlight = false;
-				searchBar.setIcon(IconTextField.Icon.SEARCH);
-				if (nameAutocompleter != null)
-				{
-					nameAutocompleter.addToSearchHistory(player);
-				}
-				if (!isFirstSelfGreeting)
-				{
-					setSearchStatus(" ", TEXT_DIM);
-				}
-				renderHiscoreResult(cachedHiscore, player, isSelf, knownType);
-				if (cachedClog != null)
-				{
-					clogResult = cachedClog;
-					renderClogResult(cachedClog, isSelf, thisLookup);
-				}
-			});
-			revealTimer.setRepeats(false);
-			revealTimer.start();
-			return;
-		}
-
-		// Full API lookup — cache miss or stale
-		AccountType hiscoreType = knownType != null && knownType.isGroupIronman()
-			? AccountType.REGULAR : knownType;
-		hiscoreService.lookup(player, hiscoreType).thenAccept(result ->
-			SwingUtilities.invokeLater(() ->
-			{
-				if (thisLookup != lookupVersion) return;
-				lookupInFlight = false;
-				searchBar.setIcon(IconTextField.Icon.SEARCH);
-
-				if (result == null)
-				{
-					lookupVersion++;
-					int notFoundIdx = ThreadLocalRandom.current().nextInt(SearchMessages.NOT_FOUND.length);
-					setSearchStatus(String.format(SearchMessages.NOT_FOUND[notFoundIdx], player), NOT_FOUND);
-					playerName.setText(" ");
-					playerName.setIcon(null);
-					playerName.setToolTipText(null);
-					clogInfoLabel.setText("");
-					clogInfoLabel.setIcon(null);
-					clogInfoLabel.setToolTipText(null);
-					searchBar.setText("");
-					return;
-				}
-
-				hiscoreResult = result;
-				if (nameAutocompleter != null)
-				{
-					nameAutocompleter.addToSearchHistory(player);
-				}
-				if (!isFirstSelfGreeting)
-				{
-					setSearchStatus(" ", TEXT_DIM);
-				}
-				renderHiscoreResult(result, player, isSelf, knownType);
-				// Clog may have arrived first with a GIM type hiscores can't detect
-				if (clogResult != null)
-				{
-					AccountType templeType = clogResult.getTempleAccountType();
-					if (templeType != null && templeType.isGroupIronman())
-					{
-						updateInfoIcon(templeType);
-					}
-					updateRares(clogResult);
-					updateClogCell(clogResult);
-				}
-			})
-		).exceptionally(ex ->
-		{
-			SwingUtilities.invokeLater(() ->
-			{
-				if (thisLookup != lookupVersion) return;
-				lookupVersion++;
-				lookupInFlight = false;
-				searchBar.setIcon(IconTextField.Icon.SEARCH);
-				searchBar.setText("");
-				setSearchStatus("Lookup failed", TEXT_DIM);
-				playerName.setText(" ");
-				playerName.setIcon(null);
-				playerName.setToolTipText(null);
-				clogInfoLabel.setText("");
-				clogInfoLabel.setIcon(null);
-				clogInfoLabel.setToolTipText(null);
-			});
-			return null;
-		});
-
-		// Clog lookup in parallel (ClogService handles source routing)
-		clogService.lookup(player).thenAccept(result ->
-			SwingUtilities.invokeLater(() ->
-			{
-				if (thisLookup != lookupVersion) return;
-				clogResult = result;
-
-				if (result != null)
-				{
-					renderClogResult(result, isSelf, thisLookup);
-				}
-				else
-				{
-					clogLastChanged = null;
-					if (isSelf)
-					{
-						clogNotice.setText(SYNC_NOTICE);
-						clogNotice.setIcon(new ImageIcon(getSyncIcon()));
-						BufferedImage icon = ImageUtil.loadImageResource(
-							KillClogPlugin.class, "icon.png");
-						clogInfoLabel.setIcon(new ImageIcon(
-							ImageUtil.resizeImage(icon, 15, 15)));
-						clogInfoLabel.setText(ClogHelper.pad("Sync"));
-						clogInfoLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-						clogInfoLabel.setToolTipText(" ");
-					}
-					else
-					{
-						clogNotice.setText(" ");
-						clogNotice.setIcon(null);
-					}
-					fetchRsn(player, thisLookup);
-				}
-			})
-		).exceptionally(ex ->
-		{
-			log.warn("Clog lookup failed", ex);
-			return null;
-		});
+		lookupSession.start(player, localRsn, localAccountType);
 	}
 
 	/**
@@ -2179,9 +2011,6 @@ public class KillClogPanel extends PluginPanel
 		tooltipController.hideClickTooltip();
 		if (comparisonMode) exitComparisonMode();
 		comparePanel.setVisible(false);
-		hiscoreResult = null;
-		clogResult = null;
-		clogLastChanged = null;
 		rsn = null;
 		clogNotice.setText(" ");
 		clogNotice.setIcon(null);
@@ -2270,24 +2099,23 @@ public class KillClogPanel extends PluginPanel
 	 */
 	private void renderClogResult(ClogResult result, boolean isSelf, int thisLookup)
 	{
-		clogLastChanged = result.getLastChanged();
 		String name = result.getPlayerName();
 		if (name != null && !name.isEmpty())
 		{
 			rsn = name;
 			updateComparePlaceholder(name);
-			if (hiscoreResult != null)
+			if (lookupSession.getHiscoreResult() != null)
 			{
 				playerName.setText(name);
 			}
 		}
 		AccountType templeType = result.getTempleAccountType();
-		if (templeType != null && templeType.isGroupIronman() && hiscoreResult != null)
+		if (templeType != null && templeType.isGroupIronman() && lookupSession.getHiscoreResult() != null)
 		{
 			updateInfoIcon(templeType);
 		}
 		lookupItemNames(result);
-		if (hiscoreResult != null)
+		if (lookupSession.getHiscoreResult() != null)
 		{
 			updateRares(result);
 			updateClogCell(result);
@@ -2322,12 +2150,12 @@ public class KillClogPanel extends PluginPanel
 		clogService.lookupRsn(player).thenAccept(name ->
 			SwingUtilities.invokeLater(() ->
 			{
-				if (thisLookup != lookupVersion) return;
+				if (thisLookup != lookupSession.getLookupVersion()) return;
 				if (name != null && !name.isEmpty())
 				{
 					rsn = name;
 					updateComparePlaceholder(name);
-					if (hiscoreResult != null)
+					if (lookupSession.getHiscoreResult() != null)
 					{
 						playerName.setText(name);
 					}
@@ -2524,15 +2352,15 @@ public class KillClogPanel extends PluginPanel
 			String bossName = skill.getName();
 			String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(bossName, bossName);
 
-			int kc = hiscoreResult != null ? hiscoreResult.getKc(hiscoreName) : -1;
-			int rank = hiscoreResult != null ? hiscoreResult.getRank(hiscoreName) : -1;
+			int kc = lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getKc(hiscoreName) : -1;
+			int rank = lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getRank(hiscoreName) : -1;
 
 			String category = ClogService.bossToCategory(hiscoreName);
 
-			if (clogResult == null)
+			if (lookupSession.getClogResult() == null)
 			{
 				boolean selfNoCache = localRsn != null
-					&& localRsn.equalsIgnoreCase(currentLookupRsn);
+					&& localRsn.equalsIgnoreCase(lookupSession.getCurrentLookupRsn());
 				if (!selfNoCache)
 				{
 					int total = clogService.getCategoryItemCount(category);
@@ -2546,7 +2374,7 @@ public class KillClogPanel extends PluginPanel
 				continue;
 			}
 
-			TooltipData data = tooltipDataBuilder.buildTooltipData(bossName, category, rank, clogResult);
+			TooltipData data = tooltipDataBuilder.buildTooltipData(bossName, category, rank, lookupSession.getClogResult());
 			if (data == null)
 			{
 				int total = clogService.getCategoryItemCount(category);
@@ -2572,15 +2400,15 @@ public class KillClogPanel extends PluginPanel
 		Map<HiscoreSkill, JLabel> labels,
 		Function<HiscoreSkill, String> nameOf)
 	{
-		if (clogResult == null) return;
+		if (lookupSession.getClogResult() == null) return;
 		for (Map.Entry<HiscoreSkill, String> entry : categories.entrySet())
 		{
 			HiscoreSkill skill = entry.getKey();
 			JLabel label = labels.get(skill);
 			if (label == null) continue;
 
-			int rank = hiscoreResult != null ? hiscoreResult.getActivityRank(skill.getName()) : -1;
-			TooltipData data = tooltipDataBuilder.buildTooltipData(nameOf.apply(skill), entry.getValue(), rank, clogResult);
+			int rank = lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getActivityRank(skill.getName()) : -1;
+			TooltipData data = tooltipDataBuilder.buildTooltipData(nameOf.apply(skill), entry.getValue(), rank, lookupSession.getClogResult());
 			if (data == null) continue;
 
 			tooltipDataMap.put(skill, data);
@@ -2595,36 +2423,36 @@ public class KillClogPanel extends PluginPanel
 
 	private void toggleHighlighter(boolean enabled)
 	{
-		if (hiscoreResult == null) return;
+		if (lookupSession.getHiscoreResult() == null) return;
 		tooltipController.clearHoveredCell();
 
 		// Info bar follows highlighter state
 		Color infoColor = getInfoColor();
 		playerName.setForeground(infoColor);
 		clogInfoLabel.setForeground(infoColor);
-		if (hiscoreResult.getCombatLevel() > 0)
+		if (lookupSession.getHiscoreResult().getCombatLevel() > 0)
 		{
 			combatCell.setForeground(infoColor);
 		}
-		if (hiscoreResult.getTotalLevel() > 0)
+		if (lookupSession.getHiscoreResult().getTotalLevel() > 0)
 		{
 			totalLvlCell.setForeground(infoColor);
 		}
 		if (pvpSummaryCell != null)
 		{
-			int bhTotal = Math.max(0, hiscoreResult.getActivityScore("Bounty Hunter - Hunter"))
-				+ Math.max(0, hiscoreResult.getActivityScore("Bounty Hunter - Rogue"));
+			int bhTotal = Math.max(0, lookupSession.getHiscoreResult().getActivityScore("Bounty Hunter - Hunter"))
+				+ Math.max(0, lookupSession.getHiscoreResult().getActivityScore("Bounty Hunter - Rogue"));
 			if (bhTotal > 0)
 			{
 				pvpSummaryCell.setForeground(infoColor);
 			}
 		}
 
-		updateBosses(hiscoreResult);
-		updateActivities(hiscoreResult);
-		if (clogResult != null)
+		updateBosses(lookupSession.getHiscoreResult());
+		updateActivities(lookupSession.getHiscoreResult());
+		if (lookupSession.getClogResult() != null)
 		{
-			updateRares(clogResult);
+			updateRares(lookupSession.getClogResult());
 			if (enabled)
 			{
 				Map<String, JLabel> rareCells = new LinkedHashMap<>();
@@ -2633,7 +2461,7 @@ public class KillClogPanel extends PluginPanel
 				rareCells.put(PanelData.RARE_HARD, hardRare);
 				rareCells.put(PanelData.RARE_ELITE, eliteRare);
 				rareCells.put(PanelData.RARE_MASTER, masterRare);
-				highlighter.colorCellsByCompletion(hiscoreResult, clogResult,
+				highlighter.colorCellsByCompletion(lookupSession.getHiscoreResult(), lookupSession.getClogResult(),
 					rareTooltips, rareCells, fourTwentyMode, FOUR_TWENTY_GREEN);
 				highlighter.colorEmptyCells();
 			}
@@ -2670,18 +2498,15 @@ public class KillClogPanel extends PluginPanel
 	public void onBulkCaptureComplete(String name)
 	{
 		searchBar.setText(name);
-		if (lookupInFlight)
-		{
-			// Current lookup will finish soon — version it out and start fresh
-			lookupVersion++;
-			lookupInFlight = false;
-		}
+		// Current lookup will finish soon — version it out and start fresh
+		lookupSession.cancelInFlight();
 		doLookup();
 	}
 
 	public void setNameAutocompleter(NameAutocompleter autocompleter)
 	{
 		this.nameAutocompleter = autocompleter;
+		lookupSession.setNameAutocompleter(autocompleter);
 		for (Component c : searchBar.getComponents())
 		{
 			if (c instanceof FlatTextField)
@@ -2717,7 +2542,7 @@ public class KillClogPanel extends PluginPanel
 		if (!visible)
 		{
 			fourTwentyMode = FourTwentyMode.OFF;
-			if (hiscoreResult != null) toggleHighlighter(config.completionistHighlighter());
+			if (lookupSession.getHiscoreResult() != null) toggleHighlighter(config.completionistHighlighter());
 		}
 	}
 
@@ -2787,9 +2612,9 @@ public class KillClogPanel extends PluginPanel
 
 	private BufferedImage getCapeImage()
 	{
-		if (hiscoreResult == null) return null;
-		boolean maxed = hiscoreResult.getTotalLevel() >= PanelData.MAX_TOTAL_LEVEL;
-		boolean infernal = hiscoreResult.getKc("TzKal-Zuk") > 0;
+		if (lookupSession.getHiscoreResult() == null) return null;
+		boolean maxed = lookupSession.getHiscoreResult().getTotalLevel() >= PanelData.MAX_TOTAL_LEVEL;
+		boolean infernal = lookupSession.getHiscoreResult().getKc("TzKal-Zuk") > 0;
 		if (maxed && infernal) return infernalMaxCapeTip;
 		if (maxed) return maxCapeTip;
 		if (infernal) return infernalCapeTip;
@@ -2894,4 +2719,124 @@ public class KillClogPanel extends PluginPanel
 		}
 	}
 
+	// ── LookupSession.Listener ───────────────────────────────────────────────
+	// Each method mirrors the matching chunk of the legacy doLookup body.
+	// Lookup state fields on the panel (lookupSession.getHiscoreResult(), lookupSession.getClogResult(),
+	// lookupSession.getCurrentLookupRsn(), lookupSession.getClogLastChanged()) are still updated here as well as in
+	// the session, so the ~30 read sites scattered through the panel keep
+	// reading from local fields until a follow-up cleanup commit migrates
+	// them to session getters.
+
+	@Override
+	public void onLookupStart(String player, boolean isSelf, boolean isFirstSelfGreeting)
+	{
+		if (isSelf)
+		{
+			setSearchStatus(selfSearchMessage(player), SearchMessages.SELF_COLOR);
+		}
+		else
+		{
+			int searchIdx = ThreadLocalRandom.current().nextInt(SearchMessages.SEARCH.length);
+			setSearchStatus(String.format(SearchMessages.SEARCH[searchIdx], player), TEXT_DIM);
+		}
+		searchBar.setIcon(IconTextField.Icon.LOADING_DARKER);
+		resetAllLabels();
+	}
+
+	@Override
+	public void onCachedResult(String player, HiscoreResult hiscore, @Nullable ClogResult clog,
+		boolean isSelf, @Nullable AccountType knownType, boolean isFirstSelfGreeting)
+	{
+		searchBar.setIcon(IconTextField.Icon.SEARCH);
+		if (!isFirstSelfGreeting)
+		{
+			setSearchStatus(" ", TEXT_DIM);
+		}
+		renderHiscoreResult(hiscore, player, isSelf, knownType);
+		if (clog != null)
+		{
+			renderClogResult(clog, isSelf, lookupSession.getLookupVersion());
+		}
+	}
+
+	@Override
+	public void onHiscoreResult(String player, HiscoreResult hiscore,
+		boolean isSelf, @Nullable AccountType knownType, boolean isFirstSelfGreeting)
+	{
+		searchBar.setIcon(IconTextField.Icon.SEARCH);
+		if (!isFirstSelfGreeting)
+		{
+			setSearchStatus(" ", TEXT_DIM);
+		}
+		renderHiscoreResult(hiscore, player, isSelf, knownType);
+		// Clog may have arrived first with a GIM type the hiscores can't detect
+		ClogResult clog = lookupSession.getClogResult();
+		if (clog != null)
+		{
+			AccountType templeType = clog.getTempleAccountType();
+			if (templeType != null && templeType.isGroupIronman())
+			{
+				updateInfoIcon(templeType);
+			}
+			updateRares(clog);
+			updateClogCell(clog);
+		}
+	}
+
+	@Override
+	public void onClogResult(String player, @Nullable ClogResult clog, boolean isSelf, int lookupVersionAtFire)
+	{
+		if (clog != null)
+		{
+			renderClogResult(clog, isSelf, lookupVersionAtFire);
+		}
+		else
+		{
+			if (isSelf)
+			{
+				clogNotice.setText(SYNC_NOTICE);
+				clogNotice.setIcon(new ImageIcon(getSyncIcon()));
+				BufferedImage icon = ImageUtil.loadImageResource(KillClogPlugin.class, "icon.png");
+				clogInfoLabel.setIcon(new ImageIcon(ImageUtil.resizeImage(icon, 15, 15)));
+				clogInfoLabel.setText(ClogHelper.pad("Sync"));
+				clogInfoLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+				clogInfoLabel.setToolTipText(" ");
+			}
+			else
+			{
+				clogNotice.setText(" ");
+				clogNotice.setIcon(null);
+			}
+			fetchRsn(player, lookupVersionAtFire);
+		}
+	}
+
+	@Override
+	public void onNotFound(String player)
+	{
+		int notFoundIdx = ThreadLocalRandom.current().nextInt(SearchMessages.NOT_FOUND.length);
+		setSearchStatus(String.format(SearchMessages.NOT_FOUND[notFoundIdx], player), NOT_FOUND);
+		searchBar.setIcon(IconTextField.Icon.SEARCH);
+		playerName.setText(" ");
+		playerName.setIcon(null);
+		playerName.setToolTipText(null);
+		clogInfoLabel.setText("");
+		clogInfoLabel.setIcon(null);
+		clogInfoLabel.setToolTipText(null);
+		searchBar.setText("");
+	}
+
+	@Override
+	public void onError(String player, Throwable error)
+	{
+		searchBar.setIcon(IconTextField.Icon.SEARCH);
+		searchBar.setText("");
+		setSearchStatus("Lookup failed", TEXT_DIM);
+		playerName.setText(" ");
+		playerName.setIcon(null);
+		playerName.setToolTipText(null);
+		clogInfoLabel.setText("");
+		clogInfoLabel.setIcon(null);
+		clogInfoLabel.setToolTipText(null);
+	}
 }
