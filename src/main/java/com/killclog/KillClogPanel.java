@@ -229,8 +229,6 @@ public class KillClogPanel extends PluginPanel
 	private final ComparisonController comparison;
 
 	// Comparison mode widgets (state fields all live on the controller)
-	private JPanel comparePanel;
-	private JLabel compareToggle;
 
 	// 420 mode — unlocked when the 420 KC plugin is loaded
 	private NameAutocompleter nameAutocompleter;
@@ -358,7 +356,8 @@ public class KillClogPanel extends PluginPanel
 		c.insets = new Insets(4, 0, 0, 0);
 		ImageIcon compareOff = new ImageIcon(ClogHelper.makeCompareIcon(ComparisonController.COMPARE_BLUE, ComparisonController.COMPARE_RED, 0.55f));
 		ImageIcon compareOn = new ImageIcon(ClogHelper.makeCompareIcon(ComparisonController.COMPARE_BLUE, ComparisonController.COMPARE_RED, 1.0f));
-		compareToggle = new JLabel(compareOff);
+		JLabel compareToggle = new JLabel(compareOff);
+		comparison.setCompareToggle(compareToggle);
 		compareToggle.setHorizontalAlignment(JLabel.CENTER);
 		compareToggle.setPreferredSize(new Dimension(15, 15));
 		compareToggle.setOpaque(false);
@@ -369,8 +368,8 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public void mousePressed(MouseEvent e)
 			{
-				boolean show = !comparePanel.isVisible();
-				comparePanel.setVisible(show);
+				boolean show = !comparison.getComparePanel().isVisible();
+				comparison.getComparePanel().setVisible(show);
 				if (!show && comparison.isComparisonMode())
 				{
 					comparison.exit();
@@ -395,7 +394,8 @@ public class KillClogPanel extends PluginPanel
 		// Compare search bar — hidden until toggle is clicked
 		c.gridy++;
 		c.insets = new Insets(2, 0, 0, 0);
-		comparePanel = buildCompareSearch();
+		JPanel comparePanel = buildCompareSearch();
+		comparison.setComparePanel(comparePanel);
 		comparePanel.setVisible(false);
 		add(comparePanel, c);
 
@@ -1459,7 +1459,7 @@ public class KillClogPanel extends PluginPanel
 			updateClogCell(swapClog);
 		}
 
-		compareToggle.setVisible(true);
+		comparison.getCompareToggle().setVisible(true);
 		refreshLabel.setVisible(true);
 		setSearchStatus(" ", TEXT_DIM);
 		toggleHighlighter(config.completionistHighlighter());
@@ -1594,7 +1594,7 @@ public class KillClogPanel extends PluginPanel
 	{
 		tooltipController.hideClickTooltip();
 		if (comparison.isComparisonMode()) comparison.exit();
-		comparePanel.setVisible(false);
+		comparison.getComparePanel().setVisible(false);
 		rsn = null;
 		clogNotice.setText(" ");
 		clogNotice.setIcon(null);
@@ -1615,7 +1615,7 @@ public class KillClogPanel extends PluginPanel
 		playerName.setText(" ");
 		playerName.setIcon(null);
 		playerName.setToolTipText(null);
-		compareToggle.setVisible(false);
+		comparison.getCompareToggle().setVisible(false);
 		refreshLabel.setVisible(false);
 		refreshLabel.setIcon(null);
 
@@ -1655,7 +1655,7 @@ public class KillClogPanel extends PluginPanel
 		playerName.setForeground(getInfoColor());
 		comparison.updateComparePlaceholder(rsn != null ? rsn : player);
 		updateInfoIcon(knownType != null ? knownType : result.getAccountType());
-		compareToggle.setVisible(true);
+		comparison.getCompareToggle().setVisible(true);
 		refreshLabel.setVisible(true);
 
 		int combatLevel = result.getCombatLevel();

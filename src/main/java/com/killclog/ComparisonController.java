@@ -157,6 +157,8 @@ public class ComparisonController
 	private final IconTextField compareSearchBar = new IconTextField();
 	@Nullable private JTextField compareTextField;
 	private String comparePlaceholder = "Comparison";
+	@Nullable private JPanel comparePanel;
+	@Nullable private JLabel compareToggle;
 
 	public ComparisonController(HiscoreService hiscoreService, ClogService clogService,
 		KillClogConfig config, LookupSession lookupSession, ItemManager itemManager,
@@ -210,6 +212,28 @@ public class ComparisonController
 	public String getComparePlaceholder()
 	{
 		return comparePlaceholder;
+	}
+
+	@Nullable
+	public JPanel getComparePanel()
+	{
+		return comparePanel;
+	}
+
+	public void setComparePanel(@Nullable JPanel panel)
+	{
+		this.comparePanel = panel;
+	}
+
+	@Nullable
+	public JLabel getCompareToggle()
+	{
+		return compareToggle;
+	}
+
+	public void setCompareToggle(@Nullable JLabel toggle)
+	{
+		this.compareToggle = toggle;
 	}
 
 	/** Refresh the comparison search bar's placeholder text after the primary player changes. */
