@@ -16,7 +16,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -24,7 +23,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
-import java.util.function.Function;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.swing.AbstractButton;
@@ -234,7 +232,7 @@ public class KillClogPanel extends PluginPanel
 		this.comparison = new ComparisonController(hiscoreService, clogService, config, lookupSession,
 			itemManager, tooltipController, tooltipDataBuilder, this);
 		this.comparison.setRenderTarget(this);
-		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder);
+		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, clogService);
 		this.comparison.setCells(this.cells);
 		this.cells.setSinglePlayerTooltipBuilder(new Cells.SinglePlayerTooltipBuilder()
 		{
@@ -1073,7 +1071,7 @@ public class KillClogPanel extends PluginPanel
 		refreshLabel.setVisible(true);
 		setSearchStatus(" ", TEXT_DIM);
 		toggleHighlighter(config.completionistHighlighter());
-		updateTooltips();
+		cells.rebuildPrimaryTooltips(localRsn);
 	}
 
 
@@ -1083,7 +1081,7 @@ public class KillClogPanel extends PluginPanel
 		comparison.getCompareSearchBar().setIcon(IconTextField.Icon.SEARCH);
 		comparison.getCompareSearchBar().setText("");
 		comparison.getCompareStatusLabel().setText(" ");
-		updateTooltips();
+		cells.rebuildPrimaryTooltips(localRsn);
 		comparison.updateAllCells();
 		comparison.updateInfoBar();
 	}
@@ -1285,7 +1283,7 @@ public class KillClogPanel extends PluginPanel
 
 		searchBar.setText("");
 		toggleHighlighter(config.completionistHighlighter());
-		updateTooltips();
+		cells.rebuildPrimaryTooltips(localRsn);
 	}
 
 	/**
@@ -1315,7 +1313,7 @@ public class KillClogPanel extends PluginPanel
 			updateClogCell(result);
 		}
 		toggleHighlighter(config.completionistHighlighter());
-		updateTooltips();
+		cells.rebuildPrimaryTooltips(localRsn);
 	}
 
 	private static void resetRareCell(JLabel label, String name)
@@ -1385,82 +1383,6 @@ public class KillClogPanel extends PluginPanel
 	// Tooltip data building
 	// -------------------------------------------------------------------------
 
-	private void updateTooltips()
-	{
-		cells.getTooltipDataMap().clear();
-
-		// Boss cells
-		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getBossLabels().entrySet())
-		{
-			HiscoreSkill skill = entry.getKey();
-			JLabel label = entry.getValue();
-			String bossName = skill.getName();
-			String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(bossName, bossName);
-
-			int kc = lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getKc(hiscoreName) : -1;
-			int rank = lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getRank(hiscoreName) : -1;
-
-			String category = ClogService.bossToCategory(hiscoreName);
-
-			if (lookupSession.getClogResult() == null)
-			{
-				boolean selfNoCache = localRsn != null
-					&& localRsn.equalsIgnoreCase(lookupSession.getCurrentLookupRsn());
-				if (!selfNoCache)
-				{
-					int total = clogService.getCategoryItemCount(category);
-					cells.getTooltipDataMap().put(skill, new TooltipData(
-						bossName, rank, -1, Math.max(total, 0),
-						Collections.emptyList(),
-						Collections.emptySet(),
-						Collections.emptyMap()));
-				}
-				label.setToolTipText(" ");
-				continue;
-			}
-
-			TooltipData data = tooltipDataBuilder.buildTooltipData(bossName, category, rank, lookupSession.getClogResult());
-			if (data == null)
-			{
-				int total = clogService.getCategoryItemCount(category);
-				cells.getTooltipDataMap().put(skill, new TooltipData(
-					bossName, rank, -1, Math.max(total, 0),
-					Collections.emptyList(),
-					Collections.emptySet(),
-					Collections.emptyMap()));
-				label.setToolTipText(" ");
-				continue;
-			}
-
-			cells.getTooltipDataMap().put(skill, data);
-			tooltipDataBuilder.preloadItemImages(data);
-			label.setToolTipText(" ");
-		}
-
-		// Clue tier cells with clog categories
-		rebuildActivityTooltips(PanelData.CLUE_CATEGORIES, cells.getClueTierLabels(), Cells::capitalizeTier);
-	}
-
-	private void rebuildActivityTooltips(Map<HiscoreSkill, String> categories,
-		Map<HiscoreSkill, JLabel> labels,
-		Function<HiscoreSkill, String> nameOf)
-	{
-		if (lookupSession.getClogResult() == null) return;
-		for (Map.Entry<HiscoreSkill, String> entry : categories.entrySet())
-		{
-			HiscoreSkill skill = entry.getKey();
-			JLabel label = labels.get(skill);
-			if (label == null) continue;
-
-			int rank = lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getActivityRank(skill.getName()) : -1;
-			TooltipData data = tooltipDataBuilder.buildTooltipData(nameOf.apply(skill), entry.getValue(), rank, lookupSession.getClogResult());
-			if (data == null) continue;
-
-			cells.getTooltipDataMap().put(skill, data);
-			tooltipDataBuilder.preloadItemImages(data);
-			label.setToolTipText(" ");
-		}
-	}
 
 	// -------------------------------------------------------------------------
 	// Progress highlighter
@@ -1607,7 +1529,7 @@ public class KillClogPanel extends PluginPanel
 			case "emptyClogColor":
 			case "infoBarColor":
 				toggleHighlighter(config.completionistHighlighter());
-				updateTooltips();
+				cells.rebuildPrimaryTooltips(localRsn);
 				break;
 			case "hoverStyle":
 				tooltipController.hideClickTooltip();
@@ -1732,7 +1654,7 @@ public class KillClogPanel extends PluginPanel
 					// Item not in cache — skip
 				}
 			}
-			SwingUtilities.invokeLater(this::updateTooltips);
+			SwingUtilities.invokeLater(() -> cells.rebuildPrimaryTooltips(localRsn));
 		});
 	}
 

@@ -54,6 +54,8 @@ public class Cells
 	private final TooltipController tooltipController;
 	private final ComparisonController comparison;
 	private final TooltipDataBuilder tooltipDataBuilder;
+	private final LookupSession lookupSession;
+	private final ClogService clogService;
 	@Nullable private SinglePlayerTooltipBuilder singlePlayerBuilder;
 
 	// ── Tooltip data caches ───────────────────────────────────────────────
@@ -79,13 +81,16 @@ public class Cells
 
 	public Cells(SpriteManager spriteManager, ItemManager itemManager,
 		TooltipController tooltipController, ComparisonController comparison,
-		TooltipDataBuilder tooltipDataBuilder)
+		TooltipDataBuilder tooltipDataBuilder, LookupSession lookupSession,
+		ClogService clogService)
 	{
 		this.spriteManager = spriteManager;
 		this.itemManager = itemManager;
 		this.tooltipController = tooltipController;
 		this.comparison = comparison;
 		this.tooltipDataBuilder = tooltipDataBuilder;
+		this.lookupSession = lookupSession;
+		this.clogService = clogService;
 	}
 
 	public void setSinglePlayerTooltipBuilder(SinglePlayerTooltipBuilder builder)
@@ -421,6 +426,90 @@ public class Cells
 		rareTooltips.put(rareKey, data);
 		label.setForeground(rareColor(data, config));
 		label.setToolTipText(" ");
+	}
+
+	/**
+	 * Rebuild the per-cell {@code TooltipData} cache for the primary side from
+	 * the current lookup session results. Mirrors what
+	 * {@link ComparisonController#enter()} does for the comparison side.
+	 */
+	public void rebuildPrimaryTooltips(@Nullable String localRsn)
+	{
+		tooltipDataMap.clear();
+
+		// Boss cells
+		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
+		{
+			HiscoreSkill skill = entry.getKey();
+			JLabel label = entry.getValue();
+			String bossName = skill.getName();
+			String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(bossName, bossName);
+
+			int rank = lookupSession.getHiscoreResult() != null
+				? lookupSession.getHiscoreResult().getRank(hiscoreName) : -1;
+
+			String category = ClogService.bossToCategory(hiscoreName);
+
+			if (lookupSession.getClogResult() == null)
+			{
+				boolean selfNoCache = localRsn != null
+					&& localRsn.equalsIgnoreCase(lookupSession.getCurrentLookupRsn());
+				if (!selfNoCache)
+				{
+					int total = clogService.getCategoryItemCount(category);
+					tooltipDataMap.put(skill, new TooltipData(
+						bossName, rank, -1, Math.max(total, 0),
+						java.util.Collections.emptyList(),
+						java.util.Collections.emptySet(),
+						java.util.Collections.emptyMap()));
+				}
+				label.setToolTipText(" ");
+				continue;
+			}
+
+			TooltipData data = tooltipDataBuilder.buildTooltipData(bossName, category, rank, lookupSession.getClogResult());
+			if (data == null)
+			{
+				int total = clogService.getCategoryItemCount(category);
+				tooltipDataMap.put(skill, new TooltipData(
+					bossName, rank, -1, Math.max(total, 0),
+					java.util.Collections.emptyList(),
+					java.util.Collections.emptySet(),
+					java.util.Collections.emptyMap()));
+				label.setToolTipText(" ");
+				continue;
+			}
+
+			tooltipDataMap.put(skill, data);
+			tooltipDataBuilder.preloadItemImages(data);
+			label.setToolTipText(" ");
+		}
+
+		// Clue tier cells
+		if (lookupSession.getClogResult() == null)
+		{
+			return;
+		}
+		for (Map.Entry<HiscoreSkill, String> entry : PanelData.CLUE_CATEGORIES.entrySet())
+		{
+			HiscoreSkill skill = entry.getKey();
+			JLabel label = clueTierLabels.get(skill);
+			if (label == null)
+			{
+				continue;
+			}
+			int rank = lookupSession.getHiscoreResult() != null
+				? lookupSession.getHiscoreResult().getActivityRank(skill.getName()) : -1;
+			TooltipData data = tooltipDataBuilder.buildTooltipData(capitalizeTier(skill), entry.getValue(),
+				rank, lookupSession.getClogResult());
+			if (data == null)
+			{
+				continue;
+			}
+			tooltipDataMap.put(skill, data);
+			tooltipDataBuilder.preloadItemImages(data);
+			label.setToolTipText(" ");
+		}
 	}
 
 	private static Color rareColor(TooltipData data, KillClogConfig config)
