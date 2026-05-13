@@ -526,10 +526,7 @@ public class ComparisonController
 		return Collections.unmodifiableMap(compareTooltipDataMap);
 	}
 
-	// ── Pure helpers (dormant in this commit) ─────────────────────────────
-	// These mirror panel methods of the same name. Until the panel callsites
-	// switch to comparison.X(), the panel's copy is what runs at runtime;
-	// these are the migration target for cut 2 step 4.
+	// ── Pure helpers ──────────────────────────────────────────────────────
 
 	/**
 	 * Build a comparison tooltip showing both players' sprite grids stacked.
