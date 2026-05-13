@@ -1735,47 +1735,6 @@ public class KillClogPanel extends PluginPanel
 		}
 	}
 
-	/** Set a cell to dual blue/red values, or restore to solo. */
-	private void setCompareCell(JLabel label, int blueVal, int redVal)
-	{
-		String blueText = blueVal > 0 ? ClogHelper.formatKc(blueVal) : "--";
-		String redText = redVal > 0 ? ClogHelper.formatKc(redVal) : "--";
-		label.setText("<html><div style='text-align:center;'>"
-			+ "<span style='color:" + ComparisonController.COMPARE_BLUE_HEX + ";'>" + blueText + "</span><br>"
-			+ "<span style='color:" + ComparisonController.COMPARE_RED_HEX + ";'>" + redText + "</span>"
-			+ "</div></html>");
-		label.setForeground(null);
-		label.setHorizontalAlignment(JLabel.CENTER);
-	}
-
-	private void restoreSoloCell(JLabel label, int val)
-	{
-		label.setHorizontalAlignment(JLabel.LEADING);
-		if (val > 0)
-		{
-			label.setText(ClogHelper.pad(ClogHelper.formatKc(val)));
-			label.setForeground(getInfoColor());
-		}
-		else
-		{
-			label.setText(ClogHelper.pad("--"));
-			label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-		}
-	}
-
-	private void compareOrRestore(JLabel label, int blueVal, int redVal)
-	{
-		if (label == null) return;
-		if (comparisonMode)
-		{
-			setCompareCell(label, blueVal, redVal);
-		}
-		else
-		{
-			restoreSoloCell(label, blueVal);
-		}
-	}
-
 	private int hiscoreKc(HiscoreResult r, String hiscoreName)
 	{
 		return r != null ? r.getKc(hiscoreName) : -1;
@@ -1805,52 +1764,52 @@ public class KillClogPanel extends PluginPanel
 		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
 		{
 			String name = PanelData.NAME_OVERRIDES.getOrDefault(entry.getKey().getName(), entry.getKey().getName());
-			compareOrRestore(entry.getValue(), hiscoreKc(lookupSession.getHiscoreResult(), name), hiscoreKc(compareHiscoreResult, name));
+			comparison.compareOrRestore(entry.getValue(), hiscoreKc(lookupSession.getHiscoreResult(), name), hiscoreKc(compareHiscoreResult, name));
 		}
 
 		// Activity cells
 		for (Map.Entry<HiscoreSkill, JLabel> entry : activityLabels.entrySet())
 		{
 			String name = entry.getKey().getName();
-			compareOrRestore(entry.getValue(), activityScore(lookupSession.getHiscoreResult(), name), activityScore(compareHiscoreResult, name));
+			comparison.compareOrRestore(entry.getValue(), activityScore(lookupSession.getHiscoreResult(), name), activityScore(compareHiscoreResult, name));
 		}
 
 		// Clue tier cells
 		for (Map.Entry<HiscoreSkill, JLabel> entry : clueTierLabels.entrySet())
 		{
 			String name = entry.getKey().getName();
-			compareOrRestore(entry.getValue(), activityScore(lookupSession.getHiscoreResult(), name), activityScore(compareHiscoreResult, name));
+			comparison.compareOrRestore(entry.getValue(), activityScore(lookupSession.getHiscoreResult(), name), activityScore(compareHiscoreResult, name));
 		}
 
 		// Combat level
-		compareOrRestore(combatCell,
+		comparison.compareOrRestore(combatCell,
 			lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getCombatLevel() : -1,
 			compareHiscoreResult != null ? compareHiscoreResult.getCombatLevel() : -1);
 
 		// Total level
-		compareOrRestore(totalLvlCell,
+		comparison.compareOrRestore(totalLvlCell,
 			lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getTotalLevel() : -1,
 			compareHiscoreResult != null ? compareHiscoreResult.getTotalLevel() : -1);
 
 		// PvP summary
-		compareOrRestore(pvpSummaryCell, pvpTotal(lookupSession.getHiscoreResult()), pvpTotal(compareHiscoreResult));
+		comparison.compareOrRestore(pvpSummaryCell, pvpTotal(lookupSession.getHiscoreResult()), pvpTotal(compareHiscoreResult));
 
 		// Clue rares — 3rd Age, Gilded
-		compareOrRestore(thirdAgeCell,
+		comparison.compareOrRestore(thirdAgeCell,
 			rareCount(rareTooltips.get(PanelData.CLOG_THIRD_AGE)),
 			rareCount(comparison.buildClueRare("3rd Age", PanelData.CLOG_THIRD_AGE)));
-		compareOrRestore(gildedCell,
+		comparison.compareOrRestore(gildedCell,
 			rareCount(rareTooltips.get(PanelData.CLOG_GILDED)),
 			rareCount(comparison.buildClueRare("Gilded", PanelData.CLOG_GILDED)));
 
 		// Custom rares — Hard, Elite, Master
-		compareOrRestore(hardRare,
+		comparison.compareOrRestore(hardRare,
 			rareCount(rareTooltips.get(PanelData.RARE_HARD)),
 			rareCount(comparison.buildCustomRare("Hard Treasure (Rare)", PanelData.HARD_RARE_ITEMS)));
-		compareOrRestore(eliteRare,
+		comparison.compareOrRestore(eliteRare,
 			rareCount(rareTooltips.get(PanelData.RARE_ELITE)),
 			rareCount(comparison.buildCustomRare("Elite Treasure (Rare)", PanelData.ELITE_RARE_ITEMS)));
-		compareOrRestore(masterRare,
+		comparison.compareOrRestore(masterRare,
 			rareCount(rareTooltips.get(PanelData.RARE_MASTER)),
 			rareCount(comparison.buildCustomRare("Master Treasure (Rare)", PanelData.MASTER_RARE_ITEMS)));
 	}
