@@ -62,6 +62,7 @@ public class LookupSession
 	private final ClogService clogService;
 	private final KillClogConfig config;
 	private final Listener listener;
+	@Nullable private NameAutocompleter nameAutocompleter;
 
 	// ── State ─────────────────────────────────────────────────────────────
 	@Nullable private HiscoreResult hiscoreResult;
@@ -76,12 +77,23 @@ public class LookupSession
 	private volatile boolean lookupInFlight = false;
 
 	public LookupSession(HiscoreService hiscoreService, ClogService clogService,
-		KillClogConfig config, Listener listener)
+		KillClogConfig config, @Nullable NameAutocompleter nameAutocompleter, Listener listener)
 	{
 		this.hiscoreService = hiscoreService;
 		this.clogService = clogService;
 		this.config = config;
+		this.nameAutocompleter = nameAutocompleter;
 		this.listener = listener;
+	}
+
+	/**
+	 * Late-bound autocompleter setter. The panel constructs the session before
+	 * its own {@link NameAutocompleter} is wired by the plugin's startUp; this
+	 * lets the panel forward the eventual instance without re-constructing.
+	 */
+	public void setNameAutocompleter(@Nullable NameAutocompleter nameAutocompleter)
+	{
+		this.nameAutocompleter = nameAutocompleter;
 	}
 
 	// ── Lifecycle ─────────────────────────────────────────────────────────
@@ -101,10 +113,37 @@ public class LookupSession
 	}
 
 	// ── Read-only state ───────────────────────────────────────────────────
-	@Nullable public HiscoreResult getHiscoreResult() { return hiscoreResult; }
-	@Nullable public ClogResult getClogResult() { return clogResult; }
-	@Nullable public String getCurrentLookupRsn() { return currentLookupRsn; }
-	@Nullable public String getClogLastChanged() { return clogLastChanged; }
-	public int getLookupVersion() { return lookupVersion; }
-	public boolean isLookupInFlight() { return lookupInFlight; }
+	@Nullable
+	public HiscoreResult getHiscoreResult()
+	{
+		return hiscoreResult;
+	}
+
+	@Nullable
+	public ClogResult getClogResult()
+	{
+		return clogResult;
+	}
+
+	@Nullable
+	public String getCurrentLookupRsn()
+	{
+		return currentLookupRsn;
+	}
+
+	@Nullable
+	public String getClogLastChanged()
+	{
+		return clogLastChanged;
+	}
+
+	public int getLookupVersion()
+	{
+		return lookupVersion;
+	}
+
+	public boolean isLookupInFlight()
+	{
+		return lookupInFlight;
+	}
 }

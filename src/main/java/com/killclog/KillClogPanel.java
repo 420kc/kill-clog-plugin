@@ -26,6 +26,7 @@ import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.swing.AbstractButton;
 import javax.swing.Box;
@@ -57,7 +58,7 @@ import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
 
 @Slf4j
-public class KillClogPanel extends PluginPanel
+public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 {
 	private static final Color TEXT_DIM = new Color(160, 160, 160);
 	private static final Color NOT_FOUND = new Color(0x81, 0x09, 0x09);
@@ -228,6 +229,7 @@ public class KillClogPanel extends PluginPanel
 	private volatile boolean lookupInFlight = false;
 
 	private final TooltipController tooltipController;
+	private final LookupSession lookupSession;
 
 	// Comparison mode
 	static final Color COMPARE_BLUE = new Color(91, 164, 207);
@@ -270,6 +272,7 @@ public class KillClogPanel extends PluginPanel
 		this.clientThread = clientThread;
 		this.tooltipDataBuilder = new TooltipDataBuilder(itemManager);
 		this.tooltipController = new TooltipController(config);
+		this.lookupSession = new LookupSession(hiscoreService, clogService, config, null, this);
 
 		NativeTooltip.loadSprites(spriteManager);
 		SkillsTooltip.loadIcons(skillIconManager);
@@ -2682,6 +2685,7 @@ public class KillClogPanel extends PluginPanel
 	public void setNameAutocompleter(NameAutocompleter autocompleter)
 	{
 		this.nameAutocompleter = autocompleter;
+		lookupSession.setNameAutocompleter(autocompleter);
 		for (Component c : searchBar.getComponents())
 		{
 			if (c instanceof FlatTextField)
@@ -2894,4 +2898,40 @@ public class KillClogPanel extends PluginPanel
 		}
 	}
 
+	// ── LookupSession.Listener ───────────────────────────────────────────────
+	// Stub bodies. The session is dormant in this commit (start() is never
+	// called); the doLookup body still owns the active pipeline. Body migration
+	// and reference-site rewiring happen in subsequent refactor-cut-1 commits.
+
+	@Override
+	public void onLookupStart(String player, boolean isSelf, boolean isFirstSelfGreeting)
+	{
+	}
+
+	@Override
+	public void onCachedResult(String player, HiscoreResult hiscore, @Nullable ClogResult clog,
+		boolean isSelf, @Nullable AccountType knownType, boolean isFirstSelfGreeting)
+	{
+	}
+
+	@Override
+	public void onHiscoreResult(String player, HiscoreResult hiscore,
+		boolean isSelf, @Nullable AccountType knownType, boolean isFirstSelfGreeting)
+	{
+	}
+
+	@Override
+	public void onClogResult(String player, ClogResult clog, boolean isSelf, int lookupVersion)
+	{
+	}
+
+	@Override
+	public void onNotFound(String player)
+	{
+	}
+
+	@Override
+	public void onError(String player, Throwable error)
+	{
+	}
 }
