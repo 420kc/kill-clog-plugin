@@ -253,7 +253,21 @@ public class KillClogPanel extends PluginPanel
 		this.comparison = new ComparisonController(hiscoreService, clogService, config, lookupSession,
 			itemManager, tooltipController, tooltipDataBuilder, this);
 		this.comparison.setRenderTarget(this);
-		this.cellFactory = new CellFactory();
+		this.cellFactory = new CellFactory(lookupSession, comparison, tooltipDataBuilder);
+		this.cellFactory.setSinglePlayerTooltipBuilder(new CellFactory.SinglePlayerTooltipBuilder()
+		{
+			@Override
+			public JToolTip build(JLabel owner, TooltipData data, int gridCols, String name)
+			{
+				return makeSpriteTooltip(owner, data, gridCols, name);
+			}
+
+			@Override
+			public JToolTip build(JLabel owner, TooltipData data, int gridCols, String name, boolean compact)
+			{
+				return makeSpriteTooltip(owner, data, gridCols, name, compact);
+			}
+		});
 
 		NativeTooltip.loadSprites(spriteManager);
 		SkillsTooltip.loadIcons(skillIconManager);
@@ -1166,18 +1180,7 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public JToolTip createToolTip()
 			{
-				if (comparison.isComparisonMode())
-				{
-					String category = PanelData.CLUE_CATEGORIES.get(tier);
-					int redRank = comparison.getCompareHiscoreResult() != null
-						? comparison.getCompareHiscoreResult().getActivityRank(tier.getName()) : -1;
-					TooltipData redData = comparison.getCompareClogResult() != null
-						? tooltipDataBuilder.buildTooltipData(displayName, category, redRank, comparison.getCompareClogResult())
-						: null;
-					return comparison.makeSpriteTooltip(this,
-						cellFactory.getTooltipDataMap().get(tier), redData, displayName);
-				}
-				return makeSpriteTooltip(this, cellFactory.getTooltipDataMap().get(tier), compact ? 10 : 5, displayName, compact);
+				return cellFactory.buildClueTierTooltip(this, tier, displayName, compact);
 			}
 		};
 		styleLabel(label, tier.getName());
@@ -1194,13 +1197,7 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public JToolTip createToolTip()
 			{
-				TooltipData data = cellFactory.getRareTooltips().get(isThirdAge ? PanelData.CLOG_THIRD_AGE : PanelData.CLOG_GILDED);
-				if (comparison.isComparisonMode())
-				{
-					TooltipData redData = comparison.buildClueRare(name, clogCategory);
-					return comparison.makeSpriteTooltip(this, data, redData, name);
-				}
-				return makeSpriteTooltip(this, data, 5, name);
+				return cellFactory.buildClueRareTooltip(this, name, clogCategory, isThirdAge);
 			}
 		};
 		styleLabel(label, name);
@@ -1224,13 +1221,7 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public JToolTip createToolTip()
 			{
-				if (comparison.isComparisonMode())
-				{
-					TooltipData redData = comparison.buildCustomRare(name, itemIds);
-					return comparison.makeSpriteTooltip(this,
-						cellFactory.getRareTooltips().get(rareKey), redData, name);
-				}
-				return makeSpriteTooltip(this, cellFactory.getRareTooltips().get(rareKey), 5, name);
+				return cellFactory.buildCustomRareTooltip(this, name, rareKey, itemIds);
 			}
 		};
 		styleLabel(label, name);
@@ -1279,15 +1270,9 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public JToolTip createToolTip()
 			{
-				if (comparison.isComparisonMode())
-				{
-					return comparison.makeSpriteTooltip(this,
-						cellFactory.getTooltipDataMap().get(boss),
-						comparison.getCompareTooltipData(boss),
-						boss.getName());
-				}
-				JToolTip tip = makeSpriteTooltip(this, cellFactory.getTooltipDataMap().get(boss), 5, boss.getName());
-				if (boss == HiscoreSkill.SOL_HEREDIT && lookupSession.getHiscoreResult() != null && tip instanceof ImgTooltip)
+				JToolTip tip = cellFactory.buildBossTooltip(this, boss);
+				if (!comparison.isComparisonMode() && boss == HiscoreSkill.SOL_HEREDIT
+					&& lookupSession.getHiscoreResult() != null && tip instanceof ImgTooltip)
 				{
 					int glory = lookupSession.getHiscoreResult().getActivityScore("Colosseum Glory");
 					if (glory > 0)
