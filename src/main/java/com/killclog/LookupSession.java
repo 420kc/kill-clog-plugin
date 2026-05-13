@@ -1,14 +1,20 @@
 /*
  * Copyright (c) 2026, 420 kc <dyl@420kc.dev>
  * Owns the async lookup pipeline for Kill Clog: cache check, parallel hiscore +
- * clog API calls, version-stamped result gating, in-flight guard. Pure data +
- * lifecycle. Zero Swing imports; UI is downstream via {@link Listener}.
+ * clog API calls, version-stamped result gating, in-flight guard. UI is
+ * downstream via {@link Listener}. Swing usage is limited to the EDT-scheduling
+ * primitives ({@link javax.swing.Timer} for the cached-result reveal delay and
+ * {@link javax.swing.SwingUtilities#invokeLater} for marshalling future
+ * callbacks back to the EDT) — never any widget code.
  *
  * Extracted from KillClogPanel as refactor cut 1.
  */
 package com.killclog;
 
 import javax.annotation.Nullable;
+import javax.swing.SwingUtilities;
+import javax.swing.Timer;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Encapsulates one player's lookup lifecycle. A panel subscribes via
@@ -28,6 +34,7 @@ import javax.annotation.Nullable;
  * to make version stamps + the in-flight guard observable across the
  * background threads that the underlying services hop through.
  */
+@Slf4j
 public class LookupSession
 {
 	/**
@@ -47,8 +54,13 @@ public class LookupSession
 		void onHiscoreResult(String player, HiscoreResult hiscore,
 			boolean isSelf, @Nullable AccountType knownType, boolean isFirstSelfGreeting);
 
-		/** Live clog result arrived from the API (independent of hiscore timing). */
-		void onClogResult(String player, ClogResult clog, boolean isSelf, int lookupVersion);
+		/**
+		 * Live clog result arrived from the API (independent of hiscore timing).
+		 * {@code clog} is null when the clog service returned no data for the
+		 * player; the listener is responsible for the not-found UI (sync notice
+		 * for self, blank notice otherwise) and for any follow-up RSN fetch.
+		 */
+		void onClogResult(String player, @Nullable ClogResult clog, boolean isSelf, int lookupVersion);
 
 		/** The hiscore service returned a null result (player not found). */
 		void onNotFound(String player);
@@ -99,17 +111,122 @@ public class LookupSession
 	// ── Lifecycle ─────────────────────────────────────────────────────────
 
 	/**
-	 * Begin a lookup for {@code player}. No-op if a lookup is already in
-	 * flight (early return preserves the existing pipeline). Otherwise:
-	 * cache check + reveal-on-delay if fresh, full API fan-out if stale.
+	 * Begin a lookup for {@code player}. No-op if {@code player} is empty or a
+	 * lookup is already in flight (early return preserves the existing
+	 * pipeline). Otherwise: cache check with a reveal-on-delay if fresh, or a
+	 * full parallel hiscore + clog API fan-out if stale or missing.
 	 *
-	 * <p>TODO(refactor-cut-1): migrate body of KillClogPanel.doLookup() here
-	 * with mechanical translation of direct UI calls into listener events.
-	 * Tracked in REFACTOR-CUT-1.md.
+	 * <p>Caller must invoke on the EDT. All listener callbacks are also on the
+	 * EDT (Timer fires there; service futures are bridged via
+	 * {@link SwingUtilities#invokeLater}).
 	 */
 	public void start(String player, @Nullable String localRsn, @Nullable AccountType localAccountType)
 	{
-		throw new UnsupportedOperationException("LookupSession.start not yet wired; tracked in REFACTOR-CUT-1.md");
+		if (player.isEmpty() || lookupInFlight)
+		{
+			return;
+		}
+
+		lookupInFlight = true;
+		currentLookupRsn = player;
+		hiscoreResult = null;
+		clogResult = null;
+		clogLastChanged = null;
+		final int thisLookup = ++lookupVersion;
+		final boolean isSelf = localRsn != null && localRsn.equalsIgnoreCase(player);
+		final boolean isFirstSelfGreeting = isSelf && !config.seenSelfGreeting();
+
+		listener.onLookupStart(player, isSelf, isFirstSelfGreeting);
+
+		// Self-lookups know their own account type; cascade only matters for
+		// other players. GIMs only ever appear on the regular hiscores, so the
+		// hiscore service must be told to skip the cascade for them.
+		final AccountType knownType = isSelf ? localAccountType : null;
+
+		final HiscoreResult cachedHiscore = hiscoreService.getCached(player);
+		final ClogResult cachedClog = clogService.getCachedResult(player);
+		if (cachedHiscore != null && !hiscoreService.isStale(player))
+		{
+			Timer revealTimer = new Timer(600, e ->
+			{
+				if (thisLookup != lookupVersion)
+				{
+					return;
+				}
+				hiscoreResult = cachedHiscore;
+				lookupInFlight = false;
+				if (nameAutocompleter != null)
+				{
+					nameAutocompleter.addToSearchHistory(player);
+				}
+				if (cachedClog != null)
+				{
+					clogResult = cachedClog;
+					clogLastChanged = cachedClog.getLastChanged();
+				}
+				listener.onCachedResult(player, cachedHiscore, cachedClog, isSelf, knownType, isFirstSelfGreeting);
+			});
+			revealTimer.setRepeats(false);
+			revealTimer.start();
+			return;
+		}
+
+		final AccountType hiscoreType = knownType != null && knownType.isGroupIronman()
+			? AccountType.REGULAR : knownType;
+		hiscoreService.lookup(player, hiscoreType).thenAccept(result ->
+			SwingUtilities.invokeLater(() ->
+			{
+				if (thisLookup != lookupVersion)
+				{
+					return;
+				}
+				lookupInFlight = false;
+
+				if (result == null)
+				{
+					lookupVersion++;
+					listener.onNotFound(player);
+					return;
+				}
+
+				hiscoreResult = result;
+				if (nameAutocompleter != null)
+				{
+					nameAutocompleter.addToSearchHistory(player);
+				}
+				listener.onHiscoreResult(player, result, isSelf, knownType, isFirstSelfGreeting);
+			})
+		).exceptionally(ex ->
+		{
+			SwingUtilities.invokeLater(() ->
+			{
+				if (thisLookup != lookupVersion)
+				{
+					return;
+				}
+				lookupVersion++;
+				lookupInFlight = false;
+				listener.onError(player, ex);
+			});
+			return null;
+		});
+
+		clogService.lookup(player).thenAccept(result ->
+			SwingUtilities.invokeLater(() ->
+			{
+				if (thisLookup != lookupVersion)
+				{
+					return;
+				}
+				clogResult = result;
+				clogLastChanged = result != null ? result.getLastChanged() : null;
+				listener.onClogResult(player, result, isSelf, thisLookup);
+			})
+		).exceptionally(ex ->
+		{
+			log.warn("Clog lookup failed", ex);
+			return null;
+		});
 	}
 
 	// ── Read-only state ───────────────────────────────────────────────────
