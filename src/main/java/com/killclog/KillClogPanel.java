@@ -59,7 +59,8 @@ import net.runelite.client.util.ImageUtil;
 
 @Slf4j
 public class KillClogPanel extends PluginPanel
-	implements LookupSession.Listener, ComparisonController.Listener
+	implements LookupSession.Listener, ComparisonController.Listener,
+	ComparisonController.CellRenderTarget
 {
 	private static final Color TEXT_DIM = new Color(160, 160, 160);
 	private static final Color NOT_FOUND = new Color(0x81, 0x09, 0x09);
@@ -71,7 +72,8 @@ public class KillClogPanel extends PluginPanel
 	private static final int SYNC_ICON_SIZE = 12;
 
 	/** Info bar text color — only applies when highlighter is active AND clog data exists. */
-	private Color getInfoColor()
+	@Override
+	public Color getInfoColor()
 	{
 		return config.completionistHighlighter() && lookupSession.getClogResult() != null
 			? config.infoBarColor() : KC_COLOR;
@@ -269,6 +271,7 @@ public class KillClogPanel extends PluginPanel
 		this.tooltipController = new TooltipController(config);
 		this.lookupSession = new LookupSession(hiscoreService, clogService, config, null, this);
 		this.comparison = new ComparisonController(hiscoreService, clogService, config, lookupSession, this);
+		this.comparison.setRenderTarget(this);
 
 		NativeTooltip.loadSprites(spriteManager);
 		SkillsTooltip.loadIcons(skillIconManager);
@@ -2624,7 +2627,8 @@ public class KillClogPanel extends PluginPanel
 		return null;
 	}
 
-	private void updateInfoIcon(AccountType type)
+	@Override
+	public void updateInfoIcon(AccountType type)
 	{
 		// GIM badges loaded from game modicons at runtime
 		BufferedImage gimBadge = ClogHelper.getGimBadge(type);
@@ -2872,5 +2876,51 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void onCompareError(String player, Throwable err)
 	{
+	}
+
+	// ── ComparisonController.CellRenderTarget ────────────────────────────────
+	// Read-only accessors the controller uses to render compare cells without
+	// holding a panel reference.
+
+	@Override
+	public Map<HiscoreSkill, JLabel> bossLabels()
+	{
+		return bossLabels;
+	}
+
+	@Override
+	public Map<HiscoreSkill, JLabel> activityLabels()
+	{
+		return activityLabels;
+	}
+
+	@Override
+	public JLabel combatCell()
+	{
+		return combatCell;
+	}
+
+	@Override
+	public JLabel totalLvlCell()
+	{
+		return totalLvlCell;
+	}
+
+	@Override
+	public JLabel pvpSummaryCell()
+	{
+		return pvpSummaryCell;
+	}
+
+	@Override
+	public JLabel playerName()
+	{
+		return playerName;
+	}
+
+	@Override
+	public JLabel clogInfoLabel()
+	{
+		return clogInfoLabel;
 	}
 }

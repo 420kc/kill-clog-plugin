@@ -71,7 +71,7 @@ public class ComparisonController
 	{
 		Map<HiscoreSkill, javax.swing.JLabel> bossLabels();
 
-		Map<String, javax.swing.JLabel> activityLabels();
+		Map<HiscoreSkill, javax.swing.JLabel> activityLabels();
 
 		javax.swing.JLabel combatCell();
 
@@ -83,7 +83,7 @@ public class ComparisonController
 
 		javax.swing.JLabel clogInfoLabel();
 
-		void updateInfoIcon(@Nullable AccountType type);
+		void updateInfoIcon(AccountType type);
 
 		Color getInfoColor();
 	}
