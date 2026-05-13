@@ -173,12 +173,43 @@ public class ComparisonController
 	// ── Lifecycle ─────────────────────────────────────────────────────────
 
 	/**
-	 * Enter comparison mode for {@code redRsn}. Body migrates from
-	 * {@code KillClogPanel.enterComparisonMode} in cut 2 step 3.
+	 * Enter comparison mode. State has already been written through
+	 * {@link #syncCompareState} (or, post-migration, set directly by the
+	 * doCompareLookup pipeline). Builds the comparison-side tooltip data and
+	 * fires {@link Listener#onComparisonEnter} for the UI dispatch.
 	 */
-	public void enter(String redRsn)
+	public void enter()
 	{
-		throw new UnsupportedOperationException("ComparisonController.enter not yet wired; tracked in REFACTOR-CUT-2-EXECUTION.md");
+		comparisonMode = true;
+
+		compareTooltipDataMap.clear();
+		if (compareHiscoreResult != null)
+		{
+			for (HiscoreSkill boss : PanelData.BOSSES)
+			{
+				String bossName = boss.getName();
+				String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(bossName, bossName);
+				String category = ClogService.bossToCategory(hiscoreName);
+				int rank = compareHiscoreResult.getRank(hiscoreName);
+				TooltipData data = tooltipDataBuilder.buildTooltipData(bossName, category, rank, compareClogResult);
+				if (data != null)
+				{
+					compareTooltipDataMap.put(boss, data);
+					tooltipDataBuilder.preloadItemImages(data);
+				}
+				else if (rank > 0)
+				{
+					int total = clogService.getCategoryItemCount(category);
+					compareTooltipDataMap.put(boss, new TooltipData(
+						bossName, rank, -1, Math.max(total, 0),
+						Collections.emptyList(),
+						Collections.emptySet(),
+						Collections.emptyMap()));
+				}
+			}
+		}
+
+		listener.onComparisonEnter(compareRsn != null ? compareRsn : "");
 	}
 
 	/**

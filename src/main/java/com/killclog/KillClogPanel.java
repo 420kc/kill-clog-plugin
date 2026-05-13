@@ -235,7 +235,6 @@ public class KillClogPanel extends PluginPanel
 	private String compareRsn;
 	private volatile int compareLookupVersion = 0;
 	private volatile boolean compareLookupInFlight = false;
-	private final Map<HiscoreSkill, TooltipData> compareTooltipDataMap = new LinkedHashMap<>();
 	private final IconTextField compareSearchBar = new IconTextField();
 	private JTextField compareTextField;
 	private String comparePlaceholder = "Comparison";
@@ -1296,7 +1295,7 @@ public class KillClogPanel extends PluginPanel
 				{
 					return comparison.makeSpriteTooltip(this,
 						tooltipDataMap.get(boss),
-						compareTooltipDataMap.get(boss),
+						comparison.getCompareTooltipData(boss),
 						boss.getName());
 				}
 				JToolTip tip = makeSpriteTooltip(this, tooltipDataMap.get(boss), 5, boss.getName());
@@ -1432,7 +1431,6 @@ public class KillClogPanel extends PluginPanel
 		compareHiscoreResult = null;
 		compareClogResult = null;
 		compareRsn = null;
-		compareTooltipDataMap.clear();
 		comparison.exit();
 		comparison.syncCompareState(false, null, null, null);
 	}
@@ -1621,39 +1619,15 @@ public class KillClogPanel extends PluginPanel
 	{
 		comparisonMode = true;
 		comparison.syncCompareState(true, compareHiscoreResult, compareClogResult, compareRsn);
+		comparison.enter();
+	}
+
+	@Override
+	public void onComparisonEnter(String redRsn)
+	{
 		compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
 		compareSearchBar.setText("");
-
 		compareStatus.setText(" ");
-
-		// Build tooltip data for comparison player
-		compareTooltipDataMap.clear();
-		if (compareHiscoreResult != null)
-		{
-			for (HiscoreSkill boss : PanelData.BOSSES)
-			{
-				String bossName = boss.getName();
-				String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(bossName, bossName);
-				String category = ClogService.bossToCategory(hiscoreName);
-				int rank = compareHiscoreResult.getRank(hiscoreName);
-				TooltipData data = tooltipDataBuilder.buildTooltipData(bossName, category, rank, compareClogResult);
-				if (data != null)
-				{
-					compareTooltipDataMap.put(boss, data);
-					tooltipDataBuilder.preloadItemImages(data);
-				}
-				else if (rank > 0)
-				{
-					int total = clogService.getCategoryItemCount(category);
-					compareTooltipDataMap.put(boss, new TooltipData(
-						bossName, rank, -1, Math.max(total, 0),
-						Collections.emptyList(),
-						Collections.emptySet(),
-						Collections.emptyMap()));
-				}
-			}
-		}
-
 		updateTooltips();
 		updateAllCellsForComparison();
 		updateInfoBarForComparison();
@@ -2760,11 +2734,6 @@ public class KillClogPanel extends PluginPanel
 	// still throw); the existing comparison code in the panel owns the live
 	// behavior. Body migration + reference-site rewiring happen in subsequent
 	// refactor-cut-2 commits.
-
-	@Override
-	public void onComparisonEnter(String redRsn)
-	{
-	}
 
 	@Override
 	public void onCompareDataReady()
