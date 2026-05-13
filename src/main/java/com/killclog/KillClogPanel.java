@@ -229,8 +229,6 @@ public class KillClogPanel extends PluginPanel
 	private final ComparisonController comparison;
 
 	// Comparison mode widgets (state fields all live on the controller)
-	private JTextField compareTextField;
-	private String comparePlaceholder = "Comparison";
 	private JPanel comparePanel;
 	private JLabel compareToggle;
 
@@ -1373,7 +1371,7 @@ public class KillClogPanel extends PluginPanel
 			if (c instanceof FlatTextField)
 			{
 				JTextField tf = ((FlatTextField) c).getTextField();
-				compareTextField = tf;
+				comparison.setCompareTextField(tf);
 				tf.setFont(FontManager.getRunescapeFont());
 				tf.setCaretColor(ComparisonController.COMPARE_RED);
 				tf.putClientProperty(
@@ -1382,13 +1380,13 @@ public class KillClogPanel extends PluginPanel
 				// Placeholder via focus listeners
 				Color placeholderColor = ColorScheme.MEDIUM_GRAY_COLOR;
 				tf.setForeground(placeholderColor);
-				tf.setText(comparePlaceholder);
+				tf.setText(comparison.getComparePlaceholder());
 				tf.addFocusListener(new java.awt.event.FocusAdapter()
 				{
 					@Override
 					public void focusGained(java.awt.event.FocusEvent e)
 					{
-						if (tf.getText().equals(comparePlaceholder))
+						if (tf.getText().equals(comparison.getComparePlaceholder()))
 						{
 							tf.setText("");
 						}
@@ -1401,7 +1399,7 @@ public class KillClogPanel extends PluginPanel
 						if (tf.getText().isEmpty())
 						{
 							tf.setForeground(placeholderColor);
-							tf.setText(comparePlaceholder);
+							tf.setText(comparison.getComparePlaceholder());
 						}
 					}
 				});
@@ -1471,7 +1469,7 @@ public class KillClogPanel extends PluginPanel
 	private void doCompareLookup()
 	{
 		String player = comparison.getCompareSearchBar().getText().trim();
-		if (player.isEmpty() || player.equals(comparePlaceholder) || comparison.isCompareLookupInFlight())
+		if (player.isEmpty() || player.equals(comparison.getComparePlaceholder()) || comparison.isCompareLookupInFlight())
 		{
 			return;
 		}
@@ -1766,22 +1764,6 @@ public class KillClogPanel extends PluginPanel
 		searchStatus.setForeground(color);
 	}
 
-	private void updateComparePlaceholder(String name)
-	{
-		String old = comparePlaceholder;
-		comparePlaceholder = name + " vs...";
-		if (compareTextField == null || compareTextField.hasFocus())
-		{
-			return;
-		}
-		String current = compareTextField.getText();
-		if (current.isEmpty() || current.equals(old) || current.equals("Comparison"))
-		{
-			compareTextField.setText(comparePlaceholder);
-			compareTextField.setForeground(ColorScheme.MEDIUM_GRAY_COLOR);
-		}
-	}
-
 	private static void recolorClearButton(Container container, Color color)
 	{
 		for (Component c : container.getComponents())
@@ -1908,7 +1890,7 @@ public class KillClogPanel extends PluginPanel
 		comparison.getCompareStatusLabel().setText(" ");
 		playerName.setText(rsn != null ? rsn : player);
 		playerName.setForeground(getInfoColor());
-		updateComparePlaceholder(rsn != null ? rsn : player);
+		comparison.updateComparePlaceholder(rsn != null ? rsn : player);
 		updateInfoIcon(knownType != null ? knownType : result.getAccountType());
 		compareToggle.setVisible(true);
 		refreshLabel.setVisible(true);
@@ -1942,7 +1924,7 @@ public class KillClogPanel extends PluginPanel
 		if (name != null && !name.isEmpty())
 		{
 			rsn = name;
-			updateComparePlaceholder(name);
+			comparison.updateComparePlaceholder(name);
 			if (lookupSession.getHiscoreResult() != null)
 			{
 				playerName.setText(name);
@@ -1993,7 +1975,7 @@ public class KillClogPanel extends PluginPanel
 				if (name != null && !name.isEmpty())
 				{
 					rsn = name;
-					updateComparePlaceholder(name);
+					comparison.updateComparePlaceholder(name);
 					if (lookupSession.getHiscoreResult() != null)
 					{
 						playerName.setText(name);

@@ -21,6 +21,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import javax.annotation.Nullable;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JTextField;
 import javax.swing.JToolTip;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.game.ItemManager;
@@ -130,6 +131,8 @@ public class ComparisonController
 	// ── Widgets ───────────────────────────────────────────────────────────
 	private final JLabel compareStatus = new JLabel(" ");
 	private final IconTextField compareSearchBar = new IconTextField();
+	@Nullable private JTextField compareTextField;
+	private String comparePlaceholder = "Comparison";
 
 	public ComparisonController(HiscoreService hiscoreService, ClogService clogService,
 		KillClogConfig config, LookupSession lookupSession, ItemManager itemManager,
@@ -216,6 +219,40 @@ public class ComparisonController
 	public IconTextField getCompareSearchBar()
 	{
 		return compareSearchBar;
+	}
+
+	/** Inner JTextField of {@link #compareSearchBar}, captured during the panel's buildCompareSearch wiring. */
+	@Nullable
+	public JTextField getCompareTextField()
+	{
+		return compareTextField;
+	}
+
+	public void setCompareTextField(@Nullable JTextField tf)
+	{
+		this.compareTextField = tf;
+	}
+
+	public String getComparePlaceholder()
+	{
+		return comparePlaceholder;
+	}
+
+	/** Refresh the comparison search bar's placeholder text after the primary player changes. */
+	public void updateComparePlaceholder(String name)
+	{
+		String old = comparePlaceholder;
+		comparePlaceholder = name + " vs...";
+		if (compareTextField == null || compareTextField.hasFocus())
+		{
+			return;
+		}
+		String current = compareTextField.getText();
+		if (current.isEmpty() || current.equals(old) || current.equals("Comparison"))
+		{
+			compareTextField.setText(comparePlaceholder);
+			compareTextField.setForeground(ColorScheme.MEDIUM_GRAY_COLOR);
+		}
 	}
 
 	/** Set the compare status label text + color. */
