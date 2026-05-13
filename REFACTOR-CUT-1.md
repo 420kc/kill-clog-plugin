@@ -68,11 +68,11 @@ Before merging back to dev:
    - Lookup with network down (error path)
 4. Run review-swarm against the diff with shibui + code-simplicity + monolith-hunter lenses; verify monolith-hunter no longer flags the panel for "doLookup orchestration mixed in"
 
-## Why not tonight
+## Sequencing notes
 
-Late-night refactor of a shipped plugin (~7,000 active installs, Plugin Hub) at 11pm is the bug-introduction window. The doLookup body has subtle invariants (version-stamp gating on every async callback, in-flight guards, parallel clog/hiscore interleave) that require focused attention to preserve.
+Refactor of a shipped plugin (~7,000 active installs, Plugin Hub). The doLookup body has subtle invariants (version-stamp gating on every async callback, in-flight guards, parallel clog/hiscore interleave) that require focused attention to preserve.
 
-**Dedicated session tomorrow morning: 2-3 hours, no interruptions, manual smoke test before commit, council pre-review on the diff.**
+**Dedicated session: 2-3 hours, no interruptions, manual smoke test before commit, council pre-review on the diff.**
 
 ## Cut 2 + cut 3 follow
 

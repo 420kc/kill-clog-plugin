@@ -2,7 +2,7 @@
 
 **Read this first.** You are a fresh Code instance picking up cut 1 of the Kill Clog refactor. The architecture is locked in `REFACTOR-CUT-1.md`. The `LookupSession.java` skeleton (commit `41cf365` on `refactor-lookup-session` branch) exists with state fields, Listener interface, getters, and a stubbed `start()` method. **Your job is to migrate the body of `KillClogPanel.doLookup()` into `LookupSession.start()` and rewire every reference site in `KillClogPanel.java`.** Zero behavior change. One atomic commit.
 
-This spec is dense by design. Follow it exactly. Don't make architectural judgment calls — those are baked in already.
+This spec is dense by design. Follow it exactly. Don't make architectural judgment calls - those are baked in already.
 
 ## Pre-flight
 
@@ -19,7 +19,7 @@ If any of these fail, stop. Tell dyl what's wrong.
 
 ## The migration in 7 steps
 
-### Step 1 — Implement `LookupSession.start()` body
+### Step 1 - Implement `LookupSession.start()` body
 
 In `src/main/java/com/killclog/LookupSession.java`, replace the `throw new UnsupportedOperationException(...)` with the body of the current `KillClogPanel.doLookup()` (lines 1998-2160-ish), translated mechanically:
 
@@ -28,17 +28,17 @@ In `src/main/java/com/killclog/LookupSession.java`, replace the `throw new Unsup
 - `resetAllLabels()` → call moves to listener's `onLookupStart`
 - `renderHiscoreResult(...)` → removed; listener handles via `onHiscoreResult` / `onCachedResult`
 - `renderClogResult(...)` → listener handles via `onClogResult` / `onCachedResult`
-- `nameAutocompleter.addToSearchHistory(player)` → KEEP in session (it's not UI, it's a service call); but consider — actually it IS UI-coupled (the autocomplete is a widget). Move to listener via a new event OR call directly from session if `NameAutocompleter` is passed in. **Decision: pass `NameAutocompleter nullable ref` to session constructor, call directly.**
+- `nameAutocompleter.addToSearchHistory(player)` → KEEP in session (it's not UI, it's a service call); but consider - actually it IS UI-coupled (the autocomplete is a widget). Move to listener via a new event OR call directly from session if `NameAutocompleter` is passed in. **Decision: pass `NameAutocompleter nullable ref` to session constructor, call directly.**
 - All `lookupVersion` mutations and `lookupInFlight` mutations stay inside session
 - All `hiscoreResult = result;` and `clogResult = result;` writes stay inside session
 - `SwingUtilities.invokeLater(...)` wrappers around listener calls stay (preserve EDT semantics)
 
 Skip these from doLookup (panel keeps them):
-- Reading `searchBar.getText().trim()` — panel passes the player string to `session.start()`
-- `localRsn` / `localAccountType` — panel passes these to `session.start()` parameters
-- `compareTooltipDataMap.clear()` (if present) — comparison mode is OUT OF SCOPE for cut 1; leave that call in panel after `session.start()` returns
+- Reading `searchBar.getText().trim()` - panel passes the player string to `session.start()`
+- `localRsn` / `localAccountType` - panel passes these to `session.start()` parameters
+- `compareTooltipDataMap.clear()` (if present) - comparison mode is OUT OF SCOPE for cut 1; leave that call in panel after `session.start()` returns
 
-### Step 2 — Update `LookupSession` constructor signature
+### Step 2 - Update `LookupSession` constructor signature
 
 Current:
 ```java
@@ -54,7 +54,7 @@ public LookupSession(HiscoreService hiscoreService, ClogService clogService,
 
 Store + use in start() at the cache-hit and api-success points.
 
-### Step 3 — In `KillClogPanel.java`, instantiate the session
+### Step 3 - In `KillClogPanel.java`, instantiate the session
 
 Add a field near other final-ish refs (after `tooltipController` declaration, around line 230):
 
@@ -74,7 +74,7 @@ Note: `nameAutocompleter` is set later in setNameAutocompleter(). Either:
 
 **Decision: add `setNameAutocompleter(NameAutocompleter)` to `LookupSession`. Panel's existing setter calls both.**
 
-### Step 4 — Panel implements `LookupSession.Listener`
+### Step 4 - Panel implements `LookupSession.Listener`
 
 Add `implements LookupSession.Listener` to the class declaration. Implement the 6 methods at the bottom of the class. Each method body is COPIED VERBATIM from the corresponding chunk of the current doLookup body:
 
@@ -89,7 +89,7 @@ Add `implements LookupSession.Listener` to the class declaration. Implement the 
 
 Each method ends with the side-effects already in doLookup (renderHiscoreResult, renderClogResult, etc).
 
-### Step 5 — Replace `doLookup()` body
+### Step 5 - Replace `doLookup()` body
 
 ```java
 public void doLookup()
@@ -109,7 +109,7 @@ public void doLookup()
 
 That's it for doLookup. Body shrinks from ~150 lines to ~10.
 
-### Step 6 — Migrate all read sites of lookup state
+### Step 6 - Migrate all read sites of lookup state
 
 In `KillClogPanel.java`, find every read of `hiscoreResult`, `clogResult`, `currentLookupRsn`, `clogLastChanged`, `lookupVersion`, `lookupInFlight`:
 
@@ -131,9 +131,9 @@ Special cases:
 
 After this step, the panel should have ZERO local references to these 6 names except via the session getters.
 
-### Step 7 — Remove the 6 state fields from KillClogPanel
+### Step 7 - Remove the 6 state fields from KillClogPanel
 
-Delete lines 215-228 (the `hiscoreResult`, `clogResult`, `rsn`, `currentLookupRsn`, `clogLastChanged`, `lookupVersion`, `lookupInFlight` declarations). Keep `localRsn` and `localAccountType` — those stay in panel as they're not lookup state.
+Delete lines 215-228 (the `hiscoreResult`, `clogResult`, `rsn`, `currentLookupRsn`, `clogLastChanged`, `lookupVersion`, `lookupInFlight` declarations). Keep `localRsn` and `localAccountType` - those stay in panel as they're not lookup state.
 
 **Note:** `rsn` (line 217) might be referenced separately from `currentLookupRsn`. Grep for it. If `rsn` is used as a "current player display name" distinct from the lookup mechanism, KEEP it in panel. If it's redundant with `currentLookupRsn`, replace with `lookupSession.getCurrentLookupRsn()`.
 
@@ -152,8 +152,8 @@ After step 7, before commit:
    ./gradlew run
    ```
    Wait for RuneLite to launch with the plugin sideloaded. Test these paths:
-   - Lookup self (cached path) — should reveal data after the 600ms timer
-   - Lookup self (after a stale cache — close + reopen plugin to force) — should hit API
+   - Lookup self (cached path) - should reveal data after the 600ms timer
+   - Lookup self (after a stale cache - close + reopen plugin to force) - should hit API
    - Lookup random player like "asdfqwerty12345" → expect not-found message
    - Lookup with network disconnected → expect "Lookup failed" message
    - Lookup, then immediately lookup another player → first lookup should NOT race-overwrite the second

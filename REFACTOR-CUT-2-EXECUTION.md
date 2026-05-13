@@ -1,8 +1,8 @@
 # Refactor cut 2 execution spec
 
-**Read this first.** You are a fresh Code instance picking up cut 2 of the Kill Clog refactor. The architecture is locked in `REFACTOR-CUT-2.md`. Cut 1 has landed (`refactor-cut-1: doLookup body migrated to LookupSession.start()` — see `git log`); `KillClogPanel` is now talking to `LookupSession` through the `Listener` interface and reads primary-player state via `lookupSession.getX()` getters. **Your job is to extract the comparison subsystem (~600 LOC, 13 fields, 10 methods, 5 widgets) out of `KillClogPanel.java` into a new `ComparisonController` class, with the panel reduced to a pure `ComparisonController.Listener` implementation.** Zero behavior change. One atomic commit per logical step (skeleton, body migration, reference-site cleanup), mirroring how cut 1 was sequenced.
+**Read this first.** You are a fresh Code instance picking up cut 2 of the Kill Clog refactor. The architecture is locked in `REFACTOR-CUT-2.md`. Cut 1 has landed (`refactor-cut-1: doLookup body migrated to LookupSession.start()` - see `git log`); `KillClogPanel` is now talking to `LookupSession` through the `Listener` interface and reads primary-player state via `lookupSession.getX()` getters. **Your job is to extract the comparison subsystem (~600 LOC, 13 fields, 10 methods, 5 widgets) out of `KillClogPanel.java` into a new `ComparisonController` class, with the panel reduced to a pure `ComparisonController.Listener` implementation.** Zero behavior change. One atomic commit per logical step (skeleton, body migration, reference-site cleanup), mirroring how cut 1 was sequenced.
 
-This spec is dense by design. Follow it exactly. Don't make architectural judgment calls — those are baked in already.
+This spec is dense by design. Follow it exactly. Don't make architectural judgment calls - those are baked in already.
 
 ## Pre-flight
 
@@ -10,7 +10,7 @@ This spec is dense by design. Follow it exactly. Don't make architectural judgme
 cd ~/plugins/kcpdev
 git checkout refactor-lookup-session
 git log --oneline | grep "refactor-cut-1: doLookup body migrated" | head -1
-# expected: f172072 (or whatever sha cut 1's final commit landed on) — body migrated to LookupSession.start
+# expected: f172072 (or whatever sha cut 1's final commit landed on) - body migrated to LookupSession.start
 
 git checkout -b refactor-comparison-controller
 ./gradlew build
@@ -24,12 +24,12 @@ If any of these fail, stop. Tell dyl what's wrong.
 
 ## The migration in 7 steps
 
-### Step 1 — Skeleton: create `ComparisonController.java` with state + Listener interface only
+### Step 1 - Skeleton: create `ComparisonController.java` with state + Listener interface only
 
 In `src/main/java/com/killclog/ComparisonController.java`, declare:
 
 - Package + license header (mirror `LookupSession.java`).
-- Class doc: brief — owns the red-side comparison subsystem; UI is downstream via `Listener`; reads primary-side state via `LookupSession` getters; never writes to the session.
+- Class doc: brief - owns the red-side comparison subsystem; UI is downstream via `Listener`; reads primary-side state via `LookupSession` getters; never writes to the session.
 - `public interface Listener` with the 5 methods from `REFACTOR-CUT-2.md`:
   - `void onComparisonEnter(String redRsn);`
   - `void onComparisonExit();`
@@ -44,7 +44,7 @@ In `src/main/java/com/killclog/ComparisonController.java`, declare:
   - `private volatile int compareLookupVersion = 0;`
   - `private volatile boolean compareLookupInFlight = false;`
   - `private final Map<HiscoreSkill, TooltipData> compareTooltipDataMap = new LinkedHashMap<>();`
-- Constants (move with the controller — they live nowhere else):
+- Constants (move with the controller - they live nowhere else):
   - `static final Color COMPARE_BLUE = new Color(91, 164, 207);`
   - `static final Color COMPARE_RED = new Color(224, 86, 86);`
   - `static final String COMPARE_BLUE_HEX = String.format(...);`
@@ -75,7 +75,7 @@ unchanged in this commit (additive only). next commit migrates the bodies +
 the ~50 reference sites.
 ```
 
-### Step 2 — Update `ComparisonController` constructor signature + scaffold the panel side
+### Step 2 - Update `ComparisonController` constructor signature + scaffold the panel side
 
 Constructor:
 ```java
@@ -103,18 +103,18 @@ owns the live behavior. zero behavior change. unblocks the body-migration
 commit.
 ```
 
-### Step 3 — Implement `ComparisonController` body
+### Step 3 - Implement `ComparisonController` body
 
 Translate the bodies of these panel methods into the controller, line-for-line:
 
 | Panel method (current line) | Controller destination | Notes |
 |---|---|---|
 | `exitComparisonMode` (line 1467) | `exit()` | UI side effects fan out to `listener.onComparisonExit()` |
-| `swapToComparePlayer` (line 1485) | `swapToComparePlayer()` | The `lookupSession.adoptState(swapHiscore, swapClog, swapName)` call STAYS — controller calls it directly on the session ref it holds. Then fires `listener.onSwapToRedPlayer(swapName)` for the panel-side UI updates. |
-| `doCompareLookup` (line 1534) | `doCompareLookup(String player)` | Receives `player` from listener; same async pipeline as the original; UI dispatch via `listener.onCompareDataReady()` on success, `listener.onCompareError(player, ex)` on fail. The version-stamp + in-flight guard pattern mirrors `LookupSession.start()` — preserve `compareLookupVersion++` and `compareLookupInFlight = true/false` semantics exactly. |
+| `swapToComparePlayer` (line 1485) | `swapToComparePlayer()` | The `lookupSession.adoptState(swapHiscore, swapClog, swapName)` call STAYS - controller calls it directly on the session ref it holds. Then fires `listener.onSwapToRedPlayer(swapName)` for the panel-side UI updates. |
+| `doCompareLookup` (line 1534) | `doCompareLookup(String player)` | Receives `player` from listener; same async pipeline as the original; UI dispatch via `listener.onCompareDataReady()` on success, `listener.onCompareError(player, ex)` on fail. The version-stamp + in-flight guard pattern mirrors `LookupSession.start()` - preserve `compareLookupVersion++` and `compareLookupInFlight = true/false` semantics exactly. |
 | `setCompareCell` (line 1770) | `setCompareCell(...)` | Pure html formatter; moves wholesale. |
-| `compareOrRestore` (line 1797) | `compareOrRestore(...)` | Pure html formatter; reads primary side via `lookupSession.getHiscoreResult()` etc. — no panel reach-through. |
-| `updateAllCellsForComparison` (line 1833) | `updateAllCells(...)` | Renamed (drop `ForComparison` suffix — the controller's name implies it). Takes the panel's cell maps as parameters or the panel calls it via the listener path. **Decision: pass the cell maps + label refs the controller needs as constructor args (or as a `CellRenderTarget` interface the panel implements), so the controller can call back into the panel's labels without holding a panel reference.** |
+| `compareOrRestore` (line 1797) | `compareOrRestore(...)` | Pure html formatter; reads primary side via `lookupSession.getHiscoreResult()` etc. - no panel reach-through. |
+| `updateAllCellsForComparison` (line 1833) | `updateAllCells(...)` | Renamed (drop `ForComparison` suffix - the controller's name implies it). Takes the panel's cell maps as parameters or the panel calls it via the listener path. **Decision: pass the cell maps + label refs the controller needs as constructor args (or as a `CellRenderTarget` interface the panel implements), so the controller can call back into the panel's labels without holding a panel reference.** |
 | `updateInfoBarForComparison` (line 1694) | `updateInfoBar(...)` | Same renaming + same parameter-passing decision. |
 | `buildCompareClueRare` (line 1889) | `buildClueRare(...)` | Pure data builder; reads `compareClogResult`. |
 | `buildCompareCustomRare` (line 1896) | `buildCustomRare(...)` | Same. |
@@ -140,8 +140,8 @@ public interface CellRenderTarget {
 Pass the target into the controller constructor or as a setter (mirrors how `LookupSession` accepted late-bound `NameAutocompleter`). Controller then calls `target.bossLabels().get(skill).setText(...)` instead of reaching into `KillClogPanel` directly.
 
 Skip these from the comparison methods (panel keeps them):
-- The 4 inline `makeCompareSpriteTooltip` call sites at panel lines 1233, 1257, 1286, 1344 — those are inside cell-factory `getToolTipText()` overrides; **cut 3's job**. They change from `makeCompareSpriteTooltip(...)` to `comparison.makeSpriteTooltip(...)` (delegation), nothing else.
-- `compareToggle` mouse listener wiring (panel lines 375-401) — the toggle is a panel widget; the click handler calls `comparison.enter(rsn)` or `comparison.exit()` instead of the inline body.
+- The 4 inline `makeCompareSpriteTooltip` call sites at panel lines 1233, 1257, 1286, 1344 - those are inside cell-factory `getToolTipText()` overrides; **cut 3's job**. They change from `makeCompareSpriteTooltip(...)` to `comparison.makeSpriteTooltip(...)` (delegation), nothing else.
+- `compareToggle` mouse listener wiring (panel lines 375-401) - the toggle is a panel widget; the click handler calls `comparison.enter(rsn)` or `comparison.exit()` instead of the inline body.
 
 Commit when build clean:
 
@@ -158,15 +158,15 @@ commit: replace the panel's comparison entry points to delegate, populate
 listener stub bodies, migrate the 50ish reference sites.
 ```
 
-### Step 4 — Replace the panel's comparison entry points
+### Step 4 - Replace the panel's comparison entry points
 
 In `KillClogPanel.java`:
 - The `compareToggle` click handler at line 375: replace inline enter/exit logic with `comparison.enter(...)` or `comparison.exit()`.
 - The `playerName` click handler at line 628 (the `swapToComparePlayer` trigger): replace with `comparison.swapToComparePlayer()`.
-- The `compareSearchBar` action listener that calls `doCompareLookup`: replace with `comparison.doCompareLookup(searchBar.getText().trim())` (or whatever the input source is — confirm against the existing wiring).
-- Delete the now-orphaned `enterComparisonMode` (if it exists), `exitComparisonMode`, `swapToComparePlayer`, `doCompareLookup`, `setCompareCell`, `compareOrRestore`, `updateAllCellsForComparison`, `updateInfoBarForComparison`, `buildCompareClueRare`, `buildCompareCustomRare`, `makeCompareSpriteTooltip`, `buildCompareSearch` methods from the panel — they live on the controller now.
+- The `compareSearchBar` action listener that calls `doCompareLookup`: replace with `comparison.doCompareLookup(searchBar.getText().trim())` (or whatever the input source is - confirm against the existing wiring).
+- Delete the now-orphaned `enterComparisonMode` (if it exists), `exitComparisonMode`, `swapToComparePlayer`, `doCompareLookup`, `setCompareCell`, `compareOrRestore`, `updateAllCellsForComparison`, `updateInfoBarForComparison`, `buildCompareClueRare`, `buildCompareCustomRare`, `makeCompareSpriteTooltip`, `buildCompareSearch` methods from the panel - they live on the controller now.
 
-### Step 5 — Populate panel's `ComparisonController.Listener` stub bodies
+### Step 5 - Populate panel's `ComparisonController.Listener` stub bodies
 
 | Listener method | Body |
 |---|---|
@@ -174,9 +174,9 @@ In `KillClogPanel.java`:
 | `onComparisonExit()` | Restore single-player cells (call existing `renderHiscoreResult` + `renderClogResult` with primary-side data from `lookupSession`), update `compareToggle` icon to "off". |
 | `onSwapToRedPlayer(newPrimaryRsn)` | The `lookupSession.adoptState` already fired in the controller; here the panel re-renders primary side: `renderHiscoreResult(lookupSession.getHiscoreResult(), newPrimaryRsn, false, null)` etc. Then `searchBar.setText(newPrimaryRsn)`. |
 | `onCompareDataReady()` | Re-render: `comparison.updateAllCells(this); comparison.updateInfoBar(this); revalidate(); repaint();` |
-| `onCompareError(player, err)` | Surface error in `compareStatus` widget (now owned by controller; panel asks: `comparison.getStatusLabel().setText("...")` — or controller exposes a `setStatusError(String)` helper). |
+| `onCompareError(player, err)` | Surface error in `compareStatus` widget (now owned by controller; panel asks: `comparison.getStatusLabel().setText("...")` - or controller exposes a `setStatusError(String)` helper). |
 
-### Step 6 — Migrate the ~50 reference sites in `KillClogPanel.java`
+### Step 6 - Migrate the ~50 reference sites in `KillClogPanel.java`
 
 ```bash
 grep -nE "\b(comparisonMode|compareHiscoreResult|compareClogResult|compareRsn|compareLookupVersion|compareLookupInFlight|compareTooltipDataMap)\b" src/main/java/com/killclog/KillClogPanel.java
@@ -187,7 +187,7 @@ For each match (excluding the now-deleted method bodies):
 - `compareHiscoreResult` → `comparison.getCompareHiscoreResult()`
 - `compareClogResult` → `comparison.getCompareClogResult()`
 - `compareRsn` → `comparison.getCompareRsn()`
-- `compareLookupVersion` → `comparison.getCompareLookupVersion()` (read-only; should not be needed externally — controller manages it internally)
+- `compareLookupVersion` → `comparison.getCompareLookupVersion()` (read-only; should not be needed externally - controller manages it internally)
 - `compareLookupInFlight` → unused outside controller after migration; remove any panel-side reads
 - `compareTooltipDataMap.get(skill)` → `comparison.getCompareTooltipData(skill)`
 - `compareTooltipDataMap.clear()` → controller exposes `clearCompareTooltips()` and the panel calls that
@@ -202,16 +202,16 @@ sed -i \
   src/main/java/com/killclog/KillClogPanel.java
 ```
 
-(Watch out: `compareTooltipDataMap` and `compareLookupVersion` need site-specific edits, not a blind sed — they often appear as method calls or assignments that don't translate cleanly to a getter.)
+(Watch out: `compareTooltipDataMap` and `compareLookupVersion` need site-specific edits, not a blind sed - they often appear as method calls or assignments that don't translate cleanly to a getter.)
 
-### Step 7 — Remove the comparison state fields + widgets + constants from `KillClogPanel`
+### Step 7 - Remove the comparison state fields + widgets + constants from `KillClogPanel`
 
 Delete from the panel (lines 228-244 currently):
 - `COMPARE_BLUE`, `COMPARE_RED`, `COMPARE_BLUE_HEX`, `COMPARE_RED_HEX` (move with controller)
 - `comparisonMode`, `compareHiscoreResult`, `compareClogResult`, `compareRsn`, `compareLookupVersion`, `compareLookupInFlight`, `compareTooltipDataMap`
 - `compareSearchBar`, `compareTextField`, `comparePlaceholder`, `comparePanel`, `compareStatus`, `compareToggle` (move with controller)
 
-Keep the toggle's mouse listener wiring on the panel — but it now calls `comparison.toggleEnter()` (or whatever the controller exposes for the toggle interaction).
+Keep the toggle's mouse listener wiring on the panel - but it now calls `comparison.toggleEnter()` (or whatever the controller exposes for the toggle interaction).
 
 After step 7, the panel should have ZERO references to bare comparison state names except via `comparison.X()` method calls.
 
@@ -285,4 +285,4 @@ If at any step the build breaks or smoke test fails:
 2. Commit with the template message
 3. Update `REFACTOR-CUT-2.md` with `## Status: complete (commit <sha>)`
 4. Telegram dyl via heartbeat bot: `REFACTOR-CUT-2 LANDED: <sha>, build green, smoke 6/6`
-5. Cut 3 (cell-factory tooltip routing) is the next refactor — design doc `REFACTOR-CUT-3.md` is the prerequisite.
+5. Cut 3 (cell-factory tooltip routing) is the next refactor - design doc `REFACTOR-CUT-3.md` is the prerequisite.

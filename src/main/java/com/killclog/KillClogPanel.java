@@ -253,7 +253,7 @@ public class KillClogPanel extends PluginPanel
 		this.comparison = new ComparisonController(hiscoreService, clogService, config, lookupSession,
 			itemManager, tooltipController, tooltipDataBuilder, this);
 		this.comparison.setRenderTarget(this);
-		this.cellFactory = new CellFactory(lookupSession, comparison, tooltipDataBuilder);
+		this.cellFactory = new CellFactory(comparison, tooltipDataBuilder);
 		this.cellFactory.setSinglePlayerTooltipBuilder(new CellFactory.SinglePlayerTooltipBuilder()
 		{
 			@Override
@@ -1197,7 +1197,7 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public JToolTip createToolTip()
 			{
-				return cellFactory.buildClueRareTooltip(this, name, clogCategory, isThirdAge);
+				return cellFactory.buildClueRareTooltip(this, name, clogCategory);
 			}
 		};
 		styleLabel(label, name);
@@ -1451,7 +1451,7 @@ public class KillClogPanel extends PluginPanel
 
 
 	@Override
-	public void onComparisonEnter(String redRsn)
+	public void onComparisonEnter(@SuppressWarnings("unused") String redRsn)
 	{
 		comparison.getCompareSearchBar().setIcon(IconTextField.Icon.SEARCH);
 		comparison.getCompareSearchBar().setText("");
@@ -2289,11 +2289,6 @@ public class KillClogPanel extends PluginPanel
 
 	// ── LookupSession.Listener ───────────────────────────────────────────────
 	// Each method mirrors the matching chunk of the legacy doLookup body.
-	// Lookup state fields on the panel (lookupSession.getHiscoreResult(), lookupSession.getClogResult(),
-	// lookupSession.getCurrentLookupRsn(), lookupSession.getClogLastChanged()) are still updated here as well as in
-	// the session, so the ~30 read sites scattered through the panel keep
-	// reading from local fields until a follow-up cleanup commit migrates
-	// them to session getters.
 
 	@Override
 	public void onLookupStart(String player, boolean isSelf, boolean isFirstSelfGreeting)
@@ -2409,10 +2404,6 @@ public class KillClogPanel extends PluginPanel
 	}
 
 	// ── ComparisonController.Listener ────────────────────────────────────────
-	// Stub bodies. Controller is dormant in this commit (its lifecycle methods
-	// still throw); the existing comparison code in the panel owns the live
-	// behavior. Body migration + reference-site rewiring happen in subsequent
-	// refactor-cut-2 commits.
 
 	@Override
 	public void onCompareDataReady()

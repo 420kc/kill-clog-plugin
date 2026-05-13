@@ -164,7 +164,7 @@ If any of these fail, stop. Resolve cut 1 first.
 
 ## Related
 
-- `REFACTOR-CUT-1.md` — design doc for the LookupSession extraction (the predecessor cut)
-- `REFACTOR-CUT-1-EXECUTION.md` — step-by-step recipe for cut 1, model for the eventual cut-2 execution spec
-- `src/main/java/com/killclog/KillClogPanel.java` — the source file being decomposed
-- `src/main/java/com/killclog/LookupSession.java` — cut 1's destination class; cut 2 reads its getters
+- `REFACTOR-CUT-1.md` - design doc for the LookupSession extraction (the predecessor cut)
+- `REFACTOR-CUT-1-EXECUTION.md` - step-by-step recipe for cut 1, model for the eventual cut-2 execution spec
+- `src/main/java/com/killclog/KillClogPanel.java` - the source file being decomposed
+- `src/main/java/com/killclog/LookupSession.java` - cut 1's destination class; cut 2 reads its getters

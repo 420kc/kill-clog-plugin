@@ -12,19 +12,19 @@ Branch: `refactor-cell-factories` (off `refactor-comparison-controller` after cu
 
 After cuts 1 + 2 land, `KillClogPanel.java` is still ~2,500 lines, and roughly 250 of those are anonymous `JLabel` subclass cell factories that override `createToolTip()` to route between single-player and comparison-mode tooltip paths. The factories live around panel lines 1060-1340 and produce 6 distinct cell types:
 
-- `makeActivityCell(HiscoreSkill)` — activity grid cell with sprite icon + tooltip
-- `makePvpSummaryCell()` — PvP summary cell with PvpSummaryTooltip
-- `makeClueTierCell(HiscoreSkill, int, boolean)` — clue tier cell (easy/medium/hard/elite/master/grandmaster), normal or compact layout
-- `makeClueRareCell(String, int, String, boolean)` — 3rd Age + Gilded rare cells
-- `makeCustomRareCell(String, int, String, int[])` — Hard/Elite/Master rare cells
-- `makeBossCell(HiscoreSkill)` — boss kc cell with comparison-aware tooltip
+- `makeActivityCell(HiscoreSkill)` - activity grid cell with sprite icon + tooltip
+- `makePvpSummaryCell()` - PvP summary cell with PvpSummaryTooltip
+- `makeClueTierCell(HiscoreSkill, int, boolean)` - clue tier cell (easy/medium/hard/elite/master/grandmaster), normal or compact layout
+- `makeClueRareCell(String, int, String, boolean)` - 3rd Age + Gilded rare cells
+- `makeCustomRareCell(String, int, String, int[])` - Hard/Elite/Master rare cells
+- `makeBossCell(HiscoreSkill)` - boss kc cell with comparison-aware tooltip
 
 Each factory creates a `JLabel` subclass with an inline `createToolTip()` override that:
 1. Checks `comparison.isComparisonMode()`.
 2. If yes, builds dual-player tooltip data (calling `comparison.buildClueRare` / `buildCustomRare` as needed) and returns `comparison.makeSpriteTooltip(...)`.
 3. If no, builds single-player tooltip data and returns one of the existing single-player tooltip classes (`ImgTooltip`, `ClueSummaryTooltip`, `PvpSummaryTooltip`, etc.).
 
-This routing is the third concentration of bundled state + behavior in the panel. The factories pull from `tooltipDataMap`, `tooltipDataBuilder`, `clogService`, `lookupSession`, `comparison`, `clueIcons`, `pvpActivityIcons`, `spriteManager`, `itemManager` — every dep used by tooltip rendering.
+This routing is the third concentration of bundled state + behavior in the panel. The factories pull from `tooltipDataMap`, `tooltipDataBuilder`, `clogService`, `lookupSession`, `comparison`, `clueIcons`, `pvpActivityIcons`, `spriteManager`, `itemManager` - every dep used by tooltip rendering.
 
 ## Audit numbers (against `KillClogPanel.java` @ refactor-comparison-controller HEAD)
 
@@ -60,9 +60,9 @@ CellFactory (new)                          KillClogPanel (slimmer)
     └─ wireSpriteAsync(label, spriteId)
 ```
 
-The `tooltipDataMap` field moves with `CellFactory` (it's the per-skill primary-side tooltip cache). `rareTooltips` also moves (or stays on panel if other code outside the factories reads it — verify during execution).
+The `tooltipDataMap` field moves with `CellFactory` (it's the per-skill primary-side tooltip cache). `rareTooltips` also moves (or stays on panel if other code outside the factories reads it - verify during execution).
 
-`clueIcons` + `pvpActivityIcons` (the icon caches loaded from sprites) move too — they're only used inside the factory's tooltip overrides.
+`clueIcons` + `pvpActivityIcons` (the icon caches loaded from sprites) move too - they're only used inside the factory's tooltip overrides.
 
 ## Listener interface (panel implements, optional)
 
@@ -105,8 +105,8 @@ Before merging back to dev:
    ```bash
    grep -nE "\b(tooltipDataMap|rareTooltips|clueIcons|pvpActivityIcons)\b" src/main/java/com/killclog/KillClogPanel.java | grep -v "cellFactory\.\|//"
    ```
-   Should print nothing (or print only what intentionally stayed on the panel — verify).
-5. Council pre-review (recommended): run review-swarm with shibui + code-simplicity + monolith-hunter on the diff. monolith-hunter should flag the panel as substantially simpler — combined with cut 1 + cut 2, the panel should drop from ~2,900 lines (pre-refactor) to ~1,500 lines (target end state per the cut-2 spec).
+   Should print nothing (or print only what intentionally stayed on the panel - verify).
+5. Council pre-review (recommended): run review-swarm with shibui + code-simplicity + monolith-hunter on the diff. monolith-hunter should flag the panel as substantially simpler - combined with cut 1 + cut 2, the panel should drop from ~2,900 lines (pre-refactor) to ~1,500 lines (target end state per the cut-2 spec).
 
 ## Why this is the smallest cut
 
@@ -141,10 +141,10 @@ If any of these fail, stop. Resolve the prior cuts first.
 
 ## Related
 
-- `REFACTOR-CUT-1.md` — design doc for the LookupSession extraction (commit f172072)
-- `REFACTOR-CUT-1-EXECUTION.md` — step-by-step recipe for cut 1
-- `REFACTOR-CUT-2.md` — design doc for the ComparisonController extraction (commit ad42218)
-- `REFACTOR-CUT-2-EXECUTION.md` — step-by-step recipe for cut 2
-- `src/main/java/com/killclog/KillClogPanel.java` — the source file being decomposed
-- `src/main/java/com/killclog/LookupSession.java` — cut 1's destination class
-- `src/main/java/com/killclog/ComparisonController.java` — cut 2's destination class
+- `REFACTOR-CUT-1.md` - design doc for the LookupSession extraction (commit f172072)
+- `REFACTOR-CUT-1-EXECUTION.md` - step-by-step recipe for cut 1
+- `REFACTOR-CUT-2.md` - design doc for the ComparisonController extraction (commit ad42218)
+- `REFACTOR-CUT-2-EXECUTION.md` - step-by-step recipe for cut 2
+- `src/main/java/com/killclog/KillClogPanel.java` - the source file being decomposed
+- `src/main/java/com/killclog/LookupSession.java` - cut 1's destination class
+- `src/main/java/com/killclog/ComparisonController.java` - cut 2's destination class

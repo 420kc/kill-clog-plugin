@@ -18,14 +18,11 @@ import net.runelite.client.hiscore.HiscoreSkill;
 
 /**
  * Holds the tooltip + icon caches that the panel's cell-factory overrides
- * read on every hover. Per-skill {@code TooltipData} entries are populated by
- * the lookup pipeline (panel-side, populated post-lookup-result); the per-rare
- * entries are populated alongside. Sprite-driven icon caches are populated
- * once during cell construction by the panel's cell-factory methods.
- *
- * <p>This class intentionally has no Swing imports yet — it's the skeleton for
- * cut 3. The cell-builder methods (makeBossCell etc.) move into this class in
- * the next commit.
+ * read on every hover, and routes between single-player and dual-player
+ * tooltip rendering. Per-skill {@code TooltipData} entries are populated by
+ * the lookup pipeline (panel-side, post-lookup-result); the per-rare entries
+ * are populated alongside. Sprite-driven icon caches are populated once
+ * during cell construction by the panel's cell-factory methods.
  */
 public class CellFactory
 {
@@ -38,9 +35,8 @@ public class CellFactory
 	}
 
 	// ── Deps ──────────────────────────────────────────────────────────────
-	@Nullable private final LookupSession lookupSession;
-	@Nullable private final ComparisonController comparison;
-	@Nullable private final TooltipDataBuilder tooltipDataBuilder;
+	private final ComparisonController comparison;
+	private final TooltipDataBuilder tooltipDataBuilder;
 	@Nullable private SinglePlayerTooltipBuilder singlePlayerBuilder;
 
 	// ── Tooltip data caches ───────────────────────────────────────────────
@@ -51,18 +47,10 @@ public class CellFactory
 	private final BufferedImage[] clueIcons = new BufferedImage[8];
 	private final BufferedImage[] pvpActivityIcons = new BufferedImage[5];
 
-	public CellFactory(@Nullable LookupSession lookupSession, @Nullable ComparisonController comparison,
-		@Nullable TooltipDataBuilder tooltipDataBuilder)
+	public CellFactory(ComparisonController comparison, TooltipDataBuilder tooltipDataBuilder)
 	{
-		this.lookupSession = lookupSession;
 		this.comparison = comparison;
 		this.tooltipDataBuilder = tooltipDataBuilder;
-	}
-
-	/** No-arg constructor retained for the field-only skeleton callsite; deps are wired via the full constructor in production. */
-	public CellFactory()
-	{
-		this(null, null, null);
 	}
 
 	public void setSinglePlayerTooltipBuilder(SinglePlayerTooltipBuilder builder)
@@ -75,7 +63,7 @@ public class CellFactory
 	/** Build the boss-cell tooltip, routing between single-player and comparison-mode renderers. */
 	public JToolTip buildBossTooltip(JLabel owner, HiscoreSkill boss)
 	{
-		if (comparison != null && comparison.isComparisonMode())
+		if (comparison.isComparisonMode())
 		{
 			return comparison.makeSpriteTooltip(owner,
 				tooltipDataMap.get(boss),
@@ -88,12 +76,12 @@ public class CellFactory
 	/** Build the clue-tier tooltip, routing between single-player and comparison-mode renderers. */
 	public JToolTip buildClueTierTooltip(JLabel owner, HiscoreSkill tier, String displayName, boolean compact)
 	{
-		if (comparison != null && comparison.isComparisonMode())
+		if (comparison.isComparisonMode())
 		{
 			String category = PanelData.CLUE_CATEGORIES.get(tier);
 			int redRank = comparison.getCompareHiscoreResult() != null
 				? comparison.getCompareHiscoreResult().getActivityRank(tier.getName()) : -1;
-			TooltipData redData = comparison.getCompareClogResult() != null && tooltipDataBuilder != null
+			TooltipData redData = comparison.getCompareClogResult() != null
 				? tooltipDataBuilder.buildTooltipData(displayName, category, redRank, comparison.getCompareClogResult())
 				: null;
 			return comparison.makeSpriteTooltip(owner, tooltipDataMap.get(tier), redData, displayName);
@@ -102,10 +90,10 @@ public class CellFactory
 	}
 
 	/** Build a clue-rare-cell tooltip (3rd Age / Gilded), routing between single-player and comparison-mode. */
-	public JToolTip buildClueRareTooltip(JLabel owner, String name, String clogCategory, boolean isThirdAge)
+	public JToolTip buildClueRareTooltip(JLabel owner, String name, String clogCategory)
 	{
-		TooltipData data = rareTooltips.get(isThirdAge ? PanelData.CLOG_THIRD_AGE : PanelData.CLOG_GILDED);
-		if (comparison != null && comparison.isComparisonMode())
+		TooltipData data = rareTooltips.get(clogCategory);
+		if (comparison.isComparisonMode())
 		{
 			TooltipData redData = comparison.buildClueRare(name, clogCategory);
 			return comparison.makeSpriteTooltip(owner, data, redData, name);
@@ -116,7 +104,7 @@ public class CellFactory
 	/** Build a custom-rare-cell tooltip (Hard / Elite / Master), routing between single-player and comparison-mode. */
 	public JToolTip buildCustomRareTooltip(JLabel owner, String name, String rareKey, int[] itemIds)
 	{
-		if (comparison != null && comparison.isComparisonMode())
+		if (comparison.isComparisonMode())
 		{
 			TooltipData redData = comparison.buildCustomRare(name, itemIds);
 			return comparison.makeSpriteTooltip(owner, rareTooltips.get(rareKey), redData, name);
