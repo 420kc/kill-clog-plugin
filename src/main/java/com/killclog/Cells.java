@@ -1,10 +1,10 @@
 /*
  * Copyright (c) 2026, 420 kc <dyl@420kc.dev>
- * Owns the cells of the kill clog panel: builds them, holds the labels, caches
- * tooltip + icon data, and routes between single-player and dual-player tooltip
- * rendering. Both KillClogPanel (for layout) and ComparisonController (for
- * dual-player rendering) talk to Cells directly; neither has to expose label
- * maps through a panel-leaking interface.
+ * Owns the cells of the kill clog panel: builds them, holds the labels,
+ * caches tooltip + icon data, renders both primary and comparison values,
+ * and routes between single-player and dual-player tooltips. KillClogPanel
+ * (layout) and ComparisonController (dual-player rendering) talk to Cells
+ * directly.
  */
 package com.killclog;
 
@@ -30,17 +30,18 @@ import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
 
 /**
- * Cells owns the per-skill JLabel cells, their tooltip data caches, and the
- * helpers used to construct them. Single source of truth for "what cells does
- * the panel show, and how do they hover."
+ * Per-skill {@link JLabel} cells, their tooltip data caches, the helpers that
+ * construct them, and the renderers that fill them with primary or comparison
+ * values. Single source of truth for "what cells does the panel show, and how
+ * do they hover."
  *
- * <p>The single-player tooltip render still lives on the panel (it touches
- * panel-internal sync notice text); we delegate to it via
- * {@link SinglePlayerTooltipBuilder}.
+ * <p>The single-player tooltip body is built by the panel ({@code
+ * SinglePlayerTooltipBuilder}) because it reaches the panel's sync-notice
+ * text; everything else lives here.
  */
 public class Cells
 {
-	/** Renders the single-player sprite tooltip; the panel keeps the impl since it uses the sync-notice text. */
+	/** Builds the single-player sprite tooltip body. Implemented by the panel (it owns the sync-notice text). */
 	public interface SinglePlayerTooltipBuilder
 	{
 		JToolTip build(JLabel owner, @Nullable TooltipData data, int gridCols, String name);
@@ -307,7 +308,7 @@ public class Cells
 
 	// ── Primary-side rendering ────────────────────────────────────────────
 
-	/** Standard kc text color (matches panel constant for backwards-compat). */
+	/** Standard kc text color (light gray-white) used for any cell that has a non-zero kc / score. */
 	static final Color KC_COLOR = new Color(215, 215, 215);
 
 	/**
@@ -360,7 +361,7 @@ public class Cells
 			}
 		}
 
-		// PvP summary cell — BH Hunter + BH Rogue total
+		// PvP summary cell: BH Hunter + BH Rogue total
 		if (pvpSummaryCell != null)
 		{
 			int bhTotal = Math.max(0, result.getActivityScore("Bounty Hunter - Hunter"))
