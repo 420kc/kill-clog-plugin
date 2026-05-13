@@ -197,8 +197,6 @@ public class KillClogPanel extends PluginPanel
 	private final Map<HiscoreSkill, ImageIcon> originalIcons = new LinkedHashMap<>();
 	private final Map<HiscoreSkill, ImageIcon> dimmedIcons = new LinkedHashMap<>();
 	private JLabel pvpSummaryCell;
-	private final BufferedImage[] pvpActivityIcons = new BufferedImage[5];
-	private final BufferedImage[] clueIcons = new BufferedImage[8];
 	// Activities tray
 	private JPanel activitiesGrid;
 	private JPanel activitiesClip;
@@ -221,12 +219,11 @@ public class KillClogPanel extends PluginPanel
 	private String localRsn;
 	private AccountType localAccountType;
 
-	private final Map<HiscoreSkill, TooltipData> tooltipDataMap = new LinkedHashMap<>();
-	private final Map<String, TooltipData> rareTooltips = new LinkedHashMap<>();
 
 	private final TooltipController tooltipController;
 	private final LookupSession lookupSession;
 	private final ComparisonController comparison;
+	private final CellFactory cellFactory;
 
 	// Comparison mode widgets (state fields all live on the controller)
 
@@ -256,6 +253,7 @@ public class KillClogPanel extends PluginPanel
 		this.comparison = new ComparisonController(hiscoreService, clogService, config, lookupSession,
 			itemManager, tooltipController, tooltipDataBuilder, this);
 		this.comparison.setRenderTarget(this);
+		this.cellFactory = new CellFactory();
 
 		NativeTooltip.loadSprites(spriteManager);
 		SkillsTooltip.loadIcons(skillIconManager);
@@ -741,11 +739,11 @@ public class KillClogPanel extends PluginPanel
 			{
 				final int idx = i + 1;
 				loadItemImage(PanelData.CLUE_TIER_ITEM_IDS[i], img ->
-					clueIcons[idx] = ImageUtil.resizeImage(
+					cellFactory.getClueIcons()[idx] = ImageUtil.resizeImage(
 						ImageUtil.resizeCanvas(img, 25, 25), 13, 13));
 			}
 			loadItemImage(23184, img ->
-				clueIcons[7] = ImageUtil.resizeImage(
+				cellFactory.getClueIcons()[7] = ImageUtil.resizeImage(
 					ImageUtil.resizeCanvas(img, 25, 25), 13, 13));
 		});
 
@@ -758,7 +756,7 @@ public class KillClogPanel extends PluginPanel
 				{
 					if (sprite != null)
 					{
-						clueIcons[0] = ImageUtil.resizeImage(
+						cellFactory.getClueIcons()[0] = ImageUtil.resizeImage(
 							ImageUtil.resizeCanvas(sprite, 25, 25), 13, 13);
 					}
 				}));
@@ -873,8 +871,8 @@ public class KillClogPanel extends PluginPanel
 				if (lookupSession.getClogResult() != null)
 				{
 					tip.setCompletion(
-						LookupQueries.countBossesCompleted(tooltipDataMap, bossLabels.keySet()),
-						LookupQueries.countBossesWithClog(tooltipDataMap, bossLabels.keySet()));
+						LookupQueries.countBossesCompleted(cellFactory.getTooltipDataMap(), bossLabels.keySet()),
+						LookupQueries.countBossesWithClog(cellFactory.getTooltipDataMap(), bossLabels.keySet()));
 				}
 				tip.setMegarares(
 					LookupQueries.getClogItemCount(lookupSession.getClogResult(), "chambers_of_xeric", 20997),
@@ -1068,7 +1066,7 @@ public class KillClogPanel extends PluginPanel
 				{
 					ClueSummaryTooltip tip = new ClueSummaryTooltip();
 					tip.setComponent(this);
-					tip.setIcons(clueIcons);
+					tip.setIcons(cellFactory.getClueIcons());
 					if (lookupSession.getHiscoreResult() != null)
 					{
 						tip.setData(lookupSession.getHiscoreResult());
@@ -1081,7 +1079,7 @@ public class KillClogPanel extends PluginPanel
 					tooltipController.keepTooltipOnHover(tip, parentCell);
 					return tip;
 				}
-				return makeSpriteTooltip(this, tooltipDataMap.get(activity), 5, activity.getName());
+				return makeSpriteTooltip(this, cellFactory.getTooltipDataMap().get(activity), 5, activity.getName());
 			}
 		};
 		styleLabel(label, activity.getName());
@@ -1113,7 +1111,7 @@ public class KillClogPanel extends PluginPanel
 			{
 				PvpSummaryTooltip tip = new PvpSummaryTooltip();
 				tip.setComponent(this);
-				tip.setIcons(pvpActivityIcons);
+				tip.setIcons(cellFactory.getPvpActivityIcons());
 				if (lookupSession.getHiscoreResult() != null)
 				{
 					tip.setData(lookupSession.getHiscoreResult(), lookupSession.getClogResult());
@@ -1151,7 +1149,7 @@ public class KillClogPanel extends PluginPanel
 				{
 					if (sprite != null)
 					{
-						pvpActivityIcons[idx] = ImageUtil.resizeImage(
+						cellFactory.getPvpActivityIcons()[idx] = ImageUtil.resizeImage(
 							ImageUtil.resizeCanvas(sprite, 25, 25), 13, 13);
 					}
 				}));
@@ -1177,9 +1175,9 @@ public class KillClogPanel extends PluginPanel
 						? tooltipDataBuilder.buildTooltipData(displayName, category, redRank, comparison.getCompareClogResult())
 						: null;
 					return comparison.makeSpriteTooltip(this,
-						tooltipDataMap.get(tier), redData, displayName);
+						cellFactory.getTooltipDataMap().get(tier), redData, displayName);
 				}
-				return makeSpriteTooltip(this, tooltipDataMap.get(tier), compact ? 10 : 5, displayName, compact);
+				return makeSpriteTooltip(this, cellFactory.getTooltipDataMap().get(tier), compact ? 10 : 5, displayName, compact);
 			}
 		};
 		styleLabel(label, tier.getName());
@@ -1196,7 +1194,7 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public JToolTip createToolTip()
 			{
-				TooltipData data = rareTooltips.get(isThirdAge ? PanelData.CLOG_THIRD_AGE : PanelData.CLOG_GILDED);
+				TooltipData data = cellFactory.getRareTooltips().get(isThirdAge ? PanelData.CLOG_THIRD_AGE : PanelData.CLOG_GILDED);
 				if (comparison.isComparisonMode())
 				{
 					TooltipData redData = comparison.buildClueRare(name, clogCategory);
@@ -1230,9 +1228,9 @@ public class KillClogPanel extends PluginPanel
 				{
 					TooltipData redData = comparison.buildCustomRare(name, itemIds);
 					return comparison.makeSpriteTooltip(this,
-						rareTooltips.get(rareKey), redData, name);
+						cellFactory.getRareTooltips().get(rareKey), redData, name);
 				}
-				return makeSpriteTooltip(this, rareTooltips.get(rareKey), 5, name);
+				return makeSpriteTooltip(this, cellFactory.getRareTooltips().get(rareKey), 5, name);
 			}
 		};
 		styleLabel(label, name);
@@ -1284,11 +1282,11 @@ public class KillClogPanel extends PluginPanel
 				if (comparison.isComparisonMode())
 				{
 					return comparison.makeSpriteTooltip(this,
-						tooltipDataMap.get(boss),
+						cellFactory.getTooltipDataMap().get(boss),
 						comparison.getCompareTooltipData(boss),
 						boss.getName());
 				}
-				JToolTip tip = makeSpriteTooltip(this, tooltipDataMap.get(boss), 5, boss.getName());
+				JToolTip tip = makeSpriteTooltip(this, cellFactory.getTooltipDataMap().get(boss), 5, boss.getName());
 				if (boss == HiscoreSkill.SOL_HEREDIT && lookupSession.getHiscoreResult() != null && tip instanceof ImgTooltip)
 				{
 					int glory = lookupSession.getHiscoreResult().getActivityScore("Colosseum Glory");
@@ -1598,8 +1596,8 @@ public class KillClogPanel extends PluginPanel
 		rsn = null;
 		clogNotice.setText(" ");
 		clogNotice.setIcon(null);
-		tooltipDataMap.clear();
-		rareTooltips.clear();
+		cellFactory.getTooltipDataMap().clear();
+		cellFactory.getRareTooltips().clear();
 		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
 		{
 			JLabel label = entry.getValue();
@@ -1640,8 +1638,8 @@ public class KillClogPanel extends PluginPanel
 		resetRareCell(hardRare, "Hard Treasure (Rare)");
 		resetRareCell(eliteRare, "Elite Treasure (Rare)");
 		resetRareCell(masterRare, "Master Treasure (Rare)");
-		rareTooltips.remove(PanelData.CLOG_THIRD_AGE);
-		rareTooltips.remove(PanelData.CLOG_GILDED);
+		cellFactory.getRareTooltips().remove(PanelData.CLOG_THIRD_AGE);
+		cellFactory.getRareTooltips().remove(PanelData.CLOG_GILDED);
 	}
 
 	/**
@@ -1884,7 +1882,7 @@ public class KillClogPanel extends PluginPanel
 		}
 
 		label.setText(ClogHelper.pad(data.obtainedCount > 0 ? ClogHelper.formatKc(data.obtainedCount) : "--"));
-		rareTooltips.put(isThirdAge ? PanelData.CLOG_THIRD_AGE : PanelData.CLOG_GILDED, data);
+		cellFactory.getRareTooltips().put(isThirdAge ? PanelData.CLOG_THIRD_AGE : PanelData.CLOG_GILDED, data);
 		label.setForeground(rareColor(data));
 		label.setToolTipText(" ");
 	}
@@ -1897,7 +1895,7 @@ public class KillClogPanel extends PluginPanel
 		TooltipData data = tooltipDataBuilder.buildCustomRareData(name, itemIds, result);
 
 		label.setText(ClogHelper.pad(data.obtainedCount > 0 ? ClogHelper.formatKc(data.obtainedCount) : "--"));
-		rareTooltips.put(rareKey, data);
+		cellFactory.getRareTooltips().put(rareKey, data);
 		label.setForeground(rareColor(data));
 		label.setToolTipText(" ");
 	}
@@ -1926,7 +1924,7 @@ public class KillClogPanel extends PluginPanel
 
 	private void updateTooltips()
 	{
-		tooltipDataMap.clear();
+		cellFactory.getTooltipDataMap().clear();
 
 		// Boss cells
 		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
@@ -1948,7 +1946,7 @@ public class KillClogPanel extends PluginPanel
 				if (!selfNoCache)
 				{
 					int total = clogService.getCategoryItemCount(category);
-					tooltipDataMap.put(skill, new TooltipData(
+					cellFactory.getTooltipDataMap().put(skill, new TooltipData(
 						bossName, rank, -1, Math.max(total, 0),
 						Collections.emptyList(),
 						Collections.emptySet(),
@@ -1962,7 +1960,7 @@ public class KillClogPanel extends PluginPanel
 			if (data == null)
 			{
 				int total = clogService.getCategoryItemCount(category);
-				tooltipDataMap.put(skill, new TooltipData(
+				cellFactory.getTooltipDataMap().put(skill, new TooltipData(
 					bossName, rank, -1, Math.max(total, 0),
 					Collections.emptyList(),
 					Collections.emptySet(),
@@ -1971,7 +1969,7 @@ public class KillClogPanel extends PluginPanel
 				continue;
 			}
 
-			tooltipDataMap.put(skill, data);
+			cellFactory.getTooltipDataMap().put(skill, data);
 			tooltipDataBuilder.preloadItemImages(data);
 			label.setToolTipText(" ");
 		}
@@ -1995,7 +1993,7 @@ public class KillClogPanel extends PluginPanel
 			TooltipData data = tooltipDataBuilder.buildTooltipData(nameOf.apply(skill), entry.getValue(), rank, lookupSession.getClogResult());
 			if (data == null) continue;
 
-			tooltipDataMap.put(skill, data);
+			cellFactory.getTooltipDataMap().put(skill, data);
 			tooltipDataBuilder.preloadItemImages(data);
 			label.setToolTipText(" ");
 		}
@@ -2046,7 +2044,7 @@ public class KillClogPanel extends PluginPanel
 				rareCells.put(PanelData.RARE_ELITE, eliteRare);
 				rareCells.put(PanelData.RARE_MASTER, masterRare);
 				highlighter.colorCellsByCompletion(lookupSession.getHiscoreResult(), lookupSession.getClogResult(),
-					rareTooltips, rareCells, fourTwentyMode, FOUR_TWENTY_GREEN);
+					cellFactory.getRareTooltips(), rareCells, fourTwentyMode, FOUR_TWENTY_GREEN);
 				highlighter.colorEmptyCells();
 			}
 		}
@@ -2547,6 +2545,6 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public Map<String, TooltipData> rareTooltips()
 	{
-		return rareTooltips;
+		return cellFactory.getRareTooltips();
 	}
 }
