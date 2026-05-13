@@ -1416,7 +1416,7 @@ public class KillClogPanel extends PluginPanel
 		comparison.getCompareSearchBar().setText("");
 		comparison.getCompareSearchBar().setIcon(IconTextField.Icon.SEARCH);
 		comparison.getCompareStatusLabel().setText(" ");
-		updateAllCellsForComparison();
+		comparison.updateAllCells();
 		comparison.updateInfoBar();
 		toggleHighlighter(config.completionistHighlighter());
 	}
@@ -1474,7 +1474,7 @@ public class KillClogPanel extends PluginPanel
 		comparison.getCompareSearchBar().setText("");
 		comparison.getCompareStatusLabel().setText(" ");
 		updateTooltips();
-		updateAllCellsForComparison();
+		comparison.updateAllCells();
 		comparison.updateInfoBar();
 	}
 
@@ -1511,85 +1511,6 @@ public class KillClogPanel extends PluginPanel
 		{
 			label.setIcon(null);
 		}
-	}
-
-	private int hiscoreKc(HiscoreResult r, String hiscoreName)
-	{
-		return r != null ? r.getKc(hiscoreName) : -1;
-	}
-
-	private int activityScore(HiscoreResult r, String name)
-	{
-		return r != null ? r.getActivityScore(name) : -1;
-	}
-
-	private int pvpTotal(HiscoreResult r)
-	{
-		if (r == null) return -1;
-		int total = Math.max(0, r.getActivityScore("Bounty Hunter - Hunter"))
-			+ Math.max(0, r.getActivityScore("Bounty Hunter - Rogue"));
-		return total > 0 ? total : -1;
-	}
-
-	private int rareCount(TooltipData data)
-	{
-		return data != null && data.obtainedCount > 0 ? data.obtainedCount : -1;
-	}
-
-	private void updateAllCellsForComparison()
-	{
-		// Boss cells
-		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
-		{
-			String name = PanelData.NAME_OVERRIDES.getOrDefault(entry.getKey().getName(), entry.getKey().getName());
-			comparison.compareOrRestore(entry.getValue(), hiscoreKc(lookupSession.getHiscoreResult(), name), hiscoreKc(comparison.getCompareHiscoreResult(), name));
-		}
-
-		// Activity cells
-		for (Map.Entry<HiscoreSkill, JLabel> entry : activityLabels.entrySet())
-		{
-			String name = entry.getKey().getName();
-			comparison.compareOrRestore(entry.getValue(), activityScore(lookupSession.getHiscoreResult(), name), activityScore(comparison.getCompareHiscoreResult(), name));
-		}
-
-		// Clue tier cells
-		for (Map.Entry<HiscoreSkill, JLabel> entry : clueTierLabels.entrySet())
-		{
-			String name = entry.getKey().getName();
-			comparison.compareOrRestore(entry.getValue(), activityScore(lookupSession.getHiscoreResult(), name), activityScore(comparison.getCompareHiscoreResult(), name));
-		}
-
-		// Combat level
-		comparison.compareOrRestore(combatCell,
-			lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getCombatLevel() : -1,
-			comparison.getCompareHiscoreResult() != null ? comparison.getCompareHiscoreResult().getCombatLevel() : -1);
-
-		// Total level
-		comparison.compareOrRestore(totalLvlCell,
-			lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getTotalLevel() : -1,
-			comparison.getCompareHiscoreResult() != null ? comparison.getCompareHiscoreResult().getTotalLevel() : -1);
-
-		// PvP summary
-		comparison.compareOrRestore(pvpSummaryCell, pvpTotal(lookupSession.getHiscoreResult()), pvpTotal(comparison.getCompareHiscoreResult()));
-
-		// Clue rares — 3rd Age, Gilded
-		comparison.compareOrRestore(thirdAgeCell,
-			rareCount(rareTooltips.get(PanelData.CLOG_THIRD_AGE)),
-			rareCount(comparison.buildClueRare("3rd Age", PanelData.CLOG_THIRD_AGE)));
-		comparison.compareOrRestore(gildedCell,
-			rareCount(rareTooltips.get(PanelData.CLOG_GILDED)),
-			rareCount(comparison.buildClueRare("Gilded", PanelData.CLOG_GILDED)));
-
-		// Custom rares — Hard, Elite, Master
-		comparison.compareOrRestore(hardRare,
-			rareCount(rareTooltips.get(PanelData.RARE_HARD)),
-			rareCount(comparison.buildCustomRare("Hard Treasure (Rare)", PanelData.HARD_RARE_ITEMS)));
-		comparison.compareOrRestore(eliteRare,
-			rareCount(rareTooltips.get(PanelData.RARE_ELITE)),
-			rareCount(comparison.buildCustomRare("Elite Treasure (Rare)", PanelData.ELITE_RARE_ITEMS)));
-		comparison.compareOrRestore(masterRare,
-			rareCount(rareTooltips.get(PanelData.RARE_MASTER)),
-			rareCount(comparison.buildCustomRare("Master Treasure (Rare)", PanelData.MASTER_RARE_ITEMS)));
 	}
 
 	// -------------------------------------------------------------------------
@@ -2132,7 +2053,7 @@ public class KillClogPanel extends PluginPanel
 
 		if (comparison.isComparisonMode())
 		{
-			updateAllCellsForComparison();
+			comparison.updateAllCells();
 			comparison.updateInfoBar();
 		}
 	}
@@ -2585,5 +2506,47 @@ public class KillClogPanel extends PluginPanel
 			clogInfoLabel.setIcon(null);
 			clogInfoLabel.setToolTipText(null);
 		}
+	}
+
+	@Override
+	public Map<HiscoreSkill, JLabel> clueTierLabels()
+	{
+		return clueTierLabels;
+	}
+
+	@Override
+	public JLabel thirdAgeCell()
+	{
+		return thirdAgeCell;
+	}
+
+	@Override
+	public JLabel gildedCell()
+	{
+		return gildedCell;
+	}
+
+	@Override
+	public JLabel hardRare()
+	{
+		return hardRare;
+	}
+
+	@Override
+	public JLabel eliteRare()
+	{
+		return eliteRare;
+	}
+
+	@Override
+	public JLabel masterRare()
+	{
+		return masterRare;
+	}
+
+	@Override
+	public Map<String, TooltipData> rareTooltips()
+	{
+		return rareTooltips;
 	}
 }

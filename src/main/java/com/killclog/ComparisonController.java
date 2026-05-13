@@ -104,6 +104,20 @@ public class ComparisonController
 
 		/** Restore the clog info cell to single-player display. {@code clog} may be null. */
 		void restoreClogCellForCompare(@Nullable ClogResult clog);
+
+		Map<HiscoreSkill, javax.swing.JLabel> clueTierLabels();
+
+		javax.swing.JLabel thirdAgeCell();
+
+		javax.swing.JLabel gildedCell();
+
+		javax.swing.JLabel hardRare();
+
+		javax.swing.JLabel eliteRare();
+
+		javax.swing.JLabel masterRare();
+
+		Map<String, TooltipData> rareTooltips();
 	}
 
 	// ── Constants ─────────────────────────────────────────────────────────
@@ -622,6 +636,94 @@ public class ComparisonController
 			clogInfoLabel.setHorizontalAlignment(JLabel.RIGHT);
 			renderTarget.restoreClogCellForCompare(lookupSession.getClogResult());
 		}
+	}
+
+	/**
+	 * Refresh every cell on the panel for comparison mode (or restore each
+	 * cell to single-player display when comparison is off). Iterates the
+	 * boss / activity / clue-tier label maps + the standalone cells (combat,
+	 * total, pvp, 3rd age, gilded, rares).
+	 */
+	public void updateAllCells()
+	{
+		if (renderTarget == null)
+		{
+			return;
+		}
+		HiscoreResult blueHiscore = lookupSession.getHiscoreResult();
+		HiscoreResult redHiscore = compareHiscoreResult;
+
+		for (Map.Entry<HiscoreSkill, JLabel> entry : renderTarget.bossLabels().entrySet())
+		{
+			String name = PanelData.NAME_OVERRIDES.getOrDefault(entry.getKey().getName(), entry.getKey().getName());
+			compareOrRestore(entry.getValue(), hiscoreKc(blueHiscore, name), hiscoreKc(redHiscore, name));
+		}
+
+		for (Map.Entry<HiscoreSkill, JLabel> entry : renderTarget.activityLabels().entrySet())
+		{
+			String name = entry.getKey().getName();
+			compareOrRestore(entry.getValue(), activityScore(blueHiscore, name), activityScore(redHiscore, name));
+		}
+
+		for (Map.Entry<HiscoreSkill, JLabel> entry : renderTarget.clueTierLabels().entrySet())
+		{
+			String name = entry.getKey().getName();
+			compareOrRestore(entry.getValue(), activityScore(blueHiscore, name), activityScore(redHiscore, name));
+		}
+
+		compareOrRestore(renderTarget.combatCell(),
+			blueHiscore != null ? blueHiscore.getCombatLevel() : -1,
+			redHiscore != null ? redHiscore.getCombatLevel() : -1);
+
+		compareOrRestore(renderTarget.totalLvlCell(),
+			blueHiscore != null ? blueHiscore.getTotalLevel() : -1,
+			redHiscore != null ? redHiscore.getTotalLevel() : -1);
+
+		compareOrRestore(renderTarget.pvpSummaryCell(), pvpTotal(blueHiscore), pvpTotal(redHiscore));
+
+		Map<String, TooltipData> rareTooltips = renderTarget.rareTooltips();
+		compareOrRestore(renderTarget.thirdAgeCell(),
+			rareCount(rareTooltips.get(PanelData.CLOG_THIRD_AGE)),
+			rareCount(buildClueRare("3rd Age", PanelData.CLOG_THIRD_AGE)));
+		compareOrRestore(renderTarget.gildedCell(),
+			rareCount(rareTooltips.get(PanelData.CLOG_GILDED)),
+			rareCount(buildClueRare("Gilded", PanelData.CLOG_GILDED)));
+
+		compareOrRestore(renderTarget.hardRare(),
+			rareCount(rareTooltips.get(PanelData.RARE_HARD)),
+			rareCount(buildCustomRare("Hard Treasure (Rare)", PanelData.HARD_RARE_ITEMS)));
+		compareOrRestore(renderTarget.eliteRare(),
+			rareCount(rareTooltips.get(PanelData.RARE_ELITE)),
+			rareCount(buildCustomRare("Elite Treasure (Rare)", PanelData.ELITE_RARE_ITEMS)));
+		compareOrRestore(renderTarget.masterRare(),
+			rareCount(rareTooltips.get(PanelData.RARE_MASTER)),
+			rareCount(buildCustomRare("Master Treasure (Rare)", PanelData.MASTER_RARE_ITEMS)));
+	}
+
+	private static int hiscoreKc(@Nullable HiscoreResult r, String hiscoreName)
+	{
+		return r != null ? r.getKc(hiscoreName) : -1;
+	}
+
+	private static int activityScore(@Nullable HiscoreResult r, String name)
+	{
+		return r != null ? r.getActivityScore(name) : -1;
+	}
+
+	private static int pvpTotal(@Nullable HiscoreResult r)
+	{
+		if (r == null)
+		{
+			return -1;
+		}
+		int total = Math.max(0, r.getActivityScore("Bounty Hunter - Hunter"))
+			+ Math.max(0, r.getActivityScore("Bounty Hunter - Rogue"));
+		return total > 0 ? total : -1;
+	}
+
+	private static int rareCount(@Nullable TooltipData data)
+	{
+		return data != null && data.obtainedCount > 0 ? data.obtainedCount : -1;
 	}
 
 	/** Toggle a cell between compare and solo display based on current mode. */
