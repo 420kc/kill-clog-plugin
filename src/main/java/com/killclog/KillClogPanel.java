@@ -1041,52 +1041,6 @@ public class KillClogPanel extends PluginPanel
 		return tip;
 	}
 
-	/**
-	 * Build a comparison tooltip showing both players' sprite grids stacked.
-	 * Falls back to single-player tooltip when not in comparison mode.
-	 */
-	private JToolTip makeCompareSpriteTooltip(JLabel owner, TooltipData blueData,
-		TooltipData redData, String name)
-	{
-		JPanel parentCell = (JPanel) owner.getParent();
-		CompareImgTooltip tip = new CompareImgTooltip();
-		tip.setComponent(owner);
-		tip.setTitle(name);
-
-		String blueName = playerName.getText().trim();
-		if (blueName.isEmpty()) blueName = "Blue";
-		String redName = compareRsn != null ? compareRsn : "Red";
-
-		boolean blueHas = blueData != null && blueData.allItemIds != null
-			&& !blueData.allItemIds.isEmpty();
-		boolean redHas = redData != null && redData.allItemIds != null
-			&& !redData.allItemIds.isEmpty();
-
-		tip.setBluePlayer(blueName,
-			blueData != null ? blueData.obtainedCount : -1,
-			blueData != null ? blueData.totalItems : 0,
-			blueData != null ? blueData.rank : 0);
-		tip.setRedPlayer(redName,
-			redData != null ? redData.obtainedCount : -1,
-			redData != null ? redData.totalItems : 0,
-			redData != null ? redData.rank : 0);
-		tip.setBlueHasData(blueHas);
-		tip.setRedHasData(redHas);
-
-		// Use whichever data source has items for the sprite grid
-		List<Integer> allItemIds = blueHas ? blueData.allItemIds
-			: (redHas ? redData.allItemIds : null);
-		tip.setItems(allItemIds,
-			blueData != null ? blueData.obtainedIds : Collections.emptySet(),
-			blueData != null ? blueData.obtainedCounts : Collections.emptyMap(),
-			redData != null ? redData.obtainedIds : Collections.emptySet(),
-			redData != null ? redData.obtainedCounts : Collections.emptyMap(),
-			itemManager);
-
-		tooltipController.keepTooltipOnHover(tip, parentCell);
-		return tip;
-	}
-
 	/** Apply standard grid cell styling — font, placeholder text, color, gap, AA hint. */
 	private static void styleLabel(JLabel label, String tooltipText)
 	{
@@ -1233,7 +1187,7 @@ public class KillClogPanel extends PluginPanel
 					TooltipData redData = compareClogResult != null
 						? tooltipDataBuilder.buildTooltipData(displayName, category, redRank, compareClogResult)
 						: null;
-					return makeCompareSpriteTooltip(this,
+					return comparison.makeSpriteTooltip(this,
 						tooltipDataMap.get(tier), redData, displayName);
 				}
 				return makeSpriteTooltip(this, tooltipDataMap.get(tier), compact ? 10 : 5, displayName, compact);
@@ -1256,8 +1210,8 @@ public class KillClogPanel extends PluginPanel
 				TooltipData data = rareTooltips.get(isThirdAge ? PanelData.CLOG_THIRD_AGE : PanelData.CLOG_GILDED);
 				if (comparisonMode)
 				{
-					TooltipData redData = buildCompareClueRare(name, clogCategory);
-					return makeCompareSpriteTooltip(this, data, redData, name);
+					TooltipData redData = comparison.buildClueRare(name, clogCategory);
+					return comparison.makeSpriteTooltip(this, data, redData, name);
 				}
 				return makeSpriteTooltip(this, data, 5, name);
 			}
@@ -1285,8 +1239,8 @@ public class KillClogPanel extends PluginPanel
 			{
 				if (comparisonMode)
 				{
-					TooltipData redData = buildCompareCustomRare(name, itemIds);
-					return makeCompareSpriteTooltip(this,
+					TooltipData redData = comparison.buildCustomRare(name, itemIds);
+					return comparison.makeSpriteTooltip(this,
 						rareTooltips.get(rareKey), redData, name);
 				}
 				return makeSpriteTooltip(this, rareTooltips.get(rareKey), 5, name);
@@ -1340,7 +1294,7 @@ public class KillClogPanel extends PluginPanel
 			{
 				if (comparisonMode)
 				{
-					return makeCompareSpriteTooltip(this,
+					return comparison.makeSpriteTooltip(this,
 						tooltipDataMap.get(boss),
 						compareTooltipDataMap.get(boss),
 						boss.getName());
@@ -1480,6 +1434,7 @@ public class KillClogPanel extends PluginPanel
 		compareRsn = null;
 		compareTooltipDataMap.clear();
 		comparison.exit();
+		comparison.syncCompareState(false, null, null, null);
 	}
 
 	@Override
@@ -1665,6 +1620,7 @@ public class KillClogPanel extends PluginPanel
 	private void activateComparisonMode()
 	{
 		comparisonMode = true;
+		comparison.syncCompareState(true, compareHiscoreResult, compareClogResult, compareRsn);
 		compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
 		compareSearchBar.setText("");
 
@@ -1882,35 +1838,21 @@ public class KillClogPanel extends PluginPanel
 		// Clue rares — 3rd Age, Gilded
 		compareOrRestore(thirdAgeCell,
 			rareCount(rareTooltips.get(PanelData.CLOG_THIRD_AGE)),
-			rareCount(buildCompareClueRare("3rd Age", PanelData.CLOG_THIRD_AGE)));
+			rareCount(comparison.buildClueRare("3rd Age", PanelData.CLOG_THIRD_AGE)));
 		compareOrRestore(gildedCell,
 			rareCount(rareTooltips.get(PanelData.CLOG_GILDED)),
-			rareCount(buildCompareClueRare("Gilded", PanelData.CLOG_GILDED)));
+			rareCount(comparison.buildClueRare("Gilded", PanelData.CLOG_GILDED)));
 
 		// Custom rares — Hard, Elite, Master
 		compareOrRestore(hardRare,
 			rareCount(rareTooltips.get(PanelData.RARE_HARD)),
-			rareCount(buildCompareCustomRare("Hard Treasure (Rare)", PanelData.HARD_RARE_ITEMS)));
+			rareCount(comparison.buildCustomRare("Hard Treasure (Rare)", PanelData.HARD_RARE_ITEMS)));
 		compareOrRestore(eliteRare,
 			rareCount(rareTooltips.get(PanelData.RARE_ELITE)),
-			rareCount(buildCompareCustomRare("Elite Treasure (Rare)", PanelData.ELITE_RARE_ITEMS)));
+			rareCount(comparison.buildCustomRare("Elite Treasure (Rare)", PanelData.ELITE_RARE_ITEMS)));
 		compareOrRestore(masterRare,
 			rareCount(rareTooltips.get(PanelData.RARE_MASTER)),
-			rareCount(buildCompareCustomRare("Master Treasure (Rare)", PanelData.MASTER_RARE_ITEMS)));
-	}
-
-	private TooltipData buildCompareClueRare(String name, String clogCategory)
-	{
-		return compareClogResult != null
-			? tooltipDataBuilder.buildClueRareData(name, clogCategory, compareClogResult)
-			: null;
-	}
-
-	private TooltipData buildCompareCustomRare(String name, int[] itemIds)
-	{
-		return compareClogResult != null
-			? tooltipDataBuilder.buildCustomRareData(name, itemIds, compareClogResult)
-			: null;
+			rareCount(comparison.buildCustomRare("Master Treasure (Rare)", PanelData.MASTER_RARE_ITEMS)));
 	}
 
 	// -------------------------------------------------------------------------

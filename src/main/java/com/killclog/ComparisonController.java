@@ -150,6 +150,26 @@ public class ComparisonController
 		this.renderTarget = renderTarget;
 	}
 
+	/**
+	 * Mirror panel-side compare state writes into the controller during the
+	 * cut-2 transition. Once the panel-side fields are removed and all writers
+	 * route through the controller's lifecycle, this bridge becomes dead and
+	 * gets dropped. Until then, the controller's read-only API
+	 * ({@link #isComparisonMode}, {@link #getCompareHiscoreResult}, etc.)
+	 * needs the state populated so any caller switched over to
+	 * {@code comparison.X} sees consistent data.
+	 */
+	public void syncCompareState(boolean comparisonMode,
+		@Nullable HiscoreResult compareHiscoreResult,
+		@Nullable ClogResult compareClogResult,
+		@Nullable String compareRsn)
+	{
+		this.comparisonMode = comparisonMode;
+		this.compareHiscoreResult = compareHiscoreResult;
+		this.compareClogResult = compareClogResult;
+		this.compareRsn = compareRsn;
+	}
+
 	// ── Lifecycle ─────────────────────────────────────────────────────────
 
 	/**
