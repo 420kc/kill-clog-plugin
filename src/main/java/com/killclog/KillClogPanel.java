@@ -1473,6 +1473,9 @@ public class KillClogPanel extends PluginPanel
 
 	private void exitComparisonMode()
 	{
+		// Mirror the reset on panel-side state until the cleanup pass migrates
+		// these fields off the panel; controller.exit() does the same on its
+		// own copies and fires onComparisonExit for the UI restoration.
 		comparisonMode = false;
 		compareLookupVersion++;
 		compareLookupInFlight = false;
@@ -1480,6 +1483,12 @@ public class KillClogPanel extends PluginPanel
 		compareClogResult = null;
 		compareRsn = null;
 		compareTooltipDataMap.clear();
+		comparison.exit();
+	}
+
+	@Override
+	public void onComparisonExit()
+	{
 		compareSearchBar.setText("");
 		compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
 		compareStatus.setText(" ");
@@ -2856,11 +2865,6 @@ public class KillClogPanel extends PluginPanel
 
 	@Override
 	public void onComparisonEnter(String redRsn)
-	{
-	}
-
-	@Override
-	public void onComparisonExit()
 	{
 	}
 

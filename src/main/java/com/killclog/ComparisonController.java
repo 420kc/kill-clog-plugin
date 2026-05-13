@@ -162,12 +162,20 @@ public class ComparisonController
 	}
 
 	/**
-	 * Exit comparison mode and clear red-side state. Body migrates from
-	 * {@code KillClogPanel.exitComparisonMode} in cut 2 step 3.
+	 * Exit comparison mode and clear red-side state. Listener handles the UI
+	 * restoration (search bar reset, status row blanked, cell + info-bar
+	 * re-render to single-player mode).
 	 */
 	public void exit()
 	{
-		throw new UnsupportedOperationException("ComparisonController.exit not yet wired; tracked in REFACTOR-CUT-2-EXECUTION.md");
+		comparisonMode = false;
+		compareLookupVersion++;
+		compareLookupInFlight = false;
+		compareHiscoreResult = null;
+		compareClogResult = null;
+		compareRsn = null;
+		compareTooltipDataMap.clear();
+		listener.onComparisonExit();
 	}
 
 	/**
