@@ -270,7 +270,8 @@ public class KillClogPanel extends PluginPanel
 		this.tooltipDataBuilder = new TooltipDataBuilder(itemManager);
 		this.tooltipController = new TooltipController(config);
 		this.lookupSession = new LookupSession(hiscoreService, clogService, config, null, this);
-		this.comparison = new ComparisonController(hiscoreService, clogService, config, lookupSession, this);
+		this.comparison = new ComparisonController(hiscoreService, clogService, config, lookupSession,
+			itemManager, tooltipController, tooltipDataBuilder, this);
 		this.comparison.setRenderTarget(this);
 
 		NativeTooltip.loadSprites(spriteManager);
