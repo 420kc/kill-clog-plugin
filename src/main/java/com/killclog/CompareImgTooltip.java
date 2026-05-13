@@ -29,8 +29,8 @@ public class CompareImgTooltip extends TitleTooltip
 	private static final int SECTION_GAP = 6;
 	private static final Font NAME_FONT = FontManager.getRunescapeSmallFont();
 
-	private static final Color COMPARE_BLUE = KillClogPanel.COMPARE_BLUE;
-	private static final Color COMPARE_RED = KillClogPanel.COMPARE_RED;
+	private static final Color COMPARE_BLUE = ComparisonController.COMPARE_BLUE;
+	private static final Color COMPARE_RED = ComparisonController.COMPARE_RED;
 
 	// Header data
 	private String bluePlayerName;

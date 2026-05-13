@@ -229,10 +229,6 @@ public class KillClogPanel extends PluginPanel
 	private final ComparisonController comparison;
 
 	// Comparison mode
-	static final Color COMPARE_BLUE = new Color(91, 164, 207);
-	static final Color COMPARE_RED = new Color(224, 86, 86);
-	private static final String COMPARE_BLUE_HEX = String.format("#%06x", COMPARE_BLUE.getRGB() & 0xFFFFFF);
-	private static final String COMPARE_RED_HEX = String.format("#%06x", COMPARE_RED.getRGB() & 0xFFFFFF);
 	private boolean comparisonMode;
 	private HiscoreResult compareHiscoreResult;
 	private ClogResult compareClogResult;
@@ -371,8 +367,8 @@ public class KillClogPanel extends PluginPanel
 		// Compare toggle — split blue/red magnifying glass, hidden until a player is looked up
 		c.gridy++;
 		c.insets = new Insets(4, 0, 0, 0);
-		ImageIcon compareOff = new ImageIcon(ClogHelper.makeCompareIcon(COMPARE_BLUE, COMPARE_RED, 0.55f));
-		ImageIcon compareOn = new ImageIcon(ClogHelper.makeCompareIcon(COMPARE_BLUE, COMPARE_RED, 1.0f));
+		ImageIcon compareOff = new ImageIcon(ClogHelper.makeCompareIcon(ComparisonController.COMPARE_BLUE, ComparisonController.COMPARE_RED, 0.55f));
+		ImageIcon compareOn = new ImageIcon(ClogHelper.makeCompareIcon(ComparisonController.COMPARE_BLUE, ComparisonController.COMPARE_RED, 1.0f));
 		compareToggle = new JLabel(compareOff);
 		compareToggle.setHorizontalAlignment(JLabel.CENTER);
 		compareToggle.setPreferredSize(new Dimension(15, 15));
@@ -1424,7 +1420,7 @@ public class KillClogPanel extends PluginPanel
 		ClogHelper.styleSearchBar(compareSearchBar);
 
 		// Recolor the clear X to match comparison red
-		recolorClearButton(compareSearchBar, COMPARE_RED);
+		recolorClearButton(compareSearchBar, ComparisonController.COMPARE_RED);
 
 		// Style inner text field: red text, placeholder
 		for (Component c : compareSearchBar.getComponents())
@@ -1434,7 +1430,7 @@ public class KillClogPanel extends PluginPanel
 				JTextField tf = ((FlatTextField) c).getTextField();
 				compareTextField = tf;
 				tf.setFont(FontManager.getRunescapeFont());
-				tf.setCaretColor(COMPARE_RED);
+				tf.setCaretColor(ComparisonController.COMPARE_RED);
 				tf.putClientProperty(
 					RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
@@ -1451,7 +1447,7 @@ public class KillClogPanel extends PluginPanel
 						{
 							tf.setText("");
 						}
-						tf.setForeground(COMPARE_RED);
+						tf.setForeground(ComparisonController.COMPARE_RED);
 					}
 
 					@Override
@@ -1622,7 +1618,7 @@ public class KillClogPanel extends PluginPanel
 					compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
 					compareSearchBar.setText("");
 					setCompareStatus(SearchMessages.COMPARE_NOT_FOUND,
-						playerName.getText().trim(), COMPARE_RED);
+						playerName.getText().trim(), ComparisonController.COMPARE_RED);
 					return;
 				}
 
@@ -1660,7 +1656,7 @@ public class KillClogPanel extends PluginPanel
 				compareLookupInFlight = false;
 				compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
 				compareSearchBar.setText("");
-				setCompareStatus("Lookup failed", COMPARE_RED);
+				setCompareStatus("Lookup failed", ComparisonController.COMPARE_RED);
 			});
 			return null;
 		});
@@ -1713,11 +1709,11 @@ public class KillClogPanel extends PluginPanel
 		if (comparisonMode)
 		{
 			// Blue player — left side
-			playerName.setForeground(COMPARE_BLUE);
+			playerName.setForeground(ComparisonController.COMPARE_BLUE);
 
 			// Red player — replaces clog label on right side, clickable to swap
 			clogInfoLabel.setText(compareRsn != null ? compareRsn : "");
-			clogInfoLabel.setForeground(COMPARE_RED);
+			clogInfoLabel.setForeground(ComparisonController.COMPARE_RED);
 			clogInfoLabel.setToolTipText(null);
 			clogInfoLabel.setHorizontalAlignment(JLabel.RIGHT);
 
@@ -1789,8 +1785,8 @@ public class KillClogPanel extends PluginPanel
 		String blueText = blueVal > 0 ? ClogHelper.formatKc(blueVal) : "--";
 		String redText = redVal > 0 ? ClogHelper.formatKc(redVal) : "--";
 		label.setText("<html><div style='text-align:center;'>"
-			+ "<span style='color:" + COMPARE_BLUE_HEX + ";'>" + blueText + "</span><br>"
-			+ "<span style='color:" + COMPARE_RED_HEX + ";'>" + redText + "</span>"
+			+ "<span style='color:" + ComparisonController.COMPARE_BLUE_HEX + ";'>" + blueText + "</span><br>"
+			+ "<span style='color:" + ComparisonController.COMPARE_RED_HEX + ";'>" + redText + "</span>"
 			+ "</div></html>");
 		label.setForeground(null);
 		label.setHorizontalAlignment(JLabel.CENTER);
