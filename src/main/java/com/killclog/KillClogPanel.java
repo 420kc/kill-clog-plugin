@@ -229,7 +229,6 @@ public class KillClogPanel extends PluginPanel
 	private final ComparisonController comparison;
 
 	// Comparison mode widgets (state fields all live on the controller)
-	private final IconTextField compareSearchBar = new IconTextField();
 	private JTextField compareTextField;
 	private String comparePlaceholder = "Comparison";
 	private JPanel comparePanel;
@@ -1355,21 +1354,21 @@ public class KillClogPanel extends PluginPanel
 			RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 		panel.add(comparison.getCompareStatusLabel());
 
-		compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
-		compareSearchBar.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		compareSearchBar.setHoverBackgroundColor(ColorScheme.DARK_GRAY_HOVER_COLOR);
-		compareSearchBar.setPreferredSize(new Dimension(0, 30));
-		compareSearchBar.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-		compareSearchBar.setAlignmentX(Component.LEFT_ALIGNMENT);
-		compareSearchBar.addActionListener(e -> doCompareLookup());
+		comparison.getCompareSearchBar().setIcon(IconTextField.Icon.SEARCH);
+		comparison.getCompareSearchBar().setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		comparison.getCompareSearchBar().setHoverBackgroundColor(ColorScheme.DARK_GRAY_HOVER_COLOR);
+		comparison.getCompareSearchBar().setPreferredSize(new Dimension(0, 30));
+		comparison.getCompareSearchBar().setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+		comparison.getCompareSearchBar().setAlignmentX(Component.LEFT_ALIGNMENT);
+		comparison.getCompareSearchBar().addActionListener(e -> doCompareLookup());
 
-		ClogHelper.styleSearchBar(compareSearchBar);
+		ClogHelper.styleSearchBar(comparison.getCompareSearchBar());
 
 		// Recolor the clear X to match comparison red
-		recolorClearButton(compareSearchBar, ComparisonController.COMPARE_RED);
+		recolorClearButton(comparison.getCompareSearchBar(), ComparisonController.COMPARE_RED);
 
 		// Style inner text field: red text, placeholder
-		for (Component c : compareSearchBar.getComponents())
+		for (Component c : comparison.getCompareSearchBar().getComponents())
 		{
 			if (c instanceof FlatTextField)
 			{
@@ -1409,15 +1408,15 @@ public class KillClogPanel extends PluginPanel
 			}
 		}
 
-		panel.add(compareSearchBar);
+		panel.add(comparison.getCompareSearchBar());
 		return panel;
 	}
 
 	@Override
 	public void onComparisonExit()
 	{
-		compareSearchBar.setText("");
-		compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
+		comparison.getCompareSearchBar().setText("");
+		comparison.getCompareSearchBar().setIcon(IconTextField.Icon.SEARCH);
 		comparison.getCompareStatusLabel().setText(" ");
 		updateAllCellsForComparison();
 		updateInfoBarForComparison();
@@ -1471,7 +1470,7 @@ public class KillClogPanel extends PluginPanel
 
 	private void doCompareLookup()
 	{
-		String player = compareSearchBar.getText().trim();
+		String player = comparison.getCompareSearchBar().getText().trim();
 		if (player.isEmpty() || player.equals(comparePlaceholder) || comparison.isCompareLookupInFlight())
 		{
 			return;
@@ -1484,7 +1483,7 @@ public class KillClogPanel extends PluginPanel
 
 		comparison.setCompareLookupInFlight(true);
 		final int thisLookup = comparison.bumpCompareLookupVersion();
-		compareSearchBar.setIcon(IconTextField.Icon.LOADING_DARKER);
+		comparison.getCompareSearchBar().setIcon(IconTextField.Icon.LOADING_DARKER);
 		String blueName = playerName.getText().trim();
 		boolean blueIsSelf = localRsn != null && localRsn.equalsIgnoreCase(blueName);
 		boolean redIsSelf = localRsn != null && localRsn.equalsIgnoreCase(player);
@@ -1494,8 +1493,8 @@ public class KillClogPanel extends PluginPanel
 		{
 			// Mirror: reuse existing data, no API calls
 			comparison.setCompareLookupInFlight(false);
-			compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
-			compareSearchBar.setText("");
+			comparison.getCompareSearchBar().setIcon(IconTextField.Icon.SEARCH);
+			comparison.getCompareSearchBar().setText("");
 			comparison.setCompareHiscoreResult(lookupSession.getHiscoreResult());
 			comparison.setCompareClogResult(lookupSession.getClogResult());
 			comparison.setCompareRsn(blueName);
@@ -1540,8 +1539,8 @@ public class KillClogPanel extends PluginPanel
 
 				if (result == null)
 				{
-					compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
-					compareSearchBar.setText("");
+					comparison.getCompareSearchBar().setIcon(IconTextField.Icon.SEARCH);
+					comparison.getCompareSearchBar().setText("");
 					comparison.setCompareStatus(SearchMessages.COMPARE_NOT_FOUND,
 						playerName.getText().trim(), ComparisonController.COMPARE_RED);
 					return;
@@ -1579,8 +1578,8 @@ public class KillClogPanel extends PluginPanel
 			{
 				if (thisLookup != comparison.getCompareLookupVersion()) return;
 				comparison.setCompareLookupInFlight(false);
-				compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
-				compareSearchBar.setText("");
+				comparison.getCompareSearchBar().setIcon(IconTextField.Icon.SEARCH);
+				comparison.getCompareSearchBar().setText("");
 				comparison.setCompareStatus("Lookup failed", ComparisonController.COMPARE_RED);
 			});
 			return null;
@@ -1590,8 +1589,8 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void onComparisonEnter(String redRsn)
 	{
-		compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
-		compareSearchBar.setText("");
+		comparison.getCompareSearchBar().setIcon(IconTextField.Icon.SEARCH);
+		comparison.getCompareSearchBar().setText("");
 		comparison.getCompareStatusLabel().setText(" ");
 		updateTooltips();
 		updateAllCellsForComparison();

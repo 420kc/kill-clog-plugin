@@ -26,6 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.ui.components.IconTextField;
 
 /**
  * Encapsulates the red-side comparison lifecycle. A panel subscribes via
@@ -128,6 +129,7 @@ public class ComparisonController
 
 	// ── Widgets ───────────────────────────────────────────────────────────
 	private final JLabel compareStatus = new JLabel(" ");
+	private final IconTextField compareSearchBar = new IconTextField();
 
 	public ComparisonController(HiscoreService hiscoreService, ClogService clogService,
 		KillClogConfig config, LookupSession lookupSession, ItemManager itemManager,
@@ -208,6 +210,12 @@ public class ComparisonController
 	public JLabel getCompareStatusLabel()
 	{
 		return compareStatus;
+	}
+
+	/** The compare-side search bar (panel reads this for layout + initial styling + action listener wiring). */
+	public IconTextField getCompareSearchBar()
+	{
+		return compareSearchBar;
 	}
 
 	/** Set the compare status label text + color. */
