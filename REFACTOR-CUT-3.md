@@ -1,5 +1,9 @@
 # Refactor cut 3: extract cell-factory tooltip routing from KillClogPanel
 
+## Status: complete
+
+Landed across 2 commits on `refactor-cell-factories` (skeleton + supporting fields 2e74522 → tooltip routing extraction d95eded). The 4 supporting fields (tooltipDataMap, rareTooltips, clueIcons, pvpActivityIcons) moved to `CellFactory`. The 4 routing-bearing cell factory `createToolTip` overrides (clue tier, clue rare, custom rare, boss) collapsed from inline if/else into one-line `cellFactory.buildXTooltip` calls. The single-player `makeSpriteTooltip` rendering stays on the panel via a `SinglePlayerTooltipBuilder` interface injected at construction (panel still owns spriteManager + tooltipController for parent-cell hover wiring). Verification grep returns only the panel's `rareTooltips()` interface method declaration (which delegates correctly to `cellFactory.getRareTooltips()`). Build green incl. checkstyle. Manual smoke test deferred (no RuneLite in the autonomous window).
+
 Branch: `refactor-cell-factories` (off `refactor-comparison-controller` after cut 2 lands)
 
 **Gates on cut 1 + cut 2.** The cell-factory tooltip routing reads primary-side state via `LookupSession` (cut 1) and dispatches to `comparison.makeSpriteTooltip` / `buildClueRare` / `buildCustomRare` (cut 2). Cut 3 cannot land cleanly until both prior cuts ship.
