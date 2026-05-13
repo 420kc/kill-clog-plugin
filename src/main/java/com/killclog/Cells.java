@@ -158,6 +158,14 @@ public class Cells
 					ClueSummaryTooltip tip = new ClueSummaryTooltip();
 					tip.setComponent(this);
 					tip.setIcons(clueIcons);
+					if (lookupSession.getHiscoreResult() != null)
+					{
+						tip.setData(lookupSession.getHiscoreResult());
+					}
+					else
+					{
+						tip.setNotice("Nothing to see here! (Search for a player)");
+					}
 					JPanel parentCell = (JPanel) this.getParent();
 					tooltipController.keepTooltipOnHover(tip, parentCell);
 					return tip;
@@ -195,6 +203,14 @@ public class Cells
 				PvpSummaryTooltip tip = new PvpSummaryTooltip();
 				tip.setComponent(this);
 				tip.setIcons(pvpActivityIcons);
+				if (lookupSession.getHiscoreResult() != null)
+				{
+					tip.setData(lookupSession.getHiscoreResult(), lookupSession.getClogResult());
+				}
+				else
+				{
+					tip.setNotice("Nothing to see here! (Search for a player)");
+				}
 				JPanel parentCell = (JPanel) this.getParent();
 				tooltipController.keepTooltipOnHover(tip, parentCell);
 				return tip;
@@ -625,17 +641,11 @@ public class Cells
 		}
 	}
 
-	/** "Clue Scrolls (hard)" -> "Hard". Public for the panel's tooltip-text builder. */
+	/** "Clue Scrolls (hard)" -> "Hard". */
 	public static String capitalizeTier(HiscoreSkill tier)
 	{
-		String name = tier.getName();
-		int dash = name.indexOf('-');
-		String tierName = dash < 0 ? name : name.substring(dash + 1).trim();
-		if (tierName.isEmpty())
-		{
-			return name;
-		}
-		return Character.toUpperCase(tierName.charAt(0)) + tierName.substring(1);
+		String name = tier.getName().replace("Clue Scrolls (", "").replace(")", "");
+		return Character.toUpperCase(name.charAt(0)) + name.substring(1);
 	}
 
 	// ── Read-only accessors ───────────────────────────────────────────────

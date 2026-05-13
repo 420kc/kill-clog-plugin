@@ -54,12 +54,6 @@ public class ComparisonController
 
 		/** Red player swapped in (became the new primary). Panel should re-render the primary side and update the search bar. */
 		void onSwapToRedPlayer(String newPrimaryRsn);
-
-		/** Red-side hiscore + clog data arrived. Panel should trigger a cell + info-bar re-render via the controller's render hooks. */
-		void onCompareDataReady();
-
-		/** Red lookup failed. Panel should surface the error in the comparison status row. */
-		void onCompareError(String player, Throwable err);
 	}
 
 	/**

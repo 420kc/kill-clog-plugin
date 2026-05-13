@@ -1802,18 +1802,6 @@ public class KillClogPanel extends PluginPanel
 		clogInfoLabel.setToolTipText(null);
 	}
 
-	// ── ComparisonController.Listener ────────────────────────────────────────
-
-	@Override
-	public void onCompareDataReady()
-	{
-	}
-
-	@Override
-	public void onCompareError(String player, Throwable err)
-	{
-	}
-
 	// ── ComparisonController.CellRenderTarget ────────────────────────────────
 	// Read-only accessors the controller uses for the panel-side info-bar
 	// widgets (combat + totalLvl cells, playerName + clogInfoLabel info bar).
