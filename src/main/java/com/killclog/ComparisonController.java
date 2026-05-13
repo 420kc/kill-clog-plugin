@@ -95,6 +95,9 @@ public class ComparisonController
 		void updateInfoIcon(AccountType type);
 
 		Color getInfoColor();
+
+		/** Trigger an async preload of item names referenced by the clog result. */
+		void preloadClogItemNames(ClogResult clog);
 	}
 
 	// ── Constants ─────────────────────────────────────────────────────────
@@ -102,6 +105,7 @@ public class ComparisonController
 	static final Color COMPARE_RED = new Color(224, 86, 86);
 	static final String COMPARE_BLUE_HEX = String.format("#%06x", COMPARE_BLUE.getRGB() & 0xFFFFFF);
 	static final String COMPARE_RED_HEX = String.format("#%06x", COMPARE_RED.getRGB() & 0xFFFFFF);
+	private static final Color COMPARE_DIM = new Color(160, 160, 160);
 
 	// ── Deps ──────────────────────────────────────────────────────────────
 	private final HiscoreService hiscoreService;
@@ -157,56 +161,6 @@ public class ComparisonController
 	public void setRenderTarget(@Nullable CellRenderTarget renderTarget)
 	{
 		this.renderTarget = renderTarget;
-	}
-
-	/**
-	 * Mirror panel-side compare state writes into the controller during the
-	 * cut-2 transition. Once the panel-side fields are removed and all writers
-	 * route through the controller's lifecycle, this bridge becomes dead and
-	 * gets dropped. Until then, the controller's read-only API
-	 * ({@link #isComparisonMode}, {@link #getCompareHiscoreResult}, etc.)
-	 * needs the state populated so any caller switched over to
-	 * {@code comparison.X} sees consistent data.
-	 */
-	public void syncCompareState(boolean comparisonMode,
-		@Nullable HiscoreResult compareHiscoreResult,
-		@Nullable ClogResult compareClogResult,
-		@Nullable String compareRsn)
-	{
-		this.comparisonMode = comparisonMode;
-		this.compareHiscoreResult = compareHiscoreResult;
-		this.compareClogResult = compareClogResult;
-		this.compareRsn = compareRsn;
-	}
-
-	/** Per-field setter used by the panel-side doCompareLookup pipeline during the cut-2 transition; goes away once doCompareLookup itself migrates. */
-	public void setCompareHiscoreResult(@Nullable HiscoreResult result)
-	{
-		this.compareHiscoreResult = result;
-	}
-
-	/** Per-field setter used by the panel-side doCompareLookup pipeline during the cut-2 transition; goes away once doCompareLookup itself migrates. */
-	public void setCompareClogResult(@Nullable ClogResult result)
-	{
-		this.compareClogResult = result;
-	}
-
-	/** Per-field setter used by the panel-side doCompareLookup pipeline during the cut-2 transition; goes away once doCompareLookup itself migrates. */
-	public void setCompareRsn(@Nullable String rsn)
-	{
-		this.compareRsn = rsn;
-	}
-
-	/** Transitional setter for the in-flight flag; goes away when doCompareLookup migrates. */
-	public void setCompareLookupInFlight(boolean inFlight)
-	{
-		this.compareLookupInFlight = inFlight;
-	}
-
-	/** Increment the compare lookup version stamp and return the new value. */
-	public int bumpCompareLookupVersion()
-	{
-		return ++compareLookupVersion;
 	}
 
 	/** The compare-side status label (panel reads this for layout + initial styling). */
@@ -347,12 +301,139 @@ public class ComparisonController
 	}
 
 	/**
-	 * Begin a red-side lookup for {@code player}. Body migrates from
-	 * {@code KillClogPanel.doCompareLookup} in cut 2 step 3.
+	 * Begin a red-side lookup. Reads the search bar text, gates on placeholder
+	 * + in-flight, runs the parallel hiscore + clog API fan-out under a
+	 * version-stamp guard, and dispatches UI updates via setCompareStatus +
+	 * the listener events.
+	 *
+	 * @param localRsn the local player's RSN (for self-detection messaging)
 	 */
-	public void doCompareLookup(String player)
+	public void doCompareLookup(@Nullable String localRsn)
 	{
-		throw new UnsupportedOperationException("ComparisonController.doCompareLookup not yet wired; tracked in REFACTOR-CUT-2-EXECUTION.md");
+		String player = compareSearchBar.getText().trim();
+		if (player.isEmpty() || player.equals(comparePlaceholder) || compareLookupInFlight)
+		{
+			return;
+		}
+
+		if (lookupSession.getHiscoreResult() == null)
+		{
+			return;
+		}
+
+		compareLookupInFlight = true;
+		final int thisLookup = ++compareLookupVersion;
+		compareSearchBar.setIcon(IconTextField.Icon.LOADING_DARKER);
+		String blueName = renderTarget != null ? renderTarget.playerName().getText().trim() : "";
+		boolean blueIsSelf = localRsn != null && localRsn.equalsIgnoreCase(blueName);
+		boolean redIsSelf = localRsn != null && localRsn.equalsIgnoreCase(player);
+		boolean samePlayer = blueName.equalsIgnoreCase(player);
+
+		if (samePlayer)
+		{
+			compareLookupInFlight = false;
+			compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
+			compareSearchBar.setText("");
+			compareHiscoreResult = lookupSession.getHiscoreResult();
+			compareClogResult = lookupSession.getClogResult();
+			compareRsn = blueName;
+			if (blueIsSelf)
+			{
+				setCompareStatus(SearchMessages.COMPARE_SELF_MIRROR, blueName, SearchMessages.SELF_COLOR);
+			}
+			else
+			{
+				setCompareStatus(SearchMessages.COMPARE_MIRROR, blueName, COMPARE_DIM);
+			}
+			enter();
+			return;
+		}
+
+		if (blueIsSelf || redIsSelf)
+		{
+			String[] pool = blueIsSelf ? SearchMessages.COMPARE_SELF_BLUE : SearchMessages.COMPARE_SELF_RED;
+			String msg = pool[ThreadLocalRandom.current().nextInt(pool.length)];
+			if (msg.contains("%s") && msg.indexOf("%s") != msg.lastIndexOf("%s"))
+			{
+				msg = String.format(msg, blueName, player);
+			}
+			else
+			{
+				msg = String.format(msg, blueIsSelf ? player : blueName);
+			}
+			setCompareStatus(msg, SearchMessages.SELF_COLOR);
+		}
+		else
+		{
+			setCompareStatus(SearchMessages.COMPARE_SEARCH, blueName, COMPARE_DIM);
+		}
+
+		hiscoreService.lookup(player, null).thenAccept(result ->
+			javax.swing.SwingUtilities.invokeLater(() ->
+			{
+				if (thisLookup != compareLookupVersion)
+				{
+					return;
+				}
+				compareLookupInFlight = false;
+
+				if (result == null)
+				{
+					compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
+					compareSearchBar.setText("");
+					setCompareStatus(SearchMessages.COMPARE_NOT_FOUND,
+						renderTarget != null ? renderTarget.playerName().getText().trim() : "",
+						COMPARE_RED);
+					return;
+				}
+
+				compareHiscoreResult = result;
+
+				clogService.lookup(player).thenAccept(clogRes ->
+					javax.swing.SwingUtilities.invokeLater(() ->
+					{
+						if (thisLookup != compareLookupVersion)
+						{
+							return;
+						}
+						compareClogResult = clogRes;
+						if (clogRes != null && renderTarget != null)
+						{
+							renderTarget.preloadClogItemNames(clogRes);
+						}
+						compareRsn = clogRes != null && clogRes.getPlayerName() != null
+							? clogRes.getPlayerName() : player;
+						enter();
+					})
+				).exceptionally(ex ->
+				{
+					javax.swing.SwingUtilities.invokeLater(() ->
+					{
+						if (thisLookup != compareLookupVersion)
+						{
+							return;
+						}
+						compareRsn = player;
+						enter();
+					});
+					return null;
+				});
+			})
+		).exceptionally(ex ->
+		{
+			javax.swing.SwingUtilities.invokeLater(() ->
+			{
+				if (thisLookup != compareLookupVersion)
+				{
+					return;
+				}
+				compareLookupInFlight = false;
+				compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
+				compareSearchBar.setText("");
+				setCompareStatus("Lookup failed", COMPARE_RED);
+			});
+			return null;
+		});
 	}
 
 	// ── Read-only state ───────────────────────────────────────────────────

@@ -1358,7 +1358,7 @@ public class KillClogPanel extends PluginPanel
 		comparison.getCompareSearchBar().setPreferredSize(new Dimension(0, 30));
 		comparison.getCompareSearchBar().setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
 		comparison.getCompareSearchBar().setAlignmentX(Component.LEFT_ALIGNMENT);
-		comparison.getCompareSearchBar().addActionListener(e -> doCompareLookup());
+		comparison.getCompareSearchBar().addActionListener(e -> comparison.doCompareLookup(localRsn));
 
 		ClogHelper.styleSearchBar(comparison.getCompareSearchBar());
 
@@ -1466,123 +1466,6 @@ public class KillClogPanel extends PluginPanel
 		updateTooltips();
 	}
 
-	private void doCompareLookup()
-	{
-		String player = comparison.getCompareSearchBar().getText().trim();
-		if (player.isEmpty() || player.equals(comparison.getComparePlaceholder()) || comparison.isCompareLookupInFlight())
-		{
-			return;
-		}
-
-		if (lookupSession.getHiscoreResult() == null)
-		{
-			return;
-		}
-
-		comparison.setCompareLookupInFlight(true);
-		final int thisLookup = comparison.bumpCompareLookupVersion();
-		comparison.getCompareSearchBar().setIcon(IconTextField.Icon.LOADING_DARKER);
-		String blueName = playerName.getText().trim();
-		boolean blueIsSelf = localRsn != null && localRsn.equalsIgnoreCase(blueName);
-		boolean redIsSelf = localRsn != null && localRsn.equalsIgnoreCase(player);
-		boolean samePlayer = blueName.equalsIgnoreCase(player);
-
-		if (samePlayer)
-		{
-			// Mirror: reuse existing data, no API calls
-			comparison.setCompareLookupInFlight(false);
-			comparison.getCompareSearchBar().setIcon(IconTextField.Icon.SEARCH);
-			comparison.getCompareSearchBar().setText("");
-			comparison.setCompareHiscoreResult(lookupSession.getHiscoreResult());
-			comparison.setCompareClogResult(lookupSession.getClogResult());
-			comparison.setCompareRsn(blueName);
-			if (blueIsSelf)
-			{
-				comparison.setCompareStatus(SearchMessages.COMPARE_SELF_MIRROR, blueName, SearchMessages.SELF_COLOR);
-			}
-			else
-			{
-				comparison.setCompareStatus(SearchMessages.COMPARE_MIRROR, blueName, TEXT_DIM);
-			}
-			comparison.enter();
-			return;
-		}
-
-		if (blueIsSelf || redIsSelf)
-		{
-			String[] pool = blueIsSelf
-				? SearchMessages.COMPARE_SELF_BLUE
-				: SearchMessages.COMPARE_SELF_RED;
-			String msg = pool[ThreadLocalRandom.current().nextInt(pool.length)];
-			if (msg.contains("%s") && msg.indexOf("%s") != msg.lastIndexOf("%s"))
-			{
-				msg = String.format(msg, blueName, player);
-			}
-			else
-			{
-				msg = String.format(msg, blueIsSelf ? player : blueName);
-			}
-			comparison.setCompareStatus(msg, SearchMessages.SELF_COLOR);
-		}
-		else
-		{
-			comparison.setCompareStatus(SearchMessages.COMPARE_SEARCH, blueName, TEXT_DIM);
-		}
-
-		hiscoreService.lookup(player, null).thenAccept(result ->
-			SwingUtilities.invokeLater(() ->
-			{
-				if (thisLookup != comparison.getCompareLookupVersion()) return;
-				comparison.setCompareLookupInFlight(false);
-
-				if (result == null)
-				{
-					comparison.getCompareSearchBar().setIcon(IconTextField.Icon.SEARCH);
-					comparison.getCompareSearchBar().setText("");
-					comparison.setCompareStatus(SearchMessages.COMPARE_NOT_FOUND,
-						playerName.getText().trim(), ComparisonController.COMPARE_RED);
-					return;
-				}
-
-				comparison.setCompareHiscoreResult(result);
-
-				clogService.lookup(player).thenAccept(clogRes ->
-					SwingUtilities.invokeLater(() ->
-					{
-						if (thisLookup != comparison.getCompareLookupVersion()) return;
-						comparison.setCompareClogResult(clogRes);
-						if (clogRes != null)
-						{
-							lookupItemNames(clogRes);
-						}
-						comparison.setCompareRsn(clogRes != null && clogRes.getPlayerName() != null
-							? clogRes.getPlayerName() : player);
-						comparison.enter();
-					})
-				).exceptionally(ex ->
-				{
-					SwingUtilities.invokeLater(() ->
-					{
-						if (thisLookup != comparison.getCompareLookupVersion()) return;
-						comparison.setCompareRsn(player);
-						comparison.enter();
-					});
-					return null;
-				});
-			})
-		).exceptionally(ex ->
-		{
-			SwingUtilities.invokeLater(() ->
-			{
-				if (thisLookup != comparison.getCompareLookupVersion()) return;
-				comparison.setCompareLookupInFlight(false);
-				comparison.getCompareSearchBar().setIcon(IconTextField.Icon.SEARCH);
-				comparison.getCompareSearchBar().setText("");
-				comparison.setCompareStatus("Lookup failed", ComparisonController.COMPARE_RED);
-			});
-			return null;
-		});
-	}
 
 	@Override
 	public void onComparisonEnter(String redRsn)
@@ -2722,5 +2605,11 @@ public class KillClogPanel extends PluginPanel
 	public JLabel clogInfoLabel()
 	{
 		return clogInfoLabel;
+	}
+
+	@Override
+	public void preloadClogItemNames(ClogResult clog)
+	{
+		lookupItemNames(clog);
 	}
 }
