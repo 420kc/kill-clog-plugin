@@ -1,6 +1,5 @@
 package com.killclog;
 
-import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
@@ -38,7 +37,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JToolTip;
 import javax.swing.SwingUtilities;
-import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.callback.ClientThread;
@@ -193,14 +191,9 @@ public class KillClogPanel extends PluginPanel
 	private JLabel refreshLabel;
 	private BufferedImage syncNoticeIcon;
 	// Activities tray
-	private JPanel activitiesGrid;
-	private JPanel activitiesClip;
-	private JPanel activitySeparator;
-	private JLabel trayToggle;
 	private JLabel combatCell;
 	private JLabel totalLvlCell;
-	private boolean activitiesExpanded;
-	private Timer slideTimer;
+	private ActivitiesTray activitiesTray;
 
 	// Current lookup state lives on lookupSession; rsn here is a separate
 	// display-name field set by fetchRsn for the playerName label.
@@ -262,7 +255,6 @@ public class KillClogPanel extends PluginPanel
 		NativeTooltip.loadSprites(spriteManager);
 		SkillsTooltip.loadIcons(skillIconManager);
 
-		activitiesExpanded = config.activitiesExpanded();
 
 		setBorder(new EmptyBorder(10, 10, 0, 10));
 		setBackground(ColorScheme.DARK_GRAY_COLOR);
@@ -280,64 +272,13 @@ public class KillClogPanel extends PluginPanel
 		// Activities tray with slide animation
 		c.gridy++;
 		c.insets = new Insets(0, 0, 0, 0);
-		activitiesGrid = buildActivitiesGrid();
-		activitiesClip = new JPanel(new BorderLayout())
-		{
-			@Override
-			public Dimension getPreferredSize()
-			{
-				int h;
-				if (slideTimer != null && slideTimer.isRunning())
-				{
-					h = super.getPreferredSize().height;
-				}
-				else if (activitiesExpanded)
-				{
-					h = activitiesGrid.getPreferredSize().height;
-				}
-				else
-				{
-					h = 0;
-				}
-				return new Dimension(activitiesGrid.getPreferredSize().width, h);
-			}
-		};
-		activitiesClip.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		activitiesClip.add(activitiesGrid, BorderLayout.NORTH);
-		activitiesClip.setPreferredSize(new Dimension(0,
-			activitiesExpanded ? activitiesGrid.getPreferredSize().height : 0));
-		activitiesClip.setVisible(activitiesExpanded);
-		add(activitiesClip, c);
+		activitiesTray = new ActivitiesTray(buildActivitiesGrid(), config.activitiesExpanded(),
+			expanded -> configManager.setConfiguration("killclog", "activitiesExpanded", expanded));
+		add(activitiesTray.getClip(), c);
 
-		// Separator between activities and boss grid
+		// Separator between activities and boss grid (also the click target to toggle the tray)
 		c.gridy++;
-		activitySeparator = new JPanel();
-		activitySeparator.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		activitySeparator.setPreferredSize(new Dimension(0, 7));
-		Color sepNormal = ColorScheme.DARK_GRAY_COLOR;
-		Color sepHover = new Color(46, 46, 46);
-		activitySeparator.addMouseListener(new MouseAdapter()
-		{
-			@Override
-			public void mousePressed(MouseEvent e)
-			{
-				toggleActivities();
-			}
-
-			@Override
-			public void mouseEntered(MouseEvent e)
-			{
-				activitySeparator.setBackground(sepHover);
-			}
-
-			@Override
-			public void mouseExited(MouseEvent e)
-			{
-				activitySeparator.setBackground(sepNormal);
-			}
-		});
-		activitySeparator.setVisible(activitiesExpanded);
-		add(activitySeparator, c);
+		add(activitiesTray.getSeparator(), c);
 
 		c.gridy++;
 		add(cells.buildBossGrid(), c);
@@ -668,7 +609,7 @@ public class KillClogPanel extends PluginPanel
 			});
 		}
 
-		trayToggle = new JLabel();
+		JLabel trayToggle = new JLabel();
 		ImageIcon hamburgerIcon = new ImageIcon(ClogHelper.makeHamburgerIcon(HAMBURGER_COLOR));
 		ImageIcon hamburgerHoverIcon = new ImageIcon(ClogHelper.makeHamburgerIcon(HAMBURGER_HOVER_COLOR));
 		trayToggle.setIcon(hamburgerIcon);
@@ -680,7 +621,7 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public void mousePressed(MouseEvent e)
 			{
-				toggleActivities();
+				activitiesTray.toggle();
 			}
 
 			@Override
@@ -816,51 +757,6 @@ public class KillClogPanel extends PluginPanel
 	// -------------------------------------------------------------------------
 	// Activities tray
 	// -------------------------------------------------------------------------
-
-	private void toggleActivities()
-	{
-		if (slideTimer != null && slideTimer.isRunning())
-		{
-			slideTimer.stop();
-		}
-
-		int startHeight = activitiesClip.getPreferredSize().height;
-		activitiesExpanded = !activitiesExpanded;
-		configManager.setConfiguration("killclog", "activitiesExpanded", activitiesExpanded);
-
-		int targetHeight = activitiesExpanded ? activitiesGrid.getPreferredSize().height : 0;
-		activitySeparator.setVisible(activitiesExpanded);
-		if (activitiesExpanded)
-		{
-			activitiesClip.setVisible(true);
-		}
-
-		long duration = 150;
-		long startTime = System.currentTimeMillis();
-
-		slideTimer = new Timer(12, null);
-		slideTimer.addActionListener(e ->
-		{
-			long elapsed = System.currentTimeMillis() - startTime;
-			float progress = Math.min(1f, (float) elapsed / duration);
-			// Ease-out: 1 - (1-t)^2
-			float eased = 1f - (1f - progress) * (1f - progress);
-			int height = startHeight + Math.round((targetHeight - startHeight) * eased);
-			activitiesClip.setPreferredSize(new Dimension(0, height));
-			revalidate();
-
-			if (progress >= 1f)
-			{
-				slideTimer.stop();
-				if (!activitiesExpanded)
-				{
-					activitiesClip.setVisible(false);
-					activitySeparator.setVisible(false);
-				}
-			}
-		});
-		slideTimer.start();
-	}
 
 	private JPanel buildActivitiesGrid()
 	{
