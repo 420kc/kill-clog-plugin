@@ -63,7 +63,6 @@ public class KillClogPanel extends PluginPanel
 	private static final Color TEXT_DIM = new Color(160, 160, 160);
 	private static final Color NOT_FOUND = new Color(0x81, 0x09, 0x09);
 	static final Color KC_COLOR = new Color(215, 215, 215);
-	private static final Color FOUR_TWENTY_GREEN = new Color(30, 200, 30);
 	private static final Color HAMBURGER_COLOR = new Color(70, 70, 70);
 	private static final Color HAMBURGER_HOVER_COLOR = new Color(96, 96, 96);
 	private static final String SYNC_NOTICE = "Open Collection Log and click";
@@ -1066,7 +1065,7 @@ public class KillClogPanel extends PluginPanel
 				updateInfoIcon(templeType);
 			}
 			lookupItemNames(swapClog);
-			updateRares(swapClog);
+			cells.renderClog(swapClog, config);
 			updateClogCell(swapClog);
 		}
 
@@ -1312,7 +1311,7 @@ public class KillClogPanel extends PluginPanel
 		lookupItemNames(result);
 		if (lookupSession.getHiscoreResult() != null)
 		{
-			updateRares(result);
+			cells.renderClog(result, config);
 			updateClogCell(result);
 		}
 		toggleHighlighter(config.completionistHighlighter());
@@ -1363,155 +1362,6 @@ public class KillClogPanel extends PluginPanel
 	// Label update methods
 	// -------------------------------------------------------------------------
 
-	private void updateActivities(HiscoreResult result)
-	{
-		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getActivityLabels().entrySet())
-		{
-			HiscoreSkill activity = entry.getKey();
-			JLabel label = entry.getValue();
-			int score = result.getActivityScore(activity.getName());
-
-			label.setText(ClogHelper.pad(score <= 0 ? "--" : ClogHelper.formatKc(score)));
-			label.setForeground(score > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
-
-			if (activity == HiscoreSkill.CLUE_SCROLL_ALL)
-			{
-				label.setToolTipText(" ");
-			}
-			else
-			{
-				int rank = result.getActivityRank(activity.getName());
-				label.setToolTipText(rank > 0
-					? activity.getName() + "\nRank: {w}" + String.format("%,d", rank)
-					: activity.getName());
-			}
-		}
-
-		// PvP summary cell — BH Hunter + BH Rogue total
-		if (cells.getPvpSummaryCell() != null)
-		{
-			int bhTotal = Math.max(0, result.getActivityScore("Bounty Hunter - Hunter"))
-				+ Math.max(0, result.getActivityScore("Bounty Hunter - Rogue"));
-			cells.getPvpSummaryCell().setText(ClogHelper.pad(bhTotal > 0 ? ClogHelper.formatKc(bhTotal) : "--"));
-		}
-
-		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getClueTierLabels().entrySet())
-		{
-			HiscoreSkill tier = entry.getKey();
-			JLabel label = entry.getValue();
-			int score = result.getActivityScore(tier.getName());
-			label.setText(ClogHelper.pad(score <= 0 ? "--" : ClogHelper.formatKc(score)));
-			label.setForeground(score > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
-
-			String shortName = capitalizeTier(tier);
-			int rank = result.getActivityRank(tier.getName());
-			label.setToolTipText(rank > 0
-				? shortName + "\nRank: {w}" + String.format("%,d", rank)
-				: shortName);
-		}
-	}
-
-	/** "Clue Scrolls (hard)" → "Hard" */
-	private static String capitalizeTier(HiscoreSkill tier)
-	{
-		String name = tier.getName().replace("Clue Scrolls (", "").replace(")", "");
-		return Character.toUpperCase(name.charAt(0)) + name.substring(1);
-	}
-
-	private void updateBosses(HiscoreResult result)
-	{
-		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getBossLabels().entrySet())
-		{
-			HiscoreSkill skill = entry.getKey();
-			JLabel label = entry.getValue();
-			String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(skill.getName(), skill.getName());
-			int kc = result.getBossKills().getOrDefault(hiscoreName, -1);
-			boolean hasKc = kc > 0;
-
-			label.setText(ClogHelper.pad(kc <= 0 ? "--" : ClogHelper.formatKc(kc)));
-			label.setForeground(hasKc ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
-
-			ImageIcon orig = cells.getOriginalIcons().get(skill);
-			if (orig != null)
-			{
-				label.setIcon(hasKc ? orig : cells.getDimmedIcons().get(skill));
-			}
-
-			// 420 mode overrides
-			switch (fourTwentyMode)
-			{
-				case GREEN_420S:
-					if (kc == 420) label.setForeground(FOUR_TWENTY_GREEN);
-					break;
-				case CAP_420:
-					if (kc > 0)
-					{
-						int display = Math.min(kc, 420);
-						label.setText(ClogHelper.pad(ClogHelper.formatKc(display)));
-						if (display == 420) label.setForeground(FOUR_TWENTY_GREEN);
-					}
-					break;
-				case ALL_420:
-					if (kc > 0)
-					{
-						label.setText(ClogHelper.pad("420"));
-						label.setForeground(FOUR_TWENTY_GREEN);
-					}
-					break;
-			}
-		}
-	}
-
-	private void updateRares(ClogResult result)
-	{
-		updateClueRare(cells.getThirdAgeCell(), "3rd Age", PanelData.CLOG_THIRD_AGE, result, true);
-		updateClueRare(cells.getGildedCell(), "Gilded", PanelData.CLOG_GILDED, result, false);
-		updateCustomRare(cells.getHardRare(), "Hard Treasure (Rare)", PanelData.RARE_HARD, PanelData.HARD_RARE_ITEMS, result);
-		updateCustomRare(cells.getEliteRare(), "Elite Treasure (Rare)", PanelData.RARE_ELITE, PanelData.ELITE_RARE_ITEMS, result);
-		updateCustomRare(cells.getMasterRare(), "Master Treasure (Rare)", PanelData.RARE_MASTER, PanelData.MASTER_RARE_ITEMS, result);
-	}
-
-	private Color rareColor(TooltipData data)
-	{
-		if (data.obtainedCount <= 0)
-		{
-			return config.completionistHighlighter()
-				? config.emptyClogColor() : ColorScheme.LIGHT_GRAY_COLOR;
-		}
-		return config.completionistHighlighter()
-			? ClogHelper.clogColor(data.obtainedCount, data.totalItems, config) : KC_COLOR;
-	}
-
-	private void updateClueRare(JLabel label, String name, String clogCategory,
-									ClogResult result, boolean isThirdAge)
-	{
-		if (label == null) return;
-
-		TooltipData data = tooltipDataBuilder.buildClueRareData(name, clogCategory, result);
-		if (data == null)
-		{
-			label.setToolTipText(name);
-			return;
-		}
-
-		label.setText(ClogHelper.pad(data.obtainedCount > 0 ? ClogHelper.formatKc(data.obtainedCount) : "--"));
-		cells.getRareTooltips().put(isThirdAge ? PanelData.CLOG_THIRD_AGE : PanelData.CLOG_GILDED, data);
-		label.setForeground(rareColor(data));
-		label.setToolTipText(" ");
-	}
-
-	private void updateCustomRare(JLabel label, String name, String rareKey,
-		int[] itemIds, ClogResult result)
-	{
-		if (label == null) return;
-
-		TooltipData data = tooltipDataBuilder.buildCustomRareData(name, itemIds, result);
-
-		label.setText(ClogHelper.pad(data.obtainedCount > 0 ? ClogHelper.formatKc(data.obtainedCount) : "--"));
-		cells.getRareTooltips().put(rareKey, data);
-		label.setForeground(rareColor(data));
-		label.setToolTipText(" ");
-	}
 
 	private void updateClogCell(ClogResult result)
 	{
@@ -1588,7 +1438,7 @@ public class KillClogPanel extends PluginPanel
 		}
 
 		// Clue tier cells with clog categories
-		rebuildActivityTooltips(PanelData.CLUE_CATEGORIES, cells.getClueTierLabels(), KillClogPanel::capitalizeTier);
+		rebuildActivityTooltips(PanelData.CLUE_CATEGORIES, cells.getClueTierLabels(), Cells::capitalizeTier);
 	}
 
 	private void rebuildActivityTooltips(Map<HiscoreSkill, String> categories,
@@ -1643,11 +1493,10 @@ public class KillClogPanel extends PluginPanel
 			}
 		}
 
-		updateBosses(lookupSession.getHiscoreResult());
-		updateActivities(lookupSession.getHiscoreResult());
+		cells.renderHiscore(lookupSession.getHiscoreResult(), fourTwentyMode);
 		if (lookupSession.getClogResult() != null)
 		{
-			updateRares(lookupSession.getClogResult());
+			cells.renderClog(lookupSession.getClogResult(), config);
 			if (enabled)
 			{
 				Map<String, JLabel> rareCells = new LinkedHashMap<>();
@@ -1657,7 +1506,7 @@ public class KillClogPanel extends PluginPanel
 				rareCells.put(PanelData.RARE_ELITE, cells.getEliteRare());
 				rareCells.put(PanelData.RARE_MASTER, cells.getMasterRare());
 				highlighter.colorCellsByCompletion(lookupSession.getHiscoreResult(), lookupSession.getClogResult(),
-					cells.getRareTooltips(), rareCells, fourTwentyMode, FOUR_TWENTY_GREEN);
+					cells.getRareTooltips(), rareCells, fourTwentyMode, FourTwentyMode.GREEN);
 				highlighter.colorEmptyCells();
 			}
 		}
@@ -1969,7 +1818,7 @@ public class KillClogPanel extends PluginPanel
 			{
 				updateInfoIcon(templeType);
 			}
-			updateRares(clog);
+			cells.renderClog(clog, config);
 			updateClogCell(clog);
 		}
 	}

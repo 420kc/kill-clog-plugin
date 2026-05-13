@@ -8,6 +8,7 @@
  */
 package com.killclog;
 
+import java.awt.Color;
 import java.awt.GridLayout;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
@@ -299,6 +300,140 @@ public class Cells
 		return wrapInCell(label);
 	}
 
+	// ── Primary-side rendering ────────────────────────────────────────────
+
+	/** Standard kc text color (matches panel constant for backwards-compat). */
+	static final Color KC_COLOR = new Color(215, 215, 215);
+
+	/**
+	 * Write hiscore-driven values into every primary-side cell: bosses
+	 * (text + color + dimmed-icon swap + 420 mode overrides), activities,
+	 * clue tiers, and the PvP summary cell. Mirrors
+	 * {@link ComparisonController#updateAllCells()} for the comparison side.
+	 */
+	public void renderHiscore(HiscoreResult result, FourTwentyMode fourTwentyMode)
+	{
+		// Boss cells (with 420 mode overrides applied last)
+		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
+		{
+			HiscoreSkill skill = entry.getKey();
+			JLabel label = entry.getValue();
+			String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(skill.getName(), skill.getName());
+			int kc = result.getBossKills().getOrDefault(hiscoreName, -1);
+			boolean hasKc = kc > 0;
+
+			label.setText(ClogHelper.pad(kc <= 0 ? "--" : ClogHelper.formatKc(kc)));
+			label.setForeground(hasKc ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
+
+			ImageIcon orig = originalIcons.get(skill);
+			if (orig != null)
+			{
+				label.setIcon(hasKc ? orig : dimmedIcons.get(skill));
+			}
+
+			fourTwentyMode.applyOverrides(label, kc);
+		}
+
+		// Activity cells
+		for (Map.Entry<HiscoreSkill, JLabel> entry : activityLabels.entrySet())
+		{
+			HiscoreSkill activity = entry.getKey();
+			JLabel label = entry.getValue();
+			int score = result.getActivityScore(activity.getName());
+			label.setText(ClogHelper.pad(score <= 0 ? "--" : ClogHelper.formatKc(score)));
+			label.setForeground(score > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
+			if (activity == HiscoreSkill.CLUE_SCROLL_ALL)
+			{
+				label.setToolTipText(" ");
+			}
+			else
+			{
+				int rank = result.getActivityRank(activity.getName());
+				label.setToolTipText(rank > 0
+					? activity.getName() + "\nRank: {w}" + String.format("%,d", rank)
+					: activity.getName());
+			}
+		}
+
+		// PvP summary cell — BH Hunter + BH Rogue total
+		if (pvpSummaryCell != null)
+		{
+			int bhTotal = Math.max(0, result.getActivityScore("Bounty Hunter - Hunter"))
+				+ Math.max(0, result.getActivityScore("Bounty Hunter - Rogue"));
+			pvpSummaryCell.setText(ClogHelper.pad(bhTotal > 0 ? ClogHelper.formatKc(bhTotal) : "--"));
+		}
+
+		// Clue tier cells
+		for (Map.Entry<HiscoreSkill, JLabel> entry : clueTierLabels.entrySet())
+		{
+			HiscoreSkill tier = entry.getKey();
+			JLabel label = entry.getValue();
+			int score = result.getActivityScore(tier.getName());
+			label.setText(ClogHelper.pad(score <= 0 ? "--" : ClogHelper.formatKc(score)));
+			label.setForeground(score > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
+
+			String shortName = capitalizeTier(tier);
+			int rank = result.getActivityRank(tier.getName());
+			label.setToolTipText(rank > 0
+				? shortName + "\nRank: {w}" + String.format("%,d", rank)
+				: shortName);
+		}
+	}
+
+	/** Write clog-driven values into the rare cells (3rd Age, Gilded, Hard/Elite/Master Treasure). */
+	public void renderClog(ClogResult result, KillClogConfig config)
+	{
+		writeClueRare(thirdAgeCell, "3rd Age", PanelData.CLOG_THIRD_AGE, result, config);
+		writeClueRare(gildedCell, "Gilded", PanelData.CLOG_GILDED, result, config);
+		writeCustomRare(hardRare, "Hard Treasure (Rare)", PanelData.RARE_HARD, PanelData.HARD_RARE_ITEMS, result, config);
+		writeCustomRare(eliteRare, "Elite Treasure (Rare)", PanelData.RARE_ELITE, PanelData.ELITE_RARE_ITEMS, result, config);
+		writeCustomRare(masterRare, "Master Treasure (Rare)", PanelData.RARE_MASTER, PanelData.MASTER_RARE_ITEMS, result, config);
+	}
+
+	private void writeClueRare(@Nullable JLabel label, String name, String clogCategory,
+		ClogResult result, KillClogConfig config)
+	{
+		if (label == null)
+		{
+			return;
+		}
+		TooltipData data = tooltipDataBuilder.buildClueRareData(name, clogCategory, result);
+		if (data == null)
+		{
+			label.setToolTipText(name);
+			return;
+		}
+		label.setText(ClogHelper.pad(data.obtainedCount > 0 ? ClogHelper.formatKc(data.obtainedCount) : "--"));
+		rareTooltips.put(clogCategory, data);
+		label.setForeground(rareColor(data, config));
+		label.setToolTipText(" ");
+	}
+
+	private void writeCustomRare(@Nullable JLabel label, String name, String rareKey,
+		int[] itemIds, ClogResult result, KillClogConfig config)
+	{
+		if (label == null)
+		{
+			return;
+		}
+		TooltipData data = tooltipDataBuilder.buildCustomRareData(name, itemIds, result);
+		label.setText(ClogHelper.pad(data.obtainedCount > 0 ? ClogHelper.formatKc(data.obtainedCount) : "--"));
+		rareTooltips.put(rareKey, data);
+		label.setForeground(rareColor(data, config));
+		label.setToolTipText(" ");
+	}
+
+	private static Color rareColor(TooltipData data, KillClogConfig config)
+	{
+		if (data.obtainedCount <= 0)
+		{
+			return config.completionistHighlighter()
+				? config.emptyClogColor() : ColorScheme.LIGHT_GRAY_COLOR;
+		}
+		return config.completionistHighlighter()
+			? ClogHelper.clogColor(data.obtainedCount, data.totalItems, config) : KC_COLOR;
+	}
+
 	// ── Tooltip routing ───────────────────────────────────────────────────
 
 	private JToolTip buildBossTooltip(JLabel owner, HiscoreSkill boss)
@@ -400,7 +535,8 @@ public class Cells
 		}
 	}
 
-	private static String capitalizeTier(HiscoreSkill tier)
+	/** "Clue Scrolls (hard)" -> "Hard". Public for the panel's tooltip-text builder. */
+	public static String capitalizeTier(HiscoreSkill tier)
 	{
 		String name = tier.getName();
 		int dash = name.indexOf('-');
