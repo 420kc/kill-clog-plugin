@@ -260,18 +260,17 @@ public class ComparisonController
 	}
 
 	/**
-	 * Swap the red player into the primary slot. Calls {@link #exit()} to
-	 * tear down comparison state, then {@link LookupSession#adoptState} to
-	 * push the swapped data into the session, then fires
-	 * {@code onSwapToRedPlayer} so the panel can re-render the primary side.
-	 *
-	 * <p>State is taken as parameters during the cut-2 transition; once the
-	 * panel-side compare state fields are removed, the controller will read
-	 * its own fields directly.
+	 * Swap the red player into the primary slot. Captures the current red
+	 * state, calls {@link #exit()} to tear down comparison, then
+	 * {@link LookupSession#adoptState} to push the captured data into the
+	 * session, then fires {@code onSwapToRedPlayer} so the panel can re-render
+	 * the primary side.
 	 */
-	public void swapToComparePlayer(@Nullable HiscoreResult swapHiscore,
-		@Nullable ClogResult swapClog, @Nullable String swapName)
+	public void swapToComparePlayer()
 	{
+		HiscoreResult swapHiscore = compareHiscoreResult;
+		ClogResult swapClog = compareClogResult;
+		String swapName = compareRsn;
 		exit();
 		lookupSession.adoptState(swapHiscore, swapClog, swapName);
 		listener.onSwapToRedPlayer(swapName);

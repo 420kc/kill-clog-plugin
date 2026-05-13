@@ -377,7 +377,7 @@ public class KillClogPanel extends PluginPanel
 				comparePanel.setVisible(show);
 				if (!show && comparison.isComparisonMode())
 				{
-					exitComparisonMode();
+					comparison.exit();
 				}
 				revalidate();
 			}
@@ -610,7 +610,7 @@ public class KillClogPanel extends PluginPanel
 			{
 				if (comparison.isComparisonMode())
 				{
-					exitComparisonMode();
+					comparison.exit();
 					return;
 				}
 				infoBarClickHandler.mousePressed(e);
@@ -623,7 +623,7 @@ public class KillClogPanel extends PluginPanel
 			{
 				if (comparison.isComparisonMode() && comparison.getCompareRsn() != null)
 				{
-					swapToComparePlayer();
+					comparison.swapToComparePlayer();
 					return;
 				}
 				infoBarClickHandler.mousePressed(e);
@@ -1414,15 +1414,6 @@ public class KillClogPanel extends PluginPanel
 		return panel;
 	}
 
-	private void exitComparisonMode()
-	{
-		// Mirror the reset on panel-side state until the cleanup pass migrates
-		// these fields off the panel; controller.exit() does the same on its
-		// own copies and fires onComparisonExit for the UI restoration.
-		comparison.exit();
-		comparison.syncCompareState(false, null, null, null);
-	}
-
 	@Override
 	public void onComparisonExit()
 	{
@@ -1432,12 +1423,6 @@ public class KillClogPanel extends PluginPanel
 		updateAllCellsForComparison();
 		updateInfoBarForComparison();
 		toggleHighlighter(config.completionistHighlighter());
-	}
-
-	/** Click red name in comparison mode — swap red player into solo view instantly. */
-	private void swapToComparePlayer()
-	{
-		comparison.swapToComparePlayer(comparison.getCompareHiscoreResult(), comparison.getCompareClogResult(), comparison.getCompareRsn());
 	}
 
 	@Override
@@ -1523,7 +1508,7 @@ public class KillClogPanel extends PluginPanel
 			{
 				setCompareStatus(SearchMessages.COMPARE_MIRROR, blueName, TEXT_DIM);
 			}
-			activateComparisonMode();
+			comparison.enter();
 			return;
 		}
 
@@ -1576,7 +1561,7 @@ public class KillClogPanel extends PluginPanel
 						}
 						comparison.setCompareRsn(clogRes != null && clogRes.getPlayerName() != null
 							? clogRes.getPlayerName() : player);
-						activateComparisonMode();
+						comparison.enter();
 					})
 				).exceptionally(ex ->
 				{
@@ -1584,7 +1569,7 @@ public class KillClogPanel extends PluginPanel
 					{
 						if (thisLookup != comparison.getCompareLookupVersion()) return;
 						comparison.setCompareRsn(player);
-						activateComparisonMode();
+						comparison.enter();
 					});
 					return null;
 				});
@@ -1601,12 +1586,6 @@ public class KillClogPanel extends PluginPanel
 			});
 			return null;
 		});
-	}
-
-	private void activateComparisonMode()
-	{
-		comparison.syncCompareState(true, comparison.getCompareHiscoreResult(), comparison.getCompareClogResult(), comparison.getCompareRsn());
-		comparison.enter();
 	}
 
 	@Override
@@ -1884,7 +1863,7 @@ public class KillClogPanel extends PluginPanel
 	private void resetAllLabels()
 	{
 		tooltipController.hideClickTooltip();
-		if (comparison.isComparisonMode()) exitComparisonMode();
+		if (comparison.isComparisonMode()) comparison.exit();
 		comparePanel.setVisible(false);
 		rsn = null;
 		clogNotice.setText(" ");
