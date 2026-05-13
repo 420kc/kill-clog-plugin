@@ -192,11 +192,6 @@ public class KillClogPanel extends PluginPanel
 
 	private JLabel refreshLabel;
 	private BufferedImage syncNoticeIcon;
-	private final Map<HiscoreSkill, JLabel> bossLabels = new LinkedHashMap<>();
-	private final Map<HiscoreSkill, JLabel> activityLabels = new LinkedHashMap<>();
-	private final Map<HiscoreSkill, ImageIcon> originalIcons = new LinkedHashMap<>();
-	private final Map<HiscoreSkill, ImageIcon> dimmedIcons = new LinkedHashMap<>();
-	private JLabel pvpSummaryCell;
 	// Activities tray
 	private JPanel activitiesGrid;
 	private JPanel activitiesClip;
@@ -207,12 +202,6 @@ public class KillClogPanel extends PluginPanel
 	private boolean activitiesExpanded;
 	private Timer slideTimer;
 
-	private final Map<HiscoreSkill, JLabel> clueTierLabels = new LinkedHashMap<>();
-	private JLabel thirdAgeCell;
-	private JLabel gildedCell;
-	private JLabel hardRare;
-	private JLabel eliteRare;
-	private JLabel masterRare;
 	// Current lookup state lives on lookupSession; rsn here is a separate
 	// display-name field set by fetchRsn for the playerName label.
 	private String rsn;
@@ -223,7 +212,7 @@ public class KillClogPanel extends PluginPanel
 	private final TooltipController tooltipController;
 	private final LookupSession lookupSession;
 	private final ComparisonController comparison;
-	private final CellFactory cellFactory;
+	private final Cells cells;
 
 	// Comparison mode widgets (state fields all live on the controller)
 
@@ -253,8 +242,9 @@ public class KillClogPanel extends PluginPanel
 		this.comparison = new ComparisonController(hiscoreService, clogService, config, lookupSession,
 			itemManager, tooltipController, tooltipDataBuilder, this);
 		this.comparison.setRenderTarget(this);
-		this.cellFactory = new CellFactory(comparison, tooltipDataBuilder);
-		this.cellFactory.setSinglePlayerTooltipBuilder(new CellFactory.SinglePlayerTooltipBuilder()
+		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder);
+		this.comparison.setCells(this.cells);
+		this.cells.setSinglePlayerTooltipBuilder(new Cells.SinglePlayerTooltipBuilder()
 		{
 			@Override
 			public JToolTip build(JLabel owner, TooltipData data, int gridCols, String name)
@@ -350,7 +340,23 @@ public class KillClogPanel extends PluginPanel
 		add(activitySeparator, c);
 
 		c.gridy++;
-		add(buildBossGrid(), c);
+		add(cells.buildBossGrid(), c);
+		// 420 mode easter egg: secret cycle on Thermonuclear Smoke Devil click.
+		JLabel thermoLabel = cells.getBossLabel(HiscoreSkill.THERMONUCLEAR_SMOKE_DEVIL);
+		if (thermoLabel != null)
+		{
+			thermoLabel.addMouseListener(new MouseAdapter()
+			{
+				@Override
+				public void mousePressed(MouseEvent e)
+				{
+					if (has420Plugin && !comparison.isComparisonMode())
+					{
+						cycleFourTwentyMode();
+					}
+				}
+			});
+		}
 
 		// Collection log sync notice below boss grid
 		c.gridy++;
@@ -425,7 +431,7 @@ public class KillClogPanel extends PluginPanel
 		}
 
 		highlighter = new ProgressHighlighter(
-			bossLabels, activityLabels, clueTierLabels,
+			cells.getBossLabels(), cells.getActivityLabels(), cells.getClueTierLabels(),
 			PanelData.NAME_OVERRIDES, PanelData.CLUE_CATEGORIES, config);
 	}
 
@@ -753,11 +759,11 @@ public class KillClogPanel extends PluginPanel
 			{
 				final int idx = i + 1;
 				loadItemImage(PanelData.CLUE_TIER_ITEM_IDS[i], img ->
-					cellFactory.getClueIcons()[idx] = ImageUtil.resizeImage(
+					cells.getClueIcons()[idx] = ImageUtil.resizeImage(
 						ImageUtil.resizeCanvas(img, 25, 25), 13, 13));
 			}
 			loadItemImage(23184, img ->
-				cellFactory.getClueIcons()[7] = ImageUtil.resizeImage(
+				cells.getClueIcons()[7] = ImageUtil.resizeImage(
 					ImageUtil.resizeCanvas(img, 25, 25), 13, 13));
 		});
 
@@ -770,7 +776,7 @@ public class KillClogPanel extends PluginPanel
 				{
 					if (sprite != null)
 					{
-						cellFactory.getClueIcons()[0] = ImageUtil.resizeImage(
+						cells.getClueIcons()[0] = ImageUtil.resizeImage(
 							ImageUtil.resizeCanvas(sprite, 25, 25), 13, 13);
 					}
 				}));
@@ -885,8 +891,8 @@ public class KillClogPanel extends PluginPanel
 				if (lookupSession.getClogResult() != null)
 				{
 					tip.setCompletion(
-						LookupQueries.countBossesCompleted(cellFactory.getTooltipDataMap(), bossLabels.keySet()),
-						LookupQueries.countBossesWithClog(cellFactory.getTooltipDataMap(), bossLabels.keySet()));
+						LookupQueries.countBossesCompleted(cells.getTooltipDataMap(), cells.getBossLabels().keySet()),
+						LookupQueries.countBossesWithClog(cells.getTooltipDataMap(), cells.getBossLabels().keySet()));
 				}
 				tip.setMegarares(
 					LookupQueries.getClogItemCount(lookupSession.getClogResult(), "chambers_of_xeric", 20997),
@@ -903,7 +909,7 @@ public class KillClogPanel extends PluginPanel
 				return tip;
 			}
 		};
-		styleLabel(combatCell, "Combat");
+		Cells.styleLabel(combatCell, "Combat");
 		spriteManager.getSpriteAsync(168, 0, sprite ->
 			SwingUtilities.invokeLater(() ->
 			{
@@ -913,7 +919,7 @@ public class KillClogPanel extends PluginPanel
 						ImageUtil.resizeCanvas(sprite, 25, 25), 20, 20)));
 				}
 			}));
-		statsRow.add(wrapInCell(combatCell));
+		statsRow.add(cells.wrapInCell(combatCell));
 
 		totalLvlCell = new JLabel()
 		{
@@ -926,7 +932,7 @@ public class KillClogPanel extends PluginPanel
 				return tip;
 			}
 		};
-		styleLabel(totalLvlCell, "Total");
+		Cells.styleLabel(totalLvlCell, "Total");
 		try
 		{
 			BufferedImage img = ImageUtil.loadImageResource(HiscorePanel.class, "overall.png");
@@ -937,8 +943,8 @@ public class KillClogPanel extends PluginPanel
 		{
 			// overall.png not available
 		}
-		statsRow.add(wrapInCell(totalLvlCell));
-		statsRow.add(makePvpSummaryCell());
+		statsRow.add(cells.wrapInCell(totalLvlCell));
+		statsRow.add(cells.buildPvpSummaryCell());
 		grid.add(statsRow);
 
 		JPanel statsSep = new JPanel();
@@ -951,35 +957,35 @@ public class KillClogPanel extends PluginPanel
 		JPanel row1 = new JPanel(new GridLayout(1, 3));
 		row1.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		row1.setAlignmentX(0f);
-		row1.add(makeClueRareCell("3rd Age", PanelData.THIRD_AGE_ITEM_ID, PanelData.CLOG_THIRD_AGE, true));
-		row1.add(makeActivityCell(HiscoreSkill.CLUE_SCROLL_ALL));
-		row1.add(makeClueRareCell("Gilded", PanelData.GILDED_ITEM_ID, PanelData.CLOG_GILDED, false));
+		row1.add(cells.buildClueRareCell("3rd Age", PanelData.THIRD_AGE_ITEM_ID, PanelData.CLOG_THIRD_AGE, true));
+		row1.add(cells.buildActivityCell(HiscoreSkill.CLUE_SCROLL_ALL));
+		row1.add(cells.buildClueRareCell("Gilded", PanelData.GILDED_ITEM_ID, PanelData.CLOG_GILDED, false));
 		grid.add(row1);
 
 		// Clue row 2: Custom rare cells (casket icons)
 		JPanel rareRow = new JPanel(new GridLayout(1, 3));
 		rareRow.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		rareRow.setAlignmentX(0f);
-		rareRow.add(makeCustomRareCell("Hard Treasure (Rare)", 20544, PanelData.RARE_HARD, PanelData.HARD_RARE_ITEMS));
-		rareRow.add(makeCustomRareCell("Elite Treasure (Rare)", 20543, PanelData.RARE_ELITE, PanelData.ELITE_RARE_ITEMS));
-		rareRow.add(makeCustomRareCell("Master Treasure (Rare)", 19836, PanelData.RARE_MASTER, PanelData.MASTER_RARE_ITEMS));
+		rareRow.add(cells.buildCustomRareCell("Hard Treasure (Rare)", 20544, PanelData.RARE_HARD, PanelData.HARD_RARE_ITEMS));
+		rareRow.add(cells.buildCustomRareCell("Elite Treasure (Rare)", 20543, PanelData.RARE_ELITE, PanelData.ELITE_RARE_ITEMS));
+		rareRow.add(cells.buildCustomRareCell("Master Treasure (Rare)", 19836, PanelData.RARE_MASTER, PanelData.MASTER_RARE_ITEMS));
 		grid.add(rareRow);
 
 		// Clue rows 3-4: Clue tiers
 		JPanel clueRow1 = new JPanel(new GridLayout(1, 3));
 		clueRow1.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		clueRow1.setAlignmentX(0f);
-		clueRow1.add(makeClueTierCell(PanelData.CLUE_TIERS[0], PanelData.CLUE_TIER_ITEM_IDS[0], false));
-		clueRow1.add(makeClueTierCell(PanelData.CLUE_TIERS[1], PanelData.CLUE_TIER_ITEM_IDS[1], true));
-		clueRow1.add(makeClueTierCell(PanelData.CLUE_TIERS[2], PanelData.CLUE_TIER_ITEM_IDS[2], true));
+		clueRow1.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[0], PanelData.CLUE_TIER_ITEM_IDS[0], false));
+		clueRow1.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[1], PanelData.CLUE_TIER_ITEM_IDS[1], true));
+		clueRow1.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[2], PanelData.CLUE_TIER_ITEM_IDS[2], true));
 		grid.add(clueRow1);
 
 		JPanel clueRow2 = new JPanel(new GridLayout(1, 3));
 		clueRow2.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		clueRow2.setAlignmentX(0f);
-		clueRow2.add(makeClueTierCell(PanelData.CLUE_TIERS[3], PanelData.CLUE_TIER_ITEM_IDS[3], true));
-		clueRow2.add(makeClueTierCell(PanelData.CLUE_TIERS[4], PanelData.CLUE_TIER_ITEM_IDS[4], false));
-		clueRow2.add(makeClueTierCell(PanelData.CLUE_TIERS[5], PanelData.CLUE_TIER_ITEM_IDS[5], false));
+		clueRow2.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[3], PanelData.CLUE_TIER_ITEM_IDS[3], true));
+		clueRow2.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[4], PanelData.CLUE_TIER_ITEM_IDS[4], false));
+		clueRow2.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[5], PanelData.CLUE_TIER_ITEM_IDS[5], false));
 		grid.add(clueRow2);
 
 		return grid;
@@ -1040,280 +1046,6 @@ public class KillClogPanel extends PluginPanel
 
 		tooltipController.keepTooltipOnHover(tip, parentCell);
 		return tip;
-	}
-
-	/** Apply standard grid cell styling — font, placeholder text, color, gap, AA hint. */
-	private static void styleLabel(JLabel label, String tooltipText)
-	{
-		label.setFont(FontManager.getRunescapeSmallFont());
-		label.setText(ClogHelper.pad("--"));
-		label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-		label.setIconTextGap(4);
-		label.setToolTipText(tooltipText);
-		label.putClientProperty(
-			RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-	}
-
-	/** Wrap a label in a standard grid cell panel. */
-	private JPanel wrapInCell(JLabel label)
-	{
-		JPanel cell = new JPanel();
-		cell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		cell.setBorder(TooltipController.CELL_BORDER);
-		cell.add(label);
-		tooltipController.addCellHoverEffect(cell, label);
-		return cell;
-	}
-
-	// -------------------------------------------------------------------------
-	// Cell factories
-	// -------------------------------------------------------------------------
-
-	private JPanel makeActivityCell(HiscoreSkill activity)
-	{
-		JLabel label = new JLabel(activity.getName())
-		{
-			@Override
-			public JToolTip createToolTip()
-			{
-				if (activity == HiscoreSkill.CLUE_SCROLL_ALL)
-				{
-					ClueSummaryTooltip tip = new ClueSummaryTooltip();
-					tip.setComponent(this);
-					tip.setIcons(cellFactory.getClueIcons());
-					if (lookupSession.getHiscoreResult() != null)
-					{
-						tip.setData(lookupSession.getHiscoreResult());
-					}
-					else
-					{
-						tip.setNotice("Nothing to see here! (Search for a player)");
-					}
-					JPanel parentCell = (JPanel) this.getParent();
-					tooltipController.keepTooltipOnHover(tip, parentCell);
-					return tip;
-				}
-				return makeSpriteTooltip(this, cellFactory.getTooltipDataMap().get(activity), 5, activity.getName());
-			}
-		};
-		styleLabel(label, activity.getName());
-
-		if (activity.getSpriteId() != -1)
-		{
-			spriteManager.getSpriteAsync(activity.getSpriteId(), 0, sprite ->
-				SwingUtilities.invokeLater(() ->
-				{
-					if (sprite != null)
-					{
-						ImageIcon icon = new ImageIcon(ImageUtil.resizeImage(
-							ImageUtil.resizeCanvas(sprite, 25, 25), 20, 20));
-						label.setIcon(icon);
-					}
-				}));
-		}
-
-		activityLabels.put(activity, label);
-		return wrapInCell(label);
-	}
-
-	private JPanel makePvpSummaryCell()
-	{
-		pvpSummaryCell = new JLabel()
-		{
-			@Override
-			public JToolTip createToolTip()
-			{
-				PvpSummaryTooltip tip = new PvpSummaryTooltip();
-				tip.setComponent(this);
-				tip.setIcons(cellFactory.getPvpActivityIcons());
-				if (lookupSession.getHiscoreResult() != null)
-				{
-					tip.setData(lookupSession.getHiscoreResult(), lookupSession.getClogResult());
-				}
-				else
-				{
-					tip.setNotice("Nothing to see here! (Search for a player)");
-				}
-				JPanel parentCell = (JPanel) this.getParent();
-				tooltipController.keepTooltipOnHover(tip, parentCell);
-				return tip;
-			}
-		};
-		styleLabel(pvpSummaryCell, "PvP Summary");
-
-		// Cell icon — PK skull
-		spriteManager.getSpriteAsync(439, 0, sprite ->
-			SwingUtilities.invokeLater(() ->
-			{
-				if (sprite != null)
-				{
-					pvpSummaryCell.setIcon(new ImageIcon(ImageUtil.resizeCanvas(
-						ImageUtil.resizeImage(sprite, 16, 16), 20, 20)));
-				}
-			}));
-
-		// Tooltip icons — one per PvP activity
-		for (int i = 0; i < PanelData.PVP_ACTIVITIES.length; i++)
-		{
-			int spriteId = PanelData.PVP_ACTIVITIES[i].getSpriteId();
-			if (spriteId == -1) continue;
-			final int idx = i;
-			spriteManager.getSpriteAsync(spriteId, 0, sprite ->
-				SwingUtilities.invokeLater(() ->
-				{
-					if (sprite != null)
-					{
-						cellFactory.getPvpActivityIcons()[idx] = ImageUtil.resizeImage(
-							ImageUtil.resizeCanvas(sprite, 25, 25), 13, 13);
-					}
-				}));
-		}
-
-		return wrapInCell(pvpSummaryCell);
-	}
-
-	private JPanel makeClueTierCell(HiscoreSkill tier, int itemId, boolean compact)
-	{
-		String displayName = capitalizeTier(tier);
-		JLabel label = new JLabel()
-		{
-			@Override
-			public JToolTip createToolTip()
-			{
-				return cellFactory.buildClueTierTooltip(this, tier, displayName, compact);
-			}
-		};
-		styleLabel(label, tier.getName());
-
-		setItemIcon(label, itemId);
-		clueTierLabels.put(tier, label);
-		return wrapInCell(label);
-	}
-
-	private JPanel makeClueRareCell(String name, int itemId, String clogCategory, boolean isThirdAge)
-	{
-		JLabel label = new JLabel()
-		{
-			@Override
-			public JToolTip createToolTip()
-			{
-				return cellFactory.buildClueRareTooltip(this, name, clogCategory);
-			}
-		};
-		styleLabel(label, name);
-
-		setItemIcon(label, itemId);
-
-		if (isThirdAge) thirdAgeCell = label;
-		else gildedCell = label;
-
-		return wrapInCell(label);
-	}
-
-	/**
-	 * Create a cell for a custom rare category (Hard/Elite/Master Rare).
-	 * These categories don't exist in Temple — item IDs are hardcoded from the native clog.
-	 */
-	private JPanel makeCustomRareCell(String name, int iconItemId, String rareKey, int[] itemIds)
-	{
-		JLabel label = new JLabel()
-		{
-			@Override
-			public JToolTip createToolTip()
-			{
-				return cellFactory.buildCustomRareTooltip(this, name, rareKey, itemIds);
-			}
-		};
-		styleLabel(label, name);
-
-		setItemIcon(label, iconItemId);
-
-		if (PanelData.RARE_HARD.equals(rareKey)) hardRare = label;
-		else if (PanelData.RARE_ELITE.equals(rareKey)) eliteRare = label;
-		else if (PanelData.RARE_MASTER.equals(rareKey)) masterRare = label;
-
-		return wrapInCell(label);
-	}
-
-	/** Set a label's icon from an item image, with async repaint on load. */
-	private void setItemIcon(JLabel label, int itemId)
-	{
-		BufferedImage img = itemManager.getImage(itemId, 1, false);
-		if (img == null)
-		{
-			return;
-		}
-		label.setIcon(new ImageIcon(ImageUtil.resizeImage(img, 20, 20)));
-		if (img instanceof AsyncBufferedImage)
-		{
-			((AsyncBufferedImage) img).onLoaded(() ->
-				SwingUtilities.invokeLater(() ->
-					label.setIcon(new ImageIcon(ImageUtil.resizeImage(img, 20, 20)))));
-		}
-	}
-
-	private JPanel buildBossGrid()
-	{
-		JPanel grid = new JPanel(new GridLayout(0, 3));
-		grid.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		for (HiscoreSkill boss : PanelData.BOSSES)
-		{
-			grid.add(makeBossCell(boss));
-		}
-		return grid;
-	}
-
-	private JPanel makeBossCell(HiscoreSkill boss)
-	{
-		JLabel label = new JLabel()
-		{
-			@Override
-			public JToolTip createToolTip()
-			{
-				JToolTip tip = cellFactory.buildBossTooltip(this, boss);
-				if (!comparison.isComparisonMode() && boss == HiscoreSkill.SOL_HEREDIT
-					&& lookupSession.getHiscoreResult() != null && tip instanceof ImgTooltip)
-				{
-					int glory = lookupSession.getHiscoreResult().getActivityScore("Colosseum Glory");
-					if (glory > 0)
-					{
-						((ImgTooltip) tip).setInfoLine("Glory: ",
-							String.format("%,d", glory), Color.WHITE);
-					}
-				}
-				return tip;
-			}
-		};
-		styleLabel(label, boss.getName());
-
-		spriteManager.getSpriteAsync(boss.getSpriteId(), 0, sprite ->
-			SwingUtilities.invokeLater(() ->
-			{
-				if (sprite == null) return;
-				BufferedImage scaled = ImageUtil.resizeImage(
-					ImageUtil.resizeCanvas(sprite, 25, 25), 20, 20);
-				ImageIcon icon = new ImageIcon(scaled);
-				label.setIcon(icon);
-				originalIcons.put(boss, icon);
-				dimmedIcons.put(boss, new ImageIcon(ClogHelper.createDimmedImage(icon)));
-			}));
-
-		bossLabels.put(boss, label);
-
-		// Secret 420 mode toggle on Thermonuclear Smoke Devil
-		if (boss == HiscoreSkill.THERMONUCLEAR_SMOKE_DEVIL)
-		{
-			label.addMouseListener(new MouseAdapter()
-			{
-				@Override
-				public void mousePressed(MouseEvent e)
-				{
-					if (has420Plugin && !comparison.isComparisonMode()) cycleFourTwentyMode();
-				}
-			});
-		}
-
-		return wrapInCell(label);
 	}
 
 	// -------------------------------------------------------------------------
@@ -1581,19 +1313,19 @@ public class KillClogPanel extends PluginPanel
 		rsn = null;
 		clogNotice.setText(" ");
 		clogNotice.setIcon(null);
-		cellFactory.getTooltipDataMap().clear();
-		cellFactory.getRareTooltips().clear();
-		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
+		cells.getTooltipDataMap().clear();
+		cells.getRareTooltips().clear();
+		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getBossLabels().entrySet())
 		{
 			JLabel label = entry.getValue();
 			label.setText(ClogHelper.pad("--"));
 			label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 			label.setToolTipText(" ");
-			ImageIcon orig = originalIcons.get(entry.getKey());
+			ImageIcon orig = cells.getOriginalIcons().get(entry.getKey());
 			if (orig != null) label.setIcon(orig);
 		}
 
-		resetLabelMap(activityLabels);
+		resetLabelMap(cells.getActivityLabels());
 
 		playerName.setText(" ");
 		playerName.setIcon(null);
@@ -1611,20 +1343,20 @@ public class KillClogPanel extends PluginPanel
 		totalLvlCell.setText(ClogHelper.pad("--"));
 		totalLvlCell.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		totalLvlCell.setToolTipText(null);
-		if (pvpSummaryCell != null)
+		if (cells.getPvpSummaryCell() != null)
 		{
-			pvpSummaryCell.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+			cells.getPvpSummaryCell().setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		}
 
-		resetLabelMap(clueTierLabels);
+		resetLabelMap(cells.getClueTierLabels());
 
-		resetRareCell(thirdAgeCell, "3rd Age");
-		resetRareCell(gildedCell, "Gilded");
-		resetRareCell(hardRare, "Hard Treasure (Rare)");
-		resetRareCell(eliteRare, "Elite Treasure (Rare)");
-		resetRareCell(masterRare, "Master Treasure (Rare)");
-		cellFactory.getRareTooltips().remove(PanelData.CLOG_THIRD_AGE);
-		cellFactory.getRareTooltips().remove(PanelData.CLOG_GILDED);
+		resetRareCell(cells.getThirdAgeCell(), "3rd Age");
+		resetRareCell(cells.getGildedCell(), "Gilded");
+		resetRareCell(cells.getHardRare(), "Hard Treasure (Rare)");
+		resetRareCell(cells.getEliteRare(), "Elite Treasure (Rare)");
+		resetRareCell(cells.getMasterRare(), "Master Treasure (Rare)");
+		cells.getRareTooltips().remove(PanelData.CLOG_THIRD_AGE);
+		cells.getRareTooltips().remove(PanelData.CLOG_GILDED);
 	}
 
 	/**
@@ -1737,7 +1469,7 @@ public class KillClogPanel extends PluginPanel
 
 	private void updateActivities(HiscoreResult result)
 	{
-		for (Map.Entry<HiscoreSkill, JLabel> entry : activityLabels.entrySet())
+		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getActivityLabels().entrySet())
 		{
 			HiscoreSkill activity = entry.getKey();
 			JLabel label = entry.getValue();
@@ -1760,14 +1492,14 @@ public class KillClogPanel extends PluginPanel
 		}
 
 		// PvP summary cell — BH Hunter + BH Rogue total
-		if (pvpSummaryCell != null)
+		if (cells.getPvpSummaryCell() != null)
 		{
 			int bhTotal = Math.max(0, result.getActivityScore("Bounty Hunter - Hunter"))
 				+ Math.max(0, result.getActivityScore("Bounty Hunter - Rogue"));
-			pvpSummaryCell.setText(ClogHelper.pad(bhTotal > 0 ? ClogHelper.formatKc(bhTotal) : "--"));
+			cells.getPvpSummaryCell().setText(ClogHelper.pad(bhTotal > 0 ? ClogHelper.formatKc(bhTotal) : "--"));
 		}
 
-		for (Map.Entry<HiscoreSkill, JLabel> entry : clueTierLabels.entrySet())
+		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getClueTierLabels().entrySet())
 		{
 			HiscoreSkill tier = entry.getKey();
 			JLabel label = entry.getValue();
@@ -1792,7 +1524,7 @@ public class KillClogPanel extends PluginPanel
 
 	private void updateBosses(HiscoreResult result)
 	{
-		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
+		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getBossLabels().entrySet())
 		{
 			HiscoreSkill skill = entry.getKey();
 			JLabel label = entry.getValue();
@@ -1803,10 +1535,10 @@ public class KillClogPanel extends PluginPanel
 			label.setText(ClogHelper.pad(kc <= 0 ? "--" : ClogHelper.formatKc(kc)));
 			label.setForeground(hasKc ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
 
-			ImageIcon orig = originalIcons.get(skill);
+			ImageIcon orig = cells.getOriginalIcons().get(skill);
 			if (orig != null)
 			{
-				label.setIcon(hasKc ? orig : dimmedIcons.get(skill));
+				label.setIcon(hasKc ? orig : cells.getDimmedIcons().get(skill));
 			}
 
 			// 420 mode overrides
@@ -1836,11 +1568,11 @@ public class KillClogPanel extends PluginPanel
 
 	private void updateRares(ClogResult result)
 	{
-		updateClueRare(thirdAgeCell, "3rd Age", PanelData.CLOG_THIRD_AGE, result, true);
-		updateClueRare(gildedCell, "Gilded", PanelData.CLOG_GILDED, result, false);
-		updateCustomRare(hardRare, "Hard Treasure (Rare)", PanelData.RARE_HARD, PanelData.HARD_RARE_ITEMS, result);
-		updateCustomRare(eliteRare, "Elite Treasure (Rare)", PanelData.RARE_ELITE, PanelData.ELITE_RARE_ITEMS, result);
-		updateCustomRare(masterRare, "Master Treasure (Rare)", PanelData.RARE_MASTER, PanelData.MASTER_RARE_ITEMS, result);
+		updateClueRare(cells.getThirdAgeCell(), "3rd Age", PanelData.CLOG_THIRD_AGE, result, true);
+		updateClueRare(cells.getGildedCell(), "Gilded", PanelData.CLOG_GILDED, result, false);
+		updateCustomRare(cells.getHardRare(), "Hard Treasure (Rare)", PanelData.RARE_HARD, PanelData.HARD_RARE_ITEMS, result);
+		updateCustomRare(cells.getEliteRare(), "Elite Treasure (Rare)", PanelData.RARE_ELITE, PanelData.ELITE_RARE_ITEMS, result);
+		updateCustomRare(cells.getMasterRare(), "Master Treasure (Rare)", PanelData.RARE_MASTER, PanelData.MASTER_RARE_ITEMS, result);
 	}
 
 	private Color rareColor(TooltipData data)
@@ -1867,7 +1599,7 @@ public class KillClogPanel extends PluginPanel
 		}
 
 		label.setText(ClogHelper.pad(data.obtainedCount > 0 ? ClogHelper.formatKc(data.obtainedCount) : "--"));
-		cellFactory.getRareTooltips().put(isThirdAge ? PanelData.CLOG_THIRD_AGE : PanelData.CLOG_GILDED, data);
+		cells.getRareTooltips().put(isThirdAge ? PanelData.CLOG_THIRD_AGE : PanelData.CLOG_GILDED, data);
 		label.setForeground(rareColor(data));
 		label.setToolTipText(" ");
 	}
@@ -1880,7 +1612,7 @@ public class KillClogPanel extends PluginPanel
 		TooltipData data = tooltipDataBuilder.buildCustomRareData(name, itemIds, result);
 
 		label.setText(ClogHelper.pad(data.obtainedCount > 0 ? ClogHelper.formatKc(data.obtainedCount) : "--"));
-		cellFactory.getRareTooltips().put(rareKey, data);
+		cells.getRareTooltips().put(rareKey, data);
 		label.setForeground(rareColor(data));
 		label.setToolTipText(" ");
 	}
@@ -1909,10 +1641,10 @@ public class KillClogPanel extends PluginPanel
 
 	private void updateTooltips()
 	{
-		cellFactory.getTooltipDataMap().clear();
+		cells.getTooltipDataMap().clear();
 
 		// Boss cells
-		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
+		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getBossLabels().entrySet())
 		{
 			HiscoreSkill skill = entry.getKey();
 			JLabel label = entry.getValue();
@@ -1931,7 +1663,7 @@ public class KillClogPanel extends PluginPanel
 				if (!selfNoCache)
 				{
 					int total = clogService.getCategoryItemCount(category);
-					cellFactory.getTooltipDataMap().put(skill, new TooltipData(
+					cells.getTooltipDataMap().put(skill, new TooltipData(
 						bossName, rank, -1, Math.max(total, 0),
 						Collections.emptyList(),
 						Collections.emptySet(),
@@ -1945,7 +1677,7 @@ public class KillClogPanel extends PluginPanel
 			if (data == null)
 			{
 				int total = clogService.getCategoryItemCount(category);
-				cellFactory.getTooltipDataMap().put(skill, new TooltipData(
+				cells.getTooltipDataMap().put(skill, new TooltipData(
 					bossName, rank, -1, Math.max(total, 0),
 					Collections.emptyList(),
 					Collections.emptySet(),
@@ -1954,13 +1686,13 @@ public class KillClogPanel extends PluginPanel
 				continue;
 			}
 
-			cellFactory.getTooltipDataMap().put(skill, data);
+			cells.getTooltipDataMap().put(skill, data);
 			tooltipDataBuilder.preloadItemImages(data);
 			label.setToolTipText(" ");
 		}
 
 		// Clue tier cells with clog categories
-		rebuildActivityTooltips(PanelData.CLUE_CATEGORIES, clueTierLabels, KillClogPanel::capitalizeTier);
+		rebuildActivityTooltips(PanelData.CLUE_CATEGORIES, cells.getClueTierLabels(), KillClogPanel::capitalizeTier);
 	}
 
 	private void rebuildActivityTooltips(Map<HiscoreSkill, String> categories,
@@ -1978,7 +1710,7 @@ public class KillClogPanel extends PluginPanel
 			TooltipData data = tooltipDataBuilder.buildTooltipData(nameOf.apply(skill), entry.getValue(), rank, lookupSession.getClogResult());
 			if (data == null) continue;
 
-			cellFactory.getTooltipDataMap().put(skill, data);
+			cells.getTooltipDataMap().put(skill, data);
 			tooltipDataBuilder.preloadItemImages(data);
 			label.setToolTipText(" ");
 		}
@@ -2005,13 +1737,13 @@ public class KillClogPanel extends PluginPanel
 		{
 			totalLvlCell.setForeground(infoColor);
 		}
-		if (pvpSummaryCell != null)
+		if (cells.getPvpSummaryCell() != null)
 		{
 			int bhTotal = Math.max(0, lookupSession.getHiscoreResult().getActivityScore("Bounty Hunter - Hunter"))
 				+ Math.max(0, lookupSession.getHiscoreResult().getActivityScore("Bounty Hunter - Rogue"));
 			if (bhTotal > 0)
 			{
-				pvpSummaryCell.setForeground(infoColor);
+				cells.getPvpSummaryCell().setForeground(infoColor);
 			}
 		}
 
@@ -2023,13 +1755,13 @@ public class KillClogPanel extends PluginPanel
 			if (enabled)
 			{
 				Map<String, JLabel> rareCells = new LinkedHashMap<>();
-				rareCells.put(PanelData.CLOG_THIRD_AGE, thirdAgeCell);
-				rareCells.put(PanelData.CLOG_GILDED, gildedCell);
-				rareCells.put(PanelData.RARE_HARD, hardRare);
-				rareCells.put(PanelData.RARE_ELITE, eliteRare);
-				rareCells.put(PanelData.RARE_MASTER, masterRare);
+				rareCells.put(PanelData.CLOG_THIRD_AGE, cells.getThirdAgeCell());
+				rareCells.put(PanelData.CLOG_GILDED, cells.getGildedCell());
+				rareCells.put(PanelData.RARE_HARD, cells.getHardRare());
+				rareCells.put(PanelData.RARE_ELITE, cells.getEliteRare());
+				rareCells.put(PanelData.RARE_MASTER, cells.getMasterRare());
 				highlighter.colorCellsByCompletion(lookupSession.getHiscoreResult(), lookupSession.getClogResult(),
-					cellFactory.getRareTooltips(), rareCells, fourTwentyMode, FOUR_TWENTY_GREEN);
+					cells.getRareTooltips(), rareCells, fourTwentyMode, FOUR_TWENTY_GREEN);
 				highlighter.colorEmptyCells();
 			}
 		}
@@ -2416,20 +2148,10 @@ public class KillClogPanel extends PluginPanel
 	}
 
 	// ── ComparisonController.CellRenderTarget ────────────────────────────────
-	// Read-only accessors the controller uses to render compare cells without
-	// holding a panel reference.
-
-	@Override
-	public Map<HiscoreSkill, JLabel> bossLabels()
-	{
-		return bossLabels;
-	}
-
-	@Override
-	public Map<HiscoreSkill, JLabel> activityLabels()
-	{
-		return activityLabels;
-	}
+	// Read-only accessors the controller uses for the panel-side info-bar
+	// widgets (combat + totalLvl cells, playerName + clogInfoLabel info bar).
+	// Cell maps + per-cell labels live on Cells; ComparisonController reads
+	// those directly.
 
 	@Override
 	public JLabel combatCell()
@@ -2441,12 +2163,6 @@ public class KillClogPanel extends PluginPanel
 	public JLabel totalLvlCell()
 	{
 		return totalLvlCell;
-	}
-
-	@Override
-	public JLabel pvpSummaryCell()
-	{
-		return pvpSummaryCell;
 	}
 
 	@Override
@@ -2480,47 +2196,5 @@ public class KillClogPanel extends PluginPanel
 			clogInfoLabel.setIcon(null);
 			clogInfoLabel.setToolTipText(null);
 		}
-	}
-
-	@Override
-	public Map<HiscoreSkill, JLabel> clueTierLabels()
-	{
-		return clueTierLabels;
-	}
-
-	@Override
-	public JLabel thirdAgeCell()
-	{
-		return thirdAgeCell;
-	}
-
-	@Override
-	public JLabel gildedCell()
-	{
-		return gildedCell;
-	}
-
-	@Override
-	public JLabel hardRare()
-	{
-		return hardRare;
-	}
-
-	@Override
-	public JLabel eliteRare()
-	{
-		return eliteRare;
-	}
-
-	@Override
-	public JLabel masterRare()
-	{
-		return masterRare;
-	}
-
-	@Override
-	public Map<String, TooltipData> rareTooltips()
-	{
-		return cellFactory.getRareTooltips();
 	}
 }

@@ -72,21 +72,16 @@ public class ComparisonController
 	}
 
 	/**
-	 * Cell-render target the controller writes to when updating compare cells
-	 * + the info bar. The panel implements this so the controller can render
-	 * without holding a panel reference (preserves the boundary).
+	 * Panel-UI hook target. The panel implements this so the controller can
+	 * write to the info-bar widgets it doesn't own (playerName + clogInfoLabel
+	 * are panel-side; the cells live on {@link Cells}). The combat + total
+	 * level cells are the only standalone cells the panel still owns.
 	 */
 	public interface CellRenderTarget
 	{
-		Map<HiscoreSkill, javax.swing.JLabel> bossLabels();
-
-		Map<HiscoreSkill, javax.swing.JLabel> activityLabels();
-
 		javax.swing.JLabel combatCell();
 
 		javax.swing.JLabel totalLvlCell();
-
-		javax.swing.JLabel pvpSummaryCell();
 
 		javax.swing.JLabel playerName();
 
@@ -99,25 +94,11 @@ public class ComparisonController
 		/** Trigger an async preload of item names referenced by the clog result. */
 		void preloadClogItemNames(ClogResult clog);
 
-		/** Apply an account-type badge to {@code label} (clog mode + GIM badges + standard hiscore badges). */
+		/** Apply an account-type badge to {@code label}. */
 		void applyBadge(javax.swing.JLabel label, @Nullable AccountType type);
 
-		/** Restore the clog info cell to single-player display. {@code clog} may be null. */
+		/** Restore the clog info cell to single-player display. */
 		void restoreClogCellForCompare(@Nullable ClogResult clog);
-
-		Map<HiscoreSkill, javax.swing.JLabel> clueTierLabels();
-
-		javax.swing.JLabel thirdAgeCell();
-
-		javax.swing.JLabel gildedCell();
-
-		javax.swing.JLabel hardRare();
-
-		javax.swing.JLabel eliteRare();
-
-		javax.swing.JLabel masterRare();
-
-		Map<String, TooltipData> rareTooltips();
 	}
 
 	// ── Constants ─────────────────────────────────────────────────────────
@@ -137,6 +118,7 @@ public class ComparisonController
 	private final TooltipDataBuilder tooltipDataBuilder;
 	private final Listener listener;
 	@Nullable private CellRenderTarget renderTarget;
+	@Nullable private Cells cells;
 
 	// ── State ─────────────────────────────────────────────────────────────
 	private boolean comparisonMode;
@@ -183,6 +165,12 @@ public class ComparisonController
 	public void setRenderTarget(@Nullable CellRenderTarget renderTarget)
 	{
 		this.renderTarget = renderTarget;
+	}
+
+	/** Late-bound cells reference (cells need a controller ref at construction time, so this is set after both exist). */
+	public void setCells(@Nullable Cells cells)
+	{
+		this.cells = cells;
 	}
 
 	/** The compare-side status label (panel reads this for layout + initial styling). */
@@ -674,19 +662,19 @@ public class ComparisonController
 		HiscoreResult blueHiscore = lookupSession.getHiscoreResult();
 		HiscoreResult redHiscore = compareHiscoreResult;
 
-		for (Map.Entry<HiscoreSkill, JLabel> entry : renderTarget.bossLabels().entrySet())
+		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getBossLabels().entrySet())
 		{
 			String name = PanelData.NAME_OVERRIDES.getOrDefault(entry.getKey().getName(), entry.getKey().getName());
 			compareOrRestore(entry.getValue(), hiscoreKc(blueHiscore, name), hiscoreKc(redHiscore, name));
 		}
 
-		for (Map.Entry<HiscoreSkill, JLabel> entry : renderTarget.activityLabels().entrySet())
+		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getActivityLabels().entrySet())
 		{
 			String name = entry.getKey().getName();
 			compareOrRestore(entry.getValue(), activityScore(blueHiscore, name), activityScore(redHiscore, name));
 		}
 
-		for (Map.Entry<HiscoreSkill, JLabel> entry : renderTarget.clueTierLabels().entrySet())
+		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getClueTierLabels().entrySet())
 		{
 			String name = entry.getKey().getName();
 			compareOrRestore(entry.getValue(), activityScore(blueHiscore, name), activityScore(redHiscore, name));
@@ -700,23 +688,23 @@ public class ComparisonController
 			blueHiscore != null ? blueHiscore.getTotalLevel() : -1,
 			redHiscore != null ? redHiscore.getTotalLevel() : -1);
 
-		compareOrRestore(renderTarget.pvpSummaryCell(), pvpTotal(blueHiscore), pvpTotal(redHiscore));
+		compareOrRestore(cells.getPvpSummaryCell(), pvpTotal(blueHiscore), pvpTotal(redHiscore));
 
-		Map<String, TooltipData> rareTooltips = renderTarget.rareTooltips();
-		compareOrRestore(renderTarget.thirdAgeCell(),
+		Map<String, TooltipData> rareTooltips = cells.getRareTooltips();
+		compareOrRestore(cells.getThirdAgeCell(),
 			rareCount(rareTooltips.get(PanelData.CLOG_THIRD_AGE)),
 			rareCount(buildClueRare("3rd Age", PanelData.CLOG_THIRD_AGE)));
-		compareOrRestore(renderTarget.gildedCell(),
+		compareOrRestore(cells.getGildedCell(),
 			rareCount(rareTooltips.get(PanelData.CLOG_GILDED)),
 			rareCount(buildClueRare("Gilded", PanelData.CLOG_GILDED)));
 
-		compareOrRestore(renderTarget.hardRare(),
+		compareOrRestore(cells.getHardRare(),
 			rareCount(rareTooltips.get(PanelData.RARE_HARD)),
 			rareCount(buildCustomRare("Hard Treasure (Rare)", PanelData.HARD_RARE_ITEMS)));
-		compareOrRestore(renderTarget.eliteRare(),
+		compareOrRestore(cells.getEliteRare(),
 			rareCount(rareTooltips.get(PanelData.RARE_ELITE)),
 			rareCount(buildCustomRare("Elite Treasure (Rare)", PanelData.ELITE_RARE_ITEMS)));
-		compareOrRestore(renderTarget.masterRare(),
+		compareOrRestore(cells.getMasterRare(),
 			rareCount(rareTooltips.get(PanelData.RARE_MASTER)),
 			rareCount(buildCustomRare("Master Treasure (Rare)", PanelData.MASTER_RARE_ITEMS)));
 	}
