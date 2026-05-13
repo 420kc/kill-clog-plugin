@@ -1,5 +1,9 @@
 # Refactor cut 2: extract ComparisonController from KillClogPanel
 
+## Status: complete
+
+Landed across 21 incremental commits on `refactor-comparison-controller` (skeleton 595268d → final widget migration 84058d9). All 13 state fields, 10 methods, 5 widgets, 4 constants moved to `ComparisonController`. Verification grep returns zero panel-side bare references to comparison state. Build green incl. checkstyle. Manual smoke test deferred (no RuneLite in the autonomous window).
+
 Branch: `refactor-comparison-controller` (off `refactor-lookup-session` after cut 1 lands)
 
 **Gates on cut 1.** ComparisonController reads the primary player's results, which migrate into `LookupSession` in cut 1. Cut 2 cannot land cleanly until cut 1 ships and `KillClogPanel` is talking to `LookupSession` through the Listener interface.
