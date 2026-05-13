@@ -1,14 +1,11 @@
 /*
  * Copyright (c) 2026, 420 kc <dyl@420kc.dev>
  * Owns the red-side comparison subsystem for Kill Clog: state, async fan-out
- * for the second player's hiscore + clog, html cell formatters, and the
- * compare-mode tooltip. UI is downstream via {@link Listener}. Reads the
- * primary player's results read-only via {@link LookupSession} getters and
- * never writes back into the session (except the explicit
- * {@link LookupSession#adoptState} call from the swap path, which is the one
- * sanctioned bridge between the two).
- *
- * Extracted from KillClogPanel as refactor cut 2.
+ * for the second player's hiscore + clog, the comparison-mode dual tooltip,
+ * the compare-side widgets. UI dispatch is downstream via {@link Listener}.
+ * Reads the primary player's results read-only through {@link LookupSession}
+ * getters; the only write path is the swap, which calls
+ * {@link LookupSession#adoptState} explicitly.
  */
 package com.killclog;
 
@@ -30,21 +27,15 @@ import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.components.IconTextField;
 
 /**
- * Encapsulates the red-side comparison lifecycle. A panel subscribes via
- * {@link Listener} and reacts to typed events; this class never touches the
- * primary-side widgets directly. Comparison-side widgets (search bar, status
- * label, toggle) are owned here and exposed to the panel via accessors so the
- * panel can lay them out.
+ * Red-side comparison lifecycle. Subscribers receive typed events through
+ * {@link Listener}; this class never touches primary-side widgets. The
+ * comparison-side widgets (search bar, status label, toggle, panel) live here
+ * and are exposed for the parent layout to place.
  *
- * <p>Threading model mirrors {@link LookupSession}: lifecycle methods are
- * called on the EDT; service futures bridge back via
- * {@code SwingUtilities.invokeLater} before invoking listener callbacks.
- *
- * <p>State is read via getters; no setter exposes controller fields. All
- * mutations flow through the lifecycle methods and the async callbacks they
- * spawn. The compare lookup-version counter ({@link #compareLookupVersion})
- * is volatile to make stale-result gating observable across the background
- * threads the underlying services hop through.
+ * <p>Threading mirrors {@link LookupSession}: lifecycle methods run on the
+ * EDT; service futures bridge back via {@code SwingUtilities.invokeLater}
+ * before firing listener callbacks. The {@code compareLookupVersion} counter
+ * is volatile so its stale-result gate is observable across those threads.
  */
 @Slf4j
 public class ComparisonController
@@ -72,52 +63,32 @@ public class ComparisonController
 	}
 
 	/**
-	 * Cell-render target the controller writes to when updating compare cells
-	 * + the info bar. The panel implements this so the controller can render
-	 * without holding a panel reference (preserves the boundary).
+	 * Hooks into the panel for the few widgets this controller writes to that
+	 * don't live on {@link Cells}: the info bar (playerName, clogInfoLabel)
+	 * and the standalone combat + total level cells.
 	 */
 	public interface CellRenderTarget
 	{
-		Map<HiscoreSkill, javax.swing.JLabel> bossLabels();
+		JLabel combatCell();
 
-		Map<HiscoreSkill, javax.swing.JLabel> activityLabels();
+		JLabel totalLvlCell();
 
-		javax.swing.JLabel combatCell();
+		JLabel playerName();
 
-		javax.swing.JLabel totalLvlCell();
-
-		javax.swing.JLabel pvpSummaryCell();
-
-		javax.swing.JLabel playerName();
-
-		javax.swing.JLabel clogInfoLabel();
+		JLabel clogInfoLabel();
 
 		void updateInfoIcon(AccountType type);
 
 		Color getInfoColor();
 
-		/** Trigger an async preload of item names referenced by the clog result. */
+		/** Async preload of item names referenced by the clog result. */
 		void preloadClogItemNames(ClogResult clog);
 
-		/** Apply an account-type badge to {@code label} (clog mode + GIM badges + standard hiscore badges). */
-		void applyBadge(javax.swing.JLabel label, @Nullable AccountType type);
+		/** Apply an account-type badge (clog-mode + GIM + standard hiscore). */
+		void applyBadge(JLabel label, @Nullable AccountType type);
 
-		/** Restore the clog info cell to single-player display. {@code clog} may be null. */
+		/** Restore the clog info cell to single-player display. */
 		void restoreClogCellForCompare(@Nullable ClogResult clog);
-
-		Map<HiscoreSkill, javax.swing.JLabel> clueTierLabels();
-
-		javax.swing.JLabel thirdAgeCell();
-
-		javax.swing.JLabel gildedCell();
-
-		javax.swing.JLabel hardRare();
-
-		javax.swing.JLabel eliteRare();
-
-		javax.swing.JLabel masterRare();
-
-		Map<String, TooltipData> rareTooltips();
 	}
 
 	// ── Constants ─────────────────────────────────────────────────────────
@@ -137,6 +108,7 @@ public class ComparisonController
 	private final TooltipDataBuilder tooltipDataBuilder;
 	private final Listener listener;
 	@Nullable private CellRenderTarget renderTarget;
+	@Nullable private Cells cells;
 
 	// ── State ─────────────────────────────────────────────────────────────
 	private boolean comparisonMode;
@@ -175,29 +147,29 @@ public class ComparisonController
 		this.listener = listener;
 	}
 
-	/**
-	 * Late-bound cell-render target. The panel constructs the controller
-	 * before its cell label maps are populated; this lets the panel forward
-	 * the target once layout is built.
-	 */
+	/** Wire the panel-side hook target. Late-bound because the controller is built before the panel's labels exist. */
 	public void setRenderTarget(@Nullable CellRenderTarget renderTarget)
 	{
 		this.renderTarget = renderTarget;
 	}
 
-	/** The compare-side status label (panel reads this for layout + initial styling). */
+	/** Wire the {@link Cells} reference. Late-bound: Cells needs a controller ref at its own construction. */
+	public void setCells(@Nullable Cells cells)
+	{
+		this.cells = cells;
+	}
+
 	public JLabel getCompareStatusLabel()
 	{
 		return compareStatus;
 	}
 
-	/** The compare-side search bar (panel reads this for layout + initial styling + action listener wiring). */
 	public IconTextField getCompareSearchBar()
 	{
 		return compareSearchBar;
 	}
 
-	/** Inner JTextField of {@link #compareSearchBar}, captured during the panel's buildCompareSearch wiring. */
+	/** Inner {@link JTextField} of {@link #compareSearchBar}, captured during search-bar construction. */
 	@Nullable
 	public JTextField getCompareTextField()
 	{
@@ -271,10 +243,10 @@ public class ComparisonController
 	// ── Lifecycle ─────────────────────────────────────────────────────────
 
 	/**
-	 * Enter comparison mode. State has already been written through
-	 * {@link #syncCompareState} (or, post-migration, set directly by the
-	 * doCompareLookup pipeline). Builds the comparison-side tooltip data and
-	 * fires {@link Listener#onComparisonEnter} for the UI dispatch.
+	 * Enter comparison mode: build the per-cell comparison tooltip data and
+	 * fire {@link Listener#onComparisonEnter} for UI dispatch. Caller must
+	 * have populated {@link #compareHiscoreResult} + {@link #compareClogResult}
+	 * + {@link #compareRsn} (the {@link #doCompareLookup} pipeline does this).
 	 */
 	public void enter()
 	{
@@ -624,10 +596,8 @@ public class ComparisonController
 	}
 
 	/**
-	 * Render the comparison-mode info bar (blue name on the left, red name on
-	 * the right with an account-type badge), or restore single-player display
-	 * when comparison mode is off. Mirrors the legacy
-	 * {@code KillClogPanel.updateInfoBarForComparison}.
+	 * Render the comparison-mode info bar (blue name left, red name + badge
+	 * right), or restore single-player display when comparison mode is off.
 	 */
 	public void updateInfoBar()
 	{
@@ -674,19 +644,19 @@ public class ComparisonController
 		HiscoreResult blueHiscore = lookupSession.getHiscoreResult();
 		HiscoreResult redHiscore = compareHiscoreResult;
 
-		for (Map.Entry<HiscoreSkill, JLabel> entry : renderTarget.bossLabels().entrySet())
+		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getBossLabels().entrySet())
 		{
 			String name = PanelData.NAME_OVERRIDES.getOrDefault(entry.getKey().getName(), entry.getKey().getName());
 			compareOrRestore(entry.getValue(), hiscoreKc(blueHiscore, name), hiscoreKc(redHiscore, name));
 		}
 
-		for (Map.Entry<HiscoreSkill, JLabel> entry : renderTarget.activityLabels().entrySet())
+		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getActivityLabels().entrySet())
 		{
 			String name = entry.getKey().getName();
 			compareOrRestore(entry.getValue(), activityScore(blueHiscore, name), activityScore(redHiscore, name));
 		}
 
-		for (Map.Entry<HiscoreSkill, JLabel> entry : renderTarget.clueTierLabels().entrySet())
+		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getClueTierLabels().entrySet())
 		{
 			String name = entry.getKey().getName();
 			compareOrRestore(entry.getValue(), activityScore(blueHiscore, name), activityScore(redHiscore, name));
@@ -700,23 +670,23 @@ public class ComparisonController
 			blueHiscore != null ? blueHiscore.getTotalLevel() : -1,
 			redHiscore != null ? redHiscore.getTotalLevel() : -1);
 
-		compareOrRestore(renderTarget.pvpSummaryCell(), pvpTotal(blueHiscore), pvpTotal(redHiscore));
+		compareOrRestore(cells.getPvpSummaryCell(), pvpTotal(blueHiscore), pvpTotal(redHiscore));
 
-		Map<String, TooltipData> rareTooltips = renderTarget.rareTooltips();
-		compareOrRestore(renderTarget.thirdAgeCell(),
+		Map<String, TooltipData> rareTooltips = cells.getRareTooltips();
+		compareOrRestore(cells.getThirdAgeCell(),
 			rareCount(rareTooltips.get(PanelData.CLOG_THIRD_AGE)),
 			rareCount(buildClueRare("3rd Age", PanelData.CLOG_THIRD_AGE)));
-		compareOrRestore(renderTarget.gildedCell(),
+		compareOrRestore(cells.getGildedCell(),
 			rareCount(rareTooltips.get(PanelData.CLOG_GILDED)),
 			rareCount(buildClueRare("Gilded", PanelData.CLOG_GILDED)));
 
-		compareOrRestore(renderTarget.hardRare(),
+		compareOrRestore(cells.getHardRare(),
 			rareCount(rareTooltips.get(PanelData.RARE_HARD)),
 			rareCount(buildCustomRare("Hard Treasure (Rare)", PanelData.HARD_RARE_ITEMS)));
-		compareOrRestore(renderTarget.eliteRare(),
+		compareOrRestore(cells.getEliteRare(),
 			rareCount(rareTooltips.get(PanelData.RARE_ELITE)),
 			rareCount(buildCustomRare("Elite Treasure (Rare)", PanelData.ELITE_RARE_ITEMS)));
-		compareOrRestore(renderTarget.masterRare(),
+		compareOrRestore(cells.getMasterRare(),
 			rareCount(rareTooltips.get(PanelData.RARE_MASTER)),
 			rareCount(buildCustomRare("Master Treasure (Rare)", PanelData.MASTER_RARE_ITEMS)));
 	}

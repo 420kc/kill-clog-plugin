@@ -1,13 +1,10 @@
 /*
  * Copyright (c) 2026, 420 kc <dyl@420kc.dev>
- * Owns the async lookup pipeline for Kill Clog: cache check, parallel hiscore +
- * clog API calls, version-stamped result gating, in-flight guard. UI is
- * downstream via {@link Listener}. Swing usage is limited to the EDT-scheduling
- * primitives ({@link javax.swing.Timer} for the cached-result reveal delay and
- * {@link javax.swing.SwingUtilities#invokeLater} for marshalling future
- * callbacks back to the EDT) — never any widget code.
- *
- * Extracted from KillClogPanel as refactor cut 1.
+ * Owns the async lookup pipeline for Kill Clog: cache check, parallel hiscore
+ * + clog API calls, version-stamped result gating, in-flight guard. UI is
+ * downstream via {@link Listener}. Swing usage is limited to EDT-scheduling
+ * primitives ({@link javax.swing.Timer}, {@link
+ * javax.swing.SwingUtilities#invokeLater}); never widget code.
  */
 package com.killclog;
 
@@ -17,22 +14,15 @@ import javax.swing.Timer;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Encapsulates one player's lookup lifecycle. A panel subscribes via
- * {@link Listener} and reacts to typed events; this class never touches the UI
- * directly. Lookup version stamps protect against stale results from earlier
- * in-flight requests overwriting newer ones.
+ * One player's lookup lifecycle. Subscribers receive typed events through
+ * {@link Listener}; this class never touches the UI. Version stamps gate stale
+ * results so an in-flight call superseded by a newer {@link #start} cannot
+ * overwrite it.
  *
- * <p>Threading model: {@link #start} is called on the EDT. Service calls
- * happen on background threads; their completion callbacks marshal back to
- * the EDT before invoking listener methods.
- *
- * <p>State is read via getters; no setter exposes session fields. All
- * mutations flow through {@link #start} and the async callbacks it spawns.
- *
- * <p>This class is intentionally NOT thread-safe at the API surface: callers
- * must invoke {@link #start} on the EDT. The {@code volatile} fields exist
- * to make version stamps + the in-flight guard observable across the
- * background threads that the underlying services hop through.
+ * <p>Threading: {@link #start} runs on the EDT. Service futures resolve on
+ * background threads and bridge back via {@code SwingUtilities.invokeLater}
+ * before firing listener callbacks. The {@code volatile} fields make the
+ * version stamp and in-flight guard observable across those threads.
  */
 @Slf4j
 public class LookupSession
@@ -98,11 +88,7 @@ public class LookupSession
 		this.listener = listener;
 	}
 
-	/**
-	 * Late-bound autocompleter setter. The panel constructs the session before
-	 * its own {@link NameAutocompleter} is wired by the plugin's startUp; this
-	 * lets the panel forward the eventual instance without re-constructing.
-	 */
+	/** Wire (or rewire) the autocompleter that records search history on each successful lookup. */
 	public void setNameAutocompleter(@Nullable NameAutocompleter nameAutocompleter)
 	{
 		this.nameAutocompleter = nameAutocompleter;
@@ -230,11 +216,9 @@ public class LookupSession
 	}
 
 	/**
-	 * Force-cancel any in-flight lookup so the next {@link #start} call is not
-	 * rejected. Bumps {@link #lookupVersion} so already-spawned async callbacks
-	 * see themselves as stale and short-circuit. The original
-	 * {@code KillClogPanel.onBulkCaptureComplete} pattern: when a fresh RSN is
-	 * captured, we want to abandon whatever's mid-flight and start over.
+	 * Abandon any in-flight lookup so the next {@link #start} is accepted.
+	 * Bumps the version stamp so already-spawned async callbacks see
+	 * themselves as stale and short-circuit.
 	 */
 	public void cancelInFlight()
 	{
@@ -246,12 +230,9 @@ public class LookupSession
 	}
 
 	/**
-	 * Replace the current lookup state without going through the async
-	 * pipeline. Used by the comparison swap path: when the user clicks the
-	 * red player in compare mode, the panel adopts the red player's already-
-	 * loaded results into the solo view in one synchronous step. Comparison
-	 * mode is cut 2 territory; this method is the minimum bridge that keeps
-	 * cut 1's field migration possible without dragging comparison along.
+	 * Adopt already-loaded results as the current lookup state, bypassing the
+	 * async pipeline. Used by the comparison swap: clicking the red player
+	 * promotes their results into the primary slot in one synchronous step.
 	 */
 	public void adoptState(@Nullable HiscoreResult hiscore, @Nullable ClogResult clog,
 		@Nullable String name)
