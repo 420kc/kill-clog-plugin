@@ -229,6 +229,22 @@ public class LookupSession
 		});
 	}
 
+	/**
+	 * Force-cancel any in-flight lookup so the next {@link #start} call is not
+	 * rejected. Bumps {@link #lookupVersion} so already-spawned async callbacks
+	 * see themselves as stale and short-circuit. The original
+	 * {@code KillClogPanel.onBulkCaptureComplete} pattern: when a fresh RSN is
+	 * captured, we want to abandon whatever's mid-flight and start over.
+	 */
+	public void cancelInFlight()
+	{
+		if (lookupInFlight)
+		{
+			lookupVersion++;
+			lookupInFlight = false;
+		}
+	}
+
 	// ── Read-only state ───────────────────────────────────────────────────
 	@Nullable
 	public HiscoreResult getHiscoreResult()

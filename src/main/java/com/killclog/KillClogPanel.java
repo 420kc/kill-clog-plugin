@@ -224,10 +224,6 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 	private final Map<HiscoreSkill, TooltipData> tooltipDataMap = new LinkedHashMap<>();
 	private final Map<String, TooltipData> rareTooltips = new LinkedHashMap<>();
 
-	// Lookup versioning — prevents stale results from overwriting fresher ones
-	private volatile int lookupVersion = 0;
-	private volatile boolean lookupInFlight = false;
-
 	private final TooltipController tooltipController;
 	private final LookupSession lookupSession;
 
@@ -2001,176 +1997,15 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 	public void doLookup()
 	{
 		String player = searchBar.getText().trim();
-		if (player.isEmpty() || lookupInFlight)
+		if (player.isEmpty() || lookupSession.isLookupInFlight())
 		{
-			if (!lookupInFlight)
+			if (!lookupSession.isLookupInFlight())
 			{
 				setSearchStatus("Enter RSN", TEXT_DIM);
 			}
 			return;
 		}
-
-		lookupInFlight = true;
-		currentLookupRsn = player;
-		final int thisLookup = ++lookupVersion;
-		final boolean isSelf = localRsn != null && localRsn.equalsIgnoreCase(player);
-		final boolean isFirstSelfGreeting = isSelf && !config.seenSelfGreeting();
-
-		if (isSelf)
-		{
-			setSearchStatus(selfSearchMessage(player), SearchMessages.SELF_COLOR);
-		}
-		else
-		{
-			int searchIdx = ThreadLocalRandom.current().nextInt(SearchMessages.SEARCH.length);
-			setSearchStatus(String.format(SearchMessages.SEARCH[searchIdx], player), TEXT_DIM);
-		}
-		searchBar.setIcon(IconTextField.Icon.LOADING_DARKER);
-		resetAllLabels();
-
-		// Hiscore lookup — pass known account type for self-lookups
-		// GIMs only appear on regular hiscores, so tell hiscore service to skip the cascade
-		AccountType knownType = isSelf ? localAccountType : null;
-
-		// Cache check: if hiscore cache is fresh, show cached data after a short
-		// delay to preserve the search feel. No API calls. If stale or missing,
-		// fire the full lookup.
-		HiscoreResult cachedHiscore = hiscoreService.getCached(player);
-		ClogResult cachedClog = clogService.getCachedResult(player);
-		if (cachedHiscore != null && !hiscoreService.isStale(player))
-		{
-			Timer revealTimer = new Timer(600, e ->
-			{
-				if (thisLookup != lookupVersion) return;
-				hiscoreResult = cachedHiscore;
-				lookupInFlight = false;
-				searchBar.setIcon(IconTextField.Icon.SEARCH);
-				if (nameAutocompleter != null)
-				{
-					nameAutocompleter.addToSearchHistory(player);
-				}
-				if (!isFirstSelfGreeting)
-				{
-					setSearchStatus(" ", TEXT_DIM);
-				}
-				renderHiscoreResult(cachedHiscore, player, isSelf, knownType);
-				if (cachedClog != null)
-				{
-					clogResult = cachedClog;
-					renderClogResult(cachedClog, isSelf, thisLookup);
-				}
-			});
-			revealTimer.setRepeats(false);
-			revealTimer.start();
-			return;
-		}
-
-		// Full API lookup — cache miss or stale
-		AccountType hiscoreType = knownType != null && knownType.isGroupIronman()
-			? AccountType.REGULAR : knownType;
-		hiscoreService.lookup(player, hiscoreType).thenAccept(result ->
-			SwingUtilities.invokeLater(() ->
-			{
-				if (thisLookup != lookupVersion) return;
-				lookupInFlight = false;
-				searchBar.setIcon(IconTextField.Icon.SEARCH);
-
-				if (result == null)
-				{
-					lookupVersion++;
-					int notFoundIdx = ThreadLocalRandom.current().nextInt(SearchMessages.NOT_FOUND.length);
-					setSearchStatus(String.format(SearchMessages.NOT_FOUND[notFoundIdx], player), NOT_FOUND);
-					playerName.setText(" ");
-					playerName.setIcon(null);
-					playerName.setToolTipText(null);
-					clogInfoLabel.setText("");
-					clogInfoLabel.setIcon(null);
-					clogInfoLabel.setToolTipText(null);
-					searchBar.setText("");
-					return;
-				}
-
-				hiscoreResult = result;
-				if (nameAutocompleter != null)
-				{
-					nameAutocompleter.addToSearchHistory(player);
-				}
-				if (!isFirstSelfGreeting)
-				{
-					setSearchStatus(" ", TEXT_DIM);
-				}
-				renderHiscoreResult(result, player, isSelf, knownType);
-				// Clog may have arrived first with a GIM type hiscores can't detect
-				if (clogResult != null)
-				{
-					AccountType templeType = clogResult.getTempleAccountType();
-					if (templeType != null && templeType.isGroupIronman())
-					{
-						updateInfoIcon(templeType);
-					}
-					updateRares(clogResult);
-					updateClogCell(clogResult);
-				}
-			})
-		).exceptionally(ex ->
-		{
-			SwingUtilities.invokeLater(() ->
-			{
-				if (thisLookup != lookupVersion) return;
-				lookupVersion++;
-				lookupInFlight = false;
-				searchBar.setIcon(IconTextField.Icon.SEARCH);
-				searchBar.setText("");
-				setSearchStatus("Lookup failed", TEXT_DIM);
-				playerName.setText(" ");
-				playerName.setIcon(null);
-				playerName.setToolTipText(null);
-				clogInfoLabel.setText("");
-				clogInfoLabel.setIcon(null);
-				clogInfoLabel.setToolTipText(null);
-			});
-			return null;
-		});
-
-		// Clog lookup in parallel (ClogService handles source routing)
-		clogService.lookup(player).thenAccept(result ->
-			SwingUtilities.invokeLater(() ->
-			{
-				if (thisLookup != lookupVersion) return;
-				clogResult = result;
-
-				if (result != null)
-				{
-					renderClogResult(result, isSelf, thisLookup);
-				}
-				else
-				{
-					clogLastChanged = null;
-					if (isSelf)
-					{
-						clogNotice.setText(SYNC_NOTICE);
-						clogNotice.setIcon(new ImageIcon(getSyncIcon()));
-						BufferedImage icon = ImageUtil.loadImageResource(
-							KillClogPlugin.class, "icon.png");
-						clogInfoLabel.setIcon(new ImageIcon(
-							ImageUtil.resizeImage(icon, 15, 15)));
-						clogInfoLabel.setText(ClogHelper.pad("Sync"));
-						clogInfoLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-						clogInfoLabel.setToolTipText(" ");
-					}
-					else
-					{
-						clogNotice.setText(" ");
-						clogNotice.setIcon(null);
-					}
-					fetchRsn(player, thisLookup);
-				}
-			})
-		).exceptionally(ex ->
-		{
-			log.warn("Clog lookup failed", ex);
-			return null;
-		});
+		lookupSession.start(player, localRsn, localAccountType);
 	}
 
 	/**
@@ -2325,7 +2160,7 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 		clogService.lookupRsn(player).thenAccept(name ->
 			SwingUtilities.invokeLater(() ->
 			{
-				if (thisLookup != lookupVersion) return;
+				if (thisLookup != lookupSession.getLookupVersion()) return;
 				if (name != null && !name.isEmpty())
 				{
 					rsn = name;
@@ -2673,12 +2508,8 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 	public void onBulkCaptureComplete(String name)
 	{
 		searchBar.setText(name);
-		if (lookupInFlight)
-		{
-			// Current lookup will finish soon — version it out and start fresh
-			lookupVersion++;
-			lookupInFlight = false;
-		}
+		// Current lookup will finish soon — version it out and start fresh
+		lookupSession.cancelInFlight();
 		doLookup();
 	}
 
@@ -2899,39 +2730,128 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 	}
 
 	// ── LookupSession.Listener ───────────────────────────────────────────────
-	// Stub bodies. The session is dormant in this commit (start() is never
-	// called); the doLookup body still owns the active pipeline. Body migration
-	// and reference-site rewiring happen in subsequent refactor-cut-1 commits.
+	// Each method mirrors the matching chunk of the legacy doLookup body.
+	// Lookup state fields on the panel (hiscoreResult, clogResult,
+	// currentLookupRsn, clogLastChanged) are still updated here as well as in
+	// the session, so the ~30 read sites scattered through the panel keep
+	// reading from local fields until a follow-up cleanup commit migrates
+	// them to session getters.
 
 	@Override
 	public void onLookupStart(String player, boolean isSelf, boolean isFirstSelfGreeting)
 	{
+		currentLookupRsn = player;
+		if (isSelf)
+		{
+			setSearchStatus(selfSearchMessage(player), SearchMessages.SELF_COLOR);
+		}
+		else
+		{
+			int searchIdx = ThreadLocalRandom.current().nextInt(SearchMessages.SEARCH.length);
+			setSearchStatus(String.format(SearchMessages.SEARCH[searchIdx], player), TEXT_DIM);
+		}
+		searchBar.setIcon(IconTextField.Icon.LOADING_DARKER);
+		resetAllLabels();
 	}
 
 	@Override
 	public void onCachedResult(String player, HiscoreResult hiscore, @Nullable ClogResult clog,
 		boolean isSelf, @Nullable AccountType knownType, boolean isFirstSelfGreeting)
 	{
+		hiscoreResult = hiscore;
+		searchBar.setIcon(IconTextField.Icon.SEARCH);
+		if (!isFirstSelfGreeting)
+		{
+			setSearchStatus(" ", TEXT_DIM);
+		}
+		renderHiscoreResult(hiscore, player, isSelf, knownType);
+		if (clog != null)
+		{
+			clogResult = clog;
+			renderClogResult(clog, isSelf, lookupSession.getLookupVersion());
+		}
 	}
 
 	@Override
 	public void onHiscoreResult(String player, HiscoreResult hiscore,
 		boolean isSelf, @Nullable AccountType knownType, boolean isFirstSelfGreeting)
 	{
+		hiscoreResult = hiscore;
+		searchBar.setIcon(IconTextField.Icon.SEARCH);
+		if (!isFirstSelfGreeting)
+		{
+			setSearchStatus(" ", TEXT_DIM);
+		}
+		renderHiscoreResult(hiscore, player, isSelf, knownType);
+		// Clog may have arrived first with a GIM type the hiscores can't detect
+		if (clogResult != null)
+		{
+			AccountType templeType = clogResult.getTempleAccountType();
+			if (templeType != null && templeType.isGroupIronman())
+			{
+				updateInfoIcon(templeType);
+			}
+			updateRares(clogResult);
+			updateClogCell(clogResult);
+		}
 	}
 
 	@Override
-	public void onClogResult(String player, ClogResult clog, boolean isSelf, int lookupVersion)
+	public void onClogResult(String player, @Nullable ClogResult clog, boolean isSelf, int lookupVersionAtFire)
 	{
+		clogResult = clog;
+		if (clog != null)
+		{
+			renderClogResult(clog, isSelf, lookupVersionAtFire);
+		}
+		else
+		{
+			clogLastChanged = null;
+			if (isSelf)
+			{
+				clogNotice.setText(SYNC_NOTICE);
+				clogNotice.setIcon(new ImageIcon(getSyncIcon()));
+				BufferedImage icon = ImageUtil.loadImageResource(KillClogPlugin.class, "icon.png");
+				clogInfoLabel.setIcon(new ImageIcon(ImageUtil.resizeImage(icon, 15, 15)));
+				clogInfoLabel.setText(ClogHelper.pad("Sync"));
+				clogInfoLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+				clogInfoLabel.setToolTipText(" ");
+			}
+			else
+			{
+				clogNotice.setText(" ");
+				clogNotice.setIcon(null);
+			}
+			fetchRsn(player, lookupVersionAtFire);
+		}
 	}
 
 	@Override
 	public void onNotFound(String player)
 	{
+		int notFoundIdx = ThreadLocalRandom.current().nextInt(SearchMessages.NOT_FOUND.length);
+		setSearchStatus(String.format(SearchMessages.NOT_FOUND[notFoundIdx], player), NOT_FOUND);
+		searchBar.setIcon(IconTextField.Icon.SEARCH);
+		playerName.setText(" ");
+		playerName.setIcon(null);
+		playerName.setToolTipText(null);
+		clogInfoLabel.setText("");
+		clogInfoLabel.setIcon(null);
+		clogInfoLabel.setToolTipText(null);
+		searchBar.setText("");
 	}
 
 	@Override
 	public void onError(String player, Throwable error)
 	{
+		searchBar.setIcon(IconTextField.Icon.SEARCH);
+		searchBar.setText("");
+		setSearchStatus("Lookup failed", TEXT_DIM);
+		playerName.setText(" ");
+		playerName.setIcon(null);
+		playerName.setToolTipText(null);
+		clogInfoLabel.setText("");
+		clogInfoLabel.setIcon(null);
+		clogInfoLabel.setToolTipText(null);
 	}
 }
