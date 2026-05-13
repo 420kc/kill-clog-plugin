@@ -58,7 +58,8 @@ import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
 
 @Slf4j
-public class KillClogPanel extends PluginPanel implements LookupSession.Listener
+public class KillClogPanel extends PluginPanel
+	implements LookupSession.Listener, ComparisonController.Listener
 {
 	private static final Color TEXT_DIM = new Color(160, 160, 160);
 	private static final Color NOT_FOUND = new Color(0x81, 0x09, 0x09);
@@ -223,6 +224,7 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 
 	private final TooltipController tooltipController;
 	private final LookupSession lookupSession;
+	private final ComparisonController comparison;
 
 	// Comparison mode
 	static final Color COMPARE_BLUE = new Color(91, 164, 207);
@@ -266,6 +268,7 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 		this.tooltipDataBuilder = new TooltipDataBuilder(itemManager);
 		this.tooltipController = new TooltipController(config);
 		this.lookupSession = new LookupSession(hiscoreService, clogService, config, null, this);
+		this.comparison = new ComparisonController(hiscoreService, clogService, config, lookupSession, this);
 
 		NativeTooltip.loadSprites(spriteManager);
 		SkillsTooltip.loadIcons(skillIconManager);
@@ -2838,5 +2841,36 @@ public class KillClogPanel extends PluginPanel implements LookupSession.Listener
 		clogInfoLabel.setText("");
 		clogInfoLabel.setIcon(null);
 		clogInfoLabel.setToolTipText(null);
+	}
+
+	// ── ComparisonController.Listener ────────────────────────────────────────
+	// Stub bodies. Controller is dormant in this commit (its lifecycle methods
+	// still throw); the existing comparison code in the panel owns the live
+	// behavior. Body migration + reference-site rewiring happen in subsequent
+	// refactor-cut-2 commits.
+
+	@Override
+	public void onComparisonEnter(String redRsn)
+	{
+	}
+
+	@Override
+	public void onComparisonExit()
+	{
+	}
+
+	@Override
+	public void onSwapToRedPlayer(String newPrimaryRsn)
+	{
+	}
+
+	@Override
+	public void onCompareDataReady()
+	{
+	}
+
+	@Override
+	public void onCompareError(String player, Throwable err)
+	{
 	}
 }
