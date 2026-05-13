@@ -17,6 +17,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ThreadLocalRandom;
 import javax.annotation.Nullable;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -125,6 +126,9 @@ public class ComparisonController
 
 	private final Map<HiscoreSkill, TooltipData> compareTooltipDataMap = new LinkedHashMap<>();
 
+	// ── Widgets ───────────────────────────────────────────────────────────
+	private final JLabel compareStatus = new JLabel(" ");
+
 	public ComparisonController(HiscoreService hiscoreService, ClogService clogService,
 		KillClogConfig config, LookupSession lookupSession, ItemManager itemManager,
 		TooltipController tooltipController, TooltipDataBuilder tooltipDataBuilder,
@@ -198,6 +202,27 @@ public class ComparisonController
 	public int bumpCompareLookupVersion()
 	{
 		return ++compareLookupVersion;
+	}
+
+	/** The compare-side status label (panel reads this for layout + initial styling). */
+	public JLabel getCompareStatusLabel()
+	{
+		return compareStatus;
+	}
+
+	/** Set the compare status label text + color. */
+	public void setCompareStatus(String msg, Color color)
+	{
+		compareStatus.setText(msg);
+		compareStatus.setForeground(color);
+	}
+
+	/** Pick a random message from {@code pool}, format it with {@code player} (twice for two-slot templates), and set the compare status. */
+	public void setCompareStatus(String[] pool, String player, Color color)
+	{
+		String msg = String.format(pool[ThreadLocalRandom.current().nextInt(pool.length)], player, player);
+		compareStatus.setText(msg);
+		compareStatus.setForeground(color);
 	}
 
 	// ── Lifecycle ─────────────────────────────────────────────────────────

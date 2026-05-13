@@ -233,7 +233,6 @@ public class KillClogPanel extends PluginPanel
 	private JTextField compareTextField;
 	private String comparePlaceholder = "Comparison";
 	private JPanel comparePanel;
-	private final JLabel compareStatus = new JLabel(" ");
 	private JLabel compareToggle;
 
 	// 420 mode — unlocked when the 420 KC plugin is loaded
@@ -1348,13 +1347,13 @@ public class KillClogPanel extends PluginPanel
 		panel.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		panel.setBorder(null);
 
-		compareStatus.setFont(FontManager.getRunescapeSmallFont());
-		compareStatus.setForeground(TEXT_DIM);
-		compareStatus.setAlignmentX(Component.LEFT_ALIGNMENT);
-		compareStatus.setBorder(new EmptyBorder(0, 4, 2, 0));
-		compareStatus.putClientProperty(
+		comparison.getCompareStatusLabel().setFont(FontManager.getRunescapeSmallFont());
+		comparison.getCompareStatusLabel().setForeground(TEXT_DIM);
+		comparison.getCompareStatusLabel().setAlignmentX(Component.LEFT_ALIGNMENT);
+		comparison.getCompareStatusLabel().setBorder(new EmptyBorder(0, 4, 2, 0));
+		comparison.getCompareStatusLabel().putClientProperty(
 			RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-		panel.add(compareStatus);
+		panel.add(comparison.getCompareStatusLabel());
 
 		compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
 		compareSearchBar.setBackground(ColorScheme.DARKER_GRAY_COLOR);
@@ -1419,7 +1418,7 @@ public class KillClogPanel extends PluginPanel
 	{
 		compareSearchBar.setText("");
 		compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
-		compareStatus.setText(" ");
+		comparison.getCompareStatusLabel().setText(" ");
 		updateAllCellsForComparison();
 		updateInfoBarForComparison();
 		toggleHighlighter(config.completionistHighlighter());
@@ -1502,11 +1501,11 @@ public class KillClogPanel extends PluginPanel
 			comparison.setCompareRsn(blueName);
 			if (blueIsSelf)
 			{
-				setCompareStatus(SearchMessages.COMPARE_SELF_MIRROR, blueName, SearchMessages.SELF_COLOR);
+				comparison.setCompareStatus(SearchMessages.COMPARE_SELF_MIRROR, blueName, SearchMessages.SELF_COLOR);
 			}
 			else
 			{
-				setCompareStatus(SearchMessages.COMPARE_MIRROR, blueName, TEXT_DIM);
+				comparison.setCompareStatus(SearchMessages.COMPARE_MIRROR, blueName, TEXT_DIM);
 			}
 			comparison.enter();
 			return;
@@ -1526,11 +1525,11 @@ public class KillClogPanel extends PluginPanel
 			{
 				msg = String.format(msg, blueIsSelf ? player : blueName);
 			}
-			setCompareStatus(msg, SearchMessages.SELF_COLOR);
+			comparison.setCompareStatus(msg, SearchMessages.SELF_COLOR);
 		}
 		else
 		{
-			setCompareStatus(SearchMessages.COMPARE_SEARCH, blueName, TEXT_DIM);
+			comparison.setCompareStatus(SearchMessages.COMPARE_SEARCH, blueName, TEXT_DIM);
 		}
 
 		hiscoreService.lookup(player, null).thenAccept(result ->
@@ -1543,7 +1542,7 @@ public class KillClogPanel extends PluginPanel
 				{
 					compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
 					compareSearchBar.setText("");
-					setCompareStatus(SearchMessages.COMPARE_NOT_FOUND,
+					comparison.setCompareStatus(SearchMessages.COMPARE_NOT_FOUND,
 						playerName.getText().trim(), ComparisonController.COMPARE_RED);
 					return;
 				}
@@ -1582,7 +1581,7 @@ public class KillClogPanel extends PluginPanel
 				comparison.setCompareLookupInFlight(false);
 				compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
 				compareSearchBar.setText("");
-				setCompareStatus("Lookup failed", ComparisonController.COMPARE_RED);
+				comparison.setCompareStatus("Lookup failed", ComparisonController.COMPARE_RED);
 			});
 			return null;
 		});
@@ -1593,7 +1592,7 @@ public class KillClogPanel extends PluginPanel
 	{
 		compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
 		compareSearchBar.setText("");
-		compareStatus.setText(" ");
+		comparison.getCompareStatusLabel().setText(" ");
 		updateTooltips();
 		updateAllCellsForComparison();
 		updateInfoBarForComparison();
@@ -1768,19 +1767,6 @@ public class KillClogPanel extends PluginPanel
 		searchStatus.setForeground(color);
 	}
 
-	private void setCompareStatus(String[] pool, String player, Color color)
-	{
-		String msg = String.format(pool[ThreadLocalRandom.current().nextInt(pool.length)], player, player);
-		compareStatus.setText(msg);
-		compareStatus.setForeground(color);
-	}
-
-	private void setCompareStatus(String msg, Color color)
-	{
-		compareStatus.setText(msg);
-		compareStatus.setForeground(color);
-	}
-
 	private void updateComparePlaceholder(String name)
 	{
 		String old = comparePlaceholder;
@@ -1920,7 +1906,7 @@ public class KillClogPanel extends PluginPanel
 	private void renderHiscoreResult(HiscoreResult result, String player,
 		boolean isSelf, AccountType knownType)
 	{
-		compareStatus.setText(" ");
+		comparison.getCompareStatusLabel().setText(" ");
 		playerName.setText(rsn != null ? rsn : player);
 		playerName.setForeground(getInfoColor());
 		updateComparePlaceholder(rsn != null ? rsn : player);
