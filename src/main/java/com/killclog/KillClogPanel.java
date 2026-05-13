@@ -229,7 +229,6 @@ public class KillClogPanel extends PluginPanel
 	private final ComparisonController comparison;
 
 	// Comparison mode
-	private boolean comparisonMode;
 	private HiscoreResult compareHiscoreResult;
 	private ClogResult compareClogResult;
 	private String compareRsn;
@@ -381,7 +380,7 @@ public class KillClogPanel extends PluginPanel
 			{
 				boolean show = !comparePanel.isVisible();
 				comparePanel.setVisible(show);
-				if (!show && comparisonMode)
+				if (!show && comparison.isComparisonMode())
 				{
 					exitComparisonMode();
 				}
@@ -614,7 +613,7 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public void mousePressed(MouseEvent e)
 			{
-				if (comparisonMode)
+				if (comparison.isComparisonMode())
 				{
 					exitComparisonMode();
 					return;
@@ -627,7 +626,7 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public void mousePressed(MouseEvent e)
 			{
-				if (comparisonMode && compareRsn != null)
+				if (comparison.isComparisonMode() && compareRsn != null)
 				{
 					swapToComparePlayer();
 					return;
@@ -644,7 +643,7 @@ public class KillClogPanel extends PluginPanel
 				public void mouseEntered(MouseEvent e)
 				{
 					if (barLabel.getToolTipText() != null
-						|| (comparisonMode && (barLabel == clogInfoLabel || barLabel == playerName)))
+						|| (comparison.isComparisonMode() && (barLabel == clogInfoLabel || barLabel == playerName)))
 					{
 						barLabel.putClientProperty("underlined", true);
 						barLabel.repaint();
@@ -1178,7 +1177,7 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public JToolTip createToolTip()
 			{
-				if (comparisonMode)
+				if (comparison.isComparisonMode())
 				{
 					String category = PanelData.CLUE_CATEGORIES.get(tier);
 					int redRank = compareHiscoreResult != null
@@ -1207,7 +1206,7 @@ public class KillClogPanel extends PluginPanel
 			public JToolTip createToolTip()
 			{
 				TooltipData data = rareTooltips.get(isThirdAge ? PanelData.CLOG_THIRD_AGE : PanelData.CLOG_GILDED);
-				if (comparisonMode)
+				if (comparison.isComparisonMode())
 				{
 					TooltipData redData = comparison.buildClueRare(name, clogCategory);
 					return comparison.makeSpriteTooltip(this, data, redData, name);
@@ -1236,7 +1235,7 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public JToolTip createToolTip()
 			{
-				if (comparisonMode)
+				if (comparison.isComparisonMode())
 				{
 					TooltipData redData = comparison.buildCustomRare(name, itemIds);
 					return comparison.makeSpriteTooltip(this,
@@ -1291,7 +1290,7 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public JToolTip createToolTip()
 			{
-				if (comparisonMode)
+				if (comparison.isComparisonMode())
 				{
 					return comparison.makeSpriteTooltip(this,
 						tooltipDataMap.get(boss),
@@ -1335,7 +1334,7 @@ public class KillClogPanel extends PluginPanel
 				@Override
 				public void mousePressed(MouseEvent e)
 				{
-					if (has420Plugin && !comparisonMode) cycleFourTwentyMode();
+					if (has420Plugin && !comparison.isComparisonMode()) cycleFourTwentyMode();
 				}
 			});
 		}
@@ -1425,7 +1424,6 @@ public class KillClogPanel extends PluginPanel
 		// Mirror the reset on panel-side state until the cleanup pass migrates
 		// these fields off the panel; controller.exit() does the same on its
 		// own copies and fires onComparisonExit for the UI restoration.
-		comparisonMode = false;
 		compareLookupVersion++;
 		compareLookupInFlight = false;
 		compareHiscoreResult = null;
@@ -1617,7 +1615,6 @@ public class KillClogPanel extends PluginPanel
 
 	private void activateComparisonMode()
 	{
-		comparisonMode = true;
 		comparison.syncCompareState(true, compareHiscoreResult, compareClogResult, compareRsn);
 		comparison.enter();
 	}
@@ -1636,7 +1633,7 @@ public class KillClogPanel extends PluginPanel
 	/** Swap info bar to show blue name (left) and red name (right) with badges. */
 	private void updateInfoBarForComparison()
 	{
-		if (comparisonMode)
+		if (comparison.isComparisonMode())
 		{
 			// Blue player — left side
 			playerName.setForeground(ComparisonController.COMPARE_BLUE);
@@ -1897,7 +1894,7 @@ public class KillClogPanel extends PluginPanel
 	private void resetAllLabels()
 	{
 		tooltipController.hideClickTooltip();
-		if (comparisonMode) exitComparisonMode();
+		if (comparison.isComparisonMode()) exitComparisonMode();
 		comparePanel.setVisible(false);
 		rsn = null;
 		clogNotice.setText(" ");
@@ -2355,7 +2352,7 @@ public class KillClogPanel extends PluginPanel
 			}
 		}
 
-		if (comparisonMode)
+		if (comparison.isComparisonMode())
 		{
 			updateAllCellsForComparison();
 			updateInfoBarForComparison();
