@@ -1,6 +1,15 @@
 # Kill Clog
 
-Kill Clog makes the hiscores flexier and tells the story instead of just the stats.
+Kill Clog is a RuneLite plugin that turns the hiscores into a PvM identity surface with collection-log context, player comparison, richer tooltips, and one-click sync.
+
+It reached `#1` on the RuneLite plugin charts after launch and now anchors the broader Kill Clog ecosystem across the plugin, web, and tracker surfaces.
+
+## what it does
+
+- adds a native-feeling side panel for player lookup and collection-log context
+- layers boss progress, obtained uniques, and missing uniques directly into the lookup flow
+- compares players side by side instead of forcing one-profile-at-a-time lookup
+- keeps your own data fresh locally from chat messages, with TempleOSRS available for public sharing
 
 ![Kill Clog](screenshots/hero-vanilla-vs-killclog.png)
 
