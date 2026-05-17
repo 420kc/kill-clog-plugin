@@ -27,6 +27,8 @@ import okhttp3.ResponseBody;
 @Singleton
 public class HiscoreService
 {
+	private static final String USER_AGENT =
+		"kill-clog-RuneLite-Plugin (https://github.com/420kc/kill-clog-plugin)";
 	private static final String BASE_URL = "https://secure.runescape.com/m=";
 	private static final String SUFFIX = "/index_lite.ws?player=";
 
@@ -443,7 +445,7 @@ public class HiscoreService
 
 		Request request = new Request.Builder()
 			.url(BASE_URL + hiscoreKey + SUFFIX + encodedPlayer)
-			.header("User-Agent", "kill-clog-RuneLite-Plugin/1.0 (https://github.com/420kc/kill-clog-plugin)")
+			.header("User-Agent", USER_AGENT)
 			.build();
 
 		httpClient.newCall(request).enqueue(new Callback()

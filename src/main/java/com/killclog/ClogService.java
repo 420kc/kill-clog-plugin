@@ -33,6 +33,8 @@ import okhttp3.ResponseBody;
 @Singleton
 public class ClogService
 {
+	private static final String USER_AGENT =
+		"kill-clog-RuneLite-Plugin (https://github.com/420kc/kill-clog-plugin)";
 	private static final String TEMPLE_CATEGORIES_URL =
 		"https://templeosrs.com/api/collection-log/categories.php";
 	private static final String TEMPLE_PLAYER_URL =
@@ -591,7 +593,7 @@ public class ClogService
 
 		Request request = new Request.Builder()
 			.url(url)
-			.header("User-Agent", "kill-clog-RuneLite-Plugin/1.0 (https://github.com/420kc/kill-clog-plugin)")
+			.header("User-Agent", USER_AGENT)
 			.build();
 
 		httpClient.newCall(request).enqueue(new Callback()
