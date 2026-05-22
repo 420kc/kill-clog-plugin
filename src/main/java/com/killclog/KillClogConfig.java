@@ -11,10 +11,10 @@ import net.runelite.client.config.Keybind;
 public interface KillClogConfig extends Config
 {
 	@ConfigItem(
-			keyName = "autoLookupOnLogin",
-			name = "Auto-Lookup on Login",
-			description = "Automatically look up your stats when you log in",
-			position = 0
+		keyName = "autoLookupOnLogin",
+		name = "Auto-Lookup on Login",
+		description = "Automatically look up your stats when you log in",
+		position = 0
 	)
 	default boolean autoLookupOnLogin()
 	{
@@ -22,10 +22,10 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(
-			keyName = "playerMenuLookup",
-			name = "Player Menu Lookup",
-			description = "Add 'Kill Clog' to right-click menu on players",
-			position = 2
+		keyName = "playerMenuLookup",
+		name = "Player Menu Lookup",
+		description = "Add 'Kill Clog' to right-click menu on players",
+		position = 2
 	)
 	default boolean playerMenuLookup()
 	{
@@ -33,10 +33,10 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(
-			keyName = "menuOption",
-			name = "Menu Option",
-			description = "Text shown in the right-click player menu. Leave blank to use the default 'Kill Clog'.",
-			position = 3
+		keyName = "menuOption",
+		name = "Menu Option",
+		description = "Text shown in the right-click player menu. Leave blank to use the default 'Kill Clog'.",
+		position = 3
 	)
 	default String menuOption()
 	{
@@ -44,10 +44,10 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(
-			keyName = "tooltipMode",
-			name = "Tooltip Activation",
-			description = "How tooltips are triggered on boss and activity cells (hover or click-to-reveal)",
-			position = 4
+		keyName = "tooltipMode",
+		name = "Tooltip Activation",
+		description = "How tooltips are triggered on boss and activity cells (hover or click-to-reveal)",
+		position = 4
 	)
 	default TooltipMode tooltipMode()
 	{
@@ -55,10 +55,10 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(
-			keyName = "hoverStyle",
-			name = "Cell Hover",
-			description = "Visual feedback when hovering a cell. Outline uses the highlighter color, Tint subtly brightens the background.",
-			position = 5
+		keyName = "hoverStyle",
+		name = "Cell Hover",
+		description = "Visual feedback when hovering a cell. Outline uses the highlighter color, Tint subtly brightens the background.",
+		position = 5
 	)
 	default HoverStyle hoverStyle()
 	{
@@ -68,18 +68,18 @@ public interface KillClogConfig extends Config
 	// --- Progress Highlighter ---
 
 	@ConfigSection(
-			name = "Progress Highlighter",
-			description = "Color KC numbers based on collection log completion",
-			position = 10
+		name = "Progress Highlighter",
+		description = "Color KC numbers based on collection log completion",
+		position = 10
 	)
 	String completionistSection = "completionist";
 
 	@ConfigItem(
-			keyName = "completionistHighlighter",
-			name = "Enable Highlighter",
-			description = "Color boss KC numbers based on collection log completion status",
-			section = "completionist",
-			position = 0
+		keyName = "completionistHighlighter",
+		name = "Enable Highlighter",
+		description = "Color boss KC numbers based on collection log completion status",
+		section = "completionist",
+		position = 0
 	)
 	default boolean completionistHighlighter()
 	{
@@ -87,11 +87,11 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(
-			keyName = "highlighterKeybind",
-			name = "Toggle Keybind",
-			description = "Shortcut key to toggle the Progress Highlighter",
-			section = "completionist",
-			position = 1
+		keyName = "highlighterKeybind",
+		name = "Toggle Keybind",
+		description = "Shortcut key to toggle the Progress Highlighter",
+		section = "completionist",
+		position = 1
 	)
 	default Keybind highlighterKeybind()
 	{
@@ -99,10 +99,10 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(
-			keyName = "activitiesExpanded",
-			name = "",
-			description = "",
-			hidden = true
+		keyName = "activitiesExpanded",
+		name = "",
+		description = "",
+		hidden = true
 	)
 	default boolean activitiesExpanded()
 	{
@@ -110,10 +110,10 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(
-			keyName = "seenSelfGreeting",
-			name = "",
-			description = "",
-			hidden = true
+		keyName = "seenSelfGreeting",
+		name = "",
+		description = "",
+		hidden = true
 	)
 	default boolean seenSelfGreeting()
 	{
@@ -121,11 +121,11 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(
-			keyName = "infoBarColor",
-			name = "Summary Bar Text",
-			description = "Colors the text of the Summary Bars (RSN, Clog Count, PvM, Total Level, and PvP)",
-			section = "completionist",
-			position = 2
+		keyName = "infoBarColor",
+		name = "Summary Bar Text",
+		description = "Colors the text of the Summary Bars (RSN, Clog Count, PvM, Total Level, and PvP)",
+		section = "completionist",
+		position = 2
 	)
 	default Color infoBarColor()
 	{
@@ -133,11 +133,11 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(
-			keyName = "completedClogColor",
-			name = "Completed",
-			description = "Color for bosses with all collection log items obtained",
-			section = "completionist",
-			position = 3
+		keyName = "completedClogColor",
+		name = "Completed",
+		description = "Color for bosses with all collection log items obtained",
+		section = "completionist",
+		position = 3
 	)
 	default Color completedClogColor()
 	{
@@ -145,11 +145,11 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(
-			keyName = "missing1Color",
-			name = "1 Away",
-			description = "Color for bosses missing exactly one collection log item",
-			section = "completionist",
-			position = 4
+		keyName = "missing1Color",
+		name = "1 Away",
+		description = "Color for bosses missing exactly one collection log item",
+		section = "completionist",
+		position = 4
 	)
 	default Color missing1Color()
 	{
@@ -157,11 +157,11 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(
-			keyName = "inProgressClogColor",
-			name = "In Progress",
-			description = "Color for bosses with some collection log items obtained",
-			section = "completionist",
-			position = 5
+		keyName = "inProgressClogColor",
+		name = "In Progress",
+		description = "Color for bosses with some collection log items obtained",
+		section = "completionist",
+		position = 5
 	)
 	default Color inProgressClogColor()
 	{
@@ -169,11 +169,11 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(
-			keyName = "emptyClogColor",
-			name = "Empty",
-			description = "Color for bosses with kills but no collection log items obtained",
-			section = "completionist",
-			position = 6
+		keyName = "emptyClogColor",
+		name = "Empty",
+		description = "Color for bosses with kills but no collection log items obtained",
+		section = "completionist",
+		position = 6
 	)
 	default Color emptyClogColor()
 	{
