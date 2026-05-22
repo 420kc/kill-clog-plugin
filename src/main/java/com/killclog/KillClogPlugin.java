@@ -51,13 +51,13 @@ import net.runelite.client.util.Text;
 
 @Slf4j
 @PluginDescriptor(
-	name = "Kill Clog",
-	description = "PvM/Clog-Focused HiScores Replacement",
-	tags = {"boss", "kc", "kill count", "collection log", "pvm", "hiscore", "ironman"}
+		name = "Kill Clog",
+		description = "PvM/Clog-Focused HiScores Replacement",
+		tags = {"boss", "kc", "kill count", "collection log", "pvm", "hiscore", "ironman"}
 )
 public class KillClogPlugin extends Plugin
 {
-	private static final String MENU_OPTION = "Kill Clog";
+	private String activeMenuOption = "Kill Clog";
 
 	// OSRS player right-click menu reserves indexes 4-7 for plugins (4 slots total)
 	private static final int FIRST_PLUGIN_PLAYER_SLOT = 4;
@@ -77,23 +77,23 @@ public class KillClogPlugin extends Plugin
 	private static final int CLOG_HEADER_CHILD = 20;
 	private static final int CLOG_ITEMS_CHILD = 37;
 	private static final java.util.regex.Pattern OBTAINED_PATTERN =
-		java.util.regex.Pattern.compile("(\\d+)/(\\d+)");
+			java.util.regex.Pattern.compile("(\\d+)/(\\d+)");
 
 	// Synthetic clog categories — not in game cache enums
 	private static final int THIRD_AGE_RING = 23185;
 	private static final int[] THIRD_AGE_ITEMS = {
-		10350, 10348, 10346, 23242, 10352,
-		10334, 10330, 10332, 10336,
-		10342, 10338, 10340, 10344,
-		12426, 12422, 12437, 12424,
-		23336, 23339, 23345, 23342,
-		20014, 20011, THIRD_AGE_RING
+			10350, 10348, 10346, 23242, 10352,
+			10334, 10330, 10332, 10336,
+			10342, 10338, 10340, 10344,
+			12426, 12422, 12437, 12424,
+			23336, 23339, 23345, 23342,
+			20014, 20011, THIRD_AGE_RING
 	};
 	private static final int[] GILDED_ITEMS = {
-		3486, 3481, 3483, 3485, 3488,
-		20146, 20149, 20152, 20155, 20158, 20161,
-		12389, 12391, 23258, 23261, 23264, 23267,
-		23276, 23279, 23282
+			3486, 3481, 3483, 3485, 3488,
+			20146, 20149, 20152, 20155, 20158, 20161,
+			12389, 12391, 23258, 23261, 23264, 23267,
+			23276, 23279, 23282
 	};
 
 	@Inject
@@ -157,12 +157,12 @@ public class KillClogPlugin extends Plugin
 	// Incoming PMs (PRIVATECHAT) and server messages (GAMEMESSAGE) deliberately excluded — those don't signal "the player is active right now."
 	private static final long AUTOSYNC_INTERVAL_MS = 5 * 60 * 1000;
 	private static final Set<ChatMessageType> AUTOSYNC_CHAT_TYPES = EnumSet.of(
-		ChatMessageType.PUBLICCHAT,
-		ChatMessageType.FRIENDSCHAT,
-		ChatMessageType.CLAN_CHAT,
-		ChatMessageType.CLAN_GUEST_CHAT,
-		ChatMessageType.PRIVATECHATOUT,
-		ChatMessageType.AUTOTYPER
+			ChatMessageType.PUBLICCHAT,
+			ChatMessageType.FRIENDSCHAT,
+			ChatMessageType.CLAN_CHAT,
+			ChatMessageType.CLAN_GUEST_CHAT,
+			ChatMessageType.PRIVATECHATOUT,
+			ChatMessageType.AUTOTYPER
 	);
 	private long lastAutoSyncMs;
 
@@ -221,11 +221,11 @@ public class KillClogPlugin extends Plugin
 	protected void startUp()
 	{
 		navButton = NavigationButton.builder()
-			.tooltip("Kill Clog")
-			.icon(getIcon())
-			.priority(6)
-			.panel(panel)
-			.build();
+				.tooltip("Kill Clog")
+				.icon(getIcon())
+				.priority(6)
+				.panel(panel)
+				.build();
 
 		clientToolbar.addNavigation(navButton);
 		overlayManager.add(clogButtonOverlay);
@@ -234,6 +234,7 @@ public class KillClogPlugin extends Plugin
 		panel.setNameAutocompleter(nameAutocompleter);
 		keyManager.registerKeyListener(highlighterHotkey);
 
+		activeMenuOption = effectiveMenuOption();
 		setPlayerMenuItemEnabled(config.playerMenuLookup());
 
 		chatCommandManager.registerCommandAsync(KillClogChatCommand.COMMAND, kclogCommand::handle);
@@ -295,15 +296,22 @@ public class KillClogPlugin extends Plugin
 		log.debug("Kill Clog plugin stopped");
 	}
 
+	// Returns the configured menu option text, falling back to "Kill Clog" if blank.
+	private String effectiveMenuOption()
+	{
+		String opt = config.menuOption();
+		return (opt == null || opt.trim().isEmpty()) ? "Kill Clog" : opt.trim();
+	}
+
 	private void setPlayerMenuItemEnabled(boolean enabled)
 	{
 		if (enabled)
 		{
-			menuManager.get().addPlayerMenuItem(MENU_OPTION);
+			menuManager.get().addPlayerMenuItem(activeMenuOption);
 		}
 		else
 		{
-			menuManager.get().removePlayerMenuItem(MENU_OPTION);
+			menuManager.get().removePlayerMenuItem(activeMenuOption);
 		}
 	}
 
@@ -326,7 +334,7 @@ public class KillClogPlugin extends Plugin
 		}
 		for (int i = FIRST_PLUGIN_PLAYER_SLOT; i < LAST_PLUGIN_PLAYER_SLOT_EXCLUSIVE; i++)
 		{
-			if (MENU_OPTION.equals(options[i]))
+			if (activeMenuOption.equals(options[i]))
 			{
 				return;
 			}
@@ -334,9 +342,9 @@ public class KillClogPlugin extends Plugin
 
 		playerMenuSlotWarned = true;
 		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-			"<col=4caf6e>Kill Clog:</col> Right-click menu is full. "
-				+ "Use the side panel or right-click names in chat instead.",
-			null);
+				"<col=4caf6e>Kill Clog:</col> Right-click menu is full. "
+						+ "Use the side panel or right-click names in chat instead.",
+				null);
 	}
 
 	@Subscribe
@@ -468,7 +476,7 @@ public class KillClogPlugin extends Plugin
 		}
 
 		if (bulk.active && bulk.finalizeTickCount > 0
-			&& client.getTickCount() >= bulk.finalizeTickCount)
+				&& client.getTickCount() >= bulk.finalizeTickCount)
 		{
 			finalizeBulkCapture();
 		}
@@ -526,6 +534,12 @@ public class KillClogPlugin extends Plugin
 		{
 			setPlayerMenuItemEnabled(config.playerMenuLookup());
 		}
+		else if (event.getKey().equals("menuOption") && config.playerMenuLookup())
+		{
+			menuManager.get().removePlayerMenuItem(activeMenuOption);
+			activeMenuOption = effectiveMenuOption();
+			menuManager.get().addPlayerMenuItem(activeMenuOption);
+		}
 
 		SwingUtilities.invokeLater(() -> panel.onConfigChanged(event.getKey()));
 	}
@@ -552,7 +566,7 @@ public class KillClogPlugin extends Plugin
 	{
 		// Clan player lists live in two different interfaces — match by componentId, not groupId
 		if (componentId == InterfaceID.ClansSidepanel.PLAYERLIST
-			|| componentId == InterfaceID.ClansGuestSidepanel.PLAYERLIST)
+				|| componentId == InterfaceID.ClansGuestSidepanel.PLAYERLIST)
 		{
 			return OPT_ADD_IGNORE.equals(option) || OPT_REMOVE_FRIEND.equals(option);
 		}
@@ -582,7 +596,7 @@ public class KillClogPlugin extends Plugin
 		}
 
 		if (event.getType() != MenuAction.CC_OP.getId()
-			&& event.getType() != MenuAction.CC_OP_LOW_PRIORITY.getId())
+				&& event.getType() != MenuAction.CC_OP_LOW_PRIORITY.getId())
 		{
 			return;
 		}
@@ -599,11 +613,11 @@ public class KillClogPlugin extends Plugin
 			}
 			String name = Text.toJagexName(Text.removeTags(target).trim());
 			client.getMenu().createMenuEntry(-2)
-				.setOption(MENU_OPTION)
-				.setTarget(target)
-				.setType(MenuAction.RUNELITE)
-				.setIdentifier(event.getIdentifier())
-				.onClick(e -> openPanelAndLookup(name));
+					.setOption(activeMenuOption)
+					.setTarget(target)
+					.setType(MenuAction.RUNELITE)
+					.setIdentifier(event.getIdentifier())
+					.onClick(e -> openPanelAndLookup(name));
 		}
 	}
 
@@ -611,7 +625,7 @@ public class KillClogPlugin extends Plugin
 	public void onMenuOptionClicked(MenuOptionClicked event)
 	{
 		if (event.getMenuAction() == MenuAction.RUNELITE_PLAYER
-			&& event.getMenuOption().equals(MENU_OPTION))
+				&& event.getMenuOption().equals(activeMenuOption))
 		{
 			Player player = event.getMenuEntry().getPlayer();
 			if (player == null || player.getName() == null)
@@ -664,7 +678,7 @@ public class KillClogPlugin extends Plugin
 						int itemId = itemsEnum.getIntValue(itemKey);
 						itemIds.add(itemId);
 						itemToCategoryKeys.computeIfAbsent(itemId, k -> new ArrayList<>())
-							.add(categoryKey);
+								.add(categoryKey);
 					}
 
 					enumCategoryMap.put(categoryKey, itemIds);
@@ -678,7 +692,7 @@ public class KillClogPlugin extends Plugin
 
 			enumsParsed = true;
 			log.debug("Parsed clog enums: {} categories, {} items",
-				enumCategoryMap.size(), itemToCategoryKeys.size());
+					enumCategoryMap.size(), itemToCategoryKeys.size());
 		}
 		catch (Exception e)
 		{
@@ -773,16 +787,16 @@ public class KillClogPlugin extends Plugin
 		if (bulk.clogCount > 0 && bulk.obtained.size() < bulk.clogCount / 2)
 		{
 			log.warn("Bulk capture incomplete: got {} of {} items, discarding",
-				bulk.obtained.size(), bulk.clogCount);
+					bulk.obtained.size(), bulk.clogCount);
 			resetBulkCapture();
 			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-				"<col=4caf6e>Kill Clog:</col> Sync interrupted — open the collection log and try again.",
-				null);
+					"<col=4caf6e>Kill Clog:</col> Sync interrupted — open the collection log and try again.",
+					null);
 			return;
 		}
 
 		ClogResult result = new ClogResult(name, obtainedByCategory, categoryItemsCopy,
-			new HashMap<>(), null, null);
+				new HashMap<>(), null, null);
 		if (bulk.clogCount > 0)
 		{
 			result.setUniqueObtained(bulk.clogCount);
@@ -798,11 +812,11 @@ public class KillClogPlugin extends Plugin
 		// exceed the player's actual unique obtained count.
 		int displayCount = bulk.clogCount > 0 ? bulk.clogCount : bulk.obtained.size();
 		log.debug("Bulk clog capture complete: {} items across {} categories for '{}' ({} streamed)",
-			displayCount, enumCategoryMap.size(), name, bulk.obtained.size());
+				displayCount, enumCategoryMap.size(), name, bulk.obtained.size());
 
 		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-			"<col=4caf6e>Kill Clog:</col> " + displayCount + " items synced to Kill Clog",
-			null);
+				"<col=4caf6e>Kill Clog:</col> " + displayCount + " items synced to Kill Clog",
+				null);
 
 		// Merge the buffered category before reset (captured when clog first opened)
 		String bufKey = bulk.bufferedCategoryKey;
@@ -817,13 +831,13 @@ public class KillClogPlugin extends Plugin
 			int buffObt = bufObtained != null ? bufObtained.size() : 0;
 			int buffTotal = bufItems.size();
 			log.debug("Merged buffered category '{}': {}/{} obtained",
-				bufKey, buffObt, buffTotal);
+					bufKey, buffObt, buffTotal);
 
 			String displayName = bufName != null ? bufName : bufKey;
 			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-				"<col=4caf6e>Kill Clog:</col> Updated " + displayName
-					+ " \u2014 " + buffObt + "/" + buffTotal + " items",
-				null);
+					"<col=4caf6e>Kill Clog:</col> Updated " + displayName
+							+ " \u2014 " + buffObt + "/" + buffTotal + " items",
+					null);
 		}
 
 		clogButtonOverlay.flashGreen();
@@ -981,9 +995,9 @@ public class KillClogPlugin extends Plugin
 			}
 
 			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-				"<col=4caf6e>Kill Clog:</col> Captured " + categoryName
-					+ " \u2014 " + obtained.size() + "/" + allItemIds.size() + " obtained",
-				null);
+					"<col=4caf6e>Kill Clog:</col> Captured " + categoryName
+							+ " \u2014 " + obtained.size() + "/" + allItemIds.size() + " obtained",
+					null);
 			SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(name));
 		}
 		else
@@ -994,10 +1008,10 @@ public class KillClogPlugin extends Plugin
 			bulk.bufferedCategoryObtained = new ArrayList<>(obtained);
 
 			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-				"<col=4caf6e>Kill Clog:</col> Buffered " + categoryName
-					+ " \u2014 " + obtained.size() + "/" + allItemIds.size()
-					+ " obtained (will merge after sync)",
-				null);
+					"<col=4caf6e>Kill Clog:</col> Buffered " + categoryName
+							+ " \u2014 " + obtained.size() + "/" + allItemIds.size()
+							+ " obtained (will merge after sync)",
+					null);
 		}
 	}
 
@@ -1030,11 +1044,11 @@ public class KillClogPlugin extends Plugin
 		net.runelite.api.IndexedSprite[] modIcons = client.getModIcons();
 		if (modIcons == null) return;
 		BufferedImage gim = modIcons.length > ClogHelper.MODICON_GIM
-			? indexedSpriteToImage(modIcons[ClogHelper.MODICON_GIM]) : null;
+				? indexedSpriteToImage(modIcons[ClogHelper.MODICON_GIM]) : null;
 		BufferedImage hcgim = modIcons.length > ClogHelper.MODICON_HCGIM
-			? indexedSpriteToImage(modIcons[ClogHelper.MODICON_HCGIM]) : null;
+				? indexedSpriteToImage(modIcons[ClogHelper.MODICON_HCGIM]) : null;
 		BufferedImage unrankedGim = modIcons.length > ClogHelper.MODICON_UNRANKED_GIM
-			? indexedSpriteToImage(modIcons[ClogHelper.MODICON_UNRANKED_GIM]) : null;
+				? indexedSpriteToImage(modIcons[ClogHelper.MODICON_UNRANKED_GIM]) : null;
 		ClogHelper.setGimBadges(gim, hcgim, unrankedGim);
 	}
 
