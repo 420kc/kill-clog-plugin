@@ -836,7 +836,7 @@ public class KillClogPlugin extends Plugin
 			String displayName = bufName != null ? bufName : bufKey;
 			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
 				"<col=4caf6e>Kill Clog:</col> Updated " + displayName
-						+ " \u2014 " + buffObt + "/" + buffTotal + " items",
+					+ " \u2014 " + buffObt + "/" + buffTotal + " items",
 				null);
 		}
 
@@ -996,7 +996,7 @@ public class KillClogPlugin extends Plugin
 
 			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
 				"<col=4caf6e>Kill Clog:</col> Captured " + categoryName
-						+ " \u2014 " + obtained.size() + "/" + allItemIds.size() + " obtained",
+					+ " \u2014 " + obtained.size() + "/" + allItemIds.size() + " obtained",
 				null);
 			SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(name));
 		}
