@@ -8,6 +8,7 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import javax.annotation.Nullable;
 import javax.swing.SwingUtilities;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
@@ -15,7 +16,7 @@ import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
 
 /**
- * Player summary tooltip on the info bar name label.
+ * Player summary tooltip on the summary-bar name label.
  * Single-column stats, optional cape icon, then obtained pet sprites.
  */
 public class SummaryTooltip extends TitleTooltip
@@ -36,7 +37,7 @@ public class SummaryTooltip extends TitleTooltip
 	private String accountLabel;
 	private String prestige;
 
-	// Pet data — only obtained pets
+	// Pet data only includes obtained pets.
 	private int totalPetCount;
 	private List<Integer> obtainedPetList;
 	private BufferedImage[] petSprites;
@@ -48,8 +49,7 @@ public class SummaryTooltip extends TitleTooltip
 		this.rsn = rsn;
 		this.overallRank = overallRank;
 		this.capeIcon = capeIcon;
-		this.badgeIcon = badgeIcon != null
-			? ImageUtil.resizeImage(badgeIcon, BADGE_SIZE, BADGE_SIZE) : null;
+		this.badgeIcon = resizeBadge(badgeIcon);
 		this.accountLabel = accountLabel;
 		this.prestige = prestige;
 	}
@@ -116,7 +116,7 @@ public class SummaryTooltip extends TitleTooltip
 		if (rsn != null)
 		{
 			int rsnW = fm.stringWidth(rsn);
-			if (badgeIcon != null) rsnW += BADGE_SIZE + BADGE_GAP;
+			if (badgeIcon != null) rsnW += badgeIcon.getWidth() + BADGE_GAP;
 			tw = Math.max(tw, rsnW);
 		}
 		String rankLine = buildRankLine();
@@ -137,14 +137,14 @@ public class SummaryTooltip extends TitleTooltip
 		int textWidth = getTextWidth(fm);
 		int statsHeight = LINE_HEIGHT * getStatsLines();
 
-		// Cape in right column beside stats
+		// Cape column beside stats.
 		int capeColWidth = 0;
 		if (capeIcon != null)
 		{
 			capeColWidth = CAPE_PAD + capeIcon.getWidth();
 		}
 
-		// Pet grid
+		// Pet grid.
 		int petCount = hasPets() ? obtainedPetList.size() : 0;
 		int petGridWidth = petCount > 0
 			? Math.min(petCount, PET_COLS) * (PET_SIZE + PET_PAD) - PET_PAD
@@ -176,22 +176,22 @@ public class SummaryTooltip extends TitleTooltip
 		FontMetrics fm = g2.getFontMetrics();
 		int lineY = startY + fm.getAscent();
 
-		// RSN with optional badge
+		// RSN with optional badge.
 		if (rsn != null)
 		{
 			int rsnX = inset;
 			if (badgeIcon != null)
 			{
-				int iconY = lineY - fm.getAscent() + (LINE_HEIGHT - BADGE_SIZE) / 2;
+				int iconY = lineY - fm.getAscent() + (LINE_HEIGHT - badgeIcon.getHeight()) / 2;
 				g2.drawImage(badgeIcon, rsnX, iconY, null);
-				rsnX += BADGE_SIZE + BADGE_GAP;
+				rsnX += badgeIcon.getWidth() + BADGE_GAP;
 			}
 			g2.setColor(Color.WHITE);
 			g2.drawString(rsn, rsnX, lineY);
 		}
 		lineY += LINE_HEIGHT;
 
-		// Account type + #rank inline
+		// Account type plus rank.
 		if (accountLabel != null || overallRank > 0)
 		{
 			int x = inset;
@@ -211,7 +211,7 @@ public class SummaryTooltip extends TitleTooltip
 			lineY += LINE_HEIGHT;
 		}
 
-		// Prestige
+		// Prestige.
 		if (prestige != null)
 		{
 			g2.setColor(OSRS_ORANGE);
@@ -222,7 +222,7 @@ public class SummaryTooltip extends TitleTooltip
 			lineY += LINE_HEIGHT;
 		}
 
-		// Cape icon — right column, vertically centered against stats
+		// Cape icon in the right column, centered against stats.
 		int sectionBottom = lineY - fm.getAscent();
 		if (capeIcon != null)
 		{
@@ -237,12 +237,12 @@ public class SummaryTooltip extends TitleTooltip
 
 		if (totalPetCount <= 0) return;
 
-		// Separator
+		// Separator.
 		int sepY = sectionBottom + SECTION_GAP;
 		g2.setColor(SEPARATOR_COLOR);
 		g2.drawLine(inset, sepY, w - inset - 1, sepY);
 
-		// "Pets: X" header
+		// Pets header.
 		FontMetrics sfm = g2.getFontMetrics();
 		int petsHeaderY = sepY + 1 + SECTION_GAP + sfm.getAscent();
 		String petsLabel = "Pets: ";
@@ -256,7 +256,7 @@ public class SummaryTooltip extends TitleTooltip
 
 		FontMetrics bfm = g2.getFontMetrics(FontManager.getRunescapeBoldFont());
 
-		// Obtained pet sprite grid
+		// Obtained pet sprite grid.
 		int gridY = petsHeaderY + PET_PAD + bfm.getDescent();
 		int cellSize = PET_SIZE + PET_PAD;
 
@@ -284,5 +284,16 @@ public class SummaryTooltip extends TitleTooltip
 		if (accountLabel != null) return accountLabel;
 		if (overallRank > 0) return "#" + String.format("%,d", overallRank);
 		return null;
+	}
+
+	@Nullable
+	private static BufferedImage resizeBadge(@Nullable BufferedImage badge)
+	{
+		if (badge == null || badge.getHeight() <= 0)
+		{
+			return null;
+		}
+		int width = Math.max(1, (int) Math.round((double) badge.getWidth() / badge.getHeight() * BADGE_SIZE));
+		return ImageUtil.resizeImage(badge, width, BADGE_SIZE);
 	}
 }

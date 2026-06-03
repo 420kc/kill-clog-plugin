@@ -1,5 +1,6 @@
 package com.killclog;
 
+import java.util.Arrays;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -113,5 +114,14 @@ public class KillClogPanelTest
 		assertEquals(
 			"BOSS_NAMES (HiscoreService) and BOSSES (PanelData) have different lengths",
 			HiscoreService.bossCount(), PanelData.bossCount());
+	}
+
+	@Test
+	public void testThirdAgeRingCountsAsThirdAgeRare()
+	{
+		assertTrue(Arrays.stream(PanelData.THIRD_AGE_ITEMS)
+			.anyMatch(id -> id == PanelData.THIRD_AGE_RING_ITEM_ID));
+		assertTrue(Arrays.stream(PanelData.MASTER_RARE_ITEMS)
+			.anyMatch(id -> id == PanelData.THIRD_AGE_RING_ITEM_ID));
 	}
 }

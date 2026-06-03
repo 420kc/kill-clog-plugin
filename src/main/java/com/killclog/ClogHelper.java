@@ -10,13 +10,15 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import javax.annotation.Nullable;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import net.runelite.api.IconID;
+import net.runelite.api.IndexedSprite;
 import org.apache.commons.lang3.StringUtils;
 
 /**
- * Pure static utility functions — zero state.
- * Formatting, image manipulation, clog tier logic, account helpers.
+ * Static formatting, image manipulation, clog tier, and account helpers.
  */
 final class ClogHelper
 {
@@ -30,9 +32,7 @@ final class ClogHelper
 	{
 	}
 
-	// -------------------------------------------------------------------------
-	// Clog data helpers
-	// -------------------------------------------------------------------------
+	// Clog data helpers.
 
 	static Set<Integer> getObtainedIds(String category, ClogResult clogResult)
 	{
@@ -82,9 +82,7 @@ final class ClogHelper
 		return new int[]{obtained, total};
 	}
 
-	// -------------------------------------------------------------------------
-	// Clog tier logic
-	// -------------------------------------------------------------------------
+	// Clog tier logic.
 
 	static Color clogColor(int obtained, int total, KillClogConfig config)
 	{
@@ -105,14 +103,11 @@ final class ClogHelper
 		return null;
 	}
 
-	// -------------------------------------------------------------------------
-	// Account helpers
-	// -------------------------------------------------------------------------
+	// Account helpers.
 
-	// GIM modicon indices in the game's modicons sprite sheet (matches IconID enum in runelite-api)
-	static final int MODICON_GIM = 41;           // yellow trim
-	static final int MODICON_HCGIM = 42;         // red trim
-	static final int MODICON_UNRANKED_GIM = 43;  // green trim
+	static final int MODICON_GIM = IconID.GROUP_IRONMAN.getIndex();
+	static final int MODICON_HCGIM = IconID.HARDCORE_GROUP_IRONMAN.getIndex();
+	static final int MODICON_UNRANKED_GIM = IconID.UNRANKED_GROUP_IRONMAN.getIndex();
 
 	// Cached GIM badge images (loaded from game modicons at runtime)
 	private static volatile BufferedImage gimBadge;
@@ -126,12 +121,70 @@ final class ClogHelper
 		unrankedGimBadge = unrankedGim;
 	}
 
+	static void setGimBadge(AccountType type, BufferedImage badge)
+	{
+		switch (type)
+		{
+			case GROUP_IRONMAN:
+				gimBadge = badge;
+				break;
+			case HARDCORE_GROUP_IRONMAN:
+				hcgimBadge = badge;
+				break;
+			case UNRANKED_GROUP_IRONMAN:
+				unrankedGimBadge = badge;
+				break;
+			default:
+				break;
+		}
+	}
+
 	static BufferedImage getGimBadge(AccountType type)
 	{
 		if (type == AccountType.GROUP_IRONMAN) return gimBadge;
 		if (type == AccountType.HARDCORE_GROUP_IRONMAN) return hcgimBadge;
 		if (type == AccountType.UNRANKED_GROUP_IRONMAN) return unrankedGimBadge;
 		return null;
+	}
+
+	static int gimModiconIndex(AccountType type)
+	{
+		switch (type)
+		{
+			case GROUP_IRONMAN: return MODICON_GIM;
+			case HARDCORE_GROUP_IRONMAN: return MODICON_HCGIM;
+			case UNRANKED_GROUP_IRONMAN: return MODICON_UNRANKED_GIM;
+			default: return -1;
+		}
+	}
+
+	@Nullable
+	static BufferedImage indexedSpriteToImage(IndexedSprite sprite)
+	{
+		if (sprite == null) return null;
+		int w = sprite.getWidth();
+		int h = sprite.getHeight();
+		if (w <= 0 || h <= 0) return null;
+
+		int canvasW = sprite.getOriginalWidth() > 0 ? sprite.getOriginalWidth() : w;
+		int canvasH = sprite.getOriginalHeight() > 0 ? sprite.getOriginalHeight() : h;
+		BufferedImage img = new BufferedImage(canvasW, canvasH, BufferedImage.TYPE_INT_ARGB);
+		byte[] pixels = sprite.getPixels();
+		int[] palette = sprite.getPalette();
+		for (int y = 0; y < h; y++)
+		{
+			for (int x = 0; x < w; x++)
+			{
+				int idx = pixels[y * w + x] & 0xFF;
+				int px = x + sprite.getOffsetX();
+				int py = y + sprite.getOffsetY();
+				if (px >= 0 && px < canvasW && py >= 0 && py < canvasH)
+				{
+					img.setRGB(px, py, idx == 0 ? 0 : 0xFF000000 | palette[idx]);
+				}
+			}
+		}
+		return img;
 	}
 
 	static String accountBadgeResource(AccountType type)
@@ -141,27 +194,17 @@ final class ClogHelper
 			case IRONMAN: return "ironman.png";
 			case HARDCORE_IRONMAN: return "hardcore_ironman.png";
 			case ULTIMATE_IRONMAN: return "ultimate_ironman.png";
-			// GIM badges loaded from game modicons — use getGimBadge() instead
+			// GIM badges come from game modicons through AccountBadgeResolver.
 			default: return null;
 		}
 	}
 
 	static String accountLabel(AccountType type)
 	{
-		switch (type)
-		{
-			case IRONMAN: return "Ironman";
-			case HARDCORE_IRONMAN: return "Hardcore Ironman";
-			case ULTIMATE_IRONMAN: return "Ultimate Ironman";
-			case GROUP_IRONMAN: return "Group Ironman";
-			case HARDCORE_GROUP_IRONMAN: return "Hardcore Group Ironman";
-			default: return null;
-		}
+		return type != null && type != AccountType.REGULAR ? type.displayName() : null;
 	}
 
-	// -------------------------------------------------------------------------
-	// Formatting
-	// -------------------------------------------------------------------------
+	// Formatting.
 
 	static String pad(String text)
 	{
@@ -175,9 +218,7 @@ final class ClogHelper
 		return String.valueOf(kc);
 	}
 
-	// -------------------------------------------------------------------------
-	// Image utilities
-	// -------------------------------------------------------------------------
+	// Image utilities.
 
 	static BufferedImage iconToImage(ImageIcon icon)
 	{
@@ -204,7 +245,7 @@ final class ClogHelper
 
 	/**
 	 * Boosts RGB channels by a multiplier (e.g. 1.10 = 10% brighter).
-	 * Preserves hue and alpha — no white wash, just more vivid color.
+	 * Preserves hue and alpha while increasing color intensity.
 	 */
 	static BufferedImage createBoostedImage(ImageIcon icon, float factor)
 	{
@@ -222,7 +263,7 @@ final class ClogHelper
 		return src;
 	}
 
-	/** Paints a 12x10 hamburger icon — three 2px-thick horizontal lines on transparent. */
+	/** Paints a 12x10 hamburger icon. */
 	static BufferedImage makeHamburgerIcon(Color barColor)
 	{
 		int w = 12, h = 10;
@@ -236,7 +277,7 @@ final class ClogHelper
 		return img;
 	}
 
-	/** Paints a 15x15 split-color magnifying glass — left half blue, right half red. */
+	/** Paints a 15x15 split-color magnifying glass. */
 	static BufferedImage makeCompareIcon(Color left, Color right, float brightness)
 	{
 		int s = 15;
@@ -245,19 +286,37 @@ final class ClogHelper
 		g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
 			java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
 		g.setStroke(new java.awt.BasicStroke(1.5f));
-		// Lens circle: center (6,5), radius 4
-		int cx = 6, cy = 5, r = 4;
-		// Left half (blue) — clip to left of center
+		// Lens circle: center (7,5), radius 4
+		int cx = 7, cy = 5, r = 4;
+		// Left half: blue.
 		g.setClip(0, 0, cx, s);
 		g.setColor(brighten(left, brightness));
 		g.drawOval(cx - r, cy - r, r * 2, r * 2);
-		// Right half (red) — clip to right of center
+		// Blue handle.
+		g.drawLine(cx - 3, cy + 3, cx - 6, cy + 6);
+		// Right half: red.
 		g.setClip(cx, 0, s, s);
 		g.setColor(brighten(right, brightness));
 		g.drawOval(cx - r, cy - r, r * 2, r * 2);
-		// Handle — no clip
+		// Red handle.
+		g.drawLine(cx + 3, cy + 3, cx + 6, cy + 6);
 		g.setClip(null);
-		g.setColor(brighten(right, brightness));
+		g.dispose();
+		return img;
+	}
+
+	/** Paints a 15x15 single-color magnifying glass for compact icon buttons. */
+	static BufferedImage makeSearchIcon(Color color, float brightness)
+	{
+		int s = 15;
+		BufferedImage img = new BufferedImage(s, s, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = img.createGraphics();
+		g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
+			java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+		g.setStroke(new java.awt.BasicStroke(1.5f));
+		g.setColor(brighten(color, brightness));
+		int cx = 7, cy = 5, r = 4;
+		g.drawOval(cx - r, cy - r, r * 2, r * 2);
 		g.drawLine(cx + 3, cy + 3, cx + 6, cy + 6);
 		g.dispose();
 		return img;
@@ -271,7 +330,7 @@ final class ClogHelper
 		return new Color(r, g, b, c.getAlpha());
 	}
 
-	/** Paints a 15x15 circular refresh arrow — nearly full circle with arrowhead. */
+	/** Paints a 15x15 circular refresh arrow. */
 	static BufferedImage makeRefreshIcon(Color color)
 	{
 		int s = 15;

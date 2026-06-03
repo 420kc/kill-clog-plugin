@@ -2,9 +2,11 @@ package com.killclog;
 
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.regex.Pattern;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -25,7 +27,8 @@ import net.runelite.api.clan.ClanMember;
 import net.runelite.api.clan.ClanSettings;
 
 /**
- * Autocompletes player names in the search bar from friends, clan, and nearby players.
+ * Autocompletes player names in the search bar from search history plus a
+ * client-thread snapshot of friends, clan, and nearby players.
  */
 @Slf4j
 @Singleton
@@ -37,11 +40,12 @@ public class NameAutocompleter implements KeyListener
 
 	private final Client client;
 	private final EvictingQueue<String> searchHistory = EvictingQueue.create(MAX_HISTORY);
+	private volatile List<String> clientNameSnapshot = Collections.emptyList();
 	private String autofill;
 	private Pattern autofillPattern;
 
 	@Inject
-	private NameAutocompleter(Client client)
+	NameAutocompleter(Client client)
 	{
 		this.client = client;
 	}
@@ -129,73 +133,10 @@ public class NameAutocompleter implements KeyListener
 
 	private boolean findAutofill(String nameStart)
 	{
-		Pattern pattern = Pattern.compile("(?i)^" + nameStart.replaceAll("[ _-]", "[ _" + NBSP + "-]") + ".+?");
-
-		// 1. Search history
-		Optional<String> match = searchHistory.stream()
-			.filter(n -> pattern.matcher(n).matches())
-			.findFirst();
-
-		// 2. Friends list
-		if (!match.isPresent())
+		String match = findAutofillCandidate(nameStart);
+		if (match != null)
 		{
-			FriendContainer friendContainer = client.getFriendContainer();
-			if (friendContainer != null)
-			{
-				match = Arrays.stream(friendContainer.getMembers())
-					.map(Nameable::getName)
-					.filter(n -> pattern.matcher(n).matches())
-					.findFirst();
-			}
-		}
-
-		// 3. Friends chat
-		if (!match.isPresent())
-		{
-			FriendsChatManager friendsChatManager = client.getFriendsChatManager();
-			if (friendsChatManager != null)
-			{
-				match = Arrays.stream(friendsChatManager.getMembers())
-					.map(Nameable::getName)
-					.filter(n -> pattern.matcher(n).matches())
-					.findFirst();
-			}
-		}
-
-		// 4. Clan settings (regular, group ironman, guest)
-		if (!match.isPresent())
-		{
-			ClanSettings[] clanSettings = new ClanSettings[]{
-				client.getClanSettings(0),
-				client.getClanSettings(1),
-				client.getGuestClanSettings()
-			};
-			match = Arrays.stream(clanSettings)
-				.filter(Objects::nonNull)
-				.flatMap(cs -> cs.getMembers().stream())
-				.map(ClanMember::getName)
-				.filter(n -> pattern.matcher(n).matches())
-				.findFirst();
-		}
-
-		// 5. Nearby players
-		if (!match.isPresent())
-		{
-			WorldView wv = client.getTopLevelWorldView();
-			if (wv != null)
-			{
-				match = wv.players().stream()
-					.filter(Objects::nonNull)
-					.map(Actor::getName)
-					.filter(Objects::nonNull)
-					.filter(n -> pattern.matcher(n).matches())
-					.findFirst();
-			}
-		}
-
-		if (match.isPresent())
-		{
-			autofill = match.get().replace(NBSP, " ");
+			autofill = match.replace(NBSP, " ");
 			autofillPattern = Pattern.compile("(?i)^" + autofill.replaceAll("[ _-]", "[ _-]") + "$");
 		}
 		else
@@ -204,13 +145,123 @@ public class NameAutocompleter implements KeyListener
 			autofillPattern = null;
 		}
 
-		return match.isPresent();
+		return match != null;
+	}
+
+	String findAutofillCandidate(String nameStart)
+	{
+		Pattern pattern = Pattern.compile("(?i)^" + nameStart.replaceAll("[ _-]", "[ _" + NBSP + "-]") + ".+?");
+
+		String historyMatch = searchHistory.stream()
+			.filter(n -> pattern.matcher(n).matches())
+			.findFirst()
+			.orElse(null);
+		if (historyMatch != null)
+		{
+			return historyMatch;
+		}
+
+		return clientNameSnapshot.stream()
+			.filter(n -> pattern.matcher(n).matches())
+			.findFirst()
+			.orElse(null);
 	}
 
 	void addToSearchHistory(@NonNull String name)
 	{
 		searchHistory.remove(name);
 		searchHistory.offer(name);
+	}
+
+	void refreshClientSnapshot()
+	{
+		if (client == null)
+		{
+			setClientNameSnapshot(Collections.emptyList());
+			return;
+		}
+
+		List<String> names = new ArrayList<>();
+		addFriendNames(names);
+		addFriendsChatNames(names);
+		addClanNames(names);
+		addNearbyPlayerNames(names);
+		setClientNameSnapshot(names);
+	}
+
+	void clearClientSnapshot()
+	{
+		setClientNameSnapshot(Collections.emptyList());
+	}
+
+	void setClientNameSnapshot(List<String> names)
+	{
+		List<String> copy = names == null ? Collections.emptyList() : new ArrayList<>(names);
+		clientNameSnapshot = Collections.unmodifiableList(copy);
+	}
+
+	private void addFriendNames(List<String> names)
+	{
+		FriendContainer friendContainer = client.getFriendContainer();
+		if (friendContainer == null || friendContainer.getMembers() == null)
+		{
+			return;
+		}
+		Arrays.stream(friendContainer.getMembers())
+			.filter(Objects::nonNull)
+			.map(Nameable::getName)
+			.forEach(name -> addName(names, name));
+	}
+
+	private void addFriendsChatNames(List<String> names)
+	{
+		FriendsChatManager friendsChatManager = client.getFriendsChatManager();
+		if (friendsChatManager == null || friendsChatManager.getMembers() == null)
+		{
+			return;
+		}
+		Arrays.stream(friendsChatManager.getMembers())
+			.filter(Objects::nonNull)
+			.map(Nameable::getName)
+			.forEach(name -> addName(names, name));
+	}
+
+	private void addClanNames(List<String> names)
+	{
+		ClanSettings[] clanSettings = new ClanSettings[]{
+			client.getClanSettings(0),
+			client.getClanSettings(1),
+			client.getGuestClanSettings()
+		};
+		Arrays.stream(clanSettings)
+			.filter(Objects::nonNull)
+			.map(ClanSettings::getMembers)
+			.filter(Objects::nonNull)
+			.flatMap(List::stream)
+			.filter(Objects::nonNull)
+			.map(ClanMember::getName)
+			.forEach(name -> addName(names, name));
+	}
+
+	private void addNearbyPlayerNames(List<String> names)
+	{
+		WorldView worldView = client.getTopLevelWorldView();
+		if (worldView == null)
+		{
+			return;
+		}
+		worldView.players().stream()
+			.filter(Objects::nonNull)
+			.map(Actor::getName)
+			.forEach(name -> addName(names, name));
+	}
+
+	private static void addName(List<String> names, String name)
+	{
+		if (name != null && !name.trim().isEmpty())
+		{
+			names.add(name);
+		}
 	}
 
 	private boolean isExpectedNext(JTextComponent input, String nextChar)

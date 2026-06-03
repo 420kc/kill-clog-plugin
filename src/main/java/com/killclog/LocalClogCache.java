@@ -11,11 +11,13 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +28,7 @@ import net.runelite.client.RuneLite;
  *
  * <p>Stores per-player clog data in {@code ~/.runelite/kill-clog/} as JSON files.
  * Populated via bulk capture when the player opens their collection log in-game.
- * Persists across client restarts — any account ever captured is available permanently.
+ * Persists across client restarts. Any captured account remains available.
  *
  * <p>Disk writes are dispatched to a single background thread to avoid blocking the
  * game client thread.
@@ -45,17 +47,17 @@ public class LocalClogCache
 	private volatile String activePlayer;
 
 	/**
-	 * Disk I/O — single-threaded executor + per-player coalesce window.
+	 * Disk I/O uses a single-threaded executor and per-player coalesce window.
 	 * Bursts of category navigation collapse to one write per player.
 	 * Volatile so shutdown() can swap the reference visibly to concurrent submitters.
 	 */
 	private static final long DEBOUNCE_MS = 500;
-	private volatile ExecutorService diskWriter = newDiskWriter();
+	private volatile ScheduledExecutorService diskWriter;
 	private final Map<String, Runnable> pendingByPlayer = new ConcurrentHashMap<>();
 
-	private static ExecutorService newDiskWriter()
+	private static ScheduledExecutorService newDiskWriter()
 	{
-		return Executors.newSingleThreadExecutor(r ->
+		return Executors.newSingleThreadScheduledExecutor(r ->
 		{
 			Thread t = new Thread(r, "kill-clog-disk");
 			t.setDaemon(true);
@@ -63,40 +65,48 @@ public class LocalClogCache
 		});
 	}
 
+	private static String cacheKey(String playerName)
+	{
+		return playerName.toLowerCase(Locale.ROOT);
+	}
+
 	/**
 	 * Submit a disk write for a player, coalescing bursts within DEBOUNCE_MS into a single write.
-	 * The latest snapshot wins. Rejections during executor swap are swallowed; the next sync re-saves.
+	 * The latest snapshot wins. Rejections during executor swap are swallowed; the next capture re-saves.
 	 */
 	private void submitDiskWrite(String playerName, Runnable task)
 	{
-		boolean wasFirst = pendingByPlayer.put(playerName, task) == null;
+		String key = cacheKey(playerName);
+		boolean wasFirst = pendingByPlayer.put(key, task) == null;
 		if (!wasFirst)
 		{
 			return;
 		}
 		try
 		{
-			diskWriter.execute(() ->
+			diskWriter.schedule(() ->
 			{
-				try
-				{
-					Thread.sleep(DEBOUNCE_MS);
-				}
-				catch (InterruptedException e)
-				{
-					Thread.currentThread().interrupt();
-				}
-				// Flush even if interrupted, so shutdown doesn't lose pending data
-				Runnable latest = pendingByPlayer.remove(playerName);
+				Runnable latest = pendingByPlayer.remove(key);
 				if (latest != null)
 				{
 					latest.run();
 				}
-			});
+			}, DEBOUNCE_MS, TimeUnit.MILLISECONDS);
 		}
 		catch (RejectedExecutionException ignored)
 		{
-			pendingByPlayer.remove(playerName);
+			if (pendingByPlayer.remove(key, task))
+			{
+				try
+				{
+					diskWriter.execute(task);
+					return;
+				}
+				catch (RejectedExecutionException retryIgnored)
+				{
+					// Leave it unsaved; the next capture will resave.
+				}
+			}
 			log.debug("Disk write rejected (executor shutting down)");
 		}
 	}
@@ -104,21 +114,26 @@ public class LocalClogCache
 	@Inject
 	public LocalClogCache(Gson gson)
 	{
+		this(gson, newDiskWriter());
+	}
+
+	LocalClogCache(Gson gson, ScheduledExecutorService diskWriter)
+	{
 		this.gson = gson;
+		this.diskWriter = diskWriter;
 	}
 
 	/**
-	 * Swap in a fresh executor before shutting down the old one — keeps a live
-	 * executor available for the next startUp(). Without this, the @Singleton
-	 * survives plugin reload but its executor would be permanently dead.
+	 * Replace the disk writer before shutdown. LocalClogCache is a singleton,
+	 * so the next startUp() needs a live executor.
 	 */
 	public void shutdown()
 	{
-		ExecutorService old = diskWriter;
-		ExecutorService fresh = newDiskWriter();
+		ScheduledExecutorService old = diskWriter;
+		ScheduledExecutorService fresh = newDiskWriter();
 		diskWriter = fresh;
 
-		// Drain pending debounced writes to fresh; atomic remove-by-key prevents double-run with old executor's lambda.
+		// Move pending debounced writes to the replacement writer without double-running them.
 		for (String key : new ArrayList<>(pendingByPlayer.keySet()))
 		{
 			Runnable t = pendingByPlayer.remove(key);
@@ -150,7 +165,7 @@ public class LocalClogCache
 		}
 
 		activePlayer = name;
-		String key = name.toLowerCase();
+		String key = cacheKey(name);
 
 		if (!players.containsKey(key))
 		{
@@ -180,12 +195,12 @@ public class LocalClogCache
 		}
 
 		String name = result.getPlayerName();
-		String key = name.toLowerCase();
+		String key = cacheKey(name);
 
-		// Preserve varp-sourced totals if they're higher than what Temple reports
+		// Preserve varp-sourced totals if they are higher than public providers report.
 		PlayerClogData existing = players.get(key);
 
-		PlayerClogData data = new PlayerClogData();
+		PlayerClogData data = existing != null ? shallowCopy(existing) : new PlayerClogData();
 		data.playerName = name;
 		data.lastUpdated = Instant.now().toString();
 		data.uniqueObtained = result.getUniqueObtained();
@@ -201,20 +216,30 @@ public class LocalClogCache
 				data.uniqueTotal = existing.uniqueTotal;
 			}
 		}
-		data.lastChanged = result.getLastChanged();
-		data.obtained = new ConcurrentHashMap<>();
-		data.categories = new ConcurrentHashMap<>();
+		if (result.getLastChanged() != null)
+		{
+			data.lastChanged = result.getLastChanged();
+		}
+		if (result.getProviderAccountType() != null)
+		{
+			data.providerAccountType = result.getProviderAccountType();
+		}
+		data.obtained = data.obtained != null
+			? new ConcurrentHashMap<>(data.obtained)
+			: new ConcurrentHashMap<>();
+		data.categories = data.categories != null
+			? new ConcurrentHashMap<>(data.categories)
+			: new ConcurrentHashMap<>();
 
 		for (Map.Entry<String, List<ClogResult.ClogItem>> entry
 			: result.getObtainedItems().entrySet())
 		{
 			String cat = entry.getKey();
 			data.obtained.put(cat, new ArrayList<>(entry.getValue()));
-			List<Integer> catItems = result.getCategoryItems().get(cat);
-			if (catItems != null)
-			{
-				data.categories.put(cat, new ArrayList<>(catItems));
-			}
+		}
+		for (Map.Entry<String, List<Integer>> entry : result.getCategoryItems().entrySet())
+		{
+			data.categories.put(entry.getKey(), new ArrayList<>(entry.getValue()));
 		}
 
 		players.put(key, data);
@@ -231,7 +256,7 @@ public class LocalClogCache
 			return;
 		}
 
-		String key = playerName.toLowerCase();
+		String key = cacheKey(playerName);
 		PlayerClogData data = players.get(key);
 		if (data == null)
 		{
@@ -254,7 +279,7 @@ public class LocalClogCache
 			return;
 		}
 
-		String key = playerName.toLowerCase();
+		String key = cacheKey(playerName);
 		PlayerClogData data = players.get(key);
 		if (data == null)
 		{
@@ -288,7 +313,7 @@ public class LocalClogCache
 			return false;
 		}
 
-		String key = playerName.toLowerCase();
+		String key = cacheKey(playerName);
 		if (players.containsKey(key))
 		{
 			return true;
@@ -313,13 +338,13 @@ public class LocalClogCache
 			return null;
 		}
 
-		PlayerClogData data = players.get(playerName.toLowerCase());
+		PlayerClogData data = players.get(cacheKey(playerName));
 		if (data == null)
 		{
 			return null;
 		}
 
-		// Defensive copies — callers may mutate their maps
+		// Defensive copies: callers may mutate their maps.
 		Map<String, List<ClogResult.ClogItem>> obtainedCopy = new HashMap<>();
 		for (Map.Entry<String, List<ClogResult.ClogItem>> entry : data.obtained.entrySet())
 		{
@@ -338,7 +363,7 @@ public class LocalClogCache
 			categoriesCopy,
 			itemNames != null ? itemNames : new HashMap<>(),
 			data.lastChanged,
-			null  // no Temple account type for local data
+			data.providerAccountType
 		);
 		if (data.uniqueObtained > 0)
 		{
@@ -351,7 +376,7 @@ public class LocalClogCache
 		return result;
 	}
 
-	// --- Disk I/O (runs on diskWriter thread only) ---
+	// Disk I/O, always on the diskWriter thread.
 
 	private void saveToDisk(String playerName, PlayerClogData data)
 	{
@@ -404,23 +429,24 @@ public class LocalClogCache
 
 	private File getCacheFile(String playerName)
 	{
-		String sanitized = playerName.toLowerCase()
+		String sanitized = cacheKey(playerName)
 			.replace(' ', '_')
 			.replaceAll("[^a-z0-9_-]", "");
 		return new File(CACHE_DIR, sanitized + ".json");
 	}
 
-	/** Shallow copy sufficient for async disk write — lists are already copied in callers. */
+	/** Shallow copy sufficient for async disk write. */
 	private static PlayerClogData shallowCopy(PlayerClogData src)
 	{
 		PlayerClogData copy = new PlayerClogData();
 		copy.playerName = src.playerName;
 		copy.lastUpdated = src.lastUpdated;
 		copy.lastChanged = src.lastChanged;
+		copy.providerAccountType = src.providerAccountType;
 		copy.uniqueObtained = src.uniqueObtained;
 		copy.uniqueTotal = src.uniqueTotal;
-		copy.categories = new HashMap<>(src.categories);
-		copy.obtained = new HashMap<>(src.obtained);
+		copy.categories = src.categories != null ? new HashMap<>(src.categories) : new HashMap<>();
+		copy.obtained = src.obtained != null ? new HashMap<>(src.obtained) : new HashMap<>();
 		return copy;
 	}
 
@@ -429,6 +455,7 @@ public class LocalClogCache
 		String playerName;
 		String lastUpdated;
 		String lastChanged;
+		AccountType providerAccountType;
 		int uniqueObtained = -1;
 		int uniqueTotal = -1;
 		Map<String, List<Integer>> categories;

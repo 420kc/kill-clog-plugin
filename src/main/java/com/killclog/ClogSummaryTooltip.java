@@ -14,7 +14,7 @@ import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
 
 /**
- * Clog summary tooltip on the info bar clog cell.
+ * Clog summary tooltip on the summary-bar clog cell.
  * Title "Clog Summary", obtained subtitle, tier progress lines with icons,
  * and recent obtained items at the bottom.
  */
@@ -185,7 +185,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 		int contentHeight = LINE_HEIGHT * lines;
 
-		// Recent section
+		// Recent section.
 		if (recentCount > 0)
 		{
 			FontMetrics bfm = getFontMetrics(FontManager.getRunescapeBoldFont());
@@ -238,7 +238,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 			y += LINE_HEIGHT;
 		}
 
-		// Sync line — label orange, date green or red
+		// Sync line: label orange, date green or red.
 		if (syncDate != null)
 		{
 			String label = "Last update: ";
@@ -252,20 +252,20 @@ public class ClogSummaryTooltip extends TitleTooltip
 		// Recent items section
 		if (recentCount > 0 && recentSprites != null)
 		{
-			// Separator
+			// Separator.
 			y += SEPARATOR_PAD;
 			g2.setColor(SEPARATOR_COLOR);
 			g2.drawLine(inset, y, w - inset - 1, y);
 			y += 1 + SEPARATOR_PAD;
 
-			// "Recent" subheader — bold
+			// "Recent" subheader.
 			g2.setFont(FontManager.getRunescapeBoldFont());
 			FontMetrics bfm = g2.getFontMetrics();
 			g2.setColor(OSRS_ORANGE);
 			g2.drawString("Recent", inset, y + bfm.getAscent());
 			y += SUBHEADER_HEIGHT;
 
-			// Sprites — horizontally centered
+			// Center the recent item sprites.
 			int spriteRowWidth = recentCount * RECENT_SIZE
 				+ (recentCount - 1) * RECENT_PAD;
 			int spriteStartX = inset + (w - 2 * inset - spriteRowWidth) / 2;
@@ -280,7 +280,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 		}
 	}
 
-	/** Draws: [icon] Tier: value [suffix] — value in valueColor, suffix in orange. */
+	/** Draws: [icon] Tier: value [suffix]. */
 	private void paintTierLine(Graphics2D g2, FontMetrics fm, int x, int y,
 		String tier, String value, Color valueColor, String suffix)
 	{

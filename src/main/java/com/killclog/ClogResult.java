@@ -6,11 +6,11 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Parsed collection log data for a player from TempleOSRS.
+ * Parsed collection log data for a player from the active provider.
  */
 public class ClogResult
 {
-	/** Canonical player name with correct capitalization from TempleOSRS */
+	/** Canonical player name with best-known capitalization from the provider */
 	private final String playerName;
 	/** category key -> list of obtained items with counts */
 	private final Map<String, List<ClogItem>> obtainedItems;
@@ -18,10 +18,10 @@ public class ClogResult
 	private final Map<String, List<Integer>> categoryItems;
 	/** item IDs whose names have been resolved (concurrent: written from client thread, read from EDT) */
 	private final Set<Integer> resolvedItemIds;
-	/** When the player last synced clog data to TempleOSRS (from last_changed field) */
+	/** When the player last synced clog data, or null for providers without it */
 	private final String lastChanged;
-	/** Account type detected from Temple's game_mode, or null if unknown */
-	private final AccountType templeAccountType;
+	/** Account type reported by the active provider, or null if unknown */
+	private final AccountType providerAccountType;
 	/** Game-reported unique obtained count (varp 2943), or -1 if unavailable */
 	private int uniqueObtained = -1;
 	/** Game-reported total clog slots (varp 2944), or -1 if unavailable */
@@ -33,7 +33,7 @@ public class ClogResult
 		Map<String, List<Integer>> categoryItems,
 		Map<Integer, String> itemNames,
 		String lastChanged,
-		AccountType templeAccountType)
+		AccountType providerAccountType)
 	{
 		this.playerName = playerName;
 		this.obtainedItems = obtainedItems;
@@ -44,7 +44,7 @@ public class ClogResult
 			resolvedItemIds.addAll(itemNames.keySet());
 		}
 		this.lastChanged = lastChanged;
-		this.templeAccountType = templeAccountType;
+		this.providerAccountType = providerAccountType;
 	}
 
 	public String getPlayerName()
@@ -67,9 +67,9 @@ public class ClogResult
 		return categoryItems;
 	}
 
-	public AccountType getTempleAccountType()
+	public AccountType getProviderAccountType()
 	{
-		return templeAccountType;
+		return providerAccountType;
 	}
 
 	public int getUniqueObtained()
@@ -100,6 +100,70 @@ public class ClogResult
 	public void markItemResolved(int id)
 	{
 		resolvedItemIds.add(id);
+	}
+
+	/**
+	 * Compare two clog results and return whichever represents the most
+	 * recent sync. Collection log items only accumulate, so the result
+	 * with more obtained items is fresher. When counts are close (within 5),
+	 * prefer TempleOSRS for its richer sync timestamp.
+	 */
+	public static ClogResult pickFreshest(ClogResult temple, ClogResult rp)
+	{
+		if (temple == null)
+		{
+			return rp;
+		}
+		if (rp == null)
+		{
+			return temple;
+		}
+
+		int templeCount = obtainedCount(temple);
+		int rpCount = obtainedCount(rp);
+
+		// RuneProfile has significantly more items, so it is clearly fresher.
+		if (rpCount > templeCount + 5)
+		{
+			return rp.withFallbackAccountTypeFrom(temple);
+		}
+		// TempleOSRS wins ties and near-ties because it has lastChanged.
+		return temple;
+	}
+
+	private ClogResult withFallbackAccountTypeFrom(ClogResult fallback)
+	{
+		if (fallback.providerAccountType == null || providerAccountType != null)
+		{
+			return this;
+		}
+
+		ClogResult merged = new ClogResult(
+			playerName,
+			obtainedItems,
+			categoryItems,
+			null,
+			lastChanged,
+			fallback.providerAccountType
+		);
+		merged.resolvedItemIds.addAll(resolvedItemIds);
+		merged.uniqueObtained = uniqueObtained;
+		merged.uniqueTotal = uniqueTotal;
+		return merged;
+	}
+
+	private static int obtainedCount(ClogResult result)
+	{
+		if (result.uniqueObtained >= 0)
+		{
+			return result.uniqueObtained;
+		}
+		int count = 0;
+		for (List<ClogItem> items : result.obtainedItems.values())
+		{
+			count += items.size();
+		}
+		return count;
 	}
 
 	public static class ClogItem

@@ -5,10 +5,7 @@ build/
 out/
 bin/
 
-# Claude
-CLAUDE.md
 docs/
-.claude/
 
 # Dev artifacts
 border-samples/

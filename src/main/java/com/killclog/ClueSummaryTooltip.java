@@ -10,7 +10,7 @@ import net.runelite.client.ui.FontManager;
 
 /**
  * Clue summary tooltip on the Clue All cell.
- * Eight label:value lines — All, Beginner through Master, and Mimic kills.
+ * Eight label:value lines: All, Beginner through Master, and Mimic kills.
  * Each line has a clue scroll icon on the left.
  */
 public class ClueSummaryTooltip extends TitleTooltip
@@ -107,7 +107,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 			return;
 		}
 
-		// Compute column positions
+		// Compute column positions.
 		int iconCol = ICON_SIZE + ICON_GAP;
 		int labelColW = 0;
 		for (String label : LABELS)
@@ -150,27 +150,27 @@ public class ClueSummaryTooltip extends TitleTooltip
 		}
 		x += ICON_SIZE + ICON_GAP;
 
-		// Col 1: tier label (left-aligned)
+		// Column 1: tier label.
 		g2.setColor(OSRS_ORANGE);
 		g2.drawString(label, x, textY);
 
 		if (score <= 0)
 		{
-			// Col 2: "--" (right-aligned)
+			// Column 2: no score.
 			String dash = "--";
 			g2.setColor(Color.WHITE);
 			g2.drawString(dash, scoreRight - fm.stringWidth(dash), textY);
 			return;
 		}
 
-		// Col 2: score (right-aligned)
+		// Column 2: score.
 		String scoreText = String.format("%,d", score);
 		g2.setColor(Color.WHITE);
 		g2.drawString(scoreText, scoreRight - fm.stringWidth(scoreText), textY);
 
 		if (rank > 0)
 		{
-			// Rank: number (flows after score column)
+			// Rank flows after the score column.
 			String rankTail = " Rank: " + String.format("%,d", rank);
 			g2.setColor(OSRS_ORANGE);
 			g2.drawString(" Rank: ", scoreRight + 1, textY);

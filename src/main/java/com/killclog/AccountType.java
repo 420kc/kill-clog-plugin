@@ -1,5 +1,8 @@
 package com.killclog;
 
+import java.util.Locale;
+import javax.annotation.Nullable;
+
 public enum AccountType
 {
 	REGULAR,
@@ -15,5 +18,106 @@ public enum AccountType
 		return this == GROUP_IRONMAN
 			|| this == HARDCORE_GROUP_IRONMAN
 			|| this == UNRANKED_GROUP_IRONMAN;
+	}
+
+	@Nullable
+	static AccountType displayType(@Nullable AccountType hiscoreType, @Nullable AccountType providerType)
+	{
+		if (providerType != null && (providerType.isGroupIronman() || hiscoreType == null))
+		{
+			return providerType;
+		}
+		return hiscoreType;
+	}
+
+	@Nullable
+	static AccountType fromProviderId(int id)
+	{
+		switch (id)
+		{
+			case 0: return REGULAR;
+			case 1: return IRONMAN;
+			case 2: return HARDCORE_IRONMAN;
+			case 3: return ULTIMATE_IRONMAN;
+			case 4: return GROUP_IRONMAN;
+			case 5: return HARDCORE_GROUP_IRONMAN;
+			case 6: return UNRANKED_GROUP_IRONMAN;
+			default: return null;
+		}
+	}
+
+	@Nullable
+	static AccountType fromRuneLiteVarbit(int value)
+	{
+		switch (value)
+		{
+			case 1: return IRONMAN;
+			case 2: return ULTIMATE_IRONMAN;
+			case 3: return HARDCORE_IRONMAN;
+			case 4: return GROUP_IRONMAN;
+			case 5: return HARDCORE_GROUP_IRONMAN;
+			case 6: return UNRANKED_GROUP_IRONMAN;
+			default: return REGULAR;
+		}
+	}
+
+	@Nullable
+	static AccountType fromProviderValue(@Nullable String value)
+	{
+		if (value == null)
+		{
+			return null;
+		}
+		switch (value.toLowerCase(Locale.ROOT).replace('-', '_').replace(' ', '_'))
+		{
+			case "regular":
+			case "normal":
+				return REGULAR;
+			case "ironman":
+				return IRONMAN;
+			case "hardcore_ironman":
+				return HARDCORE_IRONMAN;
+			case "ultimate_ironman":
+				return ULTIMATE_IRONMAN;
+			case "group_ironman":
+				return GROUP_IRONMAN;
+			case "hardcore_group_ironman":
+				return HARDCORE_GROUP_IRONMAN;
+			case "unranked_group_ironman":
+				return UNRANKED_GROUP_IRONMAN;
+			default:
+				return null;
+		}
+	}
+
+	@Nullable
+	static AccountType fromTempleGameMode(@Nullable String gameMode)
+	{
+		if (gameMode == null)
+		{
+			return null;
+		}
+		try
+		{
+			return fromProviderId(Integer.parseInt(gameMode));
+		}
+		catch (NumberFormatException ignored)
+		{
+			return fromProviderValue(gameMode);
+		}
+	}
+
+	String displayName()
+	{
+		switch (this)
+		{
+			case IRONMAN: return "Ironman";
+			case HARDCORE_IRONMAN: return "Hardcore Ironman";
+			case ULTIMATE_IRONMAN: return "Ultimate Ironman";
+			case GROUP_IRONMAN: return "Group Ironman";
+			case HARDCORE_GROUP_IRONMAN: return "Hardcore Group Ironman";
+			case UNRANKED_GROUP_IRONMAN: return "Unranked Group Ironman";
+			default: return "Regular";
+		}
 	}
 }

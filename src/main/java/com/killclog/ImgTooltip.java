@@ -6,9 +6,6 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.Map;
@@ -35,13 +32,11 @@ public class ImgTooltip extends TitleTooltip
 
 	private static final Color QTY_COLOR = new Color(255, 255, 0);
 	private static final Color QTY_SHADOW = new Color(0, 0, 0);
-	private static final Color ITEM_HOVER_BG = new Color(80, 70, 50);
 
 	private final int gridCols;
 	private final int spriteSize;
 	private int effectiveCols;
-	private int hoveredItemIndex = -1;
-	private String notice = "No TempleOSRS Data";
+	private String notice = "No Collection Log Data";
 	private BufferedImage noticeIcon;
 
 	private int totalItems;
@@ -56,38 +51,11 @@ public class ImgTooltip extends TitleTooltip
 		this(gridCols, DEFAULT_SPRITE_SIZE);
 	}
 
-	/** Compact mode — smaller sprites for dense grids like clue tiers. */
+	/** Compact mode - smaller sprites for dense grids like clue tiers. */
 	public ImgTooltip(int gridCols, int spriteSize)
 	{
 		this.gridCols = gridCols;
 		this.spriteSize = spriteSize;
-
-		addMouseMotionListener(new MouseMotionAdapter()
-		{
-			@Override
-			public void mouseMoved(MouseEvent e)
-			{
-				int idx = getItemIndexAt(e.getX(), e.getY());
-				if (idx != hoveredItemIndex)
-				{
-					hoveredItemIndex = idx;
-					repaint();
-				}
-			}
-		});
-
-		addMouseListener(new MouseAdapter()
-		{
-			@Override
-			public void mouseExited(MouseEvent e)
-			{
-				if (hoveredItemIndex != -1)
-				{
-					hoveredItemIndex = -1;
-					repaint();
-				}
-			}
-		});
 	}
 
 	@Override
@@ -196,7 +164,7 @@ public class ImgTooltip extends TitleTooltip
 		int inset = getInset();
 		boolean hasItems = allItemIds != null && !allItemIds.isEmpty();
 
-		// No clog data — center notice in the grid area
+		// No clog data - center notice in the grid area
 		if (!hasItems)
 		{
 			g2.setFont(FontManager.getRunescapeSmallFont());
@@ -246,12 +214,6 @@ public class ImgTooltip extends TitleTooltip
 				int x = gridOffsetX + col * cellSize;
 				int y = startY + row * cellSize;
 
-				if (i == hoveredItemIndex)
-				{
-					g2.setColor(ITEM_HOVER_BG);
-					g2.fillRect(x - 1, y - 1, spriteSize + 2, spriteSize + 2);
-				}
-
 				int itemId = allItemIds.get(i);
 				boolean obtained = obtainedIds.contains(itemId);
 				int count = obtained ? obtainedCounts.getOrDefault(itemId, 1) : 1;
@@ -269,7 +231,7 @@ public class ImgTooltip extends TitleTooltip
 					g2.setComposite(AlphaComposite.SrcOver);
 				}
 
-				// Quantity overlay — skip on compact sprites where text is unreadable
+				// Quantity overlay - skip on compact sprites where text is unreadable
 				if (obtained && count > 1 && spriteSize >= DEFAULT_SPRITE_SIZE)
 				{
 					FontMetrics qfm = g2.getFontMetrics();
@@ -281,37 +243,5 @@ public class ImgTooltip extends TitleTooltip
 				}
 			}
 		}
-	}
-
-	private int getItemIndexAt(int mx, int my)
-	{
-		if (allItemIds == null || allItemIds.isEmpty())
-		{
-			return -1;
-		}
-
-		int inset = getInset();
-		int w = getWidth();
-		int gridStartY = inset + getHeaderZoneHeight();
-		int cellSize = spriteSize + PADDING;
-		int gridWidth = effectiveCols * cellSize - PADDING;
-		int gridOffsetX = inset + (w - 2 * inset - gridWidth) / 2;
-
-		int relX = mx - gridOffsetX;
-		int relY = my - gridStartY;
-		if (relX < 0 || relY < 0)
-		{
-			return -1;
-		}
-
-		int col = relX / cellSize;
-		int row = relY / cellSize;
-		if (col >= effectiveCols)
-		{
-			return -1;
-		}
-
-		int idx = row * effectiveCols + col;
-		return idx < allItemIds.size() ? idx : -1;
 	}
 }

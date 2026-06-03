@@ -84,12 +84,12 @@ final class TooltipDataBuilder
 
 		int obtainedCount = ClogHelper.countObtained(allItems, obtainedIds);
 		return new TooltipData(name, -1, obtainedCount,
-			allItems.size(), allItems, obtainedIds, obtainedCounts);
+			allItems.size(), allItems, obtainedIds, obtainedCounts, false);
 	}
 
 	/**
 	 * Build TooltipData for a custom rare category (Hard/Elite/Master Rare).
-	 * Scans obtained items across ALL Temple categories.
+	 * Scans obtained items across all collection-log categories.
 	 */
 	TooltipData buildCustomRareData(String name, int[] itemIds, ClogResult clogResult)
 	{
@@ -120,10 +120,10 @@ final class TooltipDataBuilder
 
 		int obtainedCount = obtainedIds.size();
 		return new TooltipData(name, -1, obtainedCount,
-			allItemsList.size(), allItemsList, obtainedIds, obtainedCounts);
+			allItemsList.size(), allItemsList, obtainedIds, obtainedCounts, false);
 	}
 
-	/** Trigger async loads for all items in a tooltip — so they're cached by hover time. */
+	/** Trigger async loads for all tooltip items. */
 	void preloadItemImages(TooltipData data)
 	{
 		for (int itemId : data.allItemIds)

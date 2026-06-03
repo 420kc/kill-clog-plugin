@@ -1,7 +1,6 @@
 package com.killclog;
 
 import java.awt.AlphaComposite;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -10,14 +9,14 @@ import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import javax.swing.SwingUtilities;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
-import javax.swing.SwingUtilities;
 
 /**
- * Comparison mode sprite tooltip — stacked blue/red grids for the same boss or category.
+ * Comparison sprite tooltip: stacked blue/red grids for the same boss or category.
  * Header shows dual obtained/rank values, body shows both players' sprite grids.
  */
 public class CompareImgTooltip extends TitleTooltip
@@ -29,30 +28,30 @@ public class CompareImgTooltip extends TitleTooltip
 	private static final int SECTION_GAP = 6;
 	private static final Font NAME_FONT = FontManager.getRunescapeSmallFont();
 
-	private static final Color COMPARE_BLUE = ComparisonController.COMPARE_BLUE;
-	private static final Color COMPARE_RED = ComparisonController.COMPARE_RED;
-
-	// Header data
+	// Header data.
 	private String bluePlayerName;
 	private int blueObtained;
 	private int blueTotal;
 	private int blueRank;
+	private boolean blueRankTracked = true;
 
 	private String redPlayerName;
 	private int redObtained;
 	private int redTotal;
 	private int redRank;
+	private boolean redRankTracked = true;
 
-	// Grid data
+	// Grid data.
 	private List<Integer> allItemIds;
 	private BufferedImage[] sprites;
 
 	private Set<Integer> blueObtainedIds;
 	private Set<Integer> redObtainedIds;
 
-	// Notice when a player has no clog data
+	// No-data flags.
 	private boolean blueHasData = true;
 	private boolean redHasData = true;
+	private boolean showSpriteGrids = true;
 
 	@Override
 	protected Font getTitleFont()
@@ -62,18 +61,32 @@ public class CompareImgTooltip extends TitleTooltip
 
 	public void setBluePlayer(String name, int obtained, int total, int rank)
 	{
+		setBluePlayer(name, obtained, total, rank, true);
+	}
+
+	public void setBluePlayer(String name, int obtained, int total, int rank,
+		boolean rankTracked)
+	{
 		this.bluePlayerName = name;
 		this.blueObtained = obtained;
 		this.blueTotal = total;
 		this.blueRank = rank;
+		this.blueRankTracked = rankTracked;
 	}
 
 	public void setRedPlayer(String name, int obtained, int total, int rank)
+	{
+		setRedPlayer(name, obtained, total, rank, true);
+	}
+
+	public void setRedPlayer(String name, int obtained, int total, int rank,
+		boolean rankTracked)
 	{
 		this.redPlayerName = name;
 		this.redObtained = obtained;
 		this.redTotal = total;
 		this.redRank = rank;
+		this.redRankTracked = rankTracked;
 	}
 
 	public void setBlueHasData(boolean hasData)
@@ -86,9 +99,17 @@ public class CompareImgTooltip extends TitleTooltip
 		this.redHasData = hasData;
 	}
 
+	public void setShowSpriteGrids(boolean showSpriteGrids)
+	{
+		this.showSpriteGrids = showSpriteGrids;
+	}
+
+	private Map<Integer, Integer> blueObtainedCounts;
+	private Map<Integer, Integer> redObtainedCounts;
+
 	/**
 	 * Load sprites and store both players' obtained sets.
-	 * Items are the same for both players (same boss = same items).
+	 * The compared boss or category supplies one shared item list.
 	 */
 	public void setItems(List<Integer> allItemIds,
 		Set<Integer> blueObtainedIds, Map<Integer, Integer> blueObtainedCounts,
@@ -98,6 +119,8 @@ public class CompareImgTooltip extends TitleTooltip
 		this.allItemIds = allItemIds;
 		this.blueObtainedIds = blueObtainedIds;
 		this.redObtainedIds = redObtainedIds;
+		this.blueObtainedCounts = blueObtainedCounts;
+		this.redObtainedCounts = redObtainedCounts;
 
 		if (allItemIds == null || allItemIds.isEmpty() || itemManager == null)
 		{
@@ -110,7 +133,7 @@ public class CompareImgTooltip extends TitleTooltip
 		for (int i = 0; i < allItemIds.size(); i++)
 		{
 			int itemId = allItemIds.get(i);
-			// Use count from whichever player has it, default 1
+			// Use whichever player's quantity is available.
 			int count = 1;
 			if (blueObtainedIds != null && blueObtainedIds.contains(itemId))
 			{
@@ -147,17 +170,17 @@ public class CompareImgTooltip extends TitleTooltip
 			SPRITE_SIZE, SPRITE_SIZE);
 	}
 
-	// ------------------------------------------------------------------
-	// Header: dual obtained/rank with blue | red coloring
-	// ------------------------------------------------------------------
+	// Header.
 
 	@Override
 	int getHeaderHeight()
 	{
-		// Title + obtained line + rank line
 		int h = 20; // title
 		h += LINE_HEIGHT; // obtained
-		h += LINE_HEIGHT; // rank
+		if (showRankLine())
+		{
+			h += LINE_HEIGHT;
+		}
 		return h;
 	}
 
@@ -175,14 +198,14 @@ public class CompareImgTooltip extends TitleTooltip
 		FontMetrics nfm = g2.getFontMetrics();
 		int lineY = inset + nfm.getAscent();
 
-		// Title (bold orange)
+		// Title.
 		g2.setColor(OSRS_ORANGE);
 		g2.drawString(getTitle(), inset, lineY);
 
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		FontMetrics fm = g2.getFontMetrics();
 
-		// Obtained: 4/8 | 6/8
+		// Obtained line.
 		lineY += 20;
 		g2.setColor(OSRS_ORANGE);
 		String obtLabel = "Obtained: ";
@@ -194,35 +217,33 @@ public class CompareImgTooltip extends TitleTooltip
 		g2.drawString(blueObt, x, lineY);
 		x += fm.stringWidth(blueObt);
 
-		g2.setColor(Color.WHITE);
-		g2.drawString(" | ", x, lineY);
-		x += fm.stringWidth(" | ");
+		x = paintChromeSeparator(g2, fm, x, lineY);
 
 		String redObt = formatObtained(redObtained, redTotal);
 		g2.setColor(COMPARE_RED);
 		g2.drawString(redObt, x, lineY);
 
-		// Rank: #400 | #529
-		lineY += LINE_HEIGHT;
-		g2.setColor(OSRS_ORANGE);
-		String rnkLabel = "Rank: ";
-		g2.drawString(rnkLabel, inset, lineY);
-		x = inset + fm.stringWidth(rnkLabel);
+		if (showRankLine())
+		{
+			lineY += LINE_HEIGHT;
+			g2.setColor(OSRS_ORANGE);
+			String rnkLabel = "Rank: ";
+			g2.drawString(rnkLabel, inset, lineY);
+			x = inset + fm.stringWidth(rnkLabel);
 
-		String blueRnk = formatRank(blueRank);
-		g2.setColor(COMPARE_BLUE);
-		g2.drawString(blueRnk, x, lineY);
-		x += fm.stringWidth(blueRnk);
+			String blueRnk = formatRank(blueRank, blueRankTracked);
+			g2.setColor(COMPARE_BLUE);
+			g2.drawString(blueRnk, x, lineY);
+			x += fm.stringWidth(blueRnk);
 
-		g2.setColor(Color.WHITE);
-		g2.drawString(" | ", x, lineY);
-		x += fm.stringWidth(" | ");
+			x = paintChromeSeparator(g2, fm, x, lineY);
 
-		String redRnk = formatRank(redRank);
-		g2.setColor(COMPARE_RED);
-		g2.drawString(redRnk, x, lineY);
+			String redRnk = formatRank(redRank, redRankTracked);
+			g2.setColor(COMPARE_RED);
+			g2.drawString(redRnk, x, lineY);
+		}
 
-		// Separator
+		// Separator.
 		int sepY = lineY + 6;
 		g2.setColor(SEPARATOR_COLOR);
 		g2.drawLine(inset, sepY, w - inset - 1, sepY);
@@ -235,14 +256,21 @@ public class CompareImgTooltip extends TitleTooltip
 		return (obtained < 0 ? "?" : String.valueOf(obtained)) + "/" + total;
 	}
 
-	private static String formatRank(int rank)
+	private boolean showRankLine()
 	{
+		return blueRankTracked || redRankTracked;
+	}
+
+	private static String formatRank(int rank, boolean rankTracked)
+	{
+		if (!rankTracked)
+		{
+			return "--";
+		}
 		return rank > 0 ? "#" + String.format("%,d", rank) : "Unranked";
 	}
 
-	// ------------------------------------------------------------------
-	// Sizing
-	// ------------------------------------------------------------------
+	// Sizing.
 
 	@Override
 	public Dimension getPreferredSize()
@@ -251,15 +279,19 @@ public class CompareImgTooltip extends TitleTooltip
 		FontMetrics nfm = getFontMetrics(getTitleFont());
 		FontMetrics sfm = getFontMetrics(FontManager.getRunescapeSmallFont());
 
-		// Header width from title and dual-value lines
+		// Header width from title and dual-value lines.
 		int titleW = getTitle() != null ? nfm.stringWidth(getTitle()) : 0;
 
 		String obtLine = "Obtained: " + formatObtained(blueObtained, blueTotal)
-			+ " | " + formatObtained(redObtained, redTotal);
-		String rnkLine = "Rank: " + formatRank(blueRank) + " | " + formatRank(redRank);
-		int headerMinWidth = Math.max(titleW,
-			Math.max(sfm.stringWidth(obtLine), sfm.stringWidth(rnkLine)))
-			+ getHeaderRightPad();
+			+ CHROME_SEPARATOR + formatObtained(redObtained, redTotal);
+		int headerLineW = sfm.stringWidth(obtLine);
+		if (showRankLine())
+		{
+			String rnkLine = "Rank: " + formatRank(blueRank, blueRankTracked)
+				+ CHROME_SEPARATOR + formatRank(redRank, redRankTracked);
+			headerLineW = Math.max(headerLineW, sfm.stringWidth(rnkLine));
+		}
+		int headerMinWidth = Math.max(titleW, headerLineW);
 
 		Dimension contentSize = getContentSize(Math.max(headerMinWidth, 1));
 		int contentWidth = Math.max(headerMinWidth, contentSize.width);
@@ -272,6 +304,11 @@ public class CompareImgTooltip extends TitleTooltip
 	@Override
 	protected Dimension getContentSize(int availableWidth)
 	{
+		if (!showSpriteGrids)
+		{
+			return new Dimension(0, 0);
+		}
+
 		int cellSize = SPRITE_SIZE + PADDING;
 		int cols = Math.max(GRID_COLS, (availableWidth + PADDING) / cellSize);
 		int itemCount = allItemIds != null ? allItemIds.size() : 0;
@@ -280,8 +317,8 @@ public class CompareImgTooltip extends TitleTooltip
 
 		int h = 0;
 
-		// Blue section
-		h += sfm.getHeight() + 2; // player name
+		// Blue section.
+		h += sfm.getHeight() + 2;
 		if (blueHasData && itemCount > 0)
 		{
 			int rows = (itemCount + cols - 1) / cols;
@@ -289,13 +326,13 @@ public class CompareImgTooltip extends TitleTooltip
 		}
 		else
 		{
-			h += sfm.getHeight(); // notice text
+			h += sfm.getHeight();
 		}
 
 		h += SECTION_GAP;
 
-		// Red section
-		h += sfm.getHeight() + 2; // player name
+		// Red section.
+		h += sfm.getHeight() + 2;
 		if (redHasData && itemCount > 0)
 		{
 			int rows = (itemCount + cols - 1) / cols;
@@ -303,21 +340,19 @@ public class CompareImgTooltip extends TitleTooltip
 		}
 		else
 		{
-			h += sfm.getHeight(); // notice text
+			h += sfm.getHeight();
 		}
 
 		int gridWidth = cols * cellSize - PADDING;
 		return new Dimension(gridWidth, h);
 	}
 
-	// ------------------------------------------------------------------
-	// Body: blue grid on top, red grid on bottom
-	// ------------------------------------------------------------------
+	// Painting.
 
 	@Override
 	protected void paintBody(Graphics2D g2, int w, int h, int startY)
 	{
-		if (getTitle() == null)
+		if (getTitle() == null || !showSpriteGrids)
 		{
 			return;
 		}
@@ -331,7 +366,7 @@ public class CompareImgTooltip extends TitleTooltip
 		FontMetrics sfm = g2.getFontMetrics(NAME_FONT);
 		int y = startY;
 
-		// Blue player section
+		// Blue section.
 		g2.setFont(NAME_FONT);
 		g2.setColor(COMPARE_BLUE);
 		g2.drawString(bluePlayerName != null ? bluePlayerName : "Blue", inset, y + sfm.getAscent());
@@ -339,19 +374,19 @@ public class CompareImgTooltip extends TitleTooltip
 
 		if (blueHasData && sprites != null && allItemIds != null && !allItemIds.isEmpty())
 		{
-			y = paintGrid(g2, gridOffsetX, y, cols, cellSize, blueObtainedIds);
+			y = paintGrid(g2, gridOffsetX, y, cols, cellSize, blueObtainedIds, blueObtainedCounts);
 		}
 		else
 		{
 			g2.setFont(NAME_FONT);
 			g2.setColor(NOTICE_COLOR);
-			g2.drawString("No TempleOSRS Data", inset, y + sfm.getAscent());
+			g2.drawString("No Collection Log Data", inset, y + sfm.getAscent());
 			y += sfm.getHeight();
 		}
 
 		y += SECTION_GAP;
 
-		// Red player section
+		// Red section.
 		g2.setFont(NAME_FONT);
 		g2.setColor(COMPARE_RED);
 		g2.drawString(redPlayerName != null ? redPlayerName : "Red", inset, y + sfm.getAscent());
@@ -359,22 +394,26 @@ public class CompareImgTooltip extends TitleTooltip
 
 		if (redHasData && sprites != null && allItemIds != null && !allItemIds.isEmpty())
 		{
-			paintGrid(g2, gridOffsetX, y, cols, cellSize, redObtainedIds);
+			y = paintGrid(g2, gridOffsetX, y, cols, cellSize, redObtainedIds, redObtainedCounts);
 		}
 		else
 		{
 			g2.setFont(NAME_FONT);
 			g2.setColor(NOTICE_COLOR);
-			g2.drawString("No TempleOSRS Data", inset, y + sfm.getAscent());
+			g2.drawString("No Collection Log Data", inset, y + sfm.getAscent());
+			y += sfm.getHeight();
 		}
+
 	}
 
 	/**
 	 * Paint a sprite grid for one player. Returns the Y after the last row.
 	 */
 	private int paintGrid(Graphics2D g2, int gridOffsetX, int y, int cols,
-		int cellSize, Set<Integer> obtainedIds)
+		int cellSize, Set<Integer> obtainedIds, Map<Integer, Integer> obtainedCounts)
 	{
+		g2.setFont(FontManager.getRunescapeSmallFont());
+
 		for (int i = 0; i < allItemIds.size(); i++)
 		{
 			int col = i % cols;

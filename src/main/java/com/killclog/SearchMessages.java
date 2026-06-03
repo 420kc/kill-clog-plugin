@@ -2,7 +2,7 @@ package com.killclog;
 
 import java.awt.Color;
 
-/** Search status message pools — searching, not-found, and self-lookup flavor text. */
+/** Search status message pools: lookup, comparison, not-found, and self flavor text. */
 final class SearchMessages
 {
 	private SearchMessages()
@@ -72,7 +72,6 @@ final class SearchMessages
 		"%s remains uncontested",
 	};
 
-	/** Shown when blue = red and neither is self. */
 	static final String[] COMPARE_MIRROR = {
 		"%s vs %s. Bold.",
 		"%s's rival: %s",
@@ -80,7 +79,6 @@ final class SearchMessages
 		"%s challenges... %s?",
 	};
 
-	/** Shown when blue = red = self. */
 	static final String[] COMPARE_SELF_MIRROR = {
 		"You vs you. Classic.",
 		"%s's rival: %s",
@@ -88,7 +86,6 @@ final class SearchMessages
 		"The real fight, %s",
 	};
 
-	/** Shown when the blue (primary) player is self. %s = rival name, or two %s = blue + red. */
 	static final String[] COMPARE_SELF_BLUE = {
 		"Good luck vs %s!",
 		"%s vs %s: FIGHT!",
@@ -97,7 +94,6 @@ final class SearchMessages
 		"You vs %s. Let's see it.",
 	};
 
-	/** Shown when the red (compare) player is self. %s = blue name, or two %s = blue + red. */
 	static final String[] COMPARE_SELF_RED = {
 		"Challenging yourself?",
 		"Can't escape you, %s",

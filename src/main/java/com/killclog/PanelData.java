@@ -5,7 +5,7 @@ import java.util.Map;
 import net.runelite.client.hiscore.HiscoreSkill;
 
 /**
- * Static reference data for the panel grid — boss list, clue tiers, item IDs, category mappings.
+ * Static reference data for the panel grid.
  * Pure constants, no state.
  */
 final class PanelData
@@ -17,7 +17,7 @@ final class PanelData
 	static final int MAX_TOTAL_LEVEL = 2376;
 
 	// Boss display order matching vanilla RuneLite hiscores.
-	// Must contain the same bosses as BOSS_NAMES in HiscoreService (order differs — this is display order, not CSV order).
+	// Same bosses as HiscoreService.BOSS_NAMES. Display order differs from CSV order.
 	// New boss? Add HiscoreSkill.BOSS_NAME here alphabetically once RuneLite adds the enum.
 	// See BOSS_NAMES comment in HiscoreService for the full update playbook.
 	static final HiscoreSkill[] BOSSES = {
@@ -116,8 +116,23 @@ final class PanelData
 	static final int[] CLUE_TIER_ITEM_IDS = {23182, 2677, 2801, 2722, 12073, 19835};
 	static final int THIRD_AGE_ITEM_ID = 10348;
 	static final int GILDED_ITEM_ID = 3481;
+	static final int THIRD_AGE_RING_ITEM_ID = 23185;
+	static final int[] THIRD_AGE_ITEMS = {
+		10350, 10348, 10346, 23242, 10352,
+		10334, 10330, 10332, 10336,
+		10342, 10338, 10340, 10344,
+		12426, 12422, 12437, 12424,
+		23336, 23339, 23345, 23342,
+		20014, 20011, THIRD_AGE_RING_ITEM_ID
+	};
+	static final int[] GILDED_ITEMS = {
+		3486, 3481, 3483, 3485, 3488,
+		20146, 20149, 20152, 20155, 20158, 20161,
+		12389, 12391, 23258, 23261, 23264, 23267,
+		23276, 23279, 23282
+	};
 
-	// Native clog rare categories — hardcoded item IDs (Temple doesn't have these)
+	// Native clog rare categories. Public provider APIs do not provide these.
 	static final String RARE_HARD = "hard_rare";
 	static final String RARE_ELITE = "elite_rare";
 	static final String RARE_MASTER = "master_rare";
@@ -148,13 +163,13 @@ final class PanelData
 	};
 
 	static final int[] MASTER_RARE_ITEMS = {
-		// All 3rd age (23)
+		// All 3rd age (24)
 		10350, 10348, 10346, 23242, 10352,
 		10334, 10330, 10332, 10336,
 		10342, 10338, 10340, 10344,
 		12426, 12422, 12437, 12424,
 		23336, 23339, 23345, 23342,
-		20014, 20011,
+		20014, 20011, THIRD_AGE_RING_ITEM_ID,
 		// All gilded (20)
 		3486, 3481, 3483, 3485, 3488,
 		20146, 20149, 20152, 20155, 20158, 20161,
@@ -164,7 +179,7 @@ final class PanelData
 		20059, 20017
 	};
 
-	// Clue tier -> Temple clog category
+	// Clue tier -> collection-log category key.
 	static final Map<HiscoreSkill, String> CLUE_CATEGORIES = new LinkedHashMap<>();
 	static
 	{
@@ -176,7 +191,7 @@ final class PanelData
 		CLUE_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_MASTER, "master_treasure_trails");
 	}
 
-	// Clog tier trophy item IDs — one per tier (bronze through gilded)
+	// Clog tier trophy item IDs, bronze through gilded.
 	static final int[] CLOG_TIER_ITEM_IDS = {
 		30579, 30581, 30583, 30585, 30587, 30589, 30591, 30593, 30595
 	};
@@ -188,4 +203,7 @@ final class PanelData
 		HiscoreSkill.BOUNTY_HUNTER_HUNTER,
 		HiscoreSkill.BOUNTY_HUNTER_ROGUE,
 	};
+
+	static final String GOTR_CATEGORY = "guardians_of_the_rift";
+	static final String RIFTS_CLOSED_ACTIVITY = "Rifts closed";
 }

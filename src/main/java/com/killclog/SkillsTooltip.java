@@ -14,7 +14,7 @@ import net.runelite.client.ui.FontManager;
 
 /**
  * 3x8 skill grid tooltip for the total level cell.
- * Header shows "Skill Summary" + optional Total EXP via TitleTooltip.
+ * Header shows "Skill Summary" + optional Total Exp via TitleTooltip.
  * Matches the in-game skills tab layout with icon + level per cell.
  */
 @Slf4j
@@ -26,6 +26,9 @@ public class SkillsTooltip extends TitleTooltip
 	private static final int ICON_TEXT_GAP = 3;
 	private static final int ROW_HEIGHT = 18;
 	private static final int COL_GAP = 8;
+	private static final int GOTR_SECTION_GAP = 5;
+	private static final int GOTR_ICON_GAP = 3;
+	private static final String RIFTS_LABEL = "Rifts: ";
 
 	private static final Color UNRANKED_COLOR = new Color(128, 128, 128);
 
@@ -43,7 +46,17 @@ public class SkillsTooltip extends TitleTooltip
 
 	private static final Map<Skill, BufferedImage> icons = new LinkedHashMap<>();
 
+	/** Package-private accessor so CompareSkillSummaryTooltip can reuse loaded icons. */
+	static Map<Skill, BufferedImage> getIcons()
+	{
+		return icons;
+	}
+
 	private HiscoreResult result;
+	private BufferedImage gotrIcon;
+	private int gotrRifts = -1;
+	private int gotrObtained = -1;
+	private int gotrTotal;
 
 	/**
 	 * Load skill icons from RuneLite's bundled resources.
@@ -77,8 +90,33 @@ public class SkillsTooltip extends TitleTooltip
 		setTitle("Skill Summary");
 		if (result != null && result.getTotalXp() > 0)
 		{
-			setSubtitle("Total EXP: ", String.format("%,d", result.getTotalXp()), Color.WHITE);
+			setSubtitle("Total Exp: ", String.format("%,d", result.getTotalXp()), Color.WHITE);
 		}
+	}
+
+	public void setGotr(ClogResult clogResult, BufferedImage icon, int riftsClosed)
+	{
+		this.gotrIcon = icon;
+		this.gotrRifts = riftsClosed;
+		int[] counts = ClogHelper.clogCounts(PanelData.GOTR_CATEGORY, clogResult);
+		if (counts != null)
+		{
+			this.gotrObtained = counts[0];
+			this.gotrTotal = counts[1];
+		}
+	}
+
+	static String formatCompactXp(long totalXp)
+	{
+		if (totalXp <= 0)
+		{
+			return "--";
+		}
+		if (totalXp >= 1_000_000_000L)
+		{
+			return String.format(java.util.Locale.US, "%.2fB", totalXp / 1_000_000_000.0);
+		}
+		return Math.round(totalXp / 1_000_000.0) + "M";
 	}
 
 	@Override
@@ -87,9 +125,19 @@ public class SkillsTooltip extends TitleTooltip
 		FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
 		int maxLevelWidth = Math.max(fm.stringWidth("99"), fm.stringWidth("--"));
 		int cellWidth = ICON_SIZE + ICON_TEXT_GAP + maxLevelWidth;
-		int totalWidth = cellWidth * COLS + COL_GAP * (COLS - 1);
-		int totalHeight = ROW_HEIGHT * ROWS;
+		int gridWidth = cellWidth * COLS + COL_GAP * (COLS - 1);
+		int totalWidth = Math.max(gridWidth, measureGotrWidth(fm));
+		int totalHeight = ROW_HEIGHT * ROWS + GOTR_SECTION_GAP + LINE_HEIGHT;
 		return new Dimension(totalWidth, totalHeight);
+	}
+
+	private int measureGotrWidth(FontMetrics fm)
+	{
+		int iconW = gotrIcon != null ? gotrIcon.getWidth() + GOTR_ICON_GAP : 0;
+		return iconW
+			+ fm.stringWidth(RIFTS_LABEL)
+			+ fm.stringWidth(riftsText(gotrRifts))
+			+ gotrProgressWidth(fm, gotrObtained, gotrTotal);
 	}
 
 	@Override
@@ -129,5 +177,50 @@ public class SkillsTooltip extends TitleTooltip
 				g2.drawString(text, textX, textY);
 			}
 		}
+
+		paintGotr(g2, fm, inset, w, startY + ROW_HEIGHT * ROWS + GOTR_SECTION_GAP);
+	}
+
+	private void paintGotr(Graphics2D g2, FontMetrics fm, int inset, int w, int y)
+	{
+		String rifts = riftsText(gotrRifts);
+		int iconW = gotrIcon != null ? gotrIcon.getWidth() + GOTR_ICON_GAP : 0;
+		int rowW = iconW
+			+ fm.stringWidth(RIFTS_LABEL)
+			+ fm.stringWidth(rifts)
+			+ gotrProgressWidth(fm, gotrObtained, gotrTotal);
+		int x = inset + (w - 2 * inset - rowW) / 2;
+		int textY = y + fm.getAscent();
+
+		if (gotrIcon != null)
+		{
+			int iconY = y + (LINE_HEIGHT - gotrIcon.getHeight()) / 2;
+			g2.drawImage(gotrIcon, x, iconY, null);
+			x += gotrIcon.getWidth() + GOTR_ICON_GAP;
+		}
+
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString(RIFTS_LABEL, x, textY);
+		x += fm.stringWidth(RIFTS_LABEL);
+		g2.setColor(Color.WHITE);
+		g2.drawString(rifts, x, textY);
+		x += fm.stringWidth(rifts);
+		paintGotrProgress(g2, fm, x, textY, gotrObtained, gotrTotal);
+	}
+
+	private static String riftsText(int rifts)
+	{
+		return rifts >= 0 ? String.format("%,d", rifts) : "--";
+	}
+
+	private static int gotrProgressWidth(FontMetrics fm, int obtained, int total)
+	{
+		return wrappedProgressCountWidthOrDash(fm, obtained, total);
+	}
+
+	private static int paintGotrProgress(Graphics2D g2, FontMetrics fm, int x, int y,
+		int obtained, int total)
+	{
+		return paintWrappedProgressCountOrDash(g2, fm, x, y, obtained, total, UNRANKED_COLOR);
 	}
 }

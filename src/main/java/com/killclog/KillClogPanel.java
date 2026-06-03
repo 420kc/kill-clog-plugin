@@ -11,12 +11,18 @@ import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
 import java.awt.RenderingHints;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +35,7 @@ import javax.swing.AbstractButton;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
@@ -37,6 +44,7 @@ import javax.swing.JToolTip;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.Client;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
@@ -65,8 +73,9 @@ public class KillClogPanel extends PluginPanel
 	private static final Color HAMBURGER_HOVER_COLOR = new Color(96, 96, 96);
 	private static final String SYNC_NOTICE = "Open Collection Log and click";
 	private static final int SYNC_ICON_SIZE = 12;
+	private static final int ITEM_NAME_RESOLVE_BATCH_SIZE = 48;
 
-	/** Info bar text color — only applies when highlighter is active AND clog data exists. */
+	/** Info bar text color - only applies when highlighter is active AND clog data exists. */
 	@Override
 	public Color getInfoColor()
 	{
@@ -86,30 +95,44 @@ public class KillClogPanel extends PluginPanel
 
 	private final HiscoreService hiscoreService;
 	private final ClogService clogService;
+	private final RuneProfileService runeProfileService;
 	private final KillClogConfig config;
 	private final ConfigManager configManager;
 	private final SpriteManager spriteManager;
 	private final ItemManager itemManager;
 	private final ClientThread clientThread;
+	private final AccountBadgeResolver accountBadges;
 	private final TooltipDataBuilder tooltipDataBuilder;
 	private ProgressHighlighter highlighter;
+	private JPanel infoRow;
 
 	private final JLabel searchStatus = new JLabel(" ");
 	private final IconTextField searchBar = new IconTextField();
+	private final Map<CombatAchievementReward, BufferedImage> caRewardCache = new EnumMap<>(CombatAchievementReward.class);
+	private final Set<CombatAchievementReward> caRewardLoading = EnumSet.noneOf(CombatAchievementReward.class);
+	private final Set<ClogResult> itemNameResolutions = Collections.synchronizedSet(
+		Collections.newSetFromMap(new IdentityHashMap<>()));
 	private final JLabel playerName = new JLabel(" ")
 	{
 		@Override
 		public JToolTip createToolTip()
 		{
+			if (comparison.isComparisonMode() && comparison.getCompareHiscoreResult() != null)
+			{
+				return buildComparePlayerSummary(this);
+			}
+			// Single player: standard player summary
 			SummaryTooltip tip = new SummaryTooltip();
 			tip.setComponent(this);
 			String name = playerName.getText().trim();
+			AccountType type = displayAccountType(lookupSession.getHiscoreResult(),
+				lookupSession.getClogResult(), lookupSession.getCurrentLookupRsn());
 			tip.setData(
 				name.isEmpty() ? "Player" : name,
 				lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getOverallRank() : -1,
 				getCapeImage(),
-				LookupQueries.getAccountBadge(lookupSession.getHiscoreResult()),
-				LookupQueries.getAccountLabel(lookupSession.getHiscoreResult()),
+				accountBadge(type),
+				accountLabel(type),
 				LookupQueries.getPrestige(lookupSession.getHiscoreResult())
 			);
 			if (lookupSession.getClogResult() != null)
@@ -133,6 +156,13 @@ public class KillClogPanel extends PluginPanel
 		@Override
 		public JToolTip createToolTip()
 		{
+			// Comparison mode: this label is the red RSN.
+			if (comparison.isComparisonMode() && comparison.getCompareHiscoreResult() != null)
+			{
+				return buildComparePlayerSummary(this);
+			}
+
+			// Single player: standard clog summary
 			ClogSummaryTooltip tip = new ClogSummaryTooltip();
 			tip.setComponent(this);
 			if (lookupSession.getClogResult() != null)
@@ -165,7 +195,7 @@ public class KillClogPanel extends PluginPanel
 				else
 				{
 					tip.setNotice(lookupSession.getHiscoreResult() != null
-						? "No TempleOSRS Data" : "Nothing to see here! (Search for a player)");
+						? "No Collection Log Data" : "Nothing to see here! (Search for a player)");
 				}
 			}
 			return tip;
@@ -182,10 +212,22 @@ public class KillClogPanel extends PluginPanel
 	private BufferedImage maxCapeTip;
 	private BufferedImage infernalCapeTip;
 	private BufferedImage infernalMaxCapeTip;
+	private BufferedImage riftsClosedIcon;
 	private final Map<String, ImageIcon> clogTierIcons = new LinkedHashMap<>();
-	private final Map<String, ImageIcon> clogTierIconsLarge = new LinkedHashMap<>();
 
-	private JLabel refreshLabel;
+	private JLabel compareLabel;
+	private ImageIcon compareIconDim;
+	private ImageIcon compareIconBright;
+	private ImageIcon searchIconDim;
+	private ImageIcon searchIconBright;
+	private boolean compareEntryMode;
+	private boolean compareIconHover;
+	private boolean searchRowHover;
+	private JTextField searchTextField;
+	private JPanel searchRow;
+	private JPanel clogTotalsBar;
+	private JLabel blueClogTotal;
+	private JLabel redClogTotal;
 	private BufferedImage syncNoticeIcon;
 	// Activities tray
 	private JLabel combatCell;
@@ -206,31 +248,34 @@ public class KillClogPanel extends PluginPanel
 
 	// Comparison mode widgets (state fields all live on the controller)
 
-	// 420 mode — unlocked when the 420 KC plugin is loaded
+	// 420 mode - unlocked when the 420 KC plugin is loaded
 	private NameAutocompleter nameAutocompleter;
 	private FourTwentyMode fourTwentyMode = FourTwentyMode.OFF;
 	private boolean has420Plugin;
 
 	@Inject
 	public KillClogPanel(HiscoreService hiscoreService, ClogService clogService,
+		RuneProfileService runeProfileService,
 		KillClogConfig config, ConfigManager configManager,
 		SpriteManager spriteManager,
 		ItemManager itemManager, ClientThread clientThread,
-		SkillIconManager skillIconManager)
+		SkillIconManager skillIconManager, Client client)
 	{
 		super(true); // wrap in JScrollPane
 		this.hiscoreService = hiscoreService;
 		this.clogService = clogService;
+		this.runeProfileService = runeProfileService;
 		this.config = config;
 		this.configManager = configManager;
 		this.spriteManager = spriteManager;
 		this.itemManager = itemManager;
 		this.clientThread = clientThread;
+		this.accountBadges = new AccountBadgeResolver(client);
 		this.tooltipDataBuilder = new TooltipDataBuilder(itemManager);
 		this.tooltipController = new TooltipController(config);
-		this.lookupSession = new LookupSession(hiscoreService, clogService, config, null, this);
-		this.comparison = new ComparisonController(hiscoreService, clogService, config, lookupSession,
-			itemManager, tooltipController, tooltipDataBuilder, this);
+		this.lookupSession = new LookupSession(hiscoreService, clogService, runeProfileService, config, null, this);
+		this.comparison = new ComparisonController(hiscoreService, clogService, runeProfileService,
+			lookupSession, itemManager, config, tooltipController, tooltipDataBuilder, this);
 		this.comparison.setRenderTarget(this);
 		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, clogService);
 		this.comparison.setCells(this.cells);
@@ -307,53 +352,7 @@ public class KillClogPanel extends PluginPanel
 			RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 		add(clogNotice, c);
 
-		// Compare toggle — split blue/red magnifying glass, hidden until a player is looked up
-		c.gridy++;
-		c.insets = new Insets(4, 0, 0, 0);
-		ImageIcon compareOff = new ImageIcon(ClogHelper.makeCompareIcon(ComparisonController.COMPARE_BLUE, ComparisonController.COMPARE_RED, 0.55f));
-		ImageIcon compareOn = new ImageIcon(ClogHelper.makeCompareIcon(ComparisonController.COMPARE_BLUE, ComparisonController.COMPARE_RED, 1.0f));
-		JLabel compareToggle = new JLabel(compareOff);
-		comparison.setCompareToggle(compareToggle);
-		compareToggle.setHorizontalAlignment(JLabel.CENTER);
-		compareToggle.setPreferredSize(new Dimension(15, 15));
-		compareToggle.setOpaque(false);
-		compareToggle.setToolTipText("Compare Player");
-		compareToggle.setVisible(false);
-		compareToggle.addMouseListener(new MouseAdapter()
-		{
-			@Override
-			public void mousePressed(MouseEvent e)
-			{
-				boolean show = !comparison.getComparePanel().isVisible();
-				comparison.getComparePanel().setVisible(show);
-				if (!show && comparison.isComparisonMode())
-				{
-					comparison.exit();
-				}
-				revalidate();
-			}
-
-			@Override
-			public void mouseEntered(MouseEvent e)
-			{
-				compareToggle.setIcon(compareOn);
-			}
-
-			@Override
-			public void mouseExited(MouseEvent e)
-			{
-				compareToggle.setIcon(compareOff);
-			}
-		});
-		add(compareToggle, c);
-
-		// Compare search bar — hidden until toggle is clicked
-		c.gridy++;
-		c.insets = new Insets(2, 0, 0, 0);
-		JPanel comparePanel = buildCompareSearch();
-		comparison.setComparePanel(comparePanel);
-		comparePanel.setVisible(false);
-		add(comparePanel, c);
+		// Compare entry controls live in the search row.
 
 		JScrollPane sp = getScrollPane();
 		if (sp != null)
@@ -373,9 +372,7 @@ public class KillClogPanel extends PluginPanel
 			PanelData.NAME_OVERRIDES, PanelData.CLUE_CATEGORIES, config);
 	}
 
-	// -------------------------------------------------------------------------
-	// Panel construction
-	// -------------------------------------------------------------------------
+	// Panel construction.
 
 	private JPanel buildSearchPanel()
 	{
@@ -384,7 +381,7 @@ public class KillClogPanel extends PluginPanel
 		panel.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		panel.setBorder(null);
 
-		// Search status — lives above the search bar, never in the info bar
+		// Search status lives above the search bar, never in the summary bar.
 		searchStatus.setFont(FontManager.getRunescapeSmallFont());
 		searchStatus.setForeground(TEXT_DIM);
 		searchStatus.setAlignmentX(Component.LEFT_ALIGNMENT);
@@ -398,7 +395,17 @@ public class KillClogPanel extends PluginPanel
 		searchBar.setHoverBackgroundColor(ColorScheme.DARK_GRAY_HOVER_COLOR);
 		searchBar.setPreferredSize(new Dimension(0, 30));
 		searchBar.setAlignmentX(Component.LEFT_ALIGNMENT);
-		searchBar.addActionListener(e -> doLookup());
+		searchBar.addActionListener(e ->
+		{
+			if (compareEntryMode)
+			{
+				doCompareLookupFromSearchBar();
+			}
+			else
+			{
+				doLookup();
+			}
+		});
 
 		ClogHelper.styleSearchBar(searchBar);
 		for (Component c : searchBar.getComponents())
@@ -407,6 +414,7 @@ public class KillClogPanel extends PluginPanel
 			{
 				JTextField tf =
 					((FlatTextField) c).getTextField();
+				searchTextField = tf;
 				tf.setFont(FontManager.getRunescapeFont());
 				tf.setForeground(Color.WHITE);
 				tf.setCaretColor(Color.WHITE);
@@ -418,42 +426,50 @@ public class KillClogPanel extends PluginPanel
 				ClogHelper.styleSearchBar((Container) c);
 			}
 		}
-		// Refresh icon floats over the search bar's right edge.
-		// Icon = null when not hovered (invisible), shown on search area hover.
-		refreshLabel = new JLabel();
-		ImageIcon refreshOff = new ImageIcon(ClogHelper.makeRefreshIcon(HAMBURGER_COLOR));
-		ImageIcon refreshOn = new ImageIcon(ClogHelper.makeRefreshIcon(HAMBURGER_HOVER_COLOR));
-		refreshLabel.setHorizontalAlignment(JLabel.CENTER);
-		refreshLabel.setVerticalAlignment(JLabel.CENTER);
-		refreshLabel.setOpaque(false);
-		refreshLabel.setVisible(false);
+		// Compare icon sits beside the search field and shares its active background.
+		compareLabel = new JLabel();
+		compareIconDim = new ImageIcon(ClogHelper.makeCompareIcon(
+			ComparisonController.COMPARE_BLUE, ComparisonController.COMPARE_RED, 0.55f));
+		compareIconBright = new ImageIcon(ClogHelper.makeCompareIcon(
+			ComparisonController.COMPARE_BLUE, ComparisonController.COMPARE_RED, 1.0f));
+		searchIconDim = new ImageIcon(ClogHelper.makeSearchIcon(TEXT_DIM, 0.70f));
+		searchIconBright = new ImageIcon(ClogHelper.makeSearchIcon(TEXT_DIM, 1.0f));
+		compareLabel.setIcon(compareIconDim);
+		compareLabel.setHorizontalAlignment(JLabel.CENTER);
+		compareLabel.setVerticalAlignment(JLabel.CENTER);
+		compareLabel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		compareLabel.setOpaque(true);
+		// Right inset mirrors the search glass's left inset: the 24px glass glyph
+		// sits 8px in from the bar's left edge, so the compare glyph sits 8px in from the right.
+		compareLabel.setBorder(new EmptyBorder(0, 0, 0, 7));
+		compareLabel.setVisible(false);
+		compareLabel.setPreferredSize(new Dimension(22, 30));
 
-		JPanel searchRow = new JPanel(null)
+		// searchRow: [searchBar (fill)] [compareLabel (fixed right, flush)]
+		searchRow = new JPanel(null)
 		{
 			@Override
 			public void doLayout()
 			{
 				int w = getWidth(), h = getHeight();
-				searchBar.setBounds(0, 0, w, h);
-				refreshLabel.setBounds(w - 22, 0, 22, h);
+				boolean showCompare = compareLabel.isVisible();
+				int compareW = showCompare ? 22 : 0;
+				searchBar.setBounds(0, 0, w - compareW, h);
+				compareLabel.setBounds(w - compareW, 0, compareW, h);
 			}
 		};
 		searchRow.setAlignmentX(Component.LEFT_ALIGNMENT);
 		searchRow.setPreferredSize(new Dimension(0, 30));
 		searchRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-		searchRow.add(refreshLabel);
+		searchRow.setOpaque(false);
+		searchRow.add(compareLabel);
 		searchRow.add(searchBar);
-
-		// searchBar hover → show dim refresh icon. Double-click on the magnifying-glass icon → look up self.
-		searchBar.addMouseListener(new MouseAdapter()
+		MouseAdapter searchRowHoverSync = new MouseAdapter()
 		{
 			@Override
 			public void mouseEntered(MouseEvent e)
 			{
-				if (refreshLabel.isVisible())
-				{
-					refreshLabel.setIcon(refreshOff);
-				}
+				setSearchRowHover(true);
 			}
 
 			@Override
@@ -461,17 +477,22 @@ public class KillClogPanel extends PluginPanel
 			{
 				SwingUtilities.invokeLater(() ->
 				{
-					if (searchRow.getMousePosition(true) == null)
+					if (!isMouseInsideSearchRow())
 					{
-						refreshLabel.setIcon(null);
+						setSearchRowHover(false);
 					}
 				});
 			}
+		};
+		installSearchRowHoverSync(searchRow, searchRowHoverSync);
 
+		// Double-click on the magnifying-glass icon -> look up self.
+		searchBar.addMouseListener(new MouseAdapter()
+		{
 			@Override
 			public void mouseClicked(MouseEvent e)
 			{
-				// Match vanilla Hiscores: double-click the magnifying-glass icon to look up the logged-in player.
+				if (compareEntryMode) return;
 				if (e.getClickCount() == 2 && e.getX() < 25 && localRsn != null && !localRsn.isEmpty())
 				{
 					searchBar.setText(localRsn);
@@ -480,50 +501,152 @@ public class KillClogPanel extends PluginPanel
 			}
 		});
 
-		// refreshLabel hover → brighten, click → re-lookup
-		refreshLabel.addMouseListener(new MouseAdapter()
+		// compareLabel: always-visible dimmed icon, brightens on hover, click toggles compare entry
+		compareLabel.addMouseListener(new MouseAdapter()
 		{
 			@Override
 			public void mousePressed(MouseEvent e)
 			{
-				String name = playerName.getText().trim();
-				if (!name.isEmpty())
-				{
-					searchBar.setText(name);
-					doLookup();
-				}
+				toggleCompareEntry();
 			}
 
 			@Override
 			public void mouseEntered(MouseEvent e)
 			{
-				refreshLabel.setIcon(refreshOn);
+				compareIconHover = true;
+				setSearchRowHover(true);
+				updateCompareIcon();
 			}
 
 			@Override
 			public void mouseExited(MouseEvent e)
 			{
+				compareIconHover = false;
+				updateCompareIcon();
 				SwingUtilities.invokeLater(() ->
 				{
-					if (searchRow.getMousePosition(true) != null)
+					if (!isMouseInsideSearchRow())
 					{
-						refreshLabel.setIcon(refreshOff);
-					}
-					else
-					{
-						refreshLabel.setIcon(null);
+						setSearchRowHover(false);
 					}
 				});
 			}
 		});
 
+		// Comparison clog totals sit above the search input. Search status stays separate.
+		// Blue player left, red player right, each with a tier icon.
+		clogTotalsBar = new JPanel(new GridBagLayout())
+		{
+			@Override
+			public JToolTip createToolTip()
+			{
+				if (!comparison.isComparisonMode())
+				{
+					return super.createToolTip();
+				}
+				return buildCompareClogSummary(this);
+			}
+		};
+		clogTotalsBar.setOpaque(false);
+		clogTotalsBar.setAlignmentX(Component.LEFT_ALIGNMENT);
+		clogTotalsBar.setVisible(false);
+		blueClogTotal = new JLabel()
+		{
+			@Override
+			public JToolTip createToolTip()
+			{
+				if (!comparison.isComparisonMode())
+				{
+					return super.createToolTip();
+				}
+				return buildCompareClogSummary(clogTotalsBar);
+			}
+		};
+		blueClogTotal.setFont(FontManager.getRunescapeSmallFont());
+		blueClogTotal.setForeground(ComparisonController.COMPARE_BLUE);
+		blueClogTotal.setHorizontalAlignment(JLabel.LEFT);
+		blueClogTotal.setIconTextGap(3);
+		blueClogTotal.putClientProperty(
+			RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+		redClogTotal = new JLabel()
+		{
+			@Override
+			public JToolTip createToolTip()
+			{
+				if (!comparison.isComparisonMode())
+				{
+					return super.createToolTip();
+				}
+				return buildCompareClogSummary(clogTotalsBar);
+			}
+		};
+		redClogTotal.setFont(FontManager.getRunescapeSmallFont());
+		redClogTotal.setForeground(ComparisonController.COMPARE_RED);
+		redClogTotal.setHorizontalAlignment(JLabel.RIGHT);
+		redClogTotal.setIconTextGap(3);
+		redClogTotal.putClientProperty(
+			RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+		GridBagConstraints ctbc = new GridBagConstraints();
+		ctbc.gridy = 0;
+		ctbc.fill = GridBagConstraints.HORIZONTAL;
+		ctbc.gridx = 0;
+		ctbc.weightx = 1.0;
+		ctbc.anchor = GridBagConstraints.WEST;
+		clogTotalsBar.add(blueClogTotal, ctbc);
+		ctbc.gridx = 1;
+		ctbc.anchor = GridBagConstraints.EAST;
+		clogTotalsBar.add(redClogTotal, ctbc);
+		clogTotalsBar.setToolTipText(" ");
+		blueClogTotal.setToolTipText(" ");
+		redClogTotal.setToolTipText(" ");
+		MouseAdapter clogTotalsClickHandler = new MouseAdapter()
+		{
+			@Override
+			public void mousePressed(MouseEvent e)
+			{
+				if (config.tooltipMode() == TooltipMode.CLICK && clogTotalsBar.getToolTipText() != null)
+				{
+					tooltipController.showClickTooltip(clogTotalsBar, clogTotalsBar);
+				}
+			}
+		};
+		clogTotalsBar.addMouseListener(clogTotalsClickHandler);
+		blueClogTotal.addMouseListener(clogTotalsClickHandler);
+		redClogTotal.addMouseListener(clogTotalsClickHandler);
+		panel.add(clogTotalsBar);
+
 		panel.add(searchRow);
 		panel.add(Box.createVerticalStrut(4));
 
 		// Info bar: [badge+name LEFT] [hamburger CENTER] [tierIcon+clogCount RIGHT]
-		// GridBagLayout ensures playerName/clogInfoLabel fill remaining space
-		// while the hamburger always keeps its fixed center slot.
-		JPanel infoRow = new JPanel(new GridBagLayout());
+		infoRow = new JPanel(null)
+		{
+			@Override
+			public void doLayout()
+			{
+				if (getComponentCount() < 3)
+				{
+					return;
+				}
+
+				int width = getWidth();
+				int height = getHeight();
+				int gap = 4;
+				Component left = getComponent(0);
+				Component center = getComponent(1);
+				Component right = getComponent(2);
+				Dimension centerSize = center.getPreferredSize();
+				int centerW = centerSize.width;
+				int centerH = Math.min(height, centerSize.height);
+				int centerX = Math.max(0, (width - centerW) / 2);
+				int centerY = Math.max(0, (height - centerH) / 2);
+				int rightX = Math.min(width, centerX + centerW + gap);
+
+				left.setBounds(0, 0, Math.max(0, centerX - gap), height);
+				center.setBounds(centerX, centerY, centerW, centerH);
+				right.setBounds(rightX, 0, Math.max(0, width - rightX), height);
+			}
+		};
 		infoRow.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		infoRow.setAlignmentX(Component.LEFT_ALIGNMENT);
 		infoRow.setPreferredSize(new Dimension(0, 18));
@@ -531,15 +654,13 @@ public class KillClogPanel extends PluginPanel
 		configureBarLabel(playerName, JLabel.LEFT);
 		playerName.setBorder(new EmptyBorder(0, 4, 0, 0));
 		playerName.setMinimumSize(new Dimension(0, 0));
-		playerName.setPreferredSize(new Dimension(0, 18));
 
 		configureBarLabel(clogInfoLabel, JLabel.RIGHT);
 		clogInfoLabel.setBorder(new EmptyBorder(0, 0, 0, 4));
 		clogInfoLabel.setMinimumSize(new Dimension(0, 0));
-		clogInfoLabel.setPreferredSize(new Dimension(0, 18));
 
 		// Info bar labels use click-to-show in click mode (same as boss cells).
-		// No special hover override — avoids ToolTipManager showImmediately cascade.
+		// No special hover override - avoids ToolTipManager showImmediately cascade.
 		MouseAdapter infoBarClickHandler = new MouseAdapter()
 		{
 			@Override
@@ -560,9 +681,13 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public void mousePressed(MouseEvent e)
 			{
+				// In comparison mode, show the comparison tooltip instead of exiting
 				if (comparison.isComparisonMode())
 				{
-					comparison.exit();
+					if (config.tooltipMode() == TooltipMode.CLICK && playerName.getToolTipText() != null)
+					{
+						tooltipController.showClickTooltip(playerName, infoRow);
+					}
 					return;
 				}
 				infoBarClickHandler.mousePressed(e);
@@ -573,9 +698,13 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public void mousePressed(MouseEvent e)
 			{
-				if (comparison.isComparisonMode() && comparison.getCompareRsn() != null)
+				// In comparison mode, show the comparison tooltip instead of swapping
+				if (comparison.isComparisonMode())
 				{
-					comparison.swapToComparePlayer();
+					if (config.tooltipMode() == TooltipMode.CLICK && clogInfoLabel.getToolTipText() != null)
+					{
+						tooltipController.showClickTooltip(clogInfoLabel, infoRow);
+					}
 					return;
 				}
 				infoBarClickHandler.mousePressed(e);
@@ -612,7 +741,7 @@ public class KillClogPanel extends PluginPanel
 		trayToggle.setIcon(hamburgerIcon);
 		trayToggle.setHorizontalAlignment(JLabel.CENTER);
 		trayToggle.setVerticalAlignment(JLabel.CENTER);
-		trayToggle.setPreferredSize(new Dimension(30, 18));
+		trayToggle.setPreferredSize(new Dimension(18, 18));
 		trayToggle.addMouseListener(new MouseAdapter()
 		{
 			@Override
@@ -634,39 +763,78 @@ public class KillClogPanel extends PluginPanel
 			}
 		});
 
-		GridBagConstraints ibc = new GridBagConstraints();
-		ibc.gridy = 0;
-		ibc.fill = GridBagConstraints.HORIZONTAL;
-		ibc.anchor = GridBagConstraints.WEST;
+		infoRow.add(playerName);
+		infoRow.add(trayToggle);
+		infoRow.add(clogInfoLabel);
 
-		// Left: player name — takes remaining space, clips long text
-		ibc.gridx = 0;
-		ibc.weightx = 1.0;
-		infoRow.add(playerName, ibc);
-
-		// Center: hamburger — fixed width, never displaced
-		ibc.gridx = 1;
-		ibc.weightx = 0;
-		ibc.fill = GridBagConstraints.NONE;
-		ibc.anchor = GridBagConstraints.CENTER;
-		infoRow.add(trayToggle, ibc);
-
-		// Right: clog info — takes remaining space, clips long text
-		ibc.gridx = 2;
-		ibc.weightx = 1.0;
-		ibc.fill = GridBagConstraints.HORIZONTAL;
-		ibc.anchor = GridBagConstraints.EAST;
-		infoRow.add(clogInfoLabel, ibc);
 		panel.add(infoRow);
 
 		loadRuntimeIcons();
 		return panel;
 	}
 
+	private void installSearchRowHoverSync(Component component, MouseAdapter adapter)
+	{
+		component.addMouseListener(adapter);
+		if (component instanceof Container)
+		{
+			for (Component child : ((Container) component).getComponents())
+			{
+				installSearchRowHoverSync(child, adapter);
+			}
+		}
+	}
+
+	private boolean isMouseInsideSearchRow()
+	{
+		return searchRow != null && searchRow.getMousePosition(true) != null;
+	}
+
+	private void setSearchRowHover(boolean hover)
+	{
+		searchRowHover = hover;
+		Color background = hover ? ColorScheme.DARK_GRAY_HOVER_COLOR : ColorScheme.DARKER_GRAY_COLOR;
+		searchBar.setBackground(background);
+		if (compareLabel != null)
+		{
+			compareLabel.setBackground(background);
+		}
+	}
+
+	private void updateCompareIcon()
+	{
+		if (compareLabel == null)
+		{
+			return;
+		}
+
+		boolean active = compareIconHover || compareEntryMode || comparison.isComparisonMode();
+		boolean comparing = compareEntryMode || comparison.isComparisonMode();
+		compareLabel.setIcon(comparing
+			? (compareIconHover ? searchIconBright : searchIconDim)
+			: (active ? compareIconBright : compareIconDim));
+		compareLabel.setBackground(searchRowHover
+			? ColorScheme.DARK_GRAY_HOVER_COLOR
+			: ColorScheme.DARKER_GRAY_COLOR);
+		if (!comparison.isCompareLookupInFlight())
+		{
+			if (comparing)
+			{
+				searchBar.setIcon(compareIconBright);
+			}
+			else
+			{
+				searchBar.setIcon(IconTextField.Icon.SEARCH);
+			}
+		}
+	}
+
 	private void configureBarLabel(JLabel label, int alignment)
 	{
 		label.setFont(FontManager.getRunescapeSmallFont());
 		label.setHorizontalAlignment(alignment);
+		label.setVerticalAlignment(JLabel.CENTER);
+		label.setVerticalTextPosition(JLabel.CENTER);
 		label.setIconTextGap(3);
 		label.putClientProperty(
 			RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
@@ -674,13 +842,22 @@ public class KillClogPanel extends PluginPanel
 
 	private void loadRuntimeIcons()
 	{
-		// Cape + clog tier icons via ItemManager (game items, loaded at runtime)
+		// Cape, CA reward, and clog tier icons via ItemManager.
 		clientThread.invokeLater(() ->
 		{
-			// Tooltip cape icons — native aspect ratio, taller
+			// Tooltip cape icons - native aspect ratio, taller
 			loadItemImage(13280, img -> maxCapeTip = img);
 			loadItemImage(21295, img -> infernalCapeTip = img);
 			loadItemImage(21284, img -> infernalMaxCapeTip = img);
+
+			for (CombatAchievementReward reward : CombatAchievementReward.values())
+			{
+				loadItemImage(reward.itemId(), img ->
+				{
+					caRewardCache.put(reward, img);
+					repaint();
+				});
+			}
 
 			for (int i = 0; i < ClogHelper.CLOG_TIERS.length; i++)
 			{
@@ -688,8 +865,6 @@ public class KillClogPanel extends PluginPanel
 				final int itemId = PanelData.CLOG_TIER_ITEM_IDS[i];
 				loadItemIcon(itemId, 13, 13, icon ->
 					clogTierIcons.put(tier, icon));
-				loadItemIcon(itemId, 18, 18, icon ->
-					clogTierIconsLarge.put(tier, icon));
 			}
 
 			// Clue summary tooltip icons: 1-6=tier scrolls, 7=Mimic (0=All loaded via spriteManager below)
@@ -715,6 +890,20 @@ public class KillClogPanel extends PluginPanel
 					if (sprite != null)
 					{
 						cells.getClueIcons()[0] = ImageUtil.resizeImage(
+							ImageUtil.resizeCanvas(sprite, 25, 25), 13, 13);
+					}
+				}));
+		}
+
+		int riftsSpriteId = HiscoreSkill.RIFTS_CLOSED.getSpriteId();
+		if (riftsSpriteId != -1)
+		{
+			spriteManager.getSpriteAsync(riftsSpriteId, 0, sprite ->
+				SwingUtilities.invokeLater(() ->
+				{
+					if (sprite != null)
+					{
+						riftsClosedIcon = ImageUtil.resizeImage(
 							ImageUtil.resizeCanvas(sprite, 25, 25), 13, 13);
 					}
 				}));
@@ -751,9 +940,7 @@ public class KillClogPanel extends PluginPanel
 		}
 	}
 
-	// -------------------------------------------------------------------------
-	// Activities tray
-	// -------------------------------------------------------------------------
+	// Activities tray.
 
 	private JPanel buildActivitiesGrid()
 	{
@@ -771,6 +958,78 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public JToolTip createToolTip()
 			{
+				JPanel parentCell = (JPanel) this.getParent();
+
+				// Comparison mode: side-by-side PvM summary
+				if (comparison.isComparisonMode() && comparison.getCompareHiscoreResult() != null)
+				{
+					ComparePvmSummaryTooltip cmp = new ComparePvmSummaryTooltip();
+					cmp.setComponent(this);
+					HiscoreResult blueHs = lookupSession.getHiscoreResult();
+					HiscoreResult redHs = comparison.getCompareHiscoreResult();
+					ClogResult blueClog = lookupSession.getClogResult();
+					ClogResult redClog = comparison.getCompareClogResult();
+					String blueName = rsn != null ? rsn : "--";
+					String redName = comparison.getCompareRsn() != null ? comparison.getCompareRsn() : "--";
+
+					cmp.setBlueData(blueName,
+						blueHs != null ? blueHs.getCombatLevel() : 0,
+						LookupQueries.sumBossKills(blueHs),
+						LookupQueries.countBossesWithKc(blueHs),
+						PanelData.BOSSES.length,
+						LookupQueries.getMostKilledBoss(blueHs),
+						LookupQueries.getMostKilledKc(blueHs));
+					cmp.setRedData(redName,
+						redHs.getCombatLevel(),
+						LookupQueries.sumBossKills(redHs),
+						LookupQueries.countBossesWithKc(redHs),
+						PanelData.BOSSES.length,
+						LookupQueries.getMostKilledBoss(redHs),
+						LookupQueries.getMostKilledKc(redHs));
+
+					if (blueClog != null)
+					{
+						cmp.setBlueCompletion(
+							LookupQueries.countBossesCompleted(cells.getTooltipDataMap(), cells.getBossLabels().keySet()),
+							LookupQueries.countBossesWithClog(cells.getTooltipDataMap(), cells.getBossLabels().keySet()));
+					}
+					if (redClog != null)
+					{
+						cmp.setRedCompletion(
+							LookupQueries.countBossesCompleted(comparison.getCompareTooltipDataMap(), cells.getBossLabels().keySet()),
+							LookupQueries.countBossesWithClog(comparison.getCompareTooltipDataMap(), cells.getBossLabels().keySet()));
+					}
+
+					CombatAchievementResult blueCa = lookupSession.getCaResult();
+					if (blueCa != null)
+					{
+						cmp.setBlueCa(blueCa, caRewardSprite(blueCa.getReward(), 14));
+					}
+					CombatAchievementResult redCa = comparison.getCompareCaResult();
+					if (redCa != null)
+					{
+						cmp.setRedCa(redCa, caRewardSprite(redCa.getReward(), 14));
+					}
+
+					cmp.setBlueMegarares(
+						LookupQueries.getClogItemCount(blueClog, "chambers_of_xeric", 20997),
+						LookupQueries.getClogItemCount(blueClog, "theatre_of_blood", 22486),
+						LookupQueries.getClogItemCount(blueClog, "tombs_of_amascut", 27277),
+						itemManager);
+					cmp.setRedMegarares(
+						LookupQueries.getClogItemCount(redClog, "chambers_of_xeric", 20997),
+						LookupQueries.getClogItemCount(redClog, "theatre_of_blood", 22486),
+						LookupQueries.getClogItemCount(redClog, "tombs_of_amascut", 27277),
+						itemManager);
+
+					if (blueHs != null) cmp.setBlueRaids(blueHs, blueClog);
+					cmp.setRedRaids(redHs, redClog);
+
+					tooltipController.keepTooltipOnHover(cmp, parentCell);
+					return cmp;
+				}
+
+				// Single player: standard PvM summary
 				PvmSummaryTooltip tip = new PvmSummaryTooltip();
 				tip.setComponent(this);
 				tip.setData(
@@ -797,7 +1056,11 @@ public class KillClogPanel extends PluginPanel
 				{
 					tip.setRaids(lookupSession.getHiscoreResult(), lookupSession.getClogResult());
 				}
-				JPanel parentCell = (JPanel) this.getParent();
+				CombatAchievementResult ca = lookupSession.getCaResult();
+				if (ca != null)
+				{
+					tip.setCombatAchievements(ca, caRewardSprite(ca.getReward(), 16));
+				}
 				tooltipController.keepTooltipOnHover(tip, parentCell);
 				return tip;
 			}
@@ -819,9 +1082,25 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public JToolTip createToolTip()
 			{
+				if (comparison.isComparisonMode() && comparison.getCompareHiscoreResult() != null)
+				{
+					CompareSkillSummaryTooltip cmp = new CompareSkillSummaryTooltip();
+					cmp.setComponent(this);
+					String blueName = rsn != null ? rsn : "--";
+					String redName = comparison.getCompareRsn() != null ? comparison.getCompareRsn() : "--";
+					cmp.setData(blueName, lookupSession.getHiscoreResult(),
+						redName, comparison.getCompareHiscoreResult());
+					cmp.setGotr(lookupSession.getClogResult(),
+						comparison.getCompareClogResult(), riftsClosedIcon);
+					return cmp;
+				}
 				SkillsTooltip tip = new SkillsTooltip();
 				tip.setComponent(this);
-				tip.setData(lookupSession.getHiscoreResult());
+				HiscoreResult result = lookupSession.getHiscoreResult();
+				tip.setData(result);
+				int rifts = result != null
+					? result.getActivityScore(PanelData.RIFTS_CLOSED_ACTIVITY) : -1;
+				tip.setGotr(lookupSession.getClogResult(), riftsClosedIcon, rifts);
 				return tip;
 			}
 		};
@@ -884,13 +1163,10 @@ public class KillClogPanel extends PluginPanel
 		return grid;
 	}
 
-	// -------------------------------------------------------------------------
-	// Cell factory helpers — extracted to eliminate duplication
-	// -------------------------------------------------------------------------
-
+	// Cell factory helpers.
 
 	/**
-	 * Build a sprite tooltip for a cell — always ImgTooltip, with contextual notice when no data.
+	 * Build a sprite tooltip for a cell - always ImgTooltip, with contextual notice when no data.
 	 *
 	 * @param owner     the label whose parent cell drives hover tint
 	 * @param data      tooltip data, or null for notice-only display
@@ -913,7 +1189,7 @@ public class KillClogPanel extends PluginPanel
 		{
 			tip.setTitle(data.name);
 			tip.setObtained(data.obtainedCount, data.totalItems);
-			if (data.rank > 0)
+			if (data.rankTracked && data.rank > 0)
 			{
 				tip.setRank(data.rank);
 			}
@@ -932,7 +1208,7 @@ public class KillClogPanel extends PluginPanel
 			else
 			{
 				tip.setNotice(lookupSession.getHiscoreResult() != null
-					? "No TempleOSRS Data"
+					? "No Collection Log Data"
 					: "Nothing to see here! (Search for a player)");
 			}
 		}
@@ -941,92 +1217,148 @@ public class KillClogPanel extends PluginPanel
 		return tip;
 	}
 
-	// -------------------------------------------------------------------------
-	// Comparison mode
-	// -------------------------------------------------------------------------
+	// Comparison mode.
 
-	private JPanel buildCompareSearch()
+	/**
+	 * Toggle the main search bar between normal lookup mode and comparison entry mode.
+	 * In compare entry mode the search row stays fixed-size and the icons carry the mode.
+	 * Enter triggers comparison lookup instead of a normal lookup.
+	 */
+	private void toggleCompareEntry()
 	{
-		JPanel panel = new JPanel();
-		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-		panel.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		panel.setBorder(null);
-
-		comparison.getCompareStatusLabel().setFont(FontManager.getRunescapeSmallFont());
-		comparison.getCompareStatusLabel().setForeground(TEXT_DIM);
-		comparison.getCompareStatusLabel().setAlignmentX(Component.LEFT_ALIGNMENT);
-		comparison.getCompareStatusLabel().setBorder(new EmptyBorder(0, 4, 2, 0));
-		comparison.getCompareStatusLabel().putClientProperty(
-			RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-		panel.add(comparison.getCompareStatusLabel());
-
-		comparison.getCompareSearchBar().setIcon(IconTextField.Icon.SEARCH);
-		comparison.getCompareSearchBar().setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		comparison.getCompareSearchBar().setHoverBackgroundColor(ColorScheme.DARK_GRAY_HOVER_COLOR);
-		comparison.getCompareSearchBar().setPreferredSize(new Dimension(0, 30));
-		comparison.getCompareSearchBar().setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
-		comparison.getCompareSearchBar().setAlignmentX(Component.LEFT_ALIGNMENT);
-		comparison.getCompareSearchBar().addActionListener(e -> comparison.doCompareLookup(localRsn));
-
-		ClogHelper.styleSearchBar(comparison.getCompareSearchBar());
-
-		// Recolor the clear X to match comparison red
-		recolorClearButton(comparison.getCompareSearchBar(), ComparisonController.COMPARE_RED);
-
-		// Style inner text field: red text, placeholder
-		for (Component c : comparison.getCompareSearchBar().getComponents())
+		if (compareEntryMode || comparison.isComparisonMode())
 		{
-			if (c instanceof FlatTextField)
-			{
-				JTextField tf = ((FlatTextField) c).getTextField();
-				comparison.setCompareTextField(tf);
-				tf.setFont(FontManager.getRunescapeFont());
-				tf.setCaretColor(ComparisonController.COMPARE_RED);
-				tf.putClientProperty(
-					RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+			exitCompareEntry();
+		}
+		else
+		{
+			enterCompareEntry();
+		}
+	}
 
-				// Placeholder via focus listeners
-				Color placeholderColor = ColorScheme.MEDIUM_GRAY_COLOR;
-				tf.setForeground(placeholderColor);
-				tf.setText(comparison.getComparePlaceholder());
-				tf.addFocusListener(new java.awt.event.FocusAdapter()
-				{
-					@Override
-					public void focusGained(java.awt.event.FocusEvent e)
-					{
-						if (tf.getText().equals(comparison.getComparePlaceholder()))
-						{
-							tf.setText("");
-						}
-						tf.setForeground(ComparisonController.COMPARE_RED);
-					}
+	private void enterCompareEntry()
+	{
+		compareEntryMode = true;
+		updateCompareIcon();
 
-					@Override
-					public void focusLost(java.awt.event.FocusEvent e)
-					{
-						if (tf.getText().isEmpty())
-						{
-							tf.setForeground(placeholderColor);
-							tf.setText(comparison.getComparePlaceholder());
-						}
-					}
-				});
-			}
+		if (searchTextField != null)
+		{
+			searchTextField.setText("");
+			searchTextField.setForeground(ComparisonController.COMPARE_RED);
+			searchTextField.setCaretColor(ComparisonController.COMPARE_RED);
+			searchTextField.addKeyListener(compareEntryKeyListener);
+			searchTextField.requestFocusInWindow();
 		}
 
-		panel.add(comparison.getCompareSearchBar());
-		return panel;
+		setSearchStatus(" ", TEXT_DIM);
+		revalidate();
+	}
+
+	private void exitCompareEntry()
+	{
+		compareEntryMode = false;
+		if (comparison.isComparisonMode())
+		{
+			comparison.exit();
+			return; // exit() triggers onComparisonExit which handles cleanup
+		}
+		if (searchTextField != null)
+		{
+			searchTextField.removeKeyListener(compareEntryKeyListener);
+			searchTextField.setForeground(Color.WHITE);
+			searchTextField.setCaretColor(Color.WHITE);
+		}
+		searchBar.setText("");
+		updateCompareIcon();
+		clogTotalsBar.setVisible(false);
+		setSearchStatus(" ", TEXT_DIM);
+		revalidate();
+	}
+
+	private final KeyListener compareEntryKeyListener = new KeyAdapter()
+	{
+		@Override
+		public void keyPressed(KeyEvent e)
+		{
+			if (e.getKeyCode() == KeyEvent.VK_ESCAPE)
+			{
+				exitCompareEntry();
+			}
+		}
+	};
+
+	/** Redirect the search bar action to the comparison controller when in compare entry mode. */
+	private void doCompareLookupFromSearchBar()
+	{
+		String player = searchBar.getText().trim();
+		if (player.isEmpty())
+		{
+			return;
+		}
+		// Spinner must go up BEFORE the lookup: a same-player compare resolves
+		// synchronously and fires onComparisonEnter, which resets the active icon.
+		// Setting LOADING afterward would strand the spinner with no callback to clear it.
+		searchBar.setIcon(IconTextField.Icon.LOADING_DARKER);
+		comparison.doCompareLookup(player, localRsn);
+	}
+
+	/** Update the clog totals bar above the search bar for both players. */
+	private void updateClogTotalsBar()
+	{
+		ClogResult blueClog = lookupSession.getClogResult();
+		ClogResult redClog = comparison.getCompareClogResult();
+
+		if (blueClog != null)
+		{
+			int[] bt = ClogHelper.sumClogTotals(blueClog);
+			String tierName = ClogHelper.getClogTierName(bt[0], bt[1]);
+			ImageIcon icon = tierName != null ? clogTierIcons.get(tierName) : null;
+			blueClogTotal.setIcon(icon);
+			blueClogTotal.setText(String.valueOf(bt[0]));
+		}
+		else
+		{
+			blueClogTotal.setIcon(null);
+			blueClogTotal.setText("--");
+		}
+
+		if (redClog != null)
+		{
+			int[] rt = ClogHelper.sumClogTotals(redClog);
+			String tierName = ClogHelper.getClogTierName(rt[0], rt[1]);
+			ImageIcon icon = tierName != null ? clogTierIcons.get(tierName) : null;
+			redClogTotal.setIcon(icon);
+			redClogTotal.setText(String.valueOf(rt[0]));
+		}
+		else
+		{
+			redClogTotal.setIcon(null);
+			redClogTotal.setText("--");
+		}
+
+		clogTotalsBar.setVisible(true);
+		clogTotalsBar.revalidate();
 	}
 
 	@Override
 	public void onComparisonExit()
 	{
-		comparison.getCompareSearchBar().setText("");
-		comparison.getCompareSearchBar().setIcon(IconTextField.Icon.SEARCH);
-		comparison.getCompareStatusLabel().setText(" ");
+		searchBar.setText("");
+		searchBar.setIcon(IconTextField.Icon.SEARCH);
+		if (searchTextField != null)
+		{
+			searchTextField.setForeground(Color.WHITE);
+			searchTextField.setCaretColor(Color.WHITE);
+			searchTextField.removeKeyListener(compareEntryKeyListener);
+		}
+		compareEntryMode = false;
+		updateCompareIcon();
+		clogTotalsBar.setVisible(false);
+		setSearchStatus(" ", TEXT_DIM);
 		comparison.updateAllCells();
 		comparison.updateInfoBar();
 		toggleHighlighter(config.completionistHighlighter());
+		searchRow.revalidate();
 	}
 
 	@Override
@@ -1035,12 +1367,13 @@ public class KillClogPanel extends PluginPanel
 		rsn = newPrimaryRsn;
 		HiscoreResult swapHiscore = lookupSession.getHiscoreResult();
 		ClogResult swapClog = lookupSession.getClogResult();
+		AccountType swapAccountType = displayAccountType(swapHiscore, swapClog, newPrimaryRsn);
 
 		playerName.setText(newPrimaryRsn != null ? newPrimaryRsn : "");
 		playerName.setForeground(getInfoColor());
+		updateInfoIcon(swapAccountType);
 		if (swapHiscore != null)
 		{
-			updateInfoIcon(swapHiscore.getAccountType());
 			int combatLevel = swapHiscore.getCombatLevel();
 			if (combatLevel > 0)
 			{
@@ -1057,18 +1390,14 @@ public class KillClogPanel extends PluginPanel
 		}
 		if (swapClog != null)
 		{
-			AccountType templeType = swapClog.getTempleAccountType();
-			if (templeType != null && templeType.isGroupIronman())
-			{
-				updateInfoIcon(templeType);
-			}
 			lookupItemNames(swapClog);
 			cells.renderClog(swapClog, config);
 			updateClogCell(swapClog);
 		}
 
-		comparison.getCompareToggle().setVisible(true);
-		refreshLabel.setVisible(true);
+		compareLabel.setVisible(true);
+		updateCompareIcon();
+		searchRow.revalidate();
 		setSearchStatus(" ", TEXT_DIM);
 		toggleHighlighter(config.completionistHighlighter());
 		cells.rebuildPrimaryTooltips(localRsn);
@@ -1076,14 +1405,16 @@ public class KillClogPanel extends PluginPanel
 
 
 	@Override
-	public void onComparisonEnter(@SuppressWarnings("unused") String redRsn)
+	public void onComparisonEnter(String redRsn)
 	{
-		comparison.getCompareSearchBar().setIcon(IconTextField.Icon.SEARCH);
-		comparison.getCompareSearchBar().setText("");
-		comparison.getCompareStatusLabel().setText(" ");
+		searchBar.setIcon(IconTextField.Icon.SEARCH);
+		searchBar.setText("");
+		setSearchStatus(" ", TEXT_DIM);
+		updateClogTotalsBar();
 		cells.rebuildPrimaryTooltips(localRsn);
 		comparison.updateAllCells();
 		comparison.updateInfoBar();
+		updateCompareIcon();
 	}
 
 
@@ -1091,46 +1422,39 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void applyBadge(JLabel label, AccountType type)
 	{
-		if (type == null)
-		{
-			label.setIcon(null);
-			return;
-		}
-		BufferedImage gimBadge = ClogHelper.getGimBadge(type);
-		if (gimBadge != null)
-		{
-			int h = 15;
-			int w = (int) Math.round((double) gimBadge.getWidth() / gimBadge.getHeight() * h);
-			label.setIcon(new ImageIcon(ImageUtil.resizeImage(gimBadge, w, h)));
-			return;
-		}
-		String resource = ClogHelper.accountBadgeResource(type);
-		if (resource == null)
-		{
-			label.setIcon(null);
-			return;
-		}
-		try
-		{
-			BufferedImage img = ImageUtil.loadImageResource(HiscorePanel.class, resource);
-			label.setIcon(new ImageIcon(ImageUtil.resizeImage(img, 15, 15)));
-		}
-		catch (Exception e)
-		{
-			label.setIcon(null);
-		}
+		BufferedImage badge = accountBadgeImage(type);
+		label.setIcon(badge != null ? new ImageIcon(badge) : null);
 	}
 
-	// -------------------------------------------------------------------------
-	// Lookup flow
-	// -------------------------------------------------------------------------
+	@Nullable
+	private BufferedImage accountBadgeImage(@Nullable AccountType type)
+	{
+		if (type == null)
+		{
+			return null;
+		}
+		BufferedImage badge = accountBadges.badge(type);
+		if (badge == null)
+		{
+			return null;
+		}
+		return type.isGroupIronman() ? badge : resizeAccountBadge(badge, 15);
+	}
+
+	private static BufferedImage resizeAccountBadge(BufferedImage badge, int height)
+	{
+		int width = (int) Math.round((double) badge.getWidth() / badge.getHeight() * height);
+		return ImageUtil.resizeImage(badge, width, height);
+	}
+
+	// Lookup flow.
 
 	/**
-	 * Single point of control for the info bar when no result data is available.
-	 * Hides all data components; shows only the message text.
+	 * Single point of control for the search-status text.
 	 */
 	private void setSearchStatus(String text, Color color)
 	{
+		searchStatus.setIcon(null);
 		searchStatus.setText(text);
 		searchStatus.setForeground(color);
 	}
@@ -1202,7 +1526,7 @@ public class KillClogPanel extends PluginPanel
 	{
 		tooltipController.hideClickTooltip();
 		if (comparison.isComparisonMode()) comparison.exit();
-		comparison.getComparePanel().setVisible(false);
+		if (compareEntryMode) exitCompareEntry();
 		rsn = null;
 		clogNotice.setText(" ");
 		clogNotice.setIcon(null);
@@ -1223,9 +1547,9 @@ public class KillClogPanel extends PluginPanel
 		playerName.setText(" ");
 		playerName.setIcon(null);
 		playerName.setToolTipText(null);
-		comparison.getCompareToggle().setVisible(false);
-		refreshLabel.setVisible(false);
-		refreshLabel.setIcon(null);
+		compareLabel.setVisible(false);
+		updateCompareIcon();
+		searchRow.revalidate();
 
 		clogInfoLabel.setIcon(null);
 		clogInfoLabel.setText("");
@@ -1258,13 +1582,13 @@ public class KillClogPanel extends PluginPanel
 	private void renderHiscoreResult(HiscoreResult result, String player,
 		boolean isSelf, AccountType knownType)
 	{
-		comparison.getCompareStatusLabel().setText(" ");
+		setSearchStatus(" ", TEXT_DIM);
 		playerName.setText(rsn != null ? rsn : player);
 		playerName.setForeground(getInfoColor());
-		comparison.updateComparePlaceholder(rsn != null ? rsn : player);
-		updateInfoIcon(knownType != null ? knownType : result.getAccountType());
-		comparison.getCompareToggle().setVisible(true);
-		refreshLabel.setVisible(true);
+		updateInfoIcon(currentInfoAccountType(knownType != null ? knownType : result.getAccountType()));
+		compareLabel.setVisible(true);
+		updateCompareIcon();
+		searchRow.revalidate();
 
 		int combatLevel = result.getCombatLevel();
 		if (combatLevel > 0)
@@ -1295,16 +1619,15 @@ public class KillClogPanel extends PluginPanel
 		if (name != null && !name.isEmpty())
 		{
 			rsn = name;
-			comparison.updateComparePlaceholder(name);
 			if (lookupSession.getHiscoreResult() != null)
 			{
 				playerName.setText(name);
 			}
 		}
-		AccountType templeType = result.getTempleAccountType();
-		if (templeType != null && templeType.isGroupIronman() && lookupSession.getHiscoreResult() != null)
+		AccountType providerType = result.getProviderAccountType();
+		if (providerType != null && providerType.isGroupIronman())
 		{
-			updateInfoIcon(templeType);
+			updateDisplayedInfoIcon(providerType);
 		}
 		lookupItemNames(result);
 		if (lookupSession.getHiscoreResult() != null)
@@ -1346,7 +1669,6 @@ public class KillClogPanel extends PluginPanel
 				if (name != null && !name.isEmpty())
 				{
 					rsn = name;
-					comparison.updateComparePlaceholder(name);
 					if (lookupSession.getHiscoreResult() != null)
 					{
 						playerName.setText(name);
@@ -1356,10 +1678,7 @@ public class KillClogPanel extends PluginPanel
 		);
 	}
 
-	// -------------------------------------------------------------------------
-	// Label update methods
-	// -------------------------------------------------------------------------
-
+	// Label update methods.
 
 	private void updateClogCell(ClogResult result)
 	{
@@ -1367,10 +1686,10 @@ public class KillClogPanel extends PluginPanel
 		if (totals[0] > 0)
 		{
 			String tierName = ClogHelper.getClogTierName(totals[0], totals[1]);
-			ImageIcon largeIcon = tierName != null ? clogTierIconsLarge.get(tierName) : null;
-			if (largeIcon != null)
+			ImageIcon icon = tierName != null ? clogTierIcons.get(tierName) : null;
+			if (icon != null)
 			{
-				clogInfoLabel.setIcon(new ImageIcon(ClogHelper.createBoostedImage(largeIcon, 1.10f)));
+				clogInfoLabel.setIcon(icon);
 			}
 			clogInfoLabel.setText(ClogHelper.pad(ClogHelper.formatKc(totals[0])));
 			clogInfoLabel.setForeground(getInfoColor());
@@ -1379,14 +1698,7 @@ public class KillClogPanel extends PluginPanel
 		}
 	}
 
-	// -------------------------------------------------------------------------
-	// Tooltip data building
-	// -------------------------------------------------------------------------
-
-
-	// -------------------------------------------------------------------------
-	// Progress highlighter
-	// -------------------------------------------------------------------------
+	// Progress highlighter.
 
 	private void toggleHighlighter(boolean enabled)
 	{
@@ -1440,9 +1752,7 @@ public class KillClogPanel extends PluginPanel
 		}
 	}
 
-	// -------------------------------------------------------------------------
-	// Public interface
-	// -------------------------------------------------------------------------
+	// Public interface.
 
 	public void setPlayerName(String name)
 	{
@@ -1464,7 +1774,7 @@ public class KillClogPanel extends PluginPanel
 	public void onBulkCaptureComplete(String name)
 	{
 		searchBar.setText(name);
-		// Current lookup will finish soon — version it out and start fresh
+		// Current lookup will finish soon - version it out and start fresh
 		lookupSession.cancelInFlight();
 		doLookup();
 	}
@@ -1481,7 +1791,7 @@ public class KillClogPanel extends PluginPanel
 				// Idempotent: strip any prior NameAutocompleter before attaching.
 				// Plugin reload (toggle off/on, hub auto-update) re-runs startUp on the
 				// same panel singleton; without this, listeners stack and each keystroke
-				// fires the autocomplete twice — suggestion gets inserted as both
+				// fires the autocomplete twice - suggestion gets inserted as both
 				// highlighted suggestion AND committed text.
 				for (KeyListener kl : textField.getKeyListeners())
 				{
@@ -1512,12 +1822,6 @@ public class KillClogPanel extends PluginPanel
 		}
 	}
 
-	public void toggleHighlighter()
-	{
-		boolean newState = !config.completionistHighlighter();
-		configManager.setConfiguration("killclog", "completionistHighlighter", newState);
-	}
-
 	public void onConfigChanged(String key)
 	{
 		switch (key)
@@ -1537,7 +1841,7 @@ public class KillClogPanel extends PluginPanel
 				break;
 			case "tooltipMode":
 				tooltipController.restoreDefaults();
-				tooltipController.captureDefaults();
+				tooltipController.captureDefaults(this);
 				tooltipController.hideClickTooltip();
 				tooltipController.clearHoveredCell();
 				break;
@@ -1547,7 +1851,7 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void onActivate()
 	{
-		tooltipController.captureDefaults();
+		tooltipController.captureDefaults(this);
 	}
 
 	@Override
@@ -1556,7 +1860,7 @@ public class KillClogPanel extends PluginPanel
 		tooltipController.restoreDefaults();
 	}
 
-	/** Safety net — restores tooltip delay if plugin is disabled while panel is active. */
+	/** Safety net - restores tooltip delay if plugin is disabled while panel is active. */
 	public void shutdown()
 	{
 		tooltipController.restoreDefaults();
@@ -1578,9 +1882,14 @@ public class KillClogPanel extends PluginPanel
 
 	private BufferedImage getCapeImage()
 	{
-		if (lookupSession.getHiscoreResult() == null) return null;
-		boolean maxed = lookupSession.getHiscoreResult().getTotalLevel() >= PanelData.MAX_TOTAL_LEVEL;
-		boolean infernal = lookupSession.getHiscoreResult().getKc("TzKal-Zuk") > 0;
+		return getCapeImage(lookupSession.getHiscoreResult());
+	}
+
+	private BufferedImage getCapeImage(@Nullable HiscoreResult result)
+	{
+		if (result == null) return null;
+		boolean maxed = result.getTotalLevel() >= PanelData.MAX_TOTAL_LEVEL;
+		boolean infernal = result.getKc("TzKal-Zuk") > 0;
 		if (maxed && infernal) return infernalMaxCapeTip;
 		if (maxed) return maxCapeTip;
 		if (infernal) return infernalCapeTip;
@@ -1590,34 +1899,225 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void updateInfoIcon(AccountType type)
 	{
-		// GIM badges loaded from game modicons at runtime
-		BufferedImage gimBadge = ClogHelper.getGimBadge(type);
-		if (gimBadge != null)
+		applyBadge(playerName, type);
+		playerName.setToolTipText(" ");
+	}
+
+	@Override
+	public void preloadCaReward(@Nullable CombatAchievementResult ca)
+	{
+		if (ca != null)
 		{
-			int h = 15;
-			int w = (int) Math.round((double) gimBadge.getWidth() / gimBadge.getHeight() * h);
-			playerName.setIcon(new ImageIcon(ImageUtil.resizeImage(gimBadge, w, h)));
-			playerName.setToolTipText(" ");
-			return;
+			requestCaRewardSprite(ca.getReward());
+		}
+	}
+
+	private void updateDisplayedInfoIcon()
+	{
+		updateDisplayedInfoIcon(currentInfoAccountType());
+	}
+
+	private void updateDisplayedInfoIcon(@Nullable AccountType type)
+	{
+		if (isIdentityRowShowing())
+		{
+			updateInfoIcon(type);
+		}
+	}
+
+	private boolean isIdentityRowShowing()
+	{
+		String text = playerName.getText();
+		return lookupSession.getHiscoreResult() != null
+			&& text != null
+			&& !text.trim().isEmpty();
+	}
+
+	/** Build a ComparePlayerSummaryTooltip for comparison mode (used by both name labels). */
+	private ComparePlayerSummaryTooltip buildComparePlayerSummary(JLabel owner)
+	{
+		ComparePlayerSummaryTooltip cmp = new ComparePlayerSummaryTooltip();
+		cmp.setComponent(owner);
+		HiscoreResult blueHs = lookupSession.getHiscoreResult();
+		HiscoreResult redHs = comparison.getCompareHiscoreResult();
+		ClogResult blueClog = lookupSession.getClogResult();
+		ClogResult redClog = comparison.getCompareClogResult();
+		String blueName = rsn != null ? rsn : "--";
+		String redName = comparison.getCompareRsn() != null ? comparison.getCompareRsn() : "--";
+		AccountType blueType = displayAccountType(blueHs, blueClog, blueName);
+		AccountType redType = displayAccountType(redHs, redClog, redName);
+
+		cmp.setBlueData(blueName,
+			blueHs != null ? blueHs.getOverallRank() : -1,
+			accountBadge(blueType),
+			accountLabel(blueType),
+			LookupQueries.getPrestige(blueHs),
+			getCapeImage(blueHs));
+		cmp.setRedData(redName,
+			redHs.getOverallRank(),
+			accountBadge(redType),
+			accountLabel(redType),
+			LookupQueries.getPrestige(redHs),
+			getCapeImage(redHs));
+
+		if (blueClog != null)
+		{
+			List<Integer> allPets = blueClog.getCategoryItems().get("all_pets");
+			Set<Integer> obtainedPets = LookupQueries.getObtainedPetIds(blueClog);
+			cmp.setBluePets(allPets, obtainedPets, itemManager);
+		}
+		if (redClog != null)
+		{
+			List<Integer> allPets = redClog.getCategoryItems().get("all_pets");
+			Set<Integer> obtainedPets = LookupQueries.getObtainedPetIds(redClog);
+			cmp.setRedPets(allPets, obtainedPets, itemManager);
+		}
+		return cmp;
+	}
+
+	private CompareClogSummaryTooltip buildCompareClogSummary(JComponent owner)
+	{
+		CompareClogSummaryTooltip cmp = new CompareClogSummaryTooltip();
+		cmp.setComponent(owner);
+		ClogResult blueClog = lookupSession.getClogResult();
+		ClogResult redClog = comparison.getCompareClogResult();
+		String blueName = rsn != null ? rsn : "--";
+		String redName = comparison.getCompareRsn() != null ? comparison.getCompareRsn() : "--";
+		Map<String, BufferedImage> icons = new LinkedHashMap<>();
+		for (Map.Entry<String, ImageIcon> entry : clogTierIcons.entrySet())
+		{
+			icons.put(entry.getKey(), ClogHelper.iconToImage(entry.getValue()));
 		}
 
-		String resource = ClogHelper.accountBadgeResource(type);
-		if (resource == null)
+		if (blueClog != null)
 		{
-			playerName.setIcon(null);
-			playerName.setToolTipText(" ");
+			int[] bt = ClogHelper.sumClogTotals(blueClog);
+			cmp.setBlueData(blueName, bt[0], bt[1], icons);
+			boolean stale = LookupQueries.isSyncStale(lookupSession.getClogLastChanged(), 90);
+			String sync = LookupQueries.syncLine(lookupSession.getClogLastChanged(), stale);
+			if (sync != null) cmp.setBlueSync(sync, stale);
+			cmp.setBlueRecent(LookupQueries.getRecentItems(blueClog, 4), itemManager);
+		}
+		else
+		{
+			cmp.setBlueData(blueName, 0, 0, icons);
+			cmp.setBlueNotice("No Collection Log Data");
+		}
+
+		if (redClog != null)
+		{
+			int[] rt = ClogHelper.sumClogTotals(redClog);
+			cmp.setRedData(redName, rt[0], rt[1], icons);
+			boolean stale = LookupQueries.isSyncStale(redClog.getLastChanged(), 90);
+			String sync = LookupQueries.syncLine(redClog.getLastChanged(), stale);
+			if (sync != null) cmp.setRedSync(sync, stale);
+			cmp.setRedRecent(LookupQueries.getRecentItems(redClog, 4), itemManager);
+		}
+		else
+		{
+			cmp.setRedData(redName, 0, 0, icons);
+			cmp.setRedNotice("No Collection Log Data");
+		}
+
+		return cmp;
+	}
+
+	private BufferedImage caRewardSprite(@Nullable CombatAchievementReward reward, int height)
+	{
+		return reward != null ? caItemSprite(reward, height) : null;
+	}
+
+	/** Load and height-scale a CA reward item sprite, aspect preserved. */
+	private BufferedImage caItemSprite(CombatAchievementReward reward, int height)
+	{
+		BufferedImage img = caRewardCache.get(reward);
+		if (img == null)
+		{
+			requestCaRewardSprite(reward);
+			return null;
+		}
+		if (img.getHeight() <= 0)
+		{
+			return null;
+		}
+		int w = (int) Math.round((double) img.getWidth() / img.getHeight() * height);
+		return ImageUtil.resizeImage(img, w, height);
+	}
+
+	private void requestCaRewardSprite(CombatAchievementReward reward)
+	{
+		if (reward == null || caRewardCache.containsKey(reward) || !caRewardLoading.add(reward))
+		{
 			return;
 		}
-		try
+		clientThread.invokeLater(() ->
+			loadItemImage(reward.itemId(), img ->
+			{
+				if (img != null)
+				{
+					caRewardCache.put(reward, img);
+				}
+				caRewardLoading.remove(reward);
+				repaint();
+			}));
+	}
+
+	private AccountType currentInfoAccountType()
+	{
+		HiscoreResult hiscore = lookupSession.getHiscoreResult();
+		return currentInfoAccountType(hiscore != null ? hiscore.getAccountType() : null);
+	}
+
+	private AccountType currentInfoAccountType(@Nullable AccountType fallback)
+	{
+		ClogResult clog = lookupSession.getClogResult();
+		if (clog != null && clog.getProviderAccountType() != null && clog.getProviderAccountType().isGroupIronman())
 		{
-			BufferedImage img = ImageUtil.loadImageResource(HiscorePanel.class, resource);
-			playerName.setIcon(new ImageIcon(ImageUtil.resizeImage(img, 15, 15)));
+			return clog.getProviderAccountType();
 		}
-		catch (Exception e)
+		AccountType cachedProviderType = currentRuneProfileAccountType();
+		if (cachedProviderType != null)
 		{
-			playerName.setIcon(null);
+			return cachedProviderType;
 		}
-		playerName.setToolTipText(" ");
+		return fallback;
+	}
+
+	@Nullable
+	private AccountType displayAccountType(@Nullable HiscoreResult hiscore,
+		@Nullable ClogResult clog, @Nullable String player)
+	{
+		return AccountType.displayType(LookupQueries.accountType(hiscore, clog),
+			runeProfileGroupAccountType(player));
+	}
+
+	@Nullable
+	private BufferedImage accountBadge(@Nullable AccountType type)
+	{
+		return accountBadges.badge(type);
+	}
+
+	@Nullable
+	private static String accountLabel(@Nullable AccountType type)
+	{
+		return type != null ? ClogHelper.accountLabel(type) : null;
+	}
+
+	@Nullable
+	private AccountType currentRuneProfileAccountType()
+	{
+		return runeProfileGroupAccountType(lookupSession.getCurrentLookupRsn());
+	}
+
+	@Nullable
+	private AccountType runeProfileGroupAccountType(@Nullable String player)
+	{
+		if (player == null || player.isBlank() || "--".equals(player))
+		{
+			return null;
+		}
+		AccountType type = runeProfileService.getCachedAccountType(player);
+		return type != null && type.isGroupIronman() ? type : null;
 	}
 
 	private void lookupItemNames(ClogResult result)
@@ -1635,14 +2135,22 @@ public class KillClogPanel extends PluginPanel
 			if (!result.isItemResolved(id)) missing.add(id);
 		}
 		if (missing.isEmpty()) return;
+		if (!itemNameResolutions.add(result)) return;
 
 		log.debug("Resolving {} untradeable item names via game cache", missing.size());
+		resolveItemNames(result, missing, 0);
+	}
+
+	private void resolveItemNames(ClogResult result, List<Integer> missing, int start)
+	{
 		clientThread.invokeLater(() ->
 		{
-			for (int id : missing)
+			int end = Math.min(start + ITEM_NAME_RESOLVE_BATCH_SIZE, missing.size());
+			for (int i = start; i < end; i++)
 			{
 				try
 				{
+					int id = missing.get(i);
 					String name = itemManager.getItemComposition(id).getName();
 					if (name != null && !name.isEmpty() && !name.equals("null") && !name.equals("Null"))
 					{
@@ -1651,9 +2159,15 @@ public class KillClogPanel extends PluginPanel
 				}
 				catch (Exception e)
 				{
-					// Item not in cache — skip
+					// Item not in cache - skip
 				}
 			}
+			if (end < missing.size())
+			{
+				resolveItemNames(result, missing, end);
+				return;
+			}
+			itemNameResolutions.remove(result);
 			SwingUtilities.invokeLater(() -> cells.rebuildPrimaryTooltips(localRsn));
 		});
 	}
@@ -1686,8 +2200,7 @@ public class KillClogPanel extends PluginPanel
 		}
 	}
 
-	// ── LookupSession.Listener ───────────────────────────────────────────────
-	// Each method mirrors the matching chunk of the legacy doLookup body.
+	// LookupSession.Listener
 
 	@Override
 	public void onLookupStart(String player, boolean isSelf, boolean isFirstSelfGreeting)
@@ -1731,15 +2244,11 @@ public class KillClogPanel extends PluginPanel
 			setSearchStatus(" ", TEXT_DIM);
 		}
 		renderHiscoreResult(hiscore, player, isSelf, knownType);
-		// Clog may have arrived first with a GIM type the hiscores can't detect
+		// Clog may have arrived first with a GIM type the hiscores can't detect.
 		ClogResult clog = lookupSession.getClogResult();
 		if (clog != null)
 		{
-			AccountType templeType = clog.getTempleAccountType();
-			if (templeType != null && templeType.isGroupIronman())
-			{
-				updateInfoIcon(templeType);
-			}
+			updateDisplayedInfoIcon();
 			cells.renderClog(clog, config);
 			updateClogCell(clog);
 		}
@@ -1774,6 +2283,19 @@ public class KillClogPanel extends PluginPanel
 	}
 
 	@Override
+	public void onCaResult(String player, @Nullable CombatAchievementResult ca, boolean isSelf, int lookupVersionAtFire)
+	{
+		if (lookupVersionAtFire == lookupSession.getLookupVersion())
+		{
+			preloadCaReward(ca);
+			if (!comparison.isComparisonMode())
+			{
+				updateDisplayedInfoIcon();
+			}
+		}
+	}
+
+	@Override
 	public void onNotFound(String player)
 	{
 		int notFoundIdx = ThreadLocalRandom.current().nextInt(SearchMessages.NOT_FOUND.length);
@@ -1802,22 +2324,34 @@ public class KillClogPanel extends PluginPanel
 		clogInfoLabel.setToolTipText(null);
 	}
 
-	// ── ComparisonController.Listener ────────────────────────────────────────
+	// ComparisonController.Listener
 
 	@Override
 	public void onCompareDataReady()
 	{
+		comparison.updateInfoBar();
+		updateClogTotalsBar();
+	}
+
+	@Override
+	public void onCompareStatus(String msg, Color color)
+	{
+		setSearchStatus(msg, color);
 	}
 
 	@Override
 	public void onCompareError(String player, Throwable err)
 	{
-		comparison.setCompareStatus("Lookup failed", ComparisonController.COMPARE_RED);
+		if (err != null)
+		{
+			setSearchStatus("Lookup failed", ComparisonController.COMPARE_RED);
+		}
+		updateCompareIcon();
 	}
 
-	// ── ComparisonController.CellRenderTarget ────────────────────────────────
-	// Read-only accessors the controller uses for the panel-side info-bar
-	// widgets (combat + totalLvl cells, playerName + clogInfoLabel info bar).
+	// ComparisonController.CellRenderTarget
+	// Read-only accessors the controller uses for panel-side summary-bar
+	// widgets (combat + totalLvl cells, playerName + clogInfoLabel).
 	// Cell maps + per-cell labels live on Cells; ComparisonController reads
 	// those directly.
 

@@ -11,6 +11,7 @@ final class TooltipData
 	final int rank;
 	final int obtainedCount;
 	final int totalItems;
+	final boolean rankTracked;
 	final List<Integer> allItemIds;
 	final Set<Integer> obtainedIds;
 	final Map<Integer, Integer> obtainedCounts;
@@ -19,10 +20,19 @@ final class TooltipData
 				List<Integer> allItemIds, Set<Integer> obtainedIds,
 				Map<Integer, Integer> obtainedCounts)
 	{
+		this(name, rank, obtainedCount, totalItems,
+			allItemIds, obtainedIds, obtainedCounts, true);
+	}
+
+	TooltipData(String name, int rank, int obtainedCount, int totalItems,
+				List<Integer> allItemIds, Set<Integer> obtainedIds,
+				Map<Integer, Integer> obtainedCounts, boolean rankTracked)
+	{
 		this.name = name;
 		this.rank = rank;
 		this.obtainedCount = obtainedCount;
 		this.totalItems = totalItems;
+		this.rankTracked = rankTracked;
 		this.allItemIds = allItemIds;
 		this.obtainedIds = obtainedIds;
 		this.obtainedCounts = obtainedCounts;

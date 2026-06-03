@@ -21,8 +21,12 @@ public abstract class TitleTooltip extends NativeTooltip
 	static final Font TITLE_FONT_SMALL = FontManager.getRunescapeBoldFont().deriveFont(16f);
 	static final Color SEPARATOR_COLOR = new Color(80, 70, 50);
 
+	protected static final Color CLOG_RED = new Color(255, 0, 0);
 	protected static final Color CLOG_GREEN = new Color(0, 255, 0);
 	protected static final Color CLOG_YELLOW = new Color(255, 255, 0);
+	protected static final Color COMPARE_BLUE = new Color(91, 164, 207);
+	protected static final Color COMPARE_RED = new Color(224, 86, 86);
+	protected static final String CHROME_SEPARATOR = " | ";
 
 	private String title;
 	private String subtitleLabel;
@@ -51,18 +55,80 @@ public abstract class TitleTooltip extends NativeTooltip
 
 	/**
 	 * Set the obtained subtitle line. Pass -1 for unknown ("?/Y").
-	 * Color: green if complete, yellow otherwise.
+	 * Color follows native OSRS stoplight progress: red, yellow, green.
 	 */
 	public void setObtained(int obtained, int total)
 	{
-		String countPart = (obtained < 0 ? "?" : String.valueOf(obtained)) + "/" + total;
-		setSubtitle("Obtained: ", countPart, completionColor(obtained, total));
+		setSubtitle("Obtained: ", progressCountText(obtained, total), completionColor(obtained, total));
 	}
 
-	/** Green when obtained >= total, yellow otherwise. */
+	/** Native OSRS stoplight progress color: red for none, yellow for some, green for complete. */
 	protected static Color completionColor(int obtained, int total)
 	{
-		return obtained >= total && total > 0 ? CLOG_GREEN : CLOG_YELLOW;
+		if (obtained >= total && total > 0)
+		{
+			return CLOG_GREEN;
+		}
+		if (obtained == 0 && total > 0)
+		{
+			return CLOG_RED;
+		}
+		return CLOG_YELLOW;
+	}
+
+	protected static String progressCountText(int obtained, int total)
+	{
+		return (obtained < 0 ? "?" : String.valueOf(obtained)) + "/" + total;
+	}
+
+	protected static String progressCountTextOrDash(int obtained, int total)
+	{
+		return obtained >= 0 ? progressCountText(obtained, total) : "--";
+	}
+
+	protected static String wrappedProgressCountText(int obtained, int total)
+	{
+		return " (" + progressCountText(obtained, total) + ")";
+	}
+
+	protected static String wrappedProgressCountTextOrDash(int obtained, int total)
+	{
+		return " (" + progressCountTextOrDash(obtained, total) + ")";
+	}
+
+	protected static int wrappedProgressCountWidth(FontMetrics fm, int obtained, int total)
+	{
+		return fm.stringWidth(wrappedProgressCountText(obtained, total));
+	}
+
+	protected static int wrappedProgressCountWidthOrDash(FontMetrics fm, int obtained, int total)
+	{
+		return fm.stringWidth(wrappedProgressCountTextOrDash(obtained, total));
+	}
+
+	protected static int paintWrappedProgressCount(Graphics2D g2, FontMetrics fm, int x, int y,
+		int obtained, int total)
+	{
+		String progress = wrappedProgressCountText(obtained, total);
+		g2.setColor(completionColor(obtained, total));
+		g2.drawString(progress, x, y);
+		return x + fm.stringWidth(progress);
+	}
+
+	protected static int paintWrappedProgressCountOrDash(Graphics2D g2, FontMetrics fm, int x, int y,
+		int obtained, int total, Color unknownColor)
+	{
+		String progress = wrappedProgressCountTextOrDash(obtained, total);
+		g2.setColor(obtained >= 0 ? completionColor(obtained, total) : unknownColor);
+		g2.drawString(progress, x, y);
+		return x + fm.stringWidth(progress);
+	}
+
+	protected static int paintChromeSeparator(Graphics2D g2, FontMetrics fm, int x, int y)
+	{
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString(CHROME_SEPARATOR, x, y);
+		return x + fm.stringWidth(CHROME_SEPARATOR);
 	}
 
 	/** Set an extra info line below the subtitle. Label in orange, value in given color. */
@@ -99,7 +165,7 @@ public abstract class TitleTooltip extends NativeTooltip
 
 	/**
 	 * Number of pixel rows the header occupies (title + optional lines).
-	 * Does NOT include the separator gap below.
+	 * Does not include the separator gap below.
 	 */
 	int getHeaderHeight()
 	{
@@ -129,7 +195,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	}
 
 	/**
-	 * Return the content dimensions given the available width (tooltip width - 2*inset).
+	 * Return the content dimensions given the available width.
 	 * The availableWidth accounts for the header-driven minimum width, so subclasses
 	 * can wrap content to fill the space.
 	 */
@@ -148,7 +214,7 @@ public abstract class TitleTooltip extends NativeTooltip
 		FontMetrics nfm = getFontMetrics(getTitleFont());
 		FontMetrics sfm = getFontMetrics(FontManager.getRunescapeSmallFont());
 
-		// Header text widths + close button padding drive minimum tooltip width.
+		// Header text widths drive minimum tooltip width.
 		// The full header width flows to getContentSize so grids can fill the space.
 		int titleTextWidth = title != null ? nfm.stringWidth(title) : 0;
 		int subTextWidth = subtitleLabel != null
@@ -158,7 +224,7 @@ public abstract class TitleTooltip extends NativeTooltip
 		int rnkTextWidth = rankText != null ? sfm.stringWidth("Rank: " + rankText) : 0;
 		int maxTextWidth = Math.max(titleTextWidth,
 			Math.max(subTextWidth, Math.max(infoTextWidth, rnkTextWidth)));
-		int headerMinWidth = maxTextWidth + getHeaderRightPad();
+		int headerMinWidth = maxTextWidth;
 
 		Dimension contentSize = getContentSize(Math.max(headerMinWidth, 1));
 

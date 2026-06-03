@@ -1,6 +1,5 @@
 package com.killclog;
 
-import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
@@ -11,12 +10,7 @@ import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.Call;
-import okhttp3.Callback;
 import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
-import okhttp3.ResponseBody;
 
 /**
  * Parallelized hiscore lookup with account type detection.
@@ -40,7 +34,7 @@ public class HiscoreService
 
 	// Activity names in hiscore CSV order.
 	// Includes deprecated entries (Grid Points, Deadman Points, BH Legacy) that
-	// still occupy CSV lines — must be present so indices align correctly.
+	// Retired bosses still occupy CSV lines, so indices must stay aligned.
 	private static final String[] ACTIVITY_NAMES = {
 		"Grid Points",
 		"League Points",
@@ -58,13 +52,13 @@ public class HiscoreService
 	private static final int ACTIVITY_START_INDEX = 1 + SKILL_NAMES.length;
 	private static final int BOSS_START_INDEX = ACTIVITY_START_INDEX + ACTIVITY_NAMES.length;
 
-	// Boss names in hiscore CSV order — must match Jagex's exact alphabetical order.
-	// NEW BOSS PLAYBOOK: When Jagex adds a boss to hiscores:
+	// Boss names in hiscore CSV order. Must match Jagex's order.
+	// Boss update playbook:
 	//   1. Add name here in alphabetical order
 	//   2. Wait for RuneLite to add HiscoreSkill enum (check latest.release jar)
 	//   3. Add HiscoreSkill.BOSS_NAME to BOSSES[] in PanelData (alphabetical)
 	//   4. If HiscoreSkill.getName() != CSV name, add to NAME_OVERRIDES
-	//   5. If Temple uses non-standard category key, add to BOSS_CATEGORY_OVERRIDES in ClogService
+	//   5. If collection-log provider category keys differ, add to BOSS_CATEGORY_OVERRIDES in ClogService
 	private static final String[] BOSS_NAMES = {
 		"Abyssal Sire", "Alchemical Hydra", "Amoxliatl", "Araxxor",
 		"Artio", "Barrows Chests", "Brutus", "Bryophyta", "Callisto",
@@ -100,7 +94,7 @@ public class HiscoreService
 		return BOSS_NAMES;
 	}
 
-	// --- SWR cache ---
+	// Stale-while-revalidate cache.
 	private static final long CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
 
 	private static class CachedResult
@@ -176,6 +170,8 @@ public class HiscoreService
 						}
 						retry.complete(r);
 					}));
+			// Safety net: complete with null if the retry hangs
+			retry.completeOnTimeout(null, 12, TimeUnit.SECONDS);
 			return retry;
 		});
 	}
@@ -202,13 +198,13 @@ public class HiscoreService
 					? knownType
 					: detectAccountType(uimBody, hcimBody, ironBody, regBody);
 
-				// HCIM detected without knownType — dead HCIMs have frozen XP on the
+				// HCIM detected without knownType. Dead HCIMs have frozen XP on the
 				// HCIM table forever. If reg or iron failed, retry those two specifically
 				// before accepting HCIM. UIM is irrelevant (mutually exclusive).
 				if (knownType == null && type == AccountType.HARDCORE_IRONMAN
 					&& (regBody == null || ironBody == null))
 				{
-					log.debug("HCIM detected but reg/iron missing — retrying to confirm");
+					log.debug("HCIM detected but reg/iron missing - retrying to confirm");
 					CompletableFuture<String> retryReg = regBody != null
 						? CompletableFuture.completedFuture(regBody)
 						: fetchAsync("hiscore_oldschool", encoded);
@@ -261,7 +257,7 @@ public class HiscoreService
 			return AccountType.IRONMAN;
 		}
 
-		// Fallback: regular endpoint failed — cross-check specialty endpoints
+		// Fallback: regular endpoint failed, so cross-check specialty endpoints.
 		// to avoid false positives from dead HCIMs/UIMs with frozen XP
 		if (regXp <= 0)
 		{
@@ -312,7 +308,7 @@ public class HiscoreService
 		int expected = 1 + SKILL_NAMES.length + ACTIVITY_NAMES.length + BOSS_NAMES.length;
 		if (lines.length != expected)
 		{
-			log.warn("Hiscore CSV line count changed: expected {} but got {} — boss data may have shifted",
+			log.warn("Hiscore CSV line count changed: expected {} but got {} - boss data may have shifted",
 				expected, lines.length);
 		}
 		Map<String, Integer> bossKills = new LinkedHashMap<>();
@@ -439,42 +435,7 @@ public class HiscoreService
 
 	private CompletableFuture<String> fetchAsync(String hiscoreKey, String encodedPlayer)
 	{
-		CompletableFuture<String> future = new CompletableFuture<>();
-
-		Request request = new Request.Builder()
-			.url(BASE_URL + hiscoreKey + SUFFIX + encodedPlayer)
-			.header("User-Agent", "kill-clog-RuneLite-Plugin/1.0 (https://github.com/420kc/kill-clog-plugin)")
-			.build();
-
-		httpClient.newCall(request).enqueue(new Callback()
-		{
-			@Override
-			public void onFailure(Call call, IOException e)
-			{
-				log.debug("Hiscore fetch failed for {}: {}", hiscoreKey, e.getMessage());
-				future.complete(null);
-			}
-
-			@Override
-			public void onResponse(Call call, Response response)
-			{
-				try (ResponseBody body = response.body())
-				{
-					if (!response.isSuccessful() || body == null)
-					{
-						future.complete(null);
-						return;
-					}
-					future.complete(body.string());
-				}
-				catch (IOException e)
-				{
-					log.debug("Failed to read hiscore response for {}: {}", hiscoreKey, e.getMessage());
-					future.complete(null);
-				}
-			}
-		});
-
-		return future;
+		return HttpUtil.httpGet(httpClient, BASE_URL + hiscoreKey + SUFFIX + encodedPlayer)
+			.thenApply(r -> r.body);
 	}
 }

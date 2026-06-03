@@ -9,8 +9,12 @@
 package com.killclog;
 
 import java.awt.Color;
+import java.awt.Component;
 import java.awt.GridLayout;
+import java.awt.Point;
 import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -49,7 +53,7 @@ public class Cells
 		JToolTip build(JLabel owner, @Nullable TooltipData data, int gridCols, String name, boolean compact);
 	}
 
-	// ── Deps ──────────────────────────────────────────────────────────────
+	// Deps
 	private final SpriteManager spriteManager;
 	private final ItemManager itemManager;
 	private final TooltipController tooltipController;
@@ -59,15 +63,15 @@ public class Cells
 	private final ClogService clogService;
 	@Nullable private SinglePlayerTooltipBuilder singlePlayerBuilder;
 
-	// ── Tooltip data caches ───────────────────────────────────────────────
+	// Tooltip data caches
 	private final Map<HiscoreSkill, TooltipData> tooltipDataMap = new LinkedHashMap<>();
 	private final Map<String, TooltipData> rareTooltips = new LinkedHashMap<>();
 
-	// ── Icon caches ───────────────────────────────────────────────────────
+	// Icon caches
 	private final BufferedImage[] clueIcons = new BufferedImage[8];
 	private final BufferedImage[] pvpActivityIcons = new BufferedImage[5];
 
-	// ── Cell labels ───────────────────────────────────────────────────────
+	// Cell labels
 	private final Map<HiscoreSkill, JLabel> bossLabels = new LinkedHashMap<>();
 	private final Map<HiscoreSkill, JLabel> activityLabels = new LinkedHashMap<>();
 	private final Map<HiscoreSkill, JLabel> clueTierLabels = new LinkedHashMap<>();
@@ -99,7 +103,7 @@ public class Cells
 		this.singlePlayerBuilder = builder;
 	}
 
-	// ── Cell builders ─────────────────────────────────────────────────────
+	// Cell builders
 
 	/** Build the boss grid (3-wide GridLayout) populated with one cell per boss. */
 	public JPanel buildBossGrid()
@@ -155,6 +159,21 @@ public class Cells
 			{
 				if (activity == HiscoreSkill.CLUE_SCROLL_ALL)
 				{
+					if (comparison.isComparisonMode() && comparison.getCompareHiscoreResult() != null)
+					{
+						CompareClueSummaryTooltip cmp = new CompareClueSummaryTooltip();
+						cmp.setComponent(this);
+						String blueName = lookupSession.getCurrentLookupRsn() != null
+							? lookupSession.getCurrentLookupRsn() : "--";
+						String redName = comparison.getCompareRsn() != null
+							? comparison.getCompareRsn() : "--";
+						cmp.setBlueData(blueName, lookupSession.getHiscoreResult());
+						cmp.setRedData(redName, comparison.getCompareHiscoreResult());
+						cmp.setIcons(clueIcons);
+						JPanel parentCell = (JPanel) this.getParent();
+						tooltipController.keepTooltipOnHover(cmp, parentCell);
+						return cmp;
+					}
 					ClueSummaryTooltip tip = new ClueSummaryTooltip();
 					tip.setComponent(this);
 					tip.setIcons(clueIcons);
@@ -200,6 +219,21 @@ public class Cells
 			@Override
 			public JToolTip createToolTip()
 			{
+				if (comparison.isComparisonMode() && comparison.getCompareHiscoreResult() != null)
+				{
+					ComparePvpSummaryTooltip cmp = new ComparePvpSummaryTooltip();
+					cmp.setComponent(this);
+					cmp.setIcons(pvpActivityIcons);
+					String blueName = lookupSession.getCurrentLookupRsn() != null
+						? lookupSession.getCurrentLookupRsn() : "--";
+					String redName = comparison.getCompareRsn() != null
+						? comparison.getCompareRsn() : "--";
+					cmp.setBlueData(blueName, lookupSession.getHiscoreResult(), lookupSession.getClogResult());
+					cmp.setRedData(redName, comparison.getCompareHiscoreResult(), comparison.getCompareClogResult());
+					JPanel parentCell = (JPanel) this.getParent();
+					tooltipController.keepTooltipOnHover(cmp, parentCell);
+					return cmp;
+				}
 				PvpSummaryTooltip tip = new PvpSummaryTooltip();
 				tip.setComponent(this);
 				tip.setIcons(pvpActivityIcons);
@@ -322,7 +356,7 @@ public class Cells
 		return wrapInCell(label);
 	}
 
-	// ── Primary-side rendering ────────────────────────────────────────────
+	// Primary-side rendering
 
 	/** Standard kc text color (light gray-white) used for any cell that has a non-zero kc / score. */
 	static final Color KC_COLOR = new Color(215, 215, 215);
@@ -540,7 +574,7 @@ public class Cells
 			? ClogHelper.clogColor(data.obtainedCount, data.totalItems, config) : KC_COLOR;
 	}
 
-	// ── Tooltip routing ───────────────────────────────────────────────────
+	// Tooltip routing
 
 	private JToolTip buildBossTooltip(JLabel owner, HiscoreSkill boss)
 	{
@@ -564,9 +598,17 @@ public class Cells
 			TooltipData redData = comparison.getCompareClogResult() != null
 				? tooltipDataBuilder.buildTooltipData(displayName, category, redRank, comparison.getCompareClogResult())
 				: null;
-			return comparison.makeSpriteTooltip(owner, tooltipDataMap.get(tier), redData, displayName);
+			return comparison.makeSpriteTooltip(owner, tooltipDataMap.get(tier), redData, displayName,
+				!suppressComparisonClueGrid(tier));
 		}
 		return buildSingleSpriteTooltip(owner, tooltipDataMap.get(tier), compact ? 10 : 5, displayName, compact);
+	}
+
+	private static boolean suppressComparisonClueGrid(HiscoreSkill tier)
+	{
+		return tier == HiscoreSkill.CLUE_SCROLL_EASY
+			|| tier == HiscoreSkill.CLUE_SCROLL_MEDIUM
+			|| tier == HiscoreSkill.CLUE_SCROLL_HARD;
 	}
 
 	private JToolTip buildClueRareTooltip(JLabel owner, String name, String clogCategory)
@@ -600,7 +642,7 @@ public class Cells
 		return singlePlayerBuilder.build(owner, data, gridCols, name, compact);
 	}
 
-	// ── Helpers ───────────────────────────────────────────────────────────
+	// Helpers
 
 	/** Standard grid-cell label styling (used by every cell on the panel). */
 	public static void styleLabel(JLabel label, String tooltipText)
@@ -622,7 +664,44 @@ public class Cells
 		cell.setBorder(TooltipController.CELL_BORDER);
 		cell.add(label);
 		tooltipController.addCellHoverEffect(cell, label);
+		installCompareCellHover(cell, label);
 		return cell;
+	}
+
+	private void installCompareCellHover(JPanel cell, JLabel label)
+	{
+		MouseAdapter compareHover = new MouseAdapter()
+		{
+			@Override
+			public void mouseEntered(MouseEvent e)
+			{
+				comparison.setCompareCellHover(label, true);
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e)
+			{
+				if (!isInsideCell(cell, e))
+				{
+					comparison.setCompareCellHover(label, false);
+				}
+			}
+		};
+
+		cell.addMouseListener(compareHover);
+		label.addMouseListener(compareHover);
+	}
+
+	private static boolean isInsideCell(JPanel cell, MouseEvent e)
+	{
+		Object source = e.getSource();
+		if (!(source instanceof Component))
+		{
+			return false;
+		}
+
+		Point point = SwingUtilities.convertPoint((Component) source, e.getPoint(), cell);
+		return point.x >= 0 && point.y >= 0 && point.x < cell.getWidth() && point.y < cell.getHeight();
 	}
 
 	private void setItemIcon(JLabel label, int itemId)
@@ -648,7 +727,7 @@ public class Cells
 		return Character.toUpperCase(name.charAt(0)) + name.substring(1);
 	}
 
-	// ── Read-only accessors ───────────────────────────────────────────────
+	// Read-only accessors
 
 	public Map<HiscoreSkill, JLabel> getBossLabels()
 	{

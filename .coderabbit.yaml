@@ -5,6 +5,8 @@ reviews:
   auto_review:
     enabled: true
     drafts: false
+    base_branches:
+      - "review/.*"
   pre_merge_checks:
     docstring_coverage:
       enabled: false

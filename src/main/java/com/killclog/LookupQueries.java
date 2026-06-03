@@ -10,10 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import net.runelite.client.hiscore.HiscoreSkill;
-import net.runelite.client.plugins.hiscore.HiscorePanel;
-import net.runelite.client.util.ImageUtil;
 
-/** Pure query helpers on HiscoreResult / ClogResult — no state, no side effects. */
+/** Pure query helpers on HiscoreResult and ClogResult. */
 final class LookupQueries
 {
 	private LookupQueries()
@@ -138,23 +136,31 @@ final class LookupQueries
 
 	static BufferedImage getAccountBadge(HiscoreResult result)
 	{
-		if (result == null) return null;
-		String resource = ClogHelper.accountBadgeResource(result.getAccountType());
-		if (resource == null) return null;
-		try
-		{
-			return ImageUtil.loadImageResource(HiscorePanel.class, resource);
-		}
-		catch (Exception e)
-		{
-			return null;
-		}
+		return getAccountBadge(result, null);
+	}
+
+	static BufferedImage getAccountBadge(HiscoreResult result, ClogResult clog)
+	{
+		AccountType type = accountType(result, clog);
+		return AccountBadgeResolver.cachedBadge(type);
 	}
 
 	static String getAccountLabel(HiscoreResult result)
 	{
-		if (result == null) return null;
-		return ClogHelper.accountLabel(result.getAccountType());
+		return getAccountLabel(result, null);
+	}
+
+	static String getAccountLabel(HiscoreResult result, ClogResult clog)
+	{
+		AccountType type = accountType(result, clog);
+		return type != null ? ClogHelper.accountLabel(type) : null;
+	}
+
+	static AccountType accountType(HiscoreResult result, ClogResult clog)
+	{
+		AccountType providerType = clog != null ? clog.getProviderAccountType() : null;
+		AccountType hiscoreType = result != null ? result.getAccountType() : null;
+		return AccountType.displayType(hiscoreType, providerType);
 	}
 
 	static String getPrestige(HiscoreResult result)

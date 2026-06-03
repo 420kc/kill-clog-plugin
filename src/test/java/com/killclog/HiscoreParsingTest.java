@@ -19,13 +19,9 @@ public class HiscoreParsingTest
 	@Before
 	public void setUp()
 	{
-		// null httpClient — we only test parsing, not HTTP
+		// Null httpClient: these tests exercise parsing only.
 		service = new HiscoreService(null);
 	}
-
-	// ---------------------------------------------------------------
-	// extractTotalXp
-	// ---------------------------------------------------------------
 
 	@Test
 	public void testExtractTotalXpNormal()
@@ -48,7 +44,7 @@ public class HiscoreParsingTest
 	@Test
 	public void testExtractTotalXpMalformed()
 	{
-		// Only 2 columns instead of 3
+		// Only 2 columns instead of 3.
 		assertEquals(-1, service.extractTotalXp("1,2277"));
 	}
 
@@ -57,10 +53,6 @@ public class HiscoreParsingTest
 	{
 		assertEquals(-1, service.extractTotalXp("1,2277,abc"));
 	}
-
-	// ---------------------------------------------------------------
-	// parseHiscoreBody — normal case
-	// ---------------------------------------------------------------
 
 	@Test
 	public void testParseNormalBody()
@@ -81,9 +73,9 @@ public class HiscoreParsingTest
 		String body = buildCsv(1, 2277, 4600000000L);
 		HiscoreResult result = service.parseHiscoreBody(body, AccountType.REGULAR);
 
-		// First boss (Abyssal Sire) gets KC = 420
+		// First boss (Abyssal Sire) gets KC = 420.
 		assertEquals(420, result.getKc("Abyssal Sire"));
-		// Last boss (Zulrah) gets KC = 420
+		// Last boss (Zulrah) gets KC = 420.
 		assertEquals(420, result.getKc("Zulrah"));
 	}
 
@@ -93,7 +85,7 @@ public class HiscoreParsingTest
 		String body = buildCsv(1, 2277, 4600000000L);
 		HiscoreResult result = service.parseHiscoreBody(body, AccountType.REGULAR);
 
-		// Activities all get score = 100
+		// Activities all get score = 100.
 		assertEquals(100, result.getActivityScore("LMS - Rank"));
 		assertEquals(100, result.getActivityScore("Soul Wars Zeal"));
 		assertEquals(100, result.getActivityScore("Colosseum Glory"));
@@ -105,18 +97,14 @@ public class HiscoreParsingTest
 		String body = buildCsv(1, 2277, 4600000000L);
 		HiscoreResult result = service.parseHiscoreBody(body, AccountType.REGULAR);
 
-		// All skills at 99 → combat level 126
+		// All skills at 99 produce combat level 126.
 		assertEquals(126, result.getCombatLevel());
 	}
-
-	// ---------------------------------------------------------------
-	// parseHiscoreBody — truncated CSV (fewer lines)
-	// ---------------------------------------------------------------
 
 	@Test
 	public void testParseTruncatedNoBosses()
 	{
-		// Only overall + 24 skills + 20 activities = 45 lines, zero boss lines
+		// Only overall + 24 skills + 20 activities = 45 lines, zero boss lines.
 		StringBuilder sb = new StringBuilder();
 		sb.append("1,2277,4600000000\n");
 		for (int i = 0; i < 24; i++)
@@ -130,16 +118,16 @@ public class HiscoreParsingTest
 
 		HiscoreResult result = service.parseHiscoreBody(sb.toString(), AccountType.REGULAR);
 		assertNotNull(result);
-		// Boss KCs should all be missing (not in map or -1)
+		// Boss KCs are missing.
 		assertEquals(-1, result.getKc("Zulrah"));
-		// Activities should still parse
+		// Activities still parse.
 		assertEquals(100, result.getActivityScore("LMS - Rank"));
 	}
 
 	@Test
 	public void testParseTruncatedPartialBosses()
 	{
-		// 45 + 5 boss lines (only first 5 bosses)
+		// 45 + 5 boss lines (only first 5 bosses).
 		StringBuilder sb = new StringBuilder();
 		sb.append("1,2277,4600000000\n");
 		for (int i = 0; i < 24; i++)
@@ -158,18 +146,14 @@ public class HiscoreParsingTest
 		HiscoreResult result = service.parseHiscoreBody(sb.toString(), AccountType.REGULAR);
 		assertNotNull(result);
 		assertEquals(420, result.getKc("Abyssal Sire"));
-		// Boss beyond the 5 provided should be -1
+		// Boss beyond the 5 provided is missing.
 		assertEquals(-1, result.getKc("Zulrah"));
 	}
-
-	// ---------------------------------------------------------------
-	// parseHiscoreBody — extra lines (Jagex adds new activity/boss)
-	// ---------------------------------------------------------------
 
 	@Test
 	public void testParseExtraLinesAtEnd()
 	{
-		// Normal CSV + 10 extra lines at the end
+		// Normal CSV plus 10 extra lines at the end.
 		String body = buildCsv(1, 2277, 4600000000L);
 		for (int i = 0; i < 10; i++)
 		{
@@ -178,13 +162,9 @@ public class HiscoreParsingTest
 
 		HiscoreResult result = service.parseHiscoreBody(body, AccountType.REGULAR);
 		assertNotNull(result);
-		// Should still parse correctly — extra lines ignored
+		// Extra lines are ignored.
 		assertEquals(420, result.getKc("Zulrah"));
 	}
-
-	// ---------------------------------------------------------------
-	// parseHiscoreBody — malformed lines
-	// ---------------------------------------------------------------
 
 	@Test
 	public void testParseMalformedBossLine()
@@ -200,9 +180,9 @@ public class HiscoreParsingTest
 		{
 			sb.append("1,100\n");
 		}
-		// First boss: malformed
+		// First boss: malformed.
 		sb.append("not_a_number,abc\n");
-		// Second boss: valid
+		// Second boss: valid.
 		sb.append("50,420\n");
 
 		HiscoreResult result = service.parseHiscoreBody(sb.toString(), AccountType.REGULAR);
@@ -214,7 +194,7 @@ public class HiscoreParsingTest
 	@Test
 	public void testParseUnrankedBoss()
 	{
-		// Jagex hiscores use -1 for unranked
+		// Jagex hiscores use -1 for unranked.
 		StringBuilder sb = new StringBuilder();
 		sb.append("1,2277,4600000000\n");
 		for (int i = 0; i < 24; i++)
@@ -231,14 +211,10 @@ public class HiscoreParsingTest
 		assertEquals(-1, result.getKc("Abyssal Sire"));
 	}
 
-	// ---------------------------------------------------------------
-	// parseHiscoreBody — minimal / degenerate input
-	// ---------------------------------------------------------------
-
 	@Test
 	public void testParseMinimalBody()
 	{
-		// Just the overall line, nothing else
+		// Just the overall line, nothing else.
 		HiscoreResult result = service.parseHiscoreBody("1,126,100000", AccountType.REGULAR);
 		assertNotNull(result);
 		assertEquals(126, result.getTotalLevel());
@@ -248,15 +224,11 @@ public class HiscoreParsingTest
 	@Test
 	public void testParseSingleLine()
 	{
-		// Edge: body with no newlines
+		// Body with no newlines.
 		HiscoreResult result = service.parseHiscoreBody("1,2277,4600000000", AccountType.REGULAR);
 		assertNotNull(result);
 		assertEquals(2277, result.getTotalLevel());
 	}
-
-	// ---------------------------------------------------------------
-	// calcCmbLvl
-	// ---------------------------------------------------------------
 
 	@Test
 	public void testCalcCmbLvlMaxed()
@@ -290,14 +262,10 @@ public class HiscoreParsingTest
 	@Test
 	public void testCalcCmbLvlTooFewLines()
 	{
-		// Only 3 lines — can't read skills 1-7
+		// Only 3 lines, so skills 1-7 cannot be read.
 		String[] lines = {"1,2277,0", "1,99,0", "1,99,0"};
 		assertEquals(-1, service.calcCmbLvl(lines));
 	}
-
-	// ---------------------------------------------------------------
-	// Account type in parse result
-	// ---------------------------------------------------------------
 
 	@Test
 	public void testParsePreservesAccountType()
@@ -310,10 +278,6 @@ public class HiscoreParsingTest
 		assertEquals(AccountType.ULTIMATE_IRONMAN,
 			service.parseHiscoreBody(body, AccountType.ULTIMATE_IRONMAN).getAccountType());
 	}
-
-	// ---------------------------------------------------------------
-	// Boss data consistency — catches missing NAME_OVERRIDES
-	// ---------------------------------------------------------------
 
 	@Test
 	public void testAllPanelBossesMapToValidCsvNames()
@@ -331,10 +295,6 @@ public class HiscoreParsingTest
 			);
 		}
 	}
-
-	// ---------------------------------------------------------------
-	// Helper: build a full valid hiscore CSV (all 99s, 420 KC)
-	// ---------------------------------------------------------------
 
 	private String buildCsv(int overallRank, int totalLevel, long totalXp)
 	{

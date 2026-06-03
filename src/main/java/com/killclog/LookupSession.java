@@ -1,13 +1,15 @@
 /*
  * Copyright (c) 2026, 420 kc <dyl@420kc.dev>
- * Owns the async lookup pipeline for Kill Clog: cache check, parallel hiscore
- * + clog API calls, version-stamped result gating, in-flight guard. UI is
+ * Owns the async lookup pipeline for Kill Clog: cache check, parallel hiscore,
+ * clog, and CA calls, version-stamped result gating, in-flight guard. UI is
  * downstream via {@link Listener}. Swing usage is limited to EDT-scheduling
  * primitives ({@link javax.swing.Timer}, {@link
  * javax.swing.SwingUtilities#invokeLater}); never widget code.
  */
 package com.killclog;
 
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
@@ -36,7 +38,7 @@ public class LookupSession
 		/** Lookup begun: UI should reset row state, set loading indicator, post a search-status line. */
 		void onLookupStart(String player, boolean isSelf, boolean isFirstSelfGreeting);
 
-		/** Cache hit: hiscore (and possibly clog) returned from local cache without an API call. */
+		/** Cache hit: hiscore and possibly clog returned from service caches without an API call. */
 		void onCachedResult(String player, HiscoreResult hiscore, @Nullable ClogResult clog,
 			boolean isSelf, @Nullable AccountType knownType, boolean isFirstSelfGreeting);
 
@@ -52,6 +54,13 @@ public class LookupSession
 		 */
 		void onClogResult(String player, @Nullable ClogResult clog, boolean isSelf, int lookupVersion);
 
+		/**
+		 * CA tier result arrived from local cache or RuneProfile (independent of hiscore/clog timing).
+		 * {@code ca} is null when the player has no CA data (not synced, or the provider was
+		 * unavailable); the listener simply omits the CA surface in that case.
+		 */
+		void onCaResult(String player, @Nullable CombatAchievementResult ca, boolean isSelf, int lookupVersion);
+
 		/** The hiscore service returned a null result (player not found). */
 		void onNotFound(String player);
 
@@ -59,16 +68,18 @@ public class LookupSession
 		void onError(String player, Throwable error);
 	}
 
-	// ── Deps ──────────────────────────────────────────────────────────────
+	// Deps
 	private final HiscoreService hiscoreService;
 	private final ClogService clogService;
+	private final RuneProfileService runeProfileService;
 	private final KillClogConfig config;
 	private final Listener listener;
 	@Nullable private NameAutocompleter nameAutocompleter;
 
-	// ── State ─────────────────────────────────────────────────────────────
+	// State
 	@Nullable private HiscoreResult hiscoreResult;
 	@Nullable private ClogResult clogResult;
+	@Nullable private CombatAchievementResult caResult;
 	@Nullable private String currentLookupRsn;
 	@Nullable private String clogLastChanged;
 
@@ -79,10 +90,12 @@ public class LookupSession
 	private volatile boolean lookupInFlight = false;
 
 	public LookupSession(HiscoreService hiscoreService, ClogService clogService,
-		KillClogConfig config, @Nullable NameAutocompleter nameAutocompleter, Listener listener)
+		RuneProfileService runeProfileService, KillClogConfig config,
+		@Nullable NameAutocompleter nameAutocompleter, Listener listener)
 	{
 		this.hiscoreService = hiscoreService;
 		this.clogService = clogService;
+		this.runeProfileService = runeProfileService;
 		this.config = config;
 		this.nameAutocompleter = nameAutocompleter;
 		this.listener = listener;
@@ -94,13 +107,13 @@ public class LookupSession
 		this.nameAutocompleter = nameAutocompleter;
 	}
 
-	// ── Lifecycle ─────────────────────────────────────────────────────────
+	// Lifecycle
 
 	/**
 	 * Begin a lookup for {@code player}. No-op if {@code player} is empty or a
 	 * lookup is already in flight (early return preserves the existing
 	 * pipeline). Otherwise: cache check with a reveal-on-delay if fresh, or a
-	 * full parallel hiscore + clog API fan-out if stale or missing.
+	 * full parallel hiscore + public clog provider fan-out if stale or missing.
 	 *
 	 * <p>Caller must invoke on the EDT. All listener callbacks are also on the
 	 * EDT (Timer fires there; service futures are bridged via
@@ -117,12 +130,33 @@ public class LookupSession
 		currentLookupRsn = player;
 		hiscoreResult = null;
 		clogResult = null;
+		caResult = null;
 		clogLastChanged = null;
 		final int thisLookup = ++lookupVersion;
 		final boolean isSelf = localRsn != null && localRsn.equalsIgnoreCase(player);
 		final boolean isFirstSelfGreeting = isSelf && !config.seenSelfGreeting();
 
 		listener.onLookupStart(player, isSelf, isFirstSelfGreeting);
+
+		// CA tier fetch runs in parallel with the hiscore/clog fan-out (and through the cache
+		// path), independent of either. RuneProfileService owns its own freshness + dedup.
+		runeProfileService.lookup(player)
+			.orTimeout(10, TimeUnit.SECONDS)
+			.thenAccept(ca ->
+				SwingUtilities.invokeLater(() ->
+				{
+					if (thisLookup != lookupVersion)
+					{
+						return;
+					}
+					caResult = ca;
+					listener.onCaResult(player, ca, isSelf, thisLookup);
+				})
+			).exceptionally(ex ->
+			{
+				log.warn("CA lookup failed", ex);
+				return null;
+			});
 
 		// Self-lookups know their own account type; cascade only matters for
 		// other players. GIMs only ever appear on the regular hiscores, so the
@@ -133,6 +167,7 @@ public class LookupSession
 		final ClogResult cachedClog = clogService.getCachedResult(player);
 		if (cachedHiscore != null && !hiscoreService.isStale(player))
 		{
+			startClogLookup(player, isSelf, thisLookup);
 			Timer revealTimer = new Timer(600, e ->
 			{
 				if (thisLookup != lookupVersion)
@@ -145,12 +180,14 @@ public class LookupSession
 				{
 					nameAutocompleter.addToSearchHistory(player);
 				}
-				if (cachedClog != null)
+				ClogResult displayClog = clogResult;
+				if (displayClog == null && cachedClog != null)
 				{
 					clogResult = cachedClog;
 					clogLastChanged = cachedClog.getLastChanged();
+					displayClog = cachedClog;
 				}
-				listener.onCachedResult(player, cachedHiscore, cachedClog, isSelf, knownType, isFirstSelfGreeting);
+				listener.onCachedResult(player, cachedHiscore, displayClog, isSelf, knownType, isFirstSelfGreeting);
 			});
 			revealTimer.setRepeats(false);
 			revealTimer.start();
@@ -159,58 +196,87 @@ public class LookupSession
 
 		final AccountType hiscoreType = knownType != null && knownType.isGroupIronman()
 			? AccountType.REGULAR : knownType;
-		hiscoreService.lookup(player, hiscoreType).thenAccept(result ->
-			SwingUtilities.invokeLater(() ->
-			{
-				if (thisLookup != lookupVersion)
+		hiscoreService.lookup(player, hiscoreType)
+			.orTimeout(15, TimeUnit.SECONDS)
+			.thenAccept(result ->
+				SwingUtilities.invokeLater(() ->
 				{
-					return;
-				}
-				lookupInFlight = false;
+					if (thisLookup != lookupVersion)
+					{
+						return;
+					}
+					lookupInFlight = false;
 
-				if (result == null)
+					if (result == null)
+					{
+						lookupVersion++;
+						listener.onNotFound(player);
+						return;
+					}
+
+					hiscoreResult = result;
+					if (nameAutocompleter != null)
+					{
+						nameAutocompleter.addToSearchHistory(player);
+					}
+					listener.onHiscoreResult(player, result, isSelf, knownType, isFirstSelfGreeting);
+				})
+			).exceptionally(ex ->
+			{
+				SwingUtilities.invokeLater(() ->
 				{
+					if (thisLookup != lookupVersion)
+					{
+						return;
+					}
 					lookupVersion++;
-					listener.onNotFound(player);
-					return;
-				}
-
-				hiscoreResult = result;
-				if (nameAutocompleter != null)
-				{
-					nameAutocompleter.addToSearchHistory(player);
-				}
-				listener.onHiscoreResult(player, result, isSelf, knownType, isFirstSelfGreeting);
-			})
-		).exceptionally(ex ->
-		{
-			SwingUtilities.invokeLater(() ->
-			{
-				if (thisLookup != lookupVersion)
-				{
-					return;
-				}
-				lookupVersion++;
-				lookupInFlight = false;
-				listener.onError(player, ex);
+					lookupInFlight = false;
+					listener.onError(player, ex);
+				});
+				return null;
 			});
-			return null;
-		});
 
-		clogService.lookup(player).thenAccept(result ->
-			SwingUtilities.invokeLater(() ->
-			{
-				if (thisLookup != lookupVersion)
+		startClogLookup(player, isSelf, thisLookup);
+	}
+
+	/**
+	 * Fire both clog providers in parallel, keep whichever has the freshest
+	 * data. Self lookups skip RuneProfile because local widget data is
+	 * authoritative.
+	 */
+	private void startClogLookup(String player, boolean isSelf, int thisLookup)
+	{
+		CompletableFuture<ClogResult> templeClog =
+			providerOrNull(clogService.lookup(player));
+		CompletableFuture<ClogResult> rpClog = isSelf
+			? CompletableFuture.completedFuture(null)
+			: providerOrNull(runeProfileService.lookupClog(player));
+
+		templeClog.thenCombine(rpClog, ClogResult::pickFreshest)
+			.orTimeout(15, TimeUnit.SECONDS)
+			.thenAccept(result ->
+				SwingUtilities.invokeLater(() ->
 				{
-					return;
-				}
-				clogResult = result;
-				clogLastChanged = result != null ? result.getLastChanged() : null;
-				listener.onClogResult(player, result, isSelf, thisLookup);
-			})
-		).exceptionally(ex ->
+					if (thisLookup != lookupVersion)
+					{
+						return;
+					}
+					clogResult = result;
+					clogLastChanged = result != null ? result.getLastChanged() : null;
+					listener.onClogResult(player, result, isSelf, thisLookup);
+				})
+			).exceptionally(ex ->
+			{
+				log.warn("Clog lookup failed", ex);
+				return null;
+			});
+	}
+
+	private CompletableFuture<ClogResult> providerOrNull(CompletableFuture<ClogResult> future)
+	{
+		return future.exceptionally(ex ->
 		{
-			log.warn("Clog lookup failed", ex);
+			log.debug("Clog provider lookup failed", ex);
 			return null;
 		});
 	}
@@ -235,15 +301,16 @@ public class LookupSession
 	 * promotes their results into the primary slot in one synchronous step.
 	 */
 	public void adoptState(@Nullable HiscoreResult hiscore, @Nullable ClogResult clog,
-		@Nullable String name)
+		@Nullable CombatAchievementResult ca, @Nullable String name)
 	{
 		this.hiscoreResult = hiscore;
 		this.clogResult = clog;
+		this.caResult = ca;
 		this.currentLookupRsn = name;
 		this.clogLastChanged = clog != null ? clog.getLastChanged() : null;
 	}
 
-	// ── Read-only state ───────────────────────────────────────────────────
+	// Read-only state
 	@Nullable
 	public HiscoreResult getHiscoreResult()
 	{
@@ -254,6 +321,12 @@ public class LookupSession
 	public ClogResult getClogResult()
 	{
 		return clogResult;
+	}
+
+	@Nullable
+	public CombatAchievementResult getCaResult()
+	{
+		return caResult;
 	}
 
 	@Nullable

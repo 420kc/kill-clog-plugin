@@ -12,10 +12,6 @@ import static org.junit.Assert.*;
 
 public class ClogHelperTest
 {
-	// ---------------------------------------------------------------
-	// formatKc
-	// ---------------------------------------------------------------
-
 	@Test
 	public void testFormatKcSmall()
 	{
@@ -44,41 +40,36 @@ public class ClogHelperTest
 	@Test
 	public void testFormatKcBoundaries()
 	{
-		// Just below 10k — should NOT use "k"
+		// Just below 10k: no "k".
 		assertEquals("9999", ClogHelper.formatKc(9999));
-		// Exactly 10k — should use "k"
+		// Exactly 10k: use "k".
 		assertEquals("10k", ClogHelper.formatKc(10000));
-		// Just below 1m — should still use "k"
+		// Just below 1m: still use "k".
 		assertEquals("999k", ClogHelper.formatKc(999999));
-		// Exactly 1m — should use "m"
+		// Exactly 1m: use "m".
 		assertEquals("1m", ClogHelper.formatKc(1000000));
 	}
 
 	@Test
 	public void testFormatKcNegative()
 	{
-		// Unranked bosses show -1 — formatKc should handle gracefully
+		// Unranked bosses show -1.
 		String result = ClogHelper.formatKc(-1);
 		assertNotNull(result);
 	}
 
-	// ---------------------------------------------------------------
-	// getClogTierName edge cases
-	// ---------------------------------------------------------------
-
 	@Test
 	public void testClogTierZeroSlots()
 	{
-		// totalSlots = 0: gildedThreshold = 0, so 0 obtained matches gilded
+		// Empty catalogs still resolve to a tier without crashing.
 		String tier = ClogHelper.getClogTierName(0, 0);
-		// Should not crash
 		assertNotNull(tier);
 	}
 
 	@Test
 	public void testClogTierObtainedExceedsTotal()
 	{
-		// Shouldn't happen in practice, but shouldn't crash
+		// Defensive path for malformed provider totals.
 		String tier = ClogHelper.getClogTierName(2000, 1700);
 		assertEquals("gilded", tier);
 	}
@@ -86,15 +77,10 @@ public class ClogHelperTest
 	@Test
 	public void testClogTierOneSlot()
 	{
-		// Edge: tiny clog
+		// Tiny catalogs round the gilded threshold down to zero.
 		String tier = ClogHelper.getClogTierName(1, 1);
-		// 90% of 1 = 0, rounded to nearest 25 = 0, so gilded at 0+
 		assertEquals("gilded", tier);
 	}
-
-	// ---------------------------------------------------------------
-	// clogCounts
-	// ---------------------------------------------------------------
 
 	@Test
 	public void testClogCountsMissingCategory()
@@ -131,7 +117,7 @@ public class ClogHelperTest
 	@Test
 	public void testClogCountsObtainedItemNotInCategory()
 	{
-		// Player has item 999 which isn't in the category definition
+		// Items outside the category definition do not count.
 		Map<String, List<Integer>> cats = new HashMap<>();
 		cats.put("zulrah", Arrays.asList(100, 200, 300));
 
@@ -143,10 +129,6 @@ public class ClogHelperTest
 		assertEquals(0, counts[0]); // 999 not in category, so 0 obtained
 		assertEquals(3, counts[1]);
 	}
-
-	// ---------------------------------------------------------------
-	// getObtainedIds
-	// ---------------------------------------------------------------
 
 	@Test
 	public void testGetObtainedIdsNullResult()
@@ -163,10 +145,6 @@ public class ClogHelperTest
 		assertTrue(ids.isEmpty());
 	}
 
-	// ---------------------------------------------------------------
-	// countObtained
-	// ---------------------------------------------------------------
-
 	@Test
 	public void testCountObtainedEmpty()
 	{
@@ -176,16 +154,12 @@ public class ClogHelperTest
 	@Test
 	public void testCountObtainedDuplicateIds()
 	{
-		// allItems has duplicate IDs (shouldn't happen, but shouldn't crash)
+		// Duplicate catalog ids count by slot.
 		List<Integer> items = Arrays.asList(100, 100, 200);
 		Set<Integer> obtained = new HashSet<>(Arrays.asList(100));
-		// 100 appears twice in allItems, both match — counts as 2
+		// 100 appears twice in allItems, so both entries count.
 		assertEquals(2, ClogHelper.countObtained(items, obtained));
 	}
-
-	// ---------------------------------------------------------------
-	// bossToCategory (ClogService)
-	// ---------------------------------------------------------------
 
 	@Test
 	public void testBossToCategoryOverrides()
@@ -211,14 +185,10 @@ public class ClogHelperTest
 	@Test
 	public void testBossToCategorySpecialChars()
 	{
-		// Apostrophes, colons stripped by regex
+		// Apostrophes and punctuation normalize through the generic path.
 		assertEquals("some_boss", ClogService.bossToCategory("Some: Boss!"));
 		assertEquals("test_boss", ClogService.bossToCategory("  Test Boss  "));
 	}
-
-	// ---------------------------------------------------------------
-	// pad
-	// ---------------------------------------------------------------
 
 	@Test
 	public void testPadShort()
@@ -237,13 +207,9 @@ public class ClogHelperTest
 	@Test
 	public void testPadLong()
 	{
-		// Longer than 4 chars — leftPad returns as-is
+		// Longer than 4 chars: leftPad returns as-is.
 		assertEquals("12345", ClogHelper.pad("12345"));
 	}
-
-	// ---------------------------------------------------------------
-	// Helper to build ClogResult without nulls
-	// ---------------------------------------------------------------
 
 	private ClogResult makeClogResult(
 		Map<String, List<Integer>> categoryItems,

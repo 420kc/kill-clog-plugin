@@ -5,7 +5,6 @@ import net.runelite.client.config.Config;
 import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
-import net.runelite.client.config.Keybind;
 
 @ConfigGroup("killclog")
 public interface KillClogConfig extends Config
@@ -24,7 +23,7 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "playerMenuLookup",
 		name = "Player Menu Lookup",
-		description = "Add 'Kill Clog' to right-click menu on players",
+		description = "Add a lookup option to right-click menus",
 		position = 2
 	)
 	default boolean playerMenuLookup()
@@ -33,10 +32,137 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "menuLabel",
+		name = "Menu Label",
+		description = "Text shown on the right-click lookup option",
+		position = 3
+	)
+	default MenuLabel menuLabel()
+	{
+		return MenuLabel.KILL_CLOG;
+	}
+
+	@ConfigSection(
+		name = "Menu Locations",
+		description = "Which right-click menus show the lookup option",
+		position = 4,
+		closedByDefault = true
+	)
+	String menuLocationsSection = "menuLocations";
+
+	@ConfigItem(
+		keyName = "menuOnPlayers",
+		name = "Players",
+		description = "Show on in-game player right-click menus",
+		section = "menuLocations",
+		position = 0
+	)
+	default boolean menuOnPlayers()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "menuOnFriendsList",
+		name = "Friends List",
+		description = "Show on names in the Friends list",
+		section = "menuLocations",
+		position = 1
+	)
+	default boolean menuOnFriendsList()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "menuOnIgnoreList",
+		name = "Ignore List",
+		description = "Show on names in the Ignore list",
+		section = "menuLocations",
+		position = 2
+	)
+	default boolean menuOnIgnoreList()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "menuOnClanList",
+		name = "Clan List",
+		description = "Show on names in your clan member list",
+		section = "menuLocations",
+		position = 3
+	)
+	default boolean menuOnClanList()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "menuOnGuestClanList",
+		name = "Guest Clan List",
+		description = "Show on names in guest clan member lists",
+		section = "menuLocations",
+		position = 4
+	)
+	default boolean menuOnGuestClanList()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "menuOnChatChannels",
+		name = "Chat Channels",
+		description = "Show on names in friends chat and clan chat channels",
+		section = "menuLocations",
+		position = 5
+	)
+	default boolean menuOnChatChannels()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "menuOnChat",
+		name = "Public Chat",
+		description = "Show on names in the public chatbox",
+		section = "menuLocations",
+		position = 6
+	)
+	default boolean menuOnChat()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "menuOnPrivateMessages",
+		name = "Private Messages",
+		description = "Show on names in private messages",
+		section = "menuLocations",
+		position = 7
+	)
+	default boolean menuOnPrivateMessages()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "menuOnGroupIronman",
+		name = "Group Ironman",
+		description = "Show on names in the Group Ironman panel",
+		section = "menuLocations",
+		position = 8
+	)
+	default boolean menuOnGroupIronman()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 		keyName = "tooltipMode",
 		name = "Tooltip Activation",
-		description = "How tooltips are triggered on boss and activity cells (hover or click-to-reveal)",
-		position = 3
+		description = "How grid and summary tooltips are triggered (hover or click-to-reveal)",
+		position = 5
 	)
 	default TooltipMode tooltipMode()
 	{
@@ -47,14 +173,14 @@ public interface KillClogConfig extends Config
 		keyName = "hoverStyle",
 		name = "Cell Hover",
 		description = "Visual feedback when hovering a cell. Outline uses the highlighter color, Tint subtly brightens the background.",
-		position = 4
+		position = 6
 	)
 	default HoverStyle hoverStyle()
 	{
 		return HoverStyle.OUTLINE;
 	}
 
-	// --- Progress Highlighter ---
+	// Progress highlighter.
 
 	@ConfigSection(
 		name = "Progress Highlighter",
@@ -73,18 +199,6 @@ public interface KillClogConfig extends Config
 	default boolean completionistHighlighter()
 	{
 		return true;
-	}
-
-	@ConfigItem(
-		keyName = "highlighterKeybind",
-		name = "Toggle Keybind",
-		description = "Shortcut key to toggle the Progress Highlighter",
-		section = "completionist",
-		position = 1
-	)
-	default Keybind highlighterKeybind()
-	{
-		return Keybind.NOT_SET;
 	}
 
 	@ConfigItem(
@@ -112,7 +226,7 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "infoBarColor",
 		name = "Summary Bar Text",
-		description = "Colors the text of the Summary Bars (RSN, Clog Count, PvM, Total Level, and PvP)",
+		description = "Colors summary-bar text (RSN, clog count, PvM, total level, and PvP)",
 		section = "completionist",
 		position = 2
 	)

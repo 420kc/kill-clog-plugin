@@ -39,7 +39,7 @@ final class ProgressHighlighter
 
 	/**
 	 * Color boss, activity, clue tier, and rare cells by clog completion progress.
-	 * Rare cells passed as category key → label map (assigned after construction).
+	 * Rare cells are passed as a category-key to label map.
 	 */
 	void colorCellsByCompletion(HiscoreResult hiscoreResult, ClogResult clogResult,
 								Map<String, TooltipData> rareTooltips,
@@ -61,7 +61,7 @@ final class ProgressHighlighter
 
 		colorActivityCategories(clueCategories, clueTierLabels, hiscoreResult, clogResult);
 
-		// Clue All — aggregate across all 6 tier categories
+		// Clue All aggregates across all six tier categories.
 		JLabel clueAllLabel = activityLabels.get(HiscoreSkill.CLUE_SCROLL_ALL);
 		if (clueAllLabel != null)
 		{
@@ -125,9 +125,7 @@ final class ProgressHighlighter
 		}
 	}
 
-	// -------------------------------------------------------------------------
-	// Private helpers
-	// -------------------------------------------------------------------------
+	// Private helpers.
 
 	private void colorCustomRare(JLabel label, String rareKey,
 		Map<String, TooltipData> rareTooltips)
@@ -178,7 +176,7 @@ final class ProgressHighlighter
 		List<Integer> allItems = clogResult.getCategoryItems().get(category);
 		if (allItems == null || allItems.isEmpty())
 		{
-			// KC > 0 but no clog data for this category — treat as empty
+			// KC exists but no clog data was found for this category.
 			label.setForeground(config.emptyClogColor());
 			return;
 		}

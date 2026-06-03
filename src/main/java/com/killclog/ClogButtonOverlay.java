@@ -31,7 +31,7 @@ class ClogButtonOverlay extends Overlay implements MouseListener
 	private BufferedImage icon;
 	private BufferedImage greenIcon;
 	private Rectangle buttonBounds;
-	private long greenUntil;
+	private volatile long greenUntil;
 
 	@Inject
 	ClogButtonOverlay(Client client, KillClogPlugin plugin)

@@ -1,0 +1,588 @@
+package com.killclog;
+
+import java.awt.AlphaComposite;
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.FontMetrics;
+import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import javax.swing.SwingUtilities;
+import net.runelite.client.game.ItemManager;
+import net.runelite.client.ui.FontManager;
+import net.runelite.client.util.AsyncBufferedImage;
+import net.runelite.client.util.ImageUtil;
+
+/**
+ * 3-column PvM comparison tooltip. Left column: labels (orange).
+ * Middle column: blue player values. Right column: red player values.
+ * Inlay separators split the stat, raid, and mega-rare sections.
+ */
+public class ComparePvmSummaryTooltip extends TitleTooltip
+{
+	private static final int COL_GAP = 10;
+	private static final int WEAPON_SIZE = 24;
+	private static final int WEAPON_PAD = 4;
+	private static final int SEPARATOR_PAD = 3;
+	private static final int CA_ROW_HEIGHT = 16;
+	private static final int CA_REWARD_GAP = 3;
+	private static final int HEADER_GAP = 4;
+
+	private static final Color QTY_COLOR = new Color(255, 255, 0);
+	private static final Color QTY_SHADOW = new Color(0, 0, 0);
+
+	private static final int TBOW_ID = 20997;
+	private static final int SCYTHE_ID = 22486;
+	private static final int SHADOW_ID = 27277;
+
+	// Blue player values.
+	private String blueName;
+	private int blueCombat;
+	private int blueTotalKills;
+	private int blueBossesKc;
+	private int blueTotalBosses;
+	private String blueMostKilled;
+	private int blueMostKilledKc;
+	private int blueBossesCompleted = -1;
+	private int blueBossesWithClog;
+	private final BufferedImage[] blueWeaponSprites = new BufferedImage[3];
+	private final int[] blueWeaponCounts = new int[3];
+	private int blueCoxKc, blueTobKc, blueToaKc;
+	private int blueCoxObt = -1, blueCoxTotal;
+	private int blueTobObt = -1, blueTobTotal;
+	private int blueToaObt = -1, blueToaTotal;
+	private CombatAchievementResult blueCa;
+	private BufferedImage blueRewardSprite;
+
+	// Red player values.
+	private String redName;
+	private int redCombat;
+	private int redTotalKills;
+	private int redBossesKc;
+	private int redTotalBosses;
+	private String redMostKilled;
+	private int redMostKilledKc;
+	private int redBossesCompleted = -1;
+	private int redBossesWithClog;
+	private final BufferedImage[] redWeaponSprites = new BufferedImage[3];
+	private final int[] redWeaponCounts = new int[3];
+	private int redCoxKc, redTobKc, redToaKc;
+	private int redCoxObt = -1, redCoxTotal;
+	private int redTobObt = -1, redTobTotal;
+	private int redToaObt = -1, redToaTotal;
+	private CombatAchievementResult redCa;
+	private BufferedImage redRewardSprite;
+
+	@Override
+	protected Font getTitleFont()
+	{
+		return TITLE_FONT_SMALL;
+	}
+
+	public void setBlueData(String name, int combat, int totalKills,
+		int bossesKc, int totalBosses, String mostKilled, int mostKilledKc)
+	{
+		setTitle("PvM Summary");
+		this.blueName = name;
+		this.blueCombat = combat;
+		this.blueTotalKills = totalKills;
+		this.blueBossesKc = bossesKc;
+		this.blueTotalBosses = totalBosses;
+		this.blueMostKilled = mostKilled;
+		this.blueMostKilledKc = mostKilledKc;
+	}
+
+	public void setRedData(String name, int combat, int totalKills,
+		int bossesKc, int totalBosses, String mostKilled, int mostKilledKc)
+	{
+		this.redName = name;
+		this.redCombat = combat;
+		this.redTotalKills = totalKills;
+		this.redBossesKc = bossesKc;
+		this.redTotalBosses = totalBosses;
+		this.redMostKilled = mostKilled;
+		this.redMostKilledKc = mostKilledKc;
+	}
+
+	public void setBlueCompletion(int completed, int withClog)
+	{
+		this.blueBossesCompleted = completed;
+		this.blueBossesWithClog = withClog;
+	}
+
+	public void setRedCompletion(int completed, int withClog)
+	{
+		this.redBossesCompleted = completed;
+		this.redBossesWithClog = withClog;
+	}
+
+	public void setBlueCa(CombatAchievementResult ca, BufferedImage rewardSprite)
+	{
+		this.blueCa = ca;
+		this.blueRewardSprite = rewardSprite;
+	}
+
+	public void setRedCa(CombatAchievementResult ca, BufferedImage rewardSprite)
+	{
+		this.redCa = ca;
+		this.redRewardSprite = rewardSprite;
+	}
+
+	private boolean hasCaRow()
+	{
+		return blueCa != null || redCa != null;
+	}
+
+	public void setBlueRaids(HiscoreResult hs, ClogResult clog)
+	{
+		blueCoxKc = raidKc(hs, "Chambers of Xeric", "Chambers of Xeric: Challenge Mode");
+		blueTobKc = raidKc(hs, "Theatre of Blood", "Theatre of Blood: Hard Mode");
+		blueToaKc = raidKc(hs, "Tombs of Amascut", "Tombs of Amascut: Expert Mode");
+		loadRaidClog(clog, true);
+	}
+
+	public void setRedRaids(HiscoreResult hs, ClogResult clog)
+	{
+		redCoxKc = raidKc(hs, "Chambers of Xeric", "Chambers of Xeric: Challenge Mode");
+		redTobKc = raidKc(hs, "Theatre of Blood", "Theatre of Blood: Hard Mode");
+		redToaKc = raidKc(hs, "Tombs of Amascut", "Tombs of Amascut: Expert Mode");
+		loadRaidClog(clog, false);
+	}
+
+	public void setBlueMegarares(int tbow, int scythe, int shadow, ItemManager itemManager)
+	{
+		loadWeapons(blueWeaponCounts, blueWeaponSprites, tbow, scythe, shadow, itemManager);
+	}
+
+	public void setRedMegarares(int tbow, int scythe, int shadow, ItemManager itemManager)
+	{
+		loadWeapons(redWeaponCounts, redWeaponSprites, tbow, scythe, shadow, itemManager);
+	}
+
+	// Sizing.
+
+	@Override
+	protected Dimension getContentSize(int availableWidth)
+	{
+		FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
+		FontMetrics bfm = getFontMetrics(FontManager.getRunescapeBoldFont());
+
+		int labelW = measureLabelWidth(fm, bfm);
+		int valueW = measureValueWidth(fm);
+		int totalWidth = labelW + COL_GAP + valueW + COL_GAP + valueW;
+		int totalHeight = measureTableHeight(fm);
+
+		return new Dimension(totalWidth, totalHeight);
+	}
+
+	private int measureLabelWidth(FontMetrics fm, FontMetrics bfm)
+	{
+		int w = 0;
+		if (hasCaRow())
+		{
+			w = Math.max(w, fm.stringWidth("CA Tier"));
+		}
+		w = Math.max(w, fm.stringWidth("Combat"));
+		w = Math.max(w, fm.stringWidth("Total Kills"));
+		w = Math.max(w, fm.stringWidth("Most Killed"));
+		w = Math.max(w, fm.stringWidth("Bosses Killed"));
+		w = Math.max(w, fm.stringWidth("Logs Completed"));
+		w = Math.max(w, bfm.stringWidth("Raids"));
+		w = Math.max(w, fm.stringWidth("CoX"));
+		w = Math.max(w, fm.stringWidth("ToB"));
+		w = Math.max(w, fm.stringWidth("ToA"));
+		w = Math.max(w, bfm.stringWidth("Mega Rares"));
+		return w;
+	}
+
+	private int measureValueWidth(FontMetrics fm)
+	{
+		int w = 0;
+		// Player names.
+		if (blueName != null) w = Math.max(w, fm.stringWidth(blueName));
+		if (redName != null) w = Math.max(w, fm.stringWidth(redName));
+		if (hasCaRow())
+		{
+			int blueRewardW = blueRewardSprite != null ? blueRewardSprite.getWidth() + CA_REWARD_GAP : 0;
+			int redRewardW = redRewardSprite != null ? redRewardSprite.getWidth() + CA_REWARD_GAP : 0;
+			int rewardW = Math.max(blueRewardW, redRewardW);
+			w = Math.max(w, rewardW + fm.stringWidth("Grandmaster"));
+		}
+		// Stats.
+		w = Math.max(w, fm.stringWidth("126"));
+		w = Math.max(w, fm.stringWidth("999,999"));
+		w = Math.max(w, fm.stringWidth("99/99"));
+		// Most killed.
+		String blueKill = mostKilledText(blueMostKilled, blueMostKilledKc);
+		String redKill = mostKilledText(redMostKilled, redMostKilledKc);
+		w = Math.max(w, fm.stringWidth(blueKill));
+		w = Math.max(w, fm.stringWidth(redKill));
+		// Raid KC with clog progress.
+		w = Math.max(w, fm.stringWidth("99,999 (99/99)"));
+		// Weapon sprites.
+		int spriteRowW = 3 * WEAPON_SIZE + 2 * WEAPON_PAD;
+		w = Math.max(w, spriteRowW);
+		return w;
+	}
+
+	private int measureTableHeight(FontMetrics fm)
+	{
+		int h = 0;
+
+		// Header row.
+		h += fm.getHeight() + HEADER_GAP;
+
+		if (hasCaRow())
+		{
+			h += CA_ROW_HEIGHT;
+		}
+
+		// Stats.
+		h += LINE_HEIGHT * 4;
+
+		// Most killed.
+		h += LINE_HEIGHT;
+
+		// Separator.
+		h += SEPARATOR_PAD + 1 + SEPARATOR_PAD;
+
+		// Raids.
+		h += LINE_HEIGHT + LINE_HEIGHT * 3;
+
+		// Separator.
+		h += SEPARATOR_PAD + 1 + SEPARATOR_PAD;
+
+		// Mega rares.
+		h += LINE_HEIGHT + WEAPON_PAD + WEAPON_SIZE;
+
+		return h;
+	}
+
+	// Painting.
+
+	@Override
+	protected void paintBody(Graphics2D g2, int w, int h, int startY)
+	{
+		int inset = getInset();
+		int contentWidth = w - 2 * inset;
+
+		FontMetrics fm = g2.getFontMetrics(FontManager.getRunescapeSmallFont());
+		FontMetrics bfm = g2.getFontMetrics(FontManager.getRunescapeBoldFont());
+
+		int labelW = measureLabelWidth(fm, bfm);
+		int valueW = (contentWidth - labelW - COL_GAP * 2) / 2;
+		int labelX = inset;
+		int blueX = inset + labelW + COL_GAP;
+		int redX = blueX + valueW + COL_GAP;
+
+		g2.setFont(FontManager.getRunescapeSmallFont());
+		fm = g2.getFontMetrics();
+		int y = startY;
+
+		// Header row.
+		g2.setColor(COMPARE_BLUE);
+		g2.drawString(blueName != null ? blueName : "--", blueX, y + fm.getAscent());
+		g2.setColor(COMPARE_RED);
+		g2.drawString(redName != null ? redName : "--", redX, y + fm.getAscent());
+		y += fm.getHeight() + HEADER_GAP;
+
+		if (hasCaRow())
+		{
+			g2.setColor(OSRS_ORANGE);
+			g2.drawString("CA Tier", labelX, y + fm.getAscent());
+			paintCaValue(g2, fm, blueX, y, blueCa, blueRewardSprite, COMPARE_BLUE);
+			paintCaValue(g2, fm, redX, y, redCa, redRewardSprite, COMPARE_RED);
+			y += CA_ROW_HEIGHT;
+		}
+
+		// Combat.
+		paintRow(g2, fm, labelX, blueX, redX, y, "Combat",
+			blueCombat > 0 ? String.valueOf(blueCombat) : "--",
+			redCombat > 0 ? String.valueOf(redCombat) : "--",
+			COMPARE_BLUE, COMPARE_RED);
+		y += LINE_HEIGHT;
+
+		// Total kills.
+		paintRow(g2, fm, labelX, blueX, redX, y, "Total Kills",
+			blueTotalKills > 0 ? String.format("%,d", blueTotalKills) : "--",
+			redTotalKills > 0 ? String.format("%,d", redTotalKills) : "--",
+			COMPARE_BLUE, COMPARE_RED);
+		y += LINE_HEIGHT;
+
+		// Most killed.
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString("Most Killed", labelX, y + fm.getAscent());
+		g2.setColor(COMPARE_BLUE);
+		g2.drawString(mostKilledText(blueMostKilled, blueMostKilledKc), blueX, y + fm.getAscent());
+		g2.setColor(COMPARE_RED);
+		g2.drawString(mostKilledText(redMostKilled, redMostKilledKc), redX, y + fm.getAscent());
+		y += LINE_HEIGHT;
+
+		// Bosses Killed.
+		paintRow(g2, fm, labelX, blueX, redX, y, "Bosses Killed",
+			blueBossesKc + "/" + blueTotalBosses,
+			redBossesKc + "/" + redTotalBosses,
+			completionColor(blueBossesKc, blueTotalBosses),
+			completionColor(redBossesKc, redTotalBosses));
+		y += LINE_HEIGHT;
+
+		// Logs Completed.
+		if (blueBossesCompleted >= 0 || redBossesCompleted >= 0)
+		{
+			String blueLog = blueBossesCompleted >= 0 ? blueBossesCompleted + "/" + blueBossesWithClog : "--";
+			String redLog = redBossesCompleted >= 0 ? redBossesCompleted + "/" + redBossesWithClog : "--";
+			paintRow(g2, fm, labelX, blueX, redX, y, "Logs Completed",
+				blueLog, redLog,
+				blueBossesCompleted >= 0 ? completionColor(blueBossesCompleted, blueBossesWithClog) : COMPARE_BLUE,
+				redBossesCompleted >= 0 ? completionColor(redBossesCompleted, redBossesWithClog) : COMPARE_RED);
+		}
+		y += LINE_HEIGHT;
+
+		// Separator.
+		y += SEPARATOR_PAD;
+		g2.setColor(SEPARATOR_COLOR);
+		g2.drawLine(inset, y, w - inset - 1, y);
+		y += 1 + SEPARATOR_PAD;
+
+		// Raids.
+		g2.setFont(FontManager.getRunescapeBoldFont());
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString("Raids", labelX, y + g2.getFontMetrics().getAscent());
+		y += LINE_HEIGHT;
+
+		// Raid rows.
+		g2.setFont(FontManager.getRunescapeSmallFont());
+		fm = g2.getFontMetrics();
+		paintRaidRow(g2, fm, labelX, blueX, redX, y, "CoX",
+			blueCoxKc, blueCoxObt, blueCoxTotal,
+			redCoxKc, redCoxObt, redCoxTotal);
+		y += LINE_HEIGHT;
+		paintRaidRow(g2, fm, labelX, blueX, redX, y, "ToB",
+			blueTobKc, blueTobObt, blueTobTotal,
+			redTobKc, redTobObt, redTobTotal);
+		y += LINE_HEIGHT;
+		paintRaidRow(g2, fm, labelX, blueX, redX, y, "ToA",
+			blueToaKc, blueToaObt, blueToaTotal,
+			redToaKc, redToaObt, redToaTotal);
+		y += LINE_HEIGHT;
+
+		// Separator.
+		y += SEPARATOR_PAD;
+		g2.setColor(SEPARATOR_COLOR);
+		g2.drawLine(inset, y, w - inset - 1, y);
+		y += 1 + SEPARATOR_PAD;
+
+		// Mega rares.
+		g2.setFont(FontManager.getRunescapeBoldFont());
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString("Mega Rares", labelX, y + g2.getFontMetrics().getAscent());
+		y += LINE_HEIGHT + WEAPON_PAD;
+
+		// Weapon sprites.
+		g2.setFont(FontManager.getRunescapeSmallFont());
+		fm = g2.getFontMetrics();
+		paintWeaponRow(g2, fm, blueX, y, valueW, blueWeaponSprites, blueWeaponCounts);
+		paintWeaponRow(g2, fm, redX, y, valueW, redWeaponSprites, redWeaponCounts);
+	}
+
+	// Row painters.
+
+	private void paintRow(Graphics2D g2, FontMetrics fm,
+		int labelX, int blueX, int redX, int y,
+		String label, String blueVal, String redVal,
+		Color blueColor, Color redColor)
+	{
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString(label, labelX, y + fm.getAscent());
+		g2.setColor(blueColor);
+		g2.drawString(blueVal, blueX, y + fm.getAscent());
+		g2.setColor(redColor);
+		g2.drawString(redVal, redX, y + fm.getAscent());
+	}
+
+	private void paintCaValue(Graphics2D g2, FontMetrics fm, int x, int y,
+		CombatAchievementResult ca, BufferedImage rewardSprite, Color playerColor)
+	{
+		if (ca == null)
+		{
+			g2.setColor(playerColor);
+			g2.drawString("--", x, y + fm.getAscent());
+			return;
+		}
+		int cx = x;
+		String tier = tierName(ca);
+		g2.setColor(playerColor);
+		g2.drawString(tier, cx, y + fm.getAscent());
+		cx += fm.stringWidth(tier);
+		if (rewardSprite != null)
+		{
+			cx += CA_REWARD_GAP;
+			int rewardY = y + (CA_ROW_HEIGHT - rewardSprite.getHeight()) / 2;
+			g2.drawImage(rewardSprite, cx, rewardY, null);
+		}
+	}
+
+	private void paintRaidRow(Graphics2D g2, FontMetrics fm,
+		int labelX, int blueX, int redX, int y, String label,
+		int blueKc, int blueObt, int blueTotal,
+		int redKc, int redObt, int redTotal)
+	{
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString(label, labelX, y + fm.getAscent());
+		paintRaidValue(g2, fm, blueX, y, blueKc, blueObt, blueTotal, COMPARE_BLUE);
+		paintRaidValue(g2, fm, redX, y, redKc, redObt, redTotal, COMPARE_RED);
+	}
+
+	private void paintRaidValue(Graphics2D g2, FontMetrics fm, int x, int y,
+		int kc, int obtained, int total, Color playerColor)
+	{
+		int textY = y + fm.getAscent();
+		if (kc <= 0)
+		{
+			g2.setColor(playerColor);
+			g2.drawString("--", x, textY);
+			return;
+		}
+
+		String kcText = String.format("%,d", kc);
+		g2.setColor(playerColor);
+		g2.drawString(kcText, x, textY);
+
+		if (obtained >= 0)
+		{
+			int lx = x + fm.stringWidth(kcText);
+			paintWrappedProgressCount(g2, fm, lx, textY, obtained, total);
+		}
+	}
+
+	private void paintWeaponRow(Graphics2D g2, FontMetrics fm,
+		int x, int y, int colWidth,
+		BufferedImage[] sprites, int[] counts)
+	{
+		int spriteRowWidth = 3 * WEAPON_SIZE + 2 * WEAPON_PAD;
+		int startX = x + (colWidth - spriteRowWidth) / 2;
+
+		for (int i = 0; i < 3; i++)
+		{
+			int sx = startX + i * (WEAPON_SIZE + WEAPON_PAD);
+			BufferedImage sprite = sprites[i];
+			if (sprite != null)
+			{
+				boolean obtained = counts[i] > 0;
+				g2.setComposite(obtained
+					? AlphaComposite.SrcOver
+					: AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
+				g2.drawImage(sprite, sx, y, null);
+				g2.setComposite(AlphaComposite.SrcOver);
+
+				if (obtained && counts[i] > 1)
+				{
+					String qtyText = String.valueOf(counts[i]);
+					g2.setColor(QTY_SHADOW);
+					g2.drawString(qtyText, sx + 1, y + fm.getAscent() + 1);
+					g2.setColor(QTY_COLOR);
+					g2.drawString(qtyText, sx, y + fm.getAscent());
+				}
+			}
+		}
+	}
+
+	// Data helpers.
+
+	private static String mostKilledText(String name, int kc)
+	{
+		if (name == null) return "--";
+		return name + " (" + String.format("%,d", kc) + ")";
+	}
+
+	private static String tierName(CombatAchievementResult ca)
+	{
+		CombatAchievementTier tier = ca != null ? ca.getTier() : null;
+		if (tier == null)
+		{
+			return "None";
+		}
+		String name = tier.name();
+		return name.charAt(0) + name.substring(1).toLowerCase();
+	}
+
+	private static int raidKc(HiscoreResult hs, String normal, String hard)
+	{
+		if (hs == null)
+		{
+			return 0;
+		}
+		return Math.max(0, hs.getKc(normal)) + Math.max(0, hs.getKc(hard));
+	}
+
+	private void loadRaidClog(ClogResult clog, boolean blue)
+	{
+		if (clog == null) return;
+		int[] cox = ClogHelper.clogCounts("chambers_of_xeric", clog);
+		int[] tob = ClogHelper.clogCounts("theatre_of_blood", clog);
+		int[] toa = ClogHelper.clogCounts("tombs_of_amascut", clog);
+		if (blue)
+		{
+			if (cox != null)
+			{
+				blueCoxObt = cox[0];
+				blueCoxTotal = cox[1];
+			}
+			if (tob != null)
+			{
+				blueTobObt = tob[0];
+				blueTobTotal = tob[1];
+			}
+			if (toa != null)
+			{
+				blueToaObt = toa[0];
+				blueToaTotal = toa[1];
+			}
+		}
+		else
+		{
+			if (cox != null)
+			{
+				redCoxObt = cox[0];
+				redCoxTotal = cox[1];
+			}
+			if (tob != null)
+			{
+				redTobObt = tob[0];
+				redTobTotal = tob[1];
+			}
+			if (toa != null)
+			{
+				redToaObt = toa[0];
+				redToaTotal = toa[1];
+			}
+		}
+	}
+
+	private void loadWeapons(int[] counts, BufferedImage[] sprites,
+		int tbow, int scythe, int shadow, ItemManager itemManager)
+	{
+		counts[0] = tbow;
+		counts[1] = scythe;
+		counts[2] = shadow;
+
+		int[] ids = {TBOW_ID, SCYTHE_ID, SHADOW_ID};
+		for (int i = 0; i < 3; i++)
+		{
+			BufferedImage img = itemManager.getImage(ids[i], 1, false);
+			sprites[i] = ImageUtil.resizeImage(img, WEAPON_SIZE, WEAPON_SIZE);
+			if (img instanceof AsyncBufferedImage)
+			{
+				final int idx = i;
+				((AsyncBufferedImage) img).onLoaded(() ->
+				{
+					sprites[idx] = ImageUtil.resizeImage(
+						itemManager.getImage(ids[idx], 1, false), WEAPON_SIZE, WEAPON_SIZE);
+					SwingUtilities.invokeLater(this::repaint);
+				});
+			}
+		}
+	}
+
+	// Collection-log counts use the native OSRS stoplight colors from TitleTooltip.
+}

@@ -13,7 +13,7 @@ import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
 
 /**
- * PVM summary tooltip on the combat level cell.
+ * PvM summary tooltip on the combat level cell.
  * Stats at top, most-killed, raids, then megarare weapon sprites at bottom.
  */
 public class PvmSummaryTooltip extends TitleTooltip
@@ -23,6 +23,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private static final int SEPARATOR_PAD = 2;
 	private static final int MOST_KILLED_GAP = 4;
 	private static final int SUBHEADER_HEIGHT = 16;
+	private static final int CA_ROW_HEIGHT = 18;
+	private static final int CA_REWARD_GAP = 3;
 
 	private static final Color QTY_COLOR = new Color(255, 255, 0);
 	private static final Color QTY_SHADOW = new Color(0, 0, 0);
@@ -54,6 +56,9 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private int toaObtained = -1;
 	private int toaTotal;
 
+	private CombatAchievementResult caResult;
+	private BufferedImage caRewardSprite;
+
 	public void setData(int combatLevel, int totalKills, int bossesWithKc, int totalBosses,
 						String mostKilled, int mostKilledKc)
 	{
@@ -70,6 +75,27 @@ public class PvmSummaryTooltip extends TitleTooltip
 	{
 		this.bossesCompleted = completed;
 		this.bossesWithClog = total;
+	}
+
+	/**
+	 * Combat Achievement tier for the CA section, with a pre-sized tier reward sprite.
+	 * A null result omits the section entirely.
+	 */
+	public void setCombatAchievements(CombatAchievementResult ca, BufferedImage rewardSprite)
+	{
+		this.caResult = ca;
+		this.caRewardSprite = rewardSprite;
+	}
+
+	private String tierDisplayName()
+	{
+		CombatAchievementTier tier = caResult != null ? caResult.getTier() : null;
+		if (tier == null)
+		{
+			return "None";
+		}
+		String name = tier.name();
+		return name.charAt(0) + name.substring(1).toLowerCase();
 	}
 
 	public void setMegarares(int tbowCount, int scytheCount,
@@ -147,10 +173,10 @@ public class PvmSummaryTooltip extends TitleTooltip
 			mostKilledHeight = MOST_KILLED_GAP + LINE_HEIGHT * 2;
 		}
 
-		// Raids section: bold subheader + 3 raid lines
+		// Raids section.
 		int raidsHeight = SUBHEADER_HEIGHT + LINE_HEIGHT * 3;
 
-		// Megarares section: bold subheader + sprite row
+		// Mega rares section.
 		int spriteRowWidth = 3 * WEAPON_SIZE + 2 * WEAPON_PAD;
 		int megarareHeight = SUBHEADER_HEIGHT + WEAPON_PAD + WEAPON_SIZE;
 
@@ -158,10 +184,10 @@ public class PvmSummaryTooltip extends TitleTooltip
 		int textWidth = 0;
 		textWidth = Math.max(textWidth, fm.stringWidth("Combat: 126"));
 		textWidth = Math.max(textWidth, fm.stringWidth("Total Kills: 999,999"));
-		textWidth = Math.max(textWidth, fm.stringWidth("Bosses killed: 99 / 99"));
+		textWidth = Math.max(textWidth, fm.stringWidth("Bosses Killed: 99 / 99"));
 		if (bossesCompleted >= 0)
 		{
-			textWidth = Math.max(textWidth, fm.stringWidth("Logs completed: 99 / 99"));
+			textWidth = Math.max(textWidth, fm.stringWidth("Logs Completed: 99 / 99"));
 		}
 		if (mostKilled != null)
 		{
@@ -171,10 +197,17 @@ public class PvmSummaryTooltip extends TitleTooltip
 		textWidth = Math.max(textWidth, bfm.stringWidth("Raids"));
 		textWidth = Math.max(textWidth, fm.stringWidth("CoX: 99,999 (99/99)"));
 		textWidth = Math.max(textWidth, bfm.stringWidth("Mega Rares"));
+		if (caResult != null)
+		{
+			int caWidth = fm.stringWidth("CA Tier: " + tierDisplayName())
+				+ (caRewardSprite != null ? caRewardSprite.getWidth() + CA_REWARD_GAP : 0);
+			textWidth = Math.max(textWidth, caWidth);
+		}
 
 		int contentWidth = Math.max(textWidth, spriteRowWidth);
 		int separatorHeight = SEPARATOR_PAD + 1 + SEPARATOR_PAD;
-		int contentHeight = statsHeight + mostKilledHeight
+		int caHeight = caResult != null ? CA_ROW_HEIGHT : 0;
+		int contentHeight = statsHeight + caHeight + mostKilledHeight
 			+ separatorHeight + raidsHeight
 			+ separatorHeight + megarareHeight;
 
@@ -189,6 +222,27 @@ public class PvmSummaryTooltip extends TitleTooltip
 		FontMetrics fm = g2.getFontMetrics();
 		int y = startY;
 
+		// CA Tier appears first when data is available.
+		if (caResult != null)
+		{
+			int caTextY = y + fm.getAscent();
+			String caLabel = "CA Tier: ";
+			g2.setColor(OSRS_ORANGE);
+			g2.drawString(caLabel, inset, caTextY);
+			int cx = inset + fm.stringWidth(caLabel);
+			String tierName = tierDisplayName();
+			g2.setColor(Color.WHITE);
+			g2.drawString(tierName, cx, caTextY);
+			cx += fm.stringWidth(tierName);
+			if (caRewardSprite != null)
+			{
+				cx += CA_REWARD_GAP;
+				int rewardY = y + (CA_ROW_HEIGHT - caRewardSprite.getHeight()) / 2 - 2;
+				g2.drawImage(caRewardSprite, cx, rewardY, null);
+			}
+			y += CA_ROW_HEIGHT;
+		}
+
 		// Combat
 		drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Combat: ",
 			combatLevel > 0 ? String.valueOf(combatLevel) : "--");
@@ -198,21 +252,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 		drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Total Kills: ",
 			totalKills > 0 ? String.format("%,d", totalKills) : "--");
 		y += LINE_HEIGHT;
-
-		// Bosses killed
-		drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Bosses killed: ",
-			bossesWithKc + "/" + totalBosses,
-			completionColor(bossesWithKc, totalBosses));
-		y += LINE_HEIGHT;
-
-		// Logs completed (clog only)
-		if (bossesCompleted >= 0)
-		{
-			drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Logs completed: ",
-				bossesCompleted + "/" + bossesWithClog,
-				completionColor(bossesCompleted, bossesWithClog));
-			y += LINE_HEIGHT;
-		}
 
 		// Most Killed
 		if (mostKilled != null)
@@ -227,20 +266,35 @@ public class PvmSummaryTooltip extends TitleTooltip
 			y += LINE_HEIGHT;
 		}
 
-		// --- Separator (stats → raids) ---
+		// Bosses Killed
+		drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Bosses Killed: ",
+			bossesWithKc + "/" + totalBosses,
+			completionColor(bossesWithKc, totalBosses));
+		y += LINE_HEIGHT;
+
+		// Logs Completed
+		if (bossesCompleted >= 0)
+		{
+			drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Logs Completed: ",
+				bossesCompleted + "/" + bossesWithClog,
+				completionColor(bossesCompleted, bossesWithClog));
+			y += LINE_HEIGHT;
+		}
+
+		// Separator: stats to raids.
 		y += SEPARATOR_PAD;
 		g2.setColor(SEPARATOR_COLOR);
 		g2.drawLine(inset, y, w - inset - 1, y);
 		y += 1 + SEPARATOR_PAD;
 
-		// "Raids" subheader — bold
+		// "Raids" subheader.
 		g2.setFont(FontManager.getRunescapeBoldFont());
 		FontMetrics bfm = g2.getFontMetrics();
 		g2.setColor(OSRS_ORANGE);
 		g2.drawString("Raids", inset, y + bfm.getAscent());
 		y += SUBHEADER_HEIGHT;
 
-		// Raid lines — small font
+		// Raid lines.
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		fm = g2.getFontMetrics();
 		paintRaidLine(g2, fm, inset, y, "CoX: ", coxKc, coxObtained, coxTotal);
@@ -250,20 +304,20 @@ public class PvmSummaryTooltip extends TitleTooltip
 		paintRaidLine(g2, fm, inset, y, "ToA: ", toaKc, toaObtained, toaTotal);
 		y += LINE_HEIGHT;
 
-		// --- Separator (raids → megarares) ---
+		// Separator: raids to megarares.
 		y += SEPARATOR_PAD;
 		g2.setColor(SEPARATOR_COLOR);
 		g2.drawLine(inset, y, w - inset - 1, y);
 		y += 1 + SEPARATOR_PAD;
 
-		// "Mega Rares" subheader — bold
+		// "Mega Rares" subheader.
 		g2.setFont(FontManager.getRunescapeBoldFont());
 		bfm = g2.getFontMetrics();
 		g2.setColor(OSRS_ORANGE);
 		g2.drawString("Mega Rares", inset, y + bfm.getAscent());
 		y += SUBHEADER_HEIGHT + WEAPON_PAD;
 
-		// 3 weapon sprites — horizontally centered
+		// Center the three weapon sprites.
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		fm = g2.getFontMetrics();
 		int spriteRowWidth = 3 * WEAPON_SIZE + 2 * WEAPON_PAD;
@@ -281,7 +335,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 				g2.drawImage(sprite, sx, y, null);
 				g2.setComposite(AlphaComposite.SrcOver);
 
-				// Quantity overlay — top-left, matching clog tooltips
+				// Quantity overlay matches clog tooltips.
 				if (obtained && weaponCounts[i] > 1)
 				{
 					String qtyText = String.valueOf(weaponCounts[i]);
@@ -316,9 +370,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		if (obtained >= 0)
 		{
 			lx += fm.stringWidth(kcText);
-			String clogText = " (" + obtained + "/" + total + ")";
-			g2.setColor(completionColor(obtained, total));
-			g2.drawString(clogText, lx, textY);
+			paintWrappedProgressCount(g2, fm, lx, textY, obtained, total);
 		}
 	}
 

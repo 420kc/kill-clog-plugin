@@ -25,7 +25,7 @@ import net.runelite.client.util.Text;
 
 /**
  * Handler for the !kclog [boss] and !missing [boss] chat commands. Both replace the user's
- * chat line with collection log progress for the requested boss, plus inline sprite icons —
+ * chat line with collection log progress for the requested boss, plus inline sprite icons.
  * !kclog renders obtained items, !missing renders the inverse (still-unobtained items).
  * Reuses ClogService so the commands share the panel's cache.
  *
@@ -35,7 +35,7 @@ import net.runelite.client.util.Text;
  * Icons are stored directly in client.getModIcons() (the same approach RuneLite's
  * first-party ChatCommandsPlugin uses for !pets). ChatIconManager is bypassed because
  * its registerChatIcon rejects AsyncBufferedImage and its index is only valid one tick
- * after registration — neither plays well with on-demand item-cache sprites.
+ * after registration. Neither works well with on-demand item-cache sprites.
  */
 @Slf4j
 @Singleton
@@ -43,6 +43,8 @@ class KillClogChatCommand
 {
 	static final String COMMAND = "!kclog";
 	static final String COMMAND_MISSING = "!missing";
+	static final String COMMAND_THIRD_AGE = "!3a";
+	static final String COMMAND_GILDED = "!gilded";
 
 	private static final int ICON_W = 18;
 	private static final int ICON_H = 16;
@@ -61,7 +63,7 @@ class KillClogChatCommand
 	private static Map<String, String> buildAliases()
 	{
 		Map<String, String> m = new HashMap<>();
-		// Canonical names first — every boss the panel knows about, normalized self-mapping.
+		// Canonical names first: every boss the panel knows about.
 		String[] canon = {
 			"Abyssal Sire", "Alchemical Hydra", "Amoxliatl", "Araxxor", "Artio",
 			"Barrows Chests", "Brutus", "Bryophyta", "Callisto", "Cal'varion",
@@ -213,7 +215,7 @@ class KillClogChatCommand
 	}
 
 	/**
-	 * !kclog handler — renders obtained items.
+	 * !kclog handler: renders obtained items.
 	 * Async per ChatCommandManager.registerCommandAsync. Blocking I/O fine here, UI work jumps to clientThread.
 	 */
 	void handle(ChatMessage chatMessage, String message)
@@ -222,11 +224,27 @@ class KillClogChatCommand
 	}
 
 	/**
-	 * !missing handler — renders unobtained items (the inverse view).
+	 * !missing handler: renders unobtained items.
 	 */
 	void handleMissing(ChatMessage chatMessage, String message)
 	{
 		dispatch(chatMessage, message, true);
+	}
+
+	/**
+	 * !3a handler: renders received 3rd age bucket items.
+	 */
+	void handleThirdAge(ChatMessage chatMessage, String message)
+	{
+		dispatchBucket(chatMessage, "3rd Age", PanelData.THIRD_AGE_ITEMS);
+	}
+
+	/**
+	 * !gilded handler: renders received gilded bucket items.
+	 */
+	void handleGilded(ChatMessage chatMessage, String message)
+	{
+		dispatchBucket(chatMessage, "Gilded", PanelData.GILDED_ITEMS);
 	}
 
 	private void dispatch(ChatMessage chatMessage, String message, boolean missingMode)
@@ -242,7 +260,7 @@ class KillClogChatCommand
 		String resolved = ALIASES.get(query);
 		if (resolved == null)
 		{
-			// Loose substring fallback so partial typing still works ("abyssal" → "Abyssal Sire").
+			// Loose substring fallback so partial typing still works ("abyssal" matches "Abyssal Sire").
 			for (Map.Entry<String, String> e : ALIASES.entrySet())
 			{
 				String key = e.getKey();
@@ -261,21 +279,9 @@ class KillClogChatCommand
 
 		String rsn = resolveTargetRsn(chatMessage);
 		final String boss = resolved;
-		ClogResult cl;
-		try
-		{
-			cl = clogService.lookup(rsn).get();
-		}
-		catch (Exception e)
-		{
-			log.warn("clog lookup failed for {}", rsn, e);
-			replaceText(chatMessage, boss + ": lookup failed");
-			return;
-		}
-
+		ClogResult cl = lookup(chatMessage, rsn, boss);
 		if (cl == null)
 		{
-			replaceText(chatMessage, boss + ": no clog data");
 			return;
 		}
 
@@ -328,6 +334,71 @@ class KillClogChatCommand
 		clientThread.invoke(() -> render(chatMessage, header, renderIds));
 	}
 
+	private void dispatchBucket(ChatMessage chatMessage, String label, int[] bucketItemIds)
+	{
+		String rsn = resolveTargetRsn(chatMessage);
+		ClogResult cl = lookup(chatMessage, rsn, label);
+		if (cl == null)
+		{
+			return;
+		}
+
+		Set<Integer> obtainedIds = allObtainedIds(cl);
+		List<Integer> renderIds = new ArrayList<>();
+		for (int itemId : bucketItemIds)
+		{
+			if (obtainedIds.contains(itemId))
+			{
+				renderIds.add(itemId);
+			}
+		}
+
+		String header = label + ": " + renderIds.size() + "/" + bucketItemIds.length;
+		clientThread.invoke(() -> render(chatMessage, header, renderIds));
+	}
+
+	private ClogResult lookup(ChatMessage chatMessage, String rsn, String label)
+	{
+		ClogResult cl;
+		try
+		{
+			cl = clogService.lookup(rsn).get();
+		}
+		catch (InterruptedException e)
+		{
+			Thread.currentThread().interrupt();
+			log.warn("clog lookup interrupted for {}", rsn, e);
+			replaceText(chatMessage, label + ": lookup failed");
+			return null;
+		}
+		catch (Exception e)
+		{
+			log.warn("clog lookup failed for {}", rsn, e);
+			replaceText(chatMessage, label + ": lookup failed");
+			return null;
+		}
+
+		if (cl == null)
+		{
+			replaceText(chatMessage, label + ": no clog data");
+			return null;
+		}
+		return cl;
+	}
+
+	private static Set<Integer> allObtainedIds(ClogResult cl)
+	{
+		Set<Integer> obtainedIds = new HashSet<>();
+		for (List<ClogResult.ClogItem> items : cl.getObtainedItems().values())
+		{
+			for (ClogResult.ClogItem item : items)
+			{
+				obtainedIds.add(item.getId());
+			}
+		}
+		return obtainedIds;
+	}
+
 	/**
 	 * Reserve a mod-icon slot for every itemId we haven't seen before, kick off the async
 	 * sprite loads, then write the response onto the player's MessageNode. Runs on the
@@ -363,7 +434,7 @@ class KillClogChatCommand
 	 * Grow client.getModIcons() once with a slot per never-before-seen itemId, then schedule
 	 * each sprite to write into its slot via AsyncBufferedImage.onLoaded.
 	 *
-	 * Pattern matches RuneLite ChatCommandsPlugin.loadPets — bypasses ChatIconManager because
+	 * Pattern matches RuneLite ChatCommandsPlugin.loadPets. Bypasses ChatIconManager because
 	 * (a) registerChatIcon rejects AsyncBufferedImage, (b) its index is populated one tick
 	 * later via invokeLater, so chatIconIndex returns -1 in the same call. Direct modIcons
 	 * manipulation keeps the index synchronously valid and accepts async images cleanly.
@@ -396,7 +467,7 @@ class KillClogChatCommand
 			{
 				BufferedImage resized = ImageUtil.resizeImage(abi, ICON_W, ICON_H);
 				IndexedSprite sprite = ImageUtil.getImageIndexedSprite(resized, client);
-				// Re-fetch modIcons inside the callback — Jagex may swap the array between
+				// Re-fetch modIcons inside the callback; Jagex may swap the array between
 				// our setModIcons above and this callback firing.
 				IndexedSprite[] current = client.getModIcons();
 				if (current != null && slot < current.length)

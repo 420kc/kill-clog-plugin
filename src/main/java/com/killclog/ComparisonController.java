@@ -1,8 +1,8 @@
 /*
  * Copyright (c) 2026, 420 kc <dyl@420kc.dev>
  * Owns the red-side comparison subsystem for Kill Clog: state, async fan-out
- * for the second player's hiscore + clog, the comparison-mode dual tooltip,
- * the compare-side widgets. UI dispatch is downstream via {@link Listener}.
+ * for the second player's hiscore, clog, and CA data, plus the compare-side
+ * state. UI dispatch is downstream via {@link Listener}.
  * Reads the primary player's results read-only through {@link LookupSession}
  * getters; the only write path is the swap, which calls
  * {@link LookupSession#adoptState} explicitly.
@@ -14,23 +14,21 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import javax.annotation.Nullable;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JTextField;
 import javax.swing.JToolTip;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.components.IconTextField;
 
 /**
  * Red-side comparison lifecycle. Subscribers receive typed events through
- * {@link Listener}; this class never touches primary-side widgets. The
- * comparison-side widgets (search bar, status label, toggle, panel) live here
- * and are exposed for the parent layout to place.
+ * {@link Listener}; this class owns comparison state while the panel owns the
+ * visible widgets.
  *
  * <p>Threading mirrors {@link LookupSession}: lifecycle methods run on the
  * EDT; service futures bridge back via {@code SwingUtilities.invokeLater}
@@ -55,16 +53,19 @@ public class ComparisonController
 		/** Red player swapped in (became the new primary). Panel should re-render the primary side and update the search bar. */
 		void onSwapToRedPlayer(String newPrimaryRsn);
 
-		/** Red-side hiscore + clog data arrived. Panel should trigger a cell + info-bar re-render via the controller's render hooks. */
+		/** Red-side data arrived. Panel should trigger a cell + summary-bar re-render via the controller's render hooks. */
 		void onCompareDataReady();
 
-		/** Red lookup failed. Panel should surface the error in the comparison status row. */
+		/** Transient comparison lookup flavor text changed. Panel should show it in the normal search status line. */
+		void onCompareStatus(String msg, Color color);
+
+		/** Red lookup failed. Panel should return the search row to its idle compare state. */
 		void onCompareError(String player, Throwable err);
 	}
 
 	/**
 	 * Hooks into the panel for the few widgets this controller writes to that
-	 * don't live on {@link Cells}: the info bar (playerName, clogInfoLabel)
+	 * don't live on {@link Cells}: the summary bar (playerName, clogInfoLabel)
 	 * and the standalone combat + total level cells.
 	 */
 	public interface CellRenderTarget
@@ -87,33 +88,37 @@ public class ComparisonController
 		/** Apply an account-type badge (clog-mode + GIM + standard hiscore). */
 		void applyBadge(JLabel label, @Nullable AccountType type);
 
+		/** Preload the PvM Summary reward sprite for a CA result. */
+		void preloadCaReward(@Nullable CombatAchievementResult ca);
+
 		/** Restore the clog info cell to single-player display. */
 		void restoreClogCellForCompare(@Nullable ClogResult clog);
 	}
 
-	// ── Constants ─────────────────────────────────────────────────────────
-	static final Color COMPARE_BLUE = new Color(91, 164, 207);
-	static final Color COMPARE_RED = new Color(224, 86, 86);
+	// Constants
+	static final Color COMPARE_BLUE = TitleTooltip.COMPARE_BLUE;
+	static final Color COMPARE_RED = TitleTooltip.COMPARE_RED;
+	private static final Color COMPARE_DIM = new Color(160, 160, 160);
 	static final String COMPARE_BLUE_HEX = String.format("#%06x", COMPARE_BLUE.getRGB() & 0xFFFFFF);
 	static final String COMPARE_RED_HEX = String.format("#%06x", COMPARE_RED.getRGB() & 0xFFFFFF);
-	private static final Color COMPARE_DIM = new Color(160, 160, 160);
-
-	// ── Deps ──────────────────────────────────────────────────────────────
+	// Deps
 	private final HiscoreService hiscoreService;
 	private final ClogService clogService;
-	private final KillClogConfig config;
+	private final RuneProfileService runeProfileService;
 	private final LookupSession lookupSession;
 	private final ItemManager itemManager;
+	private final KillClogConfig config;
 	private final TooltipController tooltipController;
 	private final TooltipDataBuilder tooltipDataBuilder;
 	private final Listener listener;
 	@Nullable private CellRenderTarget renderTarget;
 	@Nullable private Cells cells;
 
-	// ── State ─────────────────────────────────────────────────────────────
+	// State
 	private boolean comparisonMode;
 	@Nullable private HiscoreResult compareHiscoreResult;
 	@Nullable private ClogResult compareClogResult;
+	@Nullable private CombatAchievementResult compareCaResult;
 	@Nullable private String compareRsn;
 
 	/** Monotonic counter. Each {@link #doCompareLookup} increments; async callbacks compare against this to gate stale results. */
@@ -124,24 +129,22 @@ public class ComparisonController
 
 	private final Map<HiscoreSkill, TooltipData> compareTooltipDataMap = new LinkedHashMap<>();
 
-	// ── Widgets ───────────────────────────────────────────────────────────
-	private final JLabel compareStatus = new JLabel(" ");
-	private final IconTextField compareSearchBar = new IconTextField();
-	@Nullable private JTextField compareTextField;
-	private String comparePlaceholder = "Comparison";
-	@Nullable private JPanel comparePanel;
-	@Nullable private JLabel compareToggle;
+	private static final String COMPARE_BLUE_TEXT_KEY = "killclog.compare.blueText";
+	private static final String COMPARE_RED_TEXT_KEY = "killclog.compare.redText";
+	private static final String COMPARE_BLUE_HOVER_KEY = "killclog.compare.blueHover";
+	private static final String COMPARE_RED_HOVER_KEY = "killclog.compare.redHover";
 
 	public ComparisonController(HiscoreService hiscoreService, ClogService clogService,
-		KillClogConfig config, LookupSession lookupSession, ItemManager itemManager,
-		TooltipController tooltipController, TooltipDataBuilder tooltipDataBuilder,
-		Listener listener)
+		RuneProfileService runeProfileService, LookupSession lookupSession,
+		ItemManager itemManager, KillClogConfig config, TooltipController tooltipController,
+		TooltipDataBuilder tooltipDataBuilder, Listener listener)
 	{
 		this.hiscoreService = hiscoreService;
 		this.clogService = clogService;
-		this.config = config;
+		this.runeProfileService = runeProfileService;
 		this.lookupSession = lookupSession;
 		this.itemManager = itemManager;
+		this.config = config;
 		this.tooltipController = tooltipController;
 		this.tooltipDataBuilder = tooltipDataBuilder;
 		this.listener = listener;
@@ -159,88 +162,7 @@ public class ComparisonController
 		this.cells = cells;
 	}
 
-	public JLabel getCompareStatusLabel()
-	{
-		return compareStatus;
-	}
-
-	public IconTextField getCompareSearchBar()
-	{
-		return compareSearchBar;
-	}
-
-	/** Inner {@link JTextField} of {@link #compareSearchBar}, captured during search-bar construction. */
-	@Nullable
-	public JTextField getCompareTextField()
-	{
-		return compareTextField;
-	}
-
-	public void setCompareTextField(@Nullable JTextField tf)
-	{
-		this.compareTextField = tf;
-	}
-
-	public String getComparePlaceholder()
-	{
-		return comparePlaceholder;
-	}
-
-	@Nullable
-	public JPanel getComparePanel()
-	{
-		return comparePanel;
-	}
-
-	public void setComparePanel(@Nullable JPanel panel)
-	{
-		this.comparePanel = panel;
-	}
-
-	@Nullable
-	public JLabel getCompareToggle()
-	{
-		return compareToggle;
-	}
-
-	public void setCompareToggle(@Nullable JLabel toggle)
-	{
-		this.compareToggle = toggle;
-	}
-
-	/** Refresh the comparison search bar's placeholder text after the primary player changes. */
-	public void updateComparePlaceholder(String name)
-	{
-		String old = comparePlaceholder;
-		comparePlaceholder = name + " vs...";
-		if (compareTextField == null || compareTextField.hasFocus())
-		{
-			return;
-		}
-		String current = compareTextField.getText();
-		if (current.isEmpty() || current.equals(old) || current.equals("Comparison"))
-		{
-			compareTextField.setText(comparePlaceholder);
-			compareTextField.setForeground(ColorScheme.MEDIUM_GRAY_COLOR);
-		}
-	}
-
-	/** Set the compare status label text + color. */
-	public void setCompareStatus(String msg, Color color)
-	{
-		compareStatus.setText(msg);
-		compareStatus.setForeground(color);
-	}
-
-	/** Pick a random message from {@code pool}, format it with {@code player} (twice for two-slot templates), and set the compare status. */
-	public void setCompareStatus(String[] pool, String player, Color color)
-	{
-		String msg = String.format(pool[ThreadLocalRandom.current().nextInt(pool.length)], player, player);
-		compareStatus.setText(msg);
-		compareStatus.setForeground(color);
-	}
-
-	// ── Lifecycle ─────────────────────────────────────────────────────────
+	// Lifecycle
 
 	/**
 	 * Enter comparison mode: build the per-cell comparison tooltip data and
@@ -284,8 +206,7 @@ public class ComparisonController
 
 	/**
 	 * Exit comparison mode and clear red-side state. Listener handles the UI
-	 * restoration (search bar reset, status row blanked, cell + info-bar
-	 * re-render to single-player mode).
+	 * restoration (search bar reset, cell + summary-bar re-render to single-player mode).
 	 */
 	public void exit()
 	{
@@ -294,6 +215,7 @@ public class ComparisonController
 		compareLookupInFlight = false;
 		compareHiscoreResult = null;
 		compareClogResult = null;
+		compareCaResult = null;
 		compareRsn = null;
 		compareTooltipDataMap.clear();
 		listener.onComparisonExit();
@@ -310,24 +232,24 @@ public class ComparisonController
 	{
 		HiscoreResult swapHiscore = compareHiscoreResult;
 		ClogResult swapClog = compareClogResult;
+		CombatAchievementResult swapCa = compareCaResult;
 		String swapName = compareRsn;
 		exit();
-		lookupSession.adoptState(swapHiscore, swapClog, swapName);
+		lookupSession.adoptState(swapHiscore, swapClog, swapCa, swapName);
 		listener.onSwapToRedPlayer(swapName);
 	}
 
 	/**
-	 * Begin a red-side lookup. Reads the search bar text, gates on placeholder
-	 * + in-flight, runs the parallel hiscore + clog API fan-out under a
-	 * version-stamp guard, and dispatches UI updates via setCompareStatus +
-	 * the listener events.
+	 * Begin a red-side lookup. Runs the parallel hiscore + clog + CA fan-out under
+	 * a version-stamp guard and dispatches UI updates through listener events.
 	 *
-	 * @param localRsn the local player's RSN (for self-detection messaging)
+	 * @param player the red-side player entered in the panel search bar
+	 * @param localRsn active local player, used only for self-aware search flavor
 	 */
-	public void doCompareLookup(@Nullable String localRsn)
+	public void doCompareLookup(String player, @Nullable String localRsn)
 	{
-		String player = compareSearchBar.getText().trim();
-		if (player.isEmpty() || player.equals(comparePlaceholder) || compareLookupInFlight)
+		final String redPlayer = player.trim();
+		if (redPlayer.isEmpty() || compareLookupInFlight)
 		{
 			return;
 		}
@@ -338,53 +260,69 @@ public class ComparisonController
 		}
 
 		compareLookupInFlight = true;
+		compareCaResult = null;
 		final int thisLookup = ++compareLookupVersion;
-		compareSearchBar.setIcon(IconTextField.Icon.LOADING_DARKER);
 		String blueName = renderTarget != null ? renderTarget.playerName().getText().trim() : "";
 		boolean blueIsSelf = localRsn != null && localRsn.equalsIgnoreCase(blueName);
-		boolean redIsSelf = localRsn != null && localRsn.equalsIgnoreCase(player);
-		boolean samePlayer = blueName.equalsIgnoreCase(player);
+		boolean redIsSelf = localRsn != null && localRsn.equalsIgnoreCase(redPlayer);
+		boolean samePlayer = blueName.equalsIgnoreCase(redPlayer);
 
 		if (samePlayer)
 		{
-			compareLookupInFlight = false;
-			compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
-			compareSearchBar.setText("");
-			compareHiscoreResult = lookupSession.getHiscoreResult();
-			compareClogResult = lookupSession.getClogResult();
-			compareRsn = blueName;
 			if (blueIsSelf)
 			{
-				setCompareStatus(SearchMessages.COMPARE_SELF_MIRROR, blueName, SearchMessages.SELF_COLOR);
+				setCompareStatus(SearchMessages.COMPARE_SELF_MIRROR, SearchMessages.SELF_COLOR, blueName, redPlayer);
 			}
 			else
 			{
-				setCompareStatus(SearchMessages.COMPARE_MIRROR, blueName, COMPARE_DIM);
+				setCompareStatus(SearchMessages.COMPARE_MIRROR, COMPARE_DIM, blueName, redPlayer);
 			}
+			compareLookupInFlight = false;
+			compareHiscoreResult = lookupSession.getHiscoreResult();
+			compareClogResult = lookupSession.getClogResult();
+			compareCaResult = lookupSession.getCaResult();
+			if (renderTarget != null)
+			{
+				renderTarget.preloadCaReward(compareCaResult);
+			}
+			compareRsn = blueName;
 			enter();
 			return;
 		}
 
-		if (blueIsSelf || redIsSelf)
+		if (blueIsSelf)
 		{
-			String[] pool = blueIsSelf ? SearchMessages.COMPARE_SELF_BLUE : SearchMessages.COMPARE_SELF_RED;
-			String msg = pool[ThreadLocalRandom.current().nextInt(pool.length)];
-			if (msg.contains("%s") && msg.indexOf("%s") != msg.lastIndexOf("%s"))
-			{
-				msg = String.format(msg, blueName, player);
-			}
-			else
-			{
-				msg = String.format(msg, blueIsSelf ? player : blueName);
-			}
-			setCompareStatus(msg, SearchMessages.SELF_COLOR);
+			setCompareStatus(SearchMessages.COMPARE_SELF_BLUE, SearchMessages.SELF_COLOR, redPlayer, redPlayer, blueName);
+		}
+		else if (redIsSelf)
+		{
+			setCompareStatus(SearchMessages.COMPARE_SELF_RED, SearchMessages.SELF_COLOR, blueName, redPlayer, blueName);
 		}
 		else
 		{
-			setCompareStatus(SearchMessages.COMPARE_SEARCH, blueName, COMPARE_DIM);
+			setCompareStatus(SearchMessages.COMPARE_SEARCH, COMPARE_DIM, blueName, blueName);
 		}
 
-		hiscoreService.lookup(player, null).thenAccept(result ->
+		// CA lookup runs in parallel with hiscore+clog
+		runeProfileService.lookup(redPlayer).thenAccept(ca ->
+			javax.swing.SwingUtilities.invokeLater(() ->
+			{
+				if (thisLookup == compareLookupVersion)
+				{
+					compareCaResult = ca;
+					if (renderTarget != null)
+					{
+						renderTarget.preloadCaReward(ca);
+					}
+					if (comparisonMode && listener != null)
+					{
+						listener.onCompareDataReady();
+					}
+				}
+			})
+		).exceptionally(ex -> null);
+
+		hiscoreService.lookup(redPlayer, null).thenAccept(result ->
 			javax.swing.SwingUtilities.invokeLater(() ->
 			{
 				if (thisLookup != compareLookupVersion)
@@ -395,17 +333,23 @@ public class ComparisonController
 
 				if (result == null)
 				{
-					compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
-					compareSearchBar.setText("");
-					setCompareStatus(SearchMessages.COMPARE_NOT_FOUND,
-						renderTarget != null ? renderTarget.playerName().getText().trim() : "",
-						COMPARE_RED);
+					setCompareStatus(SearchMessages.COMPARE_NOT_FOUND, COMPARE_RED, redPlayer, redPlayer);
+					listener.onCompareError(redPlayer, null);
 					return;
 				}
 
 				compareHiscoreResult = result;
 
-				clogService.lookup(player).thenAccept(clogRes ->
+				// Fire both public clog providers in parallel, keep the freshest result.
+				// Red-side self comparisons keep local widget data authoritative.
+				CompletableFuture<ClogResult> cTemple =
+					providerOrNull(clogService.lookup(redPlayer));
+				CompletableFuture<ClogResult> cRp = redIsSelf
+					? CompletableFuture.completedFuture(null)
+					: providerOrNull(runeProfileService.lookupClog(redPlayer));
+
+				cTemple.thenCombine(cRp, ClogResult::pickFreshest)
+				.thenAccept(clogRes ->
 					javax.swing.SwingUtilities.invokeLater(() ->
 					{
 						if (thisLookup != compareLookupVersion)
@@ -418,7 +362,7 @@ public class ComparisonController
 							renderTarget.preloadClogItemNames(clogRes);
 						}
 						compareRsn = clogRes != null && clogRes.getPlayerName() != null
-							? clogRes.getPlayerName() : player;
+							? clogRes.getPlayerName() : redPlayer;
 						enter();
 					})
 				).exceptionally(ex ->
@@ -429,7 +373,7 @@ public class ComparisonController
 						{
 							return;
 						}
-						compareRsn = player;
+						compareRsn = redPlayer;
 						enter();
 					});
 					return null;
@@ -444,15 +388,32 @@ public class ComparisonController
 					return;
 				}
 				compareLookupInFlight = false;
-				compareSearchBar.setIcon(IconTextField.Icon.SEARCH);
-				compareSearchBar.setText("");
-				listener.onCompareError(player, ex);
+				listener.onCompareError(redPlayer, ex);
 			});
 			return null;
 		});
 	}
 
-	// ── Read-only state ───────────────────────────────────────────────────
+	private void setCompareStatus(String[] pool, Color color, String singleArg, String secondArg)
+	{
+		setCompareStatus(pool, color, singleArg, secondArg, singleArg);
+	}
+
+	private static CompletableFuture<ClogResult> providerOrNull(CompletableFuture<ClogResult> future)
+	{
+		return future.exceptionally(ex -> null);
+	}
+
+	private void setCompareStatus(String[] pool, Color color, String singleArg, String secondArg, String firstArg)
+	{
+		String template = pool[ThreadLocalRandom.current().nextInt(pool.length)];
+		String msg = template.indexOf("%s") == template.lastIndexOf("%s")
+			? String.format(template, singleArg)
+			: String.format(template, firstArg, secondArg);
+		listener.onCompareStatus(msg, color);
+	}
+
+	// Read-only state
 
 	public boolean isComparisonMode()
 	{
@@ -472,14 +433,15 @@ public class ComparisonController
 	}
 
 	@Nullable
+	public CombatAchievementResult getCompareCaResult()
+	{
+		return compareCaResult;
+	}
+
+	@Nullable
 	public String getCompareRsn()
 	{
 		return compareRsn;
-	}
-
-	public int getCompareLookupVersion()
-	{
-		return compareLookupVersion;
 	}
 
 	public boolean isCompareLookupInFlight()
@@ -498,7 +460,7 @@ public class ComparisonController
 		return Collections.unmodifiableMap(compareTooltipDataMap);
 	}
 
-	// ── Pure helpers ──────────────────────────────────────────────────────
+	// Pure helpers
 
 	/**
 	 * Build a comparison tooltip showing both players' sprite grids stacked.
@@ -507,10 +469,17 @@ public class ComparisonController
 	public JToolTip makeSpriteTooltip(JLabel owner, TooltipData blueData,
 		TooltipData redData, String name)
 	{
+		return makeSpriteTooltip(owner, blueData, redData, name, true);
+	}
+
+	public JToolTip makeSpriteTooltip(JLabel owner, TooltipData blueData,
+		TooltipData redData, String name, boolean showSpriteGrids)
+	{
 		JPanel parentCell = (JPanel) owner.getParent();
 		CompareImgTooltip tip = new CompareImgTooltip();
 		tip.setComponent(owner);
 		tip.setTitle(name);
+		tip.setShowSpriteGrids(showSpriteGrids);
 
 		String blueName = renderTarget != null ? renderTarget.playerName().getText().trim() : "";
 		if (blueName.isEmpty())
@@ -523,15 +492,19 @@ public class ComparisonController
 			&& !blueData.allItemIds.isEmpty();
 		boolean redHas = redData != null && redData.allItemIds != null
 			&& !redData.allItemIds.isEmpty();
+		boolean rankTracked = (blueData != null && blueData.rankTracked)
+			|| (redData != null && redData.rankTracked);
 
 		tip.setBluePlayer(blueName,
 			blueData != null ? blueData.obtainedCount : -1,
 			blueData != null ? blueData.totalItems : 0,
-			blueData != null ? blueData.rank : 0);
+			blueData != null ? blueData.rank : 0,
+			rankTracked);
 		tip.setRedPlayer(redName,
 			redData != null ? redData.obtainedCount : -1,
 			redData != null ? redData.totalItems : 0,
-			redData != null ? redData.rank : 0);
+			redData != null ? redData.rank : 0,
+			rankTracked);
 		tip.setBlueHasData(blueHas);
 		tip.setRedHasData(redHas);
 
@@ -567,19 +540,57 @@ public class ComparisonController
 	/** Set a cell to dual blue/red values. */
 	public void setCompareCell(JLabel label, int blueVal, int redVal)
 	{
+		setCompareCell(label, blueVal, redVal, null, null);
+	}
+
+	/** Set a cell to dual blue/red values, with optional completion-color hover state. */
+	public void setCompareCell(JLabel label, int blueVal, int redVal,
+		@Nullable Color blueHover, @Nullable Color redHover)
+	{
 		String blueText = blueVal > 0 ? ClogHelper.formatKc(blueVal) : "--";
 		String redText = redVal > 0 ? ClogHelper.formatKc(redVal) : "--";
-		label.setText("<html><div style='text-align:center;'>"
-			+ "<span style='color:" + COMPARE_BLUE_HEX + ";'>" + blueText + "</span><br>"
-			+ "<span style='color:" + COMPARE_RED_HEX + ";'>" + redText + "</span>"
-			+ "</div></html>");
+		label.putClientProperty(COMPARE_BLUE_TEXT_KEY, blueText);
+		label.putClientProperty(COMPARE_RED_TEXT_KEY, redText);
+		label.putClientProperty(COMPARE_BLUE_HOVER_KEY, blueHover != null ? colorHex(blueHover) : null);
+		label.putClientProperty(COMPARE_RED_HOVER_KEY, redHover != null ? colorHex(redHover) : null);
+		renderCompareCell(label, false);
 		label.setForeground(null);
 		label.setHorizontalAlignment(JLabel.CENTER);
+	}
+
+	/** Apply or clear the hover-only completion colors for a comparison cell. */
+	public void setCompareCellHover(JLabel label, boolean hovering)
+	{
+		if (label != null && label.getClientProperty(COMPARE_BLUE_TEXT_KEY) instanceof String)
+		{
+			renderCompareCell(label, hovering);
+		}
+	}
+
+	private void renderCompareCell(JLabel label, boolean hovering)
+	{
+		String blueText = String.valueOf(label.getClientProperty(COMPARE_BLUE_TEXT_KEY));
+		String redText = String.valueOf(label.getClientProperty(COMPARE_RED_TEXT_KEY));
+		String blueColor = hovering ? (String) label.getClientProperty(COMPARE_BLUE_HOVER_KEY) : null;
+		String redColor = hovering ? (String) label.getClientProperty(COMPARE_RED_HOVER_KEY) : null;
+		if (blueColor == null)
+		{
+			blueColor = COMPARE_BLUE_HEX;
+		}
+		if (redColor == null)
+		{
+			redColor = COMPARE_RED_HEX;
+		}
+		label.setText("<html><div style='text-align:center;'>"
+			+ "<span style='color:" + blueColor + ";'>" + blueText + "</span><br>"
+			+ "<span style='color:" + redColor + ";'>" + redText + "</span>"
+			+ "</div></html>");
 	}
 
 	/** Restore a cell to single-player solo display. */
 	public void restoreSoloCell(JLabel label, int val)
 	{
+		clearCompareCellState(label);
 		label.setHorizontalAlignment(JLabel.LEADING);
 		Color infoColor = renderTarget != null ? renderTarget.getInfoColor()
 			: ColorScheme.LIGHT_GRAY_COLOR;
@@ -595,9 +606,17 @@ public class ComparisonController
 		}
 	}
 
+	private static void clearCompareCellState(JLabel label)
+	{
+		label.putClientProperty(COMPARE_BLUE_TEXT_KEY, null);
+		label.putClientProperty(COMPARE_RED_TEXT_KEY, null);
+		label.putClientProperty(COMPARE_BLUE_HOVER_KEY, null);
+		label.putClientProperty(COMPARE_RED_HOVER_KEY, null);
+	}
+
 	/**
-	 * Render the comparison-mode info bar (blue name left, red name + badge
-	 * right), or restore single-player display when comparison mode is off.
+	 * Render comparison identity in the summary bar, or restore single-player
+	 * display when comparison mode is off.
 	 */
 	public void updateInfoBar()
 	{
@@ -610,15 +629,13 @@ public class ComparisonController
 		if (comparisonMode)
 		{
 			playerName.setForeground(COMPARE_BLUE);
+			playerName.setToolTipText(" ");
 			clogInfoLabel.setText(compareRsn != null ? compareRsn : "");
 			clogInfoLabel.setForeground(COMPARE_RED);
-			clogInfoLabel.setToolTipText(null);
+			clogInfoLabel.setToolTipText(" ");
+			clogInfoLabel.setIcon(null);
 			clogInfoLabel.setHorizontalAlignment(JLabel.RIGHT);
-			AccountType redType = compareClogResult != null ? compareClogResult.getTempleAccountType() : null;
-			if (redType == null && compareHiscoreResult != null)
-			{
-				redType = compareHiscoreResult.getAccountType();
-			}
+			AccountType redType = compareAccountType();
 			renderTarget.applyBadge(clogInfoLabel, redType);
 		}
 		else
@@ -627,6 +644,19 @@ public class ComparisonController
 			clogInfoLabel.setHorizontalAlignment(JLabel.RIGHT);
 			renderTarget.restoreClogCellForCompare(lookupSession.getClogResult());
 		}
+	}
+
+	@Nullable
+	private AccountType compareAccountType()
+	{
+		AccountType type = LookupQueries.accountType(compareHiscoreResult, compareClogResult);
+		if (compareRsn == null)
+		{
+			return type;
+		}
+		AccountType providerType = runeProfileService.getCachedAccountType(compareRsn);
+		return AccountType.displayType(type,
+			providerType != null && providerType.isGroupIronman() ? providerType : null);
 	}
 
 	/**
@@ -647,7 +677,8 @@ public class ComparisonController
 		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getBossLabels().entrySet())
 		{
 			String name = PanelData.NAME_OVERRIDES.getOrDefault(entry.getKey().getName(), entry.getKey().getName());
-			compareOrRestore(entry.getValue(), hiscoreKc(blueHiscore, name), hiscoreKc(redHiscore, name));
+			compareOrRestore(entry.getValue(), hiscoreKc(blueHiscore, name), hiscoreKc(redHiscore, name),
+				cells.getTooltipData(entry.getKey()), compareTooltipDataMap.get(entry.getKey()));
 		}
 
 		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getActivityLabels().entrySet())
@@ -659,7 +690,9 @@ public class ComparisonController
 		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getClueTierLabels().entrySet())
 		{
 			String name = entry.getKey().getName();
-			compareOrRestore(entry.getValue(), activityScore(blueHiscore, name), activityScore(redHiscore, name));
+			TooltipData redData = buildCompareClueTierData(entry.getKey());
+			compareOrRestore(entry.getValue(), activityScore(blueHiscore, name), activityScore(redHiscore, name),
+				cells.getTooltipData(entry.getKey()), redData);
 		}
 
 		compareOrRestore(renderTarget.combatCell(),
@@ -673,22 +706,46 @@ public class ComparisonController
 		compareOrRestore(cells.getPvpSummaryCell(), pvpTotal(blueHiscore), pvpTotal(redHiscore));
 
 		Map<String, TooltipData> rareTooltips = cells.getRareTooltips();
+		TooltipData redThirdAge = buildClueRare("3rd Age", PanelData.CLOG_THIRD_AGE);
+		TooltipData redGilded = buildClueRare("Gilded", PanelData.CLOG_GILDED);
+		TooltipData redHardRare = buildCustomRare("Hard Treasure (Rare)", PanelData.HARD_RARE_ITEMS);
+		TooltipData redEliteRare = buildCustomRare("Elite Treasure (Rare)", PanelData.ELITE_RARE_ITEMS);
+		TooltipData redMasterRare = buildCustomRare("Master Treasure (Rare)", PanelData.MASTER_RARE_ITEMS);
 		compareOrRestore(cells.getThirdAgeCell(),
 			rareCount(rareTooltips.get(PanelData.CLOG_THIRD_AGE)),
-			rareCount(buildClueRare("3rd Age", PanelData.CLOG_THIRD_AGE)));
+			rareCount(redThirdAge),
+			rareTooltips.get(PanelData.CLOG_THIRD_AGE), redThirdAge);
 		compareOrRestore(cells.getGildedCell(),
 			rareCount(rareTooltips.get(PanelData.CLOG_GILDED)),
-			rareCount(buildClueRare("Gilded", PanelData.CLOG_GILDED)));
+			rareCount(redGilded),
+			rareTooltips.get(PanelData.CLOG_GILDED), redGilded);
 
 		compareOrRestore(cells.getHardRare(),
 			rareCount(rareTooltips.get(PanelData.RARE_HARD)),
-			rareCount(buildCustomRare("Hard Treasure (Rare)", PanelData.HARD_RARE_ITEMS)));
+			rareCount(redHardRare),
+			rareTooltips.get(PanelData.RARE_HARD), redHardRare);
 		compareOrRestore(cells.getEliteRare(),
 			rareCount(rareTooltips.get(PanelData.RARE_ELITE)),
-			rareCount(buildCustomRare("Elite Treasure (Rare)", PanelData.ELITE_RARE_ITEMS)));
+			rareCount(redEliteRare),
+			rareTooltips.get(PanelData.RARE_ELITE), redEliteRare);
 		compareOrRestore(cells.getMasterRare(),
 			rareCount(rareTooltips.get(PanelData.RARE_MASTER)),
-			rareCount(buildCustomRare("Master Treasure (Rare)", PanelData.MASTER_RARE_ITEMS)));
+			rareCount(redMasterRare),
+			rareTooltips.get(PanelData.RARE_MASTER), redMasterRare);
+	}
+
+	@Nullable
+	private TooltipData buildCompareClueTierData(HiscoreSkill tier)
+	{
+		String category = PanelData.CLUE_CATEGORIES.get(tier);
+		if (category == null || compareClogResult == null)
+		{
+			return null;
+		}
+		int rank = compareHiscoreResult != null
+			? compareHiscoreResult.getActivityRank(tier.getName()) : -1;
+		return tooltipDataBuilder.buildTooltipData(Cells.capitalizeTier(tier),
+			category, rank, compareClogResult);
 	}
 
 	private static int hiscoreKc(@Nullable HiscoreResult r, String hiscoreName)
@@ -720,17 +777,40 @@ public class ComparisonController
 	/** Toggle a cell between compare and solo display based on current mode. */
 	public void compareOrRestore(JLabel label, int blueVal, int redVal)
 	{
+		compareOrRestore(label, blueVal, redVal, null, null);
+	}
+
+	/** Toggle a cell between compare and solo display with optional hover colors. */
+	public void compareOrRestore(JLabel label, int blueVal, int redVal,
+		@Nullable TooltipData blueData, @Nullable TooltipData redData)
+	{
 		if (label == null)
 		{
 			return;
 		}
 		if (comparisonMode)
 		{
-			setCompareCell(label, blueVal, redVal);
+			setCompareCell(label, blueVal, redVal,
+				completionColor(blueData), completionColor(redData));
 		}
 		else
 		{
 			restoreSoloCell(label, blueVal);
 		}
+	}
+
+	@Nullable
+	private Color completionColor(@Nullable TooltipData data)
+	{
+		if (data == null || data.totalItems <= 0 || data.obtainedCount < 0)
+		{
+			return null;
+		}
+		return ClogHelper.clogColor(data.obtainedCount, data.totalItems, config);
+	}
+
+	private static String colorHex(Color color)
+	{
+		return String.format("#%06x", color.getRGB() & 0xFFFFFF);
 	}
 }

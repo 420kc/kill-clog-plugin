@@ -9,7 +9,7 @@ import net.runelite.client.ui.FontManager;
 
 /**
  * PvP summary tooltip on the skull cell.
- * Five label:value lines — LMS and Soul Wars first (have clog data),
+ * Five label:value lines: LMS and Soul Wars first,
  * then PvP Arena, BH Hunter, BH Rogue.
  */
 public class PvpSummaryTooltip extends TitleTooltip
@@ -156,12 +156,9 @@ public class PvpSummaryTooltip extends TitleTooltip
 		g2.drawString(scoreText, x, textY);
 		x += fm.stringWidth(scoreText);
 
-		// Clog count (yellow when incomplete, green when complete)
 		if (obtained >= 0)
 		{
-			String clogText = " (" + obtained + "/" + total + ")";
-			g2.setColor(completionColor(obtained, total));
-			g2.drawString(clogText, x, textY);
+			paintWrappedProgressCount(g2, fm, x, textY, obtained, total);
 		}
 	}
 }
