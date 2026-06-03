@@ -240,20 +240,18 @@ public class LookupSession
 	}
 
 	/**
-	 * Fire both clog providers in parallel, keep whichever has the freshest
-	 * data. Self lookups skip RuneProfile because local widget data is
-	 * authoritative.
+	 * Fire both clog providers in parallel with independent timeouts, then
+	 * keep the freshest result available. Self lookups skip RuneProfile
+	 * because local widget data is authoritative.
 	 */
 	private void startClogLookup(String player, boolean isSelf, int thisLookup)
 	{
-		CompletableFuture<ClogResult> templeClog =
-			providerOrNull(clogService.lookup(player));
+		CompletableFuture<ClogResult> templeClog = clogService.lookup(player);
 		CompletableFuture<ClogResult> rpClog = isSelf
 			? CompletableFuture.completedFuture(null)
-			: providerOrNull(runeProfileService.lookupClog(player));
+			: runeProfileService.lookupClog(player);
 
-		templeClog.thenCombine(rpClog, ClogResult::pickFreshest)
-			.orTimeout(15, TimeUnit.SECONDS)
+		ClogProviderFanout.chooseFreshest(templeClog, rpClog)
 			.thenAccept(result ->
 				SwingUtilities.invokeLater(() ->
 				{
@@ -270,15 +268,6 @@ public class LookupSession
 				log.warn("Clog lookup failed", ex);
 				return null;
 			});
-	}
-
-	private CompletableFuture<ClogResult> providerOrNull(CompletableFuture<ClogResult> future)
-	{
-		return future.exceptionally(ex ->
-		{
-			log.debug("Clog provider lookup failed", ex);
-			return null;
-		});
 	}
 
 	/**

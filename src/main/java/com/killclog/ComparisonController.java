@@ -340,15 +340,14 @@ public class ComparisonController
 
 				compareHiscoreResult = result;
 
-				// Fire both public clog providers in parallel, keep the freshest result.
+				// Fire both public clog providers in parallel with independent timeouts.
 				// Red-side self comparisons keep local widget data authoritative.
-				CompletableFuture<ClogResult> cTemple =
-					providerOrNull(clogService.lookup(redPlayer));
+				CompletableFuture<ClogResult> cTemple = clogService.lookup(redPlayer);
 				CompletableFuture<ClogResult> cRp = redIsSelf
 					? CompletableFuture.completedFuture(null)
-					: providerOrNull(runeProfileService.lookupClog(redPlayer));
+					: runeProfileService.lookupClog(redPlayer);
 
-				cTemple.thenCombine(cRp, ClogResult::pickFreshest)
+				ClogProviderFanout.chooseFreshest(cTemple, cRp)
 				.thenAccept(clogRes ->
 					javax.swing.SwingUtilities.invokeLater(() ->
 					{
@@ -397,11 +396,6 @@ public class ComparisonController
 	private void setCompareStatus(String[] pool, Color color, String singleArg, String secondArg)
 	{
 		setCompareStatus(pool, color, singleArg, secondArg, singleArg);
-	}
-
-	private static CompletableFuture<ClogResult> providerOrNull(CompletableFuture<ClogResult> future)
-	{
-		return future.exceptionally(ex -> null);
 	}
 
 	private void setCompareStatus(String[] pool, Color color, String singleArg, String secondArg, String firstArg)

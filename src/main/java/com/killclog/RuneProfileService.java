@@ -27,7 +27,7 @@ import okhttp3.OkHttpClient;
  *       players, plus account-type metadata. One GET per player against {@code /accounts/{rsn}}.</li>
  *   <li><strong>Collection log provider</strong> ({@link #lookupClog}) -- one GET against
  *       {@code /collection-log}, parsed into a {@link ClogResult}. LookupSession and
- *       ComparisonController race this with TempleOSRS and keep the freshest result.</li>
+ *       ComparisonController combine this with TempleOSRS and keep the freshest result.</li>
  * </ol>
  *
  * <p>Both lanes share the same freshness model: success TTL, not-synced (404) TTL, transient
@@ -374,7 +374,7 @@ public class RuneProfileService
 
 	/**
 	 * Look up collection log data from RuneProfile. LookupSession and ComparisonController
-	 * race this against TempleOSRS and keep the freshest result.
+	 * combine this with TempleOSRS and keep the freshest result.
 	 *
 	 * <p>Caching mirrors the CA lookup: success TTL, 404 TTL, failure cooldown,
 	 * in-flight dedup. Caches are independent of the CA caches so a CA 404 does
