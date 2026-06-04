@@ -74,7 +74,7 @@ Compare any two players side by side.
 
 ## summaries
 
-Six grouped readouts: player, skills, clog, PvM, clues, PvP. Now available in Comparison mode (1.4.0+)
+Six grouped readouts: player, skills, clog, PvM, clues, PvP.
 
 ![summaries](screenshots/summaries.png)
 
