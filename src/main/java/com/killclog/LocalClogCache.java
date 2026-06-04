@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -270,6 +271,99 @@ public class LocalClogCache
 		submitDiskWrite(playerName, () -> saveToDisk(playerName, snapshot));
 		log.debug("Merged category '{}' for '{}': {}/{} obtained",
 			categoryKey, playerName, obtained.size(), allItems.size());
+	}
+
+	public boolean mergeObtainedItem(String playerName, int itemId,
+		List<String> categoryKeys, Map<String, List<Integer>> categoryItems)
+	{
+		if (playerName == null || categoryKeys == null || categoryItems == null)
+		{
+			return false;
+		}
+
+		String key = cacheKey(playerName);
+		PlayerClogData data = players.get(key);
+		if (data == null)
+		{
+			return false;
+		}
+		if (data.categories == null)
+		{
+			data.categories = new ConcurrentHashMap<>();
+		}
+		if (data.obtained == null)
+		{
+			data.obtained = new ConcurrentHashMap<>();
+		}
+
+		boolean changed = false;
+		for (String categoryKey : categoryKeys)
+		{
+			List<Integer> allItems = categoryItems.get(categoryKey);
+			if (allItems == null || !allItems.contains(itemId))
+			{
+				continue;
+			}
+
+			data.categories.put(categoryKey, new ArrayList<>(allItems));
+			List<ClogResult.ClogItem> obtained = new ArrayList<>(
+				data.obtained.getOrDefault(categoryKey, Collections.emptyList()));
+			boolean alreadyObtained = false;
+			for (ClogResult.ClogItem item : obtained)
+			{
+				if (item.getId() == itemId)
+				{
+					alreadyObtained = true;
+					break;
+				}
+			}
+			if (!alreadyObtained)
+			{
+				obtained.add(new ClogResult.ClogItem(itemId, 1, null));
+				data.obtained.put(categoryKey, obtained);
+				changed = true;
+			}
+		}
+
+		if (changed)
+		{
+			data.lastUpdated = Instant.now().toString();
+			final PlayerClogData snapshot = shallowCopy(data);
+			submitDiskWrite(playerName, () -> saveToDisk(playerName, snapshot));
+			log.debug("Merged live clog item {} for '{}'", itemId, playerName);
+		}
+		return changed;
+	}
+
+	public boolean hasObtainedItem(String playerName, int itemId, List<String> categoryKeys)
+	{
+		if (playerName == null || categoryKeys == null)
+		{
+			return false;
+		}
+
+		PlayerClogData data = players.get(cacheKey(playerName));
+		if (data == null || data.obtained == null)
+		{
+			return false;
+		}
+
+		for (String categoryKey : categoryKeys)
+		{
+			List<ClogResult.ClogItem> obtained = data.obtained.get(categoryKey);
+			if (obtained == null)
+			{
+				continue;
+			}
+			for (ClogResult.ClogItem item : obtained)
+			{
+				if (item.getId() == itemId)
+				{
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	public void updateTotals(String playerName, int obtained, int total)

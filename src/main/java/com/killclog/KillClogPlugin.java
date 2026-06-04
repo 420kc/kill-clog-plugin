@@ -8,6 +8,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import javax.inject.Inject;
@@ -38,6 +39,7 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.PluginChanged;
+import net.runelite.client.game.ItemManager;
 import net.runelite.client.input.MouseManager;
 import net.runelite.client.menus.MenuManager;
 import net.runelite.client.plugins.Plugin;
@@ -72,6 +74,8 @@ public class KillClogPlugin extends Plugin
 	private static final int PARAM_SUBTAB_ENUM = 683;
 	private static final int PARAM_CATEGORY_NAME = 689;
 	private static final int PARAM_CATEGORY_ITEMS = 690;
+	private static final String COLLECTION_LOG_UNLOCK_PREFIX =
+		"New item added to your collection log:";
 
 	static final int CLOG_INTERFACE = 621;
 	private static final int CLOG_HEADER_CHILD = 20;
@@ -113,6 +117,9 @@ public class KillClogPlugin extends Plugin
 	private ClientThread clientThread;
 
 	@Inject
+	private ItemManager itemManager;
+
+	@Inject
 	private ClogService clogService;
 
 	@Inject
@@ -141,8 +148,8 @@ public class KillClogPlugin extends Plugin
 	private boolean hasAutoLookedUpThisSession;
 	private boolean playerMenuSlotWarned;
 
-	// Autosync refreshes self-lookup data when the player sends chat.
-	// Incoming PMs and server messages do not prove local player activity.
+	// Player-sent chat still gates the older self-lookup refresh path.
+	// Server collection-log unlock messages are handled immediately in onChatMessage.
 	private static final long AUTOSYNC_INTERVAL_MS = 5 * 60 * 1000;
 	private static final Set<ChatMessageType> AUTOSYNC_CHAT_TYPES = EnumSet.of(
 		ChatMessageType.PUBLICCHAT,
@@ -157,7 +164,9 @@ public class KillClogPlugin extends Plugin
 	// Enum-derived clog mappings (parsed once per session)
 	private Map<String, List<Integer>> enumCategoryMap;
 	private Map<Integer, List<String>> itemToCategoryKeys;
+	private Map<String, List<Integer>> itemNameToIds;
 	private boolean enumsParsed;
+	private boolean liveSyncNeedsFirstSyncWarned;
 
 	// Bulk clog capture state.
 	private final BulkCaptureState bulk = new BulkCaptureState();
@@ -279,6 +288,7 @@ public class KillClogPlugin extends Plugin
 		pendingAcctTypeRecheck = false;
 		pendingCaRead = false;
 		hasAutoLookedUpThisSession = false;
+		liveSyncNeedsFirstSyncWarned = false;
 		nameAutocompleter.clearClientSnapshot();
 		log.debug("Kill Clog plugin stopped");
 	}
@@ -368,15 +378,26 @@ public class KillClogPlugin extends Plugin
 			resetBulkCapture();
 			enumsParsed = false;
 			hasAutoLookedUpThisSession = false;
+			liveSyncNeedsFirstSyncWarned = false;
 			nameAutocompleter.clearClientSnapshot();
 		}
 	}
 
-	// Autosync self lookups after local player chat, but only while self is displayed.
-	// Service caches keep refreshes cheap; the interval gate is about UI churn.
+	// Live collection-log unlock messages update local cache immediately.
+	// Player-sent chat still rate-limits a self lookup refresh for older data paths.
 	@Subscribe
 	public void onChatMessage(ChatMessage event)
 	{
+		if (event.getType() == ChatMessageType.GAMEMESSAGE)
+		{
+			String unlockName = parseCollectionLogUnlockName(event.getMessage());
+			if (unlockName != null)
+			{
+				clientThread.invokeLater(() -> handleCollectionLogUnlock(unlockName));
+				return;
+			}
+		}
+
 		if (!AUTOSYNC_CHAT_TYPES.contains(event.getType()))
 		{
 			return;
@@ -411,6 +432,133 @@ public class KillClogPlugin extends Plugin
 			panel.setPlayerName(localName);
 			panel.doLookup();
 		});
+	}
+
+	static String parseCollectionLogUnlockName(String message)
+	{
+		if (message == null)
+		{
+			return null;
+		}
+
+		String cleaned = Text.removeTags(message).replace((char) 160, ' ').trim();
+		String lower = cleaned.toLowerCase(Locale.ROOT);
+		String prefix = COLLECTION_LOG_UNLOCK_PREFIX.toLowerCase(Locale.ROOT);
+		int prefixIndex = lower.indexOf(prefix);
+		if (prefixIndex < 0)
+		{
+			return null;
+		}
+
+		String itemName = cleaned.substring(prefixIndex + COLLECTION_LOG_UNLOCK_PREFIX.length()).trim();
+		while (itemName.endsWith("."))
+		{
+			itemName = itemName.substring(0, itemName.length() - 1).trim();
+		}
+		return itemName.isEmpty() ? null : itemName;
+	}
+
+	static String normalizeItemName(String itemName)
+	{
+		if (itemName == null)
+		{
+			return "";
+		}
+		return Text.removeTags(itemName)
+			.replace((char) 160, ' ')
+			.trim()
+			.toLowerCase(Locale.ROOT)
+			.replaceAll("\\s+", " ");
+	}
+
+	private void handleCollectionLogUnlock(String itemName)
+	{
+		Player local = client.getLocalPlayer();
+		if (local == null || local.getName() == null)
+		{
+			return;
+		}
+
+		if (!enumsParsed)
+		{
+			parseClogEnums();
+		}
+		if (!enumsParsed || itemNameToIds == null || enumCategoryMap == null)
+		{
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+				"<col=4caf6e>Kill Clog:</col> Live sync could not read collection-log data. "
+					+ "Click the chalice to sync.",
+				null);
+			return;
+		}
+
+		String playerName = local.getName();
+		localClogCache.setActivePlayer(playerName);
+		if (!localClogCache.hasDataFor(playerName))
+		{
+			if (!liveSyncNeedsFirstSyncWarned)
+			{
+				liveSyncNeedsFirstSyncWarned = true;
+				client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+					"<col=4caf6e>Kill Clog:</col> Click the chalice once to enable live sync.",
+					null);
+			}
+			return;
+		}
+
+		String itemKey = normalizeItemName(itemName);
+		List<Integer> itemIds = itemNameToIds.get(itemKey);
+		if (itemIds == null || itemIds.isEmpty())
+		{
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+				"<col=4caf6e>Kill Clog:</col> Could not match " + itemName
+					+ ". Click the chalice to sync.",
+				null);
+			log.debug("Live clog sync could not match item '{}'", itemName);
+			return;
+		}
+
+		List<Integer> missingItemIds = new ArrayList<>();
+		for (int itemId : itemIds)
+		{
+			if (!localClogCache.hasObtainedItem(playerName, itemId, itemToCategoryKeys.get(itemId)))
+			{
+				missingItemIds.add(itemId);
+			}
+		}
+		if (missingItemIds.size() > 1)
+		{
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+				"<col=4caf6e>Kill Clog:</col> Could not match " + itemName
+					+ " exactly. Click the chalice to sync.",
+				null);
+			log.debug("Live clog sync found ambiguous item '{}' ({})", itemName, missingItemIds);
+			return;
+		}
+
+		boolean changed = false;
+		for (int itemId : missingItemIds)
+		{
+			changed |= localClogCache.mergeObtainedItem(playerName, itemId,
+				itemToCategoryKeys.get(itemId), enumCategoryMap);
+		}
+
+		int liveObtained = client.getVarpValue(VARP_CLOG_OBTAINED);
+		int liveTotal = client.getVarpValue(VARP_CLOG_TOTAL);
+		if (liveObtained > 0 || liveTotal > 0)
+		{
+			localClogCache.updateTotals(playerName, liveObtained, liveTotal);
+		}
+
+		if (changed)
+		{
+			liveSyncNeedsFirstSyncWarned = false;
+			clogButtonOverlay.flashGreen();
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+				"<col=4caf6e>Kill Clog:</col> Added " + itemName + " to Kill Clog",
+				null);
+			SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(playerName));
+		}
 	}
 
 	// Keep local CA current when a task completes mid-session.
@@ -701,6 +849,7 @@ public class KillClogPlugin extends Plugin
 		{
 			enumCategoryMap = new HashMap<>();
 			itemToCategoryKeys = new HashMap<>();
+			itemNameToIds = new HashMap<>();
 
 			EnumComposition tabs = client.getEnum(ENUM_CLOG_TABS);
 
@@ -734,6 +883,7 @@ public class KillClogPlugin extends Plugin
 						itemIds.add(itemId);
 						itemToCategoryKeys.computeIfAbsent(itemId, k -> new ArrayList<>())
 							.add(categoryKey);
+						indexItemName(itemId);
 					}
 
 					enumCategoryMap.put(categoryKey, itemIds);
@@ -746,8 +896,8 @@ public class KillClogPlugin extends Plugin
 			injectSynthetic(PanelData.CLOG_GILDED, PanelData.GILDED_ITEMS);
 
 			enumsParsed = true;
-			log.debug("Parsed clog enums: {} categories, {} items",
-				enumCategoryMap.size(), itemToCategoryKeys.size());
+			log.debug("Parsed clog enums: {} categories, {} items, {} names",
+				enumCategoryMap.size(), itemToCategoryKeys.size(), itemNameToIds.size());
 		}
 		catch (Exception e)
 		{
@@ -763,8 +913,23 @@ public class KillClogPlugin extends Plugin
 		{
 			ids.add(id);
 			itemToCategoryKeys.computeIfAbsent(id, k -> new ArrayList<>()).add(key);
+			indexItemName(id);
 		}
 		enumCategoryMap.put(key, ids);
+	}
+
+	private void indexItemName(int itemId)
+	{
+		String itemName = itemManager.getItemComposition(itemId).getName();
+		String itemKey = normalizeItemName(itemName);
+		if (!itemKey.isEmpty() && !"null".equals(itemKey))
+		{
+			List<Integer> ids = itemNameToIds.computeIfAbsent(itemKey, k -> new ArrayList<>());
+			if (!ids.contains(itemId))
+			{
+				ids.add(itemId);
+			}
+		}
 	}
 
 	private void triggerBulkCapture()

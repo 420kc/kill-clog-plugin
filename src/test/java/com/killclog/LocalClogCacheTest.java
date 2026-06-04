@@ -63,6 +63,79 @@ public class LocalClogCacheTest
 		assertEquals(AccountType.GROUP_IRONMAN, cached.getProviderAccountType());
 	}
 
+	@Test
+	public void testMergeObtainedItemAddsItemToMappedCategories() throws Exception
+	{
+		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
+		Map<String, List<Integer>> categories = new HashMap<>();
+		categories.put("magus", itemList(1, 2, 3));
+		categories.put("all_pets", itemList(2, 4));
+
+		cache.cacheResult(clog(
+			"Fast 07",
+			categories,
+			obtainedItems("magus", 1)));
+
+		boolean changed = cache.mergeObtainedItem(
+			"Fast 07",
+			2,
+			itemListAsStrings("magus", "all_pets"),
+			categories);
+
+		ClogResult cached = cache.toClogResult("Fast 07", Collections.emptyMap());
+		assertTrue(changed);
+		assertNotNull(cached);
+		assertEquals(2, cached.getObtainedItems().get("magus").size());
+		assertEquals(1, cached.getObtainedItems().get("all_pets").size());
+		assertEquals(2, cached.getObtainedItems().get("all_pets").get(0).getId());
+	}
+
+	@Test
+	public void testMergeObtainedItemIsIdempotent() throws Exception
+	{
+		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
+		Map<String, List<Integer>> categories = categoryItems("magus", 1, 2, 3);
+
+		cache.cacheResult(clog(
+			"Fast 07",
+			categories,
+			obtainedItems("magus", 1, 2)));
+
+		boolean changed = cache.mergeObtainedItem("Fast 07", 2,
+			itemListAsStrings("magus"), categories);
+
+		ClogResult cached = cache.toClogResult("Fast 07", Collections.emptyMap());
+		assertFalse(changed);
+		assertNotNull(cached);
+		assertEquals(2, cached.getObtainedItems().get("magus").size());
+	}
+
+	@Test
+	public void testHasObtainedItemChecksMappedCategories() throws Exception
+	{
+		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
+		cache.cacheResult(clog(
+			"Fast 07",
+			categoryItems("magus", 1, 2, 3),
+			obtainedItems("magus", 1, 2)));
+
+		assertTrue(cache.hasObtainedItem("Fast 07", 2, itemListAsStrings("magus")));
+		assertFalse(cache.hasObtainedItem("Fast 07", 3, itemListAsStrings("magus")));
+		assertFalse(cache.hasObtainedItem("Fast 07", 2, itemListAsStrings("venenatis")));
+	}
+
+	@Test
+	public void testMergeObtainedItemRequiresExistingCache() throws Exception
+	{
+		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
+
+		assertFalse(cache.mergeObtainedItem(
+			"Fast 07",
+			2,
+			itemListAsStrings("magus"),
+			categoryItems("magus", 1, 2, 3)));
+	}
+
 	private static ClogResult clog(String playerName, Map<String, List<Integer>> categories,
 		Map<String, List<ClogResult.ClogItem>> obtained)
 	{
@@ -84,13 +157,25 @@ public class LocalClogCacheTest
 	private static Map<String, List<Integer>> categoryItems(String category, int... itemIds)
 	{
 		Map<String, List<Integer>> categories = new HashMap<>();
+		categories.put(category, itemList(itemIds));
+		return categories;
+	}
+
+	private static List<Integer> itemList(int... itemIds)
+	{
 		List<Integer> items = new ArrayList<>();
 		for (int itemId : itemIds)
 		{
 			items.add(itemId);
 		}
-		categories.put(category, items);
-		return categories;
+		return items;
+	}
+
+	private static List<String> itemListAsStrings(String... items)
+	{
+		List<String> result = new ArrayList<>();
+		Collections.addAll(result, items);
+		return result;
 	}
 
 	private static Map<String, List<ClogResult.ClogItem>> obtainedItems(String category, int... itemIds)

@@ -33,8 +33,8 @@ public class HiscoreService
 	};
 
 	// Activity names in hiscore CSV order.
-	// Includes deprecated entries (Grid Points, Deadman Points, BH Legacy) that
-	// Retired bosses still occupy CSV lines, so indices must stay aligned.
+	// Includes deprecated entries (Grid Points, Deadman Points, BH Legacy).
+	// Retired activity rows still occupy CSV lines, so indices must stay aligned.
 	private static final String[] ACTIVITY_NAMES = {
 		"Grid Points",
 		"League Points",
