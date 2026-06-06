@@ -342,6 +342,7 @@ public class KillClogPlugin extends Plugin
 	{
 		if (event.getGameState() == GameState.LOGGED_IN)
 		{
+			SwingUtilities.invokeLater(panel::reloadTooltipSprites);
 			clogService.clearTempleFailures();
 			runeProfileService.clearFailures();
 			pendingAcctTypeRecheck = true;
@@ -375,6 +376,7 @@ public class KillClogPlugin extends Plugin
 		}
 		else if (event.getGameState() == GameState.LOGIN_SCREEN)
 		{
+			SwingUtilities.invokeLater(panel::reloadTooltipSprites);
 			resetBulkCapture();
 			enumsParsed = false;
 			hasAutoLookedUpThisSession = false;
@@ -689,8 +691,14 @@ public class KillClogPlugin extends Plugin
 	@Subscribe
 	public void onPluginChanged(PluginChanged event)
 	{
+		String pluginName = event.getPlugin().getClass().getSimpleName();
+		if (pluginName.equals("ResourcePacksPlugin"))
+		{
+			SwingUtilities.invokeLater(panel::reloadTooltipSprites);
+		}
+
 		// String check; FourTwentyKcPlugin lives in a separate plugin.
-		if (event.getPlugin().getClass().getSimpleName().equals("FourTwentyKcPlugin"))
+		if (pluginName.equals("FourTwentyKcPlugin"))
 		{
 			SwingUtilities.invokeLater(() -> panel.setFourTwentyVisible(event.isLoaded()));
 		}
@@ -699,6 +707,12 @@ public class KillClogPlugin extends Plugin
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
+		if ("resourcepacks".equals(event.getGroup()))
+		{
+			SwingUtilities.invokeLater(panel::reloadTooltipSprites);
+			return;
+		}
+
 		if (!event.getGroup().equals("killclog"))
 		{
 			return;

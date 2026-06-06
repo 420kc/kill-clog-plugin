@@ -101,6 +101,7 @@ public class KillClogPanel extends PluginPanel
 	private final SpriteManager spriteManager;
 	private final ItemManager itemManager;
 	private final ClientThread clientThread;
+	private final Client client;
 	private final AccountBadgeResolver accountBadges;
 	private final TooltipDataBuilder tooltipDataBuilder;
 	private ProgressHighlighter highlighter;
@@ -270,6 +271,7 @@ public class KillClogPanel extends PluginPanel
 		this.spriteManager = spriteManager;
 		this.itemManager = itemManager;
 		this.clientThread = clientThread;
+		this.client = client;
 		this.accountBadges = new AccountBadgeResolver(client);
 		this.tooltipDataBuilder = new TooltipDataBuilder(itemManager);
 		this.tooltipController = new TooltipController(config);
@@ -294,7 +296,7 @@ public class KillClogPanel extends PluginPanel
 			}
 		});
 
-		NativeTooltip.loadSprites(spriteManager);
+		reloadTooltipSprites();
 		SkillsTooltip.loadIcons(skillIconManager);
 
 
@@ -1846,6 +1848,11 @@ public class KillClogPanel extends PluginPanel
 				tooltipController.clearHoveredCell();
 				break;
 		}
+	}
+
+	public void reloadTooltipSprites()
+	{
+		clientThread.invokeLater(() -> NativeTooltip.loadSprites(client, spriteManager));
 	}
 
 	@Override

@@ -5,7 +5,10 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.util.function.Consumer;
 import javax.swing.JToolTip;
+import net.runelite.api.Client;
+import net.runelite.api.SpritePixels;
 import net.runelite.client.game.SpriteManager;
 
 /**
@@ -51,39 +54,70 @@ public abstract class NativeTooltip extends JToolTip
 	 */
 	public static void loadSprites(SpriteManager spriteManager)
 	{
-		spriteManager.getSpriteAsync(SPRITE_PARCHMENT, 0, img -> parchmentBg = img);
-		spriteManager.getSpriteAsync(SPRITE_CORNER_TL, 0, img ->
+		loadSprites(null, spriteManager);
+	}
+
+	/**
+	 * Load border sprites, preferring client sprite overrides when Resource
+	 * Packs or another UI theme plugin has replaced the same game sprites.
+	 */
+	public static void loadSprites(Client client, SpriteManager spriteManager)
+	{
+		loadSprite(client, spriteManager, SPRITE_PARCHMENT, img -> parchmentBg = img);
+		loadSprite(client, spriteManager, SPRITE_CORNER_TL, img ->
 		{
 			cornerTL = img;
 			checkSprites();
 		});
-		spriteManager.getSpriteAsync(SPRITE_CORNER_TR, 0, img ->
+		loadSprite(client, spriteManager, SPRITE_CORNER_TR, img ->
 		{
 			cornerTR = img;
 			checkSprites();
 		});
-		spriteManager.getSpriteAsync(SPRITE_CORNER_BL, 0, img ->
+		loadSprite(client, spriteManager, SPRITE_CORNER_BL, img ->
 		{
 			cornerBL = img;
 			checkSprites();
 		});
-		spriteManager.getSpriteAsync(SPRITE_CORNER_BR, 0, img ->
+		loadSprite(client, spriteManager, SPRITE_CORNER_BR, img ->
 		{
 			cornerBR = img;
 			checkSprites();
 		});
-		spriteManager.getSpriteAsync(SPRITE_EDGE_HORIZ, 0, img ->
+		loadSprite(client, spriteManager, SPRITE_EDGE_HORIZ, img ->
 		{
 			edgeTop = img;
 			edgeBottom = rotate180(img);
 			checkSprites();
 		});
-		spriteManager.getSpriteAsync(SPRITE_EDGE_VERT, 0, img ->
+		loadSprite(client, spriteManager, SPRITE_EDGE_VERT, img ->
 		{
 			edgeRight = img;
 			edgeLeft = rotate180(img);
 			checkSprites();
 		});
+	}
+
+	private static void loadSprite(Client client, SpriteManager spriteManager,
+		int spriteId, Consumer<BufferedImage> consumer)
+	{
+		BufferedImage override = getOverrideSprite(client, spriteId);
+		if (override != null)
+		{
+			consumer.accept(override);
+			return;
+		}
+		spriteManager.getSpriteAsync(spriteId, 0, consumer);
+	}
+
+	private static BufferedImage getOverrideSprite(Client client, int spriteId)
+	{
+		if (client == null)
+		{
+			return null;
+		}
+		SpritePixels spritePixels = client.getSpriteOverrides().get(spriteId);
+		return spritePixels != null ? spritePixels.toBufferedImage() : null;
 	}
 
 	private static void checkSprites()
