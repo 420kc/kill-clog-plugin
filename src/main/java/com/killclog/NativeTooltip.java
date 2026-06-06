@@ -35,7 +35,6 @@ public abstract class NativeTooltip extends JToolTip
 	private static final int SPRITE_PARCHMENT = 297;
 	private static final int SPRITE_CORNER_TL = 310;
 	private static final int SPRITE_CORNER_TR = 311;
-	private static final int SPRITE_CORNER_BL = 312;
 	private static final int SPRITE_CORNER_BR = 313;
 	private static final int SPRITE_EDGE_HORIZ = 314;
 	private static final int SPRITE_EDGE_VERT = 315;
@@ -67,16 +66,12 @@ public abstract class NativeTooltip extends JToolTip
 		loadSprite(client, spriteManager, SPRITE_CORNER_TL, img ->
 		{
 			cornerTL = img;
+			cornerBL = flipVertical(img);
 			checkSprites();
 		});
 		loadSprite(client, spriteManager, SPRITE_CORNER_TR, img ->
 		{
 			cornerTR = img;
-			checkSprites();
-		});
-		loadSprite(client, spriteManager, SPRITE_CORNER_BL, img ->
-		{
-			cornerBL = img;
 			checkSprites();
 		});
 		loadSprite(client, spriteManager, SPRITE_CORNER_BR, img ->
@@ -86,14 +81,14 @@ public abstract class NativeTooltip extends JToolTip
 		});
 		loadSprite(client, spriteManager, SPRITE_EDGE_HORIZ, img ->
 		{
-			edgeTop = img;
-			edgeBottom = rotate180(img);
+			edgeTop = trimTransparentPadding(img);
+			edgeBottom = flipVertical(edgeTop);
 			checkSprites();
 		});
 		loadSprite(client, spriteManager, SPRITE_EDGE_VERT, img ->
 		{
-			edgeRight = img;
-			edgeLeft = rotate180(img);
+			edgeRight = trimTransparentPadding(img);
+			edgeLeft = flipHorizontal(edgeRight);
 			checkSprites();
 		});
 	}
@@ -185,16 +180,60 @@ public abstract class NativeTooltip extends JToolTip
 		}
 	}
 
-	private static BufferedImage rotate180(BufferedImage src)
+	private static BufferedImage trimTransparentPadding(BufferedImage src)
 	{
 		if (src == null) return null;
 		int w = src.getWidth();
 		int h = src.getHeight();
-		BufferedImage rotated = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D g = rotated.createGraphics();
-		g.drawImage(src, w, h, 0, 0, 0, 0, w, h, null);
+		int minX = w;
+		int minY = h;
+		int maxX = -1;
+		int maxY = -1;
+
+		for (int y = 0; y < h; y++)
+		{
+			for (int x = 0; x < w; x++)
+			{
+				if ((src.getRGB(x, y) >>> 24) != 0)
+				{
+					minX = Math.min(minX, x);
+					minY = Math.min(minY, y);
+					maxX = Math.max(maxX, x);
+					maxY = Math.max(maxY, y);
+				}
+			}
+		}
+
+		if (maxX < minX || maxY < minY)
+		{
+			return src;
+		}
+
+		return src.getSubimage(minX, minY, maxX - minX + 1, maxY - minY + 1);
+	}
+
+	private static BufferedImage flipVertical(BufferedImage src)
+	{
+		if (src == null) return null;
+		int w = src.getWidth();
+		int h = src.getHeight();
+		BufferedImage flipped = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = flipped.createGraphics();
+		g.drawImage(src, 0, 0, w, h, 0, h, w, 0, null);
 		g.dispose();
-		return rotated;
+		return flipped;
+	}
+
+	private static BufferedImage flipHorizontal(BufferedImage src)
+	{
+		if (src == null) return null;
+		int w = src.getWidth();
+		int h = src.getHeight();
+		BufferedImage flipped = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = flipped.createGraphics();
+		g.drawImage(src, 0, 0, w, h, w, 0, 0, h, null);
+		g.dispose();
+		return flipped;
 	}
 
 	private static void paintBorder(Graphics2D g2, int w, int h)
