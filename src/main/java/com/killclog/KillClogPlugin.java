@@ -67,10 +67,10 @@ public class KillClogPlugin extends Plugin
 
 	// Bulk clog capture IDs.
 	private static final int CLOG_ITEM_SCRIPT = 4100;
-	private static final int CLOG_SEARCH_WIDGET = 40697932;  // (621 << 16) | 76
 	private static final int ENUM_CLOG_TABS = 2102;
 	private static final int VARP_CLOG_OBTAINED = 2943;
 	private static final int VARP_CLOG_TOTAL = 2944;
+	private static final int MANUAL_BULK_TIMEOUT_TICKS = 100;
 	private static final int PARAM_SUBTAB_ENUM = 683;
 	private static final int PARAM_CATEGORY_NAME = 689;
 	private static final int PARAM_CATEGORY_ITEMS = 690;
@@ -174,10 +174,12 @@ public class KillClogPlugin extends Plugin
 	private static class BulkCaptureState
 	{
 		boolean active;
+		int startTickCount = -1;
 		int finalizeTickCount = -1;
 		int clogCount = -1;
 		int clogTotal = -1;
 		final List<ClogResult.ClogItem> obtained = new ArrayList<>();
+		final Set<Integer> obtainedIds = new HashSet<>();
 
 		// Buffered category read captured before bulk has cache data to merge into.
 		String bufferedCategoryKey;
@@ -188,10 +190,12 @@ public class KillClogPlugin extends Plugin
 		void reset()
 		{
 			active = false;
+			startTickCount = -1;
 			finalizeTickCount = -1;
 			clogCount = -1;
 			clogTotal = -1;
 			obtained.clear();
+			obtainedIds.clear();
 			bufferedCategoryKey = null;
 			bufferedCategoryName = null;
 			bufferedCategoryItems = null;
@@ -656,6 +660,15 @@ public class KillClogPlugin extends Plugin
 		{
 			finalizeBulkCapture();
 		}
+		else if (bulk.active && bulk.finalizeTickCount < 0
+			&& bulk.startTickCount >= 0
+			&& client.getTickCount() - bulk.startTickCount > MANUAL_BULK_TIMEOUT_TICKS)
+		{
+			resetBulkCapture();
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+				"<col=4caf6e>Kill Clog:</col> Sync timed out. Click the chalice, then Search and Back.",
+				null);
+		}
 	}
 
 	@Subscribe
@@ -684,7 +697,10 @@ public class KillClogPlugin extends Plugin
 		int itemId = (int) args[1];
 		int count = (int) args[2];
 
-		bulk.obtained.add(new ClogResult.ClogItem(itemId, count, null));
+		if (bulk.obtainedIds.add(itemId))
+		{
+			bulk.obtained.add(new ClogResult.ClogItem(itemId, count, null));
+		}
 		bulk.finalizeTickCount = client.getTickCount() + 3;
 	}
 
@@ -946,9 +962,17 @@ public class KillClogPlugin extends Plugin
 		}
 	}
 
-	private void triggerBulkCapture()
+	private void beginManualBulkCapture()
 	{
-		if (!enumsParsed || bulk.active)
+		if (bulk.active)
+		{
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+				"<col=4caf6e>Kill Clog:</col> Sync is armed. Click Search, then Back.",
+				null);
+			return;
+		}
+
+		if (!enumsParsed)
 		{
 			return;
 		}
@@ -965,16 +989,19 @@ public class KillClogPlugin extends Plugin
 			return;
 		}
 
-		bulk.obtained.clear();
 		bulk.active = true;
+		bulk.startTickCount = client.getTickCount();
 		bulk.finalizeTickCount = -1;
 		bulk.clogCount = client.getVarpValue(VARP_CLOG_OBTAINED);
 		bulk.clogTotal = client.getVarpValue(VARP_CLOG_TOTAL);
+		bulk.obtained.clear();
+		bulk.obtainedIds.clear();
 
-		client.menuAction(-1, CLOG_SEARCH_WIDGET, MenuAction.CC_OP, 1, -1, "Search", null);
-		client.menuAction(-1, CLOG_SEARCH_WIDGET, MenuAction.CC_OP, 1, -1, "Back", null);
+		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
+			"<col=4caf6e>Kill Clog:</col> First sync armed. Click Search, then Back.",
+			null);
 
-		log.debug("Triggered bulk clog capture (game reports {} obtained)", bulk.clogCount);
+		log.debug("Armed manual bulk clog capture (game reports {} obtained)", bulk.clogCount);
 	}
 
 	private void finalizeBulkCapture()
@@ -1040,6 +1067,7 @@ public class KillClogPlugin extends Plugin
 			result.setUniqueTotal(bulk.clogTotal);
 		}
 		localClogCache.cacheResult(result);
+		liveSyncNeedsFirstSyncWarned = false;
 
 		// Prefer the Jagex de-duped count (varp 2943) over the raw streamed count.
 		// Some items appear in multiple clog categories, so bulk.obtained.size() can
@@ -1082,7 +1110,7 @@ public class KillClogPlugin extends Plugin
 
 	/**
 	 * Called by ClogButtonOverlay on click.
-	 * First click: buffers visible category + triggers bulk capture.
+	 * First click: buffers visible category + arms manual bulk capture.
 	 * Subsequent clicks: captures visible category directly.
 	 */
 	void onSyncClicked()
@@ -1100,7 +1128,7 @@ public class KillClogPlugin extends Plugin
 
 			if (!localClogCache.hasDataFor(local.getName()))
 			{
-				triggerBulkCapture();
+				beginManualBulkCapture();
 			}
 		});
 	}

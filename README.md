@@ -8,7 +8,7 @@ Kill Clog is a HiScores overhaul that enables collection log visualization for y
 - Summary tooltips with condensed stats
 - Unified searchbar with account type autodetection
 - Collection log chat commands
-- Automatic sync of new collections
+- Guided first sync plus automatic updates for new collection-log drops
 - Configurable right-click menu options
 
 ![Kill Clog](screenshots/hero-vanilla-vs-killclog.png)
@@ -29,15 +29,23 @@ Source code is public at [github.com/420kc/kill-clog-plugin](https://github.com/
 
 ## sync
 
-Open your collection log in-game, click the red chalice at the top.
+Open your collection log in-game and click the red chalice at the top. On your
+first sync, Kill Clog will ask you to click **Search**, then **Back** inside the
+collection log. That builds your local baseline cache.
 
 ![sync-path](screenshots/sync-path.gif)
 
-That updates your local Kill Clog cache. To make your clog visible to other Kill Clog users, sync your public data through TempleOSRS and/or RuneProfile.
+After that baseline exists, new collection-log drops update automatically when
+Collection Log Chat Messages are enabled. Use the chalice again when you want to
+refresh the visible category manually, repair stale local data, or pull in
+changes from a session where chat messages were off. To make your clog visible
+to other Kill Clog users, sync your public data through TempleOSRS and/or
+RuneProfile.
 
 ## auto-sync
 
-Your local data auto-refreshes from collection log chat messages. Long sessions stay current without re-syncing.
+Once the first sync has built your local cache, collection-log chat messages keep
+new drops current during long sessions.
 
 ## quick lookup
 

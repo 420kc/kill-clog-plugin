@@ -362,14 +362,7 @@ class KillClogChatCommand
 		ClogResult cl;
 		try
 		{
-			cl = clogService.lookup(rsn).get();
-		}
-		catch (InterruptedException e)
-		{
-			Thread.currentThread().interrupt();
-			log.warn("clog lookup interrupted for {}", rsn, e);
-			replaceText(chatMessage, label + ": lookup failed");
-			return null;
+			cl = clogService.lookup(rsn).join();
 		}
 		catch (Exception e)
 		{
