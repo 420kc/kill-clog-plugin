@@ -35,9 +35,12 @@ public abstract class NativeTooltip extends JToolTip
 	private static final int SPRITE_PARCHMENT = 297;
 	private static final int SPRITE_CORNER_TL = 310;
 	private static final int SPRITE_CORNER_TR = 311;
+	private static final int SPRITE_CORNER_BL = 312;
 	private static final int SPRITE_CORNER_BR = 313;
 	private static final int SPRITE_EDGE_HORIZ = 314;
 	private static final int SPRITE_EDGE_VERT = 315;
+	private static final int SPRITE_EDGE_BOTTOM = 173;
+	private static final int SPRITE_EDGE_LEFT = 172;
 
 	// Tiled parchment background from game (sprite 297 = TRADEBACKING)
 	private static volatile BufferedImage parchmentBg;
@@ -66,7 +69,7 @@ public abstract class NativeTooltip extends JToolTip
 		loadSprite(client, spriteManager, SPRITE_CORNER_TL, img ->
 		{
 			cornerTL = img;
-			cornerBL = flipVertical(img);
+			cornerBL = optionalOverride(client, SPRITE_CORNER_BL, flipVertical(img));
 			checkSprites();
 		});
 		loadSprite(client, spriteManager, SPRITE_CORNER_TR, img ->
@@ -82,13 +85,13 @@ public abstract class NativeTooltip extends JToolTip
 		loadSprite(client, spriteManager, SPRITE_EDGE_HORIZ, img ->
 		{
 			edgeTop = trimTransparentPadding(img);
-			edgeBottom = flipVertical(edgeTop);
+			edgeBottom = optionalTrimmedOverride(client, SPRITE_EDGE_BOTTOM, flipVertical(edgeTop));
 			checkSprites();
 		});
 		loadSprite(client, spriteManager, SPRITE_EDGE_VERT, img ->
 		{
 			edgeRight = trimTransparentPadding(img);
-			edgeLeft = flipHorizontal(edgeRight);
+			edgeLeft = optionalTrimmedOverride(client, SPRITE_EDGE_LEFT, flipHorizontal(edgeRight));
 			checkSprites();
 		});
 	}
@@ -113,6 +116,17 @@ public abstract class NativeTooltip extends JToolTip
 		}
 		SpritePixels spritePixels = client.getSpriteOverrides().get(spriteId);
 		return spritePixels != null ? spritePixels.toBufferedImage() : null;
+	}
+
+	private static BufferedImage optionalOverride(Client client, int spriteId, BufferedImage fallback)
+	{
+		BufferedImage override = getOverrideSprite(client, spriteId);
+		return override != null ? override : fallback;
+	}
+
+	private static BufferedImage optionalTrimmedOverride(Client client, int spriteId, BufferedImage fallback)
+	{
+		return trimTransparentPadding(optionalOverride(client, spriteId, fallback));
 	}
 
 	private static void checkSprites()
