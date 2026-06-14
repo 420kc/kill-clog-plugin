@@ -2,11 +2,18 @@ package com.killclog;
 
 import java.awt.AlphaComposite;
 import java.awt.Color;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -44,6 +51,10 @@ public class ImgTooltip extends TitleTooltip
 	private Set<Integer> obtainedIds;
 	private Map<Integer, Integer> obtainedCounts;
 	private BufferedImage[] sprites;
+	private String[] itemNames;
+	private List<ItemHitBox> hitBoxes = Collections.emptyList();
+	private int hoveredItemId = -1;
+	private String hoveredItemName;
 
 	/** Configurable min column count. */
 	public ImgTooltip(int gridCols)
@@ -56,6 +67,7 @@ public class ImgTooltip extends TitleTooltip
 	{
 		this.gridCols = gridCols;
 		this.spriteSize = spriteSize;
+		installItemMouseListeners();
 	}
 
 	@Override
@@ -71,6 +83,17 @@ public class ImgTooltip extends TitleTooltip
 	public void setItems(int totalItems, List<Integer> allItemIds, Set<Integer> obtainedIds,
 		Map<Integer, Integer> obtainedCounts, ItemManager itemManager)
 	{
+		setItems(totalItems, allItemIds, obtainedIds, obtainedCounts, Collections.emptyMap(), itemManager);
+	}
+
+	/**
+	 * Set item grid data. Call after setTitle/setObtained/setRank.
+	 * Holds strong references to sprites so they survive ItemManager cache eviction.
+	 */
+	public void setItems(int totalItems, List<Integer> allItemIds, Set<Integer> obtainedIds,
+		Map<Integer, Integer> obtainedCounts, Map<Integer, String> itemNames,
+		ItemManager itemManager)
+	{
 		this.totalItems = totalItems;
 		this.allItemIds = allItemIds;
 		this.obtainedIds = obtainedIds;
@@ -79,13 +102,17 @@ public class ImgTooltip extends TitleTooltip
 		if (allItemIds == null || itemManager == null)
 		{
 			sprites = null;
+			this.itemNames = null;
+			clearHover();
 			return;
 		}
 
 		sprites = new BufferedImage[allItemIds.size()];
+		this.itemNames = new String[allItemIds.size()];
 		for (int i = 0; i < allItemIds.size(); i++)
 		{
 			int itemId = allItemIds.get(i);
+			this.itemNames[i] = TooltipItemLink.itemName(itemNames, itemId);
 			int count = obtainedIds != null && obtainedIds.contains(itemId)
 				? obtainedCounts.getOrDefault(itemId, 1) : 1;
 			BufferedImage img = itemManager.getImage(itemId, count, false);
@@ -172,6 +199,7 @@ public class ImgTooltip extends TitleTooltip
 
 		int inset = getInset();
 		boolean hasItems = allItemIds != null && !allItemIds.isEmpty();
+		hitBoxes = Collections.emptyList();
 
 		// No clog data - center notice in the grid area
 		if (!hasItems)
@@ -211,21 +239,26 @@ public class ImgTooltip extends TitleTooltip
 		// Item grid with auto-wrapped columns
 		if (sprites != null)
 		{
+			List<ItemHitBox> nextHitBoxes = new ArrayList<>(allItemIds.size());
 			g2.setFont(FontManager.getRunescapeSmallFont());
+
 			int cellSize = spriteSize + PADDING;
 			int gridWidth = effectiveCols * cellSize - PADDING;
 			int gridOffsetX = inset + (w - 2 * inset - gridWidth) / 2;
+			int gridStartY = startY;
 
 			for (int i = 0; i < allItemIds.size(); i++)
 			{
 				int col = i % effectiveCols;
 				int row = i / effectiveCols;
 				int x = gridOffsetX + col * cellSize;
-				int y = startY + row * cellSize;
+				int y = gridStartY + row * cellSize;
 
 				int itemId = allItemIds.get(i);
 				boolean obtained = obtainedIds.contains(itemId);
 				int count = obtained ? obtainedCounts.getOrDefault(itemId, 1) : 1;
+				nextHitBoxes.add(new ItemHitBox(itemId, itemNameAt(i),
+					new Rectangle(x, y, spriteSize, spriteSize)));
 
 				BufferedImage sprite = i < sprites.length ? sprites[i] : null;
 				if (sprite != null)
@@ -251,6 +284,104 @@ public class ImgTooltip extends TitleTooltip
 					g2.drawString(qtyText, x, y + qfm.getAscent());
 				}
 			}
+			hitBoxes = nextHitBoxes;
+		}
+	}
+
+	@Override
+	protected String getHeaderRightText()
+	{
+		return hoveredItemName;
+	}
+
+	private String itemNameAt(int index)
+	{
+		if (itemNames == null || index < 0 || index >= itemNames.length)
+		{
+			return null;
+		}
+		return itemNames[index];
+	}
+
+	private void installItemMouseListeners()
+	{
+		addMouseMotionListener(new MouseMotionAdapter()
+		{
+			@Override
+			public void mouseMoved(MouseEvent e)
+			{
+				updateHoveredItem(e.getX(), e.getY());
+			}
+		});
+		addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mousePressed(MouseEvent e)
+			{
+				updateHoveredItem(e.getX(), e.getY());
+				if (e.getButton() == MouseEvent.BUTTON1 && hoveredItemId > 0)
+				{
+					TooltipItemLink.openWiki(hoveredItemId);
+					e.consume();
+				}
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e)
+			{
+				clearHover();
+			}
+		});
+	}
+
+	private void updateHoveredItem(int mx, int my)
+	{
+		ItemHitBox hitBox = findHitBox(mx, my);
+		int nextId = hitBox != null ? hitBox.itemId : -1;
+		if (nextId == hoveredItemId)
+		{
+			return;
+		}
+		hoveredItemId = nextId;
+		hoveredItemName = hitBox != null ? hitBox.itemName : null;
+		setCursor(Cursor.getPredefinedCursor(hitBox != null ? Cursor.HAND_CURSOR : Cursor.DEFAULT_CURSOR));
+		repaint();
+	}
+
+	private ItemHitBox findHitBox(int mx, int my)
+	{
+		for (ItemHitBox hitBox : hitBoxes)
+		{
+			if (hitBox.bounds.contains(mx, my))
+			{
+				return hitBox;
+			}
+		}
+		return null;
+	}
+
+	private void clearHover()
+	{
+		if (hoveredItemId != -1 || hoveredItemName != null)
+		{
+			hoveredItemId = -1;
+			hoveredItemName = null;
+			setCursor(Cursor.getDefaultCursor());
+			repaint();
+		}
+	}
+
+	private static final class ItemHitBox
+	{
+		private final int itemId;
+		private final String itemName;
+		private final Rectangle bounds;
+
+		private ItemHitBox(int itemId, String itemName, Rectangle bounds)
+		{
+			this.itemId = itemId;
+			this.itemName = itemName;
+			this.bounds = bounds;
 		}
 	}
 }

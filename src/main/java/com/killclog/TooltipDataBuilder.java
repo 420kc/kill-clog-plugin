@@ -53,7 +53,7 @@ final class TooltipDataBuilder
 
 		List<Integer> itemList = allItems != null ? allItems : new ArrayList<>(obtainedIds);
 		return new TooltipData(displayName, rank, obtainedCount, totalItems,
-			itemList, obtainedIds, obtainedCounts);
+			itemList, obtainedIds, obtainedCounts, itemNamesFor(itemList, clogResult), true);
 	}
 
 	/**
@@ -90,7 +90,8 @@ final class TooltipDataBuilder
 
 		int obtainedCount = ClogHelper.countObtained(allItems, obtainedIds);
 		return new TooltipData(name, -1, obtainedCount,
-			allItems.size(), allItems, obtainedIds, obtainedCounts, false);
+			allItems.size(), allItems, obtainedIds, obtainedCounts,
+			itemNamesFor(allItems, clogResult), false);
 	}
 
 	private static List<ClogResult.ClogItem> rareObtainedItems(List<ClogResult.ClogItem> obtained,
@@ -173,7 +174,22 @@ final class TooltipDataBuilder
 
 		int obtainedCount = obtainedIds.size();
 		return new TooltipData(name, -1, obtainedCount,
-			allItemsList.size(), allItemsList, obtainedIds, obtainedCounts, false);
+			allItemsList.size(), allItemsList, obtainedIds, obtainedCounts,
+			itemNamesFor(allItemsList, clogResult), false);
+	}
+
+	private static Map<Integer, String> itemNamesFor(List<Integer> itemIds, ClogResult clogResult)
+	{
+		Map<Integer, String> names = new LinkedHashMap<>();
+		for (int itemId : itemIds)
+		{
+			String name = clogResult.getItemName(itemId);
+			if (name != null)
+			{
+				names.put(itemId, name);
+			}
+		}
+		return names;
 	}
 
 	/** Trigger async loads for all tooltip items. */

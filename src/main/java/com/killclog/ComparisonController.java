@@ -509,10 +509,25 @@ public class ComparisonController
 			blueData != null ? blueData.obtainedCounts : Collections.emptyMap(),
 			redData != null ? redData.obtainedIds : Collections.emptySet(),
 			redData != null ? redData.obtainedCounts : Collections.emptyMap(),
+			mergedItemNames(blueData, redData),
 			itemManager);
 
 		tooltipController.keepTooltipOnHover(tip, parentCell);
 		return tip;
+	}
+
+	private static Map<Integer, String> mergedItemNames(TooltipData blueData, TooltipData redData)
+	{
+		Map<Integer, String> names = new LinkedHashMap<>();
+		if (redData != null)
+		{
+			names.putAll(redData.itemNames);
+		}
+		if (blueData != null)
+		{
+			names.putAll(blueData.itemNames);
+		}
+		return names;
 	}
 
 	@Nullable

@@ -582,11 +582,19 @@ public class KillClogPanel extends PluginPanel
 				}
 				return buildCompareClogSummary(clogTotalsBar);
 			}
+
+			@Override
+			protected void paintComponent(Graphics g)
+			{
+				super.paintComponent(g);
+				paintUnderline(this, g, true);
+			}
 		};
 		blueClogTotal.setFont(FontManager.getRunescapeSmallFont());
 		blueClogTotal.setForeground(ComparisonController.COMPARE_BLUE);
 		blueClogTotal.setHorizontalAlignment(JLabel.LEFT);
 		blueClogTotal.setIconTextGap(3);
+		blueClogTotal.setBorder(new EmptyBorder(0, 0, 2, 0));
 		blueClogTotal.putClientProperty(
 			RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 		redClogTotal = new JLabel()
@@ -600,11 +608,19 @@ public class KillClogPanel extends PluginPanel
 				}
 				return buildCompareClogSummary(clogTotalsBar);
 			}
+
+			@Override
+			protected void paintComponent(Graphics g)
+			{
+				super.paintComponent(g);
+				paintUnderline(this, g, false);
+			}
 		};
 		redClogTotal.setFont(FontManager.getRunescapeSmallFont());
 		redClogTotal.setForeground(ComparisonController.COMPARE_RED);
 		redClogTotal.setHorizontalAlignment(JLabel.RIGHT);
 		redClogTotal.setIconTextGap(3);
+		redClogTotal.setBorder(new EmptyBorder(0, 0, 2, 0));
 		redClogTotal.putClientProperty(
 			RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 		GridBagConstraints ctbc = new GridBagConstraints();
@@ -634,6 +650,8 @@ public class KillClogPanel extends PluginPanel
 		clogTotalsBar.addMouseListener(clogTotalsClickHandler);
 		blueClogTotal.addMouseListener(clogTotalsClickHandler);
 		redClogTotal.addMouseListener(clogTotalsClickHandler);
+		installUnderlineHover(blueClogTotal);
+		installUnderlineHover(redClogTotal);
 		panel.add(clogTotalsBar);
 
 		panel.add(searchRow);
@@ -734,26 +752,7 @@ public class KillClogPanel extends PluginPanel
 
 		for (JLabel barLabel : new JLabel[]{playerName, clogInfoLabel})
 		{
-			barLabel.addMouseListener(new MouseAdapter()
-			{
-				@Override
-				public void mouseEntered(MouseEvent e)
-				{
-					if (barLabel.getToolTipText() != null
-						|| (comparison.isComparisonMode() && (barLabel == clogInfoLabel || barLabel == playerName)))
-					{
-						barLabel.putClientProperty("underlined", true);
-						barLabel.repaint();
-					}
-				}
-
-				@Override
-				public void mouseExited(MouseEvent e)
-				{
-					barLabel.putClientProperty("underlined", null);
-					barLabel.repaint();
-				}
-			});
+			installUnderlineHover(barLabel);
 		}
 
 		JLabel trayToggle = new JLabel();
@@ -859,6 +858,30 @@ public class KillClogPanel extends PluginPanel
 		label.setIconTextGap(3);
 		label.putClientProperty(
 			RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+	}
+
+	private void installUnderlineHover(JLabel barLabel)
+	{
+		barLabel.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseEntered(MouseEvent e)
+			{
+				if (barLabel.getToolTipText() != null
+					|| comparison.isComparisonMode())
+				{
+					barLabel.putClientProperty("underlined", true);
+					barLabel.repaint();
+				}
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e)
+			{
+				barLabel.putClientProperty("underlined", null);
+				barLabel.repaint();
+			}
+		});
 	}
 
 	private void loadRuntimeIcons()
@@ -1215,7 +1238,7 @@ public class KillClogPanel extends PluginPanel
 				tip.setRank(data.rank);
 			}
 			tip.setItems(data.totalItems, data.allItemIds, data.obtainedIds,
-				data.obtainedCounts, itemManager);
+				data.obtainedCounts, data.itemNames, itemManager);
 		}
 		else
 		{
@@ -2194,7 +2217,7 @@ public class KillClogPanel extends PluginPanel
 					String name = itemManager.getItemComposition(id).getName();
 					if (name != null && !name.isEmpty() && !name.equals("null") && !name.equals("Null"))
 					{
-						result.markItemResolved(id);
+						result.markItemResolved(id, name);
 					}
 				}
 				catch (Exception e)
