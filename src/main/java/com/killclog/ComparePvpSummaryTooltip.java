@@ -137,9 +137,31 @@ public class ComparePvpSummaryTooltip extends TitleTooltip
 
 	private int measureValueWidth(FontMetrics fm)
 	{
-		int w = Math.max(fm.stringWidth("99,999 (99/99)"), fm.stringWidth("99,999"));
+		int w = 0;
 		if (blueName != null) w = Math.max(w, fm.stringWidth(blueName));
 		if (redName != null) w = Math.max(w, fm.stringWidth(redName));
+
+		// Clog rows: score plus optional progress, measured from real values.
+		w = Math.max(w, clogValueWidth(fm, blueLms, blueLmsObt, blueLmsTotal));
+		w = Math.max(w, clogValueWidth(fm, redLms, redLmsObt, redLmsTotal));
+		w = Math.max(w, clogValueWidth(fm, blueSoulWars, blueSwObt, blueSwTotal));
+		w = Math.max(w, clogValueWidth(fm, redSoulWars, redSwObt, redSwTotal));
+
+		// Simple rows: score only.
+		int[] simple = {
+			bluePvpArena, redPvpArena, blueBhHunter, redBhHunter, blueBhRogue, redBhRogue,
+		};
+		w = Math.max(w, widestValue(fm, simple, TitleTooltip::scoreText));
+		return w;
+	}
+
+	private static int clogValueWidth(FontMetrics fm, int score, int obtained, int total)
+	{
+		int w = fm.stringWidth(scoreText(score));
+		if (score > 0 && obtained >= 0)
+		{
+			w += wrappedProgressCountWidth(fm, obtained, total);
+		}
 		return w;
 	}
 
@@ -200,10 +222,12 @@ public class ComparePvpSummaryTooltip extends TitleTooltip
 		paintIcon(g2, iconIndex, iconX, y);
 		g2.setColor(OSRS_ORANGE);
 		g2.drawString(label, labelX, y + fm.getAscent());
-		g2.setColor(COMPARE_BLUE);
-		g2.drawString(blueVal > 0 ? String.format("%,d", blueVal) : "--", blueX, y + fm.getAscent());
-		g2.setColor(COMPARE_RED);
-		g2.drawString(redVal > 0 ? String.format("%,d", redVal) : "--", redX, y + fm.getAscent());
+		String blueText = scoreText(blueVal);
+		g2.setColor(compareValueColor(blueText, COMPARE_BLUE));
+		g2.drawString(blueText, blueX, y + fm.getAscent());
+		String redText = scoreText(redVal);
+		g2.setColor(compareValueColor(redText, COMPARE_RED));
+		g2.drawString(redText, redX, y + fm.getAscent());
 	}
 
 	private void paintClogRow(Graphics2D g2, FontMetrics fm,
@@ -222,19 +246,13 @@ public class ComparePvpSummaryTooltip extends TitleTooltip
 		int score, int obtained, int total, Color playerColor)
 	{
 		int textY = y + fm.getAscent();
-		if (score <= 0)
+		String text = scoreText(score);
+		g2.setColor(compareValueColor(text, playerColor));
+		g2.drawString(text, x, textY);
+		// Progress rides alongside a real score; a "--" value stays dash-only.
+		if (score > 0 && obtained >= 0)
 		{
-			g2.setColor(playerColor);
-			g2.drawString("--", x, textY);
-			return;
-		}
-		String scoreText = String.format("%,d", score);
-		g2.setColor(playerColor);
-		g2.drawString(scoreText, x, textY);
-		if (obtained >= 0)
-		{
-			int lx = x + fm.stringWidth(scoreText);
-			paintWrappedProgressCount(g2, fm, lx, textY, obtained, total);
+			paintWrappedProgressCount(g2, fm, x + fm.stringWidth(text), textY, obtained, total);
 		}
 	}
 

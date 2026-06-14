@@ -83,7 +83,9 @@ public class CompareClueSummaryTooltip extends TitleTooltip
 	{
 		FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
 		int labelW = measureLabelWidth(fm);
-		int valueW = fm.stringWidth("999,999");
+		int valueW = Math.max(
+			widestValue(fm, blueScores, TitleTooltip::scoreText),
+			widestValue(fm, redScores, TitleTooltip::scoreText));
 		if (blueName != null) valueW = Math.max(valueW, fm.stringWidth(blueName));
 		if (redName != null) valueW = Math.max(valueW, fm.stringWidth(redName));
 		int totalWidth = ICON_SIZE + ICON_GAP + labelW + COL_GAP + valueW + COL_GAP + valueW;
@@ -142,13 +144,13 @@ public class CompareClueSummaryTooltip extends TitleTooltip
 			g2.setColor(OSRS_ORANGE);
 			g2.drawString(LABELS[i], labelX, y + fm.getAscent());
 
-			g2.setColor(COMPARE_BLUE);
-			g2.drawString(blueScores[i] > 0 ? String.format("%,d", blueScores[i]) : "--",
-				blueX, y + fm.getAscent());
+			String blueText = scoreText(blueScores[i]);
+			g2.setColor(compareValueColor(blueText, COMPARE_BLUE));
+			g2.drawString(blueText, blueX, y + fm.getAscent());
 
-			g2.setColor(COMPARE_RED);
-			g2.drawString(redScores[i] > 0 ? String.format("%,d", redScores[i]) : "--",
-				redX, y + fm.getAscent());
+			String redText = scoreText(redScores[i]);
+			g2.setColor(compareValueColor(redText, COMPARE_RED));
+			g2.drawString(redText, redX, y + fm.getAscent());
 
 			y += LINE_HEIGHT;
 		}

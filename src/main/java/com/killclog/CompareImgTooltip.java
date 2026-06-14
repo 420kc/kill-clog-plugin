@@ -379,8 +379,8 @@ public class CompareImgTooltip extends TitleTooltip
 		else
 		{
 			g2.setFont(NAME_FONT);
-			g2.setColor(NOTICE_COLOR);
-			g2.drawString("No Collection Log Data", inset, y + sfm.getAscent());
+			g2.setColor(dim(COMPARE_BLUE));
+			g2.drawString("--", inset, y + sfm.getAscent());
 			y += sfm.getHeight();
 		}
 
@@ -399,8 +399,8 @@ public class CompareImgTooltip extends TitleTooltip
 		else
 		{
 			g2.setFont(NAME_FONT);
-			g2.setColor(NOTICE_COLOR);
-			g2.drawString("No Collection Log Data", inset, y + sfm.getAscent());
+			g2.setColor(dim(COMPARE_RED));
+			g2.drawString("--", inset, y + sfm.getAscent());
 			y += sfm.getHeight();
 		}
 

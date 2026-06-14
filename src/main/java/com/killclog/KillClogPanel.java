@@ -10,6 +10,7 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
+import java.awt.Point;
 import java.awt.RenderingHints;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -72,6 +73,9 @@ public class KillClogPanel extends PluginPanel
 	private static final Color HAMBURGER_COLOR = new Color(70, 70, 70);
 	private static final Color HAMBURGER_HOVER_COLOR = new Color(96, 96, 96);
 	private static final String SYNC_NOTICE = "Open Collection Log and click";
+
+	// Search-glass hit region (bar coords): the 24px glyph sits 8px in, so x <= 32 is the icon.
+	private static final int SEARCH_ICON_HIT_X = 32;
 	private static final int SYNC_ICON_SIZE = 12;
 	private static final int ITEM_NAME_RESOLVE_BATCH_SIZE = 48;
 
@@ -196,7 +200,7 @@ public class KillClogPanel extends PluginPanel
 				else
 				{
 					tip.setNotice(lookupSession.getHiscoreResult() != null
-						? "No Collection Log Data" : "Nothing to see here! (Search for a player)");
+						? noClogNotice(rsn) : "Nothing to see here! (Search for a player)");
 				}
 			}
 			return tip;
@@ -253,6 +257,15 @@ public class KillClogPanel extends PluginPanel
 	private NameAutocompleter nameAutocompleter;
 	private FourTwentyMode fourTwentyMode = FourTwentyMode.OFF;
 	private boolean has420Plugin;
+
+	// No-data copy stays quiet: another player simply has no synced collection log.
+	// No provider names, no "missing data" framing - just a calm statement.
+	private static String noClogNotice(String rsn)
+	{
+		return rsn != null && !rsn.isEmpty()
+			? rsn + " hasn't synced a collection log"
+			: "No collection log synced";
+	}
 
 	@Inject
 	public KillClogPanel(HiscoreService hiscoreService, ClogService clogService,
@@ -486,19 +499,25 @@ public class KillClogPanel extends PluginPanel
 				});
 			}
 		};
-		installSearchRowHoverSync(searchRow, searchRowHoverSync);
+		installMouseListenerDeep(searchRow, searchRowHoverSync);
 
-		// Double-click on the magnifying-glass icon -> look up self.
-		searchBar.addMouseListener(new MouseAdapter()
+		// Double-click the magnifying-glass icon -> look up self. searchBar is an
+		// IconTextField composite, so clicks land on its child text field/icon, never
+		// the panel itself; install on the whole tree and test the click against the
+		// bar's icon region in shared coordinates.
+		installMouseListenerDeep(searchBar, new MouseAdapter()
 		{
 			@Override
 			public void mouseClicked(MouseEvent e)
 			{
-				if (compareEntryMode) return;
-				if (e.getClickCount() == 2 && e.getX() < 25 && localRsn != null && !localRsn.isEmpty())
+				if (!SwingUtilities.isLeftMouseButton(e) || e.getClickCount() != 2)
 				{
-					searchBar.setText(localRsn);
-					doLookup();
+					return;
+				}
+				Point p = SwingUtilities.convertPoint(e.getComponent(), e.getPoint(), searchBar);
+				if (p.x <= SEARCH_ICON_HIT_X)
+				{
+					lookupSelfFromSearchIcon();
 				}
 			}
 		});
@@ -775,14 +794,14 @@ public class KillClogPanel extends PluginPanel
 		return panel;
 	}
 
-	private void installSearchRowHoverSync(Component component, MouseAdapter adapter)
+	private void installMouseListenerDeep(Component component, MouseAdapter adapter)
 	{
 		component.addMouseListener(adapter);
 		if (component instanceof Container)
 		{
 			for (Component child : ((Container) component).getComponents())
 			{
-				installSearchRowHoverSync(child, adapter);
+				installMouseListenerDeep(child, adapter);
 			}
 		}
 	}
@@ -1210,7 +1229,7 @@ public class KillClogPanel extends PluginPanel
 			else
 			{
 				tip.setNotice(lookupSession.getHiscoreResult() != null
-					? "No Collection Log Data"
+					? noClogNotice(lookupSession.getCurrentLookupRsn())
 					: "Nothing to see here! (Search for a player)");
 			}
 		}
@@ -1518,6 +1537,20 @@ public class KillClogPanel extends PluginPanel
 			return;
 		}
 		lookupSession.start(player, localRsn, localAccountType);
+	}
+
+	private void lookupSelfFromSearchIcon()
+	{
+		if (localRsn == null || localRsn.isEmpty())
+		{
+			return;
+		}
+		if (compareEntryMode || comparison.isComparisonMode())
+		{
+			exitCompareEntry();
+		}
+		searchBar.setText(localRsn);
+		doLookup();
 	}
 
 	/**
@@ -2008,7 +2041,7 @@ public class KillClogPanel extends PluginPanel
 		else
 		{
 			cmp.setBlueData(blueName, 0, 0, icons);
-			cmp.setBlueNotice("No Collection Log Data");
+			cmp.setBlueNotice("--");
 		}
 
 		if (redClog != null)
@@ -2023,7 +2056,7 @@ public class KillClogPanel extends PluginPanel
 		else
 		{
 			cmp.setRedData(redName, 0, 0, icons);
-			cmp.setRedNotice("No Collection Log Data");
+			cmp.setRedNotice("--");
 		}
 
 		return cmp;

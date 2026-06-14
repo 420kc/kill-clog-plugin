@@ -319,6 +319,21 @@ public class ClogService
 					result.put(category, itemList);
 				}
 
+				// A player TempleOSRS tracks from hiscores but who never synced a
+				// collection log returns zero obtained items and no last_changed.
+				// Treat that as no clog data, not a real 0% profile: return null so
+				// the provider fanout can fall back to RuneProfile, and the panel
+				// shows the unknown state instead of painting every boss as empty.
+				int obtainedTotal = 0;
+				for (List<ClogResult.ClogItem> categoryItems : result.values())
+				{
+					obtainedTotal += categoryItems.size();
+				}
+				if (obtainedTotal == 0 && lastChanged == null)
+				{
+					return null;
+				}
+
 				return new PlayerClogData(canonicalName, result, lastChanged, accountType);
 			}
 			catch (Exception e)

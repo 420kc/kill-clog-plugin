@@ -52,6 +52,7 @@ class KillClogChatCommand
 	@Inject private Client client;
 	@Inject private ClientThread clientThread;
 	@Inject private ClogService clogService;
+	@Inject private HiscoreService hiscoreService;
 	@Inject private ItemManager itemManager;
 
 	// itemId -> absolute index into client.getModIcons(). Persists for the plugin's lifetime;
@@ -295,6 +296,7 @@ class KillClogChatCommand
 			return;
 		}
 
+		int bossKc = lookupBossKc(rsn, boss);
 		final List<Integer> renderIds;
 		final String header;
 		if (missingMode)
@@ -314,11 +316,11 @@ class KillClogChatCommand
 			}
 			if (missing.isEmpty())
 			{
-				replaceText(chatMessage, boss + ": complete");
+				replaceText(chatMessage, buildCompleteHeader(boss, bossKc));
 				return;
 			}
 			renderIds = missing;
-			header = boss + ": " + missing.size() + "/" + totalList.size() + " missing";
+			header = buildCommandHeader(boss, bossKc, missing.size(), totalList.size(), true);
 		}
 		else
 		{
@@ -327,7 +329,7 @@ class KillClogChatCommand
 			{
 				renderIds.add(item.getId());
 			}
-			header = boss + ": " + obtainedList.size() + "/" + totalList.size();
+			header = buildCommandHeader(boss, bossKc, obtainedList.size(), totalList.size(), false);
 		}
 
 		// Icon registration + chat replacement both need the client thread.
@@ -377,6 +379,56 @@ class KillClogChatCommand
 			return null;
 		}
 		return cl;
+	}
+
+	private int lookupBossKc(String rsn, String boss)
+	{
+		try
+		{
+			HiscoreResult cached = hiscoreService.getCached(rsn);
+			if (cached != null && !hiscoreService.isStale(rsn))
+			{
+				return cached.getKc(boss);
+			}
+
+			HiscoreResult result = hiscoreService.lookup(rsn, null).join();
+			return result != null ? result.getKc(boss) : -1;
+		}
+		catch (Exception e)
+		{
+			log.debug("hiscore lookup failed for chat command {}", rsn, e);
+			return -1;
+		}
+	}
+
+	static String buildCommandHeader(String boss, int bossKc, int count, int total, boolean missingMode)
+	{
+		StringBuilder sb = new StringBuilder();
+		sb.append(boss).append(": ");
+		appendKc(sb, bossKc);
+		sb.append(count).append("/").append(total);
+		if (missingMode)
+		{
+			sb.append(" missing");
+		}
+		return sb.toString();
+	}
+
+	static String buildCompleteHeader(String boss, int bossKc)
+	{
+		StringBuilder sb = new StringBuilder();
+		sb.append(boss).append(": ");
+		appendKc(sb, bossKc);
+		sb.append("complete");
+		return sb.toString();
+	}
+
+	private static void appendKc(StringBuilder sb, int bossKc)
+	{
+		if (bossKc >= 0)
+		{
+			sb.append(ClogHelper.formatKc(bossKc)).append(" kc, ");
+		}
 	}
 
 	private static Set<Integer> allObtainedIds(ClogResult cl)

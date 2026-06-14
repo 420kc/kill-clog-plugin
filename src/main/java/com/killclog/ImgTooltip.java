@@ -36,7 +36,7 @@ public class ImgTooltip extends TitleTooltip
 	private final int gridCols;
 	private final int spriteSize;
 	private int effectiveCols;
-	private String notice = "No Collection Log Data";
+	private String notice = "No collection log synced";
 	private BufferedImage noticeIcon;
 
 	private int totalItems;
@@ -132,8 +132,7 @@ public class ImgTooltip extends TitleTooltip
 		int itemCount = hasItems ? allItemIds.size() : Math.max(totalItems, 1);
 		int cellSize = spriteSize + PADDING;
 
-		// Native parity: at least gridCols wide, expand to fill header-driven width
-		effectiveCols = Math.max(gridCols, (availableWidth + PADDING) / cellSize);
+		effectiveCols = gridColumnsForItemCount(gridCols, itemCount, spriteSize);
 
 		int rows = (itemCount + effectiveCols - 1) / effectiveCols;
 		int gridWidth = effectiveCols * cellSize - PADDING;
@@ -151,6 +150,16 @@ public class ImgTooltip extends TitleTooltip
 		}
 
 		return new Dimension(gridWidth, gridHeight);
+	}
+
+	static int gridColumnsForItemCount(int requestedCols, int itemCount, int spriteSize)
+	{
+		int normalizedItemCount = Math.max(itemCount, 1);
+		if (spriteSize < DEFAULT_SPRITE_SIZE)
+		{
+			return Math.max(requestedCols, 1);
+		}
+		return Math.min(Math.max(requestedCols, 1), Math.max(4, normalizedItemCount));
 	}
 
 	@Override

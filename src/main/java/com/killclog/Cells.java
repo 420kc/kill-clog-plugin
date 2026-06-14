@@ -565,7 +565,14 @@ public class Cells
 
 	private static Color rareColor(TooltipData data, KillClogConfig config)
 	{
-		if (data.obtainedCount <= 0)
+		if (data.obtainedCount < 0)
+		{
+			// No collection-log data for this player (e.g. tracked but never
+			// synced to a provider). Show the normal KC color instead of
+			// emptyClogColor, which reads as a real 0% / not-started profile.
+			return KC_COLOR;
+		}
+		if (data.obtainedCount == 0)
 		{
 			return config.completionistHighlighter()
 				? config.emptyClogColor() : ColorScheme.LIGHT_GRAY_COLOR;

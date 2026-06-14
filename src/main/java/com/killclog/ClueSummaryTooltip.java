@@ -85,8 +85,8 @@ public class ClueSummaryTooltip extends TitleTooltip
 			labelCol = Math.max(labelCol, fm.stringWidth(label));
 		}
 		labelCol = Math.max(labelCol, fm.stringWidth("Mimic"));
-		int scoreCol = fm.stringWidth("999,999");
-		int rankTail = fm.stringWidth(" Rank: 9,999,999") + 10;
+		int scoreCol = measureScoreWidth(fm);
+		int rankTail = measureRankTailWidth(fm);
 
 		int totalWidth = iconCol + labelCol + COL_GAP + scoreCol + rankTail;
 
@@ -115,7 +115,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 			labelColW = Math.max(labelColW, fm.stringWidth(label));
 		}
 		labelColW = Math.max(labelColW, fm.stringWidth("Mimic"));
-		int scoreColW = fm.stringWidth("999,999");
+		int scoreColW = measureScoreWidth(fm);
 
 		int scoreRight = inset + iconCol + labelColW + COL_GAP + scoreColW;
 
@@ -134,6 +134,33 @@ public class ClueSummaryTooltip extends TitleTooltip
 	private BufferedImage icon(int index)
 	{
 		return icons != null && index < icons.length ? icons[index] : null;
+	}
+
+	private int measureScoreWidth(FontMetrics fm)
+	{
+		int width = fm.stringWidth("--");
+		for (int score : scores)
+		{
+			width = Math.max(width, fm.stringWidth(scoreText(score)));
+		}
+		width = Math.max(width, fm.stringWidth(scoreText(mimicKc)));
+		return width;
+	}
+
+	private int measureRankTailWidth(FontMetrics fm)
+	{
+		int width = 0;
+		for (int rank : ranks)
+		{
+			width = Math.max(width, rankTailWidth(fm, rank));
+		}
+		width = Math.max(width, rankTailWidth(fm, mimicRank));
+		return width;
+	}
+
+	private static int rankTailWidth(FontMetrics fm, int rank)
+	{
+		return rank > 0 ? 1 + fm.stringWidth(rankTailText(rank)) : 0;
 	}
 
 	private void paintLine(Graphics2D g2, FontMetrics fm, int inset, int y,
@@ -157,26 +184,22 @@ public class ClueSummaryTooltip extends TitleTooltip
 		if (score <= 0)
 		{
 			// Column 2: no score.
-			String dash = "--";
+			String scoreText = scoreText(score);
 			g2.setColor(Color.WHITE);
-			g2.drawString(dash, scoreRight - fm.stringWidth(dash), textY);
+			g2.drawString(scoreText, scoreRight - fm.stringWidth(scoreText), textY);
 			return;
 		}
 
 		// Column 2: score.
-		String scoreText = String.format("%,d", score);
+		String scoreText = scoreText(score);
 		g2.setColor(Color.WHITE);
 		g2.drawString(scoreText, scoreRight - fm.stringWidth(scoreText), textY);
 
 		if (rank > 0)
 		{
-			// Rank flows after the score column.
-			String rankTail = " Rank: " + String.format("%,d", rank);
-			g2.setColor(OSRS_ORANGE);
-			g2.drawString(" Rank: ", scoreRight + 1, textY);
+			// Rank flows after the score column as "#1,234".
 			g2.setColor(Color.WHITE);
-			int rankNumX = scoreRight + 1 + fm.stringWidth(" Rank: ");
-			g2.drawString(String.format("%,d", rank), rankNumX, textY);
+			g2.drawString(rankTailText(rank), scoreRight + 1, textY);
 		}
 	}
 }

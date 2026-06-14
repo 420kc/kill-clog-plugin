@@ -157,15 +157,57 @@ public class CompareClogSummaryTooltip extends TitleTooltip
 		// Player names.
 		if (blueName != null) w = Math.max(w, fm.stringWidth(blueName));
 		if (redName != null) w = Math.max(w, fm.stringWidth(redName));
-		w = Math.max(w, fm.stringWidth("9999/9999"));
-		int iconW = ICON_SIZE + ICON_GAP;
-		w = Math.max(w, iconW + fm.stringWidth("Adamant: 1000-1249"));
-		w = Math.max(w, iconW + fm.stringWidth("Gilded: 1525+"));
-		w = Math.max(w, iconW + fm.stringWidth("999 more"));
-		w = Math.max(w, fm.stringWidth("3 months ago"));
+		// Obtained count or no-data notice.
+		w = Math.max(w, fm.stringWidth(obtainedValueText(blueNotice, blueObtained, blueTotal)));
+		w = Math.max(w, fm.stringWidth(obtainedValueText(redNotice, redObtained, redTotal)));
+		// Tier range and progress (icon + text), measured from real values.
+		w = Math.max(w, tierValueWidth(fm, blueTierName, blueTierRange, blueTierIcons));
+		w = Math.max(w, tierValueWidth(fm, redTierName, redTierRange, redTierIcons));
+		w = Math.max(w, progressValueWidth(fm, blueNextTier, blueProgress, blueTierIcons));
+		w = Math.max(w, progressValueWidth(fm, redNextTier, redProgress, redTierIcons));
+		// Last update.
+		if (blueSync != null) w = Math.max(w, fm.stringWidth(blueSync));
+		if (redSync != null) w = Math.max(w, fm.stringWidth(redSync));
 		// Recent sprites.
 		int recentW = BLOCK_RECENT_COUNT * RECENT_SIZE + (BLOCK_RECENT_COUNT - 1) * RECENT_PAD;
 		w = Math.max(w, recentW);
+		return w;
+	}
+
+	private static String obtainedValueText(String notice, int obtained, int total)
+	{
+		return notice != null ? notice : obtained + "/" + total;
+	}
+
+	private int tierValueWidth(FontMetrics fm, String tierName, String tierRange,
+		Map<String, BufferedImage> tierIcons)
+	{
+		if (tierRange == null)
+		{
+			return fm.stringWidth("--");
+		}
+		int w = fm.stringWidth(capitalize(tierName) + ": " + tierRange);
+		BufferedImage icon = tierIcons != null ? tierIcons.get(tierName) : null;
+		if (icon != null)
+		{
+			w += icon.getWidth() + ICON_GAP;
+		}
+		return w;
+	}
+
+	private int progressValueWidth(FontMetrics fm, String nextTier, String progress,
+		Map<String, BufferedImage> tierIcons)
+	{
+		if (progress == null)
+		{
+			return fm.stringWidth("--");
+		}
+		int w = fm.stringWidth(progress) + fm.stringWidth(" more");
+		BufferedImage icon = tierIcons != null ? tierIcons.get(nextTier) : null;
+		if (icon != null)
+		{
+			w += icon.getWidth() + ICON_GAP;
+		}
 		return w;
 	}
 
@@ -254,7 +296,7 @@ public class CompareClogSummaryTooltip extends TitleTooltip
 		g2.drawString("Obtained", labelX, y + fm.getAscent());
 		if (notice != null)
 		{
-			g2.setColor(NOTICE_COLOR);
+			g2.setColor(compareValueColor(notice, playerColor));
 			g2.drawString(notice, valueX, y + fm.getAscent());
 		}
 		else

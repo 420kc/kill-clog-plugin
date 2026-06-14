@@ -148,8 +148,9 @@ public class ComparePlayerSummaryTooltip extends TitleTooltip
 		if (blueAccountLabel != null) w = Math.max(w, fm.stringWidth(blueAccountLabel));
 		if (redAccountLabel != null) w = Math.max(w, fm.stringWidth(redAccountLabel));
 		w = Math.max(w, fm.stringWidth("Normal"));
-		// Rank.
-		w = Math.max(w, fm.stringWidth("#999,999"));
+		// Rank: measure the real rank strings, not a placeholder.
+		w = Math.max(w, fm.stringWidth(rankValueText(blueRank)));
+		w = Math.max(w, fm.stringWidth(rankValueText(redRank)));
 		// Prestige.
 		if (bluePrestige != null) w = Math.max(w, fm.stringWidth(bluePrestige));
 		if (redPrestige != null) w = Math.max(w, fm.stringWidth(redPrestige));
@@ -260,8 +261,7 @@ public class ComparePlayerSummaryTooltip extends TitleTooltip
 		g2.setColor(OSRS_ORANGE);
 		g2.drawString("Rank", labelX, y + fm.getAscent());
 		g2.setColor(playerColor);
-		g2.drawString(rank > 0 ? "#" + String.format("%,d", rank) : "Unranked",
-			valueX, y + fm.getAscent());
+		g2.drawString(rankValueText(rank), valueX, y + fm.getAscent());
 		y += LINE_HEIGHT;
 
 		// Prestige.
@@ -322,6 +322,11 @@ public class ComparePlayerSummaryTooltip extends TitleTooltip
 	}
 
 	// Helpers.
+
+	private static String rankValueText(int rank)
+	{
+		return rank > 0 ? "#" + String.format("%,d", rank) : "Unranked";
+	}
 
 	private static List<Integer> filterObtained(List<Integer> allIds, Set<Integer> obtainedIds)
 	{

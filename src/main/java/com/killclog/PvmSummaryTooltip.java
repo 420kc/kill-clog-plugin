@@ -180,22 +180,23 @@ public class PvmSummaryTooltip extends TitleTooltip
 		int spriteRowWidth = 3 * WEAPON_SIZE + 2 * WEAPON_PAD;
 		int megarareHeight = SUBHEADER_HEIGHT + WEAPON_PAD + WEAPON_SIZE;
 
-		// Width
+		// Width: measure the real rendered strings, never a placeholder.
 		int textWidth = 0;
-		textWidth = Math.max(textWidth, fm.stringWidth("Combat: 126"));
-		textWidth = Math.max(textWidth, fm.stringWidth("Total Kills: 999,999"));
-		textWidth = Math.max(textWidth, fm.stringWidth("Bosses Killed: 99 / 99"));
+		textWidth = Math.max(textWidth, fm.stringWidth("Combat: " + combatValue()));
+		textWidth = Math.max(textWidth, fm.stringWidth("Total Kills: " + totalKillsValue()));
+		textWidth = Math.max(textWidth, fm.stringWidth("Bosses Killed: " + bossesValue()));
 		if (bossesCompleted >= 0)
 		{
-			textWidth = Math.max(textWidth, fm.stringWidth("Logs Completed: 99 / 99"));
+			textWidth = Math.max(textWidth, fm.stringWidth("Logs Completed: " + logsValue()));
 		}
 		if (mostKilled != null)
 		{
-			textWidth = Math.max(textWidth,
-				fm.stringWidth(mostKilled + " (" + String.format("%,d", mostKilledKc) + ")"));
+			textWidth = Math.max(textWidth, fm.stringWidth(mostKilledLine()));
 		}
 		textWidth = Math.max(textWidth, bfm.stringWidth("Raids"));
-		textWidth = Math.max(textWidth, fm.stringWidth("CoX: 99,999 (99/99)"));
+		textWidth = Math.max(textWidth, raidLineWidth(fm, "CoX: ", coxKc, coxObtained, coxTotal));
+		textWidth = Math.max(textWidth, raidLineWidth(fm, "ToB: ", tobKc, tobObtained, tobTotal));
+		textWidth = Math.max(textWidth, raidLineWidth(fm, "ToA: ", toaKc, toaObtained, toaTotal));
 		textWidth = Math.max(textWidth, bfm.stringWidth("Mega Rares"));
 		if (caResult != null)
 		{
@@ -244,13 +245,11 @@ public class PvmSummaryTooltip extends TitleTooltip
 		}
 
 		// Combat
-		drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Combat: ",
-			combatLevel > 0 ? String.valueOf(combatLevel) : "--");
+		drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Combat: ", combatValue());
 		y += LINE_HEIGHT;
 
 		// Total Kills
-		drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Total Kills: ",
-			totalKills > 0 ? String.format("%,d", totalKills) : "--");
+		drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Total Kills: ", totalKillsValue());
 		y += LINE_HEIGHT;
 
 		// Most Killed
@@ -261,23 +260,20 @@ public class PvmSummaryTooltip extends TitleTooltip
 			g2.drawString("Most Killed:", inset, y + fm.getAscent());
 			y += LINE_HEIGHT;
 			g2.setColor(Color.WHITE);
-			g2.drawString(mostKilled + " (" + String.format("%,d", mostKilledKc) + ")",
-				inset, y + fm.getAscent());
+			g2.drawString(mostKilledLine(), inset, y + fm.getAscent());
 			y += LINE_HEIGHT;
 		}
 
 		// Bosses Killed
 		drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Bosses Killed: ",
-			bossesWithKc + "/" + totalBosses,
-			completionColor(bossesWithKc, totalBosses));
+			bossesValue(), completionColor(bossesWithKc, totalBosses));
 		y += LINE_HEIGHT;
 
 		// Logs Completed
 		if (bossesCompleted >= 0)
 		{
 			drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Logs Completed: ",
-				bossesCompleted + "/" + bossesWithClog,
-				completionColor(bossesCompleted, bossesWithClog));
+				logsValue(), completionColor(bossesCompleted, bossesWithClog));
 			y += LINE_HEIGHT;
 		}
 
@@ -356,22 +352,50 @@ public class PvmSummaryTooltip extends TitleTooltip
 		g2.drawString(label, x, textY);
 		int lx = x + fm.stringWidth(label);
 
-		if (kc <= 0)
-		{
-			g2.setColor(Color.WHITE);
-			g2.drawString("--", lx, textY);
-			return;
-		}
-
-		String kcText = String.format("%,d", kc);
+		String kcText = scoreText(kc);
 		g2.setColor(Color.WHITE);
 		g2.drawString(kcText, lx, textY);
 
-		if (obtained >= 0)
+		// Progress rides alongside a real kc; a "--" raid stays dash-only.
+		if (kc > 0 && obtained >= 0)
 		{
-			lx += fm.stringWidth(kcText);
-			paintWrappedProgressCount(g2, fm, lx, textY, obtained, total);
+			paintWrappedProgressCount(g2, fm, lx + fm.stringWidth(kcText), textY, obtained, total);
 		}
+	}
+
+	private String combatValue()
+	{
+		return combatLevel > 0 ? String.valueOf(combatLevel) : "--";
+	}
+
+	private String totalKillsValue()
+	{
+		return scoreText(totalKills);
+	}
+
+	private String bossesValue()
+	{
+		return bossesWithKc + "/" + totalBosses;
+	}
+
+	private String logsValue()
+	{
+		return bossesCompleted + "/" + bossesWithClog;
+	}
+
+	private String mostKilledLine()
+	{
+		return mostKilled + " (" + String.format("%,d", mostKilledKc) + ")";
+	}
+
+	private static int raidLineWidth(FontMetrics fm, String label, int kc, int obtained, int total)
+	{
+		int w = fm.stringWidth(label) + fm.stringWidth(scoreText(kc));
+		if (kc > 0 && obtained >= 0)
+		{
+			w += wrappedProgressCountWidth(fm, obtained, total);
+		}
+		return w;
 	}
 
 	private void drawLabelValue(Graphics2D g2, FontMetrics fm, int x, int y,

@@ -68,9 +68,15 @@ final class TooltipDataBuilder
 
 		if (allItems == null || allItems.isEmpty())
 		{
+			allItems = staticClueRareItems(clogCategory);
+		}
+
+		if (allItems.isEmpty())
+		{
 			return null;
 		}
 
+		obtained = rareObtainedItems(obtained, allItems, clogResult);
 		Set<Integer> obtainedIds = new HashSet<>();
 		Map<Integer, Integer> obtainedCounts = new LinkedHashMap<>();
 		if (obtained != null)
@@ -85,6 +91,53 @@ final class TooltipDataBuilder
 		int obtainedCount = ClogHelper.countObtained(allItems, obtainedIds);
 		return new TooltipData(name, -1, obtainedCount,
 			allItems.size(), allItems, obtainedIds, obtainedCounts, false);
+	}
+
+	private static List<ClogResult.ClogItem> rareObtainedItems(List<ClogResult.ClogItem> obtained,
+		List<Integer> allItems, ClogResult clogResult)
+	{
+		if (obtained != null && !obtained.isEmpty())
+		{
+			return obtained;
+		}
+
+		Set<Integer> rareIds = new HashSet<>(allItems);
+		List<ClogResult.ClogItem> matches = new ArrayList<>();
+		for (List<ClogResult.ClogItem> catObtained : clogResult.getObtainedItems().values())
+		{
+			for (ClogResult.ClogItem item : catObtained)
+			{
+				if (rareIds.contains(item.getId()))
+				{
+					matches.add(item);
+				}
+			}
+		}
+		return matches;
+	}
+
+	private static List<Integer> staticClueRareItems(String clogCategory)
+	{
+		int[] ids;
+		if (PanelData.CLOG_THIRD_AGE.equals(clogCategory))
+		{
+			ids = PanelData.THIRD_AGE_ITEMS;
+		}
+		else if (PanelData.CLOG_GILDED.equals(clogCategory))
+		{
+			ids = PanelData.GILDED_ITEMS;
+		}
+		else
+		{
+			return new ArrayList<>();
+		}
+
+		List<Integer> result = new ArrayList<>(ids.length);
+		for (int id : ids)
+		{
+			result.add(id);
+		}
+		return result;
 	}
 
 	/**

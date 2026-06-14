@@ -201,27 +201,36 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		// Player names.
 		if (blueName != null) w = Math.max(w, fm.stringWidth(blueName));
 		if (redName != null) w = Math.max(w, fm.stringWidth(redName));
+
+		// CA tier: actual tier name plus its reward sprite.
 		if (hasCaRow())
 		{
-			int blueRewardW = blueRewardSprite != null ? blueRewardSprite.getWidth() + CA_REWARD_GAP : 0;
-			int redRewardW = redRewardSprite != null ? redRewardSprite.getWidth() + CA_REWARD_GAP : 0;
-			int rewardW = Math.max(blueRewardW, redRewardW);
-			w = Math.max(w, rewardW + fm.stringWidth("Grandmaster"));
+			w = Math.max(w, caValueWidth(fm, blueCa, blueRewardSprite));
+			w = Math.max(w, caValueWidth(fm, redCa, redRewardSprite));
 		}
-		// Stats.
-		w = Math.max(w, fm.stringWidth("126"));
-		w = Math.max(w, fm.stringWidth("999,999"));
-		w = Math.max(w, fm.stringWidth("99/99"));
+
+		// Stats: combat and total kills as scores, bosses/logs as counts.
+		int[] scores = {blueCombat, redCombat, blueTotalKills, redTotalKills};
+		w = Math.max(w, widestValue(fm, scores, TitleTooltip::scoreText));
+		w = Math.max(w, fm.stringWidth(bossesText(blueBossesKc, blueTotalBosses)));
+		w = Math.max(w, fm.stringWidth(bossesText(redBossesKc, redTotalBosses)));
+		w = Math.max(w, fm.stringWidth(logsText(blueBossesCompleted, blueBossesWithClog)));
+		w = Math.max(w, fm.stringWidth(logsText(redBossesCompleted, redBossesWithClog)));
+
 		// Most killed.
-		String blueKill = mostKilledText(blueMostKilled, blueMostKilledKc);
-		String redKill = mostKilledText(redMostKilled, redMostKilledKc);
-		w = Math.max(w, fm.stringWidth(blueKill));
-		w = Math.max(w, fm.stringWidth(redKill));
-		// Raid KC with clog progress.
-		w = Math.max(w, fm.stringWidth("99,999 (99/99)"));
-		// Weapon sprites.
-		int spriteRowW = 3 * WEAPON_SIZE + 2 * WEAPON_PAD;
-		w = Math.max(w, spriteRowW);
+		w = Math.max(w, fm.stringWidth(mostKilledText(blueMostKilled, blueMostKilledKc)));
+		w = Math.max(w, fm.stringWidth(mostKilledText(redMostKilled, redMostKilledKc)));
+
+		// Raid kc with clog progress.
+		w = Math.max(w, raidValueWidth(fm, blueCoxKc, blueCoxObt, blueCoxTotal));
+		w = Math.max(w, raidValueWidth(fm, redCoxKc, redCoxObt, redCoxTotal));
+		w = Math.max(w, raidValueWidth(fm, blueTobKc, blueTobObt, blueTobTotal));
+		w = Math.max(w, raidValueWidth(fm, redTobKc, redTobObt, redTobTotal));
+		w = Math.max(w, raidValueWidth(fm, blueToaKc, blueToaObt, blueToaTotal));
+		w = Math.max(w, raidValueWidth(fm, redToaKc, redToaObt, redToaTotal));
+
+		// Weapon sprite row.
+		w = Math.max(w, 3 * WEAPON_SIZE + 2 * WEAPON_PAD);
 		return w;
 	}
 
@@ -297,15 +306,13 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 
 		// Combat.
 		paintRow(g2, fm, labelX, blueX, redX, y, "Combat",
-			blueCombat > 0 ? String.valueOf(blueCombat) : "--",
-			redCombat > 0 ? String.valueOf(redCombat) : "--",
+			scoreText(blueCombat), scoreText(redCombat),
 			COMPARE_BLUE, COMPARE_RED);
 		y += LINE_HEIGHT;
 
 		// Total kills.
 		paintRow(g2, fm, labelX, blueX, redX, y, "Total Kills",
-			blueTotalKills > 0 ? String.format("%,d", blueTotalKills) : "--",
-			redTotalKills > 0 ? String.format("%,d", redTotalKills) : "--",
+			scoreText(blueTotalKills), scoreText(redTotalKills),
 			COMPARE_BLUE, COMPARE_RED);
 		y += LINE_HEIGHT;
 
@@ -320,8 +327,8 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 
 		// Bosses Killed.
 		paintRow(g2, fm, labelX, blueX, redX, y, "Bosses Killed",
-			blueBossesKc + "/" + blueTotalBosses,
-			redBossesKc + "/" + redTotalBosses,
+			bossesText(blueBossesKc, blueTotalBosses),
+			bossesText(redBossesKc, redTotalBosses),
 			completionColor(blueBossesKc, blueTotalBosses),
 			completionColor(redBossesKc, redTotalBosses));
 		y += LINE_HEIGHT;
@@ -329,10 +336,9 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		// Logs Completed.
 		if (blueBossesCompleted >= 0 || redBossesCompleted >= 0)
 		{
-			String blueLog = blueBossesCompleted >= 0 ? blueBossesCompleted + "/" + blueBossesWithClog : "--";
-			String redLog = redBossesCompleted >= 0 ? redBossesCompleted + "/" + redBossesWithClog : "--";
 			paintRow(g2, fm, labelX, blueX, redX, y, "Logs Completed",
-				blueLog, redLog,
+				logsText(blueBossesCompleted, blueBossesWithClog),
+				logsText(redBossesCompleted, redBossesWithClog),
 				blueBossesCompleted >= 0 ? completionColor(blueBossesCompleted, blueBossesWithClog) : COMPARE_BLUE,
 				redBossesCompleted >= 0 ? completionColor(redBossesCompleted, redBossesWithClog) : COMPARE_RED);
 		}
@@ -394,29 +400,21 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 	{
 		g2.setColor(OSRS_ORANGE);
 		g2.drawString(label, labelX, y + fm.getAscent());
-		g2.setColor(blueColor);
+		g2.setColor(compareValueColor(blueVal, blueColor));
 		g2.drawString(blueVal, blueX, y + fm.getAscent());
-		g2.setColor(redColor);
+		g2.setColor(compareValueColor(redVal, redColor));
 		g2.drawString(redVal, redX, y + fm.getAscent());
 	}
 
 	private void paintCaValue(Graphics2D g2, FontMetrics fm, int x, int y,
 		CombatAchievementResult ca, BufferedImage rewardSprite, Color playerColor)
 	{
-		if (ca == null)
+		String text = caValueText(ca);
+		g2.setColor(compareValueColor(text, playerColor));
+		g2.drawString(text, x, y + fm.getAscent());
+		if (ca != null && rewardSprite != null)
 		{
-			g2.setColor(playerColor);
-			g2.drawString("--", x, y + fm.getAscent());
-			return;
-		}
-		int cx = x;
-		String tier = tierName(ca);
-		g2.setColor(playerColor);
-		g2.drawString(tier, cx, y + fm.getAscent());
-		cx += fm.stringWidth(tier);
-		if (rewardSprite != null)
-		{
-			cx += CA_REWARD_GAP;
+			int cx = x + fm.stringWidth(text) + CA_REWARD_GAP;
 			int rewardY = y + (CA_ROW_HEIGHT - rewardSprite.getHeight()) / 2;
 			g2.drawImage(rewardSprite, cx, rewardY, null);
 		}
@@ -437,21 +435,14 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		int kc, int obtained, int total, Color playerColor)
 	{
 		int textY = y + fm.getAscent();
-		if (kc <= 0)
-		{
-			g2.setColor(playerColor);
-			g2.drawString("--", x, textY);
-			return;
-		}
-
-		String kcText = String.format("%,d", kc);
-		g2.setColor(playerColor);
+		String kcText = scoreText(kc);
+		g2.setColor(compareValueColor(kcText, playerColor));
 		g2.drawString(kcText, x, textY);
 
-		if (obtained >= 0)
+		// Progress rides alongside a real kc; a "--" raid stays dash-only.
+		if (kc > 0 && obtained >= 0)
 		{
-			int lx = x + fm.stringWidth(kcText);
-			paintWrappedProgressCount(g2, fm, lx, textY, obtained, total);
+			paintWrappedProgressCount(g2, fm, x + fm.stringWidth(kcText), textY, obtained, total);
 		}
 	}
 
@@ -493,6 +484,41 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 	{
 		if (name == null) return "--";
 		return name + " (" + String.format("%,d", kc) + ")";
+	}
+
+	private static String bossesText(int kc, int total)
+	{
+		return kc + "/" + total;
+	}
+
+	private static String logsText(int completed, int withClog)
+	{
+		return completed >= 0 ? completed + "/" + withClog : "--";
+	}
+
+	private static int raidValueWidth(FontMetrics fm, int kc, int obtained, int total)
+	{
+		int w = fm.stringWidth(scoreText(kc));
+		if (kc > 0 && obtained >= 0)
+		{
+			w += wrappedProgressCountWidth(fm, obtained, total);
+		}
+		return w;
+	}
+
+	private static String caValueText(CombatAchievementResult ca)
+	{
+		return ca == null ? "--" : tierName(ca);
+	}
+
+	private static int caValueWidth(FontMetrics fm, CombatAchievementResult ca, BufferedImage reward)
+	{
+		int w = fm.stringWidth(caValueText(ca));
+		if (ca != null && reward != null)
+		{
+			w += CA_REWARD_GAP + reward.getWidth();
+		}
+		return w;
 	}
 
 	private static String tierName(CombatAchievementResult ca)

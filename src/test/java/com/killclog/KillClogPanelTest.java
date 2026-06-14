@@ -1,6 +1,10 @@
 package com.killclog;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -123,5 +127,51 @@ public class KillClogPanelTest
 			.anyMatch(id -> id == PanelData.THIRD_AGE_RING_ITEM_ID));
 		assertTrue(Arrays.stream(PanelData.MASTER_RARE_ITEMS)
 			.anyMatch(id -> id == PanelData.THIRD_AGE_RING_ITEM_ID));
+	}
+
+	@Test
+	public void testEmptyRareBucketsUseStaticCatalogs()
+	{
+		ClogResult result = new ClogResult(
+			"TestPlayer",
+			Collections.emptyMap(),
+			Collections.emptyMap(),
+			new HashMap<>(),
+			null,
+			null
+		);
+		TooltipDataBuilder builder = new TooltipDataBuilder(null);
+
+		TooltipData thirdAge = builder.buildClueRareData("3rd Age", PanelData.CLOG_THIRD_AGE, result);
+		assertNotNull(thirdAge);
+		assertEquals(0, thirdAge.obtainedCount);
+		assertEquals(PanelData.THIRD_AGE_ITEMS.length, thirdAge.totalItems);
+
+		TooltipData gilded = builder.buildClueRareData("Gilded", PanelData.CLOG_GILDED, result);
+		assertNotNull(gilded);
+		assertEquals(0, gilded.obtainedCount);
+		assertEquals(PanelData.GILDED_ITEMS.length, gilded.totalItems);
+	}
+
+	@Test
+	public void testRareBucketsFindItemsOutsideSyntheticCategory()
+	{
+		Map<String, List<ClogResult.ClogItem>> obtained = new HashMap<>();
+		obtained.put("hard_treasure_trails", Collections.singletonList(
+			new ClogResult.ClogItem(PanelData.THIRD_AGE_RING_ITEM_ID, 1, null)));
+		ClogResult result = new ClogResult(
+			"TestPlayer",
+			obtained,
+			Collections.emptyMap(),
+			new HashMap<>(),
+			null,
+			null
+		);
+		TooltipDataBuilder builder = new TooltipDataBuilder(null);
+
+		TooltipData thirdAge = builder.buildClueRareData("3rd Age", PanelData.CLOG_THIRD_AGE, result);
+		assertNotNull(thirdAge);
+		assertEquals(1, thirdAge.obtainedCount);
+		assertTrue(thirdAge.obtainedIds.contains(PanelData.THIRD_AGE_RING_ITEM_ID));
 	}
 }

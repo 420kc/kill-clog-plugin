@@ -5,6 +5,7 @@ import java.awt.Font;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.util.function.IntFunction;
 import net.runelite.client.ui.FontManager;
 
 /**
@@ -129,6 +130,54 @@ public abstract class TitleTooltip extends NativeTooltip
 		g2.setColor(OSRS_ORANGE);
 		g2.drawString(CHROME_SEPARATOR, x, y);
 		return x + fm.stringWidth(CHROME_SEPARATOR);
+	}
+
+	/** Value-column text: a thousands-grouped count, or "--" when absent. */
+	protected static String scoreText(int value)
+	{
+		return value > 0 ? String.format("%,d", value) : "--";
+	}
+
+	/** Rank tail that flows after a score column, e.g. " #1,234,567". */
+	protected static String rankTailText(int rank)
+	{
+		return " #" + String.format("%,d", rank);
+	}
+
+	/**
+	 * Widest rendered width across actual values under the given formatter.
+	 * Sizing measures the strings it will paint, never a placeholder.
+	 */
+	protected static int widestValue(FontMetrics fm, int[] values, IntFunction<String> fmt)
+	{
+		int width = 0;
+		for (int value : values)
+		{
+			width = Math.max(width, fm.stringWidth(fmt.apply(value)));
+		}
+		return width;
+	}
+
+	/** Draw text so its right edge lands at rightX (right-aligned value column). */
+	protected static void drawRightAligned(Graphics2D g2, FontMetrics fm, String text, int rightX, int y)
+	{
+		g2.drawString(text, rightX - fm.stringWidth(text), y);
+	}
+
+	/** Faded version of a color for no-data cells, so an empty value reads quiet, not absent. */
+	protected static Color dim(Color color)
+	{
+		return new Color(color.getRed(), color.getGreen(), color.getBlue(), 110);
+	}
+
+	/**
+	 * Color for a comparison value: a real value keeps the player's full color,
+	 * a "--" no-data dash is dimmed. Missing data stays on the happy path instead
+	 * of shouting a notice.
+	 */
+	protected static Color compareValueColor(String text, Color playerColor)
+	{
+		return "--".equals(text) ? dim(playerColor) : playerColor;
 	}
 
 	/** Set an extra info line below the subtitle. Label in orange, value in given color. */
