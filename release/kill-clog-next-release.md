@@ -13,11 +13,12 @@ the client-to-Kill-Clog-server sync prototype out.
 - Clickable collection-log item sprites in single and comparison image tooltips.
   Hovering an item shows its name; clicking opens the OSRS Wiki item page.
 - A config toggle for Wiki item links, default on.
-- Config toggles for Kill Clog chatbox notices: new drops, sync help, sync
-  results, and warnings.
+- A config toggle for autosync chat messages.
 - Comparison total labels use the same hover/underline affordance as the player
   names.
 - `!kclog` and `!missing` headers include boss KC when Kill Clog knows it.
+- `!3a` follows the panel bucket: 3rd age ring stays under Mimic, so the
+  command reports out of 23 3rd age items.
 - Rare bucket tooltips use real zero-state data instead of implying missing
   collection-log data for synced players with no 3rd age or gilded items.
 - Summary tooltip widths measure real values and long ranks instead of leaving
@@ -46,5 +47,5 @@ Then Dylan real-client smoke:
 - comparison totals keep their hover/underline affordance
 - `!kclog` and `!missing` show KC where known
 - disabling Wiki Item Links keeps hover names but prevents wiki opens
-- disabling New Drops suppresses `Added ... to Kill Clog` messages
+- disabling Autosync chat messages suppresses `Added ... to Kill Clog` messages
 - no client upload/server-sync config appears in the plugin settings

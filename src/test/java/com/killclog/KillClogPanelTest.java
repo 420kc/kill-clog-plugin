@@ -121,10 +121,11 @@ public class KillClogPanelTest
 	}
 
 	@Test
-	public void testThirdAgeRingCountsAsThirdAgeRare()
+	public void testThirdAgeRingStaysOutOfThirdAgeBucket()
 	{
-		assertTrue(Arrays.stream(PanelData.THIRD_AGE_ITEMS)
+		assertFalse(Arrays.stream(PanelData.THIRD_AGE_ITEMS)
 			.anyMatch(id -> id == PanelData.THIRD_AGE_RING_ITEM_ID));
+		assertEquals(23, PanelData.THIRD_AGE_ITEMS.length);
 		assertTrue(Arrays.stream(PanelData.MASTER_RARE_ITEMS)
 			.anyMatch(id -> id == PanelData.THIRD_AGE_RING_ITEM_ID));
 	}
@@ -158,7 +159,7 @@ public class KillClogPanelTest
 	{
 		Map<String, List<ClogResult.ClogItem>> obtained = new HashMap<>();
 		obtained.put("hard_treasure_trails", Collections.singletonList(
-			new ClogResult.ClogItem(PanelData.THIRD_AGE_RING_ITEM_ID, 1, null)));
+			new ClogResult.ClogItem(PanelData.THIRD_AGE_ITEM_ID, 1, null)));
 		ClogResult result = new ClogResult(
 			"TestPlayer",
 			obtained,
@@ -172,6 +173,28 @@ public class KillClogPanelTest
 		TooltipData thirdAge = builder.buildClueRareData("3rd Age", PanelData.CLOG_THIRD_AGE, result);
 		assertNotNull(thirdAge);
 		assertEquals(1, thirdAge.obtainedCount);
-		assertTrue(thirdAge.obtainedIds.contains(PanelData.THIRD_AGE_RING_ITEM_ID));
+		assertTrue(thirdAge.obtainedIds.contains(PanelData.THIRD_AGE_ITEM_ID));
+	}
+
+	@Test
+	public void testThirdAgeBucketIgnoresMimicRing()
+	{
+		Map<String, List<ClogResult.ClogItem>> obtained = new HashMap<>();
+		obtained.put("mimic", Collections.singletonList(
+			new ClogResult.ClogItem(PanelData.THIRD_AGE_RING_ITEM_ID, 1, null)));
+		ClogResult result = new ClogResult(
+			"TestPlayer",
+			obtained,
+			Collections.emptyMap(),
+			new HashMap<>(),
+			null,
+			null
+		);
+		TooltipDataBuilder builder = new TooltipDataBuilder(null);
+
+		TooltipData thirdAge = builder.buildClueRareData("3rd Age", PanelData.CLOG_THIRD_AGE, result);
+		assertNotNull(thirdAge);
+		assertEquals(0, thirdAge.obtainedCount);
+		assertFalse(thirdAge.obtainedIds.contains(PanelData.THIRD_AGE_RING_ITEM_ID));
 	}
 }
