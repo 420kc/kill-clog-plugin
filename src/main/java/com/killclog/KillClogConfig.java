@@ -180,6 +180,28 @@ public interface KillClogConfig extends Config
 		return HoverStyle.OUTLINE;
 	}
 
+	@ConfigItem(
+		keyName = "wikiItemLinks",
+		name = "Wiki Item Links",
+		description = "Click item sprites in collection-log tooltips to open the OSRS Wiki",
+		position = 7
+	)
+	default boolean wikiItemLinks()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "chatNewClogMessages",
+		name = "Autosync chat messages",
+		description = "Show Added ... to Kill Clog when autosync updates your local collection log",
+		position = 8
+	)
+	default boolean autosyncChatMessages()
+	{
+		return true;
+	}
+
 	// Progress highlighter.
 
 	@ConfigSection(

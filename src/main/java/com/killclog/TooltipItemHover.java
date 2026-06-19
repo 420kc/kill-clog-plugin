@@ -1,0 +1,138 @@
+package com.killclog;
+
+import java.awt.Cursor;
+import java.awt.Rectangle;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
+import java.util.Collections;
+import java.util.List;
+import javax.swing.JComponent;
+
+final class TooltipItemHover
+{
+	private final JComponent component;
+	private List<HitBox> hitBoxes = Collections.emptyList();
+	private int hoveredItemId = -1;
+	private int hoveredSection = -1;
+	private String hoveredItemName;
+	private boolean wikiLinksEnabled = true;
+
+	TooltipItemHover(JComponent component)
+	{
+		this.component = component;
+		install();
+	}
+
+	void setWikiLinksEnabled(boolean wikiLinksEnabled)
+	{
+		this.wikiLinksEnabled = wikiLinksEnabled;
+		if (!wikiLinksEnabled)
+		{
+			component.setCursor(Cursor.getDefaultCursor());
+		}
+	}
+
+	void setHitBoxes(List<HitBox> hitBoxes)
+	{
+		this.hitBoxes = hitBoxes != null ? hitBoxes : Collections.emptyList();
+	}
+
+	void clear()
+	{
+		if (hoveredItemId != -1 || hoveredItemName != null || hoveredSection != -1)
+		{
+			hoveredItemId = -1;
+			hoveredItemName = null;
+			hoveredSection = -1;
+			component.setCursor(Cursor.getDefaultCursor());
+			component.repaint();
+		}
+	}
+
+	String hoveredItemName()
+	{
+		return hoveredItemName;
+	}
+
+	private void install()
+	{
+		component.addMouseMotionListener(new MouseMotionAdapter()
+		{
+			@Override
+			public void mouseMoved(MouseEvent e)
+			{
+				updateHoveredItem(e.getX(), e.getY());
+			}
+		});
+		component.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mousePressed(MouseEvent e)
+			{
+				updateHoveredItem(e.getX(), e.getY());
+				if (wikiLinksEnabled && e.getButton() == MouseEvent.BUTTON1 && hoveredItemId > 0)
+				{
+					TooltipItemLink.openWiki(hoveredItemId);
+					e.consume();
+				}
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e)
+			{
+				clear();
+			}
+		});
+	}
+
+	private void updateHoveredItem(int mx, int my)
+	{
+		HitBox hitBox = findHitBox(mx, my);
+		int nextId = hitBox != null ? hitBox.itemId : -1;
+		int nextSection = hitBox != null ? hitBox.section : -1;
+		if (nextId == hoveredItemId && nextSection == hoveredSection)
+		{
+			return;
+		}
+		hoveredItemId = nextId;
+		hoveredItemName = hitBox != null ? hitBox.itemName : null;
+		hoveredSection = nextSection;
+		component.setCursor(Cursor.getPredefinedCursor(hitBox != null && wikiLinksEnabled
+			? Cursor.HAND_CURSOR : Cursor.DEFAULT_CURSOR));
+		component.repaint();
+	}
+
+	private HitBox findHitBox(int mx, int my)
+	{
+		for (HitBox hitBox : hitBoxes)
+		{
+			if (hitBox.bounds.contains(mx, my))
+			{
+				return hitBox;
+			}
+		}
+		return null;
+	}
+
+	static final class HitBox
+	{
+		private final int section;
+		private final int itemId;
+		private final String itemName;
+		private final Rectangle bounds;
+
+		HitBox(int itemId, String itemName, Rectangle bounds)
+		{
+			this(0, itemId, itemName, bounds);
+		}
+
+		HitBox(int section, int itemId, String itemName, Rectangle bounds)
+		{
+			this.section = section;
+			this.itemId = itemId;
+			this.itemName = itemName;
+			this.bounds = bounds;
+		}
+	}
+}

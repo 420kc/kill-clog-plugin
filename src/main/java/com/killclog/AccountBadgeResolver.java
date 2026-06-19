@@ -2,6 +2,7 @@ package com.killclog;
 
 import java.awt.image.BufferedImage;
 import javax.annotation.Nullable;
+import javax.swing.ImageIcon;
 import net.runelite.api.Client;
 import net.runelite.api.IndexedSprite;
 import net.runelite.client.plugins.hiscore.HiscorePanel;
@@ -14,6 +15,17 @@ final class AccountBadgeResolver
 	AccountBadgeResolver(Client client)
 	{
 		this.client = client;
+	}
+
+	@Nullable
+	ImageIcon labelIcon(@Nullable AccountType type)
+	{
+		BufferedImage badge = badge(type);
+		if (badge == null)
+		{
+			return null;
+		}
+		return new ImageIcon(type.isGroupIronman() ? badge : resize(badge, 15));
 	}
 
 	@Nullable
@@ -38,6 +50,12 @@ final class AccountBadgeResolver
 			return null;
 		}
 		return type.isGroupIronman() ? ClogHelper.getGimBadge(type) : staticBadge(type);
+	}
+
+	@Nullable
+	static String label(@Nullable AccountType type)
+	{
+		return type != null ? ClogHelper.accountLabel(type) : null;
 	}
 
 	@Nullable
@@ -79,5 +97,11 @@ final class AccountBadgeResolver
 		{
 			return null;
 		}
+	}
+
+	private static BufferedImage resize(BufferedImage badge, int height)
+	{
+		int width = (int) Math.round((double) badge.getWidth() / badge.getHeight() * height);
+		return ImageUtil.resizeImage(badge, width, height);
 	}
 }

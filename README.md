@@ -1,17 +1,12 @@
 # Kill Clog
 
-Kill Clog is a HiScores overhaul that enables collection log visualization for yourself and other players who have synced to TempleOSRS or RuneProfile.
-
-## Feature List
-
-- Side-by-side Player Comparison
-- Summary tooltips with condensed stats
-- Unified searchbar with account type autodetection
-- Collection log chat commands
-- Guided first sync plus automatic updates for new collection-log drops
-- Configurable right-click menu options
+Kill Clog is a HiScores overhaul that offers fast and easy visuals of collection log progress and account snapshots.
 
 ![Kill Clog](screenshots/hero-vanilla-vs-killclog.png)
+
+![comparison](screenshots/comparison-1.4.0.png)
+
+![summaries](screenshots/summaries.png)
 
 ## privacy and data
 
@@ -24,23 +19,8 @@ Source code is public at [github.com/420kc/kill-clog-plugin](https://github.com/
 ## installation
 
 1. Install Kill Clog from the RuneLite Plugin Hub.
-2. In the RuneScape game settings, enable **Collection Log Chat Messages**.
-3. Optional, but useful for public visibility: keep your TempleOSRS and/or RuneProfile data synced so other players can see your public clog.
-
-## sync
-
-Open your collection log in-game and click the red chalice at the top. On your
-first sync, Kill Clog will ask you to click **Search**, then **Back** inside the
-collection log. That builds your local baseline cache.
-
-![sync-path](screenshots/sync-path.gif)
-
-After that baseline exists, new collection-log drops update automatically when
-Collection Log Chat Messages are enabled. Use the chalice again when you want to
-refresh the visible category manually, repair stale local data, or pull in
-changes from a session where chat messages were off. To make your clog visible
-to other Kill Clog users, sync your public data through TempleOSRS and/or
-RuneProfile.
+2. Optional, but useful for public visibility: keep your TempleOSRS and/or RuneProfile data synced so other players can see your public clog.
+3. Sync local collection log: Open your collection log in-game and click the red chalice at the top, then chat messages will guide you to right click search your collection log and click back.
 
 ## auto-sync
 
@@ -48,10 +28,6 @@ Once the first sync has built your local cache, collection-log chat messages kee
 new drops current during long sessions.
 
 ## quick lookup
-
-Configurable right-click menu options to search players on Kill Clog.
-
-Double-click the magnifying glass to look up yourself.
 
 ![player-menu](screenshots/player-menu.png)
 
@@ -73,23 +49,6 @@ Double-click the magnifying glass to look up yourself.
 
 `!gilded`
 
-
-## player comparison
-
-Compare any two players side by side.
-
-![comparison](screenshots/comparison-1.4.0.png)
-
-## summaries
-
-Six grouped readouts: player, skills, clog, PvM, clues, PvP.
-
-![summaries](screenshots/summaries.png)
-
-## activities tray
-
-Open or collapse the tray with the summary-bar menu button.
-
 ## configuration
 
 ![config](screenshots/configuration-1.4.0.png)
@@ -100,6 +59,7 @@ Open or collapse the tray with the summary-bar menu button.
 - Tooltip Activation (Hover, Click)
 - Cell Hover (Outline, Tint, None)
 - Progress Highlighter (full color customization)
+- Kill Clog chat message toggles
 
 ## local cache
 

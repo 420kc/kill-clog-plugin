@@ -2,26 +2,14 @@ package com.killclog;
 
 import com.google.inject.Provides;
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
-import java.util.EnumMap;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
-import net.runelite.api.EnumComposition;
 import net.runelite.api.GameState;
-import net.runelite.api.MenuAction;
 import net.runelite.api.Player;
-import net.runelite.api.StructComposition;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
@@ -29,10 +17,7 @@ import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.ScriptPreFired;
 import net.runelite.api.events.VarbitChanged;
-import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.VarbitID;
-import net.runelite.api.widgets.WidgetUtil;
-import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatCommandManager;
 import net.runelite.client.config.ConfigManager;
@@ -59,29 +44,7 @@ import net.runelite.client.util.Text;
 )
 public class KillClogPlugin extends Plugin
 {
-	private String menuOption = "Kill Clog";
-
-	// OSRS player right-click menu reserves indexes 4-7 for plugins (4 slots total)
-	private static final int FIRST_PLUGIN_PLAYER_SLOT = 4;
-	private static final int LAST_PLUGIN_PLAYER_SLOT_EXCLUSIVE = 8;
-
-	// Bulk clog capture IDs.
-	private static final int CLOG_ITEM_SCRIPT = 4100;
-	private static final int ENUM_CLOG_TABS = 2102;
-	private static final int VARP_CLOG_OBTAINED = 2943;
-	private static final int VARP_CLOG_TOTAL = 2944;
-	private static final int MANUAL_BULK_TIMEOUT_TICKS = 100;
-	private static final int PARAM_SUBTAB_ENUM = 683;
-	private static final int PARAM_CATEGORY_NAME = 689;
-	private static final int PARAM_CATEGORY_ITEMS = 690;
-	private static final String COLLECTION_LOG_UNLOCK_PREFIX =
-		"New item added to your collection log:";
-
 	static final int CLOG_INTERFACE = 621;
-	private static final int CLOG_HEADER_CHILD = 20;
-	private static final int CLOG_ITEMS_CHILD = 37;
-	private static final java.util.regex.Pattern OBTAINED_PATTERN =
-		java.util.regex.Pattern.compile("(\\d+)/(\\d+)");
 
 	@Inject
 	private Client client;
@@ -137,71 +100,19 @@ public class KillClogPlugin extends Plugin
 	@Inject
 	private KillClogChatCommand kclogCommand;
 
+	@Inject
+	private KillClogChatNotifier chatNotifier;
+
 	private NavigationButton navButton;
-	private boolean pendingAutoLookup;
-	// VarbitID.IRONMAN can read 0 on the LOGGED_IN tick, so re-read one tick later.
-	private boolean pendingAcctTypeRecheck;
 
-	// CA varbits, like account type, are read one tick after LOGGED_IN.
-	private boolean pendingCaRead;
-	// LOGGED_IN fires on world hops and region loads. Auto-lookup is gated per session.
-	private boolean hasAutoLookedUpThisSession;
-	private boolean playerMenuSlotWarned;
-
-	// Player-sent chat still gates the older self-lookup refresh path.
-	// Server collection-log unlock messages are handled immediately in onChatMessage.
-	private static final long AUTOSYNC_INTERVAL_MS = 5 * 60 * 1000;
-	private static final Set<ChatMessageType> AUTOSYNC_CHAT_TYPES = EnumSet.of(
-		ChatMessageType.PUBLICCHAT,
-		ChatMessageType.FRIENDSCHAT,
-		ChatMessageType.CLAN_CHAT,
-		ChatMessageType.CLAN_GUEST_CHAT,
-		ChatMessageType.PRIVATECHATOUT,
-		ChatMessageType.AUTOTYPER
-	);
-	private long lastAutoSyncMs;
-
-	// Enum-derived clog mappings (parsed once per session)
-	private Map<String, List<Integer>> enumCategoryMap;
-	private Map<Integer, List<String>> itemToCategoryKeys;
-	private Map<String, List<Integer>> itemNameToIds;
-	private boolean enumsParsed;
-	private boolean liveSyncNeedsFirstSyncWarned;
-
-	// Bulk clog capture state.
-	private final BulkCaptureState bulk = new BulkCaptureState();
-
-	private static class BulkCaptureState
-	{
-		boolean active;
-		int startTickCount = -1;
-		int finalizeTickCount = -1;
-		int clogCount = -1;
-		int clogTotal = -1;
-		final List<ClogResult.ClogItem> obtained = new ArrayList<>();
-		final Set<Integer> obtainedIds = new HashSet<>();
-
-		// Buffered category read captured before bulk has cache data to merge into.
-		String bufferedCategoryKey;
-		String bufferedCategoryName;
-		List<Integer> bufferedCategoryItems;
-		List<ClogResult.ClogItem> bufferedCategoryObtained;
-
-		void reset()
-		{
-			active = false;
-			startTickCount = -1;
-			finalizeTickCount = -1;
-			clogCount = -1;
-			clogTotal = -1;
-			obtained.clear();
-			obtainedIds.clear();
-			bufferedCategoryKey = null;
-			bufferedCategoryName = null;
-			bufferedCategoryItems = null;
-			bufferedCategoryObtained = null;
-		}
-	}
+	private final ChatAutoLookupGate chatAutoLookup = new ChatAutoLookupGate();
+	private final ClogSessionState sessionState = new ClogSessionState();
+	private final ClogIndex clogIndex = new ClogIndex();
+	private final VisibleClogCategoryReader visibleClogCategoryReader = new VisibleClogCategoryReader();
+	private final LiveClogSync liveClogSync = new LiveClogSync();
+	private final ManualClogSync manualClogSync = new ManualClogSync();
+	private final LocalCaReader localCaReader = new LocalCaReader();
+	private final ClogLookupMenu lookupMenu = new ClogLookupMenu();
 
 	@Provides
 	KillClogConfig provideConfig(ConfigManager configManager)
@@ -225,8 +136,7 @@ public class KillClogPlugin extends Plugin
 		panel.setPluginManager(pluginManager);
 		panel.setNameAutocompleter(nameAutocompleter);
 
-		menuOption = config.menuLabel().getLabel();
-		setPlayerMenuItemEnabled(config.playerMenuLookup());
+		lookupMenu.start(config, menuManager);
 
 		chatCommandManager.registerCommandAsync(KillClogChatCommand.COMMAND, kclogCommand::handle);
 		chatCommandManager.registerCommandAsync(KillClogChatCommand.COMMAND_MISSING, kclogCommand::handleMissing);
@@ -236,35 +146,7 @@ public class KillClogPlugin extends Plugin
 		// If installed mid-session, run login init on the client thread
 		if (client.getGameState() == GameState.LOGGED_IN)
 		{
-			clientThread.invokeLater(() ->
-			{
-				Player local = client.getLocalPlayer();
-				if (local != null && local.getName() != null)
-				{
-					String name = local.getName();
-					AccountType acctType = getLocalAccountType();
-					localClogCache.setActivePlayer(name);
-					localCaCache.setActivePlayer(name);
-					SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name, acctType));
-					pendingAcctTypeRecheck = true;
-					pendingCaRead = true;
-				}
-
-				nameAutocompleter.refreshClientSnapshot();
-				loadGimBadges();
-
-				if (!enumsParsed)
-				{
-					parseClogEnums();
-				}
-
-				if (config.autoLookupOnLogin() && !hasAutoLookedUpThisSession)
-				{
-					pendingAutoLookup = true;
-				}
-
-				warnIfPlayerMenuSlotUnavailable();
-			});
+			clientThread.invokeLater(() -> enterLoggedInState(false));
 		}
 
 		log.debug("Kill Clog plugin started");
@@ -276,7 +158,7 @@ public class KillClogPlugin extends Plugin
 		clientToolbar.removeNavigation(navButton);
 		overlayManager.remove(clogButtonOverlay);
 		mouseManager.unregisterMouseListener(clogButtonOverlay);
-		setPlayerMenuItemEnabled(false);
+		lookupMenu.stop(config, menuManager);
 		chatCommandManager.unregisterCommand(KillClogChatCommand.COMMAND);
 		chatCommandManager.unregisterCommand(KillClogChatCommand.COMMAND_MISSING);
 		chatCommandManager.unregisterCommand(KillClogChatCommand.COMMAND_THIRD_AGE);
@@ -285,60 +167,40 @@ public class KillClogPlugin extends Plugin
 		SwingUtilities.invokeLater(() -> panel.shutdown());
 		localClogCache.shutdown();
 		localCaCache.shutdown();
-		resetBulkCapture();
-		enumsParsed = false;
-		playerMenuSlotWarned = false;
-		pendingAutoLookup = false;
-		pendingAcctTypeRecheck = false;
-		pendingCaRead = false;
-		hasAutoLookedUpThisSession = false;
-		liveSyncNeedsFirstSyncWarned = false;
+		manualClogSync.reset();
+		clogIndex.clear();
+		sessionState.reset();
+		liveClogSync.resetFirstSyncWarning();
 		nameAutocompleter.clearClientSnapshot();
 		log.debug("Kill Clog plugin stopped");
 	}
 
-	private void setPlayerMenuItemEnabled(boolean enabled)
+	private void enterLoggedInState(boolean requestLocalReads)
 	{
-		if (enabled && config.menuOnPlayers())
+		if (requestLocalReads)
 		{
-			menuManager.get().addPlayerMenuItem(menuOption);
-		}
-		else
-		{
-			menuManager.get().removePlayerMenuItem(menuOption);
-		}
-	}
-
-	/**
-	 * OSRS reserves only 4 plugin slots (indexes 4-7) on the player right-click menu.
-	 * If other plugins claim them all first, our addPlayerMenuItem call silently no-ops.
-	 * Warn once per session so the user knows to use the side panel or chat right-click instead.
-	 */
-	private void warnIfPlayerMenuSlotUnavailable()
-	{
-		if (playerMenuSlotWarned || !config.playerMenuLookup() || !config.menuOnPlayers())
-		{
-			return;
+			sessionState.requestLocalReads();
 		}
 
-		String[] options = client.getPlayerOptions();
-		if (options == null || options.length < LAST_PLUGIN_PLAYER_SLOT_EXCLUSIVE)
+		Player local = client.getLocalPlayer();
+		if (local != null && local.getName() != null)
 		{
-			return;
-		}
-		for (int i = FIRST_PLUGIN_PLAYER_SLOT; i < LAST_PLUGIN_PLAYER_SLOT_EXCLUSIVE; i++)
-		{
-			if (menuOption.equals(options[i]))
+			String name = local.getName();
+			AccountType acctType = getLocalAccountType();
+			localClogCache.setActivePlayer(name);
+			localCaCache.setActivePlayer(name);
+			SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name, acctType));
+			if (!requestLocalReads)
 			{
-				return;
+				sessionState.requestLocalReads();
 			}
 		}
 
-		playerMenuSlotWarned = true;
-		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-			"<col=4caf6e>Kill Clog:</col> Right-click menu is full. "
-				+ "Use the side panel or right-click names in chat instead.",
-			null);
+		nameAutocompleter.refreshClientSnapshot();
+		GimBadgeLoader.load(client);
+		clogIndex.ensureParsed(client, itemManager);
+		sessionState.requestAutoLookup(config.autoLookupOnLogin());
+		lookupMenu.warnIfPlayerMenuSlotUnavailable(client, config, chatNotifier);
 	}
 
 	@Subscribe
@@ -349,42 +211,15 @@ public class KillClogPlugin extends Plugin
 			SwingUtilities.invokeLater(panel::reloadTooltipSprites);
 			clogService.clearTempleFailures();
 			runeProfileService.clearFailures();
-			pendingAcctTypeRecheck = true;
-			pendingCaRead = true;
-			nameAutocompleter.refreshClientSnapshot();
-
-			// Always track logged-in player for local clog cache
-			Player local = client.getLocalPlayer();
-			if (local != null && local.getName() != null)
-			{
-				String name = local.getName();
-				localClogCache.setActivePlayer(name);
-				localCaCache.setActivePlayer(name);
-				AccountType acctType = getLocalAccountType();
-				SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name, acctType));
-			}
-
-			loadGimBadges();
-
-			if (!enumsParsed)
-			{
-				parseClogEnums();
-			}
-
-			if (config.autoLookupOnLogin() && !hasAutoLookedUpThisSession)
-			{
-				pendingAutoLookup = true;
-			}
-
-			warnIfPlayerMenuSlotUnavailable();
+			enterLoggedInState(true);
 		}
 		else if (event.getGameState() == GameState.LOGIN_SCREEN)
 		{
 			SwingUtilities.invokeLater(panel::reloadTooltipSprites);
-			resetBulkCapture();
-			enumsParsed = false;
-			hasAutoLookedUpThisSession = false;
-			liveSyncNeedsFirstSyncWarned = false;
+			manualClogSync.reset();
+			clogIndex.clear();
+			sessionState.resetAutoLookupSession();
+			liveClogSync.resetFirstSyncWarning();
 			nameAutocompleter.clearClientSnapshot();
 		}
 	}
@@ -396,7 +231,7 @@ public class KillClogPlugin extends Plugin
 	{
 		if (event.getType() == ChatMessageType.GAMEMESSAGE)
 		{
-			String unlockName = parseCollectionLogUnlockName(event.getMessage());
+			String unlockName = ClogUnlockParser.parseItemName(event.getMessage());
 			if (unlockName != null)
 			{
 				clientThread.invokeLater(() -> handleCollectionLogUnlock(unlockName));
@@ -404,35 +239,17 @@ public class KillClogPlugin extends Plugin
 			}
 		}
 
-		if (!AUTOSYNC_CHAT_TYPES.contains(event.getType()))
-		{
-			return;
-		}
 		Player local = client.getLocalPlayer();
 		if (local == null || local.getName() == null)
 		{
 			return;
 		}
 		String localName = local.getName();
-		String sender = event.getName();
-		if (sender == null || !sender.equalsIgnoreCase(localName))
+		if (!chatAutoLookup.shouldRefresh(event, localName, panel.getDisplayedRsn(), System.currentTimeMillis()))
 		{
 			return;
 		}
 
-		long now = System.currentTimeMillis();
-		if (now - lastAutoSyncMs < AUTOSYNC_INTERVAL_MS)
-		{
-			return;
-		}
-
-		String displayed = panel.getDisplayedRsn();
-		if (displayed == null || !displayed.equalsIgnoreCase(localName))
-		{
-			return;
-		}
-
-		lastAutoSyncMs = now;
 		SwingUtilities.invokeLater(() ->
 		{
 			panel.setPlayerName(localName);
@@ -440,167 +257,26 @@ public class KillClogPlugin extends Plugin
 		});
 	}
 
-	static String parseCollectionLogUnlockName(String message)
-	{
-		if (message == null)
-		{
-			return null;
-		}
-
-		String cleaned = Text.removeTags(message).replace((char) 160, ' ').trim();
-		String lower = cleaned.toLowerCase(Locale.ROOT);
-		String prefix = COLLECTION_LOG_UNLOCK_PREFIX.toLowerCase(Locale.ROOT);
-		int prefixIndex = lower.indexOf(prefix);
-		if (prefixIndex < 0)
-		{
-			return null;
-		}
-
-		String itemName = cleaned.substring(prefixIndex + COLLECTION_LOG_UNLOCK_PREFIX.length()).trim();
-		while (itemName.endsWith("."))
-		{
-			itemName = itemName.substring(0, itemName.length() - 1).trim();
-		}
-		return itemName.isEmpty() ? null : itemName;
-	}
-
-	static String normalizeItemName(String itemName)
-	{
-		if (itemName == null)
-		{
-			return "";
-		}
-		return Text.removeTags(itemName)
-			.replace((char) 160, ' ')
-			.trim()
-			.toLowerCase(Locale.ROOT)
-			.replaceAll("\\s+", " ");
-	}
-
 	private void handleCollectionLogUnlock(String itemName)
 	{
-		Player local = client.getLocalPlayer();
-		if (local == null || local.getName() == null)
-		{
-			return;
-		}
-
-		if (!enumsParsed)
-		{
-			parseClogEnums();
-		}
-		if (!enumsParsed || itemNameToIds == null || enumCategoryMap == null)
-		{
-			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-				"<col=4caf6e>Kill Clog:</col> Live sync could not read collection-log data. "
-					+ "Click the chalice to sync.",
-				null);
-			return;
-		}
-
-		String playerName = local.getName();
-		localClogCache.setActivePlayer(playerName);
-		if (!localClogCache.hasDataFor(playerName))
-		{
-			if (!liveSyncNeedsFirstSyncWarned)
-			{
-				liveSyncNeedsFirstSyncWarned = true;
-				client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-					"<col=4caf6e>Kill Clog:</col> Click the chalice once to enable live sync.",
-					null);
-			}
-			return;
-		}
-
-		String itemKey = normalizeItemName(itemName);
-		List<Integer> itemIds = itemNameToIds.get(itemKey);
-		if (itemIds == null || itemIds.isEmpty())
-		{
-			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-				"<col=4caf6e>Kill Clog:</col> Could not match " + itemName
-					+ ". Click the chalice to sync.",
-				null);
-			log.debug("Live clog sync could not match item '{}'", itemName);
-			return;
-		}
-
-		List<Integer> missingItemIds = new ArrayList<>();
-		for (int itemId : itemIds)
-		{
-			if (!localClogCache.hasObtainedItem(playerName, itemId, itemToCategoryKeys.get(itemId)))
-			{
-				missingItemIds.add(itemId);
-			}
-		}
-		if (missingItemIds.size() > 1)
-		{
-			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-				"<col=4caf6e>Kill Clog:</col> Could not match " + itemName
-					+ " exactly. Click the chalice to sync.",
-				null);
-			log.debug("Live clog sync found ambiguous item '{}' ({})", itemName, missingItemIds);
-			return;
-		}
-
-		boolean changed = false;
-		for (int itemId : missingItemIds)
-		{
-			changed |= localClogCache.mergeObtainedItem(playerName, itemId,
-				itemToCategoryKeys.get(itemId), enumCategoryMap);
-		}
-
-		int liveObtained = client.getVarpValue(VARP_CLOG_OBTAINED);
-		int liveTotal = client.getVarpValue(VARP_CLOG_TOTAL);
-		if (liveObtained > 0 || liveTotal > 0)
-		{
-			localClogCache.updateTotals(playerName, liveObtained, liveTotal);
-		}
-
-		if (changed)
-		{
-			liveSyncNeedsFirstSyncWarned = false;
-			clogButtonOverlay.flashGreen();
-			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-				"<col=4caf6e>Kill Clog:</col> Added " + itemName + " to Kill Clog",
-				null);
-			SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(playerName));
-		}
+		liveClogSync.handleUnlock(itemName, client, itemManager, clogIndex,
+			localClogCache, chatNotifier, clogButtonOverlay, panel::onBulkCaptureComplete);
 	}
 
 	// Keep local CA current when a task completes mid-session.
 	@Subscribe
 	public void onVarbitChanged(VarbitChanged event)
 	{
-		int id = event.getVarbitId();
-		if (id == -1 || id == VarbitID.CA_TOTAL_TASKS_COMPLETED_EASY
-			|| id == VarbitID.CA_TOTAL_TASKS_COMPLETED_MEDIUM
-			|| id == VarbitID.CA_TOTAL_TASKS_COMPLETED_HARD
-			|| id == VarbitID.CA_TOTAL_TASKS_COMPLETED_ELITE
-			|| id == VarbitID.CA_TOTAL_TASKS_COMPLETED_MASTER
-			|| id == VarbitID.CA_TOTAL_TASKS_COMPLETED_GRANDMASTER)
+		if (localCaReader.isCaVarbit(event.getVarbitId()))
 		{
-			pendingCaRead = true;
+			sessionState.requestCaRead();
 		}
 	}
 
 	/** Read per-tier CA completed counts from game varbits and persist them for the active player. */
 	private boolean captureLocalCa()
 	{
-		Player local = client.getLocalPlayer();
-		if (local == null || local.getName() == null)
-		{
-			return false;
-		}
-		localCaCache.setActivePlayer(local.getName());
-		Map<CombatAchievementTier, Integer> completed = new EnumMap<>(CombatAchievementTier.class);
-		completed.put(CombatAchievementTier.EASY, client.getVarbitValue(VarbitID.CA_TOTAL_TASKS_COMPLETED_EASY));
-		completed.put(CombatAchievementTier.MEDIUM, client.getVarbitValue(VarbitID.CA_TOTAL_TASKS_COMPLETED_MEDIUM));
-		completed.put(CombatAchievementTier.HARD, client.getVarbitValue(VarbitID.CA_TOTAL_TASKS_COMPLETED_HARD));
-		completed.put(CombatAchievementTier.ELITE, client.getVarbitValue(VarbitID.CA_TOTAL_TASKS_COMPLETED_ELITE));
-		completed.put(CombatAchievementTier.MASTER, client.getVarbitValue(VarbitID.CA_TOTAL_TASKS_COMPLETED_MASTER));
-		completed.put(CombatAchievementTier.GRANDMASTER, client.getVarbitValue(VarbitID.CA_TOTAL_TASKS_COMPLETED_GRANDMASTER));
-		localCaCache.cacheResult(local.getName(), completed);
-		return true;
+		return localCaReader.capture(client, localCaCache);
 	}
 
 	@Subscribe
@@ -608,30 +284,29 @@ public class KillClogPlugin extends Plugin
 	{
 		nameAutocompleter.refreshClientSnapshot();
 
-		if (pendingAcctTypeRecheck)
+		if (sessionState.pendingAcctTypeRecheck())
 		{
 			Player local = client.getLocalPlayer();
 			if (local != null && local.getName() != null)
 			{
-				pendingAcctTypeRecheck = false;
+				sessionState.clearAcctTypeRecheck();
 				String name = local.getName();
 				AccountType acctType = getLocalAccountType();
 				SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name, acctType));
 			}
 		}
 
-		if (pendingCaRead)
+		if (sessionState.pendingCaRead())
 		{
-			pendingCaRead = !captureLocalCa();
+			sessionState.setPendingCaRead(!captureLocalCa());
 		}
 
-		if (pendingAutoLookup)
+		if (sessionState.pendingAutoLookup())
 		{
 			Player local = client.getLocalPlayer();
 			if (local != null && local.getName() != null)
 			{
-				pendingAutoLookup = false;
-				hasAutoLookedUpThisSession = true;
+				sessionState.markAutoLookupStarted();
 				String name = local.getName();
 				localClogCache.setActivePlayer(name);
 				localCaCache.setActivePlayer(name);
@@ -655,53 +330,21 @@ public class KillClogPlugin extends Plugin
 			}
 		}
 
-		if (bulk.active && bulk.finalizeTickCount > 0
-			&& client.getTickCount() >= bulk.finalizeTickCount)
-		{
-			finalizeBulkCapture();
-		}
-		else if (bulk.active && bulk.finalizeTickCount < 0
-			&& bulk.startTickCount >= 0
-			&& client.getTickCount() - bulk.startTickCount > MANUAL_BULK_TIMEOUT_TICKS)
-		{
-			resetBulkCapture();
-			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-				"<col=4caf6e>Kill Clog:</col> Sync timed out. Click the chalice, then Search and Back.",
-				null);
-		}
+		manualClogSync.onGameTick(client, clogIndex, localClogCache,
+			chatNotifier, clogButtonOverlay, liveClogSync::resetFirstSyncWarning,
+			panel::onBulkCaptureComplete);
 	}
 
 	@Subscribe
 	public void onScriptPreFired(ScriptPreFired event)
 	{
-		if (event.getScriptId() != CLOG_ITEM_SCRIPT || !bulk.active)
+		if (event.getScriptEvent() == null)
 		{
 			return;
 		}
 
-		if (event.getScriptEvent() == null || event.getScriptEvent().getArguments() == null)
-		{
-			return;
-		}
-
-		Object[] args = event.getScriptEvent().getArguments();
-		if (args.length < 3)
-		{
-			return;
-		}
-
-		if (!(args[1] instanceof Integer) || !(args[2] instanceof Integer))
-		{
-			return;
-		}
-		int itemId = (int) args[1];
-		int count = (int) args[2];
-
-		if (bulk.obtainedIds.add(itemId))
-		{
-			bulk.obtained.add(new ClogResult.ClogItem(itemId, count, null));
-		}
-		bulk.finalizeTickCount = client.getTickCount() + 3;
+		manualClogSync.captureScriptArguments(event.getScriptId(),
+			event.getScriptEvent().getArguments(), client.getTickCount());
 	}
 
 	@Subscribe
@@ -747,9 +390,7 @@ public class KillClogPlugin extends Plugin
 			|| event.getKey().equals("menuOnGroupIronman"))
 		{
 			// Refresh the menu option when its label changes.
-			menuManager.get().removePlayerMenuItem(menuOption);
-			menuOption = config.menuLabel().getLabel();
-			setPlayerMenuItemEnabled(config.playerMenuLookup());
+			lookupMenu.refresh(config, menuManager);
 		}
 
 		SwingUtilities.invokeLater(() -> panel.onConfigChanged(event.getKey()));
@@ -775,335 +416,16 @@ public class KillClogPlugin extends Plugin
 		openPanelAndLookup(Text.toJagexName(name.trim()));
 	}
 
-	// Right-click menu option strings used to filter Kill Clog lookup entries.
-	private static final String OPT_ADD_FRIEND = "Add friend";
-	private static final String OPT_ADD_IGNORE = "Add ignore";
-	private static final String OPT_REMOVE_FRIEND = "Remove friend";
-	private static final String OPT_REMOVE_IGNORE = "Remove ignore";
-	private static final String OPT_DELETE = "Delete";
-	private static final String OPT_MESSAGE = "Message";
-
-	private boolean isLookupEligible(int groupId, int componentId, String option)
-	{
-		// Clan player lists live in two different interfaces -- match by componentId, not groupId
-		if (componentId == InterfaceID.ClansSidepanel.PLAYERLIST)
-		{
-			return config.menuOnClanList()
-				&& (OPT_ADD_IGNORE.equals(option) || OPT_REMOVE_FRIEND.equals(option));
-		}
-		if (componentId == InterfaceID.ClansGuestSidepanel.PLAYERLIST)
-		{
-			return config.menuOnGuestClanList()
-				&& (OPT_ADD_IGNORE.equals(option) || OPT_REMOVE_FRIEND.equals(option));
-		}
-		switch (groupId)
-		{
-			case InterfaceID.FRIENDS:
-				return config.menuOnFriendsList() && OPT_DELETE.equals(option);
-			case InterfaceID.IGNORE:
-				return config.menuOnIgnoreList() && OPT_DELETE.equals(option);
-			case InterfaceID.CHATCHANNEL_CURRENT:
-				return config.menuOnChatChannels()
-					&& (OPT_ADD_IGNORE.equals(option) || OPT_REMOVE_FRIEND.equals(option));
-			case InterfaceID.CHATBOX:
-				return config.menuOnChat()
-					&& (OPT_ADD_IGNORE.equals(option) || OPT_MESSAGE.equals(option));
-			case InterfaceID.PM_CHAT:
-				return config.menuOnPrivateMessages()
-					&& (OPT_ADD_IGNORE.equals(option) || OPT_MESSAGE.equals(option));
-			case InterfaceID.GIM_SIDEPANEL:
-				return config.menuOnGroupIronman()
-					&& (OPT_ADD_FRIEND.equals(option) || OPT_REMOVE_FRIEND.equals(option) || OPT_REMOVE_IGNORE.equals(option));
-			default:
-				return false;
-		}
-	}
-
 	@Subscribe
 	public void onMenuEntryAdded(MenuEntryAdded event)
 	{
-		if (!config.playerMenuLookup())
-		{
-			return;
-		}
-
-		if (event.getType() != MenuAction.CC_OP.getId()
-			&& event.getType() != MenuAction.CC_OP_LOW_PRIORITY.getId())
-		{
-			return;
-		}
-
-		int componentId = event.getActionParam1();
-		int groupId = WidgetUtil.componentToInterface(componentId);
-
-		if (isLookupEligible(groupId, componentId, event.getOption()))
-		{
-			String target = event.getTarget();
-			if (target == null)
-			{
-				return;
-			}
-			String name = Text.toJagexName(Text.removeTags(target).trim());
-			client.getMenu().createMenuEntry(-2)
-				.setOption(menuOption)
-				.setTarget(target)
-				.setType(MenuAction.RUNELITE)
-				.setIdentifier(event.getIdentifier())
-				.onClick(e -> openPanelAndLookup(name));
-		}
+		lookupMenu.addLookupEntry(event, client, config, this::openPanelAndLookup);
 	}
 
 	@Subscribe
 	public void onMenuOptionClicked(MenuOptionClicked event)
 	{
-		if (event.getMenuAction() == MenuAction.RUNELITE_PLAYER
-			&& event.getMenuOption().equals(menuOption)
-			&& config.menuOnPlayers())
-		{
-			Player player = event.getMenuEntry().getPlayer();
-			if (player == null || player.getName() == null)
-			{
-				return;
-			}
-
-			String name = Text.toJagexName(player.getName());
-			openPanelAndLookup(name);
-		}
-	}
-
-	// Bulk clog capture.
-
-	private void parseClogEnums()
-	{
-		try
-		{
-			enumCategoryMap = new HashMap<>();
-			itemToCategoryKeys = new HashMap<>();
-			itemNameToIds = new HashMap<>();
-
-			EnumComposition tabs = client.getEnum(ENUM_CLOG_TABS);
-
-			for (int tabKey : tabs.getKeys())
-			{
-				int tabStructId = tabs.getIntValue(tabKey);
-				StructComposition tabStruct = client.getStructComposition(tabStructId);
-				int subtabEnumId = tabStruct.getIntValue(PARAM_SUBTAB_ENUM);
-
-				EnumComposition subtabs = client.getEnum(subtabEnumId);
-				for (int subKey : subtabs.getKeys())
-				{
-					int catStructId = subtabs.getIntValue(subKey);
-					StructComposition catStruct = client.getStructComposition(catStructId);
-
-					String name = catStruct.getStringValue(PARAM_CATEGORY_NAME);
-					int itemsEnumId = catStruct.getIntValue(PARAM_CATEGORY_ITEMS);
-
-					if (name == null || itemsEnumId <= 0)
-					{
-						continue;
-					}
-
-					String categoryKey = ClogService.bossToCategory(name);
-
-					EnumComposition itemsEnum = client.getEnum(itemsEnumId);
-					List<Integer> itemIds = new ArrayList<>();
-					for (int itemKey : itemsEnum.getKeys())
-					{
-						int itemId = itemsEnum.getIntValue(itemKey);
-						itemIds.add(itemId);
-						itemToCategoryKeys.computeIfAbsent(itemId, k -> new ArrayList<>())
-							.add(categoryKey);
-						indexItemName(itemId);
-					}
-
-					enumCategoryMap.put(categoryKey, itemIds);
-				}
-			}
-
-			// Synthetic categories not in game cache
-			injectSynthetic("mimic", new int[]{PanelData.THIRD_AGE_RING_ITEM_ID});
-			injectSynthetic(PanelData.CLOG_THIRD_AGE, PanelData.THIRD_AGE_ITEMS);
-			injectSynthetic(PanelData.CLOG_GILDED, PanelData.GILDED_ITEMS);
-
-			enumsParsed = true;
-			log.debug("Parsed clog enums: {} categories, {} items, {} names",
-				enumCategoryMap.size(), itemToCategoryKeys.size(), itemNameToIds.size());
-		}
-		catch (Exception e)
-		{
-			log.warn("Failed to parse clog enums", e);
-			enumsParsed = false;
-		}
-	}
-
-	private void injectSynthetic(String key, int[] itemIds)
-	{
-		List<Integer> ids = new ArrayList<>(itemIds.length);
-		for (int id : itemIds)
-		{
-			ids.add(id);
-			itemToCategoryKeys.computeIfAbsent(id, k -> new ArrayList<>()).add(key);
-			indexItemName(id);
-		}
-		enumCategoryMap.put(key, ids);
-	}
-
-	private void indexItemName(int itemId)
-	{
-		String itemName = itemManager.getItemComposition(itemId).getName();
-		String itemKey = normalizeItemName(itemName);
-		if (!itemKey.isEmpty() && !"null".equals(itemKey))
-		{
-			List<Integer> ids = itemNameToIds.computeIfAbsent(itemKey, k -> new ArrayList<>());
-			if (!ids.contains(itemId))
-			{
-				ids.add(itemId);
-			}
-		}
-	}
-
-	private void beginManualBulkCapture()
-	{
-		if (bulk.active)
-		{
-			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-				"<col=4caf6e>Kill Clog:</col> Sync is armed. Click Search, then Back.",
-				null);
-			return;
-		}
-
-		if (!enumsParsed)
-		{
-			return;
-		}
-
-		Player local = client.getLocalPlayer();
-		if (local == null || local.getName() == null)
-		{
-			return;
-		}
-
-		// Skip if local cache already exists for this player
-		if (localClogCache.hasDataFor(local.getName()))
-		{
-			return;
-		}
-
-		bulk.active = true;
-		bulk.startTickCount = client.getTickCount();
-		bulk.finalizeTickCount = -1;
-		bulk.clogCount = client.getVarpValue(VARP_CLOG_OBTAINED);
-		bulk.clogTotal = client.getVarpValue(VARP_CLOG_TOTAL);
-		bulk.obtained.clear();
-		bulk.obtainedIds.clear();
-
-		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-			"<col=4caf6e>Kill Clog:</col> First sync armed. Click Search, then Back.",
-			null);
-
-		log.debug("Armed manual bulk clog capture (game reports {} obtained)", bulk.clogCount);
-	}
-
-	private void finalizeBulkCapture()
-	{
-		Player local = client.getLocalPlayer();
-		if (local == null || local.getName() == null)
-		{
-			resetBulkCapture();
-			return;
-		}
-
-		String name = local.getName();
-		localClogCache.setActivePlayer(name);
-
-		// Group obtained items by category.
-		Map<String, List<ClogResult.ClogItem>> obtainedByCategory = new HashMap<>();
-
-		// Include empty categories so cacheResult stores the full catalog.
-		for (String cat : enumCategoryMap.keySet())
-		{
-			obtainedByCategory.put(cat, new ArrayList<>());
-		}
-
-		for (ClogResult.ClogItem item : bulk.obtained)
-		{
-			List<String> cats = itemToCategoryKeys.get(item.getId());
-			if (cats != null)
-			{
-				for (String cat : cats)
-				{
-					obtainedByCategory.get(cat).add(item);
-				}
-			}
-		}
-
-		// Copy category item lists from enum data
-		Map<String, List<Integer>> categoryItemsCopy = new HashMap<>();
-		for (Map.Entry<String, List<Integer>> entry : enumCategoryMap.entrySet())
-		{
-			categoryItemsCopy.put(entry.getKey(), new ArrayList<>(entry.getValue()));
-		}
-
-		// Guard against partial captures (e.g., player closed clog mid-sync)
-		if (bulk.clogCount > 0 && bulk.obtained.size() < bulk.clogCount / 2)
-		{
-			log.warn("Bulk capture incomplete: got {} of {} items, discarding",
-				bulk.obtained.size(), bulk.clogCount);
-			resetBulkCapture();
-			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-				"<col=4caf6e>Kill Clog:</col> Sync interrupted - open the collection log and try again.",
-				null);
-			return;
-		}
-
-		ClogResult result = new ClogResult(name, obtainedByCategory, categoryItemsCopy,
-			new HashMap<>(), null, null);
-		if (bulk.clogCount > 0)
-		{
-			result.setUniqueObtained(bulk.clogCount);
-		}
-		if (bulk.clogTotal > 0)
-		{
-			result.setUniqueTotal(bulk.clogTotal);
-		}
-		localClogCache.cacheResult(result);
-		liveSyncNeedsFirstSyncWarned = false;
-
-		// Prefer the Jagex de-duped count (varp 2943) over the raw streamed count.
-		// Some items appear in multiple clog categories, so bulk.obtained.size() can
-		// exceed the player's actual unique obtained count.
-		int displayCount = bulk.clogCount > 0 ? bulk.clogCount : bulk.obtained.size();
-		log.debug("Bulk clog capture complete: {} items across {} categories for '{}' ({} streamed)",
-			displayCount, enumCategoryMap.size(), name, bulk.obtained.size());
-
-		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-			"<col=4caf6e>Kill Clog:</col> " + displayCount + " items synced to Kill Clog",
-			null);
-
-		// Merge the buffered category before reset (captured when clog first opened)
-		String bufKey = bulk.bufferedCategoryKey;
-		String bufName = bulk.bufferedCategoryName;
-		List<Integer> bufItems = bulk.bufferedCategoryItems;
-		List<ClogResult.ClogItem> bufObtained = bulk.bufferedCategoryObtained;
-		resetBulkCapture();
-
-		if (bufKey != null && bufItems != null)
-		{
-			localClogCache.mergeCategory(name, bufKey, bufItems, bufObtained);
-			int buffObt = bufObtained != null ? bufObtained.size() : 0;
-			int buffTotal = bufItems.size();
-			log.debug("Merged buffered category '{}': {}/{} obtained",
-				bufKey, buffObt, buffTotal);
-
-			String displayName = bufName != null ? bufName : bufKey;
-			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-				"<col=4caf6e>Kill Clog:</col> Updated " + displayName
-					+ " - " + buffObt + "/" + buffTotal + " items",
-				null);
-		}
-
-		clogButtonOverlay.flashGreen();
-		SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(name));
+		lookupMenu.handlePlayerLookup(event, config, this::openPanelAndLookup);
 	}
 
 	// Sync button.
@@ -1124,162 +446,9 @@ public class KillClogPlugin extends Plugin
 				return;
 			}
 
-			captureVisibleCategory();
-
-			if (!localClogCache.hasDataFor(local.getName()))
-			{
-				beginManualBulkCapture();
-			}
+			manualClogSync.onSyncClicked(client, clogIndex, visibleClogCategoryReader,
+				localClogCache, chatNotifier, panel::onBulkCaptureComplete);
 		});
-	}
-
-	private void captureVisibleCategory()
-	{
-		Player local = client.getLocalPlayer();
-		if (local == null || local.getName() == null)
-		{
-			return;
-		}
-
-		// 621:20 getDynamicChildren(): [0]=category name, [1]="Obtained: x/y", [2]="Boss kills: n"
-		Widget header = client.getWidget(CLOG_INTERFACE, CLOG_HEADER_CHILD);
-		if (header == null)
-		{
-			return;
-		}
-		Widget[] headerKids = header.getDynamicChildren();
-		if (headerKids == null || headerKids.length < 2)
-		{
-			return;
-		}
-
-		String headerText = (headerKids[0] != null) ? headerKids[0].getText() : null;
-		if (headerText == null || headerText.isEmpty())
-		{
-			return;
-		}
-
-		String categoryName = Text.removeTags(headerText);
-		String categoryKey = ClogService.bossToCategory(categoryName);
-
-		// Parse "Obtained: x/y" from dynamic child [1]
-		int obtainedCount = -1;
-		int totalCount = -1;
-		if (headerKids.length >= 2 && headerKids[1] != null)
-		{
-			String obtainedText = Text.removeTags(headerKids[1].getText());
-			if (obtainedText != null)
-			{
-				// Format: "Obtained: 6/9" or similar
-				java.util.regex.Matcher m = OBTAINED_PATTERN.matcher(obtainedText);
-				if (m.find())
-				{
-					obtainedCount = Integer.parseInt(m.group(1));
-					totalCount = Integer.parseInt(m.group(2));
-				}
-			}
-		}
-
-		// Read items from widget
-		Widget items = client.getWidget(CLOG_INTERFACE, CLOG_ITEMS_CHILD);
-		if (items == null)
-		{
-			return;
-		}
-
-		Widget[] children = items.getChildren();
-		if (children == null || children.length == 0)
-		{
-			return;
-		}
-
-		List<Integer> allItemIds = new ArrayList<>();
-		List<ClogResult.ClogItem> obtained = new ArrayList<>();
-
-		for (int i = 0; i < children.length; i++)
-		{
-			Widget child = children[i];
-			int itemId = child.getItemId();
-			if (itemId <= 0)
-			{
-				continue;
-			}
-			allItemIds.add(itemId);
-			if (child.getOpacity() == 0)
-			{
-				int qty = child.getItemQuantity();
-				obtained.add(new ClogResult.ClogItem(itemId, Math.max(qty, 1), null));
-			}
-		}
-
-		// Infer untradeables: if obtained count from header > items we can see,
-		// the missing ones are untradeable items not visible in the widget
-		if (obtainedCount > obtained.size() && obtainedCount <= allItemIds.size())
-		{
-			Set<Integer> obtainedIds = new HashSet<>();
-			for (ClogResult.ClogItem oi : obtained)
-			{
-				obtainedIds.add(oi.getId());
-			}
-
-			int missing = obtainedCount - obtained.size();
-			for (int itemId : allItemIds)
-			{
-				if (!obtainedIds.contains(itemId))
-				{
-					obtained.add(new ClogResult.ClogItem(itemId, 1, null));
-					obtainedIds.add(itemId);
-					missing--;
-					if (missing <= 0)
-					{
-						break;
-					}
-				}
-			}
-		}
-
-		if (allItemIds.isEmpty())
-		{
-			return;
-		}
-
-		String name = local.getName();
-		if (localClogCache.hasDataFor(name))
-		{
-			localClogCache.mergeCategory(name, categoryKey, allItemIds, obtained);
-
-			// Re-read global clog totals from live varps (catches game updates + new items)
-			int liveObtained = client.getVarpValue(VARP_CLOG_OBTAINED);
-			int liveTotal = client.getVarpValue(VARP_CLOG_TOTAL);
-			if (liveObtained > 0 || liveTotal > 0)
-			{
-				localClogCache.updateTotals(name, liveObtained, liveTotal);
-			}
-
-			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-				"<col=4caf6e>Kill Clog:</col> Captured " + categoryName
-					+ " - " + obtained.size() + "/" + allItemIds.size() + " obtained",
-				null);
-			SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(name));
-		}
-		else
-		{
-			bulk.bufferedCategoryKey = categoryKey;
-			bulk.bufferedCategoryName = categoryName;
-			bulk.bufferedCategoryItems = new ArrayList<>(allItemIds);
-			bulk.bufferedCategoryObtained = new ArrayList<>(obtained);
-
-			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-				"<col=4caf6e>Kill Clog:</col> Buffered " + categoryName
-					+ " - " + obtained.size() + "/" + allItemIds.size()
-					+ " obtained (will merge after sync)",
-				null);
-		}
-	}
-
-	private void resetBulkCapture()
-	{
-		bulk.reset();
 	}
 
 	private AccountType getLocalAccountType()
@@ -1290,19 +459,6 @@ public class KillClogPlugin extends Plugin
 	private AccountType mapAccountType(int varbitValue)
 	{
 		return AccountType.fromRuneLiteVarbit(varbitValue);
-	}
-
-	private void loadGimBadges()
-	{
-		net.runelite.api.IndexedSprite[] modIcons = client.getModIcons();
-		if (modIcons == null) return;
-		BufferedImage gim = modIcons.length > ClogHelper.MODICON_GIM
-			? ClogHelper.indexedSpriteToImage(modIcons[ClogHelper.MODICON_GIM]) : null;
-		BufferedImage hcgim = modIcons.length > ClogHelper.MODICON_HCGIM
-			? ClogHelper.indexedSpriteToImage(modIcons[ClogHelper.MODICON_HCGIM]) : null;
-		BufferedImage unrankedGim = modIcons.length > ClogHelper.MODICON_UNRANKED_GIM
-			? ClogHelper.indexedSpriteToImage(modIcons[ClogHelper.MODICON_UNRANKED_GIM]) : null;
-		ClogHelper.setGimBadges(gim, hcgim, unrankedGim);
 	}
 
 	private BufferedImage getIcon()

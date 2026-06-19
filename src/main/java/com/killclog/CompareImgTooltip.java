@@ -1,26 +1,19 @@
 package com.killclog;
 
 import java.awt.AlphaComposite;
-import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import javax.swing.SwingUtilities;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
-import net.runelite.client.util.AsyncBufferedImage;
-import net.runelite.client.util.ImageUtil;
 
 /**
  * Comparison sprite tooltip: stacked blue/red grids for the same boss or category.
@@ -29,7 +22,6 @@ import net.runelite.client.util.ImageUtil;
 public class CompareImgTooltip extends TitleTooltip
 {
 	private static final int SPRITE_SIZE = 15;
-	private static final int DEFAULT_SPRITE_SIZE = 32;
 	private static final int PADDING = 4;
 	private static final int GRID_COLS = 5;
 	private static final int SECTION_GAP = 6;
@@ -50,12 +42,8 @@ public class CompareImgTooltip extends TitleTooltip
 
 	// Grid data.
 	private List<Integer> allItemIds;
-	private BufferedImage[] sprites;
-	private String[] itemNames;
-	private List<ItemHitBox> hitBoxes = Collections.emptyList();
-	private int hoveredItemId = -1;
-	private String hoveredItemName;
-	private int hoveredSection = -1;
+	private TooltipItemSprites itemSprites;
+	private final TooltipItemHover itemHover = new TooltipItemHover(this);
 
 	private Set<Integer> blueObtainedIds;
 	private Set<Integer> redObtainedIds;
@@ -121,7 +109,11 @@ public class CompareImgTooltip extends TitleTooltip
 
 	public CompareImgTooltip()
 	{
-		installItemMouseListeners();
+	}
+
+	public void setWikiLinksEnabled(boolean wikiLinksEnabled)
+	{
+		itemHover.setWikiLinksEnabled(wikiLinksEnabled);
 	}
 
 	/**
@@ -142,54 +134,14 @@ public class CompareImgTooltip extends TitleTooltip
 
 		if (allItemIds == null || allItemIds.isEmpty() || itemManager == null)
 		{
-			sprites = null;
-			this.itemNames = null;
-			clearHover();
+			itemSprites = null;
+			itemHover.setHitBoxes(Collections.emptyList());
+			itemHover.clear();
 			return;
 		}
 
-		sprites = new BufferedImage[allItemIds.size()];
-		this.itemNames = new String[allItemIds.size()];
-		final BufferedImage[] localSprites = sprites;
-		for (int i = 0; i < allItemIds.size(); i++)
-		{
-			int itemId = allItemIds.get(i);
-			this.itemNames[i] = TooltipItemLink.itemName(itemNames, itemId);
-			// Use whichever player's quantity is available.
-			int count = 1;
-			if (blueObtainedIds != null && blueObtainedIds.contains(itemId))
-			{
-				count = blueObtainedCounts.getOrDefault(itemId, 1);
-			}
-			else if (redObtainedIds != null && redObtainedIds.contains(itemId))
-			{
-				count = redObtainedCounts.getOrDefault(itemId, 1);
-			}
-			BufferedImage img = itemManager.getImage(itemId, count, false);
-			final int idx = i;
-			if (img instanceof AsyncBufferedImage)
-			{
-				((AsyncBufferedImage) img).onLoaded(() ->
-					SwingUtilities.invokeLater(() ->
-					{
-						if (localSprites != sprites) return;
-						localSprites[idx] = resizeSprite(img);
-						repaint();
-					}));
-			}
-			localSprites[i] = resizeSprite(img);
-		}
-	}
-
-	private static BufferedImage resizeSprite(BufferedImage img)
-	{
-		if (img == null)
-		{
-			return null;
-		}
-		return ImageUtil.resizeImage(
-			ImageUtil.resizeCanvas(img, DEFAULT_SPRITE_SIZE, DEFAULT_SPRITE_SIZE),
-			SPRITE_SIZE, SPRITE_SIZE);
+		itemSprites = TooltipItemSprites.load(allItemIds, itemNames, itemManager, SPRITE_SIZE,
+			this::compareSpriteCount, this);
 	}
 
 	// Header.
@@ -378,13 +330,13 @@ public class CompareImgTooltip extends TitleTooltip
 	@Override
 	protected void paintBody(Graphics2D g2, int w, int h, int startY)
 	{
-		hitBoxes = Collections.emptyList();
+		itemHover.setHitBoxes(Collections.emptyList());
 		if (getTitle() == null || !showSpriteGrids)
 		{
 			return;
 		}
 
-		List<ItemHitBox> nextHitBoxes = new ArrayList<>();
+		List<TooltipItemHover.HitBox> nextHitBoxes = new ArrayList<>();
 		int inset = getInset();
 		int cellSize = SPRITE_SIZE + PADDING;
 		int cols = Math.max(GRID_COLS, (w - 2 * inset + PADDING) / cellSize);
@@ -401,7 +353,7 @@ public class CompareImgTooltip extends TitleTooltip
 		g2.drawString(bluePlayerName != null ? bluePlayerName : "Blue", inset, blueNameY);
 		y += sfm.getHeight() + 2;
 
-		if (blueHasData && sprites != null && allItemIds != null && !allItemIds.isEmpty())
+		if (blueHasData && itemSprites != null && allItemIds != null && !allItemIds.isEmpty())
 		{
 			y = paintGrid(g2, nextHitBoxes, 0, gridOffsetX, y, cols, cellSize,
 				blueObtainedIds, blueObtainedCounts);
@@ -423,7 +375,7 @@ public class CompareImgTooltip extends TitleTooltip
 		g2.drawString(redPlayerName != null ? redPlayerName : "Red", inset, redNameY);
 		y += sfm.getHeight() + 2;
 
-		if (redHasData && sprites != null && allItemIds != null && !allItemIds.isEmpty())
+		if (redHasData && itemSprites != null && allItemIds != null && !allItemIds.isEmpty())
 		{
 			y = paintGrid(g2, nextHitBoxes, 1, gridOffsetX, y, cols, cellSize,
 				redObtainedIds, redObtainedCounts);
@@ -436,13 +388,13 @@ public class CompareImgTooltip extends TitleTooltip
 			y += sfm.getHeight();
 		}
 
-		hitBoxes = nextHitBoxes;
+		itemHover.setHitBoxes(nextHitBoxes);
 	}
 
 	/**
 	 * Paint a sprite grid for one player. Returns the Y after the last row.
 	 */
-	private int paintGrid(Graphics2D g2, List<ItemHitBox> nextHitBoxes, int section,
+	private int paintGrid(Graphics2D g2, List<TooltipItemHover.HitBox> nextHitBoxes, int section,
 		int gridOffsetX, int y, int cols,
 		int cellSize, Set<Integer> obtainedIds, Map<Integer, Integer> obtainedCounts)
 	{
@@ -457,10 +409,10 @@ public class CompareImgTooltip extends TitleTooltip
 
 			int itemId = allItemIds.get(i);
 			boolean obtained = obtainedIds != null && obtainedIds.contains(itemId);
-			nextHitBoxes.add(new ItemHitBox(section, itemId, itemNameAt(i),
+			nextHitBoxes.add(new TooltipItemHover.HitBox(section, itemId, itemNameAt(i),
 				new Rectangle(x, sy, SPRITE_SIZE, SPRITE_SIZE)));
 
-			BufferedImage sprite = i < sprites.length ? sprites[i] : null;
+			BufferedImage sprite = itemSprites.spriteAt(i);
 			if (sprite != null)
 			{
 				g2.setComposite(obtained
@@ -481,102 +433,29 @@ public class CompareImgTooltip extends TitleTooltip
 	@Override
 	protected String getHeaderRightText()
 	{
-		return hoveredItemName;
+		return itemHover.hoveredItemName();
 	}
 
 	private String itemNameAt(int index)
 	{
-		if (itemNames == null || index < 0 || index >= itemNames.length)
+		if (itemSprites == null)
 		{
 			return null;
 		}
-		return itemNames[index];
+		return itemSprites.nameAt(index);
 	}
 
-	private void installItemMouseListeners()
+	private int compareSpriteCount(int itemId)
 	{
-		addMouseMotionListener(new MouseMotionAdapter()
+		if (blueObtainedIds != null && blueObtainedIds.contains(itemId) && blueObtainedCounts != null)
 		{
-			@Override
-			public void mouseMoved(MouseEvent e)
-			{
-				updateHoveredItem(e.getX(), e.getY());
-			}
-		});
-		addMouseListener(new MouseAdapter()
-		{
-			@Override
-			public void mousePressed(MouseEvent e)
-			{
-				updateHoveredItem(e.getX(), e.getY());
-				if (e.getButton() == MouseEvent.BUTTON1 && hoveredItemId > 0)
-				{
-					TooltipItemLink.openWiki(hoveredItemId);
-					e.consume();
-				}
-			}
-
-			@Override
-			public void mouseExited(MouseEvent e)
-			{
-				clearHover();
-			}
-		});
-	}
-
-	private void updateHoveredItem(int mx, int my)
-	{
-		ItemHitBox hitBox = findHitBox(mx, my);
-		int nextId = hitBox != null ? hitBox.itemId : -1;
-		int nextSection = hitBox != null ? hitBox.section : -1;
-		if (nextId == hoveredItemId && nextSection == hoveredSection)
-		{
-			return;
+			return blueObtainedCounts.getOrDefault(itemId, 1);
 		}
-		hoveredItemId = nextId;
-		hoveredItemName = hitBox != null ? hitBox.itemName : null;
-		hoveredSection = nextSection;
-		setCursor(Cursor.getPredefinedCursor(hitBox != null ? Cursor.HAND_CURSOR : Cursor.DEFAULT_CURSOR));
-		repaint();
-	}
-
-	private ItemHitBox findHitBox(int mx, int my)
-	{
-		for (ItemHitBox hitBox : hitBoxes)
+		if (redObtainedIds != null && redObtainedIds.contains(itemId) && redObtainedCounts != null)
 		{
-			if (hitBox.bounds.contains(mx, my))
-			{
-				return hitBox;
-			}
+			return redObtainedCounts.getOrDefault(itemId, 1);
 		}
-		return null;
+		return 1;
 	}
 
-	private void clearHover()
-	{
-		if (hoveredItemId != -1 || hoveredItemName != null || hoveredSection != -1)
-		{
-			hoveredItemId = -1;
-			hoveredItemName = null;
-			hoveredSection = -1;
-			setCursor(Cursor.getDefaultCursor());
-			repaint();
-		}
-	}
-
-	private static final class ItemHitBox
-	{
-		private final int section;
-		private final int itemId;
-		private final String itemName;
-		private final Rectangle bounds;
-
-		private ItemHitBox(int section, int itemId, String itemName, Rectangle bounds)
-		{
-			this.section = section;
-			this.itemId = itemId;
-			this.itemName = itemName;
-			this.bounds = bounds;
-		}
-	}
 }

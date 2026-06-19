@@ -474,6 +474,7 @@ public class ComparisonController
 		tip.setComponent(owner);
 		tip.setTitle(name);
 		tip.setShowSpriteGrids(showSpriteGrids);
+		tip.setWikiLinksEnabled(config.wikiItemLinks());
 
 		String blueName = renderTarget != null ? renderTarget.playerName().getText().trim() : "";
 		if (blueName.isEmpty())

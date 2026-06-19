@@ -1,0 +1,167 @@
+package com.killclog;
+
+import java.util.function.Supplier;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JToolTip;
+import net.runelite.client.game.ItemManager;
+
+final class ActivitySummaryTooltips
+{
+	private final LookupSession lookupSession;
+	private final ComparisonController comparison;
+	private final Cells cells;
+	private final TooltipController tooltipController;
+	private final ItemManager itemManager;
+	private final CaRewardSprites caRewardSprites;
+	private final PanelIconCache iconCache;
+	private final Supplier<String> primaryName;
+
+	ActivitySummaryTooltips(LookupSession lookupSession, ComparisonController comparison,
+		Cells cells, TooltipController tooltipController, ItemManager itemManager,
+		CaRewardSprites caRewardSprites, PanelIconCache iconCache, Supplier<String> primaryName)
+	{
+		this.lookupSession = lookupSession;
+		this.comparison = comparison;
+		this.cells = cells;
+		this.tooltipController = tooltipController;
+		this.itemManager = itemManager;
+		this.caRewardSprites = caRewardSprites;
+		this.iconCache = iconCache;
+		this.primaryName = primaryName;
+	}
+
+	JToolTip buildPvm(JLabel owner, JPanel parentCell)
+	{
+		if (comparison.isComparisonMode() && comparison.getCompareHiscoreResult() != null)
+		{
+			ComparePvmSummaryTooltip cmp = new ComparePvmSummaryTooltip();
+			cmp.setComponent(owner);
+			HiscoreResult blueHs = lookupSession.getHiscoreResult();
+			HiscoreResult redHs = comparison.getCompareHiscoreResult();
+			ClogResult blueClog = lookupSession.getClogResult();
+			ClogResult redClog = comparison.getCompareClogResult();
+			String blueName = primaryName.get() != null ? primaryName.get() : "--";
+			String redName = comparison.getCompareRsn() != null ? comparison.getCompareRsn() : "--";
+
+			cmp.setBlueData(blueName,
+				blueHs != null ? blueHs.getCombatLevel() : 0,
+				LookupQueries.sumBossKills(blueHs),
+				LookupQueries.countBossesWithKc(blueHs),
+				PanelData.BOSSES.length,
+				LookupQueries.getMostKilledBoss(blueHs),
+				LookupQueries.getMostKilledKc(blueHs));
+			cmp.setRedData(redName,
+				redHs.getCombatLevel(),
+				LookupQueries.sumBossKills(redHs),
+				LookupQueries.countBossesWithKc(redHs),
+				PanelData.BOSSES.length,
+				LookupQueries.getMostKilledBoss(redHs),
+				LookupQueries.getMostKilledKc(redHs));
+
+			if (blueClog != null)
+			{
+				cmp.setBlueCompletion(
+					LookupQueries.countBossesCompleted(cells.getTooltipDataMap(), cells.getBossLabels().keySet()),
+					LookupQueries.countBossesWithClog(cells.getTooltipDataMap(), cells.getBossLabels().keySet()));
+			}
+			if (redClog != null)
+			{
+				cmp.setRedCompletion(
+					LookupQueries.countBossesCompleted(comparison.getCompareTooltipDataMap(), cells.getBossLabels().keySet()),
+					LookupQueries.countBossesWithClog(comparison.getCompareTooltipDataMap(), cells.getBossLabels().keySet()));
+			}
+
+			CombatAchievementResult blueCa = lookupSession.getCaResult();
+			if (blueCa != null)
+			{
+				cmp.setBlueCa(blueCa, caRewardSprites.sprite(blueCa.getReward(), 14));
+			}
+			CombatAchievementResult redCa = comparison.getCompareCaResult();
+			if (redCa != null)
+			{
+				cmp.setRedCa(redCa, caRewardSprites.sprite(redCa.getReward(), 14));
+			}
+
+			cmp.setBlueMegarares(
+				LookupQueries.getClogItemCount(blueClog, "chambers_of_xeric", 20997),
+				LookupQueries.getClogItemCount(blueClog, "theatre_of_blood", 22486),
+				LookupQueries.getClogItemCount(blueClog, "tombs_of_amascut", 27277),
+				itemManager);
+			cmp.setRedMegarares(
+				LookupQueries.getClogItemCount(redClog, "chambers_of_xeric", 20997),
+				LookupQueries.getClogItemCount(redClog, "theatre_of_blood", 22486),
+				LookupQueries.getClogItemCount(redClog, "tombs_of_amascut", 27277),
+				itemManager);
+
+			if (blueHs != null)
+			{
+				cmp.setBlueRaids(blueHs, blueClog);
+			}
+			cmp.setRedRaids(redHs, redClog);
+
+			tooltipController.keepTooltipOnHover(cmp, parentCell);
+			return cmp;
+		}
+
+		PvmSummaryTooltip tip = new PvmSummaryTooltip();
+		tip.setComponent(owner);
+		HiscoreResult hiscore = lookupSession.getHiscoreResult();
+		ClogResult clog = lookupSession.getClogResult();
+		tip.setData(
+			hiscore != null ? hiscore.getCombatLevel() : 0,
+			LookupQueries.sumBossKills(hiscore),
+			LookupQueries.countBossesWithKc(hiscore),
+			PanelData.BOSSES.length,
+			LookupQueries.getMostKilledBoss(hiscore),
+			LookupQueries.getMostKilledKc(hiscore)
+		);
+		if (clog != null)
+		{
+			tip.setCompletion(
+				LookupQueries.countBossesCompleted(cells.getTooltipDataMap(), cells.getBossLabels().keySet()),
+				LookupQueries.countBossesWithClog(cells.getTooltipDataMap(), cells.getBossLabels().keySet()));
+		}
+		tip.setMegarares(
+			LookupQueries.getClogItemCount(clog, "chambers_of_xeric", 20997),
+			LookupQueries.getClogItemCount(clog, "theatre_of_blood", 22486),
+			LookupQueries.getClogItemCount(clog, "tombs_of_amascut", 27277),
+			itemManager
+		);
+		if (hiscore != null)
+		{
+			tip.setRaids(hiscore, clog);
+		}
+		CombatAchievementResult ca = lookupSession.getCaResult();
+		if (ca != null)
+		{
+			tip.setCombatAchievements(ca, caRewardSprites.sprite(ca.getReward(), 16));
+		}
+		tooltipController.keepTooltipOnHover(tip, parentCell);
+		return tip;
+	}
+
+	JToolTip buildSkills(JLabel owner)
+	{
+		if (comparison.isComparisonMode() && comparison.getCompareHiscoreResult() != null)
+		{
+			CompareSkillSummaryTooltip cmp = new CompareSkillSummaryTooltip();
+			cmp.setComponent(owner);
+			String blueName = primaryName.get() != null ? primaryName.get() : "--";
+			String redName = comparison.getCompareRsn() != null ? comparison.getCompareRsn() : "--";
+			cmp.setData(blueName, lookupSession.getHiscoreResult(),
+				redName, comparison.getCompareHiscoreResult());
+			cmp.setGotr(lookupSession.getClogResult(),
+				comparison.getCompareClogResult(), iconCache.riftsClosedIcon());
+			return cmp;
+		}
+		SkillsTooltip tip = new SkillsTooltip();
+		tip.setComponent(owner);
+		HiscoreResult result = lookupSession.getHiscoreResult();
+		tip.setData(result);
+		int rifts = result != null
+			? result.getActivityScore(PanelData.RIFTS_CLOSED_ACTIVITY) : -1;
+		tip.setGotr(lookupSession.getClogResult(), iconCache.riftsClosedIcon(), rifts);
+		return tip;
+	}
+}
