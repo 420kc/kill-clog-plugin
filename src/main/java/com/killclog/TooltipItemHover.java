@@ -14,6 +14,7 @@ final class TooltipItemHover
 	private List<HitBox> hitBoxes = Collections.emptyList();
 	private int hoveredItemId = -1;
 	private int hoveredSection = -1;
+	private boolean hoveredObtained;
 	private String hoveredItemName;
 	private boolean wikiLinksEnabled = true;
 
@@ -40,6 +41,7 @@ final class TooltipItemHover
 			hoveredItemId = -1;
 			hoveredItemName = null;
 			hoveredSection = -1;
+			hoveredObtained = false;
 			component.repaint();
 		}
 	}
@@ -47,6 +49,11 @@ final class TooltipItemHover
 	String hoveredItemName()
 	{
 		return hoveredItemName;
+	}
+
+	boolean hoveredItemObtained()
+	{
+		return hoveredItemId > 0 && hoveredObtained;
 	}
 
 	private void install()
@@ -93,6 +100,7 @@ final class TooltipItemHover
 		hoveredItemId = nextId;
 		hoveredItemName = hitBox != null ? hitBox.itemName : null;
 		hoveredSection = nextSection;
+		hoveredObtained = hitBox != null && hitBox.obtained;
 		component.repaint();
 	}
 
@@ -120,18 +128,30 @@ final class TooltipItemHover
 		private final int itemId;
 		private final String itemName;
 		private final Rectangle bounds;
+		private final boolean obtained;
 
 		HitBox(int itemId, String itemName, Rectangle bounds)
 		{
-			this(0, itemId, itemName, bounds);
+			this(0, itemId, itemName, bounds, false);
 		}
 
 		HitBox(int section, int itemId, String itemName, Rectangle bounds)
+		{
+			this(section, itemId, itemName, bounds, false);
+		}
+
+		HitBox(int itemId, String itemName, Rectangle bounds, boolean obtained)
+		{
+			this(0, itemId, itemName, bounds, obtained);
+		}
+
+		HitBox(int section, int itemId, String itemName, Rectangle bounds, boolean obtained)
 		{
 			this.section = section;
 			this.itemId = itemId;
 			this.itemName = itemName;
 			this.bounds = bounds;
+			this.obtained = obtained;
 		}
 	}
 }

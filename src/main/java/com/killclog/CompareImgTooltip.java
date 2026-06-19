@@ -1,6 +1,7 @@
 package com.killclog;
 
 import java.awt.AlphaComposite;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -410,7 +411,7 @@ public class CompareImgTooltip extends TitleTooltip
 			int itemId = allItemIds.get(i);
 			boolean obtained = obtainedIds != null && obtainedIds.contains(itemId);
 			nextHitBoxes.add(new TooltipItemHover.HitBox(section, itemId, itemNameAt(i),
-				new Rectangle(x, sy, SPRITE_SIZE, SPRITE_SIZE)));
+				new Rectangle(x, sy, SPRITE_SIZE, SPRITE_SIZE), obtained));
 
 			BufferedImage sprite = itemSprites.spriteAt(i);
 			if (sprite != null)
@@ -434,6 +435,12 @@ public class CompareImgTooltip extends TitleTooltip
 	protected String getHeaderRightText()
 	{
 		return itemHover.hoveredItemName();
+	}
+
+	@Override
+	protected Color getHeaderRightColor()
+	{
+		return itemHover.hoveredItemObtained() ? CLOG_GREEN : CLOG_RED;
 	}
 
 	private String itemNameAt(int index)

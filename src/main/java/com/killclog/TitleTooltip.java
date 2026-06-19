@@ -219,6 +219,12 @@ public abstract class TitleTooltip extends NativeTooltip
 		return null;
 	}
 
+	/** Color for the optional right-side header text. */
+	protected Color getHeaderRightColor()
+	{
+		return OSRS_ORANGE;
+	}
+
 	protected void paintHeaderRightText(Graphics2D g2, FontMetrics fm, int w, int baseline,
 		int reservedLeftWidth)
 	{
@@ -241,7 +247,7 @@ public abstract class TitleTooltip extends NativeTooltip
 			return;
 		}
 
-		g2.setColor(OSRS_ORANGE);
+		g2.setColor(getHeaderRightColor());
 		g2.drawString(label, w - inset - fm.stringWidth(label), baseline);
 	}
 

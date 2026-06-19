@@ -224,7 +224,7 @@ public class ImgTooltip extends TitleTooltip
 				boolean obtained = obtainedIds.contains(itemId);
 				int count = obtained ? obtainedCounts.getOrDefault(itemId, 1) : 1;
 				nextHitBoxes.add(new TooltipItemHover.HitBox(itemId, itemNameAt(i),
-					new Rectangle(x, y, spriteSize, spriteSize)));
+					new Rectangle(x, y, spriteSize, spriteSize), obtained));
 
 				BufferedImage sprite = itemSprites.spriteAt(i);
 				if (sprite != null)
@@ -258,6 +258,12 @@ public class ImgTooltip extends TitleTooltip
 	protected String getHeaderRightText()
 	{
 		return itemHover.hoveredItemName();
+	}
+
+	@Override
+	protected Color getHeaderRightColor()
+	{
+		return itemHover.hoveredItemObtained() ? CLOG_GREEN : CLOG_RED;
 	}
 
 	private String itemNameAt(int index)
