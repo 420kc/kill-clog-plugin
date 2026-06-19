@@ -1,6 +1,5 @@
 package com.killclog;
 
-import java.awt.Cursor;
 import java.awt.Rectangle;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -27,10 +26,6 @@ final class TooltipItemHover
 	void setWikiLinksEnabled(boolean wikiLinksEnabled)
 	{
 		this.wikiLinksEnabled = wikiLinksEnabled;
-		if (!wikiLinksEnabled)
-		{
-			component.setCursor(Cursor.getDefaultCursor());
-		}
 	}
 
 	void setHitBoxes(List<HitBox> hitBoxes)
@@ -45,7 +40,6 @@ final class TooltipItemHover
 			hoveredItemId = -1;
 			hoveredItemName = null;
 			hoveredSection = -1;
-			component.setCursor(Cursor.getDefaultCursor());
 			component.repaint();
 		}
 	}
@@ -74,6 +68,7 @@ final class TooltipItemHover
 				if (wikiLinksEnabled && e.getButton() == MouseEvent.BUTTON1 && hoveredItemId > 0)
 				{
 					TooltipItemLink.openWiki(hoveredItemId);
+					closeTooltip();
 					e.consume();
 				}
 			}
@@ -98,9 +93,13 @@ final class TooltipItemHover
 		hoveredItemId = nextId;
 		hoveredItemName = hitBox != null ? hitBox.itemName : null;
 		hoveredSection = nextSection;
-		component.setCursor(Cursor.getPredefinedCursor(hitBox != null && wikiLinksEnabled
-			? Cursor.HAND_CURSOR : Cursor.DEFAULT_CURSOR));
 		component.repaint();
+	}
+
+	private void closeTooltip()
+	{
+		clear();
+		component.setVisible(false);
 	}
 
 	private HitBox findHitBox(int mx, int my)
