@@ -1,16 +1,12 @@
 package com.killclog;
 
-import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
-import javax.swing.SwingUtilities;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
-import net.runelite.client.util.AsyncBufferedImage;
-import net.runelite.client.util.ImageUtil;
 
 /**
  * PvM summary tooltip on the combat level cell.
@@ -25,13 +21,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private static final int SUBHEADER_HEIGHT = 16;
 	private static final int CA_ROW_HEIGHT = 18;
 	private static final int CA_REWARD_GAP = 3;
-
-	private static final Color QTY_COLOR = new Color(255, 255, 0);
-	private static final Color QTY_SHADOW = new Color(0, 0, 0);
-
-	private static final int TBOW_ID = 20997;
-	private static final int SCYTHE_ID = 22486;
-	private static final int SHADOW_ID = 27277;
 
 	private int combatLevel;
 	private int totalKills;
@@ -89,13 +78,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 	private String tierDisplayName()
 	{
-		CombatAchievementTier tier = caResult != null ? caResult.getTier() : null;
-		if (tier == null)
-		{
-			return "None";
-		}
-		String name = tier.name();
-		return name.charAt(0) + name.substring(1).toLowerCase();
+		return tierDisplayName(caResult);
 	}
 
 	public void setMegarares(int tbowCount, int scytheCount,
@@ -105,22 +88,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		weaponCounts[1] = scytheCount;
 		weaponCounts[2] = shadowCount;
 
-		int[] ids = {TBOW_ID, SCYTHE_ID, SHADOW_ID};
-		for (int i = 0; i < 3; i++)
-		{
-			BufferedImage img = itemManager.getImage(ids[i], 1, false);
-			weaponSprites[i] = ImageUtil.resizeImage(img, WEAPON_SIZE, WEAPON_SIZE);
-			if (img instanceof AsyncBufferedImage)
-			{
-				final int idx = i;
-				((AsyncBufferedImage) img).onLoaded(() ->
-					SwingUtilities.invokeLater(() ->
-					{
-						weaponSprites[idx] = ImageUtil.resizeImage(img, WEAPON_SIZE, WEAPON_SIZE);
-						repaint();
-					}));
-			}
-		}
+		loadItemSprites(MEGARARE_ITEM_IDS, WEAPON_SIZE, weaponSprites, itemManager);
 	}
 
 	public void setRaids(HiscoreResult hiscoreResult, ClogResult clogResult)
@@ -206,7 +174,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		}
 
 		int contentWidth = Math.max(textWidth, spriteRowWidth);
-		int separatorHeight = SEPARATOR_PAD + 1 + SEPARATOR_PAD;
+		int separatorHeight = separatorHeight(SEPARATOR_PAD);
 		int caHeight = caResult != null ? CA_ROW_HEIGHT : 0;
 		int contentHeight = statsHeight + caHeight + mostKilledHeight
 			+ separatorHeight + raidsHeight
@@ -278,10 +246,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		}
 
 		// Separator: stats to raids.
-		y += SEPARATOR_PAD;
-		g2.setColor(SEPARATOR_COLOR);
-		g2.drawLine(inset, y, w - inset - 1, y);
-		y += 1 + SEPARATOR_PAD;
+		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
 
 		// "Raids" subheader.
 		g2.setFont(FontManager.getRunescapeBoldFont());
@@ -301,10 +266,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		y += LINE_HEIGHT;
 
 		// Separator: raids to megarares.
-		y += SEPARATOR_PAD;
-		g2.setColor(SEPARATOR_COLOR);
-		g2.drawLine(inset, y, w - inset - 1, y);
-		y += 1 + SEPARATOR_PAD;
+		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
 
 		// "Mega Rares" subheader.
 		g2.setFont(FontManager.getRunescapeBoldFont());
@@ -316,32 +278,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 		// Center the three weapon sprites.
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		fm = g2.getFontMetrics();
-		int spriteRowWidth = 3 * WEAPON_SIZE + 2 * WEAPON_PAD;
-		int spriteStartX = inset + (w - 2 * inset - spriteRowWidth) / 2;
-		for (int i = 0; i < 3; i++)
-		{
-			int sx = spriteStartX + i * (WEAPON_SIZE + WEAPON_PAD);
-			BufferedImage sprite = weaponSprites[i];
-			if (sprite != null)
-			{
-				boolean obtained = weaponCounts[i] > 0;
-				g2.setComposite(obtained
-					? AlphaComposite.SrcOver
-					: AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
-				g2.drawImage(sprite, sx, y, null);
-				g2.setComposite(AlphaComposite.SrcOver);
-
-				// Quantity overlay matches clog tooltips.
-				if (obtained && weaponCounts[i] > 1)
-				{
-					String qtyText = String.valueOf(weaponCounts[i]);
-					g2.setColor(QTY_SHADOW);
-					g2.drawString(qtyText, sx + 1, y + fm.getAscent() + 1);
-					g2.setColor(QTY_COLOR);
-					g2.drawString(qtyText, sx, y + fm.getAscent());
-				}
-			}
-		}
+		paintQuantitySpriteRow(g2, fm, inset, y, w - 2 * inset,
+			weaponSprites, weaponCounts, WEAPON_SIZE, WEAPON_PAD);
 	}
 
 	private void paintRaidLine(Graphics2D g2, FontMetrics fm, int x, int y,
@@ -398,18 +336,4 @@ public class PvmSummaryTooltip extends TitleTooltip
 		return w;
 	}
 
-	private void drawLabelValue(Graphics2D g2, FontMetrics fm, int x, int y,
-		String label, String value)
-	{
-		drawLabelValue(g2, fm, x, y, label, value, Color.WHITE);
-	}
-
-	private void drawLabelValue(Graphics2D g2, FontMetrics fm, int x, int y,
-		String label, String value, Color valueColor)
-	{
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString(label, x, y);
-		g2.setColor(valueColor);
-		g2.drawString(value, x + fm.stringWidth(label), y);
-	}
 }

@@ -1,12 +1,19 @@
 package com.killclog;
 
+import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Font;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.image.BufferedImage;
+import java.util.List;
 import java.util.function.IntFunction;
+import javax.swing.SwingUtilities;
+import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
+import net.runelite.client.util.AsyncBufferedImage;
+import net.runelite.client.util.ImageUtil;
 
 /**
  * Intermediate tooltip with a titled header zone: bold title line,
@@ -29,6 +36,8 @@ public abstract class TitleTooltip extends NativeTooltip
 	protected static final Color COMPARE_BLUE = new Color(91, 164, 207);
 	protected static final Color COMPARE_RED = new Color(224, 86, 86);
 	protected static final String CHROME_SEPARATOR = " | ";
+	protected static final int[] MEGARARE_ITEM_IDS = {20997, 22486, 27277};
+	private static final Color QTY_SHADOW = new Color(0, 0, 0);
 
 	private String title;
 	private String subtitleLabel;
@@ -163,6 +172,145 @@ public abstract class TitleTooltip extends NativeTooltip
 	protected static void drawRightAligned(Graphics2D g2, FontMetrics fm, String text, int rightX, int y)
 	{
 		g2.drawString(text, rightX - fm.stringWidth(text), y);
+	}
+
+	protected static String capitalize(String text)
+	{
+		if (text == null || text.isEmpty())
+		{
+			return "";
+		}
+		return text.substring(0, 1).toUpperCase() + text.substring(1);
+	}
+
+	protected static String tierDisplayName(CombatAchievementResult ca)
+	{
+		CombatAchievementTier tier = ca != null ? ca.getTier() : null;
+		return tier != null ? capitalize(tier.name().toLowerCase()) : "None";
+	}
+
+	protected static int separatorHeight(int pad)
+	{
+		return pad + 1 + pad;
+	}
+
+	protected int paintSeparator(Graphics2D g2, int w, int y, int pad)
+	{
+		int inset = getInset();
+		y += pad;
+		g2.setColor(SEPARATOR_COLOR);
+		g2.drawLine(inset, y, w - inset - 1, y);
+		return y + 1 + pad;
+	}
+
+	protected void drawLabelValue(Graphics2D g2, FontMetrics fm, int x, int y,
+		String label, String value)
+	{
+		drawLabelValue(g2, fm, x, y, label, value, Color.WHITE);
+	}
+
+	protected void drawLabelValue(Graphics2D g2, FontMetrics fm, int x, int y,
+		String label, String value, Color valueColor)
+	{
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString(label, x, y);
+		g2.setColor(valueColor);
+		g2.drawString(value, x + fm.stringWidth(label), y);
+	}
+
+	protected void loadItemSprites(int[] itemIds, int size, BufferedImage[] sprites,
+		ItemManager itemManager)
+	{
+		for (int i = 0; i < itemIds.length && i < sprites.length; i++)
+		{
+			loadItemSprite(itemIds[i], size, sprites, i, itemManager);
+		}
+	}
+
+	protected void loadItemSprites(List<Integer> itemIds, int count, int size,
+		BufferedImage[] sprites, ItemManager itemManager)
+	{
+		for (int i = 0; i < count && i < itemIds.size() && i < sprites.length; i++)
+		{
+			loadItemSprite(itemIds.get(i), size, sprites, i, itemManager);
+		}
+	}
+
+	protected void loadClogItemSprites(List<ClogResult.ClogItem> items, int count, int size,
+		BufferedImage[] sprites, ItemManager itemManager)
+	{
+		for (int i = 0; i < count && i < items.size() && i < sprites.length; i++)
+		{
+			loadItemSprite(items.get(i).getId(), size, sprites, i, itemManager);
+		}
+	}
+
+	private void loadItemSprite(int itemId, int size, BufferedImage[] sprites, int index,
+		ItemManager itemManager)
+	{
+		BufferedImage img = itemManager.getImage(itemId, 1, false);
+		sprites[index] = ImageUtil.resizeImage(img, size, size);
+		if (img instanceof AsyncBufferedImage)
+		{
+			((AsyncBufferedImage) img).onLoaded(() -> SwingUtilities.invokeLater(() ->
+			{
+				BufferedImage loaded = itemManager.getImage(itemId, 1, false);
+				sprites[index] = ImageUtil.resizeImage(loaded, size, size);
+				repaint();
+			}));
+		}
+	}
+
+	protected void paintSpriteRow(Graphics2D g2, int x, int y, int colWidth,
+		BufferedImage[] sprites, int count, int size, int pad)
+	{
+		if (sprites == null || count == 0)
+		{
+			return;
+		}
+		int spriteRowWidth = count * size + (count - 1) * pad;
+		int startX = x + (colWidth - spriteRowWidth) / 2;
+		for (int i = 0; i < count && i < sprites.length; i++)
+		{
+			int sx = startX + i * (size + pad);
+			if (sprites[i] != null)
+			{
+				g2.drawImage(sprites[i], sx, y, null);
+			}
+		}
+	}
+
+	protected void paintQuantitySpriteRow(Graphics2D g2, FontMetrics fm, int x, int y,
+		int colWidth, BufferedImage[] sprites, int[] counts, int size, int pad)
+	{
+		int count = Math.min(sprites.length, counts.length);
+		int spriteRowWidth = count * size + (count - 1) * pad;
+		int startX = x + (colWidth - spriteRowWidth) / 2;
+		for (int i = 0; i < count; i++)
+		{
+			int sx = startX + i * (size + pad);
+			BufferedImage sprite = sprites[i];
+			if (sprite == null)
+			{
+				continue;
+			}
+
+			boolean obtained = counts[i] > 0;
+			g2.setComposite(obtained
+				? AlphaComposite.SrcOver
+				: AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
+			g2.drawImage(sprite, sx, y, null);
+			g2.setComposite(AlphaComposite.SrcOver);
+
+			if (obtained && counts[i] > 1)
+			{
+				String qtyText = String.valueOf(counts[i]);
+				g2.setColor(QTY_SHADOW);
+				g2.drawString(qtyText, sx + 1, y + fm.getAscent() + 1);
+				g2.setColor(CLOG_YELLOW);
+				g2.drawString(qtyText, sx, y + fm.getAscent());
+			}
+		}
 	}
 
 	/** Faded version of a color for no-data cells, so an empty value reads quiet, not absent. */

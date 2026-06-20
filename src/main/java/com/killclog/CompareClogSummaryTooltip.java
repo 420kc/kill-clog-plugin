@@ -7,11 +7,8 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.Map;
-import javax.swing.SwingUtilities;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
-import net.runelite.client.util.AsyncBufferedImage;
-import net.runelite.client.util.ImageUtil;
 
 /**
  * Stacked clog comparison tooltip. Blue block on top, red block below,
@@ -135,7 +132,7 @@ public class CompareClogSummaryTooltip extends TitleTooltip
 			blueSync, blueRecentCount);
 		int redH = measureBlockHeight(fm, redTierRange, redProgress,
 			redSync, redRecentCount);
-		int totalHeight = blueH + SEPARATOR_PAD + 1 + SEPARATOR_PAD + redH;
+		int totalHeight = blueH + separatorHeight(SEPARATOR_PAD) + redH;
 
 		return new Dimension(Math.max(blockWidth, MIN_BLOCK_WIDTH), totalHeight);
 	}
@@ -258,10 +255,7 @@ public class CompareClogSummaryTooltip extends TitleTooltip
 			blueRecentSprites, blueRecentCount);
 
 		// Separator.
-		y += SEPARATOR_PAD;
-		g2.setColor(SEPARATOR_COLOR);
-		g2.drawLine(inset, y, w - inset - 1, y);
-		y += 1 + SEPARATOR_PAD;
+		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
 
 		// Red block.
 		g2.setFont(FontManager.getRunescapeSmallFont());
@@ -345,7 +339,8 @@ public class CompareClogSummaryTooltip extends TitleTooltip
 			y += LINE_HEIGHT;
 
 			int recentW = contentWidth - (valueX - inset);
-			paintRecentSprites(g2, valueX, y, recentW, recentSprites, recentCount);
+			paintSpriteRow(g2, valueX, y, recentW,
+				recentSprites, recentCount, RECENT_SIZE, RECENT_PAD);
 			y += RECENT_SIZE;
 		}
 
@@ -396,22 +391,6 @@ public class CompareClogSummaryTooltip extends TitleTooltip
 		g2.drawString(progress, cx, y + fm.getAscent());
 		cx += fm.stringWidth(progress);
 		g2.drawString(" more", cx, y + fm.getAscent());
-	}
-
-	private void paintRecentSprites(Graphics2D g2, int x, int y, int colWidth,
-		BufferedImage[] sprites, int count)
-	{
-		if (sprites == null || count == 0) return;
-		int spriteRowW = count * RECENT_SIZE + (count - 1) * RECENT_PAD;
-		int startX = x + (colWidth - spriteRowW) / 2;
-		for (int i = 0; i < count; i++)
-		{
-			int sx = startX + i * (RECENT_SIZE + RECENT_PAD);
-			if (sprites[i] != null)
-			{
-				g2.drawImage(sprites[i], sx, y, null);
-			}
-		}
 	}
 
 	// Data helpers.
@@ -498,28 +477,7 @@ public class CompareClogSummaryTooltip extends TitleTooltip
 	{
 		if (count == 0) return null;
 		BufferedImage[] sprites = new BufferedImage[count];
-		for (int i = 0; i < count; i++)
-		{
-			BufferedImage img = itemManager.getImage(items.get(i).getId(), 1, false);
-			sprites[i] = ImageUtil.resizeImage(img, RECENT_SIZE, RECENT_SIZE);
-			if (img instanceof AsyncBufferedImage)
-			{
-				final int idx = i;
-				((AsyncBufferedImage) img).onLoaded(() ->
-				{
-					sprites[idx] = ImageUtil.resizeImage(
-						itemManager.getImage(items.get(idx).getId(), 1, false),
-						RECENT_SIZE, RECENT_SIZE);
-					SwingUtilities.invokeLater(this::repaint);
-				});
-			}
-		}
+		loadClogItemSprites(items, count, RECENT_SIZE, sprites, itemManager);
 		return sprites;
-	}
-
-	private static String capitalize(String s)
-	{
-		if (s == null || s.isEmpty()) return s;
-		return s.substring(0, 1).toUpperCase() + s.substring(1);
 	}
 }

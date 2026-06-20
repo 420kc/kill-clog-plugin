@@ -1,17 +1,13 @@
 package com.killclog;
 
-import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
-import javax.swing.SwingUtilities;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
-import net.runelite.client.util.AsyncBufferedImage;
-import net.runelite.client.util.ImageUtil;
 
 /**
  * 3-column PvM comparison tooltip. Left column: labels (orange).
@@ -27,13 +23,6 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 	private static final int CA_ROW_HEIGHT = 16;
 	private static final int CA_REWARD_GAP = 3;
 	private static final int HEADER_GAP = 4;
-
-	private static final Color QTY_COLOR = new Color(255, 255, 0);
-	private static final Color QTY_SHADOW = new Color(0, 0, 0);
-
-	private static final int TBOW_ID = 20997;
-	private static final int SCYTHE_ID = 22486;
-	private static final int SHADOW_ID = 27277;
 
 	// Blue player values.
 	private String blueName;
@@ -253,13 +242,13 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		h += LINE_HEIGHT;
 
 		// Separator.
-		h += SEPARATOR_PAD + 1 + SEPARATOR_PAD;
+		h += separatorHeight(SEPARATOR_PAD);
 
 		// Raids.
 		h += LINE_HEIGHT + LINE_HEIGHT * 3;
 
 		// Separator.
-		h += SEPARATOR_PAD + 1 + SEPARATOR_PAD;
+		h += separatorHeight(SEPARATOR_PAD);
 
 		// Mega rares.
 		h += LINE_HEIGHT + WEAPON_PAD + WEAPON_SIZE;
@@ -345,10 +334,7 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		y += LINE_HEIGHT;
 
 		// Separator.
-		y += SEPARATOR_PAD;
-		g2.setColor(SEPARATOR_COLOR);
-		g2.drawLine(inset, y, w - inset - 1, y);
-		y += 1 + SEPARATOR_PAD;
+		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
 
 		// Raids.
 		g2.setFont(FontManager.getRunescapeBoldFont());
@@ -373,10 +359,7 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		y += LINE_HEIGHT;
 
 		// Separator.
-		y += SEPARATOR_PAD;
-		g2.setColor(SEPARATOR_COLOR);
-		g2.drawLine(inset, y, w - inset - 1, y);
-		y += 1 + SEPARATOR_PAD;
+		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
 
 		// Mega rares.
 		g2.setFont(FontManager.getRunescapeBoldFont());
@@ -387,8 +370,10 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		// Weapon sprites.
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		fm = g2.getFontMetrics();
-		paintWeaponRow(g2, fm, blueX, y, valueW, blueWeaponSprites, blueWeaponCounts);
-		paintWeaponRow(g2, fm, redX, y, valueW, redWeaponSprites, redWeaponCounts);
+		paintQuantitySpriteRow(g2, fm, blueX, y, valueW,
+			blueWeaponSprites, blueWeaponCounts, WEAPON_SIZE, WEAPON_PAD);
+		paintQuantitySpriteRow(g2, fm, redX, y, valueW,
+			redWeaponSprites, redWeaponCounts, WEAPON_SIZE, WEAPON_PAD);
 	}
 
 	// Row painters.
@@ -446,38 +431,6 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		}
 	}
 
-	private void paintWeaponRow(Graphics2D g2, FontMetrics fm,
-		int x, int y, int colWidth,
-		BufferedImage[] sprites, int[] counts)
-	{
-		int spriteRowWidth = 3 * WEAPON_SIZE + 2 * WEAPON_PAD;
-		int startX = x + (colWidth - spriteRowWidth) / 2;
-
-		for (int i = 0; i < 3; i++)
-		{
-			int sx = startX + i * (WEAPON_SIZE + WEAPON_PAD);
-			BufferedImage sprite = sprites[i];
-			if (sprite != null)
-			{
-				boolean obtained = counts[i] > 0;
-				g2.setComposite(obtained
-					? AlphaComposite.SrcOver
-					: AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
-				g2.drawImage(sprite, sx, y, null);
-				g2.setComposite(AlphaComposite.SrcOver);
-
-				if (obtained && counts[i] > 1)
-				{
-					String qtyText = String.valueOf(counts[i]);
-					g2.setColor(QTY_SHADOW);
-					g2.drawString(qtyText, sx + 1, y + fm.getAscent() + 1);
-					g2.setColor(QTY_COLOR);
-					g2.drawString(qtyText, sx, y + fm.getAscent());
-				}
-			}
-		}
-	}
-
 	// Data helpers.
 
 	private static String mostKilledText(String name, int kc)
@@ -523,13 +476,7 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 
 	private static String tierName(CombatAchievementResult ca)
 	{
-		CombatAchievementTier tier = ca != null ? ca.getTier() : null;
-		if (tier == null)
-		{
-			return "None";
-		}
-		String name = tier.name();
-		return name.charAt(0) + name.substring(1).toLowerCase();
+		return tierDisplayName(ca);
 	}
 
 	private static int raidKc(HiscoreResult hs, String normal, String hard)
@@ -592,22 +539,7 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		counts[1] = scythe;
 		counts[2] = shadow;
 
-		int[] ids = {TBOW_ID, SCYTHE_ID, SHADOW_ID};
-		for (int i = 0; i < 3; i++)
-		{
-			BufferedImage img = itemManager.getImage(ids[i], 1, false);
-			sprites[i] = ImageUtil.resizeImage(img, WEAPON_SIZE, WEAPON_SIZE);
-			if (img instanceof AsyncBufferedImage)
-			{
-				final int idx = i;
-				((AsyncBufferedImage) img).onLoaded(() ->
-				{
-					sprites[idx] = ImageUtil.resizeImage(
-						itemManager.getImage(ids[idx], 1, false), WEAPON_SIZE, WEAPON_SIZE);
-					SwingUtilities.invokeLater(this::repaint);
-				});
-			}
-		}
+		loadItemSprites(MEGARARE_ITEM_IDS, WEAPON_SIZE, sprites, itemManager);
 	}
 
 	// Collection-log counts use the native OSRS stoplight colors from TitleTooltip.

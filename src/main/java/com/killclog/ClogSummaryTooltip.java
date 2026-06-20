@@ -7,11 +7,8 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.Map;
-import javax.swing.SwingUtilities;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
-import net.runelite.client.util.AsyncBufferedImage;
-import net.runelite.client.util.ImageUtil;
 
 /**
  * Clog summary tooltip on the summary-bar clog cell.
@@ -127,21 +124,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 		}
 
 		recentSprites = new BufferedImage[recentCount];
-		for (int i = 0; i < recentCount; i++)
-		{
-			BufferedImage img = itemManager.getImage(recentItems.get(i).getId(), 1, false);
-			recentSprites[i] = ImageUtil.resizeImage(img, RECENT_SIZE, RECENT_SIZE);
-			if (img instanceof AsyncBufferedImage)
-			{
-				final int idx = i;
-				((AsyncBufferedImage) img).onLoaded(() ->
-					SwingUtilities.invokeLater(() ->
-					{
-						recentSprites[idx] = ImageUtil.resizeImage(img, RECENT_SIZE, RECENT_SIZE);
-						repaint();
-					}));
-			}
-		}
+		loadClogItemSprites(recentItems, recentCount, RECENT_SIZE, recentSprites, itemManager);
 	}
 
 	@Override
@@ -189,7 +172,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 		if (recentCount > 0)
 		{
 			FontMetrics bfm = getFontMetrics(FontManager.getRunescapeBoldFont());
-			int separatorHeight = SEPARATOR_PAD + 1 + SEPARATOR_PAD;
+			int separatorHeight = separatorHeight(SEPARATOR_PAD);
 			contentHeight += separatorHeight + SUBHEADER_HEIGHT + RECENT_SIZE;
 
 			int spriteRowWidth = recentCount * RECENT_SIZE
@@ -253,10 +236,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 		if (recentCount > 0 && recentSprites != null)
 		{
 			// Separator.
-			y += SEPARATOR_PAD;
-			g2.setColor(SEPARATOR_COLOR);
-			g2.drawLine(inset, y, w - inset - 1, y);
-			y += 1 + SEPARATOR_PAD;
+			y = paintSeparator(g2, w, y, SEPARATOR_PAD);
 
 			// "Recent" subheader.
 			g2.setFont(FontManager.getRunescapeBoldFont());
@@ -266,17 +246,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 			y += SUBHEADER_HEIGHT;
 
 			// Center the recent item sprites.
-			int spriteRowWidth = recentCount * RECENT_SIZE
-				+ (recentCount - 1) * RECENT_PAD;
-			int spriteStartX = inset + (w - 2 * inset - spriteRowWidth) / 2;
-			for (int i = 0; i < recentCount; i++)
-			{
-				int sx = spriteStartX + i * (RECENT_SIZE + RECENT_PAD);
-				if (recentSprites[i] != null)
-				{
-					g2.drawImage(recentSprites[i], sx, y, null);
-				}
-			}
+			paintSpriteRow(g2, inset, y, w - 2 * inset,
+				recentSprites, recentCount, RECENT_SIZE, RECENT_PAD);
 		}
 	}
 
@@ -308,10 +279,5 @@ public class ClogSummaryTooltip extends TitleTooltip
 			g2.setColor(OSRS_ORANGE);
 			g2.drawString(suffix, x, textY);
 		}
-	}
-
-	private static String capitalize(String s)
-	{
-		return s == null || s.isEmpty() ? "" : s.substring(0, 1).toUpperCase() + s.substring(1);
 	}
 }
