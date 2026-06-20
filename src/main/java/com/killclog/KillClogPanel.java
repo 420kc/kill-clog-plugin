@@ -769,6 +769,7 @@ public class KillClogPanel extends PluginPanel
 		totalLvlCell.setToolTipText(null);
 		if (cells.getPvpSummaryCell() != null)
 		{
+			cells.getPvpSummaryCell().setText(ClogHelper.pad("--"));
 			cells.getPvpSummaryCell().setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		}
 
