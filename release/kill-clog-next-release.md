@@ -1,10 +1,10 @@
 # Kill Clog Next Release
 
-Target version: `1.4.3`
+Target version: `1.4.4`
 
 Current branch: `master`
 
-This release is the post-1.4.2 line. It should include the latest tooltip,
+This release is the post-1.4.3 line. It should include the latest tooltip,
 comparison, chat-command, and no-data polish already on `master`, while keeping
 the client-to-Kill-Clog-server sync prototype out.
 
@@ -12,6 +12,8 @@ the client-to-Kill-Clog-server sync prototype out.
 
 - Clickable collection-log item sprites in single and comparison image tooltips.
   Hovering an item shows its name; clicking opens the OSRS Wiki item page.
+- Tooltip item names follow the same completion convention as the item grids:
+  obtained names are green, unobtained names are red.
 - A config toggle for Wiki item links, default on.
 - A config toggle for autosync chat messages.
 - Comparison total labels use the same hover/underline affordance as the player
