@@ -14,6 +14,8 @@ the client-to-Kill-Clog-server sync prototype out.
   Hovering an item shows its name; clicking opens the OSRS Wiki item page.
 - Tooltip item names follow the same completion convention as the item grids:
   obtained names are green, unobtained names are red.
+- Starting a new lookup clears the PvP summary cell immediately, so a failed or
+  pending search cannot keep stale PvP data from the previous player.
 - A config toggle for Wiki item links, default on.
 - A config toggle for autosync chat messages.
 - Comparison total labels use the same hover/underline affordance as the player
