@@ -182,8 +182,8 @@ public interface KillClogConfig extends Config
 
 	@ConfigItem(
 		keyName = "wikiItemLinks",
-		name = "Wiki Item Links",
-		description = "Click item sprites in collection-log tooltips to open the OSRS Wiki",
+		name = "Wiki Links",
+		description = "Click boss names and item sprites in collection-log tooltips to open the OSRS Wiki",
 		position = 7
 	)
 	default boolean wikiItemLinks()

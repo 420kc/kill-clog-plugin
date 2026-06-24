@@ -61,6 +61,7 @@ public class ImgTooltip extends TitleTooltip
 
 	public void setWikiLinksEnabled(boolean wikiLinksEnabled)
 	{
+		super.setWikiLinksEnabled(wikiLinksEnabled);
 		itemHover.setWikiLinksEnabled(wikiLinksEnabled);
 	}
 

@@ -105,6 +105,21 @@ final class PanelData
 		NAME_OVERRIDES.put("Calvar'ion", "Cal'varion");
 	}
 
+	// Hiscore display name -> OSRS Wiki page where the page title differs.
+	private static final Map<HiscoreSkill, String> BOSS_WIKI_PAGES = new LinkedHashMap<>();
+	static
+	{
+		BOSS_WIKI_PAGES.put(HiscoreSkill.BARROWS_CHESTS, "Barrows");
+		BOSS_WIKI_PAGES.put(HiscoreSkill.MIMIC, "The Mimic");
+		BOSS_WIKI_PAGES.put(HiscoreSkill.NIGHTMARE, "The Nightmare");
+	}
+
+	static String bossWikiPage(HiscoreSkill boss)
+	{
+		String page = BOSS_WIKI_PAGES.get(boss);
+		return page != null ? page : boss.getName();
+	}
+
 	static final HiscoreSkill[] CLUE_TIERS = {
 		HiscoreSkill.CLUE_SCROLL_BEGINNER, HiscoreSkill.CLUE_SCROLL_EASY,
 		HiscoreSkill.CLUE_SCROLL_MEDIUM, HiscoreSkill.CLUE_SCROLL_HARD,

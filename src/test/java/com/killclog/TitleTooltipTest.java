@@ -41,6 +41,23 @@ public class TitleTooltipTest
 	}
 
 	@Test
+	public void wikiPageUrlEncodesBossPageNames()
+	{
+		assertEquals("https://oldschool.runescape.wiki/w/Abyssal_Sire",
+			TooltipItemLink.wikiPageUrl("Abyssal Sire"));
+		assertEquals("https://oldschool.runescape.wiki/w/Phosani%27s_Nightmare",
+			TooltipItemLink.wikiPageUrl("Phosani's Nightmare"));
+	}
+
+	@Test
+	public void bossWikiPageUsesCanonicalOverrides()
+	{
+		assertEquals("Barrows", PanelData.bossWikiPage(net.runelite.client.hiscore.HiscoreSkill.BARROWS_CHESTS));
+		assertEquals("The Mimic", PanelData.bossWikiPage(net.runelite.client.hiscore.HiscoreSkill.MIMIC));
+		assertEquals("Abyssal Sire", PanelData.bossWikiPage(net.runelite.client.hiscore.HiscoreSkill.ABYSSAL_SIRE));
+	}
+
+	@Test
 	public void standardSpriteTooltipsShrinkShortCatalogsToFourColumns()
 	{
 		ImgTooltip shortCatalog = spriteTooltip(2);

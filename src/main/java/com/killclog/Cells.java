@@ -585,14 +585,23 @@ public class Cells
 
 	private JToolTip buildBossTooltip(JLabel owner, HiscoreSkill boss)
 	{
+		JToolTip tip;
 		if (comparison.isComparisonMode())
 		{
-			return comparison.makeSpriteTooltip(owner,
+			tip = comparison.makeSpriteTooltip(owner,
 				tooltipDataMap.get(boss),
 				comparison.getCompareTooltipData(boss),
 				boss.getName());
 		}
-		return buildSingleSpriteTooltip(owner, tooltipDataMap.get(boss), 5, boss.getName());
+		else
+		{
+			tip = buildSingleSpriteTooltip(owner, tooltipDataMap.get(boss), 5, boss.getName());
+		}
+		if (tip instanceof TitleTooltip)
+		{
+			((TitleTooltip) tip).setTitleWikiPage(PanelData.bossWikiPage(boss));
+		}
+		return tip;
 	}
 
 	private JToolTip buildClueTierTooltip(JLabel owner, HiscoreSkill tier, String displayName, boolean compact)

@@ -6,6 +6,10 @@ import java.awt.Font;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.function.IntFunction;
@@ -47,11 +51,36 @@ public abstract class TitleTooltip extends NativeTooltip
 	private String infoValue;
 	private Color infoColor;
 	private String rankText;
+	private String titleWikiPage;
+	private boolean wikiLinksEnabled = true;
+	private boolean titleHovered;
+
+	protected TitleTooltip()
+	{
+		installTitleLinkHandlers();
+	}
 
 	/** Set the bold orange title line (always required). */
 	public void setTitle(String title)
 	{
 		this.title = title;
+	}
+
+	/** Optional OSRS Wiki page opened when the title is clicked. */
+	public void setTitleWikiPage(String titleWikiPage)
+	{
+		this.titleWikiPage = titleWikiPage;
+		titleHovered = false;
+	}
+
+	public void setWikiLinksEnabled(boolean wikiLinksEnabled)
+	{
+		this.wikiLinksEnabled = wikiLinksEnabled;
+		if (!wikiLinksEnabled && titleHovered)
+		{
+			titleHovered = false;
+			repaint();
+		}
 	}
 
 	/**
@@ -515,7 +544,7 @@ public abstract class TitleTooltip extends NativeTooltip
 		g2.setFont(getTitleFont());
 		FontMetrics nfm = g2.getFontMetrics();
 		int lineY = inset + nfm.getAscent();
-		g2.setColor(OSRS_ORANGE);
+		g2.setColor(titleHovered && titleLinkActive() ? CLOG_YELLOW : OSRS_ORANGE);
 		g2.drawString(title, inset, lineY);
 		int activeLineWidth = nfm.stringWidth(title);
 
@@ -569,5 +598,64 @@ public abstract class TitleTooltip extends NativeTooltip
 		g2.drawLine(inset, sepY, w - inset - 1, sepY);
 
 		return sepY + 1 + SEPARATOR_GAP;
+	}
+
+	private void installTitleLinkHandlers()
+	{
+		addMouseMotionListener(new MouseMotionAdapter()
+		{
+			@Override
+			public void mouseMoved(MouseEvent e)
+			{
+				updateTitleHover(e.getX(), e.getY());
+			}
+		});
+		addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mousePressed(MouseEvent e)
+			{
+				if (e.getButton() == MouseEvent.BUTTON1 && titleLinkActive()
+					&& titleBounds().contains(e.getX(), e.getY()))
+				{
+					TooltipItemLink.openWikiPage(titleWikiPage);
+					titleHovered = false;
+					setVisible(false);
+					e.consume();
+				}
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e)
+			{
+				if (titleHovered)
+				{
+					titleHovered = false;
+					repaint();
+				}
+			}
+		});
+	}
+
+	private void updateTitleHover(int x, int y)
+	{
+		boolean next = titleLinkActive() && titleBounds().contains(x, y);
+		if (next != titleHovered)
+		{
+			titleHovered = next;
+			repaint();
+		}
+	}
+
+	private boolean titleLinkActive()
+	{
+		return wikiLinksEnabled && titleWikiPage != null && !titleWikiPage.trim().isEmpty();
+	}
+
+	private Rectangle titleBounds()
+	{
+		int inset = getInset();
+		int width = title != null ? getFontMetrics(getTitleFont()).stringWidth(title) : 0;
+		return new Rectangle(inset, inset, width, NAME_LINE_HEIGHT);
 	}
 }

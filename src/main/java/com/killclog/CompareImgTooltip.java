@@ -114,6 +114,7 @@ public class CompareImgTooltip extends TitleTooltip
 
 	public void setWikiLinksEnabled(boolean wikiLinksEnabled)
 	{
+		super.setWikiLinksEnabled(wikiLinksEnabled);
 		itemHover.setWikiLinksEnabled(wikiLinksEnabled);
 	}
 
