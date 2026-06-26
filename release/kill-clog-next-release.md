@@ -1,12 +1,12 @@
 # Kill Clog Next Release
 
-Target version: `1.4.5`
+Target version: `1.5.0`
 
-Current branch: `1.4.5`
+Current branch: `master`
 
 ## Release Notes
 
-Kill Clog 1.4.5:
+Kill Clog 1.5.0:
 
 - Adds support for Defense Pures and Skillers.
 - Adds boss Wiki page links to boss names in collection log tooltips.
