@@ -105,14 +105,14 @@ public class KillClogPanel extends PluginPanel
 			SummaryTooltip tip = new SummaryTooltip();
 			tip.setComponent(this);
 			String name = playerName.getText().trim();
-			AccountType type = accountTypes.display(lookupSession.getHiscoreResult(),
+			AccountDisplay display = accountTypes.displayIdentity(lookupSession.getHiscoreResult(),
 				lookupSession.getClogResult(), lookupSession.getCurrentLookupRsn());
 			tip.setData(
 				name.isEmpty() ? "Player" : name,
 				lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getOverallRank() : -1,
 				getCapeImage(),
-				accountBadges.badge(type),
-				AccountBadgeResolver.label(type),
+				accountBadges.badge(display),
+				AccountBadgeResolver.label(display),
 				LookupQueries.getPrestige(lookupSession.getHiscoreResult())
 			);
 			if (lookupSession.getClogResult() != null)
@@ -592,11 +592,11 @@ public class KillClogPanel extends PluginPanel
 		rsn = newPrimaryRsn;
 		HiscoreResult swapHiscore = lookupSession.getHiscoreResult();
 		ClogResult swapClog = lookupSession.getClogResult();
-		AccountType swapAccountType = accountTypes.display(swapHiscore, swapClog, newPrimaryRsn);
+		AccountDisplay swapDisplay = accountTypes.displayIdentity(swapHiscore, swapClog, newPrimaryRsn);
 
 		playerName.setText(newPrimaryRsn != null ? newPrimaryRsn : "");
 		playerName.setForeground(getInfoColor());
-		updateInfoIcon(swapAccountType);
+		updateInfoIcon(swapDisplay);
 		if (swapHiscore != null)
 		{
 			int combatLevel = swapHiscore.getCombatLevel();
@@ -641,9 +641,9 @@ public class KillClogPanel extends PluginPanel
 
 	/** Apply account type badge to any label. */
 	@Override
-	public void applyBadge(JLabel label, AccountType type)
+	public void applyBadge(JLabel label, AccountDisplay display)
 	{
-		label.setIcon(accountBadges.labelIcon(type));
+		label.setIcon(accountBadges.labelIcon(display));
 	}
 
 	// Lookup flow.
@@ -793,7 +793,7 @@ public class KillClogPanel extends PluginPanel
 		setSearchStatus(" ", TEXT_DIM);
 		playerName.setText(rsn != null ? rsn : player);
 		playerName.setForeground(getInfoColor());
-		updateInfoIcon(currentInfoAccountType(knownType != null ? knownType : result.getAccountType()));
+		updateInfoIcon(currentInfoAccountDisplay(knownType != null ? knownType : result.getAccountType()));
 		searchRowController.setCompareVisible(true);
 
 		int combatLevel = result.getCombatLevel();
@@ -833,7 +833,7 @@ public class KillClogPanel extends PluginPanel
 		AccountType providerType = result.getProviderAccountType();
 		if (providerType != null && providerType.isGroupIronman())
 		{
-			updateDisplayedInfoIcon(providerType);
+			updateDisplayedInfoIcon(accountTypes.displayIdentity(lookupSession.getHiscoreResult(), result, rsn));
 		}
 		itemNameResolver.resolve(result);
 		if (lookupSession.getHiscoreResult() != null)
@@ -1102,9 +1102,9 @@ public class KillClogPanel extends PluginPanel
 	}
 
 	@Override
-	public void updateInfoIcon(AccountType type)
+	public void updateInfoIcon(AccountDisplay display)
 	{
-		applyBadge(playerName, type);
+		applyBadge(playerName, display);
 		playerName.setToolTipText(" ");
 	}
 
@@ -1119,14 +1119,14 @@ public class KillClogPanel extends PluginPanel
 
 	private void updateDisplayedInfoIcon()
 	{
-		updateDisplayedInfoIcon(currentInfoAccountType());
+		updateDisplayedInfoIcon(currentInfoAccountDisplay());
 	}
 
-	private void updateDisplayedInfoIcon(@Nullable AccountType type)
+	private void updateDisplayedInfoIcon(@Nullable AccountDisplay display)
 	{
 		if (isIdentityRowShowing())
 		{
-			updateInfoIcon(type);
+			updateInfoIcon(display);
 		}
 	}
 
@@ -1149,19 +1149,19 @@ public class KillClogPanel extends PluginPanel
 		ClogResult redClog = comparison.getCompareClogResult();
 		String blueName = rsn != null ? rsn : "--";
 		String redName = comparison.getCompareRsn() != null ? comparison.getCompareRsn() : "--";
-		AccountType blueType = accountTypes.display(blueHs, blueClog, blueName);
-		AccountType redType = accountTypes.display(redHs, redClog, redName);
+		AccountDisplay blueDisplay = accountTypes.displayIdentity(blueHs, blueClog, blueName);
+		AccountDisplay redDisplay = accountTypes.displayIdentity(redHs, redClog, redName);
 
 		cmp.setBlueData(blueName,
 			blueHs != null ? blueHs.getOverallRank() : -1,
-			accountBadges.badge(blueType),
-			AccountBadgeResolver.label(blueType),
+			accountBadges.badge(blueDisplay),
+			AccountBadgeResolver.label(blueDisplay),
 			LookupQueries.getPrestige(blueHs),
 			getCapeImage(blueHs));
 		cmp.setRedData(redName,
 			redHs.getOverallRank(),
-			accountBadges.badge(redType),
-			AccountBadgeResolver.label(redType),
+			accountBadges.badge(redDisplay),
+			AccountBadgeResolver.label(redDisplay),
 			LookupQueries.getPrestige(redHs),
 			getCapeImage(redHs));
 
@@ -1223,15 +1223,15 @@ public class KillClogPanel extends PluginPanel
 		return cmp;
 	}
 
-	private AccountType currentInfoAccountType()
+	private AccountDisplay currentInfoAccountDisplay()
 	{
-		return accountTypes.current(lookupSession.getHiscoreResult(),
+		return accountTypes.currentDisplay(lookupSession.getHiscoreResult(),
 			lookupSession.getClogResult(), lookupSession.getCurrentLookupRsn());
 	}
 
-	private AccountType currentInfoAccountType(@Nullable AccountType fallback)
+	private AccountDisplay currentInfoAccountDisplay(@Nullable AccountType fallback)
 	{
-		return accountTypes.current(fallback,
+		return accountTypes.currentDisplay(fallback, lookupSession.getHiscoreResult(),
 			lookupSession.getClogResult(), lookupSession.getCurrentLookupRsn());
 	}
 

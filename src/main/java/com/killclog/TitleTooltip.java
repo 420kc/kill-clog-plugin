@@ -544,7 +544,7 @@ public abstract class TitleTooltip extends NativeTooltip
 		g2.setFont(getTitleFont());
 		FontMetrics nfm = g2.getFontMetrics();
 		int lineY = inset + nfm.getAscent();
-		g2.setColor(titleHovered && titleLinkActive() ? CLOG_YELLOW : OSRS_ORANGE);
+		g2.setColor(titleColor());
 		g2.drawString(title, inset, lineY);
 		int activeLineWidth = nfm.stringWidth(title);
 
@@ -650,6 +650,11 @@ public abstract class TitleTooltip extends NativeTooltip
 	private boolean titleLinkActive()
 	{
 		return wikiLinksEnabled && titleWikiPage != null && !titleWikiPage.trim().isEmpty();
+	}
+
+	protected Color titleColor()
+	{
+		return titleHovered && titleLinkActive() ? Color.WHITE : OSRS_ORANGE;
 	}
 
 	private Rectangle titleBounds()

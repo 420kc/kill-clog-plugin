@@ -11,32 +11,39 @@ final class PanelAccountTypes
 		this.runeProfileService = runeProfileService;
 	}
 
-	@Nullable
-	AccountType current(@Nullable HiscoreResult hiscore, @Nullable ClogResult clog, @Nullable String player)
+	AccountDisplay currentDisplay(@Nullable HiscoreResult hiscore, @Nullable ClogResult clog,
+		@Nullable String player)
 	{
-		return current(hiscore != null ? hiscore.getAccountType() : null, clog, player);
+		return display(hiscore != null ? hiscore.getAccountType() : null,
+			hiscore != null ? hiscore.getHiscoreTable() : HiscoreTable.STANDARD,
+			clog, player);
 	}
 
-	@Nullable
-	AccountType current(@Nullable AccountType fallback, @Nullable ClogResult clog, @Nullable String player)
+	AccountDisplay currentDisplay(@Nullable AccountType fallback, @Nullable HiscoreResult hiscore,
+		@Nullable ClogResult clog, @Nullable String player)
 	{
-		if (clog != null && clog.getProviderAccountType() != null && clog.getProviderAccountType().isGroupIronman())
-		{
-			return clog.getProviderAccountType();
-		}
-		AccountType cachedProviderType = runeProfileGroupAccountType(player);
-		if (cachedProviderType != null)
-		{
-			return cachedProviderType;
-		}
-		return fallback;
+		return display(fallback,
+			hiscore != null ? hiscore.getHiscoreTable() : HiscoreTable.STANDARD,
+			clog, player);
 	}
 
-	@Nullable
-	AccountType display(@Nullable HiscoreResult hiscore, @Nullable ClogResult clog, @Nullable String player)
+	AccountDisplay displayIdentity(@Nullable HiscoreResult hiscore, @Nullable ClogResult clog,
+		@Nullable String player)
 	{
-		return AccountType.displayType(LookupQueries.accountType(hiscore, clog),
-			runeProfileGroupAccountType(player));
+		return display(LookupQueries.accountType(hiscore, clog),
+			hiscore != null ? hiscore.getHiscoreTable() : HiscoreTable.STANDARD,
+			clog, player);
+	}
+
+	private AccountDisplay display(@Nullable AccountType accountType, @Nullable HiscoreTable hiscoreTable,
+		@Nullable ClogResult clog, @Nullable String player)
+	{
+		AccountType type = AccountType.displayType(accountType, runeProfileGroupAccountType(player));
+		if (type == null && clog != null)
+		{
+			type = clog.getProviderAccountType();
+		}
+		return AccountDisplay.of(type, hiscoreTable);
 	}
 
 	@Nullable

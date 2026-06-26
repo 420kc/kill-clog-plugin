@@ -14,8 +14,8 @@ import okhttp3.OkHttpClient;
 
 /**
  * Parallelized hiscore lookup with account type detection.
- * Fires all 4 hiscore endpoints simultaneously, then determines
- * account type from the combination of results.
+ * Fires the main account-type endpoints simultaneously, then optionally refines
+ * regular 1-defence and skiller accounts through their specialty hiscore table.
  */
 @Slf4j
 @Singleton
@@ -145,7 +145,7 @@ public class HiscoreService
 	}
 
 	/**
-	 * Look up a player across all 4 hiscore endpoints in parallel.
+	 * Look up a player across the account-type hiscore endpoints in parallel.
 	 * Retries once on transient failure (Jagex 502/503/rate-limit).
 	 */
 	public CompletableFuture<HiscoreResult> lookup(String playerName, AccountType knownType)
@@ -214,7 +214,7 @@ public class HiscoreService
 
 					final String fUim = uimBody;
 					final String fHcim = hcimBody;
-					return CompletableFuture.allOf(retryReg, retryIron).thenApply(v2 ->
+					return CompletableFuture.allOf(retryReg, retryIron).thenCompose(v2 ->
 					{
 						String confirmedReg = retryReg.join();
 						String confirmedIron = retryIron.join();
@@ -222,7 +222,8 @@ public class HiscoreService
 							fUim, fHcim, confirmedIron, confirmedReg);
 						String body = pickBestBody(confirmedType,
 							fUim, fHcim, confirmedIron, confirmedReg);
-						return body != null ? parseHiscoreBody(body, confirmedType) : null;
+						return body != null ? parseAndRefine(encoded, body, confirmedType)
+							: CompletableFuture.completedFuture(null);
 					});
 				}
 
@@ -232,8 +233,36 @@ public class HiscoreService
 					return CompletableFuture.completedFuture(null);
 				}
 
-				return CompletableFuture.completedFuture(
-					parseHiscoreBody(bestBody, type));
+				return parseAndRefine(encoded, bestBody, type);
+			});
+	}
+
+	private CompletableFuture<HiscoreResult> parseAndRefine(String encodedPlayer,
+		String body, AccountType type)
+	{
+		HiscoreResult result = parseHiscoreBody(body, type);
+		HiscoreTable table = detectSpecialHiscoreTable(result);
+		if (!table.isSpecial())
+		{
+			return CompletableFuture.completedFuture(result);
+		}
+
+		return fetchAsync(table.hiscoreKey(), encodedPlayer)
+			.thenApply(refinedBody ->
+			{
+				if (refinedBody == null)
+				{
+					return result;
+				}
+
+				HiscoreResult refined = parseHiscoreBody(refinedBody, type, table);
+				return refined.getTotalXp() > 0 ? refined : result;
+			})
+			.exceptionally(ex ->
+			{
+				log.debug("Special hiscore lookup failed for {}: {}",
+					table, ex.getMessage());
+				return result;
 			});
 	}
 
@@ -302,7 +331,61 @@ public class HiscoreService
 		}
 	}
 
+	/* package */ HiscoreTable detectSpecialHiscoreTable(HiscoreResult result)
+	{
+		if (result == null || result.getAccountType() != AccountType.REGULAR)
+		{
+			return HiscoreTable.STANDARD;
+		}
+
+		if (isSkiller(result))
+		{
+			return HiscoreTable.SKILLER;
+		}
+		if (isOneDefence(result))
+		{
+			return HiscoreTable.ONE_DEFENCE;
+		}
+		return HiscoreTable.STANDARD;
+	}
+
+	private boolean isSkiller(HiscoreResult result)
+	{
+		return levelIsOne(result, "attack")
+			&& levelIsOne(result, "defence")
+			&& levelIsOne(result, "strength")
+			&& levelIsOne(result, "ranged")
+			&& levelIsOne(result, "prayer")
+			&& levelIsOne(result, "magic");
+	}
+
+	private boolean isOneDefence(HiscoreResult result)
+	{
+		return levelIsOne(result, "defence")
+			&& (levelAboveOne(result, "attack")
+				|| levelAboveOne(result, "strength")
+				|| levelAboveOne(result, "ranged")
+				|| levelAboveOne(result, "prayer")
+				|| levelAboveOne(result, "magic"));
+	}
+
+	private boolean levelIsOne(HiscoreResult result, String skill)
+	{
+		return result.getSkillLevel(skill) == 1;
+	}
+
+	private boolean levelAboveOne(HiscoreResult result, String skill)
+	{
+		return result.getSkillLevel(skill) > 1;
+	}
+
 	/* package */ HiscoreResult parseHiscoreBody(String body, AccountType type)
+	{
+		return parseHiscoreBody(body, type, HiscoreTable.STANDARD);
+	}
+
+	/* package */ HiscoreResult parseHiscoreBody(String body, AccountType type,
+		HiscoreTable hiscoreTable)
 	{
 		String[] lines = body.trim().split("\\r?\\n");
 		int expected = 1 + SKILL_NAMES.length + ACTIVITY_NAMES.length + BOSS_NAMES.length;
@@ -394,8 +477,8 @@ public class HiscoreService
 			}
 		}
 
-		return new HiscoreResult(type, bossKills, bossRanks, activityScores, activityRanks,
-			skillLevels, totalLevel, totalXp, combatLevel, overallRank);
+		return new HiscoreResult(type, hiscoreTable, bossKills, bossRanks, activityScores,
+			activityRanks, skillLevels, totalLevel, totalXp, combatLevel, overallRank);
 	}
 
 	/**

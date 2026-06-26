@@ -78,7 +78,7 @@ public class ComparisonController
 
 		JLabel clogInfoLabel();
 
-		void updateInfoIcon(AccountType type);
+		void updateInfoIcon(AccountDisplay display);
 
 		Color getInfoColor();
 
@@ -86,7 +86,7 @@ public class ComparisonController
 		void preloadClogItemNames(ClogResult clog);
 
 		/** Apply an account-type badge (clog-mode + GIM + standard hiscore). */
-		void applyBadge(JLabel label, @Nullable AccountType type);
+		void applyBadge(JLabel label, @Nullable AccountDisplay display);
 
 		/** Preload the PvM Summary reward sprite for a CA result. */
 		void preloadCaReward(@Nullable CombatAchievementResult ca);
@@ -645,8 +645,10 @@ public class ComparisonController
 			clogInfoLabel.setToolTipText(" ");
 			clogInfoLabel.setIcon(null);
 			clogInfoLabel.setHorizontalAlignment(JLabel.RIGHT);
-			AccountType redType = compareAccountType();
-			renderTarget.applyBadge(clogInfoLabel, redType);
+			renderTarget.applyBadge(playerName,
+				LookupQueries.accountDisplay(lookupSession.getHiscoreResult(),
+					lookupSession.getClogResult()));
+			renderTarget.applyBadge(clogInfoLabel, compareAccountDisplay());
 		}
 		else
 		{
@@ -657,16 +659,21 @@ public class ComparisonController
 	}
 
 	@Nullable
-	private AccountType compareAccountType()
+	private AccountDisplay compareAccountDisplay()
 	{
 		AccountType type = LookupQueries.accountType(compareHiscoreResult, compareClogResult);
 		if (compareRsn == null)
 		{
-			return type;
+			return AccountDisplay.of(type,
+				compareHiscoreResult != null ? compareHiscoreResult.getHiscoreTable()
+					: HiscoreTable.STANDARD);
 		}
 		AccountType providerType = runeProfileService.getCachedAccountType(compareRsn);
-		return AccountType.displayType(type,
-			providerType != null && providerType.isGroupIronman() ? providerType : null);
+		return AccountDisplay.of(
+			AccountType.displayType(type,
+				providerType != null && providerType.isGroupIronman() ? providerType : null),
+			compareHiscoreResult != null ? compareHiscoreResult.getHiscoreTable()
+				: HiscoreTable.STANDARD);
 	}
 
 	/**

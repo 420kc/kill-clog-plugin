@@ -141,8 +141,7 @@ final class LookupQueries
 
 	static BufferedImage getAccountBadge(HiscoreResult result, ClogResult clog)
 	{
-		AccountType type = accountType(result, clog);
-		return AccountBadgeResolver.cachedBadge(type);
+		return AccountBadgeResolver.cachedBadge(accountDisplay(result, clog));
 	}
 
 	static String getAccountLabel(HiscoreResult result)
@@ -152,8 +151,7 @@ final class LookupQueries
 
 	static String getAccountLabel(HiscoreResult result, ClogResult clog)
 	{
-		AccountType type = accountType(result, clog);
-		return type != null ? ClogHelper.accountLabel(type) : null;
+		return AccountBadgeResolver.label(accountDisplay(result, clog));
 	}
 
 	static AccountType accountType(HiscoreResult result, ClogResult clog)
@@ -161,6 +159,12 @@ final class LookupQueries
 		AccountType providerType = clog != null ? clog.getProviderAccountType() : null;
 		AccountType hiscoreType = result != null ? result.getAccountType() : null;
 		return AccountType.displayType(hiscoreType, providerType);
+	}
+
+	static AccountDisplay accountDisplay(HiscoreResult result, ClogResult clog)
+	{
+		return AccountDisplay.of(accountType(result, clog),
+			result != null ? result.getHiscoreTable() : HiscoreTable.STANDARD);
 	}
 
 	static String getPrestige(HiscoreResult result)

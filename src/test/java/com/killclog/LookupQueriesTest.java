@@ -52,6 +52,30 @@ public class LookupQueriesTest
 	}
 
 	@Test
+	public void testSpecialHiscoreTableNamesRegularPure()
+	{
+		HiscoreResult pureHiscore = hiscore(AccountType.REGULAR, HiscoreTable.ONE_DEFENCE);
+
+		assertEquals("Defense Pure", LookupQueries.getAccountLabel(pureHiscore, null));
+	}
+
+	@Test
+	public void testSpecialHiscoreTableNamesRegularSkiller()
+	{
+		HiscoreResult skillerHiscore = hiscore(AccountType.REGULAR, HiscoreTable.SKILLER);
+
+		assertEquals("Skiller", LookupQueries.getAccountLabel(skillerHiscore, null));
+	}
+
+	@Test
+	public void testSpecialHiscoreTableDoesNotOverrideIronman()
+	{
+		HiscoreResult ironHiscore = hiscore(AccountType.IRONMAN, HiscoreTable.ONE_DEFENCE);
+
+		assertEquals("Ironman", LookupQueries.getAccountLabel(ironHiscore, null));
+	}
+
+	@Test
 	public void testSyncLineNullStaysHidden()
 	{
 		assertNull(LookupQueries.syncLine(null, true));
@@ -70,8 +94,14 @@ public class LookupQueriesTest
 
 	private static HiscoreResult hiscore(AccountType accountType)
 	{
+		return hiscore(accountType, HiscoreTable.STANDARD);
+	}
+
+	private static HiscoreResult hiscore(AccountType accountType, HiscoreTable table)
+	{
 		return new HiscoreResult(
 			accountType,
+			table,
 			Collections.emptyMap(),
 			Collections.emptyMap(),
 			Collections.emptyMap(),

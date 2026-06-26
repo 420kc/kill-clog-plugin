@@ -175,7 +175,7 @@ public class CompareImgTooltip extends TitleTooltip
 		int lineY = inset + nfm.getAscent();
 
 		// Title.
-		g2.setColor(OSRS_ORANGE);
+		g2.setColor(titleColor());
 		g2.drawString(getTitle(), inset, lineY);
 
 		g2.setFont(FontManager.getRunescapeSmallFont());

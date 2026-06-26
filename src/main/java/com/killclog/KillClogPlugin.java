@@ -39,7 +39,7 @@ import net.runelite.client.util.Text;
 @Slf4j
 @PluginDescriptor(
 	name = "Kill Clog",
-	description = "PvM/Clog-Focused HiScores Replacement",
+	description = "HiScores and Collection Log Overhaul",
 	tags = {"boss", "kc", "kill count", "collection log", "pvm", "hiscore", "ironman"}
 )
 public class KillClogPlugin extends Plugin

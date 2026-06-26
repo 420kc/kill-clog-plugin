@@ -280,6 +280,53 @@ public class HiscoreParsingTest
 	}
 
 	@Test
+	public void testParsePreservesHiscoreTable()
+	{
+		String body = buildCsv(1, 2277, 4600000000L);
+		assertEquals(HiscoreTable.STANDARD,
+			service.parseHiscoreBody(body, AccountType.REGULAR).getHiscoreTable());
+		assertEquals(HiscoreTable.ONE_DEFENCE,
+			service.parseHiscoreBody(body, AccountType.REGULAR,
+				HiscoreTable.ONE_DEFENCE).getHiscoreTable());
+	}
+
+	@Test
+	public void testDetectsOneDefenceTableForRegularPure()
+	{
+		String body = buildCsvWithCombatLevels(60, 1, 80, 90, 85, 52, 94);
+		HiscoreResult result = service.parseHiscoreBody(body, AccountType.REGULAR);
+
+		assertEquals(HiscoreTable.ONE_DEFENCE, service.detectSpecialHiscoreTable(result));
+	}
+
+	@Test
+	public void testDetectsSkillerTableForRegularSkiller()
+	{
+		String body = buildCsvWithCombatLevels(1, 1, 1, 10, 1, 1, 1);
+		HiscoreResult result = service.parseHiscoreBody(body, AccountType.REGULAR);
+
+		assertEquals(HiscoreTable.SKILLER, service.detectSpecialHiscoreTable(result));
+	}
+
+	@Test
+	public void testDoesNotRefineIronPure()
+	{
+		String body = buildCsvWithCombatLevels(60, 1, 80, 90, 85, 52, 94);
+		HiscoreResult result = service.parseHiscoreBody(body, AccountType.IRONMAN);
+
+		assertEquals(HiscoreTable.STANDARD, service.detectSpecialHiscoreTable(result));
+	}
+
+	@Test
+	public void testDoesNotRefineRegularMain()
+	{
+		String body = buildCsvWithCombatLevels(99, 99, 99, 99, 99, 99, 99);
+		HiscoreResult result = service.parseHiscoreBody(body, AccountType.REGULAR);
+
+		assertEquals(HiscoreTable.STANDARD, service.detectSpecialHiscoreTable(result));
+	}
+
+	@Test
 	public void testAllPanelBossesMapToValidCsvNames()
 	{
 		Set<String> csvNames = new HashSet<>(Arrays.asList(HiscoreService.bossNames()));
@@ -312,6 +359,42 @@ public class HiscoreParsingTest
 			sb.append("1,100\n");
 		}
 		// Lines 45+: Bosses (all 420 kc)
+		for (int i = 0; i < HiscoreService.bossCount(); i++)
+		{
+			sb.append("50,420\n");
+		}
+		return sb.toString();
+	}
+
+	private String buildCsvWithCombatLevels(int attack, int defence, int strength,
+		int hitpoints, int ranged, int prayer, int magic)
+	{
+		int[] levels = new int[24];
+		Arrays.fill(levels, 70);
+		levels[0] = attack;
+		levels[1] = defence;
+		levels[2] = strength;
+		levels[3] = hitpoints;
+		levels[4] = ranged;
+		levels[5] = prayer;
+		levels[6] = magic;
+
+		int totalLevel = 0;
+		for (int level : levels)
+		{
+			totalLevel += level;
+		}
+
+		StringBuilder sb = new StringBuilder();
+		sb.append("1,").append(totalLevel).append(",1000000\n");
+		for (int level : levels)
+		{
+			sb.append("1,").append(level).append(",1\n");
+		}
+		for (int i = 0; i < 20; i++)
+		{
+			sb.append("1,100\n");
+		}
 		for (int i = 0; i < HiscoreService.bossCount(); i++)
 		{
 			sb.append("50,420\n");

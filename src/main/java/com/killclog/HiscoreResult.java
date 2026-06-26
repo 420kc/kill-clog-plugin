@@ -9,6 +9,7 @@ import java.util.Map;
 public class HiscoreResult
 {
 	private final AccountType accountType;
+	private final HiscoreTable hiscoreTable;
 	private final Map<String, Integer> bossKills;
 	private final Map<String, Integer> bossRanks;
 	private final Map<String, Integer> activityScores;
@@ -24,7 +25,18 @@ public class HiscoreResult
 		Map<String, Integer> activityRanks, Map<String, Integer> skillLevels,
 		int totalLevel, long totalXp, int combatLevel, int overallRank)
 	{
+		this(accountType, HiscoreTable.STANDARD, bossKills, bossRanks, activityScores,
+			activityRanks, skillLevels, totalLevel, totalXp, combatLevel, overallRank);
+	}
+
+	public HiscoreResult(AccountType accountType, HiscoreTable hiscoreTable,
+		Map<String, Integer> bossKills, Map<String, Integer> bossRanks,
+		Map<String, Integer> activityScores, Map<String, Integer> activityRanks,
+		Map<String, Integer> skillLevels, int totalLevel, long totalXp,
+		int combatLevel, int overallRank)
+	{
 		this.accountType = accountType;
+		this.hiscoreTable = hiscoreTable != null ? hiscoreTable : HiscoreTable.STANDARD;
 		this.bossKills = bossKills != null ? bossKills : Collections.emptyMap();
 		this.bossRanks = bossRanks != null ? bossRanks : Collections.emptyMap();
 		this.activityScores = activityScores != null ? activityScores : Collections.emptyMap();
@@ -39,6 +51,11 @@ public class HiscoreResult
 	public AccountType getAccountType()
 	{
 		return accountType;
+	}
+
+	HiscoreTable getHiscoreTable()
+	{
+		return hiscoreTable;
 	}
 
 	public Map<String, Integer> getBossKills()

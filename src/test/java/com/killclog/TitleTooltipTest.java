@@ -1,6 +1,8 @@
 package com.killclog;
 
 import java.awt.Color;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionListener;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -47,6 +49,21 @@ public class TitleTooltipTest
 			TooltipItemLink.wikiPageUrl("Abyssal Sire"));
 		assertEquals("https://oldschool.runescape.wiki/w/Phosani%27s_Nightmare",
 			TooltipItemLink.wikiPageUrl("Phosani's Nightmare"));
+	}
+
+	@Test
+	public void linkedTitleHoverTurnsWhiteOnlyWhenWikiLinksAreEnabled()
+	{
+		ImgTooltip tooltip = spriteTooltip(2);
+		tooltip.setTitle("Abyssal Sire");
+		tooltip.setTitleWikiPage("Abyssal Sire");
+
+		moveMouse(tooltip, NativeTooltip.getInset() + 1, NativeTooltip.getInset() + 1);
+		assertEquals(Color.WHITE, tooltip.titleColor());
+
+		tooltip.setWikiLinksEnabled(false);
+		moveMouse(tooltip, NativeTooltip.getInset() + 1, NativeTooltip.getInset() + 1);
+		assertEquals(NativeTooltip.OSRS_ORANGE, tooltip.titleColor());
 	}
 
 	@Test
@@ -168,6 +185,16 @@ public class TitleTooltipTest
 			itemCount == 2 ? Arrays.asList(1, 2) : Arrays.asList(1, 2, 3, 4, 5),
 			Collections.emptySet(), Collections.emptyMap(), null);
 		return tooltip;
+	}
+
+	private static void moveMouse(TitleTooltip tooltip, int x, int y)
+	{
+		MouseEvent event = new MouseEvent(tooltip, MouseEvent.MOUSE_MOVED,
+			System.currentTimeMillis(), 0, x, y, 0, false);
+		for (MouseMotionListener listener : tooltip.getMouseMotionListeners())
+		{
+			listener.mouseMoved(event);
+		}
 	}
 
 	private static HiscoreResult clueHiscore(Map<String, Integer> ranks)
