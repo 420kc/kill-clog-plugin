@@ -56,7 +56,7 @@ public class LookupQueriesTest
 	{
 		HiscoreResult pureHiscore = hiscore(AccountType.REGULAR, HiscoreTable.ONE_DEFENCE);
 
-		assertEquals("Defense Pure", LookupQueries.getAccountLabel(pureHiscore, null));
+		assertEquals("Pure", LookupQueries.getAccountLabel(pureHiscore, null));
 	}
 
 	@Test

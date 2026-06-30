@@ -9,7 +9,7 @@ package com.killclog;
 enum HiscoreTable
 {
 	STANDARD(null, null, null),
-	ONE_DEFENCE("hiscore_oldschool_skiller_defence", "pure.png", "Defense Pure"),
+	ONE_DEFENCE("hiscore_oldschool_skiller_defence", "pure.png", "Pure"),
 	SKILLER("hiscore_oldschool_skiller", "level_3_skiller.png", "Skiller");
 
 	private final String hiscoreKey;

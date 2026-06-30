@@ -1,19 +1,20 @@
 # Kill Clog Next Release
 
-Target version: `1.5.0`
+Target version: `1.5.1`
 
 Current branch: `master`
 
 ## Release Notes
 
-Kill Clog 1.5.0:
+Kill Clog 1.5.1:
 
-- Adds support for Defense Pures and Skillers.
-- Adds boss Wiki page links to boss names in collection log tooltips.
+- Renames the regular 1-defence account label from Defense Pure to Pure.
+- Adds `:killclog:` and `:clog:` chat icons.
+- Carries forward 1.5.0 support for Pures, Skillers, boss Wiki page links, and
+  collection-log tooltip polish.
 
-This release is the post-1.4.3 line. It should include the latest tooltip,
-comparison, chat-command, and no-data polish already on `master`, while keeping
-the client-to-Kill-Clog-server sync prototype out.
+This release is the post-1.5.0 line. It should keep the client-to-Kill-Clog
+server sync prototype out.
 
 ## Included
 
@@ -26,7 +27,7 @@ the client-to-Kill-Clog-server sync prototype out.
 - Regular 1-defence pures and level-3 skillers auto-refine to their specialty
   hiscore table after the normal lookup identifies the account shape. Iron
   accounts stay on their ironman hiscore table.
-- Defense pure and skiller accounts now show their native hiscore badge in the
+- Pure and skiller accounts now show their native hiscore badge in the
   infobar and their account label in player summary tooltips.
 - Starting a new lookup clears the PvP summary cell immediately, so a failed or
   pending search cannot keep stale PvP data from the previous player.
@@ -37,6 +38,8 @@ the client-to-Kill-Clog-server sync prototype out.
 - `!kclog` and `!missing` headers include boss KC when Kill Clog knows it.
 - `!3a` follows the panel bucket: 3rd age ring stays under Mimic, so the
   command reports out of 23 3rd age items.
+- `:killclog:` renders the red chalice and `:clog:` renders the collection log
+  book in player chat.
 - Rare bucket tooltips use real zero-state data instead of implying missing
   collection-log data for synced players with no 3rd age or gilded items.
 - Summary tooltip widths measure real values and long ranks instead of leaving
@@ -70,6 +73,7 @@ Then Dylan real-client smoke:
   match the refined hiscore table
 - comparison totals keep their hover/underline affordance
 - `!kclog` and `!missing` show KC where known
+- `:killclog:` and `:clog:` render as chat icons without the Emoji plugin
 - disabling Wiki Item Links keeps hover names but prevents wiki opens
 - disabling Autosync chat messages suppresses `Added ... to Kill Clog` messages
 - no client upload/server-sync config appears in the plugin settings

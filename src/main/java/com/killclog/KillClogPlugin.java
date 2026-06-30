@@ -101,6 +101,9 @@ public class KillClogPlugin extends Plugin
 	private KillClogChatCommand kclogCommand;
 
 	@Inject
+	private KillClogChatEmoji chatEmoji;
+
+	@Inject
 	private KillClogChatNotifier chatNotifier;
 
 	private NavigationButton navButton;
@@ -164,6 +167,7 @@ public class KillClogPlugin extends Plugin
 		chatCommandManager.unregisterCommand(KillClogChatCommand.COMMAND_THIRD_AGE);
 		chatCommandManager.unregisterCommand(KillClogChatCommand.COMMAND_GILDED);
 		kclogCommand.clear();
+		chatEmoji.clear();
 		SwingUtilities.invokeLater(() -> panel.shutdown());
 		localClogCache.shutdown();
 		localCaCache.shutdown();
@@ -229,6 +233,8 @@ public class KillClogPlugin extends Plugin
 	@Subscribe
 	public void onChatMessage(ChatMessage event)
 	{
+		chatEmoji.rewrite(event);
+
 		if (event.getType() == ChatMessageType.GAMEMESSAGE)
 		{
 			String unlockName = ClogUnlockParser.parseItemName(event.getMessage());
