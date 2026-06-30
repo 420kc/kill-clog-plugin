@@ -80,6 +80,25 @@ public class HiscoreParsingTest
 	}
 
 	@Test
+	public void testKnownPendingMaggotKingRowKeepsLaterBossesAligned()
+	{
+		int pendingLineCount = 1 + 24 + 20 + HiscoreService.bossCount() + 1;
+		String[] bossNames = HiscoreService.bossNamesForLineCount(pendingLineCount);
+		int mimicIndex = Arrays.asList(bossNames).indexOf("Mimic");
+		assertEquals(mimicIndex + 1, Arrays.asList(bossNames).indexOf("Maggot King"));
+		assertEquals(mimicIndex + 2, Arrays.asList(bossNames).indexOf("Nex"));
+
+		String body = buildCsvWithBossNames(1, 2277, 4600000000L, bossNames);
+		HiscoreResult result = service.parseHiscoreBody(body, AccountType.REGULAR);
+
+		assertEquals(expectedBossKc(bossNames, "Lunar Chests"), result.getKc("Lunar Chests"));
+		assertEquals(expectedBossKc(bossNames, "Maggot King"), result.getKc("Maggot King"));
+		assertEquals(expectedBossKc(bossNames, "Mimic"), result.getKc("Mimic"));
+		assertEquals(expectedBossKc(bossNames, "Nex"), result.getKc("Nex"));
+		assertEquals(expectedBossKc(bossNames, "Zulrah"), result.getKc("Zulrah"));
+	}
+
+	@Test
 	public void testParseActivityScores()
 	{
 		String body = buildCsv(1, 2277, 4600000000L);
@@ -345,6 +364,27 @@ public class HiscoreParsingTest
 
 	private String buildCsv(int overallRank, int totalLevel, long totalXp)
 	{
+		StringBuilder sb = buildCsvPrefix(overallRank, totalLevel, totalXp);
+		// Lines 45+: Bosses (all 420 kc)
+		for (int i = 0; i < HiscoreService.bossCount(); i++)
+		{
+			sb.append("50,420\n");
+		}
+		return sb.toString();
+	}
+
+	private String buildCsvWithBossNames(int overallRank, int totalLevel, long totalXp, String[] bossNames)
+	{
+		StringBuilder sb = buildCsvPrefix(overallRank, totalLevel, totalXp);
+		for (int i = 0; i < bossNames.length; i++)
+		{
+			sb.append("50,").append((i + 1) * 10).append("\n");
+		}
+		return sb.toString();
+	}
+
+	private StringBuilder buildCsvPrefix(int overallRank, int totalLevel, long totalXp)
+	{
 		StringBuilder sb = new StringBuilder();
 		// Line 0: Overall
 		sb.append(overallRank).append(",").append(totalLevel).append(",").append(totalXp).append("\n");
@@ -358,12 +398,7 @@ public class HiscoreParsingTest
 		{
 			sb.append("1,100\n");
 		}
-		// Lines 45+: Bosses (all 420 kc)
-		for (int i = 0; i < HiscoreService.bossCount(); i++)
-		{
-			sb.append("50,420\n");
-		}
-		return sb.toString();
+		return sb;
 	}
 
 	private String buildCsvWithCombatLevels(int attack, int defence, int strength,
@@ -400,5 +435,12 @@ public class HiscoreParsingTest
 			sb.append("50,420\n");
 		}
 		return sb.toString();
+	}
+
+	private int expectedBossKc(String[] bossNames, String bossName)
+	{
+		int index = Arrays.asList(bossNames).indexOf(bossName);
+		assertTrue("Boss not present in test CSV: " + bossName, index >= 0);
+		return (index + 1) * 10;
 	}
 }

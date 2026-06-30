@@ -81,6 +81,9 @@ public class HiscoreService
 		"Vardorvis", "Venenatis", "Vet'ion", "Vorkath", "Wintertodt",
 		"Yama", "Zalcano", "Zulrah"
 	};
+	private static final String MAGGOT_KING = "Maggot King";
+	private static final String[] BOSS_NAMES_WITH_MAGGOT_KING =
+		insertBossAfter(BOSS_NAMES, "Mimic", MAGGOT_KING);
 
 	/** Number of boss entries in the hiscore CSV. Used by tests to detect drift. */
 	static int bossCount()
@@ -92,6 +95,41 @@ public class HiscoreService
 	static String[] bossNames()
 	{
 		return BOSS_NAMES;
+	}
+
+	/**
+	 * Boss names for the CSV length being parsed. If Jagex adds a boss before
+	 * RuneLite exposes a HiscoreSkill enum, keep later bosses aligned.
+	 */
+	static String[] bossNamesForLineCount(int lineCount)
+	{
+		int currentExpected = BOSS_START_INDEX + BOSS_NAMES.length;
+		if (lineCount == currentExpected + 1)
+		{
+			return BOSS_NAMES_WITH_MAGGOT_KING;
+		}
+		return BOSS_NAMES;
+	}
+
+	private static String[] insertBossAfter(String[] names, String afterName, String bossName)
+	{
+		String[] next = new String[names.length + 1];
+		int out = 0;
+		boolean inserted = false;
+		for (String name : names)
+		{
+			next[out++] = name;
+			if (!inserted && afterName.equals(name))
+			{
+				next[out++] = bossName;
+				inserted = true;
+			}
+		}
+		if (!inserted)
+		{
+			next[next.length - 1] = bossName;
+		}
+		return next;
 	}
 
 	// Stale-while-revalidate cache.
@@ -388,7 +426,8 @@ public class HiscoreService
 		HiscoreTable hiscoreTable)
 	{
 		String[] lines = body.trim().split("\\r?\\n");
-		int expected = 1 + SKILL_NAMES.length + ACTIVITY_NAMES.length + BOSS_NAMES.length;
+		String[] bossNames = bossNamesForLineCount(lines.length);
+		int expected = 1 + SKILL_NAMES.length + ACTIVITY_NAMES.length + bossNames.length;
 		if (lines.length != expected)
 		{
 			log.warn("Hiscore CSV line count changed: expected {} but got {} - boss data may have shifted",
@@ -455,7 +494,7 @@ public class HiscoreService
 			}
 		}
 
-		for (int i = 0; i < BOSS_NAMES.length; i++)
+		for (int i = 0; i < bossNames.length; i++)
 		{
 			int lineIdx = BOSS_START_INDEX + i;
 			if (lineIdx >= lines.length)
@@ -467,13 +506,13 @@ public class HiscoreService
 				String[] parts = lines[lineIdx].split(",");
 				int rank = Integer.parseInt(parts[0]);
 				int kc = Integer.parseInt(parts[1]);
-				bossKills.put(BOSS_NAMES[i], kc);
-				bossRanks.put(BOSS_NAMES[i], rank);
+				bossKills.put(bossNames[i], kc);
+				bossRanks.put(bossNames[i], rank);
 			}
 			catch (Exception e)
 			{
-				bossKills.put(BOSS_NAMES[i], -1);
-				bossRanks.put(BOSS_NAMES[i], -1);
+				bossKills.put(bossNames[i], -1);
+				bossRanks.put(bossNames[i], -1);
 			}
 		}
 

@@ -121,6 +121,20 @@ public class KillClogPanelTest
 	}
 
 	@Test
+	public void testBossGridOrderMatchesHiscoreOrder()
+	{
+		String[] csvNames = HiscoreService.bossNames();
+		assertEquals(csvNames.length, PanelData.BOSSES.length);
+
+		for (int i = 0; i < PanelData.BOSSES.length; i++)
+		{
+			String displayName = PanelData.BOSSES[i].getName();
+			String csvName = PanelData.NAME_OVERRIDES.getOrDefault(displayName, displayName);
+			assertEquals("Boss grid order drift at index " + i, csvNames[i], csvName);
+		}
+	}
+
+	@Test
 	public void testThirdAgeRingStaysOutOfThirdAgeBucket()
 	{
 		assertFalse(Arrays.stream(PanelData.THIRD_AGE_ITEMS)

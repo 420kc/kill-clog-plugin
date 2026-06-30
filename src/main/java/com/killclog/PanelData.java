@@ -17,8 +17,8 @@ final class PanelData
 	static final int MAX_TOTAL_LEVEL = 2376;
 
 	// Boss display order matching vanilla RuneLite hiscores.
-	// Same bosses as HiscoreService.BOSS_NAMES. Display order differs from CSV order.
-	// New boss? Add HiscoreSkill.BOSS_NAME here alphabetically once RuneLite adds the enum.
+	// Same bosses and same order as HiscoreService.BOSS_NAMES.
+	// New boss? Add HiscoreSkill.BOSS_NAME here in Jagex/RuneLite hiscore order once RuneLite adds the enum.
 	// See BOSS_NAMES comment in HiscoreService for the full update playbook.
 	static final HiscoreSkill[] BOSSES = {
 		HiscoreSkill.ABYSSAL_SIRE,
@@ -49,7 +49,6 @@ final class PanelData
 		HiscoreSkill.GIANT_MOLE,
 		HiscoreSkill.GROTESQUE_GUARDIANS,
 		HiscoreSkill.HESPORI,
-		HiscoreSkill.THE_HUEYCOATL,
 		HiscoreSkill.KALPHITE_QUEEN,
 		HiscoreSkill.KING_BLACK_DRAGON,
 		HiscoreSkill.KRAKEN,
@@ -62,7 +61,6 @@ final class PanelData
 		HiscoreSkill.PHOSANIS_NIGHTMARE,
 		HiscoreSkill.OBOR,
 		HiscoreSkill.PHANTOM_MUSPAH,
-		HiscoreSkill.THE_ROYAL_TITANS,
 		HiscoreSkill.SARACHNIS,
 		HiscoreSkill.SCORPIA,
 		HiscoreSkill.SCURRIUS,
@@ -73,7 +71,9 @@ final class PanelData
 		HiscoreSkill.TEMPOROSS,
 		HiscoreSkill.THE_GAUNTLET,
 		HiscoreSkill.THE_CORRUPTED_GAUNTLET,
+		HiscoreSkill.THE_HUEYCOATL,
 		HiscoreSkill.THE_LEVIATHAN,
+		HiscoreSkill.THE_ROYAL_TITANS,
 		HiscoreSkill.THE_WHISPERER,
 		HiscoreSkill.THEATRE_OF_BLOOD,
 		HiscoreSkill.THEATRE_OF_BLOOD_HARD_MODE,
