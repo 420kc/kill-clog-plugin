@@ -1,6 +1,8 @@
 package com.killclog;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import net.runelite.client.hiscore.HiscoreSkill;
 
@@ -16,11 +18,13 @@ final class PanelData
 
 	static final int MAX_TOTAL_LEVEL = 2376;
 
+	private static final String MAGGOT_KING_ENUM = "MAGGOT_KING";
+
 	// Boss display order matching vanilla RuneLite hiscores.
-	// Same bosses and same order as HiscoreService.BOSS_NAMES.
-	// New boss? Add HiscoreSkill.BOSS_NAME here in Jagex/RuneLite hiscore order once RuneLite adds the enum.
+	// Same bosses and same order as HiscoreService.bossNames().
+	// New boss? Add it here in Jagex/RuneLite hiscore order once RuneLite adds the enum.
 	// See BOSS_NAMES comment in HiscoreService for the full update playbook.
-	static final HiscoreSkill[] BOSSES = {
+	private static final HiscoreSkill[] BASE_BOSSES = {
 		HiscoreSkill.ABYSSAL_SIRE,
 		HiscoreSkill.ALCHEMICAL_HYDRA,
 		HiscoreSkill.AMOXLIATL,
@@ -91,10 +95,59 @@ final class PanelData
 		HiscoreSkill.ZALCANO,
 		HiscoreSkill.ZULRAH,
 	};
+	static final HiscoreSkill[] BOSSES = bossesWithKnownOptionalBosses();
 
 	static int bossCount()
 	{
 		return BOSSES.length;
+	}
+
+	static boolean hasOfficialMaggotKing()
+	{
+		return optionalBoss(MAGGOT_KING_ENUM) != null;
+	}
+
+	private static HiscoreSkill[] bossesWithKnownOptionalBosses()
+	{
+		HiscoreSkill maggotKing = optionalBoss(MAGGOT_KING_ENUM);
+		if (maggotKing == null)
+		{
+			return BASE_BOSSES;
+		}
+		return insertAfter(BASE_BOSSES, HiscoreSkill.MIMIC, maggotKing);
+	}
+
+	private static HiscoreSkill optionalBoss(String enumName)
+	{
+		try
+		{
+			return HiscoreSkill.valueOf(enumName);
+		}
+		catch (IllegalArgumentException ex)
+		{
+			return null;
+		}
+	}
+
+	private static HiscoreSkill[] insertAfter(HiscoreSkill[] bosses,
+		HiscoreSkill after, HiscoreSkill boss)
+	{
+		List<HiscoreSkill> next = new ArrayList<>(bosses.length + 1);
+		boolean inserted = false;
+		for (HiscoreSkill existing : bosses)
+		{
+			next.add(existing);
+			if (!inserted && existing == after)
+			{
+				next.add(boss);
+				inserted = true;
+			}
+		}
+		if (!inserted)
+		{
+			next.add(boss);
+		}
+		return next.toArray(new HiscoreSkill[0]);
 	}
 
 	// HiscoreSkill.getName() -> boss name used in hiscore CSV data.

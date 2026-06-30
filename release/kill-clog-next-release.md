@@ -10,6 +10,7 @@ Kill Clog 1.5.1:
 
 - Renames the regular 1-defence account label from Defense Pure to Pure.
 - Adds `:killclog:` and `:clog:` chat icons.
+- Keeps boss KC parsing aligned after Jagex's Maggot King hiscore row.
 - Carries forward 1.5.0 support for Pures, Skillers, boss Wiki page links, and
   collection-log tooltip polish.
 
@@ -40,6 +41,8 @@ server sync prototype out.
   command reports out of 23 3rd age items.
 - `:killclog:` renders the red chalice and `:clog:` renders the collection log
   book in player chat.
+- Maggot King hiscore parsing is guarded so later bosses keep the right KC
+  values while RuneLite catches up with the official boss enum and sprite.
 - Rare bucket tooltips use real zero-state data instead of implying missing
   collection-log data for synced players with no 3rd age or gilded items.
 - Summary tooltip widths measure real values and long ranks instead of leaving
@@ -74,6 +77,7 @@ Then Dylan real-client smoke:
 - comparison totals keep their hover/underline affordance
 - `!kclog` and `!missing` show KC where known
 - `:killclog:` and `:clog:` render as chat icons without the Emoji plugin
+- Maggot King does not shift Mimic/Nex/Zulrah KC values
 - disabling Wiki Item Links keeps hover names but prevents wiki opens
 - disabling Autosync chat messages suppresses `Added ... to Kill Clog` messages
 - no client upload/server-sync config appears in the plugin settings

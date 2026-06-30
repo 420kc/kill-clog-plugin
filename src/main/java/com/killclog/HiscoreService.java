@@ -52,13 +52,18 @@ public class HiscoreService
 	private static final int ACTIVITY_START_INDEX = 1 + SKILL_NAMES.length;
 	private static final int BOSS_START_INDEX = ACTIVITY_START_INDEX + ACTIVITY_NAMES.length;
 
-	// Boss names in hiscore CSV order. Must match Jagex's order.
+	// Base boss names in hiscore CSV order, before optional official new-boss enums.
+	// Must match Jagex's order for the RuneLite version this release builds against.
 	// Boss update playbook:
-	//   1. Add name here in alphabetical order
-	//   2. Wait for RuneLite to add HiscoreSkill enum (check latest.release jar)
-	//   3. Add HiscoreSkill.BOSS_NAME to BOSSES[] in PanelData (alphabetical)
-	//   4. If HiscoreSkill.getName() != CSV name, add to NAME_OVERRIDES
-	//   5. If collection-log provider category keys differ, add to BOSS_CATEGORY_OVERRIDES in ClogService
+	//   1. Add the CSV name here in Jagex hiscore order
+	//   2. Add a temporary bossNamesForLineCount guard if Jagex ships the row
+	//      before RuneLite ships the enum
+	//   3. Add an optional enum bridge in PanelData if the official enum can
+	//      appear before Kill Clog's next release
+	//   4. Once RuneLite exposes the enum, promote it from optional to the base
+	//      BOSSES list in PanelData and move the CSV name into BOSS_NAMES
+	//   5. If HiscoreSkill.getName() != CSV name, add to NAME_OVERRIDES
+	//   6. If collection-log provider category keys differ, add to BOSS_CATEGORY_OVERRIDES in ClogService
 	private static final String[] BOSS_NAMES = {
 		"Abyssal Sire", "Alchemical Hydra", "Amoxliatl", "Araxxor",
 		"Artio", "Barrows Chests", "Brutus", "Bryophyta", "Callisto",
@@ -88,13 +93,13 @@ public class HiscoreService
 	/** Number of boss entries in the hiscore CSV. Used by tests to detect drift. */
 	static int bossCount()
 	{
-		return BOSS_NAMES.length;
+		return bossNames().length;
 	}
 
 	/** Boss names in CSV order. Used by tests to validate PanelData consistency. */
 	static String[] bossNames()
 	{
-		return BOSS_NAMES;
+		return PanelData.hasOfficialMaggotKing() ? BOSS_NAMES_WITH_MAGGOT_KING : BOSS_NAMES;
 	}
 
 	/**
@@ -103,12 +108,18 @@ public class HiscoreService
 	 */
 	static String[] bossNamesForLineCount(int lineCount)
 	{
-		int currentExpected = BOSS_START_INDEX + BOSS_NAMES.length;
-		if (lineCount == currentExpected + 1)
+		String[] activeNames = bossNames();
+		int activeExpected = BOSS_START_INDEX + activeNames.length;
+		if (lineCount == activeExpected)
+		{
+			return activeNames;
+		}
+		int baseExpected = BOSS_START_INDEX + BOSS_NAMES.length;
+		if (lineCount == baseExpected + 1)
 		{
 			return BOSS_NAMES_WITH_MAGGOT_KING;
 		}
-		return BOSS_NAMES;
+		return activeNames;
 	}
 
 	private static String[] insertBossAfter(String[] names, String afterName, String bossName)

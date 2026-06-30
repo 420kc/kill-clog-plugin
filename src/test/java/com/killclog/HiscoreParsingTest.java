@@ -82,8 +82,12 @@ public class HiscoreParsingTest
 	@Test
 	public void testKnownPendingMaggotKingRowKeepsLaterBossesAligned()
 	{
-		int pendingLineCount = 1 + 24 + 20 + HiscoreService.bossCount() + 1;
-		String[] bossNames = HiscoreService.bossNamesForLineCount(pendingLineCount);
+		int maggotLineCount = 1 + 24 + 20 + HiscoreService.bossCount();
+		if (!PanelData.hasOfficialMaggotKing())
+		{
+			maggotLineCount++;
+		}
+		String[] bossNames = HiscoreService.bossNamesForLineCount(maggotLineCount);
 		int mimicIndex = Arrays.asList(bossNames).indexOf("Mimic");
 		assertEquals(mimicIndex + 1, Arrays.asList(bossNames).indexOf("Maggot King"));
 		assertEquals(mimicIndex + 2, Arrays.asList(bossNames).indexOf("Nex"));
