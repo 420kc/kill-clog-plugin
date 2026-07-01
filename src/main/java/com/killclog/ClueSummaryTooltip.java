@@ -197,9 +197,15 @@ public class ClueSummaryTooltip extends TitleTooltip
 
 		if (rank > 0)
 		{
-			// Rank flows after the score column as "#1,234".
+			// Rank flows after the score column as " #1,234": the # stays orange,
+			// the rank value is white. Widths match rankTailText so layout is unchanged.
+			String rankPrefix = " #";
+			String rankValue = String.format("%,d", rank);
+			int rankX = scoreRight + 1;
 			g2.setColor(OSRS_ORANGE);
-			g2.drawString(rankTailText(rank), scoreRight + 1, textY);
+			g2.drawString(rankPrefix, rankX, textY);
+			g2.setColor(Color.WHITE);
+			g2.drawString(rankValue, rankX + fm.stringWidth(rankPrefix), textY);
 		}
 	}
 }
