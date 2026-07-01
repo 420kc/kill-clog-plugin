@@ -33,6 +33,10 @@ public class SkillsTooltip extends TitleTooltip
 	private static final int GOTR_SECTION_GAP = 5;
 	private static final int GOTR_ICON_GAP = 3;
 	private static final String RIFTS_LABEL = "Rifts: ";
+	private static final String SKILL_RANK_LABEL = "#";
+	private static final String SKILL_XP_LABEL = " XP: ";
+	private static final String SKILL_RANK_SAMPLE = "9,999.9K";
+	private static final String SKILL_XP_SAMPLE = "200.0M";
 
 	private static final Color UNRANKED_COLOR = new Color(128, 128, 128);
 
@@ -139,16 +143,51 @@ public class SkillsTooltip extends TitleTooltip
 		{
 			return String.format(java.util.Locale.US, "%.1fM", xp / 1_000_000.0);
 		}
-		if (xp >= 1_000L)
-		{
-			return Math.round(xp / 1_000.0) + "K";
-		}
-		return String.valueOf(xp);
+		return String.format(java.util.Locale.US, "%.2fM", xp / 1_000_000.0);
 	}
 
 	static String rankText(int rank)
 	{
-		return rank > 0 ? String.format("%,d", rank) : "--";
+		if (rank <= 0)
+		{
+			return "--";
+		}
+		if (rank < 10_000)
+		{
+			return String.format("%,d", rank);
+		}
+		return String.format(java.util.Locale.US, "%,.1fK", rank / 1_000.0);
+	}
+
+	static int skillStatsValueWidth(FontMetrics fm)
+	{
+		return fm.stringWidth(SKILL_RANK_LABEL)
+			+ fm.stringWidth(SKILL_RANK_SAMPLE)
+			+ fm.stringWidth(SKILL_XP_LABEL)
+			+ fm.stringWidth(SKILL_XP_SAMPLE);
+	}
+
+	static int paintSkillStatsValue(Graphics2D g2, FontMetrics fm, int x, int y,
+		HiscoreResult result, Skill skill)
+	{
+		String skillName = skill.getName().toLowerCase();
+		String rank = rankText(result != null ? result.getSkillRank(skillName) : -1);
+		String xp = skillXpText(result != null ? result.getSkillXp(skillName) : -1);
+		int rankFieldW = fm.stringWidth(SKILL_RANK_SAMPLE);
+		int xpFieldW = fm.stringWidth(SKILL_XP_SAMPLE);
+
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString(SKILL_RANK_LABEL, x, y);
+		x += fm.stringWidth(SKILL_RANK_LABEL);
+		g2.setColor(Color.WHITE);
+		g2.drawString(rank, x, y);
+		x += rankFieldW;
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString(SKILL_XP_LABEL, x, y);
+		x += fm.stringWidth(SKILL_XP_LABEL);
+		g2.setColor(Color.WHITE);
+		g2.drawString(xp, x, y);
+		return x + xpFieldW;
 	}
 
 	@Override
@@ -279,11 +318,7 @@ public class SkillsTooltip extends TitleTooltip
 	private int measureSkillStatsWidth(FontMetrics fm)
 	{
 		int iconW = ICON_SIZE + GOTR_ICON_GAP;
-		return iconW
-			+ fm.stringWidth("#")
-			+ fm.stringWidth("9,999,999")
-			+ fm.stringWidth(" XP: ")
-			+ fm.stringWidth("200.0M");
+		return iconW + skillStatsValueWidth(fm);
 	}
 
 	private void paintSkillStats(Graphics2D g2, FontMetrics fm, int inset, int w, int y,
@@ -301,21 +336,7 @@ public class SkillsTooltip extends TitleTooltip
 		}
 		x += ICON_SIZE + GOTR_ICON_GAP;
 
-		String skillName = skill.getName().toLowerCase();
-		String rank = rankText(result != null ? result.getSkillRank(skillName) : -1);
-		String xp = skillXpText(result != null ? result.getSkillXp(skillName) : -1);
-
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString("#", x, textY);
-		x += fm.stringWidth("#");
-		g2.setColor(Color.WHITE);
-		g2.drawString(rank, x, textY);
-		x += fm.stringWidth(rank);
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString(" XP: ", x, textY);
-		x += fm.stringWidth(" XP: ");
-		g2.setColor(Color.WHITE);
-		g2.drawString(xp, x, textY);
+		paintSkillStatsValue(g2, fm, x, textY, result, skill);
 	}
 
 	private void paintGotr(Graphics2D g2, FontMetrics fm, int inset, int w, int y)

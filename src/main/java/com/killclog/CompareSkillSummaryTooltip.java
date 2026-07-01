@@ -340,10 +340,7 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 
 	private int skillStatsValueWidth(FontMetrics fm)
 	{
-		return fm.stringWidth("#")
-			+ fm.stringWidth("9,999,999")
-			+ fm.stringWidth(" XP: ")
-			+ fm.stringWidth("200.0M");
+		return SkillsTooltip.skillStatsValueWidth(fm);
 	}
 
 	private void paintSkillStats(Graphics2D g2, FontMetrics fm, int inset, int w, int y,
@@ -369,22 +366,7 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 	private int paintSkillStatsValue(Graphics2D g2, FontMetrics fm, int x, int y,
 		HiscoreResult result, Skill skill)
 	{
-		String skillName = skill.getName().toLowerCase();
-		String rank = SkillsTooltip.rankText(result != null ? result.getSkillRank(skillName) : -1);
-		String xp = SkillsTooltip.skillXpText(result != null ? result.getSkillXp(skillName) : -1);
-
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString("#", x, y);
-		x += fm.stringWidth("#");
-		g2.setColor(Color.WHITE);
-		g2.drawString(rank, x, y);
-		x += fm.stringWidth(rank);
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString(" XP: ", x, y);
-		x += fm.stringWidth(" XP: ");
-		g2.setColor(Color.WHITE);
-		g2.drawString(xp, x, y);
-		return x + fm.stringWidth(xp);
+		return SkillsTooltip.paintSkillStatsValue(g2, fm, x, y, result, skill);
 	}
 
 	private void paintHeader(Graphics2D g2, FontMetrics fm, int inset, int w, int y, int winner)

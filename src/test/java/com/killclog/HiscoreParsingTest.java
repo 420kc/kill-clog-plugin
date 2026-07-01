@@ -71,6 +71,16 @@ public class HiscoreParsingTest
 	}
 
 	@Test
+	public void testSkillFooterNumberFormatting()
+	{
+		assertEquals("9,999", SkillsTooltip.rankText(9999));
+		assertEquals("10.0K", SkillsTooltip.rankText(10000));
+		assertEquals("1,453.8K", SkillsTooltip.rankText(1453827));
+		assertEquals("0.13M", SkillsTooltip.skillXpText(130344));
+		assertEquals("13.0M", SkillsTooltip.skillXpText(13034431));
+	}
+
+	@Test
 	public void testParseBossKills()
 	{
 		String body = buildCsv(1, 2277, 4600000000L);
