@@ -15,6 +15,8 @@ public class HiscoreResult
 	private final Map<String, Integer> activityScores;
 	private final Map<String, Integer> activityRanks;
 	private final Map<String, Integer> skillLevels;
+	private final Map<String, Integer> skillRanks;
+	private final Map<String, Long> skillXps;
 	private final int totalLevel;
 	private final long totalXp;
 	private final int combatLevel;
@@ -26,13 +28,26 @@ public class HiscoreResult
 		int totalLevel, long totalXp, int combatLevel, int overallRank)
 	{
 		this(accountType, HiscoreTable.STANDARD, bossKills, bossRanks, activityScores,
-			activityRanks, skillLevels, totalLevel, totalXp, combatLevel, overallRank);
+			activityRanks, skillLevels, Collections.emptyMap(), Collections.emptyMap(),
+			totalLevel, totalXp, combatLevel, overallRank);
 	}
 
 	public HiscoreResult(AccountType accountType, HiscoreTable hiscoreTable,
 		Map<String, Integer> bossKills, Map<String, Integer> bossRanks,
 		Map<String, Integer> activityScores, Map<String, Integer> activityRanks,
 		Map<String, Integer> skillLevels, int totalLevel, long totalXp,
+		int combatLevel, int overallRank)
+	{
+		this(accountType, hiscoreTable, bossKills, bossRanks, activityScores,
+			activityRanks, skillLevels, Collections.emptyMap(), Collections.emptyMap(),
+			totalLevel, totalXp, combatLevel, overallRank);
+	}
+
+	public HiscoreResult(AccountType accountType, HiscoreTable hiscoreTable,
+		Map<String, Integer> bossKills, Map<String, Integer> bossRanks,
+		Map<String, Integer> activityScores, Map<String, Integer> activityRanks,
+		Map<String, Integer> skillLevels, Map<String, Integer> skillRanks,
+		Map<String, Long> skillXps, int totalLevel, long totalXp,
 		int combatLevel, int overallRank)
 	{
 		this.accountType = accountType;
@@ -42,6 +57,8 @@ public class HiscoreResult
 		this.activityScores = activityScores != null ? activityScores : Collections.emptyMap();
 		this.activityRanks = activityRanks != null ? activityRanks : Collections.emptyMap();
 		this.skillLevels = skillLevels != null ? skillLevels : Collections.emptyMap();
+		this.skillRanks = skillRanks != null ? skillRanks : Collections.emptyMap();
+		this.skillXps = skillXps != null ? skillXps : Collections.emptyMap();
 		this.totalLevel = totalLevel;
 		this.totalXp = totalXp;
 		this.combatLevel = combatLevel;
@@ -106,5 +123,15 @@ public class HiscoreResult
 	public int getSkillLevel(String name)
 	{
 		return skillLevels.getOrDefault(name, -1);
+	}
+
+	public int getSkillRank(String name)
+	{
+		return skillRanks.getOrDefault(name, -1);
+	}
+
+	public long getSkillXp(String name)
+	{
+		return skillXps.getOrDefault(name, -1L);
 	}
 }

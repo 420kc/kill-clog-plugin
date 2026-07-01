@@ -448,6 +448,9 @@ public class HiscoreService
 		Map<String, Integer> bossRanks = new LinkedHashMap<>();
 		Map<String, Integer> activityScores = new LinkedHashMap<>();
 		Map<String, Integer> activityRanks = new LinkedHashMap<>();
+		Map<String, Integer> skillLevels = new LinkedHashMap<>();
+		Map<String, Integer> skillRanks = new LinkedHashMap<>();
+		Map<String, Long> skillXps = new LinkedHashMap<>();
 
 		int totalLevel = 0;
 		long totalXp = 0;
@@ -465,7 +468,6 @@ public class HiscoreService
 
 		int combatLevel = calcCmbLvl(lines);
 
-		Map<String, Integer> skillLevels = new LinkedHashMap<>();
 		for (int i = 0; i < SKILL_NAMES.length; i++)
 		{
 			int lineIdx = 1 + i;
@@ -475,11 +477,16 @@ public class HiscoreService
 			}
 			try
 			{
-				skillLevels.put(SKILL_NAMES[i], parseSkillLevel(lines, lineIdx));
+				String[] parts = lines[lineIdx].split(",");
+				skillRanks.put(SKILL_NAMES[i], Integer.parseInt(parts[0]));
+				skillLevels.put(SKILL_NAMES[i], Integer.parseInt(parts[1]));
+				skillXps.put(SKILL_NAMES[i], Long.parseLong(parts[2]));
 			}
 			catch (Exception e)
 			{
 				skillLevels.put(SKILL_NAMES[i], -1);
+				skillRanks.put(SKILL_NAMES[i], -1);
+				skillXps.put(SKILL_NAMES[i], -1L);
 			}
 		}
 
@@ -528,7 +535,8 @@ public class HiscoreService
 		}
 
 		return new HiscoreResult(type, hiscoreTable, bossKills, bossRanks, activityScores,
-			activityRanks, skillLevels, totalLevel, totalXp, combatLevel, overallRank);
+			activityRanks, skillLevels, skillRanks, skillXps, totalLevel, totalXp,
+			combatLevel, overallRank);
 	}
 
 	/**

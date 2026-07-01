@@ -2,6 +2,8 @@ package com.killclog;
 
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.api.ChatMessageType;
@@ -18,15 +20,22 @@ class KillClogChatEmoji
 {
 	static final String KILLCLOG_TRIGGER = ":killclog:";
 	static final String CLOG_TRIGGER = ":clog:";
+	static final String GREEN_TRIGGER = ":green:";
+	static final String RUNE_TRIGGER = ":rune:";
+	static final String DRAGON_TRIGGER = ":dragon:";
+	static final String GILDED_TRIGGER = ":gilded:";
 
 	private static final int COLLECTION_LOG_ITEM_ID = 22711;
 	private static final int INLINE_ICON_H = 14;
+	private static final String[] TRIGGERS = {
+		KILLCLOG_TRIGGER, CLOG_TRIGGER, GREEN_TRIGGER,
+		RUNE_TRIGGER, DRAGON_TRIGGER, GILDED_TRIGGER
+	};
 
 	@Inject private Client client;
 	@Inject private ItemManager itemManager;
 
-	private Integer killClogIconIdx;
-	private Integer clogIconIdx;
+	private final Map<String, Integer> iconIdxByTrigger = new LinkedHashMap<>();
 
 	void rewrite(ChatMessage chatMessage)
 	{
@@ -37,14 +46,24 @@ class KillClogChatEmoji
 
 		MessageNode messageNode = chatMessage.getMessageNode();
 		String message = messageNode.getValue();
-		if (!message.contains(KILLCLOG_TRIGGER) && !message.contains(CLOG_TRIGGER))
+		if (!containsTrigger(message))
 		{
 			return;
 		}
 
-		Integer killClogIdx = message.contains(KILLCLOG_TRIGGER) ? killClogIcon() : null;
-		Integer clogIdx = message.contains(CLOG_TRIGGER) ? clogIcon() : null;
-		String updatedMessage = rewriteText(message, killClogIdx, clogIdx);
+		Map<String, Integer> icons = new LinkedHashMap<>();
+		for (String trigger : TRIGGERS)
+		{
+			if (message.contains(trigger))
+			{
+				Integer iconIdx = iconFor(trigger);
+				if (iconIdx != null)
+				{
+					icons.put(trigger, iconIdx);
+				}
+			}
+		}
+		String updatedMessage = rewriteText(message, icons);
 		if (updatedMessage == null)
 		{
 			return;
@@ -56,16 +75,38 @@ class KillClogChatEmoji
 
 	static String rewriteText(String message, Integer killClogIdx, Integer clogIdx)
 	{
-		String updated = message;
+		Map<String, Integer> icons = new LinkedHashMap<>();
 		if (killClogIdx != null)
 		{
-			updated = updated.replace(KILLCLOG_TRIGGER, iconTag(killClogIdx));
+			icons.put(KILLCLOG_TRIGGER, killClogIdx);
 		}
 		if (clogIdx != null)
 		{
-			updated = updated.replace(CLOG_TRIGGER, iconTag(clogIdx));
+			icons.put(CLOG_TRIGGER, clogIdx);
+		}
+		return rewriteText(message, icons);
+	}
+
+	static String rewriteText(String message, Map<String, Integer> icons)
+	{
+		String updated = message;
+		for (Map.Entry<String, Integer> entry : icons.entrySet())
+		{
+			updated = updated.replace(entry.getKey(), iconTag(entry.getValue()));
 		}
 		return updated.equals(message) ? null : updated;
+	}
+
+	private static boolean containsTrigger(String message)
+	{
+		for (String trigger : TRIGGERS)
+		{
+			if (message.contains(trigger))
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private static String iconTag(int iconIdx)
@@ -94,37 +135,105 @@ class KillClogChatEmoji
 
 	private Integer killClogIcon()
 	{
-		if (killClogIconIdx == null)
+		Integer cached = iconIdxByTrigger.get(KILLCLOG_TRIGGER);
+		if (cached == null)
 		{
 			BufferedImage image = ImageUtil.loadImageResource(KillClogPlugin.class, "icon.png");
-			killClogIconIdx = registerIcon(resizeInlineIcon(image));
+			cached = registerIcon(resizeInlineIcon(image));
+			if (cached != null)
+			{
+				iconIdxByTrigger.put(KILLCLOG_TRIGGER, cached);
+			}
 		}
-		return killClogIconIdx;
+		return cached;
 	}
 
-	private Integer clogIcon()
+	private Integer iconFor(String trigger)
 	{
-		if (clogIconIdx == null)
+		switch (trigger)
 		{
-			int slot = reserveIconSlot();
-			if (slot == -1)
-			{
+			case KILLCLOG_TRIGGER:
+				return killClogIcon();
+			case CLOG_TRIGGER:
+				return itemIcon(CLOG_TRIGGER, COLLECTION_LOG_ITEM_ID, false);
+			case GREEN_TRIGGER:
+				return itemIcon(GREEN_TRIGGER, COLLECTION_LOG_ITEM_ID, true);
+			case RUNE_TRIGGER:
+				return itemIcon(RUNE_TRIGGER, tierItemId("rune"), false);
+			case DRAGON_TRIGGER:
+				return itemIcon(DRAGON_TRIGGER, tierItemId("dragon"), false);
+			case GILDED_TRIGGER:
+				return itemIcon(GILDED_TRIGGER, tierItemId("gilded"), false);
+			default:
 				return null;
-			}
-			clogIconIdx = slot;
+		}
+	}
 
-			BufferedImage image = itemManager.getImage(COLLECTION_LOG_ITEM_ID, 1, false);
-			if (image instanceof AsyncBufferedImage)
+	private Integer itemIcon(String trigger, int itemId, boolean green)
+	{
+		Integer cached = iconIdxByTrigger.get(trigger);
+		if (cached != null || itemId <= 0)
+		{
+			return cached;
+		}
+
+		int slot = reserveIconSlot();
+		if (slot == -1)
+		{
+			return null;
+		}
+		iconIdxByTrigger.put(trigger, slot);
+
+		BufferedImage image = itemManager.getImage(itemId, 1, false);
+		if (image instanceof AsyncBufferedImage)
+		{
+			((AsyncBufferedImage) image).onLoaded(() ->
+				writeIcon(slot, resizeInlineIcon(green ? greenIcon(image) : image)));
+		}
+		else
+		{
+			writeIcon(slot, resizeInlineIcon(green ? greenIcon(image) : image));
+		}
+		return slot;
+	}
+
+	private static int tierItemId(String tier)
+	{
+		for (int i = 0; i < ClogHelper.CLOG_TIERS.length
+			&& i < PanelData.CLOG_TIER_ITEM_IDS.length; i++)
+		{
+			if (tier.equals(ClogHelper.CLOG_TIERS[i]))
 			{
-				((AsyncBufferedImage) image).onLoaded(() ->
-					writeIcon(slot, resizeInlineIcon(image)));
-			}
-			else
-			{
-				writeIcon(slot, resizeInlineIcon(image));
+				return PanelData.CLOG_TIER_ITEM_IDS[i];
 			}
 		}
-		return clogIconIdx;
+		return -1;
+	}
+
+	static BufferedImage greenIcon(BufferedImage image)
+	{
+		BufferedImage out = new BufferedImage(image.getWidth(), image.getHeight(),
+			BufferedImage.TYPE_INT_ARGB);
+		for (int y = 0; y < image.getHeight(); y++)
+		{
+			for (int x = 0; x < image.getWidth(); x++)
+			{
+				int argb = image.getRGB(x, y);
+				int alpha = (argb >>> 24) & 0xFF;
+				if (alpha == 0)
+				{
+					continue;
+				}
+				int red = (argb >>> 16) & 0xFF;
+				int green = (argb >>> 8) & 0xFF;
+				int blue = argb & 0xFF;
+				int shade = Math.max(70, (red + green + blue) / 3);
+				int nextGreen = Math.min(255, shade + 90);
+				int next = (alpha << 24) | (shade / 8 << 16) | (nextGreen << 8) | (shade / 8);
+				out.setRGB(x, y, next);
+			}
+		}
+		return out;
 	}
 
 	static BufferedImage resizeInlineIcon(BufferedImage image)
@@ -172,7 +281,6 @@ class KillClogChatEmoji
 
 	void clear()
 	{
-		killClogIconIdx = null;
-		clogIconIdx = null;
+		iconIdxByTrigger.clear();
 	}
 }

@@ -65,6 +65,9 @@ public class HiscoreParsingTest
 		assertEquals(2277, result.getTotalLevel());
 		assertEquals(4600000000L, result.getTotalXp());
 		assertEquals(69, result.getOverallRank());
+		assertEquals(1, result.getSkillRank("attack"));
+		assertEquals(99, result.getSkillLevel("attack"));
+		assertEquals(13034431L, result.getSkillXp("attack"));
 	}
 
 	@Test

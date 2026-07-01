@@ -5,6 +5,10 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
 import java.util.Map;
 import net.runelite.api.Skill;
@@ -65,6 +69,12 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 	private int redGotrRifts = -1;
 	private int redGotrObtained = -1;
 	private int redGotrTotal;
+	private Skill hoveredSkill;
+
+	public CompareSkillSummaryTooltip()
+	{
+		installSkillHoverHandlers();
+	}
 
 	@Override
 	protected Font getTitleFont()
@@ -144,7 +154,8 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 		int gridWidth = cellWidth * COLS + COL_GAP * (COLS - 1);
 		int xpWidth = measureXpRowWidth(fm);
 		int gotrWidth = measureGotrWidth(fm);
-		int totalWidth = Math.max(Math.max(gridWidth, xpWidth), gotrWidth);
+		int totalWidth = Math.max(Math.max(Math.max(gridWidth, xpWidth), gotrWidth),
+			measureSkillStatsWidth(fm));
 		int totalHeight = fm.getHeight() + XP_ROW_GAP + LINE_HEIGHT
 			+ HEADER_GAP + ROW_HEIGHT * ROWS + GOTR_SECTION_GAP + LINE_HEIGHT;
 		return new Dimension(totalWidth, totalHeight);
@@ -253,7 +264,127 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 			}
 		}
 
-		paintGotr(g2, fm, inset, w, y + ROW_HEIGHT * ROWS + GOTR_SECTION_GAP);
+		int footerY = y + ROW_HEIGHT * ROWS + GOTR_SECTION_GAP;
+		if (hoveredSkill != null)
+		{
+			paintSkillStats(g2, fm, inset, w, footerY, hoveredSkill);
+		}
+		else
+		{
+			paintGotr(g2, fm, inset, w, footerY);
+		}
+	}
+
+	private void installSkillHoverHandlers()
+	{
+		addMouseMotionListener(new MouseMotionAdapter()
+		{
+			@Override
+			public void mouseMoved(MouseEvent e)
+			{
+				setHoveredSkill(skillAt(e.getX(), e.getY()));
+			}
+		});
+
+		addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseExited(MouseEvent e)
+			{
+				setHoveredSkill(null);
+			}
+		});
+	}
+
+	private void setHoveredSkill(Skill skill)
+	{
+		if (hoveredSkill != skill)
+		{
+			hoveredSkill = skill;
+			repaint();
+		}
+	}
+
+	private Skill skillAt(int mouseX, int mouseY)
+	{
+		FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
+		int cellWidth = measureCellWidth(fm);
+		int gridWidth = cellWidth * COLS + COL_GAP * (COLS - 1);
+		int gridOffsetX = getInset() + (getWidth() - 2 * getInset() - gridWidth) / 2;
+		int gridOffsetY = getInset() + getHeaderZoneHeight()
+			+ fm.getHeight() + XP_ROW_GAP + LINE_HEIGHT + HEADER_GAP;
+
+		for (int row = 0; row < ROWS; row++)
+		{
+			for (int col = 0; col < COLS; col++)
+			{
+				int x = gridOffsetX + col * (cellWidth + COL_GAP);
+				int y = gridOffsetY + row * ROW_HEIGHT;
+				if (new Rectangle(x, y, cellWidth, ROW_HEIGHT).contains(mouseX, mouseY))
+				{
+					return GRID[row][col];
+				}
+			}
+		}
+		return null;
+	}
+
+	private int measureSkillStatsWidth(FontMetrics fm)
+	{
+		int iconW = ICON_SIZE + GOTR_ICON_GAP;
+		return iconW
+			+ skillStatsValueWidth(fm)
+			+ fm.stringWidth(CHROME_SEPARATOR)
+			+ skillStatsValueWidth(fm);
+	}
+
+	private int skillStatsValueWidth(FontMetrics fm)
+	{
+		return fm.stringWidth("#")
+			+ fm.stringWidth("9,999,999")
+			+ fm.stringWidth(" XP: ")
+			+ fm.stringWidth("200.0M");
+	}
+
+	private void paintSkillStats(Graphics2D g2, FontMetrics fm, int inset, int w, int y,
+		Skill skill)
+	{
+		int rowW = measureSkillStatsWidth(fm);
+		int x = inset + (w - 2 * inset - rowW) / 2;
+		int textY = y + fm.getAscent();
+
+		BufferedImage icon = SkillsTooltip.getIcons().get(skill);
+		if (icon != null)
+		{
+			int iconY = y + (LINE_HEIGHT - icon.getHeight()) / 2;
+			g2.drawImage(icon, x, iconY, null);
+		}
+		x += ICON_SIZE + GOTR_ICON_GAP;
+
+		x = paintSkillStatsValue(g2, fm, x, textY, blueResult, skill);
+		x = paintChromeSeparator(g2, fm, x, textY);
+		paintSkillStatsValue(g2, fm, x, textY, redResult, skill);
+	}
+
+	private int paintSkillStatsValue(Graphics2D g2, FontMetrics fm, int x, int y,
+		HiscoreResult result, Skill skill)
+	{
+		String skillName = skill.getName().toLowerCase();
+		String rank = SkillsTooltip.rankText(result != null ? result.getSkillRank(skillName) : -1);
+		String xp = SkillsTooltip.skillXpText(result != null ? result.getSkillXp(skillName) : -1);
+
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString("#", x, y);
+		x += fm.stringWidth("#");
+		g2.setColor(Color.WHITE);
+		g2.drawString(rank, x, y);
+		x += fm.stringWidth(rank);
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString(" XP: ", x, y);
+		x += fm.stringWidth(" XP: ");
+		g2.setColor(Color.WHITE);
+		g2.drawString(xp, x, y);
+		return x + fm.stringWidth(xp);
 	}
 
 	private void paintHeader(Graphics2D g2, FontMetrics fm, int inset, int w, int y, int winner)
