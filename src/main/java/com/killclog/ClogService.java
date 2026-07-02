@@ -9,11 +9,13 @@ import java.lang.reflect.Type;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.TreeMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
@@ -354,6 +356,28 @@ public class ClogService
 		if (cats == null) return -1;
 		List<Integer> items = cats.get(category);
 		return items != null ? items.size() : -1;
+	}
+
+	@Nullable
+	public ClogResult getCatalogResult(String playerName)
+	{
+		Map<String, List<Integer>> cats = cachedCategories;
+		if (cats == null)
+		{
+			return null;
+		}
+
+		Map<String, List<Integer>> categories = new HashMap<>();
+		Map<String, List<ClogResult.ClogItem>> obtained = new HashMap<>();
+		for (Map.Entry<String, List<Integer>> entry : cats.entrySet())
+		{
+			categories.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+			obtained.put(entry.getKey(), Collections.emptyList());
+		}
+
+		Map<Integer, String> names = cachedItemNames != null
+			? new HashMap<>(cachedItemNames) : new HashMap<>();
+		return new ClogResult(playerName, obtained, categories, names, null, null);
 	}
 
 	private CompletableFuture<Map<String, List<Integer>>> fetchCategories()

@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -110,6 +111,7 @@ public class ComparisonController
 	private final KillClogConfig config;
 	private final TooltipController tooltipController;
 	private final TooltipDataBuilder tooltipDataBuilder;
+	private final UnsyncedClogCatalog unsyncedCatalog;
 	private final Listener listener;
 	@Nullable private CellRenderTarget renderTarget;
 	@Nullable private Cells cells;
@@ -147,6 +149,7 @@ public class ComparisonController
 		this.config = config;
 		this.tooltipController = tooltipController;
 		this.tooltipDataBuilder = tooltipDataBuilder;
+		this.unsyncedCatalog = new UnsyncedClogCatalog(clogService);
 		this.listener = listener;
 	}
 
@@ -162,6 +165,16 @@ public class ComparisonController
 		this.cells = cells;
 	}
 
+	public void setClogIndex(@Nullable ClogIndex clogIndex)
+	{
+		unsyncedCatalog.setClogIndex(clogIndex);
+	}
+
+	public void setUnsyncedCatalogResolver(Consumer<ClogResult> resolver)
+	{
+		unsyncedCatalog.setResolver(resolver);
+	}
+
 	// Lifecycle
 
 	/**
@@ -174,9 +187,16 @@ public class ComparisonController
 	{
 		comparisonMode = true;
 
+		rebuildTooltipData();
+		listener.onComparisonEnter(compareRsn != null ? compareRsn : "");
+	}
+
+	public void rebuildTooltipData()
+	{
 		compareTooltipDataMap.clear();
 		if (compareHiscoreResult != null)
 		{
+			ClogResult catalog = compareClogResult == null ? unsyncedCatalog.result() : null;
 			for (HiscoreSkill boss : PanelData.BOSSES)
 			{
 				String bossName = boss.getName();
@@ -189,19 +209,19 @@ public class ComparisonController
 					compareTooltipDataMap.put(boss, data);
 					tooltipDataBuilder.preloadItemImages(data);
 				}
-				else if (rank > 0)
+				else
 				{
-					int total = clogService.getCategoryItemCount(category);
-					compareTooltipDataMap.put(boss, new TooltipData(
-						bossName, rank, -1, Math.max(total, 0),
-						Collections.emptyList(),
-						Collections.emptySet(),
-						Collections.emptyMap()));
+					TooltipData unsyncedData = tooltipDataBuilder.buildUnsyncedTooltipData(
+						bossName, category, rank, "Kills: ",
+						compareHiscoreResult.getKc(hiscoreName),
+						catalog != null ? catalog : unsyncedCatalog.result());
+					if (unsyncedData != null)
+					{
+						compareTooltipDataMap.put(boss, unsyncedData);
+					}
 				}
 			}
 		}
-
-		listener.onComparisonEnter(compareRsn != null ? compareRsn : "");
 	}
 
 	/**
@@ -534,17 +554,39 @@ public class ComparisonController
 	@Nullable
 	public TooltipData buildClueRare(String name, String clogCategory)
 	{
-		return compareClogResult != null
-			? tooltipDataBuilder.buildClueRareData(name, clogCategory, compareClogResult)
-			: null;
+		TooltipData data = compareClogResult != null
+			? tooltipDataBuilder.buildClueRareData(name, clogCategory, compareClogResult) : null;
+		return data != null ? data : unsyncedClueRare(name, clogCategory);
 	}
 
 	@Nullable
 	public TooltipData buildCustomRare(String name, int[] itemIds)
 	{
-		return compareClogResult != null
-			? tooltipDataBuilder.buildCustomRareData(name, itemIds, compareClogResult)
-			: null;
+		TooltipData data = compareClogResult != null
+			? tooltipDataBuilder.buildCustomRareData(name, itemIds, compareClogResult) : null;
+		return data != null ? data
+			: tooltipDataBuilder.buildUnsyncedItemData(name, itemIds, unsyncedCatalog.result());
+	}
+
+	@Nullable
+	private TooltipData unsyncedClueRare(String name, String clogCategory)
+	{
+		ClogResult catalog = unsyncedCatalog.result();
+		TooltipData data = tooltipDataBuilder.buildUnsyncedTooltipData(
+			name, clogCategory, -1, null, -1, catalog);
+		if (data != null)
+		{
+			return data;
+		}
+		if (PanelData.CLOG_THIRD_AGE.equals(clogCategory))
+		{
+			return tooltipDataBuilder.buildUnsyncedItemData(name, PanelData.THIRD_AGE_ITEMS, catalog);
+		}
+		if (PanelData.CLOG_GILDED.equals(clogCategory))
+		{
+			return tooltipDataBuilder.buildUnsyncedItemData(name, PanelData.GILDED_ITEMS, catalog);
+		}
+		return null;
 	}
 
 	/** Set a cell to dual blue/red values. */
@@ -752,17 +794,26 @@ public class ComparisonController
 	}
 
 	@Nullable
-	private TooltipData buildCompareClueTierData(HiscoreSkill tier)
+	TooltipData buildCompareClueTierData(HiscoreSkill tier)
 	{
 		String category = PanelData.CLUE_CATEGORIES.get(tier);
-		if (category == null || compareClogResult == null)
+		if (category == null)
 		{
 			return null;
 		}
 		int rank = compareHiscoreResult != null
 			? compareHiscoreResult.getActivityRank(tier.getName()) : -1;
-		return tooltipDataBuilder.buildTooltipData(Cells.capitalizeTier(tier),
-			category, rank, compareClogResult);
+		TooltipData data = compareClogResult != null
+			? tooltipDataBuilder.buildTooltipData(Cells.capitalizeTier(tier),
+				category, rank, compareClogResult) : null;
+		if (data != null)
+		{
+			return data;
+		}
+		int score = compareHiscoreResult != null
+			? compareHiscoreResult.getActivityScore(tier.getName()) : -1;
+		return tooltipDataBuilder.buildUnsyncedTooltipData(
+			Cells.capitalizeTier(tier), category, rank, "Score: ", score, unsyncedCatalog.result());
 	}
 
 	private static int hiscoreKc(@Nullable HiscoreResult r, String hiscoreName)

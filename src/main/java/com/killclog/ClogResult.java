@@ -25,6 +25,10 @@ public class ClogResult
 	private int uniqueObtained = -1;
 	/** Game-reported total clog slots (varp 2944), or -1 if unavailable */
 	private int uniqueTotal = -1;
+	/** True when TempleOSRS returned data that fed this result */
+	private boolean fromTemple;
+	/** True when RuneProfile returned data that fed this result */
+	private boolean fromRuneProfile;
 
 	public ClogResult(
 		String playerName,
@@ -91,6 +95,16 @@ public class ClogResult
 		this.uniqueTotal = count;
 	}
 
+	public boolean isFromTemple()
+	{
+		return fromTemple;
+	}
+
+	public boolean isFromRuneProfile()
+	{
+		return fromRuneProfile;
+	}
+
 	public boolean isItemResolved(int id)
 	{
 		return itemNames.containsKey(id);
@@ -122,6 +136,18 @@ public class ClogResult
 	 * prefer TempleOSRS for its richer sync timestamp.
 	 */
 	public static ClogResult pickFreshest(ClogResult temple, ClogResult rp)
+	{
+		ClogResult winner = chooseFreshest(temple, rp);
+		if (winner != null)
+		{
+			// Provenance tracks which providers returned non-null data.
+			winner.fromTemple = temple != null;
+			winner.fromRuneProfile = rp != null;
+		}
+		return winner;
+	}
+
+	private static ClogResult chooseFreshest(ClogResult temple, ClogResult rp)
 	{
 		if (temple == null)
 		{

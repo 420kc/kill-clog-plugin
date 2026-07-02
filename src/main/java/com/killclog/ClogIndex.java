@@ -23,6 +23,7 @@ final class ClogIndex
 	private Map<String, List<Integer>> categoryItems = Collections.emptyMap();
 	private Map<Integer, List<String>> itemCategoryKeys = Collections.emptyMap();
 	private Map<String, List<Integer>> itemNameIds = Collections.emptyMap();
+	private Map<Integer, String> itemNames = Collections.emptyMap();
 	private boolean parsed;
 
 	boolean ensureParsed(Client client, ItemManager itemManager)
@@ -37,6 +38,7 @@ final class ClogIndex
 			Map<String, List<Integer>> nextCategoryItems = new HashMap<>();
 			Map<Integer, List<String>> nextItemCategoryKeys = new HashMap<>();
 			Map<String, List<Integer>> nextItemNameIds = new HashMap<>();
+			Map<Integer, String> nextItemNames = new HashMap<>();
 
 			EnumComposition tabs = client.getEnum(ENUM_CLOG_TABS);
 			for (int tabKey : tabs.getKeys())
@@ -67,22 +69,23 @@ final class ClogIndex
 						itemIds.add(itemId);
 						nextItemCategoryKeys.computeIfAbsent(itemId, k -> new ArrayList<>())
 							.add(categoryKey);
-						indexItemName(nextItemNameIds, itemManager, itemId);
+						indexItemName(nextItemNameIds, nextItemNames, itemManager, itemId);
 					}
 					nextCategoryItems.put(categoryKey, itemIds);
 				}
 			}
 
-			injectSynthetic(nextCategoryItems, nextItemCategoryKeys, nextItemNameIds,
+			injectSynthetic(nextCategoryItems, nextItemCategoryKeys, nextItemNameIds, nextItemNames,
 				itemManager, "mimic", new int[]{PanelData.THIRD_AGE_RING_ITEM_ID});
-			injectSynthetic(nextCategoryItems, nextItemCategoryKeys, nextItemNameIds,
+			injectSynthetic(nextCategoryItems, nextItemCategoryKeys, nextItemNameIds, nextItemNames,
 				itemManager, PanelData.CLOG_THIRD_AGE, PanelData.THIRD_AGE_ITEMS);
-			injectSynthetic(nextCategoryItems, nextItemCategoryKeys, nextItemNameIds,
+			injectSynthetic(nextCategoryItems, nextItemCategoryKeys, nextItemNameIds, nextItemNames,
 				itemManager, PanelData.CLOG_GILDED, PanelData.GILDED_ITEMS);
 
 			categoryItems = nextCategoryItems;
 			itemCategoryKeys = nextItemCategoryKeys;
 			itemNameIds = nextItemNameIds;
+			itemNames = nextItemNames;
 			parsed = true;
 			log.debug("Parsed clog enums: {} categories, {} items, {} names",
 				categoryItems.size(), itemCategoryKeys.size(), itemNameIds.size());
@@ -101,6 +104,7 @@ final class ClogIndex
 		categoryItems = Collections.emptyMap();
 		itemCategoryKeys = Collections.emptyMap();
 		itemNameIds = Collections.emptyMap();
+		itemNames = Collections.emptyMap();
 		parsed = false;
 	}
 
@@ -139,6 +143,11 @@ final class ClogIndex
 		return copy;
 	}
 
+	Map<Integer, String> copyItemNames()
+	{
+		return new HashMap<>(itemNames);
+	}
+
 	int categoryCount()
 	{
 		return categoryItems.size();
@@ -146,6 +155,7 @@ final class ClogIndex
 
 	private void injectSynthetic(Map<String, List<Integer>> categoryItems,
 		Map<Integer, List<String>> itemCategoryKeys, Map<String, List<Integer>> itemNameIds,
+		Map<Integer, String> itemNames,
 		ItemManager itemManager, String key, int[] itemIds)
 	{
 		List<Integer> ids = new ArrayList<>(itemIds.length);
@@ -153,17 +163,19 @@ final class ClogIndex
 		{
 			ids.add(id);
 			itemCategoryKeys.computeIfAbsent(id, k -> new ArrayList<>()).add(key);
-			indexItemName(itemNameIds, itemManager, id);
+			indexItemName(itemNameIds, itemNames, itemManager, id);
 		}
 		categoryItems.put(key, ids);
 	}
 
-	private void indexItemName(Map<String, List<Integer>> itemNameIds, ItemManager itemManager, int itemId)
+	private void indexItemName(Map<String, List<Integer>> itemNameIds,
+		Map<Integer, String> itemNames, ItemManager itemManager, int itemId)
 	{
 		String itemName = itemManager.getItemComposition(itemId).getName();
 		String itemKey = ClogUnlockParser.normalizeItemName(itemName);
 		if (!itemKey.isEmpty() && !"null".equals(itemKey))
 		{
+			itemNames.put(itemId, itemName);
 			List<Integer> ids = itemNameIds.computeIfAbsent(itemKey, k -> new ArrayList<>());
 			if (!ids.contains(itemId))
 			{

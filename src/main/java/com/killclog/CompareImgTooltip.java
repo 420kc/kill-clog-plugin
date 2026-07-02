@@ -43,7 +43,8 @@ public class CompareImgTooltip extends TitleTooltip
 
 	// Grid data.
 	private List<Integer> allItemIds;
-	private TooltipItemSprites itemSprites;
+	private TooltipItemSprites blueItemSprites;
+	private TooltipItemSprites redItemSprites;
 	private final TooltipItemHover itemHover = new TooltipItemHover(this);
 
 	private Set<Integer> blueObtainedIds;
@@ -136,14 +137,32 @@ public class CompareImgTooltip extends TitleTooltip
 
 		if (allItemIds == null || allItemIds.isEmpty() || itemManager == null)
 		{
-			itemSprites = null;
+			blueItemSprites = null;
+			redItemSprites = null;
 			itemHover.setHitBoxes(Collections.emptyList());
 			itemHover.clear();
 			return;
 		}
 
-		itemSprites = TooltipItemSprites.load(allItemIds, itemNames, itemManager, SPRITE_SIZE,
-			this::compareSpriteCount, this);
+		blueItemSprites = loadPlayerSprites(allItemIds, itemNames,
+			blueObtainedIds, blueObtainedCounts, itemManager);
+		redItemSprites = loadPlayerSprites(allItemIds, itemNames,
+			redObtainedIds, redObtainedCounts, itemManager);
+	}
+
+	private TooltipItemSprites loadPlayerSprites(List<Integer> itemIds, Map<Integer, String> itemNames,
+		Set<Integer> obtainedIds, Map<Integer, Integer> obtainedCounts,
+		ItemManager itemManager)
+	{
+		return TooltipItemSprites.load(itemIds, itemNames, itemManager, SPRITE_SIZE,
+			itemId -> spriteCountForItem(itemId, obtainedIds, obtainedCounts), this);
+	}
+
+	static int spriteCountForItem(int itemId, Set<Integer> obtainedIds,
+		Map<Integer, Integer> obtainedCounts)
+	{
+		return obtainedIds != null && obtainedIds.contains(itemId) && obtainedCounts != null
+			? obtainedCounts.getOrDefault(itemId, 1) : 1;
 	}
 
 	// Header.
@@ -233,7 +252,7 @@ public class CompareImgTooltip extends TitleTooltip
 
 	private static String formatObtained(int obtained, int total)
 	{
-		return (obtained < 0 ? "?" : String.valueOf(obtained)) + "/" + total;
+		return obtained >= 0 ? obtained + "/" + total : "--";
 	}
 
 	private boolean showRankLine()
@@ -355,9 +374,9 @@ public class CompareImgTooltip extends TitleTooltip
 		g2.drawString(bluePlayerName != null ? bluePlayerName : "Blue", inset, blueNameY);
 		y += sfm.getHeight() + 2;
 
-		if (blueHasData && itemSprites != null && allItemIds != null && !allItemIds.isEmpty())
+		if (blueHasData && blueItemSprites != null && allItemIds != null && !allItemIds.isEmpty())
 		{
-			y = paintGrid(g2, nextHitBoxes, 0, gridOffsetX, y, cols, cellSize,
+			y = paintGrid(g2, nextHitBoxes, blueItemSprites, 0, gridOffsetX, y, cols, cellSize,
 				blueObtainedIds, blueObtainedCounts);
 		}
 		else
@@ -377,9 +396,9 @@ public class CompareImgTooltip extends TitleTooltip
 		g2.drawString(redPlayerName != null ? redPlayerName : "Red", inset, redNameY);
 		y += sfm.getHeight() + 2;
 
-		if (redHasData && itemSprites != null && allItemIds != null && !allItemIds.isEmpty())
+		if (redHasData && redItemSprites != null && allItemIds != null && !allItemIds.isEmpty())
 		{
-			y = paintGrid(g2, nextHitBoxes, 1, gridOffsetX, y, cols, cellSize,
+			y = paintGrid(g2, nextHitBoxes, redItemSprites, 1, gridOffsetX, y, cols, cellSize,
 				redObtainedIds, redObtainedCounts);
 		}
 		else
@@ -396,8 +415,8 @@ public class CompareImgTooltip extends TitleTooltip
 	/**
 	 * Paint a sprite grid for one player. Returns the Y after the last row.
 	 */
-	private int paintGrid(Graphics2D g2, List<TooltipItemHover.HitBox> nextHitBoxes, int section,
-		int gridOffsetX, int y, int cols,
+	private int paintGrid(Graphics2D g2, List<TooltipItemHover.HitBox> nextHitBoxes,
+		TooltipItemSprites sprites, int section, int gridOffsetX, int y, int cols,
 		int cellSize, Set<Integer> obtainedIds, Map<Integer, Integer> obtainedCounts)
 	{
 		g2.setFont(FontManager.getRunescapeSmallFont());
@@ -414,7 +433,7 @@ public class CompareImgTooltip extends TitleTooltip
 			nextHitBoxes.add(new TooltipItemHover.HitBox(section, itemId, itemNameAt(i),
 				new Rectangle(x, sy, SPRITE_SIZE, SPRITE_SIZE), obtained));
 
-			BufferedImage sprite = itemSprites.spriteAt(i);
+			BufferedImage sprite = sprites.spriteAt(i);
 			if (sprite != null)
 			{
 				g2.setComposite(obtained
@@ -446,24 +465,12 @@ public class CompareImgTooltip extends TitleTooltip
 
 	private String itemNameAt(int index)
 	{
-		if (itemSprites == null)
+		TooltipItemSprites sprites = blueItemSprites != null ? blueItemSprites : redItemSprites;
+		if (sprites == null)
 		{
 			return null;
 		}
-		return itemSprites.nameAt(index);
-	}
-
-	private int compareSpriteCount(int itemId)
-	{
-		if (blueObtainedIds != null && blueObtainedIds.contains(itemId) && blueObtainedCounts != null)
-		{
-			return blueObtainedCounts.getOrDefault(itemId, 1);
-		}
-		if (redObtainedIds != null && redObtainedIds.contains(itemId) && redObtainedCounts != null)
-		{
-			return redObtainedCounts.getOrDefault(itemId, 1);
-		}
-		return 1;
+		return sprites.nameAt(index);
 	}
 
 }

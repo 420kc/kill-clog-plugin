@@ -92,8 +92,9 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 		this.redResult = redResult;
 		try
 		{
-			BufferedImage raw = ImageUtil.loadImageResource(KillClogPlugin.class, "icon.png");
-			chaliceSprite = ImageUtil.resizeImage(raw, CHALICE_SIZE, CHALICE_SIZE);
+			BufferedImage raw = KillClogIcons.pluginIcon();
+			chaliceSprite = raw != null
+				? ImageUtil.resizeImage(raw, CHALICE_SIZE, CHALICE_SIZE) : null;
 		}
 		catch (Exception ignored)
 		{

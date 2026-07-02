@@ -19,6 +19,7 @@ import java.awt.image.BufferedImage;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
@@ -61,6 +62,7 @@ public class Cells
 	private final TooltipDataBuilder tooltipDataBuilder;
 	private final LookupSession lookupSession;
 	private final ClogService clogService;
+	private final UnsyncedClogCatalog unsyncedCatalog;
 	@Nullable private SinglePlayerTooltipBuilder singlePlayerBuilder;
 
 	// Tooltip data caches
@@ -96,11 +98,22 @@ public class Cells
 		this.tooltipDataBuilder = tooltipDataBuilder;
 		this.lookupSession = lookupSession;
 		this.clogService = clogService;
+		this.unsyncedCatalog = new UnsyncedClogCatalog(clogService);
 	}
 
 	public void setSinglePlayerTooltipBuilder(SinglePlayerTooltipBuilder builder)
 	{
 		this.singlePlayerBuilder = builder;
+	}
+
+	public void setClogIndex(ClogIndex clogIndex)
+	{
+		this.unsyncedCatalog.setClogIndex(clogIndex);
+	}
+
+	public void setUnsyncedCatalogResolver(Consumer<ClogResult> resolver)
+	{
+		this.unsyncedCatalog.setResolver(resolver);
 	}
 
 	// Cell builders
@@ -487,6 +500,14 @@ public class Cells
 	public void rebuildPrimaryTooltips(@Nullable String localRsn)
 	{
 		tooltipDataMap.clear();
+		if (lookupSession.getClogResult() == null)
+		{
+			rareTooltips.clear();
+		}
+		boolean selfNoCache = lookupSession.getClogResult() == null && localRsn != null
+			&& localRsn.equalsIgnoreCase(lookupSession.getCurrentLookupRsn());
+		ClogResult catalog = lookupSession.getClogResult() == null && !selfNoCache
+			? unsyncedCatalog.result() : null;
 
 		// Boss cells
 		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
@@ -503,16 +524,16 @@ public class Cells
 
 			if (lookupSession.getClogResult() == null)
 			{
-				boolean selfNoCache = localRsn != null
-					&& localRsn.equalsIgnoreCase(lookupSession.getCurrentLookupRsn());
 				if (!selfNoCache)
 				{
-					int total = clogService.getCategoryItemCount(category);
-					tooltipDataMap.put(skill, new TooltipData(
-						bossName, rank, -1, Math.max(total, 0),
-						java.util.Collections.emptyList(),
-						java.util.Collections.emptySet(),
-						java.util.Collections.emptyMap()));
+					int kc = lookupSession.getHiscoreResult() != null
+						? lookupSession.getHiscoreResult().getKc(hiscoreName) : -1;
+					TooltipData data = tooltipDataBuilder.buildUnsyncedTooltipData(
+						bossName, category, rank, "Kills: ", kc, catalog);
+					if (data != null)
+					{
+						tooltipDataMap.put(skill, data);
+					}
 				}
 				label.setToolTipText(" ");
 				continue;
@@ -521,12 +542,14 @@ public class Cells
 			TooltipData data = tooltipDataBuilder.buildTooltipData(bossName, category, rank, lookupSession.getClogResult());
 			if (data == null)
 			{
-				int total = clogService.getCategoryItemCount(category);
-				tooltipDataMap.put(skill, new TooltipData(
-					bossName, rank, -1, Math.max(total, 0),
-					java.util.Collections.emptyList(),
-					java.util.Collections.emptySet(),
-					java.util.Collections.emptyMap()));
+				int kc = lookupSession.getHiscoreResult() != null
+					? lookupSession.getHiscoreResult().getKc(hiscoreName) : -1;
+				TooltipData unsyncedData = tooltipDataBuilder.buildUnsyncedTooltipData(
+					bossName, category, rank, "Kills: ", kc, unsyncedCatalog.result());
+				if (unsyncedData != null)
+				{
+					tooltipDataMap.put(skill, unsyncedData);
+				}
 				label.setToolTipText(" ");
 				continue;
 			}
@@ -539,6 +562,10 @@ public class Cells
 		// Clue tier cells
 		if (lookupSession.getClogResult() == null)
 		{
+			if (!selfNoCache)
+			{
+				rebuildUnsyncedClueTooltips(catalog);
+			}
 			return;
 		}
 		for (Map.Entry<HiscoreSkill, String> entry : PanelData.CLUE_CATEGORIES.entrySet())
@@ -559,6 +586,59 @@ public class Cells
 			}
 			tooltipDataMap.put(skill, data);
 			tooltipDataBuilder.preloadItemImages(data);
+			label.setToolTipText(" ");
+		}
+	}
+
+	private void rebuildUnsyncedClueTooltips(@Nullable ClogResult catalog)
+	{
+		for (Map.Entry<HiscoreSkill, String> entry : PanelData.CLUE_CATEGORIES.entrySet())
+		{
+			HiscoreSkill skill = entry.getKey();
+			JLabel label = clueTierLabels.get(skill);
+			if (label == null)
+			{
+				continue;
+			}
+			int rank = lookupSession.getHiscoreResult() != null
+				? lookupSession.getHiscoreResult().getActivityRank(skill.getName()) : -1;
+			int score = lookupSession.getHiscoreResult() != null
+				? lookupSession.getHiscoreResult().getActivityScore(skill.getName()) : -1;
+			TooltipData data = tooltipDataBuilder.buildUnsyncedTooltipData(
+				capitalizeTier(skill), entry.getValue(), rank, "Score: ", score, catalog);
+			if (data != null)
+			{
+				tooltipDataMap.put(skill, data);
+			}
+			label.setToolTipText(" ");
+		}
+
+		putUnsyncedRare(PanelData.CLOG_THIRD_AGE, thirdAgeCell,
+			"3rd Age", PanelData.THIRD_AGE_ITEMS, catalog);
+		putUnsyncedRare(PanelData.CLOG_GILDED, gildedCell,
+			"Gilded", PanelData.GILDED_ITEMS, catalog);
+		putUnsyncedRare(PanelData.RARE_HARD, hardRare,
+			"Hard Treasure (Rare)", PanelData.HARD_RARE_ITEMS, catalog);
+		putUnsyncedRare(PanelData.RARE_ELITE, eliteRare,
+			"Elite Treasure (Rare)", PanelData.ELITE_RARE_ITEMS, catalog);
+		putUnsyncedRare(PanelData.RARE_MASTER, masterRare,
+			"Master Treasure (Rare)", PanelData.MASTER_RARE_ITEMS, catalog);
+	}
+
+	private void putUnsyncedRare(String key, @Nullable JLabel label, String name,
+		int[] itemIds, @Nullable ClogResult catalog)
+	{
+		TooltipData data = tooltipDataBuilder.buildUnsyncedTooltipData(name, key, -1, null, -1, catalog);
+		if (data == null)
+		{
+			data = tooltipDataBuilder.buildUnsyncedItemData(name, itemIds, catalog);
+		}
+		if (data != null)
+		{
+			rareTooltips.put(key, data);
+		}
+		if (label != null)
+		{
 			label.setToolTipText(" ");
 		}
 	}
@@ -608,12 +688,7 @@ public class Cells
 	{
 		if (comparison.isComparisonMode())
 		{
-			String category = PanelData.CLUE_CATEGORIES.get(tier);
-			int redRank = comparison.getCompareHiscoreResult() != null
-				? comparison.getCompareHiscoreResult().getActivityRank(tier.getName()) : -1;
-			TooltipData redData = comparison.getCompareClogResult() != null
-				? tooltipDataBuilder.buildTooltipData(displayName, category, redRank, comparison.getCompareClogResult())
-				: null;
+			TooltipData redData = comparison.buildCompareClueTierData(tier);
 			return comparison.makeSpriteTooltip(owner, tooltipDataMap.get(tier), redData, displayName,
 				!suppressComparisonClueGrid(tier));
 		}

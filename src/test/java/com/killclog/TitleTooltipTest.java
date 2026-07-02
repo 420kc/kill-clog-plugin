@@ -1,12 +1,14 @@
 package com.killclog;
 
 import java.awt.Color;
+import java.awt.Dimension;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionListener;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import net.runelite.client.ui.FontManager;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -72,6 +74,26 @@ public class TitleTooltipTest
 		assertEquals("Barrows", PanelData.bossWikiPage(net.runelite.client.hiscore.HiscoreSkill.BARROWS_CHESTS));
 		assertEquals("The Mimic", PanelData.bossWikiPage(net.runelite.client.hiscore.HiscoreSkill.MIMIC));
 		assertEquals("Abyssal Sire", PanelData.bossWikiPage(net.runelite.client.hiscore.HiscoreSkill.ABYSSAL_SIRE));
+	}
+
+	@Test
+	public void clogSummarySourceBadgeKeepsHeaderCompactAndRevealsSourcesBelow()
+	{
+		ClogSummaryTooltip tooltip = new ClogSummaryTooltip();
+		tooltip.setTitle("Clog Summary");
+		tooltip.setClogSources(true, true);
+
+		Dimension idle = tooltip.getPreferredSize();
+		int combinedSourceWidth = tooltip.getFontMetrics(FontManager.getRunescapeSmallFont())
+			.stringWidth("TempleOSRS + RuneProfile") + NativeTooltip.getInset() * 2;
+		assertTrue(idle.width < combinedSourceWidth);
+		assertArrayEquals(new String[]{"TempleOSRS", "RuneProfile"}, tooltip.sourceRows());
+
+		tooltip.setSize(idle);
+		moveMouse(tooltip, tooltip.getWidth() - NativeTooltip.getInset() - 1,
+			NativeTooltip.getInset() + 1);
+		assertTrue(tooltip.isTitleCornerHovered());
+		assertTrue(tooltip.getPreferredSize().height > idle.height);
 	}
 
 	@Test
@@ -165,6 +187,20 @@ public class TitleTooltipTest
 		large.setRedData("Red", 126, 999, 50, 60, "Rat", 5);
 
 		assertTrue(small.getPreferredSize().width < large.getPreferredSize().width);
+	}
+
+	@Test
+	public void compareSpriteCountUsesEachPlayersObtainedCount()
+	{
+		Map<Integer, Integer> counts = new HashMap<>();
+		counts.put(995, 42);
+
+		assertEquals(42, CompareImgTooltip.spriteCountForItem(995,
+			Collections.singleton(995), counts));
+		assertEquals(1, CompareImgTooltip.spriteCountForItem(995,
+			Collections.emptySet(), counts));
+		assertEquals(1, CompareImgTooltip.spriteCountForItem(995,
+			Collections.singleton(995), Collections.emptyMap()));
 	}
 
 	private static HiscoreResult pvpHiscore(String activity, int score)

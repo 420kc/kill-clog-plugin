@@ -10,6 +10,7 @@ import java.awt.image.BufferedImage;
 import javax.inject.Inject;
 import net.runelite.api.Client;
 import net.runelite.api.widgets.Widget;
+import net.runelite.client.game.ItemManager;
 import net.runelite.client.input.MouseListener;
 import net.runelite.client.ui.overlay.Overlay;
 import net.runelite.client.ui.overlay.OverlayLayer;
@@ -27,6 +28,7 @@ class ClogButtonOverlay extends Overlay implements MouseListener
 
 	private final Client client;
 	private final KillClogPlugin plugin;
+	private final ItemManager itemManager;
 
 	private BufferedImage icon;
 	private BufferedImage greenIcon;
@@ -34,10 +36,11 @@ class ClogButtonOverlay extends Overlay implements MouseListener
 	private volatile long greenUntil;
 
 	@Inject
-	ClogButtonOverlay(Client client, KillClogPlugin plugin)
+	ClogButtonOverlay(Client client, KillClogPlugin plugin, ItemManager itemManager)
 	{
 		this.client = client;
 		this.plugin = plugin;
+		this.itemManager = itemManager;
 
 		setPosition(OverlayPosition.DYNAMIC);
 		setLayer(OverlayLayer.ABOVE_WIDGETS);
@@ -56,7 +59,7 @@ class ClogButtonOverlay extends Overlay implements MouseListener
 
 		if (icon == null)
 		{
-			icon = ImageUtil.loadImageResource(KillClogPlugin.class, "icon.png");
+			icon = KillClogIcons.pluginIconOrCollectionLog(itemManager);
 			if (icon == null)
 			{
 				return null;

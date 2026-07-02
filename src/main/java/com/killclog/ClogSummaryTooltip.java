@@ -23,6 +23,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private static final int SUBHEADER_HEIGHT = 16;
 	private static final int RECENT_SIZE = 24;
 	private static final int RECENT_PAD = 6;
+	private static final String TEMPLE_SOURCE = "TempleOSRS";
+	private static final String RUNEPROFILE_SOURCE = "RuneProfile";
 	private static final Color STALE_RED = new Color(255, 60, 60);
 
 	private String tierRange;
@@ -38,6 +40,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 	private BufferedImage[] recentSprites;
 	private int recentCount;
+	private boolean clogTemple;
+	private boolean clogRuneProfile;
 
 	public void setTierData(int obtained, int totalSlots, Map<String, BufferedImage> tierIcons)
 	{
@@ -102,6 +106,13 @@ public class ClogSummaryTooltip extends TitleTooltip
 		this.syncStale = stale;
 	}
 
+	/** Record which providers supplied this player's synced clog data for the summary badge. */
+	public void setClogSources(boolean temple, boolean runeProfile)
+	{
+		this.clogTemple = temple;
+		this.clogRuneProfile = runeProfile;
+	}
+
 	public void setNotice(String notice)
 	{
 		this.notice = notice;
@@ -125,6 +136,36 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 		recentSprites = new BufferedImage[recentCount];
 		loadClogItemSprites(recentItems, recentCount, RECENT_SIZE, recentSprites, itemManager);
+	}
+
+	@Override
+	protected boolean hasTitleCornerBadge()
+	{
+		return clogTemple || clogRuneProfile;
+	}
+
+	@Override
+	protected void onTitleCornerHoverChanged(boolean hovered)
+	{
+		setSize(getPreferredSize());
+		revalidate();
+	}
+
+	String[] sourceRows()
+	{
+		if (clogTemple && clogRuneProfile)
+		{
+			return new String[]{TEMPLE_SOURCE, RUNEPROFILE_SOURCE};
+		}
+		if (clogTemple)
+		{
+			return new String[]{TEMPLE_SOURCE};
+		}
+		if (clogRuneProfile)
+		{
+			return new String[]{RUNEPROFILE_SOURCE};
+		}
+		return new String[0];
 	}
 
 	@Override
@@ -179,6 +220,19 @@ public class ClogSummaryTooltip extends TitleTooltip
 				+ (recentCount - 1) * RECENT_PAD;
 			textWidth = Math.max(textWidth, spriteRowWidth);
 			textWidth = Math.max(textWidth, bfm.stringWidth("Recent"));
+		}
+
+		if (isTitleCornerHovered())
+		{
+			String[] sourceRows = sourceRows();
+			if (sourceRows.length > 0)
+			{
+				contentHeight += separatorHeight(SEPARATOR_PAD) + LINE_HEIGHT * sourceRows.length;
+				for (String row : sourceRows)
+				{
+					textWidth = Math.max(textWidth, fm.stringWidth(row));
+				}
+			}
 		}
 
 		return new Dimension(textWidth, contentHeight);
@@ -248,6 +302,34 @@ public class ClogSummaryTooltip extends TitleTooltip
 			// Center the recent item sprites.
 			paintSpriteRow(g2, inset, y, w - 2 * inset,
 				recentSprites, recentCount, RECENT_SIZE, RECENT_PAD);
+			y += RECENT_SIZE;
+		}
+
+		paintSourceRows(g2, fm, w, y);
+	}
+
+	private void paintSourceRows(Graphics2D g2, FontMetrics fm, int w, int y)
+	{
+		if (!isTitleCornerHovered())
+		{
+			return;
+		}
+		String[] sourceRows = sourceRows();
+		if (sourceRows.length == 0)
+		{
+			return;
+		}
+
+		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
+		g2.setFont(FontManager.getRunescapeSmallFont());
+		fm = g2.getFontMetrics();
+		g2.setColor(CLOG_GREEN);
+		int inset = getInset();
+		for (String row : sourceRows)
+		{
+			int textX = inset + (w - 2 * inset - fm.stringWidth(row)) / 2;
+			g2.drawString(row, textX, y + fm.getAscent());
+			y += LINE_HEIGHT;
 		}
 	}
 

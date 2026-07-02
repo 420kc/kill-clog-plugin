@@ -33,7 +33,6 @@ import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.ui.overlay.OverlayManager;
-import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
 
 @Slf4j
@@ -138,6 +137,7 @@ public class KillClogPlugin extends Plugin
 		mouseManager.registerMouseListener(clogButtonOverlay);
 		panel.setPluginManager(pluginManager);
 		panel.setNameAutocompleter(nameAutocompleter);
+		panel.setClogIndex(clogIndex);
 
 		lookupMenu.start(config, menuManager);
 
@@ -469,6 +469,6 @@ public class KillClogPlugin extends Plugin
 
 	private BufferedImage getIcon()
 	{
-		return ImageUtil.loadImageResource(getClass(), "icon.png");
+		return KillClogIcons.pluginIconOrCollectionLog(itemManager);
 	}
 }

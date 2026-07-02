@@ -141,8 +141,10 @@ public class KillClogPanel extends PluginPanel
 			tip.setComponent(this);
 			if (lookupSession.getClogResult() != null)
 			{
-				int[] totals = ClogHelper.sumClogTotals(lookupSession.getClogResult());
+				ClogResult clog = lookupSession.getClogResult();
+				int[] totals = ClogHelper.sumClogTotals(clog);
 				tip.setTierData(totals[0], totals[1], iconCache.clogTierImages());
+				tip.setClogSources(clog.isFromTemple(), clog.isFromRuneProfile());
 				if (lookupSession.getHiscoreResult() != null)
 				{
 					int clogRank = lookupSession.getHiscoreResult().getActivityRank("Collections Logged");
@@ -243,7 +245,9 @@ public class KillClogPanel extends PluginPanel
 			lookupSession, comparison, cells, tooltipController, itemManager,
 			caRewardSprites, iconCache, () -> rsn);
 		this.itemNameResolver = new TooltipItemNameResolver(clientThread, itemManager,
-			() -> cells.rebuildPrimaryTooltips(localRsn));
+			this::onTooltipItemNamesResolved);
+		this.cells.setUnsyncedCatalogResolver(itemNameResolver::resolve);
+		this.comparison.setUnsyncedCatalogResolver(itemNameResolver::resolve);
 		this.comparison.setCells(this.cells);
 		this.cells.setSinglePlayerTooltipBuilder(new Cells.SinglePlayerTooltipBuilder()
 		{
@@ -336,6 +340,16 @@ public class KillClogPanel extends PluginPanel
 		highlighter = new ProgressHighlighter(
 			cells.getBossLabels(), cells.getActivityLabels(), cells.getClueTierLabels(),
 			PanelData.NAME_OVERRIDES, PanelData.CLUE_CATEGORIES, config);
+	}
+
+	private void onTooltipItemNamesResolved()
+	{
+		cells.rebuildPrimaryTooltips(localRsn);
+		if (comparison.isComparisonMode())
+		{
+			comparison.rebuildTooltipData();
+			comparison.updateAllCells();
+		}
 	}
 
 	// Panel construction.
@@ -518,7 +532,8 @@ public class KillClogPanel extends PluginPanel
 		tip.setComponent(owner);
 		tip.setWikiLinksEnabled(config.wikiItemLinks());
 
-		if (data != null)
+		// Synced clog data with real item counts.
+		if (data != null && data.obtainedCount >= 0)
 		{
 			tip.setTitle(data.name);
 			tip.setObtained(data.obtainedCount, data.totalItems);
@@ -531,18 +546,19 @@ public class KillClogPanel extends PluginPanel
 		}
 		else
 		{
-			tip.setTitle(name);
-			boolean isSelfNoCache = lookupSession.getHiscoreResult() != null && localRsn != null
-				&& localRsn.equalsIgnoreCase(lookupSession.getCurrentLookupRsn());
-			if (isSelfNoCache)
+			if (!ClogHelper.configureNotSynced(tip, data, itemManager))
 			{
-				tip.setNotice(SYNC_NOTICE, getSyncIcon());
-			}
-			else
-			{
-				tip.setNotice(lookupSession.getHiscoreResult() != null
-					? noClogNotice(lookupSession.getCurrentLookupRsn())
-					: "Nothing to see here! (Search for a player)");
+				tip.setTitle(data != null ? data.name : name);
+				boolean isSelfNoCache = lookupSession.getHiscoreResult() != null && localRsn != null
+					&& localRsn.equalsIgnoreCase(lookupSession.getCurrentLookupRsn());
+				if (isSelfNoCache)
+				{
+					tip.setNotice(SYNC_NOTICE, getSyncIcon());
+				}
+				else
+				{
+					tip.setNotice("Nothing to see here! (Search for a player)");
+				}
 			}
 		}
 
@@ -1012,6 +1028,12 @@ public class KillClogPanel extends PluginPanel
 		}
 	}
 
+	public void setClogIndex(ClogIndex clogIndex)
+	{
+		cells.setClogIndex(clogIndex);
+		comparison.setClogIndex(clogIndex);
+	}
+
 	public void setPluginManager(PluginManager pluginManager)
 	{
 		has420Plugin = pluginManager.getPlugins().stream()
@@ -1302,8 +1324,8 @@ public class KillClogPanel extends PluginPanel
 			{
 				clogNotice.setText(SYNC_NOTICE);
 				clogNotice.setIcon(new ImageIcon(getSyncIcon()));
-				BufferedImage icon = ImageUtil.loadImageResource(KillClogPlugin.class, "icon.png");
-				clogInfoLabel.setIcon(new ImageIcon(ImageUtil.resizeImage(icon, 15, 15)));
+				BufferedImage icon = KillClogIcons.resizedPluginIcon(15, 15, itemManager);
+				clogInfoLabel.setIcon(icon != null ? new ImageIcon(icon) : null);
 				clogInfoLabel.setText(ClogHelper.pad("Sync"));
 				clogInfoLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 				clogInfoLabel.setToolTipText(" ");

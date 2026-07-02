@@ -6,6 +6,7 @@ import java.awt.Component;
 import java.awt.Container;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +16,7 @@ import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import net.runelite.api.IconID;
 import net.runelite.api.IndexedSprite;
+import net.runelite.client.game.ItemManager;
 import org.apache.commons.lang3.StringUtils;
 
 /**
@@ -30,6 +32,33 @@ final class ClogHelper
 
 	private ClogHelper()
 	{
+	}
+
+	// Not-synced popup config shared by every clog cell system.
+
+	/**
+	 * Configure an ImgTooltip for a player who has not synced any collection log.
+	 * Skips the obtained subtitle so no "?/Y" shows, keeps native hiscore rows,
+	 * and draws every category item dimmed so wiki links remain explorable.
+	 */
+	static boolean configureNotSynced(ImgTooltip tip, TooltipData data, ItemManager itemManager)
+	{
+		if (data == null || data.allItemIds == null || data.allItemIds.isEmpty())
+		{
+			return false;
+		}
+		tip.setTitle(data.name);
+		if (data.statLabel != null)
+		{
+			tip.setInfoLine(data.statLabel, statText(data.statValue), Color.WHITE);
+		}
+		if (data.rankTracked)
+		{
+			tip.setRank(data.rank);
+		}
+		tip.setItems(data.totalItems, data.allItemIds, Collections.emptySet(),
+			Collections.emptyMap(), data.itemNames, itemManager);
+		return true;
 	}
 
 	// Clog data helpers.
@@ -216,6 +245,11 @@ final class ClogHelper
 		if (kc >= 1_000_000) return kc / 1_000_000 + "m";
 		if (kc >= 10_000) return kc / 1_000 + "k";
 		return String.valueOf(kc);
+	}
+
+	private static String statText(int value)
+	{
+		return value > 0 ? formatKc(value) : "--";
 	}
 
 	// Image utilities.

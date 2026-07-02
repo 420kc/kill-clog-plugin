@@ -1,54 +1,53 @@
 # Kill Clog Next Release
 
-Target version: `1.5.1`
+Target version: `1.6.0`
 
 Current branch: `master`
 
 ## Release Notes
 
-Kill Clog 1.5.1:
+Kill Clog 1.6.0:
 
-- Renames the regular 1-defence account label from Defense Pure to Pure.
-- Adds `:killclog:` and `:clog:` chat icons.
-- Keeps boss KC parsing aligned after Jagex's Maggot King hiscore row.
-- Carries forward 1.5.0 support for Pures, Skillers, boss Wiki page links, and
-  collection-log tooltip polish.
+- Reworks unsynced collection-log popups so public lookups without synced clog data still show native hiscore context, rank rows, and explorable dimmed item grids.
+- Builds unsynced tooltip data from the in-game collection-log index first, with provider catalog fallback, so item names and sprites match synced data.
+- Extends unsynced tooltip support across boss cells, clue tiers, rare buckets, comparison mode, and activity-tray summary surfaces.
+- Adds a Slayer row to PvM Summary, showing collection-log progress when synced and XP/rank context when unsynced.
+- Adds a Superiors section to PvM Summary with Imbued heart and Eternal gem obtained/unobtained sprites.
+- Brings the Slayer and Superiors PvM Summary rows into comparison mode.
+- Moves TempleOSRS/RuneProfile provenance into Clog Summary only, behind a compact green hover badge that reveals source rows below Recent.
+- Fixes comparison item-grid sprites so each player uses their own stack counts for stackable item variants.
+- Adds skill-hover stats in solo and comparison Skill Summary tooltips, swapping the GOTR footer for rank and XP while hovering a skill.
+- Adds chat emoji aliases for `:green:`, `:rune:`, `:dragon:`, and `:gilded:`.
+- Shrinks the `:killclog:` chat icon to match the smaller inline clog sprites and hardens plugin icon fallback loading.
+- Centralizes Kill Clog icon loading across chat emoji, panel, nav, sync, and collection-log overlay surfaces.
+- Polishes clue-summary rank styling so only the `#` is orange and the rank value remains white.
+- Adds regression coverage for source-badge sizing, tier emoji rewrites, `:killclog:` icon loading/sizing, and per-player comparison sprite counts.
 
-This release is the post-1.5.0 line. It should keep the client-to-Kill-Clog
-server sync prototype out.
+This release is the post-1.5.1 line. It keeps the client-to-Kill-Clog server
+sync prototype out.
 
 ## Included
 
-- Boss names in boss collection-log tooltips link to their OSRS Wiki page when
-  Wiki Links are enabled.
-- Clickable collection-log item sprites in single and comparison image tooltips.
-  Hovering an item shows its name; clicking opens the OSRS Wiki item page.
-- Tooltip item names follow the same completion convention as the item grids:
-  obtained names are green, unobtained names are red.
-- Regular 1-defence pures and level-3 skillers auto-refine to their specialty
-  hiscore table after the normal lookup identifies the account shape. Iron
-  accounts stay on their ironman hiscore table.
-- Pure and skiller accounts now show their native hiscore badge in the
-  infobar and their account label in player summary tooltips.
-- Starting a new lookup clears the PvP summary cell immediately, so a failed or
-  pending search cannot keep stale PvP data from the previous player.
-- A config toggle for Wiki item links, default on.
-- A config toggle for autosync chat messages.
-- Comparison total labels use the same hover/underline affordance as the player
-  names.
-- `!kclog` and `!missing` headers include boss KC when Kill Clog knows it.
-- `!3a` follows the panel bucket: 3rd age ring stays under Mimic, so the
-  command reports out of 23 3rd age items.
-- `:killclog:` renders the red chalice and `:clog:` renders the collection log
-  book in player chat.
-- Maggot King hiscore parsing is guarded so later bosses keep the right KC
-  values while RuneLite catches up with the official boss enum and sprite.
-- Rare bucket tooltips use real zero-state data instead of implying missing
-  collection-log data for synced players with no 3rd age or gilded items.
-- Summary tooltip widths measure real values and long ranks instead of leaving
-  awkward fixed gaps or clipping.
-- Comparison no-data copy is quiet: true missing data appears as a dimmed dash
-  in the player's comparison color.
+- Full dimmed collection-log item grids for unsynced public lookups, preserving
+  wiki hover and click exploration even before the player has synced collection
+  log data.
+- Native-style unsynced stat rows:
+  - boss popups use `Kills:`
+  - clue popups use `Score:`
+  - rank remains a separate `Rank:` row where the hiscore tracks it
+- Shared unsynced catalog plumbing through primary and comparison cell systems.
+- Tooltip item-name resolution that refreshes both primary and comparison
+  unsynced popups once names resolve.
+- PvM Summary Slayer row in solo and comparison views.
+- PvM Summary Superiors section in solo and comparison views.
+- Clog Summary provider-source hover badge for TempleOSRS, RuneProfile, or both.
+- Per-player stack-count sprite loading in comparison image tooltips.
+- Skill Summary hover stats for solo and comparison tooltips.
+- Chat aliases for the green clog icon and rune/dragon/gilded tier sprites.
+- Smaller, safer `:killclog:` emoji rendering.
+- Shared Kill Clog icon helper with collection-log-book fallback.
+- Tests covering the new source badge, chat icon, and comparison sprite-count
+  behavior.
 
 ## Excluded
 
@@ -57,27 +56,31 @@ server sync prototype out.
   privacy, and backend paths are ready.
 - Stale boss-tooltip crest experiments from `next-release` /
   `fix/kc-tooltip-name-wrap`.
-- Manual hiscore endpoint selector UI. Pure/skiller lookup is automatic for now.
+- Killclog.com web parity work. This release is focused on the RuneLite plugin.
 
 ## Required Gates
 
 ```powershell
 .\gradlew.bat compileJava checkstyleMain checkstyleTest test
+.\gradlew.bat jar
 ```
 
 Then Dylan real-client smoke:
 
-- item tooltip hover name appears above the separator
-- item click opens the OSRS Wiki instead of closing the tooltip
-- boss tooltip title hover turns white and click opens the boss Wiki page
-- regular 1-defence/skiller lookup waits for the refined hiscore table before
-  painting ranks
-- regular 1-defence/skiller infobar badges and player summary account labels
-  match the refined hiscore table
-- comparison totals keep their hover/underline affordance
-- `!kclog` and `!missing` show KC where known
-- `:killclog:` and `:clog:` render as chat icons without the Emoji plugin
-- Maggot King does not shift Mimic/Nex/Zulrah KC values
-- disabling Wiki Item Links keeps hover names but prevents wiki opens
-- disabling Autosync chat messages suppresses `Added ... to Kill Clog` messages
-- no client upload/server-sync config appears in the plugin settings
+- unsynced boss tooltip shows `Kills:`, `Rank:`, and dimmed item sprites with
+  wiki links
+- unsynced clue and rare bucket popups show the same dimmed catalog behavior
+- comparison mode shows unsynced boss, clue, and rare popups for the red player
+- PvM Summary shows Slayer in solo synced, solo unsynced, and comparison cases
+- PvM Summary shows Superiors with Imbued heart and Eternal gem sprites
+- synced Slayer level value is white and the `(x/y)` progress uses stoplight
+  coloring
+- unsynced Slayer row shows XP and rank, for example `XP: 13.3M #429`
+- Clog Summary source badge is dim at rest, bright on hover, and reveals
+  TempleOSRS/RuneProfile source rows below Recent
+- boss clog tooltips do not show provenance badges
+- hovering a skill in solo or comparison Skill Summary shows rank and XP in
+  the footer, then returns to GOTR when the hover leaves
+- `:green:`, `:rune:`, `:dragon:`, and `:gilded:` render as chat icons
+- `:killclog:` renders as the smaller chalice icon without the Emoji plugin
+- comparison item-grid sprites use the correct per-player stack-count variants

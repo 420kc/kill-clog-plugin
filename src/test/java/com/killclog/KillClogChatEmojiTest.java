@@ -11,21 +11,32 @@ public class KillClogChatEmojiTest
 	@Test
 	public void testRewriteBothEmoji()
 	{
+		Map<String, Integer> icons = new LinkedHashMap<>();
+		icons.put(KillClogChatEmoji.KILLCLOG_TRIGGER, 7);
+		icons.put(KillClogChatEmoji.CLOG_TRIGGER, 8);
+
 		assertEquals("<img=7> <img=8>",
-			KillClogChatEmoji.rewriteText(":killclog: :clog:", 7, 8));
+			KillClogChatEmoji.rewriteText(":killclog: :clog:", icons));
 	}
 
 	@Test
 	public void testRewriteRepeatedEmoji()
 	{
+		Map<String, Integer> icons = new LinkedHashMap<>();
+		icons.put(KillClogChatEmoji.CLOG_TRIGGER, 8);
+
 		assertEquals("<img=8> <img=8>",
-			KillClogChatEmoji.rewriteText(":clog: :clog:", null, 8));
+			KillClogChatEmoji.rewriteText(":clog: :clog:", icons));
 	}
 
 	@Test
 	public void testRewriteLeavesUnknownText()
 	{
-		assertNull(KillClogChatEmoji.rewriteText(":other:", 7, 8));
+		Map<String, Integer> icons = new LinkedHashMap<>();
+		icons.put(KillClogChatEmoji.KILLCLOG_TRIGGER, 7);
+		icons.put(KillClogChatEmoji.CLOG_TRIGGER, 8);
+
+		assertNull(KillClogChatEmoji.rewriteText(":other:", icons));
 	}
 
 	@Test
@@ -53,6 +64,25 @@ public class KillClogChatEmojiTest
 		BufferedImage resizedTall = KillClogChatEmoji.resizeInlineIcon(tall);
 		assertEquals(7, resizedTall.getWidth());
 		assertEquals(14, resizedTall.getHeight());
+	}
+
+	@Test
+	public void testPluginIconResourceLoads()
+	{
+		assertNotNull(KillClogIcons.pluginIcon());
+	}
+
+	@Test
+	public void testKillClogIconUsesSmallerInlineCanvas()
+	{
+		BufferedImage icon = new BufferedImage(17, 16, BufferedImage.TYPE_INT_ARGB);
+		icon.setRGB(8, 8, 0xFFFFFFFF);
+
+		BufferedImage resized = KillClogChatEmoji.resizeKillClogIcon(icon);
+
+		assertEquals(14, resized.getWidth());
+		assertEquals(14, resized.getHeight());
+		assertEquals(0, (resized.getRGB(0, 0) >>> 24) & 0xFF);
 	}
 
 	@Test

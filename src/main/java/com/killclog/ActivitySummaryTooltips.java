@@ -58,6 +58,8 @@ final class ActivitySummaryTooltips
 				PanelData.BOSSES.length,
 				LookupQueries.getMostKilledBoss(redHs),
 				LookupQueries.getMostKilledKc(redHs));
+			cmp.setBlueSlayer(blueHs, blueClog);
+			cmp.setRedSlayer(redHs, redClog);
 
 			if (blueClog != null)
 			{
@@ -93,6 +95,18 @@ final class ActivitySummaryTooltips
 				LookupQueries.getClogItemCount(redClog, "theatre_of_blood", 22486),
 				LookupQueries.getClogItemCount(redClog, "tombs_of_amascut", 27277),
 				itemManager);
+			cmp.setBlueSuperiors(
+				LookupQueries.getClogItemCount(blueClog,
+					PanelData.SLAYER_CATEGORY, PanelData.IMBUED_HEART_ITEM_ID),
+				LookupQueries.getClogItemCount(blueClog,
+					PanelData.SLAYER_CATEGORY, PanelData.ETERNAL_GEM_ITEM_ID),
+				itemManager);
+			cmp.setRedSuperiors(
+				LookupQueries.getClogItemCount(redClog,
+					PanelData.SLAYER_CATEGORY, PanelData.IMBUED_HEART_ITEM_ID),
+				LookupQueries.getClogItemCount(redClog,
+					PanelData.SLAYER_CATEGORY, PanelData.ETERNAL_GEM_ITEM_ID),
+				itemManager);
 
 			if (blueHs != null)
 			{
@@ -116,6 +130,7 @@ final class ActivitySummaryTooltips
 			LookupQueries.getMostKilledBoss(hiscore),
 			LookupQueries.getMostKilledKc(hiscore)
 		);
+		tip.setSlayer(hiscore, clog);
 		if (clog != null)
 		{
 			tip.setCompletion(
@@ -126,6 +141,13 @@ final class ActivitySummaryTooltips
 			LookupQueries.getClogItemCount(clog, "chambers_of_xeric", 20997),
 			LookupQueries.getClogItemCount(clog, "theatre_of_blood", 22486),
 			LookupQueries.getClogItemCount(clog, "tombs_of_amascut", 27277),
+			itemManager
+		);
+		tip.setSuperiors(
+			LookupQueries.getClogItemCount(clog,
+				PanelData.SLAYER_CATEGORY, PanelData.IMBUED_HEART_ITEM_ID),
+			LookupQueries.getClogItemCount(clog,
+				PanelData.SLAYER_CATEGORY, PanelData.ETERNAL_GEM_ITEM_ID),
 			itemManager
 		);
 		if (hiscore != null)

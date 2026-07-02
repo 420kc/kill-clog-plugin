@@ -1,5 +1,6 @@
 package com.killclog;
 
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
@@ -27,6 +28,7 @@ class KillClogChatEmoji
 
 	private static final int COLLECTION_LOG_ITEM_ID = 22711;
 	private static final int INLINE_ICON_H = 14;
+	private static final int KILLCLOG_ICON_H = 12;
 	private static final String[] TRIGGERS = {
 		KILLCLOG_TRIGGER, CLOG_TRIGGER, GREEN_TRIGGER,
 		RUNE_TRIGGER, DRAGON_TRIGGER, GILDED_TRIGGER
@@ -71,20 +73,6 @@ class KillClogChatEmoji
 
 		messageNode.setValue(updatedMessage);
 		client.refreshChat();
-	}
-
-	static String rewriteText(String message, Integer killClogIdx, Integer clogIdx)
-	{
-		Map<String, Integer> icons = new LinkedHashMap<>();
-		if (killClogIdx != null)
-		{
-			icons.put(KILLCLOG_TRIGGER, killClogIdx);
-		}
-		if (clogIdx != null)
-		{
-			icons.put(CLOG_TRIGGER, clogIdx);
-		}
-		return rewriteText(message, icons);
 	}
 
 	static String rewriteText(String message, Map<String, Integer> icons)
@@ -138,8 +126,10 @@ class KillClogChatEmoji
 		Integer cached = iconIdxByTrigger.get(KILLCLOG_TRIGGER);
 		if (cached == null)
 		{
-			BufferedImage image = ImageUtil.loadImageResource(KillClogPlugin.class, "icon.png");
-			cached = registerIcon(resizeInlineIcon(image));
+			BufferedImage image = KillClogIcons.pluginIcon();
+			cached = image != null
+				? registerIcon(resizeKillClogIcon(image))
+				: itemIcon(KILLCLOG_TRIGGER, COLLECTION_LOG_ITEM_ID, false);
 			if (cached != null)
 			{
 				iconIdxByTrigger.put(KILLCLOG_TRIGGER, cached);
@@ -240,6 +230,25 @@ class KillClogChatEmoji
 	{
 		int width = Math.max(1, Math.round(image.getWidth() * INLINE_ICON_H / (float) image.getHeight()));
 		return ImageUtil.resizeImage(image, width, INLINE_ICON_H);
+	}
+
+	static BufferedImage resizeKillClogIcon(BufferedImage image)
+	{
+		BufferedImage scaled = ImageUtil.resizeImage(image,
+			Math.max(1, Math.round(image.getWidth() * KILLCLOG_ICON_H / (float) image.getHeight())),
+			KILLCLOG_ICON_H);
+		BufferedImage canvas = new BufferedImage(INLINE_ICON_H, INLINE_ICON_H, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g2 = canvas.createGraphics();
+		try
+		{
+			g2.drawImage(scaled, (INLINE_ICON_H - scaled.getWidth()) / 2,
+				(INLINE_ICON_H - scaled.getHeight()) / 2, null);
+		}
+		finally
+		{
+			g2.dispose();
+		}
+		return canvas;
 	}
 
 	private Integer registerIcon(BufferedImage image)

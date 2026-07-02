@@ -8,6 +8,7 @@ bin/
 docs/
 
 # Dev artifacts
+.claude/
 border-samples/
 assets/
 cfr.jar

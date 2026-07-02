@@ -56,6 +56,18 @@ final class TooltipDataBuilder
 			itemList, obtainedIds, obtainedCounts, itemNamesFor(itemList, clogResult), true);
 	}
 
+	TooltipData buildUnsyncedTooltipData(String displayName, String category, int rank,
+		String statLabel, int statValue, ClogResult catalog)
+	{
+		if (catalog == null) return null;
+		List<Integer> allItems = catalog.getCategoryItems().get(category);
+		if (allItems == null || allItems.isEmpty())
+		{
+			return null;
+		}
+		return buildUnsyncedTooltipData(displayName, allItems, rank, statLabel, statValue, true, catalog);
+	}
+
 	/**
 	 * Build TooltipData for a clue rare category (3rd Age / Gilded).
 	 * Returns null if the category has no items.
@@ -176,6 +188,28 @@ final class TooltipDataBuilder
 		return new TooltipData(name, -1, obtainedCount,
 			allItemsList.size(), allItemsList, obtainedIds, obtainedCounts,
 			itemNamesFor(allItemsList, clogResult), false);
+	}
+
+	TooltipData buildUnsyncedItemData(String name, int[] itemIds, ClogResult catalog)
+	{
+		return buildUnsyncedItemData(name, TooltipData.itemList(itemIds), catalog);
+	}
+
+	TooltipData buildUnsyncedItemData(String name, List<Integer> itemIds, ClogResult catalog)
+	{
+		if (catalog == null || itemIds == null || itemIds.isEmpty())
+		{
+			return null;
+		}
+		return buildUnsyncedTooltipData(name, itemIds, -1, null, -1, false, catalog);
+	}
+
+	private TooltipData buildUnsyncedTooltipData(String displayName, List<Integer> itemIds,
+		int rank, String statLabel, int statValue, boolean rankTracked, ClogResult catalog)
+	{
+		return new TooltipData(displayName, rank, -1, itemIds.size(), itemIds,
+			new HashSet<>(), new LinkedHashMap<>(), itemNamesFor(itemIds, catalog),
+			rankTracked, statLabel, statValue);
 	}
 
 	private static Map<Integer, String> itemNamesFor(List<Integer> itemIds, ClogResult clogResult)

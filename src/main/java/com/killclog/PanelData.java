@@ -274,4 +274,9 @@ final class PanelData
 
 	static final String GOTR_CATEGORY = "guardians_of_the_rift";
 	static final String RIFTS_CLOSED_ACTIVITY = "Rifts closed";
+
+	static final String SLAYER_CATEGORY = "slayer";
+	static final int IMBUED_HEART_ITEM_ID = 20724;
+	static final int ETERNAL_GEM_ITEM_ID = 21270;
+	static final int[] SUPERIOR_ITEMS = {IMBUED_HEART_ITEM_ID, ETERNAL_GEM_ITEM_ID};
 }

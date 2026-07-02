@@ -40,8 +40,8 @@ final class PanelIconCache
 	{
 		if (syncNoticeIcon == null)
 		{
-			BufferedImage raw = ImageUtil.loadImageResource(KillClogPlugin.class, "icon.png");
-			syncNoticeIcon = ImageUtil.resizeImage(raw, SYNC_ICON_SIZE, SYNC_ICON_SIZE);
+			syncNoticeIcon = KillClogIcons.resizedPluginIcon(
+				SYNC_ICON_SIZE, SYNC_ICON_SIZE, itemManager);
 		}
 		return syncNoticeIcon;
 	}
