@@ -303,10 +303,10 @@ final class PanelData
 	static final int[] MEGARARE_ITEM_IDS = {TWISTED_BOW_ITEM_ID, SCYTHE_ITEM_ID, SHADOW_ITEM_ID};
 
 	// Hover names for the fixed pvm-summary sprites. Static because the pvm
-	// summary renders these rows with or without a synced clog result; names
-	// match the canonical clog catalog exactly.
+	// summary renders these rows with or without a synced clog result; display
+	// names, kept short enough to sit on the narrow summary title line.
 	static final String[] MEGARARE_ITEM_NAMES = {
-		"Twisted bow", "Scythe of vitur (uncharged)", "Tumeken's shadow (uncharged)",
+		"Twisted Bow", "Scythe of Vitur", "Shadow",
 	};
 	static final String[] SUPERIOR_ITEM_NAMES = {"Imbued heart", "Eternal gem"};
 
