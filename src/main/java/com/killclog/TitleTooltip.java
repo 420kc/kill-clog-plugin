@@ -573,14 +573,26 @@ public abstract class TitleTooltip extends NativeTooltip
 		}
 
 		int inset = getInset();
-		// Title (bold orange)
+		// Title (bold orange). While the corner badge is hovered the title
+		// yields its line to the badge's reveal text, so nothing ever clips.
+		String headerTitle = title;
+		Color headerColor = titleColor();
+		if (titleCornerHovered)
+		{
+			String hoverText = getTitleCornerHoverText();
+			if (hoverText != null && !hoverText.isEmpty())
+			{
+				headerTitle = hoverText;
+				headerColor = getTitleCornerColor();
+			}
+		}
 		g2.setFont(getTitleFont());
 		FontMetrics nfm = g2.getFontMetrics();
 		int lineY = inset + nfm.getAscent();
 		int titleBaseline = lineY;
-		g2.setColor(titleColor());
-		g2.drawString(title, inset, lineY);
-		int activeLineWidth = nfm.stringWidth(title);
+		g2.setColor(headerColor);
+		g2.drawString(headerTitle, inset, lineY);
+		int activeLineWidth = nfm.stringWidth(headerTitle);
 
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		FontMetrics fm = g2.getFontMetrics();
@@ -668,24 +680,9 @@ public abstract class TitleTooltip extends NativeTooltip
 		g2.drawLine(midX, arrowTop, midX - 3, arrowTop + 3);
 		g2.drawLine(midX, arrowTop, midX + 3, arrowTop + 3);
 		g2.setComposite(prior);
-
-		// Hover reveal rides the title line beside the badge; the tooltip
-		// never resizes for it.
-		if (titleCornerHovered)
-		{
-			String hoverText = getTitleCornerHoverText();
-			if (hoverText != null && !hoverText.isEmpty())
-			{
-				g2.setFont(FontManager.getRunescapeSmallFont());
-				FontMetrics fm = g2.getFontMetrics();
-				g2.setColor(color);
-				g2.drawString(hoverText, badgeX - 4 - fm.stringWidth(hoverText),
-					badgeY + CORNER_BADGE_SIZE / 2 + (fm.getAscent() - fm.getDescent()) / 2);
-			}
-		}
 	}
 
-	/** Text revealed beside the corner badge while it is hovered. */
+	/** Text that replaces the title while the corner badge is hovered. */
 	protected String getTitleCornerHoverText()
 	{
 		return null;

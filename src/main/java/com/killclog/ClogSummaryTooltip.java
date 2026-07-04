@@ -182,8 +182,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 		return clogTemple || clogRuneProfile;
 	}
 
-	// Provenance shows inline beside the hovered badge; short enough to share
-	// the title line without crowding it.
+	// Provenance takes over the title line while the badge is hovered, so it
+	// can never crowd or clip the title.
 	String sourceLine()
 	{
 		if (clogTemple && clogRuneProfile)
