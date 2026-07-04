@@ -5,7 +5,11 @@ import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
@@ -62,11 +66,31 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 
 	private final Side blue = new Side();
 	private final Side red = new Side();
+	private final TooltipItemHover itemHover = new TooltipItemHover(this);
 
 	@Override
 	protected Font getTitleFont()
 	{
 		return TITLE_FONT_SMALL;
+	}
+
+	@Override
+	public void setWikiLinksEnabled(boolean wikiLinksEnabled)
+	{
+		super.setWikiLinksEnabled(wikiLinksEnabled);
+		itemHover.setWikiLinksEnabled(wikiLinksEnabled);
+	}
+
+	@Override
+	protected String getHeaderRightText()
+	{
+		return itemHover.hoveredItemName();
+	}
+
+	@Override
+	protected Color getHeaderRightColor()
+	{
+		return itemHover.hoveredItemObtained() ? CLOG_GREEN : CLOG_RED;
 	}
 
 	public void setBlueData(String name, int combat, int totalKills,
@@ -325,6 +349,8 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 	@Override
 	protected void paintBody(Graphics2D g2, int w, int h, int startY)
 	{
+		itemHover.setHitBoxes(Collections.emptyList());
+		List<TooltipItemHover.HitBox> hitBoxes = new ArrayList<>();
 		int inset = getInset();
 		int contentWidth = w - 2 * inset;
 
@@ -418,6 +444,10 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 			blue.superiorSprites, blue.superiorCounts, WEAPON_SIZE, WEAPON_PAD);
 		paintQuantitySpriteRow(g2, fm, redX, y, valueW,
 			red.superiorSprites, red.superiorCounts, WEAPON_SIZE, WEAPON_PAD);
+		addRowHitBoxes(hitBoxes, 0, blueX, y, valueW,
+			PanelData.SUPERIOR_ITEMS, PanelData.SUPERIOR_ITEM_NAMES, blue.superiorCounts);
+		addRowHitBoxes(hitBoxes, 1, redX, y, valueW,
+			PanelData.SUPERIOR_ITEMS, PanelData.SUPERIOR_ITEM_NAMES, red.superiorCounts);
 		y += WEAPON_SIZE;
 
 		// Separator.
@@ -453,6 +483,30 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 			blue.weaponSprites, blue.weaponCounts, WEAPON_SIZE, WEAPON_PAD);
 		paintQuantitySpriteRow(g2, fm, redX, y, valueW,
 			red.weaponSprites, red.weaponCounts, WEAPON_SIZE, WEAPON_PAD);
+		addRowHitBoxes(hitBoxes, 2, blueX, y, valueW,
+			PanelData.MEGARARE_ITEM_IDS, PanelData.MEGARARE_ITEM_NAMES, blue.weaponCounts);
+		addRowHitBoxes(hitBoxes, 3, redX, y, valueW,
+			PanelData.MEGARARE_ITEM_IDS, PanelData.MEGARARE_ITEM_NAMES, red.weaponCounts);
+
+		itemHover.setHitBoxes(hitBoxes);
+	}
+
+	/**
+	 * Hover hit boxes matching paintQuantitySpriteRow's centered geometry,
+	 * so both players' sprites hover-name and wiki-link like the grids do.
+	 */
+	private void addRowHitBoxes(List<TooltipItemHover.HitBox> hitBoxes, int section,
+		int x, int y, int colWidth, int[] itemIds, String[] itemNames, int[] counts)
+	{
+		int count = Math.min(itemIds.length, counts.length);
+		int spriteRowWidth = count * WEAPON_SIZE + (count - 1) * WEAPON_PAD;
+		int startX = x + (colWidth - spriteRowWidth) / 2;
+		for (int i = 0; i < count; i++)
+		{
+			int sx = startX + i * (WEAPON_SIZE + WEAPON_PAD);
+			hitBoxes.add(new TooltipItemHover.HitBox(section, itemIds[i], itemNames[i],
+				new Rectangle(sx, y, WEAPON_SIZE, WEAPON_SIZE), counts[i] > 0));
+		}
 	}
 
 	// Row painters.

@@ -21,7 +21,7 @@ public class PvpSummaryTooltip extends TitleTooltip
 	private static final int COL_GAP = 6;
 
 	private static final String[] LABELS = {
-		"LMS", "Soul Wars", "PvP Arena", "Bounty Hunter", "BH Rogue",
+		"LMS", "Soul Wars", "PvP Arena", "BH Hunter", "BH Rogue",
 	};
 
 	private final int[] scores = new int[5];

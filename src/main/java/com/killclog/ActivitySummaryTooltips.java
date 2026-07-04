@@ -40,6 +40,7 @@ final class ActivitySummaryTooltips
 		{
 			ComparePvmSummaryTooltip cmp = new ComparePvmSummaryTooltip();
 			cmp.setComponent(owner);
+			cmp.setWikiLinksEnabled(wikiLinks.get());
 			HiscoreResult blueHs = lookupSession.getHiscoreResult();
 			HiscoreResult redHs = comparison.getCompareHiscoreResult();
 			ClogResult blueClog = lookupSession.getClogResult();
