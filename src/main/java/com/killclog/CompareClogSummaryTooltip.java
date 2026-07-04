@@ -4,7 +4,10 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import net.runelite.client.game.ItemManager;
@@ -13,7 +16,7 @@ import net.runelite.client.ui.FontManager;
 /**
  * Stacked clog comparison tooltip. Blue block on top, red block below,
  * separated by an inlay line. Each block renders obtained count,
- * tier progress, sync age, and recent items.
+ * tier progress, sync age, trophies, and recent items.
  */
 public class CompareClogSummaryTooltip extends TitleTooltip
 {
@@ -22,6 +25,7 @@ public class CompareClogSummaryTooltip extends TitleTooltip
 	private static final int SEPARATOR_PAD = 3;
 	private static final int RECENT_SIZE = 20;
 	private static final int RECENT_PAD = 4;
+	private static final int DATE_GAP = 1;
 	private static final int COL_GAP = 10;
 	private static final int HEADER_GAP = 4;
 	private static final int BLOCK_RECENT_COUNT = 4;
@@ -43,11 +47,39 @@ public class CompareClogSummaryTooltip extends TitleTooltip
 		Map<String, BufferedImage> tierIcons;
 		BufferedImage[] recentSprites;
 		int recentCount;
+		int[] recentIds;
+		String[] recentNames;
+		String[] recentDates;
+		BufferedImage[] specialSprites;
+		int specialCount;
+		int[] specialIds;
+		String[] specialNames;
 		String notice;
 	}
 
 	private final Side blue = new Side();
 	private final Side red = new Side();
+	private final TooltipItemHover itemHover = new TooltipItemHover(this);
+
+	@Override
+	public void setWikiLinksEnabled(boolean wikiLinksEnabled)
+	{
+		super.setWikiLinksEnabled(wikiLinksEnabled);
+		itemHover.setWikiLinksEnabled(wikiLinksEnabled);
+	}
+
+	@Override
+	protected String getHeaderRightText()
+	{
+		return itemHover.hoveredItemName();
+	}
+
+	@Override
+	protected Color getHeaderRightColor()
+	{
+		// Everything on the shelves and in recents is obtained.
+		return CLOG_GREEN;
+	}
 
 	public void setBlueData(String name, int obtained, int total,
 		Map<String, BufferedImage> tierIcons)
@@ -102,20 +134,60 @@ public class CompareClogSummaryTooltip extends TitleTooltip
 		red.notice = notice;
 	}
 
-	public void setBlueRecent(List<ClogResult.ClogItem> items, ItemManager itemManager)
+	public void setBlueRecent(List<ClogResult.ClogItem> items, ClogResult clog, ItemManager itemManager)
 	{
-		setRecent(blue, items, itemManager);
+		setRecent(blue, items, clog, itemManager);
 	}
 
-	public void setRedRecent(List<ClogResult.ClogItem> items, ItemManager itemManager)
+	public void setRedRecent(List<ClogResult.ClogItem> items, ClogResult clog, ItemManager itemManager)
 	{
-		setRecent(red, items, itemManager);
+		setRecent(red, items, clog, itemManager);
 	}
 
-	private void setRecent(Side side, List<ClogResult.ClogItem> items, ItemManager itemManager)
+	private void setRecent(Side side, List<ClogResult.ClogItem> items, ClogResult clog,
+		ItemManager itemManager)
 	{
 		side.recentCount = Math.min(items.size(), BLOCK_RECENT_COUNT);
 		side.recentSprites = loadRecentSprites(items, side.recentCount, itemManager);
+		side.recentIds = new int[side.recentCount];
+		side.recentNames = new String[side.recentCount];
+		side.recentDates = new String[side.recentCount];
+		for (int i = 0; i < side.recentCount; i++)
+		{
+			ClogResult.ClogItem item = items.get(i);
+			side.recentIds[i] = item.getId();
+			side.recentNames[i] = clog != null ? clog.getItemName(item.getId()) : null;
+			side.recentDates[i] = ClogSummaryTooltip.shortDate(item.getDate());
+		}
+	}
+
+	public void setBlueSpecial(List<ClogResult.ClogItem> items, ClogResult clog, ItemManager itemManager)
+	{
+		setSpecial(blue, items, clog, itemManager);
+	}
+
+	public void setRedSpecial(List<ClogResult.ClogItem> items, ClogResult clog, ItemManager itemManager)
+	{
+		setSpecial(red, items, clog, itemManager);
+	}
+
+	private void setSpecial(Side side, List<ClogResult.ClogItem> items, ClogResult clog,
+		ItemManager itemManager)
+	{
+		side.specialCount = items.size();
+		if (side.specialCount == 0)
+		{
+			return;
+		}
+		side.specialSprites = loadRecentSprites(items, side.specialCount, itemManager);
+		side.specialIds = new int[side.specialCount];
+		side.specialNames = new String[side.specialCount];
+		for (int i = 0; i < side.specialCount; i++)
+		{
+			ClogResult.ClogItem item = items.get(i);
+			side.specialIds[i] = item.getId();
+			side.specialNames[i] = clog != null ? clog.getItemName(item.getId()) : null;
+		}
 	}
 
 	// Sizing.
@@ -168,7 +240,48 @@ public class CompareClogSummaryTooltip extends TitleTooltip
 		w = Math.max(w, progressValueWidth(fm, side.nextTier, side.progress, side.tierIcons));
 		// Last update.
 		if (side.sync != null) w = Math.max(w, fm.stringWidth(side.sync));
+		// Trophy and recent rows (recent cells widen for date captions).
+		w = Math.max(w, itemRowWidth(side.specialCount, RECENT_SIZE));
+		w = Math.max(w, itemRowWidth(side.recentCount, recentCellWidth(fm, side)));
 		return w;
+	}
+
+	private static int itemRowWidth(int count, int cellWidth)
+	{
+		return count > 0 ? count * cellWidth + (count - 1) * RECENT_PAD : 0;
+	}
+
+	/** Recent cells widen past the sprite when a date caption needs the room. */
+	private static int recentCellWidth(FontMetrics fm, Side side)
+	{
+		int w = RECENT_SIZE;
+		if (side.recentDates != null)
+		{
+			for (String date : side.recentDates)
+			{
+				if (date != null)
+				{
+					w = Math.max(w, fm.stringWidth(date));
+				}
+			}
+		}
+		return w;
+	}
+
+	private static boolean hasRecentDates(Side side)
+	{
+		if (side.recentDates == null)
+		{
+			return false;
+		}
+		for (String date : side.recentDates)
+		{
+			if (date != null)
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private static String obtainedValueText(String notice, int obtained, int total)
@@ -221,10 +334,19 @@ public class CompareClogSummaryTooltip extends TitleTooltip
 		if (side.progress != null) h += LINE_HEIGHT;
 		// Last update.
 		if (side.sync != null) h += LINE_HEIGHT;
+		// Special.
+		if (side.specialCount > 0)
+		{
+			h += LINE_HEIGHT + RECENT_SIZE;
+		}
 		// Recent.
 		if (side.recentCount > 0)
 		{
 			h += LINE_HEIGHT + RECENT_SIZE;
+			if (hasRecentDates(side))
+			{
+				h += DATE_GAP + fm.getHeight();
+			}
 		}
 		return h;
 	}
@@ -234,6 +356,8 @@ public class CompareClogSummaryTooltip extends TitleTooltip
 	@Override
 	protected void paintBody(Graphics2D g2, int w, int h, int startY)
 	{
+		itemHover.setHitBoxes(Collections.emptyList());
+		List<TooltipItemHover.HitBox> hitBoxes = new ArrayList<>();
 		int inset = getInset();
 		int contentWidth = w - 2 * inset;
 
@@ -246,19 +370,22 @@ public class CompareClogSummaryTooltip extends TitleTooltip
 		int y = startY;
 
 		// Blue block.
-		y = paintBlock(g2, fm, labelX, valueX, y, w, contentWidth, COMPARE_BLUE, blue);
+		y = paintBlock(g2, fm, labelX, valueX, y, w, contentWidth, COMPARE_BLUE, blue, 0, hitBoxes);
 
 		// Separator.
 		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
 
 		// Red block.
 		g2.setFont(FontManager.getRunescapeSmallFont());
-		paintBlock(g2, fm, labelX, valueX, y, w, contentWidth, COMPARE_RED, red);
+		paintBlock(g2, fm, labelX, valueX, y, w, contentWidth, COMPARE_RED, red, 2, hitBoxes);
+
+		itemHover.setHitBoxes(hitBoxes);
 	}
 
 	private int paintBlock(Graphics2D g2, FontMetrics fm,
 		int labelX, int valueX, int y, int w, int contentWidth,
-		Color playerColor, Side side)
+		Color playerColor, Side side, int sectionBase,
+		List<TooltipItemHover.HitBox> hitBoxes)
 	{
 		int inset = getInset();
 
@@ -315,6 +442,20 @@ public class CompareClogSummaryTooltip extends TitleTooltip
 			y += LINE_HEIGHT;
 		}
 
+		// Special: the trophy shelf, present only when earned.
+		int rowW = contentWidth - (valueX - inset);
+		if (side.specialCount > 0)
+		{
+			g2.setFont(FontManager.getRunescapeBoldFont());
+			g2.setColor(OSRS_ORANGE);
+			g2.drawString("Special", labelX, y + g2.getFontMetrics().getAscent());
+			y += LINE_HEIGHT;
+
+			paintItemRow(g2, hitBoxes, sectionBase, valueX, y, rowW,
+				side.specialSprites, side.specialIds, side.specialNames, null, RECENT_SIZE, fm);
+			y += RECENT_SIZE;
+		}
+
 		// Recent.
 		if (side.recentCount > 0)
 		{
@@ -323,13 +464,50 @@ public class CompareClogSummaryTooltip extends TitleTooltip
 			g2.drawString("Recent", labelX, y + g2.getFontMetrics().getAscent());
 			y += LINE_HEIGHT;
 
-			int recentW = contentWidth - (valueX - inset);
-			paintSpriteRow(g2, valueX, y, recentW,
-				side.recentSprites, side.recentCount, RECENT_SIZE, RECENT_PAD);
+			paintItemRow(g2, hitBoxes, sectionBase + 1, valueX, y, rowW,
+				side.recentSprites, side.recentIds, side.recentNames, side.recentDates,
+				recentCellWidth(fm, side), fm);
 			y += RECENT_SIZE;
+			if (hasRecentDates(side))
+			{
+				y += DATE_GAP + fm.getHeight();
+			}
 		}
 
 		return y;
+	}
+
+	/**
+	 * Centered sprite row with hover hit boxes and optional date captions
+	 * under each cell.
+	 */
+	private void paintItemRow(Graphics2D g2, List<TooltipItemHover.HitBox> hitBoxes, int section,
+		int x, int y, int colWidth, BufferedImage[] sprites, int[] ids, String[] names,
+		String[] dates, int cellWidth, FontMetrics fm)
+	{
+		int count = sprites != null ? sprites.length : 0;
+		int rowWidth = count * cellWidth + (count - 1) * RECENT_PAD;
+		int startX = x + (colWidth - rowWidth) / 2;
+		g2.setFont(FontManager.getRunescapeSmallFont());
+		for (int i = 0; i < count; i++)
+		{
+			int cellX = startX + i * (cellWidth + RECENT_PAD);
+			int sx = cellX + (cellWidth - RECENT_SIZE) / 2;
+			if (sprites[i] != null)
+			{
+				g2.drawImage(sprites[i], sx, y, null);
+			}
+			hitBoxes.add(new TooltipItemHover.HitBox(section, ids[i], names[i],
+				new Rectangle(sx, y, RECENT_SIZE, RECENT_SIZE), true));
+
+			String date = dates != null ? dates[i] : null;
+			if (date != null)
+			{
+				g2.setColor(MUTED_GRAY);
+				int dx = cellX + (cellWidth - fm.stringWidth(date)) / 2;
+				g2.drawString(date, dx, y + RECENT_SIZE + DATE_GAP + fm.getAscent());
+			}
+		}
 	}
 
 	// Value painters.

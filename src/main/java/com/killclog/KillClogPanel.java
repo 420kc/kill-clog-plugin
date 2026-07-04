@@ -1231,6 +1231,7 @@ public class KillClogPanel extends PluginPanel
 	{
 		CompareClogSummaryTooltip cmp = new CompareClogSummaryTooltip();
 		cmp.setComponent(owner);
+		cmp.setWikiLinksEnabled(config.wikiItemLinks());
 		ClogResult blueClog = lookupSession.getClogResult();
 		ClogResult redClog = comparison.getCompareClogResult();
 		String blueName = rsn != null ? rsn : "--";
@@ -1244,7 +1245,10 @@ public class KillClogPanel extends PluginPanel
 			boolean stale = LookupQueries.isSyncStale(lookupSession.getClogLastChanged(), 90);
 			String sync = LookupQueries.syncLine(lookupSession.getClogLastChanged(), stale);
 			if (sync != null) cmp.setBlueSync(sync, stale);
-			cmp.setBlueRecent(LookupQueries.getRecentItems(blueClog, 4), itemManager);
+			cmp.setBlueSpecial(
+				ClogHelper.obtainedSpecialItems(PanelData.SPECIAL_ITEM_IDS, blueClog),
+				blueClog, itemManager);
+			cmp.setBlueRecent(LookupQueries.getRecentItems(blueClog, 4), blueClog, itemManager);
 		}
 		else
 		{
@@ -1259,7 +1263,10 @@ public class KillClogPanel extends PluginPanel
 			boolean stale = LookupQueries.isSyncStale(redClog.getLastChanged(), 90);
 			String sync = LookupQueries.syncLine(redClog.getLastChanged(), stale);
 			if (sync != null) cmp.setRedSync(sync, stale);
-			cmp.setRedRecent(LookupQueries.getRecentItems(redClog, 4), itemManager);
+			cmp.setRedSpecial(
+				ClogHelper.obtainedSpecialItems(PanelData.SPECIAL_ITEM_IDS, redClog),
+				redClog, itemManager);
+			cmp.setRedRecent(LookupQueries.getRecentItems(redClog, 4), redClog, itemManager);
 		}
 		else
 		{

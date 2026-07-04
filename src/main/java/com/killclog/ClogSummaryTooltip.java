@@ -27,7 +27,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private static final int RECENT_SIZE = 24;
 	private static final int RECENT_PAD = 6;
 	private static final int DATE_GAP = 1;
-	private static final Color DATE_GRAY = new Color(148, 148, 148);
 	private static final String[] MONTHS = {
 		"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 		"Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
@@ -391,7 +390,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 			String date = dates != null ? dates[i] : null;
 			if (date != null)
 			{
-				g2.setColor(DATE_GRAY);
+				g2.setColor(MUTED_GRAY);
 				int dx = cellX + (cellWidth - fm.stringWidth(date)) / 2;
 				g2.drawString(date, dx, y + RECENT_SIZE + DATE_GAP + fm.getAscent());
 			}
