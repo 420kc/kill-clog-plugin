@@ -375,13 +375,13 @@ public class PvmSummaryTooltip extends TitleTooltip
 	}
 
 	@Override
-	protected String getHeaderRightText()
+	protected String getTitleHoverText()
 	{
 		return itemHover.hoveredItemName();
 	}
 
 	@Override
-	protected Color getHeaderRightColor()
+	protected Color getTitleHoverColor()
 	{
 		return itemHover.hoveredItemObtained() ? CLOG_GREEN : CLOG_RED;
 	}

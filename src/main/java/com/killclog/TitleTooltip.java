@@ -573,18 +573,22 @@ public abstract class TitleTooltip extends NativeTooltip
 		}
 
 		int inset = getInset();
-		// Title (bold orange). While the corner badge is hovered the title
-		// yields its line to the badge's reveal text, so nothing ever clips.
+		// Title (bold orange). While the corner badge or a body item is
+		// hovered the title yields its line to the reveal text, so nothing
+		// ever clips regardless of tooltip width.
 		String headerTitle = title;
 		Color headerColor = titleColor();
-		if (titleCornerHovered)
+		String cornerText = titleCornerHovered ? getTitleCornerHoverText() : null;
+		String hoverText = getTitleHoverText();
+		if (cornerText != null && !cornerText.isEmpty())
 		{
-			String hoverText = getTitleCornerHoverText();
-			if (hoverText != null && !hoverText.isEmpty())
-			{
-				headerTitle = hoverText;
-				headerColor = getTitleCornerColor();
-			}
+			headerTitle = cornerText;
+			headerColor = getTitleCornerColor();
+		}
+		else if (hoverText != null && !hoverText.isEmpty())
+		{
+			headerTitle = hoverText;
+			headerColor = getTitleHoverColor();
 		}
 		g2.setFont(getTitleFont());
 		FontMetrics nfm = g2.getFontMetrics();
@@ -686,6 +690,21 @@ public abstract class TitleTooltip extends NativeTooltip
 	protected String getTitleCornerHoverText()
 	{
 		return null;
+	}
+
+	/**
+	 * Text that replaces the title while a body item is hovered. Narrow
+	 * summary tooltips reveal hovered item names here; wide grid popups
+	 * keep using the header-right zone instead.
+	 */
+	protected String getTitleHoverText()
+	{
+		return null;
+	}
+
+	protected Color getTitleHoverColor()
+	{
+		return CLOG_GREEN;
 	}
 
 	private void installTitleLinkHandlers()

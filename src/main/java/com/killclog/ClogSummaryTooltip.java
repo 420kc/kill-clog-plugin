@@ -432,13 +432,13 @@ public class ClogSummaryTooltip extends TitleTooltip
 	}
 
 	@Override
-	protected String getHeaderRightText()
+	protected String getTitleHoverText()
 	{
 		return itemHover.hoveredItemName();
 	}
 
 	@Override
-	protected Color getHeaderRightColor()
+	protected Color getTitleHoverColor()
 	{
 		// Everything on the shelf and in recents is obtained.
 		return CLOG_GREEN;
