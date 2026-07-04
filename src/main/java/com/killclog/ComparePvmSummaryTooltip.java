@@ -6,13 +6,14 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.util.Locale;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
 
 /**
  * 3-column PvM comparison tooltip. Left column: labels (orange).
  * Middle column: blue player values. Right column: red player values.
- * Inlay separators split the stat, raid, and mega-rare sections.
+ * Inlay separators split the stat, Slayer/Superiors, and Raids/Mega Rares sections.
  */
 public class ComparePvmSummaryTooltip extends TitleTooltip
 {
@@ -24,57 +25,43 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 	private static final int CA_REWARD_GAP = 3;
 	private static final int HEADER_GAP = 4;
 
-	// Blue player values.
-	private String blueName;
-	private int blueCombat;
-	private int blueTotalKills;
-	private int blueBossesKc;
-	private int blueTotalBosses;
-	private int blueSlayerLevel = -1;
-	private long blueSlayerXp = -1;
-	private int blueSlayerRank = -1;
-	private int blueSlayerObt = -1;
-	private int blueSlayerTotal;
-	private String blueMostKilled;
-	private int blueMostKilledKc;
-	private int blueBossesCompleted = -1;
-	private int blueBossesWithClog;
-	private final BufferedImage[] blueWeaponSprites = new BufferedImage[3];
-	private final int[] blueWeaponCounts = new int[3];
-	private final BufferedImage[] blueSuperiorSprites = new BufferedImage[2];
-	private final int[] blueSuperiorCounts = new int[2];
-	private int blueCoxKc, blueTobKc, blueToaKc;
-	private int blueCoxObt = -1, blueCoxTotal;
-	private int blueTobObt = -1, blueTobTotal;
-	private int blueToaObt = -1, blueToaTotal;
-	private CombatAchievementResult blueCa;
-	private BufferedImage blueRewardSprite;
+	// One player's column of the comparison; the tooltip holds a blue and a
+	// red of these so every stat lives once instead of as name-mirrored twins.
+	private static final class Side
+	{
+		String name;
+		int combat;
+		int totalKills;
+		int bossesKc;
+		int totalBosses;
+		int slayerLevel = -1;
+		long slayerXp = -1;
+		int slayerRank = -1;
+		int slayerObt = -1;
+		int slayerTotal;
+		String mostKilled;
+		int mostKilledKc;
+		int bossesCompleted = -1;
+		int bossesWithClog;
+		final BufferedImage[] weaponSprites = new BufferedImage[3];
+		final int[] weaponCounts = new int[3];
+		final BufferedImage[] superiorSprites = new BufferedImage[2];
+		final int[] superiorCounts = new int[2];
+		int coxKc;
+		int tobKc;
+		int toaKc;
+		int coxObt = -1;
+		int coxTotal;
+		int tobObt = -1;
+		int tobTotal;
+		int toaObt = -1;
+		int toaTotal;
+		CombatAchievementResult ca;
+		BufferedImage rewardSprite;
+	}
 
-	// Red player values.
-	private String redName;
-	private int redCombat;
-	private int redTotalKills;
-	private int redBossesKc;
-	private int redTotalBosses;
-	private int redSlayerLevel = -1;
-	private long redSlayerXp = -1;
-	private int redSlayerRank = -1;
-	private int redSlayerObt = -1;
-	private int redSlayerTotal;
-	private String redMostKilled;
-	private int redMostKilledKc;
-	private int redBossesCompleted = -1;
-	private int redBossesWithClog;
-	private final BufferedImage[] redWeaponSprites = new BufferedImage[3];
-	private final int[] redWeaponCounts = new int[3];
-	private final BufferedImage[] redSuperiorSprites = new BufferedImage[2];
-	private final int[] redSuperiorCounts = new int[2];
-	private int redCoxKc, redTobKc, redToaKc;
-	private int redCoxObt = -1, redCoxTotal;
-	private int redTobObt = -1, redTobTotal;
-	private int redToaObt = -1, redToaTotal;
-	private CombatAchievementResult redCa;
-	private BufferedImage redRewardSprite;
+	private final Side blue = new Side();
+	private final Side red = new Side();
 
 	@Override
 	protected Font getTitleFont()
@@ -86,120 +73,138 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		int bossesKc, int totalBosses, String mostKilled, int mostKilledKc)
 	{
 		setTitle("PvM Summary");
-		this.blueName = name;
-		this.blueCombat = combat;
-		this.blueTotalKills = totalKills;
-		this.blueBossesKc = bossesKc;
-		this.blueTotalBosses = totalBosses;
-		this.blueMostKilled = mostKilled;
-		this.blueMostKilledKc = mostKilledKc;
+		setData(blue, name, combat, totalKills, bossesKc, totalBosses, mostKilled, mostKilledKc);
 	}
 
 	public void setRedData(String name, int combat, int totalKills,
 		int bossesKc, int totalBosses, String mostKilled, int mostKilledKc)
 	{
-		this.redName = name;
-		this.redCombat = combat;
-		this.redTotalKills = totalKills;
-		this.redBossesKc = bossesKc;
-		this.redTotalBosses = totalBosses;
-		this.redMostKilled = mostKilled;
-		this.redMostKilledKc = mostKilledKc;
+		setData(red, name, combat, totalKills, bossesKc, totalBosses, mostKilled, mostKilledKc);
+	}
+
+	private static void setData(Side side, String name, int combat, int totalKills,
+		int bossesKc, int totalBosses, String mostKilled, int mostKilledKc)
+	{
+		side.name = name;
+		side.combat = combat;
+		side.totalKills = totalKills;
+		side.bossesKc = bossesKc;
+		side.totalBosses = totalBosses;
+		side.mostKilled = mostKilled;
+		side.mostKilledKc = mostKilledKc;
 	}
 
 	public void setBlueCompletion(int completed, int withClog)
 	{
-		this.blueBossesCompleted = completed;
-		this.blueBossesWithClog = withClog;
+		blue.bossesCompleted = completed;
+		blue.bossesWithClog = withClog;
 	}
 
 	public void setRedCompletion(int completed, int withClog)
 	{
-		this.redBossesCompleted = completed;
-		this.redBossesWithClog = withClog;
+		red.bossesCompleted = completed;
+		red.bossesWithClog = withClog;
 	}
 
 	public void setBlueCa(CombatAchievementResult ca, BufferedImage rewardSprite)
 	{
-		this.blueCa = ca;
-		this.blueRewardSprite = rewardSprite;
+		blue.ca = ca;
+		blue.rewardSprite = rewardSprite;
 	}
 
 	public void setRedCa(CombatAchievementResult ca, BufferedImage rewardSprite)
 	{
-		this.redCa = ca;
-		this.redRewardSprite = rewardSprite;
+		red.ca = ca;
+		red.rewardSprite = rewardSprite;
 	}
 
 	private boolean hasCaRow()
 	{
-		return blueCa != null || redCa != null;
+		return blue.ca != null || red.ca != null;
 	}
 
 	public void setBlueRaids(HiscoreResult hs, ClogResult clog)
 	{
-		blueCoxKc = raidKc(hs, "Chambers of Xeric", "Chambers of Xeric: Challenge Mode");
-		blueTobKc = raidKc(hs, "Theatre of Blood", "Theatre of Blood: Hard Mode");
-		blueToaKc = raidKc(hs, "Tombs of Amascut", "Tombs of Amascut: Expert Mode");
-		loadRaidClog(clog, true);
+		setRaids(blue, hs, clog);
 	}
 
 	public void setRedRaids(HiscoreResult hs, ClogResult clog)
 	{
-		redCoxKc = raidKc(hs, "Chambers of Xeric", "Chambers of Xeric: Challenge Mode");
-		redTobKc = raidKc(hs, "Theatre of Blood", "Theatre of Blood: Hard Mode");
-		redToaKc = raidKc(hs, "Tombs of Amascut", "Tombs of Amascut: Expert Mode");
-		loadRaidClog(clog, false);
+		setRaids(red, hs, clog);
+	}
+
+	private static void setRaids(Side side, HiscoreResult hs, ClogResult clog)
+	{
+		side.coxKc = raidKc(hs, PanelData.COX_HISCORE, PanelData.COX_HISCORE_HARD);
+		side.tobKc = raidKc(hs, PanelData.TOB_HISCORE, PanelData.TOB_HISCORE_HARD);
+		side.toaKc = raidKc(hs, PanelData.TOA_HISCORE, PanelData.TOA_HISCORE_HARD);
+		if (clog == null)
+		{
+			return;
+		}
+		int[] cox = ClogHelper.clogCounts(PanelData.COX_CATEGORY, clog);
+		if (cox != null)
+		{
+			side.coxObt = cox[0];
+			side.coxTotal = cox[1];
+		}
+		int[] tob = ClogHelper.clogCounts(PanelData.TOB_CATEGORY, clog);
+		if (tob != null)
+		{
+			side.tobObt = tob[0];
+			side.tobTotal = tob[1];
+		}
+		int[] toa = ClogHelper.clogCounts(PanelData.TOA_CATEGORY, clog);
+		if (toa != null)
+		{
+			side.toaObt = toa[0];
+			side.toaTotal = toa[1];
+		}
 	}
 
 	public void setBlueMegarares(int tbow, int scythe, int shadow, ItemManager itemManager)
 	{
-		loadWeapons(blueWeaponCounts, blueWeaponSprites, tbow, scythe, shadow, itemManager);
+		loadWeapons(blue.weaponCounts, blue.weaponSprites, tbow, scythe, shadow, itemManager);
 	}
 
 	public void setRedMegarares(int tbow, int scythe, int shadow, ItemManager itemManager)
 	{
-		loadWeapons(redWeaponCounts, redWeaponSprites, tbow, scythe, shadow, itemManager);
+		loadWeapons(red.weaponCounts, red.weaponSprites, tbow, scythe, shadow, itemManager);
 	}
 
 	public void setBlueSlayer(HiscoreResult hs, ClogResult clog)
 	{
-		blueSlayerLevel = hs != null ? hs.getSkillLevel(PanelData.SLAYER_CATEGORY) : -1;
-		blueSlayerXp = hs != null ? hs.getSkillXp(PanelData.SLAYER_CATEGORY) : -1;
-		blueSlayerRank = hs != null ? hs.getSkillRank(PanelData.SLAYER_CATEGORY) : -1;
-		blueSlayerObt = -1;
-		blueSlayerTotal = 0;
-		int[] slayer = ClogHelper.clogCounts(PanelData.SLAYER_CATEGORY, clog);
-		if (slayer != null)
-		{
-			blueSlayerObt = slayer[0];
-			blueSlayerTotal = slayer[1];
-		}
+		setSlayer(blue, hs, clog);
 	}
 
 	public void setRedSlayer(HiscoreResult hs, ClogResult clog)
 	{
-		redSlayerLevel = hs != null ? hs.getSkillLevel(PanelData.SLAYER_CATEGORY) : -1;
-		redSlayerXp = hs != null ? hs.getSkillXp(PanelData.SLAYER_CATEGORY) : -1;
-		redSlayerRank = hs != null ? hs.getSkillRank(PanelData.SLAYER_CATEGORY) : -1;
-		redSlayerObt = -1;
-		redSlayerTotal = 0;
+		setSlayer(red, hs, clog);
+	}
+
+	private static void setSlayer(Side side, HiscoreResult hs, ClogResult clog)
+	{
+		side.slayerLevel = hs != null ? hs.getSkillLevel(PanelData.SLAYER_CATEGORY) : -1;
+		side.slayerXp = hs != null ? hs.getSkillXp(PanelData.SLAYER_CATEGORY) : -1;
+		side.slayerRank = hs != null ? hs.getSkillRank(PanelData.SLAYER_CATEGORY) : -1;
+		side.slayerObt = -1;
+		side.slayerTotal = 0;
 		int[] slayer = ClogHelper.clogCounts(PanelData.SLAYER_CATEGORY, clog);
 		if (slayer != null)
 		{
-			redSlayerObt = slayer[0];
-			redSlayerTotal = slayer[1];
+			side.slayerObt = slayer[0];
+			side.slayerTotal = slayer[1];
 		}
 	}
 
 	public void setBlueSuperiors(int imbuedHeart, int eternalGem, ItemManager itemManager)
 	{
-		loadSuperiors(blueSuperiorCounts, blueSuperiorSprites, imbuedHeart, eternalGem, itemManager);
+		loadSuperiors(blue.superiorCounts, blue.superiorSprites, imbuedHeart, eternalGem, itemManager);
 	}
 
 	public void setRedSuperiors(int imbuedHeart, int eternalGem, ItemManager itemManager)
 	{
-		loadSuperiors(redSuperiorCounts, redSuperiorSprites, imbuedHeart, eternalGem, itemManager);
+		loadSuperiors(red.superiorCounts, red.superiorSprites, imbuedHeart, eternalGem, itemManager);
 	}
 
 	// Sizing.
@@ -228,6 +233,7 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		w = Math.max(w, fm.stringWidth("Combat"));
 		w = Math.max(w, fm.stringWidth("Total Kills"));
 		w = Math.max(w, fm.stringWidth("Slayer"));
+		w = Math.max(w, fm.stringWidth("Obtained"));
 		w = Math.max(w, fm.stringWidth("Most Killed"));
 		w = Math.max(w, fm.stringWidth("Bosses Killed"));
 		w = Math.max(w, fm.stringWidth("Logs Completed"));
@@ -235,8 +241,6 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		w = Math.max(w, fm.stringWidth("CoX"));
 		w = Math.max(w, fm.stringWidth("ToB"));
 		w = Math.max(w, fm.stringWidth("ToA"));
-		w = Math.max(w, bfm.stringWidth("Mega Rares"));
-		w = Math.max(w, bfm.stringWidth("Superiors"));
 		return w;
 	}
 
@@ -244,39 +248,39 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 	{
 		int w = 0;
 		// Player names.
-		if (blueName != null) w = Math.max(w, fm.stringWidth(blueName));
-		if (redName != null) w = Math.max(w, fm.stringWidth(redName));
+		if (blue.name != null) w = Math.max(w, fm.stringWidth(blue.name));
+		if (red.name != null) w = Math.max(w, fm.stringWidth(red.name));
 
 		// CA tier: actual tier name plus its reward sprite.
 		if (hasCaRow())
 		{
-			w = Math.max(w, caValueWidth(fm, blueCa, blueRewardSprite));
-			w = Math.max(w, caValueWidth(fm, redCa, redRewardSprite));
+			w = Math.max(w, caValueWidth(fm, blue.ca, blue.rewardSprite));
+			w = Math.max(w, caValueWidth(fm, red.ca, red.rewardSprite));
 		}
 
 		// Stats: combat and total kills as scores, bosses/logs as counts.
-		int[] scores = {blueCombat, redCombat, blueTotalKills, redTotalKills};
+		int[] scores = {blue.combat, red.combat, blue.totalKills, red.totalKills};
 		w = Math.max(w, widestValue(fm, scores, TitleTooltip::scoreText));
-		w = Math.max(w, fm.stringWidth(slayerText(blueSlayerLevel, blueSlayerXp,
-			blueSlayerRank, blueSlayerObt, blueSlayerTotal)));
-		w = Math.max(w, fm.stringWidth(slayerText(redSlayerLevel, redSlayerXp,
-			redSlayerRank, redSlayerObt, redSlayerTotal)));
-		w = Math.max(w, fm.stringWidth(bossesText(blueBossesKc, blueTotalBosses)));
-		w = Math.max(w, fm.stringWidth(bossesText(redBossesKc, redTotalBosses)));
-		w = Math.max(w, fm.stringWidth(logsText(blueBossesCompleted, blueBossesWithClog)));
-		w = Math.max(w, fm.stringWidth(logsText(redBossesCompleted, redBossesWithClog)));
+		w = Math.max(w, fm.stringWidth(slayerText(blue.slayerLevel, blue.slayerXp,
+			blue.slayerRank, blue.slayerObt, blue.slayerTotal)));
+		w = Math.max(w, fm.stringWidth(slayerText(red.slayerLevel, red.slayerXp,
+			red.slayerRank, red.slayerObt, red.slayerTotal)));
+		w = Math.max(w, fm.stringWidth(bossesText(blue.bossesKc, blue.totalBosses)));
+		w = Math.max(w, fm.stringWidth(bossesText(red.bossesKc, red.totalBosses)));
+		w = Math.max(w, fm.stringWidth(logsText(blue.bossesCompleted, blue.bossesWithClog)));
+		w = Math.max(w, fm.stringWidth(logsText(red.bossesCompleted, red.bossesWithClog)));
 
 		// Most killed.
-		w = Math.max(w, fm.stringWidth(mostKilledText(blueMostKilled, blueMostKilledKc)));
-		w = Math.max(w, fm.stringWidth(mostKilledText(redMostKilled, redMostKilledKc)));
+		w = Math.max(w, fm.stringWidth(mostKilledText(blue.mostKilled, blue.mostKilledKc)));
+		w = Math.max(w, fm.stringWidth(mostKilledText(red.mostKilled, red.mostKilledKc)));
 
 		// Raid kc with clog progress.
-		w = Math.max(w, raidValueWidth(fm, blueCoxKc, blueCoxObt, blueCoxTotal));
-		w = Math.max(w, raidValueWidth(fm, redCoxKc, redCoxObt, redCoxTotal));
-		w = Math.max(w, raidValueWidth(fm, blueTobKc, blueTobObt, blueTobTotal));
-		w = Math.max(w, raidValueWidth(fm, redTobKc, redTobObt, redTobTotal));
-		w = Math.max(w, raidValueWidth(fm, blueToaKc, blueToaObt, blueToaTotal));
-		w = Math.max(w, raidValueWidth(fm, redToaKc, redToaObt, redToaTotal));
+		w = Math.max(w, raidValueWidth(fm, blue.coxKc, blue.coxObt, blue.coxTotal));
+		w = Math.max(w, raidValueWidth(fm, red.coxKc, red.coxObt, red.coxTotal));
+		w = Math.max(w, raidValueWidth(fm, blue.tobKc, blue.tobObt, blue.tobTotal));
+		w = Math.max(w, raidValueWidth(fm, red.tobKc, red.tobObt, red.tobTotal));
+		w = Math.max(w, raidValueWidth(fm, blue.toaKc, blue.toaObt, blue.toaTotal));
+		w = Math.max(w, raidValueWidth(fm, red.toaKc, red.toaObt, red.toaTotal));
 
 		// Weapon sprite row.
 		w = Math.max(w, 3 * WEAPON_SIZE + 2 * WEAPON_PAD);
@@ -296,7 +300,7 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		}
 
 		// Stats.
-		h += LINE_HEIGHT * 5;
+		h += LINE_HEIGHT * 4;
 
 		// Most killed.
 		h += LINE_HEIGHT;
@@ -304,15 +308,14 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		// Separator.
 		h += separatorHeight(SEPARATOR_PAD);
 
-		// Raids.
-		h += LINE_HEIGHT + LINE_HEIGHT * 3;
+		// Slayer section.
+		h += LINE_HEIGHT * 2 + WEAPON_PAD + WEAPON_SIZE;
 
 		// Separator.
 		h += separatorHeight(SEPARATOR_PAD);
 
-		// Rare item sections.
-		h += LINE_HEIGHT + WEAPON_PAD + WEAPON_SIZE
-			+ WEAPON_PAD + LINE_HEIGHT + WEAPON_PAD + WEAPON_SIZE;
+		// Raids section.
+		h += LINE_HEIGHT * 4 + WEAPON_PAD + WEAPON_SIZE;
 
 		return h;
 	}
@@ -340,63 +343,82 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 
 		// Header row.
 		g2.setColor(COMPARE_BLUE);
-		g2.drawString(blueName != null ? blueName : "--", blueX, y + fm.getAscent());
+		g2.drawString(blue.name != null ? blue.name : "--", blueX, y + fm.getAscent());
 		g2.setColor(COMPARE_RED);
-		g2.drawString(redName != null ? redName : "--", redX, y + fm.getAscent());
+		g2.drawString(red.name != null ? red.name : "--", redX, y + fm.getAscent());
 		y += fm.getHeight() + HEADER_GAP;
 
 		if (hasCaRow())
 		{
 			g2.setColor(OSRS_ORANGE);
 			g2.drawString("CA Tier", labelX, y + fm.getAscent());
-			paintCaValue(g2, fm, blueX, y, blueCa, blueRewardSprite, COMPARE_BLUE);
-			paintCaValue(g2, fm, redX, y, redCa, redRewardSprite, COMPARE_RED);
+			paintCaValue(g2, fm, blueX, y, blue.ca, blue.rewardSprite, COMPARE_BLUE);
+			paintCaValue(g2, fm, redX, y, red.ca, red.rewardSprite, COMPARE_RED);
 			y += CA_ROW_HEIGHT;
 		}
 
 		// Combat.
 		paintRow(g2, fm, labelX, blueX, redX, y, "Combat",
-			scoreText(blueCombat), scoreText(redCombat),
+			scoreText(blue.combat), scoreText(red.combat),
 			COMPARE_BLUE, COMPARE_RED);
 		y += LINE_HEIGHT;
 
 		// Total kills.
 		paintRow(g2, fm, labelX, blueX, redX, y, "Total Kills",
-			scoreText(blueTotalKills), scoreText(redTotalKills),
+			scoreText(blue.totalKills), scoreText(red.totalKills),
 			COMPARE_BLUE, COMPARE_RED);
-		y += LINE_HEIGHT;
-
-		// Slayer.
-		paintSlayerRow(g2, fm, labelX, blueX, redX, y);
 		y += LINE_HEIGHT;
 
 		// Most killed.
 		g2.setColor(OSRS_ORANGE);
 		g2.drawString("Most Killed", labelX, y + fm.getAscent());
 		g2.setColor(COMPARE_BLUE);
-		g2.drawString(mostKilledText(blueMostKilled, blueMostKilledKc), blueX, y + fm.getAscent());
+		g2.drawString(mostKilledText(blue.mostKilled, blue.mostKilledKc), blueX, y + fm.getAscent());
 		g2.setColor(COMPARE_RED);
-		g2.drawString(mostKilledText(redMostKilled, redMostKilledKc), redX, y + fm.getAscent());
+		g2.drawString(mostKilledText(red.mostKilled, red.mostKilledKc), redX, y + fm.getAscent());
 		y += LINE_HEIGHT;
 
 		// Bosses Killed.
 		paintRow(g2, fm, labelX, blueX, redX, y, "Bosses Killed",
-			bossesText(blueBossesKc, blueTotalBosses),
-			bossesText(redBossesKc, redTotalBosses),
-			completionColor(blueBossesKc, blueTotalBosses),
-			completionColor(redBossesKc, redTotalBosses));
+			bossesText(blue.bossesKc, blue.totalBosses),
+			bossesText(red.bossesKc, red.totalBosses),
+			completionColor(blue.bossesKc, blue.totalBosses),
+			completionColor(red.bossesKc, red.totalBosses));
 		y += LINE_HEIGHT;
 
 		// Logs Completed.
-		if (blueBossesCompleted >= 0 || redBossesCompleted >= 0)
+		if (blue.bossesCompleted >= 0 || red.bossesCompleted >= 0)
 		{
 			paintRow(g2, fm, labelX, blueX, redX, y, "Logs Completed",
-				logsText(blueBossesCompleted, blueBossesWithClog),
-				logsText(redBossesCompleted, redBossesWithClog),
-				blueBossesCompleted >= 0 ? completionColor(blueBossesCompleted, blueBossesWithClog) : COMPARE_BLUE,
-				redBossesCompleted >= 0 ? completionColor(redBossesCompleted, redBossesWithClog) : COMPARE_RED);
+				logsText(blue.bossesCompleted, blue.bossesWithClog),
+				logsText(red.bossesCompleted, red.bossesWithClog),
+				blue.bossesCompleted >= 0 ? completionColor(blue.bossesCompleted, blue.bossesWithClog) : COMPARE_BLUE,
+				red.bossesCompleted >= 0 ? completionColor(red.bossesCompleted, red.bossesWithClog) : COMPARE_RED);
 		}
 		y += LINE_HEIGHT;
+
+		// Separator.
+		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
+
+		// Slayer.
+		g2.setFont(FontManager.getRunescapeBoldFont());
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString("Slayer", labelX, y + g2.getFontMetrics().getAscent());
+		y += LINE_HEIGHT;
+
+		g2.setFont(FontManager.getRunescapeSmallFont());
+		fm = g2.getFontMetrics();
+		paintSlayerRow(g2, fm, labelX, blueX, redX, y);
+		y += LINE_HEIGHT;
+		y += WEAPON_PAD;
+
+		g2.setFont(FontManager.getRunescapeSmallFont());
+		fm = g2.getFontMetrics();
+		paintQuantitySpriteRow(g2, fm, blueX, y, valueW,
+			blue.superiorSprites, blue.superiorCounts, WEAPON_SIZE, WEAPON_PAD);
+		paintQuantitySpriteRow(g2, fm, redX, y, valueW,
+			red.superiorSprites, red.superiorCounts, WEAPON_SIZE, WEAPON_PAD);
+		y += WEAPON_SIZE;
 
 		// Separator.
 		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
@@ -411,48 +433,26 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		fm = g2.getFontMetrics();
 		paintRaidRow(g2, fm, labelX, blueX, redX, y, "CoX",
-			blueCoxKc, blueCoxObt, blueCoxTotal,
-			redCoxKc, redCoxObt, redCoxTotal);
+			blue.coxKc, blue.coxObt, blue.coxTotal,
+			red.coxKc, red.coxObt, red.coxTotal);
 		y += LINE_HEIGHT;
 		paintRaidRow(g2, fm, labelX, blueX, redX, y, "ToB",
-			blueTobKc, blueTobObt, blueTobTotal,
-			redTobKc, redTobObt, redTobTotal);
+			blue.tobKc, blue.tobObt, blue.tobTotal,
+			red.tobKc, red.tobObt, red.tobTotal);
 		y += LINE_HEIGHT;
 		paintRaidRow(g2, fm, labelX, blueX, redX, y, "ToA",
-			blueToaKc, blueToaObt, blueToaTotal,
-			redToaKc, redToaObt, redToaTotal);
+			blue.toaKc, blue.toaObt, blue.toaTotal,
+			red.toaKc, red.toaObt, red.toaTotal);
 		y += LINE_HEIGHT;
-
-		// Separator.
-		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
-
-		// Mega rares.
-		g2.setFont(FontManager.getRunescapeBoldFont());
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString("Mega Rares", labelX, y + g2.getFontMetrics().getAscent());
-		y += LINE_HEIGHT + WEAPON_PAD;
+		y += WEAPON_PAD;
 
 		// Weapon sprites.
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		fm = g2.getFontMetrics();
 		paintQuantitySpriteRow(g2, fm, blueX, y, valueW,
-			blueWeaponSprites, blueWeaponCounts, WEAPON_SIZE, WEAPON_PAD);
+			blue.weaponSprites, blue.weaponCounts, WEAPON_SIZE, WEAPON_PAD);
 		paintQuantitySpriteRow(g2, fm, redX, y, valueW,
-			redWeaponSprites, redWeaponCounts, WEAPON_SIZE, WEAPON_PAD);
-		y += WEAPON_SIZE + WEAPON_PAD;
-
-		// Superiors.
-		g2.setFont(FontManager.getRunescapeBoldFont());
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString("Superiors", labelX, y + g2.getFontMetrics().getAscent());
-		y += LINE_HEIGHT + WEAPON_PAD;
-
-		g2.setFont(FontManager.getRunescapeSmallFont());
-		fm = g2.getFontMetrics();
-		paintQuantitySpriteRow(g2, fm, blueX, y, valueW,
-			blueSuperiorSprites, blueSuperiorCounts, WEAPON_SIZE, WEAPON_PAD);
-		paintQuantitySpriteRow(g2, fm, redX, y, valueW,
-			redSuperiorSprites, redSuperiorCounts, WEAPON_SIZE, WEAPON_PAD);
+			red.weaponSprites, red.weaponCounts, WEAPON_SIZE, WEAPON_PAD);
 	}
 
 	// Row painters.
@@ -474,26 +474,33 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		int labelX, int blueX, int redX, int y)
 	{
 		g2.setColor(OSRS_ORANGE);
-		g2.drawString("Slayer", labelX, y + fm.getAscent());
-		paintSlayerValue(g2, fm, blueX, y, blueSlayerLevel, blueSlayerXp,
-			blueSlayerRank, blueSlayerObt, blueSlayerTotal, COMPARE_BLUE);
-		paintSlayerValue(g2, fm, redX, y, redSlayerLevel, redSlayerXp,
-			redSlayerRank, redSlayerObt, redSlayerTotal, COMPARE_RED);
+		g2.drawString(slayerLabelText(), labelX, y + fm.getAscent());
+		paintSlayerValue(g2, fm, blueX, y, blue.slayerLevel, blue.slayerXp,
+			blue.slayerRank, blue.slayerObt, blue.slayerTotal, COMPARE_BLUE);
+		paintSlayerValue(g2, fm, redX, y, red.slayerLevel, red.slayerXp,
+			red.slayerRank, red.slayerObt, red.slayerTotal, COMPARE_RED);
+	}
+
+	private String slayerLabelText()
+	{
+		return blue.slayerObt >= 0 || red.slayerObt >= 0 ? "Obtained" : "Slayer";
 	}
 
 	private void paintSlayerValue(Graphics2D g2, FontMetrics fm, int x, int y,
 		int level, long xp, int rank, int obtained, int total, Color playerColor)
 	{
 		int textY = y + fm.getAscent();
-		String base = slayerBaseText(level, xp, rank, obtained);
-		g2.setColor("--".equals(base) ? dim(playerColor) : Color.WHITE);
-		g2.drawString(base, x, textY);
-
+		String base = PvmSummaryTooltip.slayerBaseText(level, xp, rank, obtained);
 		if (obtained >= 0)
 		{
-			paintWrappedProgressCount(g2, fm, x + fm.stringWidth(base), textY,
-				obtained, total);
+			String progress = progressCountText(obtained, total);
+			g2.setColor(completionColor(obtained, total));
+			g2.drawString(progress, x, textY);
+			return;
 		}
+
+		g2.setColor("--".equals(base) ? dim(playerColor) : Color.WHITE);
+		g2.drawString(base, x, textY);
 	}
 
 	private void paintCaValue(Graphics2D g2, FontMetrics fm, int x, int y,
@@ -541,7 +548,7 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 	private static String mostKilledText(String name, int kc)
 	{
 		if (name == null) return "--";
-		return name + " (" + String.format("%,d", kc) + ")";
+		return name + " (" + String.format(Locale.US, "%,d", kc) + ")";
 	}
 
 	private static String bossesText(int kc, int total)
@@ -551,26 +558,12 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 
 	private static String slayerText(int level, long xp, int rank, int obtained, int total)
 	{
-		String text = slayerBaseText(level, xp, rank, obtained);
+		String text = PvmSummaryTooltip.slayerBaseText(level, xp, rank, obtained);
 		if (obtained >= 0)
 		{
-			return text + wrappedProgressCountText(obtained, total);
+			return progressCountText(obtained, total);
 		}
 		return text;
-	}
-
-	private static String slayerBaseText(int level, long xp, int rank, int obtained)
-	{
-		if (obtained >= 0)
-		{
-			return level > 0 ? String.valueOf(level) : "--";
-		}
-		String xpText = SkillsTooltip.skillXpText(xp);
-		if (!"--".equals(xpText))
-		{
-			return "XP: " + xpText + (rank > 0 ? rankTailText(rank) : "");
-		}
-		return level > 0 ? String.valueOf(level) : "--";
 	}
 
 	private static String logsText(int completed, int withClog)
@@ -617,50 +610,6 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		return Math.max(0, hs.getKc(normal)) + Math.max(0, hs.getKc(hard));
 	}
 
-	private void loadRaidClog(ClogResult clog, boolean blue)
-	{
-		if (clog == null) return;
-		int[] cox = ClogHelper.clogCounts("chambers_of_xeric", clog);
-		int[] tob = ClogHelper.clogCounts("theatre_of_blood", clog);
-		int[] toa = ClogHelper.clogCounts("tombs_of_amascut", clog);
-		if (blue)
-		{
-			if (cox != null)
-			{
-				blueCoxObt = cox[0];
-				blueCoxTotal = cox[1];
-			}
-			if (tob != null)
-			{
-				blueTobObt = tob[0];
-				blueTobTotal = tob[1];
-			}
-			if (toa != null)
-			{
-				blueToaObt = toa[0];
-				blueToaTotal = toa[1];
-			}
-		}
-		else
-		{
-			if (cox != null)
-			{
-				redCoxObt = cox[0];
-				redCoxTotal = cox[1];
-			}
-			if (tob != null)
-			{
-				redTobObt = tob[0];
-				redTobTotal = tob[1];
-			}
-			if (toa != null)
-			{
-				redToaObt = toa[0];
-				redToaTotal = toa[1];
-			}
-		}
-	}
-
 	private void loadWeapons(int[] counts, BufferedImage[] sprites,
 		int tbow, int scythe, int shadow, ItemManager itemManager)
 	{
@@ -668,7 +617,7 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		counts[1] = scythe;
 		counts[2] = shadow;
 
-		loadItemSprites(MEGARARE_ITEM_IDS, WEAPON_SIZE, sprites, itemManager);
+		loadItemSprites(PanelData.MEGARARE_ITEM_IDS, WEAPON_SIZE, sprites, itemManager);
 	}
 
 	private void loadSuperiors(int[] counts, BufferedImage[] sprites,

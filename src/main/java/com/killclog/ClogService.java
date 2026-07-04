@@ -57,9 +57,9 @@ public class ClogService
 		BOSS_CATEGORY_OVERRIDES.put("Kree'Arra", "kree_arra");
 		BOSS_CATEGORY_OVERRIDES.put("K'ril Tsutsaroth", "kril_tsutsaroth");
 		// Raids - hard/expert modes share base clog
-		BOSS_CATEGORY_OVERRIDES.put("Chambers of Xeric: Challenge Mode", "chambers_of_xeric");
-		BOSS_CATEGORY_OVERRIDES.put("Theatre of Blood: Hard Mode", "theatre_of_blood");
-		BOSS_CATEGORY_OVERRIDES.put("Tombs of Amascut: Expert Mode", "tombs_of_amascut");
+		BOSS_CATEGORY_OVERRIDES.put(PanelData.COX_HISCORE_HARD, PanelData.COX_CATEGORY);
+		BOSS_CATEGORY_OVERRIDES.put(PanelData.TOB_HISCORE_HARD, PanelData.TOB_CATEGORY);
+		BOSS_CATEGORY_OVERRIDES.put(PanelData.TOA_HISCORE_HARD, PanelData.TOA_CATEGORY);
 		// Fight Caves / Inferno
 		BOSS_CATEGORY_OVERRIDES.put("TzTok-Jad", "the_fight_caves");
 		BOSS_CATEGORY_OVERRIDES.put("TzKal-Zuk", "the_inferno");
@@ -356,6 +356,15 @@ public class ClogService
 		if (cats == null) return -1;
 		List<Integer> items = cats.get(category);
 		return items != null ? items.size() : -1;
+	}
+
+	/**
+	 * Prefetch the category and item-name catalog so the panel can preview
+	 * the log's shape before any player has been looked up.
+	 */
+	public CompletableFuture<Void> warmCatalog()
+	{
+		return CompletableFuture.allOf(fetchCategories(), fetchItemNames());
 	}
 
 	@Nullable

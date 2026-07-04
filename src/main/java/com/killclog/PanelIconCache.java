@@ -95,9 +95,9 @@ final class PanelIconCache
 		clientThread.invokeLater(() ->
 		{
 			// Tooltip cape icons - native aspect ratio, taller.
-			loadItemImage(13280, img -> maxCapeTip = img);
-			loadItemImage(21295, img -> infernalCapeTip = img);
-			loadItemImage(21284, img -> infernalMaxCapeTip = img);
+			loadItemImage(PanelData.MAX_CAPE_ITEM_ID, img -> maxCapeTip = img);
+			loadItemImage(PanelData.INFERNAL_CAPE_ITEM_ID, img -> infernalCapeTip = img);
+			loadItemImage(PanelData.INFERNAL_MAX_CAPE_ITEM_ID, img -> infernalMaxCapeTip = img);
 
 			caRewardSprites.preloadAll();
 

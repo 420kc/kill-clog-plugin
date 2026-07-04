@@ -264,6 +264,9 @@ final class PanelData
 		30579, 30581, 30583, 30585, 30587, 30589, 30591, 30593, 30595
 	};
 
+	// Collection log book item, used for chat icons and plugin icon fallbacks.
+	static final int COLLECTION_LOG_ITEM_ID = 22711;
+
 	static final HiscoreSkill[] PVP_ACTIVITIES = {
 		HiscoreSkill.LAST_MAN_STANDING,
 		HiscoreSkill.SOUL_WARS_ZEAL,
@@ -279,4 +282,43 @@ final class PanelData
 	static final int IMBUED_HEART_ITEM_ID = 20724;
 	static final int ETERNAL_GEM_ITEM_ID = 21270;
 	static final int[] SUPERIOR_ITEMS = {IMBUED_HEART_ITEM_ID, ETERNAL_GEM_ITEM_ID};
+
+	// Raids: hiscore rows (base + hard mode sum into one KC), clog category,
+	// and the megarare drop that headlines the Mega Rares row.
+	static final String COX_HISCORE = "Chambers of Xeric";
+	static final String COX_HISCORE_HARD = "Chambers of Xeric: Challenge Mode";
+	static final String COX_CATEGORY = "chambers_of_xeric";
+	static final int TWISTED_BOW_ITEM_ID = 20997;
+
+	static final String TOB_HISCORE = "Theatre of Blood";
+	static final String TOB_HISCORE_HARD = "Theatre of Blood: Hard Mode";
+	static final String TOB_CATEGORY = "theatre_of_blood";
+	static final int SCYTHE_ITEM_ID = 22486;
+
+	static final String TOA_HISCORE = "Tombs of Amascut";
+	static final String TOA_HISCORE_HARD = "Tombs of Amascut: Expert Mode";
+	static final String TOA_CATEGORY = "tombs_of_amascut";
+	static final int SHADOW_ITEM_ID = 27277;
+
+	static final int[] MEGARARE_ITEM_IDS = {TWISTED_BOW_ITEM_ID, SCYTHE_ITEM_ID, SHADOW_ITEM_ID};
+
+	// Hover names for the fixed pvm-summary sprites. Static because the pvm
+	// summary renders these rows with or without a synced clog result; names
+	// match the canonical clog catalog exactly.
+	static final String[] MEGARARE_ITEM_NAMES = {
+		"Twisted bow", "Scythe of vitur (uncharged)", "Tumeken's shadow (uncharged)",
+	};
+	static final String[] SUPERIOR_ITEM_NAMES = {"Imbued heart", "Eternal gem"};
+
+	// Clog-summary trophy items: shown in the Special section only when
+	// obtained. An unobtained special never renders; the section is a trophy
+	// shelf, not a checklist.
+	static final int STALE_BAGUETTE_ITEM_ID = 20590;
+	static final int HELMET_OF_THE_MOON_ITEM_ID = 30111;
+	static final int[] SPECIAL_ITEM_IDS = {STALE_BAGUETTE_ITEM_ID, HELMET_OF_THE_MOON_ITEM_ID};
+
+	// Prestige capes shown beside the player summary account line.
+	static final int MAX_CAPE_ITEM_ID = 13280;
+	static final int INFERNAL_CAPE_ITEM_ID = 21295;
+	static final int INFERNAL_MAX_CAPE_ITEM_ID = 21284;
 }

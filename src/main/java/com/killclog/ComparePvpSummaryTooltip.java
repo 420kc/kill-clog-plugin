@@ -21,18 +21,23 @@ public class ComparePvpSummaryTooltip extends TitleTooltip
 	private static final int ICON_GAP = 4;
 
 
-	private String blueName;
-	private String redName;
+	// One player's column of stats; the tooltip holds a blue and a red side.
+	private static final class Side
+	{
+		String name;
+		int lms;
+		int soulWars;
+		int pvpArena;
+		int bhHunter;
+		int bhRogue;
+		int lmsObt = -1;
+		int lmsTotal;
+		int swObt = -1;
+		int swTotal;
+	}
 
-	// Blue player values.
-	private int blueLms, blueSoulWars, bluePvpArena, blueBhHunter, blueBhRogue;
-	private int blueLmsObt = -1, blueLmsTotal;
-	private int blueSwObt = -1, blueSwTotal;
-
-	// Red player values.
-	private int redLms, redSoulWars, redPvpArena, redBhHunter, redBhRogue;
-	private int redLmsObt = -1, redLmsTotal;
-	private int redSwObt = -1, redSwTotal;
+	private final Side blue = new Side();
+	private final Side red = new Side();
 	private BufferedImage[] icons;
 
 	@Override
@@ -44,30 +49,12 @@ public class ComparePvpSummaryTooltip extends TitleTooltip
 	public void setBlueData(String name, HiscoreResult hs, ClogResult clog)
 	{
 		setTitle("PvP Summary");
-		this.blueName = name;
-		if (hs != null)
-		{
-			blueLms = hs.getActivityScore("LMS - Rank");
-			blueSoulWars = hs.getActivityScore("Soul Wars Zeal");
-			bluePvpArena = hs.getActivityScore("PvP Arena - Rank");
-			blueBhHunter = hs.getActivityScore("Bounty Hunter - Hunter");
-			blueBhRogue = hs.getActivityScore("Bounty Hunter - Rogue");
-		}
-		loadClog(clog, true);
+		setData(blue, name, hs, clog);
 	}
 
 	public void setRedData(String name, HiscoreResult hs, ClogResult clog)
 	{
-		this.redName = name;
-		if (hs != null)
-		{
-			redLms = hs.getActivityScore("LMS - Rank");
-			redSoulWars = hs.getActivityScore("Soul Wars Zeal");
-			redPvpArena = hs.getActivityScore("PvP Arena - Rank");
-			redBhHunter = hs.getActivityScore("Bounty Hunter - Hunter");
-			redBhRogue = hs.getActivityScore("Bounty Hunter - Rogue");
-		}
-		loadClog(clog, false);
+		setData(red, name, hs, clog);
 	}
 
 	public void setIcons(BufferedImage[] icons)
@@ -75,39 +62,32 @@ public class ComparePvpSummaryTooltip extends TitleTooltip
 		this.icons = icons;
 	}
 
-	private void loadClog(ClogResult clog, boolean blue)
+	private static void setData(Side side, String name, HiscoreResult hs, ClogResult clog)
 	{
+		side.name = name;
+		if (hs != null)
+		{
+			side.lms = hs.getActivityScore("LMS - Rank");
+			side.soulWars = hs.getActivityScore("Soul Wars Zeal");
+			side.pvpArena = hs.getActivityScore("PvP Arena - Rank");
+			side.bhHunter = hs.getActivityScore("Bounty Hunter - Hunter");
+			side.bhRogue = hs.getActivityScore("Bounty Hunter - Rogue");
+		}
 		if (clog == null)
 		{
 			return;
 		}
 		int[] lms = ClogHelper.clogCounts("last_man_standing", clog);
 		int[] sw = ClogHelper.clogCounts("soul_wars", clog);
-		if (blue)
+		if (lms != null)
 		{
-			if (lms != null)
-			{
-				blueLmsObt = lms[0];
-				blueLmsTotal = lms[1];
-			}
-			if (sw != null)
-			{
-				blueSwObt = sw[0];
-				blueSwTotal = sw[1];
-			}
+			side.lmsObt = lms[0];
+			side.lmsTotal = lms[1];
 		}
-		else
+		if (sw != null)
 		{
-			if (lms != null)
-			{
-				redLmsObt = lms[0];
-				redLmsTotal = lms[1];
-			}
-			if (sw != null)
-			{
-				redSwObt = sw[0];
-				redSwTotal = sw[1];
-			}
+			side.swObt = sw[0];
+			side.swTotal = sw[1];
 		}
 	}
 
@@ -138,18 +118,18 @@ public class ComparePvpSummaryTooltip extends TitleTooltip
 	private int measureValueWidth(FontMetrics fm)
 	{
 		int w = 0;
-		if (blueName != null) w = Math.max(w, fm.stringWidth(blueName));
-		if (redName != null) w = Math.max(w, fm.stringWidth(redName));
+		if (blue.name != null) w = Math.max(w, fm.stringWidth(blue.name));
+		if (red.name != null) w = Math.max(w, fm.stringWidth(red.name));
 
 		// Clog rows: score plus optional progress, measured from real values.
-		w = Math.max(w, clogValueWidth(fm, blueLms, blueLmsObt, blueLmsTotal));
-		w = Math.max(w, clogValueWidth(fm, redLms, redLmsObt, redLmsTotal));
-		w = Math.max(w, clogValueWidth(fm, blueSoulWars, blueSwObt, blueSwTotal));
-		w = Math.max(w, clogValueWidth(fm, redSoulWars, redSwObt, redSwTotal));
+		w = Math.max(w, clogValueWidth(fm, blue.lms, blue.lmsObt, blue.lmsTotal));
+		w = Math.max(w, clogValueWidth(fm, red.lms, red.lmsObt, red.lmsTotal));
+		w = Math.max(w, clogValueWidth(fm, blue.soulWars, blue.swObt, blue.swTotal));
+		w = Math.max(w, clogValueWidth(fm, red.soulWars, red.swObt, red.swTotal));
 
 		// Simple rows: score only.
 		int[] simple = {
-			bluePvpArena, redPvpArena, blueBhHunter, redBhHunter, blueBhRogue, redBhRogue,
+			blue.pvpArena, red.pvpArena, blue.bhHunter, red.bhHunter, blue.bhRogue, red.bhRogue,
 		};
 		w = Math.max(w, widestValue(fm, simple, TitleTooltip::scoreText));
 		return w;
@@ -187,32 +167,32 @@ public class ComparePvpSummaryTooltip extends TitleTooltip
 
 		// Header.
 		g2.setColor(COMPARE_BLUE);
-		g2.drawString(blueName != null ? blueName : "--", blueX, y + fm.getAscent());
+		g2.drawString(blue.name != null ? blue.name : "--", blueX, y + fm.getAscent());
 		g2.setColor(COMPARE_RED);
-		g2.drawString(redName != null ? redName : "--", redX, y + fm.getAscent());
+		g2.drawString(red.name != null ? red.name : "--", redX, y + fm.getAscent());
 		y += fm.getHeight() + HEADER_GAP;
 
 		// Rows.
 		paintClogRow(g2, fm, iconX, labelX, blueX, redX, y, 0, "LMS",
-			blueLms, blueLmsObt, blueLmsTotal,
-			redLms, redLmsObt, redLmsTotal);
+			blue.lms, blue.lmsObt, blue.lmsTotal,
+			red.lms, red.lmsObt, red.lmsTotal);
 		y += LINE_HEIGHT;
 
 		paintClogRow(g2, fm, iconX, labelX, blueX, redX, y, 1, "Soul Wars",
-			blueSoulWars, blueSwObt, blueSwTotal,
-			redSoulWars, redSwObt, redSwTotal);
+			blue.soulWars, blue.swObt, blue.swTotal,
+			red.soulWars, red.swObt, red.swTotal);
 		y += LINE_HEIGHT;
 
 		paintSimpleRow(g2, fm, iconX, labelX, blueX, redX, y, 2,
-			"PvP Arena", bluePvpArena, redPvpArena);
+			"PvP Arena", blue.pvpArena, red.pvpArena);
 		y += LINE_HEIGHT;
 
 		paintSimpleRow(g2, fm, iconX, labelX, blueX, redX, y, 3,
-			"BH Hunter", blueBhHunter, redBhHunter);
+			"BH Hunter", blue.bhHunter, red.bhHunter);
 		y += LINE_HEIGHT;
 
 		paintSimpleRow(g2, fm, iconX, labelX, blueX, redX, y, 4,
-			"BH Rogue", blueBhRogue, redBhRogue);
+			"BH Rogue", blue.bhRogue, red.bhRogue);
 	}
 
 	private void paintSimpleRow(Graphics2D g2, FontMetrics fm,

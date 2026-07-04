@@ -59,6 +59,7 @@ public class ImgTooltip extends TitleTooltip
 		this.spriteSize = spriteSize;
 	}
 
+	@Override
 	public void setWikiLinksEnabled(boolean wikiLinksEnabled)
 	{
 		super.setWikiLinksEnabled(wikiLinksEnabled);

@@ -10,6 +10,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.game.SkillIconManager;
@@ -31,8 +32,8 @@ public class SkillsTooltip extends TitleTooltip
 	private static final int ROW_HEIGHT = 18;
 	private static final int COL_GAP = 8;
 	private static final int GOTR_SECTION_GAP = 5;
-	private static final int GOTR_ICON_GAP = 3;
-	private static final String RIFTS_LABEL = "Rifts: ";
+	static final int GOTR_ICON_GAP = 3;
+	static final String RIFTS_LABEL = "Rifts: ";
 	private static final String SKILL_RANK_LABEL = "#";
 	private static final String SKILL_XP_LABEL = " XP: ";
 	private static final String SKILL_RANK_SAMPLE = "9,999.9K";
@@ -104,7 +105,7 @@ public class SkillsTooltip extends TitleTooltip
 		setTitle("Skill Summary");
 		if (result != null && result.getTotalXp() > 0)
 		{
-			setSubtitle("Total Exp: ", String.format("%,d", result.getTotalXp()), Color.WHITE);
+			setSubtitle("Total Exp: ", String.format(Locale.US, "%,d", result.getTotalXp()), Color.WHITE);
 		}
 	}
 
@@ -128,7 +129,7 @@ public class SkillsTooltip extends TitleTooltip
 		}
 		if (totalXp >= 1_000_000_000L)
 		{
-			return String.format(java.util.Locale.US, "%.2fB", totalXp / 1_000_000_000.0);
+			return String.format(Locale.US, "%.2fB", totalXp / 1_000_000_000.0);
 		}
 		return Math.round(totalXp / 1_000_000.0) + "M";
 	}
@@ -141,9 +142,9 @@ public class SkillsTooltip extends TitleTooltip
 		}
 		if (xp >= 1_000_000L)
 		{
-			return String.format(java.util.Locale.US, "%.1fM", xp / 1_000_000.0);
+			return String.format(Locale.US, "%.1fM", xp / 1_000_000.0);
 		}
-		return String.format(java.util.Locale.US, "%.2fM", xp / 1_000_000.0);
+		return String.format(Locale.US, "%.2fM", xp / 1_000_000.0);
 	}
 
 	static String rankText(int rank)
@@ -154,9 +155,9 @@ public class SkillsTooltip extends TitleTooltip
 		}
 		if (rank < 10_000)
 		{
-			return String.format("%,d", rank);
+			return String.format(Locale.US, "%,d", rank);
 		}
-		return String.format(java.util.Locale.US, "%,.1fK", rank / 1_000.0);
+		return String.format(Locale.US, "%,.1fK", rank / 1_000.0);
 	}
 
 	static int skillStatsValueWidth(FontMetrics fm)
@@ -366,9 +367,9 @@ public class SkillsTooltip extends TitleTooltip
 		paintGotrProgress(g2, fm, x, textY, gotrObtained, gotrTotal);
 	}
 
-	private static String riftsText(int rifts)
+	static String riftsText(int rifts)
 	{
-		return rifts >= 0 ? String.format("%,d", rifts) : "--";
+		return rifts >= 0 ? String.format(Locale.US, "%,d", rifts) : "--";
 	}
 
 	private static int gotrProgressWidth(FontMetrics fm, int obtained, int total)

@@ -13,6 +13,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
 import java.util.List;
+import java.util.Locale;
 import java.util.function.IntFunction;
 import javax.swing.SwingUtilities;
 import net.runelite.client.game.ItemManager;
@@ -40,11 +41,12 @@ public abstract class TitleTooltip extends NativeTooltip
 
 	protected static final Color CLOG_RED = new Color(255, 0, 0);
 	protected static final Color CLOG_GREEN = new Color(0, 255, 0);
+	protected static final Color STALE_RED = new Color(255, 60, 60);
 	protected static final Color CLOG_YELLOW = new Color(255, 255, 0);
 	protected static final Color COMPARE_BLUE = new Color(91, 164, 207);
 	protected static final Color COMPARE_RED = new Color(224, 86, 86);
+	protected static final Color MUTED_GRAY = new Color(148, 148, 148);
 	protected static final String CHROME_SEPARATOR = " | ";
-	protected static final int[] MEGARARE_ITEM_IDS = {20997, 22486, 27277};
 	private static final Color QTY_SHADOW = new Color(0, 0, 0);
 
 	private String title;
@@ -105,6 +107,15 @@ public abstract class TitleTooltip extends NativeTooltip
 	public void setObtained(int obtained, int total)
 	{
 		setSubtitle("Obtained: ", progressCountText(obtained, total), completionColor(obtained, total));
+	}
+
+	/**
+	 * Empty-state obtained line: the shape of the data with no player in it.
+	 * Muted gray so the preview never reads as a score.
+	 */
+	public void setObtainedPlaceholder(int total)
+	{
+		setSubtitle("Obtained: ", "--/" + total, MUTED_GRAY);
 	}
 
 	/** Native OSRS stoplight progress color: red for none, yellow for some, green for complete. */
@@ -179,13 +190,13 @@ public abstract class TitleTooltip extends NativeTooltip
 	/** Value-column text: a thousands-grouped count, or "--" when absent. */
 	protected static String scoreText(int value)
 	{
-		return value > 0 ? String.format("%,d", value) : "--";
+		return value > 0 ? String.format(Locale.US, "%,d", value) : "--";
 	}
 
 	/** Rank tail that flows after a score column, e.g. " #1,234,567". */
 	protected static String rankTailText(int rank)
 	{
-		return " #" + String.format("%,d", rank);
+		return " #" + String.format(Locale.US, "%,d", rank);
 	}
 
 	/**
@@ -376,7 +387,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	{
 		if (rank > 0)
 		{
-			this.rankText = String.format("%,d", rank);
+			this.rankText = String.format(Locale.US, "%,d", rank);
 		}
 		else
 		{
@@ -657,6 +668,27 @@ public abstract class TitleTooltip extends NativeTooltip
 		g2.drawLine(midX, arrowTop, midX - 3, arrowTop + 3);
 		g2.drawLine(midX, arrowTop, midX + 3, arrowTop + 3);
 		g2.setComposite(prior);
+
+		// Hover reveal rides the title line beside the badge; the tooltip
+		// never resizes for it.
+		if (titleCornerHovered)
+		{
+			String hoverText = getTitleCornerHoverText();
+			if (hoverText != null && !hoverText.isEmpty())
+			{
+				g2.setFont(FontManager.getRunescapeSmallFont());
+				FontMetrics fm = g2.getFontMetrics();
+				g2.setColor(color);
+				g2.drawString(hoverText, badgeX - 4 - fm.stringWidth(hoverText),
+					badgeY + CORNER_BADGE_SIZE / 2 + (fm.getAscent() - fm.getDescent()) / 2);
+			}
+		}
+	}
+
+	/** Text revealed beside the corner badge while it is hovered. */
+	protected String getTitleCornerHoverText()
+	{
+		return null;
 	}
 
 	private void installTitleLinkHandlers()

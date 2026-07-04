@@ -2,7 +2,7 @@
 
 Target version: `1.6.0`
 
-Current branch: `master`
+Current branch: `1.6.0` (squash merges to `master` for the hub pin)
 
 ## Release Notes
 
@@ -14,7 +14,13 @@ Kill Clog 1.6.0:
 - Adds a Slayer row to PvM Summary, showing collection-log progress when synced and XP/rank context when unsynced.
 - Adds a Superiors section to PvM Summary with Imbued heart and Eternal gem obtained/unobtained sprites.
 - Brings the Slayer and Superiors PvM Summary rows into comparison mode.
-- Moves TempleOSRS/RuneProfile provenance into Clog Summary only, behind a compact green hover badge that reveals source rows below Recent.
+- Moves TempleOSRS/RuneProfile provenance into Clog Summary only, behind a compact green hover badge that reveals the source inline beside the badge without resizing the tooltip.
+- Adds a Special trophy shelf to Clog Summary: obtained trophies only (Stale baguette, Helmet of the Moon). The section stays hidden until one is earned.
+- Dates each Clog Summary Recent item with its obtained day ("Jul 4").
+- Item sprites in Clog Summary (Special and Recent) and PvM Summary (mega rares and superiors) hover-name in the header and left-click to the wiki, following the item-grid treatment.
+- Retires every "Nothing to see here!" notice: before any lookup the panel previews the collection log itself - dimmed full-catalog grids with "--/Y" slot counts, and Clue/PvP summary ladders rendered with dashes. The catalog warms at panel startup.
+- Collapses the compare tooltips' duplicated blue/red field plumbing into shared two-sided rendering (no visual change).
+- Adds auto-updating version, installs, and rank badges to the README.
 - Fixes comparison item-grid sprites so each player uses their own stack counts for stackable item variants.
 - Adds skill-hover stats in solo and comparison Skill Summary tooltips, swapping the GOTR footer for rank and XP while hovering a skill.
 - Adds chat emoji aliases for `:green:`, `:rune:`, `:dragon:`, and `:gilded:`.
@@ -46,8 +52,16 @@ sync prototype out.
 - Chat aliases for the green clog icon and rune/dragon/gilded tier sprites.
 - Smaller, safer `:killclog:` emoji rendering.
 - Shared Kill Clog icon helper with collection-log-book fallback.
-- Tests covering the new source badge, chat icon, and comparison sprite-count
-  behavior.
+- Clog Summary Special trophy shelf (earned-only) and dated Recent items.
+- Hover names and wiki links on Clog Summary and PvM Summary item sprites.
+- Cold-panel catalog previews replacing all "search for a player" notices,
+  with the catalog prefetched at startup.
+- Inline provenance reveal on the Clog Summary badge (no tooltip resize).
+- Two-sided Side objects across the compare tooltip family.
+- README version/installs/rank badges (version badge updates from git tags:
+  tag `v1.6.0` when this ships).
+- Tests covering the new source badge, chat icon, comparison sprite-count,
+  tier-ladder, tooltip-builder, and inline-provenance behavior.
 
 ## Excluded
 
@@ -73,12 +87,21 @@ Then Dylan real-client smoke:
 - comparison mode shows unsynced boss, clue, and rare popups for the red player
 - PvM Summary shows Slayer in solo synced, solo unsynced, and comparison cases
 - PvM Summary shows Superiors with Imbued heart and Eternal gem sprites
-- synced Slayer level value is white and the `(x/y)` progress uses stoplight
-  coloring
+- synced Slayer section shows `Obtained: x/y` in stoplight coloring with the
+  Superiors sprites beneath it
 - unsynced Slayer row shows XP and rank, for example `XP: 13.3M #429`
-- Clog Summary source badge is dim at rest, bright on hover, and reveals
-  TempleOSRS/RuneProfile source rows below Recent
+- Clog Summary source badge is dim at rest, bright on hover, and reveals the
+  provenance inline beside the badge (TempleOSRS, RuneProfile, or Temple + RP)
+  with no tooltip resize
 - boss clog tooltips do not show provenance badges
+- Clog Summary shows the Special shelf only when a trophy is owned; an
+  unowned trophy never renders
+- Clog Summary Recent items carry gray obtained dates beneath the sprites
+- hovering a Clog Summary or PvM Summary item names it in the header;
+  left-click opens its wiki page
+- with no player searched, boss and clue cells preview dimmed full catalogs
+  with `Obtained: --/Y`, and the Clue/PvP summaries show their ladders with
+  dashes (no "Nothing to see here!" anywhere)
 - hovering a skill in solo or comparison Skill Summary shows rank and XP in
   the footer, then returns to GOTR when the hover leaves
 - `:green:`, `:rune:`, `:dragon:`, and `:gilded:` render as chat icons

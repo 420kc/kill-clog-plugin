@@ -30,10 +30,15 @@ public class CompareClueSummaryTooltip extends TitleTooltip
 		"Clue Scrolls (master)", null
 	};
 
-	private String blueName;
-	private String redName;
-	private final int[] blueScores = new int[8];
-	private final int[] redScores = new int[8];
+	// One player's column of stats; the tooltip holds a blue and a red side.
+	private static final class Side
+	{
+		String name;
+		final int[] scores = new int[8];
+	}
+
+	private final Side blue = new Side();
+	private final Side red = new Side();
 	private BufferedImage[] icons;
 
 	@Override
@@ -45,29 +50,26 @@ public class CompareClueSummaryTooltip extends TitleTooltip
 	public void setBlueData(String name, HiscoreResult hs)
 	{
 		setTitle("Clue Summary");
-		this.blueName = name;
-		if (hs != null)
-		{
-			for (int i = 0; i < HISCORE_NAMES.length; i++)
-			{
-				blueScores[i] = HISCORE_NAMES[i] != null
-					? hs.getActivityScore(HISCORE_NAMES[i])
-					: hs.getKc("Mimic");
-			}
-		}
+		setData(blue, name, hs);
 	}
 
 	public void setRedData(String name, HiscoreResult hs)
 	{
-		this.redName = name;
-		if (hs != null)
+		setData(red, name, hs);
+	}
+
+	private static void setData(Side side, String name, HiscoreResult hs)
+	{
+		side.name = name;
+		if (hs == null)
 		{
-			for (int i = 0; i < HISCORE_NAMES.length; i++)
-			{
-				redScores[i] = HISCORE_NAMES[i] != null
-					? hs.getActivityScore(HISCORE_NAMES[i])
-					: hs.getKc("Mimic");
-			}
+			return;
+		}
+		for (int i = 0; i < HISCORE_NAMES.length; i++)
+		{
+			side.scores[i] = HISCORE_NAMES[i] != null
+				? hs.getActivityScore(HISCORE_NAMES[i])
+				: hs.getKc("Mimic");
 		}
 	}
 
@@ -84,10 +86,10 @@ public class CompareClueSummaryTooltip extends TitleTooltip
 		FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
 		int labelW = measureLabelWidth(fm);
 		int valueW = Math.max(
-			widestValue(fm, blueScores, TitleTooltip::scoreText),
-			widestValue(fm, redScores, TitleTooltip::scoreText));
-		if (blueName != null) valueW = Math.max(valueW, fm.stringWidth(blueName));
-		if (redName != null) valueW = Math.max(valueW, fm.stringWidth(redName));
+			widestValue(fm, blue.scores, TitleTooltip::scoreText),
+			widestValue(fm, red.scores, TitleTooltip::scoreText));
+		if (blue.name != null) valueW = Math.max(valueW, fm.stringWidth(blue.name));
+		if (red.name != null) valueW = Math.max(valueW, fm.stringWidth(red.name));
 		int totalWidth = ICON_SIZE + ICON_GAP + labelW + COL_GAP + valueW + COL_GAP + valueW;
 		int totalHeight = fm.getHeight() + HEADER_GAP + LINE_HEIGHT * LABELS.length;
 		return new Dimension(totalWidth, totalHeight);
@@ -125,9 +127,9 @@ public class CompareClueSummaryTooltip extends TitleTooltip
 
 		// Header.
 		g2.setColor(COMPARE_BLUE);
-		g2.drawString(blueName != null ? blueName : "--", blueX, y + fm.getAscent());
+		g2.drawString(blue.name != null ? blue.name : "--", blueX, y + fm.getAscent());
 		g2.setColor(COMPARE_RED);
-		g2.drawString(redName != null ? redName : "--", redX, y + fm.getAscent());
+		g2.drawString(red.name != null ? red.name : "--", redX, y + fm.getAscent());
 		y += fm.getHeight() + HEADER_GAP;
 
 		// Tier rows.
@@ -144,11 +146,11 @@ public class CompareClueSummaryTooltip extends TitleTooltip
 			g2.setColor(OSRS_ORANGE);
 			g2.drawString(LABELS[i], labelX, y + fm.getAscent());
 
-			String blueText = scoreText(blueScores[i]);
+			String blueText = scoreText(blue.scores[i]);
 			g2.setColor(compareValueColor(blueText, COMPARE_BLUE));
 			g2.drawString(blueText, blueX, y + fm.getAscent());
 
-			String redText = scoreText(redScores[i]);
+			String redText = scoreText(red.scores[i]);
 			g2.setColor(compareValueColor(redText, COMPARE_RED));
 			g2.drawString(redText, redX, y + fm.getAscent());
 

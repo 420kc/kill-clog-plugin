@@ -16,10 +16,12 @@ final class ActivitySummaryTooltips
 	private final CaRewardSprites caRewardSprites;
 	private final PanelIconCache iconCache;
 	private final Supplier<String> primaryName;
+	private final Supplier<Boolean> wikiLinks;
 
 	ActivitySummaryTooltips(LookupSession lookupSession, ComparisonController comparison,
 		Cells cells, TooltipController tooltipController, ItemManager itemManager,
-		CaRewardSprites caRewardSprites, PanelIconCache iconCache, Supplier<String> primaryName)
+		CaRewardSprites caRewardSprites, PanelIconCache iconCache, Supplier<String> primaryName,
+		Supplier<Boolean> wikiLinks)
 	{
 		this.lookupSession = lookupSession;
 		this.comparison = comparison;
@@ -29,6 +31,7 @@ final class ActivitySummaryTooltips
 		this.caRewardSprites = caRewardSprites;
 		this.iconCache = iconCache;
 		this.primaryName = primaryName;
+		this.wikiLinks = wikiLinks;
 	}
 
 	JToolTip buildPvm(JLabel owner, JPanel parentCell)
@@ -86,14 +89,14 @@ final class ActivitySummaryTooltips
 			}
 
 			cmp.setBlueMegarares(
-				LookupQueries.getClogItemCount(blueClog, "chambers_of_xeric", 20997),
-				LookupQueries.getClogItemCount(blueClog, "theatre_of_blood", 22486),
-				LookupQueries.getClogItemCount(blueClog, "tombs_of_amascut", 27277),
+				LookupQueries.getClogItemCount(blueClog, PanelData.COX_CATEGORY, PanelData.TWISTED_BOW_ITEM_ID),
+				LookupQueries.getClogItemCount(blueClog, PanelData.TOB_CATEGORY, PanelData.SCYTHE_ITEM_ID),
+				LookupQueries.getClogItemCount(blueClog, PanelData.TOA_CATEGORY, PanelData.SHADOW_ITEM_ID),
 				itemManager);
 			cmp.setRedMegarares(
-				LookupQueries.getClogItemCount(redClog, "chambers_of_xeric", 20997),
-				LookupQueries.getClogItemCount(redClog, "theatre_of_blood", 22486),
-				LookupQueries.getClogItemCount(redClog, "tombs_of_amascut", 27277),
+				LookupQueries.getClogItemCount(redClog, PanelData.COX_CATEGORY, PanelData.TWISTED_BOW_ITEM_ID),
+				LookupQueries.getClogItemCount(redClog, PanelData.TOB_CATEGORY, PanelData.SCYTHE_ITEM_ID),
+				LookupQueries.getClogItemCount(redClog, PanelData.TOA_CATEGORY, PanelData.SHADOW_ITEM_ID),
 				itemManager);
 			cmp.setBlueSuperiors(
 				LookupQueries.getClogItemCount(blueClog,
@@ -120,6 +123,7 @@ final class ActivitySummaryTooltips
 
 		PvmSummaryTooltip tip = new PvmSummaryTooltip();
 		tip.setComponent(owner);
+		tip.setWikiLinksEnabled(wikiLinks.get());
 		HiscoreResult hiscore = lookupSession.getHiscoreResult();
 		ClogResult clog = lookupSession.getClogResult();
 		tip.setData(
@@ -138,9 +142,9 @@ final class ActivitySummaryTooltips
 				LookupQueries.countBossesWithClog(cells.getTooltipDataMap(), cells.getBossLabels().keySet()));
 		}
 		tip.setMegarares(
-			LookupQueries.getClogItemCount(clog, "chambers_of_xeric", 20997),
-			LookupQueries.getClogItemCount(clog, "theatre_of_blood", 22486),
-			LookupQueries.getClogItemCount(clog, "tombs_of_amascut", 27277),
+			LookupQueries.getClogItemCount(clog, PanelData.COX_CATEGORY, PanelData.TWISTED_BOW_ITEM_ID),
+			LookupQueries.getClogItemCount(clog, PanelData.TOB_CATEGORY, PanelData.SCYTHE_ITEM_ID),
+			LookupQueries.getClogItemCount(clog, PanelData.TOA_CATEGORY, PanelData.SHADOW_ITEM_ID),
 			itemManager
 		);
 		tip.setSuperiors(

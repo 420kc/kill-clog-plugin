@@ -18,6 +18,7 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
@@ -116,6 +117,13 @@ public class Cells
 		this.unsyncedCatalog.setResolver(resolver);
 	}
 
+	/** The empty catalog backing cold and unsynced previews, if available yet. */
+	@Nullable
+	public ClogResult unsyncedCatalogResult()
+	{
+		return unsyncedCatalog.result();
+	}
+
 	// Cell builders
 
 	/** Build the boss grid (3-wide GridLayout) populated with one cell per boss. */
@@ -190,14 +198,7 @@ public class Cells
 					ClueSummaryTooltip tip = new ClueSummaryTooltip();
 					tip.setComponent(this);
 					tip.setIcons(clueIcons);
-					if (lookupSession.getHiscoreResult() != null)
-					{
-						tip.setData(lookupSession.getHiscoreResult());
-					}
-					else
-					{
-						tip.setNotice("Nothing to see here! (Search for a player)");
-					}
+					tip.setData(lookupSession.getHiscoreResult());
 					JPanel parentCell = (JPanel) this.getParent();
 					tooltipController.keepTooltipOnHover(tip, parentCell);
 					return tip;
@@ -250,14 +251,7 @@ public class Cells
 				PvpSummaryTooltip tip = new PvpSummaryTooltip();
 				tip.setComponent(this);
 				tip.setIcons(pvpActivityIcons);
-				if (lookupSession.getHiscoreResult() != null)
-				{
-					tip.setData(lookupSession.getHiscoreResult(), lookupSession.getClogResult());
-				}
-				else
-				{
-					tip.setNotice("Nothing to see here! (Search for a player)");
-				}
+				tip.setData(lookupSession.getHiscoreResult(), lookupSession.getClogResult());
 				JPanel parentCell = (JPanel) this.getParent();
 				tooltipController.keepTooltipOnHover(tip, parentCell);
 				return tip;
@@ -419,7 +413,7 @@ public class Cells
 			{
 				int rank = result.getActivityRank(activity.getName());
 				label.setToolTipText(rank > 0
-					? activity.getName() + "\nRank: {w}" + String.format("%,d", rank)
+					? activity.getName() + "\nRank: {w}" + String.format(Locale.US, "%,d", rank)
 					: activity.getName());
 			}
 		}
@@ -444,7 +438,7 @@ public class Cells
 			String shortName = capitalizeTier(tier);
 			int rank = result.getActivityRank(tier.getName());
 			label.setToolTipText(rank > 0
-				? shortName + "\nRank: {w}" + String.format("%,d", rank)
+				? shortName + "\nRank: {w}" + String.format(Locale.US, "%,d", rank)
 				: shortName);
 		}
 	}

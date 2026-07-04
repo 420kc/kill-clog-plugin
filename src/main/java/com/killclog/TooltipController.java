@@ -43,10 +43,8 @@ class TooltipController
 
 	// Click-to-reveal popup state.
 	private Popup activeClickPopup;
-	private JLabel activeClickLabel;
 	private JComponent activeClickComponent;
 	private AWTEventListener clickDismissListener;
-	private JLabel clickDismissedLabel;
 	private JComponent clickDismissedComponent;
 	private Window focusWindow;
 	private WindowAdapter windowFocusListener;
@@ -166,58 +164,7 @@ class TooltipController
 		});
 	}
 
-	void showClickTooltip(JLabel label, JPanel cell)
-	{
-		// The global listener dismissed this label on the same click; treat it as toggle-off.
-		if (label == clickDismissedLabel)
-		{
-			clickDismissedLabel = null;
-			return;
-		}
-		clickDismissedLabel = null;
-
-		hideClickTooltip();
-
-		JToolTip tip = label.createToolTip();
-		tip.setTipText(label.getToolTipText());
-
-		Dimension tipSize = tip.getPreferredSize();
-
-		// Position below the cell, aligned to the label, and keep it on-screen.
-		Point labelLoc = label.getLocationOnScreen();
-		Point cellLoc = cell.getLocationOnScreen();
-		Rectangle screen = cell.getGraphicsConfiguration().getBounds();
-
-		int x = labelLoc.x;
-		int y = cellLoc.y + cell.getHeight();
-
-		if (x + tipSize.width > screen.x + screen.width)
-		{
-			x = screen.x + screen.width - tipSize.width;
-		}
-		if (y + tipSize.height > screen.y + screen.height)
-		{
-			y = cellLoc.y - tipSize.height;
-		}
-
-		activeClickPopup = PopupFactory.getSharedInstance().getPopup(cell, tip, x, y);
-		activeClickLabel = label;
-		activeClickPopup.show();
-
-		// Dismiss on the next click anywhere.
-		clickDismissListener = event ->
-		{
-			if (event.getID() == MouseEvent.MOUSE_PRESSED)
-			{
-				clickDismissedLabel = activeClickLabel;
-				hideClickTooltip();
-			}
-		};
-		Toolkit.getDefaultToolkit().addAWTEventListener(
-			clickDismissListener, AWTEvent.MOUSE_EVENT_MASK);
-	}
-
-	/** Show click tooltip for a non-JLabel component (e.g. JPanel with createToolTip override). */
+	/** Show the click-to-reveal tooltip for any component with tooltip text (labels included). */
 	void showClickTooltip(JComponent source, JPanel cell)
 	{
 		// The global listener dismissed this component on the same click; treat it as toggle-off.
@@ -279,7 +226,6 @@ class TooltipController
 			activeClickPopup.hide();
 			activeClickPopup = null;
 		}
-		activeClickLabel = null;
 		activeClickComponent = null;
 	}
 

@@ -31,6 +31,12 @@ final class SearchMessages
 		"Couldn't find %s. Tragic.",
 		"%s last seen at Doom. RIP.",
 		"%s probably got pk'd.",
+		"%s escaped the database",
+		"%s left no footprints",
+		"%s is off the grid",
+		"%s failed the vibe check",
+		"No clog trail for %s",
+		"%s is hiding from the hiscores",
 	};
 
 	static final String[] SELF = {
@@ -42,6 +48,11 @@ final class SearchMessages
 		"Back for more?",
 		"Miss me?",
 		"%s checks in",
+		"The legend returns",
+		"%s checks the receipts",
+		"Still got it, %s",
+		"Let's see the damage",
+		"Back to the log mines",
 	};
 
 	static final String[] SELF_RARE = {

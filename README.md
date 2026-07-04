@@ -1,5 +1,9 @@
 # Kill Clog
 
+[![version](https://img.shields.io/github/v/tag/420kc/kill-clog-plugin?label=version)](https://github.com/420kc/kill-clog-plugin/tags)
+[![installs](https://img.shields.io/endpoint?url=https://api.runelite.net/pluginhub/shields/installs/plugin/kill-clog)](https://runelite.net/plugin-hub/show/kill-clog)
+[![rank](https://img.shields.io/endpoint?url=https://api.runelite.net/pluginhub/shields/rank/plugin/kill-clog)](https://runelite.net/plugin-hub/show/kill-clog)
+
 Kill Clog is a HiScores overhaul that offers fast and easy visuals of collection log progress and account snapshots.
 
 ![Kill Clog](screenshots/hero-vanilla-vs-killclog.png)

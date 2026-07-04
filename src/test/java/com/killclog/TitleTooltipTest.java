@@ -8,7 +8,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import net.runelite.client.ui.FontManager;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -77,23 +76,26 @@ public class TitleTooltipTest
 	}
 
 	@Test
-	public void clogSummarySourceBadgeKeepsHeaderCompactAndRevealsSourcesBelow()
+	public void clogSummarySourceBadgeRevealsProvenanceInlineWithoutResizing()
 	{
 		ClogSummaryTooltip tooltip = new ClogSummaryTooltip();
 		tooltip.setTitle("Clog Summary");
 		tooltip.setClogSources(true, true);
 
 		Dimension idle = tooltip.getPreferredSize();
-		int combinedSourceWidth = tooltip.getFontMetrics(FontManager.getRunescapeSmallFont())
-			.stringWidth("TempleOSRS + RuneProfile") + NativeTooltip.getInset() * 2;
-		assertTrue(idle.width < combinedSourceWidth);
-		assertArrayEquals(new String[]{"TempleOSRS", "RuneProfile"}, tooltip.sourceRows());
+		assertEquals("Temple + RP", tooltip.sourceLine());
 
 		tooltip.setSize(idle);
 		moveMouse(tooltip, tooltip.getWidth() - NativeTooltip.getInset() - 1,
 			NativeTooltip.getInset() + 1);
 		assertTrue(tooltip.isTitleCornerHovered());
-		assertTrue(tooltip.getPreferredSize().height > idle.height);
+		// The reveal shares the title line; the tooltip must not grow for it.
+		assertEquals(idle, tooltip.getPreferredSize());
+
+		tooltip.setClogSources(true, false);
+		assertEquals("TempleOSRS", tooltip.sourceLine());
+		tooltip.setClogSources(false, true);
+		assertEquals("RuneProfile", tooltip.sourceLine());
 	}
 
 	@Test

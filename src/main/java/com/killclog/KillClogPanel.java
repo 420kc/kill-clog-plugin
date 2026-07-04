@@ -139,6 +139,7 @@ public class KillClogPanel extends PluginPanel
 			// Single player: standard clog summary
 			ClogSummaryTooltip tip = new ClogSummaryTooltip();
 			tip.setComponent(this);
+			tip.setWikiLinksEnabled(config.wikiItemLinks());
 			if (lookupSession.getClogResult() != null)
 			{
 				ClogResult clog = lookupSession.getClogResult();
@@ -153,7 +154,10 @@ public class KillClogPanel extends PluginPanel
 				boolean stale = LookupQueries.isSyncStale(lookupSession.getClogLastChanged(), 90);
 				String sync = LookupQueries.syncLine(lookupSession.getClogLastChanged(), stale);
 				if (sync != null) tip.setSyncData(sync, stale);
-				tip.setRecentItems(LookupQueries.getRecentItems(lookupSession.getClogResult(), 4), itemManager);
+				tip.setSpecialItems(
+					ClogHelper.obtainedSpecialItems(PanelData.SPECIAL_ITEM_IDS, clog),
+					clog, itemManager);
+				tip.setRecentItems(LookupQueries.getRecentItems(clog, 4), clog, itemManager);
 			}
 			else
 			{
@@ -163,10 +167,23 @@ public class KillClogPanel extends PluginPanel
 				{
 					tip.setNotice(SYNC_NOTICE, getSyncIcon());
 				}
+				else if (lookupSession.getHiscoreResult() != null)
+				{
+					tip.setNotice(noClogNotice(rsn));
+				}
 				else
 				{
-					tip.setNotice(lookupSession.getHiscoreResult() != null
-						? noClogNotice(rsn) : "Nothing to see here! (Search for a player)");
+					// No player yet: preview the log's shape from the catalog.
+					ClogResult catalog = cells.unsyncedCatalogResult();
+					if (catalog != null)
+					{
+						tip.setTitle("Clog Summary");
+						tip.setObtainedPlaceholder(ClogHelper.sumClogTotals(catalog)[1]);
+					}
+					else
+					{
+						tip.setNotice("Loading catalog...");
+					}
 				}
 			}
 			return tip;
@@ -243,7 +260,7 @@ public class KillClogPanel extends PluginPanel
 		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, clogService);
 		this.activityTooltips = new ActivitySummaryTooltips(
 			lookupSession, comparison, cells, tooltipController, itemManager,
-			caRewardSprites, iconCache, () -> rsn);
+			caRewardSprites, iconCache, () -> rsn, config::wikiItemLinks);
 		this.itemNameResolver = new TooltipItemNameResolver(clientThread, itemManager,
 			this::onTooltipItemNamesResolved);
 		this.cells.setUnsyncedCatalogResolver(itemNameResolver::resolve);
@@ -340,6 +357,11 @@ public class KillClogPanel extends PluginPanel
 		highlighter = new ProgressHighlighter(
 			cells.getBossLabels(), cells.getActivityLabels(), cells.getClueTierLabels(),
 			PanelData.NAME_OVERRIDES, PanelData.CLUE_CATEGORIES, config);
+
+		// Cold start: warm the catalog so every cell previews the log's shape
+		// (dimmed grids, --/Y slot counts) before any player has been searched.
+		clogService.warmCatalog().thenRun(() ->
+			SwingUtilities.invokeLater(() -> cells.rebuildPrimaryTooltips(localRsn)));
 	}
 
 	private void onTooltipItemNamesResolved()
@@ -544,21 +566,24 @@ public class KillClogPanel extends PluginPanel
 			tip.setItems(data.totalItems, data.allItemIds, data.obtainedIds,
 				data.obtainedCounts, data.itemNames, itemManager);
 		}
-		else
+		else if (!ClogHelper.configureNotSynced(tip, data, itemManager))
 		{
-			if (!ClogHelper.configureNotSynced(tip, data, itemManager))
+			tip.setTitle(data != null ? data.name : name);
+			boolean isSelfNoCache = lookupSession.getHiscoreResult() != null && localRsn != null
+				&& localRsn.equalsIgnoreCase(lookupSession.getCurrentLookupRsn());
+			if (isSelfNoCache)
 			{
-				tip.setTitle(data != null ? data.name : name);
-				boolean isSelfNoCache = lookupSession.getHiscoreResult() != null && localRsn != null
-					&& localRsn.equalsIgnoreCase(lookupSession.getCurrentLookupRsn());
-				if (isSelfNoCache)
-				{
-					tip.setNotice(SYNC_NOTICE, getSyncIcon());
-				}
-				else
-				{
-					tip.setNotice("Nothing to see here! (Search for a player)");
-				}
+				tip.setNotice(SYNC_NOTICE, getSyncIcon());
+			}
+			else if (lookupSession.getHiscoreResult() != null)
+			{
+				tip.setNotice(noClogNotice(lookupSession.getCurrentLookupRsn()));
+			}
+			else
+			{
+				// Cold and the catalog has not arrived yet; the warm-up
+				// rebuild replaces this with the dimmed preview.
+				tip.setNotice("Loading catalog...");
 			}
 		}
 

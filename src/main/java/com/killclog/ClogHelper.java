@@ -6,6 +6,7 @@ import java.awt.Component;
 import java.awt.Container;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -38,8 +39,9 @@ final class ClogHelper
 
 	/**
 	 * Configure an ImgTooltip for a player who has not synced any collection log.
-	 * Skips the obtained subtitle so no "?/Y" shows, keeps native hiscore rows,
-	 * and draws every category item dimmed so wiki links remain explorable.
+	 * Keeps native hiscore rows when the player has any signal (kc or rank);
+	 * otherwise shows the muted "Obtained: --/Y" preview. Every category item
+	 * draws dimmed either way so wiki links remain explorable.
 	 */
 	static boolean configureNotSynced(ImgTooltip tip, TooltipData data, ItemManager itemManager)
 	{
@@ -48,13 +50,22 @@ final class ClogHelper
 			return false;
 		}
 		tip.setTitle(data.name);
-		if (data.statLabel != null)
+		if (data.statValue >= 0 || data.rank > 0)
 		{
-			tip.setInfoLine(data.statLabel, statText(data.statValue), Color.WHITE);
+			if (data.statLabel != null)
+			{
+				tip.setInfoLine(data.statLabel, statText(data.statValue), Color.WHITE);
+			}
+			if (data.rankTracked)
+			{
+				tip.setRank(data.rank);
+			}
 		}
-		if (data.rankTracked)
+		else
 		{
-			tip.setRank(data.rank);
+			// No player signal behind this grid: preview the shape and count
+			// the slots instead of painting dashes for stats nobody has.
+			tip.setObtainedPlaceholder(data.allItemIds.size());
 		}
 		tip.setItems(data.totalItems, data.allItemIds, Collections.emptySet(),
 			Collections.emptyMap(), data.itemNames, itemManager);
@@ -80,6 +91,40 @@ final class ClogHelper
 		int count = 0;
 		for (int id : allItems) if (obtainedIds.contains(id)) count++;
 		return count;
+	}
+
+	/**
+	 * Obtained trophy items from anywhere in the log, in the order the ids
+	 * are listed. Items the player does not own are left out entirely.
+	 */
+	static List<ClogResult.ClogItem> obtainedSpecialItems(int[] specialIds, ClogResult clogResult)
+	{
+		List<ClogResult.ClogItem> found = new ArrayList<>();
+		if (clogResult == null)
+		{
+			return found;
+		}
+		for (int specialId : specialIds)
+		{
+			for (List<ClogResult.ClogItem> items : clogResult.getObtainedItems().values())
+			{
+				ClogResult.ClogItem match = null;
+				for (ClogResult.ClogItem item : items)
+				{
+					if (item.getId() == specialId)
+					{
+						match = item;
+						break;
+					}
+				}
+				if (match != null)
+				{
+					found.add(match);
+					break;
+				}
+			}
+		}
+		return found;
 	}
 
 	static int[] clogCounts(String category, ClogResult clogResult)
@@ -130,6 +175,73 @@ final class ClogHelper
 			if (obtained >= CLOG_TIER_THRESHOLDS[i]) return CLOG_TIERS[i];
 		}
 		return null;
+	}
+
+	/**
+	 * Position on the tier ladder as display strings, shared by the solo and
+	 * comparison Clog Summary tooltips. Fields are null where the ladder has
+	 * nothing to say: below bronze there is no current tier, at gilded there
+	 * is no next one.
+	 */
+	static final class TierProgress
+	{
+		final String tierName;
+		final String tierRange;
+		final String progressCount;
+		final String nextTierName;
+
+		private TierProgress(String tierName, String tierRange,
+			String progressCount, String nextTierName)
+		{
+			this.tierName = tierName;
+			this.tierRange = tierRange;
+			this.progressCount = progressCount;
+			this.nextTierName = nextTierName;
+		}
+	}
+
+	static TierProgress tierProgress(int obtained, int totalSlots)
+	{
+		int gildedThreshold = (int) (totalSlots * 0.9) / 25 * 25;
+		String currentTier = getClogTierName(obtained, totalSlots);
+
+		if (currentTier == null)
+		{
+			return new TierProgress(null, null,
+				String.valueOf(CLOG_TIER_THRESHOLDS[0] - obtained), "bronze");
+		}
+
+		if ("gilded".equals(currentTier))
+		{
+			return new TierProgress("gilded", gildedThreshold + "+", null, null);
+		}
+
+		int tierIndex = -1;
+		for (int i = 0; i < CLOG_TIERS.length; i++)
+		{
+			if (CLOG_TIERS[i].equals(currentTier))
+			{
+				tierIndex = i;
+				break;
+			}
+		}
+
+		int currentThreshold = CLOG_TIER_THRESHOLDS[tierIndex];
+		int nextThreshold;
+		String nextTier;
+		if (tierIndex + 1 < CLOG_TIER_THRESHOLDS.length)
+		{
+			nextThreshold = CLOG_TIER_THRESHOLDS[tierIndex + 1];
+			nextTier = CLOG_TIERS[tierIndex + 1];
+		}
+		else
+		{
+			nextThreshold = gildedThreshold;
+			nextTier = "gilded";
+		}
+
+		return new TierProgress(currentTier, currentThreshold + "-" + (nextThreshold - 1),
+			String.valueOf(nextThreshold - obtained), nextTier);
 	}
 
 	// Account helpers.

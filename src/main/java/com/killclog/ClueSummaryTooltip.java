@@ -5,6 +5,7 @@ import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.util.Locale;
 import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.ui.FontManager;
 
@@ -37,11 +38,15 @@ public class ClueSummaryTooltip extends TitleTooltip
 	private int mimicRank = -1;
 
 	private BufferedImage[] icons;
-	private String notice;
 
+	/** A null result renders the full tier ladder with "--" scores: the empty state. */
 	public void setData(HiscoreResult hiscoreResult)
 	{
 		setTitle("Clue Summary");
+		if (hiscoreResult == null)
+		{
+			return;
+		}
 
 		for (int i = 0; i < CLUE_TIERS.length; i++)
 		{
@@ -62,21 +67,10 @@ public class ClueSummaryTooltip extends TitleTooltip
 		this.icons = icons;
 	}
 
-	public void setNotice(String notice)
-	{
-		this.notice = notice;
-		setTitle("Clue Summary");
-	}
-
 	@Override
 	protected Dimension getContentSize(int availableWidth)
 	{
 		FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
-
-		if (notice != null)
-		{
-			return new Dimension(fm.stringWidth(notice), LINE_HEIGHT);
-		}
 
 		int iconCol = ICON_SIZE + ICON_GAP;
 		int labelCol = 0;
@@ -99,13 +93,6 @@ public class ClueSummaryTooltip extends TitleTooltip
 		int inset = getInset();
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		FontMetrics fm = g2.getFontMetrics();
-
-		if (notice != null)
-		{
-			g2.setColor(NOTICE_COLOR);
-			g2.drawString(notice, inset, startY + fm.getAscent());
-			return;
-		}
 
 		// Compute column positions.
 		int iconCol = ICON_SIZE + ICON_GAP;
@@ -200,7 +187,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 			// Rank flows after the score column as " #1,234": the # stays orange,
 			// the rank value is white. Widths match rankTailText so layout is unchanged.
 			String rankPrefix = " #";
-			String rankValue = String.format("%,d", rank);
+			String rankValue = String.format(Locale.US, "%,d", rank);
 			int rankX = scoreRight + 1;
 			g2.setColor(OSRS_ORANGE);
 			g2.drawString(rankPrefix, rankX, textY);

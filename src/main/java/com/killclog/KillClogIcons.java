@@ -6,7 +6,6 @@ import net.runelite.client.util.ImageUtil;
 
 final class KillClogIcons
 {
-	private static final int COLLECTION_LOG_ITEM_ID = 22711;
 	private static final String ICON_RESOURCE = "/com/killclog/icon.png";
 
 	private KillClogIcons()
@@ -21,7 +20,7 @@ final class KillClogIcons
 	static BufferedImage pluginIconOrCollectionLog(ItemManager itemManager)
 	{
 		BufferedImage icon = pluginIcon();
-		return icon != null ? icon : itemManager.getImage(COLLECTION_LOG_ITEM_ID, 1, false);
+		return icon != null ? icon : itemManager.getImage(PanelData.COLLECTION_LOG_ITEM_ID, 1, false);
 	}
 
 	static BufferedImage resizedPluginIcon(int width, int height, ItemManager itemManager)

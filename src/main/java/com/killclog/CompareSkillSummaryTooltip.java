@@ -38,9 +38,7 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 	private static final int XP_ROW_GAP = 2;
 	private static final int XP_FIELD_GAP = 8;
 	private static final int GOTR_SECTION_GAP = 5;
-	private static final int GOTR_ICON_GAP = 3;
 	private static final String XP_LABEL = "XP: ";
-	private static final String RIFTS_LABEL = "Rifts: ";
 
 	private static final Color ARROW_GREEN = CLOG_GREEN;
 	private static final Color UNRANKED_COLOR = new Color(128, 128, 128);
@@ -57,18 +55,20 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 		{Skill.CONSTRUCTION, Skill.HUNTER,       Skill.SAILING},
 	};
 
-	private String blueName;
-	private String redName;
-	private HiscoreResult blueResult;
-	private HiscoreResult redResult;
+	// One player's column of stats; the tooltip holds a blue and a red side.
+	private static final class Side
+	{
+		String name;
+		HiscoreResult result;
+		int gotrRifts = -1;
+		int gotrObtained = -1;
+		int gotrTotal;
+	}
+
+	private final Side blue = new Side();
+	private final Side red = new Side();
 	private BufferedImage chaliceSprite;
 	private BufferedImage gotrIcon;
-	private int blueGotrRifts = -1;
-	private int blueGotrObtained = -1;
-	private int blueGotrTotal;
-	private int redGotrRifts = -1;
-	private int redGotrObtained = -1;
-	private int redGotrTotal;
 	private Skill hoveredSkill;
 
 	public CompareSkillSummaryTooltip()
@@ -86,10 +86,10 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 		String redName, HiscoreResult redResult)
 	{
 		setTitle("Skill Summary");
-		this.blueName = blueName;
-		this.blueResult = blueResult;
-		this.redName = redName;
-		this.redResult = redResult;
+		blue.name = blueName;
+		blue.result = blueResult;
+		red.name = redName;
+		red.result = redResult;
 		try
 		{
 			BufferedImage raw = KillClogIcons.pluginIcon();
@@ -104,21 +104,19 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 	public void setGotr(ClogResult blueClog, ClogResult redClog, BufferedImage icon)
 	{
 		this.gotrIcon = icon;
-		this.blueGotrRifts = blueResult != null
-			? blueResult.getActivityScore(PanelData.RIFTS_CLOSED_ACTIVITY) : -1;
-		this.redGotrRifts = redResult != null
-			? redResult.getActivityScore(PanelData.RIFTS_CLOSED_ACTIVITY) : -1;
-		int[] blueCounts = ClogHelper.clogCounts(PanelData.GOTR_CATEGORY, blueClog);
-		if (blueCounts != null)
+		loadGotr(blue, blueClog);
+		loadGotr(red, redClog);
+	}
+
+	private static void loadGotr(Side side, ClogResult clog)
+	{
+		side.gotrRifts = side.result != null
+			? side.result.getActivityScore(PanelData.RIFTS_CLOSED_ACTIVITY) : -1;
+		int[] counts = ClogHelper.clogCounts(PanelData.GOTR_CATEGORY, clog);
+		if (counts != null)
 		{
-			this.blueGotrObtained = blueCounts[0];
-			this.blueGotrTotal = blueCounts[1];
-		}
-		int[] redCounts = ClogHelper.clogCounts(PanelData.GOTR_CATEGORY, redClog);
-		if (redCounts != null)
-		{
-			this.redGotrObtained = redCounts[0];
-			this.redGotrTotal = redCounts[1];
+			side.gotrObtained = counts[0];
+			side.gotrTotal = counts[1];
 		}
 	}
 
@@ -130,14 +128,14 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 	 */
 	private int overallWinner()
 	{
-		int blueLvl = blueResult != null ? blueResult.getTotalLevel() : 0;
-		int redLvl = redResult != null ? redResult.getTotalLevel() : 0;
+		int blueLvl = blue.result != null ? blue.result.getTotalLevel() : 0;
+		int redLvl = red.result != null ? red.result.getTotalLevel() : 0;
 		if (blueLvl != redLvl)
 		{
 			return blueLvl > redLvl ? 1 : -1;
 		}
-		long blueXp = blueResult != null ? blueResult.getTotalXp() : 0;
-		long redXp = redResult != null ? redResult.getTotalXp() : 0;
+		long blueXp = blue.result != null ? blue.result.getTotalXp() : 0;
+		long redXp = red.result != null ? red.result.getTotalXp() : 0;
 		if (blueXp != redXp)
 		{
 			return blueXp > redXp ? 1 : -1;
@@ -171,19 +169,19 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 
 	private int measureXpRowWidth(FontMetrics fm)
 	{
-		return xpFieldWidth(fm, totalXpText(blueResult))
+		return xpFieldWidth(fm, totalXpText(blue.result))
 			+ XP_FIELD_GAP
-			+ xpFieldWidth(fm, totalXpText(redResult));
+			+ xpFieldWidth(fm, totalXpText(red.result));
 	}
 
 	private int measureGotrWidth(FontMetrics fm)
 	{
-		int iconW = gotrIcon != null ? gotrIcon.getWidth() + GOTR_ICON_GAP : 0;
+		int iconW = gotrIcon != null ? gotrIcon.getWidth() + SkillsTooltip.GOTR_ICON_GAP : 0;
 		return iconW
-			+ fm.stringWidth(RIFTS_LABEL)
-			+ gotrValueWidth(fm, blueGotrRifts, blueGotrObtained, blueGotrTotal)
+			+ fm.stringWidth(SkillsTooltip.RIFTS_LABEL)
+			+ gotrValueWidth(fm, blue)
 			+ fm.stringWidth(CHROME_SEPARATOR)
-			+ gotrValueWidth(fm, redGotrRifts, redGotrObtained, redGotrTotal);
+			+ gotrValueWidth(fm, red);
 	}
 
 	// Painting.
@@ -230,8 +228,8 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 
 				// Skill levels.
 				String skillName = skill.getName().toLowerCase();
-				int blueLevel = blueResult != null ? blueResult.getSkillLevel(skillName) : -1;
-				int redLevel = redResult != null ? redResult.getSkillLevel(skillName) : -1;
+				int blueLevel = blue.result != null ? blue.result.getSkillLevel(skillName) : -1;
+				int redLevel = red.result != null ? red.result.getSkillLevel(skillName) : -1;
 				String blueText = blueLevel > 0 ? String.valueOf(blueLevel) : "--";
 				String redText = redLevel > 0 ? String.valueOf(redLevel) : "--";
 
@@ -332,7 +330,7 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 
 	private int measureSkillStatsWidth(FontMetrics fm)
 	{
-		int iconW = ICON_SIZE + GOTR_ICON_GAP;
+		int iconW = ICON_SIZE + SkillsTooltip.GOTR_ICON_GAP;
 		return iconW
 			+ skillStatsValueWidth(fm)
 			+ fm.stringWidth(CHROME_SEPARATOR)
@@ -357,11 +355,11 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 			int iconY = y + (LINE_HEIGHT - icon.getHeight()) / 2;
 			g2.drawImage(icon, x, iconY, null);
 		}
-		x += ICON_SIZE + GOTR_ICON_GAP;
+		x += ICON_SIZE + SkillsTooltip.GOTR_ICON_GAP;
 
-		x = paintSkillStatsValue(g2, fm, x, textY, blueResult, skill);
+		x = paintSkillStatsValue(g2, fm, x, textY, blue.result, skill);
 		x = paintChromeSeparator(g2, fm, x, textY);
-		paintSkillStatsValue(g2, fm, x, textY, redResult, skill);
+		paintSkillStatsValue(g2, fm, x, textY, red.result, skill);
 	}
 
 	private int paintSkillStatsValue(Graphics2D g2, FontMetrics fm, int x, int y,
@@ -380,9 +378,9 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 			bx += CHALICE_SIZE + CHALICE_GAP;
 		}
 		g2.setColor(COMPARE_BLUE);
-		g2.drawString(blueName != null ? blueName : "--", bx, y + fm.getAscent());
+		g2.drawString(blue.name != null ? blue.name : "--", bx, y + fm.getAscent());
 
-		String redText = redName != null ? redName : "--";
+		String redText = red.name != null ? red.name : "--";
 		int redNameW = fm.stringWidth(redText);
 		int chaliceW = winner == -1 && chaliceSprite != null ? CHALICE_SIZE + CHALICE_GAP : 0;
 		int rx = w - inset - redNameW - chaliceW;
@@ -399,8 +397,8 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 	private void paintXpRow(Graphics2D g2, FontMetrics fm, int inset, int w, int y)
 	{
 		int textY = y + fm.getAscent();
-		String blueXp = totalXpText(blueResult);
-		String redXp = totalXpText(redResult);
+		String blueXp = totalXpText(blue.result);
+		String redXp = totalXpText(red.result);
 		int redX = w - inset - xpFieldWidth(fm, redXp);
 
 		paintXpField(g2, fm, inset, textY, blueXp, COMPARE_BLUE);
@@ -431,11 +429,7 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 
 	private void paintGotr(Graphics2D g2, FontMetrics fm, int inset, int w, int y)
 	{
-		int iconW = gotrIcon != null ? gotrIcon.getWidth() + GOTR_ICON_GAP : 0;
-		int rowW = iconW + fm.stringWidth(RIFTS_LABEL)
-			+ gotrValueWidth(fm, blueGotrRifts, blueGotrObtained, blueGotrTotal)
-			+ fm.stringWidth(CHROME_SEPARATOR)
-			+ gotrValueWidth(fm, redGotrRifts, redGotrObtained, redGotrTotal);
+		int rowW = measureGotrWidth(fm);
 		int x = inset + (w - 2 * inset - rowW) / 2;
 		int textY = y + fm.getAscent();
 
@@ -443,38 +437,32 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 		{
 			int iconY = y + (LINE_HEIGHT - gotrIcon.getHeight()) / 2;
 			g2.drawImage(gotrIcon, x, iconY, null);
-			x += gotrIcon.getWidth() + GOTR_ICON_GAP;
+			x += gotrIcon.getWidth() + SkillsTooltip.GOTR_ICON_GAP;
 		}
 
 		g2.setColor(OSRS_ORANGE);
-		g2.drawString(RIFTS_LABEL, x, textY);
-		x += fm.stringWidth(RIFTS_LABEL);
-		x = paintGotrValue(g2, fm, x, textY,
-			blueGotrRifts, blueGotrObtained, blueGotrTotal, COMPARE_BLUE);
+		g2.drawString(SkillsTooltip.RIFTS_LABEL, x, textY);
+		x += fm.stringWidth(SkillsTooltip.RIFTS_LABEL);
+		x = paintGotrValue(g2, fm, x, textY, blue, COMPARE_BLUE);
 		x = paintChromeSeparator(g2, fm, x, textY);
-		paintGotrValue(g2, fm, x, textY,
-			redGotrRifts, redGotrObtained, redGotrTotal, COMPARE_RED);
+		paintGotrValue(g2, fm, x, textY, red, COMPARE_RED);
 	}
 
-	private static int gotrValueWidth(FontMetrics fm, int rifts, int obtained, int total)
+	private static int gotrValueWidth(FontMetrics fm, Side side)
 	{
-		return fm.stringWidth(riftsText(rifts))
-			+ wrappedProgressCountWidthOrDash(fm, obtained, total);
+		return fm.stringWidth(SkillsTooltip.riftsText(side.gotrRifts))
+			+ wrappedProgressCountWidthOrDash(fm, side.gotrObtained, side.gotrTotal);
 	}
 
 	private static int paintGotrValue(Graphics2D g2, FontMetrics fm, int x, int y,
-		int rifts, int obtained, int total, Color playerColor)
+		Side side, Color playerColor)
 	{
-		String riftsValue = riftsText(rifts);
+		String riftsValue = SkillsTooltip.riftsText(side.gotrRifts);
 		g2.setColor(playerColor);
 		g2.drawString(riftsValue, x, y);
 		x += fm.stringWidth(riftsValue);
-		return paintWrappedProgressCountOrDash(g2, fm, x, y, obtained, total, UNRANKED_COLOR);
-	}
-
-	private static String riftsText(int rifts)
-	{
-		return rifts >= 0 ? String.format("%,d", rifts) : "--";
+		return paintWrappedProgressCountOrDash(g2, fm, x, y,
+			side.gotrObtained, side.gotrTotal, UNRANKED_COLOR);
 	}
 
 	/**

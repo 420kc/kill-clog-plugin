@@ -29,11 +29,16 @@ public class PvpSummaryTooltip extends TitleTooltip
 	private final int[] total = new int[5];
 
 	private BufferedImage[] icons;
-	private String notice;
 
+	/** A null result renders all five rows with "--" scores: the empty state. */
 	public void setData(HiscoreResult hiscoreResult, ClogResult clogResult)
 	{
 		setTitle("PvP Summary");
+		Arrays.fill(obtained, -1);
+		if (hiscoreResult == null)
+		{
+			return;
+		}
 
 		scores[0] = hiscoreResult.getActivityScore("LMS - Rank");
 		scores[1] = hiscoreResult.getActivityScore("Soul Wars Zeal");
@@ -41,7 +46,6 @@ public class PvpSummaryTooltip extends TitleTooltip
 		scores[3] = hiscoreResult.getActivityScore("Bounty Hunter - Hunter");
 		scores[4] = hiscoreResult.getActivityScore("Bounty Hunter - Rogue");
 
-		Arrays.fill(obtained, -1);
 		if (clogResult != null)
 		{
 			int[] lms = ClogHelper.clogCounts("last_man_standing", clogResult);
@@ -64,21 +68,10 @@ public class PvpSummaryTooltip extends TitleTooltip
 		this.icons = icons;
 	}
 
-	public void setNotice(String notice)
-	{
-		this.notice = notice;
-		setTitle("PvP Summary");
-	}
-
 	@Override
 	protected Dimension getContentSize(int availableWidth)
 	{
 		FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
-
-		if (notice != null)
-		{
-			return new Dimension(fm.stringWidth(notice), LINE_HEIGHT);
-		}
 
 		int scoreCol = widestValue(fm, scores, TitleTooltip::scoreText);
 		int progressTail = 0;
@@ -101,13 +94,6 @@ public class PvpSummaryTooltip extends TitleTooltip
 		int inset = getInset();
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		FontMetrics fm = g2.getFontMetrics();
-
-		if (notice != null)
-		{
-			g2.setColor(NOTICE_COLOR);
-			g2.drawString(notice, inset, startY + fm.getAscent());
-			return;
-		}
 
 		int scoreCol = widestValue(fm, scores, TitleTooltip::scoreText);
 		int scoreRight = inset + ICON_SIZE + ICON_GAP + labelCol(fm) + COL_GAP + scoreCol;

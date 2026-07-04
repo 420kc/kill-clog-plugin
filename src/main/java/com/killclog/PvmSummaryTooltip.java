@@ -4,13 +4,18 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Locale;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
 
 /**
  * PvM summary tooltip on the combat level cell.
- * Stats at top, most-killed, raids, then megarare weapon sprites at bottom.
+ * Stats at top, then Slayer/Superiors and Raids/Mega Rares sections.
  */
 public class PvmSummaryTooltip extends TitleTooltip
 {
@@ -41,6 +46,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private final int[] weaponCounts = new int[3];
 	private final BufferedImage[] superiorSprites = new BufferedImage[2];
 	private final int[] superiorCounts = new int[2];
+	private final TooltipItemHover itemHover = new TooltipItemHover(this);
 
 	private int coxKc;
 	private int tobKc;
@@ -73,6 +79,13 @@ public class PvmSummaryTooltip extends TitleTooltip
 		this.bossesWithClog = total;
 	}
 
+	@Override
+	public void setWikiLinksEnabled(boolean wikiLinksEnabled)
+	{
+		super.setWikiLinksEnabled(wikiLinksEnabled);
+		itemHover.setWikiLinksEnabled(wikiLinksEnabled);
+	}
+
 	/**
 	 * Combat Achievement tier for the CA section, with a pre-sized tier reward sprite.
 	 * A null result omits the section entirely.
@@ -95,7 +108,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		weaponCounts[1] = scytheCount;
 		weaponCounts[2] = shadowCount;
 
-		loadItemSprites(MEGARARE_ITEM_IDS, WEAPON_SIZE, weaponSprites, itemManager);
+		loadItemSprites(PanelData.MEGARARE_ITEM_IDS, WEAPON_SIZE, weaponSprites, itemManager);
 	}
 
 	public void setSuperiors(int imbuedHeartCount, int eternalGemCount,
@@ -127,28 +140,28 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 	public void setRaids(HiscoreResult hiscoreResult, ClogResult clogResult)
 	{
-		coxKc = Math.max(0, hiscoreResult.getKc("Chambers of Xeric"))
-			+ Math.max(0, hiscoreResult.getKc("Chambers of Xeric: Challenge Mode"));
-		tobKc = Math.max(0, hiscoreResult.getKc("Theatre of Blood"))
-			+ Math.max(0, hiscoreResult.getKc("Theatre of Blood: Hard Mode"));
-		toaKc = Math.max(0, hiscoreResult.getKc("Tombs of Amascut"))
-			+ Math.max(0, hiscoreResult.getKc("Tombs of Amascut: Expert Mode"));
+		coxKc = Math.max(0, hiscoreResult.getKc(PanelData.COX_HISCORE))
+			+ Math.max(0, hiscoreResult.getKc(PanelData.COX_HISCORE_HARD));
+		tobKc = Math.max(0, hiscoreResult.getKc(PanelData.TOB_HISCORE))
+			+ Math.max(0, hiscoreResult.getKc(PanelData.TOB_HISCORE_HARD));
+		toaKc = Math.max(0, hiscoreResult.getKc(PanelData.TOA_HISCORE))
+			+ Math.max(0, hiscoreResult.getKc(PanelData.TOA_HISCORE_HARD));
 
 		if (clogResult != null)
 		{
-			int[] cox = ClogHelper.clogCounts("chambers_of_xeric", clogResult);
+			int[] cox = ClogHelper.clogCounts(PanelData.COX_CATEGORY, clogResult);
 			if (cox != null)
 			{
 				coxObtained = cox[0];
 				coxTotal = cox[1];
 			}
-			int[] tob = ClogHelper.clogCounts("theatre_of_blood", clogResult);
+			int[] tob = ClogHelper.clogCounts(PanelData.TOB_CATEGORY, clogResult);
 			if (tob != null)
 			{
 				tobObtained = tob[0];
 				tobTotal = tob[1];
 			}
-			int[] toa = ClogHelper.clogCounts("tombs_of_amascut", clogResult);
+			int[] toa = ClogHelper.clogCounts(PanelData.TOA_CATEGORY, clogResult);
 			if (toa != null)
 			{
 				toaObtained = toa[0];
@@ -163,8 +176,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 		FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
 		FontMetrics bfm = getFontMetrics(FontManager.getRunescapeBoldFont());
 
-		// Stats section
-		int statsLines = 4; // Combat, Total Kills, Slayer, Bosses
+		// Stats section.
+		int statsLines = 3; // Combat, Total Kills, Bosses
 		if (bossesCompleted >= 0) statsLines++;
 		int statsHeight = LINE_HEIGHT * statsLines;
 
@@ -175,19 +188,22 @@ public class PvmSummaryTooltip extends TitleTooltip
 			mostKilledHeight = MOST_KILLED_GAP + LINE_HEIGHT * 2;
 		}
 
-		// Raids section.
-		int raidsHeight = SUBHEADER_HEIGHT + LINE_HEIGHT * 3;
-
-		// Rare item sections.
 		int spriteRowWidth = 3 * WEAPON_SIZE + 2 * WEAPON_PAD;
-		int rareItemsHeight = SUBHEADER_HEIGHT + WEAPON_PAD + WEAPON_SIZE
-			+ WEAPON_PAD + SUBHEADER_HEIGHT + WEAPON_PAD + WEAPON_SIZE;
+		int superiorRowWidth = 2 * WEAPON_SIZE + WEAPON_PAD;
+
+		// Slayer section.
+		int slayerHeight = SUBHEADER_HEIGHT + LINE_HEIGHT
+			+ WEAPON_PAD + WEAPON_SIZE;
+
+		// Raids section.
+		int raidsHeight = SUBHEADER_HEIGHT + LINE_HEIGHT * 3
+			+ WEAPON_PAD + WEAPON_SIZE;
 
 		// Width: measure the real rendered strings, never a placeholder.
 		int textWidth = 0;
 		textWidth = Math.max(textWidth, fm.stringWidth("Combat: " + combatValue()));
 		textWidth = Math.max(textWidth, fm.stringWidth("Total Kills: " + totalKillsValue()));
-		textWidth = Math.max(textWidth, fm.stringWidth("Slayer: " + slayerValue()));
+		textWidth = Math.max(textWidth, fm.stringWidth(slayerLineText()));
 		textWidth = Math.max(textWidth, fm.stringWidth("Bosses Killed: " + bossesValue()));
 		if (bossesCompleted >= 0)
 		{
@@ -197,12 +213,11 @@ public class PvmSummaryTooltip extends TitleTooltip
 		{
 			textWidth = Math.max(textWidth, fm.stringWidth(mostKilledLine()));
 		}
+		textWidth = Math.max(textWidth, bfm.stringWidth("Slayer"));
 		textWidth = Math.max(textWidth, bfm.stringWidth("Raids"));
 		textWidth = Math.max(textWidth, raidLineWidth(fm, "CoX: ", coxKc, coxObtained, coxTotal));
 		textWidth = Math.max(textWidth, raidLineWidth(fm, "ToB: ", tobKc, tobObtained, tobTotal));
 		textWidth = Math.max(textWidth, raidLineWidth(fm, "ToA: ", toaKc, toaObtained, toaTotal));
-		textWidth = Math.max(textWidth, bfm.stringWidth("Mega Rares"));
-		textWidth = Math.max(textWidth, bfm.stringWidth("Superiors"));
 		if (caResult != null)
 		{
 			int caWidth = fm.stringWidth("CA Tier: " + tierDisplayName())
@@ -210,12 +225,12 @@ public class PvmSummaryTooltip extends TitleTooltip
 			textWidth = Math.max(textWidth, caWidth);
 		}
 
-		int contentWidth = Math.max(textWidth, spriteRowWidth);
+		int contentWidth = Math.max(textWidth, Math.max(spriteRowWidth, superiorRowWidth));
 		int separatorHeight = separatorHeight(SEPARATOR_PAD);
 		int caHeight = caResult != null ? CA_ROW_HEIGHT : 0;
 		int contentHeight = statsHeight + caHeight + mostKilledHeight
-			+ separatorHeight + raidsHeight
-			+ separatorHeight + rareItemsHeight;
+			+ separatorHeight + slayerHeight
+			+ separatorHeight + raidsHeight;
 
 		return new Dimension(contentWidth, contentHeight);
 	}
@@ -223,6 +238,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 	@Override
 	protected void paintBody(Graphics2D g2, int w, int h, int startY)
 	{
+		itemHover.setHitBoxes(Collections.emptyList());
+		List<TooltipItemHover.HitBox> hitBoxes = new ArrayList<>();
 		int inset = getInset();
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		FontMetrics fm = g2.getFontMetrics();
@@ -257,10 +274,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 		drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Total Kills: ", totalKillsValue());
 		y += LINE_HEIGHT;
 
-		// Slayer
-		paintSlayerLine(g2, fm, inset, y);
-		y += LINE_HEIGHT;
-
 		// Most Killed
 		if (mostKilled != null)
 		{
@@ -286,12 +299,37 @@ public class PvmSummaryTooltip extends TitleTooltip
 			y += LINE_HEIGHT;
 		}
 
-		// Separator: stats to raids.
+		// Separator: stats to Slayer.
+		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
+
+		// "Slayer" subheader.
+		g2.setFont(FontManager.getRunescapeBoldFont());
+		FontMetrics bfm = g2.getFontMetrics();
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString("Slayer", inset, y + bfm.getAscent());
+		y += SUBHEADER_HEIGHT;
+
+		// Slayer progress.
+		g2.setFont(FontManager.getRunescapeSmallFont());
+		fm = g2.getFontMetrics();
+		paintSlayerLine(g2, fm, inset, y);
+		y += LINE_HEIGHT;
+		y += WEAPON_PAD;
+
+		g2.setFont(FontManager.getRunescapeSmallFont());
+		fm = g2.getFontMetrics();
+		paintQuantitySpriteRow(g2, fm, inset, y, w - 2 * inset,
+			superiorSprites, superiorCounts, WEAPON_SIZE, WEAPON_PAD);
+		addRowHitBoxes(hitBoxes, 0, inset, y, w - 2 * inset,
+			PanelData.SUPERIOR_ITEMS, PanelData.SUPERIOR_ITEM_NAMES, superiorCounts);
+		y += WEAPON_SIZE;
+
+		// Separator: Slayer to raids.
 		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
 
 		// "Raids" subheader.
 		g2.setFont(FontManager.getRunescapeBoldFont());
-		FontMetrics bfm = g2.getFontMetrics();
+		bfm = g2.getFontMetrics();
 		g2.setColor(OSRS_ORANGE);
 		g2.drawString("Raids", inset, y + bfm.getAscent());
 		y += SUBHEADER_HEIGHT;
@@ -305,36 +343,47 @@ public class PvmSummaryTooltip extends TitleTooltip
 		y += LINE_HEIGHT;
 		paintRaidLine(g2, fm, inset, y, "ToA: ", toaKc, toaObtained, toaTotal);
 		y += LINE_HEIGHT;
-
-		// Separator: raids to megarares.
-		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
-
-		// "Mega Rares" subheader.
-		g2.setFont(FontManager.getRunescapeBoldFont());
-		bfm = g2.getFontMetrics();
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString("Mega Rares", inset, y + bfm.getAscent());
-		y += SUBHEADER_HEIGHT + WEAPON_PAD;
+		y += WEAPON_PAD;
 
 		// Center the three weapon sprites.
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		fm = g2.getFontMetrics();
 		paintQuantitySpriteRow(g2, fm, inset, y, w - 2 * inset,
 			weaponSprites, weaponCounts, WEAPON_SIZE, WEAPON_PAD);
-		y += WEAPON_SIZE + WEAPON_PAD;
+		addRowHitBoxes(hitBoxes, 1, inset, y, w - 2 * inset,
+			PanelData.MEGARARE_ITEM_IDS, PanelData.MEGARARE_ITEM_NAMES, weaponCounts);
 
-		// "Superiors" subheader.
-		g2.setFont(FontManager.getRunescapeBoldFont());
-		bfm = g2.getFontMetrics();
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString("Superiors", inset, y + bfm.getAscent());
-		y += SUBHEADER_HEIGHT + WEAPON_PAD;
+		itemHover.setHitBoxes(hitBoxes);
+	}
 
-		// Center the two superior drop sprites.
-		g2.setFont(FontManager.getRunescapeSmallFont());
-		fm = g2.getFontMetrics();
-		paintQuantitySpriteRow(g2, fm, inset, y, w - 2 * inset,
-			superiorSprites, superiorCounts, WEAPON_SIZE, WEAPON_PAD);
+	/**
+	 * Hover hit boxes matching paintQuantitySpriteRow's centered geometry,
+	 * so the summary sprites hover-name and wiki-link like the grids do.
+	 */
+	private void addRowHitBoxes(List<TooltipItemHover.HitBox> hitBoxes, int section,
+		int x, int y, int colWidth, int[] itemIds, String[] itemNames, int[] counts)
+	{
+		int count = Math.min(itemIds.length, counts.length);
+		int spriteRowWidth = count * WEAPON_SIZE + (count - 1) * WEAPON_PAD;
+		int startX = x + (colWidth - spriteRowWidth) / 2;
+		for (int i = 0; i < count; i++)
+		{
+			int sx = startX + i * (WEAPON_SIZE + WEAPON_PAD);
+			hitBoxes.add(new TooltipItemHover.HitBox(section, itemIds[i], itemNames[i],
+				new Rectangle(sx, y, WEAPON_SIZE, WEAPON_SIZE), counts[i] > 0));
+		}
+	}
+
+	@Override
+	protected String getHeaderRightText()
+	{
+		return itemHover.hoveredItemName();
+	}
+
+	@Override
+	protected Color getHeaderRightColor()
+	{
+		return itemHover.hoveredItemObtained() ? CLOG_GREEN : CLOG_RED;
 	}
 
 	private void paintRaidLine(Graphics2D g2, FontMetrics fm, int x, int y,
@@ -359,20 +408,27 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private void paintSlayerLine(Graphics2D g2, FontMetrics fm, int x, int y)
 	{
 		int textY = y + fm.getAscent();
-		String label = "Slayer: ";
+		String label = slayerObtained >= 0 ? "Obtained: " : "Slayer: ";
 		g2.setColor(OSRS_ORANGE);
 		g2.drawString(label, x, textY);
 		int lx = x + fm.stringWidth(label);
 
 		String base = slayerBaseValue();
-		g2.setColor(Color.WHITE);
-		g2.drawString(base, lx, textY);
-
 		if (slayerObtained >= 0)
 		{
-			paintWrappedProgressCount(g2, fm, lx + fm.stringWidth(base), textY,
-				slayerObtained, slayerTotal);
+			String progress = progressCountText(slayerObtained, slayerTotal);
+			g2.setColor(completionColor(slayerObtained, slayerTotal));
+			g2.drawString(progress, lx, textY);
+			return;
 		}
+
+		g2.setColor(Color.WHITE);
+		g2.drawString(base, lx, textY);
+	}
+
+	private String slayerLineText()
+	{
+		return (slayerObtained >= 0 ? "Obtained: " : "Slayer: ") + slayerValue();
 	}
 
 	private String combatValue()
@@ -390,23 +446,29 @@ public class PvmSummaryTooltip extends TitleTooltip
 		String value = slayerBaseValue();
 		if (slayerObtained >= 0)
 		{
-			return value + wrappedProgressCountText(slayerObtained, slayerTotal);
+			return progressCountText(slayerObtained, slayerTotal);
 		}
 		return value;
 	}
 
 	private String slayerBaseValue()
 	{
-		if (slayerObtained >= 0)
+		return slayerBaseText(slayerLevel, slayerXp, slayerRank, slayerObtained);
+	}
+
+	/** Level when clog progress is known, XP and rank fallback when unsynced. */
+	static String slayerBaseText(int level, long xp, int rank, int obtained)
+	{
+		if (obtained >= 0)
 		{
-			return slayerLevel > 0 ? String.valueOf(slayerLevel) : "--";
+			return level > 0 ? String.valueOf(level) : "--";
 		}
-		String xp = SkillsTooltip.skillXpText(slayerXp);
-		if (!"--".equals(xp))
+		String xpText = SkillsTooltip.skillXpText(xp);
+		if (!"--".equals(xpText))
 		{
-			return "XP: " + xp + (slayerRank > 0 ? rankTailText(slayerRank) : "");
+			return "XP: " + xpText + (rank > 0 ? rankTailText(rank) : "");
 		}
-		return slayerLevel > 0 ? String.valueOf(slayerLevel) : "--";
+		return level > 0 ? String.valueOf(level) : "--";
 	}
 
 	private String bossesValue()
@@ -421,7 +483,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 	private String mostKilledLine()
 	{
-		return mostKilled + " (" + String.format("%,d", mostKilledKc) + ")";
+		return mostKilled + " (" + String.format(Locale.US, "%,d", mostKilledKc) + ")";
 	}
 
 	private static int raidLineWidth(FontMetrics fm, String label, int kc, int obtained, int total)

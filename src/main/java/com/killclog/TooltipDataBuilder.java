@@ -131,26 +131,15 @@ final class TooltipDataBuilder
 
 	private static List<Integer> staticClueRareItems(String clogCategory)
 	{
-		int[] ids;
 		if (PanelData.CLOG_THIRD_AGE.equals(clogCategory))
 		{
-			ids = PanelData.THIRD_AGE_ITEMS;
+			return TooltipData.itemList(PanelData.THIRD_AGE_ITEMS);
 		}
-		else if (PanelData.CLOG_GILDED.equals(clogCategory))
+		if (PanelData.CLOG_GILDED.equals(clogCategory))
 		{
-			ids = PanelData.GILDED_ITEMS;
+			return TooltipData.itemList(PanelData.GILDED_ITEMS);
 		}
-		else
-		{
-			return new ArrayList<>();
-		}
-
-		List<Integer> result = new ArrayList<>(ids.length);
-		for (int id : ids)
-		{
-			result.add(id);
-		}
-		return result;
+		return new ArrayList<>();
 	}
 
 	/**

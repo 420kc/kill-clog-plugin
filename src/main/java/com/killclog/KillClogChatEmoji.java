@@ -26,7 +26,6 @@ class KillClogChatEmoji
 	static final String DRAGON_TRIGGER = ":dragon:";
 	static final String GILDED_TRIGGER = ":gilded:";
 
-	private static final int COLLECTION_LOG_ITEM_ID = 22711;
 	private static final int INLINE_ICON_H = 14;
 	private static final int KILLCLOG_ICON_H = 12;
 	private static final String[] TRIGGERS = {
@@ -129,7 +128,7 @@ class KillClogChatEmoji
 			BufferedImage image = KillClogIcons.pluginIcon();
 			cached = image != null
 				? registerIcon(resizeKillClogIcon(image))
-				: itemIcon(KILLCLOG_TRIGGER, COLLECTION_LOG_ITEM_ID, false);
+				: itemIcon(KILLCLOG_TRIGGER, PanelData.COLLECTION_LOG_ITEM_ID, false);
 			if (cached != null)
 			{
 				iconIdxByTrigger.put(KILLCLOG_TRIGGER, cached);
@@ -145,9 +144,9 @@ class KillClogChatEmoji
 			case KILLCLOG_TRIGGER:
 				return killClogIcon();
 			case CLOG_TRIGGER:
-				return itemIcon(CLOG_TRIGGER, COLLECTION_LOG_ITEM_ID, false);
+				return itemIcon(CLOG_TRIGGER, PanelData.COLLECTION_LOG_ITEM_ID, false);
 			case GREEN_TRIGGER:
-				return itemIcon(GREEN_TRIGGER, COLLECTION_LOG_ITEM_ID, true);
+				return itemIcon(GREEN_TRIGGER, PanelData.COLLECTION_LOG_ITEM_ID, true);
 			case RUNE_TRIGGER:
 				return itemIcon(RUNE_TRIGGER, tierItemId("rune"), false);
 			case DRAGON_TRIGGER:

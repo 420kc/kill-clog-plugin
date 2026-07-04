@@ -211,6 +211,47 @@ public class ClogHelperTest
 		assertEquals("12345", ClogHelper.pad("12345"));
 	}
 
+	@Test
+	public void testTierProgressBelowBronze()
+	{
+		ClogHelper.TierProgress tier = ClogHelper.tierProgress(50, 1500);
+		assertNull(tier.tierName);
+		assertNull(tier.tierRange);
+		assertEquals("50", tier.progressCount);
+		assertEquals("bronze", tier.nextTierName);
+	}
+
+	@Test
+	public void testTierProgressMidLadder()
+	{
+		ClogHelper.TierProgress tier = ClogHelper.tierProgress(350, 1500);
+		assertEquals("iron", tier.tierName);
+		assertEquals("300-499", tier.tierRange);
+		assertEquals("150", tier.progressCount);
+		assertEquals("steel", tier.nextTierName);
+	}
+
+	@Test
+	public void testTierProgressLastThresholdClimbsToGilded()
+	{
+		// Gilded starts at (total * 0.9) rounded down to 25s: 1350 for 1500 slots.
+		ClogHelper.TierProgress tier = ClogHelper.tierProgress(1250, 1500);
+		assertEquals("dragon", tier.tierName);
+		assertEquals("1200-1349", tier.tierRange);
+		assertEquals("100", tier.progressCount);
+		assertEquals("gilded", tier.nextTierName);
+	}
+
+	@Test
+	public void testTierProgressGildedIsTheTop()
+	{
+		ClogHelper.TierProgress tier = ClogHelper.tierProgress(1400, 1500);
+		assertEquals("gilded", tier.tierName);
+		assertEquals("1350+", tier.tierRange);
+		assertNull(tier.progressCount);
+		assertNull(tier.nextTierName);
+	}
+
 	private ClogResult makeClogResult(
 		Map<String, List<Integer>> categoryItems,
 		Map<String, List<ClogResult.ClogItem>> obtainedItems)

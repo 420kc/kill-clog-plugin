@@ -7,6 +7,7 @@ import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import javax.annotation.Nullable;
 import javax.swing.SwingUtilities;
@@ -32,27 +33,22 @@ public class ComparePlayerSummaryTooltip extends TitleTooltip
 	private static final int BADGE_GAP = 3;
 
 
-	// Blue player values.
-	private String blueRsn;
-	private int blueRank;
-	private BufferedImage blueBadge;
-	private BufferedImage blueCape;
-	private String blueAccountLabel;
-	private String bluePrestige;
-	private int blueTotalPets;
-	private List<Integer> blueObtainedPets;
-	private BufferedImage[] bluePetSprites;
+	// One player's block of stats; the tooltip holds a blue and a red side.
+	private static final class Side
+	{
+		String rsn;
+		int rank;
+		BufferedImage badge;
+		BufferedImage cape;
+		String accountLabel;
+		String prestige;
+		int totalPets;
+		List<Integer> obtainedPets;
+		BufferedImage[] petSprites;
+	}
 
-	// Red player values.
-	private String redRsn;
-	private int redRank;
-	private BufferedImage redBadge;
-	private BufferedImage redCape;
-	private String redAccountLabel;
-	private String redPrestige;
-	private int redTotalPets;
-	private List<Integer> redObtainedPets;
-	private BufferedImage[] redPetSprites;
+	private final Side blue = new Side();
+	private final Side red = new Side();
 
 	public void setBlueData(String rsn, int rank, BufferedImage badge,
 		String accountLabel, String prestige)
@@ -64,12 +60,7 @@ public class ComparePlayerSummaryTooltip extends TitleTooltip
 		String accountLabel, String prestige, BufferedImage cape)
 	{
 		setTitle("Player Summary");
-		this.blueRsn = rsn;
-		this.blueRank = rank;
-		this.blueBadge = resizeBadge(badge);
-		this.blueCape = cape;
-		this.blueAccountLabel = accountLabel;
-		this.bluePrestige = prestige;
+		setData(blue, rsn, rank, badge, accountLabel, prestige, cape);
 	}
 
 	public void setRedData(String rsn, int rank, BufferedImage badge,
@@ -81,28 +72,38 @@ public class ComparePlayerSummaryTooltip extends TitleTooltip
 	public void setRedData(String rsn, int rank, BufferedImage badge,
 		String accountLabel, String prestige, BufferedImage cape)
 	{
-		this.redRsn = rsn;
-		this.redRank = rank;
-		this.redBadge = resizeBadge(badge);
-		this.redCape = cape;
-		this.redAccountLabel = accountLabel;
-		this.redPrestige = prestige;
+		setData(red, rsn, rank, badge, accountLabel, prestige, cape);
+	}
+
+	private static void setData(Side side, String rsn, int rank, BufferedImage badge,
+		String accountLabel, String prestige, BufferedImage cape)
+	{
+		side.rsn = rsn;
+		side.rank = rank;
+		side.badge = resizeBadge(badge);
+		side.cape = cape;
+		side.accountLabel = accountLabel;
+		side.prestige = prestige;
 	}
 
 	public void setBluePets(List<Integer> allPetIds, Set<Integer> obtainedPetIds,
 		ItemManager itemManager)
 	{
-		this.blueTotalPets = allPetIds != null ? allPetIds.size() : 0;
-		blueObtainedPets = filterObtained(allPetIds, obtainedPetIds);
-		bluePetSprites = loadPetSprites(blueObtainedPets, itemManager);
+		setPets(blue, allPetIds, obtainedPetIds, itemManager);
 	}
 
 	public void setRedPets(List<Integer> allPetIds, Set<Integer> obtainedPetIds,
 		ItemManager itemManager)
 	{
-		this.redTotalPets = allPetIds != null ? allPetIds.size() : 0;
-		redObtainedPets = filterObtained(allPetIds, obtainedPetIds);
-		redPetSprites = loadPetSprites(redObtainedPets, itemManager);
+		setPets(red, allPetIds, obtainedPetIds, itemManager);
+	}
+
+	private void setPets(Side side, List<Integer> allPetIds, Set<Integer> obtainedPetIds,
+		ItemManager itemManager)
+	{
+		side.totalPets = allPetIds != null ? allPetIds.size() : 0;
+		side.obtainedPets = filterObtained(allPetIds, obtainedPetIds);
+		side.petSprites = loadPetSprites(side.obtainedPets, itemManager);
 	}
 
 	// Sizing.
@@ -116,8 +117,8 @@ public class ComparePlayerSummaryTooltip extends TitleTooltip
 		int valueW = measureValueWidth(fm);
 		int blockWidth = labelW + COL_GAP + valueW;
 
-		int blueH = measureBlockHeight(fm, bluePrestige, blueTotalPets, blueObtainedPets, blueCape);
-		int redH = measureBlockHeight(fm, redPrestige, redTotalPets, redObtainedPets, redCape);
+		int blueH = measureBlockHeight(fm, blue);
+		int redH = measureBlockHeight(fm, red);
 		int totalHeight = blueH + SEPARATOR_PAD + 1 + SEPARATOR_PAD + redH;
 
 		return new Dimension(blockWidth, totalHeight);
@@ -128,40 +129,37 @@ public class ComparePlayerSummaryTooltip extends TitleTooltip
 		int w = 0;
 		w = Math.max(w, fm.stringWidth("Account"));
 		w = Math.max(w, fm.stringWidth("Rank"));
-		if (bluePrestige != null || redPrestige != null) w = Math.max(w, fm.stringWidth("Prestige"));
+		if (blue.prestige != null || red.prestige != null) w = Math.max(w, fm.stringWidth("Prestige"));
 		w = Math.max(w, fm.stringWidth("Pets"));
-		if (blueCape != null) w = Math.max(w, blueCape.getWidth());
-		if (redCape != null) w = Math.max(w, redCape.getWidth());
+		if (blue.cape != null) w = Math.max(w, blue.cape.getWidth());
+		if (red.cape != null) w = Math.max(w, red.cape.getWidth());
 		return w;
 	}
 
 	private int measureValueWidth(FontMetrics fm)
 	{
-		int w = 0;
-		// Player names include badge width.
-		int blueNameW = fm.stringWidth(blueRsn != null ? blueRsn : "--");
-		if (blueBadge != null) blueNameW += blueBadge.getWidth() + BADGE_GAP;
-		int redNameW = fm.stringWidth(redRsn != null ? redRsn : "--");
-		if (redBadge != null) redNameW += redBadge.getWidth() + BADGE_GAP;
-		w = Math.max(w, Math.max(blueNameW, redNameW));
-		// Account type.
-		if (blueAccountLabel != null) w = Math.max(w, fm.stringWidth(blueAccountLabel));
-		if (redAccountLabel != null) w = Math.max(w, fm.stringWidth(redAccountLabel));
+		int w = Math.max(sideValueWidth(fm, blue), sideValueWidth(fm, red));
 		w = Math.max(w, fm.stringWidth("Normal"));
-		// Rank: measure the real rank strings, not a placeholder.
-		w = Math.max(w, fm.stringWidth(rankValueText(blueRank)));
-		w = Math.max(w, fm.stringWidth(rankValueText(redRank)));
-		// Prestige.
-		if (bluePrestige != null) w = Math.max(w, fm.stringWidth(bluePrestige));
-		if (redPrestige != null) w = Math.max(w, fm.stringWidth(redPrestige));
 		// Pet sprites.
 		int petGridW = PET_COLS * (PET_SIZE + PET_PAD) - PET_PAD;
-		w = Math.max(w, petGridW);
+		return Math.max(w, petGridW);
+	}
+
+	private static int sideValueWidth(FontMetrics fm, Side side)
+	{
+		// Player name includes badge width.
+		int w = fm.stringWidth(side.rsn != null ? side.rsn : "--");
+		if (side.badge != null) w += side.badge.getWidth() + BADGE_GAP;
+		// Account type.
+		if (side.accountLabel != null) w = Math.max(w, fm.stringWidth(side.accountLabel));
+		// Rank: measure the real rank string, not a placeholder.
+		w = Math.max(w, fm.stringWidth(rankValueText(side.rank)));
+		// Prestige.
+		if (side.prestige != null) w = Math.max(w, fm.stringWidth(side.prestige));
 		return w;
 	}
 
-	private int measureBlockHeight(FontMetrics fm, String prestige,
-		int totalPets, List<Integer> obtainedPets, BufferedImage cape)
+	private int measureBlockHeight(FontMetrics fm, Side side)
 	{
 		int h = 0;
 		// Name.
@@ -171,13 +169,13 @@ public class ComparePlayerSummaryTooltip extends TitleTooltip
 		// Rank.
 		h += LINE_HEIGHT;
 		// Prestige.
-		if (prestige != null) h += LINE_HEIGHT;
+		if (side.prestige != null) h += LINE_HEIGHT;
 		// Pets.
-		if (totalPets > 0)
+		if (side.totalPets > 0)
 		{
 			h += LINE_HEIGHT; // "Pets" count row
-			int petAreaH = Math.max(petGridHeight(obtainedPets),
-				cape != null ? cape.getHeight() : 0);
+			int petAreaH = Math.max(petGridHeight(side.obtainedPets),
+				side.cape != null ? side.cape.getHeight() : 0);
 			if (petAreaH > 0)
 			{
 				h += petAreaH;
@@ -215,9 +213,7 @@ public class ComparePlayerSummaryTooltip extends TitleTooltip
 		int y = startY;
 
 		// Blue block.
-		y = paintBlock(g2, fm, labelX, valueX, y, w,
-			COMPARE_BLUE, blueRsn, blueBadge, blueAccountLabel,
-			blueRank, bluePrestige, blueTotalPets, blueObtainedPets, bluePetSprites, blueCape);
+		y = paintBlock(g2, fm, labelX, valueX, y, w, COMPARE_BLUE, blue);
 
 		// Separator.
 		y += SEPARATOR_PAD;
@@ -226,75 +222,70 @@ public class ComparePlayerSummaryTooltip extends TitleTooltip
 		y += 1 + SEPARATOR_PAD;
 
 		// Red block.
-		paintBlock(g2, fm, labelX, valueX, y, w,
-			COMPARE_RED, redRsn, redBadge, redAccountLabel,
-			redRank, redPrestige, redTotalPets, redObtainedPets, redPetSprites, redCape);
+		paintBlock(g2, fm, labelX, valueX, y, w, COMPARE_RED, red);
 	}
 
 	private int paintBlock(Graphics2D g2, FontMetrics fm,
 		int labelX, int valueX, int y, int w,
-		Color playerColor, String rsn, BufferedImage badge,
-		String accountLabel, int rank, String prestige,
-		int totalPets, List<Integer> obtainedPets, BufferedImage[] petSprites,
-		BufferedImage cape)
+		Color playerColor, Side side)
 	{
 		// Name with optional badge.
 		int nx = labelX;
-		if (badge != null)
+		if (side.badge != null)
 		{
-			int iconY = y + (fm.getHeight() - badge.getHeight()) / 2;
-			g2.drawImage(badge, nx, iconY, null);
-			nx += badge.getWidth() + BADGE_GAP;
+			int iconY = y + (fm.getHeight() - side.badge.getHeight()) / 2;
+			g2.drawImage(side.badge, nx, iconY, null);
+			nx += side.badge.getWidth() + BADGE_GAP;
 		}
 		g2.setColor(playerColor);
-		g2.drawString(rsn != null ? rsn : "--", nx, y + fm.getAscent());
+		g2.drawString(side.rsn != null ? side.rsn : "--", nx, y + fm.getAscent());
 		y += fm.getHeight() + HEADER_GAP;
 
 		// Account type.
 		g2.setColor(OSRS_ORANGE);
 		g2.drawString("Account", labelX, y + fm.getAscent());
 		g2.setColor(playerColor);
-		g2.drawString(accountLabel != null ? accountLabel : "Normal", valueX, y + fm.getAscent());
+		g2.drawString(side.accountLabel != null ? side.accountLabel : "Normal", valueX, y + fm.getAscent());
 		y += LINE_HEIGHT;
 
 		// Rank.
 		g2.setColor(OSRS_ORANGE);
 		g2.drawString("Rank", labelX, y + fm.getAscent());
 		g2.setColor(playerColor);
-		g2.drawString(rankValueText(rank), valueX, y + fm.getAscent());
+		g2.drawString(rankValueText(side.rank), valueX, y + fm.getAscent());
 		y += LINE_HEIGHT;
 
 		// Prestige.
-		if (prestige != null)
+		if (side.prestige != null)
 		{
 			g2.setColor(OSRS_ORANGE);
 			g2.drawString("Prestige", labelX, y + fm.getAscent());
 			g2.setColor(playerColor);
-			g2.drawString(prestige, valueX, y + fm.getAscent());
+			g2.drawString(side.prestige, valueX, y + fm.getAscent());
 			y += LINE_HEIGHT;
 		}
 
 		// Pets.
-		if (totalPets > 0)
+		if (side.totalPets > 0)
 		{
-			int obt = obtainedPets != null ? obtainedPets.size() : 0;
+			int obt = side.obtainedPets != null ? side.obtainedPets.size() : 0;
 			g2.setColor(OSRS_ORANGE);
 			g2.drawString("Pets", labelX, y + fm.getAscent());
-			g2.setColor(completionColor(obt, totalPets));
+			g2.setColor(completionColor(obt, side.totalPets));
 			g2.drawString(String.valueOf(obt), valueX, y + fm.getAscent());
 			y += LINE_HEIGHT;
 
 			int labelW = valueX - labelX - COL_GAP;
-			int petAreaH = Math.max(petGridHeight(obtainedPets),
-				cape != null ? cape.getHeight() : 0);
-			if (cape != null && petAreaH > 0)
+			int petAreaH = Math.max(petGridHeight(side.obtainedPets),
+				side.cape != null ? side.cape.getHeight() : 0);
+			if (side.cape != null && petAreaH > 0)
 			{
-				int capeX = labelX + (labelW - cape.getWidth()) / 2;
-				int capeY = y + (petAreaH - cape.getHeight()) / 2;
-				g2.drawImage(cape, capeX, capeY, null);
+				int capeX = labelX + (labelW - side.cape.getWidth()) / 2;
+				int capeY = y + (petAreaH - side.cape.getHeight()) / 2;
+				g2.drawImage(side.cape, capeX, capeY, null);
 			}
 
-			paintPetGrid(g2, valueX, y, petSprites);
+			paintPetGrid(g2, valueX, y, side.petSprites);
 			if (petAreaH > 0)
 			{
 				y += petAreaH;
@@ -325,7 +316,7 @@ public class ComparePlayerSummaryTooltip extends TitleTooltip
 
 	private static String rankValueText(int rank)
 	{
-		return rank > 0 ? "#" + String.format("%,d", rank) : "Unranked";
+		return rank > 0 ? "#" + String.format(Locale.US, "%,d", rank) : "Unranked";
 	}
 
 	private static List<Integer> filterObtained(List<Integer> allIds, Set<Integer> obtainedIds)
