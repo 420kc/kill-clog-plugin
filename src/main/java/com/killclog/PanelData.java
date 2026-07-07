@@ -97,9 +97,22 @@ final class PanelData
 	};
 	static final HiscoreSkill[] BOSSES = bossesWithKnownOptionalBosses();
 
+	// Pre-enum Maggot King cell: the game cache ships the boss icon (gameval
+	// SpriteID.IconBoss25x25.MAGGOT_KING) and Jagex serves the KC line, but no
+	// released RuneLite carries the enum yet. The panel renders a pending cell
+	// from these until hasOfficialMaggotKing() flips; then the enum path owns it.
+	static final String PENDING_MAGGOT_KING_NAME = "Maggot King";
+	static final int PENDING_MAGGOT_KING_SPRITE_ID = 8358;
+
 	static int bossCount()
 	{
 		return BOSSES.length;
+	}
+
+	/** Boss cells the panel actually shows: BOSSES plus the pending Maggot King cell. */
+	static int displayedBossCount()
+	{
+		return BOSSES.length + (hasOfficialMaggotKing() ? 0 : 1);
 	}
 
 	static boolean hasOfficialMaggotKing()

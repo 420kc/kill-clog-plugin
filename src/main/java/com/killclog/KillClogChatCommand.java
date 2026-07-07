@@ -74,7 +74,7 @@ class KillClogChatCommand
 			"Deranged Archaeologist", "Doom of Mokhaiotl", "Duke Sucellus",
 			"General Graardor", "Giant Mole", "Grotesque Guardians", "Hespori",
 			"Kalphite Queen", "King Black Dragon", "Kraken", "Kree'Arra",
-			"K'ril Tsutsaroth", "Lunar Chests", "Mimic", "Nex", "Nightmare",
+			"K'ril Tsutsaroth", "Lunar Chests", "Maggot King", "Mimic", "Nex", "Nightmare",
 			"Phosani's Nightmare", "Obor", "Phantom Muspah", "Sarachnis", "Scorpia",
 			"Scurrius", "Shellbane Gryphon", "Skotizo", "Sol Heredit", "Spindel",
 			"Tempoross", "The Gauntlet", "The Corrupted Gauntlet", "The Hueycoatl",
@@ -161,6 +161,8 @@ class KillClogChatCommand
 		m.put("barrows", "Barrows Chests");
 		m.put("lunar", "Lunar Chests");
 		m.put("moons", "Lunar Chests");
+		m.put("maggot", "Maggot King");
+		m.put("mk", "Maggot King");
 		m.put("perilous", "Lunar Chests");
 		m.put("perilous moons", "Lunar Chests");
 		m.put("nightmare", "Nightmare");

@@ -121,6 +121,20 @@ public class KillClogPanelTest
 	}
 
 	@Test
+	public void testPendingMaggotKingCellContract()
+	{
+		// Pre-enum the panel shows one extra cell; once RuneLite ships the enum
+		// the pending cell retires and the counts converge.
+		int expectedExtra = PanelData.hasOfficialMaggotKing() ? 0 : 1;
+		assertEquals(PanelData.bossCount() + expectedExtra, PanelData.displayedBossCount());
+
+		// The pending cell's tooltip reads the in-game clog page via the same
+		// category key the enum path will use.
+		assertEquals("maggot_king",
+			ClogService.bossToCategory(PanelData.PENDING_MAGGOT_KING_NAME));
+	}
+
+	@Test
 	public void testBossGridOrderMatchesHiscoreOrder()
 	{
 		String[] csvNames = HiscoreService.bossNames();

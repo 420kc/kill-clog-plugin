@@ -87,6 +87,13 @@ public class Cells
 	@Nullable private JLabel eliteRare;
 	@Nullable private JLabel masterRare;
 
+	// Pending Maggot King cell (pre-enum only; see PanelData). None of these
+	// are populated once RuneLite ships HiscoreSkill.MAGGOT_KING.
+	@Nullable private JLabel pendingMaggotLabel;
+	@Nullable private ImageIcon pendingMaggotOriginalIcon;
+	@Nullable private ImageIcon pendingMaggotDimmedIcon;
+	@Nullable private TooltipData pendingMaggotData;
+
 	public Cells(SpriteManager spriteManager, ItemManager itemManager,
 		TooltipController tooltipController, ComparisonController comparison,
 		TooltipDataBuilder tooltipDataBuilder, LookupSession lookupSession,
@@ -134,8 +141,35 @@ public class Cells
 		for (HiscoreSkill boss : PanelData.BOSSES)
 		{
 			grid.add(buildBossCell(boss));
+			if (boss == HiscoreSkill.MIMIC && !PanelData.hasOfficialMaggotKing())
+			{
+				grid.add(buildPendingMaggotCell());
+			}
 		}
 		return grid;
+	}
+
+	/** Build the pending Maggot King cell shown until RuneLite ships the HiscoreSkill enum. */
+	private JPanel buildPendingMaggotCell()
+	{
+		JLabel label = new JLabel()
+		{
+			@Override
+			public JToolTip createToolTip()
+			{
+				return buildPendingMaggotTooltip(this);
+			}
+		};
+		styleLabel(label, PanelData.PENDING_MAGGOT_KING_NAME);
+
+		loadBossIcon(label, PanelData.PENDING_MAGGOT_KING_SPRITE_ID, icon ->
+		{
+			pendingMaggotOriginalIcon = icon;
+			pendingMaggotDimmedIcon = new ImageIcon(ClogHelper.createDimmedImage(icon));
+		});
+
+		pendingMaggotLabel = label;
+		return wrapInCell(label);
 	}
 
 	/** Build a single boss cell. Caller hooks listeners onto {@link #getBossLabel} after construction if needed. */
@@ -151,23 +185,31 @@ public class Cells
 		};
 		styleLabel(label, boss.getName());
 
-		spriteManager.getSpriteAsync(boss.getSpriteId(), 0, sprite ->
+		loadBossIcon(label, boss.getSpriteId(), icon ->
+		{
+			originalIcons.put(boss, icon);
+			dimmedIcons.put(boss, new ImageIcon(ClogHelper.createDimmedImage(icon)));
+		});
+
+		bossLabels.put(boss, label);
+		return wrapInCell(label);
+	}
+
+	/** Load a 25x25 game sprite into a boss label at cell size, then hand it to the icon sink. */
+	private void loadBossIcon(JLabel label, int spriteId, Consumer<ImageIcon> sink)
+	{
+		spriteManager.getSpriteAsync(spriteId, 0, sprite ->
 			SwingUtilities.invokeLater(() ->
 			{
 				if (sprite == null)
 				{
 					return;
 				}
-				BufferedImage scaled = ImageUtil.resizeImage(
-					ImageUtil.resizeCanvas(sprite, 25, 25), 20, 20);
-				ImageIcon icon = new ImageIcon(scaled);
+				ImageIcon icon = new ImageIcon(ImageUtil.resizeImage(
+					ImageUtil.resizeCanvas(sprite, 25, 25), 20, 20));
 				label.setIcon(icon);
-				originalIcons.put(boss, icon);
-				dimmedIcons.put(boss, new ImageIcon(ClogHelper.createDimmedImage(icon)));
+				sink.accept(icon);
 			}));
-
-		bossLabels.put(boss, label);
-		return wrapInCell(label);
 	}
 
 	/** Build an activity cell (skill icon + tooltip, with a special-case for the All-Clues activity). */
@@ -380,22 +422,12 @@ public class Cells
 		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
 		{
 			HiscoreSkill skill = entry.getKey();
-			JLabel label = entry.getValue();
 			String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(skill.getName(), skill.getName());
-			int kc = result.getBossKills().getOrDefault(hiscoreName, -1);
-			boolean hasKc = kc > 0;
-
-			label.setText(ClogHelper.pad(kc <= 0 ? "--" : ClogHelper.formatKc(kc)));
-			label.setForeground(hasKc ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
-
-			ImageIcon orig = originalIcons.get(skill);
-			if (orig != null)
-			{
-				label.setIcon(hasKc ? orig : dimmedIcons.get(skill));
-			}
-
-			fourTwentyMode.applyOverrides(label, kc);
+			renderBossValue(entry.getValue(), hiscoreName,
+				originalIcons.get(skill), dimmedIcons.get(skill), result, fourTwentyMode);
 		}
+		renderBossValue(pendingMaggotLabel, PanelData.PENDING_MAGGOT_KING_NAME,
+			pendingMaggotOriginalIcon, pendingMaggotDimmedIcon, result, fourTwentyMode);
 
 		// Activity cells
 		for (Map.Entry<HiscoreSkill, JLabel> entry : activityLabels.entrySet())
@@ -507,50 +539,20 @@ public class Cells
 		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
 		{
 			HiscoreSkill skill = entry.getKey();
-			JLabel label = entry.getValue();
 			String bossName = skill.getName();
 			String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(bossName, bossName);
-
-			int rank = lookupSession.getHiscoreResult() != null
-				? lookupSession.getHiscoreResult().getRank(hiscoreName) : -1;
-
-			String category = ClogService.bossToCategory(hiscoreName);
-
-			if (lookupSession.getClogResult() == null)
+			TooltipData data = buildPrimaryBossData(bossName, hiscoreName, selfNoCache, catalog);
+			if (data != null)
 			{
-				if (!selfNoCache)
-				{
-					int kc = lookupSession.getHiscoreResult() != null
-						? lookupSession.getHiscoreResult().getKc(hiscoreName) : -1;
-					TooltipData data = tooltipDataBuilder.buildUnsyncedTooltipData(
-						bossName, category, rank, "Kills: ", kc, catalog);
-					if (data != null)
-					{
-						tooltipDataMap.put(skill, data);
-					}
-				}
-				label.setToolTipText(" ");
-				continue;
+				tooltipDataMap.put(skill, data);
 			}
-
-			TooltipData data = tooltipDataBuilder.buildTooltipData(bossName, category, rank, lookupSession.getClogResult());
-			if (data == null)
-			{
-				int kc = lookupSession.getHiscoreResult() != null
-					? lookupSession.getHiscoreResult().getKc(hiscoreName) : -1;
-				TooltipData unsyncedData = tooltipDataBuilder.buildUnsyncedTooltipData(
-					bossName, category, rank, "Kills: ", kc, unsyncedCatalog.result());
-				if (unsyncedData != null)
-				{
-					tooltipDataMap.put(skill, unsyncedData);
-				}
-				label.setToolTipText(" ");
-				continue;
-			}
-
-			tooltipDataMap.put(skill, data);
-			tooltipDataBuilder.preloadItemImages(data);
-			label.setToolTipText(" ");
+			entry.getValue().setToolTipText(" ");
+		}
+		if (pendingMaggotLabel != null)
+		{
+			String name = PanelData.PENDING_MAGGOT_KING_NAME;
+			pendingMaggotData = buildPrimaryBossData(name, name, selfNoCache, catalog);
+			pendingMaggotLabel.setToolTipText(" ");
 		}
 
 		// Clue tier cells
@@ -659,23 +661,82 @@ public class Cells
 
 	private JToolTip buildBossTooltip(JLabel owner, HiscoreSkill boss)
 	{
-		JToolTip tip;
-		if (comparison.isComparisonMode())
-		{
-			tip = comparison.makeSpriteTooltip(owner,
-				tooltipDataMap.get(boss),
-				comparison.getCompareTooltipData(boss),
-				boss.getName());
-		}
-		else
-		{
-			tip = buildSingleSpriteTooltip(owner, tooltipDataMap.get(boss), 5, boss.getName());
-		}
+		return buildBossTooltip(owner, tooltipDataMap.get(boss),
+			comparison.getCompareTooltipData(boss), boss.getName(), PanelData.bossWikiPage(boss));
+	}
+
+	private JToolTip buildPendingMaggotTooltip(JLabel owner)
+	{
+		// Wiki page name matches the boss name exactly (no "The" prefix).
+		String name = PanelData.PENDING_MAGGOT_KING_NAME;
+		return buildBossTooltip(owner, pendingMaggotData,
+			comparison.getPendingMaggotTooltipData(), name, name);
+	}
+
+	private JToolTip buildBossTooltip(JLabel owner, @Nullable TooltipData blueData,
+		@Nullable TooltipData redData, String name, String wikiPage)
+	{
+		JToolTip tip = comparison.isComparisonMode()
+			? comparison.makeSpriteTooltip(owner, blueData, redData, name)
+			: buildSingleSpriteTooltip(owner, blueData, 5, name);
 		if (tip instanceof TitleTooltip)
 		{
-			((TitleTooltip) tip).setTitleWikiPage(PanelData.bossWikiPage(boss));
+			((TitleTooltip) tip).setTitleWikiPage(wikiPage);
 		}
 		return tip;
+	}
+
+	/** Write one boss cell's KC text, color, and icon dim state from the name-keyed hiscore map. */
+	private void renderBossValue(@Nullable JLabel label, String hiscoreName,
+		@Nullable ImageIcon orig, @Nullable ImageIcon dimmed,
+		HiscoreResult result, FourTwentyMode fourTwentyMode)
+	{
+		if (label == null)
+		{
+			return;
+		}
+		int kc = result.getBossKills().getOrDefault(hiscoreName, -1);
+		boolean hasKc = kc > 0;
+		label.setText(ClogHelper.pad(kc <= 0 ? "--" : ClogHelper.formatKc(kc)));
+		label.setForeground(hasKc ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
+		if (orig != null)
+		{
+			label.setIcon(hasKc ? orig : dimmed);
+		}
+		fourTwentyMode.applyOverrides(label, kc);
+	}
+
+	/**
+	 * Build one boss cell's primary-side TooltipData: synced clog data when
+	 * available, otherwise the unsynced catalog preview (skipped for the
+	 * sync-prompt self-lookup). Shared by the enum bosses and the pending
+	 * Maggot King cell.
+	 */
+	@Nullable
+	private TooltipData buildPrimaryBossData(String displayName, String hiscoreName,
+		boolean selfNoCache, @Nullable ClogResult catalog)
+	{
+		String category = ClogService.bossToCategory(hiscoreName);
+		int rank = lookupSession.getHiscoreResult() != null
+			? lookupSession.getHiscoreResult().getRank(hiscoreName) : -1;
+		int kc = lookupSession.getHiscoreResult() != null
+			? lookupSession.getHiscoreResult().getKc(hiscoreName) : -1;
+
+		if (lookupSession.getClogResult() == null)
+		{
+			return selfNoCache ? null : tooltipDataBuilder.buildUnsyncedTooltipData(
+				displayName, category, rank, "Kills: ", kc, catalog);
+		}
+
+		TooltipData data = tooltipDataBuilder.buildTooltipData(
+			displayName, category, rank, lookupSession.getClogResult());
+		if (data == null)
+		{
+			return tooltipDataBuilder.buildUnsyncedTooltipData(
+				displayName, category, rank, "Kills: ", kc, unsyncedCatalog.result());
+		}
+		tooltipDataBuilder.preloadItemImages(data);
+		return data;
 	}
 
 	private JToolTip buildClueTierTooltip(JLabel owner, HiscoreSkill tier, String displayName, boolean compact)
@@ -843,6 +904,12 @@ public class Cells
 	public JLabel getBossLabel(HiscoreSkill boss)
 	{
 		return bossLabels.get(boss);
+	}
+
+	@Nullable
+	public JLabel getPendingMaggotLabel()
+	{
+		return pendingMaggotLabel;
 	}
 
 	@Nullable
