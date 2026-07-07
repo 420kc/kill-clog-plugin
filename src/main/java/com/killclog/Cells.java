@@ -913,6 +913,12 @@ public class Cells
 	}
 
 	@Nullable
+	public TooltipData getPendingMaggotData()
+	{
+		return pendingMaggotData;
+	}
+
+	@Nullable
 	public JLabel getPvpSummaryCell()
 	{
 		return pvpSummaryCell;

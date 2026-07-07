@@ -760,6 +760,16 @@ public class ComparisonController
 				cells.getTooltipData(entry.getKey()), compareTooltipDataMap.get(entry.getKey()));
 		}
 
+		// Pending Maggot King cell lives outside the bossLabels map (pre-enum; see PanelData)
+		JLabel pendingMaggot = cells.getPendingMaggotLabel();
+		if (pendingMaggot != null)
+		{
+			String maggotName = PanelData.PENDING_MAGGOT_KING_NAME;
+			compareOrRestore(pendingMaggot,
+				hiscoreKc(blueHiscore, maggotName), hiscoreKc(redHiscore, maggotName),
+				cells.getPendingMaggotData(), pendingMaggotCompareData);
+		}
+
 		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getActivityLabels().entrySet())
 		{
 			String name = entry.getKey().getName();
