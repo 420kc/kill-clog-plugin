@@ -73,9 +73,8 @@ public class HiscoreParsingTest
 	@Test
 	public void testSkillFooterNumberFormatting()
 	{
-		assertEquals("9,999", SkillsTooltip.rankText(9999));
-		assertEquals("10.0K", SkillsTooltip.rankText(10000));
-		assertEquals("1,453.8K", SkillsTooltip.rankText(1453827));
+		// Compact xp survives on the PvM summary; the skill readout rows
+		// carry exact %,d values painted in the tooltips.
 		assertEquals("0.13M", SkillsTooltip.skillXpText(130344));
 		assertEquals("13.0M", SkillsTooltip.skillXpText(13034431));
 	}
@@ -93,14 +92,9 @@ public class HiscoreParsingTest
 	}
 
 	@Test
-	public void testKnownPendingMaggotKingRowKeepsLaterBossesAligned()
+	public void testMaggotKingRowParsesInHiscoreOrder()
 	{
-		int maggotLineCount = 1 + 24 + 20 + HiscoreService.bossCount();
-		if (!PanelData.hasOfficialMaggotKing())
-		{
-			maggotLineCount++;
-		}
-		String[] bossNames = HiscoreService.bossNamesForLineCount(maggotLineCount);
+		String[] bossNames = HiscoreService.bossNames();
 		int mimicIndex = Arrays.asList(bossNames).indexOf("Mimic");
 		assertEquals(mimicIndex + 1, Arrays.asList(bossNames).indexOf("Maggot King"));
 		assertEquals(mimicIndex + 2, Arrays.asList(bossNames).indexOf("Nex"));

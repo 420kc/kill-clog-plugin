@@ -1,8 +1,6 @@
 package com.killclog;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import net.runelite.client.hiscore.HiscoreSkill;
 
@@ -18,13 +16,13 @@ final class PanelData
 
 	static final int MAX_TOTAL_LEVEL = 2376;
 
-	private static final String MAGGOT_KING_ENUM = "MAGGOT_KING";
-
-	// Boss display order matching vanilla RuneLite hiscores.
-	// Same bosses and same order as HiscoreService.bossNames().
-	// New boss? Add it here in Jagex/RuneLite hiscore order once RuneLite adds the enum.
+	// Boss display order matching vanilla RuneLite hiscores: enum declaration
+	// order. Same bosses as HiscoreService.bossNames(), but the ORDER can
+	// diverge from Jagex's CSV rows (Maggot King renders before Mimic, parses
+	// after it) - name-keyed lookups bridge the two lists.
+	// New boss? Add it here in enum order once RuneLite adds it.
 	// See BOSS_NAMES comment in HiscoreService for the full update playbook.
-	private static final HiscoreSkill[] BASE_BOSSES = {
+	static final HiscoreSkill[] BOSSES = {
 		HiscoreSkill.ABYSSAL_SIRE,
 		HiscoreSkill.ALCHEMICAL_HYDRA,
 		HiscoreSkill.AMOXLIATL,
@@ -59,6 +57,7 @@ final class PanelData
 		HiscoreSkill.KREEARRA,
 		HiscoreSkill.KRIL_TSUTSAROTH,
 		HiscoreSkill.LUNAR_CHESTS,
+		HiscoreSkill.MAGGOT_KING,
 		HiscoreSkill.MIMIC,
 		HiscoreSkill.NEX,
 		HiscoreSkill.NIGHTMARE,
@@ -95,72 +94,9 @@ final class PanelData
 		HiscoreSkill.ZALCANO,
 		HiscoreSkill.ZULRAH,
 	};
-	static final HiscoreSkill[] BOSSES = bossesWithKnownOptionalBosses();
-
-	// Pre-enum Maggot King cell: the game cache ships the boss icon (gameval
-	// SpriteID.IconBoss25x25.MAGGOT_KING) and Jagex serves the KC line, but no
-	// released RuneLite carries the enum yet. The panel renders a pending cell
-	// from these until hasOfficialMaggotKing() flips; then the enum path owns it.
-	static final String PENDING_MAGGOT_KING_NAME = "Maggot King";
-	static final int PENDING_MAGGOT_KING_SPRITE_ID = 8358;
-
 	static int bossCount()
 	{
 		return BOSSES.length;
-	}
-
-	/** Boss cells the panel actually shows: BOSSES plus the pending Maggot King cell. */
-	static int displayedBossCount()
-	{
-		return BOSSES.length + (hasOfficialMaggotKing() ? 0 : 1);
-	}
-
-	static boolean hasOfficialMaggotKing()
-	{
-		return optionalBoss(MAGGOT_KING_ENUM) != null;
-	}
-
-	private static HiscoreSkill[] bossesWithKnownOptionalBosses()
-	{
-		HiscoreSkill maggotKing = optionalBoss(MAGGOT_KING_ENUM);
-		if (maggotKing == null)
-		{
-			return BASE_BOSSES;
-		}
-		return insertAfter(BASE_BOSSES, HiscoreSkill.MIMIC, maggotKing);
-	}
-
-	private static HiscoreSkill optionalBoss(String enumName)
-	{
-		try
-		{
-			return HiscoreSkill.valueOf(enumName);
-		}
-		catch (IllegalArgumentException ex)
-		{
-			return null;
-		}
-	}
-
-	private static HiscoreSkill[] insertAfter(HiscoreSkill[] bosses,
-		HiscoreSkill after, HiscoreSkill boss)
-	{
-		List<HiscoreSkill> next = new ArrayList<>(bosses.length + 1);
-		boolean inserted = false;
-		for (HiscoreSkill existing : bosses)
-		{
-			next.add(existing);
-			if (!inserted && existing == after)
-			{
-				next.add(boss);
-				inserted = true;
-			}
-		}
-		if (!inserted)
-		{
-			next.add(boss);
-		}
-		return next.toArray(new HiscoreSkill[0]);
 	}
 
 	// HiscoreSkill.getName() -> boss name used in hiscore CSV data.

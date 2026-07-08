@@ -357,7 +357,6 @@ public class KillClogPanel extends PluginPanel
 		highlighter = new ProgressHighlighter(
 			cells.getBossLabels(), cells.getActivityLabels(), cells.getClueTierLabels(),
 			PanelData.NAME_OVERRIDES, PanelData.CLUE_CATEGORIES, config);
-		highlighter.setPendingBoss(cells.getPendingMaggotLabel(), PanelData.PENDING_MAGGOT_KING_NAME);
 
 		// Cold start: warm the catalog so every cell previews the log's shape
 		// (dimmed grids, --/Y slot counts) before any player has been searched.

@@ -131,9 +131,6 @@ public class ComparisonController
 
 	private final Map<HiscoreSkill, TooltipData> compareTooltipDataMap = new LinkedHashMap<>();
 
-	// Red-side data for the pending Maggot King cell (pre-enum only; see PanelData).
-	@Nullable private TooltipData pendingMaggotCompareData;
-
 	private static final String COMPARE_BLUE_TEXT_KEY = "killclog.compare.blueText";
 	private static final String COMPARE_RED_TEXT_KEY = "killclog.compare.redText";
 	private static final String COMPARE_BLUE_HOVER_KEY = "killclog.compare.blueHover";
@@ -197,7 +194,6 @@ public class ComparisonController
 	public void rebuildTooltipData()
 	{
 		compareTooltipDataMap.clear();
-		pendingMaggotCompareData = null;
 		if (compareHiscoreResult != null)
 		{
 			ClogResult catalog = compareClogResult == null ? unsyncedCatalog.result() : null;
@@ -210,11 +206,6 @@ public class ComparisonController
 				{
 					compareTooltipDataMap.put(boss, data);
 				}
-			}
-			if (!PanelData.hasOfficialMaggotKing())
-			{
-				pendingMaggotCompareData = buildCompareBossData(
-					PanelData.PENDING_MAGGOT_KING_NAME, PanelData.PENDING_MAGGOT_KING_NAME, catalog);
 			}
 		}
 	}
@@ -251,7 +242,6 @@ public class ComparisonController
 		compareCaResult = null;
 		compareRsn = null;
 		compareTooltipDataMap.clear();
-		pendingMaggotCompareData = null;
 		listener.onComparisonExit();
 	}
 
@@ -481,12 +471,6 @@ public class ComparisonController
 	public TooltipData getCompareTooltipData(HiscoreSkill skill)
 	{
 		return compareTooltipDataMap.get(skill);
-	}
-
-	@Nullable
-	public TooltipData getPendingMaggotTooltipData()
-	{
-		return pendingMaggotCompareData;
 	}
 
 	public Map<HiscoreSkill, TooltipData> getCompareTooltipDataMap()
@@ -758,16 +742,6 @@ public class ComparisonController
 			String name = PanelData.NAME_OVERRIDES.getOrDefault(entry.getKey().getName(), entry.getKey().getName());
 			compareOrRestore(entry.getValue(), hiscoreKc(blueHiscore, name), hiscoreKc(redHiscore, name),
 				cells.getTooltipData(entry.getKey()), compareTooltipDataMap.get(entry.getKey()));
-		}
-
-		// Pending Maggot King cell lives outside the bossLabels map (pre-enum; see PanelData)
-		JLabel pendingMaggot = cells.getPendingMaggotLabel();
-		if (pendingMaggot != null)
-		{
-			String maggotName = PanelData.PENDING_MAGGOT_KING_NAME;
-			compareOrRestore(pendingMaggot,
-				hiscoreKc(blueHiscore, maggotName), hiscoreKc(redHiscore, maggotName),
-				cells.getPendingMaggotData(), pendingMaggotCompareData);
 		}
 
 		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getActivityLabels().entrySet())

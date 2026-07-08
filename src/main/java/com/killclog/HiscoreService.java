@@ -52,8 +52,9 @@ public class HiscoreService
 	private static final int ACTIVITY_START_INDEX = 1 + SKILL_NAMES.length;
 	private static final int BOSS_START_INDEX = ACTIVITY_START_INDEX + ACTIVITY_NAMES.length;
 
-	// Base boss names in hiscore CSV order, before optional official new-boss enums.
-	// Must match Jagex's order for the RuneLite version this release builds against.
+	// Boss names in Jagex hiscore CSV row order. This can diverge from the
+	// panel's vanilla display order (Maggot King parses after Mimic, renders
+	// before it) - name-keyed lookups bridge the two lists.
 	// Boss update playbook:
 	//   1. Add the CSV name here in Jagex hiscore order
 	//   2. Add a temporary bossNamesForLineCount guard if Jagex ships the row
@@ -74,7 +75,7 @@ public class HiscoreService
 		"Deranged Archaeologist", "Doom of Mokhaiotl", "Duke Sucellus",
 		"General Graardor", "Giant Mole", "Grotesque Guardians", "Hespori",
 		"Kalphite Queen", "King Black Dragon", "Kraken", "Kree'Arra",
-		"K'ril Tsutsaroth", "Lunar Chests", "Mimic", "Nex",
+		"K'ril Tsutsaroth", "Lunar Chests", "Mimic", "Maggot King", "Nex",
 		"Nightmare", "Phosani's Nightmare", "Obor",
 		"Phantom Muspah", "Sarachnis", "Scorpia", "Scurrius",
 		"Shellbane Gryphon", "Skotizo", "Sol Heredit", "Spindel", "Tempoross",
@@ -86,10 +87,6 @@ public class HiscoreService
 		"Vardorvis", "Venenatis", "Vet'ion", "Vorkath", "Wintertodt",
 		"Yama", "Zalcano", "Zulrah"
 	};
-	private static final String MAGGOT_KING = "Maggot King";
-	private static final String[] BOSS_NAMES_WITH_MAGGOT_KING =
-		insertBossAfter(BOSS_NAMES, "Mimic", MAGGOT_KING);
-
 	/** Number of boss entries in the hiscore CSV. Used by tests to detect drift. */
 	static int bossCount()
 	{
@@ -99,48 +96,7 @@ public class HiscoreService
 	/** Boss names in CSV order. Used by tests to validate PanelData consistency. */
 	static String[] bossNames()
 	{
-		return PanelData.hasOfficialMaggotKing() ? BOSS_NAMES_WITH_MAGGOT_KING : BOSS_NAMES;
-	}
-
-	/**
-	 * Boss names for the CSV length being parsed. If Jagex adds a boss before
-	 * RuneLite exposes a HiscoreSkill enum, keep later bosses aligned.
-	 */
-	static String[] bossNamesForLineCount(int lineCount)
-	{
-		String[] activeNames = bossNames();
-		int activeExpected = BOSS_START_INDEX + activeNames.length;
-		if (lineCount == activeExpected)
-		{
-			return activeNames;
-		}
-		int baseExpected = BOSS_START_INDEX + BOSS_NAMES.length;
-		if (lineCount == baseExpected + 1)
-		{
-			return BOSS_NAMES_WITH_MAGGOT_KING;
-		}
-		return activeNames;
-	}
-
-	private static String[] insertBossAfter(String[] names, String afterName, String bossName)
-	{
-		String[] next = new String[names.length + 1];
-		int out = 0;
-		boolean inserted = false;
-		for (String name : names)
-		{
-			next[out++] = name;
-			if (!inserted && afterName.equals(name))
-			{
-				next[out++] = bossName;
-				inserted = true;
-			}
-		}
-		if (!inserted)
-		{
-			next[next.length - 1] = bossName;
-		}
-		return next;
+		return BOSS_NAMES;
 	}
 
 	// Stale-while-revalidate cache.
@@ -437,7 +393,7 @@ public class HiscoreService
 		HiscoreTable hiscoreTable)
 	{
 		String[] lines = body.trim().split("\\r?\\n");
-		String[] bossNames = bossNamesForLineCount(lines.length);
+		String[] bossNames = bossNames();
 		int expected = 1 + SKILL_NAMES.length + ACTIVITY_NAMES.length + bossNames.length;
 		if (lines.length != expected)
 		{

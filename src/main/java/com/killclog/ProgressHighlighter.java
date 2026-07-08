@@ -3,7 +3,6 @@ package com.killclog;
 import java.awt.Color;
 import java.util.List;
 import java.util.Map;
-import javax.annotation.Nullable;
 import javax.swing.JLabel;
 import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.ui.ColorScheme;
@@ -22,10 +21,6 @@ final class ProgressHighlighter
 	private final Map<HiscoreSkill, String> clueCategories;
 	private final KillClogConfig config;
 
-	// Pending Maggot King cell (pre-enum only; see PanelData). Late-assigned like labels.
-	@Nullable private JLabel pendingBossLabel;
-	@Nullable private String pendingBossName;
-
 	ProgressHighlighter(
 		Map<HiscoreSkill, JLabel> bossLabels,
 		Map<HiscoreSkill, JLabel> activityLabels,
@@ -40,12 +35,6 @@ final class ProgressHighlighter
 		this.nameOverrides = nameOverrides;
 		this.clueCategories = clueCategories;
 		this.config = config;
-	}
-
-	void setPendingBoss(@Nullable JLabel label, @Nullable String hiscoreName)
-	{
-		this.pendingBossLabel = label;
-		this.pendingBossName = hiscoreName;
 	}
 
 	/**
@@ -67,11 +56,6 @@ final class ProgressHighlighter
 			HiscoreSkill skill = entry.getKey();
 			String hiscoreName = nameOverrides.getOrDefault(skill.getName(), skill.getName());
 			colorBossCell(entry.getValue(), hiscoreName, hiscoreResult, clogResult,
-				fourTwentyMode, fourTwentyGreen);
-		}
-		if (pendingBossLabel != null && pendingBossName != null)
-		{
-			colorBossCell(pendingBossLabel, pendingBossName, hiscoreResult, clogResult,
 				fourTwentyMode, fourTwentyGreen);
 		}
 
@@ -124,11 +108,6 @@ final class ProgressHighlighter
 			{
 				label.setForeground(config.emptyClogColor());
 			}
-		}
-		if (pendingBossLabel != null
-			&& ColorScheme.LIGHT_GRAY_COLOR.equals(pendingBossLabel.getForeground()))
-		{
-			pendingBossLabel.setForeground(config.emptyClogColor());
 		}
 		for (JLabel label : activityLabels.values())
 		{

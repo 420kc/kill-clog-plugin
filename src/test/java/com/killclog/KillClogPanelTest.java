@@ -121,31 +121,45 @@ public class KillClogPanelTest
 	}
 
 	@Test
-	public void testPendingMaggotKingCellContract()
+	public void testMaggotKingPromotedIntoBossGrid()
 	{
-		// Pre-enum the panel shows one extra cell; once RuneLite ships the enum
-		// the pending cell retires and the counts converge.
-		int expectedExtra = PanelData.hasOfficialMaggotKing() ? 0 : 1;
-		assertEquals(PanelData.bossCount() + expectedExtra, PanelData.displayedBossCount());
-
-		// The pending cell's tooltip reads the in-game clog page via the same
-		// category key the enum path will use.
-		assertEquals("maggot_king",
-			ClogService.bossToCategory(PanelData.PENDING_MAGGOT_KING_NAME));
+		// RuneLite 1.12.32 shipped the enum; the boss rides the base list now.
+		// Vanilla declares it BEFORE Mimic (display), while Jagex's CSV rows
+		// carry it after - HiscoreParsingTest holds the parse-order side.
+		java.util.List<net.runelite.client.hiscore.HiscoreSkill> bosses =
+			java.util.Arrays.asList(PanelData.BOSSES);
+		int mimic = bosses.indexOf(net.runelite.client.hiscore.HiscoreSkill.MIMIC);
+		assertEquals(mimic - 1, bosses.indexOf(net.runelite.client.hiscore.HiscoreSkill.MAGGOT_KING));
+		assertEquals("maggot_king", ClogService.bossToCategory("Maggot King"));
 	}
 
 	@Test
-	public void testBossGridOrderMatchesHiscoreOrder()
+	public void testBossGridFollowsVanillaEnumOrder()
 	{
-		String[] csvNames = HiscoreService.bossNames();
-		assertEquals(csvNames.length, PanelData.BOSSES.length);
+		// The panel promises vanilla RuneLite's hiscore layout, which is enum
+		// declaration order - a strictly ascending ordinal walk.
+		for (int i = 1; i < PanelData.BOSSES.length; i++)
+		{
+			assertTrue("Boss grid order drift at index " + i,
+				PanelData.BOSSES[i].ordinal() > PanelData.BOSSES[i - 1].ordinal());
+		}
+	}
 
+	@Test
+	public void testBossGridAndCsvNamesAgree()
+	{
+		// Display order and CSV row order may diverge (name-keyed lookups
+		// bridge them), but the two lists must always name the same bosses.
+		java.util.Set<String> csvNames =
+			new java.util.HashSet<>(java.util.Arrays.asList(HiscoreService.bossNames()));
+		java.util.Set<String> panelNames = new java.util.HashSet<>();
 		for (int i = 0; i < PanelData.BOSSES.length; i++)
 		{
 			String displayName = PanelData.BOSSES[i].getName();
-			String csvName = PanelData.NAME_OVERRIDES.getOrDefault(displayName, displayName);
-			assertEquals("Boss grid order drift at index " + i, csvNames[i], csvName);
+			panelNames.add(PanelData.NAME_OVERRIDES.getOrDefault(displayName, displayName));
 		}
+		assertEquals(csvNames, panelNames);
+		assertEquals(HiscoreService.bossNames().length, PanelData.BOSSES.length);
 	}
 
 	@Test
