@@ -10,6 +10,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
+import java.util.Locale;
 import java.util.Map;
 import net.runelite.api.Skill;
 import net.runelite.client.ui.FontManager;
@@ -154,9 +155,10 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 		int xpWidth = measureXpRowWidth(fm);
 		int gotrWidth = measureGotrWidth(fm);
 		int totalWidth = Math.max(Math.max(Math.max(gridWidth, xpWidth), gotrWidth),
-			measureSkillStatsWidth(fm));
+			statsRowsWidth(fm));
 		int totalHeight = fm.getHeight() + XP_ROW_GAP + LINE_HEIGHT
-			+ HEADER_GAP + ROW_HEIGHT * ROWS + GOTR_SECTION_GAP + LINE_HEIGHT;
+			+ HEADER_GAP + ROW_HEIGHT * ROWS + GOTR_SECTION_GAP + LINE_HEIGHT
+			+ 2 * LINE_HEIGHT;
 		return new Dimension(totalWidth, totalHeight);
 	}
 
@@ -264,14 +266,79 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 		}
 
 		int footerY = y + ROW_HEIGHT * ROWS + GOTR_SECTION_GAP;
-		if (hoveredSkill != null)
-		{
-			paintSkillStats(g2, fm, inset, w, footerY, hoveredSkill);
-		}
-		else
-		{
-			paintGotr(g2, fm, inset, w, footerY);
-		}
+		paintGotr(g2, fm, inset, w, footerY);
+		paintStatsRows(g2, fm, inset, footerY + LINE_HEIGHT);
+	}
+
+	/**
+	 * The reserved readout: XP and Rank labels always hold their rows, one
+	 * blue and one red value while a skill is hovered. The title carries the
+	 * skill name (see {@link #getTitleHoverText}), so the rows never move.
+	 */
+	private void paintStatsRows(Graphics2D g2, FontMetrics fm, int inset, int y)
+	{
+		String skillName = hoveredSkill != null ? hoveredSkill.getName().toLowerCase() : null;
+
+		int xpY = y + fm.getAscent();
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString(SkillsTooltip.XP_ROW_LABEL, inset, xpY);
+		int x = inset + fm.stringWidth(SkillsTooltip.XP_ROW_LABEL);
+		x = paintSideValue(g2, fm, x, xpY, xpValue(blue, skillName), COMPARE_BLUE);
+		x = paintChromeSeparator(g2, fm, x, xpY);
+		paintSideValue(g2, fm, x, xpY, xpValue(red, skillName), COMPARE_RED);
+
+		int rankY = xpY + LINE_HEIGHT;
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString(SkillsTooltip.RANK_ROW_LABEL, inset, rankY);
+		x = inset + fm.stringWidth(SkillsTooltip.RANK_ROW_LABEL);
+		x = paintSideValue(g2, fm, x, rankY, rankValue(blue, skillName), COMPARE_BLUE);
+		x = paintChromeSeparator(g2, fm, x, rankY);
+		paintSideValue(g2, fm, x, rankY, rankValue(red, skillName), COMPARE_RED);
+	}
+
+	private static String xpValue(Side side, String skillName)
+	{
+		long xp = skillName != null && side.result != null
+			? side.result.getSkillXp(skillName) : -1;
+		return xp > 0 ? String.format(Locale.US, "%,d", xp) : "--";
+	}
+
+	private static String rankValue(Side side, String skillName)
+	{
+		int rank = skillName != null && side.result != null
+			? side.result.getSkillRank(skillName) : -1;
+		return rank > 0 ? String.format(Locale.US, "%,d", rank) : "--";
+	}
+
+	private static int paintSideValue(Graphics2D g2, FontMetrics fm, int x, int y,
+		String value, Color playerColor)
+	{
+		g2.setColor("--".equals(value) ? UNRANKED_COLOR : playerColor);
+		g2.drawString(value, x, y);
+		return x + fm.stringWidth(value);
+	}
+
+	private static int statsRowsWidth(FontMetrics fm)
+	{
+		int xpRow = fm.stringWidth(SkillsTooltip.XP_ROW_LABEL)
+			+ 2 * fm.stringWidth(SkillsTooltip.XP_ROW_SAMPLE)
+			+ fm.stringWidth(CHROME_SEPARATOR);
+		int rankRow = fm.stringWidth(SkillsTooltip.RANK_ROW_LABEL)
+			+ 2 * fm.stringWidth(SkillsTooltip.RANK_ROW_SAMPLE)
+			+ fm.stringWidth(CHROME_SEPARATOR);
+		return Math.max(xpRow, rankRow);
+	}
+
+	@Override
+	protected String getTitleHoverText()
+	{
+		return hoveredSkill != null ? hoveredSkill.getName() : null;
+	}
+
+	@Override
+	protected Color getTitleHoverColor()
+	{
+		return Color.WHITE;
 	}
 
 	private void installSkillHoverHandlers()
@@ -326,46 +393,6 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 			}
 		}
 		return null;
-	}
-
-	private int measureSkillStatsWidth(FontMetrics fm)
-	{
-		int iconW = ICON_SIZE + SkillsTooltip.GOTR_ICON_GAP;
-		return iconW
-			+ skillStatsValueWidth(fm)
-			+ fm.stringWidth(CHROME_SEPARATOR)
-			+ skillStatsValueWidth(fm);
-	}
-
-	private int skillStatsValueWidth(FontMetrics fm)
-	{
-		return SkillsTooltip.skillStatsValueWidth(fm);
-	}
-
-	private void paintSkillStats(Graphics2D g2, FontMetrics fm, int inset, int w, int y,
-		Skill skill)
-	{
-		int rowW = measureSkillStatsWidth(fm);
-		int x = inset + (w - 2 * inset - rowW) / 2;
-		int textY = y + fm.getAscent();
-
-		BufferedImage icon = SkillsTooltip.getIcons().get(skill);
-		if (icon != null)
-		{
-			int iconY = y + (LINE_HEIGHT - icon.getHeight()) / 2;
-			g2.drawImage(icon, x, iconY, null);
-		}
-		x += ICON_SIZE + SkillsTooltip.GOTR_ICON_GAP;
-
-		x = paintSkillStatsValue(g2, fm, x, textY, blue.result, skill);
-		x = paintChromeSeparator(g2, fm, x, textY);
-		paintSkillStatsValue(g2, fm, x, textY, red.result, skill);
-	}
-
-	private int paintSkillStatsValue(Graphics2D g2, FontMetrics fm, int x, int y,
-		HiscoreResult result, Skill skill)
-	{
-		return SkillsTooltip.paintSkillStatsValue(g2, fm, x, y, result, skill);
 	}
 
 	private void paintHeader(Graphics2D g2, FontMetrics fm, int inset, int w, int y, int winner)

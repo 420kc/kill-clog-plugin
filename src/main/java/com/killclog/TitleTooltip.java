@@ -446,7 +446,7 @@ public abstract class TitleTooltip extends NativeTooltip
 			return;
 		}
 
-		String label = fitHeaderRightText(fm, text, maxWidth);
+		String label = fitHeaderText(fm, text, maxWidth);
 		if (label.isEmpty())
 		{
 			return;
@@ -456,7 +456,7 @@ public abstract class TitleTooltip extends NativeTooltip
 		g2.drawString(label, w - inset - fm.stringWidth(label), baseline);
 	}
 
-	private static String fitHeaderRightText(FontMetrics fm, String text, int maxWidth)
+	private static String fitHeaderText(FontMetrics fm, String text, int maxWidth)
 	{
 		if (fm.stringWidth(text) <= maxWidth)
 		{
@@ -595,6 +595,11 @@ public abstract class TitleTooltip extends NativeTooltip
 		int lineY = inset + nfm.getAscent();
 		int titleBaseline = lineY;
 		g2.setColor(headerColor);
+		// Long reveal texts (recent-item names) ellipsize instead of clipping
+		// at the tooltip edge; the corner badge keeps its lane.
+		int cornerW = titleCornerPreferredWidth();
+		headerTitle = fitHeaderText(nfm, headerTitle,
+			w - 2 * inset - (cornerW > 0 ? cornerW + 4 : 0));
 		g2.drawString(headerTitle, inset, lineY);
 		int activeLineWidth = nfm.stringWidth(headerTitle);
 

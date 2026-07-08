@@ -34,10 +34,14 @@ public class SkillsTooltip extends TitleTooltip
 	private static final int GOTR_SECTION_GAP = 5;
 	static final int GOTR_ICON_GAP = 3;
 	static final String RIFTS_LABEL = "Rifts: ";
-	private static final String SKILL_RANK_LABEL = "#";
-	private static final String SKILL_XP_LABEL = " XP: ";
-	private static final String SKILL_RANK_SAMPLE = "9,999.9K";
-	private static final String SKILL_XP_SAMPLE = "200.0M";
+
+	// The reserved readout rows under the grid: labels always present,
+	// exact values (1..200,000,000 xp) while a skill is hovered. Shared
+	// with CompareSkillSummaryTooltip, which paints one value per side.
+	static final String XP_ROW_LABEL = "XP: ";
+	static final String RANK_ROW_LABEL = "Rank: ";
+	static final String XP_ROW_SAMPLE = "200,000,000";
+	static final String RANK_ROW_SAMPLE = "9,999,999";
 
 	private static final Color UNRANKED_COLOR = new Color(128, 128, 128);
 
@@ -147,50 +151,6 @@ public class SkillsTooltip extends TitleTooltip
 		return String.format(Locale.US, "%.2fM", xp / 1_000_000.0);
 	}
 
-	static String rankText(int rank)
-	{
-		if (rank <= 0)
-		{
-			return "--";
-		}
-		if (rank < 10_000)
-		{
-			return String.format(Locale.US, "%,d", rank);
-		}
-		return String.format(Locale.US, "%,.1fK", rank / 1_000.0);
-	}
-
-	static int skillStatsValueWidth(FontMetrics fm)
-	{
-		return fm.stringWidth(SKILL_RANK_LABEL)
-			+ fm.stringWidth(SKILL_RANK_SAMPLE)
-			+ fm.stringWidth(SKILL_XP_LABEL)
-			+ fm.stringWidth(SKILL_XP_SAMPLE);
-	}
-
-	static int paintSkillStatsValue(Graphics2D g2, FontMetrics fm, int x, int y,
-		HiscoreResult result, Skill skill)
-	{
-		String skillName = skill.getName().toLowerCase();
-		String rank = rankText(result != null ? result.getSkillRank(skillName) : -1);
-		String xp = skillXpText(result != null ? result.getSkillXp(skillName) : -1);
-		int rankFieldW = fm.stringWidth(SKILL_RANK_SAMPLE);
-		int xpFieldW = fm.stringWidth(SKILL_XP_SAMPLE);
-
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString(SKILL_RANK_LABEL, x, y);
-		x += fm.stringWidth(SKILL_RANK_LABEL);
-		g2.setColor(Color.WHITE);
-		g2.drawString(rank, x, y);
-		x += rankFieldW;
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString(SKILL_XP_LABEL, x, y);
-		x += fm.stringWidth(SKILL_XP_LABEL);
-		g2.setColor(Color.WHITE);
-		g2.drawString(xp, x, y);
-		return x + xpFieldW;
-	}
-
 	@Override
 	protected Dimension getContentSize(int availableWidth)
 	{
@@ -198,19 +158,25 @@ public class SkillsTooltip extends TitleTooltip
 		int maxLevelWidth = Math.max(fm.stringWidth("99"), fm.stringWidth("--"));
 		int cellWidth = ICON_SIZE + ICON_TEXT_GAP + maxLevelWidth;
 		int gridWidth = cellWidth * COLS + COL_GAP * (COLS - 1);
-		int totalWidth = Math.max(gridWidth, measureGotrWidth(fm));
-		int totalHeight = ROW_HEIGHT * ROWS + GOTR_SECTION_GAP + LINE_HEIGHT;
+		int totalWidth = Math.max(gridWidth, Math.max(measureGotrWidth(fm), statsRowsWidth(fm)));
+		int totalHeight = ROW_HEIGHT * ROWS + GOTR_SECTION_GAP + LINE_HEIGHT + 2 * LINE_HEIGHT;
 		return new Dimension(totalWidth, totalHeight);
 	}
 
 	private int measureGotrWidth(FontMetrics fm)
 	{
 		int iconW = gotrIcon != null ? gotrIcon.getWidth() + GOTR_ICON_GAP : 0;
-		int gotrWidth = iconW
+		return iconW
 			+ fm.stringWidth(RIFTS_LABEL)
 			+ fm.stringWidth(riftsText(gotrRifts))
 			+ gotrProgressWidth(fm, gotrObtained, gotrTotal);
-		return Math.max(gotrWidth, measureSkillStatsWidth(fm));
+	}
+
+	private static int statsRowsWidth(FontMetrics fm)
+	{
+		return Math.max(
+			fm.stringWidth(XP_ROW_LABEL) + fm.stringWidth(XP_ROW_SAMPLE),
+			fm.stringWidth(RANK_ROW_LABEL) + fm.stringWidth(RANK_ROW_SAMPLE));
 	}
 
 	@Override
@@ -252,14 +218,46 @@ public class SkillsTooltip extends TitleTooltip
 		}
 
 		int footerY = startY + ROW_HEIGHT * ROWS + GOTR_SECTION_GAP;
-		if (hoveredSkill != null)
-		{
-			paintSkillStats(g2, fm, inset, w, footerY, hoveredSkill);
-		}
-		else
-		{
-			paintGotr(g2, fm, inset, w, footerY);
-		}
+		paintGotr(g2, fm, inset, w, footerY);
+		paintStatsRows(g2, fm, inset, footerY + LINE_HEIGHT);
+	}
+
+	/**
+	 * The reserved readout: XP and Rank labels always hold their rows; the
+	 * hovered skill fills the exact values. The title carries the skill name
+	 * (see {@link #getTitleHoverText}), so the rows never move.
+	 */
+	private void paintStatsRows(Graphics2D g2, FontMetrics fm, int inset, int y)
+	{
+		String skillName = hoveredSkill != null ? hoveredSkill.getName().toLowerCase() : null;
+		long xp = skillName != null && result != null ? result.getSkillXp(skillName) : -1;
+		int rank = skillName != null && result != null ? result.getSkillRank(skillName) : -1;
+
+		int xpY = y + fm.getAscent();
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString(XP_ROW_LABEL, inset, xpY);
+		String xpText = xp > 0 ? String.format(Locale.US, "%,d", xp) : "--";
+		g2.setColor(xp > 0 ? Color.WHITE : UNRANKED_COLOR);
+		g2.drawString(xpText, inset + fm.stringWidth(XP_ROW_LABEL), xpY);
+
+		int rankY = xpY + LINE_HEIGHT;
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString(RANK_ROW_LABEL, inset, rankY);
+		String rankValue = rank > 0 ? String.format(Locale.US, "%,d", rank) : "--";
+		g2.setColor(rank > 0 ? Color.WHITE : UNRANKED_COLOR);
+		g2.drawString(rankValue, inset + fm.stringWidth(RANK_ROW_LABEL), rankY);
+	}
+
+	@Override
+	protected String getTitleHoverText()
+	{
+		return hoveredSkill != null ? hoveredSkill.getName() : null;
+	}
+
+	@Override
+	protected Color getTitleHoverColor()
+	{
+		return Color.WHITE;
 	}
 
 	private void installSkillHoverHandlers()
@@ -314,30 +312,6 @@ public class SkillsTooltip extends TitleTooltip
 			}
 		}
 		return null;
-	}
-
-	private int measureSkillStatsWidth(FontMetrics fm)
-	{
-		int iconW = ICON_SIZE + GOTR_ICON_GAP;
-		return iconW + skillStatsValueWidth(fm);
-	}
-
-	private void paintSkillStats(Graphics2D g2, FontMetrics fm, int inset, int w, int y,
-		Skill skill)
-	{
-		int rowW = measureSkillStatsWidth(fm);
-		int x = inset + (w - 2 * inset - rowW) / 2;
-		int textY = y + fm.getAscent();
-
-		BufferedImage icon = icons.get(skill);
-		if (icon != null)
-		{
-			int iconY = y + (LINE_HEIGHT - icon.getHeight()) / 2;
-			g2.drawImage(icon, x, iconY, null);
-		}
-		x += ICON_SIZE + GOTR_ICON_GAP;
-
-		paintSkillStatsValue(g2, fm, x, textY, result, skill);
 	}
 
 	private void paintGotr(Graphics2D g2, FontMetrics fm, int inset, int w, int y)
