@@ -12,7 +12,7 @@ public class LookupQueriesTest
 	@After
 	public void tearDown()
 	{
-		ClogHelper.setGimBadges(null, null, null);
+		GimBadgeLoader.setGimBadges(null, null, null);
 	}
 
 	@Test
@@ -85,7 +85,7 @@ public class LookupQueriesTest
 	public void testProviderGroupIronBadgeComesFromModiconCache()
 	{
 		BufferedImage gim = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
-		ClogHelper.setGimBadges(gim, null, null);
+		GimBadgeLoader.setGimBadges(gim, null, null);
 
 		assertSame(gim, LookupQueries.getAccountBadge(
 			hiscore(AccountType.REGULAR),

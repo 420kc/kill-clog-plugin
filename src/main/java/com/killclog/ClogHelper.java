@@ -12,11 +12,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import javax.annotation.Nullable;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
-import net.runelite.api.IconID;
-import net.runelite.api.IndexedSprite;
 import net.runelite.client.game.ItemManager;
 import org.apache.commons.lang3.StringUtils;
 
@@ -244,89 +241,7 @@ final class ClogHelper
 			String.valueOf(nextThreshold - obtained), nextTier);
 	}
 
-	// Account helpers.
-
-	static final int MODICON_GIM = IconID.GROUP_IRONMAN.getIndex();
-	static final int MODICON_HCGIM = IconID.HARDCORE_GROUP_IRONMAN.getIndex();
-	static final int MODICON_UNRANKED_GIM = IconID.UNRANKED_GROUP_IRONMAN.getIndex();
-
-	// Cached GIM badge images (loaded from game modicons at runtime)
-	private static volatile BufferedImage gimBadge;
-	private static volatile BufferedImage hcgimBadge;
-	private static volatile BufferedImage unrankedGimBadge;
-
-	static void setGimBadges(BufferedImage gim, BufferedImage hcgim, BufferedImage unrankedGim)
-	{
-		gimBadge = gim;
-		hcgimBadge = hcgim;
-		unrankedGimBadge = unrankedGim;
-	}
-
-	static void setGimBadge(AccountType type, BufferedImage badge)
-	{
-		switch (type)
-		{
-			case GROUP_IRONMAN:
-				gimBadge = badge;
-				break;
-			case HARDCORE_GROUP_IRONMAN:
-				hcgimBadge = badge;
-				break;
-			case UNRANKED_GROUP_IRONMAN:
-				unrankedGimBadge = badge;
-				break;
-			default:
-				break;
-		}
-	}
-
-	static BufferedImage getGimBadge(AccountType type)
-	{
-		if (type == AccountType.GROUP_IRONMAN) return gimBadge;
-		if (type == AccountType.HARDCORE_GROUP_IRONMAN) return hcgimBadge;
-		if (type == AccountType.UNRANKED_GROUP_IRONMAN) return unrankedGimBadge;
-		return null;
-	}
-
-	static int gimModiconIndex(AccountType type)
-	{
-		switch (type)
-		{
-			case GROUP_IRONMAN: return MODICON_GIM;
-			case HARDCORE_GROUP_IRONMAN: return MODICON_HCGIM;
-			case UNRANKED_GROUP_IRONMAN: return MODICON_UNRANKED_GIM;
-			default: return -1;
-		}
-	}
-
-	@Nullable
-	static BufferedImage indexedSpriteToImage(IndexedSprite sprite)
-	{
-		if (sprite == null) return null;
-		int w = sprite.getWidth();
-		int h = sprite.getHeight();
-		if (w <= 0 || h <= 0) return null;
-
-		int canvasW = sprite.getOriginalWidth() > 0 ? sprite.getOriginalWidth() : w;
-		int canvasH = sprite.getOriginalHeight() > 0 ? sprite.getOriginalHeight() : h;
-		BufferedImage img = new BufferedImage(canvasW, canvasH, BufferedImage.TYPE_INT_ARGB);
-		byte[] pixels = sprite.getPixels();
-		int[] palette = sprite.getPalette();
-		for (int y = 0; y < h; y++)
-		{
-			for (int x = 0; x < w; x++)
-			{
-				int idx = pixels[y * w + x] & 0xFF;
-				int px = x + sprite.getOffsetX();
-				int py = y + sprite.getOffsetY();
-				if (px >= 0 && px < canvasW && py >= 0 && py < canvasH)
-				{
-					img.setRGB(px, py, idx == 0 ? 0 : 0xFF000000 | palette[idx]);
-				}
-			}
-		}
-		return img;
-	}
+	// Account helpers. GIM badge state lives in GimBadgeLoader.
 
 	static String accountBadgeResource(AccountType type)
 	{

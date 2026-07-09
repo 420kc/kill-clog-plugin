@@ -70,7 +70,7 @@ final class AccountBadgeResolver
 		{
 			return null;
 		}
-		return type.isGroupIronman() ? ClogHelper.getGimBadge(type) : staticBadge(type);
+		return type.isGroupIronman() ? GimBadgeLoader.getGimBadge(type) : staticBadge(type);
 	}
 
 	@Nullable
@@ -82,22 +82,22 @@ final class AccountBadgeResolver
 	@Nullable
 	private BufferedImage gimBadge(AccountType type)
 	{
-		BufferedImage badge = ClogHelper.getGimBadge(type);
+		BufferedImage badge = GimBadgeLoader.getGimBadge(type);
 		if (badge != null)
 		{
 			return badge;
 		}
 
-		int index = ClogHelper.gimModiconIndex(type);
+		int index = GimBadgeLoader.gimModiconIndex(type);
 		IndexedSprite[] modIcons = client.getModIcons();
 		if (index < 0 || modIcons == null || modIcons.length <= index)
 		{
 			return null;
 		}
-		badge = ClogHelper.indexedSpriteToImage(modIcons[index]);
+		badge = GimBadgeLoader.indexedSpriteToImage(modIcons[index]);
 		if (badge != null)
 		{
-			ClogHelper.setGimBadge(type, badge);
+			GimBadgeLoader.setGimBadge(type, badge);
 		}
 		return badge;
 	}
