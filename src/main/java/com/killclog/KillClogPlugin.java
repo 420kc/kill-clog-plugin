@@ -45,6 +45,12 @@ public class KillClogPlugin extends Plugin
 {
 	static final int CLOG_INTERFACE = 621;
 
+	/** Config keys whose changes require rebuilding the right-click lookup menu entry. */
+	private static final java.util.Set<String> MENU_CONFIG_KEYS = java.util.Set.of(
+		"playerMenuLookup", "menuLabel", "menuOnPlayers", "menuOnFriendsList",
+		"menuOnIgnoreList", "menuOnClanList", "menuOnGuestClanList",
+		"menuOnChatChannels", "menuOnChat", "menuOnPrivateMessages", "menuOnGroupIronman");
+
 	@Inject
 	private Client client;
 
@@ -383,19 +389,9 @@ public class KillClogPlugin extends Plugin
 			return;
 		}
 
-		if (event.getKey().equals("playerMenuLookup")
-			|| event.getKey().equals("menuLabel")
-			|| event.getKey().equals("menuOnPlayers")
-			|| event.getKey().equals("menuOnFriendsList")
-			|| event.getKey().equals("menuOnIgnoreList")
-			|| event.getKey().equals("menuOnClanList")
-			|| event.getKey().equals("menuOnGuestClanList")
-			|| event.getKey().equals("menuOnChatChannels")
-			|| event.getKey().equals("menuOnChat")
-			|| event.getKey().equals("menuOnPrivateMessages")
-			|| event.getKey().equals("menuOnGroupIronman"))
+		if (MENU_CONFIG_KEYS.contains(event.getKey()))
 		{
-			// Refresh the menu option when its label changes.
+			// Refresh the menu option when its label or locations change.
 			lookupMenu.refresh(config, menuManager);
 		}
 
@@ -459,12 +455,7 @@ public class KillClogPlugin extends Plugin
 
 	private AccountType getLocalAccountType()
 	{
-		return mapAccountType(client.getVarbitValue(VarbitID.IRONMAN));
-	}
-
-	private AccountType mapAccountType(int varbitValue)
-	{
-		return AccountType.fromRuneLiteVarbit(varbitValue);
+		return AccountType.fromRuneLiteVarbit(client.getVarbitValue(VarbitID.IRONMAN));
 	}
 
 	private BufferedImage getIcon()

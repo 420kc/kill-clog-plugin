@@ -191,6 +191,7 @@ public interface KillClogConfig extends Config
 		return true;
 	}
 
+	// keyName is the legacy name; renaming it would reset users' saved setting.
 	@ConfigItem(
 		keyName = "chatNewClogMessages",
 		name = "Autosync chat messages",
@@ -221,28 +222,6 @@ public interface KillClogConfig extends Config
 	default boolean completionistHighlighter()
 	{
 		return true;
-	}
-
-	@ConfigItem(
-		keyName = "activitiesExpanded",
-		name = "",
-		description = "",
-		hidden = true
-	)
-	default boolean activitiesExpanded()
-	{
-		return false;
-	}
-
-	@ConfigItem(
-		keyName = "seenSelfGreeting",
-		name = "",
-		description = "",
-		hidden = true
-	)
-	default boolean seenSelfGreeting()
-	{
-		return false;
 	}
 
 	@ConfigItem(
@@ -303,5 +282,29 @@ public interface KillClogConfig extends Config
 	default Color emptyClogColor()
 	{
 		return new Color(255, 87, 0);
+	}
+
+	// Persisted UI state, not user settings.
+
+	@ConfigItem(
+		keyName = "activitiesExpanded",
+		name = "",
+		description = "",
+		hidden = true
+	)
+	default boolean activitiesExpanded()
+	{
+		return false;
+	}
+
+	@ConfigItem(
+		keyName = "seenSelfGreeting",
+		name = "",
+		description = "",
+		hidden = true
+	)
+	default boolean seenSelfGreeting()
+	{
+		return false;
 	}
 }
