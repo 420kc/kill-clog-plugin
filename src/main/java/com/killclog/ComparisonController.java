@@ -21,6 +21,7 @@ import javax.annotation.Nullable;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JToolTip;
+import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.hiscore.HiscoreSkill;
@@ -329,7 +330,7 @@ public class ComparisonController
 
 		// CA lookup runs in parallel with hiscore+clog
 		runeProfileService.lookup(redPlayer).thenAccept(ca ->
-			javax.swing.SwingUtilities.invokeLater(() ->
+			SwingUtilities.invokeLater(() ->
 			{
 				if (thisLookup == compareLookupVersion)
 				{
@@ -347,7 +348,7 @@ public class ComparisonController
 		).exceptionally(ex -> null);
 
 		hiscoreService.lookup(redPlayer, null).thenAccept(result ->
-			javax.swing.SwingUtilities.invokeLater(() ->
+			SwingUtilities.invokeLater(() ->
 			{
 				if (thisLookup != compareLookupVersion)
 				{
@@ -373,7 +374,7 @@ public class ComparisonController
 
 				ClogProviderFanout.chooseFreshest(cTemple, cRp)
 				.thenAccept(clogRes ->
-					javax.swing.SwingUtilities.invokeLater(() ->
+					SwingUtilities.invokeLater(() ->
 					{
 						if (thisLookup != compareLookupVersion)
 						{
@@ -390,7 +391,7 @@ public class ComparisonController
 					})
 				).exceptionally(ex ->
 				{
-					javax.swing.SwingUtilities.invokeLater(() ->
+					SwingUtilities.invokeLater(() ->
 					{
 						if (thisLookup != compareLookupVersion)
 						{
@@ -404,7 +405,7 @@ public class ComparisonController
 			})
 		).exceptionally(ex ->
 		{
-			javax.swing.SwingUtilities.invokeLater(() ->
+			SwingUtilities.invokeLater(() ->
 			{
 				if (thisLookup != compareLookupVersion)
 				{
