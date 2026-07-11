@@ -33,7 +33,9 @@ public class SkillsTooltip extends TitleTooltip
 	private static final int COL_GAP = 8;
 	private static final int GOTR_SECTION_GAP = 5;
 	static final int GOTR_ICON_GAP = 3;
-	static final String RIFTS_LABEL = "Rifts: ";
+	// The rifts readout carries no inline label; hovering the row names it
+	// in the title, the same reveal the skill cells use.
+	static final String RIFTS_HOVER_LABEL = "Rifts Closed";
 
 	// The reserved readout rows under the grid: labels always present,
 	// exact values (1..200,000,000 xp) while a skill is hovered. Shared
@@ -71,6 +73,7 @@ public class SkillsTooltip extends TitleTooltip
 	private int gotrObtained = -1;
 	private int gotrTotal;
 	private Skill hoveredSkill;
+	private boolean gotrRowHovered;
 
 	public SkillsTooltip()
 	{
@@ -167,7 +170,6 @@ public class SkillsTooltip extends TitleTooltip
 	{
 		int iconW = gotrIcon != null ? gotrIcon.getWidth() + GOTR_ICON_GAP : 0;
 		return iconW
-			+ fm.stringWidth(RIFTS_LABEL)
 			+ fm.stringWidth(riftsText(gotrRifts))
 			+ gotrProgressWidth(fm, gotrObtained, gotrTotal);
 	}
@@ -251,7 +253,11 @@ public class SkillsTooltip extends TitleTooltip
 	@Override
 	protected String getTitleHoverText()
 	{
-		return hoveredSkill != null ? hoveredSkill.getName() : null;
+		if (hoveredSkill != null)
+		{
+			return hoveredSkill.getName();
+		}
+		return gotrRowHovered ? RIFTS_HOVER_LABEL : null;
 	}
 
 	@Override
@@ -268,6 +274,7 @@ public class SkillsTooltip extends TitleTooltip
 			public void mouseMoved(MouseEvent e)
 			{
 				setHoveredSkill(skillAt(e.getX(), e.getY()));
+				setGotrRowHovered(gotrRowContains(e.getX(), e.getY()));
 			}
 		});
 
@@ -277,6 +284,7 @@ public class SkillsTooltip extends TitleTooltip
 			public void mouseExited(MouseEvent e)
 			{
 				setHoveredSkill(null);
+				setGotrRowHovered(false);
 			}
 		});
 	}
@@ -288,6 +296,23 @@ public class SkillsTooltip extends TitleTooltip
 			hoveredSkill = skill;
 			repaint();
 		}
+	}
+
+	private void setGotrRowHovered(boolean hovered)
+	{
+		if (gotrRowHovered != hovered)
+		{
+			gotrRowHovered = hovered;
+			repaint();
+		}
+	}
+
+	/** The full-width band the rifts readout sits on, under the skill grid. */
+	private boolean gotrRowContains(int mouseX, int mouseY)
+	{
+		int y = getInset() + getHeaderZoneHeight() + ROW_HEIGHT * ROWS + GOTR_SECTION_GAP;
+		return new Rectangle(getInset(), y, getWidth() - 2 * getInset(), LINE_HEIGHT)
+			.contains(mouseX, mouseY);
 	}
 
 	private Skill skillAt(int mouseX, int mouseY)
@@ -317,11 +342,7 @@ public class SkillsTooltip extends TitleTooltip
 	private void paintGotr(Graphics2D g2, FontMetrics fm, int inset, int w, int y)
 	{
 		String rifts = riftsText(gotrRifts);
-		int iconW = gotrIcon != null ? gotrIcon.getWidth() + GOTR_ICON_GAP : 0;
-		int rowW = iconW
-			+ fm.stringWidth(RIFTS_LABEL)
-			+ fm.stringWidth(rifts)
-			+ gotrProgressWidth(fm, gotrObtained, gotrTotal);
+		int rowW = measureGotrWidth(fm);
 		int x = inset + (w - 2 * inset - rowW) / 2;
 		int textY = y + fm.getAscent();
 
@@ -332,9 +353,6 @@ public class SkillsTooltip extends TitleTooltip
 			x += gotrIcon.getWidth() + GOTR_ICON_GAP;
 		}
 
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString(RIFTS_LABEL, x, textY);
-		x += fm.stringWidth(RIFTS_LABEL);
 		g2.setColor(Color.WHITE);
 		g2.drawString(rifts, x, textY);
 		x += fm.stringWidth(rifts);

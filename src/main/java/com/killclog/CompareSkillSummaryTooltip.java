@@ -71,6 +71,7 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 	private BufferedImage chaliceSprite;
 	private BufferedImage gotrIcon;
 	private Skill hoveredSkill;
+	private boolean gotrRowHovered;
 
 	public CompareSkillSummaryTooltip()
 	{
@@ -180,7 +181,6 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 	{
 		int iconW = gotrIcon != null ? gotrIcon.getWidth() + SkillsTooltip.GOTR_ICON_GAP : 0;
 		return iconW
-			+ fm.stringWidth(SkillsTooltip.RIFTS_LABEL)
 			+ gotrValueWidth(fm, blue)
 			+ fm.stringWidth(CHROME_SEPARATOR)
 			+ gotrValueWidth(fm, red);
@@ -332,7 +332,11 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 	@Override
 	protected String getTitleHoverText()
 	{
-		return hoveredSkill != null ? hoveredSkill.getName() : null;
+		if (hoveredSkill != null)
+		{
+			return hoveredSkill.getName();
+		}
+		return gotrRowHovered ? SkillsTooltip.RIFTS_HOVER_LABEL : null;
 	}
 
 	@Override
@@ -349,6 +353,7 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 			public void mouseMoved(MouseEvent e)
 			{
 				setHoveredSkill(skillAt(e.getX(), e.getY()));
+				setGotrRowHovered(gotrRowContains(e.getX(), e.getY()));
 			}
 		});
 
@@ -358,6 +363,7 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 			public void mouseExited(MouseEvent e)
 			{
 				setHoveredSkill(null);
+				setGotrRowHovered(false);
 			}
 		});
 	}
@@ -369,6 +375,26 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 			hoveredSkill = skill;
 			repaint();
 		}
+	}
+
+	private void setGotrRowHovered(boolean hovered)
+	{
+		if (gotrRowHovered != hovered)
+		{
+			gotrRowHovered = hovered;
+			repaint();
+		}
+	}
+
+	/** The full-width band the rifts readout sits on, under the skill grid. */
+	private boolean gotrRowContains(int mouseX, int mouseY)
+	{
+		FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
+		int y = getInset() + getHeaderZoneHeight()
+			+ fm.getHeight() + XP_ROW_GAP + LINE_HEIGHT + HEADER_GAP
+			+ ROW_HEIGHT * ROWS + GOTR_SECTION_GAP;
+		return new Rectangle(getInset(), y, getWidth() - 2 * getInset(), LINE_HEIGHT)
+			.contains(mouseX, mouseY);
 	}
 
 	private Skill skillAt(int mouseX, int mouseY)
@@ -467,9 +493,6 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 			x += gotrIcon.getWidth() + SkillsTooltip.GOTR_ICON_GAP;
 		}
 
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString(SkillsTooltip.RIFTS_LABEL, x, textY);
-		x += fm.stringWidth(SkillsTooltip.RIFTS_LABEL);
 		x = paintGotrValue(g2, fm, x, textY, blue, COMPARE_BLUE);
 		x = paintChromeSeparator(g2, fm, x, textY);
 		paintGotrValue(g2, fm, x, textY, red, COMPARE_RED);
