@@ -125,6 +125,35 @@ public class LocalClogCacheTest
 	}
 
 	@Test
+	public void testMergeObtainedItemBumpsUniqueTotalOnceForNewUniques() throws Exception
+	{
+		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
+		Map<String, List<Integer>> categories = new HashMap<>();
+		categories.put("magus", itemList(1, 2, 3));
+		categories.put("all_pets", itemList(2, 4));
+
+		ClogResult synced = clog("Fast 07", categories, obtainedItems("magus", 1));
+		synced.setUniqueObtained(5);
+		cache.cacheResult(synced);
+
+		// A brand-new unique bumps the sidebar total immediately.
+		cache.mergeObtainedItem("Fast 07", 4, itemListAsStrings("all_pets"), categories);
+		assertEquals(6, cache.toClogResult("Fast 07", Collections.emptyMap()).getUniqueObtained());
+
+		// Merging the same unlock again changes nothing.
+		cache.mergeObtainedItem("Fast 07", 4, itemListAsStrings("all_pets"), categories);
+		assertEquals(6, cache.toClogResult("Fast 07", Collections.emptyMap()).getUniqueObtained());
+
+		// A new unique on one page counts once...
+		cache.mergeObtainedItem("Fast 07", 2, itemListAsStrings("magus"), categories);
+		assertEquals(7, cache.toClogResult("Fast 07", Collections.emptyMap()).getUniqueObtained());
+
+		// ...and landing on its second page later is not another unique.
+		cache.mergeObtainedItem("Fast 07", 2, itemListAsStrings("all_pets"), categories);
+		assertEquals(7, cache.toClogResult("Fast 07", Collections.emptyMap()).getUniqueObtained());
+	}
+
+	@Test
 	public void testMergeObtainedItemRequiresExistingCache() throws Exception
 	{
 		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
