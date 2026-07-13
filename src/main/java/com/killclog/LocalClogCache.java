@@ -393,6 +393,24 @@ public class LocalClogCache
 		return false;
 	}
 
+	/**
+	 * Live-unlock totals update: raises only. The unlock-time varp read can
+	 * lag the chat message by a tick, and lowering here would revert the
+	 * unique bump the merge just made. Chalice sync stays the downward
+	 * authority.
+	 */
+	public void updateTotalsUpward(String playerName, int obtained, int total)
+	{
+		PlayerClogData data = playerName != null ? players.get(cacheKey(playerName)) : null;
+		if (data == null)
+		{
+			return;
+		}
+		updateTotals(playerName,
+			obtained > data.uniqueObtained ? obtained : -1,
+			total > data.uniqueTotal ? total : -1);
+	}
+
 	public void updateTotals(String playerName, int obtained, int total)
 	{
 		if (playerName == null)

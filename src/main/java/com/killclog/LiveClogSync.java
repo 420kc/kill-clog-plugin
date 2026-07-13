@@ -53,11 +53,14 @@ final class LiveClogSync
 				clogIndex.categoryKeysForItem(itemId), clogIndex.categoryItems());
 		}
 
+		// Upward-only here: the varp can lag the unlock message by a tick, and
+		// a stale read would revert the unique bump the merge just made.
+		// Chalice sync remains the downward authority.
 		int liveObtained = client.getVarpValue(ClogVarps.OBTAINED);
 		int liveTotal = client.getVarpValue(ClogVarps.TOTAL);
 		if (liveObtained > 0 || liveTotal > 0)
 		{
-			localClogCache.updateTotals(playerName, liveObtained, liveTotal);
+			localClogCache.updateTotalsUpward(playerName, liveObtained, liveTotal);
 		}
 
 		if (changed)

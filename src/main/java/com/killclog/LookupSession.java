@@ -292,6 +292,11 @@ public class LookupSession
 	public void adoptState(@Nullable HiscoreResult hiscore, @Nullable ClogResult clog,
 		@Nullable CombatAchievementResult ca, @Nullable String name)
 	{
+		// Invalidate any still-in-flight callbacks from the player being
+		// replaced: their clog/CA lanes can outlive the hiscore result, and
+		// without this bump a late arrival would overwrite the adopted state.
+		lookupVersion++;
+		lookupInFlight = false;
 		this.hiscoreResult = hiscore;
 		this.clogResult = clog;
 		this.caResult = ca;
