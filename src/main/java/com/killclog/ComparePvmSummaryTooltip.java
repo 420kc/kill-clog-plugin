@@ -47,6 +47,7 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		int mostKilledKc;
 		int bossesCompleted = -1;
 		int bossesWithClog;
+		double ehb = -1;
 		final BufferedImage[] weaponSprites = new BufferedImage[3];
 		final int[] weaponCounts = new int[3];
 		final BufferedImage[] superiorSprites = new BufferedImage[2];
@@ -116,6 +117,16 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		side.totalBosses = totalBosses;
 		side.mostKilled = mostKilled;
 		side.mostKilledKc = mostKilledKc;
+	}
+
+	public void setBlueEhb(double ehb)
+	{
+		blue.ehb = ehb;
+	}
+
+	public void setRedEhb(double ehb)
+	{
+		red.ehb = ehb;
 	}
 
 	public void setBlueCompletion(int completed, int withClog)
@@ -256,6 +267,7 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		}
 		w = Math.max(w, fm.stringWidth("Combat"));
 		w = Math.max(w, fm.stringWidth("Total Kills"));
+		w = Math.max(w, fm.stringWidth("EHB"));
 		w = Math.max(w, fm.stringWidth("Slayer"));
 		w = Math.max(w, fm.stringWidth("Obtained"));
 		w = Math.max(w, fm.stringWidth("Most Killed"));
@@ -285,6 +297,8 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		// Stats: combat and total kills as scores, bosses/logs as counts.
 		int[] scores = {blue.combat, red.combat, blue.totalKills, red.totalKills};
 		w = Math.max(w, widestValue(fm, scores, TitleTooltip::scoreText));
+		w = Math.max(w, fm.stringWidth(ehbText(blue.ehb)));
+		w = Math.max(w, fm.stringWidth(ehbText(red.ehb)));
 		w = Math.max(w, fm.stringWidth(slayerText(blue.slayerLevel, blue.slayerXp,
 			blue.slayerRank, blue.slayerObt, blue.slayerTotal)));
 		w = Math.max(w, fm.stringWidth(slayerText(red.slayerLevel, red.slayerXp,
@@ -324,7 +338,7 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		}
 
 		// Stats.
-		h += LINE_HEIGHT * 4;
+		h += LINE_HEIGHT * 5;
 
 		// Most killed.
 		h += LINE_HEIGHT;
@@ -392,6 +406,12 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		// Total kills.
 		paintRow(g2, fm, labelX, blueX, redX, y, "Total Kills",
 			scoreText(blue.totalKills), scoreText(red.totalKills),
+			COMPARE_BLUE, COMPARE_RED);
+		y += LINE_HEIGHT;
+
+		// EHB (rates by TempleOSRS).
+		paintRow(g2, fm, labelX, blueX, redX, y, "EHB",
+			ehbText(blue.ehb), ehbText(red.ehb),
 			COMPARE_BLUE, COMPARE_RED);
 		y += LINE_HEIGHT;
 

@@ -203,6 +203,12 @@ public abstract class TitleTooltip extends NativeTooltip
 		return " #" + String.format(Locale.US, "%,d", rank);
 	}
 
+	/** Efficient-hours text: one decimal, thousands-grouped, "--" when absent. */
+	protected static String ehbText(double hours)
+	{
+		return hours >= 0 ? String.format(Locale.US, "%,.1f", hours) : "--";
+	}
+
 	/**
 	 * Widest rendered width across actual values under the given formatter.
 	 * Sizing measures the strings it will paint, never a placeholder.

@@ -41,6 +41,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 	private int bossesCompleted = -1;
 	private int bossesWithClog;
+	private double ehb = -1;
 
 	private final BufferedImage[] weaponSprites = new BufferedImage[3];
 	private final int[] weaponCounts = new int[3];
@@ -77,6 +78,11 @@ public class PvmSummaryTooltip extends TitleTooltip
 	{
 		this.bossesCompleted = completed;
 		this.bossesWithClog = total;
+	}
+
+	public void setEhb(double ehb)
+	{
+		this.ehb = ehb;
 	}
 
 	@Override
@@ -177,7 +183,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		FontMetrics bfm = getFontMetrics(FontManager.getRunescapeBoldFont());
 
 		// Stats section.
-		int statsLines = 3; // Combat, Total Kills, Bosses
+		int statsLines = 4; // Combat, Total Kills, EHB, Bosses
 		if (bossesCompleted >= 0) statsLines++;
 		int statsHeight = LINE_HEIGHT * statsLines;
 
@@ -203,6 +209,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		int textWidth = 0;
 		textWidth = Math.max(textWidth, fm.stringWidth("Combat: " + combatValue()));
 		textWidth = Math.max(textWidth, fm.stringWidth("Total Kills: " + totalKillsValue()));
+		textWidth = Math.max(textWidth, fm.stringWidth("EHB: " + ehbText(ehb)));
 		textWidth = Math.max(textWidth, fm.stringWidth(slayerLineText()));
 		textWidth = Math.max(textWidth, fm.stringWidth("Bosses Killed: " + bossesValue()));
 		if (bossesCompleted >= 0)
@@ -272,6 +279,10 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 		// Total Kills
 		drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Total Kills: ", totalKillsValue());
+		y += LINE_HEIGHT;
+
+		// EHB (rates by TempleOSRS)
+		drawLabelValue(g2, fm, inset, y + fm.getAscent(), "EHB: ", ehbText(ehb));
 		y += LINE_HEIGHT;
 
 		// Most Killed

@@ -18,6 +18,8 @@ Kill Clog is a HiScores overhaul that offers fast and easy visuals of collection
 
 Public player lookups read from [TempleOSRS](https://templeosrs.com) and [RuneProfile](https://runeprofile.com). The install warning is about those external lookups. Kill Clog does not use `killclog.com` as a player-profile source or upload your clog data.
 
+The EHB stat in the PvM summary uses EHB rates by TempleOSRS, bundled with the plugin and refreshed each release. No extra requests are made to compute it.
+
 Source code is public at [github.com/420kc/kill-clog-plugin](https://github.com/420kc/kill-clog-plugin) and open to audit.
 
 ## installation

@@ -62,6 +62,10 @@ final class ActivitySummaryTooltips
 				PanelData.BOSSES.length,
 				LookupQueries.getMostKilledBoss(redHs),
 				LookupQueries.getMostKilledKc(redHs));
+			cmp.setBlueEhb(EhbRates.compute(blueHs,
+				LookupQueries.accountType(blueHs, blueClog)));
+			cmp.setRedEhb(EhbRates.compute(redHs,
+				LookupQueries.accountType(redHs, redClog)));
 			cmp.setBlueSlayer(blueHs, blueClog);
 			cmp.setRedSlayer(redHs, redClog);
 
@@ -135,6 +139,7 @@ final class ActivitySummaryTooltips
 			LookupQueries.getMostKilledBoss(hiscore),
 			LookupQueries.getMostKilledKc(hiscore)
 		);
+		tip.setEhb(EhbRates.compute(hiscore, LookupQueries.accountType(hiscore, clog)));
 		tip.setSlayer(hiscore, clog);
 		if (clog != null)
 		{
