@@ -94,6 +94,9 @@ public class KillClogPlugin extends Plugin
 	private RuneProfileService runeProfileService;
 
 	@Inject
+	private HiscoreService hiscoreService;
+
+	@Inject
 	private LocalClogCache localClogCache;
 
 	@Inject
@@ -112,6 +115,7 @@ public class KillClogPlugin extends Plugin
 	private KillClogChatNotifier chatNotifier;
 
 	private NavigationButton navButton;
+	private String lastLocalName;
 
 	private final ChatAutoLookupGate chatAutoLookup = new ChatAutoLookupGate();
 	private final ClogSessionState sessionState = new ClogSessionState();
@@ -196,6 +200,7 @@ public class KillClogPlugin extends Plugin
 		if (local != null && local.getName() != null)
 		{
 			String name = local.getName();
+			lastLocalName = name;
 			AccountType acctType = getLocalAccountType();
 			localClogCache.setActivePlayer(name);
 			localCaCache.setActivePlayer(name);
@@ -231,6 +236,21 @@ public class KillClogPlugin extends Plugin
 			sessionState.resetAutoLookupSession();
 			liveClogSync.resetFirstSyncWarning();
 			nameAutocompleter.clearClientSnapshot();
+			markLocalHiscoresDirty();
+		}
+		else if (event.getGameState() == GameState.HOPPING)
+		{
+			markLocalHiscoresDirty();
+		}
+	}
+
+	// Jagex republishes the local player's hiscore row on logout and world
+	// hop; the cached self-row predates it, so the next self-search refetches.
+	private void markLocalHiscoresDirty()
+	{
+		if (lastLocalName != null)
+		{
+			hiscoreService.markDirty(lastLocalName);
 		}
 	}
 

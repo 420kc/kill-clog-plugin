@@ -454,4 +454,73 @@ public class HiscoreParsingTest
 		assertTrue("Boss not present in test CSV: " + bossName, index >= 0);
 		return (index + 1) * 10;
 	}
+
+	@Test
+	public void testMarkDirtyForcesStaleDespiteFreshCache()
+	{
+		long now = System.currentTimeMillis();
+		HiscoreResult result = service.parseHiscoreBody("1,2277,200000000", AccountType.REGULAR);
+		service.cacheResult("Zezima", result, now);
+		assertFalse(service.isStale("Zezima"));
+
+		service.markDirty("Zezima", now);
+		assertTrue(service.isStale("Zezima"));
+	}
+
+	@Test
+	public void testDirtyClearsWhenFetchLandsAfterSettleWindow()
+	{
+		long now = System.currentTimeMillis();
+		HiscoreResult result = service.parseHiscoreBody("1,2277,200000000", AccountType.REGULAR);
+		service.markDirty("Zezima", now);
+		service.cacheResult("Zezima", result, now + 10_000);
+		assertFalse(service.isStale("Zezima"));
+	}
+
+	@Test
+	public void testDirtySurvivesFetchInsideSettleWindow()
+	{
+		// The row lands server-side seconds after a hop: a fetch inside the
+		// settle window may still be pre-hop, so the mark must survive it.
+		long now = System.currentTimeMillis();
+		HiscoreResult result = service.parseHiscoreBody("1,2277,200000000", AccountType.REGULAR);
+		service.markDirty("Zezima", now);
+		service.cacheResult("Zezima", result, now + 3_000);
+		assertTrue(service.isStale("Zezima"));
+	}
+
+	@Test
+	public void testMarkDirtyIsCaseInsensitive()
+	{
+		long now = System.currentTimeMillis();
+		HiscoreResult result = service.parseHiscoreBody("1,2277,200000000", AccountType.REGULAR);
+		service.cacheResult("Zezima", result, now);
+		service.markDirty("ZEZIMA", now);
+		assertTrue(service.isStale("zezima"));
+	}
+
+	@Test
+	public void testFetchClearsOnlyTheMarkItObserved()
+	{
+		// A second hop can re-mark while the first fetch is completing; the
+		// stale fetch must not clear the newer mark. The cache is seeded
+		// fresh so the assertion can only pass through the surviving mark.
+		long now = System.currentTimeMillis();
+		HiscoreResult result = service.parseHiscoreBody("1,2277,200000000", AccountType.REGULAR);
+		service.cacheResult("Zezima", result, now);
+		service.markDirty("Zezima", now);
+		service.markDirty("Zezima", now + 5_000);
+		service.clearMarkIfSettled("zezima", now, now + 10_000);
+		assertTrue(service.isStale("Zezima"));
+	}
+
+	@Test
+	public void testMarkDirtyLeavesOtherPlayersAlone()
+	{
+		long now = System.currentTimeMillis();
+		HiscoreResult result = service.parseHiscoreBody("1,2277,200000000", AccountType.REGULAR);
+		service.cacheResult("Woox", result, now);
+		service.markDirty("Zezima", now);
+		assertFalse(service.isStale("Woox"));
+	}
 }

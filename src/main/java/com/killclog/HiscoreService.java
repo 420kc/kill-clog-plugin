@@ -121,6 +121,16 @@ public class HiscoreService
 
 	private final ConcurrentHashMap<String, CachedResult> cache = new ConcurrentHashMap<>();
 
+	// Jagex republishes a player's hiscore row when they log out or hop
+	// worlds, so a hop makes any cached self-row instantly outdated. The
+	// plugin marks the local player on those transitions and the next
+	// self-search bypasses the cache. The row lands server-side a few
+	// seconds after the hop; a fetch inside the settle window keeps the
+	// mark so the following search refetches too.
+	private static final long HOP_SETTLE_MS = 10_000;
+
+	private final ConcurrentHashMap<String, Long> dirtySince = new ConcurrentHashMap<>();
+
 	private final OkHttpClient httpClient;
 
 	@Inject
@@ -145,8 +155,23 @@ public class HiscoreService
 	 */
 	public boolean isStale(String playerName)
 	{
-		CachedResult cached = cache.get(playerName.toLowerCase());
-		return cached == null || cached.isStale();
+		String key = playerName.toLowerCase();
+		CachedResult cached = cache.get(key);
+		return cached == null || cached.isStale() || dirtySince.containsKey(key);
+	}
+
+	/**
+	 * Mark a player's cached row outdated ahead of its TTL. The next lookup
+	 * bypasses the cache regardless of entry age.
+	 */
+	public void markDirty(String playerName)
+	{
+		markDirty(playerName, System.currentTimeMillis());
+	}
+
+	/* package */ void markDirty(String playerName, long now)
+	{
+		dirtySince.put(playerName.toLowerCase(), now);
 	}
 
 	/**
@@ -159,8 +184,7 @@ public class HiscoreService
 		{
 			if (result != null)
 			{
-				cache.put(playerName.toLowerCase(),
-					new CachedResult(result, System.currentTimeMillis()));
+				cacheResult(playerName, result);
 				return CompletableFuture.completedFuture(result);
 			}
 			CompletableFuture<HiscoreResult> retry = new CompletableFuture<>();
@@ -170,8 +194,7 @@ public class HiscoreService
 					{
 						if (r != null)
 						{
-							cache.put(playerName.toLowerCase(),
-								new CachedResult(r, System.currentTimeMillis()));
+							cacheResult(playerName, r);
 						}
 						retry.complete(r);
 					}));
@@ -179,6 +202,33 @@ public class HiscoreService
 			retry.completeOnTimeout(null, 12, TimeUnit.SECONDS);
 			return retry;
 		});
+	}
+
+	private void cacheResult(String playerName, HiscoreResult result)
+	{
+		cacheResult(playerName, result, System.currentTimeMillis());
+	}
+
+	/* package */ void cacheResult(String playerName, HiscoreResult result, long now)
+	{
+		String key = playerName.toLowerCase();
+		cache.put(key, new CachedResult(result, now));
+		Long markedAt = dirtySince.get(key);
+		if (markedAt != null)
+		{
+			clearMarkIfSettled(key, markedAt, now);
+		}
+	}
+
+	// A hop can re-mark between a fetch reading the mark and clearing it; the
+	// conditional remove only clears the mark the fetch actually observed, so
+	// the newer hop's mark survives and the next self-search still refetches.
+	/* package */ void clearMarkIfSettled(String key, long observedMark, long now)
+	{
+		if (now - observedMark >= HOP_SETTLE_MS)
+		{
+			dirtySince.remove(key, observedMark);
+		}
 	}
 
 	private CompletableFuture<HiscoreResult> attemptLookup(String playerName,
