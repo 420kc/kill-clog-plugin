@@ -22,6 +22,11 @@ public class HiscoreResult
 	private final int combatLevel;
 	private final int overallRank;
 
+	// Set when the hiscore CSV line count no longer matches the known format:
+	// the boss maps were left empty on purpose (positions cannot be trusted)
+	// and surfaces should say why instead of showing dashes silently.
+	private boolean bossSectionShifted;
+
 	public HiscoreResult(AccountType accountType, Map<String, Integer> bossKills,
 		Map<String, Integer> bossRanks, Map<String, Integer> activityScores,
 		Map<String, Integer> activityRanks, Map<String, Integer> skillLevels,
@@ -118,6 +123,16 @@ public class HiscoreResult
 	public int getOverallRank()
 	{
 		return overallRank;
+	}
+
+	public boolean isBossSectionShifted()
+	{
+		return bossSectionShifted;
+	}
+
+	/* package */ void setBossSectionShifted(boolean bossSectionShifted)
+	{
+		this.bossSectionShifted = bossSectionShifted;
 	}
 
 	public int getSkillLevel(String name)

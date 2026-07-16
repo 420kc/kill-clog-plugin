@@ -445,9 +445,10 @@ public class HiscoreService
 		String[] lines = body.trim().split("\\r?\\n");
 		String[] bossNames = bossNames();
 		int expected = 1 + SKILL_NAMES.length + ACTIVITY_NAMES.length + bossNames.length;
-		if (lines.length != expected)
+		boolean bossSectionShifted = lines.length != expected;
+		if (bossSectionShifted)
 		{
-			log.warn("Hiscore CSV line count changed: expected {} but got {} - boss data may have shifted",
+			log.warn("Hiscore CSV line count changed: expected {} but got {} - failing the boss section closed",
 				expected, lines.length);
 		}
 		Map<String, Integer> bossKills = new LinkedHashMap<>();
@@ -518,31 +519,43 @@ public class HiscoreService
 			}
 		}
 
-		for (int i = 0; i < bossNames.length; i++)
+		// Format growth historically lands in the boss rows (a new boss shifts
+		// every row below its insertion point), so a count mismatch means the
+		// positional tail cannot be trusted. Wrong KCs are worse than absent
+		// ones: leave the boss maps empty and let every surface show the
+		// shifted notice instead. The fixed prefix (overall, skills,
+		// activities) stays live; a prefix-level change is a headline event
+		// that ships its own same-day release.
+		if (!bossSectionShifted)
 		{
-			int lineIdx = BOSS_START_INDEX + i;
-			if (lineIdx >= lines.length)
+			for (int i = 0; i < bossNames.length; i++)
 			{
-				break;
-			}
-			try
-			{
-				String[] parts = lines[lineIdx].split(",");
-				int rank = Integer.parseInt(parts[0]);
-				int kc = Integer.parseInt(parts[1]);
-				bossKills.put(bossNames[i], kc);
-				bossRanks.put(bossNames[i], rank);
-			}
-			catch (Exception e)
-			{
-				bossKills.put(bossNames[i], -1);
-				bossRanks.put(bossNames[i], -1);
+				int lineIdx = BOSS_START_INDEX + i;
+				if (lineIdx >= lines.length)
+				{
+					break;
+				}
+				try
+				{
+					String[] parts = lines[lineIdx].split(",");
+					int rank = Integer.parseInt(parts[0]);
+					int kc = Integer.parseInt(parts[1]);
+					bossKills.put(bossNames[i], kc);
+					bossRanks.put(bossNames[i], rank);
+				}
+				catch (Exception e)
+				{
+					bossKills.put(bossNames[i], -1);
+					bossRanks.put(bossNames[i], -1);
+				}
 			}
 		}
 
-		return new HiscoreResult(type, hiscoreTable, bossKills, bossRanks, activityScores,
-			activityRanks, skillLevels, skillRanks, skillXps, totalLevel, totalXp,
-			combatLevel, overallRank);
+		HiscoreResult result = new HiscoreResult(type, hiscoreTable, bossKills, bossRanks,
+			activityScores, activityRanks, skillLevels, skillRanks, skillXps, totalLevel,
+			totalXp, combatLevel, overallRank);
+		result.setBossSectionShifted(bossSectionShifted);
+		return result;
 	}
 
 	/**
