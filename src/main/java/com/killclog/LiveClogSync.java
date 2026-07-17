@@ -14,7 +14,8 @@ final class LiveClogSync
 {
 	private boolean needsFirstSyncWarned;
 
-	void handleUnlock(String itemName, Client client, ItemManager itemManager,
+	void handleUnlock(String itemName, int broadcastObtained, int broadcastTotal,
+		Client client, ItemManager itemManager,
 		ClogIndex clogIndex, LocalClogCache localClogCache,
 		KillClogChatNotifier chatNotifier, ClogButtonOverlay clogButtonOverlay,
 		Consumer<String> panelRefresh)
@@ -55,9 +56,10 @@ final class LiveClogSync
 
 		// Upward-only here: the varp can lag the unlock message by a tick, and
 		// a stale read would revert the unique bump the merge just made.
-		// Chalice sync remains the downward authority.
-		int liveObtained = client.getVarpValue(ClogVarps.OBTAINED);
-		int liveTotal = client.getVarpValue(ClogVarps.TOTAL);
+		// Chalice sync remains the downward authority. A clan broadcast
+		// carries its own fresh counts; take whichever signal is highest.
+		int liveObtained = Math.max(client.getVarpValue(ClogVarps.OBTAINED), broadcastObtained);
+		int liveTotal = Math.max(client.getVarpValue(ClogVarps.TOTAL), broadcastTotal);
 		if (liveObtained > 0 || liveTotal > 0)
 		{
 			localClogCache.updateTotalsUpward(playerName, liveObtained, liveTotal);

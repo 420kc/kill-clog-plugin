@@ -266,7 +266,25 @@ public class KillClogPlugin extends Plugin
 			String unlockName = ClogUnlockParser.parseItemName(event.getMessage());
 			if (unlockName != null)
 			{
-				clientThread.invokeLater(() -> handleCollectionLogUnlock(unlockName));
+				clientThread.invokeLater(() -> handleCollectionLogUnlock(unlockName, -1, -1));
+				return;
+			}
+		}
+
+		// Players whose notification setting is popup-only never produce the
+		// personal game message; their own clan broadcast is the only chat
+		// signal of the unlock, and it carries the fresh obtained/total pair.
+		if (event.getType() == ChatMessageType.CLAN_MESSAGE)
+		{
+			ClogUnlockParser.BroadcastUnlock broadcast =
+				ClogUnlockParser.parseClanBroadcast(event.getMessage());
+			Player broadcastLocal = client.getLocalPlayer();
+			if (broadcast != null && broadcastLocal != null && broadcastLocal.getName() != null
+				&& Text.toJagexName(broadcast.playerName)
+					.equalsIgnoreCase(Text.toJagexName(broadcastLocal.getName())))
+			{
+				clientThread.invokeLater(() -> handleCollectionLogUnlock(
+					broadcast.itemName, broadcast.obtained, broadcast.total));
 				return;
 			}
 		}
@@ -289,10 +307,11 @@ public class KillClogPlugin extends Plugin
 		});
 	}
 
-	private void handleCollectionLogUnlock(String itemName)
+	private void handleCollectionLogUnlock(String itemName, int broadcastObtained, int broadcastTotal)
 	{
-		liveClogSync.handleUnlock(itemName, client, itemManager, clogIndex,
-			localClogCache, chatNotifier, clogButtonOverlay, panel::onBulkCaptureComplete);
+		liveClogSync.handleUnlock(itemName, broadcastObtained, broadcastTotal, client,
+			itemManager, clogIndex, localClogCache, chatNotifier, clogButtonOverlay,
+			panel::onBulkCaptureComplete);
 	}
 
 	// Keep local CA current when a task completes mid-session.

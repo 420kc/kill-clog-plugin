@@ -1,6 +1,8 @@
 package com.killclog;
 
 import java.util.Locale;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import net.runelite.client.util.Text;
 
 final class ClogUnlockParser
@@ -8,8 +10,73 @@ final class ClogUnlockParser
 	private static final String COLLECTION_LOG_UNLOCK_PREFIX =
 		"New item added to your collection log:";
 
+	// Clan broadcast form: "<player> received a new collection log item:
+	// <item> (1186/1706)". Players whose notification setting is popup-only
+	// never get the personal game message, so the broadcast is the only chat
+	// signal their own unlock produces. The trailing counts are the live
+	// obtained/total pair, fresher than a possibly lagging varp read.
+	private static final Pattern CLAN_BROADCAST_UNLOCK = Pattern.compile(
+		"^(.+?) received a new collection log item: (.+?)(?: \\((\\d+)/(\\d+)\\))?$");
+
+	static final class BroadcastUnlock
+	{
+		final String playerName;
+		final String itemName;
+		final int obtained;
+		final int total;
+
+		BroadcastUnlock(String playerName, String itemName, int obtained, int total)
+		{
+			this.playerName = playerName;
+			this.itemName = itemName;
+			this.obtained = obtained;
+			this.total = total;
+		}
+	}
+
 	private ClogUnlockParser()
 	{
+	}
+
+	static BroadcastUnlock parseClanBroadcast(String message)
+	{
+		if (message == null)
+		{
+			return null;
+		}
+
+		String cleaned = Text.removeTags(message).replace((char) 160, ' ').trim();
+		Matcher m = CLAN_BROADCAST_UNLOCK.matcher(cleaned);
+		if (!m.matches())
+		{
+			return null;
+		}
+
+		String itemName = m.group(2).trim();
+		while (itemName.endsWith("."))
+		{
+			itemName = itemName.substring(0, itemName.length() - 1).trim();
+		}
+		if (itemName.isEmpty())
+		{
+			return null;
+		}
+
+		int obtained = -1;
+		int total = -1;
+		try
+		{
+			if (m.group(3) != null && m.group(4) != null)
+			{
+				obtained = Integer.parseInt(m.group(3));
+				total = Integer.parseInt(m.group(4));
+			}
+		}
+		catch (NumberFormatException ignored)
+		{
+		}
+
+		return new BroadcastUnlock(m.group(1).trim(), itemName, obtained, total);
 	}
 
 	static String parseItemName(String message)
