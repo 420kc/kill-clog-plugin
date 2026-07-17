@@ -253,9 +253,17 @@ public class HiscoreParsingTest
 			sb.append("-1,-1\n");
 		}
 		sb.append("-1,-1\n"); // Abyssal Sire unranked
+		// Remaining bosses ranked, keeping the line count exact so the
+		// fail-closed guard stays out of this test's way.
+		for (int i = 1; i < HiscoreService.bossCount(); i++)
+		{
+			sb.append("50,420\n");
+		}
 
 		HiscoreResult result = service.parseHiscoreBody(sb.toString(), AccountType.REGULAR);
+		assertFalse(result.isBossSectionShifted());
 		assertEquals(-1, result.getKc("Abyssal Sire"));
+		assertEquals(420, result.getKc("Alchemical Hydra"));
 	}
 
 	@Test

@@ -23,8 +23,8 @@ public class HiscoreResult
 	private final int overallRank;
 
 	// Set when the hiscore CSV line count no longer matches the known format:
-	// the boss maps were left empty on purpose (positions cannot be trusted)
-	// and surfaces should say why instead of showing dashes silently.
+	// the boss maps were left empty on purpose (positions cannot be trusted).
+	// Surfaces render their normal quiet absent state; no banner, by design.
 	private boolean bossSectionShifted;
 
 	public HiscoreResult(AccountType accountType, Map<String, Integer> bossKills,

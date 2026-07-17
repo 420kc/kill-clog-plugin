@@ -406,8 +406,11 @@ public class LocalClogCache
 		{
 			return false;
 		}
-		int risenObtained = obtained > data.uniqueObtained ? obtained : -1;
-		int risenTotal = total > data.uniqueTotal ? total : -1;
+		// Zero is no-signal (updateTotals ignores it); without this guard a
+		// partial cache with -1 totals would report 0 > -1 as a change and
+		// trigger a redundant full panel lookup.
+		int risenObtained = obtained > 0 && obtained > data.uniqueObtained ? obtained : -1;
+		int risenTotal = total > 0 && total > data.uniqueTotal ? total : -1;
 		if (risenObtained < 0 && risenTotal < 0)
 		{
 			return false;
