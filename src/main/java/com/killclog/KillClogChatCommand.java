@@ -61,6 +61,12 @@ class KillClogChatCommand
 
 	private static final Map<String, String> ALIASES = buildAliases();
 
+	/** Read-only view for canon-parity tests. */
+	/* package */ static Map<String, String> aliases()
+	{
+		return java.util.Collections.unmodifiableMap(ALIASES);
+	}
+
 	private static Map<String, String> buildAliases()
 	{
 		Map<String, String> m = new HashMap<>();
@@ -189,7 +195,7 @@ class KillClogChatCommand
 		return m;
 	}
 
-	private static String normalize(String s)
+	/* package */ static String normalize(String s)
 	{
 		return s.toLowerCase().replace("'", "").replace(":", "")
 			.replaceAll("\\s+", " ").trim();

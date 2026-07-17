@@ -175,9 +175,14 @@ public class HiscoreParsingTest
 
 		HiscoreResult result = service.parseHiscoreBody(sb.toString(), AccountType.REGULAR);
 		assertNotNull(result);
-		assertEquals(420, result.getKc("Abyssal Sire"));
-		// Boss beyond the 5 provided is missing.
+		// Contract flip (2026-07-17 hardening): a short CSV cannot be told
+		// apart from a mid-list row removal, which shifts every position
+		// below it. Wrong KCs never ship, so the boss section fails closed;
+		// a transient tail truncation heals on the next clean fetch.
+		assertTrue(result.isBossSectionShifted());
+		assertEquals(-1, result.getKc("Abyssal Sire"));
 		assertEquals(-1, result.getKc("Zulrah"));
+		assertEquals(2277, result.getTotalLevel());
 	}
 
 	@Test
@@ -192,8 +197,12 @@ public class HiscoreParsingTest
 
 		HiscoreResult result = service.parseHiscoreBody(body, AccountType.REGULAR);
 		assertNotNull(result);
-		// Extra lines are ignored.
-		assertEquals(420, result.getKc("Zulrah"));
+		// Contract flip (2026-07-17 hardening): extra lines cannot be told
+		// apart from a new boss inserted mid-list (the Mad Angel scenario),
+		// so the boss section fails closed instead of risking shifted KCs.
+		assertTrue(result.isBossSectionShifted());
+		assertEquals(-1, result.getKc("Zulrah"));
+		assertEquals(2277, result.getTotalLevel());
 	}
 
 	@Test
@@ -214,9 +223,17 @@ public class HiscoreParsingTest
 		sb.append("not_a_number,abc\n");
 		// Second boss: valid.
 		sb.append("50,420\n");
+		// Remaining bosses valid, keeping the line count exact: a malformed
+		// line with the right count is not a format shift, so per-boss
+		// best-effort parsing still applies.
+		for (int i = 2; i < HiscoreService.bossCount(); i++)
+		{
+			sb.append("50,420\n");
+		}
 
 		HiscoreResult result = service.parseHiscoreBody(sb.toString(), AccountType.REGULAR);
 		assertNotNull(result);
+		assertFalse(result.isBossSectionShifted());
 		assertEquals(-1, result.getKc("Abyssal Sire")); // malformed -> -1
 		assertEquals(420, result.getKc("Alchemical Hydra")); // valid
 	}
@@ -371,6 +388,52 @@ public class HiscoreParsingTest
 				csvNames.contains(csvName)
 			);
 		}
+	}
+
+	@Test
+	public void testEveryRuneLiteBossAppearsInPanel()
+	{
+		// The reverse direction of the mapping test above: when RuneLite's enum
+		// grows a boss (the Maggot King pattern, next The Mad Angel), this
+		// screams until PanelData carries it. Completeness gate from the
+		// 2026-07-16 pre-Mad-Angel hardening review.
+		Set<HiscoreSkill> panel = new HashSet<>(Arrays.asList(PanelData.BOSSES));
+		for (HiscoreSkill skill : HiscoreSkill.values())
+		{
+			if (skill.getType() == net.runelite.client.hiscore.HiscoreSkillType.BOSS)
+			{
+				assertTrue(
+					"RuneLite knows boss '" + skill.getName() + "' but PanelData.BOSSES does not. " +
+					"Add it (and its CSV position, sprite, EHB rate) before release.",
+					panel.contains(skill)
+				);
+			}
+		}
+	}
+
+	@Test
+	public void testShiftedCsvFailsBossSectionClosed()
+	{
+		// One extra row simulating a new boss inserted into the boss block:
+		// positions below the insertion are unknowable, so the parse must
+		// leave the boss maps empty and flag the result instead of shipping
+		// silently wrong KCs. The fixed prefix stays live.
+		String body = buildCsv(69, 2277, 4600000000L) + "50,420\n";
+		HiscoreResult result = service.parseHiscoreBody(body, AccountType.REGULAR);
+
+		assertTrue(result.isBossSectionShifted());
+		assertTrue(result.getBossKills().isEmpty());
+		assertEquals(2277, result.getTotalLevel());
+	}
+
+	@Test
+	public void testUnshiftedCsvIsNotFlagged()
+	{
+		String body = buildCsv(69, 2277, 4600000000L);
+		HiscoreResult result = service.parseHiscoreBody(body, AccountType.REGULAR);
+
+		assertFalse(result.isBossSectionShifted());
+		assertEquals(HiscoreService.bossCount(), result.getBossKills().size());
 	}
 
 	private String buildCsv(int overallRank, int totalLevel, long totalXp)
