@@ -399,16 +399,21 @@ public class LocalClogCache
 	 * unique bump the merge just made. Chalice sync stays the downward
 	 * authority.
 	 */
-	public void updateTotalsUpward(String playerName, int obtained, int total)
+	public boolean updateTotalsUpward(String playerName, int obtained, int total)
 	{
 		PlayerClogData data = playerName != null ? players.get(cacheKey(playerName)) : null;
 		if (data == null)
 		{
-			return;
+			return false;
 		}
-		updateTotals(playerName,
-			obtained > data.uniqueObtained ? obtained : -1,
-			total > data.uniqueTotal ? total : -1);
+		int risenObtained = obtained > data.uniqueObtained ? obtained : -1;
+		int risenTotal = total > data.uniqueTotal ? total : -1;
+		if (risenObtained < 0 && risenTotal < 0)
+		{
+			return false;
+		}
+		updateTotals(playerName, risenObtained, risenTotal);
+		return true;
 	}
 
 	public void updateTotals(String playerName, int obtained, int total)

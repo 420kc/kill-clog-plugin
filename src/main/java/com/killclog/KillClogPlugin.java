@@ -216,6 +216,34 @@ public class KillClogPlugin extends Plugin
 		clogIndex.ensureParsed(client, itemManager);
 		sessionState.requestAutoLookup(config.autoLookupOnLogin());
 		lookupMenu.warnIfPlayerMenuSlotUnavailable(client, config, chatNotifier);
+		reconcileClogTotalsFromVarps();
+	}
+
+	/**
+	 * True-live total bump with no chat dependency: the client pushes the
+	 * collection log counts as varps, so any unlock (and the login flood)
+	 * moves them regardless of the player's notification settings. Upward
+	 * only; chalice sync stays the downward authority. Runs on the client
+	 * thread (varbit events and enterLoggedInState both arrive there).
+	 */
+	private void reconcileClogTotalsFromVarps()
+	{
+		Player local = client.getLocalPlayer();
+		if (local == null || local.getName() == null)
+		{
+			return;
+		}
+		String name = local.getName();
+		if (!localClogCache.hasDataFor(name))
+		{
+			return;
+		}
+		int obtained = client.getVarpValue(ClogVarps.OBTAINED);
+		int total = client.getVarpValue(ClogVarps.TOTAL);
+		if ((obtained > 0 || total > 0) && localClogCache.updateTotalsUpward(name, obtained, total))
+		{
+			SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(name));
+		}
 	}
 
 	@Subscribe
@@ -321,6 +349,11 @@ public class KillClogPlugin extends Plugin
 		if (localCaReader.isCaVarbit(event.getVarbitId()))
 		{
 			sessionState.requestCaRead();
+		}
+
+		if (event.getVarpId() == ClogVarps.OBTAINED || event.getVarpId() == ClogVarps.TOTAL)
+		{
+			reconcileClogTotalsFromVarps();
 		}
 	}
 
