@@ -1,5 +1,7 @@
 package com.killclog;
 
+import java.util.Arrays;
+import java.util.List;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -13,6 +15,24 @@ public class PersonalBestsTest
 		// Precise timing keeps its fraction; whole seconds never grow one.
 		assertEquals("3:52.80", PersonalBests.formatSeconds(232.8));
 		assertEquals("1:02:05", PersonalBests.formatSeconds(3725.0));
+	}
+
+	@Test
+	public void teamSuffixesCoverEveryVanillaSizeBucket()
+	{
+		// Vanilla's longBossName emits these exact size keys for CoX/CM;
+		// missing one means a pb stored there shows absent or slower.
+		List<String> suffixes = Arrays.asList(PersonalBests.TEAM_SUFFIXES);
+		assertTrue(suffixes.contains(""));
+		assertTrue(suffixes.contains(" solo"));
+		for (int size = 1; size <= 10; size++)
+		{
+			assertTrue("missing size " + size,
+				suffixes.contains(" " + size + " player" + (size == 1 ? "" : "s")));
+		}
+		assertTrue(suffixes.contains(" 11-15 players"));
+		assertTrue(suffixes.contains(" 16-23 players"));
+		assertTrue(suffixes.contains(" 24+ players"));
 	}
 
 	@Test

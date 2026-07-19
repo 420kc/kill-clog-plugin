@@ -13,12 +13,14 @@ import net.runelite.client.config.ConfigManager;
 final class PersonalBests
 {
 	/**
-	 * Team-size suffixes vanilla appends to raid pb keys. The tooltip shows
-	 * the fastest across sizes: one line, the true personal best.
+	 * Team-size suffixes vanilla appends to raid pb keys, including the large
+	 * CoX buckets. The tooltip shows the fastest across sizes: one line, the
+	 * true personal best.
 	 */
-	private static final String[] TEAM_SUFFIXES = {
+	/* package */ static final String[] TEAM_SUFFIXES = {
 		"", " solo", " 1 player", " 2 players", " 3 players", " 4 players",
-		" 5 players", " 6 players", " 7 players", " 8 players",
+		" 5 players", " 6 players", " 7 players", " 8 players", " 9 players",
+		" 10 players", " 11-15 players", " 16-23 players", " 24+ players",
 	};
 
 	private final ConfigManager configManager;
