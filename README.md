@@ -1,6 +1,6 @@
 # Kill Clog
 
-[![version](screenshots/version-badge.svg)](https://github.com/420kc/kill-clog-plugin/tags)
+[![version](https://img.shields.io/github/v/tag/420kc/kill-clog-plugin?label=version&color=FF5700)](https://github.com/420kc/kill-clog-plugin/tags)
 
 Kill Clog is a HiScores overhaul that offers fast and easy visuals of collection log progress and account snapshots.
 
