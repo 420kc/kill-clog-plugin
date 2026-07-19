@@ -5,23 +5,32 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import lombok.Builder;
 
 /** Immutable data holder for sprite tooltip content. */
+@Builder
 final class TooltipData
 {
 	final String name;
-	final int rank;
-	final int obtainedCount;
+	@Builder.Default
+	final int rank = -1;
+	/** -1 means unsynced; the default keeps an omission from faking a synced state. */
+	@Builder.Default
+	final int obtainedCount = -1;
 	final int totalItems;
-	final boolean rankTracked;
+	@Builder.Default
+	final boolean rankTracked = true;
 	final String statLabel;
-	final int statValue;
+	@Builder.Default
+	final int statValue = -1;
 	final List<Integer> allItemIds;
 	final Set<Integer> obtainedIds;
 	final Map<Integer, Integer> obtainedCounts;
-	final Map<Integer, String> itemNames;
+	@Builder.Default
+	final Map<Integer, String> itemNames = Collections.emptyMap();
 	/** Boss kill count for the KC/PB header line, -1 when unknown. */
-	final int kc;
+	@Builder.Default
+	final int kc = -1;
 	/** The local player's recorded personal best for the KC/PB header line, null when none. */
 	final String pb;
 
@@ -33,61 +42,5 @@ final class TooltipData
 			items.add(itemId);
 		}
 		return items;
-	}
-
-	TooltipData(String name, int rank, int obtainedCount, int totalItems,
-				List<Integer> allItemIds, Set<Integer> obtainedIds,
-				Map<Integer, Integer> obtainedCounts)
-	{
-		this(name, rank, obtainedCount, totalItems,
-			allItemIds, obtainedIds, obtainedCounts, Collections.emptyMap(), true);
-	}
-
-	TooltipData(String name, int rank, int obtainedCount, int totalItems,
-				List<Integer> allItemIds, Set<Integer> obtainedIds,
-				Map<Integer, Integer> obtainedCounts, boolean rankTracked)
-	{
-		this(name, rank, obtainedCount, totalItems, allItemIds, obtainedIds,
-			obtainedCounts, Collections.emptyMap(), rankTracked);
-	}
-
-	TooltipData(String name, int rank, int obtainedCount, int totalItems,
-				List<Integer> allItemIds, Set<Integer> obtainedIds,
-				Map<Integer, Integer> obtainedCounts,
-		Map<Integer, String> itemNames, boolean rankTracked)
-	{
-		this(name, rank, obtainedCount, totalItems, allItemIds, obtainedIds,
-			obtainedCounts, itemNames, rankTracked, null, -1);
-	}
-
-	TooltipData(String name, int rank, int obtainedCount, int totalItems,
-				List<Integer> allItemIds, Set<Integer> obtainedIds,
-				Map<Integer, Integer> obtainedCounts,
-				Map<Integer, String> itemNames, boolean rankTracked,
-				String statLabel, int statValue)
-	{
-		this(name, rank, obtainedCount, totalItems, allItemIds, obtainedIds,
-			obtainedCounts, itemNames, rankTracked, statLabel, statValue, -1, null);
-	}
-
-	TooltipData(String name, int rank, int obtainedCount, int totalItems,
-				List<Integer> allItemIds, Set<Integer> obtainedIds,
-				Map<Integer, Integer> obtainedCounts,
-				Map<Integer, String> itemNames, boolean rankTracked,
-				String statLabel, int statValue, int kc, String pb)
-	{
-		this.name = name;
-		this.rank = rank;
-		this.obtainedCount = obtainedCount;
-		this.totalItems = totalItems;
-		this.rankTracked = rankTracked;
-		this.statLabel = statLabel;
-		this.statValue = statValue;
-		this.allItemIds = allItemIds;
-		this.obtainedIds = obtainedIds;
-		this.obtainedCounts = obtainedCounts;
-		this.itemNames = itemNames != null ? itemNames : Collections.emptyMap();
-		this.kc = kc;
-		this.pb = pb;
 	}
 }

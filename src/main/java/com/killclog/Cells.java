@@ -507,7 +507,7 @@ public class Cells
 			HiscoreSkill skill = entry.getKey();
 			String bossName = skill.getName();
 			String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(bossName, bossName);
-			TooltipData data = buildPrimaryBossData(bossName, hiscoreName, selfNoCache, self, catalog);
+			TooltipData data = buildPrimaryBossData(bossName, hiscoreName, self, catalog);
 			if (data != null)
 			{
 				tooltipDataMap.put(skill, data);
@@ -665,8 +665,9 @@ public class Cells
 	 */
 	@Nullable
 	private TooltipData buildPrimaryBossData(String displayName, String hiscoreName,
-		boolean selfNoCache, boolean self, @Nullable ClogResult catalog)
+		boolean self, @Nullable ClogResult catalog)
 	{
+		boolean selfNoCache = self && lookupSession.getClogResult() == null;
 		String category = ClogService.bossToCategory(hiscoreName);
 		int rank = lookupSession.getHiscoreResult() != null
 			? lookupSession.getHiscoreResult().getRank(hiscoreName) : -1;

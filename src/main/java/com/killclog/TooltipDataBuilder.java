@@ -61,9 +61,18 @@ final class TooltipDataBuilder
 			? ClogHelper.countObtained(allItems, obtainedIds) : obtainedIds.size();
 
 		List<Integer> itemList = allItems != null ? allItems : new ArrayList<>(obtainedIds);
-		return new TooltipData(displayName, rank, obtainedCount, totalItems,
-			itemList, obtainedIds, obtainedCounts, itemNamesFor(itemList, clogResult), true,
-			null, -1, kc, pb);
+		return TooltipData.builder()
+			.name(displayName)
+			.rank(rank)
+			.obtainedCount(obtainedCount)
+			.totalItems(totalItems)
+			.allItemIds(itemList)
+			.obtainedIds(obtainedIds)
+			.obtainedCounts(obtainedCounts)
+			.itemNames(itemNamesFor(itemList, clogResult))
+			.kc(kc)
+			.pb(pb)
+			.build();
 	}
 
 	TooltipData buildUnsyncedTooltipData(String displayName, String category, int rank,
@@ -111,9 +120,16 @@ final class TooltipDataBuilder
 		}
 
 		int obtainedCount = ClogHelper.countObtained(allItems, obtainedIds);
-		return new TooltipData(name, -1, obtainedCount,
-			allItems.size(), allItems, obtainedIds, obtainedCounts,
-			itemNamesFor(allItems, clogResult), false);
+		return TooltipData.builder()
+			.name(name)
+			.obtainedCount(obtainedCount)
+			.totalItems(allItems.size())
+			.allItemIds(allItems)
+			.obtainedIds(obtainedIds)
+			.obtainedCounts(obtainedCounts)
+			.itemNames(itemNamesFor(allItems, clogResult))
+			.rankTracked(false)
+			.build();
 	}
 
 	private static List<ClogResult.ClogItem> rareObtainedItems(List<ClogResult.ClogItem> obtained,
@@ -184,9 +200,16 @@ final class TooltipDataBuilder
 		}
 
 		int obtainedCount = obtainedIds.size();
-		return new TooltipData(name, -1, obtainedCount,
-			allItemsList.size(), allItemsList, obtainedIds, obtainedCounts,
-			itemNamesFor(allItemsList, clogResult), false);
+		return TooltipData.builder()
+			.name(name)
+			.obtainedCount(obtainedCount)
+			.totalItems(allItemsList.size())
+			.allItemIds(allItemsList)
+			.obtainedIds(obtainedIds)
+			.obtainedCounts(obtainedCounts)
+			.itemNames(itemNamesFor(allItemsList, clogResult))
+			.rankTracked(false)
+			.build();
 	}
 
 	TooltipData buildUnsyncedItemData(String name, int[] itemIds, ClogResult catalog)
@@ -206,9 +229,18 @@ final class TooltipDataBuilder
 	private TooltipData buildUnsyncedTooltipData(String displayName, List<Integer> itemIds,
 		int rank, String statLabel, int statValue, boolean rankTracked, ClogResult catalog)
 	{
-		return new TooltipData(displayName, rank, -1, itemIds.size(), itemIds,
-			new HashSet<>(), new LinkedHashMap<>(), itemNamesFor(itemIds, catalog),
-			rankTracked, statLabel, statValue);
+		return TooltipData.builder()
+			.name(displayName)
+			.rank(rank)
+			.totalItems(itemIds.size())
+			.allItemIds(itemIds)
+			.obtainedIds(new HashSet<>())
+			.obtainedCounts(new LinkedHashMap<>())
+			.itemNames(itemNamesFor(itemIds, catalog))
+			.rankTracked(rankTracked)
+			.statLabel(statLabel)
+			.statValue(statValue)
+			.build();
 	}
 
 	private static Map<Integer, String> itemNamesFor(List<Integer> itemIds, ClogResult clogResult)
