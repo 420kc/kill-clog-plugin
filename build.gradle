@@ -24,7 +24,7 @@ dependencies {
 }
 
 group = 'com.killclog'
-version = '1.6.3'
+version = '1.6.4'
 sourceCompatibility = '11'
 targetCompatibility = '11'
 

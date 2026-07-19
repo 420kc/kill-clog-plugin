@@ -14,3 +14,4 @@ Kill Clog 1.6.4
 * comparison summary format fixes
 * pvp summary and empty cells follow configured palette
 * long tooltip title spacing fix
+* kc, pb, and rank tooltip lines each get a settings switch, all on by default
