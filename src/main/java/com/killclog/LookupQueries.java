@@ -18,6 +18,14 @@ final class LookupQueries
 	{
 	}
 
+	/** Combined Bounty Hunter kills, the pvp summary cell's headline number. */
+	static int bountyHunterTotal(HiscoreResult result)
+	{
+		if (result == null) return 0;
+		return Math.max(0, result.getActivityScore("Bounty Hunter - Hunter"))
+			+ Math.max(0, result.getActivityScore("Bounty Hunter - Rogue"));
+	}
+
 	static int sumBossKills(HiscoreResult result)
 	{
 		if (result == null) return 0;

@@ -837,8 +837,7 @@ public class ComparisonController
 		{
 			return -1;
 		}
-		int total = Math.max(0, r.getActivityScore("Bounty Hunter - Hunter"))
-			+ Math.max(0, r.getActivityScore("Bounty Hunter - Rogue"));
+		int total = LookupQueries.bountyHunterTotal(r);
 		return total > 0 ? total : -1;
 	}
 

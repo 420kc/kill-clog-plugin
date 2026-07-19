@@ -73,9 +73,11 @@ public class KillClogPanel extends PluginPanel
 	}
 
 	/**
-	 * The stats row (combat, total level, pvp summary) takes the info color as
-	 * one unit, dashes included: a "--" left in another color next to k-colored
-	 * siblings reads as a broken cell, not an empty one.
+	 * The stats row (combat, total level, pvp summary) recolors as one unit:
+	 * cells with values take the info color, and an empty pvp cell takes the
+	 * configured empty color, exactly like every other "--" cell under the
+	 * highlighter. Before this rule the pvp dash kept whatever color the
+	 * previous lookup left behind.
 	 */
 	private void colorStatsRow()
 	{
@@ -84,8 +86,16 @@ public class KillClogPanel extends PluginPanel
 		totalLvlCell.setForeground(infoColor);
 		if (cells.getPvpSummaryCell() != null)
 		{
-			cells.getPvpSummaryCell().setForeground(infoColor);
+			boolean hasKills = LookupQueries.bountyHunterTotal(lookupSession.getHiscoreResult()) > 0;
+			cells.getPvpSummaryCell().setForeground(hasKills ? infoColor : emptyCellColor());
 		}
+	}
+
+	/** Empty-state cell color under the same gating the highlighter sweep uses. */
+	private Color emptyCellColor()
+	{
+		return config.completionistHighlighter() && lookupSession.getClogResult() != null
+			? config.emptyClogColor() : ColorScheme.LIGHT_GRAY_COLOR;
 	}
 
 	private final HiscoreService hiscoreService;

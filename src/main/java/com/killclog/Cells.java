@@ -417,8 +417,7 @@ public class Cells
 		// PvP summary cell: BH Hunter + BH Rogue total
 		if (pvpSummaryCell != null)
 		{
-			int bhTotal = Math.max(0, result.getActivityScore("Bounty Hunter - Hunter"))
-				+ Math.max(0, result.getActivityScore("Bounty Hunter - Rogue"));
+			int bhTotal = LookupQueries.bountyHunterTotal(result);
 			pvpSummaryCell.setText(ClogHelper.pad(bhTotal > 0 ? ClogHelper.formatKc(bhTotal) : "--"));
 		}
 
