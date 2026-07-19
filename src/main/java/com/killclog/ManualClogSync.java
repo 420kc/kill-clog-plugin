@@ -183,13 +183,11 @@ final class ManualClogSync
 		String bufName = bulk.bufferedCategoryName;
 		List<Integer> bufItems = bulk.bufferedCategoryItems;
 		List<ClogResult.ClogItem> bufObtained = bulk.bufferedCategoryObtained;
-		String bufFastest = bulk.bufferedCategoryFastest;
 		reset();
 
 		if (bufKey != null && bufItems != null)
 		{
 			localClogCache.mergeCategory(name, bufKey, bufItems, bufObtained);
-			localClogCache.mergeFastestTime(name, bufKey, bufFastest);
 			int buffObt = bufObtained != null ? bufObtained.size() : 0;
 			int buffTotal = bufItems.size();
 			log.debug("Merged buffered category '{}': {}/{} obtained",
@@ -225,7 +223,6 @@ final class ManualClogSync
 		if (localClogCache.hasDataFor(name))
 		{
 			localClogCache.mergeCategory(name, category.key(), category.allItemIds(), category.obtained());
-			localClogCache.mergeFastestTime(name, category.key(), category.fastestTime());
 
 			// Re-read global clog totals from live varps (catches game updates + new items).
 			int liveObtained = client.getVarpValue(ClogVarps.OBTAINED);
@@ -246,7 +243,6 @@ final class ManualClogSync
 			bulk.bufferedCategoryName = category.name();
 			bulk.bufferedCategoryItems = new ArrayList<>(category.allItemIds());
 			bulk.bufferedCategoryObtained = new ArrayList<>(category.obtained());
-			bulk.bufferedCategoryFastest = category.fastestTime();
 
 			chatNotifier.send(ChatNotice.SYNC_RESULT,
 				"Buffered " + category.name() + " - " + category.obtained().size()

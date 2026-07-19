@@ -15,9 +15,6 @@ final class VisibleClogCategoryReader
 	private static final int CLOG_HEADER_CHILD = 20;
 	private static final int CLOG_ITEMS_CHILD = 37;
 	private static final Pattern OBTAINED_PATTERN = Pattern.compile("(\\d+)/(\\d+)");
-	// "Fastest kill: 1:23", "Fastest run: 7:09.60" and friends; whatever
-	// wording the page uses, the time after the colon is the personal best.
-	private static final Pattern FASTEST_PATTERN = Pattern.compile("Fastest[^:]*:\\s*(.+)");
 
 	Optional<VisibleClogCategory> read(Client client)
 	{
@@ -42,7 +39,6 @@ final class VisibleClogCategoryReader
 		String categoryName = Text.removeTags(headerText);
 		String categoryKey = ClogService.bossToCategory(categoryName);
 		int obtainedCount = parseObtainedCount(headerKids);
-		String fastestTime = parseFastestTime(headerKids);
 
 		Widget items = client.getWidget(KillClogPlugin.CLOG_INTERFACE, CLOG_ITEMS_CHILD);
 		if (items == null)
@@ -79,24 +75,7 @@ final class VisibleClogCategoryReader
 		}
 
 		inferHiddenUntradeables(obtainedCount, allItemIds, obtained);
-		return Optional.of(new VisibleClogCategory(categoryKey, categoryName, allItemIds, obtained, fastestTime));
-	}
-
-	private static String parseFastestTime(Widget[] headerKids)
-	{
-		for (int i = 1; i < headerKids.length; i++)
-		{
-			if (headerKids[i] == null || headerKids[i].getText() == null)
-			{
-				continue;
-			}
-			Matcher matcher = FASTEST_PATTERN.matcher(Text.removeTags(headerKids[i].getText()));
-			if (matcher.find())
-			{
-				return matcher.group(1).trim();
-			}
-		}
-		return null;
+		return Optional.of(new VisibleClogCategory(categoryKey, categoryName, allItemIds, obtained));
 	}
 
 	private static int parseObtainedCount(Widget[] headerKids)

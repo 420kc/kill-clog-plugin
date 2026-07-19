@@ -547,36 +547,6 @@ public class LocalClogCache
 	}
 
 	/**
-	 * Store the fastest time read from a clog page header. The widget is the
-	 * only source of these, so a fresh read simply replaces the stored value.
-	 */
-	public synchronized void mergeFastestTime(String playerName, String categoryKey, String time)
-	{
-		if (playerName == null || categoryKey == null || time == null || time.isEmpty())
-		{
-			return;
-		}
-		PlayerClogData data = players.get(cacheKey(playerName));
-		if (data == null)
-		{
-			return;
-		}
-		if (data.fastest == null)
-		{
-			data.fastest = new ConcurrentHashMap<>();
-		}
-		if (time.equals(data.fastest.get(categoryKey)))
-		{
-			return;
-		}
-		data.fastest.put(categoryKey, time);
-		data.lastUpdated = Instant.now().toString();
-		final PlayerClogData snapshot = shallowCopy(data);
-		submitDiskWrite(playerName, () -> saveToDisk(playerName, snapshot));
-		log.debug("Stored fastest time '{}' for '{}' / {}", time, playerName, categoryKey);
-	}
-
-	/**
 	 * The obtained item carrying obtained-at-kc provenance for this player, or
 	 * null when the item is unobtained or its kc was never captured. Provenance
 	 * is recorded from live unlocks on this client, so only accounts played
@@ -733,10 +703,6 @@ public class LocalClogCache
 		{
 			result.setUniqueTotal(data.uniqueTotal);
 		}
-		if (data.fastest != null && !data.fastest.isEmpty())
-		{
-			result.setFastestTimes(new HashMap<>(data.fastest));
-		}
 		return result;
 	}
 
@@ -781,10 +747,6 @@ public class LocalClogCache
 				data.obtained = data.obtained != null
 					? new ConcurrentHashMap<>(data.obtained)
 					: new ConcurrentHashMap<>();
-				if (data.fastest != null)
-				{
-					data.fastest = new ConcurrentHashMap<>(data.fastest);
-				}
 				return data;
 			}
 		}
@@ -815,7 +777,6 @@ public class LocalClogCache
 		copy.uniqueTotal = src.uniqueTotal;
 		copy.categories = src.categories != null ? new HashMap<>(src.categories) : new HashMap<>();
 		copy.obtained = src.obtained != null ? new HashMap<>(src.obtained) : new HashMap<>();
-		copy.fastest = src.fastest != null ? new HashMap<>(src.fastest) : null;
 		return copy;
 	}
 
@@ -829,7 +790,5 @@ public class LocalClogCache
 		int uniqueTotal = -1;
 		Map<String, List<Integer>> categories;
 		Map<String, List<ClogResult.ClogItem>> obtained;
-		/** category key -> fastest time from the page header, captured at sync. */
-		Map<String, String> fastest;
 	}
 }

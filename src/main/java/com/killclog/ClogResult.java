@@ -29,11 +29,6 @@ public class ClogResult
 	private boolean fromTemple;
 	/** True when RuneProfile returned data that fed this result */
 	private boolean fromRuneProfile;
-	/**
-	 * category key -> fastest time from the game's clog page header. Only the
-	 * local widget capture fills this; provider results never carry it.
-	 */
-	private Map<String, String> fastestTimes;
 
 	public ClogResult(
 		String playerName,
@@ -193,19 +188,7 @@ public class ClogResult
 		merged.itemNames.putAll(itemNames);
 		merged.uniqueObtained = uniqueObtained;
 		merged.uniqueTotal = uniqueTotal;
-		merged.fastestTimes = fastestTimes;
 		return merged;
-	}
-
-	public void setFastestTimes(Map<String, String> fastestTimes)
-	{
-		this.fastestTimes = fastestTimes;
-	}
-
-	/** Fastest time for a category, or null when never captured. */
-	public String getFastestTime(String categoryKey)
-	{
-		return fastestTimes != null ? fastestTimes.get(categoryKey) : null;
 	}
 
 	private static int obtainedCount(ClogResult result)

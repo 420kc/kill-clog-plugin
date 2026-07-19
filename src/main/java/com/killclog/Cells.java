@@ -63,6 +63,7 @@ public class Cells
 	private final TooltipDataBuilder tooltipDataBuilder;
 	private final LookupSession lookupSession;
 	private final ClogService clogService;
+	private final PersonalBests personalBests;
 	private final UnsyncedClogCatalog unsyncedCatalog;
 	@Nullable private SinglePlayerTooltipBuilder singlePlayerBuilder;
 
@@ -90,7 +91,7 @@ public class Cells
 	public Cells(SpriteManager spriteManager, ItemManager itemManager,
 		TooltipController tooltipController, ComparisonController comparison,
 		TooltipDataBuilder tooltipDataBuilder, LookupSession lookupSession,
-		ClogService clogService)
+		ClogService clogService, PersonalBests personalBests)
 	{
 		this.spriteManager = spriteManager;
 		this.itemManager = itemManager;
@@ -99,6 +100,7 @@ public class Cells
 		this.tooltipDataBuilder = tooltipDataBuilder;
 		this.lookupSession = lookupSession;
 		this.clogService = clogService;
+		this.personalBests = personalBests;
 		this.unsyncedCatalog = new UnsyncedClogCatalog(clogService);
 	}
 
@@ -493,8 +495,9 @@ public class Cells
 		{
 			rareTooltips.clear();
 		}
-		boolean selfNoCache = lookupSession.getClogResult() == null && localRsn != null
+		boolean self = localRsn != null
 			&& localRsn.equalsIgnoreCase(lookupSession.getCurrentLookupRsn());
+		boolean selfNoCache = lookupSession.getClogResult() == null && self;
 		ClogResult catalog = lookupSession.getClogResult() == null && !selfNoCache
 			? unsyncedCatalog.result() : null;
 
@@ -504,7 +507,7 @@ public class Cells
 			HiscoreSkill skill = entry.getKey();
 			String bossName = skill.getName();
 			String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(bossName, bossName);
-			TooltipData data = buildPrimaryBossData(bossName, hiscoreName, selfNoCache, catalog);
+			TooltipData data = buildPrimaryBossData(bossName, hiscoreName, selfNoCache, self, catalog);
 			if (data != null)
 			{
 				tooltipDataMap.put(skill, data);
@@ -662,13 +665,15 @@ public class Cells
 	 */
 	@Nullable
 	private TooltipData buildPrimaryBossData(String displayName, String hiscoreName,
-		boolean selfNoCache, @Nullable ClogResult catalog)
+		boolean selfNoCache, boolean self, @Nullable ClogResult catalog)
 	{
 		String category = ClogService.bossToCategory(hiscoreName);
 		int rank = lookupSession.getHiscoreResult() != null
 			? lookupSession.getHiscoreResult().getRank(hiscoreName) : -1;
 		int kc = lookupSession.getHiscoreResult() != null
 			? lookupSession.getHiscoreResult().getKc(hiscoreName) : -1;
+		// Vanilla records pbs on the local profile only, so this stays self-only.
+		String pb = self ? personalBests.pbText(displayName) : null;
 
 		if (lookupSession.getClogResult() == null)
 		{
@@ -677,7 +682,7 @@ public class Cells
 		}
 
 		TooltipData data = tooltipDataBuilder.buildTooltipData(
-			displayName, category, rank, kc, lookupSession.getClogResult());
+			displayName, category, rank, kc, pb, lookupSession.getClogResult());
 		if (data == null)
 		{
 			return tooltipDataBuilder.buildUnsyncedTooltipData(

@@ -22,7 +22,7 @@ final class TooltipData
 	final Map<Integer, String> itemNames;
 	/** Boss kill count for the KC/PB header line, -1 when unknown. */
 	final int kc;
-	/** Fastest time for the KC/PB header line, null when never captured. */
+	/** The local player's recorded personal best for the KC/PB header line, null when none. */
 	final String pb;
 
 	static List<Integer> itemList(int[] itemIds)
