@@ -634,22 +634,16 @@ public abstract class TitleTooltip extends NativeTooltip
 
 		paintTitleCorner(g2, w);
 
-		// Subtitle (label in orange, value in subtitleColor)
-		if (subtitleLabel != null)
-		{
-			lineY += NAME_LINE_HEIGHT;
-			g2.setColor(OSRS_ORANGE);
-			g2.drawString(subtitleLabel, inset, lineY);
-			int labelWidth = fm.stringWidth(subtitleLabel);
-			g2.setColor(subtitleColor);
-			g2.drawString(subtitleValue, inset + labelWidth, lineY);
-			activeLineWidth = labelWidth + fm.stringWidth(subtitleValue);
-		}
+		// Header line order: stats read first (KC/PB info line, then rank),
+		// clog progress reads last. The first line under the title keeps the
+		// wider gap the larger title font needs.
+		boolean firstHeaderLine = true;
 
-		// Info line (e.g. Glory for Sol Heredit, KC/PB for boss cells)
+		// Info line (KC/PB for boss cells, Kills for unsynced)
 		if (infoLabel != null)
 		{
-			lineY += LINE_HEIGHT;
+			lineY += firstHeaderLine ? NAME_LINE_HEIGHT : LINE_HEIGHT;
+			firstHeaderLine = false;
 			g2.setColor(OSRS_ORANGE);
 			g2.drawString(infoLabel, inset, lineY);
 			int infoLabelWidth = fm.stringWidth(infoLabel);
@@ -671,7 +665,8 @@ public abstract class TitleTooltip extends NativeTooltip
 		// Rank line
 		if (rankText != null)
 		{
-			lineY += LINE_HEIGHT;
+			lineY += firstHeaderLine ? NAME_LINE_HEIGHT : LINE_HEIGHT;
+			firstHeaderLine = false;
 			String label = "Rank: ";
 			g2.setColor(OSRS_ORANGE);
 			g2.drawString(label, inset, lineY);
@@ -681,6 +676,19 @@ public abstract class TitleTooltip extends NativeTooltip
 			}
 			g2.drawString(rankText, inset + fm.stringWidth(label), lineY);
 			activeLineWidth = fm.stringWidth(label) + fm.stringWidth(rankText);
+		}
+
+		// Subtitle (label in orange, value in subtitleColor)
+		if (subtitleLabel != null)
+		{
+			lineY += firstHeaderLine ? NAME_LINE_HEIGHT : LINE_HEIGHT;
+			firstHeaderLine = false;
+			g2.setColor(OSRS_ORANGE);
+			g2.drawString(subtitleLabel, inset, lineY);
+			int labelWidth = fm.stringWidth(subtitleLabel);
+			g2.setColor(subtitleColor);
+			g2.drawString(subtitleValue, inset + labelWidth, lineY);
+			activeLineWidth = labelWidth + fm.stringWidth(subtitleValue);
 		}
 
 		paintHeaderRightText(g2, fm, w, lineY, activeLineWidth);
