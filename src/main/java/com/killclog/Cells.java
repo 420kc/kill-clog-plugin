@@ -678,7 +678,7 @@ public class Cells
 		}
 
 		TooltipData data = tooltipDataBuilder.buildTooltipData(
-			displayName, category, rank, lookupSession.getClogResult());
+			displayName, category, rank, kc, lookupSession.getClogResult());
 		if (data == null)
 		{
 			return tooltipDataBuilder.buildUnsyncedTooltipData(

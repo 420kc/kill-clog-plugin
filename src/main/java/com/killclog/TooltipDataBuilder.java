@@ -27,6 +27,16 @@ final class TooltipDataBuilder
 	 */
 	TooltipData buildTooltipData(String displayName, String category, int rank, ClogResult clogResult)
 	{
+		return buildTooltipData(displayName, category, rank, -1, clogResult);
+	}
+
+	/**
+	 * Boss-cell variant: carries the hiscore kc for the KC/PB header line. The
+	 * pb rides the clog result itself, so it only appears for players whose
+	 * own client captured it.
+	 */
+	TooltipData buildTooltipData(String displayName, String category, int rank, int kc, ClogResult clogResult)
+	{
 		if (clogResult == null) return null;
 
 		List<ClogResult.ClogItem> obtained = clogResult.getObtainedItems().get(category);
@@ -53,7 +63,8 @@ final class TooltipDataBuilder
 
 		List<Integer> itemList = allItems != null ? allItems : new ArrayList<>(obtainedIds);
 		return new TooltipData(displayName, rank, obtainedCount, totalItems,
-			itemList, obtainedIds, obtainedCounts, itemNamesFor(itemList, clogResult), true);
+			itemList, obtainedIds, obtainedCounts, itemNamesFor(itemList, clogResult), true,
+			null, -1, kc, clogResult.getFastestTime(category));
 	}
 
 	TooltipData buildUnsyncedTooltipData(String displayName, String category, int rank,

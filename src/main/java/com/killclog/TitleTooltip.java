@@ -36,6 +36,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	private static final int NAME_LINE_HEIGHT = 20;
 	private static final int SEPARATOR_GAP = 6;
 	private static final int CORNER_GAP = 8;
+	private static final int INFO_PAIR_GAP = 8;
 	private static final int CORNER_BADGE_SIZE = 12;
 	private static final float CORNER_BADGE_IDLE_ALPHA = 0.3f;
 	private static final String ELLIPSIS = "...";
@@ -59,6 +60,9 @@ public abstract class TitleTooltip extends NativeTooltip
 	private Color subtitleColor;
 	private String infoLabel;
 	private String infoValue;
+	private String infoLabel2;
+	private String infoValue2;
+	private Color infoColor2;
 	private Color infoColor;
 	private String rankText;
 	private String titleWikiPage;
@@ -392,6 +396,14 @@ public abstract class TitleTooltip extends NativeTooltip
 		this.infoColor = valueColor;
 	}
 
+	/** Optional second label+value pair painted after the first on the same info line. */
+	public void setInfoLinePair(String label, String value, Color valueColor)
+	{
+		this.infoLabel2 = label;
+		this.infoValue2 = value;
+		this.infoColor2 = valueColor;
+	}
+
 	/** Set the rank line. 0 = "Unranked". */
 	public void setRank(int rank)
 	{
@@ -550,6 +562,10 @@ public abstract class TitleTooltip extends NativeTooltip
 			? sfm.stringWidth(subtitleLabel + subtitleValue) : 0;
 		int infoTextWidth = infoLabel != null
 			? sfm.stringWidth(infoLabel + infoValue) : 0;
+		if (infoLabel != null && infoLabel2 != null)
+		{
+			infoTextWidth += INFO_PAIR_GAP + sfm.stringWidth(infoLabel2 + infoValue2);
+		}
 		int rnkTextWidth = rankText != null ? sfm.stringWidth("Rank: " + rankText) : 0;
 		int maxTextWidth = Math.max(titleTextWidth,
 			Math.max(subTextWidth, Math.max(infoTextWidth, rnkTextWidth)));
@@ -630,7 +646,7 @@ public abstract class TitleTooltip extends NativeTooltip
 			activeLineWidth = labelWidth + fm.stringWidth(subtitleValue);
 		}
 
-		// Info line (e.g. Glory for Sol Heredit)
+		// Info line (e.g. Glory for Sol Heredit, KC/PB for boss cells)
 		if (infoLabel != null)
 		{
 			lineY += LINE_HEIGHT;
@@ -640,6 +656,16 @@ public abstract class TitleTooltip extends NativeTooltip
 			g2.setColor(infoColor);
 			g2.drawString(infoValue, inset + infoLabelWidth, lineY);
 			activeLineWidth = infoLabelWidth + fm.stringWidth(infoValue);
+			if (infoLabel2 != null)
+			{
+				int x2 = inset + activeLineWidth + INFO_PAIR_GAP;
+				g2.setColor(OSRS_ORANGE);
+				g2.drawString(infoLabel2, x2, lineY);
+				int label2Width = fm.stringWidth(infoLabel2);
+				g2.setColor(infoColor2);
+				g2.drawString(infoValue2, x2 + label2Width, lineY);
+				activeLineWidth += INFO_PAIR_GAP + label2Width + fm.stringWidth(infoValue2);
+			}
 		}
 
 		// Rank line

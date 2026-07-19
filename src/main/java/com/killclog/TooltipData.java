@@ -20,6 +20,10 @@ final class TooltipData
 	final Set<Integer> obtainedIds;
 	final Map<Integer, Integer> obtainedCounts;
 	final Map<Integer, String> itemNames;
+	/** Boss kill count for the KC/PB header line, -1 when unknown. */
+	final int kc;
+	/** Fastest time for the KC/PB header line, null when never captured. */
+	final String pb;
 
 	static List<Integer> itemList(int[] itemIds)
 	{
@@ -62,6 +66,16 @@ final class TooltipData
 				Map<Integer, String> itemNames, boolean rankTracked,
 				String statLabel, int statValue)
 	{
+		this(name, rank, obtainedCount, totalItems, allItemIds, obtainedIds,
+			obtainedCounts, itemNames, rankTracked, statLabel, statValue, -1, null);
+	}
+
+	TooltipData(String name, int rank, int obtainedCount, int totalItems,
+				List<Integer> allItemIds, Set<Integer> obtainedIds,
+				Map<Integer, Integer> obtainedCounts,
+				Map<Integer, String> itemNames, boolean rankTracked,
+				String statLabel, int statValue, int kc, String pb)
+	{
 		this.name = name;
 		this.rank = rank;
 		this.obtainedCount = obtainedCount;
@@ -73,5 +87,7 @@ final class TooltipData
 		this.obtainedIds = obtainedIds;
 		this.obtainedCounts = obtainedCounts;
 		this.itemNames = itemNames != null ? itemNames : Collections.emptyMap();
+		this.kc = kc;
+		this.pb = pb;
 	}
 }

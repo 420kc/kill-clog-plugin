@@ -20,6 +20,7 @@ final class BulkCaptureState
 	String bufferedCategoryName;
 	List<Integer> bufferedCategoryItems;
 	List<ClogResult.ClogItem> bufferedCategoryObtained;
+	String bufferedCategoryFastest;
 
 	boolean isActive()
 	{
@@ -77,5 +78,6 @@ final class BulkCaptureState
 		bufferedCategoryName = null;
 		bufferedCategoryItems = null;
 		bufferedCategoryObtained = null;
+		bufferedCategoryFastest = null;
 	}
 }

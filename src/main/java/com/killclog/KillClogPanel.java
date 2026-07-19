@@ -559,6 +559,18 @@ public class KillClogPanel extends PluginPanel
 		{
 			tip.setTitle(data.name);
 			tip.setObtained(data.obtainedCount, data.totalItems);
+			if (data.kc >= 0)
+			{
+				tip.setInfoLine("KC: ", ClogHelper.formatKc(data.kc), Color.WHITE);
+				if (data.pb != null)
+				{
+					tip.setInfoLinePair("PB: ", data.pb, Color.WHITE);
+				}
+			}
+			else if (data.pb != null)
+			{
+				tip.setInfoLine("PB: ", data.pb, Color.WHITE);
+			}
 			if (data.rankTracked && data.rank > 0)
 			{
 				tip.setRank(data.rank);
