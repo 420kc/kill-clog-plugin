@@ -289,6 +289,10 @@ public class KillClogPlugin extends Plugin
 	{
 		chatEmoji.rewrite(event);
 
+		// !kc <item name> provenance reveal. Boss arguments stay with the
+		// built-in plugin's own "!kc" registration; the handler ignores them.
+		kclogCommand.handleKcItem(event, clogIndex, localClogCache);
+
 		// Kill-count messages land the same tick as the clog unlock they
 		// caused; remembering the freshest one lets the unlock carry its
 		// "obtained at N kc" provenance. SPAM covers filtered game messages.

@@ -38,9 +38,6 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		int totalKills;
 		int bossesKc;
 		int totalBosses;
-		int slayerLevel = -1;
-		long slayerXp = -1;
-		int slayerRank = -1;
 		int slayerObt = -1;
 		int slayerTotal;
 		String mostKilled;
@@ -207,21 +204,18 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		loadWeapons(red.weaponCounts, red.weaponSprites, tbow, scythe, shadow, itemManager);
 	}
 
-	public void setBlueSlayer(HiscoreResult hs, ClogResult clog)
+	public void setBlueSlayer(ClogResult clog)
 	{
-		setSlayer(blue, hs, clog);
+		setSlayer(blue, clog);
 	}
 
-	public void setRedSlayer(HiscoreResult hs, ClogResult clog)
+	public void setRedSlayer(ClogResult clog)
 	{
-		setSlayer(red, hs, clog);
+		setSlayer(red, clog);
 	}
 
-	private static void setSlayer(Side side, HiscoreResult hs, ClogResult clog)
+	private static void setSlayer(Side side, ClogResult clog)
 	{
-		side.slayerLevel = hs != null ? hs.getSkillLevel(PanelData.SLAYER_CATEGORY) : -1;
-		side.slayerXp = hs != null ? hs.getSkillXp(PanelData.SLAYER_CATEGORY) : -1;
-		side.slayerRank = hs != null ? hs.getSkillRank(PanelData.SLAYER_CATEGORY) : -1;
 		side.slayerObt = -1;
 		side.slayerTotal = 0;
 		int[] slayer = ClogHelper.clogCounts(PanelData.SLAYER_CATEGORY, clog);
@@ -299,10 +293,8 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		w = Math.max(w, widestValue(fm, scores, TitleTooltip::scoreText));
 		w = Math.max(w, fm.stringWidth(ehbText(blue.ehb)));
 		w = Math.max(w, fm.stringWidth(ehbText(red.ehb)));
-		w = Math.max(w, fm.stringWidth(slayerText(blue.slayerLevel, blue.slayerXp,
-			blue.slayerRank, blue.slayerObt, blue.slayerTotal)));
-		w = Math.max(w, fm.stringWidth(slayerText(red.slayerLevel, red.slayerXp,
-			red.slayerRank, red.slayerObt, red.slayerTotal)));
+		w = Math.max(w, fm.stringWidth(slayerValueText(blue.slayerObt, blue.slayerTotal)));
+		w = Math.max(w, fm.stringWidth(slayerValueText(red.slayerObt, red.slayerTotal)));
 		w = Math.max(w, fm.stringWidth(bossesText(blue.bossesKc, blue.totalBosses)));
 		w = Math.max(w, fm.stringWidth(bossesText(red.bossesKc, red.totalBosses)));
 		w = Math.max(w, fm.stringWidth(logsText(blue.bossesCompleted, blue.bossesWithClog)));
@@ -549,10 +541,8 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 	{
 		g2.setColor(OSRS_ORANGE);
 		g2.drawString(slayerLabelText(), labelX, y + fm.getAscent());
-		paintSlayerValue(g2, fm, blueX, y, blue.slayerLevel, blue.slayerXp,
-			blue.slayerRank, blue.slayerObt, blue.slayerTotal, COMPARE_BLUE);
-		paintSlayerValue(g2, fm, redX, y, red.slayerLevel, red.slayerXp,
-			red.slayerRank, red.slayerObt, red.slayerTotal, COMPARE_RED);
+		paintSlayerValue(g2, fm, blueX, y, blue.slayerObt, blue.slayerTotal, COMPARE_BLUE);
+		paintSlayerValue(g2, fm, redX, y, red.slayerObt, red.slayerTotal, COMPARE_RED);
 	}
 
 	private String slayerLabelText()
@@ -561,20 +551,30 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 	}
 
 	private void paintSlayerValue(Graphics2D g2, FontMetrics fm, int x, int y,
-		int level, long xp, int rank, int obtained, int total, Color playerColor)
+		int obtained, int total, Color playerColor)
 	{
 		int textY = y + fm.getAscent();
-		String base = PvmSummaryTooltip.slayerBaseText(level, xp, rank, obtained);
 		if (obtained >= 0)
 		{
-			String progress = progressCountText(obtained, total);
 			g2.setColor(completionColor(obtained, total));
-			g2.drawString(progress, x, textY);
-			return;
 		}
+		else
+		{
+			g2.setColor(dim(playerColor));
+		}
+		g2.drawString(slayerValueText(obtained, total), x, textY);
+	}
 
-		g2.setColor("--".equals(base) ? dim(playerColor) : Color.WHITE);
-		g2.drawString(base, x, textY);
+	// An unsynced side shows dashes over the catalog total the synced side
+	// carries, so both columns read as clog progress under one label.
+	private String slayerValueText(int obtained, int total)
+	{
+		if (obtained >= 0)
+		{
+			return progressCountText(obtained, total);
+		}
+		int knownTotal = Math.max(blue.slayerTotal, red.slayerTotal);
+		return knownTotal > 0 ? "--/" + knownTotal : "--";
 	}
 
 	private void paintCaValue(Graphics2D g2, FontMetrics fm, int x, int y,
@@ -628,16 +628,6 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 	private static String bossesText(int kc, int total)
 	{
 		return kc + "/" + total;
-	}
-
-	private static String slayerText(int level, long xp, int rank, int obtained, int total)
-	{
-		String text = PvmSummaryTooltip.slayerBaseText(level, xp, rank, obtained);
-		if (obtained >= 0)
-		{
-			return progressCountText(obtained, total);
-		}
-		return text;
 	}
 
 	private static String logsText(int completed, int withClog)

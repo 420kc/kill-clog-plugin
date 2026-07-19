@@ -469,21 +469,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 		return scoreText(totalKills);
 	}
 
-	/** Level when clog progress is known, XP and rank fallback when unsynced. */
-	static String slayerBaseText(int level, long xp, int rank, int obtained)
-	{
-		if (obtained >= 0)
-		{
-			return level > 0 ? String.valueOf(level) : "--";
-		}
-		String xpText = SkillsTooltip.skillXpText(xp);
-		if (!"--".equals(xpText))
-		{
-			return "XP: " + xpText + (rank > 0 ? rankTailText(rank) : "");
-		}
-		return level > 0 ? String.valueOf(level) : "--";
-	}
-
 	private String bossesValue()
 	{
 		return bossesWithKc + "/" + totalBosses;

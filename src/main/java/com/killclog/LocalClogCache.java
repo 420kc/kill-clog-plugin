@@ -220,10 +220,9 @@ public class LocalClogCache
 				data.uniqueTotal = existing.uniqueTotal;
 			}
 		}
-		if (result.getLastChanged() != null)
-		{
-			data.lastChanged = result.getLastChanged();
-		}
+		// Upward-only, like the totals above: a provider snapshot must not
+		// drag the last-updated notice behind a live merge stamped moments ago.
+		bumpLastChanged(data, result.getLastChanged());
 		if (result.getProviderAccountType() != null)
 		{
 			data.providerAccountType = result.getProviderAccountType();
@@ -339,9 +338,13 @@ public class LocalClogCache
 				// missing while months-old provider dates still showed.
 				// Format matches the provider date strings so sorting and
 				// display stay uniform.
-				obtained.add(new ClogResult.ClogItem(itemId, 1, liveUnlockDate(),
+				String unlockDate = liveUnlockDate();
+				obtained.add(new ClogResult.ClogItem(itemId, 1, unlockDate,
 					obtainedAtKc, obtainedFrom));
 				data.obtained.put(categoryKey, obtained);
+				// The summary's last-updated notice reads lastChanged; a live
+				// unlock is exactly such a change.
+				bumpLastChanged(data, unlockDate);
 				changed = true;
 			}
 		}
@@ -369,6 +372,16 @@ public class LocalClogCache
 	private static String liveUnlockDate()
 	{
 		return LocalDateTime.now(ZoneOffset.UTC).format(LIVE_UNLOCK_DATE_FMT);
+	}
+
+	// Upward-only. Every date here shares the yyyy-MM-dd HH:mm:ss shape, so
+	// string order is chronological order.
+	private static void bumpLastChanged(PlayerClogData data, String date)
+	{
+		if (date != null && (data.lastChanged == null || date.compareTo(data.lastChanged) > 0))
+		{
+			data.lastChanged = date;
+		}
 	}
 
 	/**
@@ -407,6 +420,7 @@ public class LocalClogCache
 		}
 
 		boolean changed = false;
+		String newestApplied = null;
 		for (Map.Entry<String, List<ClogResult.ClogItem>> entry : data.obtained.entrySet())
 		{
 			List<ClogResult.ClogItem> items = new ArrayList<>(entry.getValue());
@@ -420,6 +434,10 @@ public class LocalClogCache
 					items.set(i, new ClogResult.ClogItem(item.getId(), item.getCount(), date,
 						item.getObtainedAtKc(), item.getObtainedFrom()));
 					listChanged = true;
+					if (newestApplied == null || date.compareTo(newestApplied) > 0)
+					{
+						newestApplied = date;
+					}
 				}
 			}
 			if (listChanged)
@@ -431,6 +449,9 @@ public class LocalClogCache
 
 		if (changed)
 		{
+			// A healed date can outrank the notice's current stamp; the shelf
+			// and the last-updated line must tell the same story.
+			bumpLastChanged(data, newestApplied);
 			data.lastUpdated = Instant.now().toString();
 			final PlayerClogData snapshot = shallowCopy(data);
 			submitDiskWrite(playerName, () -> saveToDisk(playerName, snapshot));
@@ -483,6 +504,36 @@ public class LocalClogCache
 			}
 		}
 		return false;
+	}
+
+	/**
+	 * The obtained item carrying obtained-at-kc provenance for this player, or
+	 * null when the item is unobtained or its kc was never captured. Provenance
+	 * is recorded from live unlocks on this client, so only accounts played
+	 * here can resolve.
+	 */
+	public ClogResult.ClogItem provenancedItem(String playerName, List<Integer> itemIds)
+	{
+		if (playerName == null || itemIds == null)
+		{
+			return null;
+		}
+		PlayerClogData data = players.get(cacheKey(playerName));
+		if (data == null || data.obtained == null)
+		{
+			return null;
+		}
+		for (List<ClogResult.ClogItem> obtained : data.obtained.values())
+		{
+			for (ClogResult.ClogItem item : obtained)
+			{
+				if (item.getObtainedAtKc() > 0 && itemIds.contains(item.getId()))
+				{
+					return item;
+				}
+			}
+		}
+		return null;
 	}
 
 	/**

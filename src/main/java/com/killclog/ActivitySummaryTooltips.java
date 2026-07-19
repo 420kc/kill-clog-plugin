@@ -66,8 +66,8 @@ final class ActivitySummaryTooltips
 				LookupQueries.accountType(blueHs, blueClog)));
 			cmp.setRedEhb(EhbRates.compute(redHs,
 				LookupQueries.accountType(redHs, redClog)));
-			cmp.setBlueSlayer(blueHs, blueClog);
-			cmp.setRedSlayer(redHs, redClog);
+			cmp.setBlueSlayer(blueClog);
+			cmp.setRedSlayer(redClog);
 
 			if (blueClog != null)
 			{

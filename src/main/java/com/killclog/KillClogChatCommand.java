@@ -4,6 +4,7 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -45,6 +46,16 @@ class KillClogChatCommand
 	static final String COMMAND_MISSING = "!missing";
 	static final String COMMAND_THIRD_AGE = "!3a";
 	static final String COMMAND_GILDED = "!gilded";
+	static final String COMMAND_KC = "!kc";
+
+	// The channels ChatCommandManager itself dispatches on; the !kc item path
+	// reads raw events, so it mirrors the same set.
+	private static final Set<ChatMessageType> PLAYER_CHAT_TYPES = EnumSet.of(
+		ChatMessageType.PUBLICCHAT, ChatMessageType.MODCHAT,
+		ChatMessageType.FRIENDSCHAT, ChatMessageType.PRIVATECHAT,
+		ChatMessageType.MODPRIVATECHAT, ChatMessageType.PRIVATECHATOUT,
+		ChatMessageType.CLAN_CHAT, ChatMessageType.CLAN_GUEST_CHAT,
+		ChatMessageType.CLAN_GIM_CHAT);
 
 	private static final int ICON_W = 18;
 	private static final int ICON_H = 16;
@@ -238,6 +249,52 @@ class KillClogChatCommand
 	void handleMissing(ChatMessage chatMessage, String message)
 	{
 		dispatch(chatMessage, message, true);
+	}
+
+	/**
+	 * !kc <item name>: reveals the kill count an obtained clog item arrived on,
+	 * e.g. "Elder venator fang received on 421 kc".
+	 *
+	 * Never registered with ChatCommandManager: the built-in ChatCommandsPlugin
+	 * owns the "!kc" trigger (the manager keeps one handler per command string),
+	 * and boss names are its argument space. Item names are ours, so
+	 * KillClogPlugin routes raw chat events here; boss arguments, unknown
+	 * items, and items without captured provenance all fall through untouched
+	 * and the vanilla boss lookup keeps working.
+	 *
+	 * Runs on the client thread (event subscriber path, not the command
+	 * manager's executor), so item compositions are safe to read directly.
+	 */
+	void handleKcItem(ChatMessage chatMessage, ClogIndex clogIndex, LocalClogCache localClogCache)
+	{
+		if (!PLAYER_CHAT_TYPES.contains(chatMessage.getType()))
+		{
+			return;
+		}
+		String message = chatMessage.getMessage();
+		if (!message.regionMatches(true, 0, COMMAND_KC + " ", 0, COMMAND_KC.length() + 1))
+		{
+			return;
+		}
+		String query = message.substring(COMMAND_KC.length() + 1).trim();
+		if (query.isEmpty() || !clogIndex.ensureParsed(client, itemManager))
+		{
+			return;
+		}
+		List<Integer> itemIds = clogIndex.itemIdsForName(ClogUnlockParser.normalizeItemName(query));
+		if (itemIds == null || itemIds.isEmpty())
+		{
+			return;
+		}
+
+		ClogResult.ClogItem item = localClogCache.provenancedItem(resolveTargetRsn(chatMessage), itemIds);
+		if (item == null)
+		{
+			return;
+		}
+		String itemName = itemManager.getItemComposition(item.getId()).getName();
+		replaceText(chatMessage,
+			itemName + " received on " + ClogHelper.formatKc(item.getObtainedAtKc()) + " kc");
 	}
 
 	/**
