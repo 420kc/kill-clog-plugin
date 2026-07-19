@@ -289,6 +289,18 @@ public class KillClogPlugin extends Plugin
 	{
 		chatEmoji.rewrite(event);
 
+		// Kill-count messages land the same tick as the clog unlock they
+		// caused; remembering the freshest one lets the unlock carry its
+		// "obtained at N kc" provenance. SPAM covers filtered game messages.
+		if (event.getType() == ChatMessageType.GAMEMESSAGE || event.getType() == ChatMessageType.SPAM)
+		{
+			ClogUnlockParser.KillContext kill = ClogUnlockParser.parseKillCount(event.getMessage());
+			if (kill != null)
+			{
+				liveClogSync.rememberKill(kill, client.getTickCount());
+			}
+		}
+
 		if (event.getType() == ChatMessageType.GAMEMESSAGE)
 		{
 			String unlockName = ClogUnlockParser.parseItemName(event.getMessage());

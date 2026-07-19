@@ -260,7 +260,7 @@ public class KillClogPanel extends PluginPanel
 		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, clogService);
 		this.activityTooltips = new ActivitySummaryTooltips(
 			lookupSession, comparison, cells, tooltipController, itemManager,
-			caRewardSprites, iconCache, () -> rsn, config::wikiItemLinks);
+			caRewardSprites, iconCache, this::comparisonBlueName, config::wikiItemLinks);
 		this.itemNameResolver = new TooltipItemNameResolver(clientThread, itemManager,
 			this::onTooltipItemNamesResolved);
 		this.cells.setUnsyncedCatalogResolver(itemNameResolver::resolve);
@@ -1018,6 +1018,21 @@ public class KillClogPanel extends PluginPanel
 		return rsn;
 	}
 
+	/**
+	 * The blue side of a comparison always has a name: the resolved rsn when
+	 * the lookup landed, else whatever the user searched. An unsynced player
+	 * must never render as "--" in identity rows; only their data goes absent.
+	 */
+	private String comparisonBlueName()
+	{
+		if (rsn != null)
+		{
+			return rsn;
+		}
+		String typed = playerName.getText();
+		return typed != null && !typed.trim().isEmpty() ? typed.trim() : "--";
+	}
+
 	public void onBulkCaptureComplete(String name)
 	{
 		searchBar.setText(name);
@@ -1194,7 +1209,7 @@ public class KillClogPanel extends PluginPanel
 		HiscoreResult redHs = comparison.getCompareHiscoreResult();
 		ClogResult blueClog = lookupSession.getClogResult();
 		ClogResult redClog = comparison.getCompareClogResult();
-		String blueName = rsn != null ? rsn : "--";
+		String blueName = comparisonBlueName();
 		String redName = comparison.getCompareRsn() != null ? comparison.getCompareRsn() : "--";
 		AccountDisplay blueDisplay = accountTypes.displayIdentity(blueHs, blueClog, blueName);
 		AccountDisplay redDisplay = accountTypes.displayIdentity(redHs, redClog, redName);
@@ -1234,7 +1249,7 @@ public class KillClogPanel extends PluginPanel
 		cmp.setWikiLinksEnabled(config.wikiItemLinks());
 		ClogResult blueClog = lookupSession.getClogResult();
 		ClogResult redClog = comparison.getCompareClogResult();
-		String blueName = rsn != null ? rsn : "--";
+		String blueName = comparisonBlueName();
 		String redName = comparison.getCompareRsn() != null ? comparison.getCompareRsn() : "--";
 		Map<String, BufferedImage> icons = iconCache.clogTierImages();
 

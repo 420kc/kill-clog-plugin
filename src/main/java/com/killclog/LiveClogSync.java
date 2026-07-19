@@ -12,7 +12,20 @@ import net.runelite.client.game.ItemManager;
 @Slf4j
 final class LiveClogSync
 {
+	// A kill message within this many ticks of the unlock message is treated
+	// as its cause; beyond it the unlock stays provenance-less rather than
+	// guessing (skilling clogs, chest opens, and pet drops have no kc).
+	private static final int KILL_CONTEXT_MAX_TICKS = 5;
+
 	private boolean needsFirstSyncWarned;
+	private ClogUnlockParser.KillContext lastKill;
+	private int lastKillTick = -1;
+
+	void rememberKill(ClogUnlockParser.KillContext kill, int tick)
+	{
+		lastKill = kill;
+		lastKillTick = tick;
+	}
 
 	void handleUnlock(String itemName, int broadcastObtained, int broadcastTotal,
 		Client client, ItemManager itemManager,
@@ -47,11 +60,20 @@ final class LiveClogSync
 			return;
 		}
 
+		// Attach the causing kill when one landed just before the unlock.
+		ClogUnlockParser.KillContext kill = null;
+		if (lastKill != null && lastKillTick >= 0
+			&& client.getTickCount() - lastKillTick <= KILL_CONTEXT_MAX_TICKS)
+		{
+			kill = lastKill;
+		}
+
 		boolean changed = false;
 		for (int itemId : missingItemIds)
 		{
 			changed |= localClogCache.mergeObtainedItem(playerName, itemId,
-				clogIndex.categoryKeysForItem(itemId), clogIndex.categoryItems());
+				clogIndex.categoryKeysForItem(itemId), clogIndex.categoryItems(),
+				kill != null ? kill.kc : 0, kill != null ? kill.boss : null);
 		}
 
 		// Upward-only here: the varp can lag the unlock message by a tick, and

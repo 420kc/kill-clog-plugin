@@ -151,8 +151,13 @@ public class ClogService
 			if (localClogCache.hasDataFor(playerName))
 			{
 				log.debug("Using local clog cache for active player: {}", playerName);
-				return fetchItemNames().thenApply(names ->
-					localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>()));
+				// Dates-only provider overlay before serving: heals undated
+				// cache entries (pre-dating live merges, or unlocks while the
+				// plugin was off) so the recents shelf stays current. TTL-gated
+				// and failure-proof; counts and membership stay chalice-owned.
+				return overlayProviderDates(playerName)
+					.thenCompose(ignored -> fetchItemNames().thenApply(names ->
+						localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>())));
 			}
 			// No local cache yet, so the panel shows the sync prompt.
 			return CompletableFuture.completedFuture(null);
@@ -262,6 +267,32 @@ public class ClogService
 	private static AccountType parseGameMode(String gameMode)
 	{
 		return AccountType.fromTempleGameMode(gameMode);
+	}
+
+	/**
+	 * Fetch the provider's dated view of the active player and stamp missing
+	 * dates onto the local cache. Shares the clog TTL so a self-search never
+	 * fans out; any provider failure resolves false and the lookup proceeds
+	 * on local data unchanged.
+	 */
+	private CompletableFuture<Boolean> overlayProviderDates(String playerName)
+	{
+		String ttlKey = "dates:" + playerName.toLowerCase();
+		Long lastFetch = clogFetchTimes.get(ttlKey);
+		if (lastFetch != null && System.currentTimeMillis() - lastFetch < CLOG_TTL_MS)
+		{
+			return CompletableFuture.completedFuture(false);
+		}
+		clogFetchTimes.put(ttlKey, System.currentTimeMillis());
+		String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
+		return fetchClog(encoded)
+			.thenApply(player -> player != null && player.obtainedItems != null
+				&& localClogCache.mergeProviderDates(playerName, player.obtainedItems))
+			.exceptionally(t ->
+			{
+				log.debug("Provider date overlay failed for '{}'", playerName, t);
+				return false;
+			});
 	}
 
 	private CompletableFuture<PlayerClogData> fetchClog(String encodedPlayer)

@@ -210,12 +210,25 @@ public class ClogResult
 		private final int id;
 		private final int count;
 		private final String date;
+		// Provenance captured at the live unlock moment, when the vanilla
+		// kill-count message landed just before the clog message. 0 / null
+		// mean unknown: provider data, chalice syncs, and pre-capture cache
+		// files never carry these.
+		private final int obtainedAtKc;
+		private final String obtainedFrom;
 
 		public ClogItem(int id, int count, String date)
+		{
+			this(id, count, date, 0, null);
+		}
+
+		public ClogItem(int id, int count, String date, int obtainedAtKc, String obtainedFrom)
 		{
 			this.id = id;
 			this.count = count;
 			this.date = date;
+			this.obtainedAtKc = obtainedAtKc;
+			this.obtainedFrom = obtainedFrom;
 		}
 
 		public int getId()
@@ -231,6 +244,16 @@ public class ClogResult
 		public String getDate()
 		{
 			return date;
+		}
+
+		public int getObtainedAtKc()
+		{
+			return obtainedAtKc;
+		}
+
+		public String getObtainedFrom()
+		{
+			return obtainedFrom;
 		}
 	}
 }

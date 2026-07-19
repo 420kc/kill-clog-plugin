@@ -53,6 +53,25 @@ public class ClogUnlockParserTest
 	}
 
 	@Test
+	public void testParsesKillCountMessages()
+	{
+		ClogUnlockParser.KillContext kc = ClogUnlockParser.parseKillCount(
+			"Your Maggot King kill count is: <col=ff0000>421</col>");
+		assertNotNull(kc);
+		assertEquals("Maggot King", kc.boss);
+		assertEquals(421, kc.kc);
+
+		ClogUnlockParser.KillContext raid = ClogUnlockParser.parseKillCount(
+			"Your completed <col=ff0000>Chambers of Xeric</col> count is: <col=ff0000>1,234</col>");
+		assertNotNull(raid);
+		assertEquals("Chambers of Xeric", raid.boss);
+		assertEquals(1234, raid.kc);
+
+		assertNull(ClogUnlockParser.parseKillCount(
+			"New item added to your collection log: Venator tooth"));
+	}
+
+	@Test
 	public void testIgnoresOtherClanBroadcasts()
 	{
 		assertNull(ClogUnlockParser.parseClanBroadcast(

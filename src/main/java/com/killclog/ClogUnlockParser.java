@@ -18,6 +18,50 @@ final class ClogUnlockParser
 	private static final Pattern CLAN_BROADCAST_UNLOCK = Pattern.compile(
 		"^(.+?) received a new collection log item: (.+?)(?: \\((\\d+)/(\\d+)\\))?$");
 
+	// Vanilla kill-count message, RuneLite's canonical shape: covers kill,
+	// harvest, lap, completion, success, and subdued variants with their
+	// color tags. Fires the same tick as a clog unlock from that kill, so a
+	// recent match supplies the "obtained at N kc" provenance.
+	private static final Pattern KILLCOUNT_MESSAGE = Pattern.compile(
+		"Your (?<pre>completion count for |subdued |completed )?(?:<col=[0-9a-f]{6}>)?(?<boss>.+?)(?:</col>)? "
+			+ "(?<post>(?:(?:kill|harvest|lap|completion|success|Total Ticket) )?(?:count )?)is: ?"
+			+ "<col=[0-9a-f]{6}>(?<kc>[0-9,]+)</col>");
+
+	static final class KillContext
+	{
+		final String boss;
+		final int kc;
+
+		KillContext(String boss, int kc)
+		{
+			this.boss = boss;
+			this.kc = kc;
+		}
+	}
+
+	static KillContext parseKillCount(String message)
+	{
+		if (message == null)
+		{
+			return null;
+		}
+		Matcher m = KILLCOUNT_MESSAGE.matcher(message);
+		if (!m.find())
+		{
+			return null;
+		}
+		try
+		{
+			int kc = Integer.parseInt(m.group("kc").replace(",", ""));
+			String boss = Text.removeTags(m.group("boss")).replace((char) 160, ' ').trim();
+			return boss.isEmpty() || kc <= 0 ? null : new KillContext(boss, kc);
+		}
+		catch (NumberFormatException ignored)
+		{
+			return null;
+		}
+	}
+
 	static final class BroadcastUnlock
 	{
 		final String playerName;

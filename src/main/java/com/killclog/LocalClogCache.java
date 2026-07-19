@@ -8,6 +8,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -276,6 +279,13 @@ public class LocalClogCache
 	public boolean mergeObtainedItem(String playerName, int itemId,
 		List<String> categoryKeys, Map<String, List<Integer>> categoryItems)
 	{
+		return mergeObtainedItem(playerName, itemId, categoryKeys, categoryItems, 0, null);
+	}
+
+	public boolean mergeObtainedItem(String playerName, int itemId,
+		List<String> categoryKeys, Map<String, List<Integer>> categoryItems,
+		int obtainedAtKc, String obtainedFrom)
+	{
 		if (playerName == null || categoryKeys == null || categoryItems == null)
 		{
 			return false;
@@ -324,7 +334,13 @@ public class LocalClogCache
 			}
 			if (!alreadyObtained)
 			{
-				obtained.add(new ClogResult.ClogItem(itemId, 1, null));
+				// Dated at the moment it happens: undated items are invisible
+				// to the recents shelf, which is how a fresh drop could go
+				// missing while months-old provider dates still showed.
+				// Format matches the provider date strings so sorting and
+				// display stay uniform.
+				obtained.add(new ClogResult.ClogItem(itemId, 1, liveUnlockDate(),
+					obtainedAtKc, obtainedFrom));
 				data.obtained.put(categoryKey, obtained);
 				changed = true;
 			}
@@ -343,6 +359,82 @@ public class LocalClogCache
 			final PlayerClogData snapshot = shallowCopy(data);
 			submitDiskWrite(playerName, () -> saveToDisk(playerName, snapshot));
 			log.debug("Merged live clog item {} for '{}'", itemId, playerName);
+		}
+		return changed;
+	}
+
+	private static final DateTimeFormatter LIVE_UNLOCK_DATE_FMT =
+		DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+	private static String liveUnlockDate()
+	{
+		return LocalDateTime.now(ZoneOffset.UTC).format(LIVE_UNLOCK_DATE_FMT);
+	}
+
+	/**
+	 * Overlay provider dates onto cached items that have none. Membership and
+	 * counts never change here: the chalice and live merges own those. This
+	 * heals the recents shelf for items merged before live-unlock dating
+	 * existed, or obtained while the plugin was off.
+	 */
+	public boolean mergeProviderDates(String playerName,
+		Map<String, List<ClogResult.ClogItem>> providerItems)
+	{
+		if (playerName == null || providerItems == null || providerItems.isEmpty())
+		{
+			return false;
+		}
+		PlayerClogData data = players.get(cacheKey(playerName));
+		if (data == null || data.obtained == null)
+		{
+			return false;
+		}
+
+		Map<Integer, String> providerDates = new HashMap<>();
+		for (List<ClogResult.ClogItem> items : providerItems.values())
+		{
+			for (ClogResult.ClogItem item : items)
+			{
+				if (item.getDate() != null)
+				{
+					providerDates.putIfAbsent(item.getId(), item.getDate());
+				}
+			}
+		}
+		if (providerDates.isEmpty())
+		{
+			return false;
+		}
+
+		boolean changed = false;
+		for (Map.Entry<String, List<ClogResult.ClogItem>> entry : data.obtained.entrySet())
+		{
+			List<ClogResult.ClogItem> items = new ArrayList<>(entry.getValue());
+			boolean listChanged = false;
+			for (int i = 0; i < items.size(); i++)
+			{
+				ClogResult.ClogItem item = items.get(i);
+				String date = item.getDate() == null ? providerDates.get(item.getId()) : null;
+				if (date != null)
+				{
+					items.set(i, new ClogResult.ClogItem(item.getId(), item.getCount(), date,
+						item.getObtainedAtKc(), item.getObtainedFrom()));
+					listChanged = true;
+				}
+			}
+			if (listChanged)
+			{
+				data.obtained.put(entry.getKey(), items);
+				changed = true;
+			}
+		}
+
+		if (changed)
+		{
+			data.lastUpdated = Instant.now().toString();
+			final PlayerClogData snapshot = shallowCopy(data);
+			submitDiskWrite(playerName, () -> saveToDisk(playerName, snapshot));
+			log.debug("Merged provider dates into local clog cache for '{}'", playerName);
 		}
 		return changed;
 	}
