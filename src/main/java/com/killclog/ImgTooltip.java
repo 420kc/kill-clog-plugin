@@ -129,6 +129,17 @@ public class ImgTooltip extends TitleTooltip
 
 		effectiveCols = gridColumnsForItemCount(gridCols, itemCount, spriteSize);
 
+		// A long title already pays for tooltip width; fill it with extra
+		// columns so the grid never floats between wide dead margins.
+		if (hasItems && availableWidth > 0)
+		{
+			int fitCols = (availableWidth + PADDING) / cellSize;
+			if (fitCols > effectiveCols)
+			{
+				effectiveCols = Math.min(fitCols, itemCount);
+			}
+		}
+
 		int rows = (itemCount + effectiveCols - 1) / effectiveCols;
 		int gridWidth = effectiveCols * cellSize - PADDING;
 		int gridHeight = rows * cellSize - PADDING;
