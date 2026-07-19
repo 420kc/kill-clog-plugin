@@ -160,7 +160,7 @@ public class LocalClogCache
 		old.shutdown();
 	}
 
-	public void setActivePlayer(String name)
+	public synchronized void setActivePlayer(String name)
 	{
 		if (name == null)
 		{
@@ -191,7 +191,7 @@ public class LocalClogCache
 			&& activePlayer.equalsIgnoreCase(name);
 	}
 
-	public void cacheResult(ClogResult result)
+	public synchronized void cacheResult(ClogResult result)
 	{
 		if (result == null || result.getPlayerName() == null)
 		{
@@ -251,7 +251,7 @@ public class LocalClogCache
 		log.debug("Cached clog data for '{}' ({} categories)", name, data.obtained.size());
 	}
 
-	public void mergeCategory(String playerName, String categoryKey,
+	public synchronized void mergeCategory(String playerName, String categoryKey,
 		List<Integer> allItems, List<ClogResult.ClogItem> obtained)
 	{
 		if (playerName == null)
@@ -321,7 +321,7 @@ public class LocalClogCache
 		return mergeObtainedItem(playerName, itemId, categoryKeys, categoryItems, 0, null);
 	}
 
-	public boolean mergeObtainedItem(String playerName, int itemId,
+	public synchronized boolean mergeObtainedItem(String playerName, int itemId,
 		List<String> categoryKeys, Map<String, List<Integer>> categoryItems,
 		int obtainedAtKc, String obtainedFrom)
 	{
@@ -430,7 +430,7 @@ public class LocalClogCache
 	 * heals the recents shelf for items merged before live-unlock dating
 	 * existed, or obtained while the plugin was off.
 	 */
-	public boolean mergeProviderDates(String playerName,
+	public synchronized boolean mergeProviderDates(String playerName,
 		Map<String, List<ClogResult.ClogItem>> providerItems)
 	{
 		if (playerName == null || providerItems == null || providerItems.isEmpty())
@@ -515,7 +515,7 @@ public class LocalClogCache
 		return false;
 	}
 
-	public boolean hasObtainedItem(String playerName, int itemId, List<String> categoryKeys)
+	public synchronized boolean hasObtainedItem(String playerName, int itemId, List<String> categoryKeys)
 	{
 		if (playerName == null || categoryKeys == null)
 		{
@@ -550,7 +550,7 @@ public class LocalClogCache
 	 * Store the fastest time read from a clog page header. The widget is the
 	 * only source of these, so a fresh read simply replaces the stored value.
 	 */
-	public void mergeFastestTime(String playerName, String categoryKey, String time)
+	public synchronized void mergeFastestTime(String playerName, String categoryKey, String time)
 	{
 		if (playerName == null || categoryKey == null || time == null || time.isEmpty())
 		{
@@ -582,7 +582,7 @@ public class LocalClogCache
 	 * is recorded from live unlocks on this client, so only accounts played
 	 * here can resolve.
 	 */
-	public ClogResult.ClogItem provenancedItem(String playerName, List<Integer> itemIds)
+	public synchronized ClogResult.ClogItem provenancedItem(String playerName, List<Integer> itemIds)
 	{
 		if (playerName == null || itemIds == null)
 		{
@@ -612,7 +612,7 @@ public class LocalClogCache
 	 * unique bump the merge just made. Chalice sync stays the downward
 	 * authority.
 	 */
-	public boolean updateTotalsUpward(String playerName, int obtained, int total)
+	public synchronized boolean updateTotalsUpward(String playerName, int obtained, int total)
 	{
 		PlayerClogData data = playerName != null ? players.get(cacheKey(playerName)) : null;
 		if (data == null)
@@ -632,7 +632,7 @@ public class LocalClogCache
 		return true;
 	}
 
-	public void updateTotals(String playerName, int obtained, int total)
+	public synchronized void updateTotals(String playerName, int obtained, int total)
 	{
 		if (playerName == null)
 		{
@@ -666,7 +666,7 @@ public class LocalClogCache
 		}
 	}
 
-	public boolean hasDataFor(String playerName)
+	public synchronized boolean hasDataFor(String playerName)
 	{
 		if (playerName == null)
 		{
@@ -691,7 +691,7 @@ public class LocalClogCache
 		return false;
 	}
 
-	public ClogResult toClogResult(String playerName, Map<Integer, String> itemNames)
+	public synchronized ClogResult toClogResult(String playerName, Map<Integer, String> itemNames)
 	{
 		if (playerName == null)
 		{

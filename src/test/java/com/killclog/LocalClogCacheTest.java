@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Delayed;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
@@ -211,6 +212,70 @@ public class LocalClogCacheTest
 		assertEquals("2026-07-19 10:00:00", survived.getDate());
 		assertEquals(421, survived.getObtainedAtKc());
 		assertEquals("Vorkath", survived.getObtainedFrom());
+	}
+
+	@Test
+	public void testOverlayRacingLiveUnlocksNeverDropsItems() throws Exception
+	{
+		// The provider-date overlay lands on an HTTP completion thread while
+		// live unlocks merge from the client thread. Serialized mutation must
+		// never let the overlay's copy/modify/put overwrite a concurrent merge.
+		for (int round = 0; round < 25; round++)
+		{
+			LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
+			List<Integer> all = new ArrayList<>();
+			for (int i = 1; i <= 260; i++)
+			{
+				all.add(i);
+			}
+			Map<String, List<Integer>> categories = new HashMap<>();
+			categories.put("vorkath", all);
+
+			// Seed 200 undated obtained items so the overlay pass has a wide
+			// copy/modify/put window of real work.
+			Map<String, List<ClogResult.ClogItem>> seeded = new HashMap<>();
+			List<ClogResult.ClogItem> seedItems = new ArrayList<>();
+			for (int i = 1; i <= 200; i++)
+			{
+				seedItems.add(new ClogResult.ClogItem(i, 1, null));
+			}
+			seeded.put("vorkath", seedItems);
+			cache.cacheResult(clog("Fast 07", categories, seeded));
+
+			Map<String, List<ClogResult.ClogItem>> providerDates = new HashMap<>();
+			List<ClogResult.ClogItem> dated = new ArrayList<>();
+			for (int i = 1; i <= 200; i++)
+			{
+				dated.add(new ClogResult.ClogItem(i, 1, "2026-07-19 10:00:00"));
+			}
+			providerDates.put("vorkath", dated);
+
+			CountDownLatch start = new CountDownLatch(1);
+			Thread overlay = new Thread(() ->
+			{
+				try
+				{
+					start.await();
+				}
+				catch (InterruptedException e)
+				{
+					Thread.currentThread().interrupt();
+					return;
+				}
+				cache.mergeProviderDates("Fast 07", providerDates);
+			});
+			overlay.start();
+			start.countDown();
+			for (int id = 201; id <= 260; id++)
+			{
+				cache.mergeObtainedItem("Fast 07", id, itemListAsStrings("vorkath"), categories, id, "Vorkath");
+			}
+			overlay.join();
+
+			List<ClogResult.ClogItem> after = cache.toClogResult("Fast 07", Collections.emptyMap())
+				.getObtainedItems().get("vorkath");
+			assertEquals("round " + round, 260, after.size());
+		}
 	}
 
 	private static ClogResult.ClogItem obtainedItem(LocalClogCache cache,
