@@ -8,6 +8,7 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import javax.inject.Inject;
@@ -293,8 +294,13 @@ class KillClogChatCommand
 			return;
 		}
 		String itemName = itemManager.getItemComposition(item.getId()).getName();
-		replaceText(chatMessage,
-			itemName + " received on " + ClogHelper.formatKc(item.getObtainedAtKc()) + " kc");
+		replaceText(chatMessage, kcReceivedText(itemName, item.getObtainedAtKc()));
+	}
+
+	/** Provenance is exact by definition: full grouped digits, never the k/m shorthand. */
+	/* package */ static String kcReceivedText(String itemName, int kc)
+	{
+		return itemName + " received on " + String.format(Locale.US, "%,d", kc) + " kc";
 	}
 
 	/**

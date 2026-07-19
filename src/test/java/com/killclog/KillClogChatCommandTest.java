@@ -9,6 +9,16 @@ import static org.junit.Assert.*;
 public class KillClogChatCommandTest
 {
 	@Test
+	public void testKcReceivedTextKeepsExactCounts()
+	{
+		assertEquals("Elder venator fang received on 421 kc",
+			KillClogChatCommand.kcReceivedText("Elder venator fang", 421));
+		// Provenance never rounds: no 12k/1m shorthand above 9,999.
+		assertEquals("Scurry received on 12,345 kc",
+			KillClogChatCommand.kcReceivedText("Scurry", 12345));
+	}
+
+	@Test
 	public void testCommandHeaderIncludesBossKc()
 	{
 		assertEquals("Vorkath: 420 kc, 2/14",

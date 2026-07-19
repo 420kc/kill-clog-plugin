@@ -238,7 +238,7 @@ public class LocalClogCache
 			: result.getObtainedItems().entrySet())
 		{
 			String cat = entry.getKey();
-			data.obtained.put(cat, new ArrayList<>(entry.getValue()));
+			data.obtained.put(cat, preserveItemMetadata(entry.getValue(), data.obtained.get(cat)));
 		}
 		for (Map.Entry<String, List<Integer>> entry : result.getCategoryItems().entrySet())
 		{
@@ -267,12 +267,52 @@ public class LocalClogCache
 		}
 
 		data.categories.put(categoryKey, new ArrayList<>(allItems));
-		data.obtained.put(categoryKey, new ArrayList<>(obtained));
+		data.obtained.put(categoryKey,
+			preserveItemMetadata(obtained, data.obtained.get(categoryKey)));
 
 		final PlayerClogData snapshot = shallowCopy(data);
 		submitDiskWrite(playerName, () -> saveToDisk(playerName, snapshot));
 		log.debug("Merged category '{}' for '{}': {}/{} obtained",
 			categoryKey, playerName, obtained.size(), allItems.size());
+	}
+
+	/**
+	 * Replace an obtained list while carrying forward per-item metadata the
+	 * incoming entries lack. Widget captures and provider results rebuild
+	 * items bare (no date, no obtained-at kc), and a resync must never cost
+	 * a drop its provenance. Incoming values win whenever present.
+	 */
+	private static List<ClogResult.ClogItem> preserveItemMetadata(
+		List<ClogResult.ClogItem> incoming, List<ClogResult.ClogItem> existing)
+	{
+		if (incoming == null)
+		{
+			return new ArrayList<>();
+		}
+		if (existing == null || existing.isEmpty())
+		{
+			return new ArrayList<>(incoming);
+		}
+		Map<Integer, ClogResult.ClogItem> priorById = new HashMap<>();
+		for (ClogResult.ClogItem item : existing)
+		{
+			priorById.putIfAbsent(item.getId(), item);
+		}
+		List<ClogResult.ClogItem> merged = new ArrayList<>(incoming.size());
+		for (ClogResult.ClogItem item : incoming)
+		{
+			ClogResult.ClogItem prior = priorById.get(item.getId());
+			if (prior == null)
+			{
+				merged.add(item);
+				continue;
+			}
+			String date = item.getDate() != null ? item.getDate() : prior.getDate();
+			int kc = item.getObtainedAtKc() > 0 ? item.getObtainedAtKc() : prior.getObtainedAtKc();
+			String from = item.getObtainedFrom() != null ? item.getObtainedFrom() : prior.getObtainedFrom();
+			merged.add(new ClogResult.ClogItem(item.getId(), item.getCount(), date, kc, from));
+		}
+		return merged;
 	}
 
 	public boolean mergeObtainedItem(String playerName, int itemId,
