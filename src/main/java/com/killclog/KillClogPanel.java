@@ -72,6 +72,22 @@ public class KillClogPanel extends PluginPanel
 		return iconCache.syncNoticeIcon();
 	}
 
+	/**
+	 * The stats row (combat, total level, pvp summary) takes the info color as
+	 * one unit, dashes included: a "--" left in another color next to k-colored
+	 * siblings reads as a broken cell, not an empty one.
+	 */
+	private void colorStatsRow()
+	{
+		Color infoColor = getInfoColor();
+		combatCell.setForeground(infoColor);
+		totalLvlCell.setForeground(infoColor);
+		if (cells.getPvpSummaryCell() != null)
+		{
+			cells.getPvpSummaryCell().setForeground(infoColor);
+		}
+	}
+
 	private final HiscoreService hiscoreService;
 	private final ClogService clogService;
 	private final KillClogConfig config;
@@ -656,16 +672,15 @@ public class KillClogPanel extends PluginPanel
 			if (combatLevel > 0)
 			{
 				combatCell.setText(ClogHelper.pad(String.valueOf(combatLevel)));
-				combatCell.setForeground(getInfoColor());
 			}
 			int totalLevel = swapHiscore.getTotalLevel();
 			if (totalLevel > 0)
 			{
 				totalLvlCell.setText(ClogHelper.pad(String.valueOf(totalLevel)));
-				totalLvlCell.setForeground(getInfoColor());
 				totalLvlCell.setToolTipText(" ");
 			}
 		}
+		colorStatsRow();
 		if (swapClog != null)
 		{
 			itemNameResolver.resolve(swapClog);
@@ -853,16 +868,15 @@ public class KillClogPanel extends PluginPanel
 		if (combatLevel > 0)
 		{
 			combatCell.setText(ClogHelper.pad(String.valueOf(combatLevel)));
-			combatCell.setForeground(getInfoColor());
 		}
 
 		int totalLevel = result.getTotalLevel();
 		if (totalLevel > 0)
 		{
 			totalLvlCell.setText(ClogHelper.pad(String.valueOf(totalLevel)));
-			totalLvlCell.setForeground(getInfoColor());
 			totalLvlCell.setToolTipText(" ");
 		}
+		colorStatsRow();
 
 		searchBar.setText("");
 		toggleHighlighter(config.completionistHighlighter());
@@ -968,23 +982,7 @@ public class KillClogPanel extends PluginPanel
 		Color infoColor = getInfoColor();
 		playerName.setForeground(infoColor);
 		clogInfoLabel.setForeground(infoColor);
-		if (lookupSession.getHiscoreResult().getCombatLevel() > 0)
-		{
-			combatCell.setForeground(infoColor);
-		}
-		if (lookupSession.getHiscoreResult().getTotalLevel() > 0)
-		{
-			totalLvlCell.setForeground(infoColor);
-		}
-		if (cells.getPvpSummaryCell() != null)
-		{
-			int bhTotal = Math.max(0, lookupSession.getHiscoreResult().getActivityScore("Bounty Hunter - Hunter"))
-				+ Math.max(0, lookupSession.getHiscoreResult().getActivityScore("Bounty Hunter - Rogue"));
-			if (bhTotal > 0)
-			{
-				cells.getPvpSummaryCell().setForeground(infoColor);
-			}
-		}
+		colorStatsRow();
 
 		cells.renderHiscore(lookupSession.getHiscoreResult(), fourTwentyMode);
 		if (lookupSession.getClogResult() != null)
