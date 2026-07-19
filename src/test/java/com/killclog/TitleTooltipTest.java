@@ -111,12 +111,12 @@ public class TitleTooltipTest
 	public void clueSummaryWidthUsesActualRankTail()
 	{
 		ClueSummaryTooltip unranked = new ClueSummaryTooltip();
-		unranked.setData(clueHiscore(Collections.emptyMap()));
+		unranked.setData(clueHiscore(Collections.emptyMap()), true);
 
 		Map<String, Integer> ranks = new HashMap<>();
 		ranks.put("Clue Scrolls (all)", 1_234_567);
 		ClueSummaryTooltip ranked = new ClueSummaryTooltip();
-		ranked.setData(clueHiscore(ranks));
+		ranked.setData(clueHiscore(ranks), true);
 
 		assertTrue(unranked.getPreferredSize().width < ranked.getPreferredSize().width);
 	}

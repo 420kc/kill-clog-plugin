@@ -40,7 +40,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 	private BufferedImage[] icons;
 
 	/** A null result renders the full tier ladder with "--" scores: the empty state. */
-	public void setData(HiscoreResult hiscoreResult)
+	public void setData(HiscoreResult hiscoreResult, boolean showRank)
 	{
 		setTitle("Clue Summary");
 		if (hiscoreResult == null)
@@ -58,8 +58,10 @@ public class ClueSummaryTooltip extends TitleTooltip
 		mimicKc = hiscoreResult.getKc("Mimic");
 		mimicRank = hiscoreResult.getRank("Mimic");
 
-		int allRank = ranks[0];
-		setRank(allRank);
+		if (showRank)
+		{
+			setRank(ranks[0]);
+		}
 	}
 
 	public void setIcons(BufferedImage[] icons)

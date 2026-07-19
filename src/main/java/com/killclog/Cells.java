@@ -64,6 +64,7 @@ public class Cells
 	private final LookupSession lookupSession;
 	private final ClogService clogService;
 	private final PersonalBests personalBests;
+	private final KillClogConfig config;
 	private final UnsyncedClogCatalog unsyncedCatalog;
 	@Nullable private SinglePlayerTooltipBuilder singlePlayerBuilder;
 
@@ -91,8 +92,9 @@ public class Cells
 	public Cells(SpriteManager spriteManager, ItemManager itemManager,
 		TooltipController tooltipController, ComparisonController comparison,
 		TooltipDataBuilder tooltipDataBuilder, LookupSession lookupSession,
-		ClogService clogService, PersonalBests personalBests)
+		ClogService clogService, PersonalBests personalBests, KillClogConfig config)
 	{
+		this.config = config;
 		this.spriteManager = spriteManager;
 		this.itemManager = itemManager;
 		this.tooltipController = tooltipController;
@@ -208,7 +210,7 @@ public class Cells
 					ClueSummaryTooltip tip = new ClueSummaryTooltip();
 					tip.setComponent(this);
 					tip.setIcons(clueIcons);
-					tip.setData(lookupSession.getHiscoreResult());
+					tip.setData(lookupSession.getHiscoreResult(), config.showTooltipRank());
 					JPanel parentCell = (JPanel) this.getParent();
 					tooltipController.keepTooltipOnHover(tip, parentCell);
 					return tip;
