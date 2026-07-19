@@ -198,7 +198,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		int superiorRowWidth = 2 * WEAPON_SIZE + WEAPON_PAD;
 
 		// Slayer section.
-		int slayerHeight = SUBHEADER_HEIGHT + LINE_HEIGHT
+		int slayerHeight = SUBHEADER_HEIGHT + LINE_HEIGHT * slayerRowCount()
 			+ WEAPON_PAD + WEAPON_SIZE;
 
 		// Raids section.
@@ -210,7 +210,13 @@ public class PvmSummaryTooltip extends TitleTooltip
 		textWidth = Math.max(textWidth, fm.stringWidth("Combat: " + combatValue()));
 		textWidth = Math.max(textWidth, fm.stringWidth("Total Kills: " + totalKillsValue()));
 		textWidth = Math.max(textWidth, fm.stringWidth("EHB: " + ehbText(ehb)));
-		textWidth = Math.max(textWidth, fm.stringWidth(slayerLineText()));
+		textWidth = Math.max(textWidth, fm.stringWidth("XP: " + SkillsTooltip.skillXpText(slayerXp)));
+		textWidth = Math.max(textWidth, fm.stringWidth("Rank: " + slayerRankValue()));
+		if (slayerObtained >= 0)
+		{
+			textWidth = Math.max(textWidth,
+				fm.stringWidth("Obtained: " + progressCountText(slayerObtained, slayerTotal)));
+		}
 		textWidth = Math.max(textWidth, fm.stringWidth("Bosses Killed: " + bossesValue()));
 		if (bossesCompleted >= 0)
 		{
@@ -324,7 +330,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		fm = g2.getFontMetrics();
 		paintSlayerLine(g2, fm, inset, y);
-		y += LINE_HEIGHT;
+		y += LINE_HEIGHT * slayerRowCount();
 		y += WEAPON_PAD;
 
 		g2.setFont(FontManager.getRunescapeSmallFont());
@@ -418,28 +424,39 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 	private void paintSlayerLine(Graphics2D g2, FontMetrics fm, int x, int y)
 	{
+		// Three rows: XP and Rank from the hiscores, then clog progress when
+		// a synced log is known.
 		int textY = y + fm.getAscent();
-		String label = slayerObtained >= 0 ? "Obtained: " : "Slayer: ";
 		g2.setColor(OSRS_ORANGE);
-		g2.drawString(label, x, textY);
-		int lx = x + fm.stringWidth(label);
+		g2.drawString("XP: ", x, textY);
+		g2.setColor(Color.WHITE);
+		g2.drawString(SkillsTooltip.skillXpText(slayerXp), x + fm.stringWidth("XP: "), textY);
 
-		String base = slayerBaseValue();
+		textY += LINE_HEIGHT;
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString("Rank: ", x, textY);
+		g2.setColor(Color.WHITE);
+		g2.drawString(slayerRankValue(), x + fm.stringWidth("Rank: "), textY);
+
 		if (slayerObtained >= 0)
 		{
-			String progress = progressCountText(slayerObtained, slayerTotal);
+			textY += LINE_HEIGHT;
+			g2.setColor(OSRS_ORANGE);
+			g2.drawString("Obtained: ", x, textY);
 			g2.setColor(completionColor(slayerObtained, slayerTotal));
-			g2.drawString(progress, lx, textY);
-			return;
+			g2.drawString(progressCountText(slayerObtained, slayerTotal),
+				x + fm.stringWidth("Obtained: "), textY);
 		}
-
-		g2.setColor(Color.WHITE);
-		g2.drawString(base, lx, textY);
 	}
 
-	private String slayerLineText()
+	private int slayerRowCount()
 	{
-		return (slayerObtained >= 0 ? "Obtained: " : "Slayer: ") + slayerValue();
+		return slayerObtained >= 0 ? 3 : 2;
+	}
+
+	private String slayerRankValue()
+	{
+		return slayerRank > 0 ? String.format(Locale.US, "%,d", slayerRank) : "--";
 	}
 
 	private String combatValue()
@@ -450,21 +467,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private String totalKillsValue()
 	{
 		return scoreText(totalKills);
-	}
-
-	private String slayerValue()
-	{
-		String value = slayerBaseValue();
-		if (slayerObtained >= 0)
-		{
-			return progressCountText(slayerObtained, slayerTotal);
-		}
-		return value;
-	}
-
-	private String slayerBaseValue()
-	{
-		return slayerBaseText(slayerLevel, slayerXp, slayerRank, slayerObtained);
 	}
 
 	/** Level when clog progress is known, XP and rank fallback when unsynced. */
