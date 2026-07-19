@@ -585,26 +585,27 @@ public class KillClogPanel extends PluginPanel
 		{
 			tip.setTitle(data.name);
 			tip.setObtained(data.obtainedCount, data.totalItems);
-			if (data.kc >= 0)
+			if (data.kc >= 0 && config.showTooltipKc())
 			{
 				tip.setInfoLine("KC: ", ClogHelper.formatKc(data.kc), Color.WHITE);
-				if (data.pb != null)
+				if (data.pb != null && config.showTooltipPb())
 				{
 					tip.setInfoLinePair("PB: ", data.pb, Color.WHITE);
 				}
 			}
-			else if (data.pb != null)
+			else if (data.pb != null && config.showTooltipPb())
 			{
 				tip.setInfoLine("PB: ", data.pb, Color.WHITE);
 			}
-			if (data.rankTracked && data.rank > 0)
+			if (data.rankTracked && data.rank > 0 && config.showTooltipRank())
 			{
 				tip.setRank(data.rank);
 			}
 			tip.setItems(data.totalItems, data.allItemIds, data.obtainedIds,
 				data.obtainedCounts, data.itemNames, itemManager);
 		}
-		else if (!ClogHelper.configureNotSynced(tip, data, itemManager))
+		else if (!ClogHelper.configureNotSynced(tip, data, itemManager,
+			config.showTooltipKc(), config.showTooltipRank()))
 		{
 			tip.setTitle(data != null ? data.name : name);
 			boolean isSelfNoCache = lookupSession.getHiscoreResult() != null && localRsn != null

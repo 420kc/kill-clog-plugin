@@ -40,7 +40,8 @@ final class ClogHelper
 	 * otherwise shows the muted "Obtained: --/Y" preview. Every category item
 	 * draws dimmed either way so wiki links remain explorable.
 	 */
-	static boolean configureNotSynced(ImgTooltip tip, TooltipData data, ItemManager itemManager)
+	static boolean configureNotSynced(ImgTooltip tip, TooltipData data, ItemManager itemManager,
+		boolean showKc, boolean showRank)
 	{
 		if (data == null || data.allItemIds == null || data.allItemIds.isEmpty())
 		{
@@ -49,11 +50,11 @@ final class ClogHelper
 		tip.setTitle(data.name);
 		if (data.statValue >= 0 || data.rank > 0)
 		{
-			if (data.statLabel != null)
+			if (data.statLabel != null && showKc)
 			{
 				tip.setInfoLine(data.statLabel, statText(data.statValue), Color.WHITE);
 			}
-			if (data.rankTracked)
+			if (data.rankTracked && showRank)
 			{
 				tip.setRank(data.rank);
 			}

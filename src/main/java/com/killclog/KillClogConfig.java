@@ -203,6 +203,51 @@ public interface KillClogConfig extends Config
 		return true;
 	}
 
+	// Tooltip header lines.
+
+	@ConfigSection(
+		name = "Tooltip Header",
+		description = "The kc, pb, and rank lines on collection-log tooltips",
+		position = 9
+	)
+	String tooltipHeaderSection = "tooltipHeader";
+
+	@ConfigItem(
+		keyName = "showTooltipKc",
+		name = "Show KC",
+		description = "Kill count line on boss tooltips",
+		section = tooltipHeaderSection,
+		position = 0
+	)
+	default boolean showTooltipKc()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "showTooltipPb",
+		name = "Show PB",
+		description = "Personal best beside the kc, where your client has one recorded",
+		section = tooltipHeaderSection,
+		position = 1
+	)
+	default boolean showTooltipPb()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "showTooltipRank",
+		name = "Show Rank",
+		description = "Hiscore rank line on boss, clue, and rare tooltips",
+		section = tooltipHeaderSection,
+		position = 2
+	)
+	default boolean showTooltipRank()
+	{
+		return true;
+	}
+
 	// Progress highlighter.
 
 	@ConfigSection(
