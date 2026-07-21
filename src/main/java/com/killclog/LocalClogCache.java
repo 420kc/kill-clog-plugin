@@ -424,6 +424,24 @@ public class LocalClogCache
 		}
 	}
 
+	/** Newest obtained-item date across all categories, or null when none carry one. */
+	/* package */ static String newestObtainedDate(Map<String, List<ClogResult.ClogItem>> obtained)
+	{
+		String newest = null;
+		for (List<ClogResult.ClogItem> items : obtained.values())
+		{
+			for (ClogResult.ClogItem item : items)
+			{
+				String date = item.getDate();
+				if (date != null && (newest == null || date.compareTo(newest) > 0))
+				{
+					newest = date;
+				}
+			}
+		}
+		return newest;
+	}
+
 	/**
 	 * Overlay provider dates onto cached items that have none. Membership and
 	 * counts never change here: the chalice and live merges own those. This
@@ -747,6 +765,10 @@ public class LocalClogCache
 				data.obtained = data.obtained != null
 					? new ConcurrentHashMap<>(data.obtained)
 					: new ConcurrentHashMap<>();
+				// Files written before live unlocks bumped lastChanged can hold
+				// items newer than the stamp; heal on load so the last-updated
+				// notice never trails the shelf.
+				bumpLastChanged(data, newestObtainedDate(data.obtained));
 				return data;
 			}
 		}

@@ -278,6 +278,27 @@ public class LocalClogCacheTest
 		}
 	}
 
+	@Test
+	public void testNewestObtainedDateSkipsBareItems() throws Exception
+	{
+		// A file written before live unlocks bumped lastChanged carries items
+		// newer than its stamp; the load-time heal reads the newest dated item
+		// and must ignore undated ones entirely.
+		Map<String, List<ClogResult.ClogItem>> obtained = new HashMap<>();
+		List<ClogResult.ClogItem> slayer = new ArrayList<>();
+		slayer.add(new ClogResult.ClogItem(1, 1, "2026-07-12 17:18:29"));
+		slayer.add(new ClogResult.ClogItem(2, 1, "2026-07-17 02:02:05"));
+		obtained.put("slayer", slayer);
+		List<ClogResult.ClogItem> bare = new ArrayList<>();
+		bare.add(new ClogResult.ClogItem(3, 1, null));
+		obtained.put("brutus", bare);
+
+		assertEquals("2026-07-17 02:02:05", LocalClogCache.newestObtainedDate(obtained));
+		assertNull(LocalClogCache.newestObtainedDate(new HashMap<>()));
+		assertNull(LocalClogCache.newestObtainedDate(
+			Collections.singletonMap("brutus", bare)));
+	}
+
 	private static ClogResult.ClogItem obtainedItem(LocalClogCache cache,
 		String playerName, String category, int itemId)
 	{
