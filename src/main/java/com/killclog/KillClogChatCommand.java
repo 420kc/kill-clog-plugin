@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
@@ -70,6 +71,15 @@ class KillClogChatCommand
 	// itemId -> absolute index into client.getModIcons(). Persists for the plugin's lifetime;
 	// cleared in clear() on shutdown so a disable/enable cycle re-registers cleanly.
 	private final Map<Integer, Integer> itemIconIdx = new HashMap<>();
+
+	// Plugin-owned (not injected): set at startup like the panel's reference.
+	// Backs the new-content catalog fallback in dispatch.
+	@Nullable private ClogIndex clogIndex;
+
+	void setClogIndex(@Nullable ClogIndex clogIndex)
+	{
+		this.clogIndex = clogIndex;
+	}
 
 	private static final Map<String, String> ALIASES = buildAliases();
 
@@ -359,7 +369,11 @@ class KillClogChatCommand
 
 		String categoryKey = ClogService.bossToCategory(boss);
 		final List<ClogResult.ClogItem> obtainedList = cl.getObtainedItems().getOrDefault(categoryKey, Collections.emptyList());
-		final List<Integer> totalList = cl.getCategoryItems().getOrDefault(categoryKey, Collections.emptyList());
+		ClogIndex index = clogIndex;
+		final List<Integer> totalList = totalsWithCatalogFallback(
+			cl.getCategoryItems().getOrDefault(categoryKey, Collections.emptyList()),
+			index != null && index.isParsed() ? index.categoryItems() : null,
+			categoryKey);
 
 		if (totalList.isEmpty())
 		{
@@ -470,6 +484,23 @@ class KillClogChatCommand
 			log.debug("hiscore lookup failed for chat command {}", rsn, e);
 			return -1;
 		}
+	}
+
+	/**
+	 * Total-slot list for a category: the cached or provider list when it has
+	 * entries, else the parsed in-game catalog's. A cache bulk-synced before a
+	 * category existed simply lacks it, and providers lag new pages the same
+	 * way, but the running game build always knows the page. Obtained counts
+	 * are untouched: they stay whatever was captured.
+	 */
+	/* package */ static List<Integer> totalsWithCatalogFallback(List<Integer> cached,
+		@Nullable Map<String, List<Integer>> catalog, String categoryKey)
+	{
+		if (!cached.isEmpty() || catalog == null)
+		{
+			return cached;
+		}
+		return catalog.getOrDefault(categoryKey, cached);
 	}
 
 	static String buildCommandHeader(String boss, int bossKc, int count, int total, boolean missingMode)

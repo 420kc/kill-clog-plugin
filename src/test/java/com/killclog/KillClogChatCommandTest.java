@@ -1,7 +1,11 @@
 package com.killclog;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.junit.Test;
 import static org.junit.Assert.*;
@@ -43,6 +47,27 @@ public class KillClogChatCommandTest
 			KillClogChatCommand.buildCompleteHeader("Vorkath", 420));
 		assertEquals("Vorkath: complete",
 			KillClogChatCommand.buildCompleteHeader("Vorkath", -1));
+	}
+
+	@Test
+	public void testTotalsFallBackToCatalogForUnknownCategories()
+	{
+		// A cache bulk-synced before a page existed has no entry for it, so
+		// the command used to answer "no clog items found" for real content.
+		// The in-game catalog fills the total; captured entries always win.
+		Map<String, List<Integer>> catalog = new HashMap<>();
+		catalog.put("maggotking", Arrays.asList(1, 2, 3));
+
+		assertEquals(Arrays.asList(1, 2, 3), KillClogChatCommand.totalsWithCatalogFallback(
+			Collections.emptyList(), catalog, "maggotking"));
+		assertEquals(Arrays.asList(9), KillClogChatCommand.totalsWithCatalogFallback(
+			Arrays.asList(9), catalog, "maggotking"));
+		// No parsed catalog or a category it also lacks keeps the empty list,
+		// which still renders "no clog items found".
+		assertEquals(Collections.emptyList(), KillClogChatCommand.totalsWithCatalogFallback(
+			Collections.emptyList(), null, "maggotking"));
+		assertEquals(Collections.emptyList(), KillClogChatCommand.totalsWithCatalogFallback(
+			Collections.emptyList(), catalog, "vorkath"));
 	}
 
 	@Test

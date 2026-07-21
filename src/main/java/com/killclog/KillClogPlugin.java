@@ -151,6 +151,7 @@ public class KillClogPlugin extends Plugin
 
 		lookupMenu.start(config, menuManager);
 
+		kclogCommand.setClogIndex(clogIndex);
 		chatCommandManager.registerCommandAsync(KillClogChatCommand.COMMAND, kclogCommand::handle);
 		chatCommandManager.registerCommandAsync(KillClogChatCommand.COMMAND_MISSING, kclogCommand::handleMissing);
 		chatCommandManager.registerCommandAsync(KillClogChatCommand.COMMAND_THIRD_AGE, kclogCommand::handleThirdAge);
