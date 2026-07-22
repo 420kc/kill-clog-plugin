@@ -15,3 +15,5 @@ Kill Clog 1.6.4
 * pvp summary and empty cells follow configured palette
 * long tooltip title spacing fix
 * kc, pb, and rank tooltip lines each get a settings switch, all on by default
+* !kclog resolves brand new bosses before a sync has seen them, starting with Maggot King
+* combat achievement tiers follow the game's live thresholds, so a new CA batch counts from day one without waiting on syncs
