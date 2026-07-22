@@ -124,6 +124,7 @@ public class KillClogPlugin extends Plugin
 	private final LiveClogSync liveClogSync = new LiveClogSync();
 	private final ManualClogSync manualClogSync = new ManualClogSync();
 	private final LocalCaReader localCaReader = new LocalCaReader();
+	private final CaCatalog caCatalog = new CaCatalog();
 	private final ClogLookupMenu lookupMenu = new ClogLookupMenu();
 
 	@Provides
@@ -152,6 +153,8 @@ public class KillClogPlugin extends Plugin
 		lookupMenu.start(config, menuManager);
 
 		kclogCommand.setClogIndex(clogIndex);
+		localCaCache.setCaCatalog(caCatalog);
+		runeProfileService.setCaCatalog(caCatalog);
 		chatCommandManager.registerCommandAsync(KillClogChatCommand.COMMAND, kclogCommand::handle);
 		chatCommandManager.registerCommandAsync(KillClogChatCommand.COMMAND_MISSING, kclogCommand::handleMissing);
 		chatCommandManager.registerCommandAsync(KillClogChatCommand.COMMAND_THIRD_AGE, kclogCommand::handleThirdAge);
@@ -184,6 +187,9 @@ public class KillClogPlugin extends Plugin
 		localCaCache.shutdown();
 		manualClogSync.reset();
 		clogIndex.clear();
+		localCaCache.setCaCatalog(null);
+		runeProfileService.setCaCatalog(null);
+		caCatalog.clear();
 		sessionState.reset();
 		liveClogSync.resetFirstSyncWarning();
 		nameAutocompleter.clearClientSnapshot();
@@ -215,6 +221,7 @@ public class KillClogPlugin extends Plugin
 		nameAutocompleter.refreshClientSnapshot();
 		GimBadgeLoader.load(client);
 		clogIndex.ensureParsed(client, itemManager);
+		caCatalog.capture(client);
 		sessionState.requestAutoLookup(config.autoLookupOnLogin());
 		lookupMenu.warnIfPlayerMenuSlotUnavailable(client, config, chatNotifier);
 		reconcileClogTotalsFromVarps();
@@ -359,11 +366,13 @@ public class KillClogPlugin extends Plugin
 			panel::onBulkCaptureComplete);
 	}
 
-	// Keep local CA current when a task completes mid-session.
+	// Keep local CA current when a task completes mid-session, and the live
+	// catalog current when the game moves a tier threshold (a CA release).
 	@Subscribe
 	public void onVarbitChanged(VarbitChanged event)
 	{
-		if (localCaReader.isCaVarbit(event.getVarbitId()))
+		if (localCaReader.isCaVarbit(event.getVarbitId())
+			|| CaCatalog.isThresholdVarbit(event.getVarbitId()))
 		{
 			sessionState.requestCaRead();
 		}
@@ -377,6 +386,7 @@ public class KillClogPlugin extends Plugin
 	/** Read per-tier CA completed counts from game varbits and persist them for the active player. */
 	private boolean captureLocalCa()
 	{
+		caCatalog.capture(client);
 		return localCaReader.capture(client, localCaCache);
 	}
 

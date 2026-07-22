@@ -15,6 +15,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
@@ -42,10 +43,18 @@ public class LocalCaCache
 	private volatile String activePlayer;
 	private volatile ExecutorService diskWriter = newDiskWriter();
 
+	// Plugin-owned live catalog, set at startup like the panel's ClogIndex.
+	@Nullable private volatile CaCatalog caCatalog;
+
 	@Inject
 	public LocalCaCache(Gson gson)
 	{
 		this.gson = gson;
+	}
+
+	public void setCaCatalog(@Nullable CaCatalog caCatalog)
+	{
+		this.caCatalog = caCatalog;
 	}
 
 	private static ExecutorService newDiskWriter()
@@ -185,7 +194,9 @@ public class LocalCaCache
 		{
 			totals.put(tier, tier.totalTasks());
 		}
-		return CombatAchievementResult.of(completed, totals);
+		CaCatalog catalog = caCatalog;
+		return CombatAchievementResult.of(completed, totals,
+			catalog != null ? catalog.totals() : null);
 	}
 
 	// Disk I/O, always on the diskWriter thread.

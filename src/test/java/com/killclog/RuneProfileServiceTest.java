@@ -3,6 +3,7 @@ package com.killclog;
 import com.google.gson.Gson;
 import java.lang.reflect.Field;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.Before;
@@ -73,6 +74,36 @@ public class RuneProfileServiceTest
 		longCache("summaryNotFoundTimes").put("cached", System.currentTimeMillis());
 
 		assertSame(ca, service.lookup("cached").join());
+	}
+
+	@Test
+	public void testCachedSummaryHealsAgainstLiveCatalog() throws Exception
+	{
+		// The release-day cache hole: a Grandmaster verdict computed before
+		// the catalog captured sits in the summary cache for its TTL. Reads
+		// must rebase it against the current catalog with no new HTTP
+		// response (the null http client here would fail any request).
+		Map<CombatAchievementTier, Integer> full = new EnumMap<>(CombatAchievementTier.class);
+		for (CombatAchievementTier tier : CombatAchievementTier.values())
+		{
+			full.put(tier, tier.totalTasks());
+		}
+		CombatAchievementResult stale = CombatAchievementResult.of(full, full);
+		assertEquals(CombatAchievementTier.GRANDMASTER, stale.getTier());
+
+		summaryCache().put("cbc",
+			new RuneProfileService.RuneProfileSummary(AccountType.GROUP_IRONMAN, stale));
+		longCache("summaryFetchTimes").put("cbc", System.currentTimeMillis());
+
+		Map<CombatAchievementTier, Integer> expanded = new EnumMap<>(full);
+		expanded.put(CombatAchievementTier.GRANDMASTER,
+			full.get(CombatAchievementTier.GRANDMASTER) + 8);
+		service.setCaCatalog(CaCatalog.withTotals(expanded));
+
+		CombatAchievementResult healed = service.lookup("cbc").join();
+		assertEquals(CombatAchievementTier.MASTER, healed.getTier());
+		assertFalse(healed.isAllComplete());
+		assertEquals(CombatAchievementTier.MASTER, service.getCached("cbc").getTier());
 	}
 
 	@Test

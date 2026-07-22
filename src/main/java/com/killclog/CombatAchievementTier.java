@@ -1,39 +1,40 @@
 package com.killclog;
 
+import java.util.EnumMap;
+import java.util.Map;
+
 /**
- * Combat Achievement tiers, thresholds, and PvM Summary reward sprites.
+ * Combat Achievement tiers and PvM Summary reward sprites.
  *
  * <p>Easy through Master unlock by points. Grandmaster requires every task in
- * every tier to be complete.
+ * every tier to be complete. Thresholds are never stored: each tier's
+ * threshold is the total points of all tasks in it and below, so they derive
+ * from task counts. The task counts here are a fallback snapshot for cold
+ * starts; {@link CaCatalog} supplies the live counts from the running game
+ * build, which is what keeps tier math honest across a Combat Achievement
+ * release.
  */
 enum CombatAchievementTier
 {
-	EASY(1, 41, 41),
-	MEDIUM(2, 161, 60),
-	HARD(3, 416, 85),
-	ELITE(4, 1064, 162),
-	MASTER(5, 1904, 168),
-	GRANDMASTER(6, -1, 121);
+	EASY(1, 41),
+	MEDIUM(2, 60),
+	HARD(3, 85),
+	ELITE(4, 162),
+	MASTER(5, 168),
+	GRANDMASTER(6, 121);
 
 	private final int pointsPerTask;
-	private final int unlockThreshold;
 	private final int totalTasks;
 
-	CombatAchievementTier(int pointsPerTask, int unlockThreshold, int totalTasks)
+	CombatAchievementTier(int pointsPerTask, int totalTasks)
 	{
 		this.pointsPerTask = pointsPerTask;
-		this.unlockThreshold = unlockThreshold;
 		this.totalTasks = totalTasks;
 	}
 
 	int pointsPerTask()
 	{
 		return pointsPerTask;
-	}
-
-	int unlockThreshold()
-	{
-		return unlockThreshold;
 	}
 
 	int totalTasks()
@@ -80,17 +81,30 @@ enum CombatAchievementTier
 		return null;
 	}
 
-	/** Highest points-unlocked tier. Grandmaster is checked from completed tasks. */
+	/** Highest points-unlocked tier against the fallback task counts. */
 	static CombatAchievementTier highestForPoints(int totalPoints)
 	{
+		return highestForPoints(totalPoints, fallbackTotals());
+	}
+
+	/**
+	 * Highest points-unlocked tier against the given task counts, with each
+	 * threshold derived as the cumulative points of that tier and below.
+	 * Grandmaster is completion-gated and never returned here.
+	 */
+	static CombatAchievementTier highestForPoints(int totalPoints,
+		Map<CombatAchievementTier, Integer> totals)
+	{
 		CombatAchievementTier unlocked = null;
+		int threshold = 0;
 		for (CombatAchievementTier tier : values())
 		{
 			if (tier == GRANDMASTER)
 			{
 				continue;
 			}
-			if (totalPoints >= tier.unlockThreshold)
+			threshold += totals.getOrDefault(tier, tier.totalTasks) * tier.pointsPerTask;
+			if (totalPoints >= threshold)
 			{
 				unlocked = tier;
 			}
@@ -98,20 +112,14 @@ enum CombatAchievementTier
 		return unlocked;
 	}
 
-	/**
-	 * Highest tier unlocked, considering both points and task completion.
-	 * Grandmaster requires every task in every tier to be completed.
-	 */
-	static CombatAchievementTier highestForResult(CombatAchievementResult result)
+	/** The fallback task counts as a map, for callers that merge with live data. */
+	static Map<CombatAchievementTier, Integer> fallbackTotals()
 	{
-		if (result == null)
+		Map<CombatAchievementTier, Integer> totals = new EnumMap<>(CombatAchievementTier.class);
+		for (CombatAchievementTier tier : values())
 		{
-			return null;
+			totals.put(tier, tier.totalTasks);
 		}
-		if (result.isAllComplete())
-		{
-			return GRANDMASTER;
-		}
-		return highestForPoints(result.getTotalPoints());
+		return totals;
 	}
 }

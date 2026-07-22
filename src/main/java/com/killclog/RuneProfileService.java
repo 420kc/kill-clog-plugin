@@ -68,6 +68,10 @@ public class RuneProfileService
 	private final Gson gson;
 	private final LocalCaCache localCaCache;
 
+	// Plugin-owned live catalog, set at startup. Read from HTTP threads; the
+	// catalog publishes complete immutable snapshots through a volatile field.
+	@Nullable private volatile CaCatalog caCatalog;
+
 	// Summary cache. Supplies CA tiers plus account metadata from one RuneProfile request.
 	private final Map<String, RuneProfileSummary> summaryCache = new ConcurrentHashMap<>();
 	private final Map<String, Long> summaryFetchTimes = new ConcurrentHashMap<>();
@@ -88,6 +92,11 @@ public class RuneProfileService
 		this.httpClient = httpClient;
 		this.gson = gson;
 		this.localCaCache = localCaCache;
+	}
+
+	public void setCaCatalog(@Nullable CaCatalog caCatalog)
+	{
+		this.caCatalog = caCatalog;
 	}
 
 	/** Clear transient failure cooldowns immediately (called on login); TTLs auto-expire otherwise. */
@@ -157,7 +166,23 @@ public class RuneProfileService
 			return null;
 		}
 		RuneProfileSummary cached = summaryCache.get(playerName.toLowerCase());
-		return cached != null ? cached.combatAchievements : null;
+		return cached != null ? rebased(cached.combatAchievements) : null;
+	}
+
+	/**
+	 * Cached results heal against the current catalog on read: a verdict
+	 * computed before a capture (or across a threshold change) must not serve
+	 * its old tier for the cache TTL.
+	 */
+	@Nullable
+	private CombatAchievementResult rebased(@Nullable CombatAchievementResult result)
+	{
+		CaCatalog catalog = caCatalog;
+		if (result == null || catalog == null)
+		{
+			return result;
+		}
+		return result.rebasedOn(catalog.totals());
 	}
 
 	/** Cached RuneProfile account type, or null when the summary is absent or stale. */
@@ -189,7 +214,7 @@ public class RuneProfileService
 		}
 
 		return lookupSummary(playerName).thenApply(summary ->
-			summary != null ? summary.combatAchievements : null);
+			summary != null ? rebased(summary.combatAchievements) : null);
 	}
 
 	private CompletableFuture<RuneProfileSummary> lookupSummary(String playerName)
@@ -330,7 +355,9 @@ public class RuneProfileService
 		{
 			return null;
 		}
-		return CombatAchievementResult.of(completed, total);
+		CaCatalog catalog = caCatalog;
+		return CombatAchievementResult.of(completed, total,
+			catalog != null ? catalog.totals() : null);
 	}
 
 	@Nullable

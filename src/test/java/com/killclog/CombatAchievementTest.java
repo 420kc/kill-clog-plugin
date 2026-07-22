@@ -122,6 +122,124 @@ public class CombatAchievementTest
 	}
 
 	@Test
+	public void testTierMathFollowsLiveCatalog()
+	{
+		// The release-day regression: a Grandmaster snapshot synced before a
+		// Combat Achievement batch must lose the tier against the game's new
+		// catalog, exactly as it does in the client, before the player
+		// re-syncs. Completed counts never revoke; only denominators move.
+		Map<CombatAchievementTier, Integer> completed = new EnumMap<>(CombatAchievementTier.class);
+		Map<CombatAchievementTier, Integer> total = new EnumMap<>(CombatAchievementTier.class);
+		for (CombatAchievementTier tier : CombatAchievementTier.values())
+		{
+			completed.put(tier, tier.totalTasks());
+			total.put(tier, tier.totalTasks());
+		}
+		Map<CombatAchievementTier, Integer> live = liveCatalogWithNewBatch();
+
+		CombatAchievementResult r = CombatAchievementResult.of(completed, total, live);
+		assertEquals(2630, r.getTotalPoints());
+		assertFalse(r.isAllComplete());
+		assertEquals(CombatAchievementTier.MASTER, r.getTier());
+		// Display denominators follow the live catalog, not the stale snapshot.
+		assertEquals(129, r.getTotal(CombatAchievementTier.GRANDMASTER));
+		assertEquals(121, r.getCompleted(CombatAchievementTier.GRANDMASTER));
+	}
+
+	@Test
+	public void testLiveCatalogCompletionReclaimsGrandmaster()
+	{
+		// A player who has finished the new batch is Grandmaster against the
+		// live catalog even while the provider still reports old totals.
+		Map<CombatAchievementTier, Integer> live = liveCatalogWithNewBatch();
+		Map<CombatAchievementTier, Integer> completed = new EnumMap<>(CombatAchievementTier.class);
+		Map<CombatAchievementTier, Integer> total = new EnumMap<>(CombatAchievementTier.class);
+		for (CombatAchievementTier tier : CombatAchievementTier.values())
+		{
+			completed.put(tier, live.get(tier));
+			total.put(tier, tier.totalTasks());
+		}
+
+		CombatAchievementResult r = CombatAchievementResult.of(completed, total, live);
+		assertTrue(r.isAllComplete());
+		assertEquals(CombatAchievementTier.GRANDMASTER, r.getTier());
+	}
+
+	@Test
+	public void testRebasedOnHealsStaleVerdicts()
+	{
+		// A result built before any catalog capture holds a fallback
+		// Grandmaster; rebasing against an expanded catalog demotes it with
+		// no refetch, and rebasing an already-current result is free.
+		Map<CombatAchievementTier, Integer> full = new EnumMap<>(CombatAchievementTier.class);
+		for (CombatAchievementTier tier : CombatAchievementTier.values())
+		{
+			full.put(tier, tier.totalTasks());
+		}
+		CombatAchievementResult stale = CombatAchievementResult.of(full, full);
+		assertEquals(CombatAchievementTier.GRANDMASTER, stale.getTier());
+
+		Map<CombatAchievementTier, Integer> live = liveCatalogWithNewBatch();
+		CombatAchievementResult healed = stale.rebasedOn(live);
+		assertEquals(CombatAchievementTier.MASTER, healed.getTier());
+		assertEquals(129, healed.getTotal(CombatAchievementTier.GRANDMASTER));
+		assertSame(healed, healed.rebasedOn(live));
+		assertSame(stale, stale.rebasedOn(null));
+	}
+
+	@Test
+	public void testDeriveTotalsFromThresholds()
+	{
+		// The historic thresholds encode the historic catalog exactly.
+		Map<CombatAchievementTier, Integer> thresholds = new EnumMap<>(CombatAchievementTier.class);
+		thresholds.put(CombatAchievementTier.EASY, 41);
+		thresholds.put(CombatAchievementTier.MEDIUM, 161);
+		thresholds.put(CombatAchievementTier.HARD, 416);
+		thresholds.put(CombatAchievementTier.ELITE, 1064);
+		thresholds.put(CombatAchievementTier.MASTER, 1904);
+		thresholds.put(CombatAchievementTier.GRANDMASTER, 2630);
+
+		Map<CombatAchievementTier, Integer> totals = CaCatalog.deriveTotals(thresholds);
+		assertNotNull(totals);
+		for (CombatAchievementTier tier : CombatAchievementTier.values())
+		{
+			assertEquals(tier.totalTasks(), (int) totals.get(tier));
+		}
+	}
+
+	@Test
+	public void testDeriveTotalsRejectsPartialReads()
+	{
+		// Pre-login zeros.
+		Map<CombatAchievementTier, Integer> zeros = new EnumMap<>(CombatAchievementTier.class);
+		for (CombatAchievementTier tier : CombatAchievementTier.values())
+		{
+			zeros.put(tier, 0);
+		}
+		assertNull(CaCatalog.deriveTotals(zeros));
+
+		// Non-monotonic thresholds.
+		Map<CombatAchievementTier, Integer> reversed = new EnumMap<>(CombatAchievementTier.class);
+		reversed.put(CombatAchievementTier.EASY, 161);
+		reversed.put(CombatAchievementTier.MEDIUM, 41);
+		reversed.put(CombatAchievementTier.HARD, 416);
+		reversed.put(CombatAchievementTier.ELITE, 1064);
+		reversed.put(CombatAchievementTier.MASTER, 1904);
+		reversed.put(CombatAchievementTier.GRANDMASTER, 2630);
+		assertNull(CaCatalog.deriveTotals(reversed));
+
+		// A step that does not divide by the tier's points per task.
+		Map<CombatAchievementTier, Integer> garbled = new EnumMap<>(CombatAchievementTier.class);
+		garbled.put(CombatAchievementTier.EASY, 41);
+		garbled.put(CombatAchievementTier.MEDIUM, 162);
+		garbled.put(CombatAchievementTier.HARD, 416);
+		garbled.put(CombatAchievementTier.ELITE, 1064);
+		garbled.put(CombatAchievementTier.MASTER, 1904);
+		garbled.put(CombatAchievementTier.GRANDMASTER, 2630);
+		assertNull(CaCatalog.deriveTotals(garbled));
+	}
+
+	@Test
 	public void testEmptyResult()
 	{
 		CombatAchievementResult r = CombatAchievementResult.of(null, null);
@@ -129,6 +247,19 @@ public class CombatAchievementTest
 		assertNull(r.getTier());
 		assertNull(r.getReward());
 		assertFalse(r.isAllComplete());
+	}
+
+	/** The fallback catalog plus an invented release batch across every tier. */
+	private static Map<CombatAchievementTier, Integer> liveCatalogWithNewBatch()
+	{
+		Map<CombatAchievementTier, Integer> live = new EnumMap<>(CombatAchievementTier.class);
+		live.put(CombatAchievementTier.EASY, 42);
+		live.put(CombatAchievementTier.MEDIUM, 61);
+		live.put(CombatAchievementTier.HARD, 87);
+		live.put(CombatAchievementTier.ELITE, 165);
+		live.put(CombatAchievementTier.MASTER, 171);
+		live.put(CombatAchievementTier.GRANDMASTER, 129);
+		return live;
 	}
 
 	@Test
