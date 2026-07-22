@@ -22,7 +22,7 @@ final class UnsyncedClogCatalog
 	@Nullable private ClogIndex clogIndex;
 	@Nullable private ClogResult indexCatalog;
 	@Nullable private ClogResult fallbackCatalog;
-	private int indexCategoryCount = -1;
+	@Nullable private Object builtFrom;
 
 	UnsyncedClogCatalog(ClogService clogService)
 	{
@@ -33,7 +33,7 @@ final class UnsyncedClogCatalog
 	{
 		this.clogIndex = clogIndex;
 		this.indexCatalog = null;
-		this.indexCategoryCount = -1;
+		this.builtFrom = null;
 	}
 
 	void setResolver(@Nullable Consumer<ClogResult> resolver)
@@ -60,23 +60,30 @@ final class UnsyncedClogCatalog
 	private ClogResult indexCatalog()
 	{
 		ClogIndex index = clogIndex;
-		if (index == null || !index.isParsed())
+		if (index == null || index.generation() == null)
 		{
 			return null;
 		}
 
-		int categoryCount = index.categoryCount();
-		if (indexCatalog == null || indexCategoryCount != categoryCount)
+		// The generation token names one parse. When it moves, copyCatalog()
+		// captures categories and item names atomically from a single parse
+		// (possibly newer than the token just read; the cache keys on the
+		// generation the copy actually came from, so it stays coherent).
+		if (indexCatalog == null || builtFrom != index.generation())
 		{
-			Map<String, List<Integer>> categories = index.copyCategoryItems();
+			ClogIndex.CatalogCopy copy = index.copyCatalog();
+			if (copy == null)
+			{
+				return null;
+			}
 			indexCatalog = new ClogResult(
 				CATALOG_NAME,
-				emptyObtained(categories),
-				categories,
-				index.copyItemNames(),
+				emptyObtained(copy.categoryItems),
+				copy.categoryItems,
+				copy.itemNames,
 				null,
 				null);
-			indexCategoryCount = categoryCount;
+			builtFrom = copy.generation;
 		}
 		return indexCatalog;
 	}

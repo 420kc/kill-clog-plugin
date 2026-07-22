@@ -14,14 +14,12 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JToolTip;
-import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.hiscore.HiscoreSkill;
@@ -33,9 +31,8 @@ import net.runelite.client.ui.ColorScheme;
  * visible widgets.
  *
  * <p>Threading mirrors {@link LookupSession}: lifecycle methods run on the
- * EDT; service futures bridge back via {@code SwingUtilities.invokeLater}
- * before firing listener callbacks. The {@code compareLookupVersion} counter
- * is volatile so its stale-result gate is observable across those threads.
+ * EDT, and the owned {@link LookupFanout} bridges service futures back to the
+ * EDT behind its version-stamped stale-result gate.
  */
 @Slf4j
 public class ComparisonController
@@ -124,11 +121,11 @@ public class ComparisonController
 	@Nullable private CombatAchievementResult compareCaResult;
 	@Nullable private String compareRsn;
 
-	/** Monotonic counter. Each {@link #doCompareLookup} increments; async callbacks compare against this to gate stale results. */
-	private volatile int compareLookupVersion = 0;
-
-	/** True while a compare service call has been fired and has not yet resolved (or been superseded). */
-	private volatile boolean compareLookupInFlight = false;
+	/**
+	 * Red-side transport: version stamps, EDT bridging, and timeout policy
+	 * shared with the primary side, in its own version space.
+	 */
+	private final LookupFanout fanout;
 
 	private final Map<HiscoreSkill, TooltipData> compareTooltipDataMap = new LinkedHashMap<>();
 
@@ -152,6 +149,7 @@ public class ComparisonController
 		this.tooltipDataBuilder = tooltipDataBuilder;
 		this.unsyncedCatalog = new UnsyncedClogCatalog(clogService);
 		this.listener = listener;
+		this.fanout = new LookupFanout(hiscoreService, clogService, runeProfileService);
 	}
 
 	/** Wire the panel-side hook target. Late-bound because the controller is built before the panel's labels exist. */
@@ -236,8 +234,7 @@ public class ComparisonController
 	public void exit()
 	{
 		comparisonMode = false;
-		compareLookupVersion++;
-		compareLookupInFlight = false;
+		fanout.invalidate();
 		compareHiscoreResult = null;
 		compareClogResult = null;
 		compareCaResult = null;
@@ -274,7 +271,7 @@ public class ComparisonController
 	public void doCompareLookup(String player, @Nullable String localRsn)
 	{
 		final String redPlayer = player.trim();
-		if (redPlayer.isEmpty() || compareLookupInFlight)
+		if (redPlayer.isEmpty() || fanout.isInFlight())
 		{
 			return;
 		}
@@ -284,9 +281,8 @@ public class ComparisonController
 			return;
 		}
 
-		compareLookupInFlight = true;
 		compareCaResult = null;
-		final int thisLookup = ++compareLookupVersion;
+		final int thisLookup = fanout.begin();
 		String blueName = renderTarget != null ? renderTarget.playerName().getText().trim() : "";
 		boolean blueIsSelf = localRsn != null && localRsn.equalsIgnoreCase(blueName);
 		boolean redIsSelf = localRsn != null && localRsn.equalsIgnoreCase(redPlayer);
@@ -302,7 +298,7 @@ public class ComparisonController
 			{
 				setCompareStatus(SearchMessages.COMPARE_MIRROR, COMPARE_DIM, blueName, redPlayer);
 			}
-			compareLookupInFlight = false;
+			fanout.settle();
 			compareHiscoreResult = lookupSession.getHiscoreResult();
 			compareClogResult = lookupSession.getClogResult();
 			compareCaResult = lookupSession.getCaResult();
@@ -329,92 +325,54 @@ public class ComparisonController
 		}
 
 		// CA lookup runs in parallel with hiscore+clog
-		runeProfileService.lookup(redPlayer).thenAccept(ca ->
-			SwingUtilities.invokeLater(() ->
-			{
-				if (thisLookup == compareLookupVersion)
-				{
-					compareCaResult = ca;
-					if (renderTarget != null)
-					{
-						renderTarget.preloadCaReward(ca);
-					}
-					if (comparisonMode && listener != null)
-					{
-						listener.onCompareDataReady();
-					}
-				}
-			})
-		).exceptionally(ex -> null);
-
-		hiscoreService.lookup(redPlayer, null).thenAccept(result ->
-			SwingUtilities.invokeLater(() ->
-			{
-				if (thisLookup != compareLookupVersion)
-				{
-					return;
-				}
-				compareLookupInFlight = false;
-
-				if (result == null)
-				{
-					setCompareStatus(SearchMessages.COMPARE_NOT_FOUND, COMPARE_RED, redPlayer, redPlayer);
-					listener.onCompareError(redPlayer, null);
-					return;
-				}
-
-				compareHiscoreResult = result;
-
-				// Fire both public clog providers in parallel with independent timeouts.
-				// Red-side self comparisons keep local widget data authoritative.
-				CompletableFuture<ClogResult> cTemple = clogService.lookup(redPlayer);
-				CompletableFuture<ClogResult> cRp = redIsSelf
-					? CompletableFuture.completedFuture(null)
-					: runeProfileService.lookupClog(redPlayer);
-
-				ClogProviderFanout.chooseFreshest(cTemple, cRp)
-				.thenAccept(clogRes ->
-					SwingUtilities.invokeLater(() ->
-					{
-						if (thisLookup != compareLookupVersion)
-						{
-							return;
-						}
-						compareClogResult = clogRes;
-						if (clogRes != null && renderTarget != null)
-						{
-							renderTarget.preloadClogItemNames(clogRes);
-						}
-						compareRsn = clogRes != null && clogRes.getPlayerName() != null
-							? clogRes.getPlayerName() : redPlayer;
-						enter();
-					})
-				).exceptionally(ex ->
-				{
-					SwingUtilities.invokeLater(() ->
-					{
-						if (thisLookup != compareLookupVersion)
-						{
-							return;
-						}
-						compareRsn = redPlayer;
-						enter();
-					});
-					return null;
-				});
-			})
-		).exceptionally(ex ->
+		fanout.fetchCa(redPlayer, thisLookup, ca ->
 		{
-			SwingUtilities.invokeLater(() ->
+			compareCaResult = ca;
+			if (renderTarget != null)
 			{
-				if (thisLookup != compareLookupVersion)
+				renderTarget.preloadCaReward(ca);
+			}
+			if (comparisonMode && listener != null)
+			{
+				listener.onCompareDataReady();
+			}
+		});
+
+		fanout.fetchHiscore(redPlayer, null, thisLookup, result ->
+		{
+			fanout.settle();
+
+			if (result == null)
+			{
+				setCompareStatus(SearchMessages.COMPARE_NOT_FOUND, COMPARE_RED, redPlayer, redPlayer);
+				listener.onCompareError(redPlayer, null);
+				return;
+			}
+
+			compareHiscoreResult = result;
+
+			// Clog fires only after the red player proved real: comparison
+			// entry needs the hiscore side regardless, so the sequencing
+			// costs nothing and spares provider calls on typos.
+			fanout.fetchClog(redPlayer, redIsSelf, thisLookup, clogRes ->
+			{
+				compareClogResult = clogRes;
+				if (clogRes != null && renderTarget != null)
 				{
-					return;
+					renderTarget.preloadClogItemNames(clogRes);
 				}
-				compareLookupInFlight = false;
-				listener.onCompareError(redPlayer, ex);
+				compareRsn = clogRes != null && clogRes.getPlayerName() != null
+					? clogRes.getPlayerName() : redPlayer;
+				enter();
+			}, () ->
+			{
+				compareRsn = redPlayer;
+				enter();
 			});
-			return null;
+		}, ex ->
+		{
+			fanout.settle();
+			listener.onCompareError(redPlayer, ex);
 		});
 	}
 
@@ -465,7 +423,7 @@ public class ComparisonController
 
 	public boolean isCompareLookupInFlight()
 	{
-		return compareLookupInFlight;
+		return fanout.isInFlight();
 	}
 
 	@Nullable

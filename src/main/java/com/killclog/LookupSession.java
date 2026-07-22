@@ -1,32 +1,26 @@
 /*
  * Copyright (c) 2026, 420 kc <dyl@420kc.dev>
- * Owns the async lookup pipeline for Kill Clog: cache check, parallel hiscore,
- * clog, and CA calls, version-stamped result gating, in-flight guard. UI is
- * downstream via {@link Listener}. Swing usage is limited to EDT-scheduling
- * primitives ({@link javax.swing.Timer}, {@link
- * javax.swing.SwingUtilities#invokeLater}); never widget code.
+ * Owns the primary lookup lifecycle for Kill Clog: cache check, reveal
+ * pacing, and listener choreography. The transport underneath (parallel
+ * hiscore, clog, and CA fetches with version gating, EDT bridging, and
+ * timeouts) is {@link LookupFanout}, shared with the comparison side. UI is
+ * downstream via {@link Listener}; never widget code here.
  */
 package com.killclog;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
-import javax.swing.SwingUtilities;
 import javax.swing.Timer;
-import lombok.extern.slf4j.Slf4j;
 
 /**
  * One player's lookup lifecycle. Subscribers receive typed events through
- * {@link Listener}; this class never touches the UI. Version stamps gate stale
- * results so an in-flight call superseded by a newer {@link #start} cannot
- * overwrite it.
+ * {@link Listener}; this class never touches the UI. The owned
+ * {@link LookupFanout} version-stamps every fetch so an in-flight call
+ * superseded by a newer {@link #start} cannot overwrite it.
  *
- * <p>Threading: {@link #start} runs on the EDT. Service futures resolve on
- * background threads and bridge back via {@code SwingUtilities.invokeLater}
- * before firing listener callbacks. The {@code volatile} fields make the
- * version stamp and in-flight guard observable across those threads.
+ * <p>Threading: {@link #start} runs on the EDT, and every listener callback
+ * arrives on the EDT (the reveal {@link Timer} fires there; service futures
+ * bridge through the fanout).
  */
-@Slf4j
 public class LookupSession
 {
 	/**
@@ -71,9 +65,9 @@ public class LookupSession
 	// Deps
 	private final HiscoreService hiscoreService;
 	private final ClogService clogService;
-	private final RuneProfileService runeProfileService;
 	private final KillClogConfig config;
 	private final Listener listener;
+	private final LookupFanout fanout;
 	@Nullable private NameAutocompleter nameAutocompleter;
 
 	// State
@@ -83,22 +77,16 @@ public class LookupSession
 	@Nullable private String currentLookupRsn;
 	@Nullable private String clogLastChanged;
 
-	/** Monotonic counter. Each {@link #start} increments; async callbacks compare against this to gate stale results. */
-	private volatile int lookupVersion = 0;
-
-	/** True while a service call has been fired and has not yet resolved (or been superseded). */
-	private volatile boolean lookupInFlight = false;
-
 	public LookupSession(HiscoreService hiscoreService, ClogService clogService,
 		RuneProfileService runeProfileService, KillClogConfig config,
 		@Nullable NameAutocompleter nameAutocompleter, Listener listener)
 	{
 		this.hiscoreService = hiscoreService;
 		this.clogService = clogService;
-		this.runeProfileService = runeProfileService;
 		this.config = config;
 		this.nameAutocompleter = nameAutocompleter;
 		this.listener = listener;
+		this.fanout = new LookupFanout(hiscoreService, clogService, runeProfileService);
 	}
 
 	/** Wire (or rewire) the autocompleter that records search history on each successful lookup. */
@@ -116,23 +104,21 @@ public class LookupSession
 	 * full parallel hiscore + public clog provider fan-out if stale or missing.
 	 *
 	 * <p>Caller must invoke on the EDT. All listener callbacks are also on the
-	 * EDT (Timer fires there; service futures are bridged via
-	 * {@link SwingUtilities#invokeLater}).
+	 * EDT.
 	 */
 	public void start(String player, @Nullable String localRsn, @Nullable AccountType localAccountType)
 	{
-		if (player.isEmpty() || lookupInFlight)
+		if (player.isEmpty() || fanout.isInFlight())
 		{
 			return;
 		}
 
-		lookupInFlight = true;
 		currentLookupRsn = player;
 		hiscoreResult = null;
 		clogResult = null;
 		caResult = null;
 		clogLastChanged = null;
-		final int thisLookup = ++lookupVersion;
+		final int thisLookup = fanout.begin();
 		final boolean isSelf = localRsn != null && localRsn.equalsIgnoreCase(player);
 		final boolean isFirstSelfGreeting = isSelf && !config.seenSelfGreeting();
 
@@ -140,23 +126,11 @@ public class LookupSession
 
 		// CA tier fetch runs in parallel with the hiscore/clog fan-out (and through the cache
 		// path), independent of either. RuneProfileService owns its own freshness + dedup.
-		runeProfileService.lookup(player)
-			.orTimeout(10, TimeUnit.SECONDS)
-			.thenAccept(ca ->
-				SwingUtilities.invokeLater(() ->
-				{
-					if (thisLookup != lookupVersion)
-					{
-						return;
-					}
-					caResult = ca;
-					listener.onCaResult(player, ca, isSelf, thisLookup);
-				})
-			).exceptionally(ex ->
-			{
-				log.warn("CA lookup failed", ex);
-				return null;
-			});
+		fanout.fetchCa(player, thisLookup, ca ->
+		{
+			caResult = ca;
+			listener.onCaResult(player, ca, isSelf, thisLookup);
+		});
 
 		// Self-lookups know their own account type; cascade only matters for
 		// other players. GIMs only ever appear on the regular hiscores, so the
@@ -170,12 +144,12 @@ public class LookupSession
 			startClogLookup(player, isSelf, thisLookup);
 			Timer revealTimer = new Timer(600, e ->
 			{
-				if (thisLookup != lookupVersion)
+				if (!fanout.current(thisLookup))
 				{
 					return;
 				}
 				hiscoreResult = cachedHiscore;
-				lookupInFlight = false;
+				fanout.settle();
 				if (nameAutocompleter != null)
 				{
 					nameAutocompleter.addToSearchHistory(player);
@@ -196,78 +170,41 @@ public class LookupSession
 
 		final AccountType hiscoreType = knownType != null && knownType.isGroupIronman()
 			? AccountType.REGULAR : knownType;
-		hiscoreService.lookup(player, hiscoreType)
-			.orTimeout(15, TimeUnit.SECONDS)
-			.thenAccept(result ->
-				SwingUtilities.invokeLater(() ->
-				{
-					if (thisLookup != lookupVersion)
-					{
-						return;
-					}
-					lookupInFlight = false;
-
-					if (result == null)
-					{
-						lookupVersion++;
-						listener.onNotFound(player);
-						return;
-					}
-
-					hiscoreResult = result;
-					if (nameAutocompleter != null)
-					{
-						nameAutocompleter.addToSearchHistory(player);
-					}
-					listener.onHiscoreResult(player, result, isSelf, knownType, isFirstSelfGreeting);
-				})
-			).exceptionally(ex ->
+		fanout.fetchHiscore(player, hiscoreType, thisLookup, result ->
+		{
+			if (result == null)
 			{
-				SwingUtilities.invokeLater(() ->
-				{
-					if (thisLookup != lookupVersion)
-					{
-						return;
-					}
-					lookupVersion++;
-					lookupInFlight = false;
-					listener.onError(player, ex);
-				});
-				return null;
-			});
+				// Invalidate the still-in-flight clog/CA lanes: a not-found
+				// must not paint partial data afterwards.
+				fanout.invalidate();
+				listener.onNotFound(player);
+				return;
+			}
+			fanout.settle();
+			hiscoreResult = result;
+			if (nameAutocompleter != null)
+			{
+				nameAutocompleter.addToSearchHistory(player);
+			}
+			listener.onHiscoreResult(player, result, isSelf, knownType, isFirstSelfGreeting);
+		}, ex ->
+		{
+			fanout.invalidate();
+			listener.onError(player, ex);
+		});
 
 		startClogLookup(player, isSelf, thisLookup);
 	}
 
-	/**
-	 * Fire both clog providers in parallel with independent timeouts, then
-	 * keep the freshest result available. Self lookups skip RuneProfile
-	 * because local widget data is authoritative.
-	 */
+	/** Clog fan-out via the shared transport; failures log and keep the surface empty. */
 	private void startClogLookup(String player, boolean isSelf, int thisLookup)
 	{
-		CompletableFuture<ClogResult> templeClog = clogService.lookup(player);
-		CompletableFuture<ClogResult> rpClog = isSelf
-			? CompletableFuture.completedFuture(null)
-			: runeProfileService.lookupClog(player);
-
-		ClogProviderFanout.chooseFreshest(templeClog, rpClog)
-			.thenAccept(result ->
-				SwingUtilities.invokeLater(() ->
-				{
-					if (thisLookup != lookupVersion)
-					{
-						return;
-					}
-					clogResult = result;
-					clogLastChanged = result != null ? result.getLastChanged() : null;
-					listener.onClogResult(player, result, isSelf, thisLookup);
-				})
-			).exceptionally(ex ->
-			{
-				log.warn("Clog lookup failed", ex);
-				return null;
-			});
+		fanout.fetchClog(player, isSelf, thisLookup, result ->
+		{
+			clogResult = result;
+			clogLastChanged = result != null ? result.getLastChanged() : null;
+			listener.onClogResult(player, result, isSelf, thisLookup);
+		}, null);
 	}
 
 	/**
@@ -277,11 +214,7 @@ public class LookupSession
 	 */
 	public void cancelInFlight()
 	{
-		if (lookupInFlight)
-		{
-			lookupVersion++;
-			lookupInFlight = false;
-		}
+		fanout.cancel();
 	}
 
 	/**
@@ -295,8 +228,7 @@ public class LookupSession
 		// Invalidate any still-in-flight callbacks from the player being
 		// replaced: their clog/CA lanes can outlive the hiscore result, and
 		// without this bump a late arrival would overwrite the adopted state.
-		lookupVersion++;
-		lookupInFlight = false;
+		fanout.invalidate();
 		this.hiscoreResult = hiscore;
 		this.clogResult = clog;
 		this.caResult = ca;
@@ -337,11 +269,11 @@ public class LookupSession
 
 	public int getLookupVersion()
 	{
-		return lookupVersion;
+		return fanout.version();
 	}
 
 	public boolean isLookupInFlight()
 	{
-		return lookupInFlight;
+		return fanout.isInFlight();
 	}
 }
