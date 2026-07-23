@@ -19,8 +19,10 @@ import net.runelite.client.ui.FontManager;
 
 /**
  * 3x8 skill grid tooltip for the total level cell.
- * Header shows "Skill Summary" + optional Total Exp via TitleTooltip.
- * Matches the in-game skills tab layout with icon + level per cell.
+ * The hover readouts (XP/Rank) sit directly under the title, so the values
+ * that change with the hovered skill live where the changing title is;
+ * Total Exp anchors the bottom and never moves. Matches the in-game skills
+ * tab layout with icon + level per cell.
  */
 @Slf4j
 public class SkillsTooltip extends TitleTooltip
@@ -37,13 +39,14 @@ public class SkillsTooltip extends TitleTooltip
 	// in the title, the same reveal the skill cells use.
 	static final String RIFTS_HOVER_LABEL = "Rifts Closed";
 
-	// The reserved readout rows under the grid: labels always present,
-	// exact values (1..200,000,000 xp) while a skill is hovered. Shared
-	// with CompareSkillSummaryTooltip, which paints one value per side.
+	// The reserved readout rows directly under the title: labels always
+	// present, exact values (1..200,000,000 xp) while a skill is hovered.
+	// Shared with CompareSkillSummaryTooltip, which paints one value per side.
 	static final String XP_ROW_LABEL = "XP: ";
 	static final String RANK_ROW_LABEL = "Rank: ";
 	static final String XP_ROW_SAMPLE = "200,000,000";
 	static final String RANK_ROW_SAMPLE = "9,999,999";
+	static final String TOTAL_EXP_LABEL = "Total Exp: ";
 
 	private static final Color UNRANKED_COLOR = new Color(128, 128, 128);
 
@@ -68,6 +71,13 @@ public class SkillsTooltip extends TitleTooltip
 	}
 
 	private HiscoreResult result;
+
+	// The body start the painter was actually handed. Hit-tests reuse it so
+	// hover regions and painted rows cannot disagree; header-height
+	// arithmetic approximates the title's font ascent and drifts by a few
+	// pixels. -1 until the first paint.
+	private int paintedBodyStartY = -1;
+
 	private BufferedImage gotrIcon;
 	private int gotrRifts = -1;
 	private int gotrObtained = -1;
@@ -110,10 +120,6 @@ public class SkillsTooltip extends TitleTooltip
 	{
 		this.result = result;
 		setTitle("Skill Summary");
-		if (result != null && result.getTotalXp() > 0)
-		{
-			setSubtitle("Total Exp: ", String.format(Locale.US, "%,d", result.getTotalXp()), Color.WHITE);
-		}
 	}
 
 	public void setGotr(ClogResult clogResult, BufferedImage icon, int riftsClosed)
@@ -161,8 +167,10 @@ public class SkillsTooltip extends TitleTooltip
 		int maxLevelWidth = Math.max(fm.stringWidth("99"), fm.stringWidth("--"));
 		int cellWidth = ICON_SIZE + ICON_TEXT_GAP + maxLevelWidth;
 		int gridWidth = cellWidth * COLS + COL_GAP * (COLS - 1);
-		int totalWidth = Math.max(gridWidth, Math.max(measureGotrWidth(fm), statsRowsWidth(fm)));
-		int totalHeight = ROW_HEIGHT * ROWS + GOTR_SECTION_GAP + LINE_HEIGHT + 2 * LINE_HEIGHT;
+		int totalWidth = Math.max(gridWidth, Math.max(measureGotrWidth(fm),
+			Math.max(statsRowsWidth(fm), fm.stringWidth(TOTAL_EXP_LABEL + totalExpValue()))));
+		int totalHeight = 2 * LINE_HEIGHT + GOTR_SECTION_GAP + ROW_HEIGHT * ROWS
+			+ GOTR_SECTION_GAP + LINE_HEIGHT + LINE_HEIGHT;
 		return new Dimension(totalWidth, totalHeight);
 	}
 
@@ -193,13 +201,21 @@ public class SkillsTooltip extends TitleTooltip
 		int gridWidth = cellWidth * COLS + COL_GAP * (COLS - 1);
 		int gridOffsetX = inset + (w - 2 * inset - gridWidth) / 2;
 
+		paintedBodyStartY = startY;
+
+		// Hover readouts first: the values that change with the hovered skill
+		// sit under the changing title, so hovering moves only the top of the
+		// tooltip; the grid, rifts, and Total Exp below never shift.
+		paintStatsRows(g2, fm, inset, startY);
+		int gridTop = startY + 2 * LINE_HEIGHT + GOTR_SECTION_GAP;
+
 		for (int row = 0; row < ROWS; row++)
 		{
 			for (int col = 0; col < COLS; col++)
 			{
 				Skill skill = GRID[row][col];
 				int x = gridOffsetX + col * (cellWidth + COL_GAP);
-				int y = startY + row * ROW_HEIGHT;
+				int y = gridTop + row * ROW_HEIGHT;
 
 				// Icon
 				BufferedImage icon = icons.get(skill);
@@ -219,15 +235,32 @@ public class SkillsTooltip extends TitleTooltip
 			}
 		}
 
-		int footerY = startY + ROW_HEIGHT * ROWS + GOTR_SECTION_GAP;
+		int footerY = gridTop + ROW_HEIGHT * ROWS + GOTR_SECTION_GAP;
 		paintGotr(g2, fm, inset, w, footerY);
-		paintStatsRows(g2, fm, inset, footerY + LINE_HEIGHT);
+		paintTotalExp(g2, fm, inset, footerY + LINE_HEIGHT);
+	}
+
+	/** Total Exp anchors the bottom; it never changes while hovering. */
+	private void paintTotalExp(Graphics2D g2, FontMetrics fm, int inset, int y)
+	{
+		int textY = y + fm.getAscent();
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString(TOTAL_EXP_LABEL, inset, textY);
+		long totalXp = result != null ? result.getTotalXp() : -1;
+		g2.setColor(totalXp > 0 ? Color.WHITE : UNRANKED_COLOR);
+		g2.drawString(totalExpValue(), inset + fm.stringWidth(TOTAL_EXP_LABEL), textY);
+	}
+
+	private String totalExpValue()
+	{
+		return result != null && result.getTotalXp() > 0
+			? String.format(Locale.US, "%,d", result.getTotalXp()) : "--";
 	}
 
 	/**
 	 * The reserved readout: XP and Rank labels always hold their rows; the
 	 * hovered skill fills the exact values. The title carries the skill name
-	 * (see {@link #getTitleHoverText}), so the rows never move.
+	 * (see {@link #getTitleHoverText}), and the rows sit directly under it.
 	 */
 	private void paintStatsRows(Graphics2D g2, FontMetrics fm, int inset, int y)
 	{
@@ -307,10 +340,19 @@ public class SkillsTooltip extends TitleTooltip
 		}
 	}
 
+	/** Top of the skill grid: painted body start, then the two hover-readout rows. */
+	private int gridTopOffset()
+	{
+		int bodyStart = paintedBodyStartY >= 0
+			? paintedBodyStartY
+			: getInset() + getHeaderZoneHeight();
+		return bodyStart + 2 * LINE_HEIGHT + GOTR_SECTION_GAP;
+	}
+
 	/** The full-width band the rifts readout sits on, under the skill grid. */
 	private boolean gotrRowContains(int mouseX, int mouseY)
 	{
-		int y = getInset() + getHeaderZoneHeight() + ROW_HEIGHT * ROWS + GOTR_SECTION_GAP;
+		int y = gridTopOffset() + ROW_HEIGHT * ROWS + GOTR_SECTION_GAP;
 		return new Rectangle(getInset(), y, getWidth() - 2 * getInset(), LINE_HEIGHT)
 			.contains(mouseX, mouseY);
 	}
@@ -322,7 +364,7 @@ public class SkillsTooltip extends TitleTooltip
 		int cellWidth = ICON_SIZE + ICON_TEXT_GAP + maxLevelWidth;
 		int gridWidth = cellWidth * COLS + COL_GAP * (COLS - 1);
 		int gridOffsetX = getInset() + (getWidth() - 2 * getInset() - gridWidth) / 2;
-		int gridOffsetY = getInset() + getHeaderZoneHeight();
+		int gridOffsetY = gridTopOffset();
 
 		for (int row = 0; row < ROWS; row++)
 		{
