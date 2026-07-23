@@ -460,17 +460,13 @@ public class PvmSummaryTooltip extends TitleTooltip
 	}
 
 	/**
-	 * Solo summary only: under 10m the full amount reads better than a
-	 * rounded M; from 10m up the shorthand wins. The comparison side keeps
-	 * the shared compact form, where column width is the constraint.
+	 * Solo summary only: the exact amount, never rounded. Max slayer xp is
+	 * 200,000,000 and the summary has the width for it. The comparison side
+	 * keeps the shared compact form, where column width is the constraint.
 	 */
 	/* package */ static String slayerXpText(long xp)
 	{
-		if (xp > 0 && xp < 10_000_000L)
-		{
-			return String.format(Locale.US, "%,d", xp);
-		}
-		return SkillsTooltip.skillXpText(xp);
+		return xp > 0 ? String.format(Locale.US, "%,d", xp) : "--";
 	}
 
 	private String combatValue()
