@@ -210,7 +210,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		textWidth = Math.max(textWidth, fm.stringWidth("Combat: " + combatValue()));
 		textWidth = Math.max(textWidth, fm.stringWidth("Total Kills: " + totalKillsValue()));
 		textWidth = Math.max(textWidth, fm.stringWidth("EHB: " + ehbText(ehb)));
-		textWidth = Math.max(textWidth, fm.stringWidth("XP: " + SkillsTooltip.skillXpText(slayerXp)));
+		textWidth = Math.max(textWidth, fm.stringWidth("XP: " + slayerXpText(slayerXp)));
 		textWidth = Math.max(textWidth, fm.stringWidth("Rank: " + slayerRankValue()));
 		if (slayerObtained >= 0)
 		{
@@ -430,7 +430,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		g2.setColor(OSRS_ORANGE);
 		g2.drawString("XP: ", x, textY);
 		g2.setColor(Color.WHITE);
-		g2.drawString(SkillsTooltip.skillXpText(slayerXp), x + fm.stringWidth("XP: "), textY);
+		g2.drawString(slayerXpText(slayerXp), x + fm.stringWidth("XP: "), textY);
 
 		textY += LINE_HEIGHT;
 		g2.setColor(OSRS_ORANGE);
@@ -457,6 +457,20 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private String slayerRankValue()
 	{
 		return slayerRank > 0 ? String.format(Locale.US, "%,d", slayerRank) : "--";
+	}
+
+	/**
+	 * Solo summary only: under 10m the full amount reads better than a
+	 * rounded M; from 10m up the shorthand wins. The comparison side keeps
+	 * the shared compact form, where column width is the constraint.
+	 */
+	/* package */ static String slayerXpText(long xp)
+	{
+		if (xp > 0 && xp < 10_000_000L)
+		{
+			return String.format(Locale.US, "%,d", xp);
+		}
+		return SkillsTooltip.skillXpText(xp);
 	}
 
 	private String combatValue()
