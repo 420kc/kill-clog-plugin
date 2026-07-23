@@ -147,19 +147,6 @@ public class SkillsTooltip extends TitleTooltip
 		return Math.round(totalXp / 1_000_000.0) + "M";
 	}
 
-	static String skillXpText(long xp)
-	{
-		if (xp <= 0)
-		{
-			return "--";
-		}
-		if (xp >= 1_000_000L)
-		{
-			return String.format(Locale.US, "%.1fM", xp / 1_000_000.0);
-		}
-		return String.format(Locale.US, "%.2fM", xp / 1_000_000.0);
-	}
-
 	@Override
 	protected Dimension getContentSize(int availableWidth)
 	{

@@ -71,15 +71,6 @@ public class HiscoreParsingTest
 	}
 
 	@Test
-	public void testSkillFooterNumberFormatting()
-	{
-		// Compact xp survives on the PvM summary; the skill readout rows
-		// carry exact %,d values painted in the tooltips.
-		assertEquals("0.13M", SkillsTooltip.skillXpText(130344));
-		assertEquals("13.0M", SkillsTooltip.skillXpText(13034431));
-	}
-
-	@Test
 	public void testParseBossKills()
 	{
 		String body = buildCsv(1, 2277, 4600000000L);
