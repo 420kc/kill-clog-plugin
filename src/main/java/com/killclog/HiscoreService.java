@@ -87,6 +87,23 @@ public class HiscoreService
 		"Vardorvis", "Venenatis", "Vet'ion", "Vorkath", "Wintertodt",
 		"Yama", "Zalcano", "Zulrah"
 	};
+
+	// Pending boss slot, Wyrmscraig launch. Jagex ships the CSV row before
+	// RuneLite ships the HiscoreSkill enum, so the row is guarded here first
+	// and promoted into BOSS_NAMES once the enum lands (playbook steps 2 and 4).
+	//
+	// ARMING THIS IS A ONE-LINE CHANGE: set MAD_ANGEL_FOLLOWS to the CSV name
+	// the new row lands immediately after, read off a real hiscore response on
+	// release day. While it stays null the guard is inert and a longer CSV
+	// still fails the boss section closed - a wrong insertion point would ship
+	// silently shifted KCs for every boss below it, which is the exact failure
+	// b69e9d99 hardened against. Guessing is worse than blank.
+	private static final String MAD_ANGEL = "The Mad Angel";
+	private static final String MAD_ANGEL_FOLLOWS = null;
+	private static final String[] BOSS_NAMES_WITH_MAD_ANGEL = MAD_ANGEL_FOLLOWS == null
+		? null
+		: insertBossAfter(BOSS_NAMES, MAD_ANGEL_FOLLOWS, MAD_ANGEL);
+
 	/** Number of boss entries in the hiscore CSV. Used by tests to detect drift. */
 	static int bossCount()
 	{
@@ -97,6 +114,60 @@ public class HiscoreService
 	static String[] bossNames()
 	{
 		return BOSS_NAMES;
+	}
+
+	/**
+	 * Boss names matching the CSV length being parsed. When Jagex adds a boss
+	 * before RuneLite exposes its enum, an armed pending slot keeps every boss
+	 * below the insertion point aligned instead of failing the section closed.
+	 * Returns the plain list while the slot is unarmed, so the caller's
+	 * count check still rejects an unexplained length.
+	 */
+	static String[] bossNamesForLineCount(int lineCount)
+	{
+		return bossNamesFor(lineCount, BOSS_NAMES_WITH_MAD_ANGEL);
+	}
+
+	/**
+	 * Selection logic behind {@link #bossNamesForLineCount}, split out so tests
+	 * can exercise the armed path with a simulated pending list while the real
+	 * slot is still parked. Release day arms the real one; this is what proves
+	 * the mechanism works before then.
+	 */
+	static String[] bossNamesFor(int lineCount, String[] pending)
+	{
+		if (pending != null && lineCount == BOSS_START_INDEX + pending.length)
+		{
+			return pending;
+		}
+		return BOSS_NAMES;
+	}
+
+	/** True once the pending boss slot carries a confirmed CSV position. */
+	static boolean pendingBossArmed()
+	{
+		return BOSS_NAMES_WITH_MAD_ANGEL != null;
+	}
+
+	static String[] insertBossAfter(String[] names, String afterName, String bossName)
+	{
+		String[] next = new String[names.length + 1];
+		int out = 0;
+		boolean inserted = false;
+		for (String name : names)
+		{
+			next[out++] = name;
+			if (!inserted && afterName.equals(name))
+			{
+				next[out++] = bossName;
+				inserted = true;
+			}
+		}
+		if (!inserted)
+		{
+			next[next.length - 1] = bossName;
+		}
+		return next;
 	}
 
 	// Stale-while-revalidate cache.
@@ -443,7 +514,7 @@ public class HiscoreService
 		HiscoreTable hiscoreTable)
 	{
 		String[] lines = body.trim().split("\\r?\\n");
-		String[] bossNames = bossNames();
+		String[] bossNames = bossNamesForLineCount(lines.length);
 		int expected = 1 + SKILL_NAMES.length + ACTIVITY_NAMES.length + bossNames.length;
 		boolean bossSectionShifted = lines.length != expected;
 		if (bossSectionShifted)

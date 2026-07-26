@@ -381,6 +381,15 @@ public class Cells
 	static final Color KC_COLOR = new Color(215, 215, 215);
 
 	/**
+	 * Info line shown on every boss tooltip when the hiscore CSV grew a row this
+	 * version does not know. The section fails closed rather than ship shifted
+	 * KCs, so without this a blanked grid reads as an account that has never
+	 * killed anything.
+	 */
+	static final String BOSS_SECTION_SHIFTED_LABEL = "Boss KC: ";
+	static final String BOSS_SECTION_SHIFTED_VALUE = "unavailable until the next update";
+
+	/**
 	 * Write hiscore-driven values into every primary-side cell: bosses
 	 * (text + color + dimmed-icon swap + 420 mode overrides), activities,
 	 * clue tiers, and the PvP summary cell. Mirrors
@@ -635,7 +644,14 @@ public class Cells
 			: buildSingleSpriteTooltip(owner, blueData, 5, name);
 		if (tip instanceof TitleTooltip)
 		{
-			((TitleTooltip) tip).setTitleWikiPage(wikiPage);
+			TitleTooltip titled = (TitleTooltip) tip;
+			titled.setTitleWikiPage(wikiPage);
+			HiscoreResult hiscore = lookupSession.getHiscoreResult();
+			if (hiscore != null && hiscore.isBossSectionShifted())
+			{
+				titled.setInfoLine(BOSS_SECTION_SHIFTED_LABEL, BOSS_SECTION_SHIFTED_VALUE,
+					ColorScheme.LIGHT_GRAY_COLOR);
+			}
 		}
 		return tip;
 	}

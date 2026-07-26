@@ -435,6 +435,80 @@ public class HiscoreParsingTest
 		assertEquals(HiscoreService.bossCount(), result.getBossKills().size());
 	}
 
+	// Pending boss slot (The Mad Angel, Wyrmscraig). The slot ships parked
+	// because a wrong CSV insertion point would silently shift every boss below
+	// it. These prove the mechanism works now, so arming it on release day is a
+	// one-line change against tested code rather than a live experiment.
+
+	@Test
+	public void testPendingBossSlotShipsParked()
+	{
+		// Fails the moment someone arms the slot on a guess instead of a real
+		// release-day hiscore response. Delete this test when the boss is
+		// promoted into BOSS_NAMES for good.
+		assertFalse("Pending boss slot must not ship armed without a confirmed CSV position",
+			HiscoreService.pendingBossArmed());
+	}
+
+	@Test
+	public void testParkedSlotStillFailsTheBossSectionClosed()
+	{
+		// While parked, a longer CSV must behave exactly as it did before the
+		// guard existed: blank, not guessed.
+		String body = buildCsv(69, 2277, 4600000000L) + "50,420\n";
+		HiscoreResult result = service.parseHiscoreBody(body, AccountType.REGULAR);
+
+		assertTrue(result.isBossSectionShifted());
+		assertTrue(result.getBossKills().isEmpty());
+	}
+
+	@Test
+	public void testArmedSlotSelectsPendingNamesAtExactlyOneExtraRow()
+	{
+		String[] pending = HiscoreService.insertBossAfter(
+			HiscoreService.bossNames(), "Mimic", "The Mad Angel");
+		String csv = buildCsvWithBossNames(1, 2277, 4600000000L, pending);
+		int lineCount = csv.trim().split("\\r?\\n").length;
+
+		assertSame(pending, HiscoreService.bossNamesFor(lineCount, pending));
+		// Any other length is not the shape we armed for, so fall back to the
+		// plain list and let the caller's count check fail it closed.
+		assertSame(HiscoreService.bossNames(), HiscoreService.bossNamesFor(lineCount + 1, pending));
+		assertSame(HiscoreService.bossNames(), HiscoreService.bossNamesFor(lineCount - 1, pending));
+		assertSame(HiscoreService.bossNames(), HiscoreService.bossNamesFor(lineCount, null));
+	}
+
+	@Test
+	public void testInsertBossAfterKeepsLaterBossesAligned()
+	{
+		String[] base = HiscoreService.bossNames();
+		String[] next = HiscoreService.insertBossAfter(base, "Mimic", "The Mad Angel");
+
+		assertEquals(base.length + 1, next.length);
+		int at = Arrays.asList(next).indexOf("The Mad Angel");
+		assertEquals("Mimic", next[at - 1]);
+		// Everything above the insertion keeps its index, everything below
+		// shifts by exactly one - that alignment is the whole point.
+		for (int i = 0; i < at - 1; i++)
+		{
+			assertEquals(base[i], next[i]);
+		}
+		for (int i = at + 1; i < next.length; i++)
+		{
+			assertEquals(base[i - 1], next[i]);
+		}
+	}
+
+	@Test
+	public void testInsertBossAfterUnknownPredecessorAppends()
+	{
+		String[] base = HiscoreService.bossNames();
+		String[] next = HiscoreService.insertBossAfter(base, "Not A Real Boss", "The Mad Angel");
+
+		assertEquals(base.length + 1, next.length);
+		assertEquals("The Mad Angel", next[next.length - 1]);
+	}
+
 	private String buildCsv(int overallRank, int totalLevel, long totalXp)
 	{
 		StringBuilder sb = buildCsvPrefix(overallRank, totalLevel, totalXp);
