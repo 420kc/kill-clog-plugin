@@ -65,6 +65,10 @@ public class ClogService
 		BOSS_CATEGORY_OVERRIDES.put("TzKal-Zuk", "the_inferno");
 		// Colosseum
 		BOSS_CATEGORY_OVERRIDES.put("Sol Heredit", "fortis_colosseum");
+		// Mad Angel - game clog category is "The Mad Angel"; caught in the
+		// 1.12.34 snapshot preview (2026-07-29) when the boss cell showed the
+		// sync prompt forever while the capture sat under the_mad_angel.
+		BOSS_CATEGORY_OVERRIDES.put("Mad Angel", "the_mad_angel");
 		// Nightmare - both versions share one clog
 		BOSS_CATEGORY_OVERRIDES.put("Nightmare", "the_nightmare");
 		BOSS_CATEGORY_OVERRIDES.put("Phosani's Nightmare", "the_nightmare");
