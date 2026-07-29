@@ -86,9 +86,11 @@ public class HiscoreParsingTest
 	public void testMaggotKingRowParsesInHiscoreOrder()
 	{
 		String[] bossNames = HiscoreService.bossNames();
+		// Wyrmscraig re-alphabetized the trio: Mad Angel, Maggot King, Mimic.
 		int mimicIndex = Arrays.asList(bossNames).indexOf("Mimic");
-		assertEquals(mimicIndex + 1, Arrays.asList(bossNames).indexOf("Maggot King"));
-		assertEquals(mimicIndex + 2, Arrays.asList(bossNames).indexOf("Nex"));
+		assertEquals(mimicIndex - 1, Arrays.asList(bossNames).indexOf("Maggot King"));
+		assertEquals(mimicIndex - 2, Arrays.asList(bossNames).indexOf("Mad Angel"));
+		assertEquals(mimicIndex + 1, Arrays.asList(bossNames).indexOf("Nex"));
 
 		String body = buildCsvWithBossNames(1, 2277, 4600000000L, bossNames);
 		HiscoreResult result = service.parseHiscoreBody(body, AccountType.REGULAR);
@@ -435,78 +437,34 @@ public class HiscoreParsingTest
 		assertEquals(HiscoreService.bossCount(), result.getBossKills().size());
 	}
 
-	// Pending boss slot (The Mad Angel, Wyrmscraig). The slot ships parked
-	// because a wrong CSV insertion point would silently shift every boss below
-	// it. These prove the mechanism works now, so arming it on release day is a
-	// one-line change against tested code rather than a live experiment.
+	// Wyrmscraig promotion (2026-07-29). Jagex inserted Mad Angel AND
+	// re-alphabetized its neighbors (Maggot King now parses before Mimic), so
+	// the whole list was promoted from a live response. These pin the observed
+	// order; if they fail, the list drifted from what Jagex serves.
 
 	@Test
-	public void testPendingBossSlotShipsParked()
+	public void testWyrmscraigBossOrderPinned()
 	{
-		// Fails the moment someone arms the slot on a guess instead of a real
-		// release-day hiscore response. Delete this test when the boss is
-		// promoted into BOSS_NAMES for good.
-		assertFalse("Pending boss slot must not ship armed without a confirmed CSV position",
-			HiscoreService.pendingBossArmed());
+		String[] names = HiscoreService.bossNames();
+		assertEquals(71, names.length);
+		assertEquals("Lunar Chests", names[33]);
+		assertEquals("Mad Angel", names[34]);
+		assertEquals("Maggot King", names[35]);
+		assertEquals("Mimic", names[36]);
+		assertEquals("Zulrah", names[70]);
 	}
 
 	@Test
-	public void testParkedSlotStillFailsTheBossSectionClosed()
+	public void testMadAngelKcParsesFromCurrentShapeCsv()
 	{
-		// While parked, a longer CSV must behave exactly as it did before the
-		// guard existed: blank, not guessed.
-		String body = buildCsv(69, 2277, 4600000000L) + "50,420\n";
-		HiscoreResult result = service.parseHiscoreBody(body, AccountType.REGULAR);
+		String csv = buildCsvWithBossNames(1, 2277, 4600000000L, HiscoreService.bossNames());
+		HiscoreResult result = service.parseHiscoreBody(csv, AccountType.REGULAR);
 
-		assertTrue(result.isBossSectionShifted());
-		assertTrue(result.getBossKills().isEmpty());
-	}
-
-	@Test
-	public void testArmedSlotSelectsPendingNamesAtExactlyOneExtraRow()
-	{
-		String[] pending = HiscoreService.insertBossAfter(
-			HiscoreService.bossNames(), "Mimic", "The Mad Angel");
-		String csv = buildCsvWithBossNames(1, 2277, 4600000000L, pending);
-		int lineCount = csv.trim().split("\\r?\\n").length;
-
-		assertSame(pending, HiscoreService.bossNamesFor(lineCount, pending));
-		// Any other length is not the shape we armed for, so fall back to the
-		// plain list and let the caller's count check fail it closed.
-		assertSame(HiscoreService.bossNames(), HiscoreService.bossNamesFor(lineCount + 1, pending));
-		assertSame(HiscoreService.bossNames(), HiscoreService.bossNamesFor(lineCount - 1, pending));
-		assertSame(HiscoreService.bossNames(), HiscoreService.bossNamesFor(lineCount, null));
-	}
-
-	@Test
-	public void testInsertBossAfterKeepsLaterBossesAligned()
-	{
-		String[] base = HiscoreService.bossNames();
-		String[] next = HiscoreService.insertBossAfter(base, "Mimic", "The Mad Angel");
-
-		assertEquals(base.length + 1, next.length);
-		int at = Arrays.asList(next).indexOf("The Mad Angel");
-		assertEquals("Mimic", next[at - 1]);
-		// Everything above the insertion keeps its index, everything below
-		// shifts by exactly one - that alignment is the whole point.
-		for (int i = 0; i < at - 1; i++)
-		{
-			assertEquals(base[i], next[i]);
-		}
-		for (int i = at + 1; i < next.length; i++)
-		{
-			assertEquals(base[i - 1], next[i]);
-		}
-	}
-
-	@Test
-	public void testInsertBossAfterUnknownPredecessorAppends()
-	{
-		String[] base = HiscoreService.bossNames();
-		String[] next = HiscoreService.insertBossAfter(base, "Not A Real Boss", "The Mad Angel");
-
-		assertEquals(base.length + 1, next.length);
-		assertEquals("The Mad Angel", next[next.length - 1]);
+		assertFalse(result.isBossSectionShifted());
+		// buildCsvWithBossNames writes kc = (index+1)*10 per row.
+		assertEquals(350, result.getKc("Mad Angel"));
+		assertEquals(360, result.getKc("Maggot King"));
+		assertEquals(370, result.getKc("Mimic"));
 	}
 
 	private String buildCsv(int overallRank, int totalLevel, long totalXp)

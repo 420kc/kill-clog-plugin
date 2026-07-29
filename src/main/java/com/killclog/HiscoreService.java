@@ -53,8 +53,11 @@ public class HiscoreService
 	private static final int BOSS_START_INDEX = ACTIVITY_START_INDEX + ACTIVITY_NAMES.length;
 
 	// Boss names in Jagex hiscore CSV row order. This can diverge from the
-	// panel's vanilla display order (Maggot King parses after Mimic, renders
-	// before it) - name-keyed lookups bridge the two lists.
+	// panel's vanilla display order - name-keyed lookups bridge the two lists.
+	// The Wyrmscraig update (2026-07-29) re-alphabetized Mimic/Maggot King when
+	// inserting Mad Angel, so CSV growth can REORDER neighbors, not just shift
+	// the tail: promote the whole list from a live response, never a guessed
+	// single insert.
 	// Boss update playbook:
 	//   1. Add the CSV name here in Jagex hiscore order
 	//   2. Add a temporary bossNamesForLineCount guard if Jagex ships the row
@@ -75,8 +78,8 @@ public class HiscoreService
 		"Deranged Archaeologist", "Doom of Mokhaiotl", "Duke Sucellus",
 		"General Graardor", "Giant Mole", "Grotesque Guardians", "Hespori",
 		"Kalphite Queen", "King Black Dragon", "Kraken", "Kree'Arra",
-		"K'ril Tsutsaroth", "Lunar Chests", "Mimic", "Maggot King", "Nex",
-		"Nightmare", "Phosani's Nightmare", "Obor",
+		"K'ril Tsutsaroth", "Lunar Chests", "Mad Angel", "Maggot King", "Mimic",
+		"Nex", "Nightmare", "Phosani's Nightmare", "Obor",
 		"Phantom Muspah", "Sarachnis", "Scorpia", "Scurrius",
 		"Shellbane Gryphon", "Skotizo", "Sol Heredit", "Spindel", "Tempoross",
 		"The Gauntlet", "The Corrupted Gauntlet", "The Hueycoatl",
@@ -88,22 +91,6 @@ public class HiscoreService
 		"Yama", "Zalcano", "Zulrah"
 	};
 
-	// Pending boss slot, Wyrmscraig launch. Jagex ships the CSV row before
-	// RuneLite ships the HiscoreSkill enum, so the row is guarded here first
-	// and promoted into BOSS_NAMES once the enum lands (playbook steps 2 and 4).
-	//
-	// ARMING THIS IS A ONE-LINE CHANGE: set MAD_ANGEL_FOLLOWS to the CSV name
-	// the new row lands immediately after, read off a real hiscore response on
-	// release day. While it stays null the guard is inert and a longer CSV
-	// still fails the boss section closed - a wrong insertion point would ship
-	// silently shifted KCs for every boss below it, which is the exact failure
-	// b69e9d99 hardened against. Guessing is worse than blank.
-	private static final String MAD_ANGEL = "The Mad Angel";
-	private static final String MAD_ANGEL_FOLLOWS = null;
-	private static final String[] BOSS_NAMES_WITH_MAD_ANGEL = MAD_ANGEL_FOLLOWS == null
-		? null
-		: insertBossAfter(BOSS_NAMES, MAD_ANGEL_FOLLOWS, MAD_ANGEL);
-
 	/** Number of boss entries in the hiscore CSV. Used by tests to detect drift. */
 	static int bossCount()
 	{
@@ -114,60 +101,6 @@ public class HiscoreService
 	static String[] bossNames()
 	{
 		return BOSS_NAMES;
-	}
-
-	/**
-	 * Boss names matching the CSV length being parsed. When Jagex adds a boss
-	 * before RuneLite exposes its enum, an armed pending slot keeps every boss
-	 * below the insertion point aligned instead of failing the section closed.
-	 * Returns the plain list while the slot is unarmed, so the caller's
-	 * count check still rejects an unexplained length.
-	 */
-	static String[] bossNamesForLineCount(int lineCount)
-	{
-		return bossNamesFor(lineCount, BOSS_NAMES_WITH_MAD_ANGEL);
-	}
-
-	/**
-	 * Selection logic behind {@link #bossNamesForLineCount}, split out so tests
-	 * can exercise the armed path with a simulated pending list while the real
-	 * slot is still parked. Release day arms the real one; this is what proves
-	 * the mechanism works before then.
-	 */
-	static String[] bossNamesFor(int lineCount, String[] pending)
-	{
-		if (pending != null && lineCount == BOSS_START_INDEX + pending.length)
-		{
-			return pending;
-		}
-		return BOSS_NAMES;
-	}
-
-	/** True once the pending boss slot carries a confirmed CSV position. */
-	static boolean pendingBossArmed()
-	{
-		return BOSS_NAMES_WITH_MAD_ANGEL != null;
-	}
-
-	static String[] insertBossAfter(String[] names, String afterName, String bossName)
-	{
-		String[] next = new String[names.length + 1];
-		int out = 0;
-		boolean inserted = false;
-		for (String name : names)
-		{
-			next[out++] = name;
-			if (!inserted && afterName.equals(name))
-			{
-				next[out++] = bossName;
-				inserted = true;
-			}
-		}
-		if (!inserted)
-		{
-			next[next.length - 1] = bossName;
-		}
-		return next;
 	}
 
 	// Stale-while-revalidate cache.
@@ -514,7 +447,7 @@ public class HiscoreService
 		HiscoreTable hiscoreTable)
 	{
 		String[] lines = body.trim().split("\\r?\\n");
-		String[] bossNames = bossNamesForLineCount(lines.length);
+		String[] bossNames = bossNames();
 		int expected = 1 + SKILL_NAMES.length + ACTIVITY_NAMES.length + bossNames.length;
 		boolean bossSectionShifted = lines.length != expected;
 		if (bossSectionShifted)

@@ -57,6 +57,9 @@ final class PanelData
 		HiscoreSkill.KREEARRA,
 		HiscoreSkill.KRIL_TSUTSAROTH,
 		HiscoreSkill.LUNAR_CHESTS,
+		// MAD_ANGEL folds in here when RuneLite releases 1.12.34 (enum exists
+		// on their master, not in the released artifact - hub CI builds
+		// against the release). Until then Mad Angel parses by name only.
 		HiscoreSkill.MAGGOT_KING,
 		HiscoreSkill.MIMIC,
 		HiscoreSkill.NEX,
@@ -99,6 +102,13 @@ final class PanelData
 		return BOSSES.length;
 	}
 
+	// Bosses the hiscore CSV carries that the panel cannot render yet because
+	// the released RuneLite artifact has no HiscoreSkill enum for them. Each
+	// entry is a debt: when the enum ships, add it to BOSSES and delete the
+	// name here. testEveryRuneLiteBossAppearsInPanel screams at that moment.
+	static final java.util.Set<String> CSV_ONLY_PENDING =
+		java.util.Collections.singleton("Mad Angel");
+
 	// HiscoreSkill.getName() -> boss name used in hiscore CSV data.
 	// Only entries where the two differ are needed.
 	static final Map<String, String> NAME_OVERRIDES = new LinkedHashMap<>();
@@ -112,6 +122,7 @@ final class PanelData
 	static
 	{
 		BOSS_WIKI_PAGES.put(HiscoreSkill.BARROWS_CHESTS, "Barrows");
+		// MAD_ANGEL -> "The Mad Angel" rides the same 1.12.34 fold-in as BOSSES.
 		BOSS_WIKI_PAGES.put(HiscoreSkill.MIMIC, "The Mimic");
 		BOSS_WIKI_PAGES.put(HiscoreSkill.NIGHTMARE, "The Nightmare");
 	}

@@ -117,7 +117,8 @@ public class KillClogPanelTest
 	{
 		assertEquals(
 			"BOSS_NAMES (HiscoreService) and BOSSES (PanelData) have different lengths",
-			HiscoreService.bossCount(), PanelData.bossCount());
+			HiscoreService.bossCount() - PanelData.CSV_ONLY_PENDING.size(),
+			PanelData.bossCount());
 	}
 
 	@Test
@@ -149,9 +150,11 @@ public class KillClogPanelTest
 	public void testBossGridAndCsvNamesAgree()
 	{
 		// Display order and CSV row order may diverge (name-keyed lookups
-		// bridge them), but the two lists must always name the same bosses.
+		// bridge them), but the two lists must always name the same bosses,
+		// less the declared pre-enum pending window.
 		java.util.Set<String> csvNames =
 			new java.util.HashSet<>(java.util.Arrays.asList(HiscoreService.bossNames()));
+		csvNames.removeAll(PanelData.CSV_ONLY_PENDING);
 		java.util.Set<String> panelNames = new java.util.HashSet<>();
 		for (int i = 0; i < PanelData.BOSSES.length; i++)
 		{
@@ -159,7 +162,8 @@ public class KillClogPanelTest
 			panelNames.add(PanelData.NAME_OVERRIDES.getOrDefault(displayName, displayName));
 		}
 		assertEquals(csvNames, panelNames);
-		assertEquals(HiscoreService.bossNames().length, PanelData.BOSSES.length);
+		assertEquals(HiscoreService.bossNames().length - PanelData.CSV_ONLY_PENDING.size(),
+			PanelData.BOSSES.length);
 	}
 
 	@Test
