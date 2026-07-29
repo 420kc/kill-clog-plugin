@@ -4,11 +4,14 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.function.IntFunction;
 import javax.annotation.Nullable;
 import javax.swing.SwingUtilities;
 import net.runelite.client.game.ItemManager;
@@ -19,6 +22,8 @@ import net.runelite.client.util.ImageUtil;
 /**
  * Player summary tooltip on the summary-bar name label.
  * Single-column stats, optional cape icon, then obtained pet sprites.
+ * Hovering a pet swaps the title to its name and left-click opens its wiki
+ * page - same contract as the PvM summary sprites.
  */
 public class SummaryTooltip extends TitleTooltip
 {
@@ -31,6 +36,8 @@ public class SummaryTooltip extends TitleTooltip
 	private static final int BADGE_SIZE = 13;
 	private static final int BADGE_GAP = 3;
 
+	private final TooltipItemHover itemHover = new TooltipItemHover(this);
+
 	private String rsn;
 	private int overallRank;
 	private BufferedImage capeIcon;
@@ -38,9 +45,11 @@ public class SummaryTooltip extends TitleTooltip
 	private String accountLabel;
 	private String prestige;
 
-	// Pet data only includes obtained pets.
+	// Pet data only includes obtained pets (Dylan's call 2026-07-29: the
+	// gallery shows what you have, not the empty slots).
 	private int totalPetCount;
-	private List<Integer> obtainedPetList;
+	private List<Integer> petList;
+	private String[] petNames;
 	private BufferedImage[] petSprites;
 
 	public void setData(String rsn, int overallRank, BufferedImage capeIcon,
@@ -55,28 +64,37 @@ public class SummaryTooltip extends TitleTooltip
 		this.prestige = prestige;
 	}
 
-	public void setPets(List<Integer> allPetIds, Set<Integer> obtainedPetIds, ItemManager itemManager)
+	public void setPets(List<Integer> allPetIds, Set<Integer> obtainedPetIds,
+		ItemManager itemManager, IntFunction<String> nameLookup)
 	{
 		this.totalPetCount = allPetIds != null ? allPetIds.size() : 0;
 
-		obtainedPetList = new ArrayList<>();
+		petList = new ArrayList<>();
 		if (allPetIds != null && obtainedPetIds != null)
 		{
 			for (int id : allPetIds)
 			{
 				if (obtainedPetIds.contains(id))
 				{
-					obtainedPetList.add(id);
+					petList.add(id);
 				}
 			}
 		}
 
-		if (obtainedPetList.isEmpty()) return;
-
-		petSprites = new BufferedImage[obtainedPetList.size()];
-		for (int i = 0; i < obtainedPetList.size(); i++)
+		if (petList.isEmpty())
 		{
-			BufferedImage img = itemManager.getImage(obtainedPetList.get(i), 1, false);
+			return;
+		}
+
+		petNames = new String[petList.size()];
+		petSprites = new BufferedImage[petList.size()];
+
+		for (int i = 0; i < petList.size(); i++)
+		{
+			int id = petList.get(i);
+			petNames[i] = nameLookup != null ? nameLookup.apply(id) : null;
+
+			BufferedImage img = itemManager.getImage(id, 1, false);
 			petSprites[i] = ImageUtil.resizeImage(img, PET_SIZE, PET_SIZE);
 			if (img instanceof AsyncBufferedImage)
 			{
@@ -101,13 +119,13 @@ public class SummaryTooltip extends TitleTooltip
 
 	private boolean hasPets()
 	{
-		return obtainedPetList != null && !obtainedPetList.isEmpty() && petSprites != null;
+		return petList != null && !petList.isEmpty() && petSprites != null;
 	}
 
 	private int getPetGridHeight()
 	{
 		if (!hasPets()) return 0;
-		int rows = (obtainedPetList.size() + PET_COLS - 1) / PET_COLS;
+		int rows = (petList.size() + PET_COLS - 1) / PET_COLS;
 		return rows * (PET_SIZE + PET_PAD) - PET_PAD;
 	}
 
@@ -146,7 +164,7 @@ public class SummaryTooltip extends TitleTooltip
 		}
 
 		// Pet grid.
-		int petCount = hasPets() ? obtainedPetList.size() : 0;
+		int petCount = hasPets() ? petList.size() : 0;
 		int petGridWidth = petCount > 0
 			? Math.min(petCount, PET_COLS) * (PET_SIZE + PET_PAD) - PET_PAD
 			: 0;
@@ -247,21 +265,26 @@ public class SummaryTooltip extends TitleTooltip
 		FontMetrics sfm = g2.getFontMetrics();
 		int petsHeaderY = sepY + 1 + SECTION_GAP + sfm.getAscent();
 		String petsLabel = "Pets: ";
-		int obtainedCount = obtainedPetList != null ? obtainedPetList.size() : 0;
 		g2.setColor(OSRS_ORANGE);
 		g2.drawString(petsLabel, inset, petsHeaderY);
-		g2.setColor(completionColor(obtainedCount, totalPetCount));
-		g2.drawString(String.valueOf(obtainedCount), inset + sfm.stringWidth(petsLabel), petsHeaderY);
+		g2.setColor(completionColor(petList != null ? petList.size() : 0, totalPetCount));
+		g2.drawString(String.valueOf(petList != null ? petList.size() : 0), inset + sfm.stringWidth(petsLabel), petsHeaderY);
 
-		if (!hasPets()) return;
+		if (!hasPets())
+		{
+			itemHover.setHitBoxes(Collections.emptyList());
+			return;
+		}
 
 		FontMetrics bfm = g2.getFontMetrics(FontManager.getRunescapeBoldFont());
 
-		// Obtained pet sprite grid.
+		// Full pet gallery: obtained at strength, unobtained dimmed. Hit boxes
+		// share the draw geometry so hover-name and wiki-click track exactly.
 		int gridY = petsHeaderY + PET_PAD + bfm.getDescent();
 		int cellSize = PET_SIZE + PET_PAD;
+		List<TooltipItemHover.HitBox> hitBoxes = new ArrayList<>();
 
-		for (int i = 0; i < obtainedPetList.size(); i++)
+		for (int i = 0; i < petList.size(); i++)
 		{
 			int col = i % PET_COLS;
 			int row = i / PET_COLS;
@@ -273,7 +296,32 @@ public class SummaryTooltip extends TitleTooltip
 			{
 				g2.drawImage(sprite, px, py, null);
 			}
+			if (petNames[i] != null)
+			{
+				hitBoxes.add(new TooltipItemHover.HitBox(petList.get(i), petNames[i],
+					new Rectangle(px, py, PET_SIZE, PET_SIZE), true));
+			}
 		}
+		itemHover.setHitBoxes(hitBoxes);
+	}
+
+	@Override
+	public void setWikiLinksEnabled(boolean wikiLinksEnabled)
+	{
+		super.setWikiLinksEnabled(wikiLinksEnabled);
+		itemHover.setWikiLinksEnabled(wikiLinksEnabled);
+	}
+
+	@Override
+	protected String getTitleHoverText()
+	{
+		return itemHover.hoveredItemName();
+	}
+
+	@Override
+	protected Color getTitleHoverColor()
+	{
+		return itemHover.hoveredItemObtained() ? CLOG_GREEN : CLOG_RED;
 	}
 
 	private String buildRankLine()

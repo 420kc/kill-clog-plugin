@@ -141,11 +141,19 @@ public class KillClogPanel extends PluginPanel
 				AccountBadgeResolver.label(display),
 				LookupQueries.getPrestige(lookupSession.getHiscoreResult())
 			);
+			tip.setWikiLinksEnabled(config.wikiItemLinks());
 			if (lookupSession.getClogResult() != null)
 			{
-				List<Integer> allPets = lookupSession.getClogResult().getCategoryItems().get("all_pets");
-				Set<Integer> obtainedPets = LookupQueries.getObtainedPetIds(lookupSession.getClogResult());
-				tip.setPets(allPets, obtainedPets, itemManager);
+				ClogResult clog = lookupSession.getClogResult();
+				List<Integer> allPets = clog.getCategoryItems().get("all_pets");
+				Set<Integer> obtainedPets = LookupQueries.getObtainedPetIds(clog);
+				tip.setPets(allPets, obtainedPets, itemManager, clog::getItemName);
+			}
+			// Without this the tooltip dies when the mouse leaves the name
+			// label, and the pet gallery can never be hovered at all.
+			if (this.getParent() instanceof JPanel)
+			{
+				tooltipController.keepTooltipOnHover(tip, (JPanel) this.getParent());
 			}
 			return tip;
 		}
