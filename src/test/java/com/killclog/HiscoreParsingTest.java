@@ -20,7 +20,7 @@ public class HiscoreParsingTest
 	public void setUp()
 	{
 		// Null httpClient: these tests exercise parsing only.
-		service = new HiscoreService(null);
+		service = new HiscoreService(null, new com.google.gson.Gson());
 	}
 
 	@Test
@@ -168,12 +168,12 @@ public class HiscoreParsingTest
 
 		HiscoreResult result = service.parseHiscoreBody(sb.toString(), AccountType.REGULAR);
 		assertNotNull(result);
-		// Contract flip (2026-07-17 hardening): a short CSV cannot be told
-		// apart from a mid-list row removal, which shifts every position
-		// below it. Wrong KCs never ship, so the boss section fails closed;
-		// a transient tail truncation heals on the next clean fetch.
+		// Contract flip (2026-07-29 canon): this CSV path only runs when JSON
+		// is down, and visibly imperfect beats blank. The five present rows
+		// parse best-effort, the flag drives the misalignment notice, and
+		// bosses beyond the truncation stay absent.
 		assertTrue(result.isBossSectionShifted());
-		assertEquals(-1, result.getKc("Abyssal Sire"));
+		assertEquals(420, result.getKc("Abyssal Sire"));
 		assertEquals(-1, result.getKc("Zulrah"));
 		assertEquals(2277, result.getTotalLevel());
 	}
@@ -190,11 +190,11 @@ public class HiscoreParsingTest
 
 		HiscoreResult result = service.parseHiscoreBody(body, AccountType.REGULAR);
 		assertNotNull(result);
-		// Contract flip (2026-07-17 hardening): extra lines cannot be told
-		// apart from a new boss inserted mid-list (the Mad Angel scenario),
-		// so the boss section fails closed instead of risking shifted KCs.
+		// Contract flip (2026-07-29 canon): best-effort with the flag set.
+		// Known boss positions still line up here (the growth is at the tail),
+		// so values parse correctly while the notice warns about the mismatch.
 		assertTrue(result.isBossSectionShifted());
-		assertEquals(-1, result.getKc("Zulrah"));
+		assertEquals(420, result.getKc("Zulrah"));
 		assertEquals(2277, result.getTotalLevel());
 	}
 
@@ -413,17 +413,17 @@ public class HiscoreParsingTest
 	}
 
 	@Test
-	public void testShiftedCsvFailsBossSectionClosed()
+	public void testShiftedCsvParsesBestEffortAndFlags()
 	{
-		// One extra row simulating a new boss inserted into the boss block:
-		// positions below the insertion are unknowable, so the parse must
-		// leave the boss maps empty and flag the result instead of shipping
-		// silently wrong KCs. The fixed prefix stays live.
+		// One extra row simulating a new boss in the block. Canon 2026-07-29:
+		// this fallback path renders best-effort with the flag set (the
+		// tooltip notice is the honesty), instead of blanking the section
+		// for the whole update window.
 		String body = buildCsv(69, 2277, 4600000000L) + "50,420\n";
 		HiscoreResult result = service.parseHiscoreBody(body, AccountType.REGULAR);
 
 		assertTrue(result.isBossSectionShifted());
-		assertTrue(result.getBossKills().isEmpty());
+		assertEquals(HiscoreService.bossCount(), result.getBossKills().size());
 		assertEquals(2277, result.getTotalLevel());
 	}
 

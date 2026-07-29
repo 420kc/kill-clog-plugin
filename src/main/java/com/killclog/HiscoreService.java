@@ -1,9 +1,16 @@
 package com.killclog;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -22,7 +29,16 @@ import okhttp3.OkHttpClient;
 public class HiscoreService
 {
 	private static final String BASE_URL = "https://secure.runescape.com/m=";
-	private static final String SUFFIX = "/index_lite.ws?player=";
+	// JSON first: every row carries its name, so Jagex inserting, reordering,
+	// or renaming hiscore rows cannot misalign the parse (product canon
+	// 2026-07-29, after Wyrmscraig blanked boss KCs for a full merge window).
+	// The positional CSV is the fallback transport only.
+	private static final String JSON_SUFFIX = "/index_lite.json?player=";
+	private static final String CSV_SUFFIX = "/index_lite.ws?player=";
+
+	// Jagex JSON spelling -> internal key, where our CSV-era canon differs.
+	private static final Map<String, String> JSON_BOSS_NAME_OVERRIDES =
+		Map.of("Calvar'ion", "Cal'varion");
 
 	// Skill names in hiscore CSV order (lines 1-24).
 	private static final String[] SKILL_NAMES = {
@@ -136,11 +152,13 @@ public class HiscoreService
 	private final ConcurrentHashMap<String, Long> dirtySince = new ConcurrentHashMap<>();
 
 	private final OkHttpClient httpClient;
+	private final Gson gson;
 
 	@Inject
-	public HiscoreService(OkHttpClient httpClient)
+	public HiscoreService(OkHttpClient httpClient, Gson gson)
 	{
 		this.httpClient = httpClient;
+		this.gson = gson;
 	}
 
 	/**
@@ -446,13 +464,18 @@ public class HiscoreService
 	/* package */ HiscoreResult parseHiscoreBody(String body, AccountType type,
 		HiscoreTable hiscoreTable)
 	{
+		if (body != null && body.trim().startsWith("{"))
+		{
+			return parseHiscoreJson(body, type, hiscoreTable);
+		}
 		String[] lines = body.trim().split("\\r?\\n");
 		String[] bossNames = bossNames();
 		int expected = 1 + SKILL_NAMES.length + ACTIVITY_NAMES.length + bossNames.length;
 		boolean bossSectionShifted = lines.length != expected;
 		if (bossSectionShifted)
 		{
-			log.warn("Hiscore CSV line count changed: expected {} but got {} - failing the boss section closed",
+			log.warn("Hiscore CSV line count changed: expected {} but got {} - boss rows parse "
+				+ "best-effort and every boss surface carries the misalignment notice",
 				expected, lines.length);
 		}
 		Map<String, Integer> bossKills = new LinkedHashMap<>();
@@ -523,35 +546,30 @@ public class HiscoreService
 			}
 		}
 
-		// Format growth historically lands in the boss rows (a new boss shifts
-		// every row below its insertion point), so a count mismatch means the
-		// positional tail cannot be trusted. Wrong KCs are worse than absent
-		// ones: leave the boss maps empty and let every surface show the
-		// shifted notice instead. The fixed prefix (overall, skills,
-		// activities) stays live; a prefix-level change is a headline event
-		// that ships its own same-day release.
-		if (!bossSectionShifted)
+		// This CSV path only runs when the JSON endpoint is down, and a count
+		// mismatch means rows at and below the change wear their neighbors'
+		// numbers. Product canon (2026-07-29): visibly imperfect beats blank -
+		// parse best-effort and keep the shifted flag set so every boss surface
+		// shows the misalignment notice. Never silently wrong.
+		for (int i = 0; i < bossNames.length; i++)
 		{
-			for (int i = 0; i < bossNames.length; i++)
+			int lineIdx = BOSS_START_INDEX + i;
+			if (lineIdx >= lines.length)
 			{
-				int lineIdx = BOSS_START_INDEX + i;
-				if (lineIdx >= lines.length)
-				{
-					break;
-				}
-				try
-				{
-					String[] parts = lines[lineIdx].split(",");
-					int rank = Integer.parseInt(parts[0]);
-					int kc = Integer.parseInt(parts[1]);
-					bossKills.put(bossNames[i], kc);
-					bossRanks.put(bossNames[i], rank);
-				}
-				catch (Exception e)
-				{
-					bossKills.put(bossNames[i], -1);
-					bossRanks.put(bossNames[i], -1);
-				}
+				break;
+			}
+			try
+			{
+				String[] parts = lines[lineIdx].split(",");
+				int rank = Integer.parseInt(parts[0]);
+				int kc = Integer.parseInt(parts[1]);
+				bossKills.put(bossNames[i], kc);
+				bossRanks.put(bossNames[i], rank);
+			}
+			catch (Exception e)
+			{
+				bossKills.put(bossNames[i], -1);
+				bossRanks.put(bossNames[i], -1);
 			}
 		}
 
@@ -566,17 +584,95 @@ public class HiscoreService
 	 * Calculate combat level from hiscore CSV skill lines.
 	 * Skills: 1=Attack, 2=Defence, 3=Strength, 4=Hitpoints, 5=Ranged, 6=Prayer, 7=Magic
 	 */
-	/* package */ int calcCmbLvl(String[] lines)
+	/**
+	 * Name-keyed parse of Jagex's JSON hiscores. Every row carries its name,
+	 * so this path is structurally immune to the CSV failure class: row
+	 * insertions, reorders (the 2026-07-29 Mimic/Maggot King swap), and
+	 * renames cannot misalign anything. Unknown names are future bosses and
+	 * simply wait for their display cell; the shifted flag is never set here.
+	 */
+	/* package */ HiscoreResult parseHiscoreJson(String body, AccountType type,
+		HiscoreTable hiscoreTable)
+	{
+		Map<String, Integer> bossKills = new LinkedHashMap<>();
+		Map<String, Integer> bossRanks = new LinkedHashMap<>();
+		Map<String, Integer> activityScores = new LinkedHashMap<>();
+		Map<String, Integer> activityRanks = new LinkedHashMap<>();
+		Map<String, Integer> skillLevels = new LinkedHashMap<>();
+		Map<String, Integer> skillRanks = new LinkedHashMap<>();
+		Map<String, Long> skillXps = new LinkedHashMap<>();
+
+		int totalLevel = -1;
+		long totalXp = -1;
+		int overallRank = -1;
+
+		JsonObject root = gson.fromJson(body, JsonObject.class);
+		for (JsonElement e : root.getAsJsonArray("skills"))
+		{
+			JsonObject s = e.getAsJsonObject();
+			String name = s.get("name").getAsString();
+			if ("Overall".equals(name))
+			{
+				overallRank = s.get("rank").getAsInt();
+				totalLevel = s.get("level").getAsInt();
+				totalXp = s.get("xp").getAsLong();
+				continue;
+			}
+			// Internal skill keys are the CSV-era lowercase names.
+			String key = name.toLowerCase(Locale.ROOT);
+			skillRanks.put(key, s.get("rank").getAsInt());
+			skillLevels.put(key, s.get("level").getAsInt());
+			skillXps.put(key, s.get("xp").getAsLong());
+		}
+
+		Set<String> activityNames = new HashSet<>(Arrays.asList(ACTIVITY_NAMES));
+		Set<String> knownBosses = new HashSet<>(Arrays.asList(BOSS_NAMES));
+		for (JsonElement e : root.getAsJsonArray("activities"))
+		{
+			JsonObject a = e.getAsJsonObject();
+			String name = a.get("name").getAsString();
+			int rank = a.get("rank").getAsInt();
+			int score = a.get("score").getAsInt();
+			if (activityNames.contains(name))
+			{
+				activityScores.put(name, score);
+				activityRanks.put(name, rank);
+				continue;
+			}
+			String key = JSON_BOSS_NAME_OVERRIDES.getOrDefault(name, name);
+			if (knownBosses.contains(key))
+			{
+				bossKills.put(key, score);
+				bossRanks.put(key, rank);
+			}
+			else
+			{
+				// A boss added after this release. Its KC waits for the update
+				// that gives it a cell; nothing else in the parse is disturbed.
+				log.debug("Unknown hiscore row '{}' (score {}) - future boss, holding", name, score);
+			}
+		}
+
+		int combatLevel = calcCmbLvlFromLevels(skillLevels);
+
+		HiscoreResult result = new HiscoreResult(type, hiscoreTable, bossKills, bossRanks,
+			activityScores, activityRanks, skillLevels, skillRanks, skillXps, totalLevel,
+			totalXp, combatLevel, overallRank);
+		result.setBossSectionShifted(false);
+		return result;
+	}
+
+	/* package */ int calcCmbLvlFromLevels(Map<String, Integer> levels)
 	{
 		try
 		{
-			int attack = parseSkillLevel(lines, 1);
-			int defence = parseSkillLevel(lines, 2);
-			int strength = parseSkillLevel(lines, 3);
-			int hitpoints = parseSkillLevel(lines, 4);
-			int ranged = parseSkillLevel(lines, 5);
-			int prayer = parseSkillLevel(lines, 6);
-			int magic = parseSkillLevel(lines, 7);
+			int attack = levels.get("attack");
+			int defence = levels.get("defence");
+			int strength = levels.get("strength");
+			int hitpoints = levels.get("hitpoints");
+			int ranged = levels.get("ranged");
+			int prayer = levels.get("prayer");
+			int magic = levels.get("magic");
 
 			double base = 0.25 * (defence + hitpoints + Math.floor(prayer / 2.0));
 			double melee = 0.325 * (attack + strength);
@@ -584,6 +680,26 @@ public class HiscoreService
 			double mage = 0.325 * (Math.floor(magic * 3.0 / 2.0));
 
 			return (int) Math.floor(base + Math.max(melee, Math.max(range, mage)));
+		}
+		catch (Exception e)
+		{
+			return -1;
+		}
+	}
+
+	/* package */ int calcCmbLvl(String[] lines)
+	{
+		try
+		{
+			Map<String, Integer> levels = new LinkedHashMap<>();
+			levels.put("attack", parseSkillLevel(lines, 1));
+			levels.put("defence", parseSkillLevel(lines, 2));
+			levels.put("strength", parseSkillLevel(lines, 3));
+			levels.put("hitpoints", parseSkillLevel(lines, 4));
+			levels.put("ranged", parseSkillLevel(lines, 5));
+			levels.put("prayer", parseSkillLevel(lines, 6));
+			levels.put("magic", parseSkillLevel(lines, 7));
+			return calcCmbLvlFromLevels(levels);
 		}
 		catch (Exception e)
 		{
@@ -599,7 +715,19 @@ public class HiscoreService
 
 	private CompletableFuture<String> fetchAsync(String hiscoreKey, String encodedPlayer)
 	{
-		return HttpUtil.httpGet(httpClient, BASE_URL + hiscoreKey + SUFFIX + encodedPlayer)
-			.thenApply(r -> r.body);
+		return HttpUtil.httpGet(httpClient, BASE_URL + hiscoreKey + JSON_SUFFIX + encodedPlayer)
+			.thenCompose(r ->
+			{
+				if (r.code == 200 && r.body != null && r.body.trim().startsWith("{"))
+				{
+					return CompletableFuture.completedFuture(r.body);
+				}
+				// 404 means player-not-found on both endpoints; everything else
+				// (5xx, transport failure, an error page served as 200) is worth
+				// one shot at the CSV before giving up on the lookup.
+				log.debug("JSON hiscores unusable (code {}), falling back to CSV", r.code);
+				return HttpUtil.httpGet(httpClient, BASE_URL + hiscoreKey + CSV_SUFFIX + encodedPlayer)
+					.thenApply(c -> c.body);
+			});
 	}
 }

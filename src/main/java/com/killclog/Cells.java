@@ -381,13 +381,14 @@ public class Cells
 	static final Color KC_COLOR = new Color(215, 215, 215);
 
 	/**
-	 * Info line shown on every boss tooltip when the hiscore CSV grew a row this
-	 * version does not know. The section fails closed rather than ship shifted
-	 * KCs, so without this a blanked grid reads as an account that has never
-	 * killed anything.
+	 * Info line shown on every boss tooltip when the fallback CSV parse hit a
+	 * row-count mismatch: values render best-effort but rows below the format
+	 * change may wear a neighbor's numbers, and the reader deserves to know.
+	 * The JSON path never sets the flag, so this only appears when the JSON
+	 * endpoint is down during a hiscore format change.
 	 */
 	static final String BOSS_SECTION_SHIFTED_LABEL = "Boss KC: ";
-	static final String BOSS_SECTION_SHIFTED_VALUE = "unavailable until the next update";
+	static final String BOSS_SECTION_SHIFTED_VALUE = "may be misaligned until the next update";
 
 	/**
 	 * Write hiscore-driven values into every primary-side cell: bosses
