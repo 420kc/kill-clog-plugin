@@ -291,6 +291,8 @@ public class KillClogPanel extends PluginPanel
 		this.comparison = new ComparisonController(hiscoreService, clogService, runeProfileService,
 			lookupSession, itemManager, config, tooltipController, tooltipDataBuilder, this);
 		this.comparison.setRenderTarget(this);
+		this.comparison.setVirtualTotalLevel(
+			() -> ClogHelper.virtualTotalLevelEnabled(configManager));
 		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, clogService, new PersonalBests(configManager), config);
 		this.activityTooltips = new ActivitySummaryTooltips(
 			lookupSession, comparison, cells, tooltipController, itemManager,
@@ -693,7 +695,8 @@ public class KillClogPanel extends PluginPanel
 			{
 				combatCell.setText(ClogHelper.pad(String.valueOf(combatLevel)));
 			}
-			int totalLevel = swapHiscore.getTotalLevel();
+			int totalLevel = ClogHelper.displayTotalLevel(swapHiscore,
+				ClogHelper.virtualTotalLevelEnabled(configManager));
 			if (totalLevel > 0)
 			{
 				totalLvlCell.setText(ClogHelper.pad(String.valueOf(totalLevel)));
@@ -890,7 +893,8 @@ public class KillClogPanel extends PluginPanel
 			combatCell.setText(ClogHelper.pad(String.valueOf(combatLevel)));
 		}
 
-		int totalLevel = result.getTotalLevel();
+		int totalLevel = ClogHelper.displayTotalLevel(result,
+			ClogHelper.virtualTotalLevelEnabled(configManager));
 		if (totalLevel > 0)
 		{
 			totalLvlCell.setText(ClogHelper.pad(String.valueOf(totalLevel)));

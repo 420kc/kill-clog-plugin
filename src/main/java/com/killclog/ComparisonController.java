@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -156,6 +157,14 @@ public class ComparisonController
 	public void setRenderTarget(@Nullable CellRenderTarget renderTarget)
 	{
 		this.renderTarget = renderTarget;
+	}
+
+	private Supplier<Boolean> virtualTotalLevel = () -> false;
+
+	/** Follows the vanilla virtual-total setting; display only, never ranking. */
+	public void setVirtualTotalLevel(Supplier<Boolean> virtualTotalLevel)
+	{
+		this.virtualTotalLevel = virtualTotalLevel;
 	}
 
 	/** Wire the {@link Cells} reference. Late-bound: Cells needs a controller ref at its own construction. */
@@ -721,9 +730,10 @@ public class ComparisonController
 			blueHiscore != null ? blueHiscore.getCombatLevel() : -1,
 			redHiscore != null ? redHiscore.getCombatLevel() : -1);
 
+		boolean virtualTotal = virtualTotalLevel.get();
 		compareOrRestore(renderTarget.totalLvlCell(),
-			blueHiscore != null ? blueHiscore.getTotalLevel() : -1,
-			redHiscore != null ? redHiscore.getTotalLevel() : -1);
+			blueHiscore != null ? ClogHelper.displayTotalLevel(blueHiscore, virtualTotal) : -1,
+			redHiscore != null ? ClogHelper.displayTotalLevel(redHiscore, virtualTotal) : -1);
 
 		compareOrRestore(cells.getPvpSummaryCell(), pvpTotal(blueHiscore), pvpTotal(redHiscore));
 

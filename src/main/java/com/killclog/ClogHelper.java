@@ -15,6 +15,7 @@ import java.util.Set;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import net.runelite.api.Experience;
+import net.runelite.api.Skill;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
 import org.apache.commons.lang3.StringUtils;
@@ -456,5 +457,49 @@ final class ClogHelper
 			return hiscoreLevel;
 		}
 		return Experience.getLevelForXp((int) xp);
+	}
+
+	/**
+	 * True when the Virtual Levels plugin is on AND its "virtual total level"
+	 * sub-setting is too (their default: on). Mirrors the vanilla skill tab's
+	 * total exactly.
+	 */
+	static boolean virtualTotalLevelEnabled(ConfigManager configManager)
+	{
+		if (!virtualLevelsEnabled(configManager))
+		{
+			return false;
+		}
+		String v = configManager.getConfiguration("virtuallevels", "virtualTotalLevel");
+		return v == null || Boolean.parseBoolean(v);
+	}
+
+	/**
+	 * Total level for display: the hiscore total normally, the sum of
+	 * xp-derived virtual levels when the vanilla virtual-total setting is on.
+	 * Skills the hiscores hide (unranked) contribute their hiscore value via
+	 * the max guard, so a partially-ranked account never shows a virtual
+	 * total below its real one. Never used for maxed detection - identity
+	 * logic stays on real levels.
+	 */
+	static int displayTotalLevel(HiscoreResult result, boolean virtualTotal)
+	{
+		int real = result.getTotalLevel();
+		if (!virtualTotal)
+		{
+			return real;
+		}
+		int total = 0;
+		for (Skill skill : Skill.values())
+		{
+			String key = skill.getName().toLowerCase();
+			int level = result.getSkillLevel(key);
+			if (level <= 0)
+			{
+				continue;
+			}
+			total += displayLevel(level, result.getSkillXp(key), true);
+		}
+		return Math.max(total, real);
 	}
 }

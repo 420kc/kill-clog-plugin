@@ -54,4 +54,40 @@ public class VirtualLevelsTest
 		assertEquals(ClogHelper.displayLevel(70, xp70, false),
 			ClogHelper.displayLevel(70, xp70, true));
 	}
+
+	@Test
+	public void virtualTotalSumsFromXp()
+	{
+		// All 24 skills at 200m xp: 24 x 126 = 3024 virtual, 2376 real.
+		HiscoreResult result = allMaxed();
+		assertEquals(2376, ClogHelper.displayTotalLevel(result, false));
+		assertEquals(3024, ClogHelper.displayTotalLevel(result, true));
+	}
+
+	@Test
+	public void virtualTotalNeverDropsBelowRealTotal()
+	{
+		// A result whose per-skill maps are empty (hiscores hid the skills)
+		// still shows at least the real total the overall row carried.
+		HiscoreResult result = new HiscoreResult(AccountType.REGULAR, HiscoreTable.STANDARD,
+			java.util.Map.of(), java.util.Map.of(), java.util.Map.of(), java.util.Map.of(),
+			java.util.Map.of(), java.util.Map.of(), java.util.Map.of(),
+			1500, 10_000_000L, 100, 1);
+		assertEquals(1500, ClogHelper.displayTotalLevel(result, true));
+	}
+
+	private static HiscoreResult allMaxed()
+	{
+		java.util.Map<String, Integer> levels = new java.util.LinkedHashMap<>();
+		java.util.Map<String, Long> xps = new java.util.LinkedHashMap<>();
+		for (net.runelite.api.Skill s : net.runelite.api.Skill.values())
+		{
+			levels.put(s.getName().toLowerCase(), 99);
+			xps.put(s.getName().toLowerCase(), 200_000_000L);
+		}
+		return new HiscoreResult(AccountType.REGULAR, HiscoreTable.STANDARD,
+			java.util.Map.of(), java.util.Map.of(), java.util.Map.of(), java.util.Map.of(),
+			levels, java.util.Map.of(), xps,
+			2376, 4_800_000_000L, 126, 1);
+	}
 }
