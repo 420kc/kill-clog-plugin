@@ -294,7 +294,8 @@ public class KillClogPanel extends PluginPanel
 		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, clogService, new PersonalBests(configManager), config);
 		this.activityTooltips = new ActivitySummaryTooltips(
 			lookupSession, comparison, cells, tooltipController, itemManager,
-			caRewardSprites, iconCache, this::comparisonBlueName, config::wikiItemLinks);
+			caRewardSprites, iconCache, this::comparisonBlueName, config::wikiItemLinks,
+			() -> ClogHelper.virtualLevelsEnabled(configManager));
 		this.itemNameResolver = new TooltipItemNameResolver(clientThread, itemManager,
 			this::onTooltipItemNamesResolved);
 		this.cells.setUnsyncedCatalogResolver(itemNameResolver::resolve);

@@ -14,6 +14,8 @@ import java.util.Map;
 import java.util.Set;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import net.runelite.api.Experience;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
 import org.apache.commons.lang3.StringUtils;
 
@@ -428,5 +430,31 @@ final class ClogHelper
 				styleSearchBar((Container) c);
 			}
 		}
+	}
+
+	/**
+	 * True when RuneLite's core Virtual Levels plugin is switched on. Kill Clog
+	 * follows that toggle instead of carrying its own: virtual levels read as
+	 * one client-wide preference, and the core plugin's name and storage key
+	 * are stable. Null config means the plugin's own enabledByDefault = false.
+	 */
+	static boolean virtualLevelsEnabled(ConfigManager configManager)
+	{
+		return Boolean.parseBoolean(
+			configManager.getConfiguration("runelite", "virtuallevelsplugin"));
+	}
+
+	/**
+	 * The level a skill summary cell shows: the hiscore level normally, the
+	 * xp-derived virtual level (cap 126) when the Virtual Levels plugin is on.
+	 * Unranked skills (no xp) keep the hiscore value either way.
+	 */
+	static int displayLevel(int hiscoreLevel, long xp, boolean virtualLevels)
+	{
+		if (!virtualLevels || xp <= 0)
+		{
+			return hiscoreLevel;
+		}
+		return Experience.getLevelForXp((int) xp);
 	}
 }

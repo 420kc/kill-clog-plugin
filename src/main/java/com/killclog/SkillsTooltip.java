@@ -71,6 +71,7 @@ public class SkillsTooltip extends TitleTooltip
 	}
 
 	private HiscoreResult result;
+	private boolean virtualLevels;
 
 	// The body start the painter was actually handed. Hit-tests reuse it so
 	// hover regions and painted rows cannot disagree; header-height
@@ -120,6 +121,12 @@ public class SkillsTooltip extends TitleTooltip
 	{
 		this.result = result;
 		setTitle("Skill Summary");
+	}
+
+	/** Follows RuneLite's core Virtual Levels plugin toggle, read at build time. */
+	public void setVirtualLevels(boolean virtualLevels)
+	{
+		this.virtualLevels = virtualLevels;
 	}
 
 	public void setGotr(ClogResult clogResult, BufferedImage icon, int riftsClosed)
@@ -213,7 +220,11 @@ public class SkillsTooltip extends TitleTooltip
 				}
 
 				// Level text
-				int level = result != null ? result.getSkillLevel(skill.getName().toLowerCase()) : -1;
+				String skillKey = skill.getName().toLowerCase();
+				int level = result != null
+					? ClogHelper.displayLevel(result.getSkillLevel(skillKey),
+						result.getSkillXp(skillKey), virtualLevels)
+					: -1;
 				String text = level > 0 ? String.valueOf(level) : "--";
 				g2.setColor(level > 0 ? Color.WHITE : UNRANKED_COLOR);
 				int textX = x + ICON_SIZE + ICON_TEXT_GAP + (maxLevelWidth - fm.stringWidth(text)) / 2;

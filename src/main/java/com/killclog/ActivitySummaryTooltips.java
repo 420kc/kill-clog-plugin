@@ -17,11 +17,12 @@ final class ActivitySummaryTooltips
 	private final PanelIconCache iconCache;
 	private final Supplier<String> primaryName;
 	private final Supplier<Boolean> wikiLinks;
+	private final Supplier<Boolean> virtualLevels;
 
 	ActivitySummaryTooltips(LookupSession lookupSession, ComparisonController comparison,
 		Cells cells, TooltipController tooltipController, ItemManager itemManager,
 		CaRewardSprites caRewardSprites, PanelIconCache iconCache, Supplier<String> primaryName,
-		Supplier<Boolean> wikiLinks)
+		Supplier<Boolean> wikiLinks, Supplier<Boolean> virtualLevels)
 	{
 		this.lookupSession = lookupSession;
 		this.comparison = comparison;
@@ -32,6 +33,7 @@ final class ActivitySummaryTooltips
 		this.iconCache = iconCache;
 		this.primaryName = primaryName;
 		this.wikiLinks = wikiLinks;
+		this.virtualLevels = virtualLevels;
 	}
 
 	JToolTip buildPvm(JLabel owner, JPanel parentCell)
@@ -179,6 +181,7 @@ final class ActivitySummaryTooltips
 		{
 			CompareSkillSummaryTooltip cmp = new CompareSkillSummaryTooltip();
 			cmp.setComponent(owner);
+			cmp.setVirtualLevels(virtualLevels.get());
 			String blueName = primaryName.get() != null ? primaryName.get() : "--";
 			String redName = comparison.getCompareRsn() != null ? comparison.getCompareRsn() : "--";
 			cmp.setData(blueName, lookupSession.getHiscoreResult(),
@@ -189,6 +192,7 @@ final class ActivitySummaryTooltips
 		}
 		SkillsTooltip tip = new SkillsTooltip();
 		tip.setComponent(owner);
+		tip.setVirtualLevels(virtualLevels.get());
 		HiscoreResult result = lookupSession.getHiscoreResult();
 		tip.setData(result);
 		int rifts = result != null
