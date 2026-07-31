@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import net.runelite.api.Skill;
 import net.runelite.client.hiscore.HiscoreSkill;
 
 /** Pure query helpers on HiscoreResult and ClogResult. */
@@ -175,15 +176,38 @@ final class LookupQueries
 			result != null ? result.getHiscoreTable() : HiscoreTable.STANDARD);
 	}
 
+	/** 200m, the per-skill xp cap. */
+	private static final long MAX_SKILL_XP = 200_000_000L;
+
 	static String getPrestige(HiscoreResult result)
 	{
 		if (result == null) return null;
+		boolean titan = isTitan(result);
 		boolean maxed = result.getTotalLevel() >= PanelData.MAX_TOTAL_LEVEL;
 		boolean infernal = result.getKc("TzKal-Zuk") > 0;
+		if (titan && infernal) return "Titan Infernal";
+		if (titan) return "Titan";
 		if (maxed && infernal) return "Maxed Infernal";
 		if (maxed) return "Maxed";
 		if (infernal) return "Infernal";
 		return null;
+	}
+
+	/**
+	 * 200m in every skill the game has - 4.8b as of Sailing. The summit Lynx
+	 * Titan invented and Fast 07 first reached; the bar rises by itself when
+	 * Jagex adds a skill because the check walks the current skill list.
+	 */
+	private static boolean isTitan(HiscoreResult result)
+	{
+		for (Skill skill : Skill.values())
+		{
+			if (result.getSkillXp(skill.getName().toLowerCase()) != MAX_SKILL_XP)
+			{
+				return false;
+			}
+		}
+		return true;
 	}
 
 	static Set<Integer> getObtainedPetIds(ClogResult result)
