@@ -15,6 +15,19 @@ import net.runelite.client.ui.ColorScheme;
 final class ProgressHighlighter
 {
 	private final Map<HiscoreSkill, JLabel> bossLabels;
+
+	// Pending Mad Angel cell (pre-enum only; see PanelData). Late-assigned.
+	@javax.annotation.Nullable
+	private JLabel pendingBossLabel;
+	@javax.annotation.Nullable
+	private String pendingBossName;
+
+	void setPendingBoss(@javax.annotation.Nullable JLabel label,
+		@javax.annotation.Nullable String hiscoreName)
+	{
+		this.pendingBossLabel = label;
+		this.pendingBossName = hiscoreName;
+	}
 	private final Map<HiscoreSkill, JLabel> activityLabels;
 	private final Map<HiscoreSkill, JLabel> clueTierLabels;
 	private final Map<String, String> nameOverrides;
@@ -56,6 +69,11 @@ final class ProgressHighlighter
 			HiscoreSkill skill = entry.getKey();
 			String hiscoreName = nameOverrides.getOrDefault(skill.getName(), skill.getName());
 			colorBossCell(entry.getValue(), hiscoreName, hiscoreResult, clogResult,
+				fourTwentyMode, fourTwentyGreen);
+		}
+		if (pendingBossLabel != null && pendingBossName != null)
+		{
+			colorBossCell(pendingBossLabel, pendingBossName, hiscoreResult, clogResult,
 				fourTwentyMode, fourTwentyGreen);
 		}
 
@@ -108,6 +126,11 @@ final class ProgressHighlighter
 			{
 				label.setForeground(config.emptyClogColor());
 			}
+		}
+		if (pendingBossLabel != null
+			&& ColorScheme.LIGHT_GRAY_COLOR.equals(pendingBossLabel.getForeground()))
+		{
+			pendingBossLabel.setForeground(config.emptyClogColor());
 		}
 		for (JLabel label : activityLabels.values())
 		{

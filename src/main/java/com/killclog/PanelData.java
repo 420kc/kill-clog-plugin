@@ -16,13 +16,14 @@ final class PanelData
 
 	static final int MAX_TOTAL_LEVEL = 2376;
 
+	private static final String MAD_ANGEL_ENUM = "MAD_ANGEL";
+
 	// Boss display order matching vanilla RuneLite hiscores: enum declaration
-	// order. Same bosses as HiscoreService.bossNames(), but the ORDER can
-	// diverge from Jagex's CSV rows (Maggot King renders before Mimic, parses
-	// after it) - name-keyed lookups bridge the two lists.
+	// order. Same bosses as HiscoreService.bossNames() - name-keyed lookups
+	// bridge the two lists when order diverges.
 	// New boss? Add it here in enum order once RuneLite adds it.
 	// See BOSS_NAMES comment in HiscoreService for the full update playbook.
-	static final HiscoreSkill[] BOSSES = {
+	private static final HiscoreSkill[] BASE_BOSSES = {
 		HiscoreSkill.ABYSSAL_SIRE,
 		HiscoreSkill.ALCHEMICAL_HYDRA,
 		HiscoreSkill.AMOXLIATL,
@@ -97,17 +98,85 @@ final class PanelData
 		HiscoreSkill.ZALCANO,
 		HiscoreSkill.ZULRAH,
 	};
+	static final HiscoreSkill[] BOSSES = bossesWithKnownOptionalBosses();
+
+	// Pre-enum Mad Angel cell: the game cache ships the boss icon (gameval
+	// SpriteID.IconBoss25x25.MAD_ANGEL) and Jagex serves the KC row, but
+	// released RuneLite 1.12.33 lacks the enum. The panel renders a pending
+	// cell from these until hasOfficialMadAngel() flips at runtime on newer
+	// clients; then the enum path owns it. Maggot King precedent (1.6.0).
+	static final String PENDING_MAD_ANGEL_NAME = "Mad Angel";
+	static final String PENDING_MAD_ANGEL_WIKI = "The Mad Angel";
+	static final int PENDING_MAD_ANGEL_SPRITE_ID = 8359;
+
 	static int bossCount()
 	{
 		return BOSSES.length;
 	}
 
-	// Bosses the hiscore CSV carries that the panel cannot render yet because
-	// the released RuneLite artifact has no HiscoreSkill enum for them. Each
-	// entry is a debt: when the enum ships, add it to BOSSES and delete the
-	// name here. testEveryRuneLiteBossAppearsInPanel screams at that moment.
-	static final java.util.Set<String> CSV_ONLY_PENDING =
-		java.util.Collections.singleton("Mad Angel");
+	/** Boss cells the panel actually shows: BOSSES plus the pending Mad Angel cell. */
+	static int displayedBossCount()
+	{
+		return BOSSES.length + (hasOfficialMadAngel() ? 0 : 1);
+	}
+
+	static boolean hasOfficialMadAngel()
+	{
+		return optionalBoss(MAD_ANGEL_ENUM) != null;
+	}
+
+	private static HiscoreSkill[] bossesWithKnownOptionalBosses()
+	{
+		HiscoreSkill madAngel = optionalBoss(MAD_ANGEL_ENUM);
+		if (madAngel == null)
+		{
+			return BASE_BOSSES;
+		}
+		return insertAfter(BASE_BOSSES, HiscoreSkill.LUNAR_CHESTS, madAngel);
+	}
+
+	private static HiscoreSkill optionalBoss(String enumName)
+	{
+		try
+		{
+			return HiscoreSkill.valueOf(enumName);
+		}
+		catch (IllegalArgumentException ex)
+		{
+			return null;
+		}
+	}
+
+	private static HiscoreSkill[] insertAfter(HiscoreSkill[] bosses,
+		HiscoreSkill after, HiscoreSkill boss)
+	{
+		java.util.List<HiscoreSkill> next = new java.util.ArrayList<>(bosses.length + 1);
+		boolean inserted = false;
+		for (HiscoreSkill existing : bosses)
+		{
+			next.add(existing);
+			if (!inserted && existing == after)
+			{
+				next.add(boss);
+				inserted = true;
+			}
+		}
+		if (!inserted)
+		{
+			next.add(boss);
+		}
+		return next.toArray(new HiscoreSkill[0]);
+	}
+
+	// Bosses the hiscore CSV carries that the panel's enum list cannot name on
+	// this client. Empty on clients whose RuneLite ships the enum: the pending
+	// window closes by itself.
+	static java.util.Set<String> csvOnlyPending()
+	{
+		return hasOfficialMadAngel()
+			? java.util.Collections.emptySet()
+			: java.util.Collections.singleton(PENDING_MAD_ANGEL_NAME);
+	}
 
 	// HiscoreSkill.getName() -> boss name used in hiscore CSV data.
 	// Only entries where the two differ are needed.

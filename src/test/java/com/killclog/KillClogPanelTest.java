@@ -117,8 +117,25 @@ public class KillClogPanelTest
 	{
 		assertEquals(
 			"BOSS_NAMES (HiscoreService) and BOSSES (PanelData) have different lengths",
-			HiscoreService.bossCount() - PanelData.CSV_ONLY_PENDING.size(),
+			HiscoreService.bossCount() - PanelData.csvOnlyPending().size(),
 			PanelData.bossCount());
+	}
+
+	@Test
+	public void testPendingMadAngelCellContract()
+	{
+		// Pre-enum the panel shows one extra cell; once RuneLite ships the
+		// enum the pending cell retires at runtime and the counts converge.
+		int expectedExtra = PanelData.hasOfficialMadAngel() ? 0 : 1;
+		assertEquals(PanelData.bossCount() + expectedExtra, PanelData.displayedBossCount());
+
+		// The pending window and the csv-only exemption are the same window.
+		assertEquals(expectedExtra, PanelData.csvOnlyPending().size());
+
+		// The pending cell's tooltip reads clog data via the same category key
+		// the enum path will use - the game names the category with "The".
+		assertEquals("the_mad_angel",
+			ClogService.bossToCategory(PanelData.PENDING_MAD_ANGEL_NAME));
 	}
 
 	@Test
@@ -154,7 +171,7 @@ public class KillClogPanelTest
 		// less the declared pre-enum pending window.
 		java.util.Set<String> csvNames =
 			new java.util.HashSet<>(java.util.Arrays.asList(HiscoreService.bossNames()));
-		csvNames.removeAll(PanelData.CSV_ONLY_PENDING);
+		csvNames.removeAll(PanelData.csvOnlyPending());
 		java.util.Set<String> panelNames = new java.util.HashSet<>();
 		for (int i = 0; i < PanelData.BOSSES.length; i++)
 		{
@@ -162,7 +179,7 @@ public class KillClogPanelTest
 			panelNames.add(PanelData.NAME_OVERRIDES.getOrDefault(displayName, displayName));
 		}
 		assertEquals(csvNames, panelNames);
-		assertEquals(HiscoreService.bossNames().length - PanelData.CSV_ONLY_PENDING.size(),
+		assertEquals(HiscoreService.bossNames().length - PanelData.csvOnlyPending().size(),
 			PanelData.BOSSES.length);
 	}
 

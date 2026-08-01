@@ -199,9 +199,13 @@ public class ComparisonController
 		listener.onComparisonEnter(compareRsn != null ? compareRsn : "");
 	}
 
+	// Red-side data for the pending Mad Angel cell (pre-enum only; see PanelData).
+	@Nullable private TooltipData pendingMadAngelCompareData;
+
 	public void rebuildTooltipData()
 	{
 		compareTooltipDataMap.clear();
+		pendingMadAngelCompareData = null;
 		if (compareHiscoreResult != null)
 		{
 			ClogResult catalog = compareClogResult == null ? unsyncedCatalog.result() : null;
@@ -215,7 +219,18 @@ public class ComparisonController
 					compareTooltipDataMap.put(boss, data);
 				}
 			}
+			if (!PanelData.hasOfficialMadAngel())
+			{
+				pendingMadAngelCompareData = buildCompareBossData(
+					PanelData.PENDING_MAD_ANGEL_NAME, PanelData.PENDING_MAD_ANGEL_NAME, catalog);
+			}
 		}
+	}
+
+	@Nullable
+	public TooltipData getPendingMadAngelTooltipData()
+	{
+		return pendingMadAngelCompareData;
 	}
 
 	/** Build one boss cell's red-side TooltipData: synced clog data, else the unsynced catalog preview. */

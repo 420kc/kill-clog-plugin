@@ -89,6 +89,13 @@ public class Cells
 	@Nullable private JLabel eliteRare;
 	@Nullable private JLabel masterRare;
 
+	// Pending Mad Angel cell (pre-enum only; see PanelData). None of these are
+	// populated on clients whose RuneLite ships HiscoreSkill.MAD_ANGEL.
+	@Nullable private JLabel pendingMadAngelLabel;
+	@Nullable private ImageIcon pendingMadAngelOriginalIcon;
+	@Nullable private ImageIcon pendingMadAngelDimmedIcon;
+	@Nullable private TooltipData pendingMadAngelData;
+
 	public Cells(SpriteManager spriteManager, ItemManager itemManager,
 		TooltipController tooltipController, ComparisonController comparison,
 		TooltipDataBuilder tooltipDataBuilder, LookupSession lookupSession,
@@ -138,8 +145,42 @@ public class Cells
 		for (HiscoreSkill boss : PanelData.BOSSES)
 		{
 			grid.add(buildBossCell(boss));
+			if (boss == HiscoreSkill.LUNAR_CHESTS && !PanelData.hasOfficialMadAngel())
+			{
+				grid.add(buildPendingMadAngelCell());
+			}
 		}
 		return grid;
+	}
+
+	/** Build the pending Mad Angel cell shown until RuneLite ships the HiscoreSkill enum. */
+	private JPanel buildPendingMadAngelCell()
+	{
+		JLabel label = new JLabel()
+		{
+			@Override
+			public JToolTip createToolTip()
+			{
+				return buildPendingMadAngelTooltip(this);
+			}
+		};
+		styleLabel(label, PanelData.PENDING_MAD_ANGEL_NAME);
+
+		loadBossIcon(label, PanelData.PENDING_MAD_ANGEL_SPRITE_ID, icon ->
+		{
+			pendingMadAngelOriginalIcon = icon;
+			pendingMadAngelDimmedIcon = new ImageIcon(ClogHelper.createDimmedImage(icon));
+		});
+
+		pendingMadAngelLabel = label;
+		return wrapInCell(label);
+	}
+
+	/** The pending cell's label, for highlighter wiring; null once the enum owns the cell. */
+	@Nullable
+	JLabel getPendingMadAngelLabel()
+	{
+		return pendingMadAngelLabel;
 	}
 
 	/** Build a single boss cell. Caller hooks listeners onto {@link #getBossLabel} after construction if needed. */
@@ -406,6 +447,8 @@ public class Cells
 			renderBossValue(entry.getValue(), hiscoreName,
 				originalIcons.get(skill), dimmedIcons.get(skill), result, fourTwentyMode);
 		}
+		renderBossValue(pendingMadAngelLabel, PanelData.PENDING_MAD_ANGEL_NAME,
+			pendingMadAngelOriginalIcon, pendingMadAngelDimmedIcon, result, fourTwentyMode);
 
 		// Activity cells
 		for (Map.Entry<HiscoreSkill, JLabel> entry : activityLabels.entrySet())
@@ -526,6 +569,12 @@ public class Cells
 			}
 			entry.getValue().setToolTipText(" ");
 		}
+		if (pendingMadAngelLabel != null)
+		{
+			String name = PanelData.PENDING_MAD_ANGEL_NAME;
+			pendingMadAngelData = buildPrimaryBossData(name, name, self, catalog);
+			pendingMadAngelLabel.setToolTipText(" ");
+		}
 
 		// Clue tier cells
 		if (lookupSession.getClogResult() == null)
@@ -635,6 +684,13 @@ public class Cells
 	{
 		return buildBossTooltip(owner, tooltipDataMap.get(boss),
 			comparison.getCompareTooltipData(boss), boss.getName(), PanelData.bossWikiPage(boss));
+	}
+
+	private JToolTip buildPendingMadAngelTooltip(JLabel owner)
+	{
+		return buildBossTooltip(owner, pendingMadAngelData,
+			comparison.getPendingMadAngelTooltipData(), PanelData.PENDING_MAD_ANGEL_NAME,
+			PanelData.PENDING_MAD_ANGEL_WIKI);
 	}
 
 	private JToolTip buildBossTooltip(JLabel owner, @Nullable TooltipData blueData,
