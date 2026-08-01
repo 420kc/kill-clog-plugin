@@ -842,6 +842,7 @@ public class KillClogPanel extends PluginPanel
 			ImageIcon orig = cells.getOriginalIcons().get(entry.getKey());
 			if (orig != null) label.setIcon(orig);
 		}
+		cells.resetPendingMadAngelCell();
 
 		resetLabelMap(cells.getActivityLabels());
 

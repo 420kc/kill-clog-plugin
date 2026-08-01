@@ -183,6 +183,30 @@ public class Cells
 		return pendingMadAngelLabel;
 	}
 
+	/** Blue-side tooltip data for the pending cell, for the comparison renderer. */
+	@Nullable
+	TooltipData getPendingMadAngelData()
+	{
+		return pendingMadAngelData;
+	}
+
+	/** Reset the pending cell exactly like resetAllLabels resets a regular boss cell. */
+	void resetPendingMadAngelCell()
+	{
+		if (pendingMadAngelLabel == null)
+		{
+			return;
+		}
+		pendingMadAngelData = null;
+		pendingMadAngelLabel.setText(ClogHelper.pad("--"));
+		pendingMadAngelLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		pendingMadAngelLabel.setToolTipText(" ");
+		if (pendingMadAngelOriginalIcon != null)
+		{
+			pendingMadAngelLabel.setIcon(pendingMadAngelOriginalIcon);
+		}
+	}
+
 	/** Build a single boss cell. Caller hooks listeners onto {@link #getBossLabel} after construction if needed. */
 	public JPanel buildBossCell(HiscoreSkill boss)
 	{

@@ -726,6 +726,13 @@ public class ComparisonController
 			compareOrRestore(entry.getValue(), hiscoreKc(blueHiscore, name), hiscoreKc(redHiscore, name),
 				cells.getTooltipData(entry.getKey()), compareTooltipDataMap.get(entry.getKey()));
 		}
+		if (cells.getPendingMadAngelLabel() != null)
+		{
+			String pendingName = PanelData.PENDING_MAD_ANGEL_NAME;
+			compareOrRestore(cells.getPendingMadAngelLabel(),
+				hiscoreKc(blueHiscore, pendingName), hiscoreKc(redHiscore, pendingName),
+				cells.getPendingMadAngelData(), pendingMadAngelCompareData);
+		}
 
 		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getActivityLabels().entrySet())
 		{
