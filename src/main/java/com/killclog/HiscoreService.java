@@ -30,13 +30,13 @@ public class HiscoreService
 {
 	private static final String BASE_URL = "https://secure.runescape.com/m=";
 	// JSON first: every row carries its name, so Jagex inserting, reordering,
-	// or renaming hiscore rows cannot misalign the parse (product canon
-	// 2026-07-29, after Wyrmscraig blanked boss KCs for a full merge window).
-	// The positional CSV is the fallback transport only.
+	// or renaming hiscore rows cannot misalign the parse. The 2026-07-29
+	// update blanked boss KCs for a full release cycle under positional
+	// parsing; the CSV is the fallback transport only now.
 	private static final String JSON_SUFFIX = "/index_lite.json?player=";
 	private static final String CSV_SUFFIX = "/index_lite.ws?player=";
 
-	// Jagex JSON spelling -> internal key, where our CSV-era canon differs.
+	// Jagex JSON spelling -> internal key, where the internal key predates the feed spelling.
 	private static final Map<String, String> JSON_BOSS_NAME_OVERRIDES =
 		Map.of("Calvar'ion", "Cal'varion");
 
@@ -564,7 +564,7 @@ public class HiscoreService
 
 		// This CSV path only runs when the JSON endpoint is down, and a count
 		// mismatch means rows at and below the change wear their neighbors'
-		// numbers. Product canon (2026-07-29): visibly imperfect beats blank -
+		// numbers. The 2026-07-29 outage set the rule - visibly imperfect beats blank:
 		// parse best-effort and keep the shifted flag set so every boss surface
 		// shows the misalignment notice. Never silently wrong.
 		for (int i = 0; i < bossNames.length; i++)

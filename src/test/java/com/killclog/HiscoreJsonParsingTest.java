@@ -69,7 +69,7 @@ public class HiscoreJsonParsingTest
 	@Test
 	public void testJagexRespellingMapsToInternalKey()
 	{
-		// The feed says Calvar'ion now; internal canon is still Cal'varion.
+		// The feed says Calvar'ion now; internal key is still Cal'varion.
 		// The boundary override keeps every downstream surface keyed the same:
 		// present under the internal key, absent under Jagex's new spelling.
 		HiscoreResult result = service.parseHiscoreBody(fixture, AccountType.REGULAR);
@@ -113,7 +113,7 @@ public class HiscoreJsonParsingTest
 		// Account-type detection compares total xp across the four endpoint
 		// variants. With the JSON-first transport those bodies are JSON, and
 		// a CSV-only reader returns -1 for all four - every ironman would
-		// misidentify as a regular account. Caught in review before release.
+		// misidentify as a regular account.
 		assertEquals(4_600_000_000L, service.extractTotalXp(fixture));
 	}
 

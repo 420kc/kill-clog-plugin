@@ -168,7 +168,7 @@ public class HiscoreParsingTest
 
 		HiscoreResult result = service.parseHiscoreBody(sb.toString(), AccountType.REGULAR);
 		assertNotNull(result);
-		// Contract flip (2026-07-29 canon): this CSV path only runs when JSON
+		// Contract flip (2026-07-29): this CSV path only runs when JSON
 		// is down, and visibly imperfect beats blank. The five present rows
 		// parse best-effort, the flag drives the misalignment notice, and
 		// bosses beyond the truncation stay absent.
@@ -190,7 +190,7 @@ public class HiscoreParsingTest
 
 		HiscoreResult result = service.parseHiscoreBody(body, AccountType.REGULAR);
 		assertNotNull(result);
-		// Contract flip (2026-07-29 canon): best-effort with the flag set.
+		// Contract flip (2026-07-29): best-effort with the flag set.
 		// Known boss positions still line up here (the growth is at the tail),
 		// so values parse correctly while the notice warns about the mismatch.
 		assertTrue(result.isBossSectionShifted());
@@ -415,10 +415,10 @@ public class HiscoreParsingTest
 	@Test
 	public void testShiftedCsvParsesBestEffortAndFlags()
 	{
-		// One extra row simulating a new boss in the block. Canon 2026-07-29:
-		// this fallback path renders best-effort with the flag set (the
-		// tooltip notice is the honesty), instead of blanking the section
-		// for the whole update window.
+		// One extra row simulating a new boss in the block. This fallback path
+		// renders best-effort with the flag set, and the tooltip notice warns
+		// the reader, instead of blanking the section for the whole update
+		// window.
 		String body = buildCsv(69, 2277, 4600000000L) + "50,420\n";
 		HiscoreResult result = service.parseHiscoreBody(body, AccountType.REGULAR);
 
