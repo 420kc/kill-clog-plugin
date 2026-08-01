@@ -78,10 +78,18 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 		installSkillHoverHandlers();
 	}
 
+	private boolean virtualLevels;
+
 	@Override
 	protected Font getTitleFont()
 	{
 		return TITLE_FONT_SMALL;
+	}
+
+	/** Follows RuneLite's core Virtual Levels plugin toggle, read at build time. */
+	public void setVirtualLevels(boolean virtualLevels)
+	{
+		this.virtualLevels = virtualLevels;
 	}
 
 	public void setData(String blueName, HiscoreResult blueResult,
@@ -230,8 +238,14 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 
 				// Skill levels.
 				String skillName = skill.getName().toLowerCase();
-				int blueLevel = blue.result != null ? blue.result.getSkillLevel(skillName) : -1;
-				int redLevel = red.result != null ? red.result.getSkillLevel(skillName) : -1;
+				int blueLevel = blue.result != null
+					? ClogHelper.displayLevel(blue.result.getSkillLevel(skillName),
+						blue.result.getSkillXp(skillName), virtualLevels)
+					: -1;
+				int redLevel = red.result != null
+					? ClogHelper.displayLevel(red.result.getSkillLevel(skillName),
+						red.result.getSkillXp(skillName), virtualLevels)
+					: -1;
 				String blueText = blueLevel > 0 ? String.valueOf(blueLevel) : "--";
 				String redText = redLevel > 0 ? String.valueOf(redLevel) : "--";
 

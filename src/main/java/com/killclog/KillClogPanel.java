@@ -141,11 +141,19 @@ public class KillClogPanel extends PluginPanel
 				AccountBadgeResolver.label(display),
 				LookupQueries.getPrestige(lookupSession.getHiscoreResult())
 			);
+			tip.setWikiLinksEnabled(config.wikiItemLinks());
 			if (lookupSession.getClogResult() != null)
 			{
-				List<Integer> allPets = lookupSession.getClogResult().getCategoryItems().get("all_pets");
-				Set<Integer> obtainedPets = LookupQueries.getObtainedPetIds(lookupSession.getClogResult());
-				tip.setPets(allPets, obtainedPets, itemManager);
+				ClogResult clog = lookupSession.getClogResult();
+				List<Integer> allPets = clog.getCategoryItems().get("all_pets");
+				Set<Integer> obtainedPets = LookupQueries.getObtainedPetIds(clog);
+				tip.setPets(allPets, obtainedPets, itemManager, clog::getItemName);
+			}
+			// Without this the tooltip dies when the mouse leaves the name
+			// label, and the pet gallery can never be hovered at all.
+			if (this.getParent() instanceof JPanel)
+			{
+				tooltipController.keepTooltipOnHover(tip, (JPanel) this.getParent());
 			}
 			return tip;
 		}
@@ -283,10 +291,13 @@ public class KillClogPanel extends PluginPanel
 		this.comparison = new ComparisonController(hiscoreService, clogService, runeProfileService,
 			lookupSession, itemManager, config, tooltipController, tooltipDataBuilder, this);
 		this.comparison.setRenderTarget(this);
+		this.comparison.setVirtualTotalLevel(
+			() -> ClogHelper.virtualTotalLevelEnabled(configManager));
 		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, clogService, new PersonalBests(configManager), config);
 		this.activityTooltips = new ActivitySummaryTooltips(
 			lookupSession, comparison, cells, tooltipController, itemManager,
-			caRewardSprites, iconCache, this::comparisonBlueName, config::wikiItemLinks);
+			caRewardSprites, iconCache, this::comparisonBlueName, config::wikiItemLinks,
+			() -> ClogHelper.virtualLevelsEnabled(configManager));
 		this.itemNameResolver = new TooltipItemNameResolver(clientThread, itemManager,
 			this::onTooltipItemNamesResolved);
 		this.cells.setUnsyncedCatalogResolver(itemNameResolver::resolve);
@@ -684,7 +695,8 @@ public class KillClogPanel extends PluginPanel
 			{
 				combatCell.setText(ClogHelper.pad(String.valueOf(combatLevel)));
 			}
-			int totalLevel = swapHiscore.getTotalLevel();
+			int totalLevel = ClogHelper.displayTotalLevel(swapHiscore,
+				ClogHelper.virtualTotalLevelEnabled(configManager));
 			if (totalLevel > 0)
 			{
 				totalLvlCell.setText(ClogHelper.pad(String.valueOf(totalLevel)));
@@ -881,7 +893,8 @@ public class KillClogPanel extends PluginPanel
 			combatCell.setText(ClogHelper.pad(String.valueOf(combatLevel)));
 		}
 
-		int totalLevel = result.getTotalLevel();
+		int totalLevel = ClogHelper.displayTotalLevel(result,
+			ClogHelper.virtualTotalLevelEnabled(configManager));
 		if (totalLevel > 0)
 		{
 			totalLvlCell.setText(ClogHelper.pad(String.valueOf(totalLevel)));
