@@ -108,6 +108,22 @@ public class HiscoreJsonParsingTest
 	}
 
 	@Test
+	public void testExtractTotalXpReadsJsonBodies()
+	{
+		// Account-type detection compares total xp across the four endpoint
+		// variants. With the JSON-first transport those bodies are JSON, and
+		// a CSV-only reader returns -1 for all four - every ironman would
+		// misidentify as a regular account. Caught in review before release.
+		assertEquals(4_600_000_000L, service.extractTotalXp(fixture));
+	}
+
+	@Test
+	public void testExtractTotalXpStillReadsCsv()
+	{
+		assertEquals(4_600_000_000L, service.extractTotalXp("1,2277,4600000000\n1,99,13034431"));
+	}
+
+	@Test
 	public void testRowOrderIsIrrelevant()
 	{
 		// Shuffle a boss row to the front of the activities array: the parse

@@ -703,8 +703,13 @@ public class Cells
 		{
 			TitleTooltip titled = (TitleTooltip) tip;
 			titled.setTitleWikiPage(wikiPage);
-			HiscoreResult hiscore = lookupSession.getHiscoreResult();
-			if (hiscore != null && hiscore.isBossSectionShifted())
+			// Either player's result degrading to the warned CSV fallback puts
+			// the notice up - a silently wrong red column breaks the ladder's
+			// rule the same as a blue one.
+			HiscoreResult blue = lookupSession.getHiscoreResult();
+			HiscoreResult red = comparison.getCompareHiscoreResult();
+			if ((blue != null && blue.isBossSectionShifted())
+				|| (red != null && red.isBossSectionShifted()))
 			{
 				titled.setInfoLine(BOSS_SECTION_SHIFTED_LABEL, BOSS_SECTION_SHIFTED_VALUE,
 					ColorScheme.LIGHT_GRAY_COLOR);

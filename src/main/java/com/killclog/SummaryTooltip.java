@@ -45,8 +45,8 @@ public class SummaryTooltip extends TitleTooltip
 	private String accountLabel;
 	private String prestige;
 
-	// Pet data only includes obtained pets (Dylan's call 2026-07-29: the
-	// gallery shows what you have, not the empty slots).
+	// Pet data only includes obtained pets: the gallery shows what you have,
+	// not the empty slots.
 	private int totalPetCount;
 	private List<Integer> petList;
 	private String[] petNames;

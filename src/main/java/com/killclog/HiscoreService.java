@@ -383,6 +383,22 @@ public class HiscoreService
 		}
 		try
 		{
+			// Account-type detection compares this value across the four
+			// endpoint variants, and the transport is JSON-first now: read
+			// Overall xp from whichever shape arrived.
+			if (body.trim().startsWith("{"))
+			{
+				JsonObject root = gson.fromJson(body, JsonObject.class);
+				for (JsonElement e : root.getAsJsonArray("skills"))
+				{
+					JsonObject s = e.getAsJsonObject();
+					if ("Overall".equals(s.get("name").getAsString()))
+					{
+						return s.get("xp").getAsLong();
+					}
+				}
+				return -1;
+			}
 			String firstLine = body.trim().split("\\r?\\n")[0];
 			String[] parts = firstLine.split(",");
 			return parts.length >= 3 ? Long.parseLong(parts[2]) : -1;
