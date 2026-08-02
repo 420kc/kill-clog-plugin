@@ -147,9 +147,9 @@ public class RuneProfileServiceTest
 		String json = "{\"data\":["
 			+ "{\"name\":\"Easy\",\"completed\":41,\"total\":41},"
 			+ "{\"name\":\"Medium\",\"completed\":60,\"total\":60},"
-			+ "{\"name\":\"Hard\",\"completed\":85,\"total\":85},"
-			+ "{\"name\":\"Elite\",\"completed\":162,\"total\":162},"
-			+ "{\"name\":\"Master\",\"completed\":168,\"total\":168},"
+			+ "{\"name\":\"Hard\",\"completed\":86,\"total\":86},"
+			+ "{\"name\":\"Elite\",\"completed\":164,\"total\":164},"
+			+ "{\"name\":\"Master\",\"completed\":174,\"total\":174},"
 			+ "{\"name\":\"Grandmaster\",\"completed\":121,\"total\":121}"
 			+ "]}";
 		CombatAchievementResult r = service.parseCombatAchievements(json);

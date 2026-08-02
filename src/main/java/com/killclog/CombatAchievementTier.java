@@ -18,9 +18,9 @@ enum CombatAchievementTier
 {
 	EASY(1, 41),
 	MEDIUM(2, 60),
-	HARD(3, 85),
-	ELITE(4, 162),
-	MASTER(5, 168),
+	HARD(3, 86),
+	ELITE(4, 164),
+	MASTER(5, 174),
 	GRANDMASTER(6, 121);
 
 	private final int pointsPerTask;
