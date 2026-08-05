@@ -89,7 +89,8 @@ class SyncService
 	 *                    never the provider-derived one
 	 */
 	CompletableFuture<SyncResult> syncCollectionLog(String rsn, long accountHash,
-		@Nullable AccountType accountType, Map<String, Double> personalBests)
+		@Nullable AccountType accountType, Map<String, Double> personalBests,
+		Map<String, DetailedPb> detailedPersonalBests)
 	{
 		if (rsn == null || rsn.isBlank())
 		{
@@ -111,7 +112,7 @@ class SyncService
 				new SyncResult(false, false, -1, "No local collection log to sync yet."));
 		}
 
-		String body = gson.toJson(buildBody(accountHash, accountType, clog, personalBests));
+		String body = gson.toJson(buildBody(accountHash, accountType, clog, personalBests, detailedPersonalBests));
 		final int observedCount = countUniqueItems(clog);
 		// URLEncoder form-encodes spaces as '+', which the server preserves and
 		// rejects; path segments need %20.
@@ -203,7 +204,8 @@ class SyncService
 	 * identical stores produce identical payloads.
 	 */
 	private JsonObject buildBody(long accountHash, @Nullable AccountType accountType,
-		ClogResult clog, Map<String, Double> personalBests)
+		ClogResult clog, Map<String, Double> personalBests,
+		Map<String, DetailedPb> detailedPersonalBests)
 	{
 		JsonObject root = new JsonObject();
 		root.addProperty("account_hash", Long.toString(accountHash));
@@ -233,6 +235,25 @@ class SyncService
 				pbs.addProperty(entry.getKey(), entry.getValue());
 			}
 			root.add("pbs", pbs);
+		}
+
+		// Ladder cargo: the same bests keyed by vanilla's variant key with
+		// team sizes SPLIT ("chambers of xeric solo" vs "... 5 players").
+		// The collapsed map above stays for display compatibility; ladders
+		// need the split because solo and team runs rank separately. Each
+		// entry carries where this client observed it: "store" from
+		// RuneLite's own pb store, "advlog" from the Counters scroll harvest.
+		if (detailedPersonalBests != null && !detailedPersonalBests.isEmpty())
+		{
+			JsonObject detailed = new JsonObject();
+			for (Map.Entry<String, DetailedPb> entry : new TreeMap<>(detailedPersonalBests).entrySet())
+			{
+				JsonObject record = new JsonObject();
+				record.addProperty("seconds", entry.getValue().seconds);
+				record.addProperty("source", entry.getValue().source);
+				detailed.add(entry.getKey(), record);
+			}
+			root.add("pbs_detailed", detailed);
 		}
 
 		Map<Integer, ItemEntry> byId = new TreeMap<>();
@@ -269,6 +290,19 @@ class SyncService
 		root.add("clog", items);
 		root.addProperty("client_version", CLIENT_VERSION);
 		return root;
+	}
+
+	/** One variant-keyed pb with the lane this client observed it through. */
+	static final class DetailedPb
+	{
+		final double seconds;
+		final String source;
+
+		DetailedPb(double seconds, String source)
+		{
+			this.seconds = seconds;
+			this.source = source;
+		}
 	}
 
 	private static final class ItemEntry

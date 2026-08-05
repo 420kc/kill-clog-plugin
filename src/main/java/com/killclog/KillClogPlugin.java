@@ -20,6 +20,8 @@ import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.ScriptPreFired;
 import net.runelite.api.events.VarbitChanged;
+import net.runelite.api.events.WidgetLoaded;
+import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatCommandManager;
@@ -131,6 +133,12 @@ public class KillClogPlugin extends Plugin
 
 	private NavigationButton navButton;
 	private String lastLocalName;
+
+	// Adventure-log pb harvest state, vanilla's two-stage shape: the menu
+	// load names the owner, the Counters scroll load triggers the parse.
+	private boolean advLogTitleLoaded;
+	private boolean advLogCountersLoaded;
+	private String advLogOwner;
 
 	private final ChatAutoLookupGate chatAutoLookup = new ChatAutoLookupGate();
 	private final ClogSessionState sessionState = new ClogSessionState();
@@ -324,6 +332,15 @@ public class KillClogPlugin extends Plugin
 		{
 			markLocalHiscoresDirty();
 		}
+
+		// The owner claim is scoped to one POH visit, exactly as vanilla
+		// scopes it: any region load or hop drops it, so a friend's log can
+		// never linger and gate (or worse, misattribute) a later harvest.
+		if (event.getGameState() == GameState.LOADING
+			|| event.getGameState() == GameState.HOPPING)
+		{
+			advLogOwner = null;
+		}
 	}
 
 	// Jagex republishes the local player's hiscore row on logout and world
@@ -491,6 +508,57 @@ public class KillClogPlugin extends Plugin
 		return out;
 	}
 
+	/**
+	 * Variant-keyed personal bests for the ladder payload: team sizes stay
+	 * SPLIT (solo and 5-man runs are different sports on a leaderboard),
+	 * keyed by vanilla's own stored key shape. The collapsed map above stays
+	 * as-is for tooltip display. Same STANDARD-only fragment sweep, merged
+	 * min-wins with the adventure-log harvest; each entry keeps the lane it
+	 * was observed through.
+	 */
+	private java.util.Map<String, SyncService.DetailedPb> gatherDetailedPersonalBests(String rsn)
+	{
+		java.util.List<String> profileKeys = new java.util.ArrayList<>();
+		for (net.runelite.client.config.RuneScapeProfile profile : configManager.getRSProfiles())
+		{
+			if (rsn.equalsIgnoreCase(profile.getDisplayName())
+				&& profile.getType() == net.runelite.client.config.RuneScapeProfileType.STANDARD)
+			{
+				String key = profile.getKey();
+				profileKeys.add(key.startsWith("rsprofile.") ? key : "rsprofile." + key);
+			}
+		}
+
+		PersonalBests pbs = new PersonalBests(configManager);
+		AdvLogPbs advLog = new AdvLogPbs(configManager);
+		java.util.Map<String, SyncService.DetailedPb> out = new java.util.LinkedHashMap<>();
+		for (net.runelite.client.hiscore.HiscoreSkill boss : PanelData.BOSSES)
+		{
+			for (java.util.Map.Entry<String, Double> entry
+				: pbs.variantSecondsAcrossProfiles(profileKeys, boss.getName()).entrySet())
+			{
+				mergeDetailedPb(out, entry.getKey(), entry.getValue(), "store");
+			}
+			for (java.util.Map.Entry<String, Double> entry
+				: advLog.variantSecondsAcrossProfiles(profileKeys, boss.getName()).entrySet())
+			{
+				mergeDetailedPb(out, entry.getKey(), entry.getValue(), "advlog");
+			}
+		}
+		return out;
+	}
+
+	/** Faster wins; on a tie the earlier lane keeps the tag. */
+	private static void mergeDetailedPb(java.util.Map<String, SyncService.DetailedPb> out,
+		String key, double seconds, String source)
+	{
+		SyncService.DetailedPb existing = out.get(key);
+		if (existing == null || seconds < existing.seconds)
+		{
+			out.put(key, new SyncService.DetailedPb(seconds, source));
+		}
+	}
+
 	private static void putBestSeconds(java.util.Map<String, Double> out, PersonalBests pbs,
 		java.util.List<String> profileKeys, String bossName)
 	{
@@ -574,7 +642,8 @@ public class KillClogPlugin extends Plugin
 					chatNotifier.send(ChatNotice.SYNC_RESULT, "Syncing collection log to killclog.com...");
 				}
 				panel.showSyncStatus("syncing...", false, false);
-				syncService.syncCollectionLog(rsn, accountHash, accountType, gatherPersonalBests(rsn))
+				syncService.syncCollectionLog(rsn, accountHash, accountType,
+						gatherPersonalBests(rsn), gatherDetailedPersonalBests(rsn))
 					.whenComplete((result, err) ->
 					{
 						boolean current = syncGate.complete(generation);
@@ -707,6 +776,47 @@ public class KillClogPlugin extends Plugin
 		manualClogSync.onGameTick(client, clogIndex, localClogCache,
 			chatNotifier, clogButtonOverlay, liveClogSync::resetFirstSyncWarning,
 			panel::onBulkCaptureComplete);
+
+		// Adventure-log pb harvest, one tick after each widget load so the
+		// children are populated (vanilla's own deferral). The new menu
+		// interface hosts more than the Adventure Log; a non-matching title
+		// simply leaves the owner as-is.
+		if (advLogTitleLoaded)
+		{
+			advLogTitleLoaded = false;
+			String owner = AdvLogPbs.readOwner(client);
+			if (owner != null)
+			{
+				advLogOwner = owner;
+			}
+		}
+		if (advLogCountersLoaded)
+		{
+			advLogCountersLoaded = false;
+			Player local = client.getLocalPlayer();
+			if (local != null && AdvLogPbs.sameName(local.getName(), advLogOwner))
+			{
+				int recorded = new AdvLogPbs(configManager).harvest(client);
+				if (recorded > 0)
+				{
+					log.debug("adventure log pb harvest recorded {} keys for '{}'",
+						recorded, advLogOwner);
+				}
+			}
+		}
+	}
+
+	@Subscribe
+	public void onWidgetLoaded(WidgetLoaded event)
+	{
+		if (event.getGroupId() == InterfaceID.MENU_NEW)
+		{
+			advLogTitleLoaded = true;
+		}
+		else if (event.getGroupId() == InterfaceID.JOURNALSCROLL)
+		{
+			advLogCountersLoaded = true;
+		}
 	}
 
 	@Subscribe

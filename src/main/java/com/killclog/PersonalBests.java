@@ -14,13 +14,17 @@ final class PersonalBests
 {
 	/**
 	 * Team-size suffixes vanilla appends to raid pb keys, including the large
-	 * CoX buckets. The tooltip shows the fastest across sizes: one line, the
-	 * true personal best.
+	 * CoX buckets and the open-ended "N+" shape the adventure log emits for
+	 * old Nightmare records. The tooltip shows the fastest across sizes: one
+	 * line, the true personal best.
 	 */
 	/* package */ static final String[] TEAM_SUFFIXES = {
 		"", " solo", " 1 player", " 2 players", " 3 players", " 4 players",
 		" 5 players", " 6 players", " 7 players", " 8 players", " 9 players",
 		" 10 players", " 11-15 players", " 16-23 players", " 24+ players",
+		" 2+ players", " 3+ players", " 4+ players", " 5+ players",
+		" 6+ players", " 7+ players", " 8+ players", " 9+ players",
+		" 10+ players",
 	};
 
 	private final ConfigManager configManager;
@@ -81,6 +85,70 @@ final class PersonalBests
 			}
 		}
 		return best;
+	}
+
+	/** One stored-key read, abstracted so the variant merge logic is testable. */
+	@FunctionalInterface
+	interface PbReader
+	{
+		Double read(String key);
+	}
+
+	/**
+	 * Every recorded variant for a panel boss: canonical variant key
+	 * ("&lt;base&gt;&lt;suffix&gt;") -> fastest seconds for THAT variant. Team sizes
+	 * stay split - a ladder ranks solo and team runs as different sports -
+	 * while alternate stored spellings ({@link #keyCandidates}) still merge
+	 * into the canonical key.
+	 */
+	/* package */ static java.util.Map<String, Double> variantSeconds(
+		PbReader reader, String panelBossName)
+	{
+		java.util.Map<String, Double> out = new java.util.LinkedHashMap<>();
+		String[] bases = keyCandidates(panelBossName);
+		String canonicalBase = bases[0];
+		for (String suffix : TEAM_SUFFIXES)
+		{
+			double best = 0;
+			for (String base : bases)
+			{
+				Double pb = reader.read(base + suffix);
+				if (pb != null && pb > 0 && (best == 0 || pb < best))
+				{
+					best = pb;
+				}
+			}
+			if (best > 0)
+			{
+				out.put(canonicalBase + suffix, best);
+			}
+		}
+		return out;
+	}
+
+	/** {@link #variantSeconds} over the same fragment sweep the tooltips use. */
+	java.util.Map<String, Double> variantSecondsAcrossProfiles(
+		java.util.List<String> profileKeys, String panelBossName)
+	{
+		if (profileKeys.isEmpty())
+		{
+			return variantSeconds(key -> configManager.getRSProfileConfiguration(
+				"personalbest", key, double.class), panelBossName);
+		}
+		return variantSeconds(key ->
+		{
+			Double best = null;
+			for (String profileKey : profileKeys)
+			{
+				Double pb = configManager.getConfiguration(
+					"personalbest", profileKey, key, (java.lang.reflect.Type) double.class);
+				if (pb != null && pb > 0 && (best == null || pb < best))
+				{
+					best = pb;
+				}
+			}
+			return best;
+		}, panelBossName);
 	}
 
 	/**
