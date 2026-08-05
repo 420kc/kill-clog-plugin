@@ -356,7 +356,9 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 	@Override
 	protected Color getTitleHoverColor()
 	{
-		return Color.WHITE;
+		// Matches the solo skill tooltip: the hovered skill name takes the
+		// title slot, so it takes the title's color too.
+		return OSRS_ORANGE;
 	}
 
 	private void installSkillHoverHandlers()

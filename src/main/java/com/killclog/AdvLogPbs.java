@@ -6,6 +6,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.Widget;
@@ -14,14 +15,20 @@ import net.runelite.client.util.Text;
 
 /**
  * Harvests personal bests from the POH Adventure Log's Counters scroll.
- * Vanilla's own harvest has been dead since the Adventure Log menu moved to
- * the new menu interface (it still watches the old one), so live kill-timer
- * messages are the only pbs RuneLite records today; this reads the scroll the
- * way vanilla intended and backfills every boss the player has not killed
- * since installing. Times land in Kill Clog's OWN rs-profile store - never
- * vanilla's "personalbest" namespace, which stays vanilla's to write - and
- * the sync payload tags them "advlog".
+ *
+ * <p>The log opens in one of TWO menu interfaces and the player's in-game
+ * interface-style setting decides which: the original ({@code MENU}) or the
+ * newer ({@code MENU_NEW}). Vanilla's own harvest watches only the original,
+ * so it works for players on that style and silently does nothing for
+ * everyone on the newer one - which is why those players see no pbs beyond
+ * what live kill-timer messages recorded since install. This reads both, so
+ * the scroll backfills regardless of the setting.
+ *
+ * <p>Times land in Kill Clog's OWN rs-profile store - never vanilla's
+ * "personalbest" namespace, which stays vanilla's to write - and the sync
+ * payload tags them "advlog".
  */
+@Slf4j
 final class AdvLogPbs
 {
 	/* package */ static final String CONFIG_GROUP = "killclog";
@@ -68,31 +75,77 @@ final class AdvLogPbs
 	}
 
 	/**
-	 * The Adventure Log owner from the new menu interface's title layer, or
-	 * null when the loaded menu is not an Adventure Log. The title text is a
-	 * dynamic child surrounded by null and non-text children, so the scan
-	 * takes the first match.
+	 * The Adventure Log owner, or null when the loaded menu is not an
+	 * Adventure Log.
+	 *
+	 * <p>The game ships TWO menu interfaces and the player's interface-style
+	 * setting decides which one opens: the original ({@code MENU}, what
+	 * vanilla's chat-commands harvest watches) and the newer
+	 * ({@code MENU_NEW}). Watching only one silently harvests nothing for
+	 * every player on the other style, so both are read here. Cost of the
+	 * unused lookup is one null widget.
+	 *
+	 * <p>The title text sits at a different child index in each, and is
+	 * surrounded by null and non-text children, so both are scanned for the
+	 * first matching line rather than indexed.
 	 */
 	static String readOwner(Client client)
 	{
-		Widget title = client.getWidget(InterfaceID.MenuNew.TITLE);
-		if (title == null || title.getChildren() == null)
+		String owner = readOwnerFrom(client, InterfaceID.MenuNew.TITLE);
+		if (owner != null)
+		{
+			log.debug("adventure log owner '{}' read from the newer menu interface", owner);
+			return owner;
+		}
+		owner = readOwnerFrom(client, InterfaceID.Menu.LJ_LAYER2);
+		if (owner != null)
+		{
+			log.debug("adventure log owner '{}' read from the original menu interface", owner);
+		}
+		return owner;
+	}
+
+	/** Scan one container (its own text, then its children) for the title. */
+	private static String readOwnerFrom(Client client, int componentId)
+	{
+		Widget container = client.getWidget(componentId);
+		if (container == null)
 		{
 			return null;
 		}
-		for (Widget child : title.getChildren())
+		String own = matchOwner(container.getText());
+		if (own != null)
 		{
-			if (child == null || child.getText() == null)
+			return own;
+		}
+		Widget[] children = container.getChildren();
+		if (children == null)
+		{
+			return null;
+		}
+		for (Widget child : children)
+		{
+			if (child == null)
 			{
 				continue;
 			}
-			Matcher matcher = TITLE_PATTERN.matcher(Text.removeTags(child.getText()));
-			if (matcher.find())
+			String found = matchOwner(child.getText());
+			if (found != null)
 			{
-				return matcher.group(1);
+				return found;
 			}
 		}
 		return null;
+	}
+
+	/* package */ static String matchOwner(String raw)
+	{
+		if (raw == null)
+		{
+			return null;
+		}
+		Matcher matcher = TITLE_PATTERN.matcher(Text.removeTags(raw));
+		return matcher.find() ? matcher.group(1) : null;
 	}
 
 	/** Owner gate with the nbsp/tag hygiene vanilla's raw compare lacks. */
@@ -212,14 +265,20 @@ final class AdvLogPbs
 			String raw = children[i] != null ? children[i].getText() : null;
 			text[i] = raw != null ? Text.removeTags(raw) : "";
 		}
+		Map<String, Double> parsed = parseCounters(text);
 		int recorded = 0;
-		for (Map.Entry<String, Double> entry : parseCounters(text).entrySet())
+		for (Map.Entry<String, Double> entry : parsed.entrySet())
 		{
 			if (record(entry.getKey(), entry.getValue()))
 			{
 				recorded++;
 			}
 		}
+		// Both counts, always: a repeat visit legitimately records nothing
+		// (min-wins keeps the existing time), and a silent zero is
+		// indistinguishable from a parse that never ran.
+		log.debug("adventure log harvest: {} lines, parsed {} pbs, {} new or improved",
+			text.length, parsed.size(), recorded);
 		return recorded;
 	}
 

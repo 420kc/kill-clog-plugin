@@ -294,7 +294,9 @@ public class SkillsTooltip extends TitleTooltip
 	@Override
 	protected Color getTitleHoverColor()
 	{
-		return Color.WHITE;
+		// The hovered skill name stands in for the title, so it wears the
+		// title's own orange rather than a value color.
+		return OSRS_ORANGE;
 	}
 
 	private void installSkillHoverHandlers()

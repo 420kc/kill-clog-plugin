@@ -151,6 +151,21 @@ public class AdvLogPbsTest
 	}
 
 	@Test
+	public void titleLineParsesInEitherInterfaceStyle()
+	{
+		// The same title text appears in both menu interfaces; only the
+		// container and child index differ, so the matcher is shared.
+		assertEquals("420 kc", AdvLogPbs.matchOwner("The Exploits of 420 kc"));
+		assertEquals("420 kc", AdvLogPbs.matchOwner("<col=ff9040>The Exploits of 420 kc</col>"));
+		assertEquals("Zezima", AdvLogPbs.matchOwner("The Exploits of Zezima"));
+		// Non-title children and empty slots never claim ownership.
+		assertNull(AdvLogPbs.matchOwner(null));
+		assertNull(AdvLogPbs.matchOwner(""));
+		assertNull(AdvLogPbs.matchOwner("Activity Log"));
+		assertNull(AdvLogPbs.matchOwner("Counters"));
+	}
+
+	@Test
 	public void ownerGateSurvivesNbspAndRejectsStrangers()
 	{
 		// The in-game name renders its space as nbsp; the vanilla bug was

@@ -796,12 +796,14 @@ public class KillClogPlugin extends Plugin
 			Player local = client.getLocalPlayer();
 			if (local != null && AdvLogPbs.sameName(local.getName(), advLogOwner))
 			{
-				int recorded = new AdvLogPbs(configManager).harvest(client);
-				if (recorded > 0)
-				{
-					log.debug("adventure log pb harvest recorded {} keys for '{}'",
-						recorded, advLogOwner);
-				}
+				new AdvLogPbs(configManager).harvest(client);
+			}
+			else
+			{
+				// Someone else's house, or the title never resolved. Saying so
+				// separates "not yours" from "parser found nothing".
+				log.debug("adventure log counters skipped: owner '{}' is not the local player",
+					advLogOwner);
 			}
 		}
 	}
@@ -809,7 +811,10 @@ public class KillClogPlugin extends Plugin
 	@Subscribe
 	public void onWidgetLoaded(WidgetLoaded event)
 	{
-		if (event.getGroupId() == InterfaceID.MENU_NEW)
+		// Both menu interfaces are watched: the player's interface-style
+		// setting decides which one the Adventure Log opens in, and watching
+		// only one harvests nothing for everyone on the other style.
+		if (event.getGroupId() == InterfaceID.MENU_NEW || event.getGroupId() == InterfaceID.MENU)
 		{
 			advLogTitleLoaded = true;
 		}
