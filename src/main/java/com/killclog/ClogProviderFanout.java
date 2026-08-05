@@ -18,6 +18,22 @@ final class ClogProviderFanout
 		return chooseFreshest(temple, runeProfile, PROVIDER_TIMEOUT_SECONDS, TimeUnit.SECONDS);
 	}
 
+	/**
+	 * All three legs: the provider pair races on recency as before, then the
+	 * player's own killclog.com sync joins on coverage -- fullest leads, ties
+	 * prefer first-party ({@link ClogResult#pickFullest}).
+	 */
+	static CompletableFuture<ClogResult> chooseFullest(
+		CompletableFuture<ClogResult> temple,
+		CompletableFuture<ClogResult> runeProfile,
+		CompletableFuture<ClogResult> killclog)
+	{
+		return chooseFreshest(temple, runeProfile)
+			.thenCombine(
+				providerOrNull(killclog, PROVIDER_TIMEOUT_SECONDS, TimeUnit.SECONDS),
+				ClogResult::pickFullest);
+	}
+
 	static CompletableFuture<ClogResult> chooseFreshest(
 		CompletableFuture<ClogResult> temple,
 		CompletableFuture<ClogResult> runeProfile,

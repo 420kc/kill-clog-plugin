@@ -117,25 +117,18 @@ public class KillClogPanelTest
 	{
 		assertEquals(
 			"BOSS_NAMES (HiscoreService) and BOSSES (PanelData) have different lengths",
-			HiscoreService.bossCount() - PanelData.csvOnlyPending().size(),
+			HiscoreService.bossCount(),
 			PanelData.bossCount());
 	}
 
 	@Test
-	public void testPendingMadAngelCellContract()
+	public void testMadAngelOwnsItsCell()
 	{
-		// Pre-enum the panel shows one extra cell; once RuneLite ships the
-		// enum the pending cell retires at runtime and the counts converge.
-		int expectedExtra = PanelData.hasOfficialMadAngel() ? 0 : 1;
-		assertEquals(PanelData.bossCount() + expectedExtra, PanelData.displayedBossCount());
-
-		// The pending window and the csv-only exemption are the same window.
-		assertEquals(expectedExtra, PanelData.csvOnlyPending().size());
-
-		// The pending cell's tooltip reads clog data via the same category key
-		// the enum path will use - the game names the category with "The".
-		assertEquals("the_mad_angel",
-			ClogService.bossToCategory(PanelData.PENDING_MAD_ANGEL_NAME));
+		// The enum path owns the cell outright; the category key reads clog
+		// data with the game's "The" prefix.
+		assertTrue(java.util.Arrays.asList(PanelData.BOSSES)
+			.contains(net.runelite.client.hiscore.HiscoreSkill.MAD_ANGEL));
+		assertEquals("the_mad_angel", ClogService.bossToCategory("Mad Angel"));
 	}
 
 	@Test
@@ -167,11 +160,9 @@ public class KillClogPanelTest
 	public void testBossGridAndCsvNamesAgree()
 	{
 		// Display order and CSV row order may diverge (name-keyed lookups
-		// bridge them), but the two lists must always name the same bosses,
-		// less the declared pre-enum pending window.
+		// bridge them), but the two lists must always name the same bosses.
 		java.util.Set<String> csvNames =
 			new java.util.HashSet<>(java.util.Arrays.asList(HiscoreService.bossNames()));
-		csvNames.removeAll(PanelData.csvOnlyPending());
 		java.util.Set<String> panelNames = new java.util.HashSet<>();
 		for (int i = 0; i < PanelData.BOSSES.length; i++)
 		{
@@ -179,7 +170,7 @@ public class KillClogPanelTest
 			panelNames.add(PanelData.NAME_OVERRIDES.getOrDefault(displayName, displayName));
 		}
 		assertEquals(csvNames, panelNames);
-		assertEquals(HiscoreService.bossNames().length - PanelData.csvOnlyPending().size(),
+		assertEquals(HiscoreService.bossNames().length,
 			PanelData.BOSSES.length);
 	}
 

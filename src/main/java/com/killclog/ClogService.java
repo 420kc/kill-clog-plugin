@@ -393,6 +393,36 @@ public class ClogService
 		return items != null ? items.size() : -1;
 	}
 
+	/** True once the global category catalog has loaded. */
+	public boolean hasCatalog()
+	{
+		return cachedCategories != null;
+	}
+
+	/** Every category key in the loaded catalog, or empty when it hasn't loaded. */
+	public java.util.Set<String> getCatalogCategoryKeys()
+	{
+		Map<String, List<Integer>> cats = cachedCategories;
+		return cats != null ? new java.util.HashSet<>(cats.keySet()) : java.util.Collections.emptySet();
+	}
+
+	/**
+	 * Canonical item ids for a category from the cached global definitions,
+	 * or null when the catalog hasn't loaded or the category is unknown.
+	 * Returns a defensive copy.
+	 */
+	@Nullable
+	public List<Integer> getCategoryCatalogIds(String category)
+	{
+		Map<String, List<Integer>> cats = cachedCategories;
+		if (cats == null)
+		{
+			return null;
+		}
+		List<Integer> items = cats.get(category);
+		return items != null ? new ArrayList<>(items) : null;
+	}
+
 	/**
 	 * Prefetch the category and item-name catalog so the panel can preview
 	 * the log's shape before any player has been looked up.

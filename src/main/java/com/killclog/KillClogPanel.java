@@ -117,6 +117,7 @@ public class KillClogPanel extends PluginPanel
 	private JPanel infoRow;
 
 	private final JLabel searchStatus = new JLabel(" ");
+	private final JLabel syncArrow = new JLabel();
 	private final IconTextField searchBar = new IconTextField();
 	private final JLabel playerName = new UnderlineLabel(true)
 	{
@@ -179,7 +180,7 @@ public class KillClogPanel extends PluginPanel
 				ClogResult clog = lookupSession.getClogResult();
 				int[] totals = ClogHelper.sumClogTotals(clog);
 				tip.setTierData(totals[0], totals[1], iconCache.clogTierImages());
-				tip.setClogSources(clog.isFromTemple(), clog.isFromRuneProfile());
+				tip.setClogSources(clog.isFromTemple(), clog.isFromRuneProfile(), clog.isFromKillclog());
 				if (lookupSession.getHiscoreResult() != null)
 				{
 					int clogRank = lookupSession.getHiscoreResult().getActivityRank("Collections Logged");
@@ -266,7 +267,7 @@ public class KillClogPanel extends PluginPanel
 
 	@Inject
 	public KillClogPanel(HiscoreService hiscoreService, ClogService clogService,
-		RuneProfileService runeProfileService,
+		RuneProfileService runeProfileService, KillclogService killclogService,
 		KillClogConfig config, ConfigManager configManager,
 		SpriteManager spriteManager,
 		ItemManager itemManager, ClientThread clientThread,
@@ -287,13 +288,14 @@ public class KillClogPanel extends PluginPanel
 		this.iconCache = new PanelIconCache(itemManager, clientThread, spriteManager);
 		this.accountTypes = new PanelAccountTypes(runeProfileService);
 		this.tooltipController = new TooltipController(config);
-		this.lookupSession = new LookupSession(hiscoreService, clogService, runeProfileService, config, null, this);
+		this.lookupSession = new LookupSession(hiscoreService, clogService, runeProfileService,
+			killclogService, config, null, this);
 		this.comparison = new ComparisonController(hiscoreService, clogService, runeProfileService,
-			lookupSession, itemManager, config, tooltipController, tooltipDataBuilder, this);
+			killclogService, lookupSession, itemManager, config, tooltipController, tooltipDataBuilder, this);
 		this.comparison.setRenderTarget(this);
 		this.comparison.setVirtualTotalLevel(
 			() -> ClogHelper.virtualTotalLevelEnabled(configManager));
-		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, clogService, new PersonalBests(configManager), config);
+		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, clogService, killclogService, new PersonalBests(configManager), config);
 		this.activityTooltips = new ActivitySummaryTooltips(
 			lookupSession, comparison, cells, tooltipController, itemManager,
 			caRewardSprites, iconCache, this::comparisonBlueName, config::wikiItemLinks,
@@ -322,7 +324,11 @@ public class KillClogPanel extends PluginPanel
 		SkillsTooltip.loadIcons(skillIconManager);
 
 
-		setBorder(new EmptyBorder(10, 10, 0, 10));
+		// Top border 6 not 10: the missing 4px live inside the status row
+		// (taller row + compensating label inset), which lets the sync
+		// chalice center truly in the panel-top-to-search-bar band while
+		// the search bar and status text keep their exact positions.
+		setBorder(new EmptyBorder(6, 10, 0, 10));
 		setBackground(ColorScheme.DARK_GRAY_COLOR);
 		setLayout(new GridBagLayout());
 
@@ -394,7 +400,6 @@ public class KillClogPanel extends PluginPanel
 		highlighter = new ProgressHighlighter(
 			cells.getBossLabels(), cells.getActivityLabels(), cells.getClueTierLabels(),
 			PanelData.NAME_OVERRIDES, PanelData.CLUE_CATEGORIES, config);
-		highlighter.setPendingBoss(cells.getPendingMadAngelLabel(), PanelData.PENDING_MAD_ANGEL_NAME);
 
 		// Cold start: warm the catalog so every cell previews the log's shape
 		// (dimmed grids, --/Y slot counts) before any player has been searched.
@@ -422,7 +427,7 @@ public class KillClogPanel extends PluginPanel
 		panel.setBorder(null);
 
 		PanelSearchBox.configureStatus(searchStatus, TEXT_DIM);
-		panel.add(searchStatus);
+		panel.add(buildStatusRow());
 
 		searchTextField = PanelSearchBox.configureSearchBar(searchBar);
 		compareLabel = new JLabel();
@@ -741,13 +746,235 @@ public class KillClogPanel extends PluginPanel
 	// Lookup flow.
 
 	/**
-	 * Single point of control for the search-status text.
+	 * Single point of control for the search-status text. Also the arrow's
+	 * landlord: the sync arrow only shows while the bar is free (blank, or
+	 * showing the arrow's own hover text), so search progress, player-not-found
+	 * lines, and the sync flow itself all naturally park it.
 	 */
 	private void setSearchStatus(String text, Color color)
 	{
 		searchStatus.setIcon(null);
 		searchStatus.setText(text);
 		searchStatus.setForeground(color);
+		refreshSyncArrowVisibility();
+	}
+
+	// ── killclog.com sync arrow ─────────────────────────────────────────
+
+	private static final String SYNC_HOVER_TEXT = "sync to killclog.com";
+	// k1: the brand lime. Status chrome, not data coloring, so it does not
+	// route through the user-themable completion color.
+	private static final Color SYNC_K1 = new Color(78, 240, 21);
+
+	private boolean syncArrowEnabled;
+	private boolean syncArrowHasData;
+	private Runnable killclogSyncHandler;
+	private javax.swing.Timer syncStatusClearTimer;
+
+	/**
+	 * The sync control wears the Kill Clog chalice itself: dim at rest,
+	 * full red on hover, k1 green while "synced!" shows.
+	 */
+	private static java.awt.image.BufferedImage chaliceBase()
+	{
+		java.awt.image.BufferedImage src =
+			net.runelite.client.util.ImageUtil.loadImageResource(KillClogPlugin.class, "icon.png");
+		int h = 13;
+		int w = Math.max(1, src.getWidth() * h / src.getHeight());
+		java.awt.image.BufferedImage out =
+			new java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+		java.awt.Graphics2D g = out.createGraphics();
+		g.setRenderingHint(java.awt.RenderingHints.KEY_INTERPOLATION,
+			java.awt.RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+		g.drawImage(src, 0, 0, w, h, null);
+		g.dispose();
+		return out;
+	}
+
+	private static ImageIcon chaliceTinted(float alpha, Color tint)
+	{
+		java.awt.image.BufferedImage base = chaliceBase();
+		java.awt.image.BufferedImage out = new java.awt.image.BufferedImage(
+			base.getWidth(), base.getHeight(), java.awt.image.BufferedImage.TYPE_INT_ARGB);
+		for (int y = 0; y < base.getHeight(); y++)
+		{
+			for (int x = 0; x < base.getWidth(); x++)
+			{
+				int argb = base.getRGB(x, y);
+				int a = (argb >>> 24);
+				if (a == 0)
+				{
+					continue;
+				}
+				int r = (argb >> 16) & 0xFF;
+				int gch = (argb >> 8) & 0xFF;
+				int b = argb & 0xFF;
+				if (tint != null)
+				{
+					// Luminance drives the tint so the chalice keeps its shading.
+					int lum = Math.min(255, (int) (0.299 * r + 0.587 * gch + 0.114 * b) + 90);
+					r = tint.getRed() * lum / 255;
+					gch = tint.getGreen() * lum / 255;
+					b = tint.getBlue() * lum / 255;
+				}
+				int na = Math.min(255, Math.round(a * alpha));
+				out.setRGB(x, y, (na << 24) | (r << 16) | (gch << 8) | b);
+			}
+		}
+		return new ImageIcon(out);
+	}
+
+	private static final ImageIcon SYNC_CHALICE_DIM = chaliceTinted(0.45f, null);
+	private static final ImageIcon SYNC_CHALICE_LIT = chaliceTinted(1f, null);
+	private static final ImageIcon SYNC_CHALICE_SYNCED = chaliceTinted(1f, new Color(78, 240, 21));
+
+	private boolean syncedGlow;
+
+	private void refreshSyncChalice(boolean hovered)
+	{
+		syncArrow.setIcon(syncedGlow ? SYNC_CHALICE_SYNCED
+			: hovered ? SYNC_CHALICE_LIT : SYNC_CHALICE_DIM);
+	}
+
+	private JPanel buildStatusRow()
+	{
+		syncArrow.setIcon(SYNC_CHALICE_DIM);
+		// Sits vertically centered in the band between the panel top and the
+		// search bar: the bottom inset biases the icon upward within the
+		// taller status row so its center lands on the band's center.
+		syncArrow.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 4, 6, 5));
+		syncArrow.setVerticalAlignment(JLabel.CENTER);
+		syncArrow.setVisible(false);
+		syncArrow.addMouseListener(new java.awt.event.MouseAdapter()
+		{
+			@Override
+			public void mouseEntered(java.awt.event.MouseEvent e)
+			{
+				if (syncArrow.isVisible())
+				{
+					refreshSyncChalice(true);
+					setSearchStatus(SYNC_HOVER_TEXT, SYNC_K1);
+				}
+			}
+
+			@Override
+			public void mouseExited(java.awt.event.MouseEvent e)
+			{
+				refreshSyncChalice(false);
+				if (SYNC_HOVER_TEXT.equals(searchStatus.getText()))
+				{
+					setSearchStatus(" ", TEXT_DIM);
+				}
+			}
+
+			@Override
+			public void mousePressed(java.awt.event.MouseEvent e)
+			{
+				if (syncArrow.isVisible() && killclogSyncHandler != null)
+				{
+					killclogSyncHandler.run();
+				}
+			}
+		});
+
+		JPanel row = new JPanel(new java.awt.BorderLayout());
+		row.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		// The parent column is BoxLayout: children must agree on alignment or
+		// the whole stack shears sideways.
+		row.setAlignmentX(Component.LEFT_ALIGNMENT);
+		row.setMaximumSize(new Dimension(Integer.MAX_VALUE,
+			Math.max(searchStatus.getPreferredSize().height, 14) + 2));
+		row.add(searchStatus, java.awt.BorderLayout.CENTER);
+		row.add(syncArrow, java.awt.BorderLayout.EAST);
+		return row;
+	}
+
+	private boolean statusBarFree()
+	{
+		String text = searchStatus.getText();
+		return text == null || text.trim().isEmpty() || SYNC_HOVER_TEXT.equals(text);
+	}
+
+	private void refreshSyncArrowVisibility()
+	{
+		syncArrow.setVisible(syncArrowEnabled && syncArrowHasData && statusBarFree());
+	}
+
+	/** The plugin flips this with the sync checkbox; off hides the arrow. */
+	void setSyncArrowEnabled(boolean enabled)
+	{
+		SwingUtilities.invokeLater(() ->
+		{
+			syncArrowEnabled = enabled;
+			refreshSyncArrowVisibility();
+		});
+	}
+
+	/**
+	 * The chalice earns its appearance: hidden until this player's local
+	 * collection log holds at least one first-party capture, so a fresh
+	 * install can never click sync with nothing to send.
+	 */
+	void setSyncArrowHasData(boolean hasData)
+	{
+		SwingUtilities.invokeLater(() ->
+		{
+			syncArrowHasData = hasData;
+			refreshSyncArrowVisibility();
+		});
+	}
+
+	void setKillclogSyncHandler(Runnable handler)
+	{
+		this.killclogSyncHandler = handler;
+	}
+
+	private boolean barOwnedBySync()
+	{
+		String text = searchStatus.getText();
+		return SYNC_HOVER_TEXT.equals(text) || "syncing...".equals(text)
+			|| "synced!".equals(text) || "sync failed".equals(text);
+	}
+
+	/**
+	 * Sync-flow status line: "syncing..." while in flight, then "synced!" or
+	 * "sync failed" which clear themselves after a beat. Any thread. The bar
+	 * is shared: sync text only writes when the bar is free or already the
+	 * sync's, so lookup and player-not-found messages are never stomped.
+	 * Sync chrome speaks in k1; only failure stays dim.
+	 */
+	void showSyncStatus(String text, boolean ok, boolean autoClear)
+	{
+		SwingUtilities.invokeLater(() ->
+		{
+			if (!statusBarFree() && !barOwnedBySync())
+			{
+				return;
+			}
+			if (syncStatusClearTimer != null)
+			{
+				syncStatusClearTimer.stop();
+				syncStatusClearTimer = null;
+			}
+			setSearchStatus(text, "sync failed".equals(text) ? TEXT_DIM : SYNC_K1);
+			syncedGlow = "synced!".equals(text);
+			refreshSyncChalice(false);
+			if (autoClear)
+			{
+				syncStatusClearTimer = new javax.swing.Timer(2500, e ->
+				{
+					if (text.equals(searchStatus.getText()))
+					{
+						setSearchStatus(" ", TEXT_DIM);
+					}
+					syncedGlow = false;
+					refreshSyncChalice(false);
+					syncStatusClearTimer = null;
+				});
+				syncStatusClearTimer.setRepeats(false);
+				syncStatusClearTimer.start();
+			}
+		});
 	}
 
 	private static void recolorClearButton(Container container, Color color)
@@ -842,7 +1069,6 @@ public class KillClogPanel extends PluginPanel
 			ImageIcon orig = cells.getOriginalIcons().get(entry.getKey());
 			if (orig != null) label.setIcon(orig);
 		}
-		cells.resetPendingMadAngelCell();
 
 		resetLabelMap(cells.getActivityLabels());
 

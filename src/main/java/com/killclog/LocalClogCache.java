@@ -191,7 +191,27 @@ public class LocalClogCache
 			&& activePlayer.equalsIgnoreCase(name);
 	}
 
+	/**
+	 * Provider-lane write (Temple/RuneProfile snapshots for looked-up names).
+	 * Never marks first-party and never fires the sync trigger: provider data
+	 * lands in the display cache but can never ride a killclog.com push.
+	 */
 	public synchronized void cacheResult(ClogResult result)
+	{
+		cacheResult(result, false);
+	}
+
+	/**
+	 * First-party bulk-capture landing (the chalice walk). Marks every
+	 * obtained item as client-observed and fires the sync trigger - the
+	 * largest payload of all must schedule a push like any other capture.
+	 */
+	public synchronized void cacheFirstPartyResult(ClogResult result)
+	{
+		cacheResult(result, true);
+	}
+
+	private synchronized void cacheResult(ClogResult result, boolean firstParty)
 	{
 		if (result == null || result.getPlayerName() == null)
 		{
@@ -205,6 +225,16 @@ public class LocalClogCache
 		PlayerClogData existing = players.get(key);
 
 		PlayerClogData data = existing != null ? shallowCopy(existing) : new PlayerClogData();
+		if (existing == null)
+		{
+			// Every genuinely NEW entry starts explicitly marked-empty,
+			// whichever lane creates it: null is reserved for stores loaded
+			// from legacy pre-marking disk files. Without this, a
+			// zero-obtained first-party capture (fresh account, empty walk)
+			// would birth a null-marker store that later provider writes
+			// treat as legacy and ship wholesale.
+			data.firstPartyByCategory = new HashMap<>();
+		}
 		data.playerName = name;
 		data.lastUpdated = Instant.now().toString();
 		data.uniqueObtained = result.getUniqueObtained();
@@ -238,17 +268,100 @@ public class LocalClogCache
 			: result.getObtainedItems().entrySet())
 		{
 			String cat = entry.getKey();
-			data.obtained.put(cat, preserveItemMetadata(entry.getValue(), data.obtained.get(cat)));
+			List<ClogResult.ClogItem> merged;
+			if (firstParty || data.firstPartyByCategory == null)
+			{
+				// Capture landings, and legacy null-marker stores (whose
+				// whole content is implicitly first-party), merge as before.
+				merged = preserveItemMetadata(entry.getValue(), data.obtained.get(cat));
+			}
+			else
+			{
+				// Provider lane over a marked store: first-party RECORDS are
+				// inviolable, not just their ids. A provider refresh must
+				// neither replace a marked record (its quantity and
+				// provenance are client-observed truth) nor remove one that
+				// a stale provider list no longer carries - either would
+				// launder provider content through a surviving mark.
+				merged = mergeProviderIntoMarked(entry.getValue(),
+					data.obtained.get(cat), categoryMarks(data, cat));
+			}
+			data.obtained.put(cat, merged);
 		}
 		for (Map.Entry<String, List<Integer>> entry : result.getCategoryItems().entrySet())
 		{
 			data.categories.put(entry.getKey(), new ArrayList<>(entry.getValue()));
 		}
 
+		if (firstParty)
+		{
+			for (Map.Entry<String, List<ClogResult.ClogItem>> entry
+				: result.getObtainedItems().entrySet())
+			{
+				for (ClogResult.ClogItem item : entry.getValue())
+				{
+					markFirstParty(data, entry.getKey(), item.getId());
+				}
+			}
+		}
+		// (New-entry marker initialization happens at entry creation above;
+		// an EXISTING null marker is a legacy store and keeps its grandfather
+		// rights - a provider lookup must not silently revoke them.)
+
 		players.put(key, data);
 		final PlayerClogData snapshot = shallowCopy(data);
 		submitDiskWrite(name, () -> saveToDisk(name, snapshot));
 		log.debug("Cached clog data for '{}' ({} categories)", name, data.obtained.size());
+		if (firstParty)
+		{
+			notifyFirstPartyChanged();
+		}
+	}
+
+	/**
+	 * Mark an item as client-observed in one category. A null marker map
+	 * means a legacy pre-marking store built by this client's own captures:
+	 * grandfather everything obtained at that moment before adding the new
+	 * mark.
+	 */
+	private static void markFirstParty(PlayerClogData data, String categoryKey, int itemId)
+	{
+		if (data.firstPartyByCategory == null)
+		{
+			Map<String, List<Integer>> grandfathered = new HashMap<>();
+			if (data.obtained != null)
+			{
+				for (Map.Entry<String, List<ClogResult.ClogItem>> entry : data.obtained.entrySet())
+				{
+					List<Integer> ids = new ArrayList<>();
+					for (ClogResult.ClogItem item : entry.getValue())
+					{
+						if (!ids.contains(item.getId()))
+						{
+							ids.add(item.getId());
+						}
+					}
+					grandfathered.put(entry.getKey(), ids);
+				}
+			}
+			data.firstPartyByCategory = grandfathered;
+		}
+		List<Integer> marks = data.firstPartyByCategory.computeIfAbsent(categoryKey,
+			ignored -> new ArrayList<>());
+		if (!marks.contains(itemId))
+		{
+			marks.add(itemId);
+		}
+	}
+
+	private static List<Integer> categoryMarks(PlayerClogData data, String categoryKey)
+	{
+		if (data.firstPartyByCategory == null)
+		{
+			return null;
+		}
+		List<Integer> marks = data.firstPartyByCategory.get(categoryKey);
+		return marks != null ? marks : Collections.emptyList();
 	}
 
 	public synchronized void mergeCategory(String playerName, String categoryKey,
@@ -269,11 +382,82 @@ public class LocalClogCache
 		data.categories.put(categoryKey, new ArrayList<>(allItems));
 		data.obtained.put(categoryKey,
 			preserveItemMetadata(obtained, data.obtained.get(categoryKey)));
+		for (ClogResult.ClogItem item : obtained)
+		{
+			markFirstParty(data, categoryKey, item.getId());
+		}
 
 		final PlayerClogData snapshot = shallowCopy(data);
 		submitDiskWrite(playerName, () -> saveToDisk(playerName, snapshot));
 		log.debug("Merged category '{}' for '{}': {}/{} obtained",
 			categoryKey, playerName, obtained.size(), allItems.size());
+		if (!obtained.isEmpty())
+		{
+			notifyFirstPartyChanged();
+		}
+	}
+
+	// Fires after any in-client observation lands (bulk page capture, live
+	// unlock), whatever path delivered it - the killclog.com sync trigger
+	// lives here at the data seam so no capture route can be forgotten.
+	// The listener only schedules a debounced task; it must stay cheap and
+	// must not call back into this cache.
+	private volatile Runnable firstPartyChangedListener;
+
+	public void setFirstPartyChangedListener(Runnable listener)
+	{
+		this.firstPartyChangedListener = listener;
+	}
+
+	private void notifyFirstPartyChanged()
+	{
+		Runnable listener = firstPartyChangedListener;
+		if (listener != null)
+		{
+			listener.run();
+		}
+	}
+
+	/**
+	 * Provider merge over a marked store: existing records for MARKED ids are
+	 * kept verbatim and cannot be removed; incoming provider records for
+	 * marked ids are dropped entirely (marked content only ever enters via
+	 * capture paths). Unmarked records keep the old provider-merge semantics.
+	 */
+	private static List<ClogResult.ClogItem> mergeProviderIntoMarked(
+		List<ClogResult.ClogItem> incoming, List<ClogResult.ClogItem> existing,
+		List<Integer> marks)
+	{
+		List<ClogResult.ClogItem> keptMarked = new ArrayList<>();
+		List<ClogResult.ClogItem> unmarkedExisting = new ArrayList<>();
+		if (existing != null)
+		{
+			for (ClogResult.ClogItem item : existing)
+			{
+				if (marks.contains(item.getId()))
+				{
+					keptMarked.add(item);
+				}
+				else
+				{
+					unmarkedExisting.add(item);
+				}
+			}
+		}
+		List<ClogResult.ClogItem> unmarkedIncoming = new ArrayList<>();
+		if (incoming != null)
+		{
+			for (ClogResult.ClogItem item : incoming)
+			{
+				if (!marks.contains(item.getId()))
+				{
+					unmarkedIncoming.add(item);
+				}
+			}
+		}
+		List<ClogResult.ClogItem> merged = new ArrayList<>(keptMarked);
+		merged.addAll(preserveItemMetadata(unmarkedIncoming, unmarkedExisting));
+		return merged;
 	}
 
 	/**
@@ -379,9 +563,11 @@ public class LocalClogCache
 				// Format matches the provider date strings so sorting and
 				// display stay uniform.
 				String unlockDate = liveUnlockDate();
-				obtained.add(new ClogResult.ClogItem(itemId, 1, unlockDate,
-					obtainedAtKc, obtainedFrom));
+				ClogResult.ClogItem unlocked = new ClogResult.ClogItem(itemId, 1, unlockDate,
+					obtainedAtKc, obtainedFrom);
+				obtained.add(unlocked);
 				data.obtained.put(categoryKey, obtained);
+				markFirstParty(data, categoryKey, itemId);
 				// The summary's last-updated notice reads lastChanged; a live
 				// unlock is exactly such a change.
 				bumpLastChanged(data, unlockDate);
@@ -402,6 +588,7 @@ public class LocalClogCache
 			final PlayerClogData snapshot = shallowCopy(data);
 			submitDiskWrite(playerName, () -> saveToDisk(playerName, snapshot));
 			log.debug("Merged live clog item {} for '{}'", itemId, playerName);
+			notifyFirstPartyChanged();
 		}
 		return changed;
 	}
@@ -724,6 +911,120 @@ public class LocalClogCache
 		return result;
 	}
 
+	/**
+	 * Whether this player's store holds anything the sync payload would
+	 * actually carry: at least one obtained record its own category observed
+	 * first-hand, or a legacy markless store (which ships whole). Provider
+	 * caches and empty first walks both answer false - the sync chalice and
+	 * the automatic sync triggers key off THIS, never off mere cache
+	 * presence.
+	 */
+	public synchronized boolean hasFirstPartyDataFor(String playerName)
+	{
+		if (playerName == null)
+		{
+			return false;
+		}
+		PlayerClogData data = players.get(cacheKey(playerName));
+		if (data == null || data.obtained == null || data.obtained.isEmpty())
+		{
+			return false;
+		}
+		if (data.firstPartyByCategory == null)
+		{
+			return true;
+		}
+		for (Map.Entry<String, List<ClogResult.ClogItem>> entry : data.obtained.entrySet())
+		{
+			List<Integer> marks = data.firstPartyByCategory.get(entry.getKey());
+			if (marks == null || marks.isEmpty())
+			{
+				continue;
+			}
+			for (ClogResult.ClogItem item : entry.getValue())
+			{
+				if (marks.contains(item.getId()))
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/** {@link #hasFirstPartyDataFor} for the logged-in player. */
+	public boolean hasFirstPartyDataForActive()
+	{
+		return hasFirstPartyDataFor(activePlayer);
+	}
+
+	/**
+	 * The sync payload's view of the store: obtained items filtered to what
+	 * this client observed first-hand. Provider-cached items (looked-up names,
+	 * pre-login lookups) are structurally excluded, so the payload can only
+	 * carry data the etiquette canon lets it claim. A legacy pre-marking store
+	 * (null marker) is treated as all-capture: those files were built by this
+	 * client's own walks, and requiring a re-walk would discard proof the
+	 * player already earned.
+	 */
+	public synchronized ClogResult toFirstPartySyncResult(String playerName)
+	{
+		if (playerName == null)
+		{
+			return null;
+		}
+		PlayerClogData data = players.get(cacheKey(playerName));
+		if (data == null)
+		{
+			return null;
+		}
+
+		Map<String, List<ClogResult.ClogItem>> obtainedCopy = new HashMap<>();
+		for (Map.Entry<String, List<ClogResult.ClogItem>> entry : data.obtained.entrySet())
+		{
+			List<Integer> marks = categoryMarks(data, entry.getKey());
+			List<ClogResult.ClogItem> kept = new ArrayList<>();
+			for (ClogResult.ClogItem item : entry.getValue())
+			{
+				// Marks are category-scoped: a record ships only when THIS
+				// category observed it, so a provider record of the same id
+				// in another category can never ride a mark earned elsewhere.
+				if (marks == null || marks.contains(item.getId()))
+				{
+					kept.add(item);
+				}
+			}
+			if (!kept.isEmpty())
+			{
+				obtainedCopy.put(entry.getKey(), kept);
+			}
+		}
+
+		Map<String, List<Integer>> categoriesCopy = new HashMap<>();
+		for (Map.Entry<String, List<Integer>> entry : data.categories.entrySet())
+		{
+			categoriesCopy.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+		}
+
+		ClogResult result = new ClogResult(
+			data.playerName,
+			obtainedCopy,
+			categoriesCopy,
+			new HashMap<>(),
+			data.lastChanged,
+			data.providerAccountType
+		);
+		if (data.uniqueObtained > 0)
+		{
+			result.setUniqueObtained(data.uniqueObtained);
+		}
+		if (data.uniqueTotal > 0)
+		{
+			result.setUniqueTotal(data.uniqueTotal);
+		}
+		return result;
+	}
+
 	// Disk I/O, always on the diskWriter thread.
 
 	private void saveToDisk(String playerName, PlayerClogData data)
@@ -799,6 +1100,18 @@ public class LocalClogCache
 		copy.uniqueTotal = src.uniqueTotal;
 		copy.categories = src.categories != null ? new HashMap<>(src.categories) : new HashMap<>();
 		copy.obtained = src.obtained != null ? new HashMap<>(src.obtained) : new HashMap<>();
+		if (src.firstPartyByCategory != null)
+		{
+			copy.firstPartyByCategory = new HashMap<>();
+			for (Map.Entry<String, List<Integer>> entry : src.firstPartyByCategory.entrySet())
+			{
+				copy.firstPartyByCategory.put(entry.getKey(), new ArrayList<>(entry.getValue()));
+			}
+		}
+		else
+		{
+			copy.firstPartyByCategory = null;
+		}
 		return copy;
 	}
 
@@ -812,5 +1125,18 @@ public class LocalClogCache
 		int uniqueTotal = -1;
 		Map<String, List<Integer>> categories;
 		Map<String, List<ClogResult.ClogItem>> obtained;
+		/**
+		 * Per-category item ids this CLIENT observed first-hand (bulk
+		 * capture, page capture, live unlock). The sync payload ships only
+		 * records marked IN THEIR OWN CATEGORY - a global id mark would let
+		 * a provider record of the same item in another category launder
+		 * through (multi-category items are routine: clue rares span pages).
+		 * Null means a legacy pre-marking store file: those were built by
+		 * this client's own captures, so the store ships whole and the first
+		 * capture grandfathers everything obtained at that moment. Live
+		 * provider writes initialize the field EMPTY instead, which never
+		 * grandfathers.
+		 */
+		Map<String, List<Integer>> firstPartyByCategory;
 	}
 }

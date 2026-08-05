@@ -198,8 +198,7 @@ public class CompareImgTooltip extends TitleTooltip
 		// Obtained line.
 		lineY += 20;
 		int activeLineWidth = paintDualLine(g2, fm, inset, lineY, "Obtained: ",
-			formatObtained(blue.obtained, blue.total),
-			formatObtained(red.obtained, red.total));
+			blueObtainedText(), redObtainedText());
 
 		if (showRankLine())
 		{
@@ -239,9 +238,19 @@ public class CompareImgTooltip extends TitleTooltip
 		return x + fm.stringWidth(redText) - inset;
 	}
 
-	private static String formatObtained(int obtained, int total)
+	/**
+	 * The compare header's per-player obtained text, shared by painting and
+	 * sizing so both surfaces ride the one inherited progress formatter
+	 * (unknown totals render "?", unknown obtained renders "--").
+	 */
+	/* package */ String blueObtainedText()
 	{
-		return obtained >= 0 ? obtained + "/" + total : "--";
+		return progressCountTextOrDash(blue.obtained, blue.total);
+	}
+
+	/* package */ String redObtainedText()
+	{
+		return progressCountTextOrDash(red.obtained, red.total);
 	}
 
 	private boolean showRankLine()
@@ -270,8 +279,8 @@ public class CompareImgTooltip extends TitleTooltip
 		// Header width from title and dual-value lines.
 		int titleW = getTitle() != null ? nfm.stringWidth(getTitle()) : 0;
 
-		String obtLine = "Obtained: " + formatObtained(blue.obtained, blue.total)
-			+ CHROME_SEPARATOR + formatObtained(red.obtained, red.total);
+		String obtLine = "Obtained: " + blueObtainedText()
+			+ CHROME_SEPARATOR + redObtainedText();
 		int headerLineW = sfm.stringWidth(obtLine);
 		if (showRankLine())
 		{

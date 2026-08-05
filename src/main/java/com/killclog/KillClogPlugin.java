@@ -2,6 +2,9 @@ package com.killclog;
 
 import com.google.inject.Provides;
 import java.awt.image.BufferedImage;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.swing.SwingUtilities;
@@ -39,7 +42,7 @@ import net.runelite.client.util.Text;
 @PluginDescriptor(
 	name = "Kill Clog",
 	description = "HiScores and Collection Log Overhaul",
-	tags = {"boss", "kc", "kill count", "collection log", "pvm", "hiscore", "ironman"}
+	tags = {"boss", "kc", "kill count", "collection log", "pvm", "hiscore", "ironman", "templeosrs"}
 )
 public class KillClogPlugin extends Plugin
 {
@@ -94,10 +97,19 @@ public class KillClogPlugin extends Plugin
 	private RuneProfileService runeProfileService;
 
 	@Inject
+	private KillclogService killclogService;
+
+	@Inject
 	private HiscoreService hiscoreService;
 
 	@Inject
 	private LocalClogCache localClogCache;
+
+	@Inject
+	private SyncService syncService;
+
+	@Inject
+	private ScheduledExecutorService executor;
 
 	@Inject
 	private LocalCaCache localCaCache;
@@ -113,6 +125,9 @@ public class KillClogPlugin extends Plugin
 
 	@Inject
 	private KillClogChatNotifier chatNotifier;
+
+	@Inject
+	private ConfigManager configManager;
 
 	private NavigationButton navButton;
 	private String lastLocalName;
@@ -151,6 +166,23 @@ public class KillClogPlugin extends Plugin
 		panel.setClogIndex(clogIndex);
 
 		lookupMenu.start(config, menuManager);
+
+		panel.setKillclogSyncHandler(this::manualKillclogSync);
+		panel.setSyncArrowEnabled(config.killclogSync());
+		// The sync trigger lives at the data seam: any path that lands a
+		// first-party observation (bulk page capture, search-and-back walk,
+		// live unlock) schedules a debounced push.
+		localClogCache.setFirstPartyChangedListener(() ->
+		{
+			// A capture only counts once the payload is genuinely non-empty:
+			// an empty first walk must neither reveal the chalice nor
+			// schedule a push that would fail with nothing to send.
+			if (localClogCache.hasFirstPartyDataForActive())
+			{
+				panel.setSyncArrowHasData(true);
+				scheduleKillclogSync(KILLCLOG_SYNC_DEBOUNCE_SECONDS);
+			}
+		});
 
 		kclogCommand.setClogIndex(clogIndex);
 		localCaCache.setCaCatalog(caCatalog);
@@ -193,6 +225,8 @@ public class KillClogPlugin extends Plugin
 		sessionState.reset();
 		liveClogSync.resetFirstSyncWarning();
 		nameAutocompleter.clearClientSnapshot();
+		localClogCache.setFirstPartyChangedListener(null);
+		cancelKillclogSync();
 		log.debug("Kill Clog plugin stopped");
 	}
 
@@ -215,6 +249,17 @@ public class KillClogPlugin extends Plugin
 			if (!requestLocalReads)
 			{
 				sessionState.requestLocalReads();
+			}
+			// Login catch-up: a debounced push that fired after logout (or
+			// mid world-hop) aborted with nothing to relaunch it, so the last
+			// capture of a session stayed unpublished. One quiet scheduled
+			// push per login closes that hole; the server merge no-ops when
+			// nothing changed.
+			boolean hasLocalClog = localClogCache.hasFirstPartyDataFor(name);
+			panel.setSyncArrowHasData(hasLocalClog);
+			if (hasLocalClog)
+			{
+				scheduleKillclogSync(KILLCLOG_SYNC_DEBOUNCE_SECONDS, false);
 			}
 		}
 
@@ -262,6 +307,7 @@ public class KillClogPlugin extends Plugin
 			SwingUtilities.invokeLater(panel::reloadTooltipSprites);
 			clogService.clearTempleFailures();
 			runeProfileService.clearFailures();
+			killclogService.clearFailures();
 			enterLoggedInState(true);
 		}
 		else if (event.getGameState() == GameState.LOGIN_SCREEN)
@@ -366,6 +412,218 @@ public class KillClogPlugin extends Plugin
 			panel::onBulkCaptureComplete);
 	}
 
+	// Debounce window: a bulk capture completes many category writes in a
+	// burst; one push carries them all.
+	private static final int KILLCLOG_SYNC_DEBOUNCE_SECONDS = 10;
+
+	private volatile ScheduledFuture<?> pendingKillclogSync;
+	private final KillclogSyncGate syncGate = new KillclogSyncGate();
+
+	private synchronized void scheduleKillclogSync(int delaySeconds)
+	{
+		scheduleKillclogSync(delaySeconds, false);
+	}
+
+	/**
+	 * Manual pushes (the chalice, an explicit opt-in) narrate in chat;
+	 * automatic ones (capture debounce, login catch-up, queued relaunch)
+	 * keep to the status bar so an ordinary play session is not two extra
+	 * chat lines per drop. Failures always speak.
+	 */
+	private synchronized void scheduleKillclogSync(int delaySeconds, boolean manual)
+	{
+		if (!config.killclogSync())
+		{
+			return;
+		}
+		if (pendingKillclogSync != null && !pendingKillclogSync.isDone())
+		{
+			return;
+		}
+		pendingKillclogSync = executor.schedule(() -> pushKillclogSync(manual),
+			delaySeconds, TimeUnit.SECONDS);
+	}
+
+	private synchronized void cancelKillclogSync()
+	{
+		syncGate.cancel();
+		if (pendingKillclogSync != null)
+		{
+			pendingKillclogSync.cancel(false);
+			pendingKillclogSync = null;
+		}
+		// A request already in the air keeps the single-flight slot until it
+		// completes (no overlap on re-enable); its completion sees a newer
+		// generation and stays silent.
+	}
+
+	/**
+	 * RuneLite's own chat-commands store records the local player's personal
+	 * bests; no public provider serves them, which makes this map the sync's
+	 * defining cargo. One account splinters into many rs-profile fragments
+	 * over time, so the gather sweeps every fragment wearing the player's
+	 * name and keeps the fastest time per boss. STANDARD-world fragments
+	 * only: Leagues and speedrun profiles share the display name but store
+	 * buffed-world times, and the min-merge would launder those into the
+	 * player's real record. Client thread (config reads).
+	 */
+	private java.util.Map<String, Double> gatherPersonalBests(String rsn)
+	{
+		java.util.List<String> profileKeys = new java.util.ArrayList<>();
+		for (net.runelite.client.config.RuneScapeProfile profile : configManager.getRSProfiles())
+		{
+			if (rsn.equalsIgnoreCase(profile.getDisplayName())
+				&& profile.getType() == net.runelite.client.config.RuneScapeProfileType.STANDARD)
+			{
+				String key = profile.getKey();
+				profileKeys.add(key.startsWith("rsprofile.") ? key : "rsprofile." + key);
+			}
+		}
+
+		PersonalBests pbs = new PersonalBests(configManager);
+		java.util.Map<String, Double> out = new java.util.LinkedHashMap<>();
+		for (net.runelite.client.hiscore.HiscoreSkill boss : PanelData.BOSSES)
+		{
+			putBestSeconds(out, pbs, profileKeys, boss.getName());
+		}
+		log.debug("killclog sync pb gather: {} rs-profiles total, {} matched '{}', {} pbs",
+			configManager.getRSProfiles().size(), profileKeys.size(), rsn, out.size());
+		return out;
+	}
+
+	private static void putBestSeconds(java.util.Map<String, Double> out, PersonalBests pbs,
+		java.util.List<String> profileKeys, String bossName)
+	{
+		double seconds = profileKeys.isEmpty()
+			? pbs.bestSeconds(bossName)
+			: pbs.bestSecondsAcrossProfiles(profileKeys, bossName);
+		if (seconds > 0)
+		{
+			out.put(bossName, seconds);
+		}
+	}
+
+	// If a push arrived while the slot was occupied, launch it now that the
+	// slot is free (the opt-out/opt-in-mid-request case).
+	private void launchQueuedKillclogSync()
+	{
+		if (syncGate.consumeQueued() && config.killclogSync())
+		{
+			scheduleKillclogSync(0);
+		}
+	}
+
+	/**
+	 * The panel's sync arrow: push now, skipping any pending debounce. The
+	 * single-flight gate still applies; the arrow is hidden while the status
+	 * bar is occupied, so mid-flight re-clicks cannot happen.
+	 */
+	private void manualKillclogSync()
+	{
+		if (!config.killclogSync())
+		{
+			return;
+		}
+		synchronized (this)
+		{
+			if (pendingKillclogSync != null && !pendingKillclogSync.isDone())
+			{
+				pendingKillclogSync.cancel(false);
+				pendingKillclogSync = null;
+			}
+		}
+		scheduleKillclogSync(0, true);
+	}
+
+	private void pushKillclogSync(boolean manual)
+	{
+		// Re-checked at fire time: the player may have opted out while the
+		// debounce was pending.
+		if (!config.killclogSync())
+		{
+			return;
+		}
+		final int generation = syncGate.beginAttempt();
+		if (generation < 0)
+		{
+			return;
+		}
+		clientThread.invoke(() ->
+		{
+			// Any throw before the future takes ownership must release the
+			// single-flight slot, or sync is silently dead until restart -
+			// the client thread swallows the exception and the user sees
+			// nothing.
+			try
+			{
+				Player local = client.getLocalPlayer();
+				String rsn = local != null ? local.getName() : null;
+				long accountHash = client.getAccountHash();
+				if (rsn == null || accountHash == -1)
+				{
+					syncGate.abortAttempt();
+					panel.showSyncStatus(" ", false, false);
+					launchQueuedKillclogSync();
+					return;
+				}
+				AccountType accountType = getLocalAccountType();
+				// The debounce plus the round trip is a long quiet gap; say the
+				// push is underway so the result line has an antecedent.
+				if (manual)
+				{
+					chatNotifier.send(ChatNotice.SYNC_RESULT, "Syncing collection log to killclog.com...");
+				}
+				panel.showSyncStatus("syncing...", false, false);
+				syncService.syncCollectionLog(rsn, accountHash, accountType, gatherPersonalBests(rsn))
+					.whenComplete((result, err) ->
+					{
+						boolean current = syncGate.complete(generation);
+						if (result != null && current && config.killclogSync())
+						{
+								// Server-advised contention retry: another client of
+								// this account held the lock. The gate holds one retry
+								// credit per episode; a second 409 finds it consumed and
+								// falls through as a failure.
+								if (result.retryAdvised && syncGate.consumeRetryCredit())
+								{
+									panel.showSyncStatus("retrying...", false, false);
+									scheduleKillclogSync(Math.max(result.retryAfterSeconds, 2), manual);
+									launchQueuedKillclogSync();
+									return;
+								}
+								// Everything below is a terminal outcome for this episode.
+								syncGate.restoreRetryCredit();
+							panel.showSyncStatus(result.ok ? "synced!" : "sync failed", result.ok, true);
+							if (manual || !result.ok)
+							{
+								clientThread.invoke(() ->
+									chatNotifier.send(ChatNotice.SYNC_RESULT, result.message));
+							}
+						}
+						else
+						{
+							if (current)
+							{
+								syncGate.restoreRetryCredit();
+							}
+							panel.showSyncStatus(" ", false, false);
+						}
+						launchQueuedKillclogSync();
+					});
+			}
+			catch (RuntimeException e)
+			{
+				log.warn("killclog sync push failed before dispatch", e);
+				syncGate.abortAttempt();
+				panel.showSyncStatus("sync failed", false, true);
+				// Failures always chat, this path included.
+				chatNotifier.send(ChatNotice.SYNC_RESULT,
+					"Collection log sync failed - see the client log.");
+				launchQueuedKillclogSync();
+			}
+		});
+	}
+
 	// Keep local CA current when a task completes mid-session, and the live
 	// catalog current when the game moves a tier threshold (a CA release).
 	@Subscribe
@@ -421,6 +679,11 @@ public class KillClogPlugin extends Plugin
 				String name = local.getName();
 				localClogCache.setActivePlayer(name);
 				localCaCache.setActivePlayer(name);
+				// The login transition often fires before the player's name is
+				// readable, skipping enterLoggedInState's whole block - this
+				// tick path is the reliable moment the store is loaded and the
+				// chalice can learn whether a payload exists.
+				panel.setSyncArrowHasData(localClogCache.hasFirstPartyDataFor(name));
 				captureLocalCa();
 				AccountType acctType = getLocalAccountType();
 				SwingUtilities.invokeLater(() ->
@@ -492,6 +755,21 @@ public class KillClogPlugin extends Plugin
 		{
 			// Refresh the menu option when its label or locations change.
 			lookupMenu.refresh(config, menuManager);
+		}
+
+		if ("killclogSync".equals(event.getKey()))
+		{
+			panel.setSyncArrowEnabled(config.killclogSync());
+			if (config.killclogSync())
+			{
+				// Opting in mid-session pushes the already-captured log right
+				// away; nothing else fires until the next capture or unlock.
+				scheduleKillclogSync(0, true);
+			}
+			else
+			{
+				cancelKillclogSync();
+			}
 		}
 
 		SwingUtilities.invokeLater(() -> panel.onConfigChanged(event.getKey()));

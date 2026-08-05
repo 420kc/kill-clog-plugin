@@ -352,4 +352,26 @@ public interface KillClogConfig extends Config
 	{
 		return false;
 	}
+
+	@ConfigSection(
+		name = "killclog.com",
+		description = "First-party sync with your killclog.com profile",
+		position = 11,
+		closedByDefault = true
+	)
+	String killclogSection = "killclog";
+
+	@ConfigItem(
+		keyName = "killclogSync",
+		name = "Sync Collection Log to Killclog.com",
+		description = "Publish your collection log and personal bests to your killclog.com "
+			+ "profile. Off by default. Nothing is sent until you turn it on, and the "
+			+ "opt-out page removes everything.",
+		section = "killclog",
+		position = 0
+	)
+	default boolean killclogSync()
+	{
+		return false;
+	}
 }

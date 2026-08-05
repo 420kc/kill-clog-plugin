@@ -1,0 +1,90 @@
+package com.killclog;
+
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+
+/**
+ * State machine for the killclog.com sync push: single-flight until the HTTP
+ * round trip completes, a generation stamp so cancelled eras stay silent, and
+ * a queued-intent so a push requested while the slot is occupied (opt-out then
+ * opt-in during a live request) fires as soon as the slot frees instead of
+ * being dropped.
+ */
+final class KillclogSyncGate
+{
+	private final AtomicBoolean inFlight = new AtomicBoolean();
+	private final AtomicBoolean queued = new AtomicBoolean();
+	private final AtomicInteger generation = new AtomicInteger();
+	// One server-advised contention retry per episode: consumed by the first
+	// 409, restored at every terminal outcome (success, failure, abort,
+	// cancel) so a later independent episode always starts with its credit.
+	private final AtomicBoolean retryCredit = new AtomicBoolean(true);
+
+	/**
+	 * Claim the single-flight slot.
+	 *
+	 * @return the generation to carry through the attempt, or -1 when a
+	 *         request is already in flight - the intent is remembered and
+	 *         {@link #consumeQueued()} will report it once the slot frees.
+	 */
+	int beginAttempt()
+	{
+		int gen = generation.get();
+		if (!inFlight.compareAndSet(false, true))
+		{
+			queued.set(true);
+			return -1;
+		}
+		return gen;
+	}
+
+	/** Release the slot without a round trip (unusable state: no rsn/hash). */
+	void abortAttempt()
+	{
+		inFlight.set(false);
+		retryCredit.set(true);
+	}
+
+	/**
+	 * Claim the one contention-retry this episode is allowed.
+	 *
+	 * @return true exactly once between terminal outcomes - a second 409 in
+	 *         the same episode gets false and must surface as a failure.
+	 */
+	boolean consumeRetryCredit()
+	{
+		return retryCredit.compareAndSet(true, false);
+	}
+
+	/** A terminal outcome ends the episode; the next one starts with credit. */
+	void restoreRetryCredit()
+	{
+		retryCredit.set(true);
+	}
+
+	/**
+	 * Release the slot after a round trip.
+	 *
+	 * @return true when the completing attempt belongs to the current
+	 *         generation (its feedback may be surfaced).
+	 */
+	boolean complete(int gen)
+	{
+		inFlight.set(false);
+		return gen == generation.get();
+	}
+
+	/** @return true exactly once per remembered push intent. */
+	boolean consumeQueued()
+	{
+		return queued.compareAndSet(true, false);
+	}
+
+	/** Opt-out / shutdown: silence prior eras and forget any queued intent. */
+	void cancel()
+	{
+		generation.incrementAndGet();
+		queued.set(false);
+		retryCredit.set(true);
+	}
+}

@@ -29,6 +29,8 @@ public class ClogResult
 	private boolean fromTemple;
 	/** True when RuneProfile returned data that fed this result */
 	private boolean fromRuneProfile;
+	/** True when the player's own killclog.com sync returned data that fed this result */
+	private boolean fromKillclog;
 
 	public ClogResult(
 		String playerName,
@@ -48,6 +50,41 @@ public class ClogResult
 		}
 		this.lastChanged = lastChanged;
 		this.providerAccountType = providerAccountType;
+	}
+
+	/**
+	 * Shallow combine copy: shares the item/category maps with the source
+	 * (they are read-only after construction, except itemNames, whose shared
+	 * concurrent map deliberately keeps the name-resolution cache warm across
+	 * lookups). Only identity, account type, and provenance flags are per-copy.
+	 */
+	private ClogResult(ClogResult source, AccountType accountType)
+	{
+		this.playerName = source.playerName;
+		this.obtainedItems = source.obtainedItems;
+		this.categoryItems = source.categoryItems;
+		this.itemNames = source.itemNames;
+		this.lastChanged = source.lastChanged;
+		this.providerAccountType = accountType;
+		this.uniqueObtained = source.uniqueObtained;
+		this.uniqueTotal = source.uniqueTotal;
+	}
+
+	/**
+	 * Combine result carrying this data with per-combine provenance. Cached
+	 * provider/killclog instances are shared across overlapping lookups whose
+	 * legs can resolve differently (timeouts, cancellations), so combines
+	 * must NEVER mutate them -- every combine returns its own copy.
+	 */
+	private ClogResult copyWithProvenance(boolean temple, boolean runeProfile, boolean killclog,
+		AccountType fallbackType)
+	{
+		ClogResult copy = new ClogResult(this,
+			providerAccountType != null ? providerAccountType : fallbackType);
+		copy.fromTemple = temple;
+		copy.fromRuneProfile = runeProfile;
+		copy.fromKillclog = killclog;
+		return copy;
 	}
 
 	public String getPlayerName()
@@ -105,6 +142,11 @@ public class ClogResult
 		return fromRuneProfile;
 	}
 
+	public boolean isFromKillclog()
+	{
+		return fromKillclog;
+	}
+
 	public boolean isItemResolved(int id)
 	{
 		return itemNames.containsKey(id);
@@ -138,13 +180,69 @@ public class ClogResult
 	public static ClogResult pickFreshest(ClogResult temple, ClogResult rp)
 	{
 		ClogResult winner = chooseFreshest(temple, rp);
-		if (winner != null)
+		if (winner == null)
 		{
-			// Provenance tracks which providers returned non-null data.
-			winner.fromTemple = temple != null;
-			winner.fromRuneProfile = rp != null;
+			return null;
 		}
-		return winner;
+		// Provenance tracks which providers returned non-null data, stamped
+		// on a copy so the shared cached instances are never mutated.
+		ClogResult loser = winner == temple ? rp : temple;
+		return winner.copyWithProvenance(temple != null, rp != null, false,
+			loser != null ? loser.providerAccountType : null);
+	}
+
+	/**
+	 * Combine the provider winner with the player's own killclog.com sync.
+	 * The rule is the website's, not {@link #pickFreshest}'s recency lean:
+	 * the FULLEST result leads, and ties prefer first-party. A partial sync
+	 * (six items from a fresh install) must never shrink a profile below
+	 * what providers prove; a complete sync must never lose to a stale
+	 * provider snapshot.
+	 */
+	public static ClogResult pickFullest(ClogResult provider, ClogResult killclog)
+	{
+		if (provider == null && killclog == null)
+		{
+			return null;
+		}
+		if (killclog == null)
+		{
+			// Copied even though the composed caller hands us pickFreshest's
+			// own copy: this method must be safe on cached instances too.
+			return provider.copyWithProvenance(
+				provider.fromTemple, provider.fromRuneProfile, false, null);
+		}
+		if (provider == null)
+		{
+			return killclog.copyWithProvenance(false, false, true, null);
+		}
+		// The coverage race compares the same metric on both sides: distinct
+		// itemized coverage. The varp counter describes the ACCOUNT, not the
+		// payload - a six-item partial sync still carries the account's full
+		// unique count, and letting it race on that number replays the shrink
+		// bug against a complete provider log.
+		if (coverageCount(killclog) >= coverageCount(provider))
+		{
+			return killclog.copyWithProvenance(
+				provider.fromTemple, provider.fromRuneProfile, true,
+				provider.providerAccountType);
+		}
+		return provider.copyWithProvenance(
+			provider.fromTemple, provider.fromRuneProfile, true, null);
+	}
+
+	/** Distinct itemized coverage, deliberately ignoring the varp counter. */
+	private static int coverageCount(ClogResult result)
+	{
+		java.util.Set<Integer> distinct = new java.util.HashSet<>();
+		for (List<ClogItem> items : result.obtainedItems.values())
+		{
+			for (ClogItem item : items)
+			{
+				distinct.add(item.getId());
+			}
+		}
+		return distinct.size();
 	}
 
 	private static ClogResult chooseFreshest(ClogResult temple, ClogResult rp)
@@ -164,31 +262,10 @@ public class ClogResult
 		// RuneProfile has significantly more items, so it is clearly fresher.
 		if (rpCount > templeCount + 5)
 		{
-			return rp.withFallbackAccountTypeFrom(temple);
+			return rp;
 		}
 		// TempleOSRS wins ties and near-ties because it has lastChanged.
 		return temple;
-	}
-
-	private ClogResult withFallbackAccountTypeFrom(ClogResult fallback)
-	{
-		if (fallback.providerAccountType == null || providerAccountType != null)
-		{
-			return this;
-		}
-
-		ClogResult merged = new ClogResult(
-			playerName,
-			obtainedItems,
-			categoryItems,
-			null,
-			lastChanged,
-			fallback.providerAccountType
-		);
-		merged.itemNames.putAll(itemNames);
-		merged.uniqueObtained = uniqueObtained;
-		merged.uniqueTotal = uniqueTotal;
-		return merged;
 	}
 
 	private static int obtainedCount(ClogResult result)
@@ -197,12 +274,18 @@ public class ClogResult
 		{
 			return result.uniqueObtained;
 		}
-		int count = 0;
+		// Distinct ids, not a per-category sum: one item can sit in several
+		// categories, and a duplicate-heavy partial result must not outcount
+		// a genuinely fuller one.
+		java.util.Set<Integer> distinct = new java.util.HashSet<>();
 		for (List<ClogItem> items : result.obtainedItems.values())
 		{
-			count += items.size();
+			for (ClogItem item : items)
+			{
+				distinct.add(item.getId());
+			}
 		}
-		return count;
+		return distinct.size();
 	}
 
 	public static class ClogItem

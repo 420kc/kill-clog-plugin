@@ -136,7 +136,8 @@ public class ComparisonController
 	private static final String COMPARE_RED_HOVER_KEY = "killclog.compare.redHover";
 
 	public ComparisonController(HiscoreService hiscoreService, ClogService clogService,
-		RuneProfileService runeProfileService, LookupSession lookupSession,
+		RuneProfileService runeProfileService, KillclogService killclogService,
+		LookupSession lookupSession,
 		ItemManager itemManager, KillClogConfig config, TooltipController tooltipController,
 		TooltipDataBuilder tooltipDataBuilder, Listener listener)
 	{
@@ -150,7 +151,7 @@ public class ComparisonController
 		this.tooltipDataBuilder = tooltipDataBuilder;
 		this.unsyncedCatalog = new UnsyncedClogCatalog(clogService);
 		this.listener = listener;
-		this.fanout = new LookupFanout(hiscoreService, clogService, runeProfileService);
+		this.fanout = new LookupFanout(hiscoreService, clogService, runeProfileService, killclogService);
 	}
 
 	/** Wire the panel-side hook target. Late-bound because the controller is built before the panel's labels exist. */
@@ -200,12 +201,10 @@ public class ComparisonController
 	}
 
 	// Red-side data for the pending Mad Angel cell (pre-enum only; see PanelData).
-	@Nullable private TooltipData pendingMadAngelCompareData;
 
 	public void rebuildTooltipData()
 	{
 		compareTooltipDataMap.clear();
-		pendingMadAngelCompareData = null;
 		if (compareHiscoreResult != null)
 		{
 			ClogResult catalog = compareClogResult == null ? unsyncedCatalog.result() : null;
@@ -219,18 +218,7 @@ public class ComparisonController
 					compareTooltipDataMap.put(boss, data);
 				}
 			}
-			if (!PanelData.hasOfficialMadAngel())
-			{
-				pendingMadAngelCompareData = buildCompareBossData(
-					PanelData.PENDING_MAD_ANGEL_NAME, PanelData.PENDING_MAD_ANGEL_NAME, catalog);
-			}
 		}
-	}
-
-	@Nullable
-	public TooltipData getPendingMadAngelTooltipData()
-	{
-		return pendingMadAngelCompareData;
 	}
 
 	/** Build one boss cell's red-side TooltipData: synced clog data, else the unsynced catalog preview. */
@@ -726,14 +714,6 @@ public class ComparisonController
 			compareOrRestore(entry.getValue(), hiscoreKc(blueHiscore, name), hiscoreKc(redHiscore, name),
 				cells.getTooltipData(entry.getKey()), compareTooltipDataMap.get(entry.getKey()));
 		}
-		if (cells.getPendingMadAngelLabel() != null)
-		{
-			String pendingName = PanelData.PENDING_MAD_ANGEL_NAME;
-			compareOrRestore(cells.getPendingMadAngelLabel(),
-				hiscoreKc(blueHiscore, pendingName), hiscoreKc(redHiscore, pendingName),
-				cells.getPendingMadAngelData(), pendingMadAngelCompareData);
-		}
-
 		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getActivityLabels().entrySet())
 		{
 			String name = entry.getKey().getName();

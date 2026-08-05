@@ -26,7 +26,9 @@ final class PanelSearchBox
 		searchStatus.setFont(FontManager.getRunescapeSmallFont());
 		searchStatus.setForeground(textColor);
 		searchStatus.setAlignmentX(Component.LEFT_ALIGNMENT);
-		searchStatus.setBorder(new EmptyBorder(0, 4, 2, 0));
+		// Top inset 4 pairs with the panel's reduced top border: the label
+		// grows the status row upward while the text itself stays put.
+		searchStatus.setBorder(new EmptyBorder(4, 4, 2, 0));
 		searchStatus.putClientProperty(
 			RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 	}

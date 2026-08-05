@@ -54,14 +54,14 @@ final class ActivitySummaryTooltips
 				blueHs != null ? blueHs.getCombatLevel() : 0,
 				LookupQueries.sumBossKills(blueHs),
 				LookupQueries.countBossesWithKc(blueHs),
-				PanelData.displayedBossCount(),
+				PanelData.bossCount(),
 				LookupQueries.getMostKilledBoss(blueHs),
 				LookupQueries.getMostKilledKc(blueHs));
 			cmp.setRedData(redName,
 				redHs.getCombatLevel(),
 				LookupQueries.sumBossKills(redHs),
 				LookupQueries.countBossesWithKc(redHs),
-				PanelData.displayedBossCount(),
+				PanelData.bossCount(),
 				LookupQueries.getMostKilledBoss(redHs),
 				LookupQueries.getMostKilledKc(redHs));
 			cmp.setBlueEhb(EhbRates.compute(blueHs,
@@ -137,7 +137,7 @@ final class ActivitySummaryTooltips
 			hiscore != null ? hiscore.getCombatLevel() : 0,
 			LookupQueries.sumBossKills(hiscore),
 			LookupQueries.countBossesWithKc(hiscore),
-			PanelData.displayedBossCount(),
+			PanelData.bossCount(),
 			LookupQueries.getMostKilledBoss(hiscore),
 			LookupQueries.getMostKilledKc(hiscore)
 		);

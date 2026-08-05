@@ -2,8 +2,10 @@ package com.killclog;
 
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Graphics2D;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionListener;
+import java.awt.image.BufferedImage;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -80,7 +82,7 @@ public class TitleTooltipTest
 	{
 		ClogSummaryTooltip tooltip = new ClogSummaryTooltip();
 		tooltip.setTitle("Clog Summary");
-		tooltip.setClogSources(true, true);
+		tooltip.setClogSources(true, true, false);
 
 		Dimension idle = tooltip.getPreferredSize();
 		assertEquals("Temple + RP", tooltip.sourceLine());
@@ -92,10 +94,85 @@ public class TitleTooltipTest
 		// The reveal shares the title line; the tooltip must not grow for it.
 		assertEquals(idle, tooltip.getPreferredSize());
 
-		tooltip.setClogSources(true, false);
+		tooltip.setClogSources(true, false, false);
 		assertEquals("TempleOSRS", tooltip.sourceLine());
-		tooltip.setClogSources(false, true);
+		tooltip.setClogSources(false, true, false);
 		assertEquals("RuneProfile", tooltip.sourceLine());
+		tooltip.setClogSources(false, false, true);
+		assertEquals("Kill Clog Sync", tooltip.sourceLine());
+		tooltip.setClogSources(true, true, true);
+		assertEquals("Kill Clog + Temple + RP", tooltip.sourceLine());
+	}
+
+	@Test
+	public void unknownDenominatorRendersAsQuestionMarkOnEverySurface()
+	{
+		// A source that only reports obtained items has no category
+		// denominator (totalItems = -1); every header formatter must render
+		// that as "?" rather than claiming a total.
+		assertEquals("12/?", TitleTooltip.progressCountText(12, -1));
+		assertEquals("12/?", TitleTooltip.progressCountTextOrDash(12, -1));
+		assertEquals("--", TitleTooltip.progressCountTextOrDash(-1, -1));
+		assertEquals("12/100", TitleTooltip.progressCountText(12, 100));
+	}
+
+	@Test
+	public void compareSurfaceRoutesPaintAndSizingThroughTheSharedFormatter()
+	{
+		// Counting spy: if either production path (painting or sizing)
+		// reverts to a surface-local raw formatter, its seam count stays
+		// flat and this test fails. Asserting the seam values alone cannot
+		// prove the surfaces actually route through them.
+		class SeamCountingTooltip extends CompareImgTooltip
+		{
+			int blueSeamCalls;
+			int redSeamCalls;
+
+			@Override
+			String blueObtainedText()
+			{
+				blueSeamCalls++;
+				return super.blueObtainedText();
+			}
+
+			@Override
+			String redObtainedText()
+			{
+				redSeamCalls++;
+				return super.redObtainedText();
+			}
+		}
+
+		SeamCountingTooltip tip = new SeamCountingTooltip();
+		tip.setShowSpriteGrids(false);
+		tip.setTitle("Zulrah");
+		tip.setBluePlayer("Blue", 12, -1, 0, false);
+		tip.setRedPlayer("Red", -1, 10, 0, false);
+
+		Dimension size = tip.getPreferredSize();
+		assertTrue("sizing must route through the shared-formatter seams",
+			tip.blueSeamCalls > 0 && tip.redSeamCalls > 0);
+
+		int sizedBlue = tip.blueSeamCalls;
+		int sizedRed = tip.redSeamCalls;
+		tip.setSize(size);
+		BufferedImage canvas = new BufferedImage(
+			Math.max(size.width, 1), Math.max(size.height, 1), BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g2 = canvas.createGraphics();
+		try
+		{
+			tip.paint(g2);
+		}
+		finally
+		{
+			g2.dispose();
+		}
+		assertTrue("painting must route through the shared-formatter seams",
+			tip.blueSeamCalls > sizedBlue && tip.redSeamCalls > sizedRed);
+
+		// And the seams themselves speak the shared formatter's language.
+		assertEquals("12/?", tip.blueObtainedText());
+		assertEquals("--", tip.redObtainedText());
 	}
 
 	@Test

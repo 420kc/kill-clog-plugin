@@ -8,7 +8,7 @@ public class LookupFanoutTest
 	@Test
 	public void testGenerationStateMachine()
 	{
-		LookupFanout fanout = new LookupFanout(null, null, null);
+		LookupFanout fanout = new LookupFanout(null, null, null, null);
 		assertFalse(fanout.isInFlight());
 
 		int first = fanout.begin();

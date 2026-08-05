@@ -14,7 +14,7 @@ Kill Clog is a HiScores overhaul that offers fast and easy visuals of collection
 
 ![install-warning](screenshots/install-warning.png)
 
-Public player lookups read from [TempleOSRS](https://templeosrs.com) and [RuneProfile](https://runeprofile.com). The install warning is about those external lookups. Kill Clog does not use `killclog.com` as a player-profile source or upload your clog data.
+Public player lookups read from [TempleOSRS](https://templeosrs.com), [RuneProfile](https://runeprofile.com), and [killclog.com](https://killclog.com). The install warning is about those external lookups. Boss kill counts and ranks come from Jagex's own hiscores, and item names resolve through the OSRS Wiki item mapping at prices.runescape.wiki. Kill Clog only sends your collection log to killclog.com if you turn on sync, which is off by default. Syncing publishes your log and personal bests to your killclog.com profile, and opting out at killclog.com deletes everything stored.
 
 The EHB stat in the PvM summary uses EHB rates by TempleOSRS, bundled with the plugin and refreshed each release. No extra requests are made to compute it.
 

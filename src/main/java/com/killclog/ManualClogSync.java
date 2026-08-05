@@ -165,7 +165,7 @@ final class ManualClogSync
 		{
 			result.setUniqueTotal(bulk.clogTotal);
 		}
-		localClogCache.cacheResult(result);
+		localClogCache.cacheFirstPartyResult(result);
 		firstSyncComplete.run();
 
 		// Prefer the Jagex de-duped count (varp 2943) over the raw streamed count.

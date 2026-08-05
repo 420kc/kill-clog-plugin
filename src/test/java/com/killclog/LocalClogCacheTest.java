@@ -208,8 +208,12 @@ public class LocalClogCacheTest
 
 		ClogResult.ClogItem survived = obtainedItem(cache, "Fast 07", "vorkath", 2);
 		assertNotNull(survived);
-		// Incoming values win when present, prior metadata fills the gaps.
-		assertEquals("2026-07-19 10:00:00", survived.getDate());
+		// The live unlock marked item 2, so its record is inviolable: the
+		// provider refresh can neither replace its client-observed date nor
+		// its provenance. (Date healing for unmarked records rides
+		// mergeProviderDates, which only fills gaps.)
+		assertNotNull(survived.getDate());
+		assertNotEquals("2026-07-19 10:00:00", survived.getDate());
 		assertEquals(421, survived.getObtainedAtKc());
 		assertEquals("Vorkath", survived.getObtainedFrom());
 	}
@@ -297,6 +301,210 @@ public class LocalClogCacheTest
 		assertNull(LocalClogCache.newestObtainedDate(new HashMap<>()));
 		assertNull(LocalClogCache.newestObtainedDate(
 			Collections.singletonMap("brutus", bare)));
+	}
+
+	// First-party marking: the sync payload's provenance boundary.
+
+	@Test
+	public void testProviderResultsNeverEnterTheSyncPayload() throws Exception
+	{
+		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
+		final int[] notified = {0};
+		cache.setFirstPartyChangedListener(() -> notified[0]++);
+
+		// A provider snapshot (pre-login lookup, cross-character search)
+		// lands in the display cache but must never ride a push.
+		cache.cacheResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3),
+			obtainedItems("zulrah", 1, 2)));
+		assertEquals("provider writes never fire the sync trigger", 0, notified[0]);
+
+		ClogResult display = cache.toClogResult("Zezima", Collections.emptyMap());
+		assertEquals("display cache keeps provider items", 2,
+			display.getObtainedItems().get("zulrah").size());
+
+		ClogResult payload = cache.toFirstPartySyncResult("Zezima");
+		assertNotNull(payload);
+		assertTrue("the sync payload carries none of it",
+			payload.getObtainedItems().isEmpty());
+
+		// A live unlock marks exactly that item; the payload carries it and
+		// still excludes the provider-cached pair.
+		cache.mergeObtainedItem("Zezima", 3, itemListAsStrings("zulrah"),
+			categoryItems("zulrah", 1, 2, 3));
+		assertEquals(1, notified[0]);
+		ClogResult after = cache.toFirstPartySyncResult("Zezima");
+		assertEquals(1, after.getObtainedItems().get("zulrah").size());
+		assertEquals(3, after.getObtainedItems().get("zulrah").get(0).getId());
+	}
+
+	@Test
+	public void testBulkCaptureMarksEverythingAndFiresTheTrigger() throws Exception
+	{
+		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
+		final int[] notified = {0};
+		cache.setFirstPartyChangedListener(() -> notified[0]++);
+
+		cache.cacheFirstPartyResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3),
+			obtainedItems("zulrah", 1, 2)));
+
+		assertEquals("the chalice walk schedules a push like any capture", 1, notified[0]);
+		ClogResult payload = cache.toFirstPartySyncResult("Zezima");
+		assertEquals(2, payload.getObtainedItems().get("zulrah").size());
+	}
+
+	@Test
+	public void testProviderRefreshCannotReplaceOrRemoveMarkedRecords() throws Exception
+	{
+		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
+
+		// Capture first: item 1 lands with live provenance (qty 1, kc 420).
+		cache.cacheResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3),
+			new HashMap<>()));
+		cache.mergeObtainedItem("Zezima", 1, itemListAsStrings("zulrah"),
+			categoryItems("zulrah", 1, 2, 3), 420, "Zulrah");
+
+		// Provider refresh second: same item with a provider quantity of 99,
+		// plus a provider-only item 2 - and the provider list could just as
+		// well have DROPPED item 1 entirely.
+		Map<String, List<ClogResult.ClogItem>> providerObtained = new HashMap<>();
+		providerObtained.put("zulrah", new ArrayList<>(List.of(
+			new ClogResult.ClogItem(1, 99, "2026-01-01 00:00:00"),
+			new ClogResult.ClogItem(2, 1, "2026-01-01 00:00:00"))));
+		cache.cacheResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3), providerObtained));
+
+		// The payload still carries exactly the captured record, untouched.
+		ClogResult payload = cache.toFirstPartySyncResult("Zezima");
+		assertEquals(1, payload.getObtainedItems().get("zulrah").size());
+		ClogResult.ClogItem kept = payload.getObtainedItems().get("zulrah").get(0);
+		assertEquals(1, kept.getId());
+		assertEquals("client-observed quantity survives the refresh", 1, kept.getCount());
+		assertEquals("provenance survives the refresh", 420, kept.getObtainedAtKc());
+
+		// A stale provider list without item 1 cannot evict the mark either.
+		Map<String, List<ClogResult.ClogItem>> staleObtained = new HashMap<>();
+		staleObtained.put("zulrah", new ArrayList<>(List.of(
+			new ClogResult.ClogItem(2, 1, "2026-01-01 00:00:00"))));
+		cache.cacheResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3), staleObtained));
+		ClogResult afterStale = cache.toFirstPartySyncResult("Zezima");
+		assertEquals(1, afterStale.getObtainedItems().get("zulrah").size());
+		assertEquals(1, afterStale.getObtainedItems().get("zulrah").get(0).getId());
+
+		// The display cache still shows the provider-only item beside it.
+		ClogResult display = cache.toClogResult("Zezima", Collections.emptyMap());
+		assertEquals(2, display.getObtainedItems().get("zulrah").size());
+	}
+
+	@Test
+	public void testCrossCategoryProviderRecordCannotRideACaptureMark() throws Exception
+	{
+		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
+
+		// Provider caches item 1 under category B with a provider quantity
+		// FIRST (pre-login lookup); the client then captures the same item
+		// under category A. The mark is earned in A only - B's provider
+		// record must not become payload-eligible through it.
+		Map<String, List<ClogResult.ClogItem>> providerObtained = new HashMap<>();
+		providerObtained.put("clue_b", new ArrayList<>(List.of(
+			new ClogResult.ClogItem(1, 99, "2026-01-01 00:00:00"))));
+		Map<String, List<Integer>> categories = new HashMap<>();
+		categories.put("clue_b", itemList(1, 5));
+		categories.put("boss_a", itemList(1, 6));
+		cache.cacheResult(clog("Zezima", categories, providerObtained));
+
+		cache.mergeObtainedItem("Zezima", 1, itemListAsStrings("boss_a"), categories, 420, "Boss A");
+
+		ClogResult payload = cache.toFirstPartySyncResult("Zezima");
+		assertNull("the provider-only category ships nothing",
+			payload.getObtainedItems().get("clue_b"));
+		assertEquals(1, payload.getObtainedItems().get("boss_a").size());
+		assertEquals("only the captured record ships, at its captured quantity",
+			1, payload.getObtainedItems().get("boss_a").get(0).getCount());
+
+		// Display still shows both, untouched.
+		ClogResult display = cache.toClogResult("Zezima", Collections.emptyMap());
+		assertEquals(99, display.getObtainedItems().get("clue_b").get(0).getCount());
+	}
+
+	@Test
+	public void testEmptyFirstCaptureCannotBirthALegacyStore() throws Exception
+	{
+		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
+
+		// A fresh account's first walk captures nothing - the entry is born
+		// through the first-party lane with zero marks. It must still be a
+		// MARKED (empty) store, not a legacy null-sentinel one.
+		cache.cacheFirstPartyResult(clog("Newbie", categoryItems("zulrah", 1, 2, 3),
+			new HashMap<>()));
+
+		// A later provider write lands in the display cache...
+		cache.cacheResult(clog("Newbie", categoryItems("zulrah", 1, 2, 3),
+			obtainedItems("zulrah", 1, 2)));
+
+		// ...but the payload ships nothing: no capture ever observed these.
+		ClogResult payload = cache.toFirstPartySyncResult("Newbie");
+		assertNotNull(payload);
+		assertTrue("provider items cannot ride a zero-capture store",
+			payload.getObtainedItems().isEmpty());
+
+		ClogResult display = cache.toClogResult("Newbie", Collections.emptyMap());
+		assertEquals(2, display.getObtainedItems().get("zulrah").size());
+	}
+
+	@Test
+	public void testProviderLookupDoesNotRevokeLegacyGrandfather() throws Exception
+	{
+		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
+		cache.cacheFirstPartyResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3),
+			obtainedItems("zulrah", 1, 2)));
+
+		// Simulate a legacy pre-marking store: marker null, items present.
+		java.lang.reflect.Field playersField = LocalClogCache.class.getDeclaredField("players");
+		playersField.setAccessible(true);
+		Object data = ((Map<?, ?>) playersField.get(cache)).get("zezima");
+		java.lang.reflect.Field marker = data.getClass().getDeclaredField("firstPartyByCategory");
+		marker.setAccessible(true);
+		marker.set(data, null);
+
+		// A provider lookup of the same name must not flip the marker: the
+		// legacy store keeps its grandfather rights (and its pre-marking
+		// merge semantics, where a provider list replaces the category -
+		// the documented one-time legacy tradeoff).
+		cache.cacheResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3),
+			obtainedItems("zulrah", 3)));
+		// cacheResult replaces the stored object (shallowCopy + put), so the
+		// assertion must read the CURRENT map entry, not the stale reference.
+		Object stored = ((Map<?, ?>) playersField.get(cache)).get("zezima");
+		assertNull("legacy marker survives provider writes", marker.get(stored));
+
+		ClogResult payload = cache.toFirstPartySyncResult("Zezima");
+		assertEquals("legacy store still ships whole, under legacy merge semantics", 1,
+			payload.getObtainedItems().get("zulrah").size());
+	}
+
+	@Test
+	public void testLegacyMarklessStoreGrandfathersOnFirstCapture() throws Exception
+	{
+		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
+		cache.cacheFirstPartyResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3),
+			obtainedItems("zulrah", 1, 2)));
+
+		// Simulate a legacy pre-marking store file: marker null, items present.
+		java.lang.reflect.Field playersField = LocalClogCache.class.getDeclaredField("players");
+		playersField.setAccessible(true);
+		Object data = ((Map<?, ?>) playersField.get(cache)).get("zezima");
+		java.lang.reflect.Field marker = data.getClass().getDeclaredField("firstPartyByCategory");
+		marker.setAccessible(true);
+		marker.set(data, null);
+
+		// A markless store predates marking and still ships whole...
+		ClogResult legacy = cache.toFirstPartySyncResult("Zezima");
+		assertEquals(2, legacy.getObtainedItems().get("zulrah").size());
+
+		// ...and the first capture grandfathers everything, then marks on.
+		cache.mergeObtainedItem("Zezima", 3, itemListAsStrings("zulrah"),
+			categoryItems("zulrah", 1, 2, 3));
+		ClogResult after = cache.toFirstPartySyncResult("Zezima");
+		assertEquals(3, after.getObtainedItems().get("zulrah").size());
 	}
 
 	private static ClogResult.ClogItem obtainedItem(LocalClogCache cache,
@@ -431,5 +639,48 @@ public class LocalClogCacheTest
 		{
 			return null;
 		}
+	}
+
+	@Test
+	public void testFirstPartyPresenceIsPayloadAware() throws Exception
+	{
+		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
+
+		// Provider-cached data for the player's own name is not a payload.
+		cache.cacheResult(clog(
+			"Zezima",
+			categoryItems("zulrah", 1, 2, 3),
+			obtainedItems("zulrah", 1, 2),
+			"2026-08-01 00:00:00",
+			AccountType.REGULAR));
+		assertFalse(cache.hasFirstPartyDataFor("Zezima"));
+
+		// A first-party capture with real items is.
+		cache.cacheFirstPartyResult(clog(
+			"Zezima",
+			categoryItems("zulrah", 1, 2, 3),
+			obtainedItems("zulrah", 1, 2),
+			"2026-08-01 00:00:00",
+			AccountType.REGULAR));
+		assertTrue(cache.hasFirstPartyDataFor("Zezima"));
+
+		// The active-player variant follows setActivePlayer.
+		assertFalse(cache.hasFirstPartyDataForActive());
+		cache.setActivePlayer("Zezima");
+		assertTrue(cache.hasFirstPartyDataForActive());
+	}
+
+	@Test
+	public void testEmptyFirstCaptureIsNotAPayload() throws Exception
+	{
+		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
+		cache.cacheFirstPartyResult(clog(
+			"Fresh Acct",
+			new HashMap<>(),
+			new HashMap<>(),
+			"2026-08-01 00:00:00",
+			AccountType.REGULAR));
+		assertFalse("an empty first walk must not read as a sendable payload",
+			cache.hasFirstPartyDataFor("Fresh Acct"));
 	}
 }

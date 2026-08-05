@@ -33,6 +33,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 	};
 	private static final String TEMPLE_SOURCE = "TempleOSRS";
 	private static final String RUNEPROFILE_SOURCE = "RuneProfile";
+	private static final String KILLCLOG_SOURCE = "Kill Clog Sync";
 
 	private String tierRange;
 	private String tierName;
@@ -61,6 +62,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private final TooltipItemHover itemHover = new TooltipItemHover(this);
 	private boolean clogTemple;
 	private boolean clogRuneProfile;
+	private boolean clogKillclog;
 
 	public void setTierData(int obtained, int totalSlots, Map<String, BufferedImage> tierIcons)
 	{
@@ -82,10 +84,11 @@ public class ClogSummaryTooltip extends TitleTooltip
 	}
 
 	/** Record which providers supplied this player's synced clog data for the summary badge. */
-	public void setClogSources(boolean temple, boolean runeProfile)
+	public void setClogSources(boolean temple, boolean runeProfile, boolean killclog)
 	{
 		this.clogTemple = temple;
 		this.clogRuneProfile = runeProfile;
+		this.clogKillclog = killclog;
 	}
 
 	public void setNotice(String notice)
@@ -178,13 +181,30 @@ public class ClogSummaryTooltip extends TitleTooltip
 	@Override
 	protected boolean hasTitleCornerBadge()
 	{
-		return clogTemple || clogRuneProfile;
+		return clogTemple || clogRuneProfile || clogKillclog;
 	}
 
 	// Provenance takes over the title line while the badge is hovered, so it
-	// can never crowd or clip the title.
+	// can never crowd or clip the title. The player's own sync leads when it
+	// fed the result, matching the website's source labeling.
 	String sourceLine()
 	{
+		if (clogKillclog)
+		{
+			if (clogTemple && clogRuneProfile)
+			{
+				return "Kill Clog + Temple + RP";
+			}
+			if (clogTemple)
+			{
+				return "Kill Clog + Temple";
+			}
+			if (clogRuneProfile)
+			{
+				return "Kill Clog + RP";
+			}
+			return KILLCLOG_SOURCE;
+		}
 		if (clogTemple && clogRuneProfile)
 		{
 			return "Temple + RP";

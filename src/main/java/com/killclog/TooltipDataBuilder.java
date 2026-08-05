@@ -56,7 +56,10 @@ final class TooltipDataBuilder
 			}
 		}
 
-		int totalItems = allItems != null ? allItems.size() : obtainedIds.size();
+		// No catalog for the category means the denominator is UNKNOWN (-1,
+		// rendered as "X/?"), never obtainedIds.size() -- that would claim
+		// every category complete for sources that only report obtained items.
+		int totalItems = allItems != null ? allItems.size() : -1;
 		int obtainedCount = allItems != null
 			? ClogHelper.countObtained(allItems, obtainedIds) : obtainedIds.size();
 

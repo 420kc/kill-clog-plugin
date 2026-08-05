@@ -142,7 +142,8 @@ public abstract class TitleTooltip extends NativeTooltip
 
 	protected static String progressCountText(int obtained, int total)
 	{
-		return (obtained < 0 ? "?" : String.valueOf(obtained)) + "/" + total;
+		return (obtained < 0 ? "?" : String.valueOf(obtained))
+			+ "/" + (total < 0 ? "?" : String.valueOf(total));
 	}
 
 	protected static String progressCountTextOrDash(int obtained, int total)

@@ -78,7 +78,8 @@ public class LookupSession
 	@Nullable private String clogLastChanged;
 
 	public LookupSession(HiscoreService hiscoreService, ClogService clogService,
-		RuneProfileService runeProfileService, KillClogConfig config,
+		RuneProfileService runeProfileService, KillclogService killclogService,
+		KillClogConfig config,
 		@Nullable NameAutocompleter nameAutocompleter, Listener listener)
 	{
 		this.hiscoreService = hiscoreService;
@@ -86,7 +87,7 @@ public class LookupSession
 		this.config = config;
 		this.nameAutocompleter = nameAutocompleter;
 		this.listener = listener;
-		this.fanout = new LookupFanout(hiscoreService, clogService, runeProfileService);
+		this.fanout = new LookupFanout(hiscoreService, clogService, runeProfileService, killclogService);
 	}
 
 	/** Wire (or rewire) the autocompleter that records search history on each successful lookup. */

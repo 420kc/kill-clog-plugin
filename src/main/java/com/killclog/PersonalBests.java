@@ -33,6 +33,13 @@ final class PersonalBests
 	/** Formatted fastest time for a panel boss, or null when none recorded. */
 	String pbText(String panelBossName)
 	{
+		double best = bestSeconds(panelBossName);
+		return best > 0 ? formatSeconds(best) : null;
+	}
+
+	/** Fastest recorded seconds across team sizes, or 0 when none recorded. */
+	double bestSeconds(String panelBossName)
+	{
 		double best = 0;
 		for (String base : keyCandidates(panelBossName))
 		{
@@ -46,7 +53,34 @@ final class PersonalBests
 				}
 			}
 		}
-		return best > 0 ? formatSeconds(best) : null;
+		return best;
+	}
+
+	/**
+	 * Fastest seconds across team sizes AND across rs-profile fragments.
+	 * RuneLite splinters one account into many internal profiles over time
+	 * (client changes, world types), scattering its personal bests; the true
+	 * pb is the minimum over every fragment carrying the player's name.
+	 */
+	double bestSecondsAcrossProfiles(java.util.List<String> profileKeys, String panelBossName)
+	{
+		double best = 0;
+		for (String profileKey : profileKeys)
+		{
+			for (String base : keyCandidates(panelBossName))
+			{
+				for (String suffix : TEAM_SUFFIXES)
+				{
+					Double pb = configManager.getConfiguration(
+						"personalbest", profileKey, base + suffix, (java.lang.reflect.Type) double.class);
+					if (pb != null && pb > 0 && (best == 0 || pb < best))
+					{
+						best = pb;
+					}
+				}
+			}
+		}
+		return best;
 	}
 
 	/**

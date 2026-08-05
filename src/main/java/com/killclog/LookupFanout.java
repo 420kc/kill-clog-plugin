@@ -29,6 +29,7 @@ final class LookupFanout
 	private final HiscoreService hiscoreService;
 	private final ClogService clogService;
 	private final RuneProfileService runeProfileService;
+	private final KillclogService killclogService;
 
 	/** Monotonic counter. Each {@link #begin} increments; callbacks compare their stamp against it. */
 	private volatile int version = 0;
@@ -37,11 +38,12 @@ final class LookupFanout
 	private volatile boolean inFlight = false;
 
 	LookupFanout(HiscoreService hiscoreService, ClogService clogService,
-		RuneProfileService runeProfileService)
+		RuneProfileService runeProfileService, KillclogService killclogService)
 	{
 		this.hiscoreService = hiscoreService;
 		this.clogService = clogService;
 		this.runeProfileService = runeProfileService;
+		this.killclogService = killclogService;
 	}
 
 	/** Open a new fetch generation and return its version stamp. */
@@ -130,8 +132,10 @@ final class LookupFanout
 	}
 
 	/**
-	 * Both public clog providers in parallel, freshest result wins; self
-	 * lookups skip RuneProfile because local widget data is authoritative.
+	 * All clog sources in parallel: the public provider pair races on
+	 * recency, then the player's own killclog.com sync joins on coverage
+	 * (fullest leads, ties prefer first-party). Self lookups skip both
+	 * remote-self legs because local widget data is authoritative.
 	 * {@code onError} runs on the EDT behind the guard when present; null
 	 * means log-and-drop, which is the primary path's behavior.
 	 */
@@ -142,8 +146,11 @@ final class LookupFanout
 		CompletableFuture<ClogResult> rp = isSelf
 			? CompletableFuture.completedFuture(null)
 			: runeProfileService.lookupClog(player);
+		CompletableFuture<ClogResult> killclog = isSelf
+			? CompletableFuture.completedFuture(null)
+			: killclogService.lookupClog(player);
 
-		ClogProviderFanout.chooseFreshest(temple, rp)
+		ClogProviderFanout.chooseFullest(temple, rp, killclog)
 			.thenAccept(result -> onEdtIfCurrent(stamp, () -> onResult.accept(result)))
 			.exceptionally(ex ->
 			{
