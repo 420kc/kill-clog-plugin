@@ -142,8 +142,6 @@ public class KillClogPlugin extends Plugin
 	// load names the owner, the Counters scroll load triggers the parse.
 	private boolean advLogTitleLoaded;
 	private boolean advLogCountersLoaded;
-	private boolean accountSummaryLoaded;
-	private int accountSummaryCaptureTicksRemaining;
 	private String advLogOwner;
 
 	private final ChatAutoLookupGate chatAutoLookup = new ChatAutoLookupGate();
@@ -328,9 +326,7 @@ public class KillClogPlugin extends Plugin
 		else if (event.getGameState() == GameState.LOGIN_SCREEN)
 		{
 			SwingUtilities.invokeLater(panel::reloadTooltipSprites);
-			accountSummaryLoaded = false;
-			accountSummaryCaptureTicksRemaining = 0;
-			panel.clearProfileSummaryProgress();
+			panel.clearProfileLocalCapture();
 			manualClogSync.reset();
 			clogIndex.clear();
 			sessionState.resetAutoLookupSession();
@@ -786,6 +782,7 @@ public class KillClogPlugin extends Plugin
 	public void onGameTick(GameTick event)
 	{
 		nameAutocompleter.refreshClientSnapshot();
+		panel.rememberProfileStandingPose();
 
 		if (sessionState.pendingAcctTypeRecheck())
 		{
@@ -842,22 +839,6 @@ public class KillClogPlugin extends Plugin
 			chatNotifier, clogButtonOverlay, liveClogSync::resetFirstSyncWarning,
 			panel::onBulkCaptureComplete);
 
-		// Player Summary can populate dynamic text over several ticks. Cache its
-		// achievement fraction for the self-only profile card without opening
-		// or manipulating the interface on the player's behalf.
-		if (accountSummaryLoaded || accountSummaryCaptureTicksRemaining > 0)
-		{
-			accountSummaryLoaded = false;
-			if (panel.captureProfileSummaryProgress())
-			{
-				accountSummaryCaptureTicksRemaining = 0;
-			}
-			else
-			{
-				accountSummaryCaptureTicksRemaining--;
-			}
-		}
-
 		// Adventure-log pb harvest, one tick after each widget load so the
 		// children are populated (vanilla's own deferral). The new menu
 		// interface hosts more than the Adventure Log; a non-matching title
@@ -902,11 +883,6 @@ public class KillClogPlugin extends Plugin
 		else if (event.getGroupId() == InterfaceID.JOURNALSCROLL)
 		{
 			advLogCountersLoaded = true;
-		}
-		else if (event.getGroupId() == InterfaceID.ACCOUNT_SUMMARY_SIDEPANEL)
-		{
-			accountSummaryLoaded = true;
-			accountSummaryCaptureTicksRemaining = 5;
 		}
 	}
 

@@ -26,6 +26,7 @@ final class ProfileAppearanceService
 	private static final String RECOVERY_AT_KEY = "recoveryActivatesAt";
 	private static final String MODEL_PENDING = "profile updated; model pending";
 	private static final String MODEL_UNAVAILABLE = "profile updated; model unavailable";
+	private static final String MODEL_NOT_LIVE = "Player model publishing isn't live yet.";
 
 	enum Outcome
 	{
@@ -135,7 +136,11 @@ final class ProfileAppearanceService
 			JsonObject json = parse(response.body);
 			if (isDryRun(response, json))
 			{
-				return completed(Outcome.DISABLED, "Player model publishing isn't live yet.");
+				return completed(Outcome.DISABLED, MODEL_NOT_LIVE);
+			}
+			if (response.code == 404)
+			{
+				return completed(Outcome.DISABLED, MODEL_NOT_LIVE);
 			}
 			if (response.code == 201)
 			{
@@ -185,7 +190,11 @@ final class ProfileAppearanceService
 			JsonObject json = parse(response.body);
 			if (isDryRun(response, json))
 			{
-				return completed(Outcome.DISABLED, "Player model publishing isn't live yet.");
+				return completed(Outcome.DISABLED, MODEL_NOT_LIVE);
+			}
+			if (response.code == 404)
+			{
+				return completed(Outcome.DISABLED, MODEL_NOT_LIVE);
 			}
 			if (response.code >= 200 && response.code < 300)
 			{
@@ -224,7 +233,11 @@ final class ProfileAppearanceService
 			JsonObject json = parse(response.body);
 			if (isDryRun(response, json))
 			{
-				return completed(Outcome.DISABLED, "Player model publishing isn't live yet.");
+				return completed(Outcome.DISABLED, MODEL_NOT_LIVE);
+			}
+			if (response.code == 404)
+			{
+				return completed(Outcome.DISABLED, MODEL_NOT_LIVE);
 			}
 			if (response.code >= 200 && response.code < 300
 				&& json != null && json.has("published") && json.get("published").getAsBoolean())
@@ -322,12 +335,32 @@ final class ProfileAppearanceService
 	@Nullable
 	private String accountConfig(long accountHash, String key)
 	{
-		String value = configManager.getConfiguration(CONFIG_GROUP,
-			scopedKey(accountHash, key), String.class);
+		String storageKey = scopedKey(accountHash, key);
+		String value = configManager.getConfiguration(CONFIG_GROUP, storageKey, String.class);
+		if ((value == null || value.isBlank())
+			&& KillClogEndpoint.STAGING_API.equals(KillClogEndpoint.apiBaseUrl()))
+		{
+			// Early staging builds predated endpoint-scoped credentials. Move that
+			// one developer credential away from the future production namespace.
+			String legacyKey = legacyScopedKey(accountHash, key);
+			value = configManager.getConfiguration(CONFIG_GROUP, legacyKey, String.class);
+			if (value != null && !value.isBlank())
+			{
+				configManager.setConfiguration(CONFIG_GROUP, storageKey, value);
+				configManager.unsetConfiguration(CONFIG_GROUP, legacyKey);
+			}
+		}
 		return value != null && !value.isBlank() ? value : null;
 	}
 
-	private static String scopedKey(long accountHash, String key)
+	static String scopedKey(long accountHash, String key)
+	{
+		String environment = KillClogEndpoint.STAGING_API.equals(KillClogEndpoint.apiBaseUrl())
+			? "staging" : "production";
+		return Long.toUnsignedString(accountHash, 16) + "." + environment + "." + key;
+	}
+
+	private static String legacyScopedKey(long accountHash, String key)
 	{
 		return Long.toUnsignedString(accountHash, 16) + "." + key;
 	}

@@ -305,7 +305,7 @@ public class KillClogPanel extends PluginPanel
 			personalBests, config);
 		this.profileCardDataBuilder = new ProfileCardDataBuilder(itemManager,
 			accountBadges, accountTypes, iconCache);
-		this.profileCardLocalCapture = new ProfileCardLocalCapture(client, clientThread, configManager);
+		this.profileCardLocalCapture = new ProfileCardLocalCapture(client, clientThread);
 		this.profileCardController = new ProfileCardController(this,
 			() -> profileCardDataBuilder.build(
 				lookupSession, rsn, localRsn, profileCardSyncConfirmed),
@@ -984,15 +984,15 @@ public class KillClogPanel extends PluginPanel
 		});
 	}
 
-	/** Capture native Player Summary-only values after its widgets populate. */
-	boolean captureProfileSummaryProgress()
+	/** Cache the local player's frame-zero idle model for a stable profile portrait. */
+	void rememberProfileStandingPose()
 	{
-		return profileCardLocalCapture.captureSummaryProgress();
+		profileCardLocalCapture.rememberStandingPose();
 	}
 
-	void clearProfileSummaryProgress()
+	void clearProfileLocalCapture()
 	{
-		profileCardLocalCapture.clearSummaryProgress();
+		profileCardLocalCapture.clear();
 	}
 
 	void setKillclogSyncHandler(Runnable handler)

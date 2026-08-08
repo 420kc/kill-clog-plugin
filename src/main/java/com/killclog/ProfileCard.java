@@ -64,8 +64,6 @@ final class ProfileCard
 		String caTier;
 		int combatTasksCompleted = -1;
 		int totalCombatTasks = -1;
-		int achievementsCompleted = -1;
-		int totalAchievements = -1;
 		int bossesWithKc = -1;
 		int totalBosses = -1;
 		int totalClues = -1;
@@ -217,9 +215,6 @@ final class ProfileCard
 		y = paintValueLine(g, labelFont, valueFont, SECOND_COLUMN_X, y,
 			"Combat Tasks Completed: ",
 			fraction(data.combatTasksCompleted, data.totalCombatTasks), TEXT);
-		y = paintValueLine(g, labelFont, valueFont, SECOND_COLUMN_X, y,
-			"Achievements Completed: ",
-			fraction(data.achievementsCompleted, data.totalAchievements), TEXT);
 		y = paintValueLine(g, labelFont, valueFont, SECOND_COLUMN_X, y,
 			"Updated: ", text(data.updated, "--"), TEXT);
 		paintPets(g, data, labelFont, valueFont, SECOND_COLUMN_X, y + 2);

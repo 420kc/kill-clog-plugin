@@ -1,69 +1,62 @@
 package com.killclog;
 
-import java.util.Arrays;
+import java.lang.reflect.Proxy;
+import net.runelite.api.Player;
 import org.junit.Test;
 
-import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class ProfileCardLocalCaptureTest
 {
 	@Test
-	public void readsAchievementProgressFromAccountSummaryText()
+	public void acceptsOnlyFrameZeroOfThePlayersIdlePose()
 	{
-		assertArrayEquals(new int[]{422, 492}, ProfileCardLocalCapture.summaryProgress(
-			Arrays.asList("<col=ff981f>Achievements<br>Completed:</col>",
-				"<col=00ff00>422/492</col>"), "achievements completed"));
+		assertTrue(ProfileCardLocalCapture.isStandardStandingPose(player(-1, 808, 808, 0)));
+		assertFalse(ProfileCardLocalCapture.isStandardStandingPose(player(829, 808, 808, 0)));
+		assertFalse(ProfileCardLocalCapture.isStandardStandingPose(player(-1, 819, 808, 0)));
+		assertFalse(ProfileCardLocalCapture.isStandardStandingPose(player(-1, 808, 808, 1)));
 	}
 
-	@Test
-	public void readsAchievementProgressSplitAcrossSummaryWidgets()
+	private static Player player(int animation, int pose, int idle, int frame)
 	{
-		assertArrayEquals(new int[]{422, 492}, ProfileCardLocalCapture.summaryProgress(
-			Arrays.asList("Achievements", "Completed:", "422", "/492"),
-			"achievements completed"));
+		return (Player) Proxy.newProxyInstance(Player.class.getClassLoader(),
+			new Class<?>[]{Player.class}, (proxy, method, args) ->
+			{
+				switch (method.getName())
+				{
+					case "getAnimation":
+						return animation;
+					case "getPoseAnimation":
+						return pose;
+					case "getIdlePoseAnimation":
+						return idle;
+					case "getPoseAnimationFrame":
+						return frame;
+					default:
+						return defaultValue(method.getReturnType());
+				}
+			});
 	}
 
-	@Test
-	public void ignoresCombatAchievementsBeforeNativeAchievementProgress()
+	private static Object defaultValue(Class<?> type)
 	{
-		assertArrayEquals(new int[]{422, 492}, ProfileCardLocalCapture.summaryProgress(
-			Arrays.asList("Combat Achievements", "336/646", "Achievements", "Completed:",
-				"422/492"), "achievements completed"));
-	}
-
-	@Test
-	public void doesNotBorrowCombatAchievementsAfterMissingNativeProgress()
-	{
-		assertArrayEquals(new int[]{-1, -1}, ProfileCardLocalCapture.summaryProgress(
-			Arrays.asList("Achievements", "Completed:", "Combat Achievements", "336/646"),
-			"achievements completed"));
-	}
-
-	@Test
-	public void validatesProgressBeforeCachingOrPersisting()
-	{
-		assertTrue(ProfileCardLocalCapture.validProgress(422, 492));
-		assertTrue(ProfileCardLocalCapture.validProgress(0, 492));
-		assertFalse(ProfileCardLocalCapture.validProgress(-1, 492));
-		assertFalse(ProfileCardLocalCapture.validProgress(0, 0));
-		assertFalse(ProfileCardLocalCapture.validProgress(493, 492));
-	}
-
-	@Test
-	public void leavesUnavailableAchievementProgressUnknown()
-	{
-		assertArrayEquals(new int[]{-1, -1}, ProfileCardLocalCapture.summaryProgress(
-			Arrays.asList("Combat Level", "126"), "achievements completed"));
-	}
-
-	@Test
-	public void neverReusesAchievementProgressAcrossAccounts()
-	{
-		assertArrayEquals(new int[]{422, 492}, ProfileCardLocalCapture.ownedSummaryProgress(
-			"420 kc", 422, 492, "420 KC"));
-		assertArrayEquals(new int[]{-1, -1}, ProfileCardLocalCapture.ownedSummaryProgress(
-			"Player A", 422, 492, "Player B"));
+		if (type == boolean.class)
+		{
+			return false;
+		}
+		if (type == byte.class || type == short.class || type == int.class || type == long.class)
+		{
+			return 0;
+		}
+		if (type == float.class || type == double.class)
+		{
+			return 0d;
+		}
+		if (type == char.class)
+		{
+			return '\0';
+		}
+		return null;
 	}
 }

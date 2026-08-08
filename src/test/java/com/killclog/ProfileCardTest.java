@@ -52,8 +52,6 @@ public class ProfileCardTest
 		data.caTier = "MASTER";
 		data.combatTasksCompleted = 336;
 		data.totalCombatTasks = 646;
-		data.achievementsCompleted = 422;
-		data.totalAchievements = 492;
 		data.bossesWithKc = 69;
 		data.totalBosses = 69;
 		data.totalClues = 867;

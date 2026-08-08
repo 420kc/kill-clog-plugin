@@ -1,50 +1,41 @@
 package com.killclog;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.IdentityHashMap;
-import java.util.List;
-import java.util.Set;
+import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
+import net.runelite.api.ColorTextureOverride;
 import net.runelite.api.Model;
 import net.runelite.api.Player;
-import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.PlayerComposition;
 import net.runelite.api.gameval.VarPlayerID;
-import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
-import net.runelite.client.config.ConfigManager;
 
 /** Captures self-only game state for the profile card on the client thread. */
 @Slf4j
 final class ProfileCardLocalCapture
 {
-	private static final String CONFIG_GROUP = "killclog-profile-card";
-	private static final String ACHIEVEMENTS_COMPLETED_KEY = "achievementsCompleted";
-	private static final String ACHIEVEMENTS_TOTAL_KEY = "achievementsTotal";
-	private static final Pattern FRACTION = Pattern.compile("([0-9][0-9,]*)\\s*/\\s*([0-9][0-9,]*)");
+	private static final int STANDING_POSE_WAIT_CYCLES = 250;
 
 	private final Client client;
 	private final ClientThread clientThread;
-	private final ConfigManager configManager;
-	private String cachedAchievementRsn;
-	private int cachedAchievementsCompleted = -1;
-	private int cachedTotalAchievements = -1;
+	private String cachedStandingRsn;
+	private int cachedStandingAppearanceHash;
+	private int cachedStandingIdlePose = -1;
+	private ProfileCardPlayerModel.Snapshot cachedStandingModel;
 
-	ProfileCardLocalCapture(Client client, ClientThread clientThread, ConfigManager configManager)
+	ProfileCardLocalCapture(Client client, ClientThread clientThread)
 	{
 		this.client = client;
 		this.clientThread = clientThread;
-		this.configManager = configManager;
 	}
 
 	void capture(String expectedRsn, Consumer<Snapshot> callback)
 	{
+		AtomicInteger attempts = new AtomicInteger();
 		clientThread.invokeLater(() ->
 		{
 			Snapshot snapshot = null;
@@ -56,8 +47,13 @@ final class ProfileCardLocalCapture
 			{
 				log.warn("profile card local snapshot failed", e);
 			}
+			if (snapshot == null && attempts.incrementAndGet() < STANDING_POSE_WAIT_CYCLES)
+			{
+				return false;
+			}
 			Snapshot result = snapshot;
 			SwingUtilities.invokeLater(() -> callback.accept(result));
+			return true;
 		});
 	}
 
@@ -71,198 +67,115 @@ final class ProfileCardLocalCapture
 			return null;
 		}
 
-		Model model = player.getModel();
-		if (model == null)
-		{
-			return null;
-		}
-		Model unskewed = model.getUnskewedModel();
-		ProfileCardPlayerModel.Snapshot playerModel =
-			ProfileCardPlayerModel.snapshot(unskewed != null ? unskewed : model,
-				client.getTextureProvider(), client.getGameCycle());
+		rememberStandingPose();
+		ProfileCardPlayerModel.Snapshot playerModel = standingModel(player);
 		if (playerModel == null)
 		{
 			return null;
 		}
-		if (!captureSummaryProgress())
-		{
-			loadSummaryProgress(player.getName());
-		}
-		int[] achievements = ownedSummaryProgress(cachedAchievementRsn,
-			cachedAchievementsCompleted, cachedTotalAchievements, player.getName());
-		return new Snapshot(client.getVarpValue(VarPlayerID.QP),
-			achievements[0], achievements[1], playerModel);
+		return new Snapshot(client.getVarpValue(VarPlayerID.QP), playerModel);
 	}
 
-	/** Cache native Account Summary progress whenever that interface naturally opens. */
-	boolean captureSummaryProgress()
+	/**
+	 * Keep a frame-zero idle portrait ready so opening the card while walking or
+	 * skilling can never freeze that transient animation into the artifact.
+	 * FashionScape updates {@link Player#getIdlePoseAnimation()} for virtual
+	 * weapon stances, so the cached frame follows the appearance the player sees.
+	 */
+	void rememberStandingPose()
 	{
 		Player player = client.getLocalPlayer();
-		if (player == null || player.getName() == null || player.getName().isBlank())
-		{
-			return false;
-		}
-		int[] achievements = summaryProgress(readSummaryText(), "achievements completed");
-		if (validProgress(achievements[0], achievements[1]))
-		{
-			cachedAchievementRsn = player.getName().trim();
-			cachedAchievementsCompleted = achievements[0];
-			cachedTotalAchievements = achievements[1];
-			configManager.setRSProfileConfiguration(CONFIG_GROUP,
-				ACHIEVEMENTS_COMPLETED_KEY, achievements[0]);
-			configManager.setRSProfileConfiguration(CONFIG_GROUP,
-				ACHIEVEMENTS_TOTAL_KEY, achievements[1]);
-			return true;
-		}
-		return false;
-	}
-
-	private void loadSummaryProgress(String playerName)
-	{
-		Integer completed = configManager.getRSProfileConfiguration(CONFIG_GROUP,
-			ACHIEVEMENTS_COMPLETED_KEY, Integer.class);
-		Integer total = configManager.getRSProfileConfiguration(CONFIG_GROUP,
-			ACHIEVEMENTS_TOTAL_KEY, Integer.class);
-		if (completed != null && total != null && validProgress(completed, total))
-		{
-			cachedAchievementRsn = playerName.trim();
-			cachedAchievementsCompleted = completed;
-			cachedTotalAchievements = total;
-		}
-	}
-
-	void clearSummaryProgress()
-	{
-		cachedAchievementRsn = null;
-		cachedAchievementsCompleted = -1;
-		cachedTotalAchievements = -1;
-	}
-
-	static int[] ownedSummaryProgress(@Nullable String owner, int completed, int total,
-		@Nullable String expectedRsn)
-	{
-		return ProfileCardDataBuilder.isSelfPlayer(owner, expectedRsn)
-			? new int[]{completed, total} : new int[]{-1, -1};
-	}
-
-	static boolean validProgress(int completed, int total)
-	{
-		return completed >= 0 && total > 0 && completed <= total;
-	}
-
-	private List<String> readSummaryText()
-	{
-		Widget root = client.getWidget(InterfaceID.ACCOUNT_SUMMARY_SIDEPANEL,
-			InterfaceID.AccountSummarySidepanel.SUMMARY_CONTENTS);
-		if (root == null || root.isHidden())
-		{
-			return Collections.emptyList();
-		}
-		List<String> text = new ArrayList<>();
-		Set<Widget> visited = Collections.newSetFromMap(new IdentityHashMap<>());
-		collectText(root, visited, text);
-		return text;
-	}
-
-	private static void collectText(Widget widget, Set<Widget> visited, List<String> text)
-	{
-		if (widget == null || !visited.add(widget) || widget.isHidden())
+		if (!isStandardStandingPose(player) || player.getName() == null)
 		{
 			return;
 		}
-		String value = widget.getText();
-		if (value != null && !value.isBlank())
+		PlayerComposition composition = player.getPlayerComposition();
+		if (composition == null)
 		{
-			text.add(value);
+			return;
 		}
-		collectChildren(widget.getChildren(), visited, text);
-		collectChildren(widget.getDynamicChildren(), visited, text);
-		collectChildren(widget.getStaticChildren(), visited, text);
-		collectChildren(widget.getNestedChildren(), visited, text);
+		int appearanceHash = appearanceHash(composition);
+		if (ProfileCardDataBuilder.isSelfPlayer(cachedStandingRsn, player.getName())
+			&& cachedStandingAppearanceHash == appearanceHash
+			&& cachedStandingIdlePose == player.getIdlePoseAnimation()
+			&& cachedStandingModel != null)
+		{
+			return;
+		}
+		Model model = player.getModel();
+		if (model == null)
+		{
+			return;
+		}
+		Model unskewed = model.getUnskewedModel();
+		ProfileCardPlayerModel.Snapshot snapshot = ProfileCardPlayerModel.snapshot(
+			unskewed != null ? unskewed : model, client.getTextureProvider(), client.getGameCycle());
+		if (snapshot != null)
+		{
+			cachedStandingRsn = player.getName().trim();
+			cachedStandingAppearanceHash = appearanceHash;
+			cachedStandingIdlePose = player.getIdlePoseAnimation();
+			cachedStandingModel = snapshot;
+		}
 	}
 
-	private static void collectChildren(Widget[] children, Set<Widget> visited, List<String> text)
+	@Nullable
+	private ProfileCardPlayerModel.Snapshot standingModel(Player player)
 	{
-		if (children != null)
+		PlayerComposition composition = player.getPlayerComposition();
+		if (composition == null
+			|| !ProfileCardDataBuilder.isSelfPlayer(cachedStandingRsn, player.getName())
+			|| cachedStandingAppearanceHash != appearanceHash(composition)
+			|| cachedStandingIdlePose != player.getIdlePoseAnimation())
 		{
-			for (Widget child : children)
-			{
-				collectText(child, visited, text);
-			}
+			return null;
 		}
+		return cachedStandingModel;
 	}
 
-	static int[] summaryProgress(List<String> text, String label)
+	static boolean isStandardStandingPose(@Nullable Player player)
 	{
-		String normalizedLabel = normalize(label).toLowerCase(java.util.Locale.ROOT);
-		for (int i = 0; i < text.size(); i++)
-		{
-			StringBuilder labelWindow = new StringBuilder();
-			int labelEnd = -1;
-			for (int j = i; j < Math.min(text.size(), i + 3); j++)
-			{
-				labelWindow.append(' ').append(normalize(text.get(j)));
-				if (labelWindow.toString().toLowerCase(java.util.Locale.ROOT)
-					.contains(normalizedLabel))
-				{
-					labelEnd = j;
-					break;
-				}
-			}
-			if (labelEnd < 0)
-			{
-				continue;
-			}
-			StringBuilder nearby = new StringBuilder();
-			for (int j = labelEnd; j < Math.min(text.size(), labelEnd + 5); j++)
-			{
-				String chunk = normalize(text.get(j));
-				if (j > labelEnd && chunk.chars().anyMatch(Character::isLetter))
-				{
-					break;
-				}
-				nearby.append(' ').append(chunk);
-				Matcher matcher = FRACTION.matcher(nearby);
-				if (matcher.find())
-				{
-					return new int[]{parseNumber(matcher.group(1)), parseNumber(matcher.group(2))};
-				}
-			}
-		}
-		return new int[]{-1, -1};
+		return player != null
+			&& player.getAnimation() == -1
+			&& player.getPoseAnimation() == player.getIdlePoseAnimation()
+			&& player.getPoseAnimationFrame() == 0;
 	}
 
-	private static String normalize(String value)
+	private static int appearanceHash(PlayerComposition composition)
 	{
-		return value.replaceAll("<[^>]*>", " ").replace("&nbsp;", " ")
-			.replaceAll("\\s+", " ").trim();
+		int hash = Arrays.hashCode(composition.getEquipmentIds());
+		hash = 31 * hash + Arrays.hashCode(composition.getColors());
+		hash = 31 * hash + composition.getGender();
+		hash = 31 * hash + composition.getTransformedNpcId();
+		ColorTextureOverride[] overrides = composition.getColorTextureOverrides();
+		if (overrides != null)
+		{
+			for (ColorTextureOverride override : overrides)
+			{
+				hash = 31 * hash + (override == null ? 0
+					: 31 * Arrays.hashCode(override.getColorToReplaceWith())
+						+ Arrays.hashCode(override.getTextureToReplaceWith()));
+			}
+		}
+		return hash;
 	}
 
-	private static int parseNumber(String value)
+	void clear()
 	{
-		try
-		{
-			return Integer.parseInt(value.replace(",", ""));
-		}
-		catch (NumberFormatException ignored)
-		{
-			return -1;
-		}
+		cachedStandingRsn = null;
+		cachedStandingAppearanceHash = 0;
+		cachedStandingIdlePose = -1;
+		cachedStandingModel = null;
 	}
 
 	static final class Snapshot
 	{
 		final int questPoints;
-		final int achievementsCompleted;
-		final int totalAchievements;
 		final ProfileCardPlayerModel.Snapshot playerModel;
 
-		private Snapshot(int questPoints, int achievementsCompleted,
-			int totalAchievements, ProfileCardPlayerModel.Snapshot playerModel)
+		private Snapshot(int questPoints, ProfileCardPlayerModel.Snapshot playerModel)
 		{
 			this.questPoints = questPoints;
-			this.achievementsCompleted = achievementsCompleted;
-			this.totalAchievements = totalAchievements;
 			this.playerModel = playerModel;
 		}
 	}

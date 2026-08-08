@@ -45,4 +45,15 @@ public class KillClogEndpointTest
 		KillClogEndpoint.addStagingHeader(production, KillClogEndpoint.PRODUCTION_API + "/healthz");
 		assertNull(production.build().header(KillClogEndpoint.STAGING_HEADER));
 	}
+
+	@Test
+	public void appearanceCredentialsCannotCrossBetweenStagingAndProduction()
+	{
+		assertEquals("ff.production.deviceSecret",
+			ProfileAppearanceService.scopedKey(255L, "deviceSecret"));
+
+		System.setProperty(KillClogEndpoint.ENDPOINT_PROPERTY, KillClogEndpoint.STAGING_API);
+		assertEquals("ff.staging.deviceSecret",
+			ProfileAppearanceService.scopedKey(255L, "deviceSecret"));
+	}
 }
