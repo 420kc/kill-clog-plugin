@@ -156,8 +156,7 @@ public abstract class NativeTooltip extends JToolTip
 		int w = getWidth();
 		int h = getHeight();
 
-		paintBackground(g2, w, h);
-		paintBorder(g2, w, h);
+		paintFrame(g2, w, h);
 
 		g2.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING,
 			RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
@@ -165,6 +164,13 @@ public abstract class NativeTooltip extends JToolTip
 		paintContent(g2, w, h);
 
 		g2.dispose();
+	}
+
+	/** Paint the same parchment and iron frame onto a standalone image. */
+	static void paintFrame(Graphics2D g2, int w, int h)
+	{
+		paintBackground(g2, w, h);
+		paintBorder(g2, w, h);
 	}
 
 	/**

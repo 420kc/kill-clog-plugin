@@ -238,7 +238,7 @@ public class KillclogService
 		{
 			return null;
 		}
-		Map<String, Double> pbs = pbCache.get(playerName.toLowerCase());
+		Map<String, Double> pbs = pbCache.get(playerName.toLowerCase(java.util.Locale.ROOT));
 		if (pbs == null)
 		{
 			return null;

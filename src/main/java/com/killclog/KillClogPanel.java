@@ -113,6 +113,10 @@ public class KillClogPanel extends PluginPanel
 	private final PanelIconCache iconCache;
 	private final PanelAccountTypes accountTypes;
 	private final ActivitySummaryTooltips activityTooltips;
+	private final PersonalBests personalBests;
+	private final ProfileCardDataBuilder profileCardDataBuilder;
+	private final ProfileCardController profileCardController;
+	private final ProfileCardButton profileCardButton;
 	private ProgressHighlighter highlighter;
 	private JPanel infoRow;
 
@@ -287,6 +291,7 @@ public class KillClogPanel extends PluginPanel
 		this.caRewardSprites = new CaRewardSprites(itemManager, clientThread, this::repaint);
 		this.iconCache = new PanelIconCache(itemManager, clientThread, spriteManager);
 		this.accountTypes = new PanelAccountTypes(runeProfileService);
+		this.personalBests = new PersonalBests(configManager);
 		this.tooltipController = new TooltipController(config);
 		this.lookupSession = new LookupSession(hiscoreService, clogService, runeProfileService,
 			killclogService, config, null, this);
@@ -295,7 +300,18 @@ public class KillClogPanel extends PluginPanel
 		this.comparison.setRenderTarget(this);
 		this.comparison.setVirtualTotalLevel(
 			() -> ClogHelper.virtualTotalLevelEnabled(configManager));
-		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, clogService, killclogService, new PersonalBests(configManager), config);
+		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison,
+			tooltipDataBuilder, lookupSession, clogService, killclogService,
+			personalBests, config);
+		this.profileCardDataBuilder = new ProfileCardDataBuilder(itemManager, configManager,
+			accountBadges, accountTypes, iconCache, personalBests, config);
+		this.profileCardController = new ProfileCardController(this,
+			() -> profileCardDataBuilder.build(
+				lookupSession, rsn, localRsn, profileCardSyncConfirmed),
+			new ProfileCardLocalCapture(client, clientThread),
+			this::setProfileCardStatus);
+		this.profileCardButton = new ProfileCardButton(
+			profileCardController::share, this::onProfileCardHover, this::onProfileCardExit);
 		this.activityTooltips = new ActivitySummaryTooltips(
 			lookupSession, comparison, cells, tooltipController, itemManager,
 			caRewardSprites, iconCache, this::comparisonBlueName, config::wikiItemLinks,
@@ -686,6 +702,7 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void onSwapToRedPlayer(String newPrimaryRsn)
 	{
+		profileCardAwaitingClog = false;
 		rsn = newPrimaryRsn;
 		HiscoreResult swapHiscore = lookupSession.getHiscoreResult();
 		ClogResult swapClog = lookupSession.getClogResult();
@@ -727,6 +744,7 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void onComparisonEnter(String redRsn)
 	{
+		profileCardController.closePreview();
 		searchRowController.onComparisonEnter();
 		setSearchStatus(" ", TEXT_DIM);
 		updateClogTotalsBar();
@@ -762,6 +780,7 @@ public class KillClogPanel extends PluginPanel
 	// ── killclog.com sync arrow ─────────────────────────────────────────
 
 	private static final String SYNC_HOVER_TEXT = "sync to killclog.com";
+	private static final String PROFILE_CARD_HOVER_TEXT = "copy profile card";
 	// k1: the brand lime. Status chrome, not data coloring, so it does not
 	// route through the user-themable completion color.
 	private static final Color SYNC_K1 = new Color(78, 240, 21);
@@ -770,6 +789,9 @@ public class KillClogPanel extends PluginPanel
 	private boolean syncArrowHasData;
 	private Runnable killclogSyncHandler;
 	private javax.swing.Timer syncStatusClearTimer;
+	private javax.swing.Timer profileCardStatusClearTimer;
+	private boolean profileCardAwaitingClog;
+	private boolean profileCardSyncConfirmed;
 
 	/**
 	 * The sync control wears the Kill Clog chalice itself: dim at rest,
@@ -845,6 +867,7 @@ public class KillClogPanel extends PluginPanel
 		syncArrow.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 4, 6, 5));
 		syncArrow.setVerticalAlignment(JLabel.CENTER);
 		syncArrow.setVisible(false);
+		profileCardButton.setVisible(false);
 		syncArrow.addMouseListener(new java.awt.event.MouseAdapter()
 		{
 			@Override
@@ -885,19 +908,75 @@ public class KillClogPanel extends PluginPanel
 		row.setMaximumSize(new Dimension(Integer.MAX_VALUE,
 			Math.max(searchStatus.getPreferredSize().height, 14) + 2));
 		row.add(searchStatus, java.awt.BorderLayout.CENTER);
-		row.add(syncArrow, java.awt.BorderLayout.EAST);
+		JPanel actions = new JPanel();
+		actions.setLayout(new BoxLayout(actions, BoxLayout.X_AXIS));
+		actions.setOpaque(false);
+		actions.add(profileCardButton);
+		actions.add(syncArrow);
+		row.add(actions, java.awt.BorderLayout.EAST);
 		return row;
 	}
 
 	private boolean statusBarFree()
 	{
 		String text = searchStatus.getText();
-		return text == null || text.trim().isEmpty() || SYNC_HOVER_TEXT.equals(text);
+		return text == null || text.trim().isEmpty()
+			|| SYNC_HOVER_TEXT.equals(text) || PROFILE_CARD_HOVER_TEXT.equals(text);
 	}
 
 	private void refreshSyncArrowVisibility()
 	{
-		syncArrow.setVisible(syncArrowEnabled && syncArrowHasData && statusBarFree());
+		boolean free = statusBarFree();
+		syncArrow.setVisible(syncArrowEnabled && syncArrowHasData && free);
+		profileCardButton.setVisible(free
+			&& config.killclogSync()
+			&& profileCardSyncConfirmed
+			&& ProfileCardDataBuilder.isSelfPlayer(
+				lookupSession.getCurrentLookupRsn(), localRsn)
+			&& lookupSession.getClogResult() != null
+			&& lookupSession.getHiscoreResult() != null
+			&& !lookupSession.isLookupInFlight()
+			&& !profileCardAwaitingClog
+			&& !comparison.isComparisonMode());
+	}
+
+	private void onProfileCardHover()
+	{
+		if (profileCardButton.isVisible())
+		{
+			setSearchStatus(PROFILE_CARD_HOVER_TEXT, NativeTooltip.OSRS_ORANGE);
+		}
+	}
+
+	private void onProfileCardExit()
+	{
+		if (PROFILE_CARD_HOVER_TEXT.equals(searchStatus.getText()))
+		{
+			setSearchStatus(" ", TEXT_DIM);
+		}
+	}
+
+	private void setProfileCardStatus(String text)
+	{
+		boolean success = text.startsWith("Profile card copied")
+			|| text.startsWith("Copied") || text.startsWith("Saved");
+		setSearchStatus(text, success ? SYNC_K1 : TEXT_DIM);
+		if (profileCardStatusClearTimer != null)
+		{
+			profileCardStatusClearTimer.stop();
+		}
+		if (!text.startsWith("building"))
+		{
+			profileCardStatusClearTimer = new javax.swing.Timer(3500, event ->
+			{
+				if (text.equals(searchStatus.getText()))
+				{
+					setSearchStatus(" ", TEXT_DIM);
+				}
+			});
+			profileCardStatusClearTimer.setRepeats(false);
+			profileCardStatusClearTimer.start();
+		}
 	}
 
 	/** The plugin flips this with the sync checkbox; off hides the arrow. */
@@ -906,6 +985,20 @@ public class KillClogPanel extends PluginPanel
 		SwingUtilities.invokeLater(() ->
 		{
 			syncArrowEnabled = enabled;
+			if (!enabled)
+			{
+				profileCardSyncConfirmed = false;
+			}
+			refreshSyncArrowVisibility();
+		});
+	}
+
+	/** A successful first-party read or push unlocks self profile cards. */
+	void setProfileCardSyncConfirmed(boolean confirmed)
+	{
+		SwingUtilities.invokeLater(() ->
+		{
+			profileCardSyncConfirmed = confirmed && config.killclogSync();
 			refreshSyncArrowVisibility();
 		});
 	}
@@ -1053,6 +1146,8 @@ public class KillClogPanel extends PluginPanel
 	 */
 	private void resetAllLabels()
 	{
+		profileCardController.closePreview();
+		profileCardSyncConfirmed = false;
 		tooltipController.hideClickTooltip();
 		searchRowController.exitIfActive();
 		rsn = null;
@@ -1272,6 +1367,7 @@ public class KillClogPanel extends PluginPanel
 	{
 		this.localRsn = name;
 		this.localAccountType = accountType;
+		refreshSyncArrowVisibility();
 	}
 
 	/** Returns the RSN currently displayed in the panel, or null if no lookup is shown. */
@@ -1392,12 +1488,14 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void onDeactivate()
 	{
+		profileCardController.closePreview();
 		tooltipController.restoreDefaults();
 	}
 
 	/** Safety net - restores tooltip delay if plugin is disabled while panel is active. */
 	public void shutdown()
 	{
+		profileCardController.closePreview();
 		tooltipController.restoreDefaults();
 	}
 
@@ -1405,6 +1503,7 @@ public class KillClogPanel extends PluginPanel
 	public void removeNotify()
 	{
 		super.removeNotify();
+		profileCardController.closePreview();
 		tooltipController.hideClickTooltip();
 	}
 
@@ -1571,6 +1670,7 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void onLookupStart(String player, boolean isSelf, boolean isFirstSelfGreeting)
 	{
+		profileCardAwaitingClog = true;
 		if (isSelf)
 		{
 			setSearchStatus(selfSearchMessage(player), SearchMessages.SELF_COLOR);
@@ -1597,6 +1697,11 @@ public class KillClogPanel extends PluginPanel
 		if (clog != null)
 		{
 			renderClogResult(clog, isSelf, lookupSession.getLookupVersion());
+			if (isSelf && clog.isFromKillclog())
+			{
+				profileCardSyncConfirmed = true;
+				refreshSyncArrowVisibility();
+			}
 		}
 	}
 
@@ -1623,6 +1728,9 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void onClogResult(String player, @Nullable ClogResult clog, boolean isSelf, int lookupVersionAtFire)
 	{
+		profileCardAwaitingClog = false;
+		profileCardSyncConfirmed = isSelf && (profileCardSyncConfirmed
+			|| clog != null && clog.isFromKillclog());
 		if (clog != null)
 		{
 			renderClogResult(clog, isSelf, lookupVersionAtFire);
@@ -1646,6 +1754,7 @@ public class KillClogPanel extends PluginPanel
 			}
 			fetchRsn(player, lookupVersionAtFire);
 		}
+		refreshSyncArrowVisibility();
 	}
 
 	@Override
@@ -1664,6 +1773,7 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void onNotFound(String player)
 	{
+		profileCardAwaitingClog = false;
 		int notFoundIdx = ThreadLocalRandom.current().nextInt(SearchMessages.NOT_FOUND.length);
 		setSearchStatus(String.format(SearchMessages.NOT_FOUND[notFoundIdx], player), NOT_FOUND);
 		searchBar.setIcon(IconTextField.Icon.SEARCH);
@@ -1679,6 +1789,7 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void onError(String player, Throwable error)
 	{
+		profileCardAwaitingClog = false;
 		searchBar.setIcon(IconTextField.Icon.SEARCH);
 		searchBar.setText("");
 		setSearchStatus("Lookup failed", TEXT_DIM);

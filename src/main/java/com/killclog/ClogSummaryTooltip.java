@@ -189,6 +189,11 @@ public class ClogSummaryTooltip extends TitleTooltip
 	// fed the result, matching the website's source labeling.
 	String sourceLine()
 	{
+		return sourceLine(clogTemple, clogRuneProfile, clogKillclog);
+	}
+
+	static String sourceLine(boolean clogTemple, boolean clogRuneProfile, boolean clogKillclog)
+	{
 		if (clogKillclog)
 		{
 			if (clogTemple && clogRuneProfile)
