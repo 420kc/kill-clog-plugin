@@ -25,7 +25,9 @@ final class ProfileCardPlayerModel
 
 	private static final int SCALE = 2;
 	private static final int MARGIN = 8 * SCALE;
-	private static final double YAW = Math.toRadians(-28);
+	// Front-facing is 180 degrees; the native portrait cant turns 26 degrees
+	// toward 10:30 for the familiar Jagex three-quarter view.
+	private static final double YAW = Math.toRadians(180 + 26);
 	private static final double PITCH = Math.toRadians(5);
 
 	private ProfileCardPlayerModel()
