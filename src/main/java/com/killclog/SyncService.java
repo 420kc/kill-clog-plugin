@@ -39,7 +39,7 @@ class SyncService
 	static final String BASE_URL = "https://killclog.com";
 
 	// Attributed on the server per client build.
-	static final String CLIENT_VERSION = "2.0.0";
+	static final String CLIENT_VERSION = "2.1.0";
 
 	private final OkHttpClient httpClient;
 	private final Gson gson;

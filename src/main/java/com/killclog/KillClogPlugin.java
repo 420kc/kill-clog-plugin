@@ -495,18 +495,8 @@ public class KillClogPlugin extends Plugin
 	 */
 	private java.util.Map<String, Double> gatherPersonalBests(String rsn)
 	{
-		java.util.List<String> profileKeys = new java.util.ArrayList<>();
-		for (net.runelite.client.config.RuneScapeProfile profile : configManager.getRSProfiles())
-		{
-			if (rsn.equalsIgnoreCase(profile.getDisplayName())
-				&& profile.getType() == net.runelite.client.config.RuneScapeProfileType.STANDARD)
-			{
-				String key = profile.getKey();
-				profileKeys.add(key.startsWith("rsprofile.") ? key : "rsprofile." + key);
-			}
-		}
-
 		PersonalBests pbs = new PersonalBests(configManager);
+		java.util.List<String> profileKeys = pbs.standardProfileKeys(rsn);
 		java.util.Map<String, Double> out = new java.util.LinkedHashMap<>();
 		for (net.runelite.client.hiscore.HiscoreSkill boss : PanelData.BOSSES)
 		{
@@ -527,18 +517,8 @@ public class KillClogPlugin extends Plugin
 	 */
 	private java.util.Map<String, SyncService.DetailedPb> gatherDetailedPersonalBests(String rsn)
 	{
-		java.util.List<String> profileKeys = new java.util.ArrayList<>();
-		for (net.runelite.client.config.RuneScapeProfile profile : configManager.getRSProfiles())
-		{
-			if (rsn.equalsIgnoreCase(profile.getDisplayName())
-				&& profile.getType() == net.runelite.client.config.RuneScapeProfileType.STANDARD)
-			{
-				String key = profile.getKey();
-				profileKeys.add(key.startsWith("rsprofile.") ? key : "rsprofile." + key);
-			}
-		}
-
 		PersonalBests pbs = new PersonalBests(configManager);
+		java.util.List<String> profileKeys = pbs.standardProfileKeys(rsn);
 		AdvLogPbs advLog = new AdvLogPbs(configManager);
 		java.util.Map<String, SyncService.DetailedPb> out = new java.util.LinkedHashMap<>();
 		for (net.runelite.client.hiscore.HiscoreSkill boss : PanelData.BOSSES)
@@ -672,6 +652,10 @@ public class KillClogPlugin extends Plugin
 								// Everything below is a terminal outcome for this episode.
 								syncGate.restoreRetryCredit();
 							panel.showSyncStatus(result.ok ? "synced!" : "sync failed", result.ok, true);
+							if (result.ok)
+							{
+								panel.setProfileCardSyncConfirmed(true);
+							}
 							if (manual || !result.ok)
 							{
 								clientThread.invoke(() ->

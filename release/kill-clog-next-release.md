@@ -1,10 +1,10 @@
 # Kill Clog Next Release
 
-Target version: `2.0.0`
+Target version: `2.1.0`
 
 ## Release Notes
 
-Kill Clog 2.0.0
+Kill Clog 2.1.0
 
 first-party collection log sync, opt-in and off by default:
 
@@ -14,6 +14,7 @@ first-party collection log sync, opt-in and off by default:
 
 also in this release:
 
+* a camera on your own profile creates a native in-game profile card, copies it to your clipboard, saves a png, and opens a large preview with collection log and personal best provenance
 * hiscore lookups now use the name-keyed json endpoint, so game updates that reshuffle the hiscores can no longer blank or misalign boss kcs
 * hovering a pet in the player summary shows its name and links its wiki page
 * skill summaries follow the virtual levels plugin when you have it enabled, up to 126 and virtual totals
