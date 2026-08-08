@@ -36,8 +36,6 @@ import okhttp3.OkHttpClient;
 @Singleton
 class SyncService
 {
-	static final String BASE_URL = "https://killclog.com";
-
 	// Attributed on the server per client build.
 	static final String CLIENT_VERSION = "2.1.0";
 
@@ -116,7 +114,7 @@ class SyncService
 		final int observedCount = countUniqueItems(clog);
 		// URLEncoder form-encodes spaces as '+', which the server preserves and
 		// rejects; path segments need %20.
-		String url = BASE_URL + "/api/player/"
+		String url = KillClogEndpoint.apiBaseUrl() + "/player/"
 			+ URLEncoder.encode(rsn, StandardCharsets.UTF_8).replace("+", "%20") + "/sync";
 
 		log.debug("Syncing collection log for '{}' to {} ({} items)",

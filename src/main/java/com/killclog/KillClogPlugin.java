@@ -5,6 +5,7 @@ import java.awt.image.BufferedImage;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.swing.SwingUtilities;
@@ -111,6 +112,9 @@ public class KillClogPlugin extends Plugin
 	private SyncService syncService;
 
 	@Inject
+	private ProfileAppearanceService profileAppearanceService;
+
+	@Inject
 	private ScheduledExecutorService executor;
 
 	@Inject
@@ -149,6 +153,7 @@ public class KillClogPlugin extends Plugin
 	private final LocalCaReader localCaReader = new LocalCaReader();
 	private final CaCatalog caCatalog = new CaCatalog();
 	private final ClogLookupMenu lookupMenu = new ClogLookupMenu();
+	private final AtomicBoolean profileAppearanceRequested = new AtomicBoolean();
 
 	@Provides
 	KillClogConfig provideConfig(ConfigManager configManager)
@@ -233,6 +238,7 @@ public class KillClogPlugin extends Plugin
 		liveClogSync.resetFirstSyncWarning();
 		nameAutocompleter.clearClientSnapshot();
 		localClogCache.setFirstPartyChangedListener(null);
+		profileAppearanceRequested.set(false);
 		cancelKillclogSync();
 		log.debug("Kill Clog plugin stopped");
 	}
@@ -585,6 +591,9 @@ public class KillClogPlugin extends Plugin
 	/** The modal action is also the opt-in: first use enables ongoing web sync. */
 	private void syncProfileFromCard()
 	{
+		// One explicit modal click authorizes one best-effort appearance push.
+		// This never changes whether the ordinary 2.0 sync succeeds.
+		profileAppearanceRequested.set(true);
 		if (!config.killclogSync())
 		{
 			configManager.setConfiguration("killclog", "killclogSync", true);
@@ -599,6 +608,7 @@ public class KillClogPlugin extends Plugin
 		// debounce was pending.
 		if (!config.killclogSync())
 		{
+			profileAppearanceRequested.set(false);
 			return;
 		}
 		final int generation = syncGate.beginAttempt();
@@ -620,6 +630,7 @@ public class KillClogPlugin extends Plugin
 				if (rsn == null || accountHash == -1)
 				{
 					syncGate.abortAttempt();
+					profileAppearanceRequested.set(false);
 					panel.showSyncStatus(" ", false, false);
 					launchQueuedKillclogSync();
 					return;
@@ -639,19 +650,19 @@ public class KillClogPlugin extends Plugin
 						boolean current = syncGate.complete(generation);
 						if (result != null && current && config.killclogSync())
 						{
-								// Server-advised contention retry: another client of
-								// this account held the lock. The gate holds one retry
-								// credit per episode; a second 409 finds it consumed and
-								// falls through as a failure.
-								if (result.retryAdvised && syncGate.consumeRetryCredit())
-								{
-									panel.showSyncStatus("retrying...", false, false);
-									scheduleKillclogSync(Math.max(result.retryAfterSeconds, 2), manual);
-									launchQueuedKillclogSync();
-									return;
-								}
-								// Everything below is a terminal outcome for this episode.
-								syncGate.restoreRetryCredit();
+							// Server-advised contention retry: another client of
+							// this account held the lock. The gate holds one retry
+							// credit per episode; a second 409 finds it consumed and
+							// falls through as a failure.
+							if (result.retryAdvised && syncGate.consumeRetryCredit())
+							{
+								panel.showSyncStatus("retrying...", false, false);
+								scheduleKillclogSync(Math.max(result.retryAfterSeconds, 2), manual);
+								launchQueuedKillclogSync();
+								return;
+							}
+							// Everything below is a terminal outcome for this episode.
+							syncGate.restoreRetryCredit();
 							boolean published = profileWasPublished(result);
 							panel.showSyncStatus(profileSyncStatus(result), published, true);
 							if (published)
@@ -663,12 +674,20 @@ public class KillClogPlugin extends Plugin
 								clientThread.invoke(() ->
 									chatNotifier.send(ChatNotice.SYNC_RESULT, result.message));
 							}
+							boolean appearanceRequested = profileAppearanceRequested.getAndSet(false);
+							launchQueuedKillclogSync();
+							if (published && appearanceRequested)
+							{
+								publishProfileAppearance(rsn, accountHash);
+							}
+							return;
 						}
 						else
 						{
 							if (current)
 							{
 								syncGate.restoreRetryCredit();
+								profileAppearanceRequested.set(false);
 							}
 							panel.showSyncStatus(" ", false, false);
 						}
@@ -679,6 +698,7 @@ public class KillClogPlugin extends Plugin
 			{
 				log.warn("killclog sync push failed before dispatch", e);
 				syncGate.abortAttempt();
+				profileAppearanceRequested.set(false);
 				panel.showSyncStatus("sync failed", false, true);
 				// Failures always chat, this path included.
 				chatNotifier.send(ChatNotice.SYNC_RESULT,
@@ -686,6 +706,37 @@ public class KillClogPlugin extends Plugin
 				launchQueuedKillclogSync();
 			}
 		});
+	}
+
+	private void publishProfileAppearance(String rsn, long accountHash)
+	{
+		try
+		{
+			profileAppearanceService.publishCurrent(rsn, accountHash)
+				.whenComplete((result, error) ->
+				{
+					if (error != null || result == null)
+					{
+						log.debug("profile appearance publish failed", error);
+						panel.showProfileAppearanceStatus("profile updated; model pending", false);
+						return;
+					}
+					if (result.outcome == ProfileAppearanceService.Outcome.DISABLED)
+					{
+						// Default-off server rollout is invisible to the existing sync UX.
+						return;
+					}
+					panel.showProfileAppearanceStatus(result.message,
+						result.outcome == ProfileAppearanceService.Outcome.PUBLISHED);
+				});
+		}
+		catch (RuntimeException e)
+		{
+			// Appearance is cosmetic and must never charge or alter the proven
+			// collection-log sync path.
+			log.debug("profile appearance publish failed before dispatch", e);
+			panel.showProfileAppearanceStatus("profile updated; model pending", false);
+		}
 	}
 
 	static boolean profileWasPublished(SyncService.SyncResult result)
@@ -891,6 +942,7 @@ public class KillClogPlugin extends Plugin
 			}
 			else
 			{
+				profileAppearanceRequested.set(false);
 				cancelKillclogSync();
 			}
 		}

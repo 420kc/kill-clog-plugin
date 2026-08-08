@@ -138,6 +138,11 @@ final class ProfileCardController
 		preview.showSyncStatus(text, ok);
 	}
 
+	void showAppearanceStatus(String text, boolean ok)
+	{
+		preview.showAppearanceStatus(text, ok);
+	}
+
 	private void awaitSprites(ProfileCard.Data data, Runnable ready)
 	{
 		Set<AsyncBufferedImage> pending = Collections.newSetFromMap(new IdentityHashMap<>());

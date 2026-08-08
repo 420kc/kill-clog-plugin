@@ -1037,6 +1037,12 @@ public class KillClogPanel extends PluginPanel
 		});
 	}
 
+	/** Modal-only cosmetic status; never owns or rewrites the sync status bar. */
+	void showProfileAppearanceStatus(String text, boolean ok)
+	{
+		SwingUtilities.invokeLater(() -> profileCardController.showAppearanceStatus(text, ok));
+	}
+
 	private static void recolorClearButton(Container container, Color color)
 	{
 		for (Component c : container.getComponents())

@@ -47,8 +47,6 @@ import okhttp3.OkHttpClient;
 @Singleton
 public class KillclogService
 {
-	private static final String BASE_URL = "https://killclog.com/api/player/";
-	private static final String INDEX_URL = BASE_URL + "sync-index";
 	private static final String PROOF_SUFFIX = "/proof-view";
 
 	private static final long RESULT_TTL_MS = 5 * 60 * 1000;       // 5 min -- fresh success
@@ -264,7 +262,8 @@ public class KillclogService
 
 	private CompletableFuture<Set<String>> startIndexFetch()
 	{
-		return HttpUtil.httpGet(httpClient, INDEX_URL).thenApply(resp ->
+		return HttpUtil.httpGet(httpClient,
+			KillClogEndpoint.apiBaseUrl() + "/player/sync-index").thenApply(resp ->
 		{
 			try
 			{
@@ -325,7 +324,7 @@ public class KillclogService
 	{
 		// RSN sits in the path, so spaces must be %20 (URLEncoder yields '+', valid only in a query).
 		String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8).replace("+", "%20");
-		String url = BASE_URL + encoded + PROOF_SUFFIX;
+		String url = KillClogEndpoint.apiBaseUrl() + "/player/" + encoded + PROOF_SUFFIX;
 
 		return HttpUtil.httpGet(httpClient, url).thenApply(resp ->
 		{

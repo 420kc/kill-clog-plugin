@@ -45,10 +45,11 @@ final class HttpUtil
 		log.debug("HTTP GET: {}", url);
 		CompletableFuture<HttpResult> future = new CompletableFuture<>();
 
-		Request request = new Request.Builder()
+		Request.Builder requestBuilder = new Request.Builder()
 			.url(url)
-			.header("User-Agent", USER_AGENT)
-			.build();
+			.header("User-Agent", USER_AGENT);
+		KillClogEndpoint.addStagingHeader(requestBuilder, url);
+		Request request = requestBuilder.build();
 
 		client.newCall(request).enqueue(new Callback()
 		{
@@ -98,16 +99,26 @@ final class HttpUtil
 
 	static CompletableFuture<HttpResult> httpPostJson(OkHttpClient client, String url, String json)
 	{
+		return httpPostJson(client, url, json, null);
+	}
+
+	static CompletableFuture<HttpResult> httpPostJson(OkHttpClient client, String url, String json,
+		@Nullable String bearerToken)
+	{
 		log.debug("HTTP POST: {}", url);
 		CompletableFuture<HttpResult> future = new CompletableFuture<>();
 
-		Request request = new Request.Builder()
+		Request.Builder request = new Request.Builder()
 			.url(url)
 			.header("User-Agent", USER_AGENT)
-			.post(RequestBody.create(MediaType.parse("application/json; charset=utf-8"), json))
-			.build();
+			.post(RequestBody.create(MediaType.parse("application/json; charset=utf-8"), json));
+		if (bearerToken != null && bearerToken.matches("[a-f0-9]{64}"))
+		{
+			request.header("Authorization", "Bearer " + bearerToken);
+		}
+		KillClogEndpoint.addStagingHeader(request, url);
 
-		client.newCall(request).enqueue(new Callback()
+		client.newCall(request.build()).enqueue(new Callback()
 		{
 			@Override
 			public void onFailure(Call call, IOException e)

@@ -119,7 +119,7 @@ final class ProfileCardPreview
 		}
 		else if ("syncing...".equals(text) || "retrying...".equals(text))
 		{
-			status.setText(text);
+			status.setText("syncing...".equals(text) ? "updating..." : text);
 			status.setForeground(NativeTooltip.OSRS_ORANGE);
 		}
 		else if ("sync failed".equals(text))
@@ -136,6 +136,16 @@ final class ProfileCardPreview
 		{
 			status.setText(" ");
 		}
+	}
+
+	void showAppearanceStatus(String text, boolean ok)
+	{
+		if (status == null)
+		{
+			return;
+		}
+		status.setText(text == null || text.isBlank() ? " " : text);
+		status.setForeground(ok ? TitleTooltip.CLOG_GREEN : ColorScheme.LIGHT_GRAY_COLOR);
 	}
 
 	private JPanel build(BufferedImage preview, Runnable syncAction, boolean published)
@@ -194,13 +204,13 @@ final class ProfileCardPreview
 
 		if (syncAction != null)
 		{
-			syncLink = link(published ? "update killclog.com" : "sync to killclog.com", () ->
+			syncLink = link(published ? "update killclog.com" : "publish to killclog.com", () ->
 			{
-				status.setText("syncing...");
+				status.setText("updating...");
 				status.setForeground(NativeTooltip.OSRS_ORANGE);
 				syncAction.run();
 			});
-			syncLink.setToolTipText("Publishes your profile and keeps it updated");
+			syncLink.setToolTipText("Publish profile and current character");
 			controls.add(syncLink);
 			controls.add(Box.createRigidArea(new Dimension(14, 0)));
 		}
