@@ -12,7 +12,7 @@ import javax.imageio.ImageIO;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.RuneLite;
 
-/** Clipboard-first export with a PNG keepsake under RuneLite screenshots. */
+/** Explicit clipboard and PNG keepsake actions for the local profile preview. */
 @Slf4j
 final class ProfileCardShare
 {
@@ -23,24 +23,7 @@ final class ProfileCardShare
 	{
 	}
 
-	static final class Export
-	{
-		final boolean copied;
-		final File saved;
-
-		private Export(boolean copied, File saved)
-		{
-			this.copied = copied;
-			this.saved = saved;
-		}
-	}
-
-	static Export export(BufferedImage card, String rsn)
-	{
-		return new Export(copyToClipboard(card), saveToDisk(card, rsn));
-	}
-
-	private static boolean copyToClipboard(BufferedImage card)
+	static boolean copyToClipboard(BufferedImage card)
 	{
 		try
 		{
@@ -55,7 +38,7 @@ final class ProfileCardShare
 		}
 	}
 
-	private static File saveToDisk(BufferedImage card, String rsn)
+	static File saveToDisk(BufferedImage card, String rsn)
 	{
 		try
 		{

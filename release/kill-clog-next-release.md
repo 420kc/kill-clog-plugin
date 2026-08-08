@@ -14,7 +14,7 @@ first-party collection log sync, opt-in and off by default:
 
 also in this release:
 
-* a camera on your own profile creates a native in-game profile card, copies it to your clipboard, saves a png, and opens a large preview with collection log and personal best provenance
+* the chalice on your own profile opens a native in-game player card with your current character model, account stats, collection log, and recent unlocks. copy, save, and killclog.com sync are explicit actions inside the preview
 * hiscore lookups now use the name-keyed json endpoint, so game updates that reshuffle the hiscores can no longer blank or misalign boss kcs
 * hovering a pet in the player summary shows its name and links its wiki page
 * skill summaries follow the virtual levels plugin when you have it enabled, up to 126 and virtual totals

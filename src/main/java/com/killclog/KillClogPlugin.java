@@ -175,8 +175,7 @@ public class KillClogPlugin extends Plugin
 
 		lookupMenu.start(config, menuManager);
 
-		panel.setKillclogSyncHandler(this::manualKillclogSync);
-		panel.setSyncArrowEnabled(config.killclogSync());
+		panel.setKillclogSyncHandler(this::syncProfileFromCard);
 		// The sync trigger lives at the data seam: any path that lands a
 		// first-party observation (bulk page capture, search-and-back walk,
 		// live unlock) schedules a debounced push.
@@ -187,7 +186,7 @@ public class KillClogPlugin extends Plugin
 			// schedule a push that would fail with nothing to send.
 			if (localClogCache.hasFirstPartyDataForActive())
 			{
-				panel.setSyncArrowHasData(true);
+				panel.setProfileCardHasData(true);
 				scheduleKillclogSync(KILLCLOG_SYNC_DEBOUNCE_SECONDS);
 			}
 		});
@@ -264,7 +263,7 @@ public class KillClogPlugin extends Plugin
 			// push per login closes that hole; the server merge no-ops when
 			// nothing changed.
 			boolean hasLocalClog = localClogCache.hasFirstPartyDataFor(name);
-			panel.setSyncArrowHasData(hasLocalClog);
+			panel.setProfileCardHasData(hasLocalClog);
 			if (hasLocalClog)
 			{
 				scheduleKillclogSync(KILLCLOG_SYNC_DEBOUNCE_SECONDS, false);
@@ -583,6 +582,17 @@ public class KillClogPlugin extends Plugin
 		scheduleKillclogSync(0, true);
 	}
 
+	/** The modal action is also the opt-in: first use enables ongoing web sync. */
+	private void syncProfileFromCard()
+	{
+		if (!config.killclogSync())
+		{
+			configManager.setConfiguration("killclog", "killclogSync", true);
+			return;
+		}
+		manualKillclogSync();
+	}
+
 	private void pushKillclogSync(boolean manual)
 	{
 		// Re-checked at fire time: the player may have opted out while the
@@ -642,8 +652,9 @@ public class KillClogPlugin extends Plugin
 								}
 								// Everything below is a terminal outcome for this episode.
 								syncGate.restoreRetryCredit();
-							panel.showSyncStatus(result.ok ? "synced!" : "sync failed", result.ok, true);
-							if (result.ok)
+							boolean published = profileWasPublished(result);
+							panel.showSyncStatus(profileSyncStatus(result), published, true);
+							if (published)
 							{
 								panel.setProfileCardSyncConfirmed(true);
 							}
@@ -675,6 +686,20 @@ public class KillClogPlugin extends Plugin
 				launchQueuedKillclogSync();
 			}
 		});
+	}
+
+	static boolean profileWasPublished(SyncService.SyncResult result)
+	{
+		return result.ok && !result.dryRun;
+	}
+
+	static String profileSyncStatus(SyncService.SyncResult result)
+	{
+		if (result.ok && result.dryRun)
+		{
+			return "sync not published";
+		}
+		return result.ok ? "synced!" : "sync failed";
 	}
 
 	// Keep local CA current when a task completes mid-session, and the live
@@ -736,7 +761,7 @@ public class KillClogPlugin extends Plugin
 				// readable, skipping enterLoggedInState's whole block - this
 				// tick path is the reliable moment the store is loaded and the
 				// chalice can learn whether a payload exists.
-				panel.setSyncArrowHasData(localClogCache.hasFirstPartyDataFor(name));
+				panel.setProfileCardHasData(localClogCache.hasFirstPartyDataFor(name));
 				captureLocalCa();
 				AccountType acctType = getLocalAccountType();
 				SwingUtilities.invokeLater(() ->
@@ -858,7 +883,6 @@ public class KillClogPlugin extends Plugin
 
 		if ("killclogSync".equals(event.getKey()))
 		{
-			panel.setSyncArrowEnabled(config.killclogSync());
 			if (config.killclogSync())
 			{
 				// Opting in mid-session pushes the already-captured log right
