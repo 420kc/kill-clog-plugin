@@ -9,7 +9,7 @@ import net.runelite.api.PlayerComposition;
 /** Fixed, data-only PlayerComposition recipe accepted by killclog.com. */
 final class ProfileAppearanceManifest
 {
-	static final String SCHEMA = "killclog.appearance.v1";
+	static final String SCHEMA = "killclog.appearance.v2";
 	static final int EQUIPMENT_SLOTS = 12;
 	static final int BODY_COLORS = 5;
 
@@ -29,8 +29,12 @@ final class ProfileAppearanceManifest
 	@SerializedName("transformed_npc_id")
 	private final int transformedNpcId;
 
+	@SerializedName("follower_npc_id")
+	private final int followerNpcId;
+
 	private ProfileAppearanceManifest(String gameBuild, String clientVersion, int gender,
-		int[] equipment, int[] colors, Override[] overrides, int transformedNpcId)
+		int[] equipment, int[] colors, Override[] overrides, int transformedNpcId,
+		int followerNpcId)
 	{
 		this.gameBuild = gameBuild;
 		this.clientVersion = clientVersion;
@@ -39,13 +43,15 @@ final class ProfileAppearanceManifest
 		this.colors = Arrays.copyOf(colors, colors.length);
 		this.overrides = Arrays.copyOf(overrides, overrides.length);
 		this.transformedNpcId = transformedNpcId;
+		this.followerNpcId = followerNpcId;
 	}
 
 	@Nullable
 	static ProfileAppearanceManifest capture(PlayerComposition composition, int gameBuild,
-		String clientVersion)
+		String clientVersion, int followerNpcId)
 	{
-		if (composition == null || composition.getTransformedNpcId() != -1)
+		if (composition == null || composition.getTransformedNpcId() != -1
+			|| followerNpcId < -1)
 		{
 			return null;
 		}
@@ -76,7 +82,7 @@ final class ProfileAppearanceManifest
 			}
 		}
 		return new ProfileAppearanceManifest(Integer.toString(gameBuild), clientVersion,
-			gender, equipment, colors, overrides, -1);
+			gender, equipment, colors, overrides, -1, followerNpcId);
 	}
 
 	private static int[] toInts(short[] values)

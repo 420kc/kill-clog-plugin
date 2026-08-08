@@ -10,6 +10,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
+import net.runelite.api.NPC;
 import net.runelite.api.Player;
 import net.runelite.api.PlayerComposition;
 import net.runelite.client.callback.ClientThread;
@@ -74,13 +75,15 @@ final class ProfileAppearanceService
 			{
 				Player local = client.getLocalPlayer();
 				PlayerComposition composition = local != null ? local.getPlayerComposition() : null;
+				NPC follower = client.getFollower();
+				int followerNpcId = follower != null ? follower.getId() : -1;
 				if (!isStillSelf(expectedRsn, accountHash) || composition == null)
 				{
 					result.complete(failed(MODEL_UNAVAILABLE));
 					return;
 				}
 				ProfileAppearanceManifest manifest = ProfileAppearanceManifest.capture(
-					composition, client.getRevision(), SyncService.CLIENT_VERSION);
+					composition, client.getRevision(), SyncService.CLIENT_VERSION, followerNpcId);
 				if (manifest == null)
 				{
 					result.complete(failed(MODEL_UNAVAILABLE));

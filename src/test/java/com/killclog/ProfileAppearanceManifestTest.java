@@ -27,16 +27,17 @@ public class ProfileAppearanceManifestTest
 		overrides[3] = override(new short[]{12, -7}, new short[]{4});
 
 		ProfileAppearanceManifest manifest = ProfileAppearanceManifest.capture(
-			composition(equipment, colors, overrides, 0, -1), 233, "2.1.0");
+			composition(equipment, colors, overrides, 0, -1), 233, "2.1.0", 9399);
 
 		assertNotNull(manifest);
 		JsonObject json = gson.toJsonTree(manifest).getAsJsonObject();
-		assertEquals(8, json.size());
-		assertEquals("killclog.appearance.v1", json.get("schema").getAsString());
+		assertEquals(9, json.size());
+		assertEquals("killclog.appearance.v2", json.get("schema").getAsString());
 		assertEquals("233", json.get("game_build").getAsString());
 		assertEquals("2.1.0", json.get("client_version").getAsString());
 		assertEquals(0, json.get("gender").getAsInt());
 		assertEquals(-1, json.get("transformed_npc_id").getAsInt());
+		assertEquals(9399, json.get("follower_npc_id").getAsInt());
 		assertArrayEquals(equipment, ints(json.getAsJsonArray("equipment")));
 		assertArrayEquals(colors, ints(json.getAsJsonArray("colors")));
 		assertEquals(12, json.getAsJsonArray("overrides").size());
@@ -49,7 +50,7 @@ public class ProfileAppearanceManifestTest
 	public void treatsNoRuntimeOverridesAsTwelveNullSlots()
 	{
 		ProfileAppearanceManifest manifest = ProfileAppearanceManifest.capture(
-			composition(new int[12], new int[5], null, 1, -1), 233, "2.1.0");
+			composition(new int[12], new int[5], null, 1, -1), 233, "2.1.0", -1);
 
 		assertNotNull(manifest);
 		JsonArray overrides = gson.toJsonTree(manifest).getAsJsonObject()
@@ -65,11 +66,13 @@ public class ProfileAppearanceManifestTest
 	public void rejectsTransformsAndMalformedCompositionShapes()
 	{
 		assertNull(ProfileAppearanceManifest.capture(
-			composition(new int[12], new int[5], null, 0, 42), 233, "2.1.0"));
+			composition(new int[12], new int[5], null, 0, 42), 233, "2.1.0", -1));
 		assertNull(ProfileAppearanceManifest.capture(
-			composition(new int[11], new int[5], null, 0, -1), 233, "2.1.0"));
+			composition(new int[11], new int[5], null, 0, -1), 233, "2.1.0", -1));
 		assertNull(ProfileAppearanceManifest.capture(
-			composition(new int[12], new int[5], null, 7, -1), 233, "2.1.0"));
+			composition(new int[12], new int[5], null, 7, -1), 233, "2.1.0", -1));
+		assertNull(ProfileAppearanceManifest.capture(
+			composition(new int[12], new int[5], null, 0, -1), 233, "2.1.0", -2));
 	}
 
 	private static int[] ints(JsonArray values)
