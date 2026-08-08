@@ -311,7 +311,8 @@ public class KillClogPanel extends PluginPanel
 			new ProfileCardLocalCapture(client, clientThread),
 			this::setProfileCardStatus);
 		this.profileCardButton = new ProfileCardButton(
-			profileCardController::share, this::onProfileCardHover, this::onProfileCardExit);
+			profileCardController::share, this::onProfileCardHover, this::onProfileCardExit,
+			config::inProgressClogColor);
 		this.activityTooltips = new ActivitySummaryTooltips(
 			lookupSession, comparison, cells, tooltipController, itemManager,
 			caRewardSprites, iconCache, this::comparisonBlueName, config::wikiItemLinks,
@@ -780,7 +781,7 @@ public class KillClogPanel extends PluginPanel
 	// ── killclog.com sync arrow ─────────────────────────────────────────
 
 	private static final String SYNC_HOVER_TEXT = "sync to killclog.com";
-	private static final String PROFILE_CARD_HOVER_TEXT = "copy profile card";
+	private static final String PROFILE_CARD_HOVER_TEXT = "open profile card";
 	// k1: the brand lime. Status chrome, not data coloring, so it does not
 	// route through the user-themable completion color.
 	private static final Color SYNC_K1 = new Color(78, 240, 21);
@@ -944,7 +945,7 @@ public class KillClogPanel extends PluginPanel
 	{
 		if (profileCardButton.isVisible())
 		{
-			setSearchStatus(PROFILE_CARD_HOVER_TEXT, NativeTooltip.OSRS_ORANGE);
+			setSearchStatus(PROFILE_CARD_HOVER_TEXT, config.inProgressClogColor());
 		}
 	}
 
