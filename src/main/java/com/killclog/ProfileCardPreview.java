@@ -210,7 +210,9 @@ final class ProfileCardPreview
 				status.setForeground(NativeTooltip.OSRS_ORANGE);
 				syncAction.run();
 			});
-			syncLink.setToolTipText("Publish profile and current character");
+			syncLink.setToolTipText("Publish equipment, colors, supported item overrides, "
+				+ "game/client versions, and active follower ID to your public profile. "
+				+ "No screenshot or model file is uploaded.");
 			controls.add(syncLink);
 			controls.add(Box.createRigidArea(new Dimension(14, 0)));
 		}
