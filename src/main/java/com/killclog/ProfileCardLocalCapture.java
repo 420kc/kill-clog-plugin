@@ -18,23 +18,29 @@ import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.config.ConfigManager;
 
 /** Captures self-only game state for the profile card on the client thread. */
 @Slf4j
 final class ProfileCardLocalCapture
 {
+	private static final String CONFIG_GROUP = "killclog-profile-card";
+	private static final String ACHIEVEMENTS_COMPLETED_KEY = "achievementsCompleted";
+	private static final String ACHIEVEMENTS_TOTAL_KEY = "achievementsTotal";
 	private static final Pattern FRACTION = Pattern.compile("([0-9][0-9,]*)\\s*/\\s*([0-9][0-9,]*)");
 
 	private final Client client;
 	private final ClientThread clientThread;
+	private final ConfigManager configManager;
 	private String cachedAchievementRsn;
 	private int cachedAchievementsCompleted = -1;
 	private int cachedTotalAchievements = -1;
 
-	ProfileCardLocalCapture(Client client, ClientThread clientThread)
+	ProfileCardLocalCapture(Client client, ClientThread clientThread, ConfigManager configManager)
 	{
 		this.client = client;
 		this.clientThread = clientThread;
+		this.configManager = configManager;
 	}
 
 	void capture(String expectedRsn, Consumer<Snapshot> callback)
@@ -78,7 +84,10 @@ final class ProfileCardLocalCapture
 		{
 			return null;
 		}
-		captureSummaryProgress();
+		if (!captureSummaryProgress())
+		{
+			loadSummaryProgress(player.getName());
+		}
 		int[] achievements = ownedSummaryProgress(cachedAchievementRsn,
 			cachedAchievementsCompleted, cachedTotalAchievements, player.getName());
 		return new Snapshot(client.getVarpValue(VarPlayerID.QP),
@@ -86,19 +95,40 @@ final class ProfileCardLocalCapture
 	}
 
 	/** Cache native Account Summary progress whenever that interface naturally opens. */
-	void captureSummaryProgress()
+	boolean captureSummaryProgress()
 	{
 		Player player = client.getLocalPlayer();
 		if (player == null || player.getName() == null || player.getName().isBlank())
 		{
-			return;
+			return false;
 		}
-		int[] achievements = summaryProgress(readSummaryText(), "achievements");
+		int[] achievements = summaryProgress(readSummaryText(), "achievements completed");
 		if (achievements[0] >= 0 && achievements[1] >= 0)
 		{
 			cachedAchievementRsn = player.getName().trim();
 			cachedAchievementsCompleted = achievements[0];
 			cachedTotalAchievements = achievements[1];
+			configManager.setRSProfileConfiguration(CONFIG_GROUP,
+				ACHIEVEMENTS_COMPLETED_KEY, achievements[0]);
+			configManager.setRSProfileConfiguration(CONFIG_GROUP,
+				ACHIEVEMENTS_TOTAL_KEY, achievements[1]);
+			return true;
+		}
+		return false;
+	}
+
+	private void loadSummaryProgress(String playerName)
+	{
+		Integer completed = configManager.getRSProfileConfiguration(CONFIG_GROUP,
+			ACHIEVEMENTS_COMPLETED_KEY, Integer.class);
+		Integer total = configManager.getRSProfileConfiguration(CONFIG_GROUP,
+			ACHIEVEMENTS_TOTAL_KEY, Integer.class);
+		if (completed != null && total != null && completed >= 0
+			&& total > 0 && completed <= total)
+		{
+			cachedAchievementRsn = playerName.trim();
+			cachedAchievementsCompleted = completed;
+			cachedTotalAchievements = total;
 		}
 	}
 
@@ -132,7 +162,7 @@ final class ProfileCardLocalCapture
 
 	private static void collectText(Widget widget, Set<Widget> visited, List<String> text)
 	{
-		if (widget == null || !visited.add(widget))
+		if (widget == null || !visited.add(widget) || widget.isHidden())
 		{
 			return;
 		}
@@ -160,16 +190,30 @@ final class ProfileCardLocalCapture
 
 	static int[] summaryProgress(List<String> text, String label)
 	{
+		String normalizedLabel = normalize(label).toLowerCase(java.util.Locale.ROOT);
 		for (int i = 0; i < text.size(); i++)
 		{
-			String normalized = normalize(text.get(i));
-			if (!normalized.toLowerCase(java.util.Locale.ROOT).contains(label))
+			StringBuilder labelWindow = new StringBuilder();
+			int labelEnd = -1;
+			for (int j = i; j < Math.min(text.size(), i + 3); j++)
+			{
+				labelWindow.append(' ').append(normalize(text.get(j)));
+				if (labelWindow.toString().toLowerCase(java.util.Locale.ROOT)
+					.contains(normalizedLabel))
+				{
+					labelEnd = j;
+					break;
+				}
+			}
+			if (labelEnd < 0)
 			{
 				continue;
 			}
-			for (int j = i; j < Math.min(text.size(), i + 5); j++)
+			StringBuilder nearby = new StringBuilder();
+			for (int j = labelEnd; j < Math.min(text.size(), labelEnd + 5); j++)
 			{
-				Matcher matcher = FRACTION.matcher(normalize(text.get(j)));
+				nearby.append(' ').append(normalize(text.get(j)));
+				Matcher matcher = FRACTION.matcher(nearby);
 				if (matcher.find())
 				{
 					return new int[]{parseNumber(matcher.group(1)), parseNumber(matcher.group(2))};

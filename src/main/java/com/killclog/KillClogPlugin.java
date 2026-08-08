@@ -143,6 +143,7 @@ public class KillClogPlugin extends Plugin
 	private boolean advLogTitleLoaded;
 	private boolean advLogCountersLoaded;
 	private boolean accountSummaryLoaded;
+	private int accountSummaryCaptureTicksRemaining;
 	private String advLogOwner;
 
 	private final ChatAutoLookupGate chatAutoLookup = new ChatAutoLookupGate();
@@ -327,6 +328,8 @@ public class KillClogPlugin extends Plugin
 		else if (event.getGameState() == GameState.LOGIN_SCREEN)
 		{
 			SwingUtilities.invokeLater(panel::reloadTooltipSprites);
+			accountSummaryLoaded = false;
+			accountSummaryCaptureTicksRemaining = 0;
 			panel.clearProfileSummaryProgress();
 			manualClogSync.reset();
 			clogIndex.clear();
@@ -839,13 +842,20 @@ public class KillClogPlugin extends Plugin
 			chatNotifier, clogButtonOverlay, liveClogSync::resetFirstSyncWarning,
 			panel::onBulkCaptureComplete);
 
-		// Player Summary populates dynamic text one tick after load. Cache its
+		// Player Summary can populate dynamic text over several ticks. Cache its
 		// achievement fraction for the self-only profile card without opening
 		// or manipulating the interface on the player's behalf.
-		if (accountSummaryLoaded)
+		if (accountSummaryLoaded || accountSummaryCaptureTicksRemaining > 0)
 		{
 			accountSummaryLoaded = false;
-			panel.captureProfileSummaryProgress();
+			if (panel.captureProfileSummaryProgress())
+			{
+				accountSummaryCaptureTicksRemaining = 0;
+			}
+			else
+			{
+				accountSummaryCaptureTicksRemaining--;
+			}
 		}
 
 		// Adventure-log pb harvest, one tick after each widget load so the
@@ -896,6 +906,7 @@ public class KillClogPlugin extends Plugin
 		else if (event.getGroupId() == InterfaceID.ACCOUNT_SUMMARY_SIDEPANEL)
 		{
 			accountSummaryLoaded = true;
+			accountSummaryCaptureTicksRemaining = 5;
 		}
 	}
 
