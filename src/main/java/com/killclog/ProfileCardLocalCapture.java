@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.ColorTextureOverride;
 import net.runelite.api.Model;
+import net.runelite.api.NPC;
 import net.runelite.api.Player;
 import net.runelite.api.PlayerComposition;
 import net.runelite.api.gameval.VarPlayerID;
@@ -73,7 +74,22 @@ final class ProfileCardLocalCapture
 		{
 			return null;
 		}
-		return new Snapshot(client.getVarpValue(VarPlayerID.QP), playerModel);
+		return new Snapshot(client.getVarpValue(VarPlayerID.QP), playerModel,
+			followerModel());
+	}
+
+	@Nullable
+	private ProfileCardPlayerModel.Snapshot followerModel()
+	{
+		NPC follower = client.getFollower();
+		Model model = follower != null ? follower.getModel() : null;
+		if (model == null)
+		{
+			return null;
+		}
+		Model unskewed = model.getUnskewedModel();
+		return ProfileCardPlayerModel.snapshot(unskewed != null ? unskewed : model,
+			client.getTextureProvider(), client.getGameCycle());
 	}
 
 	/**
@@ -172,11 +188,15 @@ final class ProfileCardLocalCapture
 	{
 		final int questPoints;
 		final ProfileCardPlayerModel.Snapshot playerModel;
+		@Nullable
+		final ProfileCardPlayerModel.Snapshot followerModel;
 
-		private Snapshot(int questPoints, ProfileCardPlayerModel.Snapshot playerModel)
+		private Snapshot(int questPoints, ProfileCardPlayerModel.Snapshot playerModel,
+			@Nullable ProfileCardPlayerModel.Snapshot followerModel)
 		{
 			this.questPoints = questPoints;
 			this.playerModel = playerModel;
+			this.followerModel = followerModel;
 		}
 	}
 }

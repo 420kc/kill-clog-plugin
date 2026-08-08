@@ -99,7 +99,8 @@ final class ProfileCardController
 			return;
 		}
 		data.questPoints = snapshot.questPoints;
-		CompletableFuture.supplyAsync(() -> ProfileCardPlayerModel.render(snapshot.playerModel))
+		CompletableFuture.supplyAsync(() -> ProfileCardPlayerModel.render(
+			snapshot.playerModel, snapshot.followerModel))
 			.whenComplete((portrait, error) -> SwingUtilities.invokeLater(() ->
 			{
 				if (operation != generation.get())

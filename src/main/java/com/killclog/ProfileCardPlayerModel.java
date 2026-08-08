@@ -3,6 +3,7 @@ package com.killclog;
 import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Graphics2D;
+import java.awt.Rectangle;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
@@ -25,6 +26,11 @@ final class ProfileCardPlayerModel
 
 	private static final int SCALE = 2;
 	private static final int MARGIN = 8 * SCALE;
+	private static final double FOLLOWER_MIN_HEIGHT = .28d;
+	private static final double FOLLOWER_MAX_HEIGHT = .62d;
+	private static final int FOLLOWER_MAX_WIDTH = 102;
+	private static final int FOLLOWER_RIGHT = 3;
+	private static final int FOLLOWER_BOTTOM = 8;
 	// Front-facing is 180 degrees; the native portrait cant turns 26 degrees
 	// toward 10:30 for the familiar Jagex three-quarter view.
 	private static final double YAW = Math.toRadians(180 + 26);
@@ -160,6 +166,92 @@ final class ProfileCardPlayerModel
 		g.drawImage(outlined, 0, 0, WIDTH, HEIGHT, null);
 		g.dispose();
 		return result;
+	}
+
+	@Nullable
+	static BufferedImage render(Snapshot player, @Nullable Snapshot follower)
+	{
+		BufferedImage playerPortrait = render(player);
+		if (playerPortrait == null || follower == null)
+		{
+			return playerPortrait;
+		}
+		BufferedImage followerPortrait = render(follower);
+		if (followerPortrait == null)
+		{
+			return playerPortrait;
+		}
+		Rectangle playerBounds = visibleBounds(playerPortrait);
+		Rectangle followerBounds = visibleBounds(followerPortrait);
+		if (playerBounds == null || followerBounds == null)
+		{
+			return playerPortrait;
+		}
+
+		// Preserve the models' native height relationship, with quiet bounds that
+		// keep unusually tiny or wide followers readable inside the portrait.
+		double relativeHeight = geometryHeight(follower) / geometryHeight(player);
+		double heightScale = Math.max(FOLLOWER_MIN_HEIGHT,
+			Math.min(FOLLOWER_MAX_HEIGHT, relativeHeight));
+		int targetHeight = Math.max(1, (int) Math.round(playerBounds.height * heightScale));
+		int targetWidth = Math.max(1, (int) Math.round(
+			followerBounds.width * targetHeight / (double) followerBounds.height));
+		if (targetWidth > FOLLOWER_MAX_WIDTH)
+		{
+			targetHeight = Math.max(1, targetHeight * FOLLOWER_MAX_WIDTH / targetWidth);
+			targetWidth = FOLLOWER_MAX_WIDTH;
+		}
+
+		int x = WIDTH - targetWidth - FOLLOWER_RIGHT;
+		int y = HEIGHT - targetHeight - FOLLOWER_BOTTOM;
+		BufferedImage result = new BufferedImage(WIDTH, HEIGHT, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = result.createGraphics();
+		g.setRenderingHint(RenderingHints.KEY_INTERPOLATION,
+			RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+		g.drawImage(followerPortrait, x, y, x + targetWidth, y + targetHeight,
+			followerBounds.x, followerBounds.y,
+			followerBounds.x + followerBounds.width,
+			followerBounds.y + followerBounds.height, null);
+		g.drawImage(playerPortrait, 0, 0, null);
+		g.dispose();
+		return result;
+	}
+
+	@Nullable
+	private static Rectangle visibleBounds(BufferedImage image)
+	{
+		int minX = image.getWidth();
+		int minY = image.getHeight();
+		int maxX = -1;
+		int maxY = -1;
+		for (int y = 0; y < image.getHeight(); y++)
+		{
+			for (int x = 0; x < image.getWidth(); x++)
+			{
+				if ((image.getRGB(x, y) >>> 24) == 0)
+				{
+					continue;
+				}
+				minX = Math.min(minX, x);
+				minY = Math.min(minY, y);
+				maxX = Math.max(maxX, x);
+				maxY = Math.max(maxY, y);
+			}
+		}
+		return maxX >= minX && maxY >= minY
+			? new Rectangle(minX, minY, maxX - minX + 1, maxY - minY + 1) : null;
+	}
+
+	private static double geometryHeight(Snapshot model)
+	{
+		float min = Float.POSITIVE_INFINITY;
+		float max = Float.NEGATIVE_INFINITY;
+		for (float y : model.y)
+		{
+			min = Math.min(min, y);
+			max = Math.max(max, y);
+		}
+		return Math.max(1d, max - min);
 	}
 
 	private static boolean paintFace(int[] pixels, int width, int height,
