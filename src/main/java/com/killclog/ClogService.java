@@ -87,6 +87,10 @@ public class ClogService
 	// Cached data loaded once per session.
 	private volatile Map<String, List<Integer>> cachedCategories;
 	private volatile Map<Integer, String> cachedItemNames;
+	private final Map<String, TempleStats> templeStatsCache =
+		new java.util.concurrent.ConcurrentHashMap<>();
+	private final Map<String, Long> templeStatsFetchTimes =
+		new java.util.concurrent.ConcurrentHashMap<>();
 
 	// In-flight futures prevent duplicate HTTP requests from concurrent callers.
 	private volatile CompletableFuture<Map<String, List<Integer>>> categoriesFlight;
@@ -159,9 +163,16 @@ public class ClogService
 				// cache entries (pre-dating live merges, or unlocks while the
 				// plugin was off) so the recents shelf stays current. TTL-gated
 				// and failure-proof; counts and membership stay chalice-owned.
+				String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
+				CompletableFuture<TempleStats> statsFuture = fetchStats(encoded);
 				return overlayProviderDates(playerName)
-					.thenCompose(ignored -> fetchItemNames().thenApply(names ->
-						localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>())));
+					.thenCompose(ignored -> fetchItemNames().thenCombine(statsFuture, (names, stats) ->
+					{
+						ClogResult result = localClogCache.toClogResult(playerName,
+							names != null ? names : new HashMap<>());
+						applyTempleStats(result, stats);
+						return result;
+					}));
 			}
 			// No local cache yet, so the panel shows the sync prompt.
 			return CompletableFuture.completedFuture(null);
@@ -169,14 +180,20 @@ public class ClogService
 
 		// Fresh data: skip the TempleOSRS lane if we fetched recently.
 		String normalizedName = playerName.toLowerCase();
+		String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
 		Long lastFetch = clogFetchTimes.get(normalizedName);
 		if (lastFetch != null && System.currentTimeMillis() - lastFetch < CLOG_TTL_MS
 			&& localClogCache.hasDataFor(playerName))
 		{
 			log.debug("Using fresh cached clog for '{}' ({}s old)",
 				playerName, (System.currentTimeMillis() - lastFetch) / 1000);
-			return fetchItemNames().thenApply(names ->
-				localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>()));
+			return fetchItemNames().thenCombine(fetchStats(encoded), (names, stats) ->
+			{
+				ClogResult result = localClogCache.toClogResult(playerName,
+					names != null ? names : new HashMap<>());
+				applyTempleStats(result, stats);
+				return result;
+			});
 		}
 
 		// Skip TempleOSRS if it failed for this player within the cooldown window.
@@ -192,16 +209,13 @@ public class ClogService
 		}
 
 		// Build the TempleOSRS lane, with local cache as fallback.
-		String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
-
 		CompletableFuture<PlayerClogData> playerFuture =
 			fetchClog(encoded);
 		CompletableFuture<Map<String, List<Integer>>> categoriesFuture =
 			fetchCategories();
 		CompletableFuture<Map<Integer, String>> namesFuture =
 			fetchItemNames();
-		CompletableFuture<AccountType> statsFuture =
-			fetchStatsAccountType(encoded);
+		CompletableFuture<TempleStats> statsFuture = fetchStats(encoded);
 
 		return CompletableFuture.allOf(playerFuture, categoriesFuture, namesFuture, statsFuture)
 			.thenApply(v ->
@@ -209,7 +223,8 @@ public class ClogService
 				PlayerClogData playerData = playerFuture.join();
 				Map<String, List<Integer>> categories = categoriesFuture.join();
 				Map<Integer, String> names = namesFuture.join();
-				AccountType statsType = statsFuture.join();
+				TempleStats stats = statsFuture.join();
+				AccountType statsType = stats != null ? stats.accountType : null;
 
 				if (playerData != null)
 				{
@@ -230,6 +245,7 @@ public class ClogService
 						playerData.lastChanged,
 						accountType
 					);
+					applyTempleStats(result, stats);
 					localClogCache.cacheResult(result);
 					clogFetchTimes.put(normalizedName, System.currentTimeMillis());
 					return result;
@@ -240,7 +256,10 @@ public class ClogService
 				if (localClogCache.hasDataFor(playerName))
 				{
 					log.debug("TempleOSRS unavailable, using cached data for: {}", playerName);
-					return localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>());
+					ClogResult result = localClogCache.toClogResult(playerName,
+						names != null ? names : new HashMap<>());
+					applyTempleStats(result, stats);
+					return result;
 				}
 
 				return null;
@@ -580,8 +599,15 @@ public class ClogService
 	 * The clog endpoint reports game_mode 0 for GIMs, but the stats
 	 * endpoint exposes a GIM field with the group ID.
 	 */
-	private CompletableFuture<AccountType> fetchStatsAccountType(String encodedPlayer)
+	private CompletableFuture<TempleStats> fetchStats(String encodedPlayer)
 	{
+		TempleStats cached = templeStatsCache.get(encodedPlayer);
+		Long fetchedAt = templeStatsFetchTimes.get(encodedPlayer);
+		if (cached != null && fetchedAt != null
+			&& System.currentTimeMillis() - fetchedAt < CLOG_TTL_MS)
+		{
+			return CompletableFuture.completedFuture(cached);
+		}
 		String url = TEMPLE_STATS_URL + "?player=" + encodedPlayer;
 		return httpGet(url).thenApply(json ->
 		{
@@ -603,25 +629,29 @@ public class ClogService
 					return null;
 				}
 
+				AccountType accountType = null;
 				if (info.has("Game mode") && !info.get("Game mode").isJsonNull())
 				{
 					AccountType type = parseGameMode(info.get("Game mode").getAsString());
 					if (type != null && type != AccountType.REGULAR)
 					{
-						return type;
+						accountType = type;
 					}
 				}
 
-				if (info.has("GIM") && !info.get("GIM").isJsonNull())
+				if (accountType == null && info.has("GIM") && !info.get("GIM").isJsonNull())
 				{
 					int gimId = info.get("GIM").getAsInt();
 					if (gimId > 0)
 					{
-						return AccountType.GROUP_IRONMAN;
+						accountType = AccountType.GROUP_IRONMAN;
 					}
 				}
 
-				return null;
+				TempleStats stats = new TempleStats(accountType, parsePrimaryEhp(data, info));
+				templeStatsCache.put(encodedPlayer, stats);
+				templeStatsFetchTimes.put(encodedPlayer, System.currentTimeMillis());
+				return stats;
 			}
 			catch (Exception e)
 			{
@@ -629,6 +659,49 @@ public class ClogService
 				return null;
 			}
 		});
+	}
+
+	static double parsePrimaryEhp(JsonObject data, JsonObject info)
+	{
+		String primary = info.has("Primary_ehp") && !info.get("Primary_ehp").isJsonNull()
+			? info.get("Primary_ehp").getAsString() : null;
+		String[] candidates = new String[]{primary, "Overall_ehp", "Ehp"};
+		for (String candidate : candidates)
+		{
+			if (candidate == null || !data.has(candidate) || data.get(candidate).isJsonNull())
+			{
+				continue;
+			}
+			try
+			{
+				return data.get(candidate).getAsDouble();
+			}
+			catch (RuntimeException ignored)
+			{
+				// Try the provider's next compatible EHP field.
+			}
+		}
+		return -1;
+	}
+
+	private static void applyTempleStats(ClogResult result, @Nullable TempleStats stats)
+	{
+		if (result != null && stats != null && stats.ehp >= 0)
+		{
+			result.setTempleEhp(stats.ehp);
+		}
+	}
+
+	private static final class TempleStats
+	{
+		private final AccountType accountType;
+		private final double ehp;
+
+		private TempleStats(@Nullable AccountType accountType, double ehp)
+		{
+			this.accountType = accountType;
+			this.ehp = ehp;
+		}
 	}
 
 	/**

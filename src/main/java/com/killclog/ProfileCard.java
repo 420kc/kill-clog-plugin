@@ -16,27 +16,26 @@ import net.runelite.client.ui.FontManager;
  */
 final class ProfileCard
 {
-	static final int WIDTH = 720;
-	static final int HEIGHT = 388;
+	static final int WIDTH = 760;
+	static final int HEIGHT = 456;
 
 	private static final int PAD = 18;
 	private static final int PORTRAIT_X = 18;
 	private static final int PORTRAIT_Y = 62;
 	private static final int PORTRAIT_WIDTH = 190;
-	private static final int PORTRAIT_HEIGHT = 270;
+	private static final int PORTRAIT_HEIGHT = 352;
 	private static final int CONTENT_X = 226;
-	private static final int SECOND_COLUMN_X = 474;
-	private static final int RECENT_SPRITE = 40;
-	private static final int RECENT_GAP = 24;
+	private static final int SECOND_COLUMN_X = 500;
+	private static final int RECENT_SPRITE = 38;
+	private static final int RECENT_GAP = 22;
+	private static final int PET_SPRITE = 16;
+	private static final int PET_GAP = 3;
 
 	private static final Color TEXT = new Color(255, 255, 255);
 	private static final Color TEXT_SOFT = new Color(212, 212, 212);
 	private static final Color TEXT_MUTED = TitleTooltip.MUTED_GRAY;
-	private static final Color SOURCE = TitleTooltip.CLOG_GREEN;
-	private static final Color SEPARATOR = TitleTooltip.SEPARATOR_COLOR;
 	private static final Color ORANGE = NativeTooltip.OSRS_ORANGE;
 	private static final Color INSET = new Color(12, 10, 8, 118);
-	private static final Color INSET_HEADER = new Color(29, 23, 17, 185);
 
 	private ProfileCard()
 	{
@@ -55,17 +54,23 @@ final class ProfileCard
 		int total = -1;
 		String tierName;
 		BufferedImage tierIcon;
-		Color completionColor;
 		int combatLevel = -1;
 		int totalLevel = -1;
+		long totalXp = -1;
 		int questPoints = -1;
+		String prestige;
+		double ehb = -1;
+		double templeEhp = -1;
 		String caTier;
-		int caPoints = -1;
+		int combatTasksCompleted = -1;
+		int totalCombatTasks = -1;
+		int achievementsCompleted = -1;
+		int totalAchievements = -1;
 		int bossesWithKc = -1;
 		int totalBosses = -1;
+		int totalClues = -1;
 		int pets = -1;
-		int totalPets = -1;
-		int personalBests = -1;
+		BufferedImage[] petSprites;
 		BufferedImage[] recentSprites;
 		String[] recentDates;
 		String createdDate;
@@ -132,26 +137,16 @@ final class ProfileCard
 	{
 		g.setColor(INSET);
 		g.fillRect(PORTRAIT_X, PORTRAIT_Y, PORTRAIT_WIDTH, PORTRAIT_HEIGHT);
-		g.setColor(SEPARATOR);
-		g.drawRect(PORTRAIT_X, PORTRAIT_Y, PORTRAIT_WIDTH, PORTRAIT_HEIGHT);
-		g.setColor(INSET_HEADER);
-		g.fillRect(PORTRAIT_X + 1, PORTRAIT_Y + 1, PORTRAIT_WIDTH - 1, 20);
-		g.setColor(SEPARATOR);
-		g.drawLine(PORTRAIT_X + 1, PORTRAIT_Y + 21,
-			PORTRAIT_X + PORTRAIT_WIDTH - 1, PORTRAIT_Y + 21);
-		g.setFont(small);
-		g.setColor(ORANGE);
-		String title = text(data.createdDate, "");
-		g.drawString(title,
-			PORTRAIT_X + (PORTRAIT_WIDTH - g.getFontMetrics().stringWidth(title)) / 2,
-			PORTRAIT_Y + 15);
+		NativeTooltip.paintInsetBorder(g, PORTRAIT_X, PORTRAIT_Y,
+			PORTRAIT_WIDTH, PORTRAIT_HEIGHT);
 
 		g.setColor(new Color(0, 0, 0, 72));
 		g.fillOval(PORTRAIT_X + 28, PORTRAIT_Y + PORTRAIT_HEIGHT - 25,
 			PORTRAIT_WIDTH - 56, 13);
 		if (data.playerModel != null)
 		{
-			g.drawImage(data.playerModel, PORTRAIT_X + 7, PORTRAIT_Y + 16, null);
+			int modelY = PORTRAIT_Y + PORTRAIT_HEIGHT - data.playerModel.getHeight() - 14;
+			g.drawImage(data.playerModel, PORTRAIT_X + 7, modelY, null);
 		}
 		else
 		{
@@ -172,42 +167,97 @@ final class ProfileCard
 		g.drawString("Account", CONTENT_X, titleY);
 		g.drawString("Collection Log", SECOND_COLUMN_X, titleY);
 
-		g.setColor(SEPARATOR);
-		g.drawLine(CONTENT_X, 86, SECOND_COLUMN_X - 20, 86);
-		g.drawLine(SECOND_COLUMN_X, 86, WIDTH - PAD, 86);
-		g.drawLine(SECOND_COLUMN_X - 14, 62, SECOND_COLUMN_X - 14, 215);
+		NativeTooltip.paintHorizontalDivider(g, CONTENT_X, 88,
+			SECOND_COLUMN_X - CONTENT_X - 20);
+		NativeTooltip.paintHorizontalDivider(g, SECOND_COLUMN_X, 88,
+			WIDTH - PAD - SECOND_COLUMN_X);
+		NativeTooltip.paintVerticalDivider(g, SECOND_COLUMN_X - 14, 62, 228);
 
-		g.setFont(base.deriveFont(15f));
-		int y = 107;
-		y = paintValueLine(g, CONTENT_X, y, "Combat: ", optionalNumber(data.combatLevel), TEXT);
-		y = paintValueLine(g, CONTENT_X, y, "Total Level: ", optionalNumber(data.totalLevel), TEXT);
-		y = paintValueLine(g, CONTENT_X, y, "Quest Points: ", optionalNumber(data.questPoints), TEXT);
-		y = paintValueLine(g, CONTENT_X, y, "CA Tier: ", caValue(data), TEXT);
-		y = paintValueLine(g, CONTENT_X, y, "Boss KCs: ",
-			fraction(data.bossesWithKc, data.totalBosses), TEXT);
-		paintValueLine(g, CONTENT_X, y, "Personal Bests: ",
-			optionalNumber(data.personalBests), TEXT);
+		Font labelFont = bold.deriveFont(15f);
+		Font valueFont = base.deriveFont(15f);
+		int y = 109;
+		y = paintValueLine(g, labelFont, valueFont, CONTENT_X, y,
+			"Combat: ", optionalNumber(data.combatLevel), TEXT);
+		y = paintValueLine(g, labelFont, valueFont, CONTENT_X, y,
+			"Total Level: ", optionalNumber(data.totalLevel), TEXT);
+		y = paintValueLine(g, labelFont, valueFont, CONTENT_X, y,
+			"Total XP: ", optionalNumber(data.totalXp), TEXT);
+		y = paintValueLine(g, labelFont, valueFont, CONTENT_X, y,
+			"Quest Points: ", optionalNumber(data.questPoints), TEXT);
+		if (data.caTier != null)
+		{
+			y = paintValueLine(g, labelFont, valueFont, CONTENT_X, y,
+				"CA Tier: ", capitalize(data.caTier.replace('_', ' ')), TEXT);
+		}
+		if (data.prestige != null && !data.prestige.isBlank())
+		{
+			y = paintValueLine(g, labelFont, valueFont, CONTENT_X, y,
+				"Prestige: ", data.prestige, TEXT);
+		}
+		y = paintValueLine(g, labelFont, valueFont, CONTENT_X, y,
+			"EHB: ", optionalDecimal(data.ehb), TEXT);
+		if (data.templeEhp >= 0)
+		{
+			y = paintValueLine(g, labelFont, valueFont, CONTENT_X, y,
+				"Temple EHP: ", optionalDecimal(data.templeEhp), TEXT);
+		}
+		paintValueLine(g, labelFont, valueFont, CONTENT_X, y,
+			"Bosses Killed: ", fraction(data.bossesWithKc, data.totalBosses), TEXT);
 
-		y = 107;
-		Color completion = data.completionColor != null ? data.completionColor : TEXT;
-		y = paintValueLine(g, SECOND_COLUMN_X, y, "Obtained: ",
-			fraction(data.obtained, data.total), completion);
-		y = paintTierLine(g, data, SECOND_COLUMN_X, y);
+		y = 109;
+		y = paintValueLine(g, labelFont, valueFont, SECOND_COLUMN_X, y,
+			"Obtained: ", fraction(data.obtained, data.total), TEXT);
+		y = paintTierLine(g, data, labelFont, valueFont, SECOND_COLUMN_X, y);
 		String percent = data.total > 0
 			? Math.round(100d * data.obtained / data.total) + "%" : "--";
-		y = paintValueLine(g, SECOND_COLUMN_X, y, "Completion: ", percent, completion);
-		y = paintValueLine(g, SECOND_COLUMN_X, y, "Pets: ",
-			fraction(data.pets, data.totalPets), TEXT);
-		paintValueLine(g, SECOND_COLUMN_X, y, "Updated: ", text(data.updated, "--"),
-			data.updated != null ? SOURCE : TEXT_MUTED);
+		y = paintValueLine(g, labelFont, valueFont, SECOND_COLUMN_X, y,
+			"Completion: ", percent, TEXT);
+		y = paintValueLine(g, labelFont, valueFont, SECOND_COLUMN_X, y,
+			"Total Clues: ", optionalNumber(data.totalClues), TEXT);
+		y = paintValueLine(g, labelFont, valueFont, SECOND_COLUMN_X, y,
+			"Combat Tasks Completed: ",
+			fraction(data.combatTasksCompleted, data.totalCombatTasks), TEXT);
+		y = paintValueLine(g, labelFont, valueFont, SECOND_COLUMN_X, y,
+			"Achievements Completed: ",
+			fraction(data.achievementsCompleted, data.totalAchievements), TEXT);
+		y = paintValueLine(g, labelFont, valueFont, SECOND_COLUMN_X, y,
+			"Updated: ", text(data.updated, "--"), TEXT);
+		paintPets(g, data, labelFont, valueFont, SECOND_COLUMN_X, y + 2);
 
-		g.setColor(SEPARATOR);
-		g.drawLine(CONTENT_X, 226, WIDTH - PAD, 226);
+		NativeTooltip.paintHorizontalDivider(g, CONTENT_X, 300, WIDTH - PAD - CONTENT_X);
 	}
 
-	private static int paintTierLine(Graphics2D g, Data data, int x, int y)
+	private static void paintPets(Graphics2D g, Data data, Font labelFont,
+		Font valueFont, int x, int y)
+	{
+		paintValueLine(g, labelFont, valueFont, x, y, "Pets: ",
+			optionalNumber(data.pets), TEXT);
+		if (!hasSprites(data.petSprites))
+		{
+			return;
+		}
+		int maxWidth = WIDTH - PAD - x;
+		int columns = Math.max(1, maxWidth / (PET_SPRITE + PET_GAP));
+		int spriteY = y + 5;
+		for (int i = 0; i < data.petSprites.length; i++)
+		{
+			BufferedImage sprite = data.petSprites[i];
+			if (sprite == null)
+			{
+				continue;
+			}
+			int column = i % columns;
+			int row = i / columns;
+			g.drawImage(sprite, x + column * (PET_SPRITE + PET_GAP),
+				spriteY + row * (PET_SPRITE + PET_GAP), PET_SPRITE, PET_SPRITE, null);
+		}
+	}
+
+	private static int paintTierLine(Graphics2D g, Data data, Font labelFont,
+		Font valueFont, int x, int y)
 	{
 		String tier = data.tierName != null ? capitalize(data.tierName) : "--";
+		g.setFont(labelFont);
 		g.setColor(ORANGE);
 		String label = "Clog Tier: ";
 		g.drawString(label, x, y);
@@ -217,18 +267,22 @@ final class ProfileCard
 			g.drawImage(data.tierIcon, valueX, y - 13, 17, 17, null);
 			valueX += 20;
 		}
+		g.setFont(valueFont);
 		g.setColor(TEXT);
 		g.drawString(tier, valueX, y);
 		return y + 18;
 	}
 
-	private static int paintValueLine(Graphics2D g, int x, int y,
-		String label, String value, Color valueColor)
+	private static int paintValueLine(Graphics2D g, Font labelFont, Font valueFont,
+		int x, int y, String label, String value, Color valueColor)
 	{
+		g.setFont(labelFont);
 		g.setColor(ORANGE);
 		g.drawString(label, x, y);
+		int valueX = x + g.getFontMetrics().stringWidth(label);
+		g.setFont(valueFont);
 		g.setColor(valueColor);
-		g.drawString(value, x + g.getFontMetrics().stringWidth(label), y);
+		g.drawString(value, valueX, y);
 		return y + 18;
 	}
 
@@ -236,14 +290,14 @@ final class ProfileCard
 	{
 		g.setFont(bold.deriveFont(16f));
 		g.setColor(ORANGE);
-		g.drawString("Recent Unlocks", CONTENT_X, 250);
+		g.drawString("Recent Collections", CONTENT_X, 324);
 
 		if (!hasSprites(data.recentSprites))
 		{
 			g.setFont(small);
 			g.setColor(TEXT_MUTED);
-			g.drawString("No recent collection log items", CONTENT_X, 279);
-			paintHorizontalSeparator(g, 341);
+			g.drawString("No recent collection log items", CONTENT_X, 353);
+			paintHorizontalSeparator(g, 414);
 			return;
 		}
 
@@ -251,7 +305,7 @@ final class ProfileCard
 		int rowWidth = count * RECENT_SPRITE + Math.max(0, count - 1) * RECENT_GAP;
 		int contentWidth = WIDTH - CONTENT_X - PAD;
 		int spriteX = CONTENT_X + (contentWidth - rowWidth) / 2;
-		int spriteY = 263;
+		int spriteY = 337;
 		for (int i = 0; i < count; i++)
 		{
 			BufferedImage sprite = data.recentSprites[i];
@@ -271,13 +325,18 @@ final class ProfileCard
 			}
 			spriteX += RECENT_SPRITE + RECENT_GAP;
 		}
-		paintHorizontalSeparator(g, 341);
+		paintHorizontalSeparator(g, 414);
 	}
 
 	private static void paintFooter(Graphics2D g, Data data, Font small)
 	{
 		g.setFont(small);
 		int footerY = HEIGHT - 14;
+		if (data.createdDate != null)
+		{
+			g.setColor(ORANGE);
+			g.drawString(data.createdDate, PAD, footerY);
+		}
 		if (data.profileUrl != null)
 		{
 			g.setColor(ORANGE);
@@ -292,8 +351,7 @@ final class ProfileCard
 
 	private static void paintHorizontalSeparator(Graphics2D g, int y)
 	{
-		g.setColor(SEPARATOR);
-		g.drawLine(PAD, y, WIDTH - PAD, y);
+		NativeTooltip.paintHorizontalDivider(g, PAD, y, WIDTH - PAD * 2);
 	}
 
 	private static boolean hasSprites(BufferedImage[] sprites)
@@ -312,21 +370,19 @@ final class ProfileCard
 		return false;
 	}
 
-	private static String caValue(Data data)
-	{
-		if (data.caTier == null)
-		{
-			return "--";
-		}
-		String tier = capitalize(data.caTier.replace('_', ' '));
-		return data.caPoints >= 0
-			? tier + "  " + number(data.caPoints) + " pts"
-			: tier;
-	}
-
 	private static String optionalNumber(int value)
 	{
 		return value >= 0 ? number(value) : "--";
+	}
+
+	private static String optionalNumber(long value)
+	{
+		return value >= 0 ? number(value) : "--";
+	}
+
+	private static String optionalDecimal(double value)
+	{
+		return value >= 0 ? String.format(Locale.US, "%,.1f", value) : "--";
 	}
 
 	private static String fraction(int value, int total)
@@ -339,6 +395,11 @@ final class ProfileCard
 	}
 
 	private static String number(int value)
+	{
+		return number((long) value);
+	}
+
+	private static String number(long value)
 	{
 		return String.format(Locale.US, "%,d", Math.max(0, value));
 	}

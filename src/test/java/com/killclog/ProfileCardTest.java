@@ -20,7 +20,7 @@ public class ProfileCardTest
 		BufferedImage card = ProfileCard.render(data);
 
 		assertEquals(ProfileCard.WIDTH, card.getWidth());
-		assertEquals(388, card.getHeight());
+		assertEquals(ProfileCard.HEIGHT, card.getHeight());
 		assertTrue((card.getRGB(20, 60) >>> 24) > 0);
 
 		String previewPath = System.getenv("KILLCLOG_PROFILE_CARD_PREVIEW");
@@ -42,17 +42,30 @@ public class ProfileCardTest
 		data.total = 1712;
 		data.tierName = "Rune";
 		data.tierIcon = sampleSprite(new Color(104, 186, 196), 28, 2);
-		data.completionColor = new Color(255, 173, 0);
 		data.combatLevel = 126;
 		data.totalLevel = 2277;
+		data.totalXp = 1_190_481_702L;
 		data.questPoints = 324;
+		data.prestige = "Maxed Infernal";
+		data.ehb = 867.3;
+		data.templeEhp = 3003.9;
 		data.caTier = "MASTER";
-		data.caPoints = 2478;
+		data.combatTasksCompleted = 336;
+		data.totalCombatTasks = 646;
+		data.achievementsCompleted = 422;
+		data.totalAchievements = 492;
 		data.bossesWithKc = 69;
 		data.totalBosses = 69;
+		data.totalClues = 867;
 		data.pets = 10;
-		data.totalPets = 66;
-		data.personalBests = 37;
+		data.petSprites = new BufferedImage[]{
+			sampleSprite(new Color(91, 119, 89), 16, 0),
+			sampleSprite(new Color(129, 96, 62), 16, 1),
+			sampleSprite(new Color(135, 82, 145), 16, 2),
+			sampleSprite(new Color(74, 112, 148), 16, 0),
+			sampleSprite(new Color(190, 109, 50), 16, 1),
+			sampleSprite(new Color(100, 145, 111), 16, 2),
+		};
 		data.recentSprites = new BufferedImage[]{
 			sampleSprite(new Color(186, 139, 72), 40, 0),
 			sampleSprite(new Color(170, 178, 188), 40, 1),

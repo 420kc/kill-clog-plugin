@@ -173,6 +173,55 @@ public abstract class NativeTooltip extends JToolTip
 		paintBorder(g2, w, h);
 	}
 
+	/** Paint a native 9-slice border around an inset card region. */
+	static void paintInsetBorder(Graphics2D g2, int x, int y, int w, int h)
+	{
+		Graphics2D inset = (Graphics2D) g2.create();
+		inset.translate(x, y);
+		paintBorder(inset, w, h);
+		inset.dispose();
+	}
+
+	/** Tile the native bottom-edge sprite as an in-window horizontal divider. */
+	static void paintHorizontalDivider(Graphics2D g2, int x, int y, int width)
+	{
+		if (edgeBottom == null)
+		{
+			g2.setColor(TitleTooltip.SEPARATOR_COLOR);
+			g2.drawLine(x, y, x + width, y);
+			return;
+		}
+		int spriteWidth = edgeBottom.getWidth();
+		int spriteHeight = edgeBottom.getHeight();
+		int top = y - spriteHeight / 2;
+		for (int drawX = x; drawX < x + width; drawX += spriteWidth)
+		{
+			int drawWidth = Math.min(spriteWidth, x + width - drawX);
+			g2.drawImage(edgeBottom, drawX, top, drawX + drawWidth, top + spriteHeight,
+				0, 0, drawWidth, spriteHeight, null);
+		}
+	}
+
+	/** Tile the native left-edge sprite as an in-window vertical divider. */
+	static void paintVerticalDivider(Graphics2D g2, int x, int y, int height)
+	{
+		if (edgeLeft == null)
+		{
+			g2.setColor(TitleTooltip.SEPARATOR_COLOR);
+			g2.drawLine(x, y, x, y + height);
+			return;
+		}
+		int spriteWidth = edgeLeft.getWidth();
+		int spriteHeight = edgeLeft.getHeight();
+		int left = x - spriteWidth / 2;
+		for (int drawY = y; drawY < y + height; drawY += spriteHeight)
+		{
+			int drawHeight = Math.min(spriteHeight, y + height - drawY);
+			g2.drawImage(edgeLeft, left, drawY, left + spriteWidth, drawY + drawHeight,
+				0, 0, spriteWidth, drawHeight, null);
+		}
+	}
+
 	/**
 	 * Subclasses paint their content here.
 	 * Background, border, and AA hints are already applied.

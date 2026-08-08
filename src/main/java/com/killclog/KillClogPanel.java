@@ -115,6 +115,7 @@ public class KillClogPanel extends PluginPanel
 	private final ActivitySummaryTooltips activityTooltips;
 	private final PersonalBests personalBests;
 	private final ProfileCardDataBuilder profileCardDataBuilder;
+	private final ProfileCardLocalCapture profileCardLocalCapture;
 	private final ProfileCardController profileCardController;
 	private ProgressHighlighter highlighter;
 	private JPanel infoRow;
@@ -302,12 +303,13 @@ public class KillClogPanel extends PluginPanel
 		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison,
 			tooltipDataBuilder, lookupSession, clogService, killclogService,
 			personalBests, config);
-		this.profileCardDataBuilder = new ProfileCardDataBuilder(itemManager, configManager,
-			accountBadges, accountTypes, iconCache, personalBests, config);
+		this.profileCardDataBuilder = new ProfileCardDataBuilder(itemManager,
+			accountBadges, accountTypes, iconCache);
+		this.profileCardLocalCapture = new ProfileCardLocalCapture(client, clientThread);
 		this.profileCardController = new ProfileCardController(this,
 			() -> profileCardDataBuilder.build(
 				lookupSession, rsn, localRsn, profileCardSyncConfirmed),
-			new ProfileCardLocalCapture(client, clientThread),
+			profileCardLocalCapture,
 			this::setProfileCardStatus,
 			() ->
 			{
@@ -980,6 +982,17 @@ public class KillClogPanel extends PluginPanel
 			profileCardHasData = hasData;
 			refreshProfileChaliceVisibility();
 		});
+	}
+
+	/** Capture native Player Summary-only values after its widgets populate. */
+	void captureProfileSummaryProgress()
+	{
+		profileCardLocalCapture.captureSummaryProgress();
+	}
+
+	void clearProfileSummaryProgress()
+	{
+		profileCardLocalCapture.clearSummaryProgress();
 	}
 
 	void setKillclogSyncHandler(Runnable handler)

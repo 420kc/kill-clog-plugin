@@ -273,6 +273,30 @@ public class ClogResultTest
 		assertFalse(picked.isFromRuneProfile());
 	}
 
+	@Test
+	public void testTempleEhpSurvivesProviderAndFirstPartyCombines()
+	{
+		ClogResult temple = result("TempleName", 3, 10,
+			Collections.singletonMap("boss", Arrays.asList(new ClogResult.ClogItem(1, 1, null))),
+			"2026-08-03 12:00:00", AccountType.IRONMAN);
+		temple.setTempleEhp(3003.8553);
+		ClogResult runeProfile = result("RuneProfileName", 9, 10,
+			Collections.singletonMap("boss", Arrays.asList(
+				new ClogResult.ClogItem(2, 1, null),
+				new ClogResult.ClogItem(3, 1, null))), null, null);
+		ClogResult firstParty = result("420 kc", 10, 10,
+			Collections.singletonMap("boss", Arrays.asList(
+				new ClogResult.ClogItem(4, 1, null),
+				new ClogResult.ClogItem(5, 1, null),
+				new ClogResult.ClogItem(6, 1, null))), null, null);
+
+		ClogResult provider = ClogResult.pickFreshest(temple, runeProfile);
+		ClogResult combined = ClogResult.pickFullest(provider, firstParty);
+
+		assertEquals(3003.8553, provider.getTempleEhp(), 0.0001);
+		assertEquals(3003.8553, combined.getTempleEhp(), 0.0001);
+	}
+
 	private static ClogResult result(
 		String name,
 		int obtainedCount,

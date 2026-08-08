@@ -3,38 +3,32 @@ package com.killclog;
 import java.awt.image.BufferedImage;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import javax.annotation.Nullable;
-import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
 
 /** Builds a card from the lookup caches already painted in the panel. */
 final class ProfileCardDataBuilder
 {
+	private static final int MAX_PET_SPRITES = 24;
 	private static final DateTimeFormatter CARD_DATE =
 		DateTimeFormatter.ofPattern("MMMM d, uuuu", Locale.US);
 
 	private final ItemManager itemManager;
-	private final ConfigManager configManager;
 	private final AccountBadgeResolver accountBadges;
 	private final PanelAccountTypes accountTypes;
 	private final PanelIconCache iconCache;
-	private final PersonalBests personalBests;
-	private final KillClogConfig config;
 
-	ProfileCardDataBuilder(ItemManager itemManager, ConfigManager configManager,
-		AccountBadgeResolver accountBadges,
-		PanelAccountTypes accountTypes, PanelIconCache iconCache,
-		PersonalBests personalBests, KillClogConfig config)
+	ProfileCardDataBuilder(ItemManager itemManager, AccountBadgeResolver accountBadges,
+		PanelAccountTypes accountTypes, PanelIconCache iconCache)
 	{
 		this.itemManager = itemManager;
-		this.configManager = configManager;
 		this.accountBadges = accountBadges;
 		this.accountTypes = accountTypes;
 		this.iconCache = iconCache;
-		this.personalBests = personalBests;
-		this.config = config;
 	}
 
 	@Nullable
@@ -57,8 +51,11 @@ final class ProfileCardDataBuilder
 		data.pluginIcon = KillClogIcons.resizedPluginIcon(18, 18, itemManager);
 		data.overallRank = hiscore.getOverallRank();
 		data.combatLevel = hiscore.getCombatLevel();
-		data.totalLevel = ClogHelper.displayTotalLevel(hiscore,
-			ClogHelper.virtualTotalLevelEnabled(configManager));
+		data.totalLevel = hiscore.getTotalLevel();
+		data.totalXp = hiscore.getTotalXp();
+		data.prestige = LookupQueries.getPrestige(hiscore);
+		data.ehb = EhbRates.compute(hiscore, LookupQueries.accountType(hiscore, clog));
+		data.totalClues = hiscore.getActivityScore("Clue Scrolls (all)");
 		data.bossesWithKc = LookupQueries.countBossesWithKc(hiscore);
 		data.totalBosses = PanelData.bossCount();
 		data.profileUrl = syncConfirmed ? profileUrl(name) : null;
@@ -68,14 +65,19 @@ final class ProfileCardDataBuilder
 		{
 			CombatAchievementTier tier = ca.getTier();
 			data.caTier = tier != null ? tier.name() : "NO TIER";
-			data.caPoints = ca.getTotalPoints();
+			data.combatTasksCompleted = 0;
+			data.totalCombatTasks = 0;
+			for (CombatAchievementTier loopTier : CombatAchievementTier.values())
+			{
+				data.combatTasksCompleted += ca.getCompleted(loopTier);
+				data.totalCombatTasks += ca.getTotal(loopTier);
+			}
 		}
 
 		if (clog != null)
 		{
 			populateClog(data, clog, lookupSession.getClogLastChanged());
 		}
-		data.personalBests = personalBests.countForPlayer(name, PanelData.BOSSES);
 		return data;
 	}
 
@@ -88,13 +90,31 @@ final class ProfileCardDataBuilder
 		data.tierName = ClogHelper.getClogTierName(totals[0], totals[1]);
 		data.tierIcon = data.tierName != null
 			? iconCache.clogTierImages().get(data.tierName) : null;
-		data.completionColor = ClogHelper.clogColor(totals[0], totals[1], config);
+		data.templeEhp = clog.isFromTemple() ? clog.getTempleEhp() : -1;
 
-		List<Integer> allPets = clog.getCategoryItems().get("all_pets");
-		if (allPets != null)
+		List<ClogResult.ClogItem> obtainedPets = clog.getObtainedItems().get("all_pets");
+		if (obtainedPets != null)
 		{
-			data.pets = LookupQueries.getObtainedPetIds(clog).size();
-			data.totalPets = allPets.size();
+			Set<Integer> seen = new HashSet<>();
+			data.pets = 0;
+			data.petSprites = new BufferedImage[Math.min(obtainedPets.size(), MAX_PET_SPRITES)];
+			int sprite = 0;
+			for (ClogResult.ClogItem pet : obtainedPets)
+			{
+				if (!seen.add(pet.getId()))
+				{
+					continue;
+				}
+				data.pets++;
+				if (sprite < data.petSprites.length)
+				{
+					data.petSprites[sprite++] = itemManager.getImage(pet.getId(), 1, false);
+				}
+			}
+			if (sprite < data.petSprites.length)
+			{
+				data.petSprites = java.util.Arrays.copyOf(data.petSprites, sprite);
+			}
 		}
 
 		List<ClogResult.ClogItem> recent = LookupQueries.getRecentItems(clog, 6);

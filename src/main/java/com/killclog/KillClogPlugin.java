@@ -142,6 +142,7 @@ public class KillClogPlugin extends Plugin
 	// load names the owner, the Counters scroll load triggers the parse.
 	private boolean advLogTitleLoaded;
 	private boolean advLogCountersLoaded;
+	private boolean accountSummaryLoaded;
 	private String advLogOwner;
 
 	private final ChatAutoLookupGate chatAutoLookup = new ChatAutoLookupGate();
@@ -326,6 +327,7 @@ public class KillClogPlugin extends Plugin
 		else if (event.getGameState() == GameState.LOGIN_SCREEN)
 		{
 			SwingUtilities.invokeLater(panel::reloadTooltipSprites);
+			panel.clearProfileSummaryProgress();
 			manualClogSync.reset();
 			clogIndex.clear();
 			sessionState.resetAutoLookupSession();
@@ -837,6 +839,15 @@ public class KillClogPlugin extends Plugin
 			chatNotifier, clogButtonOverlay, liveClogSync::resetFirstSyncWarning,
 			panel::onBulkCaptureComplete);
 
+		// Player Summary populates dynamic text one tick after load. Cache its
+		// achievement fraction for the self-only profile card without opening
+		// or manipulating the interface on the player's behalf.
+		if (accountSummaryLoaded)
+		{
+			accountSummaryLoaded = false;
+			panel.captureProfileSummaryProgress();
+		}
+
 		// Adventure-log pb harvest, one tick after each widget load so the
 		// children are populated (vanilla's own deferral). The new menu
 		// interface hosts more than the Adventure Log; a non-matching title
@@ -881,6 +892,10 @@ public class KillClogPlugin extends Plugin
 		else if (event.getGroupId() == InterfaceID.JOURNALSCROLL)
 		{
 			advLogCountersLoaded = true;
+		}
+		else if (event.getGroupId() == InterfaceID.ACCOUNT_SUMMARY_SIDEPANEL)
+		{
+			accountSummaryLoaded = true;
 		}
 	}
 

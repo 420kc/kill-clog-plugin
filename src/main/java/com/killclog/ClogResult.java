@@ -31,6 +31,8 @@ public class ClogResult
 	private boolean fromRuneProfile;
 	/** True when the player's own killclog.com sync returned data that fed this result */
 	private boolean fromKillclog;
+	/** TempleOSRS primary EHP for this lookup, or -1 when Temple has no player stats */
+	private double templeEhp = -1;
 
 	public ClogResult(
 		String playerName,
@@ -68,6 +70,7 @@ public class ClogResult
 		this.providerAccountType = accountType;
 		this.uniqueObtained = source.uniqueObtained;
 		this.uniqueTotal = source.uniqueTotal;
+		this.templeEhp = source.templeEhp;
 	}
 
 	/**
@@ -147,6 +150,16 @@ public class ClogResult
 		return fromKillclog;
 	}
 
+	public double getTempleEhp()
+	{
+		return templeEhp;
+	}
+
+	public void setTempleEhp(double templeEhp)
+	{
+		this.templeEhp = templeEhp;
+	}
+
 	public boolean isItemResolved(int id)
 	{
 		return itemNames.containsKey(id);
@@ -187,8 +200,13 @@ public class ClogResult
 		// Provenance tracks which providers returned non-null data, stamped
 		// on a copy so the shared cached instances are never mutated.
 		ClogResult loser = winner == temple ? rp : temple;
-		return winner.copyWithProvenance(temple != null, rp != null, false,
+		ClogResult combined = winner.copyWithProvenance(temple != null, rp != null, false,
 			loser != null ? loser.providerAccountType : null);
+		if (temple != null)
+		{
+			combined.templeEhp = temple.templeEhp;
+		}
+		return combined;
 	}
 
 	/**
@@ -223,9 +241,11 @@ public class ClogResult
 		// bug against a complete provider log.
 		if (coverageCount(killclog) >= coverageCount(provider))
 		{
-			return killclog.copyWithProvenance(
+			ClogResult combined = killclog.copyWithProvenance(
 				provider.fromTemple, provider.fromRuneProfile, true,
 				provider.providerAccountType);
+			combined.templeEhp = provider.templeEhp;
+			return combined;
 		}
 		return provider.copyWithProvenance(
 			provider.fromTemple, provider.fromRuneProfile, true, null);
