@@ -11,13 +11,13 @@ import net.runelite.client.ui.FontManager;
 
 /**
  * Shareable Kill Clog player profile rendered as one expanded native popup.
- * Parchment, iron frame, typography, separators, and source colors come from
+ * Parchment, iron frame, typography, separators, and data colors come from
  * the same primitives as the in-client Kill Clog tooltips.
  */
 final class ProfileCard
 {
 	static final int WIDTH = 720;
-	static final int HEIGHT = 420;
+	static final int HEIGHT = 388;
 
 	private static final int PAD = 18;
 	private static final int PORTRAIT_X = 18;
@@ -68,8 +68,7 @@ final class ProfileCard
 		int personalBests = -1;
 		BufferedImage[] recentSprites;
 		String[] recentDates;
-		String clogSource;
-		String personalBestSource;
+		String createdDate;
 		String updated;
 		String profileUrl;
 	}
@@ -88,7 +87,7 @@ final class ProfileCard
 		paintPortrait(g, data, small);
 		paintProfileColumns(g, data, base, bold);
 		paintRecent(g, data, small, bold);
-		paintSources(g, data, small);
+		paintFooter(g, data, small);
 
 		g.dispose();
 		return image;
@@ -142,7 +141,7 @@ final class ProfileCard
 			PORTRAIT_X + PORTRAIT_WIDTH - 1, PORTRAIT_Y + 21);
 		g.setFont(small);
 		g.setColor(ORANGE);
-		String title = "CURRENT EQUIPMENT";
+		String title = text(data.createdDate, "");
 		g.drawString(title,
 			PORTRAIT_X + (PORTRAIT_WIDTH - g.getFontMetrics().stringWidth(title)) / 2,
 			PORTRAIT_Y + 15);
@@ -170,8 +169,8 @@ final class ProfileCard
 
 		g.setFont(bold.deriveFont(16f));
 		g.setColor(ORANGE);
-		g.drawString("ACCOUNT", CONTENT_X, titleY);
-		g.drawString("COLLECTION LOG", SECOND_COLUMN_X, titleY);
+		g.drawString("Account", CONTENT_X, titleY);
+		g.drawString("Collection Log", SECOND_COLUMN_X, titleY);
 
 		g.setColor(SEPARATOR);
 		g.drawLine(CONTENT_X, 86, SECOND_COLUMN_X - 20, 86);
@@ -237,7 +236,7 @@ final class ProfileCard
 	{
 		g.setFont(bold.deriveFont(16f));
 		g.setColor(ORANGE);
-		g.drawString("RECENT UNLOCKS", CONTENT_X, 250);
+		g.drawString("Recent Unlocks", CONTENT_X, 250);
 
 		if (!hasSprites(data.recentSprites))
 		{
@@ -275,19 +274,8 @@ final class ProfileCard
 		paintHorizontalSeparator(g, 341);
 	}
 
-	private static void paintSources(Graphics2D g, Data data, Font small)
+	private static void paintFooter(Graphics2D g, Data data, Font small)
 	{
-		g.setFont(small);
-		int y = 363;
-		if (data.clogSource != null && !data.clogSource.isBlank())
-		{
-			paintSourceLine(g, PAD, "Collection Log: ", data.clogSource, y);
-		}
-		if (data.personalBestSource != null && !data.personalBestSource.isBlank())
-		{
-			paintSourceLine(g, WIDTH / 2, "Personal Bests: ", data.personalBestSource, y);
-		}
-
 		g.setFont(small);
 		int footerY = HEIGHT - 14;
 		if (data.profileUrl != null)
@@ -300,18 +288,6 @@ final class ProfileCard
 				g.drawImage(data.pluginIcon, urlX - 20, footerY - 12, 14, 14, null);
 			}
 		}
-	}
-
-	private static void paintSourceLine(Graphics2D g, int x,
-		String label, String source, int y)
-	{
-		g.setColor(SOURCE);
-		g.drawString("\u2191", x, y);
-		g.setColor(ORANGE);
-		g.drawString(label, x + 13, y);
-		int sourceX = x + 13 + g.getFontMetrics().stringWidth(label);
-		g.setColor(SOURCE);
-		g.drawString(source, sourceX, y);
 	}
 
 	private static void paintHorizontalSeparator(Graphics2D g, int y)

@@ -15,7 +15,7 @@ import javax.swing.Timer;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.util.AsyncBufferedImage;
 
-/** One-click card pipeline: snapshot, await cached sprites, render, export, preview. */
+/** Local identity-card pipeline: snapshot, await cached sprites, render, preview. */
 @Slf4j
 final class ProfileCardController
 {
@@ -25,20 +25,24 @@ final class ProfileCardController
 	private final Supplier<ProfileCard.Data> dataSupplier;
 	private final ProfileCardLocalCapture localCapture;
 	private final Consumer<String> status;
+	private final Runnable syncAction;
 	private final ProfileCardPreview preview = new ProfileCardPreview();
 	private final AtomicInteger generation = new AtomicInteger();
+	private ProfileCard.Data openData;
 	private boolean busy;
 
 	ProfileCardController(JComponent owner, Supplier<ProfileCard.Data> dataSupplier,
-		ProfileCardLocalCapture localCapture, Consumer<String> status)
+		ProfileCardLocalCapture localCapture, Consumer<String> status,
+		Runnable syncAction)
 	{
 		this.owner = owner;
 		this.dataSupplier = dataSupplier;
 		this.localCapture = localCapture;
 		this.status = status;
+		this.syncAction = syncAction;
 	}
 
-	void share()
+	void open()
 	{
 		if (busy)
 		{
@@ -70,6 +74,7 @@ final class ProfileCardController
 	{
 		generation.incrementAndGet();
 		busy = false;
+		openData = null;
 		if (SwingUtilities.isEventDispatchThread())
 		{
 			preview.close();
@@ -112,8 +117,25 @@ final class ProfileCardController
 					return;
 				}
 				data.playerModel = portrait;
-				awaitSprites(data, () -> renderAndExport(data, operation));
+				awaitSprites(data, () -> renderAndPreview(data, operation));
 			}));
+	}
+
+	void showSyncStatus(String text, boolean ok)
+	{
+		if (ok && "synced!".equals(text) && openData != null)
+		{
+			try
+			{
+				openData.profileUrl = ProfileCardDataBuilder.profileUrl(openData.rsn);
+				preview.replaceCard(ProfileCard.render(openData));
+			}
+			catch (RuntimeException e)
+			{
+				log.warn("profile card refresh after sync failed", e);
+			}
+		}
+		preview.showSyncStatus(text, ok);
 	}
 
 	private void awaitSprites(ProfileCard.Data data, Runnable ready)
@@ -172,7 +194,7 @@ final class ProfileCardController
 		}
 	}
 
-	private void renderAndExport(ProfileCard.Data data, int operation)
+	private void renderAndPreview(ProfileCard.Data data, int operation)
 	{
 		if (operation != generation.get())
 		{
@@ -181,27 +203,11 @@ final class ProfileCardController
 		try
 		{
 			BufferedImage card = ProfileCard.render(data);
-			ProfileCardShare.Export export = ProfileCardShare.export(card, data.rsn);
-			if (!export.copied && export.saved == null)
-			{
-				status.accept("Profile card failed");
-				return;
-			}
-			if (export.copied && export.saved != null)
-			{
-				status.accept("Profile card copied");
-			}
-			else if (export.copied)
-			{
-				status.accept("Copied - file save failed");
-			}
-			else
-			{
-				status.accept("Saved - clipboard unavailable");
-			}
 			try
 			{
-				preview.show(owner, card, export);
+				openData = data;
+				preview.show(owner, card, data.rsn, syncAction, data.profileUrl != null);
+				status.accept(" ");
 			}
 			catch (RuntimeException e)
 			{

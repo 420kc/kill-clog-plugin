@@ -20,7 +20,7 @@ public class ProfileCardTest
 		BufferedImage card = ProfileCard.render(data);
 
 		assertEquals(ProfileCard.WIDTH, card.getWidth());
-		assertEquals(ProfileCard.HEIGHT, card.getHeight());
+		assertEquals(388, card.getHeight());
 		assertTrue((card.getRGB(20, 60) >>> 24) > 0);
 
 		String previewPath = System.getenv("KILLCLOG_PROFILE_CARD_PREVIEW");
@@ -62,8 +62,7 @@ public class ProfileCardTest
 			sampleSprite(new Color(207, 178, 95), 40, 2),
 		};
 		data.recentDates = new String[]{"Aug 1", "Aug 1", "Jul 22", "Jul 17", "Jul 12", "May 24"};
-		data.clogSource = "RuneLite Local";
-		data.personalBestSource = "RuneLite Profile";
+		data.createdDate = "August 7, 2026";
 		data.updated = "Aug 7";
 		data.profileUrl = "killclog.com/p/420-kc";
 		data.playerModel = samplePlayerModel();

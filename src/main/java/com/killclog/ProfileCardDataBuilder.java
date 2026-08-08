@@ -1,7 +1,10 @@
 package com.killclog;
 
 import java.awt.image.BufferedImage;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 import javax.annotation.Nullable;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
@@ -9,8 +12,8 @@ import net.runelite.client.game.ItemManager;
 /** Builds a card from the lookup caches already painted in the panel. */
 final class ProfileCardDataBuilder
 {
-	private static final String LOCAL_PB_SOURCE = "RuneLite Profile";
-	private static final String LOCAL_CLOG_SOURCE = "RuneLite Local";
+	private static final DateTimeFormatter CARD_DATE =
+		DateTimeFormatter.ofPattern("MMMM d, uuuu", Locale.US);
 
 	private final ItemManager itemManager;
 	private final ConfigManager configManager;
@@ -40,14 +43,8 @@ final class ProfileCardDataBuilder
 	{
 		ClogResult clog = lookupSession.getClogResult();
 		String name = cardName(displayedRsn, lookupSession.getCurrentLookupRsn(), clog);
-		if (!isSelfPlayer(name, localRsn) || !config.killclogSync()
-			|| !syncConfirmed || clog == null)
-		{
-			return null;
-		}
-
 		HiscoreResult hiscore = lookupSession.getHiscoreResult();
-		if (hiscore == null)
+		if (!canBuild(name, localRsn, clog != null, hiscore != null))
 		{
 			return null;
 		}
@@ -64,7 +61,8 @@ final class ProfileCardDataBuilder
 			ClogHelper.virtualTotalLevelEnabled(configManager));
 		data.bossesWithKc = LookupQueries.countBossesWithKc(hiscore);
 		data.totalBosses = PanelData.bossCount();
-		data.profileUrl = profileUrl(name);
+		data.profileUrl = syncConfirmed ? profileUrl(name) : null;
+		data.createdDate = LocalDate.now().format(CARD_DATE);
 		CombatAchievementResult ca = lookupSession.getCaResult();
 		if (ca != null)
 		{
@@ -78,7 +76,6 @@ final class ProfileCardDataBuilder
 			populateClog(data, clog, lookupSession.getClogLastChanged());
 		}
 		data.personalBests = personalBests.countForPlayer(name, PanelData.BOSSES);
-		data.personalBestSource = LOCAL_PB_SOURCE;
 		return data;
 	}
 
@@ -110,7 +107,6 @@ final class ProfileCardDataBuilder
 			data.recentDates[i] = ClogSummaryTooltip.shortDate(item.getDate());
 		}
 
-		data.clogSource = LOCAL_CLOG_SOURCE;
 		boolean stale = LookupQueries.isSyncStale(lastChanged, 90);
 		data.updated = LookupQueries.syncLine(lastChanged, stale);
 	}
@@ -119,6 +115,12 @@ final class ProfileCardDataBuilder
 	{
 		return displayedRsn != null && localRsn != null
 			&& displayedRsn.trim().equalsIgnoreCase(localRsn.trim());
+	}
+
+	static boolean canBuild(@Nullable String displayedRsn, @Nullable String localRsn,
+		boolean hasClog, boolean hasHiscore)
+	{
+		return isSelfPlayer(displayedRsn, localRsn) && hasClog && hasHiscore;
 	}
 
 	static String profileUrl(String name)

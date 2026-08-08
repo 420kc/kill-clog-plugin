@@ -117,12 +117,11 @@ public class KillClogPanel extends PluginPanel
 	private final PersonalBests personalBests;
 	private final ProfileCardDataBuilder profileCardDataBuilder;
 	private final ProfileCardController profileCardController;
-	private final ProfileCardButton profileCardButton;
 	private ProgressHighlighter highlighter;
 	private JPanel infoRow;
 
 	private final JLabel searchStatus = new JLabel(" ");
-	private final JLabel syncArrow = new JLabel();
+	private final JLabel profileChalice = new JLabel();
 	private final IconTextField searchBar = new IconTextField();
 	private final JLabel playerName = new UnderlineLabel(true)
 	{
@@ -314,10 +313,14 @@ public class KillClogPanel extends PluginPanel
 			() -> profileCardDataBuilder.build(
 				lookupSession, rsn, localRsn, profileCardSyncConfirmed),
 			new ProfileCardLocalCapture(client, clientThread),
-			this::setProfileCardStatus);
-		this.profileCardButton = new ProfileCardButton(
-			profileCardController::share, this::onProfileCardHover, this::onProfileCardExit,
-			config::inProgressClogColor);
+			this::setProfileCardStatus,
+			() ->
+			{
+				if (killclogSyncHandler != null)
+				{
+					killclogSyncHandler.run();
+				}
+			});
 		this.activityTooltips = new ActivitySummaryTooltips(
 			lookupSession, comparison, cells, tooltipController, itemManager,
 			caRewardSprites, iconCache, this::comparisonBlueName, config::wikiItemLinks,
@@ -863,19 +866,17 @@ public class KillClogPanel extends PluginPanel
 		searchStatus.setIcon(null);
 		searchStatus.setText(text);
 		searchStatus.setForeground(color);
-		refreshSyncArrowVisibility();
+		refreshProfileChaliceVisibility();
 	}
 
-	// ── killclog.com sync arrow ─────────────────────────────────────────
+	// ── local profile-card portal ────────────────────────────────────────
 
-	private static final String SYNC_HOVER_TEXT = "sync to killclog.com";
 	private static final String PROFILE_CARD_HOVER_TEXT = "open profile card";
 	// k1: the brand lime. Status chrome, not data coloring, so it does not
 	// route through the user-themable completion color.
 	private static final Color SYNC_K1 = new Color(78, 240, 21);
 
-	private boolean syncArrowEnabled;
-	private boolean syncArrowHasData;
+	private boolean profileCardHasData;
 	private Runnable killclogSyncHandler;
 	private javax.swing.Timer syncStatusClearTimer;
 	private javax.swing.Timer profileCardStatusClearTimer;
@@ -935,45 +936,44 @@ public class KillClogPanel extends PluginPanel
 		return new ImageIcon(out);
 	}
 
-	private static final ImageIcon SYNC_CHALICE_DIM = chaliceTinted(0.45f, null);
-	private static final ImageIcon SYNC_CHALICE_LIT = chaliceTinted(1f, null);
-	private static final ImageIcon SYNC_CHALICE_SYNCED = chaliceTinted(1f, new Color(78, 240, 21));
+	private static final ImageIcon PROFILE_CHALICE_DIM = chaliceTinted(0.45f, null);
+	private static final ImageIcon PROFILE_CHALICE_LIT = chaliceTinted(1f, null);
+	private static final ImageIcon PROFILE_CHALICE_SYNCED = chaliceTinted(1f, new Color(78, 240, 21));
 
 	private boolean syncedGlow;
 
-	private void refreshSyncChalice(boolean hovered)
+	private void refreshProfileChalice(boolean hovered)
 	{
-		syncArrow.setIcon(syncedGlow ? SYNC_CHALICE_SYNCED
-			: hovered ? SYNC_CHALICE_LIT : SYNC_CHALICE_DIM);
+		profileChalice.setIcon(syncedGlow ? PROFILE_CHALICE_SYNCED
+			: hovered ? PROFILE_CHALICE_LIT : PROFILE_CHALICE_DIM);
 	}
 
 	private JPanel buildStatusRow()
 	{
-		syncArrow.setIcon(SYNC_CHALICE_DIM);
+		profileChalice.setIcon(PROFILE_CHALICE_DIM);
 		// Sits vertically centered in the band between the panel top and the
 		// search bar: the bottom inset biases the icon upward within the
 		// taller status row so its center lands on the band's center.
-		syncArrow.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 4, 6, 5));
-		syncArrow.setVerticalAlignment(JLabel.CENTER);
-		syncArrow.setVisible(false);
-		profileCardButton.setVisible(false);
-		syncArrow.addMouseListener(new java.awt.event.MouseAdapter()
+		profileChalice.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 4, 6, 5));
+		profileChalice.setVerticalAlignment(JLabel.CENTER);
+		profileChalice.setVisible(false);
+		profileChalice.addMouseListener(new java.awt.event.MouseAdapter()
 		{
 			@Override
 			public void mouseEntered(java.awt.event.MouseEvent e)
 			{
-				if (syncArrow.isVisible())
+				if (profileChalice.isVisible())
 				{
-					refreshSyncChalice(true);
-					setSearchStatus(SYNC_HOVER_TEXT, SYNC_K1);
+					refreshProfileChalice(true);
+					setSearchStatus(PROFILE_CARD_HOVER_TEXT, config.inProgressClogColor());
 				}
 			}
 
 			@Override
 			public void mouseExited(java.awt.event.MouseEvent e)
 			{
-				refreshSyncChalice(false);
-				if (SYNC_HOVER_TEXT.equals(searchStatus.getText()))
+				refreshProfileChalice(false);
+				if (PROFILE_CARD_HOVER_TEXT.equals(searchStatus.getText()))
 				{
 					setSearchStatus(" ", TEXT_DIM);
 				}
@@ -982,9 +982,9 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public void mousePressed(java.awt.event.MouseEvent e)
 			{
-				if (syncArrow.isVisible() && killclogSyncHandler != null)
+				if (profileChalice.isVisible())
 				{
-					killclogSyncHandler.run();
+					profileCardController.open();
 				}
 			}
 		});
@@ -1000,8 +1000,7 @@ public class KillClogPanel extends PluginPanel
 		JPanel actions = new JPanel();
 		actions.setLayout(new BoxLayout(actions, BoxLayout.X_AXIS));
 		actions.setOpaque(false);
-		actions.add(profileCardButton);
-		actions.add(syncArrow);
+		actions.add(profileChalice);
 		row.add(actions, java.awt.BorderLayout.EAST);
 		return row;
 	}
@@ -1010,16 +1009,14 @@ public class KillClogPanel extends PluginPanel
 	{
 		String text = searchStatus.getText();
 		return text == null || text.trim().isEmpty()
-			|| SYNC_HOVER_TEXT.equals(text) || PROFILE_CARD_HOVER_TEXT.equals(text);
+			|| PROFILE_CARD_HOVER_TEXT.equals(text);
 	}
 
-	private void refreshSyncArrowVisibility()
+	private void refreshProfileChaliceVisibility()
 	{
 		boolean free = statusBarFree();
-		syncArrow.setVisible(syncArrowEnabled && syncArrowHasData && free);
-		profileCardButton.setVisible(free
-			&& config.killclogSync()
-			&& profileCardSyncConfirmed
+		profileChalice.setVisible(free
+			&& profileCardHasData
 			&& ProfileCardDataBuilder.isSelfPlayer(
 				lookupSession.getCurrentLookupRsn(), localRsn)
 			&& lookupSession.getClogResult() != null
@@ -1029,27 +1026,9 @@ public class KillClogPanel extends PluginPanel
 			&& !comparison.isComparisonMode());
 	}
 
-	private void onProfileCardHover()
-	{
-		if (profileCardButton.isVisible())
-		{
-			setSearchStatus(PROFILE_CARD_HOVER_TEXT, config.inProgressClogColor());
-		}
-	}
-
-	private void onProfileCardExit()
-	{
-		if (PROFILE_CARD_HOVER_TEXT.equals(searchStatus.getText()))
-		{
-			setSearchStatus(" ", TEXT_DIM);
-		}
-	}
-
 	private void setProfileCardStatus(String text)
 	{
-		boolean success = text.startsWith("Profile card copied")
-			|| text.startsWith("Copied") || text.startsWith("Saved");
-		setSearchStatus(text, success ? SYNC_K1 : TEXT_DIM);
+		setSearchStatus(text, TEXT_DIM);
 		if (profileCardStatusClearTimer != null)
 		{
 			profileCardStatusClearTimer.stop();
@@ -1068,41 +1047,26 @@ public class KillClogPanel extends PluginPanel
 		}
 	}
 
-	/** The plugin flips this with the sync checkbox; off hides the arrow. */
-	void setSyncArrowEnabled(boolean enabled)
-	{
-		SwingUtilities.invokeLater(() ->
-		{
-			syncArrowEnabled = enabled;
-			if (!enabled)
-			{
-				profileCardSyncConfirmed = false;
-			}
-			refreshSyncArrowVisibility();
-		});
-	}
-
-	/** A successful first-party read or push unlocks self profile cards. */
+	/** A successful first-party read or push adds the public profile URL. */
 	void setProfileCardSyncConfirmed(boolean confirmed)
 	{
 		SwingUtilities.invokeLater(() ->
 		{
-			profileCardSyncConfirmed = confirmed && config.killclogSync();
-			refreshSyncArrowVisibility();
+			profileCardSyncConfirmed = confirmed;
+			refreshProfileChaliceVisibility();
 		});
 	}
 
 	/**
-	 * The chalice earns its appearance: hidden until this player's local
-	 * collection log holds at least one first-party capture, so a fresh
-	 * install can never click sync with nothing to send.
+	 * The chalice appears once this player's local collection log can build a
+	 * meaningful identity card.
 	 */
-	void setSyncArrowHasData(boolean hasData)
+	void setProfileCardHasData(boolean hasData)
 	{
 		SwingUtilities.invokeLater(() ->
 		{
-			syncArrowHasData = hasData;
-			refreshSyncArrowVisibility();
+			profileCardHasData = hasData;
+			refreshProfileChaliceVisibility();
 		});
 	}
 
@@ -1114,8 +1078,9 @@ public class KillClogPanel extends PluginPanel
 	private boolean barOwnedBySync()
 	{
 		String text = searchStatus.getText();
-		return SYNC_HOVER_TEXT.equals(text) || "syncing...".equals(text)
-			|| "synced!".equals(text) || "sync failed".equals(text);
+		return "syncing...".equals(text) || "retrying...".equals(text)
+			|| "synced!".equals(text) || "sync not published".equals(text)
+			|| "sync failed".equals(text);
 	}
 
 	/**
@@ -1129,6 +1094,7 @@ public class KillClogPanel extends PluginPanel
 	{
 		SwingUtilities.invokeLater(() ->
 		{
+			profileCardController.showSyncStatus(text, ok);
 			if (!statusBarFree() && !barOwnedBySync())
 			{
 				return;
@@ -1140,7 +1106,7 @@ public class KillClogPanel extends PluginPanel
 			}
 			setSearchStatus(text, "sync failed".equals(text) ? TEXT_DIM : SYNC_K1);
 			syncedGlow = "synced!".equals(text);
-			refreshSyncChalice(false);
+			refreshProfileChalice(false);
 			if (autoClear)
 			{
 				syncStatusClearTimer = new javax.swing.Timer(2500, e ->
@@ -1150,7 +1116,7 @@ public class KillClogPanel extends PluginPanel
 						setSearchStatus(" ", TEXT_DIM);
 					}
 					syncedGlow = false;
-					refreshSyncChalice(false);
+					refreshProfileChalice(false);
 					syncStatusClearTimer = null;
 				});
 				syncStatusClearTimer.setRepeats(false);
@@ -1469,7 +1435,7 @@ public class KillClogPanel extends PluginPanel
 	{
 		this.localRsn = name;
 		this.localAccountType = accountType;
-		refreshSyncArrowVisibility();
+		refreshProfileChaliceVisibility();
 	}
 
 	/** Returns the RSN currently displayed in the panel, or null if no lookup is shown. */
@@ -1802,7 +1768,7 @@ public class KillClogPanel extends PluginPanel
 			if (isSelf && clog.isFromKillclog())
 			{
 				profileCardSyncConfirmed = true;
-				refreshSyncArrowVisibility();
+				refreshProfileChaliceVisibility();
 			}
 		}
 	}
@@ -1856,7 +1822,7 @@ public class KillClogPanel extends PluginPanel
 			}
 			fetchRsn(player, lookupVersionAtFire);
 		}
-		refreshSyncArrowVisibility();
+		refreshProfileChaliceVisibility();
 	}
 
 	@Override
