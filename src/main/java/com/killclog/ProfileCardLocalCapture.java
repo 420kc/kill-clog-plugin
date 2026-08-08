@@ -103,7 +103,7 @@ final class ProfileCardLocalCapture
 			return false;
 		}
 		int[] achievements = summaryProgress(readSummaryText(), "achievements completed");
-		if (achievements[0] >= 0 && achievements[1] >= 0)
+		if (validProgress(achievements[0], achievements[1]))
 		{
 			cachedAchievementRsn = player.getName().trim();
 			cachedAchievementsCompleted = achievements[0];
@@ -123,8 +123,7 @@ final class ProfileCardLocalCapture
 			ACHIEVEMENTS_COMPLETED_KEY, Integer.class);
 		Integer total = configManager.getRSProfileConfiguration(CONFIG_GROUP,
 			ACHIEVEMENTS_TOTAL_KEY, Integer.class);
-		if (completed != null && total != null && completed >= 0
-			&& total > 0 && completed <= total)
+		if (completed != null && total != null && validProgress(completed, total))
 		{
 			cachedAchievementRsn = playerName.trim();
 			cachedAchievementsCompleted = completed;
@@ -144,6 +143,11 @@ final class ProfileCardLocalCapture
 	{
 		return ProfileCardDataBuilder.isSelfPlayer(owner, expectedRsn)
 			? new int[]{completed, total} : new int[]{-1, -1};
+	}
+
+	static boolean validProgress(int completed, int total)
+	{
+		return completed >= 0 && total > 0 && completed <= total;
 	}
 
 	private List<String> readSummaryText()
@@ -212,7 +216,12 @@ final class ProfileCardLocalCapture
 			StringBuilder nearby = new StringBuilder();
 			for (int j = labelEnd; j < Math.min(text.size(), labelEnd + 5); j++)
 			{
-				nearby.append(' ').append(normalize(text.get(j)));
+				String chunk = normalize(text.get(j));
+				if (j > labelEnd && chunk.chars().anyMatch(Character::isLetter))
+				{
+					break;
+				}
+				nearby.append(' ').append(chunk);
 				Matcher matcher = FRACTION.matcher(nearby);
 				if (matcher.find())
 				{
