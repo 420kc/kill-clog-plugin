@@ -55,6 +55,39 @@ public class ProfileCardPlayerModelTest
 		assertTrue(hasOrangePixel(portrait));
 	}
 
+	@Test
+	public void composesFollowerBehindAndToTheRightOfPlayer()
+	{
+		int playerColor = (7 << 10) | (5 << 7) | 58;
+		int followerColor = (35 << 10) | (6 << 7) | 60;
+		ProfileCardPlayerModel.Snapshot player = standingModel(playerColor, 200);
+		ProfileCardPlayerModel.Snapshot follower = standingModel(followerColor, 90);
+
+		BufferedImage playerOnly = ProfileCardPlayerModel.render(player);
+		BufferedImage paired = ProfileCardPlayerModel.render(player, follower);
+
+		assertNotNull(playerOnly);
+		assertNotNull(paired);
+		assertTrue(visiblePixels(paired) > visiblePixels(playerOnly));
+		assertTrue(visiblePixelsRightOf(paired, ProfileCardPlayerModel.WIDTH * 2 / 3)
+			> visiblePixelsRightOf(playerOnly, ProfileCardPlayerModel.WIDTH * 2 / 3));
+	}
+
+	private static ProfileCardPlayerModel.Snapshot standingModel(int color, int height)
+	{
+		return new ProfileCardPlayerModel.Snapshot(
+			new float[]{-20, 20, 20, -20, 0},
+			new float[]{0, 0, 0, 0, -height},
+			new float[]{-18, -18, 18, 18, 0},
+			new int[]{0, 1, 2, 3, 0, 1},
+			new int[]{1, 2, 3, 0, 4, 4},
+			new int[]{4, 4, 4, 4, 3, 2},
+			new int[]{color, color, color, color, color, color},
+			new int[]{color, color, color, color, color, color},
+			new int[]{-1, -1, -1, -1, -1, -1},
+			null, null, null);
+	}
+
 	private static boolean hasVisiblePixel(BufferedImage image)
 	{
 		for (int y = 0; y < image.getHeight(); y++)
@@ -87,5 +120,26 @@ public class ProfileCardPlayerModelTest
 			}
 		}
 		return false;
+	}
+
+	private static int visiblePixels(BufferedImage image)
+	{
+		return visiblePixelsRightOf(image, 0);
+	}
+
+	private static int visiblePixelsRightOf(BufferedImage image, int startX)
+	{
+		int visible = 0;
+		for (int y = 0; y < image.getHeight(); y++)
+		{
+			for (int x = startX; x < image.getWidth(); x++)
+			{
+				if ((image.getRGB(x, y) >>> 24) != 0)
+				{
+					visible++;
+				}
+			}
+		}
+		return visible;
 	}
 }
