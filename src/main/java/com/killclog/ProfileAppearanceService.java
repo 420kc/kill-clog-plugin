@@ -11,6 +11,7 @@ import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.NPC;
+import net.runelite.api.NPCComposition;
 import net.runelite.api.Player;
 import net.runelite.api.PlayerComposition;
 import net.runelite.client.callback.ClientThread;
@@ -76,7 +77,7 @@ final class ProfileAppearanceService
 				Player local = client.getLocalPlayer();
 				PlayerComposition composition = local != null ? local.getPlayerComposition() : null;
 				NPC follower = client.getFollower();
-				int followerNpcId = follower != null ? follower.getId() : -1;
+				int followerNpcId = visibleFollowerNpcId(follower);
 				if (!isStillSelf(expectedRsn, accountHash) || composition == null)
 				{
 					result.complete(failed(MODEL_UNAVAILABLE));
@@ -116,6 +117,16 @@ final class ProfileAppearanceService
 			}
 		});
 		return result;
+	}
+
+	static int visibleFollowerNpcId(@Nullable NPC follower)
+	{
+		if (follower == null)
+		{
+			return -1;
+		}
+		NPCComposition visibleComposition = follower.getTransformedComposition();
+		return visibleComposition != null ? visibleComposition.getId() : follower.getId();
 	}
 
 	private CompletableFuture<PublishResult> ensureCredential(String rsn, long accountHash,
