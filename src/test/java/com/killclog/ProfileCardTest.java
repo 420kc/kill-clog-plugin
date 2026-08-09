@@ -63,7 +63,7 @@ public class ProfileCardTest
 			sampleSprite(new Color(190, 109, 50), 16, 1),
 			sampleSprite(new Color(100, 145, 111), 16, 2),
 		};
-		data.recentSprites = new BufferedImage[]{
+		data.rareSprites = new BufferedImage[]{
 			sampleSprite(new Color(186, 139, 72), 40, 0),
 			sampleSprite(new Color(170, 178, 188), 40, 1),
 			sampleSprite(new Color(94, 57, 55), 40, 2),
@@ -71,7 +71,6 @@ public class ProfileCardTest
 			sampleSprite(new Color(210, 205, 190), 40, 1),
 			sampleSprite(new Color(207, 178, 95), 40, 2),
 		};
-		data.recentDates = new String[]{"Aug 1", "Aug 1", "Jul 22", "Jul 17", "Jul 12", "May 24"};
 		data.createdDate = "August 7, 2026";
 		data.updated = "Aug 7";
 		data.profileUrl = "killclog.com/p/420-kc";

@@ -151,9 +151,9 @@ final class ProfileCardController
 				addPending(pending, image);
 			}
 		}
-		if (data.recentSprites != null)
+		if (data.rareSprites != null)
 		{
-			for (BufferedImage image : data.recentSprites)
+			for (BufferedImage image : data.rareSprites)
 			{
 				addPending(pending, image);
 			}
