@@ -679,6 +679,11 @@ public class KillClogPanel extends PluginPanel
 		{
 			return;
 		}
+		if (!RsnInputPolicy.isValid(player))
+		{
+			showInvalidName();
+			return;
+		}
 		// Spinner must go up BEFORE the lookup: a same-player compare resolves
 		// synchronously and fires onComparisonEnter, which resets the active icon.
 		// Setting LOADING afterward would strand the spinner with no callback to clear it.
@@ -1104,15 +1109,28 @@ public class KillClogPanel extends PluginPanel
 	public void doLookup()
 	{
 		String player = searchBar.getText().trim();
-		if (player.isEmpty() || lookupSession.isLookupInFlight())
+		if (lookupSession.isLookupInFlight())
 		{
-			if (!lookupSession.isLookupInFlight())
-			{
-				setSearchStatus("Enter RSN", TEXT_DIM);
-			}
+			return;
+		}
+		if (player.isEmpty())
+		{
+			setSearchStatus("Enter RSN", TEXT_DIM);
+			return;
+		}
+		if (!RsnInputPolicy.isValid(player))
+		{
+			showInvalidName();
 			return;
 		}
 		lookupSession.start(player, localRsn, localAccountType);
+	}
+
+	private void showInvalidName()
+	{
+		searchBar.setIcon(IconTextField.Icon.SEARCH);
+		searchBar.setText("");
+		setSearchStatus(SearchMessages.INVALID_NAME, NOT_FOUND);
 	}
 
 	private void lookupSelfFromSearchIcon()

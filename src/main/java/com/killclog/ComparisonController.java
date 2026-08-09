@@ -283,7 +283,7 @@ public class ComparisonController
 	public void doCompareLookup(String player, @Nullable String localRsn)
 	{
 		final String redPlayer = player.trim();
-		if (redPlayer.isEmpty() || fanout.isInFlight())
+		if (!RsnInputPolicy.isValid(redPlayer) || fanout.isInFlight())
 		{
 			return;
 		}
