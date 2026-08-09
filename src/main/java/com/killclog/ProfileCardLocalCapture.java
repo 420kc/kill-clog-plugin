@@ -143,6 +143,7 @@ final class ProfileCardLocalCapture
 			cachedStandingAppearanceHash = appearanceHash;
 			cachedStandingIdlePose = player.getIdlePoseAnimation();
 			cachedStandingModel = snapshot;
+			ProfileStandingPoseDiagnostic.write(snapshot, cachedStandingIdlePose);
 		}
 	}
 
