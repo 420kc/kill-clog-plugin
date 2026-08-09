@@ -150,6 +150,10 @@ public class KillClogPanel extends PluginPanel
 			if (lookupSession.getClogResult() != null)
 			{
 				ClogResult clog = lookupSession.getClogResult();
+				if (clog.isFromTemple() && clog.getTempleEhp() >= 0)
+				{
+					tip.setTempleEhp(clog.getTempleEhp());
+				}
 				List<Integer> allPets = clog.getCategoryItems().get("all_pets");
 				Set<Integer> obtainedPets = LookupQueries.getObtainedPetIds(clog);
 				tip.setPets(allPets, obtainedPets, itemManager, clog::getItemName);
@@ -1594,12 +1598,20 @@ public class KillClogPanel extends PluginPanel
 
 		if (blueClog != null)
 		{
+			if (blueClog.isFromTemple() && blueClog.getTempleEhp() >= 0)
+			{
+				cmp.setBlueTempleEhp(blueClog.getTempleEhp());
+			}
 			List<Integer> allPets = blueClog.getCategoryItems().get("all_pets");
 			Set<Integer> obtainedPets = LookupQueries.getObtainedPetIds(blueClog);
 			cmp.setBluePets(allPets, obtainedPets, itemManager);
 		}
 		if (redClog != null)
 		{
+			if (redClog.isFromTemple() && redClog.getTempleEhp() >= 0)
+			{
+				cmp.setRedTempleEhp(redClog.getTempleEhp());
+			}
 			List<Integer> allPets = redClog.getCategoryItems().get("all_pets");
 			Set<Integer> obtainedPets = LookupQueries.getObtainedPetIds(redClog);
 			cmp.setRedPets(allPets, obtainedPets, itemManager);

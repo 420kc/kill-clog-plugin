@@ -44,6 +44,7 @@ public class SummaryTooltip extends TitleTooltip
 	private BufferedImage badgeIcon;
 	private String accountLabel;
 	private String prestige;
+	private double templeEhp = -1;
 
 	// Pet data only includes obtained pets: the gallery shows what you have,
 	// not the empty slots.
@@ -62,6 +63,11 @@ public class SummaryTooltip extends TitleTooltip
 		this.badgeIcon = resizeBadge(badgeIcon);
 		this.accountLabel = accountLabel;
 		this.prestige = prestige;
+	}
+
+	public void setTempleEhp(double templeEhp)
+	{
+		this.templeEhp = templeEhp;
 	}
 
 	public void setPets(List<Integer> allPetIds, Set<Integer> obtainedPetIds,
@@ -113,6 +119,7 @@ public class SummaryTooltip extends TitleTooltip
 	{
 		int lines = 1; // RSN
 		if (accountLabel != null || overallRank > 0) lines++;
+		if (templeEhp >= 0) lines++;
 		if (prestige != null) lines += 2;
 		return lines;
 	}
@@ -140,6 +147,10 @@ public class SummaryTooltip extends TitleTooltip
 		}
 		String rankLine = buildRankLine();
 		if (rankLine != null) tw = Math.max(tw, fm.stringWidth(rankLine));
+		if (templeEhp >= 0)
+		{
+			tw = Math.max(tw, fm.stringWidth("Temple EHP: " + ehbText(templeEhp)));
+		}
 		if (prestige != null)
 		{
 			tw = Math.max(tw, fm.stringWidth("Prestige:"));
@@ -227,6 +238,16 @@ public class SummaryTooltip extends TitleTooltip
 				g2.setColor(Color.WHITE);
 				g2.drawString(rankText, x, lineY);
 			}
+			lineY += LINE_HEIGHT;
+		}
+
+		if (templeEhp >= 0)
+		{
+			String label = "Temple EHP: ";
+			g2.setColor(OSRS_ORANGE);
+			g2.drawString(label, inset, lineY);
+			g2.setColor(Color.WHITE);
+			g2.drawString(ehbText(templeEhp), inset + fm.stringWidth(label), lineY);
 			lineY += LINE_HEIGHT;
 		}
 

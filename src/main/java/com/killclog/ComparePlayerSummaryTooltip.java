@@ -42,6 +42,7 @@ public class ComparePlayerSummaryTooltip extends TitleTooltip
 		BufferedImage cape;
 		String accountLabel;
 		String prestige;
+		double templeEhp = -1;
 		int totalPets;
 		List<Integer> obtainedPets;
 		BufferedImage[] petSprites;
@@ -73,6 +74,16 @@ public class ComparePlayerSummaryTooltip extends TitleTooltip
 		String accountLabel, String prestige, BufferedImage cape)
 	{
 		setData(red, rsn, rank, badge, accountLabel, prestige, cape);
+	}
+
+	public void setBlueTempleEhp(double templeEhp)
+	{
+		blue.templeEhp = templeEhp;
+	}
+
+	public void setRedTempleEhp(double templeEhp)
+	{
+		red.templeEhp = templeEhp;
 	}
 
 	private static void setData(Side side, String rsn, int rank, BufferedImage badge,
@@ -129,6 +140,7 @@ public class ComparePlayerSummaryTooltip extends TitleTooltip
 		int w = 0;
 		w = Math.max(w, fm.stringWidth("Account"));
 		w = Math.max(w, fm.stringWidth("Rank"));
+		if (blue.templeEhp >= 0 || red.templeEhp >= 0) w = Math.max(w, fm.stringWidth("Temple EHP"));
 		if (blue.prestige != null || red.prestige != null) w = Math.max(w, fm.stringWidth("Prestige"));
 		w = Math.max(w, fm.stringWidth("Pets"));
 		if (blue.cape != null) w = Math.max(w, blue.cape.getWidth());
@@ -154,6 +166,7 @@ public class ComparePlayerSummaryTooltip extends TitleTooltip
 		if (side.accountLabel != null) w = Math.max(w, fm.stringWidth(side.accountLabel));
 		// Rank: measure the real rank string, not a placeholder.
 		w = Math.max(w, fm.stringWidth(rankValueText(side.rank)));
+		if (side.templeEhp >= 0) w = Math.max(w, fm.stringWidth(ehbText(side.templeEhp)));
 		// Prestige.
 		if (side.prestige != null) w = Math.max(w, fm.stringWidth(side.prestige));
 		return w;
@@ -168,6 +181,7 @@ public class ComparePlayerSummaryTooltip extends TitleTooltip
 		h += LINE_HEIGHT;
 		// Rank.
 		h += LINE_HEIGHT;
+		if (side.templeEhp >= 0) h += LINE_HEIGHT;
 		// Prestige.
 		if (side.prestige != null) h += LINE_HEIGHT;
 		// Pets.
@@ -254,6 +268,15 @@ public class ComparePlayerSummaryTooltip extends TitleTooltip
 		g2.setColor(playerColor);
 		g2.drawString(rankValueText(side.rank), valueX, y + fm.getAscent());
 		y += LINE_HEIGHT;
+
+		if (side.templeEhp >= 0)
+		{
+			g2.setColor(OSRS_ORANGE);
+			g2.drawString("Temple EHP", labelX, y + fm.getAscent());
+			g2.setColor(playerColor);
+			g2.drawString(ehbText(side.templeEhp), valueX, y + fm.getAscent());
+			y += LINE_HEIGHT;
+		}
 
 		// Prestige.
 		if (side.prestige != null)
