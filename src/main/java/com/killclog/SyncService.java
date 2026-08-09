@@ -126,10 +126,10 @@ class SyncService
 			{
 				boolean dryRun = responseSaysDryRun(r.body);
 				return new SyncResult(true, dryRun, r.code,
-					"Collection log synced to killclog.com ("
+					"Done! ("
 					+ observedCount + (observedCount == 1 ? " item" : " items")
 					+ (pbCount > 0 ? ", " + pbCount + (pbCount == 1 ? " pb" : " pbs") : "")
-					+ (dryRun ? ", server dry run" : "") + ").");
+					+ (dryRun ? ", server dry run" : "") + ")");
 			}
 			// 409 sync_in_flight is contention, not failure: another client of
 			// this account holds the per-player lock for a moment. Advise a

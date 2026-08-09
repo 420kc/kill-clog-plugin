@@ -641,7 +641,7 @@ public class KillClogPlugin extends Plugin
 				// push is underway so the result line has an antecedent.
 				if (manual)
 				{
-					chatNotifier.send(ChatNotice.SYNC_RESULT, "Syncing collection log to killclog.com...");
+					chatNotifier.send(ChatNotice.SYNC_RESULT, "Syncing...");
 				}
 				panel.showSyncStatus("syncing...", false, false);
 				syncService.syncCollectionLog(rsn, accountHash, accountType,

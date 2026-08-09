@@ -83,7 +83,8 @@ final class ProfileAppearanceService
 					return;
 				}
 				ProfileAppearanceManifest manifest = ProfileAppearanceManifest.capture(
-					composition, client.getRevision(), SyncService.CLIENT_VERSION, followerNpcId);
+					composition, client.getRevision(), SyncService.CLIENT_VERSION, followerNpcId,
+					local.getIdlePoseAnimation());
 				if (manifest == null)
 				{
 					result.complete(failed(MODEL_UNAVAILABLE));
