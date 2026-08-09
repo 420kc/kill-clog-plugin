@@ -9,6 +9,8 @@ final class SearchMessages
 	{
 	}
 
+	static final String INVALID_NAME = "That name didn't seem to take.";
+
 	static final String[] SEARCH = {
 		"Search party for %s...",
 		"Tracking down %s...",
