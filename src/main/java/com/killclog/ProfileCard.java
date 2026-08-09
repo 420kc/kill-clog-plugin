@@ -2,7 +2,6 @@ package com.killclog;
 
 import java.awt.Color;
 import java.awt.Font;
-import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
@@ -26,8 +25,8 @@ final class ProfileCard
 	private static final int PORTRAIT_HEIGHT = 352;
 	private static final int CONTENT_X = 226;
 	private static final int SECOND_COLUMN_X = 500;
-	private static final int RECENT_SPRITE = 38;
-	private static final int RECENT_GAP = 22;
+	private static final int RARE_SPRITE = 38;
+	private static final int RARE_GAP = 22;
 	private static final int PET_SPRITE = 16;
 	private static final int PET_GAP = 3;
 
@@ -69,8 +68,7 @@ final class ProfileCard
 		int totalClues = -1;
 		int pets = -1;
 		BufferedImage[] petSprites;
-		BufferedImage[] recentSprites;
-		String[] recentDates;
+		BufferedImage[] rareSprites;
 		String createdDate;
 		String updated;
 		String profileUrl;
@@ -89,7 +87,7 @@ final class ProfileCard
 		paintHeader(g, data, base, bold);
 		paintPortrait(g, data, small);
 		paintProfileColumns(g, data, base, bold);
-		paintRecent(g, data, small, bold);
+		paintRare(g, data, small, bold);
 		paintFooter(g, data, small);
 
 		g.dispose();
@@ -186,6 +184,9 @@ final class ProfileCard
 		{
 			y = paintValueLine(g, labelFont, valueFont, CONTENT_X, y,
 				"CA Tier: ", capitalize(data.caTier.replace('_', ' ')), TEXT);
+			y = paintValueLine(g, labelFont, valueFont, CONTENT_X, y,
+				"Combat Tasks Completed: ",
+				fraction(data.combatTasksCompleted, data.totalCombatTasks), TEXT);
 		}
 		if (data.prestige != null && !data.prestige.isBlank())
 		{
@@ -212,9 +213,6 @@ final class ProfileCard
 			"Completion: ", percent, TEXT);
 		y = paintValueLine(g, labelFont, valueFont, SECOND_COLUMN_X, y,
 			"Total Clues: ", optionalNumber(data.totalClues), TEXT);
-		y = paintValueLine(g, labelFont, valueFont, SECOND_COLUMN_X, y,
-			"Combat Tasks Completed: ",
-			fraction(data.combatTasksCompleted, data.totalCombatTasks), TEXT);
 		y = paintValueLine(g, labelFont, valueFont, SECOND_COLUMN_X, y,
 			"Updated: ", text(data.updated, "--"), TEXT);
 		paintPets(g, data, labelFont, valueFont, SECOND_COLUMN_X, y + 2);
@@ -281,44 +279,34 @@ final class ProfileCard
 		return y + 18;
 	}
 
-	private static void paintRecent(Graphics2D g, Data data, Font small, Font bold)
+	private static void paintRare(Graphics2D g, Data data, Font small, Font bold)
 	{
 		g.setFont(bold.deriveFont(16f));
 		g.setColor(ORANGE);
-		g.drawString("Recent Collections", CONTENT_X, 324);
+		g.drawString("Rare", CONTENT_X, 324);
 
-		if (!hasSprites(data.recentSprites))
+		if (!hasSprites(data.rareSprites))
 		{
 			g.setFont(small);
 			g.setColor(TEXT_MUTED);
-			g.drawString("No recent collection log items", CONTENT_X, 353);
+			g.drawString("No rare trophies yet", CONTENT_X, 353);
 			paintHorizontalSeparator(g, 414);
 			return;
 		}
 
-		int count = Math.min(data.recentSprites.length, 6);
-		int rowWidth = count * RECENT_SPRITE + Math.max(0, count - 1) * RECENT_GAP;
+		int count = Math.min(data.rareSprites.length, 6);
+		int rowWidth = count * RARE_SPRITE + Math.max(0, count - 1) * RARE_GAP;
 		int contentWidth = WIDTH - CONTENT_X - PAD;
 		int spriteX = CONTENT_X + (contentWidth - rowWidth) / 2;
-		int spriteY = 337;
+		int spriteY = 345;
 		for (int i = 0; i < count; i++)
 		{
-			BufferedImage sprite = data.recentSprites[i];
+			BufferedImage sprite = data.rareSprites[i];
 			if (sprite != null)
 			{
-				g.drawImage(sprite, spriteX, spriteY, RECENT_SPRITE, RECENT_SPRITE, null);
+				g.drawImage(sprite, spriteX, spriteY, RARE_SPRITE, RARE_SPRITE, null);
 			}
-			String date = data.recentDates != null && i < data.recentDates.length
-				? data.recentDates[i] : null;
-			if (date != null)
-			{
-				g.setFont(small);
-				g.setColor(TEXT_MUTED);
-				FontMetrics metrics = g.getFontMetrics();
-				g.drawString(date, spriteX + (RECENT_SPRITE - metrics.stringWidth(date)) / 2,
-					spriteY + RECENT_SPRITE + 15);
-			}
-			spriteX += RECENT_SPRITE + RECENT_GAP;
+			spriteX += RARE_SPRITE + RARE_GAP;
 		}
 		paintHorizontalSeparator(g, 414);
 	}

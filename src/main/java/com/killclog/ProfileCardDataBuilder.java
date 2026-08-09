@@ -3,7 +3,9 @@ package com.killclog;
 import java.awt.image.BufferedImage;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -14,6 +16,7 @@ import net.runelite.client.game.ItemManager;
 final class ProfileCardDataBuilder
 {
 	private static final int MAX_PET_SPRITES = 24;
+	private static final int MAX_RARE_TROPHIES = 6;
 	private static final DateTimeFormatter CARD_DATE =
 		DateTimeFormatter.ofPattern("MMMM d, uuuu", Locale.US);
 
@@ -117,18 +120,50 @@ final class ProfileCardDataBuilder
 			}
 		}
 
-		List<ClogResult.ClogItem> recent = LookupQueries.getRecentItems(clog, 6);
-		data.recentSprites = new BufferedImage[recent.size()];
-		data.recentDates = new String[recent.size()];
-		for (int i = 0; i < recent.size(); i++)
+		List<ClogResult.ClogItem> rare = rareTrophies(clog);
+		data.rareSprites = new BufferedImage[rare.size()];
+		for (int i = 0; i < rare.size(); i++)
 		{
-			ClogResult.ClogItem item = recent.get(i);
-			data.recentSprites[i] = itemManager.getImage(item.getId(), 1, false);
-			data.recentDates[i] = ClogSummaryTooltip.shortDate(item.getDate());
+			data.rareSprites[i] = itemManager.getImage(rare.get(i).getId(), 1, false);
 		}
 
 		boolean stale = LookupQueries.isSyncStale(lastChanged, 90);
 		data.updated = LookupQueries.syncLine(lastChanged, stale);
+	}
+
+	static List<ClogResult.ClogItem> rareTrophies(ClogResult clog)
+	{
+		List<ClogResult.ClogItem> specials =
+			ClogHelper.obtainedSpecialItems(PanelData.SPECIAL_ITEM_IDS, clog);
+		List<ClogResult.ClogItem> thirdAge =
+			ClogHelper.obtainedSpecialItems(PanelData.THIRD_AGE_ITEMS, clog);
+		List<ClogResult.ClogItem> megaRares =
+			ClogHelper.obtainedSpecialItems(PanelData.MEGARARE_ITEM_IDS, clog);
+
+		List<ClogResult.ClogItem> result = new ArrayList<>(MAX_RARE_TROPHIES);
+		Set<Integer> seen = new LinkedHashSet<>();
+		appendRare(result, seen, specials, MAX_RARE_TROPHIES);
+		int thirdAgeLimit = Math.max(result.size(), MAX_RARE_TROPHIES - megaRares.size());
+		appendRare(result, seen, thirdAge, thirdAgeLimit);
+		appendRare(result, seen, megaRares, MAX_RARE_TROPHIES);
+		appendRare(result, seen, thirdAge, MAX_RARE_TROPHIES);
+		return result;
+	}
+
+	private static void appendRare(List<ClogResult.ClogItem> result, Set<Integer> seen,
+		List<ClogResult.ClogItem> candidates, int limit)
+	{
+		for (ClogResult.ClogItem item : candidates)
+		{
+			if (result.size() >= limit)
+			{
+				return;
+			}
+			if (seen.add(item.getId()))
+			{
+				result.add(item);
+			}
+		}
 	}
 
 	static boolean isSelfPlayer(@Nullable String displayedRsn, @Nullable String localRsn)
