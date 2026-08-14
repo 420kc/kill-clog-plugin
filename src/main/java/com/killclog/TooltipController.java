@@ -69,14 +69,33 @@ class TooltipController
 	 */
 	void addCellHoverEffect(JPanel cell, JLabel label)
 	{
+		addCellHoverEffect(cell, label, label);
+	}
+
+	/**
+	 * Row-shaped variant: the hover outline follows {@code colorSource}'s
+	 * foreground while the cell and every listed surface accept hover and
+	 * click. The click tooltip comes from the pressed surface when it carries
+	 * one, else from the first surface (which also keeps the popup anchor
+	 * stable for presses on the bare cell).
+	 */
+	void addCellHoverEffect(JPanel cell, JLabel colorSource, JLabel... surfaces)
+	{
 		MouseAdapter hoverAdapter = new MouseAdapter()
 		{
 			@Override
 			public void mousePressed(MouseEvent e)
 			{
-				if (config.tooltipMode() == TooltipMode.CLICK && label.getToolTipText() != null)
+				if (config.tooltipMode() != TooltipMode.CLICK)
 				{
-					showClickTooltip(label, cell);
+					return;
+				}
+				JLabel source = e.getSource() instanceof JLabel
+					&& ((JLabel) e.getSource()).getToolTipText() != null
+					? (JLabel) e.getSource() : surfaces[0];
+				if (source.getToolTipText() != null)
+				{
+					showClickTooltip(source, cell);
 				}
 			}
 
@@ -93,7 +112,7 @@ class TooltipController
 				switch (config.hoverStyle())
 				{
 					case OUTLINE:
-						Color fg = label.getForeground();
+						Color fg = colorSource.getForeground();
 						Color outline = (fg.equals(KC_COLOR) || fg.equals(ColorScheme.LIGHT_GRAY_COLOR))
 							? HOVER_OUTLINE_DIM : fg;
 						cell.setBorder(new MatteBorder(1, 1, 1, 1, outline));
@@ -123,7 +142,10 @@ class TooltipController
 			}
 		};
 		cell.addMouseListener(hoverAdapter);
-		label.addMouseListener(hoverAdapter);
+		for (JLabel surface : surfaces)
+		{
+			surface.addMouseListener(hoverAdapter);
+		}
 	}
 
 	void resetCellHover()
