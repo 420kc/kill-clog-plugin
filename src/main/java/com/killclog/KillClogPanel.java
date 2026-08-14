@@ -9,7 +9,6 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
-import java.awt.RenderingHints;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -403,8 +402,7 @@ public class KillClogPanel extends PluginPanel
 		clogNotice.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		clogNotice.setHorizontalAlignment(JLabel.CENTER);
 		clogNotice.setText(" ");
-		clogNotice.putClientProperty(
-			RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+		ClogHelper.antialias(clogNotice);
 		add(clogNotice, c);
 
 		// Compare entry controls live in the search row.

@@ -3,7 +3,6 @@ package com.killclog;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.function.BooleanSupplier;
@@ -89,8 +88,7 @@ final class PanelInfoBar
 		label.setVerticalAlignment(JLabel.CENTER);
 		label.setVerticalTextPosition(JLabel.CENTER);
 		label.setIconTextGap(3);
-		label.putClientProperty(
-			RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+		ClogHelper.antialias(label);
 	}
 
 	private static void installInfoClicks(JLabel label, JPanel infoRow,
