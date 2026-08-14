@@ -44,7 +44,9 @@ import net.runelite.client.util.Text;
 @PluginDescriptor(
 	name = "Kill Clog",
 	description = "HiScores and Collection Log Overhaul",
-	tags = {"boss", "kc", "kill count", "collection log", "pvm", "hiscore", "ironman", "templeosrs"}
+	tags = {"boss", "kc", "kill count", "collection log", "clog", "hiscores", "pvm", "pb",
+		"personal best", "ironman", "comparison", "sync", "templeosrs", "runeprofile",
+		"combat achievements"}
 )
 public class KillClogPlugin extends Plugin
 {
