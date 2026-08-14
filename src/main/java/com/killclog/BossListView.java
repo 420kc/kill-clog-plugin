@@ -1,8 +1,8 @@
 /*
  * Copyright (c) 2026, 420 kc <dyl@420kc.dev>
- * Full-width alphabetical boss list: the hiscores-style alternative to the
- * boss grid. One row per boss - [icon] name, colored kc - reusing the grid's
- * tooltip routing so every row opens the same clog popup as its grid cell.
+ * Full-width boss list in the hiscores' own order: the list-style alternative
+ * to the boss grid. One row per boss - [icon] name, colored kc - reusing the
+ * grid's tooltip routing so every row opens the same clog popup as its cell.
  */
 package com.killclog;
 
@@ -61,7 +61,11 @@ public class BossListView
 		root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
 		root.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
-		// PanelData.BOSSES is the curated alphabetical order; the list keeps it.
+		// PanelData.BOSSES is the Jagex hiscores order: near-alphabetical with
+		// vanilla's deliberate pairings kept (Nightmare then Phosani's,
+		// Gauntlet then Corrupted). The list keeps vanilla's order rather
+		// than imposing a strict sort - "the other vanilla format" is the
+		// product promise, and every player has already scanned this order.
 		for (HiscoreSkill boss : PanelData.BOSSES)
 		{
 			root.add(buildRow(boss, spriteManager, tooltipController, cells));
