@@ -143,28 +143,21 @@ public class BossListView
 	{
 		Row row = new Row();
 
-		row.icon = new JLabel();
+		// All three labels carry the boss tooltip so the WHOLE row pops the
+		// clog popup in hover mode - icon and kc included, no dead zones.
+		row.icon = bossTooltipLabel(boss, cells);
 		row.icon.setPreferredSize(new Dimension(24, ROW_HEIGHT));
 		row.icon.setHorizontalAlignment(JLabel.CENTER);
 		loadIcon(row, boss.getSpriteId(), spriteManager);
 
-		// The name label is the tooltip owner, same routing as the grid cell:
-		// hover mode pops it over the name, click mode pops it from anywhere
-		// in the row via the cell hover effect below.
-		row.name = new JLabel(boss.getName())
-		{
-			@Override
-			public JToolTip createToolTip()
-			{
-				return cells.buildBossTooltipFor(this, boss);
-			}
-		};
+		row.name = bossTooltipLabel(boss, cells);
+		row.name.setText(boss.getName());
 		row.name.setFont(FontManager.getRunescapeSmallFont());
 		row.name.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-		row.name.setToolTipText(" ");
 		antialias(row.name);
 
-		row.kc = new JLabel("--");
+		row.kc = bossTooltipLabel(boss, cells);
+		row.kc.setText("--");
 		row.kc.setFont(FontManager.getRunescapeSmallFont());
 		row.kc.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		row.kc.setHorizontalAlignment(JLabel.RIGHT);
@@ -180,10 +173,28 @@ public class BossListView
 		panel.add(row.icon, BorderLayout.WEST);
 		panel.add(row.name, BorderLayout.CENTER);
 		panel.add(row.kc, BorderLayout.EAST);
-		tooltipController.addCellHoverEffect(panel, row.name);
+		// Outline color follows the kc label (mirrored from the grid, so the
+		// completion highlighter shows through, same as the grid cell); the
+		// name stays the popup anchor for bare-cell presses.
+		tooltipController.addCellHoverEffect(panel, row.kc, row.name, row.icon, row.kc);
 
 		rows.put(boss, row);
 		return panel;
+	}
+
+	/** A row label that routes its tooltip through the grid's boss popup. */
+	private static JLabel bossTooltipLabel(HiscoreSkill boss, Cells cells)
+	{
+		JLabel label = new JLabel()
+		{
+			@Override
+			public JToolTip createToolTip()
+			{
+				return cells.buildBossTooltipFor(this, boss);
+			}
+		};
+		label.setToolTipText(" ");
+		return label;
 	}
 
 	/** The panel-wide text treatment every other label already wears. */
