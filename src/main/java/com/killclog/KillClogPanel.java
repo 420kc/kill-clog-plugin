@@ -32,6 +32,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JToolTip;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
@@ -487,12 +488,26 @@ public class KillClogPanel extends PluginPanel
 		bossViewContainer.repaint();
 	}
 
+	private static final String COMPARE_VIEW_STATUS = "exit compare to switch views";
+
 	/** Hamburger click: flip the persisted style and re-apply. */
 	private void toggleBossViewStyle()
 	{
 		if (comparison.isComparisonMode())
 		{
-			setSearchStatus("exit compare to switch views", TEXT_DIM);
+			setSearchStatus(COMPARE_VIEW_STATUS, TEXT_DIM);
+			// Transient refusal: clears itself unless something else has
+			// already written over it. Every other status here is cleared by
+			// a follow-up path; this one has none.
+			Timer clear = new Timer(2500, e ->
+			{
+				if (COMPARE_VIEW_STATUS.equals(searchStatus.getText()))
+				{
+					setSearchStatus(" ", TEXT_DIM);
+				}
+			});
+			clear.setRepeats(false);
+			clear.start();
 			return;
 		}
 		configManager.setConfiguration("killclog", "bossListView", !config.bossListView());
