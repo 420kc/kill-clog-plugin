@@ -203,6 +203,17 @@ public interface KillClogConfig extends Config
 		return true;
 	}
 
+	@ConfigItem(
+		keyName = "showChatEmojis",
+		name = "Show emojis in chat",
+		description = "Render :clog:, :rune:, :dragon: and friends as item icons in chat messages",
+		position = 9
+	)
+	default boolean showChatEmojis()
+	{
+		return true;
+	}
+
 	// Tooltip header lines.
 
 	@ConfigSection(
