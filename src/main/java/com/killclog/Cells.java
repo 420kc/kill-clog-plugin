@@ -632,6 +632,12 @@ public class Cells
 
 	// Tooltip routing
 
+	/** List-view rows reuse the grid's tooltip routing; owner is the row's anchor label. */
+	public JToolTip buildBossTooltipFor(JLabel owner, HiscoreSkill boss)
+	{
+		return buildBossTooltip(owner, boss);
+	}
+
 	private JToolTip buildBossTooltip(JLabel owner, HiscoreSkill boss)
 	{
 		return buildBossTooltip(owner, tooltipDataMap.get(boss),

@@ -343,6 +343,17 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "bossListView",
+		name = "",
+		description = "",
+		hidden = true
+	)
+	default boolean bossListView()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "seenSelfGreeting",
 		name = "",
 		description = "",
