@@ -72,6 +72,9 @@ public class ActivitiesTray
 		clip.setPreferredSize(new Dimension(0, expanded ? content.getPreferredSize().height : 0));
 		clip.setVisible(expanded);
 
+		// The separator is the tray's only toggle (the hamburger switches boss
+		// views now), so it stays visible in BOTH states: hidden-when-collapsed
+		// would make one collapse unrecoverable for the whole session.
 		this.separator = new JPanel();
 		separator.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		separator.setPreferredSize(new Dimension(0, 7));
@@ -97,7 +100,6 @@ public class ActivitiesTray
 				separator.setBackground(sepNormal);
 			}
 		});
-		separator.setVisible(expanded);
 	}
 
 	public JPanel getClip()
@@ -128,7 +130,6 @@ public class ActivitiesTray
 		onToggle.run();
 
 		int targetHeight = expanded ? content.getPreferredSize().height : 0;
-		separator.setVisible(expanded);
 		if (expanded)
 		{
 			clip.setVisible(true);
@@ -152,7 +153,6 @@ public class ActivitiesTray
 				if (!expanded)
 				{
 					clip.setVisible(false);
-					separator.setVisible(false);
 				}
 			}
 		});
