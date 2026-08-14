@@ -14,6 +14,7 @@ import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeListener;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.function.BooleanSupplier;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -28,9 +29,14 @@ import net.runelite.client.ui.FontManager;
  * than re-deriving values: the grid is always rendered (even while hidden),
  * and each row listens to its grid label's text / foreground / icon property
  * changes. Every writer - the search-start reset, results landing, the
- * completionist highlighter, 420 mode, comparison exit, whatever comes next -
- * propagates into the list with no per-call-site wiring, which is what keeps
- * the two views incapable of disagreeing.
+ * completionist highlighter, 420 mode, whatever comes next - propagates into
+ * the list with no per-call-site wiring, which is what keeps the two views
+ * incapable of disagreeing.
+ *
+ * <p>The one deliberate pause: while comparison holds the grid on screen the
+ * mirror sits out, so compare's per-hover HTML rewrites never reach the
+ * hidden rows. The exit path rewrites every boss label (restore + rerender),
+ * which resyncs the rows the moment the list can show again.
  */
 public class BossListView
 {
@@ -39,6 +45,7 @@ public class BossListView
 
 	private final JPanel root;
 	private final Map<HiscoreSkill, Row> rows = new LinkedHashMap<>();
+	private final BooleanSupplier mirrorActive;
 
 	private static final class Row
 	{
@@ -50,9 +57,13 @@ public class BossListView
 	/**
 	 * @param thermoEasterEgg the guarded 420-mode cycle, wired to the Thermo
 	 * row's kc label - the same hit area the grid gives it
+	 * @param mirrorActive false while the grid is the forced view (compare);
+	 * the mirror skips those writes and the exit rewrite resyncs the rows
 	 */
-	public BossListView(TooltipController tooltipController, Cells cells, Runnable thermoEasterEgg)
+	public BossListView(TooltipController tooltipController, Cells cells,
+		Runnable thermoEasterEgg, BooleanSupplier mirrorActive)
 	{
+		this.mirrorActive = mirrorActive;
 		root = new JPanel();
 		root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
 		root.setBackground(ColorScheme.DARKER_GRAY_COLOR);
@@ -88,7 +99,13 @@ public class BossListView
 		{
 			return;
 		}
-		PropertyChangeListener mirror = e -> sync(row, gridLabel, e.getPropertyName());
+		PropertyChangeListener mirror = e ->
+		{
+			if (mirrorActive.getAsBoolean())
+			{
+				sync(row, gridLabel, e.getPropertyName());
+			}
+		};
 		gridLabel.addPropertyChangeListener("text", mirror);
 		gridLabel.addPropertyChangeListener("foreground", mirror);
 		gridLabel.addPropertyChangeListener("icon", mirror);

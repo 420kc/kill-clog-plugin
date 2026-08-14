@@ -360,7 +360,8 @@ public class KillClogPanel extends PluginPanel
 
 		c.gridy++;
 		bossGridPanel = cells.buildBossGrid();
-		bossListView = new BossListView(tooltipController, cells, this::fireFourTwentyEasterEgg);
+		bossListView = new BossListView(tooltipController, cells,
+			this::fireFourTwentyEasterEgg, this::bossListAvailable);
 		bossViewContainer = new JPanel(new BorderLayout());
 		bossViewContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		add(bossViewContainer, c);
@@ -474,13 +475,23 @@ public class KillClogPanel extends PluginPanel
 	// Boss view style (grid / list).
 
 	/**
+	 * The single rule for when the list may show: never during comparison -
+	 * it is a single-player hiscores surface. applyBossViewStyle, the
+	 * hamburger guard, and the row mirror's pause all consult THIS method,
+	 * so if the rule ever relaxes, all three move together.
+	 */
+	private boolean bossListAvailable()
+	{
+		return !comparison.isComparisonMode();
+	}
+
+	/**
 	 * Show the boss view the config asks for. Comparison mode always shows
-	 * the grid - the list is a single-player hiscores surface - and the
-	 * stored preference comes back on exit.
+	 * the grid; the stored preference comes back on exit.
 	 */
 	private void applyBossViewStyle()
 	{
-		boolean list = config.bossListView() && !comparison.isComparisonMode();
+		boolean list = config.bossListView() && bossListAvailable();
 		bossViewContainer.removeAll();
 		bossViewContainer.add(list ? bossListView.component() : bossGridPanel, BorderLayout.CENTER);
 		bossViewContainer.revalidate();
@@ -492,7 +503,7 @@ public class KillClogPanel extends PluginPanel
 	/** Hamburger click: flip the persisted style and re-apply. */
 	private void toggleBossViewStyle()
 	{
-		if (comparison.isComparisonMode())
+		if (!bossListAvailable())
 		{
 			setSearchStatus(COMPARE_VIEW_STATUS, TEXT_DIM);
 			// Transient refusal: clears itself unless something else has
