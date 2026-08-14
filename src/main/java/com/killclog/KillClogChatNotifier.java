@@ -33,10 +33,12 @@ final class KillClogChatNotifier
 		switch (notice)
 		{
 			case NEW_DROP:
-				return config.autosyncChatMessages();
-			case SYNC_HELP:
 			case SYNC_RESULT:
 			case WARNING:
+				return config.autosyncChatMessages();
+			case SYNC_HELP:
+				// Always on: the guidance lines are the only path out of an
+				// unsynced state, and a muted user cannot know they muted them.
 				return true;
 			default:
 				return true;

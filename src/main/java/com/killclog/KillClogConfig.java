@@ -194,8 +194,8 @@ public interface KillClogConfig extends Config
 	// keyName is the legacy name; renaming it would reset users' saved setting.
 	@ConfigItem(
 		keyName = "chatNewClogMessages",
-		name = "Autosync chat messages",
-		description = "Show Added ... to Kill Clog when autosync updates your local collection log",
+		name = "Sync chat messages",
+		description = "Show Kill Clog sync messages in chat: new drop captures, sync results, and warnings. Setup guidance always shows.",
 		position = 8
 	)
 	default boolean autosyncChatMessages()
