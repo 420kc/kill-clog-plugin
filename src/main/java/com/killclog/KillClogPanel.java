@@ -522,7 +522,7 @@ public class KillClogPanel extends PluginPanel
 			return;
 		}
 		configManager.setConfiguration("killclog", "bossListView", !config.bossListView());
-		bossListView.renderFrom(cells, lookupSession.getHiscoreResult());
+		bossListView.renderFrom(cells);
 		applyBossViewStyle();
 	}
 
@@ -1415,7 +1415,7 @@ public class KillClogPanel extends PluginPanel
 		// Mirror the freshly rendered grid state into the list rows. During
 		// comparison the list is hidden and the exit path re-runs this with
 		// primary values, so mirroring unconditionally stays correct.
-		bossListView.renderFrom(cells, lookupSession.getHiscoreResult());
+		bossListView.renderFrom(cells);
 	}
 
 	// Public interface.

@@ -1,24 +1,25 @@
 /*
  * Copyright (c) 2026, 420 kc <dyl@420kc.dev>
  * Full-width alphabetical boss list: the hiscores-style alternative to the
- * boss grid. One row per boss - [icon] name, rank, kc - reusing the grid's
+ * boss grid. One row per boss - [icon] name, colored kc - reusing the grid's
  * tooltip routing so every row opens the same clog popup as its grid cell.
  */
 package com.killclog;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.RenderingHints;
 import java.util.LinkedHashMap;
-import java.util.Locale;
 import java.util.Map;
 import javax.annotation.Nullable;
-import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JToolTip;
 import javax.swing.SwingUtilities;
+import javax.swing.border.EmptyBorder;
 import net.runelite.client.game.SpriteManager;
 import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.ui.ColorScheme;
@@ -30,15 +31,13 @@ import net.runelite.client.util.ImageUtil;
  * MIRROR the grid labels rather than re-deriving them: the grid is always
  * rendered (even while hidden), so copying its state keeps the list in exact
  * parity with every coloring rule the grid learns - completionist
- * highlighter, 420 mode, future ones - without a second render path. Only
- * the rank column is read directly from the hiscore result, because the grid
- * cells never display rank.
+ * highlighter, 420 mode, future ones - without a second render path.
  */
 public class BossListView
 {
 	private static final int ROW_HEIGHT = 22;
-	private static final int RANK_WIDTH = 56;
 	private static final int KC_WIDTH = 46;
+	private static final Color NAME_COLOR = Color.WHITE;
 
 	private final JPanel root;
 	private final Map<HiscoreSkill, Row> rows = new LinkedHashMap<>();
@@ -47,7 +46,6 @@ public class BossListView
 	{
 		JLabel icon;
 		JLabel name;
-		JLabel rank;
 		JLabel kc;
 		ImageIcon original;
 		ImageIcon dimmed;
@@ -81,11 +79,11 @@ public class BossListView
 	}
 
 	/**
-	 * Mirror the grid labels into the rows: kc text and color, icon dim
-	 * state, plus the rank column from the hiscore result (null before the
-	 * first lookup - rows keep their cold "--" state).
+	 * Mirror the grid labels into the rows: kc text and color, plus icon dim
+	 * state. Before the first lookup the grid holds its cold defaults and the
+	 * rows copy those.
 	 */
-	public void renderFrom(Cells cells, @Nullable HiscoreResult result)
+	public void renderFrom(Cells cells)
 	{
 		for (Map.Entry<HiscoreSkill, Row> entry : rows.entrySet())
 		{
@@ -93,23 +91,17 @@ public class BossListView
 			Row row = entry.getValue();
 
 			JLabel gridLabel = cells.getBossLabel(boss);
-			if (gridLabel != null)
+			if (gridLabel == null)
 			{
-				row.kc.setText(gridLabel.getText().trim());
-				row.kc.setForeground(gridLabel.getForeground());
-				boolean dimmedInGrid = gridLabel.getIcon() != null
-					&& gridLabel.getIcon() == cells.getDimmedIcons().get(boss);
-				if (row.original != null)
-				{
-					row.icon.setIcon(dimmedInGrid ? row.dimmed : row.original);
-				}
+				continue;
 			}
-
-			if (result != null)
+			row.kc.setText(gridLabel.getText().trim());
+			row.kc.setForeground(gridLabel.getForeground());
+			boolean dimmedInGrid = gridLabel.getIcon() != null
+				&& gridLabel.getIcon() == cells.getDimmedIcons().get(boss);
+			if (row.original != null)
 			{
-				String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(boss.getName(), boss.getName());
-				int rank = result.getRank(hiscoreName);
-				row.rank.setText(rank > 0 ? String.format(Locale.US, "%,d", rank) : "--");
+				row.icon.setIcon(dimmedInGrid ? row.dimmed : row.original);
 			}
 		}
 	}
@@ -136,19 +128,17 @@ public class BossListView
 			}
 		};
 		row.name.setFont(FontManager.getRunescapeSmallFont());
-		row.name.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		row.name.setForeground(NAME_COLOR);
 		row.name.setToolTipText(" ");
+		antialias(row.name);
 
-		row.rank = rightColumn(RANK_WIDTH);
-		row.kc = rightColumn(KC_WIDTH);
-
-		JPanel east = new JPanel();
-		east.setLayout(new BoxLayout(east, BoxLayout.X_AXIS));
-		east.setOpaque(false);
-		east.add(row.rank);
-		east.add(Box.createHorizontalStrut(6));
-		east.add(row.kc);
-		east.add(Box.createHorizontalStrut(4));
+		row.kc = new JLabel("--");
+		row.kc.setFont(FontManager.getRunescapeSmallFont());
+		row.kc.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		row.kc.setHorizontalAlignment(JLabel.RIGHT);
+		row.kc.setPreferredSize(new Dimension(KC_WIDTH, ROW_HEIGHT));
+		row.kc.setBorder(new EmptyBorder(0, 0, 0, 4));
+		antialias(row.kc);
 
 		JPanel panel = new JPanel(new BorderLayout(4, 0));
 		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
@@ -157,22 +147,18 @@ public class BossListView
 		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, ROW_HEIGHT));
 		panel.add(row.icon, BorderLayout.WEST);
 		panel.add(row.name, BorderLayout.CENTER);
-		panel.add(east, BorderLayout.EAST);
+		panel.add(row.kc, BorderLayout.EAST);
 		tooltipController.addCellHoverEffect(panel, row.name);
 
 		rows.put(boss, row);
 		return panel;
 	}
 
-	private static JLabel rightColumn(int width)
+	/** The panel-wide text treatment every other label already wears. */
+	private static void antialias(JLabel label)
 	{
-		JLabel label = new JLabel("--");
-		label.setFont(FontManager.getRunescapeSmallFont());
-		label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-		label.setHorizontalAlignment(JLabel.RIGHT);
-		label.setPreferredSize(new Dimension(width, ROW_HEIGHT));
-		label.setMaximumSize(new Dimension(width, ROW_HEIGHT));
-		return label;
+		label.putClientProperty(
+			RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 	}
 
 	private void loadIcon(Row row, int spriteId, SpriteManager spriteManager)
