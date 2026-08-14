@@ -99,6 +99,16 @@ public class KillclogService
 	// keys by HiscoreSkill name), so lookups need no key translation.
 	private final Map<String, Map<String, Double>> pbCache = new ConcurrentHashMap<>();
 
+	/**
+	 * The one pb-cache key normalization. Write and read sides previously
+	 * disagreed (bare toLowerCase vs Locale.ROOT), which silently broke pb
+	 * lines for players whose locale folds I/i differently (tr/az).
+	 */
+	private static String pbKey(String playerName)
+	{
+		return playerName.toLowerCase(java.util.Locale.ROOT);
+	}
+
 	@Inject
 	public KillclogService(OkHttpClient httpClient, Gson gson, ClogService clogService)
 	{
@@ -161,7 +171,7 @@ public class KillclogService
 	 */
 	public CompletableFuture<ClogResult> lookupClog(String playerName)
 	{
-		String key = playerName.toLowerCase();
+		String key = pbKey(playerName);
 		long now = System.currentTimeMillis();
 
 		ClogResult cached = clogCache.get(key);
@@ -238,7 +248,7 @@ public class KillclogService
 		{
 			return null;
 		}
-		Map<String, Double> pbs = pbCache.get(playerName.toLowerCase());
+		Map<String, Double> pbs = pbCache.get(pbKey(playerName));
 		if (pbs == null)
 		{
 			return null;
