@@ -1,5 +1,6 @@
 package com.killclog;
 
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
@@ -236,6 +237,10 @@ public class KillClogPanel extends PluginPanel
 	private JLabel combatCell;
 	private JLabel totalLvlCell;
 	private ActivitiesTray activitiesTray;
+	// Boss view: grid and list share one container; the hamburger switches them.
+	private BossListView bossListView;
+	private JPanel bossViewContainer;
+	private JPanel bossGridPanel;
 
 	// Current lookup state lives on lookupSession; rsn here is a separate
 	// display-name field set by fetchRsn for the playerName label.
@@ -353,23 +358,16 @@ public class KillClogPanel extends PluginPanel
 		add(activitiesTray.getSeparator(), c);
 
 		c.gridy++;
-		add(cells.buildBossGrid(), c);
-		// 420 mode easter egg: secret cycle on Thermonuclear Smoke Devil click.
-		JLabel thermoLabel = cells.getBossLabel(HiscoreSkill.THERMONUCLEAR_SMOKE_DEVIL);
-		if (thermoLabel != null)
-		{
-			thermoLabel.addMouseListener(new MouseAdapter()
-			{
-				@Override
-				public void mousePressed(MouseEvent e)
-				{
-					if (has420Plugin && !comparison.isComparisonMode())
-					{
-						cycleFourTwentyMode();
-					}
-				}
-			});
-		}
+		bossGridPanel = cells.buildBossGrid();
+		bossListView = new BossListView(spriteManager, tooltipController, cells);
+		bossViewContainer = new JPanel(new BorderLayout());
+		bossViewContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		add(bossViewContainer, c);
+		applyBossViewStyle();
+		// 420 mode easter egg: secret cycle on Thermonuclear Smoke Devil click,
+		// alive in both views.
+		wireFourTwentyEasterEgg(cells.getBossLabel(HiscoreSkill.THERMONUCLEAR_SMOKE_DEVIL));
+		wireFourTwentyEasterEgg(bossListView.nameLabel(HiscoreSkill.THERMONUCLEAR_SMOKE_DEVIL));
 
 		// Collection log sync notice below boss grid
 		c.gridy++;
@@ -466,11 +464,60 @@ public class KillClogPanel extends PluginPanel
 			tooltipController,
 			config::tooltipMode,
 			comparison::isComparisonMode,
-			() -> activitiesTray.toggle());
+			this::toggleBossViewStyle);
 		panel.add(infoRow);
 
 		iconCache.loadRuntimeIcons(cells, caRewardSprites);
 		return panel;
+	}
+
+	// Boss view style (grid / list).
+
+	/**
+	 * Show the boss view the config asks for. Comparison mode always shows
+	 * the grid - the list is a single-player hiscores surface - and the
+	 * stored preference comes back on exit.
+	 */
+	private void applyBossViewStyle()
+	{
+		boolean list = config.bossListView() && !comparison.isComparisonMode();
+		bossViewContainer.removeAll();
+		bossViewContainer.add(list ? bossListView.component() : bossGridPanel, BorderLayout.CENTER);
+		bossViewContainer.revalidate();
+		bossViewContainer.repaint();
+	}
+
+	/** Hamburger click: flip the persisted style and re-apply. */
+	private void toggleBossViewStyle()
+	{
+		if (comparison.isComparisonMode())
+		{
+			setSearchStatus("exit compare to switch views", TEXT_DIM);
+			return;
+		}
+		configManager.setConfiguration("killclog", "bossListView", !config.bossListView());
+		bossListView.renderFrom(cells, lookupSession.getHiscoreResult());
+		applyBossViewStyle();
+	}
+
+	/** Secret 420-mode cycle on a Thermonuclear Smoke Devil label. */
+	private void wireFourTwentyEasterEgg(@Nullable JLabel label)
+	{
+		if (label == null)
+		{
+			return;
+		}
+		label.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mousePressed(MouseEvent e)
+			{
+				if (has420Plugin && !comparison.isComparisonMode())
+				{
+					cycleFourTwentyMode();
+				}
+			}
+		});
 	}
 
 	// Activities tray.
@@ -684,6 +731,7 @@ public class KillClogPanel extends PluginPanel
 		setSearchStatus(" ", TEXT_DIM);
 		comparison.updateAllCells();
 		comparison.updateInfoBar();
+		applyBossViewStyle();
 		toggleHighlighter(config.completionistHighlighter());
 		searchRow.revalidate();
 	}
@@ -733,6 +781,7 @@ public class KillClogPanel extends PluginPanel
 	public void onComparisonEnter(String redRsn)
 	{
 		searchRowController.onComparisonEnter();
+		applyBossViewStyle();
 		setSearchStatus(" ", TEXT_DIM);
 		updateClogTotalsBar();
 		cells.rebuildPrimaryTooltips(localRsn);
@@ -1277,6 +1326,11 @@ public class KillClogPanel extends PluginPanel
 			comparison.updateAllCells();
 			comparison.updateInfoBar();
 		}
+
+		// Mirror the freshly rendered grid state into the list rows. During
+		// comparison the list is hidden and the exit path re-runs this with
+		// primary values, so mirroring unconditionally stays correct.
+		bossListView.renderFrom(cells, lookupSession.getHiscoreResult());
 	}
 
 	// Public interface.
