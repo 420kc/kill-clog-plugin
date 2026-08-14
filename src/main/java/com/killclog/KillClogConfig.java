@@ -331,6 +331,9 @@ public interface KillClogConfig extends Config
 
 	// Persisted UI state, not user settings.
 
+	// Open by default since the hamburger stopped being the tray's toggle
+	// (the separator still collapses it); a closed-by-default tray would be
+	// discoverable only through the 7px separator strip.
 	@ConfigItem(
 		keyName = "activitiesExpanded",
 		name = "",
@@ -339,7 +342,7 @@ public interface KillClogConfig extends Config
 	)
 	default boolean activitiesExpanded()
 	{
-		return false;
+		return true;
 	}
 
 	@ConfigItem(
