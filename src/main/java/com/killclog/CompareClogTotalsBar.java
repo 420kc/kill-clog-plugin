@@ -24,6 +24,10 @@ final class CompareClogTotalsBar
 	private final JPanel panel;
 	private final JLabel blueTotal;
 	private final JLabel redTotal;
+	// Whether either side carries clog data: both labels open the same shared
+	// summary popup, so the underline affordance lights only when that popup
+	// has something to show. A double "--" bar stays quiet.
+	private boolean anyClogData;
 
 	CompareClogTotalsBar(BooleanSupplier comparisonMode, Supplier<TooltipMode> tooltipMode,
 		TooltipController tooltipController, Function<JComponent, JToolTip> tooltipFactory)
@@ -51,6 +55,7 @@ final class CompareClogTotalsBar
 
 	void update(ClogResult blueClog, ClogResult redClog, PanelIconCache iconCache)
 	{
+		anyClogData = blueClog != null || redClog != null;
 		setTotal(blueTotal, blueClog, iconCache);
 		setTotal(redTotal, redClog, iconCache);
 		panel.setVisible(true);
@@ -120,10 +125,8 @@ final class CompareClogTotalsBar
 		panel.addMouseListener(clickHandler);
 		blueTotal.addMouseListener(clickHandler);
 		redTotal.addMouseListener(clickHandler);
-		UnderlineLabel.installHoverUnderline(blueTotal,
-			() -> blueTotal.getToolTipText() != null || comparisonMode.getAsBoolean());
-		UnderlineLabel.installHoverUnderline(redTotal,
-			() -> redTotal.getToolTipText() != null || comparisonMode.getAsBoolean());
+		UnderlineLabel.installHoverUnderline(blueTotal, () -> anyClogData);
+		UnderlineLabel.installHoverUnderline(redTotal, () -> anyClogData);
 	}
 
 	private void layoutLabels()
