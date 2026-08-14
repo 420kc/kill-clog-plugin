@@ -27,11 +27,13 @@ import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.ImageUtil;
 
 /**
- * List-style rendering of the boss cells. Values, colors, and icon dim state
- * MIRROR the grid labels rather than re-deriving them: the grid is always
- * rendered (even while hidden), so copying its state keeps the list in exact
- * parity with every coloring rule the grid learns - completionist
- * highlighter, 420 mode, future ones - without a second render path.
+ * List-style rendering of the boss cells. Rows MIRROR the grid labels rather
+ * than re-deriving values: the grid is always rendered (even while hidden),
+ * and each row listens to its grid label's text / foreground / icon property
+ * changes. Every writer - the search-start reset, results landing, the
+ * completionist highlighter, 420 mode, comparison exit, whatever comes next -
+ * propagates into the list with no per-call-site wiring, which is what keeps
+ * the two views incapable of disagreeing.
  */
 public class BossListView
 {
@@ -49,6 +51,9 @@ public class BossListView
 		JLabel kc;
 		ImageIcon original;
 		ImageIcon dimmed;
+		// Grid-truth dim state, remembered so a sprite that finishes loading
+		// after a lookup still lands in the right state.
+		boolean dimmedInGrid;
 	}
 
 	public BossListView(SpriteManager spriteManager, TooltipController tooltipController, Cells cells)
@@ -61,6 +66,7 @@ public class BossListView
 		for (HiscoreSkill boss : PanelData.BOSSES)
 		{
 			root.add(buildRow(boss, spriteManager, tooltipController, cells));
+			installMirror(boss, cells);
 		}
 	}
 
@@ -79,31 +85,46 @@ public class BossListView
 	}
 
 	/**
-	 * Mirror the grid labels into the rows: kc text and color, plus icon dim
-	 * state. Before the first lookup the grid holds its cold defaults and the
-	 * rows copy those.
+	 * Subscribe the row to its grid label. Named registrations keep the
+	 * listeners off the label's unrelated property traffic (tooltips flip on
+	 * every lookup).
 	 */
-	public void renderFrom(Cells cells)
+	private void installMirror(HiscoreSkill boss, Cells cells)
 	{
-		for (Map.Entry<HiscoreSkill, Row> entry : rows.entrySet())
+		JLabel gridLabel = cells.getBossLabel(boss);
+		Row row = rows.get(boss);
+		if (gridLabel == null || row == null)
 		{
-			HiscoreSkill boss = entry.getKey();
-			Row row = entry.getValue();
-
-			JLabel gridLabel = cells.getBossLabel(boss);
-			if (gridLabel == null)
-			{
-				continue;
-			}
-			row.kc.setText(gridLabel.getText().trim());
-			row.kc.setForeground(gridLabel.getForeground());
-			boolean dimmedInGrid = gridLabel.getIcon() != null
-				&& gridLabel.getIcon() == cells.getDimmedIcons().get(boss);
-			if (row.original != null)
-			{
-				row.icon.setIcon(dimmedInGrid ? row.dimmed : row.original);
-			}
+			return;
 		}
+		gridLabel.addPropertyChangeListener("text",
+			e -> row.kc.setText(gridLabel.getText().trim()));
+		gridLabel.addPropertyChangeListener("foreground",
+			e -> row.kc.setForeground(gridLabel.getForeground()));
+		gridLabel.addPropertyChangeListener("icon",
+			e -> mirrorIconState(row, gridLabel, cells, boss));
+
+		// Initial sync: the labels are freshly built with cold defaults, but
+		// copying once here removes any ordering assumption.
+		row.kc.setText(gridLabel.getText().trim());
+		row.kc.setForeground(gridLabel.getForeground());
+		mirrorIconState(row, gridLabel, cells, boss);
+	}
+
+	private void mirrorIconState(Row row, JLabel gridLabel, Cells cells, HiscoreSkill boss)
+	{
+		row.dimmedInGrid = gridLabel.getIcon() != null
+			&& gridLabel.getIcon() == cells.getDimmedIcons().get(boss);
+		applyIcon(row);
+	}
+
+	private static void applyIcon(Row row)
+	{
+		if (row.original == null)
+		{
+			return;
+		}
+		row.icon.setIcon(row.dimmedInGrid ? row.dimmed : row.original);
 	}
 
 	private JPanel buildRow(HiscoreSkill boss, SpriteManager spriteManager,
@@ -173,11 +194,9 @@ public class BossListView
 				row.original = new ImageIcon(ImageUtil.resizeImage(
 					ImageUtil.resizeCanvas(sprite, 25, 25), 20, 20));
 				row.dimmed = new ImageIcon(ClogHelper.createDimmedImage(row.original));
-				// Cold state matches the grid: full icon until a lookup dims it.
-				if (row.icon.getIcon() == null)
-				{
-					row.icon.setIcon(row.original);
-				}
+				// Late sprite arrivals land in whatever state the grid last
+				// mirrored, not blindly undimmed.
+				applyIcon(row);
 			}));
 	}
 }
