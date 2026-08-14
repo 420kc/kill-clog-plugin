@@ -965,7 +965,10 @@ public class KillClogPanel extends PluginPanel
 				if (profileChalice.isVisible())
 				{
 					refreshProfileChalice(true);
-					setSearchStatus(PROFILE_CARD_HOVER_TEXT, config.inProgressClogColor());
+					// Status chrome, not data coloring - same rule as SYNC_K1
+					// itself: never route chrome through the user-themable
+					// completion palette.
+					setSearchStatus(PROFILE_CARD_HOVER_TEXT, SYNC_K1);
 				}
 			}
 
