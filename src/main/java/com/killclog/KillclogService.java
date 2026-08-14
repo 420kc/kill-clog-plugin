@@ -100,9 +100,9 @@ public class KillclogService
 	private final Map<String, Map<String, Double>> pbCache = new ConcurrentHashMap<>();
 
 	/**
-	 * The one pb-cache key normalization. Write and read sides previously
-	 * disagreed (bare toLowerCase vs Locale.ROOT), which silently broke pb
-	 * lines for players whose locale folds I/i differently (tr/az).
+	 * The one pb-cache key normalization. Both sides previously used the
+	 * default locale - consistent with each other, but wrong for locales
+	 * that fold I/i differently (tr/az). Locale.ROOT keys everywhere now.
 	 */
 	private static String pbKey(String playerName)
 	{
