@@ -39,7 +39,6 @@ public class BossListView
 {
 	private static final int ROW_HEIGHT = 22;
 	private static final int KC_WIDTH = 46;
-	private static final Color NAME_COLOR = Color.WHITE;
 
 	private final JPanel root;
 	private final Map<HiscoreSkill, Row> rows = new LinkedHashMap<>();
@@ -99,16 +98,24 @@ public class BossListView
 		}
 		gridLabel.addPropertyChangeListener("text",
 			e -> row.kc.setText(gridLabel.getText().trim()));
+		// The name wears the same color as the kc: completion gradient when
+		// the highlighter is on, the soft kc/grey tones when it is off.
 		gridLabel.addPropertyChangeListener("foreground",
-			e -> row.kc.setForeground(gridLabel.getForeground()));
+			e -> applyForeground(row, gridLabel.getForeground()));
 		gridLabel.addPropertyChangeListener("icon",
 			e -> mirrorIconState(row, gridLabel, cells, boss));
 
 		// Initial sync: the labels are freshly built with cold defaults, but
 		// copying once here removes any ordering assumption.
 		row.kc.setText(gridLabel.getText().trim());
-		row.kc.setForeground(gridLabel.getForeground());
+		applyForeground(row, gridLabel.getForeground());
 		mirrorIconState(row, gridLabel, cells, boss);
+	}
+
+	private static void applyForeground(Row row, Color color)
+	{
+		row.kc.setForeground(color);
+		row.name.setForeground(color);
 	}
 
 	private void mirrorIconState(Row row, JLabel gridLabel, Cells cells, HiscoreSkill boss)
@@ -149,7 +156,7 @@ public class BossListView
 			}
 		};
 		row.name.setFont(FontManager.getRunescapeSmallFont());
-		row.name.setForeground(NAME_COLOR);
+		row.name.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		row.name.setToolTipText(" ");
 		antialias(row.name);
 
