@@ -4,7 +4,22 @@
 	"https://checkstyle.org/dtds/configuration_1_3.dtd">
 <module name="Checker">
 	<property name="charset" value="UTF-8"/>
+	<!-- The hub-file ratchet's hard backstop. Growth budgets per file are a
+	     working convention; these caps make runaway growth fail the build
+	     instead of relying on anyone remembering. -->
+	<module name="FileLength">
+		<property name="max" value="2000"/>
+		<property name="fileExtensions" value="java"/>
+	</module>
 	<module name="TreeWalker">
+		<!-- Methods only: the panel's wiring constructor is a known long
+		     shape already booked for extraction; gate it when it shrinks.
+		     Max sits just above today's worst (a 148-line tooltip painter).
+		     The tooltip restyle rewrites the painters - lower this with it. -->
+		<module name="MethodLength">
+			<property name="max" value="160"/>
+			<property name="tokens" value="METHOD_DEF"/>
+		</module>
 		<module name="LeftCurly">
 			<property name="option" value="nl"/>
 		</module>
