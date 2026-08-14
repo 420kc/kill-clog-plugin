@@ -218,25 +218,6 @@ public class LookupSession
 		fanout.cancel();
 	}
 
-	/**
-	 * Adopt already-loaded results as the current lookup state, bypassing the
-	 * async pipeline. Used by the comparison swap: clicking the red player
-	 * promotes their results into the primary slot in one synchronous step.
-	 */
-	public void adoptState(@Nullable HiscoreResult hiscore, @Nullable ClogResult clog,
-		@Nullable CombatAchievementResult ca, @Nullable String name)
-	{
-		// Invalidate any still-in-flight callbacks from the player being
-		// replaced: their clog/CA lanes can outlive the hiscore result, and
-		// without this bump a late arrival would overwrite the adopted state.
-		fanout.invalidate();
-		this.hiscoreResult = hiscore;
-		this.clogResult = clog;
-		this.caResult = ca;
-		this.currentLookupRsn = name;
-		this.clogLastChanged = clog != null ? clog.getLastChanged() : null;
-	}
-
 	// Read-only state
 	@Nullable
 	public HiscoreResult getHiscoreResult()

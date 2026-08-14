@@ -797,48 +797,6 @@ public class KillClogPanel extends PluginPanel
 	}
 
 	@Override
-	public void onSwapToRedPlayer(String newPrimaryRsn)
-	{
-		profileCardAwaitingClog = false;
-		rsn = newPrimaryRsn;
-		HiscoreResult swapHiscore = lookupSession.getHiscoreResult();
-		ClogResult swapClog = lookupSession.getClogResult();
-		AccountDisplay swapDisplay = accountTypes.displayIdentity(swapHiscore, swapClog, newPrimaryRsn);
-
-		playerName.setText(newPrimaryRsn != null ? newPrimaryRsn : "");
-		playerName.setForeground(getInfoColor());
-		updateInfoIcon(swapDisplay);
-		if (swapHiscore != null)
-		{
-			int combatLevel = swapHiscore.getCombatLevel();
-			if (combatLevel > 0)
-			{
-				combatCell.setText(ClogHelper.pad(String.valueOf(combatLevel)));
-			}
-			int totalLevel = ClogHelper.displayTotalLevel(swapHiscore,
-				ClogHelper.virtualTotalLevelEnabled(configManager));
-			if (totalLevel > 0)
-			{
-				totalLvlCell.setText(ClogHelper.pad(String.valueOf(totalLevel)));
-				totalLvlCell.setToolTipText(" ");
-			}
-		}
-		colorStatsRow();
-		if (swapClog != null)
-		{
-			itemNameResolver.resolve(swapClog);
-			cells.renderClog(swapClog, config);
-			updateClogCell(swapClog);
-		}
-
-		searchRowController.setCompareVisible(true);
-		setSearchStatus(" ", TEXT_DIM);
-		toggleHighlighter(config.completionistHighlighter());
-		cells.rebuildPrimaryTooltips(localRsn);
-	}
-
-
-	@Override
 	public void onComparisonEnter(String redRsn)
 	{
 		profileCardController.closePreview();

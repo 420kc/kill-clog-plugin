@@ -4,8 +4,7 @@
  * for the second player's hiscore, clog, and CA data, plus the compare-side
  * state. UI dispatch is downstream via {@link Listener}.
  * Reads the primary player's results read-only through {@link LookupSession}
- * getters; the only write path is the swap, which calls
- * {@link LookupSession#adoptState} explicitly.
+ * getters; it never writes into the session.
  */
 package com.killclog;
 
@@ -49,9 +48,6 @@ public class ComparisonController
 
 		/** Comparison mode just exited. Panel should restore single-player cells. */
 		void onComparisonExit();
-
-		/** Red player swapped in (became the new primary). Panel should re-render the primary side and update the search bar. */
-		void onSwapToRedPlayer(String newPrimaryRsn);
 
 		/** Red-side data arrived. Panel should trigger a cell + summary-bar re-render via the controller's render hooks. */
 		void onCompareDataReady();
@@ -253,24 +249,6 @@ public class ComparisonController
 		compareRsn = null;
 		compareTooltipDataMap.clear();
 		listener.onComparisonExit();
-	}
-
-	/**
-	 * Swap the red player into the primary slot. Captures the current red
-	 * state, calls {@link #exit()} to tear down comparison, then
-	 * {@link LookupSession#adoptState} to push the captured data into the
-	 * session, then fires {@code onSwapToRedPlayer} so the panel can re-render
-	 * the primary side.
-	 */
-	public void swapToComparePlayer()
-	{
-		HiscoreResult swapHiscore = compareHiscoreResult;
-		ClogResult swapClog = compareClogResult;
-		CombatAchievementResult swapCa = compareCaResult;
-		String swapName = compareRsn;
-		exit();
-		lookupSession.adoptState(swapHiscore, swapClog, swapCa, swapName);
-		listener.onSwapToRedPlayer(swapName);
 	}
 
 	/**
