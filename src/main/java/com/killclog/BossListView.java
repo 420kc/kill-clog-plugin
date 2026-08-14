@@ -9,10 +9,11 @@ package com.killclog;
 import java.awt.BorderLayout;
 import java.awt.Dimension;
 import java.awt.RenderingHints;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeListener;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import javax.annotation.Nullable;
 import javax.swing.BoxLayout;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -46,7 +47,11 @@ public class BossListView
 		JLabel kc;
 	}
 
-	public BossListView(TooltipController tooltipController, Cells cells)
+	/**
+	 * @param thermoEasterEgg the guarded 420-mode cycle, wired to the Thermo
+	 * row's kc label - the same hit area the grid gives it
+	 */
+	public BossListView(TooltipController tooltipController, Cells cells, Runnable thermoEasterEgg)
 	{
 		root = new JPanel();
 		root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
@@ -59,7 +64,7 @@ public class BossListView
 		// product promise, and every player has already scanned this order.
 		for (HiscoreSkill boss : PanelData.BOSSES)
 		{
-			root.add(buildRow(boss, tooltipController, cells));
+			root.add(buildRow(boss, tooltipController, cells, thermoEasterEgg));
 			installMirror(boss, cells);
 		}
 	}
@@ -68,14 +73,6 @@ public class BossListView
 	public JPanel component()
 	{
 		return root;
-	}
-
-	/** The row's name label, for callers wiring extra listeners (420 mode easter egg). */
-	@Nullable
-	public JLabel nameLabel(HiscoreSkill boss)
-	{
-		Row row = rows.get(boss);
-		return row != null ? row.name : null;
 	}
 
 	/**
@@ -128,7 +125,8 @@ public class BossListView
 		}
 	}
 
-	private JPanel buildRow(HiscoreSkill boss, TooltipController tooltipController, Cells cells)
+	private JPanel buildRow(HiscoreSkill boss, TooltipController tooltipController,
+		Cells cells, Runnable thermoEasterEgg)
 	{
 		Row row = new Row();
 
@@ -153,6 +151,20 @@ public class BossListView
 		row.kc.setPreferredSize(new Dimension(KC_WIDTH, ROW_HEIGHT));
 		row.kc.setBorder(new EmptyBorder(0, 0, 0, 4));
 		antialias(row.kc);
+
+		if (boss == HiscoreSkill.THERMONUCLEAR_SMOKE_DEVIL)
+		{
+			// Same hit area as the grid's easter egg: the kc label, not the
+			// whole row - a wide trigger would cycle 420 mode by accident.
+			row.kc.addMouseListener(new MouseAdapter()
+			{
+				@Override
+				public void mousePressed(MouseEvent e)
+				{
+					thermoEasterEgg.run();
+				}
+			});
+		}
 
 		JPanel panel = new JPanel(new BorderLayout(4, 0));
 		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);

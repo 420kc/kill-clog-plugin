@@ -360,15 +360,14 @@ public class KillClogPanel extends PluginPanel
 
 		c.gridy++;
 		bossGridPanel = cells.buildBossGrid();
-		bossListView = new BossListView(tooltipController, cells);
+		bossListView = new BossListView(tooltipController, cells, this::fireFourTwentyEasterEgg);
 		bossViewContainer = new JPanel(new BorderLayout());
 		bossViewContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		add(bossViewContainer, c);
 		applyBossViewStyle();
-		// 420 mode easter egg: secret cycle on Thermonuclear Smoke Devil click,
-		// alive in both views.
+		// 420 mode easter egg: secret cycle on Thermonuclear Smoke Devil click.
+		// The list view wires its own trigger through the constructor above.
 		wireFourTwentyEasterEgg(cells.getBossLabel(HiscoreSkill.THERMONUCLEAR_SMOKE_DEVIL));
-		wireFourTwentyEasterEgg(bossListView.nameLabel(HiscoreSkill.THERMONUCLEAR_SMOKE_DEVIL));
 
 		// Collection log sync notice below boss grid
 		c.gridy++;
@@ -514,6 +513,15 @@ public class KillClogPanel extends PluginPanel
 		applyBossViewStyle();
 	}
 
+	/** Guarded 420-mode cycle shared by both views' Thermo triggers. */
+	private void fireFourTwentyEasterEgg()
+	{
+		if (has420Plugin && !comparison.isComparisonMode())
+		{
+			cycleFourTwentyMode();
+		}
+	}
+
 	/** Secret 420-mode cycle on a Thermonuclear Smoke Devil label. */
 	private void wireFourTwentyEasterEgg(@Nullable JLabel label)
 	{
@@ -526,10 +534,7 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public void mousePressed(MouseEvent e)
 			{
-				if (has420Plugin && !comparison.isComparisonMode())
-				{
-					cycleFourTwentyMode();
-				}
+				fireFourTwentyEasterEgg();
 			}
 		});
 	}
