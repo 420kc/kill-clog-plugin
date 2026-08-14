@@ -490,6 +490,12 @@ public class KillClogPanel extends PluginPanel
 	private void applyBossViewStyle()
 	{
 		boolean list = config.bossListView() && bossListAvailable();
+		if (list)
+		{
+			// Opening the list always starts from grid truth; anything the
+			// paused mirror skipped during compare is re-copied here.
+			bossListView.resyncAll();
+		}
 		bossViewContainer.removeAll();
 		bossViewContainer.add(list ? bossListView.component() : bossGridPanel, BorderLayout.CENTER);
 		bossViewContainer.revalidate();
