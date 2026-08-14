@@ -4,7 +4,6 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
-import java.awt.RenderingHints;
 import java.util.function.IntSupplier;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -29,8 +28,7 @@ final class PanelSearchBox
 		// Top inset 4 pairs with the panel's reduced top border: the label
 		// grows the status row upward while the text itself stays put.
 		searchStatus.setBorder(new EmptyBorder(4, 4, 2, 0));
-		searchStatus.putClientProperty(
-			RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+		ClogHelper.antialias(searchStatus);
 	}
 
 	static JTextField configureSearchBar(IconTextField searchBar)
@@ -53,8 +51,7 @@ final class PanelSearchBox
 				tf.setFont(FontManager.getRunescapeFont());
 				tf.setForeground(Color.WHITE);
 				tf.setCaretColor(Color.WHITE);
-				tf.putClientProperty(
-					RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+				ClogHelper.antialias(tf);
 			}
 			else if (c instanceof Container)
 			{

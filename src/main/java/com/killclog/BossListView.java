@@ -8,7 +8,6 @@ package com.killclog;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeListener;
@@ -158,7 +157,7 @@ public class BossListView
 		row.name.setText(boss.getName());
 		row.name.setFont(FontManager.getRunescapeSmallFont());
 		row.name.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-		antialias(row.name);
+		ClogHelper.antialias(row.name);
 
 		row.kc = bossTooltipLabel(boss, cells);
 		row.kc.setText("--");
@@ -167,7 +166,7 @@ public class BossListView
 		row.kc.setHorizontalAlignment(JLabel.RIGHT);
 		row.kc.setPreferredSize(new Dimension(KC_WIDTH, ROW_HEIGHT));
 		row.kc.setBorder(new EmptyBorder(0, 0, 0, 4));
-		antialias(row.kc);
+		ClogHelper.antialias(row.kc);
 
 		if (boss == HiscoreSkill.THERMONUCLEAR_SMOKE_DEVIL)
 		{
@@ -215,10 +214,4 @@ public class BossListView
 		return label;
 	}
 
-	/** The panel-wide text treatment every other label already wears. */
-	private static void antialias(JLabel label)
-	{
-		label.putClientProperty(
-			RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
-	}
 }

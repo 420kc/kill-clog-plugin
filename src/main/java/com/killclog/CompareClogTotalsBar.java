@@ -2,7 +2,6 @@ package com.killclog;
 
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
-import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.function.BooleanSupplier;
@@ -98,8 +97,7 @@ final class CompareClogTotalsBar
 		label.setIconTextGap(3);
 		label.setBorder(new EmptyBorder(0, 0, 2, 0));
 		label.setToolTipText(" ");
-		label.putClientProperty(
-			RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+		ClogHelper.antialias(label);
 		return label;
 	}
 
