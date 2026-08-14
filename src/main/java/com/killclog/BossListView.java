@@ -33,9 +33,13 @@ import net.runelite.client.ui.FontManager;
  * incapable of disagreeing.
  *
  * <p>The one deliberate pause: while comparison holds the grid on screen the
- * mirror sits out, so compare's per-hover HTML rewrites never reach the
- * hidden rows. The exit path rewrites every boss label (restore + rerender),
- * which resyncs the rows the moment the list can show again.
+ * mirror skips text and foreground, so compare's per-hover HTML rewrites
+ * never reach the hidden rows; the exit path rewrites both, which resyncs
+ * them. Icons keep mirroring straight through - comparison never writes
+ * icons, and an async sprite landing mid-compare would otherwise be lost
+ * for good (reapplying the same ImageIcon later fires no change event).
+ * {@link #resyncAll()} backstops the whole contract whenever the list is
+ * about to show.
  */
 public class BossListView
 {
@@ -51,6 +55,7 @@ public class BossListView
 		JLabel icon;
 		JLabel name;
 		JLabel kc;
+		JLabel gridLabel;
 	}
 
 	/**
@@ -86,6 +91,25 @@ public class BossListView
 	}
 
 	/**
+	 * Re-copy every row from its grid label. Called before the list shows,
+	 * so it always opens on grid truth regardless of what the paused mirror
+	 * skipped - the structural backstop for the pause contract above.
+	 */
+	public void resyncAll()
+	{
+		for (Row row : rows.values())
+		{
+			if (row.gridLabel == null)
+			{
+				continue;
+			}
+			sync(row, row.gridLabel, "text");
+			sync(row, row.gridLabel, "foreground");
+			sync(row, row.gridLabel, "icon");
+		}
+	}
+
+	/**
 	 * Subscribe the row to its grid label: one listener, registered under
 	 * each mirrored property name. Named registration keeps it off the
 	 * label's unrelated property traffic (tooltips flip on every lookup).
@@ -98,9 +122,14 @@ public class BossListView
 		{
 			return;
 		}
+		row.gridLabel = gridLabel;
 		PropertyChangeListener mirror = e ->
 		{
-			if (mirrorActive.getAsBoolean())
+			// Icons pass the pause: comparison never writes them, and an
+			// async sprite load landing mid-compare is the only icon event
+			// there is - skip it and the post-exit render reapplies the same
+			// ImageIcon object, which fires nothing to catch the row up.
+			if ("icon".equals(e.getPropertyName()) || mirrorActive.getAsBoolean())
 			{
 				sync(row, gridLabel, e.getPropertyName());
 			}
