@@ -386,7 +386,7 @@ public class KillClogPanel extends PluginPanel
 
 		c.gridy++;
 		bossGridPanel = cells.buildBossGrid();
-		bossListView = new BossListView(spriteManager, tooltipController, cells);
+		bossListView = new BossListView(tooltipController, cells);
 		bossViewContainer = new JPanel(new BorderLayout());
 		bossViewContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		add(bossViewContainer, c);
