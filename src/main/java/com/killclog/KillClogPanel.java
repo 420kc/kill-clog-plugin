@@ -3,7 +3,6 @@ package com.killclog;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -20,7 +19,6 @@ import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
-import javax.swing.AbstractButton;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
@@ -1107,26 +1105,6 @@ public class KillClogPanel extends PluginPanel
 	void showProfileAppearanceStatus(String text, boolean ok)
 	{
 		SwingUtilities.invokeLater(() -> profileCardController.showAppearanceStatus(text, ok));
-	}
-
-	private static void recolorClearButton(Container container, Color color)
-	{
-		for (Component c : container.getComponents())
-		{
-			if (c instanceof AbstractButton)
-			{
-				AbstractButton btn = (AbstractButton) c;
-				if (btn.getIcon() instanceof ImageIcon)
-				{
-					ImageIcon icon = (ImageIcon) btn.getIcon();
-					btn.setIcon(new ImageIcon(ImageUtil.recolorImage(icon.getImage(), color)));
-				}
-			}
-			else if (c instanceof Container)
-			{
-				recolorClearButton((Container) c, color);
-			}
-		}
 	}
 
 	private String selfSearchMessage(String player)

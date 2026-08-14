@@ -321,25 +321,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		}
 	}
 
-	protected void paintSpriteRow(Graphics2D g2, int x, int y, int colWidth,
-		BufferedImage[] sprites, int count, int size, int pad)
-	{
-		if (sprites == null || count == 0)
-		{
-			return;
-		}
-		int spriteRowWidth = count * size + (count - 1) * pad;
-		int startX = x + (colWidth - spriteRowWidth) / 2;
-		for (int i = 0; i < count && i < sprites.length; i++)
-		{
-			int sx = startX + i * (size + pad);
-			if (sprites[i] != null)
-			{
-				g2.drawImage(sprites[i], sx, y, null);
-			}
-		}
-	}
-
 	protected void paintQuantitySpriteRow(Graphics2D g2, FontMetrics fm, int x, int y,
 		int colWidth, BufferedImage[] sprites, int[] counts, int size, int pad)
 	{

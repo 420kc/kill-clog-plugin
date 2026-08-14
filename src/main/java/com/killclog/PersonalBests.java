@@ -4,7 +4,6 @@ import java.util.Locale;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneScapeProfile;
 import net.runelite.client.config.RuneScapeProfileType;
-import net.runelite.client.hiscore.HiscoreSkill;
 
 /**
  * Reads the personal bests RuneLite's own chat commands plugin records on the
@@ -108,24 +107,6 @@ final class PersonalBests
 			}
 		}
 		return profileKeys;
-	}
-
-	/** Number of panel bosses with a recorded PB across this player's STANDARD profiles. */
-	int countForPlayer(String rsn, HiscoreSkill[] bosses)
-	{
-		java.util.List<String> profileKeys = standardProfileKeys(rsn);
-		int count = 0;
-		for (HiscoreSkill boss : bosses)
-		{
-			double seconds = profileKeys.isEmpty()
-				? bestSeconds(boss.getName())
-				: bestSecondsAcrossProfiles(profileKeys, boss.getName());
-			if (seconds > 0)
-			{
-				count++;
-			}
-		}
-		return count;
 	}
 
 	/** One stored-key read, abstracted so the variant merge logic is testable. */

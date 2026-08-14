@@ -400,18 +400,6 @@ public class ClogService
 		});
 	}
 
-	/**
-	 * Total item count for a category from the cached global definitions.
-	 * Returns -1 if categories haven't loaded yet.
-	 */
-	public int getCategoryItemCount(String category)
-	{
-		Map<String, List<Integer>> cats = cachedCategories;
-		if (cats == null) return -1;
-		List<Integer> items = cats.get(category);
-		return items != null ? items.size() : -1;
-	}
-
 	/** True once the global category catalog has loaded. */
 	public boolean hasCatalog()
 	{

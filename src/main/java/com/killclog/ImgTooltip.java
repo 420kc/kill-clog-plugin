@@ -25,8 +25,6 @@ import net.runelite.client.ui.FontManager;
  */
 public class ImgTooltip extends TitleTooltip
 {
-	private static final int DEFAULT_COLS = 5;
-
 	private static final int DEFAULT_SPRITE_SIZE = 32;
 	private static final int PADDING = 4;
 

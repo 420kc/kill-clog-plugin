@@ -885,11 +885,6 @@ public class Cells
 		return Collections.unmodifiableMap(originalIcons);
 	}
 
-	public Map<HiscoreSkill, ImageIcon> getDimmedIcons()
-	{
-		return Collections.unmodifiableMap(dimmedIcons);
-	}
-
 	@Nullable
 	public JLabel getBossLabel(HiscoreSkill boss)
 	{
@@ -947,20 +942,9 @@ public class Cells
 		return clueIcons;
 	}
 
-	public BufferedImage[] getPvpActivityIcons()
-	{
-		return pvpActivityIcons;
-	}
-
 	@Nullable
 	public TooltipData getTooltipData(HiscoreSkill skill)
 	{
 		return tooltipDataMap.get(skill);
-	}
-
-	@Nullable
-	public TooltipData getRareTooltip(String key)
-	{
-		return rareTooltips.get(key);
 	}
 }

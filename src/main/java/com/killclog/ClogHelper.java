@@ -323,26 +323,6 @@ final class ClogHelper
 		return dimmed;
 	}
 
-	/**
-	 * Boosts RGB channels by a multiplier (e.g. 1.10 = 10% brighter).
-	 * Preserves hue and alpha while increasing color intensity.
-	 */
-	static BufferedImage createBoostedImage(ImageIcon icon, float factor)
-	{
-		BufferedImage src = iconToImage(icon);
-		int[] pixels = src.getRGB(0, 0, src.getWidth(), src.getHeight(), null, 0, src.getWidth());
-		for (int i = 0; i < pixels.length; i++)
-		{
-			int a = (pixels[i] >> 24) & 0xFF;
-			int r = Math.min(255, (int) (((pixels[i] >> 16) & 0xFF) * factor));
-			int gr = Math.min(255, (int) (((pixels[i] >> 8) & 0xFF) * factor));
-			int b = Math.min(255, (int) ((pixels[i] & 0xFF) * factor));
-			pixels[i] = (a << 24) | (r << 16) | (gr << 8) | b;
-		}
-		src.setRGB(0, 0, src.getWidth(), src.getHeight(), pixels, 0, src.getWidth());
-		return src;
-	}
-
 	/** Paints a 12x10 hamburger icon. */
 	static BufferedImage makeHamburgerIcon(Color barColor)
 	{
@@ -408,26 +388,6 @@ final class ClogHelper
 		int g = Math.min(255, (int) (c.getGreen() * factor));
 		int b = Math.min(255, (int) (c.getBlue() * factor));
 		return new Color(r, g, b, c.getAlpha());
-	}
-
-	/** Paints a 15x15 circular refresh arrow. */
-	static BufferedImage makeRefreshIcon(Color color)
-	{
-		int s = 15;
-		BufferedImage img = new BufferedImage(s, s, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D g = img.createGraphics();
-		g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING,
-			java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
-		g.setColor(color);
-		g.setStroke(new java.awt.BasicStroke(1.5f));
-		// Arc: nearly full circle (300 degrees), gap at top-right
-		g.drawArc(2, 2, 10, 10, 30, 300);
-		// Arrowhead at the end of the arc (top-right area)
-		int ax = 11, ay = 3;
-		g.drawLine(ax, ay, ax - 3, ay);
-		g.drawLine(ax, ay, ax, ay + 3);
-		g.dispose();
-		return img;
 	}
 
 	static void styleSearchBar(Container container)

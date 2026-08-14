@@ -1,6 +1,5 @@
 package com.killclog;
 
-import java.awt.FontMetrics;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -60,24 +59,6 @@ final class TooltipItemLink
 		return name;
 	}
 
-	static String fitRight(FontMetrics fm, String text, int maxWidth)
-	{
-		if (text == null || text.isEmpty() || fm.stringWidth(text) <= maxWidth)
-		{
-			return text;
-		}
-		int ellipsisWidth = fm.stringWidth(ELLIPSIS);
-		if (ellipsisWidth >= maxWidth)
-		{
-			return "";
-		}
-		StringBuilder out = new StringBuilder(text);
-		while (out.length() > 0 && fm.stringWidth(out.toString()) + ellipsisWidth > maxWidth)
-		{
-			out.deleteCharAt(out.length() - 1);
-		}
-		return out + ELLIPSIS;
-	}
 
 	private static String encodePageName(String pageName)
 	{

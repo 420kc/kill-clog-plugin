@@ -112,11 +112,6 @@ public class ActivitiesTray
 		return separator;
 	}
 
-	public boolean isExpanded()
-	{
-		return expanded;
-	}
-
 	/** Run the slide animation, flip {@link #expanded}, and notify the onToggle hook. */
 	public void toggle()
 	{

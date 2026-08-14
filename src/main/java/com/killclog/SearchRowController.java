@@ -188,11 +188,6 @@ final class SearchRowController
 		});
 	}
 
-	boolean isCompareEntryMode()
-	{
-		return compareEntryMode;
-	}
-
 	int compareIconWidth()
 	{
 		return compareLabel.isVisible() ? COMPARE_ICON_WIDTH : 0;
