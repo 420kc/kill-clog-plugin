@@ -360,7 +360,10 @@ public class KillClogPlugin extends Plugin
 	@Subscribe
 	public void onChatMessage(ChatMessage event)
 	{
-		chatEmoji.rewrite(event);
+		if (config.showChatEmojis())
+		{
+			chatEmoji.rewrite(event);
+		}
 
 		// !kc <item name> provenance reveal. Boss arguments stay with the
 		// built-in plugin's own "!kc" registration; the handler ignores them.
