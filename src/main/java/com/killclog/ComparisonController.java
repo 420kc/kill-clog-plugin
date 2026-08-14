@@ -482,8 +482,13 @@ public class ComparisonController
 			&& !blueData.allItemIds.isEmpty();
 		boolean redHas = redData != null && redData.allItemIds != null
 			&& !redData.allItemIds.isEmpty();
-		boolean rankTracked = (blueData != null && blueData.rankTracked)
-			|| (redData != null && redData.rankTracked);
+		// The Tooltip Header rank setting applies in compare mode too - this
+		// builder serves every compare sprite tooltip, so one gate covers
+		// boss, clue tier, and rare variants. (KC/PB have no compare lines
+		// yet; thread their flags here when the tooltip restyle adds them.)
+		boolean rankTracked = config.showTooltipRank()
+			&& ((blueData != null && blueData.rankTracked)
+			|| (redData != null && redData.rankTracked));
 
 		tip.setBluePlayer(blueName,
 			blueData != null ? blueData.obtainedCount : -1,
