@@ -307,8 +307,8 @@ public class KillClogPanel extends PluginPanel
 		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison,
 			tooltipDataBuilder, lookupSession, clogService, killclogService,
 			personalBests, config);
-		this.profileCardDataBuilder = new ProfileCardDataBuilder(itemManager, configManager,
-			accountBadges, accountTypes, iconCache, personalBests, config);
+		this.profileCardDataBuilder = new ProfileCardDataBuilder(itemManager,
+			accountBadges, accountTypes, iconCache);
 		this.profileCardController = new ProfileCardController(this,
 			() -> profileCardDataBuilder.build(
 				lookupSession, rsn, localRsn, profileCardSyncConfirmed),

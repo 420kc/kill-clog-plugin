@@ -144,6 +144,13 @@ final class ProfileCardController
 		addPending(pending, data.accountIcon);
 		addPending(pending, data.pluginIcon);
 		addPending(pending, data.tierIcon);
+		if (data.petSprites != null)
+		{
+			for (BufferedImage image : data.petSprites)
+			{
+				addPending(pending, image);
+			}
+		}
 		if (data.recentSprites != null)
 		{
 			for (BufferedImage image : data.recentSprites)
