@@ -48,6 +48,7 @@ public class ProfileCardTest
 		data.questPoints = 324;
 		data.prestige = "Maxed Infernal";
 		data.ehb = 867.3;
+		data.templeEhp = 3003.9;
 		data.caTier = "MASTER";
 		data.combatTasksCompleted = 336;
 		data.totalCombatTasks = 646;

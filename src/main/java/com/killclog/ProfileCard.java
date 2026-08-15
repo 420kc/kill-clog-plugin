@@ -60,6 +60,7 @@ final class ProfileCard
 		int questPoints = -1;
 		String prestige;
 		double ehb = -1;
+		double templeEhp = -1;
 		String caTier;
 		int combatTasksCompleted = -1;
 		int totalCombatTasks = -1;
@@ -193,6 +194,11 @@ final class ProfileCard
 		}
 		y = paintValueLine(g, labelFont, valueFont, CONTENT_X, y,
 			"EHB: ", optionalDecimal(data.ehb), TEXT);
+		if (data.templeEhp >= 0)
+		{
+			y = paintValueLine(g, labelFont, valueFont, CONTENT_X, y,
+				"Temple EHP: ", optionalDecimal(data.templeEhp), TEXT);
+		}
 		paintValueLine(g, labelFont, valueFont, CONTENT_X, y,
 			"Bosses Killed: ", fraction(data.bossesWithKc, data.totalBosses), TEXT);
 

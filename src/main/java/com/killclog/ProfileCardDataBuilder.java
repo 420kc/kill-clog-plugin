@@ -90,6 +90,7 @@ final class ProfileCardDataBuilder
 		data.tierName = ClogHelper.getClogTierName(totals[0], totals[1]);
 		data.tierIcon = data.tierName != null
 			? iconCache.clogTierImages().get(data.tierName) : null;
+		data.templeEhp = clog.isFromTemple() ? clog.getTempleEhp() : -1;
 
 		List<ClogResult.ClogItem> obtainedPets = clog.getObtainedItems().get("all_pets");
 		if (obtainedPets != null)
