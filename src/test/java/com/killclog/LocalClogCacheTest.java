@@ -822,6 +822,7 @@ public class LocalClogCacheTest
 				new File(dir, ".kill-clog-identity.json").toPath()));
 			assertFalse("the migration was never stamped",
 				identity.contains("\"42\":\"new me\""));
+			assertNull("no chat line over a failed migration", cache.consumeRenameNotice());
 		}
 		finally
 		{
@@ -1112,6 +1113,165 @@ public class LocalClogCacheTest
 		}
 	}
 
+	@Test
+	public void testFirstSeenHashNeverAdoptsAnotherAccountsFile() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-adopt").toFile();
+		try
+		{
+			// 77 owns "Shared Name": first-party file plus a stamped claim.
+			LocalClogCache owner = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
+			owner.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
+			owner.mergeObtainedItem("Shared Name", 9, itemListAsStrings("venenatis"), cats);
+			assertNull(owner.followNameChange("Shared Name", 77L));
+
+			// A NEVER-SEEN hash logs in under that very name (a bought
+			// account, a transferred name). It must not inherit 77's file.
+			LocalClogCache taker = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			assertNull(taker.followNameChange("Shared Name", 42L));
+
+			File parked = new File(dir, ".displaced-77-shared_name.json");
+			assertTrue("the resident's file parked under ITS hash", parked.exists());
+			assertTrue(new String(Files.readAllBytes(parked.toPath())).contains("venenatis"));
+			assertFalse("nothing left to adopt", new File(dir, "shared_name.json").exists());
+			assertNull("nothing serves for the taker",
+				taker.toClogResult("Shared Name", Collections.emptyMap()));
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
+	@Test
+	public void testQueuedSavesStayAnchoredToTheCapturingAccount() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-anchor").toFile();
+		try
+		{
+			CapturingScheduledDebounceService writer = new CapturingScheduledDebounceService();
+			LocalClogCache cache = new LocalClogCache(new Gson(), writer, dir);
+			assertNull(cache.followNameChange("Shared Name", 77L));
+			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
+			cache.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
+			cache.mergeObtainedItem("Shared Name", 9, itemListAsStrings("venenatis"), cats);
+
+			// The client switches accounts (42 logs in) while 77's capture
+			// save is still queued, and 42 becomes the name's newest
+			// claimant. The queued save was 77's: it must not be authorized
+			// as 42 just because 42 is active when the debounce fires.
+			assertNull(cache.followNameChange("Other Guy", 42L));
+			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+				("{\"version\":2,\"names\":{\"77\":\"shared name\",\"42\":\"shared name\"},"
+					+ "\"stamps\":{\"77\":1000,\"42\":2000}}").getBytes());
+
+			writer.runQueued();
+
+			assertFalse("77's stale save never landed on 42's slot",
+				new File(dir, "shared_name.json").exists());
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
+	@Test
+	public void testLookupSavesNeverOverwriteAClaimedFirstPartyFile() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-lookup").toFile();
+		try
+		{
+			LocalClogCache owner = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
+			owner.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
+			owner.mergeObtainedItem("Shared Name", 9, itemListAsStrings("venenatis"), cats);
+			assertNull(owner.followNameChange("Shared Name", 77L));
+			String before = new String(Files.readAllBytes(new File(dir, "shared_name.json").toPath()));
+
+			// A cold client (nobody logged in) looks the name up: fresh
+			// unmarked provider data, which would have overwritten the
+			// claimed first-party file wholesale.
+			LocalClogCache cold = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			cold.cacheResult(clog("Shared Name", categoryItems("zulrah", 4), obtainedItems("zulrah")));
+
+			String after = new String(Files.readAllBytes(new File(dir, "shared_name.json").toPath()));
+			assertEquals("the claimed file is byte-identical", before, after);
+			assertFalse(after.contains("zulrah"));
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
+	@Test
+	public void testStampsAlwaysExceedPriorClaims() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-stampwar").toFile();
+		try
+		{
+			LocalClogCache seeder = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			Map<String, List<Integer>> cats = categoryItems("vetion", 1);
+			seeder.cacheResult(clog("Old Main", cats, obtainedItems("vetion")));
+			seeder.mergeObtainedItem("Old Main", 1, itemListAsStrings("vetion"), cats);
+			// 77's claim carries an absurd future stamp; a wall-clock stamp
+			// would lose the ordering war and hash order would decide.
+			long future = 9999999999999L;
+			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+				("{\"version\":2,\"names\":{\"77\":\"shared name\",\"42\":\"old main\"},"
+					+ "\"stamps\":{\"77\":" + future + ",\"42\":4000}}").getBytes());
+
+			LocalClogCache cache = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			assertEquals("Old Main", cache.followNameChange("Shared Name", 42L));
+
+			String identity = new String(Files.readAllBytes(
+				new File(dir, ".kill-clog-identity.json").toPath()));
+			com.google.gson.JsonObject root = new Gson().fromJson(identity, com.google.gson.JsonObject.class);
+			long ours = root.getAsJsonObject("stamps").get("42").getAsLong();
+			assertTrue("the new claim strictly exceeds every prior claim", ours > future);
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
+	@Test
+	public void testSteadyStateLiftsAV1Entry() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-v1steady").toFile();
+		try
+		{
+			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+				"{\"77\":\"shared name\"}".getBytes());
+			LocalClogCache cache = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			// No rename at all - the sitting owner logs in as itself. Its
+			// stamp-0 v1 entry must re-assert, or any stamped claim by
+			// another local account would outrank it forever.
+			assertNull(cache.followNameChange("Shared Name", 77L));
+
+			String identity = new String(Files.readAllBytes(
+				new File(dir, ".kill-clog-identity.json").toPath()));
+			com.google.gson.JsonObject root = new Gson().fromJson(identity, com.google.gson.JsonObject.class);
+			assertTrue("rewritten as v2", root.has("names"));
+			assertTrue("the sitting owner re-stamped",
+				root.getAsJsonObject("stamps").get("77").getAsLong() > 0L);
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
 	private static void deleteRecursively(File dir)
 	{
 		File[] children = dir.listFiles();
@@ -1126,23 +1286,31 @@ public class LocalClogCacheTest
 	}
 
 	@Test
-	public void testRenameNoticeSurvivesWhicheverPathMigratesFirst()
+	public void testRenameNoticeSurvivesWhicheverPathMigratesFirst() throws Exception
 	{
-		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
-		cache.seedIdentityForTest(new HashMap<>());
-		cache.cacheResult(clog(
-			"Old Name",
-			categoryItems("vetion", 1),
-			obtainedItems("vetion", 1)));
-		assertNull(cache.followNameChange("Old Name", 42L));
+		File dir = Files.createTempDirectory("kc-notice").toFile();
+		try
+		{
+			LocalClogCache cache = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			cache.cacheResult(clog(
+				"Old Name",
+				categoryItems("vetion", 1),
+				obtainedItems("vetion", 1)));
+			assertNull(cache.followNameChange("Old Name", 42L));
 
-		// The sync pre-flight migrates first and discards the return value...
-		assertEquals("Old Name", cache.followNameChange("New Name", 42L));
-		// ...the plugin latch's own call is now a no-op...
-		assertNull(cache.followNameChange("New Name", 42L));
-		// ...but the notice waited for the latch, exactly once.
-		assertEquals("Old Name", cache.consumeRenameNotice());
-		assertNull("one line per migration, never two", cache.consumeRenameNotice());
+			// The sync pre-flight migrates first and discards the return value...
+			assertEquals("Old Name", cache.followNameChange("New Name", 42L));
+			// ...the plugin latch's own call is now a no-op...
+			assertNull(cache.followNameChange("New Name", 42L));
+			// ...but the notice waited (for the DISK half to succeed), once.
+			assertEquals("Old Name", cache.consumeRenameNotice());
+			assertNull("one line per migration, never two", cache.consumeRenameNotice());
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
 	}
 
 	@Test
