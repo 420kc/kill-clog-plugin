@@ -735,7 +735,11 @@ public class LocalClogCacheTest
 			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
 			cache.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
 			cache.mergeObtainedItem("Shared Name", 9, itemListAsStrings("venenatis"), cats);
-			cache.seedIdentityForTest(new HashMap<>(Map.of("77", "shared name")));
+			// 77's claim lives on DISK, as it would in reality - the in-lock
+			// revalidation only honors claims both the decision and the
+			// ledger can see.
+			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+				"{\"version\":2,\"names\":{\"77\":\"shared name\"},\"stamps\":{\"77\":5000}}".getBytes());
 
 			cache.cacheResult(clog("Old Main", categoryItems("vetion", 1), obtainedItems("vetion", 1)));
 			assertNull(cache.followNameChange("Old Main", 42L));
@@ -1236,7 +1240,12 @@ public class LocalClogCacheTest
 				new File(dir, ".kill-clog-identity.json").toPath()));
 			com.google.gson.JsonObject root = new Gson().fromJson(identity, com.google.gson.JsonObject.class);
 			long ours = root.getAsJsonObject("stamps").get("42").getAsLong();
-			assertTrue("the new claim strictly exceeds every prior claim", ours > future);
+			long theirs = root.getAsJsonObject("stamps").get("77").getAsLong();
+			// The absurd future claim is DEMOTED to zero on read (one
+			// machine, one clock - it cannot be legitimate) and the rewrite
+			// persists that demotion, so the rightful claim wins outright.
+			assertEquals(0L, theirs);
+			assertTrue("the new claim outranks the demoted one", ours > theirs);
 		}
 		finally
 		{
@@ -1414,6 +1423,193 @@ public class LocalClogCacheTest
 		long stamp = IdentityLedger.nextStamp(view, "shared name");
 		assertEquals("saturates at the ceiling, never wraps negative",
 			Long.MAX_VALUE, stamp);
+	}
+
+	@Test
+	public void testMigrationAbortsWhenTheClaimantChangesMidWindow() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-migswap").toFile();
+		try
+		{
+			LocalClogCache seeder = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			Map<String, List<Integer>> liveCats = categoryItems("venenatis", 9);
+			seeder.cacheResult(clog("Shared Name", liveCats, obtainedItems("venenatis")));
+			seeder.mergeObtainedItem("Shared Name", 9, itemListAsStrings("venenatis"), liveCats);
+			Map<String, List<Integer>> oldCats = categoryItems("vetion", 1);
+			seeder.cacheResult(clog("Old Main", oldCats, obtainedItems("vetion")));
+			seeder.mergeObtainedItem("Old Main", 1, itemListAsStrings("vetion"), oldCats);
+			String beforeBytes = new String(Files.readAllBytes(
+				new File(dir, "shared_name.json").toPath()));
+			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+				("{\"version\":2,\"names\":{\"77\":\"shared name\",\"42\":\"old main\"},"
+					+ "\"stamps\":{\"77\":5000,\"42\":4000}}").getBytes());
+
+			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
+			LocalClogCache cache = new LocalClogCache(new Gson(), writer, dir);
+			assertEquals("Old Main", cache.followNameChange("Shared Name", 42L));
+			// The claim changes hands 77 -> 55 before the disk task runs.
+			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+				("{\"version\":2,\"names\":{\"55\":\"shared name\",\"42\":\"old main\"},"
+					+ "\"stamps\":{\"55\":6000,\"42\":4000}}").getBytes());
+			writer.runQueued();
+
+			assertEquals("the live file is byte-identical", beforeBytes, new String(
+				Files.readAllBytes(new File(dir, "shared_name.json").toPath())));
+			assertFalse("nothing filed under the old claimant",
+				new File(dir, ".displaced-77-shared_name.json").exists());
+			assertFalse("nothing filed under the new claimant",
+				new File(dir, ".displaced-55-shared_name.json").exists());
+			String identity = new String(Files.readAllBytes(
+				new File(dir, ".kill-clog-identity.json").toPath()));
+			assertFalse("the migration never stamped", identity.contains("\"42\":\"shared name\""));
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
+	@Test
+	public void testParkingFollowsTheFilesOwnProvenance() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-provenance").toFile();
+		try
+		{
+			// The live file's own stamp says hash 88 wrote it; the ledger's
+			// newest claim says 77. The bytes belong to 88 - park there.
+			Files.write(new File(dir, "shared_name.json").toPath(),
+				("{\"playerName\":\"Shared Name\",\"ownerHash\":\"88\","
+					+ "\"obtained\":{\"venenatis\":[]}}").getBytes());
+			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+				"{\"version\":2,\"names\":{\"77\":\"shared name\"},\"stamps\":{\"77\":5000}}".getBytes());
+
+			LocalClogCache taker = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			assertNull(taker.followNameChange("Shared Name", 42L));
+
+			File parked = new File(dir, ".displaced-88-shared_name.json");
+			assertTrue("parked under the file's own writer", parked.exists());
+			assertTrue(new String(Files.readAllBytes(parked.toPath())).contains("venenatis"));
+			assertFalse(new File(dir, ".displaced-77-shared_name.json").exists());
+			assertFalse(new File(dir, "shared_name.json").exists());
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
+	@Test
+	public void testQuarantinedSlotNeverLazyReloadsRejectedBytes() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-quarantine").toFile();
+		try
+		{
+			Files.write(new File(dir, "shared_name.json").toPath(),
+				("{\"playerName\":\"Shared Name\",\"categories\":{\"venenatis\":[9]},"
+					+ "\"obtained\":{\"venenatis\":[]}}").getBytes());
+
+			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
+			LocalClogCache cache = new LocalClogCache(new Gson(), writer, dir);
+			cache.setSyncVerdictTimeoutForTest(150);
+			assertFalse("the disk half never ran", cache.followNameChangeForSync("Shared Name", 42L));
+			assertFalse("the quarantined slot must not lazy-reload from disk",
+				cache.hasDataFor("Shared Name"));
+
+			// The queued arbitration finally lands - the quarantine lifts.
+			writer.runQueued();
+			assertTrue("serving resumes once arbitration succeeds",
+				cache.hasDataFor("Shared Name"));
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
+	@Test
+	public void testSittingOwnerReassertsWhenARivalStampedWhileAway() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-reassert").toFile();
+		try
+		{
+			// We (42) are recorded under the name, but 77 stamped a NEWER
+			// claim while this account was away and its file sits live.
+			Files.write(new File(dir, "shared_name.json").toPath(),
+				("{\"playerName\":\"Shared Name\",\"ownerHash\":\"77\","
+					+ "\"obtained\":{\"venenatis\":[]}}").getBytes());
+			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+				("{\"version\":2,\"names\":{\"42\":\"shared name\",\"77\":\"shared name\"},"
+					+ "\"stamps\":{\"42\":1000,\"77\":2000}}").getBytes());
+
+			LocalClogCache cache = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			assertNull(cache.followNameChange("Shared Name", 42L));
+
+			assertTrue("the rival's file parked under the rival",
+				new File(dir, ".displaced-77-shared_name.json").exists());
+			assertNull("nothing of theirs serves as ours",
+				cache.toClogResult("Shared Name", Collections.emptyMap()));
+			// And the slot now settles steady for us.
+			assertTrue(cache.followNameChangeForSync("Shared Name", 42L));
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
+	@Test
+	public void testQueuedRenameChecksDieWithTheSession() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-epoch").toFile();
+		try
+		{
+			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
+			LocalClogCache cache = new LocalClogCache(new Gson(), writer, dir);
+			cache.followNameChangeAsync("Shared Name", 77L);
+			cache.onSessionEnded();
+			writer.runQueued();
+			assertFalse("a dead session's queued check must not record identity",
+				new File(dir, ".kill-clog-identity.json").exists());
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
+	@Test
+	public void testSameKeyRecoveryRunsOncePerSession() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-pingpong").toFile();
+		try
+		{
+			String parked = "{\"playerName\":\"Shared Name\",\"ownerHash\":\"42\","
+				+ "\"obtained\":{\"venenatis\":[]}}";
+			Files.write(new File(dir, ".displaced-42-shared_name.json").toPath(), parked.getBytes());
+			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+				"{\"version\":2,\"names\":{\"42\":\"shared name\"},\"stamps\":{\"42\":1000}}".getBytes());
+
+			LocalClogCache cache = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			assertNull(cache.followNameChange("Shared Name", 42L));
+			assertFalse("the sidecar was consumed by the recovery",
+				new File(dir, ".displaced-42-shared_name.json").exists());
+
+			// A second sidecar appearing the SAME session must not trigger a
+			// second recovery: two live clients trading one name would
+			// otherwise ping-pong parks forever.
+			Files.write(new File(dir, ".displaced-42-shared_name.json").toPath(), parked.getBytes());
+			assertNull(cache.followNameChange("Shared Name", 42L));
+			assertTrue("no second recovery within one session",
+				new File(dir, ".displaced-42-shared_name.json").exists());
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
 	}
 
 	private static void deleteRecursively(File dir)

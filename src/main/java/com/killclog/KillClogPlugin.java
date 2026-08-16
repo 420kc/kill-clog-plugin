@@ -333,6 +333,10 @@ public class KillClogPlugin extends Plugin
 			liveClogSync.resetFirstSyncWarning();
 			nameAutocompleter.clearClientSnapshot();
 			markLocalHiscoresDirty();
+			// The capture anchor and any queued rename checks die with the
+			// session - a stale hash must never authorize the next account's
+			// saves.
+			localClogCache.onSessionEnded();
 		}
 		else if (event.getGameState() == GameState.HOPPING)
 		{
@@ -651,9 +655,36 @@ public class KillClogPlugin extends Plugin
 					chatNotifier.send(ChatNotice.SYNC_RESULT, "Syncing collection log to killclog.com...");
 				}
 				panel.showSyncStatus("syncing...", false, false);
-				syncService.syncCollectionLog(rsn, accountHash, accountType,
-						gatherPersonalBests(rsn), gatherDetailedPersonalBests(rsn))
-					.whenComplete((result, err) ->
+				java.util.Map<String, Double> pbs = gatherPersonalBests(rsn);
+				java.util.Map<String, SyncService.DetailedPb> detailedPbs =
+					gatherDetailedPersonalBests(rsn);
+				// Off the client thread before dispatch: the sync pre-flight
+				// can block up to ten seconds waiting for the rename disk
+				// verdict, and game ticks must never pay that wait.
+				executor.execute(() -> dispatchKillclogSync(
+					rsn, accountHash, accountType, pbs, detailedPbs, manual, generation));
+			}
+			catch (RuntimeException e)
+			{
+				log.warn("killclog sync push failed before dispatch", e);
+				syncGate.abortAttempt();
+				panel.showSyncStatus("sync failed", false, true);
+				// Failures always chat, this path included.
+				chatNotifier.send(ChatNotice.SYNC_RESULT,
+					"Collection log sync failed - see the client log.");
+				launchQueuedKillclogSync();
+			}
+		});
+	}
+
+	private void dispatchKillclogSync(String rsn, long accountHash, AccountType accountType,
+		java.util.Map<String, Double> pbs, java.util.Map<String, SyncService.DetailedPb> detailedPbs,
+		boolean manual, int generation)
+	{
+		try
+		{
+			syncService.syncCollectionLog(rsn, accountHash, accountType, pbs, detailedPbs)
+				.whenComplete((result, err) ->
 					{
 						boolean current = syncGate.complete(generation);
 						if (result != null && current && config.killclogSync())
@@ -688,18 +719,18 @@ public class KillClogPlugin extends Plugin
 						}
 						launchQueuedKillclogSync();
 					});
-			}
-			catch (RuntimeException e)
-			{
-				log.warn("killclog sync push failed before dispatch", e);
-				syncGate.abortAttempt();
-				panel.showSyncStatus("sync failed", false, true);
-				// Failures always chat, this path included.
-				chatNotifier.send(ChatNotice.SYNC_RESULT,
-					"Collection log sync failed - see the client log.");
-				launchQueuedKillclogSync();
-			}
-		});
+		}
+		catch (RuntimeException e)
+		{
+			log.warn("killclog sync push failed at dispatch", e);
+			syncGate.abortAttempt();
+			panel.showSyncStatus("sync failed", false, true);
+			// Failures always chat, this path included; chat sends need the
+			// client thread and this body runs on the executor.
+			clientThread.invoke(() -> chatNotifier.send(ChatNotice.SYNC_RESULT,
+				"Collection log sync failed - see the client log."));
+			launchQueuedKillclogSync();
+		}
 	}
 
 	// Keep local CA current when a task completes mid-session, and the live
