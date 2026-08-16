@@ -50,7 +50,11 @@ import net.runelite.client.RuneLite;
 @Singleton
 public class LocalClogCache
 {
-	private static final File CACHE_DIR = new File(RuneLite.RUNELITE_DIR, "kill-clog");
+	private static final File DEFAULT_CACHE_DIR = new File(RuneLite.RUNELITE_DIR, "kill-clog");
+
+	/** Instance field so tests can point the whole disk lane at a temp dir
+	 *  and actually exercise migration, parking, and recovery on real files. */
+	private final File cacheDir;
 
 	private final Map<String, PlayerClogData> players = new ConcurrentHashMap<>();
 	private final Gson gson;
@@ -90,11 +94,20 @@ public class LocalClogCache
 	// reaches the server's own migration machinery.
 	//
 	// Dot-prefixed: sanitized player keys never contain a dot, so no player
-	// name (not even 'Identity') can ever collide with this file.
+	// name (not even 'Identity') can ever collide with these files.
 
-	private static final File IDENTITY_FILE = new File(CACHE_DIR, ".kill-clog-identity.json");
 	private volatile Map<String, String> identityByHash;
 	private volatile String pendingRenameNotice;
+
+	private File identityFile()
+	{
+		return new File(cacheDir, ".kill-clog-identity.json");
+	}
+
+	private File sidecarFile(String hashKey, String key)
+	{
+		return new File(cacheDir, ".displaced-" + hashKey + "-" + getCacheFile(key).getName());
+	}
 
 	/**
 	 * Follow the logged-in account onto its current name. When the hash last
@@ -136,15 +149,51 @@ public class LocalClogCache
 			return null;
 		}
 
-		PlayerClogData source = players.remove(previousKey);
+		// Ownership decisions see BOTH truths: this session's in-memory
+		// mappings (ours may not have flushed yet), overlaid with a FRESH
+		// disk read for every OTHER hash - another client on this machine
+		// may have written mappings after this process last looked, and its
+		// disk entries outrank our stale cache of them.
+		Map<String, String> freshIdentity = new HashMap<>(identity);
+		for (Map.Entry<String, String> e : readIdentityFile().entrySet())
+		{
+			if (!e.getKey().equals(hashKey))
+			{
+				freshIdentity.put(e.getKey(), e.getValue());
+			}
+		}
+
+		// Source recovery, sidecar first: if a previous displacement parked
+		// this account's data, the sidecar is its canonical local copy - the
+		// live file under the old key belongs to whoever owns that name NOW.
+		PlayerClogData source = null;
+		File sidecar = sidecarFile(hashKey, previousKey);
+		boolean sourceFromSidecar = false;
+		if (sidecar.exists())
+		{
+			source = readRecordFile(sidecar);
+			sourceFromSidecar = source != null;
+		}
 		if (source == null)
 		{
-			source = loadFromDisk(previousKey);
+			String liveOwner = freshIdentity.get(hashKey);
+			String previousKeyOwner = ownerOfKeyFresh(freshIdentity, previousKey);
+			// The live file is only OURS to migrate when no OTHER account
+			// currently claims that key.
+			if (previousKeyOwner == null || previousKeyOwner.equals(hashKey)
+				|| previousKey.equals(liveOwner))
+			{
+				source = players.remove(previousKey);
+				if (source == null)
+				{
+					source = loadFromDisk(previousKey);
+				}
+			}
 		}
 		identity.put(hashKey, currentKey);
 		if (source == null)
 		{
-			// Nothing stored under the old name: mapping updates, no move.
+			// Nothing recoverable under the old name: mapping updates, no move.
 			persistIdentityEntry(hashKey, currentKey);
 			return null;
 		}
@@ -157,45 +206,78 @@ public class LocalClogCache
 		}
 		// First-party marks prove a LOCAL account captured the destination
 		// data - but on a shared machine that could be a DIFFERENT local
-		// account that owned this name before transferring it. The identity
-		// map knows: another hash still claiming this key means the data is
-		// theirs. Park their file aside (their server copy is intact and
-		// migrates when they log in) rather than merging two accounts' logs.
-		String otherHash = identityOtherHashFor(currentKey, hashKey);
-		if (otherHash != null && dest != null)
+		// account that owned this name before transferring it. The FRESH
+		// identity map knows: another hash still claiming this key means the
+		// data is theirs. Their unflushed capture is drained to disk NOW and
+		// the park happens inside the migration task, gating everything after
+		// it - a failed park aborts the disk migration whole.
+		String otherHash = ownerOfKeyFresh(freshIdentity, currentKey);
+		boolean displaced = otherHash != null && !otherHash.equals(hashKey) && dest != null;
+		if (displaced)
 		{
-			parkDisplacedFile(currentKey, otherHash);
+			Runnable unflushed = pendingByPlayer.remove(currentKey);
+			if (unflushed != null)
+			{
+				unflushed.run(); // their latest capture reaches the file pre-park
+			}
 			players.remove(currentKey);
 			dest = null;
 		}
+		else
+		{
+			// Any queued pre-merge snapshot would overwrite the merged file
+			// after the migration writes it; every capture in it already
+			// lives in the merged memory the migration itself persists.
+			pendingByPlayer.remove(currentKey);
+		}
+		if (!sourceFromSidecar)
+		{
+			// Only when the old key's live file was OURS: if we recovered from
+			// a sidecar, the live slot (and any pending write for it) belongs
+			// to whoever holds that name now.
+			pendingByPlayer.remove(previousKey);
+		}
+
 		PlayerClogData merged = hasFirstPartyMarks(dest)
 			? mergeForMigration(dest, source)
 			: source;
 		merged.playerName = currentRsn;
 		players.put(currentKey, merged);
 		pendingRenameNotice = previousDisplay;
-		// Any debounced snapshot queued BEFORE the merge holds pre-merge
-		// state; firing after the migration write would overwrite the merged
-		// file and lose source-only history. Drop them - every capture that
-		// produced them already lives in the merged in-memory data the
-		// migration task itself persists.
-		pendingByPlayer.remove(currentKey);
-		pendingByPlayer.remove(previousKey);
 
 		PlayerClogData copy = shallowCopy(merged);
 		String oldKey = previousKey;
+		boolean parkFirst = displaced;
+		String parkHash = otherHash;
+		boolean consumedSidecar = sourceFromSidecar;
+		File consumedSidecarFile = sidecar;
 		try
 		{
 			diskWriter.execute(() ->
 			{
+				if (parkFirst && !parkDisplacedFileNow(currentKey, parkHash))
+				{
+					return; // never bury another account's canonical copy
+				}
 				if (!saveToDiskChecked(currentRsn, copy))
 				{
 					return; // old file + old mapping stay: next login re-heals
 				}
-				File old = getCacheFile(oldKey);
-				if (old.exists() && !old.delete())
+				if (!consumedSidecar)
 				{
-					return; // same: never stamp a migration that left data behind
+					// The live file under the old key is only ours to remove
+					// when it was our source; after a sidecar recovery it is
+					// the name's new owner's data.
+					File old = getCacheFile(oldKey);
+					if (old.exists() && !old.delete())
+					{
+						return; // never stamp a migration that left data behind
+					}
+				}
+				if (consumedSidecar && consumedSidecarFile.exists()
+					&& !consumedSidecarFile.delete())
+				{
+					return; // sidecar must not survive as a stale second copy
 				}
 				persistIdentityEntryOnWriter(hashKey, currentKey);
 			});
@@ -206,6 +288,32 @@ public class LocalClogCache
 		}
 		log.debug("Rename continuity: '{}' -> '{}'", previousKey, currentKey);
 		return previousDisplay;
+	}
+
+	/** Which hash the FRESH identity map says currently owns this cache key. */
+	private static String ownerOfKeyFresh(Map<String, String> freshIdentity, String key)
+	{
+		for (Map.Entry<String, String> e : freshIdentity.entrySet())
+		{
+			if (key.equals(e.getValue()))
+			{
+				return e.getKey();
+			}
+		}
+		return null;
+	}
+
+	private PlayerClogData readRecordFile(File file)
+	{
+		try (BufferedReader reader = Files.newBufferedReader(file.toPath(), StandardCharsets.UTF_8))
+		{
+			return gson.fromJson(reader, PlayerClogData.class);
+		}
+		catch (Exception e)
+		{
+			log.warn("Failed to read '{}': {}", file.getName(), e.getMessage());
+			return null;
+		}
 	}
 
 	/**
@@ -220,46 +328,30 @@ public class LocalClogCache
 		return notice;
 	}
 
-	/** Another local account's hash still mapped to this cache key, or null. */
-	private String identityOtherHashFor(String cacheKeyValue, String ourHashKey)
-	{
-		for (Map.Entry<String, String> e : loadIdentity().entrySet())
-		{
-			if (!e.getKey().equals(ourHashKey) && cacheKeyValue.equals(e.getValue()))
-			{
-				return e.getKey();
-			}
-		}
-		return null;
-	}
-
 	/**
 	 * Move another account's file out of the destination slot without
-	 * destroying it: their own login migrates their server-side copy, and the
-	 * sidecar keeps the local history recoverable.
+	 * destroying it: their own next login recovers from the sidecar (the
+	 * sidecar-first source rule above), and their server copy migrates
+	 * regardless. Runs INSIDE the migration disk task; a failure here aborts
+	 * the whole disk migration so their canonical copy is never buried.
 	 */
-	private void parkDisplacedFile(String key, String otherHash)
+	private boolean parkDisplacedFileNow(String key, String otherHash)
 	{
+		File file = getCacheFile(key);
+		if (!file.exists())
+		{
+			return true; // nothing on disk to protect
+		}
+		File parked = sidecarFile(otherHash, key);
 		try
 		{
-			diskWriter.execute(() ->
-			{
-				File file = getCacheFile(key);
-				if (!file.exists())
-				{
-					return;
-				}
-				File parked = new File(CACHE_DIR,
-					".displaced-" + otherHash + "-" + file.getName());
-				if (!file.renameTo(parked))
-				{
-					log.warn("Could not park displaced cache file '{}'", file.getName());
-				}
-			});
+			atomicMove(file, parked);
+			return true;
 		}
-		catch (RejectedExecutionException ignored)
+		catch (IOException e)
 		{
-			// Shutdown race; the next login repeats the displacement check.
+			log.warn("Could not park displaced cache file '{}': {}", file.getName(), e.getMessage());
+			return false;
 		}
 	}
 
@@ -390,12 +482,12 @@ public class LocalClogCache
 	{
 		try
 		{
-			if (!CACHE_DIR.exists())
+			if (!cacheDir.exists())
 			{
-				CACHE_DIR.mkdirs();
+				cacheDir.mkdirs();
 			}
 			File file = getCacheFile(playerName);
-			File tmp = new File(CACHE_DIR, file.getName() + ".tmp");
+			File tmp = new File(cacheDir, file.getName() + ".tmp");
 			try (BufferedWriter writer = Files.newBufferedWriter(tmp.toPath(), StandardCharsets.UTF_8))
 			{
 				gson.toJson(data, writer);
@@ -432,12 +524,12 @@ public class LocalClogCache
 	 */
 	private void persistIdentityEntryOnWriter(String hashKey, String key)
 	{
-		File lockFile = new File(CACHE_DIR, ".kill-clog-identity.lock");
+		File lockFile = new File(cacheDir, ".kill-clog-identity.lock");
 		try
 		{
-			if (!CACHE_DIR.exists())
+			if (!cacheDir.exists())
 			{
-				CACHE_DIR.mkdirs();
+				cacheDir.mkdirs();
 			}
 			try (FileChannel channel = FileChannel.open(lockFile.toPath(),
 				StandardOpenOption.CREATE, StandardOpenOption.WRITE);
@@ -485,9 +577,9 @@ public class LocalClogCache
 	private Map<String, String> readIdentityFile()
 	{
 		Map<String, String> out = new HashMap<>();
-		if (IDENTITY_FILE.exists())
+		if (identityFile().exists())
 		{
-			try (BufferedReader reader = Files.newBufferedReader(IDENTITY_FILE.toPath(), StandardCharsets.UTF_8))
+			try (BufferedReader reader = Files.newBufferedReader(identityFile().toPath(), StandardCharsets.UTF_8))
 			{
 				Map<String, String> parsed = gson.fromJson(reader,
 					new TypeToken<Map<String, String>>()
@@ -510,16 +602,16 @@ public class LocalClogCache
 	{
 		try
 		{
-			if (!CACHE_DIR.exists())
+			if (!cacheDir.exists())
 			{
-				CACHE_DIR.mkdirs();
+				cacheDir.mkdirs();
 			}
-			File tmp = new File(CACHE_DIR, IDENTITY_FILE.getName() + ".tmp");
+			File tmp = new File(cacheDir, identityFile().getName() + ".tmp");
 			try (BufferedWriter writer = Files.newBufferedWriter(tmp.toPath(), StandardCharsets.UTF_8))
 			{
 				gson.toJson(identity, writer);
 			}
-			atomicMove(tmp, IDENTITY_FILE);
+			atomicMove(tmp, identityFile());
 		}
 		catch (IOException e)
 		{
@@ -591,8 +683,14 @@ public class LocalClogCache
 
 	LocalClogCache(Gson gson, ScheduledExecutorService diskWriter)
 	{
+		this(gson, diskWriter, DEFAULT_CACHE_DIR);
+	}
+
+	LocalClogCache(Gson gson, ScheduledExecutorService diskWriter, File cacheDir)
+	{
 		this.gson = gson;
 		this.diskWriter = diskWriter;
+		this.cacheDir = cacheDir;
 	}
 
 	/**
@@ -1499,9 +1597,9 @@ public class LocalClogCache
 	{
 		try
 		{
-			if (!CACHE_DIR.exists())
+			if (!cacheDir.exists())
 			{
-				CACHE_DIR.mkdirs();
+				cacheDir.mkdirs();
 			}
 			File file = getCacheFile(playerName);
 			try (BufferedWriter writer = Files.newBufferedWriter(file.toPath(), StandardCharsets.UTF_8))
@@ -1553,7 +1651,7 @@ public class LocalClogCache
 		String sanitized = cacheKey(playerName)
 			.replace(' ', '_')
 			.replaceAll("[^a-z0-9_-]", "");
-		return new File(CACHE_DIR, sanitized + ".json");
+		return new File(cacheDir, sanitized + ".json");
 	}
 
 	/** Shallow copy sufficient for async disk write. */
