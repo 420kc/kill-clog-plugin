@@ -37,6 +37,9 @@ class IdentityLedger
 		final Map<String, Long> stamps = new HashMap<>();
 	}
 
+	// One machine, one clock: a stamp this far ahead cannot be legitimate.
+	private static final long STAMP_FUTURE_TOLERANCE_MS = 365L * 24 * 60 * 60 * 1000;
+
 	private final Gson gson;
 	private final File cacheDir;
 
@@ -76,11 +79,17 @@ class IdentityLedger
 			readNames(names, view.names);
 			if (root.has("stamps") && root.get("stamps").isJsonObject())
 			{
+				// A stamp meaningfully in the future is corrupt (one machine,
+				// one clock): demote it to 0 so it loses all authority, or a
+				// forged/damaged MAX-ish value would outrank every legitimate
+				// claim forever.
+				long ceiling = System.currentTimeMillis() + STAMP_FUTURE_TOLERANCE_MS;
 				for (Map.Entry<String, JsonElement> e : root.getAsJsonObject("stamps").entrySet())
 				{
 					if (e.getValue().isJsonPrimitive())
 					{
-						view.stamps.put(e.getKey(), e.getValue().getAsLong());
+						long stamp = e.getValue().getAsLong();
+						view.stamps.put(e.getKey(), stamp > ceiling ? 0L : stamp);
 					}
 				}
 			}
