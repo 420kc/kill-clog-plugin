@@ -96,6 +96,12 @@ class SyncService
 				new SyncResult(false, false, -1, "No player to sync."));
 		}
 
+		// Rename continuity, local half: if this account's data lives under a
+		// previous name's file, it follows the player BEFORE the local-store
+		// check below - otherwise a renamed player's sync dies right here and
+		// the server's own migration never even sees a packet.
+		localClogCache.followNameChange(rsn, accountHash);
+
 		// The player's own accumulated local store is the payload: months of
 		// their in-client captures and live unlocks, published as their own
 		// truth - requiring a full re-walk to seed the sync would be needless
@@ -139,6 +145,24 @@ class SyncService
 				return new SyncResult(false, false, r.code,
 					"Another sync for this account is in flight - retrying shortly.",
 					true, parseRetryAfterSeconds(r.body));
+			}
+			// The server's identity arbitration answers (2026-08-16 wire
+			// contract): each gets plain words instead of a bare HTTP code.
+			if (r.code == 409 && r.body != null && r.body.contains("name_active_with_another_account"))
+			{
+				return new SyncResult(false, false, r.code,
+					"This name's previous owner played recently - killclog.com will "
+					+ "accept your log after their continuity window passes.");
+			}
+			if (r.code == 409 && r.body != null && r.body.contains("account_hash_mismatch"))
+			{
+				return new SyncResult(false, false, r.code,
+					"This name is registered to a different account on killclog.com.");
+			}
+			if (r.code == 451)
+			{
+				return new SyncResult(false, false, r.code,
+					"This account has opted out of killclog.com syncing.");
 			}
 			log.debug("killclog sync failed for '{}': HTTP {}", rsn, r.code);
 			return new SyncResult(false, false, r.code,
