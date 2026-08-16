@@ -326,6 +326,7 @@ public class KillClogPlugin extends Plugin
 		else if (event.getGameState() == GameState.LOGIN_SCREEN)
 		{
 			SwingUtilities.invokeLater(panel::reloadTooltipSprites);
+			panel.clearProfileLocalCapture();
 			manualClogSync.reset();
 			clogIndex.clear();
 			sessionState.resetAutoLookupSession();
@@ -739,6 +740,7 @@ public class KillClogPlugin extends Plugin
 	public void onGameTick(GameTick event)
 	{
 		nameAutocompleter.refreshClientSnapshot();
+		panel.rememberProfileStandingPose();
 
 		// Rename continuity: once per login, when both halves of the local
 		// identity have arrived, the cache follows the account onto its

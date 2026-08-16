@@ -116,6 +116,7 @@ public class KillClogPanel extends PluginPanel
 	private final ActivitySummaryTooltips activityTooltips;
 	private final PersonalBests personalBests;
 	private final ProfileCardDataBuilder profileCardDataBuilder;
+	private final ProfileCardLocalCapture profileCardLocalCapture;
 	private final ProfileCardController profileCardController;
 	private ProgressHighlighter highlighter;
 	private JPanel infoRow;
@@ -309,10 +310,11 @@ public class KillClogPanel extends PluginPanel
 			personalBests, config);
 		this.profileCardDataBuilder = new ProfileCardDataBuilder(itemManager,
 			accountBadges, accountTypes, iconCache);
+		this.profileCardLocalCapture = new ProfileCardLocalCapture(client, clientThread);
 		this.profileCardController = new ProfileCardController(this,
 			() -> profileCardDataBuilder.build(
 				lookupSession, rsn, localRsn, profileCardSyncConfirmed),
-			new ProfileCardLocalCapture(client, clientThread),
+			profileCardLocalCapture,
 			this::setProfileCardStatus,
 			() ->
 			{
@@ -1071,6 +1073,17 @@ public class KillClogPanel extends PluginPanel
 			profileCardHasData = hasData;
 			refreshProfileChaliceVisibility();
 		});
+	}
+
+	/** Cache the local player's frame-zero idle model for a stable profile portrait. */
+	void rememberProfileStandingPose()
+	{
+		profileCardLocalCapture.rememberStandingPose();
+	}
+
+	void clearProfileLocalCapture()
+	{
+		profileCardLocalCapture.clear();
 	}
 
 	void setKillclogSyncHandler(Runnable handler)
