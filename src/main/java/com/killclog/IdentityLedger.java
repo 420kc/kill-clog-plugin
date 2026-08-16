@@ -171,7 +171,11 @@ class IdentityLedger
 		{
 			if (key.equals(e.getValue()))
 			{
-				stamp = Math.max(stamp, view.stamps.getOrDefault(e.getKey(), 0L) + 1);
+				long prior = view.stamps.getOrDefault(e.getKey(), 0L);
+				// Saturate instead of overflowing: a corrupt MAX_VALUE stamp
+				// must never leave the prior claimant permanently newer.
+				long bumped = prior >= Long.MAX_VALUE - 1 ? Long.MAX_VALUE : prior + 1;
+				stamp = Math.max(stamp, bumped);
 			}
 		}
 		return stamp;
