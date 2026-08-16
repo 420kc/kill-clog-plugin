@@ -607,6 +607,63 @@ public class LocalClogCacheTest
 	}
 
 	@Test
+	public void testMigrationGrandfathersLegacyHistoryThroughTheMerge()
+	{
+		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
+		cache.seedIdentityForTest(new HashMap<>());
+		// Legacy source: wholly first-party by contract, marks null (models a
+		// pre-marking store file, which cacheResult alone cannot produce).
+		cache.cacheResult(clog(
+			"Old Name",
+			categoryItems("vetion", 1, 2),
+			obtainedItems("vetion", 1, 2)));
+		cache.nullifyFirstPartyMarksForTest("Old Name");
+		assertNull(cache.followNameChange("Old Name", 42L));
+		// Destination: modern captures WITH first-party marks (same account).
+		Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
+		cache.cacheResult(clog("New Name", cats, obtainedItems("venenatis")));
+		cache.mergeObtainedItem("New Name", 9, itemListAsStrings("venenatis"), cats);
+
+		assertEquals("Old Name", cache.followNameChange("New Name", 42L));
+		// The sync payload filters to first-party-marked items: the migrated
+		// legacy history must survive that filter, not just the display.
+		ClogResult syncable = cache.toFirstPartySyncResult("New Name");
+		assertNotNull(syncable);
+		assertNotNull("legacy history ships in the sync payload",
+			syncable.getObtainedItems().get("vetion"));
+		assertEquals(2, syncable.getObtainedItems().get("vetion").size());
+		assertNotNull("modern captures still ship too",
+			syncable.getObtainedItems().get("venenatis"));
+	}
+
+	@Test
+	public void testMigrationNeverMergesAnotherLocalAccountsData()
+	{
+		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
+		Map<String, String> identity = new HashMap<>();
+		// Another LOCAL account's hash still claims the destination name.
+		identity.put("77", "new name");
+		cache.seedIdentityForTest(identity);
+		// Its first-party captures sit at the destination...
+		Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
+		cache.cacheResult(clog("New Name", cats, obtainedItems("venenatis")));
+		cache.mergeObtainedItem("New Name", 9, itemListAsStrings("venenatis"), cats);
+		// ...and OUR account arrives under that name after a transfer.
+		cache.cacheResult(clog(
+			"Old Name",
+			categoryItems("vetion", 1),
+			obtainedItems("vetion", 1)));
+		assertNull(cache.followNameChange("Old Name", 42L));
+		assertEquals("Old Name", cache.followNameChange("New Name", 42L));
+
+		ClogResult served = cache.toClogResult("New Name", Collections.emptyMap());
+		assertNotNull(served);
+		assertNotNull("our history serves", served.getObtainedItems().get("vetion"));
+		assertNull("the other local account's log is never mixed into ours",
+			served.getObtainedItems().get("venenatis"));
+	}
+
+	@Test
 	public void testRenameNoticeSurvivesWhicheverPathMigratesFirst()
 	{
 		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());

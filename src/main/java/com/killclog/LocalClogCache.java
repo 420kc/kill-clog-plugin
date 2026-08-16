@@ -6,9 +6,13 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.AtomicMoveNotSupportedException;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -151,12 +155,32 @@ public class LocalClogCache
 		{
 			dest = loadFromDisk(currentKey);
 		}
+		// First-party marks prove a LOCAL account captured the destination
+		// data - but on a shared machine that could be a DIFFERENT local
+		// account that owned this name before transferring it. The identity
+		// map knows: another hash still claiming this key means the data is
+		// theirs. Park their file aside (their server copy is intact and
+		// migrates when they log in) rather than merging two accounts' logs.
+		String otherHash = identityOtherHashFor(currentKey, hashKey);
+		if (otherHash != null && dest != null)
+		{
+			parkDisplacedFile(currentKey, otherHash);
+			players.remove(currentKey);
+			dest = null;
+		}
 		PlayerClogData merged = hasFirstPartyMarks(dest)
 			? mergeForMigration(dest, source)
 			: source;
 		merged.playerName = currentRsn;
 		players.put(currentKey, merged);
 		pendingRenameNotice = previousDisplay;
+		// Any debounced snapshot queued BEFORE the merge holds pre-merge
+		// state; firing after the migration write would overwrite the merged
+		// file and lose source-only history. Drop them - every capture that
+		// produced them already lives in the merged in-memory data the
+		// migration task itself persists.
+		pendingByPlayer.remove(currentKey);
+		pendingByPlayer.remove(previousKey);
 
 		PlayerClogData copy = shallowCopy(merged);
 		String oldKey = previousKey;
@@ -196,6 +220,49 @@ public class LocalClogCache
 		return notice;
 	}
 
+	/** Another local account's hash still mapped to this cache key, or null. */
+	private String identityOtherHashFor(String cacheKeyValue, String ourHashKey)
+	{
+		for (Map.Entry<String, String> e : loadIdentity().entrySet())
+		{
+			if (!e.getKey().equals(ourHashKey) && cacheKeyValue.equals(e.getValue()))
+			{
+				return e.getKey();
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Move another account's file out of the destination slot without
+	 * destroying it: their own login migrates their server-side copy, and the
+	 * sidecar keeps the local history recoverable.
+	 */
+	private void parkDisplacedFile(String key, String otherHash)
+	{
+		try
+		{
+			diskWriter.execute(() ->
+			{
+				File file = getCacheFile(key);
+				if (!file.exists())
+				{
+					return;
+				}
+				File parked = new File(CACHE_DIR,
+					".displaced-" + otherHash + "-" + file.getName());
+				if (!file.renameTo(parked))
+				{
+					log.warn("Could not park displaced cache file '{}'", file.getName());
+				}
+			});
+		}
+		catch (RejectedExecutionException ignored)
+		{
+			// Shutdown race; the next login repeats the displacement check.
+		}
+	}
+
 	private static boolean hasFirstPartyMarks(PlayerClogData data)
 	{
 		if (data == null || data.firstPartyByCategory == null)
@@ -219,6 +286,25 @@ public class LocalClogCache
 	 */
 	private static PlayerClogData mergeForMigration(PlayerClogData dest, PlayerClogData source)
 	{
+		// A legacy source (null marks) is wholly first-party by definition -
+		// the class contract grandfathers it at first capture. Materialize
+		// that grandfather EXPLICITLY before the mark union, or the merged
+		// file's marks will not cover the legacy items and the sync filter
+		// would silently drop the migrated history from every future push.
+		if (source.firstPartyByCategory == null && source.obtained != null)
+		{
+			Map<String, List<Integer>> grandfathered = new ConcurrentHashMap<>();
+			for (Map.Entry<String, List<ClogResult.ClogItem>> e : source.obtained.entrySet())
+			{
+				List<Integer> ids = new ArrayList<>();
+				for (ClogResult.ClogItem item : e.getValue())
+				{
+					ids.add(item.getId());
+				}
+				grandfathered.put(e.getKey(), ids);
+			}
+			source.firstPartyByCategory = grandfathered;
+		}
 		if (source.categories != null)
 		{
 			if (dest.categories == null)
@@ -314,7 +400,7 @@ public class LocalClogCache
 			{
 				gson.toJson(data, writer);
 			}
-			Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+			atomicMove(tmp, file);
 			return true;
 		}
 		catch (IOException e)
@@ -337,16 +423,45 @@ public class LocalClogCache
 	}
 
 	/**
-	 * On the writer thread: fresh read, single-entry overlay, write. Two
-	 * clients sharing this machine each upsert only their own account's
-	 * mapping and can never truncate each other's entries with a stale
-	 * whole-file snapshot.
+	 * On the writer thread, under an OS-level file lock: fresh read,
+	 * single-entry overlay, atomic write. The in-process writer thread
+	 * serializes THIS client; the FileLock serializes ACROSS clients, so two
+	 * JVMs sharing the machine can never interleave read-modify-write and
+	 * erase each other's mappings, and the atomic move means no reader ever
+	 * sees partial JSON.
 	 */
 	private void persistIdentityEntryOnWriter(String hashKey, String key)
 	{
-		Map<String, String> disk = readIdentityFile();
-		disk.put(hashKey, key);
-		saveIdentity(disk);
+		File lockFile = new File(CACHE_DIR, ".kill-clog-identity.lock");
+		try
+		{
+			if (!CACHE_DIR.exists())
+			{
+				CACHE_DIR.mkdirs();
+			}
+			try (FileChannel channel = FileChannel.open(lockFile.toPath(),
+				StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+				FileLock lock = channel.lock())
+			{
+				Map<String, String> disk = readIdentityFile();
+				disk.put(hashKey, key);
+				saveIdentity(disk);
+			}
+		}
+		catch (Exception e)
+		{
+			log.warn("Identity upsert failed (re-records next login): {}", e.getMessage());
+		}
+	}
+
+	/** Test hook: model a pre-marking legacy store file (marks null). */
+	void nullifyFirstPartyMarksForTest(String rsn)
+	{
+		PlayerClogData data = players.get(cacheKey(rsn));
+		if (data != null)
+		{
+			data.firstPartyByCategory = null;
+		}
 	}
 
 	/** Test hook: preload the identity map so tests never touch the real file. */
@@ -399,14 +514,31 @@ public class LocalClogCache
 			{
 				CACHE_DIR.mkdirs();
 			}
-			try (BufferedWriter writer = Files.newBufferedWriter(IDENTITY_FILE.toPath(), StandardCharsets.UTF_8))
+			File tmp = new File(CACHE_DIR, IDENTITY_FILE.getName() + ".tmp");
+			try (BufferedWriter writer = Files.newBufferedWriter(tmp.toPath(), StandardCharsets.UTF_8))
 			{
 				gson.toJson(identity, writer);
 			}
+			atomicMove(tmp, IDENTITY_FILE);
 		}
 		catch (IOException e)
 		{
 			log.warn("Failed to save rename identity file: {}", e.getMessage());
+		}
+	}
+
+	/** Genuinely atomic where the filesystem allows it; plain replace as the
+	 *  documented fallback (some filesystems refuse ATOMIC_MOVE). */
+	private static void atomicMove(File from, File to) throws IOException
+	{
+		try
+		{
+			Files.move(from.toPath(), to.toPath(),
+				StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+		}
+		catch (AtomicMoveNotSupportedException e)
+		{
+			Files.move(from.toPath(), to.toPath(), StandardCopyOption.REPLACE_EXISTING);
 		}
 	}
 
