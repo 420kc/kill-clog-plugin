@@ -19,6 +19,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.RejectedExecutionException;
@@ -99,6 +101,13 @@ public class LocalClogCache
 	// for the first-party save guard below.
 	private volatile String activeHashKey;
 	private final IdentityLedger ledger;
+	// How long the sync pre-flight waits for the disk verdict.
+	private volatile long syncVerdictTimeoutMs = 10_000;
+
+	void setSyncVerdictTimeoutForTest(long ms)
+	{
+		syncVerdictTimeoutMs = ms;
+	}
 
 	private File sidecarFile(String hashKey, String key)
 	{
@@ -125,10 +134,27 @@ public class LocalClogCache
 	 *
 	 * @return the previous display name when a migration happened, else null.
 	 */
-	public synchronized String followNameChange(String currentRsn, long accountHash)
+	public String followNameChange(String currentRsn, long accountHash)
+	{
+		return followNameChange(currentRsn, accountHash, null);
+	}
+
+	/** Completes the verdict future (when given) with the DISK half's result:
+	 *  true only once park/write/stamp all landed, false on any abort. */
+	private static void settle(CompletableFuture<Boolean> verdict, boolean ok)
+	{
+		if (verdict != null)
+		{
+			verdict.complete(ok);
+		}
+	}
+
+	private synchronized String followNameChange(String currentRsn, long accountHash,
+		CompletableFuture<Boolean> verdict)
 	{
 		if (currentRsn == null || currentRsn.isBlank() || accountHash == -1)
 		{
+			settle(verdict, true);
 			return null;
 		}
 		Map<String, String> identity = loadIdentity();
@@ -142,7 +168,7 @@ public class LocalClogCache
 			// the slot's live file may belong to another local account, and
 			// adopting it would let this account publish their captures.
 			identity.put(hashKey, currentKey);
-			adoptSlot(currentKey, hashKey);
+			adoptSlot(currentKey, hashKey, verdict);
 			return null;
 		}
 		boolean sameKey = previousKey.equals(currentKey);
@@ -150,12 +176,26 @@ public class LocalClogCache
 		{
 			// Steady state. The sidecar check covers the account that lost a
 			// displacement and later RETOOK the same name: its parked history
-			// must recover even though no rename ever happened. A v1-lifted
-			// entry (stamp 0) re-asserts once here, or any stamped foreign
-			// claim would outrank the sitting owner forever.
-			if (ledger.read().stamps.getOrDefault(hashKey, 0L) == 0L)
+			// must recover even though no rename ever happened.
+			IdentityLedger.View steady = ledger.read();
+			if (!steady.names.containsKey(hashKey))
 			{
-				persistIdentityEntry(hashKey, currentKey);
+				// The memory mapping exists but disk never recorded us: an
+				// earlier adoption aborted (or is still queued). Re-run the
+				// full arbitration - stamping straight through here would
+				// bypass the park and adopt whatever sits in the slot.
+				adoptSlot(currentKey, hashKey, verdict);
+			}
+			else
+			{
+				if (steady.stamps.getOrDefault(hashKey, 0L) == 0L)
+				{
+					// A v1-lifted entry (stamp 0) re-asserts once, or any
+					// stamped foreign claim would outrank the sitting owner
+					// forever.
+					persistIdentityEntry(hashKey, currentKey);
+				}
+				settle(verdict, true);
 			}
 			return null;
 		}
@@ -189,7 +229,10 @@ public class LocalClogCache
 		}
 		if (sameKey && !sourceFromSidecar)
 		{
-			return null; // unreadable sidecar: touch nothing, retry next login
+			// Unreadable sidecar: touch nothing, retry next login. Fail
+			// closed for sync - the live slot's provenance is unresolved.
+			settle(verdict, false);
+			return null;
 		}
 		boolean sourceFromLiveFile = false;
 		if (source == null)
@@ -213,7 +256,7 @@ public class LocalClogCache
 			// move - but the DESTINATION slot still gets the same adoption
 			// arbitration as a first sighting, or a resident account's live
 			// file would become this account's serving copy.
-			adoptSlot(currentKey, hashKey);
+			adoptSlot(currentKey, hashKey, verdict);
 			return null;
 		}
 		String previousDisplay = source.playerName != null ? source.playerName : previousKey;
@@ -251,14 +294,52 @@ public class LocalClogCache
 				{
 					pendingRenameNotice.set(noticeOnSuccess);
 				}
+				settle(verdict, done);
 			});
 		}
 		catch (RejectedExecutionException ignored)
 		{
 			// Shutdown race: memory served this session; disk re-heals next login.
+			settle(verdict, false);
 		}
 		log.debug("Rename continuity: '{}' -> '{}'", previousKey, currentKey);
 		return sameKey ? null : previousDisplay;
+	}
+
+	/**
+	 * The sync pre-flight: returns only after the DISK half of any migration
+	 * or adoption reached its locked verdict, so the payload the caller
+	 * builds next can never contain bytes the in-lock revalidation rejected.
+	 * On failure the slot's memory clears too - fail closed, sync skips, the
+	 * next login re-decides with disk truth.
+	 */
+	public boolean followNameChangeForSync(String currentRsn, long accountHash)
+	{
+		if (currentRsn == null || currentRsn.isBlank())
+		{
+			return true;
+		}
+		CompletableFuture<Boolean> verdict = new CompletableFuture<>();
+		followNameChange(currentRsn, accountHash, verdict);
+		boolean ok;
+		try
+		{
+			ok = verdict.get(syncVerdictTimeoutMs, TimeUnit.MILLISECONDS);
+		}
+		catch (Exception e)
+		{
+			ok = false;
+		}
+		if (!ok)
+		{
+			synchronized (this)
+			{
+				String key = cacheKey(currentRsn);
+				players.remove(key);
+				pendingByPlayer.remove(key);
+			}
+		}
+		return ok;
 	}
 
 	private static final class MigrationDest
@@ -325,7 +406,7 @@ public class LocalClogCache
 	 * account's captures. In-memory state for the slot clears immediately;
 	 * the disk half revalidates under the identity lock.
 	 */
-	private void adoptSlot(String currentKey, String hashKey)
+	private void adoptSlot(String currentKey, String hashKey, CompletableFuture<Boolean> verdict)
 	{
 		IdentityLedger.View diskView = ledger.read();
 		String squatter = IdentityLedger.newestClaimant(diskView.names, diskView.stamps, currentKey, hashKey);
@@ -346,12 +427,13 @@ public class LocalClogCache
 		PlayerClogData squatterToFlush = squatterCopy;
 		try
 		{
-			diskWriter.execute(() -> ledger.withLock(() ->
-				adoptSlotOnDisk(currentKey, hashKey, decisionSquatter, squatterToFlush)));
+			diskWriter.execute(() -> settle(verdict, ledger.withLock(() ->
+				adoptSlotOnDisk(currentKey, hashKey, decisionSquatter, squatterToFlush))));
 		}
 		catch (RejectedExecutionException ignored)
 		{
 			// Shutdown race: the next login re-runs adoption.
+			settle(verdict, false);
 		}
 	}
 
@@ -360,31 +442,30 @@ public class LocalClogCache
 	{
 		IdentityLedger.View now = ledger.read();
 		String claimNow = IdentityLedger.newestClaimant(now.names, now.stamps, currentKey, hashKey);
-		if (claimNow != null)
+		if (!Objects.equals(claimNow, decisionSquatter))
 		{
-			if (decisionSquatter == null)
+			// The slot's ownership moved between the decision and this task -
+			// a claim appeared over what may be our own pre-latch captures,
+			// vanished, or changed hands entirely. The snapshot we carry
+			// answers a question nobody is asking anymore: abort whole and
+			// re-decide next login. (The disk entry stays absent, so the
+			// steady-state path re-runs adoption instead of stamping past it.)
+			return false;
+		}
+		if (claimNow != null && !sidecarFile(claimNow, currentKey).exists())
+		{
+			if (squatterToFlush != null)
 			{
-				// The claim appeared AFTER the decision saw a free slot. The
-				// live file there may well be our own (captured this session
-				// before the latch ran) - parking it under the claimant would
-				// contaminate their recovery. Re-decide next login instead.
-				return false;
+				String squatterName = squatterToFlush.playerName != null
+					? squatterToFlush.playerName : currentKey;
+				if (!saveToDiskChecked(squatterName, squatterToFlush))
+				{
+					return false; // their latest capture moves or nothing does
+				}
 			}
-			if (!sidecarFile(claimNow, currentKey).exists())
+			if (!parkDisplacedFileNow(currentKey, claimNow))
 			{
-				if (squatterToFlush != null)
-				{
-					String squatterName = squatterToFlush.playerName != null
-						? squatterToFlush.playerName : currentKey;
-					if (!writeCacheFile(squatterName, squatterToFlush))
-					{
-						return false; // their latest capture moves or nothing does
-					}
-				}
-				if (!parkDisplacedFileNow(currentKey, claimNow))
-				{
-					return false; // their file stays put; the next login retries
-				}
+				return false; // their file stays put; the next login retries
 			}
 		}
 		now.names.put(hashKey, currentKey);
@@ -871,6 +952,10 @@ public class LocalClogCache
 		if (name == null)
 		{
 			activePlayer = null;
+			// The capture anchor dies with the session: a stale hash would
+			// authorize the NEXT account's pre-latch saves (or post-logout
+			// lookups) against the PREVIOUS account's claims.
+			activeHashKey = null;
 			return;
 		}
 

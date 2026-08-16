@@ -1272,6 +1272,150 @@ public class LocalClogCacheTest
 		}
 	}
 
+	@Test
+	public void testAdoptionAbortsWhenTheClaimantChanges() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-claimswap").toFile();
+		try
+		{
+			String residents = "{\"playerName\":\"Shared Name\",\"obtained\":{\"venenatis\":[]}}";
+			Files.write(new File(dir, "shared_name.json").toPath(), residents.getBytes());
+			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+				"{\"version\":2,\"names\":{\"77\":\"shared name\"},\"stamps\":{\"77\":5000}}".getBytes());
+
+			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
+			LocalClogCache taker = new LocalClogCache(new Gson(), writer, dir);
+			// Decision sees claimant 77; before the task runs, the claim
+			// changes hands to 55. The snapshot answers a dead question.
+			assertNull(taker.followNameChange("Shared Name", 42L));
+			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+				"{\"version\":2,\"names\":{\"55\":\"shared name\"},\"stamps\":{\"55\":6000}}".getBytes());
+
+			writer.runQueued();
+
+			assertEquals("the live file is untouched", residents,
+				new String(Files.readAllBytes(new File(dir, "shared_name.json").toPath())));
+			assertFalse(new File(dir, ".displaced-55-shared_name.json").exists());
+			assertFalse(new File(dir, ".displaced-77-shared_name.json").exists());
+			String identity = new String(Files.readAllBytes(
+				new File(dir, ".kill-clog-identity.json").toPath()));
+			assertFalse("the taker was never stamped", identity.contains("\"42\""));
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
+	@Test
+	public void testAbortedAdoptionRetriesInsteadOfStampingThrough() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-readopt").toFile();
+		try
+		{
+			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
+			LocalClogCache taker = new LocalClogCache(new Gson(), writer, dir);
+			// First sighting on an EMPTY machine: the decision sees a free
+			// slot... but before the task runs, a resident's claim and file
+			// land (another client). Adoption must abort.
+			assertNull(taker.followNameChange("Shared Name", 42L));
+			String residents = "{\"playerName\":\"Shared Name\",\"obtained\":{\"venenatis\":[]}}";
+			Files.write(new File(dir, "shared_name.json").toPath(), residents.getBytes());
+			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+				"{\"version\":2,\"names\":{\"77\":\"shared name\"},\"stamps\":{\"77\":5000}}".getBytes());
+			writer.runQueued();
+			String afterAbort = new String(Files.readAllBytes(
+				new File(dir, ".kill-clog-identity.json").toPath()));
+			assertFalse("aborted adoption left no stamp", afterAbort.contains("\"42\""));
+
+			// The NEXT check must re-run full arbitration, not stamp through
+			// the cached memory mapping: the resident parks, then we stamp.
+			assertNull(taker.followNameChange("Shared Name", 42L));
+			writer.runQueued();
+
+			File parked = new File(dir, ".displaced-77-shared_name.json");
+			assertTrue("the resident's file parked on retry", parked.exists());
+			assertTrue(new String(Files.readAllBytes(parked.toPath())).contains("venenatis"));
+			String identity = new String(Files.readAllBytes(
+				new File(dir, ".kill-clog-identity.json").toPath()));
+			assertTrue("the taker stamped only after arbitration",
+				identity.contains("\"42\":\"shared name\""));
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
+	@Test
+	public void testSyncPreflightWaitsForTheDiskVerdict() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-preflight").toFile();
+		try
+		{
+			// Benign path: the disk half lands inline, verdict true.
+			LocalClogCache ok = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			assertTrue(ok.followNameChangeForSync("Fresh Name", 42L));
+
+			// Unresolved path: the disk half never runs before the timeout.
+			// The verdict is false and the slot's memory clears - bytes with
+			// unresolved provenance never become a payload.
+			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
+			LocalClogCache stuck = new LocalClogCache(new Gson(), writer, dir);
+			stuck.setSyncVerdictTimeoutForTest(200);
+			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
+			stuck.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
+			assertFalse(stuck.followNameChangeForSync("Shared Name", 77L));
+			assertNull("the unresolved slot serves nothing",
+				stuck.toClogResult("Shared Name", Collections.emptyMap()));
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
+	@Test
+	public void testLogoutClearsTheCaptureAnchor() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-anchorlife").toFile();
+		try
+		{
+			LocalClogCache cache = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			assertNull(cache.followNameChange("Shared Name", 77L));
+			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
+			cache.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
+			cache.mergeObtainedItem("Shared Name", 9, itemListAsStrings("venenatis"), cats);
+			String before = new String(Files.readAllBytes(new File(dir, "shared_name.json").toPath()));
+
+			// Logout kills the anchor. A later save against the claimed slot
+			// (a lookup refresh, a straggler) must self-suppress instead of
+			// riding the dead session's authority.
+			cache.setActivePlayer(null);
+			cache.cacheResult(clog("Shared Name", categoryItems("zulrah", 4), obtainedItems("zulrah")));
+
+			String after = new String(Files.readAllBytes(new File(dir, "shared_name.json").toPath()));
+			assertEquals("the claimed file is untouched after logout", before, after);
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
+	@Test
+	public void testNextStampSaturatesInsteadOfOverflowing()
+	{
+		IdentityLedger.View view = new IdentityLedger.View();
+		view.names.put("77", "shared name");
+		view.stamps.put("77", Long.MAX_VALUE);
+		long stamp = IdentityLedger.nextStamp(view, "shared name");
+		assertEquals("saturates at the ceiling, never wraps negative",
+			Long.MAX_VALUE, stamp);
+	}
+
 	private static void deleteRecursively(File dir)
 	{
 		File[] children = dir.listFiles();

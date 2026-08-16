@@ -102,7 +102,14 @@ class SyncService
 		// previous name's file, it follows the player BEFORE the local-store
 		// check below - otherwise a renamed player's sync dies right here and
 		// the server's own migration never even sees a packet.
-		localClogCache.followNameChange(rsn, accountHash);
+		if (!localClogCache.followNameChangeForSync(rsn, accountHash))
+		{
+			// The disk half of a migration or adoption did not land - the
+			// local store's provenance is unresolved and its bytes must not
+			// become a payload. The next login (or sync) re-decides.
+			return CompletableFuture.completedFuture(new SyncResult(false, false, -1,
+				"Local name ownership is still settling - sync skipped this round."));
+		}
 
 		// The player's own accumulated local store is the payload: months of
 		// their in-client captures and live unlocks, published as their own
