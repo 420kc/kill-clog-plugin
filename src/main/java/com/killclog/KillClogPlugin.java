@@ -141,6 +141,9 @@ public class KillClogPlugin extends Plugin
 	private boolean advLogTitleLoaded;
 	private boolean advLogCountersLoaded;
 	private String advLogOwner;
+	// One rename-continuity check per login, latched when name AND account
+	// hash are both available (they arrive on different ticks).
+	private boolean renameChecked;
 
 	private final ChatAutoLookupGate chatAutoLookup = new ChatAutoLookupGate();
 	private final ClogSessionState sessionState = new ClogSessionState();
@@ -314,6 +317,7 @@ public class KillClogPlugin extends Plugin
 	{
 		if (event.getGameState() == GameState.LOGGED_IN)
 		{
+			renameChecked = false;
 			SwingUtilities.invokeLater(panel::reloadTooltipSprites);
 			clogService.clearTempleFailures();
 			runeProfileService.clearFailures();
@@ -726,6 +730,28 @@ public class KillClogPlugin extends Plugin
 	public void onGameTick(GameTick event)
 	{
 		nameAutocompleter.refreshClientSnapshot();
+
+		// Rename continuity: once per login, when both halves of the local
+		// identity have arrived, the cache follows the account onto its
+		// current name (the server migrates its own copy on the next sync).
+		if (!renameChecked)
+		{
+			Player renameLocal = client.getLocalPlayer();
+			long renameHash = client.getAccountHash();
+			if (renameLocal != null && renameLocal.getName() != null && renameHash != -1)
+			{
+				renameChecked = true;
+				String renameName = renameLocal.getName();
+				String previousName = localClogCache.followNameChange(renameName, renameHash);
+				if (previousName != null)
+				{
+					chatNotifier.send(ChatNotice.SYNC_RESULT,
+						"Kill Clog followed your name change from '" + previousName
+						+ "' - your collection log came along.");
+					SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(renameName));
+				}
+			}
+		}
 
 		if (sessionState.pendingAcctTypeRecheck())
 		{
