@@ -522,6 +522,77 @@ public class LocalClogCacheTest
 		return null;
 	}
 
+	// ── rename continuity (2.0.4): the local half of the server's migration ──
+
+	@Test
+	public void testFollowNameChangeMigratesTheAccountsData()
+	{
+		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
+		cache.seedIdentityForTest(new HashMap<>());
+		cache.cacheResult(clog(
+			"Old Name",
+			categoryItems("vetion", 1, 2, 3),
+			obtainedItems("vetion", 1, 2),
+			"2026-06-03 01:23:45",
+			AccountType.IRONMAN));
+
+		assertNull("first sight of the account records the mapping, no move",
+			cache.followNameChange("Old Name", 42L));
+		assertNull("same name again is a no-op",
+			cache.followNameChange("Old Name", 42L));
+
+		String previous = cache.followNameChange("New Name", 42L);
+		assertEquals("Old Name", previous);
+		ClogResult migrated = cache.toClogResult("New Name", Collections.emptyMap());
+		assertNotNull("the data followed the account", migrated);
+		assertEquals(2, migrated.getObtainedItems().get("vetion").size());
+		assertTrue("sync sees local data under the new name", cache.hasDataFor("New Name"));
+		assertNull("the old name no longer serves this account's data",
+			cache.toClogResult("Old Name", Collections.emptyMap()));
+	}
+
+	@Test
+	public void testFollowNameChangeOwnDataOutranksStaleLookupCopy()
+	{
+		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
+		cache.seedIdentityForTest(new HashMap<>());
+		// The account's own months of captures, under its old name...
+		cache.cacheResult(clog(
+			"Old Name",
+			categoryItems("vetion", 1, 2, 3),
+			obtainedItems("vetion", 1, 2),
+			"2026-06-03 01:23:45",
+			AccountType.IRONMAN));
+		assertNull(cache.followNameChange("Old Name", 42L));
+		// ...and a stale lookup-cache copy of the NEW name's previous owner.
+		cache.cacheResult(clog(
+			"New Name",
+			categoryItems("venenatis", 9),
+			obtainedItems("venenatis", 9)));
+
+		assertEquals("Old Name", cache.followNameChange("New Name", 42L));
+		ClogResult served = cache.toClogResult("New Name", Collections.emptyMap());
+		assertNotNull(served);
+		assertNotNull("own data won the destination", served.getObtainedItems().get("vetion"));
+		assertNull("the stale lookup copy is gone", served.getObtainedItems().get("venenatis"));
+	}
+
+	@Test
+	public void testFollowNameChangeIgnoresUnknownIdentity()
+	{
+		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
+		cache.seedIdentityForTest(new HashMap<>());
+		cache.cacheResult(clog(
+			"Bystander",
+			categoryItems("vetion", 1),
+			obtainedItems("vetion", 1)));
+
+		assertNull("no hash on file, nothing to follow", cache.followNameChange("Someone", 7L));
+		assertNull("an invalid hash never records", cache.followNameChange("Someone", -1L));
+		assertNotNull("bystanders are untouched",
+			cache.toClogResult("Bystander", Collections.emptyMap()));
+	}
+
 	private static ClogResult clog(String playerName, Map<String, List<Integer>> categories,
 		Map<String, List<ClogResult.ClogItem>> obtained)
 	{

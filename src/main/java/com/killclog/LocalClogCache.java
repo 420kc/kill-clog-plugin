@@ -1,6 +1,7 @@
 package com.killclog;
 
 import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -72,6 +73,153 @@ public class LocalClogCache
 	private static String cacheKey(String playerName)
 	{
 		return playerName.toLowerCase(Locale.ROOT);
+	}
+
+	// ── rename continuity (local half; the server migrates its copy on the
+	// next sync) ──────────────────────────────────────────────────────────
+	//
+	// identity.json remembers which cache file this account's hash last
+	// wrote. Without it, a name change strands months of captures under the
+	// old file: the panel shows the sync prompt like a fresh install, and
+	// SyncService stops at "no local collection log" before a single packet
+	// reaches the server's own migration machinery.
+
+	private static final File IDENTITY_FILE = new File(CACHE_DIR, "identity.json");
+	private volatile Map<String, String> identityByHash;
+
+	/**
+	 * Follow the logged-in account onto its current name. When the hash last
+	 * wrote a DIFFERENT cache file, that file (and any in-memory copy)
+	 * migrates to the new name - the player's own data outranks a stale
+	 * lookup-cache copy of the name's previous owner at the destination.
+	 *
+	 * @return the previous display name when a migration happened, else null.
+	 */
+	public synchronized String followNameChange(String currentRsn, long accountHash)
+	{
+		if (currentRsn == null || currentRsn.isBlank() || accountHash == -1)
+		{
+			return null;
+		}
+		Map<String, String> identity = loadIdentity();
+		String hashKey = Long.toString(accountHash);
+		String currentKey = cacheKey(currentRsn);
+		String previousKey = identity.get(hashKey);
+		if (previousKey == null || previousKey.equals(currentKey))
+		{
+			if (previousKey == null)
+			{
+				identity.put(hashKey, currentKey);
+				persistIdentity();
+			}
+			return null;
+		}
+
+		PlayerClogData data = players.remove(previousKey);
+		if (data == null)
+		{
+			data = loadFromDisk(previousKey);
+		}
+		identity.put(hashKey, currentKey);
+		if (data == null)
+		{
+			// Nothing stored under the old name: mapping updates, no move.
+			persistIdentity();
+			return null;
+		}
+		String previousDisplay = data.playerName != null ? data.playerName : previousKey;
+		data.playerName = currentRsn;
+		players.put(currentKey, data);
+
+		// Memory is authoritative for the session; disk follows on the writer
+		// thread as ONE task - new file, old file removal, then the identity
+		// stamp LAST. A crash before the flush leaves the old file and the
+		// old identity mapping intact together, so the next login simply
+		// re-runs this migration from disk. (The player's own data outranks
+		// any stale lookup-cache copy sitting at the destination.)
+		PlayerClogData copy = shallowCopy(data);
+		Map<String, String> identitySnapshot = new HashMap<>(identity);
+		String oldKey = previousKey;
+		submitDiskWrite(currentRsn, () ->
+		{
+			saveToDisk(currentRsn, copy);
+			File old = getCacheFile(oldKey);
+			if (old.exists() && !old.delete())
+			{
+				log.debug("Old cache file '{}' not deleted; next login re-heals", old.getName());
+			}
+			saveIdentity(identitySnapshot);
+		});
+		log.debug("Rename continuity: '{}' -> '{}'", previousKey, currentKey);
+		return previousDisplay;
+	}
+
+	private void persistIdentity()
+	{
+		Map<String, String> snapshot = new HashMap<>(loadIdentity());
+		try
+		{
+			diskWriter.execute(() -> saveIdentity(snapshot));
+		}
+		catch (RejectedExecutionException ignored)
+		{
+			// Shutdown race: the mapping re-records on the next login.
+		}
+	}
+
+	/** Test hook: preload the identity map so tests never touch the real file. */
+	void seedIdentityForTest(Map<String, String> seed)
+	{
+		identityByHash = new ConcurrentHashMap<>(seed);
+	}
+
+	private Map<String, String> loadIdentity()
+	{
+		Map<String, String> identity = identityByHash;
+		if (identity != null)
+		{
+			return identity;
+		}
+		identity = new ConcurrentHashMap<>();
+		if (IDENTITY_FILE.exists())
+		{
+			try (BufferedReader reader = Files.newBufferedReader(IDENTITY_FILE.toPath(), StandardCharsets.UTF_8))
+			{
+				Map<String, String> parsed = gson.fromJson(reader,
+					new TypeToken<Map<String, String>>()
+					{
+					}.getType());
+				if (parsed != null)
+				{
+					identity.putAll(parsed);
+				}
+			}
+			catch (Exception e)
+			{
+				log.warn("Failed to load rename identity file: {}", e.getMessage());
+			}
+		}
+		identityByHash = identity;
+		return identity;
+	}
+
+	private void saveIdentity(Map<String, String> identity)
+	{
+		try
+		{
+			if (!CACHE_DIR.exists())
+			{
+				CACHE_DIR.mkdirs();
+			}
+			try (BufferedWriter writer = Files.newBufferedWriter(IDENTITY_FILE.toPath(), StandardCharsets.UTF_8))
+			{
+				gson.toJson(identity, writer);
+			}
+		}
+		catch (IOException e)
+		{
+			log.warn("Failed to save rename identity file: {}", e.getMessage());
+		}
 	}
 
 	/**
