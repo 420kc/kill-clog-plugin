@@ -754,6 +754,135 @@ public class LocalClogCacheTest
 		}
 	}
 
+	@Test
+	public void testLiveFileNeverBecomesSourceWhenAnotherAccountClaimsTheOldName() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-claim").toFile();
+		try
+		{
+			// 77 currently owns "Traded Name" on disk, data and identity both.
+			LocalClogCache owner = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
+			owner.cacheResult(clog("Traded Name", cats, obtainedItems("venenatis")));
+			owner.mergeObtainedItem("Traded Name", 9, itemListAsStrings("venenatis"), cats);
+			assertNull(owner.followNameChange("Traded Name", 77L));
+
+			// 42's client wakes with a STALE cached belief that it held that
+			// name, and no sidecar. The live file is 77's, not a source.
+			LocalClogCache stale = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			Map<String, String> seed = new HashMap<>();
+			seed.put("42", "traded name");
+			seed.put("77", "traded name");
+			stale.seedIdentityForTest(seed);
+			assertNull(stale.followNameChange("New Me", 42L));
+
+			assertNull("nothing migrated into 42's memory",
+				stale.toClogResult("New Me", Collections.emptyMap()));
+			assertFalse("no file created for 42", new File(dir, "new_me.json").exists());
+			String owners = new String(Files.readAllBytes(new File(dir, "traded_name.json").toPath()));
+			assertTrue("77's live file untouched", owners.contains("venenatis"));
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
+	@Test
+	public void testMigrationAbortsWhenAClaimAppearsBeforeTheDiskTaskRuns() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-toctou").toFile();
+		try
+		{
+			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
+			LocalClogCache cache = new LocalClogCache(new Gson(), writer, dir);
+			Map<String, List<Integer>> cats = categoryItems("vetion", 1);
+			cache.cacheResult(clog("Old Main", cats, obtainedItems("vetion")));
+			cache.mergeObtainedItem("Old Main", 1, itemListAsStrings("vetion"), cats);
+			assertNull(cache.followNameChange("Old Main", 42L));
+			assertEquals("Old Main", cache.followNameChange("New Me", 42L));
+
+			// Between the decision and the disk task, ANOTHER client claims
+			// the destination name for hash 55 (written straight to disk).
+			Map<String, String> foreign = new HashMap<>();
+			foreign.put("55", "new me");
+			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+				new Gson().toJson(foreign).getBytes());
+
+			writer.runQueued();
+
+			// The in-lock revalidation saw the claim and aborted whole.
+			assertFalse("no destination file written", new File(dir, "new_me.json").exists());
+			assertTrue("the old file survived", new File(dir, "old_main.json").exists());
+			String identity = new String(Files.readAllBytes(
+				new File(dir, ".kill-clog-identity.json").toPath()));
+			assertFalse("the migration was never stamped",
+				identity.contains("\"42\":\"new me\""));
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
+	@Test
+	public void testReclaimingTheSameNameRecoversTheSidecar() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-reclaim").toFile();
+		try
+		{
+			// The alt (77) owns "Shared Name"; the main (42) takes the name
+			// over, which parks the alt's file.
+			LocalClogCache altView = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
+			altView.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
+			altView.mergeObtainedItem("Shared Name", 9, itemListAsStrings("venenatis"), cats);
+			assertNull(altView.followNameChange("Shared Name", 77L));
+
+			LocalClogCache mainView = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			Map<String, List<Integer>> mainCats = categoryItems("vetion", 1);
+			mainView.cacheResult(clog("Old Main", mainCats, obtainedItems("vetion")));
+			mainView.mergeObtainedItem("Old Main", 1, itemListAsStrings("vetion"), mainCats);
+			assertNull(mainView.followNameChange("Old Main", 42L));
+			assertEquals("Old Main", mainView.followNameChange("Shared Name", 42L));
+
+			// The name transfers BACK: the alt logs in under the SAME name it
+			// always had. No rename happened, but its sidecar must recover.
+			LocalClogCache altBack = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			assertNull("same-name recovery is silent", altBack.followNameChange("Shared Name", 77L));
+			ClogResult alts = altBack.toClogResult("Shared Name", Collections.emptyMap());
+			assertNotNull(alts);
+			assertNotNull("the alt's history is back", alts.getObtainedItems().get("venenatis"));
+			assertNull("never the main's data", alts.getObtainedItems().get("vetion"));
+			assertFalse("the alt's sidecar was consumed",
+				new File(dir, ".displaced-77-shared_name.json").exists());
+
+			// The main's data was parked under ITS hash, not destroyed...
+			File mainsSidecar = new File(dir, ".displaced-42-shared_name.json");
+			assertTrue(mainsSidecar.exists());
+			String parked = new String(Files.readAllBytes(mainsSidecar.toPath()));
+			assertTrue(parked.contains("vetion"));
+
+			// ...and the main recovers whole under its next name. Full circle.
+			LocalClogCache mainBack = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			assertNotNull(mainBack.followNameChange("Main Returns", 42L));
+			ClogResult mains = mainBack.toClogResult("Main Returns", Collections.emptyMap());
+			assertNotNull(mains);
+			assertNotNull(mains.getObtainedItems().get("vetion"));
+			assertNull(mains.getObtainedItems().get("venenatis"));
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
 	private static void deleteRecursively(File dir)
 	{
 		File[] children = dir.listFiles();
@@ -899,6 +1028,41 @@ public class LocalClogCacheTest
 		public ScheduledFuture<?> schedule(Runnable command, long delay, TimeUnit unit)
 		{
 			return new CompletedScheduledFuture();
+		}
+	}
+
+	/** Debounced saves run inline; execute() calls queue until runQueued(),
+	 *  modeling the gap between a decision and its disk task. */
+	private static final class CapturingScheduledExecutorService extends ScheduledThreadPoolExecutor
+	{
+		private final List<Runnable> queued = new ArrayList<>();
+
+		CapturingScheduledExecutorService()
+		{
+			super(1);
+		}
+
+		@Override
+		public void execute(Runnable command)
+		{
+			queued.add(command);
+		}
+
+		@Override
+		public ScheduledFuture<?> schedule(Runnable command, long delay, TimeUnit unit)
+		{
+			command.run();
+			return new CompletedScheduledFuture();
+		}
+
+		void runQueued()
+		{
+			List<Runnable> toRun = new ArrayList<>(queued);
+			queued.clear();
+			for (Runnable r : toRun)
+			{
+				r.run();
+			}
 		}
 	}
 
