@@ -1,6 +1,8 @@
 package com.killclog;
 
 import com.google.gson.Gson;
+import java.io.File;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -664,6 +666,108 @@ public class LocalClogCacheTest
 	}
 
 	@Test
+	public void testDisplacementParksOnDiskAndTheDisplacedAccountRecovers() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-park").toFile();
+		try
+		{
+			// The alt (hash 77) owns "Shared Name" with first-party captures;
+			// everything flushes to REAL files in the temp dir.
+			LocalClogCache altView = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
+			altView.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
+			altView.mergeObtainedItem("Shared Name", 9, itemListAsStrings("venenatis"), cats);
+			assertNull(altView.followNameChange("Shared Name", 77L));
+
+			// A SEPARATE instance (simulating another JVM) logs the main in:
+			// its old name's data exists, and the shared name just became its.
+			LocalClogCache mainView = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			Map<String, List<Integer>> mainCats = categoryItems("vetion", 1);
+			mainView.cacheResult(clog("Old Main", mainCats, obtainedItems("vetion")));
+			mainView.mergeObtainedItem("Old Main", 1, itemListAsStrings("vetion"), mainCats);
+			assertNull(mainView.followNameChange("Old Main", 42L));
+			assertEquals("Old Main", mainView.followNameChange("Shared Name", 42L));
+
+			// The alt's file parked on real disk; the main's log serves alone.
+			assertTrue("the displaced account's file parked as a sidecar",
+				new File(dir, ".displaced-77-shared_name.json").exists());
+			ClogResult mains = mainView.toClogResult("Shared Name", Collections.emptyMap());
+			assertNotNull(mains.getObtainedItems().get("vetion"));
+			assertNull("no mixing", mains.getObtainedItems().get("venenatis"));
+
+			// The alt returns under its new name on yet another instance: the
+			// SIDECAR is its source - the live file (now the main's) is not.
+			LocalClogCache altReturns = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			assertNotNull(altReturns.followNameChange("Alt Reborn", 77L));
+			ClogResult alts = altReturns.toClogResult("Alt Reborn", Collections.emptyMap());
+			assertNotNull("the alt's own history recovered from the sidecar",
+				alts.getObtainedItems().get("venenatis"));
+			assertNull("never the main's data", alts.getObtainedItems().get("vetion"));
+			assertFalse("the consumed sidecar is gone",
+				new File(dir, ".displaced-77-shared_name.json").exists());
+			// And the main's live file survived the alt's recovery untouched.
+			File mainsFile = new File(dir, "shared_name.json");
+			assertTrue("the main's live file survived the alt's recovery",
+				mainsFile.exists());
+			String mainsJson = new String(Files.readAllBytes(mainsFile.toPath()));
+			assertTrue(mainsJson.contains("vetion"));
+			assertFalse("the alt's data never leaked back in", mainsJson.contains("venenatis"));
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
+	@Test
+	public void testDisplacedAccountsUnflushedCaptureReachesTheSidecar() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-drain").toFile();
+		try
+		{
+			// Deferred writer: debounced saves NEVER fire on their own, so the
+			// alt's latest capture exists only as a queued snapshot.
+			LocalClogCache cache = new LocalClogCache(
+				new Gson(), new DeferredScheduledExecutorService(), dir);
+			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
+			cache.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
+			cache.mergeObtainedItem("Shared Name", 9, itemListAsStrings("venenatis"), cats);
+			cache.seedIdentityForTest(new HashMap<>(Map.of("77", "shared name")));
+
+			cache.cacheResult(clog("Old Main", categoryItems("vetion", 1), obtainedItems("vetion", 1)));
+			assertNull(cache.followNameChange("Old Main", 42L));
+			assertEquals("Old Main", cache.followNameChange("Shared Name", 42L));
+
+			// The queued snapshot was drained to disk BEFORE the park, so the
+			// sidecar holds the alt's latest capture, not a stale file.
+			File sidecar = new File(dir, ".displaced-77-shared_name.json");
+			assertTrue("sidecar exists", sidecar.exists());
+			String parked = new String(Files.readAllBytes(sidecar.toPath()));
+			assertTrue("the unflushed capture reached the sidecar", parked.contains("venenatis"));
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
+	private static void deleteRecursively(File dir)
+	{
+		File[] children = dir.listFiles();
+		if (children != null)
+		{
+			for (File child : children)
+			{
+				deleteRecursively(child);
+			}
+		}
+		dir.delete();
+	}
+
+	@Test
 	public void testRenameNoticeSurvivesWhicheverPathMigratesFirst()
 	{
 		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
@@ -751,6 +855,51 @@ public class LocalClogCacheTest
 		}
 		obtained.put(category, items);
 		return obtained;
+	}
+
+	/** Runs everything inline: disk tasks execute synchronously so tests can
+	 *  assert real files in a temp dir. */
+	private static final class InlineScheduledExecutorService extends ScheduledThreadPoolExecutor
+	{
+		InlineScheduledExecutorService()
+		{
+			super(1);
+		}
+
+		@Override
+		public void execute(Runnable command)
+		{
+			command.run();
+		}
+
+		@Override
+		public ScheduledFuture<?> schedule(Runnable command, long delay, TimeUnit unit)
+		{
+			command.run();
+			return new CompletedScheduledFuture();
+		}
+	}
+
+	/** execute() runs inline; scheduled (debounced) tasks NEVER fire on their
+	 *  own - they stay queued so the drain path can be exercised. */
+	private static final class DeferredScheduledExecutorService extends ScheduledThreadPoolExecutor
+	{
+		DeferredScheduledExecutorService()
+		{
+			super(1);
+		}
+
+		@Override
+		public void execute(Runnable command)
+		{
+			command.run();
+		}
+
+		@Override
+		public ScheduledFuture<?> schedule(Runnable command, long delay, TimeUnit unit)
+		{
+			return new CompletedScheduledFuture();
+		}
 	}
 
 	private static final class NoopScheduledExecutorService extends ScheduledThreadPoolExecutor
