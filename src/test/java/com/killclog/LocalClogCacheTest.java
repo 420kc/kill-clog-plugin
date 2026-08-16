@@ -805,16 +805,18 @@ public class LocalClogCacheTest
 			assertEquals("Old Main", cache.followNameChange("New Me", 42L));
 
 			// Between the decision and the disk task, ANOTHER client claims
-			// the destination name for hash 55 (written straight to disk).
-			Map<String, String> foreign = new HashMap<>();
-			foreign.put("55", "new me");
+			// the destination name for hash 55 AND its file lands there
+			// (both written straight to disk, as another JVM would).
 			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
-				new Gson().toJson(foreign).getBytes());
+				"{\"version\":2,\"names\":{\"55\":\"new me\"},\"stamps\":{\"55\":9999}}".getBytes());
+			Files.write(new File(dir, "new_me.json").toPath(),
+				"{\"playerName\":\"New Me\",\"obtained\":{\"zulrah\":[]}}".getBytes());
 
 			writer.runQueued();
 
 			// The in-lock revalidation saw the claim and aborted whole.
-			assertFalse("no destination file written", new File(dir, "new_me.json").exists());
+			String destAfter = new String(Files.readAllBytes(new File(dir, "new_me.json").toPath()));
+			assertTrue("the claimant's file was never overwritten", destAfter.contains("zulrah"));
 			assertTrue("the old file survived", new File(dir, "old_main.json").exists());
 			String identity = new String(Files.readAllBytes(
 				new File(dir, ".kill-clog-identity.json").toPath()));
@@ -876,6 +878,233 @@ public class LocalClogCacheTest
 			assertNotNull(mains);
 			assertNotNull(mains.getObtainedItems().get("vetion"));
 			assertNull(mains.getObtainedItems().get("venenatis"));
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
+	@Test
+	public void testParkChoosesTheNewestClaimantAmongStaleOnes() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-newest").toFile();
+		try
+		{
+			// The live file at the shared name (with first-party marks).
+			LocalClogCache seeder = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
+			seeder.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
+			seeder.mergeObtainedItem("Shared Name", 9, itemListAsStrings("venenatis"), cats);
+
+			// TWO stale claims on the name: 11 (older) and 22 (newer). 11 was
+			// displaced long ago and its sidecar still holds its real data.
+			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+				("{\"version\":2,\"names\":{\"11\":\"shared name\",\"22\":\"shared name\"},"
+					+ "\"stamps\":{\"11\":1000,\"22\":2000}}").getBytes());
+			String elevens = "{\"playerName\":\"Shared Name\",\"obtained\":{\"callisto\":[]}}";
+			File oldSidecar = new File(dir, ".displaced-11-shared_name.json");
+			Files.write(oldSidecar.toPath(), elevens.getBytes());
+
+			// 42 takes the name over. The park must file the live data under
+			// 22 (the newest claimant), never over 11's parked history.
+			LocalClogCache taker = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			Map<String, List<Integer>> takerCats = categoryItems("vetion", 1);
+			taker.cacheResult(clog("Old Main", takerCats, obtainedItems("vetion")));
+			taker.mergeObtainedItem("Old Main", 1, itemListAsStrings("vetion"), takerCats);
+			assertNull(taker.followNameChange("Old Main", 42L));
+			assertEquals("Old Main", taker.followNameChange("Shared Name", 42L));
+
+			File newSidecar = new File(dir, ".displaced-22-shared_name.json");
+			assertTrue("parked under the NEWEST claimant", newSidecar.exists());
+			assertTrue(new String(Files.readAllBytes(newSidecar.toPath())).contains("venenatis"));
+			assertEquals("the older claimant's sidecar is untouched", elevens,
+				new String(Files.readAllBytes(oldSidecar.toPath())));
+			assertTrue(new String(Files.readAllBytes(new File(dir, "shared_name.json").toPath()))
+				.contains("vetion"));
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
+	@Test
+	public void testCrashedParkThenWriteRetryCompletes() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-crash1").toFile();
+		try
+		{
+			// Disk state after a migration died between park and write: 77's
+			// data is parked, its stale claim is stamped, the live slot is
+			// EMPTY, and our own source still sits under the old name.
+			LocalClogCache seeder = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			Map<String, List<Integer>> cats = categoryItems("vetion", 1);
+			seeder.cacheResult(clog("Old Main", cats, obtainedItems("vetion")));
+			seeder.mergeObtainedItem("Old Main", 1, itemListAsStrings("vetion"), cats);
+			String theirs = "{\"playerName\":\"Shared Name\",\"obtained\":{\"venenatis\":[]}}";
+			Files.write(new File(dir, ".displaced-77-shared_name.json").toPath(), theirs.getBytes());
+			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+				("{\"version\":2,\"names\":{\"77\":\"shared name\",\"42\":\"old main\"},"
+					+ "\"stamps\":{\"77\":5000,\"42\":4000}}").getBytes());
+
+			// The retry must finish instead of wedging on the stale claim.
+			LocalClogCache retry = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			assertEquals("Old Main", retry.followNameChange("Shared Name", 42L));
+
+			String live = new String(Files.readAllBytes(new File(dir, "shared_name.json").toPath()));
+			assertTrue("our data landed", live.contains("vetion"));
+			assertEquals("their parked copy is untouched", theirs,
+				new String(Files.readAllBytes(new File(dir, ".displaced-77-shared_name.json").toPath())));
+			assertFalse("our old file was consumed", new File(dir, "old_main.json").exists());
+			String identity = new String(Files.readAllBytes(
+				new File(dir, ".kill-clog-identity.json").toPath()));
+			assertTrue("the migration stamped", identity.contains("\"42\":\"shared name\""));
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
+	@Test
+	public void testCrashedWriteThenCleanupRetryDoesNotParkOverTheirSidecar() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-crash2").toFile();
+		try
+		{
+			// Disk state after a migration died between write and cleanup:
+			// 77's data is parked, OUR merged file already sits at the live
+			// slot, our old source still exists, nothing stamped.
+			LocalClogCache seeder = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			Map<String, List<Integer>> liveCats = categoryItems("vetion", 1);
+			seeder.cacheResult(clog("Shared Name", liveCats, obtainedItems("vetion")));
+			seeder.mergeObtainedItem("Shared Name", 1, itemListAsStrings("vetion"), liveCats);
+			Map<String, List<Integer>> oldCats = categoryItems("callisto", 3);
+			seeder.cacheResult(clog("Old Main", oldCats, obtainedItems("callisto")));
+			seeder.mergeObtainedItem("Old Main", 3, itemListAsStrings("callisto"), oldCats);
+			String theirs = "{\"playerName\":\"Shared Name\",\"obtained\":{\"venenatis\":[]}}";
+			Files.write(new File(dir, ".displaced-77-shared_name.json").toPath(), theirs.getBytes());
+			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+				("{\"version\":2,\"names\":{\"77\":\"shared name\",\"42\":\"old main\"},"
+					+ "\"stamps\":{\"77\":5000,\"42\":4000}}").getBytes());
+
+			// The retry treats the live slot as our own residue: merge, never
+			// a second park over their real data.
+			LocalClogCache retry = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			assertEquals("Old Main", retry.followNameChange("Shared Name", 42L));
+
+			assertEquals("their parked copy is untouched", theirs,
+				new String(Files.readAllBytes(new File(dir, ".displaced-77-shared_name.json").toPath())));
+			String live = new String(Files.readAllBytes(new File(dir, "shared_name.json").toPath()));
+			assertTrue("both halves of our own data merged", live.contains("vetion")
+				&& live.contains("callisto"));
+			assertFalse("never their data", live.contains("venenatis"));
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
+	@Test
+	public void testForeignClaimOnTheOldNameAbortsTheCopy() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-oldclaim").toFile();
+		try
+		{
+			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
+			LocalClogCache cache = new LocalClogCache(new Gson(), writer, dir);
+			Map<String, List<Integer>> cats = categoryItems("vetion", 1);
+			cache.cacheResult(clog("Old Main", cats, obtainedItems("vetion")));
+			cache.mergeObtainedItem("Old Main", 1, itemListAsStrings("vetion"), cats);
+			assertNull(cache.followNameChange("Old Main", 42L));
+			assertEquals("Old Main", cache.followNameChange("New Me", 42L));
+
+			// Before the disk task runs, another client claims the OLD name:
+			// the bytes we copied may be about to become theirs.
+			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+				"{\"version\":2,\"names\":{\"55\":\"old main\"},\"stamps\":{\"55\":9999999999999}}".getBytes());
+
+			writer.runQueued();
+
+			assertFalse("nothing written at the destination", new File(dir, "new_me.json").exists());
+			assertTrue("the contested source survived", new File(dir, "old_main.json").exists());
+			String identity = new String(Files.readAllBytes(
+				new File(dir, ".kill-clog-identity.json").toPath()));
+			assertFalse("the migration was never stamped",
+				identity.contains("\"42\":\"new me\""));
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
+	@Test
+	public void testDisplacedSavesNeverLandOnANewOwnersFile() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-saveguard").toFile();
+		try
+		{
+			// Debounced saves stay queued until fired by hand; everything
+			// else (identity writes, migrations) runs inline.
+			CapturingScheduledDebounceService writer = new CapturingScheduledDebounceService();
+			LocalClogCache cache = new LocalClogCache(new Gson(), writer, dir);
+			assertNull(cache.followNameChange("Shared Name", 77L));
+
+			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
+			cache.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
+			cache.mergeObtainedItem("Shared Name", 9, itemListAsStrings("venenatis"), cats);
+
+			// While our save is still queued, the name changes hands on disk:
+			// a NEWER claim by 42 (its migration stamped from another JVM).
+			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+				("{\"version\":2,\"names\":{\"77\":\"shared name\",\"42\":\"shared name\"},"
+					+ "\"stamps\":{\"77\":1000,\"42\":2000}}").getBytes());
+
+			writer.runQueued();
+
+			assertFalse("our stale first-party save never landed on their slot",
+				new File(dir, "shared_name.json").exists());
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
+	@Test
+	public void testLegacyIdentityFileLiftsAndRewritesStamped() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-legacy").toFile();
+		try
+		{
+			LocalClogCache seeder = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
+			seeder.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
+			seeder.mergeObtainedItem("Shared Name", 9, itemListAsStrings("venenatis"), cats);
+			// A v1 file: a bare hash-to-name map, no version, no stamps.
+			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+				"{\"77\":\"shared name\"}".getBytes());
+
+			LocalClogCache lifted = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			assertEquals("Shared Name", lifted.followNameChange("New Alt", 77L));
+
+			assertTrue(new String(Files.readAllBytes(new File(dir, "new_alt.json").toPath()))
+				.contains("venenatis"));
+			String identity = new String(Files.readAllBytes(
+				new File(dir, ".kill-clog-identity.json").toPath()));
+			assertTrue("rewritten as v2", identity.contains("\"names\""));
+			assertTrue(identity.contains("\"77\":\"new alt\""));
 		}
 		finally
 		{
@@ -1028,6 +1257,42 @@ public class LocalClogCacheTest
 		public ScheduledFuture<?> schedule(Runnable command, long delay, TimeUnit unit)
 		{
 			return new CompletedScheduledFuture();
+		}
+	}
+
+	/** The inverse of CapturingScheduledExecutorService: debounced (scheduled)
+	 *  saves queue until fired by hand while execute() runs inline, modeling
+	 *  a pending capture save outliving an identity change. */
+	private static final class CapturingScheduledDebounceService extends ScheduledThreadPoolExecutor
+	{
+		private final List<Runnable> queued = new ArrayList<>();
+
+		CapturingScheduledDebounceService()
+		{
+			super(1);
+		}
+
+		@Override
+		public void execute(Runnable command)
+		{
+			command.run();
+		}
+
+		@Override
+		public ScheduledFuture<?> schedule(Runnable command, long delay, TimeUnit unit)
+		{
+			queued.add(command);
+			return new CompletedScheduledFuture();
+		}
+
+		void runQueued()
+		{
+			List<Runnable> toRun = new ArrayList<>(queued);
+			queued.clear();
+			for (Runnable r : toRun)
+			{
+				r.run();
+			}
 		}
 	}
 

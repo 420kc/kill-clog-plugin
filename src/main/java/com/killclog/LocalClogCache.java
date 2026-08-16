@@ -1,7 +1,8 @@
 package com.killclog;
 
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -99,6 +100,9 @@ public class LocalClogCache
 
 	private volatile Map<String, String> identityByHash;
 	private volatile String pendingRenameNotice;
+	// The logged-in account's hash, recorded by followNameChange: the anchor
+	// for the first-party save guard below.
+	private volatile String activeHashKey;
 
 	private File identityFile()
 	{
@@ -138,6 +142,7 @@ public class LocalClogCache
 		}
 		Map<String, String> identity = loadIdentity();
 		String hashKey = Long.toString(accountHash);
+		activeHashKey = hashKey;
 		String currentKey = cacheKey(currentRsn);
 		String previousKey = identity.get(hashKey);
 		if (previousKey == null)
@@ -159,9 +164,11 @@ public class LocalClogCache
 		// mappings (ours may not have flushed yet), overlaid with a FRESH
 		// disk read for every OTHER hash - another client on this machine
 		// may have written mappings after this process last looked, and its
-		// disk entries outrank our stale cache of them.
+		// disk entries outrank our stale cache of them. Stamps only exist on
+		// disk, which is fine: self entries are excluded from claim ranking.
+		IdentityView diskView = readIdentityView();
 		Map<String, String> freshIdentity = new HashMap<>(identity);
-		for (Map.Entry<String, String> e : readIdentityFile().entrySet())
+		for (Map.Entry<String, String> e : diskView.names.entrySet())
 		{
 			if (!e.getKey().equals(hashKey))
 			{
@@ -184,17 +191,19 @@ public class LocalClogCache
 		{
 			return null; // unreadable sidecar: touch nothing, retry next login
 		}
+		boolean sourceFromLiveFile = false;
 		if (source == null)
 		{
 			// The live file is only OURS to migrate when no OTHER account's
 			// current name claims that key.
-			if (claimedByOther(freshIdentity, previousKey, hashKey) == null)
+			if (newestClaimant(freshIdentity, diskView.stamps, previousKey, hashKey) == null)
 			{
 				source = players.remove(previousKey);
 				if (source == null)
 				{
 					source = loadFromDisk(previousKey);
 				}
+				sourceFromLiveFile = source != null;
 			}
 		}
 		identity.put(hashKey, currentKey);
@@ -220,8 +229,14 @@ public class LocalClogCache
 		// any failure along that chain aborts the disk migration whole. All
 		// disk work stays on the writer thread, whose FIFO order guarantees
 		// an already-in-flight debounced save for them lands first.
-		String otherHash = claimedByOther(freshIdentity, currentKey, hashKey);
-		boolean displaced = otherHash != null && dest != null;
+		String otherHash = newestClaimant(freshIdentity, diskView.stamps, currentKey, hashKey);
+		// An already-existing sidecar for the claimant means the displacement
+		// happened before (and possibly crashed mid-migration): their
+		// canonical copy is safe, and whatever sits at the live slot is our
+		// own half-written file or a regenerable lookup cache - merge or
+		// replace it, never park it over their sidecar.
+		boolean displaced = otherHash != null && dest != null
+			&& !sidecarFile(otherHash, currentKey).exists();
 		PlayerClogData displacedCopy = null;
 		if (displaced)
 		{
@@ -260,13 +275,13 @@ public class LocalClogCache
 
 		PlayerClogData copy = shallowCopy(merged);
 		boolean consumedSidecar = sourceFromSidecar;
-		boolean deleteOldFile = !consumedSidecar && !sameKey;
+		boolean liveSource = sourceFromLiveFile;
 		PlayerClogData displacedToFlush = displacedCopy;
 		try
 		{
 			diskWriter.execute(() -> withIdentityLock(() ->
 				migrateOnDisk(currentRsn, currentKey, hashKey, previousKey, displaced,
-					otherHash, consumedSidecar, sidecar, deleteOldFile, copy, displacedToFlush)));
+					otherHash, consumedSidecar, sidecar, liveSource, copy, displacedToFlush)));
 		}
 		catch (RejectedExecutionException ignored)
 		{
@@ -286,44 +301,66 @@ public class LocalClogCache
 	 */
 	private boolean migrateOnDisk(String currentRsn, String currentKey, String hashKey,
 		String oldKey, boolean parkFirst, String parkHash, boolean consumedSidecar,
-		File consumedSidecarFile, boolean deleteOldFile, PlayerClogData copy,
+		File consumedSidecarFile, boolean sourceFromLiveFile, PlayerClogData copy,
 		PlayerClogData displacedToFlush)
 	{
-		Map<String, String> now = readIdentityFile();
-		String claimNow = claimedByOther(now, currentKey, hashKey);
+		IdentityView now = readIdentityView();
+		String claimNow = newestClaimant(now.names, now.stamps, currentKey, hashKey);
+		if (sourceFromLiveFile && newestClaimant(now.names, now.stamps, oldKey, hashKey) != null)
+		{
+			// A live-file source was only ours while nobody else's current
+			// name claimed the old key. A claim that appeared since the
+			// decision means the bytes we copied may be theirs - abort whole.
+			return false;
+		}
 		if (parkFirst)
 		{
-			if (displacedToFlush != null)
-			{
-				String displacedName = displacedToFlush.playerName != null
-					? displacedToFlush.playerName : currentRsn;
-				if (!saveToDiskChecked(displacedName, displacedToFlush))
-				{
-					return false; // their latest capture moves or nothing does
-				}
-			}
 			// Park under whoever the identity file says owns the slot NOW;
 			// the decision-time hash is the fallback.
-			if (!parkDisplacedFileNow(currentKey, claimNow != null ? claimNow : parkHash))
+			String parkUnder = claimNow != null ? claimNow : parkHash;
+			if (sidecarFile(parkUnder, currentKey).exists())
 			{
-				return false; // never bury another account's canonical copy
+				// Their canonical copy is already parked (a crashed earlier
+				// migration got that far): the live slot is residue, and
+				// parking it again would bury their real data. Fall through
+				// to the checked write.
+				log.debug("Displacement already parked for '{}', skipping park", currentKey);
+			}
+			else
+			{
+				if (displacedToFlush != null)
+				{
+					String displacedName = displacedToFlush.playerName != null
+						? displacedToFlush.playerName : currentRsn;
+					if (!saveToDiskChecked(displacedName, displacedToFlush))
+					{
+						return false; // their latest capture moves or nothing does
+					}
+				}
+				if (!parkDisplacedFileNow(currentKey, parkUnder))
+				{
+					return false; // never bury another account's canonical copy
+				}
 			}
 		}
-		else if (claimNow != null)
+		else if (claimNow != null && getCacheFile(currentKey).exists()
+			&& !sidecarFile(claimNow, currentKey).exists())
 		{
-			// A claim on the destination appeared after the decision: the
-			// live file there is no longer ours to overwrite. The next login
-			// re-decides with displacement handling.
+			// A foreign claim appeared after the decision and its holder's
+			// data may be the live file: not ours to overwrite. When the
+			// slot is empty, or their copy is already parked, writing ours
+			// buries nothing - which also lets a park-then-crash retry
+			// finish instead of wedging forever on the stale claim.
 			return false;
 		}
 		if (!saveToDiskChecked(currentRsn, copy))
 		{
 			return false; // old file + old mapping stay: next login re-heals
 		}
-		if (deleteOldFile && claimedByOther(now, oldKey, hashKey) == null)
+		if (sourceFromLiveFile)
 		{
-			// Only ours to remove when it was our source and no other
-			// account's current name has claimed it meanwhile.
+			// Revalidated above: still unclaimed, so the old file was our
+			// source and is ours to remove.
 			File old = getCacheFile(oldKey);
 			if (old.exists() && !old.delete())
 			{
@@ -336,28 +373,40 @@ public class LocalClogCache
 			return false; // sidecar must not survive as a stale second copy
 		}
 		// Stamp inside the SAME held lock - we hold it already, and this
-		// channel's lock is not reentrant.
-		now.put(hashKey, currentKey);
-		saveIdentity(now);
-		return true;
+		// channel's lock is not reentrant. The stamp is what makes our claim
+		// the newest; a failed write must not report the migration complete.
+		now.names.put(hashKey, currentKey);
+		now.stamps.put(hashKey, System.currentTimeMillis());
+		return saveIdentity(now);
 	}
 
 	/**
-	 * The hash of another account whose CURRENT name claims this cache key,
-	 * or null when nobody but (possibly) ourselves does. Self entries are
-	 * skipped so a stale self-mapping can never masquerade as a foreign
-	 * claim or shadow one.
+	 * The hash whose CURRENT name claims this cache key - the NEWEST claim by
+	 * stamp when several stale entries compete, hash order breaking exact
+	 * ties - or null when nobody (except an excluded self) claims it. Pass a
+	 * selfHash to skip our own entries, so a stale self-mapping can never
+	 * masquerade as a foreign claim or shadow one; pass null to rank every
+	 * claimant.
 	 */
-	private static String claimedByOther(Map<String, String> identity, String key, String selfHash)
+	private static String newestClaimant(Map<String, String> names, Map<String, Long> stamps,
+		String key, String selfHash)
 	{
-		for (Map.Entry<String, String> e : identity.entrySet())
+		String best = null;
+		long bestAt = -1;
+		for (Map.Entry<String, String> e : names.entrySet())
 		{
-			if (key.equals(e.getValue()) && !e.getKey().equals(selfHash))
+			if (!key.equals(e.getValue()) || e.getKey().equals(selfHash))
 			{
-				return e.getKey();
+				continue;
+			}
+			long at = stamps.getOrDefault(e.getKey(), 0L);
+			if (at > bestAt || (at == bestAt && best != null && e.getKey().compareTo(best) > 0))
+			{
+				best = e.getKey();
+				bestAt = at;
 			}
 		}
-		return null;
+		return best;
 	}
 
 	private PlayerClogData readRecordFile(File file)
@@ -383,6 +432,23 @@ public class LocalClogCache
 		String notice = pendingRenameNotice;
 		pendingRenameNotice = null;
 		return notice;
+	}
+
+	/**
+	 * The rename check off the calling thread: it reads the identity file and
+	 * can parse cache files, which is too much for a game tick. The chat
+	 * notice arrives later via consumeRenameNotice polling.
+	 */
+	public void followNameChangeAsync(String currentRsn, long accountHash)
+	{
+		try
+		{
+			diskWriter.execute(() -> followNameChange(currentRsn, accountHash));
+		}
+		catch (RejectedExecutionException ignored)
+		{
+			// Shutdown race: the next login re-checks.
+		}
 	}
 
 	/**
@@ -583,10 +649,10 @@ public class LocalClogCache
 	{
 		withIdentityLock(() ->
 		{
-			Map<String, String> disk = readIdentityFile();
-			disk.put(hashKey, key);
-			saveIdentity(disk);
-			return true;
+			IdentityView disk = readIdentityView();
+			disk.names.put(hashKey, key);
+			disk.stamps.put(hashKey, System.currentTimeMillis());
+			return saveIdentity(disk);
 		});
 	}
 
@@ -647,31 +713,78 @@ public class LocalClogCache
 		return identity;
 	}
 
-	private Map<String, String> readIdentityFile()
+	/**
+	 * Identity file, format v2: hash-to-current-name plus a per-hash stamp of
+	 * when that hash last asserted its name. Stale entries are NEVER cleared
+	 * when a name changes hands - a displaced account's entry is its own
+	 * recovery pointer - so several hashes can claim one name at once, and
+	 * the stamps are what order those claims: the newest claimant is the live
+	 * owner. A legacy v1 file (a bare hash-to-name map) lifts with stamp 0.
+	 */
+	private static final class IdentityView
 	{
-		Map<String, String> out = new HashMap<>();
-		if (identityFile().exists())
-		{
-			try (BufferedReader reader = Files.newBufferedReader(identityFile().toPath(), StandardCharsets.UTF_8))
-			{
-				Map<String, String> parsed = gson.fromJson(reader,
-					new TypeToken<Map<String, String>>()
-					{
-					}.getType());
-				if (parsed != null)
-				{
-					out.putAll(parsed);
-				}
-			}
-			catch (Exception e)
-			{
-				log.warn("Failed to load rename identity file: {}", e.getMessage());
-			}
-		}
-		return out;
+		private final Map<String, String> names = new HashMap<>();
+		private final Map<String, Long> stamps = new HashMap<>();
 	}
 
-	private void saveIdentity(Map<String, String> identity)
+	private Map<String, String> readIdentityFile()
+	{
+		return readIdentityView().names;
+	}
+
+	private IdentityView readIdentityView()
+	{
+		IdentityView view = new IdentityView();
+		if (!identityFile().exists())
+		{
+			return view;
+		}
+		try (BufferedReader reader = Files.newBufferedReader(identityFile().toPath(), StandardCharsets.UTF_8))
+		{
+			JsonObject root = gson.fromJson(reader, JsonObject.class);
+			if (root == null)
+			{
+				return view;
+			}
+			JsonObject names = root.has("names") && root.get("names").isJsonObject()
+				? root.getAsJsonObject("names") : null;
+			if (names == null)
+			{
+				// legacy v1: the root IS the name map
+				readIdentityNames(root, view.names);
+				return view;
+			}
+			readIdentityNames(names, view.names);
+			if (root.has("stamps") && root.get("stamps").isJsonObject())
+			{
+				for (Map.Entry<String, JsonElement> e : root.getAsJsonObject("stamps").entrySet())
+				{
+					if (e.getValue().isJsonPrimitive())
+					{
+						view.stamps.put(e.getKey(), e.getValue().getAsLong());
+					}
+				}
+			}
+		}
+		catch (Exception e)
+		{
+			log.warn("Failed to load rename identity file: {}", e.getMessage());
+		}
+		return view;
+	}
+
+	private static void readIdentityNames(JsonObject source, Map<String, String> into)
+	{
+		for (Map.Entry<String, JsonElement> e : source.entrySet())
+		{
+			if (e.getValue().isJsonPrimitive())
+			{
+				into.put(e.getKey(), e.getValue().getAsString());
+			}
+		}
+	}
+
+	private boolean saveIdentity(IdentityView view)
 	{
 		try
 		{
@@ -679,16 +792,22 @@ public class LocalClogCache
 			{
 				cacheDir.mkdirs();
 			}
+			Map<String, Object> root = new HashMap<>();
+			root.put("version", 2);
+			root.put("names", view.names);
+			root.put("stamps", view.stamps);
 			File tmp = new File(cacheDir, identityFile().getName() + ".tmp");
 			try (BufferedWriter writer = Files.newBufferedWriter(tmp.toPath(), StandardCharsets.UTF_8))
 			{
-				gson.toJson(identity, writer);
+				gson.toJson(root, writer);
 			}
 			atomicMove(tmp, identityFile());
+			return true;
 		}
 		catch (IOException e)
 		{
 			log.warn("Failed to save rename identity file: {}", e.getMessage());
+			return false;
 		}
 	}
 
@@ -1668,6 +1787,28 @@ public class LocalClogCache
 
 	private void saveToDisk(String playerName, PlayerClogData data)
 	{
+		// First-party bytes under a name this machine's identity file has
+		// since awarded to a newer claimant would land on the new owner's
+		// slot - our own JVM only finds out at its next rename check, so the
+		// check happens here, under the same lock migrations hold. Lookup
+		// caches (no marks) are regenerable and skip the guard.
+		if (hasFirstPartyMarks(data) && activeHashKey != null)
+		{
+			String self = activeHashKey;
+			String key = cacheKey(playerName);
+			boolean allowed = withIdentityLock(() ->
+			{
+				IdentityView disk = readIdentityView();
+				String winner = newestClaimant(disk.names, disk.stamps, key, null);
+				return winner == null || winner.equals(self);
+			});
+			if (!allowed)
+			{
+				log.debug("Skipped save for '{}': the name now belongs to another local account",
+					playerName);
+				return;
+			}
+		}
 		try
 		{
 			if (!cacheDir.exists())
