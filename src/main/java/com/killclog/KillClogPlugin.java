@@ -796,6 +796,8 @@ public class KillClogPlugin extends Plugin
 		// Rename continuity: once per login, when both halves of the local
 		// identity have arrived, the cache follows the account onto its
 		// current name (the server migrates its own copy on the next sync).
+		// The check runs on the cache's writer thread - it reads files - and
+		// the notice comes back through the poll below on a later tick.
 		if (!renameChecked)
 		{
 			Player renameLocal = client.getLocalPlayer();
@@ -803,18 +805,22 @@ public class KillClogPlugin extends Plugin
 			if (renameLocal != null && renameLocal.getName() != null && renameHash != -1)
 			{
 				renameChecked = true;
-				String renameName = renameLocal.getName();
-				localClogCache.followNameChange(renameName, renameHash);
-				// The notice survives whichever path migrated first (the sync
-				// pre-flight can win the race); one line either way.
-				String previousName = localClogCache.consumeRenameNotice();
-				if (previousName != null)
-				{
-					chatNotifier.send(ChatNotice.SYNC_RESULT,
-						"Kill Clog followed your name change from '" + previousName
-						+ "' - your collection log came along.");
-					SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(renameName));
-				}
+				localClogCache.followNameChangeAsync(renameLocal.getName(), renameHash);
+			}
+		}
+		// The notice survives whichever path migrated first (the sync
+		// pre-flight can win the race); one line either way.
+		String previousName = localClogCache.consumeRenameNotice();
+		if (previousName != null)
+		{
+			chatNotifier.send(ChatNotice.SYNC_RESULT,
+				"Kill Clog followed your name change from '" + previousName
+				+ "' - your collection log came along.");
+			Player noticeLocal = client.getLocalPlayer();
+			if (noticeLocal != null && noticeLocal.getName() != null)
+			{
+				String renameName = noticeLocal.getName();
+				SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(renameName));
 			}
 		}
 
