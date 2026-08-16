@@ -804,7 +804,10 @@ public class KillClogPlugin extends Plugin
 			{
 				renameChecked = true;
 				String renameName = renameLocal.getName();
-				String previousName = localClogCache.followNameChange(renameName, renameHash);
+				localClogCache.followNameChange(renameName, renameHash);
+				// The notice survives whichever path migrated first (the sync
+				// pre-flight can win the race); one line either way.
+				String previousName = localClogCache.consumeRenameNotice();
 				if (previousName != null)
 				{
 					chatNotifier.send(ChatNotice.SYNC_RESULT,

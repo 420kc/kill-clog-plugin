@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -78,20 +79,36 @@ public class LocalClogCache
 	// ── rename continuity (local half; the server migrates its copy on the
 	// next sync) ──────────────────────────────────────────────────────────
 	//
-	// identity.json remembers which cache file this account's hash last
+	// The identity file remembers which cache file this account's hash last
 	// wrote. Without it, a name change strands months of captures under the
 	// old file: the panel shows the sync prompt like a fresh install, and
 	// SyncService stops at "no local collection log" before a single packet
 	// reaches the server's own migration machinery.
+	//
+	// Dot-prefixed: sanitized player keys never contain a dot, so no player
+	// name (not even 'Identity') can ever collide with this file.
 
-	private static final File IDENTITY_FILE = new File(CACHE_DIR, "identity.json");
+	private static final File IDENTITY_FILE = new File(CACHE_DIR, ".kill-clog-identity.json");
 	private volatile Map<String, String> identityByHash;
+	private volatile String pendingRenameNotice;
 
 	/**
 	 * Follow the logged-in account onto its current name. When the hash last
-	 * wrote a DIFFERENT cache file, that file (and any in-memory copy)
-	 * migrates to the new name - the player's own data outranks a stale
-	 * lookup-cache copy of the name's previous owner at the destination.
+	 * wrote a DIFFERENT cache file, that data migrates to the new name.
+	 *
+	 * Destination handling: post-crash first-party captures under the new
+	 * name (same account, provably - only this client's own logged-in
+	 * captures mark firstPartyByCategory) are UNIONED, destination winning
+	 * per-item; a pure provider lookup copy of the name's previous owner is
+	 * replaced, never mixed into this account's log.
+	 *
+	 * Durability: memory is authoritative for the session. Disk follows on
+	 * the writer thread DIRECTLY (never through the latest-write-wins
+	 * debounce, which a same-name capture inside the window would silently
+	 * replace), and every destructive step gates on verified success: no
+	 * checked write, no old-file delete; no delete, no identity stamp. Any
+	 * failure or crash leaves the old file and the old on-disk mapping
+	 * together, and the next login re-runs the migration from disk.
 	 *
 	 * @return the previous display name when a migration happened, else null.
 	 */
@@ -110,61 +127,226 @@ public class LocalClogCache
 			if (previousKey == null)
 			{
 				identity.put(hashKey, currentKey);
-				persistIdentity();
+				persistIdentityEntry(hashKey, currentKey);
 			}
 			return null;
 		}
 
-		PlayerClogData data = players.remove(previousKey);
-		if (data == null)
+		PlayerClogData source = players.remove(previousKey);
+		if (source == null)
 		{
-			data = loadFromDisk(previousKey);
+			source = loadFromDisk(previousKey);
 		}
 		identity.put(hashKey, currentKey);
-		if (data == null)
+		if (source == null)
 		{
 			// Nothing stored under the old name: mapping updates, no move.
-			persistIdentity();
+			persistIdentityEntry(hashKey, currentKey);
 			return null;
 		}
-		String previousDisplay = data.playerName != null ? data.playerName : previousKey;
-		data.playerName = currentRsn;
-		players.put(currentKey, data);
+		String previousDisplay = source.playerName != null ? source.playerName : previousKey;
 
-		// Memory is authoritative for the session; disk follows on the writer
-		// thread as ONE task - new file, old file removal, then the identity
-		// stamp LAST. A crash before the flush leaves the old file and the
-		// old identity mapping intact together, so the next login simply
-		// re-runs this migration from disk. (The player's own data outranks
-		// any stale lookup-cache copy sitting at the destination.)
-		PlayerClogData copy = shallowCopy(data);
-		Map<String, String> identitySnapshot = new HashMap<>(identity);
-		String oldKey = previousKey;
-		submitDiskWrite(currentRsn, () ->
+		PlayerClogData dest = players.get(currentKey);
+		if (dest == null)
 		{
-			saveToDisk(currentRsn, copy);
-			File old = getCacheFile(oldKey);
-			if (old.exists() && !old.delete())
+			dest = loadFromDisk(currentKey);
+		}
+		PlayerClogData merged = hasFirstPartyMarks(dest)
+			? mergeForMigration(dest, source)
+			: source;
+		merged.playerName = currentRsn;
+		players.put(currentKey, merged);
+		pendingRenameNotice = previousDisplay;
+
+		PlayerClogData copy = shallowCopy(merged);
+		String oldKey = previousKey;
+		try
+		{
+			diskWriter.execute(() ->
 			{
-				log.debug("Old cache file '{}' not deleted; next login re-heals", old.getName());
-			}
-			saveIdentity(identitySnapshot);
-		});
+				if (!saveToDiskChecked(currentRsn, copy))
+				{
+					return; // old file + old mapping stay: next login re-heals
+				}
+				File old = getCacheFile(oldKey);
+				if (old.exists() && !old.delete())
+				{
+					return; // same: never stamp a migration that left data behind
+				}
+				persistIdentityEntryOnWriter(hashKey, currentKey);
+			});
+		}
+		catch (RejectedExecutionException ignored)
+		{
+			// Shutdown race: memory served this session; disk re-heals next login.
+		}
 		log.debug("Rename continuity: '{}' -> '{}'", previousKey, currentKey);
 		return previousDisplay;
 	}
 
-	private void persistIdentity()
+	/**
+	 * One chat line per migration, consumed by the plugin's login latch
+	 * regardless of whether the sync path or the latch itself triggered the
+	 * move first.
+	 */
+	public synchronized String consumeRenameNotice()
 	{
-		Map<String, String> snapshot = new HashMap<>(loadIdentity());
+		String notice = pendingRenameNotice;
+		pendingRenameNotice = null;
+		return notice;
+	}
+
+	private static boolean hasFirstPartyMarks(PlayerClogData data)
+	{
+		if (data == null || data.firstPartyByCategory == null)
+		{
+			return false;
+		}
+		for (List<Integer> ids : data.firstPartyByCategory.values())
+		{
+			if (ids != null && !ids.isEmpty())
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Union for the post-crash heal: destination (the newer writing) wins
+	 * per-item and per-category conflicts; everything the source alone knows
+	 * is carried over. Nothing is discarded.
+	 */
+	private static PlayerClogData mergeForMigration(PlayerClogData dest, PlayerClogData source)
+	{
+		if (source.categories != null)
+		{
+			if (dest.categories == null)
+			{
+				dest.categories = new ConcurrentHashMap<>();
+			}
+			for (Map.Entry<String, List<Integer>> e : source.categories.entrySet())
+			{
+				dest.categories.putIfAbsent(e.getKey(), e.getValue());
+			}
+		}
+		if (source.obtained != null)
+		{
+			if (dest.obtained == null)
+			{
+				dest.obtained = new ConcurrentHashMap<>();
+			}
+			for (Map.Entry<String, List<ClogResult.ClogItem>> e : source.obtained.entrySet())
+			{
+				List<ClogResult.ClogItem> existing = dest.obtained.get(e.getKey());
+				if (existing == null)
+				{
+					dest.obtained.put(e.getKey(), e.getValue());
+					continue;
+				}
+				for (ClogResult.ClogItem item : e.getValue())
+				{
+					boolean present = false;
+					for (ClogResult.ClogItem have : existing)
+					{
+						if (have.getId() == item.getId())
+						{
+							present = true;
+							break;
+						}
+					}
+					if (!present)
+					{
+						existing.add(item);
+					}
+				}
+			}
+		}
+		if (source.firstPartyByCategory != null)
+		{
+			if (dest.firstPartyByCategory == null)
+			{
+				dest.firstPartyByCategory = new ConcurrentHashMap<>();
+			}
+			for (Map.Entry<String, List<Integer>> e : source.firstPartyByCategory.entrySet())
+			{
+				dest.firstPartyByCategory.merge(e.getKey(), e.getValue(), (a, b) ->
+				{
+					List<Integer> union = new ArrayList<>(a);
+					for (Integer id : b)
+					{
+						if (!union.contains(id))
+						{
+							union.add(id);
+						}
+					}
+					return union;
+				});
+			}
+		}
+		dest.uniqueObtained = Math.max(dest.uniqueObtained, source.uniqueObtained);
+		dest.uniqueTotal = Math.max(dest.uniqueTotal, source.uniqueTotal);
+		if (dest.lastChanged == null
+			|| (source.lastChanged != null && source.lastChanged.compareTo(dest.lastChanged) > 0))
+		{
+			dest.lastChanged = source.lastChanged;
+		}
+		if (dest.providerAccountType == null)
+		{
+			dest.providerAccountType = source.providerAccountType;
+		}
+		return dest;
+	}
+
+	/** Checked write: temp file + atomic move, so a partial write can never
+	 *  pass for success and authorize the old file's deletion. */
+	private boolean saveToDiskChecked(String playerName, PlayerClogData data)
+	{
 		try
 		{
-			diskWriter.execute(() -> saveIdentity(snapshot));
+			if (!CACHE_DIR.exists())
+			{
+				CACHE_DIR.mkdirs();
+			}
+			File file = getCacheFile(playerName);
+			File tmp = new File(CACHE_DIR, file.getName() + ".tmp");
+			try (BufferedWriter writer = Files.newBufferedWriter(tmp.toPath(), StandardCharsets.UTF_8))
+			{
+				gson.toJson(data, writer);
+			}
+			Files.move(tmp.toPath(), file.toPath(), StandardCopyOption.REPLACE_EXISTING);
+			return true;
+		}
+		catch (IOException e)
+		{
+			log.warn("Checked cache write failed for '{}': {}", playerName, e.getMessage());
+			return false;
+		}
+	}
+
+	private void persistIdentityEntry(String hashKey, String key)
+	{
+		try
+		{
+			diskWriter.execute(() -> persistIdentityEntryOnWriter(hashKey, key));
 		}
 		catch (RejectedExecutionException ignored)
 		{
 			// Shutdown race: the mapping re-records on the next login.
 		}
+	}
+
+	/**
+	 * On the writer thread: fresh read, single-entry overlay, write. Two
+	 * clients sharing this machine each upsert only their own account's
+	 * mapping and can never truncate each other's entries with a stale
+	 * whole-file snapshot.
+	 */
+	private void persistIdentityEntryOnWriter(String hashKey, String key)
+	{
+		Map<String, String> disk = readIdentityFile();
+		disk.put(hashKey, key);
+		saveIdentity(disk);
 	}
 
 	/** Test hook: preload the identity map so tests never touch the real file. */
@@ -180,7 +362,14 @@ public class LocalClogCache
 		{
 			return identity;
 		}
-		identity = new ConcurrentHashMap<>();
+		identity = new ConcurrentHashMap<>(readIdentityFile());
+		identityByHash = identity;
+		return identity;
+	}
+
+	private Map<String, String> readIdentityFile()
+	{
+		Map<String, String> out = new HashMap<>();
 		if (IDENTITY_FILE.exists())
 		{
 			try (BufferedReader reader = Files.newBufferedReader(IDENTITY_FILE.toPath(), StandardCharsets.UTF_8))
@@ -191,7 +380,7 @@ public class LocalClogCache
 					}.getType());
 				if (parsed != null)
 				{
-					identity.putAll(parsed);
+					out.putAll(parsed);
 				}
 			}
 			catch (Exception e)
@@ -199,8 +388,7 @@ public class LocalClogCache
 				log.warn("Failed to load rename identity file: {}", e.getMessage());
 			}
 		}
-		identityByHash = identity;
-		return identity;
+		return out;
 	}
 
 	private void saveIdentity(Map<String, String> identity)

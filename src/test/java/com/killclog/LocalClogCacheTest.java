@@ -574,7 +574,56 @@ public class LocalClogCacheTest
 		ClogResult served = cache.toClogResult("New Name", Collections.emptyMap());
 		assertNotNull(served);
 		assertNotNull("own data won the destination", served.getObtainedItems().get("vetion"));
-		assertNull("the stale lookup copy is gone", served.getObtainedItems().get("venenatis"));
+		assertNull("another player's lookup copy is never mixed into this account's log",
+			served.getObtainedItems().get("venenatis"));
+	}
+
+	@Test
+	public void testFollowNameChangeMergesPostCrashOwnCaptures()
+	{
+		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
+		cache.seedIdentityForTest(new HashMap<>());
+		// Months of history under the old name...
+		cache.cacheResult(clog(
+			"Old Name",
+			categoryItems("vetion", 1, 2, 3),
+			obtainedItems("vetion", 1, 2),
+			"2026-06-03 01:23:45",
+			AccountType.IRONMAN));
+		assertNull(cache.followNameChange("Old Name", 42L));
+		// ...and post-crash FIRST-PARTY captures under the new name (only the
+		// logged-in account's own client marks first-party, which is the
+		// proof the destination is the same account, not a lookup copy).
+		Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
+		cache.cacheResult(clog("New Name", cats, obtainedItems("venenatis")));
+		cache.mergeObtainedItem("New Name", 9, itemListAsStrings("venenatis"), cats);
+
+		assertEquals("Old Name", cache.followNameChange("New Name", 42L));
+		ClogResult served = cache.toClogResult("New Name", Collections.emptyMap());
+		assertNotNull(served);
+		assertNotNull("the old history survived the heal", served.getObtainedItems().get("vetion"));
+		assertEquals("the old history is intact", 2, served.getObtainedItems().get("vetion").size());
+		assertNotNull("the post-crash captures survived too", served.getObtainedItems().get("venenatis"));
+	}
+
+	@Test
+	public void testRenameNoticeSurvivesWhicheverPathMigratesFirst()
+	{
+		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
+		cache.seedIdentityForTest(new HashMap<>());
+		cache.cacheResult(clog(
+			"Old Name",
+			categoryItems("vetion", 1),
+			obtainedItems("vetion", 1)));
+		assertNull(cache.followNameChange("Old Name", 42L));
+
+		// The sync pre-flight migrates first and discards the return value...
+		assertEquals("Old Name", cache.followNameChange("New Name", 42L));
+		// ...the plugin latch's own call is now a no-op...
+		assertNull(cache.followNameChange("New Name", 42L));
+		// ...but the notice waited for the latch, exactly once.
+		assertEquals("Old Name", cache.consumeRenameNotice());
+		assertNull("one line per migration, never two", cache.consumeRenameNotice());
 	}
 
 	@Test
