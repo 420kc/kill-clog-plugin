@@ -660,9 +660,13 @@ public class KillClogPlugin extends Plugin
 					gatherDetailedPersonalBests(rsn);
 				// Off the client thread before dispatch: the sync pre-flight
 				// can block up to ten seconds waiting for the rename disk
-				// verdict, and game ticks must never pay that wait.
+				// verdict, and game ticks must never pay that wait. The
+				// session fence rides along - a logout between this gather
+				// and the dispatch must kill the attempt, not let a dead
+				// session's sync restore its anchor or post after the end.
+				long cacheEpoch = localClogCache.currentSessionEpoch();
 				executor.execute(() -> dispatchKillclogSync(
-					rsn, accountHash, accountType, pbs, detailedPbs, manual, generation));
+					rsn, accountHash, accountType, pbs, detailedPbs, manual, generation, cacheEpoch));
 			}
 			catch (RuntimeException e)
 			{
@@ -679,8 +683,18 @@ public class KillClogPlugin extends Plugin
 
 	private void dispatchKillclogSync(String rsn, long accountHash, AccountType accountType,
 		java.util.Map<String, Double> pbs, java.util.Map<String, SyncService.DetailedPb> detailedPbs,
-		boolean manual, int generation)
+		boolean manual, int generation, long cacheEpoch)
 	{
+		if (localClogCache.currentSessionEpoch() != cacheEpoch)
+		{
+			// The session ended between gather and dispatch: release the
+			// single-flight slot and walk away clean.
+			syncGate.abortAttempt();
+			profileAppearanceRequested.set(false);
+			panel.showSyncStatus(" ", false, false);
+			launchQueuedKillclogSync();
+			return;
+		}
 		try
 		{
 			syncService.syncCollectionLog(rsn, accountHash, accountType, pbs, detailedPbs)
