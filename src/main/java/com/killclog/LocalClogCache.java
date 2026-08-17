@@ -365,12 +365,23 @@ public class LocalClogCache
 	 */
 	public boolean followNameChangeForSync(String currentRsn, long accountHash)
 	{
+		return followNameChangeForSync(currentRsn, accountHash, sessionEpoch.get());
+	}
+
+	/**
+	 * The epoch-fenced variant: callers that gathered their state earlier
+	 * (the plugin's sync dispatch) pass the fence they captured then, and
+	 * the check runs INSIDE the cache monitor - a logout between gather and
+	 * this call can never restore the dead session's anchor.
+	 */
+	public boolean followNameChangeForSync(String currentRsn, long accountHash, long expectedEpoch)
+	{
 		if (currentRsn == null || currentRsn.isBlank())
 		{
 			return true;
 		}
 		CompletableFuture<Boolean> verdict = new CompletableFuture<>();
-		followNameChange(currentRsn, accountHash, verdict, -1);
+		followNameChange(currentRsn, accountHash, verdict, expectedEpoch);
 		boolean ok;
 		try
 		{
@@ -382,6 +393,13 @@ public class LocalClogCache
 		}
 		if (!ok)
 		{
+			if (expectedEpoch >= 0 && sessionEpoch.get() != expectedEpoch)
+			{
+				// The session ended: there is nobody to serve and nothing
+				// unresolved about the slot itself - no quarantine, the next
+				// login re-decides fresh.
+				return false;
+			}
 			String key = cacheKey(currentRsn);
 			synchronized (this)
 			{
@@ -1968,33 +1986,4 @@ public class LocalClogCache
 		return copy;
 	}
 
-	static class PlayerClogData
-	{
-		String playerName;
-		String lastUpdated;
-		String lastChanged;
-		// Which account hash wrote this file: claims in the identity ledger
-		// order NAMES, but the bytes belong to whoever wrote them. Parking
-		// targets this over any claim-derived guess. Null on pre-2.0.4 files
-		// and pure lookup caches.
-		String ownerHash;
-		AccountType providerAccountType;
-		int uniqueObtained = -1;
-		int uniqueTotal = -1;
-		Map<String, List<Integer>> categories;
-		Map<String, List<ClogResult.ClogItem>> obtained;
-		/**
-		 * Per-category item ids this CLIENT observed first-hand (bulk
-		 * capture, page capture, live unlock). The sync payload ships only
-		 * records marked IN THEIR OWN CATEGORY - a global id mark would let
-		 * a provider record of the same item in another category launder
-		 * through (multi-category items are routine: clue rares span pages).
-		 * Null means a legacy pre-marking store file: those were built by
-		 * this client's own captures, so the store ships whole and the first
-		 * capture grandfathers everything obtained at that moment. Live
-		 * provider writes initialize the field EMPTY instead, which never
-		 * grandfathers.
-		 */
-		Map<String, List<Integer>> firstPartyByCategory;
-	}
 }

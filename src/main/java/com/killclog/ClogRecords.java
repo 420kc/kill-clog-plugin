@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Pure record math for the local cache's rename-continuity machinery: no
  * state, no I/O, just the merge and provenance rules for
- * {@link LocalClogCache.PlayerClogData}.
+ * {@link PlayerClogData}.
  */
 final class ClogRecords
 {
@@ -16,7 +16,7 @@ final class ClogRecords
 	{
 	}
 
-	static boolean hasFirstPartyMarks(LocalClogCache.PlayerClogData data)
+	static boolean hasFirstPartyMarks(PlayerClogData data)
 	{
 		if (data == null || data.firstPartyByCategory == null)
 		{
@@ -37,8 +37,8 @@ final class ClogRecords
 	 * per-item and per-category conflicts; everything the source alone knows
 	 * is carried over. Nothing is discarded.
 	 */
-	static LocalClogCache.PlayerClogData mergeForMigration(
-		LocalClogCache.PlayerClogData dest, LocalClogCache.PlayerClogData source)
+	static PlayerClogData mergeForMigration(
+		PlayerClogData dest, PlayerClogData source)
 	{
 		// A legacy source (null marks) is wholly first-party by definition -
 		// the class contract grandfathers it at first capture. Materialize
