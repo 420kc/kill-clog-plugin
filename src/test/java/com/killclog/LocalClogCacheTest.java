@@ -1612,6 +1612,30 @@ public class LocalClogCacheTest
 		}
 	}
 
+	@Test
+	public void testMigratedFilesCarryTheWritersProvenance() throws Exception
+	{
+		File dir = Files.createTempDirectory("kc-migprov").toFile();
+		try
+		{
+			LocalClogCache cache = new LocalClogCache(
+				new Gson(), new InlineScheduledExecutorService(), dir);
+			Map<String, List<Integer>> cats = categoryItems("vetion", 1);
+			cache.cacheResult(clog("Old Main", cats, obtainedItems("vetion")));
+			cache.mergeObtainedItem("Old Main", 1, itemListAsStrings("vetion"), cats);
+			assertNull(cache.followNameChange("Old Main", 42L));
+			assertEquals("Old Main", cache.followNameChange("New Me", 42L));
+
+			String moved = new String(Files.readAllBytes(new File(dir, "new_me.json").toPath()));
+			assertTrue("the migrated file records who wrote it",
+				moved.contains("\"ownerHash\":\"42\""));
+		}
+		finally
+		{
+			deleteRecursively(dir);
+		}
+	}
+
 	private static void deleteRecursively(File dir)
 	{
 		File[] children = dir.listFiles();

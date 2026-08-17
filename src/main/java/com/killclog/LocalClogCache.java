@@ -564,6 +564,15 @@ public class LocalClogCache
 	{
 		IdentityLedger.View now = ledger.read();
 		String claimNow = IdentityLedger.newestClaimant(now.names, now.stamps, currentKey, hashKey);
+		if (!Objects.equals(claimNow, parkHash))
+		{
+			// The destination's claim state moved between the decision and
+			// this task - appeared, vanished, or changed hands. Every rule
+			// below assumes the decision's view (parkHash is the claimant the
+			// decision saw, park or no park); abort whole, the next login
+			// re-decides from disk.
+			return false;
+		}
 		if (sourceFromLiveFile && IdentityLedger.newestClaimant(now.names, now.stamps, oldKey, hashKey) != null)
 		{
 			// A live-file source was only ours while nobody else's current
@@ -573,13 +582,6 @@ public class LocalClogCache
 		}
 		if (parkFirst)
 		{
-			if (!Objects.equals(claimNow, parkHash))
-			{
-				// The destination's ownership moved between the decision and
-				// this task: the carried snapshot and park target answer a
-				// dead question. Abort whole; the next login re-decides.
-				return false;
-			}
 			if (sidecarFile(parkHash, currentKey).exists())
 			{
 				// Their canonical copy is already parked (a crashed earlier
@@ -1919,6 +1921,7 @@ public class LocalClogCache
 		copy.playerName = src.playerName;
 		copy.lastUpdated = src.lastUpdated;
 		copy.lastChanged = src.lastChanged;
+		copy.ownerHash = src.ownerHash;
 		copy.providerAccountType = src.providerAccountType;
 		copy.uniqueObtained = src.uniqueObtained;
 		copy.uniqueTotal = src.uniqueTotal;
