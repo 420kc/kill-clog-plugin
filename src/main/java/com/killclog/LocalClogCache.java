@@ -86,21 +86,14 @@ public class LocalClogCache
 	}
 
 	// ── rename continuity (local half; the server migrates its copy on the
-	// next sync) ──────────────────────────────────────────────────────────
-	//
-	// The identity file remembers which cache file this account's hash last
-	// wrote. Without it, a name change strands months of captures under the
-	// old file: the panel shows the sync prompt like a fresh install, and
-	// SyncService stops at "no local collection log" before a single packet
-	// reaches the server's own migration machinery.
-	//
-	// Dot-prefixed: sanitized player keys never contain a dot, so no player
-	// name (not even 'Identity') can ever collide with these files.
+	// next sync). Claim semantics live on IdentityLedger; without this, a
+	// name change strands months of captures under the old file and sync
+	// dies at "no local collection log". Dot-prefixed control files:
+	// sanitized player keys never contain a dot, so no name collides.
 
 	private volatile Map<String, String> identityByHash;
 	private final AtomicReference<String> pendingRenameNotice = new AtomicReference<>();
-	// The logged-in account's hash, recorded by followNameChange: the anchor
-	// for the first-party save guard below.
+	// The logged-in account's hash: the anchor for the save guard below.
 	private volatile String activeHashKey;
 	private final IdentityLedger ledger;
 	// How long the sync pre-flight waits for the disk verdict.
@@ -124,14 +117,24 @@ public class LocalClogCache
 	/**
 	 * Logout: the capture anchor and any queued rename checks die with the
 	 * session. The per-session recovery latch resets too - the NEXT session
-	 * may legitimately need a recovery.
+	 * may legitimately need a recovery. Synchronized so the epoch bump and
+	 * anchor clear are atomic against any in-flight followNameChange body:
+	 * a fenced check either sees the new epoch and no-ops, or completed
+	 * fully before the clear.
 	 */
-	public void onSessionEnded()
+	public synchronized void onSessionEnded()
 	{
 		sessionEpoch.incrementAndGet();
 		activeHashKey = null;
 		activePlayer = null;
 		recoveredThisSession.clear();
+	}
+
+	/** The current session fence value, captured while the session is live
+	 *  and checked before any deferred work acts on its behalf. */
+	public long currentSessionEpoch()
+	{
+		return sessionEpoch.get();
 	}
 
 	private File sidecarFile(String hashKey, String key)
@@ -161,7 +164,7 @@ public class LocalClogCache
 	 */
 	public String followNameChange(String currentRsn, long accountHash)
 	{
-		return followNameChange(currentRsn, accountHash, null);
+		return followNameChange(currentRsn, accountHash, null, -1);
 	}
 
 	/** Completes the verdict future (when given) with the DISK half's result:
@@ -175,8 +178,15 @@ public class LocalClogCache
 	}
 
 	private synchronized String followNameChange(String currentRsn, long accountHash,
-		CompletableFuture<Boolean> verdict)
+		CompletableFuture<Boolean> verdict, long expectedEpoch)
 	{
+		if (expectedEpoch >= 0 && sessionEpoch.get() != expectedEpoch)
+		{
+			// Dead session's fenced work: checked INSIDE the monitor, atomic
+			// against onSessionEnded - no anchor-restoration window remains.
+			settle(verdict, false);
+			return null;
+		}
 		if (currentRsn == null || currentRsn.isBlank() || accountHash == -1)
 		{
 			settle(verdict, true);
@@ -221,6 +231,7 @@ public class LocalClogCache
 			// The sidecar recovery already ran this session; running it
 			// again would let two live clients trading one name ping-pong
 			// parks forever. The slot is settled for this session.
+			unresolvedSlots.remove(currentKey);
 			settle(verdict, true);
 			return null;
 		}
@@ -306,10 +317,20 @@ public class LocalClogCache
 		PlayerClogData copy = shallowCopy(merged);
 		boolean consumedSidecar = sourceFromSidecar;
 		boolean liveSource = sourceFromLiveFile;
-		// The chat notice only fires once the DISK half actually succeeded:
-		// announcing "your log came along" over a failed migration would be
-		// a lie the next login quietly retracts.
-		String noticeOnSuccess = recoverySameKey ? null : previousDisplay;
+		queueMigrationTask(currentRsn, currentKey, hashKey, fromKey, d, consumedSidecar,
+			sidecar, liveSource, copy, recoverySameKey ? null : previousDisplay, verdict);
+		log.debug("Rename continuity: '{}' -> '{}'", fromKey, currentKey);
+		return recoverySameKey ? null : previousDisplay;
+	}
+
+	/** The migration's disk dispatch. The chat notice only fires once the
+	 *  DISK half actually succeeded: announcing "your log came along" over a
+	 *  failed migration would be a lie the next login quietly retracts. */
+	private void queueMigrationTask(String currentRsn, String currentKey, String hashKey,
+		String fromKey, MigrationDest d, boolean consumedSidecar, File sidecar,
+		boolean liveSource, PlayerClogData copy, String noticeOnSuccess,
+		CompletableFuture<Boolean> verdict)
+	{
 		try
 		{
 			diskWriter.execute(() ->
@@ -333,8 +354,6 @@ public class LocalClogCache
 			// Shutdown race: memory served this session; disk re-heals next login.
 			settle(verdict, false);
 		}
-		log.debug("Rename continuity: '{}' -> '{}'", fromKey, currentKey);
-		return recoverySameKey ? null : previousDisplay;
 	}
 
 	/**
@@ -351,7 +370,7 @@ public class LocalClogCache
 			return true;
 		}
 		CompletableFuture<Boolean> verdict = new CompletableFuture<>();
-		followNameChange(currentRsn, accountHash, verdict);
+		followNameChange(currentRsn, accountHash, verdict, -1);
 		boolean ok;
 		try
 		{
@@ -363,9 +382,9 @@ public class LocalClogCache
 		}
 		if (!ok)
 		{
+			String key = cacheKey(currentRsn);
 			synchronized (this)
 			{
-				String key = cacheKey(currentRsn);
 				players.remove(key);
 				pendingByPlayer.remove(key);
 				// Quarantine, not just clear: the lazy loader would pull the
@@ -373,6 +392,16 @@ public class LocalClogCache
 				// lookup ask. A later successful arbitration lifts it.
 				unresolvedSlots.add(key);
 			}
+			// The disk task may land AFTER this timeout - its own lift may
+			// even have run BEFORE the add above. This hook runs after both
+			// the add and the completion: either order lifts the slot.
+			verdict.whenComplete((landed, err) ->
+			{
+				if (Boolean.TRUE.equals(landed))
+				{
+					unresolvedSlots.remove(key);
+				}
+			});
 		}
 		return ok;
 	}
@@ -470,6 +499,9 @@ public class LocalClogCache
 			// foreign claim would outrank the sitting owner forever.
 			persistIdentityEntry(hashKey, currentKey);
 		}
+		// A steady TRUE is also an arbitration outcome: lift any lingering
+		// quarantine rather than serving nothing forever.
+		unresolvedSlots.remove(currentKey);
 		settle(verdict, true);
 	}
 
@@ -676,19 +708,13 @@ public class LocalClogCache
 	 */
 	public void followNameChangeAsync(String currentRsn, long accountHash)
 	{
+		// The fence value rides into the body and is re-checked INSIDE the
+		// monitor: a session that logs out after this line can never have
+		// its queued check restore the dead anchor.
 		long epoch = sessionEpoch.get();
 		try
 		{
-			diskWriter.execute(() ->
-			{
-				// A check queued by a session that has since logged out must
-				// not run: it would restore the dead session's anchor over
-				// whatever the live session has established.
-				if (sessionEpoch.get() == epoch)
-				{
-					followNameChange(currentRsn, accountHash);
-				}
-			});
+			diskWriter.execute(() -> followNameChange(currentRsn, accountHash, null, epoch));
 		}
 		catch (RejectedExecutionException ignored)
 		{
