@@ -90,7 +90,7 @@ class SyncService
 	 */
 	CompletableFuture<SyncResult> syncCollectionLog(String rsn, long accountHash,
 		@Nullable AccountType accountType, Map<String, Double> personalBests,
-		Map<String, DetailedPb> detailedPersonalBests)
+		Map<String, DetailedPb> detailedPersonalBests, long cacheEpoch)
 	{
 		if (rsn == null || rsn.isBlank())
 		{
@@ -101,8 +101,10 @@ class SyncService
 		// Rename continuity, local half: if this account's data lives under a
 		// previous name's file, it follows the player BEFORE the local-store
 		// check below - otherwise a renamed player's sync dies right here and
-		// the server's own migration never even sees a packet.
-		if (!localClogCache.followNameChangeForSync(rsn, accountHash))
+		// the server's own migration never even sees a packet. The caller's
+		// gather-time epoch rides in so a logout since then fences the whole
+		// pre-flight inside the cache monitor.
+		if (!localClogCache.followNameChangeForSync(rsn, accountHash, cacheEpoch))
 		{
 			// The disk half of a migration or adoption did not land - the
 			// local store's provenance is unresolved and its bytes must not

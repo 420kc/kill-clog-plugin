@@ -240,6 +240,11 @@ public class KillClogPlugin extends Plugin
 		nameAutocompleter.clearClientSnapshot();
 		localClogCache.setFirstPartyChangedListener(null);
 		cancelKillclogSync();
+		// The rename session dies with the plugin: if the account changes
+		// while disabled, a surviving latch or anchor would let the OLD
+		// account's continuity state authorize the NEW account's session.
+		renameChecked = false;
+		localClogCache.onSessionEnded();
 		log.debug("Kill Clog plugin stopped");
 	}
 
@@ -690,14 +695,13 @@ public class KillClogPlugin extends Plugin
 			// The session ended between gather and dispatch: release the
 			// single-flight slot and walk away clean.
 			syncGate.abortAttempt();
-			profileAppearanceRequested.set(false);
 			panel.showSyncStatus(" ", false, false);
 			launchQueuedKillclogSync();
 			return;
 		}
 		try
 		{
-			syncService.syncCollectionLog(rsn, accountHash, accountType, pbs, detailedPbs)
+			syncService.syncCollectionLog(rsn, accountHash, accountType, pbs, detailedPbs, cacheEpoch)
 				.whenComplete((result, err) ->
 					{
 						boolean current = syncGate.complete(generation);
