@@ -94,6 +94,7 @@ final class PanelInfoBar
 	private static void installInfoClicks(JLabel label, JPanel infoRow,
 		TooltipController tooltipController, Supplier<TooltipMode> tooltipMode)
 	{
+		tooltipController.trackTooltipComponent(label);
 		label.addMouseListener(new MouseAdapter()
 		{
 			@Override

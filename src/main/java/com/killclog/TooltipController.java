@@ -12,8 +12,13 @@ import java.awt.event.AWTEventListener;
 import java.awt.event.HierarchyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Set;
+import java.util.WeakHashMap;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -30,7 +35,7 @@ import net.runelite.client.ui.ColorScheme;
 
 /**
  * Manages tooltip display mechanics: click-to-reveal popups, cell hover effects,
- * and ToolTipManager delay capture/restore.
+ * and component-scoped ToolTipManager registration.
  */
 class TooltipController
 {
@@ -53,9 +58,10 @@ class TooltipController
 	private JPanel hoveredCell;
 	private Timer hoverExitTimer;
 
-	// ToolTipManager defaults captured on activate and restored on deactivate.
-	private int defaultDismissDelay;
-	private int defaultInitialDelay = -1;
+	// ToolTipManager is shared by every RuneLite plugin. Track only Kill Clog's
+	// components so click mode never changes another plugin's tooltip behavior.
+	private final Set<JComponent> tooltipComponents =
+		Collections.newSetFromMap(new WeakHashMap<>());
 
 	TooltipController(KillClogConfig config)
 	{
@@ -145,7 +151,27 @@ class TooltipController
 		for (JLabel surface : surfaces)
 		{
 			surface.addMouseListener(hoverAdapter);
+			trackTooltipComponent(surface);
 		}
+	}
+
+	void trackTooltipComponent(JComponent component)
+	{
+		if (tooltipComponents.add(component))
+		{
+			component.addPropertyChangeListener("ToolTipText", event ->
+				SwingUtilities.invokeLater(() -> applyTooltipMode(component)));
+		}
+		applyTooltipMode(component);
+	}
+
+	void onTooltipModeChanged()
+	{
+		for (JComponent component : new ArrayList<>(tooltipComponents))
+		{
+			applyTooltipMode(component);
+		}
+		hideTransientTooltipState();
 	}
 
 	void resetCellHover()
@@ -251,36 +277,15 @@ class TooltipController
 		activeClickComponent = null;
 	}
 
-	/** Capture ToolTipManager defaults and panel window focus loss. */
-	void captureDefaults(Component owner)
+	void activate(Component owner)
 	{
-		captureDefaults();
+		onTooltipModeChanged();
 		installWindowFocusListener(owner);
 	}
 
-	/** Capture ToolTipManager defaults. */
-	void captureDefaults()
+	void deactivate()
 	{
-		defaultDismissDelay = ToolTipManager.sharedInstance().getDismissDelay();
-		ToolTipManager.sharedInstance().setDismissDelay(15000);
-
-		if (config.tooltipMode() == TooltipMode.CLICK)
-		{
-			defaultInitialDelay = ToolTipManager.sharedInstance().getInitialDelay();
-			ToolTipManager.sharedInstance().setInitialDelay(Integer.MAX_VALUE);
-		}
-	}
-
-	/** Restore ToolTipManager defaults from deactivate or shutdown. */
-	void restoreDefaults()
-	{
-		ToolTipManager.sharedInstance().setDismissDelay(defaultDismissDelay);
-		if (defaultInitialDelay >= 0)
-		{
-			ToolTipManager.sharedInstance().setInitialDelay(defaultInitialDelay);
-			defaultInitialDelay = -1;
-		}
-		hideClickTooltip();
+		hideTransientTooltipState();
 		uninstallWindowFocusListener();
 	}
 
@@ -306,6 +311,31 @@ class TooltipController
 			}
 			resetCellHover();
 			hoveredCell = null;
+		}
+	}
+
+	private void applyTooltipMode(JComponent component)
+	{
+		ToolTipManager manager = ToolTipManager.sharedInstance();
+		boolean registered = false;
+		for (MouseListener listener : component.getMouseListeners())
+		{
+			if (listener == manager)
+			{
+				registered = true;
+				break;
+			}
+		}
+
+		boolean shouldRegister = config.tooltipMode() == TooltipMode.HOVER
+			&& component.getToolTipText() != null;
+		if (shouldRegister && !registered)
+		{
+			manager.registerComponent(component);
+		}
+		else if (!shouldRegister && registered)
+		{
+			manager.unregisterComponent(component);
 		}
 	}
 

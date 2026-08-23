@@ -105,6 +105,9 @@ final class CompareClogTotalsBar
 	{
 		blueTotal.setForeground(ComparisonController.COMPARE_BLUE);
 		redTotal.setForeground(ComparisonController.COMPARE_RED);
+		tooltipController.trackTooltipComponent(panel);
+		tooltipController.trackTooltipComponent(blueTotal);
+		tooltipController.trackTooltipComponent(redTotal);
 
 		MouseAdapter clickHandler = new MouseAdapter()
 		{

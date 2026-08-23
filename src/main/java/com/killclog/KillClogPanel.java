@@ -1471,10 +1471,7 @@ public class KillClogPanel extends PluginPanel
 				tooltipController.clearHoveredCell();
 				break;
 			case "tooltipMode":
-				tooltipController.restoreDefaults();
-				tooltipController.captureDefaults(this);
-				tooltipController.hideClickTooltip();
-				tooltipController.clearHoveredCell();
+				tooltipController.onTooltipModeChanged();
 				break;
 		}
 	}
@@ -1487,19 +1484,19 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void onActivate()
 	{
-		tooltipController.captureDefaults(this);
+		tooltipController.activate(this);
 	}
 
 	@Override
 	public void onDeactivate()
 	{
-		tooltipController.restoreDefaults();
+		tooltipController.deactivate();
 	}
 
-	/** Safety net - restores tooltip delay if plugin is disabled while panel is active. */
+	/** Safety net - clears transient tooltip state if the plugin is disabled. */
 	public void shutdown()
 	{
-		tooltipController.restoreDefaults();
+		tooltipController.deactivate();
 	}
 
 	@Override
