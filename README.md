@@ -24,7 +24,7 @@ Source code is public at [github.com/420kc/kill-clog-plugin](https://github.com/
 
 1. Install Kill Clog from the RuneLite Plugin Hub.
 2. Optional, but useful for public visibility: keep your TempleOSRS and/or RuneProfile data synced so other players can see your public clog.
-3. Sync local collection log: Open your collection log in-game and click the red chalice at the top, then chat messages will guide you to right click search your collection log and click back.
+3. Sync local collection log: Open your collection log in-game and click the small collection-log icon near the top of the interface (it brightens on hover). Chat messages then guide you to right click search your collection log and click back.
 
 ## auto-sync
 
@@ -67,7 +67,7 @@ new drops current during long sessions.
 
 ## local cache
 
-Local cache keeps repeat searches fast (5 min TTL). Clear by deleting `~/.runelite/kill-clog/`.
+Lookup caches keep repeat searches fast and expire on their own after a few minutes. `~/.runelite/kill-clog/` also holds your own captured collection log, so deleting it means walking the log again to re-sync.
 
 ---
 

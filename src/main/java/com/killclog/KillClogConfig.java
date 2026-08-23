@@ -194,11 +194,22 @@ public interface KillClogConfig extends Config
 	// keyName is the legacy name; renaming it would reset users' saved setting.
 	@ConfigItem(
 		keyName = "chatNewClogMessages",
-		name = "Autosync chat messages",
-		description = "Show Added ... to Kill Clog when autosync updates your local collection log",
+		name = "Sync chat messages",
+		description = "Show Kill Clog sync messages in chat: new drop captures, sync results, and warnings. Setup guidance always shows.",
 		position = 8
 	)
 	default boolean autosyncChatMessages()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "showChatEmojis",
+		name = "Show emojis in chat",
+		description = "Render :clog:, :rune:, :dragon: and friends as item icons in chat messages",
+		position = 9
+	)
+	default boolean showChatEmojis()
 	{
 		return true;
 	}
@@ -331,6 +342,9 @@ public interface KillClogConfig extends Config
 
 	// Persisted UI state, not user settings.
 
+	// Open by default since the hamburger became the boss-view switch. The
+	// separator is the tray's toggle in both directions and stays visible
+	// while collapsed, so the tray is always recoverable.
 	@ConfigItem(
 		keyName = "activitiesExpanded",
 		name = "",
@@ -338,6 +352,17 @@ public interface KillClogConfig extends Config
 		hidden = true
 	)
 	default boolean activitiesExpanded()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "bossListView",
+		name = "",
+		description = "",
+		hidden = true
+	)
+	default boolean bossListView()
 	{
 		return false;
 	}

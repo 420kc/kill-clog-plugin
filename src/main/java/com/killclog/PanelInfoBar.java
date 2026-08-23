@@ -3,7 +3,6 @@ package com.killclog;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
-import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.function.BooleanSupplier;
@@ -26,7 +25,7 @@ final class PanelInfoBar
 
 	static JPanel build(JLabel playerName, JLabel clogInfoLabel,
 		TooltipController tooltipController, Supplier<TooltipMode> tooltipMode,
-		BooleanSupplier comparisonMode, Runnable toggleActivities)
+		BooleanSupplier comparisonMode, Runnable toggleBossView)
 	{
 		JPanel infoRow = new JPanel(null)
 		{
@@ -77,7 +76,7 @@ final class PanelInfoBar
 		}
 
 		infoRow.add(playerName);
-		infoRow.add(buildTrayToggle(toggleActivities));
+		infoRow.add(buildViewToggle(toggleBossView));
 		infoRow.add(clogInfoLabel);
 		return infoRow;
 	}
@@ -89,8 +88,7 @@ final class PanelInfoBar
 		label.setVerticalAlignment(JLabel.CENTER);
 		label.setVerticalTextPosition(JLabel.CENTER);
 		label.setIconTextGap(3);
-		label.putClientProperty(
-			RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+		ClogHelper.antialias(label);
 	}
 
 	private static void installInfoClicks(JLabel label, JPanel infoRow,
@@ -109,35 +107,36 @@ final class PanelInfoBar
 		});
 	}
 
-	private static JLabel buildTrayToggle(Runnable toggleActivities)
+	/** The hamburger: switches the boss area between grid and list views. */
+	private static JLabel buildViewToggle(Runnable toggleBossView)
 	{
-		JLabel trayToggle = new JLabel();
+		JLabel viewToggle = new JLabel();
 		ImageIcon hamburgerIcon = new ImageIcon(ClogHelper.makeHamburgerIcon(HAMBURGER_COLOR));
 		ImageIcon hamburgerHoverIcon = new ImageIcon(ClogHelper.makeHamburgerIcon(HAMBURGER_HOVER_COLOR));
-		trayToggle.setIcon(hamburgerIcon);
-		trayToggle.setHorizontalAlignment(JLabel.CENTER);
-		trayToggle.setVerticalAlignment(JLabel.CENTER);
-		trayToggle.setPreferredSize(new Dimension(18, 18));
-		trayToggle.addMouseListener(new MouseAdapter()
+		viewToggle.setIcon(hamburgerIcon);
+		viewToggle.setHorizontalAlignment(JLabel.CENTER);
+		viewToggle.setVerticalAlignment(JLabel.CENTER);
+		viewToggle.setPreferredSize(new Dimension(18, 18));
+		viewToggle.addMouseListener(new MouseAdapter()
 		{
 			@Override
 			public void mousePressed(MouseEvent e)
 			{
-				toggleActivities.run();
+				toggleBossView.run();
 			}
 
 			@Override
 			public void mouseEntered(MouseEvent e)
 			{
-				trayToggle.setIcon(hamburgerHoverIcon);
+				viewToggle.setIcon(hamburgerHoverIcon);
 			}
 
 			@Override
 			public void mouseExited(MouseEvent e)
 			{
-				trayToggle.setIcon(hamburgerIcon);
+				viewToggle.setIcon(hamburgerIcon);
 			}
 		});
-		return trayToggle;
+		return viewToggle;
 	}
 }

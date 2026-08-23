@@ -283,7 +283,7 @@ public class ComparisonController
 	public void doCompareLookup(String player, @Nullable String localRsn)
 	{
 		final String redPlayer = player.trim();
-		if (redPlayer.isEmpty() || fanout.isInFlight())
+		if (!RsnInputPolicy.isValid(redPlayer) || fanout.isInFlight())
 		{
 			return;
 		}
@@ -482,8 +482,13 @@ public class ComparisonController
 			&& !blueData.allItemIds.isEmpty();
 		boolean redHas = redData != null && redData.allItemIds != null
 			&& !redData.allItemIds.isEmpty();
-		boolean rankTracked = (blueData != null && blueData.rankTracked)
-			|| (redData != null && redData.rankTracked);
+		// The Tooltip Header rank setting applies in compare mode too - this
+		// builder serves every compare sprite tooltip, so one gate covers
+		// boss, clue tier, and rare variants. (KC/PB have no compare lines;
+		// if they ever gain them, their flags belong in this same gate.)
+		boolean rankTracked = config.showTooltipRank()
+			&& ((blueData != null && blueData.rankTracked)
+			|| (redData != null && redData.rankTracked));
 
 		tip.setBluePlayer(blueName,
 			blueData != null ? blueData.obtainedCount : -1,

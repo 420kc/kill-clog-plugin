@@ -12,7 +12,6 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.GridLayout;
 import java.awt.Point;
-import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
@@ -632,6 +631,12 @@ public class Cells
 
 	// Tooltip routing
 
+	/** List-view rows reuse the grid's tooltip routing; owner is the row's anchor label. */
+	public JToolTip buildBossTooltipFor(JLabel owner, HiscoreSkill boss)
+	{
+		return buildBossTooltip(owner, boss);
+	}
+
 	private JToolTip buildBossTooltip(JLabel owner, HiscoreSkill boss)
 	{
 		return buildBossTooltip(owner, tooltipDataMap.get(boss),
@@ -784,8 +789,7 @@ public class Cells
 		label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		label.setIconTextGap(4);
 		label.setToolTipText(tooltipText);
-		label.putClientProperty(
-			RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+		ClogHelper.antialias(label);
 	}
 
 	/** Wrap a label in a standard grid cell panel with hover effect wired. */

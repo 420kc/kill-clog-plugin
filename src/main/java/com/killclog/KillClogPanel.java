@@ -1,5 +1,6 @@
 package com.killclog;
 
+import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
@@ -8,7 +9,6 @@ import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
 import java.awt.GridLayout;
 import java.awt.Insets;
-import java.awt.RenderingHints;
 import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
@@ -31,6 +31,7 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JToolTip;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
@@ -236,6 +237,10 @@ public class KillClogPanel extends PluginPanel
 	private JLabel combatCell;
 	private JLabel totalLvlCell;
 	private ActivitiesTray activitiesTray;
+	// Boss view: grid and list share one container; the hamburger switches them.
+	private BossListView bossListView;
+	private JPanel bossViewContainer;
+	private JPanel bossGridPanel;
 
 	// Current lookup state lives on lookupSession; rsn here is a separate
 	// display-name field set by fetchRsn for the playerName label.
@@ -353,23 +358,16 @@ public class KillClogPanel extends PluginPanel
 		add(activitiesTray.getSeparator(), c);
 
 		c.gridy++;
-		add(cells.buildBossGrid(), c);
+		bossGridPanel = cells.buildBossGrid();
+		bossListView = new BossListView(tooltipController, cells,
+			this::fireFourTwentyEasterEgg, this::bossListAvailable);
+		bossViewContainer = new JPanel(new BorderLayout());
+		bossViewContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		add(bossViewContainer, c);
+		applyBossViewStyle();
 		// 420 mode easter egg: secret cycle on Thermonuclear Smoke Devil click.
-		JLabel thermoLabel = cells.getBossLabel(HiscoreSkill.THERMONUCLEAR_SMOKE_DEVIL);
-		if (thermoLabel != null)
-		{
-			thermoLabel.addMouseListener(new MouseAdapter()
-			{
-				@Override
-				public void mousePressed(MouseEvent e)
-				{
-					if (has420Plugin && !comparison.isComparisonMode())
-					{
-						cycleFourTwentyMode();
-					}
-				}
-			});
-		}
+		// The list view wires its own trigger through the constructor above.
+		wireFourTwentyEasterEgg(cells.getBossLabel(HiscoreSkill.THERMONUCLEAR_SMOKE_DEVIL));
 
 		// Collection log sync notice below boss grid
 		c.gridy++;
@@ -378,8 +376,7 @@ public class KillClogPanel extends PluginPanel
 		clogNotice.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		clogNotice.setHorizontalAlignment(JLabel.CENTER);
 		clogNotice.setText(" ");
-		clogNotice.putClientProperty(
-			RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+		ClogHelper.antialias(clogNotice);
 		add(clogNotice, c);
 
 		// Compare entry controls live in the search row.
@@ -466,11 +463,95 @@ public class KillClogPanel extends PluginPanel
 			tooltipController,
 			config::tooltipMode,
 			comparison::isComparisonMode,
-			() -> activitiesTray.toggle());
+			this::toggleBossViewStyle);
 		panel.add(infoRow);
 
 		iconCache.loadRuntimeIcons(cells, caRewardSprites);
 		return panel;
+	}
+
+	// Boss view style (grid / list).
+
+	/**
+	 * The single rule for when the list may show: never during comparison -
+	 * it is a single-player hiscores surface. applyBossViewStyle, the
+	 * hamburger guard, and the row mirror's pause all consult THIS method,
+	 * so if the rule ever relaxes, all three move together.
+	 */
+	private boolean bossListAvailable()
+	{
+		return !comparison.isComparisonMode();
+	}
+
+	/**
+	 * Show the boss view the config asks for. Comparison mode always shows
+	 * the grid; the stored preference comes back on exit.
+	 */
+	private void applyBossViewStyle()
+	{
+		boolean list = config.bossListView() && bossListAvailable();
+		if (list)
+		{
+			// Opening the list always starts from grid truth; anything the
+			// paused mirror skipped during compare is re-copied here.
+			bossListView.resyncAll();
+		}
+		bossViewContainer.removeAll();
+		bossViewContainer.add(list ? bossListView.component() : bossGridPanel, BorderLayout.CENTER);
+		bossViewContainer.revalidate();
+		bossViewContainer.repaint();
+	}
+
+	private static final String COMPARE_VIEW_STATUS = "exit compare to switch views";
+
+	/** Hamburger click: flip the persisted style and re-apply. */
+	private void toggleBossViewStyle()
+	{
+		if (!bossListAvailable())
+		{
+			setSearchStatus(COMPARE_VIEW_STATUS, TEXT_DIM);
+			// Transient refusal: clears itself unless something else has
+			// already written over it. Every other status here is cleared by
+			// a follow-up path; this one has none.
+			Timer clear = new Timer(2500, e ->
+			{
+				if (COMPARE_VIEW_STATUS.equals(searchStatus.getText()))
+				{
+					setSearchStatus(" ", TEXT_DIM);
+				}
+			});
+			clear.setRepeats(false);
+			clear.start();
+			return;
+		}
+		configManager.setConfiguration("killclog", "bossListView", !config.bossListView());
+		applyBossViewStyle();
+	}
+
+	/** Guarded 420-mode cycle shared by both views' Thermo triggers. */
+	private void fireFourTwentyEasterEgg()
+	{
+		if (has420Plugin && !comparison.isComparisonMode())
+		{
+			cycleFourTwentyMode();
+		}
+	}
+
+	/** Secret 420-mode cycle on a Thermonuclear Smoke Devil label. */
+	private void wireFourTwentyEasterEgg(@Nullable JLabel label)
+	{
+		if (label == null)
+		{
+			return;
+		}
+		label.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mousePressed(MouseEvent e)
+			{
+				fireFourTwentyEasterEgg();
+			}
+		});
 	}
 
 	// Activities tray.
@@ -657,6 +738,11 @@ public class KillClogPanel extends PluginPanel
 		{
 			return;
 		}
+		if (!RsnInputPolicy.isValid(player))
+		{
+			showInvalidName();
+			return;
+		}
 		// Spinner must go up BEFORE the lookup: a same-player compare resolves
 		// synchronously and fires onComparisonEnter, which resets the active icon.
 		// Setting LOADING afterward would strand the spinner with no callback to clear it.
@@ -679,6 +765,7 @@ public class KillClogPanel extends PluginPanel
 		setSearchStatus(" ", TEXT_DIM);
 		comparison.updateAllCells();
 		comparison.updateInfoBar();
+		applyBossViewStyle();
 		toggleHighlighter(config.completionistHighlighter());
 		searchRow.revalidate();
 	}
@@ -728,6 +815,7 @@ public class KillClogPanel extends PluginPanel
 	public void onComparisonEnter(String redRsn)
 	{
 		searchRowController.onComparisonEnter();
+		applyBossViewStyle();
 		setSearchStatus(" ", TEXT_DIM);
 		updateClogTotalsBar();
 		cells.rebuildPrimaryTooltips(localRsn);
@@ -1025,15 +1113,28 @@ public class KillClogPanel extends PluginPanel
 	public void doLookup()
 	{
 		String player = searchBar.getText().trim();
-		if (player.isEmpty() || lookupSession.isLookupInFlight())
+		if (lookupSession.isLookupInFlight())
 		{
-			if (!lookupSession.isLookupInFlight())
-			{
-				setSearchStatus("Enter RSN", TEXT_DIM);
-			}
+			return;
+		}
+		if (player.isEmpty())
+		{
+			setSearchStatus("Enter RSN", TEXT_DIM);
+			return;
+		}
+		if (!RsnInputPolicy.isValid(player))
+		{
+			showInvalidName();
 			return;
 		}
 		lookupSession.start(player, localRsn, localAccountType);
+	}
+
+	private void showInvalidName()
+	{
+		searchBar.setIcon(IconTextField.Icon.SEARCH);
+		searchBar.setText("");
+		setSearchStatus(SearchMessages.INVALID_NAME, NOT_FOUND);
 	}
 
 	private void lookupSelfFromSearchIcon()

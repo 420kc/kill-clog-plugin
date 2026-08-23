@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
+import javax.swing.JComponent;
 import net.runelite.api.Experience;
 import net.runelite.api.Skill;
 import net.runelite.client.config.ConfigManager;
@@ -262,6 +263,20 @@ final class ClogHelper
 	static String accountLabel(AccountType type)
 	{
 		return type != null && type != AccountType.REGULAR ? type.displayName() : null;
+	}
+
+	// Swing text treatment.
+
+	/**
+	 * The panel-wide ClearType fix: text antialiasing on any Swing text
+	 * component that sets a foreground. The one implementation of the
+	 * convention every panel label follows.
+	 */
+	static void antialias(JComponent component)
+	{
+		component.putClientProperty(
+			java.awt.RenderingHints.KEY_TEXT_ANTIALIASING,
+			java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 	}
 
 	// Formatting.
