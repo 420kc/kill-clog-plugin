@@ -1,8 +1,16 @@
 package com.killclog;
 
+import com.google.gson.Gson;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class KillclogSyncGateTest
@@ -14,6 +22,58 @@ public class KillclogSyncGateTest
 		int gen = gate.beginAttempt();
 		assertTrue(gen >= 0);
 		assertTrue(gate.complete(gen));
+	}
+
+	@Test
+	public void cancelledGenerationCannotGatherALaterAccount()
+	{
+		KillclogSyncGate gate = new KillclogSyncGate();
+		int gen = gate.beginAttempt();
+		assertTrue(gate.isCurrent(gen));
+		gate.cancel();
+		assertFalse("a queued client callback must stop before gathering identity",
+			gate.isCurrent(gen));
+	}
+
+	@Test
+	public void optOutDuringBlockedPreflightPreventsFinalEnqueue() throws Exception
+	{
+		KillclogSyncGate gate = new KillclogSyncGate();
+		LocalClogCache cache = new LocalClogCache(
+			new Gson(), new NoopScheduledExecutorService());
+		int generation = gate.beginAttempt();
+		long epoch = cache.currentSessionEpoch();
+		CountDownLatch preflightBlocked = new CountDownLatch(1);
+		CountDownLatch releasePreflight = new CountDownLatch(1);
+		AtomicBoolean httpEnqueued = new AtomicBoolean();
+		ExecutorService worker = Executors.newSingleThreadExecutor();
+		try
+		{
+			Future<String> result = worker.submit(() ->
+			{
+				preflightBlocked.countDown();
+				releasePreflight.await(1, TimeUnit.SECONDS);
+				return cache.commitIfSessionCurrent(epoch,
+					() -> gate.commitIfCurrent(generation, () ->
+					{
+						httpEnqueued.set(true);
+						return "http-enqueued";
+					}));
+			});
+			assertTrue(preflightBlocked.await(1, TimeUnit.SECONDS));
+
+			gate.cancel(); // user opts out while rename arbitration is blocked
+			releasePreflight.countDown();
+
+			assertNull("revocation must win before the HTTP supplier runs",
+				result.get(1, TimeUnit.SECONDS));
+			assertFalse(httpEnqueued.get());
+		}
+		finally
+		{
+			releasePreflight.countDown();
+			worker.shutdownNow();
+		}
 	}
 
 	@Test

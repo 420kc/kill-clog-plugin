@@ -119,7 +119,13 @@ final class ManualClogSync
 		}
 
 		String name = local.getName();
-		localClogCache.setActivePlayer(name);
+		if (!localClogCache.setActivePlayer(name))
+		{
+			reset();
+			chatNotifier.send(ChatNotice.SYNC_HELP,
+				"Local account identity is still settling - reopen the collection log in a moment.");
+			return;
+		}
 
 		// Group obtained items by category.
 		Map<String, List<ClogResult.ClogItem>> obtainedByCategory = new HashMap<>();

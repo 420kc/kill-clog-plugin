@@ -39,7 +39,7 @@ class SyncService
 	static final String BASE_URL = "https://killclog.com";
 
 	// Attributed on the server per client build.
-	static final String CLIENT_VERSION = "2.0.0";
+	static final String CLIENT_VERSION = "2.0.2";
 
 	private final OkHttpClient httpClient;
 	private final Gson gson;
@@ -90,12 +90,28 @@ class SyncService
 	 */
 	CompletableFuture<SyncResult> syncCollectionLog(String rsn, long accountHash,
 		@Nullable AccountType accountType, Map<String, Double> personalBests,
-		Map<String, DetailedPb> detailedPersonalBests)
+		Map<String, DetailedPb> detailedPersonalBests, long cacheEpoch,
+		KillclogSyncGate syncGate, int generation)
 	{
 		if (rsn == null || rsn.isBlank())
 		{
 			return CompletableFuture.completedFuture(
 				new SyncResult(false, false, -1, "No player to sync."));
+		}
+
+		// Rename continuity, local half: if this account's data lives under a
+		// previous name's file, it follows the player BEFORE the local-store
+		// check below - otherwise a renamed player's sync dies right here and
+		// the server's own migration never even sees a packet. The caller's
+		// gather-time epoch rides in so a logout since then fences the whole
+		// pre-flight inside the cache monitor.
+		if (!localClogCache.followNameChangeForSync(rsn, accountHash, cacheEpoch))
+		{
+			// The disk half of a migration or adoption did not land - the
+			// local store's provenance is unresolved and its bytes must not
+			// become a payload. The next login (or sync) re-decides.
+			return CompletableFuture.completedFuture(new SyncResult(false, false, -1,
+				"Local name ownership is still settling - sync skipped this round."));
 		}
 
 		// The player's own accumulated local store is the payload: months of
@@ -122,7 +138,15 @@ class SyncService
 		log.debug("Syncing collection log for '{}' to {} ({} items)",
 			rsn, url, observedCount);
 		final int pbCount = personalBests != null ? personalBests.size() : 0;
-		return HttpUtil.httpPostJson(httpClient, url, body).thenApply(r ->
+		CompletableFuture<HttpUtil.HttpResult> request = localClogCache.commitIfSessionCurrent(
+			cacheEpoch, () -> syncGate.commitIfCurrent(generation,
+				() -> HttpUtil.httpPostJson(httpClient, url, body)));
+		if (request == null)
+		{
+			return CompletableFuture.completedFuture(
+				new SyncResult(false, false, -1, "Sync session ended before send."));
+		}
+		return request.thenApply(r ->
 		{
 			if (r.code >= 200 && r.code < 300)
 			{
@@ -141,6 +165,24 @@ class SyncService
 				return new SyncResult(false, false, r.code,
 					"Another sync for this account is in flight - retrying shortly.",
 					true, parseRetryAfterSeconds(r.body));
+			}
+			// The server's identity arbitration answers (2026-08-16 wire
+			// contract): each gets plain words instead of a bare HTTP code.
+			if (r.code == 409 && r.body != null && r.body.contains("name_active_with_another_account"))
+			{
+				return new SyncResult(false, false, r.code,
+					"This name's previous owner played recently - killclog.com will "
+					+ "accept your log after their continuity window passes.");
+			}
+			if (r.code == 409 && r.body != null && r.body.contains("account_hash_mismatch"))
+			{
+				return new SyncResult(false, false, r.code,
+					"This name is registered to a different account on killclog.com.");
+			}
+			if (r.code == 451)
+			{
+				return new SyncResult(false, false, r.code,
+					"This account has opted out of killclog.com syncing.");
 			}
 			log.debug("killclog sync failed for '{}': HTTP {}", rsn, r.code);
 			return new SyncResult(false, false, r.code,

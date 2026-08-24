@@ -141,6 +141,9 @@ public class KillClogPlugin extends Plugin
 	private boolean advLogTitleLoaded;
 	private boolean advLogCountersLoaded;
 	private String advLogOwner;
+	// One rename-continuity check per login, latched when name AND account
+	// hash are both available (they arrive on different ticks).
+	private boolean renameChecked;
 
 	private final ChatAutoLookupGate chatAutoLookup = new ChatAutoLookupGate();
 	private final ClogSessionState sessionState = new ClogSessionState();
@@ -237,6 +240,11 @@ public class KillClogPlugin extends Plugin
 		nameAutocompleter.clearClientSnapshot();
 		localClogCache.setFirstPartyChangedListener(null);
 		cancelKillclogSync();
+		// The rename session dies with the plugin: if the account changes
+		// while disabled, a surviving latch or anchor would let the OLD
+		// account's continuity state authorize the NEW account's session.
+		renameChecked = false;
+		localClogCache.onSessionEnded();
 		log.debug("Kill Clog plugin stopped");
 	}
 
@@ -253,7 +261,7 @@ public class KillClogPlugin extends Plugin
 			String name = local.getName();
 			lastLocalName = name;
 			AccountType acctType = getLocalAccountType();
-			localClogCache.setActivePlayer(name);
+			boolean localClogReady = localClogCache.setActivePlayer(name);
 			localCaCache.setActivePlayer(name);
 			SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name, acctType));
 			if (!requestLocalReads)
@@ -265,7 +273,8 @@ public class KillClogPlugin extends Plugin
 			// capture of a session stayed unpublished. One quiet scheduled
 			// push per login closes that hole; the server merge no-ops when
 			// nothing changed.
-			boolean hasLocalClog = localClogCache.hasFirstPartyDataFor(name);
+			boolean hasLocalClog = localClogReady
+				&& localClogCache.hasFirstPartyDataFor(name);
 			panel.setSyncArrowHasData(hasLocalClog);
 			if (hasLocalClog)
 			{
@@ -280,6 +289,40 @@ public class KillClogPlugin extends Plugin
 		sessionState.requestAutoLookup(config.autoLookupOnLogin());
 		lookupMenu.warnIfPlayerMenuSlotUnavailable(client, config, chatNotifier);
 		reconcileClogTotalsFromVarps();
+	}
+
+	/**
+	 * Publish the name slot only after its account-hash ledger verdict landed.
+	 * The future completes on the cache writer, so every RuneLite and panel
+	 * read is marshalled back onto its owning thread and re-fenced against the
+	 * session that started the arbitration.
+	 */
+	private void onClogIdentitySettled(String name, long accountHash,
+		long expectedEpoch, boolean settled)
+	{
+		if (!settled)
+		{
+			return;
+		}
+		clientThread.invokeLater(() ->
+		{
+			Player local = client.getLocalPlayer();
+			if (localClogCache.currentSessionEpoch() != expectedEpoch
+				|| local == null || local.getName() == null
+				|| !local.getName().equalsIgnoreCase(name)
+				|| client.getAccountHash() != accountHash
+				|| !localClogCache.setActivePlayer(name))
+			{
+				return;
+			}
+
+			boolean hasLocalClog = localClogCache.hasFirstPartyDataFor(name);
+			SwingUtilities.invokeLater(() -> panel.setSyncArrowHasData(hasLocalClog));
+			if (hasLocalClog)
+			{
+				scheduleKillclogSync(KILLCLOG_SYNC_DEBOUNCE_SECONDS, false);
+			}
+		});
 	}
 
 	/**
@@ -314,6 +357,7 @@ public class KillClogPlugin extends Plugin
 	{
 		if (event.getGameState() == GameState.LOGGED_IN)
 		{
+			renameChecked = false;
 			SwingUtilities.invokeLater(panel::reloadTooltipSprites);
 			clogService.clearTempleFailures();
 			runeProfileService.clearFailures();
@@ -329,6 +373,15 @@ public class KillClogPlugin extends Plugin
 			liveClogSync.resetFirstSyncWarning();
 			nameAutocompleter.clearClientSnapshot();
 			markLocalHiscoresDirty();
+			// Silence old completions before ending the cache epoch, then
+			// cancel again so an attempt that began in that narrow handoff
+			// cannot narrate into the next login.
+			cancelKillclogSync();
+			// The capture anchor and any queued rename checks die with the
+			// session - a stale hash must never authorize the next account's
+			// saves.
+			localClogCache.onSessionEnded();
+			cancelKillclogSync();
 		}
 		else if (event.getGameState() == GameState.HOPPING)
 		{
@@ -462,7 +515,8 @@ public class KillClogPlugin extends Plugin
 		{
 			return;
 		}
-		pendingKillclogSync = executor.schedule(() -> pushKillclogSync(manual),
+		long scheduledEpoch = localClogCache.currentSessionEpoch();
+		pendingKillclogSync = executor.schedule(() -> pushKillclogSync(manual, scheduledEpoch),
 			delaySeconds, TimeUnit.SECONDS);
 	}
 
@@ -608,17 +662,26 @@ public class KillClogPlugin extends Plugin
 		scheduleKillclogSync(0, true);
 	}
 
-	private void pushKillclogSync(boolean manual)
+	private void pushKillclogSync(boolean manual, long scheduledEpoch)
 	{
 		// Re-checked at fire time: the player may have opted out while the
-		// debounce was pending.
-		if (!config.killclogSync())
+		// debounce was pending. The session fence was captured when this exact
+		// timer was scheduled, so a task that escaped cancellation cannot bind
+		// itself to whichever account happens to be logged in later.
+		if (!config.killclogSync()
+			|| localClogCache.currentSessionEpoch() != scheduledEpoch)
 		{
 			return;
 		}
 		final int generation = syncGate.beginAttempt();
 		if (generation < 0)
 		{
+			return;
+		}
+		if (localClogCache.currentSessionEpoch() != scheduledEpoch)
+		{
+			syncGate.abortAttempt();
+			launchQueuedKillclogSync();
 			return;
 		}
 		clientThread.invoke(() ->
@@ -629,6 +692,18 @@ public class KillClogPlugin extends Plugin
 			// nothing.
 			try
 			{
+				// The timer may have entered pushKillclogSync just before
+				// logout, leaving this client-thread callback queued behind the
+				// account switch. Never gather the next account under the old
+				// attempt's generation.
+				if (!syncGate.isCurrent(generation)
+					|| localClogCache.currentSessionEpoch() != scheduledEpoch)
+				{
+					syncGate.abortAttempt();
+					panel.showSyncStatus(" ", false, false);
+					launchQueuedKillclogSync();
+					return;
+				}
 				Player local = client.getLocalPlayer();
 				String rsn = local != null ? local.getName() : null;
 				long accountHash = client.getAccountHash();
@@ -647,9 +722,50 @@ public class KillClogPlugin extends Plugin
 					chatNotifier.send(ChatNotice.SYNC_RESULT, "Syncing collection log to killclog.com...");
 				}
 				panel.showSyncStatus("syncing...", false, false);
-				syncService.syncCollectionLog(rsn, accountHash, accountType,
-						gatherPersonalBests(rsn), gatherDetailedPersonalBests(rsn))
-					.whenComplete((result, err) ->
+				java.util.Map<String, Double> pbs = gatherPersonalBests(rsn);
+				java.util.Map<String, SyncService.DetailedPb> detailedPbs =
+					gatherDetailedPersonalBests(rsn);
+				// Off the client thread before dispatch: the sync pre-flight
+				// can block up to ten seconds waiting for the rename disk
+				// verdict, and game ticks must never pay that wait. The
+				// session fence rides along - a logout between this gather
+				// and the dispatch must kill the attempt, not let a dead
+				// session's sync restore its anchor or post after the end.
+				long cacheEpoch = scheduledEpoch;
+				executor.execute(() -> dispatchKillclogSync(
+					rsn, accountHash, accountType, pbs, detailedPbs, manual, generation, cacheEpoch));
+			}
+			catch (RuntimeException e)
+			{
+				log.warn("killclog sync push failed before dispatch", e);
+				syncGate.abortAttempt();
+				panel.showSyncStatus("sync failed", false, true);
+				// Failures always chat, this path included.
+				chatNotifier.send(ChatNotice.SYNC_RESULT,
+					"Collection log sync failed - see the client log.");
+				launchQueuedKillclogSync();
+			}
+		});
+	}
+
+	private void dispatchKillclogSync(String rsn, long accountHash, AccountType accountType,
+		java.util.Map<String, Double> pbs, java.util.Map<String, SyncService.DetailedPb> detailedPbs,
+		boolean manual, int generation, long cacheEpoch)
+	{
+		if (localClogCache.currentSessionEpoch() != cacheEpoch)
+		{
+			// The session ended between gather and dispatch: release the
+			// single-flight slot and walk away clean.
+			syncGate.abortAttempt();
+			panel.showSyncStatus(" ", false, false);
+			launchQueuedKillclogSync();
+			return;
+		}
+		try
+		{
+			syncService.syncCollectionLog(rsn, accountHash, accountType, pbs, detailedPbs,
+				cacheEpoch, syncGate, generation)
+				.whenComplete((result, err) ->
 					{
 						boolean current = syncGate.complete(generation);
 						if (result != null && current && config.killclogSync())
@@ -684,18 +800,18 @@ public class KillClogPlugin extends Plugin
 						}
 						launchQueuedKillclogSync();
 					});
-			}
-			catch (RuntimeException e)
-			{
-				log.warn("killclog sync push failed before dispatch", e);
-				syncGate.abortAttempt();
-				panel.showSyncStatus("sync failed", false, true);
-				// Failures always chat, this path included.
-				chatNotifier.send(ChatNotice.SYNC_RESULT,
-					"Collection log sync failed - see the client log.");
-				launchQueuedKillclogSync();
-			}
-		});
+		}
+		catch (RuntimeException e)
+		{
+			log.warn("killclog sync push failed at dispatch", e);
+			syncGate.abortAttempt();
+			panel.showSyncStatus("sync failed", false, true);
+			// Failures always chat, this path included; chat sends need the
+			// client thread and this body runs on the executor.
+			clientThread.invoke(() -> chatNotifier.send(ChatNotice.SYNC_RESULT,
+				"Collection log sync failed - see the client log."));
+			launchQueuedKillclogSync();
+		}
 	}
 
 	// Keep local CA current when a task completes mid-session, and the live
@@ -727,6 +843,41 @@ public class KillClogPlugin extends Plugin
 	{
 		nameAutocompleter.refreshClientSnapshot();
 
+		// Rename continuity: once per login, when both halves of the local
+		// identity have arrived, the cache follows the account onto its
+		// current name (the server migrates its own copy on the next sync).
+		// The check runs on the cache's writer thread - it reads files - and
+		// the notice comes back through the poll below on a later tick.
+		if (!renameChecked)
+		{
+			Player renameLocal = client.getLocalPlayer();
+			long renameHash = client.getAccountHash();
+			if (renameLocal != null && renameLocal.getName() != null && renameHash != -1)
+			{
+				renameChecked = true;
+				String renameName = renameLocal.getName();
+				long renameEpoch = localClogCache.currentSessionEpoch();
+				localClogCache.followNameChangeAsync(renameName, renameHash, renameEpoch)
+					.thenAccept(settled -> onClogIdentitySettled(
+						renameName, renameHash, renameEpoch, settled));
+			}
+		}
+		// The notice survives whichever path migrated first (the sync
+		// pre-flight can win the race); one line either way.
+		String previousName = localClogCache.consumeRenameNotice();
+		if (previousName != null)
+		{
+			chatNotifier.send(ChatNotice.SYNC_RESULT,
+				"Kill Clog followed your name change from '" + previousName
+				+ "' - your collection log came along.");
+			Player noticeLocal = client.getLocalPlayer();
+			if (noticeLocal != null && noticeLocal.getName() != null)
+			{
+				String renameName = noticeLocal.getName();
+				SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(renameName));
+			}
+		}
+
 		if (sessionState.pendingAcctTypeRecheck())
 		{
 			Player local = client.getLocalPlayer();
@@ -749,32 +900,33 @@ public class KillClogPlugin extends Plugin
 			Player local = client.getLocalPlayer();
 			if (local != null && local.getName() != null)
 			{
-				sessionState.markAutoLookupStarted();
 				String name = local.getName();
-				localClogCache.setActivePlayer(name);
-				localCaCache.setActivePlayer(name);
-				// The login transition often fires before the player's name is
-				// readable, skipping enterLoggedInState's whole block - this
-				// tick path is the reliable moment the store is loaded and the
-				// chalice can learn whether a payload exists.
-				panel.setSyncArrowHasData(localClogCache.hasFirstPartyDataFor(name));
-				captureLocalCa();
-				AccountType acctType = getLocalAccountType();
-				SwingUtilities.invokeLater(() ->
+				if (localClogCache.setActivePlayer(name))
 				{
-					panel.setLoggedInPlayer(name, acctType);
-
-					// Do not overwrite the user's research. LOGGED_IN fires on
-					// every world hop, so skip auto-lookup when they're viewing someone else
-					String displayed = panel.getDisplayedRsn();
-					if (displayed != null && !displayed.equalsIgnoreCase(name))
+					sessionState.markAutoLookupStarted();
+					localCaCache.setActivePlayer(name);
+					// The login transition often fires before the player's name is
+					// readable. This tick path waits for identity arbitration too,
+					// so a resident name-slot file can never become the self view.
+					panel.setSyncArrowHasData(localClogCache.hasFirstPartyDataFor(name));
+					captureLocalCa();
+					AccountType acctType = getLocalAccountType();
+					SwingUtilities.invokeLater(() ->
 					{
-						return;
-					}
+						panel.setLoggedInPlayer(name, acctType);
 
-					panel.setPlayerName(name);
-					panel.doLookup();
-				});
+						// Do not overwrite the user's research. LOGGED_IN fires on
+						// every world hop, so skip auto-lookup when viewing someone else.
+						String displayed = panel.getDisplayedRsn();
+						if (displayed != null && !displayed.equalsIgnoreCase(name))
+						{
+							return;
+						}
+
+						panel.setPlayerName(name);
+						panel.doLookup();
+					});
+				}
 			}
 		}
 

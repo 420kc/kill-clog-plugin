@@ -2,6 +2,7 @@ package com.killclog;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Supplier;
 
 /**
  * State machine for the killclog.com sync push: single-flight until the HTTP
@@ -36,6 +37,27 @@ final class KillclogSyncGate
 			return -1;
 		}
 		return gen;
+	}
+
+	/** Whether deferred pre-dispatch work still belongs to the live era. */
+	boolean isCurrent(int gen)
+	{
+		return gen == generation.get();
+	}
+
+	/**
+	 * Commit the final non-blocking request enqueue only while this attempt's
+	 * generation is still authorized. Synchronized with {@link #cancel()} so
+	 * opt-out has one total order with the enqueue: before means no request;
+	 * after means the already-enqueued request remains silent on completion.
+	 */
+	synchronized <T> T commitIfCurrent(int gen, Supplier<T> commit)
+	{
+		if (gen != generation.get())
+		{
+			return null;
+		}
+		return commit.get();
 	}
 
 	/** Release the slot without a round trip (unusable state: no rsn/hash). */
@@ -81,7 +103,7 @@ final class KillclogSyncGate
 	}
 
 	/** Opt-out / shutdown: silence prior eras and forget any queued intent. */
-	void cancel()
+	synchronized void cancel()
 	{
 		generation.incrementAndGet();
 		queued.set(false);

@@ -47,7 +47,12 @@ final class LiveClogSync
 		}
 
 		String playerName = local.getName();
-		localClogCache.setActivePlayer(playerName);
+		if (!localClogCache.setActivePlayer(playerName))
+		{
+			chatNotifier.send(ChatNotice.SYNC_HELP,
+				"Live sync is waiting for local account identity. Click the chalice to sync.");
+			return;
+		}
 		if (!localClogCache.hasDataFor(playerName))
 		{
 			warnFirstSync(chatNotifier);
