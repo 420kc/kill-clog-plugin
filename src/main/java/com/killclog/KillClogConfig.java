@@ -181,10 +181,21 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "virtualLevels",
+		name = "Display Virtual Levels",
+		description = "Show XP-derived levels above 99 in skill summaries",
+		position = 7
+	)
+	default boolean virtualLevels()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 		keyName = "wikiItemLinks",
 		name = "Wiki Links",
 		description = "Click boss names and item sprites in collection-log tooltips to open the OSRS Wiki",
-		position = 7
+		position = 8
 	)
 	default boolean wikiItemLinks()
 	{
@@ -196,7 +207,7 @@ public interface KillClogConfig extends Config
 		keyName = "chatNewClogMessages",
 		name = "Sync chat messages",
 		description = "Show Kill Clog sync messages in chat: new drop captures, sync results, and warnings. Setup guidance always shows.",
-		position = 8
+		position = 9
 	)
 	default boolean autosyncChatMessages()
 	{
@@ -207,7 +218,7 @@ public interface KillClogConfig extends Config
 		keyName = "showChatEmojis",
 		name = "Show emojis in chat",
 		description = "Render :clog:, :rune:, :dragon: and friends as item icons in chat messages",
-		position = 9
+		position = 10
 	)
 	default boolean showChatEmojis()
 	{
@@ -219,7 +230,7 @@ public interface KillClogConfig extends Config
 	@ConfigSection(
 		name = "Tooltip Header",
 		description = "The kc, pb, and rank lines on collection-log tooltips",
-		position = 9
+		position = 11
 	)
 	String tooltipHeaderSection = "tooltipHeader";
 
@@ -264,7 +275,7 @@ public interface KillClogConfig extends Config
 	@ConfigSection(
 		name = "Progress Highlighter",
 		description = "Color KC numbers based on collection log completion",
-		position = 10
+		position = 12
 	)
 	String completionistSection = "completionist";
 
@@ -381,7 +392,7 @@ public interface KillClogConfig extends Config
 	@ConfigSection(
 		name = "killclog.com",
 		description = "First-party sync with your killclog.com profile",
-		position = 11,
+		position = 13,
 		closedByDefault = true
 	)
 	String killclogSection = "killclog";

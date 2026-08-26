@@ -123,7 +123,7 @@ public class SkillsTooltip extends TitleTooltip
 		setTitle("Skill Summary");
 	}
 
-	/** Follows RuneLite's core Virtual Levels plugin toggle, read at build time. */
+	/** Uses Kill Clog's Display Virtual Levels setting, read at build time. */
 	public void setVirtualLevels(boolean virtualLevels)
 	{
 		this.virtualLevels = virtualLevels;

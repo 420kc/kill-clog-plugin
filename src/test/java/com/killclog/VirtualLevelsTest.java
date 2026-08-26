@@ -2,15 +2,23 @@ package com.killclog;
 
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
- * Virtual level display math for the skill summaries. Kill Clog follows
- * RuneLite's core Virtual Levels plugin toggle; when it is on, levels come
- * from xp via Experience.getLevelForXp (cap 126), matching what that plugin
- * shows on the vanilla skills tab.
+ * Virtual level display math for the skill summaries. When Kill Clog's setting
+ * is on, levels come from xp via Experience.getLevelForXp (cap 126).
  */
 public class VirtualLevelsTest
 {
+	@Test
+	public void killClogVirtualLevelsDefaultOn()
+	{
+		KillClogConfig config = new KillClogConfig()
+		{
+		};
+		assertTrue(config.virtualLevels());
+	}
+
 	@Test
 	public void offMeansHiscoreLevelUntouched()
 	{
