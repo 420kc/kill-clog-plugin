@@ -1,8 +1,12 @@
 package com.killclog;
 
 import java.awt.event.MouseListener;
+import java.awt.event.MouseEvent;
+import java.util.concurrent.atomic.AtomicInteger;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JToolTip;
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 import org.junit.Test;
@@ -89,6 +93,102 @@ public class TooltipControllerTest
 		}
 	}
 
+	@Test
+	public void cellPressPinsTooltipInBothModes()
+	{
+		AtomicInteger pins = new AtomicInteger();
+		AtomicInteger dismissedHoverPreviews = new AtomicInteger();
+		TooltipController controller = new TooltipController(config)
+		{
+			@Override
+			void dismissHoverPreview(MouseEvent event)
+			{
+				dismissedHoverPreviews.incrementAndGet();
+			}
+
+			@Override
+			void showPinnedTooltip(JComponent source, JPanel cell)
+			{
+				pins.incrementAndGet();
+			}
+		};
+		JPanel cell = new JPanel();
+		JLabel label = new JLabel();
+		label.setToolTipText("Kill Clog");
+
+		try
+		{
+			controller.addCellHoverEffect(cell, label);
+			pressWithoutToolTipManager(label);
+			assertEquals(1, pins.get());
+			assertEquals(0, dismissedHoverPreviews.get());
+
+			mode = TooltipMode.HOVER;
+			controller.onTooltipModeChanged();
+			pressWithoutToolTipManager(label);
+			assertEquals(2, pins.get());
+			assertEquals(1, dismissedHoverPreviews.get());
+		}
+		finally
+		{
+			label.setToolTipText(null);
+			controller.deactivate();
+		}
+	}
+
+	@Test
+	public void pinnedSourceTooltipIsSuppressedAndRestored() throws Exception
+	{
+		mode = TooltipMode.HOVER;
+		ToolTipManager manager = ToolTipManager.sharedInstance();
+		TooltipController controller = new TooltipController(config);
+		JLabel source = new JLabel();
+		source.setToolTipText("Kill Clog");
+		controller.trackTooltipComponent(source);
+
+		try
+		{
+			controller.suppressPinnedSourceTooltip(source, source.getToolTipText());
+			flushEdt();
+			assertNull(source.getToolTipText());
+			assertFalse(isRegistered(source, manager));
+
+			controller.restorePinnedSourceTooltip();
+			flushEdt();
+			assertEquals("Kill Clog", source.getToolTipText());
+			assertTrue(isRegistered(source, manager));
+		}
+		finally
+		{
+			source.setToolTipText(null);
+			controller.deactivate();
+		}
+	}
+
+	@Test
+	public void enteringPinnedTooltipClearsResidualHoverPreview()
+	{
+		AtomicInteger dismissedHoverPreviews = new AtomicInteger();
+		TooltipController controller = new TooltipController(config)
+		{
+			@Override
+			void dismissHoverPreview(MouseEvent event)
+			{
+				dismissedHoverPreviews.incrementAndGet();
+			}
+		};
+		JToolTip tip = new JToolTip();
+		controller.guardPinnedTooltip(tip);
+		MouseEvent event = new MouseEvent(tip, MouseEvent.MOUSE_ENTERED,
+			System.currentTimeMillis(), 0, 1, 1, 0, false);
+		for (MouseListener listener : tip.getMouseListeners())
+		{
+			listener.mouseEntered(event);
+		}
+
+		assertEquals(1, dismissedHoverPreviews.get());
+	}
+
 	private static boolean isRegistered(JLabel label, ToolTipManager manager)
 	{
 		for (MouseListener listener : label.getMouseListeners())
@@ -106,5 +206,19 @@ public class TooltipControllerTest
 		SwingUtilities.invokeAndWait(() ->
 		{
 		});
+	}
+
+	private static void pressWithoutToolTipManager(JLabel label)
+	{
+		ToolTipManager manager = ToolTipManager.sharedInstance();
+		MouseEvent event = new MouseEvent(label, MouseEvent.MOUSE_PRESSED,
+			System.currentTimeMillis(), 0, 1, 1, 1, false, MouseEvent.BUTTON1);
+		for (MouseListener listener : label.getMouseListeners())
+		{
+			if (listener != manager)
+			{
+				listener.mousePressed(event);
+			}
+		}
 	}
 }

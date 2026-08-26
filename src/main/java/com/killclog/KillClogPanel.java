@@ -449,7 +449,6 @@ public class KillClogPanel extends PluginPanel
 
 		compareClogTotals = new CompareClogTotalsBar(
 			comparison::isComparisonMode,
-			config::tooltipMode,
 			tooltipController,
 			this::buildCompareClogSummary);
 		panel.add(compareClogTotals.component());
@@ -461,7 +460,6 @@ public class KillClogPanel extends PluginPanel
 			playerName,
 			clogInfoLabel,
 			tooltipController,
-			config::tooltipMode,
 			comparison::isComparisonMode,
 			this::toggleBossViewStyle);
 		panel.add(infoRow);
@@ -1154,7 +1152,7 @@ public class KillClogPanel extends PluginPanel
 	 */
 	private void resetAllLabels()
 	{
-		tooltipController.hideClickTooltip();
+		tooltipController.hidePinnedTooltip();
 		searchRowController.exitIfActive();
 		rsn = null;
 		clogNotice.setText(" ");
@@ -1467,7 +1465,7 @@ public class KillClogPanel extends PluginPanel
 				cells.rebuildPrimaryTooltips(localRsn);
 				break;
 			case "hoverStyle":
-				tooltipController.hideClickTooltip();
+				tooltipController.hidePinnedTooltip();
 				tooltipController.clearHoveredCell();
 				break;
 			case "tooltipMode":
@@ -1503,7 +1501,7 @@ public class KillClogPanel extends PluginPanel
 	public void removeNotify()
 	{
 		super.removeNotify();
-		tooltipController.hideClickTooltip();
+		tooltipController.hidePinnedTooltip();
 	}
 
 	private void cycleFourTwentyMode()

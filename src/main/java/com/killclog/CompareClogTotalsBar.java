@@ -6,7 +6,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import javax.swing.ImageIcon;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -18,18 +17,16 @@ import net.runelite.client.ui.FontManager;
 final class CompareClogTotalsBar
 {
 	private final BooleanSupplier comparisonMode;
-	private final Supplier<TooltipMode> tooltipMode;
 	private final TooltipController tooltipController;
 	private final Function<JComponent, JToolTip> tooltipFactory;
 	private final JPanel panel;
 	private final JLabel blueTotal;
 	private final JLabel redTotal;
 
-	CompareClogTotalsBar(BooleanSupplier comparisonMode, Supplier<TooltipMode> tooltipMode,
-		TooltipController tooltipController, Function<JComponent, JToolTip> tooltipFactory)
+	CompareClogTotalsBar(BooleanSupplier comparisonMode, TooltipController tooltipController,
+		Function<JComponent, JToolTip> tooltipFactory)
 	{
 		this.comparisonMode = comparisonMode;
-		this.tooltipMode = tooltipMode;
 		this.tooltipController = tooltipController;
 		this.tooltipFactory = tooltipFactory;
 		this.panel = buildPanel();
@@ -114,9 +111,9 @@ final class CompareClogTotalsBar
 			@Override
 			public void mousePressed(MouseEvent e)
 			{
-				if (tooltipMode.get() == TooltipMode.CLICK && panel.getToolTipText() != null)
+				if (panel.getToolTipText() != null)
 				{
-					tooltipController.showClickTooltip(panel, panel);
+					tooltipController.pinTooltipFromPress(panel, panel, e);
 				}
 			}
 		};

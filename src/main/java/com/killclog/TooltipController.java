@@ -10,6 +10,7 @@ import java.awt.Toolkit;
 import java.awt.Window;
 import java.awt.event.AWTEventListener;
 import java.awt.event.HierarchyEvent;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
@@ -34,7 +35,7 @@ import javax.swing.border.MatteBorder;
 import net.runelite.client.ui.ColorScheme;
 
 /**
- * Manages tooltip display mechanics: click-to-reveal popups, cell hover effects,
+ * Manages tooltip display mechanics: pinned popups, cell hover effects,
  * and component-scoped ToolTipManager registration.
  */
 class TooltipController
@@ -46,11 +47,16 @@ class TooltipController
 
 	private final KillClogConfig config;
 
-	// Click-to-reveal popup state.
-	private Popup activeClickPopup;
-	private JComponent activeClickComponent;
-	private AWTEventListener clickDismissListener;
-	private JComponent clickDismissedComponent;
+	// Stable popup state. Click mode opens this directly; hover mode promotes its
+	// transient preview into the same popup when the source is pressed.
+	private Popup activePinnedPopup;
+	private JComponent activePinnedComponent;
+	private JPanel activePinnedCell;
+	private boolean pinnedFromHover;
+	private JComponent suppressedTooltipComponent;
+	private String suppressedTooltipText;
+	private AWTEventListener pinDismissListener;
+	private JComponent pinDismissedComponent;
 	private Window focusWindow;
 	private WindowAdapter windowFocusListener;
 
@@ -81,7 +87,7 @@ class TooltipController
 	/**
 	 * Row-shaped variant: the hover outline follows {@code colorSource}'s
 	 * foreground while the cell and every listed surface accept hover and
-	 * click. The click tooltip comes from the pressed surface when it carries
+	 * click. The pinned tooltip comes from the pressed surface when it carries
 	 * one, else from the first surface (which also keeps the popup anchor
 	 * stable for presses on the bare cell).
 	 */
@@ -92,16 +98,12 @@ class TooltipController
 			@Override
 			public void mousePressed(MouseEvent e)
 			{
-				if (config.tooltipMode() != TooltipMode.CLICK)
-				{
-					return;
-				}
 				JLabel source = e.getSource() instanceof JLabel
 					&& ((JLabel) e.getSource()).getToolTipText() != null
 					? (JLabel) e.getSource() : surfaces[0];
 				if (source.getToolTipText() != null)
 				{
-					showClickTooltip(source, cell);
+					pinTooltipFromPress(source, cell, e);
 				}
 			}
 
@@ -137,7 +139,8 @@ class TooltipController
 				if (hoverExitTimer != null) hoverExitTimer.stop();
 				hoverExitTimer = new Timer(150, evt ->
 				{
-					if (hoveredCell == cell)
+					if (hoveredCell == cell
+						&& !(pinnedFromHover && activePinnedCell == cell))
 					{
 						resetCellHover();
 						hoveredCell = null;
@@ -167,11 +170,8 @@ class TooltipController
 
 	void onTooltipModeChanged()
 	{
-		for (JComponent component : new ArrayList<>(tooltipComponents))
-		{
-			applyTooltipMode(component);
-		}
 		hideTransientTooltipState();
+		refreshTooltipRegistrations();
 	}
 
 	void resetCellHover()
@@ -212,21 +212,37 @@ class TooltipController
 		});
 	}
 
-	/** Show the click-to-reveal tooltip for any component with tooltip text (labels included). */
-	void showClickTooltip(JComponent source, JPanel cell)
+	void pinTooltipFromPress(JComponent source, JPanel cell, MouseEvent event)
+	{
+		if (config.tooltipMode() == TooltipMode.HOVER)
+		{
+			dismissHoverPreview(event);
+		}
+		showPinnedTooltip(source, cell);
+	}
+
+	void dismissHoverPreview(MouseEvent event)
+	{
+		ToolTipManager.sharedInstance().mousePressed(event);
+	}
+
+	/** Pin the tooltip for any component with tooltip text (labels included). */
+	void showPinnedTooltip(JComponent source, JPanel cell)
 	{
 		// The global listener dismissed this component on the same click; treat it as toggle-off.
-		if (source == clickDismissedComponent)
+		if (source == pinDismissedComponent)
 		{
-			clickDismissedComponent = null;
+			pinDismissedComponent = null;
 			return;
 		}
-		clickDismissedComponent = null;
+		pinDismissedComponent = null;
 
-		hideClickTooltip();
+		hidePinnedTooltip();
 
+		String tooltipText = source.getToolTipText();
 		JToolTip tip = source.createToolTip();
-		tip.setTipText(source.getToolTipText());
+		tip.setTipText(tooltipText);
+		guardPinnedTooltip(tip);
 
 		Dimension tipSize = tip.getPreferredSize();
 
@@ -246,35 +262,100 @@ class TooltipController
 			y = cellLoc.y - tipSize.height;
 		}
 
-		activeClickPopup = PopupFactory.getSharedInstance().getPopup(cell, tip, x, y);
-		activeClickComponent = source;
-		activeClickPopup.show();
+		activePinnedPopup = PopupFactory.getSharedInstance().getPopup(cell, tip, x, y);
+		activePinnedComponent = source;
+		activePinnedCell = cell;
+		pinnedFromHover = config.tooltipMode() == TooltipMode.HOVER;
+		suppressPinnedSourceTooltip(source, tooltipText);
+		activePinnedPopup.show();
+		refreshTooltipRegistrations();
 
-		clickDismissListener = event ->
+		pinDismissListener = event ->
 		{
 			if (event.getID() == MouseEvent.MOUSE_PRESSED)
 			{
-				clickDismissedComponent = activeClickComponent;
-				hideClickTooltip();
+				JComponent dismissedComponent = activePinnedComponent;
+				pinDismissedComponent = dismissedComponent;
+				hidePinnedTooltip();
+				SwingUtilities.invokeLater(() ->
+				{
+					if (pinDismissedComponent == dismissedComponent)
+					{
+						pinDismissedComponent = null;
+					}
+				});
+			}
+			else if (event.getID() == KeyEvent.KEY_PRESSED
+				&& ((KeyEvent) event).getKeyCode() == KeyEvent.VK_ESCAPE)
+			{
+				pinDismissedComponent = null;
+				hidePinnedTooltip();
 			}
 		};
 		Toolkit.getDefaultToolkit().addAWTEventListener(
-			clickDismissListener, AWTEvent.MOUSE_EVENT_MASK);
+			pinDismissListener, AWTEvent.MOUSE_EVENT_MASK | AWTEvent.KEY_EVENT_MASK);
 	}
 
-	void hideClickTooltip()
+	void hidePinnedTooltip()
 	{
-		if (clickDismissListener != null)
+		JPanel pinnedCell = activePinnedCell;
+		boolean clearPinnedHover = pinnedFromHover;
+		boolean hadPopup = activePinnedPopup != null;
+
+		if (pinDismissListener != null)
 		{
-			Toolkit.getDefaultToolkit().removeAWTEventListener(clickDismissListener);
-			clickDismissListener = null;
+			Toolkit.getDefaultToolkit().removeAWTEventListener(pinDismissListener);
+			pinDismissListener = null;
 		}
-		if (activeClickPopup != null)
+		if (activePinnedPopup != null)
 		{
-			activeClickPopup.hide();
-			activeClickPopup = null;
+			activePinnedPopup.hide();
+			activePinnedPopup = null;
 		}
-		activeClickComponent = null;
+		activePinnedComponent = null;
+		activePinnedCell = null;
+		pinnedFromHover = false;
+		restorePinnedSourceTooltip();
+
+		if (hadPopup)
+		{
+			refreshTooltipRegistrations();
+		}
+		if (clearPinnedHover && pinnedCell != null)
+		{
+			clearCellHover(pinnedCell);
+		}
+	}
+
+	void guardPinnedTooltip(JToolTip tip)
+	{
+		tip.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseEntered(MouseEvent event)
+			{
+				dismissHoverPreview(event);
+			}
+		});
+	}
+
+	void suppressPinnedSourceTooltip(JComponent component, String tooltipText)
+	{
+		suppressedTooltipComponent = component;
+		suppressedTooltipText = tooltipText;
+		component.setToolTipText(null);
+	}
+
+	void restorePinnedSourceTooltip()
+	{
+		JComponent component = suppressedTooltipComponent;
+		String tooltipText = suppressedTooltipText;
+		suppressedTooltipComponent = null;
+		suppressedTooltipText = null;
+		if (component != null && component.getToolTipText() == null)
+		{
+			component.setToolTipText(tooltipText);
+		}
 	}
 
 	void activate(Component owner)
@@ -304,6 +385,10 @@ class TooltipController
 	{
 		if (hoveredCell == cell)
 		{
+			if (pinnedFromHover && activePinnedCell == cell)
+			{
+				return;
+			}
 			Point mouse = cell.getMousePosition();
 			if (mouse != null)
 			{
@@ -328,6 +413,7 @@ class TooltipController
 		}
 
 		boolean shouldRegister = config.tooltipMode() == TooltipMode.HOVER
+			&& activePinnedPopup == null
 			&& component.getToolTipText() != null;
 		if (shouldRegister && !registered)
 		{
@@ -336,6 +422,14 @@ class TooltipController
 		else if (!shouldRegister && registered)
 		{
 			manager.unregisterComponent(component);
+		}
+	}
+
+	private void refreshTooltipRegistrations()
+	{
+		for (JComponent component : new ArrayList<>(tooltipComponents))
+		{
+			applyTooltipMode(component);
 		}
 	}
 
@@ -379,7 +473,7 @@ class TooltipController
 
 	private void hideTransientTooltipState()
 	{
-		hideClickTooltip();
+		hidePinnedTooltip();
 		clearHoveredCell();
 	}
 }

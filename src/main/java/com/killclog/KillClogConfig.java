@@ -161,7 +161,7 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "tooltipMode",
 		name = "Tooltip Activation",
-		description = "How grid and summary tooltips are triggered (hover or click-to-reveal)",
+		description = "Hover to preview and click to pin, or use click-to-reveal",
 		position = 5
 	)
 	default TooltipMode tooltipMode()

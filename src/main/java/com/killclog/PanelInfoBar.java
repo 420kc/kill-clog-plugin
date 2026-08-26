@@ -6,7 +6,6 @@ import java.awt.Dimension;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.function.BooleanSupplier;
-import java.util.function.Supplier;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -24,7 +23,7 @@ final class PanelInfoBar
 	}
 
 	static JPanel build(JLabel playerName, JLabel clogInfoLabel,
-		TooltipController tooltipController, Supplier<TooltipMode> tooltipMode,
+		TooltipController tooltipController,
 		BooleanSupplier comparisonMode, Runnable toggleBossView)
 	{
 		JPanel infoRow = new JPanel(null)
@@ -67,8 +66,8 @@ final class PanelInfoBar
 		clogInfoLabel.setBorder(new EmptyBorder(0, 0, 0, 4));
 		clogInfoLabel.setMinimumSize(new Dimension(0, 0));
 
-		installInfoClicks(playerName, infoRow, tooltipController, tooltipMode);
-		installInfoClicks(clogInfoLabel, infoRow, tooltipController, tooltipMode);
+		installInfoClicks(playerName, infoRow, tooltipController);
+		installInfoClicks(clogInfoLabel, infoRow, tooltipController);
 		for (JLabel barLabel : new JLabel[]{playerName, clogInfoLabel})
 		{
 			UnderlineLabel.installHoverUnderline(barLabel,
@@ -92,7 +91,7 @@ final class PanelInfoBar
 	}
 
 	private static void installInfoClicks(JLabel label, JPanel infoRow,
-		TooltipController tooltipController, Supplier<TooltipMode> tooltipMode)
+		TooltipController tooltipController)
 	{
 		tooltipController.trackTooltipComponent(label);
 		label.addMouseListener(new MouseAdapter()
@@ -100,9 +99,9 @@ final class PanelInfoBar
 			@Override
 			public void mousePressed(MouseEvent e)
 			{
-				if (tooltipMode.get() == TooltipMode.CLICK && label.getToolTipText() != null)
+				if (label.getToolTipText() != null)
 				{
-					tooltipController.showClickTooltip(label, infoRow);
+					tooltipController.pinTooltipFromPress(label, infoRow, e);
 				}
 			}
 		});
