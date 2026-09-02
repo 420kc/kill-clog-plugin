@@ -168,6 +168,17 @@ class TooltipController
 		applyTooltipMode(component);
 	}
 
+	/**
+	 * Update a tracked tooltip and immediately reapply this controller's
+	 * registration rule. Swing otherwise re-registers null-to-value changes
+	 * even while another tooltip is pinned.
+	 */
+	void setTooltipText(JComponent component, String tooltipText)
+	{
+		component.setToolTipText(tooltipText);
+		applyTooltipMode(component);
+	}
+
 	void onTooltipModeChanged()
 	{
 		hideTransientTooltipState();
@@ -343,7 +354,7 @@ class TooltipController
 	{
 		suppressedTooltipComponent = component;
 		suppressedTooltipText = tooltipText;
-		component.setToolTipText(null);
+		setTooltipText(component, null);
 	}
 
 	void restorePinnedSourceTooltip()
@@ -354,7 +365,7 @@ class TooltipController
 		suppressedTooltipText = null;
 		if (component != null && component.getToolTipText() == null)
 		{
-			component.setToolTipText(tooltipText);
+			setTooltipText(component, tooltipText);
 		}
 	}
 
@@ -413,7 +424,7 @@ class TooltipController
 		}
 
 		boolean shouldRegister = config.tooltipMode() == TooltipMode.HOVER
-			&& activePinnedPopup == null
+			&& !hasPinnedTooltip()
 			&& component.getToolTipText() != null;
 		if (shouldRegister && !registered)
 		{
@@ -423,6 +434,11 @@ class TooltipController
 		{
 			manager.unregisterComponent(component);
 		}
+	}
+
+	boolean hasPinnedTooltip()
+	{
+		return activePinnedPopup != null;
 	}
 
 	private void refreshTooltipRegistrations()

@@ -2,6 +2,7 @@ package com.killclog;
 
 import java.awt.event.MouseListener;
 import java.awt.event.MouseEvent;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -161,6 +162,51 @@ public class TooltipControllerTest
 		finally
 		{
 			source.setToolTipText(null);
+			controller.deactivate();
+		}
+	}
+
+	@Test
+	public void tooltipTextChangesAreFencedSynchronouslyWhilePinned() throws Exception
+	{
+		mode = TooltipMode.HOVER;
+		AtomicBoolean pinned = new AtomicBoolean();
+		ToolTipManager manager = ToolTipManager.sharedInstance();
+		TooltipController controller = new TooltipController(config)
+		{
+			@Override
+			boolean hasPinnedTooltip()
+			{
+				return pinned.get();
+			}
+		};
+		JLabel summary = new JLabel();
+		summary.setToolTipText("Summary");
+
+		try
+		{
+			controller.trackTooltipComponent(summary);
+			assertTrue(isRegistered(summary, manager));
+			controller.setTooltipText(summary, null);
+			assertFalse(isRegistered(summary, manager));
+
+			pinned.set(true);
+			SwingUtilities.invokeAndWait(() ->
+			{
+				controller.setTooltipText(summary, "Updated summary");
+				assertFalse(isRegistered(summary, manager));
+			});
+
+			pinned.set(false);
+			SwingUtilities.invokeAndWait(() ->
+			{
+				controller.setTooltipText(summary, "Restored summary");
+				assertTrue(isRegistered(summary, manager));
+			});
+		}
+		finally
+		{
+			summary.setToolTipText(null);
 			controller.deactivate();
 		}
 	}

@@ -418,12 +418,12 @@ public class Cells
 			label.setForeground(score > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
 			if (activity == HiscoreSkill.CLUE_SCROLL_ALL)
 			{
-				label.setToolTipText(" ");
+				tooltipController.setTooltipText(label, " ");
 			}
 			else
 			{
 				int rank = result.getActivityRank(activity.getName());
-				label.setToolTipText(rank > 0
+				tooltipController.setTooltipText(label, rank > 0
 					? activity.getName() + "\nRank: {w}" + String.format(Locale.US, "%,d", rank)
 					: activity.getName());
 			}
@@ -447,7 +447,7 @@ public class Cells
 
 			String shortName = capitalizeTier(tier);
 			int rank = result.getActivityRank(tier.getName());
-			label.setToolTipText(rank > 0
+			tooltipController.setTooltipText(label, rank > 0
 				? shortName + "\nRank: {w}" + String.format(Locale.US, "%,d", rank)
 				: shortName);
 		}
@@ -473,13 +473,13 @@ public class Cells
 		TooltipData data = tooltipDataBuilder.buildClueRareData(name, clogCategory, result);
 		if (data == null)
 		{
-			label.setToolTipText(name);
+			tooltipController.setTooltipText(label, name);
 			return;
 		}
 		label.setText(ClogHelper.pad(data.obtainedCount > 0 ? ClogHelper.formatKc(data.obtainedCount) : "--"));
 		rareTooltips.put(clogCategory, data);
 		label.setForeground(rareColor(data, config));
-		label.setToolTipText(" ");
+		tooltipController.setTooltipText(label, " ");
 	}
 
 	private void writeCustomRare(@Nullable JLabel label, String name, String rareKey,
@@ -493,7 +493,7 @@ public class Cells
 		label.setText(ClogHelper.pad(data.obtainedCount > 0 ? ClogHelper.formatKc(data.obtainedCount) : "--"));
 		rareTooltips.put(rareKey, data);
 		label.setForeground(rareColor(data, config));
-		label.setToolTipText(" ");
+		tooltipController.setTooltipText(label, " ");
 	}
 
 	/**
@@ -525,7 +525,7 @@ public class Cells
 			{
 				tooltipDataMap.put(skill, data);
 			}
-			entry.getValue().setToolTipText(" ");
+			tooltipController.setTooltipText(entry.getValue(), " ");
 		}
 		// Clue tier cells
 		if (lookupSession.getClogResult() == null)
@@ -554,7 +554,7 @@ public class Cells
 			}
 			tooltipDataMap.put(skill, data);
 			tooltipDataBuilder.preloadItemImages(data);
-			label.setToolTipText(" ");
+			tooltipController.setTooltipText(label, " ");
 		}
 	}
 
@@ -578,7 +578,7 @@ public class Cells
 			{
 				tooltipDataMap.put(skill, data);
 			}
-			label.setToolTipText(" ");
+			tooltipController.setTooltipText(label, " ");
 		}
 
 		putUnsyncedRare(PanelData.CLOG_THIRD_AGE, thirdAgeCell,
@@ -607,7 +607,7 @@ public class Cells
 		}
 		if (label != null)
 		{
-			label.setToolTipText(" ");
+			tooltipController.setTooltipText(label, " ");
 		}
 	}
 

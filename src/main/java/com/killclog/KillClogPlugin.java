@@ -5,6 +5,8 @@ import java.awt.image.BufferedImage;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.swing.SwingUtilities;
@@ -51,6 +53,9 @@ import net.runelite.client.util.Text;
 public class KillClogPlugin extends Plugin
 {
 	static final int CLOG_INTERFACE = 621;
+	static final String CHARACTER_RENDERING_STATUS = "rendering...";
+	static final String CHARACTER_PUBLISHED_STATUS = "character published!";
+	static final String CHARACTER_FAILED_STATUS = "Publish failed";
 
 	/** Config keys whose changes require rebuilding the right-click lookup menu entry. */
 	private static final java.util.Set<String> MENU_CONFIG_KEYS = java.util.Set.of(
@@ -113,6 +118,9 @@ public class KillClogPlugin extends Plugin
 	private SyncService syncService;
 
 	@Inject
+	private ProfileAppearanceService profileAppearanceService;
+
+	@Inject
 	private ScheduledExecutorService executor;
 
 	@Inject
@@ -154,6 +162,10 @@ public class KillClogPlugin extends Plugin
 	private final LocalCaReader localCaReader = new LocalCaReader();
 	private final CaCatalog caCatalog = new CaCatalog();
 	private final ClogLookupMenu lookupMenu = new ClogLookupMenu();
+	private final AtomicBoolean characterPublishInFlight = new AtomicBoolean();
+	private final AtomicBoolean characterPublishAfterSync = new AtomicBoolean();
+	private final AtomicBoolean characterPrerequisiteAttempted = new AtomicBoolean();
+	private final AtomicInteger characterPublishGeneration = new AtomicInteger();
 
 	@Provides
 	KillClogConfig provideConfig(ConfigManager configManager)
@@ -180,8 +192,11 @@ public class KillClogPlugin extends Plugin
 
 		lookupMenu.start(config, menuManager);
 
+		enforceCharacterSettingDependency();
 		panel.setKillclogSyncHandler(this::manualKillclogSync);
+		panel.setCharacterPublishHandler(this::publishCharacter);
 		panel.setSyncArrowEnabled(config.killclogSync());
+		panel.setCharacterPublishEnabled(characterPublishingEnabled());
 		// The sync trigger lives at the data seam: any path that lands a
 		// first-party observation (bulk page capture, search-and-back walk,
 		// live unlock) schedules a debounced push.
@@ -227,7 +242,6 @@ public class KillClogPlugin extends Plugin
 		chatCommandManager.unregisterCommand(KillClogChatCommand.COMMAND_GILDED);
 		kclogCommand.clear();
 		chatEmoji.clear();
-		SwingUtilities.invokeLater(() -> panel.shutdown());
 		localClogCache.shutdown();
 		localCaCache.shutdown();
 		manualClogSync.reset();
@@ -239,7 +253,9 @@ public class KillClogPlugin extends Plugin
 		liveClogSync.resetFirstSyncWarning();
 		nameAutocompleter.clearClientSnapshot();
 		localClogCache.setFirstPartyChangedListener(null);
+		cancelCharacterPublish();
 		cancelKillclogSync();
+		SwingUtilities.invokeLater(() -> panel.shutdown());
 		// The rename session dies with the plugin: if the account changes
 		// while disabled, a surviving latch or anchor would let the OLD
 		// account's continuity state authorize the NEW account's session.
@@ -376,6 +392,7 @@ public class KillClogPlugin extends Plugin
 			// Silence old completions before ending the cache epoch, then
 			// cancel again so an attempt that began in that narrow handoff
 			// cannot narrate into the next login.
+			cancelCharacterPublish();
 			cancelKillclogSync();
 			// The capture anchor and any queued rename checks die with the
 			// session - a stale hash must never authorize the next account's
@@ -640,6 +657,161 @@ public class KillClogPlugin extends Plugin
 		}
 	}
 
+	private boolean characterPublishingEnabled()
+	{
+		return config.killclogSync() && config.characterModel();
+	}
+
+	/**
+	 * RuneLite's public config API has no dynamic disabled-state attribute.
+	 * Enforce the dependency at the data boundary instead: the child opt-in
+	 * cannot survive while first-party sync is disabled.
+	 */
+	private void enforceCharacterSettingDependency()
+	{
+		if (!config.killclogSync() && config.characterModel())
+		{
+			configManager.unsetConfiguration("killclog", "characterModel");
+		}
+	}
+
+	private void publishCharacter()
+	{
+		startCharacterPublish(true);
+	}
+
+	private void retryCharacterPublish()
+	{
+		startCharacterPublish(false);
+	}
+
+	private void startCharacterPublish(boolean newRequest)
+	{
+		if (!characterPublishingEnabled()
+			|| !characterPublishInFlight.compareAndSet(false, true))
+		{
+			return;
+		}
+
+		if (newRequest)
+		{
+			characterPrerequisiteAttempted.set(false);
+		}
+		int generation = characterPublishGeneration.incrementAndGet();
+		panel.showCharacterPublishStatus(CHARACTER_RENDERING_STATUS, false, false);
+		clientThread.invokeLater(() ->
+		{
+			if (generation != characterPublishGeneration.get())
+			{
+				return;
+			}
+			Player local = client.getLocalPlayer();
+			String rsn = local != null ? local.getName() : null;
+			long accountHash = client.getAccountHash();
+			if (!characterPublishingEnabled() || rsn == null || accountHash == -1)
+			{
+				characterPublishInFlight.set(false);
+				panel.showCharacterPublishStatus(CHARACTER_FAILED_STATUS, false, true);
+				return;
+			}
+
+			profileAppearanceService.publishCurrent(rsn, accountHash)
+				.whenComplete((result, error) ->
+					handleCharacterPublishResult(result, error, generation));
+		});
+	}
+
+	private void handleCharacterPublishResult(ProfileAppearanceService.PublishResult result,
+		Throwable error, int generation)
+	{
+		if (generation != characterPublishGeneration.get() || !characterPublishingEnabled())
+		{
+			return;
+		}
+		if (error != null || result == null)
+		{
+			characterPublishInFlight.set(false);
+			panel.showCharacterPublishStatus(CHARACTER_FAILED_STATUS, false, true);
+			return;
+		}
+
+		if (result.outcome == ProfileAppearanceService.Outcome.PROFILE_REQUIRED
+			&& characterPublishingEnabled()
+			&& characterPrerequisiteAttempted.compareAndSet(false, true))
+		{
+			characterPublishAfterSync.set(true);
+			panel.showCharacterPublishStatus(CHARACTER_RENDERING_STATUS, false, false);
+			startCharacterPrerequisiteSync();
+			return;
+		}
+
+		characterPublishInFlight.set(false);
+		boolean published = result.outcome == ProfileAppearanceService.Outcome.PUBLISHED;
+		panel.showCharacterPublishStatus(characterPublishTerminalStatus(result.outcome), published, true);
+	}
+
+	static String characterPublishTerminalStatus(ProfileAppearanceService.Outcome outcome)
+	{
+		return outcome == ProfileAppearanceService.Outcome.PUBLISHED
+			? CHARACTER_PUBLISHED_STATUS : CHARACTER_FAILED_STATUS;
+	}
+
+	private void startCharacterPrerequisiteSync()
+	{
+		synchronized (this)
+		{
+			if (pendingKillclogSync != null && !pendingKillclogSync.isDone())
+			{
+				pendingKillclogSync.cancel(false);
+				pendingKillclogSync = null;
+			}
+		}
+		scheduleKillclogSync(0, false);
+	}
+
+	private void cancelCharacterPublish()
+	{
+		characterPublishGeneration.incrementAndGet();
+		characterPublishAfterSync.set(false);
+		characterPublishInFlight.set(false);
+		characterPrerequisiteAttempted.set(false);
+		panel.showCharacterPublishStatus(" ", false, false);
+	}
+
+	private boolean failQueuedCharacterPublish()
+	{
+		if (!characterPublishAfterSync.getAndSet(false))
+		{
+			return false;
+		}
+		characterPublishInFlight.set(false);
+		panel.showCharacterPublishStatus(CHARACTER_FAILED_STATUS, false, true);
+		return true;
+	}
+
+	private void scheduleCharacterPublishAfterSync()
+	{
+		int expectedGeneration = characterPublishGeneration.get();
+		try
+		{
+			executor.schedule(() ->
+			{
+				if (expectedGeneration != characterPublishGeneration.get()
+					|| !characterPublishingEnabled())
+				{
+					return;
+				}
+				characterPublishInFlight.set(false);
+				retryCharacterPublish();
+			}, ProfileAppearanceService.PUBLISH_RETRY_DELAY_MS, TimeUnit.MILLISECONDS);
+		}
+		catch (RuntimeException e)
+		{
+			characterPublishInFlight.set(false);
+			panel.showCharacterPublishStatus(CHARACTER_FAILED_STATUS, false, true);
+		}
+	}
+
 	/**
 	 * The panel's sync arrow: push now, skipping any pending debounce. The
 	 * single-flight gate still applies; the arrow is hidden while the status
@@ -710,7 +882,10 @@ public class KillClogPlugin extends Plugin
 				if (rsn == null || accountHash == -1)
 				{
 					syncGate.abortAttempt();
-					panel.showSyncStatus(" ", false, false);
+					if (!failQueuedCharacterPublish())
+					{
+						panel.showSyncStatus(" ", false, false);
+					}
 					launchQueuedKillclogSync();
 					return;
 				}
@@ -739,7 +914,10 @@ public class KillClogPlugin extends Plugin
 			{
 				log.warn("killclog sync push failed before dispatch", e);
 				syncGate.abortAttempt();
-				panel.showSyncStatus("sync failed", false, true);
+				if (!failQueuedCharacterPublish())
+				{
+					panel.showSyncStatus("sync failed", false, true);
+				}
 				// Failures always chat, this path included.
 				chatNotifier.send(ChatNotice.SYNC_RESULT,
 					"Collection log sync failed - see the client log.");
@@ -757,7 +935,10 @@ public class KillClogPlugin extends Plugin
 			// The session ended between gather and dispatch: release the
 			// single-flight slot and walk away clean.
 			syncGate.abortAttempt();
-			panel.showSyncStatus(" ", false, false);
+			if (!failQueuedCharacterPublish())
+			{
+				panel.showSyncStatus(" ", false, false);
+			}
 			launchQueuedKillclogSync();
 			return;
 		}
@@ -766,46 +947,76 @@ public class KillClogPlugin extends Plugin
 			syncService.syncCollectionLog(rsn, accountHash, accountType, pbs, detailedPbs,
 				cacheEpoch, syncGate, generation)
 				.whenComplete((result, err) ->
+				{
+					boolean current = syncGate.complete(generation);
+					boolean characterWaiting = characterPublishAfterSync.get();
+					if (result != null && current && config.killclogSync())
 					{
-						boolean current = syncGate.complete(generation);
-						if (result != null && current && config.killclogSync())
+						// Server-advised contention retry: another client of
+						// this account held the lock. Keep a pending character
+						// publication attached to that one allowed retry.
+						if (result.retryAdvised && syncGate.consumeRetryCredit())
 						{
-								// Server-advised contention retry: another client of
-								// this account held the lock. The gate holds one retry
-								// credit per episode; a second 409 finds it consumed and
-								// falls through as a failure.
-								if (result.retryAdvised && syncGate.consumeRetryCredit())
-								{
-									panel.showSyncStatus("retrying...", false, false);
-									scheduleKillclogSync(Math.max(result.retryAfterSeconds, 2), manual);
-									launchQueuedKillclogSync();
-									return;
-								}
-								// Everything below is a terminal outcome for this episode.
-								syncGate.restoreRetryCredit();
-							panel.showSyncStatus(result.ok ? "synced!" : "sync failed", result.ok, true);
-							if (manual || !result.ok)
+							if (characterWaiting)
 							{
-								clientThread.invoke(() ->
-									chatNotifier.send(ChatNotice.SYNC_RESULT, result.message));
+								panel.showCharacterPublishStatus(CHARACTER_RENDERING_STATUS, false, false);
+							}
+							else
+							{
+								panel.showSyncStatus("retrying...", false, false);
+							}
+							scheduleKillclogSync(Math.max(result.retryAfterSeconds, 2), manual);
+							launchQueuedKillclogSync();
+							return;
+						}
+
+						// Everything below is a terminal outcome for this episode.
+						syncGate.restoreRetryCredit();
+						if (characterWaiting)
+						{
+							characterPublishAfterSync.set(false);
+							if (result.ok && !result.dryRun && characterPublishingEnabled())
+							{
+								scheduleCharacterPublishAfterSync();
+							}
+							else
+							{
+								characterPublishInFlight.set(false);
+								panel.showCharacterPublishStatus(CHARACTER_FAILED_STATUS, false, true);
 							}
 						}
 						else
 						{
-							if (current)
-							{
-								syncGate.restoreRetryCredit();
-							}
+							panel.showSyncStatus(result.ok ? "synced!" : "sync failed", result.ok, true);
+						}
+						if (manual || !result.ok)
+						{
+							clientThread.invoke(() ->
+								chatNotifier.send(ChatNotice.SYNC_RESULT, result.message));
+						}
+					}
+					else
+					{
+						if (current)
+						{
+							syncGate.restoreRetryCredit();
+						}
+						if (!failQueuedCharacterPublish())
+						{
 							panel.showSyncStatus(" ", false, false);
 						}
-						launchQueuedKillclogSync();
-					});
+					}
+					launchQueuedKillclogSync();
+				});
 		}
 		catch (RuntimeException e)
 		{
 			log.warn("killclog sync push failed at dispatch", e);
 			syncGate.abortAttempt();
-			panel.showSyncStatus("sync failed", false, true);
+			if (!failQueuedCharacterPublish())
+			{
+				panel.showSyncStatus("sync failed", false, true);
+			}
 			// Failures always chat, this path included; chat sends need the
 			// client thread and this body runs on the executor.
 			clientThread.invoke(() -> chatNotifier.send(ChatNotice.SYNC_RESULT,
@@ -1034,13 +1245,33 @@ public class KillClogPlugin extends Plugin
 			panel.setSyncArrowEnabled(config.killclogSync());
 			if (config.killclogSync())
 			{
+				panel.setCharacterPublishEnabled(config.characterModel());
 				// Opting in mid-session pushes the already-captured log right
 				// away; nothing else fires until the next capture or unlock.
 				scheduleKillclogSync(0, true);
 			}
 			else
 			{
+				if (config.characterModel())
+				{
+					configManager.unsetConfiguration("killclog", "characterModel");
+				}
+				panel.setCharacterPublishEnabled(false);
+				cancelCharacterPublish();
 				cancelKillclogSync();
+			}
+		}
+		else if ("characterModel".equals(event.getKey()))
+		{
+			if (config.characterModel() && !config.killclogSync())
+			{
+				configManager.unsetConfiguration("killclog", "characterModel");
+			}
+			boolean enabled = characterPublishingEnabled();
+			panel.setCharacterPublishEnabled(enabled);
+			if (!enabled)
+			{
+				cancelCharacterPublish();
 			}
 		}
 

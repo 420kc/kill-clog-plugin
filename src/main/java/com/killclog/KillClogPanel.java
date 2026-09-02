@@ -35,6 +35,7 @@ import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
+import net.runelite.api.gameval.SpriteID;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
@@ -119,6 +120,7 @@ public class KillClogPanel extends PluginPanel
 
 	private final JLabel searchStatus = new JLabel(" ");
 	private final JLabel syncArrow = new JLabel();
+	private final JLabel characterPublish = new JLabel();
 	private final IconTextField searchBar = new IconTextField();
 	private final JLabel playerName = new UnderlineLabel(true)
 	{
@@ -791,7 +793,7 @@ public class KillClogPanel extends PluginPanel
 			if (totalLevel > 0)
 			{
 				totalLvlCell.setText(ClogHelper.pad(String.valueOf(totalLevel)));
-				totalLvlCell.setToolTipText(" ");
+				tooltipController.setTooltipText(totalLvlCell, " ");
 			}
 		}
 		colorStatsRow();
@@ -842,20 +844,24 @@ public class KillClogPanel extends PluginPanel
 		searchStatus.setIcon(null);
 		searchStatus.setText(text);
 		searchStatus.setForeground(color);
-		refreshSyncArrowVisibility();
+		refreshFirstPartyVisibility();
 	}
 
-	// ── killclog.com sync arrow ─────────────────────────────────────────
+	// ── killclog.com one-click controls ─────────────────────────────────
 
 	private static final String SYNC_HOVER_TEXT = "sync to killclog.com";
+	private static final String CHARACTER_HOVER_TEXT = "publish character";
 	// k1: the brand lime. Status chrome, not data coloring, so it does not
 	// route through the user-themable completion color.
 	private static final Color SYNC_K1 = new Color(78, 240, 21);
 
 	private boolean syncArrowEnabled;
 	private boolean syncArrowHasData;
+	private boolean characterPublishEnabled;
 	private Runnable killclogSyncHandler;
-	private javax.swing.Timer syncStatusClearTimer;
+	private Runnable characterPublishHandler;
+	private Timer firstPartyStatusClearTimer;
+	private BufferedImage characterBase;
 
 	/**
 	 * The sync control wears the Kill Clog chalice itself: dim at rest,
@@ -879,8 +885,12 @@ public class KillClogPanel extends PluginPanel
 
 	private static ImageIcon chaliceTinted(float alpha, Color tint)
 	{
-		java.awt.image.BufferedImage base = chaliceBase();
-		java.awt.image.BufferedImage out = new java.awt.image.BufferedImage(
+		return imageTinted(chaliceBase(), alpha, tint);
+	}
+
+	private static ImageIcon imageTinted(BufferedImage base, float alpha, Color tint)
+	{
+		BufferedImage out = new BufferedImage(
 			base.getWidth(), base.getHeight(), java.awt.image.BufferedImage.TYPE_INT_ARGB);
 		for (int y = 0; y < base.getHeight(); y++)
 		{
@@ -897,7 +907,7 @@ public class KillClogPanel extends PluginPanel
 				int b = argb & 0xFF;
 				if (tint != null)
 				{
-					// Luminance drives the tint so the chalice keeps its shading.
+					// Luminance drives the tint so the source keeps its shading.
 					int lum = Math.min(255, (int) (0.299 * r + 0.587 * gch + 0.114 * b) + 90);
 					r = tint.getRed() * lum / 255;
 					gch = tint.getGreen() * lum / 255;
@@ -915,6 +925,7 @@ public class KillClogPanel extends PluginPanel
 	private static final ImageIcon SYNC_CHALICE_SYNCED = chaliceTinted(1f, new Color(78, 240, 21));
 
 	private boolean syncedGlow;
+	private boolean characterPublishedGlow;
 
 	private void refreshSyncChalice(boolean hovered)
 	{
@@ -922,9 +933,78 @@ public class KillClogPanel extends PluginPanel
 			: hovered ? SYNC_CHALICE_LIT : SYNC_CHALICE_DIM);
 	}
 
+	private void requestCharacterIcon()
+	{
+		spriteManager.getSpriteAsync(SpriteID.AchievementDiaryIcons.BROWN_CHARACTER_SUMMARY, 0, sprite ->
+		{
+			if (sprite == null)
+			{
+				return;
+			}
+			int height = 14;
+			int width = Math.max(1, sprite.getWidth() * height / sprite.getHeight());
+			BufferedImage resized = ImageUtil.resizeImage(sprite, width, height);
+			SwingUtilities.invokeLater(() ->
+			{
+				characterBase = resized;
+				refreshCharacterIcon(false);
+				refreshFirstPartyVisibility();
+			});
+		});
+	}
+
+	private void refreshCharacterIcon(boolean hovered)
+	{
+		if (characterBase == null)
+		{
+			characterPublish.setIcon(null);
+			return;
+		}
+		characterPublish.setIcon(imageTinted(characterBase,
+			characterPublishedGlow || hovered ? 1f : 0.45f,
+			characterPublishedGlow ? SYNC_K1 : null));
+	}
+
 	private JPanel buildStatusRow()
 	{
 		syncArrow.setIcon(SYNC_CHALICE_DIM);
+		characterPublish.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 3, 6, 2));
+		characterPublish.setVerticalAlignment(JLabel.CENTER);
+		characterPublish.setVisible(false);
+		characterPublish.addMouseListener(new java.awt.event.MouseAdapter()
+		{
+			@Override
+			public void mouseEntered(java.awt.event.MouseEvent e)
+			{
+				if (characterPublish.isVisible())
+				{
+					refreshCharacterIcon(true);
+					setSearchStatus(CHARACTER_HOVER_TEXT, SYNC_K1);
+				}
+			}
+
+			@Override
+			public void mouseExited(java.awt.event.MouseEvent e)
+			{
+				refreshCharacterIcon(false);
+				if (CHARACTER_HOVER_TEXT.equals(searchStatus.getText()))
+				{
+					setSearchStatus(" ", TEXT_DIM);
+				}
+			}
+
+			@Override
+			public void mousePressed(java.awt.event.MouseEvent e)
+			{
+				if (SwingUtilities.isLeftMouseButton(e)
+					&& characterPublish.isVisible() && characterPublishHandler != null)
+				{
+					characterPublishHandler.run();
+				}
+			}
+		});
+		requestCharacterIcon();
+
 		// Sits vertically centered in the band between the panel top and the
 		// search bar: the bottom inset biases the icon upward within the
 		// taller status row so its center lands on the band's center.
@@ -956,7 +1036,8 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public void mousePressed(java.awt.event.MouseEvent e)
 			{
-				if (syncArrow.isVisible() && killclogSyncHandler != null)
+				if (SwingUtilities.isLeftMouseButton(e)
+					&& syncArrow.isVisible() && killclogSyncHandler != null)
 				{
 					killclogSyncHandler.run();
 				}
@@ -971,19 +1052,27 @@ public class KillClogPanel extends PluginPanel
 		row.setMaximumSize(new Dimension(Integer.MAX_VALUE,
 			Math.max(searchStatus.getPreferredSize().height, 14) + 2));
 		row.add(searchStatus, java.awt.BorderLayout.CENTER);
-		row.add(syncArrow, java.awt.BorderLayout.EAST);
+		JPanel actions = new JPanel();
+		actions.setLayout(new BoxLayout(actions, BoxLayout.X_AXIS));
+		actions.setOpaque(false);
+		actions.add(characterPublish);
+		actions.add(syncArrow);
+		row.add(actions, java.awt.BorderLayout.EAST);
 		return row;
 	}
 
 	private boolean statusBarFree()
 	{
 		String text = searchStatus.getText();
-		return text == null || text.trim().isEmpty() || SYNC_HOVER_TEXT.equals(text);
+		return text == null || text.trim().isEmpty()
+			|| SYNC_HOVER_TEXT.equals(text) || CHARACTER_HOVER_TEXT.equals(text);
 	}
 
-	private void refreshSyncArrowVisibility()
+	private void refreshFirstPartyVisibility()
 	{
-		syncArrow.setVisible(syncArrowEnabled && syncArrowHasData && statusBarFree());
+		boolean visible = syncArrowHasData && statusBarFree();
+		syncArrow.setVisible(syncArrowEnabled && visible);
+		characterPublish.setVisible(characterPublishEnabled && characterBase != null && visible);
 	}
 
 	/** The plugin flips this with the sync checkbox; off hides the arrow. */
@@ -992,7 +1081,7 @@ public class KillClogPanel extends PluginPanel
 		SwingUtilities.invokeLater(() ->
 		{
 			syncArrowEnabled = enabled;
-			refreshSyncArrowVisibility();
+			refreshFirstPartyVisibility();
 		});
 	}
 
@@ -1006,7 +1095,16 @@ public class KillClogPanel extends PluginPanel
 		SwingUtilities.invokeLater(() ->
 		{
 			syncArrowHasData = hasData;
-			refreshSyncArrowVisibility();
+			refreshFirstPartyVisibility();
+		});
+	}
+
+	void setCharacterPublishEnabled(boolean enabled)
+	{
+		SwingUtilities.invokeLater(() ->
+		{
+			characterPublishEnabled = enabled;
+			refreshFirstPartyVisibility();
 		});
 	}
 
@@ -1015,11 +1113,29 @@ public class KillClogPanel extends PluginPanel
 		this.killclogSyncHandler = handler;
 	}
 
-	private boolean barOwnedBySync()
+	void setCharacterPublishHandler(Runnable handler)
+	{
+		this.characterPublishHandler = handler;
+	}
+
+	private boolean barOwnedByFirstParty()
 	{
 		String text = searchStatus.getText();
 		return SYNC_HOVER_TEXT.equals(text) || "syncing...".equals(text)
-			|| "synced!".equals(text) || "sync failed".equals(text);
+			|| "retrying...".equals(text) || "synced!".equals(text)
+			|| "sync failed".equals(text) || CHARACTER_HOVER_TEXT.equals(text)
+			|| KillClogPlugin.CHARACTER_RENDERING_STATUS.equals(text)
+			|| KillClogPlugin.CHARACTER_PUBLISHED_STATUS.equals(text)
+			|| KillClogPlugin.CHARACTER_FAILED_STATUS.equals(text);
+	}
+
+	private void stopFirstPartyStatusTimer()
+	{
+		if (firstPartyStatusClearTimer != null)
+		{
+			firstPartyStatusClearTimer.stop();
+			firstPartyStatusClearTimer = null;
+		}
 	}
 
 	/**
@@ -1033,21 +1149,19 @@ public class KillClogPanel extends PluginPanel
 	{
 		SwingUtilities.invokeLater(() ->
 		{
-			if (!statusBarFree() && !barOwnedBySync())
+			if (!statusBarFree() && !barOwnedByFirstParty())
 			{
 				return;
 			}
-			if (syncStatusClearTimer != null)
-			{
-				syncStatusClearTimer.stop();
-				syncStatusClearTimer = null;
-			}
+			stopFirstPartyStatusTimer();
 			setSearchStatus(text, "sync failed".equals(text) ? TEXT_DIM : SYNC_K1);
 			syncedGlow = "synced!".equals(text);
+			characterPublishedGlow = false;
 			refreshSyncChalice(false);
+			refreshCharacterIcon(false);
 			if (autoClear)
 			{
-				syncStatusClearTimer = new javax.swing.Timer(2500, e ->
+				firstPartyStatusClearTimer = new Timer(2500, e ->
 				{
 					if (text.equals(searchStatus.getText()))
 					{
@@ -1055,10 +1169,43 @@ public class KillClogPanel extends PluginPanel
 					}
 					syncedGlow = false;
 					refreshSyncChalice(false);
-					syncStatusClearTimer = null;
+					firstPartyStatusClearTimer = null;
 				});
-				syncStatusClearTimer.setRepeats(false);
-				syncStatusClearTimer.start();
+				firstPartyStatusClearTimer.setRepeats(false);
+				firstPartyStatusClearTimer.start();
+			}
+		});
+	}
+
+	void showCharacterPublishStatus(String text, boolean ok, boolean autoClear)
+	{
+		SwingUtilities.invokeLater(() ->
+		{
+			if (!statusBarFree() && !barOwnedByFirstParty())
+			{
+				return;
+			}
+			stopFirstPartyStatusTimer();
+			boolean active = KillClogPlugin.CHARACTER_RENDERING_STATUS.equals(text);
+			setSearchStatus(text, ok || active ? SYNC_K1 : TEXT_DIM);
+			syncedGlow = false;
+			characterPublishedGlow = ok && KillClogPlugin.CHARACTER_PUBLISHED_STATUS.equals(text);
+			refreshSyncChalice(false);
+			refreshCharacterIcon(false);
+			if (autoClear)
+			{
+				firstPartyStatusClearTimer = new Timer(3000, e ->
+				{
+					if (text.equals(searchStatus.getText()))
+					{
+						setSearchStatus(" ", TEXT_DIM);
+					}
+					characterPublishedGlow = false;
+					refreshCharacterIcon(false);
+					firstPartyStatusClearTimer = null;
+				});
+				firstPartyStatusClearTimer.setRepeats(false);
+				firstPartyStatusClearTimer.start();
 			}
 		});
 	}
@@ -1164,7 +1311,7 @@ public class KillClogPanel extends PluginPanel
 			JLabel label = entry.getValue();
 			label.setText(ClogHelper.pad("--"));
 			label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-			label.setToolTipText(" ");
+			tooltipController.setTooltipText(label, " ");
 			ImageIcon orig = cells.getOriginalIcons().get(entry.getKey());
 			if (orig != null) label.setIcon(orig);
 		}
@@ -1173,18 +1320,18 @@ public class KillClogPanel extends PluginPanel
 
 		playerName.setText(" ");
 		playerName.setIcon(null);
-		playerName.setToolTipText(null);
+		tooltipController.setTooltipText(playerName, null);
 		searchRowController.setCompareVisible(false);
 
 		clogInfoLabel.setIcon(null);
 		clogInfoLabel.setText("");
-		clogInfoLabel.setToolTipText(null);
+		tooltipController.setTooltipText(clogInfoLabel, null);
 
 		combatCell.setText(ClogHelper.pad("--"));
 		combatCell.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		totalLvlCell.setText(ClogHelper.pad("--"));
 		totalLvlCell.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-		totalLvlCell.setToolTipText(null);
+		tooltipController.setTooltipText(totalLvlCell, null);
 		if (cells.getPvpSummaryCell() != null)
 		{
 			cells.getPvpSummaryCell().setText(ClogHelper.pad("--"));
@@ -1225,7 +1372,7 @@ public class KillClogPanel extends PluginPanel
 		if (totalLevel > 0)
 		{
 			totalLvlCell.setText(ClogHelper.pad(String.valueOf(totalLevel)));
-			totalLvlCell.setToolTipText(" ");
+			tooltipController.setTooltipText(totalLvlCell, " ");
 		}
 		colorStatsRow();
 
@@ -1263,24 +1410,24 @@ public class KillClogPanel extends PluginPanel
 		cells.rebuildPrimaryTooltips(localRsn);
 	}
 
-	private static void resetRareCell(JLabel label, String name)
+	private void resetRareCell(JLabel label, String name)
 	{
 		if (label != null)
 		{
 			label.setText(ClogHelper.pad("--"));
 			label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-			label.setToolTipText(name);
+			tooltipController.setTooltipText(label, name);
 		}
 	}
 
-	private static void resetLabelMap(Map<HiscoreSkill, JLabel> labels)
+	private void resetLabelMap(Map<HiscoreSkill, JLabel> labels)
 	{
 		for (Map.Entry<HiscoreSkill, JLabel> entry : labels.entrySet())
 		{
 			JLabel label = entry.getValue();
 			label.setText(ClogHelper.pad("--"));
 			label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-			label.setToolTipText(entry.getKey().getName());
+			tooltipController.setTooltipText(label, entry.getKey().getName());
 		}
 	}
 
@@ -1318,7 +1465,7 @@ public class KillClogPanel extends PluginPanel
 			clogInfoLabel.setText(ClogHelper.pad(ClogHelper.formatKc(totals[0])));
 			clogInfoLabel.setForeground(getInfoColor());
 
-			clogInfoLabel.setToolTipText(" ");
+			tooltipController.setTooltipText(clogInfoLabel, " ");
 		}
 	}
 
@@ -1476,7 +1623,11 @@ public class KillClogPanel extends PluginPanel
 
 	public void reloadTooltipSprites()
 	{
-		clientThread.invokeLater(() -> NativeTooltip.loadSprites(client, spriteManager));
+		clientThread.invokeLater(() ->
+		{
+			NativeTooltip.loadSprites(client, spriteManager);
+			requestCharacterIcon();
+		});
 	}
 
 	@Override
@@ -1494,6 +1645,7 @@ public class KillClogPanel extends PluginPanel
 	/** Safety net - clears transient tooltip state if the plugin is disabled. */
 	public void shutdown()
 	{
+		stopFirstPartyStatusTimer();
 		tooltipController.deactivate();
 	}
 
@@ -1525,7 +1677,7 @@ public class KillClogPanel extends PluginPanel
 	public void updateInfoIcon(AccountDisplay display)
 	{
 		applyBadge(playerName, display);
-		playerName.setToolTipText(" ");
+		tooltipController.setTooltipText(playerName, " ");
 	}
 
 	@Override
@@ -1733,7 +1885,7 @@ public class KillClogPanel extends PluginPanel
 				clogInfoLabel.setIcon(icon != null ? new ImageIcon(icon) : null);
 				clogInfoLabel.setText(ClogHelper.pad("Sync"));
 				clogInfoLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-				clogInfoLabel.setToolTipText(" ");
+				tooltipController.setTooltipText(clogInfoLabel, " ");
 			}
 			else
 			{
@@ -1765,10 +1917,10 @@ public class KillClogPanel extends PluginPanel
 		searchBar.setIcon(IconTextField.Icon.SEARCH);
 		playerName.setText(" ");
 		playerName.setIcon(null);
-		playerName.setToolTipText(null);
+		tooltipController.setTooltipText(playerName, null);
 		clogInfoLabel.setText("");
 		clogInfoLabel.setIcon(null);
-		clogInfoLabel.setToolTipText(null);
+		tooltipController.setTooltipText(clogInfoLabel, null);
 		searchBar.setText("");
 	}
 
@@ -1780,10 +1932,10 @@ public class KillClogPanel extends PluginPanel
 		setSearchStatus("Lookup failed", TEXT_DIM);
 		playerName.setText(" ");
 		playerName.setIcon(null);
-		playerName.setToolTipText(null);
+		tooltipController.setTooltipText(playerName, null);
 		clogInfoLabel.setText("");
 		clogInfoLabel.setIcon(null);
-		clogInfoLabel.setToolTipText(null);
+		tooltipController.setTooltipText(clogInfoLabel, null);
 	}
 
 	// ComparisonController.Listener
@@ -1858,7 +2010,7 @@ public class KillClogPanel extends PluginPanel
 		{
 			clogInfoLabel.setText("");
 			clogInfoLabel.setIcon(null);
-			clogInfoLabel.setToolTipText(null);
+			tooltipController.setTooltipText(clogInfoLabel, null);
 		}
 	}
 }

@@ -410,4 +410,17 @@ public interface KillClogConfig extends Config
 	{
 		return false;
 	}
+
+	@ConfigItem(
+		keyName = "characterModel",
+		name = "Character model",
+		description = "Show a one-click character publishing button. Requires "
+			+ "Killclog.com sync.",
+		section = "killclog",
+		position = 1
+	)
+	default boolean characterModel()
+	{
+		return false;
+	}
 }

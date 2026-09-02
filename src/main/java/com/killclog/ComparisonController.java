@@ -661,10 +661,10 @@ public class ComparisonController
 		if (comparisonMode)
 		{
 			playerName.setForeground(COMPARE_BLUE);
-			playerName.setToolTipText(" ");
+			tooltipController.setTooltipText(playerName, " ");
 			clogInfoLabel.setText(compareRsn != null ? compareRsn : "");
 			clogInfoLabel.setForeground(COMPARE_RED);
-			clogInfoLabel.setToolTipText(" ");
+			tooltipController.setTooltipText(clogInfoLabel, " ");
 			clogInfoLabel.setIcon(null);
 			clogInfoLabel.setHorizontalAlignment(JLabel.RIGHT);
 			renderTarget.applyBadge(playerName,

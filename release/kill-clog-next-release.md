@@ -1,10 +1,10 @@
 # Kill Clog Next Release
 
-Target version: `2.0.3`
+Target version: `2.1.0`
 
 ## Release Notes
 
-Kill Clog 2.0.3
+Kill Clog 2.1.0
 
-* hover-mode tooltips can be clicked to pin them open for interaction
-* skill summaries have their own virtual-level setting, up to 126; virtual totals still follow RuneLite's Virtual Levels setting
+* an optional Character model button publishes your current player and follower to your killclog.com profile in one click
+* pinned hover-mode tooltips now suppress new summary popups until the pinned tooltip closes
