@@ -1,10 +1,11 @@
 # Kill Clog Next Release
 
-Target version: `2.1.0`
+Target version: `2.1.1`
 
 ## Release Notes
 
-Kill Clog 2.1.0
+Kill Clog 2.1.1
 
-* an optional Character model button publishes your current player and follower to your killclog.com profile in one click
-* pinned hover-mode tooltips now suppress new summary popups until the pinned tooltip closes
+* shows duplicate item counts in `!kclog` results
+* answers RuneProfile-style `!log` commands when RuneProfile is not active
+* uses verified killclog.com sync data for group ironman account badges
