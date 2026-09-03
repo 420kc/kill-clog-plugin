@@ -50,6 +50,14 @@ public class KillClogChatCommandTest
 	}
 
 	@Test
+	public void testObtainedItemIconShowsExactDuplicateQuantity()
+	{
+		assertEquals("<img=42>", KillClogChatCommand.formatItemIcon(42, 1));
+		assertEquals("<img=42>x3", KillClogChatCommand.formatItemIcon(42, 3));
+		assertEquals("<img=42>x12345", KillClogChatCommand.formatItemIcon(42, 12345));
+	}
+
+	@Test
 	public void testTotalsFallBackToCatalogForUnknownCategories()
 	{
 		// A cache bulk-synced before a page existed has no entry for it, so

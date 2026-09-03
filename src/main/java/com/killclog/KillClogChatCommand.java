@@ -385,6 +385,7 @@ class KillClogChatCommand
 
 		int bossKc = lookupBossKc(rsn, boss);
 		final List<Integer> renderIds;
+		final Map<Integer, Integer> renderQuantities;
 		final String header;
 		if (missingMode)
 		{
@@ -407,20 +408,26 @@ class KillClogChatCommand
 				return;
 			}
 			renderIds = missing;
+			renderQuantities = Collections.emptyMap();
 			header = buildCommandHeader(boss, bossKc, missing.size(), totalList.size(), true);
 		}
 		else
 		{
 			renderIds = new ArrayList<>(obtainedList.size());
+			renderQuantities = new HashMap<>();
 			for (ClogResult.ClogItem item : obtainedList)
 			{
 				renderIds.add(item.getId());
+				if (item.getCount() > 1)
+				{
+					renderQuantities.put(item.getId(), item.getCount());
+				}
 			}
 			header = buildCommandHeader(boss, bossKc, obtainedList.size(), totalList.size(), false);
 		}
 
 		// Icon registration + chat replacement both need the client thread.
-		clientThread.invoke(() -> render(chatMessage, header, renderIds));
+		clientThread.invoke(() -> render(chatMessage, header, renderIds, renderQuantities));
 	}
 
 	private void dispatchBucket(ChatMessage chatMessage, String label, int[] bucketItemIds)
@@ -443,7 +450,7 @@ class KillClogChatCommand
 		}
 
 		String header = label + ": " + renderIds.size() + "/" + bucketItemIds.length;
-		clientThread.invoke(() -> render(chatMessage, header, renderIds));
+		clientThread.invoke(() -> render(chatMessage, header, renderIds, Collections.emptyMap()));
 	}
 
 	private ClogResult lookup(ChatMessage chatMessage, String rsn, String label)
@@ -557,7 +564,8 @@ class KillClogChatCommand
 	 * has already been drawn by the time the async lookup returns). Each onLoaded callback
 	 * also fires refreshChat so a sprite that streams in late repaints the line.
 	 */
-	private void render(ChatMessage chatMessage, String header, List<Integer> itemIds)
+	private void render(ChatMessage chatMessage, String header, List<Integer> itemIds,
+		Map<Integer, Integer> itemQuantities)
 	{
 		ensureIcons(itemIds);
 
@@ -571,12 +579,23 @@ class KillClogChatCommand
 				Integer idx = itemIconIdx.get(id);
 				if (idx != null)
 				{
-					sb.append("<img=").append(idx).append(">");
+					sb.append(formatItemIcon(idx, itemQuantities.getOrDefault(id, 1)));
 				}
 			}
 		}
 		chatMessage.getMessageNode().setRuneLiteFormatMessage(sb.toString());
 		client.refreshChat();
+	}
+
+	/* package */ static String formatItemIcon(int iconIndex, int quantity)
+	{
+		StringBuilder sb = new StringBuilder();
+		sb.append("<img=").append(iconIndex).append(">");
+		if (quantity > 1)
+		{
+			sb.append("x").append(quantity);
+		}
+		return sb.toString();
 	}
 
 	/**
