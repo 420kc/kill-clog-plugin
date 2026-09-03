@@ -13,9 +13,7 @@ import okhttp3.Request;
 final class KillClogEndpoint
 {
 	static final String ENDPOINT_PROPERTY = "killclog.endpoint";
-	static final String ENDPOINT_ENV = "KILLCLOG_ENDPOINT";
 	static final String STAGING_TOKEN_PROPERTY = "killclog.stagingToken";
-	static final String STAGING_TOKEN_ENV = "KILLCLOG_STAGING_TOKEN";
 	static final String STAGING_HEADER = "X-Killclog-Staging-Token";
 
 	static final String PRODUCTION_API = "https://killclog.com/api";
@@ -24,10 +22,6 @@ final class KillClogEndpoint
 	static String apiBaseUrl()
 	{
 		String configured = System.getProperty(ENDPOINT_PROPERTY);
-		if (configured == null || configured.isBlank())
-		{
-			configured = System.getenv(ENDPOINT_ENV);
-		}
 		configured = stripTrailingSlashes(configured);
 		return STAGING_API.equals(configured) ? STAGING_API : PRODUCTION_API;
 	}
@@ -54,10 +48,6 @@ final class KillClogEndpoint
 	private static String stagingToken()
 	{
 		String token = System.getProperty(STAGING_TOKEN_PROPERTY);
-		if (token == null || token.isBlank())
-		{
-			token = System.getenv(STAGING_TOKEN_ENV);
-		}
 		if (token == null)
 		{
 			return null;
