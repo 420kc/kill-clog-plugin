@@ -49,6 +49,7 @@ class KillClogChatCommand
 	static final String COMMAND_THIRD_AGE = "!3a";
 	static final String COMMAND_GILDED = "!gilded";
 	static final String COMMAND_KC = "!kc";
+	static final String COMMAND_LOG_COMPATIBILITY = "!log";
 
 	// The channels ChatCommandManager itself dispatches on; the !kc item path
 	// reads raw events, so it mirrors the same set.
@@ -225,6 +226,34 @@ class KillClogChatCommand
 			.replaceAll("\\s+", " ").trim();
 	}
 
+	/* package */ static boolean isCompatibleLogCommand(ChatMessageType type, String message)
+	{
+		return PLAYER_CHAT_TYPES.contains(type) && message != null
+			&& (message.equalsIgnoreCase(COMMAND_LOG_COMPATIBILITY)
+				|| message.regionMatches(true, 0, COMMAND_LOG_COMPATIBILITY + " ", 0,
+					COMMAND_LOG_COMPATIBILITY.length() + 1));
+	}
+
+	/* package */ static String toKillClogCommand(String message)
+	{
+		String[] parts = message.split("\\s+", 2);
+		if (parts.length < 2 || parts[1].trim().isEmpty())
+		{
+			return null;
+		}
+
+		String query = parts[1].trim();
+		if (query.equalsIgnoreCase("missing"))
+		{
+			return null;
+		}
+		if (query.regionMatches(true, 0, "missing ", 0, "missing ".length()))
+		{
+			return COMMAND_MISSING + " " + query.substring("missing ".length()).trim();
+		}
+		return COMMAND + " " + query;
+	}
+
 	/**
 	 * Resolve the player whose clog the command targets. In PRIVATECHATOUT,
 	 * chatMessage.getName() returns the recipient's name rather than the
@@ -262,6 +291,24 @@ class KillClogChatCommand
 	void handleMissing(ChatMessage chatMessage, String message)
 	{
 		dispatch(chatMessage, message, true);
+	}
+
+	/**
+	 * RuneProfile-compatible fallback: delegates !log to the Kill Clog result
+	 * path without registering the shared command string.
+	 */
+	void handleLogCompatibility(ChatMessage chatMessage, String message)
+	{
+		String delegated = toKillClogCommand(message);
+		if (delegated == null)
+		{
+			replaceText(chatMessage, "usage " + COMMAND_LOG_COMPATIBILITY + " <boss>");
+			return;
+		}
+
+		boolean missingMode = delegated.regionMatches(true, 0, COMMAND_MISSING + " ", 0,
+			COMMAND_MISSING.length() + 1);
+		dispatch(chatMessage, delegated, missingMode);
 	}
 
 	/**

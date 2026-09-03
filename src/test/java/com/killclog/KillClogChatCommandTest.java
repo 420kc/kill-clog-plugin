@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import net.runelite.api.ChatMessageType;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -55,6 +56,33 @@ public class KillClogChatCommandTest
 		assertEquals("<img=42>", KillClogChatCommand.formatItemIcon(42, 1));
 		assertEquals("<img=42>x3", KillClogChatCommand.formatItemIcon(42, 3));
 		assertEquals("<img=42>x12345", KillClogChatCommand.formatItemIcon(42, 12345));
+	}
+
+	@Test
+	public void testLogCompatibilityMatchesOnlyWholeCommandsInPlayerChat()
+	{
+		assertTrue(KillClogChatCommand.isCompatibleLogCommand(
+			ChatMessageType.PUBLICCHAT, "!log Vorkath"));
+		assertTrue(KillClogChatCommand.isCompatibleLogCommand(
+			ChatMessageType.CLAN_CHAT, "!LOG missing Vorkath"));
+		assertFalse(KillClogChatCommand.isCompatibleLogCommand(
+			ChatMessageType.GAMEMESSAGE, "!log Vorkath"));
+		assertFalse(KillClogChatCommand.isCompatibleLogCommand(
+			ChatMessageType.PUBLICCHAT, "!logger Vorkath"));
+		assertFalse(KillClogChatCommand.isCompatibleLogCommand(
+			ChatMessageType.PUBLICCHAT, "hello !log Vorkath"));
+	}
+
+	@Test
+	public void testLogCompatibilityDelegatesToKillClogCommands()
+	{
+		assertEquals("!kclog Vorkath", KillClogChatCommand.toKillClogCommand("!log Vorkath"));
+		assertEquals("!missing Vorkath",
+			KillClogChatCommand.toKillClogCommand("!log missing Vorkath"));
+		assertEquals("!missing Vorkath",
+			KillClogChatCommand.toKillClogCommand("!LOG MiSsInG   Vorkath"));
+		assertNull(KillClogChatCommand.toKillClogCommand("!log"));
+		assertNull(KillClogChatCommand.toKillClogCommand("!log missing"));
 	}
 
 	@Test

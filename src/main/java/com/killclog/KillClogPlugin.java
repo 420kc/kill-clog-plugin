@@ -53,6 +53,7 @@ import net.runelite.client.util.Text;
 public class KillClogPlugin extends Plugin
 {
 	static final int CLOG_INTERFACE = 621;
+	private static final String RUNEPROFILE_PLUGIN_NAME = "RuneProfile";
 	static final String CHARACTER_RENDERING_STATUS = "rendering...";
 	static final String CHARACTER_PUBLISHED_STATUS = "character published!";
 	static final String CHARACTER_FAILED_STATUS = "Publish failed";
@@ -438,6 +439,16 @@ public class KillClogPlugin extends Plugin
 		// !kc <item name> provenance reveal. Boss arguments stay with the
 		// built-in plugin's own "!kc" registration; the handler ignores them.
 		kclogCommand.handleKcItem(event, clogIndex, localClogCache);
+
+		// RuneLite keeps one registered handler per command string, so claiming
+		// !log here would replace RuneProfile's handler. Read the raw chat line
+		// only as a fallback when RuneProfile itself is not enabled.
+		String message = event.getMessage();
+		if (KillClogChatCommand.isCompatibleLogCommand(event.getType(), message)
+			&& !isRuneProfileActive())
+		{
+			executor.execute(() -> kclogCommand.handleLogCompatibility(event, message));
+		}
 
 		// Kill-count messages land the same tick as the clog unlock they
 		// caused; remembering the freshest one lets the unlock carry its
@@ -1047,6 +1058,13 @@ public class KillClogPlugin extends Plugin
 	{
 		caCatalog.capture(client);
 		return localCaReader.capture(client, localCaCache);
+	}
+
+	private boolean isRuneProfileActive()
+	{
+		return pluginManager.getPlugins().stream()
+			.anyMatch(plugin -> RUNEPROFILE_PLUGIN_NAME.equals(plugin.getName())
+				&& pluginManager.isPluginActive(plugin));
 	}
 
 	@Subscribe
