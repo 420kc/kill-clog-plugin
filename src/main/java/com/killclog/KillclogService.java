@@ -499,7 +499,7 @@ public class KillclogService
 				categoryItems,
 				null,   // item names resolve client-side through ItemManager
 				templeStyleTimestamp(stringField(root, "last_changed")),
-				null    // account type is not served on proof-view
+				AccountType.fromProviderValue(stringField(root, "account_type"))
 			);
 			// The obtained counter decides coverage races, so it needs the
 			// full plausibility chain: a valid total under the ceiling AND

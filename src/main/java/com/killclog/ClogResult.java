@@ -79,8 +79,14 @@ public class ClogResult
 	private ClogResult copyWithProvenance(boolean temple, boolean runeProfile, boolean killclog,
 		AccountType fallbackType)
 	{
-		ClogResult copy = new ClogResult(this,
-			providerAccountType != null ? providerAccountType : fallbackType);
+		AccountType accountType = providerAccountType != null ? providerAccountType : fallbackType;
+		return copyWithProvenanceAndAccountType(temple, runeProfile, killclog, accountType);
+	}
+
+	private ClogResult copyWithProvenanceAndAccountType(boolean temple, boolean runeProfile,
+		boolean killclog, AccountType accountType)
+	{
+		ClogResult copy = new ClogResult(this, accountType);
 		copy.fromTemple = temple;
 		copy.fromRuneProfile = runeProfile;
 		copy.fromKillclog = killclog;
@@ -227,8 +233,11 @@ public class ClogResult
 				provider.fromTemple, provider.fromRuneProfile, true,
 				provider.providerAccountType);
 		}
-		return provider.copyWithProvenance(
-			provider.fromTemple, provider.fromRuneProfile, true, null);
+		AccountType firstPartyType = killclog.providerAccountType;
+		AccountType accountType = firstPartyType != null && firstPartyType.isGroupIronman()
+			? firstPartyType : provider.providerAccountType;
+		return provider.copyWithProvenanceAndAccountType(
+			provider.fromTemple, provider.fromRuneProfile, true, accountType);
 	}
 
 	/** Distinct itemized coverage, deliberately ignoring the varp counter. */

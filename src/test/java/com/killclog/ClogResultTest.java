@@ -124,6 +124,26 @@ public class ClogResultTest
 	}
 
 	@Test
+	public void testProviderWinnerKeepsFirstPartyGroupIdentity()
+	{
+		ClogResult provider = result("Provider", 5, 10,
+			Collections.singletonMap("boss", Arrays.asList(
+				new ClogResult.ClogItem(1, 1, null),
+				new ClogResult.ClogItem(2, 1, null))),
+			"2026-08-03 12:00:00", AccountType.GROUP_IRONMAN);
+		ClogResult killclog = result("Synced", 2, 10,
+			Collections.singletonMap("boss", Collections.singletonList(
+				new ClogResult.ClogItem(3, 1, null))),
+			null, AccountType.HARDCORE_GROUP_IRONMAN);
+
+		ClogResult picked = ClogResult.pickFullest(provider, killclog);
+
+		assertEquals("Provider", picked.getPlayerName());
+		assertTrue(picked.isFromKillclog());
+		assertEquals(AccountType.HARDCORE_GROUP_IRONMAN, picked.getProviderAccountType());
+	}
+
+	@Test
 	public void testFullSyncBeatsStaleProviderAndKeepsFallbackAccountType()
 	{
 		ClogResult provider = result("Provider", 1100, 1561,

@@ -45,6 +45,7 @@ public class KillclogServiceTest
 	public void testParseProofViewBuildsResultAndCachesPbs()
 	{
 		String json = "{\"exists\":true,\"rsn\":\"420 kc\","
+			+ "\"account_type\":\"hardcore_group_ironman\","
 			+ "\"last_changed\":\"2026-08-03T22:15:31.123Z\","
 			+ "\"unique_obtained\":1189,\"unique_total\":1561,"
 			+ "\"pbs\":{\"Zulrah\":58.2,\"Vorkath\":101.0},"
@@ -56,6 +57,7 @@ public class KillclogServiceTest
 
 		assertNotNull(result);
 		assertEquals("420 kc", result.getPlayerName());
+		assertEquals(AccountType.HARDCORE_GROUP_IRONMAN, result.getProviderAccountType());
 		assertEquals(1189, result.getUniqueObtained());
 		assertEquals(1561, result.getUniqueTotal());
 		assertEquals("2026-08-03 22:15:31", result.getLastChanged());

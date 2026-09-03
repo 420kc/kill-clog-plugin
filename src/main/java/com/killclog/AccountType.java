@@ -23,6 +23,12 @@ public enum AccountType
 	@Nullable
 	static AccountType displayType(@Nullable AccountType hiscoreType, @Nullable AccountType providerType)
 	{
+		// The first argument may already carry a higher-trust runtime or
+		// first-party GIM subtype. Do not let a later provider cache replace it.
+		if (hiscoreType != null && hiscoreType.isGroupIronman())
+		{
+			return hiscoreType;
+		}
 		if (providerType != null && (providerType.isGroupIronman() || hiscoreType == null))
 		{
 			return providerType;
@@ -80,10 +86,13 @@ public enum AccountType
 			case "ultimate_ironman":
 				return ULTIMATE_IRONMAN;
 			case "group_ironman":
+			case "gim":
 				return GROUP_IRONMAN;
 			case "hardcore_group_ironman":
+			case "hcgim":
 				return HARDCORE_GROUP_IRONMAN;
 			case "unranked_group_ironman":
+			case "ugim":
 				return UNRANKED_GROUP_IRONMAN;
 			default:
 				return null;

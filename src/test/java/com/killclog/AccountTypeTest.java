@@ -36,6 +36,9 @@ public class AccountTypeTest
 		assertEquals(AccountType.REGULAR, AccountType.fromProviderValue("normal"));
 		assertEquals(AccountType.HARDCORE_GROUP_IRONMAN,
 			AccountType.fromProviderValue("hardcore group ironman"));
+		assertEquals(AccountType.GROUP_IRONMAN, AccountType.fromProviderValue("gim"));
+		assertEquals(AccountType.HARDCORE_GROUP_IRONMAN, AccountType.fromProviderValue("hcgim"));
+		assertEquals(AccountType.UNRANKED_GROUP_IRONMAN, AccountType.fromProviderValue("ugim"));
 		assertEquals(AccountType.UNRANKED_GROUP_IRONMAN,
 			AccountType.fromProviderValue("unranked-group-ironman"));
 		assertNull(AccountType.fromProviderValue("league"));
@@ -48,6 +51,8 @@ public class AccountTypeTest
 			AccountType.displayType(AccountType.IRONMAN, AccountType.REGULAR));
 		assertEquals(AccountType.GROUP_IRONMAN,
 			AccountType.displayType(AccountType.REGULAR, AccountType.GROUP_IRONMAN));
+		assertEquals(AccountType.HARDCORE_GROUP_IRONMAN,
+			AccountType.displayType(AccountType.HARDCORE_GROUP_IRONMAN, AccountType.GROUP_IRONMAN));
 		assertEquals(AccountType.HARDCORE_GROUP_IRONMAN,
 			AccountType.displayType(null, AccountType.HARDCORE_GROUP_IRONMAN));
 		assertEquals(AccountType.ULTIMATE_IRONMAN,
