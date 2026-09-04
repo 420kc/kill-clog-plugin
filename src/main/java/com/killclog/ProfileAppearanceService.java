@@ -128,8 +128,34 @@ final class ProfileAppearanceService
 		{
 			return -1;
 		}
+		NPCComposition composition = follower.getComposition();
+		if (!isPortableFollower(composition))
+		{
+			return -1;
+		}
 		NPCComposition visibleComposition = follower.getTransformedComposition();
 		return visibleComposition != null ? visibleComposition.getId() : follower.getId();
+	}
+
+	private static boolean isPortableFollower(@Nullable NPCComposition composition)
+	{
+		if (composition == null || !composition.isFollower())
+		{
+			return false;
+		}
+		String[] actions = composition.getActions();
+		if (actions == null)
+		{
+			return false;
+		}
+		for (String action : actions)
+		{
+			if (action != null && "Pick-up".equalsIgnoreCase(action.trim()))
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	private CompletableFuture<PublishResult> ensureCredential(String rsn, long accountHash,

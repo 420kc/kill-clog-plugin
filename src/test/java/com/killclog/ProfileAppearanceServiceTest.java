@@ -13,21 +13,35 @@ import static org.junit.Assert.assertTrue;
 public class ProfileAppearanceServiceTest
 {
 	@Test
-	public void visibleFollowerNpcIdUsesTransformedComposition()
+	public void visibleFollowerNpcIdUsesPortableTransformedComposition()
 	{
-		NPCComposition visible = proxy(NPCComposition.class, 12293, null);
-		NPC follower = proxy(NPC.class, 12296, visible);
+		NPCComposition visible = composition(9399, false);
+		NPCComposition portableRoot = composition(9999, true, "Pick-up");
+		NPC follower = npc(9999, visible, portableRoot);
 
-		assertEquals(12293, ProfileAppearanceService.visibleFollowerNpcId(follower));
+		assertEquals(9399, ProfileAppearanceService.visibleFollowerNpcId(follower));
+	}
+
+	@Test
+	public void questCompanionsAreNotPublishedAsFollowers()
+	{
+		NPCComposition drBanikan = composition(12293, false);
+		NPCComposition questRoot = composition(12296, true, "Talk-to");
+		NPC follower = npc(12296, drBanikan, questRoot);
+
+		assertEquals(-1, ProfileAppearanceService.visibleFollowerNpcId(follower));
 	}
 
 	@Test
 	public void visibleFollowerNpcIdFallsBackToNpcId()
 	{
-		NPC follower = proxy(NPC.class, 9399, null);
+		NPC follower = npc(9399, null, composition(9399, true, "Pick-up"));
 
 		assertEquals(9399, ProfileAppearanceService.visibleFollowerNpcId(follower));
 		assertEquals(-1, ProfileAppearanceService.visibleFollowerNpcId(null));
+		assertEquals(-1, ProfileAppearanceService.visibleFollowerNpcId(npc(9399, null, null)));
+		assertEquals(-1, ProfileAppearanceService.visibleFollowerNpcId(
+			npc(9399, null, composition(9399, false, "Pick-up"))));
 	}
 
 	@Test
@@ -106,10 +120,10 @@ public class ProfileAppearanceServiceTest
 		}
 	}
 
-	@SuppressWarnings("unchecked")
-	private static <T> T proxy(Class<T> type, int id, NPCComposition transformed)
+	private static NPC npc(int id, NPCComposition transformed, NPCComposition composition)
 	{
-		return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type},
+		return (NPC) Proxy.newProxyInstance(NPC.class.getClassLoader(),
+			new Class<?>[]{NPC.class},
 			(instance, method, args) ->
 			{
 				if (method.getName().equals("getId"))
@@ -119,6 +133,41 @@ public class ProfileAppearanceServiceTest
 				if (method.getName().equals("getTransformedComposition"))
 				{
 					return transformed;
+				}
+				if (method.getName().equals("getComposition"))
+				{
+					return composition;
+				}
+				Class<?> returnType = method.getReturnType();
+				if (returnType.equals(boolean.class))
+				{
+					return false;
+				}
+				if (returnType.equals(int.class))
+				{
+					return 0;
+				}
+				return null;
+			});
+	}
+
+	private static NPCComposition composition(int id, boolean follower, String... actions)
+	{
+		return (NPCComposition) Proxy.newProxyInstance(NPCComposition.class.getClassLoader(),
+			new Class<?>[]{NPCComposition.class},
+			(instance, method, args) ->
+			{
+				if (method.getName().equals("getId"))
+				{
+					return id;
+				}
+				if (method.getName().equals("getActions"))
+				{
+					return actions;
+				}
+				if (method.getName().equals("isFollower"))
+				{
+					return follower;
 				}
 				Class<?> returnType = method.getReturnType();
 				if (returnType.equals(boolean.class))
