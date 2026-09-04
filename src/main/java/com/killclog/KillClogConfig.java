@@ -134,17 +134,18 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigSection(
-		name = "Panel Display",
-		description = "Choose what the side panel shows and where",
-		position = 2
+		name = "Skills",
+		description = "Skill placement, virtual levels, and cell colors",
+		position = 2,
+		closedByDefault = true
 	)
-	String panelDisplaySection = "panelDisplay";
+	String skillsSection = "skills";
 
 	@ConfigItem(
 		keyName = "skillDisplay",
 		name = "Skill Display",
 		description = "Keep the skill summary in the Total tooltip, or show individual skill cells above bosses or clues",
-		section = panelDisplaySection,
+		section = skillsSection,
 		position = 0
 	)
 	default SkillDisplay skillDisplay()
@@ -156,10 +157,34 @@ public interface KillClogConfig extends Config
 		keyName = "virtualLevels",
 		name = "Display Virtual Levels",
 		description = "Show XP-derived levels above 99 in skill summaries",
-		section = panelDisplaySection,
+		section = skillsSection,
 		position = 1
 	)
 	default boolean virtualLevels()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "skillLevelColor",
+		name = "Skill Level Color",
+		description = "Default color for ranked skill levels shown in cells",
+		section = skillsSection,
+		position = 2
+	)
+	default Color skillLevelColor()
+	{
+		return new Color(255, 87, 0);
+	}
+
+	@ConfigItem(
+		keyName = "skillCompletionColor",
+		name = "Use Completion Color at 99+",
+		description = "Use the Progress Highlighter's Completed color for skill cells at level 99 or higher",
+		section = skillsSection,
+		position = 3
+	)
+	default boolean useSkillCompletionColor()
 	{
 		return true;
 	}
@@ -267,7 +292,7 @@ public interface KillClogConfig extends Config
 
 	@ConfigSection(
 		name = "Progress Highlighter",
-		description = "Color collection-log progress and embedded skill levels",
+		description = "Color collection-log progress",
 		position = 5,
 		closedByDefault = true
 	)
@@ -276,7 +301,7 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "completionistHighlighter",
 		name = "Enable Highlighter",
-		description = "Color boss KC and embedded skill levels by progression",
+		description = "Color boss KC by collection-log progression",
 		section = completionistSection,
 		position = 0
 	)
@@ -300,7 +325,7 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "completedClogColor",
 		name = "Completed",
-		description = "Color for complete bosses and skills level 99 or higher",
+		description = "Color for complete bosses and optional skill completion at 99 or higher",
 		section = completionistSection,
 		position = 3
 	)
@@ -312,7 +337,7 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "missing1Color",
 		name = "1 Away",
-		description = "Color for bosses missing one item and skills level 93-98",
+		description = "Color for bosses missing one item",
 		section = completionistSection,
 		position = 4
 	)
@@ -324,7 +349,7 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "inProgressClogColor",
 		name = "In Progress",
-		description = "Color for bosses with some items and skills level 50-92",
+		description = "Color for bosses with some items",
 		section = completionistSection,
 		position = 5
 	)
@@ -336,7 +361,7 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "emptyClogColor",
 		name = "Empty",
-		description = "Color for empty bosses and skills level 1-49",
+		description = "Color for empty bosses",
 		section = completionistSection,
 		position = 6
 	)

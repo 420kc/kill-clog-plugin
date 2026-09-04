@@ -33,7 +33,7 @@ public class SkillCellGridTest
 	}
 
 	@Test
-	public void soloCellsUseProgressionColorsAndNativeTooltips()
+	public void soloCellsUseSkillColorsAndNativeTooltips()
 	{
 		SkillCellGrid cells = grid();
 		HiscoreResult result = hiscores(Map.of(
@@ -43,11 +43,11 @@ public class SkillCellGridTest
 			Skill.DEFENCE, 99));
 		cells.render(result, null, false);
 
-		assertEquals(config().emptyClogColor(),
+		assertEquals(config().skillLevelColor(),
 			cells.labels().get(Skill.ATTACK).getForeground());
-		assertEquals(config().inProgressClogColor(),
+		assertEquals(config().skillLevelColor(),
 			cells.labels().get(Skill.HITPOINTS).getForeground());
-		assertEquals(config().missing1Color(),
+		assertEquals(config().skillLevelColor(),
 			cells.labels().get(Skill.MINING).getForeground());
 		assertEquals(config().completedClogColor(),
 			cells.labels().get(Skill.DEFENCE).getForeground());
@@ -141,33 +141,15 @@ public class SkillCellGridTest
 		return new KillClogConfig()
 		{
 			@Override
-			public boolean completionistHighlighter()
+			public Color skillLevelColor()
 			{
-				return true;
+				return new Color(255, 87, 0);
 			}
 
 			@Override
 			public Color completedClogColor()
 			{
 				return new Color(78, 240, 21);
-			}
-
-			@Override
-			public Color missing1Color()
-			{
-				return new Color(202, 255, 0);
-			}
-
-			@Override
-			public Color inProgressClogColor()
-			{
-				return new Color(255, 173, 0);
-			}
-
-			@Override
-			public Color emptyClogColor()
-			{
-				return new Color(255, 87, 0);
 			}
 		};
 	}

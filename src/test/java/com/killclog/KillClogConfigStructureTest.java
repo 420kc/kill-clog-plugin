@@ -24,7 +24,7 @@ public class KillClogConfigStructureTest
 		"bossListView", "seenSelfGreeting", "killclogSync", "characterModel");
 
 	@Test
-	public void reorganizationPreservesEveryExistingKeyAndAddsOnlySkillDisplay()
+	public void reorganizationPreservesEveryExistingKeyAndAddsOnlySkillSettings()
 	{
 		Set<String> keys = Arrays.stream(KillClogConfig.class.getDeclaredMethods())
 			.map(method -> method.getAnnotation(ConfigItem.class))
@@ -34,6 +34,8 @@ public class KillClogConfigStructureTest
 
 		Set<String> expected = new java.util.HashSet<>(PRE_220_KEYS);
 		expected.add("skillDisplay");
+		expected.add("skillLevelColor");
+		expected.add("skillCompletionColor");
 		assertEquals(expected, keys);
 	}
 
@@ -48,6 +50,18 @@ public class KillClogConfigStructureTest
 				assertFalse(item.keyName() + " is loose in the settings pane",
 					item.section().isEmpty());
 			}
+		}
+	}
+
+	@Test
+	public void skillSettingsShareDedicatedSection() throws Exception
+	{
+		for (String methodName : Arrays.asList(
+			"skillDisplay", "virtualLevels", "skillLevelColor", "useSkillCompletionColor"))
+		{
+			ConfigItem item = KillClogConfig.class.getDeclaredMethod(methodName)
+				.getAnnotation(ConfigItem.class);
+			assertEquals(KillClogConfig.skillsSection, item.section());
 		}
 	}
 

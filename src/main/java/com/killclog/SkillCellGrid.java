@@ -163,7 +163,7 @@ final class SkillCellGrid
 	{
 		label.setText(ClogHelper.pad(levelText(level)));
 		label.setForeground(level > 0
-			? SkillProgressColor.forLevel(level, config)
+			? SkillLevelColor.forLevel(level, config)
 			: ColorScheme.LIGHT_GRAY_COLOR);
 		label.setHorizontalAlignment(JLabel.LEADING);
 	}

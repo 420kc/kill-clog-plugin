@@ -1700,6 +1700,8 @@ public class KillClogPanel extends PluginPanel
 				tooltipController.onTooltipModeChanged();
 				break;
 			case "skillDisplay":
+			case "skillLevelColor":
+			case "skillCompletionColor":
 				refreshSkillDisplay();
 				break;
 			case "virtualLevels":

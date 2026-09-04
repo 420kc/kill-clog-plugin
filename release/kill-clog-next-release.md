@@ -7,7 +7,7 @@ Target version: `2.2.0`
 Kill Clog 2.2.0
 
 * offers the full Total tooltip or individual skill cells above bosses or clues
-* colors skill-cell levels by progression, with 99 marking completion
+* gives skill cells a configurable level color with an optional completion color at 99+
 * reorganizes settings into focused collapsible sections
 * shows Colosseum Glory on Sol Heredit tooltips instead of repeating its visible KC
 * shows duplicate item counts in `!kclog` results
