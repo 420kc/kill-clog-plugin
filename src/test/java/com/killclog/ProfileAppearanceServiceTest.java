@@ -16,7 +16,7 @@ public class ProfileAppearanceServiceTest
 	public void visibleFollowerNpcIdUsesTransformedComposition()
 	{
 		NPCComposition visible = proxy(NPCComposition.class, 12293, null);
-		NPC follower = proxy(NPC.class, 12296, visible);
+		NPC follower = proxy(NPC.class, 9999, visible);
 
 		assertEquals(12293, ProfileAppearanceService.visibleFollowerNpcId(follower));
 	}
@@ -28,6 +28,7 @@ public class ProfileAppearanceServiceTest
 
 		assertEquals(9399, ProfileAppearanceService.visibleFollowerNpcId(follower));
 		assertEquals(-1, ProfileAppearanceService.visibleFollowerNpcId(null));
+		assertEquals(-1, ProfileAppearanceService.visibleFollowerNpcId(proxy(NPC.class, 12296, null)));
 	}
 
 	@Test
@@ -120,10 +121,18 @@ public class ProfileAppearanceServiceTest
 				{
 					return transformed;
 				}
+				if (method.getName().equals("getComposition"))
+				{
+					return proxy(NPCComposition.class, id, null);
+				}
+				if (method.getName().equals("getActions"))
+				{
+					return new String[]{id == 12296 ? "Talk-to" : "Pick-up"};
+				}
 				Class<?> returnType = method.getReturnType();
 				if (returnType.equals(boolean.class))
 				{
-					return false;
+					return true;
 				}
 				if (returnType.equals(int.class))
 				{

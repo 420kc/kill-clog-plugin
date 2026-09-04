@@ -128,6 +128,13 @@ final class ProfileAppearanceService
 		{
 			return -1;
 		}
+		NPCComposition composition = follower.getComposition();
+		String[] actions = composition != null ? composition.getActions() : null;
+		if (composition == null || !composition.isFollower() || actions == null
+			|| !java.util.Arrays.asList(actions).contains("Pick-up"))
+		{
+			return -1;
+		}
 		NPCComposition visibleComposition = follower.getTransformedComposition();
 		return visibleComposition != null ? visibleComposition.getId() : follower.getId();
 	}

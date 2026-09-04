@@ -68,6 +68,8 @@ final class ActivitySummaryTooltips
 				LookupQueries.accountType(blueHs, blueClog)));
 			cmp.setRedEhb(EhbRates.compute(redHs,
 				LookupQueries.accountType(redHs, redClog)));
+			cmp.setGlory(blueHs != null ? blueHs.getActivityScore("Colosseum Glory") : -1,
+				redHs.getActivityScore("Colosseum Glory"));
 			cmp.setBlueSlayer(blueClog);
 			cmp.setRedSlayer(redClog);
 
@@ -141,6 +143,7 @@ final class ActivitySummaryTooltips
 			LookupQueries.getMostKilledBoss(hiscore),
 			LookupQueries.getMostKilledKc(hiscore)
 		);
+		tip.setGlory(hiscore != null ? hiscore.getActivityScore("Colosseum Glory") : -1);
 		tip.setEhb(EhbRates.compute(hiscore, LookupQueries.accountType(hiscore, clog)));
 		tip.setSlayer(hiscore, clog);
 		if (clog != null)

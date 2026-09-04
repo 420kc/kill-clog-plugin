@@ -35,6 +35,7 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 	{
 		String name;
 		int combat;
+		int glory = -1;
 		int totalKills;
 		int bossesKc;
 		int totalBosses;
@@ -124,6 +125,12 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 	public void setRedEhb(double ehb)
 	{
 		red.ehb = ehb;
+	}
+
+	public void setGlory(int blueGlory, int redGlory)
+	{
+		blue.glory = blueGlory;
+		red.glory = redGlory;
 	}
 
 	public void setBlueCompletion(int completed, int withClog)
@@ -260,6 +267,7 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 			w = Math.max(w, fm.stringWidth("CA Tier"));
 		}
 		w = Math.max(w, fm.stringWidth("Combat"));
+		w = Math.max(w, fm.stringWidth("Colosseum Glory"));
 		w = Math.max(w, fm.stringWidth("Total Kills"));
 		w = Math.max(w, fm.stringWidth("EHB"));
 		w = Math.max(w, fm.stringWidth("Slayer"));
@@ -289,7 +297,8 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		}
 
 		// Stats: combat and total kills as scores, bosses/logs as counts.
-		int[] scores = {blue.combat, red.combat, blue.totalKills, red.totalKills};
+		int[] scores = {blue.combat, red.combat, blue.glory, red.glory,
+			blue.totalKills, red.totalKills};
 		w = Math.max(w, widestValue(fm, scores, TitleTooltip::scoreText));
 		w = Math.max(w, fm.stringWidth(ehbText(blue.ehb)));
 		w = Math.max(w, fm.stringWidth(ehbText(red.ehb)));
@@ -330,7 +339,7 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		}
 
 		// Stats.
-		h += LINE_HEIGHT * 5;
+		h += LINE_HEIGHT * 6;
 
 		// Most killed.
 		h += LINE_HEIGHT;
@@ -393,6 +402,10 @@ public class ComparePvmSummaryTooltip extends TitleTooltip
 		paintRow(g2, fm, labelX, blueX, redX, y, "Combat",
 			scoreText(blue.combat), scoreText(red.combat),
 			COMPARE_BLUE, COMPARE_RED);
+		y += LINE_HEIGHT;
+
+		paintRow(g2, fm, labelX, blueX, redX, y, "Colosseum Glory",
+			scoreText(blue.glory), scoreText(red.glory), COMPARE_BLUE, COMPARE_RED);
 		y += LINE_HEIGHT;
 
 		// Total kills.

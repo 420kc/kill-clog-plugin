@@ -28,6 +28,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private static final int CA_REWARD_GAP = 3;
 
 	private int combatLevel;
+	private int glory = -1;
 	private int totalKills;
 	private int bossesWithKc;
 	private int totalBosses;
@@ -72,6 +73,11 @@ public class PvmSummaryTooltip extends TitleTooltip
 		this.totalBosses = totalBosses;
 		this.mostKilled = mostKilled;
 		this.mostKilledKc = mostKilledKc;
+	}
+
+	public void setGlory(int glory)
+	{
+		this.glory = glory;
 	}
 
 	public void setCompletion(int completed, int total)
@@ -183,7 +189,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		FontMetrics bfm = getFontMetrics(FontManager.getRunescapeBoldFont());
 
 		// Stats section.
-		int statsLines = 4; // Combat, Total Kills, EHB, Bosses
+		int statsLines = 5; // Combat, Glory, Total Kills, EHB, Bosses
 		if (bossesCompleted >= 0) statsLines++;
 		int statsHeight = LINE_HEIGHT * statsLines;
 
@@ -208,6 +214,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		// Width: measure the real rendered strings, never a placeholder.
 		int textWidth = 0;
 		textWidth = Math.max(textWidth, fm.stringWidth("Combat: " + combatValue()));
+		textWidth = Math.max(textWidth, fm.stringWidth("Colosseum Glory: " + scoreText(glory)));
 		textWidth = Math.max(textWidth, fm.stringWidth("Total Kills: " + totalKillsValue()));
 		textWidth = Math.max(textWidth, fm.stringWidth("EHB: " + ehbText(ehb)));
 		textWidth = Math.max(textWidth, fm.stringWidth("XP: " + slayerXpText(slayerXp)));
@@ -281,6 +288,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 		// Combat
 		drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Combat: ", combatValue());
+		y += LINE_HEIGHT;
+		drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Colosseum Glory: ", scoreText(glory));
 		y += LINE_HEIGHT;
 
 		// Total Kills
