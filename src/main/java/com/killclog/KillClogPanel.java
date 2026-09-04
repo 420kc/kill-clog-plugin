@@ -115,6 +115,7 @@ public class KillClogPanel extends PluginPanel
 	private final PanelIconCache iconCache;
 	private final PanelAccountTypes accountTypes;
 	private final ActivitySummaryTooltips activityTooltips;
+	private final SkillCellGrid skillCellGrid;
 	private ProgressHighlighter highlighter;
 	private JPanel infoRow;
 
@@ -304,6 +305,7 @@ public class KillClogPanel extends PluginPanel
 		this.comparison.setRenderTarget(this);
 		this.comparison.setVirtualTotalLevel(
 			() -> ClogHelper.virtualTotalLevelEnabled(configManager));
+		this.skillCellGrid = new SkillCellGrid(skillIconManager, tooltipController, config);
 		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, clogService, killclogService, new PersonalBests(configManager), config);
 		this.activityTooltips = new ActivitySummaryTooltips(
 			lookupSession, comparison, cells, tooltipController, itemManager,
@@ -675,9 +677,8 @@ public class KillClogPanel extends PluginPanel
 	}
 
 	/**
-	 * Move one live skill summary between its configured panel locations. The
-	 * default popup path stays untouched; embedded solo summaries opt into the
-	 * progression colors while comparison summaries retain blue/red identity.
+	 * Move one live skill-cell grid between its configured panel locations.
+	 * The default path keeps the complete summary in the Total tooltip.
 	 */
 	private void refreshSkillDisplay()
 	{
@@ -699,15 +700,16 @@ public class KillClogPanel extends PluginPanel
 
 		if (!popup && result != null)
 		{
-			JToolTip skillView = activityTooltips.buildSkills(totalLvlCell);
-			if (skillView instanceof SkillsTooltip)
-			{
-				((SkillsTooltip) skillView).setLevelColor(
-					level -> SkillProgressColor.forLevel(level, config));
-			}
+			HiscoreResult compared = comparison.isComparisonMode()
+				? comparison.getCompareHiscoreResult() : null;
+			skillCellGrid.render(result, compared, config.virtualLevels());
 			JPanel host = display == SkillDisplay.TRAY ? traySkillsHost : fixedSkillsHost;
-			host.add(skillView, BorderLayout.CENTER);
+			host.add(skillCellGrid.component(), BorderLayout.CENTER);
 			host.setVisible(true);
+		}
+		else
+		{
+			skillCellGrid.clear();
 		}
 
 		traySkillsHost.revalidate();

@@ -24,8 +24,6 @@ import net.runelite.client.util.ImageUtil;
  */
 public class CompareSkillSummaryTooltip extends TitleTooltip
 {
-	private static final int COLS = 3;
-	private static final int ROWS = 8;
 	private static final int ICON_SIZE = 16;
 	private static final int ICON_TEXT_GAP = 2;
 	private static final int ROW_HEIGHT = 18;
@@ -43,18 +41,6 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 
 	private static final Color ARROW_GREEN = CLOG_GREEN;
 	private static final Color UNRANKED_COLOR = new Color(128, 128, 128);
-
-	// In-game skills tab layout.
-	private static final Skill[][] GRID = {
-		{Skill.ATTACK,       Skill.HITPOINTS,   Skill.MINING},
-		{Skill.DEFENCE,      Skill.AGILITY,     Skill.SMITHING},
-		{Skill.STRENGTH,     Skill.HERBLORE,    Skill.FISHING},
-		{Skill.RANGED,       Skill.THIEVING,    Skill.COOKING},
-		{Skill.PRAYER,       Skill.CRAFTING,     Skill.FIREMAKING},
-		{Skill.MAGIC,        Skill.FLETCHING,    Skill.WOODCUTTING},
-		{Skill.RUNECRAFT,    Skill.SLAYER,       Skill.FARMING},
-		{Skill.CONSTRUCTION, Skill.HUNTER,       Skill.SAILING},
-	};
 
 	// One player's column of stats; the tooltip holds a blue and a red side.
 	private static final class Side
@@ -160,13 +146,15 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 	{
 		FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
 		int cellWidth = measureCellWidth(fm);
-		int gridWidth = cellWidth * COLS + COL_GAP * (COLS - 1);
+		int gridWidth = cellWidth * SkillGridOrder.COLUMNS
+			+ COL_GAP * (SkillGridOrder.COLUMNS - 1);
 		int xpWidth = measureXpRowWidth(fm);
 		int gotrWidth = measureGotrWidth(fm);
 		int totalWidth = Math.max(Math.max(Math.max(gridWidth, xpWidth), gotrWidth),
 			statsRowsWidth(fm));
 		int totalHeight = fm.getHeight() + XP_ROW_GAP + LINE_HEIGHT
-			+ HEADER_GAP + ROW_HEIGHT * ROWS + GOTR_SECTION_GAP + LINE_HEIGHT
+			+ HEADER_GAP + ROW_HEIGHT * SkillGridOrder.ROWS
+			+ GOTR_SECTION_GAP + LINE_HEIGHT
 			+ 2 * LINE_HEIGHT;
 		return new Dimension(totalWidth, totalHeight);
 	}
@@ -215,16 +203,17 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 		int levelW = fm.stringWidth("99");
 		int arrowSlot = ARROW_PAD + ARROW_SIZE;
 		int cellWidth = measureCellWidth(fm);
-		int gridWidth = cellWidth * COLS + COL_GAP * (COLS - 1);
+		int gridWidth = cellWidth * SkillGridOrder.COLUMNS
+			+ COL_GAP * (SkillGridOrder.COLUMNS - 1);
 		int gridOffsetX = inset + (w - 2 * inset - gridWidth) / 2;
 
 		Map<Skill, BufferedImage> icons = SkillsTooltip.getIcons();
 
-		for (int row = 0; row < ROWS; row++)
+		for (int row = 0; row < SkillGridOrder.ROWS; row++)
 		{
-			for (int col = 0; col < COLS; col++)
+			for (int col = 0; col < SkillGridOrder.COLUMNS; col++)
 			{
-				Skill skill = GRID[row][col];
+				Skill skill = SkillGridOrder.at(row, col);
 				int cellX = gridOffsetX + col * (cellWidth + COL_GAP);
 				int cellY = y + row * ROW_HEIGHT;
 
@@ -279,7 +268,7 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 			}
 		}
 
-		int footerY = y + ROW_HEIGHT * ROWS + GOTR_SECTION_GAP;
+		int footerY = y + ROW_HEIGHT * SkillGridOrder.ROWS + GOTR_SECTION_GAP;
 		paintGotr(g2, fm, inset, w, footerY);
 		paintStatsRows(g2, fm, inset, footerY + LINE_HEIGHT);
 	}
@@ -408,7 +397,7 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 		FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
 		int y = getInset() + getHeaderZoneHeight()
 			+ fm.getHeight() + XP_ROW_GAP + LINE_HEIGHT + HEADER_GAP
-			+ ROW_HEIGHT * ROWS + GOTR_SECTION_GAP;
+			+ ROW_HEIGHT * SkillGridOrder.ROWS + GOTR_SECTION_GAP;
 		return new Rectangle(getInset(), y, getWidth() - 2 * getInset(), LINE_HEIGHT)
 			.contains(mouseX, mouseY);
 	}
@@ -417,20 +406,21 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 	{
 		FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
 		int cellWidth = measureCellWidth(fm);
-		int gridWidth = cellWidth * COLS + COL_GAP * (COLS - 1);
+		int gridWidth = cellWidth * SkillGridOrder.COLUMNS
+			+ COL_GAP * (SkillGridOrder.COLUMNS - 1);
 		int gridOffsetX = getInset() + (getWidth() - 2 * getInset() - gridWidth) / 2;
 		int gridOffsetY = getInset() + getHeaderZoneHeight()
 			+ fm.getHeight() + XP_ROW_GAP + LINE_HEIGHT + HEADER_GAP;
 
-		for (int row = 0; row < ROWS; row++)
+		for (int row = 0; row < SkillGridOrder.ROWS; row++)
 		{
-			for (int col = 0; col < COLS; col++)
+			for (int col = 0; col < SkillGridOrder.COLUMNS; col++)
 			{
 				int x = gridOffsetX + col * (cellWidth + COL_GAP);
 				int y = gridOffsetY + row * ROW_HEIGHT;
 				if (new Rectangle(x, y, cellWidth, ROW_HEIGHT).contains(mouseX, mouseY))
 				{
-					return GRID[row][col];
+					return SkillGridOrder.at(row, col);
 				}
 			}
 		}

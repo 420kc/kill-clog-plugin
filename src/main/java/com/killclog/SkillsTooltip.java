@@ -12,7 +12,6 @@ import java.awt.image.BufferedImage;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.function.IntFunction;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.game.SkillIconManager;
 import net.runelite.api.Skill;
@@ -28,8 +27,6 @@ import net.runelite.client.ui.FontManager;
 @Slf4j
 public class SkillsTooltip extends TitleTooltip
 {
-	private static final int COLS = 3;
-	private static final int ROWS = 8;
 	private static final int ICON_SIZE = 16;
 	private static final int ICON_TEXT_GAP = 3;
 	private static final int ROW_HEIGHT = 18;
@@ -51,18 +48,6 @@ public class SkillsTooltip extends TitleTooltip
 
 	private static final Color UNRANKED_COLOR = new Color(128, 128, 128);
 
-	// In-game skills tab layout: 3 columns x 8 rows
-	private static final Skill[][] GRID = {
-		{Skill.ATTACK,       Skill.HITPOINTS,   Skill.MINING},
-		{Skill.DEFENCE,      Skill.AGILITY,     Skill.SMITHING},
-		{Skill.STRENGTH,     Skill.HERBLORE,    Skill.FISHING},
-		{Skill.RANGED,       Skill.THIEVING,    Skill.COOKING},
-		{Skill.PRAYER,       Skill.CRAFTING,     Skill.FIREMAKING},
-		{Skill.MAGIC,        Skill.FLETCHING,    Skill.WOODCUTTING},
-		{Skill.RUNECRAFT,    Skill.SLAYER,       Skill.FARMING},
-		{Skill.CONSTRUCTION, Skill.HUNTER,       Skill.SAILING},
-	};
-
 	private static final Map<Skill, BufferedImage> icons = new LinkedHashMap<>();
 
 	/** Package-private accessor so CompareSkillSummaryTooltip can reuse loaded icons. */
@@ -73,7 +58,6 @@ public class SkillsTooltip extends TitleTooltip
 
 	private HiscoreResult result;
 	private boolean virtualLevels;
-	private IntFunction<Color> levelColor = level -> Color.WHITE;
 
 	// The body start the painter was actually handed. Hit-tests reuse it so
 	// hover regions and painted rows cannot disagree; header-height
@@ -99,22 +83,19 @@ public class SkillsTooltip extends TitleTooltip
 	 */
 	public static void loadIcons(SkillIconManager skillIconManager)
 	{
-		for (Skill[] row : GRID)
+		for (Skill skill : SkillGridOrder.skills())
 		{
-			for (Skill skill : row)
+			try
 			{
-				try
+				BufferedImage img = skillIconManager.getSkillImage(skill, true);
+				if (img != null)
 				{
-					BufferedImage img = skillIconManager.getSkillImage(skill, true);
-					if (img != null)
-					{
-						icons.put(skill, img);
-					}
+					icons.put(skill, img);
 				}
-				catch (Exception e)
-				{
-					log.debug("Failed to load icon for {}", skill.getName(), e);
-				}
+			}
+			catch (Exception e)
+			{
+				log.debug("Failed to load icon for {}", skill.getName(), e);
 			}
 		}
 	}
@@ -129,12 +110,6 @@ public class SkillsTooltip extends TitleTooltip
 	public void setVirtualLevels(boolean virtualLevels)
 	{
 		this.virtualLevels = virtualLevels;
-	}
-
-	/** Optional progression colors for an embedded summary; popup levels stay white. */
-	void setLevelColor(IntFunction<Color> levelColor)
-	{
-		this.levelColor = levelColor;
 	}
 
 	public void setGotr(ClogResult clogResult, BufferedImage icon, int riftsClosed)
@@ -168,10 +143,12 @@ public class SkillsTooltip extends TitleTooltip
 		FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
 		int maxLevelWidth = Math.max(fm.stringWidth("99"), fm.stringWidth("--"));
 		int cellWidth = ICON_SIZE + ICON_TEXT_GAP + maxLevelWidth;
-		int gridWidth = cellWidth * COLS + COL_GAP * (COLS - 1);
+		int gridWidth = cellWidth * SkillGridOrder.COLUMNS
+			+ COL_GAP * (SkillGridOrder.COLUMNS - 1);
 		int totalWidth = Math.max(gridWidth, Math.max(measureGotrWidth(fm),
 			Math.max(statsRowsWidth(fm), fm.stringWidth(TOTAL_EXP_LABEL + totalExpValue()))));
-		int totalHeight = 2 * LINE_HEIGHT + GOTR_SECTION_GAP + ROW_HEIGHT * ROWS
+		int totalHeight = 2 * LINE_HEIGHT + GOTR_SECTION_GAP
+			+ ROW_HEIGHT * SkillGridOrder.ROWS
 			+ GOTR_SECTION_GAP + LINE_HEIGHT + LINE_HEIGHT;
 		return new Dimension(totalWidth, totalHeight);
 	}
@@ -200,7 +177,8 @@ public class SkillsTooltip extends TitleTooltip
 
 		int maxLevelWidth = Math.max(fm.stringWidth("99"), fm.stringWidth("--"));
 		int cellWidth = ICON_SIZE + ICON_TEXT_GAP + maxLevelWidth;
-		int gridWidth = cellWidth * COLS + COL_GAP * (COLS - 1);
+		int gridWidth = cellWidth * SkillGridOrder.COLUMNS
+			+ COL_GAP * (SkillGridOrder.COLUMNS - 1);
 		int gridOffsetX = inset + (w - 2 * inset - gridWidth) / 2;
 
 		paintedBodyStartY = startY;
@@ -211,11 +189,11 @@ public class SkillsTooltip extends TitleTooltip
 		paintStatsRows(g2, fm, inset, startY);
 		int gridTop = startY + 2 * LINE_HEIGHT + GOTR_SECTION_GAP;
 
-		for (int row = 0; row < ROWS; row++)
+		for (int row = 0; row < SkillGridOrder.ROWS; row++)
 		{
-			for (int col = 0; col < COLS; col++)
+			for (int col = 0; col < SkillGridOrder.COLUMNS; col++)
 			{
-				Skill skill = GRID[row][col];
+				Skill skill = SkillGridOrder.at(row, col);
 				int x = gridOffsetX + col * (cellWidth + COL_GAP);
 				int y = gridTop + row * ROW_HEIGHT;
 
@@ -234,14 +212,14 @@ public class SkillsTooltip extends TitleTooltip
 						result.getSkillXp(skillKey), virtualLevels)
 					: -1;
 				String text = level > 0 ? String.valueOf(level) : "--";
-				g2.setColor(level > 0 ? levelColor.apply(level) : UNRANKED_COLOR);
+				g2.setColor(level > 0 ? Color.WHITE : UNRANKED_COLOR);
 				int textX = x + ICON_SIZE + ICON_TEXT_GAP + (maxLevelWidth - fm.stringWidth(text)) / 2;
 				int textY = y + (ROW_HEIGHT + fm.getAscent() - fm.getDescent()) / 2;
 				g2.drawString(text, textX, textY);
 			}
 		}
 
-		int footerY = gridTop + ROW_HEIGHT * ROWS + GOTR_SECTION_GAP;
+		int footerY = gridTop + ROW_HEIGHT * SkillGridOrder.ROWS + GOTR_SECTION_GAP;
 		paintGotr(g2, fm, inset, w, footerY);
 		paintTotalExp(g2, fm, inset, footerY + LINE_HEIGHT);
 	}
@@ -360,7 +338,7 @@ public class SkillsTooltip extends TitleTooltip
 	/** The full-width band the rifts readout sits on, under the skill grid. */
 	private boolean gotrRowContains(int mouseX, int mouseY)
 	{
-		int y = gridTopOffset() + ROW_HEIGHT * ROWS + GOTR_SECTION_GAP;
+		int y = gridTopOffset() + ROW_HEIGHT * SkillGridOrder.ROWS + GOTR_SECTION_GAP;
 		return new Rectangle(getInset(), y, getWidth() - 2 * getInset(), LINE_HEIGHT)
 			.contains(mouseX, mouseY);
 	}
@@ -370,19 +348,20 @@ public class SkillsTooltip extends TitleTooltip
 		FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
 		int maxLevelWidth = Math.max(fm.stringWidth("99"), fm.stringWidth("--"));
 		int cellWidth = ICON_SIZE + ICON_TEXT_GAP + maxLevelWidth;
-		int gridWidth = cellWidth * COLS + COL_GAP * (COLS - 1);
+		int gridWidth = cellWidth * SkillGridOrder.COLUMNS
+			+ COL_GAP * (SkillGridOrder.COLUMNS - 1);
 		int gridOffsetX = getInset() + (getWidth() - 2 * getInset() - gridWidth) / 2;
 		int gridOffsetY = gridTopOffset();
 
-		for (int row = 0; row < ROWS; row++)
+		for (int row = 0; row < SkillGridOrder.ROWS; row++)
 		{
-			for (int col = 0; col < COLS; col++)
+			for (int col = 0; col < SkillGridOrder.COLUMNS; col++)
 			{
 				int x = gridOffsetX + col * (cellWidth + COL_GAP);
 				int y = gridOffsetY + row * ROW_HEIGHT;
 				if (new Rectangle(x, y, cellWidth, ROW_HEIGHT).contains(mouseX, mouseY))
 				{
-					return GRID[row][col];
+					return SkillGridOrder.at(row, col);
 				}
 			}
 		}

@@ -55,7 +55,7 @@ public class KillClogConfigStructureTest
 	public void skillDisplayLabelsNameAllThreePlacements()
 	{
 		assertEquals("Tooltip only", SkillDisplay.TOOLTIP.toString());
-		assertEquals("Fixed above boss grid", SkillDisplay.FIXED.toString());
-		assertEquals("Above clues in tray", SkillDisplay.TRAY.toString());
+		assertEquals("Cells above boss grid", SkillDisplay.FIXED.toString());
+		assertEquals("Cells above clues in tray", SkillDisplay.TRAY.toString());
 	}
 }

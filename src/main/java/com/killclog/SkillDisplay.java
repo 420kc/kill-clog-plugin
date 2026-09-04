@@ -8,8 +8,8 @@ import lombok.RequiredArgsConstructor;
 public enum SkillDisplay
 {
 	TOOLTIP("Tooltip only"),
-	FIXED("Fixed above boss grid"),
-	TRAY("Above clues in tray");
+	FIXED("Cells above boss grid"),
+	TRAY("Cells above clues in tray");
 
 	private final String label;
 
