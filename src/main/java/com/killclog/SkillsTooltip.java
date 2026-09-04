@@ -12,6 +12,7 @@ import java.awt.image.BufferedImage;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.IntFunction;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.game.SkillIconManager;
 import net.runelite.api.Skill;
@@ -72,6 +73,7 @@ public class SkillsTooltip extends TitleTooltip
 
 	private HiscoreResult result;
 	private boolean virtualLevels;
+	private IntFunction<Color> levelColor = level -> Color.WHITE;
 
 	// The body start the painter was actually handed. Hit-tests reuse it so
 	// hover regions and painted rows cannot disagree; header-height
@@ -127,6 +129,12 @@ public class SkillsTooltip extends TitleTooltip
 	public void setVirtualLevels(boolean virtualLevels)
 	{
 		this.virtualLevels = virtualLevels;
+	}
+
+	/** Optional progression colors for an embedded summary; popup levels stay white. */
+	void setLevelColor(IntFunction<Color> levelColor)
+	{
+		this.levelColor = levelColor;
 	}
 
 	public void setGotr(ClogResult clogResult, BufferedImage icon, int riftsClosed)
@@ -226,7 +234,7 @@ public class SkillsTooltip extends TitleTooltip
 						result.getSkillXp(skillKey), virtualLevels)
 					: -1;
 				String text = level > 0 ? String.valueOf(level) : "--";
-				g2.setColor(level > 0 ? Color.WHITE : UNRANKED_COLOR);
+				g2.setColor(level > 0 ? levelColor.apply(level) : UNRANKED_COLOR);
 				int textX = x + ICON_SIZE + ICON_TEXT_GAP + (maxLevelWidth - fm.stringWidth(text)) / 2;
 				int textY = y + (ROW_HEIGHT + fm.getAscent() - fm.getDescent()) / 2;
 				g2.drawString(text, textX, textY);

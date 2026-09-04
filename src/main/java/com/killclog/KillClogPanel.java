@@ -239,6 +239,8 @@ public class KillClogPanel extends PluginPanel
 	private JLabel combatCell;
 	private JLabel totalLvlCell;
 	private ActivitiesTray activitiesTray;
+	private JPanel traySkillsHost;
+	private JPanel fixedSkillsHost;
 	// Boss view: grid and list share one container; the hamburger switches them.
 	private BossListView bossListView;
 	private JPanel bossViewContainer;
@@ -360,6 +362,10 @@ public class KillClogPanel extends PluginPanel
 		add(activitiesTray.getSeparator(), c);
 
 		c.gridy++;
+		fixedSkillsHost = buildSkillHost();
+		add(fixedSkillsHost, c);
+
+		c.gridy++;
 		bossGridPanel = cells.buildBossGrid();
 		bossListView = new BossListView(tooltipController, cells,
 			this::fireFourTwentyEasterEgg, this::bossListAvailable);
@@ -399,6 +405,7 @@ public class KillClogPanel extends PluginPanel
 		highlighter = new ProgressHighlighter(
 			cells.getBossLabels(), cells.getActivityLabels(), cells.getClueTierLabels(),
 			PanelData.NAME_OVERRIDES, PanelData.CLUE_CATEGORIES, config);
+		refreshSkillDisplay();
 
 		// Cold start: warm the catalog so every cell previews the log's shape
 		// (dimmed grids, --/Y slot counts) before any player has been searched.
@@ -617,6 +624,9 @@ public class KillClogPanel extends PluginPanel
 		statsSep.setAlignmentX(0f);
 		grid.add(statsSep);
 
+		traySkillsHost = buildSkillHost();
+		grid.add(traySkillsHost);
+
 		// Clue row 1: [3rd Age] [Clue Summary] [Gilded]
 		JPanel row1 = new JPanel(new GridLayout(1, 3));
 		row1.setBackground(ColorScheme.DARKER_GRAY_COLOR);
@@ -653,6 +663,61 @@ public class KillClogPanel extends PluginPanel
 		grid.add(clueRow2);
 
 		return grid;
+	}
+
+	private static JPanel buildSkillHost()
+	{
+		JPanel host = new JPanel(new BorderLayout());
+		host.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		host.setAlignmentX(0f);
+		host.setVisible(false);
+		return host;
+	}
+
+	/**
+	 * Move one live skill summary between its configured panel locations. The
+	 * default popup path stays untouched; embedded solo summaries opt into the
+	 * progression colors while comparison summaries retain blue/red identity.
+	 */
+	private void refreshSkillDisplay()
+	{
+		if (totalLvlCell == null || traySkillsHost == null || fixedSkillsHost == null)
+		{
+			return;
+		}
+
+		tooltipController.hidePinnedTooltip();
+		traySkillsHost.removeAll();
+		fixedSkillsHost.removeAll();
+		traySkillsHost.setVisible(false);
+		fixedSkillsHost.setVisible(false);
+
+		HiscoreResult result = lookupSession.getHiscoreResult();
+		SkillDisplay display = config.skillDisplay();
+		boolean popup = display == SkillDisplay.TOOLTIP;
+		tooltipController.setTooltipText(totalLvlCell, popup && result != null ? " " : null);
+
+		if (!popup && result != null)
+		{
+			JToolTip skillView = activityTooltips.buildSkills(totalLvlCell);
+			if (skillView instanceof SkillsTooltip)
+			{
+				((SkillsTooltip) skillView).setLevelColor(
+					level -> SkillProgressColor.forLevel(level, config));
+			}
+			JPanel host = display == SkillDisplay.TRAY ? traySkillsHost : fixedSkillsHost;
+			host.add(skillView, BorderLayout.CENTER);
+			host.setVisible(true);
+		}
+
+		traySkillsHost.revalidate();
+		fixedSkillsHost.revalidate();
+		if (activitiesTray != null)
+		{
+			activitiesTray.getClip().revalidate();
+		}
+		revalidate();
+		repaint();
 	}
 
 	// Cell factory helpers.
@@ -821,6 +886,7 @@ public class KillClogPanel extends PluginPanel
 		cells.rebuildPrimaryTooltips(localRsn);
 		comparison.updateAllCells();
 		comparison.updateInfoBar();
+		refreshSkillDisplay();
 	}
 
 
@@ -1347,6 +1413,7 @@ public class KillClogPanel extends PluginPanel
 		resetRareCell(cells.getMasterRare(), "Master Treasure (Rare)");
 		cells.getRareTooltips().remove(PanelData.CLOG_THIRD_AGE);
 		cells.getRareTooltips().remove(PanelData.CLOG_GILDED);
+		refreshSkillDisplay();
 	}
 
 	/**
@@ -1505,6 +1572,7 @@ public class KillClogPanel extends PluginPanel
 			comparison.updateAllCells();
 			comparison.updateInfoBar();
 		}
+		refreshSkillDisplay();
 	}
 
 	// Public interface.
@@ -1617,6 +1685,20 @@ public class KillClogPanel extends PluginPanel
 				break;
 			case "tooltipMode":
 				tooltipController.onTooltipModeChanged();
+				break;
+			case "skillDisplay":
+				refreshSkillDisplay();
+				break;
+			case "virtualLevels":
+				HiscoreResult result = lookupSession.getHiscoreResult();
+				if (result != null)
+				{
+					int totalLevel = ClogHelper.displayTotalLevel(result,
+						ClogHelper.virtualTotalLevelEnabled(configManager));
+					totalLvlCell.setText(ClogHelper.pad(String.valueOf(totalLevel)));
+					comparison.updateInfoBar();
+				}
+				refreshSkillDisplay();
 				break;
 		}
 	}
@@ -1945,6 +2027,7 @@ public class KillClogPanel extends PluginPanel
 	{
 		comparison.updateInfoBar();
 		updateClogTotalsBar();
+		refreshSkillDisplay();
 	}
 
 	@Override
