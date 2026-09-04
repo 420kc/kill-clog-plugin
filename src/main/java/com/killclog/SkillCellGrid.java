@@ -12,14 +12,15 @@ import javax.annotation.Nullable;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JToolTip;
 import net.runelite.api.Skill;
 import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.util.ImageUtil;
 
 /**
- * A movable 3x8 grid of real skill cells. Each cell owns its tooltip anchor,
- * leaving room for skill-specific collection-log tooltips in future releases.
+ * A movable 3x8 grid of real skill cells with compact native stat tooltips.
+ * Skill-specific collection-log sections can grow below those stats later.
  */
 final class SkillCellGrid
 {
@@ -33,6 +34,11 @@ final class SkillCellGrid
 	private final Map<Skill, JLabel> labels = new LinkedHashMap<>();
 	private final TooltipController tooltipController;
 	private final KillClogConfig config;
+	@Nullable
+	private HiscoreResult primary;
+	@Nullable
+	private HiscoreResult compared;
+	private boolean virtualLevels;
 
 	SkillCellGrid(SkillIconManager skillIconManager,
 		TooltipController tooltipController, KillClogConfig config)
@@ -57,8 +63,15 @@ final class SkillCellGrid
 
 	private JPanel buildCell(Skill skill, SkillIconManager skillIconManager)
 	{
-		JLabel label = new JLabel();
-		Cells.styleLabel(label, skill.getName());
+		JLabel label = new JLabel()
+		{
+			@Override
+			public JToolTip createToolTip()
+			{
+				return buildTooltip(this, skill);
+			}
+		};
+		Cells.styleLabel(label, " ");
 		try
 		{
 			BufferedImage image = skillIconManager.getSkillImage(skill, true);
@@ -69,7 +82,7 @@ final class SkillCellGrid
 		}
 		catch (Exception ignored)
 		{
-			// A missing icon must not suppress the skill's level or tooltip.
+			// A missing icon must not suppress the skill's level.
 		}
 
 		JPanel cell = new JPanel();
@@ -94,6 +107,9 @@ final class SkillCellGrid
 	void render(HiscoreResult primary, @Nullable HiscoreResult compared,
 		boolean virtualLevels)
 	{
+		this.primary = primary;
+		this.compared = compared;
+		this.virtualLevels = virtualLevels;
 		for (Map.Entry<Skill, JLabel> entry : labels.entrySet())
 		{
 			Skill skill = entry.getKey();
@@ -103,28 +119,44 @@ final class SkillCellGrid
 			{
 				int comparedLevel = level(compared, skill, virtualLevels);
 				renderComparison(label, primaryLevel, comparedLevel);
-				tooltipController.setTooltipText(label,
-					comparisonTooltip(skill, primary, primaryLevel, compared, comparedLevel));
 			}
 			else
 			{
 				renderSolo(label, primaryLevel);
-				tooltipController.setTooltipText(label,
-					soloTooltip(skill, primary, primaryLevel));
 			}
 		}
 	}
 
 	void clear()
 	{
-		for (Map.Entry<Skill, JLabel> entry : labels.entrySet())
+		primary = null;
+		compared = null;
+		for (JLabel label : labels.values())
 		{
-			JLabel label = entry.getValue();
 			label.setText(ClogHelper.pad("--"));
 			label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 			label.setHorizontalAlignment(JLabel.LEADING);
-			tooltipController.setTooltipText(label, entry.getKey().getName());
 		}
+	}
+
+	private JToolTip buildTooltip(JLabel owner, Skill skill)
+	{
+		JToolTip tooltip;
+		if (compared != null)
+		{
+			CompareSkillTooltip comparison = new CompareSkillTooltip();
+			comparison.setData(skill, primary, compared, virtualLevels);
+			tooltip = comparison;
+		}
+		else
+		{
+			SkillTooltip solo = new SkillTooltip();
+			solo.setData(skill, primary, virtualLevels);
+			tooltip = solo;
+		}
+		tooltip.setComponent(owner);
+		tooltipController.keepTooltipOnHover(tooltip, (JPanel) owner.getParent());
+		return tooltip;
 	}
 
 	private void renderSolo(JLabel label, int level)
@@ -154,40 +186,9 @@ final class SkillCellGrid
 			result.getSkillXp(key), virtualLevels);
 	}
 
-	private static String soloTooltip(Skill skill, HiscoreResult result, int level)
-	{
-		String key = skill.getName().toLowerCase(Locale.ROOT);
-		return skill.getName()
-			+ "\nLevel: {w}" + levelText(level)
-			+ "\nXP: {w}" + scoreText(result.getSkillXp(key))
-			+ "\nRank: {w}" + rankText(result.getSkillRank(key));
-	}
-
-	private static String comparisonTooltip(Skill skill,
-		HiscoreResult primary, int primaryLevel,
-		HiscoreResult compared, int comparedLevel)
-	{
-		String key = skill.getName().toLowerCase(Locale.ROOT);
-		return skill.getName()
-			+ "\nBlue: {w}" + levelText(primaryLevel)
-			+ " (" + scoreText(primary.getSkillXp(key)) + " XP)"
-			+ "\nRed: {w}" + levelText(comparedLevel)
-			+ " (" + scoreText(compared.getSkillXp(key)) + " XP)";
-	}
-
 	private static String levelText(int level)
 	{
 		return level > 0 ? String.valueOf(level) : "--";
-	}
-
-	private static String scoreText(long score)
-	{
-		return score > 0 ? String.format(Locale.US, "%,d", score) : "--";
-	}
-
-	private static String rankText(int rank)
-	{
-		return rank > 0 ? "#" + String.format(Locale.US, "%,d", rank) : "--";
 	}
 
 	private static String colorHex(Color color)
