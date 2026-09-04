@@ -678,7 +678,7 @@ public class KillClogPanel extends PluginPanel
 
 	/**
 	 * Move one live skill-cell grid between its configured panel locations.
-	 * The default path keeps the complete summary in the Total tooltip.
+	 * The Total cell keeps the complete Skill Summary in every location mode.
 	 */
 	private void refreshSkillDisplay()
 	{
@@ -695,10 +695,10 @@ public class KillClogPanel extends PluginPanel
 
 		HiscoreResult result = lookupSession.getHiscoreResult();
 		SkillDisplay display = config.skillDisplay();
-		boolean popup = display == SkillDisplay.TOOLTIP;
-		tooltipController.setTooltipText(totalLvlCell, popup && result != null ? " " : null);
+		boolean summaryOnly = display == SkillDisplay.TOOLTIP;
+		tooltipController.setTooltipText(totalLvlCell, result != null ? " " : null);
 
-		if (!popup && result != null)
+		if (!summaryOnly && result != null)
 		{
 			HiscoreResult compared = comparison.isComparisonMode()
 				? comparison.getCompareHiscoreResult() : null;

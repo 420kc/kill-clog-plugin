@@ -66,10 +66,14 @@ public class KillClogConfigStructureTest
 	}
 
 	@Test
-	public void skillDisplayLabelsNameAllThreePlacements()
+	public void skillLocationKeepsEstablishedConfigKeyAndClearLabels() throws Exception
 	{
-		assertEquals("Tooltip only", SkillDisplay.TOOLTIP.toString());
-		assertEquals("Cells above boss grid", SkillDisplay.FIXED.toString());
-		assertEquals("Cells above clues in tray", SkillDisplay.TRAY.toString());
+		ConfigItem item = KillClogConfig.class.getDeclaredMethod("skillDisplay")
+			.getAnnotation(ConfigItem.class);
+		assertEquals("skillDisplay", item.keyName());
+		assertEquals("Skill Location", item.name());
+		assertEquals("Skill Summary only", SkillDisplay.TOOLTIP.toString());
+		assertEquals("Main Grid", SkillDisplay.FIXED.toString());
+		assertEquals("Activity Tray", SkillDisplay.TRAY.toString());
 	}
 }

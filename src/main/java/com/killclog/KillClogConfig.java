@@ -143,8 +143,8 @@ public interface KillClogConfig extends Config
 
 	@ConfigItem(
 		keyName = "skillDisplay",
-		name = "Skill Display",
-		description = "Keep the skill summary in the Total tooltip, or show individual skill cells above bosses or clues",
+		name = "Skill Location",
+		description = "Choose whether individual skill cells appear in the main grid or activity tray; the Total cell always keeps its Skill Summary",
 		section = skillsSection,
 		position = 0
 	)

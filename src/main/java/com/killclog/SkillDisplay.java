@@ -7,9 +7,9 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum SkillDisplay
 {
-	TOOLTIP("Tooltip only"),
-	FIXED("Cells above boss grid"),
-	TRAY("Cells above clues in tray");
+	TOOLTIP("Skill Summary only"),
+	FIXED("Main Grid"),
+	TRAY("Activity Tray");
 
 	private final String label;
 
