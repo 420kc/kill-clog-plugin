@@ -703,6 +703,9 @@ public class Cells
 			? lookupSession.getHiscoreResult().getRank(hiscoreName) : -1;
 		int kc = lookupSession.getHiscoreResult() != null
 			? lookupSession.getHiscoreResult().getKc(hiscoreName) : -1;
+		boolean isSolHeredit = ColosseumGlory.replacesKc(displayName);
+		String fallbackStatLabel = isSolHeredit ? null : "Kills: ";
+		int fallbackStatValue = isSolHeredit ? -1 : kc;
 		// Vanilla records pbs on the local profile only; for looked-up players
 		// the killclog.com sync is the one source that serves them, cached by
 		// the same fetch that raced the clog providers.
@@ -716,7 +719,7 @@ public class Cells
 		if (lookupSession.getClogResult() == null)
 		{
 			return selfNoCache ? null : tooltipDataBuilder.buildUnsyncedTooltipData(
-				displayName, category, rank, "Kills: ", kc, catalog);
+				displayName, category, rank, fallbackStatLabel, fallbackStatValue, catalog);
 		}
 
 		TooltipData data = tooltipDataBuilder.buildTooltipData(
@@ -724,7 +727,8 @@ public class Cells
 		if (data == null)
 		{
 			return tooltipDataBuilder.buildUnsyncedTooltipData(
-				displayName, category, rank, "Kills: ", kc, unsyncedCatalog.result());
+				displayName, category, rank, fallbackStatLabel, fallbackStatValue,
+				unsyncedCatalog.result());
 		}
 		tooltipDataBuilder.preloadItemImages(data);
 		return data;

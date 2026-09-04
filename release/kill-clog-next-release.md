@@ -9,3 +9,4 @@ Kill Clog 2.2.0
 * adds configurable skill summaries in the activity tray, above the boss grid, or in the Total tooltip
 * colors embedded skill levels by progression, with 99 marking completion
 * reorganizes settings into focused collapsible sections
+* shows Colosseum Glory on Sol Heredit tooltips instead of repeating its visible KC

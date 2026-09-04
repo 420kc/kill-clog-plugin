@@ -742,15 +742,21 @@ public class KillClogPanel extends PluginPanel
 		ImgTooltip tip = compact ? new ImgTooltip(gridCols, 15) : new ImgTooltip(gridCols);
 		tip.setComponent(owner);
 		tip.setWikiLinksEnabled(config.wikiItemLinks());
+		boolean isSolHeredit = ColosseumGlory.replacesKc(name);
+		int glory = ColosseumGlory.score(lookupSession.getHiscoreResult());
 
 		// Synced clog data with real item counts.
 		if (data != null && data.obtainedCount >= 0)
 		{
 			tip.setTitle(data.name);
 			tip.setObtained(data.obtainedCount, data.totalItems);
-			if (data.kc >= 0 && config.showTooltipKc())
+			boolean hasHeaderScore = isSolHeredit
+				? ColosseumGlory.isVisible(glory) : data.kc >= 0;
+			if (hasHeaderScore && config.showTooltipKc())
 			{
-				tip.setInfoLine("KC: ", ClogHelper.formatKc(data.kc), Color.WHITE);
+				tip.setInfoLine(isSolHeredit ? ColosseumGlory.LABEL : "KC: ",
+					isSolHeredit ? ColosseumGlory.format(glory) : ClogHelper.formatKc(data.kc),
+					Color.WHITE);
 				if (data.pb != null && config.showTooltipPb())
 				{
 					tip.setInfoLinePair("PB: ", data.pb, Color.WHITE);
@@ -787,6 +793,11 @@ public class KillClogPanel extends PluginPanel
 				// rebuild replaces this with the dimmed preview.
 				tip.setNotice("Loading catalog...");
 			}
+		}
+		if (isSolHeredit && ColosseumGlory.isVisible(glory)
+			&& config.showTooltipKc() && (data == null || data.obtainedCount < 0))
+		{
+			tip.setInfoLine(ColosseumGlory.LABEL, ColosseumGlory.format(glory), Color.WHITE);
 		}
 
 		tooltipController.keepTooltipOnHover(tip, parentCell);

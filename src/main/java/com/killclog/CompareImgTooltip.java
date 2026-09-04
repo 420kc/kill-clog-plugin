@@ -50,6 +50,9 @@ public class CompareImgTooltip extends TitleTooltip
 	private List<Integer> allItemIds;
 	private final TooltipItemHover itemHover = new TooltipItemHover(this);
 	private boolean showSpriteGrids = true;
+	private String comparisonStatLabel;
+	private int blueComparisonStat = -1;
+	private int redComparisonStat = -1;
 
 	@Override
 	protected Font getTitleFont()
@@ -102,6 +105,13 @@ public class CompareImgTooltip extends TitleTooltip
 	public void setShowSpriteGrids(boolean showSpriteGrids)
 	{
 		this.showSpriteGrids = showSpriteGrids;
+	}
+
+	public void setComparisonStat(String label, int blueValue, int redValue)
+	{
+		comparisonStatLabel = label;
+		blueComparisonStat = blueValue;
+		redComparisonStat = redValue;
 	}
 
 	public CompareImgTooltip()
@@ -167,6 +177,10 @@ public class CompareImgTooltip extends TitleTooltip
 	{
 		int h = 20; // title
 		h += LINE_HEIGHT; // obtained
+		if (showComparisonStat())
+		{
+			h += LINE_HEIGHT;
+		}
 		if (showRankLine())
 		{
 			h += LINE_HEIGHT;
@@ -200,6 +214,13 @@ public class CompareImgTooltip extends TitleTooltip
 		int activeLineWidth = paintDualLine(g2, fm, inset, lineY, "Obtained: ",
 			blueObtainedText(), redObtainedText());
 
+		if (showComparisonStat())
+		{
+			lineY += LINE_HEIGHT;
+			activeLineWidth = paintDualLine(g2, fm, inset, lineY, comparisonStatLabel,
+				blueComparisonStatText(), redComparisonStatText(), true);
+		}
+
 		if (showRankLine())
 		{
 			lineY += LINE_HEIGHT;
@@ -223,17 +244,23 @@ public class CompareImgTooltip extends TitleTooltip
 	private int paintDualLine(Graphics2D g2, FontMetrics fm, int inset, int lineY,
 		String label, String blueText, String redText)
 	{
+		return paintDualLine(g2, fm, inset, lineY, label, blueText, redText, false);
+	}
+
+	private int paintDualLine(Graphics2D g2, FontMetrics fm, int inset, int lineY,
+		String label, String blueText, String redText, boolean dimDashes)
+	{
 		g2.setColor(OSRS_ORANGE);
 		g2.drawString(label, inset, lineY);
 		int x = inset + fm.stringWidth(label);
 
-		g2.setColor(COMPARE_BLUE);
+		g2.setColor(dimDashes ? compareValueColor(blueText, COMPARE_BLUE) : COMPARE_BLUE);
 		g2.drawString(blueText, x, lineY);
 		x += fm.stringWidth(blueText);
 
 		x = paintChromeSeparator(g2, fm, x, lineY);
 
-		g2.setColor(COMPARE_RED);
+		g2.setColor(dimDashes ? compareValueColor(redText, COMPARE_RED) : COMPARE_RED);
 		g2.drawString(redText, x, lineY);
 		return x + fm.stringWidth(redText) - inset;
 	}
@@ -251,6 +278,22 @@ public class CompareImgTooltip extends TitleTooltip
 	/* package */ String redObtainedText()
 	{
 		return progressCountTextOrDash(red.obtained, red.total);
+	}
+
+	/* package */ boolean showComparisonStat()
+	{
+		return comparisonStatLabel != null
+			&& (blueComparisonStat > 0 || redComparisonStat > 0);
+	}
+
+	/* package */ String blueComparisonStatText()
+	{
+		return scoreText(blueComparisonStat);
+	}
+
+	/* package */ String redComparisonStatText()
+	{
+		return scoreText(redComparisonStat);
 	}
 
 	private boolean showRankLine()
@@ -282,6 +325,12 @@ public class CompareImgTooltip extends TitleTooltip
 		String obtLine = "Obtained: " + blueObtainedText()
 			+ CHROME_SEPARATOR + redObtainedText();
 		int headerLineW = sfm.stringWidth(obtLine);
+		if (showComparisonStat())
+		{
+			String statLine = comparisonStatLabel + blueComparisonStatText()
+				+ CHROME_SEPARATOR + redComparisonStatText();
+			headerLineW = Math.max(headerLineW, sfm.stringWidth(statLine));
+		}
 		if (showRankLine())
 		{
 			String rnkLine = "Rank: " + formatRank(blue.rank, blue.rankTracked)

@@ -208,8 +208,8 @@ public interface KillClogConfig extends Config
 		return true;
 	}
 
-	@ConfigItem(keyName = "showTooltipKc", name = "Show KC",
-		description = "Kill count line on boss tooltips",
+	@ConfigItem(keyName = "showTooltipKc", name = "Show KC / Glory",
+		description = "Kill count on boss tooltips; Sol Heredit shows Colosseum Glory instead",
 		section = tooltipsSection, position = 3)
 	default boolean showTooltipKc()
 	{

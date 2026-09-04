@@ -484,8 +484,8 @@ public class ComparisonController
 			&& !redData.allItemIds.isEmpty();
 		// The Tooltip Header rank setting applies in compare mode too - this
 		// builder serves every compare sprite tooltip, so one gate covers
-		// boss, clue tier, and rare variants. (KC/PB have no compare lines;
-		// if they ever gain them, their flags belong in this same gate.)
+		// boss, clue tier, and rare variants. Sol's Glory line replaces its
+		// otherwise-redundant KC and therefore follows the KC visibility flag.
 		boolean rankTracked = config.showTooltipRank()
 			&& ((blueData != null && blueData.rankTracked)
 			|| (redData != null && redData.rankTracked));
@@ -502,6 +502,12 @@ public class ComparisonController
 			rankTracked);
 		tip.setBlueHasData(blueHas);
 		tip.setRedHasData(redHas);
+		if (ColosseumGlory.replacesKc(name) && config.showTooltipKc())
+		{
+			tip.setComparisonStat(ColosseumGlory.LABEL,
+				ColosseumGlory.score(lookupSession.getHiscoreResult()),
+				ColosseumGlory.score(compareHiscoreResult));
+		}
 
 		List<Integer> allItemIds = blueHas ? blueData.allItemIds
 			: (redHas ? redData.allItemIds : null);
