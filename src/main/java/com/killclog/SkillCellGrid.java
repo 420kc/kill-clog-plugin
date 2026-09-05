@@ -6,9 +6,9 @@ import java.awt.GridLayout;
 import java.awt.image.BufferedImage;
 import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
@@ -37,6 +37,8 @@ final class SkillCellGrid
 	private final JPanel grid = new JPanel(
 		new GridLayout(SkillGridOrder.ROWS, SkillGridOrder.COLUMNS));
 	private final Map<Skill, JLabel> labels = new LinkedHashMap<>();
+	private final Supplier<String> blueName;
+	private final Supplier<String> redName;
 	private final TooltipController tooltipController;
 	private final KillClogConfig config;
 	@Nullable
@@ -55,8 +57,11 @@ final class SkillCellGrid
 
 	SkillCellGrid(SkillIconManager skillIconManager,
 		TooltipController tooltipController, KillClogConfig config,
-		@Nullable ItemManager itemManager)
+		@Nullable ItemManager itemManager,
+		Supplier<String> blueName, Supplier<String> redName)
 	{
+		this.blueName = blueName;
+		this.redName = redName;
 		this.tooltipController = tooltipController;
 		this.config = config;
 		this.itemManager = itemManager;
@@ -175,34 +180,31 @@ final class SkillCellGrid
 
 	private JToolTip buildTooltip(JLabel owner, Skill skill)
 	{
-		List<SkillClogSection> sections = SkillClogSection.forSkill(
-			skill, primaryClog, comparedClog, catalog);
-		JToolTip tooltip;
-		if (compared != null)
-		{
-			CompareSkillTooltip comparison = new CompareSkillTooltip();
-			comparison.setData(skill, primary, compared, virtualLevels, sections, itemManager);
-			if (skill == Skill.RUNECRAFT)
-			{
-				comparison.setRiftsClosed(riftsClosed(primary), riftsClosed(compared));
-			}
-			comparison.setWikiLinksEnabled(config.wikiItemLinks());
-			tooltip = comparison;
-		}
-		else
-		{
-			SkillTooltip solo = new SkillTooltip();
-			solo.setData(skill, primary, virtualLevels, sections, itemManager);
-			if (skill == Skill.RUNECRAFT)
-			{
-				solo.setRiftsClosed(riftsClosed(primary));
-			}
-			solo.setWikiLinksEnabled(config.wikiItemLinks());
-			tooltip = solo;
-		}
+		// In comparison mode each side is the ordinary solo tooltip, with the
+		// other player's clog unioned into its sections so both cards show the
+		// same slot census.
+		JToolTip tooltip = compared != null
+			? new SideBySideTooltip(
+				blueName.get(), soloTooltip(skill, primary, primaryClog, comparedClog),
+				redName.get(), soloTooltip(skill, compared, comparedClog, primaryClog))
+			: soloTooltip(skill, primary, primaryClog, comparedClog);
 		tooltip.setComponent(owner);
 		tooltipController.keepTooltipOnHover(tooltip, (JPanel) owner.getParent());
 		return tooltip;
+	}
+
+	private SkillTooltip soloTooltip(Skill skill, @Nullable HiscoreResult result,
+		@Nullable ClogResult clog, @Nullable ClogResult otherClog)
+	{
+		SkillTooltip solo = new SkillTooltip();
+		solo.setData(skill, result, virtualLevels,
+			SkillClogSection.forSkill(skill, clog, otherClog, catalog), itemManager);
+		if (skill == Skill.RUNECRAFT)
+		{
+			solo.setRiftsClosed(riftsClosed(result));
+		}
+		solo.setWikiLinksEnabled(config.wikiItemLinks());
+		return solo;
 	}
 
 	private static int riftsClosed(@Nullable HiscoreResult result)

@@ -178,12 +178,14 @@ public class SkillCellGridTest
 		assertTrue(attack.getText().contains("98"));
 		assertEquals(TitleTooltip.COMPARE_BLUE, attack.getForeground());
 
-		CompareSkillTooltip tooltip = (CompareSkillTooltip) attack.createToolTip();
-		assertEquals("99", tooltip.blueStats().levelText());
-		assertEquals("98", tooltip.redStats().levelText());
-		assertEquals("Maxed", tooltip.blueStats().xpToLevelText());
+		SideBySideTooltip tooltip = (SideBySideTooltip) attack.createToolTip();
+		SkillTooltip blueSide = (SkillTooltip) tooltip.sides()[0];
+		SkillTooltip redSide = (SkillTooltip) tooltip.sides()[1];
+		assertEquals("99", blueSide.stats().levelText());
+		assertEquals("98", redSide.stats().levelText());
+		assertEquals("Maxed", blueSide.stats().xpToLevelText());
 		assertEquals(format(Experience.getXpForLevel(99)
-			- Experience.getXpForLevel(98) - 10L), tooltip.redStats().xpToLevelText());
+			- Experience.getXpForLevel(98) - 10L), redSide.stats().xpToLevelText());
 	}
 
 	@Test
@@ -215,11 +217,13 @@ public class SkillCellGridTest
 		assertTrue(hoverItemY(runecraft, gotrName) > hoverItemY(withoutRifts, gotrName));
 
 		cells.render(blue, red, false, clog, clog, clog);
-		CompareSkillTooltip comparison = (CompareSkillTooltip) cells.labels()
+		SideBySideTooltip comparison = (SideBySideTooltip) cells.labels()
 			.get(Skill.RUNECRAFT).createToolTip();
-		assertTrue(comparison.showsRiftsClosed());
-		assertEquals("34", comparison.blueRiftsClosedText());
-		assertEquals("1,234", comparison.redRiftsClosedText());
+		SkillTooltip blueSide = (SkillTooltip) comparison.sides()[0];
+		SkillTooltip redSide = (SkillTooltip) comparison.sides()[1];
+		assertTrue(blueSide.showsRiftsClosed());
+		assertEquals("34", blueSide.riftsClosedText());
+		assertEquals("1,234", redSide.riftsClosedText());
 	}
 
 	@Test
@@ -303,11 +307,20 @@ public class SkillCellGridTest
 		paint(thieving);
 		assertEquals(TitleTooltip.getInset(), hoverItemX(thieving, pickpocketName));
 
-		CompareSkillTooltip comparison = new CompareSkillTooltip();
-		comparison.setData(Skill.RUNECRAFT, null, null, false,
+		SkillTooltip left = new SkillTooltip();
+		left.setData(Skill.RUNECRAFT, null, false,
 			SkillClogSection.forSkill(Skill.RUNECRAFT, clog, clog, clog), null);
-		paint(comparison);
-		assertEquals(TitleTooltip.getInset(), hoverItemX(comparison, petName));
+		SkillTooltip right = new SkillTooltip();
+		right.setData(Skill.RUNECRAFT, null, false,
+			SkillClogSection.forSkill(Skill.RUNECRAFT, clog, clog, clog), null);
+		SideBySideTooltip comparison = new SideBySideTooltip("Blue", left, "Red", right);
+		comparison.setSize(comparison.getPreferredSize());
+		comparison.doLayout();
+		// Each side is the ordinary solo tooltip, so the grid keeps its inset
+		// alignment inside its own card.
+		assertEquals(NativeTooltip.getInset(), left.getX());
+		paint(left);
+		assertEquals(TitleTooltip.getInset(), hoverItemX(left, petName));
 	}
 
 	@Test
@@ -343,7 +356,7 @@ public class SkillCellGridTest
 	private static SkillCellGrid grid(KillClogConfig config)
 	{
 		return new SkillCellGrid(new SkillIconManager(),
-			new TooltipController(config), config, null);
+			new TooltipController(config), config, null, () -> "Blue", () -> "Red");
 	}
 
 	private static void paint(TitleTooltip tooltip)

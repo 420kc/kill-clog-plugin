@@ -352,13 +352,19 @@ public class SkillClogSectionTest
 				soloSize.height <= 720);
 			paint(solo);
 
-			CompareSkillTooltip comparison = new CompareSkillTooltip();
-			comparison.setData(skill, null, null, false, sections, null);
+			SkillTooltip leftSide = new SkillTooltip();
+			leftSide.setData(skill, null, false, sections, null);
+			SkillTooltip rightSide = new SkillTooltip();
+			rightSide.setData(skill, null, false, sections, null);
+			SideBySideTooltip comparison = new SideBySideTooltip(
+				"Blue", leftSide, "Red", rightSide);
 			Dimension compareSize = comparison.getPreferredSize();
-			assertTrue(skill.getName() + " comparison tooltip is too wide",
-				compareSize.width <= 300);
+			assertTrue(skill.getName() + " comparison tooltip is too wide: " + compareSize,
+				compareSize.width <= soloSize.width * 2 + 50);
 			assertTrue(skill.getName() + " comparison tooltip is too tall: " + compareSize,
-				compareSize.height <= 760);
+				compareSize.height <= soloSize.height + 60);
+			comparison.setSize(compareSize);
+			comparison.doLayout();
 			paint(comparison);
 			assertMeasuredSectionHeightMatchesPaint(skill, sections);
 		}

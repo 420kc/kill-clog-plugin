@@ -303,7 +303,8 @@ public class KillClogPanel extends PluginPanel
 		this.comparison.setRenderTarget(this);
 		this.comparison.setVirtualTotalLevel(
 			() -> ClogHelper.virtualTotalLevelEnabled(configManager));
-		this.skillCellGrid = new SkillCellGrid(skillIconManager, tooltipController, config, itemManager);
+		this.skillCellGrid = new SkillCellGrid(skillIconManager, tooltipController, config, itemManager,
+			this::comparisonBlueName, comparison::getCompareRsn);
 		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, clogService, killclogService, new PersonalBests(configManager), config);
 		this.activityTooltips = new ActivitySummaryTooltips(
 			lookupSession, comparison, cells, tooltipController, itemManager,

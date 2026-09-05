@@ -196,11 +196,14 @@ class TooltipController
 
 	/**
 	 * Wire mouse + hierarchy listeners on a tooltip to clear the parent cell's hover
-	 * when the tooltip hides.
+	 * when the tooltip hides. Listeners attach to the tooltip and its children
+	 * (a side-by-side comparison tooltip hosts two live child tooltips), and the
+	 * exit handler checks position so crossing between the composite and a child
+	 * never reads as leaving the tooltip.
 	 */
 	void keepTooltipOnHover(JToolTip tip, JPanel parentCell)
 	{
-		tip.addMouseListener(new MouseAdapter()
+		attachToTipTree(tip, new MouseAdapter()
 		{
 			@Override
 			public void mouseEntered(MouseEvent e)
@@ -211,6 +214,10 @@ class TooltipController
 			@Override
 			public void mouseExited(MouseEvent e)
 			{
+				if (tip.getMousePosition(true) != null)
+				{
+					return;
+				}
 				clearCellHover(parentCell);
 			}
 		});
@@ -221,6 +228,15 @@ class TooltipController
 				clearCellHover(parentCell);
 			}
 		});
+	}
+
+	private static void attachToTipTree(JToolTip tip, MouseListener listener)
+	{
+		tip.addMouseListener(listener);
+		for (Component child : tip.getComponents())
+		{
+			child.addMouseListener(listener);
+		}
 	}
 
 	void pinTooltipFromPress(JComponent source, JPanel cell, MouseEvent event)
@@ -349,7 +365,7 @@ class TooltipController
 
 	void guardPinnedTooltip(JToolTip tip)
 	{
-		tip.addMouseListener(new MouseAdapter()
+		attachToTipTree(tip, new MouseAdapter()
 		{
 			@Override
 			public void mouseEntered(MouseEvent event)
