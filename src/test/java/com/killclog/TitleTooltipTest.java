@@ -210,22 +210,6 @@ public class TitleTooltipTest
 	}
 
 	@Test
-	public void comparePvmWidthGrowsWithLongValue()
-	{
-		// The value column is measured from real content (here the most-killed
-		// line), not a placeholder, so a long value widens the tooltip.
-		ComparePvmSummaryTooltip small = new ComparePvmSummaryTooltip();
-		small.setBlueData("Blue", 126, 999, 50, 60, "Rat", 5);
-		small.setRedData("Red", 126, 999, 50, 60, "Rat", 5);
-
-		ComparePvmSummaryTooltip large = new ComparePvmSummaryTooltip();
-		large.setBlueData("Blue", 126, 999, 50, 60, "Dagannoth Supreme Prime Rex", 1_234_567);
-		large.setRedData("Red", 126, 999, 50, 60, "Rat", 5);
-
-		assertTrue(small.getPreferredSize().width < large.getPreferredSize().width);
-	}
-
-	@Test
 	public void duplicateHoverCountIsExactUntilTenThousandThenRoundsToNearestK()
 	{
 		assertNull(TooltipItemHover.duplicateCountText(1));

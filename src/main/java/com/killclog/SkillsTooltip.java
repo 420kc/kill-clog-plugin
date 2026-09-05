@@ -35,7 +35,7 @@ public class SkillsTooltip extends TitleTooltip
 
 	// The reserved readout rows directly under the title: labels always
 	// present, exact values (1..200,000,000 xp) while a skill is hovered.
-	// Shared with CompareSkillSummaryTooltip, which paints one value per side.
+	// Sized from worst-case samples so hover never resizes the card.
 	static final String XP_ROW_LABEL = "XP: ";
 	static final String RANK_ROW_LABEL = "Rank: ";
 	static final String XP_ROW_SAMPLE = "4,800,000,000";
@@ -45,7 +45,7 @@ public class SkillsTooltip extends TitleTooltip
 
 	private static final Map<Skill, BufferedImage> icons = new LinkedHashMap<>();
 
-	/** Package-private accessor so CompareSkillSummaryTooltip can reuse loaded icons. */
+	/** Package-private accessor so other surfaces can reuse loaded icons. */
 	static Map<Skill, BufferedImage> getIcons()
 	{
 		return icons;

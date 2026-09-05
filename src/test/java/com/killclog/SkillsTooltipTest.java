@@ -16,10 +16,9 @@ public class SkillsTooltipTest
 		solo.setData(blue);
 		assertEquals("24,000,000", solo.displayedXpText());
 
-		CompareSkillSummaryTooltip comparison = new CompareSkillSummaryTooltip();
-		comparison.setData("Blue", blue, "Red", red);
-		assertEquals("24,000,000", comparison.blueDisplayedXpText());
-		assertEquals("4,800,000,000", comparison.redDisplayedXpText());
+		SkillsTooltip redSide = new SkillsTooltip();
+		redSide.setData(red);
+		assertEquals("4,800,000,000", redSide.displayedXpText());
 	}
 
 	@Test
