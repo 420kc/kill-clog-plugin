@@ -176,7 +176,10 @@ public class SkillCellGridTest
 		assertTrue(attack.getText().contains("#e05656"));
 		assertTrue(attack.getText().contains("99"));
 		assertTrue(attack.getText().contains("98"));
-		assertEquals(TitleTooltip.COMPARE_BLUE, attack.getForeground());
+		assertTrue(attack.getText().contains("99"));
+		// Routed through the shared compare-cell renderer: blue and red spans.
+		assertTrue(attack.getText().contains(ComparisonController.COMPARE_BLUE_HEX));
+		assertTrue(attack.getText().contains(ComparisonController.COMPARE_RED_HEX));
 
 		SideBySideTooltip tooltip = (SideBySideTooltip) attack.createToolTip();
 		SkillTooltip blueSide = (SkillTooltip) tooltip.sides()[0];
@@ -356,7 +359,14 @@ public class SkillCellGridTest
 	private static SkillCellGrid grid(KillClogConfig config)
 	{
 		return new SkillCellGrid(new SkillIconManager(),
-			new TooltipController(config), config, null, () -> "Blue", () -> "Red");
+			new TooltipController(config), bareComparison(config), config, null,
+			() -> "Blue", () -> "Red");
+	}
+
+	private static ComparisonController bareComparison(KillClogConfig config)
+	{
+		return new ComparisonController(null, null, null, null, null, null,
+			config, new TooltipController(config), null, null);
 	}
 
 	private static void paint(TitleTooltip tooltip)

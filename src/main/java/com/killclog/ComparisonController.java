@@ -10,6 +10,8 @@
 package com.killclog;
 
 import java.awt.Color;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -19,7 +21,9 @@ import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.JToolTip;
+import javax.swing.SwingUtilities;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
@@ -520,6 +524,52 @@ public class ComparisonController
 		renderCompareCell(label, false);
 		label.setForeground(null);
 		label.setHorizontalAlignment(JLabel.CENTER);
+	}
+
+	/** Drop a cell's comparison state without repainting; caller renders solo. */
+	public void clearCompareCell(JLabel label)
+	{
+		clearCompareCellState(label);
+	}
+
+	/**
+	 * Wire the hover listeners that swap a comparison cell's blue/red values to
+	 * each player's completion colors while hovered. Shared by every dual-value
+	 * cell: bosses, activities, and skills.
+	 */
+	public void installCompareCellHover(JPanel cell, JLabel label)
+	{
+		MouseAdapter compareHover = new MouseAdapter()
+		{
+			@Override
+			public void mouseEntered(MouseEvent e)
+			{
+				setCompareCellHover(label, true);
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e)
+			{
+				if (!isInsideCell(cell, e))
+				{
+					setCompareCellHover(label, false);
+				}
+			}
+		};
+
+		cell.addMouseListener(compareHover);
+		label.addMouseListener(compareHover);
+	}
+
+	private static boolean isInsideCell(JPanel cell, MouseEvent e)
+	{
+		Object source = e.getSource();
+		if (!(source instanceof java.awt.Component))
+		{
+			return false;
+		}
+		java.awt.Point p = SwingUtilities.convertPoint((java.awt.Component) source, e.getPoint(), cell);
+		return p.x >= 0 && p.y >= 0 && p.x < cell.getWidth() && p.y < cell.getHeight();
 	}
 
 	/** Apply or clear the hover-only completion colors for a comparison cell. */

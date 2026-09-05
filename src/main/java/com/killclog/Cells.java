@@ -9,11 +9,7 @@
 package com.killclog;
 
 import java.awt.Color;
-import java.awt.Component;
 import java.awt.GridLayout;
-import java.awt.Point;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -829,44 +825,8 @@ public class Cells
 		cell.setBorder(TooltipController.CELL_BORDER);
 		cell.add(label);
 		tooltipController.addCellHoverEffect(cell, label);
-		installCompareCellHover(cell, label);
+		comparison.installCompareCellHover(cell, label);
 		return cell;
-	}
-
-	private void installCompareCellHover(JPanel cell, JLabel label)
-	{
-		MouseAdapter compareHover = new MouseAdapter()
-		{
-			@Override
-			public void mouseEntered(MouseEvent e)
-			{
-				comparison.setCompareCellHover(label, true);
-			}
-
-			@Override
-			public void mouseExited(MouseEvent e)
-			{
-				if (!isInsideCell(cell, e))
-				{
-					comparison.setCompareCellHover(label, false);
-				}
-			}
-		};
-
-		cell.addMouseListener(compareHover);
-		label.addMouseListener(compareHover);
-	}
-
-	private static boolean isInsideCell(JPanel cell, MouseEvent e)
-	{
-		Object source = e.getSource();
-		if (!(source instanceof Component))
-		{
-			return false;
-		}
-
-		Point point = SwingUtilities.convertPoint((Component) source, e.getPoint(), cell);
-		return point.x >= 0 && point.y >= 0 && point.x < cell.getWidth() && point.y < cell.getHeight();
 	}
 
 	private void setItemIcon(JLabel label, int itemId)

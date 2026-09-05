@@ -27,8 +27,6 @@ import net.runelite.client.util.ImageUtil;
  */
 final class SkillCellGrid
 {
-	private static final String COMPARE_BLUE_HEX = colorHex(TitleTooltip.COMPARE_BLUE);
-	private static final String COMPARE_RED_HEX = colorHex(TitleTooltip.COMPARE_RED);
 	static final int SKILL_ICON_SIZE = 22;
 	private static final int SKILL_ICON_CANVAS_SIZE = 25;
 
@@ -36,6 +34,7 @@ final class SkillCellGrid
 	private final JPanel grid = new JPanel(
 		new GridLayout(SkillGridOrder.ROWS, SkillGridOrder.COLUMNS));
 	private final Map<Skill, JLabel> labels = new LinkedHashMap<>();
+	private final ComparisonController comparison;
 	private final Supplier<String> blueName;
 	private final Supplier<String> redName;
 	private final TooltipController tooltipController;
@@ -55,10 +54,11 @@ final class SkillCellGrid
 	private boolean virtualLevels;
 
 	SkillCellGrid(SkillIconManager skillIconManager,
-		TooltipController tooltipController, KillClogConfig config,
-		@Nullable ItemManager itemManager,
+		TooltipController tooltipController, ComparisonController comparison,
+		KillClogConfig config, @Nullable ItemManager itemManager,
 		Supplier<String> blueName, Supplier<String> redName)
 	{
+		this.comparison = comparison;
 		this.blueName = blueName;
 		this.redName = redName;
 		this.tooltipController = tooltipController;
@@ -110,6 +110,7 @@ final class SkillCellGrid
 		cell.setBorder(TooltipController.CELL_BORDER);
 		cell.add(label);
 		tooltipController.addCellHoverEffect(cell, label);
+		comparison.installCompareCellHover(cell, label);
 		labels.put(skill, label);
 		return cell;
 	}
@@ -148,7 +149,7 @@ final class SkillCellGrid
 			if (compared != null)
 			{
 				int comparedLevel = level(compared, skill, virtualLevels);
-				renderComparison(label, primaryLevel, comparedLevel);
+				renderComparison(label, skill, primaryLevel, comparedLevel);
 			}
 			else
 			{
@@ -214,6 +215,7 @@ final class SkillCellGrid
 
 	private void renderSolo(JLabel label, Skill skill, int level)
 	{
+		comparison.clearCompareCell(label);
 		int obtained = -1;
 		int total = -1;
 		if (config.skillColorMode() == SkillColorMode.CLOG_PROGRESSION)
@@ -230,17 +232,37 @@ final class SkillCellGrid
 		label.setHorizontalAlignment(JLabel.LEADING);
 	}
 
-	private static void renderComparison(JLabel label, int primaryLevel, int comparedLevel)
+	private void renderComparison(JLabel label, Skill skill, int primaryLevel, int comparedLevel)
 	{
-		// Same stacked shape as the boss cells: blue over red beside one icon,
-		// so comparison never widens the grid past the panel.
-		label.setText("<html><div style='text-align:center;'>"
-			+ "<span style='color:" + COMPARE_BLUE_HEX + ";'>"
-			+ levelText(primaryLevel) + "</span><br>"
-			+ "<span style='color:" + COMPARE_RED_HEX + ";'>"
-			+ levelText(comparedLevel) + "</span></div></html>");
-		label.setForeground(TitleTooltip.COMPARE_BLUE);
-		label.setHorizontalAlignment(JLabel.CENTER);
+		// Same machinery as the boss cells: shared blue-over-red state plus
+		// hover swapping to each player's configured skill colors.
+		comparison.setCompareCell(label, primaryLevel, comparedLevel,
+			hoverColor(skill, primaryLevel, primaryClog),
+			hoverColor(skill, comparedLevel, comparedClog));
+	}
+
+	/**
+	 * The hovered value color for one player's side, from the same skill color
+	 * configs solo cells use. Null (no swap) when that player has no clog,
+	 * matching the boss cells' synced-only hover rule.
+	 */
+	@Nullable
+	private Color hoverColor(Skill skill, int level, @Nullable ClogResult clog)
+	{
+		if (level <= 0 || clog == null)
+		{
+			return null;
+		}
+		int obtained = -1;
+		int total = -1;
+		if (config.skillColorMode() == SkillColorMode.CLOG_PROGRESSION)
+		{
+			SkillClogSection.Progress progress = SkillClogSection.combinedProgress(
+				SkillClogSection.forSkill(skill, clog, null, catalog), false);
+			obtained = progress.obtained();
+			total = progress.total();
+		}
+		return SkillLevelColor.forCell(level, true, obtained, total, config);
 	}
 
 	private static int level(HiscoreResult result, Skill skill, boolean virtualLevels)
@@ -253,11 +275,6 @@ final class SkillCellGrid
 	private static String levelText(int level)
 	{
 		return level > 0 ? String.valueOf(level) : "--";
-	}
-
-	private static String colorHex(Color color)
-	{
-		return String.format("#%06x", color.getRGB() & 0xFFFFFF);
 	}
 
 	JPanel component()
