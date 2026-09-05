@@ -189,31 +189,24 @@ public class TitleTooltipTest
 	}
 
 	@Test
-	public void compareClueWidthGrowsWithLargeScore()
+	public void sideBySideWidthTracksItsChildren()
 	{
-		CompareClueSummaryTooltip small = new CompareClueSummaryTooltip();
-		small.setBlueData("Blue", pvpHiscore("Clue Scrolls (all)", 42));
-		small.setRedData("Red", pvpHiscore("Clue Scrolls (all)", 42));
+		PvpSummaryTooltip blueSmall = new PvpSummaryTooltip();
+		blueSmall.setData(pvpHiscore("Soul Wars Zeal", 42), null);
+		PvpSummaryTooltip redSmall = new PvpSummaryTooltip();
+		redSmall.setData(pvpHiscore("Soul Wars Zeal", 42), null);
+		SideBySideTooltip small = new SideBySideTooltip("Blue", blueSmall, "Red", redSmall);
 
-		CompareClueSummaryTooltip large = new CompareClueSummaryTooltip();
-		large.setBlueData("Blue", pvpHiscore("Clue Scrolls (all)", 1_234_567));
-		large.setRedData("Red", pvpHiscore("Clue Scrolls (all)", 42));
+		PvpSummaryTooltip blueLarge = new PvpSummaryTooltip();
+		blueLarge.setData(pvpHiscore("Soul Wars Zeal", 1_234_567), null);
+		PvpSummaryTooltip redLarge = new PvpSummaryTooltip();
+		redLarge.setData(pvpHiscore("Soul Wars Zeal", 42), null);
+		SideBySideTooltip large = new SideBySideTooltip("Blue", blueLarge, "Red", redLarge);
 
 		assertTrue(small.getPreferredSize().width < large.getPreferredSize().width);
-	}
-
-	@Test
-	public void comparePvpWidthGrowsWithLongValue()
-	{
-		ComparePvpSummaryTooltip small = new ComparePvpSummaryTooltip();
-		small.setBlueData("Blue", pvpHiscore("Soul Wars Zeal", 42), null);
-		small.setRedData("Red", pvpHiscore("Soul Wars Zeal", 42), null);
-
-		ComparePvpSummaryTooltip large = new ComparePvpSummaryTooltip();
-		large.setBlueData("Blue", pvpHiscore("Soul Wars Zeal", 1_234_567), null);
-		large.setRedData("Red", pvpHiscore("Soul Wars Zeal", 42), null);
-
-		assertTrue(small.getPreferredSize().width < large.getPreferredSize().width);
+		// Doublewide by construction: both children plus card chrome.
+		assertTrue(small.getPreferredSize().width
+			> blueSmall.getPreferredSize().width + redSmall.getPreferredSize().width);
 	}
 
 	@Test

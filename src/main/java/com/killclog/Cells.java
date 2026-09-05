@@ -206,25 +206,12 @@ public class Cells
 				{
 					if (comparison.isComparisonMode() && comparison.getCompareHiscoreResult() != null)
 					{
-						CompareClueSummaryTooltip cmp = new CompareClueSummaryTooltip();
-						cmp.setComponent(this);
-						String blueName = lookupSession.getCurrentLookupRsn() != null
-							? lookupSession.getCurrentLookupRsn() : "--";
-						String redName = comparison.getCompareRsn() != null
-							? comparison.getCompareRsn() : "--";
-						cmp.setBlueData(blueName, lookupSession.getHiscoreResult());
-						cmp.setRedData(redName, comparison.getCompareHiscoreResult());
-						cmp.setIcons(clueIcons);
-						JPanel parentCell = (JPanel) this.getParent();
-						tooltipController.keepTooltipOnHover(cmp, parentCell);
-						return cmp;
+						return wrapSideBySide(this,
+							clueSummaryTooltip(this, lookupSession.getHiscoreResult()),
+							clueSummaryTooltip(this, comparison.getCompareHiscoreResult()));
 					}
-					ClueSummaryTooltip tip = new ClueSummaryTooltip();
-					tip.setComponent(this);
-					tip.setIcons(clueIcons);
-					tip.setData(lookupSession.getHiscoreResult(), config.showTooltipRank());
-					JPanel parentCell = (JPanel) this.getParent();
-					tooltipController.keepTooltipOnHover(tip, parentCell);
+					ClueSummaryTooltip tip = clueSummaryTooltip(this, lookupSession.getHiscoreResult());
+					tooltipController.keepTooltipOnHover(tip, (JPanel) this.getParent());
 					return tip;
 				}
 				return buildSingleSpriteTooltip(this, tooltipDataMap.get(activity), 5, activity.getName());
@@ -259,25 +246,15 @@ public class Cells
 			{
 				if (comparison.isComparisonMode() && comparison.getCompareHiscoreResult() != null)
 				{
-					ComparePvpSummaryTooltip cmp = new ComparePvpSummaryTooltip();
-					cmp.setComponent(this);
-					cmp.setIcons(pvpActivityIcons);
-					String blueName = lookupSession.getCurrentLookupRsn() != null
-						? lookupSession.getCurrentLookupRsn() : "--";
-					String redName = comparison.getCompareRsn() != null
-						? comparison.getCompareRsn() : "--";
-					cmp.setBlueData(blueName, lookupSession.getHiscoreResult(), lookupSession.getClogResult());
-					cmp.setRedData(redName, comparison.getCompareHiscoreResult(), comparison.getCompareClogResult());
-					JPanel parentCell = (JPanel) this.getParent();
-					tooltipController.keepTooltipOnHover(cmp, parentCell);
-					return cmp;
+					return wrapSideBySide(this,
+						pvpSummaryTooltip(this, lookupSession.getHiscoreResult(),
+							lookupSession.getClogResult()),
+						pvpSummaryTooltip(this, comparison.getCompareHiscoreResult(),
+							comparison.getCompareClogResult()));
 				}
-				PvpSummaryTooltip tip = new PvpSummaryTooltip();
-				tip.setComponent(this);
-				tip.setIcons(pvpActivityIcons);
-				tip.setData(lookupSession.getHiscoreResult(), lookupSession.getClogResult());
-				JPanel parentCell = (JPanel) this.getParent();
-				tooltipController.keepTooltipOnHover(tip, parentCell);
+				PvpSummaryTooltip tip = pvpSummaryTooltip(this,
+					lookupSession.getHiscoreResult(), lookupSession.getClogResult());
+				tooltipController.keepTooltipOnHover(tip, (JPanel) this.getParent());
 				return tip;
 			}
 		};
@@ -762,6 +739,25 @@ public class Cells
 		}
 		tooltipDataBuilder.preloadItemImages(data);
 		return data;
+	}
+
+	private ClueSummaryTooltip clueSummaryTooltip(JLabel owner, @Nullable HiscoreResult result)
+	{
+		ClueSummaryTooltip tip = new ClueSummaryTooltip();
+		tip.setComponent(owner);
+		tip.setIcons(clueIcons);
+		tip.setData(result, config.showTooltipRank());
+		return tip;
+	}
+
+	private PvpSummaryTooltip pvpSummaryTooltip(JLabel owner,
+		@Nullable HiscoreResult result, @Nullable ClogResult clog)
+	{
+		PvpSummaryTooltip tip = new PvpSummaryTooltip();
+		tip.setComponent(owner);
+		tip.setIcons(pvpActivityIcons);
+		tip.setData(result, clog);
+		return tip;
 	}
 
 	private JToolTip buildClueTierTooltip(JLabel owner, HiscoreSkill tier, String displayName, boolean compact)
