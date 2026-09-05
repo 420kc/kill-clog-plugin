@@ -704,8 +704,10 @@ public class Cells
 		int kc = lookupSession.getHiscoreResult() != null
 			? lookupSession.getHiscoreResult().getKc(hiscoreName) : -1;
 		boolean isSolHeredit = ColosseumGlory.replacesKc(displayName);
-		String fallbackStatLabel = isSolHeredit ? null : "Kills: ";
-		int fallbackStatValue = isSolHeredit ? -1 : kc;
+		int glory = ColosseumGlory.score(lookupSession.getHiscoreResult());
+		boolean showGlory = isSolHeredit && ColosseumGlory.isVisible(glory);
+		String fallbackStatLabel = showGlory ? null : "Kills: ";
+		int fallbackStatValue = showGlory ? -1 : kc;
 		// Vanilla records pbs on the local profile only; for looked-up players
 		// the killclog.com sync is the one source that serves them, cached by
 		// the same fetch that raced the clog providers.

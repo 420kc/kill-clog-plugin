@@ -22,13 +22,14 @@ import net.runelite.api.Player;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
 import net.runelite.client.util.Text;
 
 /**
- * Handler for the !kclog [boss] and !missing [boss] chat commands. Both replace the user's
- * chat line with collection log progress for the requested boss, plus inline sprite icons.
+ * Handler for the !kclog and !missing chat commands. Both replace the user's chat line with
+ * collection log progress for the requested boss or clue tier, plus inline sprite icons.
  * !kclog renders obtained items, !missing renders the inverse (still-unobtained items).
  * Reuses ClogService so the commands share the panel's cache.
  *
@@ -83,6 +84,19 @@ class KillClogChatCommand
 	}
 
 	private static final Map<String, String> ALIASES = buildAliases();
+	private static final Map<String, ClogTarget> CLUE_ALIASES = buildClueAliases();
+
+	private static final class ClogTarget
+	{
+		private final String label;
+		private final String categoryKey;
+
+		private ClogTarget(String label, String categoryKey)
+		{
+			this.label = label;
+			this.categoryKey = categoryKey;
+		}
+	}
 
 	/** Read-only view for canon-parity tests. */
 	/* package */ static Map<String, String> aliases()
@@ -220,6 +234,53 @@ class KillClogChatCommand
 		return m;
 	}
 
+	private static Map<String, ClogTarget> buildClueAliases()
+	{
+		Map<String, ClogTarget> m = new HashMap<>();
+		putClueAliases(m, "Beginner Treasure Trails",
+			PanelData.CLUE_CATEGORIES.get(HiscoreSkill.CLUE_SCROLL_BEGINNER),
+			"beginner treasure trails", "begs", "beg clues", "beginners",
+			"beginner clues", "beginner clue", "clues beg", "clues beginner",
+			"clue beg", "clue beginner");
+		putClueAliases(m, "Easy Treasure Trails",
+			PanelData.CLUE_CATEGORIES.get(HiscoreSkill.CLUE_SCROLL_EASY),
+			"easy treasure trails", "easy clues", "easy clue", "easies",
+			"clues easy", "clue easy");
+		putClueAliases(m, "Medium Treasure Trails",
+			PanelData.CLUE_CATEGORIES.get(HiscoreSkill.CLUE_SCROLL_MEDIUM),
+			"medium treasure trails", "meds", "med", "mediums", "medium clues",
+			"medium clue", "clues med", "clues medium", "clue med", "clue medium");
+		putClueAliases(m, "Hard Treasure Trails",
+			PanelData.CLUE_CATEGORIES.get(HiscoreSkill.CLUE_SCROLL_HARD),
+			"hard treasure trails", "hards", "hard clues", "hard clue",
+			"clue hard", "clues hard");
+		putClueAliases(m, "Elite Treasure Trails",
+			PanelData.CLUE_CATEGORIES.get(HiscoreSkill.CLUE_SCROLL_ELITE),
+			"elite treasure trails", "elites", "elite clues", "elite clue",
+			"clue elite", "clues elite");
+		putClueAliases(m, "Master Treasure Trails",
+			PanelData.CLUE_CATEGORIES.get(HiscoreSkill.CLUE_SCROLL_MASTER),
+			"master treasure trails", "masters", "master clues", "master clue",
+			"clue master", "clues master");
+		return m;
+	}
+
+	private static void putClueAliases(Map<String, ClogTarget> aliases, String label,
+		String categoryKey, String... names)
+	{
+		ClogTarget target = new ClogTarget(label, categoryKey);
+		for (String name : names)
+		{
+			aliases.put(normalize(name), target);
+		}
+	}
+
+	/* package */ static String resolveClueCategory(String query)
+	{
+		ClogTarget target = CLUE_ALIASES.get(normalize(query));
+		return target != null ? target.categoryKey : null;
+	}
+
 	/* package */ static String normalize(String s)
 	{
 		return s.toLowerCase().replace("'", "").replace(":", "")
@@ -302,7 +363,7 @@ class KillClogChatCommand
 		String delegated = toKillClogCommand(message);
 		if (delegated == null)
 		{
-			replaceText(chatMessage, "usage " + COMMAND_LOG_COMPATIBILITY + " <boss>");
+			replaceText(chatMessage, "usage " + COMMAND_LOG_COMPATIBILITY + " <collection-log page>");
 			return;
 		}
 
@@ -383,41 +444,49 @@ class KillClogChatCommand
 		String[] parts = message.split("\\s+", 2);
 		if (parts.length < 2 || parts[1].trim().isEmpty())
 		{
-			replaceText(chatMessage, "usage " + (missingMode ? COMMAND_MISSING : COMMAND) + " <boss>");
+			replaceText(chatMessage, "usage " + (missingMode ? COMMAND_MISSING : COMMAND)
+				+ " <boss or clue tier>");
 			return;
 		}
 
 		String query = normalize(parts[1]);
-		String resolved = ALIASES.get(query);
-		if (resolved == null)
+		ClogTarget clueTarget = CLUE_ALIASES.get(query);
+		String resolvedBoss = null;
+		if (clueTarget == null)
 		{
-			// Loose substring fallback so partial typing still works ("abyssal" matches "Abyssal Sire").
-			for (Map.Entry<String, String> e : ALIASES.entrySet())
+			resolvedBoss = ALIASES.get(query);
+			if (resolvedBoss == null)
 			{
-				String key = e.getKey();
-				if (key.contains(query) || query.contains(key))
+				// Loose substring fallback so partial typing still works ("abyssal" matches "Abyssal Sire").
+				for (Map.Entry<String, String> e : ALIASES.entrySet())
 				{
-					resolved = e.getValue();
-					break;
+					String key = e.getKey();
+					if (key.contains(query) || query.contains(key))
+					{
+						resolvedBoss = e.getValue();
+						break;
+					}
 				}
 			}
 		}
-		if (resolved == null)
+		if (clueTarget == null && resolvedBoss == null)
 		{
-			replaceText(chatMessage, "boss not recognized");
+			replaceText(chatMessage, "collection log page not recognized");
 			return;
 		}
 
 		String rsn = resolveTargetRsn(chatMessage);
-		final String boss = resolved;
-		ClogResult cl = lookup(chatMessage, rsn, boss);
+		final String label = clueTarget != null ? clueTarget.label : resolvedBoss;
+		final String categoryKey = clueTarget != null
+			? clueTarget.categoryKey : ClogService.bossToCategory(resolvedBoss);
+		ClogResult cl = lookup(chatMessage, rsn, label);
 		if (cl == null)
 		{
 			return;
 		}
 
-		String categoryKey = ClogService.bossToCategory(boss);
-		final List<ClogResult.ClogItem> obtainedList = cl.getObtainedItems().getOrDefault(categoryKey, Collections.emptyList());
+		final List<ClogResult.ClogItem> obtainedList = cl.getObtainedItems()
+			.getOrDefault(categoryKey, Collections.emptyList());
 		ClogIndex index = clogIndex;
 		final List<Integer> totalList = totalsWithCatalogFallback(
 			cl.getCategoryItems().getOrDefault(categoryKey, Collections.emptyList()),
@@ -426,11 +495,11 @@ class KillClogChatCommand
 
 		if (totalList.isEmpty())
 		{
-			replaceText(chatMessage, boss + ": no clog items found");
+			replaceText(chatMessage, label + ": no clog items found");
 			return;
 		}
 
-		int bossKc = lookupBossKc(rsn, boss);
+		int bossKc = clueTarget == null ? lookupBossKc(rsn, resolvedBoss) : -1;
 		final List<Integer> renderIds;
 		final Map<Integer, Integer> renderQuantities;
 		final String header;
@@ -451,12 +520,12 @@ class KillClogChatCommand
 			}
 			if (missing.isEmpty())
 			{
-				replaceText(chatMessage, buildCompleteHeader(boss, bossKc));
+				replaceText(chatMessage, buildCompleteHeader(label, bossKc));
 				return;
 			}
 			renderIds = missing;
 			renderQuantities = Collections.emptyMap();
-			header = buildCommandHeader(boss, bossKc, missing.size(), totalList.size(), true);
+			header = buildCommandHeader(label, bossKc, missing.size(), totalList.size(), true);
 		}
 		else
 		{
@@ -470,7 +539,7 @@ class KillClogChatCommand
 					renderQuantities.put(item.getId(), item.getCount());
 				}
 			}
-			header = buildCommandHeader(boss, bossKc, obtainedList.size(), totalList.size(), false);
+			header = buildCommandHeader(label, bossKc, obtainedList.size(), totalList.size(), false);
 		}
 
 		// Icon registration + chat replacement both need the client thread.

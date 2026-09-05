@@ -6,6 +6,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import javax.swing.JComponent;
 
 final class TooltipItemHover
@@ -15,6 +16,7 @@ final class TooltipItemHover
 	private int hoveredItemId = -1;
 	private int hoveredSection = -1;
 	private boolean hoveredObtained;
+	private int hoveredItemCount;
 	private String hoveredItemName;
 	private boolean wikiLinksEnabled = true;
 
@@ -42,6 +44,7 @@ final class TooltipItemHover
 			hoveredItemName = null;
 			hoveredSection = -1;
 			hoveredObtained = false;
+			hoveredItemCount = 0;
 			component.repaint();
 		}
 	}
@@ -54,6 +57,25 @@ final class TooltipItemHover
 	boolean hoveredItemObtained()
 	{
 		return hoveredItemId > 0 && hoveredObtained;
+	}
+
+	String hoveredDuplicateCountText()
+	{
+		return hoveredItemObtained() ? duplicateCountText(hoveredItemCount) : null;
+	}
+
+	static String duplicateCountText(int count)
+	{
+		if (count <= 1)
+		{
+			return null;
+		}
+		if (count >= 10_000)
+		{
+			long thousands = Math.round(count / 1000.0);
+			return "x" + String.format(Locale.US, "%,d", thousands) + "k";
+		}
+		return "x" + String.format(Locale.US, "%,d", count);
 	}
 
 	private void install()
@@ -93,14 +115,18 @@ final class TooltipItemHover
 		HitBox hitBox = findHitBox(mx, my);
 		int nextId = hitBox != null ? hitBox.itemId : -1;
 		int nextSection = hitBox != null ? hitBox.section : -1;
-		if (nextId == hoveredItemId && nextSection == hoveredSection)
+		boolean nextObtained = hitBox != null && hitBox.obtained;
+		int nextCount = hitBox != null ? hitBox.count : 0;
+		if (nextId == hoveredItemId && nextSection == hoveredSection
+			&& nextObtained == hoveredObtained && nextCount == hoveredItemCount)
 		{
 			return;
 		}
 		hoveredItemId = nextId;
 		hoveredItemName = hitBox != null ? hitBox.itemName : null;
 		hoveredSection = nextSection;
-		hoveredObtained = hitBox != null && hitBox.obtained;
+		hoveredObtained = nextObtained;
+		hoveredItemCount = nextCount;
 		component.repaint();
 	}
 
@@ -129,29 +155,42 @@ final class TooltipItemHover
 		private final String itemName;
 		private final Rectangle bounds;
 		private final boolean obtained;
+		private final int count;
 
 		HitBox(int itemId, String itemName, Rectangle bounds)
 		{
-			this(0, itemId, itemName, bounds, false);
+			this(0, itemId, itemName, bounds, false, 1);
 		}
 
 		HitBox(int section, int itemId, String itemName, Rectangle bounds)
 		{
-			this(section, itemId, itemName, bounds, false);
+			this(section, itemId, itemName, bounds, false, 1);
 		}
 
 		HitBox(int itemId, String itemName, Rectangle bounds, boolean obtained)
 		{
-			this(0, itemId, itemName, bounds, obtained);
+			this(0, itemId, itemName, bounds, obtained, 1);
 		}
 
 		HitBox(int section, int itemId, String itemName, Rectangle bounds, boolean obtained)
+		{
+			this(section, itemId, itemName, bounds, obtained, 1);
+		}
+
+		HitBox(int itemId, String itemName, Rectangle bounds, boolean obtained, int count)
+		{
+			this(0, itemId, itemName, bounds, obtained, count);
+		}
+
+		HitBox(int section, int itemId, String itemName, Rectangle bounds,
+			boolean obtained, int count)
 		{
 			this.section = section;
 			this.itemId = itemId;
 			this.itemName = itemName;
 			this.bounds = bounds;
 			this.obtained = obtained;
+			this.count = Math.max(count, 0);
 		}
 	}
 }

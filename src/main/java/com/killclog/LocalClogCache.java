@@ -1106,7 +1106,7 @@ public class LocalClogCache
 	}
 
 	/**
-	 * First-party bulk-capture landing (the chalice walk). Marks every
+	 * First-party bulk-capture landing (the Collection Log Search walk). Marks every
 	 * obtained item as client-observed and fires the sync trigger - the
 	 * largest payload of all must schedule a push like any other capture.
 	 */

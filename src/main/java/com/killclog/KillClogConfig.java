@@ -12,7 +12,7 @@ public interface KillClogConfig extends Config
 	@ConfigSection(
 		name = "Lookup",
 		description = "Automatic lookup and player-menu controls",
-		position = 0,
+		position = 2,
 		closedByDefault = true
 	)
 	String lookupSection = "lookup";
@@ -30,11 +30,23 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "enableComparison",
+		name = "Enable Comparison",
+		description = "Show the comparison control beside the player search",
+		section = lookupSection,
+		position = 1
+	)
+	default boolean enableComparison()
+	{
+		return true;
+	}
+
+	@ConfigItem(
 		keyName = "playerMenuLookup",
 		name = "Player Menu Lookup",
 		description = "Add a lookup option to right-click menus",
 		section = lookupSection,
-		position = 1
+		position = 2
 	)
 	default boolean playerMenuLookup()
 	{
@@ -46,7 +58,7 @@ public interface KillClogConfig extends Config
 		name = "Menu Label",
 		description = "Text shown on the right-click lookup option",
 		section = lookupSection,
-		position = 2
+		position = 3
 	)
 	default MenuLabel menuLabel()
 	{
@@ -54,9 +66,9 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigSection(
-		name = "Menu Locations",
+		name = "Menu location",
 		description = "Which right-click menus show the lookup option",
-		position = 1,
+		position = 3,
 		closedByDefault = true
 	)
 	String menuLocationsSection = "menuLocations";
@@ -136,7 +148,7 @@ public interface KillClogConfig extends Config
 	@ConfigSection(
 		name = "Skills",
 		description = "Skill placement, virtual levels, and cell colors",
-		position = 2,
+		position = 4,
 		closedByDefault = true
 	)
 	String skillsSection = "skills";
@@ -150,7 +162,7 @@ public interface KillClogConfig extends Config
 	)
 	default SkillDisplay skillDisplay()
 	{
-		return SkillDisplay.TOOLTIP;
+		return SkillDisplay.FIXED;
 	}
 
 	@ConfigItem(
@@ -178,21 +190,21 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "skillCompletionColor",
-		name = "Use Completion Color at 99+",
-		description = "Use the Progress Highlighter's Completed color for skill cells at level 99 or higher",
+		keyName = "skillColorMode",
+		name = "Skill Color Mode",
+		description = "Use Skill Color, mark level 99+, or show overall Skill Clog progress",
 		section = skillsSection,
 		position = 3
 	)
-	default boolean useSkillCompletionColor()
+	default SkillColorMode skillColorMode()
 	{
-		return true;
+		return SkillColorMode.LEVEL_COMPLETION;
 	}
 
 	@ConfigSection(
 		name = "Tooltips",
 		description = "Tooltip interaction, links, and stat lines",
-		position = 3,
+		position = 1,
 		closedByDefault = true
 	)
 	String tooltipsSection = "tooltips";
@@ -260,7 +272,7 @@ public interface KillClogConfig extends Config
 	@ConfigSection(
 		name = "Chat",
 		description = "Kill Clog messages and emoji rendering",
-		position = 4,
+		position = 5,
 		closedByDefault = true
 	)
 	String chatSection = "chat";
@@ -281,7 +293,7 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "showChatEmojis",
 		name = "Show emojis in chat",
-		description = "Render :clog:, :rune:, :dragon: and friends as item icons in chat messages",
+		description = "Show Kill Clog's custom emojis in chat: :killclog:, :rune:, :dragon:, :gilded:, :clog:, and :green:",
 		section = chatSection,
 		position = 1
 	)
@@ -293,7 +305,7 @@ public interface KillClogConfig extends Config
 	@ConfigSection(
 		name = "Progress Highlighter",
 		description = "Color collection-log progress",
-		position = 5,
+		position = 6,
 		closedByDefault = true
 	)
 	String completionistSection = "completionist";
@@ -396,7 +408,7 @@ public interface KillClogConfig extends Config
 	@ConfigSection(
 		name = "killclog.com",
 		description = "First-party sync with your killclog.com profile",
-		position = 6,
+		position = 0,
 		closedByDefault = true
 	)
 	String killclogSection = "killclog";

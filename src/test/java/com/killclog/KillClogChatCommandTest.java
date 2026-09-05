@@ -77,12 +77,36 @@ public class KillClogChatCommandTest
 	public void testLogCompatibilityDelegatesToKillClogCommands()
 	{
 		assertEquals("!kclog Vorkath", KillClogChatCommand.toKillClogCommand("!log Vorkath"));
+		assertEquals("!kclog medium clues",
+			KillClogChatCommand.toKillClogCommand("!log medium clues"));
 		assertEquals("!missing Vorkath",
 			KillClogChatCommand.toKillClogCommand("!log missing Vorkath"));
+		assertEquals("!missing medium clues",
+			KillClogChatCommand.toKillClogCommand("!log missing medium clues"));
 		assertEquals("!missing Vorkath",
 			KillClogChatCommand.toKillClogCommand("!LOG MiSsInG   Vorkath"));
 		assertNull(KillClogChatCommand.toKillClogCommand("!log"));
 		assertNull(KillClogChatCommand.toKillClogCommand("!log missing"));
+	}
+
+	@Test
+	public void testClueAliasesMatchRuneProfileGrammar()
+	{
+		assertEquals("beginner_treasure_trails",
+			KillClogChatCommand.resolveClueCategory("beginner clues"));
+		assertEquals("easy_treasure_trails",
+			KillClogChatCommand.resolveClueCategory("clues easy"));
+		assertEquals("medium_treasure_trails",
+			KillClogChatCommand.resolveClueCategory("medium clues"));
+		assertEquals("medium_treasure_trails",
+			KillClogChatCommand.resolveClueCategory("clues medium"));
+		assertEquals("hard_treasure_trails",
+			KillClogChatCommand.resolveClueCategory("hards"));
+		assertEquals("elite_treasure_trails",
+			KillClogChatCommand.resolveClueCategory("elite treasure trails"));
+		assertEquals("master_treasure_trails",
+			KillClogChatCommand.resolveClueCategory("master clue"));
+		assertNull(KillClogChatCommand.resolveClueCategory("medium"));
 	}
 
 	@Test

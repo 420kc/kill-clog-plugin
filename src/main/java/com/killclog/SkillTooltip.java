@@ -4,10 +4,14 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Locale;
 import javax.annotation.Nullable;
 import net.runelite.api.Experience;
 import net.runelite.api.Skill;
+import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
 
 /** Compact Kill Clog-native stat tooltip for one skill cell. */
@@ -17,14 +21,58 @@ public class SkillTooltip extends TitleTooltip
 	static final String XP_LABEL = "XP: ";
 	static final String RANK_LABEL = "Rank: ";
 	static final String XP_TO_LEVEL_LABEL = "XP to Level: ";
+	static final String RIFTS_CLOSED_LABEL = "Rifts Closed: ";
 	private static final Color UNRANKED_COLOR = new Color(128, 128, 128);
+	private static final int SECTION_SEPARATOR_PAD = 4;
 
 	private Stats stats = Stats.empty();
+	private List<SkillClogSection> sections = Collections.emptyList();
+	private boolean showRiftsClosed;
+	private int riftsClosed = -1;
+	private final SkillClogSectionRenderer sectionRenderer = new SkillClogSectionRenderer(this);
+	private final TooltipItemHover itemHover = new TooltipItemHover(this);
 
 	public void setData(Skill skill, @Nullable HiscoreResult result, boolean virtualLevels)
 	{
+		setData(skill, result, virtualLevels, Collections.emptyList(), null);
+	}
+
+	public void setData(Skill skill, @Nullable HiscoreResult result, boolean virtualLevels,
+		List<SkillClogSection> sections, @Nullable ItemManager itemManager)
+	{
 		setTitle(skill.getName());
+		clearTitleSuffix();
+		clearSubtitle();
 		stats = Stats.from(skill, result, virtualLevels);
+		this.sections = sections != null ? sections : Collections.emptyList();
+		showRiftsClosed = false;
+		riftsClosed = -1;
+		sectionRenderer.setSections(this.sections, itemManager);
+		if (!this.sections.isEmpty())
+		{
+			SkillClogSection.Progress progress = SkillClogSection.combinedProgress(
+				this.sections, false);
+			String progressText = progress.obtained() >= 0
+				? progressCountText(progress.obtained(), progress.total())
+				: progressPlaceholderText(progress.total());
+			setTitleSuffix(" (" + progressText + ")",
+				progress.obtained() >= 0
+					? completionColor(progress.obtained(), progress.total()) : MUTED_GRAY);
+		}
+	}
+
+	public void setRiftsClosed(int riftsClosed)
+	{
+		showRiftsClosed = true;
+		this.riftsClosed = riftsClosed;
+		sectionRenderer.setRiftsClosed(riftsClosed, -1);
+	}
+
+	@Override
+	public void setWikiLinksEnabled(boolean wikiLinksEnabled)
+	{
+		super.setWikiLinksEnabled(wikiLinksEnabled);
+		itemHover.setWikiLinksEnabled(wikiLinksEnabled);
 	}
 
 	@Override
@@ -36,7 +84,15 @@ public class SkillTooltip extends TitleTooltip
 		width = Math.max(width, rowWidth(fm, XP_LABEL, stats.xpText()));
 		width = Math.max(width, rowWidth(fm, RANK_LABEL, stats.rankText()));
 		width = Math.max(width, rowWidth(fm, XP_TO_LEVEL_LABEL, stats.xpToLevelText()));
-		return new Dimension(width, LINE_HEIGHT * 4);
+		int height = LINE_HEIGHT * 4;
+		if (!sections.isEmpty())
+		{
+			height += separatorHeight(SECTION_SEPARATOR_PAD);
+			Dimension sectionSize = sectionRenderer.soloSize(Math.max(width, availableWidth));
+			width = Math.max(width, sectionSize.width);
+			height += sectionSize.height;
+		}
+		return new Dimension(width, height);
 	}
 
 	@Override
@@ -55,11 +111,66 @@ public class SkillTooltip extends TitleTooltip
 		y += LINE_HEIGHT;
 		drawLabelValue(g2, fm, x, y, XP_TO_LEVEL_LABEL,
 			stats.xpToLevelText(), stats.xpToLevelColor());
+
+		List<TooltipItemHover.HitBox> hitBoxes = new ArrayList<>();
+		if (!sections.isEmpty())
+		{
+			int sectionY = paintSeparator(g2, w,
+				startY + LINE_HEIGHT * 4, SECTION_SEPARATOR_PAD);
+			sectionRenderer.paintSolo(g2, w, sectionY, hitBoxes);
+		}
+		itemHover.setHitBoxes(hitBoxes);
 	}
 
 	Stats stats()
 	{
 		return stats;
+	}
+
+	List<SkillClogSection> sections()
+	{
+		return sections;
+	}
+
+	boolean showsRiftsClosed()
+	{
+		return showRiftsClosed;
+	}
+
+	String riftsClosedText()
+	{
+		return riftsClosed >= 0 ? String.format(Locale.US, "%,d", riftsClosed) : "--";
+	}
+
+	@Override
+	protected boolean hasHeaderHoverLine()
+	{
+		return !sections.isEmpty();
+	}
+
+	@Override
+	protected String getHeaderHoverLineText()
+	{
+		return itemHover.hoveredItemName();
+	}
+
+	@Override
+	protected Color getHeaderHoverLineColor()
+	{
+		return itemHover.hoveredItemObtained() ? CLOG_GREEN : CLOG_RED;
+	}
+
+	@Override
+	protected String getHeaderHoverLineRightText()
+	{
+		return sectionRenderer.usesCompactSprites()
+			? itemHover.hoveredDuplicateCountText() : null;
+	}
+
+	@Override
+	protected Color getHeaderHoverLineRightColor()
+	{
+		return CLOG_YELLOW;
 	}
 
 	private static int rowWidth(FontMetrics fm, String label, String value)

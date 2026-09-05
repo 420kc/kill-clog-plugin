@@ -9,6 +9,13 @@ import static org.junit.Assert.*;
 public class PvmSummaryTooltipTest
 {
 	@Test
+	public void megaRareHoverNamesUseFullDisplayNames()
+	{
+		assertArrayEquals(new String[]{"Twisted Bow", "Scythe of Vitur", "Tumeken's Shadow"},
+			PanelData.MEGARARE_ITEM_NAMES);
+	}
+
+	@Test
 	public void testSlayerXpAlwaysReadsFullAmount()
 	{
 		// Solo PvM summary: exact digits at every magnitude, never rounded.
@@ -38,6 +45,16 @@ public class PvmSummaryTooltipTest
 		assertTrue(ColosseumGlory.isVisible(1));
 		assertEquals("--", ColosseumGlory.format(0));
 		assertEquals(-1, ColosseumGlory.score(null));
+	}
+
+	@Test
+	public void absentGloryFallsBackToKnownSolKc()
+	{
+		assertTrue(ColosseumGlory.hasHeaderScore(0, 17));
+		assertEquals("KC: ", ColosseumGlory.headerLabel(0));
+		assertEquals("17", ColosseumGlory.headerValue(0, 17));
+		assertEquals(ColosseumGlory.LABEL, ColosseumGlory.headerLabel(33_333));
+		assertEquals("33,333", ColosseumGlory.headerValue(33_333, 17));
 	}
 
 	@Test

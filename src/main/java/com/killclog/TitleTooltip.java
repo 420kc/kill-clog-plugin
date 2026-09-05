@@ -55,6 +55,8 @@ public abstract class TitleTooltip extends NativeTooltip
 	private static final Color QTY_SHADOW = new Color(0, 0, 0);
 
 	private String title;
+	private String titleSuffix;
+	private Color titleSuffixColor;
 	private String subtitleLabel;
 	private String subtitleValue;
 	private Color subtitleColor;
@@ -79,6 +81,29 @@ public abstract class TitleTooltip extends NativeTooltip
 	public void setTitle(String title)
 	{
 		this.title = title;
+	}
+
+	/** Optional colored text painted immediately after the main title. */
+	protected void setTitleSuffix(String titleSuffix, Color color)
+	{
+		this.titleSuffix = titleSuffix;
+		this.titleSuffixColor = color;
+	}
+
+	protected void clearTitleSuffix()
+	{
+		titleSuffix = null;
+		titleSuffixColor = null;
+	}
+
+	protected String getTitleSuffix()
+	{
+		return titleSuffix;
+	}
+
+	protected Color getTitleSuffixColor()
+	{
+		return titleSuffixColor;
 	}
 
 	/** Optional OSRS Wiki page opened when the title is clicked. */
@@ -108,6 +133,23 @@ public abstract class TitleTooltip extends NativeTooltip
 		this.subtitleColor = valueColor;
 	}
 
+	protected void clearSubtitle()
+	{
+		subtitleLabel = null;
+		subtitleValue = null;
+		subtitleColor = null;
+	}
+
+	protected void clearInfoLine()
+	{
+		infoLabel = null;
+		infoValue = null;
+		infoColor = null;
+		infoLabel2 = null;
+		infoValue2 = null;
+		infoColor2 = null;
+	}
+
 	/**
 	 * Set the obtained subtitle line. Pass -1 for unknown ("?/Y").
 	 * Color follows native OSRS stoplight progress: red, yellow, green.
@@ -123,7 +165,12 @@ public abstract class TitleTooltip extends NativeTooltip
 	 */
 	public void setObtainedPlaceholder(int total)
 	{
-		setSubtitle("Obtained: ", "--/" + total, MUTED_GRAY);
+		setSubtitle("Obtained: ", progressPlaceholderText(total), MUTED_GRAY);
+	}
+
+	protected static String progressPlaceholderText(int total)
+	{
+		return "--/" + (total >= 0 ? String.valueOf(total) : "?");
 	}
 
 	/** Native OSRS stoplight progress color: red for none, yellow for some, green for complete. */
@@ -453,10 +500,61 @@ public abstract class TitleTooltip extends NativeTooltip
 		return OSRS_ORANGE;
 	}
 
+	/** Optional text painted above the right-side header text. */
+	protected String getHeaderUpperRightText()
+	{
+		return null;
+	}
+
+	/** Color for the optional upper-right header text. */
+	protected Color getHeaderUpperRightColor()
+	{
+		return OSRS_ORANGE;
+	}
+
+	/** Whether this tooltip reserves a full-width item-hover row in its header. */
+	protected boolean hasHeaderHoverLine()
+	{
+		return false;
+	}
+
+	protected String getHeaderHoverLineText()
+	{
+		return null;
+	}
+
+	protected Color getHeaderHoverLineColor()
+	{
+		return OSRS_ORANGE;
+	}
+
+	protected String getHeaderHoverLineRightText()
+	{
+		return null;
+	}
+
+	protected Color getHeaderHoverLineRightColor()
+	{
+		return OSRS_ORANGE;
+	}
+
 	protected void paintHeaderRightText(Graphics2D g2, FontMetrics fm, int w, int baseline,
 		int reservedLeftWidth)
 	{
-		String text = getHeaderRightText();
+		paintHeaderRightText(g2, fm, w, baseline, reservedLeftWidth,
+			getHeaderRightText(), getHeaderRightColor());
+	}
+
+	protected void paintHeaderUpperRightText(Graphics2D g2, FontMetrics fm, int w, int baseline,
+		int reservedLeftWidth)
+	{
+		paintHeaderRightText(g2, fm, w, baseline, reservedLeftWidth,
+			getHeaderUpperRightText(), getHeaderUpperRightColor());
+	}
+
+	private void paintHeaderRightText(Graphics2D g2, FontMetrics fm, int w, int baseline,
+		int reservedLeftWidth, String text, Color color)
+	{
 		if (text == null || text.isEmpty())
 		{
 			return;
@@ -475,7 +573,7 @@ public abstract class TitleTooltip extends NativeTooltip
 			return;
 		}
 
-		g2.setColor(getHeaderRightColor());
+		g2.setColor(color);
 		g2.drawString(label, w - inset - fm.stringWidth(label), baseline);
 	}
 
@@ -519,6 +617,10 @@ public abstract class TitleTooltip extends NativeTooltip
 		{
 			h += LINE_HEIGHT;
 		}
+		if (hasHeaderHoverLine())
+		{
+			h += LINE_HEIGHT;
+		}
 		return h;
 	}
 
@@ -554,6 +656,10 @@ public abstract class TitleTooltip extends NativeTooltip
 		// Header text widths drive minimum tooltip width.
 		// The full header width flows to getContentSize so grids can fill the space.
 		int titleTextWidth = title != null ? nfm.stringWidth(title) : 0;
+		if (titleSuffix != null)
+		{
+			titleTextWidth += nfm.stringWidth(titleSuffix);
+		}
 		int cornerWidth = titleCornerPreferredWidth();
 		if (cornerWidth > 0)
 		{
@@ -605,17 +711,20 @@ public abstract class TitleTooltip extends NativeTooltip
 		// ever clips regardless of tooltip width.
 		String headerTitle = title;
 		Color headerColor = titleColor();
+		boolean showTitleSuffix = titleSuffix != null;
 		String cornerText = titleCornerHovered ? getTitleCornerHoverText() : null;
 		String hoverText = getTitleHoverText();
 		if (cornerText != null && !cornerText.isEmpty())
 		{
 			headerTitle = cornerText;
 			headerColor = getTitleCornerColor();
+			showTitleSuffix = false;
 		}
 		else if (hoverText != null && !hoverText.isEmpty())
 		{
 			headerTitle = hoverText;
 			headerColor = getTitleHoverColor();
+			showTitleSuffix = false;
 		}
 		g2.setFont(getTitleFont());
 		FontMetrics nfm = g2.getFontMetrics();
@@ -625,10 +734,19 @@ public abstract class TitleTooltip extends NativeTooltip
 		// Long reveal texts (recent-item names) ellipsize instead of clipping
 		// at the tooltip edge; the corner badge keeps its lane.
 		int cornerW = titleCornerPreferredWidth();
+		int suffixWidth = showTitleSuffix ? nfm.stringWidth(titleSuffix) : 0;
 		headerTitle = fitHeaderText(nfm, headerTitle,
-			w - 2 * inset - (cornerW > 0 ? cornerW + 4 : 0));
+			w - 2 * inset - suffixWidth - (cornerW > 0 ? cornerW + 4 : 0));
 		g2.drawString(headerTitle, inset, lineY);
 		int activeLineWidth = nfm.stringWidth(headerTitle);
+		if (showTitleSuffix)
+		{
+			g2.setColor(titleSuffixColor != null ? titleSuffixColor : OSRS_ORANGE);
+			g2.drawString(titleSuffix, inset + activeLineWidth, lineY);
+			activeLineWidth += suffixWidth;
+		}
+		int upperLineY = titleBaseline;
+		int upperLineWidth = activeLineWidth;
 
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		FontMetrics fm = g2.getFontMetrics();
@@ -643,6 +761,8 @@ public abstract class TitleTooltip extends NativeTooltip
 		// Info line (KC/PB for boss cells, Kills for unsynced)
 		if (infoLabel != null)
 		{
+			upperLineY = lineY;
+			upperLineWidth = activeLineWidth;
 			lineY += firstHeaderLine ? NAME_LINE_HEIGHT : LINE_HEIGHT;
 			firstHeaderLine = false;
 			g2.setColor(OSRS_ORANGE);
@@ -666,6 +786,8 @@ public abstract class TitleTooltip extends NativeTooltip
 		// Rank line
 		if (rankText != null)
 		{
+			upperLineY = lineY;
+			upperLineWidth = activeLineWidth;
 			lineY += firstHeaderLine ? NAME_LINE_HEIGHT : LINE_HEIGHT;
 			firstHeaderLine = false;
 			String label = "Rank: ";
@@ -682,6 +804,8 @@ public abstract class TitleTooltip extends NativeTooltip
 		// Subtitle (label in orange, value in subtitleColor)
 		if (subtitleLabel != null)
 		{
+			upperLineY = lineY;
+			upperLineWidth = activeLineWidth;
 			lineY += firstHeaderLine ? NAME_LINE_HEIGHT : LINE_HEIGHT;
 			firstHeaderLine = false;
 			g2.setColor(OSRS_ORANGE);
@@ -692,7 +816,20 @@ public abstract class TitleTooltip extends NativeTooltip
 			activeLineWidth = labelWidth + fm.stringWidth(subtitleValue);
 		}
 
-		paintHeaderRightText(g2, fm, w, lineY, activeLineWidth);
+		if (hasHeaderHoverLine())
+		{
+			lineY += firstHeaderLine ? NAME_LINE_HEIGHT : LINE_HEIGHT;
+			paintHeaderHoverLine(g2, fm, w, lineY);
+		}
+
+		if (!hasHeaderHoverLine() && upperLineY != lineY)
+		{
+			paintHeaderUpperRightText(g2, fm, w, upperLineY, upperLineWidth);
+		}
+		if (!hasHeaderHoverLine())
+		{
+			paintHeaderRightText(g2, fm, w, lineY, activeLineWidth);
+		}
 
 		// Separator
 		int sepY = lineY + SEPARATOR_GAP;
@@ -700,6 +837,26 @@ public abstract class TitleTooltip extends NativeTooltip
 		g2.drawLine(inset, sepY, w - inset - 1, sepY);
 
 		return sepY + 1 + SEPARATOR_GAP;
+	}
+
+	private void paintHeaderHoverLine(Graphics2D g2, FontMetrics fm, int w, int baseline)
+	{
+		String itemName = getHeaderHoverLineText();
+		String duplicateCount = getHeaderHoverLineRightText();
+		int inset = getInset();
+		int duplicateWidth = duplicateCount != null ? fm.stringWidth(duplicateCount) : 0;
+		if (itemName != null && !itemName.isEmpty())
+		{
+			int maxNameWidth = w - inset * 2 - (duplicateWidth > 0 ? duplicateWidth + 8 : 0);
+			String fittedName = fitHeaderText(fm, itemName, maxNameWidth);
+			g2.setColor(getHeaderHoverLineColor());
+			g2.drawString(fittedName, inset, baseline);
+		}
+		if (duplicateCount != null && !duplicateCount.isEmpty())
+		{
+			g2.setColor(getHeaderHoverLineRightColor());
+			g2.drawString(duplicateCount, w - inset - duplicateWidth, baseline);
+		}
 	}
 
 	private int titleCornerPreferredWidth()

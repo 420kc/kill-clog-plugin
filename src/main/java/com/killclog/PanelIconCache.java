@@ -16,8 +16,6 @@ import net.runelite.client.util.ImageUtil;
 
 final class PanelIconCache
 {
-	private static final int SYNC_ICON_SIZE = 12;
-
 	private final ItemManager itemManager;
 	private final ClientThread clientThread;
 	private final SpriteManager spriteManager;
@@ -26,24 +24,12 @@ final class PanelIconCache
 	private BufferedImage maxCapeTip;
 	private BufferedImage infernalCapeTip;
 	private BufferedImage infernalMaxCapeTip;
-	private BufferedImage riftsClosedIcon;
-	private BufferedImage syncNoticeIcon;
 
 	PanelIconCache(ItemManager itemManager, ClientThread clientThread, SpriteManager spriteManager)
 	{
 		this.itemManager = itemManager;
 		this.clientThread = clientThread;
 		this.spriteManager = spriteManager;
-	}
-
-	BufferedImage syncNoticeIcon()
-	{
-		if (syncNoticeIcon == null)
-		{
-			syncNoticeIcon = KillClogIcons.resizedPluginIcon(
-				SYNC_ICON_SIZE, SYNC_ICON_SIZE, itemManager);
-		}
-		return syncNoticeIcon;
 	}
 
 	ImageIcon clogTierIcon(@Nullable String tierName)
@@ -59,11 +45,6 @@ final class PanelIconCache
 			icons.put(entry.getKey(), ClogHelper.iconToImage(entry.getValue()));
 		}
 		return icons;
-	}
-
-	BufferedImage riftsClosedIcon()
-	{
-		return riftsClosedIcon;
 	}
 
 	BufferedImage capeFor(@Nullable HiscoreResult result)
@@ -123,7 +104,6 @@ final class PanelIconCache
 		});
 
 		loadClueAllIcon(cells);
-		loadRiftsIcon();
 	}
 
 	private void loadClueAllIcon(Cells cells)
@@ -138,23 +118,6 @@ final class PanelIconCache
 					if (sprite != null)
 					{
 						cells.getClueIcons()[0] = ImageUtil.resizeImage(
-							ImageUtil.resizeCanvas(sprite, 25, 25), 13, 13);
-					}
-				}));
-		}
-	}
-
-	private void loadRiftsIcon()
-	{
-		int riftsSpriteId = HiscoreSkill.RIFTS_CLOSED.getSpriteId();
-		if (riftsSpriteId != -1)
-		{
-			spriteManager.getSpriteAsync(riftsSpriteId, 0, sprite ->
-				SwingUtilities.invokeLater(() ->
-				{
-					if (sprite != null)
-					{
-						riftsClosedIcon = ImageUtil.resizeImage(
 							ImageUtil.resizeCanvas(sprite, 25, 25), 13, 13);
 					}
 				}));

@@ -338,6 +338,15 @@ class TooltipController
 		}
 	}
 
+	/** Dismiss only when a refresh is replacing the pinned tooltip's own source. */
+	void hidePinnedTooltipIfOwnedBy(JComponent source)
+	{
+		if (activePinnedComponent == source)
+		{
+			hidePinnedTooltip();
+		}
+	}
+
 	void guardPinnedTooltip(JToolTip tip)
 	{
 		tip.addMouseListener(new MouseAdapter()

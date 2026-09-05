@@ -257,9 +257,10 @@ final class PanelData
 
 	// Hover names for the fixed pvm-summary sprites. Static because the pvm
 	// summary renders these rows with or without a synced clog result; display
-	// names, kept short enough to sit on the narrow summary title line.
+	// names use their full display form; TitleTooltip ellipsizes them when a
+	// narrow summary cannot fit the whole hover title.
 	static final String[] MEGARARE_ITEM_NAMES = {
-		"Twisted Bow", "Scythe of Vitur", "Shadow",
+		"Twisted Bow", "Scythe of Vitur", "Tumeken's Shadow",
 	};
 	static final String[] SUPERIOR_ITEM_NAMES = {"Imbued heart", "Eternal gem"};
 

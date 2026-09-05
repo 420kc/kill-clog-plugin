@@ -6,27 +6,32 @@ import java.awt.GridLayout;
 import java.awt.image.BufferedImage;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import javax.annotation.Nullable;
+import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JToolTip;
 import net.runelite.api.Skill;
+import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.util.ImageUtil;
 
 /**
  * A movable 3x8 grid of real skill cells with compact native stat tooltips.
- * Skill-specific collection-log sections can grow below those stats later.
+ * Reusable skill collection-log sections grow below those stats when mapped.
  */
 final class SkillCellGrid
 {
 	private static final String COMPARE_BLUE_HEX = colorHex(TitleTooltip.COMPARE_BLUE);
 	private static final String COMPARE_RED_HEX = colorHex(TitleTooltip.COMPARE_RED);
 	private static final String COMPARE_SEPARATOR_HEX = "#949494";
+	static final int SKILL_ICON_SIZE = 22;
+	private static final int SKILL_ICON_CANVAS_SIZE = 25;
 
 	private final JPanel component = new JPanel();
 	private final JPanel grid = new JPanel(
@@ -35,19 +40,28 @@ final class SkillCellGrid
 	private final TooltipController tooltipController;
 	private final KillClogConfig config;
 	@Nullable
+	private final ItemManager itemManager;
+	@Nullable
 	private HiscoreResult primary;
 	@Nullable
 	private HiscoreResult compared;
+	@Nullable
+	private ClogResult primaryClog;
+	@Nullable
+	private ClogResult comparedClog;
+	@Nullable
+	private ClogResult catalog;
 	private boolean virtualLevels;
 
 	SkillCellGrid(SkillIconManager skillIconManager,
-		TooltipController tooltipController, KillClogConfig config)
+		TooltipController tooltipController, KillClogConfig config,
+		@Nullable ItemManager itemManager)
 	{
 		this.tooltipController = tooltipController;
 		this.config = config;
+		this.itemManager = itemManager;
 
-		component.setLayout(new javax.swing.BoxLayout(
-			component, javax.swing.BoxLayout.Y_AXIS));
+		component.setLayout(new BoxLayout(component, BoxLayout.Y_AXIS));
 		component.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		component.setAlignmentX(0f);
 
@@ -77,7 +91,9 @@ final class SkillCellGrid
 			BufferedImage image = skillIconManager.getSkillImage(skill, true);
 			if (image != null)
 			{
-				label.setIcon(new ImageIcon(ImageUtil.resizeCanvas(image, 25, 25)));
+				label.setIcon(new ImageIcon(ImageUtil.resizeImage(
+					ImageUtil.resizeCanvas(image, SKILL_ICON_CANVAS_SIZE,
+						SKILL_ICON_CANVAS_SIZE), SKILL_ICON_SIZE, SKILL_ICON_SIZE)));
 			}
 		}
 		catch (Exception ignored)
@@ -107,9 +123,19 @@ final class SkillCellGrid
 	void render(HiscoreResult primary, @Nullable HiscoreResult compared,
 		boolean virtualLevels)
 	{
+		render(primary, compared, virtualLevels, null, null, null);
+	}
+
+	void render(HiscoreResult primary, @Nullable HiscoreResult compared,
+		boolean virtualLevels, @Nullable ClogResult primaryClog,
+		@Nullable ClogResult comparedClog, @Nullable ClogResult catalog)
+	{
 		this.primary = primary;
 		this.compared = compared;
 		this.virtualLevels = virtualLevels;
+		this.primaryClog = primaryClog;
+		this.comparedClog = comparedClog;
+		this.catalog = catalog;
 		for (Map.Entry<Skill, JLabel> entry : labels.entrySet())
 		{
 			Skill skill = entry.getKey();
@@ -122,15 +148,23 @@ final class SkillCellGrid
 			}
 			else
 			{
-				renderSolo(label, primaryLevel);
+				renderSolo(label, skill, primaryLevel);
 			}
 		}
 	}
 
 	void clear()
 	{
+		clear(null);
+	}
+
+	void clear(@Nullable ClogResult catalog)
+	{
 		primary = null;
 		compared = null;
+		primaryClog = null;
+		comparedClog = null;
+		this.catalog = catalog;
 		for (JLabel label : labels.values())
 		{
 			label.setText(ClogHelper.pad("--"));
@@ -141,17 +175,29 @@ final class SkillCellGrid
 
 	private JToolTip buildTooltip(JLabel owner, Skill skill)
 	{
+		List<SkillClogSection> sections = SkillClogSection.forSkill(
+			skill, primaryClog, comparedClog, catalog);
 		JToolTip tooltip;
 		if (compared != null)
 		{
 			CompareSkillTooltip comparison = new CompareSkillTooltip();
-			comparison.setData(skill, primary, compared, virtualLevels);
+			comparison.setData(skill, primary, compared, virtualLevels, sections, itemManager);
+			if (skill == Skill.RUNECRAFT)
+			{
+				comparison.setRiftsClosed(riftsClosed(primary), riftsClosed(compared));
+			}
+			comparison.setWikiLinksEnabled(config.wikiItemLinks());
 			tooltip = comparison;
 		}
 		else
 		{
 			SkillTooltip solo = new SkillTooltip();
-			solo.setData(skill, primary, virtualLevels);
+			solo.setData(skill, primary, virtualLevels, sections, itemManager);
+			if (skill == Skill.RUNECRAFT)
+			{
+				solo.setRiftsClosed(riftsClosed(primary));
+			}
+			solo.setWikiLinksEnabled(config.wikiItemLinks());
 			tooltip = solo;
 		}
 		tooltip.setComponent(owner);
@@ -159,11 +205,26 @@ final class SkillCellGrid
 		return tooltip;
 	}
 
-	private void renderSolo(JLabel label, int level)
+	private static int riftsClosed(@Nullable HiscoreResult result)
 	{
+		return result != null
+			? result.getActivityScore(PanelData.RIFTS_CLOSED_ACTIVITY) : -1;
+	}
+
+	private void renderSolo(JLabel label, Skill skill, int level)
+	{
+		int obtained = -1;
+		int total = -1;
+		if (config.skillColorMode() == SkillColorMode.CLOG_PROGRESSION)
+		{
+			SkillClogSection.Progress progress = SkillClogSection.combinedProgress(
+				SkillClogSection.forSkill(skill, primaryClog, null, catalog), false);
+			obtained = progress.obtained();
+			total = progress.total();
+		}
 		label.setText(ClogHelper.pad(levelText(level)));
 		label.setForeground(level > 0
-			? SkillLevelColor.forLevel(level, config)
+			? SkillLevelColor.forCell(level, primaryClog != null, obtained, total, config)
 			: ColorScheme.LIGHT_GRAY_COLOR);
 		label.setHorizontalAlignment(JLabel.LEADING);
 	}

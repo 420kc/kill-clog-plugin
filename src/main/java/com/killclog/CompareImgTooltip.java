@@ -210,12 +210,16 @@ public class CompareImgTooltip extends TitleTooltip
 		FontMetrics fm = g2.getFontMetrics();
 
 		// Obtained line.
+		int upperLineY = lineY;
+		int upperLineWidth = nfm.stringWidth(getTitle());
 		lineY += 20;
 		int activeLineWidth = paintDualLine(g2, fm, inset, lineY, "Obtained: ",
 			blueObtainedText(), redObtainedText());
 
 		if (showComparisonStat())
 		{
+			upperLineY = lineY;
+			upperLineWidth = activeLineWidth;
 			lineY += LINE_HEIGHT;
 			activeLineWidth = paintDualLine(g2, fm, inset, lineY, comparisonStatLabel,
 				blueComparisonStatText(), redComparisonStatText(), true);
@@ -223,12 +227,15 @@ public class CompareImgTooltip extends TitleTooltip
 
 		if (showRankLine())
 		{
+			upperLineY = lineY;
+			upperLineWidth = activeLineWidth;
 			lineY += LINE_HEIGHT;
 			activeLineWidth = paintDualLine(g2, fm, inset, lineY, "Rank: ",
 				formatRank(blue.rank, blue.rankTracked),
 				formatRank(red.rank, red.rankTracked));
 		}
 
+		paintHeaderUpperRightText(g2, fm, w, upperLineY, upperLineWidth);
 		paintHeaderRightText(g2, fm, w, lineY, activeLineWidth);
 
 		// Separator.
@@ -459,8 +466,9 @@ public class CompareImgTooltip extends TitleTooltip
 
 			int itemId = allItemIds.get(i);
 			boolean obtained = obtainedIds != null && obtainedIds.contains(itemId);
+			int count = spriteCountForItem(itemId, obtainedIds, obtainedCounts);
 			nextHitBoxes.add(new TooltipItemHover.HitBox(section, itemId, itemNameAt(i),
-				new Rectangle(x, sy, SPRITE_SIZE, SPRITE_SIZE), obtained));
+				new Rectangle(x, sy, SPRITE_SIZE, SPRITE_SIZE), obtained, count));
 
 			BufferedImage sprite = sprites.spriteAt(i);
 			if (sprite != null)
@@ -490,6 +498,18 @@ public class CompareImgTooltip extends TitleTooltip
 	protected Color getHeaderRightColor()
 	{
 		return itemHover.hoveredItemObtained() ? CLOG_GREEN : CLOG_RED;
+	}
+
+	@Override
+	protected String getHeaderUpperRightText()
+	{
+		return itemHover.hoveredDuplicateCountText();
+	}
+
+	@Override
+	protected Color getHeaderUpperRightColor()
+	{
+		return CLOG_YELLOW;
 	}
 
 	private String itemNameAt(int index)

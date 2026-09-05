@@ -14,14 +14,13 @@ final class ActivitySummaryTooltips
 	private final TooltipController tooltipController;
 	private final ItemManager itemManager;
 	private final CaRewardSprites caRewardSprites;
-	private final PanelIconCache iconCache;
 	private final Supplier<String> primaryName;
 	private final Supplier<Boolean> wikiLinks;
 	private final Supplier<Boolean> virtualLevels;
 
 	ActivitySummaryTooltips(LookupSession lookupSession, ComparisonController comparison,
 		Cells cells, TooltipController tooltipController, ItemManager itemManager,
-		CaRewardSprites caRewardSprites, PanelIconCache iconCache, Supplier<String> primaryName,
+		CaRewardSprites caRewardSprites, Supplier<String> primaryName,
 		Supplier<Boolean> wikiLinks, Supplier<Boolean> virtualLevels)
 	{
 		this.lookupSession = lookupSession;
@@ -30,7 +29,6 @@ final class ActivitySummaryTooltips
 		this.tooltipController = tooltipController;
 		this.itemManager = itemManager;
 		this.caRewardSprites = caRewardSprites;
-		this.iconCache = iconCache;
 		this.primaryName = primaryName;
 		this.wikiLinks = wikiLinks;
 		this.virtualLevels = virtualLevels;
@@ -186,8 +184,6 @@ final class ActivitySummaryTooltips
 			String redName = comparison.getCompareRsn() != null ? comparison.getCompareRsn() : "--";
 			cmp.setData(blueName, lookupSession.getHiscoreResult(),
 				redName, comparison.getCompareHiscoreResult());
-			cmp.setGotr(lookupSession.getClogResult(),
-				comparison.getCompareClogResult(), iconCache.riftsClosedIcon());
 			return cmp;
 		}
 		SkillsTooltip tip = new SkillsTooltip();
@@ -195,9 +191,6 @@ final class ActivitySummaryTooltips
 		tip.setVirtualLevels(virtualLevels.get());
 		HiscoreResult result = lookupSession.getHiscoreResult();
 		tip.setData(result);
-		int rifts = result != null
-			? result.getActivityScore(PanelData.RIFTS_CLOSED_ACTIVITY) : -1;
-		tip.setGotr(lookupSession.getClogResult(), iconCache.riftsClosedIcon(), rifts);
 		return tip;
 	}
 }

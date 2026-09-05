@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -128,15 +129,15 @@ final class ProfileAppearanceService
 		{
 			return -1;
 		}
-		NPCComposition composition = follower.getComposition();
-		String[] actions = composition != null ? composition.getActions() : null;
-		if (composition == null || !composition.isFollower() || actions == null
-			|| !java.util.Arrays.asList(actions).contains("Pick-up"))
+		NPCComposition transformed = follower.getTransformedComposition();
+		NPCComposition visible = transformed != null ? transformed : follower.getComposition();
+		String[] actions = visible != null ? visible.getActions() : null;
+		if (visible == null || !visible.isFollower() || actions == null
+			|| !Arrays.asList(actions).contains("Pick-up"))
 		{
 			return -1;
 		}
-		NPCComposition visibleComposition = follower.getTransformedComposition();
-		return visibleComposition != null ? visibleComposition.getId() : follower.getId();
+		return transformed != null ? transformed.getId() : follower.getId();
 	}
 
 	private CompletableFuture<PublishResult> ensureCredential(String rsn, long accountHash,

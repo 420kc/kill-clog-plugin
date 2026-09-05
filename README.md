@@ -2,76 +2,124 @@
 
 [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fkillclog.com%2Fapi%2Fhub%2Fversion&query=%24.version&label=version&color=FF5700)](https://runelite.net/plugin-hub/show/kill-clog)
 
-Kill Clog is a HiScores overhaul that offers fast and easy visuals of collection log progress and account snapshots.
+Kill Clog brings HiScores and Collection Log progress together in one RuneLite panel, with boss personal bests, Skill Clogs, Combat Achievements, clues, and player comparison.
 
-![Kill Clog](screenshots/hero-vanilla-vs-killclog.png)
+## First-time setup
 
-![comparison](screenshots/comparison-1.4.0.png)
+Install **Kill Clog** from the RuneLite Plugin Hub and open its side panel while logged in. Your account loads automatically.
 
-![summaries](screenshots/summaries.png)
+To set up your Collection Log:
 
-## privacy and data
+1. Open your Collection Log in-game.
+2. Choose **Search** at the top:
+   - If the button says **Search**, left-click it.
+   - If the button says **RuneProfile**, right-click it and choose **Search**.
 
-![install-warning](screenshots/install-warning.png)
+| Search button | Search with RuneProfile |
+| :---: | :---: |
+| ![Left-click Search in the Collection Log](screenshots/setup-clog-search.png) | ![Right-click RuneProfile and choose Search](screenshots/setup-clog-search-runeprofile.png) |
 
-Public player lookups read from [TempleOSRS](https://templeosrs.com), [RuneProfile](https://runeprofile.com), and [killclog.com](https://killclog.com). The install warning is about those external lookups. Boss kill counts and ranks come from Jagex's own hiscores, and item names resolve through the OSRS Wiki item mapping at prices.runescape.wiki. Kill Clog only sends your collection log to killclog.com if you turn on sync, which is off by default. Syncing publishes your log and personal bests to your killclog.com profile.
+Kill Clog will confirm setup in chat.
 
-The separate Character model setting is also off by default and requires killclog.com sync. Its one-click button publishes a bounded appearance recipe for your current player and follower: equipment and body-color IDs, item recolor/retexture overrides, game and plugin versions, idle-pose animation ID, and follower NPC ID. It sends data, never a screenshot or rendered model. Opting out at killclog.com deletes everything stored.
+Your Collection Log is saved locally in `~/.runelite/kill-clog/`. New Collection Log chat messages keep it current after the first scan.
 
-The EHB stat in the PvM summary uses EHB rates by TempleOSRS, bundled with the plugin and refreshed each release. No extra requests are made to compute it.
+## Look up other players
 
-Source code is public at [github.com/420kc/kill-clog-plugin](https://github.com/420kc/kill-clog-plugin) and open to audit.
+Enter an RSN in the search bar, or right-click a supported player or name and choose **Kill Clog**.
 
-## installation
+Use the comparison button beside the search bar to load a second player.
 
-1. Install Kill Clog from the RuneLite Plugin Hub.
-2. Optional, but useful for public visibility: keep your TempleOSRS and/or RuneProfile data synced so other players can see your public clog.
-3. Sync local collection log: Open your collection log in-game and click the small collection-log icon near the top of the interface (it brightens on hover). Chat messages then guide you to right click search your collection log and click back.
+**Recommended for a full HiScore replacement:** Turn off RuneLite's **HiScore** plugin and set **Menu Label** to **Lookup** in Kill Clog's settings.
 
-## auto-sync
+![Turn off RuneLite's HiScore plugin](screenshots/setup-disable-hiscore.png)
 
-Once the first sync has built your local cache, collection-log chat messages keep
-new drops current during long sessions.
+![Set Kill Clog's Menu Label to Lookup](screenshots/setup-menu-label-lookup.png)
 
-## quick lookup
+![Player menu lookup](screenshots/player-menu.png)
 
-![player-menu](screenshots/player-menu.png)
+![Player comparison](screenshots/comparison-1.4.0.png)
 
-## chat commands
+HiScores load for any valid RSN. Collection Log details appear when that player has data available through TempleOSRS, RuneProfile, or Kill Clog Sync.
 
-![chat-kclog](screenshots/chat-kclog.png)
+## Tooltips
 
-![chat-missing](screenshots/chat-missing.png)
+Hover a summary, boss, activity, or skill cell to open its tooltip. Tooltip activation can be changed from hover to click in settings.
 
-`!kclog [boss]` shows your collected items.
+Tooltips can show Collection Log progress, item sprites and duplicate quantities, KC, rank, personal bests, and OSRS Wiki links.
 
-`Vorkath: 12/14 [item] [item] [item] ...`
+![Alchemical Hydra boss tooltip with personal best](screenshots/tooltip-alchemical-hydra-pb.png)
 
-`!missing [boss]` shows unobtained items.
+## Skill Clogs
 
-`Vorkath: 2/14 missing [item] [item]`
+| Sailing | Hitpoints | Runecraft |
+| :---: | :---: | :---: |
+| ![Sailing Skill Clog](screenshots/skill-clog-sailing.png) | ![Hitpoints Skill Clog](screenshots/skill-clog-hitpoints.png) | ![Runecraft Skill Clog](screenshots/skill-clog-runecraft.png) |
 
-`!3a`
+Every skill has its own Collection Log-style progression. Skill tooltips combine relevant activities, equipment, and unlocks with the skill's level, XP, rank, and XP to next level.
 
-`!gilded`
+The skill title shows combined progress. Each section shows its own `Obtained: x/y` count. Items shared between sections count once toward the skill total.
 
-## configuration
+Skills appear in the main grid by default. They can also be moved to the activity tray or hidden behind Skill Summary. Synced accounts can use the configured Skill Color, level-99 completion, or overall Skill Clog progression.
 
-![config](screenshots/configuration-1.4.0.png)
+## Killclog.com sync
 
-- Auto-Lookup on Login
-- Player Menu Lookup
-- Menu Locations
-- Tooltip Activation (Hover, Click)
-- Cell Hover (Outline, Tint, None)
-- Progress Highlighter (full color customization)
-- Killclog.com sync and optional Character model publishing
-- Kill Clog chat message toggles
+Killclog.com sync is optional and off by default. It is separate from the local Collection Log setup above.
 
-## local cache
+Enable **Sync Collection Log to Killclog.com** to publish your Collection Log and personal bests to your killclog.com profile. The sync button in the panel publishes immediately.
 
-Lookup caches keep repeat searches fast and expire on their own after a few minutes. `~/.runelite/kill-clog/` also holds your own captured collection log, so deleting it means walking the log again to re-sync.
+**Character model** is also off by default and requires Killclog.com sync. It publishes your current player and follower appearance.
 
----
+## Chat
 
-Questions or feedback? Open an issue on [GitHub](https://github.com/420kc/kill-clog-plugin/issues).
+| Command | Result |
+| --- | --- |
+| `!kclog [boss or clue tier]` | Collected items |
+| `!missing [boss or clue tier]` | Missing items |
+| `!3a` | Third-age progress |
+| `!gilded` | Gilded progress |
+
+Clue tiers accept names such as `medium clues` or `clues medium`. When RuneProfile is disabled, `!log medium clues` and `!log missing medium clues` use the same clue pages.
+
+## Settings
+
+- **killclog.com:** Collection Log sync and Character model publishing
+- **Tooltips:** activation, hover feedback, Wiki links, KC, PB, and rank
+- **Lookup:** automatic self-lookup, player comparison, and player-menu lookup
+- **Menu location:** choose which right-click menus show Kill Clog
+- **Skills:** location, virtual levels, and synced-account color mode
+- **Chat:** plugin messages and custom emojis
+- **Progress Highlighter:** Collection Log progress colors
+
+## Data and privacy
+
+Public lookups read from Jagex HiScores, [TempleOSRS](https://templeosrs.com), [RuneProfile](https://runeprofile.com), and [killclog.com](https://killclog.com). Item names resolve through the [OSRS Wiki](https://oldschool.runescape.wiki). These requests expose your IP address to the service being contacted, which is why RuneLite shows a third-party warning on install.
+
+Killclog.com sync is opt-in. Nothing from your local Collection Log is published until you enable it. Turning sync or Character model off stops new publishes but does not delete data already published. Use the [opt-out page](https://killclog.com/p/opt-out.html) to request deletion.
+
+TempleOSRS EHB rates are bundled with the plugin and refreshed with releases. Computing EHB does not make another request.
+
+The source is public at [github.com/420kc/kill-clog-plugin](https://github.com/420kc/kill-clog-plugin).
+
+## Development
+
+Kill Clog builds with Java 11 and the included Gradle wrapper.
+
+```powershell
+.\gradlew.bat clean compileJava checkstyleMain checkstyleTest test jar
+```
+
+Launch the development client with:
+
+```powershell
+.\gradlew.bat run
+```
+
+The release jar is written to `build/libs/`.
+
+## Custom emojis
+
+`:killclog:` `:rune:` `:dragon:` `:gilded:` `:clog:` `:green:`
+
+## Support
+
+If a total, item mapping, or tooltip looks wrong, open an [issue](https://github.com/420kc/kill-clog-plugin/issues) with the RSN and a screenshot.

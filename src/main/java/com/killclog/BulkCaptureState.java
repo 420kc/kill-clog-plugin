@@ -64,6 +64,14 @@ final class BulkCaptureState
 		finalizeTickCount = tickCount + 3;
 	}
 
+	void scheduleEmptySearchFinalization(int tickCount)
+	{
+		if (active && clogCount == 0 && clogTotal > 0)
+		{
+			finalizeTickCount = tickCount + 3;
+		}
+	}
+
 	void reset()
 	{
 		active = false;

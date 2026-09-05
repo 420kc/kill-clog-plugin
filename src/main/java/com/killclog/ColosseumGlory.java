@@ -31,4 +31,19 @@ final class ColosseumGlory
 	{
 		return isVisible(glory) ? String.format(Locale.US, "%,d", glory) : "--";
 	}
+
+	static boolean hasHeaderScore(int glory, int kc)
+	{
+		return isVisible(glory) || kc >= 0;
+	}
+
+	static String headerLabel(int glory)
+	{
+		return isVisible(glory) ? LABEL : "KC: ";
+	}
+
+	static String headerValue(int glory, int kc)
+	{
+		return isVisible(glory) ? format(glory) : ClogHelper.formatKc(kc);
+	}
 }

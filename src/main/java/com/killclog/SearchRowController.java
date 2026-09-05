@@ -46,6 +46,8 @@ final class SearchRowController
 	private boolean compareEntryMode;
 	private boolean compareIconHover;
 	private boolean searchRowHover;
+	private boolean compareAvailable;
+	private boolean comparisonEnabled = true;
 
 	SearchRowController(
 		JPanel searchRow,
@@ -200,13 +202,34 @@ final class SearchRowController
 
 	void setCompareVisible(boolean visible)
 	{
-		compareLabel.setVisible(visible);
+		compareAvailable = visible;
+		applyCompareVisibility();
+	}
+
+	void setComparisonEnabled(boolean enabled)
+	{
+		comparisonEnabled = enabled;
+		if (!enabled)
+		{
+			compareIconHover = false;
+			exitIfActive();
+		}
+		applyCompareVisibility();
+	}
+
+	private void applyCompareVisibility()
+	{
+		compareLabel.setVisible(comparisonEnabled && compareAvailable);
 		refreshIcon();
 		searchRow.revalidate();
 	}
 
 	void toggleEntry()
 	{
+		if (!comparisonEnabled)
+		{
+			return;
+		}
 		if (compareEntryMode || comparisonMode.getAsBoolean())
 		{
 			exitEntry();
@@ -266,6 +289,10 @@ final class SearchRowController
 
 	private void enterEntry()
 	{
+		if (!comparisonEnabled)
+		{
+			return;
+		}
 		compareEntryMode = true;
 		refreshIcon();
 

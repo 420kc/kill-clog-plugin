@@ -59,7 +59,8 @@ public class KillClogPanel extends PluginPanel
 	private static final Color TEXT_DIM = new Color(160, 160, 160);
 	private static final Color NOT_FOUND = new Color(0x81, 0x09, 0x09);
 	static final Color KC_COLOR = new Color(215, 215, 215);
-	private static final String SYNC_NOTICE = "Open Collection Log and click";
+	private static final String SETUP_NOTICE =
+		"Open Collection Log, then right-click the top and choose Search";
 
 	/** Info bar text color - only applies when highlighter is active AND clog data exists. */
 	@Override
@@ -67,11 +68,6 @@ public class KillClogPanel extends PluginPanel
 	{
 		return config.completionistHighlighter() && lookupSession.getClogResult() != null
 			? config.infoBarColor() : KC_COLOR;
-	}
-
-	private BufferedImage getSyncIcon()
-	{
-		return iconCache.syncNoticeIcon();
 	}
 
 	/**
@@ -204,7 +200,7 @@ public class KillClogPanel extends PluginPanel
 					&& localRsn.equalsIgnoreCase(rsn);
 				if (isSelf)
 				{
-					tip.setNotice(SYNC_NOTICE, getSyncIcon());
+					tip.setFirstTimeSetup();
 				}
 				else if (lookupSession.getHiscoreResult() != null)
 				{
@@ -229,7 +225,7 @@ public class KillClogPanel extends PluginPanel
 		}
 
 	};
-	private final JLabel clogNotice = new JLabel();
+	private final JPanel clogNotice = new JPanel();
 
 	private JLabel compareLabel;
 	private SearchRowController searchRowController;
@@ -305,11 +301,11 @@ public class KillClogPanel extends PluginPanel
 		this.comparison.setRenderTarget(this);
 		this.comparison.setVirtualTotalLevel(
 			() -> ClogHelper.virtualTotalLevelEnabled(configManager));
-		this.skillCellGrid = new SkillCellGrid(skillIconManager, tooltipController, config);
+		this.skillCellGrid = new SkillCellGrid(skillIconManager, tooltipController, config, itemManager);
 		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, clogService, killclogService, new PersonalBests(configManager), config);
 		this.activityTooltips = new ActivitySummaryTooltips(
 			lookupSession, comparison, cells, tooltipController, itemManager,
-			caRewardSprites, iconCache, this::comparisonBlueName, config::wikiItemLinks,
+			caRewardSprites, this::comparisonBlueName, config::wikiItemLinks,
 			config::virtualLevels);
 		this.itemNameResolver = new TooltipItemNameResolver(clientThread, itemManager,
 			this::onTooltipItemNamesResolved);
@@ -349,7 +345,24 @@ public class KillClogPanel extends PluginPanel
 		c.gridy = 0;
 		c.weightx = 1;
 		c.weighty = 0;
+
+		clogNotice.setLayout(new BoxLayout(clogNotice, BoxLayout.Y_AXIS));
+		clogNotice.setOpaque(false);
+		JLabel noticeOpen = new JLabel("Open Collection Log");
+		JLabel noticeSearch = new JLabel("Right-click the top and choose Search");
+		for (JLabel label : new JLabel[]{noticeOpen, noticeSearch})
+		{
+			label.setFont(FontManager.getRunescapeSmallFont());
+			label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+			label.setAlignmentX(Component.CENTER_ALIGNMENT);
+			ClogHelper.antialias(label);
+			clogNotice.add(label);
+		}
+		clogNotice.setVisible(false);
 		c.insets = new Insets(0, 0, 5, 0);
+		add(clogNotice, c);
+
+		c.gridy++;
 		add(buildSearchPanel(), c);
 
 		// Activities tray with slide animation
@@ -379,16 +392,6 @@ public class KillClogPanel extends PluginPanel
 		// The list view wires its own trigger through the constructor above.
 		wireFourTwentyEasterEgg(cells.getBossLabel(HiscoreSkill.THERMONUCLEAR_SMOKE_DEVIL));
 
-		// Collection log sync notice below boss grid
-		c.gridy++;
-		c.insets = new Insets(5, 0, 0, 0);
-		clogNotice.setFont(FontManager.getRunescapeSmallFont());
-		clogNotice.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-		clogNotice.setHorizontalAlignment(JLabel.CENTER);
-		clogNotice.setText(" ");
-		ClogHelper.antialias(clogNotice);
-		add(clogNotice, c);
-
 		// Compare entry controls live in the search row.
 
 		JScrollPane sp = getScrollPane();
@@ -411,8 +414,11 @@ public class KillClogPanel extends PluginPanel
 
 		// Cold start: warm the catalog so every cell previews the log's shape
 		// (dimmed grids, --/Y slot counts) before any player has been searched.
-		clogService.warmCatalog().thenRun(() ->
-			SwingUtilities.invokeLater(() -> cells.rebuildPrimaryTooltips(localRsn)));
+		clogService.warmCatalog().thenRun(() -> SwingUtilities.invokeLater(() ->
+		{
+			cells.rebuildPrimaryTooltips(localRsn);
+			refreshSkillDisplay();
+		}));
 	}
 
 	private void onTooltipItemNamesResolved()
@@ -457,6 +463,7 @@ public class KillClogPanel extends PluginPanel
 			this::lookupSelfFromSearchIcon,
 			this::revalidate);
 		searchRowController.install();
+		searchRowController.setComparisonEnabled(config.enableComparison());
 
 		compareClogTotals = new CompareClogTotalsBar(
 			comparison::isComparisonMode,
@@ -687,7 +694,13 @@ public class KillClogPanel extends PluginPanel
 			return;
 		}
 
-		tooltipController.hidePinnedTooltip();
+		// Rebuilding the skill grid invalidates skill tooltips, but passive clog
+		// refreshes must not dismiss a boss tooltip the player is reading.
+		tooltipController.hidePinnedTooltipIfOwnedBy(totalLvlCell);
+		for (JLabel skillLabel : skillCellGrid.labels().values())
+		{
+			tooltipController.hidePinnedTooltipIfOwnedBy(skillLabel);
+		}
 		traySkillsHost.removeAll();
 		fixedSkillsHost.removeAll();
 		traySkillsHost.setVisible(false);
@@ -698,18 +711,27 @@ public class KillClogPanel extends PluginPanel
 		boolean summaryOnly = display == SkillDisplay.TOOLTIP;
 		tooltipController.setTooltipText(totalLvlCell, result != null ? " " : null);
 
-		if (!summaryOnly && result != null)
+		if (!summaryOnly)
 		{
-			HiscoreResult compared = comparison.isComparisonMode()
-				? comparison.getCompareHiscoreResult() : null;
-			skillCellGrid.render(result, compared, config.virtualLevels());
+			if (result != null)
+			{
+				HiscoreResult compared = comparison.isComparisonMode()
+					? comparison.getCompareHiscoreResult() : null;
+				skillCellGrid.render(result, compared, config.virtualLevels(),
+					lookupSession.getClogResult(), comparison.getCompareClogResult(),
+					cells.unsyncedCatalogResult());
+			}
+			else
+			{
+				skillCellGrid.clear(cells.unsyncedCatalogResult());
+			}
 			JPanel host = display == SkillDisplay.TRAY ? traySkillsHost : fixedSkillsHost;
 			host.add(skillCellGrid.component(), BorderLayout.CENTER);
 			host.setVisible(true);
 		}
 		else
 		{
-			skillCellGrid.clear();
+			skillCellGrid.clear(cells.unsyncedCatalogResult());
 		}
 
 		traySkillsHost.revalidate();
@@ -753,11 +775,11 @@ public class KillClogPanel extends PluginPanel
 			tip.setTitle(data.name);
 			tip.setObtained(data.obtainedCount, data.totalItems);
 			boolean hasHeaderScore = isSolHeredit
-				? ColosseumGlory.isVisible(glory) : data.kc >= 0;
+				? ColosseumGlory.hasHeaderScore(glory, data.kc) : data.kc >= 0;
 			if (hasHeaderScore && config.showTooltipKc())
 			{
-				tip.setInfoLine(isSolHeredit ? ColosseumGlory.LABEL : "KC: ",
-					isSolHeredit ? ColosseumGlory.format(glory) : ClogHelper.formatKc(data.kc),
+				tip.setInfoLine(isSolHeredit ? ColosseumGlory.headerLabel(glory) : "KC: ",
+					isSolHeredit ? ColosseumGlory.headerValue(glory, data.kc) : ClogHelper.formatKc(data.kc),
 					Color.WHITE);
 				if (data.pb != null && config.showTooltipPb())
 				{
@@ -783,7 +805,7 @@ public class KillClogPanel extends PluginPanel
 				&& localRsn.equalsIgnoreCase(lookupSession.getCurrentLookupRsn());
 			if (isSelfNoCache)
 			{
-				tip.setNotice(SYNC_NOTICE, getSyncIcon());
+				tip.setNotice(SETUP_NOTICE);
 			}
 			else if (lookupSession.getHiscoreResult() != null)
 			{
@@ -1381,8 +1403,7 @@ public class KillClogPanel extends PluginPanel
 		tooltipController.hidePinnedTooltip();
 		searchRowController.exitIfActive();
 		rsn = null;
-		clogNotice.setText(" ");
-		clogNotice.setIcon(null);
+		setClogSetupNoticeVisible(false);
 		cells.getTooltipDataMap().clear();
 		cells.getRareTooltips().clear();
 		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getBossLabels().entrySet())
@@ -1683,6 +1704,9 @@ public class KillClogPanel extends PluginPanel
 	{
 		switch (key)
 		{
+			case "enableComparison":
+				searchRowController.setComparisonEnabled(config.enableComparison());
+				break;
 			case "completionistHighlighter":
 			case "completedClogColor":
 			case "missing1Color":
@@ -1701,7 +1725,7 @@ public class KillClogPanel extends PluginPanel
 				break;
 			case "skillDisplay":
 			case "skillLevelColor":
-			case "skillCompletionColor":
+			case "skillColorMode":
 				refreshSkillDisplay();
 				break;
 			case "virtualLevels":
@@ -1970,27 +1994,33 @@ public class KillClogPanel extends PluginPanel
 	{
 		if (clog != null)
 		{
+			setClogSetupNoticeVisible(false);
 			renderClogResult(clog, isSelf, lookupVersionAtFire);
 		}
 		else
 		{
 			if (isSelf)
 			{
-				clogNotice.setText(SYNC_NOTICE);
-				clogNotice.setIcon(new ImageIcon(getSyncIcon()));
+				setClogSetupNoticeVisible(true);
 				BufferedImage icon = KillClogIcons.resizedPluginIcon(15, 15, itemManager);
 				clogInfoLabel.setIcon(icon != null ? new ImageIcon(icon) : null);
-				clogInfoLabel.setText(ClogHelper.pad("Sync"));
+				clogInfoLabel.setText(ClogHelper.pad("Setup"));
 				clogInfoLabel.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 				tooltipController.setTooltipText(clogInfoLabel, " ");
 			}
 			else
 			{
-				clogNotice.setText(" ");
-				clogNotice.setIcon(null);
+				setClogSetupNoticeVisible(false);
 			}
 			fetchRsn(player, lookupVersionAtFire);
 		}
+	}
+
+	private void setClogSetupNoticeVisible(boolean visible)
+	{
+		clogNotice.setVisible(visible);
+		revalidate();
+		repaint();
 	}
 
 	@Override

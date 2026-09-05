@@ -15,20 +15,33 @@ public class ProfileAppearanceServiceTest
 	@Test
 	public void visibleFollowerNpcIdUsesTransformedComposition()
 	{
-		NPCComposition visible = proxy(NPCComposition.class, 12293, null);
-		NPC follower = proxy(NPC.class, 9999, visible);
+		NPCComposition base = composition(9999, false, null);
+		NPCComposition visible = composition(12293, true, new String[]{"Pick-up"});
+		NPC follower = npc(9999, base, visible);
 
 		assertEquals(12293, ProfileAppearanceService.visibleFollowerNpcId(follower));
 	}
 
 	@Test
+	public void visibleFollowerNpcIdRejectsNonPetTransformation()
+	{
+		NPCComposition base = composition(9999, true, new String[]{"Pick-up"});
+		NPCComposition visible = composition(12296, false, new String[]{"Talk-to"});
+
+		assertEquals(-1, ProfileAppearanceService.visibleFollowerNpcId(
+			npc(9999, base, visible)));
+	}
+
+	@Test
 	public void visibleFollowerNpcIdFallsBackToNpcId()
 	{
-		NPC follower = proxy(NPC.class, 9399, null);
+		NPC follower = npc(9399,
+			composition(9399, true, new String[]{"Pick-up"}), null);
 
 		assertEquals(9399, ProfileAppearanceService.visibleFollowerNpcId(follower));
 		assertEquals(-1, ProfileAppearanceService.visibleFollowerNpcId(null));
-		assertEquals(-1, ProfileAppearanceService.visibleFollowerNpcId(proxy(NPC.class, 12296, null)));
+		assertEquals(-1, ProfileAppearanceService.visibleFollowerNpcId(npc(12296,
+			composition(12296, false, new String[]{"Talk-to"}), null)));
 	}
 
 	@Test
@@ -107,10 +120,9 @@ public class ProfileAppearanceServiceTest
 		}
 	}
 
-	@SuppressWarnings("unchecked")
-	private static <T> T proxy(Class<T> type, int id, NPCComposition transformed)
+	private static NPC npc(int id, NPCComposition base, NPCComposition transformed)
 	{
-		return (T) Proxy.newProxyInstance(type.getClassLoader(), new Class<?>[]{type},
+		return (NPC) Proxy.newProxyInstance(NPC.class.getClassLoader(), new Class<?>[]{NPC.class},
 			(instance, method, args) ->
 			{
 				if (method.getName().equals("getId"))
@@ -123,22 +135,43 @@ public class ProfileAppearanceServiceTest
 				}
 				if (method.getName().equals("getComposition"))
 				{
-					return proxy(NPCComposition.class, id, null);
+					return base;
+				}
+				return defaultValue(method.getReturnType());
+			});
+	}
+
+	private static NPCComposition composition(int id, boolean follower, String[] actions)
+	{
+		return (NPCComposition) Proxy.newProxyInstance(NPCComposition.class.getClassLoader(),
+			new Class<?>[]{NPCComposition.class}, (instance, method, args) ->
+			{
+				if (method.getName().equals("getId"))
+				{
+					return id;
+				}
+				if (method.getName().equals("isFollower"))
+				{
+					return follower;
 				}
 				if (method.getName().equals("getActions"))
 				{
-					return new String[]{id == 12296 ? "Talk-to" : "Pick-up"};
+					return actions;
 				}
-				Class<?> returnType = method.getReturnType();
-				if (returnType.equals(boolean.class))
-				{
-					return true;
-				}
-				if (returnType.equals(int.class))
-				{
-					return 0;
-				}
-				return null;
+				return defaultValue(method.getReturnType());
 			});
+	}
+
+	private static Object defaultValue(Class<?> returnType)
+	{
+		if (returnType.equals(boolean.class))
+		{
+			return false;
+		}
+		if (returnType.equals(int.class))
+		{
+			return 0;
+		}
+		return null;
 	}
 }

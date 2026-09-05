@@ -34,6 +34,9 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private static final String TEMPLE_SOURCE = "TempleOSRS";
 	private static final String RUNEPROFILE_SOURCE = "RuneProfile";
 	private static final String KILLCLOG_SOURCE = "Kill Clog Sync";
+	private static final String SETUP_OPEN_LINE = "1. Open your Collection Log.";
+	private static final String SETUP_SEARCH_LINE = "2. Right-click the top and choose \"Search\".";
+	private static final String SETUP_CHAT_LINE = "Chat will confirm when setup is complete.";
 
 	private String tierRange;
 	private String tierName;
@@ -45,6 +48,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private Map<String, BufferedImage> tierIcons;
 	private String notice;
 	private BufferedImage noticeIcon;
+	private boolean firstTimeSetup;
 
 	private BufferedImage[] recentSprites;
 	private int recentCount;
@@ -93,15 +97,25 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 	public void setNotice(String notice)
 	{
+		firstTimeSetup = false;
 		this.notice = notice;
 		setTitle("Clog Summary");
 	}
 
 	public void setNotice(String notice, BufferedImage icon)
 	{
+		firstTimeSetup = false;
 		this.notice = notice;
 		this.noticeIcon = icon;
 		setTitle("Clog Summary");
+	}
+
+	public void setFirstTimeSetup()
+	{
+		firstTimeSetup = true;
+		notice = null;
+		noticeIcon = null;
+		setTitle("First Time Setup");
 	}
 
 	public void setRecentItems(List<ClogResult.ClogItem> recentItems, ClogResult clog,
@@ -231,6 +245,13 @@ public class ClogSummaryTooltip extends TitleTooltip
 	{
 		FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
 
+		if (firstTimeSetup)
+		{
+			int width = Math.max(fm.stringWidth(SETUP_OPEN_LINE), fm.stringWidth(SETUP_SEARCH_LINE));
+			width = Math.max(width, fm.stringWidth(SETUP_CHAT_LINE));
+			return new Dimension(width, LINE_HEIGHT * 3);
+		}
+
 		if (notice != null)
 		{
 			int nw = fm.stringWidth(notice);
@@ -307,6 +328,18 @@ public class ClogSummaryTooltip extends TitleTooltip
 		int inset = getInset();
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		FontMetrics fm = g2.getFontMetrics();
+
+		if (firstTimeSetup)
+		{
+			g2.setColor(NOTICE_COLOR);
+			int y = startY + fm.getAscent();
+			g2.drawString(SETUP_OPEN_LINE, inset, y);
+			y += LINE_HEIGHT;
+			g2.drawString(SETUP_SEARCH_LINE, inset, y);
+			y += LINE_HEIGHT;
+			g2.drawString(SETUP_CHAT_LINE, inset, y);
+			return;
+		}
 
 		if (notice != null)
 		{

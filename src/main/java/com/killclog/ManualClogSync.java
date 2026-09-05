@@ -14,7 +14,7 @@ import net.runelite.api.Player;
 final class ManualClogSync
 {
 	private static final int CLOG_ITEM_SCRIPT = 4100;
-	private static final int MANUAL_BULK_TIMEOUT_TICKS = 100;
+	private static final int FIRST_CAPTURE_TIMEOUT_TICKS = 100;
 
 	private final BulkCaptureState bulk = new BulkCaptureState();
 
@@ -33,11 +33,11 @@ final class ManualClogSync
 			finalizeBulkCapture(client, clogIndex, localClogCache,
 				chatNotifier, clogButtonOverlay, firstSyncComplete, panelRefresh);
 		}
-		else if (bulk.timedOut(tickCount, MANUAL_BULK_TIMEOUT_TICKS))
+		else if (bulk.timedOut(tickCount, FIRST_CAPTURE_TIMEOUT_TICKS))
 		{
 			reset();
 			chatNotifier.send(ChatNotice.SYNC_HELP,
-				"Sync timed out. Click the chalice, then Search and Back.");
+				"Setup timed out. Open the Collection Log and choose Search again.");
 		}
 	}
 
@@ -47,6 +47,20 @@ final class ManualClogSync
 		{
 			bulk.captureScriptArguments(args, tickCount);
 		}
+	}
+
+	void onCollectionLogOpened(Client client, LocalClogCache localClogCache,
+		KillClogChatNotifier chatNotifier)
+	{
+		Player local = client.getLocalPlayer();
+		if (local == null || local.getName() == null || bulk.isActive()
+			|| localClogCache.hasDataFor(local.getName()))
+		{
+			return;
+		}
+
+		chatNotifier.send(ChatNotice.SYNC_HELP,
+			"First Time Setup: Right-click the top of the Collection Log and choose Search.");
 	}
 
 	void onSyncClicked(Client client, ClogIndex clogIndex,
@@ -65,22 +79,34 @@ final class ManualClogSync
 
 		if (!localClogCache.hasDataFor(local.getName()))
 		{
-			beginManualBulkCapture(client, clogIndex, localClogCache, chatNotifier);
+			beginFirstCapture(client, clogIndex, localClogCache, chatNotifier, false);
 		}
 	}
 
-	private void beginManualBulkCapture(Client client, ClogIndex clogIndex,
+	/**
+	 * The game's Collection Log Search menu action is the real start of a
+	 * first-time capture. This runs before script 4100 streams the obtained
+	 * entries, so no separate chalice click (or Back action) is required.
+	 */
+	void onCollectionLogSearch(Client client, ClogIndex clogIndex,
 		LocalClogCache localClogCache, KillClogChatNotifier chatNotifier)
+	{
+		beginFirstCapture(client, clogIndex, localClogCache, chatNotifier, true);
+	}
+
+	private void beginFirstCapture(Client client, ClogIndex clogIndex,
+		LocalClogCache localClogCache, KillClogChatNotifier chatNotifier,
+		boolean searchSelected)
 	{
 		if (bulk.isActive())
 		{
-			chatNotifier.send(ChatNotice.SYNC_HELP,
-				"Sync is armed. Click Search, then Back.");
 			return;
 		}
 
 		if (!clogIndex.isParsed())
 		{
+			chatNotifier.send(ChatNotice.SYNC_HELP,
+				"Collection Log is still loading - choose Search again in a moment.");
 			return;
 		}
 
@@ -99,11 +125,18 @@ final class ManualClogSync
 		bulk.arm(client.getTickCount(),
 			client.getVarpValue(ClogVarps.OBTAINED),
 			client.getVarpValue(ClogVarps.TOTAL));
+		if (searchSelected)
+		{
+			// A genuinely empty account produces no item scripts. The loaded
+			// total varp lets that Search still finish and create its local file.
+			bulk.scheduleEmptySearchFinalization(client.getTickCount());
+		}
 
 		chatNotifier.send(ChatNotice.SYNC_HELP,
-			"First sync armed. Click Search, then Back.");
+			"Kill Clog is reading your Collection Log for First Time Setup...");
 
-		log.debug("Armed manual bulk clog capture (game reports {} obtained)", bulk.clogCount);
+		log.debug("Armed first-time clog capture from Collection Log Search "
+			+ "(game reports {} obtained)", bulk.clogCount);
 	}
 
 	private void finalizeBulkCapture(Client client, ClogIndex clogIndex,
@@ -181,8 +214,10 @@ final class ManualClogSync
 		log.debug("Bulk clog capture complete: {} items across {} categories for '{}' ({} streamed)",
 			displayCount, clogIndex.categoryCount(), name, bulk.obtained.size());
 
-		chatNotifier.send(ChatNotice.SYNC_RESULT,
-			displayCount + " items synced to Kill Clog");
+		// Setup guidance and confirmation are always visible, even when routine
+		// sync-result chat messages are disabled in config.
+		chatNotifier.send(ChatNotice.SYNC_HELP,
+			"First Time Setup complete - " + displayCount + " items saved to Kill Clog.");
 
 		// Merge the buffered category before reset (captured when clog first opened).
 		String bufKey = bulk.bufferedCategoryKey;

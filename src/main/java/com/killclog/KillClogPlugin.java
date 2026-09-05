@@ -177,6 +177,7 @@ public class KillClogPlugin extends Plugin
 	@Override
 	protected void startUp()
 	{
+		migrateSkillColorMode();
 		navButton = NavigationButton.builder()
 			.tooltip("Kill Clog")
 			.icon(getIcon())
@@ -199,7 +200,7 @@ public class KillClogPlugin extends Plugin
 		panel.setSyncArrowEnabled(config.killclogSync());
 		panel.setCharacterPublishEnabled(characterPublishingEnabled());
 		// The sync trigger lives at the data seam: any path that lands a
-		// first-party observation (bulk page capture, search-and-back walk,
+		// first-party observation (bulk page capture, Collection Log Search,
 		// live unlock) schedules a debounced push.
 		localClogCache.setFirstPartyChangedListener(() ->
 		{
@@ -228,6 +229,23 @@ public class KillClogPlugin extends Plugin
 		}
 
 		log.debug("Kill Clog plugin started");
+	}
+
+	private void migrateSkillColorMode()
+	{
+		String legacy = configManager.getConfiguration("killclog", "skillCompletionColor");
+		if (legacy == null)
+		{
+			return;
+		}
+
+		String current = configManager.getConfiguration("killclog", "skillColorMode");
+		if (current == null)
+		{
+			configManager.setConfiguration("killclog", "skillColorMode",
+				SkillColorMode.fromLegacyCompletionColor(legacy));
+		}
+		configManager.unsetConfiguration("killclog", "skillCompletionColor");
 	}
 
 	@Override
@@ -1197,6 +1215,13 @@ public class KillClogPlugin extends Plugin
 	@Subscribe
 	public void onWidgetLoaded(WidgetLoaded event)
 	{
+		if (event.getGroupId() == CLOG_INTERFACE)
+		{
+			// Prompt at the relevant game surface, but do not arm here: opening
+			// a category can run item scripts that are not a full-log Search.
+			manualClogSync.onCollectionLogOpened(client, localClogCache, chatNotifier);
+		}
+
 		// Both menu interfaces are watched: the player's interface-style
 		// setting decides which one the Adventure Log opens in, and watching
 		// only one harvests nothing for everyone on the other style.
@@ -1325,15 +1350,31 @@ public class KillClogPlugin extends Plugin
 	@Subscribe
 	public void onMenuOptionClicked(MenuOptionClicked event)
 	{
+		if (isCollectionLogSearchClick(event.getMenuOption(), event.getMenuEntry().getParam1()))
+		{
+			// Arm before the game's Search action runs script 4100 for every
+			// obtained entry. Opening the interface itself is too early: its
+			// visible category can run the same script and is not a full log.
+			clogIndex.ensureParsed(client, itemManager);
+			manualClogSync.onCollectionLogSearch(client, clogIndex,
+				localClogCache, chatNotifier);
+		}
 		lookupMenu.handlePlayerLookup(event, config, this::openPanelAndLookup);
+	}
+
+	static boolean isCollectionLogSearchClick(String option, int widgetId)
+	{
+		return option != null
+			&& "Search".equalsIgnoreCase(Text.removeTags(option).trim())
+			&& widgetId >>> 16 == CLOG_INTERFACE;
 	}
 
 	// Sync button.
 
 	/**
-	 * Called by ClogButtonOverlay on click.
-	 * First click: buffers visible category + arms manual bulk capture.
-	 * Subsequent clicks: captures visible category directly.
+	 * Called by ClogButtonOverlay on click. Search now starts first-time setup
+	 * automatically; the chalice remains a visible-category refresh and a
+	 * fallback setup trigger if the Search menu event was unavailable.
 	 */
 	void onSyncClicked()
 	{

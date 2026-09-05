@@ -1,7 +1,8 @@
 package com.killclog;
 
-import java.awt.event.MouseListener;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.lang.reflect.Field;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.swing.JComponent;
@@ -233,6 +234,23 @@ public class TooltipControllerTest
 		}
 
 		assertEquals(1, dismissedHoverPreviews.get());
+	}
+
+	@Test
+	public void scopedRefreshDismissesOnlyItsOwnPinnedSource() throws Exception
+	{
+		TooltipController controller = new TooltipController(config);
+		JLabel boss = new JLabel();
+		JLabel skill = new JLabel();
+		Field activeSource = TooltipController.class.getDeclaredField("activePinnedComponent");
+		activeSource.setAccessible(true);
+		activeSource.set(controller, boss);
+
+		controller.hidePinnedTooltipIfOwnedBy(skill);
+		assertSame(boss, activeSource.get(controller));
+
+		controller.hidePinnedTooltipIfOwnedBy(boss);
+		assertNull(activeSource.get(controller));
 	}
 
 	private static boolean isRegistered(JLabel label, ToolTipManager manager)

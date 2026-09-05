@@ -113,7 +113,7 @@ final class LiveClogSync
 		{
 			needsFirstSyncWarned = true;
 			chatNotifier.send(ChatNotice.SYNC_HELP,
-				"Click the chalice once to enable live sync.");
+				"Open the Collection Log, right-click the top, and choose Search to set up Kill Clog.");
 		}
 	}
 

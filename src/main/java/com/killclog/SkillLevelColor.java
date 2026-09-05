@@ -8,9 +8,24 @@ final class SkillLevelColor
 	{
 	}
 
-	static Color forLevel(int level, KillClogConfig config)
+	static Color forCell(int level, boolean synced, int obtained, int total,
+		KillClogConfig config)
 	{
-		if (level >= 99 && config.useSkillCompletionColor())
+		if (!synced)
+		{
+			return Cells.KC_COLOR;
+		}
+		if (config.skillColorMode() == SkillColorMode.SKILL_COLOR)
+		{
+			return config.skillLevelColor();
+		}
+		if (config.skillColorMode() == SkillColorMode.CLOG_PROGRESSION)
+		{
+			return obtained >= 0 && total > 0
+				? ClogHelper.clogColor(obtained, total, config)
+				: config.skillLevelColor();
+		}
+		if (level >= 99)
 		{
 			return config.completedClogColor();
 		}
