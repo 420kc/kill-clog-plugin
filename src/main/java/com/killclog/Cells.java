@@ -50,6 +50,11 @@ public class Cells
 	/** Builds the single-player sprite tooltip body. Implemented by the panel (it owns the sync-notice text). */
 	public interface SinglePlayerTooltipBuilder
 	{
+		/** Same tooltip, built against the compared (red) player's context. */
+		JToolTip buildCompared(JLabel owner, TooltipData data, int gridCols,
+			String name, boolean compact);
+
+
 		JToolTip build(JLabel owner, @Nullable TooltipData data, int gridCols, String name);
 
 		JToolTip build(JLabel owner, @Nullable TooltipData data, int gridCols, String name, boolean compact);
@@ -651,25 +656,43 @@ public class Cells
 	private JToolTip buildBossTooltip(JLabel owner, @Nullable TooltipData blueData,
 		@Nullable TooltipData redData, String name, String wikiPage)
 	{
-		JToolTip tip = comparison.isComparisonMode()
-			? comparison.makeSpriteTooltip(owner, blueData, redData, name)
-			: buildSingleSpriteTooltip(owner, blueData, 5, name);
+		if (comparison.isComparisonMode())
+		{
+			JToolTip blue = singlePlayerBuilder.build(owner, blueData, 5, name);
+			JToolTip red = singlePlayerBuilder.buildCompared(owner, redData, 5, name, false);
+			decorateBossTooltip(blue, wikiPage, lookupSession.getHiscoreResult());
+			decorateBossTooltip(red, wikiPage, comparison.getCompareHiscoreResult());
+			return wrapSideBySide(owner, blue, red);
+		}
+		JToolTip tip = buildSingleSpriteTooltip(owner, blueData, 5, name);
+		decorateBossTooltip(tip, wikiPage, lookupSession.getHiscoreResult());
+		return tip;
+	}
+
+	/**
+	 * Wiki link plus the shifted-CSV warning, per side: a result degrading to
+	 * the warned CSV fallback flags its own card - a silently wrong red card
+	 * breaks the ladder's rule the same as a blue one.
+	 */
+	private static void decorateBossTooltip(JToolTip tip, String wikiPage,
+		@Nullable HiscoreResult result)
+	{
 		if (tip instanceof TitleTooltip)
 		{
 			TitleTooltip titled = (TitleTooltip) tip;
 			titled.setTitleWikiPage(wikiPage);
-			// Either player's result degrading to the warned CSV fallback puts
-			// the notice up - a silently wrong red column breaks the ladder's
-			// rule the same as a blue one.
-			HiscoreResult blue = lookupSession.getHiscoreResult();
-			HiscoreResult red = comparison.getCompareHiscoreResult();
-			if ((blue != null && blue.isBossSectionShifted())
-				|| (red != null && red.isBossSectionShifted()))
+			if (result != null && result.isBossSectionShifted())
 			{
 				titled.setInfoLine(BOSS_SECTION_SHIFTED_LABEL, BOSS_SECTION_SHIFTED_VALUE,
 					ColorScheme.LIGHT_GRAY_COLOR);
 			}
 		}
+	}
+
+	private JToolTip wrapSideBySide(JLabel owner, JToolTip blue, JToolTip red)
+	{
+		JToolTip tip = comparison.wrapSideBySide(owner, blue, red);
+		tooltipController.keepTooltipOnHover(tip, (JPanel) owner.getParent());
 		return tip;
 	}
 
@@ -743,20 +766,15 @@ public class Cells
 
 	private JToolTip buildClueTierTooltip(JLabel owner, HiscoreSkill tier, String displayName, boolean compact)
 	{
+		int gridCols = compact ? 10 : 5;
 		if (comparison.isComparisonMode())
 		{
 			TooltipData redData = comparison.buildCompareClueTierData(tier);
-			return comparison.makeSpriteTooltip(owner, tooltipDataMap.get(tier), redData, displayName,
-				!suppressComparisonClueGrid(tier));
+			return wrapSideBySide(owner,
+				singlePlayerBuilder.build(owner, tooltipDataMap.get(tier), gridCols, displayName, compact),
+				singlePlayerBuilder.buildCompared(owner, redData, gridCols, displayName, compact));
 		}
-		return buildSingleSpriteTooltip(owner, tooltipDataMap.get(tier), compact ? 10 : 5, displayName, compact);
-	}
-
-	private static boolean suppressComparisonClueGrid(HiscoreSkill tier)
-	{
-		return tier == HiscoreSkill.CLUE_SCROLL_EASY
-			|| tier == HiscoreSkill.CLUE_SCROLL_MEDIUM
-			|| tier == HiscoreSkill.CLUE_SCROLL_HARD;
+		return buildSingleSpriteTooltip(owner, tooltipDataMap.get(tier), gridCols, displayName, compact);
 	}
 
 	private JToolTip buildClueRareTooltip(JLabel owner, String name, String clogCategory)
@@ -765,7 +783,9 @@ public class Cells
 		if (comparison.isComparisonMode())
 		{
 			TooltipData redData = comparison.buildClueRare(name, clogCategory);
-			return comparison.makeSpriteTooltip(owner, data, redData, name);
+			return wrapSideBySide(owner,
+				singlePlayerBuilder.build(owner, data, 5, name),
+				singlePlayerBuilder.buildCompared(owner, redData, 5, name, false));
 		}
 		return buildSingleSpriteTooltip(owner, data, 5, name);
 	}
@@ -775,7 +795,9 @@ public class Cells
 		if (comparison.isComparisonMode())
 		{
 			TooltipData redData = comparison.buildCustomRare(name, itemIds);
-			return comparison.makeSpriteTooltip(owner, rareTooltips.get(rareKey), redData, name);
+			return wrapSideBySide(owner,
+				singlePlayerBuilder.build(owner, rareTooltips.get(rareKey), 5, name),
+				singlePlayerBuilder.buildCompared(owner, redData, 5, name, false));
 		}
 		return buildSingleSpriteTooltip(owner, rareTooltips.get(rareKey), 5, name);
 	}

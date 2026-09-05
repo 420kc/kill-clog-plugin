@@ -328,6 +328,14 @@ public class KillClogPanel extends PluginPanel
 			{
 				return makeSpriteTooltip(owner, data, gridCols, name, compact);
 			}
+
+			@Override
+			public JToolTip buildCompared(JLabel owner, TooltipData data, int gridCols,
+				String name, boolean compact)
+			{
+				return makeSpriteTooltip(owner, data, gridCols, name, compact,
+					comparison.getCompareHiscoreResult(), comparison.getCompareRsn());
+			}
 		});
 
 		reloadTooltipSprites();
@@ -765,12 +773,20 @@ public class KillClogPanel extends PluginPanel
 	private JToolTip makeSpriteTooltip(JLabel owner, TooltipData data, int gridCols,
 										String name, boolean compact)
 	{
+		return makeSpriteTooltip(owner, data, gridCols, name, compact,
+			lookupSession.getHiscoreResult(), lookupSession.getCurrentLookupRsn());
+	}
+
+	/** Player-scoped form: {@code result} and {@code rsn} pick whose card this is. */
+	private JToolTip makeSpriteTooltip(JLabel owner, TooltipData data, int gridCols,
+		String name, boolean compact, @Nullable HiscoreResult result, @Nullable String rsn)
+	{
 		JPanel parentCell = (JPanel) owner.getParent();
 		ImgTooltip tip = compact ? new ImgTooltip(gridCols, 15) : new ImgTooltip(gridCols);
 		tip.setComponent(owner);
 		tip.setWikiLinksEnabled(config.wikiItemLinks());
 		boolean isSolHeredit = ColosseumGlory.replacesKc(name);
-		int glory = ColosseumGlory.score(lookupSession.getHiscoreResult());
+		int glory = ColosseumGlory.score(result);
 
 		// Synced clog data with real item counts.
 		if (data != null && data.obtainedCount >= 0)
@@ -804,15 +820,15 @@ public class KillClogPanel extends PluginPanel
 			config.showTooltipKc(), config.showTooltipRank()))
 		{
 			tip.setTitle(data != null ? data.name : name);
-			boolean isSelfNoCache = lookupSession.getHiscoreResult() != null && localRsn != null
-				&& localRsn.equalsIgnoreCase(lookupSession.getCurrentLookupRsn());
+			boolean isSelfNoCache = result != null && localRsn != null
+				&& localRsn.equalsIgnoreCase(rsn);
 			if (isSelfNoCache)
 			{
 				tip.setNotice(SETUP_NOTICE);
 			}
-			else if (lookupSession.getHiscoreResult() != null)
+			else if (result != null)
 			{
-				tip.setNotice(noClogNotice(lookupSession.getCurrentLookupRsn()));
+				tip.setNotice(noClogNotice(rsn));
 			}
 			else
 			{

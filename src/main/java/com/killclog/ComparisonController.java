@@ -12,14 +12,13 @@ package com.killclog;
 import java.awt.Color;
 import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
-import javax.swing.JPanel;
 import javax.swing.JToolTip;
 import lombok.Getter;
 import lombok.Setter;
@@ -448,89 +447,20 @@ public class ComparisonController
 	// Pure helpers
 
 	/**
-	 * Build a comparison tooltip showing both players' sprite grids stacked.
-	 * Falls back to single-player tooltip when not in comparison mode.
+	 * Wrap the two players' single tooltips into one side-by-side comparison
+	 * card, named and colored per player.
 	 */
-	public JToolTip makeSpriteTooltip(JLabel owner, TooltipData blueData,
-		TooltipData redData, String name)
+	public JToolTip wrapSideBySide(JComponent owner, JToolTip blueTip, JToolTip redTip)
 	{
-		return makeSpriteTooltip(owner, blueData, redData, name, true);
-	}
-
-	public JToolTip makeSpriteTooltip(JLabel owner, TooltipData blueData,
-		TooltipData redData, String name, boolean showSpriteGrids)
-	{
-		JPanel parentCell = (JPanel) owner.getParent();
-		CompareImgTooltip tip = new CompareImgTooltip();
-		tip.setComponent(owner);
-		tip.setTitle(name);
-		tip.setShowSpriteGrids(showSpriteGrids);
-		tip.setWikiLinksEnabled(config.wikiItemLinks());
-
 		String blueName = renderTarget != null ? renderTarget.playerName().getText().trim() : "";
 		if (blueName.isEmpty())
 		{
 			blueName = "Blue";
 		}
 		String redName = compareRsn != null ? compareRsn : "Red";
-
-		boolean blueHas = blueData != null && blueData.allItemIds != null
-			&& !blueData.allItemIds.isEmpty();
-		boolean redHas = redData != null && redData.allItemIds != null
-			&& !redData.allItemIds.isEmpty();
-		// The Tooltip Header rank setting applies in compare mode too - this
-		// builder serves every compare sprite tooltip, so one gate covers
-		// boss, clue tier, and rare variants. Sol's Glory line replaces its
-		// otherwise-redundant KC and therefore follows the KC visibility flag.
-		boolean rankTracked = config.showTooltipRank()
-			&& ((blueData != null && blueData.rankTracked)
-			|| (redData != null && redData.rankTracked));
-
-		tip.setBluePlayer(blueName,
-			blueData != null ? blueData.obtainedCount : -1,
-			blueData != null ? blueData.totalItems : 0,
-			blueData != null ? blueData.rank : 0,
-			rankTracked);
-		tip.setRedPlayer(redName,
-			redData != null ? redData.obtainedCount : -1,
-			redData != null ? redData.totalItems : 0,
-			redData != null ? redData.rank : 0,
-			rankTracked);
-		tip.setBlueHasData(blueHas);
-		tip.setRedHasData(redHas);
-		if (ColosseumGlory.replacesKc(name) && config.showTooltipKc())
-		{
-			tip.setComparisonStat(ColosseumGlory.LABEL,
-				ColosseumGlory.score(lookupSession.getHiscoreResult()),
-				ColosseumGlory.score(compareHiscoreResult));
-		}
-
-		List<Integer> allItemIds = blueHas ? blueData.allItemIds
-			: (redHas ? redData.allItemIds : null);
-		tip.setItems(allItemIds,
-			blueData != null ? blueData.obtainedIds : Collections.emptySet(),
-			blueData != null ? blueData.obtainedCounts : Collections.emptyMap(),
-			redData != null ? redData.obtainedIds : Collections.emptySet(),
-			redData != null ? redData.obtainedCounts : Collections.emptyMap(),
-			mergedItemNames(blueData, redData),
-			itemManager);
-
-		tooltipController.keepTooltipOnHover(tip, parentCell);
+		SideBySideTooltip tip = new SideBySideTooltip(blueName, blueTip, redName, redTip);
+		tip.setComponent(owner);
 		return tip;
-	}
-
-	private static Map<Integer, String> mergedItemNames(TooltipData blueData, TooltipData redData)
-	{
-		Map<Integer, String> names = new LinkedHashMap<>();
-		if (redData != null)
-		{
-			names.putAll(redData.itemNames);
-		}
-		if (blueData != null)
-		{
-			names.putAll(blueData.itemNames);
-		}
-		return names;
 	}
 
 	@Nullable

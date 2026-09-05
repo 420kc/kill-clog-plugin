@@ -57,26 +57,6 @@ public class PvmSummaryTooltipTest
 		assertEquals("33,333", ColosseumGlory.headerValue(33_333, 17));
 	}
 
-	@Test
-	public void comparisonGloryRowAppearsOnlyForPositiveSignal()
-	{
-		CompareImgTooltip tip = new CompareImgTooltip();
-		tip.setTitle("Sol Heredit");
-		tip.setBluePlayer("Blue", 1, 10, 1, true);
-		tip.setRedPlayer("Red", 2, 10, 2, true);
-		int baseHeight = tip.getHeaderHeight();
-
-		tip.setComparisonStat(ColosseumGlory.LABEL, 0, -1);
-		assertFalse(tip.showComparisonStat());
-		assertEquals(baseHeight, tip.getHeaderHeight());
-
-		tip.setComparisonStat(ColosseumGlory.LABEL, 33_333, 0);
-		assertTrue(tip.showComparisonStat());
-		assertEquals(baseHeight + TitleTooltip.LINE_HEIGHT, tip.getHeaderHeight());
-		assertEquals("33,333", tip.blueComparisonStatText());
-		assertEquals("--", tip.redComparisonStatText());
-	}
-
 	private static HiscoreResult hiscoreWithGlory(int glory)
 	{
 		Map<String, Integer> scores = new HashMap<>();

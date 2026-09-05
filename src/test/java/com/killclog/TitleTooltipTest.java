@@ -140,65 +140,6 @@ public class TitleTooltipTest
 	}
 
 	@Test
-	public void compareSurfaceRoutesPaintAndSizingThroughTheSharedFormatter()
-	{
-		// Counting spy: if either production path (painting or sizing)
-		// reverts to a surface-local raw formatter, its seam count stays
-		// flat and this test fails. Asserting the seam values alone cannot
-		// prove the surfaces actually route through them.
-		class SeamCountingTooltip extends CompareImgTooltip
-		{
-			int blueSeamCalls;
-			int redSeamCalls;
-
-			@Override
-			String blueObtainedText()
-			{
-				blueSeamCalls++;
-				return super.blueObtainedText();
-			}
-
-			@Override
-			String redObtainedText()
-			{
-				redSeamCalls++;
-				return super.redObtainedText();
-			}
-		}
-
-		SeamCountingTooltip tip = new SeamCountingTooltip();
-		tip.setShowSpriteGrids(false);
-		tip.setTitle("Zulrah");
-		tip.setBluePlayer("Blue", 12, -1, 0, false);
-		tip.setRedPlayer("Red", -1, 10, 0, false);
-
-		Dimension size = tip.getPreferredSize();
-		assertTrue("sizing must route through the shared-formatter seams",
-			tip.blueSeamCalls > 0 && tip.redSeamCalls > 0);
-
-		int sizedBlue = tip.blueSeamCalls;
-		int sizedRed = tip.redSeamCalls;
-		tip.setSize(size);
-		BufferedImage canvas = new BufferedImage(
-			Math.max(size.width, 1), Math.max(size.height, 1), BufferedImage.TYPE_INT_ARGB);
-		Graphics2D g2 = canvas.createGraphics();
-		try
-		{
-			tip.paint(g2);
-		}
-		finally
-		{
-			g2.dispose();
-		}
-		assertTrue("painting must route through the shared-formatter seams",
-			tip.blueSeamCalls > sizedBlue && tip.redSeamCalls > sizedRed);
-
-		// And the seams themselves speak the shared formatter's language.
-		assertEquals("12/?", tip.blueObtainedText());
-		assertEquals("--", tip.redObtainedText());
-	}
-
-	@Test
 	public void standardSpriteTooltipsShrinkShortCatalogsToFourColumns()
 	{
 		ImgTooltip shortCatalog = spriteTooltip(2);
@@ -289,20 +230,6 @@ public class TitleTooltipTest
 		large.setRedData("Red", 126, 999, 50, 60, "Rat", 5);
 
 		assertTrue(small.getPreferredSize().width < large.getPreferredSize().width);
-	}
-
-	@Test
-	public void compareSpriteCountUsesEachPlayersObtainedCount()
-	{
-		Map<Integer, Integer> counts = new HashMap<>();
-		counts.put(995, 42);
-
-		assertEquals(42, CompareImgTooltip.spriteCountForItem(995,
-			Collections.singleton(995), counts));
-		assertEquals(1, CompareImgTooltip.spriteCountForItem(995,
-			Collections.emptySet(), counts));
-		assertEquals(1, CompareImgTooltip.spriteCountForItem(995,
-			Collections.singleton(995), Collections.emptyMap()));
 	}
 
 	@Test
