@@ -1,0 +1,70 @@
+# Search status flavor pools: kind<TAB>text. %s slots fill with the rsn(s).
+# One pool per kind, drawn at random by the search row.
+search	Search party for %s...
+search	Tracking down %s...
+search	On %s's trail...
+search	Searching for %s...
+search	Scouring for %s...
+search	Hot on %s's trail...
+search	APB out on %s...
+not_found	WANTED: %s
+not_found	%s has gone AWOL
+not_found	%s is touching grass
+not_found	%s? Never heard of 'em.
+not_found	%s who?
+not_found	Seen %s? I haven't...
+not_found	404: %s not found
+not_found	%s remains at large
+not_found	Couldn't find %s. Tragic.
+not_found	%s last seen at Doom. RIP.
+not_found	%s probably got pk'd.
+not_found	%s escaped the database
+not_found	%s left no footprints
+not_found	%s is off the grid
+not_found	%s failed the vibe check
+not_found	No clog trail for %s
+not_found	%s is hiding from the hiscores
+self	Oh hey it's you again
+self	%s returns for more
+self	Welcome back %s
+self	The usual?
+self	Looking good, %s
+self	Back for more?
+self	Miss me?
+self	%s checks in
+self	The legend returns
+self	%s checks the receipts
+self	Still got it, %s
+self	Let's see the damage
+self	Back to the log mines
+self_rare	Today's the day. GL %s.
+self_rare	Main character energy
+self_rare	You again? Nice.
+self_ultra	%s the legend
+self_ultra	One day this log will be full
+compare_search	Finding %s a rival...
+compare_search	Scouting for %s...
+compare_search	Pulling rival stats...
+compare_search	Lining up a challenger...
+compare_search	Sizing up the field...
+compare_not_found	No one showed for %s
+compare_not_found	%s's rival is MIA
+compare_not_found	%s wins by default.
+compare_not_found	%s remains uncontested
+compare_mirror	%s vs %s. Bold.
+compare_mirror	%s's rival: %s
+compare_mirror	Mirror match.
+compare_mirror	%s challenges... %s?
+compare_self_mirror	You vs you. Classic.
+compare_self_mirror	%s's rival: %s
+compare_self_mirror	Know thyself, %s
+compare_self_mirror	The real fight, %s
+compare_self_blue	Good luck vs %s!
+compare_self_blue	%s vs %s: FIGHT!
+compare_self_blue	Think you can take %s?
+compare_self_blue	%s vs %s
+compare_self_blue	You vs %s. Let's see it.
+compare_self_red	Challenging yourself?
+compare_self_red	Can't escape you, %s
+compare_self_red	%s vs %s. Bold.
+compare_self_red	Nowhere to hide, %s
