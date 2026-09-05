@@ -131,27 +131,9 @@ public class KillClogPanel extends PluginPanel
 				return buildComparePlayerSummary(this);
 			}
 			// Single player: standard player summary
-			SummaryTooltip tip = new SummaryTooltip();
-			tip.setComponent(this);
-			String name = playerName.getText().trim();
-			AccountDisplay display = accountTypes.displayIdentity(lookupSession.getHiscoreResult(),
-				lookupSession.getClogResult(), lookupSession.getCurrentLookupRsn());
-			tip.setData(
-				name.isEmpty() ? "Player" : name,
-				lookupSession.getHiscoreResult() != null ? lookupSession.getHiscoreResult().getOverallRank() : -1,
-				getCapeImage(),
-				accountBadges.badge(display),
-				AccountBadgeResolver.label(display),
-				LookupQueries.getPrestige(lookupSession.getHiscoreResult())
-			);
-			tip.setWikiLinksEnabled(config.wikiItemLinks());
-			if (lookupSession.getClogResult() != null)
-			{
-				ClogResult clog = lookupSession.getClogResult();
-				List<Integer> allPets = clog.getCategoryItems().get("all_pets");
-				Set<Integer> obtainedPets = LookupQueries.getObtainedPetIds(clog);
-				tip.setPets(allPets, obtainedPets, itemManager, clog::getItemName);
-			}
+			SummaryTooltip tip = buildPlayerSummaryTooltip(this,
+				lookupSession.getHiscoreResult(), lookupSession.getClogResult(),
+				playerName.getText().trim(), lookupSession.getCurrentLookupRsn());
 			// Without this the tooltip dies when the mouse leaves the name
 			// label, and the pet gallery can never be hovered at all.
 			if (this.getParent() instanceof JPanel)
@@ -174,56 +156,8 @@ public class KillClogPanel extends PluginPanel
 			}
 
 			// Single player: standard clog summary
-			ClogSummaryTooltip tip = new ClogSummaryTooltip();
-			tip.setComponent(this);
-			tip.setWikiLinksEnabled(config.wikiItemLinks());
-			if (lookupSession.getClogResult() != null)
-			{
-				ClogResult clog = lookupSession.getClogResult();
-				int[] totals = ClogHelper.sumClogTotals(clog);
-				tip.setTierData(totals[0], totals[1], iconCache.clogTierImages());
-				tip.setClogSources(clog.isFromTemple(), clog.isFromRuneProfile(), clog.isFromKillclog());
-				if (lookupSession.getHiscoreResult() != null)
-				{
-					int clogRank = lookupSession.getHiscoreResult().getActivityRank("Collections Logged");
-					tip.setRank(clogRank);
-				}
-				boolean stale = LookupQueries.isSyncStale(lookupSession.getClogLastChanged(), 90);
-				String sync = LookupQueries.syncLine(lookupSession.getClogLastChanged(), stale);
-				if (sync != null) tip.setSyncData(sync, stale);
-				tip.setSpecialItems(
-					ClogHelper.obtainedSpecialItems(PanelData.SPECIAL_ITEM_IDS, clog),
-					clog, itemManager);
-				tip.setRecentItems(LookupQueries.getRecentItems(clog, 4), clog, itemManager);
-			}
-			else
-			{
-				boolean isSelf = localRsn != null && rsn != null
-					&& localRsn.equalsIgnoreCase(rsn);
-				if (isSelf)
-				{
-					tip.setFirstTimeSetup();
-				}
-				else if (lookupSession.getHiscoreResult() != null)
-				{
-					tip.setNotice(noClogNotice(rsn));
-				}
-				else
-				{
-					// No player yet: preview the log's shape from the catalog.
-					ClogResult catalog = cells.unsyncedCatalogResult();
-					if (catalog != null)
-					{
-						tip.setTitle("Clog Summary");
-						tip.setObtainedPlaceholder(ClogHelper.sumClogTotals(catalog)[1]);
-					}
-					else
-					{
-						tip.setNotice("Loading catalog...");
-					}
-				}
-			}
-			return tip;
+			return buildClogSummaryTooltip(this, lookupSession.getHiscoreResult(),
+				lookupSession.getClogResult(), rsn, lookupSession.getClogLastChanged());
 		}
 
 	};
@@ -1844,96 +1778,115 @@ public class KillClogPanel extends PluginPanel
 			&& !text.trim().isEmpty();
 	}
 
-	/** Build a ComparePlayerSummaryTooltip for comparison mode (used by both name labels). */
-	private ComparePlayerSummaryTooltip buildComparePlayerSummary(JLabel owner)
+	/** Side-by-side player summary for comparison mode (used by both name labels). */
+	private JToolTip buildComparePlayerSummary(JLabel owner)
 	{
-		ComparePlayerSummaryTooltip cmp = new ComparePlayerSummaryTooltip();
-		cmp.setComponent(owner);
-		HiscoreResult blueHs = lookupSession.getHiscoreResult();
-		HiscoreResult redHs = comparison.getCompareHiscoreResult();
-		ClogResult blueClog = lookupSession.getClogResult();
-		ClogResult redClog = comparison.getCompareClogResult();
 		String blueName = comparisonBlueName();
 		String redName = comparison.getCompareRsn() != null ? comparison.getCompareRsn() : "--";
-		AccountDisplay blueDisplay = accountTypes.displayIdentity(blueHs, blueClog, blueName);
-		AccountDisplay redDisplay = accountTypes.displayIdentity(redHs, redClog, redName);
-
-		cmp.setBlueData(blueName,
-			blueHs != null ? blueHs.getOverallRank() : -1,
-			accountBadges.badge(blueDisplay),
-			AccountBadgeResolver.label(blueDisplay),
-			LookupQueries.getPrestige(blueHs),
-			getCapeImage(blueHs));
-		cmp.setRedData(redName,
-			redHs.getOverallRank(),
-			accountBadges.badge(redDisplay),
-			AccountBadgeResolver.label(redDisplay),
-			LookupQueries.getPrestige(redHs),
-			getCapeImage(redHs));
-
-		if (blueClog != null)
+		JToolTip tip = comparison.wrapSideBySide(owner,
+			buildPlayerSummaryTooltip(owner, lookupSession.getHiscoreResult(),
+				lookupSession.getClogResult(), blueName, blueName),
+			buildPlayerSummaryTooltip(owner, comparison.getCompareHiscoreResult(),
+				comparison.getCompareClogResult(), redName, redName));
+		if (owner.getParent() instanceof JPanel)
 		{
-			List<Integer> allPets = blueClog.getCategoryItems().get("all_pets");
-			Set<Integer> obtainedPets = LookupQueries.getObtainedPetIds(blueClog);
-			cmp.setBluePets(allPets, obtainedPets, itemManager);
+			tooltipController.keepTooltipOnHover(tip, (JPanel) owner.getParent());
 		}
-		if (redClog != null)
-		{
-			List<Integer> allPets = redClog.getCategoryItems().get("all_pets");
-			Set<Integer> obtainedPets = LookupQueries.getObtainedPetIds(redClog);
-			cmp.setRedPets(allPets, obtainedPets, itemManager);
-		}
-		return cmp;
+		return tip;
 	}
 
-	private CompareClogSummaryTooltip buildCompareClogSummary(JComponent owner)
+	/** One player's summary card: solo mode shows it alone, comparison pairs two. */
+	private SummaryTooltip buildPlayerSummaryTooltip(JComponent owner,
+		@Nullable HiscoreResult hiscore, @Nullable ClogResult clog,
+		String shownName, @Nullable String identityRsn)
 	{
-		CompareClogSummaryTooltip cmp = new CompareClogSummaryTooltip();
-		cmp.setComponent(owner);
-		cmp.setWikiLinksEnabled(config.wikiItemLinks());
-		ClogResult blueClog = lookupSession.getClogResult();
+		SummaryTooltip tip = new SummaryTooltip();
+		tip.setComponent(owner);
+		AccountDisplay display = accountTypes.displayIdentity(hiscore, clog, identityRsn);
+		tip.setData(
+			shownName.isEmpty() ? "Player" : shownName,
+			hiscore != null ? hiscore.getOverallRank() : -1,
+			getCapeImage(hiscore),
+			accountBadges.badge(display),
+			AccountBadgeResolver.label(display),
+			LookupQueries.getPrestige(hiscore)
+		);
+		tip.setWikiLinksEnabled(config.wikiItemLinks());
+		if (clog != null)
+		{
+			List<Integer> allPets = clog.getCategoryItems().get("all_pets");
+			Set<Integer> obtainedPets = LookupQueries.getObtainedPetIds(clog);
+			tip.setPets(allPets, obtainedPets, itemManager, clog::getItemName);
+		}
+		return tip;
+	}
+
+	private JToolTip buildCompareClogSummary(JComponent owner)
+	{
 		ClogResult redClog = comparison.getCompareClogResult();
-		String blueName = comparisonBlueName();
-		String redName = comparison.getCompareRsn() != null ? comparison.getCompareRsn() : "--";
-		Map<String, BufferedImage> icons = iconCache.clogTierImages();
+		return comparison.wrapSideBySide(owner,
+			buildClogSummaryTooltip(owner, lookupSession.getHiscoreResult(),
+				lookupSession.getClogResult(), comparisonBlueName(),
+				lookupSession.getClogLastChanged()),
+			buildClogSummaryTooltip(owner, comparison.getCompareHiscoreResult(),
+				redClog, comparison.getCompareRsn(),
+				redClog != null ? redClog.getLastChanged() : null));
+	}
 
-		if (blueClog != null)
+	/** One player's clog summary card: solo mode shows it alone, comparison pairs two. */
+	private ClogSummaryTooltip buildClogSummaryTooltip(JComponent owner,
+		@Nullable HiscoreResult hiscore, @Nullable ClogResult clog,
+		@Nullable String playerRsn, @Nullable String lastChanged)
+	{
+		ClogSummaryTooltip tip = new ClogSummaryTooltip();
+		tip.setComponent(owner);
+		tip.setWikiLinksEnabled(config.wikiItemLinks());
+		if (clog != null)
 		{
-			int[] bt = ClogHelper.sumClogTotals(blueClog);
-			cmp.setBlueData(blueName, bt[0], bt[1], icons);
-			boolean stale = LookupQueries.isSyncStale(lookupSession.getClogLastChanged(), 90);
-			String sync = LookupQueries.syncLine(lookupSession.getClogLastChanged(), stale);
-			if (sync != null) cmp.setBlueSync(sync, stale);
-			cmp.setBlueSpecial(
-				ClogHelper.obtainedSpecialItems(PanelData.SPECIAL_ITEM_IDS, blueClog),
-				blueClog, itemManager);
-			cmp.setBlueRecent(LookupQueries.getRecentItems(blueClog, 4), blueClog, itemManager);
+			int[] totals = ClogHelper.sumClogTotals(clog);
+			tip.setTierData(totals[0], totals[1], iconCache.clogTierImages());
+			tip.setClogSources(clog.isFromTemple(), clog.isFromRuneProfile(), clog.isFromKillclog());
+			if (hiscore != null)
+			{
+				int clogRank = hiscore.getActivityRank("Collections Logged");
+				tip.setRank(clogRank);
+			}
+			boolean stale = LookupQueries.isSyncStale(lastChanged, 90);
+			String sync = LookupQueries.syncLine(lastChanged, stale);
+			if (sync != null) tip.setSyncData(sync, stale);
+			tip.setSpecialItems(
+				ClogHelper.obtainedSpecialItems(PanelData.SPECIAL_ITEM_IDS, clog),
+				clog, itemManager);
+			tip.setRecentItems(LookupQueries.getRecentItems(clog, 4), clog, itemManager);
 		}
 		else
 		{
-			cmp.setBlueData(blueName, 0, 0, icons);
-			cmp.setBlueNotice("--");
+			boolean isSelf = localRsn != null && playerRsn != null
+				&& localRsn.equalsIgnoreCase(playerRsn);
+			if (isSelf)
+			{
+				tip.setFirstTimeSetup();
+			}
+			else if (hiscore != null)
+			{
+				tip.setNotice(noClogNotice(playerRsn));
+			}
+			else
+			{
+				// No player yet: preview the log's shape from the catalog.
+				ClogResult catalog = cells.unsyncedCatalogResult();
+				if (catalog != null)
+				{
+					tip.setTitle("Clog Summary");
+					tip.setObtainedPlaceholder(ClogHelper.sumClogTotals(catalog)[1]);
+				}
+				else
+				{
+					tip.setNotice("Loading catalog...");
+				}
+			}
 		}
-
-		if (redClog != null)
-		{
-			int[] rt = ClogHelper.sumClogTotals(redClog);
-			cmp.setRedData(redName, rt[0], rt[1], icons);
-			boolean stale = LookupQueries.isSyncStale(redClog.getLastChanged(), 90);
-			String sync = LookupQueries.syncLine(redClog.getLastChanged(), stale);
-			if (sync != null) cmp.setRedSync(sync, stale);
-			cmp.setRedSpecial(
-				ClogHelper.obtainedSpecialItems(PanelData.SPECIAL_ITEM_IDS, redClog),
-				redClog, itemManager);
-			cmp.setRedRecent(LookupQueries.getRecentItems(redClog, 4), redClog, itemManager);
-		}
-		else
-		{
-			cmp.setRedData(redName, 0, 0, icons);
-			cmp.setRedNotice("--");
-		}
-
-		return cmp;
+		return tip;
 	}
 
 	private AccountDisplay currentInfoAccountDisplay()
