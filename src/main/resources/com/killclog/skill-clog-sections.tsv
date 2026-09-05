@@ -1,0 +1,69 @@
+# Curated Skill Clog taxonomy: skill<TAB>kind<TAB>heading<TAB>value.
+# kind=category reads that live provider category; kind=items pins fixed item ids
+# (comma separated, in presentation order). Empty heading renders headingless.
+# Rows are presentation order per skill: pets first, then activities alphabetically.
+# Presentation-only view; never feeds canonical collection-log totals.
+ATTACK	category	Barbarian Assault	barbarian_assault
+HITPOINTS	items	Equipment Unlocks	24422,19529,29799,31109,33634
+HITPOINTS	category	Pest Control	pest_control
+DEFENCE	category	Defenders	cyclopes
+STRENGTH	items	Weapon Unlocks	4153,21646,21742,29000,13576,6528,4718,4747,28997,21003,33631,22486
+MINING	items	Pets	13321
+MINING	category	Camdozaal	camdozaal
+MINING	items	Mining Guild	21343,21345,21392
+MINING	category	Motherlode Mine	motherlode_mine
+MINING	category	Shooting Stars	shooting_stars
+MINING	category	Volcanic Mine	volcanic_mine
+MINING	category	Zalcano	zalcano
+AGILITY	items	Pets	20659
+AGILITY	category	Brimhaven Agility Arena	brimhaven_agility_arena
+AGILITY	category	Colossal Wyrm Agility Course	colossal_wyrm_agility
+AGILITY	category	Hallowed Sepulchre	hallowed_sepulchre
+AGILITY	category	Monkey Backpacks	monkey_backpacks
+AGILITY	category	Rooftop Agility	rooftop_agility
+AGILITY	items	Underwater	21649
+SMITHING	category	Giants' Foundry	giants_foundry
+HERBLORE	category	Mastering Mixology	mastering_mixology
+FISHING	items	Pets	13320
+FISHING	category	Aerial Fishing	aerial_fishing
+FISHING	items	Big Fish	7991,7993,7989
+FISHING	items	Deep Sea Trawling	31408,31412,31416,31420,31424,31428
+FISHING	category	Fishing Trawler	fishing_trawler
+FISHING	items	Lantern Harpooning	31572
+FISHING	category	Tempoross	tempoross
+RANGED	category	Chompy Bird Hunting	chompy_bird_hunting
+THIEVING	items	Pets	20663
+THIEVING	items	Pickpocketing	23959,24777
+THIEVING	items	Pyramid Plunder	26945
+THIEVING	category	Rogues' Den	rogues_den
+THIEVING	items	Underwater	21649
+COOKING	category	Gnome Restaurant	gnome_restaurant
+COOKING	category	Trouble Brewing	trouble_brewing
+PRAYER	category	Shades of Mort'ton	shades_of_mortton
+CRAFTING	items	Rarities	34024,19707
+FIREMAKING	category	Shades of Mort'ton	shades_of_mortton
+FIREMAKING	category	Wintertodt	wintertodt
+MAGIC	category	Magic Training Arena	magic_training_arena
+FLETCHING	category	Vale Totems	vale_totems
+WOODCUTTING	items	Pets	13322
+WOODCUTTING	items	Evil Chicken Outfit	20439,20436,20442,20433
+WOODCUTTING	category	Forestry	forestry
+RUNECRAFT	items	Pets	20665
+RUNECRAFT	category	Guardians of the Rift	guardians_of_the_rift
+SLAYER	category		slayer
+FARMING	items	Pets	20661
+FARMING	category	Hespori	hespori
+FARMING	category	Tithe Farm	tithe_farm
+CONSTRUCTION	category	Mahogany Homes	mahogany_homes
+HUNTER	items	Pets	13324,21509,34040
+HUNTER	category	Aerial Fishing	aerial_fishing
+HUNTER	items	Crystal Impling	23943
+HUNTER	category	Hunter Guild	hunter_guild
+SAILING	items	Pets	31283
+SAILING	category	Barracuda Trials	barracuda_trials
+SAILING	category	Boat Paints	boat_paints
+SAILING	items	Deep Sea Trawling	31408,31412,31416,31420,31424,31428
+SAILING	category	Lost Schematics	lost_schematics
+SAILING	category	Ocean Encounters	ocean_encounters
+SAILING	category	Sailing Miscellaneous	sailing_miscellaneous
+SAILING	category	Sea Treasures	sea_treasures

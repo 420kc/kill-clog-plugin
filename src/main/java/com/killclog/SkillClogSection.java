@@ -1,7 +1,6 @@
 package com.killclog;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -19,40 +18,6 @@ import net.runelite.api.Skill;
  */
 final class SkillClogSection
 {
-	// Narrow sections are fixed by item id so they can find obtained items in
-	// any provider category. Their declared order is their presentation order.
-	private static final int[] MINING_PETS = {13321};
-	private static final int[] MINING_GUILD_ITEMS = {21343, 21345, 21392};
-	private static final int[] HITPOINTS_EQUIPMENT_ITEMS = {
-		24422, 19529, 29799, 31109, 33634
-	};
-	// Direct Collection Log weapon entries in Strength level-up order.
-	private static final int[] STRENGTH_WEAPON_ITEMS = {
-		4153, 21646, 21742, 29000,
-		13576, 6528,
-		4718, 4747,
-		28997, 21003,
-		33631, 22486
-	};
-	private static final int[] AGILITY_PETS = {20659};
-	private static final int[] UNDERWATER_ITEMS = {21649};
-	private static final int[] FISHING_PETS = {13320};
-	private static final int[] BIG_FISH_ITEMS = {7991, 7993, 7989};
-	private static final int[] DEEP_SEA_TRAWLING_ITEMS = {
-		31408, 31412, 31416, 31420, 31424, 31428
-	};
-	private static final int[] LANTERN_HARPOONING_ITEMS = {31572};
-	private static final int[] THIEVING_PETS = {20663};
-	private static final int[] PICKPOCKETING_ITEMS = {23959, 24777};
-	private static final int[] PYRAMID_PLUNDER_ITEMS = {26945};
-	private static final int[] CRAFTING_RARITIES = {34024, 19707};
-	private static final int[] WOODCUTTING_PETS = {13322};
-	private static final int[] EVIL_CHICKEN_ITEMS = {20439, 20436, 20442, 20433};
-	private static final int[] RUNECRAFT_PETS = {20665};
-	private static final int[] FARMING_PETS = {20661};
-	private static final int[] HUNTER_PETS = {13324, 21509, 34040};
-	private static final int[] CRYSTAL_IMPLING_ITEMS = {23943};
-	private static final int[] SAILING_PETS = {31283};
 	private static final int LEGACY_FLAMTAER_BAG = 12854;
 	private static final int FLAMTAER_BAG = 25630;
 	private static final int COAL_BAG = 25627;
@@ -299,118 +264,68 @@ final class SkillClogSection
 
 	private static Map<Skill, List<Spec>> buildSpecs()
 	{
-		// Pets stay first. Activity sections follow alphabetically. Full
-		// activities read their live category catalogs instead of copying slots.
+		// The curated taxonomy ships as a bundled catalog; the parity test pins
+		// its exact contents. Rows are presentation order per skill: pets stay
+		// first, activity sections follow alphabetically, and full activities
+		// read their live category catalogs instead of copying slots.
 		Map<Skill, List<Spec>> specs = new LinkedHashMap<>();
-		specs.put(Skill.ATTACK, specs(
-			category("Barbarian Assault", "barbarian_assault")));
-		specs.put(Skill.HITPOINTS, specs(
-			items("Equipment Unlocks", HITPOINTS_EQUIPMENT_ITEMS),
-			category("Pest Control", "pest_control")));
-		specs.put(Skill.DEFENCE, specs(
-			category("Defenders", "cyclopes")));
-		specs.put(Skill.STRENGTH, specs(
-			items("Weapon Unlocks", STRENGTH_WEAPON_ITEMS)));
-		specs.put(Skill.MINING, specs(
-			items("Pets", MINING_PETS),
-			category("Camdozaal", "camdozaal"),
-			items("Mining Guild", MINING_GUILD_ITEMS),
-			category("Motherlode Mine", "motherlode_mine"),
-			category("Shooting Stars", "shooting_stars"),
-			category("Volcanic Mine", "volcanic_mine"),
-			category("Zalcano", "zalcano")));
-		specs.put(Skill.AGILITY, specs(
-			items("Pets", AGILITY_PETS),
-			category("Brimhaven Agility Arena", "brimhaven_agility_arena"),
-			category("Colossal Wyrm Agility Course", "colossal_wyrm_agility"),
-			category("Hallowed Sepulchre", "hallowed_sepulchre"),
-			category("Monkey Backpacks", "monkey_backpacks"),
-			category("Rooftop Agility", "rooftop_agility"),
-			items("Underwater", UNDERWATER_ITEMS)));
-		specs.put(Skill.SMITHING, specs(
-			category("Giants' Foundry", "giants_foundry")));
-		specs.put(Skill.HERBLORE, specs(
-			category("Mastering Mixology", "mastering_mixology")));
-		specs.put(Skill.FISHING, specs(
-			items("Pets", FISHING_PETS),
-			category("Aerial Fishing", "aerial_fishing"),
-			items("Big Fish", BIG_FISH_ITEMS),
-			items("Deep Sea Trawling", DEEP_SEA_TRAWLING_ITEMS),
-			category("Fishing Trawler", "fishing_trawler"),
-			items("Lantern Harpooning", LANTERN_HARPOONING_ITEMS),
-			category("Tempoross", "tempoross")));
-		specs.put(Skill.RANGED, specs(
-			category("Chompy Bird Hunting", "chompy_bird_hunting")));
-		specs.put(Skill.THIEVING, specs(
-			items("Pets", THIEVING_PETS),
-			items("Pickpocketing", PICKPOCKETING_ITEMS),
-			items("Pyramid Plunder", PYRAMID_PLUNDER_ITEMS),
-			category("Rogues' Den", "rogues_den"),
-			items("Underwater", UNDERWATER_ITEMS)));
-		specs.put(Skill.COOKING, specs(
-			category("Gnome Restaurant", "gnome_restaurant"),
-			category("Trouble Brewing", "trouble_brewing")));
-		specs.put(Skill.PRAYER, specs(
-			category("Shades of Mort'ton", "shades_of_mortton")));
-		specs.put(Skill.CRAFTING, specs(
-			items("Rarities", CRAFTING_RARITIES)));
-		specs.put(Skill.FIREMAKING, specs(
-			category("Shades of Mort'ton", "shades_of_mortton"),
-			category("Wintertodt", "wintertodt")));
-		specs.put(Skill.MAGIC, specs(
-			category("Magic Training Arena", "magic_training_arena")));
-		specs.put(Skill.FLETCHING, specs(
-			category("Vale Totems", "vale_totems")));
-		specs.put(Skill.WOODCUTTING, specs(
-			items("Pets", WOODCUTTING_PETS),
-			items("Evil Chicken Outfit", EVIL_CHICKEN_ITEMS),
-			category("Forestry", "forestry")));
-		specs.put(Skill.RUNECRAFT, specs(
-			items("Pets", RUNECRAFT_PETS),
-			category("Guardians of the Rift", PanelData.GOTR_CATEGORY)));
-		specs.put(Skill.SLAYER, specs(
-			category(null, PanelData.SLAYER_CATEGORY)));
-		specs.put(Skill.FARMING, specs(
-			items("Pets", FARMING_PETS),
-			category("Hespori", "hespori"),
-			category("Tithe Farm", "tithe_farm")));
-		specs.put(Skill.CONSTRUCTION, specs(
-			category("Mahogany Homes", "mahogany_homes")));
-		specs.put(Skill.HUNTER, specs(
-			items("Pets", HUNTER_PETS),
-			category("Aerial Fishing", "aerial_fishing"),
-			items("Crystal Impling", CRYSTAL_IMPLING_ITEMS),
-			category("Hunter Guild", "hunter_guild")));
-		specs.put(Skill.SAILING, specs(
-			items("Pets", SAILING_PETS),
-			category("Barracuda Trials", "barracuda_trials"),
-			category("Boat Paints", "boat_paints"),
-			items("Deep Sea Trawling", DEEP_SEA_TRAWLING_ITEMS),
-			category("Lost Schematics", "lost_schematics"),
-			category("Ocean Encounters", "ocean_encounters"),
-			category("Sailing Miscellaneous", "sailing_miscellaneous"),
-			category("Sea Treasures", "sea_treasures")));
+		for (String[] row : CatalogTsv.rows(SkillClogSection.class, "skill-clog-sections.tsv", 4))
+		{
+			String heading = row[2].isEmpty() ? null : row[2];
+			Spec spec;
+			if ("category".equals(row[1]))
+			{
+				spec = new Spec(heading, row[3], Collections.emptyList());
+			}
+			else
+			{
+				List<Integer> itemIds = new ArrayList<>();
+				for (String itemId : row[3].split(","))
+				{
+					itemIds.add(Integer.parseInt(itemId));
+				}
+				spec = new Spec(heading, null, itemIds);
+			}
+			specs.computeIfAbsent(Skill.valueOf(row[0]), s -> new ArrayList<>()).add(spec);
+		}
+		for (Map.Entry<Skill, List<Spec>> entry : specs.entrySet())
+		{
+			entry.setValue(Collections.unmodifiableList(entry.getValue()));
+		}
 		return Collections.unmodifiableMap(specs);
 	}
 
-	private static List<Spec> specs(Spec... specs)
+	/** Read-only projection for catalog-parity tests: kind|heading|category-or-ids. */
+	/* package */ static List<String> specSignature(Skill skill)
 	{
-		return Collections.unmodifiableList(Arrays.asList(specs));
-	}
-
-	private static Spec category(@Nullable String heading, String category)
-	{
-		return new Spec(heading, category, Collections.emptyList());
-	}
-
-	private static Spec items(String heading, int... itemIds)
-	{
-		List<Integer> ids = new ArrayList<>();
-		for (int itemId : itemIds)
+		List<Spec> specs = SPECS.get(skill);
+		if (specs == null)
 		{
-			ids.add(itemId);
+			return Collections.emptyList();
 		}
-		return new Spec(heading, null, ids);
+		List<String> signature = new ArrayList<>(specs.size());
+		for (Spec spec : specs)
+		{
+			StringBuilder line = new StringBuilder(spec.category != null ? "category" : "items");
+			line.append('|').append(spec.heading != null ? spec.heading : "").append('|');
+			if (spec.category != null)
+			{
+				line.append(spec.category);
+			}
+			else
+			{
+				for (int i = 0; i < spec.itemIds.size(); i++)
+				{
+					if (i > 0)
+					{
+						line.append(',');
+					}
+					line.append(spec.itemIds.get(i));
+				}
+			}
+			signature.add(line.toString());
+		}
+		return signature;
 	}
 
 	static final class PlayerItems
