@@ -107,172 +107,59 @@ class KillClogChatCommand
 	private static Map<String, String> buildAliases()
 	{
 		Map<String, String> m = new HashMap<>();
-		// Canonical names first: every boss the panel knows about.
-		String[] canon = {
-			"Abyssal Sire", "Alchemical Hydra", "Amoxliatl", "Araxxor", "Artio",
-			"Barrows Chests", "Brutus", "Bryophyta", "Callisto", "Cal'varion",
-			"Cerberus", "Chambers of Xeric", "Chambers of Xeric: Challenge Mode",
-			"Chaos Elemental", "Chaos Fanatic", "Commander Zilyana", "Corporeal Beast",
-			"Crazy Archaeologist", "Dagannoth Prime", "Dagannoth Rex", "Dagannoth Supreme",
-			"Deranged Archaeologist", "Doom of Mokhaiotl", "Duke Sucellus",
-			"General Graardor", "Giant Mole", "Grotesque Guardians", "Hespori",
-			"Kalphite Queen", "King Black Dragon", "Kraken", "Kree'Arra",
-			"K'ril Tsutsaroth", "Lunar Chests", "Mad Angel", "Maggot King", "Mimic", "Nex", "Nightmare",
-			"Phosani's Nightmare", "Obor", "Phantom Muspah", "Sarachnis", "Scorpia",
-			"Scurrius", "Shellbane Gryphon", "Skotizo", "Sol Heredit", "Spindel",
-			"Tempoross", "The Gauntlet", "The Corrupted Gauntlet", "The Hueycoatl",
-			"The Leviathan", "The Royal Titans", "The Whisperer", "Theatre of Blood",
-			"Theatre of Blood: Hard Mode", "Thermonuclear Smoke Devil",
-			"Tombs of Amascut", "Tombs of Amascut: Expert Mode", "TzKal-Zuk",
-			"TzTok-Jad", "Vardorvis", "Venenatis", "Vet'ion", "Vorkath",
-			"Wintertodt", "Yama", "Zalcano", "Zulrah",
-		};
-		for (String c : canon)
+		// Canonical names first: every boss the hiscore feed carries, which is
+		// the same census the panel renders.
+		for (String canonical : HiscoreService.bossNames())
 		{
-			m.put(normalize(c), c);
+			m.put(normalize(canonical), canonical);
 		}
 
-		// Common community shorthand. Order doesn't matter; these all resolve to canonical.
-		m.put("vork", "Vorkath");
-		m.put("bandos", "General Graardor");
-		m.put("graardor", "General Graardor");
-		m.put("sara", "Commander Zilyana");
-		m.put("zilyana", "Commander Zilyana");
-		m.put("zammy", "K'ril Tsutsaroth");
-		m.put("kril", "K'ril Tsutsaroth");
-		m.put("arma", "Kree'Arra");
-		m.put("kree", "Kree'Arra");
-		m.put("kreearra", "Kree'Arra");
-		m.put("corp", "Corporeal Beast");
-		m.put("kbd", "King Black Dragon");
-		m.put("kq", "Kalphite Queen");
-		m.put("mole", "Giant Mole");
-		m.put("thermy", "Thermonuclear Smoke Devil");
-		m.put("smoke devil", "Thermonuclear Smoke Devil");
-		m.put("cerb", "Cerberus");
-		m.put("vard", "Vardorvis");
-		m.put("duke", "Duke Sucellus");
-		m.put("whisp", "The Whisperer");
-		m.put("whisperer", "The Whisperer");
-		m.put("levi", "The Leviathan");
-		m.put("leviathan", "The Leviathan");
-		m.put("muspah", "Phantom Muspah");
-		m.put("phosani", "Phosani's Nightmare");
-		m.put("doom", "Doom of Mokhaiotl");
-		m.put("mokhaiotl", "Doom of Mokhaiotl");
-		m.put("amox", "Amoxliatl");
-		m.put("arax", "Araxxor");
-		m.put("huey", "The Hueycoatl");
-		m.put("hueycoatl", "The Hueycoatl");
-		m.put("titans", "The Royal Titans");
-		m.put("royal titans", "The Royal Titans");
-		m.put("gauntlet", "The Gauntlet");
-		m.put("cg", "The Corrupted Gauntlet");
-		m.put("corrupted gauntlet", "The Corrupted Gauntlet");
-		m.put("jad", "TzTok-Jad");
-		m.put("zuk", "TzKal-Zuk");
-		m.put("inferno", "TzKal-Zuk");
-		m.put("sire", "Abyssal Sire");
-		m.put("hydra", "Alchemical Hydra");
-		m.put("scur", "Scurrius");
-		m.put("scurrius", "Scurrius");
-		m.put("sara mage", "Sarachnis");
-		m.put("sarachnis", "Sarachnis");
-		m.put("cox", "Chambers of Xeric");
-		m.put("raids", "Chambers of Xeric");
-		m.put("cm", "Chambers of Xeric: Challenge Mode");
-		m.put("toa", "Tombs of Amascut");
-		m.put("tombs", "Tombs of Amascut");
-		m.put("expert", "Tombs of Amascut: Expert Mode");
-		m.put("toa expert", "Tombs of Amascut: Expert Mode");
-		m.put("tob", "Theatre of Blood");
-		m.put("hmt", "Theatre of Blood: Hard Mode");
-		m.put("prime", "Dagannoth Prime");
-		m.put("rex", "Dagannoth Rex");
-		m.put("supreme", "Dagannoth Supreme");
-		m.put("vetion", "Vet'ion");
-		m.put("calvarion", "Cal'varion");
-		m.put("chaos ele", "Chaos Elemental");
-		m.put("chaos fan", "Chaos Fanatic");
-		m.put("crazy arch", "Crazy Archaeologist");
-		m.put("deranged arch", "Deranged Archaeologist");
-		m.put("grotesque", "Grotesque Guardians");
-		m.put("gg", "Grotesque Guardians");
-		m.put("shellbane", "Shellbane Gryphon");
-		m.put("sol", "Sol Heredit");
-		m.put("colosseum", "Sol Heredit");
-		m.put("barrows", "Barrows Chests");
-		m.put("lunar", "Lunar Chests");
-		m.put("moons", "Lunar Chests");
-		m.put("mad angel", "Mad Angel");
-		m.put("angel", "Mad Angel");
-		m.put("maggot", "Maggot King");
-		m.put("mk", "Maggot King");
-		m.put("perilous", "Lunar Chests");
-		m.put("perilous moons", "Lunar Chests");
-		m.put("nightmare", "Nightmare");
-		m.put("nm", "Nightmare");
-		m.put("pnm", "Phosani's Nightmare");
-		m.put("vorky", "Vorkath");
-		m.put("bryo", "Bryophyta");
-		m.put("hesp", "Hespori");
-		m.put("wt", "Wintertodt");
-		m.put("winter", "Wintertodt");
-		m.put("zal", "Zalcano");
-		m.put("tempo", "Tempoross");
-		m.put("krak", "Kraken");
-		m.put("abby", "Abyssal Sire");
-		m.put("ele", "Chaos Elemental");
-		m.put("fan", "Chaos Fanatic");
-		m.put("ven", "Venenatis");
-		m.put("venom", "Venenatis");
-		m.put("vet", "Vet'ion");
-		m.put("calv", "Cal'varion");
-		m.put("calli", "Callisto");
-		m.put("art", "Artio");
-		m.put("spin", "Spindel");
+		// Community shorthand rides the bundled catalog; the parity test pins
+		// its complete contents against the shipped table.
+		for (String[] row : CatalogTsv.rows(KillClogChatCommand.class, "chat-boss-aliases.tsv", 2))
+		{
+			m.put(normalize(row[0]), row[1]);
+		}
 		return m;
 	}
 
 	private static Map<String, ClogTarget> buildClueAliases()
 	{
 		Map<String, ClogTarget> m = new HashMap<>();
-		putClueAliases(m, "Beginner Treasure Trails",
-			PanelData.CLUE_CATEGORIES.get(HiscoreSkill.CLUE_SCROLL_BEGINNER),
-			"beginner treasure trails", "begs", "beg clues", "beginners",
-			"beginner clues", "beginner clue", "clues beg", "clues beginner",
-			"clue beg", "clue beginner");
-		putClueAliases(m, "Easy Treasure Trails",
-			PanelData.CLUE_CATEGORIES.get(HiscoreSkill.CLUE_SCROLL_EASY),
-			"easy treasure trails", "easy clues", "easy clue", "easies",
-			"clues easy", "clue easy");
-		putClueAliases(m, "Medium Treasure Trails",
-			PanelData.CLUE_CATEGORIES.get(HiscoreSkill.CLUE_SCROLL_MEDIUM),
-			"medium treasure trails", "meds", "med", "mediums", "medium clues",
-			"medium clue", "clues med", "clues medium", "clue med", "clue medium");
-		putClueAliases(m, "Hard Treasure Trails",
-			PanelData.CLUE_CATEGORIES.get(HiscoreSkill.CLUE_SCROLL_HARD),
-			"hard treasure trails", "hards", "hard clues", "hard clue",
-			"clue hard", "clues hard");
-		putClueAliases(m, "Elite Treasure Trails",
-			PanelData.CLUE_CATEGORIES.get(HiscoreSkill.CLUE_SCROLL_ELITE),
-			"elite treasure trails", "elites", "elite clues", "elite clue",
-			"clue elite", "clues elite");
-		putClueAliases(m, "Master Treasure Trails",
-			PanelData.CLUE_CATEGORIES.get(HiscoreSkill.CLUE_SCROLL_MASTER),
-			"master treasure trails", "masters", "master clues", "master clue",
-			"clue master", "clues master");
+		for (String[] row : CatalogTsv.rows(KillClogChatCommand.class, "chat-clue-aliases.tsv", 2))
+		{
+			HiscoreSkill tier = HiscoreSkill.valueOf("CLUE_SCROLL_" + row[1]);
+			String categoryKey = PanelData.CLUE_CATEGORIES.get(tier);
+			m.put(normalize(row[0]), new ClogTarget(titleCase(categoryKey), categoryKey));
+		}
 		return m;
 	}
 
-	private static void putClueAliases(Map<String, ClogTarget> aliases, String label,
-		String categoryKey, String... names)
+	/** beginner_treasure_trails -> Beginner Treasure Trails. */
+	private static String titleCase(String categoryKey)
 	{
-		ClogTarget target = new ClogTarget(label, categoryKey);
-		for (String name : names)
+		StringBuilder label = new StringBuilder(categoryKey.length());
+		for (String word : categoryKey.split("_"))
 		{
-			aliases.put(normalize(name), target);
+			if (label.length() > 0)
+			{
+				label.append(' ');
+			}
+			label.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
 		}
+		return label.toString();
+	}
+
+	/** Read-only views for catalog-parity tests. */
+	/* package */ static String clueLabel(String query)
+	{
+		ClogTarget target = CLUE_ALIASES.get(normalize(query));
+		return target != null ? target.label : null;
+	}
+
+	/* package */ static int clueAliasCount()
+	{
+		return CLUE_ALIASES.size();
 	}
 
 	/* package */ static String resolveClueCategory(String query)

@@ -1,0 +1,46 @@
+# Clue tier aliases for chat commands: alias<TAB>tier (BEGINNER/EASY/MEDIUM/HARD/ELITE/MASTER).
+# Label and category key derive from the tier via PanelData.CLUE_CATEGORIES.
+beginner treasure trails	BEGINNER
+begs	BEGINNER
+beg clues	BEGINNER
+beginners	BEGINNER
+beginner clues	BEGINNER
+beginner clue	BEGINNER
+clues beg	BEGINNER
+clues beginner	BEGINNER
+clue beg	BEGINNER
+clue beginner	BEGINNER
+easy treasure trails	EASY
+easy clues	EASY
+easy clue	EASY
+easies	EASY
+clues easy	EASY
+clue easy	EASY
+medium treasure trails	MEDIUM
+meds	MEDIUM
+med	MEDIUM
+mediums	MEDIUM
+medium clues	MEDIUM
+medium clue	MEDIUM
+clues med	MEDIUM
+clues medium	MEDIUM
+clue med	MEDIUM
+clue medium	MEDIUM
+hard treasure trails	HARD
+hards	HARD
+hard clues	HARD
+hard clue	HARD
+clue hard	HARD
+clues hard	HARD
+elite treasure trails	ELITE
+elites	ELITE
+elite clues	ELITE
+elite clue	ELITE
+clue elite	ELITE
+clues elite	ELITE
+master treasure trails	MASTER
+masters	MASTER
+master clues	MASTER
+master clue	MASTER
+clue master	MASTER
+clues master	MASTER
