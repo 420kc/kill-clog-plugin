@@ -1,6 +1,9 @@
 package com.killclog;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import net.runelite.client.hiscore.HiscoreSkill;
 
@@ -21,82 +24,8 @@ final class PanelData
 	// bridge the two lists when order diverges.
 	// New boss? Add it here in enum order once RuneLite adds it.
 	// See BOSS_NAMES comment in HiscoreService for the full update playbook.
-	static final HiscoreSkill[] BOSSES = {
-		HiscoreSkill.ABYSSAL_SIRE,
-		HiscoreSkill.ALCHEMICAL_HYDRA,
-		HiscoreSkill.AMOXLIATL,
-		HiscoreSkill.ARAXXOR,
-		HiscoreSkill.ARTIO,
-		HiscoreSkill.BARROWS_CHESTS,
-		HiscoreSkill.BRUTUS,
-		HiscoreSkill.BRYOPHYTA,
-		HiscoreSkill.CALLISTO,
-		HiscoreSkill.CALVARION,
-		HiscoreSkill.CERBERUS,
-		HiscoreSkill.CHAMBERS_OF_XERIC,
-		HiscoreSkill.CHAMBERS_OF_XERIC_CHALLENGE_MODE,
-		HiscoreSkill.CHAOS_ELEMENTAL,
-		HiscoreSkill.CHAOS_FANATIC,
-		HiscoreSkill.COMMANDER_ZILYANA,
-		HiscoreSkill.CORPOREAL_BEAST,
-		HiscoreSkill.CRAZY_ARCHAEOLOGIST,
-		HiscoreSkill.DAGANNOTH_PRIME,
-		HiscoreSkill.DAGANNOTH_REX,
-		HiscoreSkill.DAGANNOTH_SUPREME,
-		HiscoreSkill.DERANGED_ARCHAEOLOGIST,
-		HiscoreSkill.DOOM_OF_MOKHAIOTL,
-		HiscoreSkill.DUKE_SUCELLUS,
-		HiscoreSkill.GENERAL_GRAARDOR,
-		HiscoreSkill.GIANT_MOLE,
-		HiscoreSkill.GROTESQUE_GUARDIANS,
-		HiscoreSkill.HESPORI,
-		HiscoreSkill.KALPHITE_QUEEN,
-		HiscoreSkill.KING_BLACK_DRAGON,
-		HiscoreSkill.KRAKEN,
-		HiscoreSkill.KREEARRA,
-		HiscoreSkill.KRIL_TSUTSAROTH,
-		HiscoreSkill.LUNAR_CHESTS,
-		HiscoreSkill.MAD_ANGEL,
-		// MAD_ANGEL folds in here when RuneLite releases 1.12.34 (enum exists
-		// on their master, not in the released artifact - hub CI builds
-		// against the release). Until then Mad Angel parses by name only.
-		HiscoreSkill.MAGGOT_KING,
-		HiscoreSkill.MIMIC,
-		HiscoreSkill.NEX,
-		HiscoreSkill.NIGHTMARE,
-		HiscoreSkill.PHOSANIS_NIGHTMARE,
-		HiscoreSkill.OBOR,
-		HiscoreSkill.PHANTOM_MUSPAH,
-		HiscoreSkill.SARACHNIS,
-		HiscoreSkill.SCORPIA,
-		HiscoreSkill.SCURRIUS,
-		HiscoreSkill.SHELLBANE_GRYPHON,
-		HiscoreSkill.SKOTIZO,
-		HiscoreSkill.SOL_HEREDIT,
-		HiscoreSkill.SPINDEL,
-		HiscoreSkill.TEMPOROSS,
-		HiscoreSkill.THE_GAUNTLET,
-		HiscoreSkill.THE_CORRUPTED_GAUNTLET,
-		HiscoreSkill.THE_HUEYCOATL,
-		HiscoreSkill.THE_LEVIATHAN,
-		HiscoreSkill.THE_ROYAL_TITANS,
-		HiscoreSkill.THE_WHISPERER,
-		HiscoreSkill.THEATRE_OF_BLOOD,
-		HiscoreSkill.THEATRE_OF_BLOOD_HARD_MODE,
-		HiscoreSkill.THERMONUCLEAR_SMOKE_DEVIL,
-		HiscoreSkill.TOMBS_OF_AMASCUT,
-		HiscoreSkill.TOMBS_OF_AMASCUT_EXPERT,
-		HiscoreSkill.TZKAL_ZUK,
-		HiscoreSkill.TZTOK_JAD,
-		HiscoreSkill.VARDORVIS,
-		HiscoreSkill.VENENATIS,
-		HiscoreSkill.VETION,
-		HiscoreSkill.VORKATH,
-		HiscoreSkill.WINTERTODT,
-		HiscoreSkill.YAMA,
-		HiscoreSkill.ZALCANO,
-		HiscoreSkill.ZULRAH,
-	};
+	static final HiscoreSkill[] BOSSES = bosses();
+
 	static int bossCount()
 	{
 		return BOSSES.length;
@@ -134,88 +63,39 @@ final class PanelData
 
 	static final String CLOG_THIRD_AGE = "third_age";
 	static final String CLOG_GILDED = "gilded";
-	static final int[] CLUE_TIER_ITEM_IDS = {23182, 2677, 2801, 2722, 12073, 19835};
+	static final int[] CLUE_TIER_ITEM_IDS = itemIds("clue_tier_items");
 	static final int THIRD_AGE_ITEM_ID = 10348;
 	static final int GILDED_ITEM_ID = 3481;
 	static final int THIRD_AGE_RING_ITEM_ID = 23185;
-	static final int[] THIRD_AGE_ITEMS = {
-		10350, 10348, 10346, 23242, 10352,
-		10334, 10330, 10332, 10336,
-		10342, 10338, 10340, 10344,
-		12426, 12422, 12437, 12424,
-		23336, 23339, 23345, 23342,
-		20014, 20011
-	};
-	static final int[] GILDED_ITEMS = {
-		3486, 3481, 3483, 3485, 3488,
-		20146, 20149, 20152, 20155, 20158, 20161,
-		12389, 12391, 23258, 23261, 23264, 23267,
-		23276, 23279, 23282
-	};
+	static final int[] THIRD_AGE_ITEMS = itemIds("third_age_items");
+	static final int[] GILDED_ITEMS = itemIds("gilded_items");
 
 	// Native clog rare categories. Public provider APIs do not provide these.
 	static final String RARE_HARD = "hard_rare";
 	static final String RARE_ELITE = "elite_rare";
 	static final String RARE_MASTER = "master_rare";
 
-	static final int[] HARD_RARE_ITEMS = {
-		// 3rd age melee + range + mage + amulet (13)
-		10350, 10348, 10346, 23242, 10352,
-		10334, 10330, 10332, 10336,
-		10342, 10338, 10340, 10344,
-		// Gilded melee (11)
-		3486, 3481, 3483, 3485, 3488,
-		20146, 20149, 20152, 20155, 20158, 20161
-	};
+	static final int[] HARD_RARE_ITEMS = itemIds("hard_rare_items");
 
-	static final int[] ELITE_RARE_ITEMS = {
-		// 3rd age melee + range + mage + amulet + weapons + cloak (17)
-		10350, 10348, 10346, 23242, 10352,
-		10334, 10330, 10332, 10336,
-		10342, 10338, 10340, 10344,
-		12426, 12422, 12437, 12424,
-		// All gilded (20)
-		3486, 3481, 3483, 3485, 3488,
-		20146, 20149, 20152, 20155, 20158, 20161,
-		12389, 12391, 23258, 23261, 23264, 23267,
-		23276, 23279, 23282,
-		// Lava dragon mask, Ring of nature
-		12371, 20005
-	};
+	static final int[] ELITE_RARE_ITEMS = itemIds("elite_rare_items");
 
-	static final int[] MASTER_RARE_ITEMS = {
-		// All 3rd age (24)
-		10350, 10348, 10346, 23242, 10352,
-		10334, 10330, 10332, 10336,
-		10342, 10338, 10340, 10344,
-		12426, 12422, 12437, 12424,
-		23336, 23339, 23345, 23342,
-		20014, 20011, THIRD_AGE_RING_ITEM_ID,
-		// All gilded (20)
-		3486, 3481, 3483, 3485, 3488,
-		20146, 20149, 20152, 20155, 20158, 20161,
-		12389, 12391, 23258, 23261, 23264, 23267,
-		23276, 23279, 23282,
-		// Bucket helm (g), Ring of coins
-		20059, 20017
-	};
+	static final int[] MASTER_RARE_ITEMS = itemIds("master_rare_items");
 
-	// Clue tier -> collection-log category key.
+	// Clue tier -> collection-log category key, derived from the enum name:
+	// CLUE_SCROLL_BEGINNER -> beginner_treasure_trails.
 	static final Map<HiscoreSkill, String> CLUE_CATEGORIES = new LinkedHashMap<>();
 	static
 	{
-		CLUE_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_BEGINNER, "beginner_treasure_trails");
-		CLUE_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_EASY, "easy_treasure_trails");
-		CLUE_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_MEDIUM, "medium_treasure_trails");
-		CLUE_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_HARD, "hard_treasure_trails");
-		CLUE_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_ELITE, "elite_treasure_trails");
-		CLUE_CATEGORIES.put(HiscoreSkill.CLUE_SCROLL_MASTER, "master_treasure_trails");
+		for (HiscoreSkill tier : CLUE_TIERS)
+		{
+			CLUE_CATEGORIES.put(tier, tier.name()
+				.substring("CLUE_SCROLL_".length()).toLowerCase(Locale.US)
+				+ "_treasure_trails");
+		}
 	}
 
 	// Clog tier trophy item IDs, bronze through gilded.
-	static final int[] CLOG_TIER_ITEM_IDS = {
-		30579, 30581, 30583, 30585, 30587, 30589, 30591, 30593, 30595
-	};
+	static final int[] CLOG_TIER_ITEM_IDS = itemIds("clog_tier_items");
 
 	// Collection log book item, used for chat icons and plugin icon fallbacks.
 	static final int COLLECTION_LOG_ITEM_ID = 22711;
@@ -275,4 +155,45 @@ final class PanelData
 	static final int MAX_CAPE_ITEM_ID = 13280;
 	static final int INFERNAL_CAPE_ITEM_ID = 21295;
 	static final int INFERNAL_MAX_CAPE_ITEM_ID = 21284;
+	/** Bundled panel-catalog rows of this kind; the parity test pins contents. */
+	private static List<String> catalogValues(String kind)
+	{
+		List<String> values = new ArrayList<>();
+		for (String[] row : CatalogTsv.rows(PanelData.class, "panel-catalog.tsv", 2))
+		{
+			if (kind.equals(row[0]))
+			{
+				values.add(row[1]);
+			}
+		}
+		return values;
+	}
+
+	private static HiscoreSkill[] bosses()
+	{
+		List<String> names = catalogValues("boss");
+		HiscoreSkill[] bosses = new HiscoreSkill[names.size()];
+		for (int i = 0; i < bosses.length; i++)
+		{
+			bosses[i] = HiscoreSkill.valueOf(names.get(i));
+		}
+		return bosses;
+	}
+
+	private static int[] itemIds(String kind)
+	{
+		List<String> values = catalogValues(kind);
+		if (values.isEmpty())
+		{
+			return new int[0];
+		}
+		String[] fields = values.get(0).split(",");
+		int[] itemIds = new int[fields.length];
+		for (int i = 0; i < itemIds.length; i++)
+		{
+			itemIds[i] = Integer.parseInt(fields[i]);
+		}
+		return itemIds;
+	}
+
 }
