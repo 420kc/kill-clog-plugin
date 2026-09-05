@@ -185,7 +185,6 @@ public class KillClogPanel extends PluginPanel
 	private String localRsn;
 	private AccountType localAccountType;
 
-
 	private final TooltipController tooltipController;
 	private final LookupSession lookupSession;
 	private final ComparisonController comparison;
@@ -233,12 +232,12 @@ public class KillClogPanel extends PluginPanel
 		this.lookupSession = new LookupSession(hiscoreService, clogService, runeProfileService,
 			killclogService, config, null, this);
 		this.comparison = new ComparisonController(hiscoreService, clogService, runeProfileService,
-			killclogService, lookupSession, itemManager, config, tooltipController, tooltipDataBuilder, this);
+			killclogService, lookupSession, config, tooltipController, tooltipDataBuilder, this);
 		this.comparison.setRenderTarget(this);
 		this.comparison.setVirtualTotalLevel(
 			() -> ClogHelper.virtualTotalLevelEnabled(configManager));
 		this.skillCellGrid = new SkillCellGrid(skillIconManager, tooltipController, comparison,
-			config, itemManager, this::comparisonBlueName, comparison::getCompareRsn);
+			config, itemManager);
 		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, clogService, killclogService, new PersonalBests(configManager), config);
 		this.activityTooltips = new ActivitySummaryTooltips(
 			lookupSession, comparison, cells, tooltipController, itemManager,
@@ -246,6 +245,7 @@ public class KillClogPanel extends PluginPanel
 		this.itemNameResolver = new TooltipItemNameResolver(clientThread, itemManager,
 			this::onTooltipItemNamesResolved);
 		this.cells.setUnsyncedCatalogResolver(itemNameResolver::resolve);
+		this.comparison.setBlueNameSupplier(this::comparisonBlueName);
 		this.comparison.setUnsyncedCatalogResolver(itemNameResolver::resolve);
 		this.comparison.setCells(this.cells);
 		this.cells.setSinglePlayerTooltipBuilder(new Cells.SinglePlayerTooltipBuilder()
@@ -273,7 +273,6 @@ public class KillClogPanel extends PluginPanel
 
 		reloadTooltipSprites();
 		SkillsTooltip.loadIcons(skillIconManager);
-
 
 		// Top border 6 not 10: the missing 4px live inside the status row
 		// (taller row + compensating label inset), which lets the sync
@@ -746,8 +745,11 @@ public class KillClogPanel extends PluginPanel
 			{
 				tip.setRank(data.rank);
 			}
-			tip.setItems(data.totalItems, data.allItemIds, data.obtainedIds,
-				data.obtainedCounts, data.itemNames, itemManager);
+			if (data.allItemIds != null)
+			{
+				tip.setItems(data.totalItems, data.allItemIds, data.obtainedIds,
+					data.obtainedCounts, data.itemNames, itemManager);
+			}
 		}
 		else if (!ClogHelper.configureNotSynced(tip, data, itemManager,
 			config.showTooltipKc(), config.showTooltipRank()))
@@ -862,7 +864,6 @@ public class KillClogPanel extends PluginPanel
 		cells.rebuildPrimaryTooltips(localRsn);
 	}
 
-
 	@Override
 	public void onComparisonEnter(String redRsn)
 	{
@@ -875,7 +876,6 @@ public class KillClogPanel extends PluginPanel
 		comparison.updateInfoBar();
 		refreshSkillDisplay();
 	}
-
 
 	/** Apply account type badge to any label. */
 	@Override
@@ -1162,8 +1162,6 @@ public class KillClogPanel extends PluginPanel
 			refreshFirstPartyVisibility();
 		});
 	}
-
-
 
 	private boolean barOwnedByFirstParty()
 	{

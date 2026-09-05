@@ -45,6 +45,9 @@ public class SideBySideTooltip extends NativeTooltip
 		return getFontMetrics(TitleTooltip.TITLE_FONT_SMALL).getHeight() + NAME_GAP;
 	}
 
+	// Child getPreferredSize is not a pure query (ImgTooltip caches grid
+	// geometry from it), so sizing, layout, and paint must all ask with the
+	// same inputs; do not add state-dependent sizing here.
 	@Override
 	public Dimension getPreferredSize()
 	{
@@ -99,8 +102,15 @@ public class SideBySideTooltip extends NativeTooltip
 		{
 			return;
 		}
+		// A name wider than its card trims to fit rather than bleeding into
+		// the neighbor card's lane or the iron border.
+		String shown = name;
+		while (shown.length() > 1 && fm.stringWidth(shown) > cardWidth)
+		{
+			shown = shown.substring(0, shown.length() - (shown.endsWith("..") ? 3 : 2)) + "..";
+		}
 		g2.setColor(color);
-		int x = cardX + Math.max(0, (cardWidth - fm.stringWidth(name)) / 2);
-		g2.drawString(name, x, baseline);
+		int x = cardX + Math.max(0, (cardWidth - fm.stringWidth(shown)) / 2);
+		g2.drawString(shown, x, baseline);
 	}
 }

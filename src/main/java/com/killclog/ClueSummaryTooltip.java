@@ -66,7 +66,6 @@ public class ClueSummaryTooltip extends TitleTooltip
 		}
 	}
 
-
 	@Override
 	protected Dimension getContentSize(int availableWidth)
 	{

@@ -6,6 +6,9 @@ import static org.junit.Assert.assertArrayEquals;
 /**
  * Pins the bundled search flavor pools to the exact strings the plugin
  * shipped with in 2.3.0, when they lived in SearchMessages itself.
+ *
+ * These goldens are drift alarms, not invariants: a deliberate catalog edit
+ * updates the golden alongside it in the same commit.
  */
 public class SearchMessagesCatalogTest
 {

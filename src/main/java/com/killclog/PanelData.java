@@ -158,26 +158,27 @@ final class PanelData
 	/** Bundled panel-catalog rows of this kind; the parity test pins contents. */
 	private static List<String> catalogValues(String kind)
 	{
-		List<String> values = new ArrayList<>();
-		for (String[] row : CatalogTsv.rows(PanelData.class, "panel-catalog.tsv", 2))
-		{
-			if (kind.equals(row[0]))
-			{
-				values.add(row[1]);
-			}
-		}
-		return values;
+		return CatalogTsv.values(PanelData.class, "panel-catalog.tsv", kind);
 	}
 
 	private static HiscoreSkill[] bosses()
 	{
-		List<String> names = catalogValues("boss");
-		HiscoreSkill[] bosses = new HiscoreSkill[names.size()];
-		for (int i = 0; i < bosses.length; i++)
+		// A name the running client's enum does not carry yet is skipped, not
+		// fatal: one missing boss beats a dead panel. The parity test still
+		// compiles every expected constant, so drift fails the build.
+		List<HiscoreSkill> bosses = new ArrayList<>();
+		for (String name : catalogValues("boss"))
 		{
-			bosses[i] = HiscoreSkill.valueOf(names.get(i));
+			try
+			{
+				bosses.add(HiscoreSkill.valueOf(name));
+			}
+			catch (IllegalArgumentException e)
+			{
+				// Skip: enum not present in this client build.
+			}
 		}
-		return bosses;
+		return bosses.toArray(new HiscoreSkill[0]);
 	}
 
 	private static int[] itemIds(String kind)
@@ -191,7 +192,7 @@ final class PanelData
 		int[] itemIds = new int[fields.length];
 		for (int i = 0; i < itemIds.length; i++)
 		{
-			itemIds[i] = Integer.parseInt(fields[i]);
+			itemIds[i] = Integer.parseInt(fields[i].trim());
 		}
 		return itemIds;
 	}

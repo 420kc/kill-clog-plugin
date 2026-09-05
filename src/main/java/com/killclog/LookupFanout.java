@@ -83,7 +83,6 @@ final class LookupFanout
 		inFlight = false;
 	}
 
-
 	int version()
 	{
 		return version;

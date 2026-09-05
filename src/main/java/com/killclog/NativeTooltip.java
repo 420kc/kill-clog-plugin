@@ -143,6 +143,24 @@ public abstract class NativeTooltip extends JToolTip
 		return BORDER_THICKNESS + MARGIN;
 	}
 
+	/**
+	 * Hide the whole tooltip a component belongs to. A comparison card is a
+	 * child tooltip inside a side-by-side composite; hiding only itself would
+	 * leave the composite on screen with an empty half.
+	 */
+	public static void hideTooltipTree(java.awt.Component component)
+	{
+		java.awt.Component root = component;
+		for (java.awt.Component parent = component; parent != null; parent = parent.getParent())
+		{
+			if (parent instanceof JToolTip)
+			{
+				root = parent;
+			}
+		}
+		root.setVisible(false);
+	}
+
 	protected NativeTooltip()
 	{
 		setOpaque(false);

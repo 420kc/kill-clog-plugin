@@ -57,12 +57,12 @@ public abstract class TitleTooltip extends NativeTooltip
 	protected static final String CHROME_SEPARATOR = " | ";
 	private static final Color QTY_SHADOW = new Color(0, 0, 0);
 
-	@Getter(AccessLevel.PACKAGE)
+	@Getter(AccessLevel.PROTECTED)
 	@Setter
 	private String title; // the bold orange title line (always required)
-	@Getter(AccessLevel.PACKAGE)
+	@Getter(AccessLevel.PROTECTED)
 	private String titleSuffix;
-	@Getter(AccessLevel.PACKAGE)
+	@Getter(AccessLevel.PROTECTED)
 	private Color titleSuffixColor;
 	private String subtitleLabel;
 	private String subtitleValue;
@@ -85,7 +85,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		installTitleLinkHandlers();
 	}
 
-
 	/** Optional colored text painted immediately after the main title. */
 	protected void setTitleSuffix(String titleSuffix, Color color)
 	{
@@ -98,8 +97,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		titleSuffix = null;
 		titleSuffixColor = null;
 	}
-
-
 
 	/** Optional OSRS Wiki page opened when the title is clicked. */
 	public void setTitleWikiPage(String titleWikiPage)
@@ -459,7 +456,6 @@ public abstract class TitleTooltip extends NativeTooltip
 			this.rankText = "Unranked";
 		}
 	}
-
 
 	/** Override in subclasses that need a smaller title font. */
 	protected Font getTitleFont()
@@ -925,7 +921,7 @@ public abstract class TitleTooltip extends NativeTooltip
 				{
 					TooltipItemLink.openWikiPage(titleWikiPage);
 					titleHovered = false;
-					setVisible(false);
+					NativeTooltip.hideTooltipTree(TitleTooltip.this);
 					e.consume();
 				}
 			}
@@ -969,7 +965,6 @@ public abstract class TitleTooltip extends NativeTooltip
 	{
 		return titleHovered && titleLinkActive() ? Color.WHITE : OSRS_ORANGE;
 	}
-
 
 	protected void onTitleCornerHoverChanged(boolean hovered)
 	{

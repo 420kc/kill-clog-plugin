@@ -909,7 +909,6 @@ public class LocalClogCache
 		});
 	}
 
-
 	/** Test hook: model a pre-marking legacy store file (marks null). */
 	void nullifyFirstPartyMarksForTest(String rsn)
 	{
@@ -937,7 +936,6 @@ public class LocalClogCache
 		identityByHash = identity;
 		return identity;
 	}
-
 
 	/** Genuinely atomic where the filesystem allows it; plain replace as the
 	 *  documented fallback (some filesystems refuse ATOMIC_MOVE). */
@@ -1317,7 +1315,6 @@ public class LocalClogCache
 	// must not call back into this cache.
 	@Setter
 	private volatile Runnable firstPartyChangedListener;
-
 
 	private void notifyFirstPartyChanged()
 	{

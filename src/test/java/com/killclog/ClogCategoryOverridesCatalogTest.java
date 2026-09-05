@@ -7,6 +7,9 @@ import static org.junit.Assert.assertEquals;
 /**
  * Pins the bundled clog category overrides to the exact table the plugin
  * shipped with in 2.3.0, when it lived in ClogService itself.
+ *
+ * These goldens are drift alarms, not invariants: a deliberate catalog edit
+ * updates the golden alongside it in the same commit.
  */
 public class ClogCategoryOverridesCatalogTest
 {

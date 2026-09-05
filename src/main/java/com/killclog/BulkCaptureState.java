@@ -24,7 +24,6 @@ final class BulkCaptureState
 	List<Integer> bufferedCategoryItems;
 	List<ClogResult.ClogItem> bufferedCategoryObtained;
 
-
 	boolean readyToFinalize(int tickCount)
 	{
 		return active && finalizeTickCount > 0 && tickCount >= finalizeTickCount;

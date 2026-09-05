@@ -7,6 +7,9 @@ import static org.junit.Assert.assertArrayEquals;
  * Pins the bundled hiscore CSV layout to the exact arrays the plugin shipped
  * with in 2.3.0, when they lived in HiscoreService itself. Order is part of
  * the contract: rows are positional against the Jagex feed.
+ *
+ * These goldens are drift alarms, not invariants: a deliberate catalog edit
+ * updates the golden alongside it in the same commit.
  */
 public class HiscoreLayoutCatalogTest
 {

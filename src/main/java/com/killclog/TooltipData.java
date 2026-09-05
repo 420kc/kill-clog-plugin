@@ -34,6 +34,16 @@ final class TooltipData
 	/** The local player's recorded personal best for the KC/PB header line, null when none. */
 	final String pb;
 
+	/** This data with the sprite grid stripped: header lines only. */
+	TooltipData withoutGrid()
+	{
+		return TooltipData.builder()
+			.name(name).rank(rank).obtainedCount(obtainedCount).totalItems(totalItems)
+			.rankTracked(rankTracked).statLabel(statLabel).statValue(statValue)
+			.itemNames(itemNames).kc(kc).pb(pb)
+			.build();
+	}
+
 	static List<Integer> itemList(int[] itemIds)
 	{
 		List<Integer> items = new ArrayList<>(itemIds.length);

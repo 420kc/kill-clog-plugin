@@ -176,7 +176,6 @@ public class SkillCellGridTest
 		assertTrue(attack.getText().contains("#e05656"));
 		assertTrue(attack.getText().contains("99"));
 		assertTrue(attack.getText().contains("98"));
-		assertTrue(attack.getText().contains("99"));
 		// Routed through the shared compare-cell renderer: blue and red spans.
 		assertTrue(attack.getText().contains(ComparisonController.COMPARE_BLUE_HEX));
 		assertTrue(attack.getText().contains(ComparisonController.COMPARE_RED_HEX));
@@ -359,13 +358,12 @@ public class SkillCellGridTest
 	private static SkillCellGrid grid(KillClogConfig config)
 	{
 		return new SkillCellGrid(new SkillIconManager(),
-			new TooltipController(config), bareComparison(config), config, null,
-			() -> "Blue", () -> "Red");
+			new TooltipController(config), bareComparison(config), config, null);
 	}
 
 	private static ComparisonController bareComparison(KillClogConfig config)
 	{
-		return new ComparisonController(null, null, null, null, null, null,
+		return new ComparisonController(null, null, null, null, null,
 			config, new TooltipController(config), null, null);
 	}
 

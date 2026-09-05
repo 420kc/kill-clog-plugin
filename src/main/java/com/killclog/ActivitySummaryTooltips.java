@@ -108,13 +108,22 @@ final class ActivitySummaryTooltips
 
 	JToolTip buildSkills(JLabel owner)
 	{
+		JToolTip tip;
 		if (comparison.isComparisonMode() && comparison.getCompareHiscoreResult() != null)
 		{
-			return comparison.wrapSideBySide(owner,
+			tip = comparison.wrapSideBySide(owner,
 				skillsTooltip(owner, lookupSession.getHiscoreResult()),
 				skillsTooltip(owner, comparison.getCompareHiscoreResult()));
 		}
-		return skillsTooltip(owner, lookupSession.getHiscoreResult());
+		else
+		{
+			tip = skillsTooltip(owner, lookupSession.getHiscoreResult());
+		}
+		if (owner.getParent() instanceof JPanel)
+		{
+			tooltipController.keepTooltipOnHover(tip, (JPanel) owner.getParent());
+		}
+		return tip;
 	}
 
 	/** One player's skills summary card: solo mode shows it alone, comparison pairs two. */

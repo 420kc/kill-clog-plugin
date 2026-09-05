@@ -82,12 +82,6 @@ public class HiscoreResult
 		this.overallRank = overallRank;
 	}
 
-
-
-
-
-
-
 	public int getKc(String bossName)
 	{
 		return bossKills.getOrDefault(bossName, -1);
@@ -107,9 +101,6 @@ public class HiscoreResult
 	{
 		return activityRanks.getOrDefault(name, -1);
 	}
-
-
-
 
 	public int getSkillLevel(String name)
 	{

@@ -10,6 +10,9 @@ import static org.junit.Assert.assertEquals;
  * Pins the chat alias catalogs to the exact tables the plugin shipped through
  * 2.3.0, when they lived in KillClogChatCommand itself. The golden copies below
  * are verbatim; any drift in the bundled TSVs or their loaders fails here.
+ *
+ * These goldens are drift alarms, not invariants: a deliberate catalog edit
+ * updates the golden alongside it in the same commit.
  */
 public class ChatAliasCatalogTest
 {

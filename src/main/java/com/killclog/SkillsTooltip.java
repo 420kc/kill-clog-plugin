@@ -45,12 +45,6 @@ public class SkillsTooltip extends TitleTooltip
 
 	private static final Map<Skill, BufferedImage> icons = new LinkedHashMap<>();
 
-	/** Package-private accessor so other surfaces can reuse loaded icons. */
-	static Map<Skill, BufferedImage> getIcons()
-	{
-		return icons;
-	}
-
 	private HiscoreResult result;
 	@Setter
 	private boolean virtualLevels; // Kill Clog's Display Virtual Levels setting, read at build time
@@ -96,7 +90,6 @@ public class SkillsTooltip extends TitleTooltip
 		this.result = result;
 		setTitle("Skill Summary");
 	}
-
 
 	@Override
 	protected Dimension getContentSize(int availableWidth)

@@ -111,7 +111,6 @@ public class ImgTooltip extends TitleTooltip
 			this);
 	}
 
-
 	public void setNotice(String msg, BufferedImage icon)
 	{
 		this.notice = msg;

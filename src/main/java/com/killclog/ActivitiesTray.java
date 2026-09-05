@@ -106,9 +106,6 @@ public class ActivitiesTray
 		});
 	}
 
-
-
-
 	/** Run the slide animation, flip {@link #expanded}, and notify the onToggle hook. */
 	public void toggle()
 	{

@@ -65,7 +65,6 @@ public class PvpSummaryTooltip extends TitleTooltip
 		}
 	}
 
-
 	@Override
 	protected Dimension getContentSize(int availableWidth)
 	{

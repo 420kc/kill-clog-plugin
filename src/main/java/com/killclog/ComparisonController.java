@@ -10,6 +10,8 @@
 package com.killclog;
 
 import java.awt.Color;
+import java.awt.Component;
+import java.awt.Point;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.Collections;
@@ -27,7 +29,6 @@ import javax.swing.SwingUtilities;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.game.ItemManager;
 import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.ui.ColorScheme;
 
@@ -111,13 +112,16 @@ public class ComparisonController
 	private final ClogService clogService;
 	private final RuneProfileService runeProfileService;
 	private final LookupSession lookupSession;
-	private final ItemManager itemManager;
+
 	private final KillClogConfig config;
 	private final TooltipController tooltipController;
 	private final TooltipDataBuilder tooltipDataBuilder;
 	private final UnsyncedClogCatalog unsyncedCatalog;
 	private final Listener listener;
 	@Nullable private CellRenderTarget renderTarget;
+	// The panel's identity-row name rule; label text is only the fallback.
+	@Setter
+	private Supplier<String> blueNameSupplier = () -> null;
 	@Nullable private Cells cells;
 
 	// State
@@ -144,14 +148,13 @@ public class ComparisonController
 	public ComparisonController(HiscoreService hiscoreService, ClogService clogService,
 		RuneProfileService runeProfileService, KillclogService killclogService,
 		LookupSession lookupSession,
-		ItemManager itemManager, KillClogConfig config, TooltipController tooltipController,
+		KillClogConfig config, TooltipController tooltipController,
 		TooltipDataBuilder tooltipDataBuilder, Listener listener)
 	{
 		this.hiscoreService = hiscoreService;
 		this.clogService = clogService;
 		this.runeProfileService = runeProfileService;
 		this.lookupSession = lookupSession;
-		this.itemManager = itemManager;
 		this.config = config;
 		this.tooltipController = tooltipController;
 		this.tooltipDataBuilder = tooltipDataBuilder;
@@ -169,7 +172,6 @@ public class ComparisonController
 	@Setter
 	// Follows the vanilla virtual-total setting; display only, never ranking.
 	private Supplier<Boolean> virtualTotalLevel = () -> false;
-
 
 	/** Wire the {@link Cells} reference. Late-bound: Cells needs a controller ref at its own construction. */
 	public void setCells(@Nullable Cells cells)
@@ -231,7 +233,10 @@ public class ComparisonController
 	{
 		String category = ClogService.bossToCategory(hiscoreName);
 		int rank = compareHiscoreResult.getRank(hiscoreName);
-		TooltipData data = tooltipDataBuilder.buildTooltipData(displayName, category, rank, compareClogResult);
+		// The red card is an ordinary solo card, so it carries the compared
+		// player's KC the same way the blue one does. No red PB source exists.
+		TooltipData data = tooltipDataBuilder.buildTooltipData(displayName, category, rank,
+			compareHiscoreResult.getKc(hiscoreName), null, compareClogResult);
 		if (data == null)
 		{
 			return tooltipDataBuilder.buildUnsyncedTooltipData(
@@ -407,7 +412,6 @@ public class ComparisonController
 
 	// Read-only state
 
-
 	@Nullable
 	public HiscoreResult getCompareHiscoreResult()
 	{
@@ -456,7 +460,11 @@ public class ComparisonController
 	 */
 	public JToolTip wrapSideBySide(JComponent owner, JToolTip blueTip, JToolTip redTip)
 	{
-		String blueName = renderTarget != null ? renderTarget.playerName().getText().trim() : "";
+		String blueName = blueNameSupplier.get();
+		if (blueName == null || blueName.trim().isEmpty())
+		{
+			blueName = renderTarget != null ? renderTarget.playerName().getText().trim() : "";
+		}
 		if (blueName.isEmpty())
 		{
 			blueName = "Blue";
@@ -529,7 +537,10 @@ public class ComparisonController
 	/** Drop a cell's comparison state without repainting; caller renders solo. */
 	public void clearCompareCell(JLabel label)
 	{
-		clearCompareCellState(label);
+		label.putClientProperty(COMPARE_BLUE_TEXT_KEY, null);
+		label.putClientProperty(COMPARE_RED_TEXT_KEY, null);
+		label.putClientProperty(COMPARE_BLUE_HOVER_KEY, null);
+		label.putClientProperty(COMPARE_RED_HOVER_KEY, null);
 	}
 
 	/**
@@ -564,11 +575,11 @@ public class ComparisonController
 	private static boolean isInsideCell(JPanel cell, MouseEvent e)
 	{
 		Object source = e.getSource();
-		if (!(source instanceof java.awt.Component))
+		if (!(source instanceof Component))
 		{
 			return false;
 		}
-		java.awt.Point p = SwingUtilities.convertPoint((java.awt.Component) source, e.getPoint(), cell);
+		Point p = SwingUtilities.convertPoint((Component) source, e.getPoint(), cell);
 		return p.x >= 0 && p.y >= 0 && p.x < cell.getWidth() && p.y < cell.getHeight();
 	}
 
@@ -604,7 +615,7 @@ public class ComparisonController
 	/** Restore a cell to single-player solo display. */
 	public void restoreSoloCell(JLabel label, int val)
 	{
-		clearCompareCellState(label);
+		clearCompareCell(label);
 		label.setHorizontalAlignment(JLabel.LEADING);
 		Color infoColor = renderTarget != null ? renderTarget.getInfoColor()
 			: ColorScheme.LIGHT_GRAY_COLOR;
@@ -618,14 +629,6 @@ public class ComparisonController
 			label.setText(ClogHelper.pad("--"));
 			label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		}
-	}
-
-	private static void clearCompareCellState(JLabel label)
-	{
-		label.putClientProperty(COMPARE_BLUE_TEXT_KEY, null);
-		label.putClientProperty(COMPARE_RED_TEXT_KEY, null);
-		label.putClientProperty(COMPARE_BLUE_HOVER_KEY, null);
-		label.putClientProperty(COMPARE_RED_HOVER_KEY, null);
 	}
 
 	/**

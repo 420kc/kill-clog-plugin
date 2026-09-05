@@ -58,7 +58,6 @@ final class ClogSessionState
 		return pendingCaRead;
 	}
 
-
 	boolean pendingAutoLookup()
 	{
 		return pendingAutoLookup;

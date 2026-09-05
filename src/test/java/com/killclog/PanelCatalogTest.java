@@ -8,6 +8,9 @@ import static org.junit.Assert.assertArrayEquals;
  * Pins the bundled panel catalog to the exact tables the plugin shipped with
  * in 2.3.0, when they lived in PanelData itself. The golden boss list keeps
  * compile-time checking of every HiscoreSkill reference on the test side.
+ *
+ * These goldens are drift alarms, not invariants: a deliberate catalog edit
+ * updates the golden alongside it in the same commit.
  */
 public class PanelCatalogTest
 {

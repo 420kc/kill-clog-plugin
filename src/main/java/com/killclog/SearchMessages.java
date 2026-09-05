@@ -37,13 +37,13 @@ final class SearchMessages
 	/** Bundled pool rows of this kind; the parity test pins contents. */
 	private static String[] pool(String kind)
 	{
-		java.util.List<String> texts = new java.util.ArrayList<>();
-		for (String[] row : CatalogTsv.rows(SearchMessages.class, "search-messages.tsv", 2))
+		java.util.List<String> texts =
+			CatalogTsv.values(SearchMessages.class, "search-messages.tsv", kind);
+		if (texts.isEmpty())
 		{
-			if (kind.equals(row[0]))
-			{
-				texts.add(row[1]);
-			}
+			// A broken catalog degrades to a plain line, never an empty pool:
+			// every consumer draws by random index.
+			return new String[]{"Searching for %s..."};
 		}
 		return texts.toArray(new String[0]);
 	}

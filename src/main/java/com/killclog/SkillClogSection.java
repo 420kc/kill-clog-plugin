@@ -282,11 +282,21 @@ final class SkillClogSection
 				List<Integer> itemIds = new ArrayList<>();
 				for (String itemId : row[3].split(","))
 				{
-					itemIds.add(Integer.parseInt(itemId));
+					itemIds.add(Integer.parseInt(itemId.trim()));
 				}
 				spec = new Spec(heading, null, itemIds);
 			}
-			specs.computeIfAbsent(Skill.valueOf(row[0]), s -> new ArrayList<>()).add(spec);
+			Skill skill;
+			try
+			{
+				skill = Skill.valueOf(row[0]);
+			}
+			catch (IllegalArgumentException e)
+			{
+				// Skip: skill not present in this client build.
+				continue;
+			}
+			specs.computeIfAbsent(skill, s -> new ArrayList<>()).add(spec);
 		}
 		for (Map.Entry<Skill, List<Spec>> entry : specs.entrySet())
 		{

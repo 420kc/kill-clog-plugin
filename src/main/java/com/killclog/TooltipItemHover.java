@@ -29,7 +29,6 @@ final class TooltipItemHover
 		install();
 	}
 
-
 	void setHitBoxes(List<HitBox> hitBoxes)
 	{
 		this.hitBoxes = hitBoxes != null ? hitBoxes : Collections.emptyList();
@@ -132,7 +131,7 @@ final class TooltipItemHover
 	private void closeTooltip()
 	{
 		clear();
-		component.setVisible(false);
+		NativeTooltip.hideTooltipTree(component);
 	}
 
 	private HitBox findHitBox(int mx, int my)

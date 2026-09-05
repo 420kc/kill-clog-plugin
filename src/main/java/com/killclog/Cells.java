@@ -50,7 +50,6 @@ public class Cells
 		JToolTip buildCompared(JLabel owner, TooltipData data, int gridCols,
 			String name, boolean compact);
 
-
 		JToolTip build(JLabel owner, @Nullable TooltipData data, int gridCols, String name);
 
 		JToolTip build(JLabel owner, @Nullable TooltipData data, int gridCols, String name, boolean compact);
@@ -761,12 +760,27 @@ public class Cells
 		int gridCols = compact ? 10 : 5;
 		if (comparison.isComparisonMode())
 		{
+			TooltipData blueData = tooltipDataMap.get(tier);
 			TooltipData redData = comparison.buildCompareClueTierData(tier);
+			// The dense clue tiers stay header-only cards in comparison, as
+			// they always have: two full grids would dwarf the panel.
+			if (suppressComparisonClueGrid(tier))
+			{
+				blueData = blueData != null ? blueData.withoutGrid() : null;
+				redData = redData != null ? redData.withoutGrid() : null;
+			}
 			return wrapSideBySide(owner,
-				singlePlayerBuilder.build(owner, tooltipDataMap.get(tier), gridCols, displayName, compact),
+				singlePlayerBuilder.build(owner, blueData, gridCols, displayName, compact),
 				singlePlayerBuilder.buildCompared(owner, redData, gridCols, displayName, compact));
 		}
 		return buildSingleSpriteTooltip(owner, tooltipDataMap.get(tier), gridCols, displayName, compact);
+	}
+
+	private static boolean suppressComparisonClueGrid(HiscoreSkill tier)
+	{
+		return tier == HiscoreSkill.CLUE_SCROLL_EASY
+			|| tier == HiscoreSkill.CLUE_SCROLL_MEDIUM
+			|| tier == HiscoreSkill.CLUE_SCROLL_HARD;
 	}
 
 	private JToolTip buildClueRareTooltip(JLabel owner, String name, String clogCategory)
@@ -920,10 +934,6 @@ public class Cells
 	{
 		return masterRare;
 	}
-
-
-
-
 
 	@Nullable
 	public TooltipData getTooltipData(HiscoreSkill skill)

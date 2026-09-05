@@ -8,7 +8,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
-import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
@@ -35,8 +34,6 @@ final class SkillCellGrid
 		new GridLayout(SkillGridOrder.ROWS, SkillGridOrder.COLUMNS));
 	private final Map<Skill, JLabel> labels = new LinkedHashMap<>();
 	private final ComparisonController comparison;
-	private final Supplier<String> blueName;
-	private final Supplier<String> redName;
 	private final TooltipController tooltipController;
 	private final KillClogConfig config;
 	@Nullable
@@ -55,12 +52,9 @@ final class SkillCellGrid
 
 	SkillCellGrid(SkillIconManager skillIconManager,
 		TooltipController tooltipController, ComparisonController comparison,
-		KillClogConfig config, @Nullable ItemManager itemManager,
-		Supplier<String> blueName, Supplier<String> redName)
+		KillClogConfig config, @Nullable ItemManager itemManager)
 	{
 		this.comparison = comparison;
-		this.blueName = blueName;
-		this.redName = redName;
 		this.tooltipController = tooltipController;
 		this.config = config;
 		this.itemManager = itemManager;
@@ -172,6 +166,7 @@ final class SkillCellGrid
 		this.catalog = catalog;
 		for (JLabel label : labels.values())
 		{
+			comparison.clearCompareCell(label);
 			label.setText(ClogHelper.pad("--"));
 			label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 			label.setHorizontalAlignment(JLabel.LEADING);
@@ -184,9 +179,9 @@ final class SkillCellGrid
 		// other player's clog unioned into its sections so both cards show the
 		// same slot census.
 		JToolTip tooltip = compared != null
-			? new SideBySideTooltip(
-				blueName.get(), soloTooltip(skill, primary, primaryClog, comparedClog),
-				redName.get(), soloTooltip(skill, compared, comparedClog, primaryClog))
+			? comparison.wrapSideBySide(owner,
+				soloTooltip(skill, primary, primaryClog, comparedClog),
+				soloTooltip(skill, compared, comparedClog, primaryClog))
 			: soloTooltip(skill, primary, primaryClog, comparedClog);
 		tooltip.setComponent(owner);
 		tooltipController.keepTooltipOnHover(tooltip, (JPanel) owner.getParent());
@@ -216,18 +211,9 @@ final class SkillCellGrid
 	private void renderSolo(JLabel label, Skill skill, int level)
 	{
 		comparison.clearCompareCell(label);
-		int obtained = -1;
-		int total = -1;
-		if (config.skillColorMode() == SkillColorMode.CLOG_PROGRESSION)
-		{
-			SkillClogSection.Progress progress = SkillClogSection.combinedProgress(
-				SkillClogSection.forSkill(skill, primaryClog, null, catalog), false);
-			obtained = progress.obtained();
-			total = progress.total();
-		}
 		label.setText(ClogHelper.pad(levelText(level)));
 		label.setForeground(level > 0
-			? SkillLevelColor.forCell(level, primaryClog != null, obtained, total, config)
+			? cellColor(skill, level, primaryClog)
 			: ColorScheme.LIGHT_GRAY_COLOR);
 		label.setHorizontalAlignment(JLabel.LEADING);
 	}
@@ -249,10 +235,12 @@ final class SkillCellGrid
 	@Nullable
 	private Color hoverColor(Skill skill, int level, @Nullable ClogResult clog)
 	{
-		if (level <= 0 || clog == null)
-		{
-			return null;
-		}
+		return level <= 0 || clog == null ? null : cellColor(skill, level, clog);
+	}
+
+	/** One player's cell color under the skill color configs; solo and hover share it. */
+	private Color cellColor(Skill skill, int level, @Nullable ClogResult clog)
+	{
 		int obtained = -1;
 		int total = -1;
 		if (config.skillColorMode() == SkillColorMode.CLOG_PROGRESSION)
@@ -262,7 +250,7 @@ final class SkillCellGrid
 			obtained = progress.obtained();
 			total = progress.total();
 		}
-		return SkillLevelColor.forCell(level, true, obtained, total, config);
+		return SkillLevelColor.forCell(level, clog != null, obtained, total, config);
 	}
 
 	private static int level(HiscoreResult result, Skill skill, boolean virtualLevels)

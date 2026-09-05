@@ -82,7 +82,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 		this.bossesWithClog = total;
 	}
 
-
 	@Override
 	public void setWikiLinksEnabled(boolean wikiLinksEnabled)
 	{

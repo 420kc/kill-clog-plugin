@@ -128,7 +128,15 @@ class KillClogChatCommand
 		Map<String, ClogTarget> m = new HashMap<>();
 		for (String[] row : CatalogTsv.rows(KillClogChatCommand.class, "chat-clue-aliases.tsv", 2))
 		{
-			HiscoreSkill tier = HiscoreSkill.valueOf("CLUE_SCROLL_" + row[1]);
+			HiscoreSkill tier;
+			try
+			{
+				tier = HiscoreSkill.valueOf("CLUE_SCROLL_" + row[1]);
+			}
+			catch (IllegalArgumentException e)
+			{
+				continue;
+			}
 			String categoryKey = PanelData.CLUE_CATEGORIES.get(tier);
 			m.put(normalize(row[0]), new ClogTarget(titleCase(categoryKey), categoryKey));
 		}

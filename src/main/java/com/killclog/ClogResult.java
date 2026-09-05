@@ -107,18 +107,6 @@ public class ClogResult
 		return copy;
 	}
 
-
-
-
-
-
-
-
-
-
-
-
-
 	public boolean isItemResolved(int id)
 	{
 		return itemNames.containsKey(id);

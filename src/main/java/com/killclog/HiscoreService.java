@@ -5,10 +5,8 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -80,15 +78,8 @@ public class HiscoreService
 	 */
 	private static String[] layoutNames(String kind)
 	{
-		List<String> names = new ArrayList<>();
-		for (String[] row : CatalogTsv.rows(HiscoreService.class, "hiscore-layout.tsv", 2))
-		{
-			if (kind.equals(row[0]))
-			{
-				names.add(row[1]);
-			}
-		}
-		return names.toArray(new String[0]);
+		return CatalogTsv.values(HiscoreService.class, "hiscore-layout.tsv", kind)
+			.toArray(new String[0]);
 	}
 
 	/** Skill names in CSV order. Used by the layout-parity test. */

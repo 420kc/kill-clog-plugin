@@ -193,7 +193,6 @@ final class SearchRowController
 		});
 	}
 
-
 	int compareIconWidth()
 	{
 		return compareLabel.isVisible() ? COMPARE_ICON_WIDTH : 0;
