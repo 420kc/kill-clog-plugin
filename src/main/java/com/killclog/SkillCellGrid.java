@@ -29,7 +29,6 @@ final class SkillCellGrid
 {
 	private static final String COMPARE_BLUE_HEX = colorHex(TitleTooltip.COMPARE_BLUE);
 	private static final String COMPARE_RED_HEX = colorHex(TitleTooltip.COMPARE_RED);
-	private static final String COMPARE_SEPARATOR_HEX = "#949494";
 	static final int SKILL_ICON_SIZE = 22;
 	private static final int SKILL_ICON_CANVAS_SIZE = 25;
 
@@ -233,11 +232,13 @@ final class SkillCellGrid
 
 	private static void renderComparison(JLabel label, int primaryLevel, int comparedLevel)
 	{
-		label.setText("<html><span style='color:" + COMPARE_BLUE_HEX + ";'>"
-			+ levelText(primaryLevel) + "</span>"
-			+ "<span style='color:" + COMPARE_SEPARATOR_HEX + ";'>/</span>"
+		// Same stacked shape as the boss cells: blue over red beside one icon,
+		// so comparison never widens the grid past the panel.
+		label.setText("<html><div style='text-align:center;'>"
+			+ "<span style='color:" + COMPARE_BLUE_HEX + ";'>"
+			+ levelText(primaryLevel) + "</span><br>"
 			+ "<span style='color:" + COMPARE_RED_HEX + ";'>"
-			+ levelText(comparedLevel) + "</span></html>");
+			+ levelText(comparedLevel) + "</span></div></html>");
 		label.setForeground(TitleTooltip.COMPARE_BLUE);
 		label.setHorizontalAlignment(JLabel.CENTER);
 	}
