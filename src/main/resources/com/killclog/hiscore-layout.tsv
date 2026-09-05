@@ -1,0 +1,121 @@
+# Jagex hiscore CSV layout: kind<TAB>name, in exact feed row order.
+# Line 0 of the feed is Overall, then skills, then activities, then bosses.
+# ORDER IS THE CONTRACT: rows are positional against the feed, and CSV growth
+# can reorder neighbors, not just extend the tail (Wyrmscraig, 2026-07-29).
+# Promote the whole boss list from a live response, never a guessed insert.
+# Retired activities still occupy feed lines, so they keep their rows here.
+skill	attack
+skill	defence
+skill	strength
+skill	hitpoints
+skill	ranged
+skill	prayer
+skill	magic
+skill	cooking
+skill	woodcutting
+skill	fletching
+skill	fishing
+skill	firemaking
+skill	crafting
+skill	smithing
+skill	mining
+skill	herblore
+skill	agility
+skill	thieving
+skill	slayer
+skill	farming
+skill	runecraft
+skill	hunter
+skill	construction
+skill	sailing
+activity	Grid Points
+activity	League Points
+activity	Deadman Points
+activity	Bounty Hunter - Hunter
+activity	Bounty Hunter - Rogue
+activity	Bounty Hunter (Legacy) - Hunter
+activity	Bounty Hunter (Legacy) - Rogue
+activity	Clue Scrolls (all)
+activity	Clue Scrolls (beginner)
+activity	Clue Scrolls (easy)
+activity	Clue Scrolls (medium)
+activity	Clue Scrolls (hard)
+activity	Clue Scrolls (elite)
+activity	Clue Scrolls (master)
+activity	LMS - Rank
+activity	PvP Arena - Rank
+activity	Soul Wars Zeal
+activity	Rifts closed
+activity	Colosseum Glory
+activity	Collections Logged
+boss	Abyssal Sire
+boss	Alchemical Hydra
+boss	Amoxliatl
+boss	Araxxor
+boss	Artio
+boss	Barrows Chests
+boss	Brutus
+boss	Bryophyta
+boss	Callisto
+boss	Cal'varion
+boss	Cerberus
+boss	Chambers of Xeric
+boss	Chambers of Xeric: Challenge Mode
+boss	Chaos Elemental
+boss	Chaos Fanatic
+boss	Commander Zilyana
+boss	Corporeal Beast
+boss	Crazy Archaeologist
+boss	Dagannoth Prime
+boss	Dagannoth Rex
+boss	Dagannoth Supreme
+boss	Deranged Archaeologist
+boss	Doom of Mokhaiotl
+boss	Duke Sucellus
+boss	General Graardor
+boss	Giant Mole
+boss	Grotesque Guardians
+boss	Hespori
+boss	Kalphite Queen
+boss	King Black Dragon
+boss	Kraken
+boss	Kree'Arra
+boss	K'ril Tsutsaroth
+boss	Lunar Chests
+boss	Mad Angel
+boss	Maggot King
+boss	Mimic
+boss	Nex
+boss	Nightmare
+boss	Phosani's Nightmare
+boss	Obor
+boss	Phantom Muspah
+boss	Sarachnis
+boss	Scorpia
+boss	Scurrius
+boss	Shellbane Gryphon
+boss	Skotizo
+boss	Sol Heredit
+boss	Spindel
+boss	Tempoross
+boss	The Gauntlet
+boss	The Corrupted Gauntlet
+boss	The Hueycoatl
+boss	The Leviathan
+boss	The Royal Titans
+boss	The Whisperer
+boss	Theatre of Blood
+boss	Theatre of Blood: Hard Mode
+boss	Thermonuclear Smoke Devil
+boss	Tombs of Amascut
+boss	Tombs of Amascut: Expert Mode
+boss	TzKal-Zuk
+boss	TzTok-Jad
+boss	Vardorvis
+boss	Venenatis
+boss	Vet'ion
+boss	Vorkath
+boss	Wintertodt
+boss	Yama
+boss	Zalcano
+boss	Zulrah

@@ -5,8 +5,10 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -41,27 +43,12 @@ public class HiscoreService
 		Map.of("Calvar'ion", "Cal'varion");
 
 	// Skill names in hiscore CSV order (lines 1-24).
-	private static final String[] SKILL_NAMES = {
-		"attack", "defence", "strength", "hitpoints", "ranged", "prayer", "magic",
-		"cooking", "woodcutting", "fletching", "fishing", "firemaking", "crafting",
-		"smithing", "mining", "herblore", "agility", "thieving", "slayer",
-		"farming", "runecraft", "hunter", "construction", "sailing"
-	};
+	private static final String[] SKILL_NAMES = layoutNames("skill");
 
 	// Activity names in hiscore CSV order.
 	// Includes deprecated entries (Grid Points, Deadman Points, BH Legacy).
 	// Retired activity rows still occupy CSV lines, so indices must stay aligned.
-	private static final String[] ACTIVITY_NAMES = {
-		"Grid Points",
-		"League Points",
-		"Deadman Points",
-		"Bounty Hunter - Hunter", "Bounty Hunter - Rogue",
-		"Bounty Hunter (Legacy) - Hunter", "Bounty Hunter (Legacy) - Rogue",
-		"Clue Scrolls (all)", "Clue Scrolls (beginner)", "Clue Scrolls (easy)",
-		"Clue Scrolls (medium)", "Clue Scrolls (hard)", "Clue Scrolls (elite)",
-		"Clue Scrolls (master)", "LMS - Rank", "PvP Arena - Rank",
-		"Soul Wars Zeal", "Rifts closed", "Colosseum Glory", "Collections Logged"
-	};
+	private static final String[] ACTIVITY_NAMES = layoutNames("activity");
 
 	// Hiscore CSV layout: line 0 = Overall, then skills, then activities, then bosses.
 	// Derived from array lengths so they can never go out of sync.
@@ -84,28 +71,37 @@ public class HiscoreService
 	//      BOSSES list in PanelData and move the CSV name into BOSS_NAMES
 	//   5. If HiscoreSkill.getName() != CSV name, add to NAME_OVERRIDES
 	//   6. If collection-log provider category keys differ, add to BOSS_CATEGORY_OVERRIDES in ClogService
-	private static final String[] BOSS_NAMES = {
-		"Abyssal Sire", "Alchemical Hydra", "Amoxliatl", "Araxxor",
-		"Artio", "Barrows Chests", "Brutus", "Bryophyta", "Callisto",
-		"Cal'varion", "Cerberus", "Chambers of Xeric",
-		"Chambers of Xeric: Challenge Mode", "Chaos Elemental", "Chaos Fanatic",
-		"Commander Zilyana", "Corporeal Beast", "Crazy Archaeologist",
-		"Dagannoth Prime", "Dagannoth Rex", "Dagannoth Supreme",
-		"Deranged Archaeologist", "Doom of Mokhaiotl", "Duke Sucellus",
-		"General Graardor", "Giant Mole", "Grotesque Guardians", "Hespori",
-		"Kalphite Queen", "King Black Dragon", "Kraken", "Kree'Arra",
-		"K'ril Tsutsaroth", "Lunar Chests", "Mad Angel", "Maggot King", "Mimic",
-		"Nex", "Nightmare", "Phosani's Nightmare", "Obor",
-		"Phantom Muspah", "Sarachnis", "Scorpia", "Scurrius",
-		"Shellbane Gryphon", "Skotizo", "Sol Heredit", "Spindel", "Tempoross",
-		"The Gauntlet", "The Corrupted Gauntlet", "The Hueycoatl",
-		"The Leviathan", "The Royal Titans", "The Whisperer",
-		"Theatre of Blood", "Theatre of Blood: Hard Mode",
-		"Thermonuclear Smoke Devil", "Tombs of Amascut",
-		"Tombs of Amascut: Expert Mode", "TzKal-Zuk", "TzTok-Jad",
-		"Vardorvis", "Venenatis", "Vet'ion", "Vorkath", "Wintertodt",
-		"Yama", "Zalcano", "Zulrah"
-	};
+	private static final String[] BOSS_NAMES = layoutNames("boss");
+
+	/**
+	 * Rows of the bundled hiscore-layout.tsv with this kind, in feed order.
+	 * The layout catalog is positional against the Jagex CSV; the parity test
+	 * pins its exact contents.
+	 */
+	private static String[] layoutNames(String kind)
+	{
+		List<String> names = new ArrayList<>();
+		for (String[] row : CatalogTsv.rows(HiscoreService.class, "hiscore-layout.tsv", 2))
+		{
+			if (kind.equals(row[0]))
+			{
+				names.add(row[1]);
+			}
+		}
+		return names.toArray(new String[0]);
+	}
+
+	/** Skill names in CSV order. Used by the layout-parity test. */
+	static String[] skillNames()
+	{
+		return SKILL_NAMES;
+	}
+
+	/** Activity names in CSV order. Used by the layout-parity test. */
+	static String[] activityNames()
+	{
+		return ACTIVITY_NAMES;
+	}
 
 	/** Number of boss entries in the hiscore CSV. Used by tests to detect drift. */
 	static int bossCount()
