@@ -6,6 +6,7 @@ import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.util.Locale;
+import lombok.Setter;
 import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.ui.FontManager;
 
@@ -37,6 +38,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 	private int mimicKc = -1;
 	private int mimicRank = -1;
 
+	@Setter
 	private BufferedImage[] icons;
 
 	/** A null result renders the full tier ladder with "--" scores: the empty state. */
@@ -64,10 +66,6 @@ public class ClueSummaryTooltip extends TitleTooltip
 		}
 	}
 
-	public void setIcons(BufferedImage[] icons)
-	{
-		this.icons = icons;
-	}
 
 	@Override
 	protected Dimension getContentSize(int availableWidth)

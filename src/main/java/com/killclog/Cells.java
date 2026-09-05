@@ -26,6 +26,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JToolTip;
 import javax.swing.SwingUtilities;
+import lombok.Getter;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.SpriteManager;
 import net.runelite.client.hiscore.HiscoreSkill;
@@ -69,11 +70,15 @@ public class Cells
 	@Nullable private SinglePlayerTooltipBuilder singlePlayerBuilder;
 
 	// Tooltip data caches
+	@Getter
 	private final Map<HiscoreSkill, TooltipData> tooltipDataMap = new LinkedHashMap<>();
+	@Getter
 	private final Map<String, TooltipData> rareTooltips = new LinkedHashMap<>();
 
 	// Icon caches
+	@Getter
 	private final BufferedImage[] clueIcons = new BufferedImage[8];
+	@Getter
 	private final BufferedImage[] pvpActivityIcons = new BufferedImage[5];
 
 	// Cell labels
@@ -938,25 +943,9 @@ public class Cells
 		return masterRare;
 	}
 
-	public Map<HiscoreSkill, TooltipData> getTooltipDataMap()
-	{
-		return tooltipDataMap;
-	}
 
-	public Map<String, TooltipData> getRareTooltips()
-	{
-		return rareTooltips;
-	}
 
-	public BufferedImage[] getClueIcons()
-	{
-		return clueIcons;
-	}
 
-	public BufferedImage[] getPvpActivityIcons()
-	{
-		return pvpActivityIcons;
-	}
 
 	@Nullable
 	public TooltipData getTooltipData(HiscoreSkill skill)

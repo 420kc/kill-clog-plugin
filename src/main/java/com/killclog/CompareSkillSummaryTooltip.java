@@ -12,6 +12,7 @@ import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
 import java.util.Locale;
 import java.util.Map;
+import lombok.Setter;
 import net.runelite.api.Skill;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.ImageUtil;
@@ -56,7 +57,8 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 		installSkillHoverHandlers();
 	}
 
-	private boolean virtualLevels;
+	@Setter
+	private boolean virtualLevels; // Kill Clog's Display Virtual Levels setting, read at build time
 
 	@Override
 	protected Font getTitleFont()
@@ -64,11 +66,6 @@ public class CompareSkillSummaryTooltip extends TitleTooltip
 		return TITLE_FONT_SMALL;
 	}
 
-	/** Uses Kill Clog's Display Virtual Levels setting, read at build time. */
-	public void setVirtualLevels(boolean virtualLevels)
-	{
-		this.virtualLevels = virtualLevels;
-	}
 
 	public void setData(String blueName, HiscoreResult blueResult,
 		String redName, HiscoreResult redResult)

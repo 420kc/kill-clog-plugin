@@ -14,6 +14,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import javax.swing.JPanel;
 import javax.swing.Timer;
+import lombok.Getter;
 import net.runelite.client.ui.ColorScheme;
 
 /**
@@ -29,9 +30,12 @@ public class ActivitiesTray
 	private static final int SLIDE_TICK_MS = 12;
 
 	private final JPanel content;
+	@Getter
 	private final JPanel clip;
+	@Getter
 	private final JPanel separator;
 	private final Runnable onToggle;
+	@Getter
 	private boolean expanded;
 	private Timer slideTimer;
 
@@ -102,20 +106,8 @@ public class ActivitiesTray
 		});
 	}
 
-	public JPanel getClip()
-	{
-		return clip;
-	}
 
-	public JPanel getSeparator()
-	{
-		return separator;
-	}
 
-	public boolean isExpanded()
-	{
-		return expanded;
-	}
 
 	/** Run the slide animation, flip {@link #expanded}, and notify the onToggle hook. */
 	public void toggle()

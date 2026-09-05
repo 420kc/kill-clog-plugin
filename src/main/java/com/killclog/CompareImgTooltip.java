@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import lombok.Setter;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
 
@@ -49,6 +50,7 @@ public class CompareImgTooltip extends TitleTooltip
 
 	private List<Integer> allItemIds;
 	private final TooltipItemHover itemHover = new TooltipItemHover(this);
+	@Setter
 	private boolean showSpriteGrids = true;
 	private String comparisonStatLabel;
 	private int blueComparisonStat = -1;
@@ -102,10 +104,6 @@ public class CompareImgTooltip extends TitleTooltip
 		red.hasData = hasData;
 	}
 
-	public void setShowSpriteGrids(boolean showSpriteGrids)
-	{
-		this.showSpriteGrids = showSpriteGrids;
-	}
 
 	public void setComparisonStat(String label, int blueValue, int redValue)
 	{

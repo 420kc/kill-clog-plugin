@@ -6,6 +6,7 @@ import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
+import lombok.Setter;
 import net.runelite.client.ui.FontManager;
 
 /**
@@ -28,6 +29,7 @@ public class PvpSummaryTooltip extends TitleTooltip
 	private final int[] obtained = new int[5];
 	private final int[] total = new int[5];
 
+	@Setter
 	private BufferedImage[] icons;
 
 	/** A null result renders all five rows with "--" scores: the empty state. */
@@ -63,10 +65,6 @@ public class PvpSummaryTooltip extends TitleTooltip
 		}
 	}
 
-	public void setIcons(BufferedImage[] icons)
-	{
-		this.icons = icons;
-	}
 
 	@Override
 	protected Dimension getContentSize(int availableWidth)

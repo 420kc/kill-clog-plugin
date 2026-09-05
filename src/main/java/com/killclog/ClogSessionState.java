@@ -1,9 +1,13 @@
 package com.killclog;
 
+import lombok.AccessLevel;
+import lombok.Setter;
+
 final class ClogSessionState
 {
 	private boolean pendingAutoLookup;
 	private boolean pendingAcctTypeRecheck;
+	@Setter(AccessLevel.PACKAGE)
 	private boolean pendingCaRead;
 	private boolean autoLookedUp;
 
@@ -54,10 +58,6 @@ final class ClogSessionState
 		return pendingCaRead;
 	}
 
-	void setPendingCaRead(boolean pendingCaRead)
-	{
-		this.pendingCaRead = pendingCaRead;
-	}
 
 	boolean pendingAutoLookup()
 	{

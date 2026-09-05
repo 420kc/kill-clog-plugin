@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import lombok.Setter;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
 
@@ -41,6 +42,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 	private int bossesCompleted = -1;
 	private int bossesWithClog;
+	@Setter
 	private double ehb = -1;
 
 	private final BufferedImage[] weaponSprites = new BufferedImage[3];
@@ -80,10 +82,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 		this.bossesWithClog = total;
 	}
 
-	public void setEhb(double ehb)
-	{
-		this.ehb = ehb;
-	}
 
 	@Override
 	public void setWikiLinksEnabled(boolean wikiLinksEnabled)

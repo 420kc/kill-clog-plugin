@@ -8,6 +8,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import javax.swing.JComponent;
+import lombok.AccessLevel;
+import lombok.Setter;
 
 final class TooltipItemHover
 {
@@ -18,6 +20,7 @@ final class TooltipItemHover
 	private boolean hoveredObtained;
 	private int hoveredItemCount;
 	private String hoveredItemName;
+	@Setter(AccessLevel.PACKAGE)
 	private boolean wikiLinksEnabled = true;
 
 	TooltipItemHover(JComponent component)
@@ -26,10 +29,6 @@ final class TooltipItemHover
 		install();
 	}
 
-	void setWikiLinksEnabled(boolean wikiLinksEnabled)
-	{
-		this.wikiLinksEnabled = wikiLinksEnabled;
-	}
 
 	void setHitBoxes(List<HitBox> hitBoxes)
 	{

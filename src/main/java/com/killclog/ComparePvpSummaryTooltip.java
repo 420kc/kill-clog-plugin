@@ -6,6 +6,7 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import lombok.Setter;
 import net.runelite.client.ui.FontManager;
 
 /**
@@ -38,6 +39,7 @@ public class ComparePvpSummaryTooltip extends TitleTooltip
 
 	private final Side blue = new Side();
 	private final Side red = new Side();
+	@Setter
 	private BufferedImage[] icons;
 
 	@Override
@@ -57,10 +59,6 @@ public class ComparePvpSummaryTooltip extends TitleTooltip
 		setData(red, name, hs, clog);
 	}
 
-	public void setIcons(BufferedImage[] icons)
-	{
-		this.icons = icons;
-	}
 
 	private static void setData(Side side, String name, HiscoreResult hs, ClogResult clog)
 	{

@@ -5,6 +5,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import javax.swing.SwingUtilities;
+import lombok.AccessLevel;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -35,6 +37,7 @@ final class LookupFanout
 	private volatile int version = 0;
 
 	/** True while a fetch generation is unresolved (or until superseded). */
+	@Getter(AccessLevel.PACKAGE)
 	private volatile boolean inFlight = false;
 
 	LookupFanout(HiscoreService hiscoreService, ClogService clogService,
@@ -80,10 +83,6 @@ final class LookupFanout
 		inFlight = false;
 	}
 
-	boolean isInFlight()
-	{
-		return inFlight;
-	}
 
 	int version()
 	{

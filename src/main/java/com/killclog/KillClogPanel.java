@@ -33,6 +33,8 @@ import javax.swing.JToolTip;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
+import lombok.AccessLevel;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.gameval.SpriteID;
@@ -959,7 +961,9 @@ public class KillClogPanel extends PluginPanel
 	private boolean syncArrowEnabled;
 	private boolean syncArrowHasData;
 	private boolean characterPublishEnabled;
+	@Setter(AccessLevel.PACKAGE)
 	private Runnable killclogSyncHandler;
+	@Setter(AccessLevel.PACKAGE)
 	private Runnable characterPublishHandler;
 	private Timer firstPartyStatusClearTimer;
 	private BufferedImage characterBase;
@@ -1209,15 +1213,7 @@ public class KillClogPanel extends PluginPanel
 		});
 	}
 
-	void setKillclogSyncHandler(Runnable handler)
-	{
-		this.killclogSyncHandler = handler;
-	}
 
-	void setCharacterPublishHandler(Runnable handler)
-	{
-		this.characterPublishHandler = handler;
-	}
 
 	private boolean barOwnedByFirstParty()
 	{

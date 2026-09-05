@@ -21,6 +21,8 @@ import javax.annotation.Nullable;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JToolTip;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.hiscore.HiscoreSkill;
@@ -116,6 +118,7 @@ public class ComparisonController
 	@Nullable private Cells cells;
 
 	// State
+	@Getter
 	private boolean comparisonMode;
 	@Nullable private HiscoreResult compareHiscoreResult;
 	@Nullable private ClogResult compareClogResult;
@@ -160,13 +163,10 @@ public class ComparisonController
 		this.renderTarget = renderTarget;
 	}
 
+	@Setter
+	// Follows the vanilla virtual-total setting; display only, never ranking.
 	private Supplier<Boolean> virtualTotalLevel = () -> false;
 
-	/** Follows the vanilla virtual-total setting; display only, never ranking. */
-	public void setVirtualTotalLevel(Supplier<Boolean> virtualTotalLevel)
-	{
-		this.virtualTotalLevel = virtualTotalLevel;
-	}
 
 	/** Wire the {@link Cells} reference. Late-bound: Cells needs a controller ref at its own construction. */
 	public void setCells(@Nullable Cells cells)
@@ -404,10 +404,6 @@ public class ComparisonController
 
 	// Read-only state
 
-	public boolean isComparisonMode()
-	{
-		return comparisonMode;
-	}
 
 	@Nullable
 	public HiscoreResult getCompareHiscoreResult()

@@ -32,6 +32,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.RuneLite;
 
@@ -1314,12 +1315,9 @@ public class LocalClogCache
 	// lives here at the data seam so no capture route can be forgotten.
 	// The listener only schedules a debounced task; it must stay cheap and
 	// must not call back into this cache.
+	@Setter
 	private volatile Runnable firstPartyChangedListener;
 
-	public void setFirstPartyChangedListener(Runnable listener)
-	{
-		this.firstPartyChangedListener = listener;
-	}
 
 	private void notifyFirstPartyChanged()
 	{

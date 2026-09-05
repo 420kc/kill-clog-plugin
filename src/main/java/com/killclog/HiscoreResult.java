@@ -2,14 +2,20 @@ package com.killclog;
 
 import java.util.Collections;
 import java.util.Map;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Parsed hiscore data for a player.
  */
 public class HiscoreResult
 {
+	@Getter
 	private final AccountType accountType;
+	@Getter(AccessLevel.PACKAGE)
 	private final HiscoreTable hiscoreTable;
+	@Getter
 	private final Map<String, Integer> bossKills;
 	private final Map<String, Integer> bossRanks;
 	private final Map<String, Integer> activityScores;
@@ -17,14 +23,20 @@ public class HiscoreResult
 	private final Map<String, Integer> skillLevels;
 	private final Map<String, Integer> skillRanks;
 	private final Map<String, Long> skillXps;
+	@Getter
 	private final int totalLevel;
+	@Getter
 	private final long totalXp;
+	@Getter
 	private final int combatLevel;
+	@Getter
 	private final int overallRank;
 
 	// Set when the hiscore CSV line count no longer matches the known format:
 	// the boss maps were left empty on purpose (positions cannot be trusted).
 	// Surfaces render their normal quiet absent state; no banner, by design.
+	@Getter
+	@Setter(AccessLevel.PACKAGE)
 	private boolean bossSectionShifted;
 
 	public HiscoreResult(AccountType accountType, Map<String, Integer> bossKills,
@@ -70,35 +82,11 @@ public class HiscoreResult
 		this.overallRank = overallRank;
 	}
 
-	public AccountType getAccountType()
-	{
-		return accountType;
-	}
 
-	HiscoreTable getHiscoreTable()
-	{
-		return hiscoreTable;
-	}
 
-	public Map<String, Integer> getBossKills()
-	{
-		return bossKills;
-	}
 
-	public int getTotalLevel()
-	{
-		return totalLevel;
-	}
 
-	public long getTotalXp()
-	{
-		return totalXp;
-	}
 
-	public int getCombatLevel()
-	{
-		return combatLevel;
-	}
 
 	public int getKc(String bossName)
 	{
@@ -120,20 +108,8 @@ public class HiscoreResult
 		return activityRanks.getOrDefault(name, -1);
 	}
 
-	public int getOverallRank()
-	{
-		return overallRank;
-	}
 
-	public boolean isBossSectionShifted()
-	{
-		return bossSectionShifted;
-	}
 
-	/* package */ void setBossSectionShifted(boolean bossSectionShifted)
-	{
-		this.bossSectionShifted = bossSectionShifted;
-	}
 
 	public int getSkillLevel(String name)
 	{

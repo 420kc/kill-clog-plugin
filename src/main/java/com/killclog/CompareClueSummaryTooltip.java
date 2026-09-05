@@ -5,6 +5,7 @@ import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import lombok.Setter;
 import net.runelite.client.ui.FontManager;
 
 /**
@@ -39,6 +40,7 @@ public class CompareClueSummaryTooltip extends TitleTooltip
 
 	private final Side blue = new Side();
 	private final Side red = new Side();
+	@Setter
 	private BufferedImage[] icons;
 
 	@Override
@@ -73,10 +75,6 @@ public class CompareClueSummaryTooltip extends TitleTooltip
 		}
 	}
 
-	public void setIcons(BufferedImage[] icons)
-	{
-		this.icons = icons;
-	}
 
 	// Sizing.
 

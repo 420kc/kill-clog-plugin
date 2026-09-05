@@ -12,9 +12,10 @@ import java.awt.image.BufferedImage;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.game.SkillIconManager;
 import net.runelite.api.Skill;
+import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.ui.FontManager;
 
 /**
@@ -51,7 +52,8 @@ public class SkillsTooltip extends TitleTooltip
 	}
 
 	private HiscoreResult result;
-	private boolean virtualLevels;
+	@Setter
+	private boolean virtualLevels; // Kill Clog's Display Virtual Levels setting, read at build time
 
 	// The body start the painter was actually handed. Hit-tests reuse it so
 	// hover regions and painted rows cannot disagree; header-height
@@ -95,11 +97,6 @@ public class SkillsTooltip extends TitleTooltip
 		setTitle("Skill Summary");
 	}
 
-	/** Uses Kill Clog's Display Virtual Levels setting, read at build time. */
-	public void setVirtualLevels(boolean virtualLevels)
-	{
-		this.virtualLevels = virtualLevels;
-	}
 
 	@Override
 	protected Dimension getContentSize(int availableWidth)

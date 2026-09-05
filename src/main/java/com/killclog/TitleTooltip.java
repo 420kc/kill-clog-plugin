@@ -3,8 +3,8 @@ package com.killclog;
 import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Composite;
-import java.awt.Font;
 import java.awt.Dimension;
+import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
@@ -16,6 +16,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.function.IntFunction;
 import javax.swing.SwingUtilities;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.AsyncBufferedImage;
@@ -54,8 +57,12 @@ public abstract class TitleTooltip extends NativeTooltip
 	protected static final String CHROME_SEPARATOR = " | ";
 	private static final Color QTY_SHADOW = new Color(0, 0, 0);
 
-	private String title;
+	@Getter(AccessLevel.PACKAGE)
+	@Setter
+	private String title; // the bold orange title line (always required)
+	@Getter(AccessLevel.PACKAGE)
 	private String titleSuffix;
+	@Getter(AccessLevel.PACKAGE)
 	private Color titleSuffixColor;
 	private String subtitleLabel;
 	private String subtitleValue;
@@ -70,6 +77,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	private String titleWikiPage;
 	private boolean wikiLinksEnabled = true;
 	private boolean titleHovered;
+	@Getter(AccessLevel.PACKAGE)
 	private boolean titleCornerHovered;
 
 	protected TitleTooltip()
@@ -77,11 +85,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		installTitleLinkHandlers();
 	}
 
-	/** Set the bold orange title line (always required). */
-	public void setTitle(String title)
-	{
-		this.title = title;
-	}
 
 	/** Optional colored text painted immediately after the main title. */
 	protected void setTitleSuffix(String titleSuffix, Color color)
@@ -96,15 +99,7 @@ public abstract class TitleTooltip extends NativeTooltip
 		titleSuffixColor = null;
 	}
 
-	protected String getTitleSuffix()
-	{
-		return titleSuffix;
-	}
 
-	protected Color getTitleSuffixColor()
-	{
-		return titleSuffixColor;
-	}
 
 	/** Optional OSRS Wiki page opened when the title is clicked. */
 	public void setTitleWikiPage(String titleWikiPage)
@@ -465,10 +460,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		}
 	}
 
-	protected String getTitle()
-	{
-		return title;
-	}
 
 	/** Override in subclasses that need a smaller title font. */
 	protected Font getTitleFont()
@@ -979,10 +970,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		return titleHovered && titleLinkActive() ? Color.WHITE : OSRS_ORANGE;
 	}
 
-	boolean isTitleCornerHovered()
-	{
-		return titleCornerHovered;
-	}
 
 	protected void onTitleCornerHoverChanged(boolean hovered)
 	{

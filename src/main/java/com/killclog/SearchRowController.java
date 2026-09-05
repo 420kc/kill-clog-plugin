@@ -17,6 +17,8 @@ import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
+import lombok.AccessLevel;
+import lombok.Getter;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.components.IconTextField;
 
@@ -43,6 +45,7 @@ final class SearchRowController
 	private final ImageIcon searchIconBright;
 	private final KeyListener compareEntryKeyListener;
 
+	@Getter(AccessLevel.PACKAGE)
 	private boolean compareEntryMode;
 	private boolean compareIconHover;
 	private boolean searchRowHover;
@@ -190,10 +193,6 @@ final class SearchRowController
 		});
 	}
 
-	boolean isCompareEntryMode()
-	{
-		return compareEntryMode;
-	}
 
 	int compareIconWidth()
 	{

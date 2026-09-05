@@ -4,9 +4,12 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import lombok.AccessLevel;
+import lombok.Getter;
 
 final class BulkCaptureState
 {
+	@Getter(AccessLevel.PACKAGE)
 	private boolean active;
 	int startTickCount = -1;
 	int finalizeTickCount = -1;
@@ -21,10 +24,6 @@ final class BulkCaptureState
 	List<Integer> bufferedCategoryItems;
 	List<ClogResult.ClogItem> bufferedCategoryObtained;
 
-	boolean isActive()
-	{
-		return active;
-	}
 
 	boolean readyToFinalize(int tickCount)
 	{

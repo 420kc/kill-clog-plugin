@@ -2,6 +2,8 @@ package com.killclog;
 
 import java.util.EnumMap;
 import java.util.Map;
+import lombok.AccessLevel;
+import lombok.Getter;
 
 /**
  * Immutable Combat Achievement lookup result from per-tier task counts.
@@ -19,7 +21,10 @@ final class CombatAchievementResult
 	private final Map<CombatAchievementTier, Integer> providerTotal;
 	private final Map<CombatAchievementTier, Integer> currentTotals;
 	private final boolean liveCatalog;
+	@Getter(AccessLevel.PACKAGE)
 	private final int totalPoints;
+	// Highest unlocked tier, or null if below Easy.
+	@Getter(AccessLevel.PACKAGE)
 	private final CombatAchievementTier tier;
 
 	private CombatAchievementResult(Map<CombatAchievementTier, Integer> completed,
@@ -124,16 +129,7 @@ final class CombatAchievementResult
 			: providerTotal.getOrDefault(tier, 0);
 	}
 
-	int getTotalPoints()
-	{
-		return totalPoints;
-	}
 
-	/** Highest unlocked tier, or null if below Easy. */
-	CombatAchievementTier getTier()
-	{
-		return tier;
-	}
 
 	/** PvM Summary reward sprite for the held tier, or null when no tier is held. */
 	CombatAchievementReward getReward()

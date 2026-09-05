@@ -3,6 +3,8 @@ package com.killclog;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import lombok.Getter;
+import lombok.Setter;
 
 /**
  * Parsed collection log data for a player from the active provider.
@@ -10,26 +12,38 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ClogResult
 {
 	/** Canonical player name with best-known capitalization from the provider */
+	@Getter
 	private final String playerName;
 	/** category key -> list of obtained items with counts */
+	@Getter
 	private final Map<String, List<ClogItem>> obtainedItems;
 	/** category key -> all item IDs in that category */
+	@Getter
 	private final Map<String, List<Integer>> categoryItems;
 	/** item id -> display name, concurrent: written from client thread, read from EDT. */
 	private final Map<Integer, String> itemNames;
 	/** When the player last synced clog data, or null for providers without it */
+	@Getter
 	private final String lastChanged;
 	/** Account type reported by the active provider, or null if unknown */
+	@Getter
 	private final AccountType providerAccountType;
 	/** Game-reported unique obtained count (varp 2943), or -1 if unavailable */
+	@Getter
+	@Setter
 	private int uniqueObtained = -1;
 	/** Game-reported total clog slots (varp 2944), or -1 if unavailable */
+	@Getter
+	@Setter
 	private int uniqueTotal = -1;
 	/** True when TempleOSRS returned data that fed this result */
+	@Getter
 	private boolean fromTemple;
 	/** True when RuneProfile returned data that fed this result */
+	@Getter
 	private boolean fromRuneProfile;
 	/** True when the player's own killclog.com sync returned data that fed this result */
+	@Getter
 	private boolean fromKillclog;
 
 	public ClogResult(
@@ -93,65 +107,17 @@ public class ClogResult
 		return copy;
 	}
 
-	public String getPlayerName()
-	{
-		return playerName;
-	}
 
-	public String getLastChanged()
-	{
-		return lastChanged;
-	}
 
-	public Map<String, List<ClogItem>> getObtainedItems()
-	{
-		return obtainedItems;
-	}
 
-	public Map<String, List<Integer>> getCategoryItems()
-	{
-		return categoryItems;
-	}
 
-	public AccountType getProviderAccountType()
-	{
-		return providerAccountType;
-	}
 
-	public int getUniqueObtained()
-	{
-		return uniqueObtained;
-	}
 
-	public void setUniqueObtained(int count)
-	{
-		this.uniqueObtained = count;
-	}
 
-	public int getUniqueTotal()
-	{
-		return uniqueTotal;
-	}
 
-	public void setUniqueTotal(int count)
-	{
-		this.uniqueTotal = count;
-	}
 
-	public boolean isFromTemple()
-	{
-		return fromTemple;
-	}
 
-	public boolean isFromRuneProfile()
-	{
-		return fromRuneProfile;
-	}
 
-	public boolean isFromKillclog()
-	{
-		return fromKillclog;
-	}
 
 	public boolean isItemResolved(int id)
 	{

@@ -13,6 +13,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import lombok.Setter;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
 
@@ -36,6 +37,7 @@ public class ImgTooltip extends TitleTooltip
 	private final int gridCols;
 	private final int spriteSize;
 	private int effectiveCols;
+	@Setter
 	private String notice = "No collection log synced";
 	private BufferedImage noticeIcon;
 
@@ -109,10 +111,6 @@ public class ImgTooltip extends TitleTooltip
 			this);
 	}
 
-	public void setNotice(String msg)
-	{
-		this.notice = msg;
-	}
 
 	public void setNotice(String msg, BufferedImage icon)
 	{
