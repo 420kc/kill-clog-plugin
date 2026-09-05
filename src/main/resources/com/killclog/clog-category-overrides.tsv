@@ -1,0 +1,38 @@
+# Boss name -> TempleOSRS clog category key, where auto-conversion of the
+# name would derive the wrong key. Lookup is case-insensitive.
+# Wilderness bosses with combined clog categories
+Artio	callisto_and_artio
+Callisto	callisto_and_artio
+Cal'varion	vetion_and_calvarion
+Vet'ion	vetion_and_calvarion
+Venenatis	venenatis_and_spindel
+Spindel	venenatis_and_spindel
+# Dagannoth Kings share one clog category
+Dagannoth Prime	dagannoth_kings
+Dagannoth Rex	dagannoth_kings
+Dagannoth Supreme	dagannoth_kings
+# GWD
+Kree'Arra	kree_arra
+K'ril Tsutsaroth	kril_tsutsaroth
+# Raids - hard/expert modes share base clog
+Chambers of Xeric: Challenge Mode	chambers_of_xeric
+Theatre of Blood: Hard Mode	theatre_of_blood
+Tombs of Amascut: Expert Mode	tombs_of_amascut
+# Fight Caves / Inferno
+TzTok-Jad	the_fight_caves
+TzKal-Zuk	the_inferno
+# Colosseum
+Sol Heredit	fortis_colosseum
+# Mad Angel - the game names the clog category "The Mad Angel", so the
+# auto-conversion would derive the wrong key and captures would never
+# reach the boss cell.
+Mad Angel	the_mad_angel
+# Nightmare - both versions share one clog
+Nightmare	the_nightmare
+Phosani's Nightmare	the_nightmare
+# Gauntlet - both versions share one clog
+The Corrupted Gauntlet	the_gauntlet
+# Names that don't auto-convert cleanly
+The Hueycoatl	hueycoatl
+The Royal Titans	royal_titans
+Lunar Chests	moons_of_peril

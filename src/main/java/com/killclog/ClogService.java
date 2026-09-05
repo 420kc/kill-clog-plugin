@@ -38,46 +38,21 @@ public class ClogService
 	private static final String WIKI_MAPPING_URL =
 		"https://prices.runescape.wiki/api/v1/osrs/mapping";
 
-	// Boss name to TempleOSRS category key overrides.
+	// Boss name to TempleOSRS category key overrides, from the bundled
+	// catalog; the parity test pins its exact contents.
 	private static final Map<String, String> BOSS_CATEGORY_OVERRIDES = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 	static
 	{
-		// Wilderness bosses with combined clog categories
-		BOSS_CATEGORY_OVERRIDES.put("Artio", "callisto_and_artio");
-		BOSS_CATEGORY_OVERRIDES.put("Callisto", "callisto_and_artio");
-		BOSS_CATEGORY_OVERRIDES.put("Cal'varion", "vetion_and_calvarion");
-		BOSS_CATEGORY_OVERRIDES.put("Vet'ion", "vetion_and_calvarion");
-		BOSS_CATEGORY_OVERRIDES.put("Venenatis", "venenatis_and_spindel");
-		BOSS_CATEGORY_OVERRIDES.put("Spindel", "venenatis_and_spindel");
-		// Dagannoth Kings share one clog category
-		BOSS_CATEGORY_OVERRIDES.put("Dagannoth Prime", "dagannoth_kings");
-		BOSS_CATEGORY_OVERRIDES.put("Dagannoth Rex", "dagannoth_kings");
-		BOSS_CATEGORY_OVERRIDES.put("Dagannoth Supreme", "dagannoth_kings");
-		// GWD
-		BOSS_CATEGORY_OVERRIDES.put("Kree'Arra", "kree_arra");
-		BOSS_CATEGORY_OVERRIDES.put("K'ril Tsutsaroth", "kril_tsutsaroth");
-		// Raids - hard/expert modes share base clog
-		BOSS_CATEGORY_OVERRIDES.put(PanelData.COX_HISCORE_HARD, PanelData.COX_CATEGORY);
-		BOSS_CATEGORY_OVERRIDES.put(PanelData.TOB_HISCORE_HARD, PanelData.TOB_CATEGORY);
-		BOSS_CATEGORY_OVERRIDES.put(PanelData.TOA_HISCORE_HARD, PanelData.TOA_CATEGORY);
-		// Fight Caves / Inferno
-		BOSS_CATEGORY_OVERRIDES.put("TzTok-Jad", "the_fight_caves");
-		BOSS_CATEGORY_OVERRIDES.put("TzKal-Zuk", "the_inferno");
-		// Colosseum
-		BOSS_CATEGORY_OVERRIDES.put("Sol Heredit", "fortis_colosseum");
-		// Mad Angel - the game names the clog category "The Mad Angel", so the
-		// auto-conversion would derive the wrong key and captures would never
-		// reach the boss cell.
-		BOSS_CATEGORY_OVERRIDES.put("Mad Angel", "the_mad_angel");
-		// Nightmare - both versions share one clog
-		BOSS_CATEGORY_OVERRIDES.put("Nightmare", "the_nightmare");
-		BOSS_CATEGORY_OVERRIDES.put("Phosani's Nightmare", "the_nightmare");
-		// Gauntlet - both versions share one clog
-		BOSS_CATEGORY_OVERRIDES.put("The Corrupted Gauntlet", "the_gauntlet");
-		// Names that don't auto-convert cleanly
-		BOSS_CATEGORY_OVERRIDES.put("The Hueycoatl", "hueycoatl");
-		BOSS_CATEGORY_OVERRIDES.put("The Royal Titans", "royal_titans");
-		BOSS_CATEGORY_OVERRIDES.put("Lunar Chests", "moons_of_peril");
+		for (String[] row : CatalogTsv.rows(ClogService.class, "clog-category-overrides.tsv", 2))
+		{
+			BOSS_CATEGORY_OVERRIDES.put(row[0], row[1]);
+		}
+	}
+
+	/** Read-only view for catalog-parity tests. */
+	/* package */ static Map<String, String> bossCategoryOverrides()
+	{
+		return Collections.unmodifiableMap(BOSS_CATEGORY_OVERRIDES);
 	}
 
 	private final OkHttpClient httpClient;
