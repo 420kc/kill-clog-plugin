@@ -1337,8 +1337,7 @@ public class KillClogPlugin extends Plugin
 				cancelKillclogSync();
 			}
 		}
-		else if ("silentAutomaticSync".equals(event.getKey())
-			|| "showManualSyncStatusMessages".equals(event.getKey()))
+		else if ("silentAutomaticSync".equals(event.getKey()))
 		{
 			panel.refreshSyncFeedbackSettings();
 		}

@@ -1,7 +1,6 @@
 package com.killclog;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import org.junit.Test;
 import static org.junit.Assert.*;
@@ -11,18 +10,11 @@ public class FirstPartyFeedbackTest
 	private static final class Settings implements KillClogConfig
 	{
 		boolean silentAutomatic = true;
-		boolean manualText;
 
 		@Override
 		public boolean silentAutomaticSync()
 		{
 			return silentAutomatic;
-		}
-
-		@Override
-		public boolean showManualSyncStatusMessages()
-		{
-			return manualText;
 		}
 	}
 
@@ -50,54 +42,55 @@ public class FirstPartyFeedbackTest
 	}
 
 	@Test
-	public void manualSyncOnlyFlashesButRetainsFailuresForHover()
+	public void manualSyncShowsProgressAndFailureButOnlyFlashesForSuccess()
 	{
 		feedback.progress(true, "syncing...", false);
 		feedback.complete(true, false, "Account opted out");
-		assertTrue(events.isEmpty());
+		assertEquals(java.util.Arrays.asList("syncing...", "sync failed"), events);
 		assertEquals("Account opted out", feedback.lastFailure());
 		feedback.complete(true, true, "Synced");
-		assertEquals(Collections.singletonList("flash"), events);
+		assertEquals(java.util.Arrays.asList("syncing...", "sync failed", "flash"), events);
 		assertNull(feedback.lastFailure());
 	}
 
 	@Test
-	public void manualTextPreferenceDoesNotUnmuteAutomaticSync()
+	public void manualActionsDoNotUnmuteAutomaticSync()
 	{
-		config.manualText = true;
 		feedback.progress(false, "syncing...", false);
 		feedback.complete(false, false, "Unavailable");
 		assertTrue(events.isEmpty());
 		feedback.progress(true, "syncing...", false);
 		feedback.complete(true, false, "Unavailable");
 		feedback.complete(true, true, "Synced");
+		feedback.progress(false, "retrying...", false);
 		assertEquals(java.util.Arrays.asList("syncing...", "sync failed", "flash"), events);
 	}
 
 	@Test
-	public void automaticOptInDoesNotEnableManualText()
+	public void automaticFeedbackCanBeEnabledWithoutChangingManualFeedback()
 	{
 		config.silentAutomatic = false;
 		feedback.progress(false, "syncing...", false);
 		feedback.complete(false, true, "Synced");
 		feedback.progress(true, "syncing...", false);
-		assertEquals(java.util.Arrays.asList("syncing...", "flash"), events);
+		feedback.complete(true, true, "Synced");
+		assertEquals(java.util.Arrays.asList("syncing...", "flash", "syncing...", "flash"), events);
 	}
 
 	@Test
-	public void characterUploadSharesManualPreferencesAndKeepsItsOwnFailure()
+	public void characterUploadAlwaysShowsManualFeedbackAndKeepsItsOwnFailure()
 	{
 		FirstPartyFeedback character = feedback("Publish failed");
 		character.progress(true, "rendering...", false);
 		character.complete(true, false, "Character upload failed");
-		assertTrue(events.isEmpty());
+		assertEquals(java.util.Arrays.asList("rendering...", "Publish failed"), events);
 		feedback.complete(false, true, "Synced prerequisite");
 		assertEquals("Character upload failed", character.lastFailure());
 		character.complete(true, true, "Published");
-		assertEquals(Collections.singletonList("flash"), events);
+		assertEquals(java.util.Arrays.asList("rendering...", "Publish failed", "flash"), events);
 		assertNull(character.lastFailure());
 		events.clear();
-		config.manualText = true;
+		config.silentAutomatic = false;
 		character.progress(true, "rendering...", false);
 		character.complete(true, false, "Unavailable");
 		assertEquals(java.util.Arrays.asList("rendering...", "Publish failed"), events);

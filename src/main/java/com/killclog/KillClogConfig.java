@@ -12,7 +12,7 @@ public interface KillClogConfig extends Config
 	@ConfigSection(
 		name = "Lookup",
 		description = "Automatic lookup and player-menu controls",
-		position = 3,
+		position = 2,
 		closedByDefault = true
 	)
 	String lookupSection = "lookup";
@@ -68,7 +68,7 @@ public interface KillClogConfig extends Config
 	@ConfigSection(
 		name = "Menu location",
 		description = "Which right-click menus show the lookup option",
-		position = 4,
+		position = 3,
 		closedByDefault = true
 	)
 	String menuLocationsSection = "menuLocations";
@@ -148,7 +148,7 @@ public interface KillClogConfig extends Config
 	@ConfigSection(
 		name = "Skills",
 		description = "Skill placement, virtual levels, and cell colors",
-		position = 5,
+		position = 4,
 		closedByDefault = true
 	)
 	String skillsSection = "skills";
@@ -246,17 +246,9 @@ public interface KillClogConfig extends Config
 		return true;
 	}
 
-	@ConfigSection(
-		name = "Collection Log",
-		description = "Stat lines shown in collection-log popups",
-		position = 2,
-		closedByDefault = true
-	)
-	String collectionLogSection = "collectionLog";
-
 	@ConfigItem(keyName = "showTooltipKc", name = "Show KC / Glory",
 		description = "Kill count on boss collection logs; Sol Heredit shows Colosseum Glory instead",
-		section = collectionLogSection, position = 0)
+		section = modalAppearanceSection, position = 3)
 	default boolean showTooltipKc()
 	{
 		return true;
@@ -264,7 +256,7 @@ public interface KillClogConfig extends Config
 
 	@ConfigItem(keyName = "showTooltipPb", name = "Show PB",
 		description = "Personal best beside the kc, where your client has one recorded",
-		section = collectionLogSection, position = 1)
+		section = modalAppearanceSection, position = 4)
 	default boolean showTooltipPb()
 	{
 		return true;
@@ -272,7 +264,7 @@ public interface KillClogConfig extends Config
 
 	@ConfigItem(keyName = "showTooltipRank", name = "Show Rank",
 		description = "Hiscore rank line on boss, clue, and rare collection-log popups",
-		section = collectionLogSection, position = 2)
+		section = modalAppearanceSection, position = 5)
 	default boolean showTooltipRank()
 	{
 		return true;
@@ -281,7 +273,7 @@ public interface KillClogConfig extends Config
 	@ConfigSection(
 		name = "Chat",
 		description = "Kill Clog messages and emoji rendering",
-		position = 6,
+		position = 5,
 		closedByDefault = true
 	)
 	String chatSection = "chat";
@@ -314,7 +306,7 @@ public interface KillClogConfig extends Config
 	@ConfigSection(
 		name = "Progress Highlighter",
 		description = "Color collection-log progress",
-		position = 7,
+		position = 6,
 		closedByDefault = true
 	)
 	String completionistSection = "completionist";
@@ -416,7 +408,7 @@ public interface KillClogConfig extends Config
 
 	@ConfigSection(
 		name = "killclog.com",
-		description = "First-party sync with your killclog.com profile",
+		description = "Collection Log sync and character publishing for your killclog.com profile",
 		position = 0,
 		closedByDefault = true
 	)
@@ -442,7 +434,7 @@ public interface KillClogConfig extends Config
 		description = "Hide panel status messages and the success flash for automatic "
 			+ "killclog.com syncs. Chat messages have their own setting.",
 		section = killclogSection,
-		position = 1
+		position = 2
 	)
 	default boolean silentAutomaticSync()
 	{
@@ -450,26 +442,12 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "showManualSyncStatusMessages",
-		name = "Show manual sync status messages",
-		description = "Show progress and failure text for manual collection log syncs "
-			+ "and Character model uploads. Success uses a green icon flash. "
-			+ "Failures remain available on hover when text is hidden.",
-		section = killclogSection,
-		position = 2
-	)
-	default boolean showManualSyncStatusMessages()
-	{
-		return false;
-	}
-
-	@ConfigItem(
 		keyName = "characterModel",
-		name = "Character model",
-		description = "Show a one-click character publishing button. Requires "
-			+ "Killclog.com sync.",
+		name = "Publish Character Model",
+		description = "Adds a one-click button to publish your current character and "
+			+ "follower models to your killclog.com/p/ profile",
 		section = killclogSection,
-		position = 3
+		position = 1
 	)
 	default boolean characterModel()
 	{

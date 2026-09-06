@@ -42,7 +42,6 @@ public class KillClogConfigStructureTest
 		expected.add("skillLevelColor");
 		expected.add("skillColorMode");
 		expected.add("silentAutomaticSync");
-		expected.add("showManualSyncStatusMessages");
 		assertEquals(expected, keys);
 	}
 
@@ -53,12 +52,27 @@ public class KillClogConfigStructureTest
 		{
 		};
 		assertTrue(defaults.silentAutomaticSync());
-		assertFalse(defaults.showManualSyncStatusMessages());
-		for (String name : Arrays.asList("silentAutomaticSync", "showManualSyncStatusMessages"))
+		assertEquals(KillClogConfig.killclogSection,
+			KillClogConfig.class.getDeclaredMethod("silentAutomaticSync")
+				.getAnnotation(ConfigItem.class).section());
+		assertEquals(Arrays.asList("killclogSync", "characterModel", "silentAutomaticSync"),
+			keysInSection(KillClogConfig.killclogSection));
+	}
+
+	@Test
+	public void characterPublishLabelDescribesTheManualButton() throws Exception
+	{
+		ConfigItem item = KillClogConfig.class.getDeclaredMethod("characterModel")
+			.getAnnotation(ConfigItem.class);
+		assertEquals("characterModel", item.keyName());
+		assertEquals("Publish Character Model", item.name());
+		assertEquals("Adds a one-click button to publish your current character and "
+			+ "follower models to your killclog.com/p/ profile", item.description());
+		KillClogConfig defaults = new KillClogConfig()
 		{
-			assertEquals(KillClogConfig.killclogSection,
-				KillClogConfig.class.getDeclaredMethod(name).getAnnotation(ConfigItem.class).section());
-		}
+		};
+		assertFalse(defaults.characterModel());
+		assertFalse(defaults.killclogSync());
 	}
 
 	@Test
@@ -106,17 +120,16 @@ public class KillClogConfigStructureTest
 			.map(ConfigSection::name)
 			.collect(Collectors.toList());
 
-		assertEquals(Arrays.asList("killclog.com", "Modal Appearance", "Collection Log", "Lookup",
+		assertEquals(Arrays.asList("killclog.com", "Modal Appearance", "Lookup",
 			"Menu location", "Skills", "Chat", "Progress Highlighter"), sectionNames);
 	}
 
 	@Test
-	public void sharedModalControlsAndCollectionLogLinesHaveSeparateSections() throws Exception
+	public void allModalControlsShareOneSection() throws Exception
 	{
-		assertEquals(Arrays.asList("tooltipMode", "hoverStyle", "wikiItemLinks"),
+		assertEquals(Arrays.asList("tooltipMode", "hoverStyle", "wikiItemLinks",
+			"showTooltipKc", "showTooltipPb", "showTooltipRank"),
 			keysInSection(KillClogConfig.modalAppearanceSection));
-		assertEquals(Arrays.asList("showTooltipKc", "showTooltipPb", "showTooltipRank"),
-			keysInSection(KillClogConfig.collectionLogSection));
 		assertEquals("Modal Activation", KillClogConfig.class.getDeclaredMethod("tooltipMode")
 			.getAnnotation(ConfigItem.class).name());
 

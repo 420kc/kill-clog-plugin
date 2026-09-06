@@ -41,11 +41,11 @@ Use the comparison button beside the search bar to load a second player.
 
 HiScores load for any valid RSN. Collection Log details appear when that player has data available through TempleOSRS, RuneProfile, or Kill Clog Sync.
 
-## Tooltips
+## Modals
 
-Hover a summary, boss, activity, or skill cell to open its tooltip. Tooltip activation can be changed from hover to click in settings.
+Click a summary, boss, activity, or skill cell to open its modal. Choose Hover under **Modal Appearance** to preview on hover and click to pin.
 
-Tooltips can show Collection Log progress, item sprites and duplicate quantities, KC, rank, personal bests, and OSRS Wiki links.
+Modals can show Collection Log progress, item sprites and duplicate quantities, KC, rank, personal bests, and OSRS Wiki links.
 
 ![Alchemical Hydra boss tooltip with personal best](screenshots/tooltip-alchemical-hydra-pb.png)
 
@@ -55,7 +55,7 @@ Tooltips can show Collection Log progress, item sprites and duplicate quantities
 | :---: | :---: | :---: |
 | ![Sailing Skill Clog](screenshots/skill-clog-sailing.png) | ![Hitpoints Skill Clog](screenshots/skill-clog-hitpoints.png) | ![Runecraft Skill Clog](screenshots/skill-clog-runecraft.png) |
 
-Every skill has its own Collection Log-style progression. Skill tooltips combine relevant activities, equipment, and unlocks with the skill's level, XP, rank, and XP to next level.
+Every skill has its own Collection Log-style progression. Skill modals combine relevant activities, equipment, and unlocks with the skill's level, XP, rank, and XP to next level.
 
 The skill title shows combined progress. Each section shows its own `Obtained: x/y` count. Items shared between sections count once toward the skill total.
 
@@ -67,7 +67,9 @@ Killclog.com sync is optional and off by default. It is separate from the local 
 
 Enable **Sync Collection Log to Killclog.com** to publish your Collection Log and personal bests to your killclog.com profile. The sync button in the panel publishes immediately.
 
-**Character model** is also off by default and requires Killclog.com sync. It publishes your current player and follower appearance.
+**Publish Character Model** is also off by default and requires Killclog.com sync. It adds a one-click button to publish your current character and follower models to your killclog.com/p/ profile.
+
+Manual syncs and character publishes show progress and failure messages in the panel; success flashes the corresponding icon green. **Silent automatic sync** is enabled by default and hides automatic panel messages and flashes. Chat messages have their own setting under **Chat**.
 
 ## Chat
 
@@ -82,8 +84,8 @@ Clue tiers accept names such as `medium clues` or `clues medium`. When RuneProfi
 
 ## Settings
 
-- **killclog.com:** Collection Log sync and Character model publishing
-- **Tooltips:** activation, hover feedback, Wiki links, KC, PB, and rank
+- **killclog.com:** Collection Log sync, Publish Character Model, and Silent automatic sync
+- **Modal Appearance:** activation, hover feedback, Wiki links, KC, PB, and rank
 - **Lookup:** automatic self-lookup, player comparison, and player-menu lookup
 - **Menu location:** choose which right-click menus show Kill Clog
 - **Skills:** location, virtual levels, and synced-account color mode
@@ -94,7 +96,7 @@ Clue tiers accept names such as `medium clues` or `clues medium`. When RuneProfi
 
 Public lookups read from Jagex HiScores, [TempleOSRS](https://templeosrs.com), [RuneProfile](https://runeprofile.com), and [killclog.com](https://killclog.com). Item names resolve through the [OSRS Wiki](https://oldschool.runescape.wiki). These requests expose your IP address to the service being contacted, which is why RuneLite shows a third-party warning on install.
 
-Killclog.com sync is opt-in. Nothing from your local Collection Log is published until you enable it. Turning sync or Character model off stops new publishes but does not delete data already published. Use the [opt-out page](https://killclog.com/p/opt-out.html) to request deletion.
+Killclog.com sync is opt-in. Nothing from your local Collection Log is published until you enable it. Turning sync or Publish Character Model off stops new publishes but does not delete data already published. Use the [opt-out page](https://killclog.com/p/opt-out.html) to request deletion.
 
 TempleOSRS EHB rates are bundled with the plugin and refreshed with releases. Computing EHB does not make another request.
 

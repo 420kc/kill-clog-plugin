@@ -22,7 +22,7 @@ final class FirstPartyFeedback
 
 	void progress(boolean manual, String text, boolean autoClear)
 	{
-		if (manual ? config.showManualSyncStatusMessages() : !config.silentAutomaticSync())
+		if (manual || !config.silentAutomaticSync())
 		{
 			status.accept(text, autoClear);
 		}
