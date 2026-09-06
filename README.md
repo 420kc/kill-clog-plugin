@@ -47,7 +47,7 @@ Click a summary, boss, activity, or skill cell to open its modal. Choose Hover u
 
 Modals can show Collection Log progress, item sprites and duplicate quantities, KC, rank, personal bests, and OSRS Wiki links.
 
-![Alchemical Hydra boss tooltip with personal best](screenshots/tooltip-alchemical-hydra-pb.png)
+![Alchemical Hydra boss modal with personal best](screenshots/tooltip-alchemical-hydra-pb.png)
 
 ## Skill Clogs
 
@@ -124,4 +124,4 @@ The release jar is written to `build/libs/`.
 
 ## Support
 
-If a total, item mapping, or tooltip looks wrong, open an [issue](https://github.com/420kc/kill-clog-plugin/issues) with the RSN and a screenshot.
+If a total, item mapping, or modal looks wrong, open an [issue](https://github.com/420kc/kill-clog-plugin/issues) with the RSN and a screenshot.
