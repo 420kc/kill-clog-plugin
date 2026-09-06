@@ -37,8 +37,6 @@ Enable **Show Leaderboard Selector** under **Lookup** to choose Normal, Ironman,
 
 ![Set Kill Clog's Menu Label to Lookup](screenshots/setup-menu-label-lookup.png)
 
-![Player menu lookup](screenshots/player-menu.png)
-
 ![Player comparison](screenshots/comparison-1.4.0.png)
 
 HiScores load for any valid RSN. Collection Log details appear when that player has data available through TempleOSRS, RuneProfile, or Kill Clog Sync.
