@@ -11,4 +11,4 @@ Kill Clog 2.3.1
 * reserves status-row spacing and flashes the chalice green for manual sync success
 * defaults automatic sync to silent and manual sync or character upload to icon-only success, with optional status messages
 * organizes shared popup controls under Modal Appearance and collection-log stat lines under Collection Log
-* adds a centered data-provenance footer that shows only verified synced collection-log sources
+* adds a centered Sources footer that shows only verified synced collection-log sources

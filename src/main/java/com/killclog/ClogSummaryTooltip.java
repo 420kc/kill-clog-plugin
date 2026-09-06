@@ -32,7 +32,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private static final int SOURCE_HIT_PAD = 2;
 	private static final int SOURCE_LABEL_GAP = 3;
 	private static final int SOURCE_SECTION = 2;
-	private static final String SOURCE_LABEL = "Data Provenance";
+	private static final String SOURCE_LABEL = "Sources";
 	private static final String[] MONTHS = {
 		"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 		"Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
