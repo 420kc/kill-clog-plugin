@@ -4,6 +4,8 @@
 
 Kill Clog brings HiScores and Collection Log progress together in one RuneLite panel, with boss personal bests, Skill Clogs, Combat Achievements, clues, and player comparison.
 
+![Vanilla HiScores beside Kill Clog with a Woodcutting Skill Clog](screenshots/hero-vanilla-vs-killclog.png)
+
 ## First-time setup
 
 Install **Kill Clog** from the RuneLite Plugin Hub and open its side panel while logged in. Your account loads automatically.
@@ -40,6 +42,18 @@ Enable **Show Leaderboard Selector** under **Lookup** to choose Normal, Ironman,
 ![Player comparison](screenshots/comparison-1.4.0.png)
 
 HiScores load for any valid RSN. Collection Log details appear when that player has data available through TempleOSRS, RuneProfile, or Kill Clog Sync.
+
+## Grid and List views
+
+Toggle between the default Grid view and List view with the **Menu** button under the search bar. Comparison uses Grid view.
+
+<table>
+  <tr><th>Grid view</th><th>List view</th></tr>
+  <tr>
+    <td valign="top"><img src="screenshots/boss-grid-view.png" alt="Boss Grid view with a Phosani's Nightmare modal"></td>
+    <td valign="top"><img src="screenshots/boss-list-view.png" alt="Boss List view with a Chambers of Xeric modal"></td>
+  </tr>
+</table>
 
 ## Modals
 
@@ -79,8 +93,15 @@ Manual syncs and character publishes show progress and failure messages in the p
 | `!missing [boss or clue tier]` | Missing items |
 | `!3a` | Third-age progress |
 | `!gilded` | Gilded progress |
+| `!kc [item name]` | KC when the item was obtained, if recorded locally |
 
-Clue tiers accept names such as `medium clues` or `clues medium`. When RuneProfile is disabled, `!log medium clues` and `!log missing medium clues` use the same clue pages.
+Try `!kclog hydra`, `!kclog medium clues`, or `!missing clues medium`. Collected boss and clue items show duplicate quantities.
+
+**Keep RuneLite's Chat Commands enabled** for `!pets`, `!clues medium`, `!kc [boss]`, and `!pb [boss]`. It is separate from the HiScore plugin.
+
+RuneProfile handles `!log` while enabled. With RuneProfile off, Kill Clog handles `!log [boss or clue tier]` and `!log missing [boss or clue tier]`.
+
+`!kclog pets`, `!kclog all pets`, and `!kclog random events` are not supported pages. See the [command reference](docs/chat-commands.md) for supported names, aliases, and which plugin handles each command.
 
 ## Settings
 
