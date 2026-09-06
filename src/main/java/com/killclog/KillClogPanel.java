@@ -1782,7 +1782,7 @@ public class KillClogPanel extends PluginPanel
 		String redName = comparison.getCompareRsn() != null ? comparison.getCompareRsn() : "--";
 		JToolTip tip = comparison.wrapSideBySide(owner,
 			buildPlayerSummaryTooltip(owner, lookupSession.getHiscoreResult(),
-				lookupSession.getClogResult(), blueName, blueName),
+				lookupSession.getClogResult(), blueName, lookupSession.getCurrentLookupRsn()),
 			buildPlayerSummaryTooltip(owner, comparison.getCompareHiscoreResult(),
 				comparison.getCompareClogResult(), redName, redName));
 		if (owner.getParent() instanceof JPanel)

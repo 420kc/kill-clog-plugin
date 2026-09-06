@@ -82,6 +82,19 @@ public class HiscoreService
 			.toArray(new String[0]);
 	}
 
+	// The layout is positional against the Jagex CSV: a silently short list
+	// would attribute every following row to the wrong name. Counts only ever
+	// grow, so anything below the shipped floor means the catalog did not load
+	// intact and lookups cannot be trusted.
+	static
+	{
+		if (SKILL_NAMES.length < 24 || ACTIVITY_NAMES.length < 20 || BOSS_NAMES.length < 71)
+		{
+			log.error("hiscore layout catalog incomplete: {} skills, {} activities, {} bosses",
+				SKILL_NAMES.length, ACTIVITY_NAMES.length, BOSS_NAMES.length);
+		}
+	}
+
 	/** Skill names in CSV order. Used by the layout-parity test. */
 	static String[] skillNames()
 	{

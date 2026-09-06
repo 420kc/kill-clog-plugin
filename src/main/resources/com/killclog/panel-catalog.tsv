@@ -2,7 +2,8 @@
 # boss rows are HiscoreSkill enum names in vanilla RuneLite hiscore display
 # order (enum declaration order); same census as hiscore-layout.tsv bosses,
 # bridged by name-keyed lookups when order diverges.
-# *_items rows are item ids, comma separated, in presentation order.
+# *_items rows are item ids, comma separated, in presentation order; exactly
+# one row per *_items kind (later rows of the same kind are ignored).
 boss	ABYSSAL_SIRE
 boss	ALCHEMICAL_HYDRA
 boss	AMOXLIATL

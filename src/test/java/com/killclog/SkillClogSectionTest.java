@@ -359,10 +359,11 @@ public class SkillClogSectionTest
 			SideBySideTooltip comparison = new SideBySideTooltip(
 				"Blue", leftSide, "Red", rightSide);
 			Dimension compareSize = comparison.getPreferredSize();
+			// Absolute caps: the doublewide card must fit a fixed-mode client.
 			assertTrue(skill.getName() + " comparison tooltip is too wide: " + compareSize,
-				compareSize.width <= soloSize.width * 2 + 50);
+				compareSize.width <= 650);
 			assertTrue(skill.getName() + " comparison tooltip is too tall: " + compareSize,
-				compareSize.height <= soloSize.height + 60);
+				compareSize.height <= 800);
 			comparison.setSize(compareSize);
 			comparison.doLayout();
 			paint(comparison);

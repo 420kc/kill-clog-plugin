@@ -8,7 +8,7 @@ import java.util.Set;
 import lombok.Builder;
 
 /** Immutable data holder for sprite tooltip content. */
-@Builder
+@Builder(toBuilder = true)
 final class TooltipData
 {
 	final String name;
@@ -37,11 +37,7 @@ final class TooltipData
 	/** This data with the sprite grid stripped: header lines only. */
 	TooltipData withoutGrid()
 	{
-		return TooltipData.builder()
-			.name(name).rank(rank).obtainedCount(obtainedCount).totalItems(totalItems)
-			.rankTracked(rankTracked).statLabel(statLabel).statValue(statValue)
-			.itemNames(itemNames).kc(kc).pb(pb)
-			.build();
+		return toBuilder().allItemIds(null).obtainedIds(null).obtainedCounts(null).build();
 	}
 
 	static List<Integer> itemList(int[] itemIds)

@@ -36,7 +36,7 @@ final class CatalogTsv
 	 */
 	static List<String[]> rows(Class<?> owner, String resource, int columns)
 	{
-		return CACHE.computeIfAbsent(owner.getName() + '|' + resource,
+		return CACHE.computeIfAbsent(owner.getName() + '|' + resource + '|' + columns,
 			key -> readRows(owner, resource, columns));
 	}
 
