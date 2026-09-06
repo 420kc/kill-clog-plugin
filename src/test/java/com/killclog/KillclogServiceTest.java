@@ -2,6 +2,7 @@ package com.killclog;
 
 import com.google.gson.Gson;
 import java.lang.reflect.Field;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import org.junit.Before;
@@ -56,6 +57,9 @@ public class KillclogServiceTest
 		ClogResult result = service.parseProofView("420 kc", json, "420 kc");
 
 		assertNotNull(result);
+		assertTrue(result.isFromKillclog());
+		assertFalse(result.isFromTemple());
+		assertFalse(result.isFromRuneProfile());
 		assertEquals("420 kc", result.getPlayerName());
 		assertEquals(AccountType.HARDCORE_GROUP_IRONMAN, result.getProviderAccountType());
 		assertEquals(1189, result.getUniqueObtained());
@@ -104,9 +108,20 @@ public class KillclogServiceTest
 		ClogResult result = withCatalog.parseProofView("Pbs Only", json, "pbs only");
 
 		assertNotNull(result);
+		assertFalse(result.isFromKillclog());
+		assertFalse(result.isFromTemple());
+		assertFalse(result.isFromRuneProfile());
 		assertTrue(result.getObtainedItems().isEmpty());
 		assertEquals(3, result.getCategoryItems().get("zulrah").size());
 		assertEquals("0:58.20", withCatalog.pbText("Pbs Only", "Zulrah"));
+
+		ClogResult temple = new ClogResult("Temple", Collections.singletonMap("zulrah",
+			Collections.singletonList(new ClogResult.ClogItem(101, 1, null))), cats,
+			Collections.emptyMap(), null, null).withSources(true, false, false);
+		ClogResult combined = ClogResult.pickFullest(temple, result);
+		assertTrue(combined.isFromTemple());
+		assertFalse("PB-only participation must not become clog provenance",
+			combined.isFromKillclog());
 	}
 
 	@Test

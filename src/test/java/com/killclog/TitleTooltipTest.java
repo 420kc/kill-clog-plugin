@@ -10,6 +10,7 @@ import java.awt.image.BufferedImage;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
@@ -81,30 +82,96 @@ public class TitleTooltipTest
 	}
 
 	@Test
-	public void clogSummarySourceBadgeRevealsProvenanceInlineWithoutResizing()
+	public void clogSummaryProvenanceShowsOnlySyncedSourcesInStableOrder()
 	{
 		ClogSummaryTooltip tooltip = new ClogSummaryTooltip();
 		tooltip.setTitle("Clog Summary");
-		tooltip.setClogSources(true, true, false);
+		tooltip.setClogSources(true, true, true);
+		assertEquals(Arrays.asList("killclog.com", "TempleOSRS", "RuneProfile"),
+			tooltip.sourceNames());
 
+		tooltip.setClogSources(false, true, false);
+		assertEquals(Collections.singletonList("RuneProfile"), tooltip.sourceNames());
+		tooltip.setClogSources(false, false, false);
+		assertTrue(tooltip.sourceNames().isEmpty());
+	}
+
+	@Test
+	public void clogSummaryProvenanceRowsAreCenteredForOneTwoAndThreeSources()
+	{
+		int width = 101;
+		for (int count = 1; count <= 3; count++)
+		{
+			int rowWidth = ClogSummaryTooltip.sourceRowWidth(count);
+			int startX = ClogSummaryTooltip.sourceRowStartX(width, count);
+			assertTrue(Math.abs(width - (startX * 2 + rowWidth)) <= 1);
+		}
+	}
+
+	@Test
+	public void clogSummaryProviderHoverReplacesTitleWithoutResizing()
+	{
+		ClogSummaryTooltip tooltip = new ClogSummaryTooltip();
+		tooltip.setTitle("Clog Summary");
+		tooltip.setClogSources(true, true, true);
 		Dimension idle = tooltip.getPreferredSize();
-		assertEquals("Temple + RP", tooltip.sourceLine());
-
 		tooltip.setSize(idle);
-		moveMouse(tooltip, tooltip.getWidth() - NativeTooltip.getInset() - 1,
-			NativeTooltip.getInset() + 1);
-		assertTrue(tooltip.isTitleCornerHovered());
-		// The reveal shares the title line; the tooltip must not grow for it.
-		assertEquals(idle, tooltip.getPreferredSize());
+
+		Graphics2D graphics = new BufferedImage(
+			idle.width, idle.height, BufferedImage.TYPE_INT_ARGB).createGraphics();
+		tooltip.paint(graphics);
+		graphics.dispose();
+
+		int iconY = idle.height - NativeTooltip.getInset() - 13;
+		int startX = ClogSummaryTooltip.sourceRowStartX(idle.width, 3);
+		List<String> names = Arrays.asList("killclog.com", "TempleOSRS", "RuneProfile");
+		for (int i = 0; i < names.size(); i++)
+		{
+			moveMouse(tooltip, startX + i * 18 + 6, iconY + 6);
+			assertEquals(names.get(i), tooltip.getTitleHoverText());
+			assertEquals(idle, tooltip.getPreferredSize());
+		}
+	}
+
+	@Test
+	public void clogSummaryProvenanceFooterIsAbsentWithoutSyncedSources()
+	{
+		ClogSummaryTooltip tooltip = new ClogSummaryTooltip();
+		tooltip.setTitle("Clog Summary");
+		Dimension withoutSources = tooltip.getPreferredSize();
 
 		tooltip.setClogSources(true, false, false);
-		assertEquals("TempleOSRS", tooltip.sourceLine());
-		tooltip.setClogSources(false, true, false);
-		assertEquals("RuneProfile", tooltip.sourceLine());
-		tooltip.setClogSources(false, false, true);
-		assertEquals("Kill Clog Sync", tooltip.sourceLine());
-		tooltip.setClogSources(true, true, true);
-		assertEquals("Kill Clog + Temple + RP", tooltip.sourceLine());
+		assertTrue(tooltip.getPreferredSize().height > withoutSources.height);
+		tooltip.setClogSources(false, false, false);
+		assertEquals(withoutSources, tooltip.getPreferredSize());
+	}
+
+	@Test
+	public void comparisonClogCardsKeepIndependentProviderHover()
+	{
+		ClogSummaryTooltip blue = new ClogSummaryTooltip();
+		blue.setTitle("Clog Summary");
+		blue.setClogSources(true, false, false);
+		ClogSummaryTooltip red = new ClogSummaryTooltip();
+		red.setTitle("Clog Summary");
+		red.setClogSources(false, true, false);
+		SideBySideTooltip pair = new SideBySideTooltip("Blue", blue, "Red", red);
+		Dimension size = pair.getPreferredSize();
+		pair.setSize(size);
+
+		Graphics2D graphics = new BufferedImage(
+			size.width, size.height, BufferedImage.TYPE_INT_ARGB).createGraphics();
+		pair.paint(graphics);
+		graphics.dispose();
+
+		moveMouse(blue, ClogSummaryTooltip.sourceRowStartX(blue.getWidth(), 1) + 6,
+			blue.getHeight() - NativeTooltip.getInset() - 7);
+		assertEquals("TempleOSRS", blue.getTitleHoverText());
+		assertNull(red.getTitleHoverText());
+
+		moveMouse(red, ClogSummaryTooltip.sourceRowStartX(red.getWidth(), 1) + 6,
+			red.getHeight() - NativeTooltip.getInset() - 7);
+		assertEquals("RuneProfile", red.getTitleHoverText());
 	}
 
 	@Test

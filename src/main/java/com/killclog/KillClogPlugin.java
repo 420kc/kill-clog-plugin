@@ -402,6 +402,10 @@ public class KillClogPlugin extends Plugin
 		else if (event.getGameState() == GameState.LOGIN_SCREEN)
 		{
 			SwingUtilities.invokeLater(panel::reloadTooltipSprites);
+			// The sync affordance belongs to the account that just ended. Hiding
+			// it also fences a success callback queued during the logout handoff.
+			panel.setSyncArrowHasData(false);
+			panel.resetSyncFeedback();
 			manualClogSync.reset();
 			clogIndex.clear();
 			sessionState.resetAutoLookupSession();
@@ -901,7 +905,7 @@ public class KillClogPlugin extends Plugin
 					|| localClogCache.currentSessionEpoch() != scheduledEpoch)
 				{
 					syncGate.abortAttempt();
-					panel.showSyncStatus(" ", false, false);
+					panel.showSyncStatus(" ", false);
 					launchQueuedKillclogSync();
 					return;
 				}
@@ -913,7 +917,7 @@ public class KillClogPlugin extends Plugin
 					syncGate.abortAttempt();
 					if (!failQueuedCharacterPublish())
 					{
-						panel.showSyncStatus(" ", false, false);
+						panel.showSyncStatus(" ", false);
 					}
 					launchQueuedKillclogSync();
 					return;
@@ -925,7 +929,7 @@ public class KillClogPlugin extends Plugin
 				{
 					chatNotifier.send(ChatNotice.SYNC_RESULT, "Syncing collection log to killclog.com...");
 				}
-				panel.showSyncStatus("syncing...", false, false);
+				panel.showSyncStatus("syncing...", false);
 				java.util.Map<String, Double> pbs = gatherPersonalBests(rsn);
 				java.util.Map<String, SyncService.DetailedPb> detailedPbs =
 					gatherDetailedPersonalBests(rsn);
@@ -945,7 +949,7 @@ public class KillClogPlugin extends Plugin
 				syncGate.abortAttempt();
 				if (!failQueuedCharacterPublish())
 				{
-					panel.showSyncStatus("sync failed", false, true);
+					panel.showSyncStatus("sync failed", true);
 				}
 				// Failures always chat, this path included.
 				chatNotifier.send(ChatNotice.SYNC_RESULT,
@@ -966,7 +970,7 @@ public class KillClogPlugin extends Plugin
 			syncGate.abortAttempt();
 			if (!failQueuedCharacterPublish())
 			{
-				panel.showSyncStatus(" ", false, false);
+				panel.showSyncStatus(" ", false);
 			}
 			launchQueuedKillclogSync();
 			return;
@@ -992,7 +996,7 @@ public class KillClogPlugin extends Plugin
 							}
 							else
 							{
-								panel.showSyncStatus("retrying...", false, false);
+								panel.showSyncStatus("retrying...", false);
 							}
 							scheduleKillclogSync(Math.max(result.retryAfterSeconds, 2), manual);
 							launchQueuedKillclogSync();
@@ -1016,7 +1020,14 @@ public class KillClogPlugin extends Plugin
 						}
 						else
 						{
-							panel.showSyncStatus(result.ok ? "synced!" : "sync failed", result.ok, true);
+							if (result.ok)
+							{
+								panel.flashSyncSuccess();
+							}
+							else
+							{
+								panel.showSyncStatus("sync failed", true);
+							}
 						}
 						if (manual || !result.ok)
 						{
@@ -1032,7 +1043,7 @@ public class KillClogPlugin extends Plugin
 						}
 						if (!failQueuedCharacterPublish())
 						{
-							panel.showSyncStatus(" ", false, false);
+							panel.showSyncStatus(" ", false);
 						}
 					}
 					launchQueuedKillclogSync();
@@ -1044,7 +1055,7 @@ public class KillClogPlugin extends Plugin
 			syncGate.abortAttempt();
 			if (!failQueuedCharacterPublish())
 			{
-				panel.showSyncStatus("sync failed", false, true);
+				panel.showSyncStatus("sync failed", true);
 			}
 			// Failures always chat, this path included; chat sends need the
 			// client thread and this body runs on the executor.

@@ -74,6 +74,10 @@ public class ClogService
 	// Freshness gate skips TempleOSRS when the cache is still hot.
 	private static final long CLOG_TTL_MS = 5 * 60 * 1000; // 5 minutes
 	private final Map<String, Long> clogFetchTimes = new java.util.concurrent.ConcurrentHashMap<>();
+	// A date-overlay attempt is recorded before HTTP; keep successful Temple
+	// proof separately so the active-player result stays attributed during TTL.
+	private final Map<String, Long> templeOverlaySuccessTimes =
+		new java.util.concurrent.ConcurrentHashMap<>();
 
 	@Inject
 	public ClogService(OkHttpClient httpClient, Gson gson, LocalClogCache localClogCache)
@@ -135,8 +139,12 @@ public class ClogService
 				// plugin was off) so the recents shelf stays current. TTL-gated
 				// and failure-proof; counts and membership stay chalice-owned.
 				return overlayProviderDates(playerName)
-					.thenCompose(ignored -> fetchItemNames().thenApply(names ->
-						localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>())));
+					.thenCompose(fromTemple -> fetchItemNames().thenApply(names ->
+					{
+						ClogResult result = localClogCache.toClogResult(playerName,
+							names != null ? names : new HashMap<>());
+						return fromTemple ? markTempleSource(result) : result;
+					}));
 			}
 			// No local cache yet, so the panel shows the sync prompt.
 			return CompletableFuture.completedFuture(null);
@@ -150,8 +158,8 @@ public class ClogService
 		{
 			log.debug("Using fresh cached clog for '{}' ({}s old)",
 				playerName, (System.currentTimeMillis() - lastFetch) / 1000);
-			return fetchItemNames().thenApply(names ->
-				localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>()));
+			return fetchItemNames().thenApply(names -> markTempleSource(
+				localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>())));
 		}
 
 		// Skip TempleOSRS if it failed for this player within the cooldown window.
@@ -204,7 +212,7 @@ public class ClogService
 						names != null ? names : new HashMap<>(),
 						playerData.lastChanged,
 						accountType
-					);
+					).withSources(true, false, false);
 					localClogCache.cacheResult(result);
 					clogFetchTimes.put(normalizedName, System.currentTimeMillis());
 					return result;
@@ -220,6 +228,11 @@ public class ClogService
 
 				return null;
 			});
+	}
+
+	private static ClogResult markTempleSource(ClogResult result)
+	{
+		return result != null ? result.withSources(true, false, false) : null;
 	}
 
 	private static class PlayerClogData
@@ -251,24 +264,42 @@ public class ClogService
 	/**
 	 * Fetch the provider's dated view of the active player and stamp missing
 	 * dates onto the local cache. Shares the clog TTL so a self-search never
-	 * fans out; any provider failure resolves false and the lookup proceeds
-	 * on local data unchanged.
+	 * fans out. The return value records a usable Temple collection-log
+	 * response, even when its dates were already present locally; failures and
+	 * Temple's unsynced shape resolve false so local data remains unmarked.
 	 */
 	private CompletableFuture<Boolean> overlayProviderDates(String playerName)
 	{
-		String ttlKey = "dates:" + playerName.toLowerCase();
+		String normalizedName = playerName.toLowerCase();
+		String ttlKey = "dates:" + normalizedName;
+		long now = System.currentTimeMillis();
 		Long lastFetch = clogFetchTimes.get(ttlKey);
-		if (lastFetch != null && System.currentTimeMillis() - lastFetch < CLOG_TTL_MS)
+		if (lastFetch != null && now - lastFetch < CLOG_TTL_MS)
 		{
-			return CompletableFuture.completedFuture(false);
+			Long successfulAt = templeOverlaySuccessTimes.get(normalizedName);
+			return CompletableFuture.completedFuture(successfulAt != null
+				&& now - successfulAt < CLOG_TTL_MS);
 		}
-		clogFetchTimes.put(ttlKey, System.currentTimeMillis());
+		clogFetchTimes.put(ttlKey, now);
 		String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
 		return fetchClog(encoded)
-			.thenApply(player -> player != null && player.obtainedItems != null
-				&& localClogCache.mergeProviderDates(playerName, player.obtainedItems))
+			.thenApply(player ->
+			{
+				if (player == null)
+				{
+					templeOverlaySuccessTimes.remove(normalizedName);
+					return false;
+				}
+				if (player.obtainedItems != null)
+				{
+					localClogCache.mergeProviderDates(playerName, player.obtainedItems);
+				}
+				templeOverlaySuccessTimes.put(normalizedName, System.currentTimeMillis());
+				return true;
+			})
 			.exceptionally(t ->
 			{
+				templeOverlaySuccessTimes.remove(normalizedName);
 				log.debug("Provider date overlay failed for '{}'", playerName, t);
 				return false;
 			});

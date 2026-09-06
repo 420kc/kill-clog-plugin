@@ -1,18 +1,28 @@
 package com.killclog;
 
 import com.google.gson.Gson;
+import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Protocol;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
 /**
- * Parsing and cache-path tests for the RuneProfile CA + collection log responses.
- * Network behaviour is not exercised; cache tests short-circuit before the HTTP client.
+ * Parsing, cache-path, and intercepted HTTP tests for RuneProfile CA + collection log responses.
  */
 public class RuneProfileServiceTest
 {
@@ -215,6 +225,9 @@ public class RuneProfileServiceTest
 			+ "]}";
 		ClogResult r = service.parseCollectionLog("TestPlayer", json);
 		assertNotNull(r);
+		assertTrue(r.isFromRuneProfile());
+		assertFalse(r.isFromTemple());
+		assertFalse(r.isFromKillclog());
 		assertEquals("TestPlayer", r.getPlayerName());
 		assertEquals(42, r.getUniqueObtained());
 		assertEquals(1500, r.getUniqueTotal());
@@ -256,9 +269,9 @@ public class RuneProfileServiceTest
 	}
 
 	@Test
-	public void testParseClogNoObtainedItems()
+	public void testParseClogAllZeroCatalogIsUnsynced()
 	{
-		// Zero-quantity items keep the catalog category but do not create obtained rows.
+		// RuneProfile returns this full catalog skeleton when no player snapshot exists.
 		String json = "{\"obtained\":0,\"total\":50,\"tabs\":["
 			+ "{\"name\":\"Bosses\",\"pages\":["
 			+ "{\"name\":\"Cerberus\",\"items\":["
@@ -267,10 +280,128 @@ public class RuneProfileServiceTest
 			+ "]}"
 			+ "]}"
 			+ "]}";
-		ClogResult r = service.parseCollectionLog("dry", json);
-		assertNotNull(r);
-		assertEquals(2, r.getCategoryItems().get("cerberus").size());
-		assertFalse(r.getObtainedItems().containsKey("cerberus"));
+		assertNull(service.parseCollectionLog("dry", json));
+	}
+
+	@Test
+	public void testParseClogRootZeroWithPositiveItemRemainsData()
+	{
+		String json = "{\"obtained\":0,\"total\":50,\"tabs\":["
+			+ "{\"name\":\"Bosses\",\"pages\":["
+			+ "{\"name\":\"Cerberus\",\"items\":["
+			+ "{\"id\":1,\"name\":\"Primordial crystal\",\"quantity\":1}"
+			+ "]}"
+			+ "]}"
+			+ "]}";
+		ClogResult result = service.parseCollectionLog("inconsistent-root", json);
+		assertNotNull(result);
+		assertTrue(result.isFromRuneProfile());
+		assertEquals(1, result.getObtainedItems().get("cerberus").size());
+	}
+
+	@Test
+	public void testParseClogPositiveRootWithoutPositiveItemsIsInvalid()
+	{
+		String json = "{\"obtained\":1,\"total\":50,\"tabs\":["
+			+ "{\"name\":\"Bosses\",\"pages\":["
+			+ "{\"name\":\"Cerberus\",\"items\":["
+			+ "{\"id\":1,\"name\":\"Primordial crystal\",\"quantity\":0}"
+			+ "]}"
+			+ "]}"
+			+ "]}";
+		assertNull(service.parseCollectionLog("invalid", json));
+	}
+
+	@Test
+	public void testAllZeroClogIsHealthyNegativeAndKeepsAccountIdentity() throws Exception
+	{
+		AtomicInteger summaryRequests = new AtomicInteger();
+		AtomicInteger clogRequests = new AtomicInteger();
+		CountDownLatch clogStarted = new CountDownLatch(1);
+		CountDownLatch releaseClog = new CountDownLatch(1);
+		String summaryJson = "{\"accountType\":{\"id\":6,"
+			+ "\"key\":\"unranked_group_ironman\",\"name\":\"Unranked Group Ironman\"},"
+			+ "\"combatAchievements\":[]}";
+		String zeroClogJson = "{\"obtained\":0,\"total\":1717,\"tabs\":["
+			+ "{\"name\":\"Bosses\",\"pages\":["
+			+ "{\"name\":\"Cerberus\",\"items\":["
+			+ "{\"id\":1,\"name\":\"Primordial crystal\",\"quantity\":0}"
+			+ "]}"
+			+ "]}"
+			+ "]}";
+		OkHttpClient client = new OkHttpClient.Builder()
+			.addInterceptor(chain ->
+			{
+				boolean clog = chain.request().url().encodedPath().endsWith("/collection-log");
+				String body = clog ? zeroClogJson : summaryJson;
+				(clog ? clogRequests : summaryRequests).incrementAndGet();
+				if (clog)
+				{
+					clogStarted.countDown();
+					try
+					{
+						if (!releaseClog.await(5, TimeUnit.SECONDS))
+						{
+							throw new IOException("Timed out waiting to release clog response");
+						}
+					}
+					catch (InterruptedException e)
+					{
+						Thread.currentThread().interrupt();
+						throw new IOException(e);
+					}
+				}
+				return new Response.Builder()
+					.request(chain.request())
+					.protocol(Protocol.HTTP_1_1)
+					.code(200)
+					.message("OK")
+					.body(ResponseBody.create(MediaType.parse("application/json"), body))
+					.build();
+			})
+			.build();
+		service = new RuneProfileService(client, new Gson(), null);
+
+		try
+		{
+			service.lookup("BigWhiteCroc").join();
+			assertEquals(AccountType.UNRANKED_GROUP_IRONMAN,
+				service.getCachedAccountType("BigWhiteCroc"));
+
+			ClogResult stale = new ClogResult("BigWhiteCroc", Collections.emptyMap(),
+				Collections.emptyMap(), Collections.emptyMap(), null, null);
+			clogCache().put("bigwhitecroc", stale);
+			longCache("clogFetchTimes").put("bigwhitecroc", 0L);
+			longCache("clogFailures").put("bigwhitecroc", 0L);
+			recordBreakerFailure();
+			recordBreakerFailure();
+			assertTrue(hasRecentFailure());
+
+			CompletableFuture<ClogResult> lookup = service.lookupClog("BigWhiteCroc");
+			assertTrue(clogStarted.await(5, TimeUnit.SECONDS));
+			releaseClog.countDown();
+			assertNull(lookup.join());
+			assertFalse(clogCache().containsKey("bigwhitecroc"));
+			assertFalse(longCache("clogFetchTimes").containsKey("bigwhitecroc"));
+			assertFalse(longCache("clogFailures").containsKey("bigwhitecroc"));
+			assertNotNull(longCache("clogNotFoundTimes").get("bigwhitecroc"));
+			assertEquals(AccountType.UNRANKED_GROUP_IRONMAN,
+				service.getCachedAccountType("BigWhiteCroc"));
+
+			// The negative cache serves the second lookup without another request.
+			assertNull(service.lookupClog("BigWhiteCroc").join());
+			assertEquals(1, summaryRequests.get());
+			assertEquals(1, clogRequests.get());
+			for (long failure : recentFailures())
+			{
+				assertEquals(0L, failure);
+			}
+		}
+		finally
+		{
+			client.dispatcher().executorService().shutdownNow();
+			client.connectionPool().evictAll();
+		}
 	}
 
 	@Test
@@ -323,6 +454,17 @@ public class RuneProfileServiceTest
 	public void testParseClogEmptyTabs()
 	{
 		assertNull(service.parseCollectionLog("empty", "{\"obtained\":0,\"total\":0,\"tabs\":[]}"));
+	}
+
+	@Test
+	public void testParseClogEmptyCatalogPageIsInvalid()
+	{
+		String json = "{\"obtained\":0,\"total\":50,\"tabs\":["
+			+ "{\"name\":\"Bosses\",\"pages\":["
+			+ "{\"name\":\"Cerberus\",\"items\":[]}"
+			+ "]}"
+			+ "]}";
+		assertNull(service.parseCollectionLog("empty-page", json));
 	}
 
 	@Test
@@ -462,5 +604,31 @@ public class RuneProfileServiceTest
 	private Map<String, Long> longCache(String fieldName) throws Exception
 	{
 		return cache(fieldName);
+	}
+
+	private long[] recentFailures() throws Exception
+	{
+		Field field = RuneProfileService.class.getDeclaredField("recentFailures");
+		field.setAccessible(true);
+		return (long[]) field.get(service);
+	}
+
+	private boolean hasRecentFailure() throws Exception
+	{
+		for (long failure : recentFailures())
+		{
+			if (failure != 0L)
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private void recordBreakerFailure() throws Exception
+	{
+		Method method = RuneProfileService.class.getDeclaredMethod("recordBreakerFailure");
+		method.setAccessible(true);
+		method.invoke(service);
 	}
 }

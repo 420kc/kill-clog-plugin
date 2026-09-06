@@ -916,11 +916,12 @@ public class KillClogPanel extends PluginPanel
 	@Setter(AccessLevel.PACKAGE)
 	private Runnable characterPublishHandler;
 	private Timer firstPartyStatusClearTimer;
+	private Timer syncSuccessGlowTimer;
 	private BufferedImage characterBase;
 
 	/**
 	 * The sync control wears the Kill Clog chalice itself: dim at rest,
-	 * full red on hover, k1 green while "synced!" shows.
+	 * full red on hover, k1 green briefly after a successful sync.
 	 */
 	private static java.awt.image.BufferedImage chaliceBase()
 	{
@@ -980,6 +981,7 @@ public class KillClogPanel extends PluginPanel
 	private static final ImageIcon SYNC_CHALICE_SYNCED = chaliceTinted(1f, new Color(78, 240, 21));
 
 	private boolean syncedGlow;
+	private boolean syncChaliceHovered;
 	private boolean characterPublishedGlow;
 
 	private void refreshSyncChalice(boolean hovered)
@@ -1073,6 +1075,7 @@ public class KillClogPanel extends PluginPanel
 			{
 				if (syncArrow.isVisible())
 				{
+					syncChaliceHovered = true;
 					refreshSyncChalice(true);
 					setSearchStatus(SYNC_HOVER_TEXT, SYNC_K1);
 				}
@@ -1081,6 +1084,7 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public void mouseExited(java.awt.event.MouseEvent e)
 			{
+				syncChaliceHovered = false;
 				refreshSyncChalice(false);
 				if (SYNC_HOVER_TEXT.equals(searchStatus.getText()))
 				{
@@ -1104,8 +1108,7 @@ public class KillClogPanel extends PluginPanel
 		// The parent column is BoxLayout: children must agree on alignment or
 		// the whole stack shears sideways.
 		row.setAlignmentX(Component.LEFT_ALIGNMENT);
-		row.setMaximumSize(new Dimension(Integer.MAX_VALUE,
-			Math.max(searchStatus.getPreferredSize().height, 14) + 2));
+		reserveStatusRowHeight(row, searchStatus.getPreferredSize().height);
 		row.add(searchStatus, java.awt.BorderLayout.CENTER);
 		JPanel actions = new JPanel();
 		actions.setLayout(new BoxLayout(actions, BoxLayout.X_AXIS));
@@ -1114,6 +1117,14 @@ public class KillClogPanel extends PluginPanel
 		actions.add(syncArrow);
 		row.add(actions, java.awt.BorderLayout.EAST);
 		return row;
+	}
+
+	static void reserveStatusRowHeight(JPanel row, int labelHeight)
+	{
+		int height = Math.max(labelHeight, 14) + 2;
+		row.setMinimumSize(new Dimension(0, height));
+		row.setPreferredSize(new Dimension(0, height));
+		row.setMaximumSize(new Dimension(Integer.MAX_VALUE, height));
 	}
 
 	private boolean statusBarFree()
@@ -1136,6 +1147,11 @@ public class KillClogPanel extends PluginPanel
 		SwingUtilities.invokeLater(() ->
 		{
 			syncArrowEnabled = enabled;
+			if (!enabled)
+			{
+				syncChaliceHovered = false;
+				clearSyncSuccessGlow();
+			}
 			refreshFirstPartyVisibility();
 		});
 	}
@@ -1150,6 +1166,11 @@ public class KillClogPanel extends PluginPanel
 		SwingUtilities.invokeLater(() ->
 		{
 			syncArrowHasData = hasData;
+			if (!hasData)
+			{
+				syncChaliceHovered = false;
+				clearSyncSuccessGlow();
+			}
 			refreshFirstPartyVisibility();
 		});
 	}
@@ -1163,12 +1184,26 @@ public class KillClogPanel extends PluginPanel
 		});
 	}
 
+	private boolean barOwnedBySync()
+	{
+		return isSyncOwnedStatus(searchStatus.getText());
+	}
+
+	static boolean isSyncOwnedStatus(String text)
+	{
+		return SYNC_HOVER_TEXT.equals(text) || "syncing...".equals(text)
+			|| "retrying...".equals(text) || "sync failed".equals(text);
+	}
+
+	static boolean canFlashSyncSuccess(String text)
+	{
+		return text == null || text.trim().isEmpty() || isSyncOwnedStatus(text);
+	}
+
 	private boolean barOwnedByFirstParty()
 	{
 		String text = searchStatus.getText();
-		return SYNC_HOVER_TEXT.equals(text) || "syncing...".equals(text)
-			|| "retrying...".equals(text) || "synced!".equals(text)
-			|| "sync failed".equals(text) || CHARACTER_HOVER_TEXT.equals(text)
+		return barOwnedBySync() || CHARACTER_HOVER_TEXT.equals(text)
 			|| KillClogPlugin.CHARACTER_RENDERING_STATUS.equals(text)
 			|| KillClogPlugin.CHARACTER_PUBLISHED_STATUS.equals(text)
 			|| KillClogPlugin.CHARACTER_FAILED_STATUS.equals(text);
@@ -1183,14 +1218,30 @@ public class KillClogPanel extends PluginPanel
 		}
 	}
 
+	private void stopSyncSuccessGlowTimer()
+	{
+		if (syncSuccessGlowTimer != null)
+		{
+			syncSuccessGlowTimer.stop();
+			syncSuccessGlowTimer = null;
+		}
+	}
+
+	private void clearSyncSuccessGlow()
+	{
+		stopSyncSuccessGlowTimer();
+		syncedGlow = false;
+		refreshSyncChalice(syncChaliceHovered);
+	}
+
 	/**
-	 * Sync-flow status line: "syncing..." while in flight, then "synced!" or
-	 * "sync failed" which clear themselves after a beat. Any thread. The bar
+	 * Sync-flow status line: "syncing..." while in flight, then "sync failed"
+	 * which clears itself after a beat. Any thread. The bar
 	 * is shared: sync text only writes when the bar is free or already the
 	 * sync's, so lookup and player-not-found messages are never stomped.
 	 * Sync chrome speaks in k1; only failure stays dim.
 	 */
-	void showSyncStatus(String text, boolean ok, boolean autoClear)
+	void showSyncStatus(String text, boolean autoClear)
 	{
 		SwingUtilities.invokeLater(() ->
 		{
@@ -1199,10 +1250,9 @@ public class KillClogPanel extends PluginPanel
 				return;
 			}
 			stopFirstPartyStatusTimer();
+			clearSyncSuccessGlow();
 			setSearchStatus(text, "sync failed".equals(text) ? TEXT_DIM : SYNC_K1);
-			syncedGlow = "synced!".equals(text);
 			characterPublishedGlow = false;
-			refreshSyncChalice(false);
 			refreshCharacterIcon(false);
 			if (autoClear)
 			{
@@ -1212,12 +1262,58 @@ public class KillClogPanel extends PluginPanel
 					{
 						setSearchStatus(" ", TEXT_DIM);
 					}
-					syncedGlow = false;
-					refreshSyncChalice(false);
 					firstPartyStatusClearTimer = null;
 				});
 				firstPartyStatusClearTimer.setRepeats(false);
 				firstPartyStatusClearTimer.start();
+			}
+		});
+	}
+
+	/** Successful sync feedback is icon-only so the shared status row never moves. */
+	void flashSyncSuccess()
+	{
+		SwingUtilities.invokeLater(() ->
+		{
+			if (!syncArrowEnabled || !syncArrowHasData
+				|| !canFlashSyncSuccess(searchStatus.getText()))
+			{
+				return;
+			}
+			stopFirstPartyStatusTimer();
+			stopSyncSuccessGlowTimer();
+			if (barOwnedBySync())
+			{
+				setSearchStatus(" ", TEXT_DIM);
+			}
+			syncedGlow = true;
+			characterPublishedGlow = false;
+			refreshFirstPartyVisibility();
+			refreshSyncChalice(syncChaliceHovered);
+			refreshCharacterIcon(false);
+
+			syncSuccessGlowTimer = new Timer(2500, e ->
+			{
+				syncedGlow = false;
+				refreshSyncChalice(syncChaliceHovered);
+				syncSuccessGlowTimer = null;
+			});
+			syncSuccessGlowTimer.setRepeats(false);
+			syncSuccessGlowTimer.start();
+		});
+	}
+
+	/** Drop account-scoped sync feedback without disturbing lookup or character status. */
+	void resetSyncFeedback()
+	{
+		SwingUtilities.invokeLater(() ->
+		{
+			stopFirstPartyStatusTimer();
+			syncChaliceHovered = false;
+			clearSyncSuccessGlow();
+			if (barOwnedBySync())
+			{
+				setSearchStatus(" ", TEXT_DIM);
 			}
 		});
 	}
@@ -1231,11 +1327,10 @@ public class KillClogPanel extends PluginPanel
 				return;
 			}
 			stopFirstPartyStatusTimer();
+			clearSyncSuccessGlow();
 			boolean active = KillClogPlugin.CHARACTER_RENDERING_STATUS.equals(text);
 			setSearchStatus(text, ok || active ? SYNC_K1 : TEXT_DIM);
-			syncedGlow = false;
 			characterPublishedGlow = ok && KillClogPlugin.CHARACTER_PUBLISHED_STATUS.equals(text);
-			refreshSyncChalice(false);
 			refreshCharacterIcon(false);
 			if (autoClear)
 			{
@@ -1711,6 +1806,11 @@ public class KillClogPanel extends PluginPanel
 	public void shutdown()
 	{
 		stopFirstPartyStatusTimer();
+		syncArrowEnabled = false;
+		syncArrowHasData = false;
+		syncChaliceHovered = false;
+		clearSyncSuccessGlow();
+		refreshFirstPartyVisibility();
 		tooltipController.deactivate();
 	}
 

@@ -517,6 +517,13 @@ public class KillclogService
 					result.setUniqueObtained(uniqueObtained);
 				}
 			}
+			// This footer describes collection-log provenance, not merely account
+			// presence on killclog.com. PB-only proof views intentionally parse
+			// and cache as healthy empty results, but do not earn a clog source.
+			if (!obtainedItems.isEmpty())
+			{
+				result = result.withSources(false, false, true);
+			}
 
 			pbCache.put(key, parsePbs(root));
 			return result;

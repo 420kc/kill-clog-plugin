@@ -2,7 +2,6 @@ package com.killclog;
 
 import java.awt.AlphaComposite;
 import java.awt.Color;
-import java.awt.Composite;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
@@ -38,10 +37,7 @@ public abstract class TitleTooltip extends NativeTooltip
 {
 	private static final int NAME_LINE_HEIGHT = 20;
 	private static final int SEPARATOR_GAP = 6;
-	private static final int CORNER_GAP = 8;
 	private static final int INFO_PAIR_GAP = 8;
-	private static final int CORNER_BADGE_SIZE = 12;
-	private static final float CORNER_BADGE_IDLE_ALPHA = 0.3f;
 	private static final String ELLIPSIS = "...";
 	private static final Font TITLE_FONT = FontManager.getRunescapeBoldFont().deriveFont(18f);
 	static final Font TITLE_FONT_SMALL = FontManager.getRunescapeBoldFont().deriveFont(16f);
@@ -77,8 +73,6 @@ public abstract class TitleTooltip extends NativeTooltip
 	private String titleWikiPage;
 	private boolean wikiLinksEnabled = true;
 	private boolean titleHovered;
-	@Getter(AccessLevel.PACKAGE)
-	private boolean titleCornerHovered;
 
 	protected TitleTooltip()
 	{
@@ -463,18 +457,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		return TITLE_FONT;
 	}
 
-	/** Whether to show the optional top-right source badge. */
-	protected boolean hasTitleCornerBadge()
-	{
-		return false;
-	}
-
-	/** Color for the source badge and hover text. */
-	protected Color getTitleCornerColor()
-	{
-		return CLOG_GREEN;
-	}
-
 	/** Optional orange text painted on the right side of the last header row. */
 	protected String getHeaderRightText()
 	{
@@ -647,11 +629,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		{
 			titleTextWidth += nfm.stringWidth(titleSuffix);
 		}
-		int cornerWidth = titleCornerPreferredWidth();
-		if (cornerWidth > 0)
-		{
-			titleTextWidth += CORNER_GAP + cornerWidth;
-		}
 		int subTextWidth = subtitleLabel != null
 			? sfm.stringWidth(subtitleLabel + subtitleValue) : 0;
 		int infoTextWidth = infoLabel != null
@@ -693,21 +670,13 @@ public abstract class TitleTooltip extends NativeTooltip
 		}
 
 		int inset = getInset();
-		// Title (bold orange). While the corner badge or a body item is
-		// hovered the title yields its line to the reveal text, so nothing
-		// ever clips regardless of tooltip width.
+		// Title (bold orange). While a body item is hovered the title yields
+		// its line to the reveal text, so nothing clips regardless of width.
 		String headerTitle = title;
 		Color headerColor = titleColor();
 		boolean showTitleSuffix = titleSuffix != null;
-		String cornerText = titleCornerHovered ? getTitleCornerHoverText() : null;
 		String hoverText = getTitleHoverText();
-		if (cornerText != null && !cornerText.isEmpty())
-		{
-			headerTitle = cornerText;
-			headerColor = getTitleCornerColor();
-			showTitleSuffix = false;
-		}
-		else if (hoverText != null && !hoverText.isEmpty())
+		if (hoverText != null && !hoverText.isEmpty())
 		{
 			headerTitle = hoverText;
 			headerColor = getTitleHoverColor();
@@ -718,12 +687,10 @@ public abstract class TitleTooltip extends NativeTooltip
 		int lineY = inset + nfm.getAscent();
 		int titleBaseline = lineY;
 		g2.setColor(headerColor);
-		// Long reveal texts (recent-item names) ellipsize instead of clipping
-		// at the tooltip edge; the corner badge keeps its lane.
-		int cornerW = titleCornerPreferredWidth();
+		// Long reveal texts (recent-item names) ellipsize instead of clipping.
 		int suffixWidth = showTitleSuffix ? nfm.stringWidth(titleSuffix) : 0;
 		headerTitle = fitHeaderText(nfm, headerTitle,
-			w - 2 * inset - suffixWidth - (cornerW > 0 ? cornerW + 4 : 0));
+			w - 2 * inset - suffixWidth);
 		g2.drawString(headerTitle, inset, lineY);
 		int activeLineWidth = nfm.stringWidth(headerTitle);
 		if (showTitleSuffix)
@@ -737,8 +704,6 @@ public abstract class TitleTooltip extends NativeTooltip
 
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		FontMetrics fm = g2.getFontMetrics();
-
-		paintTitleCorner(g2, w);
 
 		// Header line order: stats read first (KC/PB info line, then rank),
 		// clog progress reads last. The first line under the title keeps the
@@ -846,46 +811,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		}
 	}
 
-	private int titleCornerPreferredWidth()
-	{
-		return hasTitleCornerBadge() ? CORNER_BADGE_SIZE : 0;
-	}
-
-	private void paintTitleCorner(Graphics2D g2, int w)
-	{
-		if (!hasTitleCornerBadge())
-		{
-			return;
-		}
-
-		int inset = getInset();
-		int width = titleCornerPreferredWidth();
-		int x = w - inset - width;
-		Color color = getTitleCornerColor();
-
-		Composite prior = g2.getComposite();
-		float alpha = titleCornerHovered ? 1f : CORNER_BADGE_IDLE_ALPHA;
-		g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha));
-		int badgeX = x + width - CORNER_BADGE_SIZE;
-		int badgeY = getInset() + 2;
-		g2.setColor(color);
-		g2.fillOval(badgeX, badgeY, CORNER_BADGE_SIZE, CORNER_BADGE_SIZE);
-		g2.setColor(new Color(0, 25, 0));
-		int midX = badgeX + CORNER_BADGE_SIZE / 2;
-		int arrowTop = badgeY + 3;
-		int arrowBottom = badgeY + CORNER_BADGE_SIZE - 3;
-		g2.drawLine(midX, arrowTop, midX, arrowBottom);
-		g2.drawLine(midX, arrowTop, midX - 3, arrowTop + 3);
-		g2.drawLine(midX, arrowTop, midX + 3, arrowTop + 3);
-		g2.setComposite(prior);
-	}
-
-	/** Text that replaces the title while the corner badge is hovered. */
-	protected String getTitleCornerHoverText()
-	{
-		return null;
-	}
-
 	/**
 	 * Text that replaces the title while a body item is hovered. Narrow
 	 * summary tooltips reveal hovered item names here; wide grid popups
@@ -929,10 +854,9 @@ public abstract class TitleTooltip extends NativeTooltip
 			@Override
 			public void mouseExited(MouseEvent e)
 			{
-				if (titleHovered || titleCornerHovered)
+				if (titleHovered)
 				{
 					titleHovered = false;
-					titleCornerHovered = false;
 					repaint();
 				}
 			}
@@ -942,16 +866,9 @@ public abstract class TitleTooltip extends NativeTooltip
 	private void updateHeaderHover(int x, int y)
 	{
 		boolean nextTitle = titleLinkActive() && titleBounds().contains(x, y);
-		boolean nextCorner = titleCornerActive() && titleCornerBounds().contains(x, y);
-		if (nextTitle != titleHovered || nextCorner != titleCornerHovered)
+		if (nextTitle != titleHovered)
 		{
-			boolean cornerChanged = nextCorner != titleCornerHovered;
 			titleHovered = nextTitle;
-			titleCornerHovered = nextCorner;
-			if (cornerChanged)
-			{
-				onTitleCornerHoverChanged(nextCorner);
-			}
 			repaint();
 		}
 	}
@@ -966,26 +883,10 @@ public abstract class TitleTooltip extends NativeTooltip
 		return titleHovered && titleLinkActive() ? Color.WHITE : OSRS_ORANGE;
 	}
 
-	protected void onTitleCornerHoverChanged(boolean hovered)
-	{
-	}
-
 	private Rectangle titleBounds()
 	{
 		int inset = getInset();
 		int width = title != null ? getFontMetrics(getTitleFont()).stringWidth(title) : 0;
 		return new Rectangle(inset, inset, width, NAME_LINE_HEIGHT);
-	}
-
-	private boolean titleCornerActive()
-	{
-		return hasTitleCornerBadge();
-	}
-
-	private Rectangle titleCornerBounds()
-	{
-		int inset = getInset();
-		int width = titleCornerPreferredWidth();
-		return new Rectangle(getWidth() - inset - width, inset, width, NAME_LINE_HEIGHT);
 	}
 }

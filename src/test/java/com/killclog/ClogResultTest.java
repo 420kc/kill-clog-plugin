@@ -114,7 +114,7 @@ public class ClogResultTest
 			Collections.singletonMap("abyssal_sire", Arrays.asList(
 				new ClogResult.ClogItem(6, 1, null),
 				new ClogResult.ClogItem(7, 1, null))),
-			null, null);
+			null, null).withSources(false, false, true);
 
 		ClogResult picked = ClogResult.pickFullest(provider, killclog);
 
@@ -134,7 +134,7 @@ public class ClogResultTest
 		ClogResult killclog = result("Synced", 2, 10,
 			Collections.singletonMap("boss", Collections.singletonList(
 				new ClogResult.ClogItem(3, 1, null))),
-			null, AccountType.HARDCORE_GROUP_IRONMAN);
+			null, AccountType.HARDCORE_GROUP_IRONMAN).withSources(false, false, true);
 
 		ClogResult picked = ClogResult.pickFullest(provider, killclog);
 
@@ -153,7 +153,7 @@ public class ClogResultTest
 			Collections.singletonMap("boss", Arrays.asList(
 				new ClogResult.ClogItem(2, 1, null),
 				new ClogResult.ClogItem(3, 1, null))),
-			"2026-08-03 12:00:00", null);
+			"2026-08-03 12:00:00", null).withSources(false, false, true);
 
 		ClogResult picked = ClogResult.pickFullest(provider, killclog);
 
@@ -171,7 +171,7 @@ public class ClogResultTest
 			"2026-08-03 12:00:00", null);
 		ClogResult killclog = result("420 kc", 1189, 1561,
 			Collections.singletonMap("boss", Arrays.asList(new ClogResult.ClogItem(2, 1, null))),
-			null, null);
+			null, null).withSources(false, false, true);
 
 		ClogResult picked = ClogResult.pickFullest(provider, killclog);
 
@@ -187,7 +187,7 @@ public class ClogResultTest
 			null, null);
 		ClogResult killclog = result("420 kc", 5, 10,
 			Collections.singletonMap("boss", Arrays.asList(new ClogResult.ClogItem(2, 1, null))),
-			null, null);
+			null, null).withSources(false, false, true);
 
 		ClogResult providerOnly = ClogResult.pickFullest(provider, null);
 		assertEquals("Provider", providerOnly.getPlayerName());
@@ -238,10 +238,10 @@ public class ClogResultTest
 		// leave the cached instance untouched.
 		ClogResult temple = result("TempleName", 9, 10,
 			Collections.singletonMap("boss", Arrays.asList(new ClogResult.ClogItem(1, 1, null))),
-			"2026-08-03 12:00:00", null);
+			"2026-08-03 12:00:00", null).withSources(true, false, false);
 		ClogResult killclog = result("420 kc", 3, 10,
 			Collections.singletonMap("boss", Arrays.asList(new ClogResult.ClogItem(2, 1, null))),
-			null, null);
+			null, null).withSources(false, false, true);
 
 		// Combine A: killclog participates (equal coverage, first-party wins).
 		ClogResult a = ClogResult.pickFullest(ClogResult.pickFreshest(temple, null), killclog);
@@ -254,15 +254,16 @@ public class ClogResultTest
 		assertNotSame(temple, b);
 		assertFalse(b.isFromKillclog());
 
-		// Combine C: killclog-only combine on the same cached instance.
+		// Combine C: putting the same Temple result in the second slot must
+		// preserve its source stamp, not relabel it from argument position.
 		ClogResult c = ClogResult.pickFullest(null, temple);
 		assertNotSame(temple, c);
-		assertFalse(c.isFromTemple());
-		assertTrue(c.isFromKillclog());
+		assertTrue(c.isFromTemple());
+		assertFalse(c.isFromKillclog());
 
-		// The cached instance itself never wore any combine's flags, and
-		// each combine's copy kept its own answer.
-		assertFalse(temple.isFromTemple());
+		// The cached instance retains only its boundary stamp, and each
+		// combine's copy keeps its own union without mutating that instance.
+		assertTrue(temple.isFromTemple());
 		assertFalse(temple.isFromRuneProfile());
 		assertFalse(temple.isFromKillclog());
 		assertTrue(a.isFromKillclog());
@@ -279,11 +280,11 @@ public class ClogResultTest
 	{
 		ClogResult temple = result("TempleName", 3, 10,
 			Collections.singletonMap("boss", Arrays.asList(new ClogResult.ClogItem(1, 1, null))),
-			"2026-08-03 12:00:00", null);
+			"2026-08-03 12:00:00", null).withSources(true, false, false);
 		ClogResult providerWinner = ClogResult.pickFreshest(temple, null);
 		ClogResult killclog = result("420 kc", 9, 10,
 			Collections.singletonMap("boss", Arrays.asList(new ClogResult.ClogItem(2, 1, null))),
-			null, null);
+			null, null).withSources(false, false, true);
 
 		ClogResult picked = ClogResult.pickFullest(providerWinner, killclog);
 
@@ -291,6 +292,46 @@ public class ClogResultTest
 		assertTrue(picked.isFromKillclog());
 		assertTrue("temple fed the race, provenance survives the combine", picked.isFromTemple());
 		assertFalse(picked.isFromRuneProfile());
+	}
+
+	@Test
+	public void testUnmarkedLocalResultNeverGainsSourceFromArgumentPosition()
+	{
+		ClogResult local = result("Local", 3, 10,
+			Collections.singletonMap("boss", Collections.singletonList(
+				new ClogResult.ClogItem(1, 1, null))), null, null);
+
+		ClogResult providerSlot = ClogResult.pickFreshest(local, null);
+		ClogResult killclogSlot = ClogResult.pickFullest(null, local);
+		for (ClogResult picked : Arrays.asList(providerSlot, killclogSlot))
+		{
+			assertFalse(picked.isFromTemple());
+			assertFalse(picked.isFromRuneProfile());
+			assertFalse(picked.isFromKillclog());
+		}
+	}
+
+	@Test
+	public void testAllStampedSourcesSurviveBothCombines()
+	{
+		ClogResult temple = result("Temple", 5, 10,
+			Collections.singletonMap("boss", Collections.singletonList(
+				new ClogResult.ClogItem(1, 1, null))), null, null)
+			.withSources(true, false, false);
+		ClogResult runeProfile = result("RuneProfile", 12, 10,
+			Collections.singletonMap("boss", Collections.singletonList(
+				new ClogResult.ClogItem(2, 1, null))), null, null)
+			.withSources(false, true, false);
+		ClogResult killclog = result("Kill Clog", 20, 10,
+			Collections.singletonMap("boss", Collections.singletonList(
+				new ClogResult.ClogItem(3, 1, null))), null, null)
+			.withSources(false, false, true);
+
+		ClogResult picked = ClogResult.pickFullest(
+			ClogResult.pickFreshest(temple, runeProfile), killclog);
+		assertTrue(picked.isFromTemple());
+		assertTrue(picked.isFromRuneProfile());
+		assertTrue(picked.isFromKillclog());
 	}
 
 	private static ClogResult result(

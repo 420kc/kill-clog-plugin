@@ -27,13 +27,19 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private static final int RECENT_SIZE = 24;
 	private static final int RECENT_PAD = 6;
 	private static final int DATE_GAP = 1;
+	private static final int SOURCE_ICON_SIZE = 13;
+	private static final int SOURCE_ICON_GAP = 5;
+	private static final int SOURCE_HIT_PAD = 2;
+	private static final int SOURCE_LABEL_GAP = 3;
+	private static final int SOURCE_SECTION = 2;
+	private static final String SOURCE_LABEL = "Data Provenance";
 	private static final String[] MONTHS = {
 		"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 		"Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 	};
 	private static final String TEMPLE_SOURCE = "TempleOSRS";
 	private static final String RUNEPROFILE_SOURCE = "RuneProfile";
-	private static final String KILLCLOG_SOURCE = "Kill Clog Sync";
+	private static final String KILLCLOG_SOURCE = "killclog.com";
 	private static final String SETUP_OPEN_LINE = "1. Open your Collection Log.";
 	private static final String SETUP_SEARCH_LINE = "2. Right-click the top and choose \"Search\".";
 	private static final String SETUP_CHAT_LINE = "Chat will confirm when setup is complete.";
@@ -64,9 +70,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private String[] specialNames;
 
 	private final TooltipItemHover itemHover = new TooltipItemHover(this);
-	private boolean clogTemple;
-	private boolean clogRuneProfile;
-	private boolean clogKillclog;
+	private final List<ClogSource> clogSources = new ArrayList<>(3);
 
 	public void setTierData(int obtained, int totalSlots, Map<String, BufferedImage> tierIcons)
 	{
@@ -87,12 +91,29 @@ public class ClogSummaryTooltip extends TitleTooltip
 		this.syncStale = stale;
 	}
 
-	/** Record which providers supplied this player's synced clog data for the summary badge. */
+	/** Record only providers that returned usable synced clog data. */
 	public void setClogSources(boolean temple, boolean runeProfile, boolean killclog)
 	{
-		this.clogTemple = temple;
-		this.clogRuneProfile = runeProfile;
-		this.clogKillclog = killclog;
+		clogSources.clear();
+		if (killclog)
+		{
+			clogSources.add(new ClogSource(
+				KILLCLOG_SOURCE, KillClogIcons.killClogSourceIcon(SOURCE_ICON_SIZE)));
+		}
+		if (temple)
+		{
+			clogSources.add(new ClogSource(
+				TEMPLE_SOURCE, KillClogIcons.templeSourceIcon(SOURCE_ICON_SIZE)));
+		}
+		if (runeProfile)
+		{
+			clogSources.add(new ClogSource(
+				RUNEPROFILE_SOURCE, KillClogIcons.runeProfileSourceIcon(SOURCE_ICON_SIZE)));
+		}
+		itemHover.clear();
+		itemHover.setHitBoxes(Collections.emptyList());
+		revalidate();
+		repaint();
 	}
 
 	public void setNotice(String notice)
@@ -192,52 +213,24 @@ public class ClogSummaryTooltip extends TitleTooltip
 		}
 	}
 
-	@Override
-	protected boolean hasTitleCornerBadge()
+	List<String> sourceNames()
 	{
-		return clogTemple || clogRuneProfile || clogKillclog;
+		List<String> names = new ArrayList<>(clogSources.size());
+		for (ClogSource source : clogSources)
+		{
+			names.add(source.name);
+		}
+		return names;
 	}
 
-	// Provenance takes over the title line while the badge is hovered, so it
-	// can never crowd or clip the title. The player's own sync leads when it
-	// fed the result, matching the website's source labeling.
-	String sourceLine()
+	static int sourceRowWidth(int count)
 	{
-		if (clogKillclog)
-		{
-			if (clogTemple && clogRuneProfile)
-			{
-				return "Kill Clog + Temple + RP";
-			}
-			if (clogTemple)
-			{
-				return "Kill Clog + Temple";
-			}
-			if (clogRuneProfile)
-			{
-				return "Kill Clog + RP";
-			}
-			return KILLCLOG_SOURCE;
-		}
-		if (clogTemple && clogRuneProfile)
-		{
-			return "Temple + RP";
-		}
-		if (clogTemple)
-		{
-			return TEMPLE_SOURCE;
-		}
-		if (clogRuneProfile)
-		{
-			return RUNEPROFILE_SOURCE;
-		}
-		return null;
+		return count > 0 ? count * SOURCE_ICON_SIZE + (count - 1) * SOURCE_ICON_GAP : 0;
 	}
 
-	@Override
-	protected String getTitleCornerHoverText()
+	static int sourceRowStartX(int tooltipWidth, int count)
 	{
-		return sourceLine();
+		return (tooltipWidth - sourceRowWidth(count)) / 2;
 	}
 
 	@Override
@@ -315,6 +308,14 @@ public class ClogSummaryTooltip extends TitleTooltip
 				+ (recentCount - 1) * RECENT_PAD;
 			textWidth = Math.max(textWidth, spriteRowWidth);
 			textWidth = Math.max(textWidth, bfm.stringWidth("Recent"));
+		}
+
+		if (!clogSources.isEmpty())
+		{
+			contentHeight += separatorHeight(SEPARATOR_PAD) + fm.getHeight()
+				+ SOURCE_LABEL_GAP + SOURCE_ICON_SIZE;
+			textWidth = Math.max(textWidth, fm.stringWidth(SOURCE_LABEL));
+			textWidth = Math.max(textWidth, sourceRowWidth(clogSources.size()));
 		}
 
 		return new Dimension(textWidth, contentHeight);
@@ -401,6 +402,40 @@ public class ClogSummaryTooltip extends TitleTooltip
 			if (hasRecentDates())
 			{
 				y += DATE_GAP + fm.getHeight();
+			}
+		}
+
+		if (!clogSources.isEmpty())
+		{
+			y = paintSeparator(g2, w, y, SEPARATOR_PAD);
+			g2.setFont(FontManager.getRunescapeSmallFont());
+			g2.setColor(MUTED_GRAY);
+			int labelX = (w - fm.stringWidth(SOURCE_LABEL)) / 2;
+			g2.drawString(SOURCE_LABEL, labelX, y + fm.getAscent());
+			y += fm.getHeight() + SOURCE_LABEL_GAP;
+
+			int sourceX = sourceRowStartX(w, clogSources.size());
+			String hoveredName = itemHover.hoveredItemName();
+			for (int i = 0; i < clogSources.size(); i++)
+			{
+				ClogSource source = clogSources.get(i);
+				int iconX = sourceX + i * (SOURCE_ICON_SIZE + SOURCE_ICON_GAP);
+				if (source.icon != null)
+				{
+					g2.drawImage(source.icon, iconX, y, null);
+				}
+				if (source.name.equals(hoveredName))
+				{
+					g2.setColor(CLOG_GREEN);
+					g2.drawRect(iconX - SOURCE_HIT_PAD, y - SOURCE_HIT_PAD,
+						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2 - 1,
+						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2 - 1);
+				}
+				hitBoxes.add(new TooltipItemHover.HitBox(
+					SOURCE_SECTION + i, 0, source.name,
+					new Rectangle(iconX - SOURCE_HIT_PAD, y - SOURCE_HIT_PAD,
+						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2,
+						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2)));
 			}
 		}
 
@@ -492,7 +527,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 	@Override
 	protected Color getTitleHoverColor()
 	{
-		// Everything on the shelf and in recents is obtained.
+		// Obtained items and verified providers share the success/trust color.
 		return CLOG_GREEN;
 	}
 
@@ -523,6 +558,18 @@ public class ClogSummaryTooltip extends TitleTooltip
 		{
 			g2.setColor(OSRS_ORANGE);
 			g2.drawString(suffix, x, textY);
+		}
+	}
+
+	private static final class ClogSource
+	{
+		private final String name;
+		private final BufferedImage icon;
+
+		private ClogSource(String name, BufferedImage icon)
+		{
+			this.name = name;
+			this.icon = icon;
 		}
 	}
 }

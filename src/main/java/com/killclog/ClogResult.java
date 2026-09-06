@@ -36,13 +36,13 @@ public class ClogResult
 	@Getter
 	@Setter
 	private int uniqueTotal = -1;
-	/** True when TempleOSRS returned data that fed this result */
+	/** True when TempleOSRS returned usable collection-log data for this lookup */
 	@Getter
 	private boolean fromTemple;
-	/** True when RuneProfile returned data that fed this result */
+	/** True when RuneProfile returned usable collection-log data for this lookup */
 	@Getter
 	private boolean fromRuneProfile;
-	/** True when the player's own killclog.com sync returned data that fed this result */
+	/** True when the player's own killclog.com sync returned itemized clog data */
 	@Getter
 	private boolean fromKillclog;
 
@@ -107,6 +107,17 @@ public class ClogResult
 		return copy;
 	}
 
+	/**
+	 * Stamp a result at the provider boundary without mutating a cached instance.
+	 * Fanout combines may receive local fallback data in a provider-shaped slot,
+	 * so argument position is never sufficient evidence of provenance.
+	 */
+	ClogResult withSources(boolean temple, boolean runeProfile, boolean killclog)
+	{
+		return copyWithProvenanceAndAccountType(
+			temple, runeProfile, killclog, providerAccountType);
+	}
+
 	public boolean isItemResolved(int id)
 	{
 		return itemNames.containsKey(id);
@@ -144,10 +155,11 @@ public class ClogResult
 		{
 			return null;
 		}
-		// Provenance tracks which providers returned non-null data, stamped
-		// on a copy so the shared cached instances are never mutated.
+		// Provenance comes from provider-stamped inputs, never argument position:
+		// the Temple-shaped leg can legitimately contain unmarked local data.
 		ClogResult loser = winner == temple ? rp : temple;
-		return winner.copyWithProvenance(temple != null, rp != null, false,
+		return winner.copyWithProvenance(sourceTemple(temple, rp),
+			sourceRuneProfile(temple, rp), sourceKillclog(temple, rp),
 			loser != null ? loser.providerAccountType : null);
 	}
 
@@ -170,12 +182,16 @@ public class ClogResult
 			// Copied even though the composed caller hands us pickFreshest's
 			// own copy: this method must be safe on cached instances too.
 			return provider.copyWithProvenance(
-				provider.fromTemple, provider.fromRuneProfile, false, null);
+				provider.fromTemple, provider.fromRuneProfile, provider.fromKillclog, null);
 		}
 		if (provider == null)
 		{
-			return killclog.copyWithProvenance(false, false, true, null);
+			return killclog.copyWithProvenance(
+				killclog.fromTemple, killclog.fromRuneProfile, killclog.fromKillclog, null);
 		}
+		boolean templeSource = sourceTemple(provider, killclog);
+		boolean runeProfileSource = sourceRuneProfile(provider, killclog);
+		boolean killclogSource = sourceKillclog(provider, killclog);
 		// The coverage race compares the same metric on both sides: distinct
 		// itemized coverage. The varp counter describes the ACCOUNT, not the
 		// payload - a six-item partial sync still carries the account's full
@@ -184,14 +200,29 @@ public class ClogResult
 		if (coverageCount(killclog) >= coverageCount(provider))
 		{
 			return killclog.copyWithProvenance(
-				provider.fromTemple, provider.fromRuneProfile, true,
+				templeSource, runeProfileSource, killclogSource,
 				provider.providerAccountType);
 		}
 		AccountType firstPartyType = killclog.providerAccountType;
 		AccountType accountType = firstPartyType != null && firstPartyType.isGroupIronman()
 			? firstPartyType : provider.providerAccountType;
 		return provider.copyWithProvenanceAndAccountType(
-			provider.fromTemple, provider.fromRuneProfile, true, accountType);
+			templeSource, runeProfileSource, killclogSource, accountType);
+	}
+
+	private static boolean sourceTemple(ClogResult first, ClogResult second)
+	{
+		return first != null && first.fromTemple || second != null && second.fromTemple;
+	}
+
+	private static boolean sourceRuneProfile(ClogResult first, ClogResult second)
+	{
+		return first != null && first.fromRuneProfile || second != null && second.fromRuneProfile;
+	}
+
+	private static boolean sourceKillclog(ClogResult first, ClogResult second)
+	{
+		return first != null && first.fromKillclog || second != null && second.fromKillclog;
 	}
 
 	/** Distinct itemized coverage, deliberately ignoring the varp counter. */

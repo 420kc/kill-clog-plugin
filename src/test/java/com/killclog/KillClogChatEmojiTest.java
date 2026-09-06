@@ -73,6 +73,23 @@ public class KillClogChatEmojiTest
 	}
 
 	@Test
+	public void testProviderSourceIconsLoadOnTheSharedCanvas()
+	{
+		BufferedImage killClog = KillClogIcons.killClogSourceIcon(13);
+		BufferedImage temple = KillClogIcons.templeSourceIcon(13);
+		BufferedImage runeProfile = KillClogIcons.runeProfileSourceIcon(13);
+
+		for (BufferedImage icon : new BufferedImage[]{killClog, temple, runeProfile})
+		{
+			assertNotNull(icon);
+			assertEquals(13, icon.getWidth());
+			assertEquals(13, icon.getHeight());
+		}
+		assertNotNull(KillClogIcons.class.getResourceAsStream(
+			"/com/killclog/THIRD_PARTY_NOTICES.txt"));
+	}
+
+	@Test
 	public void testKillClogIconUsesSmallerInlineCanvas()
 	{
 		BufferedImage icon = new BufferedImage(17, 16, BufferedImage.TYPE_INT_ARGB);

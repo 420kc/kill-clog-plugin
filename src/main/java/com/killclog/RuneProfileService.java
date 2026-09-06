@@ -136,10 +136,7 @@ public class RuneProfileService
 	/** Record a success -- resets the breaker and cooldown escalation tier. */
 	private synchronized void recordBreakerSuccess()
 	{
-		if (breakerTrippedAt > 0 || breakerCooldownMs > BREAKER_COOLDOWN_MS)
-		{
-			resetBreaker();
-		}
+		resetBreaker();
 	}
 
 	/** Hard reset: clear failure ring, un-trip, reset cooldown to base tier. */
@@ -465,7 +462,20 @@ public class RuneProfileService
 				}
 				RuneProfileSummary summary = freshSummary(key);
 				AccountType accountType = summary != null ? summary.accountType : null;
-				ClogResult result = parseCollectionLog(playerName, resp.body, accountType);
+				ClogParseOutcome parsed = parseCollectionLogOutcome(playerName, resp.body, accountType);
+				if (parsed.state == ClogParseState.NOT_SYNCED)
+				{
+					// RuneProfile can return a complete all-zero catalog instead of 404
+					// when no player snapshot exists. This is a healthy negative result,
+					// and it must replace any stale success rather than revive it.
+					clogCache.remove(key);
+					clogFetchTimes.remove(key);
+					clogFailures.remove(key);
+					clogNotFoundTimes.put(key, System.currentTimeMillis());
+					recordBreakerSuccess();
+					return null;
+				}
+				ClogResult result = parsed.result;
 				if (result == null)
 				{
 					clogFailures.put(key, System.currentTimeMillis());
@@ -514,12 +524,20 @@ public class RuneProfileService
 	@Nullable
 	ClogResult parseCollectionLog(String playerName, String json, @Nullable AccountType providerAccountType)
 	{
+		return parseCollectionLogOutcome(playerName, json, providerAccountType).result;
+	}
+
+	private ClogParseOutcome parseCollectionLogOutcome(String playerName, String json,
+		@Nullable AccountType providerAccountType)
+	{
 		try
 		{
 			JsonObject root = gson.fromJson(json, JsonObject.class);
-			if (root == null || !root.has("tabs"))
+			if (root == null || !root.has("tabs")
+				|| !root.has("obtained") || root.get("obtained").isJsonNull()
+				|| !root.has("total") || root.get("total").isJsonNull())
 			{
-				return null;
+				return ClogParseOutcome.invalid();
 			}
 
 			int rootObtained = intField(root, "obtained");
@@ -527,12 +545,13 @@ public class RuneProfileService
 
 			if (!root.get("tabs").isJsonArray())
 			{
-				return null;
+				return ClogParseOutcome.invalid();
 			}
 			JsonArray tabs = root.getAsJsonArray("tabs");
 			Map<String, List<ClogResult.ClogItem>> obtainedItems = new HashMap<>();
 			Map<String, List<Integer>> categoryItems = new HashMap<>();
 			Map<Integer, String> itemNames = new HashMap<>();
+			int parsedItemCount = 0;
 
 			for (JsonElement tabEl : tabs)
 			{
@@ -577,6 +596,12 @@ public class RuneProfileService
 							continue;
 						}
 						JsonObject item = itemEl.getAsJsonObject();
+						if (!item.has("id") || item.get("id").isJsonNull()
+							|| !item.has("quantity") || item.get("quantity").isJsonNull())
+						{
+							continue;
+						}
+						parsedItemCount++;
 						int id = intField(item, "id");
 						int qty = intField(item, "quantity");
 						String name = item.has("name") && !item.get("name").isJsonNull()
@@ -601,9 +626,16 @@ public class RuneProfileService
 				}
 			}
 
-			if (categoryItems.isEmpty())
+			if (categoryItems.isEmpty() || parsedItemCount == 0)
 			{
-				return null;
+				return ClogParseOutcome.invalid();
+			}
+
+			if (obtainedItems.isEmpty())
+			{
+				return rootObtained == 0
+					? ClogParseOutcome.notSynced()
+					: ClogParseOutcome.invalid();
 			}
 
 			ClogResult result = new ClogResult(
@@ -613,15 +645,49 @@ public class RuneProfileService
 				itemNames,
 				null,   // no lastChanged from RuneProfile clog endpoint
 				providerAccountType
-			);
+			).withSources(false, true, false);
 			result.setUniqueObtained(rootObtained);
 			result.setUniqueTotal(rootTotal);
-			return result;
+			return ClogParseOutcome.data(result);
 		}
 		catch (Exception e)
 		{
 			log.debug("Failed to parse RuneProfile collection log: {}", e.getMessage());
-			return null;
+			return ClogParseOutcome.invalid();
+		}
+	}
+
+	private enum ClogParseState
+	{
+		DATA,
+		NOT_SYNCED,
+		INVALID
+	}
+
+	private static final class ClogParseOutcome
+	{
+		private final ClogParseState state;
+		@Nullable private final ClogResult result;
+
+		private ClogParseOutcome(ClogParseState state, @Nullable ClogResult result)
+		{
+			this.state = state;
+			this.result = result;
+		}
+
+		private static ClogParseOutcome data(ClogResult result)
+		{
+			return new ClogParseOutcome(ClogParseState.DATA, result);
+		}
+
+		private static ClogParseOutcome notSynced()
+		{
+			return new ClogParseOutcome(ClogParseState.NOT_SYNCED, null);
+		}
+
+		private static ClogParseOutcome invalid()
+		{
+			return new ClogParseOutcome(ClogParseState.INVALID, null);
 		}
 	}
 

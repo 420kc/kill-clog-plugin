@@ -5,11 +5,46 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import javax.swing.JPanel;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
 public class KillClogPanelTest
 {
+	@Test
+	public void testStatusRowReservesItsHeight()
+	{
+		JPanel row = new JPanel();
+		KillClogPanel.reserveStatusRowHeight(row, 12);
+		assertEquals(16, row.getMinimumSize().height);
+		assertEquals(16, row.getPreferredSize().height);
+		assertEquals(16, row.getMaximumSize().height);
+
+		KillClogPanel.reserveStatusRowHeight(row, 20);
+		assertEquals(22, row.getMinimumSize().height);
+		assertEquals(22, row.getPreferredSize().height);
+		assertEquals(22, row.getMaximumSize().height);
+	}
+
+	@Test
+	public void testSyncSuccessOnlyClearsSyncOwnedStatus()
+	{
+		assertTrue(KillClogPanel.isSyncOwnedStatus("sync to killclog.com"));
+		assertTrue(KillClogPanel.isSyncOwnedStatus("syncing..."));
+		assertTrue(KillClogPanel.isSyncOwnedStatus("retrying..."));
+		assertTrue(KillClogPanel.isSyncOwnedStatus("sync failed"));
+		assertFalse(KillClogPanel.isSyncOwnedStatus("synced!"));
+		assertFalse(KillClogPanel.isSyncOwnedStatus(KillClogPlugin.CHARACTER_RENDERING_STATUS));
+		assertFalse(KillClogPanel.isSyncOwnedStatus("player not found"));
+
+		assertTrue(KillClogPanel.canFlashSyncSuccess(" "));
+		assertTrue(KillClogPanel.canFlashSyncSuccess("syncing..."));
+		assertTrue(KillClogPanel.canFlashSyncSuccess("sync to killclog.com"));
+		assertFalse(KillClogPanel.canFlashSyncSuccess("publish character"));
+		assertFalse(KillClogPanel.canFlashSyncSuccess(KillClogPlugin.CHARACTER_RENDERING_STATUS));
+		assertFalse(KillClogPanel.canFlashSyncSuccess("player not found"));
+	}
+
 	@Test
 	public void testClogTierBelowBronze()
 	{
