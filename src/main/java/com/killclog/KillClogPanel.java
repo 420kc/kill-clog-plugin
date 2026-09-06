@@ -190,6 +190,7 @@ public class KillClogPanel extends PluginPanel
 	private final TooltipController tooltipController;
 	private final LookupSession lookupSession;
 	private final ComparisonController comparison;
+	private final RankSelector rankSelector;
 	private final Cells cells;
 
 	// Comparison mode widgets (state fields all live on the controller)
@@ -240,6 +241,8 @@ public class KillClogPanel extends PluginPanel
 		this.comparison = new ComparisonController(hiscoreService, clogService, runeProfileService,
 			killclogService, lookupSession, config, tooltipController, tooltipDataBuilder, this);
 		this.comparison.setRenderTarget(this);
+		this.rankSelector = new RankSelector(hiscoreService::lookupRanks, this::refreshRankDisplay);
+		this.lookupSession.setRankView(rankSelector::view);
 		this.comparison.setVirtualTotalLevel(
 			() -> ClogHelper.virtualTotalLevelEnabled(configManager));
 		this.skillCellGrid = new SkillCellGrid(skillIconManager, tooltipController, comparison,
@@ -342,6 +345,8 @@ public class KillClogPanel extends PluginPanel
 		wireFourTwentyEasterEgg(cells.getBossLabel(HiscoreSkill.THERMONUCLEAR_SMOKE_DEVIL));
 
 		// Compare entry controls live in the search row.
+		getWrappedPanel().add(rankSelector, BorderLayout.SOUTH);
+		rankSelector.setVisible(config.showLeaderboardSelector());
 
 		JScrollPane sp = getScrollPane();
 		if (sp != null)
@@ -820,6 +825,7 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void onComparisonExit()
 	{
+		updateRankPlayers();
 		searchRowController.onComparisonExit();
 		compareClogTotals.setVisible(false);
 		setSearchStatus(" ", TEXT_DIM);
@@ -833,6 +839,8 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void onSwapToRedPlayer(String newPrimaryRsn)
 	{
+		rankSelector.reset();
+		updateRankPlayers();
 		rsn = newPrimaryRsn;
 		HiscoreResult swapHiscore = lookupSession.getHiscoreResult();
 		ClogResult swapClog = lookupSession.getClogResult();
@@ -873,6 +881,7 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void onComparisonEnter(String redRsn)
 	{
+		updateRankPlayers();
 		searchRowController.onComparisonEnter();
 		applyBossViewStyle();
 		setSearchStatus(" ", TEXT_DIM);
@@ -1630,6 +1639,7 @@ public class KillClogPanel extends PluginPanel
 	private void renderHiscoreResult(HiscoreResult result, String player,
 		boolean isSelf, AccountType knownType)
 	{
+		updateRankPlayers();
 		setSearchStatus(" ", TEXT_DIM);
 		playerName.setText(rsn != null ? rsn : player);
 		playerName.setForeground(getInfoColor());
@@ -1878,6 +1888,10 @@ public class KillClogPanel extends PluginPanel
 	{
 		switch (key)
 		{
+			case "showLeaderboardSelector":
+				updateRankPlayers();
+				getWrappedPanel().revalidate();
+				break;
 			case "enableComparison":
 				searchRowController.setComparisonEnabled(config.enableComparison());
 				break;
@@ -1940,6 +1954,7 @@ public class KillClogPanel extends PluginPanel
 	/** Safety net - clears transient tooltip state if the plugin is disabled. */
 	public void shutdown()
 	{
+		rankSelector.reset();
 		stopFirstPartyStatusTimer();
 		syncArrowEnabled = false;
 		syncArrowHasData = false;
@@ -2142,6 +2157,7 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void onLookupStart(String player, boolean isSelf, boolean isFirstSelfGreeting)
 	{
+		rankSelector.reset();
 		if (isSelf)
 		{
 			setSearchStatus(selfSearchMessage(player), SearchMessages.SELF_COLOR);
@@ -2272,9 +2288,27 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void onCompareDataReady()
 	{
+		updateRankPlayers();
 		comparison.updateInfoBar();
 		updateClogTotalsBar();
 		refreshSkillDisplay();
+	}
+
+	private void updateRankPlayers()
+	{
+		rankSelector.update(config.showLeaderboardSelector(), lookupSession.getCurrentLookupRsn(),
+			lookupSession.getNativeHiscoreResult(), comparison.getCompareRsn(),
+			comparison.isComparisonMode() ? comparison.getNativeCompareHiscoreResult() : null);
+	}
+
+	private void refreshRankDisplay()
+	{
+		tooltipController.hidePinnedTooltip();
+		comparison.rebuildTooltipData();
+		toggleHighlighter(config.completionistHighlighter());
+		cells.rebuildPrimaryTooltips(localRsn);
+		getWrappedPanel().revalidate();
+		getWrappedPanel().repaint();
 	}
 
 	@Override

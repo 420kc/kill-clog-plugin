@@ -1,15 +1,13 @@
 # Kill Clog Next Release
 
-Target version: `2.3.1`
+Target version: `2.3.2` (local candidate)
 
 ## Release Notes
 
-Kill Clog 2.3.1
+Kill Clog 2.3.2
 
-* treats RuneProfile's catalog-shaped all-zero response as unsynced while retaining account identity
-* prevents fast RuneProfile responses from leaving a stuck lookup
-* shows overall rank beside total XP in Skill Summary, matching Player Summary
-* reserves status-row spacing and flashes the chalice green for manual sync success
-* keeps automatic sync silent by default; manual sync and character uploads show progress and failure text with an icon flash on success
-* groups popup activation, appearance, links, and stat lines under Modal Appearance
-* adds a centered Sources footer that shows only verified synced collection-log sources
+* adds an optional leaderboard selector under Lookup, with Normal, Ironman, Hardcore, Ultimate, Skiller, and Pure icons below the grid
+* changes ranks without changing detected account identity, levels, XP, KC, Collection Logs, or personal bests
+* uses the selected leaderboard for both players in comparison; new primary lookups return to automatic selection
+* clears unavailable ranks and labels loading, unavailable, or historical results on the selected icon's hover text
+* reuses recent hiscores responses and fetches other leaderboard ranks on demand

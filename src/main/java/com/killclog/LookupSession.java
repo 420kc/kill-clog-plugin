@@ -8,6 +8,7 @@
  */
 package com.killclog;
 
+import java.util.function.UnaryOperator;
 import javax.annotation.Nullable;
 import javax.swing.Timer;
 
@@ -76,6 +77,7 @@ public class LookupSession
 	@Nullable private CombatAchievementResult caResult;
 	@Nullable private String currentLookupRsn;
 	@Nullable private String clogLastChanged;
+	private UnaryOperator<HiscoreResult> rankView = UnaryOperator.identity();
 
 	public LookupSession(HiscoreService hiscoreService, ClogService clogService,
 		RuneProfileService runeProfileService, KillclogService killclogService,
@@ -241,7 +243,22 @@ public class LookupSession
 	@Nullable
 	public HiscoreResult getHiscoreResult()
 	{
+		return rankView(hiscoreResult);
+	}
+
+	HiscoreResult getNativeHiscoreResult()
+	{
 		return hiscoreResult;
+	}
+
+	void setRankView(UnaryOperator<HiscoreResult> rankView)
+	{
+		this.rankView = rankView;
+	}
+
+	HiscoreResult rankView(HiscoreResult result)
+	{
+		return result != null ? rankView.apply(result) : null;
 	}
 
 	@Nullable

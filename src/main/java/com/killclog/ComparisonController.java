@@ -232,7 +232,7 @@ public class ComparisonController
 		@Nullable ClogResult catalog)
 	{
 		String category = ClogService.bossToCategory(hiscoreName);
-		int rank = compareHiscoreResult.getRank(hiscoreName);
+		int rank = getCompareHiscoreResult().getRank(hiscoreName);
 		// The red card is an ordinary solo card, so it carries the compared
 		// player's KC the same way the blue one does. No red PB source exists.
 		TooltipData data = tooltipDataBuilder.buildTooltipData(displayName, category, rank,
@@ -319,7 +319,7 @@ public class ComparisonController
 				setCompareStatus(SearchMessages.COMPARE_MIRROR, COMPARE_DIM, blueName, redPlayer);
 			}
 			fanout.settle();
-			compareHiscoreResult = lookupSession.getHiscoreResult();
+			compareHiscoreResult = lookupSession.getNativeHiscoreResult();
 			compareClogResult = lookupSession.getClogResult();
 			compareCaResult = lookupSession.getCaResult();
 			if (renderTarget != null)
@@ -414,6 +414,11 @@ public class ComparisonController
 
 	@Nullable
 	public HiscoreResult getCompareHiscoreResult()
+	{
+		return lookupSession.rankView(compareHiscoreResult);
+	}
+
+	HiscoreResult getNativeCompareHiscoreResult()
 	{
 		return compareHiscoreResult;
 	}
@@ -696,7 +701,7 @@ public class ComparisonController
 			return;
 		}
 		HiscoreResult blueHiscore = lookupSession.getHiscoreResult();
-		HiscoreResult redHiscore = compareHiscoreResult;
+		HiscoreResult redHiscore = getCompareHiscoreResult();
 
 		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getBossLabels().entrySet())
 		{
@@ -767,7 +772,7 @@ public class ComparisonController
 			return null;
 		}
 		int rank = compareHiscoreResult != null
-			? compareHiscoreResult.getActivityRank(tier.getName()) : -1;
+			? getCompareHiscoreResult().getActivityRank(tier.getName()) : -1;
 		TooltipData data = compareClogResult != null
 			? tooltipDataBuilder.buildTooltipData(Cells.capitalizeTier(tier),
 				category, rank, compareClogResult) : null;

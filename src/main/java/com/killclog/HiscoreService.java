@@ -1,5 +1,7 @@
 package com.killclog;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -140,6 +142,47 @@ public class HiscoreService
 	}
 
 	private final ConcurrentHashMap<String, CachedResult> cache = new ConcurrentHashMap<>();
+	private final Cache<String, HiscoreResult> rankTables = CacheBuilder.newBuilder()
+		.maximumSize(256).expireAfterWrite(CACHE_TTL_MS, TimeUnit.MILLISECONDS).build();
+	private final ConcurrentHashMap<String, CompletableFuture<HiscoreResult>> rankRequests = new ConcurrentHashMap<>();
+
+	CompletableFuture<HiscoreResult> lookupRanks(String player, RankLeaderboard table)
+	{
+		String encoded = URLEncoder.encode(player.toLowerCase(Locale.ROOT), StandardCharsets.UTF_8);
+		String key = rankKey(table.endpoint, encoded);
+		HiscoreResult cached = rankTables.getIfPresent(key);
+		if (cached != null) return CompletableFuture.completedFuture(cached);
+		CompletableFuture<HiscoreResult> request = rankRequests.computeIfAbsent(key,
+			ignored -> fetchAsync(table.endpoint, encoded).thenApply(body -> rankTables.getIfPresent(key))
+				.completeOnTimeout(null, 12, TimeUnit.SECONDS).exceptionally(ex -> null));
+		request.whenComplete((result, error) -> rankRequests.remove(key, request));
+		return request;
+	}
+
+	private static String rankKey(String endpoint, String encodedPlayer)
+	{
+		return endpoint + ":" + encodedPlayer.toLowerCase(Locale.ROOT);
+	}
+
+	private String rememberRanks(String endpoint, String encodedPlayer, String body)
+	{
+		if (body != null)
+		{
+			try
+			{
+				HiscoreResult result = parseHiscoreBody(body, AccountType.REGULAR);
+				if (result != null && result.getTotalLevel() > 0 && !result.isBossSectionShifted())
+				{
+					rankTables.put(rankKey(endpoint, encodedPlayer), result);
+				}
+			}
+			catch (RuntimeException ignored)
+			{
+				// An unusable response must not poison either the lookup or rank cache.
+			}
+		}
+		return body;
+	}
 
 	// Jagex republishes a player's hiscore row when they log out or hop
 	// worlds, so a hop makes any cached self-row instantly outdated. The
@@ -744,6 +787,6 @@ public class HiscoreService
 				log.debug("JSON hiscores unusable (code {}), falling back to CSV", r.code);
 				return HttpUtil.httpGet(httpClient, BASE_URL + hiscoreKey + CSV_SUFFIX + encodedPlayer)
 					.thenApply(c -> c.body);
-			});
+			}).thenApply(body -> rememberRanks(hiscoreKey, encodedPlayer, body));
 	}
 }

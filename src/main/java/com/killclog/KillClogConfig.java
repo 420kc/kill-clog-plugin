@@ -65,6 +65,18 @@ public interface KillClogConfig extends Config
 		return MenuLabel.KILL_CLOG;
 	}
 
+	@ConfigItem(
+		keyName = "showLeaderboardSelector",
+		name = "Show Leaderboard Selector",
+		description = "Show hiscores leaderboard icons below the panel. Changes ranks only; account detection stays automatic",
+		section = lookupSection,
+		position = 4
+	)
+	default boolean showLeaderboardSelector()
+	{
+		return false;
+	}
+
 	@ConfigSection(
 		name = "Menu location",
 		description = "Which right-click menus show the lookup option",

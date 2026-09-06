@@ -42,6 +42,7 @@ public class KillClogConfigStructureTest
 		expected.add("skillLevelColor");
 		expected.add("skillColorMode");
 		expected.add("silentAutomaticSync");
+		expected.add("showLeaderboardSelector");
 		assertEquals(expected, keys);
 	}
 
@@ -85,6 +86,18 @@ public class KillClogConfigStructureTest
 		ConfigItem item = KillClogConfig.class.getDeclaredMethod("enableComparison")
 			.getAnnotation(ConfigItem.class);
 		assertEquals(KillClogConfig.lookupSection, item.section());
+	}
+
+	@Test
+	public void leaderboardSelectorIsOptionalAndUnderLookup() throws Exception
+	{
+		assertFalse(new KillClogConfig()
+		{
+		}.showLeaderboardSelector());
+		ConfigItem item = KillClogConfig.class.getDeclaredMethod("showLeaderboardSelector")
+			.getAnnotation(ConfigItem.class);
+		assertEquals(KillClogConfig.lookupSection, item.section());
+		assertEquals("Show Leaderboard Selector", item.name());
 	}
 
 	@Test

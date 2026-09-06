@@ -87,6 +87,18 @@ public class HiscoreResult
 		return bossKills.getOrDefault(bossName, -1);
 	}
 
+	/** A display-only projection. A missing table blanks ranks, never stats or identity. */
+	HiscoreResult withRanks(HiscoreResult ranks)
+	{
+		HiscoreResult view = new HiscoreResult(accountType, hiscoreTable, bossKills,
+			ranks != null ? ranks.bossRanks : Collections.emptyMap(), activityScores,
+			ranks != null ? ranks.activityRanks : Collections.emptyMap(), skillLevels,
+			ranks != null ? ranks.skillRanks : Collections.emptyMap(), skillXps,
+			totalLevel, totalXp, combatLevel, ranks != null ? ranks.overallRank : -1);
+		view.bossSectionShifted = bossSectionShifted;
+		return view;
+	}
+
 	public int getRank(String bossName)
 	{
 		return bossRanks.getOrDefault(bossName, -1);
