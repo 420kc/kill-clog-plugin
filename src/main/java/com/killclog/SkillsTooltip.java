@@ -20,7 +20,7 @@ import net.runelite.client.ui.FontManager;
 
 /**
  * 3x8 skill grid tooltip for the total level cell.
- * The XP/Rank readouts sit directly under the title. XP defaults to total XP,
+ * The XP/Rank readouts default to total XP and overall rank under the title,
  * then both rows switch to the hovered skill. Matches the in-game skills tab
  * layout with icon + level per cell.
  */
@@ -127,7 +127,7 @@ public class SkillsTooltip extends TitleTooltip
 
 		paintedBodyStartY = startY;
 
-		// The readouts stay above the grid. XP defaults to total XP, then both
+		// The readouts default to total XP and overall rank, then both
 		// values switch to the hovered skill without moving the grid.
 		paintStatsRows(g2, fm, inset, startY);
 		int gridTop = startY + 2 * LINE_HEIGHT + GRID_GAP;
@@ -173,7 +173,7 @@ public class SkillsTooltip extends TitleTooltip
 	{
 		String skillName = hoveredSkill != null ? hoveredSkill.getName().toLowerCase() : null;
 		long xp = displayedXp(skillName);
-		int rank = skillName != null && result != null ? result.getSkillRank(skillName) : -1;
+		int rank = displayedRank();
 
 		int xpY = y + fm.getAscent();
 		g2.setColor(OSRS_ORANGE);
@@ -195,6 +195,12 @@ public class SkillsTooltip extends TitleTooltip
 		long xp = displayedXp(hoveredSkill != null
 			? hoveredSkill.getName().toLowerCase() : null);
 		return xp >= 0 ? String.format(Locale.US, "%,d", xp) : "--";
+	}
+
+	int displayedRank()
+	{
+		return result == null ? -1 : hoveredSkill != null
+			? result.getSkillRank(hoveredSkill.getName().toLowerCase()) : result.getOverallRank();
 	}
 
 	private long displayedXp(String skillName)
