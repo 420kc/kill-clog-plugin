@@ -76,6 +76,17 @@ final class ClogHelper
 
 	// Clog data helpers.
 
+	/** Missing entries on a loaded leaderboard are unranked, not failed lookups. */
+	static void configureRank(TitleTooltip tip, TooltipData data, HiscoreResult result, boolean showRank)
+	{
+		if (showRank && result != null && result.isRankDataAvailable()
+			&& data != null && data.rankTracked
+			&& (data.obtainedCount >= 0 || data.statValue >= 0 || data.rank > 0))
+		{
+			tip.setRank(data.rank);
+		}
+	}
+
 	static Set<Integer> getObtainedIds(String category, ClogResult clogResult)
 	{
 		if (clogResult == null) return new HashSet<>();

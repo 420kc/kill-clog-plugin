@@ -41,6 +41,7 @@ COOKING	category	Gnome Restaurant	gnome_restaurant
 COOKING	category	Trouble Brewing	trouble_brewing
 PRAYER	category	Shades of Mort'ton	shades_of_mortton
 CRAFTING	items	Rarities	34024,19707
+FIREMAKING	items	Pets	20693
 FIREMAKING	category	Shades of Mort'ton	shades_of_mortton
 FIREMAKING	category	Wintertodt	wintertodt
 MAGIC	category	Magic Training Arena	magic_training_arena
@@ -48,7 +49,7 @@ FLETCHING	category	Vale Totems	vale_totems
 WOODCUTTING	items	Pets	13322
 WOODCUTTING	items	Evil Chicken Outfit	20439,20436,20442,20433
 WOODCUTTING	category	Forestry	forestry
-RUNECRAFT	items	Pets	20665
+RUNECRAFT	items	Pets	20665,26901
 RUNECRAFT	category	Guardians of the Rift	guardians_of_the_rift
 SLAYER	category		slayer
 FARMING	items	Pets	20661

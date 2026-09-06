@@ -85,6 +85,7 @@ public class SkillClogCatalogTest
 			"items|Rarities|34024,19707"),
 			SkillClogSection.specSignature(Skill.CRAFTING));
 		assertEquals(Arrays.asList(
+			"items|Pets|20693",
 			"category|Shades of Mort'ton|shades_of_mortton",
 			"category|Wintertodt|wintertodt"),
 			SkillClogSection.specSignature(Skill.FIREMAKING));
@@ -100,7 +101,7 @@ public class SkillClogCatalogTest
 			"category|Forestry|forestry"),
 			SkillClogSection.specSignature(Skill.WOODCUTTING));
 		assertEquals(Arrays.asList(
-			"items|Pets|20665",
+			"items|Pets|20665,26901",
 			"category|Guardians of the Rift|" + PanelData.GOTR_CATEGORY),
 			SkillClogSection.specSignature(Skill.RUNECRAFT));
 		assertEquals(Arrays.asList(

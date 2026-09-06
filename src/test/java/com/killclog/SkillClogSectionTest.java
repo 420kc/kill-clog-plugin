@@ -164,7 +164,7 @@ public class SkillClogSectionTest
 		assertHeadings(catalog, Skill.CRAFTING, "Rarities");
 		assertEquals(CRAFTING_RARITY_IDS, SkillClogSection.forSkill(
 			Skill.CRAFTING, null, null, catalog).get(0).itemIds());
-		assertHeadings(catalog, Skill.FIREMAKING, "Shades of Mort'ton|Wintertodt");
+		assertHeadings(catalog, Skill.FIREMAKING, "Pets|Shades of Mort'ton|Wintertodt");
 		assertHeadings(catalog, Skill.MAGIC, "Magic Training Arena");
 		assertHeadings(catalog, Skill.FLETCHING, "Vale Totems");
 		assertHeadings(catalog, Skill.WOODCUTTING, "Pets|Evil Chicken Outfit|Forestry");
@@ -261,7 +261,7 @@ public class SkillClogSectionTest
 		assertEquals("Flamtaer bag", prayer.itemNames().get(25630));
 		List<SkillClogSection> firemaking = SkillClogSection.forSkill(
 			Skill.FIREMAKING, player, null, catalog);
-		assertEquals(14, uniqueItemCount(firemaking));
+		assertEquals(15, uniqueItemCount(firemaking)); // Shades plus the explicit Phoenix slot.
 	}
 
 	@Test
@@ -333,6 +333,36 @@ public class SkillClogSectionTest
 		assertTotal(catalog, Skill.CONSTRUCTION, 8);
 		assertTotal(catalog, Skill.HUNTER, 19);
 		assertTotal(catalog, Skill.SAILING, 79);
+	}
+
+	@Test
+	public void activityPetsAppearInBothSectionsButCountOncePerSkill()
+	{
+		ClogResult catalog = mappedCatalog();
+		Map<String, List<ClogResult.ClogItem>> obtained = new HashMap<>();
+		obtained.put("guardians_of_the_rift", Arrays.asList(new ClogResult.ClogItem(26901, 2, null)));
+		obtained.put("wintertodt", Arrays.asList(new ClogResult.ClogItem(20693, 3, null)));
+		obtained.put("all_pets", Arrays.asList(new ClogResult.ClogItem(20665, 1, null),
+			new ClogResult.ClogItem(26901, 2, null), new ClogResult.ClogItem(20693, 3, null)));
+		ClogResult player = new ClogResult("Pets", obtained, catalog.getCategoryItems(),
+			Collections.emptyMap(), null, null);
+		for (Skill skill : Arrays.asList(Skill.RUNECRAFT, Skill.FIREMAKING))
+		{
+			boolean runecraft = skill == Skill.RUNECRAFT;
+			int count = runecraft ? 2 : 1;
+			int pet = runecraft ? 26901 : 20693;
+			List<SkillClogSection> sections = SkillClogSection.forSkill(skill, player, player, catalog);
+			assertEquals("Pets", sections.get(0).heading());
+			assertEquals(count, sections.get(0).primary().obtainedCount());
+			assertEquals(count, sections.get(0).itemIds().size());
+			assertTrue(sections.get(sections.size() - 1).itemIds().contains(pet));
+			for (boolean compared : new boolean[]{false, true})
+			{
+				SkillClogSection.Progress progress = SkillClogSection.combinedProgress(sections, compared);
+				assertEquals(count, progress.obtained());
+				assertEquals(runecraft ? 18 : 24, progress.total());
+			}
+		}
 	}
 
 	@Test
@@ -499,7 +529,7 @@ public class SkillClogSectionTest
 		categories.put("forestry", ids(109_000, 23));
 		categories.put("giants_foundry", ids(110_000, 9));
 		categories.put("gnome_restaurant", ids(111_000, 4));
-		categories.put("guardians_of_the_rift", ids(112_000, 17));
+		categories.put("guardians_of_the_rift", concat(Arrays.asList(26901), ids(112_000, 16)));
 		categories.put("hallowed_sepulchre", ids(113_000, 16));
 		categories.put("hespori", ids(114_000, 4));
 		categories.put("hunter_guild", ids(115_000, 6));
@@ -523,7 +553,7 @@ public class SkillClogSectionTest
 		categories.put("trouble_brewing", ids(132_000, 30));
 		categories.put("vale_totems", ids(133_000, 4));
 		categories.put("volcanic_mine", concat(ids(134_000, 4), prospector));
-		categories.put("wintertodt", ids(135_000, 10));
+		categories.put("wintertodt", concat(Arrays.asList(20693), ids(135_000, 9)));
 		categories.put("zalcano", ids(136_000, 4));
 		return new ClogResult("Catalog", Collections.emptyMap(), categories,
 			Collections.emptyMap(), null, null);

@@ -60,7 +60,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 		mimicKc = hiscoreResult.getKc("Mimic");
 		mimicRank = hiscoreResult.getRank("Mimic");
 
-		if (showRank)
+		if (showRank && hiscoreResult.isRankDataAvailable())
 		{
 			setRank(ranks[0]);
 		}

@@ -185,19 +185,21 @@ public class SkillTooltip extends TitleTooltip
 		private final int rank;
 		private final long xpToLevel;
 		private final boolean maxed;
+		private final boolean rankAvailable;
 
-		private Stats(int level, long xp, int rank, long xpToLevel, boolean maxed)
+		private Stats(int level, long xp, int rank, long xpToLevel, boolean maxed, boolean rankAvailable)
 		{
 			this.level = level;
 			this.xp = xp;
 			this.rank = rank;
 			this.xpToLevel = xpToLevel;
 			this.maxed = maxed;
+			this.rankAvailable = rankAvailable;
 		}
 
 		static Stats empty()
 		{
-			return new Stats(-1, -1, -1, -1, false);
+			return new Stats(-1, -1, -1, -1, false, false);
 		}
 
 		static Stats from(Skill skill, @Nullable HiscoreResult result, boolean virtualLevels)
@@ -216,7 +218,7 @@ public class SkillTooltip extends TitleTooltip
 			long xpToLevel = level > 0 && xp >= 0 && !maxed
 				? Math.max(0L, (long) Experience.getXpForLevel(level + 1) - xp)
 				: -1;
-			return new Stats(level, xp, rank, xpToLevel, maxed);
+			return new Stats(level, xp, rank, xpToLevel, maxed, result.isRankDataAvailable());
 		}
 
 		String levelText()
@@ -231,7 +233,7 @@ public class SkillTooltip extends TitleTooltip
 
 		String rankText()
 		{
-			return rank > 0 ? format(rank) : "--";
+			return rank > 0 ? format(rank) : rankAvailable ? "Unranked" : "--";
 		}
 
 		String xpToLevelText()

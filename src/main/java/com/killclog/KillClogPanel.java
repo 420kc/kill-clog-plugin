@@ -752,10 +752,6 @@ public class KillClogPanel extends PluginPanel
 			{
 				tip.setInfoLine("PB: ", data.pb, Color.WHITE);
 			}
-			if (data.rankTracked && data.rank > 0 && config.showTooltipRank())
-			{
-				tip.setRank(data.rank);
-			}
 			if (data.allItemIds != null)
 			{
 				tip.setItems(data.totalItems, data.allItemIds, data.obtainedIds,
@@ -763,7 +759,7 @@ public class KillClogPanel extends PluginPanel
 			}
 		}
 		else if (!ClogHelper.configureNotSynced(tip, data, itemManager,
-			config.showTooltipKc(), config.showTooltipRank()))
+			config.showTooltipKc(), false))
 		{
 			tip.setTitle(data != null ? data.name : name);
 			boolean isSelfNoCache = result != null && localRsn != null
@@ -783,6 +779,7 @@ public class KillClogPanel extends PluginPanel
 				tip.setNotice("Loading catalog...");
 			}
 		}
+		ClogHelper.configureRank(tip, data, result, config.showTooltipRank());
 		if (isSolHeredit && ColosseumGlory.isVisible(glory)
 			&& config.showTooltipKc() && (data == null || data.obtainedCount < 0))
 		{
@@ -2097,7 +2094,7 @@ public class KillClogPanel extends PluginPanel
 			int[] totals = ClogHelper.sumClogTotals(clog);
 			tip.setTierData(totals[0], totals[1], iconCache.clogTierImages());
 			tip.setClogSources(clog.isFromTemple(), clog.isFromRuneProfile(), clog.isFromKillclog());
-			if (hiscore != null)
+			if (hiscore != null && hiscore.isRankDataAvailable())
 			{
 				int clogRank = hiscore.getActivityRank("Collections Logged");
 				tip.setRank(clogRank);

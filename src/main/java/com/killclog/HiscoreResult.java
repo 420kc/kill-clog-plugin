@@ -31,6 +31,8 @@ public class HiscoreResult
 	private final int combatLevel;
 	@Getter
 	private final int overallRank;
+	@Getter(AccessLevel.PACKAGE)
+	private boolean rankDataAvailable = true;
 
 	// Set when the hiscore CSV line count no longer matches the known format:
 	// the boss maps were left empty on purpose (positions cannot be trusted).
@@ -96,6 +98,7 @@ public class HiscoreResult
 			ranks != null ? ranks.skillRanks : Collections.emptyMap(), skillXps,
 			totalLevel, totalXp, combatLevel, ranks != null ? ranks.overallRank : -1);
 		view.bossSectionShifted = bossSectionShifted;
+		view.rankDataAvailable = ranks != null && ranks.rankDataAvailable;
 		return view;
 	}
 

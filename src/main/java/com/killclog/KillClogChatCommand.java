@@ -579,23 +579,25 @@ class KillClogChatCommand
 		Map<Integer, Integer> itemQuantities)
 	{
 		ensureIcons(itemIds);
+		chatMessage.getMessageNode().setRuneLiteFormatMessage(
+			formatMessage(header, itemIds, itemQuantities, itemIconIdx));
+		client.refreshChat();
+	}
 
-		StringBuilder sb = new StringBuilder();
-		sb.append(header);
-		if (!itemIds.isEmpty())
+	static String formatMessage(String header, List<Integer> itemIds,
+		Map<Integer, Integer> itemQuantities, Map<Integer, Integer> iconIndices)
+	{
+		StringBuilder sb = new StringBuilder(header);
+		for (Integer id : itemIds)
 		{
-			sb.append(" ");
-			for (Integer id : itemIds)
+			Integer idx = iconIndices.get(id);
+			if (idx != null)
 			{
-				Integer idx = itemIconIdx.get(id);
-				if (idx != null)
-				{
-					sb.append(formatItemIcon(idx, itemQuantities.getOrDefault(id, 1)));
-				}
+				// Native chat wraps on spaces. Keep each sprite and its quantity one word.
+				sb.append(' ').append(formatItemIcon(idx, itemQuantities.getOrDefault(id, 1)));
 			}
 		}
-		chatMessage.getMessageNode().setRuneLiteFormatMessage(sb.toString());
-		client.refreshChat();
+		return sb.toString();
 	}
 
 	/* package */ static String formatItemIcon(int iconIndex, int quantity)

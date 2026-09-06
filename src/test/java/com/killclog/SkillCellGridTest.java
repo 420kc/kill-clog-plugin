@@ -209,7 +209,7 @@ public class SkillCellGridTest
 		SkillTooltip herblore = (SkillTooltip) cells.labels().get(Skill.HERBLORE).createToolTip();
 		assertTrue(runecraft.showsRiftsClosed());
 		assertEquals("34", runecraft.riftsClosedText());
-		assertEquals(" (0/2)", runecraft.getTitleSuffix());
+		assertEquals(" (0/3)", runecraft.getTitleSuffix());
 		assertFalse(herblore.showsRiftsClosed());
 		SkillTooltip withoutRifts = new SkillTooltip();
 		withoutRifts.setData(Skill.RUNECRAFT, blue, false, runecraft.sections(), null);
@@ -331,7 +331,7 @@ public class SkillCellGridTest
 		SkillTooltip fresh = new SkillTooltip();
 		fresh.setData(Skill.HERBLORE, skillHiscores(Skill.HERBLORE, 1, 0, -1), false);
 		assertEquals("0", fresh.stats().xpText());
-		assertEquals("--", fresh.stats().rankText());
+		assertEquals("Unranked", fresh.stats().rankText());
 		assertEquals(format(Experience.getXpForLevel(2)), fresh.stats().xpToLevelText());
 
 		long virtualXp = 32_643_866L;

@@ -74,6 +74,33 @@ public class KillClogChatCommandTest
 	}
 
 	@Test
+	public void longClogsHaveNativeWrapPointsWithoutSplittingDuplicateCounts()
+	{
+		List<Integer> items = new java.util.ArrayList<>();
+		Map<Integer, Integer> icons = new HashMap<>();
+		Map<Integer, Integer> quantities = new HashMap<>();
+		for (int i = 0; i < 134; i++)
+		{
+			items.add(i);
+			icons.put(i, 1000 + i);
+			quantities.put(i, i % 2 == 0 ? 1 : 12345);
+		}
+		String header = "Hard Treasure Trails: 134/134";
+		String message = KillClogChatCommand.formatMessage(header, items, quantities, icons);
+		assertTrue(message.startsWith(header + " "));
+		String[] words = message.substring(header.length() + 1).split(" ");
+		assertEquals(items.size(), words.length);
+		for (int i = 0; i < words.length; i++)
+		{
+			assertEquals("<img=" + (1000 + i) + ">" + (i % 2 == 0 ? "" : "x12345"), words[i]);
+		}
+		assertEquals("Missing: 2/2 <img=10> <img=11>", KillClogChatCommand.formatMessage(
+			"Missing: 2/2", Arrays.asList(1, 2), Collections.emptyMap(), Map.of(1, 10, 2, 11)));
+		assertEquals(header, KillClogChatCommand.formatMessage(header, items, quantities, Collections.emptyMap()));
+		assertEquals(header, KillClogChatCommand.formatMessage(header, Collections.emptyList(), quantities, icons));
+	}
+
+	@Test
 	public void testLogCompatibilityDelegatesToKillClogCommands()
 	{
 		assertEquals("!kclog Vorkath", KillClogChatCommand.toKillClogCommand("!log Vorkath"));

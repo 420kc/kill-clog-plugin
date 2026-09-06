@@ -11,3 +11,6 @@ Kill Clog 2.3.2
 * uses the selected leaderboard for both players in comparison; new primary lookups return to automatic selection
 * clears unavailable ranks and labels loading, unavailable, or historical results on the selected icon's hover text
 * reuses recent hiscores responses and fetches other leaderboard ranks on demand
+* shows Unranked for missing entries on a loaded leaderboard, without treating loading or failed requests as unranked
+* includes Abyssal protector in Runecraft's Pets section and adds Phoenix under Firemaking Pets; shared pets still count once toward each skill total
+* lets long chat clogs wrap between items while keeping duplicate counts with their sprites
