@@ -33,6 +33,8 @@ public class KillClogPanelTest
 		assertTrue(KillClogPanel.isSyncOwnedStatus("syncing..."));
 		assertTrue(KillClogPanel.isSyncOwnedStatus("retrying..."));
 		assertTrue(KillClogPanel.isSyncOwnedStatus("sync failed"));
+		assertTrue(KillClogPanel.isSyncOwnedStatus("sync failed - click to retry"));
+		assertFalse(KillClogPanel.isSyncOwnedStatus("publish failed - click to retry"));
 		assertFalse(KillClogPanel.isSyncOwnedStatus("synced!"));
 		assertFalse(KillClogPanel.isSyncOwnedStatus(KillClogPlugin.CHARACTER_RENDERING_STATUS));
 		assertFalse(KillClogPanel.isSyncOwnedStatus("player not found"));
@@ -40,6 +42,7 @@ public class KillClogPanelTest
 		assertTrue(KillClogPanel.canFlashSyncSuccess(" "));
 		assertTrue(KillClogPanel.canFlashSyncSuccess("syncing..."));
 		assertTrue(KillClogPanel.canFlashSyncSuccess("sync to killclog.com"));
+		assertTrue(KillClogPanel.canFlashSyncSuccess("sync failed - click to retry"));
 		assertFalse(KillClogPanel.canFlashSyncSuccess("publish character"));
 		assertFalse(KillClogPanel.canFlashSyncSuccess(KillClogPlugin.CHARACTER_RENDERING_STATUS));
 		assertFalse(KillClogPanel.canFlashSyncSuccess("player not found"));

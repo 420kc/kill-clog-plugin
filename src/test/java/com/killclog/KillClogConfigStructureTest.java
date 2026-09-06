@@ -41,7 +41,24 @@ public class KillClogConfigStructureTest
 		expected.add("skillDisplay");
 		expected.add("skillLevelColor");
 		expected.add("skillColorMode");
+		expected.add("silentAutomaticSync");
+		expected.add("showManualSyncStatusMessages");
 		assertEquals(expected, keys);
+	}
+
+	@Test
+	public void syncFeedbackDefaultsAreQuietAndLiveUnderKillclog() throws Exception
+	{
+		KillClogConfig defaults = new KillClogConfig()
+		{
+		};
+		assertTrue(defaults.silentAutomaticSync());
+		assertFalse(defaults.showManualSyncStatusMessages());
+		for (String name : Arrays.asList("silentAutomaticSync", "showManualSyncStatusMessages"))
+		{
+			assertEquals(KillClogConfig.killclogSection,
+				KillClogConfig.class.getDeclaredMethod(name).getAnnotation(ConfigItem.class).section());
+		}
 	}
 
 	@Test
@@ -89,8 +106,39 @@ public class KillClogConfigStructureTest
 			.map(ConfigSection::name)
 			.collect(Collectors.toList());
 
-		assertEquals(Arrays.asList("killclog.com", "Tooltips", "Lookup",
+		assertEquals(Arrays.asList("killclog.com", "Modal Appearance", "Collection Log", "Lookup",
 			"Menu location", "Skills", "Chat", "Progress Highlighter"), sectionNames);
+	}
+
+	@Test
+	public void sharedModalControlsAndCollectionLogLinesHaveSeparateSections() throws Exception
+	{
+		assertEquals(Arrays.asList("tooltipMode", "hoverStyle", "wikiItemLinks"),
+			keysInSection(KillClogConfig.modalAppearanceSection));
+		assertEquals(Arrays.asList("showTooltipKc", "showTooltipPb", "showTooltipRank"),
+			keysInSection(KillClogConfig.collectionLogSection));
+		assertEquals("Modal Activation", KillClogConfig.class.getDeclaredMethod("tooltipMode")
+			.getAnnotation(ConfigItem.class).name());
+
+		KillClogConfig defaults = new KillClogConfig()
+		{
+		};
+		assertEquals(TooltipMode.CLICK, defaults.tooltipMode());
+		assertEquals(HoverStyle.OUTLINE, defaults.hoverStyle());
+		assertTrue(defaults.wikiItemLinks());
+		assertTrue(defaults.showTooltipKc());
+		assertTrue(defaults.showTooltipPb());
+		assertTrue(defaults.showTooltipRank());
+	}
+
+	private static List<String> keysInSection(String section)
+	{
+		return Arrays.stream(KillClogConfig.class.getDeclaredMethods())
+			.map(method -> method.getAnnotation(ConfigItem.class))
+			.filter(item -> item != null && section.equals(item.section()))
+			.sorted(Comparator.comparingInt(ConfigItem::position))
+			.map(ConfigItem::keyName)
+			.collect(Collectors.toList());
 	}
 
 	@Test

@@ -244,7 +244,15 @@ public class RuneProfileService
 			return CompletableFuture.completedFuture(cached);
 		}
 
-		return summaryInFlight.computeIfAbsent(key, ignored -> startSummaryLookup(playerName, key));
+		return singleFlightLookup(summaryInFlight, key, () -> startSummaryLookup(playerName, key));
+	}
+
+	static <T> CompletableFuture<T> singleFlightLookup(Map<String, CompletableFuture<T>> flights,
+		String key, java.util.function.Supplier<CompletableFuture<T>> start)
+	{
+		CompletableFuture<T> flight = flights.computeIfAbsent(key, ignored -> start.get());
+		// Even an immediate response must be registered before cleanup runs.
+		return flight.whenComplete((result, error) -> flights.remove(key, flight));
 	}
 
 	private CompletableFuture<RuneProfileSummary> startSummaryLookup(String playerName, String key)
@@ -255,35 +263,28 @@ public class RuneProfileService
 
 		return httpGet(url).thenApply(resp ->
 		{
-			try
+			if (resp.code == 404)
 			{
-				if (resp.code == 404)
-				{
-					summaryNotFoundTimes.put(key, System.currentTimeMillis());
-					return summaryCache.get(key);
-				}
-				if (resp.code != 200 || resp.body == null)
-				{
-					summaryFailures.put(key, System.currentTimeMillis());
-					recordBreakerFailure();
-					return summaryCache.get(key);
-				}
-				RuneProfileSummary result = parseAccountSummary(resp.body);
-				if (result == null)
-				{
-					summaryFailures.put(key, System.currentTimeMillis());
-					recordBreakerFailure();
-					return summaryCache.get(key);
-				}
-				summaryCache.put(key, result);
-				summaryFetchTimes.put(key, System.currentTimeMillis());
-				recordBreakerSuccess();
-				return result;
+				summaryNotFoundTimes.put(key, System.currentTimeMillis());
+				return summaryCache.get(key);
 			}
-			finally
+			if (resp.code != 200 || resp.body == null)
 			{
-				summaryInFlight.remove(key);
+				summaryFailures.put(key, System.currentTimeMillis());
+				recordBreakerFailure();
+				return summaryCache.get(key);
 			}
+			RuneProfileSummary result = parseAccountSummary(resp.body);
+			if (result == null)
+			{
+				summaryFailures.put(key, System.currentTimeMillis());
+				recordBreakerFailure();
+				return summaryCache.get(key);
+			}
+			summaryCache.put(key, result);
+			summaryFetchTimes.put(key, System.currentTimeMillis());
+			recordBreakerSuccess();
+			return result;
 		});
 	}
 
@@ -435,7 +436,7 @@ public class RuneProfileService
 			return CompletableFuture.completedFuture(cached);
 		}
 
-		return clogInFlight.computeIfAbsent(key, ignored -> startClogLookup(playerName, key));
+		return singleFlightLookup(clogInFlight, key, () -> startClogLookup(playerName, key));
 	}
 
 	private CompletableFuture<ClogResult> startClogLookup(String playerName, String key)
@@ -447,50 +448,43 @@ public class RuneProfileService
 
 		return httpGet(url).thenApply(resp ->
 		{
-			try
+			if (resp.code == 404)
 			{
-				if (resp.code == 404)
-				{
-					clogNotFoundTimes.put(key, System.currentTimeMillis());
-					return clogCache.get(key);
-				}
-				if (resp.code != 200 || resp.body == null)
-				{
-					clogFailures.put(key, System.currentTimeMillis());
-					recordBreakerFailure();
-					return clogCache.get(key);
-				}
-				RuneProfileSummary summary = freshSummary(key);
-				AccountType accountType = summary != null ? summary.accountType : null;
-				ClogParseOutcome parsed = parseCollectionLogOutcome(playerName, resp.body, accountType);
-				if (parsed.state == ClogParseState.NOT_SYNCED)
-				{
-					// RuneProfile can return a complete all-zero catalog instead of 404
-					// when no player snapshot exists. This is a healthy negative result,
-					// and it must replace any stale success rather than revive it.
-					clogCache.remove(key);
-					clogFetchTimes.remove(key);
-					clogFailures.remove(key);
-					clogNotFoundTimes.put(key, System.currentTimeMillis());
-					recordBreakerSuccess();
-					return null;
-				}
-				ClogResult result = parsed.result;
-				if (result == null)
-				{
-					clogFailures.put(key, System.currentTimeMillis());
-					recordBreakerFailure();
-					return clogCache.get(key);
-				}
-				clogCache.put(key, result);
-				clogFetchTimes.put(key, System.currentTimeMillis());
+				clogNotFoundTimes.put(key, System.currentTimeMillis());
+				return clogCache.get(key);
+			}
+			if (resp.code != 200 || resp.body == null)
+			{
+				clogFailures.put(key, System.currentTimeMillis());
+				recordBreakerFailure();
+				return clogCache.get(key);
+			}
+			RuneProfileSummary summary = freshSummary(key);
+			AccountType accountType = summary != null ? summary.accountType : null;
+			ClogParseOutcome parsed = parseCollectionLogOutcome(playerName, resp.body, accountType);
+			if (parsed.state == ClogParseState.NOT_SYNCED)
+			{
+				// RuneProfile can return a complete all-zero catalog instead of 404
+				// when no player snapshot exists. This is a healthy negative result,
+				// and it must replace any stale success rather than revive it.
+				clogCache.remove(key);
+				clogFetchTimes.remove(key);
+				clogFailures.remove(key);
+				clogNotFoundTimes.put(key, System.currentTimeMillis());
 				recordBreakerSuccess();
-				return result;
+				return null;
 			}
-			finally
+			ClogResult result = parsed.result;
+			if (result == null)
 			{
-				clogInFlight.remove(key);
+				clogFailures.put(key, System.currentTimeMillis());
+				recordBreakerFailure();
+				return clogCache.get(key);
 			}
+			clogCache.put(key, result);
+			clogFetchTimes.put(key, System.currentTimeMillis());
+			recordBreakerSuccess();
+			return result;
 		});
 	}
 

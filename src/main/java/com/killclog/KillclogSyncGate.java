@@ -15,6 +15,7 @@ final class KillclogSyncGate
 {
 	private final AtomicBoolean inFlight = new AtomicBoolean();
 	private final AtomicBoolean queued = new AtomicBoolean();
+	private boolean queuedManual;
 	private final AtomicInteger generation = new AtomicInteger();
 	// One server-advised contention retry per episode: consumed by the first
 	// 409, restored at every terminal outcome (success, failure, abort,
@@ -30,9 +31,15 @@ final class KillclogSyncGate
 	 */
 	int beginAttempt()
 	{
+		return beginAttempt(false);
+	}
+
+	synchronized int beginAttempt(boolean manual)
+	{
 		int gen = generation.get();
 		if (!inFlight.compareAndSet(false, true))
 		{
+			queuedManual |= manual;
 			queued.set(true);
 			return -1;
 		}
@@ -99,7 +106,19 @@ final class KillclogSyncGate
 	/** @return true exactly once per remembered push intent. */
 	boolean consumeQueued()
 	{
-		return queued.compareAndSet(true, false);
+		return consumeQueuedIntent() != null;
+	}
+
+	/** Null means no queued push; otherwise preserve whether a user requested it. */
+	synchronized Boolean consumeQueuedIntent()
+	{
+		if (!queued.compareAndSet(true, false))
+		{
+			return null;
+		}
+		boolean manual = queuedManual;
+		queuedManual = false;
+		return manual;
 	}
 
 	/** Opt-out / shutdown: silence prior eras and forget any queued intent. */
@@ -107,6 +126,7 @@ final class KillclogSyncGate
 	{
 		generation.incrementAndGet();
 		queued.set(false);
+		queuedManual = false;
 		retryCredit.set(true);
 	}
 }

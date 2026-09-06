@@ -101,6 +101,8 @@ public class KillClogPanel extends PluginPanel
 	private final HiscoreService hiscoreService;
 	private final ClogService clogService;
 	private final KillClogConfig config;
+	private final FirstPartyFeedback syncFeedback;
+	private final FirstPartyFeedback characterFeedback;
 	private final ConfigManager configManager;
 	private final SpriteManager spriteManager;
 	private final ItemManager itemManager;
@@ -218,6 +220,10 @@ public class KillClogPanel extends PluginPanel
 		this.hiscoreService = hiscoreService;
 		this.clogService = clogService;
 		this.config = config;
+		this.syncFeedback = new FirstPartyFeedback(config, this::showSyncStatus,
+			this::flashSyncSuccess, "sync failed");
+		this.characterFeedback = new FirstPartyFeedback(config, this::showCharacterStatusText,
+			this::flashCharacterSuccess, KillClogPlugin.CHARACTER_FAILED_STATUS);
 		this.configManager = configManager;
 		this.spriteManager = spriteManager;
 		this.itemManager = itemManager;
@@ -903,7 +909,9 @@ public class KillClogPanel extends PluginPanel
 	// ── killclog.com one-click controls ─────────────────────────────────
 
 	private static final String SYNC_HOVER_TEXT = "sync to killclog.com";
+	private static final String SYNC_FAILURE_HOVER_TEXT = "sync failed - click to retry";
 	private static final String CHARACTER_HOVER_TEXT = "publish character";
+	private static final String CHARACTER_FAILURE_HOVER_TEXT = "publish failed - click to retry";
 	// k1: the brand lime. Status chrome, not data coloring, so it does not
 	// route through the user-themable completion color.
 	private static final Color SYNC_K1 = new Color(78, 240, 21);
@@ -917,6 +925,7 @@ public class KillClogPanel extends PluginPanel
 	private Runnable characterPublishHandler;
 	private Timer firstPartyStatusClearTimer;
 	private Timer syncSuccessGlowTimer;
+	private Timer characterSuccessGlowTimer;
 	private BufferedImage characterBase;
 
 	/**
@@ -983,6 +992,7 @@ public class KillClogPanel extends PluginPanel
 	private boolean syncedGlow;
 	private boolean syncChaliceHovered;
 	private boolean characterPublishedGlow;
+	private boolean characterHovered;
 
 	private void refreshSyncChalice(boolean hovered)
 	{
@@ -1025,6 +1035,8 @@ public class KillClogPanel extends PluginPanel
 	private JPanel buildStatusRow()
 	{
 		syncArrow.setIcon(SYNC_CHALICE_DIM);
+		tooltipController.trackTooltipComponent(syncArrow);
+		tooltipController.trackTooltipComponent(characterPublish);
 		characterPublish.setBorder(javax.swing.BorderFactory.createEmptyBorder(0, 3, 6, 2));
 		characterPublish.setVerticalAlignment(JLabel.CENTER);
 		characterPublish.setVisible(false);
@@ -1035,16 +1047,21 @@ public class KillClogPanel extends PluginPanel
 			{
 				if (characterPublish.isVisible())
 				{
+					characterHovered = true;
 					refreshCharacterIcon(true);
-					setSearchStatus(CHARACTER_HOVER_TEXT, SYNC_K1);
+					tooltipController.setTooltipText(characterPublish, characterFeedback.lastFailure());
+					setSearchStatus(characterFeedback.lastFailure() == null
+						? CHARACTER_HOVER_TEXT : CHARACTER_FAILURE_HOVER_TEXT, SYNC_K1);
 				}
 			}
 
 			@Override
 			public void mouseExited(java.awt.event.MouseEvent e)
 			{
+				characterHovered = false;
+				tooltipController.setTooltipText(characterPublish, null);
 				refreshCharacterIcon(false);
-				if (CHARACTER_HOVER_TEXT.equals(searchStatus.getText()))
+				if (isCharacterHoverStatus(searchStatus.getText()))
 				{
 					setSearchStatus(" ", TEXT_DIM);
 				}
@@ -1077,7 +1094,9 @@ public class KillClogPanel extends PluginPanel
 				{
 					syncChaliceHovered = true;
 					refreshSyncChalice(true);
-					setSearchStatus(SYNC_HOVER_TEXT, SYNC_K1);
+					tooltipController.setTooltipText(syncArrow, syncFeedback.lastFailure());
+					setSearchStatus(syncFeedback.lastFailure() == null
+						? SYNC_HOVER_TEXT : SYNC_FAILURE_HOVER_TEXT, SYNC_K1);
 				}
 			}
 
@@ -1085,8 +1104,9 @@ public class KillClogPanel extends PluginPanel
 			public void mouseExited(java.awt.event.MouseEvent e)
 			{
 				syncChaliceHovered = false;
+				tooltipController.setTooltipText(syncArrow, null);
 				refreshSyncChalice(false);
-				if (SYNC_HOVER_TEXT.equals(searchStatus.getText()))
+				if (isSyncHoverStatus(searchStatus.getText()))
 				{
 					setSearchStatus(" ", TEXT_DIM);
 				}
@@ -1131,7 +1151,7 @@ public class KillClogPanel extends PluginPanel
 	{
 		String text = searchStatus.getText();
 		return text == null || text.trim().isEmpty()
-			|| SYNC_HOVER_TEXT.equals(text) || CHARACTER_HOVER_TEXT.equals(text);
+			|| isSyncHoverStatus(text) || isCharacterHoverStatus(text);
 	}
 
 	private void refreshFirstPartyVisibility()
@@ -1150,6 +1170,8 @@ public class KillClogPanel extends PluginPanel
 			if (!enabled)
 			{
 				syncChaliceHovered = false;
+				syncFeedback.reset();
+				tooltipController.setTooltipText(syncArrow, null);
 				clearSyncSuccessGlow();
 			}
 			refreshFirstPartyVisibility();
@@ -1180,6 +1202,13 @@ public class KillClogPanel extends PluginPanel
 		SwingUtilities.invokeLater(() ->
 		{
 			characterPublishEnabled = enabled;
+			if (!enabled)
+			{
+				characterFeedback.reset();
+				characterHovered = false;
+				tooltipController.setTooltipText(characterPublish, null);
+				clearCharacterSuccessGlow();
+			}
 			refreshFirstPartyVisibility();
 		});
 	}
@@ -1191,8 +1220,27 @@ public class KillClogPanel extends PluginPanel
 
 	static boolean isSyncOwnedStatus(String text)
 	{
-		return SYNC_HOVER_TEXT.equals(text) || "syncing...".equals(text)
+		return isSyncHoverStatus(text) || "syncing...".equals(text)
 			|| "retrying...".equals(text) || "sync failed".equals(text);
+	}
+
+	private static boolean isSyncHoverStatus(String text)
+	{
+		return SYNC_HOVER_TEXT.equals(text) || SYNC_FAILURE_HOVER_TEXT.equals(text);
+	}
+
+	private static boolean isCharacterHoverStatus(String text)
+	{
+		return CHARACTER_HOVER_TEXT.equals(text) || CHARACTER_FAILURE_HOVER_TEXT.equals(text);
+	}
+
+	private boolean barOwnedByCharacter()
+	{
+		String text = searchStatus.getText();
+		return isCharacterHoverStatus(text)
+			|| KillClogPlugin.CHARACTER_RENDERING_STATUS.equals(text)
+			|| KillClogPlugin.CHARACTER_PUBLISHED_STATUS.equals(text)
+			|| KillClogPlugin.CHARACTER_FAILED_STATUS.equals(text);
 	}
 
 	static boolean canFlashSyncSuccess(String text)
@@ -1202,11 +1250,7 @@ public class KillClogPanel extends PluginPanel
 
 	private boolean barOwnedByFirstParty()
 	{
-		String text = searchStatus.getText();
-		return barOwnedBySync() || CHARACTER_HOVER_TEXT.equals(text)
-			|| KillClogPlugin.CHARACTER_RENDERING_STATUS.equals(text)
-			|| KillClogPlugin.CHARACTER_PUBLISHED_STATUS.equals(text)
-			|| KillClogPlugin.CHARACTER_FAILED_STATUS.equals(text);
+		return barOwnedBySync() || barOwnedByCharacter();
 	}
 
 	private void stopFirstPartyStatusTimer()
@@ -1241,19 +1285,17 @@ public class KillClogPanel extends PluginPanel
 	 * sync's, so lookup and player-not-found messages are never stomped.
 	 * Sync chrome speaks in k1; only failure stays dim.
 	 */
-	void showSyncStatus(String text, boolean autoClear)
+	private void showSyncStatus(String text, boolean autoClear)
 	{
-		SwingUtilities.invokeLater(() ->
+		runFeedbackOnEdt(() ->
 		{
-			if (!statusBarFree() && !barOwnedByFirstParty())
+			if (!statusBarFree() && !barOwnedBySync())
 			{
 				return;
 			}
 			stopFirstPartyStatusTimer();
 			clearSyncSuccessGlow();
 			setSearchStatus(text, "sync failed".equals(text) ? TEXT_DIM : SYNC_K1);
-			characterPublishedGlow = false;
-			refreshCharacterIcon(false);
 			if (autoClear)
 			{
 				firstPartyStatusClearTimer = new Timer(2500, e ->
@@ -1271,9 +1313,9 @@ public class KillClogPanel extends PluginPanel
 	}
 
 	/** Successful sync feedback is icon-only so the shared status row never moves. */
-	void flashSyncSuccess()
+	private void flashSyncSuccess()
 	{
-		SwingUtilities.invokeLater(() ->
+		runFeedbackOnEdt(() ->
 		{
 			if (!syncArrowEnabled || !syncArrowHasData
 				|| !canFlashSyncSuccess(searchStatus.getText()))
@@ -1287,10 +1329,8 @@ public class KillClogPanel extends PluginPanel
 				setSearchStatus(" ", TEXT_DIM);
 			}
 			syncedGlow = true;
-			characterPublishedGlow = false;
 			refreshFirstPartyVisibility();
 			refreshSyncChalice(syncChaliceHovered);
-			refreshCharacterIcon(false);
 
 			syncSuccessGlowTimer = new Timer(2500, e ->
 			{
@@ -1309,6 +1349,8 @@ public class KillClogPanel extends PluginPanel
 		SwingUtilities.invokeLater(() ->
 		{
 			stopFirstPartyStatusTimer();
+			syncFeedback.reset();
+			tooltipController.setTooltipText(syncArrow, null);
 			syncChaliceHovered = false;
 			clearSyncSuccessGlow();
 			if (barOwnedBySync())
@@ -1320,18 +1362,97 @@ public class KillClogPanel extends PluginPanel
 
 	void showCharacterPublishStatus(String text, boolean ok, boolean autoClear)
 	{
-		SwingUtilities.invokeLater(() ->
+		runFeedbackOnEdt(() ->
 		{
-			if (!statusBarFree() && !barOwnedByFirstParty())
+			if (text.trim().isEmpty())
+			{
+				characterFeedback.reset();
+				tooltipController.setTooltipText(characterPublish, null);
+				clearCharacterSuccessGlow();
+				if (barOwnedByCharacter())
+				{
+					stopFirstPartyStatusTimer();
+					setSearchStatus(" ", TEXT_DIM);
+				}
+			}
+			else if (ok || KillClogPlugin.CHARACTER_FAILED_STATUS.equals(text))
+			{
+				characterFeedback.complete(true, ok, "Character upload failed. Click to retry.");
+			}
+			else
+			{
+				characterFeedback.progress(true, text, autoClear);
+			}
+		});
+	}
+
+	/** Called on the EDT after the plugin checks the attempt's session fence. */
+	void showSyncProgress(boolean manual, String text, boolean autoClear)
+	{
+		syncFeedback.progress(manual, text, autoClear);
+	}
+
+	/** Silent results still retain failures for the control's next deliberate hover. */
+	void showSyncResult(boolean manual, boolean ok, String message)
+	{
+		syncFeedback.complete(manual, ok, message);
+	}
+
+	private static void runFeedbackOnEdt(Runnable action)
+	{
+		if (SwingUtilities.isEventDispatchThread())
+		{
+			action.run();
+		}
+		else
+		{
+			SwingUtilities.invokeLater(action);
+		}
+	}
+
+	private void clearCharacterSuccessGlow()
+	{
+		if (characterSuccessGlowTimer != null)
+		{
+			characterSuccessGlowTimer.stop();
+			characterSuccessGlowTimer = null;
+		}
+		characterPublishedGlow = false;
+		refreshCharacterIcon(characterHovered);
+	}
+
+	private void flashCharacterSuccess()
+	{
+		if (!characterPublishEnabled || !syncArrowHasData
+			|| !statusBarFree() && !barOwnedByCharacter())
+		{
+			return;
+		}
+		clearCharacterSuccessGlow();
+		if (barOwnedByCharacter())
+		{
+			stopFirstPartyStatusTimer();
+			setSearchStatus(" ", TEXT_DIM);
+		}
+		characterPublishedGlow = true;
+		refreshCharacterIcon(characterHovered);
+		characterSuccessGlowTimer = new Timer(2500, e -> clearCharacterSuccessGlow());
+		characterSuccessGlowTimer.setRepeats(false);
+		characterSuccessGlowTimer.start();
+	}
+
+	private void showCharacterStatusText(String text, boolean autoClear)
+	{
+		runFeedbackOnEdt(() ->
+		{
+			if (!statusBarFree() && !barOwnedByCharacter())
 			{
 				return;
 			}
 			stopFirstPartyStatusTimer();
-			clearSyncSuccessGlow();
+			clearCharacterSuccessGlow();
 			boolean active = KillClogPlugin.CHARACTER_RENDERING_STATUS.equals(text);
-			setSearchStatus(text, ok || active ? SYNC_K1 : TEXT_DIM);
-			characterPublishedGlow = ok && KillClogPlugin.CHARACTER_PUBLISHED_STATUS.equals(text);
-			refreshCharacterIcon(false);
+			setSearchStatus(text, active ? SYNC_K1 : TEXT_DIM);
 			if (autoClear)
 			{
 				firstPartyStatusClearTimer = new Timer(3000, e ->
@@ -1340,13 +1461,27 @@ public class KillClogPanel extends PluginPanel
 					{
 						setSearchStatus(" ", TEXT_DIM);
 					}
-					characterPublishedGlow = false;
-					refreshCharacterIcon(false);
 					firstPartyStatusClearTimer = null;
 				});
 				firstPartyStatusClearTimer.setRepeats(false);
 				firstPartyStatusClearTimer.start();
 			}
+		});
+	}
+
+	void refreshSyncFeedbackSettings()
+	{
+		runFeedbackOnEdt(() ->
+		{
+			// Changing feedback preferences clears existing transient chrome;
+			// the next callback reads the new settings. Failure history remains.
+			if (barOwnedByFirstParty())
+			{
+				stopFirstPartyStatusTimer();
+				setSearchStatus(" ", TEXT_DIM);
+			}
+			clearSyncSuccessGlow();
+			clearCharacterSuccessGlow();
 		});
 	}
 
@@ -1809,6 +1944,10 @@ public class KillClogPanel extends PluginPanel
 		syncArrowEnabled = false;
 		syncArrowHasData = false;
 		syncChaliceHovered = false;
+		syncFeedback.reset();
+		characterFeedback.reset();
+		characterHovered = false;
+		clearCharacterSuccessGlow();
 		clearSyncSuccessGlow();
 		refreshFirstPartyVisibility();
 		tooltipController.deactivate();

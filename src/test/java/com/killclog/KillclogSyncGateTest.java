@@ -16,6 +16,40 @@ import static org.junit.Assert.assertTrue;
 public class KillclogSyncGateTest
 {
 	@Test
+	public void manualClickBehindAutomaticSyncKeepsManualFeedback()
+	{
+		KillclogSyncGate gate = new KillclogSyncGate();
+		int automatic = gate.beginAttempt(false);
+		assertEquals(-1, gate.beginAttempt(true));
+		assertEquals(-1, gate.beginAttempt(false));
+		gate.complete(automatic);
+		assertEquals(Boolean.TRUE, gate.consumeQueuedIntent());
+		assertNull(gate.consumeQueuedIntent());
+	}
+
+	@Test
+	public void backgroundQueueDoesNotBecomeManual()
+	{
+		KillclogSyncGate gate = new KillclogSyncGate();
+		int manual = gate.beginAttempt(true);
+		assertEquals(-1, gate.beginAttempt(false));
+		gate.complete(manual);
+		assertEquals(Boolean.FALSE, gate.consumeQueuedIntent());
+	}
+
+	@Test
+	public void cancellationForgetsManualFeedbackIntent()
+	{
+		KillclogSyncGate gate = new KillclogSyncGate();
+		int old = gate.beginAttempt(false);
+		gate.beginAttempt(true);
+		gate.cancel();
+		gate.beginAttempt(false);
+		gate.complete(old);
+		assertEquals(Boolean.FALSE, gate.consumeQueuedIntent());
+	}
+
+	@Test
 	public void singleAttemptCompletesCurrent()
 	{
 		KillclogSyncGate gate = new KillclogSyncGate();

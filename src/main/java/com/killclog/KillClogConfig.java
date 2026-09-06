@@ -12,7 +12,7 @@ public interface KillClogConfig extends Config
 	@ConfigSection(
 		name = "Lookup",
 		description = "Automatic lookup and player-menu controls",
-		position = 2,
+		position = 3,
 		closedByDefault = true
 	)
 	String lookupSection = "lookup";
@@ -68,7 +68,7 @@ public interface KillClogConfig extends Config
 	@ConfigSection(
 		name = "Menu location",
 		description = "Which right-click menus show the lookup option",
-		position = 3,
+		position = 4,
 		closedByDefault = true
 	)
 	String menuLocationsSection = "menuLocations";
@@ -148,7 +148,7 @@ public interface KillClogConfig extends Config
 	@ConfigSection(
 		name = "Skills",
 		description = "Skill placement, virtual levels, and cell colors",
-		position = 4,
+		position = 5,
 		closedByDefault = true
 	)
 	String skillsSection = "skills";
@@ -202,18 +202,19 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigSection(
-		name = "Tooltips",
-		description = "Tooltip interaction, links, and stat lines",
+		name = "Modal Appearance",
+		description = "Appearance and interaction for modal popups: collection logs, "
+			+ "skill summaries, PvM and PvP summaries, and combat achievements",
 		position = 1,
 		closedByDefault = true
 	)
-	String tooltipsSection = "tooltips";
+	String modalAppearanceSection = "tooltips";
 
 	@ConfigItem(
 		keyName = "tooltipMode",
-		name = "Tooltip Activation",
+		name = "Modal Activation",
 		description = "Hover to preview and click to pin, or use click-to-reveal",
-		section = tooltipsSection,
+		section = modalAppearanceSection,
 		position = 0
 	)
 	default TooltipMode tooltipMode()
@@ -225,7 +226,7 @@ public interface KillClogConfig extends Config
 		keyName = "hoverStyle",
 		name = "Cell Hover",
 		description = "Visual feedback when hovering a cell. Outline uses the highlighter color, Tint subtly brightens the background.",
-		section = tooltipsSection,
+		section = modalAppearanceSection,
 		position = 1
 	)
 	default HoverStyle hoverStyle()
@@ -236,8 +237,8 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "wikiItemLinks",
 		name = "Wiki Links",
-		description = "Click boss names and item sprites in collection-log tooltips to open the OSRS Wiki",
-		section = tooltipsSection,
+		description = "Open the OSRS Wiki from supported names and sprites in modal popups",
+		section = modalAppearanceSection,
 		position = 2
 	)
 	default boolean wikiItemLinks()
@@ -245,9 +246,17 @@ public interface KillClogConfig extends Config
 		return true;
 	}
 
+	@ConfigSection(
+		name = "Collection Log",
+		description = "Stat lines shown in collection-log popups",
+		position = 2,
+		closedByDefault = true
+	)
+	String collectionLogSection = "collectionLog";
+
 	@ConfigItem(keyName = "showTooltipKc", name = "Show KC / Glory",
-		description = "Kill count on boss tooltips; Sol Heredit shows Colosseum Glory instead",
-		section = tooltipsSection, position = 3)
+		description = "Kill count on boss collection logs; Sol Heredit shows Colosseum Glory instead",
+		section = collectionLogSection, position = 0)
 	default boolean showTooltipKc()
 	{
 		return true;
@@ -255,15 +264,15 @@ public interface KillClogConfig extends Config
 
 	@ConfigItem(keyName = "showTooltipPb", name = "Show PB",
 		description = "Personal best beside the kc, where your client has one recorded",
-		section = tooltipsSection, position = 4)
+		section = collectionLogSection, position = 1)
 	default boolean showTooltipPb()
 	{
 		return true;
 	}
 
 	@ConfigItem(keyName = "showTooltipRank", name = "Show Rank",
-		description = "Hiscore rank line on boss, clue, and rare tooltips",
-		section = tooltipsSection, position = 5)
+		description = "Hiscore rank line on boss, clue, and rare collection-log popups",
+		section = collectionLogSection, position = 2)
 	default boolean showTooltipRank()
 	{
 		return true;
@@ -272,7 +281,7 @@ public interface KillClogConfig extends Config
 	@ConfigSection(
 		name = "Chat",
 		description = "Kill Clog messages and emoji rendering",
-		position = 5,
+		position = 6,
 		closedByDefault = true
 	)
 	String chatSection = "chat";
@@ -305,7 +314,7 @@ public interface KillClogConfig extends Config
 	@ConfigSection(
 		name = "Progress Highlighter",
 		description = "Color collection-log progress",
-		position = 6,
+		position = 7,
 		closedByDefault = true
 	)
 	String completionistSection = "completionist";
@@ -428,12 +437,39 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(
+		keyName = "silentAutomaticSync",
+		name = "Silent automatic sync",
+		description = "Hide panel status messages and the success flash for automatic "
+			+ "killclog.com syncs. Chat messages have their own setting.",
+		section = killclogSection,
+		position = 1
+	)
+	default boolean silentAutomaticSync()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "showManualSyncStatusMessages",
+		name = "Show manual sync status messages",
+		description = "Show progress and failure text for manual collection log syncs "
+			+ "and Character model uploads. Success uses a green icon flash. "
+			+ "Failures remain available on hover when text is hidden.",
+		section = killclogSection,
+		position = 2
+	)
+	default boolean showManualSyncStatusMessages()
+	{
+		return false;
+	}
+
+	@ConfigItem(
 		keyName = "characterModel",
 		name = "Character model",
 		description = "Show a one-click character publishing button. Requires "
 			+ "Killclog.com sync.",
 		section = killclogSection,
-		position = 1
+		position = 3
 	)
 	default boolean characterModel()
 	{
