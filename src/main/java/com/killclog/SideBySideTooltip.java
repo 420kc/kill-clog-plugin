@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import javax.swing.Icon;
 import javax.swing.JToolTip;
 
 /**
@@ -22,6 +23,8 @@ public class SideBySideTooltip extends NativeTooltip
 	private final String redName;
 	private final JToolTip blueTip;
 	private final JToolTip redTip;
+	private Icon blueBadge;
+	private Icon redBadge;
 
 	public SideBySideTooltip(String blueName, JToolTip blueTip, String redName, JToolTip redTip)
 	{
@@ -40,9 +43,17 @@ public class SideBySideTooltip extends NativeTooltip
 		return new JToolTip[]{blueTip, redTip};
 	}
 
+	void setAccountBadges(Icon blueBadge, Icon redBadge)
+	{
+		this.blueBadge = blueBadge;
+		this.redBadge = redBadge;
+	}
+
 	private int nameStripHeight()
 	{
-		return getFontMetrics(TitleTooltip.TITLE_FONT_SMALL).getHeight() + NAME_GAP;
+		return Math.max(getFontMetrics(TitleTooltip.TITLE_FONT_SMALL).getHeight(),
+			Math.max(blueBadge != null ? blueBadge.getIconHeight() : 0,
+				redBadge != null ? redBadge.getIconHeight() : 0)) + NAME_GAP;
 	}
 
 	// Child getPreferredSize is not a pure query (ImgTooltip caches grid
@@ -87,15 +98,15 @@ public class SideBySideTooltip extends NativeTooltip
 		g2.setFont(TitleTooltip.TITLE_FONT_SMALL);
 		FontMetrics fm = g2.getFontMetrics();
 		int inset = getInset();
-		int top = inset + fm.getAscent();
+		int top = inset + (nameStripHeight() - NAME_GAP - fm.getHeight()) / 2 + fm.getAscent();
 		Dimension blue = blueTip.getPreferredSize();
 		Dimension red = redTip.getPreferredSize();
-		paintName(g2, fm, blueName, TitleTooltip.COMPARE_BLUE, inset, blue.width, top);
-		paintName(g2, fm, redName, TitleTooltip.COMPARE_RED,
+		paintName(g2, fm, blueName, blueBadge, TitleTooltip.COMPARE_BLUE, inset, blue.width, top);
+		paintName(g2, fm, redName, redBadge, TitleTooltip.COMPARE_RED,
 			inset + blue.width + CARD_GAP, red.width, top);
 	}
 
-	private static void paintName(Graphics2D g2, FontMetrics fm, String name,
+	private void paintName(Graphics2D g2, FontMetrics fm, String name, Icon badge,
 		Color color, int cardX, int cardWidth, int baseline)
 	{
 		if (name == null || name.isEmpty())
@@ -104,13 +115,24 @@ public class SideBySideTooltip extends NativeTooltip
 		}
 		// A name wider than its card trims to fit rather than bleeding into
 		// the neighbor card's lane or the iron border.
+		int badgeWidth = badge != null ? badge.getIconWidth() + 3 : 0;
+		int textWidth = Math.max(0, cardWidth - badgeWidth);
 		String shown = name;
-		while (shown.length() > 1 && fm.stringWidth(shown) > cardWidth)
+		if (fm.stringWidth(shown) > textWidth)
 		{
-			shown = shown.substring(0, shown.length() - (shown.endsWith("..") ? 3 : 2)) + "..";
+			while (!shown.isEmpty() && fm.stringWidth(shown + "..") > textWidth)
+			{
+				shown = shown.substring(0, shown.length() - 1);
+			}
+			shown = fm.stringWidth(shown + "..") <= textWidth ? shown + ".." : "";
+		}
+		int x = cardX + Math.max(0, (cardWidth - badgeWidth - fm.stringWidth(shown)) / 2);
+		if (badge != null)
+		{
+			badge.paintIcon(this, g2, x,
+				getInset() + (nameStripHeight() - NAME_GAP - badge.getIconHeight()) / 2);
 		}
 		g2.setColor(color);
-		int x = cardX + Math.max(0, (cardWidth - fm.stringWidth(shown)) / 2);
-		g2.drawString(shown, x, baseline);
+		g2.drawString(shown, x + badgeWidth, baseline);
 	}
 }

@@ -74,6 +74,36 @@ public class RankSelectorLayoutTest
 	}
 
 	@Test
+	public void footerContinuesScrollbarGutterWithoutChangingButtonLayout() throws Exception
+	{
+		SwingUtilities.invokeAndWait(() ->
+		{
+			RankSelector selector = new RankSelector((name, table) -> new CompletableFuture<>(), RankSelectorLayoutTest::noop);
+			selector.update(true, "Test Player",
+				RankSelectorTest.result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000), null, null);
+			for (int width : new int[]{225, 242, 320})
+			{
+				selector.setSize(width, 32);
+				selector.doLayout();
+				assertEquals(0, selector.getInsets().right);
+				BufferedImage painted = new BufferedImage(width, 32, BufferedImage.TYPE_INT_ARGB);
+				Graphics2D g = painted.createGraphics();
+				selector.printAll(g);
+				g.dispose();
+				for (int y = 0; y < 32; y++)
+				{
+					assertEquals(ColorScheme.DARK_GRAY_COLOR.getRGB(),
+						painted.getRGB(width - MinimalScrollBarUI.WIDTH - 1, y));
+					for (int x = width - MinimalScrollBarUI.WIDTH; x < width; x++)
+					{
+						assertEquals(ColorScheme.DARKER_GRAY_COLOR.getRGB(), painted.getRGB(x, y));
+					}
+				}
+			}
+		});
+	}
+
+	@Test
 	public void primaryAndComparisonAccessorsProjectWithoutReplacingStoredResults() throws Exception
 	{
 		HiscoreResult nativeBlue = RankSelectorTest.result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000);

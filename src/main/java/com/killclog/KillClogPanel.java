@@ -357,7 +357,7 @@ public class KillClogPanel extends PluginPanel
 			sp.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_ALWAYS);
 			sp.getViewport().setBackground(ColorScheme.DARK_GRAY_COLOR);
 			sp.getVerticalScrollBar().setUI(new MinimalScrollBarUI());
-			sp.getVerticalScrollBar().setPreferredSize(new Dimension(7, 0));
+			sp.getVerticalScrollBar().setPreferredSize(new Dimension(MinimalScrollBarUI.WIDTH, 0));
 			sp.getVerticalScrollBar().setUnitIncrement(16);
 		}
 

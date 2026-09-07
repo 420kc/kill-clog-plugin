@@ -12,6 +12,8 @@ import net.runelite.client.ui.ColorScheme;
 /** Slim thumb, no arrow buttons, dark theme. */
 final class MinimalScrollBarUI extends BasicScrollBarUI
 {
+	static final int WIDTH = 7;
+
 	@Override
 	protected void configureScrollBarColors()
 	{

@@ -476,6 +476,11 @@ public class ComparisonController
 		}
 		String redName = compareRsn != null ? compareRsn : "Red";
 		SideBySideTooltip tip = new SideBySideTooltip(blueName, blueTip, redName, redTip);
+		if (renderTarget != null)
+		{
+			// Reuse displayed account identity, never the selected rank leaderboard.
+			tip.setAccountBadges(renderTarget.playerName().getIcon(), renderTarget.clogInfoLabel().getIcon());
+		}
 		tip.setComponent(owner);
 		return tip;
 	}

@@ -4,6 +4,7 @@ import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
+import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.util.EnumMap;
@@ -70,6 +71,15 @@ final class RankSelector extends JPanel
 		g.drawImage(image, 0, 0, null);
 		g.dispose();
 		return new ImageIcon(dimmed);
+	}
+
+	@Override
+	protected void paintComponent(Graphics g)
+	{
+		super.paintComponent(g);
+		// Continue the scrollbar track below the scroll pane without moving the buttons.
+		g.setColor(ColorScheme.DARKER_GRAY_COLOR);
+		g.fillRect(getWidth() - MinimalScrollBarUI.WIDTH, 0, MinimalScrollBarUI.WIDTH, getHeight());
 	}
 
 	void update(boolean enabled, String blueName, HiscoreResult blue, String redName, HiscoreResult red)
