@@ -4,7 +4,12 @@
 
 Kill Clog brings HiScores and Collection Log progress together in one RuneLite panel, with boss personal bests, Skill Clogs, Combat Achievements, clues, and player comparison.
 
-![Vanilla HiScores beside Kill Clog with a Woodcutting Skill Clog](screenshots/hero-vanilla-vs-killclog.png)
+<table>
+  <tr>
+    <td valign="middle"><img src="screenshots/hero-skill-clog-2.3.2.png" alt="Kill Clog with a Thieving Skill Clog open"></td>
+    <td valign="middle"><img src="screenshots/comparison-pvm-2.3.2.png" alt="Side-by-side PvM Summary comparison for 420 kc and CBC"></td>
+  </tr>
+</table>
 
 ## First-time setup
 
@@ -38,8 +43,6 @@ Enable **Show Leaderboard Selector** under **Lookup** to choose Normal, Ironman,
 ![Turn off RuneLite's HiScore plugin](screenshots/setup-disable-hiscore.png)
 
 ![Set Kill Clog's Menu Label to Lookup](screenshots/setup-menu-label-lookup.png)
-
-![Player comparison](screenshots/comparison-1.4.0.png)
 
 HiScores load for any valid RSN. Collection Log details appear when that player has data available through TempleOSRS, RuneProfile, or Kill Clog Sync.
 
