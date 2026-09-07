@@ -14,3 +14,8 @@ Kill Clog 2.3.2
 * shows Unranked for missing entries on a loaded leaderboard, without treating loading or failed requests as unranked
 * includes Abyssal protector in Runecraft's Pets section and adds Phoenix under Firemaking Pets; shared pets still count once toward each skill total
 * lets long chat clogs wrap between items while keeping duplicate counts with their sprites
+* expands !kclog [page] and !missing [page] to the full Collection Log catalog, including All Pets, Mastering Mixology, and Random Events
+* shows pet duplicate quantities with !kclog pets; !3a and !gilded now show quantities too
+* replaces loose substring matching with full page names and explicit shortcuts, fixing random events matching ven for Venenatis
+* uses the panel's collection-log source selection for chat while keeping local self data authoritative
+* documents command ownership and the complete page/shortcut chart; RuneLite commands and RuneProfile's !log handler remain intact

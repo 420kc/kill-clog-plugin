@@ -2,6 +2,7 @@ package com.killclog;
 
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 final class ClogProviderFanout
 {
@@ -9,6 +10,29 @@ final class ClogProviderFanout
 
 	private ClogProviderFanout()
 	{
+	}
+
+	/** Shared by panel and chat; remote-self legs never replace local observations. */
+	static CompletableFuture<ClogResult> lookup(boolean isSelf,
+		Supplier<CompletableFuture<ClogResult>> temple,
+		Supplier<CompletableFuture<ClogResult>> runeProfile,
+		Supplier<CompletableFuture<ClogResult>> killclog)
+	{
+		return chooseFullest(fetch(temple),
+			isSelf ? CompletableFuture.completedFuture(null) : fetch(runeProfile),
+			isSelf ? CompletableFuture.completedFuture(null) : fetch(killclog));
+	}
+
+	private static CompletableFuture<ClogResult> fetch(Supplier<CompletableFuture<ClogResult>> provider)
+	{
+		try
+		{
+			return provider.get();
+		}
+		catch (Exception ex)
+		{
+			return CompletableFuture.completedFuture(null);
+		}
 	}
 
 	static CompletableFuture<ClogResult> chooseFreshest(

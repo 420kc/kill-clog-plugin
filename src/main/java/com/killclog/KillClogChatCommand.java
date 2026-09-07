@@ -6,7 +6,8 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -29,9 +30,9 @@ import net.runelite.client.util.Text;
 
 /**
  * Handler for the !kclog and !missing chat commands. Both replace the user's chat line with
- * collection log progress for the requested boss or clue tier, plus inline sprite icons.
+ * collection log progress for any catalog page, plus inline sprite icons.
  * !kclog renders obtained items, !missing renders the inverse (still-unobtained items).
- * Reuses ClogService so the commands share the panel's cache.
+ * Shares the panel's provider selection and the services' caches.
  *
  * Registered async via ChatCommandManager so the lookup I/O runs off-thread. Chat-icon
  * registration and the message rewrite both jump to the client thread.
@@ -67,6 +68,9 @@ class KillClogChatCommand
 	@Inject private Client client;
 	@Inject private ClientThread clientThread;
 	@Inject private ClogService clogService;
+	@Inject private RuneProfileService runeProfileService;
+	@Inject private KillclogService killclogService;
+	@Inject private LocalClogCache localClogCache;
 	@Inject private HiscoreService hiscoreService;
 	@Inject private ItemManager itemManager;
 
@@ -85,16 +89,24 @@ class KillClogChatCommand
 
 	private static final Map<String, String> ALIASES = buildAliases();
 	private static final Map<String, ClogTarget> CLUE_ALIASES = buildClueAliases();
+	private static final Map<String, String> PAGE_ALIASES = buildPageAliases();
 
-	private static final class ClogTarget
+	static final class ClogTarget
 	{
-		private final String label;
-		private final String categoryKey;
+		final String label;
+		final String categoryKey;
+		@Nullable final String boss;
 
 		private ClogTarget(String label, String categoryKey)
 		{
+			this(label, categoryKey, null);
+		}
+
+		private ClogTarget(String label, String categoryKey, @Nullable String boss)
+		{
 			this.label = label;
 			this.categoryKey = categoryKey;
+			this.boss = boss;
 		}
 	}
 
@@ -143,6 +155,46 @@ class KillClogChatCommand
 		return m;
 	}
 
+	private static Map<String, String> buildPageAliases()
+	{
+		Map<String, String> aliases = new HashMap<>();
+		for (String[] row : CatalogTsv.rows(KillClogChatCommand.class, "chat-page-aliases.tsv", 2))
+		{
+			aliases.put(normalize(row[0]), row[1]);
+		}
+		return Collections.unmodifiableMap(aliases);
+	}
+
+	/** Exact names and explicit shorthand only: "events" must never contain-match "ven". */
+	@Nullable
+	static ClogTarget resolvePage(String query, Set<String> categoryKeys)
+	{
+		String key = normalize(query);
+		ClogTarget clue = CLUE_ALIASES.get(key);
+		if (clue != null)
+		{
+			return clue;
+		}
+		String boss = ALIASES.get(key);
+		if (boss != null)
+		{
+			return new ClogTarget(boss, ClogService.bossToCategory(boss), boss);
+		}
+		String page = PAGE_ALIASES.get(key);
+		if (page != null)
+		{
+			return new ClogTarget(titleCase(page), page);
+		}
+		for (String category : categoryKeys)
+		{
+			if (normalize(category).equals(key))
+			{
+				return new ClogTarget(titleCase(category), category);
+			}
+		}
+		return null;
+	}
+
 	/** beginner_treasure_trails -> Beginner Treasure Trails. */
 	private static String titleCase(String categoryKey)
 	{
@@ -178,8 +230,8 @@ class KillClogChatCommand
 
 	/* package */ static String normalize(String s)
 	{
-		return s.toLowerCase().replace("'", "").replace(":", "")
-			.replaceAll("\\s+", " ").trim();
+		return s.toLowerCase(Locale.ROOT).replace("'", "").replace("\u2019", "").replace(":", "")
+			.replaceAll("[^a-z0-9]+", " ").trim();
 	}
 
 	/* package */ static boolean isCompatibleLogCommand(ChatMessageType type, String message)
@@ -323,7 +375,7 @@ class KillClogChatCommand
 	 */
 	void handleThirdAge(ChatMessage chatMessage, String message)
 	{
-		dispatchBucket(chatMessage, "3rd Age", PanelData.THIRD_AGE_ITEMS);
+		dispatch(chatMessage, COMMAND + " third age", false);
 	}
 
 	/**
@@ -331,7 +383,7 @@ class KillClogChatCommand
 	 */
 	void handleGilded(ChatMessage chatMessage, String message)
 	{
-		dispatchBucket(chatMessage, "Gilded", PanelData.GILDED_ITEMS);
+		dispatch(chatMessage, COMMAND + " gilded", false);
 	}
 
 	private void dispatch(ChatMessage chatMessage, String message, boolean missingMode)
@@ -340,75 +392,62 @@ class KillClogChatCommand
 		if (parts.length < 2 || parts[1].trim().isEmpty())
 		{
 			replaceText(chatMessage, "usage " + (missingMode ? COMMAND_MISSING : COMMAND)
-				+ " <boss or clue tier>");
+				+ " <collection-log page>, e.g. pets, mixology, medium clues");
 			return;
 		}
 
 		String query = normalize(parts[1]);
-		ClogTarget clueTarget = CLUE_ALIASES.get(query);
-		String resolvedBoss = null;
-		if (clueTarget == null)
+		ClogIndex index = clogIndex;
+		Set<String> categoryKeys = index != null ? index.categoryKeys() : Collections.emptySet();
+		ClogTarget target = resolvePage(query, categoryKeys);
+		if (target == null && !categoryKeys.isEmpty())
 		{
-			resolvedBoss = ALIASES.get(query);
-			if (resolvedBoss == null)
-			{
-				// Loose substring fallback so partial typing still works ("abyssal" matches "Abyssal Sire").
-				for (Map.Entry<String, String> e : ALIASES.entrySet())
-				{
-					String key = e.getKey();
-					if (key.contains(query) || query.contains(key))
-					{
-						resolvedBoss = e.getValue();
-						break;
-					}
-				}
-			}
-		}
-		if (clueTarget == null && resolvedBoss == null)
-		{
-			replaceText(chatMessage, "collection log page not recognized");
+			replaceText(chatMessage, "collection log page not recognized; use its full name or a listed alias");
 			return;
 		}
 
 		String rsn = resolveTargetRsn(chatMessage);
-		final String label = clueTarget != null ? clueTarget.label : resolvedBoss;
-		final String categoryKey = clueTarget != null
-			? clueTarget.categoryKey : ClogService.bossToCategory(resolvedBoss);
-		ClogResult cl = lookup(chatMessage, rsn, label);
+		ClogResult cl = lookup(chatMessage, rsn, target != null ? target.label : "Collection Log");
 		if (cl == null)
 		{
 			return;
 		}
 
-		final List<ClogResult.ClogItem> obtainedList = cl.getObtainedItems()
-			.getOrDefault(categoryKey, Collections.emptyList());
-		ClogIndex index = clogIndex;
-		final List<Integer> totalList = totalsWithCatalogFallback(
-			cl.getCategoryItems().getOrDefault(categoryKey, Collections.emptyList()),
-			index != null && index.isParsed() ? index.categoryItems() : null,
-			categoryKey);
+		if (target == null)
+		{
+			target = resolvePage(query, cl.getCategoryItems().keySet());
+		}
+		if (target == null)
+		{
+			replaceText(chatMessage, "collection log page not recognized; use its full name or a listed alias");
+			return;
+		}
+		final String label = target.label;
+		final String categoryKey = target.categoryKey;
+		PageItems page = pageItems(cl, categoryKey, index != null ? index.categoryItems() : null);
+		final List<Integer> totalList = page.total;
 
 		if (totalList.isEmpty())
 		{
 			replaceText(chatMessage, label + ": no clog items found");
 			return;
 		}
+		if (!page.available)
+		{
+			replaceText(chatMessage, label + ": page not synced");
+			return;
+		}
 
-		int bossKc = clueTarget == null ? lookupBossKc(rsn, resolvedBoss) : -1;
+		int bossKc = target.boss != null ? lookupBossKc(rsn, target.boss) : -1;
 		final List<Integer> renderIds;
 		final Map<Integer, Integer> renderQuantities;
 		final String header;
 		if (missingMode)
 		{
-			Set<Integer> obtainedIds = new HashSet<>();
-			for (ClogResult.ClogItem item : obtainedList)
-			{
-				obtainedIds.add(item.getId());
-			}
 			List<Integer> missing = new ArrayList<>();
 			for (Integer id : totalList)
 			{
-				if (!obtainedIds.contains(id))
+				if (!page.quantities.containsKey(id))
 				{
 					missing.add(id);
 				}
@@ -424,44 +463,67 @@ class KillClogChatCommand
 		}
 		else
 		{
-			renderIds = new ArrayList<>(obtainedList.size());
-			renderQuantities = new HashMap<>();
-			for (ClogResult.ClogItem item : obtainedList)
-			{
-				renderIds.add(item.getId());
-				if (item.getCount() > 1)
-				{
-					renderQuantities.put(item.getId(), item.getCount());
-				}
-			}
-			header = buildCommandHeader(label, bossKc, obtainedList.size(), totalList.size(), false);
+			renderIds = new ArrayList<>(page.quantities.keySet());
+			renderQuantities = page.quantities;
+			header = buildCommandHeader(label, bossKc, renderIds.size(), totalList.size(), false);
 		}
 
 		// Icon registration + chat replacement both need the client thread.
 		clientThread.invoke(() -> render(chatMessage, header, renderIds, renderQuantities));
 	}
 
-	private void dispatchBucket(ChatMessage chatMessage, String label, int[] bucketItemIds)
+	static final class PageItems
 	{
-		String rsn = resolveTargetRsn(chatMessage);
-		ClogResult cl = lookup(chatMessage, rsn, label);
-		if (cl == null)
-		{
-			return;
-		}
+		final List<Integer> total;
+		final Map<Integer, Integer> quantities = new LinkedHashMap<>();
+		final boolean available;
 
-		Set<Integer> obtainedIds = allObtainedIds(cl);
-		List<Integer> renderIds = new ArrayList<>();
-		for (int itemId : bucketItemIds)
+		private PageItems(List<Integer> total, boolean available)
 		{
-			if (obtainedIds.contains(itemId))
+			this.total = new ArrayList<>(new LinkedHashSet<>(total));
+			this.available = available;
+		}
+	}
+
+	/** One snapshot, canonical page membership, distinct slots, and exact quantities. */
+	static PageItems pageItems(ClogResult cl, String category, @Nullable Map<String, List<Integer>> catalog)
+	{
+		List<Integer> total = totalsWithCatalogFallback(
+			cl.getCategoryItems().getOrDefault(category, Collections.emptyList()), catalog, category);
+		boolean bucket = PanelData.CLOG_THIRD_AGE.equals(category) || PanelData.CLOG_GILDED.equals(category);
+		if (total.isEmpty() && bucket)
+		{
+			total = new ArrayList<>();
+			for (int id : PanelData.CLOG_THIRD_AGE.equals(category) ? PanelData.THIRD_AGE_ITEMS : PanelData.GILDED_ITEMS)
 			{
-				renderIds.add(itemId);
+				total.add(id);
 			}
 		}
-
-		String header = label + ": " + renderIds.size() + "/" + bucketItemIds.length;
-		clientThread.invoke(() -> render(chatMessage, header, renderIds, Collections.emptyMap()));
+		PageItems page = new PageItems(total, bucket || cl.getCategoryItems().containsKey(category)
+			|| cl.getObtainedItems().containsKey(category));
+		Map<Integer, Integer> counts = new HashMap<>();
+		// Only synthetic rare-item groups span pages. Pets read all_pets directly.
+		Iterable<List<ClogResult.ClogItem>> lists = bucket && !cl.getObtainedItems().containsKey(category)
+			? cl.getObtainedItems().values()
+			: Collections.singletonList(cl.getObtainedItems().getOrDefault(category, Collections.emptyList()));
+		for (List<ClogResult.ClogItem> items : lists)
+		{
+			for (ClogResult.ClogItem item : items)
+			{
+				if (item.getCount() > 0)
+				{
+					counts.merge(item.getId(), item.getCount(), Math::max);
+				}
+			}
+		}
+		for (Integer id : page.total)
+		{
+			if (counts.containsKey(id))
+			{
+				page.quantities.put(id, counts.get(id));
+			}
+		}
+		return page;
 	}
 
 	private ClogResult lookup(ChatMessage chatMessage, String rsn, String label)
@@ -469,7 +531,9 @@ class KillClogChatCommand
 		ClogResult cl;
 		try
 		{
-			cl = clogService.lookup(rsn).join();
+			cl = ClogProviderFanout.lookup(localClogCache.isActivePlayer(rsn),
+				() -> clogService.lookup(rsn), () -> runeProfileService.lookupClog(rsn),
+				() -> killclogService.lookupClog(rsn)).join();
 		}
 		catch (Exception e)
 		{
@@ -551,19 +615,6 @@ class KillClogChatCommand
 		{
 			sb.append(ClogHelper.formatKc(bossKc)).append(" kc, ");
 		}
-	}
-
-	private static Set<Integer> allObtainedIds(ClogResult cl)
-	{
-		Set<Integer> obtainedIds = new HashSet<>();
-		for (List<ClogResult.ClogItem> items : cl.getObtainedItems().values())
-		{
-			for (ClogResult.ClogItem item : items)
-			{
-				obtainedIds.add(item.getId());
-			}
-		}
-		return obtainedIds;
 	}
 
 	/**

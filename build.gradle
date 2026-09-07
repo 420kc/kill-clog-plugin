@@ -43,3 +43,9 @@ task run(type: JavaExec) {
     mainClass = 'com.killclog.KillClogPluginTest'
     jvmArgs = ['-ea']
 }
+
+task chatCommandReference(type: JavaExec) {
+    description = 'Print the chat page and alias table for docs/chat-commands.md'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.killclog.ChatPageCatalogTest'
+}

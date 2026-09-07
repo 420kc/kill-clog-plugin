@@ -1,6 +1,5 @@
 package com.killclog;
 
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
@@ -140,15 +139,8 @@ final class LookupFanout
 	void fetchClog(String player, boolean isSelf, int stamp,
 		Consumer<ClogResult> onResult, @Nullable Runnable onError)
 	{
-		CompletableFuture<ClogResult> temple = clogService.lookup(player);
-		CompletableFuture<ClogResult> rp = isSelf
-			? CompletableFuture.completedFuture(null)
-			: runeProfileService.lookupClog(player);
-		CompletableFuture<ClogResult> killclog = isSelf
-			? CompletableFuture.completedFuture(null)
-			: killclogService.lookupClog(player);
-
-		ClogProviderFanout.chooseFullest(temple, rp, killclog)
+		ClogProviderFanout.lookup(isSelf, () -> clogService.lookup(player),
+			() -> runeProfileService.lookupClog(player), () -> killclogService.lookupClog(player))
 			.thenAccept(result -> onEdtIfCurrent(stamp, () -> onResult.accept(result)))
 			.exceptionally(ex ->
 			{

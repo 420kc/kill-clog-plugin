@@ -1,0 +1,84 @@
+# Exact shorthand -> Collection Log category. Full category names resolve from the live catalog.
+pets	all_pets
+allpets	all_pets
+mixology	mastering_mixology
+mix	mastering_mixology
+gotr	guardians_of_the_rift
+rift	guardians_of_the_rift
+ba	barbarian_assault
+barracuda	barracuda_trials
+brimhaven	brimhaven_agility_arena
+agility arena	brimhaven_agility_arena
+cw	castle_wars
+trawler	fishing_trawler
+foundry	giants_foundry
+giant's foundry	giants_foundry
+gnome restaurant	gnome_restaurant
+gnome delivery	gnome_restaurant
+gnome delivery service	gnome_restaurant
+sepulchre	hallowed_sepulchre
+hs	hallowed_sepulchre
+lms	last_man_standing
+mta	magic_training_arena
+mage training arena	magic_training_arena
+mh	mahogany_homes
+pc	pest_control
+rogues	rogues_den
+shades	shades_of_mortton
+mortton	shades_of_mortton
+sw	soul_wars
+trekking	temple_trekking
+tithe	tithe_farm
+trouble	trouble_brewing
+totems	vale_totems
+vm	volcanic_mine
+aerial	aerial_fishing
+paints	boat_paints
+champions	champions_challenge
+champion's challenge	champions_challenge
+chompy	chompy_bird_hunting
+chompies	chompy_bird_hunting
+wyrm agility	colossal_wyrm_agility
+defenders	cyclopes
+fossil notes	fossil_island_notes
+glough	gloughs_experiments
+demonic gorillas	gloughs_experiments
+demonics	gloughs_experiments
+hunter rumours	hunter_guild
+rumours	hunter_guild
+rumors	hunter_guild
+schematics	lost_schematics
+monkeys	monkey_backpacks
+mlm	motherlode_mine
+ocean	ocean_encounters
+random	random_events
+events	random_events
+revs	revenants
+rooftops	rooftop_agility
+sailing misc	sailing_miscellaneous
+treasures	sea_treasures
+shayzien	shayzien_armour
+shayzien armor	shayzien_armour
+stars	shooting_stars
+skill pets	skilling_pets
+tds	tormented_demons
+tzhaar	tzhaar
+tzhaar city	tzhaar
+misc	miscellaneous
+dks	dagannoth_kings
+dag kings	dagannoth_kings
+fight caves	the_fight_caves
+shared clues	shared_treasure_trail_rewards
+shared rewards	shared_treasure_trail_rewards
+scrolls	scroll_cases
+third age	third_age
+3rd age	third_age
+3a	third_age
+gilded	gilded
+beginner	beginner_treasure_trails
+easy	easy_treasure_trails
+medium	medium_treasure_trails
+hard	hard_treasure_trails
+elite	elite_treasure_trails
+master	master_treasure_trails
+abyssal	abyssal_sire

@@ -89,19 +89,19 @@ Manual syncs and character publishes show progress and failure messages in the p
 
 | Command | Result |
 | --- | --- |
-| `!kclog [boss or clue tier]` | Collected items |
-| `!missing [boss or clue tier]` | Missing items |
+| `!kclog [page]` | Collected items and duplicate quantities |
+| `!missing [page]` | Missing items |
 | `!3a` | Third-age progress |
 | `!gilded` | Gilded progress |
 | `!kc [item name]` | KC when the item was obtained, if recorded locally |
 
-Try `!kclog hydra`, `!kclog medium clues`, or `!missing clues medium`. Collected boss and clue items show duplicate quantities.
+Use any Collection Log page, including pages outside the panel. Try `!kclog pets`, `!kclog mixology`, `!kclog random events`, or `!missing medium clues`. Pet totals count unique pets; quantities beside sprites show dupes.
 
 **Keep RuneLite's Chat Commands enabled** for `!pets`, `!clues medium`, `!kc [boss]`, and `!pb [boss]`. It is separate from the HiScore plugin.
 
-RuneProfile handles `!log` while enabled. With RuneProfile off, Kill Clog handles `!log [boss or clue tier]` and `!log missing [boss or clue tier]`.
+RuneProfile handles `!log` while enabled. With RuneProfile off, Kill Clog handles `!log [page]` and `!log missing [page]`.
 
-`!kclog pets`, `!kclog all pets`, and `!kclog random events` are not supported pages. See the [command reference](docs/chat-commands.md) for supported names, aliases, and which plugin handles each command.
+Full page names work, and shorthand such as `gotr`, `mixology`, `pets`, and `hydra` works too. See the [full page and shortcut chart](docs/chat-commands.md#page-names-and-shorthand) for every supported alias, command ownership, and examples. Skill Clog aggregates are not separate chat pages.
 
 ## Settings
 
