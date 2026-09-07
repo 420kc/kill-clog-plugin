@@ -38,11 +38,9 @@ final class PanelAccountTypes
 	private AccountDisplay display(@Nullable AccountType accountType, @Nullable HiscoreTable hiscoreTable,
 		@Nullable ClogResult clog, @Nullable String player)
 	{
-		AccountType type = AccountType.displayType(accountType, runeProfileGroupAccountType(player));
-		if (type == null && clog != null)
-		{
-			type = clog.getProviderAccountType();
-		}
+		AccountType type = AccountType.displayType(accountType,
+			clog != null ? clog.getProviderAccountType() : null);
+		type = AccountType.displayType(type, runeProfileGroupAccountType(player));
 		return AccountDisplay.of(type, hiscoreTable);
 	}
 
