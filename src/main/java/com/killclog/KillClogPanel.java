@@ -1366,7 +1366,7 @@ public class KillClogPanel extends PluginPanel
 		});
 	}
 
-	void showCharacterPublishStatus(String text, boolean ok, boolean autoClear)
+	void showCharacterPublishStatus(String text, boolean ok, boolean autoClear, String failureMessage)
 	{
 		runFeedbackOnEdt(() ->
 		{
@@ -1383,7 +1383,8 @@ public class KillClogPanel extends PluginPanel
 			}
 			else if (ok || KillClogPlugin.CHARACTER_FAILED_STATUS.equals(text))
 			{
-				characterFeedback.complete(true, ok, "Character upload failed. Click to retry.");
+				characterFeedback.complete(true, ok, failureMessage != null
+					? failureMessage : "Character upload failed. Click to retry.");
 			}
 			else
 			{

@@ -719,12 +719,18 @@ public class KillClogPlugin extends Plugin
 
 	private void showCharacterPublishStatus(int generation, String text, boolean ok, boolean autoClear)
 	{
+		showCharacterPublishStatus(generation, text, ok, autoClear, null);
+	}
+
+	private void showCharacterPublishStatus(int generation, String text, boolean ok, boolean autoClear,
+		String failureMessage)
+	{
 		SwingUtilities.invokeLater(() ->
 		{
 			if (generation == characterPublishGeneration.get()
 				&& (text.trim().isEmpty() || characterPublishingEnabled()))
 			{
-				panel.showCharacterPublishStatus(text, ok, autoClear);
+				panel.showCharacterPublishStatus(text, ok, autoClear, failureMessage);
 			}
 		});
 	}
@@ -796,7 +802,8 @@ public class KillClogPlugin extends Plugin
 
 		characterPublishInFlight.set(false);
 		boolean published = result.outcome == ProfileAppearanceService.Outcome.PUBLISHED;
-		showCharacterPublishStatus(generation, characterPublishTerminalStatus(result.outcome), published, true);
+		showCharacterPublishStatus(generation, characterPublishTerminalStatus(result.outcome), published, true,
+			result.failureMessage);
 	}
 
 	static String characterPublishTerminalStatus(ProfileAppearanceService.Outcome outcome)

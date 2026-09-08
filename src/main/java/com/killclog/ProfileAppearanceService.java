@@ -43,10 +43,17 @@ final class ProfileAppearanceService
 	static final class PublishResult
 	{
 		final Outcome outcome;
+		final String failureMessage;
 
 		private PublishResult(Outcome outcome)
 		{
+			this(outcome, null);
+		}
+
+		private PublishResult(Outcome outcome, @Nullable String failureMessage)
+		{
 			this.outcome = outcome;
+			this.failureMessage = failureMessage;
 		}
 	}
 
@@ -91,7 +98,9 @@ final class ProfileAppearanceService
 					local.getIdlePoseAnimation());
 				if (manifest == null)
 				{
-					result.complete(failed());
+					log.warn("Character capture rejected: unsupported composition or pose");
+					result.complete(new PublishResult(Outcome.FAILED,
+						"Character appearance could not be captured. Stand still in normal player form and retry."));
 					return;
 				}
 
@@ -195,7 +204,7 @@ final class ProfileAppearanceService
 			{
 				return completed(Outcome.PROFILE_REQUIRED);
 			}
-			return completed(Outcome.FAILED);
+			return failedResponse("registration", response, json);
 		});
 	}
 
@@ -240,7 +249,7 @@ final class ProfileAppearanceService
 						? requestDevice(rsn, accountHash, manifestJson)
 						: completed(Outcome.FAILED));
 			}
-			return completed(Outcome.FAILED);
+			return failedResponse("recovery", response, json);
 		});
 	}
 
@@ -265,11 +274,11 @@ final class ProfileAppearanceService
 			}
 			if (response.code == 503 && hasError(json, "appearance_render_failed"))
 			{
-				return completed(Outcome.FAILED);
+				return failedResponse("publish", response, json);
 			}
 			if (response.code == 409 && hasError(json, "appearance_superseded"))
 			{
-				return completed(Outcome.FAILED);
+				return failedResponse("publish", response, json);
 			}
 			if (response.code == 401 && recoverInvalidSecret)
 			{
@@ -280,7 +289,7 @@ final class ProfileAppearanceService
 			}
 			if (response.code == 429)
 			{
-				return completed(Outcome.FAILED);
+				return failedResponse("publish", response, json);
 			}
 			if (shouldCancelPendingRecovery(response.code, json, recoverInvalidSecret))
 			{
@@ -294,8 +303,17 @@ final class ProfileAppearanceService
 			{
 				return completed(Outcome.PROFILE_REQUIRED);
 			}
-			return completed(Outcome.FAILED);
+			return failedResponse("publish", response, json);
 		});
+	}
+
+	private CompletableFuture<PublishResult> failedResponse(String operation,
+		HttpUtil.HttpResult response, @Nullable JsonObject json)
+	{
+		ProfileAppearanceFailure failure = ProfileAppearanceFailure.fromResponse(response.code, json);
+		log.warn("Character {} failed: status={} reason={} reference={}",
+			operation, response.code, failure.reason, failure.reference);
+		return CompletableFuture.completedFuture(new PublishResult(Outcome.FAILED, failure.message));
 	}
 
 	private CompletableFuture<PublishResult> cancelRecoveryAndPublish(String rsn,
@@ -316,7 +334,7 @@ final class ProfileAppearanceService
 				&& hasError(json, "appearance_recovery_missing");
 			return cancelled || alreadyClear
 				? retryPublishAfterCooldown(rsn, accountHash, manifestJson, secret)
-				: completed(Outcome.FAILED);
+				: failedResponse("cancel_recovery", response, json);
 		});
 	}
 
@@ -404,7 +422,7 @@ final class ProfileAppearanceService
 			}
 			catch (RuntimeException e)
 			{
-				log.debug("profile appearance credential storage failed", e);
+				log.warn("Character credential storage failed");
 				result.complete(false);
 			}
 		});
