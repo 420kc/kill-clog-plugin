@@ -1,6 +1,10 @@
-# Kill Clog Next Release
+# Kill Clog 2.3.2 Release
 
-Target version: `2.3.2` (local candidate)
+Released version: `2.3.2`
+
+[Plugin Hub update #16177](https://github.com/runelite/plugin-hub/pull/16177)
+merged on 2026-09-08 and pins `c1eb9773cb730f568fd73115568afd0677635150`.
+This file records the shipped release; no next release is in progress.
 
 ## Release Notes
 
