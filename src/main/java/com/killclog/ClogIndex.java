@@ -33,6 +33,8 @@ final class ClogIndex
 	private static final int PARAM_CATEGORY_NAME = 689;
 	private static final int PARAM_CATEGORY_ITEMS = 690;
 	private static final Map<Integer, Integer> FALLBACK_ITEM_REMAPS = fallbackItemRemaps();
+	private static final ClogItemCanonicalizer FALLBACK_CANONICALIZER =
+		new ClogItemCanonicalizer(Collections.emptyMap(), FALLBACK_ITEM_REMAPS);
 
 	/** One parse product; replaced whole, never mutated. */
 	private static final class Snapshot
@@ -42,21 +44,21 @@ final class ClogIndex
 		final Map<Integer, List<String>> itemCategoryKeys;
 		final Map<String, List<Integer>> itemNameIds;
 		final Map<Integer, String> itemNames;
-		final Map<Integer, Integer> canonicalItemIds;
+		final ClogItemCanonicalizer canonicalizer;
 
 		Snapshot(Map<String, List<Integer>> categoryItems,
 			Map<String, List<String>> tabCategoryKeys,
 			Map<Integer, List<String>> itemCategoryKeys,
 			Map<String, List<Integer>> itemNameIds,
 			Map<Integer, String> itemNames,
-			Map<Integer, Integer> canonicalItemIds)
+			ClogItemCanonicalizer canonicalizer)
 		{
 			this.categoryItems = categoryItems;
 			this.tabCategoryKeys = tabCategoryKeys;
 			this.itemCategoryKeys = itemCategoryKeys;
 			this.itemNameIds = itemNameIds;
 			this.itemNames = itemNames;
-			this.canonicalItemIds = canonicalItemIds;
+			this.canonicalizer = canonicalizer;
 		}
 	}
 
@@ -134,14 +136,17 @@ final class ClogIndex
 			injectSynthetic(nextCategoryItems, nextItemCategoryKeys, nextItemNameIds, nextItemNames,
 				itemManager, PanelData.CLOG_GILDED, PanelData.GILDED_ITEMS);
 
+			ClogItemCanonicalizer canonicalizer = new ClogItemCanonicalizer(
+				nextCategoryItems, nextCanonicalItemIds);
 			Snapshot parsed = new Snapshot(nextCategoryItems, nextTabCategoryKeys,
 				nextItemCategoryKeys,
-				nextItemNameIds, nextItemNames, nextCanonicalItemIds);
+				nextItemNameIds, nextItemNames, canonicalizer);
 			snapshot = parsed;
-			log.debug("Parsed clog enums: {} tabs, {} categories, {} items, {} names, {} remaps",
+			log.debug("Parsed clog enums: {} tabs, {} categories, {} items, {} names, "
+				+ "{} remaps, {} variants",
 				parsed.tabCategoryKeys.size(), parsed.categoryItems.size(),
 				parsed.itemCategoryKeys.size(), parsed.itemNameIds.size(),
-				parsed.canonicalItemIds.size());
+				canonicalizer.declaredAliasCount(), canonicalizer.catalogVariantCount());
 			return true;
 		}
 		catch (Exception e)
@@ -177,8 +182,22 @@ final class ClogIndex
 	int canonicalItemId(int itemId)
 	{
 		Snapshot s = snapshot;
-		return canonicalItemId(itemId,
-			s != null ? s.canonicalItemIds : FALLBACK_ITEM_REMAPS);
+		return s != null
+			? s.canonicalizer.canonicalItemId(itemId) : fallbackCanonicalItemId(itemId);
+	}
+
+	List<Integer> canonicalizeItemIds(List<Integer> itemIds)
+	{
+		Snapshot s = snapshot;
+		return s != null ? s.canonicalizer.canonicalizeItemIds(itemIds)
+			: FALLBACK_CANONICALIZER.canonicalizeItemIds(itemIds);
+	}
+
+	List<ClogResult.ClogItem> canonicalizeItems(List<ClogResult.ClogItem> items)
+	{
+		Snapshot s = snapshot;
+		return s != null ? s.canonicalizer.canonicalizeItems(items)
+			: FALLBACK_CANONICALIZER.canonicalizeItems(items);
 	}
 
 	static int fallbackCanonicalItemId(int itemId)
@@ -195,17 +214,9 @@ final class ClogIndex
 			return direct;
 		}
 		Snapshot s = snapshot;
-		Map<Integer, Integer> remaps = s != null ? s.canonicalItemIds : FALLBACK_ITEM_REMAPS;
-		for (Map.Entry<Integer, Integer> entry : remaps.entrySet())
+		if (s != null)
 		{
-			if (entry.getValue() == itemId)
-			{
-				String alias = result.getItemName(entry.getKey());
-				if (alias != null)
-				{
-					return alias;
-				}
-			}
+			return s.itemNames.get(itemId);
 		}
 		return null;
 	}
@@ -273,18 +284,21 @@ final class ClogIndex
 	/* package */ void publishForTest(Map<String, List<Integer>> categoryItems,
 		Map<Integer, String> itemNames)
 	{
+		Map<Integer, Integer> remaps = new HashMap<>(FALLBACK_ITEM_REMAPS);
 		snapshot = new Snapshot(new HashMap<>(categoryItems), new LinkedHashMap<>(),
-			new HashMap<>(),
-			new HashMap<>(), new HashMap<>(itemNames), new HashMap<>(FALLBACK_ITEM_REMAPS));
+			itemCategoryKeys(categoryItems),
+			new HashMap<>(), new HashMap<>(itemNames),
+			new ClogItemCanonicalizer(categoryItems, remaps));
 	}
 
 	/** Test seam for a catalog carrying the top-level Jagex tab taxonomy. */
 	/* package */ void publishForTest(Map<String, List<Integer>> categoryItems,
 		Map<Integer, String> itemNames, Map<String, List<String>> tabCategoryKeys)
 	{
+		Map<Integer, Integer> remaps = new HashMap<>(FALLBACK_ITEM_REMAPS);
 		snapshot = new Snapshot(new HashMap<>(categoryItems), new LinkedHashMap<>(tabCategoryKeys),
-			new HashMap<>(), new HashMap<>(), new HashMap<>(itemNames),
-			new HashMap<>(FALLBACK_ITEM_REMAPS));
+			itemCategoryKeys(categoryItems), new HashMap<>(), new HashMap<>(itemNames),
+			new ClogItemCanonicalizer(categoryItems, remaps));
 	}
 
 	/** Test seam for runtime-provided duplicate item remaps. */
@@ -295,7 +309,23 @@ final class ClogIndex
 		Map<Integer, Integer> remaps = new HashMap<>(FALLBACK_ITEM_REMAPS);
 		remaps.putAll(canonicalItemIds);
 		snapshot = new Snapshot(new HashMap<>(categoryItems), new LinkedHashMap<>(tabCategoryKeys),
-			new HashMap<>(), new HashMap<>(), new HashMap<>(itemNames), remaps);
+			itemCategoryKeys(categoryItems), new HashMap<>(), new HashMap<>(itemNames),
+			new ClogItemCanonicalizer(categoryItems, remaps));
+	}
+
+	private static Map<Integer, List<String>> itemCategoryKeys(
+		Map<String, List<Integer>> categoryItems)
+	{
+		Map<Integer, List<String>> itemCategories = new HashMap<>();
+		for (Map.Entry<String, List<Integer>> category : categoryItems.entrySet())
+		{
+			for (int itemId : category.getValue())
+			{
+				itemCategories.computeIfAbsent(itemId, ignored -> new ArrayList<>())
+					.add(category.getKey());
+			}
+		}
+		return itemCategories;
 	}
 
 	/** A coherent catalog copy plus the identity of the parse it came from. */

@@ -18,7 +18,7 @@ public class ClogCanonicalizationTest
 		13639, 13353, 13226);
 	private static final List<ClogResult.ClogItem> FEMALE_TITHE_OBTAINED = Arrays.asList(
 		item(13647), item(13643), item(13641), item(13645),
-		item(13639), item(13353), item(13226));
+		item(24482), item(13353), item(24478));
 
 	@Test
 	public void missingRuntimeTabLabelsFallBackToTheFiveJagexTabs()
@@ -43,7 +43,7 @@ public class ClogCanonicalizationTest
 	}
 
 	@Test
-	public void femaleFarmersOutfitIsOneSevenSlotTitheFarmLogEverywhere()
+	public void openContainersAndFemaleOutfitAreOneSevenSlotTitheFarmLogEverywhere()
 	{
 		Map<String, List<Integer>> categories = Collections.singletonMap(
 			"tithe_farm", TITHE_CATALOG);
@@ -81,6 +81,57 @@ public class ClogCanonicalizationTest
 		assertEquals(7, progress.get(0).total);
 		assertEquals(7, ClogHelper.sumClogTotals(result, index::canonicalItemId)[0]);
 		assertEquals(7, ClogHelper.sumClogTotals(result, index::canonicalItemId)[1]);
+	}
+
+	@Test
+	public void runeLiteVariantsResolveToTheirSingleCollectionLogSlot()
+	{
+		Map<String, List<Integer>> categories = Collections.singletonMap("variants",
+			Arrays.asList(8844, 13226, 13639, 20661, 25539, 25582, 26376,
+				26850, 27226, 28140, 28583, 29996));
+		ClogIndex index = new ClogIndex();
+		index.publishForTest(categories, Collections.emptyMap());
+
+		int[][] pairs = {
+			{20449, 8844}, {24478, 13226}, {24482, 13639}, {24555, 20661},
+			{25541, 25539}, {25584, 25582}, {26382, 26376}, {26858, 26850},
+			{27235, 27226}, {28142, 28140}, {28585, 28583}, {29998, 29996}
+		};
+		for (int[] pair : pairs)
+		{
+			assertEquals(pair[1], index.canonicalItemId(pair[0]));
+			assertEquals(Collections.singletonList("variants"),
+				index.categoryKeysForItem(pair[0]));
+		}
+	}
+
+	@Test
+	public void exactCatalogSlotsAreNeverCollapsedByAReportedVariantFamily()
+	{
+		Map<String, List<Integer>> categories = Collections.singletonMap("variants",
+			Arrays.asList(28140, 28142));
+		ClogIndex index = new ClogIndex();
+		index.publishForTest(categories, Collections.emptyMap());
+
+		assertEquals(28140, index.canonicalItemId(28140));
+		assertEquals(28142, index.canonicalItemId(28142));
+	}
+
+	@Test
+	public void capturedVariantsAreCanonicalizedAndDeduplicatedBeforeStorage()
+	{
+		Map<String, List<Integer>> categories = Collections.singletonMap("variants",
+			Collections.singletonList(13226));
+		ClogIndex index = new ClogIndex();
+		index.publishForTest(categories, Collections.emptyMap());
+
+		List<ClogResult.ClogItem> normalized = index.canonicalizeItems(Arrays.asList(
+			new ClogResult.ClogItem(24478, 1, "2026-01-01"),
+			new ClogResult.ClogItem(13226, 3, null)));
+		assertEquals(1, normalized.size());
+		assertEquals(13226, normalized.get(0).getId());
+		assertEquals(3, normalized.get(0).getCount());
+		assertEquals("2026-01-01", normalized.get(0).getDate());
 	}
 
 	private static ClogResult.ClogItem item(int id)

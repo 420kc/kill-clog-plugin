@@ -74,7 +74,7 @@ final class ManualClogSync
 			return;
 		}
 
-		captureVisibleCategory(client, visibleClogCategoryReader,
+		captureVisibleCategory(client, clogIndex, visibleClogCategoryReader,
 			localClogCache, chatNotifier, panelRefresh);
 
 		if (!localClogCache.hasDataFor(local.getName()))
@@ -169,7 +169,7 @@ final class ManualClogSync
 			obtainedByCategory.put(cat, new ArrayList<>());
 		}
 
-		for (ClogResult.ClogItem item : bulk.obtained)
+		for (ClogResult.ClogItem item : clogIndex.canonicalizeItems(bulk.obtained))
 		{
 			List<String> cats = clogIndex.categoryKeysForItem(item.getId());
 			if (cats != null)
@@ -243,7 +243,7 @@ final class ManualClogSync
 		SwingUtilities.invokeLater(() -> panelRefresh.accept(name));
 	}
 
-	private void captureVisibleCategory(Client client,
+	private void captureVisibleCategory(Client client, ClogIndex clogIndex,
 		VisibleClogCategoryReader visibleClogCategoryReader,
 		LocalClogCache localClogCache, KillClogChatNotifier chatNotifier,
 		Consumer<String> panelRefresh)
@@ -261,9 +261,11 @@ final class ManualClogSync
 		}
 
 		String name = local.getName();
+		List<Integer> categoryItems = clogIndex.canonicalizeItemIds(category.allItemIds());
+		List<ClogResult.ClogItem> obtained = clogIndex.canonicalizeItems(category.obtained());
 		if (localClogCache.hasDataFor(name))
 		{
-			localClogCache.mergeCategory(name, category.key(), category.allItemIds(), category.obtained());
+			localClogCache.mergeCategory(name, category.key(), categoryItems, obtained);
 
 			// Re-read global clog totals from live varps (catches game updates + new items).
 			int liveObtained = client.getVarpValue(ClogVarps.OBTAINED);
@@ -274,20 +276,20 @@ final class ManualClogSync
 			}
 
 			chatNotifier.send(ChatNotice.SYNC_RESULT,
-				"Captured " + category.name() + " - " + category.obtained().size()
-					+ "/" + category.allItemIds().size() + " obtained");
+				"Captured " + category.name() + " - " + obtained.size()
+					+ "/" + categoryItems.size() + " obtained");
 			SwingUtilities.invokeLater(() -> panelRefresh.accept(name));
 		}
 		else
 		{
 			bulk.bufferedCategoryKey = category.key();
 			bulk.bufferedCategoryName = category.name();
-			bulk.bufferedCategoryItems = new ArrayList<>(category.allItemIds());
-			bulk.bufferedCategoryObtained = new ArrayList<>(category.obtained());
+			bulk.bufferedCategoryItems = categoryItems;
+			bulk.bufferedCategoryObtained = obtained;
 
 			chatNotifier.send(ChatNotice.SYNC_RESULT,
-				"Buffered " + category.name() + " - " + category.obtained().size()
-					+ "/" + category.allItemIds().size() + " obtained (will merge after sync)");
+				"Buffered " + category.name() + " - " + obtained.size()
+					+ "/" + categoryItems.size() + " obtained (will merge after sync)");
 		}
 	}
 }
