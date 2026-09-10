@@ -23,6 +23,7 @@ import net.runelite.client.ui.FontManager;
 public class ClogSummaryTooltip extends TitleTooltip
 {
 	private static final int TIER_CELL_SIZE = 17;
+	private static final int CURRENT_TIER_SIZE = 32;
 	private static final int TIER_SECTION = 20;
 	private static final int SEPARATOR_PAD = 2;
 	private static final int SUBHEADER_HEIGHT = 16;
@@ -55,6 +56,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private boolean syncStale;
 
 	private Map<String, BufferedImage> tierIcons;
+	private BufferedImage currentTierSprite;
 	private List<ClogHelper.ClogGroupProgress> categoryProgress = Collections.emptyList();
 	private String notice;
 	private BufferedImage noticeIcon;
@@ -121,6 +123,11 @@ public class ClogSummaryTooltip extends TitleTooltip
 	public void setClogRank(int rank)
 	{
 		clogRank = rank > 0 ? formatNumber(rank) : "Unranked";
+	}
+
+	public void setCurrentTierSprite(BufferedImage sprite)
+	{
+		currentTierSprite = sprite;
 	}
 
 	public void setSyncData(String dateText, boolean stale)
@@ -639,10 +646,10 @@ public class ClogSummaryTooltip extends TitleTooltip
 		int start = tierThreshold(tierIndex, totalSlots);
 		if (tierIndex == ClogHelper.CLOG_TIERS.length - 1)
 		{
-			return formatNumber(start) + "+ slots";
+			return formatNumber(start) + "+";
 		}
-		return formatNumber(start) + "-" + formatNumber(tierThreshold(tierIndex + 1, totalSlots) - 1)
-			+ " slots";
+		return formatNumber(start) + "-"
+			+ formatNumber(tierThreshold(tierIndex + 1, totalSlots) - 1);
 	}
 
 	private static int tierThreshold(int tierIndex, int totalSlots)
@@ -678,6 +685,23 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private static String formatNumber(int value)
 	{
 		return String.format(Locale.US, "%,d", value);
+	}
+
+	@Override
+	protected int getHeaderDecorationWidth()
+	{
+		return currentTierSprite != null ? CURRENT_TIER_SIZE : 0;
+	}
+
+	@Override
+	protected void paintHeaderDecoration(Graphics2D g2, int w, int y, int height)
+	{
+		if (currentTierSprite != null)
+		{
+			int x = w - getInset() - CURRENT_TIER_SIZE;
+			int spriteY = y + (height - CURRENT_TIER_SIZE) / 2;
+			g2.drawImage(currentTierSprite, x, spriteY, null);
+		}
 	}
 
 	@Override

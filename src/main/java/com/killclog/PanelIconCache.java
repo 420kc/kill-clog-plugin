@@ -20,6 +20,7 @@ final class PanelIconCache
 	private final ClientThread clientThread;
 	private final SpriteManager spriteManager;
 	private final Map<String, ImageIcon> clogTierIcons = new LinkedHashMap<>();
+	private final Map<String, BufferedImage> clogTierLargeImages = new LinkedHashMap<>();
 
 	private BufferedImage maxCapeTip;
 	private BufferedImage infernalCapeTip;
@@ -45,6 +46,11 @@ final class PanelIconCache
 			icons.put(entry.getKey(), ClogHelper.iconToImage(entry.getValue()));
 		}
 		return icons;
+	}
+
+	BufferedImage clogTierLargeImage(@Nullable String tierName)
+	{
+		return tierName != null ? clogTierLargeImages.get(tierName) : null;
 	}
 
 	BufferedImage capeFor(@Nullable HiscoreResult result)
@@ -86,8 +92,12 @@ final class PanelIconCache
 			{
 				final String tier = ClogHelper.CLOG_TIERS[i];
 				final int itemId = PanelData.CLOG_TIER_ITEM_IDS[i];
-				loadItemIcon(itemId, 13, 13, icon ->
-					clogTierIcons.put(tier, icon));
+				loadItemImage(itemId, image ->
+				{
+					clogTierIcons.put(tier,
+						new ImageIcon(ImageUtil.resizeImage(image, 13, 13)));
+					clogTierLargeImages.put(tier, ImageUtil.resizeImage(image, 32, 32));
+				});
 			}
 
 			// Clue summary tooltip icons: 1-6=tier scrolls, 7=Mimic (0=All loaded via spriteManager below).
@@ -121,22 +131,6 @@ final class PanelIconCache
 							ImageUtil.resizeCanvas(sprite, 25, 25), 13, 13);
 					}
 				}));
-		}
-	}
-
-	private void loadItemIcon(int itemId, int w, int h, Consumer<ImageIcon> setter)
-	{
-		BufferedImage img = itemManager.getImage(itemId, 1, false);
-		if (img instanceof AsyncBufferedImage)
-		{
-			((AsyncBufferedImage) img).onLoaded(() ->
-				SwingUtilities.invokeLater(() ->
-					setter.accept(new ImageIcon(ImageUtil.resizeImage(img, w, h)))));
-		}
-		else
-		{
-			SwingUtilities.invokeLater(() ->
-				setter.accept(new ImageIcon(ImageUtil.resizeImage(img, w, h))));
 		}
 	}
 

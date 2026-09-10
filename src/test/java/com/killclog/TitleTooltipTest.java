@@ -111,8 +111,15 @@ public class TitleTooltipTest
 			tierIcons.put(tier, icon);
 		}
 		tooltip.setTierData(1_150, 1_701, tierIcons);
+		BufferedImage currentTier = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D currentGraphics = currentTier.createGraphics();
+		currentGraphics.setColor(Color.MAGENTA);
+		currentGraphics.fillRect(0, 0, 32, 32);
+		currentGraphics.dispose();
+		tooltip.setCurrentTierSprite(currentTier);
 		assertEquals("1,150/1,701", ClogSummaryTooltip.progressText(1_150, 1_701));
 		assertEquals(153, ClogSummaryTooltip.tierLegendWidth());
+		assertEquals(32, tooltip.getHeaderDecorationWidth());
 
 		Dimension size = tooltip.getPreferredSize();
 		tooltip.setSize(size);
@@ -126,6 +133,9 @@ public class TitleTooltipTest
 		int runeIndex = 6;
 		int tierY = bodyY + NativeTooltip.LINE_HEIGHT;
 		int legendX = ClogSummaryTooltip.tierLegendStartX(size.width);
+		assertEquals(Color.MAGENTA, new Color(rendered.getRGB(
+			size.width - NativeTooltip.getInset() - 16,
+			NativeTooltip.getInset() + 16), true));
 		assertEquals(TitleTooltip.CLOG_GREEN,
 			new Color(rendered.getRGB(legendX + runeIndex * 17, tierY), true));
 		Color reached = new Color(rendered.getRGB(legendX + 8, tierY + 8), true);
@@ -134,7 +144,7 @@ public class TitleTooltipTest
 		moveMouse(tooltip,
 			legendX + runeIndex * 17 + 8,
 			tierY + 8);
-		assertEquals("Rune: 1,100-1,199 slots", tooltip.getTitleHoverText());
+		assertEquals("Rune: 1,100-1,199", tooltip.getTitleHoverText());
 	}
 
 	@Test

@@ -87,7 +87,7 @@ public class SkillTooltip extends TitleTooltip
 		int height = LINE_HEIGHT * 4;
 		if (!sections.isEmpty())
 		{
-			height += separatorHeight(SECTION_SEPARATOR_PAD);
+			height += separatorHeight(SECTION_SEPARATOR_PAD) + LINE_HEIGHT;
 			Dimension sectionSize = sectionRenderer.soloSize(Math.max(width, availableWidth));
 			width = Math.max(width, sectionSize.width);
 			height += sectionSize.height;
@@ -117,6 +117,8 @@ public class SkillTooltip extends TitleTooltip
 		{
 			int sectionY = paintSeparator(g2, w,
 				startY + LINE_HEIGHT * 4, SECTION_SEPARATOR_PAD);
+			paintHeaderHoverLine(g2, fm, w, sectionY + fm.getAscent());
+			sectionY += LINE_HEIGHT;
 			sectionRenderer.paintSolo(g2, w, sectionY, hitBoxes);
 		}
 		itemHover.setHitBoxes(hitBoxes);
@@ -140,12 +142,6 @@ public class SkillTooltip extends TitleTooltip
 	String riftsClosedText()
 	{
 		return riftsClosed >= 0 ? String.format(Locale.US, "%,d", riftsClosed) : "--";
-	}
-
-	@Override
-	protected boolean hasHeaderHoverLine()
-	{
-		return !sections.isEmpty();
 	}
 
 	@Override

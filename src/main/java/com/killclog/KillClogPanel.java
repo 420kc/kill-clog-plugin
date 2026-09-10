@@ -2095,6 +2095,8 @@ public class KillClogPanel extends PluginPanel
 		{
 			int[] totals = ClogHelper.sumClogTotals(clog);
 			tip.setTierData(totals[0], totals[1], iconCache.clogTierImages());
+			tip.setCurrentTierSprite(iconCache.clogTierLargeImage(
+				ClogHelper.getClogTierName(totals[0], totals[1])));
 			if (clogIndex != null)
 			{
 				tip.setCategoryProgress(

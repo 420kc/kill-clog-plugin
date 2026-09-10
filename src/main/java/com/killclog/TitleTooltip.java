@@ -457,6 +457,17 @@ public abstract class TitleTooltip extends NativeTooltip
 		return TITLE_FONT;
 	}
 
+	/** Width reserved at the right of every header row for an optional decoration. */
+	protected int getHeaderDecorationWidth()
+	{
+		return 0;
+	}
+
+	/** Paint an optional decoration in the reserved right side of the header. */
+	protected void paintHeaderDecoration(Graphics2D g2, int w, int y, int height)
+	{
+	}
+
 	/** Optional orange text painted on the right side of the last header row. */
 	protected String getHeaderRightText()
 	{
@@ -640,7 +651,9 @@ public abstract class TitleTooltip extends NativeTooltip
 		int rnkTextWidth = rankText != null ? sfm.stringWidth("Rank: " + rankText) : 0;
 		int maxTextWidth = Math.max(titleTextWidth,
 			Math.max(subTextWidth, Math.max(infoTextWidth, rnkTextWidth)));
-		int headerMinWidth = maxTextWidth;
+		int decorationWidth = getHeaderDecorationWidth();
+		int headerMinWidth = maxTextWidth
+			+ (decorationWidth > 0 ? decorationWidth + INFO_PAIR_GAP : 0);
 
 		Dimension contentSize = getContentSize(Math.max(headerMinWidth, 1));
 
@@ -689,8 +702,10 @@ public abstract class TitleTooltip extends NativeTooltip
 		g2.setColor(headerColor);
 		// Long reveal texts (recent-item names) ellipsize instead of clipping.
 		int suffixWidth = showTitleSuffix ? nfm.stringWidth(titleSuffix) : 0;
+		int decorationWidth = getHeaderDecorationWidth();
+		int decorationReserve = decorationWidth > 0 ? decorationWidth + INFO_PAIR_GAP : 0;
 		headerTitle = fitHeaderText(nfm, headerTitle,
-			w - 2 * inset - suffixWidth);
+			w - 2 * inset - suffixWidth - decorationReserve);
 		g2.drawString(headerTitle, inset, lineY);
 		int activeLineWidth = nfm.stringWidth(headerTitle);
 		if (showTitleSuffix)
@@ -782,6 +797,10 @@ public abstract class TitleTooltip extends NativeTooltip
 		{
 			paintHeaderRightText(g2, fm, w, lineY, activeLineWidth);
 		}
+		if (decorationWidth > 0)
+		{
+			paintHeaderDecoration(g2, w, inset, getHeaderHeight());
+		}
 
 		// Separator
 		int sepY = lineY + SEPARATOR_GAP;
@@ -791,7 +810,7 @@ public abstract class TitleTooltip extends NativeTooltip
 		return sepY + 1 + SEPARATOR_GAP;
 	}
 
-	private void paintHeaderHoverLine(Graphics2D g2, FontMetrics fm, int w, int baseline)
+	protected final void paintHeaderHoverLine(Graphics2D g2, FontMetrics fm, int w, int baseline)
 	{
 		String itemName = getHeaderHoverLineText();
 		String duplicateCount = getHeaderHoverLineRightText();
