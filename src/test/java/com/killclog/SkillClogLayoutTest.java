@@ -22,8 +22,6 @@ public class SkillClogLayoutTest
 	{
 		List<SkillClogSection> sections = SkillClogSection.forSkill(Skill.DEFENCE, null, null, null);
 		assertEquals(36, SkillClogSection.combinedProgress(sections, false).total());
-		assertEquals(Arrays.asList("Inquisitor", "Bandos", "Justiciar", "Oathplate", "Torva"),
-			sections.get(0).layout().rowLabels);
 		assertEquals(Arrays.asList(11832, 11834, 11836), sections.get(0).itemIds().subList(3, 6));
 		assertEquals(Arrays.asList(26376, 26378, 26380), sections.get(0).itemIds().subList(12, 15));
 		assertEquals(Integer.valueOf(22477), sections.get(3).itemIds().get(8));
@@ -31,9 +29,16 @@ public class SkillClogLayoutTest
 		{
 			List<TooltipItemHover.HitBox> boxes = paintSections(sections, width);
 			assertEquals(36, boxes.size());
+			SkillTooltip target = new SkillTooltip();
+			int headingHeight = target.getFontMetrics(
+				net.runelite.client.ui.FontManager.getRunescapeBoldFont()).getHeight();
+			int progressHeight = target.getFontMetrics(
+				net.runelite.client.ui.FontManager.getRunescapeSmallFont()).getHeight();
+			assertEquals(headingHeight + progressHeight + 4, bounds(boxes.get(0)).y);
 			for (int i = 0; i < boxes.size(); i += 3)
 			{
 				Rectangle first = bounds(boxes.get(i));
+				assertEquals(TitleTooltip.getInset(), first.x);
 				for (int col = 0; col < 3; col++)
 				{
 					Rectangle slot = bounds(boxes.get(i + col));
@@ -60,11 +65,6 @@ public class SkillClogLayoutTest
 			new ClogResult.ClogItem(1, 2, null))), Map.of("slayer", ids), Collections.emptyMap(), null, null);
 		List<SkillClogSection> sections = SkillClogSection.forSkill(Skill.SLAYER, player, null, player);
 		assertEquals(3, sections.size());
-		for (SkillClogSection section : sections)
-		{
-			assertTrue(section.layout().rowLabels.isEmpty());
-			assertFalse(section.layout().inlineProgress);
-		}
 		assertEquals(4, sections.get(0).itemIds().size());
 		assertEquals(15, sections.get(1).itemIds().size());
 		assertEquals(30, sections.get(2).itemIds().size());

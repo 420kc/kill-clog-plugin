@@ -105,12 +105,7 @@ final class SkillClogSectionRenderer
 				width = Math.max(width,
 					headingMetrics.stringWidth(entry.section.heading()));
 			}
-			int progressWidth = soloProgressWidth(detailMetrics, entry.section);
-			if (entry.section.layout().inlineProgress && entry.section.hasHeading())
-			{
-				progressWidth += headingMetrics.stringWidth(entry.section.heading()) + SECTION_GAP;
-			}
-			width = Math.max(width, progressWidth);
+			width = Math.max(width, soloProgressWidth(detailMetrics, entry.section));
 			if (showsRiftsClosed(entry.section))
 			{
 				width = Math.max(width, detailMetrics.stringWidth(
@@ -131,10 +126,7 @@ final class SkillClogSectionRenderer
 			{
 				height += headingMetrics.getHeight() + HEADER_GAP;
 			}
-			if (!entry.section.layout().inlineProgress || !entry.section.hasHeading())
-			{
-				height += detailMetrics.getHeight() + HEADER_GAP;
-			}
+			height += detailMetrics.getHeight() + HEADER_GAP;
 			if (showsRiftsClosed(entry.section))
 			{
 				height += detailMetrics.getHeight() + HEADER_GAP;
@@ -216,19 +208,12 @@ final class SkillClogSectionRenderer
 				g2.setFont(SECTION_FONT);
 				g2.setColor(TitleTooltip.OSRS_ORANGE);
 				g2.drawString(section.heading(), inset, y + headingMetrics.getAscent());
-				if (!section.layout().inlineProgress)
-				{
-					y += headingMetrics.getHeight() + HEADER_GAP;
-				}
+				y += headingMetrics.getHeight() + HEADER_GAP;
 			}
 			g2.setFont(DETAIL_FONT);
 			paintSoloProgress(g2, detailMetrics, section.primary(),
-				section.itemIds().size(), section.layout().inlineProgress && section.hasHeading()
-					? inset + availableWidth - soloProgressWidth(detailMetrics, section) : inset,
-				y + (section.layout().inlineProgress && section.hasHeading()
-					? headingMetrics.getAscent() : detailMetrics.getAscent()));
-			y += (section.layout().inlineProgress && section.hasHeading()
-				? headingMetrics.getHeight() : detailMetrics.getHeight()) + HEADER_GAP;
+				section.itemIds().size(), inset, y + detailMetrics.getAscent());
+			y += detailMetrics.getHeight() + HEADER_GAP;
 			if (showsRiftsClosed(section))
 			{
 				paintSoloDetail(g2, detailMetrics, SkillTooltip.RIFTS_CLOSED_LABEL,
@@ -321,15 +306,6 @@ final class SkillClogSectionRenderer
 		FontMetrics quantityMetrics = g2.getFontMetrics();
 		int spriteSize = spriteSize(entry.section);
 		int cellSize = spriteSize + PADDING;
-		int labelWidth = rowLabelWidth(entry.section);
-		for (int row = 0; row < entry.section.layout().rowLabels.size(); row++)
-		{
-			g2.setColor(TitleTooltip.MUTED_GRAY);
-			g2.drawString(entry.section.layout().rowLabels.get(row), startX,
-				y + row * cellSize + (spriteSize - quantityMetrics.getHeight()) / 2
-					+ quantityMetrics.getAscent());
-		}
-		startX += labelWidth;
 		for (int i = 0; i < itemIds.size(); i++)
 		{
 			int x = startX + (i % cols) * cellSize;
@@ -461,20 +437,9 @@ final class SkillClogSectionRenderer
 		return Math.min(fit, Math.max(section.itemIds().size(), 1));
 	}
 
-	private int rowLabelWidth(SkillClogSection section)
-	{
-		FontMetrics fm = repaintTarget.getFontMetrics(DETAIL_FONT);
-		int width = 0;
-		for (String label : section.layout().rowLabels)
-		{
-			width = Math.max(width, fm.stringWidth(label) + SECTION_GAP);
-		}
-		return width;
-	}
-
 	private int gridWidth(SkillClogSection section, int cols)
 	{
-		return rowLabelWidth(section) + cols * cellSize(section) - PADDING;
+		return cols * cellSize(section) - PADDING;
 	}
 
 	private int gridHeight(SkillClogSection section, int cols)
