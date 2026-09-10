@@ -4,6 +4,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -209,6 +210,35 @@ public class ClogHelperTest
 	{
 		// Longer than 4 chars: leftPad returns as-is.
 		assertEquals("12345", ClogHelper.pad("12345"));
+	}
+
+	@Test
+	public void topLevelTabsDeduplicateWithinTheTabButOverlapEachOther()
+	{
+		Map<String, List<Integer>> categories = new HashMap<>();
+		categories.put("boss_a", Arrays.asList(1, 2));
+		categories.put("boss_b", Arrays.asList(2, 5));
+		categories.put("raid", Arrays.asList(2, 3));
+		categories.put("all_pets", Arrays.asList(2, 4));
+		Map<String, List<ClogResult.ClogItem>> obtained = new HashMap<>();
+		obtained.put("boss_a", Collections.singletonList(new ClogResult.ClogItem(2, 1, null)));
+		obtained.put("raid", Collections.singletonList(new ClogResult.ClogItem(3, 1, null)));
+
+		Map<String, List<String>> tabs = new LinkedHashMap<>();
+		tabs.put("Bosses", Arrays.asList("boss_a", "boss_b"));
+		tabs.put("Raids", Collections.singletonList("raid"));
+		tabs.put("Other", Collections.singletonList("all_pets"));
+
+		List<ClogHelper.ClogGroupProgress> progress = ClogHelper.clogGroupProgress(
+			makeClogResult(categories, obtained), tabs);
+		assertEquals(3, progress.size());
+		assertEquals("Bosses", progress.get(0).name);
+		assertEquals(1, progress.get(0).obtained);
+		assertEquals(3, progress.get(0).total);
+		assertEquals(2, progress.get(1).obtained);
+		assertEquals(2, progress.get(1).total);
+		assertEquals(1, progress.get(2).obtained);
+		assertEquals(2, progress.get(2).total);
 	}
 
 	@Test

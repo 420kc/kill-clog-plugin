@@ -3,6 +3,7 @@ package com.killclog;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,6 +26,7 @@ import net.runelite.client.game.ItemManager;
 final class ClogIndex
 {
 	private static final int ENUM_CLOG_TABS = 2102;
+	private static final int PARAM_TAB_NAME = 682;
 	private static final int PARAM_SUBTAB_ENUM = 683;
 	private static final int PARAM_CATEGORY_NAME = 689;
 	private static final int PARAM_CATEGORY_ITEMS = 690;
@@ -33,16 +35,19 @@ final class ClogIndex
 	private static final class Snapshot
 	{
 		final Map<String, List<Integer>> categoryItems;
+		final Map<String, List<String>> tabCategoryKeys;
 		final Map<Integer, List<String>> itemCategoryKeys;
 		final Map<String, List<Integer>> itemNameIds;
 		final Map<Integer, String> itemNames;
 
 		Snapshot(Map<String, List<Integer>> categoryItems,
+			Map<String, List<String>> tabCategoryKeys,
 			Map<Integer, List<String>> itemCategoryKeys,
 			Map<String, List<Integer>> itemNameIds,
 			Map<Integer, String> itemNames)
 		{
 			this.categoryItems = categoryItems;
+			this.tabCategoryKeys = tabCategoryKeys;
 			this.itemCategoryKeys = itemCategoryKeys;
 			this.itemNameIds = itemNameIds;
 			this.itemNames = itemNames;
@@ -61,6 +66,7 @@ final class ClogIndex
 		try
 		{
 			Map<String, List<Integer>> nextCategoryItems = new HashMap<>();
+			Map<String, List<String>> nextTabCategoryKeys = new LinkedHashMap<>();
 			Map<Integer, List<String>> nextItemCategoryKeys = new HashMap<>();
 			Map<String, List<Integer>> nextItemNameIds = new HashMap<>();
 			Map<Integer, String> nextItemNames = new HashMap<>();
@@ -70,6 +76,7 @@ final class ClogIndex
 			{
 				int tabStructId = tabs.getIntValue(tabKey);
 				StructComposition tabStruct = client.getStructComposition(tabStructId);
+				String tabName = tabStruct.getStringValue(PARAM_TAB_NAME);
 				int subtabEnumId = tabStruct.getIntValue(PARAM_SUBTAB_ENUM);
 
 				EnumComposition subtabs = client.getEnum(subtabEnumId);
@@ -86,6 +93,11 @@ final class ClogIndex
 					}
 
 					String categoryKey = ClogService.bossToCategory(name);
+					if (tabName != null)
+					{
+						nextTabCategoryKeys.computeIfAbsent(tabName, k -> new ArrayList<>())
+							.add(categoryKey);
+					}
 					EnumComposition itemsEnum = client.getEnum(itemsEnumId);
 					List<Integer> itemIds = new ArrayList<>();
 					for (int itemKey : itemsEnum.getKeys())
@@ -107,7 +119,8 @@ final class ClogIndex
 			injectSynthetic(nextCategoryItems, nextItemCategoryKeys, nextItemNameIds, nextItemNames,
 				itemManager, PanelData.CLOG_GILDED, PanelData.GILDED_ITEMS);
 
-			Snapshot parsed = new Snapshot(nextCategoryItems, nextItemCategoryKeys,
+			Snapshot parsed = new Snapshot(nextCategoryItems, nextTabCategoryKeys,
+				nextItemCategoryKeys,
 				nextItemNameIds, nextItemNames);
 			snapshot = parsed;
 			log.debug("Parsed clog enums: {} categories, {} items, {} names",
@@ -156,6 +169,12 @@ final class ClogIndex
 		return s != null ? s.categoryItems : Collections.emptyMap();
 	}
 
+	Map<String, List<String>> tabCategoryKeys()
+	{
+		Snapshot s = snapshot;
+		return s != null ? s.tabCategoryKeys : Collections.emptyMap();
+	}
+
 	Map<String, List<Integer>> copyCategoryItems()
 	{
 		Map<String, List<Integer>> copy = new HashMap<>();
@@ -201,8 +220,17 @@ final class ClogIndex
 	/* package */ void publishForTest(Map<String, List<Integer>> categoryItems,
 		Map<Integer, String> itemNames)
 	{
-		snapshot = new Snapshot(new HashMap<>(categoryItems), new HashMap<>(),
+		snapshot = new Snapshot(new HashMap<>(categoryItems), new LinkedHashMap<>(),
+			new HashMap<>(),
 			new HashMap<>(), new HashMap<>(itemNames));
+	}
+
+	/** Test seam for a catalog carrying the top-level Jagex tab taxonomy. */
+	/* package */ void publishForTest(Map<String, List<Integer>> categoryItems,
+		Map<Integer, String> itemNames, Map<String, List<String>> tabCategoryKeys)
+	{
+		snapshot = new Snapshot(new HashMap<>(categoryItems), new LinkedHashMap<>(tabCategoryKeys),
+			new HashMap<>(), new HashMap<>(), new HashMap<>(itemNames));
 	}
 
 	/** A coherent catalog copy plus the identity of the parse it came from. */

@@ -1,5 +1,6 @@
 package com.killclog;
 
+import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
@@ -9,6 +10,7 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
@@ -20,8 +22,8 @@ import net.runelite.client.ui.FontManager;
  */
 public class ClogSummaryTooltip extends TitleTooltip
 {
-	private static final int ICON_SIZE = 13;
-	private static final int ICON_GAP = 3;
+	private static final int TIER_CELL_SIZE = 17;
+	private static final int TIER_SECTION = 20;
 	private static final int SEPARATOR_PAD = 2;
 	private static final int SUBHEADER_HEIGHT = 16;
 	private static final int RECENT_SIZE = 24;
@@ -44,14 +46,16 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private static final String SETUP_SEARCH_LINE = "2. Right-click the top and choose \"Search\".";
 	private static final String SETUP_CHAT_LINE = "Chat will confirm when setup is complete.";
 
-	private String tierRange;
-	private String tierName;
-	private String progressCount;
-	private String nextTierName;
+	private int overallObtained = -1;
+	private int overallTotal = -1;
+	private int currentTierIndex = -1;
+	private String completionPercent;
+	private String clogRank;
 	private String syncDate;
 	private boolean syncStale;
 
 	private Map<String, BufferedImage> tierIcons;
+	private List<ClogHelper.ClogGroupProgress> categoryProgress = Collections.emptyList();
 	private String notice;
 	private BufferedImage noticeIcon;
 	private boolean firstTimeSetup;
@@ -75,14 +79,48 @@ public class ClogSummaryTooltip extends TitleTooltip
 	public void setTierData(int obtained, int totalSlots, Map<String, BufferedImage> tierIcons)
 	{
 		setTitle("Clog Summary");
-		setObtained(obtained, totalSlots);
+		setSubtitle("Total: ", progressText(obtained, totalSlots),
+			completionColor(obtained, totalSlots));
+		overallObtained = obtained;
+		overallTotal = totalSlots;
+		completionPercent = totalSlots > 0
+			? String.format(Locale.US, "%.1f%%", obtained * 100.0 / totalSlots) : "--";
 		this.tierIcons = tierIcons;
+		currentTierIndex = tierIndex(ClogHelper.getClogTierName(obtained, totalSlots));
+	}
 
-		ClogHelper.TierProgress tier = ClogHelper.tierProgress(obtained, totalSlots);
-		tierRange = tier.tierRange;
-		tierName = tier.tierName;
-		progressCount = tier.progressCount;
-		nextTierName = tier.nextTierName;
+	public void setPreviewData(int totalSlots, Map<String, BufferedImage> tierIcons)
+	{
+		setTitle("Clog Summary");
+		setSubtitle("Total: ", progressText(-1, totalSlots), MUTED_GRAY);
+		overallObtained = -1;
+		overallTotal = totalSlots;
+		completionPercent = "--";
+		currentTierIndex = -1;
+		this.tierIcons = tierIcons;
+	}
+
+	public void setCategoryProgress(List<ClogHelper.ClogGroupProgress> progress)
+	{
+		categoryProgress = progress != null ? progress : Collections.emptyList();
+	}
+
+	public void setCategoryPreview(List<ClogHelper.ClogGroupProgress> progress)
+	{
+		List<ClogHelper.ClogGroupProgress> preview = new ArrayList<>();
+		if (progress != null)
+		{
+			for (ClogHelper.ClogGroupProgress group : progress)
+			{
+				preview.add(new ClogHelper.ClogGroupProgress(group.name, -1, group.total));
+			}
+		}
+		categoryProgress = preview;
+	}
+
+	public void setClogRank(int rank)
+	{
+		clogRank = rank > 0 ? formatNumber(rank) : "Unranked";
 	}
 
 	public void setSyncData(String dateText, boolean stale)
@@ -255,31 +293,39 @@ public class ClogSummaryTooltip extends TitleTooltip
 			return new Dimension(nw, LINE_HEIGHT);
 		}
 
-		int iconWidth = ICON_SIZE + ICON_GAP;
 		int textWidth = 0;
+		int contentHeight = 0;
+		if (completionPercent != null)
+		{
+			String overallLine = "Completion: " + completionPercent;
+			if (clogRank != null)
+			{
+				overallLine += CHROME_SEPARATOR + "Rank: " + clogRank;
+			}
+			textWidth = Math.max(textWidth, fm.stringWidth(overallLine));
+			textWidth = Math.max(textWidth, tierLegendWidth());
+			contentHeight += LINE_HEIGHT + TIER_CELL_SIZE;
+		}
 
-		if (tierRange != null)
+		if (!categoryProgress.isEmpty())
 		{
-			String label = capitalize(tierName) + ": ";
-			textWidth = Math.max(textWidth, iconWidth + fm.stringWidth(label) + fm.stringWidth(tierRange));
+			FontMetrics bfm = getFontMetrics(FontManager.getRunescapeBoldFont());
+			contentHeight += separatorHeight(SEPARATOR_PAD) + SUBHEADER_HEIGHT
+				+ categoryProgress.size() * LINE_HEIGHT;
+			textWidth = Math.max(textWidth, bfm.stringWidth("Collection Log"));
+			for (ClogHelper.ClogGroupProgress group : categoryProgress)
+			{
+				textWidth = Math.max(textWidth,
+					fm.stringWidth(group.name) + 12 + fm.stringWidth(progressText(group.obtained, group.total)));
+			}
 		}
-		if (progressCount != null)
-		{
-			String label = capitalize(nextTierName) + ": ";
-			textWidth = Math.max(textWidth, iconWidth + fm.stringWidth(label) + fm.stringWidth(progressCount + " more"));
-		}
+
 		String syncLabel = "Last update: ";
 		if (syncDate != null)
 		{
 			textWidth = Math.max(textWidth, fm.stringWidth(syncLabel + syncDate));
+			contentHeight += LINE_HEIGHT;
 		}
-
-		int lines = 0;
-		if (tierRange != null) lines++;
-		if (progressCount != null) lines++;
-		if (syncDate != null) lines++;
-
-		int contentHeight = LINE_HEIGHT * lines;
 
 		// Highlights section: obtained trophies only.
 		if (specialCount > 0)
@@ -358,29 +404,40 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 		int y = startY;
 
-		// Current tier: [icon] Rune: 1100-1199
-		if (tierRange != null)
+		if (completionPercent != null)
 		{
-			paintTierLine(g2, fm, inset, y, tierName, tierRange, Color.WHITE, null);
-			y += LINE_HEIGHT;
-		}
-
-		// Progress: [icon] Dragon: 18 more
-		if (progressCount != null)
-		{
-			paintTierLine(g2, fm, inset, y, nextTierName, progressCount, Color.WHITE, " more");
-			y += LINE_HEIGHT;
-		}
-
-		// Sync line: label orange, date green or red.
-		if (syncDate != null)
-		{
-			String label = "Last update: ";
+			String label = "Completion: ";
 			g2.setColor(OSRS_ORANGE);
 			g2.drawString(label, inset, y + fm.getAscent());
-			g2.setColor(syncStale ? STALE_RED : CLOG_GREEN);
-			g2.drawString(syncDate, inset + fm.stringWidth(label), y + fm.getAscent());
+			g2.setColor(overallObtained >= 0 ? Color.WHITE : MUTED_GRAY);
+			g2.drawString(completionPercent, inset + fm.stringWidth(label), y + fm.getAscent());
+			if (clogRank != null)
+			{
+				int rankX = inset + fm.stringWidth(label + completionPercent);
+				g2.setColor(OSRS_ORANGE);
+				g2.drawString(CHROME_SEPARATOR + "Rank: ", rankX, y + fm.getAscent());
+				rankX += fm.stringWidth(CHROME_SEPARATOR + "Rank: ");
+				g2.setColor("Unranked".equals(clogRank) ? MUTED_GRAY : Color.WHITE);
+				g2.drawString(clogRank, rankX, y + fm.getAscent());
+			}
 			y += LINE_HEIGHT;
+			y = paintTierLegend(g2, w, y, hitBoxes);
+		}
+
+		if (!categoryProgress.isEmpty())
+		{
+			y = paintSubheader(g2, w, y, "Collection Log");
+			for (ClogHelper.ClogGroupProgress group : categoryProgress)
+			{
+				String count = progressText(group.obtained, group.total);
+				g2.setFont(FontManager.getRunescapeSmallFont());
+				g2.setColor(OSRS_ORANGE);
+				g2.drawString(group.name, inset, y + fm.getAscent());
+				g2.setColor(group.obtained >= 0
+					? completionColor(group.obtained, group.total) : MUTED_GRAY);
+				g2.drawString(count, w - inset - fm.stringWidth(count), y + fm.getAscent());
+				y += LINE_HEIGHT;
+			}
 		}
 
 		// Highlights section: the trophy shelf, present only when earned.
@@ -403,6 +460,18 @@ public class ClogSummaryTooltip extends TitleTooltip
 			{
 				y += DATE_GAP + fm.getHeight();
 			}
+		}
+
+		// Freshness sits with the provenance footer, whose layout remains unchanged.
+		if (syncDate != null)
+		{
+			String label = "Last update: ";
+			g2.setFont(FontManager.getRunescapeSmallFont());
+			g2.setColor(OSRS_ORANGE);
+			g2.drawString(label, inset, y + fm.getAscent());
+			g2.setColor(syncStale ? STALE_RED : CLOG_GREEN);
+			g2.drawString(syncDate, inset + fm.stringWidth(label), y + fm.getAscent());
+			y += LINE_HEIGHT;
 		}
 
 		if (!clogSources.isEmpty())
@@ -518,6 +587,99 @@ public class ClogSummaryTooltip extends TitleTooltip
 		return w;
 	}
 
+	private int paintTierLegend(Graphics2D g2, int w, int y,
+		List<TooltipItemHover.HitBox> hitBoxes)
+	{
+		int startX = tierLegendStartX(w);
+		for (int i = 0; i < ClogHelper.CLOG_TIERS.length; i++)
+		{
+			String tier = ClogHelper.CLOG_TIERS[i];
+			int cellX = startX + i * TIER_CELL_SIZE;
+			BufferedImage icon = tierIcons != null ? tierIcons.get(tier) : null;
+			boolean reached = overallObtained >= tierThreshold(i, overallTotal);
+			if (icon != null)
+			{
+				g2.setComposite(reached ? AlphaComposite.SrcOver
+					: AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
+				int iconX = cellX + (TIER_CELL_SIZE - icon.getWidth()) / 2;
+				int iconY = y + (TIER_CELL_SIZE - icon.getHeight()) / 2;
+				g2.drawImage(icon, iconX, iconY, null);
+				g2.setComposite(AlphaComposite.SrcOver);
+			}
+			if (i == currentTierIndex)
+			{
+				g2.setColor(CLOG_GREEN);
+				g2.drawRect(cellX, y, TIER_CELL_SIZE - 1, TIER_CELL_SIZE - 1);
+			}
+			hitBoxes.add(new TooltipItemHover.HitBox(
+				TIER_SECTION + i, -1, tierHoverText(i, overallTotal),
+				new Rectangle(cellX, y, TIER_CELL_SIZE, TIER_CELL_SIZE)));
+		}
+		return y + TIER_CELL_SIZE;
+	}
+
+	static int tierLegendWidth()
+	{
+		return ClogHelper.CLOG_TIERS.length * TIER_CELL_SIZE;
+	}
+
+	static int tierLegendStartX(int tooltipWidth)
+	{
+		return (tooltipWidth - tierLegendWidth()) / 2;
+	}
+
+	static String tierHoverText(int tierIndex, int totalSlots)
+	{
+		return capitalize(ClogHelper.CLOG_TIERS[tierIndex]) + ": "
+			+ tierRange(tierIndex, totalSlots);
+	}
+
+	private static String tierRange(int tierIndex, int totalSlots)
+	{
+		int start = tierThreshold(tierIndex, totalSlots);
+		if (tierIndex == ClogHelper.CLOG_TIERS.length - 1)
+		{
+			return formatNumber(start) + "+ slots";
+		}
+		return formatNumber(start) + "-" + formatNumber(tierThreshold(tierIndex + 1, totalSlots) - 1)
+			+ " slots";
+	}
+
+	private static int tierThreshold(int tierIndex, int totalSlots)
+	{
+		if (tierIndex >= ClogHelper.CLOG_TIER_THRESHOLDS.length)
+		{
+			return (int) (Math.max(totalSlots, 0) * 0.9) / 25 * 25;
+		}
+		return ClogHelper.CLOG_TIER_THRESHOLDS[tierIndex];
+	}
+
+	private static int tierIndex(String tierName)
+	{
+		if (tierName != null)
+		{
+			for (int i = 0; i < ClogHelper.CLOG_TIERS.length; i++)
+			{
+				if (tierName.equals(ClogHelper.CLOG_TIERS[i]))
+				{
+					return i;
+				}
+			}
+		}
+		return -1;
+	}
+
+	static String progressText(int obtained, int total)
+	{
+		return (obtained >= 0 ? formatNumber(obtained) : "--") + "/"
+			+ (total >= 0 ? formatNumber(total) : "?");
+	}
+
+	private static String formatNumber(int value)
+	{
+		return String.format(Locale.US, "%,d", value);
+	}
+
 	@Override
 	protected String getTitleHoverText()
 	{
@@ -529,36 +691,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 	{
 		// Obtained items and verified providers share the success/trust color.
 		return CLOG_GREEN;
-	}
-
-	/** Draws: [icon] Tier: value [suffix]. */
-	private void paintTierLine(Graphics2D g2, FontMetrics fm, int x, int y,
-		String tier, String value, Color valueColor, String suffix)
-	{
-		int textY = y + fm.getAscent();
-
-		BufferedImage icon = tierIcons != null ? tierIcons.get(tier) : null;
-		if (icon != null)
-		{
-			int iconY = y + (LINE_HEIGHT - icon.getHeight()) / 2;
-			g2.drawImage(icon, x, iconY, null);
-			x += icon.getWidth() + ICON_GAP;
-		}
-
-		String label = capitalize(tier) + ": ";
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString(label, x, textY);
-		x += fm.stringWidth(label);
-
-		g2.setColor(valueColor);
-		g2.drawString(value, x, textY);
-		x += fm.stringWidth(value);
-
-		if (suffix != null)
-		{
-			g2.setColor(OSRS_ORANGE);
-			g2.drawString(suffix, x, textY);
-		}
 	}
 
 	private static final class ClogSource

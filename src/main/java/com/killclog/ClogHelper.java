@@ -9,6 +9,7 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -167,6 +168,67 @@ final class ClogHelper
 		int total = result.getUniqueTotal() > 0
 			? result.getUniqueTotal() : allItems.size();
 		return new int[]{obtained, total};
+	}
+
+	/**
+	 * Progress for each top-level Jagex Collection Log tab. Slots are unique
+	 * within one tab, but deliberately remain counted in every tab whose
+	 * taxonomy contains them (for example, a boss pet also listed in All Pets).
+	 */
+	static List<ClogGroupProgress> clogGroupProgress(ClogResult result,
+		Map<String, List<String>> tabCategoryKeys)
+	{
+		if (result == null || tabCategoryKeys == null || tabCategoryKeys.isEmpty())
+		{
+			return Collections.emptyList();
+		}
+
+		Set<Integer> allObtained = new HashSet<>();
+		for (List<ClogResult.ClogItem> items : result.getObtainedItems().values())
+		{
+			for (ClogResult.ClogItem item : items)
+			{
+				allObtained.add(item.getId());
+			}
+		}
+
+		List<ClogGroupProgress> progress = new ArrayList<>();
+		for (Map.Entry<String, List<String>> tab : tabCategoryKeys.entrySet())
+		{
+			Set<Integer> tabItems = new LinkedHashSet<>();
+			for (String categoryKey : tab.getValue())
+			{
+				List<Integer> categoryItems = result.getCategoryItems().get(categoryKey);
+				if (categoryItems != null)
+				{
+					tabItems.addAll(categoryItems);
+				}
+			}
+			int obtained = 0;
+			for (int itemId : tabItems)
+			{
+				if (allObtained.contains(itemId))
+				{
+					obtained++;
+				}
+			}
+			progress.add(new ClogGroupProgress(tab.getKey(), obtained, tabItems.size()));
+		}
+		return progress;
+	}
+
+	static final class ClogGroupProgress
+	{
+		final String name;
+		final int obtained;
+		final int total;
+
+		ClogGroupProgress(String name, int obtained, int total)
+		{
+			this.name = name;
+			this.obtained = obtained;
+			this.total = total;
+		}
 	}
 
 	// Clog tier logic.

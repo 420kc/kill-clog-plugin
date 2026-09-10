@@ -113,6 +113,7 @@ public class KillClogPanel extends PluginPanel
 	private final CaRewardSprites caRewardSprites;
 	private final TooltipItemNameResolver itemNameResolver;
 	private final PanelIconCache iconCache;
+	private ClogIndex clogIndex;
 	private final PanelAccountTypes accountTypes;
 	private final ActivitySummaryTooltips activityTooltips;
 	private final SkillCellGrid skillCellGrid;
@@ -1861,6 +1862,7 @@ public class KillClogPanel extends PluginPanel
 
 	public void setClogIndex(ClogIndex clogIndex)
 	{
+		this.clogIndex = clogIndex;
 		cells.setClogIndex(clogIndex);
 		comparison.setClogIndex(clogIndex);
 	}
@@ -2093,11 +2095,15 @@ public class KillClogPanel extends PluginPanel
 		{
 			int[] totals = ClogHelper.sumClogTotals(clog);
 			tip.setTierData(totals[0], totals[1], iconCache.clogTierImages());
+			if (clogIndex != null)
+			{
+				tip.setCategoryProgress(
+					ClogHelper.clogGroupProgress(clog, clogIndex.tabCategoryKeys()));
+			}
 			tip.setClogSources(clog.isFromTemple(), clog.isFromRuneProfile(), clog.isFromKillclog());
 			if (hiscore != null && hiscore.isRankDataAvailable())
 			{
-				int clogRank = hiscore.getActivityRank("Collections Logged");
-				tip.setRank(clogRank);
+				tip.setClogRank(hiscore.getActivityRank("Collections Logged"));
 			}
 			boolean stale = LookupQueries.isSyncStale(lastChanged, 90);
 			String sync = LookupQueries.syncLine(lastChanged, stale);
@@ -2125,8 +2131,13 @@ public class KillClogPanel extends PluginPanel
 				ClogResult catalog = cells.unsyncedCatalogResult();
 				if (catalog != null)
 				{
-					tip.setTitle("Clog Summary");
-					tip.setObtainedPlaceholder(ClogHelper.sumClogTotals(catalog)[1]);
+					tip.setPreviewData(ClogHelper.sumClogTotals(catalog)[1],
+						iconCache.clogTierImages());
+					if (clogIndex != null)
+					{
+						tip.setCategoryPreview(
+							ClogHelper.clogGroupProgress(catalog, clogIndex.tabCategoryKeys()));
+					}
 				}
 				else
 				{
