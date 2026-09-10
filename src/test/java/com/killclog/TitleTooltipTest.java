@@ -149,6 +149,24 @@ public class TitleTooltipTest
 	}
 
 	@Test
+	public void clogSummaryAlwaysKeepsFiveCanonicalCategoryRows()
+	{
+		ClogSummaryTooltip tooltip = new ClogSummaryTooltip();
+		assertCategoryProgress(tooltip.categoryProgress(),
+			new int[]{-1, -1, -1, -1, -1}, new int[]{-1, -1, -1, -1, -1});
+
+		tooltip.setCategoryProgress(Arrays.asList(
+			new ClogHelper.ClogGroupProgress("Other", 22, 44),
+			new ClogHelper.ClogGroupProgress("Bosses", 11, 33)));
+		assertCategoryProgress(tooltip.categoryProgress(),
+			new int[]{11, -1, -1, -1, 22}, new int[]{33, -1, -1, -1, 44});
+
+		tooltip.setCategoryPreview(tooltip.categoryProgress());
+		assertCategoryProgress(tooltip.categoryProgress(),
+			new int[]{-1, -1, -1, -1, -1}, new int[]{33, -1, -1, -1, 44});
+	}
+
+	@Test
 	public void clogSummaryProvenanceRowsAreCenteredForOneTwoAndThreeSources()
 	{
 		int width = 101;
@@ -377,6 +395,18 @@ public class TitleTooltipTest
 		moveMouse(component, 6, 6);
 		assertFalse(hover.hoveredItemObtained());
 		assertNull(hover.hoveredDuplicateCountText());
+	}
+
+	private static void assertCategoryProgress(List<ClogHelper.ClogGroupProgress> progress,
+		int[] obtained, int[] totals)
+	{
+		assertEquals(ClogHelper.CLOG_GROUP_NAMES.length, progress.size());
+		for (int i = 0; i < ClogHelper.CLOG_GROUP_NAMES.length; i++)
+		{
+			assertEquals(ClogHelper.CLOG_GROUP_NAMES[i], progress.get(i).name);
+			assertEquals(obtained[i], progress.get(i).obtained);
+			assertEquals(totals[i], progress.get(i).total);
+		}
 	}
 
 	private static HiscoreResult pvpHiscore(String activity, int score)

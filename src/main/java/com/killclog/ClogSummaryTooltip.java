@@ -57,7 +57,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 	private Map<String, BufferedImage> tierIcons;
 	private BufferedImage currentTierSprite;
-	private List<ClogHelper.ClogGroupProgress> categoryProgress = Collections.emptyList();
+	private List<ClogHelper.ClogGroupProgress> categoryProgress = normalizeCategoryProgress(null, false);
 	private String notice;
 	private BufferedImage noticeIcon;
 	private boolean firstTimeSetup;
@@ -104,20 +104,43 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 	public void setCategoryProgress(List<ClogHelper.ClogGroupProgress> progress)
 	{
-		categoryProgress = progress != null ? progress : Collections.emptyList();
+		categoryProgress = normalizeCategoryProgress(progress, false);
 	}
 
 	public void setCategoryPreview(List<ClogHelper.ClogGroupProgress> progress)
 	{
-		List<ClogHelper.ClogGroupProgress> preview = new ArrayList<>();
-		if (progress != null)
+		categoryProgress = normalizeCategoryProgress(progress, true);
+	}
+
+	private static List<ClogHelper.ClogGroupProgress> normalizeCategoryProgress(
+		List<ClogHelper.ClogGroupProgress> progress, boolean preview)
+	{
+		List<ClogHelper.ClogGroupProgress> normalized = new ArrayList<>(
+			ClogHelper.CLOG_GROUP_NAMES.length);
+		for (String name : ClogHelper.CLOG_GROUP_NAMES)
 		{
-			for (ClogHelper.ClogGroupProgress group : progress)
+			ClogHelper.ClogGroupProgress match = null;
+			if (progress != null)
 			{
-				preview.add(new ClogHelper.ClogGroupProgress(group.name, -1, group.total));
+				for (ClogHelper.ClogGroupProgress group : progress)
+				{
+					if (group != null && name.equalsIgnoreCase(group.name))
+					{
+						match = group;
+						break;
+					}
+				}
 			}
+			normalized.add(new ClogHelper.ClogGroupProgress(name,
+				match != null && !preview ? match.obtained : -1,
+				match != null ? match.total : -1));
 		}
-		categoryProgress = preview;
+		return normalized;
+	}
+
+	List<ClogHelper.ClogGroupProgress> categoryProgress()
+	{
+		return Collections.unmodifiableList(categoryProgress);
 	}
 
 	public void setClogRank(int rank)

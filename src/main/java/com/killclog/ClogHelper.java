@@ -31,6 +31,9 @@ final class ClogHelper
 	static final String[] CLOG_TIERS = {
 		"bronze", "iron", "steel", "black", "mithril", "adamant", "rune", "dragon", "gilded"
 	};
+	static final String[] CLOG_GROUP_NAMES = {
+		"Bosses", "Raids", "Clues", "Minigames", "Other"
+	};
 
 	static final int[] CLOG_TIER_THRESHOLDS = {100, 300, 500, 700, 900, 1000, 1100, 1200};
 

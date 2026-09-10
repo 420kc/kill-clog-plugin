@@ -32,9 +32,6 @@ final class ClogIndex
 	private static final int PARAM_SUBTAB_ENUM = 683;
 	private static final int PARAM_CATEGORY_NAME = 689;
 	private static final int PARAM_CATEGORY_ITEMS = 690;
-	private static final String[] JAGEX_TAB_NAMES = {
-		"Bosses", "Raids", "Clues", "Minigames", "Other"
-	};
 	private static final Map<Integer, Integer> FALLBACK_ITEM_REMAPS = fallbackItemRemaps();
 
 	/** One parse product; replaced whole, never mutated. */
@@ -390,8 +387,8 @@ final class ClogIndex
 		{
 			return parsedName;
 		}
-		return position >= 0 && position < JAGEX_TAB_NAMES.length
-			? JAGEX_TAB_NAMES[position] : null;
+		return position >= 0 && position < ClogHelper.CLOG_GROUP_NAMES.length
+			? ClogHelper.CLOG_GROUP_NAMES[position] : null;
 	}
 
 	private static Map<Integer, Integer> fallbackItemRemaps()
