@@ -14,7 +14,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import javax.annotation.Nullable;
-import javax.swing.JComponent;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
 
@@ -27,25 +26,20 @@ final class SkillClogSectionRenderer
 	private static final int PADDING = 4;
 	private static final int REGULAR_SOLO_MIN_COLS = 5;
 	private static final int COMPACT_SOLO_MIN_COLS = 7;
-	private static final int REGULAR_COMPARE_COLS = 3;
-	private static final int COMPARE_MIN_COLS = 6;
-	private static final int COMPARE_GAP = 10;
 	private static final int HEADER_GAP = 2;
-	private static final int SECTION_GAP = 6;
 	private static final String OBTAINED_LABEL = "Obtained: ";
 	private static final Color QTY_COLOR = new Color(255, 255, 0);
 	private static final Color QTY_SHADOW = new Color(0, 0, 0);
 	private static final Font SECTION_FONT = FontManager.getRunescapeBoldFont();
 	private static final Font DETAIL_FONT = FontManager.getRunescapeSmallFont();
 
-	private final JComponent repaintTarget;
+	private final SkillTooltip repaintTarget;
 	private List<Entry> entries = Collections.emptyList();
 	private boolean compactSprites;
 	private boolean showRiftsClosed;
 	private int primaryRiftsClosed = -1;
-	private int comparedRiftsClosed = -1;
 
-	SkillClogSectionRenderer(JComponent repaintTarget)
+	SkillClogSectionRenderer(SkillTooltip repaintTarget)
 	{
 		this.repaintTarget = repaintTarget;
 	}
@@ -54,7 +48,6 @@ final class SkillClogSectionRenderer
 	{
 		showRiftsClosed = false;
 		primaryRiftsClosed = -1;
-		comparedRiftsClosed = -1;
 		if (sections == null || sections.isEmpty())
 		{
 			entries = Collections.emptyList();
@@ -76,11 +69,10 @@ final class SkillClogSectionRenderer
 		entries = Collections.unmodifiableList(next);
 	}
 
-	void setRiftsClosed(int primaryRiftsClosed, int comparedRiftsClosed)
+	void setRiftsClosed(int primaryRiftsClosed)
 	{
 		showRiftsClosed = true;
 		this.primaryRiftsClosed = primaryRiftsClosed;
-		this.comparedRiftsClosed = comparedRiftsClosed;
 	}
 
 	boolean usesCompactSprites()
@@ -133,60 +125,7 @@ final class SkillClogSectionRenderer
 			}
 			height += gridHeight(entry.section, cols);
 		}
-		height += SECTION_GAP * (entries.size() - 1);
-		return new Dimension(width, height);
-	}
-
-	Dimension compareSize(int availableWidth)
-	{
-		if (entries.isEmpty())
-		{
-			return new Dimension(0, 0);
-		}
-
-		FontMetrics headingMetrics = repaintTarget.getFontMetrics(SECTION_FONT);
-		FontMetrics detailMetrics = repaintTarget.getFontMetrics(DETAIL_FONT);
-		int width = availableWidth;
-		for (Entry entry : entries)
-		{
-			if (entry.section.hasHeading())
-			{
-				width = Math.max(width, headingMetrics.stringWidth(entry.section.heading()));
-			}
-			width = Math.max(width, compareDetailWidth(detailMetrics,
-				OBTAINED_LABEL,
-				progressText(entry.section.primary(), entry.section.itemIds().size()),
-				progressText(entry.section.compared(), entry.section.itemIds().size())));
-			if (showsRiftsClosed(entry.section))
-			{
-				width = Math.max(width, compareDetailWidth(detailMetrics,
-					SkillTooltip.RIFTS_CLOSED_LABEL,
-					riftsClosedText(primaryRiftsClosed),
-					riftsClosedText(comparedRiftsClosed)));
-			}
-		}
-		for (Entry entry : entries)
-		{
-			int cols = compareColumns(width, entry.section);
-			width = Math.max(width, gridWidth(entry.section, cols) * 2 + COMPARE_GAP);
-		}
-
-		int height = 0;
-		for (Entry entry : entries)
-		{
-			int cols = compareColumns(width, entry.section);
-			if (entry.section.hasHeading())
-			{
-				height += headingMetrics.getHeight() + HEADER_GAP;
-			}
-			height += detailMetrics.getHeight() + HEADER_GAP;
-			if (showsRiftsClosed(entry.section))
-			{
-				height += detailMetrics.getHeight() + HEADER_GAP;
-			}
-			height += gridHeight(entry.section, cols);
-		}
-		height += SECTION_GAP * (entries.size() - 1);
+		height += detailMetrics.getHeight() * entries.size();
 		return new Dimension(width, height);
 	}
 
@@ -224,67 +163,9 @@ final class SkillClogSectionRenderer
 			}
 			y = paintGrid(g2, entry, section.primary(), i, inset, availableWidth,
 				y, cols, hitBoxes);
-			if (i + 1 < entries.size())
-			{
-				y += SECTION_GAP;
-			}
-		}
-		return y;
-	}
-
-	int paintCompare(Graphics2D g2, int width, int startY,
-		List<TooltipItemHover.HitBox> hitBoxes)
-	{
-		int y = startY;
-		int inset = TitleTooltip.getInset();
-		int availableWidth = width - inset * 2;
-		FontMetrics headingMetrics = g2.getFontMetrics(SECTION_FONT);
-		FontMetrics detailMetrics = g2.getFontMetrics(DETAIL_FONT);
-		for (int i = 0; i < entries.size(); i++)
-		{
-			Entry entry = entries.get(i);
-			SkillClogSection section = entry.section;
-			int cols = compareColumns(availableWidth, section);
-			int alignedGridWidth = (availableWidth - COMPARE_GAP) / 2;
-			int pairWidth = alignedGridWidth * 2 + COMPARE_GAP;
-			int pairX = inset + (availableWidth - pairWidth) / 2;
-			int redX = pairX + alignedGridWidth + COMPARE_GAP;
-
-			if (section.hasHeading())
-			{
-				g2.setFont(SECTION_FONT);
-				g2.setColor(TitleTooltip.OSRS_ORANGE);
-				g2.drawString(section.heading(), inset, y + headingMetrics.getAscent());
-				y += headingMetrics.getHeight() + HEADER_GAP;
-			}
-
-			g2.setFont(DETAIL_FONT);
-			paintCompareDetail(g2, detailMetrics, OBTAINED_LABEL,
-				progressText(section.primary(), section.itemIds().size()),
-				progressText(section.compared(), section.itemIds().size()), inset,
-				y + detailMetrics.getAscent(),
-				section.primary().synced() ? TitleTooltip.COMPARE_BLUE : TitleTooltip.MUTED_GRAY,
-				section.compared().synced() ? TitleTooltip.COMPARE_RED : TitleTooltip.MUTED_GRAY);
-			y += detailMetrics.getHeight() + HEADER_GAP;
-			if (showsRiftsClosed(section))
-			{
-				paintCompareDetail(g2, detailMetrics, SkillTooltip.RIFTS_CLOSED_LABEL,
-					riftsClosedText(primaryRiftsClosed), riftsClosedText(comparedRiftsClosed),
-					inset, y + detailMetrics.getAscent(),
-					primaryRiftsClosed >= 0 ? TitleTooltip.COMPARE_BLUE : TitleTooltip.MUTED_GRAY,
-					comparedRiftsClosed >= 0 ? TitleTooltip.COMPARE_RED : TitleTooltip.MUTED_GRAY);
-				y += detailMetrics.getHeight() + HEADER_GAP;
-			}
-
-			int blueBottom = paintGridAt(g2, entry, section.primary(), i * 2,
-				pairX, y, cols, hitBoxes);
-			int redBottom = paintGridAt(g2, entry, section.compared(), i * 2 + 1,
-				redX, y, cols, hitBoxes);
-			y = Math.max(blueBottom, redBottom);
-			if (i + 1 < entries.size())
-			{
-				y += SECTION_GAP;
-			}
+			repaintTarget.paintSectionHoverLine(g2, detailMetrics, width,
+				y + detailMetrics.getAscent(), i);
+			y += detailMetrics.getHeight();
 		}
 		return y;
 	}
@@ -362,23 +243,6 @@ final class SkillClogSectionRenderer
 		g2.drawString(value, x + fm.stringWidth(label), y);
 	}
 
-	private static void paintCompareDetail(Graphics2D g2, FontMetrics fm,
-		String label, String primaryValue, String comparedValue, int x, int y,
-		Color primaryColor, Color comparedColor)
-	{
-		g2.setColor(TitleTooltip.OSRS_ORANGE);
-		g2.drawString(label, x, y);
-		int valueX = x + fm.stringWidth(label);
-		g2.setColor(primaryColor);
-		g2.drawString(primaryValue, valueX, y);
-		valueX += fm.stringWidth(primaryValue);
-		g2.setColor(TitleTooltip.MUTED_GRAY);
-		g2.drawString(TitleTooltip.CHROME_SEPARATOR, valueX, y);
-		valueX += fm.stringWidth(TitleTooltip.CHROME_SEPARATOR);
-		g2.setColor(comparedColor);
-		g2.drawString(comparedValue, valueX, y);
-	}
-
 	static String progressText(SkillClogSection.PlayerItems items, int total)
 	{
 		return items.synced()
@@ -399,13 +263,6 @@ final class SkillClogSectionRenderer
 			+ progressText(section.primary(), section.itemIds().size()));
 	}
 
-	private static int compareDetailWidth(FontMetrics fm, String label,
-		String primaryValue, String comparedValue)
-	{
-		return fm.stringWidth(label + primaryValue
-			+ TitleTooltip.CHROME_SEPARATOR + comparedValue);
-	}
-
 	private boolean showsRiftsClosed(SkillClogSection section)
 	{
 		return showRiftsClosed && section.isCategory(PanelData.GOTR_CATEGORY);
@@ -422,18 +279,6 @@ final class SkillClogSectionRenderer
 		if (section.layout().columns > 0) return section.layout().columns;
 		int minimum = compactSprites ? COMPACT_SOLO_MIN_COLS : REGULAR_SOLO_MIN_COLS;
 		int fit = Math.max(minimum, (availableWidth + PADDING) / cellSize(section));
-		return Math.min(fit, Math.max(section.itemIds().size(), 1));
-	}
-
-	private int compareColumns(int availableWidth, SkillClogSection section)
-	{
-		if (section.layout().columns > 0) return section.layout().columns;
-		if (!compactSprites)
-		{
-			return Math.min(REGULAR_COMPARE_COLS, Math.max(section.itemIds().size(), 1));
-		}
-		int halfWidth = Math.max(0, (availableWidth - COMPARE_GAP) / 2);
-		int fit = Math.max(COMPARE_MIN_COLS, (halfWidth + PADDING) / cellSize(section));
 		return Math.min(fit, Math.max(section.itemIds().size(), 1));
 	}
 

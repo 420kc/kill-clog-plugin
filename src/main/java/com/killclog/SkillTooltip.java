@@ -65,7 +65,7 @@ public class SkillTooltip extends TitleTooltip
 	{
 		showRiftsClosed = true;
 		this.riftsClosed = riftsClosed;
-		sectionRenderer.setRiftsClosed(riftsClosed, -1);
+		sectionRenderer.setRiftsClosed(riftsClosed);
 	}
 
 	@Override
@@ -87,7 +87,7 @@ public class SkillTooltip extends TitleTooltip
 		int height = LINE_HEIGHT * 4;
 		if (!sections.isEmpty())
 		{
-			height += separatorHeight(SECTION_SEPARATOR_PAD) + LINE_HEIGHT;
+			height += separatorHeight(SECTION_SEPARATOR_PAD);
 			Dimension sectionSize = sectionRenderer.soloSize(Math.max(width, availableWidth));
 			width = Math.max(width, sectionSize.width);
 			height += sectionSize.height;
@@ -117,8 +117,6 @@ public class SkillTooltip extends TitleTooltip
 		{
 			int sectionY = paintSeparator(g2, w,
 				startY + LINE_HEIGHT * 4, SECTION_SEPARATOR_PAD);
-			paintHeaderHoverLine(g2, fm, w, sectionY + fm.getAscent());
-			sectionY += LINE_HEIGHT;
 			sectionRenderer.paintSolo(g2, w, sectionY, hitBoxes);
 		}
 		itemHover.setHitBoxes(hitBoxes);
@@ -167,6 +165,15 @@ public class SkillTooltip extends TitleTooltip
 	protected Color getHeaderHoverLineRightColor()
 	{
 		return CLOG_YELLOW;
+	}
+
+	void paintSectionHoverLine(Graphics2D g2, FontMetrics fm, int width,
+		int baseline, int section)
+	{
+		if (itemHover.isSectionHovered(section))
+		{
+			paintHeaderHoverLine(g2, fm, width, baseline);
+		}
 	}
 
 	private static int rowWidth(FontMetrics fm, String label, String value)

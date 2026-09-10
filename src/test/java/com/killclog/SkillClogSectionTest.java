@@ -378,7 +378,7 @@ public class SkillClogSectionTest
 			assertTrue(skill.getName() + " solo tooltip is too wide: " + soloSize,
 				soloSize.width <= 300);
 			assertTrue(skill.getName() + " solo tooltip is too tall: " + soloSize,
-				soloSize.height <= 720);
+				soloSize.height <= 730);
 			paint(solo);
 
 			SkillTooltip leftSide = new SkillTooltip();
@@ -473,7 +473,7 @@ public class SkillClogSectionTest
 		boolean runecraft = skill == Skill.RUNECRAFT;
 		if (runecraft)
 		{
-			solo.setRiftsClosed(34, -1);
+			solo.setRiftsClosed(34);
 		}
 		Dimension soloSize = solo.soloSize(100);
 		BufferedImage image = new BufferedImage(
@@ -482,18 +482,6 @@ public class SkillClogSectionTest
 		Graphics2D graphics = image.createGraphics();
 		assertEquals(skill.getName() + " solo measured height",
 			soloSize.height, solo.paintSolo(graphics, image.getWidth(), 0, new ArrayList<>()));
-
-		SkillClogSectionRenderer comparison = new SkillClogSectionRenderer(target);
-		comparison.setSections(sections, null);
-		if (runecraft)
-		{
-			comparison.setRiftsClosed(34, 1_234);
-		}
-		Dimension compareSize = comparison.compareSize(100);
-		assertEquals(skill.getName() + " comparison measured height",
-			compareSize.height,
-			comparison.paintCompare(graphics, compareSize.width + TitleTooltip.getInset() * 2,
-				0, new ArrayList<>()));
 		graphics.dispose();
 	}
 

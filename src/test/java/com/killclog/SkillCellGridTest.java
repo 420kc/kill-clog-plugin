@@ -261,9 +261,12 @@ public class SkillCellGridTest
 		assertTrue(slayer.getPreferredSize().height > attack.getPreferredSize().height);
 
 		paint(slayer);
-		assertTrue(hoverItem(slayer, longItemName));
+		int hoveredSpriteY = hoverItemY(slayer, longItemName);
+		assertTrue(hoveredSpriteY >= 0);
 		assertEquals(longItemName, slayer.getHeaderHoverLineText());
 		assertEquals("x4", slayer.getHeaderHoverLineRightText());
+		assertTrue(firstPixelY(paint(slayer), TitleTooltip.CLOG_GREEN,
+			hoveredSpriteY + 1) > hoveredSpriteY);
 	}
 
 	@Test
@@ -366,7 +369,7 @@ public class SkillCellGridTest
 			config, new TooltipController(config), null, null);
 	}
 
-	private static void paint(TitleTooltip tooltip)
+	private static BufferedImage paint(TitleTooltip tooltip)
 	{
 		Dimension size = tooltip.getPreferredSize();
 		tooltip.setSize(size);
@@ -375,6 +378,22 @@ public class SkillCellGridTest
 		Graphics2D graphics = image.createGraphics();
 		tooltip.paint(graphics);
 		graphics.dispose();
+		return image;
+	}
+
+	private static int firstPixelY(BufferedImage image, Color color, int fromY)
+	{
+		for (int y = Math.max(fromY, 0); y < image.getHeight(); y++)
+		{
+			for (int x = 0; x < image.getWidth(); x++)
+			{
+				if (image.getRGB(x, y) == color.getRGB())
+				{
+					return y;
+				}
+			}
+		}
+		return -1;
 	}
 
 	private static boolean hoverItem(TitleTooltip tooltip, String itemName)
