@@ -311,7 +311,12 @@ public class ClogSummaryTooltip extends TitleTooltip
 			}
 			textWidth = Math.max(textWidth, fm.stringWidth(overallLine));
 			textWidth = Math.max(textWidth, tierLegendWidth());
-			contentHeight += LINE_HEIGHT + TIER_CELL_SIZE;
+			for (int i = 0; i < ClogHelper.CLOG_TIERS.length; i++)
+			{
+				textWidth = Math.max(textWidth,
+					fm.stringWidth(tierHoverText(i, overallTotal)));
+			}
+			contentHeight += LINE_HEIGHT + TIER_CELL_SIZE + fm.getHeight();
 		}
 
 		if (!categoryProgress.isEmpty())
@@ -338,11 +343,13 @@ public class ClogSummaryTooltip extends TitleTooltip
 		if (specialCount > 0)
 		{
 			FontMetrics bfm = getFontMetrics(FontManager.getRunescapeBoldFont());
-			contentHeight += separatorHeight(SEPARATOR_PAD) + SUBHEADER_HEIGHT + RECENT_SIZE;
+			contentHeight += separatorHeight(SEPARATOR_PAD) + SUBHEADER_HEIGHT
+				+ RECENT_SIZE + fm.getHeight();
 
 			int rowWidth = specialCount * RECENT_SIZE + (specialCount - 1) * RECENT_PAD;
 			textWidth = Math.max(textWidth, rowWidth);
 			textWidth = Math.max(textWidth, bfm.stringWidth("Highlights"));
+			textWidth = Math.max(textWidth, widestName(fm, specialNames));
 		}
 
 		// Recent section.
@@ -350,7 +357,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 		{
 			FontMetrics bfm = getFontMetrics(FontManager.getRunescapeBoldFont());
 			int separatorHeight = separatorHeight(SEPARATOR_PAD);
-			contentHeight += separatorHeight + SUBHEADER_HEIGHT + RECENT_SIZE;
+			contentHeight += separatorHeight + SUBHEADER_HEIGHT + RECENT_SIZE
+				+ fm.getHeight();
 			if (hasRecentDates())
 			{
 				contentHeight += DATE_GAP + fm.getHeight();
@@ -361,14 +369,19 @@ public class ClogSummaryTooltip extends TitleTooltip
 				+ (recentCount - 1) * RECENT_PAD;
 			textWidth = Math.max(textWidth, spriteRowWidth);
 			textWidth = Math.max(textWidth, bfm.stringWidth("Recent"));
+			textWidth = Math.max(textWidth, widestName(fm, recentNames));
 		}
 
 		if (!clogSources.isEmpty())
 		{
 			contentHeight += separatorHeight(SEPARATOR_PAD) + fm.getHeight()
-				+ SOURCE_LABEL_GAP + SOURCE_ICON_SIZE;
+				+ SOURCE_LABEL_GAP + SOURCE_ICON_SIZE + fm.getHeight();
 			textWidth = Math.max(textWidth, fm.stringWidth(SOURCE_LABEL));
 			textWidth = Math.max(textWidth, sourceRowWidth(clogSources.size()));
+			for (ClogSource source : clogSources)
+			{
+				textWidth = Math.max(textWidth, fm.stringWidth(source.name));
+			}
 		}
 
 		return new Dimension(textWidth, contentHeight);
@@ -429,6 +442,9 @@ public class ClogSummaryTooltip extends TitleTooltip
 			}
 			y += LINE_HEIGHT;
 			y = paintTierLegend(g2, w, y, hitBoxes);
+			paintSectionHoverLine(g2, fm, w, y + fm.getAscent(),
+				TIER_SECTION, ClogHelper.CLOG_TIERS.length);
+			y += fm.getHeight();
 		}
 
 		if (!categoryProgress.isEmpty())
@@ -454,6 +470,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 			paintItemRow(g2, hitBoxes, 0, inset, y, w - 2 * inset,
 				specialSprites, specialIds, specialNames, null, RECENT_SIZE, fm);
 			y += RECENT_SIZE;
+			paintSectionHoverLine(g2, fm, w, y + fm.getAscent(), 0, 1);
+			y += fm.getHeight();
 		}
 
 		// Recent items section
@@ -463,6 +481,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 			paintItemRow(g2, hitBoxes, 1, inset, y, w - 2 * inset,
 				recentSprites, recentIds, recentNames, recentDates, recentCellWidth(fm), fm);
 			y += RECENT_SIZE;
+			paintSectionHoverLine(g2, fm, w, y + fm.getAscent(), 1, 1);
+			y += fm.getHeight();
 			if (hasRecentDates())
 			{
 				y += DATE_GAP + fm.getHeight();
@@ -491,7 +511,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 			y += fm.getHeight() + SOURCE_LABEL_GAP;
 
 			int sourceX = sourceRowStartX(w, clogSources.size());
-			String hoveredName = itemHover.hoveredItemName();
 			for (int i = 0; i < clogSources.size(); i++)
 			{
 				ClogSource source = clogSources.get(i);
@@ -500,7 +519,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 				{
 					g2.drawImage(source.icon, iconX, y, null);
 				}
-				if (source.name.equals(hoveredName))
+				if (itemHover.isSectionHovered(SOURCE_SECTION + i))
 				{
 					g2.setColor(CLOG_GREEN);
 					g2.drawRect(iconX - SOURCE_HIT_PAD, y - SOURCE_HIT_PAD,
@@ -513,6 +532,9 @@ public class ClogSummaryTooltip extends TitleTooltip
 						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2,
 						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2)));
 			}
+			y += SOURCE_ICON_SIZE;
+			paintSectionHoverLine(g2, fm, w, y + fm.getAscent(),
+				SOURCE_SECTION, clogSources.size());
 		}
 
 		itemHover.setHitBoxes(hitBoxes);
@@ -556,7 +578,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 			{
 				g2.setColor(MUTED_GRAY);
 				int dx = cellX + (cellWidth - fm.stringWidth(date)) / 2;
-				g2.drawString(date, dx, y + RECENT_SIZE + DATE_GAP + fm.getAscent());
+				g2.drawString(date, dx,
+					y + RECENT_SIZE + fm.getHeight() + DATE_GAP + fm.getAscent());
 			}
 		}
 	}
@@ -575,6 +598,33 @@ public class ClogSummaryTooltip extends TitleTooltip
 			}
 		}
 		return false;
+	}
+
+	private static int widestName(FontMetrics fm, String[] names)
+	{
+		int width = 0;
+		if (names != null)
+		{
+			for (String name : names)
+			{
+				if (name != null)
+				{
+					width = Math.max(width, fm.stringWidth(name));
+				}
+			}
+		}
+		return width;
+	}
+
+	private void paintSectionHoverLine(Graphics2D g2, FontMetrics fm, int width,
+		int baseline, int firstSection, int sectionCount)
+	{
+		int hoveredSection = itemHover.hoveredSection();
+		if (hoveredSection >= firstSection
+			&& hoveredSection < firstSection + sectionCount)
+		{
+			paintHeaderHoverLine(g2, fm, width, baseline);
+		}
 	}
 
 	/** Recent cells widen past the sprite when a date caption needs the room. */
@@ -705,13 +755,13 @@ public class ClogSummaryTooltip extends TitleTooltip
 	}
 
 	@Override
-	protected String getTitleHoverText()
+	protected String getHeaderHoverLineText()
 	{
 		return itemHover.hoveredItemName();
 	}
 
 	@Override
-	protected Color getTitleHoverColor()
+	protected Color getHeaderHoverLineColor()
 	{
 		// Obtained items and verified providers share the success/trust color.
 		return CLOG_GREEN;

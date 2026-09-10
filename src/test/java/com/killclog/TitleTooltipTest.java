@@ -144,7 +144,8 @@ public class TitleTooltipTest
 		moveMouse(tooltip,
 			legendX + runeIndex * 17 + 8,
 			tierY + 8);
-		assertEquals("Rune: 1,100-1,199", tooltip.getTitleHoverText());
+		assertNull(tooltip.getTitleHoverText());
+		assertEquals("Rune: 1,100-1,199", tooltip.getHeaderHoverLineText());
 	}
 
 	@Test
@@ -160,7 +161,7 @@ public class TitleTooltipTest
 	}
 
 	@Test
-	public void clogSummaryProviderHoverReplacesTitleWithoutResizing()
+	public void clogSummaryProviderHoverUsesTheReservedSourceLineWithoutResizing()
 	{
 		ClogSummaryTooltip tooltip = new ClogSummaryTooltip();
 		tooltip.setTitle("Clog Summary");
@@ -173,13 +174,12 @@ public class TitleTooltipTest
 		tooltip.paint(graphics);
 		graphics.dispose();
 
-		int iconY = idle.height - NativeTooltip.getInset() - 13;
-		int startX = ClogSummaryTooltip.sourceRowStartX(idle.width, 3);
 		List<String> names = Arrays.asList("Kill Clog", "TempleOSRS", "RuneProfile");
-		for (int i = 0; i < names.size(); i++)
+		for (String name : names)
 		{
-			moveMouse(tooltip, startX + i * 18 + 6, iconY + 6);
-			assertEquals(names.get(i), tooltip.getTitleHoverText());
+			assertTrue(moveMouseToHeaderHover(tooltip, name));
+			assertNull(tooltip.getTitleHoverText());
+			assertEquals("Clog Summary", tooltip.getTitle());
 			assertEquals(idle, tooltip.getPreferredSize());
 		}
 	}
@@ -215,14 +215,33 @@ public class TitleTooltipTest
 		pair.paint(graphics);
 		graphics.dispose();
 
-		moveMouse(blue, ClogSummaryTooltip.sourceRowStartX(blue.getWidth(), 1) + 6,
-			blue.getHeight() - NativeTooltip.getInset() - 7);
-		assertEquals("TempleOSRS", blue.getTitleHoverText());
-		assertNull(red.getTitleHoverText());
+		assertTrue(moveMouseToHeaderHover(blue, "TempleOSRS"));
+		assertEquals("TempleOSRS", blue.getHeaderHoverLineText());
+		assertNull(red.getHeaderHoverLineText());
 
-		moveMouse(red, ClogSummaryTooltip.sourceRowStartX(red.getWidth(), 1) + 6,
-			red.getHeight() - NativeTooltip.getInset() - 7);
-		assertEquals("RuneProfile", red.getTitleHoverText());
+		assertTrue(moveMouseToHeaderHover(red, "RuneProfile"));
+		assertEquals("RuneProfile", red.getHeaderHoverLineText());
+		assertNull(blue.getTitleHoverText());
+		assertNull(red.getTitleHoverText());
+	}
+
+	@Test
+	public void pvmMegarareHoverUsesAFullNameBelowTheSpriteRow()
+	{
+		PvmSummaryTooltip tooltip = new PvmSummaryTooltip();
+		tooltip.setData(126, 0, 0, 0, null, 0);
+		Dimension size = tooltip.getPreferredSize();
+		tooltip.setSize(size);
+		Graphics2D graphics = new BufferedImage(
+			size.width, size.height, BufferedImage.TYPE_INT_ARGB).createGraphics();
+		tooltip.paint(graphics);
+		graphics.dispose();
+
+		assertTrue(moveMouseToHeaderHover(tooltip, "Tumeken's Shadow"));
+		assertEquals("PvM Summary", tooltip.getTitle());
+		assertNull(tooltip.getTitleHoverText());
+		assertEquals("Tumeken's Shadow", tooltip.getHeaderHoverLineText());
+		assertEquals(size, tooltip.getPreferredSize());
 	}
 
 	@Test
@@ -388,6 +407,22 @@ public class TitleTooltipTest
 		{
 			listener.mouseMoved(event);
 		}
+	}
+
+	private static boolean moveMouseToHeaderHover(TitleTooltip tooltip, String text)
+	{
+		for (int y = 0; y < tooltip.getHeight(); y++)
+		{
+			for (int x = 0; x < tooltip.getWidth(); x++)
+			{
+				moveMouse(tooltip, x, y);
+				if (text.equals(tooltip.getHeaderHoverLineText()))
+				{
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	private static HiscoreResult clueHiscore(Map<String, Integer> ranks)

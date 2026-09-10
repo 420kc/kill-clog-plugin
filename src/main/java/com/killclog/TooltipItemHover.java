@@ -57,6 +57,11 @@ final class TooltipItemHover
 		return hoveredSection == section;
 	}
 
+	int hoveredSection()
+	{
+		return hoveredSection;
+	}
+
 	boolean hoveredItemObtained()
 	{
 		return hoveredItemId > 0 && hoveredObtained;

@@ -161,7 +161,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 		// Raids section.
 		int raidsHeight = SUBHEADER_HEIGHT + LINE_HEIGHT * 3
-			+ WEAPON_PAD + WEAPON_SIZE;
+			+ WEAPON_PAD + WEAPON_SIZE + fm.getHeight();
 
 		// Width: measure the real rendered strings, never a placeholder.
 		int textWidth = 0;
@@ -181,6 +181,10 @@ public class PvmSummaryTooltip extends TitleTooltip
 		textWidth = Math.max(textWidth, raidLineWidth(fm, "CoX: ", coxKc, coxObtained, coxTotal));
 		textWidth = Math.max(textWidth, raidLineWidth(fm, "ToB: ", tobKc, tobObtained, tobTotal));
 		textWidth = Math.max(textWidth, raidLineWidth(fm, "ToA: ", toaKc, toaObtained, toaTotal));
+		for (String itemName : PanelData.MEGARARE_ITEM_NAMES)
+		{
+			textWidth = Math.max(textWidth, fm.stringWidth(itemName));
+		}
 		if (caResult != null)
 		{
 			int caWidth = fm.stringWidth("CA Tier: " + tierDisplayName())
@@ -293,6 +297,11 @@ public class PvmSummaryTooltip extends TitleTooltip
 			weaponSprites, weaponCounts, WEAPON_SIZE, WEAPON_PAD);
 		addRowHitBoxes(hitBoxes, 1, inset, y, w - 2 * inset,
 			PanelData.MEGARARE_ITEM_IDS, PanelData.MEGARARE_ITEM_NAMES, weaponCounts);
+		y += WEAPON_SIZE;
+		if (itemHover.isSectionHovered(1))
+		{
+			paintHeaderHoverLine(g2, fm, w, y + fm.getAscent());
+		}
 
 		itemHover.setHitBoxes(hitBoxes);
 	}
@@ -316,13 +325,13 @@ public class PvmSummaryTooltip extends TitleTooltip
 	}
 
 	@Override
-	protected String getTitleHoverText()
+	protected String getHeaderHoverLineText()
 	{
 		return itemHover.hoveredItemName();
 	}
 
 	@Override
-	protected Color getTitleHoverColor()
+	protected Color getHeaderHoverLineColor()
 	{
 		return itemHover.hoveredItemObtained() ? CLOG_GREEN : CLOG_RED;
 	}
