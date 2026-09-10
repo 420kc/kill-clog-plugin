@@ -279,14 +279,10 @@ final class SkillClogSection
 		return layout;
 	}
 
-	/** Fixed rows preserve curated set adjacency regardless of card width. */
+	/** Fixed rows preserve curated grouping where the section design requires it. */
 	enum Layout
 	{
 		ADAPTIVE(0),
-		MELEE_ARMOUR(3),
-		RANGED_ARMOUR(3),
-		MAGIC_ARMOUR(3),
-		DEFENDERS(3),
 		SUPERIORS(4),
 		MYSTIC_SETS(5);
 
@@ -299,13 +295,6 @@ final class SkillClogSection
 
 		static Layout forSection(Skill skill, @Nullable String heading)
 		{
-			if (skill == Skill.DEFENCE)
-			{
-				if ("Melee Armour".equals(heading)) return MELEE_ARMOUR;
-				if ("Ranged Armour".equals(heading)) return RANGED_ARMOUR;
-				if ("Magic Armour".equals(heading)) return MAGIC_ARMOUR;
-				if ("Defenders".equals(heading)) return DEFENDERS;
-			}
 			if (skill == Skill.SLAYER)
 			{
 				if ("Superiors".equals(heading)) return SUPERIORS;

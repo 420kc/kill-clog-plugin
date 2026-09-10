@@ -18,16 +18,23 @@ import static org.junit.Assert.*;
 public class SkillClogLayoutTest
 {
 	@Test
-	public void defenceKeepsTwelveThreeSlotRowsAtRegularSizeEvenOnWideCards() throws Exception
+	public void defenceUsesTheStandardCompactAdaptiveGrid() throws Exception
 	{
 		List<SkillClogSection> sections = SkillClogSection.forSkill(Skill.DEFENCE, null, null, null);
 		assertEquals(36, SkillClogSection.combinedProgress(sections, false).total());
 		assertEquals(Arrays.asList(11832, 11834, 11836), sections.get(0).itemIds().subList(3, 6));
 		assertEquals(Arrays.asList(26376, 26378, 26380), sections.get(0).itemIds().subList(12, 15));
 		assertEquals(Integer.valueOf(22477), sections.get(3).itemIds().get(8));
+		for (SkillClogSection section : sections)
+		{
+			assertEquals(SkillClogSection.Layout.ADAPTIVE, section.layout());
+		}
 		for (int width : new int[]{100, 320})
 		{
-			List<TooltipItemHover.HitBox> boxes = paintSections(sections, width);
+			SkillClogSectionRenderer renderer = new SkillClogSectionRenderer(new SkillTooltip());
+			renderer.setSections(sections, null);
+			assertTrue(renderer.usesCompactSprites());
+			List<TooltipItemHover.HitBox> boxes = paintSections(renderer, width);
 			assertEquals(36, boxes.size());
 			SkillTooltip target = new SkillTooltip();
 			int headingHeight = target.getFontMetrics(
@@ -35,21 +42,15 @@ public class SkillClogLayoutTest
 			int progressHeight = target.getFontMetrics(
 				net.runelite.client.ui.FontManager.getRunescapeSmallFont()).getHeight();
 			assertEquals(headingHeight + progressHeight + 4, bounds(boxes.get(0)).y);
-			for (int i = 0; i < boxes.size(); i += 3)
+			for (TooltipItemHover.HitBox box : boxes)
 			{
-				Rectangle first = bounds(boxes.get(i));
-				assertEquals(TitleTooltip.getInset(), first.x);
-				for (int col = 0; col < 3; col++)
-				{
-					Rectangle slot = bounds(boxes.get(i + col));
-					assertEquals(32, slot.width);
-					assertEquals(32, slot.height);
-					assertEquals(first.y, slot.y);
-					assertEquals(first.x + col * 36, slot.x);
-				}
+				assertEquals(15, bounds(box).width);
+				assertEquals(15, bounds(box).height);
 			}
-			assertEquals(bounds(boxes.get(0)).y + 36, bounds(boxes.get(3)).y);
-			assertEquals(bounds(boxes.get(27)).y + 72, bounds(boxes.get(33)).y);
+			assertEquals(TitleTooltip.getInset(), bounds(boxes.get(0)).x);
+			assertEquals(TitleTooltip.getInset(), bounds(boxes.get(15)).x);
+			assertEquals(TitleTooltip.getInset(), bounds(boxes.get(21)).x);
+			assertEquals(TitleTooltip.getInset(), bounds(boxes.get(27)).x);
 		}
 	}
 
@@ -114,6 +115,12 @@ public class SkillClogLayoutTest
 	{
 		SkillClogSectionRenderer renderer = new SkillClogSectionRenderer(new SkillTooltip());
 		renderer.setSections(sections, null);
+		return paintSections(renderer, availableWidth);
+	}
+
+	private static List<TooltipItemHover.HitBox> paintSections(SkillClogSectionRenderer renderer,
+		int availableWidth) throws Exception
+	{
 		Dimension size = renderer.soloSize(availableWidth);
 		int width = size.width + TitleTooltip.getInset() * 2;
 		BufferedImage image = new BufferedImage(width, size.height, BufferedImage.TYPE_INT_ARGB);

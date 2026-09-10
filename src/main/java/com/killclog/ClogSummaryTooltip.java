@@ -62,7 +62,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private String[] recentNames;
 	private String[] recentDates;
 
-	// Trophy shelf: only obtained specials are ever set here; an empty shelf
+	// Highlights shelf: only obtained highlights are ever set here; an empty shelf
 	// paints nothing.
 	private BufferedImage[] specialSprites;
 	private int specialCount;
@@ -281,7 +281,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 		int contentHeight = LINE_HEIGHT * lines;
 
-		// Special section: obtained trophies only.
+		// Highlights section: obtained trophies only.
 		if (specialCount > 0)
 		{
 			FontMetrics bfm = getFontMetrics(FontManager.getRunescapeBoldFont());
@@ -289,7 +289,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 			int rowWidth = specialCount * RECENT_SIZE + (specialCount - 1) * RECENT_PAD;
 			textWidth = Math.max(textWidth, rowWidth);
-			textWidth = Math.max(textWidth, bfm.stringWidth("Special"));
+			textWidth = Math.max(textWidth, bfm.stringWidth("Highlights"));
 		}
 
 		// Recent section.
@@ -383,10 +383,10 @@ public class ClogSummaryTooltip extends TitleTooltip
 			y += LINE_HEIGHT;
 		}
 
-		// Special items section: the trophy shelf, present only when earned.
+		// Highlights section: the trophy shelf, present only when earned.
 		if (specialCount > 0 && specialSprites != null)
 		{
-			y = paintSubheader(g2, w, y, "Special");
+			y = paintSubheader(g2, w, y, "Highlights");
 			paintItemRow(g2, hitBoxes, 0, inset, y, w - 2 * inset,
 				specialSprites, specialIds, specialNames, null, RECENT_SIZE, fm);
 			y += RECENT_SIZE;
