@@ -87,7 +87,7 @@ public class TitleTooltipTest
 		ClogSummaryTooltip tooltip = new ClogSummaryTooltip();
 		tooltip.setTitle("Clog Summary");
 		tooltip.setClogSources(true, true, true);
-		assertEquals(Arrays.asList("killclog.com", "TempleOSRS", "RuneProfile"),
+		assertEquals(Arrays.asList("Kill Clog", "TempleOSRS", "RuneProfile"),
 			tooltip.sourceNames());
 
 		tooltip.setClogSources(false, true, false);
@@ -175,7 +175,7 @@ public class TitleTooltipTest
 
 		int iconY = idle.height - NativeTooltip.getInset() - 13;
 		int startX = ClogSummaryTooltip.sourceRowStartX(idle.width, 3);
-		List<String> names = Arrays.asList("killclog.com", "TempleOSRS", "RuneProfile");
+		List<String> names = Arrays.asList("Kill Clog", "TempleOSRS", "RuneProfile");
 		for (int i = 0; i < names.size(); i++)
 		{
 			moveMouse(tooltip, startX + i * 18 + 6, iconY + 6);

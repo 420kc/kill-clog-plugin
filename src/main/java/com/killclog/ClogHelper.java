@@ -13,6 +13,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.IntUnaryOperator;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -152,15 +153,26 @@ final class ClogHelper
 
 	static int[] sumClogTotals(ClogResult result)
 	{
+		return sumClogTotals(result, IntUnaryOperator.identity());
+	}
+
+	static int[] sumClogTotals(ClogResult result, IntUnaryOperator canonicalizer)
+	{
 		Set<Integer> allItems = new HashSet<>();
 		Set<Integer> allObtained = new HashSet<>();
 		for (Map.Entry<String, List<Integer>> entry : result.getCategoryItems().entrySet())
 		{
-			allItems.addAll(entry.getValue());
+			for (int itemId : entry.getValue())
+			{
+				allItems.add(canonicalizer.applyAsInt(itemId));
+			}
 			List<ClogResult.ClogItem> obtained = result.getObtainedItems().get(entry.getKey());
 			if (obtained != null)
 			{
-				for (ClogResult.ClogItem item : obtained) allObtained.add(item.getId());
+				for (ClogResult.ClogItem item : obtained)
+				{
+					allObtained.add(canonicalizer.applyAsInt(item.getId()));
+				}
 			}
 		}
 		int obtained = result.getUniqueObtained() > 0
@@ -178,6 +190,12 @@ final class ClogHelper
 	static List<ClogGroupProgress> clogGroupProgress(ClogResult result,
 		Map<String, List<String>> tabCategoryKeys)
 	{
+		return clogGroupProgress(result, tabCategoryKeys, IntUnaryOperator.identity());
+	}
+
+	static List<ClogGroupProgress> clogGroupProgress(ClogResult result,
+		Map<String, List<String>> tabCategoryKeys, IntUnaryOperator canonicalizer)
+	{
 		if (result == null || tabCategoryKeys == null || tabCategoryKeys.isEmpty())
 		{
 			return Collections.emptyList();
@@ -188,7 +206,7 @@ final class ClogHelper
 		{
 			for (ClogResult.ClogItem item : items)
 			{
-				allObtained.add(item.getId());
+				allObtained.add(canonicalizer.applyAsInt(item.getId()));
 			}
 		}
 
@@ -201,7 +219,10 @@ final class ClogHelper
 				List<Integer> categoryItems = result.getCategoryItems().get(categoryKey);
 				if (categoryItems != null)
 				{
-					tabItems.addAll(categoryItems);
+					for (int itemId : categoryItems)
+					{
+						tabItems.add(canonicalizer.applyAsInt(itemId));
+					}
 				}
 			}
 			int obtained = 0;

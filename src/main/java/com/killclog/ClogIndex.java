@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -26,10 +27,15 @@ import net.runelite.client.game.ItemManager;
 final class ClogIndex
 {
 	private static final int ENUM_CLOG_TABS = 2102;
+	private static final int ENUM_CLOG_DUPE_REMAP = 3721;
 	private static final int PARAM_TAB_NAME = 682;
 	private static final int PARAM_SUBTAB_ENUM = 683;
 	private static final int PARAM_CATEGORY_NAME = 689;
 	private static final int PARAM_CATEGORY_ITEMS = 690;
+	private static final String[] JAGEX_TAB_NAMES = {
+		"Bosses", "Raids", "Clues", "Minigames", "Other"
+	};
+	private static final Map<Integer, Integer> FALLBACK_ITEM_REMAPS = fallbackItemRemaps();
 
 	/** One parse product; replaced whole, never mutated. */
 	private static final class Snapshot
@@ -39,18 +45,21 @@ final class ClogIndex
 		final Map<Integer, List<String>> itemCategoryKeys;
 		final Map<String, List<Integer>> itemNameIds;
 		final Map<Integer, String> itemNames;
+		final Map<Integer, Integer> canonicalItemIds;
 
 		Snapshot(Map<String, List<Integer>> categoryItems,
 			Map<String, List<String>> tabCategoryKeys,
 			Map<Integer, List<String>> itemCategoryKeys,
 			Map<String, List<Integer>> itemNameIds,
-			Map<Integer, String> itemNames)
+			Map<Integer, String> itemNames,
+			Map<Integer, Integer> canonicalItemIds)
 		{
 			this.categoryItems = categoryItems;
 			this.tabCategoryKeys = tabCategoryKeys;
 			this.itemCategoryKeys = itemCategoryKeys;
 			this.itemNameIds = itemNameIds;
 			this.itemNames = itemNames;
+			this.canonicalItemIds = canonicalItemIds;
 		}
 	}
 
@@ -70,13 +79,16 @@ final class ClogIndex
 			Map<Integer, List<String>> nextItemCategoryKeys = new HashMap<>();
 			Map<String, List<Integer>> nextItemNameIds = new HashMap<>();
 			Map<Integer, String> nextItemNames = new HashMap<>();
+			Map<Integer, Integer> nextCanonicalItemIds = readCanonicalItemIds(client);
 
 			EnumComposition tabs = client.getEnum(ENUM_CLOG_TABS);
+			int tabPosition = 0;
 			for (int tabKey : tabs.getKeys())
 			{
 				int tabStructId = tabs.getIntValue(tabKey);
 				StructComposition tabStruct = client.getStructComposition(tabStructId);
-				String tabName = tabStruct.getStringValue(PARAM_TAB_NAME);
+				String tabName = resolveTabName(
+					tabStruct.getStringValue(PARAM_TAB_NAME), tabPosition++);
 				int subtabEnumId = tabStruct.getIntValue(PARAM_SUBTAB_ENUM);
 
 				EnumComposition subtabs = client.getEnum(subtabEnumId);
@@ -99,16 +111,22 @@ final class ClogIndex
 							.add(categoryKey);
 					}
 					EnumComposition itemsEnum = client.getEnum(itemsEnumId);
-					List<Integer> itemIds = new ArrayList<>();
+					LinkedHashSet<Integer> itemIds = new LinkedHashSet<>();
 					for (int itemKey : itemsEnum.getKeys())
 					{
-						int itemId = itemsEnum.getIntValue(itemKey);
+						int rawItemId = itemsEnum.getIntValue(itemKey);
+						int itemId = canonicalItemId(rawItemId, nextCanonicalItemIds);
 						itemIds.add(itemId);
-						nextItemCategoryKeys.computeIfAbsent(itemId, k -> new ArrayList<>())
-							.add(categoryKey);
-						indexItemName(nextItemNameIds, nextItemNames, itemManager, itemId);
+						List<String> itemCategories = nextItemCategoryKeys.computeIfAbsent(
+							itemId, k -> new ArrayList<>());
+						if (!itemCategories.contains(categoryKey))
+						{
+							itemCategories.add(categoryKey);
+						}
+						indexItemName(nextItemNameIds, nextItemNames, itemManager,
+							rawItemId, itemId);
 					}
-					nextCategoryItems.put(categoryKey, itemIds);
+					nextCategoryItems.put(categoryKey, new ArrayList<>(itemIds));
 				}
 			}
 
@@ -121,10 +139,12 @@ final class ClogIndex
 
 			Snapshot parsed = new Snapshot(nextCategoryItems, nextTabCategoryKeys,
 				nextItemCategoryKeys,
-				nextItemNameIds, nextItemNames);
+				nextItemNameIds, nextItemNames, nextCanonicalItemIds);
 			snapshot = parsed;
-			log.debug("Parsed clog enums: {} categories, {} items, {} names",
-				parsed.categoryItems.size(), parsed.itemCategoryKeys.size(), parsed.itemNameIds.size());
+			log.debug("Parsed clog enums: {} tabs, {} categories, {} items, {} names, {} remaps",
+				parsed.tabCategoryKeys.size(), parsed.categoryItems.size(),
+				parsed.itemCategoryKeys.size(), parsed.itemNameIds.size(),
+				parsed.canonicalItemIds.size());
 			return true;
 		}
 		catch (Exception e)
@@ -154,7 +174,43 @@ final class ClogIndex
 	List<String> categoryKeysForItem(int itemId)
 	{
 		Snapshot s = snapshot;
-		return s != null ? s.itemCategoryKeys.get(itemId) : null;
+		return s != null ? s.itemCategoryKeys.get(canonicalItemId(itemId)) : null;
+	}
+
+	int canonicalItemId(int itemId)
+	{
+		Snapshot s = snapshot;
+		return canonicalItemId(itemId,
+			s != null ? s.canonicalItemIds : FALLBACK_ITEM_REMAPS);
+	}
+
+	static int fallbackCanonicalItemId(int itemId)
+	{
+		return canonicalItemId(itemId, FALLBACK_ITEM_REMAPS);
+	}
+
+	@Nullable
+	String itemName(ClogResult result, int itemId)
+	{
+		String direct = result.getItemName(itemId);
+		if (direct != null)
+		{
+			return direct;
+		}
+		Snapshot s = snapshot;
+		Map<Integer, Integer> remaps = s != null ? s.canonicalItemIds : FALLBACK_ITEM_REMAPS;
+		for (Map.Entry<Integer, Integer> entry : remaps.entrySet())
+		{
+			if (entry.getValue() == itemId)
+			{
+				String alias = result.getItemName(entry.getKey());
+				if (alias != null)
+				{
+					return alias;
+				}
+			}
+		}
+		return null;
 	}
 
 	Set<String> categoryKeys()
@@ -222,7 +278,7 @@ final class ClogIndex
 	{
 		snapshot = new Snapshot(new HashMap<>(categoryItems), new LinkedHashMap<>(),
 			new HashMap<>(),
-			new HashMap<>(), new HashMap<>(itemNames));
+			new HashMap<>(), new HashMap<>(itemNames), new HashMap<>(FALLBACK_ITEM_REMAPS));
 	}
 
 	/** Test seam for a catalog carrying the top-level Jagex tab taxonomy. */
@@ -230,7 +286,19 @@ final class ClogIndex
 		Map<Integer, String> itemNames, Map<String, List<String>> tabCategoryKeys)
 	{
 		snapshot = new Snapshot(new HashMap<>(categoryItems), new LinkedHashMap<>(tabCategoryKeys),
-			new HashMap<>(), new HashMap<>(), new HashMap<>(itemNames));
+			new HashMap<>(), new HashMap<>(), new HashMap<>(itemNames),
+			new HashMap<>(FALLBACK_ITEM_REMAPS));
+	}
+
+	/** Test seam for runtime-provided duplicate item remaps. */
+	/* package */ void publishForTest(Map<String, List<Integer>> categoryItems,
+		Map<Integer, String> itemNames, Map<String, List<String>> tabCategoryKeys,
+		Map<Integer, Integer> canonicalItemIds)
+	{
+		Map<Integer, Integer> remaps = new HashMap<>(FALLBACK_ITEM_REMAPS);
+		remaps.putAll(canonicalItemIds);
+		snapshot = new Snapshot(new HashMap<>(categoryItems), new LinkedHashMap<>(tabCategoryKeys),
+			new HashMap<>(), new HashMap<>(), new HashMap<>(itemNames), remaps);
 	}
 
 	/** A coherent catalog copy plus the identity of the parse it came from. */
@@ -265,24 +333,88 @@ final class ClogIndex
 		{
 			ids.add(id);
 			itemCategoryKeys.computeIfAbsent(id, k -> new ArrayList<>()).add(key);
-			indexItemName(itemNameIds, itemNames, itemManager, id);
+			indexItemName(itemNameIds, itemNames, itemManager, id, id);
 		}
 		categoryItems.put(key, ids);
 	}
 
 	private void indexItemName(Map<String, List<Integer>> itemNameIds,
-		Map<Integer, String> itemNames, ItemManager itemManager, int itemId)
+		Map<Integer, String> itemNames, ItemManager itemManager, int sourceItemId,
+		int canonicalItemId)
 	{
-		String itemName = itemManager.getItemComposition(itemId).getName();
+		String itemName = itemManager.getItemComposition(sourceItemId).getName();
 		String itemKey = ClogUnlockParser.normalizeItemName(itemName);
 		if (!itemKey.isEmpty() && !"null".equals(itemKey))
 		{
-			itemNames.put(itemId, itemName);
+			String canonicalName = itemManager.getItemComposition(canonicalItemId).getName();
+			itemNames.putIfAbsent(canonicalItemId,
+				canonicalName != null && !"null".equalsIgnoreCase(canonicalName)
+					? canonicalName : itemName);
 			List<Integer> ids = itemNameIds.computeIfAbsent(itemKey, k -> new ArrayList<>());
-			if (!ids.contains(itemId))
+			if (!ids.contains(canonicalItemId))
 			{
-				ids.add(itemId);
+				ids.add(canonicalItemId);
 			}
 		}
+	}
+
+	private static Map<Integer, Integer> readCanonicalItemIds(Client client)
+	{
+		Map<Integer, Integer> remaps = new HashMap<>(FALLBACK_ITEM_REMAPS);
+		try
+		{
+			EnumComposition runtime = client.getEnum(ENUM_CLOG_DUPE_REMAP);
+			int[] sourceIds = runtime.getKeys();
+			int[] canonicalIds = runtime.getIntVals();
+			for (int i = 0; i < sourceIds.length && i < canonicalIds.length; i++)
+			{
+				remaps.put(sourceIds[i], canonicalIds[i]);
+			}
+		}
+		catch (Exception e)
+		{
+			log.warn("Failed to read clog item remaps; using known aliases", e);
+		}
+		return remaps;
+	}
+
+	private static int canonicalItemId(int itemId, Map<Integer, Integer> remaps)
+	{
+		return remaps.getOrDefault(itemId, itemId);
+	}
+
+	static String resolveTabName(@Nullable String parsedName, int position)
+	{
+		if (parsedName != null && !parsedName.isBlank()
+			&& !"null".equalsIgnoreCase(parsedName))
+		{
+			return parsedName;
+		}
+		return position >= 0 && position < JAGEX_TAB_NAMES.length
+			? JAGEX_TAB_NAMES[position] : null;
+	}
+
+	private static Map<Integer, Integer> fallbackItemRemaps()
+	{
+		Map<Integer, Integer> remaps = new HashMap<>();
+		remaps.put(764, 25627);
+		remaps.put(12019, 25627);
+		remaps.put(24480, 25627);
+		remaps.put(766, 25628);
+		remaps.put(12020, 25628);
+		remaps.put(24481, 25628);
+		remaps.put(29472, 12013);
+		remaps.put(29474, 12014);
+		remaps.put(29476, 12015);
+		remaps.put(29478, 12016);
+		remaps.put(12854, 25630);
+		remaps.put(24882, 25629);
+		remaps.put(29988, 29992);
+		remaps.put(29990, 29992);
+		remaps.put(13641, 13640);
+		remaps.put(13643, 13642);
+		remaps.put(13645, 13644);
+		remaps.put(13647, 13646);
+		return Collections.unmodifiableMap(remaps);
 	}
 }

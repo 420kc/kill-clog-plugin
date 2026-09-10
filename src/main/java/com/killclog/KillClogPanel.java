@@ -1865,6 +1865,8 @@ public class KillClogPanel extends PluginPanel
 		this.clogIndex = clogIndex;
 		cells.setClogIndex(clogIndex);
 		comparison.setClogIndex(clogIndex);
+		skillCellGrid.setClogIndex(clogIndex);
+		tooltipDataBuilder.setClogIndex(clogIndex);
 	}
 
 	public void setPluginManager(PluginManager pluginManager)
@@ -2093,14 +2095,17 @@ public class KillClogPanel extends PluginPanel
 		tip.setWikiLinksEnabled(config.wikiItemLinks());
 		if (clog != null)
 		{
-			int[] totals = ClogHelper.sumClogTotals(clog);
+			int[] totals = clogIndex != null
+				? ClogHelper.sumClogTotals(clog, clogIndex::canonicalItemId)
+				: ClogHelper.sumClogTotals(clog);
 			tip.setTierData(totals[0], totals[1], iconCache.clogTierImages());
 			tip.setCurrentTierSprite(iconCache.clogTierLargeImage(
 				ClogHelper.getClogTierName(totals[0], totals[1])));
 			if (clogIndex != null)
 			{
 				tip.setCategoryProgress(
-					ClogHelper.clogGroupProgress(clog, clogIndex.tabCategoryKeys()));
+					ClogHelper.clogGroupProgress(clog, clogIndex.tabCategoryKeys(),
+						clogIndex::canonicalItemId));
 			}
 			tip.setClogSources(clog.isFromTemple(), clog.isFromRuneProfile(), clog.isFromKillclog());
 			if (hiscore != null && hiscore.isRankDataAvailable())
@@ -2133,12 +2138,16 @@ public class KillClogPanel extends PluginPanel
 				ClogResult catalog = cells.unsyncedCatalogResult();
 				if (catalog != null)
 				{
-					tip.setPreviewData(ClogHelper.sumClogTotals(catalog)[1],
+					int total = clogIndex != null
+						? ClogHelper.sumClogTotals(catalog, clogIndex::canonicalItemId)[1]
+						: ClogHelper.sumClogTotals(catalog)[1];
+					tip.setPreviewData(total,
 						iconCache.clogTierImages());
 					if (clogIndex != null)
 					{
 						tip.setCategoryPreview(
-							ClogHelper.clogGroupProgress(catalog, clogIndex.tabCategoryKeys()));
+							ClogHelper.clogGroupProgress(catalog, clogIndex.tabCategoryKeys(),
+								clogIndex::canonicalItemId));
 					}
 				}
 				else

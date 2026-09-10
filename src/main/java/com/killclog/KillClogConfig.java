@@ -419,8 +419,8 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigSection(
-		name = "killclog.com",
-		description = "Collection Log sync and character publishing for your killclog.com profile",
+		name = "Kill Clog Web Sync",
+		description = "Collection Log sync and character publishing for your Kill Clog web profile",
 		position = 0,
 		closedByDefault = true
 	)
@@ -428,7 +428,7 @@ public interface KillClogConfig extends Config
 
 	@ConfigItem(
 		keyName = "killclogSync",
-		name = "Sync Collection Log to Killclog.com",
+		name = "Sync Collection Log",
 		description = "Publish your collection log and personal bests to your killclog.com "
 			+ "profile. Off by default. Nothing is sent until you turn it on, and the "
 			+ "opt-out page removes everything.",
