@@ -19,14 +19,18 @@ public class SkillClogCatalogTest
 	public void taxonomyMatchesGoldenTable()
 	{
 		assertEquals(Arrays.asList(
-			"category|Barbarian Assault|barbarian_assault"),
+			"category|Barbarian Assault|barbarian_assault",
+			"items|Equipment Unlocks|22477"),
 			SkillClogSection.specSignature(Skill.ATTACK));
 		assertEquals(Arrays.asList(
 			"items|Equipment Unlocks|24422,19529,29799,31109,33634",
 			"category|Pest Control|pest_control"),
 			SkillClogSection.specSignature(Skill.HITPOINTS));
 		assertEquals(Arrays.asList(
-			"category|Defenders|cyclopes"),
+			"items|Melee Armour|24419,24420,24421,11832,11834,11836,22326,22327,22328,30750,30753,30756,26376,26378,26380",
+			"items|Ranged Armour|11826,11828,11830,27226,27229,27232",
+			"items|Magic Armour|26241,26243,26245,21018,21021,21024",
+			"items|Defenders|8844,8845,8846,8847,8848,8849,8850,12954,22477"),
 			SkillClogSection.specSignature(Skill.DEFENCE));
 		assertEquals(Arrays.asList(
 			"items|Weapon Unlocks|4153,21646,21742,29000,13576,6528,4718,4747,28997,21003,33631,22486"),
@@ -105,7 +109,9 @@ public class SkillClogCatalogTest
 			"category|Guardians of the Rift|" + PanelData.GOTR_CATEGORY),
 			SkillClogSection.specSignature(Skill.RUNECRAFT));
 		assertEquals(Arrays.asList(
-			"category||" + PanelData.SLAYER_CATEGORY),
+			"items|Superiors|20724,21270,20736,20730",
+			"items|Mystic Sets|4109,4111,4113,4115,4117,4099,4101,4103,4105,4107,23047,23050,23053,23056,23059",
+			"remainder|Miscellaneous|" + PanelData.SLAYER_CATEGORY),
 			SkillClogSection.specSignature(Skill.SLAYER));
 		assertEquals(Arrays.asList(
 			"items|Pets|20661",

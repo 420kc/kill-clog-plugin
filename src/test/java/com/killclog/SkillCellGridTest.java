@@ -77,8 +77,8 @@ public class SkillCellGridTest
 		cells.clear(catalog);
 
 		SkillTooltip attack = (SkillTooltip) cells.labels().get(Skill.ATTACK).createToolTip();
-		assertEquals(" (--/2)", attack.getTitleSuffix());
-		assertEquals(1, attack.sections().size());
+		assertEquals(" (--/3)", attack.getTitleSuffix());
+		assertEquals(2, attack.sections().size());
 		SkillClogSection section = attack.sections().get(0);
 		assertEquals("--/2", SkillClogSectionRenderer.progressText(
 			section.primary(), section.itemIds().size()));
@@ -149,7 +149,8 @@ public class SkillCellGridTest
 		java.util.List<ClogResult.ClogItem> obtained = java.util.List.of(
 			new ClogResult.ClogItem(101, 1, null),
 			new ClogResult.ClogItem(102, 1, null),
-			new ClogResult.ClogItem(103, 1, null));
+			new ClogResult.ClogItem(103, 1, null),
+			new ClogResult.ClogItem(22477, 1, null));
 		ClogResult clog = new ClogResult("Tester",
 			Collections.singletonMap("barbarian_assault", obtained),
 			Collections.singletonMap("barbarian_assault", allItems),
@@ -161,7 +162,7 @@ public class SkillCellGridTest
 		assertEquals(progressionConfig.missing1Color(),
 			cells.labels().get(Skill.ATTACK).getForeground());
 		SkillTooltip tooltip = (SkillTooltip) cells.labels().get(Skill.ATTACK).createToolTip();
-		assertEquals(" (3/4)", tooltip.getTitleSuffix());
+		assertEquals(" (4/5)", tooltip.getTitleSuffix());
 	}
 
 	@Test
@@ -250,15 +251,15 @@ public class SkillCellGridTest
 		SkillTooltip slayer = (SkillTooltip) cells.labels().get(Skill.SLAYER).createToolTip();
 		SkillTooltip attack = (SkillTooltip) cells.labels().get(Skill.ATTACK).createToolTip();
 
-		assertEquals(1, slayer.sections().size());
-		assertEquals(30, slayer.sections().get(0).itemIds().size());
-		assertFalse(slayer.sections().get(0).hasHeading());
+		assertEquals(3, slayer.sections().size());
+		assertEquals(30, slayer.sections().get(2).itemIds().size());
+		assertEquals("Miscellaneous", slayer.sections().get(2).heading());
 		assertEquals("Slayer", slayer.getTitle());
-		assertEquals(" (1/30)", slayer.getTitleSuffix());
+		assertEquals(" (1/49)", slayer.getTitleSuffix());
 		assertEquals(TitleTooltip.CLOG_YELLOW, slayer.getTitleSuffixColor());
-		assertEquals(attack.getHeaderHeight() + TitleTooltip.LINE_HEIGHT,
+		assertEquals(attack.getHeaderHeight(),
 			slayer.getHeaderHeight());
-		assertFalse(attack.sections().iterator().hasNext());
+		assertEquals("Equipment Unlocks", attack.sections().get(0).heading());
 		assertTrue(slayer.getPreferredSize().height > attack.getPreferredSize().height);
 
 		paint(slayer);

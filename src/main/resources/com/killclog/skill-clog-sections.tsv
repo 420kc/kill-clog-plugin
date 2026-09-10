@@ -1,12 +1,18 @@
 # Curated Skill Clog taxonomy: skill<TAB>kind<TAB>heading<TAB>value.
 # kind=category reads that live provider category; kind=items pins fixed item ids
 # (comma separated, in presentation order). Empty heading renders headingless.
+# kind=remainder reads a category excluding this skill's explicit item sections.
 # Rows are presentation order per skill: pets first, then activities alphabetically.
 # Presentation-only view; never feeds canonical collection-log totals.
 ATTACK	category	Barbarian Assault	barbarian_assault
+# Avernic requires both Attack and Defence; its progression home is Defenders.
+ATTACK	items	Equipment Unlocks	22477
 HITPOINTS	items	Equipment Unlocks	24422,19529,29799,31109,33634
 HITPOINTS	category	Pest Control	pest_control
-DEFENCE	category	Defenders	cyclopes
+DEFENCE	items	Melee Armour	24419,24420,24421,11832,11834,11836,22326,22327,22328,30750,30753,30756,26376,26378,26380
+DEFENCE	items	Ranged Armour	11826,11828,11830,27226,27229,27232
+DEFENCE	items	Magic Armour	26241,26243,26245,21018,21021,21024
+DEFENCE	items	Defenders	8844,8845,8846,8847,8848,8849,8850,12954,22477
 STRENGTH	items	Weapon Unlocks	4153,21646,21742,29000,13576,6528,4718,4747,28997,21003,33631,22486
 MINING	items	Pets	13321
 MINING	category	Camdozaal	camdozaal
@@ -51,7 +57,9 @@ WOODCUTTING	items	Evil Chicken Outfit	20439,20436,20442,20433
 WOODCUTTING	category	Forestry	forestry
 RUNECRAFT	items	Pets	20665,26901
 RUNECRAFT	category	Guardians of the Rift	guardians_of_the_rift
-SLAYER	category		slayer
+SLAYER	items	Superiors	20724,21270,20736,20730
+SLAYER	items	Mystic Sets	4109,4111,4113,4115,4117,4099,4101,4103,4105,4107,23047,23050,23053,23056,23059
+SLAYER	remainder	Miscellaneous	slayer
 FARMING	items	Pets	20661
 FARMING	category	Hespori	hespori
 FARMING	category	Tithe Farm	tithe_farm

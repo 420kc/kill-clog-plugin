@@ -179,7 +179,7 @@ public class LookupSession
 			{
 				// Invalidate the still-in-flight clog/CA lanes: a not-found
 				// must not paint partial data afterwards.
-				fanout.invalidate();
+				adoptState(null, null, null, null);
 				listener.onNotFound(player);
 				return;
 			}
@@ -192,7 +192,7 @@ public class LookupSession
 			listener.onHiscoreResult(player, result, isSelf, knownType, isFirstSelfGreeting);
 		}, ex ->
 		{
-			fanout.invalidate();
+			adoptState(null, null, null, null);
 			listener.onError(player, ex);
 		});
 

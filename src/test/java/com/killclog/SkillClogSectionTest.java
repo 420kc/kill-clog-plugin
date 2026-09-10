@@ -15,7 +15,6 @@ import net.runelite.api.Skill;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class SkillClogSectionTest
@@ -57,10 +56,10 @@ public class SkillClogSectionTest
 		List<SkillClogSection> sections = SkillClogSection.forSkill(
 			Skill.SLAYER, clog, null, null);
 
-		assertEquals(1, sections.size());
-		SkillClogSection section = sections.get(0);
-		assertNull(section.heading());
-		assertFalse(section.hasHeading());
+		assertEquals(3, sections.size());
+		SkillClogSection section = sections.get(2);
+		assertEquals("Miscellaneous", section.heading());
+		assertTrue(section.hasHeading());
 		assertEquals(90, section.itemIds().size());
 		assertEquals(Integer.valueOf(1), section.itemIds().get(0));
 		assertEquals(Integer.valueOf(90), section.itemIds().get(89));
@@ -83,7 +82,7 @@ public class SkillClogSectionTest
 			new ClogResult.ClogItem(3, 9, null)));
 
 		SkillClogSection section = SkillClogSection.forSkill(
-			Skill.SLAYER, blue, red, catalog).get(0);
+			Skill.SLAYER, blue, red, catalog).get(2);
 
 		assertEquals(Arrays.asList(3, 1, 2, 4), section.itemIds());
 		assertEquals(2, section.primary().obtainedCount());
@@ -134,14 +133,14 @@ public class SkillClogSectionTest
 	{
 		ClogResult catalog = mappedCatalog();
 
-		assertHeadings(catalog, Skill.ATTACK, "Barbarian Assault");
+		assertHeadings(catalog, Skill.ATTACK, "Barbarian Assault|Equipment Unlocks");
 		assertHeadings(catalog, Skill.HITPOINTS, "Equipment Unlocks|Pest Control");
-		assertHeadings(catalog, Skill.DEFENCE, "Defenders");
+		assertHeadings(catalog, Skill.DEFENCE, "Melee Armour|Ranged Armour|Magic Armour|Defenders");
 		assertHeadings(catalog, Skill.STRENGTH, "Weapon Unlocks");
 		assertEquals(HITPOINTS_EQUIPMENT_IDS, SkillClogSection.forSkill(
 			Skill.HITPOINTS, null, null, catalog).get(0).itemIds());
-		assertEquals(DEFENDER_IDS, SkillClogSection.forSkill(
-			Skill.DEFENCE, null, null, catalog).get(0).itemIds());
+		assertEquals(concat(DEFENDER_IDS, Arrays.asList(22477)), SkillClogSection.forSkill(
+			Skill.DEFENCE, null, null, catalog).get(3).itemIds());
 		assertEquals(STRENGTH_WEAPON_IDS, SkillClogSection.forSkill(
 			Skill.STRENGTH, null, null, catalog).get(0).itemIds());
 		assertHeadings(catalog, Skill.MINING,
@@ -169,7 +168,7 @@ public class SkillClogSectionTest
 		assertHeadings(catalog, Skill.FLETCHING, "Vale Totems");
 		assertHeadings(catalog, Skill.WOODCUTTING, "Pets|Evil Chicken Outfit|Forestry");
 		assertHeadings(catalog, Skill.RUNECRAFT, "Pets|Guardians of the Rift");
-		assertHeadings(catalog, Skill.SLAYER, "");
+		assertHeadings(catalog, Skill.SLAYER, "Superiors|Mystic Sets|Miscellaneous");
 		assertHeadings(catalog, Skill.FARMING, "Pets|Hespori|Tithe Farm");
 		assertHeadings(catalog, Skill.CONSTRUCTION, "Mahogany Homes");
 		assertHeadings(catalog, Skill.HUNTER,
@@ -309,9 +308,9 @@ public class SkillClogSectionTest
 	{
 		ClogResult catalog = mappedCatalog();
 
-		assertTotal(catalog, Skill.ATTACK, 11);
+		assertTotal(catalog, Skill.ATTACK, 12);
 		assertTotal(catalog, Skill.HITPOINTS, 15);
-		assertTotal(catalog, Skill.DEFENCE, 8);
+		assertTotal(catalog, Skill.DEFENCE, 36);
 		assertTotal(catalog, Skill.STRENGTH, 12);
 		assertTotal(catalog, Skill.MINING, 30);
 		assertTotal(catalog, Skill.AGILITY, 48);
@@ -406,11 +405,11 @@ public class SkillClogSectionTest
 	{
 		SkillClogSectionRenderer renderer = new SkillClogSectionRenderer(new SkillTooltip());
 		renderer.setSections(SkillClogSection.forSkill(
-			Skill.SLAYER, null, null, clog(ids(1, 29), Collections.emptyList())), null);
+			Skill.SLAYER, null, null, clog(ids(1, 10), Collections.emptyList())), null);
 		assertFalse(renderer.usesCompactSprites());
 
 		renderer.setSections(SkillClogSection.forSkill(
-			Skill.SLAYER, null, null, clog(ids(1, 30), Collections.emptyList())), null);
+			Skill.SLAYER, null, null, clog(ids(1, 11), Collections.emptyList())), null);
 		assertTrue(renderer.usesCompactSprites());
 	}
 
@@ -547,7 +546,9 @@ public class SkillClogSectionTest
 		categories.put("sea_treasures", ids(126_000, 17));
 		categories.put("shades_of_mortton", ids(127_000, 14));
 		categories.put("shooting_stars", ids(128_000, 2));
-		categories.put("slayer", ids(129_000, 95));
+		categories.put("slayer", concat(ids(129_000, 76), Arrays.asList(
+			20724, 21270, 20736, 20730, 4109, 4111, 4113, 4115, 4117,
+			4099, 4101, 4103, 4105, 4107, 23047, 23050, 23053, 23056, 23059)));
 		categories.put("tempoross", ids(130_000, 12));
 		categories.put("tithe_farm", ids(131_000, 7));
 		categories.put("trouble_brewing", ids(132_000, 30));

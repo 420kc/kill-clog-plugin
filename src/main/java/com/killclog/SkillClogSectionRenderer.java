@@ -41,7 +41,6 @@ final class SkillClogSectionRenderer
 	private final JComponent repaintTarget;
 	private List<Entry> entries = Collections.emptyList();
 	private boolean compactSprites;
-	private int spriteSize = REGULAR_SPRITE_SIZE;
 	private boolean showRiftsClosed;
 	private int primaryRiftsClosed = -1;
 	private int comparedRiftsClosed = -1;
@@ -60,18 +59,17 @@ final class SkillClogSectionRenderer
 		{
 			entries = Collections.emptyList();
 			compactSprites = false;
-			spriteSize = REGULAR_SPRITE_SIZE;
 			return;
 		}
 
-		compactSprites = distinctItemCount(sections) > REGULAR_MAX_ITEMS;
-		spriteSize = compactSprites ? COMPACT_SPRITE_SIZE : REGULAR_SPRITE_SIZE;
+		compactSprites = distinctItemCount(sections) > REGULAR_MAX_ITEMS
+			&& sections.stream().anyMatch(section -> section.layout().columns == 0);
 		List<Entry> next = new ArrayList<>();
 		for (SkillClogSection section : sections)
 		{
 			TooltipItemSprites sprites = itemManager != null
 				? TooltipItemSprites.load(section.itemIds(), section.itemNames(), itemManager,
-					spriteSize, itemId -> 1, repaintTarget)
+					spriteSize(section), itemId -> 1, repaintTarget)
 				: null;
 			next.add(new Entry(section, sprites));
 		}
@@ -107,7 +105,12 @@ final class SkillClogSectionRenderer
 				width = Math.max(width,
 					headingMetrics.stringWidth(entry.section.heading()));
 			}
-			width = Math.max(width, soloProgressWidth(detailMetrics, entry.section));
+			int progressWidth = soloProgressWidth(detailMetrics, entry.section);
+			if (entry.section.layout().columns > 0 && entry.section.hasHeading())
+			{
+				progressWidth += headingMetrics.stringWidth(entry.section.heading()) + SECTION_GAP;
+			}
+			width = Math.max(width, progressWidth);
 			if (showsRiftsClosed(entry.section))
 			{
 				width = Math.max(width, detailMetrics.stringWidth(
@@ -116,24 +119,27 @@ final class SkillClogSectionRenderer
 		}
 		for (Entry entry : entries)
 		{
-			int cols = soloColumns(width, entry.section.itemIds().size());
-			width = Math.max(width, gridWidth(cols));
+			int cols = soloColumns(width, entry.section);
+			width = Math.max(width, gridWidth(entry.section, cols));
 		}
 
 		int height = 0;
 		for (Entry entry : entries)
 		{
-			int cols = soloColumns(width, entry.section.itemIds().size());
+			int cols = soloColumns(width, entry.section);
 			if (entry.section.hasHeading())
 			{
 				height += headingMetrics.getHeight() + HEADER_GAP;
 			}
-			height += detailMetrics.getHeight() + HEADER_GAP;
+			if (entry.section.layout().columns == 0 || !entry.section.hasHeading())
+			{
+				height += detailMetrics.getHeight() + HEADER_GAP;
+			}
 			if (showsRiftsClosed(entry.section))
 			{
 				height += detailMetrics.getHeight() + HEADER_GAP;
 			}
-			height += gridHeight(entry.section.itemIds().size(), cols);
+			height += gridHeight(entry.section, cols);
 		}
 		height += SECTION_GAP * (entries.size() - 1);
 		return new Dimension(width, height);
@@ -169,14 +175,14 @@ final class SkillClogSectionRenderer
 		}
 		for (Entry entry : entries)
 		{
-			int cols = compareColumns(width, entry.section.itemIds().size());
-			width = Math.max(width, gridWidth(cols) * 2 + COMPARE_GAP);
+			int cols = compareColumns(width, entry.section);
+			width = Math.max(width, gridWidth(entry.section, cols) * 2 + COMPARE_GAP);
 		}
 
 		int height = 0;
 		for (Entry entry : entries)
 		{
-			int cols = compareColumns(width, entry.section.itemIds().size());
+			int cols = compareColumns(width, entry.section);
 			if (entry.section.hasHeading())
 			{
 				height += headingMetrics.getHeight() + HEADER_GAP;
@@ -186,7 +192,7 @@ final class SkillClogSectionRenderer
 			{
 				height += detailMetrics.getHeight() + HEADER_GAP;
 			}
-			height += gridHeight(entry.section.itemIds().size(), cols);
+			height += gridHeight(entry.section, cols);
 		}
 		height += SECTION_GAP * (entries.size() - 1);
 		return new Dimension(width, height);
@@ -204,18 +210,25 @@ final class SkillClogSectionRenderer
 		{
 			Entry entry = entries.get(i);
 			SkillClogSection section = entry.section;
-			int cols = soloColumns(availableWidth, section.itemIds().size());
+			int cols = soloColumns(availableWidth, section);
 			if (section.hasHeading())
 			{
 				g2.setFont(SECTION_FONT);
 				g2.setColor(TitleTooltip.OSRS_ORANGE);
 				g2.drawString(section.heading(), inset, y + headingMetrics.getAscent());
-				y += headingMetrics.getHeight() + HEADER_GAP;
+				if (section.layout().columns == 0)
+				{
+					y += headingMetrics.getHeight() + HEADER_GAP;
+				}
 			}
 			g2.setFont(DETAIL_FONT);
 			paintSoloProgress(g2, detailMetrics, section.primary(),
-				section.itemIds().size(), inset, y + detailMetrics.getAscent());
-			y += detailMetrics.getHeight() + HEADER_GAP;
+				section.itemIds().size(), section.layout().columns > 0 && section.hasHeading()
+					? inset + availableWidth - soloProgressWidth(detailMetrics, section) : inset,
+				y + (section.layout().columns > 0 && section.hasHeading()
+					? headingMetrics.getAscent() : detailMetrics.getAscent()));
+			y += (section.layout().columns > 0 && section.hasHeading()
+				? headingMetrics.getHeight() : detailMetrics.getHeight()) + HEADER_GAP;
 			if (showsRiftsClosed(section))
 			{
 				paintSoloDetail(g2, detailMetrics, SkillTooltip.RIFTS_CLOSED_LABEL,
@@ -246,7 +259,7 @@ final class SkillClogSectionRenderer
 		{
 			Entry entry = entries.get(i);
 			SkillClogSection section = entry.section;
-			int cols = compareColumns(availableWidth, section.itemIds().size());
+			int cols = compareColumns(availableWidth, section);
 			int alignedGridWidth = (availableWidth - COMPARE_GAP) / 2;
 			int pairWidth = alignedGridWidth * 2 + COMPARE_GAP;
 			int pairX = inset + (availableWidth - pairWidth) / 2;
@@ -306,7 +319,17 @@ final class SkillClogSectionRenderer
 		List<Integer> itemIds = entry.section.itemIds();
 		g2.setFont(DETAIL_FONT);
 		FontMetrics quantityMetrics = g2.getFontMetrics();
-		int cellSize = cellSize();
+		int spriteSize = spriteSize(entry.section);
+		int cellSize = spriteSize + PADDING;
+		int labelWidth = rowLabelWidth(entry.section);
+		for (int row = 0; row < entry.section.layout().rowLabels.size(); row++)
+		{
+			g2.setColor(TitleTooltip.MUTED_GRAY);
+			g2.drawString(entry.section.layout().rowLabels.get(row), startX,
+				y + row * cellSize + (spriteSize - quantityMetrics.getHeight()) / 2
+					+ quantityMetrics.getAscent());
+		}
+		startX += labelWidth;
 		for (int i = 0; i < itemIds.size(); i++)
 		{
 			int x = startX + (i % cols) * cellSize;
@@ -331,7 +354,7 @@ final class SkillClogSectionRenderer
 				g2.setComposite(AlphaComposite.SrcOver);
 			}
 
-			if (obtained && count > 1 && !compactSprites)
+			if (obtained && count > 1 && spriteSize == REGULAR_SPRITE_SIZE)
 			{
 				String quantity = String.valueOf(count);
 				g2.setColor(QTY_SHADOW);
@@ -341,7 +364,7 @@ final class SkillClogSectionRenderer
 				g2.drawString(quantity, x, spriteY + quantityMetrics.getAscent());
 			}
 		}
-		return y + gridHeight(itemIds.size(), cols);
+		return y + gridHeight(entry.section, cols);
 	}
 
 	private static void paintSoloProgress(Graphics2D g2, FontMetrics fm,
@@ -418,38 +441,57 @@ final class SkillClogSectionRenderer
 			? String.format(java.util.Locale.US, "%,d", riftsClosed) : "--";
 	}
 
-	private int soloColumns(int availableWidth, int itemCount)
+	private int soloColumns(int availableWidth, SkillClogSection section)
 	{
+		if (section.layout().columns > 0) return section.layout().columns;
 		int minimum = compactSprites ? COMPACT_SOLO_MIN_COLS : REGULAR_SOLO_MIN_COLS;
-		int fit = Math.max(minimum, (availableWidth + PADDING) / cellSize());
-		return Math.min(fit, Math.max(itemCount, 1));
+		int fit = Math.max(minimum, (availableWidth + PADDING) / cellSize(section));
+		return Math.min(fit, Math.max(section.itemIds().size(), 1));
 	}
 
-	private int compareColumns(int availableWidth, int itemCount)
+	private int compareColumns(int availableWidth, SkillClogSection section)
 	{
+		if (section.layout().columns > 0) return section.layout().columns;
 		if (!compactSprites)
 		{
-			return Math.min(REGULAR_COMPARE_COLS, Math.max(itemCount, 1));
+			return Math.min(REGULAR_COMPARE_COLS, Math.max(section.itemIds().size(), 1));
 		}
 		int halfWidth = Math.max(0, (availableWidth - COMPARE_GAP) / 2);
-		int fit = Math.max(COMPARE_MIN_COLS, (halfWidth + PADDING) / cellSize());
-		return Math.min(fit, Math.max(itemCount, 1));
+		int fit = Math.max(COMPARE_MIN_COLS, (halfWidth + PADDING) / cellSize(section));
+		return Math.min(fit, Math.max(section.itemIds().size(), 1));
 	}
 
-	private int gridWidth(int cols)
+	private int rowLabelWidth(SkillClogSection section)
 	{
-		return cols * cellSize() - PADDING;
+		FontMetrics fm = repaintTarget.getFontMetrics(DETAIL_FONT);
+		int width = 0;
+		for (String label : section.layout().rowLabels)
+		{
+			width = Math.max(width, fm.stringWidth(label) + SECTION_GAP);
+		}
+		return width;
 	}
 
-	private int gridHeight(int itemCount, int cols)
+	private int gridWidth(SkillClogSection section, int cols)
 	{
-		int rows = (Math.max(itemCount, 1) + cols - 1) / cols;
-		return rows * cellSize() - PADDING;
+		return rowLabelWidth(section) + cols * cellSize(section) - PADDING;
 	}
 
-	private int cellSize()
+	private int gridHeight(SkillClogSection section, int cols)
 	{
-		return spriteSize + PADDING;
+		int rows = (Math.max(section.itemIds().size(), 1) + cols - 1) / cols;
+		return rows * cellSize(section) - PADDING;
+	}
+
+	private int cellSize(SkillClogSection section)
+	{
+		return spriteSize(section) + PADDING;
+	}
+
+	private int spriteSize(SkillClogSection section)
+	{
+		return compactSprites && section.layout().columns == 0
+			? COMPACT_SPRITE_SIZE : REGULAR_SPRITE_SIZE;
 	}
 
 	private static int distinctItemCount(List<SkillClogSection> sections)

@@ -16,7 +16,7 @@ import net.runelite.client.ui.FontManager;
 
 /**
  * PvM summary tooltip on the combat level cell.
- * Stats at top, then Slayer/Superiors and Raids/Mega Rares sections.
+ * Stats at top, then Raids/Mega Rares.
  */
 public class PvmSummaryTooltip extends TitleTooltip
 {
@@ -32,11 +32,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private int totalKills;
 	private int bossesWithKc;
 	private int totalBosses;
-	private int slayerLevel = -1;
-	private long slayerXp = -1;
-	private int slayerRank = -1;
-	private int slayerObtained = -1;
-	private int slayerTotal;
 	private String mostKilled;
 	private int mostKilledKc;
 
@@ -47,8 +42,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 	private final BufferedImage[] weaponSprites = new BufferedImage[3];
 	private final int[] weaponCounts = new int[3];
-	private final BufferedImage[] superiorSprites = new BufferedImage[2];
-	private final int[] superiorCounts = new int[2];
 	private final TooltipItemHover itemHover = new TooltipItemHover(this);
 
 	private int coxKc;
@@ -114,33 +107,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 		loadItemSprites(PanelData.MEGARARE_ITEM_IDS, WEAPON_SIZE, weaponSprites, itemManager);
 	}
 
-	public void setSuperiors(int imbuedHeartCount, int eternalGemCount,
-		ItemManager itemManager)
-	{
-		superiorCounts[0] = imbuedHeartCount;
-		superiorCounts[1] = eternalGemCount;
-
-		loadItemSprites(PanelData.SUPERIOR_ITEMS, WEAPON_SIZE, superiorSprites, itemManager);
-	}
-
-	public void setSlayer(HiscoreResult hiscoreResult, ClogResult clogResult)
-	{
-		slayerLevel = hiscoreResult != null
-			? hiscoreResult.getSkillLevel(PanelData.SLAYER_CATEGORY) : -1;
-		slayerXp = hiscoreResult != null
-			? hiscoreResult.getSkillXp(PanelData.SLAYER_CATEGORY) : -1;
-		slayerRank = hiscoreResult != null
-			? hiscoreResult.getSkillRank(PanelData.SLAYER_CATEGORY) : -1;
-		slayerObtained = -1;
-		slayerTotal = 0;
-		int[] slayer = ClogHelper.clogCounts(PanelData.SLAYER_CATEGORY, clogResult);
-		if (slayer != null)
-		{
-			slayerObtained = slayer[0];
-			slayerTotal = slayer[1];
-		}
-	}
-
 	public void setRaids(HiscoreResult hiscoreResult, ClogResult clogResult)
 	{
 		coxKc = Math.max(0, hiscoreResult.getKc(PanelData.COX_HISCORE))
@@ -192,11 +158,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 		}
 
 		int spriteRowWidth = 3 * WEAPON_SIZE + 2 * WEAPON_PAD;
-		int superiorRowWidth = 2 * WEAPON_SIZE + WEAPON_PAD;
-
-		// Slayer section.
-		int slayerHeight = SUBHEADER_HEIGHT + LINE_HEIGHT * slayerRowCount()
-			+ WEAPON_PAD + WEAPON_SIZE;
 
 		// Raids section.
 		int raidsHeight = SUBHEADER_HEIGHT + LINE_HEIGHT * 3
@@ -207,13 +168,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 		textWidth = Math.max(textWidth, fm.stringWidth("Combat: " + combatValue()));
 		textWidth = Math.max(textWidth, fm.stringWidth("Total Kills: " + totalKillsValue()));
 		textWidth = Math.max(textWidth, fm.stringWidth("EHB: " + ehbText(ehb)));
-		textWidth = Math.max(textWidth, fm.stringWidth("XP: " + slayerXpText(slayerXp)));
-		textWidth = Math.max(textWidth, fm.stringWidth("Rank: " + slayerRankValue()));
-		if (slayerObtained >= 0)
-		{
-			textWidth = Math.max(textWidth,
-				fm.stringWidth("Obtained: " + progressCountText(slayerObtained, slayerTotal)));
-		}
 		textWidth = Math.max(textWidth, fm.stringWidth("Bosses Killed: " + bossesValue()));
 		if (bossesCompleted >= 0)
 		{
@@ -223,7 +177,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 		{
 			textWidth = Math.max(textWidth, fm.stringWidth(mostKilledLine()));
 		}
-		textWidth = Math.max(textWidth, bfm.stringWidth("Slayer"));
 		textWidth = Math.max(textWidth, bfm.stringWidth("Raids"));
 		textWidth = Math.max(textWidth, raidLineWidth(fm, "CoX: ", coxKc, coxObtained, coxTotal));
 		textWidth = Math.max(textWidth, raidLineWidth(fm, "ToB: ", tobKc, tobObtained, tobTotal));
@@ -235,11 +188,10 @@ public class PvmSummaryTooltip extends TitleTooltip
 			textWidth = Math.max(textWidth, caWidth);
 		}
 
-		int contentWidth = Math.max(textWidth, Math.max(spriteRowWidth, superiorRowWidth));
+		int contentWidth = Math.max(textWidth, spriteRowWidth);
 		int separatorHeight = separatorHeight(SEPARATOR_PAD);
 		int caHeight = caResult != null ? CA_ROW_HEIGHT : 0;
 		int contentHeight = statsHeight + caHeight + mostKilledHeight
-			+ separatorHeight + slayerHeight
 			+ separatorHeight + raidsHeight;
 
 		return new Dimension(contentWidth, contentHeight);
@@ -313,37 +265,12 @@ public class PvmSummaryTooltip extends TitleTooltip
 			y += LINE_HEIGHT;
 		}
 
-		// Separator: stats to Slayer.
-		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
-
-		// "Slayer" subheader.
-		g2.setFont(FontManager.getRunescapeBoldFont());
-		FontMetrics bfm = g2.getFontMetrics();
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString("Slayer", inset, y + bfm.getAscent());
-		y += SUBHEADER_HEIGHT;
-
-		// Slayer progress.
-		g2.setFont(FontManager.getRunescapeSmallFont());
-		fm = g2.getFontMetrics();
-		paintSlayerLine(g2, fm, inset, y);
-		y += LINE_HEIGHT * slayerRowCount();
-		y += WEAPON_PAD;
-
-		g2.setFont(FontManager.getRunescapeSmallFont());
-		fm = g2.getFontMetrics();
-		paintQuantitySpriteRow(g2, fm, inset, y, w - 2 * inset,
-			superiorSprites, superiorCounts, WEAPON_SIZE, WEAPON_PAD);
-		addRowHitBoxes(hitBoxes, 0, inset, y, w - 2 * inset,
-			PanelData.SUPERIOR_ITEMS, PanelData.SUPERIOR_ITEM_NAMES, superiorCounts);
-		y += WEAPON_SIZE;
-
-		// Separator: Slayer to raids.
+		// Separator: stats to raids.
 		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
 
 		// "Raids" subheader.
 		g2.setFont(FontManager.getRunescapeBoldFont());
-		bfm = g2.getFontMetrics();
+		FontMetrics bfm = g2.getFontMetrics();
 		g2.setColor(OSRS_ORANGE);
 		g2.drawString("Raids", inset, y + bfm.getAscent());
 		y += SUBHEADER_HEIGHT;
@@ -417,53 +344,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 		{
 			paintWrappedProgressCount(g2, fm, lx + fm.stringWidth(kcText), textY, obtained, total);
 		}
-	}
-
-	private void paintSlayerLine(Graphics2D g2, FontMetrics fm, int x, int y)
-	{
-		// Three rows: XP and Rank from the hiscores, then clog progress when
-		// a synced log is known.
-		int textY = y + fm.getAscent();
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString("XP: ", x, textY);
-		g2.setColor(Color.WHITE);
-		g2.drawString(slayerXpText(slayerXp), x + fm.stringWidth("XP: "), textY);
-
-		textY += LINE_HEIGHT;
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString("Rank: ", x, textY);
-		g2.setColor(Color.WHITE);
-		g2.drawString(slayerRankValue(), x + fm.stringWidth("Rank: "), textY);
-
-		if (slayerObtained >= 0)
-		{
-			textY += LINE_HEIGHT;
-			g2.setColor(OSRS_ORANGE);
-			g2.drawString("Obtained: ", x, textY);
-			g2.setColor(completionColor(slayerObtained, slayerTotal));
-			g2.drawString(progressCountText(slayerObtained, slayerTotal),
-				x + fm.stringWidth("Obtained: "), textY);
-		}
-	}
-
-	private int slayerRowCount()
-	{
-		return slayerObtained >= 0 ? 3 : 2;
-	}
-
-	private String slayerRankValue()
-	{
-		return slayerRank > 0 ? String.format(Locale.US, "%,d", slayerRank) : "--";
-	}
-
-	/**
-	 * Solo summary only: the exact amount, never rounded. Max slayer xp is
-	 * 200,000,000 and the summary has the width for it. The comparison side
-	 * keeps the shared compact form, where column width is the constraint.
-	 */
-	/* package */ static String slayerXpText(long xp)
-	{
-		return xp > 0 ? String.format(Locale.US, "%,d", xp) : "--";
 	}
 
 	private String combatValue()

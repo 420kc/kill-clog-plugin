@@ -34,10 +34,11 @@ final class SkillClogSection
 	private final Map<Integer, String> itemNames;
 	private final PlayerItems primary;
 	private final PlayerItems compared;
+	private final Layout layout;
 
 	private SkillClogSection(@Nullable String heading, @Nullable String category,
 		List<Integer> itemIds,
-		Map<Integer, String> itemNames, PlayerItems primary, PlayerItems compared)
+		Map<Integer, String> itemNames, PlayerItems primary, PlayerItems compared, Layout layout)
 	{
 		this.heading = heading;
 		this.category = category;
@@ -45,6 +46,7 @@ final class SkillClogSection
 		this.itemNames = Collections.unmodifiableMap(itemNames);
 		this.primary = primary;
 		this.compared = compared;
+		this.layout = layout;
 	}
 
 	static List<SkillClogSection> forSkill(Skill skill,
@@ -57,10 +59,16 @@ final class SkillClogSection
 			return Collections.emptyList();
 		}
 
+		Set<Integer> pinnedIds = new HashSet<>();
+		for (Spec spec : specs)
+		{
+			pinnedIds.addAll(spec.itemIds);
+		}
 		List<SkillClogSection> sections = new ArrayList<>();
 		for (Spec spec : specs)
 		{
-			SkillClogSection section = fromSpec(spec, primary, compared, catalog);
+			SkillClogSection section = fromSpec(spec, primary, compared, catalog,
+				Layout.forSection(skill, spec.heading), pinnedIds);
 			if (section != null)
 			{
 				sections.add(section);
@@ -72,7 +80,7 @@ final class SkillClogSection
 	@Nullable
 	private static SkillClogSection fromSpec(Spec spec,
 		@Nullable ClogResult primary, @Nullable ClogResult compared,
-		@Nullable ClogResult catalog)
+		@Nullable ClogResult catalog, Layout layout, Set<Integer> pinnedIds)
 	{
 		LinkedHashSet<Integer> distinctIds = new LinkedHashSet<>();
 		if (spec.category != null)
@@ -80,6 +88,10 @@ final class SkillClogSection
 			addCategoryItems(distinctIds, catalog, spec.category);
 			addCategoryItems(distinctIds, primary, spec.category);
 			addCategoryItems(distinctIds, compared, spec.category);
+			if (spec.remainder)
+			{
+				distinctIds.removeAll(pinnedIds);
+			}
 		}
 		else
 		{
@@ -97,7 +109,7 @@ final class SkillClogSection
 		addItemNames(itemNames, itemIds, primary);
 		return new SkillClogSection(spec.heading, spec.category, itemIds, itemNames,
 			PlayerItems.from(primary, spec, distinctIds),
-			PlayerItems.from(compared, spec, distinctIds));
+			PlayerItems.from(compared, spec, distinctIds), layout);
 	}
 
 	private static void addCategoryItems(Set<Integer> destination,
@@ -262,6 +274,49 @@ final class SkillClogSection
 		return compared;
 	}
 
+	Layout layout()
+	{
+		return layout;
+	}
+
+	/** Fixed rows preserve curated set adjacency regardless of card width. */
+	enum Layout
+	{
+		ADAPTIVE(0),
+		MELEE_ARMOUR(3, "Inquisitor", "Bandos", "Justiciar", "Oathplate", "Torva"),
+		RANGED_ARMOUR(3, "Armadyl", "Masori"),
+		MAGIC_ARMOUR(3, "Virtus", "Ancestral"),
+		DEFENDERS(3),
+		SUPERIORS(4),
+		MYSTIC_SETS(5, "Light", "Dark", "Dusk");
+
+		final int columns;
+		final List<String> rowLabels;
+
+		Layout(int columns, String... rowLabels)
+		{
+			this.columns = columns;
+			this.rowLabels = Collections.unmodifiableList(java.util.Arrays.asList(rowLabels));
+		}
+
+		static Layout forSection(Skill skill, @Nullable String heading)
+		{
+			if (skill == Skill.DEFENCE)
+			{
+				if ("Melee Armour".equals(heading)) return MELEE_ARMOUR;
+				if ("Ranged Armour".equals(heading)) return RANGED_ARMOUR;
+				if ("Magic Armour".equals(heading)) return MAGIC_ARMOUR;
+				if ("Defenders".equals(heading)) return DEFENDERS;
+			}
+			if (skill == Skill.SLAYER)
+			{
+				if ("Superiors".equals(heading)) return SUPERIORS;
+				if ("Mystic Sets".equals(heading)) return MYSTIC_SETS;
+			}
+			return ADAPTIVE;
+		}
+	}
+
 	private static Map<Skill, List<Spec>> buildSpecs()
 	{
 		// The curated taxonomy ships as a bundled catalog; the parity test pins
@@ -273,9 +328,9 @@ final class SkillClogSection
 		{
 			String heading = row[2].isEmpty() ? null : row[2];
 			Spec spec;
-			if ("category".equals(row[1]))
+			if ("category".equals(row[1]) || "remainder".equals(row[1]))
 			{
-				spec = new Spec(heading, row[3], Collections.emptyList());
+				spec = new Spec(heading, row[3], Collections.emptyList(), "remainder".equals(row[1]));
 			}
 			else
 			{
@@ -284,7 +339,7 @@ final class SkillClogSection
 				{
 					itemIds.add(Integer.parseInt(itemId.trim()));
 				}
-				spec = new Spec(heading, null, itemIds);
+				spec = new Spec(heading, null, itemIds, false);
 			}
 			Skill skill;
 			try
@@ -316,7 +371,8 @@ final class SkillClogSection
 		List<String> signature = new ArrayList<>(specs.size());
 		for (Spec spec : specs)
 		{
-			StringBuilder line = new StringBuilder(spec.category != null ? "category" : "items");
+			StringBuilder line = new StringBuilder(spec.remainder ? "remainder"
+				: spec.category != null ? "category" : "items");
 			line.append('|').append(spec.heading != null ? spec.heading : "").append('|');
 			if (spec.category != null)
 			{
@@ -446,13 +502,15 @@ final class SkillClogSection
 		@Nullable
 		private final String category;
 		private final List<Integer> itemIds;
+		private final boolean remainder;
 
 		private Spec(@Nullable String heading, @Nullable String category,
-			List<Integer> itemIds)
+			List<Integer> itemIds, boolean remainder)
 		{
 			this.heading = heading;
 			this.category = category;
 			this.itemIds = Collections.unmodifiableList(new ArrayList<>(itemIds));
+			this.remainder = remainder;
 		}
 	}
 }

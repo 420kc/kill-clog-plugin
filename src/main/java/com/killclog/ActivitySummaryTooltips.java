@@ -75,7 +75,6 @@ final class ActivitySummaryTooltips
 			LookupQueries.getMostKilledKc(hiscore)
 		);
 		tip.setEhb(EhbRates.compute(hiscore, LookupQueries.accountType(hiscore, clog)));
-		tip.setSlayer(hiscore, clog);
 		if (clog != null)
 		{
 			tip.setCompletion(
@@ -86,13 +85,6 @@ final class ActivitySummaryTooltips
 			LookupQueries.getClogItemCount(clog, PanelData.COX_CATEGORY, PanelData.TWISTED_BOW_ITEM_ID),
 			LookupQueries.getClogItemCount(clog, PanelData.TOB_CATEGORY, PanelData.SCYTHE_ITEM_ID),
 			LookupQueries.getClogItemCount(clog, PanelData.TOA_CATEGORY, PanelData.SHADOW_ITEM_ID),
-			itemManager
-		);
-		tip.setSuperiors(
-			LookupQueries.getClogItemCount(clog,
-				PanelData.SLAYER_CATEGORY, PanelData.IMBUED_HEART_ITEM_ID),
-			LookupQueries.getClogItemCount(clog,
-				PanelData.SLAYER_CATEGORY, PanelData.ETERNAL_GEM_ITEM_ID),
 			itemManager
 		);
 		if (hiscore != null)
