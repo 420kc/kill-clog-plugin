@@ -106,7 +106,7 @@ final class SkillClogSectionRenderer
 					headingMetrics.stringWidth(entry.section.heading()));
 			}
 			int progressWidth = soloProgressWidth(detailMetrics, entry.section);
-			if (entry.section.layout().columns > 0 && entry.section.hasHeading())
+			if (entry.section.layout().inlineProgress && entry.section.hasHeading())
 			{
 				progressWidth += headingMetrics.stringWidth(entry.section.heading()) + SECTION_GAP;
 			}
@@ -131,7 +131,7 @@ final class SkillClogSectionRenderer
 			{
 				height += headingMetrics.getHeight() + HEADER_GAP;
 			}
-			if (entry.section.layout().columns == 0 || !entry.section.hasHeading())
+			if (!entry.section.layout().inlineProgress || !entry.section.hasHeading())
 			{
 				height += detailMetrics.getHeight() + HEADER_GAP;
 			}
@@ -216,18 +216,18 @@ final class SkillClogSectionRenderer
 				g2.setFont(SECTION_FONT);
 				g2.setColor(TitleTooltip.OSRS_ORANGE);
 				g2.drawString(section.heading(), inset, y + headingMetrics.getAscent());
-				if (section.layout().columns == 0)
+				if (!section.layout().inlineProgress)
 				{
 					y += headingMetrics.getHeight() + HEADER_GAP;
 				}
 			}
 			g2.setFont(DETAIL_FONT);
 			paintSoloProgress(g2, detailMetrics, section.primary(),
-				section.itemIds().size(), section.layout().columns > 0 && section.hasHeading()
+				section.itemIds().size(), section.layout().inlineProgress && section.hasHeading()
 					? inset + availableWidth - soloProgressWidth(detailMetrics, section) : inset,
-				y + (section.layout().columns > 0 && section.hasHeading()
+				y + (section.layout().inlineProgress && section.hasHeading()
 					? headingMetrics.getAscent() : detailMetrics.getAscent()));
-			y += (section.layout().columns > 0 && section.hasHeading()
+			y += (section.layout().inlineProgress && section.hasHeading()
 				? headingMetrics.getHeight() : detailMetrics.getHeight()) + HEADER_GAP;
 			if (showsRiftsClosed(section))
 			{

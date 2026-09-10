@@ -282,20 +282,22 @@ final class SkillClogSection
 	/** Fixed rows preserve curated set adjacency regardless of card width. */
 	enum Layout
 	{
-		ADAPTIVE(0),
-		MELEE_ARMOUR(3, "Inquisitor", "Bandos", "Justiciar", "Oathplate", "Torva"),
-		RANGED_ARMOUR(3, "Armadyl", "Masori"),
-		MAGIC_ARMOUR(3, "Virtus", "Ancestral"),
-		DEFENDERS(3),
-		SUPERIORS(4),
-		MYSTIC_SETS(5, "Light", "Dark", "Dusk");
+		ADAPTIVE(0, false),
+		MELEE_ARMOUR(3, true, "Inquisitor", "Bandos", "Justiciar", "Oathplate", "Torva"),
+		RANGED_ARMOUR(3, true, "Armadyl", "Masori"),
+		MAGIC_ARMOUR(3, true, "Virtus", "Ancestral"),
+		DEFENDERS(3, true),
+		SUPERIORS(4, false),
+		MYSTIC_SETS(5, false);
 
 		final int columns;
+		final boolean inlineProgress;
 		final List<String> rowLabels;
 
-		Layout(int columns, String... rowLabels)
+		Layout(int columns, boolean inlineProgress, String... rowLabels)
 		{
 			this.columns = columns;
+			this.inlineProgress = inlineProgress;
 			this.rowLabels = Collections.unmodifiableList(java.util.Arrays.asList(rowLabels));
 		}
 

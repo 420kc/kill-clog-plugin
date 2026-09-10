@@ -60,6 +60,11 @@ public class SkillClogLayoutTest
 			new ClogResult.ClogItem(1, 2, null))), Map.of("slayer", ids), Collections.emptyMap(), null, null);
 		List<SkillClogSection> sections = SkillClogSection.forSkill(Skill.SLAYER, player, null, player);
 		assertEquals(3, sections.size());
+		for (SkillClogSection section : sections)
+		{
+			assertTrue(section.layout().rowLabels.isEmpty());
+			assertFalse(section.layout().inlineProgress);
+		}
 		assertEquals(4, sections.get(0).itemIds().size());
 		assertEquals(15, sections.get(1).itemIds().size());
 		assertEquals(30, sections.get(2).itemIds().size());
@@ -75,6 +80,8 @@ public class SkillClogLayoutTest
 		assertEquals(Integer.valueOf(3), sections.get(0).primary().obtainedCounts().get(20724));
 		assertEquals(49, ids.size()); // The source catalog was not mutated.
 		List<TooltipItemHover.HitBox> boxes = paintSections(sections, 100);
+		assertEquals(TitleTooltip.getInset(), bounds(boxes.get(0)).x);
+		assertEquals(TitleTooltip.getInset(), bounds(boxes.get(4)).x);
 		for (int i = 0; i < 19; i++) assertEquals(32, bounds(boxes.get(i)).width);
 		for (int i = 19; i < 49; i++) assertEquals(15, bounds(boxes.get(i)).width);
 		for (int row = 0; row < 3; row++)
@@ -90,16 +97,15 @@ public class SkillClogLayoutTest
 	}
 
 	@Test
-	public void avernicCountsUnderBothSkillsWithoutChangingCanonicalTotals()
+	public void avernicCountsOnlyUnderDefenceWithoutChangingCanonicalTotals()
 	{
 		ClogResult player = new ClogResult("Blue", Map.of("theatre_of_blood",
 			Arrays.asList(new ClogResult.ClogItem(22477, 2, null))),
 			Map.of("theatre_of_blood", Arrays.asList(22477)), Collections.emptyMap(), null, null);
-		for (Skill skill : new Skill[]{Skill.ATTACK, Skill.DEFENCE})
-		{
-			List<SkillClogSection> sections = SkillClogSection.forSkill(skill, player, null, null);
-			assertEquals(1, SkillClogSection.combinedProgress(sections, false).obtained());
-		}
+		List<SkillClogSection> defence = SkillClogSection.forSkill(Skill.DEFENCE, player, null, null);
+		assertEquals(1, SkillClogSection.combinedProgress(defence, false).obtained());
+		List<SkillClogSection> attack = SkillClogSection.forSkill(Skill.ATTACK, player, null, null);
+		assertEquals(0, SkillClogSection.combinedProgress(attack, false).total());
 		assertArrayEquals(new int[]{1, 1}, ClogHelper.sumClogTotals(player));
 	}
 

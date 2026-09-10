@@ -5,8 +5,6 @@
 # Rows are presentation order per skill: pets first, then activities alphabetically.
 # Presentation-only view; never feeds canonical collection-log totals.
 ATTACK	category	Barbarian Assault	barbarian_assault
-# Avernic requires both Attack and Defence; its progression home is Defenders.
-ATTACK	items	Equipment Unlocks	22477
 HITPOINTS	items	Equipment Unlocks	24422,19529,29799,31109,33634
 HITPOINTS	category	Pest Control	pest_control
 DEFENCE	items	Melee Armour	24419,24420,24421,11832,11834,11836,22326,22327,22328,30750,30753,30756,26376,26378,26380

@@ -77,8 +77,8 @@ public class SkillCellGridTest
 		cells.clear(catalog);
 
 		SkillTooltip attack = (SkillTooltip) cells.labels().get(Skill.ATTACK).createToolTip();
-		assertEquals(" (--/3)", attack.getTitleSuffix());
-		assertEquals(2, attack.sections().size());
+		assertEquals(" (--/2)", attack.getTitleSuffix());
+		assertEquals(1, attack.sections().size());
 		SkillClogSection section = attack.sections().get(0);
 		assertEquals("--/2", SkillClogSectionRenderer.progressText(
 			section.primary(), section.itemIds().size()));
@@ -149,8 +149,7 @@ public class SkillCellGridTest
 		java.util.List<ClogResult.ClogItem> obtained = java.util.List.of(
 			new ClogResult.ClogItem(101, 1, null),
 			new ClogResult.ClogItem(102, 1, null),
-			new ClogResult.ClogItem(103, 1, null),
-			new ClogResult.ClogItem(22477, 1, null));
+			new ClogResult.ClogItem(103, 1, null));
 		ClogResult clog = new ClogResult("Tester",
 			Collections.singletonMap("barbarian_assault", obtained),
 			Collections.singletonMap("barbarian_assault", allItems),
@@ -162,7 +161,7 @@ public class SkillCellGridTest
 		assertEquals(progressionConfig.missing1Color(),
 			cells.labels().get(Skill.ATTACK).getForeground());
 		SkillTooltip tooltip = (SkillTooltip) cells.labels().get(Skill.ATTACK).createToolTip();
-		assertEquals(" (4/5)", tooltip.getTitleSuffix());
+		assertEquals(" (3/4)", tooltip.getTitleSuffix());
 	}
 
 	@Test
@@ -257,9 +256,9 @@ public class SkillCellGridTest
 		assertEquals("Slayer", slayer.getTitle());
 		assertEquals(" (1/49)", slayer.getTitleSuffix());
 		assertEquals(TitleTooltip.CLOG_YELLOW, slayer.getTitleSuffixColor());
-		assertEquals(attack.getHeaderHeight(),
+		assertEquals(attack.getHeaderHeight() + TitleTooltip.LINE_HEIGHT,
 			slayer.getHeaderHeight());
-		assertEquals("Equipment Unlocks", attack.sections().get(0).heading());
+		assertFalse(attack.sections().iterator().hasNext());
 		assertTrue(slayer.getPreferredSize().height > attack.getPreferredSize().height);
 
 		paint(slayer);

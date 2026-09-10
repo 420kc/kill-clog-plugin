@@ -133,7 +133,7 @@ public class SkillClogSectionTest
 	{
 		ClogResult catalog = mappedCatalog();
 
-		assertHeadings(catalog, Skill.ATTACK, "Barbarian Assault|Equipment Unlocks");
+		assertHeadings(catalog, Skill.ATTACK, "Barbarian Assault");
 		assertHeadings(catalog, Skill.HITPOINTS, "Equipment Unlocks|Pest Control");
 		assertHeadings(catalog, Skill.DEFENCE, "Melee Armour|Ranged Armour|Magic Armour|Defenders");
 		assertHeadings(catalog, Skill.STRENGTH, "Weapon Unlocks");
@@ -308,7 +308,7 @@ public class SkillClogSectionTest
 	{
 		ClogResult catalog = mappedCatalog();
 
-		assertTotal(catalog, Skill.ATTACK, 12);
+		assertTotal(catalog, Skill.ATTACK, 11);
 		assertTotal(catalog, Skill.HITPOINTS, 15);
 		assertTotal(catalog, Skill.DEFENCE, 36);
 		assertTotal(catalog, Skill.STRENGTH, 12);

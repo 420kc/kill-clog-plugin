@@ -19,8 +19,7 @@ public class SkillClogCatalogTest
 	public void taxonomyMatchesGoldenTable()
 	{
 		assertEquals(Arrays.asList(
-			"category|Barbarian Assault|barbarian_assault",
-			"items|Equipment Unlocks|22477"),
+			"category|Barbarian Assault|barbarian_assault"),
 			SkillClogSection.specSignature(Skill.ATTACK));
 		assertEquals(Arrays.asList(
 			"items|Equipment Unlocks|24422,19529,29799,31109,33634",
