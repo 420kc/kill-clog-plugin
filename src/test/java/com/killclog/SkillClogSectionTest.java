@@ -177,7 +177,7 @@ public class SkillClogSectionTest
 		assertHeadings(catalog, Skill.FARMING, "Pets|Hespori|Tithe Farm");
 		assertHeadings(catalog, Skill.CONSTRUCTION, "Mahogany Homes");
 		assertHeadings(catalog, Skill.HUNTER,
-			"Pets|Aerial Fishing|Crystal Impling|Hunter Guild");
+			"Pets|Aerial Fishing|Chompy Bird Hunting|Crystal Impling|Hunter Guild");
 		assertHeadings(catalog, Skill.SAILING,
 			"Pets|Barracuda Trials|Boat Paints|Deep Sea Trawling|Lost Schematics"
 				+ "|Ocean Encounters|Sailing Miscellaneous|Sea Treasures");
@@ -199,7 +199,7 @@ public class SkillClogSectionTest
 			Skill.MINING, player, null, null).get(0);
 
 		assertEquals("Pets", pets.heading());
-		assertEquals(Collections.singletonList(13321), pets.itemIds());
+		assertEquals(Arrays.asList(13321, 23760), pets.itemIds());
 		assertEquals(1, pets.primary().obtainedCount());
 		assertEquals(Integer.valueOf(7), pets.primary().obtainedCounts().get(13321));
 		assertEquals("Rock golem", pets.itemNames().get(13321));
@@ -335,7 +335,7 @@ public class SkillClogSectionTest
 		assertTotal(catalog, Skill.SLAYER, 95);
 		assertTotal(catalog, Skill.FARMING, 12);
 		assertTotal(catalog, Skill.CONSTRUCTION, 8);
-		assertTotal(catalog, Skill.HUNTER, 19);
+		assertTotal(catalog, Skill.HUNTER, 38);
 		assertTotal(catalog, Skill.SAILING, 79);
 	}
 
@@ -364,6 +364,40 @@ public class SkillClogSectionTest
 			assertEquals(count, progress.obtained());
 			assertEquals(runecraft ? 18 : 24, progress.total());
 		}
+	}
+
+	@Test
+	public void addedActivityPetsRemainVisibleButCountOnceOnEachComparisonSide()
+	{
+		ClogResult catalog = mappedCatalog();
+		Skill[] skills = {Skill.MINING, Skill.FISHING, Skill.HUNTER, Skill.HUNTER};
+		int[] pets = {23760, 25602, 28962, 13071};
+		String[] categories = {"zalcano", "tempoross", "hunter_guild", "chompy_bird_hunting"};
+		int[] petTotals = {2, 2, 5, 5};
+		for (int i = 0; i < pets.length; i++)
+		{
+			Map<String, List<ClogResult.ClogItem>> obtained = new HashMap<>();
+			obtained.put(categories[i], Arrays.asList(new ClogResult.ClogItem(pets[i], 3, null)));
+			obtained.put("all_pets", Arrays.asList(new ClogResult.ClogItem(pets[i], 3, null)));
+			ClogResult owner = new ClogResult("Owner", obtained, catalog.getCategoryItems(),
+				Collections.emptyMap(), null, null);
+			List<SkillClogSection> blue = SkillClogSection.forSkill(skills[i], owner, catalog, catalog);
+			List<SkillClogSection> red = SkillClogSection.forSkill(skills[i], catalog, owner, catalog);
+			assertEquals(petTotals[i], blue.get(0).itemIds().size());
+			assertTrue(blue.get(0).itemIds().contains(pets[i]));
+			assertEquals(Integer.valueOf(3), blue.get(0).primary().obtainedCounts().get(pets[i]));
+			final String category = categories[i];
+			SkillClogSection activity = blue.stream().filter(section -> section.isCategory(category))
+				.findFirst().orElseThrow(AssertionError::new);
+			assertTrue(activity.itemIds().contains(pets[i]));
+			assertEquals(Integer.valueOf(3), activity.primary().obtainedCounts().get(pets[i]));
+			assertEquals(1, SkillClogSection.combinedProgress(blue).obtained());
+			assertEquals(0, SkillClogSection.combinedProgress(red).obtained());
+			assertEquals(SkillClogSection.combinedProgress(blue).total(),
+				SkillClogSection.combinedProgress(red).total());
+		}
+		assertTrue(SkillClogSection.forSkill(Skill.RANGED, null, null, catalog).stream()
+			.anyMatch(section -> section.isCategory("chompy_bird_hunting")));
 	}
 
 	@Test
@@ -436,8 +470,8 @@ public class SkillClogSectionTest
 		SkillClogSection.Progress progress = SkillClogSection.combinedProgress(
 			sections);
 
-		// Eight unique category items, plus the pet and three Mining Guild slots.
-		assertEquals(12, progress.total());
+		// Eight unique category items, plus two pets and three Mining Guild slots.
+		assertEquals(13, progress.total());
 		assertEquals(3, progress.obtained());
 	}
 
@@ -512,7 +546,7 @@ public class SkillClogSectionTest
 		categories.put("boat_paints", ids(104_000, 11));
 		categories.put("brimhaven_agility_arena", ids(105_000, 9));
 		categories.put("camdozaal", ids(106_000, 10));
-		categories.put("chompy_bird_hunting", ids(107_000, 19));
+		categories.put("chompy_bird_hunting", concat(Arrays.asList(13071), ids(107_000, 18)));
 		categories.put("colossal_wyrm_agility", ids(108_000, 8));
 		categories.put("cyclopes", DEFENDER_IDS);
 		categories.put("fishing_trawler", angler);
@@ -522,7 +556,7 @@ public class SkillClogSectionTest
 		categories.put("guardians_of_the_rift", concat(Arrays.asList(26901), ids(112_000, 16)));
 		categories.put("hallowed_sepulchre", ids(113_000, 16));
 		categories.put("hespori", ids(114_000, 4));
-		categories.put("hunter_guild", ids(115_000, 6));
+		categories.put("hunter_guild", concat(Arrays.asList(28962), ids(115_000, 5)));
 		categories.put("lost_schematics", ids(116_000, 12));
 		categories.put("magic_training_arena", ids(117_000, 11));
 		categories.put("mahogany_homes", ids(118_000, 8));
@@ -538,13 +572,13 @@ public class SkillClogSectionTest
 		categories.put("shades_of_mortton", ids(127_000, 14));
 		categories.put("shooting_stars", ids(128_000, 2));
 		categories.put("slayer", ids(129_000, 95));
-		categories.put("tempoross", ids(130_000, 12));
+		categories.put("tempoross", concat(Arrays.asList(25602), ids(130_000, 11)));
 		categories.put("tithe_farm", ids(131_000, 7));
 		categories.put("trouble_brewing", ids(132_000, 30));
 		categories.put("vale_totems", ids(133_000, 4));
 		categories.put("volcanic_mine", concat(ids(134_000, 4), prospector));
 		categories.put("wintertodt", concat(Arrays.asList(20693), ids(135_000, 9)));
-		categories.put("zalcano", ids(136_000, 4));
+		categories.put("zalcano", concat(Arrays.asList(23760), ids(136_000, 3)));
 		return new ClogResult("Catalog", Collections.emptyMap(), categories,
 			Collections.emptyMap(), null, null);
 	}

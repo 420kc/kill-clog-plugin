@@ -32,7 +32,7 @@ public class SkillClogCatalogTest
 			"items|Weapon Unlocks|4153,21646,21742,29000,13576,6528,4718,4747,28997,21003,33631,22486"),
 			SkillClogSection.specSignature(Skill.STRENGTH));
 		assertEquals(Arrays.asList(
-			"items|Pets|13321",
+			"items|Pets|13321,23760",
 			"category|Camdozaal|camdozaal",
 			"items|Mining Guild|21343,21345,21392",
 			"category|Motherlode Mine|motherlode_mine",
@@ -56,7 +56,7 @@ public class SkillClogCatalogTest
 			"category|Mastering Mixology|mastering_mixology"),
 			SkillClogSection.specSignature(Skill.HERBLORE));
 		assertEquals(Arrays.asList(
-			"items|Pets|13320",
+			"items|Pets|13320,25602",
 			"category|Aerial Fishing|aerial_fishing",
 			"items|Big Fish|7991,7993,7989",
 			"items|Deep Sea Trawling|31408,31412,31416,31420,31424,31428",
@@ -116,8 +116,9 @@ public class SkillClogCatalogTest
 			"category|Mahogany Homes|mahogany_homes"),
 			SkillClogSection.specSignature(Skill.CONSTRUCTION));
 		assertEquals(Arrays.asList(
-			"items|Pets|13324,21509,34040",
+			"items|Pets|13324,21509,28962,34040,13071",
 			"category|Aerial Fishing|aerial_fishing",
+			"category|Chompy Bird Hunting|chompy_bird_hunting",
 			"items|Crystal Impling|23943",
 			"category|Hunter Guild|hunter_guild"),
 			SkillClogSection.specSignature(Skill.HUNTER));
