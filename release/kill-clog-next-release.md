@@ -1,4 +1,4 @@
-# Kill Clog 2.3.4: modal hover polish
+# Kill Clog 2.3.4: modal polish and item matching
 
 Local visual-smoke candidate based on accepted 2.3.3 at `96dee242`.
 
@@ -6,14 +6,19 @@ Local visual-smoke candidate based on accepted 2.3.3 at `96dee242`.
 - Put item labels beneath the corresponding sprite section, with a 2px downward text offset.
 - Reuse section spacing; dense cards widen within the existing width limits to keep their height bounded.
 - Refresh changed hover names and clear old hover state when summary/skill data changes.
-- Preserve 2.3.3 taxonomy, summary content, item identity, capture, caches and publication behavior.
+- Match observed item variants to unambiguous Collection Log slots in views and future captures.
+- Preserve strict setup completeness: two forms cannot stand in for a missing slot.
+- Restore catalog previews after failed or missing-player lookups.
+- Use Kill Clog source wording and the Kill Clog Web Sync settings heading.
+- Preserve 2.3.3 taxonomy, summary content, cache ownership and publication permissions.
 - Prepare concise automatic-setup README wording.
 
 Visual smoke: PvM Slayer and raids; Clog Special, Recent/date and Sources;
 Player pets; Skill Summary name/XP/rank; multi-section Skill Clogs including
 Sailing. Check long names, quantities, no title replacement, fixed hover size,
 blue/red independence, pointer exit and wiki targets. This candidate does not
-include the broader 2.4 summary/taxonomy or canonicalization work.
+include the broader 2.4 summary or taxonomy work.
+Also smoke Tithe Farm outfit/container variants and a missing-player lookup.
 
 ## Prior release receipt
 

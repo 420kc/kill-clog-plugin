@@ -116,10 +116,16 @@ final class SkillClogSectionRenderer
 
 		int height = sectionHeight(width, headingMetrics, detailMetrics);
 		// Dense multi-section cards trade a little width for fewer sprite rows.
-		while (height > MAX_SECTION_HEIGHT && width + cellSize() <= MAX_SECTION_WIDTH)
+		int candidateWidth = width;
+		while (height > MAX_SECTION_HEIGHT && candidateWidth + cellSize() <= MAX_SECTION_WIDTH)
 		{
-			width += cellSize();
-			height = sectionHeight(width, headingMetrics, detailMetrics);
+			candidateWidth += cellSize();
+			int candidateHeight = sectionHeight(candidateWidth, headingMetrics, detailMetrics);
+			if (candidateHeight < height)
+			{
+				width = candidateWidth;
+				height = candidateHeight;
+			}
 		}
 		return new Dimension(width, height);
 	}

@@ -17,7 +17,7 @@ Install **Kill Clog** from the RuneLite Plugin Hub and open its panel while logg
 
 Open your Collection Log. Setup runs automatically, even with zero items. Chat confirms when it's done.
 
-To retry, choose **Search** at the top of the log.
+To retry, click **Search** at the top of the log. If it says **RuneProfile**, right-click it and choose **Search**.
 
 Your log is saved locally and kept current as you unlock items.
 
