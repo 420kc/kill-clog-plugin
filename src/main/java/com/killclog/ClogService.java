@@ -149,6 +149,10 @@ public class ClogService
 					{
 						ClogResult result = localClogCache.toClogResult(playerName,
 							names != null ? names : new HashMap<>());
+						if (result != null)
+						{
+							result = result.withLocalSource(true);
+						}
 						return fromTemple ? markTempleSource(result) : result;
 					}));
 			}

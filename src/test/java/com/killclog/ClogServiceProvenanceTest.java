@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -50,7 +51,8 @@ public class ClogServiceProvenanceTest
 		AtomicInteger requests = new AtomicInteger();
 		String templeJson = "{\"data\":{\"player_name_with_capitalization\":\"Overlay Probe\","
 			+ "\"last_changed\":\"2026-09-06 12:00:00\",\"items\":{\"zulrah\":["
-			+ "{\"id\":1,\"count\":1,\"date\":\"2026-09-06 12:00:00\"}]}}}";
+			+ "{\"id\":1,\"count\":99,\"date\":\"2026-09-06 12:00:00\"},"
+			+ "{\"id\":2,\"count\":1,\"date\":\"2026-09-06 12:00:00\"}]}}}";
 		ClogService service = activeService(player, null, templeJson, requests);
 
 		ClogResult first = service.lookup(player).join();
@@ -63,6 +65,16 @@ public class ClogServiceProvenanceTest
 		ClogResult cached = service.lookup(player).join();
 		assertTrue(cached.isFromTemple());
 		assertEquals(1, requests.get());
+		for (ClogResult result : Arrays.asList(first, cached))
+		{
+			assertTrue(result.isFromLocal());
+			assertFalse("local capture does not claim a web sync", result.isFromKillclog());
+			List<ClogResult.ClogItem> items = result.getObtainedItems().get("zulrah");
+			assertEquals("provider-only item is not imported", 1, items.size());
+			assertEquals(1, items.get(0).getId());
+			assertEquals("local quantity remains authoritative", 1, items.get(0).getCount());
+			assertSelfSources(result, Arrays.asList("Kill Clog", "TempleOSRS"));
+		}
 	}
 
 	@Test
@@ -91,6 +103,26 @@ public class ClogServiceProvenanceTest
 		assertFalse(result.isFromTemple());
 		assertFalse(result.isFromRuneProfile());
 		assertFalse(result.isFromKillclog());
+		assertTrue(result.isFromLocal());
+		assertSelfSources(result, Collections.singletonList("Kill Clog"));
+	}
+
+	private static void assertSelfSources(ClogResult local, List<String> expected)
+	{
+		ClogResult combined = ClogProviderFanout.lookup(true,
+			() -> CompletableFuture.completedFuture(local),
+			() ->
+			{
+				throw new AssertionError("self must not fetch RuneProfile clog");
+			},
+			() ->
+			{
+				throw new AssertionError("self must not require a web sync");
+			}).join();
+		assertTrue(combined.isFromLocal());
+		ClogSummaryTooltip tooltip = new ClogSummaryTooltip();
+		tooltip.setClogSources(combined);
+		assertEquals(expected, tooltip.sourceNames());
 	}
 
 	private static ClogService serviceWithWarmCatalog(LocalClogCache cache) throws Exception

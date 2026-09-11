@@ -45,6 +45,9 @@ public class ClogResult
 	/** True when the player's own killclog.com sync returned itemized clog data */
 	@Getter
 	private boolean fromKillclog;
+	/** True when the result includes the local player's completed game capture. */
+	@Getter
+	private boolean fromLocal;
 
 	public ClogResult(
 		String playerName,
@@ -82,6 +85,7 @@ public class ClogResult
 		this.providerAccountType = accountType;
 		this.uniqueObtained = source.uniqueObtained;
 		this.uniqueTotal = source.uniqueTotal;
+		this.fromLocal = source.fromLocal;
 	}
 
 	/**
@@ -116,6 +120,13 @@ public class ClogResult
 	{
 		return copyWithProvenanceAndAccountType(
 			temple, runeProfile, killclog, providerAccountType);
+	}
+
+	ClogResult withLocalSource(boolean local)
+	{
+		ClogResult copy = withSources(fromTemple, fromRuneProfile, fromKillclog);
+		copy.fromLocal = local;
+		return copy;
 	}
 
 	public boolean isItemResolved(int id)
@@ -160,7 +171,8 @@ public class ClogResult
 		ClogResult loser = winner == temple ? rp : temple;
 		return winner.copyWithProvenance(sourceTemple(temple, rp),
 			sourceRuneProfile(temple, rp), sourceKillclog(temple, rp),
-			loser != null ? loser.providerAccountType : null);
+			loser != null ? loser.providerAccountType : null)
+			.withLocalSource(sourceLocal(temple, rp));
 	}
 
 	/**
@@ -201,13 +213,19 @@ public class ClogResult
 		{
 			return killclog.copyWithProvenance(
 				templeSource, runeProfileSource, killclogSource,
-				provider.providerAccountType);
+				provider.providerAccountType).withLocalSource(sourceLocal(provider, killclog));
 		}
 		AccountType firstPartyType = killclog.providerAccountType;
 		AccountType accountType = firstPartyType != null && firstPartyType.isGroupIronman()
 			? firstPartyType : provider.providerAccountType;
 		return provider.copyWithProvenanceAndAccountType(
-			templeSource, runeProfileSource, killclogSource, accountType);
+			templeSource, runeProfileSource, killclogSource, accountType)
+			.withLocalSource(sourceLocal(provider, killclog));
+	}
+
+	private static boolean sourceLocal(ClogResult first, ClogResult second)
+	{
+		return first != null && first.fromLocal || second != null && second.fromLocal;
 	}
 
 	private static boolean sourceTemple(ClogResult first, ClogResult second)

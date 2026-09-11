@@ -13,6 +13,7 @@ Local visual-smoke candidate based on accepted 2.3.3 at `96dee242`.
 - Add Smolcano, Tiny tempor and Quetzin to their skills' Pets rows.
 - Share Chompy Bird Hunting with Hunter and include Chompy chick in Hunter Pets; keep Ranged.
 - Deduplicate shared pets in each skill total while retaining both section appearances.
+- Credit local Collection Log captures as Kill Clog in Sources, alongside Temple when it supplies dates.
 - Preserve remaining 2.3.3 taxonomy, summary content, cache ownership and publication permissions.
 - Prepare concise automatic-setup README wording.
 
@@ -24,6 +25,8 @@ include the broader 2.4 summary or taxonomy work.
 Also smoke Tithe Farm outfit/container variants and a missing-player lookup.
 Check Mining/Fishing Pets (2 each), Hunter Pets (5), and Chompy Bird Hunting
 under both Hunter and Ranged. Shared pets should count once in skill totals.
+Recheck self Sources after setup and a repeat lookup: Kill Clog remains present
+when Temple supplies dates. This candidate still needs the corrected smoke pass.
 
 ## Prior release receipt
 

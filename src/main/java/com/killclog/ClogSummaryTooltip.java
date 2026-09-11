@@ -91,7 +91,13 @@ public class ClogSummaryTooltip extends TitleTooltip
 		this.syncStale = stale;
 	}
 
-	/** Record only providers that returned usable synced clog data. */
+	void setClogSources(ClogResult result)
+	{
+		setClogSources(result.isFromTemple(), result.isFromRuneProfile(),
+			result.isFromKillclog() || result.isFromLocal());
+	}
+
+	/** Record contributing sources, including Kill Clog's local game capture. */
 	public void setClogSources(boolean temple, boolean runeProfile, boolean killclog)
 	{
 		clogSources.clear();

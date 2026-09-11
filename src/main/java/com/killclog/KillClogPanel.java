@@ -2033,7 +2033,7 @@ public class KillClogPanel extends PluginPanel
 				? ClogHelper.sumClogTotals(clog, clogIndex::canonicalItemId)
 				: ClogHelper.sumClogTotals(clog);
 			tip.setTierData(totals[0], totals[1], iconCache.clogTierImages());
-			tip.setClogSources(clog.isFromTemple(), clog.isFromRuneProfile(), clog.isFromKillclog());
+			tip.setClogSources(clog);
 			if (hiscore != null && hiscore.isRankDataAvailable())
 			{
 				int clogRank = hiscore.getActivityRank("Collections Logged");
