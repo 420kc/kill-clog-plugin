@@ -179,7 +179,7 @@ public class LookupSession
 			{
 				// Invalidate the still-in-flight clog/CA lanes: a not-found
 				// must not paint partial data afterwards.
-				fanout.invalidate();
+				adoptState(null, null, null, null);
 				listener.onNotFound(player);
 				return;
 			}
@@ -192,7 +192,7 @@ public class LookupSession
 			listener.onHiscoreResult(player, result, isSelf, knownType, isFirstSelfGreeting);
 		}, ex ->
 		{
-			fanout.invalidate();
+			adoptState(null, null, null, null);
 			listener.onError(player, ex);
 		});
 
@@ -217,13 +217,12 @@ public class LookupSession
 	 */
 	public void cancelInFlight()
 	{
-		fanout.cancel();
+		fanout.invalidate();
 	}
 
 	/**
 	 * Adopt already-loaded results as the current lookup state, bypassing the
-	 * async pipeline. Used by the comparison swap: clicking the red player
-	 * promotes their results into the primary slot in one synchronous step.
+	 * async pipeline. Also clears all state on failure or shutdown.
 	 */
 	public void adoptState(@Nullable HiscoreResult hiscore, @Nullable ClogResult clog,
 		@Nullable CombatAchievementResult ca, @Nullable String name)
@@ -237,6 +236,12 @@ public class LookupSession
 		this.caResult = ca;
 		this.currentLookupRsn = name;
 		this.clogLastChanged = clog != null ? clog.getLastChanged() : null;
+	}
+
+	/** Quietly discard the session before panel shutdown or reuse. */
+	public void reset()
+	{
+		adoptState(null, null, null, null);
 	}
 
 	// Read-only state

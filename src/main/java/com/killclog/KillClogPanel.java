@@ -3,7 +3,6 @@ package com.killclog;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
-import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -20,7 +19,6 @@ import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
-import javax.swing.AbstractButton;
 import javax.swing.Box;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
@@ -62,7 +60,7 @@ public class KillClogPanel extends PluginPanel
 	private static final Color NOT_FOUND = new Color(0x81, 0x09, 0x09);
 	static final Color KC_COLOR = new Color(215, 215, 215);
 	private static final String SETUP_NOTICE =
-		"Open Collection Log, then right-click the top and choose Search";
+		"Open your Collection Log to start setup automatically";
 
 	/** Info bar text color - only applies when highlighter is active AND clog data exists. */
 	@Override
@@ -301,7 +299,7 @@ public class KillClogPanel extends PluginPanel
 		clogNotice.setLayout(new BoxLayout(clogNotice, BoxLayout.Y_AXIS));
 		clogNotice.setOpaque(false);
 		JLabel noticeOpen = new JLabel("Open Collection Log");
-		JLabel noticeSearch = new JLabel("Right-click the top and choose Search");
+		JLabel noticeSearch = new JLabel("Setup starts automatically");
 		for (JLabel label : new JLabel[]{noticeOpen, noticeSearch})
 		{
 			label.setFont(FontManager.getRunescapeSmallFont());
@@ -831,48 +829,6 @@ public class KillClogPanel extends PluginPanel
 		applyBossViewStyle();
 		toggleHighlighter(config.completionistHighlighter());
 		searchRow.revalidate();
-	}
-
-	@Override
-	public void onSwapToRedPlayer(String newPrimaryRsn)
-	{
-		rankSelector.reset();
-		updateRankPlayers();
-		rsn = newPrimaryRsn;
-		HiscoreResult swapHiscore = lookupSession.getHiscoreResult();
-		ClogResult swapClog = lookupSession.getClogResult();
-		AccountDisplay swapDisplay = accountTypes.displayIdentity(swapHiscore, swapClog, newPrimaryRsn);
-
-		playerName.setText(newPrimaryRsn != null ? newPrimaryRsn : "");
-		playerName.setForeground(getInfoColor());
-		updateInfoIcon(swapDisplay);
-		if (swapHiscore != null)
-		{
-			int combatLevel = swapHiscore.getCombatLevel();
-			if (combatLevel > 0)
-			{
-				combatCell.setText(ClogHelper.pad(String.valueOf(combatLevel)));
-			}
-			int totalLevel = ClogHelper.displayTotalLevel(swapHiscore,
-				ClogHelper.virtualTotalLevelEnabled(configManager));
-			if (totalLevel > 0)
-			{
-				totalLvlCell.setText(ClogHelper.pad(String.valueOf(totalLevel)));
-				tooltipController.setTooltipText(totalLvlCell, " ");
-			}
-		}
-		colorStatsRow();
-		if (swapClog != null)
-		{
-			itemNameResolver.resolve(swapClog);
-			cells.renderClog(swapClog, config);
-			updateClogCell(swapClog);
-		}
-
-		searchRowController.setCompareVisible(true);
-		setSearchStatus(" ", TEXT_DIM);
-		toggleHighlighter(config.completionistHighlighter());
-		cells.rebuildPrimaryTooltips(localRsn);
 	}
 
 	@Override
@@ -1491,26 +1447,6 @@ public class KillClogPanel extends PluginPanel
 		});
 	}
 
-	private static void recolorClearButton(Container container, Color color)
-	{
-		for (Component c : container.getComponents())
-		{
-			if (c instanceof AbstractButton)
-			{
-				AbstractButton btn = (AbstractButton) c;
-				if (btn.getIcon() instanceof ImageIcon)
-				{
-					ImageIcon icon = (ImageIcon) btn.getIcon();
-					btn.setIcon(new ImageIcon(ImageUtil.recolorImage(icon.getImage(), color)));
-				}
-			}
-			else if (c instanceof Container)
-			{
-				recolorClearButton((Container) c, color);
-			}
-		}
-	}
-
 	private String selfSearchMessage(String player)
 	{
 		if (!config.seenSelfGreeting())
@@ -1951,6 +1887,9 @@ public class KillClogPanel extends PluginPanel
 	/** Safety net - clears transient tooltip state if the plugin is disabled. */
 	public void shutdown()
 	{
+		lookupSession.reset();
+		comparison.reset();
+		searchRowController.onComparisonExit();
 		rankSelector.reset();
 		stopFirstPartyStatusTimer();
 		syncArrowEnabled = false;
@@ -1977,11 +1916,6 @@ public class KillClogPanel extends PluginPanel
 		FourTwentyMode[] modes = FourTwentyMode.values();
 		fourTwentyMode = modes[(fourTwentyMode.ordinal() + 1) % modes.length];
 		toggleHighlighter(config.completionistHighlighter());
-	}
-
-	private BufferedImage getCapeImage()
-	{
-		return iconCache.capeFor(lookupSession.getHiscoreResult());
 	}
 
 	private BufferedImage getCapeImage(@Nullable HiscoreResult result)

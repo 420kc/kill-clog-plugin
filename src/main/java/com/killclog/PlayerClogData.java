@@ -21,6 +21,12 @@ class PlayerClogData
 	Map<String, List<Integer>> categories;
 	Map<String, List<ClogResult.ClogItem>> obtained;
 	/**
+	 * Whether this client completed the full Collection Log Search walk.
+	 * Null is a pre-2.3.3 file; those use the first-party marker migration rule.
+	 * False keeps provider-only and live-unlock-only stores in setup.
+	 */
+	Boolean firstPartySetupComplete;
+	/**
 	 * Per-category item ids this CLIENT observed first-hand (bulk
 	 * capture, page capture, live unlock). The sync payload ships only
 	 * records marked IN THEIR OWN CATEGORY - a global id mark would let

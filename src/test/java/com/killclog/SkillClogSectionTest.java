@@ -85,11 +85,15 @@ public class SkillClogSectionTest
 		SkillClogSection section = SkillClogSection.forSkill(
 			Skill.SLAYER, blue, red, catalog).get(0);
 
+		SkillClogSection redSection = SkillClogSection.forSkill(
+			Skill.SLAYER, red, blue, catalog).get(0);
+
+		assertEquals(section.itemIds(), redSection.itemIds());
 		assertEquals(Arrays.asList(3, 1, 2, 4), section.itemIds());
 		assertEquals(2, section.primary().obtainedCount());
-		assertEquals(1, section.compared().obtainedCount());
+		assertEquals(1, redSection.primary().obtainedCount());
 		assertTrue(section.primary().obtainedIds().contains(4));
-		assertFalse(section.compared().obtainedIds().contains(4));
+		assertFalse(redSection.primary().obtainedIds().contains(4));
 	}
 
 	@Test
@@ -112,7 +116,7 @@ public class SkillClogSectionTest
 			List<SkillClogSection> sections = SkillClogSection.forSkill(
 				skill, null, null, catalog);
 			SkillClogSection.Progress progress = SkillClogSection.combinedProgress(
-				sections, false);
+				sections);
 			SkillTooltip tooltip = new SkillTooltip();
 			tooltip.setData(skill, null, false, sections, null);
 
@@ -222,7 +226,7 @@ public class SkillClogSectionTest
 		assertEquals(4, sections.get(0).primary().obtainedCount());
 		assertEquals(10, sections.get(1).primary().obtainedCount());
 		SkillClogSection.Progress progress = SkillClogSection.combinedProgress(
-			sections, false);
+			sections);
 		assertEquals(14, progress.obtained());
 		assertEquals(15, progress.total());
 	}
@@ -356,12 +360,9 @@ public class SkillClogSectionTest
 			assertEquals(count, sections.get(0).primary().obtainedCount());
 			assertEquals(count, sections.get(0).itemIds().size());
 			assertTrue(sections.get(sections.size() - 1).itemIds().contains(pet));
-			for (boolean compared : new boolean[]{false, true})
-			{
-				SkillClogSection.Progress progress = SkillClogSection.combinedProgress(sections, compared);
-				assertEquals(count, progress.obtained());
-				assertEquals(runecraft ? 18 : 24, progress.total());
-			}
+			SkillClogSection.Progress progress = SkillClogSection.combinedProgress(sections);
+			assertEquals(count, progress.obtained());
+			assertEquals(runecraft ? 18 : 24, progress.total());
 		}
 	}
 
@@ -433,7 +434,7 @@ public class SkillClogSectionTest
 		List<SkillClogSection> sections = SkillClogSection.forSkill(
 			Skill.MINING, player, null, null);
 		SkillClogSection.Progress progress = SkillClogSection.combinedProgress(
-			sections, false);
+			sections);
 
 		// Eight unique category items, plus the pet and three Mining Guild slots.
 		assertEquals(12, progress.total());
@@ -474,7 +475,7 @@ public class SkillClogSectionTest
 		boolean runecraft = skill == Skill.RUNECRAFT;
 		if (runecraft)
 		{
-			solo.setRiftsClosed(34, -1);
+			solo.setRiftsClosed(34);
 		}
 		Dimension soloSize = solo.soloSize(100);
 		BufferedImage image = new BufferedImage(
@@ -484,17 +485,6 @@ public class SkillClogSectionTest
 		assertEquals(skill.getName() + " solo measured height",
 			soloSize.height, solo.paintSolo(graphics, image.getWidth(), 0, new ArrayList<>()));
 
-		SkillClogSectionRenderer comparison = new SkillClogSectionRenderer(target);
-		comparison.setSections(sections, null);
-		if (runecraft)
-		{
-			comparison.setRiftsClosed(34, 1_234);
-		}
-		Dimension compareSize = comparison.compareSize(100);
-		assertEquals(skill.getName() + " comparison measured height",
-			compareSize.height,
-			comparison.paintCompare(graphics, compareSize.width + TitleTooltip.getInset() * 2,
-				0, new ArrayList<>()));
 		graphics.dispose();
 	}
 

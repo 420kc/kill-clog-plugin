@@ -33,18 +33,16 @@ final class SkillClogSection
 	private final List<Integer> itemIds;
 	private final Map<Integer, String> itemNames;
 	private final PlayerItems primary;
-	private final PlayerItems compared;
 
 	private SkillClogSection(@Nullable String heading, @Nullable String category,
 		List<Integer> itemIds,
-		Map<Integer, String> itemNames, PlayerItems primary, PlayerItems compared)
+		Map<Integer, String> itemNames, PlayerItems primary)
 	{
 		this.heading = heading;
 		this.category = category;
 		this.itemIds = Collections.unmodifiableList(itemIds);
 		this.itemNames = Collections.unmodifiableMap(itemNames);
 		this.primary = primary;
-		this.compared = compared;
 	}
 
 	static List<SkillClogSection> forSkill(Skill skill,
@@ -96,8 +94,7 @@ final class SkillClogSection
 		addItemNames(itemNames, itemIds, compared);
 		addItemNames(itemNames, itemIds, primary);
 		return new SkillClogSection(spec.heading, spec.category, itemIds, itemNames,
-			PlayerItems.from(primary, spec, distinctIds),
-			PlayerItems.from(compared, spec, distinctIds));
+			PlayerItems.from(primary, spec, distinctIds));
 	}
 
 	private static void addCategoryItems(Set<Integer> destination,
@@ -211,7 +208,7 @@ final class SkillClogSection
 		return null;
 	}
 
-	static Progress combinedProgress(List<SkillClogSection> sections, boolean comparisonSide)
+	static Progress combinedProgress(List<SkillClogSection> sections)
 	{
 		Set<Integer> allItems = new HashSet<>();
 		Set<Integer> obtained = new HashSet<>();
@@ -219,7 +216,7 @@ final class SkillClogSection
 		for (SkillClogSection section : sections)
 		{
 			allItems.addAll(section.itemIds);
-			PlayerItems playerItems = comparisonSide ? section.compared : section.primary;
+			PlayerItems playerItems = section.primary;
 			synced |= playerItems.synced;
 			obtained.addAll(playerItems.obtainedIds);
 		}
@@ -255,11 +252,6 @@ final class SkillClogSection
 	PlayerItems primary()
 	{
 		return primary;
-	}
-
-	PlayerItems compared()
-	{
-		return compared;
 	}
 
 	private static Map<Skill, List<Spec>> buildSpecs()

@@ -32,6 +32,23 @@ final class ClogRecords
 		return false;
 	}
 
+	static boolean hasCompletedFirstPartySetup(PlayerClogData data)
+	{
+		if (data == null)
+		{
+			return false;
+		}
+		if (data.firstPartySetupComplete != null)
+		{
+			return data.firstPartySetupComplete;
+		}
+		// Before 2.3.3 there was no setup marker. A legacy markless file was
+		// already treated as a client-owned capture, while category marks prove
+		// that this client observed at least part of the log. Empty marked files
+		// repeat Search once to establish the new marker.
+		return data.firstPartyByCategory == null || hasFirstPartyMarks(data);
+	}
+
 	/**
 	 * Union for the post-crash heal: destination (the newer writing) wins
 	 * per-item and per-category conflicts; everything the source alone knows
@@ -40,6 +57,8 @@ final class ClogRecords
 	static PlayerClogData mergeForMigration(
 		PlayerClogData dest, PlayerClogData source)
 	{
+		boolean setupComplete = hasCompletedFirstPartySetup(dest)
+			|| hasCompletedFirstPartySetup(source);
 		// A legacy source (null marks) is wholly first-party by definition -
 		// the class contract grandfathers it at first capture. Materialize
 		// that grandfather EXPLICITLY before the mark union, or the merged
@@ -135,6 +154,7 @@ final class ClogRecords
 		{
 			dest.providerAccountType = source.providerAccountType;
 		}
+		dest.firstPartySetupComplete = setupComplete;
 		return dest;
 	}
 }

@@ -73,7 +73,7 @@ final class ClogProviderFanout
 		long timeout,
 		TimeUnit unit)
 	{
-		return future
+		return future.copy()
 			.completeOnTimeout(null, timeout, unit)
 			.exceptionally(ex -> null);
 	}

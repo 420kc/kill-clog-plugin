@@ -15,6 +15,7 @@ import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.Player;
+import net.runelite.api.ScriptEvent;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
@@ -25,6 +26,7 @@ import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.events.WidgetLoaded;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.VarbitID;
+import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatCommandManager;
 import net.runelite.client.config.ConfigManager;
@@ -53,6 +55,8 @@ import net.runelite.client.util.Text;
 public class KillClogPlugin extends Plugin
 {
 	static final int CLOG_INTERFACE = 621;
+	private static final int CLOG_SEARCH_TOGGLE_SCRIPT = 4084;
+	private static final int CLOG_SEARCH_CONTAINER = 71;
 	private static final String RUNEPROFILE_PLUGIN_NAME = "RuneProfile";
 	static final String CHARACTER_RENDERING_STATUS = "rendering...";
 	static final String CHARACTER_PUBLISHED_STATUS = "character published!";
@@ -590,33 +594,21 @@ public class KillClogPlugin extends Plugin
 	 * RuneLite's own chat-commands store records the local player's personal
 	 * bests; no public provider serves them, which makes this map the sync's
 	 * defining cargo. One account splinters into many rs-profile fragments
-	 * over time, so the gather sweeps every fragment wearing the player's
-	 * name and keeps the fastest time per boss. STANDARD-world fragments
+	 * over time, so the gather sweeps every fragment owned by the captured
+	 * account hash and keeps the fastest time per boss. STANDARD-world fragments
 	 * only: Leagues and speedrun profiles share the display name but store
 	 * buffed-world times, and the min-merge would launder those into the
 	 * player's real record. Client thread (config reads).
 	 */
-	private java.util.Map<String, Double> gatherPersonalBests(String rsn)
+	private java.util.Map<String, Double> gatherPersonalBests(java.util.List<String> profileKeys)
 	{
-		java.util.List<String> profileKeys = new java.util.ArrayList<>();
-		for (net.runelite.client.config.RuneScapeProfile profile : configManager.getRSProfiles())
-		{
-			if (rsn.equalsIgnoreCase(profile.getDisplayName())
-				&& profile.getType() == net.runelite.client.config.RuneScapeProfileType.STANDARD)
-			{
-				String key = profile.getKey();
-				profileKeys.add(key.startsWith("rsprofile.") ? key : "rsprofile." + key);
-			}
-		}
-
 		PersonalBests pbs = new PersonalBests(configManager);
 		java.util.Map<String, Double> out = new java.util.LinkedHashMap<>();
 		for (net.runelite.client.hiscore.HiscoreSkill boss : PanelData.BOSSES)
 		{
 			putBestSeconds(out, pbs, profileKeys, boss.getName());
 		}
-		log.debug("killclog sync pb gather: {} rs-profiles total, {} matched '{}', {} pbs",
-			configManager.getRSProfiles().size(), profileKeys.size(), rsn, out.size());
+		log.debug("killclog sync pb gather: {} owned profiles, {} pbs", profileKeys.size(), out.size());
 		return out;
 	}
 
@@ -628,19 +620,8 @@ public class KillClogPlugin extends Plugin
 	 * min-wins with the adventure-log harvest; each entry keeps the lane it
 	 * was observed through.
 	 */
-	private java.util.Map<String, SyncService.DetailedPb> gatherDetailedPersonalBests(String rsn)
+	private java.util.Map<String, SyncService.DetailedPb> gatherDetailedPersonalBests(java.util.List<String> profileKeys)
 	{
-		java.util.List<String> profileKeys = new java.util.ArrayList<>();
-		for (net.runelite.client.config.RuneScapeProfile profile : configManager.getRSProfiles())
-		{
-			if (rsn.equalsIgnoreCase(profile.getDisplayName())
-				&& profile.getType() == net.runelite.client.config.RuneScapeProfileType.STANDARD)
-			{
-				String key = profile.getKey();
-				profileKeys.add(key.startsWith("rsprofile.") ? key : "rsprofile." + key);
-			}
-		}
-
 		PersonalBests pbs = new PersonalBests(configManager);
 		AdvLogPbs advLog = new AdvLogPbs(configManager);
 		java.util.Map<String, SyncService.DetailedPb> out = new java.util.LinkedHashMap<>();
@@ -674,9 +655,7 @@ public class KillClogPlugin extends Plugin
 	private static void putBestSeconds(java.util.Map<String, Double> out, PersonalBests pbs,
 		java.util.List<String> profileKeys, String bossName)
 	{
-		double seconds = profileKeys.isEmpty()
-			? pbs.bestSeconds(bossName)
-			: pbs.bestSecondsAcrossProfiles(profileKeys, bossName);
+		double seconds = pbs.bestSecondsAcrossProfiles(profileKeys, bossName);
 		if (seconds > 0)
 		{
 			out.put(bossName, seconds);
@@ -944,9 +923,11 @@ public class KillClogPlugin extends Plugin
 					withSyncFeedback(generation, scheduledEpoch,
 						() -> panel.showSyncProgress(manual, "syncing...", false));
 				}
-				java.util.Map<String, Double> pbs = gatherPersonalBests(rsn);
+				java.util.List<String> profileKeys = PersonalBests.profileKeys(
+					configManager.getRSProfiles(), accountHash);
+				java.util.Map<String, Double> pbs = gatherPersonalBests(profileKeys);
 				java.util.Map<String, SyncService.DetailedPb> detailedPbs =
-					gatherDetailedPersonalBests(rsn);
+					gatherDetailedPersonalBests(profileKeys);
 				// Off the client thread before dispatch: the sync pre-flight
 				// can block up to ten seconds waiting for the rename disk
 				// verdict, and game ticks must never pay that wait. The
@@ -1250,9 +1231,9 @@ public class KillClogPlugin extends Plugin
 	{
 		if (event.getGroupId() == CLOG_INTERFACE)
 		{
-			// Prompt at the relevant game surface, but do not arm here: opening
-			// a category can run item scripts that are not a full-log Search.
-			manualClogSync.onCollectionLogOpened(client, localClogCache, chatNotifier);
+			// Request a full Search walk after the player's log has initialized.
+			// Ordinary visible-category scripts cannot establish a full capture.
+			manualClogSync.onCollectionLogOpened(client, localClogCache);
 		}
 
 		// Both menu interfaces are watched: the player's interface-style
@@ -1271,13 +1252,42 @@ public class KillClogPlugin extends Plugin
 	@Subscribe
 	public void onScriptPreFired(ScriptPreFired event)
 	{
-		if (event.getScriptEvent() == null)
+		ScriptEvent script = event.getScriptEvent();
+		if (script == null)
 		{
 			return;
 		}
 
-		manualClogSync.captureScriptArguments(event.getScriptId(),
-			event.getScriptEvent().getArguments(), client.getTickCount());
+		// Native Search can run without a MenuOptionClicked event. Observe its
+		// opening callback before it emits the full obtained-item stream.
+		if (isCollectionLogSearchScript(event.getScriptId(), script))
+		{
+			clogIndex.ensureParsed(client, itemManager);
+			manualClogSync.onCollectionLogSearch(client, clogIndex,
+				localClogCache, chatNotifier);
+		}
+
+		manualClogSync.captureScriptArguments(client, event.getScriptId(),
+			script.getArguments(), client.getTickCount());
+	}
+
+	private boolean isCollectionLogSearchScript(int scriptId, ScriptEvent script)
+	{
+		if (scriptId != CLOG_SEARCH_TOGGLE_SCRIPT)
+		{
+			return false;
+		}
+		Widget source = script.getSource();
+		Object[] args = script.getArguments();
+		if (source == null || source.getId() >>> 16 != CLOG_INTERFACE || source.isHidden()
+			|| args == null || args.length < 2 || !(args[1] instanceof Integer) || (int) args[1] != 0)
+		{
+			return false;
+		}
+		// 4084 calls toggle procedure 4085: an already visible Search or a
+		// force-close argument closes it. Neither is a new full-log capture.
+		Widget search = client.getWidget(CLOG_INTERFACE, CLOG_SEARCH_CONTAINER);
+		return search != null && search.isSelfHidden();
 	}
 
 	@Subscribe
@@ -1409,13 +1419,11 @@ public class KillClogPlugin extends Plugin
 	// Sync button.
 
 	/**
-	 * Called by ClogButtonOverlay on click. Search now starts first-time setup
-	 * automatically; the chalice remains a visible-category refresh and a
-	 * fallback setup trigger if the Search menu event was unavailable.
+	 * Called by ClogButtonOverlay on click. Search owns first-time setup; the
+	 * chalice refreshes only the visible category of an established local log.
 	 */
 	void onSyncClicked()
 	{
-		clogButtonOverlay.flashGreen();
 		clientThread.invokeLater(() ->
 		{
 			Player local = client.getLocalPlayer();
@@ -1424,8 +1432,11 @@ public class KillClogPlugin extends Plugin
 				return;
 			}
 
-			manualClogSync.onSyncClicked(client, clogIndex, visibleClogCategoryReader,
-				localClogCache, chatNotifier, panel::onBulkCaptureComplete);
+			if (manualClogSync.onSyncClicked(client, clogIndex, visibleClogCategoryReader,
+				localClogCache, chatNotifier, panel::onBulkCaptureComplete))
+			{
+				clogButtonOverlay.flashGreen();
+			}
 		});
 	}
 

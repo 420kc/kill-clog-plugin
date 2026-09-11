@@ -61,21 +61,7 @@ final class LookupFanout
 		inFlight = false;
 	}
 
-	/** Abandon an in-flight generation; already-spawned callbacks see themselves stale. */
-	void cancel()
-	{
-		if (inFlight)
-		{
-			version++;
-			inFlight = false;
-		}
-	}
-
-	/**
-	 * Invalidate outstanding callbacks without an in-flight generation to
-	 * abandon (state adoption on the comparison swap): late clog/CA arrivals
-	 * from the replaced player must not overwrite the adopted state.
-	 */
+	/** Invalidate every outstanding callback, including optional legs after settlement. */
 	void invalidate()
 	{
 		version++;
@@ -101,6 +87,7 @@ final class LookupFanout
 	void fetchCa(String player, int stamp, Consumer<CombatAchievementResult> onResult)
 	{
 		runeProfileService.lookup(player)
+			.copy()
 			.orTimeout(CA_TIMEOUT_SECONDS, TimeUnit.SECONDS)
 			.thenAccept(ca -> onEdtIfCurrent(stamp, () -> onResult.accept(ca)))
 			.exceptionally(ex ->
@@ -119,6 +106,7 @@ final class LookupFanout
 		Consumer<HiscoreResult> onResult, Consumer<Throwable> onError)
 	{
 		hiscoreService.lookup(player, knownType)
+			.copy()
 			.orTimeout(HISCORE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
 			.thenAccept(result -> onEdtIfCurrent(stamp, () -> onResult.accept(result)))
 			.exceptionally(ex ->

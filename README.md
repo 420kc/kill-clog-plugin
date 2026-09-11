@@ -15,18 +15,16 @@ Kill Clog brings HiScores and Collection Log progress together in one RuneLite p
 
 Install **Kill Clog** from the RuneLite Plugin Hub and open its side panel while logged in. Your account loads automatically.
 
-To set up your Collection Log:
+Open your Collection Log in-game and leave it open until Kill Clog confirms setup in chat. Setup starts automatically, including on accounts with zero unlocked slots.
 
-1. Open your Collection Log in-game.
-2. Choose **Search** at the top:
-   - If the button says **Search**, left-click it.
-   - If the button says **RuneProfile**, right-click it and choose **Search**.
+If setup does not start or you need to retry, choose **Search** at the top:
+
+- If the button says **Search**, left-click it.
+- If the button says **RuneProfile**, right-click it and choose **Search**.
 
 | Search button | Search with RuneProfile |
 | :---: | :---: |
 | ![Left-click Search in the Collection Log](screenshots/setup-clog-search.png) | ![Right-click RuneProfile and choose Search](screenshots/setup-clog-search-runeprofile.png) |
-
-Kill Clog will confirm setup in chat.
 
 Your Collection Log is saved locally in `~/.runelite/kill-clog/`. New Collection Log chat messages keep it current after the first scan.
 

@@ -222,7 +222,7 @@ public class KillclogService
 				evictFirstParty(key);
 				return CompletableFuture.completedFuture(null);
 			}
-			return clogInFlight.computeIfAbsent(key, ignored -> startProofViewLookup(playerName, key));
+			return HttpUtil.singleFlightLookup(clogInFlight, key, () -> startProofViewLookup(playerName, key));
 		});
 	}
 
@@ -267,7 +267,7 @@ public class KillclogService
 		{
 			return CompletableFuture.completedFuture(cached);
 		}
-		return indexInFlight.computeIfAbsent("index", ignored -> startIndexFetch());
+		return HttpUtil.singleFlightLookup(indexInFlight, "index", this::startIndexFetch);
 	}
 
 	private CompletableFuture<Set<String>> startIndexFetch()
@@ -275,31 +275,24 @@ public class KillclogService
 		return HttpUtil.httpGet(httpClient,
 			KillClogEndpoint.apiBaseUrl() + "/player/sync-index").thenApply(resp ->
 		{
-			try
+			if (resp.code != 200 || resp.body == null)
 			{
-				if (resp.code != 200 || resp.body == null)
-				{
-					indexFailedAt = System.currentTimeMillis();
-					recordBreakerFailure();
-					return syncIndex;
-				}
-				Set<String> parsed = parseSyncIndex(resp.body);
-				if (parsed == null)
-				{
-					indexFailedAt = System.currentTimeMillis();
-					recordBreakerFailure();
-					return syncIndex;
-				}
-				syncIndex = parsed;
-				indexFetchedAt = System.currentTimeMillis();
-				indexFailedAt = 0;
-				recordBreakerSuccess();
-				return parsed;
+				indexFailedAt = System.currentTimeMillis();
+				recordBreakerFailure();
+				return syncIndex;
 			}
-			finally
+			Set<String> parsed = parseSyncIndex(resp.body);
+			if (parsed == null)
 			{
-				indexInFlight.remove("index");
+				indexFailedAt = System.currentTimeMillis();
+				recordBreakerFailure();
+				return syncIndex;
 			}
+			syncIndex = parsed;
+			indexFetchedAt = System.currentTimeMillis();
+			indexFailedAt = 0;
+			recordBreakerSuccess();
+			return parsed;
 		});
 	}
 
@@ -318,7 +311,7 @@ public class KillclogService
 			{
 				if (el.isJsonPrimitive() && el.getAsJsonPrimitive().isString())
 				{
-					names.add(el.getAsString().toLowerCase());
+					names.add(el.getAsString().toLowerCase(java.util.Locale.ROOT));
 				}
 			}
 			return names;
@@ -338,14 +331,7 @@ public class KillclogService
 
 		return HttpUtil.httpGet(httpClient, url).thenApply(resp ->
 		{
-			try
-			{
-				return onProofViewResponse(resp.code, resp.body, playerName, key);
-			}
-			finally
-			{
-				clogInFlight.remove(key);
-			}
+			return onProofViewResponse(resp.code, resp.body, playerName, key);
 		});
 	}
 

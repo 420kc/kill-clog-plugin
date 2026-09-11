@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import java.lang.reflect.Field;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import org.junit.Before;
 import org.junit.Test;
@@ -40,6 +41,21 @@ public class KillclogServiceTest
 	{
 		assertNull(service.parseSyncIndex("{\"schema\":1}"));
 		assertNull(service.parseSyncIndex("not json"));
+	}
+
+	@Test
+	public void indexMembershipUsesTheSameLocaleIndependentKeyAsLookup()
+	{
+		Locale previous = Locale.getDefault();
+		try
+		{
+			Locale.setDefault(Locale.forLanguageTag("tr-TR"));
+			assertEquals(Set.of("iron"), service.parseSyncIndex("{\"names\":[\"IRON\"]}"));
+		}
+		finally
+		{
+			Locale.setDefault(previous);
+		}
 	}
 
 	@Test

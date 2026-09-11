@@ -13,6 +13,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.junit.Rule;
 import org.junit.Test;
@@ -23,6 +24,77 @@ public class LocalClogCacheTest
 {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	@Test
+	public void testLegacySetupEligibilityDoesNotChangeAfterOneLiveUnlock() throws Exception
+	{
+		for (int legacyKind = 0; legacyKind < 3; legacyKind++)
+		{
+			File directory = temporaryFolder.newFolder();
+			PlayerClogData data = new PlayerClogData();
+			data.playerName = "Tester";
+			data.categories = categoryItems("zulrah", 1, 2);
+			data.obtained = obtainedItems("zulrah", 1);
+			data.firstPartyByCategory = legacyKind == 0 ? new HashMap<>()
+				: legacyKind == 1 ? null : Map.of("zulrah", List.of(1));
+			Files.writeString(new File(directory, "tester.json").toPath(), new Gson().toJson(data));
+			LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), directory);
+			assertTrue(cache.hasDataFor("Tester"));
+			assertEquals(legacyKind != 0, cache.hasCompletedFirstPartySetupFor("Tester"));
+			assertTrue(cache.mergeObtainedItem("Tester", 2, List.of("zulrah"), data.categories));
+			assertEquals(legacyKind != 0, cache.hasCompletedFirstPartySetupFor("Tester"));
+			ClogResult payload = cache.toFirstPartySyncResult("Tester");
+			assertEquals(legacyKind == 0 ? 1 : 2, payload.getObtainedItems().get("zulrah").size());
+			LocalClogCache reloaded = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), directory);
+			assertEquals(legacyKind != 0, reloaded.hasCompletedFirstPartySetupFor("Tester"));
+			reloaded.cacheFirstPartyResult(clog("Tester", data.categories, obtainedItems("zulrah", 1, 2)));
+			assertTrue(reloaded.hasCompletedFirstPartySetupFor("Tester"));
+		}
+	}
+
+	@Test
+	public void shutdownFlushAndNewSessionShareTheExistingWriterQueue() throws Exception
+	{
+		File directory = temporaryFolder.newFolder();
+		ScheduledThreadPoolExecutor writer = new ScheduledThreadPoolExecutor(1);
+		CountDownLatch entered = new CountDownLatch(1);
+		CountDownLatch release = new CountDownLatch(1);
+		try
+		{
+			writer.execute(() ->
+			{
+				entered.countDown();
+				try
+				{
+					assertTrue(release.await(3, TimeUnit.SECONDS));
+				}
+				catch (InterruptedException e)
+				{
+					Thread.currentThread().interrupt();
+					throw new AssertionError(e);
+				}
+			});
+			assertTrue(entered.await(3, TimeUnit.SECONDS));
+			LocalClogCache cache = new LocalClogCache(new Gson(), writer, directory);
+			cache.cacheResult(clog("Tester", categoryItems("magus", 1, 2), obtainedItems("magus", 1)));
+			cache.shutdown();
+			assertFalse(writer.isShutdown());
+			cache.cacheResult(clog("Tester", categoryItems("magus", 1, 2), obtainedItems("magus", 1, 2)));
+			cache.shutdown();
+			assertFalse(new File(directory, "tester.json").exists());
+			release.countDown();
+			writer.submit(() -> null).get(3, TimeUnit.SECONDS);
+			LocalClogCache reloaded = new LocalClogCache(new Gson(), new NoopScheduledExecutorService(), directory);
+			assertTrue(reloaded.hasDataFor("Tester"));
+			assertEquals(2, reloaded.toClogResult("Tester", Collections.emptyMap()).getObtainedItems().get("magus").size());
+		}
+		finally
+		{
+			release.countDown();
+			writer.shutdownNow();
+			assertTrue(writer.awaitTermination(3, TimeUnit.SECONDS));
+		}
+	}
 
 	@Test
 	public void testProviderAccountTypeSurvivesCachedRender() throws Exception
@@ -615,6 +687,25 @@ public class LocalClogCacheTest
 		assertNotNull("the old history survived the heal", served.getObtainedItems().get("vetion"));
 		assertEquals("the old history is intact", 2, served.getObtainedItems().get("vetion").size());
 		assertNotNull("the post-crash captures survived too", served.getObtainedItems().get("venenatis"));
+	}
+
+	@Test
+	public void testFollowNameChangePreservesPostCrashEmptySetup() throws Exception
+	{
+		LocalClogCache cache = new LocalClogCache(new Gson(),
+			new InlineScheduledExecutorService(), temporaryFolder.newFolder());
+		cache.seedIdentityForTest(new HashMap<>());
+		cache.cacheResult(clog(
+			"Old Name",
+			categoryItems("vetion", 1, 2, 3),
+			obtainedItems("vetion", 1, 2)));
+		assertNull(cache.followNameChange("Old Name", 42L));
+
+		cache.cacheFirstPartyResult(clog(
+			"New Name", new HashMap<>(), new HashMap<>()));
+		assertEquals("Old Name", cache.followNameChange("New Name", 42L));
+		assertTrue("the completed empty Search survives the rename heal",
+			cache.hasCompletedFirstPartySetupFor("New Name"));
 	}
 
 	@Test
@@ -2159,6 +2250,14 @@ public class LocalClogCacheTest
 				"2026-08-01 00:00:00",
 				AccountType.REGULAR));
 			assertFalse(cache.hasFirstPartyDataFor("Zezima"));
+			assertFalse(cache.hasCompletedFirstPartySetupFor("Zezima"));
+
+			// A page capture is honest first-party data, but it is not the full
+			// Search walk and must not dismiss onboarding.
+			cache.mergeCategory("Zezima", "zulrah", List.of(1, 2, 3),
+				obtainedItems("zulrah", 1, 2).get("zulrah"));
+			assertTrue(cache.hasFirstPartyDataFor("Zezima"));
+			assertFalse(cache.hasCompletedFirstPartySetupFor("Zezima"));
 
 			// A first-party capture with real items is.
 			cache.cacheFirstPartyResult(clog(
@@ -2168,6 +2267,7 @@ public class LocalClogCacheTest
 				"2026-08-01 00:00:00",
 				AccountType.REGULAR));
 			assertTrue(cache.hasFirstPartyDataFor("Zezima"));
+			assertTrue(cache.hasCompletedFirstPartySetupFor("Zezima"));
 
 			// The active-player variant is available only after identity settles.
 			assertFalse(cache.hasFirstPartyDataForActive());
@@ -2192,6 +2292,12 @@ public class LocalClogCacheTest
 			new HashMap<>(),
 			"2026-08-01 00:00:00",
 			AccountType.REGULAR));
+		assertTrue("an empty first walk still completes local setup",
+			cache.hasDataFor("Fresh Acct"));
+		assertTrue("an empty first walk records completed Search setup",
+			cache.hasCompletedFirstPartySetupFor("Fresh Acct"));
+		assertNotNull("the panel can render the completed empty local log",
+			cache.toClogResult("Fresh Acct", new HashMap<>()));
 		assertFalse("an empty first walk must not read as a sendable payload",
 			cache.hasFirstPartyDataFor("Fresh Acct"));
 	}

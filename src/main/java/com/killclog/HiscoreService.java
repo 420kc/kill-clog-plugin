@@ -152,11 +152,9 @@ public class HiscoreService
 		String key = rankKey(table.endpoint, encoded);
 		HiscoreResult cached = rankTables.getIfPresent(key);
 		if (cached != null) return CompletableFuture.completedFuture(cached);
-		CompletableFuture<HiscoreResult> request = rankRequests.computeIfAbsent(key,
-			ignored -> fetchAsync(table.endpoint, encoded).thenApply(body -> rankTables.getIfPresent(key))
-				.completeOnTimeout(null, 12, TimeUnit.SECONDS).exceptionally(ex -> null));
-		request.whenComplete((result, error) -> rankRequests.remove(key, request));
-		return request;
+		return HttpUtil.singleFlightLookup(rankRequests, key,
+			() -> fetchAsync(table.endpoint, encoded).thenApply(body -> rankTables.getIfPresent(key)))
+			.completeOnTimeout(null, 12, TimeUnit.SECONDS).exceptionally(ex -> null);
 	}
 
 	private static String rankKey(String endpoint, String encodedPlayer)
@@ -211,7 +209,7 @@ public class HiscoreService
 	 */
 	public HiscoreResult getCached(String playerName)
 	{
-		CachedResult cached = cache.get(playerName.toLowerCase());
+		CachedResult cached = cache.get(playerName.toLowerCase(Locale.ROOT));
 		return cached != null ? cached.result : null;
 	}
 
@@ -220,7 +218,7 @@ public class HiscoreService
 	 */
 	public boolean isStale(String playerName)
 	{
-		String key = playerName.toLowerCase();
+		String key = playerName.toLowerCase(Locale.ROOT);
 		CachedResult cached = cache.get(key);
 		return cached == null || cached.isStale() || dirtySince.containsKey(key);
 	}
@@ -236,7 +234,7 @@ public class HiscoreService
 
 	/* package */ void markDirty(String playerName, long now)
 	{
-		dirtySince.put(playerName.toLowerCase(), now);
+		dirtySince.put(playerName.toLowerCase(Locale.ROOT), now);
 	}
 
 	/**
@@ -245,27 +243,10 @@ public class HiscoreService
 	 */
 	public CompletableFuture<HiscoreResult> lookup(String playerName, AccountType knownType)
 	{
-		return attemptLookup(playerName, knownType).thenCompose(result ->
+		return attemptLookup(playerName, knownType).thenApply(result ->
 		{
-			if (result != null)
-			{
-				cacheResult(playerName, result);
-				return CompletableFuture.completedFuture(result);
-			}
-			CompletableFuture<HiscoreResult> retry = new CompletableFuture<>();
-			CompletableFuture.delayedExecutor(500, TimeUnit.MILLISECONDS)
-				.execute(() -> attemptLookup(playerName, knownType)
-					.whenComplete((r, ex) ->
-					{
-						if (r != null)
-						{
-							cacheResult(playerName, r);
-						}
-						retry.complete(r);
-					}));
-			// Safety net: complete with null if the retry hangs
-			retry.completeOnTimeout(null, 12, TimeUnit.SECONDS);
-			return retry;
+			if (result != null) cacheResult(playerName, result);
+			return result;
 		});
 	}
 
@@ -276,7 +257,7 @@ public class HiscoreService
 
 	/* package */ void cacheResult(String playerName, HiscoreResult result, long now)
 	{
-		String key = playerName.toLowerCase();
+		String key = playerName.toLowerCase(Locale.ROOT);
 		cache.put(key, new CachedResult(result, now));
 		Long markedAt = dirtySince.get(key);
 		if (markedAt != null)
@@ -300,6 +281,7 @@ public class HiscoreService
 		AccountType knownType)
 	{
 		String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
+		if (knownType != null) return lookupKnown(encoded, knownType);
 
 		CompletableFuture<String> uimFuture = fetchAsync("hiscore_oldschool_ultimate", encoded);
 		CompletableFuture<String> hcimFuture = fetchAsync("hiscore_oldschool_hardcore_ironman", encoded);
@@ -318,35 +300,8 @@ public class HiscoreService
 					? knownType
 					: detectAccountType(uimBody, hcimBody, ironBody, regBody);
 
-				// HCIM detected without knownType. Dead HCIMs have frozen XP on the
-				// HCIM table forever. If reg or iron failed, retry those two specifically
-				// before accepting HCIM. UIM is irrelevant (mutually exclusive).
-				if (knownType == null && type == AccountType.HARDCORE_IRONMAN
-					&& (regBody == null || ironBody == null))
-				{
-					log.debug("HCIM detected but reg/iron missing - retrying to confirm");
-					CompletableFuture<String> retryReg = regBody != null
-						? CompletableFuture.completedFuture(regBody)
-						: fetchAsync("hiscore_oldschool", encoded);
-					CompletableFuture<String> retryIron = ironBody != null
-						? CompletableFuture.completedFuture(ironBody)
-						: fetchAsync("hiscore_oldschool_ironman", encoded);
-
-					final String fUim = uimBody;
-					final String fHcim = hcimBody;
-					return CompletableFuture.allOf(retryReg, retryIron).thenCompose(v2 ->
-					{
-						String confirmedReg = retryReg.join();
-						String confirmedIron = retryIron.join();
-						AccountType confirmedType = detectAccountType(
-							fUim, fHcim, confirmedIron, confirmedReg);
-						String body = pickBestBody(confirmedType,
-							fUim, fHcim, confirmedIron, confirmedReg);
-						return body != null ? parseAndRefine(encoded, body, confirmedType)
-							: CompletableFuture.completedFuture(null);
-					});
-				}
-
+				// Missing tables have already used their own bounded retry. Keep the
+				// XP cross-check so a frozen HCIM row cannot override fresher stats.
 				String bestBody = pickBestBody(type, uimBody, hcimBody, ironBody, regBody);
 				if (bestBody == null)
 				{
@@ -355,6 +310,31 @@ public class HiscoreService
 
 				return parseAndRefine(encoded, bestBody, type);
 			});
+	}
+
+	private CompletableFuture<HiscoreResult> lookupKnown(String encodedPlayer, AccountType type)
+	{
+		CompletableFuture<String> regular = fetchAsync("hiscore_oldschool", encodedPlayer);
+		String endpoint;
+		switch (type)
+		{
+			case ULTIMATE_IRONMAN: endpoint = "hiscore_oldschool_ultimate"; break;
+			case HARDCORE_IRONMAN: endpoint = "hiscore_oldschool_hardcore_ironman"; break;
+			case IRONMAN: endpoint = "hiscore_oldschool_ironman"; break;
+			default:
+				return regular.thenCompose(body -> body != null ? parseAndRefine(encodedPlayer, body, type)
+					: CompletableFuture.completedFuture(null));
+		}
+		return regular.thenCombine(fetchAsync(endpoint, encodedPlayer), (base, ranked) ->
+		{
+			if (base == null && ranked == null) return null;
+			// RuneLite supplies the current self type. Keep its selected ranks, but
+			// do not let a stale specialty row replace fresher regular-table stats.
+			String body = base != null && (ranked == null || extractTotalXp(base) >= extractTotalXp(ranked))
+				? base : ranked;
+			return parseHiscoreBody(body, type)
+				.withRanks(ranked != null ? parseHiscoreBody(ranked, type) : null);
+		});
 	}
 
 	private CompletableFuture<HiscoreResult> parseAndRefine(String encodedPlayer,
@@ -772,21 +752,98 @@ public class HiscoreService
 		return Integer.parseInt(parts[1]);
 	}
 
+	private enum FetchStatus
+	{
+		FOUND, NOT_FOUND, TRANSIENT, MALFORMED, REJECTED
+	}
+
+	private static final class TableResponse
+	{
+		final FetchStatus status;
+		final String body;
+
+		TableResponse(FetchStatus status, String body)
+		{
+			this.status = status;
+			this.body = body;
+		}
+
+		boolean retryable()
+		{
+			return status == FetchStatus.TRANSIENT || status == FetchStatus.MALFORMED;
+		}
+	}
+
 	private CompletableFuture<String> fetchAsync(String hiscoreKey, String encodedPlayer)
 	{
+		return fetchTable(hiscoreKey, encodedPlayer).thenCompose(first ->
+		{
+			if (!first.retryable()) return CompletableFuture.completedFuture(first);
+			return CompletableFuture.supplyAsync(() -> null,
+				CompletableFuture.delayedExecutor(500, TimeUnit.MILLISECONDS))
+				.thenCompose(ignored -> fetchTable(hiscoreKey, encodedPlayer));
+		}).thenApply(result -> rememberRanks(hiscoreKey, encodedPlayer, result.body));
+	}
+
+	private CompletableFuture<TableResponse> fetchTable(String hiscoreKey, String encodedPlayer)
+	{
 		return HttpUtil.httpGet(httpClient, BASE_URL + hiscoreKey + JSON_SUFFIX + encodedPlayer)
-			.thenCompose(r ->
+			.thenCompose(response ->
 			{
-				if (r.code == 200 && r.body != null && r.body.trim().startsWith("{"))
-				{
-					return CompletableFuture.completedFuture(r.body);
-				}
-				// 404 means player-not-found on both endpoints; everything else
-				// (5xx, transport failure, an error page served as 200) is worth
-				// one shot at the CSV before giving up on the lookup.
-				log.debug("JSON hiscores unusable (code {}), falling back to CSV", r.code);
+				TableResponse json = classify(response);
+				if (!json.retryable()) return CompletableFuture.completedFuture(json);
 				return HttpUtil.httpGet(httpClient, BASE_URL + hiscoreKey + CSV_SUFFIX + encodedPlayer)
-					.thenApply(c -> c.body);
-			}).thenApply(body -> rememberRanks(hiscoreKey, encodedPlayer, body));
+					.thenApply(csvResponse ->
+					{
+						TableResponse csv = classify(csvResponse);
+						// Only the primary endpoint can establish absence. A missing
+						// fallback after an outage or bad JSON remains retryable.
+						return csv.status == FetchStatus.FOUND ? csv : json;
+					});
+			});
+	}
+
+	private TableResponse classify(HttpUtil.HttpResult response)
+	{
+		if (response.code == 404) return new TableResponse(FetchStatus.NOT_FOUND, null);
+		if (response.code == 200)
+		{
+			try
+			{
+				String body = response.body;
+				boolean overallFound = false;
+				if (body != null && body.trim().startsWith("{"))
+				{
+					JsonObject root = gson.fromJson(body, JsonObject.class);
+					for (JsonElement skill : root.getAsJsonArray("skills"))
+					{
+						if ("Overall".equals(skill.getAsJsonObject().get("name").getAsString())) overallFound = true;
+					}
+				}
+				else if (body != null)
+				{
+					String[] overall = body.trim().split("\\r?\\n", 2)[0].split(",");
+					Integer.parseInt(overall[0]);
+					Integer.parseInt(overall[1]);
+					Long.parseLong(overall[2]);
+					overallFound = true;
+				}
+				if (overallFound)
+				{
+					// Parse before accepting JSON: a leading brace alone is not a schema.
+					// CSV keeps its existing best-effort parse and shifted-row warning.
+					parseHiscoreBody(body, AccountType.REGULAR);
+					return new TableResponse(FetchStatus.FOUND, body);
+				}
+			}
+			catch (RuntimeException ignored)
+			{
+				// Malformed and schema-invalid bodies use the same bounded fallback.
+			}
+			return new TableResponse(FetchStatus.MALFORMED, null);
+		}
+		boolean transientFailure = response.code == -1 || response.code == 408
+			|| response.code == 429 || response.code >= 500;
+		return new TableResponse(transientFailure ? FetchStatus.TRANSIENT : FetchStatus.REJECTED, null);
 	}
 }

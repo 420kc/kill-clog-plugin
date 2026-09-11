@@ -117,6 +117,11 @@ public class ClogService
 		{
 			return null;
 		}
+		if (localClogCache.isActivePlayer(playerName)
+			&& !localClogCache.hasCompletedFirstPartySetupFor(playerName))
+		{
+			return null;
+		}
 		Map<Integer, String> names = cachedItemNames;
 		return localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>());
 	}
@@ -131,7 +136,8 @@ public class ClogService
 		// Active player: local cache is authoritative.
 		if (localClogCache.isActivePlayer(playerName))
 		{
-			if (localClogCache.hasDataFor(playerName))
+			if (localClogCache.hasDataFor(playerName)
+				&& localClogCache.hasCompletedFirstPartySetupFor(playerName))
 			{
 				log.debug("Using local clog cache for active player: {}", playerName);
 				// Dates-only provider overlay before serving: heals undated

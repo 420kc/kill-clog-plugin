@@ -1,6 +1,5 @@
 package com.killclog;
 
-import java.awt.image.BufferedImage;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -141,26 +140,6 @@ final class LookupQueries
 			if (item.getId() == itemId) return item.getCount();
 		}
 		return 0;
-	}
-
-	static BufferedImage getAccountBadge(HiscoreResult result)
-	{
-		return getAccountBadge(result, null);
-	}
-
-	static BufferedImage getAccountBadge(HiscoreResult result, ClogResult clog)
-	{
-		return AccountBadgeResolver.cachedBadge(accountDisplay(result, clog));
-	}
-
-	static String getAccountLabel(HiscoreResult result)
-	{
-		return getAccountLabel(result, null);
-	}
-
-	static String getAccountLabel(HiscoreResult result, ClogResult clog)
-	{
-		return AccountBadgeResolver.label(accountDisplay(result, clog));
 	}
 
 	static AccountType accountType(HiscoreResult result, ClogResult clog)

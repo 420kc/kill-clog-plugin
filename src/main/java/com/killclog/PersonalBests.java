@@ -1,7 +1,12 @@
 package com.killclog;
 
 import java.util.Locale;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.config.RuneScapeProfile;
+import net.runelite.client.config.RuneScapeProfileType;
 
 /**
  * Reads the personal bests RuneLite's own chat commands plugin records on the
@@ -34,6 +39,29 @@ final class PersonalBests
 		this.configManager = configManager;
 	}
 
+	/** Explicit ownership for publication; names can change or be reused. */
+	static List<String> profileKeys(Iterable<RuneScapeProfile> profiles, long accountHash)
+	{
+		if (accountHash == 0 || accountHash == RuneScapeProfile.ACCOUNT_HASH_INVALID)
+		{
+			return List.of();
+		}
+		Set<String> keys = new LinkedHashSet<>();
+		for (RuneScapeProfile profile : profiles)
+		{
+			if (profile.getType() == RuneScapeProfileType.STANDARD
+				&& profile.getAccountHash() == accountHash)
+			{
+				String key = profile.getKey();
+				if (key != null && !key.isEmpty())
+				{
+					keys.add(key.startsWith("rsprofile.") ? key : "rsprofile." + key);
+				}
+			}
+		}
+		return List.copyOf(keys);
+	}
+
 	/** Formatted fastest time for a panel boss, or null when none recorded. */
 	String pbText(String panelBossName)
 	{
@@ -64,7 +92,7 @@ final class PersonalBests
 	 * Fastest seconds across team sizes AND across rs-profile fragments.
 	 * RuneLite splinters one account into many internal profiles over time
 	 * (client changes, world types), scattering its personal bests; the true
-	 * pb is the minimum over every fragment carrying the player's name.
+	 * pb is the minimum over the explicitly selected account-owned fragments.
 	 */
 	double bestSecondsAcrossProfiles(java.util.List<String> profileKeys, String panelBossName)
 	{
@@ -130,11 +158,6 @@ final class PersonalBests
 	java.util.Map<String, Double> variantSecondsAcrossProfiles(
 		java.util.List<String> profileKeys, String panelBossName)
 	{
-		if (profileKeys.isEmpty())
-		{
-			return variantSeconds(key -> configManager.getRSProfileConfiguration(
-				"personalbest", key, double.class), panelBossName);
-		}
 		return variantSeconds(key ->
 		{
 			Double best = null;

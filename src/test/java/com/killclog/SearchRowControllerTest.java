@@ -1,10 +1,13 @@
 package com.killclog;
 
 import java.awt.Color;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JTextField;
 import javax.swing.SwingUtilities;
 import net.runelite.client.ui.components.IconTextField;
 import org.junit.Test;
@@ -14,6 +17,40 @@ import static org.junit.Assert.assertTrue;
 
 public class SearchRowControllerTest
 {
+	@Test
+	public void escapeAndDisableCancelBeforeComparisonBecomesActive() throws Exception
+	{
+		SwingUtilities.invokeAndWait(() ->
+		{
+			for (boolean escape : new boolean[]{false, true})
+			{
+				AtomicBoolean pending = new AtomicBoolean();
+				AtomicInteger exits = new AtomicInteger();
+				JTextField input = new JTextField();
+				Runnable idle = () ->
+				{
+				};
+				SearchRowController controller = new SearchRowController(new JPanel(),
+					new IconTextField(), new JLabel(), input, Color.GRAY, () -> false,
+					pending::get, idle, idle, exits::incrementAndGet, idle, idle, idle);
+				controller.install();
+				controller.toggleEntry();
+				pending.set(true);
+				if (escape)
+				{
+					KeyEvent event = new KeyEvent(input, KeyEvent.KEY_PRESSED, 0, 0, KeyEvent.VK_ESCAPE, (char) 27);
+					for (KeyListener listener : input.getKeyListeners()) listener.keyPressed(event);
+				}
+				else
+				{
+					controller.setComparisonEnabled(false);
+				}
+				assertEquals(1, exits.get());
+				assertFalse(controller.isCompareEntryMode());
+			}
+		});
+	}
+
 	@Test
 	public void disablingComparisonHidesAndRestoresAvailableControl() throws Exception
 	{

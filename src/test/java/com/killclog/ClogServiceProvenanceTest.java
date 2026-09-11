@@ -112,7 +112,7 @@ public class ClogServiceProvenanceTest
 		categories.put("zulrah", Arrays.asList(1, 2, 3));
 
 		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
-		cache.cacheResult(new ClogResult(player, obtained, categories,
+		cache.cacheFirstPartyResult(new ClogResult(player, obtained, categories,
 			Collections.emptyMap(), localDate, null));
 		Field activePlayer = LocalClogCache.class.getDeclaredField("activePlayer");
 		activePlayer.setAccessible(true);

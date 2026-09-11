@@ -940,10 +940,4 @@ public class Cells
 	{
 		return tooltipDataMap.get(skill);
 	}
-
-	@Nullable
-	public TooltipData getRareTooltip(String key)
-	{
-		return rareTooltips.get(key);
-	}
 }

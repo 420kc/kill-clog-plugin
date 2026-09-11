@@ -246,7 +246,7 @@ final class SkillCellGrid
 		if (config.skillColorMode() == SkillColorMode.CLOG_PROGRESSION)
 		{
 			SkillClogSection.Progress progress = SkillClogSection.combinedProgress(
-				SkillClogSection.forSkill(skill, clog, null, catalog), false);
+				SkillClogSection.forSkill(skill, clog, null, catalog));
 			obtained = progress.obtained();
 			total = progress.total();
 		}
