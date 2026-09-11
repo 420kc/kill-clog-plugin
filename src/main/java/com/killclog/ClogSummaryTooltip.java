@@ -39,7 +39,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 	};
 	private static final String TEMPLE_SOURCE = "TempleOSRS";
 	private static final String RUNEPROFILE_SOURCE = "RuneProfile";
-	private static final String KILLCLOG_SOURCE = "killclog.com";
+	private static final String KILLCLOG_SOURCE = "Kill Clog";
 	private static final String SETUP_OPEN_LINE = "1. Open your Collection Log.";
 	private static final String SETUP_SEARCH_LINE = "2. Wait for setup to finish.";
 	private static final String SETUP_CHAT_LINE = "Chat will confirm when setup is complete.";

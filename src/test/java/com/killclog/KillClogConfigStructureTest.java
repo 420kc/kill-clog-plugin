@@ -133,7 +133,7 @@ public class KillClogConfigStructureTest
 			.map(ConfigSection::name)
 			.collect(Collectors.toList());
 
-		assertEquals(Arrays.asList("killclog.com", "Modal Appearance", "Lookup",
+		assertEquals(Arrays.asList("Kill Clog Web Sync", "Modal Appearance", "Lookup",
 			"Menu location", "Skills", "Chat", "Progress Highlighter"), sectionNames);
 	}
 

@@ -2188,30 +2188,22 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void onNotFound(String player)
 	{
+		resetAllLabels();
+		cells.rebuildPrimaryTooltips(localRsn);
 		int notFoundIdx = ThreadLocalRandom.current().nextInt(SearchMessages.NOT_FOUND.length);
 		setSearchStatus(String.format(SearchMessages.NOT_FOUND[notFoundIdx], player), NOT_FOUND);
 		searchBar.setIcon(IconTextField.Icon.SEARCH);
-		playerName.setText(" ");
-		playerName.setIcon(null);
-		tooltipController.setTooltipText(playerName, null);
-		clogInfoLabel.setText("");
-		clogInfoLabel.setIcon(null);
-		tooltipController.setTooltipText(clogInfoLabel, null);
 		searchBar.setText("");
 	}
 
 	@Override
 	public void onError(String player, Throwable error)
 	{
+		resetAllLabels();
+		cells.rebuildPrimaryTooltips(localRsn);
 		searchBar.setIcon(IconTextField.Icon.SEARCH);
 		searchBar.setText("");
 		setSearchStatus("Lookup failed", TEXT_DIM);
-		playerName.setText(" ");
-		playerName.setIcon(null);
-		tooltipController.setTooltipText(playerName, null);
-		clogInfoLabel.setText("");
-		clogInfoLabel.setIcon(null);
-		tooltipController.setTooltipText(clogInfoLabel, null);
 	}
 
 	// ComparisonController.Listener
