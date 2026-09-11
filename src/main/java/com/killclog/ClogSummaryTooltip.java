@@ -397,17 +397,19 @@ public class ClogSummaryTooltip extends TitleTooltip
 		if (specialCount > 0 && specialSprites != null)
 		{
 			y = paintSubheader(g2, w, y, "Special");
+			paintSectionLabel(g2, fm, w, y, 0);
+			y += hoverRowHeight(fm);
 			paintItemRow(g2, hitBoxes, 0, inset, y, w - 2 * inset,
 				specialSprites, specialIds, specialNames, null, RECENT_SIZE, fm);
 			y += RECENT_SIZE;
-			paintSectionLabel(g2, fm, w, y, 0);
-			y += hoverRowHeight(fm);
 		}
 
 		// Recent items section
 		if (recentCount > 0 && recentSprites != null)
 		{
 			y = paintSubheader(g2, w, y, "Recent");
+			paintSectionLabel(g2, fm, w, y, 1);
+			y += hoverRowHeight(fm);
 			paintItemRow(g2, hitBoxes, 1, inset, y, w - 2 * inset,
 				recentSprites, recentIds, recentNames, recentDates, recentCellWidth(fm), fm);
 			y += RECENT_SIZE;
@@ -415,8 +417,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 			{
 				y += DATE_GAP + fm.getHeight();
 			}
-			paintSectionLabel(g2, fm, w, y, 1);
-			y += hoverRowHeight(fm);
 		}
 
 		if (!clogSources.isEmpty())
@@ -427,6 +427,11 @@ public class ClogSummaryTooltip extends TitleTooltip
 			int labelX = (w - fm.stringWidth(SOURCE_LABEL)) / 2;
 			g2.drawString(SOURCE_LABEL, labelX, y + fm.getAscent());
 			y += fm.getHeight() + SOURCE_LABEL_GAP;
+			if (itemHover.hoveredSection() >= SOURCE_SECTION)
+			{
+				paintHeaderHoverLine(g2, fm, w, y + fm.getAscent());
+			}
+			y += hoverRowHeight(fm);
 
 			int sourceX = sourceRowStartX(w, clogSources.size());
 			String hoveredName = itemHover.hoveredItemName();
@@ -450,10 +455,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 					new Rectangle(iconX - SOURCE_HIT_PAD, y - SOURCE_HIT_PAD,
 						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2,
 						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2)));
-			}
-			if (itemHover.hoveredSection() >= SOURCE_SECTION)
-			{
-				paintHeaderHoverLine(g2, fm, w, y + SOURCE_ICON_SIZE + fm.getAscent());
 			}
 		}
 

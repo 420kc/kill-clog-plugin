@@ -122,8 +122,7 @@ public class TitleTooltipTest
 		tooltip.paint(graphics);
 		graphics.dispose();
 
-		int iconY = idle.height - NativeTooltip.getInset() - 13
-			- TitleTooltip.hoverRowHeight(tooltip.getFontMetrics(net.runelite.client.ui.FontManager.getRunescapeSmallFont()));
+		int iconY = idle.height - NativeTooltip.getInset() - 13;
 		int startX = ClogSummaryTooltip.sourceRowStartX(idle.width, 3);
 		List<String> names = Arrays.asList("Kill Clog", "TempleOSRS", "RuneProfile");
 		for (int i = 0; i < names.size(); i++)
@@ -166,14 +165,12 @@ public class TitleTooltipTest
 		graphics.dispose();
 
 		moveMouse(blue, ClogSummaryTooltip.sourceRowStartX(blue.getWidth(), 1) + 6,
-			blue.getHeight() - NativeTooltip.getInset() - 7
-			- TitleTooltip.hoverRowHeight(blue.getFontMetrics(net.runelite.client.ui.FontManager.getRunescapeSmallFont())));
+			blue.getHeight() - NativeTooltip.getInset() - 7);
 		assertEquals("TempleOSRS", blue.getHeaderHoverLineText());
 		assertNull(red.getHeaderHoverLineText());
 
 		moveMouse(red, ClogSummaryTooltip.sourceRowStartX(red.getWidth(), 1) + 6,
-			red.getHeight() - NativeTooltip.getInset() - 7
-			- TitleTooltip.hoverRowHeight(red.getFontMetrics(net.runelite.client.ui.FontManager.getRunescapeSmallFont())));
+			red.getHeight() - NativeTooltip.getInset() - 7);
 		assertEquals("RuneProfile", red.getHeaderHoverLineText());
 	}
 
