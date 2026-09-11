@@ -18,12 +18,6 @@ final class BulkCaptureState
 	final List<ClogResult.ClogItem> obtained = new ArrayList<>();
 	final Set<Integer> obtainedIds = new HashSet<>();
 
-	// Buffered category read captured before bulk has cache data to merge into.
-	String bufferedCategoryKey;
-	String bufferedCategoryName;
-	List<Integer> bufferedCategoryItems;
-	List<ClogResult.ClogItem> bufferedCategoryObtained;
-
 	boolean readyToFinalize(int tickCount)
 	{
 		return active && finalizeTickCount > 0 && tickCount >= finalizeTickCount;
@@ -64,9 +58,19 @@ final class BulkCaptureState
 
 	void scheduleEmptySearchFinalization(int tickCount)
 	{
-		if (active && clogCount == 0 && clogTotal > 0)
+		if (active && clogCount == 0)
 		{
-			finalizeTickCount = tickCount + 3;
+			// A known catalog total is already settled. Both counters at zero can
+			// also mean a brand-new account, so leave room for delayed scripts.
+			finalizeTickCount = tickCount + (clogTotal > 0 ? 3 : 10);
+		}
+	}
+
+	void deferEmptyFinalizationIfItemsReported(int reportedCount)
+	{
+		if (active && reportedCount > 0 && obtained.isEmpty())
+		{
+			finalizeTickCount = -1;
 		}
 	}
 
@@ -79,9 +83,5 @@ final class BulkCaptureState
 		clogTotal = -1;
 		obtained.clear();
 		obtainedIds.clear();
-		bufferedCategoryKey = null;
-		bufferedCategoryName = null;
-		bufferedCategoryItems = null;
-		bufferedCategoryObtained = null;
 	}
 }

@@ -36,10 +36,36 @@ public class CollectionLogSearchSetupTest
 	public void emptySearchSchedulesFinalizationWithoutItemScripts()
 	{
 		BulkCaptureState capture = new BulkCaptureState();
-		capture.arm(200, 0, 1_500);
+		capture.arm(200, 0, 0);
 		capture.scheduleEmptySearchFinalization(200);
 
-		assertFalse(capture.readyToFinalize(202));
-		assertTrue(capture.readyToFinalize(203));
+		assertFalse(capture.readyToFinalize(209));
+		assertTrue(capture.readyToFinalize(210));
+	}
+
+	@Test
+	public void itemStreamExtendsAnInitiallyEmptySearchDeadline()
+	{
+		BulkCaptureState capture = new BulkCaptureState();
+		capture.arm(300, 0, 0);
+		capture.scheduleEmptySearchFinalization(300);
+		capture.captureScriptArguments(new Object[]{4100, 995, 42}, 302);
+
+		assertFalse(capture.readyToFinalize(303));
+		assertFalse(capture.readyToFinalize(304));
+		assertTrue(capture.readyToFinalize(305));
+	}
+
+	@Test
+	public void reportedItemsCancelEmptyDeadlineUntilScriptsArrive()
+	{
+		BulkCaptureState capture = new BulkCaptureState();
+		capture.arm(400, 0, 0);
+		capture.scheduleEmptySearchFinalization(400);
+		capture.deferEmptyFinalizationIfItemsReported(5);
+
+		assertFalse(capture.readyToFinalize(410));
+		capture.captureScriptArguments(new Object[]{4100, 995, 42}, 411);
+		assertTrue(capture.readyToFinalize(414));
 	}
 }

@@ -362,7 +362,8 @@ public class LocalClogCache
 			pendingByPlayer.remove(fromKey);
 		}
 
-		PlayerClogData merged = ClogRecords.hasFirstPartyMarks(d.dest)
+		PlayerClogData merged = (ClogRecords.hasFirstPartyMarks(d.dest)
+			|| ClogRecords.hasCompletedFirstPartySetup(d.dest))
 			? ClogRecords.mergeForMigration(d.dest, source)
 			: source;
 		merged.playerName = currentRsn;
@@ -916,6 +917,7 @@ public class LocalClogCache
 		if (data != null)
 		{
 			data.firstPartyByCategory = null;
+			data.firstPartySetupComplete = null;
 		}
 	}
 
@@ -1141,6 +1143,7 @@ public class LocalClogCache
 			// would birth a null-marker store that later provider writes
 			// treat as legacy and ship wholesale.
 			data.firstPartyByCategory = new HashMap<>();
+			data.firstPartySetupComplete = false;
 		}
 		data.playerName = name;
 		data.lastUpdated = Instant.now().toString();
@@ -1202,6 +1205,7 @@ public class LocalClogCache
 
 		if (firstParty)
 		{
+			data.firstPartySetupComplete = true;
 			for (Map.Entry<String, List<ClogResult.ClogItem>> entry
 				: result.getObtainedItems().entrySet())
 			{
@@ -1807,6 +1811,31 @@ public class LocalClogCache
 		return false;
 	}
 
+	/** Whether this player completed the full local Collection Log Search walk. */
+	public synchronized boolean hasCompletedFirstPartySetupFor(String playerName)
+	{
+		if (playerName == null)
+		{
+			return false;
+		}
+
+		String key = cacheKey(playerName);
+		if (unresolvedSlots.contains(key))
+		{
+			return false;
+		}
+		PlayerClogData data = players.get(key);
+		if (data == null)
+		{
+			data = loadFromDisk(playerName);
+			if (data != null)
+			{
+				players.put(key, data);
+			}
+		}
+		return ClogRecords.hasCompletedFirstPartySetup(data);
+	}
+
 	public synchronized ClogResult toClogResult(String playerName, Map<Integer, String> itemNames)
 	{
 		if (playerName == null)
@@ -2101,6 +2130,7 @@ public class LocalClogCache
 		copy.uniqueTotal = src.uniqueTotal;
 		copy.categories = src.categories != null ? new HashMap<>(src.categories) : new HashMap<>();
 		copy.obtained = src.obtained != null ? new HashMap<>(src.obtained) : new HashMap<>();
+		copy.firstPartySetupComplete = src.firstPartySetupComplete;
 		if (src.firstPartyByCategory != null)
 		{
 			copy.firstPartyByCategory = new HashMap<>();

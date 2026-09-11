@@ -1409,13 +1409,11 @@ public class KillClogPlugin extends Plugin
 	// Sync button.
 
 	/**
-	 * Called by ClogButtonOverlay on click. Search now starts first-time setup
-	 * automatically; the chalice remains a visible-category refresh and a
-	 * fallback setup trigger if the Search menu event was unavailable.
+	 * Called by ClogButtonOverlay on click. Search owns first-time setup; the
+	 * chalice refreshes only the visible category of an established local log.
 	 */
 	void onSyncClicked()
 	{
-		clogButtonOverlay.flashGreen();
 		clientThread.invokeLater(() ->
 		{
 			Player local = client.getLocalPlayer();
@@ -1424,8 +1422,11 @@ public class KillClogPlugin extends Plugin
 				return;
 			}
 
-			manualClogSync.onSyncClicked(client, clogIndex, visibleClogCategoryReader,
-				localClogCache, chatNotifier, panel::onBulkCaptureComplete);
+			if (manualClogSync.onSyncClicked(client, clogIndex, visibleClogCategoryReader,
+				localClogCache, chatNotifier, panel::onBulkCaptureComplete))
+			{
+				clogButtonOverlay.flashGreen();
+			}
 		});
 	}
 
