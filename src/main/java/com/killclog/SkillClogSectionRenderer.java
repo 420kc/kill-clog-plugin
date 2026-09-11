@@ -14,7 +14,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import javax.annotation.Nullable;
-import javax.swing.JComponent;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
 
@@ -28,21 +27,22 @@ final class SkillClogSectionRenderer
 	private static final int REGULAR_SOLO_MIN_COLS = 5;
 	private static final int COMPACT_SOLO_MIN_COLS = 7;
 	private static final int HEADER_GAP = 2;
-	private static final int SECTION_GAP = 6;
+	private static final int MAX_SECTION_HEIGHT = 580;
+	private static final int MAX_SECTION_WIDTH = 280;
 	private static final String OBTAINED_LABEL = "Obtained: ";
 	private static final Color QTY_COLOR = new Color(255, 255, 0);
 	private static final Color QTY_SHADOW = new Color(0, 0, 0);
 	private static final Font SECTION_FONT = FontManager.getRunescapeBoldFont();
 	private static final Font DETAIL_FONT = FontManager.getRunescapeSmallFont();
 
-	private final JComponent repaintTarget;
+	private final SkillTooltip repaintTarget;
 	private List<Entry> entries = Collections.emptyList();
 	private boolean compactSprites;
 	private int spriteSize = REGULAR_SPRITE_SIZE;
 	private boolean showRiftsClosed;
 	private int primaryRiftsClosed = -1;
 
-	SkillClogSectionRenderer(JComponent repaintTarget)
+	SkillClogSectionRenderer(SkillTooltip repaintTarget)
 	{
 		this.repaintTarget = repaintTarget;
 	}
@@ -114,6 +114,18 @@ final class SkillClogSectionRenderer
 			width = Math.max(width, gridWidth(cols));
 		}
 
+		int height = sectionHeight(width, headingMetrics, detailMetrics);
+		// Dense multi-section cards trade a little width for fewer sprite rows.
+		while (height > MAX_SECTION_HEIGHT && width + cellSize() <= MAX_SECTION_WIDTH)
+		{
+			width += cellSize();
+			height = sectionHeight(width, headingMetrics, detailMetrics);
+		}
+		return new Dimension(width, height);
+	}
+
+	private int sectionHeight(int width, FontMetrics headingMetrics, FontMetrics detailMetrics)
+	{
 		int height = 0;
 		for (Entry entry : entries)
 		{
@@ -129,8 +141,8 @@ final class SkillClogSectionRenderer
 			}
 			height += gridHeight(entry.section.itemIds().size(), cols);
 		}
-		height += SECTION_GAP * (entries.size() - 1);
-		return new Dimension(width, height);
+		height += TitleTooltip.hoverRowHeight(detailMetrics) * entries.size();
+		return height;
 	}
 
 	int paintSolo(Graphics2D g2, int width, int startY,
@@ -167,10 +179,9 @@ final class SkillClogSectionRenderer
 			}
 			y = paintGrid(g2, entry, section.primary(), i, inset, availableWidth,
 				y, cols, hitBoxes);
-			if (i + 1 < entries.size())
-			{
-				y += SECTION_GAP;
-			}
+			repaintTarget.paintSectionHoverLine(g2, detailMetrics, width,
+				y + detailMetrics.getAscent(), i);
+			y += TitleTooltip.hoverRowHeight(detailMetrics);
 		}
 		return y;
 	}

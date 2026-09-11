@@ -1,3 +1,22 @@
+# Kill Clog 2.3.4: modal hover polish
+
+Local visual-smoke candidate based on accepted 2.3.3 at `96dee242`.
+
+- Keep every modal title stable, including Player and Skill Summary.
+- Put item labels beneath the corresponding sprite section, with a 2px downward text offset.
+- Reuse section spacing; dense cards widen within the existing width limits to keep their height bounded.
+- Refresh changed hover names and clear old hover state when summary/skill data changes.
+- Preserve 2.3.3 taxonomy, summary content, item identity, capture, caches and publication behavior.
+- Prepare concise automatic-setup README wording.
+
+Visual smoke: PvM Slayer and raids; Clog Special, Recent/date and Sources;
+Player pets; Skill Summary name/XP/rank; multi-section Skill Clogs including
+Sailing. Check long names, quantities, no title replacement, fixed hover size,
+blue/red independence, pointer exit and wiki targets. This candidate does not
+include the broader 2.4 summary/taxonomy or canonicalization work.
+
+## Prior release receipt
+
 # Kill Clog 2.3.3
 
 Status: accepted for Plugin Hub submission after independent review and manual smoke.

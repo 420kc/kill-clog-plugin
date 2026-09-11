@@ -7,6 +7,7 @@ import java.awt.event.MouseMotionAdapter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import javax.swing.JComponent;
 import lombok.AccessLevel;
 import lombok.Setter;
@@ -50,6 +51,16 @@ final class TooltipItemHover
 	String hoveredItemName()
 	{
 		return hoveredItemName;
+	}
+
+	boolean isSectionHovered(int section)
+	{
+		return hoveredSection == section;
+	}
+
+	int hoveredSection()
+	{
+		return hoveredSection;
 	}
 
 	boolean hoveredItemObtained()
@@ -116,7 +127,8 @@ final class TooltipItemHover
 		boolean nextObtained = hitBox != null && hitBox.obtained;
 		int nextCount = hitBox != null ? hitBox.count : 0;
 		if (nextId == hoveredItemId && nextSection == hoveredSection
-			&& nextObtained == hoveredObtained && nextCount == hoveredItemCount)
+			&& nextObtained == hoveredObtained && nextCount == hoveredItemCount
+			&& Objects.equals(hitBox != null ? hitBox.itemName : null, hoveredItemName))
 		{
 			return;
 		}

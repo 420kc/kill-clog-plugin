@@ -40,6 +40,7 @@ public class SkillTooltip extends TitleTooltip
 	public void setData(Skill skill, @Nullable HiscoreResult result, boolean virtualLevels,
 		List<SkillClogSection> sections, @Nullable ItemManager itemManager)
 	{
+		itemHover.clear();
 		setTitle(skill.getName());
 		clearTitleSuffix();
 		clearSubtitle();
@@ -143,12 +144,6 @@ public class SkillTooltip extends TitleTooltip
 	}
 
 	@Override
-	protected boolean hasHeaderHoverLine()
-	{
-		return !sections.isEmpty();
-	}
-
-	@Override
 	protected String getHeaderHoverLineText()
 	{
 		return itemHover.hoveredItemName();
@@ -171,6 +166,15 @@ public class SkillTooltip extends TitleTooltip
 	protected Color getHeaderHoverLineRightColor()
 	{
 		return CLOG_YELLOW;
+	}
+
+	void paintSectionHoverLine(Graphics2D g2, FontMetrics fm, int width,
+		int baseline, int section)
+	{
+		if (itemHover.isSectionHovered(section))
+		{
+			paintHeaderHoverLine(g2, fm, width, baseline);
+		}
 	}
 
 	private static int rowWidth(FontMetrics fm, String label, String value)

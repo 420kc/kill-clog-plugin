@@ -285,7 +285,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 		if (specialCount > 0)
 		{
 			FontMetrics bfm = getFontMetrics(FontManager.getRunescapeBoldFont());
-			contentHeight += separatorHeight(SEPARATOR_PAD) + SUBHEADER_HEIGHT + RECENT_SIZE;
+			contentHeight += separatorHeight(SEPARATOR_PAD) + SUBHEADER_HEIGHT + RECENT_SIZE + hoverRowHeight(fm);
 
 			int rowWidth = specialCount * RECENT_SIZE + (specialCount - 1) * RECENT_PAD;
 			textWidth = Math.max(textWidth, rowWidth);
@@ -297,7 +297,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 		{
 			FontMetrics bfm = getFontMetrics(FontManager.getRunescapeBoldFont());
 			int separatorHeight = separatorHeight(SEPARATOR_PAD);
-			contentHeight += separatorHeight + SUBHEADER_HEIGHT + RECENT_SIZE;
+			contentHeight += separatorHeight + SUBHEADER_HEIGHT + RECENT_SIZE + hoverRowHeight(fm);
 			if (hasRecentDates())
 			{
 				contentHeight += DATE_GAP + fm.getHeight();
@@ -313,9 +313,13 @@ public class ClogSummaryTooltip extends TitleTooltip
 		if (!clogSources.isEmpty())
 		{
 			contentHeight += separatorHeight(SEPARATOR_PAD) + fm.getHeight()
-				+ SOURCE_LABEL_GAP + SOURCE_ICON_SIZE;
+				+ SOURCE_LABEL_GAP + SOURCE_ICON_SIZE + hoverRowHeight(fm);
 			textWidth = Math.max(textWidth, fm.stringWidth(SOURCE_LABEL));
 			textWidth = Math.max(textWidth, sourceRowWidth(clogSources.size()));
+			for (ClogSource source : clogSources)
+			{
+				textWidth = Math.max(textWidth, fm.stringWidth(source.name));
+			}
 		}
 
 		return new Dimension(textWidth, contentHeight);
@@ -390,6 +394,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 			paintItemRow(g2, hitBoxes, 0, inset, y, w - 2 * inset,
 				specialSprites, specialIds, specialNames, null, RECENT_SIZE, fm);
 			y += RECENT_SIZE;
+			paintSectionLabel(g2, fm, w, y, 0);
+			y += hoverRowHeight(fm);
 		}
 
 		// Recent items section
@@ -403,6 +409,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 			{
 				y += DATE_GAP + fm.getHeight();
 			}
+			paintSectionLabel(g2, fm, w, y, 1);
+			y += hoverRowHeight(fm);
 		}
 
 		if (!clogSources.isEmpty())
@@ -437,9 +445,21 @@ public class ClogSummaryTooltip extends TitleTooltip
 						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2,
 						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2)));
 			}
+			if (itemHover.hoveredSection() >= SOURCE_SECTION)
+			{
+				paintHeaderHoverLine(g2, fm, w, y + SOURCE_ICON_SIZE + fm.getAscent());
+			}
 		}
 
 		itemHover.setHitBoxes(hitBoxes);
+	}
+
+	private void paintSectionLabel(Graphics2D g2, FontMetrics fm, int width, int y, int section)
+	{
+		if (itemHover.isSectionHovered(section))
+		{
+			paintHeaderHoverLine(g2, fm, width, y + fm.getAscent());
+		}
 	}
 
 	/** Separator plus a bold orange subheader; returns the Y under the header. */
@@ -519,13 +539,13 @@ public class ClogSummaryTooltip extends TitleTooltip
 	}
 
 	@Override
-	protected String getTitleHoverText()
+	protected String getHeaderHoverLineText()
 	{
 		return itemHover.hoveredItemName();
 	}
 
 	@Override
-	protected Color getTitleHoverColor()
+	protected Color getHeaderHoverLineColor()
 	{
 		// Obtained items and verified providers share the success/trust color.
 		return CLOG_GREEN;
