@@ -42,7 +42,7 @@ final class ClogRecords
 		{
 			return data.firstPartySetupComplete;
 		}
-		// Before 2.4 there was no setup marker. A legacy markless file was
+		// Before 2.3.3 there was no setup marker. A legacy markless file was
 		// already treated as a client-owned capture, while category marks prove
 		// that this client observed at least part of the log. Empty marked files
 		// repeat Search once to establish the new marker.

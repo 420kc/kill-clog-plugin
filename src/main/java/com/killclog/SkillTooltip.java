@@ -51,7 +51,7 @@ public class SkillTooltip extends TitleTooltip
 		if (!this.sections.isEmpty())
 		{
 			SkillClogSection.Progress progress = SkillClogSection.combinedProgress(
-				this.sections, false);
+				this.sections);
 			String progressText = progress.obtained() >= 0
 				? progressCountText(progress.obtained(), progress.total())
 				: progressPlaceholderText(progress.total());

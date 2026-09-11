@@ -22,7 +22,7 @@ public class LookupQueriesTest
 		ClogResult providerGimClog = clog(AccountType.GROUP_IRONMAN);
 
 		assertEquals("Group Ironman",
-			LookupQueries.getAccountLabel(regularHiscore, providerGimClog));
+			AccountBadgeResolver.label(LookupQueries.accountDisplay(regularHiscore, providerGimClog)));
 	}
 
 	@Test
@@ -31,7 +31,7 @@ public class LookupQueriesTest
 		HiscoreResult ironHiscore = hiscore(AccountType.IRONMAN);
 		ClogResult providerRegularClog = clog(AccountType.REGULAR);
 
-		assertEquals("Ironman", LookupQueries.getAccountLabel(ironHiscore, providerRegularClog));
+		assertEquals("Ironman", AccountBadgeResolver.label(LookupQueries.accountDisplay(ironHiscore, providerRegularClog)));
 	}
 
 	@Test
@@ -39,7 +39,7 @@ public class LookupQueriesTest
 	{
 		ClogResult providerRegularClog = clog(AccountType.REGULAR);
 
-		assertNull(LookupQueries.getAccountLabel(null, providerRegularClog));
+		assertNull(AccountBadgeResolver.label(LookupQueries.accountDisplay(null, providerRegularClog)));
 	}
 
 	@Test
@@ -48,7 +48,7 @@ public class LookupQueriesTest
 		HiscoreResult ironHiscore = hiscore(AccountType.IRONMAN);
 		ClogResult noTypeClog = clog(null);
 
-		assertEquals("Ironman", LookupQueries.getAccountLabel(ironHiscore, noTypeClog));
+		assertEquals("Ironman", AccountBadgeResolver.label(LookupQueries.accountDisplay(ironHiscore, noTypeClog)));
 	}
 
 	@Test
@@ -56,7 +56,7 @@ public class LookupQueriesTest
 	{
 		HiscoreResult pureHiscore = hiscore(AccountType.REGULAR, HiscoreTable.ONE_DEFENCE);
 
-		assertEquals("Pure", LookupQueries.getAccountLabel(pureHiscore, null));
+		assertEquals("Pure", AccountBadgeResolver.label(LookupQueries.accountDisplay(pureHiscore, null)));
 	}
 
 	@Test
@@ -64,7 +64,7 @@ public class LookupQueriesTest
 	{
 		HiscoreResult skillerHiscore = hiscore(AccountType.REGULAR, HiscoreTable.SKILLER);
 
-		assertEquals("Skiller", LookupQueries.getAccountLabel(skillerHiscore, null));
+		assertEquals("Skiller", AccountBadgeResolver.label(LookupQueries.accountDisplay(skillerHiscore, null)));
 	}
 
 	@Test
@@ -72,7 +72,7 @@ public class LookupQueriesTest
 	{
 		HiscoreResult ironHiscore = hiscore(AccountType.IRONMAN, HiscoreTable.ONE_DEFENCE);
 
-		assertEquals("Ironman", LookupQueries.getAccountLabel(ironHiscore, null));
+		assertEquals("Ironman", AccountBadgeResolver.label(LookupQueries.accountDisplay(ironHiscore, null)));
 	}
 
 	@Test
@@ -87,9 +87,9 @@ public class LookupQueriesTest
 		BufferedImage gim = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
 		GimBadgeLoader.setGimBadges(gim, null, null);
 
-		assertSame(gim, LookupQueries.getAccountBadge(
+		assertSame(gim, AccountBadgeResolver.cachedBadge(LookupQueries.accountDisplay(
 			hiscore(AccountType.REGULAR),
-			clog(AccountType.GROUP_IRONMAN)));
+			clog(AccountType.GROUP_IRONMAN))));
 	}
 
 	private static HiscoreResult hiscore(AccountType accountType)

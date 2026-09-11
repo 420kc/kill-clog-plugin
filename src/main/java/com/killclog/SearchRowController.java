@@ -228,7 +228,7 @@ final class SearchRowController
 		{
 			return;
 		}
-		if (compareEntryMode || comparisonMode.getAsBoolean())
+		if (compareEntryMode || comparisonMode.getAsBoolean() || compareLookupInFlight.getAsBoolean())
 		{
 			exitEntry();
 		}
@@ -240,7 +240,7 @@ final class SearchRowController
 
 	void exitIfActive()
 	{
-		if (compareEntryMode || comparisonMode.getAsBoolean())
+		if (compareEntryMode || comparisonMode.getAsBoolean() || compareLookupInFlight.getAsBoolean())
 		{
 			exitEntry();
 		}
@@ -310,7 +310,7 @@ final class SearchRowController
 	private void exitEntry()
 	{
 		compareEntryMode = false;
-		if (comparisonMode.getAsBoolean())
+		if (comparisonMode.getAsBoolean() || compareLookupInFlight.getAsBoolean())
 		{
 			comparisonExit.run();
 			return;

@@ -126,16 +126,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		subtitleColor = null;
 	}
 
-	protected void clearInfoLine()
-	{
-		infoLabel = null;
-		infoValue = null;
-		infoColor = null;
-		infoLabel2 = null;
-		infoValue2 = null;
-		infoColor2 = null;
-	}
-
 	/**
 	 * Set the obtained subtitle line. Pass -1 for unknown ("?/Y").
 	 * Color follows native OSRS stoplight progress: red, yellow, green.
@@ -179,29 +169,14 @@ public abstract class TitleTooltip extends NativeTooltip
 			+ "/" + (total < 0 ? "?" : String.valueOf(total));
 	}
 
-	protected static String progressCountTextOrDash(int obtained, int total)
-	{
-		return obtained >= 0 ? progressCountText(obtained, total) : "--";
-	}
-
 	protected static String wrappedProgressCountText(int obtained, int total)
 	{
 		return " (" + progressCountText(obtained, total) + ")";
 	}
 
-	protected static String wrappedProgressCountTextOrDash(int obtained, int total)
-	{
-		return " (" + progressCountTextOrDash(obtained, total) + ")";
-	}
-
 	protected static int wrappedProgressCountWidth(FontMetrics fm, int obtained, int total)
 	{
 		return fm.stringWidth(wrappedProgressCountText(obtained, total));
-	}
-
-	protected static int wrappedProgressCountWidthOrDash(FontMetrics fm, int obtained, int total)
-	{
-		return fm.stringWidth(wrappedProgressCountTextOrDash(obtained, total));
 	}
 
 	protected static int paintWrappedProgressCount(Graphics2D g2, FontMetrics fm, int x, int y,
@@ -211,22 +186,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		g2.setColor(completionColor(obtained, total));
 		g2.drawString(progress, x, y);
 		return x + fm.stringWidth(progress);
-	}
-
-	protected static int paintWrappedProgressCountOrDash(Graphics2D g2, FontMetrics fm, int x, int y,
-		int obtained, int total, Color unknownColor)
-	{
-		String progress = wrappedProgressCountTextOrDash(obtained, total);
-		g2.setColor(obtained >= 0 ? completionColor(obtained, total) : unknownColor);
-		g2.drawString(progress, x, y);
-		return x + fm.stringWidth(progress);
-	}
-
-	protected static int paintChromeSeparator(Graphics2D g2, FontMetrics fm, int x, int y)
-	{
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString(CHROME_SEPARATOR, x, y);
-		return x + fm.stringWidth(CHROME_SEPARATOR);
 	}
 
 	/** Value-column text: a thousands-grouped count, or "--" when absent. */
@@ -354,25 +313,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		}
 	}
 
-	protected void paintSpriteRow(Graphics2D g2, int x, int y, int colWidth,
-		BufferedImage[] sprites, int count, int size, int pad)
-	{
-		if (sprites == null || count == 0)
-		{
-			return;
-		}
-		int spriteRowWidth = count * size + (count - 1) * pad;
-		int startX = x + (colWidth - spriteRowWidth) / 2;
-		for (int i = 0; i < count && i < sprites.length; i++)
-		{
-			int sx = startX + i * (size + pad);
-			if (sprites[i] != null)
-			{
-				g2.drawImage(sprites[i], sx, y, null);
-			}
-		}
-	}
-
 	protected void paintQuantitySpriteRow(Graphics2D g2, FontMetrics fm, int x, int y,
 		int colWidth, BufferedImage[] sprites, int[] counts, int size, int pad)
 	{
@@ -410,16 +350,6 @@ public abstract class TitleTooltip extends NativeTooltip
 	protected static Color dim(Color color)
 	{
 		return new Color(color.getRed(), color.getGreen(), color.getBlue(), 110);
-	}
-
-	/**
-	 * Color for a comparison value: a real value keeps the player's full color,
-	 * a "--" no-data dash is dimmed. Missing data stays on the happy path instead
-	 * of shouting a notice.
-	 */
-	protected static Color compareValueColor(String text, Color playerColor)
-	{
-		return "--".equals(text) ? dim(playerColor) : playerColor;
 	}
 
 	/** Set an extra info line below the subtitle. Label in orange, value in given color. */

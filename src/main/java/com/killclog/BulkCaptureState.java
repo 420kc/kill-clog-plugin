@@ -49,6 +49,10 @@ final class BulkCaptureState
 
 		int itemId = (int) args[1];
 		int count = (int) args[2];
+		if (itemId <= 0 || count <= 0)
+		{
+			return;
+		}
 		if (obtainedIds.add(itemId))
 		{
 			obtained.add(new ClogResult.ClogItem(itemId, count, null));

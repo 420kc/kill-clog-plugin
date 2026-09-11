@@ -21,7 +21,7 @@ public class SkillClogLayoutTest
 	public void defenceUsesTheStandardCompactAdaptiveGrid() throws Exception
 	{
 		List<SkillClogSection> sections = SkillClogSection.forSkill(Skill.DEFENCE, null, null, null);
-		assertEquals(36, SkillClogSection.combinedProgress(sections, false).total());
+		assertEquals(36, SkillClogSection.combinedProgress(sections).total());
 		assertEquals(Arrays.asList(11832, 11834, 11836), sections.get(0).itemIds().subList(3, 6));
 		assertEquals(Arrays.asList(26376, 26378, 26380), sections.get(0).itemIds().subList(12, 15));
 		assertEquals(Integer.valueOf(22477), sections.get(3).itemIds().get(8));
@@ -74,10 +74,13 @@ public class SkillClogLayoutTest
 		{
 			for (int id : section.itemIds()) assertTrue("repeated slot " + id, unique.add(id));
 			assertEquals(1, section.primary().obtainedCount());
-			assertEquals(-1, section.compared().obtainedCount());
+		}
+		for (SkillClogSection section : SkillClogSection.forSkill(Skill.SLAYER, null, player, player))
+		{
+			assertEquals(-1, section.primary().obtainedCount());
 		}
 		assertEquals(new HashSet<>(ids), unique);
-		assertEquals(3, SkillClogSection.combinedProgress(sections, false).obtained());
+		assertEquals(3, SkillClogSection.combinedProgress(sections).obtained());
 		assertEquals(Integer.valueOf(3), sections.get(0).primary().obtainedCounts().get(20724));
 		assertEquals(49, ids.size()); // The source catalog was not mutated.
 		List<TooltipItemHover.HitBox> boxes = paintSections(sections, 100);
@@ -104,9 +107,9 @@ public class SkillClogLayoutTest
 			Arrays.asList(new ClogResult.ClogItem(22477, 2, null))),
 			Map.of("theatre_of_blood", Arrays.asList(22477)), Collections.emptyMap(), null, null);
 		List<SkillClogSection> defence = SkillClogSection.forSkill(Skill.DEFENCE, player, null, null);
-		assertEquals(1, SkillClogSection.combinedProgress(defence, false).obtained());
+		assertEquals(1, SkillClogSection.combinedProgress(defence).obtained());
 		List<SkillClogSection> attack = SkillClogSection.forSkill(Skill.ATTACK, player, null, null);
-		assertEquals(0, SkillClogSection.combinedProgress(attack, false).total());
+		assertEquals(0, SkillClogSection.combinedProgress(attack).total());
 		assertArrayEquals(new int[]{1, 1}, ClogHelper.sumClogTotals(player));
 	}
 

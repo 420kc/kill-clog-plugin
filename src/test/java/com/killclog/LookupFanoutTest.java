@@ -26,18 +26,13 @@ public class LookupFanoutTest
 		assertTrue(fanout.current(second));
 
 		// Cancel abandons an in-flight generation and stales its callbacks.
-		fanout.cancel();
+		fanout.invalidate();
 		assertFalse(fanout.isInFlight());
 		assertFalse(fanout.current(second));
 
-		// Cancel with nothing in flight changes nothing.
+		// Optional legs can outlive settlement and must also be invalidated.
 		int third = fanout.begin();
 		fanout.settle();
-		fanout.cancel();
-		assertTrue(fanout.current(third));
-
-		// Invalidate stales callbacks even when nothing is in flight: the
-		// comparison swap adopts state and must silence late arrivals.
 		fanout.invalidate();
 		assertFalse(fanout.current(third));
 	}

@@ -1,6 +1,8 @@
 package com.killclog;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertSame;
 
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
@@ -80,6 +82,10 @@ public class ClogProviderFanoutTest
 		).get(1, TimeUnit.SECONDS);
 
 		assertEquals("Temple", picked.getPlayerName());
+		assertFalse(hangingRp.isDone());
+		ClogResult late = result("Late RP", 10);
+		hangingRp.complete(late);
+		assertSame(late, hangingRp.join());
 	}
 
 	@Test
@@ -96,6 +102,7 @@ public class ClogProviderFanoutTest
 		).get(1, TimeUnit.SECONDS);
 
 		assertEquals("RuneProfile", picked.getPlayerName());
+		assertFalse(hangingTemple.isDone());
 	}
 
 	@Test

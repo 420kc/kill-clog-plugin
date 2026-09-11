@@ -4,8 +4,7 @@
  * for the second player's hiscore, clog, and CA data, plus the compare-side
  * state. UI dispatch is downstream via {@link Listener}.
  * Reads the primary player's results read-only through {@link LookupSession}
- * getters; the only write path is the swap, which calls
- * {@link LookupSession#adoptState} explicitly.
+ * getters.
  */
 package com.killclog;
 
@@ -55,9 +54,6 @@ public class ComparisonController
 
 		/** Comparison mode just exited. Panel should restore single-player cells. */
 		void onComparisonExit();
-
-		/** Red player swapped in (became the new primary). Panel should re-render the primary side and update the search bar. */
-		void onSwapToRedPlayer(String newPrimaryRsn);
 
 		/** Red-side data arrived. Panel should trigger a cell + summary-bar re-render via the controller's render hooks. */
 		void onCompareDataReady();
@@ -127,10 +123,42 @@ public class ComparisonController
 	// State
 	@Getter
 	private boolean comparisonMode;
-	@Nullable private HiscoreResult compareHiscoreResult;
-	@Nullable private ClogResult compareClogResult;
-	@Nullable private CombatAchievementResult compareCaResult;
-	@Nullable private String compareRsn;
+	private ComparedPlayer compared = ComparedPlayer.EMPTY;
+
+	/** One committed identity; optional CA enrichment replaces this whole value. */
+	private static final class ComparedPlayer
+	{
+		static final ComparedPlayer EMPTY = new ComparedPlayer(-1, null, null, null, null);
+		final int generation;
+		@Nullable final HiscoreResult hiscore;
+		@Nullable final ClogResult clog;
+		@Nullable final CombatAchievementResult ca;
+		@Nullable final String rsn;
+
+		ComparedPlayer(int generation, HiscoreResult hiscore, ClogResult clog,
+			CombatAchievementResult ca, String rsn)
+		{
+			this.generation = generation;
+			this.hiscore = hiscore;
+			this.clog = clog;
+			this.ca = ca;
+			this.rsn = rsn;
+		}
+	}
+
+	/** Mutable optional evidence belongs only to this lookup's captured callbacks. */
+	private static final class PendingLookup
+	{
+		final int generation;
+		final String requestedName;
+		CombatAchievementResult ca;
+
+		PendingLookup(int generation, String requestedName)
+		{
+			this.generation = generation;
+			this.requestedName = requestedName;
+		}
+	}
 
 	/**
 	 * Red-side transport: version stamps, EDT bridging, and timeout policy
@@ -194,15 +222,15 @@ public class ComparisonController
 	/**
 	 * Enter comparison mode: build the per-cell comparison tooltip data and
 	 * fire {@link Listener#onComparisonEnter} for UI dispatch. Caller must
-	 * have populated {@link #compareHiscoreResult} + {@link #compareClogResult}
-	 * + {@link #compareRsn} (the {@link #doCompareLookup} pipeline does this).
+	 * have committed one complete player snapshot first.
 	 */
 	public void enter()
 	{
+		fanout.settle();
 		comparisonMode = true;
 
 		rebuildTooltipData();
-		listener.onComparisonEnter(compareRsn != null ? compareRsn : "");
+		listener.onComparisonEnter(compared.rsn != null ? compared.rsn : "");
 	}
 
 	// Red-side data for the pending Mad Angel cell (pre-enum only; see PanelData).
@@ -210,9 +238,9 @@ public class ComparisonController
 	public void rebuildTooltipData()
 	{
 		compareTooltipDataMap.clear();
-		if (compareHiscoreResult != null)
+		if (compared.hiscore != null)
 		{
-			ClogResult catalog = compareClogResult == null ? unsyncedCatalog.result() : null;
+			ClogResult catalog = compared.clog == null ? unsyncedCatalog.result() : null;
 			for (HiscoreSkill boss : PanelData.BOSSES)
 			{
 				String bossName = boss.getName();
@@ -236,11 +264,11 @@ public class ComparisonController
 		// The red card is an ordinary solo card, so it carries the compared
 		// player's KC the same way the blue one does. No red PB source exists.
 		TooltipData data = tooltipDataBuilder.buildTooltipData(displayName, category, rank,
-			compareHiscoreResult.getKc(hiscoreName), null, compareClogResult);
+			compared.hiscore.getKc(hiscoreName), null, compared.clog);
 		if (data == null)
 		{
 			return tooltipDataBuilder.buildUnsyncedTooltipData(
-				displayName, category, rank, "Kills: ", compareHiscoreResult.getKc(hiscoreName),
+				displayName, category, rank, "Kills: ", compared.hiscore.getKc(hiscoreName),
 				catalog != null ? catalog : unsyncedCatalog.result());
 		}
 		tooltipDataBuilder.preloadItemImages(data);
@@ -253,32 +281,17 @@ public class ComparisonController
 	 */
 	public void exit()
 	{
-		comparisonMode = false;
-		fanout.invalidate();
-		compareHiscoreResult = null;
-		compareClogResult = null;
-		compareCaResult = null;
-		compareRsn = null;
-		compareTooltipDataMap.clear();
+		reset();
 		listener.onComparisonExit();
 	}
 
-	/**
-	 * Swap the red player into the primary slot. Captures the current red
-	 * state, calls {@link #exit()} to tear down comparison, then
-	 * {@link LookupSession#adoptState} to push the captured data into the
-	 * session, then fires {@code onSwapToRedPlayer} so the panel can re-render
-	 * the primary side.
-	 */
-	public void swapToComparePlayer()
+	/** Quiet shutdown: invalidate pending and settled callbacks without UI restoration. */
+	void reset()
 	{
-		HiscoreResult swapHiscore = compareHiscoreResult;
-		ClogResult swapClog = compareClogResult;
-		CombatAchievementResult swapCa = compareCaResult;
-		String swapName = compareRsn;
-		exit();
-		lookupSession.adoptState(swapHiscore, swapClog, swapCa, swapName);
-		listener.onSwapToRedPlayer(swapName);
+		comparisonMode = false;
+		fanout.invalidate();
+		compared = ComparedPlayer.EMPTY;
+		compareTooltipDataMap.clear();
 	}
 
 	/**
@@ -301,8 +314,8 @@ public class ComparisonController
 			return;
 		}
 
-		compareCaResult = null;
 		final int thisLookup = fanout.begin();
+		final PendingLookup pending = new PendingLookup(thisLookup, redPlayer);
 		String blueName = renderTarget != null ? renderTarget.playerName().getText().trim() : "";
 		boolean blueIsSelf = localRsn != null && localRsn.equalsIgnoreCase(blueName);
 		boolean redIsSelf = localRsn != null && localRsn.equalsIgnoreCase(redPlayer);
@@ -318,16 +331,8 @@ public class ComparisonController
 			{
 				setCompareStatus(SearchMessages.COMPARE_MIRROR, COMPARE_DIM, blueName, redPlayer);
 			}
-			fanout.settle();
-			compareHiscoreResult = lookupSession.getNativeHiscoreResult();
-			compareClogResult = lookupSession.getClogResult();
-			compareCaResult = lookupSession.getCaResult();
-			if (renderTarget != null)
-			{
-				renderTarget.preloadCaReward(compareCaResult);
-			}
-			compareRsn = blueName;
-			enter();
+			publish(new ComparedPlayer(thisLookup, lookupSession.getNativeHiscoreResult(),
+				lookupSession.getClogResult(), lookupSession.getCaResult(), blueName));
 			return;
 		}
 
@@ -347,53 +352,53 @@ public class ComparisonController
 		// CA lookup runs in parallel with hiscore+clog
 		fanout.fetchCa(redPlayer, thisLookup, ca ->
 		{
-			compareCaResult = ca;
-			if (renderTarget != null)
+			pending.ca = ca;
+			if (compared.generation == thisLookup)
 			{
-				renderTarget.preloadCaReward(ca);
-			}
-			if (comparisonMode && listener != null)
-			{
+				compared = new ComparedPlayer(thisLookup, compared.hiscore, compared.clog, ca, compared.rsn);
+				if (renderTarget != null) renderTarget.preloadCaReward(ca);
 				listener.onCompareDataReady();
 			}
 		});
 
 		fanout.fetchHiscore(redPlayer, null, thisLookup, result ->
 		{
-			fanout.settle();
-
 			if (result == null)
 			{
+				fanout.invalidate();
 				setCompareStatus(SearchMessages.COMPARE_NOT_FOUND, COMPARE_RED, redPlayer, redPlayer);
 				listener.onCompareError(redPlayer, null);
 				return;
 			}
 
-			compareHiscoreResult = result;
-
 			// Clog fires only after the red player proved real: comparison
 			// entry needs the hiscore side regardless, so the sequencing
 			// costs nothing and spares provider calls on typos.
-			fanout.fetchClog(redPlayer, redIsSelf, thisLookup, clogRes ->
-			{
-				compareClogResult = clogRes;
-				if (clogRes != null && renderTarget != null)
-				{
-					renderTarget.preloadClogItemNames(clogRes);
-				}
-				compareRsn = clogRes != null && clogRes.getPlayerName() != null
-					? clogRes.getPlayerName() : redPlayer;
-				enter();
-			}, () ->
-			{
-				compareRsn = redPlayer;
-				enter();
-			});
+			fanout.fetchClog(redPlayer, redIsSelf, thisLookup,
+				clogRes -> commit(pending, result, clogRes),
+				() -> commit(pending, result, null));
 		}, ex ->
 		{
-			fanout.settle();
+			fanout.invalidate();
 			listener.onCompareError(redPlayer, ex);
 		});
+	}
+
+	private void commit(PendingLookup pending, HiscoreResult hiscore, @Nullable ClogResult clog)
+	{
+		String name = clog != null && clog.getPlayerName() != null ? clog.getPlayerName() : pending.requestedName;
+		publish(new ComparedPlayer(pending.generation, hiscore, clog, pending.ca, name));
+	}
+
+	private void publish(ComparedPlayer player)
+	{
+		compared = player;
+		if (renderTarget != null)
+		{
+			if (player.clog != null) renderTarget.preloadClogItemNames(player.clog);
+			renderTarget.preloadCaReward(player.ca);
+		}
+		enter();
 	}
 
 	private void setCompareStatus(String[] pool, Color color, String singleArg, String secondArg)
@@ -415,30 +420,30 @@ public class ComparisonController
 	@Nullable
 	public HiscoreResult getCompareHiscoreResult()
 	{
-		return lookupSession.rankView(compareHiscoreResult);
+		return lookupSession.rankView(compared.hiscore);
 	}
 
 	HiscoreResult getNativeCompareHiscoreResult()
 	{
-		return compareHiscoreResult;
+		return compared.hiscore;
 	}
 
 	@Nullable
 	public ClogResult getCompareClogResult()
 	{
-		return compareClogResult;
+		return compared.clog;
 	}
 
 	@Nullable
 	public CombatAchievementResult getCompareCaResult()
 	{
-		return compareCaResult;
+		return compared.ca;
 	}
 
 	@Nullable
 	public String getCompareRsn()
 	{
-		return compareRsn;
+		return compared.rsn;
 	}
 
 	public boolean isCompareLookupInFlight()
@@ -474,7 +479,7 @@ public class ComparisonController
 		{
 			blueName = "Blue";
 		}
-		String redName = compareRsn != null ? compareRsn : "Red";
+		String redName = compared.rsn != null ? compared.rsn : "Red";
 		SideBySideTooltip tip = new SideBySideTooltip(blueName, blueTip, redName, redTip);
 		if (renderTarget != null)
 		{
@@ -488,16 +493,16 @@ public class ComparisonController
 	@Nullable
 	public TooltipData buildClueRare(String name, String clogCategory)
 	{
-		TooltipData data = compareClogResult != null
-			? tooltipDataBuilder.buildClueRareData(name, clogCategory, compareClogResult) : null;
+		TooltipData data = compared.clog != null
+			? tooltipDataBuilder.buildClueRareData(name, clogCategory, compared.clog) : null;
 		return data != null ? data : unsyncedClueRare(name, clogCategory);
 	}
 
 	@Nullable
 	public TooltipData buildCustomRare(String name, int[] itemIds)
 	{
-		TooltipData data = compareClogResult != null
-			? tooltipDataBuilder.buildCustomRareData(name, itemIds, compareClogResult) : null;
+		TooltipData data = compared.clog != null
+			? tooltipDataBuilder.buildCustomRareData(name, itemIds, compared.clog) : null;
 		return data != null ? data
 			: tooltipDataBuilder.buildUnsyncedItemData(name, itemIds, unsyncedCatalog.result());
 	}
@@ -657,7 +662,7 @@ public class ComparisonController
 		{
 			playerName.setForeground(COMPARE_BLUE);
 			tooltipController.setTooltipText(playerName, " ");
-			clogInfoLabel.setText(compareRsn != null ? compareRsn : "");
+			clogInfoLabel.setText(compared.rsn != null ? compared.rsn : "");
 			clogInfoLabel.setForeground(COMPARE_RED);
 			tooltipController.setTooltipText(clogInfoLabel, " ");
 			clogInfoLabel.setIcon(null);
@@ -678,18 +683,18 @@ public class ComparisonController
 	@Nullable
 	private AccountDisplay compareAccountDisplay()
 	{
-		AccountType type = LookupQueries.accountType(compareHiscoreResult, compareClogResult);
-		if (compareRsn == null)
+		AccountType type = LookupQueries.accountType(compared.hiscore, compared.clog);
+		if (compared.rsn == null)
 		{
 			return AccountDisplay.of(type,
-				compareHiscoreResult != null ? compareHiscoreResult.getHiscoreTable()
+				compared.hiscore != null ? compared.hiscore.getHiscoreTable()
 					: HiscoreTable.STANDARD);
 		}
-		AccountType providerType = runeProfileService.getCachedAccountType(compareRsn);
+		AccountType providerType = runeProfileService.getCachedAccountType(compared.rsn);
 		return AccountDisplay.of(
 			AccountType.displayType(type,
 				providerType != null && providerType.isGroupIronman() ? providerType : null),
-			compareHiscoreResult != null ? compareHiscoreResult.getHiscoreTable()
+			compared.hiscore != null ? compared.hiscore.getHiscoreTable()
 				: HiscoreTable.STANDARD);
 	}
 
@@ -776,17 +781,17 @@ public class ComparisonController
 		{
 			return null;
 		}
-		int rank = compareHiscoreResult != null
+		int rank = compared.hiscore != null
 			? getCompareHiscoreResult().getActivityRank(tier.getName()) : -1;
-		TooltipData data = compareClogResult != null
+		TooltipData data = compared.clog != null
 			? tooltipDataBuilder.buildTooltipData(Cells.capitalizeTier(tier),
-				category, rank, compareClogResult) : null;
+				category, rank, compared.clog) : null;
 		if (data != null)
 		{
 			return data;
 		}
-		int score = compareHiscoreResult != null
-			? compareHiscoreResult.getActivityScore(tier.getName()) : -1;
+		int score = compared.hiscore != null
+			? compared.hiscore.getActivityScore(tier.getName()) : -1;
 		return tooltipDataBuilder.buildUnsyncedTooltipData(
 			Cells.capitalizeTier(tier), category, rank, "Score: ", score, unsyncedCatalog.result());
 	}

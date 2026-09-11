@@ -301,11 +301,6 @@ final class AdvLogPbs
 	 */
 	Map<String, Double> variantSecondsAcrossProfiles(List<String> profileKeys, String panelBossName)
 	{
-		if (profileKeys.isEmpty())
-		{
-			return PersonalBests.variantSeconds(key -> configManager.getRSProfileConfiguration(
-				CONFIG_GROUP, KEY_PREFIX + key, double.class), panelBossName);
-		}
 		return PersonalBests.variantSeconds(key ->
 		{
 			Double best = null;

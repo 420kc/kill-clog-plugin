@@ -244,15 +244,7 @@ public class RuneProfileService
 			return CompletableFuture.completedFuture(cached);
 		}
 
-		return singleFlightLookup(summaryInFlight, key, () -> startSummaryLookup(playerName, key));
-	}
-
-	static <T> CompletableFuture<T> singleFlightLookup(Map<String, CompletableFuture<T>> flights,
-		String key, java.util.function.Supplier<CompletableFuture<T>> start)
-	{
-		CompletableFuture<T> flight = flights.computeIfAbsent(key, ignored -> start.get());
-		// Even an immediate response must be registered before cleanup runs.
-		return flight.whenComplete((result, error) -> flights.remove(key, flight));
+		return HttpUtil.singleFlightLookup(summaryInFlight, key, () -> startSummaryLookup(playerName, key));
 	}
 
 	private CompletableFuture<RuneProfileSummary> startSummaryLookup(String playerName, String key)
@@ -436,7 +428,7 @@ public class RuneProfileService
 			return CompletableFuture.completedFuture(cached);
 		}
 
-		return singleFlightLookup(clogInFlight, key, () -> startClogLookup(playerName, key));
+		return HttpUtil.singleFlightLookup(clogInFlight, key, () -> startClogLookup(playerName, key));
 	}
 
 	private CompletableFuture<ClogResult> startClogLookup(String playerName, String key)

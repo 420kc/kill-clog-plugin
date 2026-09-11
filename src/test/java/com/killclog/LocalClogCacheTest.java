@@ -13,6 +13,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import org.junit.Rule;
 import org.junit.Test;
@@ -23,6 +24,77 @@ public class LocalClogCacheTest
 {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
+	@Test
+	public void testLegacySetupEligibilityDoesNotChangeAfterOneLiveUnlock() throws Exception
+	{
+		for (int legacyKind = 0; legacyKind < 3; legacyKind++)
+		{
+			File directory = temporaryFolder.newFolder();
+			PlayerClogData data = new PlayerClogData();
+			data.playerName = "Tester";
+			data.categories = categoryItems("zulrah", 1, 2);
+			data.obtained = obtainedItems("zulrah", 1);
+			data.firstPartyByCategory = legacyKind == 0 ? new HashMap<>()
+				: legacyKind == 1 ? null : Map.of("zulrah", List.of(1));
+			Files.writeString(new File(directory, "tester.json").toPath(), new Gson().toJson(data));
+			LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), directory);
+			assertTrue(cache.hasDataFor("Tester"));
+			assertEquals(legacyKind != 0, cache.hasCompletedFirstPartySetupFor("Tester"));
+			assertTrue(cache.mergeObtainedItem("Tester", 2, List.of("zulrah"), data.categories));
+			assertEquals(legacyKind != 0, cache.hasCompletedFirstPartySetupFor("Tester"));
+			ClogResult payload = cache.toFirstPartySyncResult("Tester");
+			assertEquals(legacyKind == 0 ? 1 : 2, payload.getObtainedItems().get("zulrah").size());
+			LocalClogCache reloaded = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), directory);
+			assertEquals(legacyKind != 0, reloaded.hasCompletedFirstPartySetupFor("Tester"));
+			reloaded.cacheFirstPartyResult(clog("Tester", data.categories, obtainedItems("zulrah", 1, 2)));
+			assertTrue(reloaded.hasCompletedFirstPartySetupFor("Tester"));
+		}
+	}
+
+	@Test
+	public void shutdownFlushAndNewSessionShareTheExistingWriterQueue() throws Exception
+	{
+		File directory = temporaryFolder.newFolder();
+		ScheduledThreadPoolExecutor writer = new ScheduledThreadPoolExecutor(1);
+		CountDownLatch entered = new CountDownLatch(1);
+		CountDownLatch release = new CountDownLatch(1);
+		try
+		{
+			writer.execute(() ->
+			{
+				entered.countDown();
+				try
+				{
+					assertTrue(release.await(3, TimeUnit.SECONDS));
+				}
+				catch (InterruptedException e)
+				{
+					Thread.currentThread().interrupt();
+					throw new AssertionError(e);
+				}
+			});
+			assertTrue(entered.await(3, TimeUnit.SECONDS));
+			LocalClogCache cache = new LocalClogCache(new Gson(), writer, directory);
+			cache.cacheResult(clog("Tester", categoryItems("magus", 1, 2), obtainedItems("magus", 1)));
+			cache.shutdown();
+			assertFalse(writer.isShutdown());
+			cache.cacheResult(clog("Tester", categoryItems("magus", 1, 2), obtainedItems("magus", 1, 2)));
+			cache.shutdown();
+			assertFalse(new File(directory, "tester.json").exists());
+			release.countDown();
+			writer.submit(() -> null).get(3, TimeUnit.SECONDS);
+			LocalClogCache reloaded = new LocalClogCache(new Gson(), new NoopScheduledExecutorService(), directory);
+			assertTrue(reloaded.hasDataFor("Tester"));
+			assertEquals(2, reloaded.toClogResult("Tester", Collections.emptyMap()).getObtainedItems().get("magus").size());
+		}
+		finally
+		{
+			release.countDown();
+			writer.shutdownNow();
+			assertTrue(writer.awaitTermination(3, TimeUnit.SECONDS));
+		}
+	}
 
 	@Test
 	public void testProviderAccountTypeSurvivesCachedRender() throws Exception

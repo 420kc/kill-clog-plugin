@@ -1,6 +1,7 @@
 package com.killclog;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonIOException;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.File;
@@ -13,8 +14,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -40,8 +43,9 @@ public class LocalCaCache
 
 	private final Map<String, CaData> players = new ConcurrentHashMap<>();
 	private final Gson gson;
+	private final File cacheDir;
 	private volatile String activePlayer;
-	private volatile ExecutorService diskWriter = newDiskWriter();
+	private final ExecutorService diskWriter;
 
 	// Plugin-owned live catalog, set at startup like the panel's ClogIndex.
 	@Nullable private volatile CaCatalog caCatalog;
@@ -49,7 +53,14 @@ public class LocalCaCache
 	@Inject
 	public LocalCaCache(Gson gson)
 	{
+		this(gson, newDiskWriter(), CACHE_DIR);
+	}
+
+	LocalCaCache(Gson gson, ExecutorService diskWriter, File cacheDir)
+	{
 		this.gson = gson;
+		this.diskWriter = diskWriter;
+		this.cacheDir = cacheDir;
 	}
 
 	public void setCaCatalog(@Nullable CaCatalog caCatalog)
@@ -59,7 +70,10 @@ public class LocalCaCache
 
 	private static ExecutorService newDiskWriter()
 	{
-		return Executors.newSingleThreadExecutor(r ->
+		// One queue across enable/disable cycles. The daemon exits when idle,
+		// so a disabled singleton does not retain a worker thread.
+		return new ThreadPoolExecutor(0, 1, 30, TimeUnit.SECONDS,
+			new LinkedBlockingQueue<>(), r ->
 		{
 			Thread t = new Thread(r, "kill-clog-ca-disk");
 			t.setDaemon(true);
@@ -67,12 +81,11 @@ public class LocalCaCache
 		});
 	}
 
-	/** Replace the disk writer before shutdown so the next startUp() has a live executor. */
+	/** Accepted writes drain in order, including across an immediate re-enable. */
 	public void shutdown()
 	{
-		ExecutorService old = diskWriter;
-		diskWriter = newDiskWriter();
-		old.shutdownNow();
+		activePlayer = null;
+		caCatalog = null;
 	}
 
 	public void setActivePlayer(String name)
@@ -120,7 +133,7 @@ public class LocalCaCache
 	}
 
 	/** Store per-tier completed counts for a player (sourced from game varbits) and persist. */
-	public void cacheResult(String name, Map<CombatAchievementTier, Integer> completed)
+	public synchronized void cacheResult(String name, Map<CombatAchievementTier, Integer> completed)
 	{
 		if (name == null || completed == null)
 		{
@@ -133,7 +146,7 @@ public class LocalCaCache
 			completedByTier.put(entry.getKey().name(), entry.getValue());
 		}
 		CaData existing = players.get(key);
-		if (existing != null && completedByTier.equals(existing.completed))
+		if (existing != null && !existing.saveFailed && completedByTier.equals(existing.completed))
 		{
 			return;
 		}
@@ -151,6 +164,7 @@ public class LocalCaCache
 		}
 		catch (RejectedExecutionException ignored)
 		{
+			data.saveFailed = true;
 			log.debug("CA disk write rejected (executor shutting down)");
 		}
 	}
@@ -203,21 +217,41 @@ public class LocalCaCache
 
 	private void saveToDisk(String playerName, CaData data)
 	{
+		File tmp = null;
 		try
 		{
-			if (!CACHE_DIR.exists())
+			if (!cacheDir.exists())
 			{
-				CACHE_DIR.mkdirs();
+				cacheDir.mkdirs();
 			}
 			File file = getCacheFile(playerName);
-			try (BufferedWriter writer = Files.newBufferedWriter(file.toPath(), StandardCharsets.UTF_8))
+			// Separate clients may save the same player concurrently. Each write
+			// must finish its own bytes before replacing the shared final file.
+			tmp = Files.createTempFile(cacheDir.toPath(), file.getName() + ".", ".tmp").toFile();
+			try (BufferedWriter writer = Files.newBufferedWriter(tmp.toPath(), StandardCharsets.UTF_8))
 			{
 				gson.toJson(data, writer);
 			}
+			LocalClogCache.atomicMove(tmp, file);
 		}
-		catch (IOException e)
+		catch (IOException | JsonIOException e)
 		{
+			data.saveFailed = true;
 			log.warn("Failed to save CA cache for '{}': {}", playerName, e.getMessage());
+		}
+		finally
+		{
+			if (tmp != null)
+			{
+				try
+				{
+					Files.deleteIfExists(tmp.toPath());
+				}
+				catch (IOException e)
+				{
+					log.debug("Could not remove CA temporary file: {}", e.getMessage());
+				}
+			}
 		}
 	}
 
@@ -248,11 +282,12 @@ public class LocalCaCache
 		String sanitized = playerName.toLowerCase()
 			.replace(' ', '_')
 			.replaceAll("[^a-z0-9_-]", "");
-		return new File(CACHE_DIR, sanitized + ".json");
+		return new File(cacheDir, sanitized + ".json");
 	}
 
-	private static class CaData
+	static class CaData
 	{
+		transient volatile boolean saveFailed;
 		String playerName;
 		String lastUpdated;
 		Map<String, Integer> completed;

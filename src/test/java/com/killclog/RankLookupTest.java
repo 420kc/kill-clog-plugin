@@ -30,7 +30,7 @@ public class RankLookupTest
 	}
 
 	@Test
-	public void unifiedLookupRetainsAllFourTablesWithoutAnotherRequest() throws Exception
+	public void knownTypeRetainsNeededTablesAndOtherRankSelectionsFetchLazily() throws Exception
 	{
 		AtomicInteger calls = new AtomicInteger();
 		OkHttpClient client = new OkHttpClient.Builder().addInterceptor(chain ->
@@ -44,7 +44,7 @@ public class RankLookupTest
 		HiscoreResult original = service.lookup("Test Player", AccountType.IRONMAN).get(3, TimeUnit.SECONDS);
 		assertEquals(AccountType.IRONMAN, original.getAccountType());
 		assertEquals(3, original.getOverallRank());
-		assertEquals(4, calls.get());
+		assertEquals(2, calls.get());
 		assertEquals(4, service.lookupRanks("test player", RankLeaderboard.NORMAL).get().getOverallRank());
 		assertEquals(3, service.lookupRanks("TEST PLAYER", RankLeaderboard.IRONMAN).get().getOverallRank());
 		assertEquals(2, service.lookupRanks("Test Player", RankLeaderboard.HARDCORE).get().getOverallRank());
@@ -78,16 +78,20 @@ public class RankLookupTest
 		}).build();
 		HiscoreService service = new HiscoreService(client, new Gson());
 		CompletableFuture<HiscoreResult> first = service.lookupRanks("Test Player", RankLeaderboard.PURE);
+		CompletableFuture<HiscoreResult> second;
 		try
 		{
 			assertTrue(entered.await(3, TimeUnit.SECONDS));
-			assertSame(first, service.lookupRanks("TEST PLAYER", RankLeaderboard.PURE));
+			second = service.lookupRanks("TEST PLAYER", RankLeaderboard.PURE);
+			assertNotSame(first, second);
+			first.complete(null);
 		}
 		finally
 		{
 			release.countDown();
 		}
-		assertEquals(50, first.get(3, TimeUnit.SECONDS).getOverallRank());
+		assertNull(first.get());
+		assertEquals(50, second.get(3, TimeUnit.SECONDS).getOverallRank());
 		assertEquals(50, service.lookupRanks("Test Player", RankLeaderboard.PURE).get().getOverallRank());
 		assertEquals(1, calls.get());
 		assertNull(service.getCached("Test Player"));
@@ -100,13 +104,12 @@ public class RankLookupTest
 		OkHttpClient client = new OkHttpClient.Builder().addInterceptor(chain ->
 		{
 			int call = calls.incrementAndGet();
-			return response(chain, call <= 2 ? 404 : 200, call == 3 ? "{broken" : body(99));
+			return response(chain, call == 1 ? 404 : 200, call == 2 ? "{broken" : body(99));
 		}).build();
 		HiscoreService service = new HiscoreService(client, new Gson());
 		assertNull(service.lookupRanks("Test", RankLeaderboard.SKILLER).get(3, TimeUnit.SECONDS));
-		assertEquals(2, calls.get()); // Existing JSON -> CSV fallback, neither successful.
-		assertNull(service.lookupRanks("Test", RankLeaderboard.SKILLER).get(3, TimeUnit.SECONDS));
+		assertEquals(1, calls.get());
 		assertEquals(99, service.lookupRanks("Test", RankLeaderboard.SKILLER).get(3, TimeUnit.SECONDS).getOverallRank());
-		assertEquals(4, calls.get());
+		assertEquals(3, calls.get());
 	}
 }

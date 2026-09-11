@@ -6,7 +6,6 @@ import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.lang.reflect.Field;
 import java.util.concurrent.CompletableFuture;
 import javax.imageio.ImageIO;
 import javax.swing.JButton;
@@ -109,12 +108,17 @@ public class RankSelectorLayoutTest
 		HiscoreResult nativeBlue = RankSelectorTest.result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000);
 		HiscoreResult nativeRed = RankSelectorTest.result(AccountType.HARDCORE_IRONMAN, HiscoreTable.STANDARD, 20, 10000);
 		HiscoreResult chosenRanks = RankSelectorTest.result(AccountType.REGULAR, HiscoreTable.STANDARD, 100, 10000);
-		LookupSession session = new LookupSession(null, null, null, null, null, null, null);
-		session.adoptState(nativeBlue, null, null, "Blue");
-		ComparisonController comparison = new ComparisonController(null, null, null, null, session, null, null, null, null);
-		Field redField = ComparisonController.class.getDeclaredField("compareHiscoreResult");
-		redField.setAccessible(true);
-		redField.set(comparison, nativeRed);
+		LookupTestFixture fixture = new LookupTestFixture();
+		LookupSession session = fixture.primary;
+		ComparisonController comparison = fixture.comparison;
+		LookupTestFixture.edt(() ->
+		{
+			session.adoptState(nativeBlue, null, null, "Blue");
+			comparison.doCompareLookup("Red", "Blue");
+		});
+		fixture.hiscores.get("Red").complete(nativeRed);
+		LookupTestFixture.edt(() -> fixture.clogs.get("Red").complete(null));
+		LookupTestFixture.edt(RankSelectorLayoutTest::noop);
 		session.setRankView(result -> result.withRanks(chosenRanks));
 		assertEquals(100, session.getHiscoreResult().getOverallRank());
 		assertEquals(100, comparison.getCompareHiscoreResult().getOverallRank());

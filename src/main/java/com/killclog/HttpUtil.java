@@ -1,7 +1,9 @@
 package com.killclog;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Call;
@@ -26,6 +28,16 @@ final class HttpUtil
 	// JSON parser gets a chance to reject it. No legitimate provider payload
 	// approaches this.
 	static final long MAX_BODY_BYTES = 8L * 1024 * 1024;
+
+	/** Services own registration and cleanup; subscribers receive independent futures. */
+	static <T> CompletableFuture<T> singleFlightLookup(Map<String, CompletableFuture<T>> flights,
+		String key, Supplier<CompletableFuture<T>> start)
+	{
+		CompletableFuture<T> flight = flights.computeIfAbsent(key, ignored -> start.get());
+		// Even an immediate response must be registered before cleanup runs.
+		flight.whenComplete((result, error) -> flights.remove(key, flight));
+		return flight.copy();
+	}
 
 	/** HTTP status code (-1 on transport failure) plus the body of a successful response. */
 	static final class HttpResult
