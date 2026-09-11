@@ -292,6 +292,10 @@ public class ClogSummaryTooltip extends TitleTooltip
 		{
 			FontMetrics bfm = getFontMetrics(FontManager.getRunescapeBoldFont());
 			contentHeight += separatorHeight(SEPARATOR_PAD) + SUBHEADER_HEIGHT + RECENT_SIZE + hoverRowHeight(fm);
+			if (recentCount > 0 || !clogSources.isEmpty())
+			{
+				contentHeight += ITEM_SECTION_GAP;
+			}
 
 			int rowWidth = specialCount * RECENT_SIZE + (specialCount - 1) * RECENT_PAD;
 			textWidth = Math.max(textWidth, rowWidth);
@@ -304,6 +308,10 @@ public class ClogSummaryTooltip extends TitleTooltip
 			FontMetrics bfm = getFontMetrics(FontManager.getRunescapeBoldFont());
 			int separatorHeight = separatorHeight(SEPARATOR_PAD);
 			contentHeight += separatorHeight + SUBHEADER_HEIGHT + RECENT_SIZE + hoverRowHeight(fm);
+			if (!clogSources.isEmpty())
+			{
+				contentHeight += ITEM_SECTION_GAP;
+			}
 			if (hasRecentDates())
 			{
 				contentHeight += DATE_GAP + fm.getHeight();
@@ -402,6 +410,10 @@ public class ClogSummaryTooltip extends TitleTooltip
 			paintItemRow(g2, hitBoxes, 0, inset, y, w - 2 * inset,
 				specialSprites, specialIds, specialNames, null, RECENT_SIZE, fm);
 			y += RECENT_SIZE;
+			if (recentCount > 0 || !clogSources.isEmpty())
+			{
+				y += ITEM_SECTION_GAP;
+			}
 		}
 
 		// Recent items section
@@ -416,6 +428,10 @@ public class ClogSummaryTooltip extends TitleTooltip
 			if (hasRecentDates())
 			{
 				y += DATE_GAP + fm.getHeight();
+			}
+			if (!clogSources.isEmpty())
+			{
+				y += ITEM_SECTION_GAP;
 			}
 		}
 

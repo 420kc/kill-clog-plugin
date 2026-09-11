@@ -197,7 +197,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 		// Slayer section.
 		int slayerHeight = SUBHEADER_HEIGHT + LINE_HEIGHT * slayerRowCount()
-			+ WEAPON_PAD + WEAPON_SIZE + hoverRowHeight(fm);
+			+ WEAPON_PAD + WEAPON_SIZE + hoverRowHeight(fm) + ITEM_SECTION_GAP;
 
 		// Raids section.
 		int raidsHeight = SUBHEADER_HEIGHT + LINE_HEIGHT * 3
@@ -347,7 +347,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 			superiorSprites, superiorCounts, WEAPON_SIZE, WEAPON_PAD);
 		addRowHitBoxes(hitBoxes, 0, inset, y, w - 2 * inset,
 			PanelData.SUPERIOR_ITEMS, PanelData.SUPERIOR_ITEM_NAMES, superiorCounts);
-		y += WEAPON_SIZE;
+		y += WEAPON_SIZE + ITEM_SECTION_GAP;
 
 		// Separator: Slayer to raids.
 		y = paintSeparator(g2, w, y, SEPARATOR_PAD);

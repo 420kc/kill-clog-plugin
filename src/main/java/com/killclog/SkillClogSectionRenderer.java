@@ -148,6 +148,7 @@ final class SkillClogSectionRenderer
 			height += gridHeight(entry.section.itemIds().size(), cols);
 		}
 		height += TitleTooltip.hoverRowHeight(detailMetrics) * entries.size();
+		height += TitleTooltip.ITEM_SECTION_GAP * Math.max(0, entries.size() - 1);
 		return height;
 	}
 
@@ -188,6 +189,10 @@ final class SkillClogSectionRenderer
 			y += TitleTooltip.hoverRowHeight(detailMetrics);
 			y = paintGrid(g2, entry, section.primary(), i, inset, availableWidth,
 				y, cols, hitBoxes);
+			if (i + 1 < entries.size())
+			{
+				y += TitleTooltip.ITEM_SECTION_GAP;
+			}
 		}
 		return y;
 	}

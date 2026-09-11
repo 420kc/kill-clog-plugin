@@ -4,6 +4,7 @@ Local visual-smoke candidate based on accepted 2.3.3 at `96dee242`.
 
 - Keep every modal title stable, including Player and Skill Summary.
 - Reserve item hover labels between each section's heading/progress and sprite rows, with a 2px downward text offset.
+- Leave 4px of extra space after item groups before the next section.
 - Reuse section spacing; dense cards widen within the existing width limits to keep their height bounded.
 - Refresh changed hover names and clear old hover state when summary/skill data changes.
 - Match observed item variants to unambiguous Collection Log slots in views and future captures.
