@@ -40,6 +40,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private static final String TEMPLE_SOURCE = "TempleOSRS";
 	private static final String RUNEPROFILE_SOURCE = "RuneProfile";
 	private static final String KILLCLOG_SOURCE = "Kill Clog";
+	private static final String LOCAL_SOURCE = "Local Collection Log";
 	private static final String SETUP_OPEN_LINE = "1. Open your Collection Log.";
 	private static final String SETUP_SEARCH_LINE = "2. Wait for setup to finish.";
 	private static final String SETUP_CHAT_LINE = "Chat will confirm when setup is complete.";
@@ -94,17 +95,23 @@ public class ClogSummaryTooltip extends TitleTooltip
 	void setClogSources(ClogResult result)
 	{
 		setClogSources(result.isFromTemple(), result.isFromRuneProfile(),
-			result.isFromKillclog() || result.isFromLocal());
+			result.isFromKillclog(), result.isFromLocal());
 	}
 
 	/** Record contributing sources, including Kill Clog's local game capture. */
 	public void setClogSources(boolean temple, boolean runeProfile, boolean killclog)
 	{
+		setClogSources(temple, runeProfile, killclog, false);
+	}
+
+	private void setClogSources(boolean temple, boolean runeProfile, boolean killclog, boolean local)
+	{
 		clogSources.clear();
-		if (killclog)
+		if (killclog || local)
 		{
 			clogSources.add(new ClogSource(
-				KILLCLOG_SOURCE, KillClogIcons.killClogSourceIcon(SOURCE_ICON_SIZE)));
+				local ? LOCAL_SOURCE : KILLCLOG_SOURCE,
+				KillClogIcons.killClogSourceIcon(SOURCE_ICON_SIZE)));
 		}
 		if (temple)
 		{

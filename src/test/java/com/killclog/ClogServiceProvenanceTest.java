@@ -73,7 +73,7 @@ public class ClogServiceProvenanceTest
 			assertEquals("provider-only item is not imported", 1, items.size());
 			assertEquals(1, items.get(0).getId());
 			assertEquals("local quantity remains authoritative", 1, items.get(0).getCount());
-			assertSelfSources(result, Arrays.asList("Kill Clog", "TempleOSRS"));
+			assertSelfSources(result, Arrays.asList("Local Collection Log", "TempleOSRS"));
 		}
 	}
 
@@ -104,7 +104,7 @@ public class ClogServiceProvenanceTest
 		assertFalse(result.isFromRuneProfile());
 		assertFalse(result.isFromKillclog());
 		assertTrue(result.isFromLocal());
-		assertSelfSources(result, Collections.singletonList("Kill Clog"));
+		assertSelfSources(result, Collections.singletonList("Local Collection Log"));
 	}
 
 	private static void assertSelfSources(ClogResult local, List<String> expected)
