@@ -111,6 +111,7 @@ public class KillClogPanel extends PluginPanel
 	private final CaRewardSprites caRewardSprites;
 	private final TooltipItemNameResolver itemNameResolver;
 	private final PanelIconCache iconCache;
+	private ClogIndex clogIndex;
 	private final PanelAccountTypes accountTypes;
 	private final ActivitySummaryTooltips activityTooltips;
 	private final SkillCellGrid skillCellGrid;
@@ -1797,8 +1798,11 @@ public class KillClogPanel extends PluginPanel
 
 	public void setClogIndex(ClogIndex clogIndex)
 	{
+		this.clogIndex = clogIndex;
 		cells.setClogIndex(clogIndex);
 		comparison.setClogIndex(clogIndex);
+		skillCellGrid.setClogIndex(clogIndex);
+		tooltipDataBuilder.setClogIndex(clogIndex);
 	}
 
 	public void setPluginManager(PluginManager pluginManager)
@@ -2025,7 +2029,9 @@ public class KillClogPanel extends PluginPanel
 		tip.setWikiLinksEnabled(config.wikiItemLinks());
 		if (clog != null)
 		{
-			int[] totals = ClogHelper.sumClogTotals(clog);
+			int[] totals = clogIndex != null
+				? ClogHelper.sumClogTotals(clog, clogIndex::canonicalItemId)
+				: ClogHelper.sumClogTotals(clog);
 			tip.setTierData(totals[0], totals[1], iconCache.clogTierImages());
 			tip.setClogSources(clog.isFromTemple(), clog.isFromRuneProfile(), clog.isFromKillclog());
 			if (hiscore != null && hiscore.isRankDataAvailable())
@@ -2060,7 +2066,9 @@ public class KillClogPanel extends PluginPanel
 				if (catalog != null)
 				{
 					tip.setTitle("Clog Summary");
-					tip.setObtainedPlaceholder(ClogHelper.sumClogTotals(catalog)[1]);
+					tip.setObtainedPlaceholder(clogIndex != null
+						? ClogHelper.sumClogTotals(catalog, clogIndex::canonicalItemId)[1]
+						: ClogHelper.sumClogTotals(catalog)[1]);
 				}
 				else
 				{

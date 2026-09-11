@@ -49,6 +49,13 @@ final class SkillClogSection
 		@Nullable ClogResult primary, @Nullable ClogResult compared,
 		@Nullable ClogResult catalog)
 	{
+		return forSkill(skill, primary, compared, catalog, null);
+	}
+
+	static List<SkillClogSection> forSkill(Skill skill,
+		@Nullable ClogResult primary, @Nullable ClogResult compared,
+		@Nullable ClogResult catalog, @Nullable ClogIndex clogIndex)
+	{
 		List<Spec> specs = SPECS.get(skill);
 		if (specs == null)
 		{
@@ -58,7 +65,8 @@ final class SkillClogSection
 		List<SkillClogSection> sections = new ArrayList<>();
 		for (Spec spec : specs)
 		{
-			SkillClogSection section = fromSpec(spec, primary, compared, catalog);
+			SkillClogSection section = fromSpec(spec, primary, compared, catalog,
+				clogIndex);
 			if (section != null)
 			{
 				sections.add(section);
@@ -70,18 +78,22 @@ final class SkillClogSection
 	@Nullable
 	private static SkillClogSection fromSpec(Spec spec,
 		@Nullable ClogResult primary, @Nullable ClogResult compared,
-		@Nullable ClogResult catalog)
+		@Nullable ClogResult catalog,
+		@Nullable ClogIndex clogIndex)
 	{
 		LinkedHashSet<Integer> distinctIds = new LinkedHashSet<>();
 		if (spec.category != null)
 		{
-			addCategoryItems(distinctIds, catalog, spec.category);
-			addCategoryItems(distinctIds, primary, spec.category);
-			addCategoryItems(distinctIds, compared, spec.category);
+			addCategoryItems(distinctIds, catalog, spec.category, clogIndex);
+			addCategoryItems(distinctIds, primary, spec.category, clogIndex);
+			addCategoryItems(distinctIds, compared, spec.category, clogIndex);
 		}
 		else
 		{
-			distinctIds.addAll(spec.itemIds);
+			for (int itemId : spec.itemIds)
+			{
+				distinctIds.add(canonicalItemId(itemId, clogIndex));
+			}
 		}
 		if (distinctIds.isEmpty())
 		{
@@ -90,15 +102,15 @@ final class SkillClogSection
 
 		List<Integer> itemIds = new ArrayList<>(distinctIds);
 		Map<Integer, String> itemNames = new LinkedHashMap<>();
-		addItemNames(itemNames, itemIds, catalog);
-		addItemNames(itemNames, itemIds, compared);
-		addItemNames(itemNames, itemIds, primary);
+		addItemNames(itemNames, itemIds, catalog, clogIndex);
+		addItemNames(itemNames, itemIds, compared, clogIndex);
+		addItemNames(itemNames, itemIds, primary, clogIndex);
 		return new SkillClogSection(spec.heading, spec.category, itemIds, itemNames,
-			PlayerItems.from(primary, spec, distinctIds));
+			PlayerItems.from(primary, spec, distinctIds, clogIndex));
 	}
 
 	private static void addCategoryItems(Set<Integer> destination,
-		@Nullable ClogResult result, String category)
+		@Nullable ClogResult result, String category, @Nullable ClogIndex clogIndex)
 	{
 		if (result == null)
 		{
@@ -109,13 +121,13 @@ final class SkillClogSection
 		{
 			for (int itemId : items)
 			{
-				destination.add(canonicalItemId(itemId));
+				destination.add(canonicalItemId(itemId, clogIndex));
 			}
 		}
 	}
 
 	private static void addItemNames(Map<Integer, String> destination,
-		List<Integer> itemIds, @Nullable ClogResult result)
+		List<Integer> itemIds, @Nullable ClogResult result, @Nullable ClogIndex clogIndex)
 	{
 		if (result == null)
 		{
@@ -123,7 +135,8 @@ final class SkillClogSection
 		}
 		for (int itemId : itemIds)
 		{
-			String name = result.getItemName(itemId);
+			String name = clogIndex != null
+				? clogIndex.itemName(result, itemId) : result.getItemName(itemId);
 			if (name == null)
 			{
 				name = aliasName(result, itemId);
@@ -135,36 +148,10 @@ final class SkillClogSection
 		}
 	}
 
-	private static int canonicalItemId(int itemId)
+	private static int canonicalItemId(int itemId, @Nullable ClogIndex clogIndex)
 	{
-		switch (itemId)
-		{
-			case 764:
-			case 12019:
-			case 24480:
-				return COAL_BAG;
-			case 766:
-			case 12020:
-			case 24481:
-				return GEM_BAG;
-			case 29472:
-				return 12013;
-			case 29474:
-				return 12014;
-			case 29476:
-				return 12015;
-			case 29478:
-				return 12016;
-			case LEGACY_FLAMTAER_BAG:
-				return FLAMTAER_BAG;
-			case 24882:
-				return PLANK_SACK;
-			case 29988:
-			case 29990:
-				return ALCHEMISTS_AMULET;
-			default:
-				return itemId;
-		}
+		return clogIndex != null
+			? clogIndex.canonicalItemId(itemId) : ClogIndex.fallbackCanonicalItemId(itemId);
 	}
 
 	@Nullable
@@ -345,7 +332,7 @@ final class SkillClogSection
 		}
 
 		private static PlayerItems from(@Nullable ClogResult result,
-			Spec spec, Set<Integer> catalogIds)
+			Spec spec, Set<Integer> catalogIds, @Nullable ClogIndex clogIndex)
 		{
 			Set<Integer> obtainedIds = new HashSet<>();
 			Map<Integer, Integer> obtainedCounts = new LinkedHashMap<>();
@@ -354,7 +341,7 @@ final class SkillClogSection
 				if (spec.category != null)
 				{
 					addObtained(result.getObtainedItems().get(spec.category),
-						catalogIds, obtainedIds, obtainedCounts);
+						catalogIds, obtainedIds, obtainedCounts, clogIndex);
 				}
 				else
 				{
@@ -362,7 +349,7 @@ final class SkillClogSection
 						: result.getObtainedItems().values())
 					{
 						addObtained(categoryItems, catalogIds,
-							obtainedIds, obtainedCounts);
+							obtainedIds, obtainedCounts, clogIndex);
 					}
 				}
 			}
@@ -371,7 +358,7 @@ final class SkillClogSection
 
 		private static void addObtained(@Nullable List<ClogResult.ClogItem> items,
 			Set<Integer> catalogIds, Set<Integer> obtainedIds,
-			Map<Integer, Integer> obtainedCounts)
+			Map<Integer, Integer> obtainedCounts, @Nullable ClogIndex clogIndex)
 		{
 			if (items == null)
 			{
@@ -379,7 +366,7 @@ final class SkillClogSection
 			}
 			for (ClogResult.ClogItem item : items)
 			{
-				int itemId = canonicalItemId(item.getId());
+				int itemId = canonicalItemId(item.getId(), clogIndex);
 				if (catalogIds.contains(itemId))
 				{
 					obtainedIds.add(itemId);

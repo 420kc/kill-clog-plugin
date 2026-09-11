@@ -7,6 +7,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import javax.annotation.Nullable;
 import net.runelite.client.game.ItemManager;
 
 /**
@@ -15,10 +16,17 @@ import net.runelite.client.game.ItemManager;
 final class TooltipDataBuilder
 {
 	private final ItemManager itemManager;
+	@Nullable
+	private ClogIndex clogIndex;
 
 	TooltipDataBuilder(ItemManager itemManager)
 	{
 		this.itemManager = itemManager;
+	}
+
+	void setClogIndex(@Nullable ClogIndex clogIndex)
+	{
+		this.clogIndex = clogIndex;
 	}
 
 	/**
@@ -39,20 +47,22 @@ final class TooltipDataBuilder
 		if (clogResult == null) return null;
 
 		List<ClogResult.ClogItem> obtained = clogResult.getObtainedItems().get(category);
-		List<Integer> allItems = clogResult.getCategoryItems().get(category);
+		List<Integer> allItems = canonicalItemIds(clogResult.getCategoryItems().get(category));
 
 		if ((obtained == null || obtained.isEmpty()) && (allItems == null || allItems.isEmpty()))
 		{
 			return null;
 		}
 
-		Set<Integer> obtainedIds = ClogHelper.getObtainedIds(category, clogResult);
+		Set<Integer> obtainedIds = new HashSet<>();
 		Map<Integer, Integer> obtainedCounts = new LinkedHashMap<>();
 		if (obtained != null)
 		{
 			for (ClogResult.ClogItem item : obtained)
 			{
-				obtainedCounts.put(item.getId(), item.getCount());
+				int itemId = canonicalItemId(item.getId());
+				obtainedIds.add(itemId);
+				obtainedCounts.merge(itemId, item.getCount(), Integer::max);
 			}
 		}
 
@@ -82,7 +92,7 @@ final class TooltipDataBuilder
 		String statLabel, int statValue, ClogResult catalog)
 	{
 		if (catalog == null) return null;
-		List<Integer> allItems = catalog.getCategoryItems().get(category);
+		List<Integer> allItems = canonicalItemIds(catalog.getCategoryItems().get(category));
 		if (allItems == null || allItems.isEmpty())
 		{
 			return null;
@@ -97,12 +107,13 @@ final class TooltipDataBuilder
 	TooltipData buildClueRareData(String name, String clogCategory, ClogResult clogResult)
 	{
 		if (clogResult == null) return null;
-		List<Integer> allItems = clogResult.getCategoryItems().get(clogCategory);
+		List<Integer> allItems = canonicalItemIds(
+			clogResult.getCategoryItems().get(clogCategory));
 		List<ClogResult.ClogItem> obtained = clogResult.getObtainedItems().get(clogCategory);
 
 		if (allItems == null || allItems.isEmpty())
 		{
-			allItems = staticClueRareItems(clogCategory);
+			allItems = canonicalItemIds(staticClueRareItems(clogCategory));
 		}
 
 		if (allItems.isEmpty())
@@ -117,8 +128,9 @@ final class TooltipDataBuilder
 		{
 			for (ClogResult.ClogItem item : obtained)
 			{
-				obtainedIds.add(item.getId());
-				obtainedCounts.put(item.getId(), item.getCount());
+				int itemId = canonicalItemId(item.getId());
+				obtainedIds.add(itemId);
+				obtainedCounts.merge(itemId, item.getCount(), Integer::max);
 			}
 		}
 
@@ -135,7 +147,7 @@ final class TooltipDataBuilder
 			.build();
 	}
 
-	private static List<ClogResult.ClogItem> rareObtainedItems(List<ClogResult.ClogItem> obtained,
+	private List<ClogResult.ClogItem> rareObtainedItems(List<ClogResult.ClogItem> obtained,
 		List<Integer> allItems, ClogResult clogResult)
 	{
 		if (obtained != null && !obtained.isEmpty())
@@ -149,7 +161,7 @@ final class TooltipDataBuilder
 		{
 			for (ClogResult.ClogItem item : catObtained)
 			{
-				if (rareIds.contains(item.getId()))
+				if (rareIds.contains(canonicalItemId(item.getId())))
 				{
 					matches.add(item);
 				}
@@ -184,8 +196,9 @@ final class TooltipDataBuilder
 		{
 			for (ClogResult.ClogItem item : catObtained)
 			{
-				allObtainedGlobal.add(item.getId());
-				allCountsGlobal.merge(item.getId(), item.getCount(), Integer::max);
+				int itemId = canonicalItemId(item.getId());
+				allObtainedGlobal.add(itemId);
+				allCountsGlobal.merge(itemId, item.getCount(), Integer::max);
 			}
 		}
 
@@ -194,11 +207,12 @@ final class TooltipDataBuilder
 		Map<Integer, Integer> obtainedCounts = new LinkedHashMap<>();
 		for (int id : itemIds)
 		{
-			allItemsList.add(id);
-			if (allObtainedGlobal.contains(id))
+			int itemId = canonicalItemId(id);
+			allItemsList.add(itemId);
+			if (allObtainedGlobal.contains(itemId))
 			{
-				obtainedIds.add(id);
-				obtainedCounts.put(id, allCountsGlobal.getOrDefault(id, 1));
+				obtainedIds.add(itemId);
+				obtainedCounts.put(itemId, allCountsGlobal.getOrDefault(itemId, 1));
 			}
 		}
 
@@ -232,32 +246,54 @@ final class TooltipDataBuilder
 	private TooltipData buildUnsyncedTooltipData(String displayName, List<Integer> itemIds,
 		int rank, String statLabel, int statValue, boolean rankTracked, ClogResult catalog)
 	{
+		List<Integer> canonicalItems = canonicalItemIds(itemIds);
 		return TooltipData.builder()
 			.name(displayName)
 			.rank(rank)
-			.totalItems(itemIds.size())
-			.allItemIds(itemIds)
+			.totalItems(canonicalItems.size())
+			.allItemIds(canonicalItems)
 			.obtainedIds(new HashSet<>())
 			.obtainedCounts(new LinkedHashMap<>())
-			.itemNames(itemNamesFor(itemIds, catalog))
+			.itemNames(itemNamesFor(canonicalItems, catalog))
 			.rankTracked(rankTracked)
 			.statLabel(statLabel)
 			.statValue(statValue)
 			.build();
 	}
 
-	private static Map<Integer, String> itemNamesFor(List<Integer> itemIds, ClogResult clogResult)
+	private Map<Integer, String> itemNamesFor(List<Integer> itemIds, ClogResult clogResult)
 	{
 		Map<Integer, String> names = new LinkedHashMap<>();
 		for (int itemId : itemIds)
 		{
-			String name = clogResult.getItemName(itemId);
+			String name = clogIndex != null
+				? clogIndex.itemName(clogResult, itemId) : clogResult.getItemName(itemId);
 			if (name != null)
 			{
 				names.put(itemId, name);
 			}
 		}
 		return names;
+	}
+
+	private List<Integer> canonicalItemIds(@Nullable List<Integer> itemIds)
+	{
+		if (itemIds == null)
+		{
+			return null;
+		}
+		Set<Integer> distinct = new java.util.LinkedHashSet<>();
+		for (int itemId : itemIds)
+		{
+			distinct.add(canonicalItemId(itemId));
+		}
+		return new ArrayList<>(distinct);
+	}
+
+	private int canonicalItemId(int itemId)
+	{
+		return clogIndex != null
+			? clogIndex.canonicalItemId(itemId) : ClogIndex.fallbackCanonicalItemId(itemId);
 	}
 
 	/** Trigger async loads for all tooltip items. */

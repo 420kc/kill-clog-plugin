@@ -2,7 +2,6 @@ package com.killclog;
 
 import com.google.gson.Gson;
 import java.io.File;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
@@ -97,15 +96,7 @@ public class ManualClogSyncTest
 		cache.seedIdentityForTest(new HashMap<>());
 		cache.followNameChange("Tester", 42L);
 		index = (ClogIndex) pluginField("clogIndex").get(plugin);
-		Class<?> snapshotType = Class.forName("com.killclog.ClogIndex$Snapshot");
-		Constructor<?> constructor = snapshotType.getDeclaredConstructors()[0];
-		constructor.setAccessible(true);
-		Object snapshot = constructor.newInstance(Map.of("zulrah", List.of(1, 2, 3)),
-			Map.of(1, List.of("zulrah"), 2, List.of("zulrah"), 3, List.of("zulrah")),
-			Map.of(), Map.of());
-		Field snapshotField = ClogIndex.class.getDeclaredField("snapshot");
-		snapshotField.setAccessible(true);
-		snapshotField.set(index, snapshot);
+		index.publishForTest(Map.of("zulrah", List.of(1, 2, 3)), Map.of());
 		pluginField("client").set(plugin, client);
 		pluginField("localClogCache").set(plugin, cache);
 		pluginField("chatNotifier").set(plugin, notifier);
@@ -491,6 +482,41 @@ public class ManualClogSyncTest
 		assertEquals(1, completions);
 		assertEquals(2, cache.toFirstPartySyncResult("Tester")
 			.getObtainedItems().get("zulrah").get(0).getId());
+	}
+
+	@Test
+	public void automaticCaptureStoresOneCanonicalSlotForMultipleForms() throws Exception
+	{
+		index.publishForTest(Map.of("zulrah", List.of(10000)), Map.of(), Map.of(), Map.of(10001, 10000));
+		openCollectionLog();
+		tick(101);
+		itemScript(10001, 2, 102);
+		itemScript(10000, 5, 102);
+		tick(105);
+		assertEquals(1, completions);
+		LocalClogCache reloaded = new LocalClogCache(new Gson(),
+			new InlineScheduledExecutorService(), directory);
+		assertTrue(reloaded.hasCompletedFirstPartySetupFor("Tester"));
+		List<ClogResult.ClogItem> items = reloaded.toFirstPartySyncResult("Tester")
+			.getObtainedItems().get("zulrah");
+		assertEquals(1, items.size());
+		assertEquals(10000, items.get(0).getId());
+		assertEquals(5, items.get(0).getCount());
+	}
+
+	@Test
+	public void variantFormsCannotStandInForAMissingLogicalSlot() throws Exception
+	{
+		index.publishForTest(Map.of("zulrah", List.of(10000, 10002)), Map.of(), Map.of(), Map.of(10001, 10000));
+		obtained = 2;
+		openCollectionLog();
+		tick(101);
+		itemScript(10001, 2, 102);
+		itemScript(10000, 5, 102);
+		tick(105);
+		assertEquals(0, completions);
+		assertFalse(cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertTrue(notices.stream().anyMatch(text -> text.contains("interrupted")));
 	}
 
 	private void tick(int count) throws Exception

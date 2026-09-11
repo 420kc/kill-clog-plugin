@@ -177,7 +177,7 @@ final class ManualClogSync
 			return false;
 		}
 
-		return captureVisibleCategory(client, visibleClogCategoryReader,
+		return captureVisibleCategory(client, clogIndex, visibleClogCategoryReader,
 			localClogCache, chatNotifier, panelRefresh);
 	}
 
@@ -277,8 +277,10 @@ final class ManualClogSync
 			obtainedByCategory.put(cat, new ArrayList<>());
 		}
 
+		// Count logical slots, so two forms cannot hide a missing obtained item.
+		List<ClogResult.ClogItem> capturedItems = clogIndex.canonicalizeItems(bulk.obtained);
 		int mappedCount = 0;
-		for (ClogResult.ClogItem item : bulk.obtained)
+		for (ClogResult.ClogItem item : capturedItems)
 		{
 			List<String> cats = clogIndex.categoryKeysForItem(item.getId());
 			if (cats != null && !cats.isEmpty())
@@ -294,11 +296,11 @@ final class ManualClogSync
 		Map<String, List<Integer>> categoryItemsCopy = clogIndex.copyCategoryItems();
 
 		// Guard against partial captures (e.g., player closed clog mid-sync).
-		if (reportedCount < 0 || (reportedCount == 0 && !bulk.obtained.isEmpty())
-			|| mappedCount < reportedCount || mappedCount != bulk.obtained.size())
+		if (reportedCount < 0 || (reportedCount == 0 && !capturedItems.isEmpty())
+			|| mappedCount < reportedCount || mappedCount != capturedItems.size())
 		{
-			log.warn("Bulk capture incomplete: {} mapped, {} streamed, {} reported; discarding",
-				mappedCount, bulk.obtained.size(), reportedCount);
+			log.warn("Bulk capture incomplete: {} mapped, {} canonical, {} reported; discarding",
+				mappedCount, capturedItems.size(), reportedCount);
 			reset();
 			chatNotifier.send(ChatNotice.SYNC_HELP,
 				"Sync interrupted - open the collection log and try again.");
@@ -334,7 +336,7 @@ final class ManualClogSync
 		SwingUtilities.invokeLater(() -> panelRefresh.accept(name));
 	}
 
-	private boolean captureVisibleCategory(Client client,
+	private boolean captureVisibleCategory(Client client, ClogIndex clogIndex,
 		VisibleClogCategoryReader visibleClogCategoryReader,
 		LocalClogCache localClogCache, KillClogChatNotifier chatNotifier,
 		Consumer<String> panelRefresh)
@@ -354,8 +356,8 @@ final class ManualClogSync
 		}
 
 		String name = local.getName();
-		List<Integer> categoryItems = category.allItemIds();
-		List<ClogResult.ClogItem> obtained = category.obtained();
+		List<Integer> categoryItems = clogIndex.canonicalizeItemIds(category.allItemIds());
+		List<ClogResult.ClogItem> obtained = clogIndex.canonicalizeItems(category.obtained());
 		localClogCache.mergeCategory(name, category.key(), categoryItems, obtained);
 
 		// Re-read global clog totals from live varps (catches game updates + new items).

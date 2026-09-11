@@ -48,6 +48,8 @@ final class SkillCellGrid
 	private ClogResult comparedClog;
 	@Nullable
 	private ClogResult catalog;
+	@Nullable
+	private ClogIndex clogIndex;
 	private boolean virtualLevels;
 
 	SkillCellGrid(SkillIconManager skillIconManager,
@@ -173,6 +175,11 @@ final class SkillCellGrid
 		}
 	}
 
+	void setClogIndex(@Nullable ClogIndex clogIndex)
+	{
+		this.clogIndex = clogIndex;
+	}
+
 	private JToolTip buildTooltip(JLabel owner, Skill skill)
 	{
 		// In comparison mode each side is the ordinary solo tooltip, with the
@@ -193,7 +200,7 @@ final class SkillCellGrid
 	{
 		SkillTooltip solo = new SkillTooltip();
 		solo.setData(skill, result, virtualLevels,
-			SkillClogSection.forSkill(skill, clog, otherClog, catalog), itemManager);
+			SkillClogSection.forSkill(skill, clog, otherClog, catalog, clogIndex), itemManager);
 		if (skill == Skill.RUNECRAFT)
 		{
 			solo.setRiftsClosed(riftsClosed(result));
@@ -246,7 +253,7 @@ final class SkillCellGrid
 		if (config.skillColorMode() == SkillColorMode.CLOG_PROGRESSION)
 		{
 			SkillClogSection.Progress progress = SkillClogSection.combinedProgress(
-				SkillClogSection.forSkill(skill, clog, null, catalog));
+				SkillClogSection.forSkill(skill, clog, null, catalog, clogIndex));
 			obtained = progress.obtained();
 			total = progress.total();
 		}

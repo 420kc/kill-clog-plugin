@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.IntUnaryOperator;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JComponent;
@@ -29,6 +30,8 @@ final class ClogHelper
 	static final String[] CLOG_TIERS = {
 		"bronze", "iron", "steel", "black", "mithril", "adamant", "rune", "dragon", "gilded"
 	};
+
+	static final String[] CLOG_GROUP_NAMES = {"Bosses", "Raids", "Clues", "Minigames", "Other"};
 
 	static final int[] CLOG_TIER_THRESHOLDS = {100, 300, 500, 700, 900, 1000, 1100, 1200};
 
@@ -151,15 +154,26 @@ final class ClogHelper
 
 	static int[] sumClogTotals(ClogResult result)
 	{
+		return sumClogTotals(result, IntUnaryOperator.identity());
+	}
+
+	static int[] sumClogTotals(ClogResult result, IntUnaryOperator canonicalizer)
+	{
 		Set<Integer> allItems = new HashSet<>();
 		Set<Integer> allObtained = new HashSet<>();
 		for (Map.Entry<String, List<Integer>> entry : result.getCategoryItems().entrySet())
 		{
-			allItems.addAll(entry.getValue());
+			for (int itemId : entry.getValue())
+			{
+				allItems.add(canonicalizer.applyAsInt(itemId));
+			}
 			List<ClogResult.ClogItem> obtained = result.getObtainedItems().get(entry.getKey());
 			if (obtained != null)
 			{
-				for (ClogResult.ClogItem item : obtained) allObtained.add(item.getId());
+				for (ClogResult.ClogItem item : obtained)
+				{
+					allObtained.add(canonicalizer.applyAsInt(item.getId()));
+				}
 			}
 		}
 		int obtained = result.getUniqueObtained() > 0
