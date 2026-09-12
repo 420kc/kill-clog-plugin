@@ -17,8 +17,9 @@ Status: local preparation, not ready for submission. This supersedes the active
 ## Included changes from 2.3.3
 
 1. Keep all modal titles stable during item, skill and source hovers.
-2. Put item names beneath their own sprite sections, with 2px text centering;
-   retain the restored original spacing and bounded sizing for dense cards.
+2. Use one reserved item-name row below the stats divider in skill clogs,
+   with 6px section gaps and the existing dense-grid column choices. Other
+   modals retain their section readouts and restored spacing.
 3. Refresh changed hover names and clear stale hover state when data changes.
 4. Match alternate item forms to unambiguous canonical Collection Log slots
    in previews, totals and future captures, without counting forms twice.
@@ -163,37 +164,37 @@ Only the remaining design differences should be considered for a later slice.
 PB privacy separation, Armoury, cache-delete buttons and provider-routing changes
 are not part of this submission boundary.
 
-## Remaining submission checklist
+## Final release gates
 
-- [x] Independently review the completed character-publish cleanup above.
-- [x] Run compile, both Checkstyle gates, full tests, relevant render fixtures and
-      source-size checks on code checkpoint `a852a227`; record base-to-head size.
-- [ ] Stage API contract/recovery/queued-render cases with authorized test accounts;
-      verify ready player and follower models, signed recolors, both body types,
-      palette extremes, changed equipment and repeat publication.
-- [ ] Check privacy: opt-in off by default, prerequisite profile sync, settings
-      disable mid-flight, logout/account switch, existing deletion/revocation
-      behavior, and no secrets/raw API bodies in user text or notices.
-- [ ] Build and select an immutable 2.4.0 jar through Plugin Studio after code is
-      ready; prove the loaded version/hash before Dylan's real-client smoke.
-- [ ] Smoke fresh/empty and existing-cache log opens, manual Search, interrupted
-      capture, house-host exclusion, quantity repair, dates and restart persistence.
-- [ ] Smoke labels below sprites across PvM, Clog, Player, Skills and Sailing;
-      long names, comparison, pointer exit and wiki targets. No title replacement.
-- [ ] Smoke Tithe Farm variants, Mining/Fishing/Hunter pet totals and missing-player
-      lookup while comparison is active. Keep per-skill shared-item deduplication.
-- [ ] Smoke character first publish/repeat, unsupported follower/transform,
-      queued render and actionable failure; verify one controlled private notice
-      in Hive Ops and Telegram. Do not use production failure spam as a test.
-- [ ] Approve final terse README/release notes and any outdated screenshots.
-- [ ] Recheck 2.3.3 Hub merge and its exact accepted pin before preparing the next
-      submission. Preserve its submitted branch while review is open.
-- [ ] After final review and Dylan smoke, prepare master, obtain push/submission
-      authorization, and create the Hub update with one pin commit. Recheck CI.
+Completed: character-publication independent reviews, compile, both Checkstyle
+checks and 612 tests. The final skill-only layout pass also passed those gates;
+local Swing fixtures verify fixed titles, stable hover size, clearing on exit,
+long-name clipping and comparison. Fixtures use synthetic item sprites.
+Firemaking is 20px shorter, Hitpoints 10px shorter and Sailing 70px shorter than
+`6cbe8489`, with unchanged widths. The prepared jar below supersedes the earlier
+character-only candidate once recorded; no real-client smoke is inferred.
 
-The prepared candidate has 612 passing tests and prior refresh reviews.
-These receipts do not constitute a fresh 2.4 real-client smoke or submission
-approval. Historical release receipts follow unchanged.
+- [ ] Approve the shared skill readout in the real client: short and long cards,
+      long names and comparison. Titles stay fixed; names clear on pointer exit.
+- [ ] Confirm the loaded candidate, then smoke normal flows: open/retry the local
+      Collection Log and restart; inspect totals/dates, lookup recovery, Sources
+      and the Mining/Fishing/Hunter additions; publish a character, change gear
+      and publish again, including a follower if available.
+- [ ] Confirm final README/screenshots, recheck 2.3.3's accepted Hub pin, then
+      prepare master and obtain push/submission authorization for one Hub pin.
+
+Automated failure coverage includes incomplete captures, house-host exclusion,
+account switches, consent cancellation, duplicate requests, recovery responses,
+rate limits and transport loss. Extra account/body-type/recolor/empty-account
+smokes are useful when available; these are coverage opportunities, not a new
+feature backlog. Reopen implementation only for a concrete failure.
+
+Companion operations: one controlled API failure should verify actual Hive Ops
+chat/sidebar and Telegram delivery. This is separate from plugin layout approval.
+The seven-day recovery policy, expanded recovery alerts and asynchronous support
+reference correlation remain separate decisions, outside this release slice.
+
+Historical release receipts follow unchanged.
 
 ## Prior release receipt
 

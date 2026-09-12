@@ -28,6 +28,7 @@ final class SkillClogSectionRenderer
 	private static final int COMPACT_SOLO_MIN_COLS = 7;
 	private static final int HEADER_GAP = 2;
 	private static final int MAX_SECTION_HEIGHT = 580;
+	private static final int SECTION_GAP = 6;
 	private static final int MAX_SECTION_WIDTH = 280;
 	private static final String OBTAINED_LABEL = "Obtained: ";
 	private static final Color QTY_COLOR = new Color(255, 255, 0);
@@ -115,9 +116,12 @@ final class SkillClogSectionRenderer
 		}
 
 		int height = sectionHeight(width, headingMetrics, detailMetrics);
+		// Keep dense-card column choices stable when collapsing section readouts.
+		int densityAllowance = TitleTooltip.hoverRowHeight(detailMetrics) * entries.size()
+			- SECTION_GAP * Math.max(0, entries.size() - 1);
 		// Dense multi-section cards trade a little width for fewer sprite rows.
 		int candidateWidth = width;
-		while (height > MAX_SECTION_HEIGHT && candidateWidth + cellSize() <= MAX_SECTION_WIDTH)
+		while (height + densityAllowance > MAX_SECTION_HEIGHT && candidateWidth + cellSize() <= MAX_SECTION_WIDTH)
 		{
 			candidateWidth += cellSize();
 			int candidateHeight = sectionHeight(candidateWidth, headingMetrics, detailMetrics);
@@ -147,7 +151,7 @@ final class SkillClogSectionRenderer
 			}
 			height += gridHeight(entry.section.itemIds().size(), cols);
 		}
-		height += TitleTooltip.hoverRowHeight(detailMetrics) * entries.size();
+		height += SECTION_GAP * Math.max(0, entries.size() - 1);
 		return height;
 	}
 
@@ -185,9 +189,7 @@ final class SkillClogSectionRenderer
 			}
 			y = paintGrid(g2, entry, section.primary(), i, inset, availableWidth,
 				y, cols, hitBoxes);
-			repaintTarget.paintSectionHoverLine(g2, detailMetrics, width,
-				y + detailMetrics.getAscent(), i);
-			y += TitleTooltip.hoverRowHeight(detailMetrics);
+			if (i + 1 < entries.size()) y += SECTION_GAP;
 		}
 		return y;
 	}
