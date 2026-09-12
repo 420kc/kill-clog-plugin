@@ -72,9 +72,21 @@ final class ProfileAppearanceService
 	private final Function<String, String> readConfig;
 	private final BiConsumer<String, String> writeConfig;
 	private final AtomicBoolean inFlight = new AtomicBoolean();
-	private long retryAccount;
-	private long retryUntil;
-	private PublishResult retryResult;
+	private volatile RetryHold retryHold;
+
+	private static final class RetryHold
+	{
+		final long account;
+		final long until;
+		final PublishResult result;
+
+		RetryHold(long account, long until, PublishResult result)
+		{
+			this.account = account;
+			this.until = until;
+			this.result = result;
+		}
+	}
 	private final okhttp3.OkHttpClient httpClient;
 	private final Gson gson;
 
@@ -142,11 +154,17 @@ final class ProfileAppearanceService
 	private CompletableFuture<PublishResult> captureAndPublish(PublishAttempt attempt)
 	{
 		if (!attempt.active()) return completed(Outcome.CANCELLED);
-		if (retryAccount == attempt.accountHash && System.currentTimeMillis() < retryUntil)
+		RetryHold hold = retryHold;
+		if (hold != null && hold.account == attempt.accountHash && System.currentTimeMillis() < hold.until)
 		{
-			return CompletableFuture.completedFuture(retryResult);
+			return CompletableFuture.completedFuture(hold.result);
 		}
 		Player local = client.getLocalPlayer();
+		if (local == null)
+		{
+			return CompletableFuture.completedFuture(new PublishResult(Outcome.FAILED,
+				"Your character is not ready. Wait until it is visible, then retry."));
+		}
 		PlayerComposition composition = local.getPlayerComposition();
 		if (composition != null && composition.getTransformedNpcId() != -1)
 		{
@@ -292,8 +310,9 @@ final class ProfileAppearanceService
 			}
 			if (response.code == 409 && hasError(json, "appearance_recovery_pending"))
 			{
-				return CompletableFuture.completedFuture(recoveryPending(stringValue(json, "activates_at") != null
-					? stringValue(json, "activates_at") : attempt.recoveryAt));
+				// This installation has no token for the already-pending request.
+				return CompletableFuture.completedFuture(new PublishResult(Outcome.RECOVERY_PENDING,
+					"Publishing recovery was started elsewhere. Finish it from that installation, or contact Kill Clog support."));
 			}
 			if (isProfileRequired(response.code, json))
 			{
@@ -430,9 +449,7 @@ final class ProfileAppearanceService
 
 	private CompletableFuture<PublishResult> holdRetry(PublishAttempt attempt, PublishResult result, int seconds)
 	{
-		retryAccount = attempt.accountHash;
-		retryUntil = System.currentTimeMillis() + seconds * 1000L;
-		retryResult = result;
+		retryHold = new RetryHold(attempt.accountHash, System.currentTimeMillis() + seconds * 1000L, result);
 		return CompletableFuture.completedFuture(result);
 	}
 

@@ -63,6 +63,7 @@ public class KillClogPlugin extends Plugin
 	static final String CHARACTER_RECOVERY_STATUS = "Publishing on hold";
 	static final String CHARACTER_DISABLED_STATUS = "Publishing unavailable";
 	static final String CHARACTER_UNKNOWN_STATUS = "Check your profile";
+	static final String CHARACTER_BUSY_STATUS = "Finishing previous request...";
 
 	/** Config keys whose changes require rebuilding the right-click lookup menu entry. */
 	private static final java.util.Set<String> MENU_CONFIG_KEYS = java.util.Set.of(
@@ -782,7 +783,7 @@ public class KillClogPlugin extends Plugin
 			case RENDERING: return CHARACTER_PENDING_STATUS;
 			case RECOVERY_PENDING: return CHARACTER_RECOVERY_STATUS;
 			case DISABLED: return CHARACTER_DISABLED_STATUS;
-			case BUSY: return CHARACTER_RENDERING_STATUS;
+			case BUSY: return CHARACTER_BUSY_STATUS;
 			case UNKNOWN: return CHARACTER_UNKNOWN_STATUS;
 			case CANCELLED: return " ";
 			default: return CHARACTER_FAILED_STATUS;

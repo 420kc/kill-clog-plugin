@@ -29,6 +29,9 @@ final class ProfileAppearanceFailure
 		String message;
 		switch (code)
 		{
+			case "invalid_client_version":
+			case "invalid_game_build": message = "Client version could not be read. Restart RuneLite and check for updates."; break;
+			case "invalid_gender": message = "Character body type is unsupported."; break;
 			case "invalid_colors": message = "Appearance colors are unsupported."; break;
 			case "invalid_equipment": message = "Equipment appearance is unsupported."; break;
 			case "invalid_overrides": message = "Equipment recolors are unsupported."; break;

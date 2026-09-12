@@ -1014,8 +1014,8 @@ public class KillClogPanel extends PluginPanel
 				{
 					characterHovered = true;
 					refreshCharacterIcon(true);
-					tooltipController.setTooltipText(characterPublish, characterNoticeDetail != null
-						? characterNoticeDetail : characterFeedback.lastFailure());
+					tooltipController.setTooltipText(characterPublish, characterTooltipText(characterNoticeDetail != null
+						? characterNoticeDetail : characterFeedback.lastFailure()));
 					setSearchStatus(characterNoticeText != null ? characterNoticeText
 						: characterFeedback.lastFailure() == null ? CHARACTER_HOVER_TEXT : CHARACTER_FAILURE_HOVER_TEXT, SYNC_K1);
 				}
@@ -1203,6 +1203,13 @@ public class KillClogPanel extends PluginPanel
 			|| isCharacterNotice(text);
 	}
 
+	static String characterTooltipText(String detail)
+	{
+		if (detail == null) return null;
+		return "<html><div style='width:220px'>" + detail.replace("&", "&amp;")
+			.replace("<", "&lt;").replace(">", "&gt;") + "</div></html>";
+	}
+
 	static boolean isCharacterNotice(String text)
 	{
 		return KillClogPlugin.CHARACTER_PENDING_STATUS.equals(text)
@@ -1216,6 +1223,7 @@ public class KillClogPanel extends PluginPanel
 		String text = searchStatus.getText();
 		return isCharacterHoverStatus(text)
 			|| KillClogPlugin.CHARACTER_RENDERING_STATUS.equals(text)
+			|| KillClogPlugin.CHARACTER_BUSY_STATUS.equals(text)
 			|| KillClogPlugin.CHARACTER_PUBLISHED_STATUS.equals(text)
 			|| KillClogPlugin.CHARACTER_FAILED_STATUS.equals(text);
 	}
@@ -1364,7 +1372,8 @@ public class KillClogPanel extends PluginPanel
 				characterFeedback.reset();
 				if (isCharacterNotice(text))
 				{
-					characterNoticeText = text;
+					characterNoticeText = KillClogPlugin.CHARACTER_PENDING_STATUS.equals(text)
+						? KillClogPlugin.CHARACTER_UNKNOWN_STATUS : text;
 					characterNoticeDetail = detail;
 				}
 				characterFeedback.progress(true, text, autoClear);
@@ -1372,7 +1381,7 @@ public class KillClogPanel extends PluginPanel
 			if (characterHovered)
 			{
 				tooltipController.setTooltipText(characterPublish,
-					characterNoticeDetail != null ? characterNoticeDetail : characterFeedback.lastFailure());
+					characterTooltipText(characterNoticeDetail != null ? characterNoticeDetail : characterFeedback.lastFailure()));
 			}
 		});
 	}

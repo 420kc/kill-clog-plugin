@@ -290,6 +290,19 @@ public class ProfileAppearanceFlowTest
 		assertEquals(0, HttpUtil.retryAfterSeconds(null));
 	}
 
+	@Test
+	public void missingRecoveryTokenDoesNotPromiseTimedRetry() throws Exception
+	{
+		try (Harness h = new Harness(chain -> response(chain, 409,
+			"{\"error\":\"appearance_recovery_pending\",\"activates_at\":\"2030-09-20T12:00:00Z\"}")))
+		{
+			ProfileAppearanceService.PublishResult result = h.publish().get(3, TimeUnit.SECONDS);
+			assertEquals(ProfileAppearanceService.Outcome.RECOVERY_PENDING, result.outcome);
+			assertTrue(result.message.contains("started elsewhere"));
+			assertFalse(result.message.contains("Sep 20"));
+		}
+	}
+
 	private static void await(CountDownLatch latch) throws java.io.IOException
 	{
 		try

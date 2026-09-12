@@ -109,11 +109,21 @@ public class ProfileAppearanceServiceTest
 	@Test
 	public void pendingAndRecoveryAreNotFailures()
 	{
-		assertEquals("character updated!", KillClogPlugin.characterPublishTerminalStatus(ProfileAppearanceService.Outcome.PUBLISHED));
-		assertEquals("Still rendering...", KillClogPlugin.characterPublishTerminalStatus(ProfileAppearanceService.Outcome.RENDERING));
-		assertEquals("Publishing on hold", KillClogPlugin.characterPublishTerminalStatus(ProfileAppearanceService.Outcome.RECOVERY_PENDING));
-		assertEquals("Check your profile", KillClogPlugin.characterPublishTerminalStatus(ProfileAppearanceService.Outcome.UNKNOWN));
-		assertEquals(" ", KillClogPlugin.characterPublishTerminalStatus(ProfileAppearanceService.Outcome.CANCELLED));
+		java.util.Map<ProfileAppearanceService.Outcome, String> expected = new java.util.EnumMap<>(ProfileAppearanceService.Outcome.class);
+		expected.put(ProfileAppearanceService.Outcome.PUBLISHED, "character updated!");
+		expected.put(ProfileAppearanceService.Outcome.RENDERING, "Still rendering...");
+		expected.put(ProfileAppearanceService.Outcome.RECOVERY_PENDING, "Publishing on hold");
+		expected.put(ProfileAppearanceService.Outcome.DISABLED, "Publishing unavailable");
+		expected.put(ProfileAppearanceService.Outcome.BUSY, "Finishing previous request...");
+		expected.put(ProfileAppearanceService.Outcome.UNKNOWN, "Check your profile");
+		expected.put(ProfileAppearanceService.Outcome.CANCELLED, " ");
+		expected.put(ProfileAppearanceService.Outcome.FAILED, "Publish failed");
+		expected.put(ProfileAppearanceService.Outcome.PROFILE_REQUIRED, "Publish failed");
+		assertEquals(ProfileAppearanceService.Outcome.values().length, expected.size());
+		for (ProfileAppearanceService.Outcome outcome : ProfileAppearanceService.Outcome.values())
+		{
+			assertEquals(expected.get(outcome), KillClogPlugin.characterPublishTerminalStatus(outcome));
+		}
 		assertTrue(KillClogPanel.isCharacterNotice("Still rendering..."));
 		assertFalse(KillClogPanel.isCharacterNotice("Publish failed"));
 	}
