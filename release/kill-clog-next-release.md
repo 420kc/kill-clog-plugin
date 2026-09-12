@@ -1,10 +1,15 @@
-# Kill Clog 2.4.0 candidate
+# Kill Clog 2.4.0 submission-ready candidate
 
 Status: the e403c7d8 product/UX candidate remains Dylan-approved and smoke-passed.
 Ownership recovery is independently approved. Dylan supplied Fable's ALLOW for
 the total-authority/catalog-retry packet on 2026-09-12, including an independent
 640-test and Checkstyle rerun. No reviewer was summoned for that follow-up.
-The current jar still needs the recorded focused smoke gate below.
+On 2026-09-12 Dylan explicitly accepted the current jar as smoke-passed and
+ready for 2.4.0 submission after the 2.3.3 Plugin Hub PR merges. His prior unlock
+increased the Clog Summary total from 1197 to 1198 once, with two chat messages.
+He accepted that evidence without requiring another scarce unlock. This is user
+acceptance of the current candidate, not a claim that every proposed smoke step
+was newly rerun. The separate acquisition-date API rollout remains tracked below.
 Master and the earlier approved jars remain unchanged.
 
 - Active branch: `hive/2.4.0`.
@@ -255,16 +260,14 @@ completion continuation. No further code change was requested.
       revision queues all arbitration on the disk writer, preserves damaged
       owned/unclaimed files before setup retries, and keeps provider-only caches
       writable. Readable foreign captures and unreadable ledgers remain blocked.
-- [ ] Focused smoke of the current total/catalog follow-up: normal login/self log, open Collection Log, sync,
-      and restart with saved data intact; account switching if available. No user
-      cache corruption/deletion is required for smoke. A normal cold lookup
-      should still populate catalog previews.
-      UI layout is unchanged.
-- [ ] Real-unlock total proof: obtain one new unique item without opening the
-      Collection Log. Verify the displayed total increases exactly once after
-      game-counter reconciliation, allowing a tick after the unlock message.
-      Then check dated Recent and that reopening the log does not increase the
-      total again. Keep this gate pending until actually observed.
+- [x] Current total/catalog candidate smoke accepted by Dylan on 2026-09-12.
+      Earlier smoke plus independent gates are accepted for submission; no claim
+      is made that login, restart, account switching and cold lookup were all
+      newly repeated against this jar.
+- [x] Real-unlock smoke requirement accepted by Dylan using the prior observation:
+      Clog Summary increased once from 1197 to 1198, while two chat messages
+      appeared. He explicitly waived another unlock-based rerun because unlocks
+      are scarce. Duplicate chat output is recorded, not claimed fixed.
 - [x] Integrate and validate the acquisition-date API companion against actual
       production f34f575f, retaining its newer Recent-source selection.
       Worktree `C:/Users/dylan/.codex/worktrees/collection-unlock-dates`, branch
