@@ -1,12 +1,17 @@
 # Kill Clog 2.4.0 candidate
 
-Status: Dylan-approved, smoke-passed local candidate on 2026-09-12. Product scope
-is frozen. Submission remains gated by the ownership-recovery review finding and
-the date API rollout below. Master and the preserved 2.3.4 checkpoints are unchanged.
+Status: the e403c7d8 product/UX candidate is Dylan-approved and smoke-passed.
+The bounded ownership-recovery correction passed 637 tests and build/style gates;
+final independent review is ALLOW. Its new jar still needs a focused
+account/setup/restart smoke. Product scope is frozen.
+Master and the preserved 2.3.4 checkpoints are unchanged.
 
 - Active branch: `hive/2.4.0-candidate`.
 - Active checkout: `C:/Users/dylan/.codex/worktrees/killclog-240-candidate`.
-- Approved candidate code: `e403c7d897e414ec37de9de742ac161beafdd9d9`.
+- Current code: `064c09b015ecd40667e9c2a5d4c222736e7a417a` (ownership recovery).
+- Pre-fix candidate preserved as `hive/2.4.0-before-ownership-recovery` at 2bf9c639;
+  its smoke-approved jar remains unchanged.
+- Prior smoke-approved code: `e403c7d897e414ec37de9de742ac161beafdd9d9`.
 - Submission base: 2.3.3 `96dee2429ed96187e36d1451270b114f7a9dbd07`.
 - 2.3.3 Hub PR: https://github.com/runelite/plugin-hub/pull/16418
   Last checked open on 2026-09-12; recheck the accepted pin before submission.
@@ -82,9 +87,17 @@ and 6 removed across three files (122/8 including its tests).
 Earlier measurements, retained as history:
 The earlier `a852a227` checkpoint diff from 2.3.3 was 49 files, +2,467/-931 lines; the character
 slice from `5469f66d` is 10 files, +963/-181, including tests and documentation.
-At `a852a227`, tracked main Java was 109 files / 29,339 lines / 229,293 `o200k_base` tokens
-(sum per file). This is a source-size measurement, not account usage or proof
-against an old token ceiling; the 2.3.3 baseline measures 223,885 the same way.
+The earlier raw counts included comments and are not the Hub-style estimate.
+The recovered local counter strips comments from main Java, trims trailing line
+whitespace, collapses blank lines, and uses `o200k_base`. It reproduces 193,171
+at the older 24703ced checkpoint, 187,786 at 2.3.3, and 195,101 at 2bf9c639.
+The final ownership correction measures 195,988 tokens (local proxy).
+The Hub's documented limit is 200,000; our conservative working ceiling is
+195,000. This is a local proxy, not the private bot's exact implementation.
+Run the existing local counter once per changed release candidate and record its
+result alongside the build receipt; it is not currently a Gradle/CI gate.
+Counter: `C:/Users/dylan/.claude/skills/runelite-plugin-gate/count_plugin_tokens.py`.
+Maintainer scope: https://github.com/runelite/plugin-hub/pull/16026#issuecomment-5554814434
 
 Earlier in this lane, live API health and the private deployment marker were checked. The bind
 verifier now matches this release, the render queue is idle, and the retained
@@ -189,22 +202,41 @@ are not part of this submission boundary.
 
 ## Final release gates
 
-Completed: candidate code committed; 624 tests, compile, Checkstyle and jar gates;
-independent implementation reviews; Dylan's candidate/quiet-update smoke; exact
-running-jar verification. Keep the approved UI and behavior frozen.
+Approved baseline: e403c7d8, 624 tests, compile/Checkstyle/jar gates, independent
+reviews, Dylan's quiet-update smoke, and exact running-jar verification.
+Ownership correction: 637 tests, zero failures/skips; compile/Checkstyle/jar gates
+passed with JDK 11.0.30 and resolved RuneLite 1.12.38. New jar: 553,880 bytes,
+SHA-256 51ac58985105f1d0f3a3aa772dc6eaf44c128997ddbd31fb8b48cd112098bc5a.
+This jar is not yet Dylan-smoked. Keep the approved UI frozen.
 
-- [ ] Validate architectural review F1 against current code: a missing/malformed
-      identity ledger may let an explicitly owned cache be adopted under another
-      account. Reproduce with isolated fixtures and fix if confirmed before Hub
-      submission. The date and quiet-refresh reviews did not close this finding.
-- [ ] Approve/deploy the acquisition-date API companion, then verify plugin sync
-      and web Recent. Worktree `C:/Users/dylan/.codex/worktrees/collection-unlock-dates`,
-      branch `hive/collection-unlock-dates`, tip `f76ff14d`, code `16e0f3fb`.
-      Local API integration tests and the real web normalizer passed; no deployment
-      occurred in this slice. Existing receipt-only profiles can have no Recent
-      until a new sync supplies known dates. The already-missed hat is not repaired.
-- [ ] Confirm final README/screenshots, recheck 2.3.3's accepted Hub pin, then
-      prepare master and obtain push/submission authorization for one Hub pin.
+- [x] Reproduce architectural review F1: four temporary-file regressions fail
+      against the approved baseline (foreign adoption, malformed ledger, foreign
+      rename destination, and queued overwrite after ledger loss).
+- [x] Finish independent review of the ownership correction (final ALLOW).
+      The first review caught a writer-lock race and recovery regressions; the
+      revision queues all arbitration on the disk writer, preserves damaged
+      owned/unclaimed files before setup retries, and keeps provider-only caches
+      writable. Readable foreign captures and unreadable ledgers remain blocked.
+- [ ] Focused smoke of 064c09b0: normal login/self log, open Collection Log, sync,
+      and restart with saved data intact; account switching if available. No user
+      cache corruption/deletion is required for smoke. UI layout is unchanged.
+- [x] Integrate and validate the acquisition-date API companion against actual
+      production f34f575f, retaining its newer Recent-source selection.
+      Worktree `C:/Users/dylan/.codex/worktrees/collection-unlock-dates`, branch
+      `hive/collection-unlock-dates`, reviewed tip `9e450c83` (date code 16e0f3fb).
+      Independent review ALLOW; API suite 258 pass / one skip, renderer 17 pass,
+      and real website normalizer fixture pass. Built renderer SHA-256 equals
+      production: 2866c99ebbbb1077a14d7fe8a112032cb49cbe56866e79bb622d945d5fdb8c15.
+- [ ] Approve/deploy the reviewed date companion, then verify live sync/web Recent.
+      Deployment approval is pending; no live date support at the last check.
+      Undated first-party profiles gain known acquisition history on their next
+      sync; existing dated provider history remains available. The already-missed hat is not repaired.
+- [x] Recheck README setup/update/web-sync wording; all ten referenced local
+      images exist. Approved layout and README were not changed by this fix.
+- [x] Recheck Hub: PR #16418 is OPEN, not merged. Accepted pin is still 2.3.2
+      c1eb9773cb730f568fd73115568afd0677635150 as of 2026-09-12.
+- [ ] After 2.3.3 is accepted, prepare master and obtain push/submission approval
+      for the final 2.4 Hub pin.
 
 Automated failure coverage includes incomplete captures, house-host exclusion,
 account switches, consent cancellation, duplicate requests, recovery responses,
@@ -217,10 +249,21 @@ chat/sidebar and Telegram delivery. This is separate from plugin layout approval
 The seven-day recovery policy, expanded recovery alerts and asynchronous support
 reference correlation remain separate decisions, outside this release slice.
 
-The supplied architectural review also lists F2 (event-order total overcount),
-F3 (catalog request cleanup race), and F4 (comparison PB data). These remain
-unvalidated follow-ups, not silently completed work. Triage them before final
-release approval; none requires reopening the approved layout or a package rewrite.
+Audit triage completed against the current candidate, without implementing F2-F4:
+
+- F2 confirmed with the real cache methods: varp-first unlock leaves two obtained
+  items but a saved/upload scalar of three. Recommend a small total-authority fix
+  before 2.4 because it affects the new live-unlock/sync experience.
+- F3 confirmed for both catalog methods with immediate transport failure: the
+  second fetch returns the same failed flight and starts no new request. Recommend
+  a bounded request-cleanup fix now; no framework or provider-policy change.
+- F4 confirmed by source: comparison boss preparation still passes null for PB,
+  while primary preparation resolves available PBs. Defer to ordinary maintenance;
+  it is display parity, not loss of captured/published data.
+- F2/F3 implementation remains a separate scope decision. The triage fixture lives
+  outside shipped sources at `C:/Users/dylan/.codex/scratch/killclog-240-triage`.
+- Dead-code deletion, package moves, and coordinator extraction remain parked.
+  No next-release workbranch is being prepared.
 
 UX closeout: opening the log handles local setup/update/repair; matched drops
 update local Recent immediately while self is displayed; web sync publishes saved
