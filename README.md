@@ -1,6 +1,6 @@
 # Kill Clog
 
-[![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fkillclog.com%2Fapi%2Fhub%2Fversion&query=%24.version&label=version&color=FF5700)](https://runelite.net/plugin-hub/show/kill-clog)
+[![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fkillclog.com%2Fapi%2Fhub%2Fversion&query=%24.version&label=version&color=551919)](https://runelite.net/plugin-hub/show/kill-clog)
 
 Kill Clog brings HiScores and Collection Log progress together in one RuneLite panel, with boss personal bests, Skill Clogs, Combat Achievements, clues, and player comparison.
 
@@ -17,7 +17,7 @@ Install **Kill Clog** from the RuneLite Plugin Hub and open its panel while logg
 
 Open your Collection Log. Setup runs automatically and confirms completion with a chat message.
 
-Your log is saved locally. New unlocks update it as you play; opening the log refreshes every page and corrects saved quantities. Later refreshes are quiet.
+Your log is saved locally. New unlocks update it as you play, and totals follow the game's count. Opening the log refreshes every page and corrects saved quantities. Later refreshes are quiet.
 
 To retry an update, reopen the log or choose **Search** at the top. If it says **RuneProfile**, right-click it and choose **Search**. Interrupted updates keep your saved log.
 
