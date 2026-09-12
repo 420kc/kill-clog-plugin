@@ -34,14 +34,12 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.PluginChanged;
 import net.runelite.client.game.ItemManager;
-import net.runelite.client.input.MouseManager;
 import net.runelite.client.menus.MenuManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
-import net.runelite.client.ui.overlay.OverlayManager;
 import net.runelite.client.util.Text;
 
 @Slf4j
@@ -88,15 +86,6 @@ public class KillClogPlugin extends Plugin
 
 	@Inject
 	private NameAutocompleter nameAutocompleter;
-
-	@Inject
-	private OverlayManager overlayManager;
-
-	@Inject
-	private MouseManager mouseManager;
-
-	@Inject
-	private ClogButtonOverlay clogButtonOverlay;
 
 	@Inject
 	private ClientThread clientThread;
@@ -161,7 +150,6 @@ public class KillClogPlugin extends Plugin
 	private final ChatAutoLookupGate chatAutoLookup = new ChatAutoLookupGate();
 	private final ClogSessionState sessionState = new ClogSessionState();
 	private final ClogIndex clogIndex = new ClogIndex();
-	private final VisibleClogCategoryReader visibleClogCategoryReader = new VisibleClogCategoryReader();
 	private final LiveClogSync liveClogSync = new LiveClogSync();
 	private final ManualClogSync manualClogSync = new ManualClogSync();
 	private final LocalCaReader localCaReader = new LocalCaReader();
@@ -190,8 +178,6 @@ public class KillClogPlugin extends Plugin
 			.build();
 
 		clientToolbar.addNavigation(navButton);
-		overlayManager.add(clogButtonOverlay);
-		mouseManager.registerMouseListener(clogButtonOverlay);
 		panel.setPluginManager(pluginManager);
 		panel.setNameAutocompleter(nameAutocompleter);
 		panel.setClogIndex(clogIndex);
@@ -256,8 +242,6 @@ public class KillClogPlugin extends Plugin
 	protected void shutDown()
 	{
 		clientToolbar.removeNavigation(navButton);
-		overlayManager.remove(clogButtonOverlay);
-		mouseManager.unregisterMouseListener(clogButtonOverlay);
 		lookupMenu.stop(config, menuManager);
 		chatCommandManager.unregisterCommand(KillClogChatCommand.COMMAND);
 		chatCommandManager.unregisterCommand(KillClogChatCommand.COMMAND_MISSING);
@@ -368,7 +352,7 @@ public class KillClogPlugin extends Plugin
 	 * True-live total bump with no chat dependency: the client pushes the
 	 * collection log counts as varps, so any unlock (and the login flood)
 	 * moves them regardless of the player's notification settings. Upward
-	 * only; chalice sync stays the downward authority. Runs on the client
+	 * only; full log refresh stays the downward authority. Runs on the client
 	 * thread (varbit events and enterLoggedInState both arrive there).
 	 */
 	private void reconcileClogTotalsFromVarps()
@@ -537,7 +521,7 @@ public class KillClogPlugin extends Plugin
 	private void handleCollectionLogUnlock(String itemName, int broadcastObtained, int broadcastTotal)
 	{
 		liveClogSync.handleUnlock(itemName, broadcastObtained, broadcastTotal, client,
-			itemManager, clogIndex, localClogCache, chatNotifier, clogButtonOverlay,
+			itemManager, clogIndex, localClogCache, chatNotifier,
 			panel::onBulkCaptureComplete);
 	}
 
@@ -554,7 +538,7 @@ public class KillClogPlugin extends Plugin
 	}
 
 	/**
-	 * Manual pushes (the chalice, an explicit opt-in) narrate in chat;
+	 * Manual web pushes (the panel sync button, an explicit opt-in) narrate in chat;
 	 * automatic ones (capture debounce and login catch-up) default to silent
 	 * panel feedback. Chat still follows its separate setting.
 	 */
@@ -1192,7 +1176,7 @@ public class KillClogPlugin extends Plugin
 		}
 
 		manualClogSync.onGameTick(client, clogIndex, localClogCache,
-			chatNotifier, clogButtonOverlay, liveClogSync::resetFirstSyncWarning,
+			chatNotifier, liveClogSync::resetFirstSyncWarning,
 			panel::onBulkCaptureComplete);
 
 		// Adventure-log pb harvest, one tick after each widget load so the
@@ -1414,30 +1398,6 @@ public class KillClogPlugin extends Plugin
 		return option != null
 			&& "Search".equalsIgnoreCase(Text.removeTags(option).trim())
 			&& widgetId >>> 16 == CLOG_INTERFACE;
-	}
-
-	// Sync button.
-
-	/**
-	 * Called by ClogButtonOverlay on click. Search owns first-time setup; the
-	 * chalice refreshes only the visible category of an established local log.
-	 */
-	void onSyncClicked()
-	{
-		clientThread.invokeLater(() ->
-		{
-			Player local = client.getLocalPlayer();
-			if (local == null || local.getName() == null)
-			{
-				return;
-			}
-
-			if (manualClogSync.onSyncClicked(client, clogIndex, visibleClogCategoryReader,
-				localClogCache, chatNotifier, panel::onBulkCaptureComplete))
-			{
-				clogButtonOverlay.flashGreen();
-			}
-		});
 	}
 
 	private AccountType getLocalAccountType()

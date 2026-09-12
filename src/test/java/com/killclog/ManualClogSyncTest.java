@@ -109,8 +109,6 @@ public class ManualClogSyncTest
 			new ClogResult.ClogItem(3, 5, null))), Map.of("zulrah", List.of(1, 2, 3)),
 			Map.of(), null, null));
 		assertFalse(cache.hasCompletedFirstPartySetupFor("Tester"));
-		assertFalse(sync.onSyncClicked(client, index, null, cache, notifier, name -> refreshes++));
-		assertTrue(notices.get(0).contains("choose Search"));
 		openCollectionLog();
 		menu("Search", KillClogPlugin.CLOG_INTERFACE << 16 | 76);
 		itemScript(1, 2, 101);
@@ -172,7 +170,7 @@ public class ManualClogSyncTest
 	}
 
 	@Test
-	public void automaticEmptySearchCompletesOnceAndSurvivesReload() throws Exception
+	public void automaticEmptySearchRefreshesQuietlyAndSurvivesReload() throws Exception
 	{
 		obtained = 0;
 		openCollectionLog();
@@ -196,8 +194,10 @@ public class ManualClogSyncTest
 		assertFalse(reloaded.hasFirstPartyDataFor("Tester"));
 		openCollectionLog();
 		tick(110);
-		assertEquals(1, automaticSearches);
-		assertEquals(1, completions);
+		assertEquals(2, automaticSearches);
+		tick(113);
+		assertEquals(2, completions);
+		assertEquals(2, notices.size());
 	}
 
 	@Test
@@ -410,7 +410,7 @@ public class ManualClogSyncTest
 		assertEquals(1, completions);
 		menu("Search", KillClogPlugin.CLOG_INTERFACE << 16 | 76);
 		tick(120);
-		assertEquals(1, completions);
+		assertEquals(2, completions);
 		assertEquals(1, notices.stream().filter(text -> text.contains("is reading")).count());
 	}
 
@@ -519,11 +519,109 @@ public class ManualClogSyncTest
 		assertTrue(notices.stream().anyMatch(text -> text.contains("interrupted")));
 	}
 
+	@Test
+	public void repeatedOpeningRepairsQuantitiesAndPreservesMetadataWithoutUnchangedWrites() throws Exception
+	{
+		ClogResult seed = new ClogResult("Tester", Map.of("zulrah", List.of(
+			new ClogResult.ClogItem(1, 99, "2026-09-01", 42, "Zulrah"))),
+			Map.of("zulrah", List.of(1, 2, 3)), Map.of(), null, null);
+		seed.setUniqueObtained(99);
+		seed.setUniqueTotal(100);
+		cache.cacheFirstPartyResult(seed);
+		int[] changes = {0};
+		cache.setFirstPartyChangedListener(() -> changes[0]++);
+		automaticItems.add(1);
+		openCollectionLog();
+		tick(101);
+		tick(104);
+		ClogResult result = cache.toFirstPartySyncResult("Tester");
+		ClogResult.ClogItem item = result.getObtainedItems().get("zulrah").get(0);
+		assertEquals(1, item.getCount());
+		assertEquals("2026-09-01", item.getDate());
+		assertEquals(42, item.getObtainedAtKc());
+		assertEquals("Zulrah", item.getObtainedFrom());
+		assertEquals(1, result.getUniqueObtained());
+		assertEquals(3, result.getUniqueTotal());
+		assertEquals(1, changes[0]);
+		assertTrue(notices.isEmpty());
+		openCollectionLog();
+		tick(105);
+		tick(108);
+		assertEquals(2, automaticSearches);
+		assertEquals(1, changes[0]);
+		obtained = 2;
+		automaticItems.add(2);
+		openCollectionLog();
+		tick(109);
+		tick(112);
+		assertEquals(2, changes[0]);
+		assertEquals(2, cache.toFirstPartySyncResult("Tester").getUniqueObtained());
+	}
+
+	@Test
+	public void incompleteOrClosedRefreshKeepsLastGoodCapture() throws Exception
+	{
+		automaticItems.add(1);
+		openCollectionLog();
+		tick(101);
+		tick(104);
+		obtained = 2;
+		openCollectionLog();
+		tick(105);
+		tick(108);
+		assertEquals(1, completions);
+		assertEquals(1, cache.toFirstPartySyncResult("Tester").getUniqueObtained());
+		assertTrue(notices.stream().anyMatch(text -> text.contains("saved log is unchanged")));
+		automaticItems.add(2);
+		openCollectionLog();
+		tick(109);
+		clogRoot = null;
+		tick(112);
+		assertEquals(1, completions);
+		LocalClogCache reloaded = new LocalClogCache(new Gson(),
+			new InlineScheduledExecutorService(), directory);
+		assertTrue(reloaded.hasDataFor("Tester"));
+		assertEquals(1, reloaded.toFirstPartySyncResult("Tester").getUniqueObtained());
+	}
+
+	@Test
+	public void accountSwitchDuringRefreshCannotWriteEitherAccount() throws Exception
+	{
+		automaticItems.add(1);
+		openCollectionLog();
+		tick(101);
+		playerName = "Another";
+		tick(104);
+		assertEquals(0, completions);
+		assertFalse(cache.hasDataFor("Tester"));
+		assertFalse(cache.hasDataFor("Another"));
+	}
+
+	@Test
+	public void completeEmptyRefreshRemovesStaleItemsAndCategories() throws Exception
+	{
+		ClogResult seed = new ClogResult("Tester", Map.of("retired", List.of(
+			new ClogResult.ClogItem(999, 1, null))), Map.of("retired", List.of(999)),
+			Map.of(), null, null);
+		seed.setUniqueObtained(1);
+		seed.setUniqueTotal(100);
+		cache.cacheFirstPartyResult(seed);
+		obtained = 0;
+		openCollectionLog();
+		tick(101);
+		tick(104);
+		assertEquals(1, completions);
+		assertTrue(cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertFalse(cache.hasFirstPartyDataFor("Tester"));
+		assertEquals(0, cache.toFirstPartySyncResult("Tester").getUniqueObtained());
+		assertFalse(cache.toFirstPartySyncResult("Tester").getCategoryItems().containsKey("retired"));
+	}
+
 	private void tick(int count) throws Exception
 	{
 		tick = count;
 		sync.onGameTick(client, index, cache, notifier,
-			new ClogButtonOverlay(client, null, null), () -> completions++, name -> refreshes++);
+			() -> completions++, name -> refreshes++);
 		SwingUtilities.invokeAndWait(() ->
 		{
 		});

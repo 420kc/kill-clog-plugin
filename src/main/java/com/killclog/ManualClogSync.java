@@ -18,23 +18,32 @@ import net.runelite.api.widgets.Widget;
 final class ManualClogSync
 {
 	private static final int CLOG_ITEM_SCRIPT = 4100;
-	private static final int FIRST_CAPTURE_TIMEOUT_TICKS = 100;
+	private static final int CAPTURE_TIMEOUT_TICKS = 100;
 
 	private final BulkCaptureState bulk = new BulkCaptureState();
 	private String openingPlayer;
 	private int openingTick;
+	private String capturePlayer;
+	private boolean firstCapture;
 
 	void reset()
 	{
 		bulk.reset();
 		openingPlayer = null;
+		capturePlayer = null;
+		firstCapture = false;
 	}
 
 	void onGameTick(Client client, ClogIndex clogIndex, LocalClogCache localClogCache,
-		KillClogChatNotifier chatNotifier, ClogButtonOverlay clogButtonOverlay,
-		Runnable firstSyncComplete, Consumer<String> panelRefresh)
+		KillClogChatNotifier chatNotifier,
+		Runnable captureComplete, Consumer<String> panelRefresh)
 	{
 		int tickCount = client.getTickCount();
+		if (bulk.isActive() && !captureStillValid(client))
+		{
+			reset();
+			return;
+		}
 		if ((openingPlayer != null || bulk.isActive()) && isHostLog(client))
 		{
 			reset();
@@ -49,13 +58,13 @@ final class ManualClogSync
 		if (bulk.readyToFinalize(tickCount))
 		{
 			finalizeBulkCapture(client, clogIndex, localClogCache,
-				chatNotifier, clogButtonOverlay, firstSyncComplete, panelRefresh);
+				chatNotifier, captureComplete, panelRefresh);
 		}
-		else if (bulk.timedOut(tickCount, FIRST_CAPTURE_TIMEOUT_TICKS))
+		else if (bulk.timedOut(tickCount, CAPTURE_TIMEOUT_TICKS))
 		{
 			reset();
 			chatNotifier.send(ChatNotice.SYNC_HELP,
-				"Setup timed out. Open the Collection Log and choose Search again.");
+				"Collection Log update timed out. Reopen the log or choose Search to retry.");
 		}
 	}
 
@@ -65,7 +74,7 @@ final class ManualClogSync
 		{
 			return;
 		}
-		if (isHostLog(client))
+		if (isHostLog(client) || bulk.isActive() && !captureStillValid(client))
 		{
 			reset();
 			return;
@@ -84,8 +93,7 @@ final class ManualClogSync
 			return;
 		}
 		Player local = client.getLocalPlayer();
-		if (local == null || local.getName() == null || bulk.isActive()
-			|| localClogCache.hasCompletedFirstPartySetupFor(local.getName()))
+		if (local == null || local.getName() == null || bulk.isActive())
 		{
 			return;
 		}
@@ -108,7 +116,7 @@ final class ManualClogSync
 		Player local = client.getLocalPlayer();
 		Widget root = client.getWidget(KillClogPlugin.CLOG_INTERFACE, 0);
 		if (bulk.isActive() || local == null || !name.equals(local.getName())
-			|| root == null || root.isHidden() || localClogCache.hasCompletedFirstPartySetupFor(name))
+			|| root == null || root.isHidden())
 		{
 			return;
 		}
@@ -119,7 +127,7 @@ final class ManualClogSync
 			sendSearchHelp(chatNotifier);
 			return;
 		}
-		beginFirstCapture(client, clogIndex, localClogCache, chatNotifier);
+		beginCapture(client, clogIndex, localClogCache, chatNotifier);
 		if (!bulk.isActive())
 		{
 			return;
@@ -137,9 +145,17 @@ final class ManualClogSync
 		catch (RuntimeException ex)
 		{
 			reset();
-			log.warn("Could not request automatic Collection Log setup", ex);
+			log.warn("Could not request automatic Collection Log update", ex);
 			sendSearchHelp(chatNotifier);
 		}
+	}
+
+	private boolean captureStillValid(Client client)
+	{
+		Player local = client.getLocalPlayer();
+		Widget root = client.getWidget(KillClogPlugin.CLOG_INTERFACE, 0);
+		return local != null && capturePlayer != null && capturePlayer.equals(local.getName())
+			&& root != null && !root.isHidden() && !isHostLog(client);
 	}
 
 	private static boolean isHostLog(Client client)
@@ -150,48 +166,20 @@ final class ManualClogSync
 	private static void sendSearchHelp(KillClogChatNotifier chatNotifier)
 	{
 		chatNotifier.send(ChatNotice.SYNC_HELP,
-			"First Time Setup: Right-click the top of the Collection Log and choose Search.");
-	}
-
-	boolean onSyncClicked(Client client, ClogIndex clogIndex,
-		VisibleClogCategoryReader visibleClogCategoryReader,
-		LocalClogCache localClogCache, KillClogChatNotifier chatNotifier,
-		Consumer<String> panelRefresh)
-	{
-		if (isHostLog(client))
-		{
-			return false;
-		}
-		Player local = client.getLocalPlayer();
-		if (local == null || local.getName() == null)
-		{
-			return false;
-		}
-
-		if (!localClogCache.hasCompletedFirstPartySetupFor(local.getName()))
-		{
-			// A visible page can run the same item script as a full Search walk.
-			// Do not arm setup here: doing so could mistake one page for the
-			// player's complete log. Search is the explicit full-catalog signal.
-			sendSearchHelp(chatNotifier);
-			return false;
-		}
-
-		return captureVisibleCategory(client, clogIndex, visibleClogCategoryReader,
-			localClogCache, chatNotifier, panelRefresh);
+			"To update your Collection Log, right-click the top of the log and choose Search.");
 	}
 
 	/**
-	 * Search starts first-time capture before script 4100 streams the obtained
+	 * Search starts a full capture before script 4100 streams the obtained
 	 * entries. Automatic and manual requests share the same completeness checks.
 	 */
 	void onCollectionLogSearch(Client client, ClogIndex clogIndex,
 		LocalClogCache localClogCache, KillClogChatNotifier chatNotifier)
 	{
-		beginFirstCapture(client, clogIndex, localClogCache, chatNotifier);
+		beginCapture(client, clogIndex, localClogCache, chatNotifier);
 	}
 
-	private void beginFirstCapture(Client client, ClogIndex clogIndex,
+	private void beginCapture(Client client, ClogIndex clogIndex,
 		LocalClogCache localClogCache, KillClogChatNotifier chatNotifier)
 	{
 		if (isHostLog(client))
@@ -217,11 +205,9 @@ final class ManualClogSync
 			return;
 		}
 
-		// A public provider cache or a live unlock alone does not complete setup.
-		if (localClogCache.hasCompletedFirstPartySetupFor(local.getName()))
-		{
-			return;
-		}
+		// A completed cache can be refreshed by the same full-catalog walk.
+		firstCapture = !localClogCache.hasCompletedFirstPartySetupFor(local.getName());
+		capturePlayer = local.getName();
 		// A manual request or another plugin's Search supersedes the queued open.
 		openingPlayer = null;
 
@@ -232,16 +218,19 @@ final class ManualClogSync
 		// empty logs, which produce no item events at all.
 		bulk.scheduleEmptySearchFinalization(client.getTickCount());
 
-		chatNotifier.send(ChatNotice.SYNC_HELP,
-			"Kill Clog is reading your Collection Log for First Time Setup...");
+		if (firstCapture)
+		{
+			chatNotifier.send(ChatNotice.SYNC_HELP,
+				"Kill Clog is reading your Collection Log for First Time Setup...");
+		}
 
-		log.debug("Armed first-time clog capture from Collection Log Search "
+		log.debug("Armed full clog capture from Collection Log Search "
 			+ "(game reports {} obtained)", bulk.clogCount);
 	}
 
 	private void finalizeBulkCapture(Client client, ClogIndex clogIndex,
 		LocalClogCache localClogCache, KillClogChatNotifier chatNotifier,
-		ClogButtonOverlay clogButtonOverlay, Runnable firstSyncComplete,
+		Runnable captureComplete,
 		Consumer<String> panelRefresh)
 	{
 		Player local = client.getLocalPlayer();
@@ -303,22 +292,22 @@ final class ManualClogSync
 				mappedCount, capturedItems.size(), reportedCount);
 			reset();
 			chatNotifier.send(ChatNotice.SYNC_HELP,
-				"Sync interrupted - open the collection log and try again.");
+				"Collection Log update interrupted. Your saved log is unchanged. Reopen the log or choose Search to retry.");
 			return;
 		}
 
 		ClogResult result = new ClogResult(name, obtainedByCategory, categoryItemsCopy,
 			new HashMap<>(), null, null);
-		if (reportedCount > 0)
+		if (reportedCount >= 0)
 		{
 			result.setUniqueObtained(reportedCount);
 		}
-		if (reportedTotal > 0)
+		if (reportedTotal >= 0)
 		{
 			result.setUniqueTotal(reportedTotal);
 		}
 		localClogCache.cacheFirstPartyResult(result);
-		firstSyncComplete.run();
+		captureComplete.run();
 
 		// Prefer Jagex's logical-slot count; distinct item forms can share a slot.
 		int displayCount = reportedCount > 0 ? reportedCount : bulk.obtained.size();
@@ -327,51 +316,14 @@ final class ManualClogSync
 
 		// Setup guidance and confirmation are always visible, even when routine
 		// sync-result chat messages are disabled in config.
-		chatNotifier.send(ChatNotice.SYNC_HELP,
-			"First Time Setup complete - " + displayCount + " items saved to Kill Clog.");
+		if (firstCapture)
+		{
+			chatNotifier.send(ChatNotice.SYNC_HELP,
+				"First Time Setup complete - " + displayCount + " items saved to Kill Clog.");
+		}
 
 		reset();
 
-		clogButtonOverlay.flashGreen();
 		SwingUtilities.invokeLater(() -> panelRefresh.accept(name));
-	}
-
-	private boolean captureVisibleCategory(Client client, ClogIndex clogIndex,
-		VisibleClogCategoryReader visibleClogCategoryReader,
-		LocalClogCache localClogCache, KillClogChatNotifier chatNotifier,
-		Consumer<String> panelRefresh)
-	{
-		Player local = client.getLocalPlayer();
-		if (local == null || local.getName() == null)
-		{
-			return false;
-		}
-
-		VisibleClogCategory category = visibleClogCategoryReader.read(client).orElse(null);
-		if (category == null)
-		{
-			chatNotifier.send(ChatNotice.SYNC_HELP,
-				"Open a Collection Log category to refresh its items.");
-			return false;
-		}
-
-		String name = local.getName();
-		List<Integer> categoryItems = clogIndex.canonicalizeItemIds(category.allItemIds());
-		List<ClogResult.ClogItem> obtained = clogIndex.canonicalizeItems(category.obtained());
-		localClogCache.mergeCategory(name, category.key(), categoryItems, obtained);
-
-		// Re-read global clog totals from live varps (catches game updates + new items).
-		int liveObtained = client.getVarpValue(ClogVarps.OBTAINED);
-		int liveTotal = client.getVarpValue(ClogVarps.TOTAL);
-		if (liveObtained > 0 || liveTotal > 0)
-		{
-			localClogCache.updateTotals(name, liveObtained, liveTotal);
-		}
-
-		chatNotifier.send(ChatNotice.SYNC_RESULT,
-			"Captured " + category.name() + " - " + obtained.size()
-				+ "/" + categoryItems.size() + " obtained");
-		SwingUtilities.invokeLater(() -> panelRefresh.accept(name));
-		return true;
 	}
 }

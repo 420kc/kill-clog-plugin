@@ -1,3 +1,23 @@
+# 2.3.4 local refresh follow-up
+
+The original reviewed candidate remains frozen at `hive/2.3.4-submission-candidate`
+(`d18f41e7`). The follow-up is on `hive/2.3.4-log-refresh` and needs fresh review
+and a real-client smoke before submission.
+
+- Refresh the full local Collection Log whenever its owner opens it; Search retries the same capture.
+- Remove the in-game page-refresh chalice. Keep the panel/profile controls.
+- Preserve the last good capture on interruption, incomplete data, host logs or account changes.
+- Repair quantities and totals from complete captures while preserving dates and ownership metadata.
+- Keep routine refreshes quiet and skip unchanged cache writes and web-sync notifications.
+- Clarify local setup/updates versus optional Kill Clog Web Sync in the README.
+
+Smoke: existing cache, reopen without Search, normal page restored, no page chalice,
+quiet refresh; then manual Search. Check quantities and dated items. Close during
+capture and confirm saved data remains. Fresh/empty setup still confirms in chat.
+Web publication remains opt-in; the panel sync control publishes saved data.
+
+## Preserved candidate scope
+
 # Kill Clog 2.3.4: modal polish and item matching
 
 Local visual-smoke candidate based on accepted 2.3.3 at `96dee242`.

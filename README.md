@@ -11,15 +11,15 @@ Kill Clog brings HiScores and Collection Log progress together in one RuneLite p
   </tr>
 </table>
 
-## First-time setup
+## Collection Log setup and updates
 
 Install **Kill Clog** from the RuneLite Plugin Hub and open its panel while logged in. Your account loads automatically.
 
-Open your Collection Log. Setup runs automatically, even with zero items. Chat confirms when it's done.
+Open your Collection Log. Setup runs automatically and confirms completion with a chat message.
 
-To retry, click **Search** at the top of the log. If it says **RuneProfile**, right-click it and choose **Search**.
+Your log is saved locally. New unlocks update it as you play; opening the log refreshes every page and corrects saved quantities. Later refreshes are quiet.
 
-Your log is saved locally and kept current as you unlock items.
+To retry an update, reopen the log or choose **Search** at the top. If it says **RuneProfile**, right-click it and choose **Search**. Interrupted updates keep your saved log.
 
 ## Look up other players
 
@@ -69,11 +69,11 @@ The skill title shows combined progress. Each section shows its own `Obtained: x
 
 Skills appear in the main grid by default. They can also be moved to the activity tray or hidden behind Skill Summary. Synced accounts can use the configured Skill Color, level-99 completion, or overall Skill Clog progression.
 
-## Killclog.com sync
+## Kill Clog Web Sync
 
 Killclog.com sync is optional and off by default. It is separate from the local Collection Log setup above.
 
-Enable **Sync Collection Log to Killclog.com** to publish your Collection Log and personal bests to your killclog.com profile. The sync button in the panel publishes immediately.
+Enable **Sync Collection Log** under **Kill Clog Web Sync** to publish your Collection Log and personal bests to your killclog.com profile. The sync button in the panel publishes saved data immediately; it does not reread the in-game log.
 
 **Publish Character Model** is also off by default and requires Killclog.com sync. It adds a one-click button to publish your current character and follower models to your killclog.com/p/ profile.
 
@@ -99,7 +99,7 @@ Full page names work, and shorthand such as `gotr`, `mixology`, `pets`, and `hyd
 
 ## Settings
 
-- **killclog.com:** Collection Log sync, Publish Character Model, and Silent automatic sync
+- **Kill Clog Web Sync:** Collection Log sync, Publish Character Model, and Silent automatic sync
 - **Modal Appearance:** activation, hover feedback, Wiki links, KC, PB, and rank
 - **Lookup:** automatic self-lookup, player comparison, and player-menu lookup
 - **Menu location:** choose which right-click menus show Kill Clog

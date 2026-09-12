@@ -1134,7 +1134,7 @@ public class LocalClogCache
 		data.lastUpdated = Instant.now().toString();
 		data.uniqueObtained = result.getUniqueObtained();
 		data.uniqueTotal = result.getUniqueTotal();
-		if (existing != null)
+		if (existing != null && !firstParty)
 		{
 			if (existing.uniqueObtained > data.uniqueObtained)
 			{
@@ -1152,10 +1152,10 @@ public class LocalClogCache
 		{
 			data.providerAccountType = result.getProviderAccountType();
 		}
-		data.obtained = data.obtained != null
+		data.obtained = !firstParty && data.obtained != null
 			? new ConcurrentHashMap<>(data.obtained)
 			: new ConcurrentHashMap<>();
-		data.categories = data.categories != null
+		data.categories = !firstParty && data.categories != null
 			? new ConcurrentHashMap<>(data.categories)
 			: new ConcurrentHashMap<>();
 
@@ -1168,7 +1168,8 @@ public class LocalClogCache
 			{
 				// Capture landings, and legacy null-marker stores (whose
 				// whole content is implicitly first-party), merge as before.
-				merged = preserveItemMetadata(entry.getValue(), data.obtained.get(cat));
+				merged = preserveItemMetadata(entry.getValue(),
+					existing != null && existing.obtained != null ? existing.obtained.get(cat) : null);
 			}
 			else
 			{
@@ -1191,6 +1192,7 @@ public class LocalClogCache
 		if (firstParty)
 		{
 			data.firstPartySetupComplete = true;
+			data.firstPartyByCategory = new HashMap<>();
 			for (Map.Entry<String, List<ClogResult.ClogItem>> entry
 				: result.getObtainedItems().entrySet())
 			{
@@ -1204,6 +1206,11 @@ public class LocalClogCache
 		// an EXISTING null marker is a legacy store and keeps its grandfather
 		// rights - a provider lookup must not silently revoke them.)
 
+		// An unchanged full walk needs neither a disk write nor a web-sync signal.
+		if (firstParty && sameCapture(data, existing))
+		{
+			return;
+		}
 		players.put(key, data);
 		final PlayerClogData snapshot = shallowCopy(data);
 		submitPlayerSave(name, snapshot);
@@ -1212,6 +1219,39 @@ public class LocalClogCache
 		{
 			notifyFirstPartyChanged();
 		}
+	}
+
+	private static boolean sameCapture(PlayerClogData data, PlayerClogData prior)
+	{
+		if (prior == null || data.uniqueObtained != prior.uniqueObtained
+			|| data.uniqueTotal != prior.uniqueTotal
+			|| !Objects.equals(data.playerName, prior.playerName)
+			|| !Objects.equals(data.ownerHash, prior.ownerHash)
+			|| data.providerAccountType != prior.providerAccountType
+			|| !Objects.equals(data.lastChanged, prior.lastChanged)
+			|| !Objects.equals(data.firstPartySetupComplete, prior.firstPartySetupComplete)
+			|| !Objects.equals(data.firstPartyByCategory, prior.firstPartyByCategory)
+			|| !Objects.equals(data.categories, prior.categories)
+			|| prior.obtained == null || !data.obtained.keySet().equals(prior.obtained.keySet()))
+		{
+			return false;
+		}
+		for (String category : data.obtained.keySet())
+		{
+			List<ClogResult.ClogItem> items = data.obtained.get(category);
+			List<ClogResult.ClogItem> previous = prior.obtained.get(category);
+			if (previous == null || items.size() != previous.size()) return false;
+			for (int i = 0; i < items.size(); i++)
+			{
+				ClogResult.ClogItem item = items.get(i);
+				ClogResult.ClogItem old = previous.get(i);
+				if (item.getId() != old.getId() || item.getCount() != old.getCount()
+					|| item.getObtainedAtKc() != old.getObtainedAtKc()
+					|| !Objects.equals(item.getDate(), old.getDate())
+					|| !Objects.equals(item.getObtainedFrom(), old.getObtainedFrom())) return false;
+			}
+		}
+		return true;
 	}
 
 	/**
@@ -2011,11 +2051,11 @@ public class LocalClogCache
 			data.lastChanged,
 			data.providerAccountType
 		);
-		if (data.uniqueObtained > 0)
+		if (data.uniqueObtained >= 0)
 		{
 			result.setUniqueObtained(data.uniqueObtained);
 		}
-		if (data.uniqueTotal > 0)
+		if (data.uniqueTotal >= 0)
 		{
 			result.setUniqueTotal(data.uniqueTotal);
 		}
