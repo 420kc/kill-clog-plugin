@@ -1,18 +1,25 @@
 # Kill Clog 2.4.0 candidate
 
-Status: local preparation, not ready for submission. This supersedes the active
-2.3.4 release name; it does not alter the preserved 2.3.4 checkpoints or master.
+Status: Dylan-approved, smoke-passed local candidate on 2026-09-12. Product scope
+is frozen. Submission remains gated by the ownership-recovery review finding and
+the date API rollout below. Master and the preserved 2.3.4 checkpoints are unchanged.
 
 - Active branch: `hive/2.4.0-candidate`.
 - Active checkout: `C:/Users/dylan/.codex/worktrees/killclog-240-candidate`.
-- Candidate behavior baseline: `1c3df015a9fb8a0f8b37879812be1f0c8aee569f`.
+- Approved candidate code: `e403c7d897e414ec37de9de742ac161beafdd9d9`.
 - Submission base: 2.3.3 `96dee2429ed96187e36d1451270b114f7a9dbd07`.
 - 2.3.3 Hub PR: https://github.com/runelite/plugin-hub/pull/16418
-  Still open on 2026-09-12; build passed, maintainer review required.
+  Last checked open on 2026-09-12; recheck the accepted pin before submission.
 - Historical checkpoints: `hive/2.3.4-submission-candidate` (`d18f41e7`)
   and `hive/2.3.4-log-refresh` (`1c3df015`). Keep their names and jars as history.
-- Prepared 2.4 code: `1952dfeb`, jar `kcpdev-1952dfeb-78F579604EEA.jar`.
-  Selected for the next shared refire; the running client was not changed.
+- Approved jar: `kcpdev-e403c7d8-E31A0EDAA84C.jar`, 552,802 bytes.
+  SHA-256: `E31A0EDAA84CBBB9A2FEA810FB2903F70A16B22B6E152099E4F3B85B99EC3DAA`.
+  Stored under `C:/Users/dylan/plugins/dev-client/.prepared-refire/plugins/`.
+  The running shared client was verified to load this exact jar when Dylan
+  reported the quiet-update smoke passed. Preserve these bytes; docs-only
+  closeout commits do not require a replacement build or another visual smoke.
+- Previous candidate `85d71da9` / code `1952dfeb` is retained as
+  `hive/2.4.0-before-unlock-history`; its immutable prepared jar also remains.
 
 ## Included changes from 2.3.3
 
@@ -49,21 +56,37 @@ Status: local preparation, not ready for submission. This supersedes the active
     changes; retain single-flight requests and bounded click backoff.
 18. Preserve recovery dates and newly issued credentials under the original
     account, avoiding lost authorization when a request is cancelled.
+19. Retain ambiguous live unlock timestamps until a complete capture identifies
+    one item; preserve pending evidence across restarts, session gaps and renames.
+    Never assign an acquisition time to an undated historical import.
+20. Carry saved acquisition dates through optional web sync, proof lookup and
+    Recent, separately from API receipt times. Requires the companion API rollout.
+21. Refresh the displayed local log immediately after captures and matched drops,
+    preserving stats, CA, rank selection and colors without restarting provider
+    lookups. Leave other-player lookups alone; refresh comparison colors/totals.
 
 ## Current preparation proof (2026-09-12)
 
-Code `1952dfeb` passed compile, both Checkstyle gates, jar build and 612 tests
-(zero failures/errors/skips). The local Swing fixture verifies compact status
-text and wrapped tooltips; this does not replace a real-client smoke.
-The prepared jar is 546,997 bytes, SHA-256
-`78F579604EEA62A4EB2CA94532CB280952602E866208E03412FD943DC28CFE3D`.
+Code `e403c7d8` passed compile, both Checkstyle gates, jar build and 624 tests
+(zero failures/errors/skips). Independent date-history and quiet-refresh reviews
+returned ALLOW; follow-up review checked the comparison redraw order and totals.
+Dylan approved the final quiet-update smoke on 2026-09-12. This supersedes the
+earlier 612-test/code `1952dfeb` candidate. Existing Swing fixtures and isolated
+failure-path tests remain relevant; the smoke is not proof of every rare account
+or service failure scenario.
+
+The code diff from 2.3.3 through `e403c7d8` is 60 files, +2,992/-942 lines,
+including tests/docs. The quiet-update slice alone is 43 production lines added
+and 6 removed across three files (122/8 including its tests).
+
+Earlier measurements, retained as history:
 The earlier `a852a227` checkpoint diff from 2.3.3 was 49 files, +2,467/-931 lines; the character
 slice from `5469f66d` is 10 files, +963/-181, including tests and documentation.
 At `a852a227`, tracked main Java was 109 files / 29,339 lines / 229,293 `o200k_base` tokens
 (sum per file). This is a source-size measurement, not account usage or proof
 against an old token ceiling; the 2.3.3 baseline measures 223,885 the same way.
 
-Live API health and the private deployment marker were checked again. The bind
+Earlier in this lane, live API health and the private deployment marker were checked. The bind
 verifier now matches this release, the render queue is idle, and the retained
 API log contains no appearance request/failure notice events since the notice
 deployment. That gives no new real-user failure-path coverage or delivery proof.
@@ -73,7 +96,7 @@ deployment. That gives no new real-user failure-path coverage or delivery proof.
 Implemented locally after `5469f66d`. Independent review allowed `7a47f007`
 and reproduced 611 tests. The final follow-up `a852a227` also received ALLOW,
 with 31 appearance tests, 23 panel tests and both Checkstyle gates rerun.
-A new real-client smoke is required before release.
+The later candidate smoke is recorded above; no new character feature is pending.
 
 - Bring forward the bounded API error-code/support-ref messages from `5a06060f`.
 - Keep the existing character icon, status row and success flash. Show updating,
@@ -122,7 +145,7 @@ policy adoption is part of this plugin cleanup.
 
 ## API and private operations
 
-Verified production on 2026-09-12: `d6b7d2b508ff9d5934697de5bf7b8a81179aef53`,
+Last verified production snapshot on 2026-09-12: `d6b7d2b508ff9d5934697de5bf7b8a81179aef53`,
 containing the existing palette/wearable compatibility fix `105fb6f4` plus
 private failure notices. This is separate from the plugin diff.
 
@@ -166,20 +189,20 @@ are not part of this submission boundary.
 
 ## Final release gates
 
-Completed: character-publication independent reviews, compile, both Checkstyle
-checks and 612 tests. The final skill-only layout pass also passed those gates;
-local Swing fixtures verify fixed titles, stable hover size, clearing on exit,
-long-name clipping and comparison. Fixtures use synthetic item sprites.
-Firemaking is 20px shorter, Hitpoints 10px shorter and Sailing 70px shorter than
-`6cbe8489`, with unchanged widths. The prepared jar at the top supersedes the
-earlier character-only candidate; no real-client smoke is inferred.
+Completed: candidate code committed; 624 tests, compile, Checkstyle and jar gates;
+independent implementation reviews; Dylan's candidate/quiet-update smoke; exact
+running-jar verification. Keep the approved UI and behavior frozen.
 
-- [ ] Approve the shared skill readout in the real client: short and long cards,
-      long names and comparison. Titles stay fixed; names clear on pointer exit.
-- [ ] Confirm the loaded candidate, then smoke normal flows: open/retry the local
-      Collection Log and restart; inspect totals/dates, lookup recovery, Sources
-      and the Mining/Fishing/Hunter additions; publish a character, change gear
-      and publish again, including a follower if available.
+- [ ] Validate architectural review F1 against current code: a missing/malformed
+      identity ledger may let an explicitly owned cache be adopted under another
+      account. Reproduce with isolated fixtures and fix if confirmed before Hub
+      submission. The date and quiet-refresh reviews did not close this finding.
+- [ ] Approve/deploy the acquisition-date API companion, then verify plugin sync
+      and web Recent. Worktree `C:/Users/dylan/.codex/worktrees/collection-unlock-dates`,
+      branch `hive/collection-unlock-dates`, tip `f76ff14d`, code `16e0f3fb`.
+      Local API integration tests and the real web normalizer passed; no deployment
+      occurred in this slice. Existing receipt-only profiles can have no Recent
+      until a new sync supplies known dates. The already-missed hat is not repaired.
 - [ ] Confirm final README/screenshots, recheck 2.3.3's accepted Hub pin, then
       prepare master and obtain push/submission authorization for one Hub pin.
 
@@ -193,6 +216,21 @@ Companion operations: one controlled API failure should verify actual Hive Ops
 chat/sidebar and Telegram delivery. This is separate from plugin layout approval.
 The seven-day recovery policy, expanded recovery alerts and asynchronous support
 reference correlation remain separate decisions, outside this release slice.
+
+The supplied architectural review also lists F2 (event-order total overcount),
+F3 (catalog request cleanup race), and F4 (comparison PB data). These remain
+unvalidated follow-ups, not silently completed work. Triage them before final
+release approval; none requires reopening the approved layout or a package rewrite.
+
+UX closeout: opening the log handles local setup/update/repair; matched drops
+update local Recent immediately while self is displayed; web sync publishes saved
+data; character publication stays separately opt-in. No extra repair button,
+settings, retry dialog or manual self-lookup requirement is needed.
+
+Next page direction (not implemented): a lightweight 2.4.0 page for killclog.com
+with a short introduction, three player-facing highlights, one approved screenshot
+and the Plugin Hub link. Call it a preview until the release is available on Hub;
+do not turn the public page into this internal checklist.
 
 Historical release receipts follow unchanged.
 

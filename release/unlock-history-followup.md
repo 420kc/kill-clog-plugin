@@ -1,8 +1,10 @@
 # 2.4 unlock-history follow-up
 
-Base: approved candidate `85d71da9` / code `1952dfeb`, preserved in
-`killclog-240-candidate`. This separate checkout is `killclog-240-unlock-dates`,
-branch `hive/2.4.0-unlock-dates`. Local work only until reviewed and smoked.
+Base: previous candidate `85d71da9` / code `1952dfeb`, preserved as
+`hive/2.4.0-before-unlock-history`. Work was built in `killclog-240-unlock-dates`,
+branch `hive/2.4.0-unlock-dates`, and adopted into `hive/2.4.0-candidate` after
+independent review and Dylan's smoke approval on 2026-09-12. Current release truth
+and remaining gates live in [kill-clog-next-release.md](kill-clog-next-release.md).
 
 The Chompy bird hat report established two gaps: ambiguous live names discarded
 their event time, and web sync carried no acquisition dates. Item 2991 was present
@@ -29,7 +31,10 @@ in the inspected local cache without a date. No user cache has been edited.
 Verification: persisted pending-event round trip, duplicate notifications,
 multi-category dedup, account isolation, ambiguous/historical captures, date
 validation, payload/proof-view round trip, and unchanged-date repeat refresh.
-Full compile/Checkstyle/test/jar gate and independent review are required.
+Final code `e403c7d8` passed compile/Checkstyle/test/jar gates (624 tests) and
+independent reviews. The follow-up quiet local update preserves the populated
+panel without a new provider lookup; comparison colors and totals also refresh.
+The exact jar and Dylan-approved smoke are recorded in the owning release note.
 
 API companion: `C:/Users/dylan/.codex/worktrees/collection-unlock-dates`, branch
 `hive/collection-unlock-dates`, based on `d6b7d2b5`. Deploy API support before the
