@@ -143,6 +143,17 @@ final class ClogRecords
 				});
 			}
 		}
+		if (source.pendingUnlocks != null)
+		{
+			List<PendingClogUnlock> pending = dest.pendingUnlocks == null
+				? new ArrayList<>() : new ArrayList<>(dest.pendingUnlocks);
+			for (PendingClogUnlock event : source.pendingUnlocks)
+			{
+				if (event != null && !pending.contains(event)) pending.add(event);
+			}
+			while (pending.size() > 32) pending.remove(0);
+			dest.pendingUnlocks = pending;
+		}
 		dest.uniqueObtained = Math.max(dest.uniqueObtained, source.uniqueObtained);
 		dest.uniqueTotal = Math.max(dest.uniqueTotal, source.uniqueTotal);
 		if (dest.lastChanged == null

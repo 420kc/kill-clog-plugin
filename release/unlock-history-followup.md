@@ -12,6 +12,9 @@ in the inspected local cache without a date. No user cache has been edited.
   inside that account's cache, using the existing guarded disk writer. Duplicate
   personal/clan notifications coalesce. Storage is bounded to 32 pending groups,
   each with at most 256 candidates.
+- Require a completed local capture before recording ambiguous candidates;
+  incomplete provider snapshots cannot establish which items were missing.
+  Pending evidence survives session gaps and account rename migration.
 - On a complete first-party capture, one matching candidate gains the observed
   date in every category. No matches keep the pending event. Multiple matches
   cannot establish which item received that time and are discarded without

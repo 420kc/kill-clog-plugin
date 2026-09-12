@@ -55,6 +55,25 @@ public class LocalClogCacheTest
 	}
 
 	@Test
+	public void pendingDatesRequireACompletedLocalBaseline() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		Gson gson = new Gson();
+		LocalClogCache cache = new LocalClogCache(gson, new InlineScheduledExecutorService(), dir);
+		Map<String, List<Integer>> cats = categoryItems("hats", 2978, 2991, 2992);
+		cache.cacheResult(clog("Tester", cats, obtainedItems("hats", 2978)));
+		cache.followNameChange("Tester", 77L);
+		assertTrue(cache.setActivePlayer("Tester"));
+		cache.rememberPendingUnlock("Tester", List.of(2991, 2992));
+		PlayerClogData saved = gson.fromJson(Files.readString(new File(dir, "tester.json").toPath()), PlayerClogData.class);
+		assertNull(saved.pendingUnlocks);
+		cache.cacheFirstPartyResult(clog("Tester", cats, obtainedItems("hats", 2978)));
+		cache.rememberPendingUnlock("Tester", List.of(2991, 2992));
+		saved = gson.fromJson(Files.readString(new File(dir, "tester.json").toPath()), PlayerClogData.class);
+		assertEquals(1, saved.pendingUnlocks.size());
+	}
+
+	@Test
 	public void testLegacySetupEligibilityDoesNotChangeAfterOneLiveUnlock() throws Exception
 	{
 		for (int legacyKind = 0; legacyKind < 3; legacyKind++)

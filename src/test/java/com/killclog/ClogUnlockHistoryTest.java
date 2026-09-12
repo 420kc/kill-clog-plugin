@@ -83,6 +83,34 @@ public class ClogUnlockHistoryTest
 	}
 
 	@Test
+	public void sessionGapKeepsEvidenceUntilTheOwnerReturns()
+	{
+		List<PendingClogUnlock> pending = List.of(new PendingClogUnlock(List.of(2991, 2992), date, "owner"));
+		Map<String, List<ClogResult.ClogItem>> obtained = items(2991);
+		List<PendingClogUnlock> waiting = PendingClogUnlock.reconcile(pending, obtained, null);
+		assertEquals(pending, waiting);
+		assertNull(obtained.get("hats").get(0).getDate());
+		PendingClogUnlock.reconcile(waiting, obtained, "owner");
+		assertEquals(date, obtained.get("hats").get(0).getDate());
+		assertNull(PendingClogUnlock.reconcile(null, obtained, "owner"));
+	}
+
+	@Test
+	public void renameMergeRetainsUnresolvedDatesWithoutDuplicates()
+	{
+		PlayerClogData oldName = new PlayerClogData();
+		oldName.pendingUnlocks = List.of(new PendingClogUnlock(List.of(2991, 2992), date, "owner"));
+		PlayerClogData newName = new PlayerClogData();
+		ClogRecords.mergeForMigration(newName, oldName);
+		ClogRecords.mergeForMigration(newName, new Gson().fromJson(new Gson().toJson(oldName), PlayerClogData.class));
+		assertNotNull(newName.pendingUnlocks);
+		assertEquals(1, newName.pendingUnlocks.size());
+		Map<String, List<ClogResult.ClogItem>> obtained = items(2991);
+		PendingClogUnlock.reconcile(newName.pendingUnlocks, obtained, "owner");
+		assertEquals(date, obtained.get("hats").get(0).getDate());
+	}
+
+	@Test
 	public void malformedAndFutureDatesAreIgnored()
 	{
 		assertNull(ClogDates.iso("2026-02-30 12:00:00"));

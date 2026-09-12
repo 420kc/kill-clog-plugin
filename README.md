@@ -75,6 +75,8 @@ Killclog.com sync is optional and off by default. It is separate from the local 
 
 Enable **Sync Collection Log** under **Kill Clog Web Sync** to publish your Collection Log and personal bests to your killclog.com profile. The sync button in the panel publishes saved data immediately; it does not reread the in-game log.
 
+Saved unlock dates are included in web sync. Older items without a known date stay undated.
+
 **Publish Character Model** is also off by default and requires Killclog.com sync. It adds a one-click button to publish your current character and follower models to your killclog.com/p/ profile.
 
 Manual syncs and character updates show progress in the panel and flash the icon green on success. Hover the character icon for details if an update is delayed or fails.

@@ -1488,8 +1488,9 @@ public class LocalClogCache
 		if (playerName == null || candidates == null || candidates.size() < 2 || candidates.size() > 256) return;
 		String key = cacheKey(playerName);
 		PlayerClogData data = players.get(key);
-		// Pending evidence must have a settled owner, never merely a lookup name.
-		if (data == null || activeHashKey == null || !activeHashKey.equals(settledOwnerBySlot.get(key))) return;
+		// Missing candidates need a completed local baseline and a settled owner.
+		if (data == null || !Boolean.TRUE.equals(data.firstPartySetupComplete)
+			|| activeHashKey == null || !activeHashKey.equals(settledOwnerBySlot.get(key))) return;
 		String validDate = ClogDates.local(date);
 		if (validDate == null) return;
 		PendingClogUnlock event = new PendingClogUnlock(candidates, validDate, activeHashKey);
@@ -1502,7 +1503,7 @@ public class LocalClogCache
 		{
 			if (prior != null && event.candidates.equals(prior.candidates)) return;
 		}
-		if (pending.size() >= 32) pending.remove(0);
+		while (pending.size() >= 32) pending.remove(0);
 		pending.add(event);
 		data.pendingUnlocks = pending;
 		submitPlayerSave(playerName, shallowCopy(data));
