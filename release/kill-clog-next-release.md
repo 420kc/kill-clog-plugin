@@ -1,32 +1,50 @@
 # Kill Clog 2.4.0 candidate
 
 Status: the e403c7d8 product/UX candidate remains Dylan-approved and smoke-passed.
-Ownership recovery is independently approved. The subsequent total-authority and
-catalog-retry fixes are locally tested and ready for Dylan's separately arranged
-Fable review. No reviewer was summoned for that follow-up. The current jar still
-needs focused smoke. Master and the earlier approved jars remain unchanged.
+Ownership recovery is independently approved. Dylan reported Fable's ALLOW for
+the subsequent total-authority/catalog-retry packet on 2026-09-12; the review
+artifact has not yet been attached here. No reviewer was summoned for that
+follow-up. The current jar still needs the recorded focused smoke gate below.
+Master and the earlier approved jars remain unchanged.
 
-- Active branch: `hive/2.4.0-candidate`.
-- Active checkout: `C:/Users/dylan/.codex/worktrees/killclog-240-candidate`.
+- Active branch: `hive/2.4.0`.
+- Active checkout: `C:/Users/dylan/plugins/kcpdev`.
+- Canonical consolidation preserves reviewed candidate `32b90541` unchanged;
+  only release documentation changed during cleanup.
 - Current production code: `2bff127c` (catalog retry); total fix `31d4f597`.
 - README badge/wording: `05715328cf65e3d57a2a529884aa4d32ab45141c`.
 - Ownership correction: `064c09b015ecd40667e9c2a5d4c222736e7a417a`.
-- Pre-fix candidate preserved as `hive/2.4.0-before-ownership-recovery` at 2bf9c639;
-  its smoke-approved jar remains unchanged.
+- Pre-fix candidate: `2bf9c639`; its smoke-approved jar remains unchanged.
+  Retired branch names and build evidence are in the cleanup archive below.
 - Prior smoke-approved code: `e403c7d897e414ec37de9de742ac161beafdd9d9`.
 - Submission base: 2.3.3 `96dee2429ed96187e36d1451270b114f7a9dbd07`.
 - 2.3.3 Hub PR: https://github.com/runelite/plugin-hub/pull/16418
   Last checked open on 2026-09-12; recheck the accepted pin before submission.
-- Historical checkpoints: `hive/2.3.4-submission-candidate` (`d18f41e7`)
-  and `hive/2.3.4-log-refresh` (`1c3df015`). Keep their names and jars as history.
+- Historical checkpoints: tag `hive/2.3.4-submission-candidate` (`d18f41e7`)
+  and log-refresh commit `1c3df015`. Their release branches are retired.
 - Approved jar: `kcpdev-e403c7d8-E31A0EDAA84C.jar`, 552,802 bytes.
   SHA-256: `E31A0EDAA84CBBB9A2FEA810FB2903F70A16B22B6E152099E4F3B85B99EC3DAA`.
   Stored under `C:/Users/dylan/plugins/dev-client/.prepared-refire/plugins/`.
   The running shared client was verified to load this exact jar when Dylan
   reported the quiet-update smoke passed. Preserve these bytes; docs-only
   closeout commits do not require a replacement build or another visual smoke.
-- Previous candidate `85d71da9` / code `1952dfeb` is retained as
-  `hive/2.4.0-before-unlock-history`; its immutable prepared jar also remains.
+- Previous candidate `85d71da9` / code `1952dfeb` remains in Git history and
+  the cleanup archive; its immutable prepared jar also remains.
+
+## Canonical checkout and recovery
+
+Use `C:/Users/dylan/plugins/kcpdev` on `hive/2.4.0` for all plugin work and
+prepared refires. The temporary 2.3.3/2.3.4/2.4.0 release and review worktrees
+were clean and removed on 2026-09-12. `master` remains at the submitted 2.3.3
+commit `96dee242`; no remote refs or Plugin Hub pin changed.
+
+Recovery archive:
+`C:/Users/dylan/plugins/release-archives/killclog-20260912-161658/`.
+It contains a verified `plugin-history.bundle`, `build-evidence.zip`, and
+`inventory.json` with original branch heads and worktree paths. The old canonical
+build is also retained there. Unique design/diagnostic histories have local
+`archive/20260912/*` tags; they are historical alternatives, not active releases.
+Unrelated older plugin experiments and separate API/Hive worktrees were untouched.
 
 ## Included changes from 2.3.3
 
@@ -188,8 +206,9 @@ private failure notices. This is separate from the plugin diff.
 
 ## Preserved broader redesign, excluded from this candidate
 
-`C:/Users/dylan/plugins/kcpdev`, branch `hive/2.4.0` at `9c9280e3`, remains a
-separate design checkpoint. Do not merge it wholesale over the new candidate.
+The former canonical design is preserved at tag
+`archive/20260912/2.4.0-earlier-design` (`8e7cccca`, including the `9c9280e3`
+checkpoint). Do not merge it wholesale over the current canonical candidate.
 
 - Slayer: Superiors, Light/Dark/Dusk Mystic Sets, then a deduplicated remainder.
 - Defence: curated melee/ranged/magic armour plus defenders through Avernic hilt.
@@ -214,7 +233,9 @@ That ownership-only jar is superseded for the next smoke by the total/catalog
 follow-up: 640 tests, zero failures/skips; compile, both Checkstyle gates and jar
 passed. New jar: 553,848 bytes, SHA-256
 e4b987671231ca2e1e973dd0452a253ac93db242b25e1c581fcc91afcde9ee20.
-This jar awaits Fable review and Dylan smoke. Keep the approved UI frozen.
+Dylan reported Fable ALLOW for this packet on 2026-09-12; attach the review
+artifact when available. Focused smoke remains as recorded below. Keep the
+approved UI frozen.
 
 - [x] Reproduce architectural review F1: four temporary-file regressions fail
       against the approved baseline (foreign adoption, malformed ledger, foreign

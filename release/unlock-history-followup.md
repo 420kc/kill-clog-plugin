@@ -1,6 +1,10 @@
 # 2.4 unlock-history follow-up
 
-Base: previous candidate `85d71da9` / code `1952dfeb`, preserved as
+Historical receipt: the temporary branches/worktrees below were retired during
+canonical consolidation. Current work is `C:/Users/dylan/plugins/kcpdev` on
+`hive/2.4.0`; the release checklist links their recovery archive.
+
+Base: previous candidate `85d71da9` / code `1952dfeb`, formerly preserved as
 `hive/2.4.0-before-unlock-history`. Work was built in `killclog-240-unlock-dates`,
 branch `hive/2.4.0-unlock-dates`, and adopted into `hive/2.4.0-candidate` after
 independent review and Dylan's smoke approval on 2026-09-12. Current release truth
