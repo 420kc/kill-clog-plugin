@@ -11,8 +11,8 @@ Status: local preparation, not ready for submission. This supersedes the active
   Still open on 2026-09-12; build passed, maintainer review required.
 - Historical checkpoints: `hive/2.3.4-submission-candidate` (`d18f41e7`)
   and `hive/2.3.4-log-refresh` (`1c3df015`). Keep their names and jars as history.
-- No 2.4 jar has been selected for the shared client yet. A previously prepared
-  2.3.4 jar does not become 2.4 merely because this checkout's version changed.
+- Prepared 2.4 code: `a852a227`, jar `kcpdev-a852a227-BE92698049F4.jar`.
+  Selected for the next shared refire; the running client was not changed.
 
 ## Included changes from 2.3.3
 
@@ -42,13 +42,25 @@ Status: local preparation, not ready for submission. This supersedes the active
     retain retryable failed saves, and keep the last settled catalog total.
 15. Explain local setup, automatic updates, retry/repair and optional web
     publication separately in the README. Align all three version fields to 2.4.0.
+16. Clarify character publication failures and waiting states in the existing
+    status row and wrapped hover details, including safe support references.
+17. Guard each publish continuation against cancellation, consent and account
+    changes; retain single-flight requests and bounded click backoff.
+18. Preserve recovery dates and newly issued credentials under the original
+    account, avoiding lost authorization when a request is cancelled.
 
 ## Current preparation proof (2026-09-12)
 
-Version-only preparation passed compile, both Checkstyle gates, jar build and
-593 tests (zero failures/errors/skips). Production behavior remains `1c3df015`;
-only CLIENT_VERSION changes to 2.4.0. No new real-client smoke is claimed.
-The 2.4 jar was built locally but was not selected for shared refire.
+Code `a852a227` passed compile, both Checkstyle gates, jar build and 612 tests
+(zero failures/errors/skips). The local Swing fixture verifies compact status
+text and wrapped tooltips; this does not replace a real-client smoke.
+The prepared jar is 547,018 bytes, SHA-256
+`BE92698049F485CE478281F45A21FE8CD78271C769C6F9BB38EA31143D080635`.
+The code checkpoint diff from 2.3.3 is 49 files, +2,467/-931 lines; the character
+slice from `5469f66d` is 10 files, +963/-181, including tests and documentation.
+Tracked main Java is 109 files / 29,339 lines / 229,293 `o200k_base` tokens
+(sum per file). This is a source-size measurement, not account usage or proof
+against an old token ceiling; the 2.3.3 baseline measures 223,885 the same way.
 
 Live API health and the private deployment marker were checked again. The bind
 verifier now matches this release, the render queue is idle, and the retained
@@ -57,8 +69,10 @@ deployment. That gives no new real-user failure-path coverage or delivery proof.
 
 ## Character publication cleanup
 
-Implemented locally after `5469f66d`; independent review and a new real-client
-smoke are required before adoption.
+Implemented locally after `5469f66d`. Independent review allowed `7a47f007`
+and reproduced 611 tests. The final follow-up `a852a227` also received ALLOW,
+with 31 appearance tests, 23 panel tests and both Checkstyle gates rerun.
+A new real-client smoke is required before release.
 
 - Bring forward the bounded API error-code/support-ref messages from `5a06060f`.
 - Keep the existing character icon, status row and success flash. Show updating,
@@ -76,6 +90,9 @@ smoke are required before adoption.
   network loss advises checking the profile before retrying.
 - Preserve recovery activation dates (they were mistakenly treated as invalid
   hex secrets) and display the server's date in the user's timezone.
+- When this installation lacks the token for an existing recovery request,
+  direct the user to the installation that started it or support. Waiting alone
+  cannot give this installation the missing token.
 - Explain unsupported local player transforms before making an HTTP request.
   Keep current API validation and explicit unsupported-follower retry guidance.
 - Test actual delayed registration/claim/retry sequences, cancellation, account
@@ -116,8 +133,8 @@ private failure notices. This is separate from the plugin diff.
 - Registration/publish failures and asynchronous render failures now reach a
   private event feed and configured Telegram notifier with fixed reason codes
   and random support refs. Notices contain no player names, recipes or credentials.
-- Hive Ops `1739c48c` is built/reviewed and prepared for the next shared refire,
-  not proven loaded. Actual Telegram delivery and real-client chat/sidebar
+- The running shared-client classpath includes Hive Ops `1739c48c`.
+  Actual Telegram delivery and real-client chat/sidebar
   delivery still require one controlled failure smoke.
 - Recovery/claim/cancel failures are logged but are outside the current alert
   filter. Local capture and transport failures may never reach the API. Decide
@@ -148,9 +165,9 @@ are not part of this submission boundary.
 
 ## Remaining submission checklist
 
-- [ ] Independently review the completed character-publish cleanup above.
-- [ ] Run compile, both Checkstyle gates, full tests, relevant render fixtures and
-      source-size checks on the final exact commit. Recalculate base-to-head size.
+- [x] Independently review the completed character-publish cleanup above.
+- [x] Run compile, both Checkstyle gates, full tests, relevant render fixtures and
+      source-size checks on code checkpoint `a852a227`; record base-to-head size.
 - [ ] Stage API contract/recovery/queued-render cases with authorized test accounts;
       verify ready player and follower models, signed recolors, both body types,
       palette extremes, changed equipment and repeat publication.
@@ -174,9 +191,9 @@ are not part of this submission boundary.
 - [ ] After final review and Dylan smoke, prepare master, obtain push/submission
       authorization, and create the Hub update with one pin commit. Recheck CI.
 
-The latest behavior baseline had 593 passing tests and prior refresh reviews.
-Those receipts do not constitute approval of unfinished character work or a fresh
-2.4 real-client smoke. Historical release receipts follow unchanged.
+The prepared candidate has 612 passing tests and prior refresh reviews.
+These receipts do not constitute a fresh 2.4 real-client smoke or submission
+approval. Historical release receipts follow unchanged.
 
 ## Prior release receipt
 
