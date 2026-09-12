@@ -1,10 +1,10 @@
 # Kill Clog 2.4.0 candidate
 
 Status: the e403c7d8 product/UX candidate remains Dylan-approved and smoke-passed.
-Ownership recovery is independently approved. Dylan reported Fable's ALLOW for
-the subsequent total-authority/catalog-retry packet on 2026-09-12; the review
-artifact has not yet been attached here. No reviewer was summoned for that
-follow-up. The current jar still needs the recorded focused smoke gate below.
+Ownership recovery is independently approved. Dylan supplied Fable's ALLOW for
+the total-authority/catalog-retry packet on 2026-09-12, including an independent
+640-test and Checkstyle rerun. No reviewer was summoned for that follow-up.
+The current jar still needs the recorded focused smoke gate below.
 Master and the earlier approved jars remain unchanged.
 
 - Active branch: `hive/2.4.0`.
@@ -233,9 +233,19 @@ That ownership-only jar is superseded for the next smoke by the total/catalog
 follow-up: 640 tests, zero failures/skips; compile, both Checkstyle gates and jar
 passed. New jar: 553,848 bytes, SHA-256
 e4b987671231ca2e1e973dd0452a253ac93db242b25e1c581fcc91afcde9ee20.
-Dylan reported Fable ALLOW for this packet on 2026-09-12; attach the review
-artifact when available. Focused smoke remains as recorded below. Keep the
-approved UI frozen.
+Dylan supplied Fable's ALLOW for `c1f6b12e..05715328` on 2026-09-12. Fable
+independently reran `./gradlew.bat --offline test checkstyleMain checkstyleTest
+--rerun-tasks`: build successful, 7 tasks executed, 640 tests, zero failures,
+errors or skips. The six-file +228/-68 slice and three-file production +20/-41
+counts matched. Fable checked the existing jar size/hash but did not rebuild it.
+Canonical consolidation changed release documentation only; the reviewed code
+and jar remain unchanged. Focused smoke remains below. Keep the approved UI frozen.
+
+Review cautions: live totals now depend on game counters rather than chat-side
+increments. A total may trail the unlock message by a tick; verify it advances
+without opening the Collection Log. Fable's catalog-completion ordering note was
+non-blocking: current production callers do not immediately re-fetch from a
+completion continuation. No further code change was requested.
 
 - [x] Reproduce architectural review F1: four temporary-file regressions fail
       against the approved baseline (foreign adoption, malformed ledger, foreign
@@ -247,10 +257,14 @@ approved UI frozen.
       writable. Readable foreign captures and unreadable ledgers remain blocked.
 - [ ] Focused smoke of the current total/catalog follow-up: normal login/self log, open Collection Log, sync,
       and restart with saved data intact; account switching if available. No user
-      cache corruption/deletion is required for smoke. If an unlock is available,
-      check one total increase, dated Recent, and unchanged counts after reopening
-      the log. A normal cold lookup should still populate catalog previews.
+      cache corruption/deletion is required for smoke. A normal cold lookup
+      should still populate catalog previews.
       UI layout is unchanged.
+- [ ] Real-unlock total proof: obtain one new unique item without opening the
+      Collection Log. Verify the displayed total increases exactly once after
+      game-counter reconciliation, allowing a tick after the unlock message.
+      Then check dated Recent and that reopening the log does not increase the
+      total again. Keep this gate pending until actually observed.
 - [x] Integrate and validate the acquisition-date API companion against actual
       production f34f575f, retaining its newer Recent-source selection.
       Worktree `C:/Users/dylan/.codex/worktrees/collection-unlock-dates`, branch
@@ -300,7 +314,8 @@ Audit follow-up and Fable review scope:
 - For a combined review of ownership plus these fixes, use `2bf9c639..HEAD`.
   For full release scope, use 2.3.3 `96dee242..HEAD`. Do not treat the prior
   ownership ALLOW as approval of the subsequent total/catalog changes.
-- Dylan will arrange Fable independently; no agent was invoked for these fixes.
+- Dylan arranged Fable independently and supplied ALLOW; no agent was invoked
+  for these fixes. Independent gate details and remaining smoke are recorded above.
 - Broader dead-code deletion, package moves, coordinator extraction and a new
   release branch remain parked. API deployment approval is still pending.
 
