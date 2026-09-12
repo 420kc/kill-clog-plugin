@@ -1,8 +1,12 @@
 # 2.3.4 local refresh follow-up
 
 The original reviewed candidate remains frozen at `hive/2.3.4-submission-candidate`
-(`d18f41e7`). The follow-up is on `hive/2.3.4-log-refresh` and needs fresh review
-and a real-client smoke before submission.
+(`d18f41e7`). The follow-up is on `hive/2.3.4-log-refresh`.
+
+Local code at `fe7c69bc` passed compile, both Checkstyle gates and 593 tests.
+Independent review allowed the refresh slice at `6372f0b9` and its recovery
+follow-up at `fe7c69bc`. Fresh real-client smoke is required before submission.
+Nothing in this follow-up has been pushed or submitted.
 
 - Refresh the full local Collection Log whenever its owner opens it; Search retries the same capture.
 - Remove the in-game page-refresh chalice. Keep the panel/profile controls.
