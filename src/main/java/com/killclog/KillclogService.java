@@ -381,9 +381,8 @@ public class KillclogService
 	 *           total_obtained, capitalized_name } }
 	 * }</pre>
 	 * Category keys round-trip the plugin's own canon (they were pushed from
-	 * it), so no normalization is applied. Item dates are server-observed sync
-	 * times, not true unlock dates, so they are dropped rather than shown as
-	 * something they are not.
+	 * it), so no category normalization is applied. Only acquisition dates are
+	 * read; server-observed sync timestamps remain separate.
 	 */
 	@Nullable
 	ClogResult parseProofView(String playerName, String json, String key)
@@ -427,7 +426,8 @@ public class KillclogService
 						// fabricate an obtained item into the coverage race.
 						continue;
 					}
-					obtained.add(new ClogResult.ClogItem(id, qty, null));
+					obtained.add(new ClogResult.ClogItem(id, qty,
+						ClogDates.local(stringField(item, "obtained_at"))));
 				}
 				if (obtained.isEmpty())
 				{

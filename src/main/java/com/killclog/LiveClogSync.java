@@ -140,6 +140,7 @@ final class LiveClogSync
 		}
 		if (missingItemIds.size() > 1)
 		{
+			localClogCache.rememberPendingUnlock(playerName, missingItemIds);
 			chatNotifier.send(ChatNotice.SYNC_HELP,
 				"Could not match " + itemName + " exactly. Open your Collection Log to update it.");
 			log.debug("Live clog sync found ambiguous item '{}' ({})", itemName, missingItemIds);

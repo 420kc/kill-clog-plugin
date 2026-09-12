@@ -239,7 +239,7 @@ class SyncService
 
 	/**
 	 * Request body per the ingest contract:
-	 * {@code { account_hash, account_type?, clog: [{item_id, quantity, categories[]}], client_version }}.
+	 * {@code { account_hash, account_type?, clog: [{item_id, quantity, categories[], obtained_at?}], client_version }}.
 	 * Items in multiple categories merge to one entry; sorted by item id so
 	 * identical stores produce identical payloads.
 	 */
@@ -306,6 +306,11 @@ class SyncService
 				ItemEntry entry = byId.computeIfAbsent(item.getId(),
 					id -> new ItemEntry(id, item.getCount()));
 				entry.quantity = Math.max(entry.quantity, item.getCount());
+				String date = ClogDates.iso(item.getDate());
+				if (date != null && (entry.obtainedAt == null || date.compareTo(entry.obtainedAt) < 0))
+				{
+					entry.obtainedAt = date;
+				}
 				if (!entry.categories.contains(category))
 				{
 					entry.categories.add(category);
@@ -319,6 +324,7 @@ class SyncService
 			JsonObject obj = new JsonObject();
 			obj.addProperty("item_id", entry.id);
 			obj.addProperty("quantity", Math.max(entry.quantity, 1));
+			if (entry.obtainedAt != null) obj.addProperty("obtained_at", entry.obtainedAt);
 			JsonArray cats = new JsonArray();
 			for (String category : new TreeSet<>(entry.categories))
 			{
@@ -349,6 +355,7 @@ class SyncService
 	{
 		final int id;
 		int quantity;
+		String obtainedAt;
 		final List<String> categories = new ArrayList<>();
 
 		ItemEntry(int id, int quantity)

@@ -1212,6 +1212,11 @@ public class LocalClogCache
 		// an EXISTING null marker is a legacy store and keeps its grandfather
 		// rights - a provider lookup must not silently revoke them.)
 
+		if (firstParty)
+		{
+			data.pendingUnlocks = PendingClogUnlock.reconcile(data.pendingUnlocks, data.obtained, activeHashKey);
+			bumpLastChanged(data, newestObtainedDate(data.obtained));
+		}
 		// An unchanged full walk needs neither a disk write nor a web-sync signal.
 		if (firstParty && sameCapture(data, existing))
 		{
@@ -1239,6 +1244,7 @@ public class LocalClogCache
 			|| !Objects.equals(data.ownerHash, prior.ownerHash)
 			|| data.providerAccountType != prior.providerAccountType
 			|| !Objects.equals(data.lastChanged, prior.lastChanged)
+			|| !Objects.equals(data.pendingUnlocks, prior.pendingUnlocks)
 			|| !Objects.equals(data.firstPartySetupComplete, prior.firstPartySetupComplete)
 			|| !Objects.equals(data.firstPartyByCategory, prior.firstPartyByCategory)
 			|| !Objects.equals(data.categories, prior.categories)
@@ -1470,6 +1476,36 @@ public class LocalClogCache
 			merged.add(new ClogResult.ClogItem(item.getId(), item.getCount(), date, kc, from));
 		}
 		return merged;
+	}
+
+	void rememberPendingUnlock(String playerName, List<Integer> candidates)
+	{
+		rememberPendingUnlock(playerName, candidates, liveUnlockDate());
+	}
+
+	synchronized void rememberPendingUnlock(String playerName, List<Integer> candidates, String date)
+	{
+		if (playerName == null || candidates == null || candidates.size() < 2 || candidates.size() > 256) return;
+		String key = cacheKey(playerName);
+		PlayerClogData data = players.get(key);
+		// Pending evidence must have a settled owner, never merely a lookup name.
+		if (data == null || activeHashKey == null || !activeHashKey.equals(settledOwnerBySlot.get(key))) return;
+		String validDate = ClogDates.local(date);
+		if (validDate == null) return;
+		PendingClogUnlock event = new PendingClogUnlock(candidates, validDate, activeHashKey);
+		List<PendingClogUnlock> pending = data.pendingUnlocks != null
+			? new ArrayList<>(data.pendingUnlocks) : new ArrayList<>();
+		pending.removeIf(prior -> prior == null || !activeHashKey.equals(prior.ownerHash)
+			|| ClogDates.iso(prior.date) == null);
+		// Personal and clan notifications describe the same still-unresolved unlock.
+		for (PendingClogUnlock prior : pending)
+		{
+			if (prior != null && event.candidates.equals(prior.candidates)) return;
+		}
+		if (pending.size() >= 32) pending.remove(0);
+		pending.add(event);
+		data.pendingUnlocks = pending;
+		submitPlayerSave(playerName, shallowCopy(data));
 	}
 
 	public boolean mergeObtainedItem(String playerName, int itemId,
@@ -2176,6 +2212,7 @@ public class LocalClogCache
 		copy.categories = src.categories != null ? new HashMap<>(src.categories) : new HashMap<>();
 		copy.obtained = src.obtained != null ? new HashMap<>(src.obtained) : new HashMap<>();
 		copy.firstPartySetupComplete = src.firstPartySetupComplete;
+		copy.pendingUnlocks = src.pendingUnlocks != null ? new ArrayList<>(src.pendingUnlocks) : null;
 		if (src.firstPartyByCategory != null)
 		{
 			copy.firstPartyByCategory = new HashMap<>();

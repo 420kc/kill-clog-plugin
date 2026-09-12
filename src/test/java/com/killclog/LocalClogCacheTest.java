@@ -26,6 +26,35 @@ public class LocalClogCacheTest
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
 	@Test
+	public void pendingHatDateSurvivesRestartAndOnlyReconcilesForItsOwner() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		Gson gson = new Gson();
+		LocalClogCache cache = new LocalClogCache(gson, new InlineScheduledExecutorService(), dir);
+		Map<String, List<Integer>> cats = categoryItems("hats", 2978, 2991, 2992);
+		cache.cacheFirstPartyResult(clog("Tester", cats, obtainedItems("hats", 2978)));
+		cache.followNameChange("Tester", 77L);
+		assertTrue(cache.setActivePlayer("Tester"));
+		String date = ClogDates.local(java.time.Instant.now().minusSeconds(60).toString());
+		cache.rememberPendingUnlock("Tester", List.of(2991, 2992), date);
+		cache.rememberPendingUnlock("Tester", List.of(2992, 2991), date);
+		PlayerClogData saved = gson.fromJson(Files.readString(new File(dir, "tester.json").toPath()), PlayerClogData.class);
+		assertEquals(1, saved.pendingUnlocks.size());
+		LocalClogCache restarted = new LocalClogCache(gson, new InlineScheduledExecutorService(), dir);
+		restarted.followNameChange("Tester", 77L);
+		assertTrue(restarted.setActivePlayer("Tester"));
+		restarted.cacheFirstPartyResult(clog("Tester", cats, obtainedItems("hats", 2978, 2991)));
+		ClogResult result = restarted.toFirstPartySyncResult("Tester");
+		assertEquals(date, LookupQueries.getRecentItems(result, 5).get(0).getDate());
+		assertEquals(2991, LookupQueries.getRecentItems(result, 5).get(0).getId());
+		restarted.cacheFirstPartyResult(clog("Tester", cats, obtainedItems("hats", 2978, 2991)));
+		assertEquals(date, LookupQueries.getRecentItems(restarted.toFirstPartySyncResult("Tester"), 5).get(0).getDate());
+		Map<String, List<ClogResult.ClogItem>> wrongOwner = obtainedItems("hats", 2991);
+		PendingClogUnlock.reconcile(saved.pendingUnlocks, wrongOwner, "other-owner");
+		assertNull(wrongOwner.get("hats").get(0).getDate());
+	}
+
+	@Test
 	public void testLegacySetupEligibilityDoesNotChangeAfterOneLiveUnlock() throws Exception
 	{
 		for (int legacyKind = 0; legacyKind < 3; legacyKind++)

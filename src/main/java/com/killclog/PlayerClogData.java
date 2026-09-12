@@ -20,6 +20,7 @@ class PlayerClogData
 	int uniqueTotal = -1;
 	Map<String, List<Integer>> categories;
 	Map<String, List<ClogResult.ClogItem>> obtained;
+	List<PendingClogUnlock> pendingUnlocks;
 	/**
 	 * Whether this client completed the full Collection Log Search walk.
 	 * Null is a pre-2.3.3 file; those use the first-party marker migration rule.
