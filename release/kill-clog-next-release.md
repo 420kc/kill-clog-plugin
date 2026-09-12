@@ -1,61 +1,168 @@
-# 2.3.4 local refresh follow-up
+# Kill Clog 2.4.0 candidate
 
-The original reviewed candidate remains frozen at `hive/2.3.4-submission-candidate`
-(`d18f41e7`). The follow-up is on `hive/2.3.4-log-refresh`.
+Status: local preparation, not ready for submission. This supersedes the active
+2.3.4 release name; it does not alter the preserved 2.3.4 checkpoints or master.
 
-Local code at `fe7c69bc` passed compile, both Checkstyle gates and 593 tests.
-Independent review allowed the refresh slice at `6372f0b9` and its recovery
-follow-up at `fe7c69bc`. Fresh real-client smoke is required before submission.
-Nothing in this follow-up has been pushed or submitted.
+- Active branch: `hive/2.4.0-candidate`.
+- Active checkout: `C:/Users/dylan/.codex/worktrees/killclog-240-candidate`.
+- Candidate behavior baseline: `1c3df015a9fb8a0f8b37879812be1f0c8aee569f`.
+- Submission base: 2.3.3 `96dee2429ed96187e36d1451270b114f7a9dbd07`.
+- 2.3.3 Hub PR: https://github.com/runelite/plugin-hub/pull/16418
+  Still open on 2026-09-12; build passed, maintainer review required.
+- Historical checkpoints: `hive/2.3.4-submission-candidate` (`d18f41e7`)
+  and `hive/2.3.4-log-refresh` (`1c3df015`). Keep their names and jars as history.
+- No 2.4 jar has been selected for the shared client yet. A previously prepared
+  2.3.4 jar does not become 2.4 merely because this checkout's version changed.
 
-Visual follow-up: restore item hover labels below sprites and the original
-section spacing (reverse 595c5ac4 and ac6b56d9). Keep the 2px label centering,
-stable modal titles and sync behavior. Render fixtures and all 593 tests pass;
-real-client visual approval remains outstanding.
+## Included changes from 2.3.3
 
-- Refresh the full local Collection Log whenever its owner opens it; Search retries the same capture.
-- Remove the in-game page-refresh chalice. Keep the panel/profile controls.
-- Preserve the last good capture on interruption, incomplete data, host logs or account changes.
-- Repair quantities and totals from complete captures while preserving dates and ownership metadata.
-- Keep routine refreshes quiet and skip unchanged cache writes and web-sync notifications.
-- Clarify local setup/updates versus optional Kill Clog Web Sync in the README.
+1. Keep all modal titles stable during item, skill and source hovers.
+2. Put item names beneath their own sprite sections, with 2px text centering;
+   retain the restored original spacing and bounded sizing for dense cards.
+3. Refresh changed hover names and clear stale hover state when data changes.
+4. Match alternate item forms to unambiguous canonical Collection Log slots
+   in previews, totals and future captures, without counting forms twice.
+5. Validate complete captures against canonical slots: alternate forms cannot
+   stand in for a missing different item.
+6. Restore normal catalog previews after a missing-player or failed lookup.
+7. Add Smolcano to Mining Pets and Tiny tempor to Fishing Pets.
+8. Add Quetzin and Chompy chick to Hunter Pets; share Chompy Bird Hunting with
+   Hunter while retaining Ranged. Shared items count once per skill total.
+9. Distinguish Local Collection Log from Kill Clog web data in Sources; credit
+   Temple when it contributes dates. Preserve reduced external self requests.
+10. Use Kill Clog source wording and the Kill Clog Web Sync settings heading.
+11. Refresh the full local log whenever its owner opens it, including an existing
+    cache; manual Search retries the same complete capture.
+12. Remove the in-game page-refresh chalice and its unused page-reader code.
+    Keep the panel web-sync and character controls.
+13. Replace saved quantities and totals from a complete first-party capture,
+    preserving dates and identity metadata. Reject interrupted, incomplete,
+    house-host and changed-account captures without replacing good data.
+14. Keep routine refreshes quiet; skip unchanged writes and web-sync signals,
+    retain retryable failed saves, and keep the last settled catalog total.
+15. Explain local setup, automatic updates, retry/repair and optional web
+    publication separately in the README. Align all three version fields to 2.4.0.
 
-Smoke: existing cache, reopen without Search, normal page restored, no page chalice,
-quiet refresh; then manual Search. Check quantities and dated items. Close during
-capture and confirm saved data remains. Fresh/empty setup still confirms in chat.
-Web publication remains opt-in; the panel sync control publishes saved data.
+## Current preparation proof (2026-09-12)
 
-## Preserved candidate scope
+Version-only preparation passed compile, both Checkstyle gates, jar build and
+593 tests (zero failures/errors/skips). Production behavior remains `1c3df015`;
+only CLIENT_VERSION changes to 2.4.0. No new real-client smoke is claimed.
+The 2.4 jar was built locally but was not selected for shared refire.
 
-# Kill Clog 2.3.4: modal polish and item matching
+Live API health and the private deployment marker were checked again. The bind
+verifier now matches this release, the render queue is idle, and the retained
+API log contains no appearance request/failure notice events since the notice
+deployment. That gives no new real-user failure-path coverage or delivery proof.
 
-Local visual-smoke candidate based on accepted 2.3.3 at `96dee242`.
+## Character publication: remaining release work
 
-- Keep every modal title stable, including Player and Skill Summary.
-- Put item labels beneath the corresponding sprite section, with a 2px downward text offset.
-- Reuse section spacing; dense cards widen within the existing width limits to keep their height bounded.
-- Refresh changed hover names and clear old hover state when summary/skill data changes.
-- Match observed item variants to unambiguous Collection Log slots in views and future captures.
-- Preserve strict setup completeness: two forms cannot stand in for a missing slot.
-- Restore catalog previews after failed or missing-player lookups.
-- Use Kill Clog source wording and the Kill Clog Web Sync settings heading.
-- Add Smolcano, Tiny tempor and Quetzin to their skills' Pets rows.
-- Share Chompy Bird Hunting with Hunter and include Chompy chick in Hunter Pets; keep Ranged.
-- Deduplicate shared pets in each skill total while retaining both section appearances.
-- Label local captures as Local Collection Log in Sources; keep Kill Clog for web data and Temple when it supplies dates.
-- Preserve remaining 2.3.3 taxonomy, summary content, cache ownership and publication permissions.
-- Prepare concise automatic-setup README wording.
+These are confirmed gaps, not implemented changes in this candidate.
 
-Visual smoke: PvM Slayer and raids; Clog Special, Recent/date and Sources;
-Player pets; Skill Summary name/XP/rank; multi-section Skill Clogs including
-Sailing. Check long names, quantities, no title replacement, fixed hover size,
-blue/red independence, pointer exit and wiki targets. This candidate does not
-include the broader 2.4 summary or taxonomy work.
-Also smoke Tithe Farm outfit/container variants and a missing-player lookup.
-Check Mining/Fishing Pets (2 each), Hunter Pets (5), and Chompy Bird Hunting
-under both Hunter and Ranged. Shared pets should count once in skill totals.
-Recheck self Sources after setup and a repeat lookup: Local Collection Log remains present
-when Temple supplies dates. This candidate still needs the corrected smoke pass.
+- Adopt and finish the safe failure-detail work from `5a06060f`. The candidate
+  currently loses API reason/ref in its generic failure display. Cover register,
+  claim, cancel/retry, publish, transport errors and local capture rejection.
+- Give rendered success, queued rendering, credential recovery waiting, disabled
+  publication and failure distinct truthful messages. PENDING currently becomes
+  Publish failed in the panel; a test explicitly preserves that wrong behavior.
+- Retain recovery activation time and display a useful next action. It is stored
+  today but not surfaced. Do not tell users to republish a queued render.
+- Stop subsequent requests after logout, account change, setting disable or
+  plugin shutdown. The UI generation guard does not cancel the service chain.
+  Keep single-flight ownership until an already-sent request settles; cancellation
+  cannot retract a request the server already accepted.
+- Add a bounded, hash-specific completion check for accepted rendering if the
+  existing public appearance endpoint provides enough information. Never mark an
+  older served model as success for a newer pending publish. Distinguish a network
+  timeout with unknown outcome from a definite server rejection.
+- Honor server retry guidance for busy/rate-limited/render failures. HTTP results
+  currently discard response headers, including Retry-After. Avoid repeat-click
+  storms and unbounded automatic retries or recovery loops.
+- Validate captured equipment, palette indices, override sizes and follower bounds
+  against the current API contract using shared fixtures. Preserve legitimate new
+  colors and signed recolors; do not introduce a stale duplicate palette table.
+  A transformed player should get an actionable local explanation.
+- Keep unsupported-follower recovery explicit: pick it up and retry. Do not
+  silently publish a different composition or silently omit an intended follower.
+- Add asynchronous request-sequence tests, not only response-classifier tests:
+  delayed registration, recovery, account switch, opt-out, cancellation, duplicate
+  clicks, 202 then ready, 503 retry, 429, malformed response and connection loss.
+
+## API and private operations
+
+Verified production on 2026-09-12: `d6b7d2b508ff9d5934697de5bf7b8a81179aef53`,
+containing the existing palette/wearable compatibility fix `105fb6f4` plus
+private failure notices. This is separate from the plugin diff.
+
+- API schema v3 already accepts the plugin's equipment/colors/overrides/follower
+  and idle pose recipe. Renderer and API share `appearance-contract.json`.
+- API distinguishes ready (200), accepted/pending (202), render failure (503),
+  superseded work (409), rate limits and recovery states. The plugin needs to
+  preserve those distinctions; weakening API validation is not the remedy.
+- Registration/publish failures and asynchronous render failures now reach a
+  private event feed and configured Telegram notifier with fixed reason codes
+  and random support refs. Notices contain no player names, recipes or credentials.
+- Hive Ops `1739c48c` is built/reviewed and prepared for the next shared refire,
+  not proven loaded. Actual Telegram delivery and real-client chat/sidebar
+  delivery still require one controlled failure smoke.
+- Recovery/claim/cancel failures are logged but are outside the current alert
+  filter. Local capture and transport failures may never reach the API. Decide
+  whether actionable recovery failures need private notices; routine waiting and
+  cancelled requests should not page the operator.
+- Render notices use a separate ref from the originating HTTP request. Correlating
+  the asynchronous job ref with the user-visible ref would improve support.
+- Dedup is five minutes per stage/status/reason, capped at 12 notices/minute.
+  Alert delivery is best effort. Pre-auth rejection noise and shared feed retention
+  remain non-blocking operational follow-ups, not proof of a successful publish.
+
+## Preserved broader redesign, excluded from this candidate
+
+`C:/Users/dylan/plugins/kcpdev`, branch `hive/2.4.0` at `9c9280e3`, remains a
+separate design checkpoint. Do not merge it wholesale over the new candidate.
+
+- Slayer: Superiors, Light/Dark/Dusk Mystic Sets, then a deduplicated remainder.
+- Defence: curated melee/ranged/magic armour plus defenders through Avernic hilt.
+- Remove Slayer stats/Superior item content from PvM Summary.
+- Larger Clog Summary redesign: Total/completion, current tier sprite and complete
+  tier legend, five native-tab totals/placeholders, Special renamed Highlights.
+- Supporting fixed-row/adaptive layouts and old parallel renderer cleanup.
+
+Some matching/hover/lookup work from that branch is already in the candidate.
+Only the remaining design differences should be considered for a later slice.
+PB privacy separation, Armoury, cache-delete buttons and provider-routing changes
+are not part of this submission boundary.
+
+## Remaining submission checklist
+
+- [ ] Finish and independently review the character-publish changes above.
+- [ ] Run compile, both Checkstyle gates, full tests, relevant render fixtures and
+      source-size checks on the final exact commit. Recalculate base-to-head size.
+- [ ] Stage API contract/recovery/queued-render cases with authorized test accounts;
+      verify ready player and follower models, signed recolors, both body types,
+      palette extremes, changed equipment and repeat publication.
+- [ ] Check privacy: opt-in off by default, prerequisite profile sync, settings
+      disable mid-flight, logout/account switch, existing deletion/revocation
+      behavior, and no secrets/raw API bodies in user text or notices.
+- [ ] Build and select an immutable 2.4.0 jar through Plugin Studio after code is
+      ready; prove the loaded version/hash before Dylan's real-client smoke.
+- [ ] Smoke fresh/empty and existing-cache log opens, manual Search, interrupted
+      capture, house-host exclusion, quantity repair, dates and restart persistence.
+- [ ] Smoke labels below sprites across PvM, Clog, Player, Skills and Sailing;
+      long names, comparison, pointer exit and wiki targets. No title replacement.
+- [ ] Smoke Tithe Farm variants, Mining/Fishing/Hunter pet totals and missing-player
+      lookup while comparison is active. Keep per-skill shared-item deduplication.
+- [ ] Smoke character first publish/repeat, unsupported follower/transform,
+      queued render and actionable failure; verify one controlled private notice
+      in Hive Ops and Telegram. Do not use production failure spam as a test.
+- [ ] Approve final terse README/release notes and any outdated screenshots.
+- [ ] Recheck 2.3.3 Hub merge and its exact accepted pin before preparing the next
+      submission. Preserve its submitted branch while review is open.
+- [ ] After final review and Dylan smoke, prepare master, obtain push/submission
+      authorization, and create the Hub update with one pin commit. Recheck CI.
+
+The latest behavior baseline had 593 passing tests and prior refresh reviews.
+Those receipts do not constitute approval of unfinished character work or a fresh
+2.4 real-client smoke. Historical release receipts follow unchanged.
 
 ## Prior release receipt
 
