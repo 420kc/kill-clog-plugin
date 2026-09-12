@@ -307,7 +307,7 @@ public class ClogResult
 		private final String date;
 		// Provenance captured at the live unlock moment, when the vanilla
 		// kill-count message landed just before the clog message. 0 / null
-		// mean unknown: provider data, chalice syncs, and pre-capture cache
+		// mean unknown: provider data, full log captures, and pre-capture cache
 		// files never carry these.
 		private final int obtainedAtKc;
 		private final String obtainedFrom;

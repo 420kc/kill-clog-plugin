@@ -617,6 +617,21 @@ public class ManualClogSyncTest
 		assertFalse(cache.toFirstPartySyncResult("Tester").getCategoryItems().containsKey("retired"));
 	}
 
+	@Test
+	public void zeroCatalogCounterDoesNotEraseKnownTotal() throws Exception
+	{
+		automaticItems.add(1);
+		openCollectionLog();
+		tick(101);
+		tick(104);
+		total = 0;
+		openCollectionLog();
+		tick(105);
+		tick(108);
+		assertEquals(2, completions);
+		assertEquals(3, cache.toFirstPartySyncResult("Tester").getUniqueTotal());
+	}
+
 	private void tick(int count) throws Exception
 	{
 		tick = count;

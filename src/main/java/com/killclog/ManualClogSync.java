@@ -298,11 +298,8 @@ final class ManualClogSync
 
 		ClogResult result = new ClogResult(name, obtainedByCategory, categoryItemsCopy,
 			new HashMap<>(), null, null);
-		if (reportedCount >= 0)
-		{
-			result.setUniqueObtained(reportedCount);
-		}
-		if (reportedTotal >= 0)
+		result.setUniqueObtained(reportedCount);
+		if (reportedTotal > 0)
 		{
 			result.setUniqueTotal(reportedTotal);
 		}

@@ -73,6 +73,7 @@ public class LocalClogCache
 	private static final long DEBOUNCE_MS = 500;
 	private final ScheduledExecutorService diskWriter;
 	private final Map<String, Runnable> pendingByPlayer = new ConcurrentHashMap<>();
+	private final Map<String, PlayerClogData> unsavedPlayers = new ConcurrentHashMap<>();
 
 	private static ScheduledExecutorService newDiskWriter()
 	{
@@ -1134,6 +1135,11 @@ public class LocalClogCache
 		data.lastUpdated = Instant.now().toString();
 		data.uniqueObtained = result.getUniqueObtained();
 		data.uniqueTotal = result.getUniqueTotal();
+		if (firstParty && data.uniqueTotal <= 0 && existing != null)
+		{
+			// Zero is not a settled catalog size; retain the last known total.
+			data.uniqueTotal = existing.uniqueTotal;
+		}
 		if (existing != null && !firstParty)
 		{
 			if (existing.uniqueObtained > data.uniqueObtained)
@@ -1209,6 +1215,10 @@ public class LocalClogCache
 		// An unchanged full walk needs neither a disk write nor a web-sync signal.
 		if (firstParty && sameCapture(data, existing))
 		{
+			if (unsavedPlayers.containsKey(key))
+			{
+				submitPlayerSave(name, shallowCopy(existing));
+			}
 			return;
 		}
 		players.put(key, data);
@@ -2072,6 +2082,7 @@ public class LocalClogCache
 	private void submitPlayerSave(String playerName, PlayerClogData snapshot)
 	{
 		String anchor = activeHashKey;
+		unsavedPlayers.put(cacheKey(playerName), snapshot);
 		submitDiskWrite(playerName, () -> saveToDisk(playerName, snapshot, anchor));
 	}
 
@@ -2086,7 +2097,7 @@ public class LocalClogCache
 		// marked or not: a lookup overwrite is regenerable bytes IN but a
 		// claimed first-party file OUT, and legacy null-mark data is wholly
 		// first-party by the class contract anyway.
-		ledger.withLock(() ->
+		boolean saved = ledger.withLock(() ->
 		{
 			IdentityLedger.View disk = ledger.read();
 			String winner = IdentityLedger.newestClaimant(disk.names, disk.stamps, key, null);
@@ -2104,6 +2115,11 @@ public class LocalClogCache
 			}
 			return saveToDiskChecked(playerName, data);
 		});
+		if (saved)
+		{
+			// An older write must not clear a newer pending or rejected snapshot.
+			unsavedPlayers.remove(key, data);
+		}
 	}
 
 	private PlayerClogData loadFromDisk(String playerName)
