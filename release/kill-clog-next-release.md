@@ -1,4 +1,51 @@
-# Kill Clog 2.4.0 work branch
+# Kill Clog 2.3.4 preserved submission candidate
+
+Status: Dylan-approved for preservation and submission preparation on 2026-09-11.
+The final combined independent review is ALLOW with no required code corrections.
+Nothing was pushed or submitted during this task. Plugin Hub availability is not
+claimed by this receipt.
+
+- Candidate: `d18f41e7b6652128cf37e7a2fcd4f65f8b8d27ca`.
+- Local preservation tag: `hive/2.3.4-submission-candidate`.
+- Branch: `hive/2.3.4-modal-polish`.
+- Worktree: `C:/Users/dylan/.codex/worktrees/killclog-234-modal-polish`.
+- Base: accepted 2.3.3 `96dee2429ed96187e36d1451270b114f7a9dbd07`.
+- Exact diff: 35 files, +1174/-234; production Java: 20 files, +678/-186.
+- Prepared jar: `kcpdev-d18f41e7-453FAEFA88AD.jar`, 541679 bytes.
+- SHA-256: `453FAEFA88AD29D8C237C200D6342871BFBB795B3C86340C9E347823526CE45F`.
+
+Scope: fixed modal titles, reserved hover labels above sprite rows, 2px label
+offset and 4px separation before the next section; bounded dense-card layouts;
+item-variant matching with strict canonical-slot setup checks; failed-lookup
+catalog recovery; four small skill-catalog corrections with deduplicated totals;
+and source/setup wording. Self captures say Local Collection Log, web results
+say Kill Clog, and Temple remains credited when supplying item dates. Self
+lookups still avoid redundant RuneProfile and killclog.com clog requests.
+
+Independent proof: full build, 590 tests with no failures/errors/skips, clean
+Checkstyle, 83 focused tests, and approximately 110 geometry assertions. The
+review covered the entire base-to-candidate diff in an isolated worktree.
+Full report: `C:/Users/dylan/.codex/visualizations/2026/09/11/01a08de4-ec0e-7063-9a9a-4d59f436d0fc/killclog-review/234-final-review.md`.
+
+Remaining release checks: confirm variant/category totals and failed primary
+lookup behavior while comparison is active. A fresh 1197-item setup capture
+was observed during this task; final-label real-client verification was not
+separately recorded. Preserve the candidate unchanged until release follow-through;
+any further code changes need their own verification. Push and Hub submission
+still require authorization.
+
+This plugin task is parked. The next requested lane is the Armoury build for
+staging on killclog.com, in a fresh conversation starting at
+`C:/Users/dylan/420live/killclog.com-repo`. Re-prove that repository's state and
+the staging target, then load its applicable instructions before implementation.
+No Armoury implementation, staging deployment, or PB privacy change was started
+here. PB privacy and broader provider-provenance presentation remain parked.
+
+## Kill Clog 2.4.0 work branch
+
+The preserved 2.3.4 changes have not yet been integrated into this branch.
+The following describes the existing 2.4.0 code baseline; this shutdown update
+changes release documentation only.
 
 Status: local development, not submitted to Plugin Hub. Version fields are 2.4.0.
 Includes the accepted 2.3.3 setup and hardening release at `96dee242`, together
