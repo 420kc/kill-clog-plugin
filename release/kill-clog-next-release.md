@@ -8,6 +8,11 @@ Independent review allowed the refresh slice at `6372f0b9` and its recovery
 follow-up at `fe7c69bc`. Fresh real-client smoke is required before submission.
 Nothing in this follow-up has been pushed or submitted.
 
+Visual follow-up: restore item hover labels below sprites and the original
+section spacing (reverse 595c5ac4 and ac6b56d9). Keep the 2px label centering,
+stable modal titles and sync behavior. Render fixtures and all 593 tests pass;
+real-client visual approval remains outstanding.
+
 - Refresh the full local Collection Log whenever its owner opens it; Search retries the same capture.
 - Remove the in-game page-refresh chalice. Keep the panel/profile controls.
 - Preserve the last good capture on interruption, incomplete data, host logs or account changes.
@@ -27,8 +32,7 @@ Web publication remains opt-in; the panel sync control publishes saved data.
 Local visual-smoke candidate based on accepted 2.3.3 at `96dee242`.
 
 - Keep every modal title stable, including Player and Skill Summary.
-- Reserve item hover labels between each section's heading/progress and sprite rows, with a 2px downward text offset.
-- Leave 4px of extra space after item groups before the next section.
+- Put item labels beneath the corresponding sprite section, with a 2px downward text offset.
 - Reuse section spacing; dense cards widen within the existing width limits to keep their height bounded.
 - Refresh changed hover names and clear old hover state when summary/skill data changes.
 - Match observed item variants to unambiguous Collection Log slots in views and future captures.

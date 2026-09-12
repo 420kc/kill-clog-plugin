@@ -713,9 +713,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		return sepY + 1 + SEPARATOR_GAP;
 	}
 
-	/** Breathing room after an item group when another section follows. */
-	static final int ITEM_SECTION_GAP = 4;
-
 	/** Room above and below the label, shared by sprite-section readouts. */
 	static int hoverRowHeight(FontMetrics fm)
 	{

@@ -282,8 +282,6 @@ public class SummaryTooltip extends TitleTooltip
 		// Full pet gallery: obtained at strength, unobtained dimmed. Hit boxes
 		// share the draw geometry so hover-name and wiki-click track exactly.
 		int gridY = petsHeaderY + PET_PAD + bfm.getDescent();
-		paintHeaderHoverLine(g2, fm, w, gridY + fm.getAscent());
-		gridY += hoverRowHeight(fm);
 		int cellSize = PET_SIZE + PET_PAD;
 		List<TooltipItemHover.HitBox> hitBoxes = new ArrayList<>();
 
@@ -305,6 +303,7 @@ public class SummaryTooltip extends TitleTooltip
 					new Rectangle(px, py, PET_SIZE, PET_SIZE), true));
 			}
 		}
+		paintHeaderHoverLine(g2, fm, w, gridY + getPetGridHeight() + fm.getAscent());
 		itemHover.setHitBoxes(hitBoxes);
 	}
 

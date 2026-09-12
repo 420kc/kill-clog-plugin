@@ -197,7 +197,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 		// Slayer section.
 		int slayerHeight = SUBHEADER_HEIGHT + LINE_HEIGHT * slayerRowCount()
-			+ WEAPON_PAD + WEAPON_SIZE + hoverRowHeight(fm) + ITEM_SECTION_GAP;
+			+ WEAPON_PAD + WEAPON_SIZE + hoverRowHeight(fm);
 
 		// Raids section.
 		int raidsHeight = SUBHEADER_HEIGHT + LINE_HEIGHT * 3
@@ -341,13 +341,13 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		fm = g2.getFontMetrics();
-		paintItemLabel(g2, fm, w, y, 0);
-		y += hoverRowHeight(fm);
 		paintQuantitySpriteRow(g2, fm, inset, y, w - 2 * inset,
 			superiorSprites, superiorCounts, WEAPON_SIZE, WEAPON_PAD);
 		addRowHitBoxes(hitBoxes, 0, inset, y, w - 2 * inset,
 			PanelData.SUPERIOR_ITEMS, PanelData.SUPERIOR_ITEM_NAMES, superiorCounts);
-		y += WEAPON_SIZE + ITEM_SECTION_GAP;
+		y += WEAPON_SIZE;
+		paintItemLabel(g2, fm, w, y, 0);
+		y += hoverRowHeight(fm);
 
 		// Separator: Slayer to raids.
 		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
@@ -373,12 +373,11 @@ public class PvmSummaryTooltip extends TitleTooltip
 		// Center the three weapon sprites.
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		fm = g2.getFontMetrics();
-		paintItemLabel(g2, fm, w, y, 1);
-		y += hoverRowHeight(fm);
 		paintQuantitySpriteRow(g2, fm, inset, y, w - 2 * inset,
 			weaponSprites, weaponCounts, WEAPON_SIZE, WEAPON_PAD);
 		addRowHitBoxes(hitBoxes, 1, inset, y, w - 2 * inset,
 			PanelData.MEGARARE_ITEM_IDS, PanelData.MEGARARE_ITEM_NAMES, weaponCounts);
+		paintItemLabel(g2, fm, w, y + WEAPON_SIZE, 1);
 
 		itemHover.setHitBoxes(hitBoxes);
 	}
