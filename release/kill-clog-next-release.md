@@ -11,7 +11,7 @@ Status: local preparation, not ready for submission. This supersedes the active
   Still open on 2026-09-12; build passed, maintainer review required.
 - Historical checkpoints: `hive/2.3.4-submission-candidate` (`d18f41e7`)
   and `hive/2.3.4-log-refresh` (`1c3df015`). Keep their names and jars as history.
-- Prepared 2.4 code: `a852a227`, jar `kcpdev-a852a227-BE92698049F4.jar`.
+- Prepared 2.4 code: `1952dfeb`, jar `kcpdev-1952dfeb-78F579604EEA.jar`.
   Selected for the next shared refire; the running client was not changed.
 
 ## Included changes from 2.3.3
@@ -52,14 +52,14 @@ Status: local preparation, not ready for submission. This supersedes the active
 
 ## Current preparation proof (2026-09-12)
 
-Code `a852a227` passed compile, both Checkstyle gates, jar build and 612 tests
+Code `1952dfeb` passed compile, both Checkstyle gates, jar build and 612 tests
 (zero failures/errors/skips). The local Swing fixture verifies compact status
 text and wrapped tooltips; this does not replace a real-client smoke.
-The prepared jar is 547,018 bytes, SHA-256
-`BE92698049F485CE478281F45A21FE8CD78271C769C6F9BB38EA31143D080635`.
-The code checkpoint diff from 2.3.3 is 49 files, +2,467/-931 lines; the character
+The prepared jar is 546,997 bytes, SHA-256
+`78F579604EEA62A4EB2CA94532CB280952602E866208E03412FD943DC28CFE3D`.
+The earlier `a852a227` checkpoint diff from 2.3.3 was 49 files, +2,467/-931 lines; the character
 slice from `5469f66d` is 10 files, +963/-181, including tests and documentation.
-Tracked main Java is 109 files / 29,339 lines / 229,293 `o200k_base` tokens
+At `a852a227`, tracked main Java was 109 files / 29,339 lines / 229,293 `o200k_base` tokens
 (sum per file). This is a source-size measurement, not account usage or proof
 against an old token ceiling; the 2.3.3 baseline measures 223,885 the same way.
 
@@ -171,8 +171,8 @@ checks and 612 tests. The final skill-only layout pass also passed those gates;
 local Swing fixtures verify fixed titles, stable hover size, clearing on exit,
 long-name clipping and comparison. Fixtures use synthetic item sprites.
 Firemaking is 20px shorter, Hitpoints 10px shorter and Sailing 70px shorter than
-`6cbe8489`, with unchanged widths. The prepared jar below supersedes the earlier
-character-only candidate once recorded; no real-client smoke is inferred.
+`6cbe8489`, with unchanged widths. The prepared jar at the top supersedes the
+earlier character-only candidate; no real-client smoke is inferred.
 
 - [ ] Approve the shared skill readout in the real client: short and long cards,
       long names and comparison. Titles stay fixed; names clear on pointer exit.
