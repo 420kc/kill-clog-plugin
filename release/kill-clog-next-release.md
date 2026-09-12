@@ -1,14 +1,16 @@
 # Kill Clog 2.4.0 candidate
 
-Status: the e403c7d8 product/UX candidate is Dylan-approved and smoke-passed.
-The bounded ownership-recovery correction passed 637 tests and build/style gates;
-final independent review is ALLOW. Its new jar still needs a focused
-account/setup/restart smoke. Product scope is frozen.
-Master and the preserved 2.3.4 checkpoints are unchanged.
+Status: the e403c7d8 product/UX candidate remains Dylan-approved and smoke-passed.
+Ownership recovery is independently approved. The subsequent total-authority and
+catalog-retry fixes are locally tested and ready for Dylan's separately arranged
+Fable review. No reviewer was summoned for that follow-up. The current jar still
+needs focused smoke. Master and the earlier approved jars remain unchanged.
 
 - Active branch: `hive/2.4.0-candidate`.
 - Active checkout: `C:/Users/dylan/.codex/worktrees/killclog-240-candidate`.
-- Current code: `064c09b015ecd40667e9c2a5d4c222736e7a417a` (ownership recovery).
+- Current production code: `2bff127c` (catalog retry); total fix `31d4f597`.
+- README badge/wording: `05715328cf65e3d57a2a529884aa4d32ab45141c`.
+- Ownership correction: `064c09b015ecd40667e9c2a5d4c222736e7a417a`.
 - Pre-fix candidate preserved as `hive/2.4.0-before-ownership-recovery` at 2bf9c639;
   its smoke-approved jar remains unchanged.
 - Prior smoke-approved code: `e403c7d897e414ec37de9de742ac161beafdd9d9`.
@@ -91,7 +93,8 @@ The earlier raw counts included comments and are not the Hub-style estimate.
 The recovered local counter strips comments from main Java, trims trailing line
 whitespace, collapses blank lines, and uses `o200k_base`. It reproduces 193,171
 at the older 24703ced checkpoint, 187,786 at 2.3.3, and 195,101 at 2bf9c639.
-The final ownership correction measures 195,988 tokens (local proxy).
+Ownership correction: 195,988 tokens. After the two correctness fixes: 195,937
+tokens (local proxy, 51 fewer).
 The Hub's documented limit is 200,000; our conservative working ceiling is
 195,000. This is a local proxy, not the private bot's exact implementation.
 Run the existing local counter once per changed release candidate and record its
@@ -207,7 +210,11 @@ reviews, Dylan's quiet-update smoke, and exact running-jar verification.
 Ownership correction: 637 tests, zero failures/skips; compile/Checkstyle/jar gates
 passed with JDK 11.0.30 and resolved RuneLite 1.12.38. New jar: 553,880 bytes,
 SHA-256 51ac58985105f1d0f3a3aa772dc6eaf44c128997ddbd31fb8b48cd112098bc5a.
-This jar is not yet Dylan-smoked. Keep the approved UI frozen.
+That ownership-only jar is superseded for the next smoke by the total/catalog
+follow-up: 640 tests, zero failures/skips; compile, both Checkstyle gates and jar
+passed. New jar: 553,848 bytes, SHA-256
+e4b987671231ca2e1e973dd0452a253ac93db242b25e1c581fcc91afcde9ee20.
+This jar awaits Fable review and Dylan smoke. Keep the approved UI frozen.
 
 - [x] Reproduce architectural review F1: four temporary-file regressions fail
       against the approved baseline (foreign adoption, malformed ledger, foreign
@@ -217,9 +224,12 @@ This jar is not yet Dylan-smoked. Keep the approved UI frozen.
       revision queues all arbitration on the disk writer, preserves damaged
       owned/unclaimed files before setup retries, and keeps provider-only caches
       writable. Readable foreign captures and unreadable ledgers remain blocked.
-- [ ] Focused smoke of 064c09b0: normal login/self log, open Collection Log, sync,
+- [ ] Focused smoke of the current total/catalog follow-up: normal login/self log, open Collection Log, sync,
       and restart with saved data intact; account switching if available. No user
-      cache corruption/deletion is required for smoke. UI layout is unchanged.
+      cache corruption/deletion is required for smoke. If an unlock is available,
+      check one total increase, dated Recent, and unchanged counts after reopening
+      the log. A normal cold lookup should still populate catalog previews.
+      UI layout is unchanged.
 - [x] Integrate and validate the acquisition-date API companion against actual
       production f34f575f, retaining its newer Recent-source selection.
       Worktree `C:/Users/dylan/.codex/worktrees/collection-unlock-dates`, branch
@@ -232,7 +242,9 @@ This jar is not yet Dylan-smoked. Keep the approved UI frozen.
       Undated first-party profiles gain known acquisition history on their next
       sync; existing dated provider history remains available. The already-missed hat is not repaired.
 - [x] Recheck README setup/update/web-sync wording; all ten referenced local
-      images exist. Approved layout and README were not changed by this fix.
+      images exist. Badge matches Dylan's solid #551919 swatch and was visually
+      checked against the real Shields endpoint. Setup notes now say totals follow
+      the game's count. No additional catalog-retry instructions are needed.
 - [x] Recheck Hub: PR #16418 is OPEN, not merged. Accepted pin is still 2.3.2
       c1eb9773cb730f568fd73115568afd0677635150 as of 2026-09-12.
 - [ ] After 2.3.3 is accepted, prepare master and obtain push/submission approval
@@ -249,21 +261,27 @@ chat/sidebar and Telegram delivery. This is separate from plugin layout approval
 The seven-day recovery policy, expanded recovery alerts and asynchronous support
 reference correlation remain separate decisions, outside this release slice.
 
-Audit triage completed against the current candidate, without implementing F2-F4:
+Audit follow-up and Fable review scope:
 
-- F2 confirmed with the real cache methods: varp-first unlock leaves two obtained
-  items but a saved/upload scalar of three. Recommend a small total-authority fix
-  before 2.4 because it affects the new live-unlock/sync experience.
-- F3 confirmed for both catalog methods with immediate transport failure: the
-  second fetch returns the same failed flight and starts no new request. Recommend
-  a bounded request-cleanup fix now; no framework or provider-policy change.
-- F4 confirmed by source: comparison boss preparation still passes null for PB,
-  while primary preparation resolves available PBs. Defer to ordinary maintenance;
-  it is display parity, not loss of captured/published data.
-- F2/F3 implementation remains a separate scope decision. The triage fixture lives
-  outside shipped sources at `C:/Users/dylan/.codex/scratch/killclog-240-triage`.
-- Dead-code deletion, package moves, and coordinator extraction remain parked.
-  No next-release workbranch is being prepared.
+- F2 fixed in 31d4f597: drop events record membership/date/KC without incrementing
+  the scalar a second time. Game varp/broadcast counts own the saved total; a full
+  capture remains the downward correction. Tests cover counter-first, chat-first,
+  zero-to-one, duplicate/shared-page notifications, consecutive unlocks, persisted
+  totals and date/KC retention. The now-unused obtainedAnywhere helper was removed.
+- F3 fixed in 2bff127c: both catalog methods register a stable local future before
+  attaching synchronized, identity-checked cleanup and return that local reference.
+  Tests cover immediate transport/parse failure, delayed shared failure, retry
+  success, immediate success, and retained successful catalog caching.
+- F4 remains deferred: red comparison PB parity is ordinary maintenance.
+- Latest slice: `c1f6b12e..05715328`, six files +228/-68 including tests and README;
+  production Java alone is three files +20/-41. Both regressions were reproduced
+  before the fixes. The live badge still reports the actual shipped Hub version.
+- For a combined review of ownership plus these fixes, use `2bf9c639..HEAD`.
+  For full release scope, use 2.3.3 `96dee242..HEAD`. Do not treat the prior
+  ownership ALLOW as approval of the subsequent total/catalog changes.
+- Dylan will arrange Fable independently; no agent was invoked for these fixes.
+- Broader dead-code deletion, package moves, coordinator extraction and a new
+  release branch remain parked. API deployment approval is still pending.
 
 UX closeout: opening the log handles local setup/update/repair; matched drops
 update local Recent immediately while self is displayed; web sync publishes saved
