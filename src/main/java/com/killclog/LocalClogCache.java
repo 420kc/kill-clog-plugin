@@ -244,6 +244,12 @@ public class LocalClogCache
 		String hashKey = Long.toString(accountHash);
 		activeHashKey = hashKey;
 		String currentKey = cacheKey(currentRsn);
+		if (!ledger.read().readable)
+		{
+			beginSlotArbitration(currentKey);
+			settle(verdict, false);
+			return null;
+		}
 		String previousKey = identity.get(hashKey);
 		if (previousKey == null)
 		{
@@ -263,6 +269,12 @@ public class LocalClogCache
 			// THIS name, nobody outranking). settleSteadySlot re-arbitrates
 			// anything less.
 			IdentityLedger.View steady = ledger.read();
+			if (!steady.readable)
+			{
+				beginSlotArbitration(currentKey);
+				settle(verdict, false);
+				return null;
+			}
 			String diskName = steady.names.get(hashKey);
 			if (diskName == null || currentKey.equals(diskName))
 			{
@@ -305,6 +317,11 @@ public class LocalClogCache
 		// disk entries outrank our stale cache of them. Stamps only exist on
 		// disk, which is fine: self entries are excluded from claim ranking.
 		IdentityLedger.View diskView = ledger.read();
+		if (!diskView.readable)
+		{
+			settle(verdict, false);
+			return null;
+		}
 		Map<String, String> freshIdentity = new HashMap<>(identity);
 		for (Map.Entry<String, String> e : diskView.names.entrySet())
 		{
@@ -339,7 +356,7 @@ public class LocalClogCache
 			// current name claims that key.
 			if (IdentityLedger.newestClaimant(freshIdentity, diskView.stamps, fromKey, hashKey) == null)
 			{
-				source = players.remove(fromKey);
+				source = players.get(fromKey);
 				if (source == null)
 				{
 					source = loadFromDisk(fromKey);
@@ -347,24 +364,40 @@ public class LocalClogCache
 				sourceFromLiveFile = source != null;
 			}
 		}
-		identity.put(hashKey, currentKey);
 		if (source == null)
 		{
 			// Nothing recoverable under the old name: mapping updates, no
 			// move - but the DESTINATION slot still gets the same adoption
 			// arbitration as a first sighting, or a resident account's live
 			// file would become this account's serving copy.
+			identity.put(hashKey, currentKey);
 			adoptSlot(currentKey, hashKey, verdict, arbitrationEpoch);
+			return null;
+		}
+		if (!ownedBy(source, hashKey))
+		{
+			settle(verdict, false);
 			return null;
 		}
 		String previousDisplay = source.playerName != null ? source.playerName : fromKey;
 
 		MigrationDest d = resolveDestination(currentKey, hashKey, freshIdentity, diskView.stamps);
+		if (!ownedBy(d.dest, hashKey))
+		{
+			settle(verdict, false);
+			return null;
+		}
+		identity.put(hashKey, currentKey);
+		if (!d.displaced)
+		{
+			pendingByPlayer.remove(currentKey);
+		}
 		if (!sourceFromSidecar)
 		{
 			// Only when the old key's live file was OURS: if we recovered from
 			// a sidecar, the live slot (and any pending write for it) belongs
 			// to whoever holds that name now.
+			players.remove(fromKey);
 			pendingByPlayer.remove(fromKey);
 		}
 
@@ -545,13 +578,6 @@ public class LocalClogCache
 			}
 			d.dest = null;
 		}
-		else
-		{
-			// Any queued pre-merge snapshot would overwrite the merged file
-			// after the migration writes it; every capture in it already
-			// lives in the merged memory the migration itself persists.
-			pendingByPlayer.remove(currentKey);
-		}
 		return d;
 	}
 
@@ -585,15 +611,33 @@ public class LocalClogCache
 			adoptSlot(currentKey, hashKey, verdict, expectedEpoch);
 			return;
 		}
-		if (steady.stamps.getOrDefault(hashKey, 0L) == 0L)
+		try
 		{
-			// A v1-lifted entry (stamp 0) re-asserts once, or any stamped
-			// foreign claim would outrank the sitting owner forever.
-			persistIdentityEntry(hashKey, currentKey);
+			diskWriter.execute(() ->
+			{
+				boolean safe = ledger.withLock(() ->
+				{
+					IdentityLedger.View now = ledger.read();
+					if (!now.readable || !currentKey.equals(now.names.get(hashKey))
+						|| !hashKey.equals(IdentityLedger.newestClaimant(now.names, now.stamps, currentKey, null))
+						|| !residentOwnedBy(currentKey, hashKey))
+					{
+						return false;
+					}
+					if (now.stamps.getOrDefault(hashKey, 0L) == 0L)
+					{
+						now.stamps.put(hashKey, IdentityLedger.nextStamp(now, currentKey));
+						return ledger.save(now);
+					}
+					return true;
+				});
+				settle(verdict, safe && markSlotSettledIfCurrent(currentKey, hashKey, expectedEpoch));
+			});
 		}
-		// A steady TRUE is also an arbitration outcome: lift any lingering
-		// quarantine rather than serving nothing forever.
-		settle(verdict, markSlotSettledIfCurrent(currentKey, hashKey, expectedEpoch));
+		catch (RejectedExecutionException ignored)
+		{
+			settle(verdict, false);
+		}
 	}
 
 	private void adoptSlot(String currentKey, String hashKey, CompletableFuture<Boolean> verdict,
@@ -601,6 +645,11 @@ public class LocalClogCache
 	{
 		IdentityLedger.View diskView = ledger.read();
 		String squatter = IdentityLedger.newestClaimant(diskView.names, diskView.stamps, currentKey, hashKey);
+		if (!diskView.readable || (squatter == null && !ownedBy(players.get(currentKey), hashKey)))
+		{
+			settle(verdict, false);
+			return;
+		}
 		PlayerClogData squatterCopy = null;
 		if (squatter != null)
 		{
@@ -639,6 +688,10 @@ public class LocalClogCache
 		String decisionSquatter, PlayerClogData squatterToFlush)
 	{
 		IdentityLedger.View now = ledger.read();
+		if (!now.readable)
+		{
+			return false;
+		}
 		String claimNow = IdentityLedger.newestClaimant(now.names, now.stamps, currentKey, hashKey);
 		if (!Objects.equals(claimNow, decisionSquatter))
 		{
@@ -666,6 +719,10 @@ public class LocalClogCache
 				return false; // their file stays put; the next login retries
 			}
 		}
+		if (!residentOwnedBy(currentKey, hashKey))
+		{
+			return false;
+		}
 		now.names.put(hashKey, currentKey);
 		now.stamps.put(hashKey, IdentityLedger.nextStamp(now, currentKey));
 		return ledger.save(now);
@@ -685,6 +742,11 @@ public class LocalClogCache
 		PlayerClogData displacedToFlush)
 	{
 		IdentityLedger.View now = ledger.read();
+		if (!now.readable || (sourceFromLiveFile && !residentOwnedBy(oldKey, hashKey))
+			|| (consumedSidecar && !recordOwnedBy(consumedSidecarFile, hashKey)))
+		{
+			return false;
+		}
 		String claimNow = IdentityLedger.newestClaimant(now.names, now.stamps, currentKey, hashKey);
 		if (!Objects.equals(claimNow, parkHash))
 		{
@@ -739,7 +801,7 @@ public class LocalClogCache
 			// finish instead of wedging forever on the stale claim.
 			return false;
 		}
-		if (!saveToDiskChecked(currentRsn, copy))
+		if (!residentOwnedBy(currentKey, hashKey) || !saveToDiskChecked(currentRsn, copy))
 		{
 			return false; // old file + old mapping stay: next login re-heals
 		}
@@ -764,6 +826,51 @@ public class LocalClogCache
 		now.names.put(hashKey, currentKey);
 		now.stamps.put(hashKey, IdentityLedger.nextStamp(now, currentKey));
 		return ledger.save(now);
+	}
+
+	private static boolean ownedBy(PlayerClogData data, String hashKey)
+	{
+		return data == null || data.ownerHash == null || data.ownerHash.equals(hashKey)
+			|| (data.firstPartyByCategory != null && !ClogRecords.hasFirstPartyMarks(data)
+				&& !Boolean.TRUE.equals(data.firstPartySetupComplete));
+	}
+
+	/** Called under the identity lock, on the writer lane. Preserve damaged owned files before setup retries. */
+	private boolean residentOwnedBy(String key, String hashKey)
+	{
+		File file = getCacheFile(key);
+		if (Files.notExists(file.toPath()))
+		{
+			return true;
+		}
+		PlayerClogData resident = readRecordFile(file);
+		if (resident != null)
+		{
+			return ownedBy(resident, hashKey);
+		}
+		IdentityLedger.View view = ledger.read();
+		String claimant = IdentityLedger.newestClaimant(view.names, view.stamps, key, null);
+		if (!file.isFile() || !view.readable || (claimant != null && !claimant.equals(hashKey)))
+		{
+			return false;
+		}
+		try
+		{
+			File preserved = Files.createTempFile(cacheDir.toPath(), ".unreadable-" + file.getName() + "-", ".json").toFile();
+			atomicMove(file, preserved);
+			return true;
+		}
+		catch (IOException e)
+		{
+			log.warn("Could not preserve unreadable cache '{}': {}", file.getName(), e.getMessage());
+			return false;
+		}
+	}
+
+	private boolean recordOwnedBy(File file, String hashKey)
+	{
+		PlayerClogData resident = readRecordFile(file);
+		return resident != null && ownedBy(resident, hashKey);
 	}
 
 	private PlayerClogData readRecordFile(File file)
@@ -885,37 +992,6 @@ public class LocalClogCache
 		}
 	}
 
-	private void persistIdentityEntry(String hashKey, String key)
-	{
-		try
-		{
-			diskWriter.execute(() -> persistIdentityEntryOnWriter(hashKey, key));
-		}
-		catch (RejectedExecutionException ignored)
-		{
-			// Shutdown race: the mapping re-records on the next login.
-		}
-	}
-
-	/**
-	 * On the writer thread, under an OS-level file lock: fresh read,
-	 * single-entry overlay, atomic write. The in-process writer thread
-	 * serializes THIS client; the FileLock serializes ACROSS clients, so two
-	 * JVMs sharing the machine can never interleave read-modify-write and
-	 * erase each other's mappings, and the atomic move means no reader ever
-	 * sees partial JSON.
-	 */
-	private void persistIdentityEntryOnWriter(String hashKey, String key)
-	{
-		ledger.withLock(() ->
-		{
-			IdentityLedger.View disk = ledger.read();
-			disk.names.put(hashKey, key);
-			disk.stamps.put(hashKey, IdentityLedger.nextStamp(disk, key));
-			return ledger.save(disk);
-		});
-	}
-
 	/** Test hook: model a pre-marking legacy store file (marks null). */
 	void nullifyFirstPartyMarksForTest(String rsn)
 	{
@@ -940,8 +1016,12 @@ public class LocalClogCache
 		{
 			return identity;
 		}
-		identity = new ConcurrentHashMap<>(ledger.read().names);
-		identityByHash = identity;
+		IdentityLedger.View view = ledger.read();
+		identity = new ConcurrentHashMap<>(view.names);
+		if (view.readable)
+		{
+			identityByHash = identity;
+		}
 		return identity;
 	}
 
@@ -2137,6 +2217,10 @@ public class LocalClogCache
 		boolean saved = ledger.withLock(() ->
 		{
 			IdentityLedger.View disk = ledger.read();
+			if (!disk.readable || !residentOwnedBy(key, anchorHash))
+			{
+				return false;
+			}
 			String winner = IdentityLedger.newestClaimant(disk.names, disk.stamps, key, null);
 			if (winner != null && !winner.equals(anchorHash))
 			{

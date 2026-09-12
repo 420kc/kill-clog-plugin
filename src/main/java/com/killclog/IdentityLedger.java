@@ -35,6 +35,7 @@ class IdentityLedger
 	{
 		final Map<String, String> names = new HashMap<>();
 		final Map<String, Long> stamps = new HashMap<>();
+		boolean readable = true;
 	}
 
 	// One machine, one clock: a stamp this far ahead cannot be legitimate.
@@ -57,7 +58,7 @@ class IdentityLedger
 	View read()
 	{
 		View view = new View();
-		if (!file().exists())
+		if (Files.notExists(file().toPath()))
 		{
 			return view;
 		}
@@ -66,7 +67,12 @@ class IdentityLedger
 			JsonObject root = gson.fromJson(reader, JsonObject.class);
 			if (root == null)
 			{
-				return view;
+				throw new IOException("Empty identity ledger");
+			}
+			if ((root.has("version") || root.has("names"))
+				&& (!root.has("names") || !root.get("names").isJsonObject()))
+			{
+				throw new IOException("Invalid identity names");
 			}
 			JsonObject names = root.has("names") && root.get("names").isJsonObject()
 				? root.getAsJsonObject("names") : null;
@@ -77,6 +83,10 @@ class IdentityLedger
 				return view;
 			}
 			readNames(names, view.names);
+			if (root.has("stamps") && !root.get("stamps").isJsonObject())
+			{
+				throw new IOException("Invalid identity stamps");
+			}
 			if (root.has("stamps") && root.get("stamps").isJsonObject())
 			{
 				// A stamp meaningfully in the future is corrupt (one machine,
@@ -96,6 +106,9 @@ class IdentityLedger
 		}
 		catch (Exception e)
 		{
+			view.readable = false;
+			view.names.clear();
+			view.stamps.clear();
 			log.warn("Failed to load rename identity file: {}", e.getMessage());
 		}
 		return view;
@@ -105,15 +118,20 @@ class IdentityLedger
 	{
 		for (Map.Entry<String, JsonElement> e : source.entrySet())
 		{
-			if (e.getValue().isJsonPrimitive())
+			if (!e.getValue().isJsonPrimitive())
 			{
-				into.put(e.getKey(), e.getValue().getAsString());
+				throw new IllegalArgumentException("Invalid identity name");
 			}
+			into.put(e.getKey(), e.getValue().getAsString());
 		}
 	}
 
 	boolean save(View view)
 	{
+		if (!view.readable)
+		{
+			return false;
+		}
 		try
 		{
 			if (!cacheDir.exists())
