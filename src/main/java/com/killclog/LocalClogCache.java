@@ -1623,11 +1623,7 @@ public class LocalClogCache
 			data.obtained = new ConcurrentHashMap<>();
 		}
 
-		// Whether this item is a brand-new unique, judged across every page
-		// BEFORE the merge: shared items (clue rares on several pages) only
-		// count once, and the game's own counter stays authoritative at sync.
-		boolean newUnique = data.uniqueObtained > 0 && !obtainedAnywhere(data, itemId);
-
+		// Record item history here; game counters update the unique total separately.
 		boolean changed = false;
 		for (String categoryKey : categoryKeys)
 		{
@@ -1671,13 +1667,6 @@ public class LocalClogCache
 
 		if (changed)
 		{
-			if (newUnique)
-			{
-				// The sidebar total reads this scalar; without the bump a live
-				// unlock shows on its page but the total sits stale until the
-				// next chalice sync.
-				data.uniqueObtained++;
-			}
 			data.lastUpdated = Instant.now().toString();
 			final PlayerClogData snapshot = shallowCopy(data);
 			submitPlayerSave(playerName, snapshot);
@@ -1802,21 +1791,6 @@ public class LocalClogCache
 			log.debug("Merged provider dates into local clog cache for '{}'", playerName);
 		}
 		return changed;
-	}
-
-	private static boolean obtainedAnywhere(PlayerClogData data, int itemId)
-	{
-		for (List<ClogResult.ClogItem> items : data.obtained.values())
-		{
-			for (ClogResult.ClogItem item : items)
-			{
-				if (item.getId() == itemId)
-				{
-					return true;
-				}
-			}
-		}
-		return false;
 	}
 
 	public synchronized boolean hasObtainedItem(String playerName, int itemId, List<String> categoryKeys)

@@ -81,10 +81,9 @@ final class LiveClogSync
 				kill != null ? kill.kc : 0, kill != null ? kill.boss : null);
 		}
 
-		// Upward-only here: the varp can lag the unlock message by a tick, and
-		// a stale read would revert the unique bump the merge just made.
-		// Full log refresh remains the downward authority. A clan broadcast
-		// carries its own fresh counts; take whichever signal is highest.
+		// Game counters own the scalar; unlock messages only add item history.
+		// A lagging varp must not undo a newer broadcast count. Full log
+		// refresh remains the downward authority.
 		int liveObtained = Math.max(client.getVarpValue(ClogVarps.OBTAINED), broadcastObtained);
 		int liveTotal = Math.max(client.getVarpValue(ClogVarps.TOTAL), broadcastTotal);
 		if (liveObtained > 0 || liveTotal > 0)

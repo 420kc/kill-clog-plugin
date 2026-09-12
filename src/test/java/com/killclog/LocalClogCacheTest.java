@@ -521,32 +521,35 @@ public class LocalClogCacheTest
 	}
 
 	@Test
-	public void testMergeObtainedItemBumpsUniqueTotalOnceForNewUniques() throws Exception
+	public void liveUnlockTotalsFollowGameCountersInEitherEventOrder() throws Exception
 	{
-		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
-		Map<String, List<Integer>> categories = new HashMap<>();
-		categories.put("magus", itemList(1, 2, 3));
-		categories.put("all_pets", itemList(2, 4));
-
-		ClogResult synced = clog("Fast 07", categories, obtainedItems("magus", 1));
-		synced.setUniqueObtained(5);
-		cache.cacheResult(synced);
-
-		// A brand-new unique bumps the sidebar total immediately.
-		cache.mergeObtainedItem("Fast 07", 4, itemListAsStrings("all_pets"), categories);
-		assertEquals(6, cache.toClogResult("Fast 07", Collections.emptyMap()).getUniqueObtained());
-
-		// Merging the same unlock again changes nothing.
-		cache.mergeObtainedItem("Fast 07", 4, itemListAsStrings("all_pets"), categories);
-		assertEquals(6, cache.toClogResult("Fast 07", Collections.emptyMap()).getUniqueObtained());
-
-		// A new unique on one page counts once...
-		cache.mergeObtainedItem("Fast 07", 2, itemListAsStrings("magus"), categories);
-		assertEquals(7, cache.toClogResult("Fast 07", Collections.emptyMap()).getUniqueObtained());
-
-		// ...and landing on its second page later is not another unique.
-		cache.mergeObtainedItem("Fast 07", 2, itemListAsStrings("all_pets"), categories);
-		assertEquals(7, cache.toClogResult("Fast 07", Collections.emptyMap()).getUniqueObtained());
+		for (int initial : List.of(0, 5))
+		{
+			for (boolean counterFirst : List.of(false, true))
+			{
+				File dir = temporaryFolder.newFolder();
+				LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+				Map<String, List<Integer>> categories = Map.of("hats", itemList(1, 2), "other", itemList(1));
+				ClogResult baseline = clog("Tester", categories, obtainedItems("hats"));
+				baseline.setUniqueObtained(initial);
+				cache.cacheFirstPartyResult(baseline);
+				if (counterFirst) cache.updateTotalsUpward("Tester", initial + 1, 100);
+				cache.mergeObtainedItem("Tester", 1, List.of("hats", "other"), categories, 42, "Boss");
+				if (!counterFirst) cache.updateTotalsUpward("Tester", initial + 1, 100);
+				// A duplicate notification and a lagging counter cannot add another slot.
+				cache.mergeObtainedItem("Tester", 1, List.of("hats", "other"), categories);
+				cache.updateTotalsUpward("Tester", initial, 100);
+				ClogResult payload = cache.toFirstPartySyncResult("Tester");
+				assertEquals(initial + 1, payload.getUniqueObtained());
+				assertNotNull(payload.getObtainedItems().get("hats").get(0).getDate());
+				assertEquals(42, payload.getObtainedItems().get("hats").get(0).getObtainedAtKc());
+				cache.mergeObtainedItem("Tester", 2, List.of("hats"), categories);
+				cache.updateTotalsUpward("Tester", initial + 2, 100);
+				LocalClogCache restarted = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+				assertTrue(restarted.hasDataFor("Tester"));
+				assertEquals(initial + 2, restarted.toFirstPartySyncResult("Tester").getUniqueObtained());
+			}
+		}
 	}
 
 	@Test
