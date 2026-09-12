@@ -1,3 +1,19 @@
+# Active release: Kill Clog 2.4.0
+
+Updated 2026-09-12. The active candidate is now `hive/2.4.0-candidate` at
+`C:/Users/dylan/.codex/worktrees/killclog-240-candidate`.
+Its [release checklist](C:/Users/dylan/.codex/worktrees/killclog-240-candidate/release/kill-clog-next-release.md)
+owns the current scope, change tally and character-publish gaps.
+
+This checkout (`hive/2.4.0`) preserves the older broader taxonomy/summary design.
+It is not the active release or refire source. Its code has not been merged over
+the newer refresh/provenance candidate. The 2.3.4 checkpoints remain historical;
+there is no separate planned 2.3.4 submission. Master and the open 2.3.3 PR remain
+unchanged. The receipts below are historical and do not establish current smoke
+approval, active jar selection or Hub availability.
+
+---
+
 # Kill Clog 2.3.4 preserved submission candidate
 
 Status: Dylan-approved for preservation and submission preparation on 2026-09-11.
