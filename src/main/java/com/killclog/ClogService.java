@@ -498,7 +498,7 @@ public class ClogService
 				return categoriesFlight;
 			}
 
-			categoriesFlight = httpGet(TEMPLE_CATEGORIES_URL).thenApply(json ->
+			CompletableFuture<Map<String, List<Integer>>> flight = httpGet(TEMPLE_CATEGORIES_URL).thenApply(json ->
 			{
 				try
 				{
@@ -535,13 +535,16 @@ public class ClogService
 					log.debug("Failed to parse clog categories: {}", e.getMessage());
 					return null;
 				}
-				finally
+			});
+			categoriesFlight = flight;
+			flight.whenComplete((result, error) ->
+			{
+				synchronized (this)
 				{
-					categoriesFlight = null;
+					if (categoriesFlight == flight) categoriesFlight = null;
 				}
 			});
-
-			return categoriesFlight;
+			return flight;
 		}
 	}
 
@@ -563,7 +566,7 @@ public class ClogService
 				return namesFlight;
 			}
 
-			namesFlight = httpGet(WIKI_MAPPING_URL).thenApply(json ->
+			CompletableFuture<Map<Integer, String>> flight = httpGet(WIKI_MAPPING_URL).thenApply(json ->
 			{
 				try
 				{
@@ -591,13 +594,16 @@ public class ClogService
 					log.debug("Failed to parse item names: {}", e.getMessage());
 					return null;
 				}
-				finally
+			});
+			namesFlight = flight;
+			flight.whenComplete((result, error) ->
+			{
+				synchronized (this)
 				{
-					namesFlight = null;
+					if (namesFlight == flight) namesFlight = null;
 				}
 			});
-
-			return namesFlight;
+			return flight;
 		}
 	}
 
