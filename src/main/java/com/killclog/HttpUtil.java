@@ -44,11 +44,34 @@ final class HttpUtil
 	{
 		final int code;
 		final String body;
+		final int retryAfterSeconds;
 
 		HttpResult(int code, String body)
 		{
+			this(code, body, 0);
+		}
+
+		HttpResult(int code, String body, int retryAfterSeconds)
+		{
 			this.code = code;
 			this.body = body;
+			this.retryAfterSeconds = retryAfterSeconds;
+		}
+	}
+
+	static int retryAfterSeconds(@Nullable String value)
+	{
+		if (value == null) return 0;
+		try
+		{
+			long seconds = value.trim().matches("[0-9]+") ? Long.parseLong(value.trim())
+				: (java.time.ZonedDateTime.parse(value, java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME)
+					.toInstant().toEpochMilli() - System.currentTimeMillis() + 999) / 1000;
+			return (int) Math.max(0, Math.min(seconds, 86_400));
+		}
+		catch (RuntimeException e)
+		{
+			return 0;
 		}
 	}
 
@@ -145,7 +168,7 @@ final class HttpUtil
 				try (ResponseBody body = response.body())
 				{
 					String text = body != null ? readBounded(body) : null;
-					future.complete(new HttpResult(response.code(), text));
+					future.complete(new HttpResult(response.code(), text, retryAfterSeconds(response.header("Retry-After"))));
 				}
 				catch (IOException e)
 				{

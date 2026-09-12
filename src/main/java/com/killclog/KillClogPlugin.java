@@ -56,9 +56,13 @@ public class KillClogPlugin extends Plugin
 	private static final int CLOG_SEARCH_TOGGLE_SCRIPT = 4084;
 	private static final int CLOG_SEARCH_CONTAINER = 71;
 	private static final String RUNEPROFILE_PLUGIN_NAME = "RuneProfile";
-	static final String CHARACTER_RENDERING_STATUS = "rendering...";
-	static final String CHARACTER_PUBLISHED_STATUS = "character published!";
+	static final String CHARACTER_RENDERING_STATUS = "updating character...";
+	static final String CHARACTER_PUBLISHED_STATUS = "character updated!";
 	static final String CHARACTER_FAILED_STATUS = "Publish failed";
+	static final String CHARACTER_PENDING_STATUS = "Still rendering...";
+	static final String CHARACTER_RECOVERY_STATUS = "Publishing on hold";
+	static final String CHARACTER_DISABLED_STATUS = "Publishing unavailable";
+	static final String CHARACTER_UNKNOWN_STATUS = "Check your profile";
 
 	/** Config keys whose changes require rebuilding the right-click lookup menu entry. */
 	private static final java.util.Set<String> MENU_CONFIG_KEYS = java.util.Set.of(
@@ -682,12 +686,18 @@ public class KillClogPlugin extends Plugin
 
 	private void showCharacterPublishStatus(int generation, String text, boolean ok, boolean autoClear)
 	{
+		showCharacterPublishStatus(generation, text, ok, autoClear, null);
+	}
+
+	private void showCharacterPublishStatus(int generation, String text, boolean ok, boolean autoClear,
+		String failureMessage)
+	{
 		SwingUtilities.invokeLater(() ->
 		{
 			if (generation == characterPublishGeneration.get()
 				&& (text.trim().isEmpty() || characterPublishingEnabled()))
 			{
-				panel.showCharacterPublishStatus(text, ok, autoClear);
+				panel.showCharacterPublishStatus(text, ok, autoClear, failureMessage);
 			}
 		});
 	}
@@ -727,7 +737,8 @@ public class KillClogPlugin extends Plugin
 				return;
 			}
 
-			profileAppearanceService.publishCurrent(rsn, accountHash)
+			profileAppearanceService.publishCurrent(rsn, accountHash,
+				() -> generation == characterPublishGeneration.get() && characterPublishingEnabled())
 				.whenComplete((result, error) ->
 					handleCharacterPublishResult(result, error, generation));
 		});
@@ -759,13 +770,23 @@ public class KillClogPlugin extends Plugin
 
 		characterPublishInFlight.set(false);
 		boolean published = result.outcome == ProfileAppearanceService.Outcome.PUBLISHED;
-		showCharacterPublishStatus(generation, characterPublishTerminalStatus(result.outcome), published, true);
+		showCharacterPublishStatus(generation, characterPublishTerminalStatus(result.outcome), published, true,
+			result.message);
 	}
 
 	static String characterPublishTerminalStatus(ProfileAppearanceService.Outcome outcome)
 	{
-		return outcome == ProfileAppearanceService.Outcome.PUBLISHED
-			? CHARACTER_PUBLISHED_STATUS : CHARACTER_FAILED_STATUS;
+		switch (outcome)
+		{
+			case PUBLISHED: return CHARACTER_PUBLISHED_STATUS;
+			case RENDERING: return CHARACTER_PENDING_STATUS;
+			case RECOVERY_PENDING: return CHARACTER_RECOVERY_STATUS;
+			case DISABLED: return CHARACTER_DISABLED_STATUS;
+			case BUSY: return CHARACTER_RENDERING_STATUS;
+			case UNKNOWN: return CHARACTER_UNKNOWN_STATUS;
+			case CANCELLED: return " ";
+			default: return CHARACTER_FAILED_STATUS;
+		}
 	}
 
 	private void startCharacterPrerequisiteSync()

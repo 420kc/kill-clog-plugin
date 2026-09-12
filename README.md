@@ -77,7 +77,7 @@ Enable **Sync Collection Log** under **Kill Clog Web Sync** to publish your Coll
 
 **Publish Character Model** is also off by default and requires Killclog.com sync. It adds a one-click button to publish your current character and follower models to your killclog.com/p/ profile.
 
-Manual syncs and character publishes show progress and failure messages in the panel; success flashes the corresponding icon green. **Silent automatic sync** is enabled by default and hides automatic panel messages and flashes. Chat messages have their own setting under **Chat**.
+Manual syncs and character updates show progress in the panel; success flashes the corresponding icon green. If a character update is still rendering, check your profile shortly. Hover the character icon for the reason and next step when an update cannot finish. **Silent automatic sync** is enabled by default and hides automatic panel messages and flashes. Chat messages have their own setting under **Chat**.
 
 ## Chat
 

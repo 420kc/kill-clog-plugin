@@ -107,17 +107,15 @@ public class ProfileAppearanceServiceTest
 	}
 
 	@Test
-	public void characterPublishStatusContractHasOnlySuccessOrFailureTerminals()
+	public void pendingAndRecoveryAreNotFailures()
 	{
-		assertEquals("rendering...", KillClogPlugin.CHARACTER_RENDERING_STATUS);
-		assertEquals("character published!", KillClogPlugin.CHARACTER_PUBLISHED_STATUS);
-		assertEquals("Publish failed", KillClogPlugin.CHARACTER_FAILED_STATUS);
-		for (ProfileAppearanceService.Outcome outcome : ProfileAppearanceService.Outcome.values())
-		{
-			assertEquals(outcome == ProfileAppearanceService.Outcome.PUBLISHED
-				? "character published!" : "Publish failed",
-				KillClogPlugin.characterPublishTerminalStatus(outcome));
-		}
+		assertEquals("character updated!", KillClogPlugin.characterPublishTerminalStatus(ProfileAppearanceService.Outcome.PUBLISHED));
+		assertEquals("Still rendering...", KillClogPlugin.characterPublishTerminalStatus(ProfileAppearanceService.Outcome.RENDERING));
+		assertEquals("Publishing on hold", KillClogPlugin.characterPublishTerminalStatus(ProfileAppearanceService.Outcome.RECOVERY_PENDING));
+		assertEquals("Check your profile", KillClogPlugin.characterPublishTerminalStatus(ProfileAppearanceService.Outcome.UNKNOWN));
+		assertEquals(" ", KillClogPlugin.characterPublishTerminalStatus(ProfileAppearanceService.Outcome.CANCELLED));
+		assertTrue(KillClogPanel.isCharacterNotice("Still rendering..."));
+		assertFalse(KillClogPanel.isCharacterNotice("Publish failed"));
 	}
 
 	private static NPC npc(int id, NPCComposition base, NPCComposition transformed)

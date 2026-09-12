@@ -5,6 +5,10 @@ import com.google.gson.JsonObject;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.function.BiConsumer;
+import java.util.function.BooleanSupplier;
+import java.util.function.Function;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -13,6 +17,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
+import net.runelite.api.GameState;
 import net.runelite.api.NPC;
 import net.runelite.api.NPCComposition;
 import net.runelite.api.Player;
@@ -36,24 +41,40 @@ final class ProfileAppearanceService
 		PUBLISHED,
 		PROFILE_REQUIRED,
 		DISABLED,
-		PENDING,
+		RENDERING,
+		RECOVERY_PENDING,
+		BUSY,
+		CANCELLED,
+		UNKNOWN,
 		FAILED
 	}
 
 	static final class PublishResult
 	{
 		final Outcome outcome;
+		final String message;
 
 		private PublishResult(Outcome outcome)
 		{
+			this(outcome, null);
+		}
+
+		private PublishResult(Outcome outcome, @Nullable String message)
+		{
 			this.outcome = outcome;
+			this.message = message;
 		}
 	}
 
 	private final Client client;
 	private final ClientThread clientThread;
 	private final ScheduledExecutorService executor;
-	private final ConfigManager configManager;
+	private final Function<String, String> readConfig;
+	private final BiConsumer<String, String> writeConfig;
+	private final AtomicBoolean inFlight = new AtomicBoolean();
+	private long retryAccount;
+	private long retryUntil;
+	private PublishResult retryResult;
 	private final okhttp3.OkHttpClient httpClient;
 	private final Gson gson;
 
@@ -62,65 +83,146 @@ final class ProfileAppearanceService
 		ScheduledExecutorService executor,
 		ConfigManager configManager, okhttp3.OkHttpClient httpClient, Gson gson)
 	{
+		this(client, clientThread, executor, httpClient, gson,
+			key -> configManager.getConfiguration(CONFIG_GROUP, key, String.class),
+			(key, value) ->
+			{
+				if (value == null) configManager.unsetConfiguration(CONFIG_GROUP, key);
+				else configManager.setConfiguration(CONFIG_GROUP, key, value);
+			});
+	}
+
+	ProfileAppearanceService(Client client, ClientThread clientThread,
+		ScheduledExecutorService executor, okhttp3.OkHttpClient httpClient, Gson gson,
+		Function<String, String> readConfig, BiConsumer<String, String> writeConfig)
+	{
 		this.client = client;
 		this.clientThread = clientThread;
 		this.executor = executor;
-		this.configManager = configManager;
 		this.httpClient = httpClient;
 		this.gson = gson;
+		this.readConfig = readConfig;
+		this.writeConfig = writeConfig;
 	}
 
-	CompletableFuture<PublishResult> publishCurrent(String expectedRsn, long accountHash)
+	CompletableFuture<PublishResult> publishCurrent(String expectedRsn, long accountHash,
+		BooleanSupplier authorized)
 	{
+		if (!inFlight.compareAndSet(false, true)) return completed(Outcome.BUSY);
+		PublishAttempt attempt = new PublishAttempt(expectedRsn, accountHash, authorized);
 		CompletableFuture<PublishResult> result = new CompletableFuture<>();
-		clientThread.invokeLater(() ->
+		try
 		{
+			clientThread.invokeLater(() ->
+			{
+				try
+				{
+					captureAndPublish(attempt).whenComplete((value, error) ->
+					{
+						// Retain the slot across cancellation until the whole chain settles.
+						inFlight.set(false);
+						result.complete(error == null ? value : failed());
+					});
+				}
+				catch (RuntimeException e)
+				{
+					inFlight.set(false);
+					result.complete(failed());
+				}
+			});
+		}
+		catch (RuntimeException e)
+		{
+			inFlight.set(false);
+			result.complete(failed());
+		}
+		return result;
+	}
+
+	private CompletableFuture<PublishResult> captureAndPublish(PublishAttempt attempt)
+	{
+		if (!attempt.active()) return completed(Outcome.CANCELLED);
+		if (retryAccount == attempt.accountHash && System.currentTimeMillis() < retryUntil)
+		{
+			return CompletableFuture.completedFuture(retryResult);
+		}
+		Player local = client.getLocalPlayer();
+		PlayerComposition composition = local.getPlayerComposition();
+		if (composition != null && composition.getTransformedNpcId() != -1)
+		{
+			return CompletableFuture.completedFuture(new PublishResult(Outcome.FAILED,
+				"Return to your normal player form and retry."));
+		}
+		ProfileAppearanceManifest manifest = ProfileAppearanceManifest.capture(
+			composition, client.getRevision(), SyncService.CLIENT_VERSION,
+			visibleFollowerNpcId(client.getFollower()), local.getIdlePoseAnimation());
+		if (manifest == null)
+		{
+			return CompletableFuture.completedFuture(new PublishResult(Outcome.FAILED,
+				"Your character is not ready. Wait until it is visible, then retry."));
+		}
+		String secret = accountConfig(attempt.accountHash, DEVICE_SECRET_KEY);
+		String recoveryToken = accountConfig(attempt.accountHash, RECOVERY_TOKEN_KEY);
+		attempt.recoveryAt = accountConfig(attempt.accountHash, RECOVERY_AT_KEY);
+		String manifestJson = gson.toJson(manifest);
+		return secret != null
+			? publishWithSecret(attempt, manifestJson, secret, true)
+			: ensureCredential(attempt, manifestJson, recoveryToken);
+	}
+
+	/** Each HTTP dispatch rechecks consent and identity on the client thread. */
+	private final class PublishAttempt
+	{
+		private final String rsn;
+		private final long accountHash;
+		private final BooleanSupplier authorized;
+		private String recoveryAt;
+
+		private PublishAttempt(String rsn, long accountHash, BooleanSupplier authorized)
+		{
+			this.rsn = rsn;
+			this.accountHash = accountHash;
+			this.authorized = authorized;
+		}
+
+		private boolean active()
+		{
+			return authorized.getAsBoolean() && isStillSelf(rsn, accountHash);
+		}
+
+		private CompletableFuture<HttpUtil.HttpResult> post(String suffix, String body, String secret)
+		{
+			CompletableFuture<HttpUtil.HttpResult> result = new CompletableFuture<>();
 			try
 			{
-				Player local = client.getLocalPlayer();
-				PlayerComposition composition = local != null ? local.getPlayerComposition() : null;
-				NPC follower = client.getFollower();
-				int followerNpcId = visibleFollowerNpcId(follower);
-				if (!isStillSelf(expectedRsn, accountHash) || composition == null)
+				clientThread.invokeLater(() ->
 				{
-					result.complete(failed());
-					return;
-				}
-				ProfileAppearanceManifest manifest = ProfileAppearanceManifest.capture(
-					composition, client.getRevision(), SyncService.CLIENT_VERSION, followerNpcId,
-					local.getIdlePoseAnimation());
-				if (manifest == null)
-				{
-					result.complete(failed());
-					return;
-				}
-
-				String secret = accountConfig(accountHash, DEVICE_SECRET_KEY);
-				String recoveryToken = accountConfig(accountHash, RECOVERY_TOKEN_KEY);
-				String manifestJson = gson.toJson(manifest);
-				CompletableFuture<PublishResult> request = secret != null
-					? publishWithSecret(expectedRsn, accountHash, manifestJson, secret, true)
-					: ensureCredential(expectedRsn, accountHash, manifestJson, recoveryToken);
-				request.whenComplete((value, error) ->
-				{
-					if (error != null)
+					try
 					{
-						log.debug("profile appearance publish failed", error);
-						result.complete(failed());
+						if (!active())
+						{
+							result.complete(new HttpUtil.HttpResult(-2, null));
+							return;
+						}
+						HttpUtil.httpPostJson(httpClient, endpoint(rsn, suffix), body, secret)
+							.whenComplete((response, error) ->
+							{
+								if (error != null) result.completeExceptionally(error);
+								else result.complete(response);
+							});
 					}
-					else
+					catch (RuntimeException e)
 					{
-						result.complete(value);
+						result.completeExceptionally(e);
 					}
 				});
 			}
 			catch (RuntimeException e)
 			{
-				log.debug("profile appearance capture failed", e);
-				result.complete(failed());
+				result.completeExceptionally(e);
 			}
-		});
-		return result;
+			return result;
+		}
 	}
 
 	static int visibleFollowerNpcId(@Nullable NPC follower)
@@ -140,28 +242,29 @@ final class ProfileAppearanceService
 		return transformed != null ? transformed.getId() : follower.getId();
 	}
 
-	private CompletableFuture<PublishResult> ensureCredential(String rsn, long accountHash,
+	private CompletableFuture<PublishResult> ensureCredential(PublishAttempt attempt,
 		String manifestJson, @Nullable String recoveryToken)
 	{
 		if (validSecret(recoveryToken))
 		{
-			return claimRecovery(rsn, accountHash, manifestJson, recoveryToken);
+			return claimRecovery(attempt, manifestJson, recoveryToken);
 		}
-		return requestDevice(rsn, accountHash, manifestJson);
+		return requestDevice(attempt, manifestJson);
 	}
 
-	private CompletableFuture<PublishResult> requestDevice(String rsn, long accountHash,
+	private CompletableFuture<PublishResult> requestDevice(PublishAttempt attempt,
 		String manifestJson)
 	{
 		JsonObject body = new JsonObject();
-		body.addProperty("account_hash", Long.toString(accountHash));
-		return HttpUtil.httpPostJson(httpClient, endpoint(rsn, "appearance/device"),
-			gson.toJson(body)).thenCompose(response ->
+		body.addProperty("account_hash", Long.toString(attempt.accountHash));
+		return attempt.post("appearance/device", gson.toJson(body), null).thenCompose(response ->
 		{
+			if (response.code == -2) return completed(Outcome.CANCELLED);
 			JsonObject json = parse(response.body);
 			if (isDryRun(response, json))
 			{
-				return completed(Outcome.DISABLED);
+				return CompletableFuture.completedFuture(new PublishResult(Outcome.DISABLED,
+					"Character publishing is temporarily unavailable. Try again later."));
 			}
 			if (response.code == 201)
 			{
@@ -170,9 +273,9 @@ final class ProfileAppearanceService
 				{
 					return completed(Outcome.FAILED);
 				}
-				return saveDeviceSecret(accountHash, secret)
+				return saveDeviceSecret(attempt.accountHash, secret)
 					.thenCompose(saved -> saved
-						? publishWithSecret(rsn, accountHash, manifestJson, secret, false)
+						? publishWithSecret(attempt, manifestJson, secret, false)
 						: completed(Outcome.FAILED));
 			}
 			if (response.code == 202)
@@ -183,35 +286,38 @@ final class ProfileAppearanceService
 				{
 					return completed(Outcome.FAILED);
 				}
-				return saveRecovery(accountHash, token, activatesAt)
+				return saveRecovery(attempt.accountHash, token, activatesAt)
 					.thenApply(saved -> saved
-						? new PublishResult(Outcome.PENDING) : failed());
+						? recoveryPending(activatesAt) : failed());
 			}
 			if (response.code == 409 && hasError(json, "appearance_recovery_pending"))
 			{
-				return completed(Outcome.PENDING);
+				return CompletableFuture.completedFuture(recoveryPending(stringValue(json, "activates_at") != null
+					? stringValue(json, "activates_at") : attempt.recoveryAt));
 			}
 			if (isProfileRequired(response.code, json))
 			{
-				return completed(Outcome.PROFILE_REQUIRED);
+				return CompletableFuture.completedFuture(new PublishResult(Outcome.PROFILE_REQUIRED,
+					"Sync your Collection Log to killclog.com, then retry character publishing."));
 			}
-			return completed(Outcome.FAILED);
+			return failedResponse(attempt, "registration", response, json);
 		});
 	}
 
-	private CompletableFuture<PublishResult> claimRecovery(String rsn, long accountHash,
+	private CompletableFuture<PublishResult> claimRecovery(PublishAttempt attempt,
 		String manifestJson, String recoveryToken)
 	{
 		JsonObject body = new JsonObject();
-		body.addProperty("account_hash", Long.toString(accountHash));
+		body.addProperty("account_hash", Long.toString(attempt.accountHash));
 		body.addProperty("recovery_token", recoveryToken);
-		return HttpUtil.httpPostJson(httpClient, endpoint(rsn, "appearance/device/claim"),
-			gson.toJson(body)).thenCompose(response ->
+		return attempt.post("appearance/device/claim", gson.toJson(body), null).thenCompose(response ->
 		{
+			if (response.code == -2) return completed(Outcome.CANCELLED);
 			JsonObject json = parse(response.body);
 			if (isDryRun(response, json))
 			{
-				return completed(Outcome.DISABLED);
+				return CompletableFuture.completedFuture(new PublishResult(Outcome.DISABLED,
+					"Character publishing is temporarily unavailable. Try again later."));
 			}
 			if (response.code >= 200 && response.code < 300)
 			{
@@ -220,40 +326,43 @@ final class ProfileAppearanceService
 				{
 					return completed(Outcome.FAILED);
 				}
-				return saveDeviceSecret(accountHash, secret)
+				return saveDeviceSecret(attempt.accountHash, secret)
 					.thenCompose(saved -> saved
-						? publishWithSecret(rsn, accountHash, manifestJson, secret, false)
+						? publishWithSecret(attempt, manifestJson, secret, false)
 						: completed(Outcome.FAILED));
 			}
 			if (response.code == 409 && hasError(json, "appearance_recovery_wait"))
 			{
-				return completed(Outcome.PENDING);
+				return CompletableFuture.completedFuture(recoveryPending(stringValue(json, "activates_at") != null
+					? stringValue(json, "activates_at") : attempt.recoveryAt));
 			}
 			if (isProfileRequired(response.code, json))
 			{
-				return completed(Outcome.PROFILE_REQUIRED);
+				return CompletableFuture.completedFuture(new PublishResult(Outcome.PROFILE_REQUIRED,
+					"Sync your Collection Log to killclog.com, then retry character publishing."));
 			}
 			if (response.code == 409 && hasError(json, "appearance_recovery_missing"))
 			{
-				return clearRecovery(accountHash)
+				return clearRecovery(attempt.accountHash)
 					.thenCompose(cleared -> cleared
-						? requestDevice(rsn, accountHash, manifestJson)
+						? requestDevice(attempt, manifestJson)
 						: completed(Outcome.FAILED));
 			}
-			return completed(Outcome.FAILED);
+			return failedResponse(attempt, "recovery", response, json);
 		});
 	}
 
-	private CompletableFuture<PublishResult> publishWithSecret(String rsn, long accountHash,
+	private CompletableFuture<PublishResult> publishWithSecret(PublishAttempt attempt,
 		String manifestJson, String secret, boolean recoverInvalidSecret)
 	{
-		return HttpUtil.httpPostJson(httpClient, endpoint(rsn, "appearance/publish"),
-			manifestJson, secret).thenCompose(response ->
+		return attempt.post("appearance/publish", manifestJson, secret).thenCompose(response ->
 		{
+			if (response.code == -2) return completed(Outcome.CANCELLED);
 			JsonObject json = parse(response.body);
 			if (isDryRun(response, json))
 			{
-				return completed(Outcome.DISABLED);
+				return CompletableFuture.completedFuture(new PublishResult(Outcome.DISABLED,
+					"Character publishing is temporarily unavailable. Try again later."));
 			}
 			if (isRenderedPublishResponse(response.code, json))
 			{
@@ -261,53 +370,106 @@ final class ProfileAppearanceService
 			}
 			if (isAcceptedPendingPublishResponse(response.code, json))
 			{
-				return completed(Outcome.PENDING);
+				return holdRetry(attempt, new PublishResult(Outcome.RENDERING,
+					"Your character was accepted and is still rendering. Check your profile shortly."), 15);
 			}
 			if (response.code == 503 && hasError(json, "appearance_render_failed"))
 			{
-				return completed(Outcome.FAILED);
+				return failedResponse(attempt, "publish", response, json);
 			}
 			if (response.code == 409 && hasError(json, "appearance_superseded"))
 			{
-				return completed(Outcome.FAILED);
+				return failedResponse(attempt, "publish", response, json);
 			}
 			if (response.code == 401 && recoverInvalidSecret)
 			{
-				return clearDeviceSecret(accountHash)
+				return clearDeviceSecret(attempt.accountHash)
 					.thenCompose(cleared -> cleared
-						? requestDevice(rsn, accountHash, manifestJson)
+						? requestDevice(attempt, manifestJson)
 						: completed(Outcome.FAILED));
 			}
 			if (response.code == 429)
 			{
-				return completed(Outcome.FAILED);
+				return failedResponse(attempt, "publish", response, json);
 			}
 			if (shouldCancelPendingRecovery(response.code, json, recoverInvalidSecret))
 			{
-				return cancelRecoveryAndPublish(rsn, accountHash, manifestJson, secret);
+				return cancelRecoveryAndPublish(attempt, manifestJson, secret);
 			}
 			if (response.code == 409 && hasError(json, "appearance_recovery_pending"))
 			{
-				return completed(Outcome.PENDING);
+				return CompletableFuture.completedFuture(recoveryPending(stringValue(json, "activates_at") != null
+					? stringValue(json, "activates_at") : attempt.recoveryAt));
 			}
 			if (isProfileRequired(response.code, json))
 			{
-				return completed(Outcome.PROFILE_REQUIRED);
+				return CompletableFuture.completedFuture(new PublishResult(Outcome.PROFILE_REQUIRED,
+					"Sync your Collection Log to killclog.com, then retry character publishing."));
 			}
-			return completed(Outcome.FAILED);
+			return failedResponse(attempt, "publish", response, json);
 		});
 	}
 
-	private CompletableFuture<PublishResult> cancelRecoveryAndPublish(String rsn,
-		long accountHash, String manifestJson, String secret)
+	private CompletableFuture<PublishResult> failedResponse(PublishAttempt attempt, String operation,
+		HttpUtil.HttpResult response, @Nullable JsonObject json)
 	{
-		return HttpUtil.httpPostJson(httpClient, endpoint(rsn, "appearance/device/cancel"),
-			"{}", secret).thenCompose(response ->
+		ProfileAppearanceFailure failure = ProfileAppearanceFailure.fromResponse(response.code, json);
+		log.warn("Character {} failed: status={} reason={} reference={}",
+			operation, response.code, failure.reason, failure.reference);
+		if (response.code < 0 && "publish".equals(operation))
 		{
+			return holdRetry(attempt, new PublishResult(Outcome.UNKNOWN,
+				"The connection was interrupted. Your character may have updated. Check your profile before retrying."), 10);
+		}
+		int delay = response.retryAfterSeconds;
+		if (delay == 0 && (response.code == 429 || response.code == 503)) delay = 60;
+		PublishResult result = new PublishResult(Outcome.FAILED, failure.message
+			+ (delay > 0 ? " Retry after " + displayTime(java.time.Instant.now().plusSeconds(delay).toString()) + "." : ""));
+		return holdRetry(attempt, result, delay);
+	}
+
+	private CompletableFuture<PublishResult> holdRetry(PublishAttempt attempt, PublishResult result, int seconds)
+	{
+		retryAccount = attempt.accountHash;
+		retryUntil = System.currentTimeMillis() + seconds * 1000L;
+		retryResult = result;
+		return CompletableFuture.completedFuture(result);
+	}
+
+	private static PublishResult recoveryPending(@Nullable String activatesAt)
+	{
+		String time = displayTime(activatesAt);
+		return new PublishResult(Outcome.RECOVERY_PENDING,
+			"Publishing access is being restored for this installation. "
+				+ (time == null ? "Try again after the recovery wait." : "Try again after " + time + ".")
+				+ " This does not affect your game login or Collection Log sync.");
+	}
+
+	@Nullable
+	private static String displayTime(@Nullable String value)
+	{
+		try
+		{
+			return java.time.format.DateTimeFormatter.ofPattern("MMM d, HH:mm z", java.util.Locale.ENGLISH)
+				.withZone(java.time.ZoneId.systemDefault()).format(java.time.Instant.parse(value));
+		}
+		catch (RuntimeException e)
+		{
+			return null;
+		}
+	}
+
+	private CompletableFuture<PublishResult> cancelRecoveryAndPublish(PublishAttempt attempt,
+		String manifestJson, String secret)
+	{
+		return attempt.post("appearance/device/cancel", "{}", secret).thenCompose(response ->
+		{
+			if (response.code == -2) return completed(Outcome.CANCELLED);
 			JsonObject json = parse(response.body);
 			if (isDryRun(response, json))
 			{
-				return completed(Outcome.DISABLED);
+				return CompletableFuture.completedFuture(new PublishResult(Outcome.DISABLED,
+					"Character publishing is temporarily unavailable. Try again later."));
 			}
 			boolean cancelled = response.code >= 200 && response.code < 300
 				&& json != null && json.has("recovery_cancelled")
@@ -315,48 +477,35 @@ final class ProfileAppearanceService
 			boolean alreadyClear = response.code == 409
 				&& hasError(json, "appearance_recovery_missing");
 			return cancelled || alreadyClear
-				? retryPublishAfterCooldown(rsn, accountHash, manifestJson, secret)
-				: completed(Outcome.FAILED);
+				? retryPublishAfterCooldown(attempt, manifestJson, secret)
+				: failedResponse(attempt, "cancel_recovery", response, json);
 		});
 	}
 
-	private CompletableFuture<PublishResult> retryPublishAfterCooldown(String rsn,
-		long accountHash, String manifestJson, String secret)
+	private CompletableFuture<PublishResult> retryPublishAfterCooldown(PublishAttempt attempt,
+		String manifestJson, String secret)
 	{
-		CompletableFuture<Boolean> stillSelf = new CompletableFuture<>();
+		CompletableFuture<Boolean> delay = new CompletableFuture<>();
 		try
 		{
-			executor.schedule(() -> clientThread.invokeLater(() ->
-			{
-				try
-				{
-					stillSelf.complete(isStillSelf(rsn, accountHash));
-				}
-				catch (RuntimeException e)
-				{
-					stillSelf.complete(false);
-				}
-			}), PUBLISH_RETRY_DELAY_MS, TimeUnit.MILLISECONDS);
+			executor.schedule(() -> delay.complete(true), PUBLISH_RETRY_DELAY_MS, TimeUnit.MILLISECONDS);
 		}
 		catch (RuntimeException e)
 		{
-			stillSelf.complete(false);
+			delay.complete(false);
 		}
-		return stillSelf.thenCompose(current -> current
-			? publishWithSecret(rsn, accountHash, manifestJson, secret, false)
-			: completed(Outcome.FAILED));
+		return delay.thenCompose(ready -> ready
+			? publishWithSecret(attempt, manifestJson, secret, false)
+			: completed(Outcome.CANCELLED));
 	}
 
 	private CompletableFuture<Boolean> saveDeviceSecret(long accountHash, String secret)
 	{
 		return updateAccountConfig(() ->
 		{
-			configManager.setConfiguration(CONFIG_GROUP,
-				scopedKey(accountHash, DEVICE_SECRET_KEY), secret);
-			configManager.unsetConfiguration(CONFIG_GROUP,
-				scopedKey(accountHash, RECOVERY_TOKEN_KEY));
-			configManager.unsetConfiguration(CONFIG_GROUP,
-				scopedKey(accountHash, RECOVERY_AT_KEY));
+			writeConfig.accept(scopedKey(accountHash, DEVICE_SECRET_KEY), secret);
+			writeConfig.accept(scopedKey(accountHash, RECOVERY_TOKEN_KEY), null);
+			writeConfig.accept(scopedKey(accountHash, RECOVERY_AT_KEY), null);
 		});
 	}
 
@@ -365,30 +514,25 @@ final class ProfileAppearanceService
 	{
 		return updateAccountConfig(() ->
 		{
-			configManager.setConfiguration(CONFIG_GROUP,
-				scopedKey(accountHash, RECOVERY_TOKEN_KEY), token);
+			writeConfig.accept(scopedKey(accountHash, RECOVERY_TOKEN_KEY), token);
 			if (activatesAt != null)
 			{
-				configManager.setConfiguration(CONFIG_GROUP,
-					scopedKey(accountHash, RECOVERY_AT_KEY), activatesAt);
+				writeConfig.accept(scopedKey(accountHash, RECOVERY_AT_KEY), activatesAt);
 			}
 		});
 	}
 
 	private CompletableFuture<Boolean> clearDeviceSecret(long accountHash)
 	{
-		return updateAccountConfig(() -> configManager.unsetConfiguration(CONFIG_GROUP,
-			scopedKey(accountHash, DEVICE_SECRET_KEY)));
+		return updateAccountConfig(() -> writeConfig.accept(scopedKey(accountHash, DEVICE_SECRET_KEY), null));
 	}
 
 	private CompletableFuture<Boolean> clearRecovery(long accountHash)
 	{
 		return updateAccountConfig(() ->
 		{
-			configManager.unsetConfiguration(CONFIG_GROUP,
-				scopedKey(accountHash, RECOVERY_TOKEN_KEY));
-			configManager.unsetConfiguration(CONFIG_GROUP,
-				scopedKey(accountHash, RECOVERY_AT_KEY));
+			writeConfig.accept(scopedKey(accountHash, RECOVERY_TOKEN_KEY), null);
+			writeConfig.accept(scopedKey(accountHash, RECOVERY_AT_KEY), null);
 		});
 	}
 
@@ -404,7 +548,7 @@ final class ProfileAppearanceService
 			}
 			catch (RuntimeException e)
 			{
-				log.debug("profile appearance credential storage failed", e);
+				log.warn("Character credential storage failed");
 				result.complete(false);
 			}
 		});
@@ -414,7 +558,7 @@ final class ProfileAppearanceService
 	private boolean isStillSelf(String expectedRsn, long accountHash)
 	{
 		Player local = client.getLocalPlayer();
-		return local != null
+		return client.getGameState() == GameState.LOGGED_IN && local != null
 			&& samePlayer(expectedRsn, local.getName())
 			&& client.getAccountHash() == accountHash;
 	}
@@ -429,23 +573,23 @@ final class ProfileAppearanceService
 	private String accountConfig(long accountHash, String key)
 	{
 		String storageKey = scopedKey(accountHash, key);
-		String value = configManager.getConfiguration(CONFIG_GROUP, storageKey, String.class);
+		String value = readConfig.apply(storageKey);
 		if ((value == null || value.isBlank())
 			&& KillClogEndpoint.STAGING_API.equals(KillClogEndpoint.apiBaseUrl()))
 		{
 			// Early staging builds predated endpoint-scoped credentials. Move that
 			// one developer credential away from the production namespace.
 			String legacyKey = legacyScopedKey(accountHash, key);
-			value = configManager.getConfiguration(CONFIG_GROUP, legacyKey, String.class);
+			value = readConfig.apply(legacyKey);
 			if (value != null && !value.isBlank())
 			{
-				configManager.setConfiguration(CONFIG_GROUP, storageKey, value);
-				configManager.unsetConfiguration(CONFIG_GROUP, legacyKey);
+				writeConfig.accept(storageKey, value);
+				writeConfig.accept(legacyKey, null);
 			}
 		}
-		if (value != null && !value.isBlank() && !validSecret(value))
+		if (value != null && !value.isBlank() && !RECOVERY_AT_KEY.equals(key) && !validSecret(value))
 		{
-			configManager.unsetConfiguration(CONFIG_GROUP, storageKey);
+			writeConfig.accept(storageKey, null);
 			value = null;
 		}
 		return value != null && !value.isBlank() ? value : null;
@@ -568,6 +712,6 @@ final class ProfileAppearanceService
 
 	private static PublishResult failed()
 	{
-		return new PublishResult(Outcome.FAILED);
+		return new PublishResult(Outcome.FAILED, "Could not update your character. Please retry.");
 	}
 }

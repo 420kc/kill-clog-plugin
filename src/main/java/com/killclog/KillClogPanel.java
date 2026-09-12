@@ -101,6 +101,8 @@ public class KillClogPanel extends PluginPanel
 	private final KillClogConfig config;
 	private final FirstPartyFeedback syncFeedback;
 	private final FirstPartyFeedback characterFeedback;
+	private String characterNoticeText;
+	private String characterNoticeDetail;
 	private final ConfigManager configManager;
 	private final SpriteManager spriteManager;
 	private final ItemManager itemManager;
@@ -1012,9 +1014,10 @@ public class KillClogPanel extends PluginPanel
 				{
 					characterHovered = true;
 					refreshCharacterIcon(true);
-					tooltipController.setTooltipText(characterPublish, characterFeedback.lastFailure());
-					setSearchStatus(characterFeedback.lastFailure() == null
-						? CHARACTER_HOVER_TEXT : CHARACTER_FAILURE_HOVER_TEXT, SYNC_K1);
+					tooltipController.setTooltipText(characterPublish, characterNoticeDetail != null
+						? characterNoticeDetail : characterFeedback.lastFailure());
+					setSearchStatus(characterNoticeText != null ? characterNoticeText
+						: characterFeedback.lastFailure() == null ? CHARACTER_HOVER_TEXT : CHARACTER_FAILURE_HOVER_TEXT, SYNC_K1);
 				}
 			}
 
@@ -1168,6 +1171,8 @@ public class KillClogPanel extends PluginPanel
 			if (!enabled)
 			{
 				characterFeedback.reset();
+				characterNoticeText = null;
+				characterNoticeDetail = null;
 				characterHovered = false;
 				tooltipController.setTooltipText(characterPublish, null);
 				clearCharacterSuccessGlow();
@@ -1194,7 +1199,16 @@ public class KillClogPanel extends PluginPanel
 
 	private static boolean isCharacterHoverStatus(String text)
 	{
-		return CHARACTER_HOVER_TEXT.equals(text) || CHARACTER_FAILURE_HOVER_TEXT.equals(text);
+		return CHARACTER_HOVER_TEXT.equals(text) || CHARACTER_FAILURE_HOVER_TEXT.equals(text)
+			|| isCharacterNotice(text);
+	}
+
+	static boolean isCharacterNotice(String text)
+	{
+		return KillClogPlugin.CHARACTER_PENDING_STATUS.equals(text)
+			|| KillClogPlugin.CHARACTER_RECOVERY_STATUS.equals(text)
+			|| KillClogPlugin.CHARACTER_DISABLED_STATUS.equals(text)
+			|| KillClogPlugin.CHARACTER_UNKNOWN_STATUS.equals(text);
 	}
 
 	private boolean barOwnedByCharacter()
@@ -1323,10 +1337,12 @@ public class KillClogPanel extends PluginPanel
 		});
 	}
 
-	void showCharacterPublishStatus(String text, boolean ok, boolean autoClear)
+	void showCharacterPublishStatus(String text, boolean ok, boolean autoClear, String detail)
 	{
 		runFeedbackOnEdt(() ->
 		{
+			characterNoticeText = null;
+			characterNoticeDetail = null;
 			if (text.trim().isEmpty())
 			{
 				characterFeedback.reset();
@@ -1340,16 +1356,27 @@ public class KillClogPanel extends PluginPanel
 			}
 			else if (ok || KillClogPlugin.CHARACTER_FAILED_STATUS.equals(text))
 			{
-				characterFeedback.complete(true, ok, "Character upload failed. Click to retry.");
+				characterFeedback.complete(true, ok, detail != null
+					? detail : "Character upload failed. Click to retry.");
 			}
 			else
 			{
+				characterFeedback.reset();
+				if (isCharacterNotice(text))
+				{
+					characterNoticeText = text;
+					characterNoticeDetail = detail;
+				}
 				characterFeedback.progress(true, text, autoClear);
+			}
+			if (characterHovered)
+			{
+				tooltipController.setTooltipText(characterPublish,
+					characterNoticeDetail != null ? characterNoticeDetail : characterFeedback.lastFailure());
 			}
 		});
 	}
 
-	/** Called on the EDT after the plugin checks the attempt's session fence. */
 	void showSyncProgress(boolean manual, String text, boolean autoClear)
 	{
 		syncFeedback.progress(manual, text, autoClear);
@@ -1901,6 +1928,8 @@ public class KillClogPanel extends PluginPanel
 		syncChaliceHovered = false;
 		syncFeedback.reset();
 		characterFeedback.reset();
+		characterNoticeText = null;
+		characterNoticeDetail = null;
 		characterHovered = false;
 		clearCharacterSuccessGlow();
 		clearSyncSuccessGlow();

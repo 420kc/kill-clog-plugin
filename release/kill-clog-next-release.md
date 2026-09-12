@@ -55,38 +55,52 @@ verifier now matches this release, the render queue is idle, and the retained
 API log contains no appearance request/failure notice events since the notice
 deployment. That gives no new real-user failure-path coverage or delivery proof.
 
-## Character publication: remaining release work
+## Character publication cleanup
 
-These are confirmed gaps, not implemented changes in this candidate.
+Implemented locally after `5469f66d`; independent review and a new real-client
+smoke are required before adoption.
 
-- Adopt and finish the safe failure-detail work from `5a06060f`. The candidate
-  currently loses API reason/ref in its generic failure display. Cover register,
-  claim, cancel/retry, publish, transport errors and local capture rejection.
-- Give rendered success, queued rendering, credential recovery waiting, disabled
-  publication and failure distinct truthful messages. PENDING currently becomes
-  Publish failed in the panel; a test explicitly preserves that wrong behavior.
-- Retain recovery activation time and display a useful next action. It is stored
-  today but not surfaced. Do not tell users to republish a queued render.
-- Stop subsequent requests after logout, account change, setting disable or
-  plugin shutdown. The UI generation guard does not cancel the service chain.
-  Keep single-flight ownership until an already-sent request settles; cancellation
-  cannot retract a request the server already accepted.
-- Add a bounded, hash-specific completion check for accepted rendering if the
-  existing public appearance endpoint provides enough information. Never mark an
-  older served model as success for a newer pending publish. Distinguish a network
-  timeout with unknown outcome from a definite server rejection.
-- Honor server retry guidance for busy/rate-limited/render failures. HTTP results
-  currently discard response headers, including Retry-After. Avoid repeat-click
-  storms and unbounded automatic retries or recovery loops.
-- Validate captured equipment, palette indices, override sizes and follower bounds
-  against the current API contract using shared fixtures. Preserve legitimate new
-  colors and signed recolors; do not introduce a stale duplicate palette table.
-  A transformed player should get an actionable local explanation.
-- Keep unsupported-follower recovery explicit: pick it up and retry. Do not
-  silently publish a different composition or silently omit an intended follower.
-- Add asynchronous request-sequence tests, not only response-classifier tests:
-  delayed registration, recovery, account switch, opt-out, cancellation, duplicate
-  clicks, 202 then ready, 503 retry, 429, malformed response and connection loss.
+- Bring forward the bounded API error-code/support-ref messages from `5a06060f`.
+- Keep the existing character icon, status row and success flash. Show updating,
+  accepted rendering, access recovery waiting, unavailable service and unknown
+  connection outcomes truthfully. Retain useful details on hover, without
+  replacing these states with Publish failed or adding a dialog/settings panel.
+- Check current consent and account identity on the client thread before every
+  HTTP dispatch. Keep a service flight occupied until its existing chain settles,
+  so a cancelled UI cannot start overlapping HTTP work after re-enable.
+- Retain a newly issued account-scoped secret even when cancelled, preventing an
+  avoidable recovery lockout; stop subsequent publication. Already-sent requests
+  cannot be retracted by cancelling the UI.
+- Honor Retry-After on failed POSTs, with bounded click backoff and no new
+  automatic retry loop. Accepted rendering has a short repeat-click backoff;
+  network loss advises checking the profile before retrying.
+- Preserve recovery activation dates (they were mistakenly treated as invalid
+  hex secrets) and display the server's date in the user's timezone.
+- Explain unsupported local player transforms before making an HTTP request.
+  Keep current API validation and explicit unsupported-follower retry guidance.
+- Test actual delayed registration/claim/retry sequences, cancellation, account
+  switch, logout, duplicate clicks, 202, 429, 503, malformed replies and connection
+  loss with isolated configuration and intercepted HTTP. Never use live accounts
+  or real credential storage for these tests.
+
+The earlier checklist was broader than the agreed public UX slice. Continuous
+polling, an additional recovery UI, new automatic retries, and duplicated client
+palette tables are excluded. The existing API contract remains authoritative.
+
+### Recovery policy decision
+
+The API's existing lost-secret recovery and registration-lock delays are seven
+days. This is not a new 2.4 behavior and is not changed by clearer status text.
+Normal first-time publishing does not wait. A retained old publishing secret can
+cancel a pending takeover; losing all copies can require delayed recovery.
+RuneProfile's inspected upload path instead uses an account-derived identifier
+without this additional device-recovery workflow.
+
+Consider simplifying this separately against the same owner-sync trust boundary,
+or retaining continuity protection with an approved alternative recovery path.
+Shortening the timer alone changes the protection without eliminating the extra
+workflow. No timer change, credential migration, API deployment or security
+policy adoption is part of this plugin cleanup.
 
 ## API and private operations
 
@@ -134,7 +148,7 @@ are not part of this submission boundary.
 
 ## Remaining submission checklist
 
-- [ ] Finish and independently review the character-publish changes above.
+- [ ] Independently review the completed character-publish cleanup above.
 - [ ] Run compile, both Checkstyle gates, full tests, relevant render fixtures and
       source-size checks on the final exact commit. Recalculate base-to-head size.
 - [ ] Stage API contract/recovery/queued-render cases with authorized test accounts;
