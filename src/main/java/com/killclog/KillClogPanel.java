@@ -1661,8 +1661,9 @@ public class KillClogPanel extends PluginPanel
 			cells.renderClog(result, config);
 			updateClogCell(result);
 		}
-		toggleHighlighter(config.completionistHighlighter());
 		cells.rebuildPrimaryTooltips(localRsn);
+		toggleHighlighter(config.completionistHighlighter());
+		if (comparison.isComparisonMode()) updateClogTotalsBar();
 	}
 
 	private void resetRareCell(JLabel label, String name)
