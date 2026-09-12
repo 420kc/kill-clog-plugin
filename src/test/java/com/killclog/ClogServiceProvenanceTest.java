@@ -54,6 +54,10 @@ public class ClogServiceProvenanceTest
 			+ "{\"id\":1,\"count\":99,\"date\":\"2026-09-06 12:00:00\"},"
 			+ "{\"id\":2,\"count\":1,\"date\":\"2026-09-06 12:00:00\"}]}}}";
 		ClogService service = activeService(player, null, templeJson, requests);
+		ClogResult localOnly = service.getCachedResult(player);
+		assertTrue(localOnly.isFromLocal());
+		assertFalse(localOnly.isFromTemple());
+		assertEquals(0, requests.get());
 
 		ClogResult first = service.lookup(player).join();
 		assertTrue(first.isFromTemple());
@@ -65,7 +69,9 @@ public class ClogServiceProvenanceTest
 		ClogResult cached = service.lookup(player).join();
 		assertTrue(cached.isFromTemple());
 		assertEquals(1, requests.get());
-		for (ClogResult result : Arrays.asList(first, cached))
+		ClogResult quiet = service.getCachedResult(player);
+		assertEquals("quiet refresh makes no request", 1, requests.get());
+		for (ClogResult result : Arrays.asList(first, cached, quiet))
 		{
 			assertTrue(result.isFromLocal());
 			assertFalse("local capture does not claim a web sync", result.isFromKillclog());

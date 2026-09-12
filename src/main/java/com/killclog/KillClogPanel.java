@@ -1799,10 +1799,15 @@ public class KillClogPanel extends PluginPanel
 
 	public void onBulkCaptureComplete(String name)
 	{
-		searchBar.setText(name);
-		// Current lookup will finish soon - version it out and start fresh
-		lookupSession.cancelInFlight();
-		doLookup();
+		if (localRsn == null || !localRsn.equalsIgnoreCase(name)) return;
+		if (lookupSession.getCurrentLookupRsn() == null)
+		{
+			// First setup can populate an empty panel through the normal lookup.
+			searchBar.setText(name);
+			doLookup();
+			return;
+		}
+		lookupSession.refreshLocalClog(name, localRsn);
 	}
 
 	public void setNameAutocompleter(NameAutocompleter autocompleter)

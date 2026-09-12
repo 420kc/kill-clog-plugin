@@ -123,7 +123,17 @@ public class ClogService
 			return null;
 		}
 		Map<Integer, String> names = cachedItemNames;
-		return localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>());
+		ClogResult result = localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>());
+		if (result != null && localClogCache.isActivePlayer(playerName))
+		{
+			result = result.withLocalSource(true);
+			Long successfulAt = templeOverlaySuccessTimes.get(playerName.toLowerCase());
+			if (successfulAt != null && System.currentTimeMillis() - successfulAt < CLOG_TTL_MS)
+			{
+				result = markTempleSource(result);
+			}
+		}
+		return result;
 	}
 
 	/**
