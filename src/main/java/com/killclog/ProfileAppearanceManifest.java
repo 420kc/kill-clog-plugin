@@ -4,6 +4,7 @@ import com.google.gson.annotations.SerializedName;
 import java.util.Arrays;
 import javax.annotation.Nullable;
 import net.runelite.api.ColorTextureOverride;
+import net.runelite.api.Item;
 import net.runelite.api.PlayerComposition;
 
 /** Fixed, data-only PlayerComposition recipe accepted by killclog.com. */
@@ -87,6 +88,25 @@ final class ProfileAppearanceManifest
 		}
 		return new ProfileAppearanceManifest(Integer.toString(gameBuild), clientVersion,
 			gender, equipment, colors, overrides, -1, followerNpcId, idlePoseAnimation);
+	}
+
+	/** Compare the captured recipe with real worn items, before any HTTP request. */
+	boolean matchesEquipment(Item[] worn)
+	{
+		if (worn == null) return false;
+		// The first 12 worn-container slots align with composition slots; ring and
+		// ammo have no player model. Empty slots may contain a native body kit.
+		for (int slot = 0; slot < EQUIPMENT_SLOTS; slot++)
+		{
+			Item item = slot < worn.length ? worn[slot] : null;
+			int itemId = item == null ? -1 : item.getId();
+			if (itemId >= 0)
+			{
+				if (equipment[slot] != itemId + PlayerComposition.ITEM_OFFSET) return false;
+			}
+			else if (equipment[slot] >= PlayerComposition.ITEM_OFFSET) return false;
+		}
+		return true;
 	}
 
 	private static int[] toInts(short[] values)

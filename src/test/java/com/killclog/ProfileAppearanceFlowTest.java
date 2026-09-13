@@ -14,6 +14,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.Item;
+import net.runelite.api.ItemContainer;
 import net.runelite.api.Player;
 import net.runelite.api.PlayerComposition;
 import net.runelite.client.callback.ClientThread;
@@ -32,6 +34,44 @@ public class ProfileAppearanceFlowTest
 	private static final String SECRET = "a".repeat(64);
 	private static final String TOKEN = "b".repeat(64);
 	private static final String READY = "{\"published\":true,\"render_status\":\"ready\"}";
+
+	@Test
+	public void cosmeticWeaponIsRejectedBeforeRegistrationOrPublish() throws Exception
+	{
+		AtomicInteger calls = new AtomicInteger();
+		try (Harness h = new Harness(chain ->
+		{
+			calls.incrementAndGet();
+			return response(chain, 200, READY);
+		}))
+		{
+			h.equipment[3] = 22325 + PlayerComposition.ITEM_OFFSET;
+			h.worn[3] = new Item(4151, 1);
+			ProfileAppearanceService.PublishResult result = h.publish().get(3, TimeUnit.SECONDS);
+			assertEquals(ProfileAppearanceService.Outcome.FAILED, result.outcome);
+			assertEquals("Turn off cosmetic equipment overrides, then publish again.", result.message);
+			assertEquals(0, calls.get());
+			h.secret();
+			h.equipment[3] = 4151 + PlayerComposition.ITEM_OFFSET;
+			assertEquals(ProfileAppearanceService.Outcome.PUBLISHED, h.publish().get(3, TimeUnit.SECONDS).outcome);
+			assertEquals(1, calls.get());
+		}
+	}
+
+	@Test
+	public void missingEquipmentContainerMakesNoRequest() throws Exception
+	{
+		try (Harness h = new Harness(chain ->
+		{
+			throw new AssertionError("Unexpected HTTP request");
+		}))
+		{
+			h.equipmentReady = false;
+			ProfileAppearanceService.PublishResult result = h.publish().get(3, TimeUnit.SECONDS);
+			assertEquals(ProfileAppearanceService.Outcome.FAILED, result.outcome);
+			assertTrue(result.message.startsWith("Your equipment is not ready."));
+		}
+	}
 
 	@Test
 	public void registrationThenPublishUsesNewCredential() throws Exception
@@ -323,6 +363,9 @@ public class ProfileAppearanceFlowTest
 
 	private static final class Harness implements AutoCloseable
 	{
+		private final int[] equipment = new int[12];
+		private final Item[] worn = new Item[14];
+		private boolean equipmentReady = true;
 		private final AtomicBoolean authorized = new AtomicBoolean(true);
 		private final AtomicBoolean loggedIn = new AtomicBoolean(true);
 		private final AtomicLong account = new AtomicLong(1);
@@ -340,7 +383,7 @@ public class ProfileAppearanceFlowTest
 				{
 					case "getTransformedNpcId": return transform.get();
 					case "getGender": return 0;
-					case "getEquipmentIds": return new int[12];
+					case "getEquipmentIds": return equipment;
 					case "getColors": return new int[5];
 					default: return null;
 				}
@@ -352,6 +395,8 @@ public class ProfileAppearanceFlowTest
 			{
 				switch (name)
 				{
+					case "getItemContainer": return equipmentReady
+						? proxy(ItemContainer.class, method -> "getItems".equals(method) ? worn : null) : null;
 					case "getLocalPlayer": return player;
 					case "getAccountHash": return account.get();
 					case "getRevision": return 237;

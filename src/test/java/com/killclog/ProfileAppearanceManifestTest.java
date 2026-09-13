@@ -5,11 +5,13 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import java.lang.reflect.Proxy;
 import net.runelite.api.ColorTextureOverride;
+import net.runelite.api.Item;
 import net.runelite.api.PlayerComposition;
 import org.junit.Test;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -17,6 +19,36 @@ import static org.junit.Assert.assertTrue;
 public class ProfileAppearanceManifestTest
 {
 	private final Gson gson = new Gson();
+
+	@Test
+	public void checksEveryVisibleSlotAndAllowsBodyKitsAndInvisibleEquipment()
+	{
+		for (int slot = 0; slot < 12; slot++)
+		{
+			int[] equipment = new int[12];
+			Item[] worn = new Item[14];
+			equipment[slot] = PlayerComposition.ITEM_OFFSET + 4151;
+			ProfileAppearanceManifest manifest = ProfileAppearanceManifest.capture(
+				composition(equipment, new int[5], null, 0, -1), 237, "2.4.0", -1, 808);
+			assertFalse(manifest.matchesEquipment(worn));
+			worn[slot] = new Item(4151, 1);
+			assertTrue(manifest.matchesEquipment(worn));
+			worn[slot] = new Item(22325, 1);
+			assertFalse(manifest.matchesEquipment(worn));
+		}
+		int[] equipment = {0, 0, 0, 0, 256, 0, 257, 258, 259, 260, 261, 262};
+		ProfileAppearanceManifest manifest = ProfileAppearanceManifest.capture(
+			composition(equipment, new int[5], null, 0, -1), 237, "2.4.0", -1, 808);
+		Item[] worn = new Item[14];
+		worn[0] = new Item(-1, 0);
+		worn[12] = new Item(6737, 1);
+		worn[13] = new Item(892, 100);
+		assertTrue(manifest.matchesEquipment(worn));
+		assertTrue(manifest.matchesEquipment(new Item[0]));
+		assertFalse(manifest.matchesEquipment(null));
+		worn[3] = new Item(4151, 1);
+		assertFalse(manifest.matchesEquipment(worn));
+	}
 
 	@Test
 	public void capturesOnlyTheFixedDataRecipe()

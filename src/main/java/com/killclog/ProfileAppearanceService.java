@@ -18,10 +18,12 @@ import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
+import net.runelite.api.ItemContainer;
 import net.runelite.api.NPC;
 import net.runelite.api.NPCComposition;
 import net.runelite.api.Player;
 import net.runelite.api.PlayerComposition;
+import net.runelite.api.gameval.InventoryID;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 
@@ -178,6 +180,17 @@ final class ProfileAppearanceService
 		{
 			return CompletableFuture.completedFuture(new PublishResult(Outcome.FAILED,
 				"Your character is not ready. Wait until it is visible, then retry."));
+		}
+		ItemContainer worn = client.getItemContainer(InventoryID.WORN);
+		if (worn == null || worn.getItems() == null)
+		{
+			return CompletableFuture.completedFuture(new PublishResult(Outcome.FAILED,
+				"Your equipment is not ready. Wait a moment, then retry."));
+		}
+		if (!manifest.matchesEquipment(worn.getItems()))
+		{
+			return CompletableFuture.completedFuture(new PublishResult(Outcome.FAILED,
+				"Turn off cosmetic equipment overrides, then publish again."));
 		}
 		String secret = accountConfig(attempt.accountHash, DEVICE_SECRET_KEY);
 		String recoveryToken = accountConfig(attempt.accountHash, RECOVERY_TOKEN_KEY);
