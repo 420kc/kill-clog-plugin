@@ -25,6 +25,9 @@ Independent review: ALLOW, with 36 appearance tests and both Checkstyles rerun.
 Offscreen RuneLite-font smoke: the 148px retry notice fits the 225px row.
 Jar: 555,774 bytes, SHA-256
 `A5FD09643D7FE2B88F671D2AFB2B4BB33F8B88ED386EAEFC72B9C103938A33DB`.
+Committed as `e6584a9e`; prepared for the next shared refire as
+`C:/Users/dylan/plugins/dev-client/.prepared-refire/plugins/kcpdev-e6584a9e-A5FD09643D7F.jar`.
+The running client was left untouched. No push or Plugin Hub submission.
 
 Required next in-game smoke: keep the fake scythe override enabled, publish,
 and confirm the web character shows the actual weapon and original stance.
@@ -49,7 +52,7 @@ Master and the earlier approved jars remain unchanged.
 - Active checkout: `C:/Users/dylan/plugins/kcpdev`.
 - Canonical consolidation preserves reviewed candidate `32b90541` unchanged;
   only release documentation changed during cleanup.
-- Current candidate code: original-appearance capture (see closeout above), following
+- Current candidate code: `e6584a9e` (original-appearance capture), following
   `431e263a` (override status) and `5b1b8354` (equipment publication guard),
   `2bff127c` (catalog retry) and total fix `31d4f597`.
 - README badge/wording: `05715328cf65e3d57a2a529884aa4d32ab45141c`.
