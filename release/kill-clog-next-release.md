@@ -1,4 +1,19 @@
-# Kill Clog 2.4.0 submission-ready candidate
+# Kill Clog 2.4.0 candidate
+
+Current addition (2026-09-12): `5b1b8354` rejects character publication when the
+captured visible equipment differs from the real worn-item container. Dylan
+reproduced a cosmetic scythe reaching the website. The guard runs before device
+registration or upload; its message asks the player to disable cosmetic
+equipment overrides. README reflects that requirement. Animations/recolours and
+already-published characters are unchanged.
+
+Independent review: ALLOW; 643 tests and both Checkstyles passed. Prepared jar:
+`kcpdev-5b1b8354-2975B8FB58CB.jar`, 554,328 bytes, SHA-256
+`2975B8FB58CBFCC976006D359D28E80BC5E009BC354C66162F68ABF87E3A1B8D`.
+The running client was left untouched. This new guard still needs Dylan's
+focused smoke: normal gear publishes, cosmetic scythe is refused, disabling
+the override permits publishing again. Prior acceptance below applies to the
+previous candidate; do not treat it as smoke approval of these new bytes.
 
 Status: the e403c7d8 product/UX candidate remains Dylan-approved and smoke-passed.
 Ownership recovery is independently approved. Dylan supplied Fable's ALLOW for
@@ -16,7 +31,8 @@ Master and the earlier approved jars remain unchanged.
 - Active checkout: `C:/Users/dylan/plugins/kcpdev`.
 - Canonical consolidation preserves reviewed candidate `32b90541` unchanged;
   only release documentation changed during cleanup.
-- Current production code: `2bff127c` (catalog retry); total fix `31d4f597`.
+- Current candidate code: `5b1b8354` (equipment publication guard), following
+  `2bff127c` (catalog retry) and total fix `31d4f597`.
 - README badge/wording: `05715328cf65e3d57a2a529884aa4d32ab45141c`.
 - Ownership correction: `064c09b015ecd40667e9c2a5d4c222736e7a417a`.
 - Pre-fix candidate: `2bf9c639`; its smoke-approved jar remains unchanged.
