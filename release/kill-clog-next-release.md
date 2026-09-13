@@ -29,14 +29,18 @@ Committed as `e6584a9e`; prepared for the next shared refire as
 `C:/Users/dylan/plugins/dev-client/.prepared-refire/plugins/kcpdev-e6584a9e-A5FD09643D7F.jar`.
 The running client was left untouched. No push or Plugin Hub submission.
 
-Required next in-game smoke: keep the fake scythe override enabled, publish,
-and confirm the web character shows the actual weapon and original stance.
+Smoke accepted (2026-09-12): Dylan confirmed the override-enabled publication
+fix with "confirmed!!! that's the fix." The running Java process (PID 43320)
+references `kcpdev-e6584a9e-A5FD09643D7F.jar`; the artifact hash matches above.
+This closes the targeted appearance smoke and restores the current 2.4.0
+candidate to Dylan-approved status. Separate hop/reconnect/body-type smokes
+are not implied by that confirmation.
 Prior scythe rejection smoke covered guard `5b1b8354`; the earlier actionable
-status jar `kcpdev-431e263a-9B6262A04D27.jar` remains preserved. Prior acceptance
-below does not cover these new bytes. Existing published characters update
+status jar `kcpdev-431e263a-9B6262A04D27.jar` remains preserved. Existing published characters update
 only when their owners publish again.
 
-Status: the e403c7d8 product/UX candidate remains Dylan-approved and smoke-passed.
+Status: current code `e6584a9e` is Dylan-approved and smoke-passed, extending
+the previously approved `e403c7d8` product/UX candidate.
 Ownership recovery is independently approved. Dylan supplied Fable's ALLOW for
 the total-authority/catalog-retry packet on 2026-09-12, including an independent
 640-test and Checkstyle rerun. No reviewer was summoned for that follow-up.
@@ -65,7 +69,7 @@ Master and the earlier approved jars remain unchanged.
   Last checked open on 2026-09-12; recheck the accepted pin before submission.
 - Historical checkpoints: tag `hive/2.3.4-submission-candidate` (`d18f41e7`)
   and log-refresh commit `1c3df015`. Their release branches are retired.
-- Approved jar: `kcpdev-e403c7d8-E31A0EDAA84C.jar`, 552,802 bytes.
+- Historical approved jar: `kcpdev-e403c7d8-E31A0EDAA84C.jar`, 552,802 bytes.
   SHA-256: `E31A0EDAA84CBBB9A2FEA810FB2903F70A16B22B6E152099E4F3B85B99EC3DAA`.
   Stored under `C:/Users/dylan/plugins/dev-client/.prepared-refire/plugins/`.
   The running shared client was verified to load this exact jar when Dylan
@@ -133,6 +137,16 @@ Unrelated older plugin experiments and separate API/Hive worktrees were untouche
 21. Refresh the displayed local log immediately after captures and matched drops,
     preserving stats, CA, rank selection and colors without restarting provider
     lookups. Leave other-player lookups alone; refresh comparison colors/totals.
+22. Retain ownership/recovery corrections, including the independently approved
+    identity fix `064c09b0`.
+23. Let game totals own the scalar count; a live unlock records the item/date/KC
+    without incrementing the same total again (`31d4f597`).
+24. Allow catalog retries after immediate HTTP/parse failure instead of retaining
+    a dead completed request (`2bff127c`).
+25. Publish the original appearance captured before cosmetic plugins change it,
+    checking current actor/account and equipped gear before upload. Cosmetic
+    overrides can remain enabled; missing/stale captures have actionable retry
+    wording (`e6584a9e`, Dylan-smoked).
 
 ## Current preparation proof (2026-09-12)
 
@@ -253,6 +267,28 @@ private failure notices. This is separate from the plugin diff.
 
 ## Preserved broader redesign, excluded from this candidate
 
+### Next product slices after this reconciliation
+
+Dylan identified Slayer cleanup and combat Skill Clog taxonomy as the remaining
+product work. They are not implemented in the current smoke-passed candidate.
+Keep the current jar as the accepted baseline; either slice requires its own
+focused implementation, review and visual smoke before joining a release.
+
+1. Slayer: separate Superiors and Light/Dark/Dusk Mystic Sets, then show the
+   remaining Slayer items once. Remove the duplicated Slayer/Superior section
+   from PvM Summary as part of that same move.
+2. Combat taxonomy: the concrete archived change is Defence's melee, ranged
+   and magic armour groups, plus explicit defenders through Avernic hilt.
+   The archived table has no additional Attack, Strength, Hitpoints, Ranged,
+   Magic or Prayer taxonomy changes to recover. Broader changes need a fresh
+   item-level decision.
+
+Already included: Smolcano/Mining, Tiny tempor/Fishing, Quetzin and Chompy
+chick/Hunter, Hunter's Chompy Bird Hunting, and shared-item deduplication.
+These must survive any selective recovery from the older archive.
+
+### Archive inventory
+
 The former canonical design is preserved at tag
 `archive/20260912/2.4.0-earlier-design` (`8e7cccca`, including the `9c9280e3`
 checkpoint). Do not merge it wholesale over the current canonical candidate.
@@ -356,7 +392,7 @@ Audit follow-up and Fable review scope:
   Tests cover immediate transport/parse failure, delayed shared failure, retry
   success, immediate success, and retained successful catalog caching.
 - F4 remains deferred: red comparison PB parity is ordinary maintenance.
-- Latest slice: `c1f6b12e..05715328`, six files +228/-68 including tests and README;
+- Reviewed total/catalog slice: `c1f6b12e..05715328`, six files +228/-68 including tests and README;
   production Java alone is three files +20/-41. Both regressions were reproduced
   before the fixes. The live badge still reports the actual shipped Hub version.
 - For a combined review of ownership plus these fixes, use `2bf9c639..HEAD`.
