@@ -116,6 +116,7 @@ public class ProfileAppearanceServiceTest
 		expected.put(ProfileAppearanceService.Outcome.DISABLED, "Publishing unavailable");
 		expected.put(ProfileAppearanceService.Outcome.BUSY, "Finishing previous request...");
 		expected.put(ProfileAppearanceService.Outcome.UNKNOWN, "Check your profile");
+		expected.put(ProfileAppearanceService.Outcome.COSMETIC_OVERRIDES, "Disable cosmetic overrides");
 		expected.put(ProfileAppearanceService.Outcome.CANCELLED, " ");
 		expected.put(ProfileAppearanceService.Outcome.FAILED, "Publish failed");
 		expected.put(ProfileAppearanceService.Outcome.PROFILE_REQUIRED, "Publish failed");
@@ -125,6 +126,7 @@ public class ProfileAppearanceServiceTest
 			assertEquals(expected.get(outcome), KillClogPlugin.characterPublishTerminalStatus(outcome));
 		}
 		assertTrue(KillClogPanel.isCharacterNotice("Still rendering..."));
+		assertTrue(KillClogPanel.isCharacterNotice("Disable cosmetic overrides"));
 		assertFalse(KillClogPanel.isCharacterNotice("Publish failed"));
 	}
 

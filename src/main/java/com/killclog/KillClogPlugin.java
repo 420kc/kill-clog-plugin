@@ -59,6 +59,7 @@ public class KillClogPlugin extends Plugin
 	static final String CHARACTER_RENDERING_STATUS = "updating character...";
 	static final String CHARACTER_PUBLISHED_STATUS = "character updated!";
 	static final String CHARACTER_FAILED_STATUS = "Publish failed";
+	static final String CHARACTER_OVERRIDES_STATUS = "Disable cosmetic overrides";
 	static final String CHARACTER_PENDING_STATUS = "Still rendering...";
 	static final String CHARACTER_RECOVERY_STATUS = "Publishing on hold";
 	static final String CHARACTER_DISABLED_STATUS = "Publishing unavailable";
@@ -785,6 +786,7 @@ public class KillClogPlugin extends Plugin
 			case DISABLED: return CHARACTER_DISABLED_STATUS;
 			case BUSY: return CHARACTER_BUSY_STATUS;
 			case UNKNOWN: return CHARACTER_UNKNOWN_STATUS;
+			case COSMETIC_OVERRIDES: return CHARACTER_OVERRIDES_STATUS;
 			case CANCELLED: return " ";
 			default: return CHARACTER_FAILED_STATUS;
 		}

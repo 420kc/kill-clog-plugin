@@ -48,6 +48,7 @@ final class ProfileAppearanceService
 		BUSY,
 		CANCELLED,
 		UNKNOWN,
+		COSMETIC_OVERRIDES,
 		FAILED
 	}
 
@@ -189,7 +190,7 @@ final class ProfileAppearanceService
 		}
 		if (!manifest.matchesEquipment(worn.getItems()))
 		{
-			return CompletableFuture.completedFuture(new PublishResult(Outcome.FAILED,
+			return CompletableFuture.completedFuture(new PublishResult(Outcome.COSMETIC_OVERRIDES,
 				"Turn off cosmetic equipment overrides, then publish again."));
 		}
 		String secret = accountConfig(attempt.accountHash, DEVICE_SECRET_KEY);

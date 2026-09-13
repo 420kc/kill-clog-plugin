@@ -48,7 +48,8 @@ public class ProfileAppearanceFlowTest
 			h.equipment[3] = 22325 + PlayerComposition.ITEM_OFFSET;
 			h.worn[3] = new Item(4151, 1);
 			ProfileAppearanceService.PublishResult result = h.publish().get(3, TimeUnit.SECONDS);
-			assertEquals(ProfileAppearanceService.Outcome.FAILED, result.outcome);
+			assertEquals(ProfileAppearanceService.Outcome.COSMETIC_OVERRIDES, result.outcome);
+			assertEquals("Disable cosmetic overrides", KillClogPlugin.characterPublishTerminalStatus(result.outcome));
 			assertEquals("Turn off cosmetic equipment overrides, then publish again.", result.message);
 			assertEquals(0, calls.get());
 			h.secret();
