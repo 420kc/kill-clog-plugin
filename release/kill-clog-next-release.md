@@ -1,23 +1,37 @@
 # Kill Clog 2.4.0 candidate
 
-Current addition (2026-09-12): `5b1b8354` rejects character publication when the
-captured visible equipment differs from the real worn-item container. Dylan
-reproduced a cosmetic scythe reaching the website. The guard runs before device
-registration or upload; its message asks the player to disable cosmetic
-equipment overrides. README reflects that requirement. Animations/recolours and
-already-published characters are unchanged. Dylan confirmed cosmetic scythe
-rejection in-game. Follow-up `431e263a` changes the visible status to
-"Disable cosmetic overrides", retaining the detailed hover instructions.
+Current addition (2026-09-12): character publication now captures the game's
+original appearance on `PlayerChanged` at priority 2, before Fashionscape (0)
+and Weapon/Gear/Anim Replacer (1) mutate it. Equipment, body kits, colours,
+item recolours/textures, gender and idle pose are copied in memory. Publication
+uses that snapshot plus the current follower; no renderer/schema/API change.
 
-Independent reviews: ALLOW; 643 tests and both Checkstyles passed, plus an
-independent 31-test wording rerun. Offscreen RuneLite-font smoke confirms the
-135px status fits the normal 225px row. Current prepared jar:
-`kcpdev-431e263a-9B6262A04D27.jar`, 554,537 bytes, SHA-256
-`9B6262A04D27FAFC55A3445ADE4513FAD76BBD8E57EE22102FF25805CC67803F`.
-The running client was left untouched. Cosmetic rejection is Dylan-smoked;
-normal-gear publication and retry after disabling the override have automated
-proof but have not been reported as live smoke. The latest wording is prepared
-for the next refire. Prior acceptance below does not cover these new bytes.
+Before registration or upload, the snapshot must belong to the current local
+actor/account and match all nine real wearable slots in WORN. Structural body
+slots are excluded from that comparison. Logout, hopping, connection loss and
+shutdown clear the snapshot; normal LOADING can capture the initial appearance.
+Missing/stale data asks the player to equip or unequip an item and retry. This
+can occur after enabling Kill Clog mid-session. No visible-composition fallback
+is allowed. Cosmetic plugins can remain enabled during normal publication.
+This is compatibility with known cosmetic event handlers, not remote attestation
+or protection against deliberately modified clients/higher-priority handlers.
+
+Validation: 648 tests, zero failures/errors/skips; both Checkstyles and jar
+build passed. Tests cover priority ordering, original gear/body/colour/pose in
+the HTTP payload, deep-copy immunity, account/actor isolation, stale equipment,
+invalid appearance and hop/reconnect clearing. Token proxy: 196,614 (+347),
+still below the documented 200,000 ceiling and above the 195,000 caution mark.
+Independent review: ALLOW, with 36 appearance tests and both Checkstyles rerun.
+Offscreen RuneLite-font smoke: the 148px retry notice fits the 225px row.
+Jar: 555,774 bytes, SHA-256
+`A5FD09643D7FE2B88F671D2AFB2B4BB33F8B88ED386EAEFC72B9C103938A33DB`.
+
+Required next in-game smoke: keep the fake scythe override enabled, publish,
+and confirm the web character shows the actual weapon and original stance.
+Prior scythe rejection smoke covered guard `5b1b8354`; the earlier actionable
+status jar `kcpdev-431e263a-9B6262A04D27.jar` remains preserved. Prior acceptance
+below does not cover these new bytes. Existing published characters update
+only when their owners publish again.
 
 Status: the e403c7d8 product/UX candidate remains Dylan-approved and smoke-passed.
 Ownership recovery is independently approved. Dylan supplied Fable's ALLOW for
@@ -35,8 +49,8 @@ Master and the earlier approved jars remain unchanged.
 - Active checkout: `C:/Users/dylan/plugins/kcpdev`.
 - Canonical consolidation preserves reviewed candidate `32b90541` unchanged;
   only release documentation changed during cleanup.
-- Current candidate code: `431e263a` (actionable override status), following
-  `5b1b8354` (equipment publication guard),
+- Current candidate code: original-appearance capture (see closeout above), following
+  `431e263a` (override status) and `5b1b8354` (equipment publication guard),
   `2bff127c` (catalog retry) and total fix `31d4f597`.
 - README badge/wording: `05715328cf65e3d57a2a529884aa4d32ab45141c`.
 - Ownership correction: `064c09b015ecd40667e9c2a5d4c222736e7a417a`.

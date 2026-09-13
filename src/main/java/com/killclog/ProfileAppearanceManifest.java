@@ -90,14 +90,21 @@ final class ProfileAppearanceManifest
 			gender, equipment, colors, overrides, -1, followerNpcId, idlePoseAnimation);
 	}
 
-	/** Compare the captured recipe with real worn items, before any HTTP request. */
+	ProfileAppearanceManifest withFollower(int npcId)
+	{
+		return new ProfileAppearanceManifest(gameBuild, clientVersion, gender, equipment,
+			colors, overrides, transformedNpcId, npcId, idlePoseAnimation);
+	}
+
+	/** Reject an original snapshot that predates the current equipped items. */
 	boolean matchesEquipment(Item[] worn)
 	{
 		if (worn == null) return false;
-		// The first 12 worn-container slots align with composition slots; ring and
-		// ammo have no player model. Empty slots may contain a native body kit.
+		// Arms, hair and jaw are body parts, not worn items. Native jaw values
+		// can also encode game icons. Ring and ammo have no player model.
 		for (int slot = 0; slot < EQUIPMENT_SLOTS; slot++)
 		{
+			if (slot == 6 || slot == 8 || slot == 11) continue;
 			Item item = slot < worn.length ? worn[slot] : null;
 			int itemId = item == null ? -1 : item.getId();
 			if (itemId >= 0)

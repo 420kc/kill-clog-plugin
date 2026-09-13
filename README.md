@@ -79,7 +79,7 @@ Saved unlock dates are included in web sync. Older items without a known date st
 
 **Publish Character Model** is also off by default and requires Killclog.com sync. It adds a one-click button to publish your current character and follower models to your killclog.com/p/ profile.
 
-Turn off cosmetic equipment overrides before publishing. Your visible gear must match your equipped items.
+Publishes your real appearance, including when cosmetic equipment overrides are enabled.
 
 Manual syncs and character updates show progress in the panel and flash the icon green on success. Hover the character icon for details if an update is delayed or fails.
 

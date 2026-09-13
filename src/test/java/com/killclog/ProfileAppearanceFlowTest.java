@@ -1,6 +1,7 @@
 package com.killclog;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import java.lang.reflect.Proxy;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -18,7 +19,11 @@ import net.runelite.api.Item;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.Player;
 import net.runelite.api.PlayerComposition;
+import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.events.PlayerChanged;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.eventbus.EventBus;
+import net.runelite.client.eventbus.Subscribe;
 import okhttp3.Interceptor;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -36,7 +41,7 @@ public class ProfileAppearanceFlowTest
 	private static final String READY = "{\"published\":true,\"render_status\":\"ready\"}";
 
 	@Test
-	public void cosmeticWeaponIsRejectedBeforeRegistrationOrPublish() throws Exception
+	public void staleOriginalWaitsForFreshEquipmentBeforeRegistrationOrPublish() throws Exception
 	{
 		AtomicInteger calls = new AtomicInteger();
 		try (Harness h = new Harness(chain ->
@@ -48,14 +53,126 @@ public class ProfileAppearanceFlowTest
 			h.equipment[3] = 22325 + PlayerComposition.ITEM_OFFSET;
 			h.worn[3] = new Item(4151, 1);
 			ProfileAppearanceService.PublishResult result = h.publish().get(3, TimeUnit.SECONDS);
-			assertEquals(ProfileAppearanceService.Outcome.COSMETIC_OVERRIDES, result.outcome);
-			assertEquals("Disable cosmetic overrides", KillClogPlugin.characterPublishTerminalStatus(result.outcome));
-			assertEquals("Turn off cosmetic equipment overrides, then publish again.", result.message);
+			assertEquals(ProfileAppearanceService.Outcome.APPEARANCE_PENDING, result.outcome);
+			assertEquals("Change equipment, then retry", KillClogPlugin.characterPublishTerminalStatus(result.outcome));
+			assertTrue(result.message.startsWith("Equip or unequip an item"));
 			assertEquals(0, calls.get());
 			h.secret();
 			h.equipment[3] = 4151 + PlayerComposition.ITEM_OFFSET;
+			h.service.captureOriginalAppearance(h.player);
 			assertEquals(ProfileAppearanceService.Outcome.PUBLISHED, h.publish().get(3, TimeUnit.SECONDS).outcome);
 			assertEquals(1, calls.get());
+		}
+	}
+
+	@Test
+	public void publishesOriginalRecipeBeforeCosmeticEventHandlers() throws Exception
+	{
+		try (Harness h = new Harness(chain ->
+		{
+			okio.Buffer body = new okio.Buffer();
+			chain.request().body().writeTo(body);
+			JsonObject json = new Gson().fromJson(body.readUtf8(), JsonObject.class);
+			assertEquals(4151 + PlayerComposition.ITEM_OFFSET, json.getAsJsonArray("equipment").get(3).getAsInt());
+			assertEquals(300, json.getAsJsonArray("equipment").get(6).getAsInt());
+			assertEquals(2, json.getAsJsonArray("colors").get(0).getAsInt());
+			assertEquals(808, json.get("idle_pose_animation").getAsInt());
+			return response(chain, 200, READY);
+		}))
+		{
+			h.secret();
+			h.equipment[3] = 4151 + PlayerComposition.ITEM_OFFSET;
+			h.equipment[6] = 300;
+			h.colors[0] = 2;
+			h.worn[3] = new Item(4151, 1);
+			KillClogPlugin plugin = new KillClogPlugin();
+			java.lang.reflect.Field field = KillClogPlugin.class.getDeclaredField("profileAppearanceService");
+			field.setAccessible(true);
+			field.set(plugin, h.service);
+			EventBus bus = new EventBus();
+			bus.register(new CosmeticSubscriber(h));
+			bus.register(plugin);
+			// Initial appearance arrives during loading, before normal logged-in UI.
+			h.loading = true;
+			bus.post(new PlayerChanged(h.player));
+			h.loading = false;
+			assertEquals(22325 + PlayerComposition.ITEM_OFFSET, h.equipment[3]);
+			assertEquals(ProfileAppearanceService.Outcome.PUBLISHED, h.publish().get(3, TimeUnit.SECONDS).outcome);
+		}
+	}
+
+	private static final class CosmeticSubscriber
+	{
+		private final Harness harness;
+		private CosmeticSubscriber(Harness harness)
+		{
+			this.harness = harness;
+		}
+		@Subscribe(priority = 1)
+		public void onPlayerChanged(PlayerChanged event)
+		{
+			harness.equipment[3] = 22325 + PlayerComposition.ITEM_OFFSET;
+			harness.equipment[6] = 0;
+			harness.colors[0] = 6;
+			harness.idle.set(5318);
+		}
+	}
+
+	@Test
+	public void missingOrForeignOriginalNeverFallsBackToVisibleComposition() throws Exception
+	{
+		try (Harness h = new Harness(chain ->
+		{
+			throw new AssertionError("Unexpected HTTP request");
+		}))
+		{
+			h.service.clearOriginalAppearance();
+			assertEquals(ProfileAppearanceService.Outcome.APPEARANCE_PENDING, h.publish().get().outcome);
+			h.account.set(2);
+			h.service.captureOriginalAppearance(h.player);
+			h.account.set(1);
+			assertEquals(ProfileAppearanceService.Outcome.APPEARANCE_PENDING, h.publish().get().outcome);
+			h.service.captureOriginalAppearance(h.player);
+			h.player = proxy(Player.class, name -> "getName".equals(name) ? "Test player" : null);
+			assertEquals(ProfileAppearanceService.Outcome.APPEARANCE_PENDING, h.publish().get().outcome);
+		}
+	}
+
+	@Test
+	public void invalidFreshAppearanceClearsPreviousSnapshot() throws Exception
+	{
+		try (Harness h = new Harness(chain ->
+		{
+			throw new AssertionError("Unexpected HTTP request");
+		}))
+		{
+			h.transform.set(123);
+			h.service.captureOriginalAppearance(h.player);
+			h.transform.set(-1);
+			assertEquals(ProfileAppearanceService.Outcome.APPEARANCE_PENDING, h.publish().get().outcome);
+		}
+	}
+
+	@Test
+	public void hopAndConnectionLossRequireNewOriginalAppearance() throws Exception
+	{
+		try (Harness h = new Harness(chain ->
+		{
+			throw new AssertionError("Unexpected HTTP request");
+		}))
+		{
+			KillClogPlugin plugin = new KillClogPlugin();
+			java.lang.reflect.Field field = KillClogPlugin.class.getDeclaredField("profileAppearanceService");
+			field.setAccessible(true);
+			field.set(plugin, h.service);
+			for (GameState state : new GameState[]{GameState.HOPPING, GameState.CONNECTION_LOST})
+			{
+				h.service.captureOriginalAppearance(h.player);
+				GameStateChanged event = new GameStateChanged();
+				event.setGameState(state);
+				plugin.onGameStateChanged(event);
+				assertEquals(ProfileAppearanceService.Outcome.APPEARANCE_PENDING, h.publish().get().outcome);
+			}
 		}
 	}
 
@@ -365,8 +482,12 @@ public class ProfileAppearanceFlowTest
 	private static final class Harness implements AutoCloseable
 	{
 		private final int[] equipment = new int[12];
+		private final int[] colors = new int[5];
+		private final AtomicInteger idle = new AtomicInteger(808);
+		private Player player;
 		private final Item[] worn = new Item[14];
 		private boolean equipmentReady = true;
+		private boolean loading;
 		private final AtomicBoolean authorized = new AtomicBoolean(true);
 		private final AtomicBoolean loggedIn = new AtomicBoolean(true);
 		private final AtomicLong account = new AtomicLong(1);
@@ -385,13 +506,13 @@ public class ProfileAppearanceFlowTest
 					case "getTransformedNpcId": return transform.get();
 					case "getGender": return 0;
 					case "getEquipmentIds": return equipment;
-					case "getColors": return new int[5];
+					case "getColors": return colors;
 					default: return null;
 				}
 			});
-			Player player = proxy(Player.class, name ->
+			player = proxy(Player.class, name ->
 				"getName".equals(name) ? "Test player" : "getPlayerComposition".equals(name) ? composition
-					: "getIdlePoseAnimation".equals(name) ? 808 : null);
+					: "getIdlePoseAnimation".equals(name) ? idle.get() : null);
 			Client client = proxy(Client.class, name ->
 			{
 				switch (name)
@@ -401,7 +522,8 @@ public class ProfileAppearanceFlowTest
 					case "getLocalPlayer": return player;
 					case "getAccountHash": return account.get();
 					case "getRevision": return 237;
-					case "getGameState": return loggedIn.get() ? GameState.LOGGED_IN : GameState.LOGIN_SCREEN;
+					case "getGameState": return loading ? GameState.LOADING
+						: loggedIn.get() ? GameState.LOGGED_IN : GameState.LOGIN_SCREEN;
 					default: return null;
 				}
 			});
@@ -419,6 +541,7 @@ public class ProfileAppearanceFlowTest
 				{
 					if (value == null) config.remove(key); else config.put(key, value);
 				});
+			service.captureOriginalAppearance(player);
 		}
 
 		private String key(String name)

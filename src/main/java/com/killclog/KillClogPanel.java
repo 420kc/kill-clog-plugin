@@ -1215,7 +1215,7 @@ public class KillClogPanel extends PluginPanel
 		return KillClogPlugin.CHARACTER_PENDING_STATUS.equals(text)
 			|| KillClogPlugin.CHARACTER_RECOVERY_STATUS.equals(text)
 			|| KillClogPlugin.CHARACTER_DISABLED_STATUS.equals(text)
-			|| KillClogPlugin.CHARACTER_OVERRIDES_STATUS.equals(text)
+			|| KillClogPlugin.CHARACTER_APPEARANCE_STATUS.equals(text)
 			|| KillClogPlugin.CHARACTER_UNKNOWN_STATUS.equals(text);
 	}
 

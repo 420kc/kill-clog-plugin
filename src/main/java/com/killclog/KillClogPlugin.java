@@ -21,6 +21,7 @@ import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.MenuOptionClicked;
+import net.runelite.api.events.PlayerChanged;
 import net.runelite.api.events.ScriptPreFired;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.events.WidgetLoaded;
@@ -59,7 +60,7 @@ public class KillClogPlugin extends Plugin
 	static final String CHARACTER_RENDERING_STATUS = "updating character...";
 	static final String CHARACTER_PUBLISHED_STATUS = "character updated!";
 	static final String CHARACTER_FAILED_STATUS = "Publish failed";
-	static final String CHARACTER_OVERRIDES_STATUS = "Disable cosmetic overrides";
+	static final String CHARACTER_APPEARANCE_STATUS = "Change equipment, then retry";
 	static final String CHARACTER_PENDING_STATUS = "Still rendering...";
 	static final String CHARACTER_RECOVERY_STATUS = "Publishing on hold";
 	static final String CHARACTER_DISABLED_STATUS = "Publishing unavailable";
@@ -247,6 +248,7 @@ public class KillClogPlugin extends Plugin
 	@Override
 	protected void shutDown()
 	{
+		profileAppearanceService.clearOriginalAppearance();
 		clientToolbar.removeNavigation(navButton);
 		lookupMenu.stop(config, menuManager);
 		chatCommandManager.unregisterCommand(KillClogChatCommand.COMMAND);
@@ -381,9 +383,22 @@ public class KillClogPlugin extends Plugin
 		}
 	}
 
+	// Run before Fashionscape (0) and Weapon/Gear/Anim Replacer (1).
+	@Subscribe(priority = 2)
+	public void onPlayerChanged(PlayerChanged event)
+	{
+		profileAppearanceService.captureOriginalAppearance(event.getPlayer());
+	}
+
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged event)
 	{
+		if (event.getGameState() == GameState.LOGIN_SCREEN
+			|| event.getGameState() == GameState.HOPPING
+			|| event.getGameState() == GameState.CONNECTION_LOST)
+		{
+			profileAppearanceService.clearOriginalAppearance();
+		}
 		if (event.getGameState() == GameState.LOGGED_IN)
 		{
 			renameChecked = false;
@@ -786,7 +801,7 @@ public class KillClogPlugin extends Plugin
 			case DISABLED: return CHARACTER_DISABLED_STATUS;
 			case BUSY: return CHARACTER_BUSY_STATUS;
 			case UNKNOWN: return CHARACTER_UNKNOWN_STATUS;
-			case COSMETIC_OVERRIDES: return CHARACTER_OVERRIDES_STATUS;
+			case APPEARANCE_PENDING: return CHARACTER_APPEARANCE_STATUS;
 			case CANCELLED: return " ";
 			default: return CHARACTER_FAILED_STATUS;
 		}

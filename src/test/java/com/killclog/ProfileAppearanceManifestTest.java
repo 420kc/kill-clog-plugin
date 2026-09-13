@@ -25,6 +25,7 @@ public class ProfileAppearanceManifestTest
 	{
 		for (int slot = 0; slot < 12; slot++)
 		{
+			if (slot == 6 || slot == 8 || slot == 11) continue;
 			int[] equipment = new int[12];
 			Item[] worn = new Item[14];
 			equipment[slot] = PlayerComposition.ITEM_OFFSET + 4151;
@@ -36,7 +37,7 @@ public class ProfileAppearanceManifestTest
 			worn[slot] = new Item(22325, 1);
 			assertFalse(manifest.matchesEquipment(worn));
 		}
-		int[] equipment = {0, 0, 0, 0, 256, 0, 257, 258, 259, 260, 261, 262};
+		int[] equipment = {0, 0, 0, 0, 256, 0, 257, 258, 259, 260, 261, PlayerComposition.ITEM_OFFSET + 262};
 		ProfileAppearanceManifest manifest = ProfileAppearanceManifest.capture(
 			composition(equipment, new int[5], null, 0, -1), 237, "2.4.0", -1, 808);
 		Item[] worn = new Item[14];
@@ -77,6 +78,35 @@ public class ProfileAppearanceManifestTest
 		JsonObject itemOverride = json.getAsJsonArray("overrides").get(3).getAsJsonObject();
 		assertArrayEquals(new int[]{12, -7}, ints(itemOverride.getAsJsonArray("colors")));
 		assertArrayEquals(new int[]{4}, ints(itemOverride.getAsJsonArray("textures")));
+	}
+
+	@Test
+	public void originalRecipeSurvivesMutableClientArraysAndFreshFollower()
+	{
+		int[] equipment = new int[12];
+		int[] colors = new int[5];
+		short[] recolors = {42};
+		short[] textures = {7};
+		ColorTextureOverride[] overrides = new ColorTextureOverride[12];
+		overrides[3] = override(recolors, textures);
+		ProfileAppearanceManifest original = ProfileAppearanceManifest.capture(
+			composition(equipment, colors, overrides, 1, -1), 237, "2.4.0", -1, 808);
+		equipment[3] = PlayerComposition.ITEM_OFFSET + 22325;
+		colors[0] = 4;
+		recolors[0] = 99;
+		textures[0] = 88;
+		overrides[3] = null;
+		JsonObject json = gson.toJsonTree(original.withFollower(9399)).getAsJsonObject();
+		assertEquals(0, json.getAsJsonArray("equipment").get(3).getAsInt());
+		assertEquals(0, json.getAsJsonArray("colors").get(0).getAsInt());
+		assertEquals(42, json.getAsJsonArray("overrides").get(3).getAsJsonObject()
+			.getAsJsonArray("colors").get(0).getAsInt());
+		assertEquals(7, json.getAsJsonArray("overrides").get(3).getAsJsonObject()
+			.getAsJsonArray("textures").get(0).getAsInt());
+		assertEquals(1, json.get("gender").getAsInt());
+		assertEquals(808, json.get("idle_pose_animation").getAsInt());
+		assertEquals(9399, json.get("follower_npc_id").getAsInt());
+		assertEquals(-1, gson.toJsonTree(original).getAsJsonObject().get("follower_npc_id").getAsInt());
 	}
 
 	@Test

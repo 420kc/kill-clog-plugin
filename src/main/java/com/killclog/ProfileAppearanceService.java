@@ -48,7 +48,7 @@ final class ProfileAppearanceService
 		BUSY,
 		CANCELLED,
 		UNKNOWN,
-		COSMETIC_OVERRIDES,
+		APPEARANCE_PENDING,
 		FAILED
 	}
 
@@ -76,6 +76,38 @@ final class ProfileAppearanceService
 	private final BiConsumer<String, String> writeConfig;
 	private final AtomicBoolean inFlight = new AtomicBoolean();
 	private volatile RetryHold retryHold;
+	private volatile OriginalAppearance originalAppearance;
+
+	private static final class OriginalAppearance
+	{
+		final Player player;
+		final long account;
+		final ProfileAppearanceManifest manifest;
+
+		OriginalAppearance(Player player, long account, ProfileAppearanceManifest manifest)
+		{
+			this.player = player;
+			this.account = account;
+			this.manifest = manifest;
+		}
+	}
+
+	/** Called before cosmetic plugins mutate the game's fresh appearance. */
+	void captureOriginalAppearance(Player player)
+	{
+		if (player == null || player != client.getLocalPlayer()) return;
+		long account = client.getAccountHash();
+		ProfileAppearanceManifest manifest = ProfileAppearanceManifest.capture(
+			player.getPlayerComposition(), client.getRevision(), SyncService.CLIENT_VERSION,
+			-1, player.getIdlePoseAnimation());
+		originalAppearance = account == 0 || manifest == null ? null
+			: new OriginalAppearance(player, account, manifest);
+	}
+
+	void clearOriginalAppearance()
+	{
+		originalAppearance = null;
+	}
 
 	private static final class RetryHold
 	{
@@ -174,25 +206,20 @@ final class ProfileAppearanceService
 			return CompletableFuture.completedFuture(new PublishResult(Outcome.FAILED,
 				"Return to your normal player form and retry."));
 		}
-		ProfileAppearanceManifest manifest = ProfileAppearanceManifest.capture(
-			composition, client.getRevision(), SyncService.CLIENT_VERSION,
-			visibleFollowerNpcId(client.getFollower()), local.getIdlePoseAnimation());
-		if (manifest == null)
-		{
-			return CompletableFuture.completedFuture(new PublishResult(Outcome.FAILED,
-				"Your character is not ready. Wait until it is visible, then retry."));
-		}
 		ItemContainer worn = client.getItemContainer(InventoryID.WORN);
 		if (worn == null || worn.getItems() == null)
 		{
 			return CompletableFuture.completedFuture(new PublishResult(Outcome.FAILED,
 				"Your equipment is not ready. Wait a moment, then retry."));
 		}
-		if (!manifest.matchesEquipment(worn.getItems()))
+		OriginalAppearance original = originalAppearance;
+		if (original == null || original.player != local || original.account != attempt.accountHash
+			|| !original.manifest.matchesEquipment(worn.getItems()))
 		{
-			return CompletableFuture.completedFuture(new PublishResult(Outcome.COSMETIC_OVERRIDES,
-				"Turn off cosmetic equipment overrides, then publish again."));
+			return CompletableFuture.completedFuture(new PublishResult(Outcome.APPEARANCE_PENDING,
+				"Equip or unequip an item, then publish again so Kill Clog can read your real appearance."));
 		}
+		ProfileAppearanceManifest manifest = original.manifest.withFollower(visibleFollowerNpcId(client.getFollower()));
 		String secret = accountConfig(attempt.accountHash, DEVICE_SECRET_KEY);
 		String recoveryToken = accountConfig(attempt.accountHash, RECOVERY_TOKEN_KEY);
 		attempt.recoveryAt = accountConfig(attempt.accountHash, RECOVERY_AT_KEY);
