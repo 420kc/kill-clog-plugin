@@ -111,7 +111,8 @@ Unrelated older plugin experiments and separate API/Hive worktrees were untouche
     one item; preserve pending evidence across restarts, session gaps and renames.
     Never assign an acquisition time to an undated historical import.
 20. Carry saved acquisition dates through optional web sync, proof lookup and
-    Recent, separately from API receipt times. Requires the companion API rollout.
+    Recent, separately from API receipt times. Companion API deployed at
+    `69a70503` on 2026-09-13 02:34 UTC (September 12 locally).
 21. Refresh the displayed local log immediately after captures and matched drops,
     preserving stats, CA, rank selection and colors without restarting provider
     lookups. Leave other-player lookups alone; refresh comparison colors/totals.
@@ -299,8 +300,11 @@ completion continuation. No further code change was requested.
       Independent review ALLOW; API suite 258 pass / one skip, renderer 17 pass,
       and real website normalizer fixture pass. Built renderer SHA-256 equals
       production: 2866c99ebbbb1077a14d7fe8a112032cb49cbe56866e79bb622d945d5fdb8c15.
-- [ ] Approve/deploy the reviewed date companion, then verify live sync/web Recent.
-      Deployment approval is pending; no live date support at the last check.
+- [x] Approve/deploy the reviewed date companion. Dylan approved; integrated
+      with live Ops and deployed at `69a70503` on 2026-09-13 02:34 UTC.
+      Independent integration ALLOW; 264 API passes / one existing skip;
+      renderer unchanged, health/security checks passed, publishing re-enabled.
+- [ ] Confirm live web Recent after a normal manual sync carrying saved dates.
       Undated first-party profiles gain known acquisition history on their next
       sync; existing dated provider history remains available. The already-missed hat is not repaired.
 - [x] Recheck README setup/update/web-sync wording; all ten referenced local
@@ -344,7 +348,8 @@ Audit follow-up and Fable review scope:
 - Dylan arranged Fable independently and supplied ALLOW; no agent was invoked
   for these fixes. Independent gate details and remaining smoke are recorded above.
 - Broader dead-code deletion, package moves, coordinator extraction and a new
-  release branch remain parked. API deployment approval is still pending.
+  release branch remain parked. Acquisition-date API deployment is complete;
+  normal-account sync/web Recent confirmation remains above.
 
 UX closeout: opening the log handles local setup/update/repair; matched drops
 update local Recent immediately while self is displayed; web sync publishes saved
