@@ -5,15 +5,19 @@ captured visible equipment differs from the real worn-item container. Dylan
 reproduced a cosmetic scythe reaching the website. The guard runs before device
 registration or upload; its message asks the player to disable cosmetic
 equipment overrides. README reflects that requirement. Animations/recolours and
-already-published characters are unchanged.
+already-published characters are unchanged. Dylan confirmed cosmetic scythe
+rejection in-game. Follow-up `431e263a` changes the visible status to
+"Disable cosmetic overrides", retaining the detailed hover instructions.
 
-Independent review: ALLOW; 643 tests and both Checkstyles passed. Prepared jar:
-`kcpdev-5b1b8354-2975B8FB58CB.jar`, 554,328 bytes, SHA-256
-`2975B8FB58CBFCC976006D359D28E80BC5E009BC354C66162F68ABF87E3A1B8D`.
-The running client was left untouched. This new guard still needs Dylan's
-focused smoke: normal gear publishes, cosmetic scythe is refused, disabling
-the override permits publishing again. Prior acceptance below applies to the
-previous candidate; do not treat it as smoke approval of these new bytes.
+Independent reviews: ALLOW; 643 tests and both Checkstyles passed, plus an
+independent 31-test wording rerun. Offscreen RuneLite-font smoke confirms the
+135px status fits the normal 225px row. Current prepared jar:
+`kcpdev-431e263a-9B6262A04D27.jar`, 554,537 bytes, SHA-256
+`9B6262A04D27FAFC55A3445ADE4513FAD76BBD8E57EE22102FF25805CC67803F`.
+The running client was left untouched. Cosmetic rejection is Dylan-smoked;
+normal-gear publication and retry after disabling the override have automated
+proof but have not been reported as live smoke. The latest wording is prepared
+for the next refire. Prior acceptance below does not cover these new bytes.
 
 Status: the e403c7d8 product/UX candidate remains Dylan-approved and smoke-passed.
 Ownership recovery is independently approved. Dylan supplied Fable's ALLOW for
@@ -31,7 +35,8 @@ Master and the earlier approved jars remain unchanged.
 - Active checkout: `C:/Users/dylan/plugins/kcpdev`.
 - Canonical consolidation preserves reviewed candidate `32b90541` unchanged;
   only release documentation changed during cleanup.
-- Current candidate code: `5b1b8354` (equipment publication guard), following
+- Current candidate code: `431e263a` (actionable override status), following
+  `5b1b8354` (equipment publication guard),
   `2bff127c` (catalog retry) and total fix `31d4f597`.
 - README badge/wording: `05715328cf65e3d57a2a529884aa4d32ab45141c`.
 - Ownership correction: `064c09b015ecd40667e9c2a5d4c222736e7a417a`.
@@ -134,6 +139,9 @@ whitespace, collapses blank lines, and uses `o200k_base`. It reproduces 193,171
 at the older 24703ced checkpoint, 187,786 at 2.3.3, and 195,101 at 2bf9c639.
 Ownership correction: 195,988 tokens. After the two correctness fixes: 195,937
 tokens (local proxy, 51 fewer).
+Current equipment guard and status candidate `431e263a`: 196,267 tokens using
+the same local counter. This is below the documented 200,000 cap but above
+the conservative 195,000 working ceiling; do not report a large safety margin.
 The Hub's documented limit is 200,000; our conservative working ceiling is
 195,000. This is a local proxy, not the private bot's exact implementation.
 Run the existing local counter once per changed release candidate and record its
