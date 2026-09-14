@@ -1,5 +1,12 @@
 # Kill Clog 2.4.0 candidate
 
+Requested follow-up (2026-09-14, after the server migration): distinguish every
+Chompy Bird Hat in item hover text by its tier and kill-count requirement.
+Requested format: `Chompy Bird Hat (Expert): 1300`. Verify each item's tier and
+threshold before implementation; apply consistently wherever those hats appear.
+This is recorded work for 2.4.0, not part of the currently approved jar. Keep
+item IDs, obtained state and slot counts unchanged.
+
 Current addition (2026-09-12): character publication now captures the game's
 original appearance on `PlayerChanged` at priority 2, before Fashionscape (0)
 and Weapon/Gear/Anim Replacer (1) mutate it. Equipment, body kits, colours,
