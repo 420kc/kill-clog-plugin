@@ -30,7 +30,7 @@ final class TooltipItemLink
 	{
 		int hat = itemId - 2978;
 		return hat >= 0 && hat < CHOMPY_TIERS.length
-			? CHOMPY_TIERS[hat] + " - " + CHOMPY_KILLS[hat] : name;
+			? CHOMPY_KILLS[hat] + ": " + CHOMPY_TIERS[hat] : name;
 	}
 
 	private TooltipItemLink()

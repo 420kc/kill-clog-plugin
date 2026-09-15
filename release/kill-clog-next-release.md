@@ -16,7 +16,7 @@ Final additions in this checkout:
   Item details/recent drops still require itemized data. Self setup remains
   available even when the hiscores provide a total.
 - Display all 18 Chompy hats with tier and KC requirement, for example
-  `Expert - 1300`. Names change only in tooltip presentation;
+  `1300: Expert`. Names change only in tooltip presentation;
   raw names, item IDs, matching, saved quantities and wiki targets are unchanged.
   Mapping verified against the OSRS Wiki Chompy bird hunting table and item IDs:
   https://oldschool.runescape.wiki/w/Chompy_bird_hunting
@@ -40,10 +40,11 @@ without item details or a tier ladder. Catalog fallback retains its existing
 pre-index total-count limitations; this slice does not change catalog matching.
 
 Dylan accepted the unsynced clog-total client smoke on September 15.
-Hat labels were then shortened to title-cased tier plus KC, for example
-`Ogre Dragon Archer - 1700`. This is display wording only. Focused name tests,
-both Checkstyles and jar build passed. Updated jar: 556,690 bytes, SHA-256
-`1DF6ABFC116616806C516B47B108A3244BB064FF78510C90A36E5612C49C7DE9`.
+Hat labels were finalized with KC first, for example `1700: Ogre Dragon Archer`.
+Existing width-aware ellipsis truncation preserves the leading requirement. This is display wording only. Full suite (655 tests),
+both Checkstyles and jar build passed, including KC-first ellipsis coverage.
+Updated jar: 556,686 bytes, SHA-256
+`F2295F4C605EC648DD59B29A8B0AF86E0FC2627708870BECFD1D86D21D797F37`.
 Remaining focused smoke: comparison with a synced account; inspect a
 Chompy hat in the skill modal and Recent, including wiki navigation. Verify
 self setup is still reachable. Only the unsynced-total smoke is claimed as accepted.
