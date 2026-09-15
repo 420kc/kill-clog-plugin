@@ -45,16 +45,46 @@ successfully: 658 tests across 73 suites, zero failures/errors/skips. Production
 sources are unchanged. The earlier full rerun compiled all sources and ran the
 suite; the final run corrected test formatting and passed both style gates.
 
+## Completed: extract PanelStatusRow
+
+`PanelStatusRow` now owns the status label, the two action labels, both
+`FirstPartyFeedback` objects, the notice text/detail, hover and glow state,
+the shared expiry timer and both glow timers, chalice/character icon tinting,
+row layout, and teardown. It takes the config, sprite manager, tooltip
+controller and idle text colour; the panel is not passed in. Method bodies
+moved unchanged apart from reading the idle colour from a field and dropping
+fully qualified names.
+
+The panel keeps its package-private surface as one-line delegates
+(`setKillclogSyncHandler`, `setCharacterPublishHandler`, `setSyncArrowEnabled`,
+`setSyncArrowHasData`, `setCharacterPublishEnabled`, `showSyncProgress`,
+`showSyncResult`, `resetSyncFeedback`, `showCharacterPublishStatus`,
+`refreshSyncFeedbackSettings`), routes lookup messages through
+`setSearchStatus`, reads `statusText()` for the compare-view refusal, calls
+the row's `shutdown()` from its own, and re-requests the character icon after
+a sprite reload. `KillClogPlugin` is unchanged. Message priority, timer policy
+(including `resetSyncFeedback` stopping the shared expiry timer), EDT
+scheduling and the reserved row height are as before.
+
+Tests: the characterization fixture resolves widgets and timers on the
+extracted row instead of the panel; `KillClogPanelTest` and
+`ProfileAppearanceServiceTest` reference the moved static helpers. No
+assertion changed.
+
+Validation: `./gradlew.bat --offline test checkstyleMain checkstyleTest`
+completed successfully on a cleared `build/test-results`: 658 tests across
+73 suites, zero failures/errors/skips. A line-multiset diff of the moved
+block against the new class showed only the constructor, accessors, section
+comments and the widened `setSearchStatus` visibility. Not done here:
+before/after visual smoke in a running client, and an independent review.
+
+Open for a later slice: whether the plugin should hold `PanelStatusRow`
+directly and drop the panel delegates. Left as-is to keep this commit a pure
+extraction.
+
 ## Reversible follow-up slices
 
-1. **Extract PanelStatusRow with behavior preserved.** Move the two action
-   labels, shared status label, feedback objects, hover/detail state, visibility,
-   success glow, timers and teardown together. Give it action callbacks and
-   explicit inputs/results; do not pass the whole panel back into the component.
-   Keep layout dimensions, tooltip tracking, EDT scheduling and message priority.
-   The panel routes lookup messages through the component. No copy, ownership,
-   retry, consent, cache or public API changes in this commit.
-2. **Replace string-based status ownership.** Represent owner (lookup, sync,
+1. **Replace string-based status ownership.** Represent owner (lookup, sync,
    character), kind (hover, progress, notice, result) and message identity
    explicitly. Timer expiry must belong to the message it clears. Preserve
    current priority rules unless a separately demonstrated bug warrants changing
@@ -62,11 +92,11 @@ suite; the final run corrected test formatting and passed both style gates.
    shared timer cancellation in `resetSyncFeedback`: preserving character text
    currently also stops the shared expiry timer. Do not silently change that
    policy during extraction.
-3. **Move cell reset behavior into Cells.** Keep search/header reset in the
+2. **Move cell reset behavior into Cells.** Keep search/header reset in the
    panel. Verify icons, tooltip maps, highlights and comparison resets. Rename
    misleading rendering methods/comments in their owning slice, without a
    repository-wide cleanup.
-4. **Characterize publication orchestration, then extract one coordinator.**
+3. **Characterize publication orchestration, then extract one coordinator.**
    Cover prerequisite sync, duplicate requests, queued manual requests, logout,
    account changes, consent revoke, disable/re-enable and late completions.
    Preserve generation/session guards and physical single-flight ownership.

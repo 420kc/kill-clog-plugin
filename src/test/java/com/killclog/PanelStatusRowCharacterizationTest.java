@@ -33,10 +33,11 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-/** Exercise the real panel before extracting its status row; no network or game client is started. */
+/** Exercise the real panel through its extracted status row; no network or game client is started. */
 public class PanelStatusRowCharacterizationTest
 {
 	private KillClogPanel panel;
+	private PanelStatusRow statusRow;
 	private JLabel status;
 	private JLabel sync;
 	private JLabel character;
@@ -63,6 +64,7 @@ public class PanelStatusRowCharacterizationTest
 				mock(RuneProfileService.class), mock(KillclogService.class),
 				config, mock(ConfigManager.class), sprites,
 				mock(ItemManager.class), mock(ClientThread.class), new SkillIconManager(), mock(Client.class));
+			statusRow = field(panel, "statusRow", PanelStatusRow.class);
 			status = field("searchStatus", JLabel.class);
 			sync = field("syncArrow", JLabel.class);
 			character = field("characterPublish", JLabel.class);
@@ -340,11 +342,16 @@ public class PanelStatusRowCharacterizationTest
 
 	private <T> T field(String name, Class<T> type)
 	{
+		return field(statusRow, name, type);
+	}
+
+	private static <T> T field(Object owner, String name, Class<T> type)
+	{
 		try
 		{
-			Field field = KillClogPanel.class.getDeclaredField(name);
+			Field field = owner.getClass().getDeclaredField(name);
 			field.setAccessible(true);
-			return type.cast(field.get(panel));
+			return type.cast(field.get(owner));
 		}
 		catch (ReflectiveOperationException exception)
 		{

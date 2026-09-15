@@ -125,9 +125,9 @@ public class ProfileAppearanceServiceTest
 		{
 			assertEquals(expected.get(outcome), KillClogPlugin.characterPublishTerminalStatus(outcome));
 		}
-		assertTrue(KillClogPanel.isCharacterNotice("Still rendering..."));
-		assertTrue(KillClogPanel.isCharacterNotice("Change equipment, then retry"));
-		assertFalse(KillClogPanel.isCharacterNotice("Publish failed"));
+		assertTrue(PanelStatusRow.isCharacterNotice("Still rendering..."));
+		assertTrue(PanelStatusRow.isCharacterNotice("Change equipment, then retry"));
+		assertFalse(PanelStatusRow.isCharacterNotice("Publish failed"));
 	}
 
 	private static NPC npc(int id, NPCComposition base, NPCComposition transformed)
