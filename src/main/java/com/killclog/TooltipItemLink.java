@@ -17,10 +17,10 @@ final class TooltipItemLink
 	private static final String ELLIPSIS = "...";
 
 	private static final String[] CHOMPY_TIERS = {
-		"Ogre bowman", "Bowman", "Ogre yeoman", "Yeoman", "Ogre marksman", "Marksman",
-		"Ogre woodsman", "Woodsman", "Ogre forester", "Forester", "Ogre bowmaster", "Bowmaster",
-		"Ogre expert", "Expert", "Ogre dragon archer", "Dragon archer",
-		"Expert ogre dragon archer", "Expert dragon archer"
+		"Ogre Bowman", "Bowman", "Ogre Yeoman", "Yeoman", "Ogre Marksman", "Marksman",
+		"Ogre Woodsman", "Woodsman", "Ogre Forester", "Forester", "Ogre Bowmaster", "Bowmaster",
+		"Ogre Expert", "Expert", "Ogre Dragon Archer", "Dragon Archer",
+		"Expert Ogre Dragon Archer", "Expert Dragon Archer"
 	};
 	private static final int[] CHOMPY_KILLS = {
 		30, 40, 50, 70, 95, 125, 170, 225, 300, 400, 550, 700, 1000, 1300, 1700, 2250, 3000, 4000
@@ -30,7 +30,7 @@ final class TooltipItemLink
 	{
 		int hat = itemId - 2978;
 		return hat >= 0 && hat < CHOMPY_TIERS.length
-			? "Chompy Bird Hat (" + CHOMPY_TIERS[hat] + "): " + CHOMPY_KILLS[hat] : name;
+			? CHOMPY_TIERS[hat] + " - " + CHOMPY_KILLS[hat] : name;
 	}
 
 	private TooltipItemLink()
