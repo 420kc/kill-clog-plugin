@@ -45,13 +45,18 @@ Existing width-aware ellipsis truncation preserves the leading requirement. This
 both Checkstyles and jar build passed, including KC-first ellipsis coverage.
 Updated jar: 556,686 bytes, SHA-256
 `F2295F4C605EC648DD59B29A8B0AF86E0FC2627708870BECFD1D86D21D797F37`.
-Remaining focused smoke: comparison with a synced account; inspect a
-Chompy hat in the skill modal and Recent, including wiki navigation. Verify
-self setup is still reachable. Only the unsynced-total smoke is claimed as accepted.
+Final acceptance (September 15): Dylan called the refired `7660d88e` candidate
+"100% perfect" and explicitly required both the unsynced total and final
+KC-first Chompy labels in canonical 2.4.0. These additions are smoke-approved.
+This records user acceptance, not a claim that every rare failure path was
+exercised manually. The running client was verified to load
+`kcpdev-7660d88e-F2295F4C605E.jar`. Current token proxy: 197,146 / 200,000.
 
-These additions supersede the approved jar below only after independent review
-and a new visual smoke. The previously approved artifact remains preserved.
-No push or Plugin Hub submission is included in this finalization.
+The canonical release remains `hive/2.4.0` in `C:/Users/dylan/plugins/kcpdev`.
+The separate status-row characterization/refactor branch is not included.
+No push or Plugin Hub submission has been performed. Keep this scope frozen
+except for confirmed release-blocking defects; September 28 is a proposed
+submission target, not a maintainer-mandated waiting period.
 
 Current addition (2026-09-12): character publication now captures the game's
 original appearance on `PlayerChanged` at priority 2, before Fashionscape (0)
@@ -201,7 +206,42 @@ Unrelated older plugin experiments and separate API/Hive worktrees were untouche
     overrides can remain enabled; missing/stale captures have actionable retry
     wording (`e6584a9e`, Dylan-smoked).
 
-## Current preparation proof (2026-09-12)
+26. Show official Collections Logged totals and ranks without an external item
+    snapshot, including comparison. Preserve local/provider precedence, zero
+    versus unknown, and self-setup instructions.
+27. Show all Chompy hat hover names as KC followed by tier (`1300: Expert`),
+    using existing ellipsis truncation. Raw item names, identity and wiki links
+    are unchanged.
+
+## Proposed Plugin Hub PR body
+
+Updates Kill Clog from 2.3.3 to 2.4.0, focused on Collection Log refresh
+correctness, character publication reliability and modal clarity.
+
+- Refresh the full local Collection Log when opened, including existing caches;
+  keep Search as a retry and remove the redundant in-game page-sync chalice.
+- Validate complete captures before replacing saved data, preserve ownership
+  and acquisition dates, avoid duplicate total increments, and update the panel
+  without restarting provider lookups or flashing away completion colors.
+- Show official Collections Logged totals/ranks without external sync; restore
+  catalog previews after failed lookups and allow failed catalog requests to retry.
+- Match alternate item forms to canonical log slots without double counting;
+  distinguish local data from web sync and retain contributing source credit.
+- Publish the original character appearance before supported cosmetic overrides,
+  validate it against current equipment/account, and improve cancellation,
+  credential recovery, retry backoff and failure feedback.
+- Keep modal titles stable, use reserved hover-label space, and improve spacing.
+  Add the missing Mining/Fishing/Hunter pets and Hunter Chompy section; label
+  Chompy hats with their kill requirement and tier.
+- Update setup, refresh and web-sync documentation and settings wording.
+
+Validation: 655 tests pass, both Checkstyle tasks pass, and the candidate has
+received independent reviews and real-client smoke approval. The final label
+wording change was covered by focused ellipsis regression testing and the full
+suite. The broad combat taxonomy redesign, new skill panels and structural
+refactor are not part of this update.
+
+## Earlier preparation proof (2026-09-12)
 
 Code `e403c7d8` passed compile, both Checkstyle gates, jar build and 624 tests
 (zero failures/errors/skips). Independent date-history and quiet-refresh reviews
