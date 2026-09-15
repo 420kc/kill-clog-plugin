@@ -55,8 +55,12 @@ exercised manually. The running client was verified to load
 The canonical release remains `hive/2.4.0` in `C:/Users/dylan/plugins/kcpdev`.
 The separate status-row characterization/refactor branch is not included.
 No push or Plugin Hub submission has been performed. Keep this scope frozen
-except for confirmed release-blocking defects; September 28 is a proposed
-submission target, not a maintainer-mandated waiting period.
+except for confirmed release-blocking defects. Dylan selected Friday, September 25,
+2026 as the active Plugin Hub submission target, replacing September 28.
+Proceed if 2.3.3 observation remains clear of unresolved blockers and the frozen
+2.4.0 candidate retains its passing checks and smoke approval. This is a
+submission target, not a guaranteed Plugin Hub merge/live date or an automatic
+submission authorization.
 
 Current addition (2026-09-12): character publication now captures the game's
 original appearance on `PlayerChanged` at priority 2, before Fashionscape (0)
