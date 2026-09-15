@@ -62,6 +62,12 @@ Proceed if 2.3.3 observation remains clear of unresolved blockers and the frozen
 submission target, not a guaranteed Plugin Hub merge/live date or an automatic
 submission authorization.
 
+September 15 handoff: September 25 remains the target; Dylan may explicitly
+bring submission forward. Fable owns the next bounded status-row extraction in
+`C:/Users/dylan/plugins/kcpdev-status-row` on `hive/status-row-characterization`.
+Keep that work separate from the frozen 2.4 candidate; no refactor-only patch
+release is planned. Review it as a possible later development baseline.
+
 Current addition (2026-09-12): character publication now captures the game's
 original appearance on `PlayerChanged` at priority 2, before Fashionscape (0)
 and Weapon/Gear/Anim Replacer (1) mutate it. Equipment, body kits, colours,
