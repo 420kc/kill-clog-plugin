@@ -1,11 +1,52 @@
 # Kill Clog 2.4.0 candidate
 
-Requested follow-up (2026-09-14, after the server migration): distinguish every
-Chompy Bird Hat in item hover text by its tier and kill-count requirement.
-Requested format: `Chompy Bird Hat (Expert): 1300`. Verify each item's tier and
-threshold before implementation; apply consistently wherever those hats appear.
-This is recorded work for 2.4.0, not part of the currently approved jar. Keep
-item IDs, obtained state and slot counts unchanged.
+## Bounded finalization (2026-09-15)
+
+2.3.3 merged in Plugin Hub PR #16418 on September 15. The next release stays
+focused on existing-feature correctness, setup/sync clarity and approved modal
+polish. Retain the small existing skill-pet/Chompy association corrections.
+Defer broad combat taxonomy, Slayer reorganization, new panels, Awakened PB
+presentation and the status-row/publishing refactor.
+
+Final additions in this checkout:
+- Show the official Collections Logged count and rank without an itemized
+  provider snapshot, in the summary and comparison. Existing local/provider
+  totals retain precedence. Missing hiscores are unknown, not zero; a real zero
+  is shown. An available catalog supplies the denominator, otherwise it is `?`.
+  Item details/recent drops still require itemized data. Self setup remains
+  available even when the hiscores provide a total.
+- Display all 18 Chompy hats with tier and KC requirement, for example
+  `Chompy Bird Hat (Expert): 1300`. Names change only in tooltip presentation;
+  raw names, item IDs, matching, saved quantities and wiki targets are unchanged.
+  Mapping verified against the OSRS Wiki Chompy bird hunting table and item IDs:
+  https://oldschool.runescape.wiki/w/Chompy_bird_hunting
+  https://oldschool.runescape.wiki/w/Item_IDs
+
+Validation on September 15: 654 tests, zero failures/errors/skips; both
+Checkstyles and jar build passed. Regression coverage includes official JSON
+parsing through the fallback, zero/unknown, catalog denominator, captured-total
+precedence, comparison clearing and Chompy labels/wiki identity. Offscreen Swing
+render checked the unsynced summary, unknown denominator and self-setup layout.
+Token proxy: 197,161 / 200,000 (+547), above the 195,000 caution mark.
+Jar: 556,715 bytes, SHA-256
+`138517C8BD484F2A895E46E17705FF7E7BEDD765D7B3657E8898223022B82828`.
+
+Independent review: ALLOW on September 15. Reviewer reran the focused tests,
+both Checkstyles and full 654-test suite; no blockers. Confirmed callback order,
+zero/unknown handling, captured-data precedence and display-only item identity.
+A ranked self account shows its total in the cell, with setup instructions still
+in the modal. Hiscores-only modals show count/rank plus the existing notice,
+without item details or a tier ladder. Catalog fallback retains its existing
+pre-index total-count limitations; this slice does not change catalog matching.
+
+Focused client smoke still required: look up an account with an official clog
+total but no external snapshot; compare it with a synced account; inspect a
+Chompy hat in the skill modal and Recent, including wiki navigation. Verify
+self setup is still reachable. No in-game smoke is claimed for these additions.
+
+These additions supersede the approved jar below only after independent review
+and a new visual smoke. The previously approved artifact remains preserved.
+No push or Plugin Hub submission is included in this finalization.
 
 Current addition (2026-09-12): character publication now captures the game's
 original appearance on `PlayerChanged` at priority 2, before Fashionscape (0)
@@ -73,7 +114,7 @@ Master and the earlier approved jars remain unchanged.
 - Prior smoke-approved code: `e403c7d897e414ec37de9de742ac161beafdd9d9`.
 - Submission base: 2.3.3 `96dee2429ed96187e36d1451270b114f7a9dbd07`.
 - 2.3.3 Hub PR: https://github.com/runelite/plugin-hub/pull/16418
-  Last checked open on 2026-09-12; recheck the accepted pin before submission.
+  Merged on 2026-09-15 with accepted pin `96dee242`; the waiting condition is cleared.
 - Historical checkpoints: tag `hive/2.3.4-submission-candidate` (`d18f41e7`)
   and log-refresh commit `1c3df015`. Their release branches are retired.
 - Historical approved jar: `kcpdev-e403c7d8-E31A0EDAA84C.jar`, 552,802 bytes.
