@@ -1,7 +1,9 @@
 # Kill Clog 2.3.4 maintenance candidate
 
-Status: local candidate; Dylan accepted the running-client smoke on 2026-09-16.
-Independent review remains pending. Not pushed or submitted.
+Status: HOLD for whole-plugin reconciliation. Fable approved code `1d176b2c`
+and Dylan accepted its smoke, but a later audit found omitted fixes in the
+backported paths. See [2.3.4-reconciliation.md](2.3.4-reconciliation.md).
+Nothing pushed or submitted.
 
 Review handoff: [2.3.4-review-packet.md](2.3.4-review-packet.md).
 
