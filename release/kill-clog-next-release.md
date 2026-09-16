@@ -1,11 +1,14 @@
 # Kill Clog 2.3.4 maintenance candidate
 
-Status: HOLD for whole-plugin reconciliation. Fable approved code `1d176b2c`
-and Dylan accepted its smoke, but a later audit found omitted fixes in the
-backported paths. See [2.3.4-reconciliation.md](2.3.4-reconciliation.md).
-Nothing pushed or submitted.
+Status: corrected candidate `b342dfff` is committed locally and staged for the
+next shared refire. Independent delta review and a new affected-path client
+smoke are pending. Nothing pushed or submitted.
 
-Review handoff: [2.3.4-review-packet.md](2.3.4-review-packet.md).
+Current handoff: [2.3.4-delta-review.md](2.3.4-delta-review.md).
+The original review/smoke applied to `1d176b2c`; reconciliation findings and
+resolution are recorded in [2.3.4-reconciliation.md](2.3.4-reconciliation.md).
+Current gate: 69 suites / 610 tests, zero failures, both checkstyles passed.
+Current total-plugin token proxy: 189,974 / 200,000.
 
 Base: shipped 2.3.3, `96dee2429ed96187e36d1451270b114f7a9dbd07`.
 Worktree: `C:/Users/dylan/plugins/kcpdev-issue18`, branch `hive/issue-18-setup-fix`.
@@ -14,6 +17,8 @@ Worktree: `C:/Users/dylan/plugins/kcpdev-issue18`, branch `hive/issue-18-setup-f
 
 * fixes Collection Log setup rejecting recognized alternate item forms
 * refreshes the full saved log when opening it, with Search available to retry
+* updates the displayed local log without replacing other-player lookups or comparisons
+* prevents live-total double counting, strengthens cache ownership checks, and restores failed catalog retries
 * removes the redundant in-log chalice that overlaps other plugins' controls
 * keeps modal titles visible while hovering items and moves the skill hover row above the item sections
 
