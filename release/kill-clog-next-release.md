@@ -1,6 +1,9 @@
 # Kill Clog 2.3.4 maintenance candidate
 
-Status: local candidate for independent review and running-client smoke. Not pushed or submitted.
+Status: local candidate; Dylan accepted the running-client smoke on 2026-09-16.
+Independent review remains pending. Not pushed or submitted.
+
+Review handoff: [2.3.4-review-packet.md](2.3.4-review-packet.md).
 
 Base: shipped 2.3.3, `96dee2429ed96187e36d1451270b114f7a9dbd07`.
 Worktree: `C:/Users/dylan/plugins/kcpdev-issue18`, branch `hive/issue-18-setup-fix`.
@@ -50,7 +53,8 @@ the Windows wrapper can return exit zero for a failed Gradle run.
 
 1. Independent review of the complete diff against `96dee242`, especially
    canonical capture accounting and first-party cache replacement/save retry.
-2. Dylan's running-client smoke: setup/refresh, interruption preserving the saved
+2. Dylan accepted the overall running-client smoke on 2026-09-16 against staged
+   candidate `1d176b2c`. The supplied smoke checklist was: setup/refresh, interruption preserving the saved
    log, reopening and Search retry, manual panel web sync, absence of the in-log
    chalice, stable modal titles, and hover placement above Pets.
 3. After acceptance, carry this maintenance release forward into both the frozen
