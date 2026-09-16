@@ -223,7 +223,7 @@ public class KillClogPanel extends PluginPanel
 		this.clogService = clogService;
 		this.config = config;
 		this.syncFeedback = new FirstPartyFeedback(config, this::showSyncStatus,
-			this::flashSyncSuccess, "sync failed");
+			this::flashSyncSuccess, "publish failed");
 		this.characterFeedback = new FirstPartyFeedback(config, this::showCharacterStatusText,
 			this::flashCharacterSuccess, KillClogPlugin.CHARACTER_FAILED_STATUS);
 		this.configManager = configManager;
@@ -876,10 +876,10 @@ public class KillClogPanel extends PluginPanel
 
 	// ── killclog.com one-click controls ─────────────────────────────────
 
-	private static final String SYNC_HOVER_TEXT = "sync to killclog.com";
-	private static final String SYNC_FAILURE_HOVER_TEXT = "sync failed - click to retry";
+	private static final String SYNC_HOVER_TEXT = "publish collection log";
+	private static final String SYNC_FAILURE_HOVER_TEXT = "publish failed - click to retry";
 	private static final String CHARACTER_HOVER_TEXT = "publish character";
-	private static final String CHARACTER_FAILURE_HOVER_TEXT = "publish failed - click to retry";
+	private static final String CHARACTER_FAILURE_HOVER_TEXT = "character failed - click to retry";
 	// k1: the brand lime. Status chrome, not data coloring, so it does not
 	// route through the user-themable completion color.
 	private static final Color SYNC_K1 = new Color(78, 240, 21);
@@ -1191,8 +1191,8 @@ public class KillClogPanel extends PluginPanel
 
 	static boolean isSyncOwnedStatus(String text)
 	{
-		return isSyncHoverStatus(text) || "syncing...".equals(text)
-			|| "retrying...".equals(text) || "sync failed".equals(text);
+		return isSyncHoverStatus(text) || "publishing...".equals(text)
+			|| "retrying...".equals(text) || "publish failed".equals(text);
 	}
 
 	private static boolean isSyncHoverStatus(String text)
@@ -1268,7 +1268,7 @@ public class KillClogPanel extends PluginPanel
 	}
 
 	/**
-	 * Sync-flow status line: "syncing..." while in flight, then "sync failed"
+	 * Sync-flow status line: "publishing..." while in flight, then "publish failed"
 	 * which clears itself after a beat. Any thread. The bar
 	 * is shared: sync text only writes when the bar is free or already the
 	 * sync's, so lookup and player-not-found messages are never stomped.
@@ -1284,7 +1284,7 @@ public class KillClogPanel extends PluginPanel
 			}
 			stopFirstPartyStatusTimer();
 			clearSyncSuccessGlow();
-			setSearchStatus(text, "sync failed".equals(text) ? TEXT_DIM : SYNC_K1);
+			setSearchStatus(text, "publish failed".equals(text) ? TEXT_DIM : SYNC_K1);
 			if (autoClear)
 			{
 				firstPartyStatusClearTimer = new Timer(2500, e ->

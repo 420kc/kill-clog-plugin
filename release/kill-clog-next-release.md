@@ -7,11 +7,12 @@ candidate. The former maintenance and refactor branches remain preserved.
 
 Checkout: `C:/Users/dylan/plugins/kcpdev-234-full`.
 Branch: `hive/2.3.4-full-candidate`.
-Only the three release version declarations differ in production/build inputs
+The three release version declarations and final publication wording differ
 from the frozen source. Test fixture literals remain historical sample values.
 The structural refactor remains on its separate future-development branch.
 
-Dylan will smoke this full candidate and identify any requested removals.
+Dylan accepted the full candidate in the running client at `4ffe6d7d`, then
+approved the final publication wording pass recorded below.
 No release push or Plugin Hub submission is authorized by candidate preparation.
 The historical September 25 scheduling and 2.4.0 labels below describe the
 prior plan, not this active candidate's version or submission authorization.
@@ -23,7 +24,30 @@ checkstyleTest, and jar with all tasks rerun. Fresh XML: 74 suites, 655 tests,
 zero failures/errors/skips. Token proxy: 197,146 / 200,000 (2,854 headroom;
 above the conservative 195,000 caution mark).
 Log: `C:/Users/dylan/AppData/Local/Temp/killclog-234-full-gate.log`.
-`git diff --check` passed. Real-client evaluation of this version is pending.
+`git diff --check` passed. Dylan subsequently accepted this candidate's client smoke.
+
+## Final publication wording, 2026-09-16
+
+- Collection Log control: `publish collection log`; progress: `publishing...`;
+  completion chat: `Collection log published!` followed by the existing counts.
+- Collection Log retry: `publish failed - click to retry`; character retry:
+  `character failed - click to retry`. Distinct strings preserve status ownership.
+- Ordinary messages use Kill Clog or publication wording. The consent description
+  retains the actual website destination; network endpoints remain unchanged.
+- Existing panel success glow and chat settings remain in effect. No new chat
+  confirmation was added for local Collection Log capture.
+
+Fresh final gate: BUILD SUCCESSFUL, 74 suites, 655 tests, zero failures/errors/skips,
+both Checkstyles and jar build. `git diff --check` passed. Token proxy: 197,107 /
+200,000 (2,893 headroom; still above the conservative 195,000 caution mark).
+Log: `C:/Users/dylan/AppData/Local/Temp/killclog-234-final-copy-gate.log`.
+Offscreen rendering of the four actual hover constants with RuneLite's font
+confirmed they fit the label width. This final wording pass has not been refired.
+
+Before future development resumes on the refactor branch, carry this final copy
+and the frozen branch's final total/Chompy presentation changes forward together.
+Use this full candidate as the release baseline, not the superseded selective
+maintenance candidate. No push or Plugin Hub submission has occurred here.
 
 ## Historical full-release notes and evidence
 

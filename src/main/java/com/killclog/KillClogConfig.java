@@ -444,7 +444,7 @@ public interface KillClogConfig extends Config
 		keyName = "silentAutomaticSync",
 		name = "Silent automatic sync",
 		description = "Hide panel status messages and the success flash for automatic "
-			+ "killclog.com syncs. Chat messages have their own setting.",
+			+ "Collection Log publishing. Chat messages have their own setting.",
 		section = killclogSection,
 		position = 2
 	)
@@ -457,7 +457,7 @@ public interface KillClogConfig extends Config
 		keyName = "characterModel",
 		name = "Publish Character Model",
 		description = "Adds a one-click button to publish your current character and "
-			+ "follower models to your killclog.com/p/ profile",
+			+ "follower models to your Kill Clog web profile",
 		section = killclogSection,
 		position = 1
 	)

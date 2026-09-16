@@ -939,12 +939,12 @@ public class KillClogPlugin extends Plugin
 				AccountType accountType = getLocalAccountType();
 				if (manual)
 				{
-					chatNotifier.send(ChatNotice.SYNC_RESULT, "Syncing collection log to killclog.com...");
+					chatNotifier.send(ChatNotice.SYNC_RESULT, "Publishing collection log...");
 				}
 				if (!characterPublishAfterSync.get())
 				{
 					withSyncFeedback(generation, scheduledEpoch,
-						() -> panel.showSyncProgress(manual, "syncing...", false));
+						() -> panel.showSyncProgress(manual, "publishing...", false));
 				}
 				java.util.List<String> profileKeys = PersonalBests.profileKeys(
 					configManager.getRSProfiles(), accountHash);
@@ -968,11 +968,11 @@ public class KillClogPlugin extends Plugin
 				if (!failQueuedCharacterPublish())
 				{
 					withSyncFeedback(generation, scheduledEpoch, () -> panel.showSyncResult(manual,
-						false, "Collection log sync failed. See the client log."));
+						false, "Collection log publication failed. See the client log."));
 				}
 				// Failures always chat, this path included.
 				chatNotifier.send(ChatNotice.SYNC_RESULT,
-					"Collection log sync failed - see the client log.");
+					"Collection log publication failed - see the client log.");
 				launchQueuedKillclogSync();
 			}
 		});
@@ -1056,7 +1056,7 @@ public class KillClogPlugin extends Plugin
 						if (current && !failQueuedCharacterPublish() && err != null)
 						{
 							withSyncFeedback(generation, cacheEpoch, () -> panel.showSyncResult(manual,
-								false, "Collection log sync failed. See the client log."));
+								false, "Collection log publication failed. See the client log."));
 						}
 					}
 					launchQueuedKillclogSync();
@@ -1069,12 +1069,12 @@ public class KillClogPlugin extends Plugin
 			if (!failQueuedCharacterPublish())
 			{
 				withSyncFeedback(generation, cacheEpoch, () -> panel.showSyncResult(manual,
-					false, "Collection log sync failed. See the client log."));
+					false, "Collection log publication failed. See the client log."));
 			}
 			// Failures always chat, this path included; chat sends need the
 			// client thread and this body runs on the executor.
 			clientThread.invoke(() -> chatNotifier.send(ChatNotice.SYNC_RESULT,
-				"Collection log sync failed - see the client log."));
+				"Collection log publication failed - see the client log."));
 			launchQueuedKillclogSync();
 		}
 	}

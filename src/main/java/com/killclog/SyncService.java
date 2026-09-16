@@ -150,7 +150,7 @@ class SyncService
 			{
 				boolean dryRun = responseSaysDryRun(r.body);
 				return new SyncResult(true, dryRun, r.code,
-					"Collection log synced to killclog.com ("
+					"Collection log published! ("
 					+ observedCount + (observedCount == 1 ? " item" : " items")
 					+ (pbCount > 0 ? ", " + pbCount + (pbCount == 1 ? " pb" : " pbs") : "")
 					+ (dryRun ? ", server dry run" : "") + ").");
@@ -169,22 +169,22 @@ class SyncService
 			if (r.code == 409 && r.body != null && r.body.contains("name_active_with_another_account"))
 			{
 				return new SyncResult(false, false, r.code,
-					"This name's previous owner played recently - killclog.com will "
+					"This name's previous owner played recently - Kill Clog will "
 					+ "accept your log after their continuity window passes.");
 			}
 			if (r.code == 409 && r.body != null && r.body.contains("account_hash_mismatch"))
 			{
 				return new SyncResult(false, false, r.code,
-					"This name is registered to a different account on killclog.com.");
+					"This name is registered to a different account on Kill Clog.");
 			}
 			if (r.code == 451)
 			{
 				return new SyncResult(false, false, r.code,
-					"This account has opted out of killclog.com syncing.");
+					"This account has opted out of Kill Clog publishing.");
 			}
 			log.debug("killclog sync failed for '{}': HTTP {}", rsn, r.code);
 			return new SyncResult(false, false, r.code,
-				"killclog.com sync failed (HTTP " + r.code + ").");
+				"Collection log publication failed (HTTP " + r.code + ").");
 		});
 	}
 
