@@ -256,7 +256,7 @@ public class SkillCellGridTest
 		assertEquals("Slayer", slayer.getTitle());
 		assertEquals(" (1/30)", slayer.getTitleSuffix());
 		assertEquals(TitleTooltip.CLOG_YELLOW, slayer.getTitleSuffixColor());
-		assertEquals(attack.getHeaderHeight() + TitleTooltip.LINE_HEIGHT,
+		assertEquals(attack.getHeaderHeight(),
 			slayer.getHeaderHeight());
 		assertFalse(attack.sections().iterator().hasNext());
 		assertTrue(slayer.getPreferredSize().height > attack.getPreferredSize().height);

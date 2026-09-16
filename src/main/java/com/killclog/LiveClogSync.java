@@ -30,7 +30,7 @@ final class LiveClogSync
 	void handleUnlock(String itemName, int broadcastObtained, int broadcastTotal,
 		Client client, ItemManager itemManager,
 		ClogIndex clogIndex, LocalClogCache localClogCache,
-		KillClogChatNotifier chatNotifier, ClogButtonOverlay clogButtonOverlay,
+		KillClogChatNotifier chatNotifier,
 		Consumer<String> panelRefresh)
 	{
 		Player local = client.getLocalPlayer();
@@ -42,7 +42,7 @@ final class LiveClogSync
 		if (!clogIndex.ensureParsed(client, itemManager))
 		{
 			chatNotifier.send(ChatNotice.SYNC_HELP,
-				"Live sync could not read collection-log data. Click the chalice to sync.");
+				"Live sync could not read collection-log data. Open your Collection Log to update it.");
 			return;
 		}
 
@@ -50,7 +50,7 @@ final class LiveClogSync
 		if (!localClogCache.setActivePlayer(playerName))
 		{
 			chatNotifier.send(ChatNotice.SYNC_HELP,
-				"Live sync is waiting for local account identity. Click the chalice to sync.");
+				"Live sync is waiting for local account identity. Open your Collection Log to update it.");
 			return;
 		}
 		if (!localClogCache.hasDataFor(playerName))
@@ -83,7 +83,7 @@ final class LiveClogSync
 
 		// Upward-only here: the varp can lag the unlock message by a tick, and
 		// a stale read would revert the unique bump the merge just made.
-		// Chalice sync remains the downward authority. A clan broadcast
+		// Full log refresh remains the downward authority. A clan broadcast
 		// carries its own fresh counts; take whichever signal is highest.
 		int liveObtained = Math.max(client.getVarpValue(ClogVarps.OBTAINED), broadcastObtained);
 		int liveTotal = Math.max(client.getVarpValue(ClogVarps.TOTAL), broadcastTotal);
@@ -95,7 +95,6 @@ final class LiveClogSync
 		if (changed)
 		{
 			resetFirstSyncWarning();
-			clogButtonOverlay.flashGreen();
 			chatNotifier.send(ChatNotice.NEW_DROP,
 				"Added " + itemName + " to Kill Clog");
 			SwingUtilities.invokeLater(() -> panelRefresh.accept(playerName));
@@ -126,7 +125,7 @@ final class LiveClogSync
 		if (itemIds == null || itemIds.isEmpty())
 		{
 			chatNotifier.send(ChatNotice.SYNC_HELP,
-				"Could not match " + itemName + ". Click the chalice to sync.");
+				"Could not match " + itemName + ". Open your Collection Log to update it.");
 			log.debug("Live clog sync could not match item '{}'", itemName);
 			return null;
 		}
@@ -142,7 +141,7 @@ final class LiveClogSync
 		if (missingItemIds.size() > 1)
 		{
 			chatNotifier.send(ChatNotice.SYNC_HELP,
-				"Could not match " + itemName + " exactly. Click the chalice to sync.");
+				"Could not match " + itemName + " exactly. Open your Collection Log to update it.");
 			log.debug("Live clog sync found ambiguous item '{}' ({})", itemName, missingItemIds);
 			return null;
 		}

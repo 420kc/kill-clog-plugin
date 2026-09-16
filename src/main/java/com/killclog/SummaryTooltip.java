@@ -55,6 +55,7 @@ public class SummaryTooltip extends TitleTooltip
 	public void setData(String rsn, int overallRank, BufferedImage capeIcon,
 						BufferedImage badgeIcon, String accountLabel, String prestige)
 	{
+		itemHover.clear();
 		setTitle("Player Summary");
 		this.rsn = rsn;
 		this.overallRank = overallRank;
@@ -180,7 +181,7 @@ public class SummaryTooltip extends TitleTooltip
 				+ fm.getHeight() + PET_PAD;
 			if (hasPets())
 			{
-				contentHeight += getPetGridHeight();
+				contentHeight += getPetGridHeight() + hoverRowHeight(fm);
 			}
 		}
 
@@ -302,6 +303,7 @@ public class SummaryTooltip extends TitleTooltip
 					new Rectangle(px, py, PET_SIZE, PET_SIZE), true));
 			}
 		}
+		paintHeaderHoverLine(g2, fm, w, gridY + getPetGridHeight() + fm.getAscent());
 		itemHover.setHitBoxes(hitBoxes);
 	}
 
@@ -313,13 +315,13 @@ public class SummaryTooltip extends TitleTooltip
 	}
 
 	@Override
-	protected String getTitleHoverText()
+	protected String getHeaderHoverLineText()
 	{
 		return itemHover.hoveredItemName();
 	}
 
 	@Override
-	protected Color getTitleHoverColor()
+	protected Color getHeaderHoverLineColor()
 	{
 		return itemHover.hoveredItemObtained() ? CLOG_GREEN : CLOG_RED;
 	}

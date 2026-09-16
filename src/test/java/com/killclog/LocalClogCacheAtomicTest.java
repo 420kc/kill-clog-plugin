@@ -57,8 +57,11 @@ public class LocalClogCacheAtomicTest
 		assertArrayEquals(valid, Files.readAllBytes(file.toPath()));
 		assertEquals(1, reload(directory).getId());
 		fail.set(false);
-		cache.cacheFirstPartyResult(result(3));
-		assertEquals(3, reload(directory).getId());
+		int[] changes = {0};
+		cache.setFirstPartyChangedListener(() -> changes[0]++);
+		cache.cacheFirstPartyResult(result(2));
+		assertEquals(2, reload(directory).getId());
+		assertEquals(0, changes[0]);
 		assertFalse(new File(directory, "tester.json.tmp").exists());
 	}
 

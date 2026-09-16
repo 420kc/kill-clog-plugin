@@ -40,6 +40,7 @@ public class SkillTooltip extends TitleTooltip
 	public void setData(Skill skill, @Nullable HiscoreResult result, boolean virtualLevels,
 		List<SkillClogSection> sections, @Nullable ItemManager itemManager)
 	{
+		itemHover.clear();
 		setTitle(skill.getName());
 		clearTitleSuffix();
 		clearSubtitle();
@@ -88,6 +89,7 @@ public class SkillTooltip extends TitleTooltip
 		if (!sections.isEmpty())
 		{
 			height += separatorHeight(SECTION_SEPARATOR_PAD);
+			height += hoverRowHeight(fm);
 			Dimension sectionSize = sectionRenderer.soloSize(Math.max(width, availableWidth));
 			width = Math.max(width, sectionSize.width);
 			height += sectionSize.height;
@@ -117,6 +119,8 @@ public class SkillTooltip extends TitleTooltip
 		{
 			int sectionY = paintSeparator(g2, w,
 				startY + LINE_HEIGHT * 4, SECTION_SEPARATOR_PAD);
+			paintHeaderHoverLine(g2, fm, w, sectionY + fm.getAscent());
+			sectionY += hoverRowHeight(fm);
 			sectionRenderer.paintSolo(g2, w, sectionY, hitBoxes);
 		}
 		itemHover.setHitBoxes(hitBoxes);
@@ -140,12 +144,6 @@ public class SkillTooltip extends TitleTooltip
 	String riftsClosedText()
 	{
 		return riftsClosed >= 0 ? String.format(Locale.US, "%,d", riftsClosed) : "--";
-	}
-
-	@Override
-	protected boolean hasHeaderHoverLine()
-	{
-		return !sections.isEmpty();
 	}
 
 	@Override

@@ -87,6 +87,7 @@ public class SkillsTooltip extends TitleTooltip
 
 	public void setData(HiscoreResult result)
 	{
+		hoveredSkill = null;
 		this.result = result;
 		setTitle("Skill Summary");
 	}
@@ -166,8 +167,8 @@ public class SkillsTooltip extends TitleTooltip
 
 	/**
 	 * The reserved readout: XP and Rank labels always hold their rows; the
-	 * hovered skill fills the exact values. The title carries the skill name
-	 * (see {@link #getTitleHoverText}), and the rows sit directly under it.
+	 * hovered skill fills the exact values. A reserved header row carries the skill name
+	 * (see {@link #getHeaderHoverLineText}), and the rows sit directly under it.
 	 */
 	private void paintStatsRows(Graphics2D g2, FontMetrics fm, int inset, int y)
 	{
@@ -210,7 +211,13 @@ public class SkillsTooltip extends TitleTooltip
 	}
 
 	@Override
-	protected String getTitleHoverText()
+	protected boolean hasHeaderHoverLine()
+	{
+		return true;
+	}
+
+	@Override
+	protected String getHeaderHoverLineText()
 	{
 		if (hoveredSkill != null)
 		{
@@ -220,10 +227,9 @@ public class SkillsTooltip extends TitleTooltip
 	}
 
 	@Override
-	protected Color getTitleHoverColor()
+	protected Color getHeaderHoverLineColor()
 	{
-		// The hovered skill name stands in for the title, so it wears the
-		// title's own orange rather than a value color.
+		// The readout context uses the standard label color.
 		return OSRS_ORANGE;
 	}
 

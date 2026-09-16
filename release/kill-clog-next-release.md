@@ -1,3 +1,65 @@
+# Kill Clog 2.3.4 maintenance candidate
+
+Status: local candidate for independent review and running-client smoke. Not pushed or submitted.
+
+Base: shipped 2.3.3, `96dee2429ed96187e36d1451270b114f7a9dbd07`.
+Worktree: `C:/Users/dylan/plugins/kcpdev-issue18`, branch `hive/issue-18-setup-fix`.
+
+## Release notes
+
+* fixes Collection Log setup rejecting recognized alternate item forms
+* refreshes the full saved log when opening it, with Search available to retry
+* removes the redundant in-log chalice that overlaps other plugins' controls
+* keeps modal titles visible while hovering items and moves the skill hover row above the item sections
+
+## Review scope and provenance
+
+This is a selective backport, not the complete 2.4.0 release. Canonical item matching
+comes from `f5254227`; full captures, cache replacement, and failed-save retry
+come from `6372f0b9` and `fe7c69bc`; modal rendering uses the finalized
+`1952dfeb` state. Provider-label changes were excluded. The existing skill
+catalog, panel architecture, publication flow, and opt-in settings are retained.
+The frozen 2.4.0 and refactor worktrees were not edited.
+
+The alternate-form failure was reproduced against shipped 2.3.3 and passes in
+this candidate. This proves a setup defect, but does not establish that it caused
+reporter #18's interruption or how many players encounter it. Do not close #18
+as confirmed fixed until the reporter or matching real-client evidence confirms it.
+
+Capture coverage includes canonical aliases, duplicate forms not hiding missing
+slots, distinct catalog forms, complete replacement with lower quantities,
+incomplete-capture preservation, empty logs, and retrying failed saves.
+The full-capture path preserves completeness checks and existing metadata.
+
+## Local proof, 2026-09-16
+
+* `compileJava test checkstyleMain checkstyleTest jar --rerun-tasks`: BUILD SUCCESSFUL.
+* Fresh test XML: 67 suites, 589 tests, 0 failures, 0 errors, 0 skipped.
+* Offscreen Swing render: Player, PvM, Clog, Skill Summary, and Mining fixtures.
+  Titles are pixel-stable during hover. Mining's shared hover row is below the
+  stats divider and above Pets. Fixture sprites are synthetic, not game assets.
+* `git diff --check`: passed.
+* Jar version: 2.3.4 in Gradle, plugin properties, and sync client version.
+
+Evidence directory: `C:/Users/dylan/AppData/Local/Temp/killclog-issue18-jugg4xt8/`.
+`combined-gate.log`, XML under this worktree's `build/test-results/test`,
+`render.log`, and `modals/` contain the local proof. Use the build banner and XML;
+the Windows wrapper can return exit zero for a failed Gradle run.
+
+## Before submission
+
+1. Independent review of the complete diff against `96dee242`, especially
+   canonical capture accounting and first-party cache replacement/save retry.
+2. Dylan's running-client smoke: setup/refresh, interruption preserving the saved
+   log, reopening and Search retry, manual panel web sync, absence of the in-log
+   chalice, stable modal titles, and hover placement above Pets.
+3. After acceptance, carry this maintenance release forward into both the frozen
+   release integration plan and future refactor development. Reconcile versions
+   and the selective backports; do not blindly replay duplicate changes.
+4. Obtain current push/submission authorization and follow the Plugin Hub pin flow.
+
+---
+
 # Kill Clog 2.3.3
 
 Status: accepted for Plugin Hub submission after independent review and manual smoke.

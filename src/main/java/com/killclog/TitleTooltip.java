@@ -600,18 +600,10 @@ public abstract class TitleTooltip extends NativeTooltip
 		}
 
 		int inset = getInset();
-		// Title (bold orange). While a body item is hovered the title yields
-		// its line to the reveal text, so nothing clips regardless of width.
+		// Modal titles remain stable while body labels change.
 		String headerTitle = title;
 		Color headerColor = titleColor();
 		boolean showTitleSuffix = titleSuffix != null;
-		String hoverText = getTitleHoverText();
-		if (hoverText != null && !hoverText.isEmpty())
-		{
-			headerTitle = hoverText;
-			headerColor = getTitleHoverColor();
-			showTitleSuffix = false;
-		}
 		g2.setFont(getTitleFont());
 		FontMetrics nfm = g2.getFontMetrics();
 		int lineY = inset + nfm.getAscent();
@@ -721,8 +713,15 @@ public abstract class TitleTooltip extends NativeTooltip
 		return sepY + 1 + SEPARATOR_GAP;
 	}
 
-	private void paintHeaderHoverLine(Graphics2D g2, FontMetrics fm, int w, int baseline)
+	/** Room above and below the label, shared by sprite-section readouts. */
+	static int hoverRowHeight(FontMetrics fm)
 	{
+		return fm.getHeight() + 4;
+	}
+
+	protected final void paintHeaderHoverLine(Graphics2D g2, FontMetrics fm, int w, int baseline)
+	{
+		baseline += 2;
 		String itemName = getHeaderHoverLineText();
 		String duplicateCount = getHeaderHoverLineRightText();
 		int inset = getInset();
@@ -739,21 +738,6 @@ public abstract class TitleTooltip extends NativeTooltip
 			g2.setColor(getHeaderHoverLineRightColor());
 			g2.drawString(duplicateCount, w - inset - duplicateWidth, baseline);
 		}
-	}
-
-	/**
-	 * Text that replaces the title while a body item is hovered. Narrow
-	 * summary tooltips reveal hovered item names here; wide grid popups
-	 * keep using the header-right zone instead.
-	 */
-	protected String getTitleHoverText()
-	{
-		return null;
-	}
-
-	protected Color getTitleHoverColor()
-	{
-		return CLOG_GREEN;
 	}
 
 	private void installTitleLinkHandlers()

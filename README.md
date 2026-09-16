@@ -11,7 +11,7 @@ Kill Clog brings HiScores and Collection Log progress together in one RuneLite p
   </tr>
 </table>
 
-## First-time setup
+## Collection Log setup and updates
 
 Install **Kill Clog** from the RuneLite Plugin Hub and open its side panel while logged in. Your account loads automatically.
 
@@ -26,7 +26,7 @@ If setup does not start or you need to retry, choose **Search** at the top:
 | :---: | :---: |
 | ![Left-click Search in the Collection Log](screenshots/setup-clog-search.png) | ![Right-click RuneProfile and choose Search](screenshots/setup-clog-search-runeprofile.png) |
 
-Your Collection Log is saved locally in `~/.runelite/kill-clog/`. New Collection Log chat messages keep it current after the first scan.
+Your Collection Log is saved locally in `~/.runelite/kill-clog/`. New unlocks keep it current. Opening the log refreshes every page and corrects saved quantities; Search remains available to retry. Interrupted captures preserve your saved log. The in-game refresh chalice is no longer needed. Optional web sync and character publishing remain in the panel.
 
 ## Look up other players
 

@@ -67,6 +67,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 	public void setData(int combatLevel, int totalKills, int bossesWithKc, int totalBosses,
 						String mostKilled, int mostKilledKc)
 	{
+		itemHover.clear();
 		setTitle("PvM Summary");
 		this.combatLevel = combatLevel;
 		this.totalKills = totalKills;
@@ -196,11 +197,11 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 		// Slayer section.
 		int slayerHeight = SUBHEADER_HEIGHT + LINE_HEIGHT * slayerRowCount()
-			+ WEAPON_PAD + WEAPON_SIZE;
+			+ WEAPON_PAD + WEAPON_SIZE + hoverRowHeight(fm);
 
 		// Raids section.
 		int raidsHeight = SUBHEADER_HEIGHT + LINE_HEIGHT * 3
-			+ WEAPON_PAD + WEAPON_SIZE;
+			+ WEAPON_PAD + WEAPON_SIZE + hoverRowHeight(fm);
 
 		// Width: measure the real rendered strings, never a placeholder.
 		int textWidth = 0;
@@ -235,6 +236,14 @@ public class PvmSummaryTooltip extends TitleTooltip
 			textWidth = Math.max(textWidth, caWidth);
 		}
 
+		for (String name : PanelData.MEGARARE_ITEM_NAMES)
+		{
+			textWidth = Math.max(textWidth, fm.stringWidth(name));
+		}
+		for (String name : PanelData.SUPERIOR_ITEM_NAMES)
+		{
+			textWidth = Math.max(textWidth, fm.stringWidth(name));
+		}
 		int contentWidth = Math.max(textWidth, Math.max(spriteRowWidth, superiorRowWidth));
 		int separatorHeight = separatorHeight(SEPARATOR_PAD);
 		int caHeight = caResult != null ? CA_ROW_HEIGHT : 0;
@@ -337,6 +346,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 		addRowHitBoxes(hitBoxes, 0, inset, y, w - 2 * inset,
 			PanelData.SUPERIOR_ITEMS, PanelData.SUPERIOR_ITEM_NAMES, superiorCounts);
 		y += WEAPON_SIZE;
+		paintItemLabel(g2, fm, w, y, 0);
+		y += hoverRowHeight(fm);
 
 		// Separator: Slayer to raids.
 		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
@@ -366,6 +377,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 			weaponSprites, weaponCounts, WEAPON_SIZE, WEAPON_PAD);
 		addRowHitBoxes(hitBoxes, 1, inset, y, w - 2 * inset,
 			PanelData.MEGARARE_ITEM_IDS, PanelData.MEGARARE_ITEM_NAMES, weaponCounts);
+		paintItemLabel(g2, fm, w, y + WEAPON_SIZE, 1);
 
 		itemHover.setHitBoxes(hitBoxes);
 	}
@@ -374,6 +386,14 @@ public class PvmSummaryTooltip extends TitleTooltip
 	 * Hover hit boxes matching paintQuantitySpriteRow's centered geometry,
 	 * so the summary sprites hover-name and wiki-link like the grids do.
 	 */
+	private void paintItemLabel(Graphics2D g2, FontMetrics fm, int width, int y, int section)
+	{
+		if (itemHover.isSectionHovered(section))
+		{
+			paintHeaderHoverLine(g2, fm, width, y + fm.getAscent());
+		}
+	}
+
 	private void addRowHitBoxes(List<TooltipItemHover.HitBox> hitBoxes, int section,
 		int x, int y, int colWidth, int[] itemIds, String[] itemNames, int[] counts)
 	{
@@ -389,13 +409,13 @@ public class PvmSummaryTooltip extends TitleTooltip
 	}
 
 	@Override
-	protected String getTitleHoverText()
+	protected String getHeaderHoverLineText()
 	{
 		return itemHover.hoveredItemName();
 	}
 
 	@Override
-	protected Color getTitleHoverColor()
+	protected Color getHeaderHoverLineColor()
 	{
 		return itemHover.hoveredItemObtained() ? CLOG_GREEN : CLOG_RED;
 	}

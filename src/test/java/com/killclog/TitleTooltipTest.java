@@ -109,7 +109,7 @@ public class TitleTooltipTest
 	}
 
 	@Test
-	public void clogSummaryProviderHoverReplacesTitleWithoutResizing()
+	public void clogSummaryProviderHoverKeepsTitleWithoutResizing()
 	{
 		ClogSummaryTooltip tooltip = new ClogSummaryTooltip();
 		tooltip.setTitle("Clog Summary");
@@ -122,13 +122,14 @@ public class TitleTooltipTest
 		tooltip.paint(graphics);
 		graphics.dispose();
 
-		int iconY = idle.height - NativeTooltip.getInset() - 13;
+		int iconY = idle.height - NativeTooltip.getInset() - 13
+			- TitleTooltip.hoverRowHeight(tooltip.getFontMetrics(net.runelite.client.ui.FontManager.getRunescapeSmallFont()));
 		int startX = ClogSummaryTooltip.sourceRowStartX(idle.width, 3);
 		List<String> names = Arrays.asList("killclog.com", "TempleOSRS", "RuneProfile");
 		for (int i = 0; i < names.size(); i++)
 		{
 			moveMouse(tooltip, startX + i * 18 + 6, iconY + 6);
-			assertEquals(names.get(i), tooltip.getTitleHoverText());
+			assertEquals(names.get(i), tooltip.getHeaderHoverLineText());
 			assertEquals(idle, tooltip.getPreferredSize());
 		}
 	}
@@ -165,13 +166,15 @@ public class TitleTooltipTest
 		graphics.dispose();
 
 		moveMouse(blue, ClogSummaryTooltip.sourceRowStartX(blue.getWidth(), 1) + 6,
-			blue.getHeight() - NativeTooltip.getInset() - 7);
-		assertEquals("TempleOSRS", blue.getTitleHoverText());
-		assertNull(red.getTitleHoverText());
+			blue.getHeight() - NativeTooltip.getInset() - 7
+			- TitleTooltip.hoverRowHeight(blue.getFontMetrics(net.runelite.client.ui.FontManager.getRunescapeSmallFont())));
+		assertEquals("TempleOSRS", blue.getHeaderHoverLineText());
+		assertNull(red.getHeaderHoverLineText());
 
 		moveMouse(red, ClogSummaryTooltip.sourceRowStartX(red.getWidth(), 1) + 6,
-			red.getHeight() - NativeTooltip.getInset() - 7);
-		assertEquals("RuneProfile", red.getTitleHoverText());
+			red.getHeight() - NativeTooltip.getInset() - 7
+			- TitleTooltip.hoverRowHeight(red.getFontMetrics(net.runelite.client.ui.FontManager.getRunescapeSmallFont())));
+		assertEquals("RuneProfile", red.getHeaderHoverLineText());
 	}
 
 	@Test
