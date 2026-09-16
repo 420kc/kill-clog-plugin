@@ -7,9 +7,79 @@ import java.util.concurrent.atomic.AtomicInteger;
 import javax.swing.SwingUtilities;
 import org.junit.Test;
 import static org.junit.Assert.*;
+import static com.killclog.LookupTestFixture.*;
 
 public class LookupSessionTest
 {
+	@Test
+	public void localRefreshPreservesStatsCaAndComparisonWithoutStartingLookups() throws Exception
+	{
+		LookupTestFixture fixture = new LookupTestFixture();
+		HiscoreResult stats = fixture.primary.getHiscoreResult();
+		CombatAchievementResult ca = fixture.primary.getCaResult();
+		ClogResult updated = clog("Blue").withLocalSource(true);
+		fixture.cachedClogs.put("Blue", updated);
+		edt(() -> fixture.comparison.doCompareLookup("Red", "Blue"));
+		fixture.hiscores.get("Red").complete(hiscore(2));
+		edt(() -> assertNotNull(fixture.clogs.get("Red")));
+		fixture.clogs.get("Red").complete(clog("Red"));
+		fixture.cas.get("Red").complete(ca(2));
+		edt(() ->
+		{
+			assertTrue(fixture.comparison.isComparisonMode());
+			fixture.primary.refreshLocalClog("Blue", "Blue");
+			assertSame(updated, fixture.primary.getClogResult());
+			assertSame(stats, fixture.primary.getHiscoreResult());
+			assertSame(ca, fixture.primary.getCaResult());
+			assertTrue(fixture.comparison.isComparisonMode());
+			assertEquals("Red", fixture.comparison.getCompareClogResult().getPlayerName());
+		});
+		assertEquals(0, fixture.events("onLookupStart"));
+		assertEquals(1, fixture.events("onClogResult"));
+		assertFalse(fixture.clogs.containsKey("Blue"));
+		assertFalse(fixture.hiscores.containsKey("Blue"));
+	}
+
+	@Test
+	public void localRefreshDoesNotReplaceAnotherPlayerOrAnUnsettledCache() throws Exception
+	{
+		LookupTestFixture fixture = new LookupTestFixture();
+		ClogResult original = fixture.primary.getClogResult();
+		fixture.cachedClogs.put("Red", clog("Red").withLocalSource(true));
+		fixture.cachedClogs.put("Blue", clog("Blue"));
+		edt(() ->
+		{
+			fixture.primary.refreshLocalClog("Red", "Red");
+			fixture.primary.refreshLocalClog("Blue", "Red");
+			fixture.primary.refreshLocalClog("Blue", "Blue");
+			assertSame(original, fixture.primary.getClogResult());
+			assertEquals("Blue", fixture.primary.getCurrentLookupRsn());
+		});
+		assertEquals(0, fixture.events("onClogResult"));
+	}
+
+	@Test
+	public void localCaptureBeatsLateClogWithoutCancellingStatsOrCa() throws Exception
+	{
+		LookupTestFixture fixture = new LookupTestFixture();
+		edt(() -> fixture.primary.start("Blue", "Blue", AccountType.REGULAR));
+		ClogResult updated = clog("Blue").withLocalSource(true);
+		fixture.cachedClogs.put("Blue", updated);
+		edt(() -> fixture.primary.refreshLocalClog("Blue", "Blue"));
+		fixture.clogs.get("Blue").complete(clog("Blue"));
+		fixture.hiscores.get("Blue").complete(hiscore(7));
+		fixture.cas.get("Blue").complete(ca(3));
+		edt(() ->
+		{
+			assertSame(updated, fixture.primary.getClogResult());
+			assertEquals(7, fixture.primary.getHiscoreResult().getTotalLevel());
+			assertNotNull(fixture.primary.getCaResult());
+		});
+		assertEquals(1, fixture.events("onLookupStart"));
+		assertEquals(1, fixture.events("onHiscoreResult"));
+		assertEquals(1, fixture.events("onCaResult"));
+	}
+
 	@Test
 	public void notFoundClearsEarlierClogAndRestoresDormantState() throws Exception
 	{

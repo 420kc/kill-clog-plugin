@@ -1624,8 +1624,9 @@ public class KillClogPanel extends PluginPanel
 			cells.renderClog(result, config);
 			updateClogCell(result);
 		}
-		toggleHighlighter(config.completionistHighlighter());
 		cells.rebuildPrimaryTooltips(localRsn);
+		toggleHighlighter(config.completionistHighlighter());
+		if (comparison.isComparisonMode()) updateClogTotalsBar();
 	}
 
 	private void resetRareCell(JLabel label, String name)
@@ -1762,10 +1763,15 @@ public class KillClogPanel extends PluginPanel
 
 	public void onBulkCaptureComplete(String name)
 	{
-		searchBar.setText(name);
-		// Current lookup will finish soon - version it out and start fresh
-		lookupSession.cancelInFlight();
-		doLookup();
+		if (localRsn == null || !localRsn.equalsIgnoreCase(name)) return;
+		if (lookupSession.getCurrentLookupRsn() == null)
+		{
+			// First setup can populate an empty panel through the normal lookup.
+			searchBar.setText(name);
+			doLookup();
+			return;
+		}
+		lookupSession.refreshLocalClog(name, localRsn);
 	}
 
 	public void setNameAutocompleter(NameAutocompleter autocompleter)
@@ -2027,7 +2033,7 @@ public class KillClogPanel extends PluginPanel
 		{
 			int[] totals = ClogHelper.sumClogTotals(clog);
 			tip.setTierData(totals[0], totals[1], iconCache.clogTierImages());
-			tip.setClogSources(clog.isFromTemple(), clog.isFromRuneProfile(), clog.isFromKillclog());
+			tip.setClogSources(clog);
 			if (hiscore != null && hiscore.isRankDataAvailable())
 			{
 				int clogRank = hiscore.getActivityRank("Collections Logged");

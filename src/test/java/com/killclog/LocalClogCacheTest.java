@@ -206,32 +206,35 @@ public class LocalClogCacheTest
 	}
 
 	@Test
-	public void testMergeObtainedItemBumpsUniqueTotalOnceForNewUniques() throws Exception
+	public void liveUnlockTotalsFollowGameCountersInEitherEventOrder() throws Exception
 	{
-		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
-		Map<String, List<Integer>> categories = new HashMap<>();
-		categories.put("magus", itemList(1, 2, 3));
-		categories.put("all_pets", itemList(2, 4));
-
-		ClogResult synced = clog("Fast 07", categories, obtainedItems("magus", 1));
-		synced.setUniqueObtained(5);
-		cache.cacheResult(synced);
-
-		// A brand-new unique bumps the sidebar total immediately.
-		cache.mergeObtainedItem("Fast 07", 4, itemListAsStrings("all_pets"), categories);
-		assertEquals(6, cache.toClogResult("Fast 07", Collections.emptyMap()).getUniqueObtained());
-
-		// Merging the same unlock again changes nothing.
-		cache.mergeObtainedItem("Fast 07", 4, itemListAsStrings("all_pets"), categories);
-		assertEquals(6, cache.toClogResult("Fast 07", Collections.emptyMap()).getUniqueObtained());
-
-		// A new unique on one page counts once...
-		cache.mergeObtainedItem("Fast 07", 2, itemListAsStrings("magus"), categories);
-		assertEquals(7, cache.toClogResult("Fast 07", Collections.emptyMap()).getUniqueObtained());
-
-		// ...and landing on its second page later is not another unique.
-		cache.mergeObtainedItem("Fast 07", 2, itemListAsStrings("all_pets"), categories);
-		assertEquals(7, cache.toClogResult("Fast 07", Collections.emptyMap()).getUniqueObtained());
+		for (int initial : List.of(0, 5))
+		{
+			for (boolean counterFirst : List.of(false, true))
+			{
+				File dir = temporaryFolder.newFolder();
+				LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+				Map<String, List<Integer>> categories = Map.of("hats", itemList(1, 2), "other", itemList(1));
+				ClogResult baseline = clog("Tester", categories, obtainedItems("hats"));
+				baseline.setUniqueObtained(initial);
+				cache.cacheFirstPartyResult(baseline);
+				if (counterFirst) cache.updateTotalsUpward("Tester", initial + 1, 100);
+				cache.mergeObtainedItem("Tester", 1, List.of("hats", "other"), categories, 42, "Boss");
+				if (!counterFirst) cache.updateTotalsUpward("Tester", initial + 1, 100);
+				// A duplicate notification and a lagging counter cannot add another slot.
+				cache.mergeObtainedItem("Tester", 1, List.of("hats", "other"), categories);
+				cache.updateTotalsUpward("Tester", initial, 100);
+				ClogResult payload = cache.toFirstPartySyncResult("Tester");
+				assertEquals(initial + 1, payload.getUniqueObtained());
+				assertNotNull(payload.getObtainedItems().get("hats").get(0).getDate());
+				assertEquals(42, payload.getObtainedItems().get("hats").get(0).getObtainedAtKc());
+				cache.mergeObtainedItem("Tester", 2, List.of("hats"), categories);
+				cache.updateTotalsUpward("Tester", initial + 2, 100);
+				LocalClogCache restarted = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+				assertTrue(restarted.hasDataFor("Tester"));
+				assertEquals(initial + 2, restarted.toFirstPartySyncResult("Tester").getUniqueObtained());
+			}
+		}
 	}
 
 	@Test
@@ -1949,6 +1952,8 @@ public class LocalClogCacheTest
 			CompletableFuture<Boolean> settled = returning.followNameChangeAsync(
 				"Stable Name", 77L, returning.currentSessionEpoch());
 			writer.runQueued();
+			assertFalse("disk verdict remains queued", settled.isDone());
+			writer.runQueued();
 			assertTrue(settled.get(1, TimeUnit.SECONDS));
 			assertTrue(returning.setActivePlayer("Stable Name"));
 			assertTrue("the proven owner recovers its own file",
@@ -1977,6 +1982,8 @@ public class LocalClogCacheTest
 			LocalClogCache returning = new LocalClogCache(new Gson(), writer, dir);
 			CompletableFuture<Boolean> settled = returning.followNameChangeAsync(
 				"Stable Name", 77L, returning.currentSessionEpoch());
+			writer.runQueued();
+			assertFalse("disk verdict remains queued", settled.isDone());
 			writer.runQueued();
 			assertTrue(settled.get(1, TimeUnit.SECONDS));
 
@@ -2301,4 +2308,271 @@ public class LocalClogCacheTest
 		assertFalse("an empty first walk must not read as a sendable payload",
 			cache.hasFirstPartyDataFor("Fresh Acct"));
 	}
+	@Test
+	public void missingLedgerNeverAdoptsForeignOwnedCache() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		writeOwnedRecord(dir, "Tester", "77");
+		File record = new File(dir, "tester.json");
+		String before = Files.readString(record.toPath());
+		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+		assertFalse(cache.followNameChangeForSync("Tester", 42L));
+		assertFalse(cache.setActivePlayer("Tester"));
+		assertNull(cache.toFirstPartySyncResult("Tester"));
+		assertEquals(before, Files.readString(record.toPath()));
+		assertFalse(new File(dir, ".kill-clog-identity.json").exists());
+	}
+
+	@Test
+	public void failedLedgerReadNeverRewritesLedgerOrResident() throws Exception
+	{
+		for (String contents : List.of("{broken", "null", "{\"version\":2,\"names\":false}"))
+		{
+			File dir = temporaryFolder.newFolder();
+			writeOwnedRecord(dir, "Tester", "77");
+			File ledgerFile = new File(dir, ".kill-clog-identity.json");
+			Files.writeString(ledgerFile.toPath(), contents);
+			LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+			assertFalse(cache.followNameChangeForSync("Tester", 77L));
+			assertNull(cache.toFirstPartySyncResult("Tester"));
+			assertEquals(contents, Files.readString(ledgerFile.toPath()));
+		}
+		File dir = temporaryFolder.newFolder();
+		Files.createDirectory(new File(dir, ".kill-clog-identity.json").toPath());
+		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+		assertFalse(cache.followNameChangeForSync("Tester", 77L));
+		assertTrue(new File(dir, ".kill-clog-identity.json").isDirectory());
+	}
+
+	@Test
+	public void missingLedgerRecoversSameOwner() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		writeOwnedRecord(dir, "Tester", "77");
+		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+		assertTrue(cache.followNameChangeForSync("Tester", 77L));
+		assertTrue(cache.setActivePlayer("Tester"));
+		assertNotNull(cache.toFirstPartySyncResult("Tester"));
+	}
+
+	@Test
+	public void renameRejectsUnclaimedForeignDestination() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		writeOwnedRecord(dir, "Old", "42");
+		writeOwnedRecord(dir, "Tester", "77");
+		File ledgerFile = new File(dir, ".kill-clog-identity.json");
+		String ledger = "{\"version\":2,\"names\":{\"42\":\"old\"},\"stamps\":{\"42\":1}}";
+		Files.writeString(ledgerFile.toPath(), ledger);
+		String before = Files.readString(new File(dir, "tester.json").toPath());
+		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+		assertFalse(cache.followNameChangeForSync("Tester", 42L));
+		assertNull(cache.toFirstPartySyncResult("Tester"));
+		assertEquals(before, Files.readString(new File(dir, "tester.json").toPath()));
+		assertTrue(new File(dir, "old.json").exists());
+		assertEquals(ledger, Files.readString(ledgerFile.toPath()));
+	}
+
+	@Test
+	public void queuedWriteCannotReplaceForeignFileAfterLedgerLoss() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		CapturingScheduledDebounceService writer = new CapturingScheduledDebounceService();
+		LocalClogCache cache = new LocalClogCache(new Gson(), writer, dir);
+		cache.followNameChange("Tester", 42L);
+		cache.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 1), obtainedItems("hats", 1)));
+		Files.delete(new File(dir, ".kill-clog-identity.json").toPath());
+		writeOwnedRecord(dir, "Tester", "77");
+		String before = Files.readString(new File(dir, "tester.json").toPath());
+		writer.runQueued();
+		assertEquals(before, Files.readString(new File(dir, "tester.json").toPath()));
+	}
+
+	private static void writeOwnedRecord(File dir, String name, String owner) throws Exception
+	{
+		PlayerClogData data = new PlayerClogData();
+		data.playerName = name;
+		data.ownerHash = owner;
+		data.categories = categoryItems("hats", 1);
+		data.obtained = obtainedItems("hats", 1);
+		data.firstPartyByCategory = Map.of("hats", List.of(1));
+		data.firstPartySetupComplete = true;
+		Files.writeString(new File(dir, name.toLowerCase() + ".json").toPath(), new Gson().toJson(data));
+	}
+
+	@Test
+	public void steadyClaimCannotOverrideExplicitResidentOwner() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		writeOwnedRecord(dir, "Tester", "77");
+		Files.writeString(new File(dir, ".kill-clog-identity.json").toPath(),
+			"{\"version\":2,\"names\":{\"42\":\"tester\"},\"stamps\":{\"42\":1}}");
+		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+		assertFalse(cache.followNameChangeForSync("Tester", 42L));
+		assertNull(cache.toFirstPartySyncResult("Tester"));
+	}
+
+	@Test
+	public void renameCannotTakeForeignSourceDespiteOwnLedgerClaim() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		writeOwnedRecord(dir, "Old", "77");
+		Files.writeString(new File(dir, ".kill-clog-identity.json").toPath(),
+			"{\"version\":2,\"names\":{\"42\":\"old\"},\"stamps\":{\"42\":1}}");
+		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+		assertFalse(cache.followNameChangeForSync("Tester", 42L));
+		assertNull(cache.toFirstPartySyncResult("Tester"));
+		assertTrue(new File(dir, "old.json").exists());
+		assertFalse(new File(dir, "tester.json").exists());
+	}
+
+	@Test
+	public void adoptionRechecksResidentAndLedgerAtDiskDispatch() throws Exception
+	{
+		for (boolean corruptLedger : List.of(false, true))
+		{
+			File dir = temporaryFolder.newFolder();
+			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
+			LocalClogCache cache = new LocalClogCache(new Gson(), writer, dir);
+			CompletableFuture<Boolean> verdict = cache.followNameChangeAsync("Tester", 42L);
+			writer.runQueued();
+			if (corruptLedger)
+			{
+				Files.writeString(new File(dir, ".kill-clog-identity.json").toPath(), "{broken");
+			}
+			else
+			{
+				writeOwnedRecord(dir, "Tester", "77");
+			}
+			writer.runQueued();
+			assertFalse(verdict.get(1, TimeUnit.SECONDS));
+			assertNull(cache.toFirstPartySyncResult("Tester"));
+		}
+	}
+
+	@Test
+	public void damagedOwnRecordIsPreservedAndSetupCanRetry() throws Exception
+	{
+		for (String damaged : List.of("", "{broken"))
+		{
+			File dir = temporaryFolder.newFolder();
+			Files.writeString(new File(dir, "tester.json").toPath(), damaged);
+			Files.writeString(new File(dir, ".kill-clog-identity.json").toPath(),
+				"{\"version\":2,\"names\":{\"77\":\"tester\"},\"stamps\":{\"77\":1}}");
+			LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+			assertTrue(cache.followNameChangeForSync("Tester", 77L));
+			assertTrue(cache.setActivePlayer("Tester"));
+			assertFalse(cache.hasDataFor("Tester"));
+			File[] preserved = dir.listFiles((folder, name) -> name.startsWith(".unreadable-"));
+			assertNotNull(preserved);
+			assertEquals(1, preserved.length);
+			assertEquals(damaged, Files.readString(preserved[0].toPath()));
+			cache.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 1), obtainedItems("hats", 1)));
+			LocalClogCache restarted = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+			assertTrue(restarted.followNameChangeForSync("Tester", 77L));
+			assertTrue(restarted.setActivePlayer("Tester"));
+			assertNotNull(restarted.toFirstPartySyncResult("Tester"));
+		}
+	}
+
+	@Test
+	public void providerOnlyRecordCanRefreshWithoutItsPreviousWriter() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		writeOwnedRecord(dir, "Tester", "77");
+		File file = new File(dir, "tester.json");
+		PlayerClogData provider = new Gson().fromJson(Files.readString(file.toPath()), PlayerClogData.class);
+		provider.firstPartyByCategory = new HashMap<>();
+		provider.firstPartySetupComplete = false;
+		Files.writeString(file.toPath(), new Gson().toJson(provider));
+		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+		cache.cacheResult(clog("Tester", categoryItems("hats", 1, 2), obtainedItems("hats", 1, 2)));
+		PlayerClogData refreshed = new Gson().fromJson(Files.readString(file.toPath()), PlayerClogData.class);
+		assertEquals(2, refreshed.obtained.get("hats").size());
+	}
+
+	@Test
+	public void unclaimedDamagedRecordIsPreservedBeforeFirstSetup() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		Files.writeString(new File(dir, "tester.json").toPath(), "{broken");
+		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+		assertTrue(cache.followNameChangeForSync("Tester", 77L));
+		assertTrue(cache.setActivePlayer("Tester"));
+		assertFalse(cache.hasDataFor("Tester"));
+		File[] preserved = dir.listFiles((folder, name) -> name.startsWith(".unreadable-"));
+		assertNotNull(preserved);
+		assertEquals(1, preserved.length);
+		assertEquals("{broken", Files.readString(preserved[0].toPath()));
+		cache.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 1), obtainedItems("hats", 1)));
+		assertNotNull(cache.toFirstPartySyncResult("Tester"));
+	}
+
+	@Test
+	public void repairedLedgerRestoresRenameWithoutRestart() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		writeOwnedRecord(dir, "Old", "77");
+		File ledgerFile = new File(dir, ".kill-clog-identity.json");
+		Files.writeString(ledgerFile.toPath(), "{broken");
+		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+		assertFalse(cache.followNameChangeForSync("Tester", 77L));
+		Files.writeString(ledgerFile.toPath(),
+			"{\"version\":2,\"names\":{\"77\":\"old\"},\"stamps\":{\"77\":1}}");
+		assertTrue(cache.followNameChangeForSync("Tester", 77L));
+		assertFalse(new File(dir, "old.json").exists());
+		assertNotNull(cache.toFirstPartySyncResult("Tester"));
+	}
+
+	@Test
+	public void steadySyncQueuesBehindRealDiskWriterLock() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		writeOwnedRecord(dir, "Tester", "77");
+		Files.writeString(new File(dir, ".kill-clog-identity.json").toPath(),
+			"{\"version\":2,\"names\":{\"77\":\"tester\"},\"stamps\":{\"77\":1}}");
+		CountDownLatch locked = new CountDownLatch(1);
+		CountDownLatch release = new CountDownLatch(1);
+		CountDownLatch queued = new CountDownLatch(1);
+		ScheduledThreadPoolExecutor writer = new ScheduledThreadPoolExecutor(1)
+		{
+			@Override public void execute(Runnable task)
+			{
+				super.execute(task);
+				if (Thread.currentThread().getName().equals("sync-test")) queued.countDown();
+			}
+		};
+		ExecutorService caller = Executors.newSingleThreadExecutor(r -> new Thread(r, "sync-test"));
+		try
+		{
+			LocalClogCache cache = new LocalClogCache(new Gson(), writer, dir);
+			writer.execute(() -> new IdentityLedger(new Gson(), dir).withLock(() ->
+			{
+				locked.countDown();
+				try
+				{
+					return release.await(30, TimeUnit.SECONDS);
+				}
+				catch (InterruptedException e)
+				{
+					Thread.currentThread().interrupt();
+					return false;
+				}
+			}));
+			assertTrue(locked.await(2, TimeUnit.SECONDS));
+			Future<Boolean> synced = caller.submit(() -> cache.followNameChangeForSync("Tester", 77L));
+			assertTrue("steady check must queue on the writer", queued.await(2, TimeUnit.SECONDS));
+			assertFalse(synced.isDone());
+			release.countDown();
+			assertTrue(synced.get(2, TimeUnit.SECONDS));
+			assertTrue(cache.setActivePlayer("Tester"));
+		}
+		finally
+		{
+			release.countDown();
+			caller.shutdownNow();
+			writer.shutdownNow();
+		}
+	}
+
 }

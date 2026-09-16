@@ -123,7 +123,17 @@ public class ClogService
 			return null;
 		}
 		Map<Integer, String> names = cachedItemNames;
-		return localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>());
+		ClogResult result = localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>());
+		if (result != null && localClogCache.isActivePlayer(playerName))
+		{
+			result = result.withLocalSource(true);
+			Long successfulAt = templeOverlaySuccessTimes.get(playerName.toLowerCase());
+			if (successfulAt != null && System.currentTimeMillis() - successfulAt < CLOG_TTL_MS)
+			{
+				result = markTempleSource(result);
+			}
+		}
+		return result;
 	}
 
 	/**
@@ -149,6 +159,10 @@ public class ClogService
 					{
 						ClogResult result = localClogCache.toClogResult(playerName,
 							names != null ? names : new HashMap<>());
+						if (result != null)
+						{
+							result = result.withLocalSource(true);
+						}
 						return fromTemple ? markTempleSource(result) : result;
 					}));
 			}
@@ -484,7 +498,7 @@ public class ClogService
 				return categoriesFlight;
 			}
 
-			categoriesFlight = httpGet(TEMPLE_CATEGORIES_URL).thenApply(json ->
+			CompletableFuture<Map<String, List<Integer>>> flight = httpGet(TEMPLE_CATEGORIES_URL).thenApply(json ->
 			{
 				try
 				{
@@ -521,13 +535,16 @@ public class ClogService
 					log.debug("Failed to parse clog categories: {}", e.getMessage());
 					return null;
 				}
-				finally
+			});
+			categoriesFlight = flight;
+			flight.whenComplete((result, error) ->
+			{
+				synchronized (this)
 				{
-					categoriesFlight = null;
+					if (categoriesFlight == flight) categoriesFlight = null;
 				}
 			});
-
-			return categoriesFlight;
+			return flight;
 		}
 	}
 
@@ -549,7 +566,7 @@ public class ClogService
 				return namesFlight;
 			}
 
-			namesFlight = httpGet(WIKI_MAPPING_URL).thenApply(json ->
+			CompletableFuture<Map<Integer, String>> flight = httpGet(WIKI_MAPPING_URL).thenApply(json ->
 			{
 				try
 				{
@@ -577,13 +594,16 @@ public class ClogService
 					log.debug("Failed to parse item names: {}", e.getMessage());
 					return null;
 				}
-				finally
+			});
+			namesFlight = flight;
+			flight.whenComplete((result, error) ->
+			{
+				synchronized (this)
 				{
-					namesFlight = null;
+					if (namesFlight == flight) namesFlight = null;
 				}
 			});
-
-			return namesFlight;
+			return flight;
 		}
 	}
 

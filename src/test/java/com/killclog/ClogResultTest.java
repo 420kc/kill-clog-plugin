@@ -312,6 +312,29 @@ public class ClogResultTest
 	}
 
 	@Test
+	public void testLocalSourceSurvivesCombinesWithoutClaimingWebPublication()
+	{
+		ClogResult original = result("Local", 1, 10,
+			Collections.singletonMap("boss", Collections.singletonList(
+				new ClogResult.ClogItem(1, 1, null))), null, null);
+		ClogResult local = original.withLocalSource(true);
+		ClogResult provider = result("Provider", 2, 10,
+			Collections.singletonMap("boss", Arrays.asList(
+				new ClogResult.ClogItem(1, 1, null), new ClogResult.ClogItem(2, 1, null))),
+			null, null).withSources(true, false, false);
+		for (ClogResult combined : Arrays.asList(
+			ClogResult.pickFreshest(provider, local), ClogResult.pickFreshest(local, null),
+			ClogResult.pickFullest(provider, local), ClogResult.pickFullest(local, provider),
+			ClogResult.pickFullest(null, local), ClogResult.pickFullest(local, null)))
+		{
+			assertTrue(combined.isFromLocal());
+			assertFalse(combined.isFromKillclog());
+		}
+		assertFalse("stamping must not mutate a shared result", original.isFromLocal());
+		assertFalse(provider.isFromLocal());
+	}
+
+	@Test
 	public void testAllStampedSourcesSurviveBothCombines()
 	{
 		ClogResult temple = result("Temple", 5, 10,

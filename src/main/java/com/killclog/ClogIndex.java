@@ -99,8 +99,12 @@ final class ClogIndex
 						int rawItemId = itemsEnum.getIntValue(itemKey);
 						int itemId = canonicalItemId(rawItemId, remaps);
 						itemIds.add(itemId);
-						nextItemCategoryKeys.computeIfAbsent(itemId, k -> new ArrayList<>())
-							.add(categoryKey);
+						List<String> itemCategories = nextItemCategoryKeys.computeIfAbsent(
+							itemId, k -> new ArrayList<>());
+						if (!itemCategories.contains(categoryKey))
+						{
+							itemCategories.add(categoryKey);
+						}
 						indexItemName(nextItemNameIds, nextItemNames, itemManager, rawItemId, itemId);
 					}
 					nextCategoryItems.put(categoryKey, new ArrayList<>(itemIds));

@@ -13,6 +13,7 @@ final class LookupTestFixture
 	final Map<String, CompletableFuture<HiscoreResult>> hiscores = new HashMap<>();
 	final Map<String, CompletableFuture<ClogResult>> clogs = new HashMap<>();
 	final Map<String, CompletableFuture<CombatAchievementResult>> cas = new HashMap<>();
+	final Map<String, ClogResult> cachedClogs = new HashMap<>();
 	final Map<String, Integer> events = new HashMap<>();
 	final KillClogConfig config = new KillClogConfig()
 	{
@@ -30,7 +31,7 @@ final class LookupTestFixture
 		@Override
 		public ClogResult getCachedResult(String player)
 		{
-			return null;
+			return cachedClogs.get(player);
 		}
 
 		@Override

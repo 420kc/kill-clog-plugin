@@ -77,6 +77,7 @@ public class LookupSession
 	@Nullable private CombatAchievementResult caResult;
 	@Nullable private String currentLookupRsn;
 	@Nullable private String clogLastChanged;
+	private int localClogRevision;
 	private UnaryOperator<HiscoreResult> rankView = UnaryOperator.identity();
 
 	public LookupSession(HiscoreService hiscoreService, ClogService clogService,
@@ -202,12 +203,32 @@ public class LookupSession
 	/** Clog fan-out via the shared transport; failures log and keep the surface empty. */
 	private void startClogLookup(String player, boolean isSelf, int thisLookup)
 	{
+		final int revisionAtFire = localClogRevision;
 		fanout.fetchClog(player, isSelf, thisLookup, result ->
 		{
+			// A completed local capture supersedes a result already in flight.
+			if (isSelf && revisionAtFire != localClogRevision)
+			{
+				result = clogService.getCachedResult(player);
+				if (result == null || !result.isFromLocal()) return;
+			}
 			clogResult = result;
 			clogLastChanged = result != null ? result.getLastChanged() : null;
 			listener.onClogResult(player, result, isSelf, thisLookup);
 		}, null);
+	}
+
+	/** Update the displayed self log on the EDT without restarting any lookup lanes. */
+	void refreshLocalClog(String player, @Nullable String localRsn)
+	{
+		if (player == null || localRsn == null || !localRsn.equalsIgnoreCase(player)
+			|| currentLookupRsn == null || !currentLookupRsn.equalsIgnoreCase(player)) return;
+		ClogResult local = clogService.getCachedResult(player);
+		if (local == null || !local.isFromLocal()) return;
+		localClogRevision++;
+		clogResult = local;
+		clogLastChanged = local.getLastChanged();
+		listener.onClogResult(player, local, true, fanout.version());
 	}
 
 	/**
