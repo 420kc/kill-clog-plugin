@@ -15,7 +15,7 @@ Kill Clog brings HiScores and Collection Log progress together in one RuneLite p
 
 Install **Kill Clog** from the RuneLite Plugin Hub and open its panel while logged in. Your account loads automatically.
 
-Open your Collection Log. Setup runs automatically and confirms completion with a chat message.
+Open your Collection Log and leave it open until setup confirms completion in chat. Setup runs automatically, including on accounts with no unlocked items.
 
 Your log is saved locally. New unlocks update it as you play, and totals follow the game's count. Opening the log refreshes every page and corrects saved quantities. Later refreshes are quiet.
 
@@ -35,7 +35,7 @@ Enable **Show Leaderboard Selector** under **Lookup** to choose Normal, Ironman,
 
 ![Set Kill Clog's Menu Label to Lookup](screenshots/setup-menu-label-lookup.png)
 
-HiScores load for any valid RSN, including Collection Log totals and ranks when listed. Item-by-item Collection Log details appear when that player has data available through TempleOSRS, RuneProfile, or Kill Clog Sync.
+HiScores load for any valid RSN, including Collection Log totals and ranks when listed. Item-by-item Collection Log details appear when that player has data available through TempleOSRS, RuneProfile, or Kill Clog.
 
 ## Grid and List views
 
@@ -71,17 +71,15 @@ Skills appear in the main grid by default. They can also be moved to the activit
 
 ## Kill Clog Web Sync
 
-Killclog.com sync is optional and off by default. It is separate from the local Collection Log setup above.
+Web publication is optional and off by default. It is separate from the local Collection Log setup above.
 
-Enable **Sync Collection Log** under **Kill Clog Web Sync** to publish your Collection Log and personal bests to your killclog.com profile. The sync button in the panel publishes saved data immediately; it does not reread the in-game log.
+Enable **Sync Collection Log** under **Kill Clog Web Sync** to publish your Collection Log and personal bests to your killclog.com profile. The panel button labelled **publish collection log** on hover publishes saved data immediately. Open the in-game log to refresh the saved data first.
 
 Saved unlock dates are included in web sync. Older items without a known date stay undated.
 
-**Publish Character Model** is also off by default and requires Killclog.com sync. It adds a one-click button to publish your current character and follower models to your killclog.com/p/ profile.
+**Publish Character Model** is also off by default and requires **Sync Collection Log**. It adds a button labelled **publish character** on hover that publishes your character and follower models to your Kill Clog web profile. It uses your real appearance even when cosmetic equipment overrides are enabled.
 
-Publishes your real appearance, including when cosmetic equipment overrides are enabled.
-
-Manual syncs and character updates show progress in the panel and flash the icon green on success. Hover the character icon for details if an update is delayed or fails.
+Manual Collection Log publications and character updates show progress in the panel and flash the icon green on success. Hover the corresponding icon for details if an update fails, or the character icon if rendering is delayed.
 
 **Silent automatic sync** is on by default and hides automatic panel messages and flashes. Chat messages have their own setting under **Chat**.
 
@@ -117,7 +115,7 @@ Full page names work, and shorthand such as `gotr`, `mixology`, `pets`, and `hyd
 
 Public lookups read from Jagex HiScores, [TempleOSRS](https://templeosrs.com), [RuneProfile](https://runeprofile.com), and [killclog.com](https://killclog.com). Item names resolve through the [OSRS Wiki](https://oldschool.runescape.wiki). These requests expose your IP address to the service being contacted, which is why RuneLite shows a third-party warning on install.
 
-Killclog.com sync is opt-in. Nothing from your local Collection Log is published until you enable it. Turning sync or Publish Character Model off stops new publishes but does not delete data already published. Use the [opt-out page](https://killclog.com/p/opt-out.html) to request deletion.
+Web publication is opt-in. Nothing from your local Collection Log is published until you enable **Sync Collection Log**. Disable that setting to stop all web publication, or **Publish Character Model** to stop character updates. Already published data remains until you request deletion through the [opt-out page](https://killclog.com/p/opt-out.html).
 
 TempleOSRS EHB rates are bundled with the plugin and refreshed with releases. Computing EHB does not make another request.
 
@@ -125,10 +123,8 @@ The source is public at [github.com/420kc/kill-clog-plugin](https://github.com/4
 
 ## Development
 
-The 2.4.0 release branch is frozen. Ongoing development continues on
-`hive/status-row-characterization`, which includes the approved status-row,
-cell-reset and publication refactor. See the current branch guidance in
-[release notes](release/kill-clog-next-release.md).
+See the [release notes](release/kill-clog-next-release.md) for current release
+and development branch guidance.
 
 Kill Clog builds with Java 11 and the included Gradle wrapper.
 
@@ -150,4 +146,4 @@ The release jar is written to `build/libs/`.
 
 ## Support
 
-If a total, item mapping, or modal looks wrong, open an [issue](https://github.com/420kc/kill-clog-plugin/issues) with the RSN and a screenshot.
+If setup, a total, an item mapping, or a modal looks wrong, open an [issue](https://github.com/420kc/kill-clog-plugin/issues) with your Kill Clog version, the RSN, and a screenshot.
