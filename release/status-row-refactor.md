@@ -225,7 +225,64 @@ independent review.
 
 ## Reversible follow-up slices
 
-All four planned slices are complete; nothing remains queued.
+All four planned slices are implemented. Independent review of
+`c1ce1121..d4f48282` found the following follow-ups before approval/push.
+
+### Independent review (2026-09-15): BLOCK
+
+- **P2: preserve the physical sync slot across plugin disable/re-enable.**
+  `KillClogPlugin.startUp()` constructs a new `PublicationCoordinator` each
+  time, and each coordinator owns a new `KillclogSyncGate`. Shutdown cancels
+  the old generation but intentionally leaves an outstanding HTTP request in
+  flight. Re-enable therefore loses that occupied slot and can dispatch a
+  second sync before the first completes. Before extraction, the gate was a
+  final field on the plugin and survived this lifecycle. Preserve that lifetime
+  and queued intent without reviving cancelled feedback. Add a characterization
+  that starts a sync, shuts down and restarts the same plugin, requests another
+  sync, and asserts one request until the old completion, then exactly one
+  follow-up with no old-result feedback.
+- Reproduction in an isolated copy: the additional test
+  `pluginRestartRetainsPhysicalSyncSlotUntilOldRequestCompletes` fails on
+  `d4f48282` with `expected:<1> but was:<2>` and passes with the plugin source
+  from `deb4f1da`. Logs and XML are preserved in
+  `C:/Users/dylan/AppData/Local/Temp/killclog-review-d4f48282-dxk58kkl/`
+  as `review-head.log`, `review-head.xml`, `review-parent.log` and
+  `review-parent.xml`. The test source is in that copy; tracked tests were not
+  changed for this reproduction.
+- Non-blocking cleanup: remove orphaned publication/PB comments and excess
+  indentation left in `KillClogPlugin` around the setting-dependency helper,
+  terminal-status helper and `onVarbitChanged`.
+- Running-client visual and end-to-end sync/publish smoke remains outstanding.
+
+Independent baseline gate on `d4f48282`: compile, test and both Checkstyle
+tasks rerun; `BUILD SUCCESSFUL`, 678 tests across 75 suites, zero
+failures/errors/skips. This green suite does not cover the newly reproduced
+restart case. The reproduction also confirmed a failed Gradle test can be
+reported as process exit zero in this harness; use the current build banner
+and fresh XML results to establish the outcome. No production code was edited
+and nothing was pushed during review.
+
+### Resolution (2026-09-16)
+
+- `KillClogPlugin.startUp()` now constructs the `PublicationCoordinator` once
+  per plugin instance and reuses it on every later start, so the sync gate,
+  its queued intent and any request still in the air outlive a disable and
+  re-enable exactly as the plugin's own fields did before extraction.
+  Shutdown still cancels the current generation; the old request's completion
+  stays silent and launches the queued intent.
+- `restartKeepsTheOccupiedSlotAndQueuesTheNextRequest` joined the
+  characterization suite. It failed on the extraction commit with
+  `expected:<1> but was:<2>` and passes with the fix: one request until the
+  old completion, then exactly one follow-up, with no feedback or chat for
+  the old result.
+- The orphaned javadoc and comment blocks and the accumulated leading tabs
+  around `enforceCharacterSettingDependency`, `characterPublishTerminalStatus`
+  and `onVarbitChanged` are removed. They were an artefact of the extraction's
+  method deletion, not intent.
+
+Validation: same PowerShell gate on a cleared `build/test-results`: 679
+tests across 75 suites, zero failures/errors/skips, compile and both
+Checkstyles included. Running-client smoke remains outstanding.
 
 For each production slice: relevant tests plus full test/checkstyle gates,
 independent review, and focused before/after visual smoke. No full release smoke

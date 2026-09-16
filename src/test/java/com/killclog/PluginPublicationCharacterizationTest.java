@@ -431,6 +431,38 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void restartKeepsTheOccupiedSlotAndQueuesTheNextRequest() throws Exception
+	{
+		syncHandler.run();
+		settle();
+		assertEquals(1, syncs.size());
+		clearInvocations(panel, chatNotifier);
+
+		// RuneLite disables and re-enables the same plugin instance.
+		plugin.shutDown();
+		drainEdt();
+		plugin.startUp();
+		ArgumentCaptor<Runnable> handler = ArgumentCaptor.forClass(Runnable.class);
+		verify(panel).setKillclogSyncHandler(handler.capture());
+		syncHandler = handler.getValue();
+		clearInvocations(panel);
+
+		syncHandler.run();
+		settle();
+		assertEquals(1, syncs.size());
+
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, 200, "Old"));
+		settle();
+		assertEquals(2, syncs.size());
+		verify(panel, never()).showSyncResult(anyBoolean(), anyBoolean(), eq("Old"));
+		verify(chatNotifier, never()).send(ChatNotice.SYNC_RESULT, "Old");
+
+		syncs.get(1).complete(new SyncService.SyncResult(true, false, 200, "New"));
+		settle();
+		verify(panel).showSyncResult(true, true, "New");
+	}
+
+	@Test
 	public void shutDownDropsAScheduledPush() throws Exception
 	{
 		syncHandler.run();

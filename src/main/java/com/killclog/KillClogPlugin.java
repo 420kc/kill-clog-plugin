@@ -184,9 +184,16 @@ public class KillClogPlugin extends Plugin
 
 		lookupMenu.start(config, menuManager);
 
-		publication = new PublicationCoordinator(config, configManager, client, clientThread, executor,
-			localClogCache, syncService, profileAppearanceService, chatNotifier, panelFeedback(),
-			this::getLocalAccountType);
+		// One coordinator for the life of this plugin instance: RuneLite reuses
+		// the instance across disable and enable, and the sync gate, its queued
+		// intent and a request still in the air must survive that, or a re-enabled
+		// plugin would run a second sync beside the old one.
+		if (publication == null)
+		{
+			publication = new PublicationCoordinator(config, configManager, client, clientThread, executor,
+				localClogCache, syncService, profileAppearanceService, chatNotifier, panelFeedback(),
+				this::getLocalAccountType);
+		}
 		enforceCharacterSettingDependency();
 		panel.setKillclogSyncHandler(publication::manualSync);
 		panel.setCharacterPublishHandler(publication::publishCharacter);
@@ -542,33 +549,7 @@ public class KillClogPlugin extends Plugin
 			panel::onBulkCaptureComplete);
 	}
 
-		/**
-	 * Manual web pushes (the panel sync button, an explicit opt-in) narrate in chat;
-	 * automatic ones (capture debounce and login catch-up) default to silent
-	 * panel feedback. Chat still follows its separate setting.
-	 */
-			/**
-	 * RuneLite's own chat-commands store records the local player's personal
-	 * bests; no public provider serves them, which makes this map the sync's
-	 * defining cargo. One account splinters into many rs-profile fragments
-	 * over time, so the gather sweeps every fragment owned by the captured
-	 * account hash and keeps the fastest time per boss. STANDARD-world fragments
-	 * only: Leagues and speedrun profiles share the display name but store
-	 * buffed-world times, and the min-merge would launder those into the
-	 * player's real record. Client thread (config reads).
-	 */
-		/**
-	 * Variant-keyed personal bests for the ladder payload: team sizes stay
-	 * SPLIT (solo and 5-man runs are different sports on a leaderboard),
-	 * keyed by vanilla's own stored key shape. The collapsed map above stays
-	 * as-is for tooltip display. Same STANDARD-only fragment sweep, merged
-	 * min-wins with the adventure-log harvest; each entry keeps the lane it
-	 * was observed through.
-	 */
-		/** Faster wins; on a tie the earlier lane keeps the tag. */
-			// If a push arrived while the slot was occupied, launch it now that the
-	// slot is free (the opt-out/opt-in-mid-request case).
-			/**
+	/**
 	 * RuneLite's public config API has no dynamic disabled-state attribute.
 	 * Enforce the dependency at the data boundary instead: the child opt-in
 	 * cannot survive while first-party sync is disabled.
@@ -581,7 +562,7 @@ public class KillClogPlugin extends Plugin
 		}
 	}
 
-							static String characterPublishTerminalStatus(ProfileAppearanceService.Outcome outcome)
+	static String characterPublishTerminalStatus(ProfileAppearanceService.Outcome outcome)
 	{
 		switch (outcome)
 		{
@@ -597,12 +578,7 @@ public class KillClogPlugin extends Plugin
 		}
 	}
 
-					/**
-	 * The panel's sync arrow: push now, skipping any pending debounce. The
-	 * single-flight gate remembers a click during an in-flight request, so
-	 * icon-only feedback never makes that deliberate action disappear.
-	 */
-					// Keep local CA current when a task completes mid-session, and the live
+	// Keep local CA current when a task completes mid-session, and the live
 	// catalog current when the game moves a tier threshold (a CA release).
 	@Subscribe
 	public void onVarbitChanged(VarbitChanged event)
