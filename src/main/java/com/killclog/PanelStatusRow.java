@@ -467,17 +467,14 @@ final class PanelStatusRow
 		syncFeedback.complete(manual, ok, message);
 	}
 
-	/** Drop account-scoped sync feedback without disturbing lookup or character status. */
+	/**
+	 * Drop account-scoped sync feedback without disturbing lookup or character
+	 * status: only a sync-owned message, and with it its expiry, is cleared.
+	 */
 	void resetSyncFeedback()
 	{
 		SwingUtilities.invokeLater(() ->
 		{
-			// Stops whichever expiry is running, character included; see the
-			// status row maintenance notes before changing this policy.
-			if (current != null)
-			{
-				current.cancelExpiry();
-			}
 			syncFeedback.reset();
 			tooltipController.setTooltipText(syncArrow, null);
 			syncChaliceHovered = false;

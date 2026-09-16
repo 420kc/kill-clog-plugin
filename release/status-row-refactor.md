@@ -126,6 +126,26 @@ checkstyleTest --rerun-tasks` in PowerShell, exit 0, on a cleared
 failures/errors/skips. Not done here: running-client visual smoke, and an
 independent review.
 
+## Completed: sync reset keeps character expiry
+
+`resetSyncFeedback` runs on logout and account change. It used to stop the
+shared expiry timer regardless of owner, so a character result shown moments
+earlier, such as `Publish failed`, lost its expiry and stayed on the row until
+something else wrote over it. Reproduced first with
+`syncResetLeavesCharacterExpiryRunning` against the previous commit:
+
+    PanelStatusRowCharacterizationTest > syncResetLeavesCharacterExpiryRunning FAILED
+    Caused by: java.lang.AssertionError: character result keeps its expiry through a sync reset
+    14 tests completed, 1 failed
+
+The reset now clears only a sync-owned message, and with it its expiry;
+lookup and character messages and their expiries are untouched. This is an
+intentional behaviour fix, not an extraction artefact.
+
+Validation: same PowerShell gate, exit 0, on a cleared `build/test-results`:
+662 tests across 73 suites, zero failures/errors/skips. Not done here:
+running-client visual smoke, and an independent review.
+
 ## Reversible follow-up slices
 
 1. **Move cell reset behavior into Cells.** Keep search/header reset in the

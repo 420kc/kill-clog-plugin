@@ -404,6 +404,25 @@ public class PanelStatusRowCharacterizationTest
 		});
 	}
 
+	@Test
+	public void syncResetLeavesCharacterExpiryRunning() throws Exception
+	{
+		enableControls();
+		edt(() -> panel.showCharacterPublishStatus(KillClogPlugin.CHARACTER_FAILED_STATUS, false, true, "Render failed"));
+		panel.resetSyncFeedback();
+		drain();
+		edt(() ->
+		{
+			assertEquals(KillClogPlugin.CHARACTER_FAILED_STATUS, status.getText());
+			Timer expiry = expiry();
+			assertNotNull("character result keeps its expiry through a sync reset", expiry);
+			assertTrue(expiry.isRunning());
+			fire(expiry);
+			assertEquals(" ", status.getText());
+			assertControls(true, true);
+		});
+	}
+
 	private Timer expiry()
 	{
 		StatusMessage current = field("current", StatusMessage.class);
