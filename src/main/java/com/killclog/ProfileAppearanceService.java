@@ -62,7 +62,7 @@ final class ProfileAppearanceService
 			this(outcome, null);
 		}
 
-		private PublishResult(Outcome outcome, @Nullable String message)
+		PublishResult(Outcome outcome, @Nullable String message)
 		{
 			this.outcome = outcome;
 			this.message = message;
