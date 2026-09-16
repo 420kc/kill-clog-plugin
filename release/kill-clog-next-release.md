@@ -62,11 +62,20 @@ Proceed if 2.3.3 observation remains clear of unresolved blockers and the frozen
 submission target, not a guaranteed Plugin Hub merge/live date or an automatic
 submission authorization.
 
-September 15 handoff: September 25 remains the target; Dylan may explicitly
-bring submission forward. Fable owns the next bounded status-row extraction in
-`C:/Users/dylan/plugins/kcpdev-status-row` on `hive/status-row-characterization`.
-Keep that work separate from the frozen 2.4 candidate; no refactor-only patch
-release is planned. Review it as a possible later development baseline.
+September 16 handoff: September 25 remains the submission target; Dylan may
+explicitly bring it forward. The completed refactor at `1d4e18a5` has independent
+code approval and Dylan's smoke acceptance. Future development belongs in
+`C:/Users/dylan/plugins/kcpdev-status-row` on `hive/status-row-characterization`,
+so it retains the refactor. This checkout is the frozen 2.4.0 release lane,
+reserved for release preparation and confirmed release-blocking fixes.
+No refactor-only patch release is planned. Before the next combined candidate,
+integrate the final 2.4.0 changes (including hiscores totals and KC-first Chompy
+labels) into the refactored tree, then review/test/smoke that combined tree.
+
+Observation on September 16: GitHub issue #18 reports interrupted first-time
+Collection Log setup after about five seconds. It needs triage before describing
+2.3.3 observation as clear; no cause or affected version is confirmed yet.
+https://github.com/420kc/kill-clog-plugin/issues/18
 
 Current addition (2026-09-12): character publication now captures the game's
 original appearance on `PlayerChanged` at priority 2, before Fashionscape (0)
@@ -148,8 +157,9 @@ Master and the earlier approved jars remain unchanged.
 
 ## Canonical checkout and recovery
 
-Use `C:/Users/dylan/plugins/kcpdev` on `hive/2.4.0` for all plugin work and
-prepared refires. The temporary 2.3.3/2.3.4/2.4.0 release and review worktrees
+Use `C:/Users/dylan/plugins/kcpdev` on `hive/2.4.0` for frozen release work.
+Future development and refactor smokes use `C:/Users/dylan/plugins/kcpdev-status-row`
+on `hive/status-row-characterization`. The temporary 2.3.3/2.3.4/2.4.0 release and review worktrees
 were clean and removed on 2026-09-12. `master` remains at the submitted 2.3.3
 commit `96dee242`; no remote refs or Plugin Hub pin changed.
 
@@ -225,31 +235,12 @@ Unrelated older plugin experiments and separate API/Hive worktrees were untouche
 
 ## Proposed Plugin Hub PR body
 
-Updates Kill Clog from 2.3.3 to 2.4.0, focused on Collection Log refresh
-correctness, character publication reliability and modal clarity.
-
-- Refresh the full local Collection Log when opened, including existing caches;
-  keep Search as a retry and remove the redundant in-game page-sync chalice.
-- Validate complete captures before replacing saved data, preserve ownership
-  and acquisition dates, avoid duplicate total increments, and update the panel
-  without restarting provider lookups or flashing away completion colors.
-- Show official Collections Logged totals/ranks without external sync; restore
-  catalog previews after failed lookups and allow failed catalog requests to retry.
-- Match alternate item forms to canonical log slots without double counting;
-  distinguish local data from web sync and retain contributing source credit.
-- Publish the original character appearance before supported cosmetic overrides,
-  validate it against current equipment/account, and improve cancellation,
-  credential recovery, retry backoff and failure feedback.
-- Keep modal titles stable, use reserved hover-label space, and improve spacing.
-  Add the missing Mining/Fishing/Hunter pets and Hunter Chompy section; label
-  Chompy hats with their kill requirement and tier.
-- Update setup, refresh and web-sync documentation and settings wording.
-
-Validation: 655 tests pass, both Checkstyle tasks pass, and the candidate has
-received independent reviews and real-client smoke approval. The final label
-wording change was covered by focused ellipsis regression testing and the full
-suite. The broad combat taxonomy redesign, new skill panels and structural
-refactor are not part of this update.
+- Refresh the full local Collection Log when opened and update the panel as items are captured.
+- Fix item variant matching, duplicate total increments, cache ownership recovery, and unlock-date retention.
+- Show Collections Logged totals and ranks from hiscores when itemized data is unavailable.
+- Fix character publishing with cosmetic overrides and improve retry/error feedback.
+- Improve modal hover labels and spacing, add missing skill-pet associations, and show Chompy hat kill requirements.
+- Clarify local setup and optional web sync; remove the redundant in-game refresh button.
 
 ## Earlier preparation proof (2026-09-12)
 

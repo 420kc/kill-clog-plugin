@@ -125,6 +125,11 @@ The source is public at [github.com/420kc/kill-clog-plugin](https://github.com/4
 
 ## Development
 
+The 2.4.0 release branch is frozen. Ongoing development continues on
+`hive/status-row-characterization`, which includes the approved status-row,
+cell-reset and publication refactor. See the current branch guidance in
+[release notes](release/kill-clog-next-release.md).
+
 Kill Clog builds with Java 11 and the included Gradle wrapper.
 
 ```powershell
