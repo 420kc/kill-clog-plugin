@@ -178,14 +178,54 @@ Validation: same PowerShell gate, exit 0, on a cleared `build/test-results`:
 664 tests across 74 suites, zero failures/errors/skips. Not done here:
 running-client visual smoke, and an independent review.
 
+## Completed: publication orchestration characterized and extracted
+
+`PluginPublicationCharacterizationTest` (previous commit) constructs the
+real plugin with its injected collaborators replaced: the executor and the
+client thread are queues the test pumps by hand, the sync and appearance
+services are mocks whose futures the test completes, the cache reports a
+session epoch the test can change, and the panel is a mock whose feedback
+calls are the assertions. It runs `startUp`, captures the panel handlers and
+the capture listener, and covers: a manual push narrating and reporting;
+repeat clicks during a flight queuing one follow-up; the capture debounce
+coalescing and staying quiet; logout before the client hop, and a late
+completion after logout, staying silent with the next session pushing again;
+a session change before the timer fires dropping the push; opt-out mid-flight
+then opt-in queuing behind the old request; one server-advised contention
+retry; a publish rendering, reporting and ignoring a double click; the
+profile-required prerequisite sync followed by exactly one retry; a failed
+prerequisite sync failing the publish and freeing the slot; logout during the
+prerequisite sync withdrawing the publish; disabling character publishing
+silencing the flight and re-enabling allowing a new one; and shutdown
+dropping a scheduled push. Dependencies are injected by reflection over the
+plugin's `@Inject` fields, as the container would; no private method is
+invoked. `PublishResult`'s two-argument constructor became package-private so
+a mocked publish can complete with one.
+
+`PublicationCoordinator` now owns the flow: the pending debounce, the sync
+gate, the character in-flight, parked-behind-sync and prerequisite-attempted
+flags, the character generation, and with them scheduling, cancellation, the
+push, the dispatch, both feedback fences and the personal-best cargo gather.
+Method bodies moved unchanged apart from panel calls going through the
+coordinator's `Feedback` interface and the account type arriving as a
+supplier. The plugin keeps every event subscription and forwards the moments
+that matter: `scheduleAutomaticSync` on capture, login and settled identity;
+`scheduleSync(0, true)` on opt-in; `manualSync` and `publishCharacter` as the
+panel handlers; `cancelSync` and `cancelCharacterPublish` on logout, opt-out
+and shutdown. It keeps the status vocabulary, `characterPublishTerminalStatus`
+and `enforceCharacterSettingDependency`, and adapts the panel to `Feedback`.
+Sync and character publish stay one unit because a publish can be parked
+behind a sync. The plugin went from 1451 to 987 lines.
+
+Validation: same PowerShell gate on a cleared `build/test-results`: 678
+tests across 75 suites, zero failures/errors/skips. Gradle's exit code
+did not propagate through the harness used here, so the build banner and the
+XML reports are the proof. Not done here: running-client visual smoke, and an
+independent review.
+
 ## Reversible follow-up slices
 
-1. **Characterize publication orchestration, then extract one coordinator.**
-   Cover prerequisite sync, duplicate requests, queued manual requests, logout,
-   account changes, consent revoke, disable/re-enable and late completions.
-   Preserve generation/session guards and physical single-flight ownership.
-   Keep event subscriptions in the plugin and existing HTTP/cache services in
-   place. Do not split mutually dependent sync and publish managers.
+All four planned slices are complete; nothing remains queued.
 
 For each production slice: relevant tests plus full test/checkstyle gates,
 independent review, and focused before/after visual smoke. No full release smoke

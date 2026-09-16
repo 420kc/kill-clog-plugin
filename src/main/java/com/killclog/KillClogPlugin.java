@@ -3,10 +3,6 @@ package com.killclog;
 import com.google.inject.Provides;
 import java.awt.image.BufferedImage;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import javax.inject.Inject;
 import javax.inject.Provider;
 import javax.swing.SwingUtilities;
@@ -162,10 +158,7 @@ public class KillClogPlugin extends Plugin
 	private final LocalCaReader localCaReader = new LocalCaReader();
 	private final CaCatalog caCatalog = new CaCatalog();
 	private final ClogLookupMenu lookupMenu = new ClogLookupMenu();
-	private final AtomicBoolean characterPublishInFlight = new AtomicBoolean();
-	private final AtomicBoolean characterPublishAfterSync = new AtomicBoolean();
-	private final AtomicBoolean characterPrerequisiteAttempted = new AtomicBoolean();
-	private final AtomicInteger characterPublishGeneration = new AtomicInteger();
+	private PublicationCoordinator publication;
 
 	@Provides
 	KillClogConfig provideConfig(ConfigManager configManager)
@@ -191,11 +184,14 @@ public class KillClogPlugin extends Plugin
 
 		lookupMenu.start(config, menuManager);
 
+		publication = new PublicationCoordinator(config, configManager, client, clientThread, executor,
+			localClogCache, syncService, profileAppearanceService, chatNotifier, panelFeedback(),
+			this::getLocalAccountType);
 		enforceCharacterSettingDependency();
-		panel.setKillclogSyncHandler(this::manualKillclogSync);
-		panel.setCharacterPublishHandler(this::publishCharacter);
+		panel.setKillclogSyncHandler(publication::manualSync);
+		panel.setCharacterPublishHandler(publication::publishCharacter);
 		panel.setSyncArrowEnabled(config.killclogSync());
-		panel.setCharacterPublishEnabled(characterPublishingEnabled());
+		panel.setCharacterPublishEnabled(publication.characterPublishingEnabled());
 		// The sync trigger lives at the data seam: any path that lands a
 		// first-party observation (bulk page capture, Collection Log Search,
 		// live unlock) schedules a debounced push.
@@ -207,7 +203,7 @@ public class KillClogPlugin extends Plugin
 			if (localClogCache.hasFirstPartyDataForActive())
 			{
 				panel.setSyncArrowHasData(true);
-				scheduleKillclogSync(KILLCLOG_SYNC_DEBOUNCE_SECONDS);
+				publication.scheduleAutomaticSync();
 			}
 		});
 
@@ -268,8 +264,8 @@ public class KillClogPlugin extends Plugin
 		liveClogSync.resetFirstSyncWarning();
 		nameAutocompleter.clearClientSnapshot();
 		localClogCache.setFirstPartyChangedListener(null);
-		cancelCharacterPublish();
-		cancelKillclogSync();
+		publication.cancelCharacterPublish();
+		publication.cancelSync();
 		SwingUtilities.invokeLater(() -> panel.shutdown());
 		// The rename session dies with the plugin: if the account changes
 		// while disabled, a surviving latch or anchor would let the OLD
@@ -309,7 +305,7 @@ public class KillClogPlugin extends Plugin
 			panel.setSyncArrowHasData(hasLocalClog);
 			if (hasLocalClog)
 			{
-				scheduleKillclogSync(KILLCLOG_SYNC_DEBOUNCE_SECONDS, false);
+				publication.scheduleAutomaticSync();
 			}
 		}
 
@@ -351,7 +347,7 @@ public class KillClogPlugin extends Plugin
 			SwingUtilities.invokeLater(() -> panel.setSyncArrowHasData(hasLocalClog));
 			if (hasLocalClog)
 			{
-				scheduleKillclogSync(KILLCLOG_SYNC_DEBOUNCE_SECONDS, false);
+				publication.scheduleAutomaticSync();
 			}
 		});
 	}
@@ -424,13 +420,13 @@ public class KillClogPlugin extends Plugin
 			// Silence old completions before ending the cache epoch, then
 			// cancel again so an attempt that began in that narrow handoff
 			// cannot narrate into the next login.
-			cancelCharacterPublish();
-			cancelKillclogSync();
+			publication.cancelCharacterPublish();
+			publication.cancelSync();
 			// The capture anchor and any queued rename checks die with the
 			// session - a stale hash must never authorize the next account's
 			// saves.
 			localClogCache.onSessionEnded();
-			cancelKillclogSync();
+			publication.cancelSync();
 		}
 		else if (event.getGameState() == GameState.HOPPING)
 		{
@@ -546,56 +542,12 @@ public class KillClogPlugin extends Plugin
 			panel::onBulkCaptureComplete);
 	}
 
-	// Debounce window: a bulk capture completes many category writes in a
-	// burst; one push carries them all.
-	private static final int KILLCLOG_SYNC_DEBOUNCE_SECONDS = 10;
-
-	private volatile ScheduledFuture<?> pendingKillclogSync;
-	private final KillclogSyncGate syncGate = new KillclogSyncGate();
-
-	private synchronized void scheduleKillclogSync(int delaySeconds)
-	{
-		scheduleKillclogSync(delaySeconds, false);
-	}
-
-	/**
+		/**
 	 * Manual web pushes (the panel sync button, an explicit opt-in) narrate in chat;
 	 * automatic ones (capture debounce and login catch-up) default to silent
 	 * panel feedback. Chat still follows its separate setting.
 	 */
-	private synchronized void scheduleKillclogSync(int delaySeconds, boolean manual)
-	{
-		if (!config.killclogSync())
-		{
-			return;
-		}
-		if (pendingKillclogSync != null && !pendingKillclogSync.isDone())
-		{
-			if (!manual)
-			{
-				return;
-			}
-			pendingKillclogSync.cancel(false);
-		}
-		long scheduledEpoch = localClogCache.currentSessionEpoch();
-		pendingKillclogSync = executor.schedule(() -> pushKillclogSync(manual, scheduledEpoch),
-			delaySeconds, TimeUnit.SECONDS);
-	}
-
-	private synchronized void cancelKillclogSync()
-	{
-		syncGate.cancel();
-		if (pendingKillclogSync != null)
-		{
-			pendingKillclogSync.cancel(false);
-			pendingKillclogSync = null;
-		}
-		// A request already in the air keeps the single-flight slot until it
-		// completes (no overlap on re-enable); its completion sees a newer
-		// generation and stays silent.
-	}
-
-	/**
+			/**
 	 * RuneLite's own chat-commands store records the local player's personal
 	 * bests; no public provider serves them, which makes this map the sync's
 	 * defining cargo. One account splinters into many rs-profile fragments
@@ -605,19 +557,7 @@ public class KillClogPlugin extends Plugin
 	 * buffed-world times, and the min-merge would launder those into the
 	 * player's real record. Client thread (config reads).
 	 */
-	private java.util.Map<String, Double> gatherPersonalBests(java.util.List<String> profileKeys)
-	{
-		PersonalBests pbs = new PersonalBests(configManager);
-		java.util.Map<String, Double> out = new java.util.LinkedHashMap<>();
-		for (net.runelite.client.hiscore.HiscoreSkill boss : PanelData.BOSSES)
-		{
-			putBestSeconds(out, pbs, profileKeys, boss.getName());
-		}
-		log.debug("killclog sync pb gather: {} owned profiles, {} pbs", profileKeys.size(), out.size());
-		return out;
-	}
-
-	/**
+		/**
 	 * Variant-keyed personal bests for the ladder payload: team sizes stay
 	 * SPLIT (solo and 5-man runs are different sports on a leaderboard),
 	 * keyed by vanilla's own stored key shape. The collapsed map above stays
@@ -625,65 +565,10 @@ public class KillClogPlugin extends Plugin
 	 * min-wins with the adventure-log harvest; each entry keeps the lane it
 	 * was observed through.
 	 */
-	private java.util.Map<String, SyncService.DetailedPb> gatherDetailedPersonalBests(java.util.List<String> profileKeys)
-	{
-		PersonalBests pbs = new PersonalBests(configManager);
-		AdvLogPbs advLog = new AdvLogPbs(configManager);
-		java.util.Map<String, SyncService.DetailedPb> out = new java.util.LinkedHashMap<>();
-		for (net.runelite.client.hiscore.HiscoreSkill boss : PanelData.BOSSES)
-		{
-			for (java.util.Map.Entry<String, Double> entry
-				: pbs.variantSecondsAcrossProfiles(profileKeys, boss.getName()).entrySet())
-			{
-				mergeDetailedPb(out, entry.getKey(), entry.getValue(), "store");
-			}
-			for (java.util.Map.Entry<String, Double> entry
-				: advLog.variantSecondsAcrossProfiles(profileKeys, boss.getName()).entrySet())
-			{
-				mergeDetailedPb(out, entry.getKey(), entry.getValue(), "advlog");
-			}
-		}
-		return out;
-	}
-
-	/** Faster wins; on a tie the earlier lane keeps the tag. */
-	private static void mergeDetailedPb(java.util.Map<String, SyncService.DetailedPb> out,
-		String key, double seconds, String source)
-	{
-		SyncService.DetailedPb existing = out.get(key);
-		if (existing == null || seconds < existing.seconds)
-		{
-			out.put(key, new SyncService.DetailedPb(seconds, source));
-		}
-	}
-
-	private static void putBestSeconds(java.util.Map<String, Double> out, PersonalBests pbs,
-		java.util.List<String> profileKeys, String bossName)
-	{
-		double seconds = pbs.bestSecondsAcrossProfiles(profileKeys, bossName);
-		if (seconds > 0)
-		{
-			out.put(bossName, seconds);
-		}
-	}
-
-	// If a push arrived while the slot was occupied, launch it now that the
+		/** Faster wins; on a tie the earlier lane keeps the tag. */
+			// If a push arrived while the slot was occupied, launch it now that the
 	// slot is free (the opt-out/opt-in-mid-request case).
-	private void launchQueuedKillclogSync()
-	{
-		Boolean manual = syncGate.consumeQueuedIntent();
-		if (manual != null && config.killclogSync())
-		{
-			scheduleKillclogSync(0, manual);
-		}
-	}
-
-	private boolean characterPublishingEnabled()
-	{
-		return config.killclogSync() && config.characterModel();
-	}
-
-	/**
+			/**
 	 * RuneLite's public config API has no dynamic disabled-state attribute.
 	 * Enforce the dependency at the data boundary instead: the child opt-in
 	 * cannot survive while first-party sync is disabled.
@@ -696,102 +581,7 @@ public class KillClogPlugin extends Plugin
 		}
 	}
 
-	private void publishCharacter()
-	{
-		startCharacterPublish(true);
-	}
-
-	private void showCharacterPublishStatus(int generation, String text, boolean ok, boolean autoClear)
-	{
-		showCharacterPublishStatus(generation, text, ok, autoClear, null);
-	}
-
-	private void showCharacterPublishStatus(int generation, String text, boolean ok, boolean autoClear,
-		String failureMessage)
-	{
-		SwingUtilities.invokeLater(() ->
-		{
-			if (generation == characterPublishGeneration.get()
-				&& (text.trim().isEmpty() || characterPublishingEnabled()))
-			{
-				panel.showCharacterPublishStatus(text, ok, autoClear, failureMessage);
-			}
-		});
-	}
-
-	private void retryCharacterPublish()
-	{
-		startCharacterPublish(false);
-	}
-
-	private void startCharacterPublish(boolean newRequest)
-	{
-		if (!characterPublishingEnabled()
-			|| !characterPublishInFlight.compareAndSet(false, true))
-		{
-			return;
-		}
-
-		if (newRequest)
-		{
-			characterPrerequisiteAttempted.set(false);
-		}
-		int generation = characterPublishGeneration.incrementAndGet();
-		showCharacterPublishStatus(generation, CHARACTER_RENDERING_STATUS, false, false);
-		clientThread.invokeLater(() ->
-		{
-			if (generation != characterPublishGeneration.get())
-			{
-				return;
-			}
-			Player local = client.getLocalPlayer();
-			String rsn = local != null ? local.getName() : null;
-			long accountHash = client.getAccountHash();
-			if (!characterPublishingEnabled() || rsn == null || accountHash == -1)
-			{
-				characterPublishInFlight.set(false);
-				showCharacterPublishStatus(generation, CHARACTER_FAILED_STATUS, false, true);
-				return;
-			}
-
-			profileAppearanceService.publishCurrent(rsn, accountHash,
-				() -> generation == characterPublishGeneration.get() && characterPublishingEnabled())
-				.whenComplete((result, error) ->
-					handleCharacterPublishResult(result, error, generation));
-		});
-	}
-
-	private void handleCharacterPublishResult(ProfileAppearanceService.PublishResult result,
-		Throwable error, int generation)
-	{
-		if (generation != characterPublishGeneration.get() || !characterPublishingEnabled())
-		{
-			return;
-		}
-		if (error != null || result == null)
-		{
-			characterPublishInFlight.set(false);
-			showCharacterPublishStatus(generation, CHARACTER_FAILED_STATUS, false, true);
-			return;
-		}
-
-		if (result.outcome == ProfileAppearanceService.Outcome.PROFILE_REQUIRED
-			&& characterPublishingEnabled()
-			&& characterPrerequisiteAttempted.compareAndSet(false, true))
-		{
-			characterPublishAfterSync.set(true);
-			showCharacterPublishStatus(generation, CHARACTER_RENDERING_STATUS, false, false);
-			startCharacterPrerequisiteSync();
-			return;
-		}
-
-		characterPublishInFlight.set(false);
-		boolean published = result.outcome == ProfileAppearanceService.Outcome.PUBLISHED;
-		showCharacterPublishStatus(generation, characterPublishTerminalStatus(result.outcome), published, true,
-			result.message);
-	}
-
-	static String characterPublishTerminalStatus(ProfileAppearanceService.Outcome outcome)
+							static String characterPublishTerminalStatus(ProfileAppearanceService.Outcome outcome)
 	{
 		switch (outcome)
 		{
@@ -807,291 +597,12 @@ public class KillClogPlugin extends Plugin
 		}
 	}
 
-	private void startCharacterPrerequisiteSync()
-	{
-		synchronized (this)
-		{
-			if (pendingKillclogSync != null && !pendingKillclogSync.isDone())
-			{
-				pendingKillclogSync.cancel(false);
-				pendingKillclogSync = null;
-			}
-		}
-		scheduleKillclogSync(0, false);
-	}
-
-	private void cancelCharacterPublish()
-	{
-		int generation = characterPublishGeneration.incrementAndGet();
-		characterPublishAfterSync.set(false);
-		characterPublishInFlight.set(false);
-		characterPrerequisiteAttempted.set(false);
-		showCharacterPublishStatus(generation, " ", false, false);
-	}
-
-	private boolean failQueuedCharacterPublish()
-	{
-		int generation = characterPublishGeneration.get();
-		if (!characterPublishAfterSync.getAndSet(false))
-		{
-			return false;
-		}
-		characterPublishInFlight.set(false);
-		showCharacterPublishStatus(generation, CHARACTER_FAILED_STATUS, false, true);
-		return true;
-	}
-
-	private void scheduleCharacterPublishAfterSync(int expectedGeneration)
-	{
-		try
-		{
-			executor.schedule(() ->
-			{
-				if (expectedGeneration != characterPublishGeneration.get()
-					|| !characterPublishingEnabled())
-				{
-					return;
-				}
-				characterPublishInFlight.set(false);
-				retryCharacterPublish();
-			}, ProfileAppearanceService.PUBLISH_RETRY_DELAY_MS, TimeUnit.MILLISECONDS);
-		}
-		catch (RuntimeException e)
-		{
-			characterPublishInFlight.set(false);
-			showCharacterPublishStatus(expectedGeneration, CHARACTER_FAILED_STATUS, false, true);
-		}
-	}
-
-	/**
+					/**
 	 * The panel's sync arrow: push now, skipping any pending debounce. The
 	 * single-flight gate remembers a click during an in-flight request, so
 	 * icon-only feedback never makes that deliberate action disappear.
 	 */
-	private void manualKillclogSync()
-	{
-		if (!config.killclogSync())
-		{
-			return;
-		}
-		synchronized (this)
-		{
-			if (pendingKillclogSync != null && !pendingKillclogSync.isDone())
-			{
-				pendingKillclogSync.cancel(false);
-				pendingKillclogSync = null;
-			}
-		}
-		scheduleKillclogSync(0, true);
-	}
-
-	private void pushKillclogSync(boolean manual, long scheduledEpoch)
-	{
-		// Re-checked at fire time: the player may have opted out while the
-		// debounce was pending. The session fence was captured when this exact
-		// timer was scheduled, so a task that escaped cancellation cannot bind
-		// itself to whichever account happens to be logged in later.
-		if (!config.killclogSync()
-			|| localClogCache.currentSessionEpoch() != scheduledEpoch)
-		{
-			return;
-		}
-		final int generation = syncGate.beginAttempt(manual);
-		if (generation < 0)
-		{
-			return;
-		}
-		if (localClogCache.currentSessionEpoch() != scheduledEpoch)
-		{
-			syncGate.abortAttempt();
-			launchQueuedKillclogSync();
-			return;
-		}
-		clientThread.invoke(() ->
-		{
-			// Any throw before the future takes ownership must release the
-			// single-flight slot, or sync is silently dead until restart -
-			// the client thread swallows the exception and the user sees
-			// nothing.
-			try
-			{
-				// The timer may have entered pushKillclogSync just before
-				// logout, leaving this client-thread callback queued behind the
-				// account switch. Never gather the next account under the old
-				// attempt's generation.
-				if (!syncGate.isCurrent(generation)
-					|| localClogCache.currentSessionEpoch() != scheduledEpoch)
-				{
-					syncGate.abortAttempt();
-					launchQueuedKillclogSync();
-					return;
-				}
-				Player local = client.getLocalPlayer();
-				String rsn = local != null ? local.getName() : null;
-				long accountHash = client.getAccountHash();
-				if (rsn == null || accountHash == -1)
-				{
-					syncGate.abortAttempt();
-					failQueuedCharacterPublish();
-					launchQueuedKillclogSync();
-					return;
-				}
-				AccountType accountType = getLocalAccountType();
-				if (manual)
-				{
-					chatNotifier.send(ChatNotice.SYNC_RESULT, "Syncing collection log to killclog.com...");
-				}
-				if (!characterPublishAfterSync.get())
-				{
-					withSyncFeedback(generation, scheduledEpoch,
-						() -> panel.showSyncProgress(manual, "syncing...", false));
-				}
-				java.util.List<String> profileKeys = PersonalBests.profileKeys(
-					configManager.getRSProfiles(), accountHash);
-				java.util.Map<String, Double> pbs = gatherPersonalBests(profileKeys);
-				java.util.Map<String, SyncService.DetailedPb> detailedPbs =
-					gatherDetailedPersonalBests(profileKeys);
-				// Off the client thread before dispatch: the sync pre-flight
-				// can block up to ten seconds waiting for the rename disk
-				// verdict, and game ticks must never pay that wait. The
-				// session fence rides along - a logout between this gather
-				// and the dispatch must kill the attempt, not let a dead
-				// session's sync restore its anchor or post after the end.
-				long cacheEpoch = scheduledEpoch;
-				executor.execute(() -> dispatchKillclogSync(
-					rsn, accountHash, accountType, pbs, detailedPbs, manual, generation, cacheEpoch));
-			}
-			catch (RuntimeException e)
-			{
-				log.warn("killclog sync push failed before dispatch", e);
-				syncGate.abortAttempt();
-				if (!failQueuedCharacterPublish())
-				{
-					withSyncFeedback(generation, scheduledEpoch, () -> panel.showSyncResult(manual,
-						false, "Collection log sync failed. See the client log."));
-				}
-				// Failures always chat, this path included.
-				chatNotifier.send(ChatNotice.SYNC_RESULT,
-					"Collection log sync failed - see the client log.");
-				launchQueuedKillclogSync();
-			}
-		});
-	}
-
-	private void dispatchKillclogSync(String rsn, long accountHash, AccountType accountType,
-		java.util.Map<String, Double> pbs, java.util.Map<String, SyncService.DetailedPb> detailedPbs,
-		boolean manual, int generation, long cacheEpoch)
-	{
-		if (localClogCache.currentSessionEpoch() != cacheEpoch)
-		{
-			// The session ended between gather and dispatch: release the
-			// single-flight slot and walk away clean.
-			syncGate.abortAttempt();
-			failQueuedCharacterPublish();
-			launchQueuedKillclogSync();
-			return;
-		}
-		try
-		{
-			syncService.syncCollectionLog(rsn, accountHash, accountType, pbs, detailedPbs,
-				cacheEpoch, syncGate, generation)
-				.whenComplete((result, err) ->
-				{
-					boolean current = syncGate.complete(generation);
-					int characterGeneration = characterPublishGeneration.get();
-					boolean characterWaiting = characterPublishAfterSync.get();
-					if (result != null && current && config.killclogSync())
-					{
-						// Server-advised contention retry: another client of
-						// this account held the lock. Keep a pending character
-						// publication attached to that one allowed retry.
-						if (result.retryAdvised && syncGate.consumeRetryCredit())
-						{
-							if (characterWaiting)
-							{
-								showCharacterPublishStatus(characterGeneration, CHARACTER_RENDERING_STATUS, false, false);
-							}
-							else
-							{
-								withSyncFeedback(generation, cacheEpoch,
-									() -> panel.showSyncProgress(manual, "retrying...", false));
-							}
-							scheduleKillclogSync(Math.max(result.retryAfterSeconds, 2), manual);
-							launchQueuedKillclogSync();
-							return;
-						}
-
-						// Everything below is a terminal outcome for this episode.
-						syncGate.restoreRetryCredit();
-						if (characterWaiting)
-						{
-							characterPublishAfterSync.set(false);
-							if (result.ok && !result.dryRun && characterPublishingEnabled())
-							{
-								scheduleCharacterPublishAfterSync(characterGeneration);
-							}
-							else
-							{
-								characterPublishInFlight.set(false);
-								showCharacterPublishStatus(characterGeneration, CHARACTER_FAILED_STATUS, false, true);
-							}
-						}
-						else
-						{
-							withSyncFeedback(generation, cacheEpoch,
-								() -> panel.showSyncResult(manual, result.ok, result.message));
-						}
-						if (manual || !result.ok)
-						{
-							clientThread.invoke(() ->
-								chatNotifier.send(ChatNotice.SYNC_RESULT, result.message));
-						}
-					}
-					else
-					{
-						if (current)
-						{
-							syncGate.restoreRetryCredit();
-						}
-						if (current && !failQueuedCharacterPublish() && err != null)
-						{
-							withSyncFeedback(generation, cacheEpoch, () -> panel.showSyncResult(manual,
-								false, "Collection log sync failed. See the client log."));
-						}
-					}
-					launchQueuedKillclogSync();
-				});
-		}
-		catch (RuntimeException e)
-		{
-			log.warn("killclog sync push failed at dispatch", e);
-			syncGate.abortAttempt();
-			if (!failQueuedCharacterPublish())
-			{
-				withSyncFeedback(generation, cacheEpoch, () -> panel.showSyncResult(manual,
-					false, "Collection log sync failed. See the client log."));
-			}
-			// Failures always chat, this path included; chat sends need the
-			// client thread and this body runs on the executor.
-			clientThread.invoke(() -> chatNotifier.send(ChatNotice.SYNC_RESULT,
-				"Collection log sync failed - see the client log."));
-			launchQueuedKillclogSync();
-		}
-	}
-
-	private void withSyncFeedback(int generation, long epoch, Runnable feedback)
-	{
-		SwingUtilities.invokeLater(() ->
-		{
-			if (syncGate.isCurrent(generation) && config.killclogSync()
-				&& localClogCache.currentSessionEpoch() == epoch)
-			{
-				feedback.run();
-			}
-		});
-	}
-
-	// Keep local CA current when a task completes mid-session, and the live
+					// Keep local CA current when a task completes mid-session, and the live
 	// catalog current when the game moves a tier threshold (a CA release).
 	@Subscribe
 	public void onVarbitChanged(VarbitChanged event)
@@ -1357,7 +868,7 @@ public class KillClogPlugin extends Plugin
 				panel.setCharacterPublishEnabled(config.characterModel());
 				// Opting in mid-session pushes the already-captured log right
 				// away; nothing else fires until the next capture or unlock.
-				scheduleKillclogSync(0, true);
+				publication.scheduleSync(0, true);
 			}
 			else
 			{
@@ -1366,8 +877,8 @@ public class KillClogPlugin extends Plugin
 					configManager.unsetConfiguration("killclog", "characterModel");
 				}
 				panel.setCharacterPublishEnabled(false);
-				cancelCharacterPublish();
-				cancelKillclogSync();
+				publication.cancelCharacterPublish();
+				publication.cancelSync();
 			}
 		}
 		else if ("silentAutomaticSync".equals(event.getKey()))
@@ -1380,11 +891,11 @@ public class KillClogPlugin extends Plugin
 			{
 				configManager.unsetConfiguration("killclog", "characterModel");
 			}
-			boolean enabled = characterPublishingEnabled();
+			boolean enabled = publication.characterPublishingEnabled();
 			panel.setCharacterPublishEnabled(enabled);
 			if (!enabled)
 			{
-				cancelCharacterPublish();
+				publication.cancelCharacterPublish();
 			}
 		}
 
@@ -1442,6 +953,31 @@ public class KillClogPlugin extends Plugin
 	private AccountType getLocalAccountType()
 	{
 		return AccountType.fromRuneLiteVarbit(client.getVarbitValue(VarbitID.IRONMAN));
+	}
+
+	/** The panel's status row speaks for the publication flow; the coordinator already lands on the EDT. */
+	private PublicationCoordinator.Feedback panelFeedback()
+	{
+		return new PublicationCoordinator.Feedback()
+		{
+			@Override
+			public void showSyncProgress(boolean manual, String text, boolean autoClear)
+			{
+				panel.showSyncProgress(manual, text, autoClear);
+			}
+
+			@Override
+			public void showSyncResult(boolean manual, boolean ok, String message)
+			{
+				panel.showSyncResult(manual, ok, message);
+			}
+
+			@Override
+			public void showCharacterPublishStatus(String text, boolean ok, boolean autoClear, String failureMessage)
+			{
+				panel.showCharacterPublishStatus(text, ok, autoClear, failureMessage);
+			}
+		};
 	}
 
 	private BufferedImage getIcon()
