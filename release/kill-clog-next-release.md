@@ -1,3 +1,32 @@
+# Full 2.3.4 candidate, 2026-09-16
+
+This candidate contains the complete frozen 2.4.0 implementation from
+`a9a364fc55973cea86067c1e9c68236c2acdca74`, relabeled 2.3.4 at Dylan's request.
+It supersedes the selective maintenance candidate as the active evaluation
+candidate. The former maintenance and refactor branches remain preserved.
+
+Checkout: `C:/Users/dylan/plugins/kcpdev-234-full`.
+Branch: `hive/2.3.4-full-candidate`.
+Only the three release version declarations differ in production/build inputs
+from the frozen source. Test fixture literals remain historical sample values.
+The structural refactor remains on its separate future-development branch.
+
+Dylan will smoke this full candidate and identify any requested removals.
+No release push or Plugin Hub submission is authorized by candidate preparation.
+The historical September 25 scheduling and 2.4.0 labels below describe the
+prior plan, not this active candidate's version or submission authorization.
+
+## Fresh candidate gate
+
+2026-09-16: BUILD SUCCESSFUL for compileJava, test, checkstyleMain,
+checkstyleTest, and jar with all tasks rerun. Fresh XML: 74 suites, 655 tests,
+zero failures/errors/skips. Token proxy: 197,146 / 200,000 (2,854 headroom;
+above the conservative 195,000 caution mark).
+Log: `C:/Users/dylan/AppData/Local/Temp/killclog-234-full-gate.log`.
+`git diff --check` passed. Real-client evaluation of this version is pending.
+
+## Historical full-release notes and evidence
+
 # Kill Clog 2.4.0 candidate
 
 ## Bounded finalization (2026-09-15)
