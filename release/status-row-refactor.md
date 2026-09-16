@@ -146,13 +146,41 @@ Validation: same PowerShell gate, exit 0, on a cleared `build/test-results`:
 662 tests across 73 suites, zero failures/errors/skips. Not done here:
 running-client visual smoke, and an independent review.
 
+## Completed: cell reset moved into Cells
+
+`Cells.reset()` returns every cell to its pre-lookup state: dashes in the
+resting colour, the resting tooltip, boss cells back on their original icons,
+and both tooltip caches emptied. The panel's `resetForLookup` (formerly
+`resetAllLabels`) keeps the header side: pinned tooltip, compare entry, the
+setup notice, player name, clog info, combat and total cells, the compare
+icon, and the skill display refresh. The two trailing `rareTooltips.remove`
+calls were dropped; they followed a `clear()` of the same map and had since
+both were written in the same commit. Cell resets now run before the header
+resets rather than interleaved with them; no cell or header widget depends
+on the other, so the resting state is identical.
+
+Renamed in the panel, mechanically: `toggleHighlighter(boolean)` is now
+`renderResults()`, since it repaints the header and every cell from the
+session results and applies the highlighter only when the setting is on; all
+eight callers passed that same setting. `renderHiscoreResult`,
+`renderClogResult` and their comments were left alone.
+
+`PanelCellResetCharacterizationTest` (previous commit) renders a small
+result set, colours the empty cells the way the highlighter does, shows the
+compare icon, seeds the header, then drives `onLookupStart` and asserts the
+resting text, colour, tooltip and icon of every boss, activity, clue tier,
+rare and PvP cell, both tooltip caches, and the header. A second case pins
+that `onError` goes through the same reset. Observed while writing it and
+left as-is: after a miss or failure the panel immediately rebuilds catalog
+previews, so rare cells show a custom tooltip again rather than their name.
+
+Validation: same PowerShell gate, exit 0, on a cleared `build/test-results`:
+664 tests across 74 suites, zero failures/errors/skips. Not done here:
+running-client visual smoke, and an independent review.
+
 ## Reversible follow-up slices
 
-1. **Move cell reset behavior into Cells.** Keep search/header reset in the
-   panel. Verify icons, tooltip maps, highlights and comparison resets. Rename
-   misleading rendering methods/comments in their owning slice, without a
-   repository-wide cleanup.
-2. **Characterize publication orchestration, then extract one coordinator.**
+1. **Characterize publication orchestration, then extract one coordinator.**
    Cover prerequisite sync, duplicate requests, queued manual requests, logout,
    account changes, consent revoke, disable/re-enable and late completions.
    Preserve generation/session guards and physical single-flight ownership.

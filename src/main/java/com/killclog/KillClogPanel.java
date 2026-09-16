@@ -817,7 +817,7 @@ public class KillClogPanel extends PluginPanel
 		comparison.updateAllCells();
 		comparison.updateInfoBar();
 		applyBossViewStyle();
-		toggleHighlighter(config.completionistHighlighter());
+		renderResults();
 		searchRow.revalidate();
 	}
 
@@ -966,28 +966,16 @@ public class KillClogPanel extends PluginPanel
 	}
 
 	/**
-	 * Reset all labels, maps, and fields to their pre-lookup state.
-	 * Called at the start of every lookup to ensure a clean slate.
+	 * Return the header and every cell to the pre-lookup state. Called at the
+	 * start of every lookup, and after a miss or failure, for a clean slate.
 	 */
-	private void resetAllLabels()
+	private void resetForLookup()
 	{
 		tooltipController.hidePinnedTooltip();
 		searchRowController.exitIfActive();
 		rsn = null;
 		setClogSetupNoticeVisible(false);
-		cells.getTooltipDataMap().clear();
-		cells.getRareTooltips().clear();
-		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getBossLabels().entrySet())
-		{
-			JLabel label = entry.getValue();
-			label.setText(ClogHelper.pad("--"));
-			label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-			tooltipController.setTooltipText(label, " ");
-			ImageIcon orig = cells.getOriginalIcons().get(entry.getKey());
-			if (orig != null) label.setIcon(orig);
-		}
-
-		resetLabelMap(cells.getActivityLabels());
+		cells.reset();
 
 		playerName.setText(" ");
 		playerName.setIcon(null);
@@ -1003,21 +991,6 @@ public class KillClogPanel extends PluginPanel
 		totalLvlCell.setText(ClogHelper.pad("--"));
 		totalLvlCell.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		tooltipController.setTooltipText(totalLvlCell, null);
-		if (cells.getPvpSummaryCell() != null)
-		{
-			cells.getPvpSummaryCell().setText(ClogHelper.pad("--"));
-			cells.getPvpSummaryCell().setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-		}
-
-		resetLabelMap(cells.getClueTierLabels());
-
-		resetRareCell(cells.getThirdAgeCell(), "3rd Age");
-		resetRareCell(cells.getGildedCell(), "Gilded");
-		resetRareCell(cells.getHardRare(), "Hard Treasure (Rare)");
-		resetRareCell(cells.getEliteRare(), "Elite Treasure (Rare)");
-		resetRareCell(cells.getMasterRare(), "Master Treasure (Rare)");
-		cells.getRareTooltips().remove(PanelData.CLOG_THIRD_AGE);
-		cells.getRareTooltips().remove(PanelData.CLOG_GILDED);
 		refreshSkillDisplay();
 	}
 
@@ -1050,7 +1023,7 @@ public class KillClogPanel extends PluginPanel
 		colorStatsRow();
 
 		searchBar.setText("");
-		toggleHighlighter(config.completionistHighlighter());
+		renderResults();
 		cells.rebuildPrimaryTooltips(localRsn);
 	}
 
@@ -1080,29 +1053,8 @@ public class KillClogPanel extends PluginPanel
 			updateClogCell(result);
 		}
 		cells.rebuildPrimaryTooltips(localRsn);
-		toggleHighlighter(config.completionistHighlighter());
+		renderResults();
 		if (comparison.isComparisonMode()) updateClogTotalsBar();
-	}
-
-	private void resetRareCell(JLabel label, String name)
-	{
-		if (label != null)
-		{
-			label.setText(ClogHelper.pad("--"));
-			label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-			tooltipController.setTooltipText(label, name);
-		}
-	}
-
-	private void resetLabelMap(Map<HiscoreSkill, JLabel> labels)
-	{
-		for (Map.Entry<HiscoreSkill, JLabel> entry : labels.entrySet())
-		{
-			JLabel label = entry.getValue();
-			label.setText(ClogHelper.pad("--"));
-			label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-			tooltipController.setTooltipText(label, entry.getKey().getName());
-		}
 	}
 
 	private void fetchRsn(String player, int thisLookup)
@@ -1143,9 +1095,13 @@ public class KillClogPanel extends PluginPanel
 		}
 	}
 
-	// Progress highlighter.
+	// Result rendering.
 
-	private void toggleHighlighter(boolean enabled)
+	/**
+	 * Repaint the header and every cell from the session results under the
+	 * current settings: 420 mode, the completion highlighter and any comparison.
+	 */
+	private void renderResults()
 	{
 		if (lookupSession.getHiscoreResult() == null) return;
 		tooltipController.clearHoveredCell();
@@ -1160,7 +1116,7 @@ public class KillClogPanel extends PluginPanel
 		if (lookupSession.getClogResult() != null)
 		{
 			cells.renderClog(lookupSession.getClogResult(), config);
-			if (enabled)
+			if (config.completionistHighlighter())
 			{
 				Map<String, JLabel> rareCells = new LinkedHashMap<>();
 				rareCells.put(PanelData.CLOG_THIRD_AGE, cells.getThirdAgeCell());
@@ -1277,7 +1233,7 @@ public class KillClogPanel extends PluginPanel
 		if (!visible)
 		{
 			fourTwentyMode = FourTwentyMode.OFF;
-			if (lookupSession.getHiscoreResult() != null) toggleHighlighter(config.completionistHighlighter());
+			if (lookupSession.getHiscoreResult() != null) renderResults();
 		}
 	}
 
@@ -1298,7 +1254,7 @@ public class KillClogPanel extends PluginPanel
 			case "inProgressClogColor":
 			case "emptyClogColor":
 			case "infoBarColor":
-				toggleHighlighter(config.completionistHighlighter());
+				renderResults();
 				cells.rebuildPrimaryTooltips(localRsn);
 				break;
 			case "hoverStyle":
@@ -1370,7 +1326,7 @@ public class KillClogPanel extends PluginPanel
 	{
 		FourTwentyMode[] modes = FourTwentyMode.values();
 		fourTwentyMode = modes[(fourTwentyMode.ordinal() + 1) % modes.length];
-		toggleHighlighter(config.completionistHighlighter());
+		renderResults();
 	}
 
 	private BufferedImage getCapeImage(@Nullable HiscoreResult result)
@@ -1558,7 +1514,7 @@ public class KillClogPanel extends PluginPanel
 			setSearchStatus(String.format(SearchMessages.SEARCH[searchIdx], player), TEXT_DIM);
 		}
 		searchBar.setIcon(IconTextField.Icon.LOADING_DARKER);
-		resetAllLabels();
+		resetForLookup();
 	}
 
 	@Override
@@ -1647,7 +1603,7 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void onNotFound(String player)
 	{
-		resetAllLabels();
+		resetForLookup();
 		cells.rebuildPrimaryTooltips(localRsn);
 		int notFoundIdx = ThreadLocalRandom.current().nextInt(SearchMessages.NOT_FOUND.length);
 		setSearchStatus(String.format(SearchMessages.NOT_FOUND[notFoundIdx], player), NOT_FOUND);
@@ -1658,7 +1614,7 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void onError(String player, Throwable error)
 	{
-		resetAllLabels();
+		resetForLookup();
 		cells.rebuildPrimaryTooltips(localRsn);
 		searchBar.setIcon(IconTextField.Icon.SEARCH);
 		searchBar.setText("");
@@ -1687,7 +1643,7 @@ public class KillClogPanel extends PluginPanel
 	{
 		tooltipController.hidePinnedTooltip();
 		comparison.rebuildTooltipData();
-		toggleHighlighter(config.completionistHighlighter());
+		renderResults();
 		cells.rebuildPrimaryTooltips(localRsn);
 		getWrappedPanel().revalidate();
 		getWrappedPanel().repaint();

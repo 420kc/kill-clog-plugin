@@ -445,6 +445,59 @@ public class Cells
 		writeCustomRare(masterRare, "Master Treasure (Rare)", PanelData.RARE_MASTER, PanelData.MASTER_RARE_ITEMS, result, config);
 	}
 
+	/**
+	 * Return every cell to its pre-lookup state: dashes in the resting colour,
+	 * the resting tooltip, boss cells back on their original icons, and both
+	 * tooltip caches emptied. The panel resets its own header alongside.
+	 */
+	public void reset()
+	{
+		tooltipDataMap.clear();
+		rareTooltips.clear();
+		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
+		{
+			JLabel label = entry.getValue();
+			label.setText(ClogHelper.pad("--"));
+			label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+			tooltipController.setTooltipText(label, " ");
+			ImageIcon orig = originalIcons.get(entry.getKey());
+			if (orig != null) label.setIcon(orig);
+		}
+		resetLabels(activityLabels);
+		if (pvpSummaryCell != null)
+		{
+			pvpSummaryCell.setText(ClogHelper.pad("--"));
+			pvpSummaryCell.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		}
+		resetLabels(clueTierLabels);
+		resetRare(thirdAgeCell, "3rd Age");
+		resetRare(gildedCell, "Gilded");
+		resetRare(hardRare, "Hard Treasure (Rare)");
+		resetRare(eliteRare, "Elite Treasure (Rare)");
+		resetRare(masterRare, "Master Treasure (Rare)");
+	}
+
+	private void resetLabels(Map<HiscoreSkill, JLabel> labels)
+	{
+		for (Map.Entry<HiscoreSkill, JLabel> entry : labels.entrySet())
+		{
+			JLabel label = entry.getValue();
+			label.setText(ClogHelper.pad("--"));
+			label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+			tooltipController.setTooltipText(label, entry.getKey().getName());
+		}
+	}
+
+	private void resetRare(@Nullable JLabel label, String name)
+	{
+		if (label != null)
+		{
+			label.setText(ClogHelper.pad("--"));
+			label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+			tooltipController.setTooltipText(label, name);
+		}
+	}
+
 	private void writeClueRare(@Nullable JLabel label, String name, String clogCategory,
 		ClogResult result, KillClogConfig config)
 	{
