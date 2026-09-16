@@ -1,5 +1,11 @@
 # Kill Clog 2.4.0 candidate
 
+This file describes the separate 2.4.0 release lane. This checkout is the
+post-2.4.0 development continuation on `hive/status-row-characterization`;
+its current acceptance and integration boundary are in
+[status-row-refactor.md](status-row-refactor.md). The release instructions below
+do not make this refactored tree the frozen 2.4.0 submission candidate.
+
 Requested follow-up (2026-09-14, after the server migration): distinguish every
 Chompy Bird Hat in item hover text by its tier and kill-count requirement.
 Requested format: `Chompy Bird Hat (Expert): 1300`. Verify each item's tier and

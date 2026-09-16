@@ -1,6 +1,26 @@
 # Status row maintenance slice
 
-## Boundary
+## Current status (2026-09-16)
+
+The eight implementation/fix commits through `1d4e18a5` are independently
+approved. The final independent gate passed 679 tests across 75 suites with
+zero failures/errors/skips, compilation and both Checkstyles; the reviewer's
+original restart regression also passes. Dylan reported the smoke passed and
+authorized pushing the refactor on September 16. The running shared client was
+verified to reference `kcpdev-1d4e18a5-78BA6A777DE8.jar`, SHA-256
+`78BA6A777DE85DD09B7905BB44054D5717FFA90DDF5D7F961E5A384676DBE508`.
+Smoke acceptance is Dylan's report, not a claim of automated gameplay testing.
+
+This worktree on `hive/status-row-characterization` is the continuation point
+for future development. The main `kcpdev` checkout on `hive/2.4.0` remains the
+frozen release lane. Preserve the individual refactor commits. Before the next
+combined release candidate, integrate the remaining 2.4.0 changes, including
+hiscores totals and KC-first Chompy labels, and review/test/smoke the combined
+tree. No standalone refactor release or next version number has been selected.
+The historical review and validation entries below retain their original status;
+this acceptance supersedes their outstanding code-review and smoke gates.
+
+## Original boundary
 
 Prepared on `hive/status-row-characterization` in
 `C:/Users/dylan/plugins/kcpdev-status-row`, from
