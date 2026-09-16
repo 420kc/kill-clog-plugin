@@ -123,9 +123,6 @@ The source is public at [github.com/420kc/kill-clog-plugin](https://github.com/4
 
 ## Development
 
-See the [release notes](release/kill-clog-next-release.md) for current release
-and development branch guidance.
-
 Kill Clog builds with Java 11 and the included Gradle wrapper.
 
 ```powershell
