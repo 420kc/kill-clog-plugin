@@ -20,12 +20,17 @@ public class FirstPartyFeedbackTest
 
 	private final Settings config = new Settings();
 	private final List<String> events = new ArrayList<>();
+	private final List<StatusMessage.Kind> kinds = new ArrayList<>();
 	private final FirstPartyFeedback feedback = feedback("sync failed");
 
 	private FirstPartyFeedback feedback(String failureText)
 	{
 		return new FirstPartyFeedback(config,
-			(text, autoClear) -> events.add(text), () -> events.add("flash"), failureText);
+			(kind, text, autoClear) ->
+			{
+				events.add(text);
+				kinds.add(kind);
+			}, () -> events.add("flash"), failureText);
 	}
 
 	@Test
@@ -107,5 +112,17 @@ public class FirstPartyFeedbackTest
 		assertTrue(events.isEmpty());
 		feedback.reset();
 		assertNull(feedback.lastFailure());
+	}
+
+	@Test
+	public void progressNoticeAndFailureCarryTheirKind()
+	{
+		feedback.progress(true, "syncing...", false);
+		feedback.complete(true, false, "Server unavailable");
+		feedback.show(true, StatusMessage.Kind.NOTICE, "Change equipment, then retry", true);
+		feedback.show(false, StatusMessage.Kind.RESULT, "Finishing previous request...", true);
+		assertEquals(java.util.Arrays.asList("syncing...", "sync failed", "Change equipment, then retry"), events);
+		assertEquals(java.util.Arrays.asList(StatusMessage.Kind.PROGRESS, StatusMessage.Kind.RESULT,
+			StatusMessage.Kind.NOTICE), kinds);
 	}
 }

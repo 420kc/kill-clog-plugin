@@ -1,18 +1,21 @@
 package com.killclog;
 
-import java.util.function.BiConsumer;
-
 /** Panel feedback for one first-party control. All access stays on the EDT. */
 final class FirstPartyFeedback
 {
+	/** Receives the messages this control is allowed to show. */
+	interface Status
+	{
+		void show(StatusMessage.Kind kind, String text, boolean autoClear);
+	}
+
 	private final KillClogConfig config;
-	private final BiConsumer<String, Boolean> status;
+	private final Status status;
 	private final Runnable successFlash;
 	private final String failureText;
 	private String lastFailure;
 
-	FirstPartyFeedback(KillClogConfig config, BiConsumer<String, Boolean> status,
-		Runnable successFlash, String failureText)
+	FirstPartyFeedback(KillClogConfig config, Status status, Runnable successFlash, String failureText)
 	{
 		this.config = config;
 		this.status = status;
@@ -22,9 +25,15 @@ final class FirstPartyFeedback
 
 	void progress(boolean manual, String text, boolean autoClear)
 	{
+		show(manual, StatusMessage.Kind.PROGRESS, text, autoClear);
+	}
+
+	/** Manual actions always speak; automatic ones only when the user opted into their feedback. */
+	void show(boolean manual, StatusMessage.Kind kind, String text, boolean autoClear)
+	{
 		if (manual || !config.silentAutomaticSync())
 		{
-			status.accept(text, autoClear);
+			status.show(kind, text, autoClear);
 		}
 	}
 
@@ -40,7 +49,7 @@ final class FirstPartyFeedback
 		}
 		else
 		{
-			progress(manual, failureText, true);
+			show(manual, StatusMessage.Kind.RESULT, failureText, true);
 		}
 	}
 

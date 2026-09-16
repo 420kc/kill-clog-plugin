@@ -27,28 +27,6 @@ public class KillClogPanelTest
 	}
 
 	@Test
-	public void testSyncSuccessOnlyClearsSyncOwnedStatus()
-	{
-		assertTrue(PanelStatusRow.isSyncOwnedStatus("sync to killclog.com"));
-		assertTrue(PanelStatusRow.isSyncOwnedStatus("syncing..."));
-		assertTrue(PanelStatusRow.isSyncOwnedStatus("retrying..."));
-		assertTrue(PanelStatusRow.isSyncOwnedStatus("sync failed"));
-		assertTrue(PanelStatusRow.isSyncOwnedStatus("sync failed - click to retry"));
-		assertFalse(PanelStatusRow.isSyncOwnedStatus("publish failed - click to retry"));
-		assertFalse(PanelStatusRow.isSyncOwnedStatus("synced!"));
-		assertFalse(PanelStatusRow.isSyncOwnedStatus(KillClogPlugin.CHARACTER_RENDERING_STATUS));
-		assertFalse(PanelStatusRow.isSyncOwnedStatus("player not found"));
-
-		assertTrue(PanelStatusRow.canFlashSyncSuccess(" "));
-		assertTrue(PanelStatusRow.canFlashSyncSuccess("syncing..."));
-		assertTrue(PanelStatusRow.canFlashSyncSuccess("sync to killclog.com"));
-		assertTrue(PanelStatusRow.canFlashSyncSuccess("sync failed - click to retry"));
-		assertFalse(PanelStatusRow.canFlashSyncSuccess("publish character"));
-		assertFalse(PanelStatusRow.canFlashSyncSuccess(KillClogPlugin.CHARACTER_RENDERING_STATUS));
-		assertFalse(PanelStatusRow.canFlashSyncSuccess("player not found"));
-	}
-
-	@Test
 	public void testClogTierBelowBronze()
 	{
 		assertNull(ClogHelper.getClogTierName(0, 1700));

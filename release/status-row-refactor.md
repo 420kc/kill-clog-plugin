@@ -82,21 +82,57 @@ Open for a later slice: whether the plugin should hold `PanelStatusRow`
 directly and drop the panel delegates. Left as-is to keep this commit a pure
 extraction.
 
+Independent review: approved as a local extraction with no blocking findings;
+running-client smoke still outstanding.
+
+## Completed: explicit status ownership
+
+`StatusMessage` carries owner (lookup, sync, character), kind (hover, notice,
+progress, result), text, colour and its own expiry timer. `PanelStatusRow`
+holds the current message and decides from it: the row is free while blank or
+while the message yields (hover, notice); feedback lands only while free or
+already its owner's; a sync success flashes only over a blank row or sync-owned
+text; leaving a control clears only that owner's yielding message. Lookup text
+still arrives as strings and holds the row until the panel replaces or blanks
+it. The plugin's character strings are classified once in
+`showCharacterPublishStatus`: `updating character...` is progress, the notice
+constants are notices, and anything else, including `Publish failed` and
+`Finishing previous request...`, is a result. `FirstPartyFeedback` passes the
+kind through its status callback and reports a failure as a result rather than
+as progress text. Colours follow the kind: progress and hover in k1, notices
+and results dim, exactly as before.
+
+An expiry now belongs to the message it was started for and clears nothing
+else; replacing or blanking a message cancels its expiry. Two behaviours
+changed as a consequence, both covered by new tests:
+
+- A stale expiry can no longer clear a newer message with the same text or
+  drop the reference to the newer timer
+  (`sameTextReplacementKeepsItsOwnExpiry`).
+- Hovering the character control while a notice shows keeps the hover line
+  until the pointer leaves; the notice's expiry no longer clears it mid-hover
+  (`hoverOverNoticeOutlivesTheNoticeExpiry`).
+
+`resetSyncFeedback` still stops whichever expiry is running, character
+included; that policy is handled in the next commit. The string predicates
+`isSyncOwnedStatus` and `canFlashSyncSuccess` are gone and their coverage
+moved to `syncSuccessFlashesOnlyOverBlankOrSyncOwnedText`; `isCharacterNotice`
+remains as the door classifier. The characterization fixture reads the expiry
+through the current message. `KillClogPlugin` is unchanged.
+
+Validation: `.\gradlew.bat --offline compileJava test checkstyleMain
+checkstyleTest --rerun-tasks` in PowerShell, exit 0, on a cleared
+`build/test-results`: 661 tests across 73 suites, zero
+failures/errors/skips. Not done here: running-client visual smoke, and an
+independent review.
+
 ## Reversible follow-up slices
 
-1. **Replace string-based status ownership.** Represent owner (lookup, sync,
-   character), kind (hover, progress, notice, result) and message identity
-   explicitly. Timer expiry must belong to the message it clears. Preserve
-   current priority rules unless a separately demonstrated bug warrants changing
-   one. Add same-text replacement and stale-callback cases here. Review the
-   shared timer cancellation in `resetSyncFeedback`: preserving character text
-   currently also stops the shared expiry timer. Do not silently change that
-   policy during extraction.
-2. **Move cell reset behavior into Cells.** Keep search/header reset in the
+1. **Move cell reset behavior into Cells.** Keep search/header reset in the
    panel. Verify icons, tooltip maps, highlights and comparison resets. Rename
    misleading rendering methods/comments in their owning slice, without a
    repository-wide cleanup.
-3. **Characterize publication orchestration, then extract one coordinator.**
+2. **Characterize publication orchestration, then extract one coordinator.**
    Cover prerequisite sync, duplicate requests, queued manual requests, logout,
    account changes, consent revoke, disable/re-enable and late completions.
    Preserve generation/session guards and physical single-flight ownership.

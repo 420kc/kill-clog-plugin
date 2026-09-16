@@ -25,6 +25,7 @@ import org.mockito.ArgumentMatchers;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNotSame;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -119,7 +120,7 @@ public class PanelStatusRowCharacterizationTest
 			assertEquals("Looking up player", status.getText());
 			assertEquals(Color.RED, status.getForeground());
 			assertControls(false, false);
-			assertNull(field("firstPartyStatusClearTimer", Timer.class));
+			assertNull(expiry());
 			assertNull(field("syncSuccessGlowTimer", Timer.class));
 			assertNull(field("characterSuccessGlowTimer", Timer.class));
 		});
@@ -151,7 +152,7 @@ public class PanelStatusRowCharacterizationTest
 		edt(() ->
 		{
 			panel.showSyncResult(true, false, "HTTP 503");
-			Timer expiry = field("firstPartyStatusClearTimer", Timer.class);
+			Timer expiry = expiry();
 			assertNotNull(expiry);
 			panel.onCompareStatus("Player not found", Color.RED);
 			fire(expiry);
@@ -168,7 +169,7 @@ public class PanelStatusRowCharacterizationTest
 		{
 			panel.showSyncResult(false, false, "HTTP 503");
 			assertEquals(" ", status.getText());
-			assertNull(field("firstPartyStatusClearTimer", Timer.class));
+			assertNull(expiry());
 			mouse(sync, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
 			assertEquals("sync failed - click to retry", status.getText());
 			assertEquals("HTTP 503", sync.getToolTipText());
@@ -191,7 +192,7 @@ public class PanelStatusRowCharacterizationTest
 			panel.showCharacterPublishStatus(KillClogPlugin.CHARACTER_FAILED_STATUS, false, true, "Bad <model> & retry");
 			assertEquals(KillClogPlugin.CHARACTER_FAILED_STATUS, status.getText());
 			assertControls(false, false);
-			fire(field("firstPartyStatusClearTimer", Timer.class));
+			fire(expiry());
 			assertEquals(" ", status.getText());
 			assertControls(true, true);
 			mouse(character, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
@@ -211,7 +212,7 @@ public class PanelStatusRowCharacterizationTest
 		{
 			panel.showSyncResult(false, false, "Old sync failure");
 			panel.showCharacterPublishStatus(KillClogPlugin.CHARACTER_FAILED_STATUS, false, true, "Old publish failure");
-			fire(field("firstPartyStatusClearTimer", Timer.class));
+			fire(expiry());
 		});
 		panel.setSyncArrowEnabled(false);
 		panel.setCharacterPublishEnabled(false);
@@ -303,12 +304,110 @@ public class PanelStatusRowCharacterizationTest
 			assertSame(sync, field("syncArrow", JLabel.class));
 			assertControls(true, true);
 			panel.showSyncResult(true, false, "Failure after restart");
-			Timer failure = field("firstPartyStatusClearTimer", Timer.class);
+			Timer failure = expiry();
 			assertTrue(failure.isRunning());
 			panel.shutdown();
 			assertFalse(failure.isRunning());
-			assertNull(field("firstPartyStatusClearTimer", Timer.class));
+			assertNull(expiry());
 		});
+	}
+
+	@Test
+	public void sameTextReplacementKeepsItsOwnExpiry() throws Exception
+	{
+		enableControls();
+		edt(() ->
+		{
+			panel.showSyncResult(true, false, "HTTP 503");
+			Timer first = expiry();
+			panel.showSyncResult(true, false, "HTTP 503 again");
+			Timer second = expiry();
+			assertNotSame(first, second);
+			assertFalse(first.isRunning());
+			assertTrue(second.isRunning());
+			fire(first);
+			assertEquals("sync failed", status.getText());
+			assertSame(second, expiry());
+			assertTrue(second.isRunning());
+			fire(second);
+			assertEquals(" ", status.getText());
+			assertNull(expiry());
+			assertControls(true, true);
+		});
+	}
+
+	@Test
+	public void hoverOverNoticeOutlivesTheNoticeExpiry() throws Exception
+	{
+		enableControls();
+		edt(() ->
+		{
+			panel.showCharacterPublishStatus(KillClogPlugin.CHARACTER_APPEARANCE_STATUS, false, true, "Cosmetic override");
+			assertEquals(KillClogPlugin.CHARACTER_APPEARANCE_STATUS, status.getText());
+			assertControls(true, true);
+			Timer notice = expiry();
+			assertTrue(notice.isRunning());
+			mouse(character, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
+			assertEquals(KillClogPlugin.CHARACTER_APPEARANCE_STATUS, status.getText());
+			assertEquals(new Color(78, 240, 21), status.getForeground());
+			assertFalse(notice.isRunning());
+			assertNull(expiry());
+			fire(notice);
+			assertEquals(KillClogPlugin.CHARACTER_APPEARANCE_STATUS, status.getText());
+			assertEquals("<html><div style='width:220px'>Cosmetic override</div></html>", character.getToolTipText());
+			mouse(character, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
+			assertEquals(" ", status.getText());
+			assertControls(true, true);
+		});
+	}
+
+	@Test
+	public void syncSuccessFlashesOnlyOverBlankOrSyncOwnedText() throws Exception
+	{
+		enableControls();
+		edt(() ->
+		{
+			panel.showSyncResult(true, true, null);
+			assertNotNull(field("syncSuccessGlowTimer", Timer.class));
+			fire(field("syncSuccessGlowTimer", Timer.class));
+			assertNull(field("syncSuccessGlowTimer", Timer.class));
+
+			panel.showSyncProgress(true, "syncing...", false);
+			panel.showSyncResult(true, true, null);
+			assertEquals(" ", status.getText());
+			assertNotNull(field("syncSuccessGlowTimer", Timer.class));
+			fire(field("syncSuccessGlowTimer", Timer.class));
+
+			mouse(sync, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
+			panel.showSyncResult(true, true, null);
+			assertEquals(" ", status.getText());
+			assertNotNull(field("syncSuccessGlowTimer", Timer.class));
+			mouse(sync, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
+			fire(field("syncSuccessGlowTimer", Timer.class));
+
+			mouse(character, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
+			panel.showSyncResult(true, true, null);
+			assertEquals("publish character", status.getText());
+			assertNull(field("syncSuccessGlowTimer", Timer.class));
+			mouse(character, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
+
+			panel.showCharacterPublishStatus(KillClogPlugin.CHARACTER_RENDERING_STATUS, false, false, null);
+			panel.showSyncResult(true, true, null);
+			assertEquals(KillClogPlugin.CHARACTER_RENDERING_STATUS, status.getText());
+			assertNull(field("syncSuccessGlowTimer", Timer.class));
+			panel.showCharacterPublishStatus(" ", false, false, null);
+
+			panel.onCompareStatus("Player not found", Color.RED);
+			panel.showSyncResult(true, true, null);
+			assertEquals("Player not found", status.getText());
+			assertNull(field("syncSuccessGlowTimer", Timer.class));
+		});
+	}
+
+	private Timer expiry()
+	{
+		StatusMessage current = field("current", StatusMessage.class);
+		return current == null ? null : field(current, "expiry", Timer.class);
 	}
 
 	private void enableControls() throws Exception

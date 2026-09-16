@@ -1,5 +1,7 @@
 package com.killclog;
 
+import com.killclog.StatusMessage.Kind;
+import com.killclog.StatusMessage.Owner;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
@@ -25,10 +27,11 @@ import net.runelite.client.util.ImageUtil;
 
 /**
  * The status line above the search bar and the killclog.com one-click
- * controls that share it. Lookup messages arrive through
- * {@link #setSearchStatus}; sync and character feedback arrive through the
- * show/reset methods and only write while the bar is free or already theirs.
- * Widgets are touched on the EDT only.
+ * controls that share it. Every occupant is a {@link StatusMessage}: lookup
+ * text arrives through {@link #setSearchStatus}, sync and character feedback
+ * through the show/reset methods. Feedback only lands while the row is free
+ * or already its owner's, and an expiry only ever clears the message it was
+ * started for. Widgets are touched on the EDT only.
  */
 final class PanelStatusRow
 {
@@ -36,6 +39,8 @@ final class PanelStatusRow
 	private static final String SYNC_FAILURE_HOVER_TEXT = "sync failed - click to retry";
 	private static final String CHARACTER_HOVER_TEXT = "publish character";
 	private static final String CHARACTER_FAILURE_HOVER_TEXT = "publish failed - click to retry";
+	private static final int SYNC_EXPIRY_MS = 2500;
+	private static final int CHARACTER_EXPIRY_MS = 3000;
 	// k1: the brand lime. Status chrome, not data coloring, so it does not
 	// route through the user-themable completion color.
 	private static final Color SYNC_K1 = new Color(78, 240, 21);
@@ -54,6 +59,8 @@ final class PanelStatusRow
 	private final FirstPartyFeedback characterFeedback;
 	private String characterNoticeText;
 	private String characterNoticeDetail;
+	/** What the row shows now; null while blank. */
+	private StatusMessage current;
 
 	private boolean syncArrowEnabled;
 	private boolean syncArrowHasData;
@@ -62,7 +69,6 @@ final class PanelStatusRow
 	private Runnable killclogSyncHandler;
 	@Setter(AccessLevel.PACKAGE)
 	private Runnable characterPublishHandler;
-	private Timer firstPartyStatusClearTimer;
 	private Timer syncSuccessGlowTimer;
 	private Timer characterSuccessGlowTimer;
 	private BufferedImage characterBase;
@@ -77,9 +83,11 @@ final class PanelStatusRow
 		this.spriteManager = spriteManager;
 		this.tooltipController = tooltipController;
 		this.textDim = textDim;
-		this.syncFeedback = new FirstPartyFeedback(config, this::showSyncStatus,
+		this.syncFeedback = new FirstPartyFeedback(config,
+			(kind, text, autoClear) -> showFeedback(Owner.SYNC, kind, text, autoClear),
 			this::flashSyncSuccess, "sync failed");
-		this.characterFeedback = new FirstPartyFeedback(config, this::showCharacterStatusText,
+		this.characterFeedback = new FirstPartyFeedback(config,
+			(kind, text, autoClear) -> showFeedback(Owner.CHARACTER, kind, text, autoClear),
 			this::flashCharacterSuccess, KillClogPlugin.CHARACTER_FAILED_STATUS);
 		PanelSearchBox.configureStatus(searchStatus, textDim);
 		this.row = build();
@@ -96,17 +104,68 @@ final class PanelStatusRow
 	}
 
 	/**
-	 * Single point of control for the status text. Also the arrow's
-	 * landlord: the sync arrow only shows while the bar is free (blank, or
-	 * showing the arrow's own hover text), so search progress, player-not-found
-	 * lines, and the sync flow itself all naturally park it.
+	 * Lookup text from the panel. The panel manages lookup lifetimes itself:
+	 * text holds the row until the panel replaces it, and blank hands the row
+	 * back. The controls only show while the row is free, so search progress
+	 * and player-not-found lines naturally park them.
 	 */
 	void setSearchStatus(String text, Color color)
 	{
-		searchStatus.setIcon(null);
-		searchStatus.setText(text);
-		searchStatus.setForeground(color);
+		if (text == null || text.trim().isEmpty())
+		{
+			clear();
+		}
+		else
+		{
+			show(new StatusMessage(Owner.LOOKUP, Kind.RESULT, text, color));
+		}
+	}
+
+	// ── occupancy ──────────────────────────────────────────────────────
+
+	/** Replacing a message retires it: its expiry can never fire on a successor. */
+	private void show(StatusMessage message)
+	{
+		if (current != null)
+		{
+			current.cancelExpiry();
+		}
+		current = message;
+		searchStatus.setText(message.text);
+		searchStatus.setForeground(message.color);
 		refreshFirstPartyVisibility();
+	}
+
+	private void clear()
+	{
+		if (current != null)
+		{
+			current.cancelExpiry();
+			current = null;
+		}
+		searchStatus.setText(" ");
+		searchStatus.setForeground(textDim);
+		refreshFirstPartyVisibility();
+	}
+
+	/** Blank, hover lines and notices leave the row free for the next writer. */
+	private boolean free()
+	{
+		return current == null || current.yields();
+	}
+
+	private boolean ownedBy(Owner owner)
+	{
+		return current != null && current.owner == owner;
+	}
+
+	/** A control's own hover line or notice clears when the pointer leaves it. */
+	private void clearYielding(Owner owner)
+	{
+		if (ownedBy(owner) && current.yields())
+		{
+			clear();
+		}
 	}
 
 	// ── layout ─────────────────────────────────────────────────────────
@@ -130,8 +189,8 @@ final class PanelStatusRow
 					refreshCharacterIcon(true);
 					tooltipController.setTooltipText(characterPublish, characterTooltipText(characterNoticeDetail != null
 						? characterNoticeDetail : characterFeedback.lastFailure()));
-					setSearchStatus(characterNoticeText != null ? characterNoticeText
-						: characterFeedback.lastFailure() == null ? CHARACTER_HOVER_TEXT : CHARACTER_FAILURE_HOVER_TEXT, SYNC_K1);
+					show(new StatusMessage(Owner.CHARACTER, Kind.HOVER, characterNoticeText != null ? characterNoticeText
+						: characterFeedback.lastFailure() == null ? CHARACTER_HOVER_TEXT : CHARACTER_FAILURE_HOVER_TEXT, SYNC_K1));
 				}
 			}
 
@@ -141,10 +200,7 @@ final class PanelStatusRow
 				characterHovered = false;
 				tooltipController.setTooltipText(characterPublish, null);
 				refreshCharacterIcon(false);
-				if (isCharacterHoverStatus(searchStatus.getText()))
-				{
-					setSearchStatus(" ", textDim);
-				}
+				clearYielding(Owner.CHARACTER);
 			}
 
 			@Override
@@ -175,8 +231,8 @@ final class PanelStatusRow
 					syncChaliceHovered = true;
 					refreshSyncChalice(true);
 					tooltipController.setTooltipText(syncArrow, syncFeedback.lastFailure());
-					setSearchStatus(syncFeedback.lastFailure() == null
-						? SYNC_HOVER_TEXT : SYNC_FAILURE_HOVER_TEXT, SYNC_K1);
+					show(new StatusMessage(Owner.SYNC, Kind.HOVER, syncFeedback.lastFailure() == null
+						? SYNC_HOVER_TEXT : SYNC_FAILURE_HOVER_TEXT, SYNC_K1));
 				}
 			}
 
@@ -186,10 +242,7 @@ final class PanelStatusRow
 				syncChaliceHovered = false;
 				tooltipController.setTooltipText(syncArrow, null);
 				refreshSyncChalice(false);
-				if (isSyncHoverStatus(searchStatus.getText()))
-				{
-					setSearchStatus(" ", textDim);
-				}
+				clearYielding(Owner.SYNC);
 			}
 
 			@Override
@@ -323,42 +376,11 @@ final class PanelStatusRow
 			characterPublishedGlow ? SYNC_K1 : null));
 	}
 
-	// ── visibility and bar ownership ───────────────────────────────────
-
-	private boolean statusBarFree()
-	{
-		String text = searchStatus.getText();
-		return text == null || text.trim().isEmpty()
-			|| isSyncHoverStatus(text) || isCharacterHoverStatus(text);
-	}
-
 	private void refreshFirstPartyVisibility()
 	{
-		boolean visible = syncArrowHasData && statusBarFree();
+		boolean visible = syncArrowHasData && free();
 		syncArrow.setVisible(syncArrowEnabled && visible);
 		characterPublish.setVisible(characterPublishEnabled && characterBase != null && visible);
-	}
-
-	private boolean barOwnedBySync()
-	{
-		return isSyncOwnedStatus(searchStatus.getText());
-	}
-
-	static boolean isSyncOwnedStatus(String text)
-	{
-		return isSyncHoverStatus(text) || "syncing...".equals(text)
-			|| "retrying...".equals(text) || "sync failed".equals(text);
-	}
-
-	private static boolean isSyncHoverStatus(String text)
-	{
-		return SYNC_HOVER_TEXT.equals(text) || SYNC_FAILURE_HOVER_TEXT.equals(text);
-	}
-
-	private static boolean isCharacterHoverStatus(String text)
-	{
-		return CHARACTER_HOVER_TEXT.equals(text) || CHARACTER_FAILURE_HOVER_TEXT.equals(text)
-			|| isCharacterNotice(text);
 	}
 
 	private static String characterTooltipText(String detail)
@@ -368,6 +390,7 @@ final class PanelStatusRow
 			.replace("<", "&lt;").replace(">", "&gt;") + "</div></html>";
 	}
 
+	/** The plugin's actionable character hints; shown as notices and repeated on hover. */
 	static boolean isCharacterNotice(String text)
 	{
 		return KillClogPlugin.CHARACTER_PENDING_STATUS.equals(text)
@@ -375,26 +398,6 @@ final class PanelStatusRow
 			|| KillClogPlugin.CHARACTER_DISABLED_STATUS.equals(text)
 			|| KillClogPlugin.CHARACTER_APPEARANCE_STATUS.equals(text)
 			|| KillClogPlugin.CHARACTER_UNKNOWN_STATUS.equals(text);
-	}
-
-	private boolean barOwnedByCharacter()
-	{
-		String text = searchStatus.getText();
-		return isCharacterHoverStatus(text)
-			|| KillClogPlugin.CHARACTER_RENDERING_STATUS.equals(text)
-			|| KillClogPlugin.CHARACTER_BUSY_STATUS.equals(text)
-			|| KillClogPlugin.CHARACTER_PUBLISHED_STATUS.equals(text)
-			|| KillClogPlugin.CHARACTER_FAILED_STATUS.equals(text);
-	}
-
-	static boolean canFlashSyncSuccess(String text)
-	{
-		return text == null || text.trim().isEmpty() || isSyncOwnedStatus(text);
-	}
-
-	private boolean barOwnedByFirstParty()
-	{
-		return barOwnedBySync() || barOwnedByCharacter();
 	}
 
 	// ── plugin-facing controls ─────────────────────────────────────────
@@ -469,18 +472,29 @@ final class PanelStatusRow
 	{
 		SwingUtilities.invokeLater(() ->
 		{
-			stopFirstPartyStatusTimer();
+			// Stops whichever expiry is running, character included; see the
+			// status row maintenance notes before changing this policy.
+			if (current != null)
+			{
+				current.cancelExpiry();
+			}
 			syncFeedback.reset();
 			tooltipController.setTooltipText(syncArrow, null);
 			syncChaliceHovered = false;
 			clearSyncSuccessGlow();
-			if (barOwnedBySync())
+			if (ownedBy(Owner.SYNC))
 			{
-				setSearchStatus(" ", textDim);
+				clear();
 			}
 		});
 	}
 
+	/**
+	 * The plugin speaks in status strings; they are classified once here.
+	 * Blank withdraws the character's message, a success or failure completes
+	 * the request, the notice constants are notices, "updating character..."
+	 * is progress, and anything else is a result.
+	 */
 	void showCharacterPublishStatus(String text, boolean ok, boolean autoClear, String detail)
 	{
 		runFeedbackOnEdt(() ->
@@ -492,10 +506,9 @@ final class PanelStatusRow
 				characterFeedback.reset();
 				tooltipController.setTooltipText(characterPublish, null);
 				clearCharacterSuccessGlow();
-				if (barOwnedByCharacter())
+				if (ownedBy(Owner.CHARACTER))
 				{
-					stopFirstPartyStatusTimer();
-					setSearchStatus(" ", textDim);
+					clear();
 				}
 			}
 			else if (ok || KillClogPlugin.CHARACTER_FAILED_STATUS.equals(text))
@@ -506,13 +519,19 @@ final class PanelStatusRow
 			else
 			{
 				characterFeedback.reset();
+				Kind kind = Kind.RESULT;
 				if (isCharacterNotice(text))
 				{
+					kind = Kind.NOTICE;
 					characterNoticeText = KillClogPlugin.CHARACTER_PENDING_STATUS.equals(text)
 						? KillClogPlugin.CHARACTER_UNKNOWN_STATUS : text;
 					characterNoticeDetail = detail;
 				}
-				characterFeedback.progress(true, text, autoClear);
+				else if (KillClogPlugin.CHARACTER_RENDERING_STATUS.equals(text))
+				{
+					kind = Kind.PROGRESS;
+				}
+				characterFeedback.show(true, kind, text, autoClear);
 			}
 			if (characterHovered)
 			{
@@ -528,10 +547,9 @@ final class PanelStatusRow
 		{
 			// Changing feedback preferences clears existing transient chrome;
 			// the next callback reads the new settings. Failure history remains.
-			if (barOwnedByFirstParty())
+			if (current != null && current.owner != Owner.LOOKUP)
 			{
-				stopFirstPartyStatusTimer();
-				setSearchStatus(" ", textDim);
+				clear();
 			}
 			clearSyncSuccessGlow();
 			clearCharacterSuccessGlow();
@@ -541,7 +559,10 @@ final class PanelStatusRow
 	/** Stops every timer and hides the controls; the row stays reusable afterwards. */
 	void shutdown()
 	{
-		stopFirstPartyStatusTimer();
+		if (current != null)
+		{
+			current.cancelExpiry();
+		}
 		syncArrowEnabled = false;
 		syncArrowHasData = false;
 		syncChaliceHovered = false;
@@ -569,13 +590,43 @@ final class PanelStatusRow
 		}
 	}
 
-	private void stopFirstPartyStatusTimer()
+	/**
+	 * Sync and character feedback share the row on equal terms: a message
+	 * only lands while the row is free or already its owner's, so lookup text
+	 * is never stomped. Progress speaks in k1; notices and results stay dim.
+	 * An auto-clearing message expires on its own timer, and that expiry
+	 * clears nothing else. Any thread.
+	 */
+	private void showFeedback(Owner owner, Kind kind, String text, boolean autoClear)
 	{
-		if (firstPartyStatusClearTimer != null)
+		runFeedbackOnEdt(() ->
 		{
-			firstPartyStatusClearTimer.stop();
-			firstPartyStatusClearTimer = null;
-		}
+			if (!free() && !ownedBy(owner))
+			{
+				return;
+			}
+			if (owner == Owner.SYNC)
+			{
+				clearSyncSuccessGlow();
+			}
+			else
+			{
+				clearCharacterSuccessGlow();
+			}
+			StatusMessage message = new StatusMessage(owner, kind, text,
+				kind == Kind.PROGRESS ? SYNC_K1 : textDim);
+			show(message);
+			if (autoClear)
+			{
+				message.expireAfter(owner == Owner.SYNC ? SYNC_EXPIRY_MS : CHARACTER_EXPIRY_MS, () ->
+				{
+					if (current == message)
+					{
+						clear();
+					}
+				});
+			}
+		});
 	}
 
 	private void stopSyncSuccessGlowTimer()
@@ -595,57 +646,25 @@ final class PanelStatusRow
 	}
 
 	/**
-	 * Sync-flow status line: "syncing..." while in flight, then "sync failed"
-	 * which clears itself after a beat. Any thread. The bar
-	 * is shared: sync text only writes when the bar is free or already the
-	 * sync's, so lookup and player-not-found messages are never stomped.
-	 * Sync chrome speaks in k1; only failure stays dim.
+	 * Successful sync feedback is icon-only so the shared status row never
+	 * moves. It flashes over a blank row or the sync's own text, never over
+	 * lookup or character text.
 	 */
-	private void showSyncStatus(String text, boolean autoClear)
-	{
-		runFeedbackOnEdt(() ->
-		{
-			if (!statusBarFree() && !barOwnedBySync())
-			{
-				return;
-			}
-			stopFirstPartyStatusTimer();
-			clearSyncSuccessGlow();
-			setSearchStatus(text, "sync failed".equals(text) ? textDim : SYNC_K1);
-			if (autoClear)
-			{
-				firstPartyStatusClearTimer = new Timer(2500, e ->
-				{
-					if (text.equals(searchStatus.getText()))
-					{
-						setSearchStatus(" ", textDim);
-					}
-					firstPartyStatusClearTimer = null;
-				});
-				firstPartyStatusClearTimer.setRepeats(false);
-				firstPartyStatusClearTimer.start();
-			}
-		});
-	}
-
-	/** Successful sync feedback is icon-only so the shared status row never moves. */
 	private void flashSyncSuccess()
 	{
 		runFeedbackOnEdt(() ->
 		{
 			if (!syncArrowEnabled || !syncArrowHasData
-				|| !canFlashSyncSuccess(searchStatus.getText()))
+				|| current != null && !ownedBy(Owner.SYNC))
 			{
 				return;
 			}
-			stopFirstPartyStatusTimer();
 			stopSyncSuccessGlowTimer();
-			if (barOwnedBySync())
+			if (ownedBy(Owner.SYNC))
 			{
-				setSearchStatus(" ", textDim);
+				clear();
 			}
 			syncedGlow = true;
-			refreshFirstPartyVisibility();
 			refreshSyncChalice(syncChaliceHovered);
 
 			syncSuccessGlowTimer = new Timer(2500, e ->
@@ -673,48 +692,19 @@ final class PanelStatusRow
 	private void flashCharacterSuccess()
 	{
 		if (!characterPublishEnabled || !syncArrowHasData
-			|| !statusBarFree() && !barOwnedByCharacter())
+			|| !free() && !ownedBy(Owner.CHARACTER))
 		{
 			return;
 		}
 		clearCharacterSuccessGlow();
-		if (barOwnedByCharacter())
+		if (ownedBy(Owner.CHARACTER))
 		{
-			stopFirstPartyStatusTimer();
-			setSearchStatus(" ", textDim);
+			clear();
 		}
 		characterPublishedGlow = true;
 		refreshCharacterIcon(characterHovered);
 		characterSuccessGlowTimer = new Timer(2500, e -> clearCharacterSuccessGlow());
 		characterSuccessGlowTimer.setRepeats(false);
 		characterSuccessGlowTimer.start();
-	}
-
-	private void showCharacterStatusText(String text, boolean autoClear)
-	{
-		runFeedbackOnEdt(() ->
-		{
-			if (!statusBarFree() && !barOwnedByCharacter())
-			{
-				return;
-			}
-			stopFirstPartyStatusTimer();
-			clearCharacterSuccessGlow();
-			boolean active = KillClogPlugin.CHARACTER_RENDERING_STATUS.equals(text);
-			setSearchStatus(text, active ? SYNC_K1 : textDim);
-			if (autoClear)
-			{
-				firstPartyStatusClearTimer = new Timer(3000, e ->
-				{
-					if (text.equals(searchStatus.getText()))
-					{
-						setSearchStatus(" ", textDim);
-					}
-					firstPartyStatusClearTimer = null;
-				});
-				firstPartyStatusClearTimer.setRepeats(false);
-				firstPartyStatusClearTimer.start();
-			}
-		});
 	}
 }
