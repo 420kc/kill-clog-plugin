@@ -728,7 +728,7 @@ public class KillClogPlugin extends Plugin
 		{
 			// Request a full Search walk after the player's log has initialized.
 			// Ordinary visible-category scripts cannot establish a full capture.
-			manualClogSync.onCollectionLogOpened(client, localClogCache);
+			manualClogSync.onCollectionLogOpened(client);
 		}
 
 		// Both menu interfaces are watched: the player's interface-style

@@ -50,8 +50,6 @@ public class Cells
 		JToolTip buildCompared(JLabel owner, TooltipData data, int gridCols,
 			String name, boolean compact);
 
-		JToolTip build(JLabel owner, @Nullable TooltipData data, int gridCols, String name);
-
 		JToolTip build(JLabel owner, @Nullable TooltipData data, int gridCols, String name, boolean compact);
 	}
 
@@ -62,7 +60,6 @@ public class Cells
 	private final ComparisonController comparison;
 	private final TooltipDataBuilder tooltipDataBuilder;
 	private final LookupSession lookupSession;
-	private final ClogService clogService;
 	private final KillclogService killclogService;
 	private final PersonalBests personalBests;
 	private final KillClogConfig config;
@@ -103,7 +100,6 @@ public class Cells
 		this.comparison = comparison;
 		this.tooltipDataBuilder = tooltipDataBuilder;
 		this.lookupSession = lookupSession;
-		this.clogService = clogService;
 		this.killclogService = killclogService;
 		this.personalBests = personalBests;
 		loadPvpActivityIcons();
@@ -186,46 +182,40 @@ public class Cells
 			}));
 	}
 
-	/** Build an activity cell (skill icon + tooltip, with a special-case for the All-Clues activity). */
-	public JPanel buildActivityCell(HiscoreSkill activity)
+	/** Build the All Clues cell, which opens the Clue Summary. */
+	public JPanel buildClueSummaryCell()
 	{
+		HiscoreSkill activity = HiscoreSkill.CLUE_SCROLL_ALL;
 		JLabel label = new JLabel(activity.getName())
 		{
 			@Override
 			public JToolTip createToolTip()
 			{
-				if (activity == HiscoreSkill.CLUE_SCROLL_ALL)
+				if (comparison.isComparisonMode() && comparison.getCompareHiscoreResult() != null)
 				{
-					if (comparison.isComparisonMode() && comparison.getCompareHiscoreResult() != null)
-					{
-						return wrapSideBySide(this,
-							clueSummaryTooltip(this, lookupSession.getHiscoreResult(),
-								lookupSession.getClogResult(), false),
-							clueSummaryTooltip(this, comparison.getCompareHiscoreResult(),
-								comparison.getCompareClogResult(), true));
-					}
-					ClueSummaryTooltip tip = clueSummaryTooltip(this, lookupSession.getHiscoreResult(),
-						lookupSession.getClogResult(), false);
-					tooltipController.keepTooltipOnHover(tip, (JPanel) this.getParent());
-					return tip;
+					return wrapSideBySide(this,
+						clueSummaryTooltip(this, lookupSession.getHiscoreResult(),
+							lookupSession.getClogResult(), false),
+						clueSummaryTooltip(this, comparison.getCompareHiscoreResult(),
+							comparison.getCompareClogResult(), true));
 				}
-				return buildSingleSpriteTooltip(this, tooltipDataMap.get(activity), 5, activity.getName());
+				ClueSummaryTooltip tip = clueSummaryTooltip(this, lookupSession.getHiscoreResult(),
+					lookupSession.getClogResult(), false);
+				tooltipController.keepTooltipOnHover(tip, (JPanel) this.getParent());
+				return tip;
 			}
 		};
 		styleLabel(label, activity.getName());
 
-		if (activity.getSpriteId() != -1)
-		{
-			spriteManager.getSpriteAsync(activity.getSpriteId(), 0, sprite ->
-				SwingUtilities.invokeLater(() ->
+		spriteManager.getSpriteAsync(activity.getSpriteId(), 0, sprite ->
+			SwingUtilities.invokeLater(() ->
+			{
+				if (sprite != null)
 				{
-					if (sprite != null)
-					{
-						label.setIcon(new ImageIcon(ImageUtil.resizeImage(
-							ImageUtil.resizeCanvas(sprite, 25, 25), 20, 20)));
-					}
-				}));
-		}
+					label.setIcon(new ImageIcon(ImageUtil.resizeImage(
+						ImageUtil.resizeCanvas(sprite, 25, 25), 20, 20)));
+				}
+			}));
 
 		activityLabels.put(activity, label);
 		return wrapInCell(label);
@@ -310,17 +300,7 @@ public class Cells
 			int score = result.getActivityScore(activity.getName());
 			label.setText(ClogHelper.pad(score <= 0 ? "--" : ClogHelper.formatKc(score)));
 			label.setForeground(score > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
-			if (activity == HiscoreSkill.CLUE_SCROLL_ALL)
-			{
-				tooltipController.setTooltipText(label, " ");
-			}
-			else
-			{
-				int rank = result.getActivityRank(activity.getName());
-				tooltipController.setTooltipText(label, rank > 0
-					? activity.getName() + "\nRank: {w}" + String.format(Locale.US, "%,d", rank)
-					: activity.getName());
-			}
+			tooltipController.setTooltipText(label, " ");
 		}
 
 		// Clue tier cells
@@ -341,7 +321,7 @@ public class Cells
 	}
 
 	/** Build the rare clue collections from the clog; the Clue Summary lists and opens them. */
-	public void renderClog(ClogResult result, KillClogConfig config)
+	public void renderClog(ClogResult result)
 	{
 		for (int i = 0; i < 2; i++)
 		{
@@ -512,13 +492,13 @@ public class Cells
 	{
 		if (comparison.isComparisonMode())
 		{
-			JToolTip blue = singlePlayerBuilder.build(owner, blueData, 5, name);
+			JToolTip blue = singlePlayerBuilder.build(owner, blueData, 5, name, false);
 			JToolTip red = singlePlayerBuilder.buildCompared(owner, redData, 5, name, false);
 			decorateBossTooltip(blue, wikiPage, lookupSession.getHiscoreResult());
 			decorateBossTooltip(red, wikiPage, comparison.getCompareHiscoreResult());
 			return wrapSideBySide(owner, blue, red);
 		}
-		JToolTip tip = buildSingleSpriteTooltip(owner, blueData, 5, name);
+		JToolTip tip = singlePlayerBuilder.build(owner, blueData, 5, name, false);
 		decorateBossTooltip(tip, wikiPage, lookupSession.getHiscoreResult());
 		return tip;
 	}
@@ -666,7 +646,7 @@ public class Cells
 				singlePlayerBuilder.build(owner, blueData, gridCols, displayName, compact),
 				singlePlayerBuilder.buildCompared(owner, redData, gridCols, displayName, compact));
 		}
-		return buildSingleSpriteTooltip(owner, tooltipDataMap.get(tier), gridCols, displayName, compact);
+		return singlePlayerBuilder.build(owner, tooltipDataMap.get(tier), gridCols, displayName, compact);
 	}
 
 	private static boolean suppressComparisonClueGrid(HiscoreSkill tier)
@@ -706,10 +686,10 @@ public class Cells
 		{
 			TooltipData redData = comparison.buildClueRare(name, clogCategory);
 			return wrapSideBySide(owner,
-				singlePlayerBuilder.build(owner, data, 5, name),
+				singlePlayerBuilder.build(owner, data, 5, name, false),
 				singlePlayerBuilder.buildCompared(owner, redData, 5, name, false));
 		}
-		return buildSingleSpriteTooltip(owner, data, 5, name);
+		return singlePlayerBuilder.build(owner, data, 5, name, false);
 	}
 
 	private JToolTip buildCustomRareTooltip(JLabel owner, String name, String rareKey, int[] itemIds)
@@ -718,20 +698,10 @@ public class Cells
 		{
 			TooltipData redData = comparison.buildCustomRare(name, itemIds);
 			return wrapSideBySide(owner,
-				singlePlayerBuilder.build(owner, rareTooltips.get(rareKey), 5, name),
+				singlePlayerBuilder.build(owner, rareTooltips.get(rareKey), 5, name, false),
 				singlePlayerBuilder.buildCompared(owner, redData, 5, name, false));
 		}
-		return buildSingleSpriteTooltip(owner, rareTooltips.get(rareKey), 5, name);
-	}
-
-	private JToolTip buildSingleSpriteTooltip(JLabel owner, @Nullable TooltipData data, int gridCols, String name)
-	{
-		return singlePlayerBuilder.build(owner, data, gridCols, name);
-	}
-
-	private JToolTip buildSingleSpriteTooltip(JLabel owner, @Nullable TooltipData data, int gridCols, String name, boolean compact)
-	{
-		return singlePlayerBuilder.build(owner, data, gridCols, name, compact);
+		return singlePlayerBuilder.build(owner, rareTooltips.get(rareKey), 5, name, false);
 	}
 
 	// Helpers

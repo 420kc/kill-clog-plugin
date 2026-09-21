@@ -88,13 +88,11 @@ public class LookupSession
 
 	public LookupSession(HiscoreService hiscoreService, ClogService clogService,
 		RuneProfileService runeProfileService, KillclogService killclogService,
-		KillClogConfig config,
-		@Nullable NameAutocompleter nameAutocompleter, Listener listener)
+		KillClogConfig config, Listener listener)
 	{
 		this.hiscoreService = hiscoreService;
 		this.clogService = clogService;
 		this.config = config;
-		this.nameAutocompleter = nameAutocompleter;
 		this.listener = listener;
 		this.fanout = new LookupFanout(hiscoreService, clogService, runeProfileService, killclogService);
 	}

@@ -50,7 +50,6 @@ public abstract class TitleTooltip extends NativeTooltip
 	protected static final Color COMPARE_BLUE = new Color(91, 164, 207);
 	protected static final Color COMPARE_RED = new Color(224, 86, 86);
 	protected static final Color MUTED_GRAY = new Color(148, 148, 148);
-	protected static final String CHROME_SEPARATOR = " | ";
 	private static final Color QTY_SHADOW = new Color(0, 0, 0);
 
 	@Getter(AccessLevel.PROTECTED)
@@ -285,15 +284,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		}
 	}
 
-	protected void loadItemSprites(List<Integer> itemIds, int count, int size,
-		BufferedImage[] sprites, ItemManager itemManager)
-	{
-		for (int i = 0; i < count && i < itemIds.size() && i < sprites.length; i++)
-		{
-			loadItemSprite(itemIds.get(i), size, sprites, i, itemManager);
-		}
-	}
-
 	protected void loadClogItemSprites(List<ClogResult.ClogItem> items, int count, int size,
 		BufferedImage[] sprites, ItemManager itemManager)
 	{
@@ -350,12 +340,6 @@ public abstract class TitleTooltip extends NativeTooltip
 				g2.drawString(qtyText, sx, y + fm.getAscent());
 			}
 		}
-	}
-
-	/** Faded version of a color for no-data cells, so an empty value reads quiet, not absent. */
-	protected static Color dim(Color color)
-	{
-		return new Color(color.getRed(), color.getGreen(), color.getBlue(), 110);
 	}
 
 	/** Set an extra info line below the subtitle. Label in orange, value in given color. */
@@ -417,12 +401,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		return OSRS_ORANGE;
 	}
 
-	/** Whether this tooltip reserves a full-width item-hover row in its header. */
-	protected boolean hasHeaderHoverLine()
-	{
-		return false;
-	}
-
 	protected String getHeaderHoverLineText()
 	{
 		return null;
@@ -441,20 +419,6 @@ public abstract class TitleTooltip extends NativeTooltip
 	protected Color getHeaderHoverLineRightColor()
 	{
 		return OSRS_ORANGE;
-	}
-
-	protected void paintHeaderRightText(Graphics2D g2, FontMetrics fm, int w, int baseline,
-		int reservedLeftWidth)
-	{
-		paintHeaderRightText(g2, fm, w, baseline, reservedLeftWidth,
-			getHeaderRightText(), getHeaderRightColor());
-	}
-
-	protected void paintHeaderUpperRightText(Graphics2D g2, FontMetrics fm, int w, int baseline,
-		int reservedLeftWidth)
-	{
-		paintHeaderRightText(g2, fm, w, baseline, reservedLeftWidth,
-			getHeaderUpperRightText(), getHeaderUpperRightColor());
 	}
 
 	private void paintHeaderRightText(Graphics2D g2, FontMetrics fm, int w, int baseline,
@@ -519,10 +483,6 @@ public abstract class TitleTooltip extends NativeTooltip
 			h += LINE_HEIGHT;
 		}
 		if (rankText != null)
-		{
-			h += LINE_HEIGHT;
-		}
-		if (hasHeaderHoverLine())
 		{
 			h += LINE_HEIGHT;
 		}
@@ -696,20 +656,13 @@ public abstract class TitleTooltip extends NativeTooltip
 			activeLineWidth = labelWidth + fm.stringWidth(subtitleValue);
 		}
 
-		if (hasHeaderHoverLine())
+		if (upperLineY != lineY)
 		{
-			lineY += firstHeaderLine ? NAME_LINE_HEIGHT : LINE_HEIGHT;
-			paintHeaderHoverLine(g2, fm, w, lineY);
+			paintHeaderRightText(g2, fm, w, upperLineY, upperLineWidth,
+				getHeaderUpperRightText(), getHeaderUpperRightColor());
 		}
-
-		if (!hasHeaderHoverLine() && upperLineY != lineY)
-		{
-			paintHeaderUpperRightText(g2, fm, w, upperLineY, upperLineWidth);
-		}
-		if (!hasHeaderHoverLine())
-		{
-			paintHeaderRightText(g2, fm, w, lineY, activeLineWidth);
-		}
+		paintHeaderRightText(g2, fm, w, lineY, activeLineWidth,
+			getHeaderRightText(), getHeaderRightColor());
 
 		// Separator
 		int sepY = lineY + SEPARATOR_GAP;

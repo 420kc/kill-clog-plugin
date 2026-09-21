@@ -67,7 +67,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 	// The current tier, large, in the header's corner. Empty below bronze.
 	private BufferedImage tierSprite;
 	private String notice;
-	private BufferedImage noticeIcon;
 	private boolean firstTimeSetup;
 
 	private BufferedImage[] recentSprites;
@@ -191,19 +190,10 @@ public class ClogSummaryTooltip extends TitleTooltip
 		setTitle("Clog Summary");
 	}
 
-	public void setNotice(String notice, BufferedImage icon)
-	{
-		firstTimeSetup = false;
-		this.notice = notice;
-		this.noticeIcon = icon;
-		setTitle("Clog Summary");
-	}
-
 	public void setFirstTimeSetup()
 	{
 		firstTimeSetup = true;
 		notice = null;
-		noticeIcon = null;
 		setTitle("First Time Setup");
 	}
 
@@ -315,12 +305,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 		if (notice != null)
 		{
-			int nw = fm.stringWidth(notice);
-			if (noticeIcon != null)
-			{
-				nw += noticeIcon.getWidth() + 3;
-			}
-			return new Dimension(nw, LINE_HEIGHT);
+			return new Dimension(fm.stringWidth(notice), LINE_HEIGHT);
 		}
 
 		int textWidth = 0;
@@ -428,14 +413,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 		if (notice != null)
 		{
 			g2.setColor(NOTICE_COLOR);
-			int nx = inset;
-			g2.drawString(notice, nx, startY + fm.getAscent());
-			if (noticeIcon != null)
-			{
-				nx += fm.stringWidth(notice) + 3;
-				int iconY = startY + (LINE_HEIGHT - noticeIcon.getHeight()) / 2;
-				g2.drawImage(noticeIcon, nx, iconY, null);
-			}
+			g2.drawString(notice, inset, startY + fm.getAscent());
 			return;
 		}
 

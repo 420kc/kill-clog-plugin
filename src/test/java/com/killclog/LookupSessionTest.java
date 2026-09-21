@@ -255,7 +255,7 @@ public class LookupSessionTest
 		{
 		};
 		LookupSession session = new LookupSession(hiscores, clogs, runeProfile, null,
-			config, null, listener);
+			config, listener);
 		holder[0] = session;
 		ClogResult partial = new ClogResult("Missing", Collections.emptyMap(),
 			Collections.emptyMap(), Collections.emptyMap(), "2026-09-10", null);

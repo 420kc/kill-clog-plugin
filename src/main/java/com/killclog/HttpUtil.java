@@ -132,11 +132,6 @@ final class HttpUtil
 		return body.string();
 	}
 
-	static CompletableFuture<HttpResult> httpPostJson(OkHttpClient client, String url, String json)
-	{
-		return httpPostJson(client, url, json, null);
-	}
-
 	static CompletableFuture<HttpResult> httpPostJson(OkHttpClient client, String url, String json,
 		@Nullable String bearerToken)
 	{

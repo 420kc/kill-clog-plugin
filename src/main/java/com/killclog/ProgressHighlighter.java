@@ -1,6 +1,5 @@
 package com.killclog;
 
-import java.awt.Color;
 import java.util.List;
 import java.util.Map;
 import javax.swing.JLabel;
@@ -16,33 +15,25 @@ final class ProgressHighlighter
 {
 	private final Map<HiscoreSkill, JLabel> bossLabels;
 
-	// Pending Mad Angel cell (pre-enum only; see PanelData). Late-assigned.
-	@javax.annotation.Nullable
 	private final Map<HiscoreSkill, JLabel> activityLabels;
 	private final Map<HiscoreSkill, JLabel> clueTierLabels;
-	private final Map<String, String> nameOverrides;
-	private final Map<HiscoreSkill, String> clueCategories;
 	private final KillClogConfig config;
 
 	ProgressHighlighter(
 		Map<HiscoreSkill, JLabel> bossLabels,
 		Map<HiscoreSkill, JLabel> activityLabels,
 		Map<HiscoreSkill, JLabel> clueTierLabels,
-		Map<String, String> nameOverrides,
-		Map<HiscoreSkill, String> clueCategories,
 		KillClogConfig config)
 	{
 		this.bossLabels = bossLabels;
 		this.activityLabels = activityLabels;
 		this.clueTierLabels = clueTierLabels;
-		this.nameOverrides = nameOverrides;
-		this.clueCategories = clueCategories;
 		this.config = config;
 	}
 
 	/** Color boss, activity and clue tier cells by clog completion progress. */
 	void colorCellsByCompletion(HiscoreResult hiscoreResult, ClogResult clogResult,
-								FourTwentyMode fourTwentyMode, Color fourTwentyGreen)
+								FourTwentyMode fourTwentyMode)
 	{
 		if (clogResult == null)
 		{
@@ -52,11 +43,10 @@ final class ProgressHighlighter
 		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
 		{
 			HiscoreSkill skill = entry.getKey();
-			String hiscoreName = nameOverrides.getOrDefault(skill.getName(), skill.getName());
-			colorBossCell(entry.getValue(), hiscoreName, hiscoreResult, clogResult,
-				fourTwentyMode, fourTwentyGreen);
+			String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(skill.getName(), skill.getName());
+			colorBossCell(entry.getValue(), hiscoreName, hiscoreResult, clogResult, fourTwentyMode);
 		}
-		colorActivityCategories(clueCategories, clueTierLabels, hiscoreResult, clogResult);
+		colorClueTiers(hiscoreResult, clogResult);
 
 		// Clue All aggregates across all six tier categories.
 		JLabel clueAllLabel = activityLabels.get(HiscoreSkill.CLUE_SCROLL_ALL);
@@ -64,7 +54,7 @@ final class ProgressHighlighter
 		{
 			int totalItems = 0;
 			int totalObtained = 0;
-			for (String cat : clueCategories.values())
+			for (String cat : PanelData.CLUE_CATEGORIES.values())
 			{
 				List<Integer> items = clogResult.getCategoryItems().get(cat);
 				if (items != null)
@@ -110,10 +100,9 @@ final class ProgressHighlighter
 	// Private helpers.
 
 	private void colorBossCell(JLabel label, String hiscoreName,
-		HiscoreResult hiscoreResult, ClogResult clogResult,
-		FourTwentyMode fourTwentyMode, Color fourTwentyGreen)
+		HiscoreResult hiscoreResult, ClogResult clogResult, FourTwentyMode fourTwentyMode)
 	{
-		if (fourTwentyMode != FourTwentyMode.OFF && fourTwentyGreen.equals(label.getForeground()))
+		if (fourTwentyMode != FourTwentyMode.OFF && FourTwentyMode.GREEN.equals(label.getForeground()))
 		{
 			return;
 		}
@@ -124,14 +113,11 @@ final class ProgressHighlighter
 		colorByCompletion(label, ClogService.bossToCategory(hiscoreName), clogResult);
 	}
 
-	private void colorActivityCategories(Map<HiscoreSkill, String> categories,
-		Map<HiscoreSkill, JLabel> labels,
-		HiscoreResult hiscoreResult,
-		ClogResult clogResult)
+	private void colorClueTiers(HiscoreResult hiscoreResult, ClogResult clogResult)
 	{
-		for (Map.Entry<HiscoreSkill, String> entry : categories.entrySet())
+		for (Map.Entry<HiscoreSkill, String> entry : PanelData.CLUE_CATEGORIES.entrySet())
 		{
-			JLabel label = labels.get(entry.getKey());
+			JLabel label = clueTierLabels.get(entry.getKey());
 			if (label != null)
 			{
 				int score = hiscoreResult.getActivityScore(entry.getKey().getName());

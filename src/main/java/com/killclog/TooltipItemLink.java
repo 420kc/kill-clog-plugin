@@ -1,6 +1,5 @@
 package com.killclog;
 
-import java.awt.FontMetrics;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -14,7 +13,6 @@ final class TooltipItemLink
 	private static final String WIKI_PAGE =
 		"https://oldschool.runescape.wiki/w/";
 	private static final String FALLBACK_NAME_PREFIX = "Item ";
-	private static final String ELLIPSIS = "...";
 
 	private static final String[] CHOMPY_TIERS = {
 		"Ogre Bowman", "Bowman", "Ogre Yeoman", "Yeoman", "Ogre Marksman", "Marksman",
@@ -77,25 +75,6 @@ final class TooltipItemLink
 			return fallbackName(itemId);
 		}
 		return name;
-	}
-
-	static String fitRight(FontMetrics fm, String text, int maxWidth)
-	{
-		if (text == null || text.isEmpty() || fm.stringWidth(text) <= maxWidth)
-		{
-			return text;
-		}
-		int ellipsisWidth = fm.stringWidth(ELLIPSIS);
-		if (ellipsisWidth >= maxWidth)
-		{
-			return "";
-		}
-		StringBuilder out = new StringBuilder(text);
-		while (out.length() > 0 && fm.stringWidth(out.toString()) + ellipsisWidth > maxWidth)
-		{
-			out.deleteCharAt(out.length() - 1);
-		}
-		return out + ELLIPSIS;
 	}
 
 	private static String encodePageName(String pageName)

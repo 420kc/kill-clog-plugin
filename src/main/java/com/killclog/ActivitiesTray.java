@@ -35,7 +35,6 @@ public class ActivitiesTray
 	@Getter
 	private final JPanel separator;
 	private final Runnable onToggle;
-	@Getter
 	private boolean expanded;
 	private Timer slideTimer;
 

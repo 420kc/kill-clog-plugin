@@ -138,7 +138,7 @@ class SyncService
 		final int pbCount = personalBests != null ? personalBests.size() : 0;
 		CompletableFuture<HttpUtil.HttpResult> request = localClogCache.commitIfSessionCurrent(
 			cacheEpoch, () -> syncGate.commitIfCurrent(generation,
-				() -> HttpUtil.httpPostJson(httpClient, url, body)));
+				() -> HttpUtil.httpPostJson(httpClient, url, body, null)));
 		if (request == null)
 		{
 			return CompletableFuture.completedFuture(

@@ -5,7 +5,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -28,19 +27,6 @@ final class ClogItemCanonicalizer
 	{
 		int declared = declaredAliases.getOrDefault(itemId, itemId);
 		return catalogVariants.getOrDefault(declared, declared);
-	}
-
-	List<Integer> canonicalizeItemIds(List<Integer> itemIds)
-	{
-		LinkedHashSet<Integer> canonical = new LinkedHashSet<>();
-		if (itemIds != null)
-		{
-			for (int itemId : itemIds)
-			{
-				canonical.add(canonicalItemId(itemId));
-			}
-		}
-		return new ArrayList<>(canonical);
 	}
 
 	List<ClogResult.ClogItem> canonicalizeItems(List<ClogResult.ClogItem> items)

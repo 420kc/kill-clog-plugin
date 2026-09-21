@@ -26,8 +26,6 @@ import net.runelite.client.ui.FontManager;
  */
 public class ImgTooltip extends TitleTooltip
 {
-	private static final int DEFAULT_COLS = 5;
-
 	private static final int DEFAULT_SPRITE_SIZE = 32;
 	private static final int PADDING = 4;
 
@@ -39,7 +37,6 @@ public class ImgTooltip extends TitleTooltip
 	private int effectiveCols;
 	@Setter
 	private String notice = "No collection log synced";
-	private BufferedImage noticeIcon;
 
 	private int totalItems;
 	private List<Integer> allItemIds;
@@ -111,12 +108,6 @@ public class ImgTooltip extends TitleTooltip
 			this);
 	}
 
-	public void setNotice(String msg, BufferedImage icon)
-	{
-		this.notice = msg;
-		this.noticeIcon = icon;
-	}
-
 	@Override
 	protected Dimension getContentSize(int availableWidth)
 	{
@@ -144,12 +135,7 @@ public class ImgTooltip extends TitleTooltip
 		if (!hasItems)
 		{
 			FontMetrics sfm = getFontMetrics(FontManager.getRunescapeSmallFont());
-			int noticeWidth = sfm.stringWidth(notice);
-			if (noticeIcon != null)
-			{
-				noticeWidth += noticeIcon.getWidth() + 3;
-			}
-			gridWidth = Math.max(gridWidth, noticeWidth);
+			gridWidth = Math.max(gridWidth, sfm.stringWidth(notice));
 		}
 
 		return new Dimension(gridWidth, gridHeight);
@@ -191,23 +177,8 @@ public class ImgTooltip extends TitleTooltip
 			int cellSize = spriteSize + PADDING;
 			int gridHeight = rows * cellSize - PADDING;
 
-			int totalWidth = nfm.stringWidth(notice);
-			int iconW = 0;
-			if (noticeIcon != null)
-			{
-				iconW = noticeIcon.getWidth() + 3;
-				totalWidth += iconW;
-			}
-
-			int nx = inset + (w - inset * 2 - totalWidth) / 2;
+			int nx = inset + (w - inset * 2 - nfm.stringWidth(notice)) / 2;
 			int ny = startY + (gridHeight - nfm.getHeight()) / 2 + nfm.getAscent();
-
-			if (noticeIcon != null)
-			{
-				int iconY = ny - noticeIcon.getHeight() + nfm.getDescent();
-				g2.drawImage(noticeIcon, nx, iconY, null);
-				nx += iconW;
-			}
 			g2.drawString(notice, nx, ny);
 			return;
 		}

@@ -174,7 +174,7 @@ public class PanelCellResetCharacterizationTest
 		ClogResult clog = new ClogResult("Seeded", obtained, Collections.emptyMap(), new HashMap<>(), null, null);
 
 		cells.renderHiscore(hiscore, FourTwentyMode.OFF);
-		cells.renderClog(clog, config);
+		cells.renderClog(clog);
 		cells.getTooltipDataMap().put(HiscoreSkill.ZULRAH,
 			new TooltipDataBuilder(null).buildClueRareData("3rd Age", PanelData.CLOG_THIRD_AGE, clog));
 		highlighter.colorEmptyCells();

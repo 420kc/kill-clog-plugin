@@ -3,7 +3,6 @@ package com.killclog;
 import java.util.Collections;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 
 public class SkillsTooltipTest
@@ -44,7 +43,6 @@ public class SkillsTooltipTest
 		// Same height with or without data, so a comparison pair never staggers.
 		assertEquals(empty.getPreferredSize().height, tip.getPreferredSize().height);
 		// No per-skill readout: the card reserves no hover line under its title.
-		assertFalse(tip.hasHeaderHoverLine());
 		assertNull(tip.getHeaderHoverLineText());
 	}
 

@@ -51,15 +51,6 @@ public abstract class NativeTooltip extends JToolTip
 	private static volatile boolean spritesLoaded;
 
 	/**
-	 * Load border sprites from the game via SpriteManager.
-	 * Call once when the client is ready.
-	 */
-	public static void loadSprites(SpriteManager spriteManager)
-	{
-		loadSprites(null, spriteManager);
-	}
-
-	/**
 	 * Load border sprites, preferring client sprite overrides when Resource
 	 * Packs or another UI theme plugin has replaced the same game sprites.
 	 */

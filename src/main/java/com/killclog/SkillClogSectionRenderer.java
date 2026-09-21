@@ -187,8 +187,7 @@ final class SkillClogSectionRenderer
 						? Color.WHITE : TitleTooltip.MUTED_GRAY);
 				y += detailMetrics.getHeight() + HEADER_GAP;
 			}
-			y = paintGrid(g2, entry, section.primary(), i, inset, availableWidth,
-				y, cols, hitBoxes);
+			y = paintGrid(g2, entry, section.primary(), i, inset, y, cols, hitBoxes);
 			if (i + 1 < entries.size()) y += SECTION_GAP;
 		}
 		return y;
@@ -196,7 +195,7 @@ final class SkillClogSectionRenderer
 
 	private int paintGrid(Graphics2D g2, Entry entry,
 		SkillClogSection.PlayerItems playerItems, int sectionIndex,
-		int inset, int availableWidth, int y, int cols,
+		int inset, int y, int cols,
 		List<TooltipItemHover.HitBox> hitBoxes)
 	{
 		return paintGridAt(g2, entry, playerItems, sectionIndex, inset, y, cols, hitBoxes);

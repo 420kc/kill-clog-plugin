@@ -33,7 +33,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private int totalKills;
 	private int bossesWithKc;
 	private int totalBosses;
-	private int slayerLevel = -1;
 	private long slayerXp = -1;
 	private int slayerRank = -1;
 	private int slayerObtained = -1;
@@ -135,8 +134,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 	public void setSlayer(HiscoreResult hiscoreResult, ClogResult clogResult)
 	{
-		slayerLevel = hiscoreResult != null
-			? hiscoreResult.getSkillLevel(PanelData.SLAYER_CATEGORY) : -1;
 		slayerXp = hiscoreResult != null
 			? hiscoreResult.getSkillXp(PanelData.SLAYER_CATEGORY) : -1;
 		slayerRank = hiscoreResult != null

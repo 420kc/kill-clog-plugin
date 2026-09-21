@@ -383,7 +383,7 @@ public class RuneProfileService
 				return null;
 			}
 
-			AccountType accountType = parseAccountType(root);
+			AccountType accountType = RuneProfileAccountSummaryParser.parseAccountType(root);
 			CombatAchievementResult ca = parseCombatAchievements(json);
 			if (accountType == null && ca == null)
 			{
@@ -396,12 +396,6 @@ public class RuneProfileService
 			log.debug("Failed to parse RuneProfile account summary: {}", e.getMessage());
 			return null;
 		}
-	}
-
-	@Nullable
-	private AccountType parseAccountType(JsonObject root)
-	{
-		return RuneProfileAccountSummaryParser.parseAccountType(root);
 	}
 
 	private static int intField(JsonObject obj, String field)

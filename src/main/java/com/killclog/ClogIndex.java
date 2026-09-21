@@ -187,13 +187,6 @@ final class ClogIndex
 			? s.canonicalizer.canonicalItemId(itemId) : fallbackCanonicalItemId(itemId);
 	}
 
-	List<Integer> canonicalizeItemIds(List<Integer> itemIds)
-	{
-		Snapshot s = snapshot;
-		return s != null ? s.canonicalizer.canonicalizeItemIds(itemIds)
-			: FALLBACK_CANONICALIZER.canonicalizeItemIds(itemIds);
-	}
-
 	List<ClogResult.ClogItem> canonicalizeItems(List<ClogResult.ClogItem> items)
 	{
 		Snapshot s = snapshot;
@@ -232,12 +225,6 @@ final class ClogIndex
 	{
 		Snapshot s = snapshot;
 		return s != null ? s.categoryItems : Collections.emptyMap();
-	}
-
-	Map<String, List<String>> tabCategoryKeys()
-	{
-		Snapshot s = snapshot;
-		return s != null ? s.tabCategoryKeys : Collections.emptyMap();
 	}
 
 	/**
@@ -330,24 +317,10 @@ final class ClogIndex
 	/* package */ void publishForTest(Map<String, List<Integer>> categoryItems,
 		Map<Integer, String> itemNames)
 	{
-		Map<Integer, Integer> remaps = new HashMap<>(FALLBACK_ITEM_REMAPS);
-		snapshot = new Snapshot(new HashMap<>(categoryItems), new LinkedHashMap<>(),
-			itemCategoryKeys(categoryItems),
-			new HashMap<>(), new HashMap<>(itemNames),
-			new ClogItemCanonicalizer(categoryItems, remaps));
+		publishForTest(categoryItems, itemNames, Collections.emptyMap(), Collections.emptyMap());
 	}
 
-	/** Test seam for a catalog carrying the top-level Jagex tab taxonomy. */
-	/* package */ void publishForTest(Map<String, List<Integer>> categoryItems,
-		Map<Integer, String> itemNames, Map<String, List<String>> tabCategoryKeys)
-	{
-		Map<Integer, Integer> remaps = new HashMap<>(FALLBACK_ITEM_REMAPS);
-		snapshot = new Snapshot(new HashMap<>(categoryItems), new LinkedHashMap<>(tabCategoryKeys),
-			itemCategoryKeys(categoryItems), new HashMap<>(), new HashMap<>(itemNames),
-			new ClogItemCanonicalizer(categoryItems, remaps));
-	}
-
-	/** Test seam for runtime-provided duplicate item remaps. */
+	/** Test seam for the Jagex tab taxonomy and runtime-provided duplicate item remaps. */
 	/* package */ void publishForTest(Map<String, List<Integer>> categoryItems,
 		Map<Integer, String> itemNames, Map<String, List<String>> tabCategoryKeys,
 		Map<Integer, Integer> canonicalItemIds)

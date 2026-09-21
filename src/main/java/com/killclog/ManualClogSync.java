@@ -85,7 +85,7 @@ final class ManualClogSync
 		}
 	}
 
-	void onCollectionLogOpened(Client client, LocalClogCache localClogCache)
+	void onCollectionLogOpened(Client client)
 	{
 		if (isHostLog(client))
 		{

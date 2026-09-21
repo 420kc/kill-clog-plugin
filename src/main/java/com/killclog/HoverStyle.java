@@ -1,9 +1,7 @@
 package com.killclog;
 
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
-@Getter
 @RequiredArgsConstructor
 public enum HoverStyle
 {

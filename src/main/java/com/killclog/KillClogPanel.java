@@ -29,7 +29,6 @@ import javax.swing.JToolTip;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
-import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
@@ -46,7 +45,6 @@ import net.runelite.client.ui.components.FlatTextField;
 import net.runelite.client.ui.components.IconTextField;
 import net.runelite.client.util.ImageUtil;
 
-@Slf4j
 public class KillClogPanel extends PluginPanel
 	implements LookupSession.Listener, ComparisonController.Listener,
 	ComparisonController.CellRenderTarget
@@ -79,7 +77,6 @@ public class KillClogPanel extends PluginPanel
 		totalLvlCell.setForeground(infoColor);
 	}
 
-	private final HiscoreService hiscoreService;
 	private final ClogService clogService;
 	private final RuneProfileService runeProfileService;
 	private final KillClogConfig config;
@@ -175,7 +172,6 @@ public class KillClogPanel extends PluginPanel
 	// Comparison mode widgets (state fields all live on the controller)
 
 	// 420 mode - unlocked when the 420 KC plugin is loaded
-	private NameAutocompleter nameAutocompleter;
 	private FourTwentyMode fourTwentyMode = FourTwentyMode.OFF;
 	private boolean has420Plugin;
 
@@ -197,7 +193,6 @@ public class KillClogPanel extends PluginPanel
 		SkillIconManager skillIconManager, Client client)
 	{
 		super(true); // wrap in JScrollPane
-		this.hiscoreService = hiscoreService;
 		this.clogService = clogService;
 		this.runeProfileService = runeProfileService;
 		this.config = config;
@@ -214,7 +209,7 @@ public class KillClogPanel extends PluginPanel
 		this.tooltipController = new TooltipController(config);
 		this.statusRow = new PanelStatusRow(config, spriteManager, tooltipController, TEXT_DIM);
 		this.lookupSession = new LookupSession(hiscoreService, clogService, runeProfileService,
-			killclogService, config, null, this);
+			killclogService, config, this);
 		this.comparison = new ComparisonController(hiscoreService, clogService, runeProfileService,
 			killclogService, lookupSession, config, tooltipController, tooltipDataBuilder, this);
 		this.comparison.setRenderTarget(this);
@@ -237,15 +232,10 @@ public class KillClogPanel extends PluginPanel
 		this.cells.setSinglePlayerTooltipBuilder(new Cells.SinglePlayerTooltipBuilder()
 		{
 			@Override
-			public JToolTip build(JLabel owner, TooltipData data, int gridCols, String name)
-			{
-				return makeSpriteTooltip(owner, data, gridCols, name);
-			}
-
-			@Override
 			public JToolTip build(JLabel owner, TooltipData data, int gridCols, String name, boolean compact)
 			{
-				return makeSpriteTooltip(owner, data, gridCols, name, compact);
+				return makeSpriteTooltip(owner, data, gridCols, name, compact,
+					lookupSession.getHiscoreResult(), lookupSession.getCurrentLookupRsn());
 			}
 
 			@Override
@@ -338,8 +328,7 @@ public class KillClogPanel extends PluginPanel
 		}
 
 		highlighter = new ProgressHighlighter(
-			cells.getBossLabels(), cells.getActivityLabels(), cells.getClueTierLabels(),
-			PanelData.NAME_OVERRIDES, PanelData.CLUE_CATEGORIES, config);
+			cells.getBossLabels(), cells.getActivityLabels(), cells.getClueTierLabels(), config);
 		refreshSkillDisplay();
 
 		// Cold start: warm the catalog so every cell previews the log's shape
@@ -554,7 +543,7 @@ public class KillClogPanel extends PluginPanel
 		}
 		statsRow.add(cells.wrapInCell(totalLvlCell));
 		// The three summaries: Combat, Skills, Clues.
-		statsRow.add(cells.buildActivityCell(HiscoreSkill.CLUE_SCROLL_ALL));
+		statsRow.add(cells.buildClueSummaryCell());
 		grid.add(statsRow);
 
 		JPanel statsSep = new JPanel();
@@ -655,20 +644,8 @@ public class KillClogPanel extends PluginPanel
 	 * @param data      tooltip data, or null for notice-only display
 	 * @param gridCols  min columns for the sprite grid
 	 * @param name      display name shown as title when data is null
+	 * @param result    with {@code rsn}, picks whose card this is
 	 */
-	private JToolTip makeSpriteTooltip(JLabel owner, TooltipData data, int gridCols, String name)
-	{
-		return makeSpriteTooltip(owner, data, gridCols, name, false);
-	}
-
-	private JToolTip makeSpriteTooltip(JLabel owner, TooltipData data, int gridCols,
-										String name, boolean compact)
-	{
-		return makeSpriteTooltip(owner, data, gridCols, name, compact,
-			lookupSession.getHiscoreResult(), lookupSession.getCurrentLookupRsn());
-	}
-
-	/** Player-scoped form: {@code result} and {@code rsn} pick whose card this is. */
 	private JToolTip makeSpriteTooltip(JLabel owner, TooltipData data, int gridCols,
 		String name, boolean compact, @Nullable HiscoreResult result, @Nullable String rsn)
 	{
@@ -706,8 +683,7 @@ public class KillClogPanel extends PluginPanel
 					data.obtainedCounts, data.itemNames, itemManager);
 			}
 		}
-		else if (!ClogHelper.configureNotSynced(tip, data, itemManager,
-			config.showTooltipKc(), false))
+		else if (!ClogHelper.configureNotSynced(tip, data, itemManager, config.showTooltipKc()))
 		{
 			tip.setTitle(data != null ? data.name : name);
 			boolean isSelfNoCache = result != null && localRsn != null
@@ -960,8 +936,7 @@ public class KillClogPanel extends PluginPanel
 	/**
 	 * Render hiscore data to the panel (extracted for cache/SWR reuse).
 	 */
-	private void renderHiscoreResult(HiscoreResult result, String player,
-		boolean isSelf, AccountType knownType)
+	private void renderHiscoreResult(HiscoreResult result, String player, AccountType knownType)
 	{
 		updateRankPlayers();
 		setSearchStatus(" ", TEXT_DIM);
@@ -995,7 +970,7 @@ public class KillClogPanel extends PluginPanel
 	/**
 	 * Render clog data to the panel (extracted for SWR reuse).
 	 */
-	private void renderClogResult(ClogResult result, boolean isSelf, int thisLookup)
+	private void renderClogResult(ClogResult result)
 	{
 		String name = result.getPlayerName();
 		if (name != null && !name.isEmpty())
@@ -1014,7 +989,7 @@ public class KillClogPanel extends PluginPanel
 		itemNameResolver.resolve(result);
 		if (lookupSession.getHiscoreResult() != null)
 		{
-			cells.renderClog(result, config);
+			cells.renderClog(result);
 			updateClogCell(result);
 		}
 		cells.rebuildPrimaryTooltips(localRsn);
@@ -1078,11 +1053,11 @@ public class KillClogPanel extends PluginPanel
 		cells.renderHiscore(lookupSession.getHiscoreResult(), fourTwentyMode);
 		if (lookupSession.getClogResult() != null)
 		{
-			cells.renderClog(lookupSession.getClogResult(), config);
+			cells.renderClog(lookupSession.getClogResult());
 			if (config.completionistHighlighter())
 			{
 				highlighter.colorCellsByCompletion(lookupSession.getHiscoreResult(), lookupSession.getClogResult(),
-					fourTwentyMode, FourTwentyMode.GREEN);
+					fourTwentyMode);
 				highlighter.colorEmptyCells();
 			}
 		}
@@ -1144,7 +1119,6 @@ public class KillClogPanel extends PluginPanel
 
 	public void setNameAutocompleter(NameAutocompleter autocompleter)
 	{
-		this.nameAutocompleter = autocompleter;
 		lookupSession.setNameAutocompleter(autocompleter);
 		for (Component c : searchBar.getComponents())
 		{
@@ -1292,8 +1266,7 @@ public class KillClogPanel extends PluginPanel
 		return iconCache.capeFor(result);
 	}
 
-	@Override
-	public void updateInfoIcon(AccountDisplay display)
+	private void updateInfoIcon(AccountDisplay display)
 	{
 		applyBadge(playerName, display);
 		tooltipController.setTooltipText(playerName, " ");
@@ -1494,10 +1467,10 @@ public class KillClogPanel extends PluginPanel
 		{
 			setSearchStatus(" ", TEXT_DIM);
 		}
-		renderHiscoreResult(hiscore, player, isSelf, knownType);
+		renderHiscoreResult(hiscore, player, knownType);
 		if (clog != null)
 		{
-			renderClogResult(clog, isSelf, lookupSession.getLookupVersion());
+			renderClogResult(clog);
 		}
 	}
 
@@ -1510,13 +1483,13 @@ public class KillClogPanel extends PluginPanel
 		{
 			setSearchStatus(" ", TEXT_DIM);
 		}
-		renderHiscoreResult(hiscore, player, isSelf, knownType);
+		renderHiscoreResult(hiscore, player, knownType);
 		// Clog may have arrived first with a GIM type the hiscores can't detect.
 		ClogResult clog = lookupSession.getClogResult();
 		if (clog != null)
 		{
 			updateDisplayedInfoIcon();
-			cells.renderClog(clog, config);
+			cells.renderClog(clog);
 		}
 	}
 
@@ -1526,7 +1499,7 @@ public class KillClogPanel extends PluginPanel
 		if (clog != null)
 		{
 			setClogSetupNoticeVisible(false);
-			renderClogResult(clog, isSelf, lookupVersionAtFire);
+			renderClogResult(clog);
 		}
 		else
 		{

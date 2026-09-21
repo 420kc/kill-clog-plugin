@@ -27,7 +27,6 @@ import javax.swing.JToolTip;
 import javax.swing.SwingUtilities;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.ui.ColorScheme;
 
@@ -40,7 +39,6 @@ import net.runelite.client.ui.ColorScheme;
  * EDT, and the owned {@link LookupFanout} bridges service futures back to the
  * EDT behind its version-stamped stale-result gate.
  */
-@Slf4j
 public class ComparisonController
 {
 	/**
@@ -80,8 +78,6 @@ public class ComparisonController
 
 		JLabel clogInfoLabel();
 
-		void updateInfoIcon(AccountDisplay display);
-
 		Color getInfoColor();
 
 		/** Async preload of item names referenced by the clog result. */
@@ -104,8 +100,6 @@ public class ComparisonController
 	static final String COMPARE_BLUE_HEX = String.format("#%06x", COMPARE_BLUE.getRGB() & 0xFFFFFF);
 	static final String COMPARE_RED_HEX = String.format("#%06x", COMPARE_RED.getRGB() & 0xFFFFFF);
 	// Deps
-	private final HiscoreService hiscoreService;
-	private final ClogService clogService;
 	private final RuneProfileService runeProfileService;
 	private final LookupSession lookupSession;
 
@@ -179,8 +173,6 @@ public class ComparisonController
 		KillClogConfig config, TooltipController tooltipController,
 		TooltipDataBuilder tooltipDataBuilder, Listener listener)
 	{
-		this.hiscoreService = hiscoreService;
-		this.clogService = clogService;
 		this.runeProfileService = runeProfileService;
 		this.lookupSession = lookupSession;
 		this.config = config;
@@ -526,12 +518,6 @@ public class ComparisonController
 			return tooltipDataBuilder.buildUnsyncedItemData(name, PanelData.GILDED_ITEMS, catalog);
 		}
 		return null;
-	}
-
-	/** Set a cell to dual blue/red values. */
-	public void setCompareCell(JLabel label, int blueVal, int redVal)
-	{
-		setCompareCell(label, blueVal, redVal, null, null);
 	}
 
 	/** Set a cell to dual blue/red values, with optional completion-color hover state. */
