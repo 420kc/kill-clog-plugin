@@ -152,6 +152,15 @@ final class ClogHelper
 		return new int[]{countObtained(items, obtained), items.size()};
 	}
 
+	/** A hiscore total does not imply knowledge of the player's individual items. */
+	static int[] summaryTotals(ClogResult clog, HiscoreResult hiscore, ClogResult catalog)
+	{
+		if (clog != null) return sumClogTotals(clog);
+		int count = hiscore != null ? hiscore.getActivityScore("Collections Logged") : -1;
+		int total = catalog != null ? sumClogTotals(catalog)[1] : -1;
+		return new int[]{count, total > 0 ? total : -1};
+	}
+
 	static int[] sumClogTotals(ClogResult result)
 	{
 		return sumClogTotals(result, IntUnaryOperator.identity());

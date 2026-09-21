@@ -804,7 +804,10 @@ public class KillClogPanel extends PluginPanel
 	private void updateClogTotalsBar()
 	{
 		compareClogTotals.update(
-			lookupSession.getClogResult(), comparison.getCompareClogResult(), iconCache);
+			ClogHelper.summaryTotals(lookupSession.getClogResult(), lookupSession.getHiscoreResult(),
+				cells.unsyncedCatalogResult()),
+			ClogHelper.summaryTotals(comparison.getCompareClogResult(), comparison.getCompareHiscoreResult(),
+				cells.unsyncedCatalogResult()), iconCache);
 	}
 
 	@Override
@@ -1025,6 +1028,8 @@ public class KillClogPanel extends PluginPanel
 		searchBar.setText("");
 		renderResults();
 		cells.rebuildPrimaryTooltips(localRsn);
+		updateClogCell(lookupSession.getClogResult());
+		if (comparison.isComparisonMode()) updateClogTotalsBar();
 	}
 
 	/**
@@ -1079,15 +1084,13 @@ public class KillClogPanel extends PluginPanel
 
 	private void updateClogCell(ClogResult result)
 	{
-		int[] totals = ClogHelper.sumClogTotals(result);
-		if (totals[0] > 0)
+		int[] totals = ClogHelper.summaryTotals(result, lookupSession.getHiscoreResult(),
+			cells.unsyncedCatalogResult());
+		if (totals[0] >= 0)
 		{
-			String tierName = ClogHelper.getClogTierName(totals[0], totals[1]);
+			String tierName = totals[1] > 0 ? ClogHelper.getClogTierName(totals[0], totals[1]) : null;
 			ImageIcon icon = iconCache.clogTierIcon(tierName);
-			if (icon != null)
-			{
-				clogInfoLabel.setIcon(icon);
-			}
+			clogInfoLabel.setIcon(icon);
 			clogInfoLabel.setText(ClogHelper.pad(ClogHelper.formatKc(totals[0])));
 			clogInfoLabel.setForeground(getInfoColor());
 
@@ -1483,6 +1486,12 @@ public class KillClogPanel extends PluginPanel
 				}
 			}
 		}
+		if (clog == null && hiscore != null)
+		{
+			int[] totals = ClogHelper.summaryTotals(null, hiscore, cells.unsyncedCatalogResult());
+			if (totals[0] >= 0) tip.setObtained(totals[0], totals[1]);
+			if (hiscore.isRankDataAvailable()) tip.setRank(hiscore.getActivityRank("Collections Logged"));
+		}
 		return tip;
 	}
 
@@ -1549,7 +1558,6 @@ public class KillClogPanel extends PluginPanel
 		{
 			updateDisplayedInfoIcon();
 			cells.renderClog(clog, config);
-			updateClogCell(clog);
 		}
 	}
 
@@ -1576,6 +1584,7 @@ public class KillClogPanel extends PluginPanel
 			{
 				setClogSetupNoticeVisible(false);
 			}
+			updateClogCell(null);
 			fetchRsn(player, lookupVersionAtFire);
 		}
 	}
@@ -1704,15 +1713,9 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void restoreClogCellForCompare(ClogResult clog)
 	{
-		if (clog != null)
-		{
-			updateClogCell(clog);
-		}
-		else
-		{
-			clogInfoLabel.setText("");
-			clogInfoLabel.setIcon(null);
-			tooltipController.setTooltipText(clogInfoLabel, null);
-		}
+		clogInfoLabel.setText("");
+		clogInfoLabel.setIcon(null);
+		tooltipController.setTooltipText(clogInfoLabel, null);
+		updateClogCell(clog);
 	}
 }

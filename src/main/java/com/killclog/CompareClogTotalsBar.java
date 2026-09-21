@@ -46,7 +46,7 @@ final class CompareClogTotalsBar
 		panel.setVisible(visible);
 	}
 
-	void update(ClogResult blueClog, ClogResult redClog, PanelIconCache iconCache)
+	void update(int[] blueClog, int[] redClog, PanelIconCache iconCache)
 	{
 		setTotal(blueTotal, blueClog, iconCache);
 		setTotal(redTotal, redClog, iconCache);
@@ -140,16 +140,15 @@ final class CompareClogTotalsBar
 		panel.add(redTotal, c);
 	}
 
-	private static void setTotal(JLabel label, ClogResult clog, PanelIconCache iconCache)
+	private static void setTotal(JLabel label, int[] totals, PanelIconCache iconCache)
 	{
-		if (clog == null)
+		if (totals[0] < 0)
 		{
 			label.setIcon(null);
 			label.setText("--");
 			return;
 		}
-		int[] totals = ClogHelper.sumClogTotals(clog);
-		String tierName = ClogHelper.getClogTierName(totals[0], totals[1]);
+		String tierName = totals[1] > 0 ? ClogHelper.getClogTierName(totals[0], totals[1]) : null;
 		ImageIcon icon = iconCache.clogTierIcon(tierName);
 		label.setIcon(icon);
 		label.setText(String.valueOf(totals[0]));

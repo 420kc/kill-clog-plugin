@@ -68,7 +68,7 @@ public class KillClogConfigStructureTest
 		assertEquals("characterModel", item.keyName());
 		assertEquals("Publish Character Model", item.name());
 		assertEquals("Adds a one-click button to publish your current character and "
-			+ "follower models to your killclog.com/p/ profile", item.description());
+			+ "follower models to your Kill Clog web profile", item.description());
 		KillClogConfig defaults = new KillClogConfig()
 		{
 		};

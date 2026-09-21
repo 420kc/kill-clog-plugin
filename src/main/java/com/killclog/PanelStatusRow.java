@@ -35,10 +35,10 @@ import net.runelite.client.util.ImageUtil;
  */
 final class PanelStatusRow
 {
-	private static final String SYNC_HOVER_TEXT = "sync to killclog.com";
-	private static final String SYNC_FAILURE_HOVER_TEXT = "sync failed - click to retry";
+	private static final String SYNC_HOVER_TEXT = "publish collection log";
+	private static final String SYNC_FAILURE_HOVER_TEXT = "publish failed - click to retry";
 	private static final String CHARACTER_HOVER_TEXT = "publish character";
-	private static final String CHARACTER_FAILURE_HOVER_TEXT = "publish failed - click to retry";
+	private static final String CHARACTER_FAILURE_HOVER_TEXT = "character failed - click to retry";
 	private static final int SYNC_EXPIRY_MS = 2500;
 	private static final int CHARACTER_EXPIRY_MS = 3000;
 	// k1: the brand lime. Status chrome, not data coloring, so it does not
@@ -85,7 +85,7 @@ final class PanelStatusRow
 		this.textDim = textDim;
 		this.syncFeedback = new FirstPartyFeedback(config,
 			(kind, text, autoClear) -> showFeedback(Owner.SYNC, kind, text, autoClear),
-			this::flashSyncSuccess, "sync failed");
+			this::flashSyncSuccess, "publish failed");
 		this.characterFeedback = new FirstPartyFeedback(config,
 			(kind, text, autoClear) -> showFeedback(Owner.CHARACTER, kind, text, autoClear),
 			this::flashCharacterSuccess, KillClogPlugin.CHARACTER_FAILED_STATUS);

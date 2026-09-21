@@ -54,7 +54,7 @@ final class ProfileAppearanceFailure
 			case "locked_out": message = "Publication is temporarily locked. Try again later."; break;
 			default:
 				code = status < 0 ? "network_failure" : "request_failed";
-				message = status < 0 ? "Could not reach killclog.com. Try again."
+				message = status < 0 ? "Could not reach Kill Clog. Try again."
 					: status == 429 ? "Too many requests. Please wait before retrying."
 					: status >= 500 ? "Character service is unavailable. Try again later."
 					: "Character request failed. Click to retry.";

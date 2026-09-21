@@ -16,6 +16,23 @@ final class TooltipItemLink
 	private static final String FALLBACK_NAME_PREFIX = "Item ";
 	private static final String ELLIPSIS = "...";
 
+	private static final String[] CHOMPY_TIERS = {
+		"Ogre Bowman", "Bowman", "Ogre Yeoman", "Yeoman", "Ogre Marksman", "Marksman",
+		"Ogre Woodsman", "Woodsman", "Ogre Forester", "Forester", "Ogre Bowmaster", "Bowmaster",
+		"Ogre Expert", "Expert", "Ogre Dragon Archer", "Dragon Archer",
+		"Expert Ogre Dragon Archer", "Expert Dragon Archer"
+	};
+	private static final int[] CHOMPY_KILLS = {
+		30, 40, 50, 70, 95, 125, 170, 225, 300, 400, 550, 700, 1000, 1300, 1700, 2250, 3000, 4000
+	};
+
+	static String displayName(int itemId, String name)
+	{
+		int hat = itemId - 2978;
+		return hat >= 0 && hat < CHOMPY_TIERS.length
+			? CHOMPY_KILLS[hat] + ": " + CHOMPY_TIERS[hat] : name;
+	}
+
 	private TooltipItemLink()
 	{
 	}
@@ -48,6 +65,8 @@ final class TooltipItemLink
 
 	static String itemName(Map<Integer, String> itemNames, int itemId)
 	{
+		String hatName = displayName(itemId, null);
+		if (hatName != null) return hatName;
 		if (itemNames == null)
 		{
 			return fallbackName(itemId);

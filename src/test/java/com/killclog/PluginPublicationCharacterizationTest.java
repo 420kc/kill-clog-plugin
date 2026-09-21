@@ -158,8 +158,8 @@ public class PluginPublicationCharacterizationTest
 		syncHandler.run();
 		assertEquals(1, executor.live());
 		settle();
-		verify(chatNotifier).send(ChatNotice.SYNC_RESULT, "Syncing collection log to killclog.com...");
-		verify(panel).showSyncProgress(true, "syncing...", false);
+		verify(chatNotifier).send(ChatNotice.SYNC_RESULT, "Publishing collection log...");
+		verify(panel).showSyncProgress(true, "publishing...", false);
 		assertEquals(1, syncs.size());
 		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), any(), any(), any(), eq(7L), any(), eq(0));
 
@@ -186,7 +186,7 @@ public class PluginPublicationCharacterizationTest
 		syncs.get(1).complete(new SyncService.SyncResult(true, false, 200, "Second"));
 		settle();
 		assertEquals(2, syncs.size());
-		verify(panel, times(2)).showSyncProgress(true, "syncing...", false);
+		verify(panel, times(2)).showSyncProgress(true, "publishing...", false);
 		verify(panel).showSyncResult(true, true, "First");
 		verify(panel).showSyncResult(true, true, "Second");
 	}
@@ -203,7 +203,7 @@ public class PluginPublicationCharacterizationTest
 
 		settle();
 		verify(chatNotifier, never()).send(eq(ChatNotice.SYNC_RESULT), startsWith("Syncing"));
-		verify(panel).showSyncProgress(false, "syncing...", false);
+		verify(panel).showSyncProgress(false, "publishing...", false);
 		assertEquals(1, syncs.size());
 
 		syncs.get(0).complete(new SyncService.SyncResult(true, false, 200, "Synced"));

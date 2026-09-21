@@ -358,7 +358,7 @@ final class ProfileAppearanceService
 			if (isProfileRequired(response.code, json))
 			{
 				return CompletableFuture.completedFuture(new PublishResult(Outcome.PROFILE_REQUIRED,
-					"Sync your Collection Log to killclog.com, then retry character publishing."));
+					"Publish your Collection Log, then retry character publishing."));
 			}
 			return failedResponse(attempt, "registration", response, json);
 		});
@@ -399,7 +399,7 @@ final class ProfileAppearanceService
 			if (isProfileRequired(response.code, json))
 			{
 				return CompletableFuture.completedFuture(new PublishResult(Outcome.PROFILE_REQUIRED,
-					"Sync your Collection Log to killclog.com, then retry character publishing."));
+					"Publish your Collection Log, then retry character publishing."));
 			}
 			if (response.code == 409 && hasError(json, "appearance_recovery_missing"))
 			{
@@ -464,7 +464,7 @@ final class ProfileAppearanceService
 			if (isProfileRequired(response.code, json))
 			{
 				return CompletableFuture.completedFuture(new PublishResult(Outcome.PROFILE_REQUIRED,
-					"Sync your Collection Log to killclog.com, then retry character publishing."));
+					"Publish your Collection Log, then retry character publishing."));
 			}
 			return failedResponse(attempt, "publish", response, json);
 		});

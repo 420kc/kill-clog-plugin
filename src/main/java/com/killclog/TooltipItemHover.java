@@ -197,7 +197,7 @@ final class TooltipItemHover
 		{
 			this.section = section;
 			this.itemId = itemId;
-			this.itemName = itemName;
+			this.itemName = TooltipItemLink.displayName(itemId, itemName);
 			this.bounds = bounds;
 			this.obtained = obtained;
 			this.count = Math.max(count, 0);
