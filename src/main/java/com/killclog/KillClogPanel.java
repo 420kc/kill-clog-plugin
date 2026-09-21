@@ -954,7 +954,12 @@ public class KillClogPanel extends PluginPanel
 		}
 		colorStatsRow();
 
-		searchBar.setText("");
+		// The search box is free again while a hiscore waits for its clog:
+		// leave a name typed in the meantime.
+		if (searchBar.getText().trim().equalsIgnoreCase(player))
+		{
+			searchBar.setText("");
+		}
 		renderResults();
 		cells.rebuildPrimaryTooltips(localRsn);
 		updateClogCell(lookupSession.getClogResult());

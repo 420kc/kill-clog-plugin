@@ -2,6 +2,7 @@ package com.killclog;
 
 import java.awt.image.BufferedImage;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -19,6 +20,7 @@ import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.game.SpriteManager;
 import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.ui.components.IconTextField;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -84,6 +86,35 @@ public class PanelCellResetCharacterizationTest
 			edt(panel::shutdown);
 			drain();
 		}
+	}
+
+	@Test
+	public void theRevealClearsTheLookedUpNameButNotOneTypedSince() throws Exception
+	{
+		Method reveal = KillClogPanel.class.getDeclaredMethod("renderHiscoreResult",
+			HiscoreResult.class, String.class, AccountType.class);
+		reveal.setAccessible(true);
+		HiscoreResult hiscore = new HiscoreResult(AccountType.REGULAR, new HashMap<>(), Collections.emptyMap(),
+			new HashMap<>(), Collections.emptyMap(), Collections.emptyMap(), 0, 0L, 0, 0);
+		IconTextField searchBar = field("searchBar", IconTextField.class);
+		edt(() ->
+		{
+			try
+			{
+				searchBar.setText(" probe ");
+				reveal.invoke(panel, hiscore, "Probe", null);
+				assertEquals("", searchBar.getText());
+
+				// The hold frees the box before the reveal; the next name is already going in.
+				searchBar.setText("Next pla");
+				reveal.invoke(panel, hiscore, "Probe", null);
+				assertEquals("Next pla", searchBar.getText());
+			}
+			catch (ReflectiveOperationException e)
+			{
+				throw new AssertionError(e);
+			}
+		});
 	}
 
 	@Test
