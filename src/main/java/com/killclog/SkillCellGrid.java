@@ -199,8 +199,10 @@ final class SkillCellGrid
 		@Nullable ClogResult clog, @Nullable ClogResult otherClog)
 	{
 		SkillTooltip solo = new SkillTooltip();
-		solo.setData(skill, result, virtualLevels,
-			SkillClogSection.forSkill(skill, clog, otherClog, catalog, clogIndex), itemManager);
+		// With Skill Clogs off the modal is the stats rows alone.
+		solo.setData(skill, result, virtualLevels, config.enableSkillClogs()
+			? SkillClogSection.forSkill(skill, clog, otherClog, catalog, clogIndex)
+			: Collections.emptyList(), itemManager);
 		if (skill == Skill.RUNECRAFT)
 		{
 			solo.setRiftsClosed(riftsClosed(result));
@@ -250,7 +252,7 @@ final class SkillCellGrid
 	{
 		int obtained = -1;
 		int total = -1;
-		if (config.skillColorMode() == SkillColorMode.CLOG_PROGRESSION)
+		if (SkillLevelColor.usesClogProgress(config))
 		{
 			SkillClogSection.Progress progress = SkillClogSection.combinedProgress(
 				SkillClogSection.forSkill(skill, clog, null, catalog, clogIndex));

@@ -3,6 +3,8 @@ package com.killclog;
 import java.awt.Color;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 public class SkillLevelColorTest
 {
@@ -67,6 +69,22 @@ public class SkillLevelColorTest
 	}
 
 	@Test
+	public void clogProgressionReadsAsTheLevelDefaultWhileSkillClogsAreOff()
+	{
+		KillClogConfig on = config(SkillColorMode.CLOG_PROGRESSION);
+		KillClogConfig off = config(SkillColorMode.CLOG_PROGRESSION, false);
+		assertTrue(SkillLevelColor.usesClogProgress(on));
+		assertFalse(SkillLevelColor.usesClogProgress(off));
+		assertFalse(SkillLevelColor.usesClogProgress(config(SkillColorMode.LEVEL_COMPLETION)));
+
+		assertEquals(COMPLETION_COLOR, SkillLevelColor.forCell(99, true, 1, 4, off));
+		assertEquals(LEVEL_COLOR, SkillLevelColor.forCell(50, true, 4, 4, off));
+		// The other modes never depended on Skill Clogs.
+		assertEquals(LEVEL_COLOR, SkillLevelColor.forCell(99, true, 4, 4,
+			config(SkillColorMode.SKILL_COLOR, false)));
+	}
+
+	@Test
 	public void unsyncedSkillsKeepNormalWhiteNumbers()
 	{
 		KillClogConfig config = config(SkillColorMode.CLOG_PROGRESSION);
@@ -87,8 +105,19 @@ public class SkillLevelColorTest
 
 	private static KillClogConfig config(SkillColorMode colorMode)
 	{
+		return config(colorMode, true);
+	}
+
+	private static KillClogConfig config(SkillColorMode colorMode, boolean skillClogs)
+	{
 		return new KillClogConfig()
 		{
+			@Override
+			public boolean enableSkillClogs()
+			{
+				return skillClogs;
+			}
+
 			@Override
 			public Color skillLevelColor()
 			{
