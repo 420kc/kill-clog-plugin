@@ -1272,6 +1272,7 @@ public class KillClogPanel extends PluginPanel
 			case "skillDisplay":
 			case "skillLevelColor":
 			case "skillColorMode":
+			case "enableSkillClogs":
 				refreshSkillDisplay();
 				break;
 			case "virtualLevels":

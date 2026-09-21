@@ -7,6 +7,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionListener;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Locale;
@@ -162,6 +163,57 @@ public class SkillCellGridTest
 			cells.labels().get(Skill.ATTACK).getForeground());
 		SkillTooltip tooltip = (SkillTooltip) cells.labels().get(Skill.ATTACK).createToolTip();
 		assertEquals(" (3/4)", tooltip.getTitleSuffix());
+	}
+
+	@Test
+	public void skillClogsOffLeavesStatsOnlyModalsAndLevelColors()
+	{
+		KillClogConfig statsOnly = new KillClogConfig()
+		{
+			@Override
+			public boolean enableSkillClogs()
+			{
+				return false;
+			}
+
+			@Override
+			public SkillColorMode skillColorMode()
+			{
+				return SkillColorMode.CLOG_PROGRESSION;
+			}
+		};
+		SkillCellGrid cells = grid(statsOnly);
+		ClogResult clog = new ClogResult("Tester",
+			Collections.singletonMap("barbarian_assault", java.util.List.of(
+				new ClogResult.ClogItem(101, 1, null))),
+			Map.of("barbarian_assault", java.util.List.of(101, 102),
+				PanelData.GOTR_CATEGORY, Collections.singletonList(1)),
+			Collections.emptyMap(), null, null);
+		HiscoreResult hiscore = hiscores(Map.of(Skill.ATTACK, 99, Skill.RUNECRAFT, 93),
+			Collections.singletonMap(PanelData.RIFTS_CLOSED_ACTIVITY, 34));
+
+		cells.render(hiscore, null, false, clog, null, clog);
+
+		// Clog Progression has nothing to show, so it reads as the 99+ default.
+		assertEquals(statsOnly.completedClogColor(),
+			cells.labels().get(Skill.ATTACK).getForeground());
+		assertEquals(statsOnly.skillLevelColor(),
+			cells.labels().get(Skill.RUNECRAFT).getForeground());
+
+		for (Skill skill : Arrays.asList(Skill.ATTACK, Skill.RUNECRAFT))
+		{
+			SkillTooltip modal = (SkillTooltip) cells.labels().get(skill).createToolTip();
+			SkillTooltip plain = new SkillTooltip();
+			plain.setData(skill, hiscore, false);
+			assertTrue(modal.sections().isEmpty());
+			assertEquals(plain.getTitleSuffix(), modal.getTitleSuffix());
+			assertEquals(plain.getPreferredSize(), modal.getPreferredSize());
+		}
+
+		cells.render(hiscore, hiscore, false, clog, clog, clog);
+		SideBySideTooltip pair = (SideBySideTooltip) cells.labels().get(Skill.ATTACK).createToolTip();
+		assertTrue(((SkillTooltip) pair.sides()[0]).sections().isEmpty());
+		assertTrue(((SkillTooltip) pair.sides()[1]).sections().isEmpty());
 	}
 
 	@Test

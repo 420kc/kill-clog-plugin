@@ -19,7 +19,7 @@ final class SkillLevelColor
 		{
 			return config.skillLevelColor();
 		}
-		if (config.skillColorMode() == SkillColorMode.CLOG_PROGRESSION)
+		if (usesClogProgress(config))
 		{
 			return obtained >= 0 && total > 0
 				? ClogHelper.clogColor(obtained, total, config)
@@ -30,5 +30,12 @@ final class SkillLevelColor
 			return config.completedClogColor();
 		}
 		return config.skillLevelColor();
+	}
+
+	/** Clog Progression needs Skill Clogs on; with them off it reads as the 99+ default. */
+	static boolean usesClogProgress(KillClogConfig config)
+	{
+		return config.enableSkillClogs()
+			&& config.skillColorMode() == SkillColorMode.CLOG_PROGRESSION;
 	}
 }

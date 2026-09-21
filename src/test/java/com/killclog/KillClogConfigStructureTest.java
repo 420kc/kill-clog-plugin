@@ -41,6 +41,7 @@ public class KillClogConfigStructureTest
 		expected.add("skillDisplay");
 		expected.add("skillLevelColor");
 		expected.add("skillColorMode");
+		expected.add("enableSkillClogs");
 		expected.add("silentAutomaticSync");
 		expected.add("showLeaderboardSelector");
 		assertEquals(expected, keys);
@@ -177,6 +178,21 @@ public class KillClogConfigStructureTest
 				.getAnnotation(ConfigItem.class);
 			assertEquals(KillClogConfig.skillsSection, item.section());
 		}
+	}
+
+	@Test
+	public void skillClogsToggleIsDefaultOnAndLastInSkills() throws Exception
+	{
+		ConfigItem item = KillClogConfig.class.getDeclaredMethod("enableSkillClogs")
+			.getAnnotation(ConfigItem.class);
+		assertEquals("Enable Skill Clogs", item.name());
+		assertEquals("Show Skill Clog items in skill modals. When off, skills show "
+			+ "level, XP, rank, and XP to level only", item.description());
+		assertEquals(Arrays.asList("skillDisplay", "virtualLevels", "skillLevelColor",
+			"skillColorMode", "enableSkillClogs"), keysInSection(KillClogConfig.skillsSection));
+		assertTrue(new KillClogConfig()
+		{
+		}.enableSkillClogs());
 	}
 
 	@Test

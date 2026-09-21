@@ -69,6 +69,8 @@ The skill title shows combined progress. Each section shows its own `Obtained: x
 
 Skills appear in the main grid by default. They can also be moved to the activity tray or hidden behind Skill Summary. Synced accounts can use the configured Skill Color, level-99 completion, or overall Skill Clog progression.
 
+Turn off **Enable Skill Clogs** in the Skills settings to keep skill modals to level, XP, rank, and XP to next level.
+
 ## Kill Clog Web Sync
 
 Web publication is optional and off by default. It is separate from the local Collection Log setup above.
