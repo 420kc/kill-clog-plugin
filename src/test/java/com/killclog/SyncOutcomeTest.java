@@ -1,6 +1,7 @@
 package com.killclog;
 
 import com.google.gson.Gson;
+import java.util.TreeSet;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
@@ -15,15 +16,21 @@ public class SyncOutcomeTest
 	{
 		for (int code : new int[]{502, 503, 504})
 		{
+			TreeSet<Integer> delays = new TreeSet<>();
 			for (int attempt = 0; attempt < 200; attempt++)
 			{
 				SyncService.SyncResult result = outcome(code, null);
 				assertFalse(result.ok);
 				assertTrue(result.retryAdvised);
 				assertTrue(result.retryAfterSeconds >= 15 && result.retryAfterSeconds <= 30);
+				delays.add(result.retryAfterSeconds);
 				// Still the honest message, for when the retry fails too.
 				assertEquals("Collection log publication failed (HTTP " + code + ").", result.message);
 			}
+			// Spread across the window, so the clients a restart turned away do not return together.
+			assertTrue(delays.toString(), delays.size() >= 8);
+			assertTrue(delays.toString(), delays.first() <= 17);
+			assertTrue(delays.toString(), delays.last() >= 28);
 		}
 	}
 

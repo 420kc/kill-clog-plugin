@@ -118,6 +118,17 @@ final class PublicationCoordinator
 			delaySeconds, TimeUnit.SECONDS);
 	}
 
+	/** The retry keeps its own delay: a capture's shorter debounce must not stand in for it. */
+	private synchronized void scheduleRetry(int delaySeconds, boolean manual)
+	{
+		if (pendingKillclogSync != null)
+		{
+			pendingKillclogSync.cancel(false);
+		}
+		pendingKillclogSync = null;
+		scheduleSync(delaySeconds, manual);
+	}
+
 	synchronized void cancelSync()
 	{
 		syncGate.cancel();
@@ -451,7 +462,11 @@ final class PublicationCoordinator
 								withSyncFeedback(generation, cacheEpoch,
 									() -> feedback.showSyncProgress(manual, "retrying...", false));
 							}
-							scheduleSync(Math.max(result.retryAfterSeconds, 2), manual);
+							// Nobody is watching an automatic sync, so it waits out a
+							// slow restart. A player waiting on a click or a character
+							// publish gets the advised delay as it is.
+							int delay = Math.max(result.retryAfterSeconds, 2);
+							scheduleRetry(manual || characterWaiting ? delay : delay * 2, manual);
 							launchQueuedSync();
 							return;
 						}

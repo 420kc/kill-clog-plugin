@@ -296,6 +296,12 @@ public class PluginPublicationCharacterizationTest
 		verify(panel).showSyncResult(true, true, "New");
 	}
 
+	private static SyncService.SyncResult restarting()
+	{
+		return new SyncService.SyncResult(false, false,
+			"Collection log publication failed (HTTP 502).", true, 20);
+	}
+
 	@Test
 	public void serverContentionRetriesOnceThenReports() throws Exception
 	{
@@ -325,7 +331,8 @@ public class PluginPublicationCharacterizationTest
 		String failed = "Collection log publication failed (HTTP 502).";
 		syncs.get(0).complete(new SyncService.SyncResult(false, false, failed, true, 20));
 		settle();
-		assertEquals(20_000L, executor.lastDelayMs());
+		// Nobody is watching an automatic sync: it waits twice the advised delay.
+		assertEquals(40_000L, executor.lastDelayMs());
 		assertEquals(2, syncs.size());
 		verify(panel, never()).showSyncResult(anyBoolean(), anyBoolean(), eq(failed));
 		verify(chatNotifier, never()).send(ChatNotice.SYNC_RESULT, failed);
@@ -351,6 +358,88 @@ public class PluginPublicationCharacterizationTest
 		assertEquals(2, syncs.size());
 		verify(panel).showSyncResult(false, false, failed);
 		verify(chatNotifier, times(1)).send(ChatNotice.SYNC_RESULT, failed);
+	}
+
+	@Test
+	public void aCaptureWhileTheFirstPushIsInTheAirDoesNotShortenTheQuietRetry() throws Exception
+	{
+		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		captureListener.run();
+		settle();
+		assertEquals(1, syncs.size());
+		// A log walk is still landing pages, which arms the ten second debounce.
+		captureListener.run();
+		assertEquals(10_000L, executor.lastDelayMs());
+
+		syncs.get(0).complete(restarting());
+		// The retry takes over from the debounce rather than yielding to it.
+		assertEquals(40_000L, executor.lastDelayMs());
+		assertEquals(1, executor.live());
+		settle();
+		assertEquals(2, syncs.size());
+	}
+
+	@Test
+	public void everyEpisodeGetsItsOwnQuietRetry() throws Exception
+	{
+		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		captureListener.run();
+		settle();
+		syncs.get(0).complete(restarting());
+		settle();
+		syncs.get(1).complete(restarting());
+		settle();
+		assertEquals(2, syncs.size());
+
+		captureListener.run();
+		settle();
+		assertEquals(3, syncs.size());
+		syncs.get(2).complete(restarting());
+		settle();
+		assertEquals(4, syncs.size());
+	}
+
+	@Test
+	public void logoutDuringTheWaitDropsTheQuietRetry() throws Exception
+	{
+		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		captureListener.run();
+		settle();
+		syncs.get(0).complete(restarting());
+		assertEquals(1, executor.live());
+
+		logout();
+		epoch = 8;
+		assertEquals(0, executor.live());
+		settle();
+		assertEquals(1, syncs.size());
+		verify(chatNotifier, never()).send(eq(ChatNotice.SYNC_RESULT), any());
+	}
+
+	@Test
+	public void aCharacterPublishWaitsThroughTheRetryAndPublishesOnce() throws Exception
+	{
+		publishHandler.run();
+		settle();
+		publishes.get(0).complete(new ProfileAppearanceService.PublishResult(
+			ProfileAppearanceService.Outcome.PROFILE_REQUIRED, null));
+		settle();
+		assertEquals(1, syncs.size());
+		syncs.get(0).complete(restarting());
+		// Someone is waiting on this one, so it gets the advised delay as it is.
+		assertEquals(20_000L, executor.lastDelayMs());
+
+		// A second click during the wait is ignored: the publish is still parked.
+		publishHandler.run();
+		settle();
+		assertEquals(2, syncs.size());
+		assertEquals(1, publishes.size());
+		verify(panel, never()).showCharacterPublishStatus(eq(KillClogPlugin.CHARACTER_FAILED_STATUS),
+			anyBoolean(), anyBoolean(), any());
+
+		syncs.get(1).complete(new SyncService.SyncResult(true, false, "Synced"));
+		settle();
+		assertEquals(2, publishes.size());
 	}
 
 	@Test
