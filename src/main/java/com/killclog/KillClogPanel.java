@@ -95,6 +95,7 @@ public class KillClogPanel extends PluginPanel
 
 	private final HiscoreService hiscoreService;
 	private final ClogService clogService;
+	private final RuneProfileService runeProfileService;
 	private final KillClogConfig config;
 	private final ConfigManager configManager;
 	private final SpriteManager spriteManager;
@@ -151,8 +152,7 @@ public class KillClogPanel extends PluginPanel
 
 			// Single player: standard clog summary
 			return buildClogSummaryTooltip(this, lookupSession.getHiscoreResult(),
-				lookupSession.getClogResult(), lookupSession.getCaResult(), rsn,
-				lookupSession.getClogLastChanged());
+				lookupSession.getClogResult(), rsn, lookupSession.getClogLastChanged());
 		}
 
 	};
@@ -213,6 +213,7 @@ public class KillClogPanel extends PluginPanel
 		super(true); // wrap in JScrollPane
 		this.hiscoreService = hiscoreService;
 		this.clogService = clogService;
+		this.runeProfileService = runeProfileService;
 		this.config = config;
 		this.configManager = configManager;
 		this.spriteManager = spriteManager;
@@ -1423,17 +1424,16 @@ public class KillClogPanel extends PluginPanel
 		ClogResult redClog = comparison.getCompareClogResult();
 		return comparison.wrapSideBySide(owner,
 			buildClogSummaryTooltip(owner, lookupSession.getHiscoreResult(),
-				lookupSession.getClogResult(), lookupSession.getCaResult(),
-				comparisonBlueName(), lookupSession.getClogLastChanged()),
+				lookupSession.getClogResult(), comparisonBlueName(),
+				lookupSession.getClogLastChanged()),
 			buildClogSummaryTooltip(owner, comparison.getCompareHiscoreResult(),
-				redClog, comparison.getCompareCaResult(), comparison.getCompareRsn(),
+				redClog, comparison.getCompareRsn(),
 				redClog != null ? redClog.getLastChanged() : null));
 	}
 
 	/** One player's clog summary card: solo mode shows it alone, comparison pairs two. */
 	private ClogSummaryTooltip buildClogSummaryTooltip(JComponent owner,
 		@Nullable HiscoreResult hiscore, @Nullable ClogResult clog,
-		@Nullable CombatAchievementResult ca,
 		@Nullable String playerRsn, @Nullable String lastChanged)
 	{
 		ClogSummaryTooltip tip = new ClogSummaryTooltip();
@@ -1445,7 +1445,7 @@ public class KillClogPanel extends PluginPanel
 				? ClogHelper.sumClogTotals(clog, clogIndex::canonicalItemId)
 				: ClogHelper.sumClogTotals(clog);
 			tip.setTierData(totals[0], totals[1], iconCache.clogTierImages());
-			tip.setClogSources(clog, ca);
+			tip.setClogSources(clog, runeProfileService.hasProfile(playerRsn));
 			if (hiscore != null && hiscore.isRankDataAvailable())
 			{
 				int clogRank = hiscore.getActivityRank("Collections Logged");
