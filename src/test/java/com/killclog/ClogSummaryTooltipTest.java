@@ -7,18 +7,27 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionListener;
 import java.awt.image.BufferedImage;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 public class ClogSummaryTooltipTest
 {
 	private static final int ICON = 13;
 	private static final int ICON_STEP = 16;
+	private static final int BAR_TRACK = new Color(40, 35, 28).getRGB();
+	private static final int YELLOW = new Color(255, 255, 0).getRGB();
 
 	@Test
 	public void theTierLadderReadsAReachedTierGreenAndTheNextOneRed()
@@ -46,30 +55,67 @@ public class ClogSummaryTooltipTest
 	}
 
 	@Test
+	public void landingExactlyOnATierReachesIt()
+	{
+		ClogSummaryTooltip tip = painted(card(1100, 1700));
+		move(tip, ladderX(tip, 6) + 6, ladderY(tip));
+		assertEquals("Rune: 1,100-1,199", tip.getHeaderHoverLineText());
+		assertEquals(new Color(0, 255, 0), tip.getHeaderHoverLineColor());
+	}
+
+	@Test
+	public void unreachedTiersAreDimmedAndReachedOnesAreNot()
+	{
+		Map<String, BufferedImage> icons = new LinkedHashMap<>();
+		for (String tier : ClogHelper.CLOG_TIERS)
+		{
+			icons.put(tier, tile(ICON, ICON, Color.MAGENTA));
+		}
+		ClogSummaryTooltip tip = new ClogSummaryTooltip();
+		tip.setTierData(1150, 1700, icons, null);
+		BufferedImage image = paint(tip);
+		int y = ladderY(tip);
+		assertEquals(Color.MAGENTA.getRGB(), image.getRGB(ladderX(tip, 0) + 6, y));
+		assertEquals(Color.MAGENTA.getRGB(), image.getRGB(ladderX(tip, 6) + 6, y));
+		assertNotEquals(Color.MAGENTA.getRGB(), image.getRGB(ladderX(tip, 7) + 6, y));
+		assertNotEquals(Color.MAGENTA.getRGB(), image.getRGB(ladderX(tip, 8) + 6, y));
+	}
+
+	@Test
+	public void theCurrentTierSpriteIsAskedForByTier()
+	{
+		ItemManager items = mock(ItemManager.class);
+		new ClogSummaryTooltip().setTierData(1150, 1700, null, items);
+		verify(items).getImage(PanelData.CLOG_TIER_ITEM_IDS[6]);
+
+		items = mock(ItemManager.class);
+		new ClogSummaryTooltip().setTierData(100, 1700, null, items);
+		verify(items).getImage(PanelData.CLOG_TIER_ITEM_IDS[0]);
+
+		// Below bronze there is no tier to show.
+		items = mock(ItemManager.class);
+		new ClogSummaryTooltip().setTierData(99, 1700, null, items);
+		verifyNoInteractions(items);
+	}
+
+	@Test
 	public void theCurrentTierSitsInTheHeaderCornerClearOfTheTitle() throws ReflectiveOperationException
 	{
 		ClogSummaryTooltip tip = card(1150, 1700);
 		tip.setRank(4321);
 		Dimension bare = tip.getPreferredSize();
-		BufferedImage sprite = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D g = sprite.createGraphics();
-		g.setColor(Color.MAGENTA);
-		g.fillRect(0, 0, 32, 32);
-		g.dispose();
 		Field field = ClogSummaryTooltip.class.getDeclaredField("tierSprite");
 		field.setAccessible(true);
-		((BufferedImage[]) field.get(tip))[0] = sprite;
+		// An item image at its native size.
+		field.set(tip, tile(36, 32, Color.MAGENTA));
 
 		// A decoration, not a row: the card is the same size with it.
 		assertEquals(bare, tip.getPreferredSize());
-		tip.setSize(bare);
-		BufferedImage image = new BufferedImage(bare.width, bare.height, BufferedImage.TYPE_INT_ARGB);
-		g = image.createGraphics();
-		tip.paint(g);
-		g.dispose();
+		BufferedImage image = paint(tip);
 
 		int inset = NativeTooltip.getInset();
 		int left = bare.width;
+		int right = 0;
 		int bottom = 0;
 		for (int y = 0; y < bare.height; y++)
 		{
@@ -78,21 +124,66 @@ public class ClogSummaryTooltipTest
 				if (image.getRGB(x, y) == Color.MAGENTA.getRGB())
 				{
 					left = Math.min(left, x);
+					right = Math.max(right, x);
 					bottom = Math.max(bottom, y);
 				}
 			}
 		}
-		assertEquals(bare.width - inset - 32, left);
-		// Inside the header, above its rule, and right of the widest header text.
+		assertEquals(bare.width - inset - 36, left);
+		assertEquals(bare.width - inset - 1, right);
+		// Inside the header, above its rule, and right of the title on its line.
 		assertTrue(bottom < inset + tip.getHeaderHeight());
 		int titleWidth = tip.getFontMetrics(tip.getTitleFont()).stringWidth("Clog Summary");
 		assertTrue(inset + titleWidth < left);
 	}
 
 	@Test
+	public void theHeaderCountsATotalAndTheCompletionNeverPassesOneHundred() throws ReflectiveOperationException
+	{
+		ClogSummaryTooltip tip = card(1150, 1700);
+		Field label = TitleTooltip.class.getDeclaredField("subtitleLabel");
+		label.setAccessible(true);
+		assertEquals("Total: ", label.get(tip));
+		assertEquals("67.6%", tip.completionText());
+
+		ClogSummaryTooltip preview = new ClogSummaryTooltip();
+		preview.setObtainedPlaceholder(1700);
+		assertEquals("Total: ", label.get(preview));
+
+		// A provider can count more than the catalog it sent.
+		assertEquals("100.0%", card(1800, 1700).completionText());
+		assertEquals("0.0%", card(0, 1700).completionText());
+	}
+
+	@Test
+	public void everyBarFillsToItsOwnShare()
+	{
+		ClogSummaryTooltip tip = card(1150, 1700);
+		Map<String, int[]> tabs = new LinkedHashMap<>();
+		tabs.put("Bosses", new int[]{1, 2});
+		tabs.put("Raids", new int[]{0, 79});
+		tabs.put("Clues", new int[]{470, 470});
+		tip.setTabs(tabs);
+		List<int[]> bars = bars(paint(tip));
+
+		// The completion bar, then one per tab, all inside the card.
+		assertEquals(4, bars.size());
+		int width = tip.getWidth() - 2 * NativeTooltip.getInset();
+		assertEquals(width * 1150 / 1700, bars.get(0)[0]);
+		assertEquals(width / 2, bars.get(1)[0]);
+		assertEquals(0, bars.get(2)[0]);
+		// A complete tab is green end to end: no yellow and no track left.
+		assertEquals(0, bars.get(3)[0]);
+		assertEquals(0, bars.get(3)[1]);
+		int contentBottom = tip.getHeight() - NativeTooltip.getInset() - 1;
+		assertTrue(bars.get(3)[2] <= contentBottom);
+	}
+
+	@Test
 	public void everyTabAddsARowAndACardWithoutTabsHasNone()
 	{
 		ClogSummaryTooltip bare = card(1150, 1700);
+		assertEquals(1, bars(paint(bare)).size());
 		ClogSummaryTooltip withTabs = card(1150, 1700);
 		Map<String, int[]> tabs = new LinkedHashMap<>();
 		tabs.put("Bosses", new int[]{290, 381});
@@ -106,7 +197,7 @@ public class ClogSummaryTooltipTest
 		assertTrue(perTab > NativeTooltip.LINE_HEIGHT);
 		tabs.put("Minigames", new int[]{120, 120});
 		assertEquals(twoTabs + 2 * perTab, withTabs.getPreferredSize().height);
-		painted(withTabs);
+		assertEquals(5, bars(paint(withTabs)).size());
 	}
 
 	@Test
@@ -126,7 +217,7 @@ public class ClogSummaryTooltipTest
 	{
 		ClogSummaryTooltip tip = new ClogSummaryTooltip();
 		tip.setTitle("Clog Summary");
-		painted(tip);
+		assertTrue(bars(paint(tip)).isEmpty());
 		move(tip, tip.getWidth() / 2, tip.getHeight() - 4);
 		assertNull(tip.getHeaderHoverLineText());
 	}
@@ -140,13 +231,68 @@ public class ClogSummaryTooltipTest
 
 	private static ClogSummaryTooltip painted(ClogSummaryTooltip tip)
 	{
+		paint(tip);
+		return tip;
+	}
+
+	private static BufferedImage paint(ClogSummaryTooltip tip)
+	{
 		Dimension size = tip.getPreferredSize();
 		tip.setSize(size);
-		Graphics2D graphics = new BufferedImage(
-			size.width, size.height, BufferedImage.TYPE_INT_ARGB).createGraphics();
+		BufferedImage image = new BufferedImage(size.width, size.height, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D graphics = image.createGraphics();
 		tip.paint(graphics);
 		graphics.dispose();
-		return tip;
+		return image;
+	}
+
+	/**
+	 * Every fill bar on the card, top to bottom: {yellow pixels, track pixels,
+	 * bottom row}, read from the bar's first row. A bar is any run of rows
+	 * that holds track or spans the card in one fill colour.
+	 */
+	private static List<int[]> bars(BufferedImage image)
+	{
+		int inset = NativeTooltip.getInset();
+		int width = image.getWidth() - 2 * inset;
+		List<int[]> bars = new ArrayList<>();
+		boolean inBar = false;
+		for (int y = 0; y < image.getHeight(); y++)
+		{
+			int yellow = 0;
+			int track = 0;
+			int first = image.getRGB(inset, y);
+			int sameAsFirst = 0;
+			for (int x = inset; x < inset + width; x++)
+			{
+				int rgb = image.getRGB(x, y);
+				yellow += rgb == YELLOW ? 1 : 0;
+				track += rgb == BAR_TRACK ? 1 : 0;
+				sameAsFirst += rgb == first ? 1 : 0;
+			}
+			boolean green = sameAsFirst == width && first == new Color(0, 255, 0).getRGB();
+			boolean bar = track > 0 || green || yellow == width;
+			if (bar && !inBar)
+			{
+				bars.add(new int[]{yellow, track, y});
+			}
+			else if (bar)
+			{
+				bars.get(bars.size() - 1)[2] = y;
+			}
+			inBar = bar;
+		}
+		return bars;
+	}
+
+	private static BufferedImage tile(int width, int height, Color color)
+	{
+		BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = image.createGraphics();
+		g.setColor(color);
+		g.fillRect(0, 0, width, height);
+		g.dispose();
+		return image;
 	}
 
 	/** The ladder is the last thing on a card with no tabs, items or sources. */

@@ -15,6 +15,7 @@ import java.util.Locale;
 import java.util.Map;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
+import net.runelite.client.util.AsyncBufferedImage;
 
 /**
  * Clog summary tooltip on the summary-bar clog cell.
@@ -38,7 +39,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 	// An unreached tier sits one past TIER_SECTION so its readout can turn red.
 	private static final int TIER_SECTION = 2;
 	private static final int SOURCE_SECTION = 4;
-	private static final int TIER_SPRITE_SIZE = 32;
 	private static final int BAR_HEIGHT = 3;
 	private static final int BAR_GAP = 3;
 	private static final Color BAR_TRACK = new Color(40, 35, 28);
@@ -57,6 +57,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 	private int obtained = -1;
 	private int totalSlots;
+	private int tier = -1;
 	// Collection-log tabs in game order: name, then {obtained, total}.
 	private Map<String, int[]> tabs = Collections.emptyMap();
 	private String syncDate;
@@ -64,7 +65,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 	private Map<String, BufferedImage> tierIcons;
 	// The current tier, large, in the header's corner. Empty below bronze.
-	private final BufferedImage[] tierSprite = new BufferedImage[1];
+	private BufferedImage tierSprite;
 	private String notice;
 	private BufferedImage noticeIcon;
 	private boolean firstTimeSetup;
@@ -94,11 +95,16 @@ public class ClogSummaryTooltip extends TitleTooltip
 		this.obtained = obtained;
 		this.totalSlots = totalSlots;
 
-		int tier = ClogHelper.tierIndex(obtained, totalSlots);
+		tier = ClogHelper.tierIndex(obtained, totalSlots);
 		if (tier >= 0 && itemManager != null)
 		{
-			loadItemSprites(new int[]{PanelData.CLOG_TIER_ITEM_IDS[tier]}, TIER_SPRITE_SIZE,
-				tierSprite, itemManager);
+			// The item image at its own size, which stays crisp; it fills in once loaded.
+			AsyncBufferedImage sprite = itemManager.getImage(PanelData.CLOG_TIER_ITEM_IDS[tier]);
+			if (sprite != null)
+			{
+				sprite.onLoaded(this::repaint);
+			}
+			tierSprite = sprite;
 		}
 	}
 
@@ -119,9 +125,9 @@ public class ClogSummaryTooltip extends TitleTooltip
 		return obtained >= 0 && totalSlots > 0;
 	}
 
-	private String completionText()
+	String completionText()
 	{
-		return String.format(Locale.US, "%.1f%%", obtained * 100.0 / totalSlots);
+		return String.format(Locale.US, "%.1f%%", Math.min(obtained, totalSlots) * 100.0 / totalSlots);
 	}
 
 	private static int legendWidth()
@@ -437,10 +443,10 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 		if (hasTotals())
 		{
-			if (tierSprite[0] != null)
+			if (tierSprite != null)
 			{
-				g2.drawImage(tierSprite[0], w - inset - TIER_SPRITE_SIZE,
-					inset + (getHeaderHeight() - TIER_SPRITE_SIZE) / 2, null);
+				g2.drawImage(tierSprite, w - inset - tierSprite.getWidth(),
+					inset + (getHeaderHeight() - tierSprite.getHeight()) / 2, null);
 			}
 			drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Completion: ", completionText());
 			y = paintBar(g2, w, y + LINE_HEIGHT, obtained, totalSlots);
@@ -660,7 +666,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 		Composite solid = g2.getComposite();
 		for (int i = 0; i < labels.length; i++)
 		{
-			boolean reached = obtained >= ClogHelper.tierThreshold(i, totalSlots);
+			boolean reached = i <= tier;
 			BufferedImage icon = tierIcons != null ? tierIcons.get(ClogHelper.CLOG_TIERS[i]) : null;
 			if (icon != null)
 			{

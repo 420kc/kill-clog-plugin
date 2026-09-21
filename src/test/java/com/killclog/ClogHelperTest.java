@@ -231,6 +231,9 @@ public class ClogHelperTest
 		assertEquals("Bronze: 100-299", labels[0]);
 		assertEquals("Rune: 1,100-1,199", labels[6]);
 		assertEquals("Dragon: 1,200-1,349 (18 more)", labels[7]);
+		// Landing exactly on a tier reaches it: nothing is left to go.
+		assertEquals("Dragon: 1,200-1,349", ClogHelper.tierLabels(1200, 1500)[7]);
+		assertEquals("Dragon: 1,200-1,349 (1 more)", ClogHelper.tierLabels(1199, 1500)[7]);
 		assertEquals("Gilded: 1,350+ (168 more)", labels[8]);
 		assertEquals("Bronze: 100-299 (100 more)", ClogHelper.tierLabels(0, 1500)[0]);
 		assertEquals("Gilded: 1,350+ (1,350 more)", ClogHelper.tierLabels(0, 1500)[8]);
