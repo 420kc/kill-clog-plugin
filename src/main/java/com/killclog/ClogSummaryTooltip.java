@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import javax.annotation.Nullable;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
 
@@ -94,14 +93,13 @@ public class ClogSummaryTooltip extends TitleTooltip
 	}
 
 	/**
-	 * Every provider feeding this player's card. RuneProfile also counts when
-	 * only its Combat Achievements arrived, because its larger collection-log
-	 * request can miss the lookup window while the summary lands.
+	 * Every provider this player is synced to. RuneProfile counts whenever it
+	 * holds a profile for them: its collection-log request is skipped for the
+	 * local player and can miss the lookup window for anyone else.
 	 */
-	void setClogSources(ClogResult result, @Nullable CombatAchievementResult ca)
+	void setClogSources(ClogResult result, boolean hasRuneProfile)
 	{
-		setClogSources(result.isFromTemple(),
-			result.isFromRuneProfile() || ca != null && ca.isFromRuneProfile(),
+		setClogSources(result.isFromTemple(), result.isFromRuneProfile() || hasRuneProfile,
 			result.isFromKillclog(), result.isFromLocal());
 	}
 

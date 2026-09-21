@@ -18,7 +18,9 @@ import okhttp3.Protocol;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
 import org.junit.Before;
+import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
 import static org.junit.Assert.*;
 
 /**
@@ -26,6 +28,9 @@ import static org.junit.Assert.*;
  */
 public class RuneProfileServiceTest
 {
+	@Rule
+	public TemporaryFolder temporaryFolder = new TemporaryFolder();
+
 	private RuneProfileService service;
 
 	@Before
@@ -49,30 +54,6 @@ public class RuneProfileServiceTest
 		assertNotNull(summary.combatAchievements);
 		assertEquals(CombatAchievementTier.EASY, summary.combatAchievements.getTier());
 		assertEquals(41, summary.combatAchievements.getCompleted(CombatAchievementTier.EASY));
-	}
-
-	@Test
-	public void testRuneProfileCaKeepsItsSourceStampThroughARebase()
-	{
-		String json = "{\"combatAchievements\":["
-			+ "{\"id\":1,\"name\":\"Easy\",\"completed\":41,\"total\":41}]}";
-		CombatAchievementResult parsed = service.parseCombatAchievements(json);
-		assertNotNull(parsed);
-		assertTrue(parsed.isFromRuneProfile());
-		assertEquals(CombatAchievementTier.EASY, parsed.getTier());
-
-		Map<CombatAchievementTier, Integer> live = new EnumMap<>(CombatAchievementTier.class);
-		for (CombatAchievementTier tier : CombatAchievementTier.values())
-		{
-			live.put(tier, tier.totalTasks() + 1);
-		}
-		CombatAchievementResult rebased = parsed.rebasedOn(live);
-		assertNotSame(parsed, rebased);
-		assertTrue(rebased.isFromRuneProfile());
-
-		// The local game read is built through the same factory and must stay unmarked.
-		assertFalse(CombatAchievementResult.of(
-			Collections.singletonMap(CombatAchievementTier.EASY, 41), null).isFromRuneProfile());
 	}
 
 	@Test
@@ -334,6 +315,109 @@ public class RuneProfileServiceTest
 			+ "]}"
 			+ "]}";
 		assertNull(service.parseCollectionLog("invalid", json));
+	}
+
+	@Test
+	public void testActivePlayerKeepsLocalDataButLearnsRuneProfilePresence() throws Exception
+	{
+		AtomicInteger requests = new AtomicInteger();
+		OkHttpClient client = cannedClient(200, "{\"accountType\":{\"id\":4,\"key\":\"group_ironman\"},"
+			+ "\"combatAchievements\":[{\"name\":\"Easy\",\"completed\":41,\"total\":41}]}", requests);
+		service = new RuneProfileService(client, new Gson(), activeLocalCa("Self Probe", 3));
+
+		try
+		{
+			assertFalse(service.hasProfile("Self Probe"));
+			CombatAchievementResult ca = service.lookup("Self Probe").join();
+			assertEquals(3, ca.getCompleted(CombatAchievementTier.EASY));
+
+			awaitProfile("Self Probe", true);
+			// RuneProfile's view of the account never reaches the player's own badge.
+			assertNull(service.getCachedAccountType("Self Probe"));
+			assertEquals(3, service.lookup("self probe").join().getCompleted(CombatAchievementTier.EASY));
+			assertEquals(1, requests.get());
+		}
+		finally
+		{
+			client.dispatcher().executorService().shutdownNow();
+			client.connectionPool().evictAll();
+		}
+	}
+
+	@Test
+	public void testHasProfileMatchesTheCanonicalSpellingOfATypedName() throws Exception
+	{
+		assertFalse(service.hasProfile(null));
+		assertFalse(service.hasProfile("420 kc"));
+		summaryCache().put("420_kc", new RuneProfileService.RuneProfileSummary(AccountType.IRONMAN, null));
+		assertTrue(service.hasProfile("420 KC"));
+		assertFalse(service.hasProfile("421 kc"));
+	}
+
+	@Test
+	public void testActivePlayerWithoutARuneProfileIsNotCredited() throws Exception
+	{
+		AtomicInteger requests = new AtomicInteger();
+		OkHttpClient client = cannedClient(404, "{\"error\":\"Account not found\"}", requests);
+		service = new RuneProfileService(client, new Gson(), activeLocalCa("Self Probe", 3));
+
+		try
+		{
+			service.lookup("Self Probe").join();
+			long deadline = System.currentTimeMillis() + 5000;
+			while (longCache("summaryNotFoundTimes").get("self probe") == null
+				&& System.currentTimeMillis() < deadline)
+			{
+				Thread.sleep(10);
+			}
+			assertNotNull(longCache("summaryNotFoundTimes").get("self probe"));
+			assertFalse(service.hasProfile("Self Probe"));
+
+			// The hour-long negative cache absorbs the next self lookup.
+			service.lookup("Self Probe").join();
+			assertEquals(1, requests.get());
+		}
+		finally
+		{
+			client.dispatcher().executorService().shutdownNow();
+			client.connectionPool().evictAll();
+		}
+	}
+
+	private LocalCaCache activeLocalCa(String player, int easyCompleted) throws IOException
+	{
+		LocalCaCache local = new LocalCaCache(new Gson(), new InlineScheduledExecutorService(),
+			temporaryFolder.newFolder());
+		local.setActivePlayer(player);
+		local.cacheResult(player, Map.of(CombatAchievementTier.EASY, easyCompleted));
+		return local;
+	}
+
+	private static OkHttpClient cannedClient(int code, String body, AtomicInteger requests)
+	{
+		return new OkHttpClient.Builder()
+			.addInterceptor(chain ->
+			{
+				requests.incrementAndGet();
+				return new Response.Builder()
+					.request(chain.request())
+					.protocol(Protocol.HTTP_1_1)
+					.code(code)
+					.message("canned")
+					.body(ResponseBody.create(MediaType.parse("application/json"), body))
+					.build();
+			})
+			.build();
+	}
+
+	private void awaitProfile(String player, boolean expected) throws InterruptedException
+	{
+		long deadline = System.currentTimeMillis() + 5000;
+		while (service.hasProfile(player) != expected && System.currentTimeMillis() < deadline)
+		{
+			Thread.sleep(10);
+		}
+		assertEquals(expected, service.hasProfile(player));
 	}
 
 	@Test

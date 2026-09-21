@@ -97,22 +97,19 @@ public class TitleTooltipTest
 	}
 
 	@Test
-	public void clogSummaryCreditsRuneProfileWhenOnlyItsCombatAchievementsArrived()
+	public void clogSummaryCreditsRuneProfileWhenItHoldsAProfileButSentNoLog()
 	{
-		ClogResult templeOnly = new ClogResult("Probe", Collections.emptyMap(),
+		ClogResult selfCard = new ClogResult("Probe", Collections.emptyMap(),
 			Collections.emptyMap(), Collections.emptyMap(), null, null)
-			.withSources(true, false, false);
-		CombatAchievementResult localCa = CombatAchievementResult.of(
-			Collections.singletonMap(CombatAchievementTier.EASY, 41), null);
+			.withSources(true, false, false).withLocalSource(true);
 
 		ClogSummaryTooltip tooltip = new ClogSummaryTooltip();
-		tooltip.setClogSources(templeOnly, null);
-		assertEquals(Collections.singletonList("TempleOSRS"), tooltip.sourceNames());
-		tooltip.setClogSources(templeOnly, localCa);
-		assertEquals(Collections.singletonList("TempleOSRS"), tooltip.sourceNames());
+		tooltip.setClogSources(selfCard, false);
+		assertEquals(Arrays.asList("Local Collection Log", "TempleOSRS"), tooltip.sourceNames());
 
-		tooltip.setClogSources(templeOnly, localCa.withRuneProfileSource());
-		assertEquals(Arrays.asList("TempleOSRS", "RuneProfile"), tooltip.sourceNames());
+		tooltip.setClogSources(selfCard, true);
+		assertEquals(Arrays.asList("Local Collection Log", "TempleOSRS", "RuneProfile"),
+			tooltip.sourceNames());
 	}
 
 	@Test

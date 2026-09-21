@@ -26,18 +26,13 @@ final class CombatAchievementResult
 	// Highest unlocked tier, or null if below Easy.
 	@Getter(AccessLevel.PACKAGE)
 	private final CombatAchievementTier tier;
-	/** True when RuneProfile supplied these counts; the local game read never carries it. */
-	@Getter(AccessLevel.PACKAGE)
-	private final boolean fromRuneProfile;
 
 	private CombatAchievementResult(Map<CombatAchievementTier, Integer> completed,
 									Map<CombatAchievementTier, Integer> providerTotal,
-									Map<CombatAchievementTier, Integer> liveTotals,
-									boolean fromRuneProfile)
+									Map<CombatAchievementTier, Integer> liveTotals)
 	{
 		this.completed = completed;
 		this.providerTotal = providerTotal;
-		this.fromRuneProfile = fromRuneProfile;
 		this.liveCatalog = liveTotals != null && !liveTotals.isEmpty();
 
 		Map<CombatAchievementTier, Integer> totals = new EnumMap<>(CombatAchievementTier.class);
@@ -100,15 +95,7 @@ final class CombatAchievementResult
 		{
 			t.putAll(total);
 		}
-		return new CombatAchievementResult(c, t, liveTotals, false);
-	}
-
-	/** Stamp at the RuneProfile boundary, so provenance never rides on which lane answered. */
-	CombatAchievementResult withRuneProfileSource()
-	{
-		return fromRuneProfile ? this
-			: new CombatAchievementResult(completed, providerTotal,
-				liveCatalog ? currentTotals : null, true);
+		return new CombatAchievementResult(c, t, liveTotals);
 	}
 
 	/**
@@ -127,7 +114,7 @@ final class CombatAchievementResult
 		{
 			return this;
 		}
-		return new CombatAchievementResult(completed, providerTotal, liveTotals, fromRuneProfile);
+		return new CombatAchievementResult(completed, providerTotal, liveTotals);
 	}
 
 	int getCompleted(CombatAchievementTier tier)

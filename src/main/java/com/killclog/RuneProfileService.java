@@ -18,13 +18,15 @@ import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.util.Text;
 import okhttp3.OkHttpClient;
 
 /**
  * Fetches player data from RuneProfile. Two lanes:
  * <ol>
  *   <li><strong>Account summary</strong> ({@link #lookup}) -- public CA source for other
- *       players, plus account-type metadata. One GET per player against {@code /accounts/{rsn}}.</li>
+ *       players, plus account-type metadata. One GET per player against {@code /accounts/{rsn}}.
+ *       The local player is asked for too, only so Sources can list RuneProfile.</li>
  *   <li><strong>Collection log provider</strong> ({@link #lookupClog}) -- one GET against
  *       {@code /collection-log}, parsed into a {@link ClogResult}. LookupSession and
  *       ComparisonController combine this with TempleOSRS and keep the freshest result.</li>
@@ -186,12 +188,29 @@ public class RuneProfileService
 	@Nullable
 	public AccountType getCachedAccountType(String playerName)
 	{
-		if (playerName == null)
+		// The active player's summary is fetched for Sources only; their own
+		// client stays the authority on account type.
+		if (playerName == null || localCaCache != null && localCaCache.isActivePlayer(playerName))
 		{
 			return null;
 		}
 		RuneProfileSummary cached = freshSummary(playerName.toLowerCase());
 		return cached != null ? cached.accountType : null;
+	}
+
+	/**
+	 * True once RuneProfile has answered with a profile for this name. Matched
+	 * as Jagex names, because the panel asks with a provider's canonical
+	 * spelling while the cache is keyed by what was typed.
+	 */
+	boolean hasProfile(@Nullable String playerName)
+	{
+		if (playerName == null)
+		{
+			return false;
+		}
+		String wanted = Text.toJagexName(playerName.toLowerCase());
+		return summaryCache.keySet().stream().anyMatch(key -> Text.toJagexName(key).equals(wanted));
 	}
 
 	/**
@@ -202,9 +221,12 @@ public class RuneProfileService
 	public CompletableFuture<CombatAchievementResult> lookup(String playerName)
 	{
 		// Active player: CA is read straight from the game and held locally.
-		// It is authoritative even when empty, so never fall through to RuneProfile.
+		// It is authoritative even when empty, so RuneProfile never supplies it.
+		// The summary is still requested so Sources can say whether this player
+		// has a RuneProfile; nothing from it replaces local data.
 		if (localCaCache != null && localCaCache.isActivePlayer(playerName))
 		{
+			lookupSummary(playerName).exceptionally(ex -> null);
 			CombatAchievementResult local = localCaCache.hasDataFor(playerName)
 				? localCaCache.getCached(playerName) : null;
 			return CompletableFuture.completedFuture(local);
@@ -347,7 +369,7 @@ public class RuneProfileService
 		}
 		CaCatalog catalog = caCatalog;
 		return CombatAchievementResult.of(completed, total,
-			catalog != null ? catalog.totals() : null).withRuneProfileSource();
+			catalog != null ? catalog.totals() : null);
 	}
 
 	@Nullable
