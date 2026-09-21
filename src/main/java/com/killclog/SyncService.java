@@ -37,7 +37,7 @@ import okhttp3.OkHttpClient;
 class SyncService
 {
 	// Attributed on the server per client build.
-	static final String CLIENT_VERSION = "2.3.4";
+	static final String CLIENT_VERSION = "2.3.5";
 
 	private final OkHttpClient httpClient;
 	private final Gson gson;
