@@ -215,12 +215,25 @@ public class ClogHelperTest
 	public void theTierLadderReadsEveryRangeAndLeavesGildedOpen()
 	{
 		// Gilded starts at (total * 0.9) rounded down to 25s: 1350 for 1500 slots.
-		String[] labels = ClogHelper.tierLabels(1500);
+		String[] labels = ClogHelper.tierLabels(1500, 1500);
 		assertEquals(ClogHelper.CLOG_TIERS.length, labels.length);
 		assertEquals("Bronze: 100-299", labels[0]);
 		assertEquals("Rune: 1,100-1,199", labels[6]);
 		assertEquals("Dragon: 1,200-1,349", labels[7]);
 		assertEquals("Gilded: 1,350+", labels[8]);
+	}
+
+	@Test
+	public void aTierStillAheadSaysHowFarOffItIs()
+	{
+		String[] labels = ClogHelper.tierLabels(1182, 1500);
+		// Reached tiers, the current one included, read as a plain range.
+		assertEquals("Bronze: 100-299", labels[0]);
+		assertEquals("Rune: 1,100-1,199", labels[6]);
+		assertEquals("Dragon: 1,200-1,349 (18 more)", labels[7]);
+		assertEquals("Gilded: 1,350+ (168 more)", labels[8]);
+		assertEquals("Bronze: 100-299 (100 more)", ClogHelper.tierLabels(0, 1500)[0]);
+		assertEquals("Gilded: 1,350+ (1,350 more)", ClogHelper.tierLabels(0, 1500)[8]);
 	}
 
 	@Test
@@ -232,6 +245,8 @@ public class ClogHelperTest
 			assertEquals(ClogHelper.CLOG_TIERS[tier], ClogHelper.getClogTierName(start, 1500));
 			assertEquals(tier == 0 ? null : ClogHelper.CLOG_TIERS[tier - 1],
 				ClogHelper.getClogTierName(start - 1, 1500));
+			assertEquals(tier, ClogHelper.tierIndex(start, 1500));
+			assertEquals(tier - 1, ClogHelper.tierIndex(start - 1, 1500));
 		}
 	}
 

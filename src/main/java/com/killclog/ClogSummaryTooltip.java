@@ -38,6 +38,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 	// An unreached tier sits one past TIER_SECTION so its readout can turn red.
 	private static final int TIER_SECTION = 2;
 	private static final int SOURCE_SECTION = 4;
+	private static final int TIER_SPRITE_SIZE = 32;
 	private static final int BAR_HEIGHT = 3;
 	private static final int BAR_GAP = 3;
 	private static final Color BAR_TRACK = new Color(40, 35, 28);
@@ -62,6 +63,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private boolean syncStale;
 
 	private Map<String, BufferedImage> tierIcons;
+	// The current tier, large, in the header's corner. Empty below bronze.
+	private final BufferedImage[] tierSprite = new BufferedImage[1];
 	private String notice;
 	private BufferedImage noticeIcon;
 	private boolean firstTimeSetup;
@@ -82,13 +85,21 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private final TooltipItemHover itemHover = new TooltipItemHover(this);
 	private final List<ClogSource> clogSources = new ArrayList<>(3);
 
-	public void setTierData(int obtained, int totalSlots, Map<String, BufferedImage> tierIcons)
+	public void setTierData(int obtained, int totalSlots, Map<String, BufferedImage> tierIcons,
+		ItemManager itemManager)
 	{
 		setTitle("Clog Summary");
 		setObtained(obtained, totalSlots);
 		this.tierIcons = tierIcons;
 		this.obtained = obtained;
 		this.totalSlots = totalSlots;
+
+		int tier = ClogHelper.tierIndex(obtained, totalSlots);
+		if (tier >= 0 && itemManager != null)
+		{
+			loadItemSprites(new int[]{PanelData.CLOG_TIER_ITEM_IDS[tier]}, TIER_SPRITE_SIZE,
+				tierSprite, itemManager);
+		}
 	}
 
 	/** Progress per collection-log tab, in the game's tab order. */
@@ -313,7 +324,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 		if (hasTotals())
 		{
 			textWidth = Math.max(fm.stringWidth("Completion: " + completionText()), legendWidth());
-			for (String label : ClogHelper.tierLabels(totalSlots))
+			for (String label : ClogHelper.tierLabels(obtained, totalSlots))
 			{
 				textWidth = Math.max(textWidth, fm.stringWidth(label));
 			}
@@ -426,6 +437,11 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 		if (hasTotals())
 		{
+			if (tierSprite[0] != null)
+			{
+				g2.drawImage(tierSprite[0], w - inset - TIER_SPRITE_SIZE,
+					inset + (getHeaderHeight() - TIER_SPRITE_SIZE) / 2, null);
+			}
 			drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Completion: ", completionText());
 			y = paintBar(g2, w, y + LINE_HEIGHT, obtained, totalSlots);
 			y = paintTierLadder(g2, fm, hitBoxes, w, y);
@@ -639,7 +655,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private int paintTierLadder(Graphics2D g2, FontMetrics fm, List<TooltipItemHover.HitBox> hitBoxes,
 		int w, int y)
 	{
-		String[] labels = ClogHelper.tierLabels(totalSlots);
+		String[] labels = ClogHelper.tierLabels(obtained, totalSlots);
 		int x = (w - legendWidth()) / 2;
 		Composite solid = g2.getComposite();
 		for (int i = 0; i < labels.length; i++)

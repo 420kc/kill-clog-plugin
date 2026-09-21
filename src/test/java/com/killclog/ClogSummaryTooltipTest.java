@@ -6,6 +6,7 @@ import java.awt.Graphics2D;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionListener;
 import java.awt.image.BufferedImage;
+import java.lang.reflect.Field;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import net.runelite.client.ui.FontManager;
@@ -32,16 +33,60 @@ public class ClogSummaryTooltipTest
 		assertEquals(new Color(0, 255, 0), tip.getHeaderHoverLineColor());
 
 		move(tip, ladderX(tip, 7) + 6, y);
-		assertEquals("Dragon: 1,200-1,524", tip.getHeaderHoverLineText());
+		assertEquals("Dragon: 1,200-1,524 (50 more)", tip.getHeaderHoverLineText());
 		assertEquals(new Color(255, 0, 0), tip.getHeaderHoverLineColor());
 
 		move(tip, ladderX(tip, 8) + 6, y);
-		assertEquals("Gilded: 1,525+", tip.getHeaderHoverLineText());
+		assertEquals("Gilded: 1,525+ (375 more)", tip.getHeaderHoverLineText());
 
 		// The readout row is always reserved, so hovering never resizes the card.
 		assertEquals(idle, tip.getPreferredSize());
 		move(tip, 1, 1);
 		assertNull(tip.getHeaderHoverLineText());
+	}
+
+	@Test
+	public void theCurrentTierSitsInTheHeaderCornerClearOfTheTitle() throws ReflectiveOperationException
+	{
+		ClogSummaryTooltip tip = card(1150, 1700);
+		tip.setRank(4321);
+		Dimension bare = tip.getPreferredSize();
+		BufferedImage sprite = new BufferedImage(32, 32, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = sprite.createGraphics();
+		g.setColor(Color.MAGENTA);
+		g.fillRect(0, 0, 32, 32);
+		g.dispose();
+		Field field = ClogSummaryTooltip.class.getDeclaredField("tierSprite");
+		field.setAccessible(true);
+		((BufferedImage[]) field.get(tip))[0] = sprite;
+
+		// A decoration, not a row: the card is the same size with it.
+		assertEquals(bare, tip.getPreferredSize());
+		tip.setSize(bare);
+		BufferedImage image = new BufferedImage(bare.width, bare.height, BufferedImage.TYPE_INT_ARGB);
+		g = image.createGraphics();
+		tip.paint(g);
+		g.dispose();
+
+		int inset = NativeTooltip.getInset();
+		int left = bare.width;
+		int bottom = 0;
+		for (int y = 0; y < bare.height; y++)
+		{
+			for (int x = 0; x < bare.width; x++)
+			{
+				if (image.getRGB(x, y) == Color.MAGENTA.getRGB())
+				{
+					left = Math.min(left, x);
+					bottom = Math.max(bottom, y);
+				}
+			}
+		}
+		assertEquals(bare.width - inset - 32, left);
+		// Inside the header, above its rule, and right of the widest header text.
+		assertTrue(bottom < inset + tip.getHeaderHeight());
+		int titleWidth = tip.getFontMetrics(tip.getTitleFont()).stringWidth("Clog Summary");
+		assertTrue(inset + titleWidth < left);
 	}
 
 	@Test
@@ -89,7 +134,7 @@ public class ClogSummaryTooltipTest
 	private static ClogSummaryTooltip card(int obtained, int total)
 	{
 		ClogSummaryTooltip tip = new ClogSummaryTooltip();
-		tip.setTierData(obtained, total, null);
+		tip.setTierData(obtained, total, null, null);
 		return tip;
 	}
 

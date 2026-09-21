@@ -1397,7 +1397,7 @@ public class KillClogPanel extends PluginPanel
 			int[] totals = clogIndex != null
 				? ClogHelper.sumClogTotals(clog, clogIndex::canonicalItemId)
 				: ClogHelper.sumClogTotals(clog);
-			tip.setTierData(totals[0], totals[1], iconCache.clogTierImages());
+			tip.setTierData(totals[0], totals[1], iconCache.clogTierImages(), itemManager);
 			if (clogIndex != null)
 			{
 				tip.setTabs(clogIndex.tabProgress(clog));

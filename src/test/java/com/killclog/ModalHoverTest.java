@@ -75,7 +75,7 @@ public class ModalHoverTest
 		PvmSummaryTooltip pvm = new PvmSummaryTooltip();
 		pvm.setData(126, 12345, 20, 60, "Zulrah", 5000);
 		ClogSummaryTooltip clog = new ClogSummaryTooltip();
-		clog.setTierData(125, 1600, null);
+		clog.setTierData(125, 1600, null, null);
 		clog.setClogSources(true, true, true);
 		set(clog, "specialCount", 1);
 		set(clog, "specialSprites", new BufferedImage[]{tile(24)});

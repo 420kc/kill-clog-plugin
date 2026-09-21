@@ -210,25 +210,38 @@ final class ClogHelper
 			? CLOG_TIER_THRESHOLDS[tier] : (int) (totalSlots * 0.9) / 25 * 25;
 	}
 
-	static String getClogTierName(int obtained, int totalSlots)
+	/** The tier a count has reached, as an index into CLOG_TIERS; -1 below bronze. */
+	static int tierIndex(int obtained, int totalSlots)
 	{
 		for (int i = CLOG_TIERS.length - 1; i >= 0; i--)
 		{
-			if (obtained >= tierThreshold(i, totalSlots)) return CLOG_TIERS[i];
+			if (obtained >= tierThreshold(i, totalSlots)) return i;
 		}
-		return null;
+		return -1;
 	}
 
-	/** Every tier's readout, e.g. "Rune: 1,100-1,199"; gilded is open-ended. */
-	static String[] tierLabels(int totalSlots)
+	static String getClogTierName(int obtained, int totalSlots)
+	{
+		int tier = tierIndex(obtained, totalSlots);
+		return tier >= 0 ? CLOG_TIERS[tier] : null;
+	}
+
+	/**
+	 * Every tier's readout, e.g. "Rune: 1,100-1,199"; gilded is open-ended.
+	 * A tier still ahead of the player also says how far off it is.
+	 */
+	static String[] tierLabels(int obtained, int totalSlots)
 	{
 		String[] labels = new String[CLOG_TIERS.length];
 		for (int i = 0; i < labels.length; i++)
 		{
+			int start = tierThreshold(i, totalSlots);
 			labels[i] = StringUtils.capitalize(CLOG_TIERS[i]) + ": "
-				+ QuantityFormatter.formatNumber(tierThreshold(i, totalSlots))
+				+ QuantityFormatter.formatNumber(start)
 				+ (i == labels.length - 1 ? "+"
-				: "-" + QuantityFormatter.formatNumber(tierThreshold(i + 1, totalSlots) - 1));
+				: "-" + QuantityFormatter.formatNumber(tierThreshold(i + 1, totalSlots) - 1))
+				+ (obtained < start
+				? " (" + QuantityFormatter.formatNumber(start - obtained) + " more)" : "");
 		}
 		return labels;
 	}
