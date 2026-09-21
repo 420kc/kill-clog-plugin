@@ -276,12 +276,38 @@ public class TitleTooltipTest
 		card.setPvp(pvpHiscore("Soul Wars Zeal", 1_234_567), null, null);
 		// The section is always there: five rows even with no PvP data.
 		assertEquals(withoutPvp.getPreferredSize().height, card.getPreferredSize().height);
+
+		BufferedImage[] icons = new BufferedImage[5];
+		for (int i = 0; i < icons.length; i++)
+		{
+			icons[i] = new BufferedImage(13, 13, BufferedImage.TYPE_INT_ARGB);
+			Graphics2D g = icons[i].createGraphics();
+			g.setColor(Color.MAGENTA);
+			g.fillRect(0, 0, 13, 13);
+			g.dispose();
+		}
+		card.setPvp(pvpHiscore("Soul Wars Zeal", 1_234_567), null, icons);
 		Dimension size = card.getPreferredSize();
 		card.setSize(size);
-		Graphics2D graphics = new BufferedImage(
-			size.width, size.height, BufferedImage.TYPE_INT_ARGB).createGraphics();
+		BufferedImage image = new BufferedImage(size.width, size.height, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D graphics = image.createGraphics();
 		card.paint(graphics);
 		graphics.dispose();
+
+		// All five rows are painted, and the last one ends inside the card.
+		int x = NativeTooltip.getInset() + 6;
+		int painted = 0;
+		int last = 0;
+		for (int y = 0; y < size.height; y++)
+		{
+			if (image.getRGB(x, y) == Color.MAGENTA.getRGB())
+			{
+				painted++;
+				last = y;
+			}
+		}
+		assertEquals(13 * icons.length, painted);
+		assertTrue(last < size.height - NativeTooltip.getInset());
 	}
 
 	@Test

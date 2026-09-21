@@ -1,5 +1,6 @@
 package com.killclog;
 
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.event.MouseEvent;
@@ -28,6 +29,48 @@ public class ClueSummaryTooltipTest
 			assertEquals(row, tip.rareAt(top + row * NativeTooltip.LINE_HEIGHT + NativeTooltip.LINE_HEIGHT - 1));
 		}
 		assertEquals(-1, tip.rareAt(top + ClueSummaryTooltip.RARE_LABELS.length * NativeTooltip.LINE_HEIGHT));
+	}
+
+	@Test
+	public void aRareRowAnswersExactlyWhereItsIconWasPainted()
+	{
+		ClueSummaryTooltip tip = card();
+		BufferedImage[] icons = new BufferedImage[ClueSummaryTooltip.RARE_LABELS.length];
+		for (int row = 0; row < icons.length; row++)
+		{
+			icons[row] = new BufferedImage(13, 13, BufferedImage.TYPE_INT_ARGB);
+			Graphics2D g = icons[row].createGraphics();
+			g.setColor(new Color(255, 0, 255 - row));
+			g.fillRect(0, 0, 13, 13);
+			g.dispose();
+		}
+		tip.setRareIcons(icons);
+		Dimension size = tip.getPreferredSize();
+		tip.setSize(size);
+		BufferedImage image = new BufferedImage(size.width, size.height, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D graphics = image.createGraphics();
+		tip.paint(graphics);
+		graphics.dispose();
+
+		int x = NativeTooltip.getInset() + 6;
+		int found = 0;
+		for (int y = 0; y < size.height; y++)
+		{
+			int rgb = image.getRGB(x, y);
+			for (int row = 0; row < icons.length; row++)
+			{
+				if (rgb == new Color(255, 0, 255 - row).getRGB())
+				{
+					// Every painted pixel of a row's icon belongs to that row and no other.
+					assertEquals(row, tip.rareAt(y));
+					found++;
+				}
+			}
+		}
+		assertEquals(13 * icons.length, found);
+		// The last row ends inside the card.
+		assertTrue(firstRareY(tip) + icons.length * NativeTooltip.LINE_HEIGHT
+			<= size.height - NativeTooltip.getInset());
 	}
 
 	@Test

@@ -1,14 +1,24 @@
 package com.killclog;
 
+import java.awt.Component;
+import java.awt.GraphicsConfiguration;
+import java.awt.Point;
+import java.awt.event.AWTEventListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.image.BufferedImage;
 import java.lang.reflect.Field;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JToolTip;
+import javax.swing.Popup;
+import javax.swing.PopupFactory;
 import javax.swing.SwingUtilities;
 import javax.swing.ToolTipManager;
 import org.junit.Test;
@@ -135,6 +145,104 @@ public class TooltipControllerTest
 		{
 			label.setToolTipText(null);
 			controller.deactivate();
+		}
+	}
+
+	@Test
+	public void aModalOpensAnotherOnTheSamePressThatDismissedIt() throws Exception
+	{
+		List<Component> shown = new ArrayList<>();
+		PopupFactory original = PopupFactory.getSharedInstance();
+		PopupFactory.setSharedInstance(new PopupFactory()
+		{
+			@Override
+			public Popup getPopup(Component owner, Component contents, int x, int y)
+			{
+				return new Popup()
+				{
+					@Override
+					public void show()
+					{
+						shown.add(contents);
+					}
+
+					@Override
+					public void hide()
+					{
+						shown.remove(contents);
+					}
+				};
+			}
+		});
+		GraphicsConfiguration screen = new BufferedImage(8, 8, BufferedImage.TYPE_INT_ARGB)
+			.createGraphics().getDeviceConfiguration();
+		JPanel cell = new JPanel()
+		{
+			@Override
+			public Point getLocationOnScreen()
+			{
+				return new Point(10, 10);
+			}
+
+			@Override
+			public GraphicsConfiguration getGraphicsConfiguration()
+			{
+				return screen;
+			}
+		};
+		JToolTip summary = new JToolTip();
+		JToolTip rare = new JToolTip();
+		JLabel source = new JLabel()
+		{
+			@Override
+			public Point getLocationOnScreen()
+			{
+				return new Point(10, 10);
+			}
+
+			@Override
+			public JToolTip createToolTip()
+			{
+				return summary;
+			}
+		};
+		source.setToolTipText("Clue Summary");
+		TooltipController controller = new TooltipController(config);
+
+		try
+		{
+			SwingUtilities.invokeAndWait(() ->
+			{
+				controller.showPinnedTooltip(source, cell);
+				assertEquals(Collections.singletonList(summary), shown);
+
+				// A press on a row inside the summary reaches the dismiss listener first.
+				try
+				{
+					Field listener = TooltipController.class.getDeclaredField("pinDismissListener");
+					listener.setAccessible(true);
+					((AWTEventListener) listener.get(controller)).eventDispatched(new MouseEvent(
+						summary, MouseEvent.MOUSE_PRESSED, 0L, 0, 5, 5, 1, false, MouseEvent.BUTTON1));
+				}
+				catch (ReflectiveOperationException e)
+				{
+					throw new AssertionError(e);
+				}
+				assertTrue(shown.isEmpty());
+
+				// The row's own request still opens, where a plain re-press of the cell would toggle off.
+				controller.pinTooltip(source, cell, rare);
+				assertEquals(Collections.singletonList(rare), shown);
+
+				controller.hidePinnedTooltip();
+				assertTrue(shown.isEmpty());
+			});
+		}
+		finally
+		{
+			source.setToolTipText(null);
+			controller.deactivate();
+			PopupFactory.setSharedInstance(original);
 		}
 	}
 
