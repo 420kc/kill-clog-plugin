@@ -616,12 +616,8 @@ public class Cells
 			tip.setRare(i, counts(rival ? rivalRare(i) : rareTooltips.get(PanelData.RARE_KEYS[i])));
 		}
 		// A rare row opens that collection's own modal where the summary was.
-		// In hover mode the summary is a passing preview nothing else takes down.
-		tip.setOnOpenRare(row ->
-		{
-			NativeTooltip.hideTooltipTree(tip);
-			tooltipController.pinTooltip(owner, (JPanel) owner.getParent(), buildRareTooltip(owner, row));
-		});
+		tip.setOnOpenRare((press, row) -> tooltipController.pinTooltipFromPress(
+			owner, (JPanel) owner.getParent(), press, buildRareTooltip(owner, row)));
 		tip.setComponent(owner);
 		tip.setIcons(clueIcons);
 		tip.setData(result, config.showTooltipRank());

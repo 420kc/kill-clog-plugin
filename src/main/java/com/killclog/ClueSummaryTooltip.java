@@ -10,7 +10,7 @@ import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
 import java.util.Locale;
-import java.util.function.IntConsumer;
+import java.util.function.ObjIntConsumer;
 import javax.annotation.Nullable;
 import lombok.Setter;
 import net.runelite.client.hiscore.HiscoreSkill;
@@ -61,7 +61,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 	@Setter
 	private BufferedImage[] rareIcons;
 	@Nullable
-	private IntConsumer onOpenRare;
+	private ObjIntConsumer<MouseEvent> onOpenRare;
 
 	public ClueSummaryTooltip()
 	{
@@ -85,7 +85,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 				int row = rareAt(e.getY());
 				if (row >= 0 && onOpenRare != null && e.getButton() == MouseEvent.BUTTON1)
 				{
-					onOpenRare.accept(row);
+					onOpenRare.accept(e, row);
 					e.consume();
 				}
 			}
@@ -137,7 +137,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 	}
 
 	/** Called with the rare row index when the player presses one. */
-	void setOnOpenRare(@Nullable IntConsumer onOpenRare)
+	void setOnOpenRare(@Nullable ObjIntConsumer<MouseEvent> onOpenRare)
 	{
 		this.onOpenRare = onOpenRare;
 	}

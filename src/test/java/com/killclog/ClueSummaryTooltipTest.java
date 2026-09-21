@@ -78,7 +78,7 @@ public class ClueSummaryTooltipTest
 	{
 		ClueSummaryTooltip tip = card();
 		List<Integer> opened = new ArrayList<>();
-		tip.setOnOpenRare(opened::add);
+		tip.setOnOpenRare((press, row) -> opened.add(row));
 
 		// Before the first paint there is no rare section to press.
 		press(tip, 5, 200, MouseEvent.BUTTON1);

@@ -111,26 +111,7 @@ class TooltipController
 			public void mouseEntered(MouseEvent e)
 			{
 				if (hoverExitTimer != null) hoverExitTimer.stop();
-
-				if (hoveredCell == cell) return;
-
-				if (hoveredCell != null) resetCellHover();
-
-				hoveredCell = cell;
-				switch (config.hoverStyle())
-				{
-					case OUTLINE:
-						Color fg = colorSource.getForeground();
-						Color outline = (fg.equals(KC_COLOR) || fg.equals(ColorScheme.LIGHT_GRAY_COLOR))
-							? HOVER_OUTLINE_DIM : fg;
-						cell.setBorder(new MatteBorder(1, 1, 1, 1, outline));
-						break;
-					case TINT:
-						cell.setBackground(HOVER_TINT_BG);
-						break;
-					case NONE:
-						break;
-				}
+				hoverCell(cell, colorSource);
 			}
 
 			@Override
@@ -261,6 +242,45 @@ class TooltipController
 			dismissHoverPreview(event);
 		}
 		showPinnedTooltip(source, cell);
+	}
+
+	/**
+	 * A press inside one modal that opens another in its place, the way a rare
+	 * row opens its collection from the Clue Summary. The hover preview is a
+	 * window of its own and has to be taken down like any other press does, and
+	 * the cell keeps the outline that modal's closing just cleared.
+	 */
+	void pinTooltipFromPress(JComponent source, JPanel cell, MouseEvent event, JToolTip tip)
+	{
+		if (config.tooltipMode() == TooltipMode.HOVER)
+		{
+			dismissHoverPreview(event);
+		}
+		pinTooltip(source, cell, tip);
+		hoverCell(cell, source);
+	}
+
+	private void hoverCell(JPanel cell, JComponent colorSource)
+	{
+		if (hoveredCell == cell) return;
+
+		if (hoveredCell != null) resetCellHover();
+
+		hoveredCell = cell;
+		switch (config.hoverStyle())
+		{
+			case OUTLINE:
+				Color fg = colorSource.getForeground();
+				Color outline = (fg.equals(KC_COLOR) || fg.equals(ColorScheme.LIGHT_GRAY_COLOR))
+					? HOVER_OUTLINE_DIM : fg;
+				cell.setBorder(new MatteBorder(1, 1, 1, 1, outline));
+				break;
+			case TINT:
+				cell.setBackground(HOVER_TINT_BG);
+				break;
+			case NONE:
+				break;
+		}
 	}
 
 	void dismissHoverPreview(MouseEvent event)

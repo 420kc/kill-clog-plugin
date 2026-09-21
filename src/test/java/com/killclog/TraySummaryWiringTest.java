@@ -1,6 +1,7 @@
 package com.killclog;
 
 import java.awt.Component;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -11,12 +12,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
-import java.util.function.IntConsumer;
+import java.util.function.ObjIntConsumer;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JToolTip;
 import javax.swing.SwingUtilities;
+import javax.swing.border.MatteBorder;
 import net.runelite.api.Client;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
@@ -43,8 +45,16 @@ import static org.mockito.Mockito.when;
 public class TraySummaryWiringTest
 {
 	private SkillDisplay skillDisplay = SkillDisplay.FIXED;
+	private TooltipMode mode = TooltipMode.CLICK;
+	private int previewsDismissed;
 	private final KillClogConfig config = new KillClogConfig()
 	{
+		@Override
+		public TooltipMode tooltipMode()
+		{
+			return mode;
+		}
+
 		@Override
 		public SkillDisplay skillDisplay()
 		{
@@ -90,6 +100,12 @@ public class TraySummaryWiringTest
 					pinnedOn.add(source);
 					pinned.add(tip);
 				}
+
+				@Override
+				void dismissHoverPreview(MouseEvent event)
+				{
+					previewsDismissed++;
+				}
 			});
 		});
 	}
@@ -133,13 +149,32 @@ public class TraySummaryWiringTest
 			for (int row = 0; row < PanelData.RARE_NAMES.length; row++)
 			{
 				ClueSummaryTooltip tip = (ClueSummaryTooltip) clues.createToolTip();
-				field(tip, "onOpenRare", IntConsumer.class).accept(row);
+				openRare(tip, row);
 				assertEquals(row + 1, pinned.size());
 				assertSame(clues, pinnedOn.get(row));
 				assertEquals(PanelData.RARE_NAMES[row], ((TitleTooltip) pinned.get(row)).getTitle());
-				// The summary it came from is taken down, hover preview or not.
-				assertTrue(!tip.isVisible());
 			}
+			// A pinned summary was already closed by the press; there is no preview to take down.
+			assertEquals(0, previewsDismissed);
+		});
+	}
+
+	@Test
+	public void aRareRowTakesTheHoverPreviewDownAndKeepsTheCellOutlined() throws Exception
+	{
+		edt(() ->
+		{
+			seedSelf(clog("Seeded", 1, true));
+			JPanel cell = (JPanel) clues.getParent();
+			assertTrue(!(cell.getBorder() instanceof MatteBorder));
+
+			mode = TooltipMode.HOVER;
+			openRare((ClueSummaryTooltip) clues.createToolTip(), 1);
+			// The preview is a window of its own: it goes the way any press takes it down.
+			assertEquals(1, previewsDismissed);
+			assertEquals(1, pinned.size());
+			// The summary's closing cleared the cell's outline; the new modal's cell has it back.
+			assertTrue(cell.getBorder() instanceof MatteBorder);
 		});
 	}
 
@@ -171,7 +206,7 @@ public class TraySummaryWiringTest
 			assertEquals(3, field(red, "rareObtained", int[].class)[0]);
 
 			// Either side's row opens the pair, not one player's modal.
-			field(red, "onOpenRare", IntConsumer.class).accept(0);
+			openRare(red, 0);
 			assertTrue(pinned.get(0) instanceof SideBySideTooltip);
 		});
 	}
@@ -218,6 +253,13 @@ public class TraySummaryWiringTest
 		assertEquals(PanelData.RARE_KEYS.length, PanelData.RARE_NAMES.length);
 		assertEquals(PanelData.RARE_KEYS.length, PanelData.RARE_ICON_ITEM_IDS.length);
 		assertEquals(PanelData.RARE_KEYS.length, ClueSummaryTooltip.RARE_LABELS.length);
+	}
+
+	@SuppressWarnings("unchecked")
+	private static void openRare(ClueSummaryTooltip tip, int row)
+	{
+		MouseEvent press = new MouseEvent(tip, MouseEvent.MOUSE_PRESSED, 0L, 0, 5, 5, 1, false, MouseEvent.BUTTON1);
+		((ObjIntConsumer<MouseEvent>) field(tip, "onOpenRare", ObjIntConsumer.class)).accept(press, row);
 	}
 
 	private void seedSelf(ClogResult clog)
