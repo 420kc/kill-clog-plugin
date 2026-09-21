@@ -287,6 +287,11 @@ class TooltipController
 	 */
 	void pinTooltip(JComponent source, JPanel cell, JToolTip tip)
 	{
+		// A row pressed in a preview that outlived its panel has nowhere to open.
+		if (!source.isShowing())
+		{
+			return;
+		}
 		pinDismissedComponent = null;
 
 		hidePinnedTooltip();

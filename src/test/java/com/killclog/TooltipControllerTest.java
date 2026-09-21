@@ -192,8 +192,15 @@ public class TooltipControllerTest
 		};
 		JToolTip summary = new JToolTip();
 		JToolTip rare = new JToolTip();
+		AtomicBoolean showing = new AtomicBoolean(true);
 		JLabel source = new JLabel()
 		{
+			@Override
+			public boolean isShowing()
+			{
+				return showing.get();
+			}
+
 			@Override
 			public Point getLocationOnScreen()
 			{
@@ -235,6 +242,11 @@ public class TooltipControllerTest
 				assertEquals(Collections.singletonList(rare), shown);
 
 				controller.hidePinnedTooltip();
+				assertTrue(shown.isEmpty());
+
+				// Once the panel is off screen there is nowhere to open it.
+				showing.set(false);
+				controller.pinTooltip(source, cell, rare);
 				assertTrue(shown.isEmpty());
 			});
 		}
