@@ -67,7 +67,7 @@ final class ActivitySummaryTooltips
 		tip.setComponent(owner);
 		tip.setWikiLinksEnabled(wikiLinks.get());
 		tip.setData(
-			hiscore != null ? hiscore.getCombatLevel() : 0,
+			hiscore != null ? hiscore.getCombatLevelExact() : 0,
 			LookupQueries.sumBossKills(hiscore),
 			LookupQueries.countBossesWithKc(hiscore),
 			PanelData.bossCount(),

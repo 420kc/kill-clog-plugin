@@ -29,6 +29,17 @@ public class PvmSummaryTooltipTest
 	}
 
 	@Test
+	public void combatLevelReadsLikeVanillasExactCombatLevel()
+	{
+		assertEquals("83.925", PvmSummaryTooltip.combatText(83.925));
+		assertEquals("126.1", PvmSummaryTooltip.combatText(126.1));
+		assertEquals("3", PvmSummaryTooltip.combatText(3.0));
+		assertEquals("104.475", PvmSummaryTooltip.combatText(104.47500000000001));
+		assertEquals("--", PvmSummaryTooltip.combatText(-1));
+		assertEquals("--", PvmSummaryTooltip.combatText(0));
+	}
+
+	@Test
 	public void solHereditReplacesKcWithExactPositiveGlory()
 	{
 		assertTrue(ColosseumGlory.replacesKc("Sol Heredit"));

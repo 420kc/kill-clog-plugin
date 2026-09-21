@@ -539,7 +539,7 @@ public class HiscoreService
 		{
 		}
 
-		int combatLevel = calcCmbLvl(lines);
+		double combatLevel = calcCmbLvlExact(combatLevels(lines));
 
 		for (int i = 0; i < SKILL_NAMES.length; i++)
 		{
@@ -692,7 +692,7 @@ public class HiscoreService
 			}
 		}
 
-		int combatLevel = calcCmbLvlFromLevels(skillLevels);
+		double combatLevel = calcCmbLvlExact(skillLevels);
 
 		HiscoreResult result = new HiscoreResult(type, hiscoreTable, bossKills, bossRanks,
 			activityScores, activityRanks, skillLevels, skillRanks, skillXps, totalLevel,
@@ -702,6 +702,12 @@ public class HiscoreService
 	}
 
 	/* package */ int calcCmbLvlFromLevels(Map<String, Integer> levels)
+	{
+		return (int) Math.floor(calcCmbLvlExact(levels));
+	}
+
+	/** The unrounded combat level, the value vanilla's hiscore calls Exact Combat Level. */
+	/* package */ double calcCmbLvlExact(Map<String, Integer> levels)
 	{
 		try
 		{
@@ -718,7 +724,7 @@ public class HiscoreService
 			double range = 0.325 * (Math.floor(ranged * 3.0 / 2.0));
 			double mage = 0.325 * (Math.floor(magic * 3.0 / 2.0));
 
-			return (int) Math.floor(base + Math.max(melee, Math.max(range, mage)));
+			return base + Math.max(melee, Math.max(range, mage));
 		}
 		catch (Exception e)
 		{
@@ -727,6 +733,12 @@ public class HiscoreService
 	}
 
 	/* package */ int calcCmbLvl(String[] lines)
+	{
+		return calcCmbLvlFromLevels(combatLevels(lines));
+	}
+
+	/** The seven combat skills from the CSV rows; null when a row is unreadable. */
+	private Map<String, Integer> combatLevels(String[] lines)
 	{
 		try
 		{
@@ -738,11 +750,11 @@ public class HiscoreService
 			levels.put("ranged", parseSkillLevel(lines, 5));
 			levels.put("prayer", parseSkillLevel(lines, 6));
 			levels.put("magic", parseSkillLevel(lines, 7));
-			return calcCmbLvlFromLevels(levels);
+			return levels;
 		}
 		catch (Exception e)
 		{
-			return -1;
+			return null;
 		}
 	}
 

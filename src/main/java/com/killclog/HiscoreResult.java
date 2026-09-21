@@ -27,8 +27,9 @@ public class HiscoreResult
 	private final int totalLevel;
 	@Getter
 	private final long totalXp;
+	/** Unrounded, so the Combat Summary can show what vanilla calls Exact Combat Level. */
 	@Getter
-	private final int combatLevel;
+	private final double combatLevelExact;
 	@Getter
 	private final int overallRank;
 	@Getter(AccessLevel.PACKAGE)
@@ -44,7 +45,7 @@ public class HiscoreResult
 	public HiscoreResult(AccountType accountType, Map<String, Integer> bossKills,
 		Map<String, Integer> bossRanks, Map<String, Integer> activityScores,
 		Map<String, Integer> activityRanks, Map<String, Integer> skillLevels,
-		int totalLevel, long totalXp, int combatLevel, int overallRank)
+		int totalLevel, long totalXp, double combatLevel, int overallRank)
 	{
 		this(accountType, HiscoreTable.STANDARD, bossKills, bossRanks, activityScores,
 			activityRanks, skillLevels, Collections.emptyMap(), Collections.emptyMap(),
@@ -55,7 +56,7 @@ public class HiscoreResult
 		Map<String, Integer> bossKills, Map<String, Integer> bossRanks,
 		Map<String, Integer> activityScores, Map<String, Integer> activityRanks,
 		Map<String, Integer> skillLevels, int totalLevel, long totalXp,
-		int combatLevel, int overallRank)
+		double combatLevel, int overallRank)
 	{
 		this(accountType, hiscoreTable, bossKills, bossRanks, activityScores,
 			activityRanks, skillLevels, Collections.emptyMap(), Collections.emptyMap(),
@@ -67,7 +68,7 @@ public class HiscoreResult
 		Map<String, Integer> activityScores, Map<String, Integer> activityRanks,
 		Map<String, Integer> skillLevels, Map<String, Integer> skillRanks,
 		Map<String, Long> skillXps, int totalLevel, long totalXp,
-		int combatLevel, int overallRank)
+		double combatLevel, int overallRank)
 	{
 		this.accountType = accountType;
 		this.hiscoreTable = hiscoreTable != null ? hiscoreTable : HiscoreTable.STANDARD;
@@ -80,8 +81,14 @@ public class HiscoreResult
 		this.skillXps = skillXps != null ? skillXps : Collections.emptyMap();
 		this.totalLevel = totalLevel;
 		this.totalXp = totalXp;
-		this.combatLevel = combatLevel;
+		this.combatLevelExact = combatLevel;
 		this.overallRank = overallRank;
+	}
+
+	/** The whole combat level every cell and comparison uses. */
+	public int getCombatLevel()
+	{
+		return (int) Math.floor(combatLevelExact);
 	}
 
 	public int getKc(String bossName)
@@ -96,7 +103,7 @@ public class HiscoreResult
 			ranks != null ? ranks.bossRanks : Collections.emptyMap(), activityScores,
 			ranks != null ? ranks.activityRanks : Collections.emptyMap(), skillLevels,
 			ranks != null ? ranks.skillRanks : Collections.emptyMap(), skillXps,
-			totalLevel, totalXp, combatLevel, ranks != null ? ranks.overallRank : -1);
+			totalLevel, totalXp, combatLevelExact, ranks != null ? ranks.overallRank : -1);
 		view.bossSectionShifted = bossSectionShifted;
 		view.rankDataAvailable = ranks != null && ranks.rankDataAvailable;
 		return view;

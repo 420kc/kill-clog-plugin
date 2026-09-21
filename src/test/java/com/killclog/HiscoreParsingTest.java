@@ -308,6 +308,32 @@ public class HiscoreParsingTest
 	}
 
 	@Test
+	public void exactCombatLevelKeepsItsFractionAndFloorsToTheCellValue()
+	{
+		java.util.Map<String, Integer> levels = new java.util.HashMap<>();
+		levels.put("attack", 70);
+		levels.put("strength", 75);
+		levels.put("defence", 70);
+		levels.put("hitpoints", 78);
+		levels.put("ranged", 80);
+		levels.put("prayer", 55);
+		levels.put("magic", 77);
+		// 0.25 * (70 + 78 + 27) + 0.325 * (70 + 75) = 43.75 + 47.125
+		assertEquals(90.875, service.calcCmbLvlExact(levels), 1e-9);
+		assertEquals(90, service.calcCmbLvlFromLevels(levels));
+
+		HiscoreResult result = new HiscoreResult(AccountType.REGULAR, null, null, null, null,
+			levels, 0, 0L, service.calcCmbLvlExact(levels), -1);
+		assertEquals(90, result.getCombatLevel());
+		assertEquals(90.875, result.getCombatLevelExact(), 1e-9);
+		assertEquals(90.875, result.withRanks(null).getCombatLevelExact(), 1e-9);
+
+		levels.remove("magic");
+		assertEquals(-1, service.calcCmbLvlExact(levels), 0);
+		assertEquals(-1, service.calcCmbLvlFromLevels(levels));
+	}
+
+	@Test
 	public void testCalcCmbLvlTooFewLines()
 	{
 		// Only 3 lines, so skills 1-7 cannot be read.

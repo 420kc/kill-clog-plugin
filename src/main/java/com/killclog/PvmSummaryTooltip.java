@@ -13,6 +13,7 @@ import java.util.Locale;
 import lombok.Setter;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
+import net.runelite.client.util.QuantityFormatter;
 
 /**
  * PvM summary tooltip on the combat level cell.
@@ -28,7 +29,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private static final int CA_ROW_HEIGHT = 18;
 	private static final int CA_REWARD_GAP = 3;
 
-	private int combatLevel;
+	private double combatLevel;
 	private int totalKills;
 	private int bossesWithKc;
 	private int totalBosses;
@@ -64,7 +65,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private CombatAchievementResult caResult;
 	private BufferedImage caRewardSprite;
 
-	public void setData(int combatLevel, int totalKills, int bossesWithKc, int totalBosses,
+	public void setData(double combatLevel, int totalKills, int bossesWithKc, int totalBosses,
 						String mostKilled, int mostKilledKc)
 	{
 		itemHover.clear();
@@ -488,7 +489,13 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 	private String combatValue()
 	{
-		return combatLevel > 0 ? String.valueOf(combatLevel) : "--";
+		return combatText(combatLevel);
+	}
+
+	/** Vanilla's hiscore formatter: up to three decimals, trailing zeros dropped. */
+	static String combatText(double combatLevel)
+	{
+		return combatLevel > 0 ? QuantityFormatter.formatNumber(combatLevel) : "--";
 	}
 
 	private String totalKillsValue()
