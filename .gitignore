@@ -16,3 +16,7 @@ decompiled/
 node_modules/
 native_autocompleter_bytecode.txt
 *.zip
+
+# Local working notes
+release/
+.local/
