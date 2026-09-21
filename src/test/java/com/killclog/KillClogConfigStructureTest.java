@@ -202,7 +202,7 @@ public class KillClogConfigStructureTest
 			.getAnnotation(ConfigItem.class);
 		assertEquals("skillDisplay", item.keyName());
 		assertEquals("Skill Location", item.name());
-		assertEquals("Skill Summary only", SkillDisplay.TOOLTIP.toString());
+		assertEquals(2, SkillDisplay.values().length);
 		assertEquals("Main Grid", SkillDisplay.FIXED.toString());
 		assertEquals("Activity Tray", SkillDisplay.TRAY.toString());
 		KillClogConfig defaults = new KillClogConfig()

@@ -169,7 +169,7 @@ public class KillClogPlugin extends Plugin
 	@Override
 	protected void startUp()
 	{
-		migrateSkillColorMode();
+		ConfigMigrations.run(configManager);
 		navButton = NavigationButton.builder()
 			.tooltip("Kill Clog")
 			.icon(getIcon())
@@ -229,23 +229,6 @@ public class KillClogPlugin extends Plugin
 		}
 
 		log.debug("Kill Clog plugin started");
-	}
-
-	private void migrateSkillColorMode()
-	{
-		String legacy = configManager.getConfiguration("killclog", "skillCompletionColor");
-		if (legacy == null)
-		{
-			return;
-		}
-
-		String current = configManager.getConfiguration("killclog", "skillColorMode");
-		if (current == null)
-		{
-			configManager.setConfiguration("killclog", "skillColorMode",
-				SkillColorMode.fromLegacyCompletionColor(legacy));
-		}
-		configManager.unsetConfiguration("killclog", "skillCompletionColor");
 	}
 
 	@Override

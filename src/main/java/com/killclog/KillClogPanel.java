@@ -628,7 +628,6 @@ public class KillClogPanel extends PluginPanel
 
 	/**
 	 * Move one live skill-cell grid between its configured panel locations.
-	 * The Total cell keeps the complete Skill Summary in every location mode.
 	 */
 	private void refreshSkillDisplay()
 	{
@@ -650,32 +649,23 @@ public class KillClogPanel extends PluginPanel
 		fixedSkillsHost.setVisible(false);
 
 		HiscoreResult result = lookupSession.getHiscoreResult();
-		SkillDisplay display = config.skillDisplay();
-		boolean summaryOnly = display == SkillDisplay.TOOLTIP;
 		tooltipController.setTooltipText(totalLvlCell, result != null ? " " : null);
 
-		if (!summaryOnly)
+		if (result != null)
 		{
-			if (result != null)
-			{
-				HiscoreResult compared = comparison.isComparisonMode()
-					? comparison.getCompareHiscoreResult() : null;
-				skillCellGrid.render(result, compared, config.virtualLevels(),
-					lookupSession.getClogResult(), comparison.getCompareClogResult(),
-					cells.unsyncedCatalogResult());
-			}
-			else
-			{
-				skillCellGrid.clear(cells.unsyncedCatalogResult());
-			}
-			JPanel host = display == SkillDisplay.TRAY ? traySkillsHost : fixedSkillsHost;
-			host.add(skillCellGrid.component(), BorderLayout.CENTER);
-			host.setVisible(true);
+			HiscoreResult compared = comparison.isComparisonMode()
+				? comparison.getCompareHiscoreResult() : null;
+			skillCellGrid.render(result, compared, config.virtualLevels(),
+				lookupSession.getClogResult(), comparison.getCompareClogResult(),
+				cells.unsyncedCatalogResult());
 		}
 		else
 		{
 			skillCellGrid.clear(cells.unsyncedCatalogResult());
 		}
+		JPanel host = config.skillDisplay() == SkillDisplay.TRAY ? traySkillsHost : fixedSkillsHost;
+		host.add(skillCellGrid.component(), BorderLayout.CENTER);
+		host.setVisible(true);
 
 		traySkillsHost.revalidate();
 		fixedSkillsHost.revalidate();

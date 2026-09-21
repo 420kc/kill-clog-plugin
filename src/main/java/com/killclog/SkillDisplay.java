@@ -7,7 +7,6 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public enum SkillDisplay
 {
-	TOOLTIP("Skill Summary only"),
 	FIXED("Main Grid"),
 	TRAY("Activity Tray");
 

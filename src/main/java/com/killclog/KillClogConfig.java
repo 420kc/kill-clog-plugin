@@ -168,7 +168,7 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "skillDisplay",
 		name = "Skill Location",
-		description = "Choose whether individual skill cells appear in the main grid or activity tray; the Total cell always keeps its Skill Summary",
+		description = "Choose whether the skill cells appear in the main grid or the activity tray",
 		section = skillsSection,
 		position = 0
 	)
