@@ -229,6 +229,7 @@ final class ClogHelper
 	static String[] tierLabels(int obtained, int totalSlots)
 	{
 		String[] labels = new String[CLOG_TIERS.length];
+		int tier = tierIndex(obtained, totalSlots);
 		for (int i = 0; i < labels.length; i++)
 		{
 			int start = tierThreshold(i, totalSlots);
@@ -236,7 +237,7 @@ final class ClogHelper
 				+ QuantityFormatter.formatNumber(start)
 				+ (i == labels.length - 1 ? "+"
 				: "-" + QuantityFormatter.formatNumber(tierThreshold(i + 1, totalSlots) - 1))
-				+ (obtained < start
+				+ (i > tier
 				? " (" + QuantityFormatter.formatNumber(start - obtained) + " more)" : "");
 		}
 		return labels;

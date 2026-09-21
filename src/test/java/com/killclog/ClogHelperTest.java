@@ -234,6 +234,11 @@ public class ClogHelperTest
 		// Landing exactly on a tier reaches it: nothing is left to go.
 		assertEquals("Dragon: 1,200-1,349", ClogHelper.tierLabels(1200, 1500)[7]);
 		assertEquals("Dragon: 1,200-1,349 (1 more)", ClogHelper.tierLabels(1199, 1500)[7]);
+		// A log too small for its own thresholds still never calls a tier it lights "ahead".
+		for (String label : ClogHelper.tierLabels(950, 1000))
+		{
+			assertFalse(label, label.endsWith("more)"));
+		}
 		assertEquals("Gilded: 1,350+ (168 more)", labels[8]);
 		assertEquals("Bronze: 100-299 (100 more)", ClogHelper.tierLabels(0, 1500)[0]);
 		assertEquals("Gilded: 1,350+ (1,350 more)", ClogHelper.tierLabels(0, 1500)[8]);
