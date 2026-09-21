@@ -315,6 +315,45 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void aRestartingServerNeverReachesChatWhenTheQuietRetryLands() throws Exception
+	{
+		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		captureListener.run();
+		settle();
+		assertEquals(1, syncs.size());
+
+		String failed = "Collection log publication failed (HTTP 502).";
+		syncs.get(0).complete(new SyncService.SyncResult(false, false, failed, true, 20));
+		settle();
+		assertEquals(20_000L, executor.lastDelayMs());
+		assertEquals(2, syncs.size());
+		verify(panel, never()).showSyncResult(anyBoolean(), anyBoolean(), eq(failed));
+		verify(chatNotifier, never()).send(ChatNotice.SYNC_RESULT, failed);
+
+		syncs.get(1).complete(new SyncService.SyncResult(true, false, "Synced"));
+		settle();
+		verify(panel).showSyncResult(false, true, "Synced");
+		verify(chatNotifier, never()).send(eq(ChatNotice.SYNC_RESULT), any());
+	}
+
+	@Test
+	public void aServerStillDownAfterTheQuietRetryIsReportedOnce() throws Exception
+	{
+		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		captureListener.run();
+		settle();
+
+		String failed = "Collection log publication failed (HTTP 502).";
+		syncs.get(0).complete(new SyncService.SyncResult(false, false, failed, true, 20));
+		settle();
+		syncs.get(1).complete(new SyncService.SyncResult(false, false, failed, true, 20));
+		settle();
+		assertEquals(2, syncs.size());
+		verify(panel).showSyncResult(false, false, failed);
+		verify(chatNotifier, times(1)).send(ChatNotice.SYNC_RESULT, failed);
+	}
+
+	@Test
 	public void publishRendersThenReportsAndIgnoresADoubleClick() throws Exception
 	{
 		publishHandler.run();

@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ThreadLocalRandom;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -142,48 +143,56 @@ class SyncService
 			return CompletableFuture.completedFuture(
 				new SyncResult(false, false, "Sync session ended before send."));
 		}
-		return request.thenApply(r ->
+		return request.thenApply(r -> outcome(r, rsn, observedCount, pbCount));
+	}
+
+	/** What one round trip means for the player, in plain words. */
+	SyncResult outcome(HttpUtil.HttpResult r, String rsn, int observedCount, int pbCount)
+	{
+		if (r.code >= 200 && r.code < 300)
 		{
-			if (r.code >= 200 && r.code < 300)
-			{
-				boolean dryRun = responseSaysDryRun(r.body);
-				return new SyncResult(true, dryRun,
-					"Collection log published! ("
-					+ observedCount + (observedCount == 1 ? " item" : " items")
-					+ (pbCount > 0 ? ", " + pbCount + (pbCount == 1 ? " pb" : " pbs") : "")
-					+ (dryRun ? ", server dry run" : "") + ").");
-			}
-			// 409 sync_in_flight is contention, not failure: another client of
-			// this account holds the per-player lock for a moment. Advise a
-			// short retry instead of booking a failure.
-			if (r.code == 409 && r.body != null && r.body.contains("sync_in_flight"))
-			{
-				return new SyncResult(false, false,
-					"Another sync for this account is in flight - retrying shortly.",
-					true, parseRetryAfterSeconds(r.body));
-			}
-			// The server's identity arbitration answers (2026-08-16 wire
-			// contract): each gets plain words instead of a bare HTTP code.
-			if (r.code == 409 && r.body != null && r.body.contains("name_active_with_another_account"))
-			{
-				return new SyncResult(false, false,
-					"This name's previous owner played recently - Kill Clog will "
-					+ "accept your log after their continuity window passes.");
-			}
-			if (r.code == 409 && r.body != null && r.body.contains("account_hash_mismatch"))
-			{
-				return new SyncResult(false, false,
-					"This name is registered to a different account on Kill Clog.");
-			}
-			if (r.code == 451)
-			{
-				return new SyncResult(false, false,
-					"This account has opted out of Kill Clog publishing.");
-			}
-			log.debug("killclog sync failed for '{}': HTTP {}", rsn, r.code);
+			boolean dryRun = responseSaysDryRun(r.body);
+			return new SyncResult(true, dryRun,
+				"Collection log published! ("
+				+ observedCount + (observedCount == 1 ? " item" : " items")
+				+ (pbCount > 0 ? ", " + pbCount + (pbCount == 1 ? " pb" : " pbs") : "")
+				+ (dryRun ? ", server dry run" : "") + ").");
+		}
+		// 409 sync_in_flight is contention, not failure: another client of
+		// this account holds the per-player lock for a moment. Advise a
+		// short retry instead of booking a failure.
+		if (r.code == 409 && r.body != null && r.body.contains("sync_in_flight"))
+		{
 			return new SyncResult(false, false,
-				"Collection log publication failed (HTTP " + r.code + ").");
-		});
+				"Another sync for this account is in flight - retrying shortly.",
+				true, parseRetryAfterSeconds(r.body));
+		}
+		// The server's identity arbitration answers (2026-08-16 wire
+		// contract): each gets plain words instead of a bare HTTP code.
+		if (r.code == 409 && r.body != null && r.body.contains("name_active_with_another_account"))
+		{
+			return new SyncResult(false, false,
+				"This name's previous owner played recently - Kill Clog will "
+				+ "accept your log after their continuity window passes.");
+		}
+		if (r.code == 409 && r.body != null && r.body.contains("account_hash_mismatch"))
+		{
+			return new SyncResult(false, false,
+				"This name is registered to a different account on Kill Clog.");
+		}
+		if (r.code == 451)
+		{
+			return new SyncResult(false, false,
+				"This account has opted out of Kill Clog publishing.");
+		}
+		log.debug("killclog sync failed for '{}': HTTP {}", rsn, r.code);
+		// A restarting server answers 502 to 504 for a few seconds: worth one
+		// quiet retry before anyone is told. The delay is spread out so the
+		// clients it turned away do not all come back together.
+		boolean restarting = r.code >= 502 && r.code <= 504;
+		return new SyncResult(false, false,
+			"Collection log publication failed (HTTP " + r.code + ").",
+			restarting, restarting ? 15 + ThreadLocalRandom.current().nextInt(16) : 0);
 	}
 
 	private int parseRetryAfterSeconds(String body)
