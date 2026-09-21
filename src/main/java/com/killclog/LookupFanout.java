@@ -122,7 +122,7 @@ final class LookupFanout
 	 * (fullest leads, ties prefer first-party). Self lookups skip both
 	 * remote-self legs because local widget data is authoritative.
 	 * {@code onError} runs on the EDT behind the guard when present; null
-	 * means log-and-drop, which is the primary path's behavior.
+	 * means log-and-drop. The primary path uses it to release a held hiscore.
 	 */
 	void fetchClog(String player, boolean isSelf, int stamp,
 		Consumer<ClogResult> onResult, @Nullable Runnable onError)

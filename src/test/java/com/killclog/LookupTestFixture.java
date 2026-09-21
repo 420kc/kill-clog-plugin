@@ -1,7 +1,9 @@
 package com.killclog;
 
 import java.lang.reflect.Proxy;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import javax.swing.JLabel;
@@ -15,6 +17,7 @@ final class LookupTestFixture
 	final Map<String, CompletableFuture<CombatAchievementResult>> cas = new HashMap<>();
 	final Map<String, ClogResult> cachedClogs = new HashMap<>();
 	final Map<String, Integer> events = new HashMap<>();
+	final List<String> order = new ArrayList<>();
 	final KillClogConfig config = new KillClogConfig()
 	{
 	};
@@ -92,6 +95,7 @@ final class LookupTestFixture
 			{
 				if (!SwingUtilities.isEventDispatchThread()) throw new AssertionError("callback outside EDT");
 				events.merge(method.getName(), 1, Integer::sum);
+				order.add(method.getName());
 				return null;
 			}));
 	}

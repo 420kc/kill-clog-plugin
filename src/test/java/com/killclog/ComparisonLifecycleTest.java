@@ -52,6 +52,8 @@ public class ComparisonLifecycleTest
 		assertNull(fixture.comparison.getCompareHiscoreResult());
 		edt(() -> fixture.primary.start("Fresh", null, null));
 		fixture.hiscores.get("Fresh").complete(hiscore(4));
+		// A finished hiscore is shown with its clog, so the clog lane settles first.
+		fixture.clogs.get("Fresh").complete(clog("Fresh"));
 		edt(() -> assertEquals(4, fixture.primary.getHiscoreResult().getTotalLevel()));
 		edt(() -> fixture.comparison.doCompareLookup("Other", "Fresh"));
 		assertTrue(fixture.hiscores.containsKey("Other"));

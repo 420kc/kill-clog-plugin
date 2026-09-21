@@ -1,10 +1,14 @@
 package com.killclog;
 
+import java.awt.event.ActionListener;
+import java.lang.reflect.Field;
 import java.lang.reflect.Proxy;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.swing.SwingUtilities;
+import javax.swing.Timer;
 import org.junit.Test;
 import static org.junit.Assert.*;
 import static com.killclog.LookupTestFixture.*;
@@ -78,6 +82,103 @@ public class LookupSessionTest
 		assertEquals(1, fixture.events("onLookupStart"));
 		assertEquals(1, fixture.events("onHiscoreResult"));
 		assertEquals(1, fixture.events("onCaResult"));
+	}
+
+	@Test
+	public void finishedHiscoreWaitsForItsClogAndIsShownFirst() throws Exception
+	{
+		LookupTestFixture fixture = new LookupTestFixture();
+		edt(() -> fixture.primary.start("Red", "Blue", AccountType.REGULAR));
+		fixture.hiscores.get("Red").complete(hiscore(7));
+		edt(() ->
+		{
+			// Held, not shown: but a new search is never blocked by the hold.
+			assertNull(fixture.primary.getHiscoreResult());
+			assertFalse(fixture.primary.isLookupInFlight());
+		});
+		assertEquals(0, fixture.events("onHiscoreResult"));
+
+		fixture.clogs.get("Red").complete(clog("Red"));
+		edt(() ->
+		{
+			assertEquals(7, fixture.primary.getHiscoreResult().getTotalLevel());
+			assertEquals("Red", fixture.primary.getClogResult().getPlayerName());
+		});
+		assertEquals(Arrays.asList("onLookupStart", "onHiscoreResult", "onClogResult"), fixture.order);
+	}
+
+	@Test
+	public void playerWithoutAClogIsShownAsSoonAsThatIsKnown() throws Exception
+	{
+		LookupTestFixture fixture = new LookupTestFixture();
+		edt(() -> fixture.primary.start("Red", "Blue", AccountType.REGULAR));
+		fixture.hiscores.get("Red").complete(hiscore(7));
+		fixture.clogs.get("Red").completeExceptionally(new IllegalStateException("provider down"));
+		edt(() ->
+		{
+			assertEquals(7, fixture.primary.getHiscoreResult().getTotalLevel());
+			assertNull(fixture.primary.getClogResult());
+		});
+		assertEquals(Arrays.asList("onLookupStart", "onHiscoreResult", "onClogResult"), fixture.order);
+	}
+
+	@Test
+	public void slowClogOnlyDelaysTheHiscoreUntilTheHoldExpires() throws Exception
+	{
+		LookupTestFixture fixture = new LookupTestFixture();
+		edt(() -> fixture.primary.start("Red", "Blue", AccountType.REGULAR));
+		fixture.hiscores.get("Red").complete(hiscore(7));
+		edt(() -> fireHoldTimer(fixture.primary));
+		edt(() -> assertEquals(7, fixture.primary.getHiscoreResult().getTotalLevel()));
+		assertEquals(1, fixture.events("onHiscoreResult"));
+		assertEquals(0, fixture.events("onClogResult"));
+
+		// The late clog colours the shown hiscore, exactly as before the hold existed.
+		fixture.clogs.get("Red").complete(clog("Red"));
+		edt(() -> assertEquals("Red", fixture.primary.getClogResult().getPlayerName()));
+		assertEquals(1, fixture.events("onHiscoreResult"));
+		assertEquals(1, fixture.events("onClogResult"));
+	}
+
+	@Test
+	public void newSearchDuringTheHoldDiscardsTheHeldPlayer() throws Exception
+	{
+		LookupTestFixture fixture = new LookupTestFixture();
+		edt(() -> fixture.primary.start("Red", "Blue", AccountType.REGULAR));
+		fixture.hiscores.get("Red").complete(hiscore(7));
+		edt(() -> fixture.primary.start("Green", "Blue", AccountType.REGULAR));
+		fixture.clogs.get("Red").complete(clog("Red"));
+		edt(() ->
+		{
+			assertEquals("Green", fixture.primary.getCurrentLookupRsn());
+			assertNull(fixture.primary.getHiscoreResult());
+			assertNull(fixture.primary.getClogResult());
+		});
+		assertEquals(0, fixture.events("onHiscoreResult"));
+
+		fixture.clogs.get("Green").complete(clog("Green"));
+		fixture.hiscores.get("Green").complete(hiscore(9));
+		edt(() -> assertEquals(9, fixture.primary.getHiscoreResult().getTotalLevel()));
+		assertEquals(1, fixture.events("onHiscoreResult"));
+	}
+
+	private static void fireHoldTimer(LookupSession session)
+	{
+		try
+		{
+			Field field = LookupSession.class.getDeclaredField("holdTimer");
+			field.setAccessible(true);
+			Timer timer = (Timer) field.get(session);
+			assertNotNull("a hold should be running", timer);
+			for (ActionListener listener : timer.getActionListeners())
+			{
+				listener.actionPerformed(null);
+			}
+		}
+		catch (ReflectiveOperationException ex)
+		{
+			throw new AssertionError(ex);
+		}
 	}
 
 	@Test

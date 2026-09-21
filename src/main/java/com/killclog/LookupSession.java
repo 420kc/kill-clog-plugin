@@ -80,6 +80,12 @@ public class LookupSession
 	private int localClogRevision;
 	private UnaryOperator<HiscoreResult> rankView = UnaryOperator.identity();
 
+	/** Longest a finished hiscore waits for its clog before showing uncoloured. */
+	static final int CLOG_HOLD_MS = 2500;
+	private boolean clogSettled;
+	@Nullable private Runnable heldReveal;
+	@Nullable private Timer holdTimer;
+
 	public LookupSession(HiscoreService hiscoreService, ClogService clogService,
 		RuneProfileService runeProfileService, KillclogService killclogService,
 		KillClogConfig config,
@@ -122,6 +128,8 @@ public class LookupSession
 		clogResult = null;
 		caResult = null;
 		clogLastChanged = null;
+		clearHold();
+		clogSettled = false;
 		final int thisLookup = fanout.begin();
 		final boolean isSelf = localRsn != null && localRsn.equalsIgnoreCase(player);
 		final boolean isFirstSelfGreeting = isSelf && !config.seenSelfGreeting();
@@ -152,20 +160,24 @@ public class LookupSession
 				{
 					return;
 				}
-				hiscoreResult = cachedHiscore;
 				fanout.settle();
-				if (nameAutocompleter != null)
+				revealWithClog(thisLookup, cachedClog != null, () ->
 				{
-					nameAutocompleter.addToSearchHistory(player);
-				}
-				ClogResult displayClog = clogResult;
-				if (displayClog == null && cachedClog != null)
-				{
-					clogResult = cachedClog;
-					clogLastChanged = cachedClog.getLastChanged();
-					displayClog = cachedClog;
-				}
-				listener.onCachedResult(player, cachedHiscore, displayClog, isSelf, knownType, isFirstSelfGreeting);
+					hiscoreResult = cachedHiscore;
+					if (nameAutocompleter != null)
+					{
+						nameAutocompleter.addToSearchHistory(player);
+					}
+					ClogResult displayClog = clogResult;
+					if (displayClog == null && cachedClog != null)
+					{
+						clogResult = cachedClog;
+						clogLastChanged = cachedClog.getLastChanged();
+						displayClog = cachedClog;
+					}
+					listener.onCachedResult(player, cachedHiscore, displayClog, isSelf, knownType,
+						isFirstSelfGreeting);
+				});
 			});
 			revealTimer.setRepeats(false);
 			revealTimer.start();
@@ -184,13 +196,17 @@ public class LookupSession
 				listener.onNotFound(player);
 				return;
 			}
+			// Settled now, so a new search is never blocked by the hold below.
 			fanout.settle();
-			hiscoreResult = result;
-			if (nameAutocompleter != null)
+			revealWithClog(thisLookup, false, () ->
 			{
-				nameAutocompleter.addToSearchHistory(player);
-			}
-			listener.onHiscoreResult(player, result, isSelf, knownType, isFirstSelfGreeting);
+				hiscoreResult = result;
+				if (nameAutocompleter != null)
+				{
+					nameAutocompleter.addToSearchHistory(player);
+				}
+				listener.onHiscoreResult(player, result, isSelf, knownType, isFirstSelfGreeting);
+			});
 		}, ex ->
 		{
 			adoptState(null, null, null, null);
@@ -200,7 +216,10 @@ public class LookupSession
 		startClogLookup(player, isSelf, thisLookup);
 	}
 
-	/** Clog fan-out via the shared transport; failures log and keep the surface empty. */
+	/**
+	 * Clog fan-out via the shared transport; failures keep the surface empty.
+	 * Every outcome settles the clog, so a held hiscore is never left waiting.
+	 */
 	private void startClogLookup(String player, boolean isSelf, int thisLookup)
 	{
 		final int revisionAtFire = localClogRevision;
@@ -210,12 +229,63 @@ public class LookupSession
 			if (isSelf && revisionAtFire != localClogRevision)
 			{
 				result = clogService.getCachedResult(player);
-				if (result == null || !result.isFromLocal()) return;
+				if (result == null || !result.isFromLocal())
+				{
+					settleClog(thisLookup);
+					return;
+				}
 			}
 			clogResult = result;
 			clogLastChanged = result != null ? result.getLastChanged() : null;
+			settleClog(thisLookup);
 			listener.onClogResult(player, result, isSelf, thisLookup);
-		}, null);
+		}, () -> settleClog(thisLookup));
+	}
+
+	/**
+	 * Show a finished hiscore together with its clog, so cells never paint
+	 * white and recolour a moment later. A slow provider delays the reveal by
+	 * at most {@link #CLOG_HOLD_MS}; after that the hiscore shows on its own
+	 * and the clog colours it on arrival, as it always could.
+	 */
+	private void revealWithClog(int thisLookup, boolean clogReady, Runnable reveal)
+	{
+		if (clogSettled || clogReady)
+		{
+			reveal.run();
+			return;
+		}
+		heldReveal = reveal;
+		holdTimer = new Timer(CLOG_HOLD_MS, e -> releaseHold(thisLookup));
+		holdTimer.setRepeats(false);
+		holdTimer.start();
+	}
+
+	/** The clog lane resolved, with data or without: release a held hiscore first. */
+	private void settleClog(int thisLookup)
+	{
+		clogSettled = true;
+		releaseHold(thisLookup);
+	}
+
+	private void releaseHold(int thisLookup)
+	{
+		Runnable reveal = heldReveal;
+		clearHold();
+		if (reveal != null && fanout.current(thisLookup))
+		{
+			reveal.run();
+		}
+	}
+
+	private void clearHold()
+	{
+		if (holdTimer != null)
+		{
+			holdTimer.stop();
+		}
+		holdTimer = null;
+		heldReveal = null;
 	}
 
 	/** Update the displayed self log on the EDT without restarting any lookup lanes. */
@@ -228,6 +298,7 @@ public class LookupSession
 		localClogRevision++;
 		clogResult = local;
 		clogLastChanged = local.getLastChanged();
+		settleClog(fanout.version());
 		listener.onClogResult(player, local, true, fanout.version());
 	}
 
@@ -238,6 +309,7 @@ public class LookupSession
 	 */
 	public void cancelInFlight()
 	{
+		clearHold();
 		fanout.invalidate();
 	}
 
@@ -251,6 +323,7 @@ public class LookupSession
 		// Invalidate any still-in-flight callbacks from the player being
 		// replaced: their clog/CA lanes can outlive the hiscore result, and
 		// without this bump a late arrival would overwrite the adopted state.
+		clearHold();
 		fanout.invalidate();
 		this.hiscoreResult = hiscore;
 		this.clogResult = clog;
