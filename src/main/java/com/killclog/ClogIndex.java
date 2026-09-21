@@ -243,9 +243,12 @@ final class ClogIndex
 	/**
 	 * A player's progress per collection-log tab, in game order. Slots come from
 	 * the game's own catalog, so every provider is measured against the same log,
-	 * and an item counts once per tab however many pages list it.
+	 * and an item counts once per tab however many pages list it. The rows sit
+	 * under the log's total and must agree with it: a partial sync itemizes a
+	 * handful of items under the account's full count, and a log without a
+	 * denominator has nothing to measure against, so neither gets any rows.
 	 */
-	Map<String, int[]> tabProgress(ClogResult clog)
+	Map<String, int[]> tabProgress(ClogResult clog, int[] totals)
 	{
 		Map<String, int[]> progress = new LinkedHashMap<>();
 		Snapshot s = snapshot;
@@ -260,6 +263,10 @@ final class ClogIndex
 			{
 				obtained.add(s.canonicalizer.canonicalItemId(item.getId()));
 			}
+		}
+		if (totals[1] <= 0 || obtained.size() * 10L < totals[0] * 9L)
+		{
+			return progress;
 		}
 		for (Map.Entry<String, List<String>> tab : s.tabCategoryKeys.entrySet())
 		{
