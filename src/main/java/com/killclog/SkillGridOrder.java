@@ -13,8 +13,8 @@ final class SkillGridOrder
 
 	private static final Skill[] ORDER = {
 		Skill.ATTACK, Skill.HITPOINTS, Skill.MINING,
-		Skill.DEFENCE, Skill.AGILITY, Skill.SMITHING,
-		Skill.STRENGTH, Skill.HERBLORE, Skill.FISHING,
+		Skill.STRENGTH, Skill.AGILITY, Skill.SMITHING,
+		Skill.DEFENCE, Skill.HERBLORE, Skill.FISHING,
 		Skill.RANGED, Skill.THIEVING, Skill.COOKING,
 		Skill.PRAYER, Skill.CRAFTING, Skill.FIREMAKING,
 		Skill.MAGIC, Skill.FLETCHING, Skill.WOODCUTTING,
