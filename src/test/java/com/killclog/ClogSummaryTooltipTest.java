@@ -11,8 +11,10 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
+import net.runelite.client.util.AsyncBufferedImage;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
@@ -21,6 +23,7 @@ import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 public class ClogSummaryTooltipTest
 {
@@ -99,6 +102,40 @@ public class ClogSummaryTooltipTest
 	}
 
 	@Test
+	public void theTierSpriteFillsInOnceItLoads() throws Exception
+	{
+		AtomicInteger repaints = new AtomicInteger();
+		ClogSummaryTooltip tip = new ClogSummaryTooltip()
+		{
+			@Override
+			public void repaint()
+			{
+				repaints.incrementAndGet();
+			}
+		};
+		ItemManager items = mock(ItemManager.class);
+		AsyncBufferedImage sprite = new AsyncBufferedImage(null, 36, 32, BufferedImage.TYPE_INT_ARGB);
+		when(items.getImage(PanelData.CLOG_TIER_ITEM_IDS[6])).thenReturn(sprite);
+		tip.setTierData(1150, 1700, null, items);
+		assertEquals(0, count(paint(tip), Color.MAGENTA.getRGB()));
+
+		// The client thread fills the shared image in and announces it.
+		int before = repaints.get();
+		Thread loader = new Thread(() ->
+		{
+			Graphics2D g = sprite.createGraphics();
+			g.setColor(Color.MAGENTA);
+			g.fillRect(0, 0, 36, 32);
+			g.dispose();
+			sprite.loaded();
+		});
+		loader.start();
+		loader.join();
+		assertEquals(1, repaints.get() - before);
+		assertEquals(36 * 32, count(paint(tip), Color.MAGENTA.getRGB()));
+	}
+
+	@Test
 	public void theCurrentTierSitsInTheHeaderCornerClearOfTheTitle() throws ReflectiveOperationException
 	{
 		ClogSummaryTooltip tip = card(1150, 1700);
@@ -116,6 +153,7 @@ public class ClogSummaryTooltipTest
 		int inset = NativeTooltip.getInset();
 		int left = bare.width;
 		int right = 0;
+		int top = bare.height;
 		int bottom = 0;
 		for (int y = 0; y < bare.height; y++)
 		{
@@ -125,13 +163,15 @@ public class ClogSummaryTooltipTest
 				{
 					left = Math.min(left, x);
 					right = Math.max(right, x);
+					top = Math.min(top, y);
 					bottom = Math.max(bottom, y);
 				}
 			}
 		}
 		assertEquals(bare.width - inset - 36, left);
 		assertEquals(bare.width - inset - 1, right);
-		// Inside the header, above its rule, and right of the title on its line.
+		// Centred in the header, above its rule, and right of the title on its line.
+		assertEquals(inset + (tip.getHeaderHeight() - 32) / 2, top);
 		assertTrue(bottom < inset + tip.getHeaderHeight());
 		int titleWidth = tip.getFontMetrics(tip.getTitleFont()).stringWidth("Clog Summary");
 		assertTrue(inset + titleWidth < left);
@@ -283,6 +323,19 @@ public class ClogSummaryTooltipTest
 			inBar = bar;
 		}
 		return bars;
+	}
+
+	private static int count(BufferedImage image, int rgb)
+	{
+		int found = 0;
+		for (int y = 0; y < image.getHeight(); y++)
+		{
+			for (int x = 0; x < image.getWidth(); x++)
+			{
+				found += image.getRGB(x, y) == rgb ? 1 : 0;
+			}
+		}
+		return found;
 	}
 
 	private static BufferedImage tile(int width, int height, Color color)

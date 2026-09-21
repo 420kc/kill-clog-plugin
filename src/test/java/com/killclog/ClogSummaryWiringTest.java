@@ -110,6 +110,25 @@ public class ClogSummaryWiringTest
 		assertArrayEquals(new int[]{75, 80}, shown.get("Bosses"));
 		assertArrayEquals(new int[]{35, 40}, shown.get("Other"));
 		assertTrue(tip[0].completionText().startsWith("91."));
+		// The same items under an account that has counted far more are a partial
+		// sync, and the rows stay off the card rather than contradict its total.
+		ClogResult partial = new ClogResult("Probe", obtained, categories, Collections.emptyMap(), null, null);
+		partial.setUniqueObtained(1189);
+		partial.setUniqueTotal(1561);
+		SwingUtilities.invokeAndWait(() ->
+		{
+			try
+			{
+				tip[0] = (ClogSummaryTooltip) build.invoke(panel, new JLabel(), null, partial, "Probe", null);
+			}
+			catch (ReflectiveOperationException e)
+			{
+				throw new AssertionError(e);
+			}
+		});
+		assertTrue(((Map<?, ?>) field.get(tip[0])).isEmpty());
+		assertTrue(tip[0].completionText().startsWith("76."));
+
 		// Which tier that is belongs to the tooltip's own tests; here it only has to be asked for.
 		verify(items).getImage(PanelData.CLOG_TIER_ITEM_IDS[ClogHelper.tierIndex(110, 120)]);
 	}
