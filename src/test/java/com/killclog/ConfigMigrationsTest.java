@@ -2,9 +2,11 @@ package com.killclog;
 
 import net.runelite.client.config.ConfigManager;
 import org.junit.Test;
+import org.mockito.InOrder;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -21,6 +23,21 @@ public class ConfigMigrationsTest
 		ConfigMigrations.run(config);
 
 		verify(config).setConfiguration("killclog", "skillDisplay", SkillDisplay.TRAY);
+	}
+
+	@Test
+	public void savedSettingsMoveBeforeTheConfigIsHandedToAnything()
+	{
+		// The panel is built at injection and reads its skill location then,
+		// so the move belongs to the provider rather than to startUp.
+		ConfigManager config = mock(ConfigManager.class);
+		when(config.getConfiguration("killclog", "skillDisplay")).thenReturn("TOOLTIP");
+
+		new KillClogPlugin().provideConfig(config);
+
+		InOrder order = inOrder(config);
+		order.verify(config).setConfiguration("killclog", "skillDisplay", SkillDisplay.TRAY);
+		order.verify(config).getConfig(KillClogConfig.class);
 	}
 
 	@Test

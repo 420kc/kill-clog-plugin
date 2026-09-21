@@ -163,13 +163,15 @@ public class KillClogPlugin extends Plugin
 	@Provides
 	KillClogConfig provideConfig(ConfigManager configManager)
 	{
+		// Saved settings take their current shape before anything reads them:
+		// the panel is built at injection, ahead of startUp.
+		ConfigMigrations.run(configManager);
 		return configManager.getConfig(KillClogConfig.class);
 	}
 
 	@Override
 	protected void startUp()
 	{
-		ConfigMigrations.run(configManager);
 		navButton = NavigationButton.builder()
 			.tooltip("Kill Clog")
 			.icon(getIcon())
