@@ -202,7 +202,7 @@ public class PluginPublicationCharacterizationTest
 		assertEquals(10_000L, executor.lastDelayMs());
 
 		settle();
-		verify(chatNotifier, never()).send(eq(ChatNotice.SYNC_RESULT), startsWith("Syncing"));
+		verify(chatNotifier, never()).send(eq(ChatNotice.SYNC_RESULT), startsWith("Publishing"));
 		verify(panel).showSyncProgress(false, "publishing...", false);
 		assertEquals(1, syncs.size());
 
