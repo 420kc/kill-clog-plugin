@@ -1,6 +1,8 @@
 package com.killclog;
 
+import java.awt.AlphaComposite;
 import java.awt.Color;
+import java.awt.Composite;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
@@ -9,14 +11,15 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
 
 /**
  * Clog summary tooltip on the summary-bar clog cell.
- * Title "Clog Summary", obtained subtitle, tier progress lines with icons,
- * and recent obtained items at the bottom.
+ * The log's total with its completion, the tier ladder, progress per
+ * collection-log tab, then the trophy shelf, recent items and sources.
  */
 public class ClogSummaryTooltip extends TitleTooltip
 {
@@ -31,7 +34,13 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private static final int SOURCE_ICON_GAP = 5;
 	private static final int SOURCE_HIT_PAD = 2;
 	private static final int SOURCE_LABEL_GAP = 3;
-	private static final int SOURCE_SECTION = 2;
+	// Hover sections: 0 highlights, 1 recent, then the tier ladder and the sources.
+	// An unreached tier sits one past TIER_SECTION so its readout can turn red.
+	private static final int TIER_SECTION = 2;
+	private static final int SOURCE_SECTION = 4;
+	private static final int BAR_HEIGHT = 3;
+	private static final int BAR_GAP = 3;
+	private static final Color BAR_TRACK = new Color(40, 35, 28);
 	private static final String SOURCE_LABEL = "Sources";
 	private static final String[] MONTHS = {
 		"Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -45,10 +54,10 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private static final String SETUP_SEARCH_LINE = "2. Wait for setup to finish.";
 	private static final String SETUP_CHAT_LINE = "Chat will confirm when setup is complete.";
 
-	private String tierRange;
-	private String tierName;
-	private String progressCount;
-	private String nextTierName;
+	private int obtained = -1;
+	private int totalSlots;
+	// Collection-log tabs in game order: name, then {obtained, total}.
+	private Map<String, int[]> tabs = Collections.emptyMap();
 	private String syncDate;
 	private boolean syncStale;
 
@@ -78,12 +87,36 @@ public class ClogSummaryTooltip extends TitleTooltip
 		setTitle("Clog Summary");
 		setObtained(obtained, totalSlots);
 		this.tierIcons = tierIcons;
+		this.obtained = obtained;
+		this.totalSlots = totalSlots;
+	}
 
-		ClogHelper.TierProgress tier = ClogHelper.tierProgress(obtained, totalSlots);
-		tierRange = tier.tierRange;
-		tierName = tier.tierName;
-		progressCount = tier.progressCount;
-		nextTierName = tier.nextTierName;
+	/** Progress per collection-log tab, in the game's tab order. */
+	void setTabs(Map<String, int[]> tabs)
+	{
+		this.tabs = tabs;
+	}
+
+	@Override
+	protected String obtainedLabel()
+	{
+		return "Total: ";
+	}
+
+	private boolean hasTotals()
+	{
+		return obtained >= 0 && totalSlots > 0;
+	}
+
+	private String completionText()
+	{
+		return String.format(Locale.US, "%.1f%%", obtained * 100.0 / totalSlots);
+	}
+
+	private static int legendWidth()
+	{
+		int tiers = ClogHelper.CLOG_TIERS.length;
+		return tiers * ICON_SIZE + (tiers - 1) * ICON_GAP;
 	}
 
 	public void setSyncData(String dateText, boolean stale)
@@ -273,33 +306,34 @@ public class ClogSummaryTooltip extends TitleTooltip
 			return new Dimension(nw, LINE_HEIGHT);
 		}
 
-		int iconWidth = ICON_SIZE + ICON_GAP;
 		int textWidth = 0;
+		int contentHeight = 0;
 
-		if (tierRange != null)
+		// Completion, its bar, the tier ladder and the ladder's readout row.
+		if (hasTotals())
 		{
-			String label = capitalize(tierName) + ": ";
-			textWidth = Math.max(textWidth, iconWidth + fm.stringWidth(label) + fm.stringWidth(tierRange));
-		}
-		if (progressCount != null)
-		{
-			String label = capitalize(nextTierName) + ": ";
-			textWidth = Math.max(textWidth, iconWidth + fm.stringWidth(label) + fm.stringWidth(progressCount + " more"));
-		}
-		String syncLabel = "Last update: ";
-		if (syncDate != null)
-		{
-			textWidth = Math.max(textWidth, fm.stringWidth(syncLabel + syncDate));
+			textWidth = Math.max(fm.stringWidth("Completion: " + completionText()), legendWidth());
+			for (String label : ClogHelper.tierLabels(totalSlots))
+			{
+				textWidth = Math.max(textWidth, fm.stringWidth(label));
+			}
+			contentHeight += LINE_HEIGHT + BAR_HEIGHT + BAR_GAP + ICON_SIZE + hoverRowHeight(fm);
 		}
 
-		int lines = 0;
-		if (tierRange != null) lines++;
-		if (progressCount != null) lines++;
-		if (syncDate != null) lines++;
+		if (!tabs.isEmpty())
+		{
+			FontMetrics bfm = getFontMetrics(FontManager.getRunescapeBoldFont());
+			textWidth = Math.max(textWidth, bfm.stringWidth("Collection Log"));
+			for (Map.Entry<String, int[]> tab : tabs.entrySet())
+			{
+				textWidth = Math.max(textWidth, fm.stringWidth(tab.getKey() + ": "
+					+ progressCountText(tab.getValue()[0], tab.getValue()[1])));
+			}
+			contentHeight += separatorHeight(SEPARATOR_PAD) + SUBHEADER_HEIGHT
+				+ tabs.size() * (LINE_HEIGHT + BAR_HEIGHT + BAR_GAP);
+		}
 
-		int contentHeight = LINE_HEIGHT * lines;
-
-		// Special section: obtained trophies only.
+		// Highlights: obtained trophies only.
 		if (specialCount > 0)
 		{
 			FontMetrics bfm = getFontMetrics(FontManager.getRunescapeBoldFont());
@@ -307,7 +341,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 			int rowWidth = specialCount * RECENT_SIZE + (specialCount - 1) * RECENT_PAD;
 			textWidth = Math.max(textWidth, rowWidth);
-			textWidth = Math.max(textWidth, bfm.stringWidth("Special"));
+			textWidth = Math.max(textWidth, bfm.stringWidth("Highlights"));
 		}
 
 		// Recent section.
@@ -328,9 +362,19 @@ public class ClogSummaryTooltip extends TitleTooltip
 			textWidth = Math.max(textWidth, bfm.stringWidth("Recent"));
 		}
 
+		// The footer: when it last changed and who supplied it, under one rule.
+		if (syncDate != null || !clogSources.isEmpty())
+		{
+			contentHeight += separatorHeight(SEPARATOR_PAD);
+		}
+		if (syncDate != null)
+		{
+			textWidth = Math.max(textWidth, fm.stringWidth("Last update: " + syncDate));
+			contentHeight += LINE_HEIGHT;
+		}
 		if (!clogSources.isEmpty())
 		{
-			contentHeight += separatorHeight(SEPARATOR_PAD) + fm.getHeight()
+			contentHeight += fm.getHeight()
 				+ SOURCE_LABEL_GAP + SOURCE_ICON_SIZE + hoverRowHeight(fm);
 			textWidth = Math.max(textWidth, fm.stringWidth(SOURCE_LABEL));
 			textWidth = Math.max(textWidth, sourceRowWidth(clogSources.size()));
@@ -380,35 +424,30 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 		int y = startY;
 
-		// Current tier: [icon] Rune: 1100-1199
-		if (tierRange != null)
+		if (hasTotals())
 		{
-			paintTierLine(g2, fm, inset, y, tierName, tierRange, Color.WHITE, null);
-			y += LINE_HEIGHT;
+			drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Completion: ", completionText());
+			y = paintBar(g2, w, y + LINE_HEIGHT, obtained, totalSlots);
+			y = paintTierLadder(g2, fm, hitBoxes, w, y);
 		}
 
-		// Progress: [icon] Dragon: 18 more
-		if (progressCount != null)
+		if (!tabs.isEmpty())
 		{
-			paintTierLine(g2, fm, inset, y, nextTierName, progressCount, Color.WHITE, " more");
-			y += LINE_HEIGHT;
+			y = paintSubheader(g2, w, y, "Collection Log");
+			g2.setFont(FontManager.getRunescapeSmallFont());
+			for (Map.Entry<String, int[]> tab : tabs.entrySet())
+			{
+				int[] count = tab.getValue();
+				drawLabelValue(g2, fm, inset, y + fm.getAscent(), tab.getKey() + ": ",
+					progressCountText(count[0], count[1]), completionColor(count[0], count[1]));
+				y = paintBar(g2, w, y + LINE_HEIGHT, count[0], count[1]);
+			}
 		}
 
-		// Sync line: label orange, date green or red.
-		if (syncDate != null)
-		{
-			String label = "Last update: ";
-			g2.setColor(OSRS_ORANGE);
-			g2.drawString(label, inset, y + fm.getAscent());
-			g2.setColor(syncStale ? STALE_RED : CLOG_GREEN);
-			g2.drawString(syncDate, inset + fm.stringWidth(label), y + fm.getAscent());
-			y += LINE_HEIGHT;
-		}
-
-		// Special items section: the trophy shelf, present only when earned.
+		// Highlights: the trophy shelf, present only when earned.
 		if (specialCount > 0 && specialSprites != null)
 		{
-			y = paintSubheader(g2, w, y, "Special");
+			y = paintSubheader(g2, w, y, "Highlights");
 			paintItemRow(g2, hitBoxes, 0, inset, y, w - 2 * inset,
 				specialSprites, specialIds, specialNames, null, RECENT_SIZE, fm);
 			y += RECENT_SIZE;
@@ -431,10 +470,22 @@ public class ClogSummaryTooltip extends TitleTooltip
 			y += hoverRowHeight(fm);
 		}
 
-		if (!clogSources.isEmpty())
+		if (syncDate != null || !clogSources.isEmpty())
 		{
 			y = paintSeparator(g2, w, y, SEPARATOR_PAD);
 			g2.setFont(FontManager.getRunescapeSmallFont());
+		}
+
+		// Sync line: label orange, date green or red.
+		if (syncDate != null)
+		{
+			drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Last update: ", syncDate,
+				syncStale ? STALE_RED : CLOG_GREEN);
+			y += LINE_HEIGHT;
+		}
+
+		if (!clogSources.isEmpty())
+		{
 			g2.setColor(MUTED_GRAY);
 			int labelX = (w - fm.stringWidth(SOURCE_LABEL)) / 2;
 			g2.drawString(SOURCE_LABEL, labelX, y + fm.getAscent());
@@ -565,38 +616,52 @@ public class ClogSummaryTooltip extends TitleTooltip
 	@Override
 	protected Color getHeaderHoverLineColor()
 	{
-		// Obtained items and verified providers share the success/trust color.
-		return CLOG_GREEN;
+		// Obtained items, verified providers and reached tiers share the success color.
+		return itemHover.hoveredSection() == TIER_SECTION + 1 ? CLOG_RED : CLOG_GREEN;
 	}
 
-	/** Draws: [icon] Tier: value [suffix]. */
-	private void paintTierLine(Graphics2D g2, FontMetrics fm, int x, int y,
-		String tier, String value, Color valueColor, String suffix)
+	/** A thin rail under a count: the share at a glance, the number still primary. */
+	private int paintBar(Graphics2D g2, int w, int y, int obtained, int total)
 	{
-		int textY = y + fm.getAscent();
-
-		BufferedImage icon = tierIcons != null ? tierIcons.get(tier) : null;
-		if (icon != null)
+		int inset = getInset();
+		int width = w - 2 * inset;
+		g2.setColor(BAR_TRACK);
+		g2.fillRect(inset, y, width, BAR_HEIGHT);
+		if (obtained > 0 && total > 0)
 		{
-			int iconY = y + (LINE_HEIGHT - icon.getHeight()) / 2;
-			g2.drawImage(icon, x, iconY, null);
-			x += icon.getWidth() + ICON_GAP;
+			g2.setColor(completionColor(obtained, total));
+			g2.fillRect(inset, y, Math.max(1, width * Math.min(obtained, total) / total), BAR_HEIGHT);
 		}
+		return y + BAR_HEIGHT + BAR_GAP;
+	}
 
-		String label = capitalize(tier) + ": ";
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString(label, x, textY);
-		x += fm.stringWidth(label);
-
-		g2.setColor(valueColor);
-		g2.drawString(value, x, textY);
-		x += fm.stringWidth(value);
-
-		if (suffix != null)
+	/** Every tier's icon, dimmed until reached; hovering one reads its range below. */
+	private int paintTierLadder(Graphics2D g2, FontMetrics fm, List<TooltipItemHover.HitBox> hitBoxes,
+		int w, int y)
+	{
+		String[] labels = ClogHelper.tierLabels(totalSlots);
+		int x = (w - legendWidth()) / 2;
+		Composite solid = g2.getComposite();
+		for (int i = 0; i < labels.length; i++)
 		{
-			g2.setColor(OSRS_ORANGE);
-			g2.drawString(suffix, x, textY);
+			boolean reached = obtained >= ClogHelper.tierThreshold(i, totalSlots);
+			BufferedImage icon = tierIcons != null ? tierIcons.get(ClogHelper.CLOG_TIERS[i]) : null;
+			if (icon != null)
+			{
+				g2.setComposite(reached ? solid : AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
+				g2.drawImage(icon, x, y, null);
+			}
+			hitBoxes.add(new TooltipItemHover.HitBox(reached ? TIER_SECTION : TIER_SECTION + 1, 0, labels[i],
+				new Rectangle(x, y, ICON_SIZE, ICON_SIZE)));
+			x += ICON_SIZE + ICON_GAP;
 		}
+		g2.setComposite(solid);
+		int section = itemHover.hoveredSection();
+		if (section >= TIER_SECTION && section < SOURCE_SECTION)
+		{
+			paintHeaderHoverLine(g2, fm, w, y + ICON_SIZE + fm.getAscent());
+		}
+		return y + ICON_SIZE + hoverRowHeight(fm);
 	}
 
 	private static final class ClogSource

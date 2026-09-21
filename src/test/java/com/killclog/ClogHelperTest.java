@@ -212,44 +212,27 @@ public class ClogHelperTest
 	}
 
 	@Test
-	public void testTierProgressBelowBronze()
-	{
-		ClogHelper.TierProgress tier = ClogHelper.tierProgress(50, 1500);
-		assertNull(tier.tierName);
-		assertNull(tier.tierRange);
-		assertEquals("50", tier.progressCount);
-		assertEquals("bronze", tier.nextTierName);
-	}
-
-	@Test
-	public void testTierProgressMidLadder()
-	{
-		ClogHelper.TierProgress tier = ClogHelper.tierProgress(350, 1500);
-		assertEquals("iron", tier.tierName);
-		assertEquals("300-499", tier.tierRange);
-		assertEquals("150", tier.progressCount);
-		assertEquals("steel", tier.nextTierName);
-	}
-
-	@Test
-	public void testTierProgressLastThresholdClimbsToGilded()
+	public void theTierLadderReadsEveryRangeAndLeavesGildedOpen()
 	{
 		// Gilded starts at (total * 0.9) rounded down to 25s: 1350 for 1500 slots.
-		ClogHelper.TierProgress tier = ClogHelper.tierProgress(1250, 1500);
-		assertEquals("dragon", tier.tierName);
-		assertEquals("1200-1349", tier.tierRange);
-		assertEquals("100", tier.progressCount);
-		assertEquals("gilded", tier.nextTierName);
+		String[] labels = ClogHelper.tierLabels(1500);
+		assertEquals(ClogHelper.CLOG_TIERS.length, labels.length);
+		assertEquals("Bronze: 100-299", labels[0]);
+		assertEquals("Rune: 1,100-1,199", labels[6]);
+		assertEquals("Dragon: 1,200-1,349", labels[7]);
+		assertEquals("Gilded: 1,350+", labels[8]);
 	}
 
 	@Test
-	public void testTierProgressGildedIsTheTop()
+	public void aTierIsNamedFromTheSameThresholdsTheLadderShows()
 	{
-		ClogHelper.TierProgress tier = ClogHelper.tierProgress(1400, 1500);
-		assertEquals("gilded", tier.tierName);
-		assertEquals("1350+", tier.tierRange);
-		assertNull(tier.progressCount);
-		assertNull(tier.nextTierName);
+		for (int tier = 0; tier < ClogHelper.CLOG_TIERS.length; tier++)
+		{
+			int start = ClogHelper.tierThreshold(tier, 1500);
+			assertEquals(ClogHelper.CLOG_TIERS[tier], ClogHelper.getClogTierName(start, 1500));
+			assertEquals(tier == 0 ? null : ClogHelper.CLOG_TIERS[tier - 1],
+				ClogHelper.getClogTierName(start - 1, 1500));
+		}
 	}
 
 	private ClogResult makeClogResult(

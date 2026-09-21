@@ -132,7 +132,13 @@ public abstract class TitleTooltip extends NativeTooltip
 	 */
 	public void setObtained(int obtained, int total)
 	{
-		setSubtitle("Obtained: ", progressCountText(obtained, total), completionColor(obtained, total));
+		setSubtitle(obtainedLabel(), progressCountText(obtained, total), completionColor(obtained, total));
+	}
+
+	/** The count's label; the Clog Summary counts the whole log, not one page. */
+	protected String obtainedLabel()
+	{
+		return "Obtained: ";
 	}
 
 	/**
@@ -141,7 +147,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	 */
 	public void setObtainedPlaceholder(int total)
 	{
-		setSubtitle("Obtained: ", progressPlaceholderText(total), MUTED_GRAY);
+		setSubtitle(obtainedLabel(), progressPlaceholderText(total), MUTED_GRAY);
 	}
 
 	protected static String progressPlaceholderText(int total)

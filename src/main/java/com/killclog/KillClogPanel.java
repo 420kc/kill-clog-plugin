@@ -1398,6 +1398,10 @@ public class KillClogPanel extends PluginPanel
 				? ClogHelper.sumClogTotals(clog, clogIndex::canonicalItemId)
 				: ClogHelper.sumClogTotals(clog);
 			tip.setTierData(totals[0], totals[1], iconCache.clogTierImages());
+			if (clogIndex != null)
+			{
+				tip.setTabs(clogIndex.tabProgress(clog));
+			}
 			tip.setClogSources(clog, runeProfileService.hasProfile(playerRsn));
 			if (hiscore != null && hiscore.isRankDataAvailable())
 			{

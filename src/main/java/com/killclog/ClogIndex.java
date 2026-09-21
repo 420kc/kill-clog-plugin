@@ -3,6 +3,7 @@ package com.killclog;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -237,6 +238,44 @@ final class ClogIndex
 	{
 		Snapshot s = snapshot;
 		return s != null ? s.tabCategoryKeys : Collections.emptyMap();
+	}
+
+	/**
+	 * A player's progress per collection-log tab, in game order. Slots come from
+	 * the game's own catalog, so every provider is measured against the same log,
+	 * and an item counts once per tab however many pages list it.
+	 */
+	Map<String, int[]> tabProgress(ClogResult clog)
+	{
+		Map<String, int[]> progress = new LinkedHashMap<>();
+		Snapshot s = snapshot;
+		if (s == null)
+		{
+			return progress;
+		}
+		Set<Integer> obtained = new HashSet<>();
+		for (List<ClogResult.ClogItem> items : clog.getObtainedItems().values())
+		{
+			for (ClogResult.ClogItem item : items)
+			{
+				obtained.add(s.canonicalizer.canonicalItemId(item.getId()));
+			}
+		}
+		for (Map.Entry<String, List<String>> tab : s.tabCategoryKeys.entrySet())
+		{
+			Set<Integer> slots = new HashSet<>();
+			for (String category : tab.getValue())
+			{
+				for (int itemId : s.categoryItems.getOrDefault(category, Collections.emptyList()))
+				{
+					slots.add(s.canonicalizer.canonicalItemId(itemId));
+				}
+			}
+			int total = slots.size();
+			slots.retainAll(obtained);
+			progress.put(tab.getKey(), new int[]{slots.size(), total});
+		}
+		return progress;
 	}
 
 	Map<String, List<Integer>> copyCategoryItems()

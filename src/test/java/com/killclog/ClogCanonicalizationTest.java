@@ -1,5 +1,6 @@
 package com.killclog;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -8,6 +9,7 @@ import java.util.Map;
 import net.runelite.api.Skill;
 import org.junit.Test;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -76,6 +78,37 @@ public class ClogCanonicalizationTest
 
 		assertEquals(7, ClogHelper.sumClogTotals(result, index::canonicalItemId)[0]);
 		assertEquals(7, ClogHelper.sumClogTotals(result, index::canonicalItemId)[1]);
+	}
+
+	@Test
+	public void tabProgressCountsEachSlotOnceAgainstTheGamesOwnCatalog()
+	{
+		Map<String, List<Integer>> categories = new LinkedHashMap<>();
+		categories.put("tithe_farm", TITHE_CATALOG);
+		// 4151 sits on two pages of one tab; 11286 is on a page the provider files elsewhere.
+		categories.put("abyssal_sire", Arrays.asList(4151, 13262));
+		categories.put("slayer", Arrays.asList(4151, 11286));
+		Map<String, List<String>> tabs = new LinkedHashMap<>();
+		tabs.put("Bosses", Arrays.asList("abyssal_sire", "slayer"));
+		tabs.put("Minigames", Collections.singletonList("tithe_farm"));
+		tabs.put("Other", Collections.emptyList());
+		ClogIndex index = new ClogIndex();
+		index.publishForTest(categories, Collections.emptyMap(), tabs, Collections.emptyMap());
+
+		Map<String, List<ClogResult.ClogItem>> obtained = new LinkedHashMap<>();
+		obtained.put("tithe_farm", FEMALE_TITHE_OBTAINED);
+		obtained.put("abyssal_sire", Collections.singletonList(item(4151)));
+		obtained.put("some_provider_key", Collections.singletonList(item(11286)));
+		ClogResult result = new ClogResult("Probe", obtained, Collections.emptyMap(),
+			Collections.emptyMap(), null, null);
+
+		Map<String, int[]> progress = index.tabProgress(result);
+		assertEquals(Arrays.asList("Bosses", "Minigames", "Other"), new ArrayList<>(progress.keySet()));
+		assertArrayEquals(new int[]{2, 3}, progress.get("Bosses"));
+		assertArrayEquals(new int[]{7, 7}, progress.get("Minigames"));
+		assertArrayEquals(new int[]{0, 0}, progress.get("Other"));
+
+		assertTrue(new ClogIndex().tabProgress(result).isEmpty());
 	}
 
 	@Test

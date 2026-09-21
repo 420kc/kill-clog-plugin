@@ -20,6 +20,7 @@ import net.runelite.api.Experience;
 import net.runelite.api.Skill;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.util.QuantityFormatter;
 import org.apache.commons.lang3.StringUtils;
 
 /**
@@ -202,82 +203,34 @@ final class ClogHelper
 		return config.inProgressClogColor();
 	}
 
+	/** Where a tier starts. Gilded, the last, floats at 90% of the log in steps of 25. */
+	static int tierThreshold(int tier, int totalSlots)
+	{
+		return tier < CLOG_TIER_THRESHOLDS.length
+			? CLOG_TIER_THRESHOLDS[tier] : (int) (totalSlots * 0.9) / 25 * 25;
+	}
+
 	static String getClogTierName(int obtained, int totalSlots)
 	{
-		int gildedThreshold = (int) (totalSlots * 0.9) / 25 * 25;
-		if (obtained >= gildedThreshold) return "gilded";
-		for (int i = CLOG_TIER_THRESHOLDS.length - 1; i >= 0; i--)
+		for (int i = CLOG_TIERS.length - 1; i >= 0; i--)
 		{
-			if (obtained >= CLOG_TIER_THRESHOLDS[i]) return CLOG_TIERS[i];
+			if (obtained >= tierThreshold(i, totalSlots)) return CLOG_TIERS[i];
 		}
 		return null;
 	}
 
-	/**
-	 * Position on the tier ladder as display strings, shared by the solo and
-	 * comparison Clog Summary tooltips. Fields are null where the ladder has
-	 * nothing to say: below bronze there is no current tier, at gilded there
-	 * is no next one.
-	 */
-	static final class TierProgress
+	/** Every tier's readout, e.g. "Rune: 1,100-1,199"; gilded is open-ended. */
+	static String[] tierLabels(int totalSlots)
 	{
-		final String tierName;
-		final String tierRange;
-		final String progressCount;
-		final String nextTierName;
-
-		private TierProgress(String tierName, String tierRange,
-			String progressCount, String nextTierName)
+		String[] labels = new String[CLOG_TIERS.length];
+		for (int i = 0; i < labels.length; i++)
 		{
-			this.tierName = tierName;
-			this.tierRange = tierRange;
-			this.progressCount = progressCount;
-			this.nextTierName = nextTierName;
+			labels[i] = StringUtils.capitalize(CLOG_TIERS[i]) + ": "
+				+ QuantityFormatter.formatNumber(tierThreshold(i, totalSlots))
+				+ (i == labels.length - 1 ? "+"
+				: "-" + QuantityFormatter.formatNumber(tierThreshold(i + 1, totalSlots) - 1));
 		}
-	}
-
-	static TierProgress tierProgress(int obtained, int totalSlots)
-	{
-		int gildedThreshold = (int) (totalSlots * 0.9) / 25 * 25;
-		String currentTier = getClogTierName(obtained, totalSlots);
-
-		if (currentTier == null)
-		{
-			return new TierProgress(null, null,
-				String.valueOf(CLOG_TIER_THRESHOLDS[0] - obtained), "bronze");
-		}
-
-		if ("gilded".equals(currentTier))
-		{
-			return new TierProgress("gilded", gildedThreshold + "+", null, null);
-		}
-
-		int tierIndex = -1;
-		for (int i = 0; i < CLOG_TIERS.length; i++)
-		{
-			if (CLOG_TIERS[i].equals(currentTier))
-			{
-				tierIndex = i;
-				break;
-			}
-		}
-
-		int currentThreshold = CLOG_TIER_THRESHOLDS[tierIndex];
-		int nextThreshold;
-		String nextTier;
-		if (tierIndex + 1 < CLOG_TIER_THRESHOLDS.length)
-		{
-			nextThreshold = CLOG_TIER_THRESHOLDS[tierIndex + 1];
-			nextTier = CLOG_TIERS[tierIndex + 1];
-		}
-		else
-		{
-			nextThreshold = gildedThreshold;
-			nextTier = "gilded";
-		}
-
-		return new TierProgress(currentTier, currentThreshold + "-" + (nextThreshold - 1),
-			String.valueOf(nextThreshold - obtained), nextTier);
+		return labels;
 	}
 
 	// Account helpers. GIM badge state lives in GimBadgeLoader.
