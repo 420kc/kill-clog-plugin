@@ -347,7 +347,7 @@ public class RuneProfileService
 		}
 		CaCatalog catalog = caCatalog;
 		return CombatAchievementResult.of(completed, total,
-			catalog != null ? catalog.totals() : null);
+			catalog != null ? catalog.totals() : null).withRuneProfileSource();
 	}
 
 	@Nullable
