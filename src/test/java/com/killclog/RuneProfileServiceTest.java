@@ -52,6 +52,30 @@ public class RuneProfileServiceTest
 	}
 
 	@Test
+	public void testRuneProfileCaKeepsItsSourceStampThroughARebase()
+	{
+		String json = "{\"combatAchievements\":["
+			+ "{\"id\":1,\"name\":\"Easy\",\"completed\":41,\"total\":41}]}";
+		CombatAchievementResult parsed = service.parseCombatAchievements(json);
+		assertNotNull(parsed);
+		assertTrue(parsed.isFromRuneProfile());
+		assertEquals(CombatAchievementTier.EASY, parsed.getTier());
+
+		Map<CombatAchievementTier, Integer> live = new EnumMap<>(CombatAchievementTier.class);
+		for (CombatAchievementTier tier : CombatAchievementTier.values())
+		{
+			live.put(tier, tier.totalTasks() + 1);
+		}
+		CombatAchievementResult rebased = parsed.rebasedOn(live);
+		assertNotSame(parsed, rebased);
+		assertTrue(rebased.isFromRuneProfile());
+
+		// The local game read is built through the same factory and must stay unmarked.
+		assertFalse(CombatAchievementResult.of(
+			Collections.singletonMap(CombatAchievementTier.EASY, 41), null).isFromRuneProfile());
+	}
+
+	@Test
 	public void testParseAccountSummaryFallsBackToId()
 	{
 		String json = "{\"accountType\":{\"id\":4,\"key\":\"new-gim-key\"},\"combatAchievements\":[]}";

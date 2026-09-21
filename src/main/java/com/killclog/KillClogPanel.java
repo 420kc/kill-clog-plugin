@@ -151,7 +151,8 @@ public class KillClogPanel extends PluginPanel
 
 			// Single player: standard clog summary
 			return buildClogSummaryTooltip(this, lookupSession.getHiscoreResult(),
-				lookupSession.getClogResult(), rsn, lookupSession.getClogLastChanged());
+				lookupSession.getClogResult(), lookupSession.getCaResult(), rsn,
+				lookupSession.getClogLastChanged());
 		}
 
 	};
@@ -1422,16 +1423,17 @@ public class KillClogPanel extends PluginPanel
 		ClogResult redClog = comparison.getCompareClogResult();
 		return comparison.wrapSideBySide(owner,
 			buildClogSummaryTooltip(owner, lookupSession.getHiscoreResult(),
-				lookupSession.getClogResult(), comparisonBlueName(),
-				lookupSession.getClogLastChanged()),
+				lookupSession.getClogResult(), lookupSession.getCaResult(),
+				comparisonBlueName(), lookupSession.getClogLastChanged()),
 			buildClogSummaryTooltip(owner, comparison.getCompareHiscoreResult(),
-				redClog, comparison.getCompareRsn(),
+				redClog, comparison.getCompareCaResult(), comparison.getCompareRsn(),
 				redClog != null ? redClog.getLastChanged() : null));
 	}
 
 	/** One player's clog summary card: solo mode shows it alone, comparison pairs two. */
 	private ClogSummaryTooltip buildClogSummaryTooltip(JComponent owner,
 		@Nullable HiscoreResult hiscore, @Nullable ClogResult clog,
+		@Nullable CombatAchievementResult ca,
 		@Nullable String playerRsn, @Nullable String lastChanged)
 	{
 		ClogSummaryTooltip tip = new ClogSummaryTooltip();
@@ -1443,7 +1445,7 @@ public class KillClogPanel extends PluginPanel
 				? ClogHelper.sumClogTotals(clog, clogIndex::canonicalItemId)
 				: ClogHelper.sumClogTotals(clog);
 			tip.setTierData(totals[0], totals[1], iconCache.clogTierImages());
-			tip.setClogSources(clog);
+			tip.setClogSources(clog, ca);
 			if (hiscore != null && hiscore.isRankDataAvailable())
 			{
 				int clogRank = hiscore.getActivityRank("Collections Logged");

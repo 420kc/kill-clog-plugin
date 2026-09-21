@@ -97,6 +97,25 @@ public class TitleTooltipTest
 	}
 
 	@Test
+	public void clogSummaryCreditsRuneProfileWhenOnlyItsCombatAchievementsArrived()
+	{
+		ClogResult templeOnly = new ClogResult("Probe", Collections.emptyMap(),
+			Collections.emptyMap(), Collections.emptyMap(), null, null)
+			.withSources(true, false, false);
+		CombatAchievementResult localCa = CombatAchievementResult.of(
+			Collections.singletonMap(CombatAchievementTier.EASY, 41), null);
+
+		ClogSummaryTooltip tooltip = new ClogSummaryTooltip();
+		tooltip.setClogSources(templeOnly, null);
+		assertEquals(Collections.singletonList("TempleOSRS"), tooltip.sourceNames());
+		tooltip.setClogSources(templeOnly, localCa);
+		assertEquals(Collections.singletonList("TempleOSRS"), tooltip.sourceNames());
+
+		tooltip.setClogSources(templeOnly, localCa.withRuneProfileSource());
+		assertEquals(Arrays.asList("TempleOSRS", "RuneProfile"), tooltip.sourceNames());
+	}
+
+	@Test
 	public void clogSummaryProvenanceRowsAreCenteredForOneTwoAndThreeSources()
 	{
 		int width = 101;
