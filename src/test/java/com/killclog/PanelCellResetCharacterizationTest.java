@@ -101,7 +101,6 @@ public class PanelCellResetCharacterizationTest
 			assertNotEquals(ColorScheme.LIGHT_GRAY_COLOR, config.emptyClogColor());
 			assertEquals(config.emptyClogColor(), vorkath.getForeground());
 			assertEquals(ClogHelper.pad("3"), cells.getClueTierLabels().get(HiscoreSkill.CLUE_SCROLL_HARD).getText());
-			assertEquals(ClogHelper.pad("2"), cells.getPvpSummaryCell().getText());
 			assertEquals(ClogHelper.pad("1"), cells.getThirdAgeCell().getText());
 			assertEquals(" ", cells.getThirdAgeCell().getToolTipText());
 			assertFalse(cells.getTooltipDataMap().isEmpty());
@@ -125,7 +124,6 @@ public class PanelCellResetCharacterizationTest
 			{
 				assertResting(entry.getValue(), entry.getKey().getName());
 			}
-			assertResting(cells.getPvpSummaryCell(), "PvP Summary");
 			assertResting(cells.getThirdAgeCell(), "3rd Age");
 			assertResting(cells.getGildedCell(), "Gilded");
 			assertResting(cells.getHardRare(), "Hard Treasure (Rare)");

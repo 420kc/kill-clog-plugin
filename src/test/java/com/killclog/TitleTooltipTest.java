@@ -247,15 +247,41 @@ public class TitleTooltipTest
 	}
 
 	@Test
-	public void pvpSummaryWidthGrowsWithLargeScore()
+	public void pvpRowsWidthGrowsWithLargeScore()
 	{
-		PvpSummaryTooltip small = new PvpSummaryTooltip();
+		java.awt.FontMetrics fm = new javax.swing.JPanel().getFontMetrics(
+			net.runelite.client.ui.FontManager.getRunescapeSmallFont());
+		PvpSummaryRows small = new PvpSummaryRows();
 		small.setData(pvpHiscore("Soul Wars Zeal", 42), null);
-
-		PvpSummaryTooltip large = new PvpSummaryTooltip();
+		PvpSummaryRows large = new PvpSummaryRows();
 		large.setData(pvpHiscore("Soul Wars Zeal", 1_234_567), null);
 
-		assertTrue(small.getPreferredSize().width < large.getPreferredSize().width);
+		assertTrue(small.size(fm).width < large.size(fm).width);
+		// Five rows whatever the data, so a comparison pair never staggers.
+		PvpSummaryRows empty = new PvpSummaryRows();
+		empty.setData(null, null);
+		assertEquals(5 * NativeTooltip.LINE_HEIGHT, empty.size(fm).height);
+		assertEquals(empty.size(fm).height, large.size(fm).height);
+	}
+
+	@Test
+	public void combatSummaryCarriesThePvpSectionUnderItsOwnTitle()
+	{
+		PvmSummaryTooltip withoutPvp = new PvmSummaryTooltip();
+		withoutPvp.setData(126.1, 999, 50, 60, null, 0);
+		assertEquals("Combat Summary", withoutPvp.getTitle());
+
+		PvmSummaryTooltip card = new PvmSummaryTooltip();
+		card.setData(126.1, 999, 50, 60, null, 0);
+		card.setPvp(pvpHiscore("Soul Wars Zeal", 1_234_567), null, null);
+		// The section is always there: five rows even with no PvP data.
+		assertEquals(withoutPvp.getPreferredSize().height, card.getPreferredSize().height);
+		Dimension size = card.getPreferredSize();
+		card.setSize(size);
+		Graphics2D graphics = new BufferedImage(
+			size.width, size.height, BufferedImage.TYPE_INT_ARGB).createGraphics();
+		card.paint(graphics);
+		graphics.dispose();
 	}
 
 	@Test
@@ -275,16 +301,16 @@ public class TitleTooltipTest
 	@Test
 	public void sideBySideWidthTracksItsChildren()
 	{
-		PvpSummaryTooltip blueSmall = new PvpSummaryTooltip();
-		blueSmall.setData(pvpHiscore("Soul Wars Zeal", 42), null);
-		PvpSummaryTooltip redSmall = new PvpSummaryTooltip();
-		redSmall.setData(pvpHiscore("Soul Wars Zeal", 42), null);
+		PvmSummaryTooltip blueSmall = new PvmSummaryTooltip();
+		blueSmall.setData(126, 999, 50, 60, null, 0);
+		PvmSummaryTooltip redSmall = new PvmSummaryTooltip();
+		redSmall.setData(126, 999, 50, 60, null, 0);
 		SideBySideTooltip small = new SideBySideTooltip("Blue", blueSmall, "Red", redSmall);
 
-		PvpSummaryTooltip blueLarge = new PvpSummaryTooltip();
-		blueLarge.setData(pvpHiscore("Soul Wars Zeal", 1_234_567), null);
-		PvpSummaryTooltip redLarge = new PvpSummaryTooltip();
-		redLarge.setData(pvpHiscore("Soul Wars Zeal", 42), null);
+		PvmSummaryTooltip blueLarge = new PvmSummaryTooltip();
+		blueLarge.setData(126, 1_234_567_890, 50, 60, null, 0);
+		PvmSummaryTooltip redLarge = new PvmSummaryTooltip();
+		redLarge.setData(126, 999, 50, 60, null, 0);
 		SideBySideTooltip large = new SideBySideTooltip("Blue", blueLarge, "Red", redLarge);
 
 		assertTrue(small.getPreferredSize().width < large.getPreferredSize().width);

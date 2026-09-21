@@ -742,8 +742,6 @@ public class ComparisonController
 			blueHiscore != null ? ClogHelper.displayTotalLevel(blueHiscore, virtualTotal) : -1,
 			redHiscore != null ? ClogHelper.displayTotalLevel(redHiscore, virtualTotal) : -1);
 
-		compareOrRestore(cells.getPvpSummaryCell(), pvpTotal(blueHiscore), pvpTotal(redHiscore));
-
 		Map<String, TooltipData> rareTooltips = cells.getRareTooltips();
 		TooltipData redThirdAge = buildClueRare("3rd Age", PanelData.CLOG_THIRD_AGE);
 		TooltipData redGilded = buildClueRare("Gilded", PanelData.CLOG_GILDED);
@@ -804,16 +802,6 @@ public class ComparisonController
 	private static int activityScore(@Nullable HiscoreResult r, String name)
 	{
 		return r != null ? r.getActivityScore(name) : -1;
-	}
-
-	private static int pvpTotal(@Nullable HiscoreResult r)
-	{
-		if (r == null)
-		{
-			return -1;
-		}
-		int total = LookupQueries.bountyHunterTotal(r);
-		return total > 0 ? total : -1;
 	}
 
 	private static int rareCount(@Nullable TooltipData data)

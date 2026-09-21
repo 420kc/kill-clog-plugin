@@ -79,18 +79,6 @@ public class KillClogPanel extends PluginPanel
 		Color infoColor = getInfoColor();
 		combatCell.setForeground(infoColor);
 		totalLvlCell.setForeground(infoColor);
-		if (cells.getPvpSummaryCell() != null)
-		{
-			boolean hasKills = LookupQueries.bountyHunterTotal(lookupSession.getHiscoreResult()) > 0;
-			cells.getPvpSummaryCell().setForeground(hasKills ? infoColor : emptyCellColor());
-		}
-	}
-
-	/** Empty-state cell color under the same gating the highlighter sweep uses. */
-	private Color emptyCellColor()
-	{
-		return config.completionistHighlighter() && lookupSession.getClogResult() != null
-			? config.emptyClogColor() : ColorScheme.LIGHT_GRAY_COLOR;
 	}
 
 	private final HiscoreService hiscoreService;
@@ -567,7 +555,8 @@ public class KillClogPanel extends PluginPanel
 			// overall.png not available
 		}
 		statsRow.add(cells.wrapInCell(totalLvlCell));
-		statsRow.add(cells.buildPvpSummaryCell());
+		// The three summaries: Combat, Skills, Clues.
+		statsRow.add(cells.buildActivityCell(HiscoreSkill.CLUE_SCROLL_ALL));
 		grid.add(statsRow);
 
 		JPanel statsSep = new JPanel();
@@ -579,12 +568,12 @@ public class KillClogPanel extends PluginPanel
 		traySkillsHost = buildSkillHost();
 		grid.add(traySkillsHost);
 
-		// Clue row 1: [3rd Age] [Clue Summary] [Gilded]
+		// Rare row 1: [3rd Age] [ ] [Gilded]
 		JPanel row1 = new JPanel(new GridLayout(1, 3));
 		row1.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		row1.setAlignmentX(0f);
 		row1.add(cells.buildClueRareCell("3rd Age", PanelData.THIRD_AGE_ITEM_ID, PanelData.CLOG_THIRD_AGE, true));
-		row1.add(cells.buildActivityCell(HiscoreSkill.CLUE_SCROLL_ALL));
+		row1.add(cells.wrapInCell(new JLabel()));
 		row1.add(cells.buildClueRareCell("Gilded", PanelData.GILDED_ITEM_ID, PanelData.CLOG_GILDED, false));
 		grid.add(row1);
 

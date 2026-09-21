@@ -64,18 +64,26 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 	private CombatAchievementResult caResult;
 	private BufferedImage caRewardSprite;
+	private final PvpSummaryRows pvpRows = new PvpSummaryRows();
 
 	public void setData(double combatLevel, int totalKills, int bossesWithKc, int totalBosses,
 						String mostKilled, int mostKilledKc)
 	{
 		itemHover.clear();
-		setTitle("PvM Summary");
+		setTitle("Combat Summary");
 		this.combatLevel = combatLevel;
 		this.totalKills = totalKills;
 		this.bossesWithKc = bossesWithKc;
 		this.totalBosses = totalBosses;
 		this.mostKilled = mostKilled;
 		this.mostKilledKc = mostKilledKc;
+	}
+
+	/** The five PvP activities close out the card under their own subheader. */
+	void setPvp(HiscoreResult hiscore, ClogResult clog, BufferedImage[] icons)
+	{
+		pvpRows.setIcons(icons);
+		pvpRows.setData(hiscore, clog);
 	}
 
 	public void setCompletion(int completed, int total)
@@ -225,6 +233,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 		{
 			textWidth = Math.max(textWidth, fm.stringWidth(mostKilledLine()));
 		}
+		textWidth = Math.max(textWidth, bfm.stringWidth("PvM Summary"));
+		textWidth = Math.max(textWidth, bfm.stringWidth("PvP Summary"));
 		textWidth = Math.max(textWidth, bfm.stringWidth("Slayer"));
 		textWidth = Math.max(textWidth, bfm.stringWidth("Raids"));
 		textWidth = Math.max(textWidth, raidLineWidth(fm, "CoX: ", coxKc, coxObtained, coxTotal));
@@ -245,12 +255,15 @@ public class PvmSummaryTooltip extends TitleTooltip
 		{
 			textWidth = Math.max(textWidth, fm.stringWidth(name));
 		}
-		int contentWidth = Math.max(textWidth, Math.max(spriteRowWidth, superiorRowWidth));
+		Dimension pvpSize = pvpRows.size(fm);
+		int contentWidth = Math.max(Math.max(textWidth, pvpSize.width),
+			Math.max(spriteRowWidth, superiorRowWidth));
 		int separatorHeight = separatorHeight(SEPARATOR_PAD);
 		int caHeight = caResult != null ? CA_ROW_HEIGHT : 0;
-		int contentHeight = statsHeight + caHeight + mostKilledHeight
+		int contentHeight = SUBHEADER_HEIGHT + statsHeight + caHeight + mostKilledHeight
 			+ separatorHeight + slayerHeight
-			+ separatorHeight + raidsHeight;
+			+ separatorHeight + raidsHeight
+			+ separatorHeight + SUBHEADER_HEIGHT + pvpSize.height;
 
 		return new Dimension(contentWidth, contentHeight);
 	}
@@ -264,6 +277,12 @@ public class PvmSummaryTooltip extends TitleTooltip
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		FontMetrics fm = g2.getFontMetrics();
 		int y = startY;
+
+		// Combat leads the card; PvM and PvP each follow under their own subheader.
+		drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Combat: ", combatValue());
+		y += LINE_HEIGHT;
+		y = paintSubheader(g2, inset, y, "PvM Summary");
+		g2.setFont(FontManager.getRunescapeSmallFont());
 
 		// CA Tier appears first when data is available.
 		if (caResult != null)
@@ -285,10 +304,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 			}
 			y += CA_ROW_HEIGHT;
 		}
-
-		// Combat
-		drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Combat: ", combatValue());
-		y += LINE_HEIGHT;
 
 		// Total Kills
 		drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Total Kills: ", totalKillsValue());
@@ -379,8 +394,22 @@ public class PvmSummaryTooltip extends TitleTooltip
 		addRowHitBoxes(hitBoxes, 1, inset, y, w - 2 * inset,
 			PanelData.MEGARARE_ITEM_IDS, PanelData.MEGARARE_ITEM_NAMES, weaponCounts);
 		paintItemLabel(g2, fm, w, y + WEAPON_SIZE, 1);
+		y += WEAPON_SIZE + hoverRowHeight(fm);
+
+		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
+		y = paintSubheader(g2, inset, y, "PvP Summary");
+		g2.setFont(FontManager.getRunescapeSmallFont());
+		pvpRows.paint(g2, g2.getFontMetrics(), inset, y);
 
 		itemHover.setHitBoxes(hitBoxes);
+	}
+
+	private int paintSubheader(Graphics2D g2, int inset, int y, String text)
+	{
+		g2.setFont(FontManager.getRunescapeBoldFont());
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString(text, inset, y + g2.getFontMetrics().getAscent());
+		return y + SUBHEADER_HEIGHT;
 	}
 
 	/**

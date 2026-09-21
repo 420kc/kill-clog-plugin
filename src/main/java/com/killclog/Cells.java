@@ -87,7 +87,6 @@ public class Cells
 	private final Map<HiscoreSkill, JLabel> clueTierLabels = new LinkedHashMap<>();
 	private final Map<HiscoreSkill, ImageIcon> originalIcons = new LinkedHashMap<>();
 	private final Map<HiscoreSkill, ImageIcon> dimmedIcons = new LinkedHashMap<>();
-	@Nullable private JLabel pvpSummaryCell;
 	@Nullable private JLabel thirdAgeCell;
 	@Nullable private JLabel gildedCell;
 	@Nullable private JLabel hardRare;
@@ -110,6 +109,7 @@ public class Cells
 		this.clogService = clogService;
 		this.killclogService = killclogService;
 		this.personalBests = personalBests;
+		loadPvpActivityIcons();
 		this.unsyncedCatalog = new UnsyncedClogCatalog(clogService);
 	}
 
@@ -231,41 +231,9 @@ public class Cells
 		return wrapInCell(label);
 	}
 
-	/** Build the PvP summary cell with its custom tooltip + 5-icon row. */
-	public JPanel buildPvpSummaryCell()
+	/** Icons for the PvP rows inside the Combat Summary, loaded once. */
+	private void loadPvpActivityIcons()
 	{
-		JLabel cell = new JLabel()
-		{
-			@Override
-			public JToolTip createToolTip()
-			{
-				if (comparison.isComparisonMode() && comparison.getCompareHiscoreResult() != null)
-				{
-					return wrapSideBySide(this,
-						pvpSummaryTooltip(this, lookupSession.getHiscoreResult(),
-							lookupSession.getClogResult()),
-						pvpSummaryTooltip(this, comparison.getCompareHiscoreResult(),
-							comparison.getCompareClogResult()));
-				}
-				PvpSummaryTooltip tip = pvpSummaryTooltip(this,
-					lookupSession.getHiscoreResult(), lookupSession.getClogResult());
-				tooltipController.keepTooltipOnHover(tip, (JPanel) this.getParent());
-				return tip;
-			}
-		};
-		styleLabel(cell, "PvP Summary");
-		pvpSummaryCell = cell;
-
-		spriteManager.getSpriteAsync(439, 0, sprite ->
-			SwingUtilities.invokeLater(() ->
-			{
-				if (sprite != null)
-				{
-					cell.setIcon(new ImageIcon(ImageUtil.resizeCanvas(
-						ImageUtil.resizeImage(sprite, 16, 16), 20, 20)));
-				}
-			}));
-
 		for (int i = 0; i < PanelData.PVP_ACTIVITIES.length; i++)
 		{
 			int spriteId = PanelData.PVP_ACTIVITIES[i].getSpriteId();
@@ -284,8 +252,6 @@ public class Cells
 					}
 				}));
 		}
-
-		return wrapInCell(cell);
 	}
 
 	public JPanel buildClueTierCell(HiscoreSkill tier, int itemId, boolean compact)
@@ -411,13 +377,6 @@ public class Cells
 			}
 		}
 
-		// PvP summary cell: BH Hunter + BH Rogue total
-		if (pvpSummaryCell != null)
-		{
-			int bhTotal = LookupQueries.bountyHunterTotal(result);
-			pvpSummaryCell.setText(ClogHelper.pad(bhTotal > 0 ? ClogHelper.formatKc(bhTotal) : "--"));
-		}
-
 		// Clue tier cells
 		for (Map.Entry<HiscoreSkill, JLabel> entry : clueTierLabels.entrySet())
 		{
@@ -464,11 +423,6 @@ public class Cells
 			if (orig != null) label.setIcon(orig);
 		}
 		resetLabels(activityLabels);
-		if (pvpSummaryCell != null)
-		{
-			pvpSummaryCell.setText(ClogHelper.pad("--"));
-			pvpSummaryCell.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-		}
 		resetLabels(clueTierLabels);
 		resetRare(thirdAgeCell, "3rd Age");
 		resetRare(gildedCell, "Gilded");
@@ -798,16 +752,6 @@ public class Cells
 		return tip;
 	}
 
-	private PvpSummaryTooltip pvpSummaryTooltip(JLabel owner,
-		@Nullable HiscoreResult result, @Nullable ClogResult clog)
-	{
-		PvpSummaryTooltip tip = new PvpSummaryTooltip();
-		tip.setComponent(owner);
-		tip.setIcons(pvpActivityIcons);
-		tip.setData(result, clog);
-		return tip;
-	}
-
 	private JToolTip buildClueTierTooltip(JLabel owner, HiscoreSkill tier, String displayName, boolean compact)
 	{
 		int gridCols = compact ? 10 : 5;
@@ -950,12 +894,6 @@ public class Cells
 	public JLabel getBossLabel(HiscoreSkill boss)
 	{
 		return bossLabels.get(boss);
-	}
-
-	@Nullable
-	public JLabel getPvpSummaryCell()
-	{
-		return pvpSummaryCell;
 	}
 
 	@Nullable
