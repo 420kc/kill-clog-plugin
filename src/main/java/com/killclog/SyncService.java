@@ -48,23 +48,21 @@ class SyncService
 	{
 		final boolean ok;
 		final boolean dryRun;
-		final int code;
 		final String message;
 		/** Server says another sync holds this player's lock: retry, don't fail. */
 		final boolean retryAdvised;
 		final int retryAfterSeconds;
 
-		SyncResult(boolean ok, boolean dryRun, int code, String message)
+		SyncResult(boolean ok, boolean dryRun, String message)
 		{
-			this(ok, dryRun, code, message, false, 0);
+			this(ok, dryRun, message, false, 0);
 		}
 
-		SyncResult(boolean ok, boolean dryRun, int code, String message,
+		SyncResult(boolean ok, boolean dryRun, String message,
 			boolean retryAdvised, int retryAfterSeconds)
 		{
 			this.ok = ok;
 			this.dryRun = dryRun;
-			this.code = code;
 			this.message = message;
 			this.retryAdvised = retryAdvised;
 			this.retryAfterSeconds = retryAfterSeconds;
@@ -94,7 +92,7 @@ class SyncService
 		if (rsn == null || rsn.isBlank())
 		{
 			return CompletableFuture.completedFuture(
-				new SyncResult(false, false, -1, "No player to sync."));
+				new SyncResult(false, false, "No player to sync."));
 		}
 
 		// Rename continuity, local half: if this account's data lives under a
@@ -108,7 +106,7 @@ class SyncService
 			// The disk half of a migration or adoption did not land - the
 			// local store's provenance is unresolved and its bytes must not
 			// become a payload. The next login (or sync) re-decides.
-			return CompletableFuture.completedFuture(new SyncResult(false, false, -1,
+			return CompletableFuture.completedFuture(new SyncResult(false, false,
 				"Local name ownership is still settling - sync skipped this round."));
 		}
 
@@ -123,7 +121,7 @@ class SyncService
 		if (clog == null || clog.getObtainedItems().isEmpty())
 		{
 			return CompletableFuture.completedFuture(
-				new SyncResult(false, false, -1, "No local collection log to sync yet."));
+				new SyncResult(false, false, "No local collection log to sync yet."));
 		}
 
 		String body = gson.toJson(buildBody(accountHash, accountType, clog, personalBests, detailedPersonalBests));
@@ -142,14 +140,14 @@ class SyncService
 		if (request == null)
 		{
 			return CompletableFuture.completedFuture(
-				new SyncResult(false, false, -1, "Sync session ended before send."));
+				new SyncResult(false, false, "Sync session ended before send."));
 		}
 		return request.thenApply(r ->
 		{
 			if (r.code >= 200 && r.code < 300)
 			{
 				boolean dryRun = responseSaysDryRun(r.body);
-				return new SyncResult(true, dryRun, r.code,
+				return new SyncResult(true, dryRun,
 					"Collection log published! ("
 					+ observedCount + (observedCount == 1 ? " item" : " items")
 					+ (pbCount > 0 ? ", " + pbCount + (pbCount == 1 ? " pb" : " pbs") : "")
@@ -160,7 +158,7 @@ class SyncService
 			// short retry instead of booking a failure.
 			if (r.code == 409 && r.body != null && r.body.contains("sync_in_flight"))
 			{
-				return new SyncResult(false, false, r.code,
+				return new SyncResult(false, false,
 					"Another sync for this account is in flight - retrying shortly.",
 					true, parseRetryAfterSeconds(r.body));
 			}
@@ -168,22 +166,22 @@ class SyncService
 			// contract): each gets plain words instead of a bare HTTP code.
 			if (r.code == 409 && r.body != null && r.body.contains("name_active_with_another_account"))
 			{
-				return new SyncResult(false, false, r.code,
+				return new SyncResult(false, false,
 					"This name's previous owner played recently - Kill Clog will "
 					+ "accept your log after their continuity window passes.");
 			}
 			if (r.code == 409 && r.body != null && r.body.contains("account_hash_mismatch"))
 			{
-				return new SyncResult(false, false, r.code,
+				return new SyncResult(false, false,
 					"This name is registered to a different account on Kill Clog.");
 			}
 			if (r.code == 451)
 			{
-				return new SyncResult(false, false, r.code,
+				return new SyncResult(false, false,
 					"This account has opted out of Kill Clog publishing.");
 			}
 			log.debug("killclog sync failed for '{}': HTTP {}", rsn, r.code);
-			return new SyncResult(false, false, r.code,
+			return new SyncResult(false, false,
 				"Collection log publication failed (HTTP " + r.code + ").");
 		});
 	}

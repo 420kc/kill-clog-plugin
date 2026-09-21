@@ -163,7 +163,7 @@ public class PluginPublicationCharacterizationTest
 		assertEquals(1, syncs.size());
 		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), any(), any(), any(), eq(7L), any(), eq(0));
 
-		syncs.get(0).complete(new SyncService.SyncResult(true, false, 200, "Synced 12 items"));
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced 12 items"));
 		settle();
 		verify(panel).showSyncResult(true, true, "Synced 12 items");
 		verify(chatNotifier).send(ChatNotice.SYNC_RESULT, "Synced 12 items");
@@ -180,10 +180,10 @@ public class PluginPublicationCharacterizationTest
 		settle();
 		assertEquals(1, syncs.size());
 
-		syncs.get(0).complete(new SyncService.SyncResult(true, false, 200, "First"));
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "First"));
 		settle();
 		assertEquals(2, syncs.size());
-		syncs.get(1).complete(new SyncService.SyncResult(true, false, 200, "Second"));
+		syncs.get(1).complete(new SyncService.SyncResult(true, false, "Second"));
 		settle();
 		assertEquals(2, syncs.size());
 		verify(panel, times(2)).showSyncProgress(true, "publishing...", false);
@@ -206,7 +206,7 @@ public class PluginPublicationCharacterizationTest
 		verify(panel).showSyncProgress(false, "publishing...", false);
 		assertEquals(1, syncs.size());
 
-		syncs.get(0).complete(new SyncService.SyncResult(true, false, 200, "Synced"));
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
 		settle();
 		verify(panel).showSyncResult(false, true, "Synced");
 		verify(chatNotifier, never()).send(ChatNotice.SYNC_RESULT, "Synced");
@@ -239,7 +239,7 @@ public class PluginPublicationCharacterizationTest
 		logout();
 		epoch = 8;
 		settle();
-		syncs.get(0).complete(new SyncService.SyncResult(true, false, 200, "Synced"));
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
 		settle();
 		verify(panel, never()).showSyncResult(anyBoolean(), anyBoolean(), any());
 		verify(chatNotifier, never()).send(any(), any());
@@ -285,13 +285,13 @@ public class PluginPublicationCharacterizationTest
 		settle();
 		assertEquals(1, syncs.size());
 
-		syncs.get(0).complete(new SyncService.SyncResult(true, false, 200, "Old"));
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Old"));
 		settle();
 		assertEquals(2, syncs.size());
 		verify(panel, never()).showSyncResult(anyBoolean(), anyBoolean(), eq("Old"));
 		verify(chatNotifier, never()).send(ChatNotice.SYNC_RESULT, "Old");
 
-		syncs.get(1).complete(new SyncService.SyncResult(true, false, 200, "New"));
+		syncs.get(1).complete(new SyncService.SyncResult(true, false, "New"));
 		settle();
 		verify(panel).showSyncResult(true, true, "New");
 	}
@@ -301,13 +301,13 @@ public class PluginPublicationCharacterizationTest
 	{
 		syncHandler.run();
 		settle();
-		syncs.get(0).complete(new SyncService.SyncResult(false, false, 409, "Another sync holds the lock", true, 5));
+		syncs.get(0).complete(new SyncService.SyncResult(false, false, "Another sync holds the lock", true, 5));
 		settle();
 		verify(panel).showSyncProgress(true, "retrying...", false);
 		assertEquals(5_000L, executor.lastDelayMs());
 		assertEquals(2, syncs.size());
 
-		syncs.get(1).complete(new SyncService.SyncResult(false, false, 409, "Another sync holds the lock", true, 5));
+		syncs.get(1).complete(new SyncService.SyncResult(false, false, "Another sync holds the lock", true, 5));
 		settle();
 		assertEquals(2, syncs.size());
 		verify(panel).showSyncResult(true, false, "Another sync holds the lock");
@@ -346,7 +346,7 @@ public class PluginPublicationCharacterizationTest
 		verify(panel, never()).showSyncProgress(anyBoolean(), any(), anyBoolean());
 		verify(chatNotifier, never()).send(any(), any());
 
-		syncs.get(0).complete(new SyncService.SyncResult(true, false, 200, "Synced"));
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
 		settle();
 		assertEquals(ProfileAppearanceService.PUBLISH_RETRY_DELAY_MS, executor.lastDelayMs());
 		assertEquals(2, publishes.size());
@@ -370,7 +370,7 @@ public class PluginPublicationCharacterizationTest
 		publishes.get(0).complete(new ProfileAppearanceService.PublishResult(
 			ProfileAppearanceService.Outcome.PROFILE_REQUIRED, null));
 		settle();
-		syncs.get(0).complete(new SyncService.SyncResult(false, false, 500, "Server unavailable"));
+		syncs.get(0).complete(new SyncService.SyncResult(false, false, "Server unavailable"));
 		settle();
 		verify(panel).showCharacterPublishStatus(KillClogPlugin.CHARACTER_FAILED_STATUS, false, true, null);
 		verify(panel, never()).showSyncResult(anyBoolean(), anyBoolean(), any());
@@ -398,7 +398,7 @@ public class PluginPublicationCharacterizationTest
 		settle();
 		verify(panel).showCharacterPublishStatus(" ", false, false, null);
 
-		syncs.get(0).complete(new SyncService.SyncResult(true, false, 200, "Synced"));
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
 		settle();
 		verify(panel, never()).showCharacterPublishStatus(eq(KillClogPlugin.CHARACTER_FAILED_STATUS), anyBoolean(), anyBoolean(), any());
 		verify(panel, never()).showSyncResult(anyBoolean(), anyBoolean(), any());
@@ -451,13 +451,13 @@ public class PluginPublicationCharacterizationTest
 		settle();
 		assertEquals(1, syncs.size());
 
-		syncs.get(0).complete(new SyncService.SyncResult(true, false, 200, "Old"));
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Old"));
 		settle();
 		assertEquals(2, syncs.size());
 		verify(panel, never()).showSyncResult(anyBoolean(), anyBoolean(), eq("Old"));
 		verify(chatNotifier, never()).send(ChatNotice.SYNC_RESULT, "Old");
 
-		syncs.get(1).complete(new SyncService.SyncResult(true, false, 200, "New"));
+		syncs.get(1).complete(new SyncService.SyncResult(true, false, "New"));
 		settle();
 		verify(panel).showSyncResult(true, true, "New");
 	}
