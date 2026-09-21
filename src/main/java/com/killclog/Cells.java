@@ -80,6 +80,8 @@ public class Cells
 	private final BufferedImage[] clueIcons = new BufferedImage[8];
 	@Getter
 	private final BufferedImage[] pvpActivityIcons = new BufferedImage[5];
+	@Getter
+	private final BufferedImage[] rareIcons = new BufferedImage[5];
 
 	// Cell labels
 	private final Map<HiscoreSkill, JLabel> bossLabels = new LinkedHashMap<>();
@@ -87,11 +89,6 @@ public class Cells
 	private final Map<HiscoreSkill, JLabel> clueTierLabels = new LinkedHashMap<>();
 	private final Map<HiscoreSkill, ImageIcon> originalIcons = new LinkedHashMap<>();
 	private final Map<HiscoreSkill, ImageIcon> dimmedIcons = new LinkedHashMap<>();
-	@Nullable private JLabel thirdAgeCell;
-	@Nullable private JLabel gildedCell;
-	@Nullable private JLabel hardRare;
-	@Nullable private JLabel eliteRare;
-	@Nullable private JLabel masterRare;
 
 	public Cells(SpriteManager spriteManager, ItemManager itemManager,
 		TooltipController tooltipController, ComparisonController comparison,
@@ -202,10 +199,13 @@ public class Cells
 					if (comparison.isComparisonMode() && comparison.getCompareHiscoreResult() != null)
 					{
 						return wrapSideBySide(this,
-							clueSummaryTooltip(this, lookupSession.getHiscoreResult()),
-							clueSummaryTooltip(this, comparison.getCompareHiscoreResult()));
+							clueSummaryTooltip(this, lookupSession.getHiscoreResult(),
+								lookupSession.getClogResult(), false),
+							clueSummaryTooltip(this, comparison.getCompareHiscoreResult(),
+								comparison.getCompareClogResult(), true));
 					}
-					ClueSummaryTooltip tip = clueSummaryTooltip(this, lookupSession.getHiscoreResult());
+					ClueSummaryTooltip tip = clueSummaryTooltip(this, lookupSession.getHiscoreResult(),
+						lookupSession.getClogResult(), false);
 					tooltipController.keepTooltipOnHover(tip, (JPanel) this.getParent());
 					return tip;
 				}
@@ -268,60 +268,6 @@ public class Cells
 		styleLabel(label, tier.getName());
 		setItemIcon(label, itemId);
 		clueTierLabels.put(tier, label);
-		return wrapInCell(label);
-	}
-
-	public JPanel buildClueRareCell(String name, int itemId, String clogCategory, boolean isThirdAge)
-	{
-		JLabel label = new JLabel()
-		{
-			@Override
-			public JToolTip createToolTip()
-			{
-				return buildClueRareTooltip(this, name, clogCategory);
-			}
-		};
-		styleLabel(label, name);
-		setItemIcon(label, itemId);
-
-		if (isThirdAge)
-		{
-			thirdAgeCell = label;
-		}
-		else
-		{
-			gildedCell = label;
-		}
-
-		return wrapInCell(label);
-	}
-
-	public JPanel buildCustomRareCell(String name, int iconItemId, String rareKey, int[] itemIds)
-	{
-		JLabel label = new JLabel()
-		{
-			@Override
-			public JToolTip createToolTip()
-			{
-				return buildCustomRareTooltip(this, name, rareKey, itemIds);
-			}
-		};
-		styleLabel(label, name);
-		setItemIcon(label, iconItemId);
-
-		if (PanelData.RARE_HARD.equals(rareKey))
-		{
-			hardRare = label;
-		}
-		else if (PanelData.RARE_ELITE.equals(rareKey))
-		{
-			eliteRare = label;
-		}
-		else if (PanelData.RARE_MASTER.equals(rareKey))
-		{
-			masterRare = label;
-		}
-
 		return wrapInCell(label);
 	}
 
@@ -394,14 +340,23 @@ public class Cells
 		}
 	}
 
-	/** Write clog-driven values into the rare cells (3rd Age, Gilded, Hard/Elite/Master Treasure). */
+	/** Build the rare clue collections from the clog; the Clue Summary lists and opens them. */
 	public void renderClog(ClogResult result, KillClogConfig config)
 	{
-		writeClueRare(thirdAgeCell, "3rd Age", PanelData.CLOG_THIRD_AGE, result, config);
-		writeClueRare(gildedCell, "Gilded", PanelData.CLOG_GILDED, result, config);
-		writeCustomRare(hardRare, "Hard Treasure (Rare)", PanelData.RARE_HARD, PanelData.HARD_RARE_ITEMS, result, config);
-		writeCustomRare(eliteRare, "Elite Treasure (Rare)", PanelData.RARE_ELITE, PanelData.ELITE_RARE_ITEMS, result, config);
-		writeCustomRare(masterRare, "Master Treasure (Rare)", PanelData.RARE_MASTER, PanelData.MASTER_RARE_ITEMS, result, config);
+		for (int i = 0; i < 2; i++)
+		{
+			TooltipData data = tooltipDataBuilder.buildClueRareData(
+				PanelData.RARE_NAMES[i], PanelData.RARE_KEYS[i], result);
+			if (data != null)
+			{
+				rareTooltips.put(PanelData.RARE_KEYS[i], data);
+			}
+		}
+		for (int i = 2; i < PanelData.RARE_KEYS.length; i++)
+		{
+			rareTooltips.put(PanelData.RARE_KEYS[i], tooltipDataBuilder.buildCustomRareData(
+				PanelData.RARE_NAMES[i], PanelData.RARE_ITEMS[i], result));
+		}
 	}
 
 	/**
@@ -424,11 +379,6 @@ public class Cells
 		}
 		resetLabels(activityLabels);
 		resetLabels(clueTierLabels);
-		resetRare(thirdAgeCell, "3rd Age");
-		resetRare(gildedCell, "Gilded");
-		resetRare(hardRare, "Hard Treasure (Rare)");
-		resetRare(eliteRare, "Elite Treasure (Rare)");
-		resetRare(masterRare, "Master Treasure (Rare)");
 	}
 
 	private void resetLabels(Map<HiscoreSkill, JLabel> labels)
@@ -440,49 +390,6 @@ public class Cells
 			label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 			tooltipController.setTooltipText(label, entry.getKey().getName());
 		}
-	}
-
-	private void resetRare(@Nullable JLabel label, String name)
-	{
-		if (label != null)
-		{
-			label.setText(ClogHelper.pad("--"));
-			label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-			tooltipController.setTooltipText(label, name);
-		}
-	}
-
-	private void writeClueRare(@Nullable JLabel label, String name, String clogCategory,
-		ClogResult result, KillClogConfig config)
-	{
-		if (label == null)
-		{
-			return;
-		}
-		TooltipData data = tooltipDataBuilder.buildClueRareData(name, clogCategory, result);
-		if (data == null)
-		{
-			tooltipController.setTooltipText(label, name);
-			return;
-		}
-		label.setText(ClogHelper.pad(data.obtainedCount > 0 ? ClogHelper.formatKc(data.obtainedCount) : "--"));
-		rareTooltips.put(clogCategory, data);
-		label.setForeground(rareColor(data, config));
-		tooltipController.setTooltipText(label, " ");
-	}
-
-	private void writeCustomRare(@Nullable JLabel label, String name, String rareKey,
-		int[] itemIds, ClogResult result, KillClogConfig config)
-	{
-		if (label == null)
-		{
-			return;
-		}
-		TooltipData data = tooltipDataBuilder.buildCustomRareData(name, itemIds, result);
-		label.setText(ClogHelper.pad(data.obtainedCount > 0 ? ClogHelper.formatKc(data.obtainedCount) : "--"));
-		rareTooltips.put(rareKey, data);
-		label.setForeground(rareColor(data, config));
-		tooltipController.setTooltipText(label, " ");
 	}
 
 	/**
@@ -570,52 +477,20 @@ public class Cells
 			tooltipController.setTooltipText(label, " ");
 		}
 
-		putUnsyncedRare(PanelData.CLOG_THIRD_AGE, thirdAgeCell,
-			"3rd Age", PanelData.THIRD_AGE_ITEMS, catalog);
-		putUnsyncedRare(PanelData.CLOG_GILDED, gildedCell,
-			"Gilded", PanelData.GILDED_ITEMS, catalog);
-		putUnsyncedRare(PanelData.RARE_HARD, hardRare,
-			"Hard Treasure (Rare)", PanelData.HARD_RARE_ITEMS, catalog);
-		putUnsyncedRare(PanelData.RARE_ELITE, eliteRare,
-			"Elite Treasure (Rare)", PanelData.ELITE_RARE_ITEMS, catalog);
-		putUnsyncedRare(PanelData.RARE_MASTER, masterRare,
-			"Master Treasure (Rare)", PanelData.MASTER_RARE_ITEMS, catalog);
-	}
-
-	private void putUnsyncedRare(String key, @Nullable JLabel label, String name,
-		int[] itemIds, @Nullable ClogResult catalog)
-	{
-		TooltipData data = tooltipDataBuilder.buildUnsyncedTooltipData(name, key, -1, null, -1, catalog);
-		if (data == null)
+		for (int i = 0; i < PanelData.RARE_KEYS.length; i++)
 		{
-			data = tooltipDataBuilder.buildUnsyncedItemData(name, itemIds, catalog);
+			String key = PanelData.RARE_KEYS[i];
+			String name = PanelData.RARE_NAMES[i];
+			TooltipData data = tooltipDataBuilder.buildUnsyncedTooltipData(name, key, -1, null, -1, catalog);
+			if (data == null)
+			{
+				data = tooltipDataBuilder.buildUnsyncedItemData(name, PanelData.RARE_ITEMS[i], catalog);
+			}
+			if (data != null)
+			{
+				rareTooltips.put(key, data);
+			}
 		}
-		if (data != null)
-		{
-			rareTooltips.put(key, data);
-		}
-		if (label != null)
-		{
-			tooltipController.setTooltipText(label, " ");
-		}
-	}
-
-	private static Color rareColor(TooltipData data, KillClogConfig config)
-	{
-		if (data.obtainedCount < 0)
-		{
-			// No collection-log data for this player (e.g. tracked but never
-			// synced to a provider). Show the normal KC color instead of
-			// emptyClogColor, which reads as a real 0% / not-started profile.
-			return KC_COLOR;
-		}
-		if (data.obtainedCount == 0)
-		{
-			return config.completionistHighlighter()
-				? config.emptyClogColor() : ColorScheme.LIGHT_GRAY_COLOR;
-		}
-		return config.completionistHighlighter()
-			? ClogHelper.clogColor(data.obtainedCount, data.totalItems, config) : KC_COLOR;
 	}
 
 	// Tooltip routing
@@ -743,9 +618,26 @@ public class Cells
 		return data;
 	}
 
-	private ClueSummaryTooltip clueSummaryTooltip(JLabel owner, @Nullable HiscoreResult result)
+	private ClueSummaryTooltip clueSummaryTooltip(JLabel owner, @Nullable HiscoreResult result,
+		@Nullable ClogResult clog, boolean rival)
 	{
 		ClueSummaryTooltip tip = new ClueSummaryTooltip();
+		tip.setRareIcons(rareIcons);
+		for (int i = 0; i < PanelData.CLUE_TIERS.length; i++)
+		{
+			tip.setProgress(i + 1, ClogHelper.clogCounts(
+				PanelData.CLUE_CATEGORIES.get(PanelData.CLUE_TIERS[i]), clog));
+		}
+		// The Mimic's one log slot is the 3rd age ring.
+		tip.setProgress(7, clog == null ? null : counts(tooltipDataBuilder.buildCustomRareData(
+			"Mimic", new int[]{PanelData.THIRD_AGE_RING_ITEM_ID}, clog)));
+		for (int i = 0; i < PanelData.RARE_KEYS.length; i++)
+		{
+			tip.setRare(i, counts(rival ? rivalRare(i) : rareTooltips.get(PanelData.RARE_KEYS[i])));
+		}
+		// A rare row opens that collection's own modal where the summary was.
+		tip.setOnOpenRare(row -> tooltipController.pinTooltip(owner, (JPanel) owner.getParent(),
+			buildRareTooltip(owner, row)));
 		tip.setComponent(owner);
 		tip.setIcons(clueIcons);
 		tip.setData(result, config.showTooltipRank());
@@ -778,6 +670,29 @@ public class Cells
 		return tier == HiscoreSkill.CLUE_SCROLL_EASY
 			|| tier == HiscoreSkill.CLUE_SCROLL_MEDIUM
 			|| tier == HiscoreSkill.CLUE_SCROLL_HARD;
+	}
+
+	/** Progress for a Clue Summary row; unsynced or unknown data shows none. */
+	@Nullable
+	private static int[] counts(@Nullable TooltipData data)
+	{
+		return data == null || data.obtainedCount < 0 ? null
+			: new int[]{data.obtainedCount, data.totalItems};
+	}
+
+	private TooltipData rivalRare(int row)
+	{
+		return row < 2
+			? comparison.buildClueRare(PanelData.RARE_NAMES[row], PanelData.RARE_KEYS[row])
+			: comparison.buildCustomRare(PanelData.RARE_NAMES[row], PanelData.RARE_ITEMS[row]);
+	}
+
+	private JToolTip buildRareTooltip(JLabel owner, int row)
+	{
+		return row < 2
+			? buildClueRareTooltip(owner, PanelData.RARE_NAMES[row], PanelData.RARE_KEYS[row])
+			: buildCustomRareTooltip(owner, PanelData.RARE_NAMES[row], PanelData.RARE_KEYS[row],
+				PanelData.RARE_ITEMS[row]);
 	}
 
 	private JToolTip buildClueRareTooltip(JLabel owner, String name, String clogCategory)
@@ -894,36 +809,6 @@ public class Cells
 	public JLabel getBossLabel(HiscoreSkill boss)
 	{
 		return bossLabels.get(boss);
-	}
-
-	@Nullable
-	public JLabel getThirdAgeCell()
-	{
-		return thirdAgeCell;
-	}
-
-	@Nullable
-	public JLabel getGildedCell()
-	{
-		return gildedCell;
-	}
-
-	@Nullable
-	public JLabel getHardRare()
-	{
-		return hardRare;
-	}
-
-	@Nullable
-	public JLabel getEliteRare()
-	{
-		return eliteRare;
-	}
-
-	@Nullable
-	public JLabel getMasterRare()
-	{
-		return masterRare;
 	}
 
 	@Nullable

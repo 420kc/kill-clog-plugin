@@ -277,12 +277,21 @@ class TooltipController
 			pinDismissedComponent = null;
 			return;
 		}
+		pinTooltip(source, cell, source.createToolTip());
+	}
+
+	/**
+	 * Pin a specific modal on a cell: how one modal opens another in its place.
+	 * It skips the toggle-off check above, because the press that asked for this
+	 * is the same press that just dismissed the modal it came from.
+	 */
+	void pinTooltip(JComponent source, JPanel cell, JToolTip tip)
+	{
 		pinDismissedComponent = null;
 
 		hidePinnedTooltip();
 
 		String tooltipText = source.getToolTipText();
-		JToolTip tip = source.createToolTip();
 		tip.setTipText(tooltipText);
 		guardPinnedTooltip(tip);
 

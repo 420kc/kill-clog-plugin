@@ -12,9 +12,7 @@ import java.awt.event.KeyListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import javax.annotation.Nullable;
@@ -568,25 +566,7 @@ public class KillClogPanel extends PluginPanel
 		traySkillsHost = buildSkillHost();
 		grid.add(traySkillsHost);
 
-		// Rare row 1: [3rd Age] [ ] [Gilded]
-		JPanel row1 = new JPanel(new GridLayout(1, 3));
-		row1.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		row1.setAlignmentX(0f);
-		row1.add(cells.buildClueRareCell("3rd Age", PanelData.THIRD_AGE_ITEM_ID, PanelData.CLOG_THIRD_AGE, true));
-		row1.add(cells.wrapInCell(new JLabel()));
-		row1.add(cells.buildClueRareCell("Gilded", PanelData.GILDED_ITEM_ID, PanelData.CLOG_GILDED, false));
-		grid.add(row1);
-
-		// Clue row 2: Custom rare cells (casket icons)
-		JPanel rareRow = new JPanel(new GridLayout(1, 3));
-		rareRow.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		rareRow.setAlignmentX(0f);
-		rareRow.add(cells.buildCustomRareCell("Hard Treasure (Rare)", 20544, PanelData.RARE_HARD, PanelData.HARD_RARE_ITEMS));
-		rareRow.add(cells.buildCustomRareCell("Elite Treasure (Rare)", 20543, PanelData.RARE_ELITE, PanelData.ELITE_RARE_ITEMS));
-		rareRow.add(cells.buildCustomRareCell("Master Treasure (Rare)", 19836, PanelData.RARE_MASTER, PanelData.MASTER_RARE_ITEMS));
-		grid.add(rareRow);
-
-		// Clue rows 3-4: Clue tiers
+		// The six clue tiers. The rare collections open from the Clue Summary.
 		JPanel clueRow1 = new JPanel(new GridLayout(1, 3));
 		clueRow1.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		clueRow1.setAlignmentX(0f);
@@ -1101,14 +1081,8 @@ public class KillClogPanel extends PluginPanel
 			cells.renderClog(lookupSession.getClogResult(), config);
 			if (config.completionistHighlighter())
 			{
-				Map<String, JLabel> rareCells = new LinkedHashMap<>();
-				rareCells.put(PanelData.CLOG_THIRD_AGE, cells.getThirdAgeCell());
-				rareCells.put(PanelData.CLOG_GILDED, cells.getGildedCell());
-				rareCells.put(PanelData.RARE_HARD, cells.getHardRare());
-				rareCells.put(PanelData.RARE_ELITE, cells.getEliteRare());
-				rareCells.put(PanelData.RARE_MASTER, cells.getMasterRare());
 				highlighter.colorCellsByCompletion(lookupSession.getHiscoreResult(), lookupSession.getClogResult(),
-					cells.getRareTooltips(), rareCells, fourTwentyMode, FourTwentyMode.GREEN);
+					fourTwentyMode, FourTwentyMode.GREEN);
 				highlighter.colorEmptyCells();
 			}
 		}

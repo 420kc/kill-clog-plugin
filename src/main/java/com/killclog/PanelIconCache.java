@@ -101,6 +101,13 @@ final class PanelIconCache
 			loadItemImage(23184, img ->
 				cells.getClueIcons()[7] = ImageUtil.resizeImage(
 					ImageUtil.resizeCanvas(img, 25, 25), 13, 13));
+			for (int i = 0; i < PanelData.RARE_ICON_ITEM_IDS.length; i++)
+			{
+				final int idx = i;
+				loadItemImage(PanelData.RARE_ICON_ITEM_IDS[i], img ->
+					cells.getRareIcons()[idx] = ImageUtil.resizeImage(
+						ImageUtil.resizeCanvas(img, 25, 25), 13, 13));
+			}
 		});
 
 		loadClueAllIcon(cells);

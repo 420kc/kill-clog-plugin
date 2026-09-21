@@ -101,8 +101,8 @@ public class PanelCellResetCharacterizationTest
 			assertNotEquals(ColorScheme.LIGHT_GRAY_COLOR, config.emptyClogColor());
 			assertEquals(config.emptyClogColor(), vorkath.getForeground());
 			assertEquals(ClogHelper.pad("3"), cells.getClueTierLabels().get(HiscoreSkill.CLUE_SCROLL_HARD).getText());
-			assertEquals(ClogHelper.pad("1"), cells.getThirdAgeCell().getText());
-			assertEquals(" ", cells.getThirdAgeCell().getToolTipText());
+			// The rare collections have no cells of their own; their data feeds the Clue Summary.
+			assertEquals(1, cells.getRareTooltips().get(PanelData.CLOG_THIRD_AGE).obtainedCount);
 			assertFalse(cells.getTooltipDataMap().isEmpty());
 			assertEquals(5, cells.getRareTooltips().size());
 			assertTrue(compareLabel.isVisible());
@@ -124,11 +124,6 @@ public class PanelCellResetCharacterizationTest
 			{
 				assertResting(entry.getValue(), entry.getKey().getName());
 			}
-			assertResting(cells.getThirdAgeCell(), "3rd Age");
-			assertResting(cells.getGildedCell(), "Gilded");
-			assertResting(cells.getHardRare(), "Hard Treasure (Rare)");
-			assertResting(cells.getEliteRare(), "Elite Treasure (Rare)");
-			assertResting(cells.getMasterRare(), "Master Treasure (Rare)");
 			assertTrue(cells.getTooltipDataMap().isEmpty());
 			assertTrue(cells.getRareTooltips().isEmpty());
 

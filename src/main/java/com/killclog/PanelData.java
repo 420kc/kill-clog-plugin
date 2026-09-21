@@ -81,6 +81,16 @@ final class PanelData
 
 	static final int[] MASTER_RARE_ITEMS = itemIds("master_rare_items");
 
+	// The rare collections in Clue Summary order: the two clue-wide sets, then the tier rares.
+	static final String[] RARE_KEYS = {CLOG_THIRD_AGE, CLOG_GILDED, RARE_HARD, RARE_ELITE, RARE_MASTER};
+	static final String[] RARE_NAMES = {
+		"3rd Age", "Gilded", "Hard Treasure (Rare)", "Elite Treasure (Rare)", "Master Treasure (Rare)",
+	};
+	static final int[][] RARE_ITEMS = {
+		THIRD_AGE_ITEMS, GILDED_ITEMS, HARD_RARE_ITEMS, ELITE_RARE_ITEMS, MASTER_RARE_ITEMS,
+	};
+	static final int[] RARE_ICON_ITEM_IDS = {THIRD_AGE_ITEM_ID, GILDED_ITEM_ID, 20544, 20543, 19836};
+
 	// Clue tier -> collection-log category key, derived from the enum name:
 	// CLUE_SCROLL_BEGINNER -> beginner_treasure_trails.
 	static final Map<HiscoreSkill, String> CLUE_CATEGORIES = new LinkedHashMap<>();

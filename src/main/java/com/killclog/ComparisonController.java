@@ -742,33 +742,6 @@ public class ComparisonController
 			blueHiscore != null ? ClogHelper.displayTotalLevel(blueHiscore, virtualTotal) : -1,
 			redHiscore != null ? ClogHelper.displayTotalLevel(redHiscore, virtualTotal) : -1);
 
-		Map<String, TooltipData> rareTooltips = cells.getRareTooltips();
-		TooltipData redThirdAge = buildClueRare("3rd Age", PanelData.CLOG_THIRD_AGE);
-		TooltipData redGilded = buildClueRare("Gilded", PanelData.CLOG_GILDED);
-		TooltipData redHardRare = buildCustomRare("Hard Treasure (Rare)", PanelData.HARD_RARE_ITEMS);
-		TooltipData redEliteRare = buildCustomRare("Elite Treasure (Rare)", PanelData.ELITE_RARE_ITEMS);
-		TooltipData redMasterRare = buildCustomRare("Master Treasure (Rare)", PanelData.MASTER_RARE_ITEMS);
-		compareOrRestore(cells.getThirdAgeCell(),
-			rareCount(rareTooltips.get(PanelData.CLOG_THIRD_AGE)),
-			rareCount(redThirdAge),
-			rareTooltips.get(PanelData.CLOG_THIRD_AGE), redThirdAge);
-		compareOrRestore(cells.getGildedCell(),
-			rareCount(rareTooltips.get(PanelData.CLOG_GILDED)),
-			rareCount(redGilded),
-			rareTooltips.get(PanelData.CLOG_GILDED), redGilded);
-
-		compareOrRestore(cells.getHardRare(),
-			rareCount(rareTooltips.get(PanelData.RARE_HARD)),
-			rareCount(redHardRare),
-			rareTooltips.get(PanelData.RARE_HARD), redHardRare);
-		compareOrRestore(cells.getEliteRare(),
-			rareCount(rareTooltips.get(PanelData.RARE_ELITE)),
-			rareCount(redEliteRare),
-			rareTooltips.get(PanelData.RARE_ELITE), redEliteRare);
-		compareOrRestore(cells.getMasterRare(),
-			rareCount(rareTooltips.get(PanelData.RARE_MASTER)),
-			rareCount(redMasterRare),
-			rareTooltips.get(PanelData.RARE_MASTER), redMasterRare);
 	}
 
 	@Nullable
@@ -802,11 +775,6 @@ public class ComparisonController
 	private static int activityScore(@Nullable HiscoreResult r, String name)
 	{
 		return r != null ? r.getActivityScore(name) : -1;
-	}
-
-	private static int rareCount(@Nullable TooltipData data)
-	{
-		return data != null && data.obtainedCount > 0 ? data.obtainedCount : -1;
 	}
 
 	/** Toggle a cell between compare and solo display based on current mode. */

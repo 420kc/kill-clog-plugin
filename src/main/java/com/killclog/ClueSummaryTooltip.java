@@ -4,22 +4,31 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
+import java.util.Arrays;
 import java.util.Locale;
+import java.util.function.IntConsumer;
+import javax.annotation.Nullable;
 import lombok.Setter;
 import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.ui.FontManager;
 
 /**
- * Clue summary tooltip on the Clue All cell.
- * Eight label:value lines: All, Beginner through Master, and Mimic kills.
- * Each line has a clue scroll icon on the left.
+ * Clue Summary on the Clues cell. Eight lines, All through Mimic, each with its
+ * score and rank and, for the six tiers and Mimic, collection progress. Below
+ * them the rare collections, each a row that opens its own modal.
  */
 public class ClueSummaryTooltip extends TitleTooltip
 {
 	private static final int ICON_SIZE = 13;
 	private static final int ICON_GAP = 4;
 	private static final int COL_GAP = 6;
+	private static final int SECTION_PAD = 2;
+	private static final int SUBHEADER_HEIGHT = 16;
+	private static final int MIMIC = 7;
 
 	private static final HiscoreSkill[] CLUE_TIERS = {
 		HiscoreSkill.CLUE_SCROLL_ALL,
@@ -30,16 +39,64 @@ public class ClueSummaryTooltip extends TitleTooltip
 
 	private static final String[] LABELS = {
 		"All", "Beginner", "Easy", "Medium",
-		"Hard", "Elite", "Master",
+		"Hard", "Elite", "Master", "Mimic",
 	};
 
-	private final int[] scores = new int[7];
-	private final int[] ranks = new int[7];
-	private int mimicKc = -1;
-	private int mimicRank = -1;
+	static final String[] RARE_LABELS = {
+		"3rd Age", "Gilded", "Hard Rare", "Elite Rare", "Master Rare",
+	};
+
+	private final int[] scores = new int[8];
+	private final int[] ranks = new int[8];
+	// Collection progress per line; -1 obtained means none is shown.
+	private final int[] obtained = new int[8];
+	private final int[] total = new int[8];
+	private final int[] rareObtained = new int[RARE_LABELS.length];
+	private final int[] rareTotal = new int[RARE_LABELS.length];
+	private int rareTop = -1;
+	private int hoveredRare = -1;
 
 	@Setter
 	private BufferedImage[] icons;
+	@Setter
+	private BufferedImage[] rareIcons;
+	@Nullable
+	private IntConsumer onOpenRare;
+
+	public ClueSummaryTooltip()
+	{
+		Arrays.fill(scores, -1);
+		Arrays.fill(ranks, -1);
+		Arrays.fill(obtained, -1);
+		Arrays.fill(rareObtained, -1);
+		addMouseMotionListener(new MouseMotionAdapter()
+		{
+			@Override
+			public void mouseMoved(MouseEvent e)
+			{
+				setHoveredRare(rareAt(e.getY()));
+			}
+		});
+		addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mousePressed(MouseEvent e)
+			{
+				int row = rareAt(e.getY());
+				if (row >= 0 && onOpenRare != null && e.getButton() == MouseEvent.BUTTON1)
+				{
+					onOpenRare.accept(row);
+					e.consume();
+				}
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e)
+			{
+				setHoveredRare(-1);
+			}
+		});
+	}
 
 	/** A null result renders the full tier ladder with "--" scores: the empty state. */
 	public void setData(HiscoreResult hiscoreResult, boolean showRank)
@@ -56,9 +113,8 @@ public class ClueSummaryTooltip extends TitleTooltip
 			scores[i] = hiscoreResult.getActivityScore(name);
 			ranks[i] = hiscoreResult.getActivityRank(name);
 		}
-
-		mimicKc = hiscoreResult.getKc("Mimic");
-		mimicRank = hiscoreResult.getRank("Mimic");
+		scores[MIMIC] = hiscoreResult.getKc("Mimic");
+		ranks[MIMIC] = hiscoreResult.getRank("Mimic");
 
 		if (showRank && hiscoreResult.isRankDataAvailable())
 		{
@@ -66,24 +122,62 @@ public class ClueSummaryTooltip extends TitleTooltip
 		}
 	}
 
+	/** Collection progress for a line (1 to 6 the tiers, 7 Mimic); null counts leave it bare. */
+	void setProgress(int line, @Nullable int[] counts)
+	{
+		obtained[line] = counts != null ? counts[0] : -1;
+		total[line] = counts != null ? counts[1] : 0;
+	}
+
+	/** One rare collection row; null counts show the row without progress. */
+	void setRare(int row, @Nullable int[] counts)
+	{
+		rareObtained[row] = counts != null ? counts[0] : -1;
+		rareTotal[row] = counts != null ? counts[1] : 0;
+	}
+
+	/** Called with the rare row index when the player presses one. */
+	void setOnOpenRare(@Nullable IntConsumer onOpenRare)
+	{
+		this.onOpenRare = onOpenRare;
+	}
+
+	int hoveredRare()
+	{
+		return hoveredRare;
+	}
+
+	/** The rare row under a y coordinate, or -1. Rows are full width. */
+	int rareAt(int y)
+	{
+		if (rareTop < 0 || y < rareTop)
+		{
+			return -1;
+		}
+		int row = (y - rareTop) / LINE_HEIGHT;
+		return row < RARE_LABELS.length ? row : -1;
+	}
+
+	private void setHoveredRare(int row)
+	{
+		if (hoveredRare != row)
+		{
+			hoveredRare = row;
+			repaint();
+		}
+	}
+
 	@Override
 	protected Dimension getContentSize(int availableWidth)
 	{
 		FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
-
-		int iconCol = ICON_SIZE + ICON_GAP;
-		int labelCol = 0;
-		for (String label : LABELS)
-		{
-			labelCol = Math.max(labelCol, fm.stringWidth(label));
-		}
-		labelCol = Math.max(labelCol, fm.stringWidth("Mimic"));
-		int scoreCol = measureScoreWidth(fm);
-		int rankTail = measureRankTailWidth(fm);
-
-		int totalWidth = iconCol + labelCol + COL_GAP + scoreCol + rankTail;
-
-		return new Dimension(totalWidth, LINE_HEIGHT * 8);
+		int lineWidth = scoreRight(fm, 0) + progressCol(fm) + rankCol(fm);
+		int rareWidth = ICON_SIZE + ICON_GAP + widest(fm, RARE_LABELS)
+			+ progressWidth(fm, rareObtained, rareTotal);
+		int bold = getFontMetrics(FontManager.getRunescapeBoldFont()).stringWidth("Rare Collections");
+		return new Dimension(Math.max(Math.max(lineWidth, rareWidth), bold),
+			LINE_HEIGHT * LABELS.length + separatorHeight(SECTION_PAD)
+				+ SUBHEADER_HEIGHT + LINE_HEIGHT * RARE_LABELS.length);
 	}
 
 	@Override
@@ -92,106 +186,129 @@ public class ClueSummaryTooltip extends TitleTooltip
 		int inset = getInset();
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		FontMetrics fm = g2.getFontMetrics();
-
-		// Compute column positions.
-		int iconCol = ICON_SIZE + ICON_GAP;
-		int labelColW = 0;
-		for (String label : LABELS)
-		{
-			labelColW = Math.max(labelColW, fm.stringWidth(label));
-		}
-		labelColW = Math.max(labelColW, fm.stringWidth("Mimic"));
-		int scoreColW = measureScoreWidth(fm);
-
-		int scoreRight = inset + iconCol + labelColW + COL_GAP + scoreColW;
+		int scoreRight = scoreRight(fm, inset);
+		int rankX = scoreRight + progressCol(fm);
 
 		int y = startY;
 		for (int i = 0; i < LABELS.length; i++)
 		{
-			paintLine(g2, fm, inset, y, icon(i), LABELS[i], scores[i], ranks[i],
-				scoreRight);
+			paintLine(g2, fm, inset, y, i, scoreRight, rankX);
 			y += LINE_HEIGHT;
 		}
 
-		paintLine(g2, fm, inset, y, icon(7), "Mimic", mimicKc, mimicRank,
-			scoreRight);
-	}
+		y = paintSeparator(g2, w, y, SECTION_PAD);
+		g2.setFont(FontManager.getRunescapeBoldFont());
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString("Rare Collections", inset, y + g2.getFontMetrics().getAscent());
+		y += SUBHEADER_HEIGHT;
 
-	private BufferedImage icon(int index)
-	{
-		return icons != null && index < icons.length ? icons[index] : null;
-	}
-
-	private int measureScoreWidth(FontMetrics fm)
-	{
-		int width = fm.stringWidth("--");
-		for (int score : scores)
+		g2.setFont(FontManager.getRunescapeSmallFont());
+		rareTop = y;
+		for (int i = 0; i < RARE_LABELS.length; i++)
 		{
-			width = Math.max(width, fm.stringWidth(scoreText(score)));
+			paintRare(g2, fm, inset, y, w, i);
+			y += LINE_HEIGHT;
 		}
-		width = Math.max(width, fm.stringWidth(scoreText(mimicKc)));
-		return width;
 	}
 
-	private int measureRankTailWidth(FontMetrics fm)
+	private void paintLine(Graphics2D g2, FontMetrics fm, int inset, int y, int line,
+		int scoreRight, int rankX)
 	{
-		int width = 0;
-		for (int rank : ranks)
-		{
-			width = Math.max(width, rankTailWidth(fm, rank));
-		}
-		width = Math.max(width, rankTailWidth(fm, mimicRank));
-		return width;
-	}
-
-	private static int rankTailWidth(FontMetrics fm, int rank)
-	{
-		return rank > 0 ? 1 + fm.stringWidth(rankTailText(rank)) : 0;
-	}
-
-	private void paintLine(Graphics2D g2, FontMetrics fm, int inset, int y,
-		BufferedImage icon, String label, int score, int rank,
-		int scoreRight)
-	{
-		int x = inset;
 		int textY = y + fm.getAscent();
+		paintIcon(g2, icons, line, inset, y);
 
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString(LABELS[line], inset + ICON_SIZE + ICON_GAP, textY);
+
+		g2.setColor(Color.WHITE);
+		drawRightAligned(g2, fm, scoreText(scores[line]), scoreRight, textY);
+
+		// Progress rides in its own column, so ranks stay aligned down the card.
+		if (obtained[line] >= 0)
+		{
+			paintWrappedProgressCount(g2, fm, scoreRight, textY, obtained[line], total[line]);
+		}
+
+		if (scores[line] > 0 && ranks[line] > 0)
+		{
+			String rankPrefix = " #";
+			g2.setColor(OSRS_ORANGE);
+			g2.drawString(rankPrefix, rankX + 1, textY);
+			g2.setColor(Color.WHITE);
+			g2.drawString(String.format(Locale.US, "%,d", ranks[line]),
+				rankX + 1 + fm.stringWidth(rankPrefix), textY);
+		}
+	}
+
+	private void paintRare(Graphics2D g2, FontMetrics fm, int inset, int y, int w, int row)
+	{
+		int textY = y + fm.getAscent();
+		paintIcon(g2, rareIcons, row, inset, y);
+
+		// No pointer cursor in this UI: the hovered row answers in white instead.
+		g2.setColor(row == hoveredRare ? Color.WHITE : OSRS_ORANGE);
+		g2.drawString(RARE_LABELS[row], inset + ICON_SIZE + ICON_GAP, textY);
+
+		if (rareObtained[row] >= 0)
+		{
+			int width = wrappedProgressCountWidth(fm, rareObtained[row], rareTotal[row]);
+			paintWrappedProgressCount(g2, fm, w - inset - width, textY, rareObtained[row], rareTotal[row]);
+		}
+	}
+
+	private static void paintIcon(Graphics2D g2, @Nullable BufferedImage[] set, int index, int x, int y)
+	{
+		BufferedImage icon = set != null && index < set.length ? set[index] : null;
 		if (icon != null)
 		{
-			int iconY = y + (LINE_HEIGHT - ICON_SIZE) / 2;
-			g2.drawImage(icon, x, iconY, null);
+			g2.drawImage(icon, x, y + (LINE_HEIGHT - ICON_SIZE) / 2, null);
 		}
-		x += ICON_SIZE + ICON_GAP;
+	}
 
-		// Column 1: tier label.
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString(label, x, textY);
+	private int scoreRight(FontMetrics fm, int inset)
+	{
+		return inset + ICON_SIZE + ICON_GAP + widest(fm, LABELS) + COL_GAP
+			+ widestValue(fm, scores, TitleTooltip::scoreText);
+	}
 
-		if (score <= 0)
+	private int progressCol(FontMetrics fm)
+	{
+		return progressWidth(fm, obtained, total);
+	}
+
+	private static int progressWidth(FontMetrics fm, int[] obtained, int[] total)
+	{
+		int width = 0;
+		for (int i = 0; i < obtained.length; i++)
 		{
-			// Column 2: no score.
-			String scoreText = scoreText(score);
-			g2.setColor(Color.WHITE);
-			g2.drawString(scoreText, scoreRight - fm.stringWidth(scoreText), textY);
-			return;
+			if (obtained[i] >= 0)
+			{
+				width = Math.max(width, wrappedProgressCountWidth(fm, obtained[i], total[i]));
+			}
 		}
+		return width;
+	}
 
-		// Column 2: score.
-		String scoreText = scoreText(score);
-		g2.setColor(Color.WHITE);
-		g2.drawString(scoreText, scoreRight - fm.stringWidth(scoreText), textY);
-
-		if (rank > 0)
+	private int rankCol(FontMetrics fm)
+	{
+		int width = 0;
+		for (int i = 0; i < ranks.length; i++)
 		{
-			// Rank flows after the score column as " #1,234": the # stays orange,
-			// the rank value is white. Widths match rankTailText so layout is unchanged.
-			String rankPrefix = " #";
-			String rankValue = String.format(Locale.US, "%,d", rank);
-			int rankX = scoreRight + 1;
-			g2.setColor(OSRS_ORANGE);
-			g2.drawString(rankPrefix, rankX, textY);
-			g2.setColor(Color.WHITE);
-			g2.drawString(rankValue, rankX + fm.stringWidth(rankPrefix), textY);
+			if (scores[i] > 0 && ranks[i] > 0)
+			{
+				width = Math.max(width, 1 + fm.stringWidth(rankTailText(ranks[i])));
+			}
 		}
+		return width;
+	}
+
+	private static int widest(FontMetrics fm, String[] labels)
+	{
+		int width = 0;
+		for (String label : labels)
+		{
+			width = Math.max(width, fm.stringWidth(label));
+		}
+		return width;
 	}
 }
