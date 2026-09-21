@@ -21,7 +21,6 @@ import net.runelite.client.ui.FontManager;
  * Sprite grid tooltip for collection log data.
  * Header (title, obtained, rank) via TitleTooltip, then auto-wrapping item grid.
  *
- * <p>Standard 32px sprites: {@code new ImgTooltip()}
  * <p>Compact 15px sprites for dense grids: {@code new ImgTooltip(5, 15)}
  */
 public class ImgTooltip extends TitleTooltip

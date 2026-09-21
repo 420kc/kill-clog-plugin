@@ -16,8 +16,8 @@ import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.QuantityFormatter;
 
 /**
- * PvM summary tooltip on the combat level cell.
- * Stats at top, then Slayer/Superiors and Raids/Mega Rares sections.
+ * Combat Summary tooltip on the combat level cell.
+ * Stats at top, then Slayer/Superiors, Raids/Mega Rares and the PvP rows.
  */
 public class PvmSummaryTooltip extends TitleTooltip
 {

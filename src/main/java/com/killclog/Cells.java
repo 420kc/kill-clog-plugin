@@ -278,8 +278,8 @@ public class Cells
 
 	/**
 	 * Write hiscore-driven values into every primary-side cell: bosses
-	 * (text + color + dimmed-icon swap + 420 mode overrides), activities,
-	 * clue tiers, and the PvP summary cell. Mirrors
+	 * (text + color + dimmed-icon swap + 420 mode overrides), activities
+	 * and clue tiers. Mirrors
 	 * {@link ComparisonController#updateAllCells()} for the comparison side.
 	 */
 	public void renderHiscore(HiscoreResult result, FourTwentyMode fourTwentyMode)

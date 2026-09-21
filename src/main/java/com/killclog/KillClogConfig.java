@@ -180,7 +180,7 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "virtualLevels",
 		name = "Display Virtual Levels",
-		description = "Show XP-derived levels above 99 in skill summaries",
+		description = "Show XP-derived levels above 99 on skills",
 		section = skillsSection,
 		position = 1
 	)

@@ -63,13 +63,7 @@ public class KillClogPanel extends PluginPanel
 			? config.infoBarColor() : KC_COLOR;
 	}
 
-	/**
-	 * The stats row (combat, total level, pvp summary) recolors as one unit:
-	 * cells with values take the info color, and an empty pvp cell takes the
-	 * configured empty color, exactly like every other "--" cell under the
-	 * highlighter. Before this rule the pvp dash kept whatever color the
-	 * previous lookup left behind.
-	 */
+	/** Combat and total level take the info color together; the Clues cell follows the highlighter. */
 	private void colorStatsRow()
 	{
 		Color infoColor = getInfoColor();
@@ -496,7 +490,7 @@ public class KillClogPanel extends PluginPanel
 		grid.setLayout(new BoxLayout(grid, BoxLayout.Y_AXIS));
 		grid.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
-		// Row 0: [Combat Level] [Total Level]
+		// Row 0: [Combat Summary] [Skill Summary] [Clue Summary]
 		JPanel statsRow = new JPanel(new GridLayout(1, 3));
 		statsRow.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		statsRow.setAlignmentX(0f);

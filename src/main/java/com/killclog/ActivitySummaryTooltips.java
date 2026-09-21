@@ -56,7 +56,7 @@ final class ActivitySummaryTooltips
 		return tip;
 	}
 
-	/** One player's PvM summary card: solo mode shows it alone, comparison pairs two. */
+	/** One player's Combat Summary card: solo mode shows it alone, comparison pairs two. */
 	private PvmSummaryTooltip pvmTooltip(JLabel owner, @Nullable HiscoreResult hiscore,
 		@Nullable ClogResult clog, @Nullable CombatAchievementResult ca,
 		Map<HiscoreSkill, TooltipData> tooltipData)

@@ -68,7 +68,6 @@ final class ProgressHighlighter
 				clueAllLabel.setForeground(ClogHelper.clogColor(totalObtained, totalItems, config));
 			}
 		}
-
 	}
 
 	/** Recolor "--" cells to emptyClogColor when highlighter is active. */

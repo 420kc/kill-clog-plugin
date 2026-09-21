@@ -225,8 +225,6 @@ public class ComparisonController
 		listener.onComparisonEnter(compared.rsn != null ? compared.rsn : "");
 	}
 
-	// Red-side data for the pending Mad Angel cell (pre-enum only; see PanelData).
-
 	public void rebuildTooltipData()
 	{
 		compareTooltipDataMap.clear();
@@ -688,7 +686,7 @@ public class ComparisonController
 	 * Refresh every cell on the panel for comparison mode (or restore each
 	 * cell to single-player display when comparison is off). Iterates the
 	 * boss / activity / clue-tier label maps + the standalone cells (combat,
-	 * total, pvp, 3rd age, gilded, rares).
+	 * total).
 	 */
 	public void updateAllCells()
 	{
@@ -727,7 +725,6 @@ public class ComparisonController
 		compareOrRestore(renderTarget.totalLvlCell(),
 			blueHiscore != null ? ClogHelper.displayTotalLevel(blueHiscore, virtualTotal) : -1,
 			redHiscore != null ? ClogHelper.displayTotalLevel(redHiscore, virtualTotal) : -1);
-
 	}
 
 	@Nullable
