@@ -84,6 +84,8 @@ public class LookupSession
 	static final int CLOG_HOLD_MS = 2500;
 	private boolean clogSettled;
 	@Nullable private Runnable heldReveal;
+	/** The lookup the held reveal belongs to; -1 while nothing is held. */
+	private int heldLookup = -1;
 	@Nullable private Timer holdTimer;
 
 	public LookupSession(HiscoreService hiscoreService, ClogService clogService,
@@ -254,6 +256,7 @@ public class LookupSession
 			return;
 		}
 		heldReveal = reveal;
+		heldLookup = thisLookup;
 		holdTimer = new Timer(CLOG_HOLD_MS, e -> releaseHold(thisLookup));
 		holdTimer.setRepeats(false);
 		holdTimer.start();
@@ -268,9 +271,14 @@ public class LookupSession
 
 	private void releaseHold(int thisLookup)
 	{
+		// A late release from an earlier lookup must leave the next one's hold alone.
+		if (heldLookup != thisLookup)
+		{
+			return;
+		}
 		Runnable reveal = heldReveal;
 		clearHold();
-		if (reveal != null && fanout.current(thisLookup))
+		if (fanout.current(thisLookup))
 		{
 			reveal.run();
 		}
@@ -284,6 +292,7 @@ public class LookupSession
 		}
 		holdTimer = null;
 		heldReveal = null;
+		heldLookup = -1;
 	}
 
 	/** Update the displayed self log on the EDT without restarting any lookup lanes. */
