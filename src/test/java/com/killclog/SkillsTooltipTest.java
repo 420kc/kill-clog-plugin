@@ -1,12 +1,10 @@
 package com.killclog;
 
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
-import java.lang.reflect.Field;
 import java.util.Collections;
-import net.runelite.api.Skill;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 
 public class SkillsTooltipTest
 {
@@ -37,30 +35,17 @@ public class SkillsTooltipTest
 	}
 
 	@Test
-	public void hoveringUsesSkillRankAndExitingRestoresOverallRank() throws Exception
+	public void theCardIsTwoRowsAndNothingToHover()
 	{
 		SkillsTooltip tip = new SkillsTooltip();
 		tip.setData(hiscores(24_000_000L, 12_345));
-		Field hovered = SkillsTooltip.class.getDeclaredField("hoveredSkill");
-		hovered.setAccessible(true);
-		hovered.set(tip, Skill.ATTACK);
-		assertEquals(987, tip.displayedRank());
-		assertEquals("13,034,431", tip.displayedXpText());
-
-		MouseEvent exit = new MouseEvent(tip, MouseEvent.MOUSE_EXITED,
-			System.currentTimeMillis(), 0, -1, -1, 0, false);
-		for (MouseListener listener : tip.getMouseListeners())
-		{
-			listener.mouseExited(exit);
-		}
-		assertEquals(12_345, tip.displayedRank());
-		assertEquals("24,000,000", tip.displayedXpText());
-
-		// An unranked hovered skill stays unknown instead of borrowing overall rank.
-		hovered.set(tip, Skill.DEFENCE);
-		assertEquals(-1, tip.displayedRank());
-		tip.setData(null);
-		assertEquals(-1, tip.displayedRank());
+		SkillsTooltip empty = new SkillsTooltip();
+		empty.setData(null);
+		// Same height with or without data, so a comparison pair never staggers.
+		assertEquals(empty.getPreferredSize().height, tip.getPreferredSize().height);
+		// No per-skill readout: the card reserves no hover line under its title.
+		assertFalse(tip.hasHeaderHoverLine());
+		assertNull(tip.getHeaderHoverLineText());
 	}
 
 	@Test

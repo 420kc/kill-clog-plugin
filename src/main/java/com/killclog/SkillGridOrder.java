@@ -29,11 +29,6 @@ final class SkillGridOrder
 	{
 	}
 
-	static Skill at(int row, int column)
-	{
-		return ORDER[row * COLUMNS + column];
-	}
-
 	static List<Skill> skills()
 	{
 		return SKILLS;

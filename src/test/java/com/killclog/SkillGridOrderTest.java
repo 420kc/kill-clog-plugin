@@ -37,7 +37,7 @@ public class SkillGridOrderTest
 		Skill[] skills = new Skill[SkillGridOrder.ROWS];
 		for (int row = 0; row < SkillGridOrder.ROWS; row++)
 		{
-			skills[row] = SkillGridOrder.at(row, column);
+			skills[row] = SkillGridOrder.skills().get(row * SkillGridOrder.COLUMNS + column);
 		}
 		return skills;
 	}

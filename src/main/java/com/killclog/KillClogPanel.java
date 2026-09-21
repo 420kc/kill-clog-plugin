@@ -241,7 +241,7 @@ public class KillClogPanel extends PluginPanel
 		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, clogService, killclogService, new PersonalBests(configManager), config);
 		this.activityTooltips = new ActivitySummaryTooltips(
 			lookupSession, comparison, cells, tooltipController, itemManager,
-			caRewardSprites, config::wikiItemLinks, config::virtualLevels);
+			caRewardSprites, config::wikiItemLinks);
 		this.itemNameResolver = new TooltipItemNameResolver(clientThread, itemManager,
 			this::onTooltipItemNamesResolved);
 		this.cells.setUnsyncedCatalogResolver(itemNameResolver::resolve);
@@ -272,7 +272,6 @@ public class KillClogPanel extends PluginPanel
 		});
 
 		reloadTooltipSprites();
-		SkillsTooltip.loadIcons(skillIconManager);
 
 		// Top border 6 not 10: the missing 4px live inside the status row
 		// (taller row + compensating label inset), which lets the sync

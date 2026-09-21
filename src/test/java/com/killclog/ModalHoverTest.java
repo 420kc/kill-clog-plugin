@@ -92,9 +92,8 @@ public class ModalHoverTest
 		set(player, "petList", Arrays.asList(1337, 1338));
 		set(player, "petNames", new String[]{"Pet snakeling", "Abyssal orphan"});
 		set(player, "petSprites", new BufferedImage[]{tile(15), tile(15)});
-		SkillsTooltip skills = new SkillsTooltip();
-		skills.setData(null);
-		return new TitleTooltip[]{pvm, clog, player, skills};
+		// The Skill Summary is two plain rows since 2.4.0: nothing in it hovers.
+		return new TitleTooltip[]{pvm, clog, player};
 	}
 
 	private static BufferedImage tile(int size)

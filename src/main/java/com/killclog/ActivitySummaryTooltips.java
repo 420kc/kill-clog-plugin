@@ -18,12 +18,11 @@ final class ActivitySummaryTooltips
 	private final ItemManager itemManager;
 	private final CaRewardSprites caRewardSprites;
 	private final Supplier<Boolean> wikiLinks;
-	private final Supplier<Boolean> virtualLevels;
 
 	ActivitySummaryTooltips(LookupSession lookupSession, ComparisonController comparison,
 		Cells cells, TooltipController tooltipController, ItemManager itemManager,
 		CaRewardSprites caRewardSprites,
-		Supplier<Boolean> wikiLinks, Supplier<Boolean> virtualLevels)
+		Supplier<Boolean> wikiLinks)
 	{
 		this.lookupSession = lookupSession;
 		this.comparison = comparison;
@@ -32,7 +31,6 @@ final class ActivitySummaryTooltips
 		this.itemManager = itemManager;
 		this.caRewardSprites = caRewardSprites;
 		this.wikiLinks = wikiLinks;
-		this.virtualLevels = virtualLevels;
 	}
 
 	JToolTip buildPvm(JLabel owner, JPanel parentCell)
@@ -131,7 +129,6 @@ final class ActivitySummaryTooltips
 	{
 		SkillsTooltip tip = new SkillsTooltip();
 		tip.setComponent(owner);
-		tip.setVirtualLevels(virtualLevels.get());
 		tip.setData(result);
 		return tip;
 	}
