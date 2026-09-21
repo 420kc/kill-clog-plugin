@@ -109,7 +109,7 @@ Full page names work, and shorthand such as `gotr`, `mixology`, `pets`, and `hyd
 - **Modal Appearance:** activation, hover feedback, Wiki links, KC, PB, and rank
 - **Lookup:** automatic self-lookup, player comparison, and player-menu lookup
 - **Menu location:** choose which right-click menus show Kill Clog
-- **Skills:** location, virtual levels, and synced-account color mode
+- **Skills:** location, virtual levels, synced-account color mode, and Skill Clogs on or off
 - **Chat:** plugin messages and custom emojis
 - **Progress Highlighter:** Collection Log progress colors
 
