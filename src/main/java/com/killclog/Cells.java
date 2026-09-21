@@ -78,7 +78,7 @@ public class Cells
 	@Getter
 	private final BufferedImage[] pvpActivityIcons = new BufferedImage[5];
 	@Getter
-	private final BufferedImage[] rareIcons = new BufferedImage[5];
+	private final BufferedImage[] rareIcons = new BufferedImage[PanelData.RARE_KEYS.length];
 
 	// Cell labels
 	private final Map<HiscoreSkill, JLabel> bossLabels = new LinkedHashMap<>();
