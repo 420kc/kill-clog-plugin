@@ -212,8 +212,8 @@ public class Cells
 			{
 				if (sprite != null)
 				{
-					label.setIcon(new ImageIcon(ImageUtil.resizeImage(
-						ImageUtil.resizeCanvas(sprite, 25, 25), 20, 20)));
+					label.setIcon(new ImageIcon(ImageUtil.resizeCanvas(ImageUtil.resizeImage(
+						ImageUtil.resizeCanvas(sprite, 25, 25), 16, 16), 20, 20)));
 				}
 			}));
 
