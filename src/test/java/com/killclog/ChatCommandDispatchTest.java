@@ -89,6 +89,51 @@ public class ChatCommandDispatchTest
 		assertEquals("Other player", harness.lookedUp);
 	}
 
+	@Test
+	public void aLeagueWorldReadsTheLeagueAndSaysSo() throws Exception
+	{
+		Harness harness = new Harness(pets());
+		KillclogService killclog = org.mockito.Mockito.mock(KillclogService.class);
+		org.mockito.Mockito.when(killclog.lookupClog("Other player", "demonic-pacts"))
+			.thenReturn(CompletableFuture.completedFuture(pets()));
+		set(harness.command, "killclogService", killclog);
+		LocalClogCache own = org.mockito.Mockito.mock(LocalClogCache.class);
+		org.mockito.Mockito.when(own.isActivePlayer("Local player")).thenReturn(true);
+		harness.command.readLeague("demonic-pacts", own);
+
+		assertEquals("Leagues: All Pets: 2/3 <img=101>x3 <img=102>", harness.run("!kclog pets", ChatMessageType.PRIVATECHATOUT));
+		assertEquals("own League log", harness.lookedUp);
+		harness.lookedUp = null;
+		assertEquals("Leagues: All Pets: 2/3 <img=101>x3 <img=102>", harness.run("!kclog pets", ChatMessageType.PRIVATECHAT));
+		assertNull("never the main-game sources", harness.lookedUp);
+		org.mockito.Mockito.verify(killclog).lookupClog("Other player", "demonic-pacts");
+		harness.result = null;
+		assertEquals("Leagues: All Pets: no clog data", harness.run("!kclog pets", ChatMessageType.PRIVATECHATOUT));
+
+		harness.result = pets();
+		harness.command.readLeague(null, null);
+		assertEquals("All Pets: 2/3 <img=101>x3 <img=102>", harness.run("!kclog pets", ChatMessageType.PRIVATECHATOUT));
+		assertEquals("Local player", harness.lookedUp);
+	}
+
+	@Test
+	public void aLeagueBossPageCountsLeagueKills() throws Exception
+	{
+		ClogResult zulrah = result(Map.of("zulrah", List.of(item(1, 1))), Map.of("zulrah", List.of(1, 2)));
+		Harness harness = new Harness(zulrah);
+		HiscoreService hiscores = org.mockito.Mockito.mock(HiscoreService.class);
+		HiscoreResult row = org.mockito.Mockito.mock(HiscoreResult.class);
+		org.mockito.Mockito.when(row.getKc(org.mockito.ArgumentMatchers.any())).thenReturn(57);
+		org.mockito.Mockito.when(hiscores.lookupTable("Other player", HiscoreService.LEAGUE_TABLE))
+			.thenReturn(CompletableFuture.completedFuture(row));
+		set(harness.command, "hiscoreService", hiscores);
+		KillclogService killclog = org.mockito.Mockito.mock(KillclogService.class);
+		org.mockito.Mockito.when(killclog.lookupClog("Other player", "demonic-pacts")).thenReturn(CompletableFuture.completedFuture(zulrah));
+		set(harness.command, "killclogService", killclog);
+		harness.command.readLeague("demonic-pacts", null);
+		assertEquals("Leagues: Zulrah: 57 kc, 1/2 <img=101>", harness.run("!kclog zulrah", ChatMessageType.PRIVATECHAT));
+	}
+
 	private static final class Harness
 	{
 		private final KillClogChatCommand command = new KillClogChatCommand();
@@ -117,6 +162,13 @@ public class ChatCommandDispatchTest
 				public CompletableFuture<ClogResult> lookup(String name)
 				{
 					lookedUp = name;
+					return CompletableFuture.completedFuture(Harness.this.result);
+				}
+
+				@Override
+				CompletableFuture<ClogResult> lookupLocal(LocalClogCache cache, String name)
+				{
+					lookedUp = "own League log";
 					return CompletableFuture.completedFuture(Harness.this.result);
 				}
 			});

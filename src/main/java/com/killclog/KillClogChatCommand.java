@@ -87,6 +87,23 @@ class KillClogChatCommand
 		this.clogIndex = clogIndex;
 	}
 
+	// On a League world, replies read that League (null: the main game) and the player's own log for it.
+	static final String LEAGUE_PREFIX = "Leagues: ";
+	@Nullable private volatile String league;
+	@Nullable private volatile LocalClogCache leagueLog;
+
+	void readLeague(@Nullable String league, @Nullable LocalClogCache leagueLog)
+	{
+		this.leagueLog = leagueLog;
+		this.league = league;
+	}
+
+	/** Every reply on a League world names the League, so it never reads as main-game data. */
+	private String inGame(String text)
+	{
+		return league != null ? LEAGUE_PREFIX + text : text;
+	}
+
 	private static final Map<String, String> ALIASES = buildAliases();
 	private static final Map<String, ClogTarget> CLUE_ALIASES = buildClueAliases();
 	private static final Map<String, String> PAGE_ALIASES = buildPageAliases();
@@ -531,9 +548,13 @@ class KillClogChatCommand
 		ClogResult cl;
 		try
 		{
-			cl = ClogProviderFanout.lookup(localClogCache.isActivePlayer(rsn),
+			String league = this.league;
+			LocalClogCache leagueLog = this.leagueLog;
+			cl = (league == null ? ClogProviderFanout.lookup(localClogCache.isActivePlayer(rsn),
 				() -> clogService.lookup(rsn), () -> runeProfileService.lookupClog(rsn),
-				() -> killclogService.lookupClog(rsn)).join();
+				() -> killclogService.lookupClog(rsn))
+				: leagueLog != null && leagueLog.isActivePlayer(rsn) ? clogService.lookupLocal(leagueLog, rsn)
+				: killclogService.lookupClog(rsn, league)).join();
 		}
 		catch (Exception e)
 		{
@@ -554,13 +575,15 @@ class KillClogChatCommand
 	{
 		try
 		{
+			boolean main = league == null;
 			HiscoreResult cached = hiscoreService.getCached(rsn);
-			if (cached != null && !hiscoreService.isStale(rsn))
+			if (main && cached != null && !hiscoreService.isStale(rsn))
 			{
 				return cached.getKc(boss);
 			}
 
-			HiscoreResult result = hiscoreService.lookup(rsn, null).join();
+			HiscoreResult result = (main ? hiscoreService.lookup(rsn, null)
+				: hiscoreService.lookupTable(rsn, HiscoreService.LEAGUE_TABLE)).join();
 			return result != null ? result.getKc(boss) : -1;
 		}
 		catch (Exception e)
@@ -631,7 +654,7 @@ class KillClogChatCommand
 	{
 		ensureIcons(itemIds);
 		chatMessage.getMessageNode().setRuneLiteFormatMessage(
-			formatMessage(header, itemIds, itemQuantities, itemIconIdx));
+			formatMessage(inGame(header), itemIds, itemQuantities, itemIconIdx));
 		client.refreshChat();
 	}
 
@@ -726,7 +749,7 @@ class KillClogChatCommand
 	{
 		clientThread.invoke(() ->
 		{
-			chatMessage.getMessageNode().setRuneLiteFormatMessage(text);
+			chatMessage.getMessageNode().setRuneLiteFormatMessage(inGame(text));
 			client.refreshChat();
 		});
 	}

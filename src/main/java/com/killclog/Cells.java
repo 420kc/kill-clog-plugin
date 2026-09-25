@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import javax.swing.ImageIcon;
@@ -61,7 +62,8 @@ public class Cells
 	private final TooltipDataBuilder tooltipDataBuilder;
 	private final LookupSession lookupSession;
 	private final KillclogService killclogService;
-	private final PersonalBests personalBests;
+	// Your own PB for a panel boss in the viewed game (null: the main game).
+	private final BiFunction<String, String, String> selfPb;
 	private final KillClogConfig config;
 	private final UnsyncedClogCatalog unsyncedCatalog;
 	@Nullable private SinglePlayerTooltipBuilder singlePlayerBuilder;
@@ -91,7 +93,7 @@ public class Cells
 		TooltipController tooltipController, ComparisonController comparison,
 		TooltipDataBuilder tooltipDataBuilder, LookupSession lookupSession,
 		ClogService clogService, KillclogService killclogService,
-		PersonalBests personalBests, KillClogConfig config)
+		BiFunction<String, String, String> selfPb, KillClogConfig config)
 	{
 		this.config = config;
 		this.spriteManager = spriteManager;
@@ -101,7 +103,7 @@ public class Cells
 		this.tooltipDataBuilder = tooltipDataBuilder;
 		this.lookupSession = lookupSession;
 		this.killclogService = killclogService;
-		this.personalBests = personalBests;
+		this.selfPb = selfPb;
 		loadPvpActivityIcons();
 		this.unsyncedCatalog = new UnsyncedClogCatalog(clogService);
 	}
@@ -574,10 +576,12 @@ public class Cells
 		// the killclog.com sync is the one source that serves them, cached by
 		// the same fetch that raced the clog providers.
 		ClogResult lookupClog = lookupSession.getClogResult();
+		String league = lookupSession.league();
 		String pb = self
-			? personalBests.pbText(displayName)
+			? selfPb.apply(league, displayName)
 			: (lookupClog != null
-				? killclogService.pbText(lookupClog.getPlayerName(), displayName)
+				? killclogService.pbText(league == null ? lookupClog.getPlayerName()
+					: KillclogService.modeKey(league, lookupClog.getPlayerName()), displayName)
 				: null);
 
 		if (lookupSession.getClogResult() == null)

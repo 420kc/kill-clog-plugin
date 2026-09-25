@@ -161,6 +161,7 @@ public class KillClogPanel extends PluginPanel
 	private final LookupSession lookupSession;
 	private final ComparisonController comparison;
 	private final RankSelector rankSelector;
+	private java.util.function.BiFunction<String, String, String> selfPb = (league, boss) -> null;
 	private final Cells cells;
 
 	// Comparison mode widgets (state fields all live on the controller)
@@ -213,7 +214,7 @@ public class KillClogPanel extends PluginPanel
 			() -> ClogHelper.virtualTotalLevelEnabled(configManager));
 		this.skillCellGrid = new SkillCellGrid(skillIconManager, tooltipController, comparison,
 			config, itemManager);
-		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, clogService, killclogService, new PersonalBests(configManager), config);
+		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, clogService, killclogService, (league, boss) -> selfPb.apply(league, boss), config);
 		this.activityTooltips = new ActivitySummaryTooltips(
 			lookupSession, comparison, cells, tooltipController, itemManager,
 			caRewardSprites, config::wikiItemLinks);
@@ -1076,6 +1077,25 @@ public class KillClogPanel extends PluginPanel
 		searchBar.setText(name);
 	}
 
+	/** The world's game: a League world reads its League, any other world the main game. A shown player is read again. */
+	public void followWorld(String league, LocalClogCache leagueLog)
+	{
+		lookupSession.readLeague(league, leagueLog);
+		comparison.readLeague(league, leagueLog);
+		if (rsn != null)
+		{
+			searchRowController.exitIfActive();
+			searchBar.setText(rsn);
+			doLookup();
+		}
+	}
+
+	/** Your own PB reader: panel boss in the viewed game (null: the main game) to its text, or null. */
+	public void setSelfPb(java.util.function.BiFunction<String, String, String> selfPb)
+	{
+		this.selfPb = selfPb;
+	}
+
 	public void setLoggedInPlayer(String name, AccountType accountType)
 	{
 		this.localRsn = name;
@@ -1574,7 +1594,8 @@ public class KillClogPanel extends PluginPanel
 
 	private void updateRankPlayers()
 	{
-		rankSelector.update(config.showLeaderboardSelector(), lookupSession.getCurrentLookupRsn(),
+		// Leaderboards are main-game tables; a League view keeps its own ranks.
+		rankSelector.update(config.showLeaderboardSelector() && lookupSession.league() == null, lookupSession.getCurrentLookupRsn(),
 			lookupSession.getNativeHiscoreResult(), comparison.getCompareRsn(),
 			comparison.isComparisonMode() ? comparison.getNativeCompareHiscoreResult() : null);
 	}

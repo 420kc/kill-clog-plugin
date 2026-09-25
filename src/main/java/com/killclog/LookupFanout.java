@@ -39,6 +39,12 @@ final class LookupFanout
 	@Getter(AccessLevel.PACKAGE)
 	private volatile boolean inFlight = false;
 
+	// EDT-owned: the League these lookups read (null: the main game) and the player's own
+	// open log for it. League reads come from League Hiscores and Kill Clog only.
+	@Getter(AccessLevel.PACKAGE)
+	@Nullable private String league;
+	@Nullable private LocalClogCache leagueLog;
+
 	LookupFanout(HiscoreService hiscoreService, ClogService clogService,
 		RuneProfileService runeProfileService, KillclogService killclogService)
 	{
@@ -46,6 +52,12 @@ final class LookupFanout
 		this.clogService = clogService;
 		this.runeProfileService = runeProfileService;
 		this.killclogService = killclogService;
+	}
+
+	void readLeague(@Nullable String league, @Nullable LocalClogCache leagueLog)
+	{
+		this.league = league;
+		this.leagueLog = leagueLog;
 	}
 
 	/** Open a new fetch generation and return its version stamp. */
@@ -86,6 +98,10 @@ final class LookupFanout
 	 */
 	void fetchCa(String player, int stamp, Consumer<CombatAchievementResult> onResult)
 	{
+		if (league != null)
+		{
+			return;
+		}
 		runeProfileService.lookup(player)
 			.copy()
 			.orTimeout(CA_TIMEOUT_SECONDS, TimeUnit.SECONDS)
@@ -105,7 +121,8 @@ final class LookupFanout
 	void fetchHiscore(String player, @Nullable AccountType knownType, int stamp,
 		Consumer<HiscoreResult> onResult, Consumer<Throwable> onError)
 	{
-		hiscoreService.lookup(player, knownType)
+		(league != null ? hiscoreService.lookupTable(player, HiscoreService.LEAGUE_TABLE)
+			: hiscoreService.lookup(player, knownType))
 			.copy()
 			.orTimeout(HISCORE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
 			.thenAccept(result -> onEdtIfCurrent(stamp, () -> onResult.accept(result)))
@@ -127,8 +144,10 @@ final class LookupFanout
 	void fetchClog(String player, boolean isSelf, int stamp,
 		Consumer<ClogResult> onResult, @Nullable Runnable onError)
 	{
-		ClogProviderFanout.lookup(isSelf, () -> clogService.lookup(player),
+		(league == null ? ClogProviderFanout.lookup(isSelf, () -> clogService.lookup(player),
 			() -> runeProfileService.lookupClog(player), () -> killclogService.lookupClog(player))
+			: isSelf && leagueLog != null ? clogService.lookupLocal(leagueLog, player)
+			: killclogService.lookupClog(player, league))
 			.thenAccept(result -> onEdtIfCurrent(stamp, () -> onResult.accept(result)))
 			.exceptionally(ex ->
 			{

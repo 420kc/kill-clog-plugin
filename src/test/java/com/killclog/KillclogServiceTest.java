@@ -65,6 +65,38 @@ public class KillclogServiceTest
 	}
 
 	@Test
+	public void aLeaguesLogAndPbsComeFromItsOwnViewAndStayApart() throws Exception
+	{
+		List<String> paths = new java.util.ArrayList<>();
+		okhttp3.OkHttpClient http = new okhttp3.OkHttpClient.Builder().addInterceptor(chain ->
+		{
+			String path = chain.request().url().encodedPath();
+			paths.add(path);
+			boolean league = path.endsWith("/proof-view/demonic-pacts");
+			String body = "{\"rsn\":\"420 kc\",\"pbs\":{\"Zulrah\":" + (league ? "61.2" : "58.2") + "},"
+				+ "\"clog\":{\"items_by_category\":{\"zulrah\":[{\"item_id\":" + (league ? 2 : 1) + ",\"quantity\":1}]}}}";
+			return new okhttp3.Response.Builder().request(chain.request()).protocol(okhttp3.Protocol.HTTP_1_1).code(200)
+				.message("OK").body(okhttp3.ResponseBody.create(okhttp3.MediaType.get("application/json"), body)).build();
+		}).build();
+		service = new KillclogService(http, new Gson(), null);
+		Set<String> index = java.util.concurrent.ConcurrentHashMap.newKeySet();
+		index.add("420 kc");
+		setField("syncIndex", index);
+		setField("indexFetchedAt", System.currentTimeMillis());
+
+		ClogResult league = service.lookupClog("420 Kc", "demonic-pacts").join();
+		ClogResult main = service.lookupClog("420 Kc").join();
+
+		assertEquals(2, paths.size());
+		assertTrue(paths.get(0), paths.get(0).endsWith("/player/420%20Kc/proof-view/demonic-pacts"));
+		assertTrue(paths.get(1), paths.get(1).endsWith("/player/420%20Kc/proof-view"));
+		assertEquals(2, league.getObtainedItems().get("zulrah").get(0).getId());
+		assertEquals(1, main.getObtainedItems().get("zulrah").get(0).getId());
+		assertEquals(PersonalBests.formatSeconds(61.2), service.pbText(KillclogService.modeKey("demonic-pacts", "420 KC"), "Zulrah"));
+		assertEquals(PersonalBests.formatSeconds(58.2), service.pbText("420 kc", "Zulrah"));
+	}
+
+	@Test
 	public void testParseSyncIndexRejectsGarbage()
 	{
 		assertNull(service.parseSyncIndex("{\"schema\":1}"));

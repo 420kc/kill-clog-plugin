@@ -183,6 +183,12 @@ public class ComparisonController
 		this.fanout = new LookupFanout(hiscoreService, clogService, runeProfileService, killclogService);
 	}
 
+	/** The comparison reads the same game as the main lookup. */
+	void readLeague(@Nullable String league, @Nullable LocalClogCache leagueLog)
+	{
+		fanout.readLeague(league, leagueLog);
+	}
+
 	/** Wire the panel-side hook target. Late-bound because the controller is built before the panel's labels exist. */
 	public void setRenderTarget(@Nullable CellRenderTarget renderTarget)
 	{

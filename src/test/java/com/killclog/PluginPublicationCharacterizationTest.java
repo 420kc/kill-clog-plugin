@@ -74,6 +74,7 @@ public class PluginPublicationCharacterizationTest
 	private Runnable syncHandler;
 	private Runnable publishHandler;
 	private Runnable captureListener;
+	private java.util.function.BiFunction<String, String, String> selfPb;
 
 	private static final class Settings implements KillClogConfig
 	{
@@ -149,6 +150,11 @@ public class PluginPublicationCharacterizationTest
 		handler = ArgumentCaptor.forClass(Runnable.class);
 		verify(localClogCache).setFirstPartyChangedListener(handler.capture());
 		captureListener = handler.getValue();
+		@SuppressWarnings("unchecked")
+		ArgumentCaptor<java.util.function.BiFunction<String, String, String>> pbReader =
+			ArgumentCaptor.forClass(java.util.function.BiFunction.class);
+		verify(panel).setSelfPb(pbReader.capture());
+		selfPb = pbReader.getValue();
 		clearInvocations(panel, chatNotifier, localClogCache);
 	}
 
@@ -767,6 +773,17 @@ public class PluginPublicationCharacterizationTest
 	@SuppressWarnings("unchecked")
 	private java.util.Map<String, Double> leaguePbs(LocalClogCache league) throws Exception
 	{
+		recordPbs();
+		syncHandler.run();
+		settle();
+		ArgumentCaptor<java.util.Map<String, Double>> pbs = ArgumentCaptor.forClass(java.util.Map.class);
+		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), pbs.capture(), any(),
+			eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"));
+		return pbs.getValue();
+	}
+
+	private void recordPbs()
+	{
 		when(configManager.getRSProfiles()).thenReturn(List.of(
 			new RuneScapeProfile(RSN, RuneScapeProfileType.STANDARD, HASH, "main"),
 			new RuneScapeProfile(RSN, RuneScapeProfileType.RAGING_ECHOES_LEAGUE, HASH, "earlier"),
@@ -777,12 +794,51 @@ public class PluginPublicationCharacterizationTest
 			when(configManager.getConfiguration(eq("personalbest"), eq(pb[0]), eq("zulrah"),
 				eq((java.lang.reflect.Type) double.class))).thenReturn(Double.valueOf(pb[1]));
 		}
-		syncHandler.run();
-		settle();
-		ArgumentCaptor<java.util.Map<String, Double>> pbs = ArgumentCaptor.forClass(java.util.Map.class);
-		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), pbs.capture(), any(),
-			eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"));
-		return pbs.getValue();
+	}
+
+	@Test
+	public void yourPbsComeFromTheViewedGamesOwnProfiles() throws Exception
+	{
+		KillclogService service = (KillclogService) field("killclogService");
+		GameStateChanged login = new GameStateChanged();
+		login.setGameState(GameState.LOGGED_IN);
+		plugin.onGameStateChanged(login);
+		recordPbs();
+		when(service.leagueProfileType("demonic-pacts")).thenReturn("DEMONIC_PACTS_LEAGUE");
+		assertEquals(PersonalBests.formatSeconds(5.0), selfPb.apply(null, "Zulrah"));
+		assertEquals(PersonalBests.formatSeconds(9.6), selfPb.apply("demonic-pacts", "Zulrah"));
+		when(service.leagueProfileType("demonic-pacts")).thenReturn(null);
+		org.junit.Assert.assertNull("a League RuneLite does not know yet shows no PB", selfPb.apply("demonic-pacts", "Zulrah"));
+	}
+
+	@Test
+	public void aLeagueWorldPointsThePanelAndChatAtItsLeague() throws Exception
+	{
+		KillClogChatCommand chat = (KillClogChatCommand) field("kclogCommand");
+		ticks(1);
+		drainEdt();
+		verify(panel, never()).followWorld(any(), any());
+		LocalClogCache league = announceLeague();
+		ticks(3);
+		drainEdt();
+		verify(panel).followWorld("demonic-pacts", league);
+		verify(chat).readLeague("demonic-pacts", league);
+		net.runelite.api.events.ChatMessage kc = new net.runelite.api.events.ChatMessage();
+		kc.setType(net.runelite.api.ChatMessageType.PUBLICCHAT);
+		kc.setMessage("!kc twisted bow");
+		plugin.onChatMessage(kc);
+		verify(chat).handleKcItem(eq(kc), any(), eq(league));
+		world(net.runelite.api.WorldType.MEMBERS);
+		ticks(1);
+		drainEdt();
+		verify(panel).followWorld(null, null);
+		verify(chat).readLeague(null, null);
+		world(net.runelite.api.WorldType.SEASONAL, net.runelite.api.WorldType.MEMBERS);
+		ticks(1);
+		gameState = GameState.LOGIN_SCREEN;
+		logout();
+		drainEdt();
+		verify(panel, times(2)).followWorld(null, null);
 	}
 
 	@Test
@@ -844,6 +900,20 @@ public class PluginPublicationCharacterizationTest
 		verify(live).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), eq(localClogCache), any(), any(), anyBoolean());
 		verify(walk).onGameTick(any(), any(), eq(localClogCache), any(), any(), any());
 		verify(walk).onCollectionLogSearch(any(), any(), eq(localClogCache), any());
+	}
+
+	@Test
+	public void aLeagueWorldSettlesAndReadsItsOwnCounters() throws Exception
+	{
+		LiveClogSync live = mock(LiveClogSync.class);
+		replace("liveClogSync", live);
+		LocalClogCache league = announceLeague();
+		ticks(9);
+		unlockMessage();
+		verify(live).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), eq(league), any(), any(), eq(false));
+		ticks(1);
+		unlockMessage();
+		verify(live).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), eq(league), any(), any(), eq(true));
 	}
 
 	@Test

@@ -16,6 +16,24 @@ import static com.killclog.LookupTestFixture.*;
 public class LookupSessionTest
 {
 	@Test
+	public void aLeagueLookupNeverShowsTheMainGamesCachedRow() throws Exception
+	{
+		HiscoreService hiscores = org.mockito.Mockito.mock(HiscoreService.class);
+		org.mockito.Mockito.when(hiscores.getCached("Friend")).thenReturn(org.mockito.Mockito.mock(HiscoreResult.class));
+		org.mockito.Mockito.when(hiscores.lookupTable("Friend", HiscoreService.LEAGUE_TABLE)).thenReturn(new CompletableFuture<>());
+		KillclogService killclog = org.mockito.Mockito.mock(KillclogService.class);
+		org.mockito.Mockito.when(killclog.lookupClog("Friend", "demonic-pacts")).thenReturn(new CompletableFuture<>());
+		LookupSession session = new LookupSession(hiscores, org.mockito.Mockito.mock(ClogService.class),
+			org.mockito.Mockito.mock(RuneProfileService.class), killclog, new KillClogConfig()
+			{
+			}, org.mockito.Mockito.mock(LookupSession.Listener.class));
+		session.readLeague("demonic-pacts", null);
+		SwingUtilities.invokeAndWait(() -> session.start("Friend", "Me", AccountType.REGULAR));
+		org.mockito.Mockito.verify(hiscores).lookupTable("Friend", HiscoreService.LEAGUE_TABLE);
+		assertEquals("demonic-pacts", session.league());
+	}
+
+	@Test
 	public void localRefreshPreservesStatsCaAndComparisonWithoutStartingLookups() throws Exception
 	{
 		LookupTestFixture fixture = new LookupTestFixture();

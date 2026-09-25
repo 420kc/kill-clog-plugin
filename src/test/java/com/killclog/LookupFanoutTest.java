@@ -1,7 +1,17 @@
 package com.killclog;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import javax.swing.SwingUtilities;
 import org.junit.Test;
 import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 public class LookupFanoutTest
 {
@@ -35,6 +45,43 @@ public class LookupFanoutTest
 		fanout.settle();
 		fanout.invalidate();
 		assertFalse(fanout.current(third));
+	}
+
+	@Test
+	public void aLeagueReadsLeagueHiscoresYourOwnLogAndKillClogOnly() throws Exception
+	{
+		HiscoreService hiscores = mock(HiscoreService.class);
+		ClogService clogs = mock(ClogService.class);
+		RuneProfileService runeProfile = mock(RuneProfileService.class);
+		KillclogService killclog = mock(KillclogService.class);
+		LocalClogCache own = mock(LocalClogCache.class);
+		HiscoreResult row = mock(HiscoreResult.class);
+		ClogResult theirs = mock(ClogResult.class);
+		ClogResult mine = mock(ClogResult.class);
+		when(hiscores.lookupTable("Friend", HiscoreService.LEAGUE_TABLE)).thenReturn(CompletableFuture.completedFuture(row));
+		when(killclog.lookupClog("Friend", "demonic-pacts")).thenReturn(CompletableFuture.completedFuture(theirs));
+		when(clogs.lookupLocal(own, "Me")).thenReturn(CompletableFuture.completedFuture(mine));
+		LookupFanout fanout = new LookupFanout(hiscores, clogs, runeProfile, killclog);
+		fanout.readLeague("demonic-pacts", own);
+		int stamp = fanout.begin();
+		List<Object> shown = new ArrayList<>();
+		fanout.fetchHiscore("Friend", null, stamp, shown::add, error -> fail(error.toString()));
+		fanout.fetchClog("Friend", false, stamp, shown::add, null);
+		fanout.fetchClog("Me", true, stamp, shown::add, null);
+		fanout.fetchCa("Friend", stamp, shown::add);
+		SwingUtilities.invokeAndWait(() ->
+		{
+		});
+		assertEquals(List.of(row, theirs, mine), shown);
+		verify(hiscores, never()).lookup(any(), any());
+		verify(clogs, never()).lookup(any());
+		verify(killclog, never()).lookupClog("Friend");
+		verifyNoInteractions(runeProfile);
+
+		when(hiscores.lookup("Friend", null)).thenReturn(new CompletableFuture<>());
+		fanout.readLeague(null, null);
+		fanout.fetchHiscore("Friend", null, stamp, shown::add, error -> fail(error.toString()));
+		verify(hiscores).lookup("Friend", null);
 	}
 
 	@Test

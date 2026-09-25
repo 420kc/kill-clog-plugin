@@ -99,6 +99,18 @@ public class LookupSession
 		this.fanout = new LookupFanout(hiscoreService, clogService, runeProfileService, killclogService);
 	}
 
+	/** Which game the next lookups read: a League, or null for the main game. */
+	void readLeague(@Nullable String league, @Nullable LocalClogCache leagueLog)
+	{
+		fanout.readLeague(league, leagueLog);
+	}
+
+	@Nullable
+	String league()
+	{
+		return fanout.getLeague();
+	}
+
 	/** Wire (or rewire) the autocompleter that records search history on each successful lookup. */
 	public void setNameAutocompleter(@Nullable NameAutocompleter nameAutocompleter)
 	{
@@ -149,7 +161,8 @@ public class LookupSession
 		// hiscore service must be told to skip the cascade for them.
 		final AccountType knownType = isSelf ? localAccountType : null;
 
-		final HiscoreResult cachedHiscore = hiscoreService.getCached(player);
+		// The shared cache holds main-game rows only.
+		final HiscoreResult cachedHiscore = fanout.getLeague() == null ? hiscoreService.getCached(player) : null;
 		final ClogResult cachedClog = clogService.getCachedResult(player);
 		if (cachedHiscore != null && !hiscoreService.isStale(player))
 		{

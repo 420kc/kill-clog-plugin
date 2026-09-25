@@ -107,6 +107,12 @@ public class KillclogService
 		return playerName.toLowerCase(java.util.Locale.ROOT);
 	}
 
+	/** Cache key for one player in one mode, also accepted by {@link #pbText}; main keeps the plain name. */
+	static String modeKey(String mode, String playerName)
+	{
+		return GameMode.MAIN.equals(mode) ? pbKey(playerName) : mode + "/" + pbKey(playerName);
+	}
+
 	@Inject
 	public KillclogService(OkHttpClient httpClient, Gson gson, ClogService clogService)
 	{
@@ -169,7 +175,13 @@ public class KillclogService
 	 */
 	public CompletableFuture<ClogResult> lookupClog(String playerName)
 	{
-		String key = pbKey(playerName);
+		return lookupClog(playerName, GameMode.MAIN);
+	}
+
+	/** One mode's first-party log: main, or a League from that League's own proof view. */
+	CompletableFuture<ClogResult> lookupClog(String playerName, String mode)
+	{
+		String key = modeKey(mode, playerName);
 		long now = System.currentTimeMillis();
 
 		ClogResult cached = clogCache.get(key);
@@ -217,12 +229,12 @@ public class KillclogService
 			// synced-then-withdrawn (opt-out purge, unbind). Cached data and
 			// pbs are evicted so withdrawal is honored within one index
 			// refresh, never held for a cache TTL.
-			if (!index.contains(key))
+			if (!index.contains(pbKey(playerName)))
 			{
 				evictFirstParty(key);
 				return CompletableFuture.completedFuture(null);
 			}
-			return HttpUtil.singleFlightLookup(clogInFlight, key, () -> startProofViewLookup(playerName, key));
+			return HttpUtil.singleFlightLookup(clogInFlight, key, () -> startProofViewLookup(playerName, key, mode));
 		});
 	}
 
@@ -354,11 +366,12 @@ public class KillclogService
 		}
 	}
 
-	private CompletableFuture<ClogResult> startProofViewLookup(String playerName, String key)
+	private CompletableFuture<ClogResult> startProofViewLookup(String playerName, String key, String mode)
 	{
 		// RSN sits in the path, so spaces must be %20 (URLEncoder yields '+', valid only in a query).
 		String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8).replace("+", "%20");
-		String url = KillClogEndpoint.apiBaseUrl() + "/player/" + encoded + PROOF_SUFFIX;
+		String url = KillClogEndpoint.apiBaseUrl() + "/player/" + encoded + PROOF_SUFFIX
+			+ (GameMode.MAIN.equals(mode) ? "" : "/" + mode);
 
 		return HttpUtil.httpGet(httpClient, url).thenApply(resp ->
 		{

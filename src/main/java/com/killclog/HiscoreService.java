@@ -146,14 +146,22 @@ public class HiscoreService
 		.maximumSize(256).expireAfterWrite(CACHE_TTL_MS, TimeUnit.MILLISECONDS).build();
 	private final ConcurrentHashMap<String, CompletableFuture<HiscoreResult>> rankRequests = new ConcurrentHashMap<>();
 
+	static final String LEAGUE_TABLE = "hiscore_oldschool_seasonal";
+
 	CompletableFuture<HiscoreResult> lookupRanks(String player, RankLeaderboard table)
 	{
+		return lookupTable(player, table.endpoint);
+	}
+
+	/** One leaderboard's full row for a player; null when absent or unreachable. */
+	CompletableFuture<HiscoreResult> lookupTable(String player, String endpoint)
+	{
 		String encoded = URLEncoder.encode(player.toLowerCase(Locale.ROOT), StandardCharsets.UTF_8);
-		String key = rankKey(table.endpoint, encoded);
+		String key = rankKey(endpoint, encoded);
 		HiscoreResult cached = rankTables.getIfPresent(key);
 		if (cached != null) return CompletableFuture.completedFuture(cached);
 		return HttpUtil.singleFlightLookup(rankRequests, key,
-			() -> fetchAsync(table.endpoint, encoded).thenApply(body -> rankTables.getIfPresent(key)))
+			() -> fetchAsync(endpoint, encoded).thenApply(body -> rankTables.getIfPresent(key)))
 			.completeOnTimeout(null, 12, TimeUnit.SECONDS).exceptionally(ex -> null);
 	}
 

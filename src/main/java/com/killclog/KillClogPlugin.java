@@ -28,6 +28,7 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatCommandManager;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.PluginChanged;
@@ -155,6 +156,9 @@ public class KillClogPlugin extends Plugin
 		new LocalClogCache(gson, new java.io.File(net.runelite.client.RuneLite.RUNELITE_DIR, "kill-clog/leagues/" + id));
 	// The store the collection log walk started with; a different one means start over.
 	private LocalClogCache walkCache;
+	// The logged-in account, for PB reads on the panel's thread, and the League the panel follows.
+	private volatile long localAccountHash = -1;
+	private String panelLeague;
 
 	// Adventure-log pb harvest state, vanilla's two-stage shape: the menu
 	// load names the owner, the Counters scroll load triggers the parse.
@@ -215,6 +219,7 @@ public class KillClogPlugin extends Plugin
 		enforceCharacterSettingDependency();
 		panel.setKillclogSyncHandler(publication::manualSync);
 		panel.setCharacterPublishHandler(publication::publishCharacter);
+		panel.setSelfPb(this::selfPb);
 		panel.setSyncArrowEnabled(config.killclogSync());
 		panel.setCharacterPublishEnabled(publication.characterPublishingEnabled());
 		// The sync trigger lives at the data seam: any path that lands a
@@ -293,6 +298,7 @@ public class KillClogPlugin extends Plugin
 		{
 			String name = local.getName();
 			lastLocalName = name;
+			localAccountHash = client.getAccountHash();
 			AccountType acctType = getLocalAccountType();
 			boolean localClogReady = cache.setActivePlayer(name);
 			localCaCache.setActivePlayer(name);
@@ -437,6 +443,7 @@ public class KillClogPlugin extends Plugin
 				leagueCache.onSessionEnded();
 			}
 			publication.cancelSync();
+			followWorld();
 		}
 		else if (event.getGameState() == GameState.HOPPING)
 		{
@@ -482,7 +489,11 @@ public class KillClogPlugin extends Plugin
 
 		// !kc <item name> provenance reveal. Boss arguments stay with the
 		// built-in plugin's own "!kc" registration; the handler ignores them.
-		kclogCommand.handleKcItem(event, clogIndex, localClogCache);
+		LocalClogCache kcCache = captureCache();
+		if (kcCache != null)
+		{
+			kclogCommand.handleKcItem(event, clogIndex, kcCache);
+		}
 
 		// RuneLite keeps one registered handler per command string, so claiming
 		// !log here would replace RuneProfile's handler. Read the raw chat line
@@ -683,6 +694,27 @@ public class KillClogPlugin extends Plugin
 		}
 	}
 
+	/** A League world reads its League in the panel and chat; every other world, or none, the main game. */
+	private void followWorld()
+	{
+		String mode = mode();
+		String league = mode == null || GameMode.MAIN.equals(mode) ? null : mode;
+		if (!java.util.Objects.equals(league, panelLeague))
+		{
+			panelLeague = league;
+			LocalClogCache leagueLog = league == null ? null : captureCache();
+			kclogCommand.readLeague(league, leagueLog);
+			SwingUtilities.invokeLater(() -> panel.followWorld(league, leagueLog));
+		}
+	}
+
+	/** Your PB for a panel boss in one game: the main game's profiles, or the League's announced one. */
+	private String selfPb(String league, String boss)
+	{
+		return new PersonalBests(configManager).pbText(PersonalBests.profileKeys(configManager.getRSProfiles(), localAccountHash,
+			league == null ? RuneScapeProfileType.STANDARD.name() : killclogService.leagueProfileType(league)), boss);
+	}
+
 	void setLeagueCacheFactory(java.util.function.Function<String, LocalClogCache> factory)
 	{
 		leagueCacheFactory = factory;
@@ -707,6 +739,7 @@ public class KillClogPlugin extends Plugin
 			reconcileClogTotalsFromVarps();
 			sessionState.requestCaRead();
 		}
+		followWorld();
 
 		// Rename continuity: once per login, when both halves of the local
 		// identity have arrived, the cache follows the account onto its

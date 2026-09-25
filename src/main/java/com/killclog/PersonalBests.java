@@ -62,30 +62,11 @@ final class PersonalBests
 		return List.copyOf(keys);
 	}
 
-	/** Formatted fastest time for a panel boss, or null when none recorded. */
-	String pbText(String panelBossName)
+	/** Formatted fastest time for a panel boss across the given profiles, or null when none recorded. */
+	String pbText(java.util.List<String> profileKeys, String panelBossName)
 	{
-		double best = bestSeconds(panelBossName);
+		double best = bestSecondsAcrossProfiles(profileKeys, panelBossName);
 		return best > 0 ? formatSeconds(best) : null;
-	}
-
-	/** Fastest recorded seconds across team sizes, or 0 when none recorded. */
-	double bestSeconds(String panelBossName)
-	{
-		double best = 0;
-		for (String base : keyCandidates(panelBossName))
-		{
-			for (String suffix : TEAM_SUFFIXES)
-			{
-				Double pb = configManager.getRSProfileConfiguration(
-					"personalbest", base + suffix, double.class);
-				if (pb != null && pb > 0 && (best == 0 || pb < best))
-				{
-					best = pb;
-				}
-			}
-		}
-		return best;
 	}
 
 	/**

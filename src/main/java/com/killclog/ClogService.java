@@ -136,6 +136,20 @@ public class ClogService
 		return result;
 	}
 
+	/** A League's own local log for the active player. League logs never take provider data. */
+	CompletableFuture<ClogResult> lookupLocal(LocalClogCache cache, String playerName)
+	{
+		if (!cache.isActivePlayer(playerName) || !cache.hasDataFor(playerName))
+		{
+			return CompletableFuture.completedFuture(null);
+		}
+		return fetchItemNames().thenApply(names ->
+		{
+			ClogResult result = cache.toClogResult(playerName, names != null ? names : new HashMap<>());
+			return result != null ? result.withLocalSource(true) : null;
+		});
+	}
+
 	/**
 	 * Look up this service's TempleOSRS collection-log lane for a player.
 	 * Active player with widget-read data is served from cache (authoritative).
