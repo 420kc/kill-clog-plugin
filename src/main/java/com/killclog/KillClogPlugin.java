@@ -803,8 +803,9 @@ public class KillClogPlugin extends Plugin
 			if (local != null && local.getName() != null)
 			{
 				String name = local.getName();
-				LocalClogCache cache = captureCache();
-				if (cache != null && cache.setActivePlayer(name))
+				// A world with no known game still shows the main log, as it always has.
+				LocalClogCache cache = captureCache() != null ? captureCache() : localClogCache;
+				if (cache.setActivePlayer(name))
 				{
 					sessionState.markAutoLookupStarted();
 					localCaCache.setActivePlayer(name);

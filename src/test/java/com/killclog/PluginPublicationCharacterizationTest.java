@@ -842,6 +842,19 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void aWorldWithNoKnownGameStillShowsYouAtLogin() throws Exception
+	{
+		world(net.runelite.api.WorldType.DEADMAN);
+		when(localClogCache.setActivePlayer(RSN)).thenReturn(true);
+		GameStateChanged login = new GameStateChanged();
+		login.setGameState(GameState.LOGGED_IN);
+		plugin.onGameStateChanged(login);
+		ticks(1);
+		drainEdt();
+		verify(panel).doLookup();
+	}
+
+	@Test
 	public void theLoginLookupWaitsForTheLeaguesOwnLog() throws Exception
 	{
 		LocalClogCache league = announceLeague();

@@ -40,7 +40,8 @@ public class LookupSessionTest
 		org.mockito.Mockito.when(hiscores.lookupTable("Me", HiscoreService.LEAGUE_TABLE)).thenReturn(new CompletableFuture<>());
 		ClogService clogs = org.mockito.Mockito.mock(ClogService.class);
 		LocalClogCache own = org.mockito.Mockito.mock(LocalClogCache.class);
-		org.mockito.Mockito.when(clogs.lookupLocal(own, "Me")).thenReturn(new CompletableFuture<>());
+		CompletableFuture<ClogResult> loading = new CompletableFuture<>();
+		org.mockito.Mockito.when(clogs.lookupLocal(own, "Me")).thenReturn(loading);
 		ClogResult main = new ClogResult("Me", Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), null, null)
 			.withLocalSource(true);
 		ClogResult league = new ClogResult("Me", Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), null, null)
@@ -58,8 +59,15 @@ public class LookupSessionTest
 			session.start("Me", "Me", AccountType.REGULAR);
 			session.refreshLocalClog("Me", "Me");
 		});
-		org.mockito.Mockito.verify(listener).onClogResult(org.mockito.ArgumentMatchers.eq("Me"),
+		// The lookup that was already loading lands after the capture and reads the log again.
+		loading.complete(null);
+		SwingUtilities.invokeAndWait(() ->
+		{
+		});
+		org.mockito.Mockito.verify(listener, org.mockito.Mockito.times(2)).onClogResult(org.mockito.ArgumentMatchers.eq("Me"),
 			org.mockito.ArgumentMatchers.same(league), org.mockito.ArgumentMatchers.eq(true), org.mockito.ArgumentMatchers.anyInt());
+		org.mockito.Mockito.verify(listener, org.mockito.Mockito.never()).onClogResult(org.mockito.ArgumentMatchers.any(),
+			org.mockito.ArgumentMatchers.same(main), org.mockito.ArgumentMatchers.anyBoolean(), org.mockito.ArgumentMatchers.anyInt());
 	}
 
 	@Test
