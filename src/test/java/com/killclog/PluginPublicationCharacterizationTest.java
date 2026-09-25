@@ -800,9 +800,7 @@ public class PluginPublicationCharacterizationTest
 	public void yourPbsComeFromTheViewedGamesOwnProfiles() throws Exception
 	{
 		KillclogService service = (KillclogService) field("killclogService");
-		GameStateChanged login = new GameStateChanged();
-		login.setGameState(GameState.LOGGED_IN);
-		plugin.onGameStateChanged(login);
+		ticks(1);
 		recordPbs();
 		when(service.leagueProfileType("demonic-pacts")).thenReturn("DEMONIC_PACTS_LEAGUE");
 		assertEquals(PersonalBests.formatSeconds(5.0), selfPb.apply(null, "Zulrah"));
@@ -812,12 +810,57 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void yourPbsFollowTheLoggedInAccount() throws Exception
+	{
+		recordPbs();
+		// The login event can come before the name; the hash still arrives with the next tick.
+		ticks(1);
+		assertEquals(PersonalBests.formatSeconds(5.0), selfPb.apply(null, "Zulrah"));
+		gameState = GameState.LOGIN_SCREEN;
+		logout();
+		org.junit.Assert.assertNull("no account, no PB", selfPb.apply(null, "Zulrah"));
+		gameState = GameState.LOGGED_IN;
+		when(client.getAccountHash()).thenReturn(HASH + 1);
+		ticks(1);
+		org.junit.Assert.assertNull("another account never shows these", selfPb.apply(null, "Zulrah"));
+	}
+
+	@Test
+	public void aRestartHandsThePanelTheWorldsGameAgain() throws Exception
+	{
+		LocalClogCache league = announceLeague();
+		ticks(1);
+		drainEdt();
+		verify(panel).followWorld("demonic-pacts", league);
+		plugin.shutDown();
+		LocalClogCache reopened = mock(LocalClogCache.class);
+		plugin.setLeagueCacheFactory(id -> reopened);
+		plugin.startUp();
+		ticks(1);
+		drainEdt();
+		verify(panel).followWorld("demonic-pacts", reopened);
+	}
+
+	@Test
+	public void theLoginLookupWaitsForTheLeaguesOwnLog() throws Exception
+	{
+		LocalClogCache league = announceLeague();
+		when(league.setActivePlayer(RSN)).thenReturn(true);
+		GameStateChanged login = new GameStateChanged();
+		login.setGameState(GameState.LOGGED_IN);
+		plugin.onGameStateChanged(login);
+		ticks(1);
+		drainEdt();
+		verify(panel).doLookup();
+	}
+
+	@Test
 	public void aLeagueWorldPointsThePanelAndChatAtItsLeague() throws Exception
 	{
 		KillClogChatCommand chat = (KillClogChatCommand) field("kclogCommand");
 		ticks(1);
 		drainEdt();
-		verify(panel, never()).followWorld(any(), any());
+		verify(panel).followWorld(null, null);
 		LocalClogCache league = announceLeague();
 		ticks(3);
 		drainEdt();
@@ -831,14 +874,14 @@ public class PluginPublicationCharacterizationTest
 		world(net.runelite.api.WorldType.MEMBERS);
 		ticks(1);
 		drainEdt();
-		verify(panel).followWorld(null, null);
-		verify(chat).readLeague(null, null);
+		verify(panel, times(2)).followWorld(null, null);
+		verify(chat, times(2)).readLeague(null, null);
 		world(net.runelite.api.WorldType.SEASONAL, net.runelite.api.WorldType.MEMBERS);
 		ticks(1);
 		gameState = GameState.LOGIN_SCREEN;
 		logout();
 		drainEdt();
-		verify(panel, times(2)).followWorld(null, null);
+		verify(panel, times(3)).followWorld(null, null);
 	}
 
 	@Test

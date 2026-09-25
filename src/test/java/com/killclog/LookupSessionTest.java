@@ -34,6 +34,35 @@ public class LookupSessionTest
 	}
 
 	@Test
+	public void aLeagueCaptureRefreshesYourLeagueLogNotYourMainOne() throws Exception
+	{
+		HiscoreService hiscores = org.mockito.Mockito.mock(HiscoreService.class);
+		org.mockito.Mockito.when(hiscores.lookupTable("Me", HiscoreService.LEAGUE_TABLE)).thenReturn(new CompletableFuture<>());
+		ClogService clogs = org.mockito.Mockito.mock(ClogService.class);
+		LocalClogCache own = org.mockito.Mockito.mock(LocalClogCache.class);
+		org.mockito.Mockito.when(clogs.lookupLocal(own, "Me")).thenReturn(new CompletableFuture<>());
+		ClogResult main = new ClogResult("Me", Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), null, null)
+			.withLocalSource(true);
+		ClogResult league = new ClogResult("Me", Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), null, null)
+			.withLocalSource(true);
+		org.mockito.Mockito.when(clogs.getCachedResult("Me")).thenReturn(main);
+		org.mockito.Mockito.when(clogs.localResult(own, "Me")).thenReturn(league);
+		LookupSession.Listener listener = org.mockito.Mockito.mock(LookupSession.Listener.class);
+		LookupSession session = new LookupSession(hiscores, clogs, org.mockito.Mockito.mock(RuneProfileService.class),
+			org.mockito.Mockito.mock(KillclogService.class), new KillClogConfig()
+			{
+			}, listener);
+		session.readLeague("demonic-pacts", own);
+		SwingUtilities.invokeAndWait(() ->
+		{
+			session.start("Me", "Me", AccountType.REGULAR);
+			session.refreshLocalClog("Me", "Me");
+		});
+		org.mockito.Mockito.verify(listener).onClogResult(org.mockito.ArgumentMatchers.eq("Me"),
+			org.mockito.ArgumentMatchers.same(league), org.mockito.ArgumentMatchers.eq(true), org.mockito.ArgumentMatchers.anyInt());
+	}
+
+	@Test
 	public void localRefreshPreservesStatsCaAndComparisonWithoutStartingLookups() throws Exception
 	{
 		LookupTestFixture fixture = new LookupTestFixture();

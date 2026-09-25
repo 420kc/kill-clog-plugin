@@ -241,7 +241,7 @@ public class LookupSession
 			// A completed local capture supersedes a result already in flight.
 			if (isSelf && revisionAtFire != localClogRevision)
 			{
-				result = clogService.getCachedResult(player);
+				result = fanout.ownLog(player);
 				if (result == null || !result.isFromLocal())
 				{
 					settleClog(thisLookup);
@@ -313,7 +313,7 @@ public class LookupSession
 	{
 		if (player == null || localRsn == null || !localRsn.equalsIgnoreCase(player)
 			|| currentLookupRsn == null || !currentLookupRsn.equalsIgnoreCase(player)) return;
-		ClogResult local = clogService.getCachedResult(player);
+		ClogResult local = fanout.ownLog(player);
 		if (local == null || !local.isFromLocal()) return;
 		localClogRevision++;
 		clogResult = local;

@@ -136,18 +136,23 @@ public class ClogService
 		return result;
 	}
 
-	/** A League's own local log for the active player. League logs never take provider data. */
+	/** A League's own local log for the active player, once item names have loaded. */
 	CompletableFuture<ClogResult> lookupLocal(LocalClogCache cache, String playerName)
+	{
+		return fetchItemNames().thenApply(names -> localResult(cache, playerName));
+	}
+
+	/** A League's own local log for the active player, now. League logs never take provider data. */
+	@Nullable
+	ClogResult localResult(LocalClogCache cache, String playerName)
 	{
 		if (!cache.isActivePlayer(playerName) || !cache.hasDataFor(playerName))
 		{
-			return CompletableFuture.completedFuture(null);
+			return null;
 		}
-		return fetchItemNames().thenApply(names ->
-		{
-			ClogResult result = cache.toClogResult(playerName, names != null ? names : new HashMap<>());
-			return result != null ? result.withLocalSource(true) : null;
-		});
+		Map<Integer, String> names = cachedItemNames;
+		ClogResult result = cache.toClogResult(playerName, names != null ? names : new HashMap<>());
+		return result != null ? result.withLocalSource(true) : null;
 	}
 
 	/**

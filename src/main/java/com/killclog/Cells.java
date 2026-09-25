@@ -89,6 +89,17 @@ public class Cells
 	private final Map<HiscoreSkill, ImageIcon> originalIcons = new LinkedHashMap<>();
 	private final Map<HiscoreSkill, ImageIcon> dimmedIcons = new LinkedHashMap<>();
 
+	/** A boss PB in the viewed game: yours from RuneLite's profiles, anyone else's from their Kill Clog sync. */
+	String pbFor(boolean self, String displayName)
+	{
+		ClogResult lookupClog = lookupSession.getClogResult();
+		String league = lookupSession.league();
+		return self ? selfPb.apply(league, displayName)
+			: lookupClog == null ? null
+			: killclogService.pbText(league == null ? lookupClog.getPlayerName()
+				: KillclogService.modeKey(league, lookupClog.getPlayerName()), displayName);
+	}
+
 	public Cells(SpriteManager spriteManager, ItemManager itemManager,
 		TooltipController tooltipController, ComparisonController comparison,
 		TooltipDataBuilder tooltipDataBuilder, LookupSession lookupSession,
@@ -575,14 +586,7 @@ public class Cells
 		// Vanilla records pbs on the local profile only; for looked-up players
 		// the killclog.com sync is the one source that serves them, cached by
 		// the same fetch that raced the clog providers.
-		ClogResult lookupClog = lookupSession.getClogResult();
-		String league = lookupSession.league();
-		String pb = self
-			? selfPb.apply(league, displayName)
-			: (lookupClog != null
-				? killclogService.pbText(league == null ? lookupClog.getPlayerName()
-					: KillclogService.modeKey(league, lookupClog.getPlayerName()), displayName)
-				: null);
+		String pb = pbFor(self, displayName);
 
 		if (lookupSession.getClogResult() == null)
 		{

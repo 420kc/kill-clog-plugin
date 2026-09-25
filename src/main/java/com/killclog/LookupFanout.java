@@ -60,6 +60,14 @@ final class LookupFanout
 		this.leagueLog = leagueLog;
 	}
 
+	/** Your own log for the game these lookups read, as it is now. */
+	@Nullable
+	ClogResult ownLog(String player)
+	{
+		return league == null ? clogService.getCachedResult(player)
+			: leagueLog != null ? clogService.localResult(leagueLog, player) : null;
+	}
+
 	/** Open a new fetch generation and return its version stamp. */
 	int begin()
 	{

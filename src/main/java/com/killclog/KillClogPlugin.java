@@ -220,6 +220,8 @@ public class KillClogPlugin extends Plugin
 		panel.setKillclogSyncHandler(publication::manualSync);
 		panel.setCharacterPublishHandler(publication::publishCharacter);
 		panel.setSelfPb(this::selfPb);
+		// Nothing matches it, so the first tick hands the panel and chat this world's game again.
+		panelLeague = "";
 		panel.setSyncArrowEnabled(config.killclogSync());
 		panel.setCharacterPublishEnabled(publication.characterPublishingEnabled());
 		// The sync trigger lives at the data seam: any path that lands a
@@ -298,7 +300,6 @@ public class KillClogPlugin extends Plugin
 		{
 			String name = local.getName();
 			lastLocalName = name;
-			localAccountHash = client.getAccountHash();
 			AccountType acctType = getLocalAccountType();
 			boolean localClogReady = cache.setActivePlayer(name);
 			localCaCache.setActivePlayer(name);
@@ -443,6 +444,7 @@ public class KillClogPlugin extends Plugin
 				leagueCache.onSessionEnded();
 			}
 			publication.cancelSync();
+			localAccountHash = -1;
 			followWorld();
 		}
 		else if (event.getGameState() == GameState.HOPPING)
@@ -729,6 +731,7 @@ public class KillClogPlugin extends Plugin
 	public void onGameTick(GameTick event)
 	{
 		nameAutocompleter.refreshClientSnapshot();
+		localAccountHash = client.getAccountHash();
 		if (mode() == null)
 		{
 			settledTicks = 0;
@@ -800,14 +803,15 @@ public class KillClogPlugin extends Plugin
 			if (local != null && local.getName() != null)
 			{
 				String name = local.getName();
-				if (localClogCache.setActivePlayer(name))
+				LocalClogCache cache = captureCache();
+				if (cache != null && cache.setActivePlayer(name))
 				{
 					sessionState.markAutoLookupStarted();
 					localCaCache.setActivePlayer(name);
 					// The login transition often fires before the player's name is
 					// readable. This tick path waits for identity arbitration too,
 					// so a resident name-slot file can never become the self view.
-					panel.setSyncArrowHasData(localClogCache.hasFirstPartyDataFor(name));
+					panel.setSyncArrowHasData(cache.hasFirstPartyDataFor(name));
 					captureLocalCa();
 					AccountType acctType = getLocalAccountType();
 					SwingUtilities.invokeLater(() ->

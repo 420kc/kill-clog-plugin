@@ -85,6 +85,31 @@ public class LookupFanoutTest
 	}
 
 	@Test
+	public void yourOwnLogIsTheViewedGamesAndOnlyYours()
+	{
+		ClogService clogs = mock(ClogService.class);
+		LocalClogCache own = mock(LocalClogCache.class);
+		ClogResult main = mock(ClogResult.class);
+		ClogResult league = mock(ClogResult.class);
+		when(clogs.getCachedResult("Me")).thenReturn(main);
+		when(clogs.localResult(own, "Me")).thenReturn(league);
+		LookupFanout fanout = new LookupFanout(null, clogs, null, null);
+		assertSame(main, fanout.ownLog("Me"));
+		fanout.readLeague("demonic-pacts", own);
+		assertSame(league, fanout.ownLog("Me"));
+		fanout.readLeague("demonic-pacts", null);
+		assertNull("a League read from another world has no log of yours here", fanout.ownLog("Me"));
+
+		ClogService real = new ClogService(null, null, null);
+		when(own.hasDataFor(any())).thenReturn(true);
+		when(own.isActivePlayer("Me")).thenReturn(true);
+		ClogResult logged = new ClogResult("Me", java.util.Map.of(), java.util.Map.of(), java.util.Map.of(), null, null);
+		when(own.toClogResult(any(), any())).thenReturn(logged);
+		assertTrue(real.localResult(own, "Me").isFromLocal());
+		assertNull("another player's name never reads your log", real.localResult(own, "Other"));
+	}
+
+	@Test
 	public void testTransportPolicyPins()
 	{
 		// The compare side once lost these by re-implementing transport;

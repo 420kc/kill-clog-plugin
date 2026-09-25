@@ -1082,10 +1082,13 @@ public class KillClogPanel extends PluginPanel
 	{
 		lookupSession.readLeague(league, leagueLog);
 		comparison.readLeague(league, leagueLog);
-		if (rsn != null)
+		// Shown or still loading, the player is read again in the new game.
+		String shown = lookupSession.getCurrentLookupRsn();
+		if (shown != null)
 		{
-			searchRowController.exitIfActive();
-			searchBar.setText(rsn);
+			// The new lookup also ends any comparison: its other side is the last game's.
+			lookupSession.cancelInFlight();
+			searchBar.setText(shown);
 			doLookup();
 		}
 	}
