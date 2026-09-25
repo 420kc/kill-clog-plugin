@@ -180,6 +180,11 @@ class SyncService
 			return new SyncResult(false, false,
 				"This name is registered to a different account on Kill Clog.");
 		}
+		// The server no longer takes this version's syncs (a League cutover): only an update helps.
+		if (r.code == 426)
+		{
+			return new SyncResult(false, false, FirstPartyFeedback.UPDATE_REQUIRED);
+		}
 		if (r.code == 451)
 		{
 			return new SyncResult(false, false,

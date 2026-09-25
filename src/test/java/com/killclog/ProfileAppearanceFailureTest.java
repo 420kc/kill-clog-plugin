@@ -7,6 +7,14 @@ import static org.junit.Assert.*;
 public class ProfileAppearanceFailureTest
 {
 	@Test
+	public void aRefusedVersionAsksForAnUpdate()
+	{
+		JsonObject body = new JsonObject();
+		body.addProperty("error", "update_required");
+		assertEquals(FirstPartyFeedback.UPDATE_REQUIRED, ProfileAppearanceFailure.fromResponse(426, body).message);
+	}
+
+	@Test
 	public void knownRejectionIncludesSafeSupportReference()
 	{
 		JsonObject body = new JsonObject();

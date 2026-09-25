@@ -34,6 +34,18 @@ public class FirstPartyFeedbackTest
 	}
 
 	@Test
+	public void aRefusedVersionSaysUpdateNeededNotFailed()
+	{
+		feedback.complete(true, false, FirstPartyFeedback.UPDATE_REQUIRED + " Reference: 0123456789abcdef.");
+		assertEquals(java.util.Arrays.asList("update needed"), events);
+		assertEquals("update needed - restart RuneLite", feedback.hoverText("publish collection log", "publish failed"));
+		feedback.complete(true, false, "Server unavailable");
+		assertEquals("publish failed", feedback.hoverText("publish collection log", "publish failed"));
+		feedback.complete(true, true, "Synced");
+		assertEquals("publish collection log", feedback.hoverText("publish collection log", "publish failed"));
+	}
+
+	@Test
 	public void automaticSyncIsSilentThroughProgressRetryFailureAndSuccess()
 	{
 		feedback.progress(false, "syncing...", false);

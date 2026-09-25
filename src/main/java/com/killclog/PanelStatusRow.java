@@ -190,7 +190,7 @@ final class PanelStatusRow
 					tooltipController.setTooltipText(characterPublish, characterTooltipText(characterNoticeDetail != null
 						? characterNoticeDetail : characterFeedback.lastFailure()));
 					show(new StatusMessage(Owner.CHARACTER, Kind.HOVER, characterNoticeText != null ? characterNoticeText
-						: characterFeedback.lastFailure() == null ? CHARACTER_HOVER_TEXT : CHARACTER_FAILURE_HOVER_TEXT, SYNC_K1));
+						: characterFeedback.hoverText(CHARACTER_HOVER_TEXT, CHARACTER_FAILURE_HOVER_TEXT), SYNC_K1));
 				}
 			}
 
@@ -231,8 +231,8 @@ final class PanelStatusRow
 					syncChaliceHovered = true;
 					refreshSyncChalice(true);
 					tooltipController.setTooltipText(syncArrow, syncFeedback.lastFailure());
-					show(new StatusMessage(Owner.SYNC, Kind.HOVER, syncFeedback.lastFailure() == null
-						? SYNC_HOVER_TEXT : SYNC_FAILURE_HOVER_TEXT, SYNC_K1));
+					show(new StatusMessage(Owner.SYNC, Kind.HOVER,
+						syncFeedback.hoverText(SYNC_HOVER_TEXT, SYNC_FAILURE_HOVER_TEXT), SYNC_K1));
 				}
 			}
 

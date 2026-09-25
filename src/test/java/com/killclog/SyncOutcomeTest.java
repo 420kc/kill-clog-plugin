@@ -49,6 +49,15 @@ public class SyncOutcomeTest
 	}
 
 	@Test
+	public void aRefusedVersionAsksForAnUpdate()
+	{
+		SyncService.SyncResult result = outcome(426, "{\"error\":\"update_required\"}");
+		assertFalse(result.ok);
+		assertFalse("retrying cannot help", result.retryAdvised);
+		assertEquals(FirstPartyFeedback.UPDATE_REQUIRED, result.message);
+	}
+
+	@Test
 	public void contentionKeepsTheServersOwnDelay()
 	{
 		SyncService.SyncResult result = outcome(409, "{\"error\":\"sync_in_flight\",\"retry_after_seconds\":4}");

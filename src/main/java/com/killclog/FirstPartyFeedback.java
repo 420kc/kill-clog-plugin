@@ -9,6 +9,9 @@ final class FirstPartyFeedback
 		void show(StatusMessage.Kind kind, String text, boolean autoClear);
 	}
 
+	// A server that refuses this version: retrying cannot help, only an update can.
+	static final String UPDATE_REQUIRED = "Kill Clog needs an update to keep publishing. Restart RuneLite to update it.";
+
 	private final KillClogConfig config;
 	private final Status status;
 	private final Runnable successFlash;
@@ -49,13 +52,24 @@ final class FirstPartyFeedback
 		}
 		else
 		{
-			show(manual, StatusMessage.Kind.RESULT, failureText, true);
+			show(manual, StatusMessage.Kind.RESULT, updateRequired() ? "update needed" : failureText, true);
 		}
 	}
 
 	String lastFailure()
 	{
 		return lastFailure;
+	}
+
+	/** The control's hover label: its usual one, its failure one, or a call to update. */
+	String hoverText(String normal, String failed)
+	{
+		return lastFailure == null ? normal : updateRequired() ? "update needed - restart RuneLite" : failed;
+	}
+
+	private boolean updateRequired()
+	{
+		return lastFailure != null && lastFailure.startsWith(UPDATE_REQUIRED);
 	}
 
 	void reset()

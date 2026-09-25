@@ -44,6 +44,7 @@ final class ProfileAppearanceFailure
 			case "appearance_render_failed": message = "Server could not render the character. Try again later."; break;
 			case "follower_catalog_unavailable": message = "Follower service is unavailable. Try again later."; break;
 			case "opted_out": message = "Publication is disabled by your privacy setting."; break;
+			case "update_required": message = FirstPartyFeedback.UPDATE_REQUIRED; break;
 			case "account_hash_mismatch": message = "Publication account does not match."; break;
 			case "missing_appearance_credential":
 			case "invalid_appearance_credential": message = "Publishing access could not be restored. Try again later."; break;

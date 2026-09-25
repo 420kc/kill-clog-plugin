@@ -184,6 +184,28 @@ public class PanelStatusRowCharacterizationTest
 	}
 
 	@Test
+	public void aRefusedVersionAsksForAnUpdateOnBothControls() throws Exception
+	{
+		enableControls();
+		edt(() ->
+		{
+			panel.showSyncResult(true, false, FirstPartyFeedback.UPDATE_REQUIRED);
+			assertEquals("update needed", status.getText());
+			fire(expiry());
+			mouse(sync, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
+			assertEquals("update needed - restart RuneLite", status.getText());
+			assertEquals(FirstPartyFeedback.UPDATE_REQUIRED, sync.getToolTipText());
+			mouse(sync, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
+
+			panel.showCharacterPublishStatus(KillClogPlugin.CHARACTER_FAILED_STATUS, false, true, FirstPartyFeedback.UPDATE_REQUIRED);
+			assertEquals("update needed", status.getText());
+			fire(expiry());
+			mouse(character, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
+			assertEquals("update needed - restart RuneLite", status.getText());
+		});
+	}
+
+	@Test
 	public void characterFailureExpiresIntoEscapedHoverDetails() throws Exception
 	{
 		enableControls();
