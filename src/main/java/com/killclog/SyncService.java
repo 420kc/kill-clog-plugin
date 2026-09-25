@@ -130,7 +130,7 @@ class SyncService
 		// URLEncoder form-encodes spaces as '+', which the server preserves and
 		// rejects; path segments need %20.
 		String url = KillClogEndpoint.apiBaseUrl() + "/player/"
-			+ URLEncoder.encode(rsn, StandardCharsets.UTF_8).replace("+", "%20") + "/sync";
+			+ URLEncoder.encode(rsn, StandardCharsets.UTF_8).replace("+", "%20") + "/sync/main";
 
 		log.debug("Syncing collection log for '{}' to {} ({} items)",
 			rsn, url, observedCount);

@@ -66,6 +66,8 @@ public class PluginPublicationCharacterizationTest
 	private final List<CompletableFuture<SyncService.SyncResult>> syncs = new ArrayList<>();
 	private final List<CompletableFuture<ProfileAppearanceService.PublishResult>> publishes = new ArrayList<>();
 	private long epoch = 7;
+	// Startup sees no session, as before; the player is then on a main-game members world.
+	private GameState gameState;
 	private KillClogPlugin plugin;
 	private Runnable syncHandler;
 	private Runnable publishHandler;
@@ -96,6 +98,8 @@ public class PluginPublicationCharacterizationTest
 		when(local.getName()).thenReturn(RSN);
 		when(client.getLocalPlayer()).thenReturn(local);
 		when(client.getAccountHash()).thenReturn(HASH);
+		when(client.getGameState()).thenAnswer(invocation -> gameState);
+		when(client.getWorldType()).thenReturn(java.util.EnumSet.of(net.runelite.api.WorldType.MEMBERS));
 		when(localClogCache.currentSessionEpoch()).thenAnswer(invocation -> epoch);
 		when(syncService.syncCollectionLog(any(), anyLong(), any(), any(), any(), anyLong(), any(), anyInt()))
 			.thenAnswer(invocation ->
@@ -132,6 +136,7 @@ public class PluginPublicationCharacterizationTest
 			field.set(plugin, dependency(field));
 		}
 		plugin.startUp();
+		gameState = GameState.LOGGED_IN;
 
 		ArgumentCaptor<Runnable> handler = ArgumentCaptor.forClass(Runnable.class);
 		verify(panel).setKillclogSyncHandler(handler.capture());
@@ -599,6 +604,127 @@ public class PluginPublicationCharacterizationTest
 		assertEquals(0, executor.live());
 		settle();
 		assertTrue(syncs.isEmpty());
+	}
+
+	private void world(net.runelite.api.WorldType first, net.runelite.api.WorldType... rest)
+	{
+		when(client.getWorldType()).thenReturn(java.util.EnumSet.of(first, rest));
+	}
+
+	private void ticks(int count)
+	{
+		for (int i = 0; i < count; i++)
+		{
+			plugin.onGameTick(new net.runelite.api.events.GameTick());
+		}
+	}
+
+	private void varp(int id)
+	{
+		net.runelite.api.events.VarbitChanged event = new net.runelite.api.events.VarbitChanged();
+		event.setVarpId(id);
+		plugin.onVarbitChanged(event);
+	}
+
+	private AccountType sentType(int call)
+	{
+		ArgumentCaptor<AccountType> type = ArgumentCaptor.forClass(AccountType.class);
+		verify(syncService, times(call)).syncCollectionLog(any(), anyLong(), type.capture(), any(), any(), anyLong(), any(), anyInt());
+		return type.getAllValues().get(call - 1);
+	}
+
+	@Test
+	public void onALeagueWorldNothingSyncsOrPublishes() throws Exception
+	{
+		world(net.runelite.api.WorldType.SEASONAL, net.runelite.api.WorldType.MEMBERS);
+		syncHandler.run();
+		settle();
+		publishHandler.run();
+		settle();
+		assertTrue(syncs.isEmpty());
+		assertTrue(publishes.isEmpty());
+	}
+
+	@Test
+	public void theAccountTypeIsSentOnlyOnceTheMainWorldHasSettled() throws Exception
+	{
+		syncHandler.run();
+		settle();
+		org.junit.Assert.assertNull("an unsettled reading is never sent", sentType(1));
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
+		ticks(10);
+		syncHandler.run();
+		settle();
+		assertEquals(AccountType.REGULAR, sentType(2));
+		syncs.get(1).complete(new SyncService.SyncResult(true, false, "Synced"));
+		net.runelite.api.events.VarbitChanged changed = new net.runelite.api.events.VarbitChanged();
+		changed.setVarbitId(net.runelite.api.gameval.VarbitID.IRONMAN);
+		plugin.onVarbitChanged(changed);
+		ticks(9);
+		syncHandler.run();
+		settle();
+		org.junit.Assert.assertNull("a type change settles again first", sentType(3));
+	}
+
+	@Test
+	public void countersAndCombatAchievementsWaitForASettledMainWorld() throws Exception
+	{
+		LocalCaCache caCache = (LocalCaCache) field("localCaCache");
+		when(localClogCache.hasDataFor(RSN)).thenReturn(true);
+		when(client.getVarpValue(ClogVarps.OBTAINED)).thenReturn(5);
+		when(client.getVarpValue(ClogVarps.TOTAL)).thenReturn(10);
+		varp(ClogVarps.OBTAINED);
+		ticks(9);
+		verify(localClogCache, never()).updateTotalsUpward(any(), anyInt(), anyInt());
+		verify(caCache, never()).cacheResult(any(), any());
+		ticks(1);
+		verify(localClogCache).updateTotalsUpward(RSN, 5, 10);
+		verify(caCache).cacheResult(eq(RSN), any());
+		world(net.runelite.api.WorldType.SEASONAL);
+		varp(ClogVarps.OBTAINED);
+		ticks(20);
+		verify(localClogCache).updateTotalsUpward(RSN, 5, 10);
+		verify(caCache).cacheResult(eq(RSN), any());
+	}
+
+	private void unlockMessage() throws Exception
+	{
+		net.runelite.api.events.ChatMessage unlock = new net.runelite.api.events.ChatMessage();
+		unlock.setType(net.runelite.api.ChatMessageType.GAMEMESSAGE);
+		unlock.setMessage("New item added to your collection log: Twisted bow");
+		plugin.onChatMessage(unlock);
+		settle();
+	}
+
+	@Test
+	public void aLeagueWorldUnlockNeverReachesTheMainLog() throws Exception
+	{
+		world(net.runelite.api.WorldType.SEASONAL);
+		unlockMessage();
+		// On this harness the unlock's first step reports an unreadable log; it never runs here.
+		verify(chatNotifier, never()).send(eq(ChatNotice.SYNC_HELP), any());
+		world(net.runelite.api.WorldType.MEMBERS);
+		unlockMessage();
+		verify(chatNotifier).send(eq(ChatNotice.SYNC_HELP), any());
+	}
+
+	@Test
+	public void theCollectionLogWalkRunsOnlyOnTheMainGame() throws Exception
+	{
+		// The walk reads the obtained counter every tick; nothing else here does without a local log.
+		world(net.runelite.api.WorldType.SEASONAL);
+		ticks(3);
+		verify(client, never()).getVarpValue(ClogVarps.OBTAINED);
+		world(net.runelite.api.WorldType.MEMBERS);
+		ticks(1);
+		verify(client).getVarpValue(ClogVarps.OBTAINED);
+	}
+
+	private Object field(String name) throws Exception
+	{
+		Field field = KillClogPlugin.class.getDeclaredField(name);
+		field.setAccessible(true);
+		return field.get(plugin);
 	}
 
 	private void logout()

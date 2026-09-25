@@ -140,6 +140,11 @@ public class KillClogPlugin extends Plugin
 
 	private NavigationButton navButton;
 	private String lastLocalName;
+	// Ticks on a main-game world with an unchanged account type. Counters, CA tiers and the
+	// account type sent to the server wait for it, so a hop or login never carries another
+	// mode's values into the main game.
+	private int mainTicks;
+	private static final int SETTLED_TICKS = 10;
 
 	// Adventure-log pb harvest state, vanilla's two-stage shape: the menu
 	// load names the owner, the Counters scroll load triggers the parse.
@@ -194,7 +199,7 @@ public class KillClogPlugin extends Plugin
 		{
 			publication = new PublicationCoordinator(config, configManager, client, clientThread, executor,
 				localClogCache, syncService, profileAppearanceService, chatNotifier, panelFeedback(),
-				this::getLocalAccountType);
+				() -> mainSettled() ? getLocalAccountType() : null, this::onMainWorld);
 		}
 		enforceCharacterSettingDependency();
 		panel.setKillclogSyncHandler(publication::manualSync);
@@ -354,7 +359,7 @@ public class KillClogPlugin extends Plugin
 	private void reconcileClogTotalsFromVarps()
 	{
 		Player local = client.getLocalPlayer();
-		if (local == null || local.getName() == null)
+		if (!mainSettled() || local == null || local.getName() == null)
 		{
 			return;
 		}
@@ -423,6 +428,12 @@ public class KillClogPlugin extends Plugin
 		else if (event.getGameState() == GameState.HOPPING)
 		{
 			markLocalHiscoresDirty();
+			// A walk never spans two worlds: the next one may be a different game.
+			manualClogSync.reset();
+		}
+		if (event.getGameState() != GameState.LOGGED_IN)
+		{
+			mainTicks = 0;
 		}
 
 		// The owner claim is scoped to one POH visit, exactly as vanilla
@@ -529,6 +540,10 @@ public class KillClogPlugin extends Plugin
 
 	private void handleCollectionLogUnlock(String itemName, int broadcastObtained, int broadcastTotal)
 	{
+		if (!onMainWorld())
+		{
+			return;
+		}
 		liveClogSync.handleUnlock(itemName, broadcastObtained, broadcastTotal, client,
 			itemManager, clogIndex, localClogCache, chatNotifier,
 			panel::onBulkCaptureComplete);
@@ -578,11 +593,19 @@ public class KillClogPlugin extends Plugin
 		{
 			reconcileClogTotalsFromVarps();
 		}
+		if (event.getVarbitId() == VarbitID.IRONMAN)
+		{
+			mainTicks = 0;
+		}
 	}
 
 	/** Read per-tier CA completed counts from game varbits and persist them for the active player. */
 	private boolean captureLocalCa()
 	{
+		if (!mainSettled())
+		{
+			return false;
+		}
 		caCatalog.capture(client);
 		return localCaReader.capture(client, localCaCache);
 	}
@@ -594,10 +617,31 @@ public class KillClogPlugin extends Plugin
 				&& pluginManager.isPluginActive(plugin));
 	}
 
+	/** The main game: logged in on a world whose flags create no separate character. */
+	private boolean onMainWorld()
+	{
+		return client.getGameState() == GameState.LOGGED_IN && GameMode.isMain(client.getWorldType());
+	}
+
+	private boolean mainSettled()
+	{
+		return mainTicks >= SETTLED_TICKS && onMainWorld();
+	}
+
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
 		nameAutocompleter.refreshClientSnapshot();
+		if (!onMainWorld())
+		{
+			mainTicks = 0;
+		}
+		else if (++mainTicks == SETTLED_TICKS)
+		{
+			// Counters and CA tiers read before the world settled were skipped: take them now.
+			reconcileClogTotalsFromVarps();
+			sessionState.requestCaRead();
+		}
 
 		// Rename continuity: once per login, when both halves of the local
 		// identity have arrived, the cache follows the account onto its
@@ -686,9 +730,16 @@ public class KillClogPlugin extends Plugin
 			}
 		}
 
-		manualClogSync.onGameTick(client, clogIndex, localClogCache,
-			chatNotifier, liveClogSync::resetFirstSyncWarning,
-			panel::onBulkCaptureComplete);
+		if (onMainWorld())
+		{
+			manualClogSync.onGameTick(client, clogIndex, localClogCache,
+				chatNotifier, liveClogSync::resetFirstSyncWarning,
+				panel::onBulkCaptureComplete);
+		}
+		else
+		{
+			manualClogSync.reset();
+		}
 
 		// Adventure-log pb harvest, one tick after each widget load so the
 		// children are populated (vanilla's own deferral). The new menu

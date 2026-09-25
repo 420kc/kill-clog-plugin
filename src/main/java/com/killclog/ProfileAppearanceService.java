@@ -415,7 +415,7 @@ final class ProfileAppearanceService
 	private CompletableFuture<PublishResult> publishWithSecret(PublishAttempt attempt,
 		String manifestJson, String secret, boolean recoverInvalidSecret)
 	{
-		return attempt.post("appearance/publish", manifestJson, secret).thenCompose(response ->
+		return attempt.post("appearance/publish/main", manifestJson, secret).thenCompose(response ->
 		{
 			if (response.code == -2) return completed(Outcome.CANCELLED);
 			JsonObject json = parse(response.body);

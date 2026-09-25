@@ -8,6 +8,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
@@ -55,6 +56,8 @@ final class PublicationCoordinator
 	private final KillClogChatNotifier chatNotifier;
 	private final Feedback feedback;
 	private final Supplier<AccountType> localAccountType;
+	// Only the main game syncs or publishes a character here.
+	private final BooleanSupplier mainWorld;
 
 	private volatile ScheduledFuture<?> pendingKillclogSync;
 	private final KillclogSyncGate syncGate = new KillclogSyncGate();
@@ -66,7 +69,8 @@ final class PublicationCoordinator
 	PublicationCoordinator(KillClogConfig config, ConfigManager configManager, Client client,
 		ClientThread clientThread, ScheduledExecutorService executor, LocalClogCache localClogCache,
 		SyncService syncService, ProfileAppearanceService profileAppearanceService,
-		KillClogChatNotifier chatNotifier, Feedback feedback, Supplier<AccountType> localAccountType)
+		KillClogChatNotifier chatNotifier, Feedback feedback, Supplier<AccountType> localAccountType,
+		BooleanSupplier mainWorld)
 	{
 		this.config = config;
 		this.configManager = configManager;
@@ -79,6 +83,7 @@ final class PublicationCoordinator
 		this.chatNotifier = chatNotifier;
 		this.feedback = feedback;
 		this.localAccountType = localAccountType;
+		this.mainWorld = mainWorld;
 	}
 
 	// ── plugin-facing ──────────────────────────────────────────────────
@@ -226,7 +231,7 @@ final class PublicationCoordinator
 			Player local = client.getLocalPlayer();
 			String rsn = local != null ? local.getName() : null;
 			long accountHash = client.getAccountHash();
-			if (!characterPublishingEnabled() || rsn == null || accountHash == -1)
+			if (!characterPublishingEnabled() || rsn == null || accountHash == -1 || !mainWorld.getAsBoolean())
 			{
 				characterPublishInFlight.set(false);
 				showCharacterPublishStatus(generation, KillClogPlugin.CHARACTER_FAILED_STATUS, false, true);
@@ -374,7 +379,7 @@ final class PublicationCoordinator
 				Player local = client.getLocalPlayer();
 				String rsn = local != null ? local.getName() : null;
 				long accountHash = client.getAccountHash();
-				if (rsn == null || accountHash == -1)
+				if (rsn == null || accountHash == -1 || !mainWorld.getAsBoolean())
 				{
 					syncGate.abortAttempt();
 					failQueuedCharacterPublish();
