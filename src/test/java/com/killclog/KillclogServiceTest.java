@@ -37,6 +37,22 @@ public class KillclogServiceTest
 	}
 
 	@Test
+	public void theActiveLeagueIsOnlyEverAPlainSlug()
+	{
+		service.parseSyncIndex("{\"names\":[],\"active_league\":\"demonic-pacts\"}");
+		assertEquals("demonic-pacts", service.activeLeague());
+		for (String unsafe : new String[]{"main", "../etc", "Demonic-Pacts", "a/b", "", "x".repeat(41)})
+		{
+			service.parseSyncIndex("{\"names\":[],\"active_league\":\"" + unsafe + "\"}");
+			assertNull(unsafe, service.activeLeague());
+		}
+		service.parseSyncIndex("{\"names\":[],\"active_league\":null}");
+		assertNull(service.activeLeague());
+		service.parseSyncIndex("{\"names\":[]}");
+		assertNull(service.activeLeague());
+	}
+
+	@Test
 	public void testParseSyncIndexRejectsGarbage()
 	{
 		assertNull(service.parseSyncIndex("{\"schema\":1}"));

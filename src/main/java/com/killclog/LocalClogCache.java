@@ -1092,6 +1092,12 @@ public class LocalClogCache
 		this(gson, diskWriter, DEFAULT_CACHE_DIR);
 	}
 
+	/** A League's own cache: the same store, in that League's folder. */
+	LocalClogCache(Gson gson, File cacheDir)
+	{
+		this(gson, newDiskWriter(), cacheDir);
+	}
+
 	LocalClogCache(Gson gson, ScheduledExecutorService diskWriter, File cacheDir)
 	{
 		this.gson = gson;

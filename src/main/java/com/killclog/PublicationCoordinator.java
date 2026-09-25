@@ -8,7 +8,6 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
@@ -56,8 +55,9 @@ final class PublicationCoordinator
 	private final KillClogChatNotifier chatNotifier;
 	private final Feedback feedback;
 	private final Supplier<AccountType> localAccountType;
-	// Only the main game syncs or publishes a character here.
-	private final BooleanSupplier mainWorld;
+	// The world's game mode and that mode's own store; no mode means nothing is sent.
+	private final Supplier<String> mode;
+	private final Supplier<LocalClogCache> modeCache;
 
 	private volatile ScheduledFuture<?> pendingKillclogSync;
 	private final KillclogSyncGate syncGate = new KillclogSyncGate();
@@ -70,7 +70,7 @@ final class PublicationCoordinator
 		ClientThread clientThread, ScheduledExecutorService executor, LocalClogCache localClogCache,
 		SyncService syncService, ProfileAppearanceService profileAppearanceService,
 		KillClogChatNotifier chatNotifier, Feedback feedback, Supplier<AccountType> localAccountType,
-		BooleanSupplier mainWorld)
+		Supplier<String> mode, Supplier<LocalClogCache> modeCache)
 	{
 		this.config = config;
 		this.configManager = configManager;
@@ -83,7 +83,8 @@ final class PublicationCoordinator
 		this.chatNotifier = chatNotifier;
 		this.feedback = feedback;
 		this.localAccountType = localAccountType;
-		this.mainWorld = mainWorld;
+		this.mode = mode;
+		this.modeCache = modeCache;
 	}
 
 	// ── plugin-facing ──────────────────────────────────────────────────
@@ -231,7 +232,7 @@ final class PublicationCoordinator
 			Player local = client.getLocalPlayer();
 			String rsn = local != null ? local.getName() : null;
 			long accountHash = client.getAccountHash();
-			if (!characterPublishingEnabled() || rsn == null || accountHash == -1 || !mainWorld.getAsBoolean())
+			if (!characterPublishingEnabled() || rsn == null || accountHash == -1 || !GameMode.MAIN.equals(mode.get()))
 			{
 				characterPublishInFlight.set(false);
 				showCharacterPublishStatus(generation, KillClogPlugin.CHARACTER_FAILED_STATUS, false, true);
@@ -379,13 +380,18 @@ final class PublicationCoordinator
 				Player local = client.getLocalPlayer();
 				String rsn = local != null ? local.getName() : null;
 				long accountHash = client.getAccountHash();
-				if (rsn == null || accountHash == -1 || !mainWorld.getAsBoolean())
+				String gameMode = mode.get();
+				LocalClogCache cache = modeCache.get();
+				if (rsn == null || accountHash == -1 || gameMode == null || cache == null)
 				{
 					syncGate.abortAttempt();
 					failQueuedCharacterPublish();
 					launchQueuedSync();
 					return;
 				}
+				// The type supplier answers only on a settled main world; a League's PBs live in its
+				// own RuneLite profile.
+				boolean main = GameMode.MAIN.equals(gameMode);
 				AccountType accountType = localAccountType.get();
 				if (manual)
 				{
@@ -396,8 +402,9 @@ final class PublicationCoordinator
 					withSyncFeedback(generation, scheduledEpoch,
 						() -> feedback.showSyncProgress(manual, "publishing...", false));
 				}
-				List<String> profileKeys = PersonalBests.profileKeys(
-					configManager.getRSProfiles(), accountHash);
+				String leagueProfile = main ? null : configManager.getRSProfileKey();
+				List<String> profileKeys = main ? PersonalBests.profileKeys(configManager.getRSProfiles(), accountHash)
+					: leagueProfile == null ? List.of() : List.of(leagueProfile);
 				Map<String, Double> pbs = gatherPersonalBests(profileKeys);
 				Map<String, SyncService.DetailedPb> detailedPbs =
 					gatherDetailedPersonalBests(profileKeys);
@@ -408,8 +415,10 @@ final class PublicationCoordinator
 				// and the dispatch must kill the attempt, not let a dead
 				// session's sync restore its anchor or post after the end.
 				long cacheEpoch = scheduledEpoch;
+				long storeEpoch = cache.currentSessionEpoch();
 				executor.execute(() -> dispatchKillclogSync(
-					rsn, accountHash, accountType, pbs, detailedPbs, manual, generation, cacheEpoch));
+					rsn, accountHash, accountType, pbs, detailedPbs, manual, generation, cacheEpoch,
+					cache, gameMode, storeEpoch));
 			}
 			catch (RuntimeException e)
 			{
@@ -430,7 +439,7 @@ final class PublicationCoordinator
 
 	private void dispatchKillclogSync(String rsn, long accountHash, AccountType accountType,
 		Map<String, Double> pbs, Map<String, SyncService.DetailedPb> detailedPbs,
-		boolean manual, int generation, long cacheEpoch)
+		boolean manual, int generation, long cacheEpoch, LocalClogCache cache, String gameMode, long storeEpoch)
 	{
 		if (localClogCache.currentSessionEpoch() != cacheEpoch)
 		{
@@ -444,7 +453,7 @@ final class PublicationCoordinator
 		try
 		{
 			syncService.syncCollectionLog(rsn, accountHash, accountType, pbs, detailedPbs,
-				cacheEpoch, syncGate, generation)
+				storeEpoch, syncGate, generation, cache, gameMode)
 				.whenComplete((result, err) ->
 				{
 					boolean current = syncGate.complete(generation);

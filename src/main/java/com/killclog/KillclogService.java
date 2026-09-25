@@ -296,6 +296,23 @@ public class KillclogService
 		});
 	}
 
+	// The League the server takes syncs for, announced with the index. It names a folder and a
+	// path segment, so anything but a plain slug is ignored.
+	private volatile String activeLeague;
+	private static final java.util.regex.Pattern LEAGUE_ID = java.util.regex.Pattern.compile("[a-z0-9]+(-[a-z0-9]+){0,5}");
+
+	@Nullable
+	String activeLeague()
+	{
+		return activeLeague;
+	}
+
+	/** Login: learn the active League even when no lookup needs the index. */
+	void refreshIndex()
+	{
+		ensureIndex();
+	}
+
 	@Nullable
 	Set<String> parseSyncIndex(String json)
 	{
@@ -314,6 +331,9 @@ public class KillclogService
 					names.add(el.getAsString().toLowerCase(java.util.Locale.ROOT));
 				}
 			}
+			JsonElement league = root.get("active_league");
+			String id = league != null && league.isJsonPrimitive() ? league.getAsString() : "";
+			activeLeague = id.length() <= 40 && LEAGUE_ID.matcher(id).matches() && !GameMode.MAIN.equals(id) ? id : null;
 			return names;
 		}
 		catch (Exception e)

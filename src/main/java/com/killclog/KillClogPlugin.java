@@ -1,5 +1,6 @@
 package com.killclog;
 
+import com.google.gson.Gson;
 import com.google.inject.Provides;
 import java.awt.image.BufferedImage;
 import java.util.concurrent.ScheduledExecutorService;
@@ -145,6 +146,15 @@ public class KillClogPlugin extends Plugin
 	// mode's values into the main game.
 	private int mainTicks;
 	private static final int SETTLED_TICKS = 10;
+	@Inject
+	private Gson gson;
+	// The active League's own store, opened on first use; one League at a time.
+	private LocalClogCache leagueCache;
+	private String leagueCacheId;
+	private java.util.function.Function<String, LocalClogCache> leagueCacheFactory = id ->
+		new LocalClogCache(gson, new java.io.File(net.runelite.client.RuneLite.RUNELITE_DIR, "kill-clog/leagues/" + id));
+	// The store the collection log walk started with; a different one means start over.
+	private LocalClogCache walkCache;
 
 	// Adventure-log pb harvest state, vanilla's two-stage shape: the menu
 	// load names the owner, the Counters scroll load triggers the parse.
@@ -199,7 +209,7 @@ public class KillClogPlugin extends Plugin
 		{
 			publication = new PublicationCoordinator(config, configManager, client, clientThread, executor,
 				localClogCache, syncService, profileAppearanceService, chatNotifier, panelFeedback(),
-				() -> mainSettled() ? getLocalAccountType() : null, this::onMainWorld);
+				() -> mainSettled() ? getLocalAccountType() : null, this::mode, this::captureCache);
 		}
 		enforceCharacterSettingDependency();
 		panel.setKillclogSyncHandler(publication::manualSync);
@@ -251,6 +261,12 @@ public class KillClogPlugin extends Plugin
 		kclogCommand.clear();
 		chatEmoji.clear();
 		localClogCache.shutdown();
+		if (leagueCache != null)
+		{
+			leagueCache.shutdown();
+			leagueCache = null;
+			leagueCacheId = null;
+		}
 		localCaCache.shutdown();
 		manualClogSync.reset();
 		clogIndex.clear();
@@ -279,13 +295,15 @@ public class KillClogPlugin extends Plugin
 			sessionState.requestLocalReads();
 		}
 
+		killclogService.refreshIndex();
 		Player local = client.getLocalPlayer();
-		if (local != null && local.getName() != null)
+		LocalClogCache cache = captureCache();
+		if (local != null && local.getName() != null && cache != null)
 		{
 			String name = local.getName();
 			lastLocalName = name;
 			AccountType acctType = getLocalAccountType();
-			boolean localClogReady = localClogCache.setActivePlayer(name);
+			boolean localClogReady = cache.setActivePlayer(name);
 			localCaCache.setActivePlayer(name);
 			SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name, acctType));
 			if (!requestLocalReads)
@@ -298,7 +316,7 @@ public class KillClogPlugin extends Plugin
 			// push per login closes that hole; the server merge no-ops when
 			// nothing changed.
 			boolean hasLocalClog = localClogReady
-				&& localClogCache.hasFirstPartyDataFor(name);
+				&& cache.hasFirstPartyDataFor(name);
 			panel.setSyncArrowHasData(hasLocalClog);
 			if (hasLocalClog)
 			{
@@ -321,7 +339,7 @@ public class KillClogPlugin extends Plugin
 	 * read is marshalled back onto its owning thread and re-fenced against the
 	 * session that started the arbitration.
 	 */
-	private void onClogIdentitySettled(String name, long accountHash,
+	private void onClogIdentitySettled(LocalClogCache cache, String name, long accountHash,
 		long expectedEpoch, boolean settled)
 	{
 		if (!settled)
@@ -331,16 +349,16 @@ public class KillClogPlugin extends Plugin
 		clientThread.invokeLater(() ->
 		{
 			Player local = client.getLocalPlayer();
-			if (localClogCache.currentSessionEpoch() != expectedEpoch
+			if (cache.currentSessionEpoch() != expectedEpoch || cache != captureCache()
 				|| local == null || local.getName() == null
 				|| !local.getName().equalsIgnoreCase(name)
 				|| client.getAccountHash() != accountHash
-				|| !localClogCache.setActivePlayer(name))
+				|| !cache.setActivePlayer(name))
 			{
 				return;
 			}
 
-			boolean hasLocalClog = localClogCache.hasFirstPartyDataFor(name);
+			boolean hasLocalClog = cache.hasFirstPartyDataFor(name);
 			SwingUtilities.invokeLater(() -> panel.setSyncArrowHasData(hasLocalClog));
 			if (hasLocalClog)
 			{
@@ -423,6 +441,10 @@ public class KillClogPlugin extends Plugin
 			// session - a stale hash must never authorize the next account's
 			// saves.
 			localClogCache.onSessionEnded();
+			if (leagueCache != null)
+			{
+				leagueCache.onSessionEnded();
+			}
 			publication.cancelSync();
 		}
 		else if (event.getGameState() == GameState.HOPPING)
@@ -540,12 +562,13 @@ public class KillClogPlugin extends Plugin
 
 	private void handleCollectionLogUnlock(String itemName, int broadcastObtained, int broadcastTotal)
 	{
-		if (!onMainWorld())
+		LocalClogCache cache = captureCache();
+		if (cache == null)
 		{
 			return;
 		}
 		liveClogSync.handleUnlock(itemName, broadcastObtained, broadcastTotal, client,
-			itemManager, clogIndex, localClogCache, chatNotifier,
+			itemManager, clogIndex, cache, chatNotifier,
 			panel::onBulkCaptureComplete);
 	}
 
@@ -617,10 +640,41 @@ public class KillClogPlugin extends Plugin
 				&& pluginManager.isPluginActive(plugin));
 	}
 
-	/** The main game: logged in on a world whose flags create no separate character. */
+	/** Main, the announced League, or null: logged in on a world whose game is known. */
+	private String mode()
+	{
+		return client.getGameState() == GameState.LOGGED_IN
+			? GameMode.of(client.getWorldType(), killclogService.activeLeague()) : null;
+	}
+
 	private boolean onMainWorld()
 	{
-		return client.getGameState() == GameState.LOGGED_IN && GameMode.isMain(client.getWorldType());
+		return GameMode.MAIN.equals(mode());
+	}
+
+	/** The store this world's captures belong in, or null when the world's game is unknown. */
+	private LocalClogCache captureCache()
+	{
+		String mode = mode();
+		if (mode == null || GameMode.MAIN.equals(mode))
+		{
+			return mode == null ? null : localClogCache;
+		}
+		if (!mode.equals(leagueCacheId))
+		{
+			if (leagueCache != null)
+			{
+				leagueCache.shutdown();
+			}
+			leagueCache = leagueCacheFactory.apply(mode);
+			leagueCacheId = mode;
+		}
+		return leagueCache;
+	}
+
+	void setLeagueCacheFactory(java.util.function.Function<String, LocalClogCache> factory)
+	{
+		leagueCacheFactory = factory;
 	}
 
 	private boolean mainSettled()
@@ -652,14 +706,15 @@ public class KillClogPlugin extends Plugin
 		{
 			Player renameLocal = client.getLocalPlayer();
 			long renameHash = client.getAccountHash();
-			if (renameLocal != null && renameLocal.getName() != null && renameHash != -1)
+			LocalClogCache renameCache = captureCache();
+			if (renameLocal != null && renameLocal.getName() != null && renameHash != -1 && renameCache != null)
 			{
 				renameChecked = true;
 				String renameName = renameLocal.getName();
-				long renameEpoch = localClogCache.currentSessionEpoch();
-				localClogCache.followNameChangeAsync(renameName, renameHash, renameEpoch)
+				long renameEpoch = renameCache.currentSessionEpoch();
+				renameCache.followNameChangeAsync(renameName, renameHash, renameEpoch)
 					.thenAccept(settled -> onClogIdentitySettled(
-						renameName, renameHash, renameEpoch, settled));
+						renameCache, renameName, renameHash, renameEpoch, settled));
 			}
 		}
 		// The notice survives whichever path migrated first (the sync
@@ -730,15 +785,17 @@ public class KillClogPlugin extends Plugin
 			}
 		}
 
-		if (onMainWorld())
-		{
-			manualClogSync.onGameTick(client, clogIndex, localClogCache,
-				chatNotifier, liveClogSync::resetFirstSyncWarning,
-				panel::onBulkCaptureComplete);
-		}
-		else
+		LocalClogCache cache = captureCache();
+		if (cache != walkCache)
 		{
 			manualClogSync.reset();
+			walkCache = cache;
+		}
+		if (cache != null)
+		{
+			manualClogSync.onGameTick(client, clogIndex, cache,
+				chatNotifier, liveClogSync::resetFirstSyncWarning,
+				panel::onBulkCaptureComplete);
 		}
 
 		// Adventure-log pb harvest, one tick after each widget load so the

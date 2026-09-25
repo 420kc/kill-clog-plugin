@@ -85,10 +85,11 @@ class SyncService
 	 * @param accountType the locally detected account type (client varbits),
 	 *                    never the provider-derived one
 	 */
+	/** {@code cache} is the mode's own store and {@code cacheEpoch} its gather-time session. */
 	CompletableFuture<SyncResult> syncCollectionLog(String rsn, long accountHash,
 		@Nullable AccountType accountType, Map<String, Double> personalBests,
 		Map<String, DetailedPb> detailedPersonalBests, long cacheEpoch,
-		KillclogSyncGate syncGate, int generation)
+		KillclogSyncGate syncGate, int generation, LocalClogCache cache, String mode)
 	{
 		if (rsn == null || rsn.isBlank())
 		{
@@ -102,7 +103,7 @@ class SyncService
 		// the server's own migration never even sees a packet. The caller's
 		// gather-time epoch rides in so a logout since then fences the whole
 		// pre-flight inside the cache monitor.
-		if (!localClogCache.followNameChangeForSync(rsn, accountHash, cacheEpoch))
+		if (!cache.followNameChangeForSync(rsn, accountHash, cacheEpoch))
 		{
 			// The disk half of a migration or adoption did not land - the
 			// local store's provenance is unresolved and its bytes must not
@@ -118,7 +119,7 @@ class SyncService
 		// ever push, and only its own file - filtered to items this client
 		// observed first-hand, so provider-cached data (pre-login lookups,
 		// cross-character searches) can never launder into first-party proof.
-		ClogResult clog = localClogCache.toFirstPartySyncResult(rsn);
+		ClogResult clog = cache.toFirstPartySyncResult(rsn);
 		if (clog == null || clog.getObtainedItems().isEmpty())
 		{
 			return CompletableFuture.completedFuture(
@@ -130,12 +131,12 @@ class SyncService
 		// URLEncoder form-encodes spaces as '+', which the server preserves and
 		// rejects; path segments need %20.
 		String url = KillClogEndpoint.apiBaseUrl() + "/player/"
-			+ URLEncoder.encode(rsn, StandardCharsets.UTF_8).replace("+", "%20") + "/sync/main";
+			+ URLEncoder.encode(rsn, StandardCharsets.UTF_8).replace("+", "%20") + "/sync/" + mode;
 
 		log.debug("Syncing collection log for '{}' to {} ({} items)",
 			rsn, url, observedCount);
 		final int pbCount = personalBests != null ? personalBests.size() : 0;
-		CompletableFuture<HttpUtil.HttpResult> request = localClogCache.commitIfSessionCurrent(
+		CompletableFuture<HttpUtil.HttpResult> request = cache.commitIfSessionCurrent(
 			cacheEpoch, () -> syncGate.commitIfCurrent(generation,
 				() -> HttpUtil.httpPostJson(httpClient, url, body, null)));
 		if (request == null)

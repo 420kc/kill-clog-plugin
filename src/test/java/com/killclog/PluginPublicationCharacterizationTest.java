@@ -101,7 +101,7 @@ public class PluginPublicationCharacterizationTest
 		when(client.getGameState()).thenAnswer(invocation -> gameState);
 		when(client.getWorldType()).thenReturn(java.util.EnumSet.of(net.runelite.api.WorldType.MEMBERS));
 		when(localClogCache.currentSessionEpoch()).thenAnswer(invocation -> epoch);
-		when(syncService.syncCollectionLog(any(), anyLong(), any(), any(), any(), anyLong(), any(), anyInt()))
+		when(syncService.syncCollectionLog(any(), anyLong(), any(), any(), any(), anyLong(), any(), anyInt(), any(), any()))
 			.thenAnswer(invocation ->
 			{
 				CompletableFuture<SyncService.SyncResult> sync = new CompletableFuture<>();
@@ -166,7 +166,8 @@ public class PluginPublicationCharacterizationTest
 		verify(chatNotifier).send(ChatNotice.SYNC_RESULT, "Publishing collection log...");
 		verify(panel).showSyncProgress(true, "publishing...", false);
 		assertEquals(1, syncs.size());
-		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), any(), any(), any(), eq(7L), any(), eq(0));
+		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), any(), any(), any(), eq(7L), any(), eq(0),
+			eq(localClogCache), eq("main"));
 
 		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced 12 items"));
 		settle();
@@ -253,7 +254,7 @@ public class PluginPublicationCharacterizationTest
 		captureListener.run();
 		settle();
 		assertEquals(2, syncs.size());
-		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), any(), any(), any(), eq(8L), any(), anyInt());
+		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), any(), any(), any(), eq(8L), any(), anyInt(), any(), any());
 	}
 
 	@Test
@@ -629,7 +630,8 @@ public class PluginPublicationCharacterizationTest
 	private AccountType sentType(int call)
 	{
 		ArgumentCaptor<AccountType> type = ArgumentCaptor.forClass(AccountType.class);
-		verify(syncService, times(call)).syncCollectionLog(any(), anyLong(), type.capture(), any(), any(), anyLong(), any(), anyInt());
+		verify(syncService, times(call)).syncCollectionLog(any(), anyLong(), type.capture(), any(), any(), anyLong(), any(), anyInt(),
+			any(), any());
 		return type.getAllValues().get(call - 1);
 	}
 
@@ -716,6 +718,68 @@ public class PluginPublicationCharacterizationTest
 		ticks(3);
 		verify(client, never()).getVarpValue(ClogVarps.OBTAINED);
 		world(net.runelite.api.WorldType.MEMBERS);
+		ticks(1);
+		verify(client).getVarpValue(ClogVarps.OBTAINED);
+	}
+
+	/** The server announces a League, and the player is on one of its worlds. */
+	private LocalClogCache announceLeague() throws Exception
+	{
+		when(((KillclogService) field("killclogService")).activeLeague()).thenReturn("demonic-pacts");
+		LocalClogCache league = mock(LocalClogCache.class);
+		when(league.currentSessionEpoch()).thenReturn(3L);
+		when(league.followNameChangeAsync(any(), anyLong(), anyLong())).thenReturn(CompletableFuture.completedFuture(true));
+		plugin.setLeagueCacheFactory(id ->
+		{
+			assertEquals("demonic-pacts", id);
+			return league;
+		});
+		world(net.runelite.api.WorldType.SEASONAL, net.runelite.api.WorldType.MEMBERS);
+		return league;
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	public void theAnnouncedLeagueSyncsItsOwnLogAndPbsToItsOwnPath() throws Exception
+	{
+		LocalClogCache league = announceLeague();
+		when(configManager.getRSProfileKey()).thenReturn("rsprofile.league");
+		when(configManager.getConfiguration(eq("personalbest"), eq("rsprofile.league"), eq("zulrah"),
+			eq((java.lang.reflect.Type) double.class))).thenReturn(9.6);
+		syncHandler.run();
+		settle();
+		ArgumentCaptor<java.util.Map<String, Double>> pbs = ArgumentCaptor.forClass(java.util.Map.class);
+		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), pbs.capture(), any(),
+			eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"));
+		assertEquals(Double.valueOf(9.6), pbs.getValue().get("Zulrah"));
+		publishHandler.run();
+		settle();
+		assertTrue("a League appearance never publishes", publishes.isEmpty());
+	}
+
+	@Test
+	public void theLeagueStoreChecksWhoseItIsAndEndsWithTheSession() throws Exception
+	{
+		LocalClogCache league = announceLeague();
+		GameStateChanged login = new GameStateChanged();
+		login.setGameState(GameState.LOGGED_IN);
+		plugin.onGameStateChanged(login);
+		ticks(1);
+		settle();
+		verify((KillclogService) field("killclogService")).refreshIndex();
+		verify(league).followNameChangeAsync(eq(RSN), eq(HASH), eq(3L));
+		verify(league, org.mockito.Mockito.atLeastOnce()).setActivePlayer(RSN);
+		verify(localClogCache, never()).followNameChangeAsync(any(), anyLong(), anyLong());
+		logout();
+		verify(league).onSessionEnded();
+	}
+
+	@Test
+	public void theAnnouncedLeagueCapturesUnlocksAndWalks() throws Exception
+	{
+		announceLeague();
+		unlockMessage();
+		verify(chatNotifier).send(eq(ChatNotice.SYNC_HELP), any());
 		ticks(1);
 		verify(client).getVarpValue(ClogVarps.OBTAINED);
 	}
