@@ -141,10 +141,10 @@ public class KillClogPlugin extends Plugin
 
 	private NavigationButton navButton;
 	private String lastLocalName;
-	// Ticks on a main-game world with an unchanged account type. Counters, CA tiers and the
-	// account type sent to the server wait for it, so a hop or login never carries another
-	// mode's values into the main game.
-	private int mainTicks;
+	// Ticks on this world with an unchanged account type. Counters, CA tiers and the account
+	// type sent to the server wait for it, so a hop or login never carries another mode's
+	// values into this one.
+	private int settledTicks;
 	private static final int SETTLED_TICKS = 10;
 	@Inject
 	private Gson gson;
@@ -209,7 +209,8 @@ public class KillClogPlugin extends Plugin
 		{
 			publication = new PublicationCoordinator(config, configManager, client, clientThread, executor,
 				localClogCache, syncService, profileAppearanceService, chatNotifier, panelFeedback(),
-				() -> mainSettled() ? getLocalAccountType() : null, this::mode, this::captureCache);
+				() -> mainSettled() ? getLocalAccountType() : null, this::mode, this::cacheFor,
+				killclogService::leagueProfileType);
 		}
 		enforceCharacterSettingDependency();
 		panel.setKillclogSyncHandler(publication::manualSync);
@@ -219,17 +220,7 @@ public class KillClogPlugin extends Plugin
 		// The sync trigger lives at the data seam: any path that lands a
 		// first-party observation (bulk page capture, Collection Log Search,
 		// live unlock) schedules a debounced push.
-		localClogCache.setFirstPartyChangedListener(() ->
-		{
-			// A capture only counts once the payload is genuinely non-empty:
-			// an empty first walk must neither reveal the chalice nor
-			// schedule a push that would fail with nothing to send.
-			if (localClogCache.hasFirstPartyDataForActive())
-			{
-				panel.setSyncArrowHasData(true);
-				publication.scheduleAutomaticSync();
-			}
-		});
+		localClogCache.setFirstPartyChangedListener(() -> firstPartyChanged(localClogCache));
 
 		kclogCommand.setClogIndex(clogIndex);
 		localCaCache.setCaCatalog(caCatalog);
@@ -453,9 +444,10 @@ public class KillClogPlugin extends Plugin
 			// A walk never spans two worlds: the next one may be a different game.
 			manualClogSync.reset();
 		}
-		if (event.getGameState() != GameState.LOGGED_IN)
+		// A region load stays on the same world; everything else may change it.
+		if (event.getGameState() != GameState.LOGGED_IN && event.getGameState() != GameState.LOADING)
 		{
-			mainTicks = 0;
+			settledTicks = 0;
 		}
 
 		// The owner claim is scoped to one POH visit, exactly as vanilla
@@ -569,7 +561,7 @@ public class KillClogPlugin extends Plugin
 		}
 		liveClogSync.handleUnlock(itemName, broadcastObtained, broadcastTotal, client,
 			itemManager, clogIndex, cache, chatNotifier,
-			panel::onBulkCaptureComplete);
+			panel::onBulkCaptureComplete, settledTicks >= SETTLED_TICKS);
 	}
 
 	/**
@@ -618,7 +610,7 @@ public class KillClogPlugin extends Plugin
 		}
 		if (event.getVarbitId() == VarbitID.IRONMAN)
 		{
-			mainTicks = 0;
+			settledTicks = 0;
 		}
 	}
 
@@ -656,9 +648,14 @@ public class KillClogPlugin extends Plugin
 	private LocalClogCache captureCache()
 	{
 		String mode = mode();
-		if (mode == null || GameMode.MAIN.equals(mode))
+		return mode == null ? null : cacheFor(mode);
+	}
+
+	private LocalClogCache cacheFor(String mode)
+	{
+		if (GameMode.MAIN.equals(mode))
 		{
-			return mode == null ? null : localClogCache;
+			return localClogCache;
 		}
 		if (!mode.equals(leagueCacheId))
 		{
@@ -666,10 +663,24 @@ public class KillClogPlugin extends Plugin
 			{
 				leagueCache.shutdown();
 			}
-			leagueCache = leagueCacheFactory.apply(mode);
+			LocalClogCache created = leagueCacheFactory.apply(mode);
+			created.setFirstPartyChangedListener(() -> firstPartyChanged(created));
+			leagueCache = created;
 			leagueCacheId = mode;
 		}
 		return leagueCache;
+	}
+
+	private void firstPartyChanged(LocalClogCache cache)
+	{
+		// A capture only counts once the payload is genuinely non-empty:
+		// an empty first walk must neither reveal the chalice nor
+		// schedule a push that would fail with nothing to send.
+		if (cache.hasFirstPartyDataForActive())
+		{
+			panel.setSyncArrowHasData(true);
+			publication.scheduleAutomaticSync();
+		}
 	}
 
 	void setLeagueCacheFactory(java.util.function.Function<String, LocalClogCache> factory)
@@ -679,18 +690,18 @@ public class KillClogPlugin extends Plugin
 
 	private boolean mainSettled()
 	{
-		return mainTicks >= SETTLED_TICKS && onMainWorld();
+		return settledTicks >= SETTLED_TICKS && onMainWorld();
 	}
 
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
 		nameAutocompleter.refreshClientSnapshot();
-		if (!onMainWorld())
+		if (mode() == null)
 		{
-			mainTicks = 0;
+			settledTicks = 0;
 		}
-		else if (++mainTicks == SETTLED_TICKS)
+		else if (++settledTicks == SETTLED_TICKS && onMainWorld())
 		{
 			// Counters and CA tiers read before the world settled were skipped: take them now.
 			reconcileClogTotalsFromVarps();
@@ -865,9 +876,7 @@ public class KillClogPlugin extends Plugin
 		// opening callback before it emits the full obtained-item stream.
 		if (isCollectionLogSearchScript(event.getScriptId(), script))
 		{
-			clogIndex.ensureParsed(client, itemManager);
-			manualClogSync.onCollectionLogSearch(client, clogIndex,
-				localClogCache, chatNotifier);
+			onCollectionLogSearch();
 		}
 
 		manualClogSync.captureScriptArguments(client, event.getScriptId(),
@@ -1005,11 +1014,19 @@ public class KillClogPlugin extends Plugin
 			// Arm before the game's Search action runs script 4100 for every
 			// obtained entry. Opening the interface itself is too early: its
 			// visible category can run the same script and is not a full log.
-			clogIndex.ensureParsed(client, itemManager);
-			manualClogSync.onCollectionLogSearch(client, clogIndex,
-				localClogCache, chatNotifier);
+			onCollectionLogSearch();
 		}
 		lookupMenu.handlePlayerLookup(event, config, this::openPanelAndLookup);
+	}
+
+	private void onCollectionLogSearch()
+	{
+		clogIndex.ensureParsed(client, itemManager);
+		LocalClogCache cache = captureCache();
+		if (cache != null)
+		{
+			manualClogSync.onCollectionLogSearch(client, clogIndex, cache, chatNotifier);
+		}
 	}
 
 	static boolean isCollectionLogSearchClick(String option, int widgetId)

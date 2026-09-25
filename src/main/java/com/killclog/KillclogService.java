@@ -296,15 +296,24 @@ public class KillclogService
 		});
 	}
 
-	// The League the server takes syncs for, announced with the index. It names a folder and a
+	// The League the server takes syncs for and the RuneLite profile type holding its PBs,
+	// announced together with the index and replaced together. The id names a folder and a
 	// path segment, so anything but a plain slug is ignored.
-	private volatile String activeLeague;
+	private volatile String[] activeLeague = new String[2];
 	private static final java.util.regex.Pattern LEAGUE_ID = java.util.regex.Pattern.compile("[a-z0-9]+(-[a-z0-9]+){0,5}");
 
 	@Nullable
 	String activeLeague()
 	{
-		return activeLeague;
+		return activeLeague[0];
+	}
+
+	/** This League's RuneLite profile type, or null while RuneLite files its PBs under another League. */
+	@Nullable
+	String leagueProfileType(String league)
+	{
+		String[] active = activeLeague;
+		return league.equals(active[0]) ? active[1] : null;
 	}
 
 	/** Login: learn the active League even when no lookup needs the index. */
@@ -332,8 +341,10 @@ public class KillclogService
 				}
 			}
 			JsonElement league = root.get("active_league");
+			JsonElement profile = root.get("active_league_profile");
 			String id = league != null && league.isJsonPrimitive() ? league.getAsString() : "";
-			activeLeague = id.length() <= 40 && LEAGUE_ID.matcher(id).matches() && !GameMode.MAIN.equals(id) ? id : null;
+			activeLeague = id.length() <= 40 && LEAGUE_ID.matcher(id).matches() && !GameMode.MAIN.equals(id)
+				? new String[]{id, profile != null && profile.isJsonPrimitive() ? profile.getAsString() : null} : new String[2];
 			return names;
 		}
 		catch (Exception e)

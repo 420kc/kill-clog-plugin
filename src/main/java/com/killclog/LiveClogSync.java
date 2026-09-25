@@ -31,7 +31,7 @@ final class LiveClogSync
 		Client client, ItemManager itemManager,
 		ClogIndex clogIndex, LocalClogCache localClogCache,
 		KillClogChatNotifier chatNotifier,
-		Consumer<String> panelRefresh)
+		Consumer<String> panelRefresh, boolean countersSettled)
 	{
 		Player local = client.getLocalPlayer();
 		if (local == null || local.getName() == null)
@@ -82,10 +82,11 @@ final class LiveClogSync
 		}
 
 		// Game counters own the scalar; unlock messages only add item history.
-		// A lagging varp must not undo a newer broadcast count. Full log
-		// refresh remains the downward authority.
-		int liveObtained = Math.max(client.getVarpValue(ClogVarps.OBTAINED), broadcastObtained);
-		int liveTotal = Math.max(client.getVarpValue(ClogVarps.TOTAL), broadcastTotal);
+		// A lagging varp must not undo a newer broadcast count, and right after a
+		// hop the varps may still hold the last world's. Full log refresh remains
+		// the downward authority.
+		int liveObtained = Math.max(countersSettled ? client.getVarpValue(ClogVarps.OBTAINED) : 0, broadcastObtained);
+		int liveTotal = Math.max(countersSettled ? client.getVarpValue(ClogVarps.TOTAL) : 0, broadcastTotal);
 		if (liveObtained > 0 || liveTotal > 0)
 		{
 			localClogCache.updateTotalsUpward(playerName, liveObtained, liveTotal);

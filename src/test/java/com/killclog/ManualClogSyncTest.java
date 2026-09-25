@@ -66,6 +66,8 @@ public class ManualClogSyncTest
 				switch (method.getName())
 				{
 					case "getLocalPlayer": return player;
+					case "getGameState": return net.runelite.api.GameState.LOGGED_IN;
+					case "getWorldType": return java.util.EnumSet.of(net.runelite.api.WorldType.MEMBERS);
 					case "getTickCount": return tick;
 					case "getVarpValue": return (int) args[0] == ClogVarps.OBTAINED ? obtained : total;
 					case "getVarbitValue": return hostLog ? 1 : 0;
@@ -100,6 +102,7 @@ public class ManualClogSyncTest
 		pluginField("client").set(plugin, client);
 		pluginField("localClogCache").set(plugin, cache);
 		pluginField("chatNotifier").set(plugin, notifier);
+		pluginField("killclogService").set(plugin, org.mockito.Mockito.mock(KillclogService.class));
 	}
 
 	@Test

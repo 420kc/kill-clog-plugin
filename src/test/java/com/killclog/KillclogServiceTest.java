@@ -53,6 +53,18 @@ public class KillclogServiceTest
 	}
 
 	@Test
+	public void aLeaguesPbProfileIsOnlyEverItsOwn()
+	{
+		service.parseSyncIndex("{\"names\":[],\"active_league\":\"demonic-pacts\",\"active_league_profile\":\"DEMONIC_PACTS_LEAGUE\"}");
+		assertEquals("DEMONIC_PACTS_LEAGUE", service.leagueProfileType("demonic-pacts"));
+		assertNull("another League never borrows it", service.leagueProfileType("raging-echoes"));
+		service.parseSyncIndex("{\"names\":[],\"active_league\":\"demonic-pacts\"}");
+		assertNull("RuneLite does not know the League yet", service.leagueProfileType("demonic-pacts"));
+		service.parseSyncIndex("{\"names\":[],\"active_league\":\"../x\",\"active_league_profile\":\"DEMONIC_PACTS_LEAGUE\"}");
+		assertNull(service.leagueProfileType("demonic-pacts"));
+	}
+
+	@Test
 	public void testParseSyncIndexRejectsGarbage()
 	{
 		assertNull(service.parseSyncIndex("{\"schema\":1}"));

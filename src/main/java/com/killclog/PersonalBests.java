@@ -4,9 +4,9 @@ import java.util.Locale;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import javax.annotation.Nullable;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneScapeProfile;
-import net.runelite.client.config.RuneScapeProfileType;
 
 /**
  * Reads the personal bests RuneLite's own chat commands plugin records on the
@@ -39,8 +39,8 @@ final class PersonalBests
 		this.configManager = configManager;
 	}
 
-	/** Explicit ownership for publication; names can change or be reused. */
-	static List<String> profileKeys(Iterable<RuneScapeProfile> profiles, long accountHash)
+	/** Explicit ownership for publication, from RuneLite profiles of one type; names can change or be reused. */
+	static List<String> profileKeys(Iterable<RuneScapeProfile> profiles, long accountHash, @Nullable String type)
 	{
 		if (accountHash == 0 || accountHash == RuneScapeProfile.ACCOUNT_HASH_INVALID)
 		{
@@ -49,7 +49,7 @@ final class PersonalBests
 		Set<String> keys = new LinkedHashSet<>();
 		for (RuneScapeProfile profile : profiles)
 		{
-			if (profile.getType() == RuneScapeProfileType.STANDARD
+			if (profile.getType() != null && profile.getType().name().equals(type)
 				&& profile.getAccountHash() == accountHash)
 			{
 				String key = profile.getKey();

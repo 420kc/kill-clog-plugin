@@ -8,6 +8,7 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,7 @@ import net.runelite.api.Client;
 import net.runelite.api.Player;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.hiscore.HiscoreSkill;
 
 /**
@@ -55,9 +57,11 @@ final class PublicationCoordinator
 	private final KillClogChatNotifier chatNotifier;
 	private final Feedback feedback;
 	private final Supplier<AccountType> localAccountType;
-	// The world's game mode and that mode's own store; no mode means nothing is sent.
+	// The world's game mode, each mode's own store and a League's RuneLite PB profile type;
+	// no mode means nothing is sent.
 	private final Supplier<String> mode;
-	private final Supplier<LocalClogCache> modeCache;
+	private final Function<String, LocalClogCache> modeCache;
+	private final Function<String, String> leagueProfileType;
 
 	private volatile ScheduledFuture<?> pendingKillclogSync;
 	private final KillclogSyncGate syncGate = new KillclogSyncGate();
@@ -70,7 +74,7 @@ final class PublicationCoordinator
 		ClientThread clientThread, ScheduledExecutorService executor, LocalClogCache localClogCache,
 		SyncService syncService, ProfileAppearanceService profileAppearanceService,
 		KillClogChatNotifier chatNotifier, Feedback feedback, Supplier<AccountType> localAccountType,
-		Supplier<String> mode, Supplier<LocalClogCache> modeCache)
+		Supplier<String> mode, Function<String, LocalClogCache> modeCache, Function<String, String> leagueProfileType)
 	{
 		this.config = config;
 		this.configManager = configManager;
@@ -85,6 +89,7 @@ final class PublicationCoordinator
 		this.localAccountType = localAccountType;
 		this.mode = mode;
 		this.modeCache = modeCache;
+		this.leagueProfileType = leagueProfileType;
 	}
 
 	// ── plugin-facing ──────────────────────────────────────────────────
@@ -381,7 +386,7 @@ final class PublicationCoordinator
 				String rsn = local != null ? local.getName() : null;
 				long accountHash = client.getAccountHash();
 				String gameMode = mode.get();
-				LocalClogCache cache = modeCache.get();
+				LocalClogCache cache = gameMode == null ? null : modeCache.apply(gameMode);
 				if (rsn == null || accountHash == -1 || gameMode == null || cache == null)
 				{
 					syncGate.abortAttempt();
@@ -389,8 +394,9 @@ final class PublicationCoordinator
 					launchQueuedSync();
 					return;
 				}
-				// The type supplier answers only on a settled main world; a League's PBs live in its
-				// own RuneLite profile.
+				// The type supplier answers only on a settled main world. A League's PBs come only from
+				// the RuneLite profile the server names: until RuneLite knows a new League, it files
+				// that League's PBs under an older one.
 				boolean main = GameMode.MAIN.equals(gameMode);
 				AccountType accountType = localAccountType.get();
 				if (manual)
@@ -402,9 +408,8 @@ final class PublicationCoordinator
 					withSyncFeedback(generation, scheduledEpoch,
 						() -> feedback.showSyncProgress(manual, "publishing...", false));
 				}
-				String leagueProfile = main ? null : configManager.getRSProfileKey();
-				List<String> profileKeys = main ? PersonalBests.profileKeys(configManager.getRSProfiles(), accountHash)
-					: leagueProfile == null ? List.of() : List.of(leagueProfile);
+				List<String> profileKeys = PersonalBests.profileKeys(configManager.getRSProfiles(), accountHash,
+					main ? RuneScapeProfileType.STANDARD.name() : leagueProfileType.apply(gameMode));
 				Map<String, Double> pbs = gatherPersonalBests(profileKeys);
 				Map<String, SyncService.DetailedPb> detailedPbs =
 					gatherDetailedPersonalBests(profileKeys);

@@ -18,6 +18,8 @@ import net.runelite.api.Player;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
+import net.runelite.client.config.RuneScapeProfile;
+import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.menus.MenuManager;
 import org.junit.After;
@@ -699,15 +701,19 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
-	public void aLeagueWorldUnlockNeverReachesTheMainLog() throws Exception
+	public void anUnknownWorldsUnlockReachesNoLog() throws Exception
 	{
+		LiveClogSync live = mock(LiveClogSync.class);
+		replace("liveClogSync", live);
 		world(net.runelite.api.WorldType.SEASONAL);
 		unlockMessage();
-		// On this harness the unlock's first step reports an unreadable log; it never runs here.
-		verify(chatNotifier, never()).send(eq(ChatNotice.SYNC_HELP), any());
+		verify(live, never()).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), any(), any(), any(), anyBoolean());
 		world(net.runelite.api.WorldType.MEMBERS);
 		unlockMessage();
-		verify(chatNotifier).send(eq(ChatNotice.SYNC_HELP), any());
+		verify(live).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), eq(localClogCache), any(), any(), eq(false));
+		ticks(10);
+		unlockMessage();
+		verify(live).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), eq(localClogCache), any(), any(), eq(true));
 	}
 
 	@Test
@@ -739,22 +745,62 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
-	@SuppressWarnings("unchecked")
 	public void theAnnouncedLeagueSyncsItsOwnLogAndPbsToItsOwnPath() throws Exception
 	{
 		LocalClogCache league = announceLeague();
-		when(configManager.getRSProfileKey()).thenReturn("rsprofile.league");
-		when(configManager.getConfiguration(eq("personalbest"), eq("rsprofile.league"), eq("zulrah"),
-			eq((java.lang.reflect.Type) double.class))).thenReturn(9.6);
+		when(((KillclogService) field("killclogService")).leagueProfileType("demonic-pacts")).thenReturn("DEMONIC_PACTS_LEAGUE");
+		assertEquals(Double.valueOf(9.6), leaguePbs(league).get("Zulrah"));
+		publishHandler.run();
+		settle();
+		assertTrue("a League appearance never publishes", publishes.isEmpty());
+	}
+
+	@Test
+	public void aLeagueRuneLiteDoesNotKnowYetSendsNoPbs() throws Exception
+	{
+		LocalClogCache league = announceLeague();
+		when(configManager.getRSProfileKey()).thenReturn("rsprofile.earlier");
+		assertTrue(leaguePbs(league).isEmpty());
+	}
+
+	/** Main, an earlier League and this League each hold a Zulrah PB; returns what the League sync sent. */
+	@SuppressWarnings("unchecked")
+	private java.util.Map<String, Double> leaguePbs(LocalClogCache league) throws Exception
+	{
+		when(configManager.getRSProfiles()).thenReturn(List.of(
+			new RuneScapeProfile(RSN, RuneScapeProfileType.STANDARD, HASH, "main"),
+			new RuneScapeProfile(RSN, RuneScapeProfileType.RAGING_ECHOES_LEAGUE, HASH, "earlier"),
+			new RuneScapeProfile(RSN, RuneScapeProfileType.DEMONIC_PACTS_LEAGUE, HASH, "league")));
+		String[][] recorded = {{"rsprofile.main", "5.0"}, {"rsprofile.earlier", "7.0"}, {"rsprofile.league", "9.6"}};
+		for (String[] pb : recorded)
+		{
+			when(configManager.getConfiguration(eq("personalbest"), eq(pb[0]), eq("zulrah"),
+				eq((java.lang.reflect.Type) double.class))).thenReturn(Double.valueOf(pb[1]));
+		}
 		syncHandler.run();
 		settle();
 		ArgumentCaptor<java.util.Map<String, Double>> pbs = ArgumentCaptor.forClass(java.util.Map.class);
 		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), pbs.capture(), any(),
 			eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"));
-		assertEquals(Double.valueOf(9.6), pbs.getValue().get("Zulrah"));
-		publishHandler.run();
+		return pbs.getValue();
+	}
+
+	@Test
+	public void aLeagueCaptureSchedulesItsOwnSync() throws Exception
+	{
+		LocalClogCache league = announceLeague();
+		ticks(1);
+		ArgumentCaptor<Runnable> listener = ArgumentCaptor.forClass(Runnable.class);
+		verify(league).setFirstPartyChangedListener(listener.capture());
+		listener.getValue().run();
+		assertEquals("an empty capture schedules nothing", 0, executor.live());
+		when(league.hasFirstPartyDataForActive()).thenReturn(true);
+		listener.getValue().run();
+		verify(panel).setSyncArrowHasData(true);
+		assertEquals(1, executor.live());
 		settle();
-		assertTrue("a League appearance never publishes", publishes.isEmpty());
+		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), any(), any(),
+			eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"));
 	}
 
 	@Test
@@ -775,13 +821,80 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
-	public void theAnnouncedLeagueCapturesUnlocksAndWalks() throws Exception
+	public void unlocksWalksAndSearchesLandInTheWorldsOwnLog() throws Exception
 	{
-		announceLeague();
+		LiveClogSync live = mock(LiveClogSync.class);
+		ManualClogSync walk = mock(ManualClogSync.class);
+		replace("liveClogSync", live);
+		replace("manualClogSync", walk);
+		LocalClogCache league = announceLeague();
 		unlockMessage();
-		verify(chatNotifier).send(eq(ChatNotice.SYNC_HELP), any());
 		ticks(1);
-		verify(client).getVarpValue(ClogVarps.OBTAINED);
+		searchClick();
+		verify(live).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), eq(league), any(), any(), anyBoolean());
+		verify(walk).onGameTick(any(), any(), eq(league), any(), any(), any());
+		verify(walk).onCollectionLogSearch(any(), any(), eq(league), any());
+		verify(live, never()).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), eq(localClogCache), any(), any(), anyBoolean());
+		verify(walk, never()).onGameTick(any(), any(), eq(localClogCache), any(), any(), any());
+		verify(walk, never()).onCollectionLogSearch(any(), any(), eq(localClogCache), any());
+		world(net.runelite.api.WorldType.MEMBERS);
+		unlockMessage();
+		ticks(1);
+		searchClick();
+		verify(live).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), eq(localClogCache), any(), any(), anyBoolean());
+		verify(walk).onGameTick(any(), any(), eq(localClogCache), any(), any(), any());
+		verify(walk).onCollectionLogSearch(any(), any(), eq(localClogCache), any());
+	}
+
+	@Test
+	public void aNewLeagueOpensItsOwnStoreAndClosesTheLast() throws Exception
+	{
+		ManualClogSync walk = mock(ManualClogSync.class);
+		replace("manualClogSync", walk);
+		KillclogService service = (KillclogService) field("killclogService");
+		java.util.Map<String, LocalClogCache> stores = new java.util.HashMap<>();
+		plugin.setLeagueCacheFactory(id -> stores.computeIfAbsent(id, key -> mock(LocalClogCache.class)));
+		when(service.activeLeague()).thenReturn("raging-echoes");
+		world(net.runelite.api.WorldType.SEASONAL, net.runelite.api.WorldType.MEMBERS);
+		ticks(1);
+		when(service.activeLeague()).thenReturn("demonic-pacts");
+		ticks(1);
+		verify(stores.get("raging-echoes")).shutdown();
+		verify(walk).onGameTick(any(), any(), eq(stores.get("demonic-pacts")), any(), any(), any());
+	}
+
+	@Test
+	public void aRegionLoadKeepsTheWorldSettledAndAHopDoesNot() throws Exception
+	{
+		ticks(10);
+		GameStateChanged loading = new GameStateChanged();
+		loading.setGameState(GameState.LOADING);
+		plugin.onGameStateChanged(loading);
+		syncHandler.run();
+		settle();
+		assertEquals(AccountType.REGULAR, sentType(1));
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
+		GameStateChanged hop = new GameStateChanged();
+		hop.setGameState(GameState.HOPPING);
+		plugin.onGameStateChanged(hop);
+		syncHandler.run();
+		settle();
+		org.junit.Assert.assertNull(sentType(2));
+	}
+
+	private void searchClick()
+	{
+		net.runelite.api.MenuEntry entry = mock(net.runelite.api.MenuEntry.class);
+		when(entry.getOption()).thenReturn("Search");
+		when(entry.getParam1()).thenReturn(KillClogPlugin.CLOG_INTERFACE << 16);
+		plugin.onMenuOptionClicked(new net.runelite.api.events.MenuOptionClicked(entry));
+	}
+
+	private void replace(String name, Object value) throws Exception
+	{
+		Field field = KillClogPlugin.class.getDeclaredField(name);
+		field.setAccessible(true);
+		field.set(plugin, value);
 	}
 
 	private Object field(String name) throws Exception
