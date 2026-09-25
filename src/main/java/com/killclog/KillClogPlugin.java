@@ -702,9 +702,10 @@ public class KillClogPlugin extends Plugin
 		String mode = mode();
 		String league = mode == null || GameMode.MAIN.equals(mode) ? null : mode;
 		String active = killclogService.activeLeague();
-		if (!(league + "/" + active).equals(panelLeague))
+		// Keyed on the mode itself, so a logout (no mode) ends a flip made on a main world.
+		if (!(mode + "/" + active).equals(panelLeague))
 		{
-			panelLeague = league + "/" + active;
+			panelLeague = mode + "/" + active;
 			LocalClogCache leagueLog = league == null ? null : captureCache();
 			kclogCommand.readLeague(league, leagueLog);
 			SwingUtilities.invokeLater(() -> panel.followWorld(league, leagueLog, active));

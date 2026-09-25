@@ -826,6 +826,19 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void aLogoutFromAMainWorldEndsAFlip() throws Exception
+	{
+		when(((KillclogService) field("killclogService")).activeLeague()).thenReturn("demonic-pacts");
+		ticks(1);
+		drainEdt();
+		verify(panel).followWorld(null, null, "demonic-pacts");
+		gameState = GameState.LOGIN_SCREEN;
+		logout();
+		drainEdt();
+		verify(panel, times(2)).followWorld(null, null, "demonic-pacts");
+	}
+
+	@Test
 	public void aRestartHandsThePanelTheWorldsGameAgain() throws Exception
 	{
 		LocalClogCache league = announceLeague();

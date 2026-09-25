@@ -143,6 +143,8 @@ public class LeagueViewPanelTest
 				listener.mousePressed(press);
 			}
 			assertEquals("demonic-pacts", session.league());
+			LookupFanout comparison = field(field(panel, "comparison", ComparisonController.class), "fanout", LookupFanout.class);
+			assertEquals("the comparison follows a flip too", "demonic-pacts", comparison.getLeague());
 			assertTrue(lit == toggle.getIcon());
 			assertEquals("League stats", toggle.getToolTipText());
 
@@ -160,6 +162,23 @@ public class LeagueViewPanelTest
 		// Read again on each switch into the League, and on the flip back to main.
 		verify(hiscores, org.mockito.Mockito.times(2)).lookupTable("Friend", HiscoreService.LEAGUE_TABLE);
 		verify(hiscores, org.mockito.Mockito.times(2)).lookup("Friend", null);
+	}
+
+	@Test
+	public void withNoLeagueRunningTheSearchRowKeepsItsLayout() throws Exception
+	{
+		SwingUtilities.invokeAndWait(() ->
+		{
+			javax.swing.JPanel row = field(panel, "searchRow", javax.swing.JPanel.class);
+			IconTextField searchBar = field(panel, "searchBar", IconTextField.class);
+			row.setSize(200, 30);
+			panel.followWorld(null, null, null);
+			row.doLayout();
+			assertEquals("the search bar keeps the whole row", 200, searchBar.getWidth());
+			panel.followWorld(null, null, "demonic-pacts");
+			row.doLayout();
+			assertEquals(178, searchBar.getWidth());
+		});
 	}
 
 	@Test
