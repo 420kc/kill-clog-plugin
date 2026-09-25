@@ -1564,7 +1564,7 @@ public class KillClogPanel extends PluginPanel
 		}
 		else
 		{
-			if (isSelf)
+			if (isSelf && lookupSession.readsOwnLog())
 			{
 				setClogSetupNoticeVisible(true);
 				BufferedImage icon = KillClogIcons.resizedPluginIcon(15, 15, itemManager);

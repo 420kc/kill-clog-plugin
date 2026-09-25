@@ -182,6 +182,56 @@ public class LeagueViewPanelTest
 	}
 
 	@Test
+	public void setupShowsOnlyForALogThisClientKeeps() throws Exception
+	{
+		when(clogs.lookupRsn(any())).thenReturn(new CompletableFuture<>());
+		javax.swing.JComponent notice = field(panel, "clogNotice", javax.swing.JComponent.class);
+		javax.swing.JLabel toggle = field(panel, "leagueSwitch", javax.swing.JLabel.class);
+		java.awt.event.MouseEvent press = new java.awt.event.MouseEvent(toggle, java.awt.event.MouseEvent.MOUSE_PRESSED, 0, 0, 5, 5, 1, false);
+		SwingUtilities.invokeAndWait(() ->
+		{
+			panel.setLoggedInPlayer("Me", AccountType.REGULAR);
+			panel.followWorld(null, null, "demonic-pacts");
+			panel.onClogResult("Me", null, true, session.getLookupVersion());
+			assertTrue("your main log is set up here", notice.isVisible());
+
+			for (java.awt.event.MouseListener listener : toggle.getMouseListeners())
+			{
+				listener.mousePressed(press);
+			}
+			panel.onClogResult("Me", null, true, session.getLookupVersion());
+			assertFalse("a League read from a main world has nothing to set up here", notice.isVisible());
+
+			panel.followWorld("demonic-pacts", mock(LocalClogCache.class), "demonic-pacts");
+			panel.onClogResult("Me", null, true, session.getLookupVersion());
+			assertTrue("on the League's own world, its log is set up here", notice.isVisible());
+		});
+	}
+
+	@Test
+	public void yourTooltipsInALeagueFromAnotherWorldShowItsEmptyLog() throws Exception
+	{
+		ClogIndex index = new ClogIndex();
+		index.publishForTest(Map.of("zulrah", java.util.List.of(1, 2, 3)), Map.of());
+		Cells cells = field(panel, "cells", Cells.class);
+		Map<?, ?> tooltips = field(cells, "tooltipDataMap", Map.class);
+		java.util.Map<String, Integer> kills = new java.util.HashMap<>();
+		kills.put("Zulrah", 57);
+		HiscoreResult row = new HiscoreResult(AccountType.REGULAR, kills, new java.util.HashMap<>(), new java.util.HashMap<>(),
+			new java.util.HashMap<>(), new java.util.HashMap<>(), 100, 1000L, 30, 1);
+		SwingUtilities.invokeAndWait(() ->
+		{
+			panel.setClogIndex(index);
+			session.adoptState(row, null, null, "Me");
+			cells.rebuildPrimaryTooltips("Me");
+			assertTrue("your main log is waiting for setup", tooltips.isEmpty());
+			session.readLeague("demonic-pacts", null);
+			cells.rebuildPrimaryTooltips("Me");
+			assertFalse("a League read from another world shows its empty log, like anyone's", tooltips.isEmpty());
+		});
+	}
+
+	@Test
 	public void everyNameInALeagueViewWearsTheLeaguesBadge() throws Exception
 	{
 		javax.swing.ImageIcon badge = field(panel, "leagueBadge", javax.swing.ImageIcon.class);

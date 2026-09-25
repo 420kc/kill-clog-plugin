@@ -111,6 +111,12 @@ public class LookupSession
 		return fanout.getLeague();
 	}
 
+	/** Setup applies only to a log this client keeps; a League read from another world has none here. */
+	boolean readsOwnLog()
+	{
+		return fanout.readsOwnLog();
+	}
+
 	/** Wire (or rewire) the autocompleter that records search history on each successful lookup. */
 	public void setNameAutocompleter(@Nullable NameAutocompleter nameAutocompleter)
 	{

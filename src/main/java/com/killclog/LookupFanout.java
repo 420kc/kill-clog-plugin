@@ -60,6 +60,12 @@ final class LookupFanout
 		this.leagueLog = leagueLog;
 	}
 
+	/** Whether this client keeps the log read here: the main game's, or the League's on its own world. */
+	boolean readsOwnLog()
+	{
+		return league == null || leagueLog != null;
+	}
+
 	/** Your own log for the game these lookups read, as it is now. */
 	@Nullable
 	ClogResult ownLog(String player)

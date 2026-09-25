@@ -399,7 +399,7 @@ public class Cells
 		}
 		boolean self = localRsn != null
 			&& localRsn.equalsIgnoreCase(lookupSession.getCurrentLookupRsn());
-		boolean selfNoCache = lookupSession.getClogResult() == null && self;
+		boolean selfNoCache = lookupSession.getClogResult() == null && self && lookupSession.readsOwnLog();
 		ClogResult catalog = lookupSession.getClogResult() == null && !selfNoCache
 			? unsyncedCatalog.result() : null;
 
@@ -572,7 +572,7 @@ public class Cells
 	private TooltipData buildPrimaryBossData(String displayName, String hiscoreName,
 		boolean self, @Nullable ClogResult catalog)
 	{
-		boolean selfNoCache = self && lookupSession.getClogResult() == null;
+		boolean selfNoCache = self && lookupSession.getClogResult() == null && lookupSession.readsOwnLog();
 		String category = ClogService.bossToCategory(hiscoreName);
 		int rank = lookupSession.getHiscoreResult() != null
 			? lookupSession.getHiscoreResult().getRank(hiscoreName) : -1;
