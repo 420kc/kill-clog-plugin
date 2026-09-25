@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
@@ -28,6 +29,11 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private static final int SUBHEADER_HEIGHT = 16;
 	private static final int CA_ROW_HEIGHT = 18;
 	private static final int CA_REWARD_GAP = 3;
+	// The combat level leads the card beside the combat cell's own icon, with room around it.
+	private static final int LEVEL_ROW_HEIGHT = 22;
+	private static final int LEVEL_GAP_ABOVE = 4;
+	private static final int LEVEL_GAP_BELOW = 6;
+	private static final int LEVEL_ICON_GAP = 4;
 
 	private double combatLevel;
 	private int totalKills;
@@ -61,6 +67,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private int toaObtained = -1;
 	private int toaTotal;
 
+	@Setter
+	private Image combatIcon;
 	private CombatAchievementResult caResult;
 	private BufferedImage caRewardSprite;
 	private final PvpSummaryRows pvpRows = new PvpSummaryRows();
@@ -187,7 +195,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		FontMetrics bfm = getFontMetrics(FontManager.getRunescapeBoldFont());
 
 		// Stats section.
-		int statsLines = 4; // Combat, Total Kills, EHB, Bosses
+		int statsLines = 3; // Total Kills, EHB, Bosses
 		if (bossesCompleted >= 0) statsLines++;
 		int statsHeight = LINE_HEIGHT * statsLines;
 
@@ -211,7 +219,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 		// Width: measure the real rendered strings, never a placeholder.
 		int textWidth = 0;
-		textWidth = Math.max(textWidth, fm.stringWidth("Combat: " + combatValue()));
+		textWidth = Math.max(textWidth, iconWidth() + bfm.stringWidth(combatValue()));
 		textWidth = Math.max(textWidth, fm.stringWidth("Total Kills: " + totalKillsValue()));
 		textWidth = Math.max(textWidth, fm.stringWidth("EHB: " + ehbText(ehb)));
 		textWidth = Math.max(textWidth, fm.stringWidth("XP: " + slayerXpText(slayerXp)));
@@ -257,7 +265,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 			Math.max(spriteRowWidth, superiorRowWidth));
 		int separatorHeight = separatorHeight(SEPARATOR_PAD);
 		int caHeight = caResult != null ? CA_ROW_HEIGHT : 0;
-		int contentHeight = SUBHEADER_HEIGHT + statsHeight + caHeight + mostKilledHeight
+		int contentHeight = LEVEL_GAP_ABOVE + LEVEL_ROW_HEIGHT + LEVEL_GAP_BELOW
+			+ SUBHEADER_HEIGHT + statsHeight + caHeight + mostKilledHeight
 			+ separatorHeight + slayerHeight
 			+ separatorHeight + raidsHeight
 			+ separatorHeight + SUBHEADER_HEIGHT + pvpSize.height;
@@ -275,9 +284,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 		FontMetrics fm = g2.getFontMetrics();
 		int y = startY;
 
-		// Combat leads the card; PvM and PvP each follow under their own subheader.
-		drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Combat: ", combatValue());
-		y += LINE_HEIGHT;
+		// The combat level leads the card; PvM and PvP each follow under their own subheader.
+		y = paintLevel(g2, inset, y + LEVEL_GAP_ABOVE) + LEVEL_GAP_BELOW;
 		y = paintSubheader(g2, inset, y, "PvM Summary");
 		g2.setFont(FontManager.getRunescapeSmallFont());
 
@@ -516,6 +524,27 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private String combatValue()
 	{
 		return combatText(combatLevel);
+	}
+
+	/** The combat icon and level in bold, exactly like the panel cell. */
+	private int paintLevel(Graphics2D g2, int inset, int y)
+	{
+		int x = inset + iconWidth();
+		if (combatIcon != null)
+		{
+			g2.drawImage(combatIcon, inset, y + (LEVEL_ROW_HEIGHT - combatIcon.getHeight(null)) / 2, null);
+		}
+		g2.setFont(FontManager.getRunescapeBoldFont());
+		FontMetrics bfm = g2.getFontMetrics();
+		g2.setColor(Color.WHITE);
+		g2.drawString(combatValue(), x, y + (LEVEL_ROW_HEIGHT + bfm.getAscent() - bfm.getDescent()) / 2);
+		g2.setFont(FontManager.getRunescapeSmallFont());
+		return y + LEVEL_ROW_HEIGHT;
+	}
+
+	private int iconWidth()
+	{
+		return combatIcon != null ? combatIcon.getWidth(null) + LEVEL_ICON_GAP : 0;
 	}
 
 	/** Vanilla's hiscore formatter: up to three decimals, trailing zeros dropped. */

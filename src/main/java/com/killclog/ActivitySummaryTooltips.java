@@ -3,6 +3,7 @@ package com.killclog;
 import java.util.Map;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
+import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JToolTip;
@@ -63,6 +64,11 @@ final class ActivitySummaryTooltips
 	{
 		PvmSummaryTooltip tip = new PvmSummaryTooltip();
 		tip.setComponent(owner);
+		// The combat cell's own icon, so the card repeats exactly what the panel shows.
+		if (owner.getIcon() instanceof ImageIcon)
+		{
+			tip.setCombatIcon(((ImageIcon) owner.getIcon()).getImage());
+		}
 		tip.setWikiLinksEnabled(wikiLinks.get());
 		tip.setData(
 			hiscore != null ? hiscore.getCombatLevelExact() : 0,
