@@ -25,7 +25,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private static final int WEAPON_SIZE = 28;
 	private static final int WEAPON_PAD = 6;
 	private static final int SEPARATOR_PAD = 2;
-	private static final int MOST_KILLED_GAP = 4;
+	private static final int SECTION_GAP = 4;
 	private static final int SUBHEADER_HEIGHT = 16;
 	private static final int CA_ROW_HEIGHT = 18;
 	private static final int CA_REWARD_GAP = 3;
@@ -203,7 +203,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		int mostKilledHeight = 0;
 		if (mostKilled != null)
 		{
-			mostKilledHeight = MOST_KILLED_GAP + LINE_HEIGHT * 2;
+			mostKilledHeight = SECTION_GAP + LINE_HEIGHT * 2;
 		}
 
 		int spriteRowWidth = 3 * WEAPON_SIZE + 2 * WEAPON_PAD;
@@ -266,7 +266,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		int separatorHeight = separatorHeight(SEPARATOR_PAD);
 		int caHeight = caResult != null ? CA_ROW_HEIGHT : 0;
 		int contentHeight = LEVEL_GAP_ABOVE + LEVEL_ROW_HEIGHT + LEVEL_GAP_BELOW
-			+ SUBHEADER_HEIGHT + statsHeight + caHeight + mostKilledHeight
+			+ SUBHEADER_HEIGHT + statsHeight + caHeight + mostKilledHeight + SECTION_GAP
 			+ separatorHeight + slayerHeight
 			+ separatorHeight + raidsHeight
 			+ separatorHeight + SUBHEADER_HEIGHT + pvpSize.height;
@@ -318,18 +318,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 		drawLabelValue(g2, fm, inset, y + fm.getAscent(), "EHB: ", ehbText(ehb));
 		y += LINE_HEIGHT;
 
-		// Most Killed
-		if (mostKilled != null)
-		{
-			y += MOST_KILLED_GAP;
-			g2.setColor(OSRS_ORANGE);
-			g2.drawString("Most Killed:", inset, y + fm.getAscent());
-			y += LINE_HEIGHT;
-			g2.setColor(Color.WHITE);
-			g2.drawString(mostKilledLine(), inset, y + fm.getAscent());
-			y += LINE_HEIGHT;
-		}
-
 		// Bosses Killed
 		drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Bosses Killed: ",
 			bossesValue(), completionColor(bossesWithKc, totalBosses));
@@ -342,6 +330,19 @@ public class PvmSummaryTooltip extends TitleTooltip
 				logsValue(), completionColor(bossesCompleted, bossesWithClog));
 			y += LINE_HEIGHT;
 		}
+
+		// Most Killed closes the PvM rows, then a small gap before the divider like every section.
+		if (mostKilled != null)
+		{
+			y += SECTION_GAP;
+			g2.setColor(OSRS_ORANGE);
+			g2.drawString("Most Killed:", inset, y + fm.getAscent());
+			y += LINE_HEIGHT;
+			g2.setColor(Color.WHITE);
+			g2.drawString(mostKilledLine(), inset, y + fm.getAscent());
+			y += LINE_HEIGHT;
+		}
+		y += SECTION_GAP;
 
 		// Separator: stats to Slayer.
 		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
