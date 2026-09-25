@@ -353,7 +353,9 @@ final class SearchRowController
 	{
 		searchRowHover = hover;
 		Color background = hover ? ColorScheme.DARK_GRAY_HOVER_COLOR : ColorScheme.DARKER_GRAY_COLOR;
-		searchBar.setBackground(background);
-		compareLabel.setBackground(background);
+		for (Component part : searchRow.getComponents())
+		{
+			part.setBackground(background);
+		}
 	}
 }

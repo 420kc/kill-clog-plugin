@@ -831,14 +831,14 @@ public class PluginPublicationCharacterizationTest
 		LocalClogCache league = announceLeague();
 		ticks(1);
 		drainEdt();
-		verify(panel).followWorld("demonic-pacts", league);
+		verify(panel).followWorld("demonic-pacts", league, "demonic-pacts");
 		plugin.shutDown();
 		LocalClogCache reopened = mock(LocalClogCache.class);
 		plugin.setLeagueCacheFactory(id -> reopened);
 		plugin.startUp();
 		ticks(1);
 		drainEdt();
-		verify(panel).followWorld("demonic-pacts", reopened);
+		verify(panel).followWorld("demonic-pacts", reopened, "demonic-pacts");
 	}
 
 	@Test
@@ -873,11 +873,11 @@ public class PluginPublicationCharacterizationTest
 		KillClogChatCommand chat = (KillClogChatCommand) field("kclogCommand");
 		ticks(1);
 		drainEdt();
-		verify(panel).followWorld(null, null);
+		verify(panel).followWorld(null, null, null);
 		LocalClogCache league = announceLeague();
 		ticks(3);
 		drainEdt();
-		verify(panel).followWorld("demonic-pacts", league);
+		verify(panel).followWorld("demonic-pacts", league, "demonic-pacts");
 		verify(chat).readLeague("demonic-pacts", league);
 		net.runelite.api.events.ChatMessage kc = new net.runelite.api.events.ChatMessage();
 		kc.setType(net.runelite.api.ChatMessageType.PUBLICCHAT);
@@ -887,14 +887,21 @@ public class PluginPublicationCharacterizationTest
 		world(net.runelite.api.WorldType.MEMBERS);
 		ticks(1);
 		drainEdt();
-		verify(panel, times(2)).followWorld(null, null);
+		// A main world while a League runs: the panel reads main, and can switch to the League.
+		verify(panel).followWorld(null, null, "demonic-pacts");
 		verify(chat, times(2)).readLeague(null, null);
 		world(net.runelite.api.WorldType.SEASONAL, net.runelite.api.WorldType.MEMBERS);
 		ticks(1);
 		gameState = GameState.LOGIN_SCREEN;
 		logout();
 		drainEdt();
-		verify(panel, times(3)).followWorld(null, null);
+		verify(panel, times(2)).followWorld(null, null, "demonic-pacts");
+		when(((KillclogService) field("killclogService")).activeLeague()).thenReturn(null);
+		gameState = GameState.LOGGED_IN;
+		world(net.runelite.api.WorldType.MEMBERS);
+		ticks(1);
+		drainEdt();
+		verify(panel, times(2)).followWorld(null, null, null);
 	}
 
 	@Test

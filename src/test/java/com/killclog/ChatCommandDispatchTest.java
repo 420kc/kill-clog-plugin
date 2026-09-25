@@ -101,14 +101,14 @@ public class ChatCommandDispatchTest
 		org.mockito.Mockito.when(own.isActivePlayer("Local player")).thenReturn(true);
 		harness.command.readLeague("demonic-pacts", own);
 
-		assertEquals("Leagues: All Pets: 2/3 <img=101>x3 <img=102>", harness.run("!kclog pets", ChatMessageType.PRIVATECHATOUT));
+		assertEquals("[Leagues] All Pets: 2/3 <img=101>x3 <img=102>", harness.run("!kclog pets", ChatMessageType.PRIVATECHATOUT));
 		assertEquals("own League log", harness.lookedUp);
 		harness.lookedUp = null;
-		assertEquals("Leagues: All Pets: 2/3 <img=101>x3 <img=102>", harness.run("!kclog pets", ChatMessageType.PRIVATECHAT));
+		assertEquals("[Leagues] All Pets: 2/3 <img=101>x3 <img=102>", harness.run("!kclog pets", ChatMessageType.PRIVATECHAT));
 		assertNull("never the main-game sources", harness.lookedUp);
 		org.mockito.Mockito.verify(killclog).lookupClog("Other player", "demonic-pacts");
 		harness.result = null;
-		assertEquals("Leagues: All Pets: no clog data", harness.run("!kclog pets", ChatMessageType.PRIVATECHATOUT));
+		assertEquals("[Leagues] All Pets: no clog data", harness.run("!kclog pets", ChatMessageType.PRIVATECHATOUT));
 
 		harness.result = pets();
 		harness.command.readLeague(null, null);
@@ -131,7 +131,7 @@ public class ChatCommandDispatchTest
 		org.mockito.Mockito.when(killclog.lookupClog("Other player", "demonic-pacts")).thenReturn(CompletableFuture.completedFuture(zulrah));
 		set(harness.command, "killclogService", killclog);
 		harness.command.readLeague("demonic-pacts", null);
-		assertEquals("Leagues: Zulrah: 57 kc, 1/2 <img=101>", harness.run("!kclog zulrah", ChatMessageType.PRIVATECHAT));
+		assertEquals("[Leagues] Zulrah: 57 kc, 1/2 <img=101>", harness.run("!kclog zulrah", ChatMessageType.PRIVATECHAT));
 	}
 
 	private static final class Harness

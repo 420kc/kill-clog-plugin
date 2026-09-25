@@ -61,7 +61,7 @@ final class PanelSearchBox
 		return searchTextField;
 	}
 
-	static JPanel buildSearchRow(IconTextField searchBar, JLabel compareLabel, IntSupplier compareWidth)
+	static JPanel buildSearchRow(IconTextField searchBar, JLabel leagueSwitch, JLabel compareLabel, IntSupplier compareWidth)
 	{
 		JPanel searchRow = new JPanel(null)
 		{
@@ -70,7 +70,9 @@ final class PanelSearchBox
 			{
 				int w = getWidth(), h = getHeight();
 				int compareW = compareWidth.getAsInt();
-				searchBar.setBounds(0, 0, w - compareW, h);
+				int leagueW = leagueSwitch.isVisible() ? 22 : 0;
+				searchBar.setBounds(0, 0, w - compareW - leagueW, h);
+				leagueSwitch.setBounds(w - compareW - leagueW, 0, leagueW, h);
 				compareLabel.setBounds(w - compareW, 0, compareW, h);
 			}
 		};
@@ -79,6 +81,7 @@ final class PanelSearchBox
 		searchRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
 		searchRow.setOpaque(false);
 		searchRow.add(compareLabel);
+		searchRow.add(leagueSwitch);
 		searchRow.add(searchBar);
 		return searchRow;
 	}

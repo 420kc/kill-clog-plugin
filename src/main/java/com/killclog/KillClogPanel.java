@@ -161,6 +161,17 @@ public class KillClogPanel extends PluginPanel
 	private final LookupSession lookupSession;
 	private final ComparisonController comparison;
 	private final RankSelector rankSelector;
+	// The Leagues switch: shown while a League runs, lit while the panel reads one. A League
+	// world reads its League and any other world the main game; a click flips that until the
+	// world changes. Every name in a League view wears the Leagues badge.
+	private final JLabel leagueSwitch = new JLabel();
+	private final ImageIcon leagueBadge = new ImageIcon(ImageUtil.resizeImage(
+		ImageUtil.loadImageResource(HiscorePanel.class, "seasonal.png"), 15, 15));
+	private final ImageIcon leagueOff = RankSelector.icon((BufferedImage) leagueBadge.getImage(), 0.35f);
+	private String worldLeague;
+	private String activeLeague;
+	private LocalClogCache worldLeagueLog;
+	private boolean flipped;
 	private java.util.function.BiFunction<String, String, String> selfPb = (league, boss) -> null;
 	private final Cells cells;
 
@@ -358,8 +369,20 @@ public class KillClogPanel extends PluginPanel
 
 		searchTextField = PanelSearchBox.configureSearchBar(searchBar);
 		compareLabel = new JLabel();
+		leagueSwitch.setOpaque(true);
+		leagueSwitch.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		leagueSwitch.setVisible(false);
+		leagueSwitch.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mousePressed(MouseEvent e)
+			{
+				flipped = !flipped;
+				showGame();
+			}
+		});
 		searchRow = PanelSearchBox.buildSearchRow(
-			searchBar, compareLabel,
+			searchBar, leagueSwitch, compareLabel,
 			() -> searchRowController != null ? searchRowController.compareIconWidth() : 0);
 		searchRowController = new SearchRowController(
 			searchRow,
@@ -773,7 +796,7 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void applyBadge(JLabel label, AccountDisplay display)
 	{
-		label.setIcon(accountBadges.labelIcon(display));
+		label.setIcon(lookupSession.league() != null ? leagueBadge : accountBadges.labelIcon(display));
 	}
 
 	// ── killclog.com one-click controls: the plugin's view of the status row ──
@@ -1077,14 +1100,30 @@ public class KillClogPanel extends PluginPanel
 		searchBar.setText(name);
 	}
 
-	/** The world's game: a League world reads its League, any other world the main game. A shown player is read again. */
-	public void followWorld(String league, LocalClogCache leagueLog)
+	/** The world's League (null: none), your log for it, and the League running now (null: none). */
+	public void followWorld(String league, LocalClogCache leagueLog, String active)
 	{
-		lookupSession.readLeague(league, leagueLog);
-		comparison.readLeague(league, leagueLog);
+		worldLeague = league;
+		worldLeagueLog = leagueLog;
+		activeLeague = active;
+		flipped = false;
+		showGame();
+	}
+
+	private void showGame()
+	{
+		String league = worldLeague != null ? (flipped ? null : worldLeague) : (flipped ? activeLeague : null);
+		boolean changed = !java.util.Objects.equals(league, lookupSession.league());
+		// A main-game view ignores the log, and only a League world has one.
+		lookupSession.readLeague(league, worldLeagueLog);
+		comparison.readLeague(league, worldLeagueLog);
+		leagueSwitch.setVisible(worldLeague != null || activeLeague != null);
+		leagueSwitch.setIcon(league != null ? leagueBadge : leagueOff);
+		tooltipController.setTooltipText(leagueSwitch, league != null ? "League stats" : "Main game stats");
+		searchRow.revalidate();
 		// Shown or still loading, the player is read again in the new game.
 		String shown = lookupSession.getCurrentLookupRsn();
-		if (shown != null)
+		if (changed && shown != null)
 		{
 			// The new lookup also ends any comparison: its other side is the last game's.
 			lookupSession.cancelInFlight();

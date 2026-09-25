@@ -92,7 +92,7 @@ public class LeagueViewPanelTest
 			panel.doLookup();
 			// Still loading when the world changes, and mid-way into a comparison entry.
 			setField(field(panel, "searchRowController", SearchRowController.class), "compareEntryMode", true);
-			panel.followWorld("demonic-pacts", null);
+			panel.followWorld("demonic-pacts", null, "demonic-pacts");
 		});
 		verify(hiscores).lookup("Friend", null);
 		verify(hiscores).lookupTable("Friend", HiscoreService.LEAGUE_TABLE);
@@ -113,10 +113,68 @@ public class LeagueViewPanelTest
 			field(panel, "searchBar", IconTextField.class).setText("Friend");
 			panel.doLookup();
 			setField(comparison, "comparisonMode", true);
-			panel.followWorld("demonic-pacts", null);
+			panel.followWorld("demonic-pacts", null, "demonic-pacts");
 			assertFalse("the other side would still be the last game's", comparison.isComparisonMode());
 		});
 		verify(hiscores).lookupTable("Friend", HiscoreService.LEAGUE_TABLE);
+	}
+
+	@Test
+	public void theLeaguesSwitchShowsWhileALeagueRunsAndFlipsUntilTheWorldChanges() throws Exception
+	{
+		javax.swing.JLabel toggle = field(panel, "leagueSwitch", javax.swing.JLabel.class);
+		javax.swing.ImageIcon lit = field(panel, "leagueBadge", javax.swing.ImageIcon.class);
+		java.awt.event.MouseEvent press = new java.awt.event.MouseEvent(toggle, java.awt.event.MouseEvent.MOUSE_PRESSED, 0, 0, 5, 5, 1, false);
+		SwingUtilities.invokeAndWait(() ->
+		{
+			panel.followWorld(null, null, null);
+			assertFalse("no League running, no switch", toggle.isVisible());
+
+			field(panel, "searchBar", IconTextField.class).setText("Friend");
+			panel.doLookup();
+			panel.followWorld(null, null, "demonic-pacts");
+			assertTrue(toggle.isVisible());
+			assertNull("a main world reads the main game", session.league());
+			assertFalse(lit == toggle.getIcon());
+			assertEquals("Main game stats", toggle.getToolTipText());
+
+			for (java.awt.event.MouseListener listener : toggle.getMouseListeners())
+			{
+				listener.mousePressed(press);
+			}
+			assertEquals("demonic-pacts", session.league());
+			assertTrue(lit == toggle.getIcon());
+			assertEquals("League stats", toggle.getToolTipText());
+
+			LocalClogCache own = mock(LocalClogCache.class);
+			panel.followWorld("demonic-pacts", own, "demonic-pacts");
+			assertEquals("a League world reads its League", "demonic-pacts", session.league());
+			for (java.awt.event.MouseListener listener : toggle.getMouseListeners())
+			{
+				listener.mousePressed(press);
+			}
+			assertNull("flipped back to the main game", session.league());
+			panel.followWorld("demonic-pacts", own, "demonic-pacts");
+			assertEquals("a world change ends the flip", "demonic-pacts", session.league());
+		});
+		// Read again on each switch into the League, and on the flip back to main.
+		verify(hiscores, org.mockito.Mockito.times(2)).lookupTable("Friend", HiscoreService.LEAGUE_TABLE);
+		verify(hiscores, org.mockito.Mockito.times(2)).lookup("Friend", null);
+	}
+
+	@Test
+	public void everyNameInALeagueViewWearsTheLeaguesBadge() throws Exception
+	{
+		javax.swing.ImageIcon badge = field(panel, "leagueBadge", javax.swing.ImageIcon.class);
+		javax.swing.JLabel name = new javax.swing.JLabel();
+		SwingUtilities.invokeAndWait(() ->
+		{
+			panel.applyBadge(name, null);
+			assertNull(name.getIcon());
+			panel.followWorld("demonic-pacts", null, "demonic-pacts");
+			panel.applyBadge(name, null);
+			assertTrue(badge == name.getIcon());
+		});
 	}
 
 	@Test
@@ -129,7 +187,7 @@ public class LeagueViewPanelTest
 		{
 			invoke(update);
 			assertTrue(ranks.isVisible());
-			panel.followWorld("demonic-pacts", null);
+			panel.followWorld("demonic-pacts", null, "demonic-pacts");
 			invoke(update);
 			assertFalse(ranks.isVisible());
 		});

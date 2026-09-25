@@ -63,7 +63,7 @@ final class RankSelector extends JPanel
 		setVisible(false);
 	}
 
-	private static ImageIcon icon(BufferedImage image, float alpha)
+	static ImageIcon icon(BufferedImage image, float alpha)
 	{
 		BufferedImage dimmed = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
 		Graphics2D g = dimmed.createGraphics();

@@ -156,7 +156,7 @@ public class KillClogPlugin extends Plugin
 		new LocalClogCache(gson, new java.io.File(net.runelite.client.RuneLite.RUNELITE_DIR, "kill-clog/leagues/" + id));
 	// The store the collection log walk started with; a different one means start over.
 	private LocalClogCache walkCache;
-	// The logged-in account, for PB reads on the panel's thread, and the League the panel follows.
+	// The logged-in account, for PB reads on the panel's thread, and the world's and running League last given to the panel.
 	private volatile long localAccountHash = -1;
 	private String panelLeague;
 
@@ -701,12 +701,13 @@ public class KillClogPlugin extends Plugin
 	{
 		String mode = mode();
 		String league = mode == null || GameMode.MAIN.equals(mode) ? null : mode;
-		if (!java.util.Objects.equals(league, panelLeague))
+		String active = killclogService.activeLeague();
+		if (!(league + "/" + active).equals(panelLeague))
 		{
-			panelLeague = league;
+			panelLeague = league + "/" + active;
 			LocalClogCache leagueLog = league == null ? null : captureCache();
 			kclogCommand.readLeague(league, leagueLog);
-			SwingUtilities.invokeLater(() -> panel.followWorld(league, leagueLog));
+			SwingUtilities.invokeLater(() -> panel.followWorld(league, leagueLog, active));
 		}
 	}
 

@@ -88,7 +88,7 @@ class KillClogChatCommand
 	}
 
 	// On a League world, replies read that League (null: the main game) and the player's own log for it.
-	static final String LEAGUE_PREFIX = "Leagues: ";
+	static final String LEAGUE_PREFIX = "[Leagues] ";
 	@Nullable private volatile String league;
 	@Nullable private volatile LocalClogCache leagueLog;
 
