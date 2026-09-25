@@ -705,7 +705,7 @@ public class KillClogPanel extends PluginPanel
 		{
 			tip.setTitle(data != null ? data.name : name);
 			boolean isSelfNoCache = result != null && localRsn != null
-				&& localRsn.equalsIgnoreCase(rsn);
+				&& localRsn.equalsIgnoreCase(rsn) && lookupSession.readsOwnLog();
 			if (isSelfNoCache)
 			{
 				tip.setNotice(SETUP_NOTICE);
@@ -1452,8 +1452,9 @@ public class KillClogPanel extends PluginPanel
 		}
 		else
 		{
+			// Setup is only offered for a log this client keeps.
 			boolean isSelf = localRsn != null && playerRsn != null
-				&& localRsn.equalsIgnoreCase(playerRsn);
+				&& localRsn.equalsIgnoreCase(playerRsn) && lookupSession.readsOwnLog();
 			if (isSelf)
 			{
 				tip.setFirstTimeSetup();
