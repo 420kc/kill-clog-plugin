@@ -574,12 +574,13 @@ public class LocalClogCacheTest
 		// Live unlock lands with kill provenance and a date.
 		cache.mergeObtainedItem("Fast 07", 2, itemListAsStrings("vorkath"), categories, 421, "Vorkath");
 
-		// A later chalice capture rebuilds the page with bare items; the
+		// A later chalice capture rebuilds the log with bare items; the
 		// wholesale replace must not cost the drop its provenance.
-		List<ClogResult.ClogItem> bare = new ArrayList<>();
-		bare.add(new ClogResult.ClogItem(1, 1, null));
-		bare.add(new ClogResult.ClogItem(2, 1, null));
-		cache.mergeCategory("Fast 07", "vorkath", itemList(1, 2, 3), bare);
+		Map<String, List<ClogResult.ClogItem>> bare = new HashMap<>();
+		bare.put("vorkath", new ArrayList<>(List.of(
+			new ClogResult.ClogItem(1, 1, null),
+			new ClogResult.ClogItem(2, 1, null))));
+		cache.cacheFirstPartyResult(clog("Fast 07", categories, bare));
 
 		ClogResult.ClogItem survived = obtainedItem(cache, "Fast 07", "vorkath", 2);
 		assertNotNull(survived);
@@ -2574,10 +2575,10 @@ public class LocalClogCacheTest
 			assertFalse(cache.hasFirstPartyDataFor("Zezima"));
 			assertFalse(cache.hasCompletedFirstPartySetupFor("Zezima"));
 
-			// A page capture is honest first-party data, but it is not the full
+			// A live unlock is honest first-party data, but it is not the full
 			// Search walk and must not dismiss onboarding.
-			cache.mergeCategory("Zezima", "zulrah", List.of(1, 2, 3),
-				obtainedItems("zulrah", 1, 2).get("zulrah"));
+			cache.mergeObtainedItem("Zezima", 3, itemListAsStrings("zulrah"),
+				categoryItems("zulrah", 1, 2, 3));
 			assertTrue(cache.hasFirstPartyDataFor("Zezima"));
 			assertFalse(cache.hasCompletedFirstPartySetupFor("Zezima"));
 

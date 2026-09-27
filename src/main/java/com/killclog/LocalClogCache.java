@@ -17,7 +17,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -1408,64 +1407,6 @@ public class LocalClogCache
 		return marks != null ? marks : Collections.emptyList();
 	}
 
-	public synchronized void mergeCategory(String playerName, String categoryKey,
-		List<Integer> allItems, List<ClogResult.ClogItem> obtained)
-	{
-		if (playerName == null)
-		{
-			return;
-		}
-
-		String key = cacheKey(playerName);
-		if (unresolvedSlots.contains(key))
-		{
-			return;
-		}
-		PlayerClogData data = players.get(key);
-		if (data == null)
-		{
-			return;
-		}
-
-		List<ClogResult.ClogItem> prior = data.obtained.get(categoryKey);
-		List<ClogResult.ClogItem> merged = preserveItemMetadata(obtained, prior);
-		Set<Integer> seen = new HashSet<>();
-		for (ClogResult.ClogItem item : obtained)
-		{
-			seen.add(item.getId());
-		}
-		List<Integer> marks = categoryMarks(data, categoryKey);
-		List<Integer> categoryItems = new ArrayList<>(allItems);
-		// A page may hide owned items. Preserve earlier client evidence, but
-		// never promote unobserved provider entries or infer IDs from a count.
-		if (prior != null)
-		{
-			for (ClogResult.ClogItem item : prior)
-			{
-				if ((marks == null || marks.contains(item.getId())) && seen.add(item.getId()))
-				{
-					merged.add(item);
-					if (!categoryItems.contains(item.getId())) categoryItems.add(item.getId());
-				}
-			}
-		}
-		data.categories.put(categoryKey, categoryItems);
-		data.obtained.put(categoryKey, merged);
-		for (ClogResult.ClogItem item : obtained)
-		{
-			markFirstParty(data, categoryKey, item.getId());
-		}
-
-		final PlayerClogData snapshot = shallowCopy(data);
-		submitPlayerSave(playerName, snapshot);
-		log.debug("Merged category '{}' for '{}': {}/{} obtained",
-			categoryKey, playerName, obtained.size(), allItems.size());
-		if (!obtained.isEmpty())
-		{
-			notifyFirstPartyChanged();
-		}
-	}
-
 	// Fires after any in-client observation lands (bulk page capture, live
 	// unlock), whatever path delivered it - the killclog.com sync trigger
 	// lives here at the data seam so no capture route can be forgotten.
@@ -2236,7 +2177,7 @@ public class LocalClogCache
 			if (data != null && data.categories != null && !data.categories.isEmpty())
 			{
 				// Gson deserializes to plain maps; wrap in ConcurrentHashMap
-				// so mergeCategory() and EDT reads can't collide.
+				// so cache writes and EDT reads can't collide.
 				data.categories = new ConcurrentHashMap<>(data.categories);
 				data.obtained = data.obtained != null
 					? new ConcurrentHashMap<>(data.obtained)
