@@ -97,6 +97,18 @@ public class HiscoreResult
 	}
 
 	/** A display-only projection. A missing table blanks ranks, never stats or identity. */
+	/** Another leaderboard's whole row under this player's own type and table, so a Hardcore
+	 *  who died reads their Hardcore stats as they stood at the death. */
+	HiscoreResult withRow(HiscoreResult row)
+	{
+		HiscoreResult view = new HiscoreResult(accountType, hiscoreTable, row.bossKills, row.bossRanks,
+			row.activityScores, row.activityRanks, row.skillLevels, row.skillRanks, row.skillXps,
+			row.totalLevel, row.totalXp, row.combatLevelExact, row.overallRank);
+		view.bossSectionShifted = row.bossSectionShifted;
+		view.rankDataAvailable = row.rankDataAvailable;
+		return view;
+	}
+
 	HiscoreResult withRanks(HiscoreResult ranks)
 	{
 		HiscoreResult view = new HiscoreResult(accountType, hiscoreTable, bossKills,

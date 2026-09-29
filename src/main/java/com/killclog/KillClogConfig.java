@@ -68,7 +68,7 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "showLeaderboardSelector",
 		name = "Show Leaderboard Selector",
-		description = "Show hiscores leaderboard icons below the panel. Changes ranks only; account detection stays automatic",
+		description = "Show hiscores leaderboard icons below the panel. Shows that leaderboard's stats and ranks; account detection stays automatic",
 		section = lookupSection,
 		position = 4
 	)

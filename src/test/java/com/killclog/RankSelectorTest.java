@@ -48,6 +48,23 @@ public class RankSelectorTest
 	}
 
 	@Test
+	public void rowViewTakesTheWholeRowButKeepsThePlayersOwnTypeAndTable()
+	{
+		HiscoreResult base = result(AccountType.IRONMAN, HiscoreTable.ONE_DEFENCE, 10, 10000);
+		HiscoreResult died = result(AccountType.REGULAR, HiscoreTable.STANDARD, 50, 5000);
+		died.setBossSectionShifted(true);
+		HiscoreResult view = base.withRow(died);
+		assertEquals(5000, view.getTotalXp());
+		assertEquals(5000, view.getSkillXp("attack"));
+		assertEquals(50, view.getOverallRank());
+		assertEquals(50, view.getRank("Zulrah"));
+		assertEquals(AccountType.IRONMAN, view.getAccountType());
+		assertEquals(HiscoreTable.ONE_DEFENCE, view.getHiscoreTable());
+		assertTrue(view.isBossSectionShifted());
+		assertEquals(10000, base.getTotalXp());
+	}
+
+	@Test
 	public void rankChoiceCannotChangeSpecialtyIdentity()
 	{
 		HiscoreResult base = result(AccountType.REGULAR, HiscoreTable.ONE_DEFENCE, 10, 10000);
@@ -134,7 +151,7 @@ public class RankSelectorTest
 	}
 
 	@Test
-	public void historicalAndMissingRanksAreLabelledWithoutChangingStats() throws Exception
+	public void aDeadHardcoreReadsTheFrozenRowAndMissingTablesKeepCurrentStats() throws Exception
 	{
 		RankSelector[] holder = new RankSelector[1];
 		HiscoreResult base = result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000);
@@ -148,14 +165,16 @@ public class RankSelectorTest
 		SwingUtilities.invokeAndWait(() ->
 		{
 			assertEquals(50, holder[0].view(base).getOverallRank());
-			assertEquals(10000, holder[0].view(base).getTotalXp());
-			assertTrue(((JButton) holder[0].getComponent(2)).getToolTipText().contains("Historical ranks"));
+			assertEquals(5000, holder[0].view(base).getTotalXp());
+			assertEquals(AccountType.IRONMAN, holder[0].view(base).getAccountType());
+			assertTrue(((JButton) holder[0].getComponent(2)).getToolTipText().contains("Stats frozen"));
 			holder[0].select(RankLeaderboard.ULTIMATE);
 		});
 		SwingUtilities.invokeAndWait(() ->
 		{
 			assertEquals(-1, holder[0].view(base).getOverallRank());
-			assertTrue(((JButton) holder[0].getComponent(3)).getToolTipText().contains("Ranks unavailable"));
+			assertEquals(10000, holder[0].view(base).getTotalXp());
+			assertTrue(((JButton) holder[0].getComponent(3)).getToolTipText().contains("Unavailable"));
 		});
 	}
 

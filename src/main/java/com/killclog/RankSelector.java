@@ -22,7 +22,7 @@ import net.runelite.client.plugins.hiscore.HiscorePanel;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.util.ImageUtil;
 
-/** EDT-owned, rank-only views for both players. Cached service results stay untouched. */
+/** EDT-owned leaderboard views for both players. Cached service results stay untouched. */
 final class RankSelector extends JPanel
 {
 	private final BiFunction<String, RankLeaderboard, CompletableFuture<HiscoreResult>> fetch;
@@ -152,13 +152,14 @@ final class RankSelector extends JPanel
 			return;
 		}
 		views.put(base, base.withRanks(null));
-		notices.put(base, "Loading ranks...");
-		fetch.apply(name, table).whenComplete((ranks, error) -> SwingUtilities.invokeLater(() ->
+		notices.put(base, "Loading...");
+		fetch.apply(name, table).whenComplete((row, error) -> SwingUtilities.invokeLater(() ->
 		{
 			if (version != requestVersion) return;
-			views.put(base, base.withRanks(error == null ? ranks : null));
-			notices.put(base, error != null || ranks == null ? "Ranks unavailable; click to retry"
-				: ranks.getTotalXp() < base.getTotalXp() ? "Historical ranks; current stats unchanged" : "");
+			boolean found = error == null && row != null;
+			views.put(base, found ? base.withRow(row) : base.withRanks(null));
+			notices.put(base, !found ? "Unavailable; click to retry"
+				: row.getTotalXp() < base.getTotalXp() ? "Stats frozen on this leaderboard" : "");
 			updateButtons();
 			changed.run();
 		}));
