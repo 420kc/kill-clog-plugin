@@ -73,23 +73,6 @@ public class LocalClogCacheTest
 	}
 
 	@Test
-	public void aSettledLogLoadsOnTheWriterAndActivationNeverReadsDisk() throws Exception
-	{
-		File dir = temporaryFolder.newFolder();
-		writeOwnedRecord(dir, "Tester", "77");
-		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
-		assertTrue(cache.followNameChangeForSync("Tester", 77L));
-		assertTrue("loaded as the slot settled", cache.setActivePlayer("Tester") && cache.hasFirstPartyDataFor("Tester"));
-
-		File fresh = temporaryFolder.newFolder();
-		LocalClogCache newcomer = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(fresh));
-		assertTrue(newcomer.followNameChangeForSync("Tester", 77L));
-		writeOwnedRecord(fresh, "Tester", "77");
-		assertTrue(newcomer.setActivePlayer("Tester"));
-		assertFalse("activation reads memory, not a file that appeared later", newcomer.hasFirstPartyDataFor("Tester"));
-	}
-
-	@Test
 	public void renameRejectsUnclaimedForeignDestination() throws Exception
 	{
 		File dir = temporaryFolder.newFolder();

@@ -791,6 +791,24 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void aLeagueClickQueuedBehindASyncStaysWithThatLeague() throws Exception
+	{
+		LocalClogCache league = announceLeague();
+		syncHandler.run();
+		settle();
+		assertEquals(1, syncs.size());
+		syncHandler.run();
+		settle();
+		world(net.runelite.api.WorldType.MEMBERS);
+		ticks(10);
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "First"));
+		settle();
+		assertEquals(2, syncs.size());
+		verify(syncService, times(2)).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), any(),
+			any(), eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"));
+	}
+
+	@Test
 	public void aSyncFiringBeforeTheNewWorldSettlesTriesOnceMore() throws Exception
 	{
 		((PublicationCoordinator) field("publication")).scheduleAutomaticSync();

@@ -214,16 +214,6 @@ public class LocalClogCache
 		}
 		settledOwnerBySlot.put(key, hashKey);
 		unresolvedSlots.remove(key);
-		// Settling runs on this store's writer: the log loads here, so taking the
-		// player up on the client thread only ever reads memory.
-		if (!players.containsKey(key))
-		{
-			PlayerClogData loaded = loadFromDisk(key);
-			if (loaded != null)
-			{
-				players.put(key, loaded);
-			}
-		}
 		return true;
 	}
 
@@ -1196,6 +1186,17 @@ public class LocalClogCache
 		{
 			log.debug("Active clog player '{}' is waiting for identity arbitration", name);
 			return false;
+		}
+
+		if (!players.containsKey(key))
+		{
+			PlayerClogData loaded = loadFromDisk(name);
+			if (loaded != null)
+			{
+				players.put(key, loaded);
+				log.debug("Loaded persistent clog cache for '{}' ({} categories)",
+					name, loaded.categories.size());
+			}
 		}
 
 		log.debug("Active clog player set to: {}", name);
