@@ -39,6 +39,11 @@ tasks.withType(JavaCompile) {
     options.compilerArgs += ['-Xlint:deprecation']
 }
 
+test {
+    // RuneLite resolves .runelite from user.home as it loads: tests get their own, never the player's.
+    systemProperty 'user.home', "${buildDir}/test-home"
+}
+
 task run(type: JavaExec) {
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'com.killclog.KillClogPluginTest'

@@ -16,6 +16,13 @@ public class PluginFolderTest
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 
 	@Test
+	public void testsNeverSeeTheRealRuneliteFolder()
+	{
+		assertTrue(net.runelite.client.RuneLite.RUNELITE_DIR.getPath()
+			.replace(File.separatorChar, '/').contains("/build/test-home/"));
+	}
+
+	@Test
 	public void windowsDeviceNamesTakeASafeFileName()
 	{
 		assertEquals("+con.json", LocalClogCache.fileName("Con"));
