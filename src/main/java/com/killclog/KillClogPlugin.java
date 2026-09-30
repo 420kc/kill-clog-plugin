@@ -219,7 +219,6 @@ public class KillClogPlugin extends Plugin
 			.build();
 
 		clientToolbar.addNavigation(navButton);
-		panel.setPluginManager(pluginManager);
 		panel.setNameAutocompleter(nameAutocompleter);
 		panel.setClogIndex(clogIndex);
 
@@ -969,12 +968,6 @@ public class KillClogPlugin extends Plugin
 		if (pluginName.equals("ResourcePacksPlugin"))
 		{
 			SwingUtilities.invokeLater(panel::reloadTooltipSprites);
-		}
-
-		// String check; FourTwentyKcPlugin lives in a separate plugin.
-		if (pluginName.equals("FourTwentyKcPlugin"))
-		{
-			SwingUtilities.invokeLater(() -> panel.setFourTwentyVisible(event.isLoaded()));
 		}
 	}
 

@@ -8,8 +8,6 @@ package com.killclog;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.beans.PropertyChangeListener;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -59,13 +57,10 @@ public class BossListView
 	}
 
 	/**
-	 * @param thermoEasterEgg the guarded 420-mode cycle, wired to the Thermo
-	 * row's kc label - the same hit area the grid gives it
 	 * @param mirrorActive false while the grid is the forced view (compare);
 	 * the mirror skips those writes and the exit rewrite resyncs the rows
 	 */
-	public BossListView(TooltipController tooltipController, Cells cells,
-		Runnable thermoEasterEgg, BooleanSupplier mirrorActive)
+	public BossListView(TooltipController tooltipController, Cells cells, BooleanSupplier mirrorActive)
 	{
 		this.mirrorActive = mirrorActive;
 		root = new JPanel();
@@ -79,7 +74,7 @@ public class BossListView
 		// exact order in the game's own hiscores.
 		for (HiscoreSkill boss : PanelData.BOSSES)
 		{
-			root.add(buildRow(boss, tooltipController, cells, thermoEasterEgg));
+			root.add(buildRow(boss, tooltipController, cells));
 			installMirror(boss, cells);
 		}
 	}
@@ -171,7 +166,7 @@ public class BossListView
 	}
 
 	private JPanel buildRow(HiscoreSkill boss, TooltipController tooltipController,
-		Cells cells, Runnable thermoEasterEgg)
+		Cells cells)
 	{
 		Row row = new Row();
 
@@ -196,20 +191,6 @@ public class BossListView
 		row.kc.setPreferredSize(new Dimension(KC_WIDTH, ROW_HEIGHT));
 		row.kc.setBorder(new EmptyBorder(0, 0, 0, 4));
 		ClogHelper.antialias(row.kc);
-
-		if (boss == HiscoreSkill.THERMONUCLEAR_SMOKE_DEVIL)
-		{
-			// Same hit area as the grid's easter egg: the kc label, not the
-			// whole row - a wide trigger would cycle 420 mode by accident.
-			row.kc.addMouseListener(new MouseAdapter()
-			{
-				@Override
-				public void mousePressed(MouseEvent e)
-				{
-					thermoEasterEgg.run();
-				}
-			});
-		}
 
 		JPanel panel = new JPanel(new BorderLayout(4, 0));
 		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);

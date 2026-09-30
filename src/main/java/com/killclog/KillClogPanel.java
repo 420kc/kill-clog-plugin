@@ -35,8 +35,6 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.game.SpriteManager;
-import net.runelite.client.hiscore.HiscoreSkill;
-import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.plugins.hiscore.HiscorePanel;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
@@ -177,10 +175,6 @@ public class KillClogPanel extends PluginPanel
 
 	// Comparison mode widgets (state fields all live on the controller)
 
-	// 420 mode - unlocked when the 420 KC plugin is loaded
-	private FourTwentyMode fourTwentyMode = FourTwentyMode.OFF;
-	private boolean has420Plugin;
-
 	// No-data copy stays quiet: another player simply has no synced collection log.
 	// No provider names, no "missing data" framing - just a calm statement.
 	private String noClogNotice(String rsn, @Nullable HiscoreResult hiscore)
@@ -313,14 +307,11 @@ public class KillClogPanel extends PluginPanel
 		c.gridy++;
 		bossGridPanel = cells.buildBossGrid();
 		bossListView = new BossListView(tooltipController, cells,
-			this::fireFourTwentyEasterEgg, this::bossListAvailable);
+			this::bossListAvailable);
 		bossViewContainer = new JPanel(new BorderLayout());
 		bossViewContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		add(bossViewContainer, c);
 		applyBossViewStyle();
-		// 420 mode easter egg: secret cycle on Thermonuclear Smoke Devil click.
-		// The list view wires its own trigger through the constructor above.
-		wireFourTwentyEasterEgg(cells.getBossLabel(HiscoreSkill.THERMONUCLEAR_SMOKE_DEVIL));
 
 		// Compare entry controls live in the search row.
 		getWrappedPanel().add(rankSelector, BorderLayout.SOUTH);
@@ -484,32 +475,6 @@ public class KillClogPanel extends PluginPanel
 		}
 		configManager.setConfiguration("killclog", "bossListView", !config.bossListView());
 		applyBossViewStyle();
-	}
-
-	/** Guarded 420-mode cycle shared by both views' Thermo triggers. */
-	private void fireFourTwentyEasterEgg()
-	{
-		if (has420Plugin && !comparison.isComparisonMode())
-		{
-			cycleFourTwentyMode();
-		}
-	}
-
-	/** Secret 420-mode cycle on a Thermonuclear Smoke Devil label. */
-	private void wireFourTwentyEasterEgg(@Nullable JLabel label)
-	{
-		if (label == null)
-		{
-			return;
-		}
-		label.addMouseListener(new MouseAdapter()
-		{
-			@Override
-			public void mousePressed(MouseEvent e)
-			{
-				fireFourTwentyEasterEgg();
-			}
-		});
 	}
 
 	// Activities tray.
@@ -1066,7 +1031,7 @@ public class KillClogPanel extends PluginPanel
 
 	/**
 	 * Repaint the header and every cell from the session results under the
-	 * current settings: 420 mode, the completion highlighter and any comparison.
+	 * current settings: the completion highlighter and any comparison.
 	 */
 	private void renderResults()
 	{
@@ -1079,14 +1044,13 @@ public class KillClogPanel extends PluginPanel
 		clogInfoLabel.setForeground(infoColor);
 		colorStatsRow();
 
-		cells.renderHiscore(lookupSession.getHiscoreResult(), fourTwentyMode);
+		cells.renderHiscore(lookupSession.getHiscoreResult());
 		if (lookupSession.getClogResult() != null)
 		{
 			cells.renderClog(lookupSession.getClogResult());
 			if (config.completionistHighlighter())
 			{
-				highlighter.colorCellsByCompletion(lookupSession.getHiscoreResult(), lookupSession.getClogResult(),
-					fourTwentyMode);
+				highlighter.colorCellsByCompletion(lookupSession.getHiscoreResult(), lookupSession.getClogResult());
 				highlighter.colorEmptyCells();
 			}
 		}
@@ -1219,22 +1183,6 @@ public class KillClogPanel extends PluginPanel
 		tooltipDataBuilder.setClogIndex(clogIndex);
 	}
 
-	public void setPluginManager(PluginManager pluginManager)
-	{
-		has420Plugin = pluginManager.getPlugins().stream()
-			.anyMatch(p -> p.getClass().getSimpleName().equals("FourTwentyKcPlugin"));
-	}
-
-	public void setFourTwentyVisible(boolean visible)
-	{
-		has420Plugin = visible;
-		if (!visible)
-		{
-			fourTwentyMode = FourTwentyMode.OFF;
-			if (lookupSession.getHiscoreResult() != null) renderResults();
-		}
-	}
-
 	public void onConfigChanged(String key)
 	{
 		switch (key)
@@ -1319,13 +1267,6 @@ public class KillClogPanel extends PluginPanel
 	{
 		super.removeNotify();
 		tooltipController.hidePinnedTooltip();
-	}
-
-	private void cycleFourTwentyMode()
-	{
-		FourTwentyMode[] modes = FourTwentyMode.values();
-		fourTwentyMode = modes[(fourTwentyMode.ordinal() + 1) % modes.length];
-		renderResults();
 	}
 
 	private BufferedImage getCapeImage(@Nullable HiscoreResult result)

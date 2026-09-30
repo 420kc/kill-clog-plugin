@@ -32,8 +32,7 @@ final class ProgressHighlighter
 	}
 
 	/** Color boss, activity and clue tier cells by clog completion progress. */
-	void colorCellsByCompletion(HiscoreResult hiscoreResult, ClogResult clogResult,
-								FourTwentyMode fourTwentyMode)
+	void colorCellsByCompletion(HiscoreResult hiscoreResult, ClogResult clogResult)
 	{
 		if (clogResult == null)
 		{
@@ -44,7 +43,7 @@ final class ProgressHighlighter
 		{
 			HiscoreSkill skill = entry.getKey();
 			String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(skill.getName(), skill.getName());
-			colorBossCell(entry.getValue(), hiscoreName, hiscoreResult, clogResult, fourTwentyMode);
+			colorBossCell(entry.getValue(), hiscoreName, hiscoreResult, clogResult);
 		}
 		colorClueTiers(hiscoreResult, clogResult);
 
@@ -99,12 +98,8 @@ final class ProgressHighlighter
 	// Private helpers.
 
 	private void colorBossCell(JLabel label, String hiscoreName,
-		HiscoreResult hiscoreResult, ClogResult clogResult, FourTwentyMode fourTwentyMode)
+		HiscoreResult hiscoreResult, ClogResult clogResult)
 	{
-		if (fourTwentyMode != FourTwentyMode.OFF && FourTwentyMode.GREEN.equals(label.getForeground()))
-		{
-			return;
-		}
 
 		int kc = hiscoreResult.getKc(hiscoreName);
 		if (kc <= 0) return;

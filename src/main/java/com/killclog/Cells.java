@@ -291,19 +291,19 @@ public class Cells
 
 	/**
 	 * Write hiscore-driven values into every primary-side cell: bosses
-	 * (text + color + dimmed-icon swap + 420 mode overrides), activities
+	 * (text + color + dimmed-icon swap), activities
 	 * and clue tiers. Mirrors
 	 * {@link ComparisonController#updateAllCells()} for the comparison side.
 	 */
-	public void renderHiscore(HiscoreResult result, FourTwentyMode fourTwentyMode)
+	public void renderHiscore(HiscoreResult result)
 	{
-		// Boss cells (with 420 mode overrides applied last)
+		// Boss cells
 		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
 		{
 			HiscoreSkill skill = entry.getKey();
 			String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(skill.getName(), skill.getName());
 			renderBossValue(entry.getValue(), hiscoreName,
-				originalIcons.get(skill), dimmedIcons.get(skill), result, fourTwentyMode);
+				originalIcons.get(skill), dimmedIcons.get(skill), result);
 		}
 		// Activity cells
 		for (Map.Entry<HiscoreSkill, JLabel> entry : activityLabels.entrySet())
@@ -546,7 +546,7 @@ public class Cells
 	/** Write one boss cell's KC text, color, and icon dim state from the name-keyed hiscore map. */
 	private void renderBossValue(@Nullable JLabel label, String hiscoreName,
 		@Nullable ImageIcon orig, @Nullable ImageIcon dimmed,
-		HiscoreResult result, FourTwentyMode fourTwentyMode)
+		HiscoreResult result)
 	{
 		if (label == null)
 		{
@@ -560,7 +560,6 @@ public class Cells
 		{
 			label.setIcon(hasKc ? orig : dimmed);
 		}
-		fourTwentyMode.applyOverrides(label, kc);
 	}
 
 	/**

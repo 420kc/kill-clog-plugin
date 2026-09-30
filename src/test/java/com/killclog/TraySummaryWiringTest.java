@@ -266,7 +266,7 @@ public class TraySummaryWiringTest
 	{
 		HiscoreResult hiscore = hiscore();
 		field(panel, "lookupSession", LookupSession.class).adoptState(hiscore, clog, null, "Seeded");
-		cells.renderHiscore(hiscore, FourTwentyMode.OFF);
+		cells.renderHiscore(hiscore);
 		cells.renderClog(clog);
 		cells.rebuildPrimaryTooltips("SomeoneElse");
 	}
