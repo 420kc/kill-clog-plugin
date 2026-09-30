@@ -23,6 +23,21 @@ public class PluginFolderTest
 	}
 
 	@Test
+	public void onlyAConfirmedMissingFileCountsAsAbsent() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		Files.writeString(new File(dir, "tester.json").toPath(), "{}");
+		assertFalse(LocalClogCache.absent(TestFolders.folder(dir).join("tester.json")));
+		assertTrue(LocalClogCache.absent(TestFolders.folder(dir).join("nobody.json")));
+		// Same answer as Files.notExists, which the 2.4 checks used.
+		for (String path : new String[]{"tester.json", "nobody.json", "tester.json/inside.json", "."})
+		{
+			assertEquals(path, Files.notExists(dir.toPath().resolve(path)),
+				LocalClogCache.absent(TestFolders.folder(dir).join(path)));
+		}
+	}
+
+	@Test
 	public void windowsDeviceNamesTakeASafeFileName()
 	{
 		assertEquals("+con.json", LocalClogCache.fileName("Con"));

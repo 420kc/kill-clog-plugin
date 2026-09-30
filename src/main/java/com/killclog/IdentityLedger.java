@@ -64,7 +64,7 @@ class IdentityLedger
 			return view;
 		}
 		Filepath file = folder.join(IdentityLedger.FILE);
-		if (!file.exists())
+		if (LocalClogCache.absent(file))
 		{
 			return view;
 		}

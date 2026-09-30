@@ -6,6 +6,7 @@ import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -835,7 +836,7 @@ public class LocalClogCache
 	private boolean residentOwnedBy(String key, String hashKey)
 	{
 		Filepath file = getCacheFile(key);
-		if (!file.exists())
+		if (absent(file))
 		{
 			return true;
 		}
@@ -1029,6 +1030,28 @@ public class LocalClogCache
 		catch (AtomicMoveNotSupportedException e)
 		{
 			from.moveTo(to, StandardCopyOption.REPLACE_EXISTING);
+		}
+	}
+
+	/**
+	 * Files.notExists for a Filepath: true only when the file is confirmed
+	 * missing. One that cannot be checked counts as present, so ownership and
+	 * ledger checks fail closed instead of treating it as free.
+	 */
+	static boolean absent(Filepath file)
+	{
+		try
+		{
+			file.getLastModifiedTime();
+			return false;
+		}
+		catch (NoSuchFileException e)
+		{
+			return true;
+		}
+		catch (IOException e)
+		{
+			return false;
 		}
 	}
 
