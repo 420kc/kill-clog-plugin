@@ -762,6 +762,33 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void aLeagueSyncScheduledBeforeAHopStillSyncsThatLeague() throws Exception
+	{
+		LocalClogCache league = announceLeague();
+		((PublicationCoordinator) field("publication")).scheduleAutomaticSync();
+		world(net.runelite.api.WorldType.MEMBERS);
+		ticks(10);
+		settle();
+		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), any(), any(),
+			eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"));
+		verify(syncService, never()).syncCollectionLog(any(), anyLong(), any(), any(), any(), anyLong(), any(), anyInt(),
+			eq(localClogCache), eq("main"));
+	}
+
+	@Test
+	public void aSyncFiringBeforeTheNewWorldSettlesTriesOnceMore() throws Exception
+	{
+		((PublicationCoordinator) field("publication")).scheduleAutomaticSync();
+		world(net.runelite.api.WorldType.SEASONAL);
+		fireOnce();
+		assertTrue("an unknown world syncs nothing", syncs.isEmpty());
+		assertEquals("its own catch-up gets one more try", 1, executor.live());
+		fireOnce();
+		assertTrue(syncs.isEmpty());
+		assertEquals("and no more after that", 0, executor.live());
+	}
+
+	@Test
 	public void aLeagueRuneLiteDoesNotKnowYetSendsNoPbs() throws Exception
 	{
 		LocalClogCache league = announceLeague();
@@ -922,6 +949,8 @@ public class PluginPublicationCharacterizationTest
 	{
 		LocalClogCache league = announceLeague();
 		ticks(1);
+		// The login's identity check finishes off the client thread first.
+		settle();
 		ArgumentCaptor<Runnable> listener = ArgumentCaptor.forClass(Runnable.class);
 		verify(league).setFirstPartyChangedListener(listener.capture());
 		listener.getValue().run();
@@ -1005,7 +1034,7 @@ public class PluginPublicationCharacterizationTest
 		ticks(1);
 		when(service.activeLeague()).thenReturn("demonic-pacts");
 		ticks(1);
-		verify(stores.get("raging-echoes")).shutdown();
+		verify(stores.get("raging-echoes")).close();
 		verify(walk).onGameTick(any(), any(), eq(stores.get("demonic-pacts")), any(), any(), any());
 	}
 
@@ -1066,6 +1095,17 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	/** Pump the executor, the client thread and the EDT until nothing is left to run. */
+	/** One pass: the timers due now, then what they hand the client thread. */
+	private void fireOnce() throws Exception
+	{
+		executor.runAll();
+		while (!clientQueue.isEmpty())
+		{
+			clientQueue.poll().run();
+		}
+		drainEdt();
+	}
+
 	private void settle() throws Exception
 	{
 		while (executor.live() > 0 || !clientQueue.isEmpty())

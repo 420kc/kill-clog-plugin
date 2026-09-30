@@ -280,7 +280,7 @@ public class KillClogPlugin extends Plugin
 		localClogCache.shutdown();
 		if (leagueCache != null)
 		{
-			leagueCache.shutdown();
+			leagueCache.close();
 			leagueCache = null;
 			leagueCacheId = null;
 		}
@@ -363,6 +363,8 @@ public class KillClogPlugin extends Plugin
 		{
 			return;
 		}
+		// Here, off the client thread, the log loads from disk; the client thread then reads memory.
+		cache.hasDataFor(name);
 		clientThread.invokeLater(() ->
 		{
 			Player local = client.getLocalPlayer();
@@ -693,7 +695,7 @@ public class KillClogPlugin extends Plugin
 		{
 			if (leagueCache != null)
 			{
-				leagueCache.shutdown();
+				leagueCache.close();
 			}
 			LocalClogCache created = leagueCacheFactory.apply(mode);
 			created.setFirstPartyChangedListener(() -> firstPartyChanged(created));
@@ -781,8 +783,8 @@ public class KillClogPlugin extends Plugin
 				String renameName = renameLocal.getName();
 				long renameEpoch = renameCache.currentSessionEpoch();
 				renameCache.followNameChangeAsync(renameName, renameHash, renameEpoch)
-					.thenAccept(settled -> onClogIdentitySettled(
-						renameCache, renameName, renameHash, renameEpoch, settled));
+					.thenAcceptAsync(settled -> onClogIdentitySettled(
+						renameCache, renameName, renameHash, renameEpoch, settled), executor);
 			}
 		}
 		// The notice survives whichever path migrated first (the sync
