@@ -776,6 +776,21 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void aLeaguesRetryAfterAHopStaysWithThatLeague() throws Exception
+	{
+		LocalClogCache league = announceLeague();
+		((PublicationCoordinator) field("publication")).scheduleAutomaticSync();
+		world(net.runelite.api.WorldType.MEMBERS);
+		ticks(10);
+		settle();
+		syncs.get(0).complete(new SyncService.SyncResult(false, false, "Another sync holds the lock", true, 5));
+		settle();
+		assertEquals(2, syncs.size());
+		verify(syncService, times(2)).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), any(),
+			any(), eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"));
+	}
+
+	@Test
 	public void aSyncFiringBeforeTheNewWorldSettlesTriesOnceMore() throws Exception
 	{
 		((PublicationCoordinator) field("publication")).scheduleAutomaticSync();
@@ -949,8 +964,6 @@ public class PluginPublicationCharacterizationTest
 	{
 		LocalClogCache league = announceLeague();
 		ticks(1);
-		// The login's identity check finishes off the client thread first.
-		settle();
 		ArgumentCaptor<Runnable> listener = ArgumentCaptor.forClass(Runnable.class);
 		verify(league).setFirstPartyChangedListener(listener.capture());
 		listener.getValue().run();

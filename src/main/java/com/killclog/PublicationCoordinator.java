@@ -112,6 +112,12 @@ final class PublicationCoordinator
 	 */
 	synchronized void scheduleSync(int delaySeconds, boolean manual)
 	{
+		scheduleSync(delaySeconds, manual, mode.get());
+	}
+
+	/** A retry keeps the game its attempt was for, wherever the player has hopped since. */
+	private synchronized void scheduleSync(int delaySeconds, boolean manual, String scheduledMode)
+	{
 		if (!config.killclogSync())
 		{
 			return;
@@ -125,20 +131,19 @@ final class PublicationCoordinator
 			pendingKillclogSync.cancel(false);
 		}
 		long scheduledEpoch = localClogCache.currentSessionEpoch();
-		String scheduledMode = mode.get();
 		pendingKillclogSync = executor.schedule(() -> pushKillclogSync(manual, scheduledEpoch, scheduledMode),
 			delaySeconds, TimeUnit.SECONDS);
 	}
 
 	/** The retry keeps its own delay: a capture's shorter debounce must not stand in for it. */
-	private synchronized void scheduleRetry(int delaySeconds, boolean manual)
+	private synchronized void scheduleRetry(int delaySeconds, boolean manual, String gameMode)
 	{
 		if (pendingKillclogSync != null)
 		{
 			pendingKillclogSync.cancel(false);
 		}
 		pendingKillclogSync = null;
-		scheduleSync(delaySeconds, manual);
+		scheduleSync(delaySeconds, manual, gameMode);
 	}
 
 	synchronized void cancelSync()
@@ -495,7 +500,7 @@ final class PublicationCoordinator
 							// slow restart. A player waiting on a click or a character
 							// publish gets the advised delay as it is.
 							int delay = Math.max(result.retryAfterSeconds, 2);
-							scheduleRetry(manual || characterWaiting ? delay : delay * 2, manual);
+							scheduleRetry(manual || characterWaiting ? delay : delay * 2, manual, gameMode);
 							launchQueuedSync();
 							return;
 						}

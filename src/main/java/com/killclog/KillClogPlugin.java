@@ -363,8 +363,6 @@ public class KillClogPlugin extends Plugin
 		{
 			return;
 		}
-		// Here, off the client thread, the log loads from disk; the client thread then reads memory.
-		cache.hasDataFor(name);
 		clientThread.invokeLater(() ->
 		{
 			Player local = client.getLocalPlayer();
@@ -783,8 +781,8 @@ public class KillClogPlugin extends Plugin
 				String renameName = renameLocal.getName();
 				long renameEpoch = renameCache.currentSessionEpoch();
 				renameCache.followNameChangeAsync(renameName, renameHash, renameEpoch)
-					.thenAcceptAsync(settled -> onClogIdentitySettled(
-						renameCache, renameName, renameHash, renameEpoch, settled), executor);
+					.thenAccept(settled -> onClogIdentitySettled(
+						renameCache, renameName, renameHash, renameEpoch, settled));
 			}
 		}
 		// The notice survives whichever path migrated first (the sync
