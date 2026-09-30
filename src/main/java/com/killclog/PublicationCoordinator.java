@@ -112,6 +112,12 @@ final class PublicationCoordinator
 	 */
 	synchronized void scheduleSync(int delaySeconds, boolean manual)
 	{
+		scheduleSync(delaySeconds, manual, mode.get());
+	}
+
+	/** A retry keeps the game its attempt was for, wherever the player has hopped since. */
+	private synchronized void scheduleSync(int delaySeconds, boolean manual, String scheduledMode)
+	{
 		if (!config.killclogSync())
 		{
 			return;
@@ -125,19 +131,19 @@ final class PublicationCoordinator
 			pendingKillclogSync.cancel(false);
 		}
 		long scheduledEpoch = localClogCache.currentSessionEpoch();
-		pendingKillclogSync = executor.schedule(() -> pushKillclogSync(manual, scheduledEpoch),
+		pendingKillclogSync = executor.schedule(() -> pushKillclogSync(manual, scheduledEpoch, scheduledMode),
 			delaySeconds, TimeUnit.SECONDS);
 	}
 
 	/** The retry keeps its own delay: a capture's shorter debounce must not stand in for it. */
-	private synchronized void scheduleRetry(int delaySeconds, boolean manual)
+	private synchronized void scheduleRetry(int delaySeconds, boolean manual, String gameMode)
 	{
 		if (pendingKillclogSync != null)
 		{
 			pendingKillclogSync.cancel(false);
 		}
 		pendingKillclogSync = null;
-		scheduleSync(delaySeconds, manual);
+		scheduleSync(delaySeconds, manual, gameMode);
 	}
 
 	synchronized void cancelSync()
@@ -334,14 +340,14 @@ final class PublicationCoordinator
 	// slot is free (the opt-out/opt-in-mid-request case).
 	private void launchQueuedSync()
 	{
-		Boolean manual = syncGate.consumeQueuedIntent();
-		if (manual != null && config.killclogSync())
+		KillclogSyncGate.Intent queued = syncGate.consumeQueuedIntent();
+		if (queued != null && config.killclogSync())
 		{
-			scheduleSync(0, manual);
+			scheduleSync(0, queued.manual, queued.mode);
 		}
 	}
 
-	private void pushKillclogSync(boolean manual, long scheduledEpoch)
+	private void pushKillclogSync(boolean manual, long scheduledEpoch, String scheduledMode)
 	{
 		// Re-checked at fire time: the player may have opted out while the
 		// debounce was pending. The session fence was captured when this exact
@@ -352,7 +358,7 @@ final class PublicationCoordinator
 		{
 			return;
 		}
-		final int generation = syncGate.beginAttempt(manual);
+		final int generation = syncGate.beginAttempt(manual, scheduledMode);
 		if (generation < 0)
 		{
 			return;
@@ -385,20 +391,29 @@ final class PublicationCoordinator
 				Player local = client.getLocalPlayer();
 				String rsn = local != null ? local.getName() : null;
 				long accountHash = client.getAccountHash();
-				String gameMode = mode.get();
+				// A League sync reads only that League's store and profile, so it finishes after a hop
+				// off its worlds; a main sync needs a settled main world, so it follows this one.
+				String gameMode = scheduledMode == null || GameMode.MAIN.equals(scheduledMode)
+					? mode.get() : scheduledMode;
 				LocalClogCache cache = gameMode == null ? null : modeCache.apply(gameMode);
 				if (rsn == null || accountHash == -1 || gameMode == null || cache == null)
 				{
 					syncGate.abortAttempt();
 					failQueuedCharacterPublish();
 					launchQueuedSync();
+					if (scheduledMode != null && gameMode == null && !manual)
+					{
+						// Fired before a new world settled: its login catch-up waited behind this timer.
+						scheduleAutomaticSync();
+					}
 					return;
 				}
 				// The type supplier answers only on a settled main world. A League's PBs come only from
 				// the RuneLite profile the server names: until RuneLite knows a new League, it files
 				// that League's PBs under an older one.
 				boolean main = GameMode.MAIN.equals(gameMode);
-				AccountType accountType = localAccountType.get();
+				// A League is one account status for everyone: its sync never carries a main type.
+				AccountType accountType = main ? localAccountType.get() : null;
 				if (manual)
 				{
 					chatNotifier.send(ChatNotice.SYNC_RESULT, "Publishing collection log...");
@@ -485,7 +500,7 @@ final class PublicationCoordinator
 							// slow restart. A player waiting on a click or a character
 							// publish gets the advised delay as it is.
 							int delay = Math.max(result.retryAfterSeconds, 2);
-							scheduleRetry(manual || characterWaiting ? delay : delay * 2, manual);
+							scheduleRetry(manual || characterWaiting ? delay : delay * 2, manual, gameMode);
 							launchQueuedSync();
 							return;
 						}

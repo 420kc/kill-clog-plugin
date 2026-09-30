@@ -16,6 +16,7 @@ final class KillclogSyncGate
 	private final AtomicBoolean inFlight = new AtomicBoolean();
 	private final AtomicBoolean queued = new AtomicBoolean();
 	private boolean queuedManual;
+	private String queuedMode;
 	private final AtomicInteger generation = new AtomicInteger();
 	// One server-advised contention retry per episode: consumed by the first
 	// 409, restored at every terminal outcome (success, failure, abort,
@@ -34,11 +35,21 @@ final class KillclogSyncGate
 		return beginAttempt(false);
 	}
 
-	synchronized int beginAttempt(boolean manual)
+	int beginAttempt(boolean manual)
+	{
+		return beginAttempt(manual, null);
+	}
+
+	/** A queued click keeps its game over later automatic pushes; the latest click wins among clicks. */
+	synchronized int beginAttempt(boolean manual, String mode)
 	{
 		int gen = generation.get();
 		if (!inFlight.compareAndSet(false, true))
 		{
+			if (manual || !queuedManual)
+			{
+				queuedMode = mode;
+			}
 			queuedManual |= manual;
 			queued.set(true);
 			return -1;
@@ -109,16 +120,30 @@ final class KillclogSyncGate
 		return consumeQueuedIntent() != null;
 	}
 
-	/** Null means no queued push; otherwise preserve whether a user requested it. */
-	synchronized Boolean consumeQueuedIntent()
+	/** A queued push: whether a user asked for it, and its game (null follows the world). */
+	static final class Intent
+	{
+		final boolean manual;
+		final String mode;
+
+		Intent(boolean manual, String mode)
+		{
+			this.manual = manual;
+			this.mode = mode;
+		}
+	}
+
+	/** Null means no queued push. */
+	synchronized Intent consumeQueuedIntent()
 	{
 		if (!queued.compareAndSet(true, false))
 		{
 			return null;
 		}
-		boolean manual = queuedManual;
+		Intent intent = new Intent(queuedManual, queuedMode);
 		queuedManual = false;
-		return manual;
+		queuedMode = null;
+		return intent;
 	}
 
 	/** Opt-out / shutdown: silence prior eras and forget any queued intent. */
@@ -127,6 +152,7 @@ final class KillclogSyncGate
 		generation.incrementAndGet();
 		queued.set(false);
 		queuedManual = false;
+		queuedMode = null;
 		retryCredit.set(true);
 	}
 }

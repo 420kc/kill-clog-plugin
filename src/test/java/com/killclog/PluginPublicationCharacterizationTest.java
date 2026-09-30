@@ -762,6 +762,69 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void aLeagueSyncScheduledBeforeAHopStillSyncsThatLeague() throws Exception
+	{
+		LocalClogCache league = announceLeague();
+		((PublicationCoordinator) field("publication")).scheduleAutomaticSync();
+		world(net.runelite.api.WorldType.MEMBERS);
+		ticks(10);
+		settle();
+		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), any(), any(),
+			eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"));
+		verify(syncService, never()).syncCollectionLog(any(), anyLong(), any(), any(), any(), anyLong(), any(), anyInt(),
+			eq(localClogCache), eq("main"));
+	}
+
+	@Test
+	public void aLeaguesRetryAfterAHopStaysWithThatLeague() throws Exception
+	{
+		LocalClogCache league = announceLeague();
+		((PublicationCoordinator) field("publication")).scheduleAutomaticSync();
+		world(net.runelite.api.WorldType.MEMBERS);
+		ticks(10);
+		settle();
+		syncs.get(0).complete(new SyncService.SyncResult(false, false, "Another sync holds the lock", true, 5));
+		settle();
+		assertEquals(2, syncs.size());
+		verify(syncService, times(2)).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), any(),
+			any(), eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"));
+	}
+
+	@Test
+	public void aLeagueClickQueuedBehindASyncStaysWithThatLeague() throws Exception
+	{
+		LocalClogCache league = announceLeague();
+		syncHandler.run();
+		settle();
+		assertEquals(1, syncs.size());
+		syncHandler.run();
+		settle();
+		world(net.runelite.api.WorldType.MEMBERS);
+		ticks(10);
+		// The main world's own catch-up queues behind the same flight.
+		((PublicationCoordinator) field("publication")).scheduleAutomaticSync();
+		settle();
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "First"));
+		settle();
+		assertEquals(2, syncs.size());
+		verify(syncService, times(2)).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), any(),
+			any(), eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"));
+	}
+
+	@Test
+	public void aSyncFiringBeforeTheNewWorldSettlesTriesOnceMore() throws Exception
+	{
+		((PublicationCoordinator) field("publication")).scheduleAutomaticSync();
+		world(net.runelite.api.WorldType.SEASONAL);
+		fireOnce();
+		assertTrue("an unknown world syncs nothing", syncs.isEmpty());
+		assertEquals("its own catch-up gets one more try", 1, executor.live());
+		fireOnce();
+		assertTrue(syncs.isEmpty());
+		assertEquals("and no more after that", 0, executor.live());
+	}
+
+	@Test
 	public void aLeagueRuneLiteDoesNotKnowYetSendsNoPbs() throws Exception
 	{
 		LocalClogCache league = announceLeague();
@@ -1005,7 +1068,7 @@ public class PluginPublicationCharacterizationTest
 		ticks(1);
 		when(service.activeLeague()).thenReturn("demonic-pacts");
 		ticks(1);
-		verify(stores.get("raging-echoes")).shutdown();
+		verify(stores.get("raging-echoes")).close();
 		verify(walk).onGameTick(any(), any(), eq(stores.get("demonic-pacts")), any(), any(), any());
 	}
 
@@ -1066,6 +1129,17 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	/** Pump the executor, the client thread and the EDT until nothing is left to run. */
+	/** One pass: the timers due now, then what they hand the client thread. */
+	private void fireOnce() throws Exception
+	{
+		executor.runAll();
+		while (!clientQueue.isEmpty())
+		{
+			clientQueue.poll().run();
+		}
+		drainEdt();
+	}
+
 	private void settle() throws Exception
 	{
 		while (executor.live() > 0 || !clientQueue.isEmpty())

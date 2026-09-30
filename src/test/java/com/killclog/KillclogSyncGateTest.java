@@ -23,7 +23,7 @@ public class KillclogSyncGateTest
 		assertEquals(-1, gate.beginAttempt(true));
 		assertEquals(-1, gate.beginAttempt(false));
 		gate.complete(automatic);
-		assertEquals(Boolean.TRUE, gate.consumeQueuedIntent());
+		assertTrue(gate.consumeQueuedIntent().manual);
 		assertNull(gate.consumeQueuedIntent());
 	}
 
@@ -34,7 +34,7 @@ public class KillclogSyncGateTest
 		int manual = gate.beginAttempt(true);
 		assertEquals(-1, gate.beginAttempt(false));
 		gate.complete(manual);
-		assertEquals(Boolean.FALSE, gate.consumeQueuedIntent());
+		assertFalse(gate.consumeQueuedIntent().manual);
 	}
 
 	@Test
@@ -46,7 +46,7 @@ public class KillclogSyncGateTest
 		gate.cancel();
 		gate.beginAttempt(false);
 		gate.complete(old);
-		assertEquals(Boolean.FALSE, gate.consumeQueuedIntent());
+		assertFalse(gate.consumeQueuedIntent().manual);
 	}
 
 	@Test
@@ -202,5 +202,26 @@ public class KillclogSyncGateTest
 		gate.cancel();
 		assertFalse(gate.complete(gen));
 		assertTrue("slot must free after a stale completion", gate.beginAttempt() >= 0);
+	}
+
+	@Test
+	public void aQueuedClickKeepsItsGameOverLaterAutomaticPushes()
+	{
+		KillclogSyncGate gate = new KillclogSyncGate();
+		gate.beginAttempt(false, "main");
+		gate.beginAttempt(true, "demonic-pacts");
+		gate.beginAttempt(false, "main");
+		KillclogSyncGate.Intent intent = gate.consumeQueuedIntent();
+		assertTrue(intent.manual);
+		assertEquals("demonic-pacts", intent.mode);
+		gate.beginAttempt(false, "main");
+		gate.beginAttempt(true, "demonic-pacts");
+		assertEquals("the latest click wins", "main", pairAfterClick(gate));
+	}
+
+	private static String pairAfterClick(KillclogSyncGate gate)
+	{
+		gate.beginAttempt(true, "main");
+		return gate.consumeQueuedIntent().mode;
 	}
 }
