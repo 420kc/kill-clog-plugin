@@ -62,6 +62,30 @@ public class RankSelectorTest
 		assertEquals(HiscoreTable.ONE_DEFENCE, view.getHiscoreTable());
 		assertTrue(view.isBossSectionShifted());
 		assertEquals(10000, base.getTotalXp());
+		assertTrue(view.isFrozen());
+		assertFalse(base.withRow(base).isFrozen());
+		assertFalse(base.withRanks(died).isFrozen());
+	}
+
+	@Test
+	public void aFrozenRowHidesTodaysLogOnBothSidesButKeepsItForTheBadge() throws Exception
+	{
+		LookupTestFixture fixture = new LookupTestFixture();
+		HiscoreResult base = fixture.primary.getNativeHiscoreResult();
+		ClogResult log = fixture.primary.getNativeClogResult();
+		HiscoreResult frozen = base.withRow(result(AccountType.REGULAR, HiscoreTable.STANDARD, 5, 0));
+		LookupTestFixture.edt(() -> fixture.primary.setRankView(row -> frozen));
+		// A mirror compare started while frozen still takes the real log.
+		LookupTestFixture.edt(() -> fixture.comparison.doCompareLookup("Blue", "Blue"));
+		assertNull(fixture.primary.getClogResult());
+		assertNull(fixture.comparison.getCompareClogResult());
+		assertSame(log, fixture.primary.getNativeClogResult());
+		assertFalse("no setup prompt beside a frozen row", fixture.primary.readsOwnLog());
+
+		LookupTestFixture.edt(() -> fixture.primary.setRankView(row -> row));
+		assertSame(log, fixture.primary.getClogResult());
+		assertSame(log, fixture.comparison.getCompareClogResult());
+		assertTrue(fixture.primary.readsOwnLog());
 	}
 
 	@Test

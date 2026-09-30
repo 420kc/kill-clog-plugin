@@ -236,7 +236,7 @@ public class ComparisonController
 		compareTooltipDataMap.clear();
 		if (compared.hiscore != null)
 		{
-			ClogResult catalog = compared.clog == null ? unsyncedCatalog.result() : null;
+			ClogResult catalog = getCompareClogResult() == null ? unsyncedCatalog.result() : null;
 			for (HiscoreSkill boss : PanelData.BOSSES)
 			{
 				String bossName = boss.getName();
@@ -256,15 +256,16 @@ public class ComparisonController
 		@Nullable ClogResult catalog)
 	{
 		String category = ClogService.bossToCategory(hiscoreName);
-		int rank = getCompareHiscoreResult().getRank(hiscoreName);
+		HiscoreResult view = getCompareHiscoreResult();
+		int rank = view.getRank(hiscoreName);
 		// The red card is an ordinary solo card, so it carries the compared
 		// player's KC the same way the blue one does. No red PB source exists.
 		TooltipData data = tooltipDataBuilder.buildTooltipData(displayName, category, rank,
-			compared.hiscore.getKc(hiscoreName), null, compared.clog);
+			view.getKc(hiscoreName), null, getCompareClogResult());
 		if (data == null)
 		{
 			return tooltipDataBuilder.buildUnsyncedTooltipData(
-				displayName, category, rank, "Kills: ", compared.hiscore.getKc(hiscoreName),
+				displayName, category, rank, "Kills: ", view.getKc(hiscoreName),
 				catalog != null ? catalog : unsyncedCatalog.result());
 		}
 		tooltipDataBuilder.preloadItemImages(data);
@@ -328,7 +329,7 @@ public class ComparisonController
 				setCompareStatus(SearchMessages.COMPARE_MIRROR, COMPARE_DIM, blueName, redPlayer);
 			}
 			publish(new ComparedPlayer(thisLookup, lookupSession.getNativeHiscoreResult(),
-				lookupSession.getClogResult(), lookupSession.getCaResult(), blueName));
+				lookupSession.getNativeClogResult(), lookupSession.getCaResult(), blueName));
 			return;
 		}
 
@@ -427,7 +428,7 @@ public class ComparisonController
 	@Nullable
 	public ClogResult getCompareClogResult()
 	{
-		return compared.clog;
+		return LookupSession.frozen(getCompareHiscoreResult()) ? null : compared.clog;
 	}
 
 	@Nullable
@@ -489,16 +490,18 @@ public class ComparisonController
 	@Nullable
 	public TooltipData buildClueRare(String name, String clogCategory)
 	{
-		TooltipData data = compared.clog != null
-			? tooltipDataBuilder.buildClueRareData(name, clogCategory, compared.clog) : null;
+		ClogResult clog = getCompareClogResult();
+		TooltipData data = clog != null
+			? tooltipDataBuilder.buildClueRareData(name, clogCategory, clog) : null;
 		return data != null ? data : unsyncedClueRare(name, clogCategory);
 	}
 
 	@Nullable
 	public TooltipData buildCustomRare(String name, int[] itemIds)
 	{
-		TooltipData data = compared.clog != null
-			? tooltipDataBuilder.buildCustomRareData(name, itemIds, compared.clog) : null;
+		ClogResult clog = getCompareClogResult();
+		TooltipData data = clog != null
+			? tooltipDataBuilder.buildCustomRareData(name, itemIds, clog) : null;
 		return data != null ? data
 			: tooltipDataBuilder.buildUnsyncedItemData(name, itemIds, unsyncedCatalog.result());
 	}
@@ -659,7 +662,7 @@ public class ComparisonController
 			clogInfoLabel.setHorizontalAlignment(JLabel.RIGHT);
 			renderTarget.applyBadge(playerName,
 				LookupQueries.accountDisplay(lookupSession.getHiscoreResult(),
-					lookupSession.getClogResult()));
+					lookupSession.getNativeClogResult()));
 			renderTarget.applyBadge(clogInfoLabel, compareAccountDisplay());
 		}
 		else
@@ -743,15 +746,16 @@ public class ComparisonController
 		}
 		int rank = compared.hiscore != null
 			? getCompareHiscoreResult().getActivityRank(tier.getName()) : -1;
-		TooltipData data = compared.clog != null
+		ClogResult clog = getCompareClogResult();
+		TooltipData data = clog != null
 			? tooltipDataBuilder.buildTooltipData(Cells.capitalizeTier(tier),
-				category, rank, compared.clog) : null;
+				category, rank, clog) : null;
 		if (data != null)
 		{
 			return data;
 		}
 		int score = compared.hiscore != null
-			? compared.hiscore.getActivityScore(tier.getName()) : -1;
+			? getCompareHiscoreResult().getActivityScore(tier.getName()) : -1;
 		return tooltipDataBuilder.buildUnsyncedTooltipData(
 			Cells.capitalizeTier(tier), category, rank, "Score: ", score, unsyncedCatalog.result());
 	}

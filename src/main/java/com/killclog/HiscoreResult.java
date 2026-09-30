@@ -42,6 +42,10 @@ public class HiscoreResult
 	@Setter(AccessLevel.PACKAGE)
 	private boolean bossSectionShifted;
 
+	/** Another leaderboard's row that trails this player's stats, like a Hardcore's after the death. */
+	@Getter(AccessLevel.PACKAGE)
+	private boolean frozen;
+
 	public HiscoreResult(AccountType accountType, Map<String, Integer> bossKills,
 		Map<String, Integer> bossRanks, Map<String, Integer> activityScores,
 		Map<String, Integer> activityRanks, Map<String, Integer> skillLevels,
@@ -96,7 +100,6 @@ public class HiscoreResult
 		return bossKills.getOrDefault(bossName, -1);
 	}
 
-	/** A display-only projection. A missing table blanks ranks, never stats or identity. */
 	/** Another leaderboard's whole row under this player's own type and table, so a Hardcore
 	 *  who died reads their Hardcore stats as they stood at the death. */
 	HiscoreResult withRow(HiscoreResult row)
@@ -106,9 +109,11 @@ public class HiscoreResult
 			row.totalLevel, row.totalXp, row.combatLevelExact, row.overallRank);
 		view.bossSectionShifted = row.bossSectionShifted;
 		view.rankDataAvailable = row.rankDataAvailable;
+		view.frozen = row.totalXp < totalXp;
 		return view;
 	}
 
+	/** A display-only projection. A missing table blanks ranks, never stats or identity. */
 	HiscoreResult withRanks(HiscoreResult ranks)
 	{
 		HiscoreResult view = new HiscoreResult(accountType, hiscoreTable, bossKills,

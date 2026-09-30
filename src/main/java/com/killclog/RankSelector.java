@@ -157,9 +157,10 @@ final class RankSelector extends JPanel
 		{
 			if (version != requestVersion) return;
 			boolean found = error == null && row != null;
-			views.put(base, found ? base.withRow(row) : base.withRanks(null));
+			HiscoreResult view = found ? base.withRow(row) : base.withRanks(null);
+			views.put(base, view);
 			notices.put(base, !found ? "Unavailable; click to retry"
-				: row.getTotalXp() < base.getTotalXp() ? "Stats frozen on this leaderboard" : "");
+				: view.isFrozen() ? "Stats frozen on this leaderboard" : "");
 			updateButtons();
 			changed.run();
 		}));

@@ -183,11 +183,17 @@ public class KillClogPanel extends PluginPanel
 
 	// No-data copy stays quiet: another player simply has no synced collection log.
 	// No provider names, no "missing data" framing - just a calm statement.
-	private static String noClogNotice(String rsn)
+	private String noClogNotice(String rsn, @Nullable HiscoreResult hiscore)
 	{
-		return rsn != null && !rsn.isEmpty()
+		return LookupSession.frozen(hiscore) ? frozenLogNotice()
+			: rsn != null && !rsn.isEmpty()
 			? rsn + " hasn't synced a collection log"
 			: "No collection log synced";
+	}
+
+	private String frozenLogNotice()
+	{
+		return rankSelector.active().label.replace(" Ironman", "") + " collection log not recorded";
 	}
 
 	@Inject
@@ -712,7 +718,7 @@ public class KillClogPanel extends PluginPanel
 			}
 			else if (result != null)
 			{
-				tip.setNotice(noClogNotice(rsn));
+				tip.setNotice(noClogNotice(rsn, result));
 			}
 			else
 			{
@@ -1461,7 +1467,7 @@ public class KillClogPanel extends PluginPanel
 			}
 			else if (hiscore != null)
 			{
-				tip.setNotice(noClogNotice(playerRsn));
+				tip.setNotice(noClogNotice(playerRsn, hiscore));
 			}
 			else
 			{
@@ -1492,13 +1498,13 @@ public class KillClogPanel extends PluginPanel
 	private AccountDisplay currentInfoAccountDisplay()
 	{
 		return accountTypes.currentDisplay(lookupSession.getHiscoreResult(),
-			lookupSession.getClogResult(), lookupSession.getCurrentLookupRsn());
+			lookupSession.getNativeClogResult(), lookupSession.getCurrentLookupRsn());
 	}
 
 	private AccountDisplay currentInfoAccountDisplay(@Nullable AccountType fallback)
 	{
 		return accountTypes.currentDisplay(fallback, lookupSession.getHiscoreResult(),
-			lookupSession.getClogResult(), lookupSession.getCurrentLookupRsn());
+			lookupSession.getNativeClogResult(), lookupSession.getCurrentLookupRsn());
 	}
 
 	// LookupSession.Listener
@@ -1649,8 +1655,29 @@ public class KillClogPanel extends PluginPanel
 		comparison.rebuildTooltipData();
 		renderResults();
 		cells.rebuildPrimaryTooltips(localRsn);
+		// A frozen row without a Collections Logged score must not keep today's count.
+		if (comparison.isComparisonMode()) updateClogTotalsBar();
+		else if (LookupSession.frozen(lookupSession.getHiscoreResult())) restoreClogCellForCompare(null);
+		else updateClogCell(lookupSession.getClogResult());
+		showFrozenLogNotice();
 		getWrappedPanel().revalidate();
 		getWrappedPanel().repaint();
+	}
+
+	/** A frozen row shows no log, so the status line says why; it clears only its own line. */
+	private void showFrozenLogNotice()
+	{
+		boolean blue = LookupSession.frozen(lookupSession.getHiscoreResult());
+		boolean red = comparison.isComparisonMode() && LookupSession.frozen(comparison.getCompareHiscoreResult());
+		if (blue || red)
+		{
+			setSearchStatus((blue == red || !comparison.isComparisonMode() ? ""
+				: (blue ? comparisonBlueName() : comparison.getCompareRsn()) + ": ") + frozenLogNotice(), TEXT_DIM);
+		}
+		else if (statusRow.statusText().endsWith(" collection log not recorded"))
+		{
+			setSearchStatus(" ", TEXT_DIM);
+		}
 	}
 
 	@Override

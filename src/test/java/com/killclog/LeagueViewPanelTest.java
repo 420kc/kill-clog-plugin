@@ -21,6 +21,7 @@ import org.mockito.ArgumentMatchers;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
@@ -278,6 +279,35 @@ public class LeagueViewPanelTest
 			panel.followWorld("demonic-pacts", null, "demonic-pacts");
 			panel.applyBadge(name, null);
 			assertTrue(badge == name.getIcon());
+		});
+	}
+
+	@Test
+	public void aDeadHardcoresBoardHidesTodaysLogAndSaysSo() throws Exception
+	{
+		PanelStatusRow status = field(panel, "statusRow", PanelStatusRow.class);
+		RankSelector ranks = field(panel, "rankSelector", RankSelector.class);
+		Method update = KillClogPanel.class.getDeclaredMethod("updateRankPlayers");
+		update.setAccessible(true);
+		HiscoreResult now = RankSelectorTest.result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000);
+		HiscoreResult atDeath = RankSelectorTest.result(AccountType.REGULAR, HiscoreTable.STANDARD, 50, 5000);
+		ClogResult log = new ClogResult("Friend", Map.of(), Map.of(), Map.of(), null, null);
+		when(hiscores.lookupRanks("Friend", RankLeaderboard.HARDCORE))
+			.thenReturn(CompletableFuture.completedFuture(atDeath));
+		SwingUtilities.invokeAndWait(() ->
+		{
+			session.adoptState(now, log, null, "Friend");
+			invoke(update);
+			ranks.select(RankLeaderboard.HARDCORE);
+		});
+		SwingUtilities.invokeAndWait(() ->
+		{
+			assertEquals(5000, session.getHiscoreResult().getTotalXp());
+			assertNull(session.getClogResult());
+			assertEquals("Hardcore collection log not recorded", status.statusText());
+			ranks.select(RankLeaderboard.IRONMAN);
+			assertSame(log, session.getClogResult());
+			assertEquals(" ", status.statusText());
 		});
 	}
 

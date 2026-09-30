@@ -114,7 +114,7 @@ public class LookupSession
 	/** Setup applies only to a log this client keeps; a League read from another world has none here. */
 	boolean readsOwnLog()
 	{
-		return fanout.readsOwnLog();
+		return fanout.readsOwnLog() && !frozen(getHiscoreResult());
 	}
 
 	/** Wire (or rewire) the autocompleter that records search history on each successful lookup. */
@@ -386,10 +386,21 @@ public class LookupSession
 		return result != null ? rankView.apply(result) : null;
 	}
 
+	/** None beside a frozen row: today's log would read as earned by the stats of then. */
 	@Nullable
 	public ClogResult getClogResult()
 	{
+		return frozen(getHiscoreResult()) ? null : clogResult;
+	}
+
+	ClogResult getNativeClogResult()
+	{
 		return clogResult;
+	}
+
+	static boolean frozen(@Nullable HiscoreResult view)
+	{
+		return view != null && view.isFrozen();
 	}
 
 	@Nullable
