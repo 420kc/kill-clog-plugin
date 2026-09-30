@@ -26,7 +26,7 @@ import net.runelite.client.ui.FontManager;
  * than re-deriving values: the grid is always rendered (even while hidden),
  * and each row listens to its grid label's text / foreground / icon property
  * changes. Every writer - the search-start reset, results landing, the
- * completionist highlighter, 420 mode, whatever comes next - propagates into
+ * completionist highlighter, whatever comes next - propagates into
  * the list with no per-call-site wiring, which is what keeps the two views
  * incapable of disagreeing.
  *

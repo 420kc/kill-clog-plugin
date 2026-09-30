@@ -280,7 +280,7 @@ public class KillClogPlugin extends Plugin
 		localClogCache.shutdown();
 		if (leagueCache != null)
 		{
-			leagueCache.shutdown();
+			leagueCache.close();
 			leagueCache = null;
 			leagueCacheId = null;
 		}
@@ -693,7 +693,7 @@ public class KillClogPlugin extends Plugin
 		{
 			if (leagueCache != null)
 			{
-				leagueCache.shutdown();
+				leagueCache.close();
 			}
 			LocalClogCache created = leagueCacheFactory.apply(mode);
 			created.setFirstPartyChangedListener(() -> firstPartyChanged(created));

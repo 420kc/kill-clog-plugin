@@ -1140,6 +1140,13 @@ public class LocalClogCache
 		ledger = new IdentityLedger(gson, folder);
 	}
 
+	/** A League store that is done for good: flush its saves, then let its writer end. */
+	public void close()
+	{
+		shutdown();
+		diskWriter.shutdown();
+	}
+
 	/** Flush accepted saves on the same queue; a new session cannot overtake them. */
 	public void shutdown()
 	{
