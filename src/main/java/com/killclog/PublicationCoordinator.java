@@ -60,8 +60,6 @@ final class PublicationCoordinator
 	// The world's game mode, each mode's own store and a League's RuneLite PB profile type;
 	// no mode means nothing is sent.
 	private final Supplier<String> mode;
-	// The game a push queued behind one in flight was for; null follows the world.
-	private volatile String queuedMode;
 	private final Function<String, LocalClogCache> modeCache;
 	private final Function<String, String> leagueProfileType;
 
@@ -342,10 +340,10 @@ final class PublicationCoordinator
 	// slot is free (the opt-out/opt-in-mid-request case).
 	private void launchQueuedSync()
 	{
-		Boolean manual = syncGate.consumeQueuedIntent();
-		if (manual != null && config.killclogSync())
+		KillclogSyncGate.Intent queued = syncGate.consumeQueuedIntent();
+		if (queued != null && config.killclogSync())
 		{
-			scheduleSync(0, manual, queuedMode);
+			scheduleSync(0, queued.manual, queued.mode);
 		}
 	}
 
@@ -360,10 +358,9 @@ final class PublicationCoordinator
 		{
 			return;
 		}
-		final int generation = syncGate.beginAttempt(manual);
+		final int generation = syncGate.beginAttempt(manual, scheduledMode);
 		if (generation < 0)
 		{
-			queuedMode = scheduledMode;
 			return;
 		}
 		if (localClogCache.currentSessionEpoch() != scheduledEpoch)

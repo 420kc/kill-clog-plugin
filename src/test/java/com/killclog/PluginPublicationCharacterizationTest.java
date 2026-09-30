@@ -801,6 +801,9 @@ public class PluginPublicationCharacterizationTest
 		settle();
 		world(net.runelite.api.WorldType.MEMBERS);
 		ticks(10);
+		// The main world's own catch-up queues behind the same flight.
+		((PublicationCoordinator) field("publication")).scheduleAutomaticSync();
+		settle();
 		syncs.get(0).complete(new SyncService.SyncResult(true, false, "First"));
 		settle();
 		assertEquals(2, syncs.size());
