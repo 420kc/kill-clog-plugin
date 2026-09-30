@@ -6,7 +6,6 @@ import com.google.gson.JsonObject;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -54,18 +53,7 @@ public class KillclogService
 	private static final long FAILURE_TTL_MS = 3 * 60 * 1000;     // 3 min -- transient failure
 	private static final long INDEX_TTL_MS = 10 * 60 * 1000;      // 10 min -- membership list
 
-	// Circuit breaker, same shape as RuneProfileService: trips after
-	// BREAKER_THRESHOLD failures within BREAKER_WINDOW_MS, short-circuits for
-	// an escalating cooldown, resets on any success.
-	private static final int BREAKER_THRESHOLD = 5;
-	private static final long BREAKER_WINDOW_MS = 60 * 1000;
-	private static final long BREAKER_COOLDOWN_MS = 60 * 1000;
-	private static final long BREAKER_MAX_COOLDOWN_MS = 30 * 60 * 1000;
-
-	private final long[] recentFailures = new long[BREAKER_THRESHOLD];
-	private int failureIndex = 0;
-	private volatile long breakerTrippedAt = 0;
-	private volatile long breakerCooldownMs = BREAKER_COOLDOWN_MS;
+	private final CircuitBreaker breaker = new CircuitBreaker("killclog.com");
 
 	// Plausibility ceiling for the game's unique counters: the real log sits
 	// around 1.7k slots, so anything past this is a corrupt or hostile value
@@ -126,45 +114,7 @@ public class KillclogService
 	{
 		clogFailures.clear();
 		indexFailedAt = 0;
-		resetBreaker();
-	}
-
-	private synchronized void recordBreakerFailure()
-	{
-		long now = System.currentTimeMillis();
-		recentFailures[failureIndex] = now;
-		failureIndex = (failureIndex + 1) % BREAKER_THRESHOLD;
-
-		long oldest = recentFailures[failureIndex];
-		if (oldest > 0 && now - oldest <= BREAKER_WINDOW_MS)
-		{
-			breakerTrippedAt = now;
-			breakerCooldownMs = Math.min(breakerCooldownMs * 2, BREAKER_MAX_COOLDOWN_MS);
-			log.warn("killclog.com circuit breaker tripped ({} failures in {}s), cooldown {}s",
-				BREAKER_THRESHOLD, BREAKER_WINDOW_MS / 1000, breakerCooldownMs / 1000);
-		}
-	}
-
-	private synchronized void recordBreakerSuccess()
-	{
-		if (breakerTrippedAt > 0 || breakerCooldownMs > BREAKER_COOLDOWN_MS)
-		{
-			resetBreaker();
-		}
-	}
-
-	private synchronized void resetBreaker()
-	{
-		Arrays.fill(recentFailures, 0);
-		failureIndex = 0;
-		breakerTrippedAt = 0;
-		breakerCooldownMs = BREAKER_COOLDOWN_MS;
-	}
-
-	private boolean isBreakerOpen()
-	{
-		long tripped = breakerTrippedAt;
-		return tripped > 0 && System.currentTimeMillis() - tripped < breakerCooldownMs;
+		breaker.reset();
 	}
 
 	/**
@@ -203,7 +153,7 @@ public class KillclogService
 			return CompletableFuture.completedFuture(cached);
 		}
 
-		if (isBreakerOpen())
+		if (breaker.isOpen())
 		{
 			return CompletableFuture.completedFuture(cached);
 		}
@@ -290,20 +240,20 @@ public class KillclogService
 			if (resp.code != 200 || resp.body == null)
 			{
 				indexFailedAt = System.currentTimeMillis();
-				recordBreakerFailure();
+				breaker.failure();
 				return syncIndex;
 			}
 			Set<String> parsed = parseSyncIndex(resp.body);
 			if (parsed == null)
 			{
 				indexFailedAt = System.currentTimeMillis();
-				recordBreakerFailure();
+				breaker.failure();
 				return syncIndex;
 			}
 			syncIndex = parsed;
 			indexFetchedAt = System.currentTimeMillis();
 			indexFailedAt = 0;
-			recordBreakerSuccess();
+			breaker.success();
 			return parsed;
 		});
 	}
@@ -400,19 +350,19 @@ public class KillclogService
 		if (code != 200 || body == null)
 		{
 			clogFailures.put(key, System.currentTimeMillis());
-			recordBreakerFailure();
+			breaker.failure();
 			return clogCache.get(key);
 		}
 		ClogResult result = parseProofView(playerName, body, key);
 		if (result == null)
 		{
 			clogFailures.put(key, System.currentTimeMillis());
-			recordBreakerFailure();
+			breaker.failure();
 			return clogCache.get(key);
 		}
 		clogCache.put(key, result);
 		clogFetchTimes.put(key, System.currentTimeMillis());
-		recordBreakerSuccess();
+		breaker.success();
 		return result;
 	}
 

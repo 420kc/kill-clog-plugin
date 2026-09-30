@@ -7,7 +7,6 @@ import com.google.gson.JsonObject;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
@@ -51,20 +50,8 @@ public class RuneProfileService
 	private static final long NOT_FOUND_TTL_MS = 60 * 60 * 1000;  // 1 hour -- not synced
 	private static final long FAILURE_TTL_MS = 3 * 60 * 1000;     // 3 min -- transient failure
 
-	// Provider-level circuit breaker shared across CA and clog lanes.
-	// Trips after BREAKER_THRESHOLD consecutive failures within BREAKER_WINDOW_MS.
-	// Once tripped, all requests short-circuit for BREAKER_COOLDOWN_MS (escalating on
-	// repeated trips up to BREAKER_MAX_COOLDOWN_MS). A single success resets the
-	// breaker and the cooldown tier.
-	private static final int BREAKER_THRESHOLD = 5;
-	private static final long BREAKER_WINDOW_MS = 60 * 1000;          // 5 in 60s trips it
-	private static final long BREAKER_COOLDOWN_MS = 60 * 1000;        // 1 min initial cooldown
-	private static final long BREAKER_MAX_COOLDOWN_MS = 30 * 60 * 1000; // 30 min ceiling
-
-	private final long[] recentFailures = new long[BREAKER_THRESHOLD]; // ring buffer of failure timestamps
-	private int failureIndex = 0;
-	private volatile long breakerTrippedAt = 0;
-	private volatile long breakerCooldownMs = BREAKER_COOLDOWN_MS;
+	// Shared across the CA and clog lanes. A single success clears it.
+	private final CircuitBreaker breaker = new CircuitBreaker("RuneProfile");
 
 	private final OkHttpClient httpClient;
 	private final Gson gson;
@@ -106,55 +93,7 @@ public class RuneProfileService
 	{
 		summaryFailures.clear();
 		clogFailures.clear();
-		resetBreaker();
-	}
-
-	/**
-	 * Record a transient failure in the circuit breaker ring buffer. When
-	 * {@link #BREAKER_THRESHOLD} failures land within {@link #BREAKER_WINDOW_MS},
-	 * the breaker trips and all subsequent requests short-circuit until cooldown
-	 * expires. Cooldown doubles on each consecutive trip (capped at 30 min).
-	 */
-	private synchronized void recordBreakerFailure()
-	{
-		long now = System.currentTimeMillis();
-		recentFailures[failureIndex] = now;
-		failureIndex = (failureIndex + 1) % BREAKER_THRESHOLD;
-
-		// Check if the oldest failure in the ring is within the window
-		long oldest = recentFailures[failureIndex]; // next slot = oldest entry
-		if (oldest > 0 && now - oldest <= BREAKER_WINDOW_MS)
-		{
-			breakerTrippedAt = now;
-			// Escalate cooldown on repeated trips (1m -> 2m -> 4m -> ... -> 30m)
-			breakerCooldownMs = Math.min(breakerCooldownMs * 2, BREAKER_MAX_COOLDOWN_MS);
-			log.warn("RuneProfile circuit breaker tripped ({} failures in {}s), cooldown {}s",
-				BREAKER_THRESHOLD,
-				BREAKER_WINDOW_MS / 1000,
-				breakerCooldownMs / 1000);
-		}
-	}
-
-	/** Record a success -- resets the breaker and cooldown escalation tier. */
-	private synchronized void recordBreakerSuccess()
-	{
-		resetBreaker();
-	}
-
-	/** Hard reset: clear failure ring, un-trip, reset cooldown to base tier. */
-	private synchronized void resetBreaker()
-	{
-		Arrays.fill(recentFailures, 0);
-		failureIndex = 0;
-		breakerTrippedAt = 0;
-		breakerCooldownMs = BREAKER_COOLDOWN_MS;
-	}
-
-	/** True when the breaker is tripped and the cooldown hasn't elapsed yet. */
-	private boolean isBreakerOpen()
-	{
-		long tripped = breakerTrippedAt;
-		return tripped > 0 && System.currentTimeMillis() - tripped < breakerCooldownMs;
+		breaker.reset();
 	}
 
 	/** Cached CA result for SWR reveal without an API call, or null if none is held. */
@@ -261,7 +200,7 @@ public class RuneProfileService
 		}
 
 		// If RuneProfile is down, do not pile on requests.
-		if (isBreakerOpen())
+		if (breaker.isOpen())
 		{
 			return CompletableFuture.completedFuture(cached);
 		}
@@ -285,19 +224,19 @@ public class RuneProfileService
 			if (resp.code != 200 || resp.body == null)
 			{
 				summaryFailures.put(key, System.currentTimeMillis());
-				recordBreakerFailure();
+				breaker.failure();
 				return summaryCache.get(key);
 			}
 			RuneProfileSummary result = parseAccountSummary(resp.body);
 			if (result == null)
 			{
 				summaryFailures.put(key, System.currentTimeMillis());
-				recordBreakerFailure();
+				breaker.failure();
 				return summaryCache.get(key);
 			}
 			summaryCache.put(key, result);
 			summaryFetchTimes.put(key, System.currentTimeMillis());
-			recordBreakerSuccess();
+			breaker.reset();
 			return result;
 		});
 	}
@@ -439,7 +378,7 @@ public class RuneProfileService
 		}
 
 		// Shared with CA lane; if RuneProfile is down, do not pile on.
-		if (isBreakerOpen())
+		if (breaker.isOpen())
 		{
 			return CompletableFuture.completedFuture(cached);
 		}
@@ -464,7 +403,7 @@ public class RuneProfileService
 			if (resp.code != 200 || resp.body == null)
 			{
 				clogFailures.put(key, System.currentTimeMillis());
-				recordBreakerFailure();
+				breaker.failure();
 				return clogCache.get(key);
 			}
 			RuneProfileSummary summary = freshSummary(key);
@@ -479,19 +418,19 @@ public class RuneProfileService
 				clogFetchTimes.remove(key);
 				clogFailures.remove(key);
 				clogNotFoundTimes.put(key, System.currentTimeMillis());
-				recordBreakerSuccess();
+				breaker.reset();
 				return null;
 			}
 			ClogResult result = parsed.result;
 			if (result == null)
 			{
 				clogFailures.put(key, System.currentTimeMillis());
-				recordBreakerFailure();
+				breaker.failure();
 				return clogCache.get(key);
 			}
 			clogCache.put(key, result);
 			clogFetchTimes.put(key, System.currentTimeMillis());
-			recordBreakerSuccess();
+			breaker.reset();
 			return result;
 		});
 	}

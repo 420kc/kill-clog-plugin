@@ -3,7 +3,6 @@ package com.killclog;
 import com.google.gson.Gson;
 import java.io.IOException;
 import java.lang.reflect.Field;
-import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
@@ -714,11 +713,18 @@ public class RuneProfileServiceTest
 		return cache(fieldName);
 	}
 
+	private CircuitBreaker breaker() throws Exception
+	{
+		Field field = RuneProfileService.class.getDeclaredField("breaker");
+		field.setAccessible(true);
+		return (CircuitBreaker) field.get(service);
+	}
+
 	private long[] recentFailures() throws Exception
 	{
-		Field field = RuneProfileService.class.getDeclaredField("recentFailures");
+		Field field = CircuitBreaker.class.getDeclaredField("recentFailures");
 		field.setAccessible(true);
-		return (long[]) field.get(service);
+		return (long[]) field.get(breaker());
 	}
 
 	private boolean hasRecentFailure() throws Exception
@@ -735,8 +741,6 @@ public class RuneProfileServiceTest
 
 	private void recordBreakerFailure() throws Exception
 	{
-		Method method = RuneProfileService.class.getDeclaredMethod("recordBreakerFailure");
-		method.setAccessible(true);
-		method.invoke(service);
+		breaker().failure();
 	}
 }
