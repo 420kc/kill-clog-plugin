@@ -25,7 +25,7 @@ public class LocalCaCacheTest
 	{
 		File directory = temporaryFolder.newFolder();
 		CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
-		LocalCaCache cache = new LocalCaCache(new Gson(), writer, directory);
+		LocalCaCache cache = new LocalCaCache(new Gson(), writer, TestFolders.folder(directory));
 		cache.setActivePlayer("Tester");
 		cache.cacheResult("Tester", Map.of(CombatAchievementTier.EASY, 1));
 		cache.shutdown();
@@ -49,7 +49,7 @@ public class LocalCaCacheTest
 		AtomicBoolean fail = new AtomicBoolean();
 		LocalCaCache cache = new LocalCaCache(writingGson(fail, () ->
 		{
-		}), new InlineScheduledExecutorService(), directory);
+		}), new InlineScheduledExecutorService(), TestFolders.folder(directory));
 		cache.cacheResult("Tester", Map.of(CombatAchievementTier.EASY, 1));
 		File file = new File(directory, "tester.json");
 		byte[] valid = Files.readAllBytes(file.toPath());
@@ -69,10 +69,10 @@ public class LocalCaCacheTest
 		File directory = temporaryFolder.newFolder();
 		LocalCaCache second = new LocalCaCache(writingGson(new AtomicBoolean(), () ->
 			assertEquals(2, directory.listFiles((dir, name) -> name.endsWith(".tmp")).length)),
-			new InlineScheduledExecutorService(), directory);
+			new InlineScheduledExecutorService(), TestFolders.folder(directory));
 		LocalCaCache first = new LocalCaCache(writingGson(new AtomicBoolean(), () ->
 			second.cacheResult("Tester", Map.of(CombatAchievementTier.EASY, 2))),
-			new InlineScheduledExecutorService(), directory);
+			new InlineScheduledExecutorService(), TestFolders.folder(directory));
 		first.cacheResult("Tester", Map.of(CombatAchievementTier.EASY, 1));
 		assertEquals(1, reload(directory).getTotalPoints());
 		assertEquals(0, directory.listFiles((dir, name) -> name.endsWith(".tmp")).length);
@@ -107,6 +107,6 @@ public class LocalCaCacheTest
 
 	private static CombatAchievementResult reload(File directory)
 	{
-		return new LocalCaCache(new Gson(), new InlineScheduledExecutorService(), directory).getCached("Tester");
+		return new LocalCaCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(directory)).getCached("Tester");
 	}
 }

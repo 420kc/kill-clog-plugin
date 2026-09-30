@@ -48,7 +48,7 @@ public class LocalClogCacheAtomicTest
 				}
 			}).create();
 		File directory = temporaryFolder.newFolder();
-		LocalClogCache cache = new LocalClogCache(gson, new InlineScheduledExecutorService(), directory);
+		LocalClogCache cache = new LocalClogCache(gson, new InlineScheduledExecutorService(), TestFolders.folder(directory));
 		cache.cacheFirstPartyResult(result(1));
 		File file = new File(directory, "tester.json");
 		byte[] valid = Files.readAllBytes(file.toPath());
@@ -69,7 +69,7 @@ public class LocalClogCacheAtomicTest
 	public void unwritableTemporaryPathPreservesExistingJson() throws Exception
 	{
 		File directory = temporaryFolder.newFolder();
-		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), directory);
+		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(directory));
 		cache.cacheFirstPartyResult(result(1));
 		File file = new File(directory, "tester.json");
 		byte[] valid = Files.readAllBytes(file.toPath());
@@ -81,7 +81,7 @@ public class LocalClogCacheAtomicTest
 
 	private static ClogResult.ClogItem reload(File directory)
 	{
-		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), directory);
+		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(directory));
 		assertTrue(cache.hasDataFor("Tester"));
 		return cache.toClogResult("Tester", Map.of()).getObtainedItems().get("zulrah").get(0);
 	}

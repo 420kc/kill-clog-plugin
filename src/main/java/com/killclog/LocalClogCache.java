@@ -4,11 +4,8 @@ import com.google.gson.Gson;
 import com.google.gson.JsonIOException;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.AtomicMoveNotSupportedException;
-import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -31,11 +28,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.RuneLite;
+import net.runelite.client.util.Filepath;
 
 /**
  * Multi-account, disk-backed collection log cache.
@@ -54,11 +52,12 @@ import net.runelite.client.RuneLite;
 @Singleton
 public class LocalClogCache
 {
-	private static final File DEFAULT_CACHE_DIR = new File(RuneLite.RUNELITE_DIR, "kill-clog");
 
 	/** Instance field so tests can point the whole disk lane at a temp dir
 	 *  and actually exercise migration, parking, and recovery on real files. */
-	private final File cacheDir;
+	// The plugin's folder, set at start; null keeps the log in memory.
+	@Nullable
+	private volatile Filepath logs;
 
 	private final Map<String, PlayerClogData> players = new ConcurrentHashMap<>();
 	private final Gson gson;
@@ -102,7 +101,7 @@ public class LocalClogCache
 	private final AtomicReference<String> pendingRenameNotice = new AtomicReference<>();
 	// The logged-in account's hash: the anchor for the save guard below.
 	private volatile String activeHashKey;
-	private final IdentityLedger ledger;
+	private volatile IdentityLedger ledger;
 	// How long the sync pre-flight waits for the disk verdict.
 	private volatile long syncVerdictTimeoutMs = 10_000;
 	// Bumped at logout: queued rename checks from a dead session must not run
@@ -165,9 +164,9 @@ public class LocalClogCache
 		return commit.get();
 	}
 
-	private File sidecarFile(String hashKey, String key)
+	private Filepath sidecarFile(String hashKey, String key)
 	{
-		return new File(cacheDir, ".displaced-" + hashKey + "-" + getCacheFile(key).getName());
+		return logs.join(".displaced-" + hashKey + "-" + fileName(key));
 	}
 
 	/**
@@ -334,7 +333,7 @@ public class LocalClogCache
 		// this account's data, the sidecar is its canonical local copy - the
 		// live file under the old key belongs to whoever owns that name NOW.
 		PlayerClogData source = null;
-		File sidecar = sidecarFile(hashKey, fromKey);
+		Filepath sidecar = sidecarFile(hashKey, fromKey);
 		boolean sourceFromSidecar = false;
 		if (sidecar.exists())
 		{
@@ -422,7 +421,7 @@ public class LocalClogCache
 	 *  DISK half actually succeeded: announcing "your log came along" over a
 	 *  failed migration would be a lie the next login quietly retracts. */
 	private void queueMigrationTask(String currentRsn, String currentKey, String hashKey,
-		String fromKey, MigrationDest d, boolean consumedSidecar, File sidecar,
+		String fromKey, MigrationDest d, boolean consumedSidecar, Filepath sidecar,
 		boolean liveSource, PlayerClogData copy, String noticeOnSuccess,
 		CompletableFuture<Boolean> verdict, long expectedEpoch)
 	{
@@ -737,7 +736,7 @@ public class LocalClogCache
 	 */
 	private boolean migrateOnDisk(String currentRsn, String currentKey, String hashKey,
 		String oldKey, boolean parkFirst, String parkHash, boolean consumedSidecar,
-		File consumedSidecarFile, boolean sourceFromLiveFile, PlayerClogData copy,
+		Filepath consumedSidecarFile, boolean sourceFromLiveFile, PlayerClogData copy,
 		PlayerClogData displacedToFlush)
 	{
 		IdentityLedger.View now = ledger.read();
@@ -808,14 +807,12 @@ public class LocalClogCache
 		{
 			// Revalidated above: still unclaimed, so the old file was our
 			// source and is ours to remove.
-			File old = getCacheFile(oldKey);
-			if (old.exists() && !old.delete())
+			if (!deleted(getCacheFile(oldKey)))
 			{
 				return false; // never stamp a migration that left data behind
 			}
 		}
-		if (consumedSidecar && consumedSidecarFile.exists()
-			&& !consumedSidecarFile.delete())
+		if (consumedSidecar && !deleted(consumedSidecarFile))
 		{
 			return false; // sidecar must not survive as a stale second copy
 		}
@@ -837,8 +834,8 @@ public class LocalClogCache
 	/** Called under the identity lock, on the writer lane. Preserve damaged owned files before setup retries. */
 	private boolean residentOwnedBy(String key, String hashKey)
 	{
-		File file = getCacheFile(key);
-		if (Files.notExists(file.toPath()))
+		Filepath file = getCacheFile(key);
+		if (!file.exists())
 		{
 			return true;
 		}
@@ -855,32 +852,32 @@ public class LocalClogCache
 		}
 		try
 		{
-			File preserved = Files.createTempFile(cacheDir.toPath(), ".unreadable-" + file.getName() + "-", ".json").toFile();
+			Filepath preserved = logs.createTempFile(".unreadable-" + file.getFileName() + "-", ".json");
 			atomicMove(file, preserved);
 			return true;
 		}
 		catch (IOException e)
 		{
-			log.warn("Could not preserve unreadable cache '{}': {}", file.getName(), e.getMessage());
+			log.warn("Could not preserve unreadable cache '{}': {}", file.getFileName(), e.getMessage());
 			return false;
 		}
 	}
 
-	private boolean recordOwnedBy(File file, String hashKey)
+	private boolean recordOwnedBy(Filepath file, String hashKey)
 	{
 		PlayerClogData resident = readRecordFile(file);
 		return resident != null && ownedBy(resident, hashKey);
 	}
 
-	private PlayerClogData readRecordFile(File file)
+	private PlayerClogData readRecordFile(Filepath file)
 	{
-		try (BufferedReader reader = Files.newBufferedReader(file.toPath(), StandardCharsets.UTF_8))
+		try (BufferedReader reader = file.openBufferedReader())
 		{
 			return gson.fromJson(reader, PlayerClogData.class);
 		}
 		catch (Exception e)
 		{
-			log.warn("Failed to read '{}': {}", file.getName(), e.getMessage());
+			log.warn("Failed to read '{}': {}", file.getFileName(), e.getMessage());
 			return null;
 		}
 	}
@@ -933,7 +930,7 @@ public class LocalClogCache
 	 */
 	private boolean parkDisplacedFileNow(String key, String fallbackHash)
 	{
-		File file = getCacheFile(key);
+		Filepath file = getCacheFile(key);
 		if (!file.exists())
 		{
 			return true; // nothing on disk to protect
@@ -945,7 +942,7 @@ public class LocalClogCache
 		PlayerClogData resident = readRecordFile(file);
 		String owner = resident != null && resident.ownerHash != null
 			? resident.ownerHash : fallbackHash;
-		File parked = sidecarFile(owner, key);
+		Filepath parked = sidecarFile(owner, key);
 		if (parked.exists())
 		{
 			// The owner's canonical copy is already parked; the live file is
@@ -960,7 +957,7 @@ public class LocalClogCache
 		}
 		catch (IOException e)
 		{
-			log.warn("Could not park displaced cache file '{}': {}", file.getName(), e.getMessage());
+			log.warn("Could not park displaced cache file '{}': {}", file.getFileName(), e.getMessage());
 			return false;
 		}
 	}
@@ -971,13 +968,10 @@ public class LocalClogCache
 	{
 		try
 		{
-			if (!cacheDir.exists())
-			{
-				cacheDir.mkdirs();
-			}
-			File file = getCacheFile(playerName);
-			File tmp = new File(cacheDir, file.getName() + ".tmp");
-			try (BufferedWriter writer = Files.newBufferedWriter(tmp.toPath(), StandardCharsets.UTF_8))
+			logs.createDirectories();
+			Filepath file = getCacheFile(playerName);
+			Filepath tmp = logs.join(file.getFileName() + ".tmp");
+			try (BufferedWriter writer = tmp.openBufferedWriter())
 			{
 				gson.toJson(data, writer);
 			}
@@ -1026,16 +1020,28 @@ public class LocalClogCache
 
 	/** Genuinely atomic where the filesystem allows it; plain replace as the
 	 *  documented fallback (some filesystems refuse ATOMIC_MOVE). */
-	static void atomicMove(File from, File to) throws IOException
+	static void atomicMove(Filepath from, Filepath to) throws IOException
 	{
 		try
 		{
-			Files.move(from.toPath(), to.toPath(),
-				StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+			from.moveTo(to, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
 		}
 		catch (AtomicMoveNotSupportedException e)
 		{
-			Files.move(from.toPath(), to.toPath(), StandardCopyOption.REPLACE_EXISTING);
+			from.moveTo(to, StandardCopyOption.REPLACE_EXISTING);
+		}
+	}
+
+	private static boolean deleted(Filepath file)
+	{
+		try
+		{
+			file.deleteIfExists();
+			return true;
+		}
+		catch (IOException e)
+		{
+			return false;
 		}
 	}
 
@@ -1088,21 +1094,27 @@ public class LocalClogCache
 
 	LocalClogCache(Gson gson, ScheduledExecutorService diskWriter)
 	{
-		this(gson, diskWriter, DEFAULT_CACHE_DIR);
+		this(gson, diskWriter, null);
 	}
 
 	/** A League's own cache: the same store, in that League's folder. */
-	LocalClogCache(Gson gson, File cacheDir)
+	LocalClogCache(Gson gson, @Nullable Filepath folder)
 	{
-		this(gson, newDiskWriter(), cacheDir);
+		this(gson, newDiskWriter(), folder);
 	}
 
-	LocalClogCache(Gson gson, ScheduledExecutorService diskWriter, File cacheDir)
+	LocalClogCache(Gson gson, ScheduledExecutorService diskWriter, @Nullable Filepath folder)
 	{
 		this.gson = gson;
 		this.diskWriter = diskWriter;
-		this.cacheDir = cacheDir;
-		this.ledger = new IdentityLedger(gson, cacheDir);
+		useFolder(folder);
+	}
+
+	/** One log file per account, the name ledger beside them. Null keeps the store in memory. */
+	void useFolder(@Nullable Filepath folder)
+	{
+		logs = folder;
+		ledger = new IdentityLedger(gson, folder);
 	}
 
 	/** Flush accepted saves on the same queue; a new session cannot overtake them. */
@@ -2166,12 +2178,12 @@ public class LocalClogCache
 
 	private PlayerClogData loadFromDisk(String playerName)
 	{
-		File file = getCacheFile(playerName);
-		if (!file.exists())
+		Filepath file = logs == null ? null : getCacheFile(playerName);
+		if (file == null || !file.exists())
 		{
 			return null;
 		}
-		try (BufferedReader reader = Files.newBufferedReader(file.toPath(), StandardCharsets.UTF_8))
+		try (BufferedReader reader = file.openBufferedReader())
 		{
 			PlayerClogData data = gson.fromJson(reader, PlayerClogData.class);
 			if (data != null && data.categories != null && !data.categories.isEmpty())
@@ -2196,12 +2208,20 @@ public class LocalClogCache
 		return null;
 	}
 
-	private File getCacheFile(String playerName)
+	private Filepath getCacheFile(String playerName)
 	{
-		String sanitized = cacheKey(playerName)
-			.replace(' ', '_')
-			.replaceAll("[^a-z0-9_-]", "");
-		return new File(cacheDir, sanitized + ".json");
+		return logs.join(fileName(playerName));
+	}
+
+	/**
+	 * A player's file name: lowercased, spaces as underscores, [a-z0-9_-] only.
+	 * RuneLite refuses Windows device names (con, aux, nul...) with any
+	 * extension, so those take a leading '+' that no real name can produce.
+	 */
+	static String fileName(String playerName)
+	{
+		String stem = cacheKey(playerName).replace(' ', '_').replaceAll("[^a-z0-9_-]", "");
+		return (stem.matches("con|prn|aux|nul|(com|lpt)[1-9]") ? "+" : "") + stem + ".json";
 	}
 
 	/** Shallow copy sufficient for async disk write. */

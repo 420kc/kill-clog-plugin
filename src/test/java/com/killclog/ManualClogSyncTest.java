@@ -94,7 +94,7 @@ public class ManualClogSyncTest
 		{
 		});
 		directory = temporaryFolder.newFolder();
-		cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), directory);
+		cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(directory));
 		cache.seedIdentityForTest(new HashMap<>());
 		cache.followNameChange("Tester", 42L);
 		index = (ClogIndex) pluginField("clogIndex").get(plugin);
@@ -122,7 +122,7 @@ public class ManualClogSyncTest
 		assertEquals(1, refreshes);
 		assertTrue(cache.hasCompletedFirstPartySetupFor("Tester"));
 		LocalClogCache reloaded = new LocalClogCache(new Gson(),
-			new InlineScheduledExecutorService(), directory);
+			new InlineScheduledExecutorService(), TestFolders.folder(directory));
 		assertTrue(reloaded.hasCompletedFirstPartySetupFor("Tester"));
 		ClogResult payload = reloaded.toFirstPartySyncResult("Tester");
 		assertEquals(List.of(1), payload.getObtainedItems().get("zulrah").stream()
@@ -146,7 +146,7 @@ public class ManualClogSyncTest
 		assertTrue(cache.hasCompletedFirstPartySetupFor("Tester"));
 		assertFalse(cache.hasFirstPartyDataFor("Tester"));
 		LocalClogCache reloaded = new LocalClogCache(new Gson(),
-			new InlineScheduledExecutorService(), directory);
+			new InlineScheduledExecutorService(), TestFolders.folder(directory));
 		assertTrue(reloaded.hasCompletedFirstPartySetupFor("Tester"));
 		assertFalse(reloaded.hasFirstPartyDataFor("Tester"));
 		assertTrue(notices.stream().anyMatch(text -> text.contains("Setup complete")));
@@ -167,7 +167,7 @@ public class ManualClogSyncTest
 		assertEquals(1, completions);
 		assertTrue(notices.stream().anyMatch(text -> text.contains("is reading")));
 		LocalClogCache reloaded = new LocalClogCache(new Gson(),
-			new InlineScheduledExecutorService(), directory);
+			new InlineScheduledExecutorService(), TestFolders.folder(directory));
 		assertTrue(reloaded.hasCompletedFirstPartySetupFor("Tester"));
 		assertFalse(reloaded.hasFirstPartyDataFor("Tester"));
 	}
@@ -188,7 +188,7 @@ public class ManualClogSyncTest
 		assertEquals(2, notices.size());
 		assertTrue(notices.get(1).contains("Setup complete - 0 items"));
 		LocalClogCache reloaded = new LocalClogCache(new Gson(),
-			new InlineScheduledExecutorService(), directory);
+			new InlineScheduledExecutorService(), TestFolders.folder(directory));
 		assertTrue(reloaded.hasCompletedFirstPartySetupFor("Tester"));
 		assertFalse(reloaded.hasFirstPartyDataFor("Tester"));
 		reloaded.cacheResult(new ClogResult("Tester", Map.of("zulrah", List.of(
@@ -218,7 +218,7 @@ public class ManualClogSyncTest
 		assertEquals(1, viewRestores);
 		assertEquals(1, completions);
 		LocalClogCache reloaded = new LocalClogCache(new Gson(),
-			new InlineScheduledExecutorService(), directory);
+			new InlineScheduledExecutorService(), TestFolders.folder(directory));
 		assertTrue(reloaded.hasCompletedFirstPartySetupFor("Tester"));
 		assertEquals(List.of(1), reloaded.toFirstPartySyncResult("Tester")
 			.getObtainedItems().get("zulrah").stream().map(ClogResult.ClogItem::getId)
@@ -341,7 +341,7 @@ public class ManualClogSyncTest
 		tick(104);
 		assertEquals(1, completions);
 		LocalClogCache reloaded = new LocalClogCache(new Gson(),
-			new InlineScheduledExecutorService(), directory);
+			new InlineScheduledExecutorService(), TestFolders.folder(directory));
 		assertTrue(reloaded.hasCompletedFirstPartySetupFor("Tester"));
 		assertEquals(List.of(1), reloaded.toFirstPartySyncResult("Tester")
 			.getObtainedItems().get("zulrah").stream().map(ClogResult.ClogItem::getId)
@@ -498,7 +498,7 @@ public class ManualClogSyncTest
 		tick(105);
 		assertEquals(1, completions);
 		LocalClogCache reloaded = new LocalClogCache(new Gson(),
-			new InlineScheduledExecutorService(), directory);
+			new InlineScheduledExecutorService(), TestFolders.folder(directory));
 		assertTrue(reloaded.hasCompletedFirstPartySetupFor("Tester"));
 		List<ClogResult.ClogItem> items = reloaded.toFirstPartySyncResult("Tester")
 			.getObtainedItems().get("zulrah");
@@ -582,7 +582,7 @@ public class ManualClogSyncTest
 		tick(112);
 		assertEquals(1, completions);
 		LocalClogCache reloaded = new LocalClogCache(new Gson(),
-			new InlineScheduledExecutorService(), directory);
+			new InlineScheduledExecutorService(), TestFolders.folder(directory));
 		assertTrue(reloaded.hasDataFor("Tester"));
 		assertEquals(1, reloaded.toFirstPartySyncResult("Tester").getUniqueObtained());
 	}

@@ -32,12 +32,12 @@ public class LocalClogCacheTest
 		writeOwnedRecord(dir, "Tester", "77");
 		File record = new File(dir, "tester.json");
 		String before = Files.readString(record.toPath());
-		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 		assertFalse(cache.followNameChangeForSync("Tester", 42L));
 		assertFalse(cache.setActivePlayer("Tester"));
 		assertNull(cache.toFirstPartySyncResult("Tester"));
 		assertEquals(before, Files.readString(record.toPath()));
-		assertFalse(new File(dir, ".kill-clog-identity.json").exists());
+		assertFalse(new File(dir, IdentityLedger.FILE).exists());
 	}
 
 	@Test
@@ -47,18 +47,18 @@ public class LocalClogCacheTest
 		{
 			File dir = temporaryFolder.newFolder();
 			writeOwnedRecord(dir, "Tester", "77");
-			File ledgerFile = new File(dir, ".kill-clog-identity.json");
+			File ledgerFile = new File(dir, IdentityLedger.FILE);
 			Files.writeString(ledgerFile.toPath(), contents);
-			LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+			LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			assertFalse(cache.followNameChangeForSync("Tester", 77L));
 			assertNull(cache.toFirstPartySyncResult("Tester"));
 			assertEquals(contents, Files.readString(ledgerFile.toPath()));
 		}
 		File dir = temporaryFolder.newFolder();
-		Files.createDirectory(new File(dir, ".kill-clog-identity.json").toPath());
-		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+		Files.createDirectory(new File(dir, IdentityLedger.FILE).toPath());
+		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 		assertFalse(cache.followNameChangeForSync("Tester", 77L));
-		assertTrue(new File(dir, ".kill-clog-identity.json").isDirectory());
+		assertTrue(new File(dir, IdentityLedger.FILE).isDirectory());
 	}
 
 	@Test
@@ -66,7 +66,7 @@ public class LocalClogCacheTest
 	{
 		File dir = temporaryFolder.newFolder();
 		writeOwnedRecord(dir, "Tester", "77");
-		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 		assertTrue(cache.followNameChangeForSync("Tester", 77L));
 		assertTrue(cache.setActivePlayer("Tester"));
 		assertNotNull(cache.toFirstPartySyncResult("Tester"));
@@ -78,11 +78,11 @@ public class LocalClogCacheTest
 		File dir = temporaryFolder.newFolder();
 		writeOwnedRecord(dir, "Old", "42");
 		writeOwnedRecord(dir, "Tester", "77");
-		File ledgerFile = new File(dir, ".kill-clog-identity.json");
+		File ledgerFile = new File(dir, IdentityLedger.FILE);
 		String ledger = "{\"version\":2,\"names\":{\"42\":\"old\"},\"stamps\":{\"42\":1}}";
 		Files.writeString(ledgerFile.toPath(), ledger);
 		String before = Files.readString(new File(dir, "tester.json").toPath());
-		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 		assertFalse(cache.followNameChangeForSync("Tester", 42L));
 		assertNull(cache.toFirstPartySyncResult("Tester"));
 		assertEquals(before, Files.readString(new File(dir, "tester.json").toPath()));
@@ -95,10 +95,10 @@ public class LocalClogCacheTest
 	{
 		File dir = temporaryFolder.newFolder();
 		CapturingScheduledDebounceService writer = new CapturingScheduledDebounceService();
-		LocalClogCache cache = new LocalClogCache(new Gson(), writer, dir);
+		LocalClogCache cache = new LocalClogCache(new Gson(), writer, TestFolders.folder(dir));
 		cache.followNameChange("Tester", 42L);
 		cache.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 1), obtainedItems("hats", 1)));
-		Files.delete(new File(dir, ".kill-clog-identity.json").toPath());
+		Files.delete(new File(dir, IdentityLedger.FILE).toPath());
 		writeOwnedRecord(dir, "Tester", "77");
 		String before = Files.readString(new File(dir, "tester.json").toPath());
 		writer.runQueued();
@@ -122,9 +122,9 @@ public class LocalClogCacheTest
 	{
 		File dir = temporaryFolder.newFolder();
 		writeOwnedRecord(dir, "Tester", "77");
-		Files.writeString(new File(dir, ".kill-clog-identity.json").toPath(),
+		Files.writeString(new File(dir, IdentityLedger.FILE).toPath(),
 			"{\"version\":2,\"names\":{\"42\":\"tester\"},\"stamps\":{\"42\":1}}");
-		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 		assertFalse(cache.followNameChangeForSync("Tester", 42L));
 		assertNull(cache.toFirstPartySyncResult("Tester"));
 	}
@@ -134,9 +134,9 @@ public class LocalClogCacheTest
 	{
 		File dir = temporaryFolder.newFolder();
 		writeOwnedRecord(dir, "Old", "77");
-		Files.writeString(new File(dir, ".kill-clog-identity.json").toPath(),
+		Files.writeString(new File(dir, IdentityLedger.FILE).toPath(),
 			"{\"version\":2,\"names\":{\"42\":\"old\"},\"stamps\":{\"42\":1}}");
-		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 		assertFalse(cache.followNameChangeForSync("Tester", 42L));
 		assertNull(cache.toFirstPartySyncResult("Tester"));
 		assertTrue(new File(dir, "old.json").exists());
@@ -150,12 +150,12 @@ public class LocalClogCacheTest
 		{
 			File dir = temporaryFolder.newFolder();
 			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
-			LocalClogCache cache = new LocalClogCache(new Gson(), writer, dir);
+			LocalClogCache cache = new LocalClogCache(new Gson(), writer, TestFolders.folder(dir));
 			CompletableFuture<Boolean> verdict = cache.followNameChangeAsync("Tester", 42L);
 			writer.runQueued();
 			if (corruptLedger)
 			{
-				Files.writeString(new File(dir, ".kill-clog-identity.json").toPath(), "{broken");
+				Files.writeString(new File(dir, IdentityLedger.FILE).toPath(), "{broken");
 			}
 			else
 			{
@@ -174,9 +174,9 @@ public class LocalClogCacheTest
 		{
 			File dir = temporaryFolder.newFolder();
 			Files.writeString(new File(dir, "tester.json").toPath(), damaged);
-			Files.writeString(new File(dir, ".kill-clog-identity.json").toPath(),
+			Files.writeString(new File(dir, IdentityLedger.FILE).toPath(),
 				"{\"version\":2,\"names\":{\"77\":\"tester\"},\"stamps\":{\"77\":1}}");
-			LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+			LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			assertTrue(cache.followNameChangeForSync("Tester", 77L));
 			assertTrue(cache.setActivePlayer("Tester"));
 			assertFalse(cache.hasDataFor("Tester"));
@@ -185,7 +185,7 @@ public class LocalClogCacheTest
 			assertEquals(1, preserved.length);
 			assertEquals(damaged, Files.readString(preserved[0].toPath()));
 			cache.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 1), obtainedItems("hats", 1)));
-			LocalClogCache restarted = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+			LocalClogCache restarted = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			assertTrue(restarted.followNameChangeForSync("Tester", 77L));
 			assertTrue(restarted.setActivePlayer("Tester"));
 			assertNotNull(restarted.toFirstPartySyncResult("Tester"));
@@ -202,7 +202,7 @@ public class LocalClogCacheTest
 		provider.firstPartyByCategory = new HashMap<>();
 		provider.firstPartySetupComplete = false;
 		Files.writeString(file.toPath(), new Gson().toJson(provider));
-		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 		cache.cacheResult(clog("Tester", categoryItems("hats", 1, 2), obtainedItems("hats", 1, 2)));
 		PlayerClogData refreshed = new Gson().fromJson(Files.readString(file.toPath()), PlayerClogData.class);
 		assertEquals(2, refreshed.obtained.get("hats").size());
@@ -213,7 +213,7 @@ public class LocalClogCacheTest
 	{
 		File dir = temporaryFolder.newFolder();
 		Files.writeString(new File(dir, "tester.json").toPath(), "{broken");
-		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 		assertTrue(cache.followNameChangeForSync("Tester", 77L));
 		assertTrue(cache.setActivePlayer("Tester"));
 		assertFalse(cache.hasDataFor("Tester"));
@@ -230,9 +230,9 @@ public class LocalClogCacheTest
 	{
 		File dir = temporaryFolder.newFolder();
 		writeOwnedRecord(dir, "Old", "77");
-		File ledgerFile = new File(dir, ".kill-clog-identity.json");
+		File ledgerFile = new File(dir, IdentityLedger.FILE);
 		Files.writeString(ledgerFile.toPath(), "{broken");
-		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 		assertFalse(cache.followNameChangeForSync("Tester", 77L));
 		Files.writeString(ledgerFile.toPath(),
 			"{\"version\":2,\"names\":{\"77\":\"old\"},\"stamps\":{\"77\":1}}");
@@ -246,7 +246,7 @@ public class LocalClogCacheTest
 	{
 		File dir = temporaryFolder.newFolder();
 		writeOwnedRecord(dir, "Tester", "77");
-		Files.writeString(new File(dir, ".kill-clog-identity.json").toPath(),
+		Files.writeString(new File(dir, IdentityLedger.FILE).toPath(),
 			"{\"version\":2,\"names\":{\"77\":\"tester\"},\"stamps\":{\"77\":1}}");
 		CountDownLatch locked = new CountDownLatch(1);
 		CountDownLatch release = new CountDownLatch(1);
@@ -262,8 +262,8 @@ public class LocalClogCacheTest
 		ExecutorService caller = Executors.newSingleThreadExecutor(r -> new Thread(r, "sync-test"));
 		try
 		{
-			LocalClogCache cache = new LocalClogCache(new Gson(), writer, dir);
-			writer.execute(() -> new IdentityLedger(new Gson(), dir).withLock(() ->
+			LocalClogCache cache = new LocalClogCache(new Gson(), writer, TestFolders.folder(dir));
+			writer.execute(() -> new IdentityLedger(new Gson(), TestFolders.folder(dir)).withLock(() ->
 			{
 				locked.countDown();
 				try
@@ -297,7 +297,7 @@ public class LocalClogCacheTest
 	{
 		File dir = temporaryFolder.newFolder();
 		Gson gson = new Gson();
-		LocalClogCache cache = new LocalClogCache(gson, new InlineScheduledExecutorService(), dir);
+		LocalClogCache cache = new LocalClogCache(gson, new InlineScheduledExecutorService(), TestFolders.folder(dir));
 		Map<String, List<Integer>> cats = categoryItems("hats", 2978, 2991, 2992);
 		cache.cacheFirstPartyResult(clog("Tester", cats, obtainedItems("hats", 2978)));
 		cache.followNameChange("Tester", 77L);
@@ -307,7 +307,7 @@ public class LocalClogCacheTest
 		cache.rememberPendingUnlock("Tester", List.of(2992, 2991), date);
 		PlayerClogData saved = gson.fromJson(Files.readString(new File(dir, "tester.json").toPath()), PlayerClogData.class);
 		assertEquals(1, saved.pendingUnlocks.size());
-		LocalClogCache restarted = new LocalClogCache(gson, new InlineScheduledExecutorService(), dir);
+		LocalClogCache restarted = new LocalClogCache(gson, new InlineScheduledExecutorService(), TestFolders.folder(dir));
 		restarted.followNameChange("Tester", 77L);
 		assertTrue(restarted.setActivePlayer("Tester"));
 		restarted.cacheFirstPartyResult(clog("Tester", cats, obtainedItems("hats", 2978, 2991)));
@@ -326,7 +326,7 @@ public class LocalClogCacheTest
 	{
 		File dir = temporaryFolder.newFolder();
 		Gson gson = new Gson();
-		LocalClogCache cache = new LocalClogCache(gson, new InlineScheduledExecutorService(), dir);
+		LocalClogCache cache = new LocalClogCache(gson, new InlineScheduledExecutorService(), TestFolders.folder(dir));
 		Map<String, List<Integer>> cats = categoryItems("hats", 2978, 2991, 2992);
 		cache.cacheResult(clog("Tester", cats, obtainedItems("hats", 2978)));
 		cache.followNameChange("Tester", 77L);
@@ -353,14 +353,14 @@ public class LocalClogCacheTest
 			data.firstPartyByCategory = legacyKind == 0 ? new HashMap<>()
 				: legacyKind == 1 ? null : Map.of("zulrah", List.of(1));
 			Files.writeString(new File(directory, "tester.json").toPath(), new Gson().toJson(data));
-			LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), directory);
+			LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(directory));
 			assertTrue(cache.hasDataFor("Tester"));
 			assertEquals(legacyKind != 0, cache.hasCompletedFirstPartySetupFor("Tester"));
 			assertTrue(cache.mergeObtainedItem("Tester", 2, List.of("zulrah"), data.categories));
 			assertEquals(legacyKind != 0, cache.hasCompletedFirstPartySetupFor("Tester"));
 			ClogResult payload = cache.toFirstPartySyncResult("Tester");
 			assertEquals(legacyKind == 0 ? 1 : 2, payload.getObtainedItems().get("zulrah").size());
-			LocalClogCache reloaded = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), directory);
+			LocalClogCache reloaded = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(directory));
 			assertEquals(legacyKind != 0, reloaded.hasCompletedFirstPartySetupFor("Tester"));
 			reloaded.cacheFirstPartyResult(clog("Tester", data.categories, obtainedItems("zulrah", 1, 2)));
 			assertTrue(reloaded.hasCompletedFirstPartySetupFor("Tester"));
@@ -390,7 +390,7 @@ public class LocalClogCacheTest
 				}
 			});
 			assertTrue(entered.await(3, TimeUnit.SECONDS));
-			LocalClogCache cache = new LocalClogCache(new Gson(), writer, directory);
+			LocalClogCache cache = new LocalClogCache(new Gson(), writer, TestFolders.folder(directory));
 			cache.cacheResult(clog("Tester", categoryItems("magus", 1, 2), obtainedItems("magus", 1)));
 			cache.shutdown();
 			assertFalse(writer.isShutdown());
@@ -399,7 +399,7 @@ public class LocalClogCacheTest
 			assertFalse(new File(directory, "tester.json").exists());
 			release.countDown();
 			writer.submit(() -> null).get(3, TimeUnit.SECONDS);
-			LocalClogCache reloaded = new LocalClogCache(new Gson(), new NoopScheduledExecutorService(), directory);
+			LocalClogCache reloaded = new LocalClogCache(new Gson(), new NoopScheduledExecutorService(), TestFolders.folder(directory));
 			assertTrue(reloaded.hasDataFor("Tester"));
 			assertEquals(2, reloaded.toClogResult("Tester", Collections.emptyMap()).getObtainedItems().get("magus").size());
 		}
@@ -528,7 +528,7 @@ public class LocalClogCacheTest
 			for (boolean counterFirst : List.of(false, true))
 			{
 				File dir = temporaryFolder.newFolder();
-				LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+				LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 				Map<String, List<Integer>> categories = Map.of("hats", itemList(1, 2), "other", itemList(1));
 				ClogResult baseline = clog("Tester", categories, obtainedItems("hats"));
 				baseline.setUniqueObtained(initial);
@@ -545,7 +545,7 @@ public class LocalClogCacheTest
 				assertEquals(42, payload.getObtainedItems().get("hats").get(0).getObtainedAtKc());
 				cache.mergeObtainedItem("Tester", 2, List.of("hats"), categories);
 				cache.updateTotalsUpward("Tester", initial + 2, 100);
-				LocalClogCache restarted = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), dir);
+				LocalClogCache restarted = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 				assertTrue(restarted.hasDataFor("Tester"));
 				assertEquals(initial + 2, restarted.toFirstPartySyncResult("Tester").getUniqueObtained());
 			}
@@ -927,7 +927,7 @@ public class LocalClogCacheTest
 	public void testFollowNameChangeMigratesTheAccountsData() throws Exception
 	{
 		LocalClogCache cache = new LocalClogCache(new Gson(),
-			new InlineScheduledExecutorService(), temporaryFolder.newFolder());
+			new InlineScheduledExecutorService(), TestFolders.folder(temporaryFolder.newFolder()));
 		cache.seedIdentityForTest(new HashMap<>());
 		cache.cacheResult(clog(
 			"Old Name",
@@ -955,7 +955,7 @@ public class LocalClogCacheTest
 	public void testFollowNameChangeOwnDataOutranksStaleLookupCopy() throws Exception
 	{
 		LocalClogCache cache = new LocalClogCache(new Gson(),
-			new InlineScheduledExecutorService(), temporaryFolder.newFolder());
+			new InlineScheduledExecutorService(), TestFolders.folder(temporaryFolder.newFolder()));
 		cache.seedIdentityForTest(new HashMap<>());
 		// The account's own months of captures, under its old name...
 		cache.cacheResult(clog(
@@ -983,7 +983,7 @@ public class LocalClogCacheTest
 	public void testFollowNameChangeMergesPostCrashOwnCaptures() throws Exception
 	{
 		LocalClogCache cache = new LocalClogCache(new Gson(),
-			new InlineScheduledExecutorService(), temporaryFolder.newFolder());
+			new InlineScheduledExecutorService(), TestFolders.folder(temporaryFolder.newFolder()));
 		cache.seedIdentityForTest(new HashMap<>());
 		// Months of history under the old name...
 		cache.cacheResult(clog(
@@ -1012,7 +1012,7 @@ public class LocalClogCacheTest
 	public void testFollowNameChangePreservesPostCrashEmptySetup() throws Exception
 	{
 		LocalClogCache cache = new LocalClogCache(new Gson(),
-			new InlineScheduledExecutorService(), temporaryFolder.newFolder());
+			new InlineScheduledExecutorService(), TestFolders.folder(temporaryFolder.newFolder()));
 		cache.seedIdentityForTest(new HashMap<>());
 		cache.cacheResult(clog(
 			"Old Name",
@@ -1031,7 +1031,7 @@ public class LocalClogCacheTest
 	public void testMigrationGrandfathersLegacyHistoryThroughTheMerge() throws Exception
 	{
 		LocalClogCache cache = new LocalClogCache(new Gson(),
-			new InlineScheduledExecutorService(), temporaryFolder.newFolder());
+			new InlineScheduledExecutorService(), TestFolders.folder(temporaryFolder.newFolder()));
 		cache.seedIdentityForTest(new HashMap<>());
 		// Legacy source: wholly first-party by contract, marks null (models a
 		// pre-marking store file, which cacheResult alone cannot produce).
@@ -1063,12 +1063,12 @@ public class LocalClogCacheTest
 	{
 		File dir = temporaryFolder.newFolder();
 		LocalClogCache cache = new LocalClogCache(new Gson(),
-			new InlineScheduledExecutorService(), dir);
+			new InlineScheduledExecutorService(), TestFolders.folder(dir));
 		Map<String, String> identity = new HashMap<>();
 		// Another LOCAL account's hash still claims the destination name.
 		identity.put("77", "new name");
 		cache.seedIdentityForTest(identity);
-		Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+		Files.write(new File(dir, IdentityLedger.FILE).toPath(),
 			"{\"version\":2,\"names\":{\"77\":\"new name\"},\"stamps\":{\"77\":5000}}".getBytes());
 		// Its first-party captures sit at the destination...
 		Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
@@ -1098,7 +1098,7 @@ public class LocalClogCacheTest
 			// The alt (hash 77) owns "Shared Name" with first-party captures;
 			// everything flushes to REAL files in the temp dir.
 			LocalClogCache altView = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
 			altView.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
 			altView.mergeObtainedItem("Shared Name", 9, itemListAsStrings("venenatis"), cats);
@@ -1107,7 +1107,7 @@ public class LocalClogCacheTest
 			// A SEPARATE instance (simulating another JVM) logs the main in:
 			// its old name's data exists, and the shared name just became its.
 			LocalClogCache mainView = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			Map<String, List<Integer>> mainCats = categoryItems("vetion", 1);
 			mainView.cacheResult(clog("Old Main", mainCats, obtainedItems("vetion")));
 			mainView.mergeObtainedItem("Old Main", 1, itemListAsStrings("vetion"), mainCats);
@@ -1124,7 +1124,7 @@ public class LocalClogCacheTest
 			// The alt returns under its new name on yet another instance: the
 			// SIDECAR is its source - the live file (now the main's) is not.
 			LocalClogCache altReturns = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			assertNotNull(altReturns.followNameChange("Alt Reborn", 77L));
 			ClogResult alts = altReturns.toClogResult("Alt Reborn", Collections.emptyMap());
 			assertNotNull("the alt's own history recovered from the sidecar",
@@ -1155,14 +1155,14 @@ public class LocalClogCacheTest
 			// Deferred writer: debounced saves NEVER fire on their own, so the
 			// alt's latest capture exists only as a queued snapshot.
 			LocalClogCache cache = new LocalClogCache(
-				new Gson(), new DeferredScheduledExecutorService(), dir);
+				new Gson(), new DeferredScheduledExecutorService(), TestFolders.folder(dir));
 			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
 			cache.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
 			cache.mergeObtainedItem("Shared Name", 9, itemListAsStrings("venenatis"), cats);
 			// 77's claim lives on DISK, as it would in reality - the in-lock
 			// revalidation only honors claims both the decision and the
 			// ledger can see.
-			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+			Files.write(new File(dir, IdentityLedger.FILE).toPath(),
 				"{\"version\":2,\"names\":{\"77\":\"shared name\"},\"stamps\":{\"77\":5000}}".getBytes());
 
 			cache.cacheResult(clog("Old Main", categoryItems("vetion", 1), obtainedItems("vetion", 1)));
@@ -1190,7 +1190,7 @@ public class LocalClogCacheTest
 		{
 			// 77 currently owns "Traded Name" on disk, data and identity both.
 			LocalClogCache owner = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
 			owner.cacheResult(clog("Traded Name", cats, obtainedItems("venenatis")));
 			owner.mergeObtainedItem("Traded Name", 9, itemListAsStrings("venenatis"), cats);
@@ -1199,7 +1199,7 @@ public class LocalClogCacheTest
 			// 42's client wakes with a STALE cached belief that it held that
 			// name, and no sidecar. The live file is 77's, not a source.
 			LocalClogCache stale = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			Map<String, String> seed = new HashMap<>();
 			seed.put("42", "traded name");
 			seed.put("77", "traded name");
@@ -1225,7 +1225,7 @@ public class LocalClogCacheTest
 		try
 		{
 			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
-			LocalClogCache cache = new LocalClogCache(new Gson(), writer, dir);
+			LocalClogCache cache = new LocalClogCache(new Gson(), writer, TestFolders.folder(dir));
 			Map<String, List<Integer>> cats = categoryItems("vetion", 1);
 			cache.cacheResult(clog("Old Main", cats, obtainedItems("vetion")));
 			cache.mergeObtainedItem("Old Main", 1, itemListAsStrings("vetion"), cats);
@@ -1235,7 +1235,7 @@ public class LocalClogCacheTest
 			// Between the decision and the disk task, ANOTHER client claims
 			// the destination name for hash 55 AND its file lands there
 			// (both written straight to disk, as another JVM would).
-			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+			Files.write(new File(dir, IdentityLedger.FILE).toPath(),
 				"{\"version\":2,\"names\":{\"55\":\"new me\"},\"stamps\":{\"55\":9999}}".getBytes());
 			Files.write(new File(dir, "new_me.json").toPath(),
 				"{\"playerName\":\"New Me\",\"obtained\":{\"zulrah\":[]}}".getBytes());
@@ -1247,7 +1247,7 @@ public class LocalClogCacheTest
 			assertTrue("the claimant's file was never overwritten", destAfter.contains("zulrah"));
 			assertTrue("the old file survived", new File(dir, "old_main.json").exists());
 			String identity = new String(Files.readAllBytes(
-				new File(dir, ".kill-clog-identity.json").toPath()));
+				new File(dir, IdentityLedger.FILE).toPath()));
 			assertFalse("the migration was never stamped",
 				identity.contains("\"42\":\"new me\""));
 			assertNull("no chat line over a failed migration", cache.consumeRenameNotice());
@@ -1267,14 +1267,14 @@ public class LocalClogCacheTest
 			// The alt (77) owns "Shared Name"; the main (42) takes the name
 			// over, which parks the alt's file.
 			LocalClogCache altView = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
 			altView.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
 			altView.mergeObtainedItem("Shared Name", 9, itemListAsStrings("venenatis"), cats);
 			assertNull(altView.followNameChange("Shared Name", 77L));
 
 			LocalClogCache mainView = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			Map<String, List<Integer>> mainCats = categoryItems("vetion", 1);
 			mainView.cacheResult(clog("Old Main", mainCats, obtainedItems("vetion")));
 			mainView.mergeObtainedItem("Old Main", 1, itemListAsStrings("vetion"), mainCats);
@@ -1284,7 +1284,7 @@ public class LocalClogCacheTest
 			// The name transfers BACK: the alt logs in under the SAME name it
 			// always had. No rename happened, but its sidecar must recover.
 			LocalClogCache altBack = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			assertNull("same-name recovery is silent", altBack.followNameChange("Shared Name", 77L));
 			ClogResult alts = altBack.toClogResult("Shared Name", Collections.emptyMap());
 			assertNotNull(alts);
@@ -1301,7 +1301,7 @@ public class LocalClogCacheTest
 
 			// ...and the main recovers whole under its next name. Full circle.
 			LocalClogCache mainBack = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			assertNotNull(mainBack.followNameChange("Main Returns", 42L));
 			ClogResult mains = mainBack.toClogResult("Main Returns", Collections.emptyMap());
 			assertNotNull(mains);
@@ -1322,14 +1322,14 @@ public class LocalClogCacheTest
 		{
 			// The live file at the shared name (with first-party marks).
 			LocalClogCache seeder = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
 			seeder.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
 			seeder.mergeObtainedItem("Shared Name", 9, itemListAsStrings("venenatis"), cats);
 
 			// TWO stale claims on the name: 11 (older) and 22 (newer). 11 was
 			// displaced long ago and its sidecar still holds its real data.
-			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+			Files.write(new File(dir, IdentityLedger.FILE).toPath(),
 				("{\"version\":2,\"names\":{\"11\":\"shared name\",\"22\":\"shared name\"},"
 					+ "\"stamps\":{\"11\":1000,\"22\":2000}}").getBytes());
 			String elevens = "{\"playerName\":\"Shared Name\",\"obtained\":{\"callisto\":[]}}";
@@ -1339,7 +1339,7 @@ public class LocalClogCacheTest
 			// 42 takes the name over. The park must file the live data under
 			// 22 (the newest claimant), never over 11's parked history.
 			LocalClogCache taker = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			Map<String, List<Integer>> takerCats = categoryItems("vetion", 1);
 			taker.cacheResult(clog("Old Main", takerCats, obtainedItems("vetion")));
 			taker.mergeObtainedItem("Old Main", 1, itemListAsStrings("vetion"), takerCats);
@@ -1370,19 +1370,19 @@ public class LocalClogCacheTest
 			// data is parked, its stale claim is stamped, the live slot is
 			// EMPTY, and our own source still sits under the old name.
 			LocalClogCache seeder = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			Map<String, List<Integer>> cats = categoryItems("vetion", 1);
 			seeder.cacheResult(clog("Old Main", cats, obtainedItems("vetion")));
 			seeder.mergeObtainedItem("Old Main", 1, itemListAsStrings("vetion"), cats);
 			String theirs = "{\"playerName\":\"Shared Name\",\"obtained\":{\"venenatis\":[]}}";
 			Files.write(new File(dir, ".displaced-77-shared_name.json").toPath(), theirs.getBytes());
-			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+			Files.write(new File(dir, IdentityLedger.FILE).toPath(),
 				("{\"version\":2,\"names\":{\"77\":\"shared name\",\"42\":\"old main\"},"
 					+ "\"stamps\":{\"77\":5000,\"42\":4000}}").getBytes());
 
 			// The retry must finish instead of wedging on the stale claim.
 			LocalClogCache retry = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			assertEquals("Old Main", retry.followNameChange("Shared Name", 42L));
 
 			String live = new String(Files.readAllBytes(new File(dir, "shared_name.json").toPath()));
@@ -1391,7 +1391,7 @@ public class LocalClogCacheTest
 				new String(Files.readAllBytes(new File(dir, ".displaced-77-shared_name.json").toPath())));
 			assertFalse("our old file was consumed", new File(dir, "old_main.json").exists());
 			String identity = new String(Files.readAllBytes(
-				new File(dir, ".kill-clog-identity.json").toPath()));
+				new File(dir, IdentityLedger.FILE).toPath()));
 			assertTrue("the migration stamped", identity.contains("\"42\":\"shared name\""));
 		}
 		finally
@@ -1410,7 +1410,7 @@ public class LocalClogCacheTest
 			// 77's data is parked, OUR merged file already sits at the live
 			// slot, our old source still exists, nothing stamped.
 			LocalClogCache seeder = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			Map<String, List<Integer>> liveCats = categoryItems("vetion", 1);
 			seeder.cacheResult(clog("Shared Name", liveCats, obtainedItems("vetion")));
 			seeder.mergeObtainedItem("Shared Name", 1, itemListAsStrings("vetion"), liveCats);
@@ -1419,14 +1419,14 @@ public class LocalClogCacheTest
 			seeder.mergeObtainedItem("Old Main", 3, itemListAsStrings("callisto"), oldCats);
 			String theirs = "{\"playerName\":\"Shared Name\",\"obtained\":{\"venenatis\":[]}}";
 			Files.write(new File(dir, ".displaced-77-shared_name.json").toPath(), theirs.getBytes());
-			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+			Files.write(new File(dir, IdentityLedger.FILE).toPath(),
 				("{\"version\":2,\"names\":{\"77\":\"shared name\",\"42\":\"old main\"},"
 					+ "\"stamps\":{\"77\":5000,\"42\":4000}}").getBytes());
 
 			// The retry treats the live slot as our own residue: merge, never
 			// a second park over their real data.
 			LocalClogCache retry = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			assertEquals("Old Main", retry.followNameChange("Shared Name", 42L));
 
 			assertEquals("their parked copy is untouched", theirs,
@@ -1449,7 +1449,7 @@ public class LocalClogCacheTest
 		try
 		{
 			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
-			LocalClogCache cache = new LocalClogCache(new Gson(), writer, dir);
+			LocalClogCache cache = new LocalClogCache(new Gson(), writer, TestFolders.folder(dir));
 			Map<String, List<Integer>> cats = categoryItems("vetion", 1);
 			cache.cacheResult(clog("Old Main", cats, obtainedItems("vetion")));
 			cache.mergeObtainedItem("Old Main", 1, itemListAsStrings("vetion"), cats);
@@ -1458,7 +1458,7 @@ public class LocalClogCacheTest
 
 			// Before the disk task runs, another client claims the OLD name:
 			// the bytes we copied may be about to become theirs.
-			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+			Files.write(new File(dir, IdentityLedger.FILE).toPath(),
 				"{\"version\":2,\"names\":{\"55\":\"old main\"},\"stamps\":{\"55\":9999999999999}}".getBytes());
 
 			writer.runQueued();
@@ -1466,7 +1466,7 @@ public class LocalClogCacheTest
 			assertFalse("nothing written at the destination", new File(dir, "new_me.json").exists());
 			assertTrue("the contested source survived", new File(dir, "old_main.json").exists());
 			String identity = new String(Files.readAllBytes(
-				new File(dir, ".kill-clog-identity.json").toPath()));
+				new File(dir, IdentityLedger.FILE).toPath()));
 			assertFalse("the migration was never stamped",
 				identity.contains("\"42\":\"new me\""));
 		}
@@ -1485,7 +1485,7 @@ public class LocalClogCacheTest
 			// Debounced saves stay queued until fired by hand; everything
 			// else (identity writes, migrations) runs inline.
 			CapturingScheduledDebounceService writer = new CapturingScheduledDebounceService();
-			LocalClogCache cache = new LocalClogCache(new Gson(), writer, dir);
+			LocalClogCache cache = new LocalClogCache(new Gson(), writer, TestFolders.folder(dir));
 			assertNull(cache.followNameChange("Shared Name", 77L));
 
 			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
@@ -1494,7 +1494,7 @@ public class LocalClogCacheTest
 
 			// While our save is still queued, the name changes hands on disk:
 			// a NEWER claim by 42 (its migration stamped from another JVM).
-			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+			Files.write(new File(dir, IdentityLedger.FILE).toPath(),
 				("{\"version\":2,\"names\":{\"77\":\"shared name\",\"42\":\"shared name\"},"
 					+ "\"stamps\":{\"77\":1000,\"42\":2000}}").getBytes());
 
@@ -1516,22 +1516,22 @@ public class LocalClogCacheTest
 		try
 		{
 			LocalClogCache seeder = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
 			seeder.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
 			seeder.mergeObtainedItem("Shared Name", 9, itemListAsStrings("venenatis"), cats);
 			// A v1 file: a bare hash-to-name map, no version, no stamps.
-			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+			Files.write(new File(dir, IdentityLedger.FILE).toPath(),
 				"{\"77\":\"shared name\"}".getBytes());
 
 			LocalClogCache lifted = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			assertEquals("Shared Name", lifted.followNameChange("New Alt", 77L));
 
 			assertTrue(new String(Files.readAllBytes(new File(dir, "new_alt.json").toPath()))
 				.contains("venenatis"));
 			String identity = new String(Files.readAllBytes(
-				new File(dir, ".kill-clog-identity.json").toPath()));
+				new File(dir, IdentityLedger.FILE).toPath()));
 			assertTrue("rewritten as v2", identity.contains("\"names\""));
 			assertTrue(identity.contains("\"77\":\"new alt\""));
 		}
@@ -1549,7 +1549,7 @@ public class LocalClogCacheTest
 		{
 			// 77 owns "Shared Name": first-party file plus a stamped claim.
 			LocalClogCache owner = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
 			owner.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
 			owner.mergeObtainedItem("Shared Name", 9, itemListAsStrings("venenatis"), cats);
@@ -1558,7 +1558,7 @@ public class LocalClogCacheTest
 			// A NEVER-SEEN hash logs in under that very name (a bought
 			// account, a transferred name). It must not inherit 77's file.
 			LocalClogCache taker = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			assertNull(taker.followNameChange("Shared Name", 42L));
 
 			File parked = new File(dir, ".displaced-77-shared_name.json");
@@ -1581,7 +1581,7 @@ public class LocalClogCacheTest
 		try
 		{
 			CapturingScheduledDebounceService writer = new CapturingScheduledDebounceService();
-			LocalClogCache cache = new LocalClogCache(new Gson(), writer, dir);
+			LocalClogCache cache = new LocalClogCache(new Gson(), writer, TestFolders.folder(dir));
 			assertNull(cache.followNameChange("Shared Name", 77L));
 			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
 			cache.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
@@ -1592,7 +1592,7 @@ public class LocalClogCacheTest
 			// claimant. The queued save was 77's: it must not be authorized
 			// as 42 just because 42 is active when the debounce fires.
 			assertNull(cache.followNameChange("Other Guy", 42L));
-			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+			Files.write(new File(dir, IdentityLedger.FILE).toPath(),
 				("{\"version\":2,\"names\":{\"77\":\"shared name\",\"42\":\"shared name\"},"
 					+ "\"stamps\":{\"77\":1000,\"42\":2000}}").getBytes());
 
@@ -1614,7 +1614,7 @@ public class LocalClogCacheTest
 		try
 		{
 			LocalClogCache owner = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
 			owner.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
 			owner.mergeObtainedItem("Shared Name", 9, itemListAsStrings("venenatis"), cats);
@@ -1625,7 +1625,7 @@ public class LocalClogCacheTest
 			// unmarked provider data, which would have overwritten the
 			// claimed first-party file wholesale.
 			LocalClogCache cold = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			cold.cacheResult(clog("Shared Name", categoryItems("zulrah", 4), obtainedItems("zulrah")));
 
 			String after = new String(Files.readAllBytes(new File(dir, "shared_name.json").toPath()));
@@ -1645,23 +1645,23 @@ public class LocalClogCacheTest
 		try
 		{
 			LocalClogCache seeder = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			Map<String, List<Integer>> cats = categoryItems("vetion", 1);
 			seeder.cacheResult(clog("Old Main", cats, obtainedItems("vetion")));
 			seeder.mergeObtainedItem("Old Main", 1, itemListAsStrings("vetion"), cats);
 			// 77's claim carries an absurd future stamp; a wall-clock stamp
 			// would lose the ordering war and hash order would decide.
 			long future = 9999999999999L;
-			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+			Files.write(new File(dir, IdentityLedger.FILE).toPath(),
 				("{\"version\":2,\"names\":{\"77\":\"shared name\",\"42\":\"old main\"},"
 					+ "\"stamps\":{\"77\":" + future + ",\"42\":4000}}").getBytes());
 
 			LocalClogCache cache = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			assertEquals("Old Main", cache.followNameChange("Shared Name", 42L));
 
 			String identity = new String(Files.readAllBytes(
-				new File(dir, ".kill-clog-identity.json").toPath()));
+				new File(dir, IdentityLedger.FILE).toPath()));
 			com.google.gson.JsonObject root = new Gson().fromJson(identity, com.google.gson.JsonObject.class);
 			long ours = root.getAsJsonObject("stamps").get("42").getAsLong();
 			long theirs = root.getAsJsonObject("stamps").get("77").getAsLong();
@@ -1683,17 +1683,17 @@ public class LocalClogCacheTest
 		File dir = Files.createTempDirectory("kc-v1steady").toFile();
 		try
 		{
-			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+			Files.write(new File(dir, IdentityLedger.FILE).toPath(),
 				"{\"77\":\"shared name\"}".getBytes());
 			LocalClogCache cache = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			// No rename at all - the sitting owner logs in as itself. Its
 			// stamp-0 v1 entry must re-assert, or any stamped claim by
 			// another local account would outrank it forever.
 			assertNull(cache.followNameChange("Shared Name", 77L));
 
 			String identity = new String(Files.readAllBytes(
-				new File(dir, ".kill-clog-identity.json").toPath()));
+				new File(dir, IdentityLedger.FILE).toPath()));
 			com.google.gson.JsonObject root = new Gson().fromJson(identity, com.google.gson.JsonObject.class);
 			assertTrue("rewritten as v2", root.has("names"));
 			assertTrue("the sitting owner re-stamped",
@@ -1713,15 +1713,15 @@ public class LocalClogCacheTest
 		{
 			String residents = "{\"playerName\":\"Shared Name\",\"obtained\":{\"venenatis\":[]}}";
 			Files.write(new File(dir, "shared_name.json").toPath(), residents.getBytes());
-			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+			Files.write(new File(dir, IdentityLedger.FILE).toPath(),
 				"{\"version\":2,\"names\":{\"77\":\"shared name\"},\"stamps\":{\"77\":5000}}".getBytes());
 
 			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
-			LocalClogCache taker = new LocalClogCache(new Gson(), writer, dir);
+			LocalClogCache taker = new LocalClogCache(new Gson(), writer, TestFolders.folder(dir));
 			// Decision sees claimant 77; before the task runs, the claim
 			// changes hands to 55. The snapshot answers a dead question.
 			assertNull(taker.followNameChange("Shared Name", 42L));
-			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+			Files.write(new File(dir, IdentityLedger.FILE).toPath(),
 				"{\"version\":2,\"names\":{\"55\":\"shared name\"},\"stamps\":{\"55\":6000}}".getBytes());
 
 			writer.runQueued();
@@ -1731,7 +1731,7 @@ public class LocalClogCacheTest
 			assertFalse(new File(dir, ".displaced-55-shared_name.json").exists());
 			assertFalse(new File(dir, ".displaced-77-shared_name.json").exists());
 			String identity = new String(Files.readAllBytes(
-				new File(dir, ".kill-clog-identity.json").toPath()));
+				new File(dir, IdentityLedger.FILE).toPath()));
 			assertFalse("the taker was never stamped", identity.contains("\"42\""));
 		}
 		finally
@@ -1747,18 +1747,18 @@ public class LocalClogCacheTest
 		try
 		{
 			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
-			LocalClogCache taker = new LocalClogCache(new Gson(), writer, dir);
+			LocalClogCache taker = new LocalClogCache(new Gson(), writer, TestFolders.folder(dir));
 			// First sighting on an EMPTY machine: the decision sees a free
 			// slot... but before the task runs, a resident's claim and file
 			// land (another client). Adoption must abort.
 			assertNull(taker.followNameChange("Shared Name", 42L));
 			String residents = "{\"playerName\":\"Shared Name\",\"obtained\":{\"venenatis\":[]}}";
 			Files.write(new File(dir, "shared_name.json").toPath(), residents.getBytes());
-			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+			Files.write(new File(dir, IdentityLedger.FILE).toPath(),
 				"{\"version\":2,\"names\":{\"77\":\"shared name\"},\"stamps\":{\"77\":5000}}".getBytes());
 			writer.runQueued();
 			String afterAbort = new String(Files.readAllBytes(
-				new File(dir, ".kill-clog-identity.json").toPath()));
+				new File(dir, IdentityLedger.FILE).toPath()));
 			assertFalse("aborted adoption left no stamp", afterAbort.contains("\"42\""));
 
 			// The NEXT check must re-run full arbitration, not stamp through
@@ -1770,7 +1770,7 @@ public class LocalClogCacheTest
 			assertTrue("the resident's file parked on retry", parked.exists());
 			assertTrue(new String(Files.readAllBytes(parked.toPath())).contains("venenatis"));
 			String identity = new String(Files.readAllBytes(
-				new File(dir, ".kill-clog-identity.json").toPath()));
+				new File(dir, IdentityLedger.FILE).toPath()));
 			assertTrue("the taker stamped only after arbitration",
 				identity.contains("\"42\":\"shared name\""));
 		}
@@ -1788,14 +1788,14 @@ public class LocalClogCacheTest
 		{
 			// Benign path: the disk half lands inline, verdict true.
 			LocalClogCache ok = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			assertTrue(ok.followNameChangeForSync("Fresh Name", 42L));
 
 			// Unresolved path: the disk half never runs before the timeout.
 			// The verdict is false and the slot's memory clears - bytes with
 			// unresolved provenance never become a payload.
 			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
-			LocalClogCache stuck = new LocalClogCache(new Gson(), writer, dir);
+			LocalClogCache stuck = new LocalClogCache(new Gson(), writer, TestFolders.folder(dir));
 			stuck.setSyncVerdictTimeoutForTest(200);
 			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
 			stuck.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
@@ -1816,7 +1816,7 @@ public class LocalClogCacheTest
 		try
 		{
 			LocalClogCache cache = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			assertNull(cache.followNameChange("Shared Name", 77L));
 			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
 			cache.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
@@ -1856,7 +1856,7 @@ public class LocalClogCacheTest
 		try
 		{
 			LocalClogCache seeder = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			Map<String, List<Integer>> liveCats = categoryItems("venenatis", 9);
 			seeder.cacheResult(clog("Shared Name", liveCats, obtainedItems("venenatis")));
 			seeder.mergeObtainedItem("Shared Name", 9, itemListAsStrings("venenatis"), liveCats);
@@ -1865,15 +1865,15 @@ public class LocalClogCacheTest
 			seeder.mergeObtainedItem("Old Main", 1, itemListAsStrings("vetion"), oldCats);
 			String beforeBytes = new String(Files.readAllBytes(
 				new File(dir, "shared_name.json").toPath()));
-			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+			Files.write(new File(dir, IdentityLedger.FILE).toPath(),
 				("{\"version\":2,\"names\":{\"77\":\"shared name\",\"42\":\"old main\"},"
 					+ "\"stamps\":{\"77\":5000,\"42\":4000}}").getBytes());
 
 			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
-			LocalClogCache cache = new LocalClogCache(new Gson(), writer, dir);
+			LocalClogCache cache = new LocalClogCache(new Gson(), writer, TestFolders.folder(dir));
 			assertEquals("Old Main", cache.followNameChange("Shared Name", 42L));
 			// The claim changes hands 77 -> 55 before the disk task runs.
-			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+			Files.write(new File(dir, IdentityLedger.FILE).toPath(),
 				("{\"version\":2,\"names\":{\"55\":\"shared name\",\"42\":\"old main\"},"
 					+ "\"stamps\":{\"55\":6000,\"42\":4000}}").getBytes());
 			writer.runQueued();
@@ -1885,7 +1885,7 @@ public class LocalClogCacheTest
 			assertFalse("nothing filed under the new claimant",
 				new File(dir, ".displaced-55-shared_name.json").exists());
 			String identity = new String(Files.readAllBytes(
-				new File(dir, ".kill-clog-identity.json").toPath()));
+				new File(dir, IdentityLedger.FILE).toPath()));
 			assertFalse("the migration never stamped", identity.contains("\"42\":\"shared name\""));
 		}
 		finally
@@ -1905,11 +1905,11 @@ public class LocalClogCacheTest
 			Files.write(new File(dir, "shared_name.json").toPath(),
 				("{\"playerName\":\"Shared Name\",\"ownerHash\":\"88\","
 					+ "\"obtained\":{\"venenatis\":[]}}").getBytes());
-			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+			Files.write(new File(dir, IdentityLedger.FILE).toPath(),
 				"{\"version\":2,\"names\":{\"77\":\"shared name\"},\"stamps\":{\"77\":5000}}".getBytes());
 
 			LocalClogCache taker = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			assertNull(taker.followNameChange("Shared Name", 42L));
 
 			File parked = new File(dir, ".displaced-88-shared_name.json");
@@ -1935,7 +1935,7 @@ public class LocalClogCacheTest
 					+ "\"obtained\":{\"venenatis\":[]}}").getBytes());
 
 			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
-			LocalClogCache cache = new LocalClogCache(new Gson(), writer, dir);
+			LocalClogCache cache = new LocalClogCache(new Gson(), writer, TestFolders.folder(dir));
 			cache.setSyncVerdictTimeoutForTest(150);
 			assertFalse("the disk half never ran", cache.followNameChangeForSync("Shared Name", 42L));
 			assertFalse("the quarantined slot must not lazy-reload from disk",
@@ -1963,12 +1963,12 @@ public class LocalClogCacheTest
 			Files.write(new File(dir, "shared_name.json").toPath(),
 				("{\"playerName\":\"Shared Name\",\"ownerHash\":\"77\","
 					+ "\"obtained\":{\"venenatis\":[]}}").getBytes());
-			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+			Files.write(new File(dir, IdentityLedger.FILE).toPath(),
 				("{\"version\":2,\"names\":{\"42\":\"shared name\",\"77\":\"shared name\"},"
 					+ "\"stamps\":{\"42\":1000,\"77\":2000}}").getBytes());
 
 			LocalClogCache cache = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			assertNull(cache.followNameChange("Shared Name", 42L));
 
 			assertTrue("the rival's file parked under the rival",
@@ -1991,12 +1991,12 @@ public class LocalClogCacheTest
 		try
 		{
 			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
-			LocalClogCache cache = new LocalClogCache(new Gson(), writer, dir);
+			LocalClogCache cache = new LocalClogCache(new Gson(), writer, TestFolders.folder(dir));
 			cache.followNameChangeAsync("Shared Name", 77L);
 			cache.onSessionEnded();
 			writer.runQueued();
 			assertFalse("a dead session's queued check must not record identity",
-				new File(dir, ".kill-clog-identity.json").exists());
+				new File(dir, IdentityLedger.FILE).exists());
 		}
 		finally
 		{
@@ -2011,7 +2011,7 @@ public class LocalClogCacheTest
 		try
 		{
 			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
-			LocalClogCache cache = new LocalClogCache(new Gson(), writer, dir);
+			LocalClogCache cache = new LocalClogCache(new Gson(), writer, TestFolders.folder(dir));
 			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
 			cache.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
 			cache.mergeObtainedItem("Shared Name", 9, itemListAsStrings("venenatis"), cats);
@@ -2057,11 +2057,11 @@ public class LocalClogCacheTest
 			String parked = "{\"playerName\":\"Shared Name\",\"ownerHash\":\"42\","
 				+ "\"obtained\":{\"venenatis\":[]}}";
 			Files.write(new File(dir, ".displaced-42-shared_name.json").toPath(), parked.getBytes());
-			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+			Files.write(new File(dir, IdentityLedger.FILE).toPath(),
 				"{\"version\":2,\"names\":{\"42\":\"shared name\"},\"stamps\":{\"42\":1000}}".getBytes());
 
 			LocalClogCache cache = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			assertNull(cache.followNameChange("Shared Name", 42L));
 			assertFalse("the sidecar was consumed by the recovery",
 				new File(dir, ".displaced-42-shared_name.json").exists());
@@ -2089,11 +2089,11 @@ public class LocalClogCacheTest
 			String parked = "{\"playerName\":\"Shared Name\",\"ownerHash\":\"42\","
 				+ "\"obtained\":{\"venenatis\":[]}}";
 			Files.write(new File(dir, ".displaced-42-shared_name.json").toPath(), parked.getBytes());
-			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+			Files.write(new File(dir, IdentityLedger.FILE).toPath(),
 				"{\"version\":2,\"names\":{\"42\":\"shared name\"},\"stamps\":{\"42\":1000}}".getBytes());
 
 			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
-			LocalClogCache cache = new LocalClogCache(new Gson(), writer, dir);
+			LocalClogCache cache = new LocalClogCache(new Gson(), writer, TestFolders.folder(dir));
 			CompletableFuture<Boolean> first = cache.followNameChangeAsync(
 				"Shared Name", 42L, cache.currentSessionEpoch());
 			writer.runQueued(); // recovery decision made; disk migration still queued
@@ -2122,11 +2122,11 @@ public class LocalClogCacheTest
 		{
 			Files.write(new File(dir, ".displaced-42-shared_name.json").toPath(),
 				"not-json".getBytes());
-			Files.write(new File(dir, ".kill-clog-identity.json").toPath(),
+			Files.write(new File(dir, IdentityLedger.FILE).toPath(),
 				"{\"version\":2,\"names\":{\"42\":\"shared name\"},\"stamps\":{\"42\":1000}}".getBytes());
 
 			LocalClogCache cache = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			assertNull(cache.followNameChange("Shared Name", 42L));
 			assertNull(cache.followNameChange("Shared Name", 42L));
 			assertFalse("a failed recovery never becomes settled on retry",
@@ -2146,7 +2146,7 @@ public class LocalClogCacheTest
 		try
 		{
 			LocalClogCache cache = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			Map<String, List<Integer>> cats = categoryItems("vetion", 1);
 			cache.cacheResult(clog("Old Main", cats, obtainedItems("vetion")));
 			cache.mergeObtainedItem("Old Main", 1, itemListAsStrings("vetion"), cats);
@@ -2170,7 +2170,7 @@ public class LocalClogCacheTest
 		try
 		{
 			LocalClogCache cache = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			assertNull(cache.followNameChange("Shared Name", 77L));
 			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
 			cache.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
@@ -2213,13 +2213,13 @@ public class LocalClogCacheTest
 		{
 			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
 			LocalClogCache owner = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			owner.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
 			owner.mergeObtainedItem("Shared Name", 9, itemListAsStrings("venenatis"), cats);
 			owner.followNameChange("Shared Name", 77L);
 
 			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
-			LocalClogCache taker = new LocalClogCache(new Gson(), writer, dir);
+			LocalClogCache taker = new LocalClogCache(new Gson(), writer, TestFolders.folder(dir));
 			assertFalse("login activation is fail-closed", taker.setActivePlayer("Shared Name"));
 			assertFalse(taker.hasDataFor("Shared Name"));
 			assertFalse(taker.hasFirstPartyDataFor("Shared Name"));
@@ -2255,13 +2255,13 @@ public class LocalClogCacheTest
 		{
 			Map<String, List<Integer>> cats = categoryItems("vetion", 1);
 			LocalClogCache seeder = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			seeder.cacheResult(clog("Stable Name", cats, obtainedItems("vetion")));
 			seeder.mergeObtainedItem("Stable Name", 1, itemListAsStrings("vetion"), cats);
 			seeder.followNameChange("Stable Name", 77L);
 
 			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
-			LocalClogCache returning = new LocalClogCache(new Gson(), writer, dir);
+			LocalClogCache returning = new LocalClogCache(new Gson(), writer, TestFolders.folder(dir));
 			assertFalse(returning.setActivePlayer("Stable Name"));
 			assertFalse(returning.hasDataFor("Stable Name"));
 
@@ -2289,13 +2289,13 @@ public class LocalClogCacheTest
 		{
 			Map<String, List<Integer>> cats = categoryItems("vetion", 1);
 			LocalClogCache seeder = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			seeder.cacheResult(clog("Stable Name", cats, obtainedItems("vetion")));
 			seeder.mergeObtainedItem("Stable Name", 1, itemListAsStrings("vetion"), cats);
 			seeder.followNameChange("Stable Name", 77L);
 
 			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
-			LocalClogCache returning = new LocalClogCache(new Gson(), writer, dir);
+			LocalClogCache returning = new LocalClogCache(new Gson(), writer, TestFolders.folder(dir));
 			CompletableFuture<Boolean> settled = returning.followNameChangeAsync(
 				"Stable Name", 77L, returning.currentSessionEpoch());
 			writer.runQueued();
@@ -2322,13 +2322,13 @@ public class LocalClogCacheTest
 		{
 			Map<String, List<Integer>> cats = categoryItems("venenatis", 9);
 			LocalClogCache owner = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			owner.cacheResult(clog("Shared Name", cats, obtainedItems("venenatis")));
 			owner.mergeObtainedItem("Shared Name", 9, itemListAsStrings("venenatis"), cats);
 			owner.followNameChange("Shared Name", 77L);
 
 			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
-			LocalClogCache taker = new LocalClogCache(new Gson(), writer, dir);
+			LocalClogCache taker = new LocalClogCache(new Gson(), writer, TestFolders.folder(dir));
 			CompletableFuture<Boolean> settled = taker.followNameChangeAsync(
 				"Shared Name", 42L, taker.currentSessionEpoch());
 			writer.runQueued(); // decision made; disk park and stamp still queued
@@ -2404,7 +2404,7 @@ public class LocalClogCacheTest
 		try
 		{
 			LocalClogCache cache = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			cache.cacheResult(clog(
 				"Old Name",
 				categoryItems("vetion", 1),
@@ -2432,7 +2432,7 @@ public class LocalClogCacheTest
 		try
 		{
 			LocalClogCache cache = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			cache.cacheResult(clog(
 				"Old Name", categoryItems("vetion", 1), obtainedItems("vetion", 1)));
 			cache.followNameChange("Old Name", 42L);
@@ -2456,13 +2456,13 @@ public class LocalClogCacheTest
 		try
 		{
 			LocalClogCache seeder = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 			seeder.cacheResult(clog(
 				"Old Name", categoryItems("vetion", 1), obtainedItems("vetion", 1)));
 			seeder.followNameChange("Old Name", 42L);
 
 			CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
-			LocalClogCache cache = new LocalClogCache(new Gson(), writer, dir);
+			LocalClogCache cache = new LocalClogCache(new Gson(), writer, TestFolders.folder(dir));
 			assertFalse(cache.setActivePlayer("New Name"));
 			long epoch = cache.currentSessionEpoch();
 			CompletableFuture<Boolean> settled =
@@ -2563,7 +2563,7 @@ public class LocalClogCacheTest
 		try
 		{
 			LocalClogCache cache = new LocalClogCache(
-				new Gson(), new InlineScheduledExecutorService(), dir);
+				new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(dir));
 
 			// Provider-cached data for the player's own name is not a payload.
 			cache.cacheResult(clog(

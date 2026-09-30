@@ -4,10 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonIOException;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.time.Instant;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
@@ -22,7 +19,7 @@ import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.client.RuneLite;
+import net.runelite.client.util.Filepath;
 
 /**
  * Multi-account, disk-backed Combat Achievement cache.
@@ -39,11 +36,11 @@ import net.runelite.client.RuneLite;
 @Singleton
 public class LocalCaCache
 {
-	private static final File CACHE_DIR = new File(RuneLite.RUNELITE_DIR, "kill-clog/ca");
-
 	private final Map<String, CaData> players = new ConcurrentHashMap<>();
 	private final Gson gson;
-	private final File cacheDir;
+	// ca/ in the plugin's folder; null keeps captures in memory for the session.
+	@Nullable
+	private volatile Filepath folder;
 	private volatile String activePlayer;
 	private final ExecutorService diskWriter;
 
@@ -53,14 +50,19 @@ public class LocalCaCache
 	@Inject
 	public LocalCaCache(Gson gson)
 	{
-		this(gson, newDiskWriter(), CACHE_DIR);
+		this(gson, newDiskWriter(), null);
 	}
 
-	LocalCaCache(Gson gson, ExecutorService diskWriter, File cacheDir)
+	LocalCaCache(Gson gson, ExecutorService diskWriter, @Nullable Filepath folder)
 	{
 		this.gson = gson;
 		this.diskWriter = diskWriter;
-		this.cacheDir = cacheDir;
+		this.folder = folder;
+	}
+
+	void useFolder(@Nullable Filepath folder)
+	{
+		this.folder = folder;
 	}
 
 	public void setCaCatalog(@Nullable CaCatalog caCatalog)
@@ -217,18 +219,20 @@ public class LocalCaCache
 
 	private void saveToDisk(String playerName, CaData data)
 	{
-		File tmp = null;
+		Filepath folder = this.folder;
+		Filepath tmp = null;
 		try
 		{
-			if (!cacheDir.exists())
+			if (folder == null)
 			{
-				cacheDir.mkdirs();
+				throw new IOException("no data folder this session");
 			}
-			File file = getCacheFile(playerName);
+			folder.createDirectories();
+			Filepath file = folder.join(LocalClogCache.fileName(playerName));
 			// Separate clients may save the same player concurrently. Each write
 			// must finish its own bytes before replacing the shared final file.
-			tmp = Files.createTempFile(cacheDir.toPath(), file.getName() + ".", ".tmp").toFile();
-			try (BufferedWriter writer = Files.newBufferedWriter(tmp.toPath(), StandardCharsets.UTF_8))
+			tmp = folder.createTempFile(file.getFileName() + ".", ".tmp");
+			try (BufferedWriter writer = tmp.openBufferedWriter())
 			{
 				gson.toJson(data, writer);
 			}
@@ -245,7 +249,7 @@ public class LocalCaCache
 			{
 				try
 				{
-					Files.deleteIfExists(tmp.toPath());
+					tmp.deleteIfExists();
 				}
 				catch (IOException e)
 				{
@@ -257,12 +261,13 @@ public class LocalCaCache
 
 	private CaData loadFromDisk(String playerName)
 	{
-		File file = getCacheFile(playerName);
-		if (!file.exists())
+		Filepath folder = this.folder;
+		Filepath file = folder == null ? null : folder.join(LocalClogCache.fileName(playerName));
+		if (file == null || !file.exists())
 		{
 			return null;
 		}
-		try (BufferedReader reader = Files.newBufferedReader(file.toPath(), StandardCharsets.UTF_8))
+		try (BufferedReader reader = file.openBufferedReader())
 		{
 			CaData data = gson.fromJson(reader, CaData.class);
 			if (data != null && data.completed != null && !data.completed.isEmpty())
@@ -275,14 +280,6 @@ public class LocalCaCache
 			log.warn("Failed to load CA cache for '{}': {}", playerName, e.getMessage());
 		}
 		return null;
-	}
-
-	private File getCacheFile(String playerName)
-	{
-		String sanitized = playerName.toLowerCase()
-			.replace(' ', '_')
-			.replaceAll("[^a-z0-9_-]", "");
-		return new File(cacheDir, sanitized + ".json");
 	}
 
 	static class CaData

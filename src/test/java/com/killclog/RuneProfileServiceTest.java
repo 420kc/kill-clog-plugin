@@ -386,7 +386,7 @@ public class RuneProfileServiceTest
 	private LocalCaCache activeLocalCa(String player, int easyCompleted) throws IOException
 	{
 		LocalCaCache local = new LocalCaCache(new Gson(), new InlineScheduledExecutorService(),
-			temporaryFolder.newFolder());
+			TestFolders.folder(temporaryFolder.newFolder()));
 		local.setActivePlayer(player);
 		local.cacheResult(player, Map.of(CombatAchievementTier.EASY, easyCompleted));
 		return local;

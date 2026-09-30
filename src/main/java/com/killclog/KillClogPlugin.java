@@ -3,6 +3,7 @@ package com.killclog;
 import com.google.gson.Gson;
 import com.google.inject.Provides;
 import java.awt.image.BufferedImage;
+import java.io.IOException;
 import java.util.concurrent.ScheduledExecutorService;
 import javax.inject.Inject;
 import javax.inject.Provider;
@@ -39,6 +40,7 @@ import net.runelite.client.plugins.PluginDescriptor;
 import net.runelite.client.plugins.PluginManager;
 import net.runelite.client.ui.ClientToolbar;
 import net.runelite.client.ui.NavigationButton;
+import net.runelite.client.util.Filepath;
 import net.runelite.client.util.Text;
 
 @Slf4j
@@ -47,7 +49,9 @@ import net.runelite.client.util.Text;
 	description = "HiScores and Collection Log Overhaul",
 	tags = {"boss", "kc", "kill count", "collection log", "clog", "hiscores", "pvm", "pb",
 		"personal best", "ironman", "comparison", "sync", "templeosrs", "runeprofile",
-		"combat achievements"}
+		"combat achievements"},
+	internalName = "kill-clog",
+	legacyDataDirectory = "kill-clog"
 )
 public class KillClogPlugin extends Plugin
 {
@@ -149,11 +153,13 @@ public class KillClogPlugin extends Plugin
 	private static final int SETTLED_TICKS = 10;
 	@Inject
 	private Gson gson;
+	// .runelite/plugin-data/kill-clog, or null for a session that could not open it.
+	private Filepath dataFolder;
 	// The active League's own store, opened on first use; one League at a time.
 	private LocalClogCache leagueCache;
 	private String leagueCacheId;
 	private java.util.function.Function<String, LocalClogCache> leagueCacheFactory = id ->
-		new LocalClogCache(gson, new java.io.File(net.runelite.client.RuneLite.RUNELITE_DIR, "kill-clog/leagues/" + id));
+		new LocalClogCache(gson, dataFolder == null ? null : dataFolder.join("leagues", id));
 	// The store the collection log walk started with; a different one means start over.
 	private LocalClogCache walkCache;
 	// The logged-in account, for PB reads on the panel's thread, and the world's and running League last given to the panel.
@@ -191,6 +197,20 @@ public class KillClogPlugin extends Plugin
 	@Override
 	protected void startUp()
 	{
+		// RuneLite moves the 2.4 folder in on first use; a failed move stays in
+		// memory this session and retries next start, never writing a new folder.
+		try
+		{
+			dataFolder = getPluginDirectory();
+		}
+		catch (IOException | RuntimeException e)
+		{
+			dataFolder = null;
+			log.warn("Kill Clog data folder unavailable this session: {}", e.getMessage());
+		}
+		localClogCache.useFolder(dataFolder);
+		localCaCache.useFolder(dataFolder == null ? null : dataFolder.join("ca"));
+
 		navButton = NavigationButton.builder()
 			.tooltip("Kill Clog")
 			.icon(getIcon())

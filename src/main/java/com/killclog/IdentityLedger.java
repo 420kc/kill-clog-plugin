@@ -5,17 +5,16 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.BooleanSupplier;
+import javax.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.client.util.Filepath;
 
 /**
  * The machine-local rename identity ledger: which account hash currently
@@ -41,28 +40,35 @@ class IdentityLedger
 	// One machine, one clock: a stamp this far ahead cannot be legitimate.
 	private static final long STAMP_FUTURE_TOLERANCE_MS = 365L * 24 * 60 * 60 * 1000;
 
-	private final Gson gson;
-	private final File cacheDir;
+	static final String FILE = ".kill-clog-identity.json";
+	static final String LOCK = ".kill-clog-identity.lock";
 
-	IdentityLedger(Gson gson, File cacheDir)
+	private final Gson gson;
+	// Null for a session whose folder could not be opened: nothing is read,
+	// saved or locked, so every claim waits for the next start.
+	@Nullable
+	private final Filepath folder;
+
+	IdentityLedger(Gson gson, @Nullable Filepath folder)
 	{
 		this.gson = gson;
-		this.cacheDir = cacheDir;
-	}
-
-	private File file()
-	{
-		return new File(cacheDir, ".kill-clog-identity.json");
+		this.folder = folder;
 	}
 
 	View read()
 	{
 		View view = new View();
-		if (Files.notExists(file().toPath()))
+		if (folder == null)
+		{
+			view.readable = false;
+			return view;
+		}
+		Filepath file = folder.join(IdentityLedger.FILE);
+		if (!file.exists())
 		{
 			return view;
 		}
-		try (BufferedReader reader = Files.newBufferedReader(file().toPath(), StandardCharsets.UTF_8))
+		try (BufferedReader reader = file.openBufferedReader())
 		{
 			JsonObject root = gson.fromJson(reader, JsonObject.class);
 			if (root == null)
@@ -134,20 +140,17 @@ class IdentityLedger
 		}
 		try
 		{
-			if (!cacheDir.exists())
-			{
-				cacheDir.mkdirs();
-			}
+			folder.createDirectories();
 			Map<String, Object> root = new HashMap<>();
 			root.put("version", 2);
 			root.put("names", view.names);
 			root.put("stamps", view.stamps);
-			File tmp = new File(cacheDir, file().getName() + ".tmp");
-			try (BufferedWriter writer = Files.newBufferedWriter(tmp.toPath(), StandardCharsets.UTF_8))
+			Filepath tmp = folder.join(IdentityLedger.FILE + ".tmp");
+			try (BufferedWriter writer = tmp.openBufferedWriter())
 			{
 				gson.toJson(root, writer);
 			}
-			LocalClogCache.atomicMove(tmp, file());
+			LocalClogCache.atomicMove(tmp, folder.join(IdentityLedger.FILE));
 			return true;
 		}
 		catch (IOException e)
@@ -165,14 +168,14 @@ class IdentityLedger
 	 */
 	boolean withLock(BooleanSupplier action)
 	{
-		File lockFile = new File(cacheDir, ".kill-clog-identity.lock");
+		if (folder == null)
+		{
+			return false;
+		}
 		try
 		{
-			if (!cacheDir.exists())
-			{
-				cacheDir.mkdirs();
-			}
-			try (FileChannel channel = FileChannel.open(lockFile.toPath(),
+			folder.createDirectories();
+			try (FileChannel channel = folder.join(IdentityLedger.LOCK).openFileChannel(
 				StandardOpenOption.CREATE, StandardOpenOption.WRITE);
 				FileLock lock = channel.lock())
 			{
