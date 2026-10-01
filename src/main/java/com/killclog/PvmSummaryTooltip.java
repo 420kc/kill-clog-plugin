@@ -55,7 +55,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private final int[] weaponCounts = new int[3];
 	private final BufferedImage[] superiorSprites = new BufferedImage[2];
 	private final int[] superiorCounts = new int[2];
-	private final TooltipItemHover itemHover = new TooltipItemHover(this);
 
 	private int coxKc;
 	private int tobKc;
@@ -97,13 +96,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 	{
 		this.bossesCompleted = completed;
 		this.bossesWithClog = total;
-	}
-
-	@Override
-	public void setWikiLinksEnabled(boolean wikiLinksEnabled)
-	{
-		super.setWikiLinksEnabled(wikiLinksEnabled);
-		itemHover.setWikiLinksEnabled(wikiLinksEnabled);
 	}
 
 	/**
@@ -368,7 +360,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		addRowHitBoxes(hitBoxes, 0, inset, y, w - 2 * inset,
 			PanelData.SUPERIOR_ITEMS, PanelData.SUPERIOR_ITEM_NAMES, superiorCounts);
 		y += WEAPON_SIZE;
-		paintItemLabel(g2, fm, w, y, 0);
+		paintSectionHoverLine(g2, fm, w, y, 0);
 		y += hoverRowHeight(fm);
 
 		// Separator: Slayer to raids.
@@ -399,7 +391,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 			weaponSprites, weaponCounts, WEAPON_SIZE, WEAPON_PAD);
 		addRowHitBoxes(hitBoxes, 1, inset, y, w - 2 * inset,
 			PanelData.MEGARARE_ITEM_IDS, PanelData.MEGARARE_ITEM_NAMES, weaponCounts);
-		paintItemLabel(g2, fm, w, y + WEAPON_SIZE, 1);
+		paintSectionHoverLine(g2, fm, w, y + WEAPON_SIZE, 1);
 		y += WEAPON_SIZE + hoverRowHeight(fm);
 
 		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
@@ -422,14 +414,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 	 * Hover hit boxes matching paintQuantitySpriteRow's centered geometry,
 	 * so the summary sprites hover-name and wiki-link like the grids do.
 	 */
-	private void paintItemLabel(Graphics2D g2, FontMetrics fm, int width, int y, int section)
-	{
-		if (itemHover.isSectionHovered(section))
-		{
-			paintHeaderHoverLine(g2, fm, width, y + fm.getAscent());
-		}
-	}
-
 	private void addRowHitBoxes(List<TooltipItemHover.HitBox> hitBoxes, int section,
 		int x, int y, int colWidth, int[] itemIds, String[] itemNames, int[] counts)
 	{
@@ -442,18 +426,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 			hitBoxes.add(new TooltipItemHover.HitBox(section, itemIds[i], itemNames[i],
 				new Rectangle(sx, y, WEAPON_SIZE, WEAPON_SIZE), counts[i] > 0));
 		}
-	}
-
-	@Override
-	protected String getHeaderHoverLineText()
-	{
-		return itemHover.hoveredItemName();
-	}
-
-	@Override
-	protected Color getHeaderHoverLineColor()
-	{
-		return itemHover.hoveredItemObtained() ? CLOG_GREEN : CLOG_RED;
 	}
 
 	private void paintRaidLine(Graphics2D g2, FontMetrics fm, int x, int y,
