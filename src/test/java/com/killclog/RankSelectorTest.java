@@ -1,8 +1,9 @@
 package com.killclog;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import javax.swing.JButton;
 import javax.swing.SwingUtilities;
@@ -106,7 +107,7 @@ public class RankSelectorTest
 			RankSelector selector = new RankSelector((name, table) ->
 			{
 				throw new AssertionError();
-			}, RankSelectorTest::noop);
+			}, (name, table) -> false, RankSelectorTest::noop);
 			HiscoreResult base = result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000);
 			selector.update(false, "Blue", base, null, null);
 			assertFalse(selector.isVisible());
@@ -119,38 +120,68 @@ public class RankSelectorTest
 	@Test
 	public void comparisonUsesOneBoardAndIgnoresSupersededResponses() throws Exception
 	{
-		List<CompletableFuture<HiscoreResult>> requests = new ArrayList<>();
-		List<RankLeaderboard> tables = new ArrayList<>();
+		Map<String, CompletableFuture<HiscoreResult>> requests = new HashMap<>();
 		RankSelector[] holder = new RankSelector[1];
 		HiscoreResult blue = result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000);
 		HiscoreResult red = result(AccountType.REGULAR, HiscoreTable.STANDARD, 20, 10000);
 		SwingUtilities.invokeAndWait(() ->
 		{
 			RankSelector selector = new RankSelector((name, table) ->
-			{
-				tables.add(table);
-				CompletableFuture<HiscoreResult> request = new CompletableFuture<>();
-				requests.add(request);
-				return request;
-			}, RankSelectorTest::noop);
+				requests.computeIfAbsent(name + table, key -> new CompletableFuture<>()), (name, table) -> false,
+				RankSelectorTest::noop);
 			holder[0] = selector;
 			selector.update(true, "Blue", blue, "Red", red);
-			assertEquals(List.of(RankLeaderboard.IRONMAN), tables);
 			assertSame(blue, selector.view(blue));
-			assertEquals(-1, selector.view(red).getOverallRank());
+			assertEquals("a board still loading shows nothing", -1, selector.view(red).getKc("Zulrah"));
+			assertEquals("Loading...", selector.blankNotice(selector.view(red)));
 			selector.select(RankLeaderboard.NORMAL);
-			assertEquals(List.of(RankLeaderboard.IRONMAN, RankLeaderboard.NORMAL), tables);
 			assertSame(red, selector.view(red));
 			assertEquals(-1, selector.view(blue).getOverallRank());
-			requests.get(0).complete(result(AccountType.IRONMAN, HiscoreTable.STANDARD, 1, 10000));
-			requests.get(1).complete(result(AccountType.REGULAR, HiscoreTable.STANDARD, 100, 10000));
+			requests.get("Red" + RankLeaderboard.IRONMAN).complete(result(AccountType.IRONMAN, HiscoreTable.STANDARD, 1, 10000));
+			requests.get("Blue" + RankLeaderboard.NORMAL).complete(result(AccountType.REGULAR, HiscoreTable.STANDARD, 100, 10000));
 		});
 		SwingUtilities.invokeAndWait(() ->
 		{
 			assertEquals(100, holder[0].view(blue).getOverallRank());
-			assertEquals(20, holder[0].view(red).getOverallRank());
+			assertNull(holder[0].blankNotice(holder[0].view(blue)));
+			assertSame(red, holder[0].view(red));
 			assertEquals(10, blue.getOverallRank());
 		});
+	}
+
+	@Test
+	public void onlyBoardsWithARowGetATabAndComparisonAddsTheOtherPlayers() throws Exception
+	{
+		HiscoreResult blue = result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000);
+		HiscoreResult red = result(AccountType.REGULAR, HiscoreTable.ONE_DEFENCE, 20, 10000);
+		Set<RankLeaderboard> blueRows = EnumSet.of(RankLeaderboard.NORMAL, RankLeaderboard.IRONMAN, RankLeaderboard.HARDCORE);
+		RankSelector[] holder = new RankSelector[1];
+		SwingUtilities.invokeAndWait(() ->
+		{
+			// Skiller never answers, so its tab stays for a retry; every other board said "not found".
+			holder[0] = new RankSelector((name, table) -> CompletableFuture.completedFuture(
+				name.equals("Blue") && blueRows.contains(table) ? blue : null),
+				(name, table) -> table != RankLeaderboard.SKILLER, RankSelectorTest::noop);
+			holder[0].update(true, "Blue", blue, null, null);
+		});
+		SwingUtilities.invokeAndWait(() ->
+		{
+			assertEquals(EnumSet.of(RankLeaderboard.NORMAL, RankLeaderboard.IRONMAN, RankLeaderboard.HARDCORE,
+				RankLeaderboard.SKILLER), shown(holder[0]));
+			holder[0].update(true, "Blue", blue, "Red", red);
+		});
+		SwingUtilities.invokeAndWait(() -> assertEquals(EnumSet.complementOf(EnumSet.of(RankLeaderboard.ULTIMATE)),
+			shown(holder[0])));
+	}
+
+	private static Set<RankLeaderboard> shown(RankSelector selector)
+	{
+		Set<RankLeaderboard> shown = EnumSet.noneOf(RankLeaderboard.class);
+		for (RankLeaderboard table : RankLeaderboard.values())
+		{
+			if (selector.getComponent(table.ordinal()).isVisible()) shown.add(table);
+		}
+		return shown;
 	}
 
 	@Test
@@ -161,7 +192,7 @@ public class RankSelectorTest
 		HiscoreResult base = result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000);
 		SwingUtilities.invokeAndWait(() ->
 		{
-			RankSelector selector = new RankSelector((name, table) -> pending, RankSelectorTest::noop);
+			RankSelector selector = new RankSelector((name, table) -> pending, (name, table) -> false, RankSelectorTest::noop);
 			holder[0] = selector;
 			selector.update(true, "Blue", base, null, null);
 			selector.select(RankLeaderboard.NORMAL);
@@ -175,30 +206,36 @@ public class RankSelectorTest
 	}
 
 	@Test
-	public void aDeadHardcoreReadsTheFrozenRowAndMissingTablesKeepCurrentStats() throws Exception
+	public void aDeadHardcoreReadsTheFrozenRowAndABoardWithoutARowShowsNothing() throws Exception
 	{
-		RankSelector[] holder = new RankSelector[1];
 		HiscoreResult base = result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000);
 		SwingUtilities.invokeAndWait(() ->
 		{
-			holder[0] = new RankSelector((name, table) -> CompletableFuture.completedFuture(
-				table == RankLeaderboard.HARDCORE ? result(AccountType.HARDCORE_IRONMAN, HiscoreTable.STANDARD, 50, 5000) : null), RankSelectorTest::noop);
-			holder[0].update(true, "Blue", base, null, null);
-			holder[0].select(RankLeaderboard.HARDCORE);
-		});
-		SwingUtilities.invokeAndWait(() ->
-		{
-			assertEquals(50, holder[0].view(base).getOverallRank());
-			assertEquals(5000, holder[0].view(base).getTotalXp());
-			assertEquals(AccountType.IRONMAN, holder[0].view(base).getAccountType());
-			assertTrue(((JButton) holder[0].getComponent(2)).getToolTipText().contains("Stats frozen"));
-			holder[0].select(RankLeaderboard.ULTIMATE);
-		});
-		SwingUtilities.invokeAndWait(() ->
-		{
-			assertEquals(-1, holder[0].view(base).getOverallRank());
-			assertEquals(10000, holder[0].view(base).getTotalXp());
-			assertTrue(((JButton) holder[0].getComponent(3)).getToolTipText().contains("Unavailable"));
+			RankSelector selector = new RankSelector((name, table) -> CompletableFuture.completedFuture(
+				table == RankLeaderboard.HARDCORE ? result(AccountType.HARDCORE_IRONMAN, HiscoreTable.STANDARD, 50, 5000) : null),
+				(name, table) -> table == RankLeaderboard.ULTIMATE, RankSelectorTest::noop);
+			selector.update(true, "Blue", base, null, null);
+			selector.select(RankLeaderboard.HARDCORE);
+			HiscoreResult hardcore = selector.view(base);
+			assertEquals(50, hardcore.getOverallRank());
+			assertEquals(5000, hardcore.getTotalXp());
+			assertEquals(AccountType.IRONMAN, hardcore.getAccountType());
+			assertNull(selector.blankNotice(hardcore));
+			assertTrue(((JButton) selector.getComponent(2)).getToolTipText().contains("Stats frozen"));
+
+			selector.select(RankLeaderboard.ULTIMATE);
+			HiscoreResult ultimate = selector.view(base);
+			assertEquals("never another board's stats", -1, ultimate.getKc("Zulrah"));
+			assertEquals(-1, ultimate.getSkillLevel("attack"));
+			assertEquals(-1, ultimate.getActivityScore("Clue Scrolls (all)"));
+			assertEquals(0, ultimate.getTotalLevel());
+			assertTrue("today's log hides like a frozen row's", ultimate.isFrozen());
+			assertEquals("Not on this leaderboard", selector.blankNotice(ultimate));
+
+			selector.select(RankLeaderboard.PURE);
+			assertEquals(-1, selector.view(base).getKc("Zulrah"));
+			assertEquals("Unavailable; click to retry", selector.blankNotice(selector.view(base)));
+			assertTrue(((JButton) selector.getComponent(5)).getToolTipText().contains("Unavailable"));
 		});
 	}
 

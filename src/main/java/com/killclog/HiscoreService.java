@@ -145,6 +145,9 @@ public class HiscoreService
 	private final Cache<String, HiscoreResult> rankTables = CacheBuilder.newBuilder()
 		.maximumSize(256).expireAfterWrite(CACHE_TTL_MS, TimeUnit.MILLISECONDS).build();
 	private final ConcurrentHashMap<String, CompletableFuture<HiscoreResult>> rankRequests = new ConcurrentHashMap<>();
+	/** Boards Jagex answered "not found" on: the player has no row there to show. */
+	private final Cache<String, Boolean> absentTables = CacheBuilder.newBuilder()
+		.maximumSize(256).expireAfterWrite(CACHE_TTL_MS, TimeUnit.MILLISECONDS).build();
 
 	static final String LEAGUE_TABLE = "hiscore_oldschool_seasonal";
 
@@ -153,13 +156,20 @@ public class HiscoreService
 		return lookupTable(player, table.endpoint);
 	}
 
+	/** True once Jagex has said this player has no row on this leaderboard. */
+	boolean notOnBoard(String player, RankLeaderboard table)
+	{
+		return absentTables.getIfPresent(rankKey(table.endpoint,
+			URLEncoder.encode(player.toLowerCase(Locale.ROOT), StandardCharsets.UTF_8))) != null;
+	}
+
 	/** One leaderboard's full row for a player; null when absent or unreachable. */
 	CompletableFuture<HiscoreResult> lookupTable(String player, String endpoint)
 	{
 		String encoded = URLEncoder.encode(player.toLowerCase(Locale.ROOT), StandardCharsets.UTF_8);
 		String key = rankKey(endpoint, encoded);
 		HiscoreResult cached = rankTables.getIfPresent(key);
-		if (cached != null) return CompletableFuture.completedFuture(cached);
+		if (cached != null || absentTables.getIfPresent(key) != null) return CompletableFuture.completedFuture(cached);
 		return HttpUtil.singleFlightLookup(rankRequests, key,
 			() -> fetchAsync(endpoint, encoded).thenApply(body -> rankTables.getIfPresent(key)))
 			.completeOnTimeout(null, 12, TimeUnit.SECONDS).exceptionally(ex -> null);
@@ -771,7 +781,11 @@ public class HiscoreService
 			return CompletableFuture.supplyAsync(() -> null,
 				CompletableFuture.delayedExecutor(500, TimeUnit.MILLISECONDS))
 				.thenCompose(ignored -> fetchTable(hiscoreKey, encodedPlayer));
-		}).thenApply(result -> rememberRanks(hiscoreKey, encodedPlayer, result.body));
+		}).thenApply(result ->
+		{
+			if (result.status == FetchStatus.NOT_FOUND) absentTables.put(rankKey(hiscoreKey, encodedPlayer), true);
+			return rememberRanks(hiscoreKey, encodedPlayer, result.body);
+		});
 	}
 
 	private CompletableFuture<TableResponse> fetchTable(String hiscoreKey, String encodedPlayer)

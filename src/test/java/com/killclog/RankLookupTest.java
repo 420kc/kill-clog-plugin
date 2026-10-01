@@ -109,7 +109,49 @@ public class RankLookupTest
 		HiscoreService service = new HiscoreService(client, new Gson());
 		assertNull(service.lookupRanks("Test", RankLeaderboard.SKILLER).get(3, TimeUnit.SECONDS));
 		assertEquals(1, calls.get());
-		assertEquals(99, service.lookupRanks("Test", RankLeaderboard.SKILLER).get(3, TimeUnit.SECONDS).getOverallRank());
+		assertTrue(service.notOnBoard("TEST", RankLeaderboard.SKILLER));
+		assertNull("not found is remembered, not asked again",
+			service.lookupRanks("Test", RankLeaderboard.SKILLER).get(3, TimeUnit.SECONDS));
+		assertEquals(1, calls.get());
+		assertEquals(99, service.lookupRanks("Test", RankLeaderboard.PURE).get(3, TimeUnit.SECONDS).getOverallRank());
 		assertEquals(3, calls.get());
+		assertFalse(service.notOnBoard("Test", RankLeaderboard.PURE));
+	}
+
+	@Test
+	public void theLookupsOwnFanOutTellsWhichBoardsHaveARow() throws Exception
+	{
+		AtomicInteger calls = new AtomicInteger();
+		OkHttpClient client = new OkHttpClient.Builder().addInterceptor(chain ->
+		{
+			calls.incrementAndGet();
+			boolean ultimate = chain.request().url().encodedPath().contains("ultimate");
+			return response(chain, ultimate ? 404 : 200, ultimate ? "" : body(7));
+		}).build();
+		HiscoreService service = new HiscoreService(client, new Gson());
+		assertNotNull(service.lookup("Ye Ol Buck", null).get(3, TimeUnit.SECONDS));
+		int asked = calls.get();
+		assertTrue(service.notOnBoard("ye ol buck", RankLeaderboard.ULTIMATE));
+		assertFalse(service.notOnBoard("Ye Ol Buck", RankLeaderboard.HARDCORE));
+		assertNull(service.lookupRanks("Ye Ol Buck", RankLeaderboard.ULTIMATE).get(3, TimeUnit.SECONDS));
+		assertEquals(7, service.lookupRanks("Ye Ol Buck", RankLeaderboard.HARDCORE).get(3, TimeUnit.SECONDS).getOverallRank());
+		assertEquals("both answers came from the lookup itself", asked, calls.get());
+	}
+
+	@Test
+	public void anOutageIsNeverReadAsNotOnTheBoard() throws Exception
+	{
+		AtomicInteger calls = new AtomicInteger();
+		OkHttpClient client = new OkHttpClient.Builder().addInterceptor(chain ->
+		{
+			calls.incrementAndGet();
+			return response(chain, 503, "");
+		}).build();
+		HiscoreService service = new HiscoreService(client, new Gson());
+		assertNull(service.lookupRanks("Test", RankLeaderboard.ULTIMATE).get(5, TimeUnit.SECONDS));
+		assertFalse(service.notOnBoard("Test", RankLeaderboard.ULTIMATE));
+		int asked = calls.get();
+		assertNull(service.lookupRanks("Test", RankLeaderboard.ULTIMATE).get(5, TimeUnit.SECONDS));
+		assertTrue("an outage is asked again", calls.get() > asked);
 	}
 }

@@ -23,11 +23,18 @@ public class RankSelectorLayoutTest
 	public void footerStaysOutsideScrollAtNativeWidthsAndRendersPreview() throws Exception
 	{
 		BufferedImage preview = new BufferedImage(242, 180, BufferedImage.TYPE_INT_ARGB);
+		HiscoreResult base = RankSelectorTest.result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000);
+		RankSelector[] holder = new RankSelector[1];
+		// Every board has a row, so all six tabs must fit.
 		SwingUtilities.invokeAndWait(() ->
 		{
-			RankSelector selector = new RankSelector((name, table) -> new CompletableFuture<>(), RankSelectorLayoutTest::noop);
-			HiscoreResult base = RankSelectorTest.result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000);
-			selector.update(true, "Test Player", base, null, null);
+			holder[0] = new RankSelector((name, table) -> CompletableFuture.completedFuture(base),
+				(name, table) -> false, RankSelectorLayoutTest::noop);
+			holder[0].update(true, "Test Player", base, null, null);
+		});
+		SwingUtilities.invokeAndWait(() ->
+		{
+			RankSelector selector = holder[0];
 			PluginPanel panel = new PluginPanel()
 			{
 			};
@@ -44,6 +51,7 @@ public class RankSelectorLayoutTest
 				assertEquals(500, selector.getY() + selector.getHeight());
 				for (Component button : selector.getComponents())
 				{
+					assertTrue(button.isVisible());
 					assertEquals(3, button.getY());
 					assertTrue(button.getX() >= 0 && button.getX() + button.getWidth() <= width);
 				}
@@ -77,7 +85,8 @@ public class RankSelectorLayoutTest
 	{
 		SwingUtilities.invokeAndWait(() ->
 		{
-			RankSelector selector = new RankSelector((name, table) -> new CompletableFuture<>(), RankSelectorLayoutTest::noop);
+			RankSelector selector = new RankSelector((name, table) -> new CompletableFuture<>(), (name, table) -> false,
+				RankSelectorLayoutTest::noop);
 			selector.update(true, "Test Player",
 				RankSelectorTest.result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000), null, null);
 			for (int width : new int[]{225, 242, 320})

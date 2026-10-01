@@ -1,11 +1,13 @@
 package com.killclog;
 
 import java.awt.image.BufferedImage;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
+import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
 import net.runelite.api.Client;
 import net.runelite.client.callback.ClientThread;
@@ -292,8 +294,11 @@ public class LeagueViewPanelTest
 		HiscoreResult now = RankSelectorTest.result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000);
 		HiscoreResult atDeath = RankSelectorTest.result(AccountType.REGULAR, HiscoreTable.STANDARD, 50, 5000);
 		ClogResult log = new ClogResult("Friend", Map.of(), Map.of(), Map.of(), null, null);
+		when(hiscores.lookupRanks(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
 		when(hiscores.lookupRanks("Friend", RankLeaderboard.HARDCORE))
 			.thenReturn(CompletableFuture.completedFuture(atDeath));
+		when(hiscores.notOnBoard("Friend", RankLeaderboard.ULTIMATE)).thenReturn(true);
+		JLabel totalLevel = field(panel, "totalLvlCell", JLabel.class);
 		SwingUtilities.invokeAndWait(() ->
 		{
 			session.adoptState(now, log, null, "Friend");
@@ -305,8 +310,45 @@ public class LeagueViewPanelTest
 			assertEquals(5000, session.getHiscoreResult().getTotalXp());
 			assertNull(session.getClogResult());
 			assertEquals("Hardcore collection log not recorded", status.statusText());
+			ranks.select(RankLeaderboard.ULTIMATE);
+			assertEquals(-1, session.getHiscoreResult().getKc("Zulrah"));
+			assertNull(session.getClogResult());
+			assertEquals("Not on this leaderboard", status.statusText());
+			assertEquals("--", totalLevel.getText().trim());
 			ranks.select(RankLeaderboard.IRONMAN);
 			assertSame(log, session.getClogResult());
+			assertEquals(" ", status.statusText());
+			assertEquals("2277", totalLevel.getText().trim());
+		});
+	}
+
+	@Test
+	public void inAComparisonTheEmptySideExplainsItselfFirst() throws Exception
+	{
+		PanelStatusRow status = field(panel, "statusRow", PanelStatusRow.class);
+		RankSelector ranks = field(panel, "rankSelector", RankSelector.class);
+		ComparisonController comparison = field(panel, "comparison", ComparisonController.class);
+		Method update = KillClogPanel.class.getDeclaredMethod("updateRankPlayers");
+		update.setAccessible(true);
+		Constructor<?> compared = Class.forName("com.killclog.ComparisonController$ComparedPlayer").getDeclaredConstructors()[0];
+		compared.setAccessible(true);
+		HiscoreResult buck = RankSelectorTest.result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000);
+		Object main = compared.newInstance(1, RankSelectorTest.result(AccountType.IRONMAN, HiscoreTable.STANDARD, 20, 20000),
+			null, null, "Main");
+		when(hiscores.lookupRanks(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
+		when(hiscores.lookupRanks("Ye Ol Buck", RankLeaderboard.HARDCORE)).thenReturn(CompletableFuture.completedFuture(
+			RankSelectorTest.result(AccountType.REGULAR, HiscoreTable.STANDARD, 50, 5000)));
+		when(hiscores.notOnBoard("Main", RankLeaderboard.HARDCORE)).thenReturn(true);
+		SwingUtilities.invokeAndWait(() ->
+		{
+			session.adoptState(buck, null, null, "Ye Ol Buck");
+			setField(comparison, "compared", main);
+			setField(comparison, "comparisonMode", true);
+			invoke(update);
+			ranks.select(RankLeaderboard.HARDCORE);
+			// Ye Ol Buck's row is frozen and Main has none; the blank side is the one that needs saying.
+			assertEquals("Main: Not on this leaderboard", status.statusText());
+			ranks.select(RankLeaderboard.IRONMAN);
 			assertEquals(" ", status.statusText());
 		});
 	}
