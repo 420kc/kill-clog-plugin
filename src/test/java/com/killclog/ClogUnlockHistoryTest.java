@@ -96,13 +96,13 @@ public class ClogUnlockHistoryTest
 	}
 
 	@Test
-	public void renameMergeRetainsUnresolvedDatesWithoutDuplicates()
+	public void mergedCopiesRetainUnresolvedDatesWithoutDuplicates()
 	{
 		PlayerClogData oldName = new PlayerClogData();
 		oldName.pendingUnlocks = List.of(new PendingClogUnlock(List.of(2991, 2992), date, "owner"));
 		PlayerClogData newName = new PlayerClogData();
-		ClogRecords.mergeForMigration(newName, oldName);
-		ClogRecords.mergeForMigration(newName, new Gson().fromJson(new Gson().toJson(oldName), PlayerClogData.class));
+		ClogRecords.mergeOwn(newName, oldName, "owner");
+		ClogRecords.mergeOwn(newName, new Gson().fromJson(new Gson().toJson(oldName), PlayerClogData.class), "owner");
 		assertNotNull(newName.pendingUnlocks);
 		assertEquals(1, newName.pendingUnlocks.size());
 		Map<String, List<ClogResult.ClogItem>> obtained = items(2991);
