@@ -860,6 +860,52 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	@SuppressWarnings("unchecked")
+	public void theLadderPayloadKeepsTeamSizesSplitAndNamesEachBestsLane() throws Exception
+	{
+		when(configManager.getRSProfiles()).thenReturn(List.of(
+			new RuneScapeProfile(RSN, RuneScapeProfileType.STANDARD, HASH, "main"),
+			new RuneScapeProfile(RSN, RuneScapeProfileType.STANDARD, HASH, "frag"),
+			new RuneScapeProfile("Someone", RuneScapeProfileType.STANDARD, 99L, "other")));
+		Object[][] stored = {
+			{"personalbest", "rsprofile.main", "zulrah", 60.0},
+			{"personalbest", "rsprofile.frag", "zulrah", 55.5},
+			{"personalbest", "rsprofile.other", "zulrah", 1.0},
+			{"personalbest", "rsprofile.main", "chambers of xeric solo", 1500.0},
+			{"personalbest", "rsprofile.main", "chambers of xeric 5 players", 1200.0},
+			{"killclog", "rsprofile.main", "advlogpb.chambers of xeric solo", 1400.0},
+			{"killclog", "rsprofile.frag", "advlogpb.chambers of xeric 5 players", 1200.0},
+			{"personalbest", "rsprofile.main", "chambers of xeric challenge mode 3 players", 2000.0},
+			{"killclog", "rsprofile.main", "advlogpb.vorkath", 70.0},
+			{"personalbest", "rsprofile.frag", "leviathan", 150.0},
+			{"killclog", "rsprofile.other", "advlogpb.leviathan", 2.0}};
+		for (Object[] pb : stored)
+		{
+			when(configManager.getConfiguration(eq((String) pb[0]), eq((String) pb[1]), eq((String) pb[2]),
+				eq((java.lang.reflect.Type) double.class))).thenReturn((Double) pb[3]);
+		}
+		syncHandler.run();
+		settle();
+		ArgumentCaptor<java.util.Map<String, Double>> collapsed = ArgumentCaptor.forClass(java.util.Map.class);
+		ArgumentCaptor<java.util.Map<String, SyncService.DetailedPb>> detailed = ArgumentCaptor.forClass(java.util.Map.class);
+		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), any(), collapsed.capture(), detailed.capture(),
+			eq(7L), any(), anyInt(), eq(localClogCache), eq("main"));
+
+		java.util.Map<String, String> got = new java.util.TreeMap<>();
+		detailed.getValue().forEach((key, pb) -> got.put(key, pb.seconds + " " + pb.source));
+		java.util.Map<String, String> want = new java.util.TreeMap<>();
+		want.put("zulrah", "55.5 store");
+		want.put("chambers of xeric solo", "1400.0 advlog");
+		want.put("chambers of xeric 5 players", "1200.0 store");
+		want.put("chambers of xeric challenge mode 3 players", "2000.0 store");
+		want.put("vorkath", "70.0 advlog");
+		want.put("the leviathan", "150.0 store");
+		assertEquals("faster lane wins, a tie keeps the store, another account never counts", want, got);
+		assertEquals(Double.valueOf(55.5), collapsed.getValue().get("Zulrah"));
+		assertEquals(Double.valueOf(1200.0), collapsed.getValue().get("Chambers of Xeric"));
+	}
+
+	@Test
 	public void yourPbsComeFromTheViewedGamesOwnProfiles() throws Exception
 	{
 		KillclogService service = (KillclogService) field("killclogService");
