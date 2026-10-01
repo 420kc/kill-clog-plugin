@@ -227,7 +227,7 @@ public class RuneProfileServiceTest
 			+ "]}"
 			+ "]}"
 			+ "]}";
-		ClogResult r = service.parseCollectionLog("TestPlayer", json);
+		ClogResult r = service.parseCollectionLogOutcome("TestPlayer", json, null).result;
 		assertNotNull(r);
 		assertTrue(r.isFromRuneProfile());
 		assertFalse(r.isFromTemple());
@@ -263,7 +263,7 @@ public class RuneProfileServiceTest
 			+ "]}"
 			+ "]}"
 			+ "]}";
-		ClogResult r = service.parseCollectionLog("multi", json);
+		ClogResult r = service.parseCollectionLogOutcome("multi", json, null).result;
 		assertNotNull(r);
 		assertEquals(2, r.getCategoryItems().size());
 		assertTrue(r.getCategoryItems().containsKey("vorkath"));
@@ -284,7 +284,7 @@ public class RuneProfileServiceTest
 			+ "]}"
 			+ "]}"
 			+ "]}";
-		assertNull(service.parseCollectionLog("dry", json));
+		assertNull(service.parseCollectionLogOutcome("dry", json, null).result);
 	}
 
 	@Test
@@ -297,7 +297,7 @@ public class RuneProfileServiceTest
 			+ "]}"
 			+ "]}"
 			+ "]}";
-		ClogResult result = service.parseCollectionLog("inconsistent-root", json);
+		ClogResult result = service.parseCollectionLogOutcome("inconsistent-root", json, null).result;
 		assertNotNull(result);
 		assertTrue(result.isFromRuneProfile());
 		assertEquals(1, result.getObtainedItems().get("cerberus").size());
@@ -313,7 +313,7 @@ public class RuneProfileServiceTest
 			+ "]}"
 			+ "]}"
 			+ "]}";
-		assertNull(service.parseCollectionLog("invalid", json));
+		assertNull(service.parseCollectionLogOutcome("invalid", json, null).result);
 	}
 
 	@Test
@@ -522,7 +522,7 @@ public class RuneProfileServiceTest
 			+ "]}"
 			+ "]}"
 			+ "]}";
-		ClogResult r = service.parseCollectionLog("names", json);
+		ClogResult r = service.parseCollectionLogOutcome("names", json, null).result;
 		assertNotNull(r);
 		// Item 12921 has a name and is considered resolved.
 		assertTrue(r.isItemResolved(12921));
@@ -538,7 +538,7 @@ public class RuneProfileServiceTest
 			+ "{\"name\":\"Graardor\",\"items\":[{\"id\":1,\"name\":\"B\",\"quantity\":1}]}"
 			+ "]}"
 			+ "]}";
-		ClogResult r = service.parseCollectionLog("gim", json, AccountType.GROUP_IRONMAN);
+		ClogResult r = service.parseCollectionLogOutcome("gim", json, AccountType.GROUP_IRONMAN).result;
 		assertNotNull(r);
 		assertEquals(AccountType.GROUP_IRONMAN, r.getProviderAccountType());
 	}
@@ -551,7 +551,7 @@ public class RuneProfileServiceTest
 			+ "{\"name\":\"Graardor\",\"items\":[{\"id\":1,\"name\":\"B\",\"quantity\":1}]}"
 			+ "]}"
 			+ "]}";
-		ClogResult r = service.parseCollectionLog("nodate", json);
+		ClogResult r = service.parseCollectionLogOutcome("nodate", json, null).result;
 		assertNotNull(r);
 		assertNull(r.getLastChanged());
 		assertNull(r.getProviderAccountType());
@@ -560,7 +560,7 @@ public class RuneProfileServiceTest
 	@Test
 	public void testParseClogEmptyTabs()
 	{
-		assertNull(service.parseCollectionLog("empty", "{\"obtained\":0,\"total\":0,\"tabs\":[]}"));
+		assertNull(service.parseCollectionLogOutcome("empty", "{\"obtained\":0,\"total\":0,\"tabs\":[]}", null).result);
 	}
 
 	@Test
@@ -571,26 +571,26 @@ public class RuneProfileServiceTest
 			+ "{\"name\":\"Cerberus\",\"items\":[]}"
 			+ "]}"
 			+ "]}";
-		assertNull(service.parseCollectionLog("empty-page", json));
+		assertNull(service.parseCollectionLogOutcome("empty-page", json, null).result);
 	}
 
 	@Test
 	public void testParseClogMissingTabs()
 	{
-		assertNull(service.parseCollectionLog("none", "{\"obtained\":0,\"total\":0}"));
+		assertNull(service.parseCollectionLogOutcome("none", "{\"obtained\":0,\"total\":0}", null).result);
 	}
 
 	@Test
 	public void testParseClogTabsNotArray()
 	{
-		assertNull(service.parseCollectionLog("bad", "{\"tabs\":{}}"));
+		assertNull(service.parseCollectionLogOutcome("bad", "{\"tabs\":{}}", null).result);
 	}
 
 	@Test
 	public void testParseClogGarbage()
 	{
-		assertNull(service.parseCollectionLog("x", "not json at all"));
-		assertNull(service.parseCollectionLog("x", ""));
+		assertNull(service.parseCollectionLogOutcome("x", "not json at all", null).result);
+		assertNull(service.parseCollectionLogOutcome("x", "", null).result);
 	}
 
 	@Test
@@ -602,7 +602,7 @@ public class RuneProfileServiceTest
 			+ "{\"name\":\"Zilyana\",\"items\":[42,{\"id\":1,\"name\":\"A\",\"quantity\":1}]}"
 			+ "]}"
 			+ "]}";
-		ClogResult r = service.parseCollectionLog("partial", json);
+		ClogResult r = service.parseCollectionLogOutcome("partial", json, null).result;
 		assertNotNull(r);
 		assertEquals(1, r.getObtainedItems().get("zilyana").size());
 	}
@@ -616,7 +616,7 @@ public class RuneProfileServiceTest
 			+ "{\"items\":[{\"id\":1,\"name\":\"X\",\"quantity\":1}]}"
 			+ "]}"
 			+ "]}";
-		ClogResult r = service.parseCollectionLog("nopage", json);
+		ClogResult r = service.parseCollectionLogOutcome("nopage", json, null).result;
 		// No valid pages means empty categories, so parsing returns null.
 		assertNull(r);
 	}
