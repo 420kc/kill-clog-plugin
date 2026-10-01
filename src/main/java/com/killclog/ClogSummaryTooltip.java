@@ -27,7 +27,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private static final int ICON_SIZE = 13;
 	private static final int ICON_GAP = 3;
 	private static final int SEPARATOR_PAD = 2;
-	private static final int SUBHEADER_HEIGHT = 16;
 	private static final int RECENT_SIZE = 24;
 	private static final int RECENT_PAD = 6;
 	private static final int DATE_GAP = 1;
@@ -425,8 +424,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 		if (!tabs.isEmpty())
 		{
-			y = paintSubheader(g2, w, y, "Collection Log");
-			g2.setFont(FontManager.getRunescapeSmallFont());
+			y = paintSubheader(g2, paintSeparator(g2, w, y, SEPARATOR_PAD), "Collection Log");
 			for (Map.Entry<String, int[]> tab : tabs.entrySet())
 			{
 				int[] count = tab.getValue();
@@ -439,7 +437,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 		// Highlights: the trophy shelf, present only when earned.
 		if (specialCount > 0 && specialSprites != null)
 		{
-			y = paintSubheader(g2, w, y, "Highlights");
+			y = paintSubheader(g2, paintSeparator(g2, w, y, SEPARATOR_PAD), "Highlights");
 			paintItemRow(g2, hitBoxes, 0, inset, y, w - 2 * inset,
 				specialSprites, specialIds, specialNames, null, RECENT_SIZE, fm);
 			y += RECENT_SIZE;
@@ -450,7 +448,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 		// Recent items section
 		if (recentCount > 0 && recentSprites != null)
 		{
-			y = paintSubheader(g2, w, y, "Recent");
+			y = paintSubheader(g2, paintSeparator(g2, w, y, SEPARATOR_PAD), "Recent");
 			paintItemRow(g2, hitBoxes, 1, inset, y, w - 2 * inset,
 				recentSprites, recentIds, recentNames, recentDates, recentCellWidth(fm), fm);
 			y += RECENT_SIZE;
@@ -513,16 +511,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 		}
 
 		itemHover.setHitBoxes(hitBoxes);
-	}
-
-	/** Separator plus a bold orange subheader; returns the Y under the header. */
-	private int paintSubheader(Graphics2D g2, int w, int y, String label)
-	{
-		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
-		g2.setFont(FontManager.getRunescapeBoldFont());
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString(label, getInset(), y + g2.getFontMetrics().getAscent());
-		return y + SUBHEADER_HEIGHT;
 	}
 
 	/**

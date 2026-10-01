@@ -26,7 +26,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private static final int WEAPON_PAD = 6;
 	private static final int SEPARATOR_PAD = 2;
 	private static final int SECTION_GAP = 4;
-	private static final int SUBHEADER_HEIGHT = 16;
 	private static final int CA_ROW_HEIGHT = 18;
 	private static final int CA_REWARD_GAP = 3;
 	// The combat level leads the card beside the combat cell's own icon, with room around it.
@@ -278,8 +277,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 		// The combat level leads the card; PvM and PvP each follow under their own subheader.
 		y = paintLevel(g2, inset, y + LEVEL_GAP_ABOVE) + LEVEL_GAP_BELOW;
-		y = paintSubheader(g2, inset, y, "PvM Summary");
-		g2.setFont(FontManager.getRunescapeSmallFont());
+		y = paintSubheader(g2, y, "PvM Summary");
 
 		// CA Tier appears first when data is available.
 		if (caResult != null)
@@ -332,22 +330,10 @@ public class PvmSummaryTooltip extends TitleTooltip
 		// Separator: stats to Slayer.
 		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
 
-		// "Slayer" subheader.
-		g2.setFont(FontManager.getRunescapeBoldFont());
-		FontMetrics bfm = g2.getFontMetrics();
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString("Slayer", inset, y + bfm.getAscent());
-		y += SUBHEADER_HEIGHT;
-
-		// Slayer progress.
-		g2.setFont(FontManager.getRunescapeSmallFont());
-		fm = g2.getFontMetrics();
+		y = paintSubheader(g2, y, "Slayer");
 		paintSlayerLine(g2, fm, inset, y);
 		y += LINE_HEIGHT * slayerRowCount();
 		y += WEAPON_PAD;
-
-		g2.setFont(FontManager.getRunescapeSmallFont());
-		fm = g2.getFontMetrics();
 		paintQuantitySpriteRow(g2, fm, inset, y, w - 2 * inset,
 			superiorSprites, superiorCounts, WEAPON_SIZE, WEAPON_PAD);
 		addRowHitBoxes(hitBoxes, 0, inset, y, w - 2 * inset,
@@ -359,16 +345,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		// Separator: Slayer to raids.
 		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
 
-		// "Raids" subheader.
-		g2.setFont(FontManager.getRunescapeBoldFont());
-		bfm = g2.getFontMetrics();
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString("Raids", inset, y + bfm.getAscent());
-		y += SUBHEADER_HEIGHT;
-
-		// Raid lines.
-		g2.setFont(FontManager.getRunescapeSmallFont());
-		fm = g2.getFontMetrics();
+		y = paintSubheader(g2, y, "Raids");
 		paintRaidLine(g2, fm, inset, y, "CoX: ", coxKc, coxObtained, coxTotal);
 		y += LINE_HEIGHT;
 		paintRaidLine(g2, fm, inset, y, "ToB: ", tobKc, tobObtained, tobTotal);
@@ -378,8 +355,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 		y += WEAPON_PAD;
 
 		// Center the three weapon sprites.
-		g2.setFont(FontManager.getRunescapeSmallFont());
-		fm = g2.getFontMetrics();
 		paintQuantitySpriteRow(g2, fm, inset, y, w - 2 * inset,
 			weaponSprites, weaponCounts, WEAPON_SIZE, WEAPON_PAD);
 		addRowHitBoxes(hitBoxes, 1, inset, y, w - 2 * inset,
@@ -388,19 +363,10 @@ public class PvmSummaryTooltip extends TitleTooltip
 		y += WEAPON_SIZE + hoverRowHeight(fm);
 
 		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
-		y = paintSubheader(g2, inset, y, "PvP Summary");
-		g2.setFont(FontManager.getRunescapeSmallFont());
-		pvpRows.paint(g2, g2.getFontMetrics(), inset, y);
+		y = paintSubheader(g2, y, "PvP Summary");
+		pvpRows.paint(g2, fm, inset, y);
 
 		itemHover.setHitBoxes(hitBoxes);
-	}
-
-	private int paintSubheader(Graphics2D g2, int inset, int y, String text)
-	{
-		g2.setFont(FontManager.getRunescapeBoldFont());
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString(text, inset, y + g2.getFontMetrics().getAscent());
-		return y + SUBHEADER_HEIGHT;
 	}
 
 	/**
