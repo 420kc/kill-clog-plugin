@@ -100,11 +100,25 @@ final class StoreMigration
 	{
 		Map<String, String> ledger = ledgerNames(gson, folder.join(LEDGER));
 		Map<String, List<Candidate>> own = new LinkedHashMap<>();
+		Map<String, PlayerClogData> earlier = new HashMap<>();
 		for (Filepath file : list(folder))
 		{
 			String name = file.getFileName();
-			if (!name.endsWith(".json") || (name.startsWith(".") && !name.startsWith(SIDECAR))
-				|| name.matches("[0-9a-f]{16}\\.json"))
+			if (name.matches("[0-9a-f]{16}\\.json"))
+			{
+				// An interrupted earlier run's own log stays only when whole and named for its owner.
+				PlayerClogData data = read(gson, file, PlayerClogData.class);
+				if (data != null && name.equals(LocalClogCache.ownFile(data.ownerHash)))
+				{
+					earlier.put(data.ownerHash, data);
+				}
+				else
+				{
+					LocalClogCache.atomicMove(file, folder.join(".unreadable-" + name + "-" + System.currentTimeMillis() + ".json"));
+				}
+				continue;
+			}
+			if (!name.endsWith(".json") || (name.startsWith(".") && !name.startsWith(SIDECAR)))
 			{
 				continue;
 			}
@@ -126,7 +140,7 @@ final class StoreMigration
 		}
 		for (Map.Entry<String, List<Candidate>> entry : own.entrySet())
 		{
-			mergeOwn(gson, folder, entry.getKey(), entry.getValue(), ledger.get(entry.getKey()));
+			writeOwn(gson, folder, entry.getKey(), entry.getValue(), earlier.get(entry.getKey()), ledger.get(entry.getKey()));
 		}
 		Filepath ca = folder.join("ca");
 		if (ca.isDirectory())
@@ -146,11 +160,14 @@ final class StoreMigration
 		}
 	}
 
-	/** The stamped hash, when first-party evidence backs it and a sidecar's name agrees. */
+	/**
+	 * The stamped hash, when first-party evidence backs it and a sidecar's name
+	 * agrees. A file without a marker map predates marking and is never proof.
+	 */
 	private static String provenOwner(String fileName, PlayerClogData data)
 	{
 		String hash = data.ownerHash;
-		if (hash == null || !hash.matches("-?\\d{1,19}")
+		if (hash == null || !hash.matches("-?\\d{1,19}") || data.firstPartyByCategory == null
 			|| fileName.startsWith(SIDECAR) && !fileName.startsWith(SIDECAR + hash + "-"))
 		{
 			return null;
@@ -160,44 +177,26 @@ final class StoreMigration
 		return evidence ? hash : null;
 	}
 
-	private static void mergeOwn(Gson gson, Filepath folder, String hash, List<Candidate> candidates,
-		String ledgerName) throws IOException
+	/**
+	 * One account's own log from its proven copies, each cut to its first-party
+	 * core. The base is an earlier run's result, else what 2.4 serves for the
+	 * account: its ledger name, then its parked copy, then the newest.
+	 */
+	private static void writeOwn(Gson gson, Filepath folder, String hash, List<Candidate> candidates,
+		PlayerClogData earlier, String ledgerName) throws IOException
 	{
-		Filepath dest = folder.join(ownFileName(hash));
-		PlayerClogData base = null;
-		if (!LocalClogCache.absent(dest))
-		{
-			// An interrupted earlier run: trust it only when it is whole and this account's.
-			PlayerClogData existing = read(gson, dest, PlayerClogData.class);
-			if (existing != null && hash.equals(existing.ownerHash)
-				&& (ClogRecords.hasFirstPartyMarks(existing) || ClogRecords.hasCompletedFirstPartySetup(existing)))
-			{
-				base = existing;
-			}
-			else
-			{
-				LocalClogCache.atomicMove(dest, folder.join(".unreadable-" + ownFileName(hash) + "-"
-					+ System.currentTimeMillis() + ".json"));
-			}
-		}
 		List<Candidate> ordered = new ArrayList<>(candidates);
-		// Without an earlier result, the base is what 2.4 serves for this account:
-		// its ledger name, then its parked copy, then the newest.
 		String served = ledgerName != null ? LocalClogCache.fileName(ledgerName) : null;
 		ordered.sort(Comparator.<Candidate, Boolean>comparing(c -> !c.file.getFileName().equals(served))
 			.thenComparing(c -> !c.file.getFileName().startsWith(SIDECAR))
 			.thenComparing(c -> c.data.lastUpdated, Comparator.nullsLast(Comparator.reverseOrder())));
+		PlayerClogData merged = earlier != null ? ClogRecords.ownCore(earlier, hash) : null;
 		for (Candidate candidate : ordered)
 		{
-			base = base == null ? candidate.data : ClogRecords.mergeOwn(base, candidate.data, hash);
+			PlayerClogData core = ClogRecords.ownCore(candidate.data, hash);
+			merged = merged == null ? core : ClogRecords.mergeOwn(merged, core);
 		}
-		base.ownerHash = hash;
-		base.firstPartySetupComplete = ClogRecords.hasCompletedFirstPartySetup(base);
-		if (base.firstPartyByCategory == null)
-		{
-			base.firstPartyByCategory = new HashMap<>();
-		}
-		write(gson, folder, dest, base);
+		write(gson, folder, folder.join(ownFileName(hash)), merged);
 		for (Candidate candidate : candidates)
 		{
 			archive(folder, candidate.file, LEGACY);

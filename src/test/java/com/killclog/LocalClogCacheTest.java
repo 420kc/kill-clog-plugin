@@ -241,11 +241,10 @@ public class LocalClogCacheTest
 		Map<String, List<Integer>> cats = categoryItems("hats", 2978, 2991, 2992);
 		cache.cacheResult(clog("Tester", cats, obtainedItems("hats", 2978)));
 		cache.rememberPendingUnlock("Tester", List.of(2991, 2992));
-		PlayerClogData saved = gson.fromJson(Files.readString(ownFile(dir, HASH).toPath()), PlayerClogData.class);
-		assertNull(saved.pendingUnlocks);
+		assertFalse("a provider copy makes no own log to hold it", ownFile(dir, HASH).exists());
 		cache.cacheFirstPartyResult(clog("Tester", cats, obtainedItems("hats", 2978)));
 		cache.rememberPendingUnlock("Tester", List.of(2991, 2992));
-		saved = gson.fromJson(Files.readString(ownFile(dir, HASH).toPath()), PlayerClogData.class);
+		PlayerClogData saved = gson.fromJson(Files.readString(ownFile(dir, HASH).toPath()), PlayerClogData.class);
 		assertEquals(1, saved.pendingUnlocks.size());
 	}
 
@@ -333,7 +332,7 @@ public class LocalClogCacheTest
 		Map<String, List<Integer>> categories = new HashMap<>();
 		categories.put("magus", itemList(1, 2, 3));
 		categories.put("all_pets", itemList(2, 4));
-		cache.cacheResult(clog("Fast 07", categories, obtainedItems("magus", 1)));
+		cache.cacheFirstPartyResult(clog("Fast 07", categories, obtainedItems("magus", 1)));
 
 		boolean changed = cache.mergeObtainedItem("Fast 07", 2, itemListAsStrings("magus", "all_pets"), categories);
 
@@ -349,7 +348,7 @@ public class LocalClogCacheTest
 	{
 		LocalClogCache cache = memory("Fast 07");
 		Map<String, List<Integer>> categories = categoryItems("magus", 1, 2, 3);
-		cache.cacheResult(clog("Fast 07", categories, obtainedItems("magus", 1, 2)));
+		cache.cacheFirstPartyResult(clog("Fast 07", categories, obtainedItems("magus", 1, 2)));
 		assertFalse(cache.mergeObtainedItem("Fast 07", 2, itemListAsStrings("magus"), categories));
 		assertEquals(2, cache.toClogResult("Fast 07", Collections.emptyMap()).getObtainedItems().get("magus").size());
 	}
@@ -409,7 +408,7 @@ public class LocalClogCacheTest
 	{
 		LocalClogCache cache = memory("Fast 07");
 		Map<String, List<Integer>> categories = categoryItems("vorkath", 1, 2, 3);
-		cache.cacheResult(clog("Fast 07", categories, obtainedItems("vorkath", 1)));
+		cache.cacheFirstPartyResult(clog("Fast 07", categories, obtainedItems("vorkath", 1)));
 		cache.mergeObtainedItem("Fast 07", 2, itemListAsStrings("vorkath"), categories, 421, "Vorkath");
 
 		// A later chalice capture rebuilds the log with bare items; the
@@ -431,7 +430,7 @@ public class LocalClogCacheTest
 	{
 		LocalClogCache cache = memory("Fast 07");
 		Map<String, List<Integer>> categories = categoryItems("vorkath", 1, 2, 3);
-		cache.cacheResult(clog("Fast 07", categories, obtainedItems("vorkath", 1)));
+		cache.cacheFirstPartyResult(clog("Fast 07", categories, obtainedItems("vorkath", 1)));
 		cache.mergeObtainedItem("Fast 07", 2, itemListAsStrings("vorkath"), categories, 421, "Vorkath");
 
 		Map<String, List<ClogResult.ClogItem>> providerObtained = new HashMap<>();
@@ -472,7 +471,7 @@ public class LocalClogCacheTest
 				dated.add(new ClogResult.ClogItem(i, 1, "2026-07-19 10:00:00"));
 			}
 			seeded.put("vorkath", seedItems);
-			cache.cacheResult(clog("Fast 07", categories, seeded));
+			cache.cacheFirstPartyResult(clog("Fast 07", categories, seeded));
 			Map<String, List<ClogResult.ClogItem>> providerDates = new HashMap<>();
 			providerDates.put("vorkath", dated);
 
@@ -519,23 +518,26 @@ public class LocalClogCacheTest
 	// First-party marking: the sync payload's provenance boundary.
 
 	@Test
-	public void testProviderResultsNeverEnterTheSyncPayload() throws Exception
+	public void providerResultsNeverEnterTheLoggedInPlayersOwnLog() throws Exception
 	{
 		LocalClogCache cache = memory("Zezima");
 		final int[] notified = {0};
 		cache.setFirstPartyChangedListener(() -> notified[0]++);
 		cache.cacheResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3), obtainedItems("zulrah", 1, 2)));
 		assertEquals("provider writes never fire the sync trigger", 0, notified[0]);
-		assertEquals(2, cache.toClogResult("Zezima", Collections.emptyMap()).getObtainedItems().get("zulrah").size());
-		ClogResult payload = cache.toFirstPartySyncResult("Zezima");
-		assertNotNull(payload);
-		assertTrue("the sync payload carries none of it", payload.getObtainedItems().isEmpty());
+		assertFalse("they make no own log", cache.hasDataFor("Zezima"));
+		assertNull(cache.toFirstPartySyncResult("Zezima"));
+		assertFalse("and a live unlock needs the account's own log", cache.mergeObtainedItem("Zezima", 3,
+			itemListAsStrings("zulrah"), categoryItems("zulrah", 1, 2, 3)));
 
+		cache.cacheFirstPartyResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3), obtainedItems("zulrah", 1)));
+		cache.cacheResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3), obtainedItems("zulrah", 1, 2)));
+		assertEquals("a later provider copy changes nothing", 1,
+			cache.toFirstPartySyncResult("Zezima").getObtainedItems().get("zulrah").size());
 		cache.mergeObtainedItem("Zezima", 3, itemListAsStrings("zulrah"), categoryItems("zulrah", 1, 2, 3));
-		assertEquals(1, notified[0]);
-		ClogResult after = cache.toFirstPartySyncResult("Zezima");
-		assertEquals(1, after.getObtainedItems().get("zulrah").size());
-		assertEquals(3, after.getObtainedItems().get("zulrah").get(0).getId());
+		assertEquals(2, notified[0]);
+		assertEquals(2, cache.toFirstPartySyncResult("Zezima").getObtainedItems().get("zulrah").size());
+		assertEquals(2, cache.toClogResult("Zezima", Collections.emptyMap()).getObtainedItems().get("zulrah").size());
 	}
 
 	@Test
@@ -550,10 +552,10 @@ public class LocalClogCacheTest
 	}
 
 	@Test
-	public void testProviderRefreshCannotReplaceOrRemoveMarkedRecords() throws Exception
+	public void providerRefreshesCannotTouchACapturedRecord() throws Exception
 	{
 		LocalClogCache cache = memory("Zezima");
-		cache.cacheResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3), new HashMap<>()));
+		cache.cacheFirstPartyResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3), new HashMap<>()));
 		cache.mergeObtainedItem("Zezima", 1, itemListAsStrings("zulrah"), categoryItems("zulrah", 1, 2, 3), 420, "Zulrah");
 
 		Map<String, List<ClogResult.ClogItem>> providerObtained = new HashMap<>();
@@ -561,40 +563,36 @@ public class LocalClogCacheTest
 			new ClogResult.ClogItem(1, 99, "2026-01-01 00:00:00"),
 			new ClogResult.ClogItem(2, 1, "2026-01-01 00:00:00"))));
 		cache.cacheResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3), providerObtained));
+		Map<String, List<ClogResult.ClogItem>> staleObtained = new HashMap<>();
+		staleObtained.put("zulrah", new ArrayList<>(List.of(new ClogResult.ClogItem(2, 1, "2026-01-01 00:00:00"))));
+		cache.cacheResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3), staleObtained));
 
 		ClogResult payload = cache.toFirstPartySyncResult("Zezima");
 		assertEquals(1, payload.getObtainedItems().get("zulrah").size());
 		ClogResult.ClogItem kept = payload.getObtainedItems().get("zulrah").get(0);
 		assertEquals(1, kept.getId());
-		assertEquals("client-observed quantity survives the refresh", 1, kept.getCount());
-		assertEquals("provenance survives the refresh", 420, kept.getObtainedAtKc());
-
-		Map<String, List<ClogResult.ClogItem>> staleObtained = new HashMap<>();
-		staleObtained.put("zulrah", new ArrayList<>(List.of(new ClogResult.ClogItem(2, 1, "2026-01-01 00:00:00"))));
-		cache.cacheResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3), staleObtained));
-		ClogResult afterStale = cache.toFirstPartySyncResult("Zezima");
-		assertEquals(1, afterStale.getObtainedItems().get("zulrah").size());
-		assertEquals(1, afterStale.getObtainedItems().get("zulrah").get(0).getId());
-		assertEquals(2, cache.toClogResult("Zezima", Collections.emptyMap()).getObtainedItems().get("zulrah").size());
+		assertEquals("client-observed quantity survives", 1, kept.getCount());
+		assertEquals("provenance survives", 420, kept.getObtainedAtKc());
+		assertEquals("the panel shows the own log", 1,
+			cache.toClogResult("Zezima", Collections.emptyMap()).getObtainedItems().get("zulrah").size());
 	}
 
 	@Test
-	public void testCrossCategoryProviderRecordCannotRideACaptureMark() throws Exception
+	public void aCaptureInOneCategoryCarriesNoProviderRecordFromAnother() throws Exception
 	{
 		LocalClogCache cache = memory("Zezima");
-		Map<String, List<ClogResult.ClogItem>> providerObtained = new HashMap<>();
-		providerObtained.put("clue_b", new ArrayList<>(List.of(new ClogResult.ClogItem(1, 99, "2026-01-01 00:00:00"))));
 		Map<String, List<Integer>> categories = new HashMap<>();
 		categories.put("clue_b", itemList(1, 5));
 		categories.put("boss_a", itemList(1, 6));
+		Map<String, List<ClogResult.ClogItem>> providerObtained = new HashMap<>();
+		providerObtained.put("clue_b", new ArrayList<>(List.of(new ClogResult.ClogItem(1, 99, "2026-01-01 00:00:00"))));
 		cache.cacheResult(clog("Zezima", categories, providerObtained));
+		cache.cacheFirstPartyResult(clog("Zezima", categories, new HashMap<>()));
 		cache.mergeObtainedItem("Zezima", 1, itemListAsStrings("boss_a"), categories, 420, "Boss A");
 
 		ClogResult payload = cache.toFirstPartySyncResult("Zezima");
 		assertNull("the provider-only category ships nothing", payload.getObtainedItems().get("clue_b"));
-		assertEquals(1, payload.getObtainedItems().get("boss_a").size());
 		assertEquals(1, payload.getObtainedItems().get("boss_a").get(0).getCount());
-		assertEquals(99, cache.toClogResult("Zezima", Collections.emptyMap()).getObtainedItems().get("clue_b").get(0).getCount());
 	}
 
 	@Test
@@ -605,8 +603,8 @@ public class LocalClogCacheTest
 		cache.cacheResult(clog("Newbie", categoryItems("zulrah", 1, 2, 3), obtainedItems("zulrah", 1, 2)));
 		ClogResult payload = cache.toFirstPartySyncResult("Newbie");
 		assertNotNull(payload);
-		assertTrue("provider items cannot ride a zero-capture store", payload.getObtainedItems().isEmpty());
-		assertEquals(2, cache.toClogResult("Newbie", Collections.emptyMap()).getObtainedItems().get("zulrah").size());
+		assertTrue("provider items cannot ride a zero-capture log", payload.getObtainedItems().isEmpty());
+		assertFalse(cache.hasFirstPartyDataFor("Newbie"));
 	}
 
 	@Test
@@ -618,15 +616,12 @@ public class LocalClogCacheTest
 		assertFalse(cache.hasFirstPartyDataFor("Zezima"));
 		assertFalse(cache.hasCompletedFirstPartySetupFor("Zezima"));
 
-		// A live unlock is honest first-party data, but not the full Search walk.
+		cache.cacheFirstPartyResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3), new HashMap<>(),
+			"2026-08-01 00:00:00", AccountType.REGULAR));
+		assertTrue("an empty walk completes setup", cache.hasCompletedFirstPartySetupFor("Zezima"));
+		assertFalse("but carries nothing", cache.hasFirstPartyDataFor("Zezima"));
 		cache.mergeObtainedItem("Zezima", 3, itemListAsStrings("zulrah"), categoryItems("zulrah", 1, 2, 3));
 		assertTrue(cache.hasFirstPartyDataFor("Zezima"));
-		assertFalse(cache.hasCompletedFirstPartySetupFor("Zezima"));
-
-		cache.cacheFirstPartyResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3), obtainedItems("zulrah", 1, 2),
-			"2026-08-01 00:00:00", AccountType.REGULAR));
-		assertTrue(cache.hasFirstPartyDataFor("Zezima"));
-		assertTrue(cache.hasCompletedFirstPartySetupFor("Zezima"));
 		assertTrue(cache.hasFirstPartyDataForActive());
 	}
 
