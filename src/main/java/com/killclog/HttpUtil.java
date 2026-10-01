@@ -129,7 +129,8 @@ final class HttpUtil
 			return values.get(key);
 		}
 
-		T ok(String key, T value)
+		/** Results land on many threads; storing and trimming as one step keeps the cap. */
+		synchronized T ok(String key, T value)
 		{
 			values.put(key, value);
 			fetched.put(key, System.currentTimeMillis());

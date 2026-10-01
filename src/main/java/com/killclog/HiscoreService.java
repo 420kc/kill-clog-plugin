@@ -263,7 +263,7 @@ public class HiscoreService
 		cacheResult(playerName, result, System.currentTimeMillis());
 	}
 
-	/* package */ void cacheResult(String playerName, HiscoreResult result, long now)
+	/* package */ synchronized void cacheResult(String playerName, HiscoreResult result, long now)
 	{
 		String key = playerName.toLowerCase(Locale.ROOT);
 		cache.put(key, new CachedResult(result, now));
