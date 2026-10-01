@@ -86,13 +86,13 @@ public class TitleTooltipTest
 	{
 		ClogSummaryTooltip tooltip = new ClogSummaryTooltip();
 		tooltip.setTitle("Clog Summary");
-		tooltip.setClogSources(true, true, true);
+		tooltip.setClogSources(true, true, true, false);
 		assertEquals(Arrays.asList("Kill Clog", "TempleOSRS", "RuneProfile"),
 			tooltip.sourceNames());
 
-		tooltip.setClogSources(false, true, false);
+		tooltip.setClogSources(false, true, false, false);
 		assertEquals(Collections.singletonList("RuneProfile"), tooltip.sourceNames());
-		tooltip.setClogSources(false, false, false);
+		tooltip.setClogSources(false, false, false, false);
 		assertTrue(tooltip.sourceNames().isEmpty());
 	}
 
@@ -129,7 +129,7 @@ public class TitleTooltipTest
 	{
 		ClogSummaryTooltip tooltip = new ClogSummaryTooltip();
 		tooltip.setTitle("Clog Summary");
-		tooltip.setClogSources(true, true, true);
+		tooltip.setClogSources(true, true, true, false);
 		Dimension idle = tooltip.getPreferredSize();
 		tooltip.setSize(idle);
 
@@ -157,9 +157,9 @@ public class TitleTooltipTest
 		tooltip.setTitle("Clog Summary");
 		Dimension withoutSources = tooltip.getPreferredSize();
 
-		tooltip.setClogSources(true, false, false);
+		tooltip.setClogSources(true, false, false, false);
 		assertTrue(tooltip.getPreferredSize().height > withoutSources.height);
-		tooltip.setClogSources(false, false, false);
+		tooltip.setClogSources(false, false, false, false);
 		assertEquals(withoutSources, tooltip.getPreferredSize());
 	}
 
@@ -168,10 +168,10 @@ public class TitleTooltipTest
 	{
 		ClogSummaryTooltip blue = new ClogSummaryTooltip();
 		blue.setTitle("Clog Summary");
-		blue.setClogSources(true, false, false);
+		blue.setClogSources(true, false, false, false);
 		ClogSummaryTooltip red = new ClogSummaryTooltip();
 		red.setTitle("Clog Summary");
-		red.setClogSources(false, true, false);
+		red.setClogSources(false, true, false, false);
 		SideBySideTooltip pair = new SideBySideTooltip("Blue", blue, "Red", red);
 		Dimension size = pair.getPreferredSize();
 		pair.setSize(size);
@@ -394,7 +394,7 @@ public class TitleTooltipTest
 		tooltip.setObtained(0, itemCount);
 		tooltip.setItems(itemCount,
 			itemCount == 2 ? Arrays.asList(1, 2) : Arrays.asList(1, 2, 3, 4, 5),
-			Collections.emptySet(), Collections.emptyMap(), null);
+			Collections.emptySet(), Collections.emptyMap(), Collections.emptyMap(), null);
 		return tooltip;
 	}
 
