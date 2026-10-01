@@ -290,9 +290,11 @@ public class KillclogService
 	 * absence: every cached first-party trace is EVICTED, not merely aged --
 	 * withdrawal must not be served for a cache TTL. Transient failures keep
 	 * stale data, because a server blip should not blank known-good results.
+	 * One response at a time, so a player's PBs and clog result are stored
+	 * and trimmed together.
 	 */
 	@Nullable
-	ClogResult onProofViewResponse(int code, @Nullable String body, String playerName, String key)
+	synchronized ClogResult onProofViewResponse(int code, @Nullable String body, String playerName, String key)
 	{
 		if (code == 404 || code == 451)
 		{
@@ -306,7 +308,10 @@ public class KillclogService
 			return clogs.fail(key);
 		}
 		breaker.success();
-		return clogs.ok(key, result);
+		clogs.ok(key, result);
+		// A player's PBs live exactly as long as the clog result they came with.
+		pbCache.keySet().retainAll(clogs.values.keySet());
+		return result;
 	}
 
 	/**
@@ -449,11 +454,6 @@ public class KillclogService
 			}
 
 			pbCache.put(key, parsePbs(root));
-			if (pbCache.size() > HttpUtil.CACHE_CAP)
-			{
-				// PBs go with the clog result they came with; this player's result is stored next.
-				pbCache.keySet().removeIf(other -> !other.equals(key) && !clogs.values.containsKey(other));
-			}
 			return result;
 		}
 		catch (Exception e)
