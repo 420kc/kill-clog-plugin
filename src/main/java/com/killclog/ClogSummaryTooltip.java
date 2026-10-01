@@ -68,18 +68,46 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private String notice;
 	private boolean firstTimeSetup;
 
-	private BufferedImage[] recentSprites;
-	private int recentCount;
-	private int[] recentIds;
-	private String[] recentNames;
-	private String[] recentDates;
+	// The trophy shelf holds only obtained specials; recent unlocks carry their dates.
+	// An empty shelf is null and paints nothing.
+	private Shelf special;
+	private Shelf recent;
 
-	// Trophy shelf: only obtained specials are ever set here; an empty shelf
-	// paints nothing.
-	private BufferedImage[] specialSprites;
-	private int specialCount;
-	private int[] specialIds;
-	private String[] specialNames;
+	/** One row of item sprites under its own subheader. */
+	static final class Shelf
+	{
+		final BufferedImage[] sprites;
+		final int[] ids;
+		final String[] names;
+		final String[] dates;
+
+		Shelf(BufferedImage[] sprites, int[] ids, String[] names, String[] dates)
+		{
+			this.sprites = sprites;
+			this.ids = ids;
+			this.names = names;
+			this.dates = dates;
+		}
+
+		boolean dated()
+		{
+			return dates != null && java.util.Arrays.stream(dates).anyMatch(java.util.Objects::nonNull);
+		}
+
+		/** Cells widen past the sprite when a date caption needs the room. */
+		int cellWidth(FontMetrics fm)
+		{
+			int w = RECENT_SIZE;
+			for (String date : dates != null ? dates : new String[0])
+			{
+				if (date != null)
+				{
+					w = Math.max(w, fm.stringWidth(date));
+				}
+			}
+			return w;
+		}
+	}
 
 	private final List<ClogSource> clogSources = new ArrayList<>(3);
 
@@ -193,45 +221,36 @@ public class ClogSummaryTooltip extends TitleTooltip
 	public void setRecentItems(List<ClogResult.ClogItem> recentItems, ClogResult clog,
 		ItemManager itemManager)
 	{
-		recentCount = recentItems.size();
-		if (recentCount == 0)
-		{
-			return;
-		}
-
-		recentSprites = new BufferedImage[recentCount];
-		recentIds = new int[recentCount];
-		recentNames = new String[recentCount];
-		recentDates = new String[recentCount];
-		for (int i = 0; i < recentCount; i++)
-		{
-			ClogResult.ClogItem item = recentItems.get(i);
-			recentIds[i] = item.getId();
-			recentNames[i] = clog != null ? clog.getItemName(item.getId()) : null;
-			recentDates[i] = shortDate(item.getDate());
-		}
-		loadClogItemSprites(recentItems, recentCount, RECENT_SIZE, recentSprites, itemManager);
+		recent = shelf(recentItems, clog, itemManager, true);
 	}
 
 	public void setSpecialItems(List<ClogResult.ClogItem> specialItems, ClogResult clog,
 		ItemManager itemManager)
 	{
-		specialCount = specialItems.size();
-		if (specialCount == 0)
-		{
-			return;
-		}
+		special = shelf(specialItems, clog, itemManager, false);
+	}
 
-		specialSprites = new BufferedImage[specialCount];
-		specialIds = new int[specialCount];
-		specialNames = new String[specialCount];
-		for (int i = 0; i < specialCount; i++)
+	private Shelf shelf(List<ClogResult.ClogItem> items, ClogResult clog, ItemManager itemManager, boolean dated)
+	{
+		int count = items.size();
+		if (count == 0)
 		{
-			ClogResult.ClogItem item = specialItems.get(i);
-			specialIds[i] = item.getId();
-			specialNames[i] = clog != null ? clog.getItemName(item.getId()) : null;
+			return null;
 		}
-		loadClogItemSprites(specialItems, specialCount, RECENT_SIZE, specialSprites, itemManager);
+		Shelf shelf = new Shelf(new BufferedImage[count], new int[count], new String[count],
+			dated ? new String[count] : null);
+		for (int i = 0; i < count; i++)
+		{
+			ClogResult.ClogItem item = items.get(i);
+			shelf.ids[i] = item.getId();
+			shelf.names[i] = clog != null ? clog.getItemName(item.getId()) : null;
+			if (dated)
+			{
+				shelf.dates[i] = shortDate(item.getDate());
+			}
+		}
+		loadClogItemSprites(items, count, RECENT_SIZE, shelf.sprites, itemManager);
+		return shelf;
 	}
 
 	/** "2026-07-04 ..." from the provider becomes "Jul 4"; anything else is dropped. */
@@ -321,34 +340,19 @@ public class ClogSummaryTooltip extends TitleTooltip
 				+ tabs.size() * (LINE_HEIGHT + BAR_HEIGHT + BAR_GAP);
 		}
 
-		// Highlights: obtained trophies only.
-		if (specialCount > 0)
+		// Highlights (obtained trophies only), then recent unlocks.
+		for (Shelf shelf : new Shelf[]{special, recent})
 		{
-			FontMetrics bfm = getFontMetrics(FontManager.getRunescapeBoldFont());
-			contentHeight += separatorHeight(SEPARATOR_PAD) + SUBHEADER_HEIGHT + RECENT_SIZE + hoverRowHeight(fm);
-
-			int rowWidth = specialCount * RECENT_SIZE + (specialCount - 1) * RECENT_PAD;
-			textWidth = Math.max(textWidth, rowWidth);
-			textWidth = Math.max(textWidth, bfm.stringWidth("Highlights"));
-		}
-
-		// Recent section.
-		if (recentCount > 0)
-		{
-			FontMetrics bfm = getFontMetrics(FontManager.getRunescapeBoldFont());
-			int separatorHeight = separatorHeight(SEPARATOR_PAD);
-			contentHeight += separatorHeight + SUBHEADER_HEIGHT + RECENT_SIZE + hoverRowHeight(fm);
-			if (hasRecentDates())
+			if (shelf != null)
 			{
-				contentHeight += DATE_GAP + fm.getHeight();
+				contentHeight += separatorHeight(SEPARATOR_PAD) + SUBHEADER_HEIGHT + shelfRowHeight(shelf, fm);
+				int count = shelf.ids.length;
+				textWidth = Math.max(textWidth, count * shelf.cellWidth(fm) + (count - 1) * RECENT_PAD);
 			}
-
-			int cellWidth = recentCellWidth(fm);
-			int spriteRowWidth = recentCount * cellWidth
-				+ (recentCount - 1) * RECENT_PAD;
-			textWidth = Math.max(textWidth, spriteRowWidth);
-			textWidth = Math.max(textWidth, bfm.stringWidth("Recent"));
 		}
+		FontMetrics bfm = getFontMetrics(FontManager.getRunescapeBoldFont());
+		textWidth = Math.max(textWidth, Math.max(special != null ? bfm.stringWidth("Highlights") : 0,
+			recent != null ? bfm.stringWidth("Recent") : 0));
 
 		// The footer: when it last changed and who supplied it, under one rule.
 		if (syncDate != null || !clogSources.isEmpty())
@@ -429,31 +433,9 @@ public class ClogSummaryTooltip extends TitleTooltip
 			}
 		}
 
-		// Highlights: the trophy shelf, present only when earned.
-		if (specialCount > 0 && specialSprites != null)
-		{
-			y = paintSubheader(g2, paintSeparator(g2, w, y, SEPARATOR_PAD), "Highlights");
-			paintItemRow(g2, hitBoxes, 0, inset, y, w - 2 * inset,
-				specialSprites, specialIds, specialNames, null, RECENT_SIZE, fm);
-			y += RECENT_SIZE;
-			paintSectionHoverLine(g2, fm, w, y, 0);
-			y += hoverRowHeight(fm);
-		}
-
-		// Recent items section
-		if (recentCount > 0 && recentSprites != null)
-		{
-			y = paintSubheader(g2, paintSeparator(g2, w, y, SEPARATOR_PAD), "Recent");
-			paintItemRow(g2, hitBoxes, 1, inset, y, w - 2 * inset,
-				recentSprites, recentIds, recentNames, recentDates, recentCellWidth(fm), fm);
-			y += RECENT_SIZE;
-			if (hasRecentDates())
-			{
-				y += DATE_GAP + fm.getHeight();
-			}
-			paintSectionHoverLine(g2, fm, w, y, 1);
-			y += hoverRowHeight(fm);
-		}
+		// The trophy shelf, present only when earned, then recent unlocks.
+		y = paintShelf(g2, hitBoxes, 0, "Highlights", special, w, y, fm);
+		y = paintShelf(g2, hitBoxes, 1, "Recent", recent, w, y, fm);
 
 		if (syncDate != null || !clogSources.isEmpty())
 		{
@@ -512,66 +494,45 @@ public class ClogSummaryTooltip extends TitleTooltip
 	 * Centered sprite row with hover hit boxes and optional date captions
 	 * under each cell.
 	 */
-	private void paintItemRow(Graphics2D g2, List<TooltipItemHover.HitBox> hitBoxes, int section,
-		int x, int y, int colWidth, BufferedImage[] sprites, int[] ids, String[] names,
-		String[] dates, int cellWidth, FontMetrics fm)
+	private int shelfRowHeight(Shelf shelf, FontMetrics fm)
 	{
-		int count = sprites.length;
-		int rowWidth = count * cellWidth + (count - 1) * RECENT_PAD;
-		int startX = x + (colWidth - rowWidth) / 2;
-		g2.setFont(FontManager.getRunescapeSmallFont());
+		return RECENT_SIZE + (shelf.dated() ? DATE_GAP + fm.getHeight() : 0) + hoverRowHeight(fm);
+	}
+
+	/** A shelf under its subheader: sprites centered in a row, dates below, then its hover line. */
+	private int paintShelf(Graphics2D g2, List<TooltipItemHover.HitBox> hitBoxes, int section, String title,
+		Shelf shelf, int w, int y, FontMetrics fm)
+	{
+		if (shelf == null)
+		{
+			return y;
+		}
+		y = paintSubheader(g2, paintSeparator(g2, w, y, SEPARATOR_PAD), title);
+		int inset = getInset();
+		int count = shelf.sprites.length;
+		int cellWidth = shelf.cellWidth(fm);
+		int startX = inset + (w - 2 * inset - (count * cellWidth + (count - 1) * RECENT_PAD)) / 2;
 		for (int i = 0; i < count; i++)
 		{
 			int cellX = startX + i * (cellWidth + RECENT_PAD);
 			int sx = cellX + (cellWidth - RECENT_SIZE) / 2;
-			if (sprites[i] != null)
+			if (shelf.sprites[i] != null)
 			{
-				g2.drawImage(sprites[i], sx, y, null);
+				g2.drawImage(shelf.sprites[i], sx, y, null);
 			}
-			hitBoxes.add(new TooltipItemHover.HitBox(section, ids[i], names[i],
+			hitBoxes.add(new TooltipItemHover.HitBox(section, shelf.ids[i], shelf.names[i],
 				new Rectangle(sx, y, RECENT_SIZE, RECENT_SIZE), true, 1));
-
-			String date = dates != null ? dates[i] : null;
+			String date = shelf.dates != null ? shelf.dates[i] : null;
 			if (date != null)
 			{
 				g2.setColor(MUTED_GRAY);
-				int dx = cellX + (cellWidth - fm.stringWidth(date)) / 2;
-				g2.drawString(date, dx, y + RECENT_SIZE + DATE_GAP + fm.getAscent());
+				g2.drawString(date, cellX + (cellWidth - fm.stringWidth(date)) / 2,
+					y + RECENT_SIZE + DATE_GAP + fm.getAscent());
 			}
 		}
-	}
-
-	private boolean hasRecentDates()
-	{
-		if (recentDates == null)
-		{
-			return false;
-		}
-		for (String date : recentDates)
-		{
-			if (date != null)
-			{
-				return true;
-			}
-		}
-		return false;
-	}
-
-	/** Recent cells widen past the sprite when a date caption needs the room. */
-	private int recentCellWidth(FontMetrics fm)
-	{
-		int w = RECENT_SIZE;
-		if (recentDates != null)
-		{
-			for (String date : recentDates)
-			{
-				if (date != null)
-				{
-					w = Math.max(w, fm.stringWidth(date));
-				}
-			}
-		}
-		return w;
+		y += shelfRowHeight(shelf, fm) - hoverRowHeight(fm);
+		paintSectionHoverLine(g2, fm, w, y, section);
+		return y + hoverRowHeight(fm);
 	}
 
 	@Override
