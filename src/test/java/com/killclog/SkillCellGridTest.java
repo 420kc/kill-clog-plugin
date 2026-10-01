@@ -204,7 +204,7 @@ public class SkillCellGridTest
 		{
 			SkillTooltip modal = (SkillTooltip) cells.labels().get(skill).createToolTip();
 			SkillTooltip plain = new SkillTooltip();
-			plain.setData(skill, hiscore, false);
+			plain.setData(skill, hiscore, false, Collections.emptyList(), null);
 			assertTrue(modal.sections().isEmpty());
 			assertEquals(plain.getTitleSuffix(), modal.getTitleSuffix());
 			assertEquals(plain.getPreferredSize(), modal.getPreferredSize());
@@ -381,7 +381,7 @@ public class SkillCellGridTest
 	public void xpToLevelFollowsRealAndVirtualLevelCaps()
 	{
 		SkillTooltip fresh = new SkillTooltip();
-		fresh.setData(Skill.HERBLORE, skillHiscores(Skill.HERBLORE, 1, 0, -1), false);
+		fresh.setData(Skill.HERBLORE, skillHiscores(Skill.HERBLORE, 1, 0, -1), false, Collections.emptyList(), null);
 		assertEquals("0", fresh.stats().xpText());
 		assertEquals("Unranked", fresh.stats().rankText());
 		assertEquals(format(Experience.getXpForLevel(2)), fresh.stats().xpToLevelText());
@@ -390,14 +390,14 @@ public class SkillCellGridTest
 		int virtualLevel = Experience.getLevelForXp((int) virtualXp);
 		SkillTooltip virtual = new SkillTooltip();
 		virtual.setData(Skill.HERBLORE,
-			skillHiscores(Skill.HERBLORE, 99, virtualXp, 1_075), true);
+			skillHiscores(Skill.HERBLORE, 99, virtualXp, 1_075), true, Collections.emptyList(), null);
 		assertEquals(String.valueOf(virtualLevel), virtual.stats().levelText());
 		assertEquals(format(Experience.getXpForLevel(virtualLevel + 1) - virtualXp),
 			virtual.stats().xpToLevelText());
 
 		SkillTooltip capped = new SkillTooltip();
 		capped.setData(Skill.HERBLORE,
-			skillHiscores(Skill.HERBLORE, 99, Experience.MAX_SKILL_XP, 1), true);
+			skillHiscores(Skill.HERBLORE, 99, Experience.MAX_SKILL_XP, 1), true, Collections.emptyList(), null);
 		assertEquals(String.valueOf(Experience.MAX_VIRT_LEVEL), capped.stats().levelText());
 		assertEquals("Maxed", capped.stats().xpToLevelText());
 	}

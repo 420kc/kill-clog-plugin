@@ -31,11 +31,6 @@ public class SkillTooltip extends TitleTooltip
 	int riftsClosed = -1;
 	private final SkillClogSectionRenderer sectionRenderer = new SkillClogSectionRenderer(this);
 
-	public void setData(Skill skill, @Nullable HiscoreResult result, boolean virtualLevels)
-	{
-		setData(skill, result, virtualLevels, Collections.emptyList(), null);
-	}
-
 	public void setData(Skill skill, @Nullable HiscoreResult result, boolean virtualLevels,
 		List<SkillClogSection> sections, @Nullable ItemManager itemManager)
 	{

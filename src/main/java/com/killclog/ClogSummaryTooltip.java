@@ -151,12 +151,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 	}
 
 	/** Record contributing sources, including Kill Clog's local game capture. */
-	public void setClogSources(boolean temple, boolean runeProfile, boolean killclog)
-	{
-		setClogSources(temple, runeProfile, killclog, false);
-	}
-
-	private void setClogSources(boolean temple, boolean runeProfile, boolean killclog, boolean local)
+	void setClogSources(boolean temple, boolean runeProfile, boolean killclog, boolean local)
 	{
 		clogSources.clear();
 		if (killclog || local)

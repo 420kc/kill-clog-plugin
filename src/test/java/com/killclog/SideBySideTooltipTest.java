@@ -83,8 +83,8 @@ public class SideBySideTooltipTest
 		{
 			SkillTooltip blue = new SkillTooltip();
 			SkillTooltip red = new SkillTooltip();
-			blue.setData(Skill.ATTACK, null, false);
-			red.setData(Skill.ATTACK, null, false);
+			blue.setData(Skill.ATTACK, null, false, java.util.Collections.emptyList(), null);
+			red.setData(Skill.ATTACK, null, false, java.util.Collections.emptyList(), null);
 			SideBySideTooltip pair = new SideBySideTooltip("Iron Player", blue, "Hardcore", red);
 			AccountBadgeResolver resolver = new AccountBadgeResolver(null);
 			Icon blueBadge = resolver.labelIcon(AccountDisplay.of(AccountType.IRONMAN, HiscoreTable.STANDARD));

@@ -67,12 +67,6 @@ public class ImgTooltip extends TitleTooltip
 	 * Set item grid data. Call after setTitle/setObtained/setRank.
 	 * Holds strong references to sprites so they survive ItemManager cache eviction.
 	 */
-	public void setItems(int totalItems, List<Integer> allItemIds, Set<Integer> obtainedIds,
-		Map<Integer, Integer> obtainedCounts, ItemManager itemManager)
-	{
-		setItems(totalItems, allItemIds, obtainedIds, obtainedCounts, Collections.emptyMap(), itemManager);
-	}
-
 	/**
 	 * Set item grid data. Call after setTitle/setObtained/setRank.
 	 * Holds strong references to sprites so they survive ItemManager cache eviction.
