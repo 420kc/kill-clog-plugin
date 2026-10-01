@@ -82,7 +82,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private int[] specialIds;
 	private String[] specialNames;
 
-	private final TooltipItemHover itemHover = new TooltipItemHover(this);
 	private final List<ClogSource> clogSources = new ArrayList<>(3);
 
 	public void setTierData(int obtained, int totalSlots, Map<String, BufferedImage> tierIcons,
@@ -239,13 +238,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 			specialNames[i] = clog != null ? clog.getItemName(item.getId()) : null;
 		}
 		loadClogItemSprites(specialItems, specialCount, RECENT_SIZE, specialSprites, itemManager);
-	}
-
-	@Override
-	public void setWikiLinksEnabled(boolean wikiLinksEnabled)
-	{
-		super.setWikiLinksEnabled(wikiLinksEnabled);
-		itemHover.setWikiLinksEnabled(wikiLinksEnabled);
 	}
 
 	/** "2026-07-04 ..." from the provider becomes "Jul 4"; anything else is dropped. */
@@ -451,7 +443,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 			paintItemRow(g2, hitBoxes, 0, inset, y, w - 2 * inset,
 				specialSprites, specialIds, specialNames, null, RECENT_SIZE, fm);
 			y += RECENT_SIZE;
-			paintSectionLabel(g2, fm, w, y, 0);
+			paintSectionHoverLine(g2, fm, w, y, 0);
 			y += hoverRowHeight(fm);
 		}
 
@@ -466,7 +458,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 			{
 				y += DATE_GAP + fm.getHeight();
 			}
-			paintSectionLabel(g2, fm, w, y, 1);
+			paintSectionHoverLine(g2, fm, w, y, 1);
 			y += hoverRowHeight(fm);
 		}
 
@@ -521,14 +513,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 		}
 
 		itemHover.setHitBoxes(hitBoxes);
-	}
-
-	private void paintSectionLabel(Graphics2D g2, FontMetrics fm, int width, int y, int section)
-	{
-		if (itemHover.isSectionHovered(section))
-		{
-			paintHeaderHoverLine(g2, fm, width, y + fm.getAscent());
-		}
 	}
 
 	/** Separator plus a bold orange subheader; returns the Y under the header. */
@@ -605,12 +589,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 			}
 		}
 		return w;
-	}
-
-	@Override
-	protected String getHeaderHoverLineText()
-	{
-		return itemHover.hoveredItemName();
 	}
 
 	@Override

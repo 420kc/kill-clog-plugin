@@ -42,7 +42,6 @@ public class ImgTooltip extends TitleTooltip
 	private Set<Integer> obtainedIds;
 	private Map<Integer, Integer> obtainedCounts;
 	private TooltipItemSprites itemSprites;
-	private final TooltipItemHover itemHover = new TooltipItemHover(this);
 
 	/** Configurable min column count. */
 	public ImgTooltip(int gridCols)
@@ -55,13 +54,7 @@ public class ImgTooltip extends TitleTooltip
 	{
 		this.gridCols = gridCols;
 		this.spriteSize = spriteSize;
-	}
-
-	@Override
-	public void setWikiLinksEnabled(boolean wikiLinksEnabled)
-	{
-		super.setWikiLinksEnabled(wikiLinksEnabled);
-		itemHover.setWikiLinksEnabled(wikiLinksEnabled);
+		itemNameInHeader = true;
 	}
 
 	@Override
@@ -232,30 +225,6 @@ public class ImgTooltip extends TitleTooltip
 			}
 			itemHover.setHitBoxes(nextHitBoxes);
 		}
-	}
-
-	@Override
-	protected String getHeaderRightText()
-	{
-		return itemHover.hoveredItemName();
-	}
-
-	@Override
-	protected Color getHeaderRightColor()
-	{
-		return itemHover.hoveredItemObtained() ? CLOG_GREEN : CLOG_RED;
-	}
-
-	@Override
-	protected String getHeaderUpperRightText()
-	{
-		return itemHover.hoveredDuplicateCountText();
-	}
-
-	@Override
-	protected Color getHeaderUpperRightColor()
-	{
-		return CLOG_YELLOW;
 	}
 
 	private String itemNameAt(int index)

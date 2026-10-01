@@ -36,7 +36,6 @@ public class SummaryTooltip extends TitleTooltip
 	private static final int BADGE_SIZE = 13;
 	private static final int BADGE_GAP = 3;
 
-	private final TooltipItemHover itemHover = new TooltipItemHover(this);
 
 	private String rsn;
 	private int overallRank;
@@ -305,25 +304,6 @@ public class SummaryTooltip extends TitleTooltip
 		}
 		paintHeaderHoverLine(g2, fm, w, gridY + getPetGridHeight() + fm.getAscent());
 		itemHover.setHitBoxes(hitBoxes);
-	}
-
-	@Override
-	public void setWikiLinksEnabled(boolean wikiLinksEnabled)
-	{
-		super.setWikiLinksEnabled(wikiLinksEnabled);
-		itemHover.setWikiLinksEnabled(wikiLinksEnabled);
-	}
-
-	@Override
-	protected String getHeaderHoverLineText()
-	{
-		return itemHover.hoveredItemName();
-	}
-
-	@Override
-	protected Color getHeaderHoverLineColor()
-	{
-		return itemHover.hoveredItemObtained() ? CLOG_GREEN : CLOG_RED;
 	}
 
 	private String buildRankLine()
