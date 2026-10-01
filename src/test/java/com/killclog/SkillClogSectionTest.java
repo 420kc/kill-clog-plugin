@@ -509,7 +509,7 @@ public class SkillClogSectionTest
 		boolean runecraft = skill == Skill.RUNECRAFT;
 		if (runecraft)
 		{
-			solo.setRiftsClosed(34);
+			target.setRiftsClosed(34);
 		}
 		Dimension soloSize = solo.soloSize(100);
 		BufferedImage image = new BufferedImage(
