@@ -197,7 +197,7 @@ class TooltipController
 			{
 				// Guard against the WHOLE tooltip: a child card's exit while
 				// crossing into its sibling must not read as leaving.
-				if (rootTooltip(tip).getMousePosition(true) != null)
+				if (((JToolTip) NativeTooltip.tooltipRoot(tip)).getMousePosition(true) != null)
 				{
 					return;
 				}
@@ -220,19 +220,6 @@ class TooltipController
 		{
 			child.addMouseListener(listener);
 		}
-	}
-
-	private static JToolTip rootTooltip(JToolTip tip)
-	{
-		JToolTip root = tip;
-		for (Component parent = tip.getParent(); parent != null; parent = parent.getParent())
-		{
-			if (parent instanceof JToolTip)
-			{
-				root = (JToolTip) parent;
-			}
-		}
-		return root;
 	}
 
 	void pinTooltipFromPress(JComponent source, JPanel cell, MouseEvent event)
