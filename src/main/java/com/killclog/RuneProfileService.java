@@ -349,19 +349,7 @@ public class RuneProfileService
 	 * Items with {@code quantity > 0} are obtained. The page name is normalized through
 	 * the category canon shared with TempleOSRS and the boss grid.
 	 */
-	@Nullable
-	ClogResult parseCollectionLog(String playerName, String json)
-	{
-		return parseCollectionLog(playerName, json, null);
-	}
-
-	@Nullable
-	ClogResult parseCollectionLog(String playerName, String json, @Nullable AccountType providerAccountType)
-	{
-		return parseCollectionLogOutcome(playerName, json, providerAccountType).result;
-	}
-
-	private ClogParseOutcome parseCollectionLogOutcome(String playerName, String json,
+	ClogParseOutcome parseCollectionLogOutcome(String playerName, String json,
 		@Nullable AccountType providerAccountType)
 	{
 		try
@@ -498,10 +486,10 @@ public class RuneProfileService
 		INVALID
 	}
 
-	private static final class ClogParseOutcome
+	static final class ClogParseOutcome
 	{
 		private final ClogParseState state;
-		@Nullable private final ClogResult result;
+		@Nullable final ClogResult result;
 
 		private ClogParseOutcome(ClogParseState state, @Nullable ClogResult result)
 		{
