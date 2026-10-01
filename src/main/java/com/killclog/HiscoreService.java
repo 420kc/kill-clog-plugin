@@ -304,9 +304,7 @@ public class HiscoreService
 				String ironBody = ironFuture.join();
 				String regBody = regFuture.join();
 
-				AccountType type = knownType != null
-					? knownType
-					: detectAccountType(uimBody, hcimBody, ironBody, regBody);
+				AccountType type = detectAccountType(uimBody, hcimBody, ironBody, regBody);
 
 				// Missing tables have already used their own bounded retry. Keep the
 				// XP cross-check so a frozen HCIM row cannot override fresher stats.
@@ -473,34 +471,39 @@ public class HiscoreService
 		return HiscoreTable.STANDARD;
 	}
 
+	private static final String[] NON_DEFENCE_COMBAT = {"attack", "strength", "ranged", "prayer", "magic"};
+
 	private boolean isSkiller(HiscoreResult result)
 	{
-		return levelIsOne(result, "attack")
-			&& levelIsOne(result, "defence")
-			&& levelIsOne(result, "strength")
-			&& levelIsOne(result, "ranged")
-			&& levelIsOne(result, "prayer")
-			&& levelIsOne(result, "magic");
+		return result.getSkillLevel("defence") == 1
+			&& Arrays.stream(NON_DEFENCE_COMBAT).allMatch(skill -> result.getSkillLevel(skill) == 1);
 	}
 
 	private boolean isOneDefence(HiscoreResult result)
 	{
-		return levelIsOne(result, "defence")
-			&& (levelAboveOne(result, "attack")
-				|| levelAboveOne(result, "strength")
-				|| levelAboveOne(result, "ranged")
-				|| levelAboveOne(result, "prayer")
-				|| levelAboveOne(result, "magic"));
+		return result.getSkillLevel("defence") == 1
+			&& Arrays.stream(NON_DEFENCE_COMBAT).anyMatch(skill -> result.getSkillLevel(skill) > 1);
 	}
 
-	private boolean levelIsOne(HiscoreResult result, String skill)
+	/** One CSV row per name: rank then score; an unreadable row reads -1 for both. */
+	private static void readRows(String[] lines, int start, String[] names,
+		Map<String, Integer> scores, Map<String, Integer> ranks)
 	{
-		return result.getSkillLevel(skill) == 1;
-	}
-
-	private boolean levelAboveOne(HiscoreResult result, String skill)
-	{
-		return result.getSkillLevel(skill) > 1;
+		for (int i = 0; i < names.length && start + i < lines.length; i++)
+		{
+			try
+			{
+				String[] parts = lines[start + i].split(",");
+				int rank = Integer.parseInt(parts[0]);
+				scores.put(names[i], Integer.parseInt(parts[1]));
+				ranks.put(names[i], rank);
+			}
+			catch (Exception e)
+			{
+				scores.put(names[i], -1);
+				ranks.put(names[i], -1);
+			}
+		}
 	}
 
 	/* package */ HiscoreResult parseHiscoreBody(String body, AccountType type)
@@ -571,54 +574,14 @@ public class HiscoreService
 			}
 		}
 
-		for (int i = 0; i < ACTIVITY_NAMES.length; i++)
-		{
-			int lineIdx = ACTIVITY_START_INDEX + i;
-			if (lineIdx >= lines.length)
-			{
-				break;
-			}
-			try
-			{
-				String[] parts = lines[lineIdx].split(",");
-				int rank = Integer.parseInt(parts[0]);
-				int score = Integer.parseInt(parts[1]);
-				activityScores.put(ACTIVITY_NAMES[i], score);
-				activityRanks.put(ACTIVITY_NAMES[i], rank);
-			}
-			catch (Exception e)
-			{
-				activityScores.put(ACTIVITY_NAMES[i], -1);
-				activityRanks.put(ACTIVITY_NAMES[i], -1);
-			}
-		}
+		readRows(lines, ACTIVITY_START_INDEX, ACTIVITY_NAMES, activityScores, activityRanks);
 
 		// This CSV path only runs when the JSON endpoint is down, and a count
 		// mismatch means rows at and below the change wear their neighbors'
 		// numbers. The 2026-07-29 outage set the rule - visibly imperfect beats blank:
 		// parse best-effort and keep the shifted flag set so every boss surface
 		// shows the misalignment notice. Never silently wrong.
-		for (int i = 0; i < bossNames.length; i++)
-		{
-			int lineIdx = BOSS_START_INDEX + i;
-			if (lineIdx >= lines.length)
-			{
-				break;
-			}
-			try
-			{
-				String[] parts = lines[lineIdx].split(",");
-				int rank = Integer.parseInt(parts[0]);
-				int kc = Integer.parseInt(parts[1]);
-				bossKills.put(bossNames[i], kc);
-				bossRanks.put(bossNames[i], rank);
-			}
-			catch (Exception e)
-			{
-				bossKills.put(bossNames[i], -1);
-				bossRanks.put(bossNames[i], -1);
-			}
-		}
+		readRows(lines, BOSS_START_INDEX, bossNames, bossKills, bossRanks);
 
 		HiscoreResult result = new HiscoreResult(type, hiscoreTable, bossKills, bossRanks,
 			activityScores, activityRanks, skillLevels, skillRanks, skillXps, totalLevel,
