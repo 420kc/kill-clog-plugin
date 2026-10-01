@@ -87,7 +87,7 @@ public class LookupQueriesTest
 		BufferedImage gim = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
 		GimBadgeLoader.setGimBadges(gim, null, null);
 
-		assertSame(gim, AccountBadgeResolver.cachedBadge(LookupQueries.accountDisplay(
+		assertSame(gim, AccountBadgeResolver.badge(LookupQueries.accountDisplay(
 			hiscore(AccountType.REGULAR),
 			clog(AccountType.GROUP_IRONMAN))));
 	}
