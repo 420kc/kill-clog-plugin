@@ -1,14 +1,15 @@
 package com.killclog;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Pure record math for the local cache's rename-continuity machinery: no
- * state, no I/O, just the merge and provenance rules for
- * {@link PlayerClogData}.
+ * Pure record math for the local store: no state, no I/O, just the
+ * provenance rules for {@link PlayerClogData} and the merge that joins two
+ * proven copies of one account's log.
  */
 final class ClogRecords
 {
@@ -32,140 +33,110 @@ final class ClogRecords
 		return false;
 	}
 
+	/** Only an explicit completed Collection Log Search counts; marks alone never do. */
 	static boolean hasCompletedFirstPartySetup(PlayerClogData data)
 	{
-		if (data == null)
-		{
-			return false;
-		}
-		if (data.firstPartySetupComplete != null)
-		{
-			return data.firstPartySetupComplete;
-		}
-		// Before 2.3.3 there was no setup marker. A legacy markless file was
-		// already treated as a client-owned capture, while category marks prove
-		// that this client observed at least part of the log. Empty marked files
-		// repeat Search once to establish the new marker.
-		return data.firstPartyByCategory == null || hasFirstPartyMarks(data);
+		return data != null && Boolean.TRUE.equals(data.firstPartySetupComplete);
 	}
 
 	/**
-	 * Union for the post-crash heal: destination (the newer writing) wins
-	 * per-item and per-category conflicts; everything the source alone knows
-	 * is carried over. Nothing is discarded.
+	 * Two proven copies of one account's log become one, provenance first. Per
+	 * category and item: a record marked first-party in that category beats an
+	 * unmarked one whichever copy holds it, equal provenance keeps the base, and
+	 * a mark only ever travels with the record it was earned on. Nothing is
+	 * summed and nothing is discarded; the losing copy's file is archived.
 	 */
-	static PlayerClogData mergeForMigration(
-		PlayerClogData dest, PlayerClogData source)
+	static PlayerClogData mergeOwn(PlayerClogData base, PlayerClogData other, String ownerHash)
 	{
-		boolean setupComplete = hasCompletedFirstPartySetup(dest)
-			|| hasCompletedFirstPartySetup(source);
-		// A legacy source (null marks) is wholly first-party by definition -
-		// the class contract grandfathers it at first capture. Materialize
-		// that grandfather EXPLICITLY before the mark union, or the merged
-		// file's marks will not cover the legacy items and the sync filter
-		// would silently drop the migrated history from every future push.
-		if (source.firstPartyByCategory == null && source.obtained != null)
+		base.categories = base.categories != null ? new HashMap<>(base.categories) : new HashMap<>();
+		base.obtained = base.obtained != null ? new HashMap<>(base.obtained) : new HashMap<>();
+		base.firstPartyByCategory = base.firstPartyByCategory != null
+			? new HashMap<>(base.firstPartyByCategory) : new HashMap<>();
+		if (other.categories != null)
 		{
-			Map<String, List<Integer>> grandfathered = new ConcurrentHashMap<>();
-			for (Map.Entry<String, List<ClogResult.ClogItem>> e : source.obtained.entrySet())
+			for (Map.Entry<String, List<Integer>> e : other.categories.entrySet())
 			{
-				List<Integer> ids = new ArrayList<>();
+				base.categories.putIfAbsent(e.getKey(), e.getValue());
+			}
+		}
+		if (other.obtained != null)
+		{
+			for (Map.Entry<String, List<ClogResult.ClogItem>> e : other.obtained.entrySet())
+			{
+				String category = e.getKey();
+				List<ClogResult.ClogItem> items = new ArrayList<>(
+					base.obtained.getOrDefault(category, Collections.emptyList()));
+				List<Integer> marks = new ArrayList<>(
+					base.firstPartyByCategory.getOrDefault(category, Collections.emptyList()));
+				List<Integer> theirMarks = other.firstPartyByCategory != null
+					? other.firstPartyByCategory.getOrDefault(category, Collections.emptyList())
+					: Collections.emptyList();
 				for (ClogResult.ClogItem item : e.getValue())
 				{
-					ids.add(item.getId());
-				}
-				grandfathered.put(e.getKey(), ids);
-			}
-			source.firstPartyByCategory = grandfathered;
-		}
-		if (source.categories != null)
-		{
-			if (dest.categories == null)
-			{
-				dest.categories = new ConcurrentHashMap<>();
-			}
-			for (Map.Entry<String, List<Integer>> e : source.categories.entrySet())
-			{
-				dest.categories.putIfAbsent(e.getKey(), e.getValue());
-			}
-		}
-		if (source.obtained != null)
-		{
-			if (dest.obtained == null)
-			{
-				dest.obtained = new ConcurrentHashMap<>();
-			}
-			for (Map.Entry<String, List<ClogResult.ClogItem>> e : source.obtained.entrySet())
-			{
-				List<ClogResult.ClogItem> existing = dest.obtained.get(e.getKey());
-				if (existing == null)
-				{
-					dest.obtained.put(e.getKey(), e.getValue());
-					continue;
-				}
-				for (ClogResult.ClogItem item : e.getValue())
-				{
-					boolean present = false;
-					for (ClogResult.ClogItem have : existing)
+					int id = item.getId();
+					int at = indexOf(items, id);
+					boolean theirsMarked = theirMarks.contains(id);
+					if (at < 0 || (theirsMarked && !marks.contains(id)))
 					{
-						if (have.getId() == item.getId())
+						if (at < 0)
 						{
-							present = true;
-							break;
+							items.add(item);
+						}
+						else
+						{
+							items.set(at, item);
+						}
+						if (theirsMarked && !marks.contains(id))
+						{
+							marks.add(id);
 						}
 					}
-					if (!present)
-					{
-						existing.add(item);
-					}
+				}
+				base.obtained.put(category, items);
+				base.firstPartyByCategory.put(category, marks);
+			}
+		}
+		if (other.pendingUnlocks != null)
+		{
+			List<PendingClogUnlock> pending = base.pendingUnlocks != null
+				? new ArrayList<>(base.pendingUnlocks) : new ArrayList<>();
+			for (PendingClogUnlock event : other.pendingUnlocks)
+			{
+				if (event != null && ownerHash.equals(event.ownerHash) && !pending.contains(event))
+				{
+					pending.add(event);
 				}
 			}
-		}
-		if (source.firstPartyByCategory != null)
-		{
-			if (dest.firstPartyByCategory == null)
+			while (pending.size() > 32)
 			{
-				dest.firstPartyByCategory = new ConcurrentHashMap<>();
+				pending.remove(0);
 			}
-			for (Map.Entry<String, List<Integer>> e : source.firstPartyByCategory.entrySet())
+			base.pendingUnlocks = pending;
+		}
+		base.uniqueObtained = Math.max(base.uniqueObtained, other.uniqueObtained);
+		base.uniqueTotal = Math.max(base.uniqueTotal, other.uniqueTotal);
+		if (base.lastChanged == null
+			|| (other.lastChanged != null && other.lastChanged.compareTo(base.lastChanged) > 0))
+		{
+			base.lastChanged = other.lastChanged;
+		}
+		if (base.providerAccountType == null)
+		{
+			base.providerAccountType = other.providerAccountType;
+		}
+		base.firstPartySetupComplete = hasCompletedFirstPartySetup(base) || hasCompletedFirstPartySetup(other);
+		return base;
+	}
+
+	private static int indexOf(List<ClogResult.ClogItem> items, int id)
+	{
+		for (int i = 0; i < items.size(); i++)
+		{
+			if (items.get(i).getId() == id)
 			{
-				dest.firstPartyByCategory.merge(e.getKey(), e.getValue(), (a, b) ->
-				{
-					List<Integer> union = new ArrayList<>(a);
-					for (Integer id : b)
-					{
-						if (!union.contains(id))
-						{
-							union.add(id);
-						}
-					}
-					return union;
-				});
+				return i;
 			}
 		}
-		if (source.pendingUnlocks != null)
-		{
-			List<PendingClogUnlock> pending = dest.pendingUnlocks == null
-				? new ArrayList<>() : new ArrayList<>(dest.pendingUnlocks);
-			for (PendingClogUnlock event : source.pendingUnlocks)
-			{
-				if (event != null && !pending.contains(event)) pending.add(event);
-			}
-			while (pending.size() > 32) pending.remove(0);
-			dest.pendingUnlocks = pending;
-		}
-		dest.uniqueObtained = Math.max(dest.uniqueObtained, source.uniqueObtained);
-		dest.uniqueTotal = Math.max(dest.uniqueTotal, source.uniqueTotal);
-		if (dest.lastChanged == null
-			|| (source.lastChanged != null && source.lastChanged.compareTo(dest.lastChanged) > 0))
-		{
-			dest.lastChanged = source.lastChanged;
-		}
-		if (dest.providerAccountType == null)
-		{
-			dest.providerAccountType = source.providerAccountType;
-		}
-		dest.firstPartySetupComplete = setupComplete;
-		return dest;
+		return -1;
 	}
 }

@@ -23,7 +23,7 @@ public class ClogServiceProvenanceTest
 	public void testOnlyProvenFreshTempleCacheCarriesTempleSource() throws Exception
 	{
 		String player = "Provider Probe";
-		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
+		LocalClogCache cache = LocalClogCacheTest.ready();
 		cache.cacheResult(new ClogResult(player, Collections.emptyMap(),
 			Collections.emptyMap(), new HashMap<>(), null, null));
 
@@ -149,12 +149,10 @@ public class ClogServiceProvenanceTest
 		Map<String, List<Integer>> categories = new HashMap<>();
 		categories.put("zulrah", Arrays.asList(1, 2, 3));
 
-		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
+		LocalClogCache cache = LocalClogCacheTest.ready();
+		cache.activate(player, 1L);
 		cache.cacheFirstPartyResult(new ClogResult(player, obtained, categories,
 			Collections.emptyMap(), localDate, null));
-		Field activePlayer = LocalClogCache.class.getDeclaredField("activePlayer");
-		activePlayer.setAccessible(true);
-		activePlayer.set(cache, player);
 
 		OkHttpClient client = new OkHttpClient.Builder()
 			.addInterceptor(chain ->

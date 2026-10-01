@@ -3,7 +3,6 @@ package com.killclog;
 import com.google.gson.Gson;
 import com.google.inject.Provides;
 import java.awt.image.BufferedImage;
-import java.io.IOException;
 import java.util.concurrent.ScheduledExecutorService;
 import javax.inject.Inject;
 import javax.inject.Provider;
@@ -153,13 +152,14 @@ public class KillClogPlugin extends Plugin
 	private static final int SETTLED_TICKS = 10;
 	@Inject
 	private Gson gson;
-	// .runelite/plugin-data/kill-clog, or null for a session that could not open it.
-	private Filepath dataFolder;
 	// The active League's own store, opened on first use; one League at a time.
 	private LocalClogCache leagueCache;
 	private String leagueCacheId;
 	private java.util.function.Function<String, LocalClogCache> leagueCacheFactory = id ->
-		new LocalClogCache(gson, dataFolder == null ? null : dataFolder.join("leagues", id));
+	{
+		Filepath folder = localClogCache.folder().getNow(null);
+		return new LocalClogCache(gson, folder == null ? null : folder.join("leagues", id));
+	};
 	// The store the collection log walk started with; a different one means start over.
 	private LocalClogCache walkCache;
 	// The logged-in account, for PB reads on the panel's thread, and the world's and running League last given to the panel.
@@ -171,9 +171,9 @@ public class KillClogPlugin extends Plugin
 	private boolean advLogTitleLoaded;
 	private boolean advLogCountersLoaded;
 	private String advLogOwner;
-	// One rename-continuity check per login, latched when name AND account
-	// hash are both available (they arrive on different ticks).
-	private boolean renameChecked;
+	// Once per login the account takes up its own log, latched when name, account
+	// hash and the open store are all there (they arrive on different ticks).
+	private boolean accountActivated;
 
 	private final ChatAutoLookupGate chatAutoLookup = new ChatAutoLookupGate();
 	private final ClogSessionState sessionState = new ClogSessionState();
@@ -197,19 +197,10 @@ public class KillClogPlugin extends Plugin
 	@Override
 	protected void startUp()
 	{
-		// RuneLite moves the 2.4 folder in on first use; a failed move stays in
-		// memory this session and retries next start, never writing a new folder.
-		try
-		{
-			dataFolder = getPluginDirectory();
-		}
-		catch (IOException | RuntimeException e)
-		{
-			dataFolder = null;
-			log.warn("Kill Clog data folder unavailable this session: {}", e.getMessage());
-		}
-		localClogCache.useFolder(dataFolder);
-		localCaCache.useFolder(dataFolder == null ? null : dataFolder.join("ca"));
+		// RuneLite moves the 2.4 folder in on first use. The store opens it on its
+		// own disk thread; a folder that cannot open keeps this session in memory.
+		localClogCache.open(this::getPluginDirectory);
+		localClogCache.folder().thenAccept(folder -> localCaCache.open(folder == null ? null : folder.join("ca")));
 
 		navButton = NavigationButton.builder()
 			.tooltip("Kill Clog")
@@ -297,10 +288,9 @@ public class KillClogPlugin extends Plugin
 		publication.cancelCharacterPublish();
 		publication.cancelSync();
 		SwingUtilities.invokeLater(() -> panel.shutdown());
-		// The rename session dies with the plugin: if the account changes
-		// while disabled, a surviving latch or anchor would let the OLD
-		// account's continuity state authorize the NEW account's session.
-		renameChecked = false;
+		// The account's session dies with the plugin: a surviving latch would
+		// carry the old account into whoever logs in next.
+		accountActivated = false;
 		localClogCache.onSessionEnded();
 		log.debug("Kill Clog plugin stopped");
 	}
@@ -351,40 +341,6 @@ public class KillClogPlugin extends Plugin
 	}
 
 	/**
-	 * Publish the name slot only after its account-hash ledger verdict landed.
-	 * The future completes on the cache writer, so every RuneLite and panel
-	 * read is marshalled back onto its owning thread and re-fenced against the
-	 * session that started the arbitration.
-	 */
-	private void onClogIdentitySettled(LocalClogCache cache, String name, long accountHash,
-		long expectedEpoch, boolean settled)
-	{
-		if (!settled)
-		{
-			return;
-		}
-		clientThread.invokeLater(() ->
-		{
-			Player local = client.getLocalPlayer();
-			if (cache.currentSessionEpoch() != expectedEpoch || cache != captureCache()
-				|| local == null || local.getName() == null
-				|| !local.getName().equalsIgnoreCase(name)
-				|| client.getAccountHash() != accountHash
-				|| !cache.setActivePlayer(name))
-			{
-				return;
-			}
-
-			boolean hasLocalClog = cache.hasFirstPartyDataFor(name);
-			SwingUtilities.invokeLater(() -> panel.setSyncArrowHasData(hasLocalClog));
-			if (hasLocalClog)
-			{
-				publication.scheduleAutomaticSync();
-			}
-		});
-	}
-
-	/**
 	 * True-live total bump with no chat dependency: the client pushes the
 	 * collection log counts as varps, so any unlock (and the login flood)
 	 * moves them regardless of the player's notification settings. Upward
@@ -429,7 +385,7 @@ public class KillClogPlugin extends Plugin
 		}
 		if (event.getGameState() == GameState.LOGGED_IN)
 		{
-			renameChecked = false;
+			accountActivated = false;
 			SwingUtilities.invokeLater(panel::reloadTooltipSprites);
 			clogService.clearTempleFailures();
 			runeProfileService.clearFailures();
@@ -765,28 +721,23 @@ public class KillClogPlugin extends Plugin
 		}
 		followWorld();
 
-		// Rename continuity: once per login, when both halves of the local
-		// identity have arrived, the cache follows the account onto its
-		// current name (the server migrates its own copy on the next sync).
-		// The check runs on the cache's writer thread - it reads files - and
-		// the notice comes back through the poll below on a later tick.
-		if (!renameChecked)
+		// The account takes up its own log, following any name change (the
+		// server migrates its own copy on the next sync). Memory only; the
+		// store says no until its folder has loaded, and this retries.
+		LocalClogCache activeCache = captureCache();
+		Player activeLocal = client.getLocalPlayer();
+		if (!accountActivated && activeCache != null && activeLocal != null
+			&& activeCache.activate(activeLocal.getName(), client.getAccountHash()))
 		{
-			Player renameLocal = client.getLocalPlayer();
-			long renameHash = client.getAccountHash();
-			LocalClogCache renameCache = captureCache();
-			if (renameLocal != null && renameLocal.getName() != null && renameHash != -1 && renameCache != null)
+			accountActivated = true;
+			String name = activeLocal.getName();
+			boolean hasLocalClog = activeCache.hasFirstPartyDataFor(name);
+			SwingUtilities.invokeLater(() -> panel.setSyncArrowHasData(hasLocalClog));
+			if (hasLocalClog)
 			{
-				renameChecked = true;
-				String renameName = renameLocal.getName();
-				long renameEpoch = renameCache.currentSessionEpoch();
-				renameCache.followNameChangeAsync(renameName, renameHash, renameEpoch)
-					.thenAccept(settled -> onClogIdentitySettled(
-						renameCache, renameName, renameHash, renameEpoch, settled));
+				publication.scheduleAutomaticSync();
 			}
 		}
-		// The notice survives whichever path migrated first (the sync
-		// pre-flight can win the race); one line either way.
 		String previousName = localClogCache.consumeRenameNotice();
 		if (previousName != null)
 		{

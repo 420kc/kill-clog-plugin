@@ -22,14 +22,15 @@ final class LocalCaReader
 	boolean capture(Client client, LocalCaCache localCaCache)
 	{
 		Player local = client.getLocalPlayer();
-		if (local == null || local.getName() == null)
+		long accountHash = client.getAccountHash();
+		if (local == null || local.getName() == null || accountHash == -1)
 		{
 			return false;
 		}
 
 		String name = local.getName();
 		localCaCache.setActivePlayer(name);
-		localCaCache.cacheResult(name, completed(client));
+		localCaCache.cacheResult(name, accountHash, completed(client));
 		return true;
 	}
 

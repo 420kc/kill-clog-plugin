@@ -48,9 +48,11 @@ public class LocalClogCacheAtomicTest
 				}
 			}).create();
 		File directory = temporaryFolder.newFolder();
-		LocalClogCache cache = new LocalClogCache(gson, new InlineScheduledExecutorService(), TestFolders.folder(directory));
+		LocalClogCache cache = new LocalClogCache(gson, new InlineScheduledExecutorService());
+		cache.open(() -> TestFolders.folder(directory));
+		assertTrue(cache.activate("Tester", 77L));
 		cache.cacheFirstPartyResult(result(1));
-		File file = new File(directory, "tester.json");
+		File file = LocalClogCacheTest.ownFile(directory, 77L);
 		byte[] valid = Files.readAllBytes(file.toPath());
 		fail.set(true);
 		cache.cacheFirstPartyResult(result(2));
@@ -62,26 +64,14 @@ public class LocalClogCacheAtomicTest
 		cache.cacheFirstPartyResult(result(2));
 		assertEquals(2, reload(directory).getId());
 		assertEquals(0, changes[0]);
-		assertFalse(new File(directory, "tester.json.tmp").exists());
-	}
-
-	@Test
-	public void unwritableTemporaryPathPreservesExistingJson() throws Exception
-	{
-		File directory = temporaryFolder.newFolder();
-		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(directory));
-		cache.cacheFirstPartyResult(result(1));
-		File file = new File(directory, "tester.json");
-		byte[] valid = Files.readAllBytes(file.toPath());
-		Files.createDirectory(new File(directory, "tester.json.tmp").toPath());
-		cache.cacheFirstPartyResult(result(2));
-		assertArrayEquals(valid, Files.readAllBytes(file.toPath()));
-		assertEquals(1, reload(directory).getId());
+		assertEquals("no temporary file outlives its write", 0,
+			directory.listFiles((dir, name) -> name.endsWith(".tmp")).length);
 	}
 
 	private static ClogResult.ClogItem reload(File directory)
 	{
-		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(directory));
+		LocalClogCache cache = LocalClogCacheTest.onDisk(directory);
+		assertTrue(cache.activate("Tester", 77L));
 		assertTrue(cache.hasDataFor("Tester"));
 		return cache.toClogResult("Tester", Map.of()).getObtainedItems().get("zulrah").get(0);
 	}

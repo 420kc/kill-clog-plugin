@@ -3,7 +3,6 @@ package com.killclog;
 import com.google.gson.Gson;
 import java.io.File;
 import java.nio.file.Files;
-import java.util.List;
 import java.util.Map;
 import org.junit.Rule;
 import org.junit.Test;
@@ -49,38 +48,38 @@ public class PluginFolderTest
 	}
 
 	@Test
-	public void aDeviceNamedPlayerSavesAndLoads() throws Exception
+	public void aDeviceNamedLookupSavesAndLoads() throws Exception
 	{
-		File ca = temporaryFolder.newFolder();
-		LocalCaCache cache = new LocalCaCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(ca));
-		cache.setActivePlayer("Con");
-		cache.cacheResult("Con", Map.of(CombatAchievementTier.EASY, 4));
-		assertTrue(new File(ca, "+con.json").isFile());
-		assertEquals(4, new LocalCaCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(ca))
-			.getCached("Con").getTotalPoints());
-
 		File logs = temporaryFolder.newFolder();
-		PlayerClogData data = new PlayerClogData();
-		data.playerName = "Con";
-		data.categories = Map.of("hats", List.of(1));
-		data.obtained = Map.of("hats", List.of(new ClogResult.ClogItem(1, 1, null)));
-		Files.writeString(new File(logs, "+con.json").toPath(), new Gson().toJson(data));
-		assertTrue(new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), TestFolders.folder(logs))
-			.hasDataFor("Con"));
+		LocalClogCache cache = LocalClogCacheTest.onDisk(logs);
+		assertTrue(cache.activate("Main", 77L));
+		cache.cacheResult(LocalClogCacheTest.clog("Con", LocalClogCacheTest.categoryItems("hats", 1),
+			LocalClogCacheTest.obtainedItems("hats", 1)));
+		assertTrue(new File(logs, "lookups/+con.json").isFile());
+		LocalClogCache reloaded = LocalClogCacheTest.onDisk(logs);
+		assertTrue(reloaded.activate("Main", 77L));
+		assertTrue(reloaded.hasDataFor("Con"));
 	}
 
 	@Test
 	public void aSessionWithoutAFolderStaysInMemory()
 	{
-		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService(), null);
-		assertFalse(cache.followNameChangeForSync("Tester", 77L));
-		assertFalse(cache.setActivePlayer("Tester"));
-		assertFalse(cache.hasDataFor("Tester"));
+		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService());
+		cache.open(() ->
+		{
+			throw new java.io.IOException("refused");
+		});
+		assertNull(cache.folder().join());
+		assertTrue(cache.activate("Tester", 77L));
+		cache.cacheFirstPartyResult(LocalClogCacheTest.clog("Tester", LocalClogCacheTest.categoryItems("hats", 1, 2),
+			LocalClogCacheTest.obtainedItems("hats", 1)));
+		assertTrue(cache.hasFirstPartyDataFor("Tester"));
 		assertFalse("a lookup reads no disk", cache.hasDataFor("Someone Else"));
 
-		LocalCaCache ca = new LocalCaCache(new Gson(), new InlineScheduledExecutorService(), null);
+		LocalCaCache ca = new LocalCaCache(new Gson(), new InlineScheduledExecutorService());
+		ca.open(null);
 		ca.setActivePlayer("Tester");
-		ca.cacheResult("Tester", Map.of(CombatAchievementTier.EASY, 1));
+		ca.cacheResult("Tester", 77L, Map.of(CombatAchievementTier.EASY, 1));
 		assertEquals(1, ca.getCached("Tester").getTotalPoints());
 	}
 }
