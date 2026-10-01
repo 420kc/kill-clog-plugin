@@ -384,7 +384,7 @@ class KillClogChatCommand
 	/** Provenance is exact by definition: full grouped digits, never the k/m shorthand. */
 	/* package */ static String kcReceivedText(String itemName, int kc)
 	{
-		return itemName + " received on " + String.format(Locale.US, "%,d", kc) + " kc";
+		return itemName + " received on " + TitleTooltip.grouped(kc) + " kc";
 	}
 
 	/**

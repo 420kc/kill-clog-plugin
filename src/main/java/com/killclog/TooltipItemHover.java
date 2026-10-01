@@ -6,7 +6,6 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import javax.swing.JComponent;
 import lombok.AccessLevel;
@@ -82,9 +81,9 @@ final class TooltipItemHover
 		if (count >= 10_000)
 		{
 			long thousands = Math.round(count / 1000.0);
-			return "x" + String.format(Locale.US, "%,d", thousands) + "k";
+			return "x" + TitleTooltip.grouped(thousands) + "k";
 		}
-		return "x" + String.format(Locale.US, "%,d", count);
+		return "x" + TitleTooltip.grouped(count);
 	}
 
 	private void install()

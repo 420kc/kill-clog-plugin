@@ -134,7 +134,7 @@ public class SkillTooltip extends TitleTooltip
 
 	String riftsClosedText()
 	{
-		return riftsClosed >= 0 ? String.format(Locale.US, "%,d", riftsClosed) : "--";
+		return riftsClosed >= 0 ? grouped(riftsClosed) : "--";
 	}
 
 	@Override
@@ -205,12 +205,12 @@ public class SkillTooltip extends TitleTooltip
 
 		String xpText()
 		{
-			return xp >= 0 ? format(xp) : "--";
+			return xp >= 0 ? grouped(xp) : "--";
 		}
 
 		String rankText()
 		{
-			return rank > 0 ? format(rank) : rankAvailable ? "Unranked" : "--";
+			return rank > 0 ? grouped(rank) : rankAvailable ? "Unranked" : "--";
 		}
 
 		String xpToLevelText()
@@ -219,7 +219,7 @@ public class SkillTooltip extends TitleTooltip
 			{
 				return "Maxed";
 			}
-			return xpToLevel >= 0 ? format(xpToLevel) : "--";
+			return xpToLevel >= 0 ? grouped(xpToLevel) : "--";
 		}
 
 		private Color levelColor()
@@ -244,11 +244,6 @@ public class SkillTooltip extends TitleTooltip
 				return CLOG_GREEN;
 			}
 			return xpToLevel >= 0 ? Color.WHITE : UNRANKED_COLOR;
-		}
-
-		private static String format(long value)
-		{
-			return String.format(Locale.US, "%,d", value);
 		}
 	}
 }

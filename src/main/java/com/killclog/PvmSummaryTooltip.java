@@ -10,7 +10,6 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import lombok.Setter;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
@@ -423,7 +422,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 	private String slayerRankValue()
 	{
-		return slayerRank > 0 ? String.format(Locale.US, "%,d", slayerRank) : "--";
+		return scoreText(slayerRank);
 	}
 
 	/**
@@ -433,7 +432,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 	 */
 	/* package */ static String slayerXpText(long xp)
 	{
-		return xp > 0 ? String.format(Locale.US, "%,d", xp) : "--";
+		return scoreText(xp);
 	}
 
 	private String combatValue()
@@ -485,7 +484,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 	private String mostKilledLine()
 	{
-		return mostKilled + " (" + String.format(Locale.US, "%,d", mostKilledKc) + ")";
+		return mostKilled + " (" + grouped(mostKilledKc) + ")";
 	}
 
 	private static int raidLineWidth(FontMetrics fm, String label, int kc, int obtained, int total)

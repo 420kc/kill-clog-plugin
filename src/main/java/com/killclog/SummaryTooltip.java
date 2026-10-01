@@ -9,7 +9,6 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 import java.util.function.IntFunction;
 import javax.annotation.Nullable;
@@ -222,8 +221,8 @@ public class SummaryTooltip extends TitleTooltip
 			}
 			if (overallRank > 0)
 			{
-				String rankText = " #" + String.format(Locale.US, "%,d", overallRank);
-				if (accountLabel == null) rankText = "#" + String.format(Locale.US, "%,d", overallRank);
+				String rankText = " #" + grouped(overallRank);
+				if (accountLabel == null) rankText = "#" + grouped(overallRank);
 				g2.setColor(Color.WHITE);
 				g2.drawString(rankText, x, lineY);
 			}
@@ -309,10 +308,10 @@ public class SummaryTooltip extends TitleTooltip
 	{
 		if (accountLabel != null && overallRank > 0)
 		{
-			return accountLabel + " #" + String.format(Locale.US, "%,d", overallRank);
+			return accountLabel + " #" + grouped(overallRank);
 		}
 		if (accountLabel != null) return accountLabel;
-		if (overallRank > 0) return "#" + String.format(Locale.US, "%,d", overallRank);
+		if (overallRank > 0) return "#" + grouped(overallRank);
 		return null;
 	}
 
