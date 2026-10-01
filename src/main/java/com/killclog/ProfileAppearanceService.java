@@ -2,10 +2,9 @@ package com.killclog;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -37,6 +36,8 @@ final class ProfileAppearanceService
 	private static final String RECOVERY_TOKEN_KEY = "recoveryToken";
 	private static final String RECOVERY_AT_KEY = "recoveryActivatesAt";
 	static final long PUBLISH_RETRY_DELAY_MS = 2250L;
+	private static final PublishResult PROFILE_REQUIRED = new PublishResult(Outcome.PROFILE_REQUIRED,
+		"Publish your Collection Log, then retry character publishing.");
 
 	enum Outcome
 	{
@@ -249,7 +250,8 @@ final class ProfileAppearanceService
 			return authorized.getAsBoolean() && isStillSelf(rsn, accountHash);
 		}
 
-		private CompletableFuture<HttpUtil.HttpResult> post(String suffix, String body, String secret)
+		private CompletableFuture<PublishResult> post(String suffix, String body, String secret,
+			BiFunction<HttpUtil.HttpResult, JsonObject, CompletableFuture<PublishResult>> handle)
 		{
 			CompletableFuture<HttpUtil.HttpResult> result = new CompletableFuture<>();
 			try
@@ -280,7 +282,14 @@ final class ProfileAppearanceService
 			{
 				result.completeExceptionally(e);
 			}
-			return result;
+			return result.thenCompose(response ->
+			{
+				JsonObject json = parse(response.body);
+				return response.code == -2 ? completed(Outcome.CANCELLED)
+					: isDryRun(response, json) ? CompletableFuture.completedFuture(new PublishResult(Outcome.DISABLED,
+						"Character publishing is temporarily unavailable. Try again later."))
+					: handle.apply(response, json);
+			});
 		}
 	}
 
@@ -316,26 +325,11 @@ final class ProfileAppearanceService
 	{
 		JsonObject body = new JsonObject();
 		body.addProperty("account_hash", Long.toString(attempt.accountHash));
-		return attempt.post("appearance/device", gson.toJson(body), null).thenCompose(response ->
+		return attempt.post("appearance/device", gson.toJson(body), null, (response, json) ->
 		{
-			if (response.code == -2) return completed(Outcome.CANCELLED);
-			JsonObject json = parse(response.body);
-			if (isDryRun(response, json))
-			{
-				return CompletableFuture.completedFuture(new PublishResult(Outcome.DISABLED,
-					"Character publishing is temporarily unavailable. Try again later."));
-			}
 			if (response.code == 201)
 			{
-				String secret = stringValue(json, "device_secret");
-				if (!validSecret(secret))
-				{
-					return completed(Outcome.FAILED);
-				}
-				return saveDeviceSecret(attempt.accountHash, secret)
-					.thenCompose(saved -> saved
-						? publishWithSecret(attempt, manifestJson, secret, false)
-						: completed(Outcome.FAILED));
+				return adoptSecret(attempt, manifestJson, json);
 			}
 			if (response.code == 202)
 			{
@@ -357,11 +351,17 @@ final class ProfileAppearanceService
 			}
 			if (isProfileRequired(response.code, json))
 			{
-				return CompletableFuture.completedFuture(new PublishResult(Outcome.PROFILE_REQUIRED,
-					"Publish your Collection Log, then retry character publishing."));
+				return CompletableFuture.completedFuture(PROFILE_REQUIRED);
 			}
 			return failedResponse(attempt, "registration", response, json);
 		});
+	}
+
+	private CompletableFuture<PublishResult> adoptSecret(PublishAttempt attempt, String manifestJson, JsonObject json)
+	{
+		String secret = stringValue(json, "device_secret");
+		return !validSecret(secret) ? completed(Outcome.FAILED) : saveDeviceSecret(attempt.accountHash, secret)
+			.thenCompose(saved -> saved ? publishWithSecret(attempt, manifestJson, secret, false) : completed(Outcome.FAILED));
 	}
 
 	private CompletableFuture<PublishResult> claimRecovery(PublishAttempt attempt,
@@ -370,36 +370,19 @@ final class ProfileAppearanceService
 		JsonObject body = new JsonObject();
 		body.addProperty("account_hash", Long.toString(attempt.accountHash));
 		body.addProperty("recovery_token", recoveryToken);
-		return attempt.post("appearance/device/claim", gson.toJson(body), null).thenCompose(response ->
+		return attempt.post("appearance/device/claim", gson.toJson(body), null, (response, json) ->
 		{
-			if (response.code == -2) return completed(Outcome.CANCELLED);
-			JsonObject json = parse(response.body);
-			if (isDryRun(response, json))
-			{
-				return CompletableFuture.completedFuture(new PublishResult(Outcome.DISABLED,
-					"Character publishing is temporarily unavailable. Try again later."));
-			}
 			if (response.code >= 200 && response.code < 300)
 			{
-				String secret = stringValue(json, "device_secret");
-				if (!validSecret(secret))
-				{
-					return completed(Outcome.FAILED);
-				}
-				return saveDeviceSecret(attempt.accountHash, secret)
-					.thenCompose(saved -> saved
-						? publishWithSecret(attempt, manifestJson, secret, false)
-						: completed(Outcome.FAILED));
+				return adoptSecret(attempt, manifestJson, json);
 			}
 			if (response.code == 409 && hasError(json, "appearance_recovery_wait"))
 			{
-				return CompletableFuture.completedFuture(recoveryPending(stringValue(json, "activates_at") != null
-					? stringValue(json, "activates_at") : attempt.recoveryAt));
+				return CompletableFuture.completedFuture(recoveryPending(json, attempt));
 			}
 			if (isProfileRequired(response.code, json))
 			{
-				return CompletableFuture.completedFuture(new PublishResult(Outcome.PROFILE_REQUIRED,
-					"Publish your Collection Log, then retry character publishing."));
+				return CompletableFuture.completedFuture(PROFILE_REQUIRED);
 			}
 			if (response.code == 409 && hasError(json, "appearance_recovery_missing"))
 			{
@@ -415,15 +398,8 @@ final class ProfileAppearanceService
 	private CompletableFuture<PublishResult> publishWithSecret(PublishAttempt attempt,
 		String manifestJson, String secret, boolean recoverInvalidSecret)
 	{
-		return attempt.post("appearance/publish/main", manifestJson, secret).thenCompose(response ->
+		return attempt.post("appearance/publish/main", manifestJson, secret, (response, json) ->
 		{
-			if (response.code == -2) return completed(Outcome.CANCELLED);
-			JsonObject json = parse(response.body);
-			if (isDryRun(response, json))
-			{
-				return CompletableFuture.completedFuture(new PublishResult(Outcome.DISABLED,
-					"Character publishing is temporarily unavailable. Try again later."));
-			}
 			if (isRenderedPublishResponse(response.code, json))
 			{
 				return completed(Outcome.PUBLISHED);
@@ -433,14 +409,6 @@ final class ProfileAppearanceService
 				return holdRetry(attempt, new PublishResult(Outcome.RENDERING,
 					"Your character was accepted and is still rendering. Check your profile shortly."), 15);
 			}
-			if (response.code == 503 && hasError(json, "appearance_render_failed"))
-			{
-				return failedResponse(attempt, "publish", response, json);
-			}
-			if (response.code == 409 && hasError(json, "appearance_superseded"))
-			{
-				return failedResponse(attempt, "publish", response, json);
-			}
 			if (response.code == 401 && recoverInvalidSecret)
 			{
 				return clearDeviceSecret(attempt.accountHash)
@@ -448,23 +416,17 @@ final class ProfileAppearanceService
 						? requestDevice(attempt, manifestJson)
 						: completed(Outcome.FAILED));
 			}
-			if (response.code == 429)
-			{
-				return failedResponse(attempt, "publish", response, json);
-			}
 			if (shouldCancelPendingRecovery(response.code, json, recoverInvalidSecret))
 			{
 				return cancelRecoveryAndPublish(attempt, manifestJson, secret);
 			}
 			if (response.code == 409 && hasError(json, "appearance_recovery_pending"))
 			{
-				return CompletableFuture.completedFuture(recoveryPending(stringValue(json, "activates_at") != null
-					? stringValue(json, "activates_at") : attempt.recoveryAt));
+				return CompletableFuture.completedFuture(recoveryPending(json, attempt));
 			}
 			if (isProfileRequired(response.code, json))
 			{
-				return CompletableFuture.completedFuture(new PublishResult(Outcome.PROFILE_REQUIRED,
-					"Publish your Collection Log, then retry character publishing."));
+				return CompletableFuture.completedFuture(PROFILE_REQUIRED);
 			}
 			return failedResponse(attempt, "publish", response, json);
 		});
@@ -494,6 +456,12 @@ final class ProfileAppearanceService
 		return CompletableFuture.completedFuture(result);
 	}
 
+	private static PublishResult recoveryPending(@Nullable JsonObject json, PublishAttempt attempt)
+	{
+		String activatesAt = stringValue(json, "activates_at");
+		return recoveryPending(activatesAt != null ? activatesAt : attempt.recoveryAt);
+	}
+
 	private static PublishResult recoveryPending(@Nullable String activatesAt)
 	{
 		String time = displayTime(activatesAt);
@@ -520,15 +488,8 @@ final class ProfileAppearanceService
 	private CompletableFuture<PublishResult> cancelRecoveryAndPublish(PublishAttempt attempt,
 		String manifestJson, String secret)
 	{
-		return attempt.post("appearance/device/cancel", "{}", secret).thenCompose(response ->
+		return attempt.post("appearance/device/cancel", "{}", secret, (response, json) ->
 		{
-			if (response.code == -2) return completed(Outcome.CANCELLED);
-			JsonObject json = parse(response.body);
-			if (isDryRun(response, json))
-			{
-				return CompletableFuture.completedFuture(new PublishResult(Outcome.DISABLED,
-					"Character publishing is temporarily unavailable. Try again later."));
-			}
 			boolean cancelled = response.code >= 200 && response.code < 300
 				&& json != null && json.has("recovery_cancelled")
 				&& json.get("recovery_cancelled").getAsBoolean();
@@ -759,7 +720,7 @@ final class ProfileAppearanceService
 	private static String endpoint(String rsn, String suffix)
 	{
 		return KillClogEndpoint.apiBaseUrl() + "/player/"
-			+ URLEncoder.encode(rsn, StandardCharsets.UTF_8).replace("+", "%20")
+			+ HttpUtil.pathSegment(rsn)
 			+ "/" + suffix;
 	}
 
