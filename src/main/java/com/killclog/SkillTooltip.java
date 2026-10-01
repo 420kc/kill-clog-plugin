@@ -30,7 +30,6 @@ public class SkillTooltip extends TitleTooltip
 	private boolean showRiftsClosed;
 	private int riftsClosed = -1;
 	private final SkillClogSectionRenderer sectionRenderer = new SkillClogSectionRenderer(this);
-	private final TooltipItemHover itemHover = new TooltipItemHover(this);
 
 	public void setData(Skill skill, @Nullable HiscoreResult result, boolean virtualLevels)
 	{
@@ -67,13 +66,6 @@ public class SkillTooltip extends TitleTooltip
 		showRiftsClosed = true;
 		this.riftsClosed = riftsClosed;
 		sectionRenderer.setRiftsClosed(riftsClosed);
-	}
-
-	@Override
-	public void setWikiLinksEnabled(boolean wikiLinksEnabled)
-	{
-		super.setWikiLinksEnabled(wikiLinksEnabled);
-		itemHover.setWikiLinksEnabled(wikiLinksEnabled);
 	}
 
 	@Override
@@ -144,18 +136,6 @@ public class SkillTooltip extends TitleTooltip
 	String riftsClosedText()
 	{
 		return riftsClosed >= 0 ? String.format(Locale.US, "%,d", riftsClosed) : "--";
-	}
-
-	@Override
-	protected String getHeaderHoverLineText()
-	{
-		return itemHover.hoveredItemName();
-	}
-
-	@Override
-	protected Color getHeaderHoverLineColor()
-	{
-		return itemHover.hoveredItemObtained() ? CLOG_GREEN : CLOG_RED;
 	}
 
 	@Override

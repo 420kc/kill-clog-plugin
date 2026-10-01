@@ -72,10 +72,16 @@ public abstract class TitleTooltip extends NativeTooltip
 	private String titleWikiPage;
 	private boolean wikiLinksEnabled = true;
 	private boolean titleHovered;
+	// Item sprites on the card: hover names and wiki links. Installed after the
+	// title's own listeners, as the cards' own copies were.
+	final TooltipItemHover itemHover;
+	// Image grids name the hovered item at the header's right instead of a hover line.
+	boolean itemNameInHeader;
 
 	protected TitleTooltip()
 	{
 		installTitleLinkHandlers();
+		itemHover = new TooltipItemHover(this);
 	}
 
 	/** Optional colored text painted immediately after the main title. */
@@ -101,6 +107,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	public void setWikiLinksEnabled(boolean wikiLinksEnabled)
 	{
 		this.wikiLinksEnabled = wikiLinksEnabled;
+		itemHover.setWikiLinksEnabled(wikiLinksEnabled);
 		if (!wikiLinksEnabled && titleHovered)
 		{
 			titleHovered = false;
@@ -377,38 +384,23 @@ public abstract class TitleTooltip extends NativeTooltip
 		return TITLE_FONT;
 	}
 
-	/** Optional orange text painted on the right side of the last header row. */
-	protected String getHeaderRightText()
-	{
-		return null;
-	}
-
-	/** Color for the optional right-side header text. */
-	protected Color getHeaderRightColor()
-	{
-		return OSRS_ORANGE;
-	}
-
-	/** Optional text painted above the right-side header text. */
-	protected String getHeaderUpperRightText()
-	{
-		return null;
-	}
-
-	/** Color for the optional upper-right header text. */
-	protected Color getHeaderUpperRightColor()
-	{
-		return OSRS_ORANGE;
-	}
-
 	protected String getHeaderHoverLineText()
 	{
-		return null;
+		return itemHover.hoveredItemName();
 	}
 
 	protected Color getHeaderHoverLineColor()
 	{
-		return OSRS_ORANGE;
+		return itemHover.hoveredItemObtained() ? CLOG_GREEN : CLOG_RED;
+	}
+
+	/** The hover line under a sprite row, while one of that section's items is hovered. */
+	void paintSectionHoverLine(Graphics2D g2, FontMetrics fm, int width, int y, int section)
+	{
+		if (itemHover.isSectionHovered(section))
+		{
+			paintHeaderHoverLine(g2, fm, width, y + fm.getAscent());
+		}
 	}
 
 	protected String getHeaderHoverLineRightText()
@@ -656,13 +648,17 @@ public abstract class TitleTooltip extends NativeTooltip
 			activeLineWidth = labelWidth + fm.stringWidth(subtitleValue);
 		}
 
-		if (upperLineY != lineY)
+		if (itemNameInHeader)
 		{
-			paintHeaderRightText(g2, fm, w, upperLineY, upperLineWidth,
-				getHeaderUpperRightText(), getHeaderUpperRightColor());
+			// The hovered item's name on the last header row, its duplicate count above.
+			if (upperLineY != lineY)
+			{
+				paintHeaderRightText(g2, fm, w, upperLineY, upperLineWidth,
+					itemHover.hoveredDuplicateCountText(), CLOG_YELLOW);
+			}
+			paintHeaderRightText(g2, fm, w, lineY, activeLineWidth,
+				itemHover.hoveredItemName(), getHeaderHoverLineColor());
 		}
-		paintHeaderRightText(g2, fm, w, lineY, activeLineWidth,
-			getHeaderRightText(), getHeaderRightColor());
 
 		// Separator
 		int sepY = lineY + SEPARATOR_GAP;
