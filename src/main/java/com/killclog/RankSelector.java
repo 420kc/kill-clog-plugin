@@ -8,11 +8,14 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.IdentityHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.BiFunction;
+import java.util.function.BiPredicate;
 import javax.swing.BorderFactory;
 import javax.swing.ImageIcon;
 import javax.swing.JButton;
@@ -25,8 +28,13 @@ import net.runelite.client.util.ImageUtil;
 /** EDT-owned leaderboard views for both players. Cached service results stay untouched. */
 final class RankSelector extends JPanel
 {
+	/** The row a board without this player shows: nothing. */
+	private static final HiscoreResult NOTHING = new HiscoreResult(null, null, null, null, null, null, 0, 0, 0, -1);
+
 	private final BiFunction<String, RankLeaderboard, CompletableFuture<HiscoreResult>> fetch;
+	private final BiPredicate<String, RankLeaderboard> absent;
 	private final Runnable changed;
+	private final Set<RankLeaderboard> open = EnumSet.noneOf(RankLeaderboard.class);
 	private final Map<RankLeaderboard, JButton> buttons = new EnumMap<>(RankLeaderboard.class);
 	private final Map<HiscoreResult, HiscoreResult> views = new IdentityHashMap<>();
 	private final Map<HiscoreResult, String> notices = new IdentityHashMap<>();
@@ -37,11 +45,14 @@ final class RankSelector extends JPanel
 	private RankLeaderboard selected;
 	private boolean enabled;
 	private int version;
+	private int probes;
 
-	RankSelector(BiFunction<String, RankLeaderboard, CompletableFuture<HiscoreResult>> fetch, Runnable changed)
+	RankSelector(BiFunction<String, RankLeaderboard, CompletableFuture<HiscoreResult>> fetch,
+		BiPredicate<String, RankLeaderboard> absent, Runnable changed)
 	{
 		super(new FlowLayout(FlowLayout.CENTER, 4, 3));
 		this.fetch = fetch;
+		this.absent = absent;
 		this.changed = changed;
 		setBackground(ColorScheme.DARK_GRAY_COLOR);
 		for (RankLeaderboard table : RankLeaderboard.values())
@@ -96,18 +107,43 @@ final class RankSelector extends JPanel
 		this.redName = redName;
 		if (!enabled) selected = null;
 		setVisible(enabled);
+		probe();
 		reload();
 	}
 
 	void reset()
 	{
 		version++;
+		probes++;
 		selected = null;
 		blue = null;
 		red = null;
+		open.clear();
 		views.clear();
 		notices.clear();
 		updateButtons();
+	}
+
+	/** A board gets its button once either player has a row on it, or Jagex didn't answer and a click can retry. */
+	private void probe()
+	{
+		int probe = ++probes;
+		open.clear();
+		if (!enabled || blue == null) return;
+		probe(blueName, blue, probe);
+		if (red != null && red != blue) probe(redName, red, probe);
+	}
+
+	private void probe(String name, HiscoreResult base, int probe)
+	{
+		open.add(RankLeaderboard.nativeOf(base));
+		for (RankLeaderboard table : RankLeaderboard.values())
+		{
+			fetch.apply(name, table).whenComplete((row, error) -> SwingUtilities.invokeLater(() ->
+			{
+				if (probe == probes && (row != null || !absent.test(name, table)) && open.add(table)) updateButtons();
+			}));
+		}
 	}
 
 	void select(RankLeaderboard table)
@@ -127,6 +163,16 @@ final class RankSelector extends JPanel
 		if (!enabled || result == null) return result;
 		HiscoreResult view = views.get(result);
 		return view != null ? view : result.withRanks(null);
+	}
+
+	/** Why a displayed board shows nothing, or null when it shows a row. */
+	String blankNotice(HiscoreResult view)
+	{
+		for (Map.Entry<HiscoreResult, HiscoreResult> entry : views.entrySet())
+		{
+			if (entry.getValue() == view && view.getTotalLevel() == 0) return notices.get(entry.getKey());
+		}
+		return null;
 	}
 
 	private void reload()
@@ -151,19 +197,30 @@ final class RankSelector extends JPanel
 			views.put(base, base);
 			return;
 		}
-		views.put(base, base.withRanks(null));
+		CompletableFuture<HiscoreResult> fetching = fetch.apply(name, table);
+		if (fetching.isDone() && !fetching.isCompletedExceptionally())
+		{
+			settle(name, base, table, fetching.join());
+			return;
+		}
+		views.put(base, base.withRow(NOTHING));
 		notices.put(base, "Loading...");
-		fetch.apply(name, table).whenComplete((row, error) -> SwingUtilities.invokeLater(() ->
+		fetching.whenComplete((row, error) -> SwingUtilities.invokeLater(() ->
 		{
 			if (version != requestVersion) return;
-			boolean found = error == null && row != null;
-			HiscoreResult view = found ? base.withRow(row) : base.withRanks(null);
-			views.put(base, view);
-			notices.put(base, !found ? "Unavailable; click to retry"
-				: view.isFrozen() ? "Stats frozen on this leaderboard" : "");
+			settle(name, base, table, error == null ? row : null);
 			updateButtons();
 			changed.run();
 		}));
+	}
+
+	/** A board without this player's row shows nothing, never another board's stats. */
+	private void settle(String name, HiscoreResult base, RankLeaderboard table, HiscoreResult row)
+	{
+		HiscoreResult view = base.withRow(row != null ? row : NOTHING);
+		views.put(base, view);
+		notices.put(base, row == null ? absent.test(name, table) ? "Not on this leaderboard" : "Unavailable; click to retry"
+			: view.isFrozen() ? "Stats frozen on this leaderboard" : "");
 	}
 
 	private void updateButtons()
@@ -172,6 +229,7 @@ final class RankSelector extends JPanel
 		{
 			boolean active = entry.getKey() == active();
 			JButton button = entry.getValue();
+			button.setVisible(active || open.contains(entry.getKey()));
 			button.setEnabled(enabled && blue != null);
 			button.setSelected(active);
 			button.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0,
