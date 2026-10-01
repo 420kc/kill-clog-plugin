@@ -141,6 +141,12 @@ public abstract class NativeTooltip extends JToolTip
 	 */
 	public static void hideTooltipTree(java.awt.Component component)
 	{
+		tooltipRoot(component).setVisible(false);
+	}
+
+	/** The outermost tooltip holding this component (pinned cards nest side by side). */
+	static java.awt.Component tooltipRoot(java.awt.Component component)
+	{
 		java.awt.Component root = component;
 		for (java.awt.Component parent = component; parent != null; parent = parent.getParent())
 		{
@@ -149,7 +155,7 @@ public abstract class NativeTooltip extends JToolTip
 				root = parent;
 			}
 		}
-		root.setVisible(false);
+		return root;
 	}
 
 	protected NativeTooltip()
