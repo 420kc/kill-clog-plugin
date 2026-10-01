@@ -200,16 +200,22 @@ public abstract class TitleTooltip extends NativeTooltip
 		return x + fm.stringWidth(progress);
 	}
 
-	/** Value-column text: a thousands-grouped count, or "--" when absent. */
-	protected static String scoreText(int value)
+	/** A thousands-grouped count, the game's way: 1,234,567. */
+	static String grouped(long value)
 	{
-		return value > 0 ? String.format(Locale.US, "%,d", value) : "--";
+		return String.format(Locale.US, "%,d", value);
+	}
+
+	/** Value-column text: a thousands-grouped count, or "--" when absent. */
+	protected static String scoreText(long value)
+	{
+		return value > 0 ? grouped(value) : "--";
 	}
 
 	/** Rank tail that flows after a score column, e.g. " #1,234,567". */
 	protected static String rankTailText(int rank)
 	{
-		return " #" + String.format(Locale.US, "%,d", rank);
+		return " #" + grouped(rank);
 	}
 
 	/** Efficient-hours text: one decimal, thousands-grouped, "--" when absent. */
@@ -385,7 +391,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	{
 		if (rank > 0)
 		{
-			this.rankText = String.format(Locale.US, "%,d", rank);
+			this.rankText = grouped(rank);
 		}
 		else
 		{
