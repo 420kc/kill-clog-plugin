@@ -36,7 +36,7 @@ public class SyncServiceModeTest
 		}).build();
 		LocalClogCache main = mock(LocalClogCache.class);
 		LocalClogCache league = mock(LocalClogCache.class);
-		when(league.followNameChangeForSync("Tester", 42L, 3L)).thenReturn(true);
+		when(league.servesAccount("Tester", 42L, 3L)).thenReturn(true);
 		when(league.toFirstPartySyncResult("Tester")).thenReturn(new ClogResult("Tester",
 			Map.of("boss", List.of(new ClogResult.ClogItem(1, 1, null))), Map.of("boss", List.of(1)), Map.of(), null, null));
 		when(league.commitIfSessionCurrent(eq(3L), any())).thenAnswer(call -> ((Supplier<Object>) call.getArgument(1)).get());
