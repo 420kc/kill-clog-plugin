@@ -267,6 +267,12 @@ public class HiscoreService
 	{
 		String key = playerName.toLowerCase(Locale.ROOT);
 		cache.put(key, new CachedResult(result, now));
+		if (cache.size() > HttpUtil.CACHE_CAP)
+		{
+			// The name fetched longest ago goes; it is fetched again when asked for.
+			cache.entrySet().stream().min(java.util.Comparator.comparingLong(e -> e.getValue().timestamp))
+				.ifPresent(oldest -> cache.remove(oldest.getKey(), oldest.getValue()));
+		}
 		Long markedAt = dirtySince.get(key);
 		if (markedAt != null)
 		{
