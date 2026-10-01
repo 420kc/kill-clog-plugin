@@ -4,15 +4,12 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -46,10 +43,6 @@ public class RuneProfileService
 	private static final String BASE_URL = "https://api.runeprofile.com/v1/accounts/";
 	private static final String CLOG_SUFFIX = "/collection-log";
 
-	private static final long RESULT_TTL_MS = 5 * 60 * 1000;       // 5 min -- fresh success (CA + clog)
-	private static final long NOT_FOUND_TTL_MS = 60 * 60 * 1000;  // 1 hour -- not synced
-	private static final long FAILURE_TTL_MS = 3 * 60 * 1000;     // 3 min -- transient failure
-
 	// Shared across the CA and clog lanes. A single success clears it.
 	private final CircuitBreaker breaker = new CircuitBreaker("RuneProfile");
 
@@ -61,19 +54,9 @@ public class RuneProfileService
 	// catalog publishes complete immutable snapshots through a volatile field.
 	@Nullable private volatile CaCatalog caCatalog;
 
-	// Summary cache. Supplies CA tiers plus account metadata from one RuneProfile request.
-	private final Map<String, RuneProfileSummary> summaryCache = new ConcurrentHashMap<>();
-	private final Map<String, Long> summaryFetchTimes = new ConcurrentHashMap<>();
-	private final Map<String, Long> summaryNotFoundTimes = new ConcurrentHashMap<>();
-	private final Map<String, Long> summaryFailures = new ConcurrentHashMap<>();
-	private final Map<String, CompletableFuture<RuneProfileSummary>> summaryInFlight = new ConcurrentHashMap<>();
-
-	// Clog cache. Independent of CA, same TTLs.
-	private final Map<String, ClogResult> clogCache = new ConcurrentHashMap<>();
-	private final Map<String, Long> clogFetchTimes = new ConcurrentHashMap<>();
-	private final Map<String, Long> clogNotFoundTimes = new ConcurrentHashMap<>();
-	private final Map<String, Long> clogFailures = new ConcurrentHashMap<>();
-	private final Map<String, CompletableFuture<ClogResult>> clogInFlight = new ConcurrentHashMap<>();
+	// Summary lane (CA tiers plus account metadata) and clog lane: independent, same TTLs.
+	private final HttpUtil.Lane<RuneProfileSummary> summaries = new HttpUtil.Lane<>(breaker);
+	private final HttpUtil.Lane<ClogResult> clogs = new HttpUtil.Lane<>(breaker);
 
 	@Inject
 	public RuneProfileService(OkHttpClient httpClient, Gson gson, LocalCaCache localCaCache)
@@ -91,8 +74,8 @@ public class RuneProfileService
 	/** Clear transient failure cooldowns immediately (called on login); TTLs auto-expire otherwise. */
 	public void clearFailures()
 	{
-		summaryFailures.clear();
-		clogFailures.clear();
+		summaries.failed.clear();
+		clogs.failed.clear();
 		breaker.reset();
 	}
 
@@ -103,7 +86,7 @@ public class RuneProfileService
 		{
 			return null;
 		}
-		RuneProfileSummary cached = summaryCache.get(playerName.toLowerCase());
+		RuneProfileSummary cached = summaries.values.get(playerName.toLowerCase());
 		return cached != null ? rebased(cached.combatAchievements) : null;
 	}
 
@@ -133,7 +116,7 @@ public class RuneProfileService
 		{
 			return null;
 		}
-		RuneProfileSummary cached = freshSummary(playerName.toLowerCase());
+		RuneProfileSummary cached = summaries.fresh(playerName.toLowerCase());
 		return cached != null ? cached.accountType : null;
 	}
 
@@ -149,7 +132,7 @@ public class RuneProfileService
 			return false;
 		}
 		String wanted = Text.toJagexName(playerName.toLowerCase());
-		return summaryCache.keySet().stream().anyMatch(key -> Text.toJagexName(key).equals(wanted));
+		return summaries.values.keySet().stream().anyMatch(key -> Text.toJagexName(key).equals(wanted));
 	}
 
 	/**
@@ -178,66 +161,25 @@ public class RuneProfileService
 	private CompletableFuture<RuneProfileSummary> lookupSummary(String playerName)
 	{
 		String key = playerName.toLowerCase();
-		long now = System.currentTimeMillis();
-
-		RuneProfileSummary cached = summaryCache.get(key);
-		Long fetched = summaryFetchTimes.get(key);
-		if (cached != null && fetched != null && now - fetched < RESULT_TTL_MS)
-		{
-			return CompletableFuture.completedFuture(cached);
-		}
-
-		Long notFoundAt = summaryNotFoundTimes.get(key);
-		if (notFoundAt != null && now - notFoundAt < NOT_FOUND_TTL_MS)
-		{
-			return CompletableFuture.completedFuture(cached);
-		}
-
-		Long failedAt = summaryFailures.get(key);
-		if (failedAt != null && now - failedAt < FAILURE_TTL_MS)
-		{
-			return CompletableFuture.completedFuture(cached);
-		}
-
-		// If RuneProfile is down, do not pile on requests.
-		if (breaker.isOpen())
-		{
-			return CompletableFuture.completedFuture(cached);
-		}
-
-		return HttpUtil.singleFlightLookup(summaryInFlight, key, () -> startSummaryLookup(playerName, key));
+		return summaries.lookup(key, () -> startSummaryLookup(playerName, key));
 	}
 
 	private CompletableFuture<RuneProfileSummary> startSummaryLookup(String playerName, String key)
 	{
-		// RSN sits in the path, so spaces must be %20 (URLEncoder yields '+', valid only in a query).
-		String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8).replace("+", "%20");
-		String url = BASE_URL + encoded;
-
-		return httpGet(url).thenApply(resp ->
+		return HttpUtil.httpGet(httpClient, BASE_URL + HttpUtil.pathSegment(playerName)).thenApply(resp ->
 		{
 			if (resp.code == 404)
 			{
-				summaryNotFoundTimes.put(key, System.currentTimeMillis());
-				return summaryCache.get(key);
+				summaries.notFound.put(key, System.currentTimeMillis());
+				return summaries.values.get(key);
 			}
-			if (resp.code != 200 || resp.body == null)
-			{
-				summaryFailures.put(key, System.currentTimeMillis());
-				breaker.failure();
-				return summaryCache.get(key);
-			}
-			RuneProfileSummary result = parseAccountSummary(resp.body);
+			RuneProfileSummary result = resp.code == 200 && resp.body != null ? parseAccountSummary(resp.body) : null;
 			if (result == null)
 			{
-				summaryFailures.put(key, System.currentTimeMillis());
-				breaker.failure();
-				return summaryCache.get(key);
+				return summaries.fail(key);
 			}
-			summaryCache.put(key, result);
-			summaryFetchTimes.put(key, System.currentTimeMillis());
 			breaker.reset();
-			return result;
+			return summaries.ok(key, result);
 		});
 	}
 
@@ -356,57 +298,25 @@ public class RuneProfileService
 	public CompletableFuture<ClogResult> lookupClog(String playerName)
 	{
 		String key = playerName.toLowerCase();
-		long now = System.currentTimeMillis();
-
-		ClogResult cached = clogCache.get(key);
-		Long fetched = clogFetchTimes.get(key);
-		if (cached != null && fetched != null && now - fetched < RESULT_TTL_MS)
-		{
-			return CompletableFuture.completedFuture(cached);
-		}
-
-		Long notFoundAt = clogNotFoundTimes.get(key);
-		if (notFoundAt != null && now - notFoundAt < NOT_FOUND_TTL_MS)
-		{
-			return CompletableFuture.completedFuture(cached);
-		}
-
-		Long failedAt = clogFailures.get(key);
-		if (failedAt != null && now - failedAt < FAILURE_TTL_MS)
-		{
-			return CompletableFuture.completedFuture(cached);
-		}
-
-		// Shared with CA lane; if RuneProfile is down, do not pile on.
-		if (breaker.isOpen())
-		{
-			return CompletableFuture.completedFuture(cached);
-		}
-
-		return HttpUtil.singleFlightLookup(clogInFlight, key, () -> startClogLookup(playerName, key));
+		return clogs.lookup(key, () -> startClogLookup(playerName, key));
 	}
 
 	private CompletableFuture<ClogResult> startClogLookup(String playerName, String key)
 	{
 		lookupSummary(playerName).exceptionally(ex -> null);
 
-		String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8).replace("+", "%20");
-		String url = BASE_URL + encoded + CLOG_SUFFIX;
-
-		return httpGet(url).thenApply(resp ->
+		return HttpUtil.httpGet(httpClient, BASE_URL + HttpUtil.pathSegment(playerName) + CLOG_SUFFIX).thenApply(resp ->
 		{
 			if (resp.code == 404)
 			{
-				clogNotFoundTimes.put(key, System.currentTimeMillis());
-				return clogCache.get(key);
+				clogs.notFound.put(key, System.currentTimeMillis());
+				return clogs.values.get(key);
 			}
 			if (resp.code != 200 || resp.body == null)
 			{
-				clogFailures.put(key, System.currentTimeMillis());
-				breaker.failure();
-				return clogCache.get(key);
+				return clogs.fail(key);
 			}
-			RuneProfileSummary summary = freshSummary(key);
+			RuneProfileSummary summary = summaries.fresh(key);
 			AccountType accountType = summary != null ? summary.accountType : null;
 			ClogParseOutcome parsed = parseCollectionLogOutcome(playerName, resp.body, accountType);
 			if (parsed.state == ClogParseState.NOT_SYNCED)
@@ -414,37 +324,20 @@ public class RuneProfileService
 				// RuneProfile can return a complete all-zero catalog instead of 404
 				// when no player snapshot exists. This is a healthy negative result,
 				// and it must replace any stale success rather than revive it.
-				clogCache.remove(key);
-				clogFetchTimes.remove(key);
-				clogFailures.remove(key);
-				clogNotFoundTimes.put(key, System.currentTimeMillis());
+				clogs.values.remove(key);
+				clogs.fetched.remove(key);
+				clogs.failed.remove(key);
+				clogs.notFound.put(key, System.currentTimeMillis());
 				breaker.reset();
 				return null;
 			}
-			ClogResult result = parsed.result;
-			if (result == null)
+			if (parsed.result == null)
 			{
-				clogFailures.put(key, System.currentTimeMillis());
-				breaker.failure();
-				return clogCache.get(key);
+				return clogs.fail(key);
 			}
-			clogCache.put(key, result);
-			clogFetchTimes.put(key, System.currentTimeMillis());
 			breaker.reset();
-			return result;
+			return clogs.ok(key, parsed.result);
 		});
-	}
-
-	@Nullable
-	private RuneProfileSummary freshSummary(String key)
-	{
-		RuneProfileSummary summary = summaryCache.get(key);
-		Long fetched = summaryFetchTimes.get(key);
-		if (summary == null || fetched == null)
-		{
-			return null;
-		}
-		return System.currentTimeMillis() - fetched < RESULT_TTL_MS ? summary : null;
 	}
 
 	/**
@@ -651,10 +544,5 @@ public class RuneProfileService
 			this.accountType = accountType;
 			this.combatAchievements = combatAchievements;
 		}
-	}
-
-	private CompletableFuture<HttpUtil.HttpResult> httpGet(String url)
-	{
-		return HttpUtil.httpGet(httpClient, url);
 	}
 }

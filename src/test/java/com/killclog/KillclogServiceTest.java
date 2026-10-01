@@ -307,10 +307,7 @@ public class KillclogServiceTest
 		setField("syncIndex", index);
 		setField("indexFetchedAt", System.currentTimeMillis());
 		// Age the cached result past its TTL so the lookup reaches the gate.
-		@SuppressWarnings("unchecked")
-		java.util.Map<String, Long> fetchTimes =
-			(java.util.Map<String, Long>) getField("clogFetchTimes");
-		fetchTimes.put("420 kc", System.currentTimeMillis() - 6 * 60 * 1000);
+		((HttpUtil.Lane<?>) getField("clogs")).fetched.put("420 kc", System.currentTimeMillis() - 6 * 60 * 1000);
 
 		assertNull(service.lookupClog("420 kc").join());
 		assertNull("pbs are evicted with the clog", service.pbText("420 kc", "Zulrah"));

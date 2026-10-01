@@ -1,8 +1,11 @@
 package com.killclog;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +40,66 @@ final class HttpUtil
 		// Even an immediate response must be registered before cleanup runs.
 		flight.whenComplete((result, error) -> flights.remove(key, flight));
 		return flight.copy();
+	}
+
+	/** An RSN as a path segment: spaces must be %20 (URLEncoder yields '+', valid only in a query). */
+	static String pathSegment(String rsn)
+	{
+		return URLEncoder.encode(rsn, StandardCharsets.UTF_8).replace("+", "%20");
+	}
+
+	/** One provider lane: success, not-found and failure stamps, in-flight dedup and a breaker. */
+	static final class Lane<T>
+	{
+		static final long RESULT_TTL_MS = 5 * 60 * 1000;       // 5 min -- fresh success
+		static final long NOT_FOUND_TTL_MS = 60 * 60 * 1000;  // 1 hour -- not synced
+		static final long FAILURE_TTL_MS = 3 * 60 * 1000;     // 3 min -- transient failure
+
+		final Map<String, T> values = new ConcurrentHashMap<>();
+		final Map<String, Long> fetched = new ConcurrentHashMap<>();
+		final Map<String, Long> notFound = new ConcurrentHashMap<>();
+		final Map<String, Long> failed = new ConcurrentHashMap<>();
+		final Map<String, CompletableFuture<T>> inFlight = new ConcurrentHashMap<>();
+		final CircuitBreaker breaker;
+
+		Lane(CircuitBreaker breaker)
+		{
+			this.breaker = breaker;
+		}
+
+		@Nullable
+		T fresh(String key)
+		{
+			T value = values.get(key);
+			return value != null && System.currentTimeMillis() - fetched.getOrDefault(key, 0L) < RESULT_TTL_MS ? value : null;
+		}
+
+		/** True while the lane answers from what it holds; a previous success outlives its TTL. */
+		boolean hold(String key)
+		{
+			long now = System.currentTimeMillis();
+			return fresh(key) != null || now - notFound.getOrDefault(key, 0L) < NOT_FOUND_TTL_MS
+				|| now - failed.getOrDefault(key, 0L) < FAILURE_TTL_MS || breaker.isOpen();
+		}
+
+		CompletableFuture<T> lookup(String key, Supplier<CompletableFuture<T>> start)
+		{
+			return hold(key) ? CompletableFuture.completedFuture(values.get(key)) : singleFlightLookup(inFlight, key, start);
+		}
+
+		T fail(String key)
+		{
+			failed.put(key, System.currentTimeMillis());
+			breaker.failure();
+			return values.get(key);
+		}
+
+		T ok(String key, T value)
+		{
+			values.put(key, value);
+			fetched.put(key, System.currentTimeMillis());
+			return value;
+		}
 	}
 
 	/** HTTP status code (-1 on transport failure) plus the body of a successful response. */
@@ -77,41 +140,7 @@ final class HttpUtil
 
 	static CompletableFuture<HttpResult> httpGet(OkHttpClient client, String url)
 	{
-		log.debug("HTTP GET: {}", url);
-		CompletableFuture<HttpResult> future = new CompletableFuture<>();
-
-		Request.Builder requestBuilder = new Request.Builder()
-			.url(url)
-			.header("User-Agent", USER_AGENT);
-		KillClogEndpoint.addStagingHeader(requestBuilder, url);
-		Request request = requestBuilder.build();
-
-		client.newCall(request).enqueue(new Callback()
-		{
-			@Override
-			public void onFailure(Call call, IOException e)
-			{
-				log.debug("HTTP GET failed for {}: {}", url, e.getMessage());
-				future.complete(new HttpResult(-1, null));
-			}
-
-			@Override
-			public void onResponse(Call call, Response response)
-			{
-				try (ResponseBody body = response.body())
-				{
-					String text = response.isSuccessful() && body != null ? readBounded(body) : null;
-					future.complete(new HttpResult(response.code(), text));
-				}
-				catch (IOException e)
-				{
-					log.debug("Failed to read response for {}: {}", url, e.getMessage());
-					future.complete(new HttpResult(-1, null));
-				}
-			}
-		});
-
-		return future;
+		return send(client, url, null, null);
 	}
 
 	/** Read a response body capped at {@link #MAX_BODY_BYTES}; null when oversized. */
@@ -135,13 +164,24 @@ final class HttpUtil
 	static CompletableFuture<HttpResult> httpPostJson(OkHttpClient client, String url, String json,
 		@Nullable String bearerToken)
 	{
-		log.debug("HTTP POST: {}", url);
+		return send(client, url, json, bearerToken);
+	}
+
+	/** GETs keep only a successful body; POSTs keep every body and the Retry-After advice. */
+	private static CompletableFuture<HttpResult> send(OkHttpClient client, String url, @Nullable String json,
+		@Nullable String bearerToken)
+	{
+		boolean post = json != null;
+		log.debug("HTTP {}: {}", post ? "POST" : "GET", url);
 		CompletableFuture<HttpResult> future = new CompletableFuture<>();
 
 		Request.Builder request = new Request.Builder()
 			.url(url)
-			.header("User-Agent", USER_AGENT)
-			.post(RequestBody.create(MediaType.parse("application/json; charset=utf-8"), json));
+			.header("User-Agent", USER_AGENT);
+		if (post)
+		{
+			request.post(RequestBody.create(MediaType.parse("application/json; charset=utf-8"), json));
+		}
 		if (bearerToken != null && bearerToken.matches("[a-f0-9]{64}"))
 		{
 			request.header("Authorization", "Bearer " + bearerToken);
@@ -153,7 +193,7 @@ final class HttpUtil
 			@Override
 			public void onFailure(Call call, IOException e)
 			{
-				log.debug("HTTP POST failed for {}: {}", url, e.getMessage());
+				log.debug("HTTP request failed for {}: {}", url, e.getMessage());
 				future.complete(new HttpResult(-1, null));
 			}
 
@@ -162,13 +202,14 @@ final class HttpUtil
 			{
 				try (ResponseBody body = response.body())
 				{
-					String text = body != null ? readBounded(body) : null;
-					future.complete(new HttpResult(response.code(), text, retryAfterSeconds(response.header("Retry-After"))));
+					String text = (post || response.isSuccessful()) && body != null ? readBounded(body) : null;
+					future.complete(new HttpResult(response.code(), text,
+						post ? retryAfterSeconds(response.header("Retry-After")) : 0));
 				}
 				catch (IOException e)
 				{
 					log.debug("Failed to read response for {}: {}", url, e.getMessage());
-					future.complete(new HttpResult(response.code(), null));
+					future.complete(new HttpResult(post ? response.code() : -1, null));
 				}
 			}
 		});

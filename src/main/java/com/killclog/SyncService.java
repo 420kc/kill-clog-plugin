@@ -3,8 +3,6 @@ package com.killclog;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
@@ -122,10 +120,7 @@ class SyncService
 
 		String body = gson.toJson(buildBody(accountHash, accountType, clog, personalBests, detailedPersonalBests));
 		final int observedCount = countUniqueItems(clog);
-		// URLEncoder form-encodes spaces as '+', which the server preserves and
-		// rejects; path segments need %20.
-		String url = KillClogEndpoint.apiBaseUrl() + "/player/"
-			+ URLEncoder.encode(rsn, StandardCharsets.UTF_8).replace("+", "%20") + "/sync/" + mode;
+		String url = KillClogEndpoint.apiBaseUrl() + "/player/" + HttpUtil.pathSegment(rsn) + "/sync/" + mode;
 
 		log.debug("Syncing collection log for '{}' to {} ({} items)",
 			rsn, url, observedCount);

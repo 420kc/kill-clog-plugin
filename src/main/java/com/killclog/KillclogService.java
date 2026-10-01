@@ -3,8 +3,6 @@ package com.killclog;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -48,9 +46,6 @@ public class KillclogService
 {
 	private static final String PROOF_SUFFIX = "/proof-view";
 
-	private static final long RESULT_TTL_MS = 5 * 60 * 1000;       // 5 min -- fresh success
-	private static final long NOT_FOUND_TTL_MS = 60 * 60 * 1000;  // 1 hour -- never synced / opted out
-	private static final long FAILURE_TTL_MS = 3 * 60 * 1000;     // 3 min -- transient failure
 	private static final long INDEX_TTL_MS = 10 * 60 * 1000;      // 10 min -- membership list
 
 	private final CircuitBreaker breaker = new CircuitBreaker("killclog.com");
@@ -73,11 +68,7 @@ public class KillclogService
 	private final Map<String, CompletableFuture<Set<String>>> indexInFlight = new ConcurrentHashMap<>();
 
 	// Proof-view cache, keyed by lowercase rsn. Same TTL trio as the providers.
-	private final Map<String, ClogResult> clogCache = new ConcurrentHashMap<>();
-	private final Map<String, Long> clogFetchTimes = new ConcurrentHashMap<>();
-	private final Map<String, Long> clogNotFoundTimes = new ConcurrentHashMap<>();
-	private final Map<String, Long> clogFailures = new ConcurrentHashMap<>();
-	private final Map<String, CompletableFuture<ClogResult>> clogInFlight = new ConcurrentHashMap<>();
+	private final HttpUtil.Lane<ClogResult> clogs = new HttpUtil.Lane<>(breaker);
 
 	// Personal bests per player, filled by every successful proof-view fetch
 	// regardless of which provider wins the clog pick. Keys are panel boss
@@ -112,7 +103,7 @@ public class KillclogService
 	/** Clear transient failure cooldowns immediately (called on login); TTLs auto-expire otherwise. */
 	public void clearFailures()
 	{
-		clogFailures.clear();
+		clogs.failed.clear();
 		indexFailedAt = 0;
 		breaker.reset();
 	}
@@ -132,39 +123,13 @@ public class KillclogService
 	CompletableFuture<ClogResult> lookupClog(String playerName, String mode)
 	{
 		String key = modeKey(mode, playerName);
-		long now = System.currentTimeMillis();
-
-		ClogResult cached = clogCache.get(key);
-		Long fetched = clogFetchTimes.get(key);
-		if (cached != null && fetched != null && now - fetched < RESULT_TTL_MS)
-		{
-			return CompletableFuture.completedFuture(cached);
-		}
-
-		Long notFoundAt = clogNotFoundTimes.get(key);
-		if (notFoundAt != null && now - notFoundAt < NOT_FOUND_TTL_MS)
-		{
-			return CompletableFuture.completedFuture(cached);
-		}
-
-		Long failedAt = clogFailures.get(key);
-		if (failedAt != null && now - failedAt < FAILURE_TTL_MS)
-		{
-			return CompletableFuture.completedFuture(cached);
-		}
-
-		if (breaker.isOpen())
-		{
-			return CompletableFuture.completedFuture(cached);
-		}
-
 		// The canonical catalog supplies category denominators; until it
 		// warms (a brief startup window), a fresh first-party result would
 		// render dishonest totals, so the leg waits it out. Providers keep
 		// serving, and nothing is recorded against the breaker.
-		if (clogService != null && !clogService.hasCatalog())
+		if (clogs.hold(key) || clogService != null && !clogService.hasCatalog())
 		{
-			return CompletableFuture.completedFuture(cached);
+			return CompletableFuture.completedFuture(clogs.values.get(key));
 		}
 
 		return ensureIndex().thenCompose(index ->
@@ -173,7 +138,7 @@ public class KillclogService
 			// keep whatever is cached rather than guessing either way.
 			if (index == null)
 			{
-				return CompletableFuture.completedFuture(clogCache.get(key));
+				return CompletableFuture.completedFuture(clogs.values.get(key));
 			}
 			// A real index miss is authoritative absence: never synced, or
 			// synced-then-withdrawn (opt-out purge, unbind). Cached data and
@@ -184,15 +149,15 @@ public class KillclogService
 				evictFirstParty(key);
 				return CompletableFuture.completedFuture(null);
 			}
-			return HttpUtil.singleFlightLookup(clogInFlight, key, () -> startProofViewLookup(playerName, key, mode));
+			return HttpUtil.singleFlightLookup(clogs.inFlight, key, () -> startProofViewLookup(playerName, key, mode));
 		});
 	}
 
 	/** Drop every first-party trace of a player: clog result, freshness, pbs. */
 	private void evictFirstParty(String key)
 	{
-		clogCache.remove(key);
-		clogFetchTimes.remove(key);
+		clogs.values.remove(key);
+		clogs.fetched.remove(key);
 		pbCache.remove(key);
 	}
 
@@ -225,7 +190,7 @@ public class KillclogService
 		{
 			return CompletableFuture.completedFuture(cached);
 		}
-		if (indexFailedAt > 0 && now - indexFailedAt < FAILURE_TTL_MS)
+		if (indexFailedAt > 0 && now - indexFailedAt < HttpUtil.Lane.FAILURE_TTL_MS)
 		{
 			return CompletableFuture.completedFuture(cached);
 		}
@@ -237,13 +202,7 @@ public class KillclogService
 		return HttpUtil.httpGet(httpClient,
 			KillClogEndpoint.apiBaseUrl() + "/player/sync-index").thenApply(resp ->
 		{
-			if (resp.code != 200 || resp.body == null)
-			{
-				indexFailedAt = System.currentTimeMillis();
-				breaker.failure();
-				return syncIndex;
-			}
-			Set<String> parsed = parseSyncIndex(resp.body);
+			Set<String> parsed = resp.code == 200 && resp.body != null ? parseSyncIndex(resp.body) : null;
 			if (parsed == null)
 			{
 				indexFailedAt = System.currentTimeMillis();
@@ -318,15 +277,9 @@ public class KillclogService
 
 	private CompletableFuture<ClogResult> startProofViewLookup(String playerName, String key, String mode)
 	{
-		// RSN sits in the path, so spaces must be %20 (URLEncoder yields '+', valid only in a query).
-		String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8).replace("+", "%20");
-		String url = KillClogEndpoint.apiBaseUrl() + "/player/" + encoded + PROOF_SUFFIX
+		String url = KillClogEndpoint.apiBaseUrl() + "/player/" + HttpUtil.pathSegment(playerName) + PROOF_SUFFIX
 			+ (GameMode.MAIN.equals(mode) ? "" : "/" + mode);
-
-		return HttpUtil.httpGet(httpClient, url).thenApply(resp ->
-		{
-			return onProofViewResponse(resp.code, resp.body, playerName, key);
-		});
+		return HttpUtil.httpGet(httpClient, url).thenApply(resp -> onProofViewResponse(resp.code, resp.body, playerName, key));
 	}
 
 	/**
@@ -344,26 +297,16 @@ public class KillclogService
 		if (code == 404 || code == 451)
 		{
 			evictFirstParty(key);
-			clogNotFoundTimes.put(key, System.currentTimeMillis());
+			clogs.notFound.put(key, System.currentTimeMillis());
 			return null;
 		}
-		if (code != 200 || body == null)
-		{
-			clogFailures.put(key, System.currentTimeMillis());
-			breaker.failure();
-			return clogCache.get(key);
-		}
-		ClogResult result = parseProofView(playerName, body, key);
+		ClogResult result = code == 200 && body != null ? parseProofView(playerName, body, key) : null;
 		if (result == null)
 		{
-			clogFailures.put(key, System.currentTimeMillis());
-			breaker.failure();
-			return clogCache.get(key);
+			return clogs.fail(key);
 		}
-		clogCache.put(key, result);
-		clogFetchTimes.put(key, System.currentTimeMillis());
 		breaker.success();
-		return result;
+		return clogs.ok(key, result);
 	}
 
 	/**
