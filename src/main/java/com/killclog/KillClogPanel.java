@@ -738,10 +738,11 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void onComparisonExit()
 	{
+		// Clear first: the board's own notice, set while its players change, must survive.
+		setSearchStatus(" ", TEXT_DIM);
 		updateRankPlayers();
 		searchRowController.onComparisonExit();
 		compareClogTotals.setVisible(false);
-		setSearchStatus(" ", TEXT_DIM);
 		comparison.updateAllCells();
 		comparison.updateInfoBar();
 		applyBossViewStyle();
@@ -752,10 +753,10 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void onComparisonEnter(String redRsn)
 	{
+		setSearchStatus(" ", TEXT_DIM);
 		updateRankPlayers();
 		searchRowController.onComparisonEnter();
 		applyBossViewStyle();
-		setSearchStatus(" ", TEXT_DIM);
 		updateClogTotalsBar();
 		cells.rebuildPrimaryTooltips(localRsn);
 		comparison.updateAllCells();
@@ -1214,12 +1215,8 @@ public class KillClogPanel extends PluginPanel
 				refreshSkillDisplay();
 				break;
 			case "virtualLevels":
-				HiscoreResult result = lookupSession.getHiscoreResult();
-				if (result != null)
-				{
-					renderLevels(result);
-					comparison.updateInfoBar();
-				}
+				// A full render keeps a comparison's two-player level cells.
+				renderResults();
 				refreshSkillDisplay();
 				break;
 		}
