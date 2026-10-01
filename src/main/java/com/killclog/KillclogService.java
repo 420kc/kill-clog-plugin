@@ -297,7 +297,7 @@ public class KillclogService
 		if (code == 404 || code == 451)
 		{
 			evictFirstParty(key);
-			clogs.notFound.put(key, System.currentTimeMillis());
+			clogs.missing(key);
 			return null;
 		}
 		ClogResult result = code == 200 && body != null ? parseProofView(playerName, body, key) : null;
@@ -449,6 +449,11 @@ public class KillclogService
 			}
 
 			pbCache.put(key, parsePbs(root));
+			if (pbCache.size() > HttpUtil.CACHE_CAP)
+			{
+				// PBs go with the clog result they came with.
+				pbCache.keySet().retainAll(clogs.values.keySet());
+			}
 			return result;
 		}
 		catch (Exception e)

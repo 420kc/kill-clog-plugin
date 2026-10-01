@@ -42,6 +42,32 @@ final class HttpUtil
 		return flight.copy();
 	}
 
+	/** Per-name lookup caches hold at most this many names. */
+	static final int CACHE_CAP = 256;
+
+	/** Past the cap, stamps older than their TTL go: they only ever meant "skip this name for a while". */
+	static void prune(Map<String, Long> stamps, long ttlMs)
+	{
+		if (stamps.size() > CACHE_CAP)
+		{
+			long now = System.currentTimeMillis();
+			stamps.values().removeIf(at -> now - at >= ttlMs);
+		}
+	}
+
+	/** Past the cap, the name fetched longest ago leaves both maps; it is fetched again when asked for. */
+	static void evictStalest(Map<String, ?> values, Map<String, Long> fetched)
+	{
+		if (values.size() > CACHE_CAP)
+		{
+			fetched.entrySet().stream().min(Map.Entry.comparingByValue()).map(Map.Entry::getKey).ifPresent(oldest ->
+			{
+				values.remove(oldest);
+				fetched.remove(oldest);
+			});
+		}
+	}
+
 	/** An RSN as a path segment: spaces must be %20 (URLEncoder yields '+', valid only in a query). */
 	static String pathSegment(String rsn)
 	{
@@ -90,7 +116,16 @@ final class HttpUtil
 		T fail(String key)
 		{
 			failed.put(key, System.currentTimeMillis());
+			prune(failed, FAILURE_TTL_MS);
 			breaker.failure();
+			return values.get(key);
+		}
+
+		/** Not on this provider: skip the name for an hour, keeping whatever it held. */
+		T missing(String key)
+		{
+			notFound.put(key, System.currentTimeMillis());
+			prune(notFound, NOT_FOUND_TTL_MS);
 			return values.get(key);
 		}
 
@@ -98,6 +133,7 @@ final class HttpUtil
 		{
 			values.put(key, value);
 			fetched.put(key, System.currentTimeMillis());
+			evictStalest(values, fetched);
 			return value;
 		}
 	}

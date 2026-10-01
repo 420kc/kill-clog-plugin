@@ -170,8 +170,7 @@ public class RuneProfileService
 		{
 			if (resp.code == 404)
 			{
-				summaries.notFound.put(key, System.currentTimeMillis());
-				return summaries.values.get(key);
+				return summaries.missing(key);
 			}
 			RuneProfileSummary result = resp.code == 200 && resp.body != null ? parseAccountSummary(resp.body) : null;
 			if (result == null)
@@ -309,8 +308,7 @@ public class RuneProfileService
 		{
 			if (resp.code == 404)
 			{
-				clogs.notFound.put(key, System.currentTimeMillis());
-				return clogs.values.get(key);
+				return clogs.missing(key);
 			}
 			if (resp.code != 200 || resp.body == null)
 			{
@@ -327,7 +325,7 @@ public class RuneProfileService
 				clogs.values.remove(key);
 				clogs.fetched.remove(key);
 				clogs.failed.remove(key);
-				clogs.notFound.put(key, System.currentTimeMillis());
+				clogs.missing(key);
 				breaker.reset();
 				return null;
 			}
