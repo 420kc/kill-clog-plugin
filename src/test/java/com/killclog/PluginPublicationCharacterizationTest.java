@@ -104,6 +104,7 @@ public class PluginPublicationCharacterizationTest
 		when(client.getGameState()).thenAnswer(invocation -> gameState);
 		when(client.getWorldType()).thenReturn(java.util.EnumSet.of(net.runelite.api.WorldType.MEMBERS));
 		when(localClogCache.currentSessionEpoch()).thenAnswer(invocation -> epoch);
+		when(localClogCache.folder()).thenReturn(CompletableFuture.completedFuture(null));
 		when(syncService.syncCollectionLog(any(), anyLong(), any(), any(), any(), anyLong(), any(), anyInt(), any(), any()))
 			.thenAnswer(invocation ->
 			{
@@ -686,15 +687,15 @@ public class PluginPublicationCharacterizationTest
 		varp(ClogVarps.OBTAINED);
 		ticks(9);
 		verify(localClogCache, never()).updateTotalsUpward(any(), anyInt(), anyInt());
-		verify(caCache, never()).cacheResult(any(), any());
+		verify(caCache, never()).cacheResult(any(), anyLong(), any());
 		ticks(1);
 		verify(localClogCache).updateTotalsUpward(RSN, 5, 10);
-		verify(caCache).cacheResult(eq(RSN), any());
+		verify(caCache).cacheResult(eq(RSN), anyLong(), any());
 		world(net.runelite.api.WorldType.SEASONAL);
 		varp(ClogVarps.OBTAINED);
 		ticks(20);
 		verify(localClogCache).updateTotalsUpward(RSN, 5, 10);
-		verify(caCache).cacheResult(eq(RSN), any());
+		verify(caCache).cacheResult(eq(RSN), anyLong(), any());
 	}
 
 	private void unlockMessage() throws Exception
@@ -740,7 +741,7 @@ public class PluginPublicationCharacterizationTest
 		when(((KillclogService) field("killclogService")).activeLeague()).thenReturn("demonic-pacts");
 		LocalClogCache league = mock(LocalClogCache.class);
 		when(league.currentSessionEpoch()).thenReturn(3L);
-		when(league.followNameChangeAsync(any(), anyLong(), anyLong())).thenReturn(CompletableFuture.completedFuture(true));
+		when(league.activate(any(), anyLong())).thenReturn(true);
 		plugin.setLeagueCacheFactory(id ->
 		{
 			assertEquals("demonic-pacts", id);
@@ -1054,9 +1055,9 @@ public class PluginPublicationCharacterizationTest
 		ticks(1);
 		settle();
 		verify((KillclogService) field("killclogService")).refreshIndex();
-		verify(league).followNameChangeAsync(eq(RSN), eq(HASH), eq(3L));
+		verify(league, org.mockito.Mockito.atLeastOnce()).activate(RSN, HASH);
 		verify(league, org.mockito.Mockito.atLeastOnce()).setActivePlayer(RSN);
-		verify(localClogCache, never()).followNameChangeAsync(any(), anyLong(), anyLong());
+		verify(localClogCache, never()).activate(any(), anyLong());
 		logout();
 		verify(league).onSessionEnded();
 	}
