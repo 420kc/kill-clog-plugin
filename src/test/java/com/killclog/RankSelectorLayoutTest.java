@@ -30,7 +30,7 @@ public class RankSelectorLayoutTest
 		{
 			holder[0] = new RankSelector((name, table) -> CompletableFuture.completedFuture(base),
 				(name, table) -> false, RankSelectorLayoutTest::noop);
-			holder[0].update(true, "Test Player", base, null, null);
+			holder[0].update(true, "Test Player", base);
 		});
 		SwingUtilities.invokeAndWait(() ->
 		{
@@ -88,7 +88,7 @@ public class RankSelectorLayoutTest
 			RankSelector selector = new RankSelector((name, table) -> new CompletableFuture<>(), (name, table) -> false,
 				RankSelectorLayoutTest::noop);
 			selector.update(true, "Test Player",
-				RankSelectorTest.result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000), null, null);
+				RankSelectorTest.result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000));
 			for (int width : new int[]{225, 242, 320})
 			{
 				selector.setSize(width, 32);

@@ -323,7 +323,7 @@ public class LeagueViewPanelTest
 	}
 
 	@Test
-	public void inAComparisonTheEmptySideExplainsItselfFirst() throws Exception
+	public void aComparisonReadsEachPlayersOwnBoard() throws Exception
 	{
 		PanelStatusRow status = field(panel, "statusRow", PanelStatusRow.class);
 		RankSelector ranks = field(panel, "rankSelector", RankSelector.class);
@@ -333,52 +333,42 @@ public class LeagueViewPanelTest
 		Constructor<?> compared = Class.forName("com.killclog.ComparisonController$ComparedPlayer").getDeclaredConstructors()[0];
 		compared.setAccessible(true);
 		HiscoreResult buck = RankSelectorTest.result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000);
-		Object main = compared.newInstance(1, RankSelectorTest.result(AccountType.IRONMAN, HiscoreTable.STANDARD, 20, 20000),
-			null, null, "Main");
+		HiscoreResult exo = RankSelectorTest.result(AccountType.REGULAR, HiscoreTable.STANDARD, 20, 20000);
 		when(hiscores.lookupRanks(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
 		when(hiscores.lookupRanks("Ye Ol Buck", RankLeaderboard.HARDCORE)).thenReturn(CompletableFuture.completedFuture(
 			RankSelectorTest.result(AccountType.REGULAR, HiscoreTable.STANDARD, 50, 5000)));
-		when(hiscores.notOnBoard("Main", RankLeaderboard.HARDCORE)).thenReturn(true);
+		when(hiscores.notOnBoard("Exo", RankLeaderboard.IRONMAN)).thenReturn(true);
 		SwingUtilities.invokeAndWait(() ->
 		{
 			session.adoptState(buck, null, null, "Ye Ol Buck");
-			setField(comparison, "compared", main);
-			setField(comparison, "comparisonMode", true);
 			invoke(update);
 			ranks.select(RankLeaderboard.HARDCORE);
-			// Ye Ol Buck's row is frozen and Main has none; the blank side is the one that needs saying.
-			assertEquals("Main: Not on this leaderboard", status.statusText());
-			ranks.select(RankLeaderboard.IRONMAN);
+			assertTrue(session.getHiscoreResult().isFrozen());
+			setField(comparison, "compared", newInstance(compared, exo));
+			setField(comparison, "comparisonMode", true);
+			panel.onComparisonEnter("Exo");
+			// An Ironman meets a main on their own boards; the selector steps aside.
+			assertFalse(ranks.isVisible());
+			assertSame(buck, session.getHiscoreResult());
+			assertSame(exo, comparison.getCompareHiscoreResult());
 			assertEquals(" ", status.statusText());
+			setField(comparison, "comparisonMode", false);
+			panel.onComparisonExit();
+			assertTrue(ranks.isVisible());
+			assertEquals(RankLeaderboard.IRONMAN, ranks.active());
 		});
 	}
 
-	@Test
-	public void enteringAndLeavingAComparisonKeepsTheBoardsNotice() throws Exception
+	private static Object newInstance(Constructor<?> compared, HiscoreResult hiscore)
 	{
-		PanelStatusRow status = field(panel, "statusRow", PanelStatusRow.class);
-		RankSelector ranks = field(panel, "rankSelector", RankSelector.class);
-		ComparisonController comparison = field(panel, "comparison", ComparisonController.class);
-		Constructor<?> compared = Class.forName("com.killclog.ComparisonController$ComparedPlayer").getDeclaredConstructors()[0];
-		compared.setAccessible(true);
-		HiscoreResult buck = RankSelectorTest.result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000);
-		Object main = compared.newInstance(1, RankSelectorTest.result(AccountType.ULTIMATE_IRONMAN, HiscoreTable.STANDARD, 20, 20000),
-			null, null, "Main");
-		when(hiscores.lookupRanks(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
-		when(hiscores.notOnBoard("Main", RankLeaderboard.IRONMAN)).thenReturn(true);
-		when(hiscores.notOnBoard("Ye Ol Buck", RankLeaderboard.ULTIMATE)).thenReturn(true);
-		SwingUtilities.invokeAndWait(() ->
+		try
 		{
-			session.adoptState(buck, null, null, "Ye Ol Buck");
-			setField(comparison, "compared", main);
-			setField(comparison, "comparisonMode", true);
-			panel.onComparisonEnter("Main");
-			assertEquals("Main: Not on this leaderboard", status.statusText());
-			ranks.select(RankLeaderboard.ULTIMATE);
-			setField(comparison, "comparisonMode", false);
-			panel.onComparisonExit();
-			assertEquals("Not on this leaderboard", status.statusText());
-		});
+			return compared.newInstance(1, hiscore, null, null, "Exo");
+		}
+		catch (ReflectiveOperationException e)
+		{
+			throw new AssertionError(e);
+		}
 	}
 
 	@Test
@@ -389,7 +379,7 @@ public class LeagueViewPanelTest
 		JLabel total = field(panel, "totalLvlCell", JLabel.class);
 		Constructor<?> compared = Class.forName("com.killclog.ComparisonController$ComparedPlayer").getDeclaredConstructors()[0];
 		compared.setAccessible(true);
-		Object rival = compared.newInstance(1, new HiscoreResult(AccountType.IRONMAN, Map.of(), Map.of(), Map.of(), Map.of(),
+		Object rival = compared.newInstance(1, new HiscoreResult(AccountType.REGULAR, Map.of(), Map.of(), Map.of(), Map.of(),
 			Map.of(), 1500, 50000, 100, 30), null, null, "Rival");
 		SwingUtilities.invokeAndWait(() ->
 		{
