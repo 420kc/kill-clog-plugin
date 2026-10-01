@@ -267,6 +267,18 @@ public abstract class TitleTooltip extends NativeTooltip
 		return y + 1 + pad;
 	}
 
+	static final int SUBHEADER_HEIGHT = 16;
+
+	/** A bold orange subheader, the small font handed back after; returns the Y under it. */
+	int paintSubheader(Graphics2D g2, int y, String text)
+	{
+		g2.setFont(FontManager.getRunescapeBoldFont());
+		g2.setColor(OSRS_ORANGE);
+		g2.drawString(text, getInset(), y + g2.getFontMetrics().getAscent());
+		g2.setFont(FontManager.getRunescapeSmallFont());
+		return y + SUBHEADER_HEIGHT;
+	}
+
 	static int drawLabelValue(Graphics2D g2, FontMetrics fm, int x, int y,
 		String label, String value)
 	{
