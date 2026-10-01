@@ -9,7 +9,6 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
-import java.util.Locale;
 import java.util.function.ObjIntConsumer;
 import javax.annotation.Nullable;
 import lombok.Setter;
@@ -225,7 +224,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 		if (scores[line] > 0 && ranks[line] > 0)
 		{
 			String rankPrefix = " #";
-			drawLabelValue(g2, fm, rankX + 1, textY, rankPrefix, String.format(Locale.US, "%,d", ranks[line]));
+			drawLabelValue(g2, fm, rankX + 1, textY, rankPrefix, grouped(ranks[line]));
 		}
 	}
 
