@@ -178,15 +178,17 @@ public class KillClogPanel extends PluginPanel
 	// No provider names, no "missing data" framing - just a calm statement.
 	private String noClogNotice(String rsn, @Nullable HiscoreResult hiscore)
 	{
-		return LookupSession.frozen(hiscore) ? frozenLogNotice()
+		return LookupSession.frozen(hiscore) ? frozenLogNotice(hiscore)
 			: rsn != null && !rsn.isEmpty()
 			? rsn + " hasn't synced a collection log"
 			: "No collection log synced";
 	}
 
-	private String frozenLogNotice()
+	/** A frozen row's log wasn't recorded; a board with no row at all says why it's empty. */
+	private String frozenLogNotice(HiscoreResult view)
 	{
-		return rankSelector.active().label.replace(" Ironman", "") + " collection log not recorded";
+		String blank = rankSelector.blankNotice(view);
+		return blank != null ? blank : rankSelector.active().label.replace(" Ironman", "") + " collection log not recorded";
 	}
 
 	@Inject
@@ -217,7 +219,7 @@ public class KillClogPanel extends PluginPanel
 		this.comparison = new ComparisonController(hiscoreService, clogService, runeProfileService,
 			killclogService, lookupSession, config, tooltipController, tooltipDataBuilder, this);
 		this.comparison.setRenderTarget(this);
-		this.rankSelector = new RankSelector(hiscoreService::lookupRanks, this::refreshRankDisplay);
+		this.rankSelector = new RankSelector(hiscoreService::lookupRanks, hiscoreService::notOnBoard, this::refreshRankDisplay);
 		this.lookupSession.setRankView(rankSelector::view);
 		this.comparison.setVirtualTotalLevel(
 			() -> ClogHelper.virtualTotalLevelEnabled(configManager));
@@ -931,20 +933,6 @@ public class KillClogPanel extends PluginPanel
 		playerName.setForeground(getInfoColor());
 		updateInfoIcon(currentInfoAccountDisplay(knownType != null ? knownType : result.getAccountType()));
 		searchRowController.setCompareVisible(true);
-
-		int combatLevel = result.getCombatLevel();
-		if (combatLevel > 0)
-		{
-			combatCell.setText(ClogHelper.pad(String.valueOf(combatLevel)));
-		}
-
-		int totalLevel = ClogHelper.displayTotalLevel(result,
-			ClogHelper.virtualTotalLevelEnabled(configManager));
-		if (totalLevel > 0)
-		{
-			totalLvlCell.setText(ClogHelper.pad(String.valueOf(totalLevel)));
-			tooltipController.setTooltipText(totalLvlCell, " ");
-		}
 		colorStatsRow();
 
 		// The search box is free again while a hiscore waits for its clog:
@@ -1041,6 +1029,7 @@ public class KillClogPanel extends PluginPanel
 		playerName.setForeground(infoColor);
 		clogInfoLabel.setForeground(infoColor);
 		colorStatsRow();
+		renderLevels(lookupSession.getHiscoreResult());
 
 		cells.renderHiscore(lookupSession.getHiscoreResult());
 		if (lookupSession.getClogResult() != null)
@@ -1059,6 +1048,16 @@ public class KillClogPanel extends PluginPanel
 			comparison.updateInfoBar();
 		}
 		refreshSkillDisplay();
+	}
+
+	/** Combat and total level follow the board on show; a board without a row shows dashes. */
+	private void renderLevels(HiscoreResult result)
+	{
+		int combatLevel = result.getCombatLevel();
+		combatCell.setText(ClogHelper.pad(combatLevel > 0 ? String.valueOf(combatLevel) : "--"));
+		int totalLevel = ClogHelper.displayTotalLevel(result, ClogHelper.virtualTotalLevelEnabled(configManager));
+		totalLvlCell.setText(ClogHelper.pad(totalLevel > 0 ? String.valueOf(totalLevel) : "--"));
+		tooltipController.setTooltipText(totalLvlCell, totalLevel > 0 ? " " : null);
 	}
 
 	// Public interface.
@@ -1218,9 +1217,7 @@ public class KillClogPanel extends PluginPanel
 				HiscoreResult result = lookupSession.getHiscoreResult();
 				if (result != null)
 				{
-					int totalLevel = ClogHelper.displayTotalLevel(result,
-						ClogHelper.virtualTotalLevelEnabled(configManager));
-					totalLvlCell.setText(ClogHelper.pad(String.valueOf(totalLevel)));
+					renderLevels(result);
 					comparison.updateInfoBar();
 				}
 				refreshSkillDisplay();
@@ -1603,17 +1600,25 @@ public class KillClogPanel extends PluginPanel
 		getWrappedPanel().repaint();
 	}
 
-	/** A frozen row shows no log, so the status line says why; it clears only its own line. */
+	/** What the board last put on the status line, so it clears only its own text. */
+	private String boardStatus;
+
+	/** A frozen or empty board shows no log, so the status line says why; it clears only its own line. */
 	private void showFrozenLogNotice()
 	{
-		boolean blue = LookupSession.frozen(lookupSession.getHiscoreResult());
-		boolean red = comparison.isComparisonMode() && LookupSession.frozen(comparison.getCompareHiscoreResult());
-		if (blue || red)
+		HiscoreResult blueView = lookupSession.getHiscoreResult();
+		HiscoreResult redView = comparison.isComparisonMode() ? comparison.getCompareHiscoreResult() : null;
+		String blue = LookupSession.frozen(blueView) ? frozenLogNotice(blueView) : null;
+		String red = LookupSession.frozen(redView) ? frozenLogNotice(redView) : null;
+		// One line: when the sides differ, an empty side explains itself first.
+		String status = blue != null && (redView == null || blue.equals(red)) ? blue
+			: red != null && (blue == null || rankSelector.blankNotice(redView) != null) ? comparison.getCompareRsn() + ": " + red
+			: blue != null ? comparisonBlueName() + ": " + blue : null;
+		if (status != null)
 		{
-			setSearchStatus((blue == red || !comparison.isComparisonMode() ? ""
-				: (blue ? comparisonBlueName() : comparison.getCompareRsn()) + ": ") + frozenLogNotice(), TEXT_DIM);
+			setSearchStatus(boardStatus = status, TEXT_DIM);
 		}
-		else if (statusRow.statusText().endsWith(" collection log not recorded"))
+		else if (statusRow.statusText().equals(boardStatus))
 		{
 			setSearchStatus(" ", TEXT_DIM);
 		}
