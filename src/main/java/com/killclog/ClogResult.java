@@ -244,7 +244,7 @@ public class ClogResult
 	}
 
 	/** Distinct itemized coverage, deliberately ignoring the varp counter. */
-	private static int coverageCount(ClogResult result)
+	static int coverageCount(ClogResult result)
 	{
 		java.util.Set<Integer> distinct = new java.util.HashSet<>();
 		for (List<ClogItem> items : result.obtainedItems.values())
@@ -282,22 +282,10 @@ public class ClogResult
 
 	private static int obtainedCount(ClogResult result)
 	{
-		if (result.uniqueObtained >= 0)
-		{
-			return result.uniqueObtained;
-		}
 		// Distinct ids, not a per-category sum: one item can sit in several
 		// categories, and a duplicate-heavy partial result must not outcount
 		// a genuinely fuller one.
-		java.util.Set<Integer> distinct = new java.util.HashSet<>();
-		for (List<ClogItem> items : result.obtainedItems.values())
-		{
-			for (ClogItem item : items)
-			{
-				distinct.add(item.getId());
-			}
-		}
-		return distinct.size();
+		return result.uniqueObtained >= 0 ? result.uniqueObtained : coverageCount(result);
 	}
 
 	public static class ClogItem
