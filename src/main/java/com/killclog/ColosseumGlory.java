@@ -1,6 +1,5 @@
 package com.killclog;
 
-import java.util.Locale;
 
 final class ColosseumGlory
 {
@@ -29,7 +28,7 @@ final class ColosseumGlory
 
 	static String format(int glory)
 	{
-		return isVisible(glory) ? String.format(Locale.US, "%,d", glory) : "--";
+		return isVisible(glory) ? TitleTooltip.grouped(glory) : "--";
 	}
 
 	static boolean hasHeaderScore(int glory, int kc)
