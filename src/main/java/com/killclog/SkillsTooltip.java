@@ -4,7 +4,6 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
-import java.util.Locale;
 import net.runelite.client.ui.FontManager;
 
 /**
@@ -49,7 +48,7 @@ public class SkillsTooltip extends TitleTooltip
 	String displayedXpText()
 	{
 		long xp = result != null ? result.getTotalXp() : -1;
-		return xp >= 0 ? String.format(Locale.US, "%,d", xp) : "--";
+		return xp >= 0 ? grouped(xp) : "--";
 	}
 
 	int displayedRank()
@@ -60,6 +59,6 @@ public class SkillsTooltip extends TitleTooltip
 	private String rankText()
 	{
 		int rank = displayedRank();
-		return rank > 0 ? String.format(Locale.US, "%,d", rank) : "--";
+		return scoreText(rank);
 	}
 }
