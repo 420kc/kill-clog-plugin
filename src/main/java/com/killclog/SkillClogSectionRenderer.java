@@ -40,8 +40,6 @@ final class SkillClogSectionRenderer
 	private List<Entry> entries = Collections.emptyList();
 	private boolean compactSprites;
 	private int spriteSize = REGULAR_SPRITE_SIZE;
-	private boolean showRiftsClosed;
-	private int primaryRiftsClosed = -1;
 
 	SkillClogSectionRenderer(SkillTooltip repaintTarget)
 	{
@@ -50,8 +48,6 @@ final class SkillClogSectionRenderer
 
 	void setSections(List<SkillClogSection> sections, @Nullable ItemManager itemManager)
 	{
-		showRiftsClosed = false;
-		primaryRiftsClosed = -1;
 		if (sections == null || sections.isEmpty())
 		{
 			entries = Collections.emptyList();
@@ -72,12 +68,6 @@ final class SkillClogSectionRenderer
 			next.add(new Entry(section, sprites));
 		}
 		entries = Collections.unmodifiableList(next);
-	}
-
-	void setRiftsClosed(int primaryRiftsClosed)
-	{
-		showRiftsClosed = true;
-		this.primaryRiftsClosed = primaryRiftsClosed;
 	}
 
 	boolean usesCompactSprites()
@@ -106,7 +96,7 @@ final class SkillClogSectionRenderer
 			if (showsRiftsClosed(entry.section))
 			{
 				width = Math.max(width, detailMetrics.stringWidth(
-					SkillTooltip.RIFTS_CLOSED_LABEL + riftsClosedText(primaryRiftsClosed)));
+					SkillTooltip.RIFTS_CLOSED_LABEL + repaintTarget.riftsClosedText()));
 			}
 		}
 		for (Entry entry : entries)
@@ -176,15 +166,15 @@ final class SkillClogSectionRenderer
 				y += headingMetrics.getHeight() + HEADER_GAP;
 			}
 			g2.setFont(DETAIL_FONT);
-			paintSoloProgress(g2, detailMetrics, section.primary(),
-				section.itemIds().size(), inset, y + detailMetrics.getAscent());
+			TitleTooltip.drawLabelValue(g2, detailMetrics, inset, y + detailMetrics.getAscent(), OBTAINED_LABEL,
+				progressText(section.primary(), section.itemIds().size()),
+				progressColor(section.primary(), section.itemIds().size()));
 			y += detailMetrics.getHeight() + HEADER_GAP;
 			if (showsRiftsClosed(section))
 			{
-				paintSoloDetail(g2, detailMetrics, SkillTooltip.RIFTS_CLOSED_LABEL,
-					riftsClosedText(primaryRiftsClosed), inset,
-					y + detailMetrics.getAscent(), primaryRiftsClosed >= 0
-						? Color.WHITE : TitleTooltip.MUTED_GRAY);
+				TitleTooltip.drawLabelValue(g2, detailMetrics, inset, y + detailMetrics.getAscent(),
+					SkillTooltip.RIFTS_CLOSED_LABEL, repaintTarget.riftsClosedText(),
+					repaintTarget.riftsClosed >= 0 ? Color.WHITE : TitleTooltip.MUTED_GRAY);
 				y += detailMetrics.getHeight() + HEADER_GAP;
 			}
 			y = paintGrid(g2, entry, section.primary(), i, inset, y, cols, hitBoxes);
@@ -194,14 +184,6 @@ final class SkillClogSectionRenderer
 	}
 
 	private int paintGrid(Graphics2D g2, Entry entry,
-		SkillClogSection.PlayerItems playerItems, int sectionIndex,
-		int inset, int y, int cols,
-		List<TooltipItemHover.HitBox> hitBoxes)
-	{
-		return paintGridAt(g2, entry, playerItems, sectionIndex, inset, y, cols, hitBoxes);
-	}
-
-	private int paintGridAt(Graphics2D g2, Entry entry,
 		SkillClogSection.PlayerItems playerItems, int sectionIndex,
 		int startX, int y, int cols, List<TooltipItemHover.HitBox> hitBoxes)
 	{
@@ -246,25 +228,6 @@ final class SkillClogSectionRenderer
 		return y + gridHeight(itemIds.size(), cols);
 	}
 
-	private static void paintSoloProgress(Graphics2D g2, FontMetrics fm,
-		SkillClogSection.PlayerItems items, int total, int x, int y)
-	{
-		g2.setColor(TitleTooltip.OSRS_ORANGE);
-		g2.drawString(OBTAINED_LABEL, x, y);
-		String text = progressText(items, total);
-		g2.setColor(progressColor(items, total));
-		g2.drawString(text, x + fm.stringWidth(OBTAINED_LABEL), y);
-	}
-
-	private static void paintSoloDetail(Graphics2D g2, FontMetrics fm,
-		String label, String value, int x, int y, Color valueColor)
-	{
-		g2.setColor(TitleTooltip.OSRS_ORANGE);
-		g2.drawString(label, x, y);
-		g2.setColor(valueColor);
-		g2.drawString(value, x + fm.stringWidth(label), y);
-	}
-
 	static String progressText(SkillClogSection.PlayerItems items, int total)
 	{
 		return items.synced()
@@ -287,13 +250,7 @@ final class SkillClogSectionRenderer
 
 	private boolean showsRiftsClosed(SkillClogSection section)
 	{
-		return showRiftsClosed && section.isCategory(PanelData.GOTR_CATEGORY);
-	}
-
-	private static String riftsClosedText(int riftsClosed)
-	{
-		return riftsClosed >= 0
-			? String.format(java.util.Locale.US, "%,d", riftsClosed) : "--";
+		return repaintTarget.showsRiftsClosed() && section.isCategory(PanelData.GOTR_CATEGORY);
 	}
 
 	private int soloColumns(int availableWidth, int itemCount)

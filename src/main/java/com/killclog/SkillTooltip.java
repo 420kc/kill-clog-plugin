@@ -28,7 +28,7 @@ public class SkillTooltip extends TitleTooltip
 	private Stats stats = Stats.empty();
 	private List<SkillClogSection> sections = Collections.emptyList();
 	private boolean showRiftsClosed;
-	private int riftsClosed = -1;
+	int riftsClosed = -1;
 	private final SkillClogSectionRenderer sectionRenderer = new SkillClogSectionRenderer(this);
 
 	public void setData(Skill skill, @Nullable HiscoreResult result, boolean virtualLevels)
@@ -65,7 +65,6 @@ public class SkillTooltip extends TitleTooltip
 	{
 		showRiftsClosed = true;
 		this.riftsClosed = riftsClosed;
-		sectionRenderer.setRiftsClosed(riftsClosed);
 	}
 
 	@Override
