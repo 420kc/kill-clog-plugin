@@ -54,17 +54,8 @@ final class TooltipDataBuilder
 			return null;
 		}
 
-		Set<Integer> obtainedIds = new HashSet<>();
-		Map<Integer, Integer> obtainedCounts = new LinkedHashMap<>();
-		if (obtained != null)
-		{
-			for (ClogResult.ClogItem item : obtained)
-			{
-				int itemId = canonicalItemId(item.getId());
-				obtainedIds.add(itemId);
-				obtainedCounts.merge(itemId, item.getCount(), Integer::max);
-			}
-		}
+		Map<Integer, Integer> obtainedCounts = obtainedCounts(obtained);
+		Set<Integer> obtainedIds = new HashSet<>(obtainedCounts.keySet());
 
 		// No catalog for the category means the denominator is UNKNOWN (-1,
 		// rendered as "X/?"), never obtainedIds.size() -- that would claim
@@ -122,17 +113,8 @@ final class TooltipDataBuilder
 		}
 
 		obtained = rareObtainedItems(obtained, allItems, clogResult);
-		Set<Integer> obtainedIds = new HashSet<>();
-		Map<Integer, Integer> obtainedCounts = new LinkedHashMap<>();
-		if (obtained != null)
-		{
-			for (ClogResult.ClogItem item : obtained)
-			{
-				int itemId = canonicalItemId(item.getId());
-				obtainedIds.add(itemId);
-				obtainedCounts.merge(itemId, item.getCount(), Integer::max);
-			}
-		}
+		Map<Integer, Integer> obtainedCounts = obtainedCounts(obtained);
+		Set<Integer> obtainedIds = new HashSet<>(obtainedCounts.keySet());
 
 		int obtainedCount = ClogHelper.countObtained(allItems, obtainedIds);
 		return TooltipData.builder()
@@ -145,6 +127,20 @@ final class TooltipDataBuilder
 			.itemNames(itemNamesFor(allItems, clogResult))
 			.rankTracked(false)
 			.build();
+	}
+
+	/** Each obtained item's highest count, keyed by canonical id. */
+	private Map<Integer, Integer> obtainedCounts(@Nullable List<ClogResult.ClogItem> obtained)
+	{
+		Map<Integer, Integer> counts = new LinkedHashMap<>();
+		if (obtained != null)
+		{
+			for (ClogResult.ClogItem item : obtained)
+			{
+				counts.merge(canonicalItemId(item.getId()), item.getCount(), Integer::max);
+			}
+		}
+		return counts;
 	}
 
 	private List<ClogResult.ClogItem> rareObtainedItems(List<ClogResult.ClogItem> obtained,
