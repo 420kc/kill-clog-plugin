@@ -497,7 +497,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 					SOURCE_SECTION + i, 0, source.name,
 					new Rectangle(iconX - SOURCE_HIT_PAD, y - SOURCE_HIT_PAD,
 						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2,
-						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2)));
+						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2), false, 1));
 			}
 			if (itemHover.hoveredSection() >= SOURCE_SECTION)
 			{
@@ -529,7 +529,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 				g2.drawImage(sprites[i], sx, y, null);
 			}
 			hitBoxes.add(new TooltipItemHover.HitBox(section, ids[i], names[i],
-				new Rectangle(sx, y, RECENT_SIZE, RECENT_SIZE), true));
+				new Rectangle(sx, y, RECENT_SIZE, RECENT_SIZE), true, 1));
 
 			String date = dates != null ? dates[i] : null;
 			if (date != null)
@@ -613,7 +613,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 				g2.drawImage(icon, x, y, null);
 			}
 			hitBoxes.add(new TooltipItemHover.HitBox(reached ? TIER_SECTION : TIER_SECTION + 1, 0, labels[i],
-				new Rectangle(x, y, ICON_SIZE, ICON_SIZE)));
+				new Rectangle(x, y, ICON_SIZE, ICON_SIZE), false, 1));
 			x += ICON_SIZE + ICON_GAP;
 		}
 		g2.setComposite(solid);

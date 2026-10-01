@@ -166,21 +166,6 @@ final class TooltipItemHover
 		private final boolean obtained;
 		private final int count;
 
-		HitBox(int section, int itemId, String itemName, Rectangle bounds)
-		{
-			this(section, itemId, itemName, bounds, false, 1);
-		}
-
-		HitBox(int section, int itemId, String itemName, Rectangle bounds, boolean obtained)
-		{
-			this(section, itemId, itemName, bounds, obtained, 1);
-		}
-
-		HitBox(int itemId, String itemName, Rectangle bounds, boolean obtained, int count)
-		{
-			this(0, itemId, itemName, bounds, obtained, count);
-		}
-
 		HitBox(int section, int itemId, String itemName, Rectangle bounds,
 			boolean obtained, int count)
 		{

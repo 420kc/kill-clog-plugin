@@ -382,7 +382,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		{
 			int sx = startX + i * (WEAPON_SIZE + WEAPON_PAD);
 			hitBoxes.add(new TooltipItemHover.HitBox(section, itemIds[i], itemNames[i],
-				new Rectangle(sx, y, WEAPON_SIZE, WEAPON_SIZE), counts[i] > 0));
+				new Rectangle(sx, y, WEAPON_SIZE, WEAPON_SIZE), counts[i] > 0, 1));
 		}
 	}
 

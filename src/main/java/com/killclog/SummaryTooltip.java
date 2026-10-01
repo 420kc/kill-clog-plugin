@@ -296,7 +296,7 @@ public class SummaryTooltip extends TitleTooltip
 			}
 			if (petNames[i] != null)
 			{
-				hitBoxes.add(new TooltipItemHover.HitBox(petList.get(i), petNames[i],
+				hitBoxes.add(new TooltipItemHover.HitBox(0, petList.get(i), petNames[i],
 					new Rectangle(px, py, PET_SIZE, PET_SIZE), true, 1));
 			}
 		}

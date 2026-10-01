@@ -190,7 +190,7 @@ public class ImgTooltip extends TitleTooltip
 				int itemId = allItemIds.get(i);
 				boolean obtained = obtainedIds.contains(itemId);
 				int count = obtained ? obtainedCounts.getOrDefault(itemId, 1) : 1;
-				nextHitBoxes.add(new TooltipItemHover.HitBox(itemId, itemNameAt(i),
+				nextHitBoxes.add(new TooltipItemHover.HitBox(0, itemId, itemNameAt(i),
 					new Rectangle(x, y, spriteSize, spriteSize), obtained, count));
 
 				BufferedImage sprite = itemSprites.spriteAt(i);
