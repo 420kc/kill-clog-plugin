@@ -119,7 +119,7 @@ class SyncService
 		}
 
 		String body = gson.toJson(buildBody(accountHash, accountType, clog, personalBests, detailedPersonalBests));
-		final int observedCount = countUniqueItems(clog);
+		final int observedCount = ClogResult.coverageCount(clog);
 		String url = KillClogEndpoint.apiBaseUrl() + "/player/" + HttpUtil.pathSegment(rsn) + "/sync/" + mode;
 
 		log.debug("Syncing collection log for '{}' to {} ({} items)",
@@ -224,19 +224,6 @@ class SyncService
 		{
 			return false;
 		}
-	}
-
-	private static int countUniqueItems(ClogResult clog)
-	{
-		java.util.Set<Integer> ids = new java.util.HashSet<>();
-		for (List<ClogResult.ClogItem> items : clog.getObtainedItems().values())
-		{
-			for (ClogResult.ClogItem item : items)
-			{
-				ids.add(item.getId());
-			}
-		}
-		return ids.size();
 	}
 
 	/**
