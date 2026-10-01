@@ -3,22 +3,22 @@ package com.killclog;
 import java.awt.image.BufferedImage;
 import javax.annotation.Nullable;
 import javax.swing.ImageIcon;
-import net.runelite.api.Client;
-import net.runelite.api.IndexedSprite;
 import net.runelite.client.plugins.hiscore.HiscorePanel;
 import net.runelite.client.util.ImageUtil;
 
+/**
+ * Account badges for names. GIM badges come from the game's mod icons, which
+ * the client thread loads at login; this never reads game state itself, since
+ * it runs on the panel's thread.
+ */
 final class AccountBadgeResolver
 {
-	private final Client client;
-
-	AccountBadgeResolver(Client client)
+	private AccountBadgeResolver()
 	{
-		this.client = client;
 	}
 
 	@Nullable
-	ImageIcon labelIcon(@Nullable AccountDisplay display)
+	static ImageIcon labelIcon(@Nullable AccountDisplay display)
 	{
 		BufferedImage badge = badge(display);
 		if (badge == null)
@@ -30,31 +30,7 @@ final class AccountBadgeResolver
 	}
 
 	@Nullable
-	BufferedImage badge(@Nullable AccountDisplay display)
-	{
-		if (display == null)
-		{
-			return null;
-		}
-		HiscoreTable table = display.hiscoreTable();
-		if (table.isSpecial())
-		{
-			return staticBadge(table);
-		}
-		AccountType type = display.accountType();
-		if (type == null)
-		{
-			return null;
-		}
-		if (type.isGroupIronman())
-		{
-			return gimBadge(type);
-		}
-		return staticBadge(type);
-	}
-
-	@Nullable
-	static BufferedImage cachedBadge(@Nullable AccountDisplay display)
+	static BufferedImage badge(@Nullable AccountDisplay display)
 	{
 		if (display == null)
 		{
@@ -77,29 +53,6 @@ final class AccountBadgeResolver
 	static String label(@Nullable AccountDisplay display)
 	{
 		return display != null ? display.label() : null;
-	}
-
-	@Nullable
-	private BufferedImage gimBadge(AccountType type)
-	{
-		BufferedImage badge = GimBadgeLoader.getGimBadge(type);
-		if (badge != null)
-		{
-			return badge;
-		}
-
-		int index = GimBadgeLoader.gimModiconIndex(type);
-		IndexedSprite[] modIcons = client.getModIcons();
-		if (index < 0 || modIcons == null || modIcons.length <= index)
-		{
-			return null;
-		}
-		badge = GimBadgeLoader.indexedSpriteToImage(modIcons[index]);
-		if (badge != null)
-		{
-			GimBadgeLoader.setGimBadge(type, badge);
-		}
-		return badge;
 	}
 
 	@Nullable
