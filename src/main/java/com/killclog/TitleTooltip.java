@@ -244,19 +244,10 @@ public abstract class TitleTooltip extends NativeTooltip
 		g2.drawString(text, rightX - fm.stringWidth(text), y);
 	}
 
-	protected static String capitalize(String text)
-	{
-		if (text == null || text.isEmpty())
-		{
-			return "";
-		}
-		return text.substring(0, 1).toUpperCase() + text.substring(1);
-	}
-
 	protected static String tierDisplayName(CombatAchievementResult ca)
 	{
 		CombatAchievementTier tier = ca != null ? ca.getTier() : null;
-		return tier != null ? capitalize(tier.name().toLowerCase()) : "None";
+		return tier != null ? tier.name().charAt(0) + tier.name().substring(1).toLowerCase() : "None";
 	}
 
 	protected static int separatorHeight(int pad)

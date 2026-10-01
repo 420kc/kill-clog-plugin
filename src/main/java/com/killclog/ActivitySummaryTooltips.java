@@ -36,23 +36,13 @@ final class ActivitySummaryTooltips
 
 	JToolTip buildPvm(JLabel owner, JPanel parentCell)
 	{
-		JToolTip tip;
-		if (comparison.isComparisonMode() && comparison.getCompareHiscoreResult() != null)
-		{
-			tip = comparison.wrapSideBySide(owner,
-				pvmTooltip(owner, lookupSession.getHiscoreResult(),
-					lookupSession.getClogResult(), lookupSession.getCaResult(),
-					cells.getTooltipDataMap()),
-				pvmTooltip(owner, comparison.getCompareHiscoreResult(),
-					comparison.getCompareClogResult(), comparison.getCompareCaResult(),
-					comparison.getCompareTooltipDataMap()));
-		}
-		else
-		{
-			tip = pvmTooltip(owner, lookupSession.getHiscoreResult(),
+		JToolTip tip = soloOrPair(owner,
+			pvmTooltip(owner, lookupSession.getHiscoreResult(),
 				lookupSession.getClogResult(), lookupSession.getCaResult(),
-				cells.getTooltipDataMap());
-		}
+				cells.getTooltipDataMap()),
+			() -> pvmTooltip(owner, comparison.getCompareHiscoreResult(),
+				comparison.getCompareClogResult(), comparison.getCompareCaResult(),
+				comparison.getCompareTooltipDataMap()));
 		tooltipController.keepTooltipOnHover(tip, parentCell);
 		return tip;
 	}
@@ -113,22 +103,20 @@ final class ActivitySummaryTooltips
 
 	JToolTip buildSkills(JLabel owner)
 	{
-		JToolTip tip;
-		if (comparison.isComparisonMode() && comparison.getCompareHiscoreResult() != null)
-		{
-			tip = comparison.wrapSideBySide(owner,
-				skillsTooltip(owner, lookupSession.getHiscoreResult()),
-				skillsTooltip(owner, comparison.getCompareHiscoreResult()));
-		}
-		else
-		{
-			tip = skillsTooltip(owner, lookupSession.getHiscoreResult());
-		}
+		JToolTip tip = soloOrPair(owner, skillsTooltip(owner, lookupSession.getHiscoreResult()),
+			() -> skillsTooltip(owner, comparison.getCompareHiscoreResult()));
 		if (owner.getParent() instanceof JPanel)
 		{
 			tooltipController.keepTooltipOnHover(tip, (JPanel) owner.getParent());
 		}
 		return tip;
+	}
+
+	/** The card alone, or beside the rival's while comparing. */
+	private JToolTip soloOrPair(JLabel owner, JToolTip solo, Supplier<JToolTip> rival)
+	{
+		return comparison.isComparisonMode() && comparison.getCompareHiscoreResult() != null
+			? comparison.wrapSideBySide(owner, solo, rival.get()) : solo;
 	}
 
 	/** One player's skills summary card: solo mode shows it alone, comparison pairs two. */
