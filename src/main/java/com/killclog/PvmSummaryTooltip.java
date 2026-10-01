@@ -106,11 +106,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 		this.caRewardSprite = rewardSprite;
 	}
 
-	private String tierDisplayName()
-	{
-		return tierDisplayName(caResult);
-	}
-
 	public void setMegarares(int tbowCount, int scytheCount,
 		int shadowCount, ItemManager itemManager)
 	{
@@ -209,11 +204,11 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 		// Width: measure the real rendered strings, never a placeholder.
 		int textWidth = 0;
-		textWidth = Math.max(textWidth, iconWidth() + bfm.stringWidth(combatValue()));
-		textWidth = Math.max(textWidth, fm.stringWidth("Total Kills: " + totalKillsValue()));
+		textWidth = Math.max(textWidth, iconWidth() + bfm.stringWidth(combatText(combatLevel)));
+		textWidth = Math.max(textWidth, fm.stringWidth("Total Kills: " + scoreText(totalKills)));
 		textWidth = Math.max(textWidth, fm.stringWidth("EHB: " + ehbText(ehb)));
 		textWidth = Math.max(textWidth, fm.stringWidth("XP: " + slayerXpText(slayerXp)));
-		textWidth = Math.max(textWidth, fm.stringWidth("Rank: " + slayerRankValue()));
+		textWidth = Math.max(textWidth, fm.stringWidth("Rank: " + scoreText(slayerRank)));
 		if (slayerObtained >= 0)
 		{
 			textWidth = Math.max(textWidth,
@@ -237,7 +232,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		textWidth = Math.max(textWidth, raidLineWidth(fm, "ToA: ", toaKc, toaObtained, toaTotal));
 		if (caResult != null)
 		{
-			int caWidth = fm.stringWidth("CA Tier: " + tierDisplayName())
+			int caWidth = fm.stringWidth("CA Tier: " + tierDisplayName(caResult))
 				+ (caRewardSprite != null ? caRewardSprite.getWidth() + CA_REWARD_GAP : 0);
 			textWidth = Math.max(textWidth, caWidth);
 		}
@@ -282,7 +277,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		if (caResult != null)
 		{
 			int caTextY = y + fm.getAscent();
-			int cx = inset + drawLabelValue(g2, fm, inset, caTextY, "CA Tier: ", tierDisplayName());
+			int cx = inset + drawLabelValue(g2, fm, inset, caTextY, "CA Tier: ", tierDisplayName(caResult));
 			if (caRewardSprite != null)
 			{
 				cx += CA_REWARD_GAP;
@@ -293,7 +288,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		}
 
 		// Total Kills
-		drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Total Kills: ", totalKillsValue());
+		drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Total Kills: ", scoreText(totalKills));
 		y += LINE_HEIGHT;
 
 		// EHB (rates by TempleOSRS)
@@ -406,7 +401,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		int textY = y + fm.getAscent();
 		drawLabelValue(g2, fm, x, textY, "XP: ", slayerXpText(slayerXp));
 		textY += LINE_HEIGHT;
-		drawLabelValue(g2, fm, x, textY, "Rank: ", slayerRankValue());
+		drawLabelValue(g2, fm, x, textY, "Rank: ", scoreText(slayerRank));
 		if (slayerObtained >= 0)
 		{
 			textY += LINE_HEIGHT;
@@ -420,11 +415,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 		return slayerObtained >= 0 ? 3 : 2;
 	}
 
-	private String slayerRankValue()
-	{
-		return scoreText(slayerRank);
-	}
-
 	/**
 	 * Solo summary only: the exact amount, never rounded. Max slayer xp is
 	 * 200,000,000 and the summary has the width for it. The comparison side
@@ -433,11 +423,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 	/* package */ static String slayerXpText(long xp)
 	{
 		return scoreText(xp);
-	}
-
-	private String combatValue()
-	{
-		return combatText(combatLevel);
 	}
 
 	/** The combat icon and level in bold, exactly like the panel cell. */
@@ -451,7 +436,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		g2.setFont(FontManager.getRunescapeBoldFont());
 		FontMetrics bfm = g2.getFontMetrics();
 		g2.setColor(Color.WHITE);
-		g2.drawString(combatValue(), x, y + (LEVEL_ROW_HEIGHT + bfm.getAscent() - bfm.getDescent()) / 2);
+		g2.drawString(combatText(combatLevel), x, y + (LEVEL_ROW_HEIGHT + bfm.getAscent() - bfm.getDescent()) / 2);
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		return y + LEVEL_ROW_HEIGHT;
 	}
@@ -465,11 +450,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 	static String combatText(double combatLevel)
 	{
 		return combatLevel > 0 ? QuantityFormatter.formatNumber(combatLevel) : "--";
-	}
-
-	private String totalKillsValue()
-	{
-		return scoreText(totalKills);
 	}
 
 	private String bossesValue()
