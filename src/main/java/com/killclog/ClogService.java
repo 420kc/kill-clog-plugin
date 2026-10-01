@@ -64,8 +64,8 @@ public class ClogService
 	private volatile Map<Integer, String> cachedItemNames;
 
 	// In-flight futures prevent duplicate HTTP requests from concurrent callers.
-	private volatile CompletableFuture<Map<String, List<Integer>>> categoriesFlight;
-	private volatile CompletableFuture<Map<Integer, String>> namesFlight;
+	private final Map<String, CompletableFuture<Map<String, List<Integer>>>> categoriesFlight = new java.util.concurrent.ConcurrentHashMap<>();
+	private final Map<String, CompletableFuture<Map<Integer, String>>> namesFlight = new java.util.concurrent.ConcurrentHashMap<>();
 
 	// Failure cooldown skips TempleOSRS briefly after transient errors.
 	private static final long TEMPLE_FAILURE_TTL_MS = 3 * 60 * 1000;
@@ -489,23 +489,10 @@ public class ClogService
 
 	private CompletableFuture<Map<String, List<Integer>>> fetchCategories()
 	{
-		if (cachedCategories != null)
-		{
-			return CompletableFuture.completedFuture(cachedCategories);
-		}
-
-		synchronized (this)
-		{
-			if (cachedCategories != null)
-			{
-				return CompletableFuture.completedFuture(cachedCategories);
-			}
-			if (categoriesFlight != null)
-			{
-				return categoriesFlight;
-			}
-
-			CompletableFuture<Map<String, List<Integer>>> flight = httpGet(TEMPLE_CATEGORIES_URL).thenApply(json ->
+		// Rechecked inside the flight so a fetch that just landed is never repeated.
+		return cachedCategories != null ? CompletableFuture.completedFuture(cachedCategories)
+			: HttpUtil.singleFlightLookup(categoriesFlight, "", () -> cachedCategories != null
+			? CompletableFuture.completedFuture(cachedCategories) : httpGet(TEMPLE_CATEGORIES_URL).thenApply(json ->
 			{
 				try
 				{
@@ -542,38 +529,14 @@ public class ClogService
 					log.debug("Failed to parse clog categories: {}", e.getMessage());
 					return null;
 				}
-			});
-			categoriesFlight = flight;
-			flight.whenComplete((result, error) ->
-			{
-				synchronized (this)
-				{
-					if (categoriesFlight == flight) categoriesFlight = null;
-				}
-			});
-			return flight;
-		}
+			}));
 	}
 
 	private CompletableFuture<Map<Integer, String>> fetchItemNames()
 	{
-		if (cachedItemNames != null)
-		{
-			return CompletableFuture.completedFuture(cachedItemNames);
-		}
-
-		synchronized (this)
-		{
-			if (cachedItemNames != null)
-			{
-				return CompletableFuture.completedFuture(cachedItemNames);
-			}
-			if (namesFlight != null)
-			{
-				return namesFlight;
-			}
-
-			CompletableFuture<Map<Integer, String>> flight = httpGet(WIKI_MAPPING_URL).thenApply(json ->
+		return cachedItemNames != null ? CompletableFuture.completedFuture(cachedItemNames)
+			: HttpUtil.singleFlightLookup(namesFlight, "", () -> cachedItemNames != null
+			? CompletableFuture.completedFuture(cachedItemNames) : httpGet(WIKI_MAPPING_URL).thenApply(json ->
 			{
 				try
 				{
@@ -601,17 +564,7 @@ public class ClogService
 					log.debug("Failed to parse item names: {}", e.getMessage());
 					return null;
 				}
-			});
-			namesFlight = flight;
-			flight.whenComplete((result, error) ->
-			{
-				synchronized (this)
-				{
-					if (namesFlight == flight) namesFlight = null;
-				}
-			});
-			return flight;
-		}
+			}));
 	}
 
 	/**
