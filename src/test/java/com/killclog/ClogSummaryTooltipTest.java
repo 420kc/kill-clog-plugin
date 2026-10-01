@@ -244,7 +244,7 @@ public class ClogSummaryTooltipTest
 	public void theLastUpdateSitsInTheFooterWithTheSources()
 	{
 		ClogSummaryTooltip tip = card(1150, 1700);
-		tip.setClogSources(true, false, false);
+		tip.setClogSources(true, false, false, false);
 		int sourcesOnly = tip.getPreferredSize().height;
 		tip.setSyncData("2 hours ago", false);
 		// One more line under the same rule, not a second section.
