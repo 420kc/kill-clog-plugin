@@ -60,7 +60,7 @@ public abstract class NativeTooltip extends JToolTip
 		loadSprite(client, spriteManager, SPRITE_CORNER_TL, img ->
 		{
 			cornerTL = img;
-			cornerBL = optionalOverride(client, SPRITE_CORNER_BL, flipVertical(img));
+			cornerBL = optionalOverride(client, SPRITE_CORNER_BL, flip(img, true));
 			checkSprites();
 		});
 		loadSprite(client, spriteManager, SPRITE_CORNER_TR, img ->
@@ -76,13 +76,13 @@ public abstract class NativeTooltip extends JToolTip
 		loadSprite(client, spriteManager, SPRITE_EDGE_HORIZ, img ->
 		{
 			edgeTop = trimTransparentPadding(img);
-			edgeBottom = optionalTrimmedOverride(client, SPRITE_EDGE_BOTTOM, flipVertical(edgeTop));
+			edgeBottom = optionalTrimmedOverride(client, SPRITE_EDGE_BOTTOM, flip(edgeTop, true));
 			checkSprites();
 		});
 		loadSprite(client, spriteManager, SPRITE_EDGE_VERT, img ->
 		{
 			edgeRight = trimTransparentPadding(img);
-			edgeLeft = optionalTrimmedOverride(client, SPRITE_EDGE_LEFT, flipHorizontal(edgeRight));
+			edgeLeft = optionalTrimmedOverride(client, SPRITE_EDGE_LEFT, flip(edgeRight, false));
 			checkSprites();
 		});
 	}
@@ -241,26 +241,15 @@ public abstract class NativeTooltip extends JToolTip
 		return src.getSubimage(minX, minY, maxX - minX + 1, maxY - minY + 1);
 	}
 
-	private static BufferedImage flipVertical(BufferedImage src)
+	/** A mirrored copy: top to bottom when vertical, else left to right. */
+	private static BufferedImage flip(BufferedImage src, boolean vertical)
 	{
 		if (src == null) return null;
 		int w = src.getWidth();
 		int h = src.getHeight();
 		BufferedImage flipped = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
 		Graphics2D g = flipped.createGraphics();
-		g.drawImage(src, 0, 0, w, h, 0, h, w, 0, null);
-		g.dispose();
-		return flipped;
-	}
-
-	private static BufferedImage flipHorizontal(BufferedImage src)
-	{
-		if (src == null) return null;
-		int w = src.getWidth();
-		int h = src.getHeight();
-		BufferedImage flipped = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D g = flipped.createGraphics();
-		g.drawImage(src, 0, 0, w, h, w, 0, 0, h, null);
+		g.drawImage(src, 0, 0, w, h, vertical ? 0 : w, vertical ? h : 0, vertical ? w : 0, vertical ? 0 : h, null);
 		g.dispose();
 		return flipped;
 	}
@@ -287,44 +276,29 @@ public abstract class NativeTooltip extends JToolTip
 		g2.drawImage(cornerBL, 0, h - cornerBL.getHeight(), null);
 		g2.drawImage(cornerBR, w - cornerBR.getWidth(), h - cornerBR.getHeight(), null);
 
-		// Top edge
-		int tew = edgeTop.getWidth();
-		int teh = edgeTop.getHeight();
-		for (int x = cw; x < w - cw; x += tew)
-		{
-			int drawW = Math.min(tew, w - cw - x);
-			g2.drawImage(edgeTop, x, 0, x + drawW, teh,
-				0, 0, drawW, teh, null);
-		}
+		// Edges between the corners: top, bottom, left, right.
+		tileEdge(g2, edgeTop, 0, 0, cw, w - cw, true);
+		tileEdge(g2, edgeBottom, 0, h - edgeBottom.getHeight(), cw, w - cw, true);
+		tileEdge(g2, edgeLeft, 0, 0, ch, h - ch, false);
+		tileEdge(g2, edgeRight, w - edgeRight.getWidth(), 0, ch, h - ch, false);
+	}
 
-		// Bottom edge
-		int bew = edgeBottom.getWidth();
-		int beh = edgeBottom.getHeight();
-		for (int x = cw; x < w - cw; x += bew)
+	/** Tile an edge piece along one side from one corner to the other, cropping the last tile. */
+	private static void tileEdge(Graphics2D g2, BufferedImage edge, int x, int y, int from, int to, boolean across)
+	{
+		int ew = edge.getWidth();
+		int eh = edge.getHeight();
+		for (int at = from; at < to; at += across ? ew : eh)
 		{
-			int drawW = Math.min(bew, w - cw - x);
-			g2.drawImage(edgeBottom, x, h - beh, x + drawW, h,
-				0, 0, drawW, beh, null);
-		}
-
-		// Left edge
-		int lew = edgeLeft.getWidth();
-		int leh = edgeLeft.getHeight();
-		for (int y = ch; y < h - ch; y += leh)
-		{
-			int drawH = Math.min(leh, h - ch - y);
-			g2.drawImage(edgeLeft, 0, y, lew, y + drawH,
-				0, 0, lew, drawH, null);
-		}
-
-		// Right edge
-		int rew = edgeRight.getWidth();
-		int reh = edgeRight.getHeight();
-		for (int y = ch; y < h - ch; y += reh)
-		{
-			int drawH = Math.min(reh, h - ch - y);
-			g2.drawImage(edgeRight, w - rew, y, w, y + drawH,
-				0, 0, rew, drawH, null);
+			int len = Math.min(across ? ew : eh, to - at);
+			if (across)
+			{
+				g2.drawImage(edge, at, y, at + len, y + eh, 0, 0, len, eh, null);
+			}
+			else
+			{
+				g2.drawImage(edge, x, at, x + ew, at + len, 0, 0, ew, len, null);
+			}
 		}
 	}
 }
