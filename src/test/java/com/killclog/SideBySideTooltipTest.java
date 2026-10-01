@@ -86,9 +86,8 @@ public class SideBySideTooltipTest
 			blue.setData(Skill.ATTACK, null, false, java.util.Collections.emptyList(), null);
 			red.setData(Skill.ATTACK, null, false, java.util.Collections.emptyList(), null);
 			SideBySideTooltip pair = new SideBySideTooltip("Iron Player", blue, "Hardcore", red);
-			AccountBadgeResolver resolver = new AccountBadgeResolver(null);
-			Icon blueBadge = resolver.labelIcon(AccountDisplay.of(AccountType.IRONMAN, HiscoreTable.STANDARD));
-			Icon redBadge = resolver.labelIcon(AccountDisplay.of(AccountType.HARDCORE_IRONMAN, HiscoreTable.STANDARD));
+			Icon blueBadge = AccountBadgeResolver.labelIcon(AccountDisplay.of(AccountType.IRONMAN, HiscoreTable.STANDARD));
+			Icon redBadge = AccountBadgeResolver.labelIcon(AccountDisplay.of(AccountType.HARDCORE_IRONMAN, HiscoreTable.STANDARD));
 			assertNotNull(blueBadge);
 			assertNotNull(redBadge);
 			pair.setAccountBadges(blueBadge, redBadge);

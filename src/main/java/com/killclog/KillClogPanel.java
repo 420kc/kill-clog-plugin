@@ -77,7 +77,6 @@ public class KillClogPanel extends PluginPanel
 	private final ItemManager itemManager;
 	private final ClientThread clientThread;
 	private final Client client;
-	private final AccountBadgeResolver accountBadges;
 	private final TooltipDataBuilder tooltipDataBuilder;
 	private final CaRewardSprites caRewardSprites;
 	private final TooltipItemNameResolver itemNameResolver;
@@ -207,7 +206,6 @@ public class KillClogPanel extends PluginPanel
 		this.itemManager = itemManager;
 		this.clientThread = clientThread;
 		this.client = client;
-		this.accountBadges = new AccountBadgeResolver(client);
 		this.tooltipDataBuilder = new TooltipDataBuilder(itemManager);
 		this.caRewardSprites = new CaRewardSprites(itemManager, clientThread, this::repaint);
 		this.iconCache = new PanelIconCache(itemManager, clientThread, spriteManager);
@@ -767,7 +765,7 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void applyBadge(JLabel label, AccountDisplay display)
 	{
-		label.setIcon(lookupSession.league() != null ? leagueBadge : accountBadges.labelIcon(display));
+		label.setIcon(lookupSession.league() != null ? leagueBadge : AccountBadgeResolver.labelIcon(display));
 	}
 
 	// ── killclog.com one-click controls: the plugin's view of the status row ──
@@ -1339,7 +1337,7 @@ public class KillClogPanel extends PluginPanel
 			shownName.isEmpty() ? "Player" : shownName,
 			hiscore != null ? hiscore.getOverallRank() : -1,
 			getCapeImage(hiscore),
-			accountBadges.badge(display),
+			AccountBadgeResolver.badge(display),
 			AccountBadgeResolver.label(display),
 			LookupQueries.getPrestige(hiscore)
 		);

@@ -48,41 +48,12 @@ final class GimBadgeLoader
 		unrankedGimBadge = unrankedGim;
 	}
 
-	static void setGimBadge(AccountType type, BufferedImage badge)
-	{
-		switch (type)
-		{
-			case GROUP_IRONMAN:
-				gimBadge = badge;
-				break;
-			case HARDCORE_GROUP_IRONMAN:
-				hcgimBadge = badge;
-				break;
-			case UNRANKED_GROUP_IRONMAN:
-				unrankedGimBadge = badge;
-				break;
-			default:
-				break;
-		}
-	}
-
 	static BufferedImage getGimBadge(AccountType type)
 	{
 		if (type == AccountType.GROUP_IRONMAN) return gimBadge;
 		if (type == AccountType.HARDCORE_GROUP_IRONMAN) return hcgimBadge;
 		if (type == AccountType.UNRANKED_GROUP_IRONMAN) return unrankedGimBadge;
 		return null;
-	}
-
-	static int gimModiconIndex(AccountType type)
-	{
-		switch (type)
-		{
-			case GROUP_IRONMAN: return MODICON_GIM;
-			case HARDCORE_GROUP_IRONMAN: return MODICON_HCGIM;
-			case UNRANKED_GROUP_IRONMAN: return MODICON_UNRANKED_GIM;
-			default: return -1;
-		}
 	}
 
 	@Nullable
