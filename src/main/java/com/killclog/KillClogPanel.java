@@ -1576,10 +1576,10 @@ public class KillClogPanel extends PluginPanel
 
 	private void updateRankPlayers()
 	{
-		// Leaderboards are main-game tables; a League view keeps its own ranks.
-		rankSelector.update(config.showLeaderboardSelector() && lookupSession.league() == null, lookupSession.getCurrentLookupRsn(),
-			lookupSession.getNativeHiscoreResult(), comparison.getCompareRsn(),
-			comparison.isComparisonMode() ? comparison.getNativeCompareHiscoreResult() : null);
+		// Leaderboards are main-game tables for one player: a League view keeps its own ranks,
+		// and a comparison reads each player's own board, so an Ironman still meets a main.
+		rankSelector.update(config.showLeaderboardSelector() && lookupSession.league() == null
+			&& !comparison.isComparisonMode(), lookupSession.getCurrentLookupRsn(), lookupSession.getNativeHiscoreResult());
 	}
 
 	private void refreshRankDisplay()
@@ -1603,17 +1603,10 @@ public class KillClogPanel extends PluginPanel
 	/** A frozen or empty board shows no log, so the status line says why; it clears only its own line. */
 	private void showFrozenLogNotice()
 	{
-		HiscoreResult blueView = lookupSession.getHiscoreResult();
-		HiscoreResult redView = comparison.isComparisonMode() ? comparison.getCompareHiscoreResult() : null;
-		String blue = LookupSession.frozen(blueView) ? frozenLogNotice(blueView) : null;
-		String red = LookupSession.frozen(redView) ? frozenLogNotice(redView) : null;
-		// One line: when the sides differ, an empty side explains itself first.
-		String status = blue != null && (redView == null || blue.equals(red)) ? blue
-			: red != null && (blue == null || rankSelector.blankNotice(redView) != null) ? comparison.getCompareRsn() + ": " + red
-			: blue != null ? comparisonBlueName() + ": " + blue : null;
-		if (status != null)
+		HiscoreResult view = lookupSession.getHiscoreResult();
+		if (LookupSession.frozen(view))
 		{
-			setSearchStatus(boardStatus = status, TEXT_DIM);
+			setSearchStatus(boardStatus = frozenLogNotice(view), TEXT_DIM);
 		}
 		else if (statusRow.statusText().equals(boardStatus))
 		{

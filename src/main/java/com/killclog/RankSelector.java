@@ -25,7 +25,7 @@ import net.runelite.client.plugins.hiscore.HiscorePanel;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.util.ImageUtil;
 
-/** EDT-owned leaderboard views for both players. Cached service results stay untouched. */
+/** EDT-owned leaderboard views for the looked-up player. Cached service results stay untouched. */
 final class RankSelector extends JPanel
 {
 	/** The row a board without this player shows: nothing. */
@@ -39,9 +39,7 @@ final class RankSelector extends JPanel
 	private final Map<HiscoreResult, HiscoreResult> views = new IdentityHashMap<>();
 	private final Map<HiscoreResult, String> notices = new IdentityHashMap<>();
 	private HiscoreResult blue;
-	private HiscoreResult red;
 	private String blueName;
-	private String redName;
 	private RankLeaderboard selected;
 	private boolean enabled;
 	private int version;
@@ -93,18 +91,15 @@ final class RankSelector extends JPanel
 		g.fillRect(getWidth() - MinimalScrollBarUI.WIDTH, 0, MinimalScrollBarUI.WIDTH, getHeight());
 	}
 
-	void update(boolean enabled, String blueName, HiscoreResult blue, String redName, HiscoreResult red)
+	void update(boolean enabled, String blueName, HiscoreResult blue)
 	{
-		if (this.enabled == enabled && this.blue == blue && this.red == red
-			&& Objects.equals(this.blueName, blueName) && Objects.equals(this.redName, redName))
+		if (this.enabled == enabled && this.blue == blue && Objects.equals(this.blueName, blueName))
 		{
 			return;
 		}
 		this.enabled = enabled;
 		this.blue = blue;
-		this.red = red;
 		this.blueName = blueName;
-		this.redName = redName;
 		if (!enabled) selected = null;
 		setVisible(enabled);
 		probe();
@@ -117,26 +112,20 @@ final class RankSelector extends JPanel
 		probes++;
 		selected = null;
 		blue = null;
-		red = null;
 		open.clear();
 		views.clear();
 		notices.clear();
 		updateButtons();
 	}
 
-	/** A board gets its button once either player has a row on it, or Jagex didn't answer and a click can retry. */
+	/** A board gets its button once the player has a row on it, or Jagex didn't answer and a click can retry. */
 	private void probe()
 	{
 		int probe = ++probes;
 		open.clear();
 		if (!enabled || blue == null) return;
-		probe(blueName, blue, probe);
-		if (red != null && red != blue) probe(redName, red, probe);
-	}
-
-	private void probe(String name, HiscoreResult base, int probe)
-	{
-		open.add(RankLeaderboard.nativeOf(base));
+		String name = blueName;
+		open.add(RankLeaderboard.nativeOf(blue));
 		for (RankLeaderboard table : RankLeaderboard.values())
 		{
 			fetch.apply(name, table).whenComplete((row, error) -> SwingUtilities.invokeLater(() ->
@@ -183,7 +172,6 @@ final class RankSelector extends JPanel
 		if (enabled && blue != null)
 		{
 			load(blueName, blue, requestVersion);
-			if (red != null && red != blue) load(redName, red, requestVersion);
 		}
 		updateButtons();
 		changed.run();
@@ -237,7 +225,7 @@ final class RankSelector extends JPanel
 			String hint = entry.getKey().label + " Hiscores";
 			if (active)
 			{
-				hint += notice(blueName, blue) + notice(redName, red);
+				hint += notice(blueName, blue);
 			}
 			button.setToolTipText(hint);
 		}
