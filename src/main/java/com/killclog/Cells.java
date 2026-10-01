@@ -13,7 +13,6 @@ import java.awt.GridLayout;
 import java.awt.image.BufferedImage;
 import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.Locale;
 import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
@@ -328,7 +327,7 @@ public class Cells
 			String shortName = capitalizeTier(tier);
 			int rank = result.getActivityRank(tier.getName());
 			tooltipController.setTooltipText(label, rank > 0
-				? shortName + "\nRank: {w}" + String.format(Locale.US, "%,d", rank)
+				? shortName + "\nRank: {w}" + TitleTooltip.grouped(rank)
 				: shortName);
 		}
 	}
