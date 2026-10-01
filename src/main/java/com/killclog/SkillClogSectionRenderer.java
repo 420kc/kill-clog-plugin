@@ -1,13 +1,10 @@
 package com.killclog;
 
-import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
-import java.awt.Rectangle;
-import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
@@ -31,8 +28,6 @@ final class SkillClogSectionRenderer
 	private static final int SECTION_GAP = 6;
 	private static final int MAX_SECTION_WIDTH = 280;
 	private static final String OBTAINED_LABEL = "Obtained: ";
-	private static final Color QTY_COLOR = new Color(255, 255, 0);
-	private static final Color QTY_SHADOW = new Color(0, 0, 0);
 	private static final Font SECTION_FONT = FontManager.getRunescapeBoldFont();
 	private static final Font DETAIL_FONT = FontManager.getRunescapeSmallFont();
 
@@ -189,42 +184,9 @@ final class SkillClogSectionRenderer
 	{
 		List<Integer> itemIds = entry.section.itemIds();
 		g2.setFont(DETAIL_FONT);
-		FontMetrics quantityMetrics = g2.getFontMetrics();
-		int cellSize = cellSize();
-		for (int i = 0; i < itemIds.size(); i++)
-		{
-			int x = startX + (i % cols) * cellSize;
-			int spriteY = y + (i / cols) * cellSize;
-			int itemId = itemIds.get(i);
-			boolean obtained = playerItems.obtainedIds().contains(itemId);
-			int count = obtained
-				? playerItems.obtainedCounts().getOrDefault(itemId, 1) : 1;
-			String itemName = TooltipItemLink.itemName(entry.section.itemNames(), itemId);
-			hitBoxes.add(new TooltipItemHover.HitBox(sectionIndex, itemId, itemName,
-				new Rectangle(x, spriteY, spriteSize, spriteSize), obtained, count));
-
-			BufferedImage sprite = entry.sprites != null ? entry.sprites.spriteAt(i) : null;
-			if (sprite != null)
-			{
-				g2.setComposite(obtained
-					? AlphaComposite.SrcOver
-					: AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
-				int spriteX = x + (spriteSize - sprite.getWidth()) / 2;
-				int centeredY = spriteY + (spriteSize - sprite.getHeight()) / 2;
-				g2.drawImage(sprite, spriteX, centeredY, null);
-				g2.setComposite(AlphaComposite.SrcOver);
-			}
-
-			if (obtained && count > 1 && !compactSprites)
-			{
-				String quantity = String.valueOf(count);
-				g2.setColor(QTY_SHADOW);
-				g2.drawString(quantity, x + 1,
-					spriteY + quantityMetrics.getAscent() + 1);
-				g2.setColor(QTY_COLOR);
-				g2.drawString(quantity, x, spriteY + quantityMetrics.getAscent());
-			}
-		}
+		hitBoxes.addAll(TooltipItemSprites.paintGrid(g2, entry.sprites, entry.section.itemNames(), sectionIndex,
+			itemIds, playerItems.obtainedIds(), playerItems.obtainedCounts(), startX, y, cols, spriteSize,
+			cellSize(), !compactSprites));
 		return y + gridHeight(itemIds.size(), cols);
 	}
 

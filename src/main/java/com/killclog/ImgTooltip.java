@@ -1,14 +1,9 @@
 package com.killclog;
 
-import java.awt.AlphaComposite;
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
-import java.awt.Rectangle;
-import java.awt.image.BufferedImage;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -28,8 +23,6 @@ public class ImgTooltip extends TitleTooltip
 	private static final int DEFAULT_SPRITE_SIZE = 32;
 	private static final int PADDING = 4;
 
-	private static final Color QTY_COLOR = new Color(255, 255, 0);
-	private static final Color QTY_SHADOW = new Color(0, 0, 0);
 
 	private final int gridCols;
 	private final int spriteSize;
@@ -172,62 +165,14 @@ public class ImgTooltip extends TitleTooltip
 		// Item grid with auto-wrapped columns
 		if (itemSprites != null)
 		{
-			List<TooltipItemHover.HitBox> nextHitBoxes = new ArrayList<>(allItemIds.size());
 			g2.setFont(FontManager.getRunescapeSmallFont());
-
 			int cellSize = spriteSize + PADDING;
 			int gridWidth = effectiveCols * cellSize - PADDING;
-			int gridOffsetX = inset + (w - 2 * inset - gridWidth) / 2;
-			int gridStartY = startY;
-
-			for (int i = 0; i < allItemIds.size(); i++)
-			{
-				int col = i % effectiveCols;
-				int row = i / effectiveCols;
-				int x = gridOffsetX + col * cellSize;
-				int y = gridStartY + row * cellSize;
-
-				int itemId = allItemIds.get(i);
-				boolean obtained = obtainedIds.contains(itemId);
-				int count = obtained ? obtainedCounts.getOrDefault(itemId, 1) : 1;
-				nextHitBoxes.add(new TooltipItemHover.HitBox(0, itemId, itemNameAt(i),
-					new Rectangle(x, y, spriteSize, spriteSize), obtained, count));
-
-				BufferedImage sprite = itemSprites.spriteAt(i);
-				if (sprite != null)
-				{
-					g2.setComposite(obtained
-						? AlphaComposite.SrcOver
-						: AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
-
-					int sx = x + (spriteSize - sprite.getWidth()) / 2;
-					int sy = y + (spriteSize - sprite.getHeight()) / 2;
-					g2.drawImage(sprite, sx, sy, null);
-					g2.setComposite(AlphaComposite.SrcOver);
-				}
-
-				// Quantity overlay - skip on compact sprites where text is unreadable
-				if (obtained && count > 1 && spriteSize >= DEFAULT_SPRITE_SIZE)
-				{
-					FontMetrics qfm = g2.getFontMetrics();
-					String qtyText = String.valueOf(count);
-					g2.setColor(QTY_SHADOW);
-					g2.drawString(qtyText, x + 1, y + qfm.getAscent() + 1);
-					g2.setColor(QTY_COLOR);
-					g2.drawString(qtyText, x, y + qfm.getAscent());
-				}
-			}
-			itemHover.setHitBoxes(nextHitBoxes);
+			// Quantities skip compact sprites, where the text is unreadable.
+			itemHover.setHitBoxes(TooltipItemSprites.paintGrid(g2, itemSprites, null, 0, allItemIds,
+				obtainedIds, obtainedCounts, inset + (w - 2 * inset - gridWidth) / 2, startY, effectiveCols,
+				spriteSize, cellSize, spriteSize >= DEFAULT_SPRITE_SIZE));
 		}
-	}
-
-	private String itemNameAt(int index)
-	{
-		if (itemSprites == null)
-		{
-			return null;
-		}
-		return itemSprites.nameAt(index);
 	}
 
 }
