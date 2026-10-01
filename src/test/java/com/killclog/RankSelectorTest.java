@@ -109,7 +109,7 @@ public class RankSelectorTest
 				throw new AssertionError();
 			}, (name, table) -> false, RankSelectorTest::noop);
 			HiscoreResult base = result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000);
-			selector.update(false, "Blue", base, null, null);
+			selector.update(false, "Blue", base);
 			assertFalse(selector.isVisible());
 			assertSame(base, selector.view(base));
 			selector.select(RankLeaderboard.NORMAL);
@@ -118,42 +118,38 @@ public class RankSelectorTest
 	}
 
 	@Test
-	public void comparisonUsesOneBoardAndIgnoresSupersededResponses() throws Exception
+	public void aBoardStillLoadingShowsNothingAndASupersededAnswerIsIgnored() throws Exception
 	{
 		Map<String, CompletableFuture<HiscoreResult>> requests = new HashMap<>();
 		RankSelector[] holder = new RankSelector[1];
 		HiscoreResult blue = result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000);
-		HiscoreResult red = result(AccountType.REGULAR, HiscoreTable.STANDARD, 20, 10000);
 		SwingUtilities.invokeAndWait(() ->
 		{
 			RankSelector selector = new RankSelector((name, table) ->
 				requests.computeIfAbsent(name + table, key -> new CompletableFuture<>()), (name, table) -> false,
 				RankSelectorTest::noop);
 			holder[0] = selector;
-			selector.update(true, "Blue", blue, "Red", red);
+			selector.update(true, "Blue", blue);
 			assertSame(blue, selector.view(blue));
-			assertEquals("a board still loading shows nothing", -1, selector.view(red).getKc("Zulrah"));
-			assertEquals("Loading...", selector.blankNotice(selector.view(red)));
 			selector.select(RankLeaderboard.NORMAL);
-			assertSame(red, selector.view(red));
-			assertEquals(-1, selector.view(blue).getOverallRank());
-			requests.get("Red" + RankLeaderboard.IRONMAN).complete(result(AccountType.IRONMAN, HiscoreTable.STANDARD, 1, 10000));
+			assertEquals("a board still loading shows nothing", -1, selector.view(blue).getKc("Zulrah"));
+			assertEquals("Loading...", selector.blankNotice(selector.view(blue)));
+			selector.select(RankLeaderboard.HARDCORE);
 			requests.get("Blue" + RankLeaderboard.NORMAL).complete(result(AccountType.REGULAR, HiscoreTable.STANDARD, 100, 10000));
+			requests.get("Blue" + RankLeaderboard.HARDCORE).complete(result(AccountType.REGULAR, HiscoreTable.STANDARD, 7, 10000));
 		});
 		SwingUtilities.invokeAndWait(() ->
 		{
-			assertEquals(100, holder[0].view(blue).getOverallRank());
+			assertEquals("the board picked last wins", 7, holder[0].view(blue).getOverallRank());
 			assertNull(holder[0].blankNotice(holder[0].view(blue)));
-			assertSame(red, holder[0].view(red));
 			assertEquals(10, blue.getOverallRank());
 		});
 	}
 
 	@Test
-	public void onlyBoardsWithARowGetATabAndComparisonAddsTheOtherPlayers() throws Exception
+	public void onlyBoardsWithARowGetATab() throws Exception
 	{
 		HiscoreResult blue = result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000);
-		HiscoreResult red = result(AccountType.REGULAR, HiscoreTable.ONE_DEFENCE, 20, 10000);
 		Set<RankLeaderboard> blueRows = EnumSet.of(RankLeaderboard.NORMAL, RankLeaderboard.IRONMAN, RankLeaderboard.HARDCORE);
 		RankSelector[] holder = new RankSelector[1];
 		SwingUtilities.invokeAndWait(() ->
@@ -162,16 +158,10 @@ public class RankSelectorTest
 			holder[0] = new RankSelector((name, table) -> CompletableFuture.completedFuture(
 				name.equals("Blue") && blueRows.contains(table) ? blue : null),
 				(name, table) -> table != RankLeaderboard.SKILLER, RankSelectorTest::noop);
-			holder[0].update(true, "Blue", blue, null, null);
+			holder[0].update(true, "Blue", blue);
 		});
-		SwingUtilities.invokeAndWait(() ->
-		{
-			assertEquals(EnumSet.of(RankLeaderboard.NORMAL, RankLeaderboard.IRONMAN, RankLeaderboard.HARDCORE,
-				RankLeaderboard.SKILLER), shown(holder[0]));
-			holder[0].update(true, "Blue", blue, "Red", red);
-		});
-		SwingUtilities.invokeAndWait(() -> assertEquals(EnumSet.complementOf(EnumSet.of(RankLeaderboard.ULTIMATE)),
-			shown(holder[0])));
+		SwingUtilities.invokeAndWait(() -> assertEquals(EnumSet.of(RankLeaderboard.NORMAL, RankLeaderboard.IRONMAN,
+			RankLeaderboard.HARDCORE, RankLeaderboard.SKILLER), shown(holder[0])));
 	}
 
 	private static Set<RankLeaderboard> shown(RankSelector selector)
@@ -194,12 +184,12 @@ public class RankSelectorTest
 		{
 			RankSelector selector = new RankSelector((name, table) -> pending, (name, table) -> false, RankSelectorTest::noop);
 			holder[0] = selector;
-			selector.update(true, "Blue", base, null, null);
+			selector.update(true, "Blue", base);
 			selector.select(RankLeaderboard.NORMAL);
 			selector.reset();
-			selector.update(true, "Next", base, null, null);
+			selector.update(true, "Next", base);
 			assertEquals(RankLeaderboard.IRONMAN, selector.active());
-			selector.update(false, "Next", base, null, null);
+			selector.update(false, "Next", base);
 			pending.complete(result(AccountType.REGULAR, HiscoreTable.STANDARD, 999, 10000));
 		});
 		SwingUtilities.invokeAndWait(() -> assertSame(base, holder[0].view(base)));
@@ -214,7 +204,7 @@ public class RankSelectorTest
 			RankSelector selector = new RankSelector((name, table) -> CompletableFuture.completedFuture(
 				table == RankLeaderboard.HARDCORE ? result(AccountType.HARDCORE_IRONMAN, HiscoreTable.STANDARD, 50, 5000) : null),
 				(name, table) -> table == RankLeaderboard.ULTIMATE, RankSelectorTest::noop);
-			selector.update(true, "Blue", base, null, null);
+			selector.update(true, "Blue", base);
 			selector.select(RankLeaderboard.HARDCORE);
 			HiscoreResult hardcore = selector.view(base);
 			assertEquals(50, hardcore.getOverallRank());
