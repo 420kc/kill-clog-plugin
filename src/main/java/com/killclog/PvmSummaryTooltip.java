@@ -54,15 +54,16 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private final BufferedImage[] superiorSprites = new BufferedImage[2];
 	private final int[] superiorCounts = new int[2];
 
-	private int coxKc;
-	private int tobKc;
-	private int toaKc;
-	private int coxObtained = -1;
-	private int coxTotal;
-	private int tobObtained = -1;
-	private int tobTotal;
-	private int toaObtained = -1;
-	private int toaTotal;
+	// CoX, ToB and ToA: normal plus hard-mode kills, and the raid's collection progress.
+	private static final String[] RAID_LABELS = {"CoX: ", "ToB: ", "ToA: "};
+	private static final String[][] RAID_HISCORES = {
+		{PanelData.COX_HISCORE, PanelData.COX_HISCORE_HARD},
+		{PanelData.TOB_HISCORE, PanelData.TOB_HISCORE_HARD},
+		{PanelData.TOA_HISCORE, PanelData.TOA_HISCORE_HARD}};
+	private static final String[] RAID_CATEGORIES = {PanelData.COX_CATEGORY, PanelData.TOB_CATEGORY, PanelData.TOA_CATEGORY};
+	private final int[] raidKc = new int[3];
+	private final int[] raidObtained = {-1, -1, -1};
+	private final int[] raidTotal = new int[3];
 
 	@Setter
 	private Image combatIcon;
@@ -143,32 +144,15 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 	public void setRaids(HiscoreResult hiscoreResult, ClogResult clogResult)
 	{
-		coxKc = Math.max(0, hiscoreResult.getKc(PanelData.COX_HISCORE))
-			+ Math.max(0, hiscoreResult.getKc(PanelData.COX_HISCORE_HARD));
-		tobKc = Math.max(0, hiscoreResult.getKc(PanelData.TOB_HISCORE))
-			+ Math.max(0, hiscoreResult.getKc(PanelData.TOB_HISCORE_HARD));
-		toaKc = Math.max(0, hiscoreResult.getKc(PanelData.TOA_HISCORE))
-			+ Math.max(0, hiscoreResult.getKc(PanelData.TOA_HISCORE_HARD));
-
-		if (clogResult != null)
+		for (int i = 0; i < 3; i++)
 		{
-			int[] cox = ClogHelper.clogCounts(PanelData.COX_CATEGORY, clogResult);
-			if (cox != null)
+			raidKc[i] = Math.max(0, hiscoreResult.getKc(RAID_HISCORES[i][0]))
+				+ Math.max(0, hiscoreResult.getKc(RAID_HISCORES[i][1]));
+			int[] counts = clogResult != null ? ClogHelper.clogCounts(RAID_CATEGORIES[i], clogResult) : null;
+			if (counts != null)
 			{
-				coxObtained = cox[0];
-				coxTotal = cox[1];
-			}
-			int[] tob = ClogHelper.clogCounts(PanelData.TOB_CATEGORY, clogResult);
-			if (tob != null)
-			{
-				tobObtained = tob[0];
-				tobTotal = tob[1];
-			}
-			int[] toa = ClogHelper.clogCounts(PanelData.TOA_CATEGORY, clogResult);
-			if (toa != null)
-			{
-				toaObtained = toa[0];
-				toaTotal = toa[1];
+				raidObtained[i] = counts[0];
+				raidTotal[i] = counts[1];
 			}
 		}
 	}
@@ -227,9 +211,10 @@ public class PvmSummaryTooltip extends TitleTooltip
 		textWidth = Math.max(textWidth, bfm.stringWidth("PvP Summary"));
 		textWidth = Math.max(textWidth, bfm.stringWidth("Slayer"));
 		textWidth = Math.max(textWidth, bfm.stringWidth("Raids"));
-		textWidth = Math.max(textWidth, raidLineWidth(fm, "CoX: ", coxKc, coxObtained, coxTotal));
-		textWidth = Math.max(textWidth, raidLineWidth(fm, "ToB: ", tobKc, tobObtained, tobTotal));
-		textWidth = Math.max(textWidth, raidLineWidth(fm, "ToA: ", toaKc, toaObtained, toaTotal));
+		for (int i = 0; i < 3; i++)
+		{
+			textWidth = Math.max(textWidth, raidLineWidth(fm, RAID_LABELS[i], raidKc[i], raidObtained[i], raidTotal[i]));
+		}
 		if (caResult != null)
 		{
 			int caWidth = fm.stringWidth("CA Tier: " + tierDisplayName(caResult))
@@ -340,12 +325,11 @@ public class PvmSummaryTooltip extends TitleTooltip
 		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
 
 		y = paintSubheader(g2, y, "Raids");
-		paintRaidLine(g2, fm, inset, y, "CoX: ", coxKc, coxObtained, coxTotal);
-		y += LINE_HEIGHT;
-		paintRaidLine(g2, fm, inset, y, "ToB: ", tobKc, tobObtained, tobTotal);
-		y += LINE_HEIGHT;
-		paintRaidLine(g2, fm, inset, y, "ToA: ", toaKc, toaObtained, toaTotal);
-		y += LINE_HEIGHT;
+		for (int i = 0; i < 3; i++)
+		{
+			paintRaidLine(g2, fm, inset, y, RAID_LABELS[i], raidKc[i], raidObtained[i], raidTotal[i]);
+			y += LINE_HEIGHT;
+		}
 		y += WEAPON_PAD;
 
 		// Center the three weapon sprites.
