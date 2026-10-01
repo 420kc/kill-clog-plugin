@@ -312,7 +312,7 @@ public abstract class TitleTooltip extends NativeTooltip
 		}
 	}
 
-	private void loadItemSprite(int itemId, int size, BufferedImage[] sprites, int index,
+	void loadItemSprite(int itemId, int size, BufferedImage[] sprites, int index,
 		ItemManager itemManager)
 	{
 		BufferedImage img = itemManager.getImage(itemId, 1, false);
