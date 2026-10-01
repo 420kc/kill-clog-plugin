@@ -98,9 +98,9 @@ public class StoreMigrationTest
 		assertEquals("a marked record beats an unmarked one whichever file holds it", 1, x.getCount());
 		assertEquals(42, x.getObtainedAtKc());
 		assertEquals("2026-01-01 00:00:00", x.getDate());
-		assertTrue(merged.firstPartyByCategory.get("hats").containsAll(List.of(1, 2)));
-		assertNotNull("an item only one copy has carries over", find(merged.obtained.get("pets"), 5));
-		assertFalse("its mark only travels if it had one", merged.firstPartyByCategory.get("pets").contains(5));
+		assertNotNull("the base's own capture stays", find(merged.obtained.get("hats"), 2));
+		assertNull("an own log carries no marks", merged.firstPartyByCategory);
+		assertNull("an unmarked record is never certified", merged.obtained.get("pets"));
 		assertEquals("only the account's own pending unlocks carry over", 1, merged.pendingUnlocks.size());
 		assertEquals("77", merged.pendingUnlocks.get(0).ownerHash);
 		assertEquals("an explicit completed setup survives", Boolean.TRUE, merged.firstPartySetupComplete);
@@ -228,6 +228,56 @@ public class StoreMigrationTest
 			assertEquals("Own " + i, read(LocalClogCacheTest.ownFile(dir, 100 + i)).playerName);
 			assertTrue(new File(dir, "lookups/look" + i + ".json").exists());
 		}
+	}
+
+	@Test
+	public void everyEarlierOwnFileIsCheckedEvenWithoutCandidates() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		File misnamed = LocalClogCacheTest.ownFile(dir, 77L);
+		write(dir, misnamed.getName(), own("Someone", "78", marked("hats", 1)));
+		File broken = LocalClogCacheTest.ownFile(dir, 79L);
+		Files.writeString(broken.toPath(), "{broken");
+		File good = LocalClogCacheTest.ownFile(dir, 80L);
+		write(dir, good.getName(), own("Good", "80", marked("hats", 1)));
+		assertTrue(StoreMigration.run(GSON, TestFolders.folder(dir)));
+		assertFalse(misnamed.exists());
+		assertFalse(broken.exists());
+		assertTrue(good.exists());
+		assertEquals(2, dir.listFiles((d, n) -> n.startsWith(".unreadable-")).length);
+	}
+
+	@Test
+	public void aNullMarkerFileIsNotProofEvenWithSetupComplete() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		PlayerClogData legacy = legacy("Legacy", "78");
+		legacy.firstPartySetupComplete = true;
+		write(dir, "legacy.json", legacy);
+		assertTrue(StoreMigration.run(GSON, TestFolders.folder(dir)));
+		assertFalse(LocalClogCacheTest.ownFile(dir, 78L).exists());
+		assertTrue(new File(dir, "legacy/legacy.json").exists());
+	}
+
+	@Test
+	public void bothCopiesLoseForeignPendingUnlocksAndKeepEveryCategoryId() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		PlayerClogData base = own("Base", "77", marked("hats", 1));
+		base.categories = new HashMap<>(Map.of("hats", List.of(1, 2)));
+		base.pendingUnlocks = new ArrayList<>(List.of(
+			new PendingClogUnlock(List.of(7, 8), "2026-01-02 00:00:00", "99"),
+			new PendingClogUnlock(List.of(3, 4), "2026-01-02 00:00:00", "77")));
+		PlayerClogData other = own("Other", "77", marked("hats", 2));
+		other.categories = new HashMap<>(Map.of("hats", List.of(2, 3)));
+		write(dir, "base.json", base);
+		write(dir, "other.json", other);
+		Files.writeString(new File(dir, ".kill-clog-identity.json").toPath(), "{\"77\":\"base\"}");
+		assertTrue(StoreMigration.run(GSON, TestFolders.folder(dir)));
+		PlayerClogData merged = read(LocalClogCacheTest.ownFile(dir, 77L));
+		assertEquals(List.of(1, 2, 3), merged.categories.get("hats"));
+		assertEquals(1, merged.pendingUnlocks.size());
+		assertEquals("77", merged.pendingUnlocks.get(0).ownerHash);
 	}
 
 	// ── helpers ──

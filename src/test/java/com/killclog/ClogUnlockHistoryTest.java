@@ -100,9 +100,10 @@ public class ClogUnlockHistoryTest
 	{
 		PlayerClogData oldName = new PlayerClogData();
 		oldName.pendingUnlocks = List.of(new PendingClogUnlock(List.of(2991, 2992), date, "owner"));
-		PlayerClogData newName = new PlayerClogData();
-		ClogRecords.mergeOwn(newName, oldName, "owner");
-		ClogRecords.mergeOwn(newName, new Gson().fromJson(new Gson().toJson(oldName), PlayerClogData.class), "owner");
+		PlayerClogData twin = new Gson().fromJson(new Gson().toJson(oldName), PlayerClogData.class);
+		PlayerClogData newName = ClogRecords.ownCore(new PlayerClogData(), "owner");
+		ClogRecords.mergeOwn(newName, ClogRecords.ownCore(oldName, "owner"));
+		ClogRecords.mergeOwn(newName, ClogRecords.ownCore(twin, "owner"));
 		assertNotNull(newName.pendingUnlocks);
 		assertEquals(1, newName.pendingUnlocks.size());
 		Map<String, List<ClogResult.ClogItem>> obtained = items(2991);
