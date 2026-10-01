@@ -295,6 +295,19 @@ public class KillclogServiceTest
 	}
 
 	@Test
+	public void pastTheCapTheNewestPlayerKeepsTheirPbs() throws Exception
+	{
+		for (int i = 0; i <= HttpUtil.CACHE_CAP; i++)
+		{
+			String name = "player " + i;
+			String json = "{\"rsn\":\"" + name + "\",\"pbs\":{\"Zulrah\":58.2},"
+				+ "\"clog\":{\"items_by_category\":{\"zulrah\":[{\"item_id\":1,\"quantity\":1}]}}}";
+			assertNotNull(service.onProofViewResponse(200, json, name, name));
+			assertNotNull("player " + i + " keeps their pbs", service.pbText(name, "Zulrah"));
+		}
+	}
+
+	@Test
 	public void testIndexMissEvictsStaleFirstPartyData() throws Exception
 	{
 		String json = "{\"rsn\":\"420 kc\",\"pbs\":{\"Zulrah\":58.2},"
