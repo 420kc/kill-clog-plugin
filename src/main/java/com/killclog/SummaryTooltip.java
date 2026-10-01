@@ -12,10 +12,8 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.IntFunction;
 import javax.annotation.Nullable;
-import javax.swing.SwingUtilities;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
-import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
 
 /**
@@ -92,19 +90,7 @@ public class SummaryTooltip extends TitleTooltip
 		{
 			int id = petList.get(i);
 			petNames[i] = nameLookup != null ? nameLookup.apply(id) : null;
-
-			BufferedImage img = itemManager.getImage(id, 1, false);
-			petSprites[i] = ImageUtil.resizeImage(img, PET_SIZE, PET_SIZE);
-			if (img instanceof AsyncBufferedImage)
-			{
-				final int idx = i;
-				((AsyncBufferedImage) img).onLoaded(() ->
-					SwingUtilities.invokeLater(() ->
-					{
-						petSprites[idx] = ImageUtil.resizeImage(img, PET_SIZE, PET_SIZE);
-						repaint();
-					}));
-			}
+			loadItemSprite(id, PET_SIZE, petSprites, i, itemManager);
 		}
 	}
 
@@ -137,8 +123,7 @@ public class SummaryTooltip extends TitleTooltip
 			if (badgeIcon != null) rsnW += badgeIcon.getWidth() + BADGE_GAP;
 			tw = Math.max(tw, rsnW);
 		}
-		String rankLine = buildRankLine();
-		if (rankLine != null) tw = Math.max(tw, fm.stringWidth(rankLine));
+		tw = Math.max(tw, fm.stringWidth(accountLabelText() + rankTail()));
 		if (prestige != null)
 		{
 			tw = Math.max(tw, fm.stringWidth("Prestige:"));
@@ -212,20 +197,7 @@ public class SummaryTooltip extends TitleTooltip
 		// Account type plus rank.
 		if (accountLabel != null || overallRank > 0)
 		{
-			int x = inset;
-			if (accountLabel != null)
-			{
-				g2.setColor(OSRS_ORANGE);
-				g2.drawString(accountLabel, x, lineY);
-				x += fm.stringWidth(accountLabel);
-			}
-			if (overallRank > 0)
-			{
-				String rankText = " #" + grouped(overallRank);
-				if (accountLabel == null) rankText = "#" + grouped(overallRank);
-				g2.setColor(Color.WHITE);
-				g2.drawString(rankText, x, lineY);
-			}
+			drawLabelValue(g2, fm, inset, lineY, accountLabelText(), rankTail());
 			lineY += LINE_HEIGHT;
 		}
 
@@ -255,17 +227,10 @@ public class SummaryTooltip extends TitleTooltip
 
 		if (totalPetCount <= 0) return;
 
-		// Separator.
-		int sepY = sectionBottom + SECTION_GAP;
-		g2.setColor(SEPARATOR_COLOR);
-		g2.drawLine(inset, sepY, w - inset - 1, sepY);
-
-		// Pets header.
-		FontMetrics sfm = g2.getFontMetrics();
-		int petsHeaderY = sepY + 1 + SECTION_GAP + sfm.getAscent();
-		String petsLabel = "Pets: ";
+		// Pets header under a separator.
+		int petsHeaderY = paintSeparator(g2, w, sectionBottom, SECTION_GAP) + fm.getAscent();
 		int petCount = petList != null ? petList.size() : 0;
-		drawLabelValue(g2, sfm, inset, petsHeaderY, petsLabel, String.valueOf(petCount),
+		drawLabelValue(g2, fm, inset, petsHeaderY, "Pets: ", String.valueOf(petCount),
 			completionColor(petCount, totalPetCount));
 
 		if (!hasPets())
@@ -304,15 +269,15 @@ public class SummaryTooltip extends TitleTooltip
 		itemHover.setHitBoxes(hitBoxes);
 	}
 
-	private String buildRankLine()
+	private String accountLabelText()
 	{
-		if (accountLabel != null && overallRank > 0)
-		{
-			return accountLabel + " #" + grouped(overallRank);
-		}
-		if (accountLabel != null) return accountLabel;
-		if (overallRank > 0) return "#" + grouped(overallRank);
-		return null;
+		return accountLabel != null ? accountLabel : "";
+	}
+
+	/** " #1,234" after an account label, "#1,234" alone, nothing when unranked. */
+	private String rankTail()
+	{
+		return overallRank > 0 ? (accountLabel != null ? " #" : "#") + grouped(overallRank) : "";
 	}
 
 	@Nullable
