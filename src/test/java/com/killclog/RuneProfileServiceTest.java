@@ -690,12 +690,26 @@ public class RuneProfileServiceTest
 		assertEquals("moons_of_peril", RuneProfileService.normalizePageKey("Lunar Chests"));
 	}
 
+	/** The old per-map names, now each lane's own maps ("summaryFetchTimes" is the summary lane's fetched). */
 	@SuppressWarnings("unchecked")
 	private <T> Map<String, T> cache(String fieldName) throws Exception
 	{
-		Field field = RuneProfileService.class.getDeclaredField(fieldName);
+		Field field = RuneProfileService.class.getDeclaredField(fieldName.startsWith("summary") ? "summaries" : "clogs");
 		field.setAccessible(true);
-		return (Map<String, T>) field.get(service);
+		HttpUtil.Lane<?> lane = (HttpUtil.Lane<?>) field.get(service);
+		switch (fieldName.replaceFirst("^(summary|clog)", ""))
+		{
+			case "Cache":
+				return (Map<String, T>) lane.values;
+			case "FetchTimes":
+				return (Map<String, T>) (Map<?, ?>) lane.fetched;
+			case "NotFoundTimes":
+				return (Map<String, T>) (Map<?, ?>) lane.notFound;
+			case "Failures":
+				return (Map<String, T>) (Map<?, ?>) lane.failed;
+			default:
+				throw new AssertionError(fieldName);
+		}
 	}
 
 	private Map<String, RuneProfileService.RuneProfileSummary> summaryCache() throws Exception
