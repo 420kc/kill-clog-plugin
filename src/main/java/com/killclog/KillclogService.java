@@ -451,8 +451,8 @@ public class KillclogService
 			pbCache.put(key, parsePbs(root));
 			if (pbCache.size() > HttpUtil.CACHE_CAP)
 			{
-				// PBs go with the clog result they came with.
-				pbCache.keySet().retainAll(clogs.values.keySet());
+				// PBs go with the clog result they came with; this player's result is stored next.
+				pbCache.keySet().removeIf(other -> !other.equals(key) && !clogs.values.containsKey(other));
 			}
 			return result;
 		}
