@@ -254,11 +254,13 @@ public class ClogService
 					).withSources(true, false, false);
 					localClogCache.cacheResult(result);
 					clogFetchTimes.put(normalizedName, System.currentTimeMillis());
+					HttpUtil.prune(clogFetchTimes, CLOG_TTL_MS);
 					return result;
 				}
 
 				// TempleOSRS lane failed. Remember timestamp and fall back to local cache.
 				templeFailures.put(normalizedName, System.currentTimeMillis());
+				HttpUtil.prune(templeFailures, TEMPLE_FAILURE_TTL_MS);
 				if (localClogCache.hasDataFor(playerName))
 				{
 					log.debug("TempleOSRS unavailable, using cached data for: {}", playerName);
@@ -320,6 +322,7 @@ public class ClogService
 				&& now - successfulAt < CLOG_TTL_MS);
 		}
 		clogFetchTimes.put(ttlKey, now);
+		HttpUtil.prune(clogFetchTimes, CLOG_TTL_MS);
 		String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
 		return fetchClog(encoded)
 			.thenApply(player ->
@@ -334,6 +337,7 @@ public class ClogService
 					localClogCache.mergeProviderDates(playerName, player.obtainedItems);
 				}
 				templeOverlaySuccessTimes.put(normalizedName, System.currentTimeMillis());
+				HttpUtil.prune(templeOverlaySuccessTimes, CLOG_TTL_MS);
 				return true;
 			})
 			.exceptionally(t ->
