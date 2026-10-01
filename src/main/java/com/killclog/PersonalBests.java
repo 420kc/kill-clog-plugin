@@ -77,23 +77,8 @@ final class PersonalBests
 	 */
 	double bestSecondsAcrossProfiles(java.util.List<String> profileKeys, String panelBossName)
 	{
-		double best = 0;
-		for (String profileKey : profileKeys)
-		{
-			for (String base : keyCandidates(panelBossName))
-			{
-				for (String suffix : TEAM_SUFFIXES)
-				{
-					Double pb = configManager.getConfiguration(
-						"personalbest", profileKey, base + suffix, (java.lang.reflect.Type) double.class);
-					if (pb != null && pb > 0 && (best == 0 || pb < best))
-					{
-						best = pb;
-					}
-				}
-			}
-		}
-		return best;
+		return variantSecondsAcrossProfiles("personalbest", "", profileKeys, panelBossName)
+			.values().stream().min(Double::compare).orElse(0.0);
 	}
 
 	/** One stored-key read, abstracted so the variant merge logic is testable. */
@@ -136,7 +121,7 @@ final class PersonalBests
 	}
 
 	/** {@link #variantSeconds} over the same fragment sweep the tooltips use. */
-	java.util.Map<String, Double> variantSecondsAcrossProfiles(
+	java.util.Map<String, Double> variantSecondsAcrossProfiles(String group, String prefix,
 		java.util.List<String> profileKeys, String panelBossName)
 	{
 		return variantSeconds(key ->
@@ -145,7 +130,7 @@ final class PersonalBests
 			for (String profileKey : profileKeys)
 			{
 				Double pb = configManager.getConfiguration(
-					"personalbest", profileKey, key, (java.lang.reflect.Type) double.class);
+					group, profileKey, prefix + key, (java.lang.reflect.Type) double.class);
 				if (pb != null && pb > 0 && (best == null || pb < best))
 				{
 					best = pb;
