@@ -166,10 +166,14 @@ final class PublicationCoordinator
 	 */
 	void manualSync()
 	{
-		if (!config.killclogSync())
+		if (config.killclogSync())
 		{
-			return;
+			syncNow(true);
 		}
+	}
+
+	private void syncNow(boolean manual)
+	{
 		synchronized (this)
 		{
 			if (pendingKillclogSync != null && !pendingKillclogSync.isDone())
@@ -178,7 +182,7 @@ final class PublicationCoordinator
 				pendingKillclogSync = null;
 			}
 		}
-		scheduleSync(0, true);
+		scheduleSync(0, manual);
 	}
 
 	void publishCharacter()
@@ -277,7 +281,7 @@ final class PublicationCoordinator
 		{
 			characterPublishAfterSync.set(true);
 			showCharacterPublishStatus(generation, KillClogPlugin.CHARACTER_RENDERING_STATUS, false, false);
-			startCharacterPrerequisiteSync();
+			syncNow(false);
 			return;
 		}
 
@@ -285,19 +289,6 @@ final class PublicationCoordinator
 		boolean published = result.outcome == ProfileAppearanceService.Outcome.PUBLISHED;
 		showCharacterPublishStatus(generation, KillClogPlugin.characterPublishTerminalStatus(result.outcome),
 			published, true, result.message);
-	}
-
-	private void startCharacterPrerequisiteSync()
-	{
-		synchronized (this)
-		{
-			if (pendingKillclogSync != null && !pendingKillclogSync.isDone())
-			{
-				pendingKillclogSync.cancel(false);
-				pendingKillclogSync = null;
-			}
-		}
-		scheduleSync(0, false);
 	}
 
 	private boolean failQueuedCharacterPublish()
@@ -425,9 +416,8 @@ final class PublicationCoordinator
 				}
 				List<String> profileKeys = PersonalBests.profileKeys(configManager.getRSProfiles(), accountHash,
 					main ? RuneScapeProfileType.STANDARD.name() : leagueProfileType.apply(gameMode));
-				Map<String, Double> pbs = gatherPersonalBests(profileKeys);
-				Map<String, SyncService.DetailedPb> detailedPbs =
-					gatherDetailedPersonalBests(profileKeys);
+				Map<String, Double> pbs = new LinkedHashMap<>();
+				Map<String, SyncService.DetailedPb> detailedPbs = gatherPersonalBests(profileKeys, pbs);
 				// Off the client thread before dispatch: the sync pre-flight
 				// can block up to ten seconds waiting for the rename disk
 				// verdict, and game ticks must never pay that wait. The
@@ -443,16 +433,7 @@ final class PublicationCoordinator
 			catch (RuntimeException e)
 			{
 				log.warn("killclog sync push failed before dispatch", e);
-				syncGate.abortAttempt();
-				if (!failQueuedCharacterPublish())
-				{
-					withSyncFeedback(generation, scheduledEpoch, () -> feedback.showSyncResult(manual,
-						false, "Collection log publication failed. See the client log."));
-				}
-				// Failures always chat, this path included.
-				chatNotifier.send(ChatNotice.SYNC_RESULT,
-					"Collection log publication failed - see the client log.");
-				launchQueuedSync();
+				failBeforeSend(generation, scheduledEpoch, manual);
 			}
 		});
 	}
@@ -550,18 +531,22 @@ final class PublicationCoordinator
 		catch (RuntimeException e)
 		{
 			log.warn("killclog sync push failed at dispatch", e);
-			syncGate.abortAttempt();
-			if (!failQueuedCharacterPublish())
-			{
-				withSyncFeedback(generation, cacheEpoch, () -> feedback.showSyncResult(manual,
-					false, "Collection log publication failed. See the client log."));
-			}
-			// Failures always chat, this path included; chat sends need the
-			// client thread and this body runs on the executor.
-			clientThread.invoke(() -> chatNotifier.send(ChatNotice.SYNC_RESULT,
-				"Collection log publication failed - see the client log."));
-			launchQueuedSync();
+			failBeforeSend(generation, cacheEpoch, manual);
 		}
+	}
+
+	/** Failures always chat; chat sends need the client thread, which invoke runs at once when already on it. */
+	private void failBeforeSend(int generation, long epoch, boolean manual)
+	{
+		syncGate.abortAttempt();
+		if (!failQueuedCharacterPublish())
+		{
+			withSyncFeedback(generation, epoch, () -> feedback.showSyncResult(manual,
+				false, "Collection log publication failed. See the client log."));
+		}
+		clientThread.invoke(() -> chatNotifier.send(ChatNotice.SYNC_RESULT,
+			"Collection log publication failed - see the client log."));
+		launchQueuedSync();
 	}
 
 	private void withSyncFeedback(int generation, long epoch, Runnable feedbackCall)
@@ -588,44 +573,19 @@ final class PublicationCoordinator
 	 * buffed-world times, and the min-merge would launder those into the
 	 * player's real record. Client thread (config reads).
 	 */
-	private Map<String, Double> gatherPersonalBests(List<String> profileKeys)
+	private Map<String, SyncService.DetailedPb> gatherPersonalBests(List<String> profileKeys, Map<String, Double> pbs)
 	{
-		PersonalBests pbs = new PersonalBests(configManager);
-		Map<String, Double> out = new LinkedHashMap<>();
-		for (HiscoreSkill boss : PanelData.BOSSES)
-		{
-			putBestSeconds(out, pbs, profileKeys, boss.getName());
-		}
-		log.debug("killclog sync pb gather: {} owned profiles, {} pbs", profileKeys.size(), out.size());
-		return out;
-	}
-
-	/**
-	 * Variant-keyed personal bests for the ladder payload: team sizes stay
-	 * SPLIT (solo and 5-man runs are different sports on a leaderboard),
-	 * keyed by vanilla's own stored key shape. The collapsed map above stays
-	 * as-is for tooltip display. Same STANDARD-only fragment sweep, merged
-	 * min-wins with the adventure-log harvest; each entry keeps the lane it
-	 * was observed through.
-	 */
-	private Map<String, SyncService.DetailedPb> gatherDetailedPersonalBests(List<String> profileKeys)
-	{
-		PersonalBests pbs = new PersonalBests(configManager);
-		AdvLogPbs advLog = new AdvLogPbs(configManager);
+		PersonalBests store = new PersonalBests(configManager);
 		Map<String, SyncService.DetailedPb> out = new LinkedHashMap<>();
 		for (HiscoreSkill boss : PanelData.BOSSES)
 		{
-			for (Map.Entry<String, Double> entry
-				: pbs.variantSecondsAcrossProfiles(profileKeys, boss.getName()).entrySet())
-			{
-				mergeDetailedPb(out, entry.getKey(), entry.getValue(), "store");
-			}
-			for (Map.Entry<String, Double> entry
-				: advLog.variantSecondsAcrossProfiles(profileKeys, boss.getName()).entrySet())
-			{
-				mergeDetailedPb(out, entry.getKey(), entry.getValue(), "advlog");
-			}
+			Map<String, Double> vanilla = store.variantSecondsAcrossProfiles("personalbest", "", profileKeys, boss.getName());
+			vanilla.values().stream().min(Double::compare).ifPresent(seconds -> pbs.put(boss.getName(), seconds));
+			vanilla.forEach((key, seconds) -> mergeDetailedPb(out, key, seconds, "store"));
+			store.variantSecondsAcrossProfiles(AdvLogPbs.CONFIG_GROUP, AdvLogPbs.KEY_PREFIX, profileKeys, boss.getName())
+				.forEach((key, seconds) -> mergeDetailedPb(out, key, seconds, "advlog"));
 		}
+		log.debug("killclog sync pb gather: {} owned profiles, {} pbs", profileKeys.size(), pbs.size());
 		return out;
 	}
 
@@ -637,16 +597,6 @@ final class PublicationCoordinator
 		if (existing == null || seconds < existing.seconds)
 		{
 			out.put(key, new SyncService.DetailedPb(seconds, source));
-		}
-	}
-
-	private static void putBestSeconds(Map<String, Double> out, PersonalBests pbs,
-		List<String> profileKeys, String bossName)
-	{
-		double seconds = pbs.bestSecondsAcrossProfiles(profileKeys, bossName);
-		if (seconds > 0)
-		{
-			out.put(bossName, seconds);
 		}
 	}
 }

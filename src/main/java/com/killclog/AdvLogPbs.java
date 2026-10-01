@@ -1,7 +1,6 @@
 package com.killclog;
 
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -215,20 +214,8 @@ final class AdvLogPbs
 	/* package */ static String canonicalSection(String title)
 	{
 		String key = title.toLowerCase(Locale.ROOT).trim();
-		String renamed = SCROLL_RENAMES.get(key);
-		if (renamed != null)
-		{
-			return renamed;
-		}
-		if (key.startsWith("the "))
-		{
-			key = key.substring("the ".length());
-		}
-		return key
-			.replace(": challenge mode", " challenge mode")
-			.replace(": hard mode", " hard mode")
-			.replace(": expert mode", " expert mode")
-			.replace(": entry mode", " entry mode");
+		String[] keys = PersonalBests.keyCandidates(key);
+		return SCROLL_RENAMES.getOrDefault(key, keys[keys.length - 1]);
 	}
 
 	/** Vanilla's time parser: mm:ss(.f) and h:mm:ss(.f). */
@@ -293,27 +280,5 @@ final class AdvLogPbs
 		}
 		configManager.setRSProfileConfiguration(CONFIG_GROUP, KEY_PREFIX + key, seconds);
 		return true;
-	}
-
-	/**
-	 * Every advlog-harvested variant for a panel boss, canonical-keyed - the
-	 * same fragment sweep and candidate merge the vanilla-store gather uses.
-	 */
-	Map<String, Double> variantSecondsAcrossProfiles(List<String> profileKeys, String panelBossName)
-	{
-		return PersonalBests.variantSeconds(key ->
-		{
-			Double best = null;
-			for (String profileKey : profileKeys)
-			{
-				Double pb = configManager.getConfiguration(
-					CONFIG_GROUP, profileKey, KEY_PREFIX + key, (java.lang.reflect.Type) double.class);
-				if (pb != null && pb > 0 && (best == null || pb < best))
-				{
-					best = pb;
-				}
-			}
-			return best;
-		}, panelBossName);
 	}
 }

@@ -58,8 +58,9 @@ public class PersonalBestProfilesTest
 		// A null manager deliberately fails if any implicit profile read happens.
 		PersonalBests vanilla = new PersonalBests(null);
 		assertEquals(0, vanilla.bestSecondsAcrossProfiles(List.of(), "Zulrah"), 0);
-		assertTrue(vanilla.variantSecondsAcrossProfiles(List.of(), "Zulrah").isEmpty());
-		assertTrue(new AdvLogPbs(null).variantSecondsAcrossProfiles(List.of(), "Zulrah").isEmpty());
+		assertTrue(vanilla.variantSecondsAcrossProfiles("personalbest", "", List.of(), "Zulrah").isEmpty());
+		assertTrue(vanilla.variantSecondsAcrossProfiles(AdvLogPbs.CONFIG_GROUP, AdvLogPbs.KEY_PREFIX,
+			List.of(), "Zulrah").isEmpty());
 	}
 
 	private static RuneScapeProfile profile(String name, long hash, String key)
