@@ -265,10 +265,9 @@ public class SummaryTooltip extends TitleTooltip
 		FontMetrics sfm = g2.getFontMetrics();
 		int petsHeaderY = sepY + 1 + SECTION_GAP + sfm.getAscent();
 		String petsLabel = "Pets: ";
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString(petsLabel, inset, petsHeaderY);
-		g2.setColor(completionColor(petList != null ? petList.size() : 0, totalPetCount));
-		g2.drawString(String.valueOf(petList != null ? petList.size() : 0), inset + sfm.stringWidth(petsLabel), petsHeaderY);
+		int petCount = petList != null ? petList.size() : 0;
+		drawLabelValue(g2, sfm, inset, petsHeaderY, petsLabel, String.valueOf(petCount),
+			completionColor(petCount, totalPetCount));
 
 		if (!hasPets())
 		{

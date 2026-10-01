@@ -285,14 +285,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		if (caResult != null)
 		{
 			int caTextY = y + fm.getAscent();
-			String caLabel = "CA Tier: ";
-			g2.setColor(OSRS_ORANGE);
-			g2.drawString(caLabel, inset, caTextY);
-			int cx = inset + fm.stringWidth(caLabel);
-			String tierName = tierDisplayName();
-			g2.setColor(Color.WHITE);
-			g2.drawString(tierName, cx, caTextY);
-			cx += fm.stringWidth(tierName);
+			int cx = inset + drawLabelValue(g2, fm, inset, caTextY, "CA Tier: ", tierDisplayName());
 			if (caRewardSprite != null)
 			{
 				cx += CA_REWARD_GAP;
@@ -432,18 +425,12 @@ public class PvmSummaryTooltip extends TitleTooltip
 		String label, int kc, int obtained, int total)
 	{
 		int textY = y + fm.getAscent();
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString(label, x, textY);
-		int lx = x + fm.stringWidth(label);
-
-		String kcText = scoreText(kc);
-		g2.setColor(Color.WHITE);
-		g2.drawString(kcText, lx, textY);
+		int end = x + drawLabelValue(g2, fm, x, textY, label, scoreText(kc));
 
 		// Progress rides alongside a real kc; a "--" raid stays dash-only.
 		if (kc > 0 && obtained >= 0)
 		{
-			paintWrappedProgressCount(g2, fm, lx + fm.stringWidth(kcText), textY, obtained, total);
+			paintWrappedProgressCount(g2, fm, end, textY, obtained, total);
 		}
 	}
 
@@ -452,25 +439,14 @@ public class PvmSummaryTooltip extends TitleTooltip
 		// Three rows: XP and Rank from the hiscores, then clog progress when
 		// a synced log is known.
 		int textY = y + fm.getAscent();
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString("XP: ", x, textY);
-		g2.setColor(Color.WHITE);
-		g2.drawString(slayerXpText(slayerXp), x + fm.stringWidth("XP: "), textY);
-
+		drawLabelValue(g2, fm, x, textY, "XP: ", slayerXpText(slayerXp));
 		textY += LINE_HEIGHT;
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString("Rank: ", x, textY);
-		g2.setColor(Color.WHITE);
-		g2.drawString(slayerRankValue(), x + fm.stringWidth("Rank: "), textY);
-
+		drawLabelValue(g2, fm, x, textY, "Rank: ", slayerRankValue());
 		if (slayerObtained >= 0)
 		{
 			textY += LINE_HEIGHT;
-			g2.setColor(OSRS_ORANGE);
-			g2.drawString("Obtained: ", x, textY);
-			g2.setColor(completionColor(slayerObtained, slayerTotal));
-			g2.drawString(progressCountText(slayerObtained, slayerTotal),
-				x + fm.stringWidth("Obtained: "), textY);
+			drawLabelValue(g2, fm, x, textY, "Obtained: ", progressCountText(slayerObtained, slayerTotal),
+				completionColor(slayerObtained, slayerTotal));
 		}
 	}
 

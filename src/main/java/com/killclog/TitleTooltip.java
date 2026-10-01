@@ -267,19 +267,22 @@ public abstract class TitleTooltip extends NativeTooltip
 		return y + 1 + pad;
 	}
 
-	protected void drawLabelValue(Graphics2D g2, FontMetrics fm, int x, int y,
+	static int drawLabelValue(Graphics2D g2, FontMetrics fm, int x, int y,
 		String label, String value)
 	{
-		drawLabelValue(g2, fm, x, y, label, value, Color.WHITE);
+		return drawLabelValue(g2, fm, x, y, label, value, Color.WHITE);
 	}
 
-	protected void drawLabelValue(Graphics2D g2, FontMetrics fm, int x, int y,
+	/** An orange label with its value right after it; returns the pair's width. */
+	static int drawLabelValue(Graphics2D g2, FontMetrics fm, int x, int y,
 		String label, String value, Color valueColor)
 	{
 		g2.setColor(OSRS_ORANGE);
 		g2.drawString(label, x, y);
+		int labelWidth = fm.stringWidth(label);
 		g2.setColor(valueColor);
-		g2.drawString(value, x + fm.stringWidth(label), y);
+		g2.drawString(value, x + labelWidth, y);
+		return labelWidth + fm.stringWidth(value);
 	}
 
 	protected void loadItemSprites(int[] itemIds, int size, BufferedImage[] sprites,
@@ -588,30 +591,18 @@ public abstract class TitleTooltip extends NativeTooltip
 		// Header line order: stats read first (KC/PB info line, then rank),
 		// clog progress reads last. The first line under the title keeps the
 		// wider gap the larger title font needs.
-		boolean firstHeaderLine = true;
 
 		// Info line (KC/PB for boss cells, Kills for unsynced)
 		if (infoLabel != null)
 		{
 			upperLineY = lineY;
 			upperLineWidth = activeLineWidth;
-			lineY += firstHeaderLine ? NAME_LINE_HEIGHT : LINE_HEIGHT;
-			firstHeaderLine = false;
-			g2.setColor(OSRS_ORANGE);
-			g2.drawString(infoLabel, inset, lineY);
-			int infoLabelWidth = fm.stringWidth(infoLabel);
-			g2.setColor(infoColor);
-			g2.drawString(infoValue, inset + infoLabelWidth, lineY);
-			activeLineWidth = infoLabelWidth + fm.stringWidth(infoValue);
+			lineY += lineY == titleBaseline ? NAME_LINE_HEIGHT : LINE_HEIGHT;
+			activeLineWidth = drawLabelValue(g2, fm, inset, lineY, infoLabel, infoValue, infoColor);
 			if (infoLabel2 != null)
 			{
-				int x2 = inset + activeLineWidth + INFO_PAIR_GAP;
-				g2.setColor(OSRS_ORANGE);
-				g2.drawString(infoLabel2, x2, lineY);
-				int label2Width = fm.stringWidth(infoLabel2);
-				g2.setColor(infoColor2);
-				g2.drawString(infoValue2, x2 + label2Width, lineY);
-				activeLineWidth += INFO_PAIR_GAP + label2Width + fm.stringWidth(infoValue2);
+				activeLineWidth += INFO_PAIR_GAP + drawLabelValue(g2, fm,
+					inset + activeLineWidth + INFO_PAIR_GAP, lineY, infoLabel2, infoValue2, infoColor2);
 			}
 		}
 
@@ -620,17 +611,9 @@ public abstract class TitleTooltip extends NativeTooltip
 		{
 			upperLineY = lineY;
 			upperLineWidth = activeLineWidth;
-			lineY += firstHeaderLine ? NAME_LINE_HEIGHT : LINE_HEIGHT;
-			firstHeaderLine = false;
-			String label = "Rank: ";
-			g2.setColor(OSRS_ORANGE);
-			g2.drawString(label, inset, lineY);
-			if (!"Unranked".equals(rankText))
-			{
-				g2.setColor(Color.WHITE);
-			}
-			g2.drawString(rankText, inset + fm.stringWidth(label), lineY);
-			activeLineWidth = fm.stringWidth(label) + fm.stringWidth(rankText);
+			lineY += lineY == titleBaseline ? NAME_LINE_HEIGHT : LINE_HEIGHT;
+			activeLineWidth = drawLabelValue(g2, fm, inset, lineY, "Rank: ", rankText,
+				"Unranked".equals(rankText) ? OSRS_ORANGE : Color.WHITE);
 		}
 
 		// Subtitle (label in orange, value in subtitleColor)
@@ -638,14 +621,8 @@ public abstract class TitleTooltip extends NativeTooltip
 		{
 			upperLineY = lineY;
 			upperLineWidth = activeLineWidth;
-			lineY += firstHeaderLine ? NAME_LINE_HEIGHT : LINE_HEIGHT;
-			firstHeaderLine = false;
-			g2.setColor(OSRS_ORANGE);
-			g2.drawString(subtitleLabel, inset, lineY);
-			int labelWidth = fm.stringWidth(subtitleLabel);
-			g2.setColor(subtitleColor);
-			g2.drawString(subtitleValue, inset + labelWidth, lineY);
-			activeLineWidth = labelWidth + fm.stringWidth(subtitleValue);
+			lineY += lineY == titleBaseline ? NAME_LINE_HEIGHT : LINE_HEIGHT;
+			activeLineWidth = drawLabelValue(g2, fm, inset, lineY, subtitleLabel, subtitleValue, subtitleColor);
 		}
 
 		if (itemNameInHeader)

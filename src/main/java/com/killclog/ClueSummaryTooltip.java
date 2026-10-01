@@ -232,11 +232,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 		if (scores[line] > 0 && ranks[line] > 0)
 		{
 			String rankPrefix = " #";
-			g2.setColor(OSRS_ORANGE);
-			g2.drawString(rankPrefix, rankX + 1, textY);
-			g2.setColor(Color.WHITE);
-			g2.drawString(String.format(Locale.US, "%,d", ranks[line]),
-				rankX + 1 + fm.stringWidth(rankPrefix), textY);
+			drawLabelValue(g2, fm, rankX + 1, textY, rankPrefix, String.format(Locale.US, "%,d", ranks[line]));
 		}
 	}
 
