@@ -1,6 +1,5 @@
 package com.killclog;
 
-import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Font;
@@ -50,7 +49,6 @@ public abstract class TitleTooltip extends NativeTooltip
 	protected static final Color COMPARE_BLUE = new Color(91, 164, 207);
 	protected static final Color COMPARE_RED = new Color(224, 86, 86);
 	protected static final Color MUTED_GRAY = new Color(148, 148, 148);
-	private static final Color QTY_SHADOW = new Color(0, 0, 0);
 
 	@Getter(AccessLevel.PROTECTED)
 	@Setter
@@ -325,39 +323,6 @@ public abstract class TitleTooltip extends NativeTooltip
 				sprites[index] = ImageUtil.resizeImage(loaded, size, size);
 				repaint();
 			}));
-		}
-	}
-
-	protected void paintQuantitySpriteRow(Graphics2D g2, FontMetrics fm, int x, int y,
-		int colWidth, BufferedImage[] sprites, int[] counts, int size, int pad)
-	{
-		int count = Math.min(sprites.length, counts.length);
-		int spriteRowWidth = count * size + (count - 1) * pad;
-		int startX = x + (colWidth - spriteRowWidth) / 2;
-		for (int i = 0; i < count; i++)
-		{
-			int sx = startX + i * (size + pad);
-			BufferedImage sprite = sprites[i];
-			if (sprite == null)
-			{
-				continue;
-			}
-
-			boolean obtained = counts[i] > 0;
-			g2.setComposite(obtained
-				? AlphaComposite.SrcOver
-				: AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
-			g2.drawImage(sprite, sx, y, null);
-			g2.setComposite(AlphaComposite.SrcOver);
-
-			if (obtained && counts[i] > 1)
-			{
-				String qtyText = String.valueOf(counts[i]);
-				g2.setColor(QTY_SHADOW);
-				g2.drawString(qtyText, sx + 1, y + fm.getAscent() + 1);
-				g2.setColor(CLOG_YELLOW);
-				g2.drawString(qtyText, sx, y + fm.getAscent());
-			}
 		}
 	}
 

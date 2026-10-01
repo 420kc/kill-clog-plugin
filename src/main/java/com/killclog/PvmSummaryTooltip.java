@@ -1,5 +1,6 @@
 package com.killclog;
 
+import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
@@ -313,10 +314,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 		paintSlayerLine(g2, fm, inset, y);
 		y += LINE_HEIGHT * slayerRowCount();
 		y += WEAPON_PAD;
-		paintQuantitySpriteRow(g2, fm, inset, y, w - 2 * inset,
-			superiorSprites, superiorCounts, WEAPON_SIZE, WEAPON_PAD);
-		addRowHitBoxes(hitBoxes, 0, inset, y, w - 2 * inset,
-			PanelData.SUPERIOR_ITEMS, PanelData.SUPERIOR_ITEM_NAMES, superiorCounts);
+		paintSpriteRow(g2, fm, hitBoxes, 0, y, w,
+			superiorSprites, PanelData.SUPERIOR_ITEMS, PanelData.SUPERIOR_ITEM_NAMES, superiorCounts);
 		y += WEAPON_SIZE;
 		paintSectionHoverLine(g2, fm, w, y, 0);
 		y += hoverRowHeight(fm);
@@ -333,10 +332,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 		y += WEAPON_PAD;
 
 		// Center the three weapon sprites.
-		paintQuantitySpriteRow(g2, fm, inset, y, w - 2 * inset,
-			weaponSprites, weaponCounts, WEAPON_SIZE, WEAPON_PAD);
-		addRowHitBoxes(hitBoxes, 1, inset, y, w - 2 * inset,
-			PanelData.MEGARARE_ITEM_IDS, PanelData.MEGARARE_ITEM_NAMES, weaponCounts);
+		paintSpriteRow(g2, fm, hitBoxes, 1, y, w,
+			weaponSprites, PanelData.MEGARARE_ITEM_IDS, PanelData.MEGARARE_ITEM_NAMES, weaponCounts);
 		paintSectionHoverLine(g2, fm, w, y + WEAPON_SIZE, 1);
 		y += WEAPON_SIZE + hoverRowHeight(fm);
 
@@ -348,20 +345,37 @@ public class PvmSummaryTooltip extends TitleTooltip
 	}
 
 	/**
-	 * Hover hit boxes matching paintQuantitySpriteRow's centered geometry,
-	 * so the summary sprites hover-name and wiki-link like the grids do.
+	 * A centered row of item sprites, unobtained ones dimmed, quantities in the
+	 * corner; each sprite hover-names and wiki-links like the grids do.
 	 */
-	private void addRowHitBoxes(List<TooltipItemHover.HitBox> hitBoxes, int section,
-		int x, int y, int colWidth, int[] itemIds, String[] itemNames, int[] counts)
+	private void paintSpriteRow(Graphics2D g2, FontMetrics fm, List<TooltipItemHover.HitBox> hitBoxes,
+		int section, int y, int w, BufferedImage[] sprites, int[] itemIds, String[] itemNames, int[] counts)
 	{
-		int count = Math.min(itemIds.length, counts.length);
-		int spriteRowWidth = count * WEAPON_SIZE + (count - 1) * WEAPON_PAD;
-		int startX = x + (colWidth - spriteRowWidth) / 2;
+		int count = Math.min(sprites.length, counts.length);
+		int startX = getInset() + (w - 2 * getInset() - (count * WEAPON_SIZE + (count - 1) * WEAPON_PAD)) / 2;
 		for (int i = 0; i < count; i++)
 		{
 			int sx = startX + i * (WEAPON_SIZE + WEAPON_PAD);
+			boolean obtained = counts[i] > 0;
 			hitBoxes.add(new TooltipItemHover.HitBox(section, itemIds[i], itemNames[i],
-				new Rectangle(sx, y, WEAPON_SIZE, WEAPON_SIZE), counts[i] > 0, 1));
+				new Rectangle(sx, y, WEAPON_SIZE, WEAPON_SIZE), obtained, 1));
+			if (sprites[i] == null)
+			{
+				continue;
+			}
+			g2.setComposite(obtained
+				? AlphaComposite.SrcOver
+				: AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
+			g2.drawImage(sprites[i], sx, y, null);
+			g2.setComposite(AlphaComposite.SrcOver);
+			if (counts[i] > 1)
+			{
+				String quantity = String.valueOf(counts[i]);
+				g2.setColor(Color.BLACK);
+				g2.drawString(quantity, sx + 1, y + fm.getAscent() + 1);
+				g2.setColor(CLOG_YELLOW);
+				g2.drawString(quantity, sx, y + fm.getAscent());
+			}
 		}
 	}
 
