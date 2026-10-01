@@ -27,7 +27,6 @@ public class ClueSummaryTooltip extends TitleTooltip
 	private static final int ICON_GAP = 4;
 	private static final int COL_GAP = 6;
 	private static final int SECTION_PAD = 2;
-	private static final int SUBHEADER_HEIGHT = 16;
 	private static final int MIMIC = 7;
 
 	private static final HiscoreSkill[] CLUE_TIERS = {
@@ -196,13 +195,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 			y += LINE_HEIGHT;
 		}
 
-		y = paintSeparator(g2, w, y, SECTION_PAD);
-		g2.setFont(FontManager.getRunescapeBoldFont());
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString("Rare Collections", inset, y + g2.getFontMetrics().getAscent());
-		y += SUBHEADER_HEIGHT;
-
-		g2.setFont(FontManager.getRunescapeSmallFont());
+		y = paintSubheader(g2, paintSeparator(g2, w, y, SECTION_PAD), "Rare Collections");
 		rareTop = y;
 		for (int i = 0; i < RARE_LABELS.length; i++)
 		{
