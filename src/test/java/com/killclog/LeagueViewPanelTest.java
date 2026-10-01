@@ -354,6 +354,56 @@ public class LeagueViewPanelTest
 	}
 
 	@Test
+	public void enteringAndLeavingAComparisonKeepsTheBoardsNotice() throws Exception
+	{
+		PanelStatusRow status = field(panel, "statusRow", PanelStatusRow.class);
+		RankSelector ranks = field(panel, "rankSelector", RankSelector.class);
+		ComparisonController comparison = field(panel, "comparison", ComparisonController.class);
+		Constructor<?> compared = Class.forName("com.killclog.ComparisonController$ComparedPlayer").getDeclaredConstructors()[0];
+		compared.setAccessible(true);
+		HiscoreResult buck = RankSelectorTest.result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000);
+		Object main = compared.newInstance(1, RankSelectorTest.result(AccountType.ULTIMATE_IRONMAN, HiscoreTable.STANDARD, 20, 20000),
+			null, null, "Main");
+		when(hiscores.lookupRanks(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
+		when(hiscores.notOnBoard("Main", RankLeaderboard.IRONMAN)).thenReturn(true);
+		when(hiscores.notOnBoard("Ye Ol Buck", RankLeaderboard.ULTIMATE)).thenReturn(true);
+		SwingUtilities.invokeAndWait(() ->
+		{
+			session.adoptState(buck, null, null, "Ye Ol Buck");
+			setField(comparison, "compared", main);
+			setField(comparison, "comparisonMode", true);
+			panel.onComparisonEnter("Main");
+			assertEquals("Main: Not on this leaderboard", status.statusText());
+			ranks.select(RankLeaderboard.ULTIMATE);
+			setField(comparison, "comparisonMode", false);
+			panel.onComparisonExit();
+			assertEquals("Not on this leaderboard", status.statusText());
+		});
+	}
+
+	@Test
+	public void virtualLevelsKeepBothPlayersLevelsInAComparison() throws Exception
+	{
+		ComparisonController comparison = field(panel, "comparison", ComparisonController.class);
+		JLabel combat = field(panel, "combatCell", JLabel.class);
+		JLabel total = field(panel, "totalLvlCell", JLabel.class);
+		Constructor<?> compared = Class.forName("com.killclog.ComparisonController$ComparedPlayer").getDeclaredConstructors()[0];
+		compared.setAccessible(true);
+		Object rival = compared.newInstance(1, new HiscoreResult(AccountType.IRONMAN, Map.of(), Map.of(), Map.of(), Map.of(),
+			Map.of(), 1500, 50000, 100, 30), null, null, "Rival");
+		SwingUtilities.invokeAndWait(() ->
+		{
+			session.adoptState(RankSelectorTest.result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000), null, null, "Friend");
+			setField(comparison, "compared", rival);
+			setField(comparison, "comparisonMode", true);
+			panel.onComparisonEnter("Rival");
+			panel.onConfigChanged("virtualLevels");
+			assertTrue(combat.getText(), combat.getText().contains("126") && combat.getText().contains("100"));
+			assertTrue(total.getText(), total.getText().contains("2277") && total.getText().contains("1500"));
+		});
+	}
+
+	@Test
 	public void leaderboardsHideInALeagueView() throws Exception
 	{
 		RankSelector ranks = field(panel, "rankSelector", RankSelector.class);
