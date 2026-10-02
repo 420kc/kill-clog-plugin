@@ -27,7 +27,9 @@ Enter an RSN in the search bar, or right-click a supported player or name and ch
 
 Use the comparison button beside the search bar to load a second player.
 
-Enable **Show Leaderboard Selector** under **Lookup** to view a player on the Normal, Ironman, Hardcore, Ultimate, Skiller, or Pure hiscores from the icons below the grid. The panel shows that leaderboard's stats and ranks, so a Hardcore who died reads their Hardcore stats as they stood at the death. The account badge stays the same. Comparison uses the selected leaderboard for both players. Each new lookup returns to that player's automatic leaderboard.
+Enable **Show Leaderboard Selector** under **Lookup** to view a player on any hiscores they're on (Normal, Ironman, Hardcore, Ultimate, Skiller, or Pure) from the icons below the grid. The panel shows that leaderboard's stats and ranks, so a Hardcore who died reads their Hardcore stats as they stood at the death. The account badge stays the same. A comparison shows each player on their own leaderboard. Each new lookup returns to that player's automatic leaderboard.
+
+While a League runs, a **Leagues** switch beside the search bar flips the panel between League and main game stats.
 
 **Recommended for a full HiScore replacement:** Turn off RuneLite's **HiScore** plugin and set **Menu Label** to **Lookup** in Kill Clog's settings.
 
