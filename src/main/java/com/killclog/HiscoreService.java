@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
@@ -161,6 +162,24 @@ public class HiscoreService
 	{
 		return absentTables.getIfPresent(rankKey(table.endpoint,
 			URLEncoder.encode(player.toLowerCase(Locale.ROOT), StandardCharsets.UTF_8))) != null;
+	}
+
+	/**
+	 * Whether the player is an Ironman now, from the regular and Ironman rows Jagex answered:
+	 * true when they match, false when the Ironman row trails. Null when either didn't answer,
+	 * so nothing is claimed from a guess. Reads only what lookups already fetched.
+	 */
+	@Nullable
+	Boolean ironmanNow(String player)
+	{
+		String encoded = URLEncoder.encode(player.toLowerCase(Locale.ROOT), StandardCharsets.UTF_8);
+		HiscoreResult regular = rankTables.getIfPresent(rankKey(RankLeaderboard.NORMAL.endpoint, encoded));
+		HiscoreResult iron = rankTables.getIfPresent(rankKey(RankLeaderboard.IRONMAN.endpoint, encoded));
+		if (regular == null || iron == null || regular.getTotalXp() <= 0)
+		{
+			return null;
+		}
+		return iron.getTotalXp() >= regular.getTotalXp();
 	}
 
 	/** One leaderboard's full row for a player; null when absent or unreachable. */
