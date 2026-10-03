@@ -1,5 +1,6 @@
 package com.killclog;
 
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import javax.annotation.Nullable;
 import javax.swing.ImageIcon;
@@ -36,6 +37,10 @@ final class AccountBadgeResolver
 		{
 			return null;
 		}
+		if (display.former() != null)
+		{
+			return formerBadge(display.former());
+		}
 		HiscoreTable table = display.hiscoreTable();
 		if (table.isSpecial())
 		{
@@ -68,8 +73,32 @@ final class AccountBadgeResolver
 		return loadHiscoreResource(table.badgeResource());
 	}
 
+	/** RuneLite's own helm with the mark of the mode left drawn over it. */
+	@Nullable
+	private static BufferedImage formerBadge(AccountDisplay.Former former)
+	{
+		BufferedImage helm = loadHiscoreResource(former.helm);
+		BufferedImage overlay = loadResource(AccountBadgeResolver.class, former.overlay);
+		if (helm == null || overlay == null)
+		{
+			return helm;
+		}
+		BufferedImage badge = new BufferedImage(helm.getWidth(), helm.getHeight(), BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = badge.createGraphics();
+		g.drawImage(helm, 0, 0, null);
+		g.drawImage(overlay, 0, 0, null);
+		g.dispose();
+		return badge;
+	}
+
 	@Nullable
 	private static BufferedImage loadHiscoreResource(@Nullable String resource)
+	{
+		return loadResource(HiscorePanel.class, resource);
+	}
+
+	@Nullable
+	private static BufferedImage loadResource(Class<?> owner, @Nullable String resource)
 	{
 		if (resource == null)
 		{
@@ -77,7 +106,7 @@ final class AccountBadgeResolver
 		}
 		try
 		{
-			return ImageUtil.loadImageResource(HiscorePanel.class, resource);
+			return ImageUtil.loadImageResource(owner, resource);
 		}
 		catch (Exception e)
 		{

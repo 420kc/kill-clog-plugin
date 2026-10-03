@@ -86,6 +86,10 @@ public class ComparisonController
 		/** Apply an account-type badge (clog-mode + GIM + standard hiscore). */
 		void applyBadge(JLabel label, @Nullable AccountDisplay display);
 
+		/** The primary player's identity as the panel keeps it, or null before it has one. */
+		@Nullable
+		AccountDisplay primaryIdentity();
+
 		/** Preload the PvM Summary reward sprite for a CA result. */
 		void preloadCaReward(@Nullable CombatAchievementResult ca);
 
@@ -122,21 +126,24 @@ public class ComparisonController
 	/** One committed identity; optional CA enrichment replaces this whole value. */
 	private static final class ComparedPlayer
 	{
-		static final ComparedPlayer EMPTY = new ComparedPlayer(-1, null, null, null, null);
+		static final ComparedPlayer EMPTY = new ComparedPlayer(-1, null, null, null, null, null);
 		final int generation;
 		@Nullable final HiscoreResult hiscore;
 		@Nullable final ClogResult clog;
 		@Nullable final CombatAchievementResult ca;
 		@Nullable final String rsn;
+		/** RuneLite's own type when this player is you, like a group ironman the hiscores read as regular. */
+		@Nullable final AccountType selfType;
 
 		ComparedPlayer(int generation, HiscoreResult hiscore, ClogResult clog,
-			CombatAchievementResult ca, String rsn)
+			CombatAchievementResult ca, String rsn, AccountType selfType)
 		{
 			this.generation = generation;
 			this.hiscore = hiscore;
 			this.clog = clog;
 			this.ca = ca;
 			this.rsn = rsn;
+			this.selfType = selfType;
 		}
 	}
 
@@ -145,12 +152,14 @@ public class ComparisonController
 	{
 		final int generation;
 		final String requestedName;
+		@Nullable final AccountType selfType;
 		CombatAchievementResult ca;
 
-		PendingLookup(int generation, String requestedName)
+		PendingLookup(int generation, String requestedName, @Nullable AccountType selfType)
 		{
 			this.generation = generation;
 			this.requestedName = requestedName;
+			this.selfType = selfType;
 		}
 	}
 
@@ -296,9 +305,10 @@ public class ComparisonController
 	 * a version-stamp guard and dispatches UI updates through listener events.
 	 *
 	 * @param player the red-side player entered in the panel search bar
-	 * @param localRsn active local player, used only for self-aware search flavor
+	 * @param localRsn active local player, used for self-aware search flavor
+	 * @param localAccountType RuneLite's own type for the local player, worn when the red player is you
 	 */
-	public void doCompareLookup(String player, @Nullable String localRsn)
+	public void doCompareLookup(String player, @Nullable String localRsn, @Nullable AccountType localAccountType)
 	{
 		final String redPlayer = player.trim();
 		if (!RsnInputPolicy.isValid(redPlayer) || fanout.isInFlight())
@@ -312,11 +322,12 @@ public class ComparisonController
 		}
 
 		final int thisLookup = fanout.begin();
-		final PendingLookup pending = new PendingLookup(thisLookup, redPlayer);
 		String blueName = renderTarget != null ? renderTarget.playerName().getText().trim() : "";
 		boolean blueIsSelf = localRsn != null && localRsn.equalsIgnoreCase(blueName);
 		boolean redIsSelf = localRsn != null && localRsn.equalsIgnoreCase(redPlayer);
 		boolean samePlayer = blueName.equalsIgnoreCase(redPlayer);
+		AccountType redSelfType = redIsSelf ? localAccountType : null;
+		final PendingLookup pending = new PendingLookup(thisLookup, redPlayer, redSelfType);
 
 		if (samePlayer)
 		{
@@ -329,7 +340,7 @@ public class ComparisonController
 				setCompareStatus(SearchMessages.COMPARE_MIRROR, COMPARE_DIM, blueName, redPlayer);
 			}
 			publish(new ComparedPlayer(thisLookup, lookupSession.getNativeHiscoreResult(),
-				lookupSession.getNativeClogResult(), lookupSession.getCaResult(), blueName));
+				lookupSession.getNativeClogResult(), lookupSession.getCaResult(), blueName, redSelfType));
 			return;
 		}
 
@@ -352,7 +363,8 @@ public class ComparisonController
 			pending.ca = ca;
 			if (compared.generation == thisLookup)
 			{
-				compared = new ComparedPlayer(thisLookup, compared.hiscore, compared.clog, ca, compared.rsn);
+				compared = new ComparedPlayer(thisLookup, compared.hiscore, compared.clog, ca, compared.rsn,
+					compared.selfType);
 				if (renderTarget != null) renderTarget.preloadCaReward(ca);
 				listener.onCompareDataReady();
 			}
@@ -384,7 +396,7 @@ public class ComparisonController
 	private void commit(PendingLookup pending, HiscoreResult hiscore, @Nullable ClogResult clog)
 	{
 		String name = clog != null && clog.getPlayerName() != null ? clog.getPlayerName() : pending.requestedName;
-		publish(new ComparedPlayer(pending.generation, hiscore, clog, pending.ca, name));
+		publish(new ComparedPlayer(pending.generation, hiscore, clog, pending.ca, name, pending.selfType));
 	}
 
 	private void publish(ComparedPlayer player)
@@ -660,9 +672,10 @@ public class ComparisonController
 			tooltipController.setTooltipText(clogInfoLabel, " ");
 			clogInfoLabel.setIcon(null);
 			clogInfoLabel.setHorizontalAlignment(JLabel.RIGHT);
-			renderTarget.applyBadge(playerName,
-				LookupQueries.accountDisplay(lookupSession.getHiscoreResult(),
-					lookupSession.getNativeClogResult()));
+			// The primary name keeps the identity the panel resolved, RuneLite's own type included.
+			AccountDisplay blue = renderTarget.primaryIdentity();
+			renderTarget.applyBadge(playerName, blue != null ? blue
+				: LookupQueries.accountDisplay(lookupSession.getHiscoreResult(), lookupSession.getNativeClogResult()));
 			renderTarget.applyBadge(clogInfoLabel, compareAccountDisplay());
 		}
 		else
@@ -676,7 +689,8 @@ public class ComparisonController
 	@Nullable
 	private AccountDisplay compareAccountDisplay()
 	{
-		AccountType type = LookupQueries.accountType(compared.hiscore, compared.clog);
+		AccountType type = compared.selfType != null ? compared.selfType
+			: LookupQueries.accountType(compared.hiscore, compared.clog);
 		if (compared.rsn == null)
 		{
 			return AccountDisplay.of(type,

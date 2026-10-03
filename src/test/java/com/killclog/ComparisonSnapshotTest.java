@@ -15,14 +15,14 @@ public class ComparisonSnapshotTest
 			{
 				LookupTestFixture fixture = new LookupTestFixture();
 				commitFirstPlayer(fixture);
-				edt(() -> fixture.comparison.doCompareLookup("Second", "Blue"));
+				edt(() -> fixture.comparison.doCompareLookup("Second", "Blue", null));
 				assertPlayer(fixture, "First", 2, "First", 2);
 				if (caStage == 0) fixture.cas.get("Second").complete(ca(3));
 				fixture.hiscores.get("Second").complete(hiscore(3));
 				edt(() -> assertTrue(fixture.comparison.isCompareLookupInFlight()));
 				if (caStage == 1) fixture.cas.get("Second").complete(ca(3));
 				assertPlayer(fixture, "First", 2, "First", 2);
-				edt(() -> fixture.comparison.doCompareLookup("Third", "Blue"));
+				edt(() -> fixture.comparison.doCompareLookup("Third", "Blue", null));
 				assertFalse(fixture.hiscores.containsKey("Third"));
 				assertEquals(1, fixture.events("onComparisonEnter"));
 				fixture.clogs.get("Second").complete(clogPresent ? clog("Second") : null);
@@ -42,7 +42,7 @@ public class ComparisonSnapshotTest
 		{
 			LookupTestFixture fixture = new LookupTestFixture();
 			commitFirstPlayer(fixture);
-			edt(() -> fixture.comparison.doCompareLookup("Missing", "Blue"));
+			edt(() -> fixture.comparison.doCompareLookup("Missing", "Blue", null));
 			fixture.cas.get("Missing").complete(ca(3));
 			if (error) fixture.hiscores.get("Missing").completeExceptionally(new IllegalStateException("fixture"));
 			else fixture.hiscores.get("Missing").complete(null);
@@ -58,7 +58,7 @@ public class ComparisonSnapshotTest
 	{
 		LookupTestFixture fixture = new LookupTestFixture();
 		commitFirstPlayer(fixture);
-		edt(() -> fixture.comparison.doCompareLookup("Second", "Blue"));
+		edt(() -> fixture.comparison.doCompareLookup("Second", "Blue", null));
 		fixture.hiscores.get("Second").complete(hiscore(3));
 		edt(() -> fixture.clogs.get("Second").completeExceptionally(new IllegalStateException("fixture")));
 		assertPlayer(fixture, "Second", 3, null, null);
@@ -68,10 +68,10 @@ public class ComparisonSnapshotTest
 	public void mirrorCommitsBlueSnapshotAndFencesPreviousLateCa() throws Exception
 	{
 		LookupTestFixture fixture = new LookupTestFixture();
-		edt(() -> fixture.comparison.doCompareLookup("First", "Blue"));
+		edt(() -> fixture.comparison.doCompareLookup("First", "Blue", null));
 		fixture.hiscores.get("First").complete(hiscore(2));
 		edt(() -> fixture.clogs.get("First").complete(clog("First")));
-		edt(() -> fixture.comparison.doCompareLookup("Blue", "Blue"));
+		edt(() -> fixture.comparison.doCompareLookup("Blue", "Blue", null));
 		fixture.cas.get("First").complete(ca(2));
 		assertPlayer(fixture, "Blue", 1, "Blue", 1);
 		assertFalse(fixture.hiscores.containsKey("Blue"));
@@ -80,7 +80,7 @@ public class ComparisonSnapshotTest
 
 	private static void commitFirstPlayer(LookupTestFixture fixture) throws Exception
 	{
-		edt(() -> fixture.comparison.doCompareLookup("First", "Blue"));
+		edt(() -> fixture.comparison.doCompareLookup("First", "Blue", null));
 		fixture.cas.get("First").complete(ca(2));
 		fixture.hiscores.get("First").complete(hiscore(2));
 		edt(() -> fixture.clogs.get("First").complete(clog("First")));

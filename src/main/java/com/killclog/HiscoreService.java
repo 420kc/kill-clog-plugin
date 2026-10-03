@@ -16,6 +16,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
@@ -321,6 +322,12 @@ public class HiscoreService
 				String regBody = regFuture.join();
 
 				AccountType type = detectAccountType(uimBody, hcimBody, ironBody, regBody);
+				// This lookup's own regular and Ironman answers say whether it's an Ironman now;
+				// an Ironman row ahead of the regular one is a mismatched read and says nothing.
+				long regXp = extractTotalXp(regBody);
+				long ironXp = extractTotalXp(ironBody);
+				Boolean ironmanNow = regXp > 0 && ironXp > 0 && ironXp <= regXp
+					? Boolean.valueOf(ironXp == regXp) : null;
 
 				// Missing tables have already used their own bounded retry. Keep the
 				// XP cross-check so a frozen HCIM row cannot override fresher stats.
@@ -330,8 +337,18 @@ public class HiscoreService
 					return CompletableFuture.completedFuture(null);
 				}
 
-				return parseAndRefine(encoded, bestBody, type);
+				return parseAndRefine(encoded, bestBody, type).thenApply(result -> proven(result, ironmanNow));
 			});
+	}
+
+	@Nullable
+	private static HiscoreResult proven(@Nullable HiscoreResult result, @Nullable Boolean ironmanNow)
+	{
+		if (result != null)
+		{
+			result.setIronmanNow(ironmanNow);
+		}
+		return result;
 	}
 
 	private CompletableFuture<HiscoreResult> lookupKnown(String encodedPlayer, AccountType type)
@@ -344,8 +361,9 @@ public class HiscoreService
 			case HARDCORE_IRONMAN: endpoint = "hiscore_oldschool_hardcore_ironman"; break;
 			case IRONMAN: endpoint = "hiscore_oldschool_ironman"; break;
 			default:
+				// RuneLite's own type: not a solo Ironman now (a group ironman reads its regular row).
 				return regular.thenCompose(body -> body != null ? parseAndRefine(encodedPlayer, body, type)
-					: CompletableFuture.completedFuture(null));
+					: CompletableFuture.completedFuture(null)).thenApply(result -> proven(result, false));
 		}
 		return regular.thenCombine(fetchAsync(endpoint, encodedPlayer), (base, ranked) ->
 		{
@@ -354,8 +372,8 @@ public class HiscoreService
 			// do not let a stale specialty row replace fresher regular-table stats.
 			String body = base != null && (ranked == null || extractTotalXp(base) >= extractTotalXp(ranked))
 				? base : ranked;
-			return parseHiscoreBody(body, type)
-				.withRanks(ranked != null ? parseHiscoreBody(ranked, type) : null);
+			return proven(parseHiscoreBody(body, type)
+				.withRanks(ranked != null ? parseHiscoreBody(ranked, type) : null), true);
 		});
 	}
 

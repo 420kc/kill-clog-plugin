@@ -123,7 +123,7 @@ public class RankSelectorLayoutTest
 		LookupTestFixture.edt(() ->
 		{
 			session.adoptState(nativeBlue, null, null, "Blue");
-			comparison.doCompareLookup("Red", "Blue");
+			comparison.doCompareLookup("Red", "Blue", null);
 		});
 		fixture.hiscores.get("Red").complete(nativeRed);
 		LookupTestFixture.edt(() -> fixture.clogs.get("Red").complete(null));

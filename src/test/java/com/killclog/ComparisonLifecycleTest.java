@@ -13,7 +13,7 @@ public class ComparisonLifecycleTest
 		for (boolean hiscoreFirst : new boolean[]{false, true})
 		{
 			LookupTestFixture fixture = new LookupTestFixture();
-			edt(() -> fixture.comparison.doCompareLookup("Red", "Blue"));
+			edt(() -> fixture.comparison.doCompareLookup("Red", "Blue", null));
 			if (hiscoreFirst)
 			{
 				fixture.hiscores.get("Red").complete(hiscore(2));
@@ -36,7 +36,7 @@ public class ComparisonLifecycleTest
 		LookupTestFixture fixture = new LookupTestFixture();
 		edt(() ->
 		{
-			fixture.comparison.doCompareLookup("Red", "Blue");
+			fixture.comparison.doCompareLookup("Red", "Blue", null);
 			fixture.primary.start("Green", null, null);
 			fixture.comparison.reset();
 			fixture.primary.reset();
@@ -55,7 +55,7 @@ public class ComparisonLifecycleTest
 		// A finished hiscore is shown with its clog, so the clog lane settles first.
 		fixture.clogs.get("Fresh").complete(clog("Fresh"));
 		edt(() -> assertEquals(4, fixture.primary.getHiscoreResult().getTotalLevel()));
-		edt(() -> fixture.comparison.doCompareLookup("Other", "Fresh"));
+		edt(() -> fixture.comparison.doCompareLookup("Other", "Fresh", null));
 		assertTrue(fixture.hiscores.containsKey("Other"));
 	}
 
@@ -81,7 +81,7 @@ public class ComparisonLifecycleTest
 	public void failedComparisonFencesLateCa() throws Exception
 	{
 		LookupTestFixture fixture = new LookupTestFixture();
-		edt(() -> fixture.comparison.doCompareLookup("Missing", "Blue"));
+		edt(() -> fixture.comparison.doCompareLookup("Missing", "Blue", null));
 		fixture.hiscores.get("Missing").complete(null);
 		edt(() -> assertEquals(1, fixture.events("onCompareError")));
 		fixture.cas.get("Missing").complete(ca(3));

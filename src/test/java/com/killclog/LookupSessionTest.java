@@ -78,7 +78,7 @@ public class LookupSessionTest
 		CombatAchievementResult ca = fixture.primary.getCaResult();
 		ClogResult updated = clog("Blue").withLocalSource(true);
 		fixture.cachedClogs.put("Blue", updated);
-		edt(() -> fixture.comparison.doCompareLookup("Red", "Blue"));
+		edt(() -> fixture.comparison.doCompareLookup("Red", "Blue", null));
 		fixture.hiscores.get("Red").complete(hiscore(2));
 		edt(() -> assertNotNull(fixture.clogs.get("Red")));
 		fixture.clogs.get("Red").complete(clog("Red"));
