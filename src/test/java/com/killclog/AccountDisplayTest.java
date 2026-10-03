@@ -1,0 +1,141 @@
+package com.killclog;
+
+import java.awt.image.BufferedImage;
+import java.util.Collections;
+import javax.swing.ImageIcon;
+import net.runelite.client.util.ImageUtil;
+import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
+
+public class AccountDisplayTest
+{
+	@Test
+	public void aFrozenBoardWearsTheModeTheAccountLeft()
+	{
+		AccountDisplay iron = AccountDisplay.of(AccountType.IRONMAN, HiscoreTable.STANDARD);
+		assertEquals("Dead Hardcore", iron.frozenOn(RankLeaderboard.HARDCORE).label());
+
+		AccountDisplay main = AccountDisplay.of(AccountType.REGULAR, HiscoreTable.STANDARD);
+		AccountDisplay pure = AccountDisplay.of(AccountType.REGULAR, HiscoreTable.ONE_DEFENCE);
+		for (RankLeaderboard board : new RankLeaderboard[]{
+			RankLeaderboard.IRONMAN, RankLeaderboard.HARDCORE, RankLeaderboard.ULTIMATE})
+		{
+			assertEquals("De-ironed", main.frozenOn(board).label());
+			// The mode left outranks a pure's or skiller's own table.
+			assertEquals("De-ironed", pure.frozenOn(board).label());
+		}
+	}
+
+	@Test
+	public void onlyARecordedFrozenRowWearsTheModeLeft()
+	{
+		HiscoreResult today = row(AccountType.IRONMAN, 1_500, 20_000_000L);
+		HiscoreResult atTheDeath = row(AccountType.HARDCORE_IRONMAN, 1_200, 9_000_000L);
+		AccountDisplay iron = AccountDisplay.of(AccountType.IRONMAN, HiscoreTable.STANDARD);
+		assertEquals("Dead Hardcore", iron.shownOn(today.withRow(atTheDeath), RankLeaderboard.HARDCORE, true).label());
+
+		// Loading, unanswered, or not on the board: the placeholder row trails too, but records nothing.
+		HiscoreResult nothing = new HiscoreResult(null, null, null, null, null, null, 0, 0, 0, -1);
+		assertSame(iron, iron.shownOn(today.withRow(nothing), RankLeaderboard.HARDCORE, true));
+		// The account's own row, or a row level with it, isn't frozen.
+		assertSame(iron, iron.shownOn(today, RankLeaderboard.HARDCORE, true));
+		assertSame(iron, iron.shownOn(today.withRow(today), RankLeaderboard.HARDCORE, true));
+		assertSame(iron, iron.shownOn(null, RankLeaderboard.HARDCORE, true));
+	}
+
+	@Test
+	public void aFormerModeNeedsTheAnsweredIronmanRowToAgree()
+	{
+		HiscoreResult today = row(AccountType.IRONMAN, 1_500, 20_000_000L);
+		HiscoreResult frozen = today.withRow(row(AccountType.HARDCORE_IRONMAN, 1_200, 9_000_000L));
+		AccountDisplay iron = AccountDisplay.of(AccountType.IRONMAN, HiscoreTable.STANDARD);
+		AccountDisplay main = AccountDisplay.of(AccountType.REGULAR, HiscoreTable.STANDARD);
+
+		// Ironman now: a dead Hardcore, never a de-ironed account.
+		assertEquals("Dead Hardcore", iron.shownOn(frozen, RankLeaderboard.HARDCORE, true).label());
+		assertSame(main, main.shownOn(frozen, RankLeaderboard.HARDCORE, true));
+		// Ironman row trailing: de-ironed, never a dead Hardcore.
+		assertEquals("De-ironed", main.shownOn(frozen, RankLeaderboard.HARDCORE, false).label());
+		assertSame(iron, iron.shownOn(frozen, RankLeaderboard.HARDCORE, false));
+		// A regular or Ironman board Jagex didn't answer proves neither.
+		assertSame(iron, iron.shownOn(frozen, RankLeaderboard.HARDCORE, null));
+		assertSame(main, main.shownOn(frozen, RankLeaderboard.HARDCORE, null));
+		// An Ultimate who stepped down is an Ironman now, and keeps the Ironman helm.
+		assertSame(iron, iron.shownOn(frozen, RankLeaderboard.ULTIMATE, true));
+	}
+
+	@Test
+	public void everyOtherFrozenBoardKeepsTheAccountsOwnBadge()
+	{
+		for (AccountType type : AccountType.values())
+		{
+			AccountDisplay display = AccountDisplay.of(type, HiscoreTable.STANDARD);
+			assertSame(display, display.frozenOn(null));
+			for (RankLeaderboard board : RankLeaderboard.values())
+			{
+				boolean deadHardcore = type == AccountType.IRONMAN && board == RankLeaderboard.HARDCORE;
+				boolean deIroned = type == AccountType.REGULAR && (board == RankLeaderboard.IRONMAN
+					|| board == RankLeaderboard.HARDCORE || board == RankLeaderboard.ULTIMATE);
+				if (!deadHardcore && !deIroned)
+				{
+					// An Ultimate who stepped down to Ironman is one of these.
+					assertSame(type + " on " + board, display, display.frozenOn(board));
+				}
+			}
+		}
+		assertNull(AccountDisplay.of(AccountType.IRONMAN, HiscoreTable.STANDARD).former());
+	}
+
+	@Test
+	public void aFormerBadgeIsTheHelmWithItsMarkDrawnOver()
+	{
+		AccountDisplay[] shown = {
+			AccountDisplay.of(AccountType.IRONMAN, HiscoreTable.STANDARD).frozenOn(RankLeaderboard.HARDCORE),
+			AccountDisplay.of(AccountType.REGULAR, HiscoreTable.STANDARD).frozenOn(RankLeaderboard.IRONMAN)};
+		// The red Hardcore helm under the skull; the grey Ironman helm under the circle and slash.
+		AccountType[] helms = {AccountType.HARDCORE_IRONMAN, AccountType.IRONMAN};
+		String[] marks = {"dead-hardcore-overlay.png", "de-ironed-overlay.png"};
+		for (int i = 0; i < shown.length; i++)
+		{
+			AccountDisplay display = shown[i];
+			AccountDisplay.Former former = display.former();
+			BufferedImage helm = AccountBadgeResolver.badge(AccountDisplay.of(helms[i], HiscoreTable.STANDARD));
+			BufferedImage mark = ImageUtil.loadImageResource(AccountBadgeResolver.class, marks[i]);
+			BufferedImage badge = AccountBadgeResolver.badge(display);
+			assertNotNull(badge);
+			assertEquals(helm.getWidth(), badge.getWidth());
+			assertEquals(helm.getHeight(), badge.getHeight());
+			int marked = 0;
+			for (int y = 0; y < helm.getHeight(); y++)
+			{
+				for (int x = 0; x < helm.getWidth(); x++)
+				{
+					int alpha = mark.getRGB(x, y) >>> 24;
+					if (alpha == 255)
+					{
+						assertEquals(former + " at " + x + "," + y, mark.getRGB(x, y), badge.getRGB(x, y));
+						marked++;
+					}
+					else if (alpha == 0)
+					{
+						assertEquals(former + " at " + x + "," + y, helm.getRGB(x, y), badge.getRGB(x, y));
+					}
+				}
+			}
+			assertTrue(marked > 0);
+			// The name row draws it at the same 15px as every other account badge.
+			ImageIcon icon = AccountBadgeResolver.labelIcon(display);
+			assertEquals(15, icon.getIconHeight());
+		}
+	}
+
+	private static HiscoreResult row(AccountType type, int totalLevel, long totalXp)
+	{
+		return new HiscoreResult(type, Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(),
+			Collections.emptyMap(), Collections.emptyMap(), totalLevel, totalXp, 100, 1);
+	}
+}

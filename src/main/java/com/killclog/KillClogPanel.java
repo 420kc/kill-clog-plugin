@@ -69,6 +69,7 @@ public class KillClogPanel extends PluginPanel
 		totalLvlCell.setForeground(infoColor);
 	}
 
+	private final HiscoreService hiscoreService;
 	private final ClogService clogService;
 	private final RuneProfileService runeProfileService;
 	private final KillClogConfig config;
@@ -102,7 +103,7 @@ public class KillClogPanel extends PluginPanel
 			// Single player: standard player summary
 			SummaryTooltip tip = buildPlayerSummaryTooltip(this,
 				lookupSession.getHiscoreResult(), lookupSession.getClogResult(),
-				playerName.getText().trim(), lookupSession.getCurrentLookupRsn());
+				playerName.getText().trim(), shown(currentInfoAccountDisplay()));
 			// Without this the tooltip dies when the mouse leaves the name
 			// label, and the pet gallery can never be hovered at all.
 			if (this.getParent() instanceof JPanel)
@@ -200,6 +201,7 @@ public class KillClogPanel extends PluginPanel
 		SkillIconManager skillIconManager, Client client)
 	{
 		super(true); // wrap in JScrollPane
+		this.hiscoreService = hiscoreService;
 		this.clogService = clogService;
 		this.runeProfileService = runeProfileService;
 		this.config = config;
@@ -1268,7 +1270,7 @@ public class KillClogPanel extends PluginPanel
 
 	private void updateInfoIcon(AccountDisplay display)
 	{
-		applyBadge(playerName, display);
+		applyBadge(playerName, shown(display));
 		tooltipController.setTooltipText(playerName, " ");
 	}
 
@@ -1309,9 +1311,11 @@ public class KillClogPanel extends PluginPanel
 		String redName = comparison.getCompareRsn() != null ? comparison.getCompareRsn() : "--";
 		JToolTip tip = comparison.wrapSideBySide(owner,
 			buildPlayerSummaryTooltip(owner, lookupSession.getHiscoreResult(),
-				lookupSession.getClogResult(), blueName, lookupSession.getCurrentLookupRsn()),
+				lookupSession.getClogResult(), blueName, accountTypes.displayIdentity(lookupSession.getHiscoreResult(),
+					lookupSession.getClogResult(), lookupSession.getCurrentLookupRsn())),
 			buildPlayerSummaryTooltip(owner, comparison.getCompareHiscoreResult(),
-				comparison.getCompareClogResult(), redName, redName));
+				comparison.getCompareClogResult(), redName, accountTypes.displayIdentity(
+					comparison.getCompareHiscoreResult(), comparison.getCompareClogResult(), redName)));
 		if (owner.getParent() instanceof JPanel)
 		{
 			tooltipController.keepTooltipOnHover(tip, (JPanel) owner.getParent());
@@ -1322,11 +1326,10 @@ public class KillClogPanel extends PluginPanel
 	/** One player's summary card: solo mode shows it alone, comparison pairs two. */
 	private SummaryTooltip buildPlayerSummaryTooltip(JComponent owner,
 		@Nullable HiscoreResult hiscore, @Nullable ClogResult clog,
-		String shownName, @Nullable String identityRsn)
+		String shownName, AccountDisplay display)
 	{
 		SummaryTooltip tip = new SummaryTooltip();
 		tip.setComponent(owner);
-		AccountDisplay display = accountTypes.displayIdentity(hiscore, clog, identityRsn);
 		tip.setData(
 			shownName.isEmpty() ? "Player" : shownName,
 			hiscore != null ? hiscore.getOverallRank() : -1,
@@ -1426,6 +1429,14 @@ public class KillClogPanel extends PluginPanel
 			if (hiscore.isRankDataAvailable()) tip.setRank(hiscore.getActivityRank("Collections Logged"));
 		}
 		return tip;
+	}
+
+	/** The looked-up player on the shown board: a former mode only where Jagex's answered rows prove it. */
+	private AccountDisplay shown(AccountDisplay display)
+	{
+		String rsn = lookupSession.getCurrentLookupRsn();
+		return display.shownOn(lookupSession.getHiscoreResult(), rankSelector.active(),
+			rsn != null ? hiscoreService.ironmanNow(rsn) : null);
 	}
 
 	private AccountDisplay currentInfoAccountDisplay()
@@ -1587,6 +1598,7 @@ public class KillClogPanel extends PluginPanel
 		tooltipController.hidePinnedTooltip();
 		comparison.rebuildTooltipData();
 		renderResults();
+		updateDisplayedInfoIcon();
 		cells.rebuildPrimaryTooltips(localRsn);
 		// A frozen row without a Collections Logged score must not keep today's count.
 		if (comparison.isComparisonMode()) updateClogTotalsBar();
