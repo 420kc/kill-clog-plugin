@@ -279,7 +279,7 @@ public class TraySummaryWiringTest
 			Constructor<?> ctor = Class.forName("com.killclog.ComparisonController$ComparedPlayer")
 				.getDeclaredConstructors()[0];
 			ctor.setAccessible(true);
-			set(comparison, "compared", ctor.newInstance(1, hiscore(), clog, null, "Rival"));
+			set(comparison, "compared", ctor.newInstance(1, hiscore(), clog, null, "Rival", null));
 			set(comparison, "comparisonMode", true);
 		}
 		catch (ReflectiveOperationException e)

@@ -77,7 +77,7 @@ public class RankSelectorTest
 		HiscoreResult frozen = base.withRow(result(AccountType.REGULAR, HiscoreTable.STANDARD, 5, 0));
 		LookupTestFixture.edt(() -> fixture.primary.setRankView(row -> frozen));
 		// A mirror compare started while frozen still takes the real log.
-		LookupTestFixture.edt(() -> fixture.comparison.doCompareLookup("Blue", "Blue"));
+		LookupTestFixture.edt(() -> fixture.comparison.doCompareLookup("Blue", "Blue", null));
 		assertNull(fixture.primary.getClogResult());
 		assertNull(fixture.comparison.getCompareClogResult());
 		assertSame(log, fixture.primary.getNativeClogResult());
