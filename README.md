@@ -2,22 +2,17 @@
 
 [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fkillclog.com%2Fapi%2Fhub%2Fversion&query=%24.version&label=version&color=551919)](https://runelite.net/plugin-hub/show/kill-clog)
 
-Kill Clog brings HiScores and Collection Log progress together in one RuneLite panel, with boss personal bests, Skill Clogs, Combat Achievements, clues, and player comparison.
+HiScores, Collection Logs, Personal Bests, and player comparison in one RuneLite panel.
 
-<table>
-  <tr>
-    <td valign="middle"><img src="screenshots/hero-skill-clog-2.3.2.png" alt="Kill Clog with a Thieving Skill Clog open"></td>
-    <td valign="middle"><img src="screenshots/comparison-pvm-2.3.2.png" alt="Side-by-side PvM Summary comparison for 420 kc and CBC"></td>
-  </tr>
-</table>
+![Kill Clog's panel for 420 kc, with a popup from each kind of cell](screenshots/hero-2.5.0.png)
 
 ## Collection Log setup and updates
 
 Install **Kill Clog** from the RuneLite Plugin Hub and open its panel while logged in. Your account loads automatically.
 
-Open your Collection Log and leave it open until setup confirms completion in chat. Setup runs automatically, including on accounts with no unlocked items.
+Open your Collection Log and leave it open until setup confirms completion in chat. Setup runs automatically.
 
-Your log is saved locally. New unlocks update it as you play, and totals follow the game's count. Opening the log refreshes every page and corrects saved quantities. Later refreshes are quiet.
+Your log is saved locally and updates with new unlocks as you play. Open the Collection Log any time to catch items you got on mobile or another device.
 
 To retry an update, reopen the log or choose **Search** at the top. If it says **RuneProfile**, right-click it and choose **Search**. Interrupted updates keep your saved log.
 
@@ -26,8 +21,6 @@ To retry an update, reopen the log or choose **Search** at the top. If it says *
 Enter an RSN in the search bar, or right-click a supported player or name and choose **Kill Clog**.
 
 Use the comparison button beside the search bar to load a second player.
-
-Enable **Show Leaderboard Selector** under **Lookup** to view a player on any hiscores they're on (Normal, Ironman, Hardcore, Ultimate, Skiller, or Pure) from the icons below the grid. The panel shows that leaderboard's stats and ranks, so a Hardcore who died reads their Hardcore stats as they stood at the death. The account badge stays the same. A comparison shows each player on their own leaderboard. Each new lookup returns to that player's automatic leaderboard.
 
 While a League runs, a **Leagues** switch beside the search bar flips the panel between League and main game stats.
 
@@ -39,55 +32,51 @@ While a League runs, a **Leagues** switch beside the search bar flips the panel 
 
 HiScores load for any valid RSN, including Collection Log totals and ranks when listed. Item-by-item Collection Log details appear when that player has data available through TempleOSRS, RuneProfile, or Kill Clog.
 
+### Leaderboard selector
+
+Turn on **Show Leaderboard Selector** under **Lookup** to switch between the hiscores a player is on, using the icons below the grid.
+
+![Leaderboard selector](screenshots/leaderboard-selector.png)
+
+A Hardcore who died keeps their stats from the moment of death on the Hardcore tab, marked with a skull on the helm. A de-ironed account's old Ironman stats get a crossed-out helm. Comparisons and new lookups always use each player's own leaderboard.
+
 ## Grid and List views
 
 Toggle between the default Grid view and List view with the **Menu** button under the search bar. Comparison uses Grid view.
 
-<table>
-  <tr><th>Grid view</th><th>List view</th></tr>
-  <tr>
-    <td valign="top"><img src="screenshots/boss-grid-view.png" alt="Boss Grid view with a Phosani's Nightmare modal"></td>
-    <td valign="top"><img src="screenshots/boss-list-view.png" alt="Boss List view with a Chambers of Xeric modal"></td>
-  </tr>
-</table>
-
-## Modals
-
-Click a summary, boss, activity, or skill cell to open its modal. Choose Hover under **Modal Appearance** to preview on hover and click to pin.
-
-Modals can show Collection Log progress, item sprites and duplicate quantities, KC, rank, personal bests, and OSRS Wiki links.
-
-![Alchemical Hydra boss modal with personal best](screenshots/tooltip-alchemical-hydra-pb.png)
+![Bosses in Grid view and List view](screenshots/grid-and-list-views.png)
 
 ## Skill Clogs
 
-| Sailing | Hitpoints | Runecraft |
-| :---: | :---: | :---: |
-| ![Sailing Skill Clog](screenshots/skill-clog-sailing.png) | ![Hitpoints Skill Clog](screenshots/skill-clog-hitpoints.png) | ![Runecraft Skill Clog](screenshots/skill-clog-runecraft.png) |
-
 Every skill has its own Collection Log-style progression. Skill modals combine relevant activities, equipment, and unlocks with the skill's level, XP, rank, and XP to next level.
 
-The skill title shows combined progress. Each section shows its own `Obtained: x/y` count. Items shared between sections count once toward the skill total.
+![Enable Skill Clogs on](screenshots/skill-clogs-setting-on.png)
 
-Skills appear in the main grid by default and can be moved to the activity tray. Synced accounts can use the configured Skill Color, level-99 completion, or overall Skill Clog progression.
+![A Fletching skill modal with its Vale Totems skill clog](screenshots/skill-clog-on.png)
 
-Turn off **Enable Skill Clogs** in the Skills settings to keep skill modals to level, XP, rank, and XP to next level.
+![Enable Skill Clogs off](screenshots/skill-clogs-setting-off.png)
+
+![The same Fletching modal with Skill Clogs off](screenshots/skill-clog-off.png)
 
 ## Kill Clog Web Sync
 
-Web publication is optional and off by default. It is separate from the local Collection Log setup above.
+Optional and off by default.
 
-Enable **Sync Collection Log** under **Kill Clog Web Sync** to publish your Collection Log and personal bests to your killclog.com profile. The panel button labelled **publish collection log** on hover publishes saved data immediately. Open the in-game log to refresh the saved data first.
+**Sync Collection Log** publishes your Collection Log, unlock dates and personal bests to your killclog.com profile. The chalice button (**publish collection log**) publishes right away. Open the in-game log first so it's current.
 
-Saved unlock dates are included in web sync. Older items without a known date stay undated.
+**Publish Character Model** needs Sync Collection Log. It adds the **publish character** button beside the chalice, which publishes your character and follower in your real appearance.
 
-**Publish Character Model** is also off by default and requires **Sync Collection Log**. It adds a button labelled **publish character** on hover that publishes your character and follower models to your Kill Clog web profile. It uses your real appearance even when cosmetic equipment overrides are enabled.
+![Kill Clog Web Sync settings with Sync Collection Log and Publish Character Model on](screenshots/web-sync-settings.png)
 
-Manual Collection Log publications and character updates show progress in the panel and flash the icon green on success. Hover the corresponding icon for details if an update fails, or the character icon if rendering is delayed.
+![The publish character button beside the chalice at the top of the panel](screenshots/web-sync-publish-character.png)
 
-**Silent automatic sync** is on by default and hides automatic panel messages and flashes. Chat messages have their own setting under **Chat**.
+![A published character and follower on a killclog.com profile](screenshots/web-sync-profile.png)
+
+The icon will flash green on a successful upload.
 
 ## Chat
+
+![A Kill Clog chat reply for Brutus with item sprites and quantities](screenshots/chat-reply-brutus.png)
 
 | Command | Result |
 | --- | --- |
@@ -109,7 +98,7 @@ Full page names work, and shorthand such as `gotr`, `mixology`, `pets`, and `hyd
 
 - **Kill Clog Web Sync:** Collection Log sync, Publish Character Model, and Silent automatic sync
 - **Modal Appearance:** activation, hover feedback, Wiki links, KC, PB, and rank
-- **Lookup:** automatic self-lookup, player comparison, and player-menu lookup
+- **Lookup:** automatic self-lookup, player comparison, player-menu lookup, and the leaderboard selector
 - **Menu location:** choose which right-click menus show Kill Clog
 - **Skills:** location, virtual levels, synced-account color mode, and Skill Clogs on or off
 - **Chat:** plugin messages and custom emojis
