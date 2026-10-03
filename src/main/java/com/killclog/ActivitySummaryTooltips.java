@@ -94,6 +94,9 @@ final class ActivitySummaryTooltips
 		{
 			tip.setRaids(hiscore, clog);
 		}
+		// A raid row opens that raid's popup where the summary was, like the Clue Summary's rares.
+		tip.setOnOpenRaid((press, raid) -> tooltipController.pinTooltipFromPress(
+			owner, (JPanel) owner.getParent(), press, cells.buildBossTooltipFor(owner, raid)));
 		if (ca != null)
 		{
 			tip.setCombatAchievements(ca, caRewardSprites.sprite(ca.getReward(), 16));
