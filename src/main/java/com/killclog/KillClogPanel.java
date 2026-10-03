@@ -102,7 +102,7 @@ public class KillClogPanel extends PluginPanel
 			// Single player: standard player summary
 			SummaryTooltip tip = buildPlayerSummaryTooltip(this,
 				lookupSession.getHiscoreResult(), lookupSession.getClogResult(),
-				playerName.getText().trim(), lookupSession.getCurrentLookupRsn());
+				playerName.getText().trim(), rowIdentity);
 			// Without this the tooltip dies when the mouse leaves the name
 			// label, and the pet gallery can never be hovered at all.
 			if (this.getParent() instanceof JPanel)
@@ -745,6 +745,12 @@ public class KillClogPanel extends PluginPanel
 		compareClogTotals.setVisible(false);
 		comparison.updateAllCells();
 		comparison.updateInfoBar();
+		// The comparison's badges come down; the name wears its kept identity again.
+		rivalIdentity = null;
+		if (isIdentityRowShowing())
+		{
+			showIdentity();
+		}
 		applyBossViewStyle();
 		renderResults();
 		searchRow.revalidate();
@@ -768,7 +774,22 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void applyBadge(JLabel label, AccountDisplay display)
 	{
+		if (label == playerName)
+		{
+			rowIdentity = display;
+		}
+		else if (label == clogInfoLabel)
+		{
+			rivalIdentity = display;
+		}
 		label.setIcon(lookupSession.league() != null ? leagueBadge : AccountBadgeResolver.labelIcon(display));
+	}
+
+	@Override
+	@Nullable
+	public AccountDisplay primaryIdentity()
+	{
+		return keptIdentity;
 	}
 
 	// ── killclog.com one-click controls: the plugin's view of the status row ──
@@ -908,6 +929,9 @@ public class KillClogPanel extends PluginPanel
 
 		playerName.setText(" ");
 		playerName.setIcon(null);
+		selfType = null;
+		keptIdentity = null;
+		rowIdentity = null;
 		tooltipController.setTooltipText(playerName, null);
 		searchRowController.setCompareVisible(false);
 
@@ -928,6 +952,7 @@ public class KillClogPanel extends PluginPanel
 	 */
 	private void renderHiscoreResult(HiscoreResult result, String player, AccountType knownType)
 	{
+		selfType = knownType;
 		updateRankPlayers();
 		setSearchStatus(" ", TEXT_DIM);
 		playerName.setText(rsn != null ? rsn : player);
@@ -1268,8 +1293,16 @@ public class KillClogPanel extends PluginPanel
 
 	private void updateInfoIcon(AccountDisplay display)
 	{
-		applyBadge(playerName, display);
+		keptIdentity = display;
+		showIdentity();
 		tooltipController.setTooltipText(playerName, " ");
+	}
+
+	/** The name row: the kept identity, marked when the shown board is a frozen one the lookup proves. */
+	private void showIdentity()
+	{
+		applyBadge(playerName, keptIdentity != null
+			? keptIdentity.shownOn(lookupSession.getHiscoreResult(), rankSelector.active()) : null);
 	}
 
 	@Override
@@ -1309,9 +1342,9 @@ public class KillClogPanel extends PluginPanel
 		String redName = comparison.getCompareRsn() != null ? comparison.getCompareRsn() : "--";
 		JToolTip tip = comparison.wrapSideBySide(owner,
 			buildPlayerSummaryTooltip(owner, lookupSession.getHiscoreResult(),
-				lookupSession.getClogResult(), blueName, lookupSession.getCurrentLookupRsn()),
+				lookupSession.getClogResult(), blueName, rowIdentity),
 			buildPlayerSummaryTooltip(owner, comparison.getCompareHiscoreResult(),
-				comparison.getCompareClogResult(), redName, redName));
+				comparison.getCompareClogResult(), redName, rivalIdentity));
 		if (owner.getParent() instanceof JPanel)
 		{
 			tooltipController.keepTooltipOnHover(tip, (JPanel) owner.getParent());
@@ -1322,11 +1355,10 @@ public class KillClogPanel extends PluginPanel
 	/** One player's summary card: solo mode shows it alone, comparison pairs two. */
 	private SummaryTooltip buildPlayerSummaryTooltip(JComponent owner,
 		@Nullable HiscoreResult hiscore, @Nullable ClogResult clog,
-		String shownName, @Nullable String identityRsn)
+		String shownName, @Nullable AccountDisplay display)
 	{
 		SummaryTooltip tip = new SummaryTooltip();
 		tip.setComponent(owner);
-		AccountDisplay display = accountTypes.displayIdentity(hiscore, clog, identityRsn);
 		tip.setData(
 			shownName.isEmpty() ? "Player" : shownName,
 			hiscore != null ? hiscore.getOverallRank() : -1,
@@ -1430,7 +1462,9 @@ public class KillClogPanel extends PluginPanel
 
 	private AccountDisplay currentInfoAccountDisplay()
 	{
-		return accountTypes.currentDisplay(lookupSession.getHiscoreResult(),
+		// A self lookup keeps RuneLite's own type, like a group ironman the hiscores read as regular.
+		return selfType != null ? currentInfoAccountDisplay(selfType)
+			: accountTypes.currentDisplay(lookupSession.getHiscoreResult(),
 			lookupSession.getNativeClogResult(), lookupSession.getCurrentLookupRsn());
 	}
 
@@ -1587,6 +1621,11 @@ public class KillClogPanel extends PluginPanel
 		tooltipController.hidePinnedTooltip();
 		comparison.rebuildTooltipData();
 		renderResults();
+		// The board changes the mark, never who the account is; a comparison owns its own badges.
+		if (!comparison.isComparisonMode() && isIdentityRowShowing())
+		{
+			showIdentity();
+		}
 		cells.rebuildPrimaryTooltips(localRsn);
 		// A frozen row without a Collections Logged score must not keep today's count.
 		if (comparison.isComparisonMode()) updateClogTotalsBar();
@@ -1599,6 +1638,19 @@ public class KillClogPanel extends PluginPanel
 
 	/** What the board last put on the status line, so it clears only its own text. */
 	private String boardStatus;
+
+	/**
+	 * RuneLite's own type on a self lookup, the identity the name row keeps, and what the name
+	 * labels show: the hover cards repeat exactly these.
+	 */
+	@Nullable
+	private AccountType selfType;
+	@Nullable
+	private AccountDisplay keptIdentity;
+	@Nullable
+	private AccountDisplay rowIdentity;
+	@Nullable
+	private AccountDisplay rivalIdentity;
 
 	/** A frozen or empty board shows no log, so the status line says why; it clears only its own line. */
 	private void showFrozenLogNotice()

@@ -86,6 +86,10 @@ public class ComparisonController
 		/** Apply an account-type badge (clog-mode + GIM + standard hiscore). */
 		void applyBadge(JLabel label, @Nullable AccountDisplay display);
 
+		/** The primary player's identity as the panel keeps it, or null before it has one. */
+		@Nullable
+		AccountDisplay primaryIdentity();
+
 		/** Preload the PvM Summary reward sprite for a CA result. */
 		void preloadCaReward(@Nullable CombatAchievementResult ca);
 
@@ -660,9 +664,10 @@ public class ComparisonController
 			tooltipController.setTooltipText(clogInfoLabel, " ");
 			clogInfoLabel.setIcon(null);
 			clogInfoLabel.setHorizontalAlignment(JLabel.RIGHT);
-			renderTarget.applyBadge(playerName,
-				LookupQueries.accountDisplay(lookupSession.getHiscoreResult(),
-					lookupSession.getNativeClogResult()));
+			// The primary name keeps the identity the panel resolved, RuneLite's own type included.
+			AccountDisplay blue = renderTarget.primaryIdentity();
+			renderTarget.applyBadge(playerName, blue != null ? blue
+				: LookupQueries.accountDisplay(lookupSession.getHiscoreResult(), lookupSession.getNativeClogResult()));
 			renderTarget.applyBadge(clogInfoLabel, compareAccountDisplay());
 		}
 		else

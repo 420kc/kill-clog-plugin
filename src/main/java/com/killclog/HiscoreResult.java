@@ -46,6 +46,15 @@ public class HiscoreResult
 	@Getter(AccessLevel.PACKAGE)
 	private boolean frozen;
 
+	/**
+	 * Whether this lookup's own answers make the account an Ironman now: true when its regular and
+	 * Ironman rows matched or RuneLite named the type, false when the Ironman row trailed, and null
+	 * when either board didn't answer. It stays with the lookup, so later caches can't change it.
+	 */
+	@Getter(AccessLevel.PACKAGE)
+	@Setter(AccessLevel.PACKAGE)
+	private Boolean ironmanNow;
+
 	public HiscoreResult(AccountType accountType, Map<String, Integer> bossKills,
 		Map<String, Integer> bossRanks, Map<String, Integer> activityScores,
 		Map<String, Integer> activityRanks, Map<String, Integer> skillLevels,
@@ -110,6 +119,7 @@ public class HiscoreResult
 		view.bossSectionShifted = row.bossSectionShifted;
 		view.rankDataAvailable = row.rankDataAvailable;
 		view.frozen = row.totalXp < totalXp;
+		view.ironmanNow = ironmanNow;
 		return view;
 	}
 
@@ -123,6 +133,7 @@ public class HiscoreResult
 			totalLevel, totalXp, combatLevelExact, ranks != null ? ranks.overallRank : -1);
 		view.bossSectionShifted = bossSectionShifted;
 		view.rankDataAvailable = ranks != null && ranks.rankDataAvailable;
+		view.ironmanNow = ironmanNow;
 		return view;
 	}
 
