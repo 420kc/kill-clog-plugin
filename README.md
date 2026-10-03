@@ -4,12 +4,7 @@
 
 Kill Clog brings HiScores and Collection Log progress together in one RuneLite panel, with boss personal bests, Skill Clogs, Combat Achievements, clues, and player comparison.
 
-<table>
-  <tr>
-    <td valign="middle"><img src="screenshots/hero-skill-clog-2.3.2.png" alt="Kill Clog with a Thieving Skill Clog open"></td>
-    <td valign="middle"><img src="screenshots/comparison-pvm-2.3.2.png" alt="Side-by-side PvM Summary comparison for 420 kc and CBC"></td>
-  </tr>
-</table>
+![Kill Clog's panel for 420 kc, with a popup from each kind of cell](screenshots/hero-2.5.0.png)
 
 ## Collection Log setup and updates
 
@@ -19,6 +14,8 @@ Open your Collection Log and leave it open until setup confirms completion in ch
 
 Your log is saved locally. New unlocks update it as you play, and totals follow the game's count. Opening the log refreshes every page and corrects saved quantities. Later refreshes are quiet.
 
+![Clog Summary with completion, recent unlocks, and the last update](screenshots/clog-summary-2.5.0.png)
+
 To retry an update, reopen the log or choose **Search** at the top. If it says **RuneProfile**, right-click it and choose **Search**. Interrupted updates keep your saved log.
 
 ## Look up other players
@@ -26,8 +23,6 @@ To retry an update, reopen the log or choose **Search** at the top. If it says *
 Enter an RSN in the search bar, or right-click a supported player or name and choose **Kill Clog**.
 
 Use the comparison button beside the search bar to load a second player.
-
-Enable **Show Leaderboard Selector** under **Lookup** to view a player on any hiscores they're on (Normal, Ironman, Hardcore, Ultimate, Skiller, or Pure) from the icons below the grid. The panel shows that leaderboard's stats and ranks, so a Hardcore who died reads their Hardcore stats as they stood at the death. The account badge stays the same. A comparison shows each player on their own leaderboard. Each new lookup returns to that player's automatic leaderboard.
 
 While a League runs, a **Leagues** switch beside the search bar flips the panel between League and main game stats.
 
@@ -38,6 +33,14 @@ While a League runs, a **Leagues** switch beside the search bar flips the panel 
 ![Set Kill Clog's Menu Label to Lookup](screenshots/setup-menu-label-lookup.png)
 
 HiScores load for any valid RSN, including Collection Log totals and ranks when listed. Item-by-item Collection Log details appear when that player has data available through TempleOSRS, RuneProfile, or Kill Clog.
+
+### Leaderboard selector
+
+Turn on **Show Leaderboard Selector** under **Lookup** to switch between the hiscores a player is on, using the icons below the grid.
+
+![Leaderboard selector](screenshots/leaderboard-selector.png)
+
+A Hardcore who died keeps their stats from the moment of death on the Hardcore tab, marked with a skull on the helm. A de-ironed account's old Ironman stats get a crossed-out helm. Comparisons and new lookups always use each player's own leaderboard.
 
 ## Grid and List views
 
@@ -109,7 +112,7 @@ Full page names work, and shorthand such as `gotr`, `mixology`, `pets`, and `hyd
 
 - **Kill Clog Web Sync:** Collection Log sync, Publish Character Model, and Silent automatic sync
 - **Modal Appearance:** activation, hover feedback, Wiki links, KC, PB, and rank
-- **Lookup:** automatic self-lookup, player comparison, and player-menu lookup
+- **Lookup:** automatic self-lookup, player comparison, player-menu lookup, and the leaderboard selector
 - **Menu location:** choose which right-click menus show Kill Clog
 - **Skills:** location, virtual levels, synced-account color mode, and Skill Clogs on or off
 - **Chat:** plugin messages and custom emojis
