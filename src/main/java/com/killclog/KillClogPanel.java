@@ -1268,7 +1268,7 @@ public class KillClogPanel extends PluginPanel
 
 	private void updateInfoIcon(AccountDisplay display)
 	{
-		applyBadge(playerName, display);
+		applyBadge(playerName, display.shownOn(lookupSession.getHiscoreResult(), rankSelector.active()));
 		tooltipController.setTooltipText(playerName, " ");
 	}
 
@@ -1326,7 +1326,8 @@ public class KillClogPanel extends PluginPanel
 	{
 		SummaryTooltip tip = new SummaryTooltip();
 		tip.setComponent(owner);
-		AccountDisplay display = accountTypes.displayIdentity(hiscore, clog, identityRsn);
+		AccountDisplay display = accountTypes.displayIdentity(hiscore, clog, identityRsn)
+			.shownOn(hiscore, rankSelector.active());
 		tip.setData(
 			shownName.isEmpty() ? "Player" : shownName,
 			hiscore != null ? hiscore.getOverallRank() : -1,
@@ -1587,6 +1588,7 @@ public class KillClogPanel extends PluginPanel
 		tooltipController.hidePinnedTooltip();
 		comparison.rebuildTooltipData();
 		renderResults();
+		updateDisplayedInfoIcon();
 		cells.rebuildPrimaryTooltips(localRsn);
 		// A frozen row without a Collections Logged score must not keep today's count.
 		if (comparison.isComparisonMode()) updateClogTotalsBar();
