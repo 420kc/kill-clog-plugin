@@ -22,11 +22,13 @@ import org.junit.Test;
 import org.mockito.ArgumentMatchers;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -35,12 +37,13 @@ import static org.mockito.Mockito.when;
 /** The real panel following the world's game; no network or game client is started. */
 public class LeagueViewPanelTest
 {
+	private boolean selectorOn = true;
 	private final KillClogConfig config = new KillClogConfig()
 	{
 		@Override
 		public boolean showLeaderboardSelector()
 		{
-			return true;
+			return selectorOn;
 		}
 	};
 	private final HiscoreService hiscores = mock(HiscoreService.class);
@@ -357,6 +360,104 @@ public class LeagueViewPanelTest
 			assertTrue(ranks.isVisible());
 			assertEquals(RankLeaderboard.IRONMAN, ranks.active());
 		});
+	}
+
+	@Test
+	public void aProvenFrozenBoardMarksTheNameAndItsCardRepeatsIt() throws Exception
+	{
+		RankSelector ranks = field(panel, "rankSelector", RankSelector.class);
+		JLabel name = field(panel, "playerName", JLabel.class);
+		HiscoreResult proven = RankSelectorTest.result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000);
+		proven.setIronmanNow(true);
+		HiscoreResult unproven = RankSelectorTest.result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000);
+		when(hiscores.lookupRanks(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
+		when(hiscores.lookupRanks(any(), eq(RankLeaderboard.HARDCORE))).thenReturn(CompletableFuture.completedFuture(
+			RankSelectorTest.result(AccountType.REGULAR, HiscoreTable.STANDARD, 50, 5000)));
+		SwingUtilities.invokeAndWait(() ->
+		{
+			show(proven, "Friend", null);
+			assertEquals("Ironman", shownLabel());
+			ranks.select(RankLeaderboard.HARDCORE);
+			assertEquals("Dead Hardcore", shownLabel());
+			assertNotNull(name.getIcon());
+			assertEquals("Dead Hardcore", cardLabel(name.createToolTip()));
+			ranks.select(RankLeaderboard.IRONMAN);
+			assertEquals("Ironman", shownLabel());
+			assertEquals("Ironman", cardLabel(name.createToolTip()));
+
+			// A lookup without its own Ironman answer never marks the frozen board.
+			show(unproven, "Friend", null);
+			ranks.select(RankLeaderboard.HARDCORE);
+			assertTrue(session.getHiscoreResult().isFrozen());
+			assertEquals("Ironman", shownLabel());
+			assertEquals("Ironman", cardLabel(name.createToolTip()));
+		});
+	}
+
+	@Test
+	public void yourGroupIronmanBadgeSurvivesBoardsAndComparisons() throws Exception
+	{
+		RankSelector ranks = field(panel, "rankSelector", RankSelector.class);
+		ComparisonController comparison = field(panel, "comparison", ComparisonController.class);
+		JLabel name = field(panel, "playerName", JLabel.class);
+		Constructor<?> compared = Class.forName("com.killclog.ComparisonController$ComparedPlayer").getDeclaredConstructors()[0];
+		compared.setAccessible(true);
+		// The hiscores read a group ironman as a main; RuneLite knows better.
+		HiscoreResult me = RankSelectorTest.result(AccountType.REGULAR, HiscoreTable.STANDARD, 10, 10000);
+		me.setIronmanNow(false);
+		HiscoreResult exo = RankSelectorTest.result(AccountType.IRONMAN, HiscoreTable.STANDARD, 20, 20000);
+		HiscoreResult friend = RankSelectorTest.result(AccountType.REGULAR, HiscoreTable.STANDARD, 30, 30000);
+		when(hiscores.lookupRanks(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
+		for (boolean selector : new boolean[]{true, false})
+		{
+			selectorOn = selector;
+			SwingUtilities.invokeAndWait(() ->
+			{
+				show(me, "Me", AccountType.GROUP_IRONMAN);
+				assertEquals("Group Ironman", shownLabel());
+				ranks.select(RankLeaderboard.NORMAL);
+				assertEquals("Group Ironman", shownLabel());
+				// Later redraws, like Combat Achievements arriving, keep RuneLite's type too.
+				panel.onCaResult("Me", null, true, session.getLookupVersion());
+				assertEquals("Group Ironman", shownLabel());
+
+				setField(comparison, "compared", newInstance(compared, exo));
+				setField(comparison, "comparisonMode", true);
+				panel.onComparisonEnter("Exo");
+				assertEquals("Group Ironman", shownLabel());
+				javax.swing.JToolTip pair = name.createToolTip();
+				assertEquals("Group Ironman", cardLabel(field(pair, "blueTip", javax.swing.JToolTip.class)));
+				assertEquals("Ironman", cardLabel(field(pair, "redTip", javax.swing.JToolTip.class)));
+
+				setField(comparison, "comparisonMode", false);
+				panel.onComparisonExit();
+				assertEquals("Group Ironman", shownLabel());
+				assertEquals("Group Ironman", cardLabel(name.createToolTip()));
+
+				// The next player looked up never inherits your type.
+				show(friend, "Friend", null);
+				assertNull(shownLabel());
+				assertNull(cardLabel(name.createToolTip()));
+			});
+		}
+	}
+
+	/** A finished lookup, the way the session reports one. */
+	private void show(HiscoreResult result, String rsn, AccountType selfType)
+	{
+		panel.onLookupStart(rsn, selfType != null, false);
+		session.adoptState(result, null, null, rsn);
+		panel.onHiscoreResult(rsn, result, selfType != null, selfType, false);
+	}
+
+	private String shownLabel()
+	{
+		return AccountBadgeResolver.label(field(panel, "rowIdentity", AccountDisplay.class));
+	}
+
+	private static String cardLabel(javax.swing.JToolTip card)
+	{
+		return field(card, "accountLabel", String.class);
 	}
 
 	private static Object newInstance(Constructor<?> compared, HiscoreResult hiscore)
