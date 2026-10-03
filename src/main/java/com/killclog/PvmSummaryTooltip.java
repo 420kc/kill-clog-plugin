@@ -7,12 +7,18 @@ import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.Rectangle;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.BiConsumer;
+import javax.annotation.Nullable;
 import lombok.Setter;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.QuantityFormatter;
 
@@ -62,15 +68,53 @@ public class PvmSummaryTooltip extends TitleTooltip
 		{PanelData.TOB_HISCORE, PanelData.TOB_HISCORE_HARD},
 		{PanelData.TOA_HISCORE, PanelData.TOA_HISCORE_HARD}};
 	private static final String[] RAID_CATEGORIES = {PanelData.COX_CATEGORY, PanelData.TOB_CATEGORY, PanelData.TOA_CATEGORY};
+	// Each row opens its raid's own popup.
+	static final HiscoreSkill[] RAID_BOSSES = {HiscoreSkill.CHAMBERS_OF_XERIC,
+		HiscoreSkill.THEATRE_OF_BLOOD, HiscoreSkill.TOMBS_OF_AMASCUT};
 	private final int[] raidKc = new int[3];
 	private final int[] raidObtained = {-1, -1, -1};
 	private final int[] raidTotal = new int[3];
+	private int raidTop = -1;
+	private int hoveredRaid = -1;
+	@Nullable
+	private BiConsumer<MouseEvent, HiscoreSkill> onOpenRaid;
 
 	@Setter
 	private Image combatIcon;
 	private CombatAchievementResult caResult;
 	private BufferedImage caRewardSprite;
 	private final PvpSummaryRows pvpRows = new PvpSummaryRows();
+
+	public PvmSummaryTooltip()
+	{
+		addMouseMotionListener(new MouseMotionAdapter()
+		{
+			@Override
+			public void mouseMoved(MouseEvent e)
+			{
+				setHoveredRaid(raidAt(e.getY()));
+			}
+		});
+		addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mousePressed(MouseEvent e)
+			{
+				int row = raidAt(e.getY());
+				if (row >= 0 && onOpenRaid != null && e.getButton() == MouseEvent.BUTTON1)
+				{
+					onOpenRaid.accept(e, RAID_BOSSES[row]);
+					e.consume();
+				}
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e)
+			{
+				setHoveredRaid(-1);
+			}
+		});
+	}
 
 	public void setData(double combatLevel, int totalKills, int bossesWithKc, int totalBosses,
 						String mostKilled, int mostKilledKc)
@@ -155,6 +199,37 @@ public class PvmSummaryTooltip extends TitleTooltip
 				raidObtained[i] = counts[0];
 				raidTotal[i] = counts[1];
 			}
+		}
+	}
+
+	/** Called with the raid when the player presses its row. */
+	void setOnOpenRaid(@Nullable BiConsumer<MouseEvent, HiscoreSkill> onOpenRaid)
+	{
+		this.onOpenRaid = onOpenRaid;
+	}
+
+	int hoveredRaid()
+	{
+		return hoveredRaid;
+	}
+
+	/** The raid row under a y coordinate, or -1. Rows are full width. */
+	int raidAt(int y)
+	{
+		if (raidTop < 0 || y < raidTop)
+		{
+			return -1;
+		}
+		int row = (y - raidTop) / LINE_HEIGHT;
+		return row < RAID_LABELS.length ? row : -1;
+	}
+
+	private void setHoveredRaid(int row)
+	{
+		if (hoveredRaid != row)
+		{
+			hoveredRaid = row;
+			repaint();
 		}
 	}
 
@@ -324,9 +399,10 @@ public class PvmSummaryTooltip extends TitleTooltip
 		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
 
 		y = paintSubheader(g2, y, "Raids");
+		raidTop = y;
 		for (int i = 0; i < 3; i++)
 		{
-			paintRaidLine(g2, fm, inset, y, RAID_LABELS[i], raidKc[i], raidObtained[i], raidTotal[i]);
+			paintRaidLine(g2, fm, inset, y, i);
 			y += LINE_HEIGHT;
 		}
 		y += WEAPON_PAD;
@@ -379,16 +455,22 @@ public class PvmSummaryTooltip extends TitleTooltip
 		}
 	}
 
-	private void paintRaidLine(Graphics2D g2, FontMetrics fm, int x, int y,
-		String label, int kc, int obtained, int total)
+	private void paintRaidLine(Graphics2D g2, FontMetrics fm, int x, int y, int row)
 	{
 		int textY = y + fm.getAscent();
-		int end = x + drawLabelValue(g2, fm, x, textY, label, scoreText(kc));
+		// No pointer cursor in this UI: the hovered row answers in white instead.
+		g2.setColor(row == hoveredRaid ? Color.WHITE : OSRS_ORANGE);
+		g2.drawString(RAID_LABELS[row], x, textY);
+		int end = x + fm.stringWidth(RAID_LABELS[row]);
+		String kc = scoreText(raidKc[row]);
+		g2.setColor(Color.WHITE);
+		g2.drawString(kc, end, textY);
+		end += fm.stringWidth(kc);
 
 		// Progress rides alongside a real kc; a "--" raid stays dash-only.
-		if (kc > 0 && obtained >= 0)
+		if (raidKc[row] > 0 && raidObtained[row] >= 0)
 		{
-			paintWrappedProgressCount(g2, fm, end, textY, obtained, total);
+			paintWrappedProgressCount(g2, fm, end, textY, raidObtained[row], raidTotal[row]);
 		}
 	}
 
