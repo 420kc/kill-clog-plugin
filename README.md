@@ -78,6 +78,12 @@ Saved unlock dates are included in web sync. Older items without a known date st
 
 **Publish Character Model** is also off by default and requires **Sync Collection Log**. It adds a button labelled **publish character** on hover that publishes your character and follower models to your Kill Clog web profile. It uses your real appearance even when cosmetic equipment overrides are enabled.
 
+![Kill Clog Web Sync settings with Sync Collection Log and Publish Character Model on](screenshots/web-sync-settings.png)
+
+![The publish character button beside the chalice at the top of the panel](screenshots/web-sync-publish-character.png)
+
+![A published character and follower on a killclog.com profile](screenshots/web-sync-profile.png)
+
 Manual Collection Log publications and character updates show progress in the panel and flash the icon green on success. Hover the corresponding icon for details if an update fails, or the character icon if rendering is delayed.
 
 **Silent automatic sync** is on by default and hides automatic panel messages and flashes. Chat messages have their own setting under **Chat**.
