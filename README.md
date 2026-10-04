@@ -76,6 +76,8 @@ The icon will flash green on a successful upload.
 
 ## Chat
 
+![A Kill Clog chat reply for Brutus with item sprites and quantities](screenshots/chat-reply-brutus.png)
+
 | Command | Result |
 | --- | --- |
 | `!kclog [page]` | Collected items and duplicate quantities |
