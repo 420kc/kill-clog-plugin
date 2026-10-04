@@ -2,7 +2,7 @@
 
 [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fkillclog.com%2Fapi%2Fhub%2Fversion&query=%24.version&label=version&color=551919)](https://runelite.net/plugin-hub/show/kill-clog)
 
-Kill Clog brings HiScores and Collection Log progress together in one RuneLite panel, with boss personal bests, Skill Clogs, Combat Achievements, clues, and player comparison.
+HiScores, Collection Logs, Personal Bests, and player comparison in one RuneLite panel.
 
 ![Kill Clog's panel for 420 kc, with a popup from each kind of cell](screenshots/hero-2.5.0.png)
 
