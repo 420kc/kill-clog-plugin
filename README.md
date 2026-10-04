@@ -4,12 +4,7 @@
 
 Kill Clog brings HiScores and Collection Log progress together in one RuneLite panel, with boss personal bests, Skill Clogs, Combat Achievements, clues, and player comparison.
 
-<table>
-  <tr>
-    <td valign="middle"><img src="screenshots/hero-skill-clog-2.3.2.png" alt="Kill Clog with a Thieving Skill Clog open"></td>
-    <td valign="middle"><img src="screenshots/hero-combat-summary-2.5.0.png" alt="Combat Summary for CBC"></td>
-  </tr>
-</table>
+![Kill Clog's panel for 420 kc, with a popup from each kind of cell](screenshots/hero-2.5.0.png)
 
 ## Collection Log setup and updates
 
