@@ -10,11 +10,9 @@ HiScores, Collection Logs, Personal Bests, and player comparison in one RuneLite
 
 Install **Kill Clog** from the RuneLite Plugin Hub and open its panel while logged in. Your account loads automatically.
 
-Open your Collection Log and leave it open until setup confirms completion in chat. Setup runs automatically, including on accounts with no unlocked items.
+Open your Collection Log and leave it open until setup confirms completion in chat. Setup runs automatically.
 
-Your log is saved locally. New unlocks update it as you play, and totals follow the game's count. Opening the log refreshes every page and corrects saved quantities. Later refreshes are quiet.
-
-![Clog Summary with completion, recent unlocks, and the last update](screenshots/clog-summary-2.5.0.png)
+Your log is saved locally and updates with new unlocks as you play. Open the Collection Log any time to catch items you got on mobile or another device.
 
 To retry an update, reopen the log or choose **Search** at the top. If it says **RuneProfile**, right-click it and choose **Search**. Interrupted updates keep your saved log.
 
@@ -46,37 +44,27 @@ A Hardcore who died keeps their stats from the moment of death on the Hardcore t
 
 Toggle between the default Grid view and List view with the **Menu** button under the search bar. Comparison uses Grid view.
 
-<table>
-  <tr><th>Grid view</th><th>List view</th></tr>
-  <tr>
-    <td valign="top"><img src="screenshots/boss-grid-view.png" alt="Boss Grid view with a Phosani's Nightmare modal"></td>
-    <td valign="top"><img src="screenshots/boss-list-view.png" alt="Boss List view with a Chambers of Xeric modal"></td>
-  </tr>
-</table>
-
-## Modals
-
-Click a summary, boss, activity, or skill cell to open its modal. Choose Hover under **Modal Appearance** to preview on hover and click to pin.
-
-Modals can show Collection Log progress, item sprites and duplicate quantities, KC, rank, personal bests, and OSRS Wiki links.
-
-![Alchemical Hydra boss modal with personal best](screenshots/tooltip-alchemical-hydra-pb.png)
+![Bosses in Grid view and List view](screenshots/grid-and-list-views.png)
 
 ## Skill Clogs
 
 Every skill has its own Collection Log-style progression. Skill modals combine relevant activities, equipment, and unlocks with the skill's level, XP, rank, and XP to next level.
 
-Turn off **Enable Skill Clogs** in the Skills settings to keep skill modals to level, XP, rank, and XP to next level.
+![Enable Skill Clogs on](screenshots/skill-clogs-setting-on.png)
+
+![A Fletching skill modal with its Vale Totems skill clog](screenshots/skill-clog-on.png)
+
+![Enable Skill Clogs off](screenshots/skill-clogs-setting-off.png)
+
+![The same Fletching modal with Skill Clogs off](screenshots/skill-clog-off.png)
 
 ## Kill Clog Web Sync
 
-Web publication is optional and off by default. It is separate from the local Collection Log setup above.
+Optional and off by default.
 
-Enable **Sync Collection Log** under **Kill Clog Web Sync** to publish your Collection Log and personal bests to your killclog.com profile. The panel button labelled **publish collection log** on hover publishes saved data immediately. Open the in-game log to refresh the saved data first.
+**Sync Collection Log** publishes your Collection Log, unlock dates and personal bests to your killclog.com profile. The chalice button (**publish collection log**) publishes right away. Open the in-game log first so it's current.
 
-Saved unlock dates are included in web sync. Older items without a known date stay undated.
-
-**Publish Character Model** is also off by default and requires **Sync Collection Log**. It adds a button labelled **publish character** on hover that publishes your character and follower models to your Kill Clog web profile. It uses your real appearance even when cosmetic equipment overrides are enabled.
+**Publish Character Model** needs Sync Collection Log. It adds the **publish character** button beside the chalice, which publishes your character and follower in your real appearance.
 
 ![Kill Clog Web Sync settings with Sync Collection Log and Publish Character Model on](screenshots/web-sync-settings.png)
 
@@ -84,9 +72,7 @@ Saved unlock dates are included in web sync. Older items without a known date st
 
 ![A published character and follower on a killclog.com profile](screenshots/web-sync-profile.png)
 
-Manual Collection Log publications and character updates show progress in the panel and flash the icon green on success. Hover the corresponding icon for details if an update fails, or the character icon if rendering is delayed.
-
-**Silent automatic sync** is on by default and hides automatic panel messages and flashes. Chat messages have their own setting under **Chat**.
+The icon will flash green on a successful upload.
 
 ## Chat
 
