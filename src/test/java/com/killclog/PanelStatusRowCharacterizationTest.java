@@ -64,7 +64,7 @@ public class PanelStatusRowCharacterizationTest
 			panel = new KillClogPanel(mock(HiscoreService.class), catalog,
 				mock(RuneProfileService.class), mock(KillclogService.class),
 				config, mock(ConfigManager.class), sprites,
-				mock(ItemManager.class), mock(ClientThread.class), new SkillIconManager(), mock(Client.class));
+				mock(ItemManager.class), mock(ClientThread.class), new SkillIconManager(), mock(Client.class), mock(PlayerPortraits.class));
 			statusRow = field(panel, "statusRow", PanelStatusRow.class);
 			status = field("searchStatus", JLabel.class);
 			sync = field("syncArrow", JLabel.class);

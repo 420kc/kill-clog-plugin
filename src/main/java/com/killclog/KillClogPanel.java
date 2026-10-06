@@ -71,6 +71,7 @@ public class KillClogPanel extends PluginPanel
 
 	private final ClogService clogService;
 	private final RuneProfileService runeProfileService;
+	private final PlayerPortraits portraits;
 	private final KillClogConfig config;
 	private final ConfigManager configManager;
 	private final SpriteManager spriteManager;
@@ -197,11 +198,12 @@ public class KillClogPanel extends PluginPanel
 		KillClogConfig config, ConfigManager configManager,
 		SpriteManager spriteManager,
 		ItemManager itemManager, ClientThread clientThread,
-		SkillIconManager skillIconManager, Client client)
+		SkillIconManager skillIconManager, Client client, PlayerPortraits portraits)
 	{
 		super(true); // wrap in JScrollPane
 		this.clogService = clogService;
 		this.runeProfileService = runeProfileService;
+		this.portraits = portraits;
 		this.config = config;
 		this.configManager = configManager;
 		this.spriteManager = spriteManager;
@@ -985,6 +987,8 @@ public class KillClogPanel extends PluginPanel
 	 */
 	private void renderClogResult(ClogResult result)
 	{
+		// Each lookup re-checks a syncer's character, so a withdrawn one is gone from this lookup on.
+		portraits.lookedUp(result);
 		String name = result.getPlayerName();
 		if (name != null && !name.isEmpty())
 		{
@@ -1371,10 +1375,12 @@ public class KillClogPanel extends PluginPanel
 	{
 		SummaryTooltip tip = new SummaryTooltip();
 		tip.setComponent(owner);
+		// A Kill Clog syncer who published their character stands where the prestige cape would.
+		BufferedImage character = portraits.forSummary(clog);
 		tip.setData(
 			shownName.isEmpty() ? "Player" : shownName,
 			hiscore != null ? hiscore.getOverallRank() : -1,
-			getCapeImage(hiscore),
+			character != null ? character : getCapeImage(hiscore),
 			AccountBadgeResolver.badge(display),
 			AccountBadgeResolver.label(display),
 			LookupQueries.getPrestige(hiscore)
@@ -1737,6 +1743,7 @@ public class KillClogPanel extends PluginPanel
 	public void preloadClogItemNames(ClogResult clog)
 	{
 		itemNameResolver.resolve(clog);
+		portraits.lookedUp(clog);
 	}
 
 	@Override

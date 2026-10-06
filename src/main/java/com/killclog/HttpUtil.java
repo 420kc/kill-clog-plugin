@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import lombok.extern.slf4j.Slf4j;
@@ -19,7 +20,7 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 
 /**
- * Shared HTTP plumbing used by ClogService and RuneProfileService.
+ * Shared HTTP plumbing for every provider and killclog.com request.
  */
 @Slf4j
 final class HttpUtil
@@ -87,24 +88,40 @@ final class HttpUtil
 		final Map<String, Long> failed = new ConcurrentHashMap<>();
 		final Map<String, CompletableFuture<T>> inFlight = new ConcurrentHashMap<>();
 		final CircuitBreaker breaker;
+		private final long resultTtlMs;
+		private final long notFoundTtlMs;
 
 		Lane(CircuitBreaker breaker)
 		{
+			this(breaker, RESULT_TTL_MS, NOT_FOUND_TTL_MS);
+		}
+
+		/** A lane whose answers age differently from a provider lookup's. */
+		Lane(CircuitBreaker breaker, long resultTtlMs, long notFoundTtlMs)
+		{
 			this.breaker = breaker;
+			this.resultTtlMs = resultTtlMs;
+			this.notFoundTtlMs = notFoundTtlMs;
 		}
 
 		@Nullable
 		T fresh(String key)
 		{
 			T value = values.get(key);
-			return value != null && System.currentTimeMillis() - fetched.getOrDefault(key, 0L) < RESULT_TTL_MS ? value : null;
+			return value != null && System.currentTimeMillis() - fetched.getOrDefault(key, 0L) < resultTtlMs ? value : null;
 		}
 
 		/** True while the lane answers from what it holds; a previous success outlives its TTL. */
 		boolean hold(String key)
 		{
+			return fresh(key) != null || resting(key);
+		}
+
+		/** True while a name is not asked about: a recent miss or failure, or the breaker open. */
+		boolean resting(String key)
+		{
 			long now = System.currentTimeMillis();
-			return fresh(key) != null || now - notFound.getOrDefault(key, 0L) < NOT_FOUND_TTL_MS
+			return now - notFound.getOrDefault(key, 0L) < notFoundTtlMs
 				|| now - failed.getOrDefault(key, 0L) < FAILURE_TTL_MS || breaker.isOpen();
 		}
 
@@ -121,11 +138,11 @@ final class HttpUtil
 			return values.get(key);
 		}
 
-		/** Not on this provider: skip the name for an hour, keeping whatever it held. */
+		/** Not on this provider: skip the name for the lane's not-found time, keeping whatever it held. */
 		T missing(String key)
 		{
 			notFound.put(key, System.currentTimeMillis());
-			prune(notFound, NOT_FOUND_TTL_MS);
+			prune(notFound, notFoundTtlMs);
 			return values.get(key);
 		}
 
@@ -184,18 +201,54 @@ final class HttpUtil
 	@Nullable
 	private static String readBounded(ResponseBody body) throws IOException
 	{
-		if (body.contentLength() > MAX_BODY_BYTES)
+		return fitsWithin(body, MAX_BODY_BYTES) ? body.string() : null;
+	}
+
+	/**
+	 * True when the whole body is at most {@code max} bytes. request() returning true means at
+	 * least max+1 bytes exist (covers chunked responses with no content-length); false means the
+	 * whole body is already buffered under the cap, ready to drain.
+	 */
+	private static boolean fitsWithin(ResponseBody body, long max) throws IOException
+	{
+		return body.contentLength() <= max && !body.source().request(max + 1);
+	}
+
+	/**
+	 * A GET whose successful body is bytes, at most {@code maxBytes} of them; anything larger is dropped.
+	 * With {@code ifNoneMatch}, an unchanged resource answers 304 with no body.
+	 */
+	static CompletableFuture<BytesResult> httpGetBytes(OkHttpClient client, String url, int maxBytes,
+		@Nullable String ifNoneMatch)
+	{
+		Request.Builder request = request(url);
+		if (ifNoneMatch != null)
 		{
-			return null;
+			request.header("If-None-Match", ifNoneMatch);
 		}
-		// request() returning true means at least cap+1 bytes exist (covers
-		// chunked responses with no content-length); false means the whole
-		// body is already buffered under the cap, and string() drains it.
-		if (body.source().request(MAX_BODY_BYTES + 1))
+		BytesResult failed = new BytesResult(-1, null, null);
+		return enqueue(client, request.build(),
+			(response, body) -> new BytesResult(response.code(),
+				response.isSuccessful() && body != null && fitsWithin(body, maxBytes) ? body.bytes() : null,
+				response.header("ETag")),
+			response -> failed, failed);
+	}
+
+	/** HTTP status code (-1 on transport failure), the bytes of a successful response, and its ETag. */
+	static final class BytesResult
+	{
+		final int code;
+		@Nullable
+		final byte[] bytes;
+		@Nullable
+		final String etag;
+
+		BytesResult(int code, @Nullable byte[] bytes, @Nullable String etag)
 		{
-			return null;
+			this.code = code;
+			this.bytes = bytes;
+			this.etag = etag;
 		}
-		return body.string();
 	}
 
 	static CompletableFuture<HttpResult> httpPostJson(OkHttpClient client, String url, String json,
@@ -209,12 +262,7 @@ final class HttpUtil
 		@Nullable String bearerToken)
 	{
 		boolean post = json != null;
-		log.debug("HTTP {}: {}", post ? "POST" : "GET", url);
-		CompletableFuture<HttpResult> future = new CompletableFuture<>();
-
-		Request.Builder request = new Request.Builder()
-			.url(url)
-			.header("User-Agent", USER_AGENT);
+		Request.Builder request = request(url);
 		if (post)
 		{
 			request.post(RequestBody.create(MediaType.parse("application/json; charset=utf-8"), json));
@@ -223,15 +271,38 @@ final class HttpUtil
 		{
 			request.header("Authorization", "Bearer " + bearerToken);
 		}
-		KillClogEndpoint.addStagingHeader(request, url);
+		return enqueue(client, request.build(),
+			(response, body) -> new HttpResult(response.code(),
+				(post || response.isSuccessful()) && body != null ? readBounded(body) : null,
+				post ? retryAfterSeconds(response.header("Retry-After")) : 0),
+			response -> new HttpResult(post ? response.code() : -1, null),
+			new HttpResult(-1, null));
+	}
 
-		client.newCall(request.build()).enqueue(new Callback()
+	/** Makes a call's answer from its response; it may read the body, which is closed afterwards. */
+	@FunctionalInterface
+	private interface BodyReader<T>
+	{
+		T read(Response response, @Nullable ResponseBody body) throws IOException;
+	}
+
+	/**
+	 * Every request goes out here, on OkHttp's dispatcher. {@code unreadable} answers when the body
+	 * can't be read, and {@code unreachable} when the request never got a response.
+	 */
+	private static <T> CompletableFuture<T> enqueue(OkHttpClient client, Request request, BodyReader<T> reader,
+		Function<Response, T> unreadable, T unreachable)
+	{
+		String url = request.url().toString();
+		log.debug("HTTP {}: {}", request.method(), url);
+		CompletableFuture<T> future = new CompletableFuture<>();
+		client.newCall(request).enqueue(new Callback()
 		{
 			@Override
 			public void onFailure(Call call, IOException e)
 			{
 				log.debug("HTTP request failed for {}: {}", url, e.getMessage());
-				future.complete(new HttpResult(-1, null));
+				future.complete(unreachable);
 			}
 
 			@Override
@@ -239,19 +310,26 @@ final class HttpUtil
 			{
 				try (ResponseBody body = response.body())
 				{
-					String text = (post || response.isSuccessful()) && body != null ? readBounded(body) : null;
-					future.complete(new HttpResult(response.code(), text,
-						post ? retryAfterSeconds(response.header("Retry-After")) : 0));
+					future.complete(reader.read(response, body));
 				}
 				catch (IOException e)
 				{
 					log.debug("Failed to read response for {}: {}", url, e.getMessage());
-					future.complete(new HttpResult(post ? response.code() : -1, null));
+					future.complete(unreadable.apply(response));
 				}
 			}
 		});
-
 		return future;
+	}
+
+	/** Every request carries the plugin's User-Agent, and the staging token when it goes to staging. */
+	private static Request.Builder request(String url)
+	{
+		Request.Builder request = new Request.Builder()
+			.url(url)
+			.header("User-Agent", USER_AGENT);
+		KillClogEndpoint.addStagingHeader(request, url);
+		return request;
 	}
 
 	private HttpUtil()

@@ -76,7 +76,7 @@ public class LeagueViewPanelTest
 		SwingUtilities.invokeAndWait(() ->
 		{
 			panel = new KillClogPanel(hiscores, clogs, runeProfile, killclog, config, mock(ConfigManager.class), sprites,
-				mock(ItemManager.class), mock(ClientThread.class), new SkillIconManager(), mock(Client.class));
+				mock(ItemManager.class), mock(ClientThread.class), new SkillIconManager(), mock(Client.class), mock(PlayerPortraits.class));
 			session = field(panel, "lookupSession", LookupSession.class);
 		});
 	}

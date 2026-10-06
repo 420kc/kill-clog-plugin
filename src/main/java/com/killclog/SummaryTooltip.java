@@ -18,7 +18,8 @@ import net.runelite.client.util.ImageUtil;
 
 /**
  * Player summary tooltip on the summary-bar name label.
- * Single-column stats, optional cape icon, then obtained pet sprites.
+ * Single-column stats, the prestige cape or a Kill Clog syncer's character
+ * beside them, then obtained pet sprites.
  * Hovering a pet swaps the title to its name and left-click opens its wiki
  * page - same contract as the PvM summary sprites.
  */
@@ -28,7 +29,7 @@ public class SummaryTooltip extends TitleTooltip
 	private static final int PET_PAD = 2;
 	private static final int PET_COLS = 10;
 	private static final int SECTION_GAP = 6;
-	private static final int CAPE_PAD = 4;
+	private static final int FIGURE_PAD = 4;
 
 	private static final int BADGE_SIZE = 13;
 	private static final int BADGE_GAP = 3;
@@ -36,7 +37,8 @@ public class SummaryTooltip extends TitleTooltip
 
 	private String rsn;
 	private int overallRank;
-	private BufferedImage capeIcon;
+	// The prestige cape, or a Kill Clog syncer's character (PlayerPortraits) standing in its place.
+	private BufferedImage figure;
 	private BufferedImage badgeIcon;
 	private String accountLabel;
 	private String prestige;
@@ -48,14 +50,14 @@ public class SummaryTooltip extends TitleTooltip
 	private String[] petNames;
 	private BufferedImage[] petSprites;
 
-	public void setData(String rsn, int overallRank, BufferedImage capeIcon,
+	public void setData(String rsn, int overallRank, BufferedImage figure,
 						BufferedImage badgeIcon, String accountLabel, String prestige)
 	{
 		itemHover.clear();
 		setTitle("Player Summary");
 		this.rsn = rsn;
 		this.overallRank = overallRank;
-		this.capeIcon = capeIcon;
+		this.figure = figure;
 		this.badgeIcon = resizeBadge(badgeIcon);
 		this.accountLabel = accountLabel;
 		this.prestige = prestige;
@@ -140,11 +142,11 @@ public class SummaryTooltip extends TitleTooltip
 		int textWidth = getTextWidth(fm);
 		int statsHeight = LINE_HEIGHT * getStatsLines();
 
-		// Cape column beside stats.
-		int capeColWidth = 0;
-		if (capeIcon != null)
+		// The cape or character column beside stats.
+		int figureColWidth = 0;
+		if (figure != null)
 		{
-			capeColWidth = CAPE_PAD + capeIcon.getWidth();
+			figureColWidth = FIGURE_PAD + figure.getWidth();
 		}
 
 		// Pet grid.
@@ -153,9 +155,9 @@ public class SummaryTooltip extends TitleTooltip
 			? Math.min(petCount, PET_COLS) * (PET_SIZE + PET_PAD) - PET_PAD
 			: 0;
 
-		int contentWidth = Math.max(textWidth + capeColWidth, petGridWidth);
-		int contentHeight = capeIcon != null
-			? Math.max(statsHeight, capeIcon.getHeight())
+		int contentWidth = Math.max(textWidth + figureColWidth, petGridWidth);
+		int contentHeight = figure != null
+			? Math.max(statsHeight, figure.getHeight())
 			: statsHeight;
 
 		if (totalPetCount > 0)
@@ -212,17 +214,18 @@ public class SummaryTooltip extends TitleTooltip
 			lineY += LINE_HEIGHT;
 		}
 
-		// Cape icon in the right column, centered against stats.
+		// Cape or character in the right column: centered against stats, or level with their top
+		// when taller (a character stands taller than four lines of stats).
 		int sectionBottom = lineY - fm.getAscent();
-		if (capeIcon != null)
+		if (figure != null)
 		{
 			int textRight = inset + getTextWidth(fm);
 			int rightEdge = w - inset;
-			int capeX = textRight + (rightEdge - textRight - capeIcon.getWidth()) / 2;
+			int figureX = textRight + (rightEdge - textRight - figure.getWidth()) / 2;
 			int statsBlockHeight = LINE_HEIGHT * getStatsLines();
-			int capeY = startY + (statsBlockHeight - capeIcon.getHeight()) / 2;
-			g2.drawImage(capeIcon, capeX, capeY, null);
-			sectionBottom = Math.max(sectionBottom, startY + Math.max(statsBlockHeight, capeIcon.getHeight()));
+			int figureY = startY + Math.max(0, (statsBlockHeight - figure.getHeight()) / 2);
+			g2.drawImage(figure, figureX, figureY, null);
+			sectionBottom = Math.max(sectionBottom, startY + Math.max(statsBlockHeight, figure.getHeight()));
 		}
 
 		if (totalPetCount <= 0) return;

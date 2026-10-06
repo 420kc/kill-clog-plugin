@@ -56,7 +56,7 @@ public class ClogSummaryWiringTest
 			new KillClogConfig()
 			{
 			}, mock(ConfigManager.class), sprites,
-			items, mock(ClientThread.class), new SkillIconManager(), mock(Client.class)));
+			items, mock(ClientThread.class), new SkillIconManager(), mock(Client.class), mock(PlayerPortraits.class)));
 	}
 
 	@After

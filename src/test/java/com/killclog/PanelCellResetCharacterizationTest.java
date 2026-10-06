@@ -69,7 +69,7 @@ public class PanelCellResetCharacterizationTest
 			panel = new KillClogPanel(mock(HiscoreService.class), catalog,
 				mock(RuneProfileService.class), mock(KillclogService.class),
 				config, mock(ConfigManager.class), sprites,
-				mock(ItemManager.class), mock(ClientThread.class), new SkillIconManager(), mock(Client.class));
+				mock(ItemManager.class), mock(ClientThread.class), new SkillIconManager(), mock(Client.class), mock(PlayerPortraits.class));
 			cells = field("cells", Cells.class);
 			highlighter = field("highlighter", ProgressHighlighter.class);
 			searchRow = field("searchRowController", SearchRowController.class);

@@ -88,7 +88,7 @@ public class TraySummaryWiringTest
 			panel = new KillClogPanel(mock(HiscoreService.class), catalog,
 				mock(RuneProfileService.class), mock(KillclogService.class),
 				config, mock(ConfigManager.class), sprites,
-				items, clientThread, new SkillIconManager(), mock(Client.class));
+				items, clientThread, new SkillIconManager(), mock(Client.class), mock(PlayerPortraits.class));
 			cells = field(panel, "cells", Cells.class);
 			clues = cells.getActivityLabels().get(HiscoreSkill.CLUE_SCROLL_ALL);
 			// Nothing here is on a screen, so the pin is recorded instead of shown.
