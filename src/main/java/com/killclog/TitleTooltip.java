@@ -35,6 +35,11 @@ import net.runelite.client.util.ImageUtil;
 public abstract class TitleTooltip extends NativeTooltip
 {
 	private static final int NAME_LINE_HEIGHT = 20;
+	// LAB ONLY (hive/modal-lab): a badge before the title and a white title, for mockups.
+	BufferedImage labTitleIcon;
+	boolean labTitleWhite;
+	static int labTitleIconGap = 4;
+	static boolean labTitleCentered;
 	private static final int SEPARATOR_GAP = 6;
 	private static final int INFO_PAIR_GAP = 8;
 	private static final String ELLIPSIS = "...";
@@ -490,6 +495,10 @@ public abstract class TitleTooltip extends NativeTooltip
 		// Header text widths drive minimum tooltip width.
 		// The full header width flows to getContentSize so grids can fill the space.
 		int titleTextWidth = title != null ? nfm.stringWidth(title) : 0;
+		if (labTitleIcon != null)
+		{
+			titleTextWidth += labTitleIcon.getWidth() + labTitleIconGap;
+		}
 		if (titleSuffix != null)
 		{
 			titleTextWidth += nfm.stringWidth(titleSuffix);
@@ -546,10 +555,22 @@ public abstract class TitleTooltip extends NativeTooltip
 		g2.setColor(headerColor);
 		// Long reveal texts (recent-item names) ellipsize instead of clipping.
 		int suffixWidth = showTitleSuffix ? nfm.stringWidth(titleSuffix) : 0;
+		int titleX = inset;
+		if (labTitleCentered)
+		{
+			int total = nfm.stringWidth(headerTitle) + suffixWidth
+				+ (labTitleIcon != null ? labTitleIcon.getWidth() + labTitleIconGap : 0);
+			titleX = Math.max(inset, (w - total) / 2);
+		}
+		if (labTitleIcon != null)
+		{
+			g2.drawImage(labTitleIcon, titleX, inset + (NAME_LINE_HEIGHT - labTitleIcon.getHeight()) / 2 + labTitleIconDrop, null);
+			titleX += labTitleIcon.getWidth() + labTitleIconGap;
+		}
 		headerTitle = fitHeaderText(nfm, headerTitle,
-			w - 2 * inset - suffixWidth);
-		g2.drawString(headerTitle, inset, lineY);
-		int activeLineWidth = nfm.stringWidth(headerTitle);
+			w - inset - titleX - suffixWidth);
+		g2.drawString(headerTitle, titleX, lineY);
+		int activeLineWidth = titleX - inset + nfm.stringWidth(headerTitle);
 		if (showTitleSuffix)
 		{
 			g2.setColor(titleSuffixColor != null ? titleSuffixColor : OSRS_ORANGE);
@@ -698,8 +719,14 @@ public abstract class TitleTooltip extends NativeTooltip
 		return wikiLinksEnabled && titleWikiPage != null && !titleWikiPage.trim().isEmpty();
 	}
 
+	static int labTitleIconDrop = -1;
+
 	protected Color titleColor()
 	{
+		if (labTitleWhite)
+		{
+			return Color.WHITE;
+		}
 		return titleHovered && titleLinkActive() ? Color.WHITE : OSRS_ORANGE;
 	}
 

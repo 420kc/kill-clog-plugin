@@ -40,6 +40,29 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private static final int LEVEL_GAP_BELOW = 6;
 	private static final int LEVEL_ICON_GAP = 4;
 
+	// LAB ONLY (hive/modal-lab): layout knobs for mockups, never shipped.
+	static int labLevelGapAbove = LEVEL_GAP_ABOVE;
+	static int labLevelGapBelow = LEVEL_GAP_BELOW;
+	static int labCaRowHeight = CA_ROW_HEIGHT;
+	static int labMostKilledGap = SECTION_GAP;
+	static int labWeaponPad = WEAPON_PAD;
+	static int labSectionEndGap = SECTION_GAP;
+	static boolean labNamesOnSubheader;
+	static boolean labSuperiorsBeside;
+	private static final int LAB_BESIDE_GAP = 8;
+
+	static void labReset()
+	{
+		labLevelGapAbove = LEVEL_GAP_ABOVE;
+		labLevelGapBelow = LEVEL_GAP_BELOW;
+		labCaRowHeight = CA_ROW_HEIGHT;
+		labMostKilledGap = SECTION_GAP;
+		labWeaponPad = WEAPON_PAD;
+		labSectionEndGap = SECTION_GAP;
+		labNamesOnSubheader = false;
+		labSuperiorsBeside = false;
+	}
+
 	private double combatLevel;
 	private int totalKills;
 	private int bossesWithKc;
@@ -248,19 +271,22 @@ public class PvmSummaryTooltip extends TitleTooltip
 		int mostKilledHeight = 0;
 		if (mostKilled != null)
 		{
-			mostKilledHeight = SECTION_GAP + LINE_HEIGHT * 2;
+			mostKilledHeight = labMostKilledGap + LINE_HEIGHT * 2;
 		}
 
 		int spriteRowWidth = 3 * WEAPON_SIZE + 2 * WEAPON_PAD;
 		int superiorRowWidth = 2 * WEAPON_SIZE + WEAPON_PAD;
 
+		int hoverRow = labNamesOnSubheader ? 0 : hoverRowHeight(fm);
+
 		// Slayer section.
-		int slayerHeight = SUBHEADER_HEIGHT + LINE_HEIGHT * slayerRowCount()
-			+ WEAPON_PAD + WEAPON_SIZE + hoverRowHeight(fm);
+		int slayerHeight = labSuperiorsBeside
+			? SUBHEADER_HEIGHT + Math.max(LINE_HEIGHT * slayerRowCount(), WEAPON_SIZE) + hoverRow
+			: SUBHEADER_HEIGHT + LINE_HEIGHT * slayerRowCount() + labWeaponPad + WEAPON_SIZE + hoverRow;
 
 		// Raids section.
 		int raidsHeight = SUBHEADER_HEIGHT + LINE_HEIGHT * 3
-			+ WEAPON_PAD + WEAPON_SIZE + hoverRowHeight(fm);
+			+ labWeaponPad + WEAPON_SIZE + hoverRow;
 
 		// Width: measure the real rendered strings, never a placeholder.
 		int textWidth = 0;
@@ -306,13 +332,35 @@ public class PvmSummaryTooltip extends TitleTooltip
 		{
 			textWidth = Math.max(textWidth, fm.stringWidth(name));
 		}
+		if (labSuperiorsBeside)
+		{
+			int slayerText = Math.max(fm.stringWidth("XP: " + slayerXpText(slayerXp)),
+				fm.stringWidth("Rank: " + scoreText(slayerRank)));
+			if (slayerObtained >= 0)
+			{
+				slayerText = Math.max(slayerText,
+					fm.stringWidth("Obtained: " + progressCountText(slayerObtained, slayerTotal)));
+			}
+			textWidth = Math.max(textWidth, slayerText + LAB_BESIDE_GAP + superiorRowWidth);
+		}
+		if (labNamesOnSubheader)
+		{
+			for (String name : PanelData.MEGARARE_ITEM_NAMES)
+			{
+				textWidth = Math.max(textWidth, bfm.stringWidth("Raids") + LAB_BESIDE_GAP + fm.stringWidth(name));
+			}
+			for (String name : PanelData.SUPERIOR_ITEM_NAMES)
+			{
+				textWidth = Math.max(textWidth, bfm.stringWidth("Slayer") + LAB_BESIDE_GAP + fm.stringWidth(name));
+			}
+		}
 		Dimension pvpSize = pvpRows.size(fm);
 		int contentWidth = Math.max(Math.max(textWidth, pvpSize.width),
 			Math.max(spriteRowWidth, superiorRowWidth));
 		int separatorHeight = separatorHeight(SEPARATOR_PAD);
-		int caHeight = caResult != null ? CA_ROW_HEIGHT : 0;
-		int contentHeight = LEVEL_GAP_ABOVE + LEVEL_ROW_HEIGHT + LEVEL_GAP_BELOW
-			+ SUBHEADER_HEIGHT + statsHeight + caHeight + mostKilledHeight + SECTION_GAP
+		int caHeight = caResult != null ? labCaRowHeight : 0;
+		int contentHeight = labLevelGapAbove + LEVEL_ROW_HEIGHT + labLevelGapBelow
+			+ SUBHEADER_HEIGHT + statsHeight + caHeight + mostKilledHeight + labSectionEndGap
 			+ separatorHeight + slayerHeight
 			+ separatorHeight + raidsHeight
 			+ separatorHeight + SUBHEADER_HEIGHT + pvpSize.height;
@@ -331,7 +379,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		int y = startY;
 
 		// The combat level leads the card; PvM and PvP each follow under their own subheader.
-		y = paintLevel(g2, inset, y + LEVEL_GAP_ABOVE) + LEVEL_GAP_BELOW;
+		y = paintLevel(g2, inset, y + labLevelGapAbove) + labLevelGapBelow;
 		y = paintSubheader(g2, y, "PvM Summary");
 
 		// CA Tier appears first when data is available.
@@ -345,7 +393,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 				int rewardY = y + (CA_ROW_HEIGHT - caRewardSprite.getHeight()) / 2 - 2;
 				g2.drawImage(caRewardSprite, cx, rewardY, null);
 			}
-			y += CA_ROW_HEIGHT;
+			y += labCaRowHeight;
 		}
 
 		// Total Kills
@@ -372,7 +420,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		// Most Killed closes the PvM rows, then a small gap before the divider like every section.
 		if (mostKilled != null)
 		{
-			y += SECTION_GAP;
+			y += labMostKilledGap;
 			g2.setColor(OSRS_ORANGE);
 			g2.drawString("Most Killed:", inset, y + fm.getAscent());
 			y += LINE_HEIGHT;
@@ -380,24 +428,40 @@ public class PvmSummaryTooltip extends TitleTooltip
 			g2.drawString(mostKilledLine(), inset, y + fm.getAscent());
 			y += LINE_HEIGHT;
 		}
-		y += SECTION_GAP;
+		y += labSectionEndGap;
 
 		// Separator: stats to Slayer.
 		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
 
+		paintSubheaderName(g2, fm, w, y, 0);
 		y = paintSubheader(g2, y, "Slayer");
 		paintSlayerLine(g2, fm, inset, y);
-		y += LINE_HEIGHT * slayerRowCount();
-		y += WEAPON_PAD;
-		paintSpriteRow(g2, fm, hitBoxes, 0, y, w,
-			superiorSprites, PanelData.SUPERIOR_ITEMS, PanelData.SUPERIOR_ITEM_NAMES, superiorCounts);
-		y += WEAPON_SIZE;
-		paintSectionHoverLine(g2, fm, w, y, 0);
-		y += hoverRowHeight(fm);
+		if (labSuperiorsBeside)
+		{
+			int block = Math.max(LINE_HEIGHT * slayerRowCount(), WEAPON_SIZE);
+			paintSpriteRow(g2, fm, hitBoxes, 0, y + (block - WEAPON_SIZE) / 2,
+				w - inset - (2 * WEAPON_SIZE + WEAPON_PAD),
+				superiorSprites, PanelData.SUPERIOR_ITEMS, PanelData.SUPERIOR_ITEM_NAMES, superiorCounts);
+			y += block;
+		}
+		else
+		{
+			y += LINE_HEIGHT * slayerRowCount();
+			y += labWeaponPad;
+			paintSpriteRow(g2, fm, hitBoxes, 0, y, centeredRowX(w, 2),
+				superiorSprites, PanelData.SUPERIOR_ITEMS, PanelData.SUPERIOR_ITEM_NAMES, superiorCounts);
+			y += WEAPON_SIZE;
+		}
+		if (!labNamesOnSubheader)
+		{
+			paintSectionHoverLine(g2, fm, w, y, 0);
+			y += hoverRowHeight(fm);
+		}
 
 		// Separator: Slayer to raids.
 		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
 
+		paintSubheaderName(g2, fm, w, y, 1);
 		y = paintSubheader(g2, y, "Raids");
 		raidTop = y;
 		for (int i = 0; i < 3; i++)
@@ -405,13 +469,17 @@ public class PvmSummaryTooltip extends TitleTooltip
 			paintRaidLine(g2, fm, inset, y, i);
 			y += LINE_HEIGHT;
 		}
-		y += WEAPON_PAD;
+		y += labWeaponPad;
 
 		// Center the three weapon sprites.
-		paintSpriteRow(g2, fm, hitBoxes, 1, y, w,
+		paintSpriteRow(g2, fm, hitBoxes, 1, y, centeredRowX(w, 3),
 			weaponSprites, PanelData.MEGARARE_ITEM_IDS, PanelData.MEGARARE_ITEM_NAMES, weaponCounts);
-		paintSectionHoverLine(g2, fm, w, y + WEAPON_SIZE, 1);
-		y += WEAPON_SIZE + hoverRowHeight(fm);
+		y += WEAPON_SIZE;
+		if (!labNamesOnSubheader)
+		{
+			paintSectionHoverLine(g2, fm, w, y, 1);
+			y += hoverRowHeight(fm);
+		}
 
 		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
 		y = paintSubheader(g2, y, "PvP Summary");
@@ -424,11 +492,32 @@ public class PvmSummaryTooltip extends TitleTooltip
 	 * A centered row of item sprites, unobtained ones dimmed, quantities in the
 	 * corner; each sprite hover-names and wiki-links like the grids do.
 	 */
+	private int centeredRowX(int w, int count)
+	{
+		return getInset() + (w - 2 * getInset() - (count * WEAPON_SIZE + (count - 1) * WEAPON_PAD)) / 2;
+	}
+
+	/** LAB: the hovered item's name, right-aligned on its section's subheader line. */
+	private void paintSubheaderName(Graphics2D g2, FontMetrics fm, int w, int y, int section)
+	{
+		if (!labNamesOnSubheader || !itemHover.isSectionHovered(section))
+		{
+			return;
+		}
+		String name = itemHover.hoveredItemName();
+		if (name == null || name.isEmpty())
+		{
+			return;
+		}
+		int baseline = y + getFontMetrics(FontManager.getRunescapeBoldFont()).getAscent();
+		g2.setColor(getHeaderHoverLineColor());
+		g2.drawString(name, w - getInset() - fm.stringWidth(name), baseline);
+	}
+
 	private void paintSpriteRow(Graphics2D g2, FontMetrics fm, List<TooltipItemHover.HitBox> hitBoxes,
-		int section, int y, int w, BufferedImage[] sprites, int[] itemIds, String[] itemNames, int[] counts)
+		int section, int y, int startX, BufferedImage[] sprites, int[] itemIds, String[] itemNames, int[] counts)
 	{
 		int count = Math.min(sprites.length, counts.length);
-		int startX = getInset() + (w - 2 * getInset() - (count * WEAPON_SIZE + (count - 1) * WEAPON_PAD)) / 2;
 		for (int i = 0; i < count; i++)
 		{
 			int sx = startX + i * (WEAPON_SIZE + WEAPON_PAD);
