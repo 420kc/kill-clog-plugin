@@ -99,7 +99,7 @@ final class ActivitySummaryTooltips
 			owner, (JPanel) owner.getParent(), press, cells.buildBossTooltipFor(owner, raid)));
 		if (ca != null)
 		{
-			tip.setCombatAchievements(ca, caRewardSprites.sprite(ca.getReward(), 16));
+			tip.setCombatAchievements(ca, caRewardSprites.sprite(ca.getReward(), PvmSummaryTooltip.ICON_SIZE));
 		}
 		return tip;
 	}

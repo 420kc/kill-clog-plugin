@@ -39,6 +39,37 @@ public class PvmSummaryTooltipTest
 	}
 
 	@Test
+	public void theTierRowWaitsForATierThenTakesTheCombatRowsRoom()
+	{
+		Map<CombatAchievementTier, Integer> totals = new java.util.EnumMap<>(CombatAchievementTier.class);
+		for (CombatAchievementTier tier : CombatAchievementTier.values())
+		{
+			totals.put(tier, tier.totalTasks());
+		}
+		Map<CombatAchievementTier, Integer> easyDone = new java.util.EnumMap<>(CombatAchievementTier.class);
+		easyDone.put(CombatAchievementTier.EASY, CombatAchievementTier.EASY.totalTasks());
+
+		int noData = pvmCard(null).getPreferredSize().height;
+		int noTier = pvmCard(CombatAchievementResult.of(Collections.emptyMap(), totals)).getPreferredSize().height;
+		int easy = pvmCard(CombatAchievementResult.of(easyDone, totals)).getPreferredSize().height;
+
+		assertEquals(noData, noTier);
+		// 4 px above, the 22 px row, 6 px below: the combat level row's room.
+		assertEquals(4 + 22 + 6, easy - noData);
+	}
+
+	private static PvmSummaryTooltip pvmCard(CombatAchievementResult ca)
+	{
+		PvmSummaryTooltip tip = new PvmSummaryTooltip();
+		tip.setData(126, 12345, 20, 60, "Zulrah", 5000);
+		if (ca != null)
+		{
+			tip.setCombatAchievements(ca, null);
+		}
+		return tip;
+	}
+
+	@Test
 	public void combatLevelReadsLikeVanillasExactCombatLevel()
 	{
 		assertEquals("83.925", PvmSummaryTooltip.combatText(83.925));
