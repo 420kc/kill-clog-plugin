@@ -31,6 +31,7 @@ public class SummaryTooltip extends TitleTooltip
 	private static final int SECTION_GAP = 6;
 	private static final int FIGURE_GAP = 4;
 	private static final String PRESTIGE_LABEL = "Prestige: ";
+	private static final String FORMER_TITLE = "Player Summary";
 
 	private int overallRank;
 	// The prestige cape, or a Kill Clog syncer's character (PlayerPortraits) standing in its place.
@@ -151,6 +152,8 @@ public class SummaryTooltip extends TitleTooltip
 
 		int contentWidth = Math.max(Math.max(getTextWidth(fm), figure != null ? figure.getWidth() : 0),
 			petGridWidth);
+		// Never thinner than the card was when "Player Summary" titled it, whatever the name.
+		contentWidth = Math.max(contentWidth, getFontMetrics(getTitleFont()).stringWidth(FORMER_TITLE));
 		int contentHeight = getFigureHeight() + LINE_HEIGHT * getStatsLines();
 
 		if (totalPetCount > 0)

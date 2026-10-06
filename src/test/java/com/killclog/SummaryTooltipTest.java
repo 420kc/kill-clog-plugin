@@ -3,6 +3,7 @@ package com.killclog;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 import java.awt.image.BufferedImage;
 import org.junit.Test;
@@ -36,11 +37,11 @@ public class SummaryTooltipTest
 	@Test
 	public void theBadgeStandsBeforeTheNameAtItsOwnSize()
 	{
-		// No stats, figure or pets: the title alone sets the width.
+		// A name long enough to set the width past the card's floor.
 		SummaryTooltip plain = new SummaryTooltip();
-		plain.setData("Fixture", -1, null, null, null, null);
+		plain.setData("WWWWWWWWWWWW", -1, null, null, null, null);
 		SummaryTooltip badged = new SummaryTooltip();
-		badged.setData("Fixture", -1, null, new BufferedImage(13, 12, BufferedImage.TYPE_INT_ARGB), null, null);
+		badged.setData("WWWWWWWWWWWW", -1, null, new BufferedImage(13, 12, BufferedImage.TYPE_INT_ARGB), null, null);
 
 		assertEquals(13 + 4, badged.getPreferredSize().width - plain.getPreferredSize().width);
 	}
@@ -49,11 +50,25 @@ public class SummaryTooltipTest
 	public void aBadgeTallerThanTheTitleLineIsScaledToIt()
 	{
 		SummaryTooltip plain = new SummaryTooltip();
-		plain.setData("Fixture", -1, null, null, null, null);
+		plain.setData("WWWWWWWWWWWW", -1, null, null, null, null);
 		SummaryTooltip badged = new SummaryTooltip();
-		badged.setData("Fixture", -1, null, new BufferedImage(36, 36, BufferedImage.TYPE_INT_ARGB), null, null);
+		badged.setData("WWWWWWWWWWWW", -1, null, new BufferedImage(36, 36, BufferedImage.TYPE_INT_ARGB), null, null);
 
 		assertEquals(18 + 4, badged.getPreferredSize().width - plain.getPreferredSize().width);
+	}
+
+	@Test
+	public void aShortNameKeepsTheOldTitlesWidth()
+	{
+		SummaryTooltip shortName = new SummaryTooltip();
+		shortName.setData("Al", -1, null, new BufferedImage(18, 18, BufferedImage.TYPE_INT_ARGB), "Ironman", null);
+		SummaryTooltip oldTitle = new SummaryTooltip();
+		oldTitle.setData("Player Summary", -1, null, null, null, null);
+		SummaryTooltip longName = new SummaryTooltip();
+		longName.setData("WWWWWWWWWWWW", -1, null, null, null, null);
+
+		assertEquals(oldTitle.getPreferredSize().width, shortName.getPreferredSize().width);
+		assertTrue(longName.getPreferredSize().width > oldTitle.getPreferredSize().width);
 	}
 
 	@Test
