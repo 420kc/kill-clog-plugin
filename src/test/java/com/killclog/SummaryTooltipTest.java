@@ -109,4 +109,15 @@ public class SummaryTooltipTest
 		field.setAccessible(true);
 		field.setInt(tip, total);
 	}
+
+	@Test
+	public void aMissingNameStillTitlesTheCard()
+	{
+		SummaryTooltip unnamed = new SummaryTooltip();
+		unnamed.setData(null, -1, null, null, null, null);
+		SummaryTooltip player = new SummaryTooltip();
+		player.setData("Player", -1, null, null, null, null);
+
+		assertEquals(player.getPreferredSize(), unnamed.getPreferredSize());
+	}
 }

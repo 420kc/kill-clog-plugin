@@ -58,6 +58,42 @@ public class PvmSummaryTooltipTest
 		assertEquals(4 + 22 + 6, easy - noData);
 	}
 
+	@Test
+	public void raidRowsStillAnswerClicksUnderTheTierRow() throws ReflectiveOperationException
+	{
+		Map<CombatAchievementTier, Integer> totals = new java.util.EnumMap<>(CombatAchievementTier.class);
+		for (CombatAchievementTier tier : CombatAchievementTier.values())
+		{
+			totals.put(tier, tier.totalTasks());
+		}
+		Map<CombatAchievementTier, Integer> easyDone = new java.util.EnumMap<>(CombatAchievementTier.class);
+		easyDone.put(CombatAchievementTier.EASY, CombatAchievementTier.EASY.totalTasks());
+		PvmSummaryTooltip plain = pvmCard(null);
+		PvmSummaryTooltip tiered = pvmCard(CombatAchievementResult.of(easyDone, totals));
+
+		int plainTop = paintedRaidTop(plain);
+		int tieredTop = paintedRaidTop(tiered);
+		// The tier row's room moves the raid rows down, and their clicks move with them.
+		assertEquals(plainTop + 4 + 22 + 6, tieredTop);
+		assertEquals(-1, tiered.raidAt(tieredTop - 1));
+		assertEquals(0, tiered.raidAt(tieredTop));
+		assertEquals(2, tiered.raidAt(tieredTop + 2 * 14 + 13));
+		assertEquals(-1, tiered.raidAt(tieredTop + 3 * 14));
+	}
+
+	private static int paintedRaidTop(PvmSummaryTooltip tip) throws ReflectiveOperationException
+	{
+		Dimension size = tip.getPreferredSize();
+		tip.setSize(size);
+		BufferedImage image = new BufferedImage(size.width, size.height, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = image.createGraphics();
+		tip.paint(g);
+		g.dispose();
+		java.lang.reflect.Field top = PvmSummaryTooltip.class.getDeclaredField("raidTop");
+		top.setAccessible(true);
+		return top.getInt(tip);
+	}
+
 	private static PvmSummaryTooltip pvmCard(CombatAchievementResult ca)
 	{
 		PvmSummaryTooltip tip = new PvmSummaryTooltip();

@@ -50,7 +50,8 @@ public class SummaryTooltip extends TitleTooltip
 						BufferedImage badgeIcon, String accountLabel, String prestige)
 	{
 		itemHover.clear();
-		setTitle(rsn);
+		// The panel's own stand-in when a lookup has no name, so the card always keeps its title.
+		setTitle(rsn != null ? rsn : "Player");
 		setTitleIcon(badgeIcon);
 		this.overallRank = overallRank;
 		this.figure = withoutHeadroom(figure);
