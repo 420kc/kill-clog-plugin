@@ -4,7 +4,7 @@ import java.util.EnumMap;
 import java.util.Map;
 
 /**
- * Combat Achievement tiers and PvM Summary reward sprites.
+ * Combat Achievement tiers and their Combat Summary reward sprites.
  *
  * <p>Easy through Master unlock by points. Grandmaster requires every task in
  * every tier to be complete. Thresholds are never stored: each tier's
@@ -42,7 +42,7 @@ enum CombatAchievementTier
 		return totalTasks;
 	}
 
-	/** PvM Summary reward sprite for this tier. */
+	/** The Combat Summary reward sprite for this tier. */
 	CombatAchievementReward reward()
 	{
 		switch (this)

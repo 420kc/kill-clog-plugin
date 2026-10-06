@@ -129,7 +129,7 @@ final class CombatAchievementResult
 			: providerTotal.getOrDefault(tier, 0);
 	}
 
-	/** PvM Summary reward sprite for the held tier, or null when no tier is held. */
+	/** The Combat Summary tier row's reward sprite for the held tier, or null when no tier is held. */
 	CombatAchievementReward getReward()
 	{
 		return tier == null ? null : tier.reward();

@@ -39,6 +39,73 @@ public class PvmSummaryTooltipTest
 	}
 
 	@Test
+	public void theTierRowWaitsForATierThenTakesTheCombatRowsRoom()
+	{
+		Map<CombatAchievementTier, Integer> totals = new java.util.EnumMap<>(CombatAchievementTier.class);
+		for (CombatAchievementTier tier : CombatAchievementTier.values())
+		{
+			totals.put(tier, tier.totalTasks());
+		}
+		Map<CombatAchievementTier, Integer> easyDone = new java.util.EnumMap<>(CombatAchievementTier.class);
+		easyDone.put(CombatAchievementTier.EASY, CombatAchievementTier.EASY.totalTasks());
+
+		int noData = pvmCard(null).getPreferredSize().height;
+		int noTier = pvmCard(CombatAchievementResult.of(Collections.emptyMap(), totals)).getPreferredSize().height;
+		int easy = pvmCard(CombatAchievementResult.of(easyDone, totals)).getPreferredSize().height;
+
+		assertEquals(noData, noTier);
+		// 4 px above, the 22 px row, 6 px below: the combat level row's room.
+		assertEquals(4 + 22 + 6, easy - noData);
+	}
+
+	@Test
+	public void raidRowsStillAnswerClicksUnderTheTierRow() throws ReflectiveOperationException
+	{
+		Map<CombatAchievementTier, Integer> totals = new java.util.EnumMap<>(CombatAchievementTier.class);
+		for (CombatAchievementTier tier : CombatAchievementTier.values())
+		{
+			totals.put(tier, tier.totalTasks());
+		}
+		Map<CombatAchievementTier, Integer> easyDone = new java.util.EnumMap<>(CombatAchievementTier.class);
+		easyDone.put(CombatAchievementTier.EASY, CombatAchievementTier.EASY.totalTasks());
+		PvmSummaryTooltip plain = pvmCard(null);
+		PvmSummaryTooltip tiered = pvmCard(CombatAchievementResult.of(easyDone, totals));
+
+		int plainTop = paintedRaidTop(plain);
+		int tieredTop = paintedRaidTop(tiered);
+		// The tier row's room moves the raid rows down, and their clicks move with them.
+		assertEquals(plainTop + 4 + 22 + 6, tieredTop);
+		assertEquals(-1, tiered.raidAt(tieredTop - 1));
+		assertEquals(0, tiered.raidAt(tieredTop));
+		assertEquals(2, tiered.raidAt(tieredTop + 2 * 14 + 13));
+		assertEquals(-1, tiered.raidAt(tieredTop + 3 * 14));
+	}
+
+	private static int paintedRaidTop(PvmSummaryTooltip tip) throws ReflectiveOperationException
+	{
+		Dimension size = tip.getPreferredSize();
+		tip.setSize(size);
+		BufferedImage image = new BufferedImage(size.width, size.height, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = image.createGraphics();
+		tip.paint(g);
+		g.dispose();
+		java.lang.reflect.Field top = PvmSummaryTooltip.class.getDeclaredField("raidTop");
+		top.setAccessible(true);
+		return top.getInt(tip);
+	}
+
+	private static PvmSummaryTooltip pvmCard(CombatAchievementResult ca)
+	{
+		PvmSummaryTooltip tip = new PvmSummaryTooltip();
+		tip.setData(126, 12345, 20, 60, "Zulrah", 5000);
+		if (ca != null)
+		{
+			tip.setCombatAchievements(ca, null);
+		}
+		return tip;
+	}
+
+	@Test
 	public void combatLevelReadsLikeVanillasExactCombatLevel()
 	{
 		assertEquals("83.925", PvmSummaryTooltip.combatText(83.925));

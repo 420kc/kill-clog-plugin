@@ -90,7 +90,7 @@ public class ComparisonController
 		@Nullable
 		AccountDisplay primaryIdentity();
 
-		/** Preload the PvM Summary reward sprite for a CA result. */
+		/** Preload the Combat Summary reward sprite for a CA result. */
 		void preloadCaReward(@Nullable CombatAchievementResult ca);
 
 		/** Restore the clog info cell to single-player display. */

@@ -14,13 +14,13 @@ import java.util.function.IntFunction;
 import javax.annotation.Nullable;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
-import net.runelite.client.util.ImageUtil;
 
 /**
  * Player summary tooltip on the summary-bar name label.
- * Single-column stats, the prestige cape or a Kill Clog syncer's character
- * beside them, then obtained pet sprites.
- * Hovering a pet swaps the title to its name and left-click opens its wiki
+ * The player's name is the title, in white beside their account badge. Under it stand the
+ * prestige cape or a Kill Clog syncer's character, centered, then the account and prestige
+ * lines, then obtained pet sprites.
+ * Hovering a pet names it under the grid and left-click opens its wiki
  * page - same contract as the PvM summary sprites.
  */
 public class SummaryTooltip extends TitleTooltip
@@ -29,17 +29,13 @@ public class SummaryTooltip extends TitleTooltip
 	private static final int PET_PAD = 2;
 	private static final int PET_COLS = 10;
 	private static final int SECTION_GAP = 6;
-	private static final int FIGURE_PAD = 4;
+	private static final int FIGURE_GAP = 4;
+	private static final String PRESTIGE_LABEL = "Prestige: ";
+	private static final String FORMER_TITLE = "Player Summary";
 
-	private static final int BADGE_SIZE = 13;
-	private static final int BADGE_GAP = 3;
-
-
-	private String rsn;
 	private int overallRank;
 	// The prestige cape, or a Kill Clog syncer's character (PlayerPortraits) standing in its place.
 	private BufferedImage figure;
-	private BufferedImage badgeIcon;
 	private String accountLabel;
 	private String prestige;
 
@@ -54,13 +50,20 @@ public class SummaryTooltip extends TitleTooltip
 						BufferedImage badgeIcon, String accountLabel, String prestige)
 	{
 		itemHover.clear();
-		setTitle("Player Summary");
-		this.rsn = rsn;
+		// The panel's own stand-in when a lookup has no name, so the card always keeps its title.
+		setTitle(rsn != null ? rsn : "Player");
+		setTitleIcon(badgeIcon);
 		this.overallRank = overallRank;
-		this.figure = figure;
-		this.badgeIcon = resizeBadge(badgeIcon);
+		this.figure = withoutHeadroom(figure);
 		this.accountLabel = accountLabel;
 		this.prestige = prestige;
+	}
+
+	/** The player's name reads white, like the name it is, not an orange card label. */
+	@Override
+	protected Color titleColor()
+	{
+		return Color.WHITE;
 	}
 
 	public void setPets(List<Integer> allPetIds, Set<Integer> obtainedPetIds,
@@ -96,12 +99,14 @@ public class SummaryTooltip extends TitleTooltip
 		}
 	}
 
+	private boolean hasRankLine()
+	{
+		return accountLabel != null || overallRank > 0;
+	}
+
 	private int getStatsLines()
 	{
-		int lines = 1; // RSN
-		if (accountLabel != null || overallRank > 0) lines++;
-		if (prestige != null) lines += 2;
-		return lines;
+		return (hasRankLine() ? 1 : 0) + (prestige != null ? 1 : 0);
 	}
 
 	private boolean hasPets()
@@ -119,19 +124,26 @@ public class SummaryTooltip extends TitleTooltip
 	private int getTextWidth(FontMetrics fm)
 	{
 		int tw = 0;
-		if (rsn != null)
+		if (hasRankLine())
 		{
-			int rsnW = fm.stringWidth(rsn);
-			if (badgeIcon != null) rsnW += badgeIcon.getWidth() + BADGE_GAP;
-			tw = Math.max(tw, rsnW);
+			tw = fm.stringWidth(accountLabelText() + rankTail());
 		}
-		tw = Math.max(tw, fm.stringWidth(accountLabelText() + rankTail()));
 		if (prestige != null)
 		{
-			tw = Math.max(tw, fm.stringWidth("Prestige:"));
-			tw = Math.max(tw, fm.stringWidth(prestige));
+			tw = Math.max(tw, fm.stringWidth(PRESTIGE_LABEL + prestige));
 		}
 		return tw;
+	}
+
+	/** A player without hiscores or a figure has nothing above the pets but the title. */
+	private boolean hasBodyAbovePets()
+	{
+		return figure != null || getStatsLines() > 0;
+	}
+
+	private int getFigureHeight()
+	{
+		return figure != null ? figure.getHeight() + FIGURE_GAP : 0;
 	}
 
 	@Override
@@ -139,30 +151,21 @@ public class SummaryTooltip extends TitleTooltip
 	{
 		FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
 
-		int textWidth = getTextWidth(fm);
-		int statsHeight = LINE_HEIGHT * getStatsLines();
-
-		// The cape or character column beside stats.
-		int figureColWidth = 0;
-		if (figure != null)
-		{
-			figureColWidth = FIGURE_PAD + figure.getWidth();
-		}
-
 		// Pet grid.
 		int petCount = hasPets() ? petList.size() : 0;
 		int petGridWidth = petCount > 0
 			? Math.min(petCount, PET_COLS) * (PET_SIZE + PET_PAD) - PET_PAD
 			: 0;
 
-		int contentWidth = Math.max(textWidth + figureColWidth, petGridWidth);
-		int contentHeight = figure != null
-			? Math.max(statsHeight, figure.getHeight())
-			: statsHeight;
+		int contentWidth = Math.max(Math.max(getTextWidth(fm), figure != null ? figure.getWidth() : 0),
+			petGridWidth);
+		// Never thinner than the card was when "Player Summary" titled it, whatever the name.
+		contentWidth = Math.max(contentWidth, getFontMetrics(getTitleFont()).stringWidth(FORMER_TITLE));
+		int contentHeight = getFigureHeight() + LINE_HEIGHT * getStatsLines();
 
 		if (totalPetCount > 0)
 		{
-			contentHeight += SECTION_GAP + 1 + SECTION_GAP
+			contentHeight += (hasBodyAbovePets() ? SECTION_GAP + 1 + SECTION_GAP : 0)
 				+ fm.getHeight() + PET_PAD;
 			if (hasPets())
 			{
@@ -179,59 +182,33 @@ public class SummaryTooltip extends TitleTooltip
 		int inset = getInset();
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		FontMetrics fm = g2.getFontMetrics();
-		int lineY = startY + fm.getAscent();
 
-		// RSN with optional badge.
-		if (rsn != null)
-		{
-			int rsnX = inset;
-			if (badgeIcon != null)
-			{
-				int iconY = lineY - fm.getAscent() + (LINE_HEIGHT - badgeIcon.getHeight()) / 2;
-				g2.drawImage(badgeIcon, rsnX, iconY, null);
-				rsnX += badgeIcon.getWidth() + BADGE_GAP;
-			}
-			g2.setColor(Color.WHITE);
-			g2.drawString(rsn, rsnX, lineY);
-		}
-		lineY += LINE_HEIGHT;
-
-		// Account type plus rank.
-		if (accountLabel != null || overallRank > 0)
-		{
-			drawLabelValue(g2, fm, inset, lineY, accountLabelText(), rankTail());
-			lineY += LINE_HEIGHT;
-		}
-
-		// Prestige.
-		if (prestige != null)
-		{
-			g2.setColor(OSRS_ORANGE);
-			g2.drawString("Prestige:", inset, lineY);
-			lineY += LINE_HEIGHT;
-			g2.setColor(Color.WHITE);
-			g2.drawString(prestige, inset, lineY);
-			lineY += LINE_HEIGHT;
-		}
-
-		// Cape or character in the right column: centered against stats, or level with their top
-		// when taller (a character stands taller than four lines of stats).
-		int sectionBottom = lineY - fm.getAscent();
+		// The cape or character stands centered under the name.
 		if (figure != null)
 		{
-			int textRight = inset + getTextWidth(fm);
-			int rightEdge = w - inset;
-			int figureX = textRight + (rightEdge - textRight - figure.getWidth()) / 2;
-			int statsBlockHeight = LINE_HEIGHT * getStatsLines();
-			int figureY = startY + Math.max(0, (statsBlockHeight - figure.getHeight()) / 2);
-			g2.drawImage(figure, figureX, figureY, null);
-			sectionBottom = Math.max(sectionBottom, startY + Math.max(statsBlockHeight, figure.getHeight()));
+			g2.drawImage(figure, (w - figure.getWidth()) / 2, startY, null);
+		}
+		int lineY = startY + getFigureHeight() + fm.getAscent();
+
+		// Account type plus rank, then prestige, each centered under the figure.
+		if (hasRankLine())
+		{
+			String line = accountLabelText() + rankTail();
+			drawLabelValue(g2, fm, (w - fm.stringWidth(line)) / 2, lineY, accountLabelText(), rankTail());
+			lineY += LINE_HEIGHT;
+		}
+		if (prestige != null)
+		{
+			drawLabelValue(g2, fm, (w - fm.stringWidth(PRESTIGE_LABEL + prestige)) / 2, lineY,
+				PRESTIGE_LABEL, prestige);
+			lineY += LINE_HEIGHT;
 		}
 
 		if (totalPetCount <= 0) return;
 
-		// Pets header under a separator.
-		int petsHeaderY = paintSeparator(g2, w, sectionBottom, SECTION_GAP) + fm.getAscent();
+		// Pets header under a separator, or straight under the title's own when nothing stands between.
+		int petsTop = hasBodyAbovePets() ? paintSeparator(g2, w, lineY - fm.getAscent(), SECTION_GAP) : startY;
+		int petsHeaderY = petsTop + fm.getAscent();
 		int petCount = petList != null ? petList.size() : 0;
 		drawLabelValue(g2, fm, inset, petsHeaderY, "Pets: ", String.valueOf(petCount),
 			completionColor(petCount, totalPetCount));
@@ -283,14 +260,27 @@ public class SummaryTooltip extends TitleTooltip
 		return overallRank > 0 ? (accountLabel != null ? " #" : "#") + grouped(overallRank) : "";
 	}
 
+	/**
+	 * The figure cut to its first row of pixels: a character's portrait leaves room above the head
+	 * for tall hats, which would read as a gap under the name.
+	 */
 	@Nullable
-	private static BufferedImage resizeBadge(@Nullable BufferedImage badge)
+	static BufferedImage withoutHeadroom(@Nullable BufferedImage image)
 	{
-		if (badge == null || badge.getHeight() <= 0)
+		if (image == null)
 		{
 			return null;
 		}
-		int width = Math.max(1, (int) Math.round((double) badge.getWidth() / badge.getHeight() * BADGE_SIZE));
-		return ImageUtil.resizeImage(badge, width, BADGE_SIZE);
+		for (int y = 0; y < image.getHeight(); y++)
+		{
+			for (int x = 0; x < image.getWidth(); x++)
+			{
+				if ((image.getRGB(x, y) >>> 24) != 0)
+				{
+					return y == 0 ? image : image.getSubimage(0, y, image.getWidth(), image.getHeight() - y);
+				}
+			}
+		}
+		return image;
 	}
 }

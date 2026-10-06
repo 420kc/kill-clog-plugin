@@ -13,6 +13,7 @@ import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.IntFunction;
+import javax.annotation.Nullable;
 import javax.swing.SwingUtilities;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -35,6 +36,9 @@ import net.runelite.client.util.ImageUtil;
 public abstract class TitleTooltip extends NativeTooltip
 {
 	private static final int NAME_LINE_HEIGHT = 20;
+	// The hiscore badges are 18 px art, the title line's own height.
+	private static final int TITLE_ICON_MAX = 18;
+	private static final int TITLE_ICON_GAP = 4;
 	private static final int SEPARATOR_GAP = 6;
 	private static final int INFO_PAIR_GAP = 8;
 	private static final String ELLIPSIS = "...";
@@ -68,6 +72,8 @@ public abstract class TitleTooltip extends NativeTooltip
 	private Color infoColor;
 	private String rankText;
 	private String titleWikiPage;
+	@Nullable
+	private BufferedImage titleIcon;
 	private boolean wikiLinksEnabled = true;
 	private boolean titleHovered;
 	// Item sprites on the card: hover names and wiki links. Installed after the
@@ -93,6 +99,25 @@ public abstract class TitleTooltip extends NativeTooltip
 	{
 		titleSuffix = null;
 		titleSuffixColor = null;
+	}
+
+	/**
+	 * Optional badge before the title, drawn at its own size: art no taller than the title's line
+	 * stays crisp, and anything taller is scaled down to fit it.
+	 */
+	protected void setTitleIcon(@Nullable BufferedImage icon)
+	{
+		if (icon != null && icon.getHeight() > TITLE_ICON_MAX)
+		{
+			int width = Math.max(1, (int) Math.round((double) icon.getWidth() / icon.getHeight() * TITLE_ICON_MAX));
+			icon = ImageUtil.resizeImage(icon, width, TITLE_ICON_MAX);
+		}
+		titleIcon = icon;
+	}
+
+	private int titleIconWidth()
+	{
+		return titleIcon != null ? titleIcon.getWidth() + TITLE_ICON_GAP : 0;
 	}
 
 	/** Optional OSRS Wiki page opened when the title is clicked. */
@@ -489,7 +514,7 @@ public abstract class TitleTooltip extends NativeTooltip
 
 		// Header text widths drive minimum tooltip width.
 		// The full header width flows to getContentSize so grids can fill the space.
-		int titleTextWidth = title != null ? nfm.stringWidth(title) : 0;
+		int titleTextWidth = title != null ? titleIconWidth() + nfm.stringWidth(title) : 0;
 		if (titleSuffix != null)
 		{
 			titleTextWidth += nfm.stringWidth(titleSuffix);
@@ -546,10 +571,16 @@ public abstract class TitleTooltip extends NativeTooltip
 		g2.setColor(headerColor);
 		// Long reveal texts (recent-item names) ellipsize instead of clipping.
 		int suffixWidth = showTitleSuffix ? nfm.stringWidth(titleSuffix) : 0;
+		int titleX = inset + titleIconWidth();
+		if (titleIcon != null)
+		{
+			// Centered on the title's line, lifted a pixel to sit level with the letters.
+			g2.drawImage(titleIcon, inset, inset + (NAME_LINE_HEIGHT - titleIcon.getHeight()) / 2 - 1, null);
+		}
 		headerTitle = fitHeaderText(nfm, headerTitle,
-			w - 2 * inset - suffixWidth);
-		g2.drawString(headerTitle, inset, lineY);
-		int activeLineWidth = nfm.stringWidth(headerTitle);
+			w - inset - titleX - suffixWidth);
+		g2.drawString(headerTitle, titleX, lineY);
+		int activeLineWidth = titleX - inset + nfm.stringWidth(headerTitle);
 		if (showTitleSuffix)
 		{
 			g2.setColor(titleSuffixColor != null ? titleSuffixColor : OSRS_ORANGE);
@@ -707,6 +738,6 @@ public abstract class TitleTooltip extends NativeTooltip
 	{
 		int inset = getInset();
 		int width = title != null ? getFontMetrics(getTitleFont()).stringWidth(title) : 0;
-		return new Rectangle(inset, inset, width, NAME_LINE_HEIGHT);
+		return new Rectangle(inset + titleIconWidth(), inset, width, NAME_LINE_HEIGHT);
 	}
 }
