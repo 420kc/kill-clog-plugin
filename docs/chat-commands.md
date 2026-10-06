@@ -1,6 +1,6 @@
 # Chat command reference
 
-[Back to the README](../README.md#chat)
+[Back to the README](../README.md#chat-commands)
 
 ## Quick rule
 

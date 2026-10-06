@@ -6,7 +6,7 @@ HiScores, Collection Logs, Personal Bests, and player comparison in one RuneLite
 
 ![Kill Clog's panel for 420 kc, with a popup from each kind of cell](screenshots/hero-2.5.0.png)
 
-## Collection Log setup and updates
+## Setup
 
 Install **Kill Clog** from the RuneLite Plugin Hub and open its panel while logged in. Your account loads automatically.
 
@@ -16,7 +16,35 @@ Your log is saved locally and updates with new unlocks as you play. Open the Col
 
 To retry an update, reopen the log or choose **Search** at the top. If it says **RuneProfile**, right-click it and choose **Search**. Interrupted updates keep your saved log.
 
-## Look up other players
+## Kill Clog Web Sync
+
+Optional and off by default.
+
+**Sync Collection Log** publishes your Collection Log, unlock dates and personal bests to your killclog.com profile. The chalice button (**publish collection log**) publishes right away. Open the in-game log first so it's current.
+
+**Publish Character Model** needs Sync Collection Log. It adds the **publish character** button beside the chalice, which publishes your character and follower in your real appearance. Anyone who looks you up in Kill Clog sees them in your Player Summary.
+
+![Kill Clog Web Sync settings with Sync Collection Log and Publish Character Model on](screenshots/web-sync-settings.png)
+
+![The publish character button beside the chalice at the top of the panel](screenshots/web-sync-publish-character.png)
+
+![based batt's published character and follower on killclog.com and in Kill Clog's Player Summary](screenshots/web-sync-profile-and-summary.png)
+
+The icon will flash green on a successful upload.
+
+## Skill Clogs
+
+Every skill has its own Collection Log-style progression. Skill modals combine relevant activities, equipment, and unlocks with the skill's level, XP, rank, and XP to next level.
+
+![Enable Skill Clogs on](screenshots/skill-clogs-setting-on.png)
+
+![A Fletching skill modal with its Vale Totems skill clog](screenshots/skill-clog-on.png)
+
+![Enable Skill Clogs off](screenshots/skill-clogs-setting-off.png)
+
+![The same Fletching modal with Skill Clogs off](screenshots/skill-clog-off.png)
+
+## Player Lookup
 
 Enter an RSN in the search bar, or right-click a supported player or name and choose **Kill Clog**.
 
@@ -32,7 +60,13 @@ While a League runs, a **Leagues** switch beside the search bar flips the panel 
 
 HiScores load for any valid RSN, including Collection Log totals and ranks when listed. Item-by-item Collection Log details appear when that player has data available through TempleOSRS, RuneProfile, or Kill Clog.
 
-### Leaderboard selector
+## Grid and List views
+
+Toggle between the default Grid view and List view with the **Menu** button under the search bar. Comparison uses Grid view.
+
+![Bosses in Grid view and List view](screenshots/grid-and-list-views.png)
+
+## Leaderboard selector
 
 Turn on **Show Leaderboard Selector** under **Lookup** to switch between the hiscores a player is on, using the icons below the grid.
 
@@ -40,41 +74,7 @@ Turn on **Show Leaderboard Selector** under **Lookup** to switch between the his
 
 A Hardcore who died keeps their stats from the moment of death on the Hardcore tab, marked with a skull on the helm. A de-ironed account's old Ironman stats get a crossed-out helm. Comparisons and new lookups always use each player's own leaderboard.
 
-## Grid and List views
-
-Toggle between the default Grid view and List view with the **Menu** button under the search bar. Comparison uses Grid view.
-
-![Bosses in Grid view and List view](screenshots/grid-and-list-views.png)
-
-## Skill Clogs
-
-Every skill has its own Collection Log-style progression. Skill modals combine relevant activities, equipment, and unlocks with the skill's level, XP, rank, and XP to next level.
-
-![Enable Skill Clogs on](screenshots/skill-clogs-setting-on.png)
-
-![A Fletching skill modal with its Vale Totems skill clog](screenshots/skill-clog-on.png)
-
-![Enable Skill Clogs off](screenshots/skill-clogs-setting-off.png)
-
-![The same Fletching modal with Skill Clogs off](screenshots/skill-clog-off.png)
-
-## Kill Clog Web Sync
-
-Optional and off by default.
-
-**Sync Collection Log** publishes your Collection Log, unlock dates and personal bests to your killclog.com profile. The chalice button (**publish collection log**) publishes right away. Open the in-game log first so it's current.
-
-**Publish Character Model** needs Sync Collection Log. It adds the **publish character** button beside the chalice, which publishes your character and follower in your real appearance.
-
-![Kill Clog Web Sync settings with Sync Collection Log and Publish Character Model on](screenshots/web-sync-settings.png)
-
-![The publish character button beside the chalice at the top of the panel](screenshots/web-sync-publish-character.png)
-
-![A published character and follower on a killclog.com profile](screenshots/web-sync-profile.png)
-
-The icon will flash green on a successful upload.
-
-## Chat
+## Chat Commands
 
 ![A Kill Clog chat reply for Brutus with item sprites and quantities](screenshots/chat-reply-brutus.png)
 
