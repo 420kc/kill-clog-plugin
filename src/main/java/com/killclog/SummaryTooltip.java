@@ -134,6 +134,12 @@ public class SummaryTooltip extends TitleTooltip
 		return tw;
 	}
 
+	/** A player without hiscores or a figure has nothing above the pets but the title. */
+	private boolean hasBodyAbovePets()
+	{
+		return figure != null || getStatsLines() > 0;
+	}
+
 	private int getFigureHeight()
 	{
 		return figure != null ? figure.getHeight() + FIGURE_GAP : 0;
@@ -158,7 +164,7 @@ public class SummaryTooltip extends TitleTooltip
 
 		if (totalPetCount > 0)
 		{
-			contentHeight += SECTION_GAP + 1 + SECTION_GAP
+			contentHeight += (hasBodyAbovePets() ? SECTION_GAP + 1 + SECTION_GAP : 0)
 				+ fm.getHeight() + PET_PAD;
 			if (hasPets())
 			{
@@ -199,8 +205,9 @@ public class SummaryTooltip extends TitleTooltip
 
 		if (totalPetCount <= 0) return;
 
-		// Pets header under a separator.
-		int petsHeaderY = paintSeparator(g2, w, lineY - fm.getAscent(), SECTION_GAP) + fm.getAscent();
+		// Pets header under a separator, or straight under the title's own when nothing stands between.
+		int petsTop = hasBodyAbovePets() ? paintSeparator(g2, w, lineY - fm.getAscent(), SECTION_GAP) : startY;
+		int petsHeaderY = petsTop + fm.getAscent();
 		int petCount = petList != null ? petList.size() : 0;
 		drawLabelValue(g2, fm, inset, petsHeaderY, "Pets: ", String.valueOf(petCount),
 			completionColor(petCount, totalPetCount));

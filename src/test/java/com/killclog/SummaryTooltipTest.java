@@ -6,6 +6,7 @@ import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 
 import java.awt.image.BufferedImage;
+import java.lang.reflect.Field;
 import org.junit.Test;
 
 public class SummaryTooltipTest
@@ -86,5 +87,26 @@ public class SummaryTooltipTest
 
 		// The trimmed 87 px character and a 4 px gap, over the same two stat lines.
 		assertEquals(87 + 4, with.getPreferredSize().height - without.getPreferredSize().height);
+	}
+
+	@Test
+	public void petsFollowTheTitlesDividerWhenNothingStandsAboveThem() throws ReflectiveOperationException
+	{
+		SummaryTooltip bare = new SummaryTooltip();
+		bare.setData("Fixture", -1, null, null, null, null);
+		SummaryTooltip ranked = new SummaryTooltip();
+		ranked.setData("Fixture", 12345, null, null, "Ironman", null);
+		petTotal(bare, 65);
+		petTotal(ranked, 65);
+
+		// One stats line and its divider (6 + 1 + 6) above the pets, against nothing and no second divider.
+		assertEquals(14 + 13, ranked.getPreferredSize().height - bare.getPreferredSize().height);
+	}
+
+	private static void petTotal(SummaryTooltip tip, int total) throws ReflectiveOperationException
+	{
+		Field field = SummaryTooltip.class.getDeclaredField("totalPetCount");
+		field.setAccessible(true);
+		field.setInt(tip, total);
 	}
 }
