@@ -259,6 +259,125 @@ public class TooltipControllerTest
 	}
 
 	@Test
+	public void aPinnedCardsWholeLifeLeavesNothingBehind() throws Exception
+	{
+		List<Component> shown = new ArrayList<>();
+		PopupFactory original = PopupFactory.getSharedInstance();
+		PopupFactory.setSharedInstance(new PopupFactory()
+		{
+			@Override
+			public Popup getPopup(Component owner, Component contents, int x, int y)
+			{
+				return new Popup()
+				{
+					@Override
+					public void show()
+					{
+						shown.add(contents);
+					}
+
+					@Override
+					public void hide()
+					{
+						shown.remove(contents);
+					}
+				};
+			}
+		});
+		GraphicsConfiguration screen = new BufferedImage(8, 8, BufferedImage.TYPE_INT_ARGB)
+			.createGraphics().getDeviceConfiguration();
+		JPanel cell = new JPanel()
+		{
+			@Override
+			public Point getLocationOnScreen()
+			{
+				return new Point(10, 10);
+			}
+
+			@Override
+			public GraphicsConfiguration getGraphicsConfiguration()
+			{
+				return screen;
+			}
+		};
+		JToolTip summary = new JToolTip();
+		JLabel source = new JLabel()
+		{
+			@Override
+			public boolean isShowing()
+			{
+				return true;
+			}
+
+			@Override
+			public Point getLocationOnScreen()
+			{
+				return new Point(10, 10);
+			}
+
+			@Override
+			public JToolTip createToolTip()
+			{
+				return summary;
+			}
+		};
+		source.setToolTipText("Clog Summary");
+		TooltipController controller = new TooltipController(config);
+		int listeners = java.awt.Toolkit.getDefaultToolkit().getAWTEventListeners().length;
+
+		try
+		{
+			SwingUtilities.invokeAndWait(() ->
+			{
+				controller.showPinnedTooltip(source, cell);
+				assertEquals(Collections.singletonList(summary), shown);
+				assertEquals(listeners + 1, java.awt.Toolkit.getDefaultToolkit().getAWTEventListeners().length);
+				assertNull("the source's own tooltip waits while its card is pinned", source.getToolTipText());
+
+				// Summary to tab, tab to page, page back to the summary: each press closes one card and opens
+				// the next, and only one dismiss listener is ever installed.
+				for (JToolTip next : new JToolTip[]{new JToolTip(), new JToolTip(), summary})
+				{
+					dismissListener(controller).eventDispatched(new MouseEvent(shown.get(0), MouseEvent.MOUSE_PRESSED,
+						0L, 0, 5, 5, 1, false, MouseEvent.BUTTON1));
+					assertTrue(shown.isEmpty());
+					controller.pinTooltip(source, cell, next);
+					assertEquals(Collections.singletonList(next), shown);
+					assertEquals(listeners + 1, java.awt.Toolkit.getDefaultToolkit().getAWTEventListeners().length);
+				}
+
+				// Escape closes the last card and leaves nothing behind.
+				dismissListener(controller).eventDispatched(new java.awt.event.KeyEvent(summary,
+					java.awt.event.KeyEvent.KEY_PRESSED, 0L, 0, java.awt.event.KeyEvent.VK_ESCAPE,
+					java.awt.event.KeyEvent.CHAR_UNDEFINED));
+				assertTrue(shown.isEmpty());
+				assertEquals(listeners, java.awt.Toolkit.getDefaultToolkit().getAWTEventListeners().length);
+				assertEquals("Clog Summary", source.getToolTipText());
+			});
+		}
+		finally
+		{
+			source.setToolTipText(null);
+			controller.deactivate();
+			PopupFactory.setSharedInstance(original);
+		}
+	}
+
+	private static AWTEventListener dismissListener(TooltipController controller)
+	{
+		try
+		{
+			Field listener = TooltipController.class.getDeclaredField("pinDismissListener");
+			listener.setAccessible(true);
+			return (AWTEventListener) listener.get(controller);
+		}
+		catch (ReflectiveOperationException e)
+		{
+			throw new AssertionError(e);
+		}
+	}
+
+	@Test
 	public void pinnedSourceTooltipIsSuppressedAndRestored() throws Exception
 	{
 		mode = TooltipMode.HOVER;

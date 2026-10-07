@@ -78,6 +78,42 @@ public class ComparisonSnapshotTest
 		assertSame(fixture.primary.getNativeHiscoreResult(), fixture.comparison.getCompareHiscoreResult());
 	}
 
+	@Test
+	public void aLateCaKeepsTheLocalPlayersOwnAccountType() throws Exception
+	{
+		LookupTestFixture fixture = new LookupTestFixture();
+		// The local player, a group ironman the hiscores read as regular, on the red side.
+		edt(() -> fixture.comparison.doCompareLookup("Me", "Me", AccountType.GROUP_IRONMAN));
+		fixture.hiscores.get("Me").complete(hiscore(2));
+		edt(() -> fixture.clogs.get("Me").complete(clog("Me")));
+		assertEquals(AccountType.GROUP_IRONMAN, redSelfType(fixture));
+		fixture.cas.get("Me").complete(ca(5));
+		assertPlayer(fixture, "Me", 2, "Me", 5);
+		assertEquals(AccountType.GROUP_IRONMAN, redSelfType(fixture));
+	}
+
+	private static AccountType redSelfType(LookupTestFixture fixture) throws Exception
+	{
+		AccountType[] type = new AccountType[1];
+		edt(() ->
+		{
+			try
+			{
+				java.lang.reflect.Field compared = ComparisonController.class.getDeclaredField("compared");
+				compared.setAccessible(true);
+				Object red = compared.get(fixture.comparison);
+				java.lang.reflect.Field selfType = red.getClass().getDeclaredField("selfType");
+				selfType.setAccessible(true);
+				type[0] = (AccountType) selfType.get(red);
+			}
+			catch (ReflectiveOperationException e)
+			{
+				throw new AssertionError(e);
+			}
+		});
+		return type[0];
+	}
+
 	private static void commitFirstPlayer(LookupTestFixture fixture) throws Exception
 	{
 		edt(() -> fixture.comparison.doCompareLookup("First", "Blue", null));

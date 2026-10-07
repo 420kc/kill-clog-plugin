@@ -603,6 +603,29 @@ public class LeagueViewPanelTest
 		return field(card, "accountLabel", String.class);
 	}
 
+	@Test
+	public void aSelfLookupsSetupNeverWritesOverTheRivalsName() throws Exception
+	{
+		when(clogs.lookupRsn(any())).thenReturn(new CompletableFuture<>());
+		ComparisonController comparison = field(panel, "comparison", ComparisonController.class);
+		JLabel rival = field(panel, "clogInfoLabel", JLabel.class);
+		javax.swing.JComponent notice = field(panel, "clogNotice", javax.swing.JComponent.class);
+		Constructor<?> compared = Class.forName("com.killclog.ComparisonController$ComparedPlayer").getDeclaredConstructors()[0];
+		compared.setAccessible(true);
+		HiscoreResult exo = RankSelectorTest.result(AccountType.IRONMAN, HiscoreTable.STANDARD, 20, 20000);
+		SwingUtilities.invokeAndWait(() ->
+		{
+			panel.setLoggedInPlayer("Me", AccountType.REGULAR);
+			panel.followWorld(null, null, null);
+			setField(comparison, "compared", newInstance(compared, exo));
+			setField(comparison, "comparisonMode", true);
+			panel.onComparisonEnter("Exo");
+			panel.onClogResult("Me", null, true, session.getLookupVersion());
+			assertTrue("the log still offers setup", notice.isVisible());
+			assertEquals("the red name keeps its place", "Exo", rival.getText().trim());
+		});
+	}
+
 	private static Object newInstance(Constructor<?> compared, HiscoreResult hiscore)
 	{
 		try
