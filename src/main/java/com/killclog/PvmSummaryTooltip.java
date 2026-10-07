@@ -32,9 +32,11 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private static final int WEAPON_PAD = 6;
 	private static final int SEPARATOR_PAD = 2;
 	private static final int SECTION_GAP = 4;
-	private static final int CA_ROW_HEIGHT = 18;
-	private static final int CA_REWARD_GAP = 3;
-	// The combat level leads the card beside the combat cell's own icon, with room around it.
+	// The combat level leads the card beside the combat cell's own icon, with room around it; the
+	// CA tier leads the PvM rows the same way, its reward at the combat icon's size.
+	static final int ICON_SIZE = 20;
+	private static final String PVM_HEADER = "PvM";
+	private static final String PVP_HEADER = "PvP";
 	private static final int LEVEL_ROW_HEIGHT = 22;
 	private static final int LEVEL_GAP_ABOVE = 4;
 	private static final int LEVEL_GAP_BELOW = 6;
@@ -264,7 +266,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 		// Width: measure the real rendered strings, never a placeholder.
 		int textWidth = 0;
-		textWidth = Math.max(textWidth, iconWidth() + bfm.stringWidth(combatText(combatLevel)));
+		textWidth = Math.max(textWidth, iconColumnWidth() + bfm.stringWidth(combatText(combatLevel)));
 		textWidth = Math.max(textWidth, fm.stringWidth("Total Kills: " + scoreText(totalKills)));
 		textWidth = Math.max(textWidth, fm.stringWidth("EHB: " + ehbText(ehb)));
 		textWidth = Math.max(textWidth, fm.stringWidth("XP: " + slayerXpText(slayerXp)));
@@ -283,19 +285,17 @@ public class PvmSummaryTooltip extends TitleTooltip
 		{
 			textWidth = Math.max(textWidth, fm.stringWidth(mostKilledLine()));
 		}
-		textWidth = Math.max(textWidth, bfm.stringWidth("PvM Summary"));
-		textWidth = Math.max(textWidth, bfm.stringWidth("PvP Summary"));
+		textWidth = Math.max(textWidth, bfm.stringWidth(PVM_HEADER));
+		textWidth = Math.max(textWidth, bfm.stringWidth(PVP_HEADER));
 		textWidth = Math.max(textWidth, bfm.stringWidth("Slayer"));
 		textWidth = Math.max(textWidth, bfm.stringWidth("Raids"));
 		for (int i = 0; i < 3; i++)
 		{
 			textWidth = Math.max(textWidth, raidLineWidth(fm, RAID_LABELS[i], raidKc[i], raidObtained[i], raidTotal[i]));
 		}
-		if (caResult != null)
+		if (hasTierRow())
 		{
-			int caWidth = fm.stringWidth("CA Tier: " + tierDisplayName(caResult))
-				+ (caRewardSprite != null ? caRewardSprite.getWidth() + CA_REWARD_GAP : 0);
-			textWidth = Math.max(textWidth, caWidth);
+			textWidth = Math.max(textWidth, iconColumnWidth() + bfm.stringWidth(tierDisplayName(caResult)));
 		}
 
 		for (String name : PanelData.MEGARARE_ITEM_NAMES)
@@ -310,7 +310,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		int contentWidth = Math.max(Math.max(textWidth, pvpSize.width),
 			Math.max(spriteRowWidth, superiorRowWidth));
 		int separatorHeight = separatorHeight(SEPARATOR_PAD);
-		int caHeight = caResult != null ? CA_ROW_HEIGHT : 0;
+		int caHeight = hasTierRow() ? LEVEL_GAP_ABOVE + LEVEL_ROW_HEIGHT + LEVEL_GAP_BELOW : 0;
 		int contentHeight = LEVEL_GAP_ABOVE + LEVEL_ROW_HEIGHT + LEVEL_GAP_BELOW
 			+ SUBHEADER_HEIGHT + statsHeight + caHeight + mostKilledHeight + SECTION_GAP
 			+ separatorHeight + slayerHeight
@@ -331,21 +331,14 @@ public class PvmSummaryTooltip extends TitleTooltip
 		int y = startY;
 
 		// The combat level leads the card; PvM and PvP each follow under their own subheader.
-		y = paintLevel(g2, inset, y + LEVEL_GAP_ABOVE) + LEVEL_GAP_BELOW;
-		y = paintSubheader(g2, y, "PvM Summary");
+		y = paintIconRow(g2, inset, y + LEVEL_GAP_ABOVE, combatIcon, combatText(combatLevel)) + LEVEL_GAP_BELOW;
+		y = paintSubheader(g2, y, PVM_HEADER);
 
-		// CA Tier appears first when data is available.
-		if (caResult != null)
+		// The CA tier leads the PvM rows, built like the combat level row above it, once one is held.
+		if (hasTierRow())
 		{
-			int caTextY = y + fm.getAscent();
-			int cx = inset + drawLabelValue(g2, fm, inset, caTextY, "CA Tier: ", tierDisplayName(caResult));
-			if (caRewardSprite != null)
-			{
-				cx += CA_REWARD_GAP;
-				int rewardY = y + (CA_ROW_HEIGHT - caRewardSprite.getHeight()) / 2 - 2;
-				g2.drawImage(caRewardSprite, cx, rewardY, null);
-			}
-			y += CA_ROW_HEIGHT;
+			y = paintIconRow(g2, inset, y + LEVEL_GAP_ABOVE, caRewardSprite, tierDisplayName(caResult))
+				+ LEVEL_GAP_BELOW;
 		}
 
 		// Total Kills
@@ -414,7 +407,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		y += WEAPON_SIZE + hoverRowHeight(fm);
 
 		y = paintSeparator(g2, w, y, SEPARATOR_PAD);
-		y = paintSubheader(g2, y, "PvP Summary");
+		y = paintSubheader(g2, y, PVP_HEADER);
 		pvpRows.paint(g2, fm, inset, y);
 
 		itemHover.setHitBoxes(hitBoxes);
@@ -505,25 +498,38 @@ public class PvmSummaryTooltip extends TitleTooltip
 		return scoreText(xp);
 	}
 
-	/** The combat icon and level in bold, exactly like the panel cell. */
-	private int paintLevel(Graphics2D g2, int inset, int y)
+	/**
+	 * A lead row like the panel's combat cell: an icon centered in the icon column, then its text in
+	 * bold white. The combat level and the CA tier share the column, so their text lines up.
+	 */
+	private int paintIconRow(Graphics2D g2, int inset, int y, @Nullable Image icon, String text)
 	{
-		int x = inset + iconWidth();
-		if (combatIcon != null)
+		if (icon != null)
 		{
-			g2.drawImage(combatIcon, inset, y + (LEVEL_ROW_HEIGHT - combatIcon.getHeight(null)) / 2, null);
+			int column = iconColumnWidth() - LEVEL_ICON_GAP;
+			g2.drawImage(icon, inset + (column - icon.getWidth(null)) / 2,
+				y + (LEVEL_ROW_HEIGHT - icon.getHeight(null)) / 2, null);
 		}
 		g2.setFont(FontManager.getRunescapeBoldFont());
 		FontMetrics bfm = g2.getFontMetrics();
 		g2.setColor(Color.WHITE);
-		g2.drawString(combatText(combatLevel), x, y + (LEVEL_ROW_HEIGHT + bfm.getAscent() - bfm.getDescent()) / 2);
+		g2.drawString(text, inset + iconColumnWidth(), y + (LEVEL_ROW_HEIGHT + bfm.getAscent() - bfm.getDescent()) / 2);
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		return y + LEVEL_ROW_HEIGHT;
 	}
 
-	private int iconWidth()
+	/** The tier row waits for a tier: a player still short of Easy has nothing to lead with. */
+	private boolean hasTierRow()
 	{
-		return combatIcon != null ? combatIcon.getWidth(null) + LEVEL_ICON_GAP : 0;
+		return caResult != null && caResult.getTier() != null;
+	}
+
+	/** The icon column the lead rows share: as wide as the wider icon, then the gap. */
+	private int iconColumnWidth()
+	{
+		int width = Math.max(combatIcon != null ? combatIcon.getWidth(null) : 0,
+			hasTierRow() && caRewardSprite != null ? caRewardSprite.getWidth() : 0);
+		return width > 0 ? width + LEVEL_ICON_GAP : 0;
 	}
 
 	/** Vanilla's hiscore formatter: up to three decimals, trailing zeros dropped. */

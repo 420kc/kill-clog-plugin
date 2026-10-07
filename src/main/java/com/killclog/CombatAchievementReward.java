@@ -1,7 +1,7 @@
 package com.killclog;
 
 /**
- * Runtime item sprite shown beside a Combat Achievement tier in PvM Summary.
+ * Runtime item sprite leading a Combat Achievement tier in the Combat Summary.
  */
 enum CombatAchievementReward
 {

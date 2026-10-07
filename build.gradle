@@ -20,6 +20,8 @@ dependencies {
     testImplementation 'org.mockito:mockito-core:5.23.0'
     testImplementation group: 'net.runelite', name: 'client', version: runeLiteVersion
     testImplementation group: 'net.runelite', name: 'jshell', version: runeLiteVersion
+    // Modal lab only: the game cache for real item icons and sprites.
+    testImplementation 'net.runelite:cache:1.12.38'
     testCompileOnly 'org.projectlombok:lombok:1.18.30'
     testAnnotationProcessor 'org.projectlombok:lombok:1.18.30'
 }

@@ -33,6 +33,14 @@ public class SummaryTooltip extends TitleTooltip
 	private static final String PRESTIGE_LABEL = "Prestige: ";
 	private static final String FORMER_TITLE = "Player Summary";
 
+	// LAB ONLY (hive/modal-lab): spacing knobs for the layout harness, never shipped.
+	static int labFigureGap = FIGURE_GAP;
+	static boolean labDivider;
+	static boolean labStatsLeft;
+	static boolean labPrestigeTwoLines;
+	static boolean labKeepHeadroom;
+	static boolean labNoFloor;
+
 	private int overallRank;
 	// The prestige cape, or a Kill Clog syncer's character (PlayerPortraits) standing in its place.
 	private BufferedImage figure;
@@ -53,7 +61,7 @@ public class SummaryTooltip extends TitleTooltip
 		setTitle(rsn);
 		setTitleIcon(badgeIcon);
 		this.overallRank = overallRank;
-		this.figure = withoutHeadroom(figure);
+		this.figure = labKeepHeadroom ? figure : withoutHeadroom(figure);
 		this.accountLabel = accountLabel;
 		this.prestige = prestige;
 	}
@@ -105,7 +113,7 @@ public class SummaryTooltip extends TitleTooltip
 
 	private int getStatsLines()
 	{
-		return (hasRankLine() ? 1 : 0) + (prestige != null ? 1 : 0);
+		return (hasRankLine() ? 1 : 0) + (prestige != null ? (labPrestigeTwoLines ? 2 : 1) : 0);
 	}
 
 	private boolean hasPets()
@@ -127,16 +135,26 @@ public class SummaryTooltip extends TitleTooltip
 		{
 			tw = fm.stringWidth(accountLabelText() + rankTail());
 		}
-		if (prestige != null)
+		if (prestige != null && labPrestigeTwoLines)
+		{
+			tw = Math.max(tw, Math.max(fm.stringWidth(PRESTIGE_LABEL), fm.stringWidth(prestige)));
+		}
+		else if (prestige != null)
 		{
 			tw = Math.max(tw, fm.stringWidth(PRESTIGE_LABEL + prestige));
 		}
 		return tw;
 	}
 
+	/** A player without hiscores or a figure has nothing above the pets but the title. */
+	private boolean hasBodyAbovePets()
+	{
+		return figure != null || getStatsLines() > 0;
+	}
+
 	private int getFigureHeight()
 	{
-		return figure != null ? figure.getHeight() + FIGURE_GAP : 0;
+		return figure != null ? figure.getHeight() + (labDivider ? 6 + 1 + 6 : labFigureGap) : 0;
 	}
 
 	@Override
@@ -153,12 +171,15 @@ public class SummaryTooltip extends TitleTooltip
 		int contentWidth = Math.max(Math.max(getTextWidth(fm), figure != null ? figure.getWidth() : 0),
 			petGridWidth);
 		// Never thinner than the card was when "Player Summary" titled it, whatever the name.
-		contentWidth = Math.max(contentWidth, getFontMetrics(getTitleFont()).stringWidth(FORMER_TITLE));
+		if (!labNoFloor)
+		{
+			contentWidth = Math.max(contentWidth, getFontMetrics(getTitleFont()).stringWidth(FORMER_TITLE));
+		}
 		int contentHeight = getFigureHeight() + LINE_HEIGHT * getStatsLines();
 
 		if (totalPetCount > 0)
 		{
-			contentHeight += SECTION_GAP + 1 + SECTION_GAP
+			contentHeight += (hasBodyAbovePets() ? SECTION_GAP + 1 + SECTION_GAP : 0)
 				+ fm.getHeight() + PET_PAD;
 			if (hasPets())
 			{
@@ -180,6 +201,10 @@ public class SummaryTooltip extends TitleTooltip
 		if (figure != null)
 		{
 			g2.drawImage(figure, (w - figure.getWidth()) / 2, startY, null);
+			if (labDivider)
+			{
+				paintSeparator(g2, w, startY + figure.getHeight(), 6);
+			}
 		}
 		int lineY = startY + getFigureHeight() + fm.getAscent();
 
@@ -187,20 +212,30 @@ public class SummaryTooltip extends TitleTooltip
 		if (hasRankLine())
 		{
 			String line = accountLabelText() + rankTail();
-			drawLabelValue(g2, fm, (w - fm.stringWidth(line)) / 2, lineY, accountLabelText(), rankTail());
+			drawLabelValue(g2, fm, labX(w, fm.stringWidth(line)), lineY, accountLabelText(), rankTail());
 			lineY += LINE_HEIGHT;
 		}
-		if (prestige != null)
+		if (prestige != null && labPrestigeTwoLines)
 		{
-			drawLabelValue(g2, fm, (w - fm.stringWidth(PRESTIGE_LABEL + prestige)) / 2, lineY,
+			g2.setColor(OSRS_ORANGE);
+			g2.drawString(PRESTIGE_LABEL.trim(), labX(w, fm.stringWidth(PRESTIGE_LABEL.trim())), lineY);
+			lineY += LINE_HEIGHT;
+			g2.setColor(Color.WHITE);
+			g2.drawString(prestige, labX(w, fm.stringWidth(prestige)), lineY);
+			lineY += LINE_HEIGHT;
+		}
+		else if (prestige != null)
+		{
+			drawLabelValue(g2, fm, labX(w, fm.stringWidth(PRESTIGE_LABEL + prestige)), lineY,
 				PRESTIGE_LABEL, prestige);
 			lineY += LINE_HEIGHT;
 		}
 
 		if (totalPetCount <= 0) return;
 
-		// Pets header under a separator.
-		int petsHeaderY = paintSeparator(g2, w, lineY - fm.getAscent(), SECTION_GAP) + fm.getAscent();
+		// Pets header under a separator, or straight under the title's own when nothing stands between.
+		int petsTop = hasBodyAbovePets() ? paintSeparator(g2, w, lineY - fm.getAscent(), SECTION_GAP) : startY;
+		int petsHeaderY = petsTop + fm.getAscent();
 		int petCount = petList != null ? petList.size() : 0;
 		drawLabelValue(g2, fm, inset, petsHeaderY, "Pets: ", String.valueOf(petCount),
 			completionColor(petCount, totalPetCount));
@@ -239,6 +274,12 @@ public class SummaryTooltip extends TitleTooltip
 		}
 		paintHeaderHoverLine(g2, fm, w, gridY + getPetGridHeight() + fm.getAscent());
 		itemHover.setHitBoxes(hitBoxes);
+	}
+
+	/** LAB: a stats line's x, centered (what ships) or at the inset. */
+	private int labX(int w, int lineWidth)
+	{
+		return labStatsLeft ? getInset() : (w - lineWidth) / 2;
 	}
 
 	private String accountLabelText()
