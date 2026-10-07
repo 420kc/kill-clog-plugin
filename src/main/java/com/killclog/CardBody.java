@@ -270,9 +270,15 @@ final class CardBody
 	/** One row that opens something: it answers hover in white and a left press with its key. */
 	static Part clickRow(ClickRows rows, int key, ToIntFunction<Ctx> width, RowPainter painter)
 	{
-		return row(NativeTooltip.LINE_HEIGHT, width, (c, y) ->
+		return clickRow(rows, key, NativeTooltip.LINE_HEIGHT, width, painter);
+	}
+
+	/** The same row at its own height, for text a size up. */
+	static Part clickRow(ClickRows rows, int key, int height, ToIntFunction<Ctx> width, RowPainter painter)
+	{
+		return row(height, width, (c, y) ->
 		{
-			rows.span(y, key);
+			rows.span(y, height, key);
 			painter.paint(c, y, rows.hovered == key);
 		});
 	}
@@ -562,8 +568,13 @@ final class CardBody
 
 		void span(int top, int key)
 		{
+			span(top, NativeTooltip.LINE_HEIGHT, key);
+		}
+
+		void span(int top, int height, int key)
+		{
 			spans.removeIf(s -> s[1] == key);
-			spans.add(new int[]{top, key});
+			spans.add(new int[]{top, key, height});
 		}
 
 		/** Forgets every row: a scrolled list lays down only the rows it shows. */
@@ -583,7 +594,7 @@ final class CardBody
 		{
 			for (int[] s : spans)
 			{
-				if (y >= s[0] && y < s[0] + NativeTooltip.LINE_HEIGHT)
+				if (y >= s[0] && y < s[0] + s[2])
 				{
 					return s[1];
 				}

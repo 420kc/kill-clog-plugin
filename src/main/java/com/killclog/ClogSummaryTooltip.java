@@ -3,6 +3,7 @@ package com.killclog;
 import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Composite;
+import java.awt.Font;
 import java.awt.FontMetrics;
 import java.awt.Rectangle;
 import java.awt.event.MouseEvent;
@@ -15,8 +16,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.function.BiConsumer;
+import java.util.function.ToIntFunction;
 import javax.annotation.Nullable;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.AsyncBufferedImage;
 
 /**
@@ -39,6 +42,10 @@ public class ClogSummaryTooltip extends TitleTooltip
 	// an unreached one red, as held and missing items do.
 	private static final int TIER_SECTION = 2;
 	private static final int SOURCE_SECTION = 3;
+	// The tab rows read a size up from the card's text, their counts at the right, each tab apart from the next.
+	private static final Font TAB_FONT = FontManager.getRunescapeFont();
+	private static final int TAB_GAP = 4;
+	private static final int TAB_VALUE_GAP = 8;
 	private static final int BAR_HEIGHT = 3;
 	private static final int BAR_GAP = 3;
 	static final Color BAR_TRACK = new Color(40, 35, 28);
@@ -365,15 +372,12 @@ public class ClogSummaryTooltip extends TitleTooltip
 			for (Map.Entry<String, int[]> tab : tabs.entrySet())
 			{
 				int[] count = tab.getValue();
-				String label = tab.getKey() + ": ";
-				String value = progressCountText(count[0], count[1]);
-				Color color = completionColor(count[0], count[1]);
-				// A tab's row opens its pages, answering hover in white like the Clue Summary's rares.
-				body.add(onOpenTab == null ? CardBody.line(label, value, color)
-					: CardBody.clickRow(tabRows, row, c -> c.fm.stringWidth(label + value), (c, y, hovered) ->
-						drawLabelValue(c.g, c.fm, c.inset(), y + c.fm.getAscent(), label, value,
-							hovered ? Color.WHITE : OSRS_ORANGE, color)))
-					.add(bar(count[0], count[1]));
+				if (row > 0)
+				{
+					body.add(CardBody.gap(TAB_GAP));
+				}
+				body.add(tabRow(row, tab.getKey(), progressCountText(count[0], count[1]),
+					completionColor(count[0], count[1]))).add(bar(count[0], count[1]));
 				row++;
 			}
 		}
@@ -397,6 +401,29 @@ public class ClogSummaryTooltip extends TitleTooltip
 				clogSources.stream().map(source -> source.name).toArray(String[]::new)));
 		}
 		return body;
+	}
+
+	/**
+	 * A tab's row, a size up from the card's text, its count at the right like the PvP rows': it opens the tab's
+	 * pages, answering hover in white like the Clue Summary's rares.
+	 */
+	private CardBody.Part tabRow(int row, String label, String value, Color color)
+	{
+		FontMetrics fm = getFontMetrics(TAB_FONT);
+		ToIntFunction<CardBody.Ctx> width = c -> fm.stringWidth(label) + TAB_VALUE_GAP + fm.stringWidth(value);
+		CardBody.RowPainter painter = (c, y, hovered) ->
+		{
+			Font font = c.g.getFont();
+			c.g.setFont(TAB_FONT);
+			int baseline = y + fm.getAscent();
+			c.g.setColor(hovered ? Color.WHITE : OSRS_ORANGE);
+			c.g.drawString(label, c.inset(), baseline);
+			c.g.setColor(color);
+			c.g.drawString(value, c.w - c.inset() - fm.stringWidth(value), baseline);
+			c.g.setFont(font);
+		};
+		return onOpenTab == null ? CardBody.row(fm.getHeight(), width, (c, y) -> painter.paint(c, y, false))
+			: CardBody.clickRow(tabRows, row, fm.getHeight(), width, painter);
 	}
 
 	/** A thin rail under a count: the share at a glance, the number still primary. */
