@@ -257,6 +257,21 @@ public class HiscoreFailureTest
 			.get(3, TimeUnit.SECONDS).getTotalXp());
 	}
 
+	@Test
+	public void aRowOnABoardThatIsNotTheMainOneNeverReadsAsMissingWhileTheRestAreDown() throws Exception
+	{
+		// The main and Ironman boards are down, the Ultimate board says no row, the Hardcore board has one.
+		assertDown(service(chain ->
+		{
+			String path = chain.request().url().encodedPath();
+			if (path.startsWith(HARDCORE))
+			{
+				return response(chain, 200, body(1000));
+			}
+			return response(chain, path.startsWith("/m=hiscore_oldschool_ultimate/") ? 404 : 503, "");
+		}).lookup("Existing HC", null));
+	}
+
 	private static void assertDown(CompletableFuture<HiscoreResult> lookup) throws Exception
 	{
 		try

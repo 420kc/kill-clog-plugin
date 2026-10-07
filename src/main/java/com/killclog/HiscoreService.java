@@ -373,8 +373,7 @@ public class HiscoreService
 				String bestBody = pickBestBody(type, uimBody, hcimBody, ironBody, regBody);
 				if (bestBody == null)
 				{
-					return uimBody == null && hcimBody == null && ironBody == null && regBody == null
-						? missing(encoded, "hiscore_oldschool") : CompletableFuture.completedFuture(null);
+					return missing(encoded, "hiscore_oldschool");
 				}
 
 				return parseAndRefine(encoded, bestBody, type).thenApply(result -> proven(result, ironmanNow));
