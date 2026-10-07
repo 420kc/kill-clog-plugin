@@ -396,8 +396,7 @@ public class Cells
 		{
 			rareTooltips.clear();
 		}
-		boolean self = localRsn != null
-			&& localRsn.equalsIgnoreCase(lookupSession.getCurrentLookupRsn());
+		boolean self = RsnInputPolicy.sameName(localRsn, lookupSession.getCurrentLookupRsn());
 		boolean selfNoCache = lookupSession.getClogResult() == null && self && lookupSession.readsOwnLog();
 		ClogResult catalog = lookupSession.getClogResult() == null && !selfNoCache
 			? unsyncedCatalog.result() : null;

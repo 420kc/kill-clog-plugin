@@ -386,8 +386,7 @@ public class LocalClogCache
 
 	public boolean isActivePlayer(String name)
 	{
-		return activePlayer != null && name != null
-			&& activePlayer.equalsIgnoreCase(name);
+		return RsnInputPolicy.sameName(activePlayer, name);
 	}
 
 	private boolean serving(String name)

@@ -326,9 +326,9 @@ public class ComparisonController
 
 		final int thisLookup = fanout.begin();
 		String blueName = renderTarget != null ? renderTarget.playerName().getText().trim() : "";
-		boolean blueIsSelf = localRsn != null && localRsn.equalsIgnoreCase(blueName);
-		boolean redIsSelf = localRsn != null && localRsn.equalsIgnoreCase(redPlayer);
-		boolean samePlayer = blueName.equalsIgnoreCase(redPlayer);
+		boolean blueIsSelf = RsnInputPolicy.sameName(localRsn, blueName);
+		boolean redIsSelf = RsnInputPolicy.sameName(localRsn, redPlayer);
+		boolean samePlayer = RsnInputPolicy.sameName(blueName, redPlayer);
 		AccountType redSelfType = redIsSelf ? localAccountType : null;
 		final PendingLookup pending = new PendingLookup(thisLookup, redPlayer, redSelfType);
 

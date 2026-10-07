@@ -1,6 +1,8 @@
 package com.killclog;
 
 import java.util.regex.Pattern;
+import javax.annotation.Nullable;
+import net.runelite.client.util.Text;
 
 /** RSN shape validation for names entered in the panel search box. */
 final class RsnInputPolicy
@@ -12,6 +14,12 @@ final class RsnInputPolicy
 
 	private RsnInputPolicy()
 	{
+	}
+
+	/** One player whatever the spelling Jagex accepts: an underscore, hyphen or non-breaking space for a space. */
+	static boolean sameName(@Nullable String a, @Nullable String b)
+	{
+		return a != null && b != null && Text.toJagexName(a).equalsIgnoreCase(Text.toJagexName(b));
 	}
 
 	static boolean isValid(String raw)

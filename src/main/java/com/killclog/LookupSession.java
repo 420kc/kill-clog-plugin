@@ -149,7 +149,7 @@ public class LookupSession
 		clearHold();
 		clogSettled = false;
 		final int thisLookup = fanout.begin();
-		final boolean isSelf = localRsn != null && localRsn.equalsIgnoreCase(player);
+		final boolean isSelf = RsnInputPolicy.sameName(localRsn, player);
 		final boolean isFirstSelfGreeting = isSelf && !config.seenSelfGreeting();
 
 		listener.onLookupStart(player, isSelf, isFirstSelfGreeting);
@@ -317,8 +317,7 @@ public class LookupSession
 	/** Update the displayed self log on the EDT without restarting any lookup lanes. */
 	void refreshLocalClog(String player, @Nullable String localRsn)
 	{
-		if (player == null || localRsn == null || !localRsn.equalsIgnoreCase(player)
-			|| currentLookupRsn == null || !currentLookupRsn.equalsIgnoreCase(player)) return;
+		if (!RsnInputPolicy.sameName(localRsn, player) || !RsnInputPolicy.sameName(currentLookupRsn, player)) return;
 		ClogResult local = fanout.ownLog(player);
 		if (local == null || !local.isFromLocal()) return;
 		localClogRevision++;

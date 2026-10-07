@@ -16,6 +16,27 @@ import static com.killclog.LookupTestFixture.*;
 public class LookupSessionTest
 {
 	@Test
+	public void everySpellingJagexAcceptsOfYourNameIsYou() throws Exception
+	{
+		// The client names you with a non-breaking space; you type an underscore or a hyphen.
+		for (String typed : new String[]{"My_Name", "My-Name", "my name"})
+		{
+			HiscoreService hiscores = org.mockito.Mockito.mock(HiscoreService.class);
+			org.mockito.Mockito.when(hiscores.lookup(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+				.thenReturn(new CompletableFuture<>());
+			LookupSession.Listener listener = org.mockito.Mockito.mock(LookupSession.Listener.class);
+			LookupSession session = new LookupSession(hiscores, org.mockito.Mockito.mock(ClogService.class),
+				org.mockito.Mockito.mock(RuneProfileService.class), org.mockito.Mockito.mock(KillclogService.class),
+				new KillClogConfig()
+				{
+				}, listener);
+			SwingUtilities.invokeAndWait(() -> session.start(typed, "My Name", AccountType.REGULAR));
+			org.mockito.Mockito.verify(listener).onLookupStart(org.mockito.ArgumentMatchers.eq(typed),
+				org.mockito.ArgumentMatchers.eq(true), org.mockito.ArgumentMatchers.anyBoolean());
+		}
+	}
+
+	@Test
 	public void aLeagueLookupNeverShowsTheMainGamesCachedRow() throws Exception
 	{
 		HiscoreService hiscores = org.mockito.Mockito.mock(HiscoreService.class);
