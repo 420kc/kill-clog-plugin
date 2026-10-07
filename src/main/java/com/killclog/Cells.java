@@ -677,6 +677,19 @@ public class Cells
 			: comparison.buildCustomRare(PanelData.RARE_NAMES[row], PanelData.RARE_ITEMS[row]);
 	}
 
+	/** A Clue Summary rare row's card, for the Collection Log page it stands for. */
+	public JToolTip buildRareTooltipFor(JLabel owner, int row)
+	{
+		return buildRareTooltip(owner, row);
+	}
+
+	/** A rare row's data for either player, as its card shows it. */
+	@Nullable
+	TooltipData rareData(int row, boolean rival)
+	{
+		return rival ? rivalRare(row) : rareTooltips.get(PanelData.RARE_KEYS[row]);
+	}
+
 	private JToolTip buildRareTooltip(JLabel owner, int row)
 	{
 		return gridTooltip(owner, rareTooltips.get(PanelData.RARE_KEYS[row]), () -> rivalRare(row),

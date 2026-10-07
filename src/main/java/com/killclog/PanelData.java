@@ -96,6 +96,10 @@ final class PanelData
 		"3rd Age equipment", "Gilded equipment", CLOG_WIKI_PAGE + "#Hard Treasure Trail Rewards (Rare)",
 		CLOG_WIKI_PAGE + "#Elite Treasure Trail Rewards (Rare)", CLOG_WIKI_PAGE + "#Master Treasure Trail Rewards (Rare)",
 	};
+	// The game's Collection Log page each rare row stands for, where one does: its page opens the row's card.
+	static final String[] RARE_PAGES = {
+		null, null, "hard_treasure_trails_rare", "elite_treasure_trails_rare", "master_treasure_trails_rare",
+	};
 	static final int[][] RARE_ITEMS = {
 		THIRD_AGE_ITEMS, GILDED_ITEMS, HARD_RARE_ITEMS, ELITE_RARE_ITEMS, MASTER_RARE_ITEMS,
 	};

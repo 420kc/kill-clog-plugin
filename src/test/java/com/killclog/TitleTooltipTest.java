@@ -63,6 +63,7 @@ public class TitleTooltipTest
 		// A clue tier's card opens its scroll's article; every Clue Summary rare row has a page too.
 		assertEquals("Clue scroll (beginner)", PanelData.clueWikiPage(HiscoreSkill.CLUE_SCROLL_BEGINNER));
 		assertEquals(PanelData.RARE_NAMES.length, PanelData.RARE_WIKI_PAGES.length);
+		assertEquals(PanelData.RARE_NAMES.length, PanelData.RARE_PAGES.length);
 	}
 
 	@Test

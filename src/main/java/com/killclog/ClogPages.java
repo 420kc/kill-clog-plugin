@@ -3,6 +3,7 @@ package com.killclog;
 import java.awt.Component;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -87,6 +88,11 @@ final class ClogPages
 		{
 			return cells.buildCellTooltipFor(anchor, cell);
 		}
+		int rare = rare(key);
+		if (rare >= 0)
+		{
+			return cells.buildRareTooltipFor(anchor, rare);
+		}
 		List<Integer> items = items(key);
 		TooltipData blue = tooltipDataBuilder.buildPageData(name, items, lookupSession.getClogResult());
 		TooltipData red = comparison.isComparisonMode()
@@ -118,7 +124,9 @@ final class ClogPages
 			Set<Integer> items = distinct(items(key));
 			slots.addAll(items);
 			HiscoreSkill cell = cell(key, names[i]);
-			TooltipData data = cell == null ? tooltipDataBuilder.buildPageData(names[i], items(key), clog)
+			int rare = rare(key);
+			TooltipData data = cell == null && rare < 0 ? tooltipDataBuilder.buildPageData(names[i], items(key), clog)
+				: rare >= 0 ? cells.rareData(rare, red)
 				: !red ? cells.getTooltipDataMap().get(cell)
 				: PanelData.CLUE_CATEGORIES.containsKey(cell) ? comparison.buildCompareClueTierData(cell)
 				: comparison.getCompareTooltipData(cell);
@@ -170,6 +178,13 @@ final class ClogPages
 			cell = cell == null && tier.getValue().equals(key) ? tier.getKey() : cell;
 		}
 		return cell != null && cells.getTooltipDataMap().get(cell) != null ? cell : null;
+	}
+
+	/** The Clue Summary rare row this page stands for, while that row has a card; -1 otherwise. */
+	private int rare(String key)
+	{
+		int row = Arrays.asList(PanelData.RARE_PAGES).indexOf(key);
+		return row >= 0 && cells.rareData(row, false) != null ? row : -1;
 	}
 
 	private String name(String key)
