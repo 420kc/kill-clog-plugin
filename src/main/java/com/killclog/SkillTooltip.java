@@ -73,10 +73,8 @@ public class SkillTooltip extends TitleTooltip
 		{
 			return body;
 		}
-		// The skill's clog sections fill the card's width under their shared hover line.
-		return body.add(CardBody.separator(SECTION_SEPARATOR_PAD))
-			.add(CardBody.part(c -> 0, c -> hoverRowHeight(c.fm),
-				(c, y) -> paintHeaderHoverLine(c.g, c.fm, c.w, y + c.fm.getAscent())))
+		// The skill's clog sections fill the card's width under the band their hovered item is named in.
+		return body.add(CardBody.hoverBand(SECTION_SEPARATOR_PAD))
 			.add(CardBody.scroll(scroll, CardBody.part(c -> sectionRenderer.soloSize(Math.max(statsWidth(c.fm), c.available)).width,
 				c -> sectionRenderer.soloSize(Math.max(statsWidth(c.fm), c.available)).height,
 				(c, y) -> sectionRenderer.paintSolo(c.g, c.w, y, c.hits))));

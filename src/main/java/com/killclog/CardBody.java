@@ -191,6 +191,31 @@ final class CardBody
 		return row(TitleTooltip.separatorHeight(pad), c -> 0, (c, y) -> c.card.paintSeparator(c.g, c.w, y, pad));
 	}
 
+	// The band a scrolled card names its hovered item in: warm like the dividers, faint enough to read through.
+	static final Color HOVER_BAND = new Color(80, 70, 50, 70);
+	private static final int BAND_TEXT_PAD = 3;
+
+	/**
+	 * The fixed band a scrolled card names its hovered item in: tinted, between a divider above and one below,
+	 * so the name has its own place while the card moves under it.
+	 */
+	static Part hoverBand(int pad)
+	{
+		return part(c -> 0, c -> pad + TitleTooltip.hoverRowHeight(c.fm) + 2 + pad, (c, y) ->
+		{
+			int top = y + pad;
+			int height = TitleTooltip.hoverRowHeight(c.fm);
+			c.g.setColor(HOVER_BAND);
+			c.g.fillRect(c.inset(), top + 1, c.w - 2 * c.inset(), height);
+			c.g.setColor(TitleTooltip.SEPARATOR_COLOR);
+			c.g.drawLine(c.inset(), top, c.w - c.inset() - 1, top);
+			c.g.drawLine(c.inset(), top + height + 1, c.w - c.inset() - 1, top + height + 1);
+			c.g.translate(BAND_TEXT_PAD, 0);
+			c.card.paintHeaderHoverLine(c.g, c.fm, c.w - 2 * BAND_TEXT_PAD, top + 1 + c.fm.getAscent());
+			c.g.translate(-BAND_TEXT_PAD, 0);
+		});
+	}
+
 	/** The hovered item's name under its section's sprites, measured for every name it may show. */
 	static Part hoverLine(int section, String... names)
 	{
