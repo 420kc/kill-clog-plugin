@@ -1456,7 +1456,7 @@ public class KillClogPanel extends PluginPanel
 				ClogResult catalog = cells.unsyncedCatalogResult();
 				if (catalog != null)
 				{
-					tip.setTitle("Clog Summary");
+					tip.setTitle("Collection Log");
 					tip.setObtainedPlaceholder(clogIndex != null
 						? ClogHelper.sumClogTotals(catalog, clogIndex::canonicalItemId)[1]
 						: ClogHelper.sumClogTotals(catalog)[1]);

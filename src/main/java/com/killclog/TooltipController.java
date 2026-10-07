@@ -61,7 +61,7 @@ class TooltipController
 	private WindowAdapter windowFocusListener;
 
 	// Cell hover state. Only the panel's own cells take the outline; a card pinned under another
-	// surface, like the info row the Clog Summary opens from, leaves that surface as it is.
+	// surface, like the info row the Collection Log card opens from, leaves that surface as it is.
 	private JPanel hoveredCell;
 	private final Set<JPanel> hoverCells = Collections.newSetFromMap(new WeakHashMap<>());
 	private Timer hoverExitTimer;

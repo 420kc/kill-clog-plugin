@@ -33,7 +33,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/** The real panel hands the Clog Summary its tabs and its tier sprite. */
+/** The real panel hands the Collection Log card its tabs and its tier sprite. */
 public class ClogSummaryWiringTest
 {
 	private final ItemManager items = mock(ItemManager.class);

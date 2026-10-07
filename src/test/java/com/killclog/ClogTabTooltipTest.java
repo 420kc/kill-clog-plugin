@@ -76,7 +76,7 @@ public class ClogTabTooltipTest
 		ClogTabTooltip bare = card(5);
 		ClogTabTooltip back = card(5);
 		int[] backs = new int[1];
-		back.setBack("< Clog Summary", press -> backs[0]++);
+		back.setBack("< Collection Log", press -> backs[0]++);
 		// One line more, and nothing else.
 		assertEquals(bare.getPreferredSize().height + LINE, back.getPreferredSize().height);
 

@@ -19,7 +19,7 @@ import lombok.Setter;
 import net.runelite.client.hiscore.HiscoreSkill;
 
 /**
- * Every Collection Log page, reached from the Clog Summary: a tab's row opens the tab's pages in the
+ * Every Collection Log page, reached from the Collection Log card: a tab's row opens the tab's pages in the
  * game's order, and a page opens its popup, each where the summary was. A page that is one panel boss's
  * opens that boss's own popup; any other shows the game's own items for it, held from anywhere in the
  * log. A row's count always comes from the popup it opens. A comparison pairs both players at every step.
@@ -57,7 +57,7 @@ final class ClogPages
 		this.tooltipDataBuilder = tooltipDataBuilder;
 	}
 
-	/** A tab row's press: the tab's pages replace the Clog Summary it came from. */
+	/** A tab row's press: the tab's pages replace the Collection Log card it came from. */
 	void openTab(JComponent owner, MouseEvent press, String tab)
 	{
 		pin(owner, press, tabCard(owner, tab));
@@ -140,7 +140,7 @@ final class ClogPages
 		card.setComponent(owner);
 		card.setTab(tab, progress.get(tab), slots.size());
 		card.setPages(names, obtained, total);
-		card.setBack("< Clog Summary", press -> pin(owner, press, owner.createToolTip()));
+		card.setBack("< Collection Log", press -> pin(owner, press, owner.createToolTip()));
 		card.setOnOpenPage((press, page) -> pin(owner, press, pageCard(owner, tab, keys.get(page))));
 		return card;
 	}

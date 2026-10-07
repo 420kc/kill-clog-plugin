@@ -171,7 +171,7 @@ final class ClogHelper
 	static final int MAX_RARES = 6;
 
 	/**
-	 * The Clog Summary's Rare shelf, filled as killclog.com's profile card fills it: the trophies, then 3rd age
+	 * The Collection Log card's Rare shelf, filled as killclog.com's profile card fills it: the trophies, then 3rd age
 	 * with room kept for the megarares, then the megarares, then any 3rd age left.
 	 */
 	static List<ClogResult.ClogItem> rareItems(ClogResult clog)

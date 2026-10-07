@@ -172,7 +172,7 @@ public class ClogSummaryTooltipTest
 		// Centred in the header, above its rule, and right of the title on its line.
 		assertEquals(inset + (tip.getHeaderHeight() - 32) / 2, top);
 		assertTrue(bottom < inset + tip.getHeaderHeight());
-		int titleWidth = tip.getFontMetrics(tip.getTitleFont()).stringWidth("Clog Summary");
+		int titleWidth = tip.getFontMetrics(tip.getTitleFont()).stringWidth("Collection Log");
 		assertTrue(inset + titleWidth < left);
 	}
 
@@ -255,7 +255,7 @@ public class ClogSummaryTooltipTest
 	public void aCardWithNoTotalsPaintsNoLadder()
 	{
 		ClogSummaryTooltip tip = new ClogSummaryTooltip();
-		tip.setTitle("Clog Summary");
+		tip.setTitle("Collection Log");
 		assertTrue(bars(paint(tip)).isEmpty());
 		move(tip, tip.getWidth() / 2, tip.getHeight() - 4);
 		assertNull(tip.getHeaderHoverLineText());

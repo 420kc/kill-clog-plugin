@@ -189,7 +189,7 @@ public abstract class TitleTooltip extends NativeTooltip
 		setSubtitle(obtainedLabel(), progressCountText(obtained, total), completionColor(obtained, total));
 	}
 
-	/** The count's label; the Clog Summary counts the whole log, not one page. */
+	/** The count's label; the Collection Log card counts the whole log, not one page. */
 	protected String obtainedLabel()
 	{
 		return "Obtained: ";

@@ -41,6 +41,9 @@ public class ClogSummaryTooltip extends TitleTooltip
 	// Hover sections: 0 rare, 1 recent, then the tier ladder and the sources. A reached tier reads green and
 	// an unreached one red, as held and missing items do.
 	private static final int TIER_SECTION = 2;
+	private static final String TITLE = "Collection Log";
+	// The header holds the title and, clear of it in the corner, the current tier's item.
+	private static final int TIER_ROOM = 40;
 	private static final int SOURCE_SECTION = 3;
 	// The tab rows read a size up from the card's text, their counts at the right, each tab apart from the next.
 	private static final Font TAB_FONT = FontManager.getRunescapeFont();
@@ -137,7 +140,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 	public void setTierData(int obtained, int totalSlots, Map<String, BufferedImage> tierIcons,
 		ItemManager itemManager)
 	{
-		setTitle("Clog Summary");
+		setTitle(TITLE);
 		setObtained(obtained, totalSlots);
 		this.tierIcons = tierIcons;
 		this.obtained = obtained;
@@ -243,7 +246,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 	{
 		firstTimeSetup = false;
 		this.notice = notice;
-		setTitle("Clog Summary");
+		setTitle(TITLE);
 	}
 
 	public void setFirstTimeSetup()
@@ -351,7 +354,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 		// The current tier sits large in the header's corner. Any tier's, item's or source's name shows in the band
 		// under the header, and everything below it scrolls: completion, its bar and the tier ladder first.
-		CardBody card = new CardBody().add(CardBody.row(0, c -> 0, (c, y) ->
+		CardBody card = new CardBody().add(CardBody.row(0,
+			c -> hasTotals() ? getFontMetrics(getTitleFont()).stringWidth(TITLE) + TIER_ROOM : 0, (c, y) ->
 		{
 			if (hasTotals() && tierSprite != null)
 			{
@@ -368,7 +372,12 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 		if (!tabs.isEmpty())
 		{
-			body.titled("Collection Log");
+			// The tabs need no heading of their own: the card is the Collection Log. A divider parts them from
+			// the completion above it.
+			if (hasTotals())
+			{
+				body.add(CardBody.separator(SEPARATOR_PAD));
+			}
 			int row = 0;
 			for (Map.Entry<String, int[]> tab : tabs.entrySet())
 			{

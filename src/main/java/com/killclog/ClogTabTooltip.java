@@ -6,7 +6,7 @@ import java.util.function.ObjIntConsumer;
 import javax.annotation.Nullable;
 
 /**
- * One Collection Log tab, opened from the Clog Summary where it was: the tab's progress and the way back,
+ * One Collection Log tab, opened from the Collection Log card where it was: the tab's progress and the way back,
  * then every page in the game's order with the player's count. A page opens its own popup. A tab
  * more than a notch past {@link #VISIBLE_ROWS} pages scrolls with the mouse wheel, a thin rail showing where.
  */
