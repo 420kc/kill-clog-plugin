@@ -82,10 +82,10 @@ final class ClogPages
 	{
 		JLabel anchor = anchor(owner);
 		String name = name(key);
-		HiscoreSkill boss = boss(key, name);
-		if (boss != null)
+		HiscoreSkill cell = cell(key, name);
+		if (cell != null)
 		{
-			return cells.buildBossTooltipFor(anchor, boss);
+			return cells.buildCellTooltipFor(anchor, cell);
 		}
 		List<Integer> items = items(key);
 		TooltipData blue = tooltipDataBuilder.buildPageData(name, items, lookupSession.getClogResult());
@@ -117,10 +117,11 @@ final class ClogPages
 			names[i] = name(key);
 			Set<Integer> items = distinct(items(key));
 			slots.addAll(items);
-			HiscoreSkill boss = boss(key, names[i]);
-			TooltipData data = boss != null
-				? (red ? comparison.getCompareTooltipData(boss) : cells.getTooltipDataMap().get(boss))
-				: tooltipDataBuilder.buildPageData(names[i], items(key), clog);
+			HiscoreSkill cell = cell(key, names[i]);
+			TooltipData data = cell == null ? tooltipDataBuilder.buildPageData(names[i], items(key), clog)
+				: !red ? cells.getTooltipDataMap().get(cell)
+				: PanelData.CLUE_CATEGORIES.containsKey(cell) ? comparison.buildCompareClueTierData(cell)
+				: comparison.getCompareTooltipData(cell);
 			obtained[i] = data != null ? data.obtainedCount : -1;
 			total[i] = data != null ? data.totalItems : items.size();
 		}
@@ -156,12 +157,19 @@ final class ClogPages
 		return boss;
 	}
 
-	/** The page's boss while that boss has a popup to open. */
+	/**
+	 * The panel cell whose card is this page's, while that cell has one: the page's boss, or the clue tier the
+	 * page logs. One log keeps one card wherever it opens.
+	 */
 	@Nullable
-	private HiscoreSkill boss(String key, String name)
+	private HiscoreSkill cell(String key, String name)
 	{
-		HiscoreSkill boss = pageBoss(key, name);
-		return boss != null && cells.getTooltipDataMap().get(boss) != null ? boss : null;
+		HiscoreSkill cell = pageBoss(key, name);
+		for (Map.Entry<HiscoreSkill, String> tier : PanelData.CLUE_CATEGORIES.entrySet())
+		{
+			cell = cell == null && tier.getValue().equals(key) ? tier.getKey() : cell;
+		}
+		return cell != null && cells.getTooltipDataMap().get(cell) != null ? cell : null;
 	}
 
 	private String name(String key)

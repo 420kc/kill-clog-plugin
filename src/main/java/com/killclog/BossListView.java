@@ -217,7 +217,7 @@ public class BossListView
 			@Override
 			public JToolTip createToolTip()
 			{
-				return cells.buildBossTooltipFor(this, boss);
+				return cells.buildCellTooltipFor(this, boss);
 			}
 		};
 		label.setToolTipText(" ");

@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
@@ -489,10 +490,14 @@ public class Cells
 
 	// Tooltip routing
 
-	/** List-view rows reuse the grid's tooltip routing; owner is the row's anchor label. */
-	public JToolTip buildBossTooltipFor(JLabel owner, HiscoreSkill boss)
+	/**
+	 * A panel cell's own card, for whatever else shows it (a list row, a summary, a Collection Log page): a
+	 * boss's or a clue tier's. Owner is the anchor label.
+	 */
+	public JToolTip buildCellTooltipFor(JLabel owner, HiscoreSkill cell)
 	{
-		return buildBossTooltip(owner, boss);
+		return PanelData.CLUE_CATEGORIES.containsKey(cell) ? buildClueTierTooltip(owner, cell, capitalizeTier(cell))
+			: buildBossTooltip(owner, cell);
 	}
 
 	/**
@@ -501,16 +506,7 @@ public class Cells
 	 */
 	public JToolTip buildPageTooltip(JLabel owner, String name, @Nullable TooltipData blue, @Nullable TooltipData red)
 	{
-		String wikiPage = PanelData.CLOG_WIKI_PAGE + "#" + name;
-		JToolTip tip = singlePlayerBuilder.build(owner, blue, 5, name);
-		decorate(tip, wikiPage, null);
-		if (!comparison.isComparisonMode())
-		{
-			return tip;
-		}
-		JToolTip rival = singlePlayerBuilder.buildCompared(owner, red, 5, name);
-		decorate(rival, wikiPage, null);
-		return wrapSideBySide(owner, tip, rival);
+		return gridTooltip(owner, blue, () -> red, name, PanelData.CLOG_WIKI_PAGE + "#" + name, false);
 	}
 
 	private JToolTip buildBossTooltip(JLabel owner, HiscoreSkill boss)
@@ -523,17 +519,25 @@ public class Cells
 	private JToolTip buildBossTooltip(JLabel owner, @Nullable TooltipData blueData,
 		@Nullable TooltipData redData, String name, String wikiPage)
 	{
-		if (comparison.isComparisonMode())
+		return gridTooltip(owner, blueData, () -> redData, name, wikiPage, true);
+	}
+
+	/**
+	 * One log's card: the player's grid, or both players' side by side, the title opening the wiki. A boss's
+	 * card also carries each side's shifted-hiscores warning.
+	 */
+	private JToolTip gridTooltip(JLabel owner, @Nullable TooltipData blue, Supplier<TooltipData> red, String name,
+		@Nullable String wikiPage, boolean boss)
+	{
+		JToolTip tip = singlePlayerBuilder.build(owner, blue, 5, name);
+		decorate(tip, wikiPage, boss ? lookupSession.getHiscoreResult() : null);
+		if (!comparison.isComparisonMode())
 		{
-			JToolTip blue = singlePlayerBuilder.build(owner, blueData, 5, name);
-			JToolTip red = singlePlayerBuilder.buildCompared(owner, redData, 5, name);
-			decorate(blue, wikiPage, lookupSession.getHiscoreResult());
-			decorate(red, wikiPage, comparison.getCompareHiscoreResult());
-			return wrapSideBySide(owner, blue, red);
+			return tip;
 		}
-		JToolTip tip = singlePlayerBuilder.build(owner, blueData, 5, name);
-		decorate(tip, wikiPage, lookupSession.getHiscoreResult());
-		return tip;
+		JToolTip rival = singlePlayerBuilder.buildCompared(owner, red.get(), 5, name);
+		decorate(rival, wikiPage, boss ? comparison.getCompareHiscoreResult() : null);
+		return wrapSideBySide(owner, tip, rival);
 	}
 
 	/**
@@ -541,7 +545,7 @@ public class Cells
 	 * the warned CSV fallback flags its own card - a silently wrong red card
 	 * breaks the ladder's rule the same as a blue one.
 	 */
-	private static void decorate(JToolTip tip, String wikiPage,
+	private static void decorate(JToolTip tip, @Nullable String wikiPage,
 		@Nullable HiscoreResult result)
 	{
 		if (tip instanceof TitleTooltip)
@@ -654,10 +658,8 @@ public class Cells
 
 	private JToolTip buildClueTierTooltip(JLabel owner, HiscoreSkill tier, String displayName)
 	{
-		return comparison.isComparisonMode()
-			? wrapSideBySide(owner, singlePlayerBuilder.build(owner, tooltipDataMap.get(tier), 5, displayName),
-				singlePlayerBuilder.buildCompared(owner, comparison.buildCompareClueTierData(tier), 5, displayName))
-			: singlePlayerBuilder.build(owner, tooltipDataMap.get(tier), 5, displayName);
+		return gridTooltip(owner, tooltipDataMap.get(tier), () -> comparison.buildCompareClueTierData(tier),
+			displayName, null, false);
 	}
 
 	/** Progress for a Clue Summary row; unsynced or unknown data shows none. */
@@ -677,35 +679,8 @@ public class Cells
 
 	private JToolTip buildRareTooltip(JLabel owner, int row)
 	{
-		return row < 2
-			? buildClueRareTooltip(owner, PanelData.RARE_NAMES[row], PanelData.RARE_KEYS[row])
-			: buildCustomRareTooltip(owner, PanelData.RARE_NAMES[row], PanelData.RARE_KEYS[row],
-				PanelData.RARE_ITEMS[row]);
-	}
-
-	private JToolTip buildClueRareTooltip(JLabel owner, String name, String clogCategory)
-	{
-		TooltipData data = rareTooltips.get(clogCategory);
-		if (comparison.isComparisonMode())
-		{
-			TooltipData redData = comparison.buildClueRare(name, clogCategory);
-			return wrapSideBySide(owner,
-				singlePlayerBuilder.build(owner, data, 5, name),
-				singlePlayerBuilder.buildCompared(owner, redData, 5, name));
-		}
-		return singlePlayerBuilder.build(owner, data, 5, name);
-	}
-
-	private JToolTip buildCustomRareTooltip(JLabel owner, String name, String rareKey, int[] itemIds)
-	{
-		if (comparison.isComparisonMode())
-		{
-			TooltipData redData = comparison.buildCustomRare(name, itemIds);
-			return wrapSideBySide(owner,
-				singlePlayerBuilder.build(owner, rareTooltips.get(rareKey), 5, name),
-				singlePlayerBuilder.buildCompared(owner, redData, 5, name));
-		}
-		return singlePlayerBuilder.build(owner, rareTooltips.get(rareKey), 5, name);
+		return gridTooltip(owner, rareTooltips.get(PanelData.RARE_KEYS[row]), () -> rivalRare(row),
+			PanelData.RARE_NAMES[row], null, false);
 	}
 
 	// Helpers
