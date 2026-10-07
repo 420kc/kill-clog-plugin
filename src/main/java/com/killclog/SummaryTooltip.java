@@ -1,19 +1,14 @@
 package com.killclog;
 
 import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.FontMetrics;
-import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.function.IntFunction;
 import javax.annotation.Nullable;
 import net.runelite.client.game.ItemManager;
-import net.runelite.client.ui.FontManager;
 
 /**
  * Player summary tooltip on the summary-bar name label.
@@ -121,132 +116,85 @@ public class SummaryTooltip extends TitleTooltip
 		return rows * (PET_SIZE + PET_PAD) - PET_PAD;
 	}
 
-	private int getTextWidth(FontMetrics fm)
-	{
-		int tw = 0;
-		if (hasRankLine())
-		{
-			tw = fm.stringWidth(accountLabelText() + rankTail());
-		}
-		if (prestige != null)
-		{
-			tw = Math.max(tw, fm.stringWidth(PRESTIGE_LABEL + prestige));
-		}
-		return tw;
-	}
-
 	/** A player without hiscores or a figure has nothing above the pets but the title. */
 	private boolean hasBodyAbovePets()
 	{
 		return figure != null || getStatsLines() > 0;
 	}
 
-	private int getFigureHeight()
-	{
-		return figure != null ? figure.getHeight() + FIGURE_GAP : 0;
-	}
-
 	@Override
-	protected Dimension getContentSize(int availableWidth)
+	protected CardBody body()
 	{
-		FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
-
-		// Pet grid.
-		int petCount = hasPets() ? petList.size() : 0;
-		int petGridWidth = petCount > 0
-			? Math.min(petCount, PET_COLS) * (PET_SIZE + PET_PAD) - PET_PAD
-			: 0;
-
-		int contentWidth = Math.max(Math.max(getTextWidth(fm), figure != null ? figure.getWidth() : 0),
-			petGridWidth);
-		// Never thinner than the card was when "Player Summary" titled it, whatever the name.
-		contentWidth = Math.max(contentWidth, getFontMetrics(getTitleFont()).stringWidth(FORMER_TITLE));
-		int contentHeight = getFigureHeight() + LINE_HEIGHT * getStatsLines();
-
-		if (totalPetCount > 0)
-		{
-			contentHeight += (hasBodyAbovePets() ? SECTION_GAP + 1 + SECTION_GAP : 0)
-				+ fm.getHeight() + PET_PAD;
-			if (hasPets())
-			{
-				contentHeight += getPetGridHeight() + hoverRowHeight(fm);
-			}
-		}
-
-		return new Dimension(contentWidth, contentHeight);
-	}
-
-	@Override
-	protected void paintBody(Graphics2D g2, int w, int h, int startY)
-	{
-		int inset = getInset();
-		g2.setFont(FontManager.getRunescapeSmallFont());
-		FontMetrics fm = g2.getFontMetrics();
-
 		// The cape or character stands centered under the name.
+		CardBody body = new CardBody()
+			.add(CardBody.minWidth(c -> getFontMetrics(getTitleFont()).stringWidth(FORMER_TITLE)));
 		if (figure != null)
 		{
-			g2.drawImage(figure, (w - figure.getWidth()) / 2, startY, null);
+			body.add(CardBody.row(figure.getHeight() + FIGURE_GAP, c -> figure.getWidth(),
+				(c, y) -> c.g.drawImage(figure, (c.w - figure.getWidth()) / 2, y, null)));
 		}
-		int lineY = startY + getFigureHeight() + fm.getAscent();
-
 		// Account type plus rank, then prestige, each centered under the figure.
 		if (hasRankLine())
 		{
-			String line = accountLabelText() + rankTail();
-			drawLabelValue(g2, fm, (w - fm.stringWidth(line)) / 2, lineY, accountLabelText(), rankTail());
-			lineY += LINE_HEIGHT;
+			body.add(centered(accountLabelText(), rankTail()));
 		}
 		if (prestige != null)
 		{
-			drawLabelValue(g2, fm, (w - fm.stringWidth(PRESTIGE_LABEL + prestige)) / 2, lineY,
-				PRESTIGE_LABEL, prestige);
-			lineY += LINE_HEIGHT;
+			body.add(centered(PRESTIGE_LABEL, prestige));
 		}
-
-		if (totalPetCount <= 0) return;
-
-		// Pets header under a separator, or straight under the title's own when nothing stands between.
-		int petsTop = hasBodyAbovePets() ? paintSeparator(g2, w, lineY - fm.getAscent(), SECTION_GAP) : startY;
-		int petsHeaderY = petsTop + fm.getAscent();
-		int petCount = petList != null ? petList.size() : 0;
-		drawLabelValue(g2, fm, inset, petsHeaderY, "Pets: ", String.valueOf(petCount),
-			completionColor(petCount, totalPetCount));
-
-		if (!hasPets())
+		if (totalPetCount > 0)
 		{
-			itemHover.setHitBoxes(Collections.emptyList());
-			return;
-		}
-
-		FontMetrics bfm = g2.getFontMetrics(FontManager.getRunescapeBoldFont());
-
-		// Full pet gallery: obtained at strength, unobtained dimmed. Hit boxes
-		// share the draw geometry so hover-name and wiki-click track exactly.
-		int gridY = petsHeaderY + PET_PAD + bfm.getDescent();
-		int cellSize = PET_SIZE + PET_PAD;
-		List<TooltipItemHover.HitBox> hitBoxes = new ArrayList<>();
-
-		for (int i = 0; i < petList.size(); i++)
-		{
-			int col = i % PET_COLS;
-			int row = i / PET_COLS;
-			int px = inset + col * cellSize;
-			int py = gridY + row * cellSize;
-
-			BufferedImage sprite = petSprites[i];
-			if (sprite != null)
+			// Pets under a separator, or straight under the title's own when nothing stands between.
+			if (hasBodyAbovePets())
 			{
-				g2.drawImage(sprite, px, py, null);
+				body.add(CardBody.separator(SECTION_GAP));
 			}
-			if (petNames[i] != null)
-			{
-				hitBoxes.add(new TooltipItemHover.HitBox(0, petList.get(i), petNames[i],
-					new Rectangle(px, py, PET_SIZE, PET_SIZE), true, 1));
-			}
+			body.add(pets());
 		}
-		paintHeaderHoverLine(g2, fm, w, gridY + getPetGridHeight() + fm.getAscent());
-		itemHover.setHitBoxes(hitBoxes);
+		return body;
+	}
+
+	private static CardBody.Part centered(String label, String value)
+	{
+		return CardBody.row(LINE_HEIGHT, c -> c.fm.stringWidth(label + value), (c, y) -> drawLabelValue(c.g, c.fm,
+			(c.w - c.fm.stringWidth(label + value)) / 2, y + c.fm.getAscent(), label, value));
+	}
+
+	/**
+	 * The pet count, then the full pet gallery: obtained at strength, unobtained dimmed. Hit boxes
+	 * share the draw geometry so hover-name and wiki-click track exactly.
+	 */
+	private CardBody.Part pets()
+	{
+		int count = hasPets() ? petList.size() : 0;
+		return CardBody.part(c -> count > 0 ? Math.min(count, PET_COLS) * (PET_SIZE + PET_PAD) - PET_PAD : 0,
+			c -> c.fm.getHeight() + PET_PAD + (hasPets() ? getPetGridHeight() + hoverRowHeight(c.fm) : 0), (c, y) ->
+			{
+				int headerY = y + c.fm.getAscent();
+				drawLabelValue(c.g, c.fm, c.inset(), headerY, "Pets: ", String.valueOf(count),
+					completionColor(count, totalPetCount));
+				if (!hasPets())
+				{
+					return;
+				}
+				int gridY = headerY + PET_PAD + c.bfm.getDescent();
+				int cellSize = PET_SIZE + PET_PAD;
+				for (int i = 0; i < petList.size(); i++)
+				{
+					int px = c.inset() + (i % PET_COLS) * cellSize;
+					int py = gridY + (i / PET_COLS) * cellSize;
+					if (petSprites[i] != null)
+					{
+						c.g.drawImage(petSprites[i], px, py, null);
+					}
+					if (petNames[i] != null)
+					{
+						c.hits.add(new TooltipItemHover.HitBox(0, petList.get(i), petNames[i],
+							new Rectangle(px, py, PET_SIZE, PET_SIZE), true, 1));
+					}
+				}
+				paintHeaderHoverLine(c.g, c.fm, c.w, gridY + getPetGridHeight() + c.fm.getAscent());
+			});
 	}
 
 	private String accountLabelText()

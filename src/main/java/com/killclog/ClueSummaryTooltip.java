@@ -1,19 +1,15 @@
 package com.killclog;
 
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
-import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
 import java.util.function.ObjIntConsumer;
 import javax.annotation.Nullable;
 import lombok.Setter;
 import net.runelite.client.hiscore.HiscoreSkill;
-import net.runelite.client.ui.FontManager;
 
 /**
  * Clue Summary on the Clues cell. Eight lines, All through Mimic, each with its
@@ -51,8 +47,6 @@ public class ClueSummaryTooltip extends TitleTooltip
 	private final int[] total = new int[8];
 	private final int[] rareObtained = new int[RARE_LABELS.length];
 	private final int[] rareTotal = new int[RARE_LABELS.length];
-	private int rareTop = -1;
-	private int hoveredRare = -1;
 
 	@Setter
 	private BufferedImage[] icons;
@@ -60,6 +54,14 @@ public class ClueSummaryTooltip extends TitleTooltip
 	private BufferedImage[] rareIcons;
 	@Nullable
 	private ObjIntConsumer<MouseEvent> onOpenRare;
+	private final CardBody.ClickRows rareRows = new CardBody.ClickRows(this, (e, row) ->
+	{
+		if (onOpenRare != null)
+		{
+			onOpenRare.accept(e, row);
+			e.consume();
+		}
+	});
 
 	public ClueSummaryTooltip()
 	{
@@ -67,33 +69,6 @@ public class ClueSummaryTooltip extends TitleTooltip
 		Arrays.fill(ranks, -1);
 		Arrays.fill(obtained, -1);
 		Arrays.fill(rareObtained, -1);
-		addMouseMotionListener(new MouseMotionAdapter()
-		{
-			@Override
-			public void mouseMoved(MouseEvent e)
-			{
-				setHoveredRare(rareAt(e.getY()));
-			}
-		});
-		addMouseListener(new MouseAdapter()
-		{
-			@Override
-			public void mousePressed(MouseEvent e)
-			{
-				int row = rareAt(e.getY());
-				if (row >= 0 && onOpenRare != null && e.getButton() == MouseEvent.BUTTON1)
-				{
-					onOpenRare.accept(e, row);
-					e.consume();
-				}
-			}
-
-			@Override
-			public void mouseExited(MouseEvent e)
-			{
-				setHoveredRare(-1);
-			}
-		});
 	}
 
 	/** A null result renders the full tier ladder with "--" scores: the empty state. */
@@ -142,106 +117,52 @@ public class ClueSummaryTooltip extends TitleTooltip
 
 	int hoveredRare()
 	{
-		return hoveredRare;
+		return rareRows.hovered();
 	}
 
 	/** The rare row under a y coordinate, or -1. Rows are full width. */
 	int rareAt(int y)
 	{
-		if (rareTop < 0 || y < rareTop)
-		{
-			return -1;
-		}
-		int row = (y - rareTop) / LINE_HEIGHT;
-		return row < RARE_LABELS.length ? row : -1;
-	}
-
-	private void setHoveredRare(int row)
-	{
-		if (hoveredRare != row)
-		{
-			hoveredRare = row;
-			repaint();
-		}
+		return rareRows.at(y);
 	}
 
 	@Override
-	protected Dimension getContentSize(int availableWidth)
+	protected CardBody body()
 	{
-		FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
-		int lineWidth = scoreRight(fm, 0) + progressCol(fm) + rankCol(fm);
-		int rareWidth = ICON_SIZE + ICON_GAP + widest(fm, RARE_LABELS)
-			+ progressWidth(fm, rareObtained, rareTotal);
-		int bold = getFontMetrics(FontManager.getRunescapeBoldFont()).stringWidth("Rare Collections");
-		return new Dimension(Math.max(Math.max(lineWidth, rareWidth), bold),
-			LINE_HEIGHT * LABELS.length + separatorHeight(SECTION_PAD)
-				+ SUBHEADER_HEIGHT + LINE_HEIGHT * RARE_LABELS.length);
-	}
-
-	@Override
-	protected void paintBody(Graphics2D g2, int w, int h, int startY)
-	{
-		int inset = getInset();
-		g2.setFont(FontManager.getRunescapeSmallFont());
-		FontMetrics fm = g2.getFontMetrics();
-		int scoreRight = scoreRight(fm, inset);
-		int rankX = scoreRight + progressCol(fm);
-
-		int y = startY;
-		for (int i = 0; i < LABELS.length; i++)
+		// Ranks ride in their own column, so they stay aligned down the card.
+		int[] shownRanks = new int[ranks.length];
+		for (int i = 0; i < ranks.length; i++)
 		{
-			paintLine(g2, fm, inset, y, i, scoreRight, rankX);
-			y += LINE_HEIGHT;
+			shownRanks[i] = scores[i] > 0 && ranks[i] > 0 ? ranks[i] : 0;
 		}
-
-		y = paintSubheader(g2, paintSeparator(g2, w, y, SECTION_PAD), "Rare Collections");
-		rareTop = y;
+		CardBody body = new CardBody()
+			.add(CardBody.table(icons, LABELS, scores, obtained, total, shownRanks, ICON_SIZE, ICON_GAP, COL_GAP))
+			.add(CardBody.separator(SECTION_PAD))
+			.add(CardBody.subheader("Rare Collections"));
 		for (int i = 0; i < RARE_LABELS.length; i++)
 		{
-			paintRare(g2, fm, inset, y, w, i);
-			y += LINE_HEIGHT;
+			body.add(rareRow(i));
 		}
+		return body;
 	}
 
-	private void paintLine(Graphics2D g2, FontMetrics fm, int inset, int y, int line,
-		int scoreRight, int rankX)
+	/** One rare collection; the row opens its own modal, its progress right-aligned. */
+	private CardBody.Part rareRow(int row)
 	{
-		int textY = y + fm.getAscent();
-		paintIcon(g2, icons, line, inset, y);
-
-		g2.setColor(OSRS_ORANGE);
-		g2.drawString(LABELS[line], inset + ICON_SIZE + ICON_GAP, textY);
-
-		g2.setColor(Color.WHITE);
-		drawRightAligned(g2, fm, scoreText(scores[line]), scoreRight, textY);
-
-		// Progress rides in its own column, so ranks stay aligned down the card.
-		if (obtained[line] >= 0)
+		return CardBody.clickRow(rareRows, row, c -> ICON_SIZE + ICON_GAP + widest(c.fm, RARE_LABELS)
+			+ progressWidth(c.fm, rareObtained, rareTotal), (c, y, hovered) ->
 		{
-			paintWrappedProgressCount(g2, fm, scoreRight, textY, obtained[line], total[line]);
-		}
-
-		if (scores[line] > 0 && ranks[line] > 0)
-		{
-			String rankPrefix = " #";
-			drawLabelValue(g2, fm, rankX + 1, textY, rankPrefix, grouped(ranks[line]));
-		}
-	}
-
-	private void paintRare(Graphics2D g2, FontMetrics fm, int inset, int y, int w, int row)
-	{
-		int textY = y + fm.getAscent();
-		paintIcon(g2, rareIcons, row, inset, y);
-
-		// No pointer cursor in this UI: the hovered row answers in white instead.
-		g2.setColor(row == hoveredRare ? Color.WHITE : OSRS_ORANGE);
-		g2.drawString(RARE_LABELS[row], inset + ICON_SIZE + ICON_GAP, textY);
-
-		if (rareObtained[row] >= 0)
-		{
-			int width = wrappedProgressCountWidth(fm, rareObtained[row], rareTotal[row]);
-			paintWrappedProgressCount(g2, fm, w - inset - width, textY, rareObtained[row], rareTotal[row]);
-		}
+			int textY = y + c.fm.getAscent();
+			paintIcon(c.g, rareIcons, row, c.inset(), y);
+			// No pointer cursor in this UI: the hovered row answers in white instead.
+			c.g.setColor(hovered ? Color.WHITE : OSRS_ORANGE);
+			c.g.drawString(RARE_LABELS[row], c.inset() + ICON_SIZE + ICON_GAP, textY);
+			if (rareObtained[row] >= 0)
+			{
+				int width = wrappedProgressCountWidth(c.fm, rareObtained[row], rareTotal[row]);
+				paintWrappedProgressCount(c.g, c.fm, c.w - c.inset() - width, textY, rareObtained[row], rareTotal[row]);
+			}
+		});
 	}
 
 	private static void paintIcon(Graphics2D g2, @Nullable BufferedImage[] set, int index, int x, int y)
@@ -253,17 +174,6 @@ public class ClueSummaryTooltip extends TitleTooltip
 		}
 	}
 
-	private int scoreRight(FontMetrics fm, int inset)
-	{
-		return inset + ICON_SIZE + ICON_GAP + widest(fm, LABELS) + COL_GAP
-			+ widestValue(fm, scores, TitleTooltip::scoreText);
-	}
-
-	private int progressCol(FontMetrics fm)
-	{
-		return progressWidth(fm, obtained, total);
-	}
-
 	private static int progressWidth(FontMetrics fm, int[] obtained, int[] total)
 	{
 		int width = 0;
@@ -272,19 +182,6 @@ public class ClueSummaryTooltip extends TitleTooltip
 			if (obtained[i] >= 0)
 			{
 				width = Math.max(width, wrappedProgressCountWidth(fm, obtained[i], total[i]));
-			}
-		}
-		return width;
-	}
-
-	private int rankCol(FontMetrics fm)
-	{
-		int width = 0;
-		for (int i = 0; i < ranks.length; i++)
-		{
-			if (scores[i] > 0 && ranks[i] > 0)
-			{
-				width = Math.max(width, 1 + fm.stringWidth(rankTailText(ranks[i])));
 			}
 		}
 		return width;

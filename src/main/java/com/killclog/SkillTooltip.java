@@ -1,10 +1,7 @@
 package com.killclog;
 
 import java.awt.Color;
-import java.awt.Dimension;
 import java.awt.FontMetrics;
-import java.awt.Graphics2D;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
@@ -12,7 +9,6 @@ import javax.annotation.Nullable;
 import net.runelite.api.Experience;
 import net.runelite.api.Skill;
 import net.runelite.client.game.ItemManager;
-import net.runelite.client.ui.FontManager;
 
 /** Compact Kill Clog-native stat tooltip for one skill cell. */
 public class SkillTooltip extends TitleTooltip
@@ -63,53 +59,31 @@ public class SkillTooltip extends TitleTooltip
 	}
 
 	@Override
-	protected Dimension getContentSize(int availableWidth)
+	protected CardBody body()
 	{
-		FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
-		int width = 0;
-		width = Math.max(width, rowWidth(fm, LEVEL_LABEL, stats.levelText()));
-		width = Math.max(width, rowWidth(fm, XP_LABEL, stats.xpText()));
-		width = Math.max(width, rowWidth(fm, RANK_LABEL, stats.rankText()));
-		width = Math.max(width, rowWidth(fm, XP_TO_LEVEL_LABEL, stats.xpToLevelText()));
-		int height = LINE_HEIGHT * 4;
-		if (!sections.isEmpty())
+		CardBody body = new CardBody()
+			.add(CardBody.line(LEVEL_LABEL, stats.levelText(), stats.levelColor()))
+			.add(CardBody.line(XP_LABEL, stats.xpText(), stats.xpColor()))
+			.add(CardBody.line(RANK_LABEL, stats.rankText(), stats.rankColor()))
+			.add(CardBody.line(XP_TO_LEVEL_LABEL, stats.xpToLevelText(), stats.xpToLevelColor()));
+		if (sections.isEmpty())
 		{
-			height += separatorHeight(SECTION_SEPARATOR_PAD);
-			height += hoverRowHeight(fm);
-			Dimension sectionSize = sectionRenderer.soloSize(Math.max(width, availableWidth));
-			width = Math.max(width, sectionSize.width);
-			height += sectionSize.height;
+			return body;
 		}
-		return new Dimension(width, height);
+		// The skill's clog sections fill the card's width under their shared hover line.
+		return body.add(CardBody.separator(SECTION_SEPARATOR_PAD))
+			.add(CardBody.part(c -> 0, c -> hoverRowHeight(c.fm),
+				(c, y) -> paintHeaderHoverLine(c.g, c.fm, c.w, y + c.fm.getAscent())))
+			.add(CardBody.part(c -> sectionRenderer.soloSize(Math.max(statsWidth(c.fm), c.available)).width,
+				c -> sectionRenderer.soloSize(Math.max(statsWidth(c.fm), c.available)).height,
+				(c, y) -> sectionRenderer.paintSolo(c.g, c.w, y, c.hits)));
 	}
 
-	@Override
-	protected void paintBody(Graphics2D g2, int w, int h, int startY)
+	private int statsWidth(FontMetrics fm)
 	{
-		g2.setFont(FontManager.getRunescapeSmallFont());
-		FontMetrics fm = g2.getFontMetrics();
-		int x = getInset();
-		int y = startY + fm.getAscent();
-
-		drawLabelValue(g2, fm, x, y, LEVEL_LABEL, stats.levelText(), stats.levelColor());
-		y += LINE_HEIGHT;
-		drawLabelValue(g2, fm, x, y, XP_LABEL, stats.xpText(), stats.xpColor());
-		y += LINE_HEIGHT;
-		drawLabelValue(g2, fm, x, y, RANK_LABEL, stats.rankText(), stats.rankColor());
-		y += LINE_HEIGHT;
-		drawLabelValue(g2, fm, x, y, XP_TO_LEVEL_LABEL,
-			stats.xpToLevelText(), stats.xpToLevelColor());
-
-		List<TooltipItemHover.HitBox> hitBoxes = new ArrayList<>();
-		if (!sections.isEmpty())
-		{
-			int sectionY = paintSeparator(g2, w,
-				startY + LINE_HEIGHT * 4, SECTION_SEPARATOR_PAD);
-			paintHeaderHoverLine(g2, fm, w, sectionY + fm.getAscent());
-			sectionY += hoverRowHeight(fm);
-			sectionRenderer.paintSolo(g2, w, sectionY, hitBoxes);
-		}
-		itemHover.setHitBoxes(hitBoxes);
+		int width = Math.max(rowWidth(fm, LEVEL_LABEL, stats.levelText()), rowWidth(fm, XP_LABEL, stats.xpText()));
+		width = Math.max(width, rowWidth(fm, RANK_LABEL, stats.rankText()));
+		return Math.max(width, rowWidth(fm, XP_TO_LEVEL_LABEL, stats.xpToLevelText()));
 	}
 
 	Stats stats()

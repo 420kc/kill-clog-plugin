@@ -1,9 +1,5 @@
 package com.killclog;
 
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.FontMetrics;
-import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.util.Arrays;
 import lombok.Setter;
@@ -61,56 +57,14 @@ final class PvpSummaryRows
 		}
 	}
 
-	Dimension size(FontMetrics fm)
+	/** The rows as one table part: progress only rides alongside a real score; a "--" row stays dash-only. */
+	CardBody.Part part()
 	{
-		int progressTail = 0;
+		int[] shown = new int[LABELS.length];
 		for (int i = 0; i < LABELS.length; i++)
 		{
-			// Progress only rides alongside a real score; a "--" row stays dash-only.
-			if (scores[i] > 0 && obtained[i] >= 0)
-			{
-				progressTail = Math.max(progressTail,
-					TitleTooltip.wrappedProgressCountWidth(fm, obtained[i], total[i]));
-			}
+			shown[i] = scores[i] > 0 ? obtained[i] : -1;
 		}
-		return new Dimension(scoreRight(fm, 0) + progressTail,
-			TitleTooltip.LINE_HEIGHT * LABELS.length);
-	}
-
-	void paint(Graphics2D g2, FontMetrics fm, int inset, int y)
-	{
-		int scoreRight = scoreRight(fm, inset);
-		for (int i = 0; i < LABELS.length; i++)
-		{
-			int textY = y + fm.getAscent();
-			BufferedImage icon = icons != null && i < icons.length ? icons[i] : null;
-			if (icon != null)
-			{
-				g2.drawImage(icon, inset, y + (TitleTooltip.LINE_HEIGHT - ICON_SIZE) / 2, null);
-			}
-
-			g2.setColor(TitleTooltip.OSRS_ORANGE);
-			g2.drawString(LABELS[i], inset + ICON_SIZE + ICON_GAP, textY);
-
-			g2.setColor(Color.WHITE);
-			TitleTooltip.drawRightAligned(g2, fm, TitleTooltip.scoreText(scores[i]), scoreRight, textY);
-
-			if (scores[i] > 0 && obtained[i] >= 0)
-			{
-				TitleTooltip.paintWrappedProgressCount(g2, fm, scoreRight, textY, obtained[i], total[i]);
-			}
-			y += TitleTooltip.LINE_HEIGHT;
-		}
-	}
-
-	private int scoreRight(FontMetrics fm, int inset)
-	{
-		int labelCol = 0;
-		for (String label : LABELS)
-		{
-			labelCol = Math.max(labelCol, fm.stringWidth(label));
-		}
-		return inset + ICON_SIZE + ICON_GAP + labelCol + COL_GAP
-			+ TitleTooltip.widestValue(fm, scores, TitleTooltip::scoreText);
+		return CardBody.table(icons, LABELS, scores, shown, total, null, ICON_SIZE, ICON_GAP, COL_GAP);
 	}
 }

@@ -1,10 +1,6 @@
 package com.killclog;
 
 import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.FontMetrics;
-import java.awt.Graphics2D;
-import net.runelite.client.ui.FontManager;
 
 /**
  * Skill Summary on the total level cell: total XP and overall rank.
@@ -25,24 +21,12 @@ public class SkillsTooltip extends TitleTooltip
 	}
 
 	@Override
-	protected Dimension getContentSize(int availableWidth)
+	protected CardBody body()
 	{
-		FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
-		return new Dimension(Math.max(
-			fm.stringWidth(XP_ROW_LABEL + displayedXpText()),
-			fm.stringWidth(RANK_ROW_LABEL + rankText())), 2 * LINE_HEIGHT);
-	}
-
-	@Override
-	protected void paintBody(Graphics2D g2, int w, int h, int startY)
-	{
-		g2.setFont(FontManager.getRunescapeSmallFont());
-		FontMetrics fm = g2.getFontMetrics();
-		int y = startY + fm.getAscent();
-		drawLabelValue(g2, fm, getInset(), y, XP_ROW_LABEL, displayedXpText(),
-			result != null && result.getTotalXp() >= 0 ? Color.WHITE : UNRANKED_COLOR);
-		drawLabelValue(g2, fm, getInset(), y + LINE_HEIGHT, RANK_ROW_LABEL, rankText(),
-			displayedRank() > 0 ? Color.WHITE : UNRANKED_COLOR);
+		return new CardBody()
+			.add(CardBody.line(XP_ROW_LABEL, displayedXpText(),
+				result != null && result.getTotalXp() >= 0 ? Color.WHITE : UNRANKED_COLOR))
+			.add(CardBody.line(RANK_ROW_LABEL, rankText(), displayedRank() > 0 ? Color.WHITE : UNRANKED_COLOR));
 	}
 
 	String displayedXpText()

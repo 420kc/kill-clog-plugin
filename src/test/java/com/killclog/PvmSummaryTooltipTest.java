@@ -89,9 +89,15 @@ public class PvmSummaryTooltipTest
 		Graphics2D g = image.createGraphics();
 		tip.paint(g);
 		g.dispose();
-		java.lang.reflect.Field top = PvmSummaryTooltip.class.getDeclaredField("raidTop");
-		top.setAccessible(true);
-		return top.getInt(tip);
+		// The first raid row's top, read through the card's own hit test.
+		for (int y = 0; y < size.height; y++)
+		{
+			if (tip.raidAt(y) == 0)
+			{
+				return y;
+			}
+		}
+		return -1;
 	}
 
 	private static PvmSummaryTooltip pvmCard(CombatAchievementResult ca)

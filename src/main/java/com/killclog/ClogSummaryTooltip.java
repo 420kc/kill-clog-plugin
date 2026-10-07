@@ -3,9 +3,7 @@ package com.killclog;
 import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Composite;
-import java.awt.Dimension;
 import java.awt.FontMetrics;
-import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
@@ -14,7 +12,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import net.runelite.client.game.ItemManager;
-import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.AsyncBufferedImage;
 
 /**
@@ -297,168 +294,177 @@ public class ClogSummaryTooltip extends TitleTooltip
 	}
 
 	@Override
-	protected Dimension getContentSize(int availableWidth)
+	protected CardBody body()
 	{
-		FontMetrics fm = getFontMetrics(FontManager.getRunescapeSmallFont());
-
+		CardBody body = new CardBody();
 		if (firstTimeSetup)
 		{
-			int width = Math.max(fm.stringWidth(SETUP_OPEN_LINE), fm.stringWidth(SETUP_SEARCH_LINE));
-			width = Math.max(width, fm.stringWidth(SETUP_CHAT_LINE));
-			return new Dimension(width, LINE_HEIGHT * 3);
+			return body.add(CardBody.text(SETUP_OPEN_LINE, NOTICE_COLOR, true))
+				.add(CardBody.text(SETUP_SEARCH_LINE, NOTICE_COLOR, true))
+				.add(CardBody.text(SETUP_CHAT_LINE, NOTICE_COLOR, true));
 		}
-
 		if (notice != null)
 		{
-			return new Dimension(fm.stringWidth(notice), LINE_HEIGHT);
+			return body.add(CardBody.text(notice, NOTICE_COLOR, true));
 		}
 
-		int textWidth = 0;
-		int contentHeight = 0;
-
-		// Completion, its bar, the tier ladder and the ladder's readout row.
+		// Completion, its bar, the tier ladder and the ladder's readout row; the current tier sits large
+		// in the header's corner.
 		if (hasTotals())
 		{
-			textWidth = Math.max(fm.stringWidth("Completion: " + completionText()), legendWidth());
-			for (String label : ClogHelper.tierLabels(obtained, totalSlots))
+			body.add(CardBody.row(0, c -> 0, (c, y) ->
 			{
-				textWidth = Math.max(textWidth, fm.stringWidth(label));
-			}
-			contentHeight += LINE_HEIGHT + BAR_HEIGHT + BAR_GAP + ICON_SIZE + hoverRowHeight(fm);
+				if (tierSprite != null)
+				{
+					c.g.drawImage(tierSprite, c.w - c.inset() - tierSprite.getWidth(),
+						c.inset() + (getHeaderHeight() - tierSprite.getHeight()) / 2, null);
+				}
+			}))
+				.add(CardBody.line("Completion: ", completionText()))
+				.add(bar(obtained, totalSlots))
+				.add(tierLadder());
 		}
 
 		if (!tabs.isEmpty())
 		{
-			FontMetrics bfm = getFontMetrics(FontManager.getRunescapeBoldFont());
-			textWidth = Math.max(textWidth, bfm.stringWidth("Collection Log"));
-			for (Map.Entry<String, int[]> tab : tabs.entrySet())
-			{
-				textWidth = Math.max(textWidth, fm.stringWidth(tab.getKey() + ": "
-					+ progressCountText(tab.getValue()[0], tab.getValue()[1])));
-			}
-			contentHeight += separatorHeight(SEPARATOR_PAD) + SUBHEADER_HEIGHT
-				+ tabs.size() * (LINE_HEIGHT + BAR_HEIGHT + BAR_GAP);
-		}
-
-		// Highlights (obtained trophies only), then recent unlocks.
-		for (Shelf shelf : new Shelf[]{special, recent})
-		{
-			if (shelf != null)
-			{
-				contentHeight += separatorHeight(SEPARATOR_PAD) + SUBHEADER_HEIGHT + shelfRowHeight(shelf, fm);
-				int count = shelf.ids.length;
-				textWidth = Math.max(textWidth, count * shelf.cellWidth(fm) + (count - 1) * RECENT_PAD);
-			}
-		}
-		FontMetrics bfm = getFontMetrics(FontManager.getRunescapeBoldFont());
-		textWidth = Math.max(textWidth, Math.max(special != null ? bfm.stringWidth("Highlights") : 0,
-			recent != null ? bfm.stringWidth("Recent") : 0));
-
-		// The footer: when it last changed and who supplied it, under one rule.
-		if (syncDate != null || !clogSources.isEmpty())
-		{
-			contentHeight += separatorHeight(SEPARATOR_PAD);
-		}
-		if (syncDate != null)
-		{
-			textWidth = Math.max(textWidth, fm.stringWidth("Last update: " + syncDate));
-			contentHeight += LINE_HEIGHT;
-		}
-		if (!clogSources.isEmpty())
-		{
-			contentHeight += fm.getHeight()
-				+ SOURCE_LABEL_GAP + SOURCE_ICON_SIZE + hoverRowHeight(fm);
-			textWidth = Math.max(textWidth, fm.stringWidth(SOURCE_LABEL));
-			textWidth = Math.max(textWidth, sourceRowWidth(clogSources.size()));
-			for (ClogSource source : clogSources)
-			{
-				textWidth = Math.max(textWidth, fm.stringWidth(source.name));
-			}
-		}
-
-		return new Dimension(textWidth, contentHeight);
-	}
-
-	@Override
-	protected void paintBody(Graphics2D g2, int w, int h, int startY)
-	{
-		itemHover.setHitBoxes(Collections.emptyList());
-		List<TooltipItemHover.HitBox> hitBoxes = new ArrayList<>();
-		int inset = getInset();
-		g2.setFont(FontManager.getRunescapeSmallFont());
-		FontMetrics fm = g2.getFontMetrics();
-
-		if (firstTimeSetup)
-		{
-			g2.setColor(NOTICE_COLOR);
-			int y = startY + fm.getAscent();
-			g2.drawString(SETUP_OPEN_LINE, inset, y);
-			y += LINE_HEIGHT;
-			g2.drawString(SETUP_SEARCH_LINE, inset, y);
-			y += LINE_HEIGHT;
-			g2.drawString(SETUP_CHAT_LINE, inset, y);
-			return;
-		}
-
-		if (notice != null)
-		{
-			g2.setColor(NOTICE_COLOR);
-			g2.drawString(notice, inset, startY + fm.getAscent());
-			return;
-		}
-
-		int y = startY;
-
-		if (hasTotals())
-		{
-			if (tierSprite != null)
-			{
-				g2.drawImage(tierSprite, w - inset - tierSprite.getWidth(),
-					inset + (getHeaderHeight() - tierSprite.getHeight()) / 2, null);
-			}
-			drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Completion: ", completionText());
-			y = paintBar(g2, w, y + LINE_HEIGHT, obtained, totalSlots);
-			y = paintTierLadder(g2, fm, hitBoxes, w, y);
-		}
-
-		if (!tabs.isEmpty())
-		{
-			y = paintSubheader(g2, paintSeparator(g2, w, y, SEPARATOR_PAD), "Collection Log");
+			body.add(CardBody.separator(SEPARATOR_PAD)).add(CardBody.subheader("Collection Log"));
 			for (Map.Entry<String, int[]> tab : tabs.entrySet())
 			{
 				int[] count = tab.getValue();
-				drawLabelValue(g2, fm, inset, y + fm.getAscent(), tab.getKey() + ": ",
-					progressCountText(count[0], count[1]), completionColor(count[0], count[1]));
-				y = paintBar(g2, w, y + LINE_HEIGHT, count[0], count[1]);
+				body.add(CardBody.line(tab.getKey() + ": ", progressCountText(count[0], count[1]),
+					completionColor(count[0], count[1])))
+					.add(bar(count[0], count[1]));
 			}
 		}
 
 		// The trophy shelf, present only when earned, then recent unlocks.
-		y = paintShelf(g2, hitBoxes, 0, "Highlights", special, w, y, fm);
-		y = paintShelf(g2, hitBoxes, 1, "Recent", recent, w, y, fm);
+		shelf(body, 0, "Highlights", special);
+		shelf(body, 1, "Recent", recent);
 
+		// The footer: when it last changed and who supplied it, under one rule.
 		if (syncDate != null || !clogSources.isEmpty())
 		{
-			y = paintSeparator(g2, w, y, SEPARATOR_PAD);
-			g2.setFont(FontManager.getRunescapeSmallFont());
+			body.add(CardBody.separator(SEPARATOR_PAD));
 		}
-
-		// Sync line: label orange, date green or red.
 		if (syncDate != null)
 		{
-			drawLabelValue(g2, fm, inset, y + fm.getAscent(), "Last update: ", syncDate,
-				syncStale ? STALE_RED : CLOG_GREEN);
-			y += LINE_HEIGHT;
+			body.add(CardBody.line("Last update: ", syncDate, syncStale ? STALE_RED : CLOG_GREEN));
 		}
-
 		if (!clogSources.isEmpty())
 		{
-			g2.setColor(MUTED_GRAY);
-			int labelX = (w - fm.stringWidth(SOURCE_LABEL)) / 2;
-			g2.drawString(SOURCE_LABEL, labelX, y + fm.getAscent());
-			y += fm.getHeight() + SOURCE_LABEL_GAP;
+			body.add(sources());
+		}
+		return body;
+	}
 
-			int sourceX = sourceRowStartX(w, clogSources.size());
+	/** A thin rail under a count: the share at a glance, the number still primary. */
+	private static CardBody.Part bar(int obtained, int total)
+	{
+		return CardBody.row(BAR_HEIGHT + BAR_GAP, c -> 0, (c, y) ->
+		{
+			int width = c.w - 2 * c.inset();
+			c.g.setColor(BAR_TRACK);
+			c.g.fillRect(c.inset(), y, width, BAR_HEIGHT);
+			if (obtained > 0 && total > 0)
+			{
+				c.g.setColor(completionColor(obtained, total));
+				c.g.fillRect(c.inset(), y, Math.max(1, width * Math.min(obtained, total) / total), BAR_HEIGHT);
+			}
+		});
+	}
+
+	/** Every tier's icon, dimmed until reached; hovering one reads its range below. */
+	private CardBody.Part tierLadder()
+	{
+		String[] labels = ClogHelper.tierLabels(obtained, totalSlots);
+		return CardBody.part(c ->
+		{
+			int width = legendWidth();
+			for (String label : labels)
+			{
+				width = Math.max(width, c.fm.stringWidth(label));
+			}
+			return width;
+		}, c -> ICON_SIZE + hoverRowHeight(c.fm), (c, y) ->
+		{
+			int x = (c.w - legendWidth()) / 2;
+			Composite solid = c.g.getComposite();
+			for (int i = 0; i < labels.length; i++)
+			{
+				boolean reached = i <= tier;
+				BufferedImage icon = tierIcons != null ? tierIcons.get(ClogHelper.CLOG_TIERS[i]) : null;
+				if (icon != null)
+				{
+					c.g.setComposite(reached ? solid : AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
+					c.g.drawImage(icon, x, y, null);
+				}
+				c.hits.add(new TooltipItemHover.HitBox(reached ? TIER_SECTION : TIER_SECTION + 1, 0, labels[i],
+					new Rectangle(x, y, ICON_SIZE, ICON_SIZE), false, 1));
+				x += ICON_SIZE + ICON_GAP;
+			}
+			c.g.setComposite(solid);
+			int section = itemHover.hoveredSection();
+			if (section >= TIER_SECTION && section < SOURCE_SECTION)
+			{
+				paintHeaderHoverLine(c.g, c.fm, c.w, y + ICON_SIZE + c.fm.getAscent());
+			}
+		});
+	}
+
+	/** A shelf under its subheader: sprites centered in a row, dates below, then its hover line. */
+	private void shelf(CardBody body, int section, String title, Shelf shelf)
+	{
+		if (shelf == null)
+		{
+			return;
+		}
+		int count = shelf.ids.length;
+		body.add(CardBody.separator(SEPARATOR_PAD)).add(CardBody.subheader(title)).add(CardBody.part(
+			c -> count * shelf.cellWidth(c.fm) + (count - 1) * RECENT_PAD,
+			c -> RECENT_SIZE + (shelf.dated() ? DATE_GAP + c.fm.getHeight() : 0) + hoverRowHeight(c.fm), (c, y) ->
+			{
+				int cellWidth = shelf.cellWidth(c.fm);
+				int startX = c.inset() + (c.w - 2 * c.inset() - (count * cellWidth + (count - 1) * RECENT_PAD)) / 2;
+				for (int i = 0; i < count; i++)
+				{
+					int cellX = startX + i * (cellWidth + RECENT_PAD);
+					int sx = cellX + (cellWidth - RECENT_SIZE) / 2;
+					if (shelf.sprites[i] != null)
+					{
+						c.g.drawImage(shelf.sprites[i], sx, y, null);
+					}
+					c.hits.add(new TooltipItemHover.HitBox(section, shelf.ids[i], shelf.names[i],
+						new Rectangle(sx, y, RECENT_SIZE, RECENT_SIZE), true, 1));
+					String date = shelf.dates != null ? shelf.dates[i] : null;
+					if (date != null)
+					{
+						c.g.setColor(MUTED_GRAY);
+						c.g.drawString(date, cellX + (cellWidth - c.fm.stringWidth(date)) / 2,
+							y + RECENT_SIZE + DATE_GAP + c.fm.getAscent());
+					}
+				}
+				paintSectionHoverLine(c.g, c.fm, c.w, y + RECENT_SIZE + (shelf.dated() ? DATE_GAP + c.fm.getHeight() : 0),
+					section);
+			}));
+	}
+
+	/** Who supplied the log: each source's icon, its name on hover. */
+	private CardBody.Part sources()
+	{
+		return CardBody.part(c ->
+		{
+			int width = Math.max(c.fm.stringWidth(SOURCE_LABEL), sourceRowWidth(clogSources.size()));
+			for (ClogSource source : clogSources)
+			{
+				width = Math.max(width, c.fm.stringWidth(source.name));
+			}
+			return width;
+		}, c -> c.fm.getHeight() + SOURCE_LABEL_GAP + SOURCE_ICON_SIZE + hoverRowHeight(c.fm), (c, y) ->
+		{
+			c.g.setColor(MUTED_GRAY);
+			c.g.drawString(SOURCE_LABEL, (c.w - c.fm.stringWidth(SOURCE_LABEL)) / 2, y + c.fm.getAscent());
+			y += c.fm.getHeight() + SOURCE_LABEL_GAP;
+			int sourceX = sourceRowStartX(c.w, clogSources.size());
 			String hoveredName = itemHover.hoveredItemName();
 			for (int i = 0; i < clogSources.size(); i++)
 			{
@@ -466,73 +472,23 @@ public class ClogSummaryTooltip extends TitleTooltip
 				int iconX = sourceX + i * (SOURCE_ICON_SIZE + SOURCE_ICON_GAP);
 				if (source.icon != null)
 				{
-					g2.drawImage(source.icon, iconX, y, null);
+					c.g.drawImage(source.icon, iconX, y, null);
 				}
 				if (source.name.equals(hoveredName))
 				{
-					g2.setColor(CLOG_GREEN);
-					g2.drawRect(iconX - SOURCE_HIT_PAD, y - SOURCE_HIT_PAD,
-						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2 - 1,
-						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2 - 1);
+					c.g.setColor(CLOG_GREEN);
+					c.g.drawRect(iconX - SOURCE_HIT_PAD, y - SOURCE_HIT_PAD,
+						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2 - 1, SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2 - 1);
 				}
-				hitBoxes.add(new TooltipItemHover.HitBox(
-					SOURCE_SECTION + i, 0, source.name,
+				c.hits.add(new TooltipItemHover.HitBox(SOURCE_SECTION + i, 0, source.name,
 					new Rectangle(iconX - SOURCE_HIT_PAD, y - SOURCE_HIT_PAD,
-						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2,
-						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2), false, 1));
+						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2, SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2), false, 1));
 			}
 			if (itemHover.hoveredSection() >= SOURCE_SECTION)
 			{
-				paintHeaderHoverLine(g2, fm, w, y + SOURCE_ICON_SIZE + fm.getAscent());
+				paintHeaderHoverLine(c.g, c.fm, c.w, y + SOURCE_ICON_SIZE + c.fm.getAscent());
 			}
-		}
-
-		itemHover.setHitBoxes(hitBoxes);
-	}
-
-	/**
-	 * Centered sprite row with hover hit boxes and optional date captions
-	 * under each cell.
-	 */
-	private int shelfRowHeight(Shelf shelf, FontMetrics fm)
-	{
-		return RECENT_SIZE + (shelf.dated() ? DATE_GAP + fm.getHeight() : 0) + hoverRowHeight(fm);
-	}
-
-	/** A shelf under its subheader: sprites centered in a row, dates below, then its hover line. */
-	private int paintShelf(Graphics2D g2, List<TooltipItemHover.HitBox> hitBoxes, int section, String title,
-		Shelf shelf, int w, int y, FontMetrics fm)
-	{
-		if (shelf == null)
-		{
-			return y;
-		}
-		y = paintSubheader(g2, paintSeparator(g2, w, y, SEPARATOR_PAD), title);
-		int inset = getInset();
-		int count = shelf.sprites.length;
-		int cellWidth = shelf.cellWidth(fm);
-		int startX = inset + (w - 2 * inset - (count * cellWidth + (count - 1) * RECENT_PAD)) / 2;
-		for (int i = 0; i < count; i++)
-		{
-			int cellX = startX + i * (cellWidth + RECENT_PAD);
-			int sx = cellX + (cellWidth - RECENT_SIZE) / 2;
-			if (shelf.sprites[i] != null)
-			{
-				g2.drawImage(shelf.sprites[i], sx, y, null);
-			}
-			hitBoxes.add(new TooltipItemHover.HitBox(section, shelf.ids[i], shelf.names[i],
-				new Rectangle(sx, y, RECENT_SIZE, RECENT_SIZE), true, 1));
-			String date = shelf.dates != null ? shelf.dates[i] : null;
-			if (date != null)
-			{
-				g2.setColor(MUTED_GRAY);
-				g2.drawString(date, cellX + (cellWidth - fm.stringWidth(date)) / 2,
-					y + RECENT_SIZE + DATE_GAP + fm.getAscent());
-			}
-		}
-		y += shelfRowHeight(shelf, fm) - hoverRowHeight(fm);
-		paintSectionHoverLine(g2, fm, w, y, section);
-		return y + hoverRowHeight(fm);
+		});
 	}
 
 	@Override
@@ -540,50 +496,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 	{
 		// Obtained items, verified providers and reached tiers share the success color.
 		return itemHover.hoveredSection() == TIER_SECTION + 1 ? CLOG_RED : CLOG_GREEN;
-	}
-
-	/** A thin rail under a count: the share at a glance, the number still primary. */
-	private int paintBar(Graphics2D g2, int w, int y, int obtained, int total)
-	{
-		int inset = getInset();
-		int width = w - 2 * inset;
-		g2.setColor(BAR_TRACK);
-		g2.fillRect(inset, y, width, BAR_HEIGHT);
-		if (obtained > 0 && total > 0)
-		{
-			g2.setColor(completionColor(obtained, total));
-			g2.fillRect(inset, y, Math.max(1, width * Math.min(obtained, total) / total), BAR_HEIGHT);
-		}
-		return y + BAR_HEIGHT + BAR_GAP;
-	}
-
-	/** Every tier's icon, dimmed until reached; hovering one reads its range below. */
-	private int paintTierLadder(Graphics2D g2, FontMetrics fm, List<TooltipItemHover.HitBox> hitBoxes,
-		int w, int y)
-	{
-		String[] labels = ClogHelper.tierLabels(obtained, totalSlots);
-		int x = (w - legendWidth()) / 2;
-		Composite solid = g2.getComposite();
-		for (int i = 0; i < labels.length; i++)
-		{
-			boolean reached = i <= tier;
-			BufferedImage icon = tierIcons != null ? tierIcons.get(ClogHelper.CLOG_TIERS[i]) : null;
-			if (icon != null)
-			{
-				g2.setComposite(reached ? solid : AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
-				g2.drawImage(icon, x, y, null);
-			}
-			hitBoxes.add(new TooltipItemHover.HitBox(reached ? TIER_SECTION : TIER_SECTION + 1, 0, labels[i],
-				new Rectangle(x, y, ICON_SIZE, ICON_SIZE), false, 1));
-			x += ICON_SIZE + ICON_GAP;
-		}
-		g2.setComposite(solid);
-		int section = itemHover.hoveredSection();
-		if (section >= TIER_SECTION && section < SOURCE_SECTION)
-		{
-			paintHeaderHoverLine(g2, fm, w, y + ICON_SIZE + fm.getAscent());
-		}
-		return y + ICON_SIZE + hoverRowHeight(fm);
 	}
 
 	private static final class ClogSource

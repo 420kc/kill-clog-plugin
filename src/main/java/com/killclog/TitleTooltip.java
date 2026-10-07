@@ -492,17 +492,29 @@ public abstract class TitleTooltip extends NativeTooltip
 		return getHeaderHeight() + SEPARATOR_GAP + 1 + SEPARATOR_GAP;
 	}
 
+	/** The card's body as parts; a card that lists its body needs no sizing or painting of its own. */
+	protected CardBody body()
+	{
+		return new CardBody();
+	}
+
 	/**
 	 * Return the content dimensions given the available width.
 	 * The availableWidth accounts for the header-driven minimum width, so subclasses
 	 * can wrap content to fill the space.
 	 */
-	protected abstract Dimension getContentSize(int availableWidth);
+	protected Dimension getContentSize(int availableWidth)
+	{
+		return body().size(this, availableWidth);
+	}
 
 	/**
 	 * Paint the body content starting at the given Y coordinate (below separator).
 	 */
-	protected abstract void paintBody(Graphics2D g2, int w, int h, int startY);
+	protected void paintBody(Graphics2D g2, int w, int h, int startY)
+	{
+		itemHover.setHitBoxes(body().paint(this, g2, w, startY));
+	}
 
 	@Override
 	public Dimension getPreferredSize()

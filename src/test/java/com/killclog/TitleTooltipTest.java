@@ -249,19 +249,22 @@ public class TitleTooltipTest
 	@Test
 	public void pvpRowsWidthGrowsWithLargeScore()
 	{
-		java.awt.FontMetrics fm = new javax.swing.JPanel().getFontMetrics(
-			net.runelite.client.ui.FontManager.getRunescapeSmallFont());
 		PvpSummaryRows small = new PvpSummaryRows();
 		small.setData(pvpHiscore("Soul Wars Zeal", 42), null);
 		PvpSummaryRows large = new PvpSummaryRows();
 		large.setData(pvpHiscore("Soul Wars Zeal", 1_234_567), null);
 
-		assertTrue(small.size(fm).width < large.size(fm).width);
+		assertTrue(size(small).width < size(large).width);
 		// Five rows whatever the data, so a comparison pair never staggers.
 		PvpSummaryRows empty = new PvpSummaryRows();
 		empty.setData(null, null);
-		assertEquals(5 * NativeTooltip.LINE_HEIGHT, empty.size(fm).height);
-		assertEquals(empty.size(fm).height, large.size(fm).height);
+		assertEquals(5 * NativeTooltip.LINE_HEIGHT, size(empty).height);
+		assertEquals(size(empty).height, size(large).height);
+	}
+
+	private static java.awt.Dimension size(PvpSummaryRows rows)
+	{
+		return new CardBody().add(rows.part()).size(new PvmSummaryTooltip(), 0);
 	}
 
 	@Test
