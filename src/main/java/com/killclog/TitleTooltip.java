@@ -62,6 +62,8 @@ public abstract class TitleTooltip extends NativeTooltip
 	@Getter(AccessLevel.PROTECTED)
 	private Color titleSuffixColor;
 	private String subtitleLabel;
+	// A clue card reads as the game's own page does: Obtained first, then the tier's completed clues.
+	private boolean obtainedFirst;
 	private String subtitleValue;
 	private Color subtitleColor;
 	// The header's stat lines (KC and PB; a raid's hard mode on a second), each a label and value and maybe a pair.
@@ -398,6 +400,12 @@ public abstract class TitleTooltip extends NativeTooltip
 		rankPairText = rank > 0 ? grouped(rank) : "Unranked";
 	}
 
+	/** Leads the header with the Obtained line, as the game's clue pages do. */
+	void setObtainedFirst(boolean obtainedFirst)
+	{
+		this.obtainedFirst = obtainedFirst;
+	}
+
 	/** Set the rank line. 0 = "Unranked". */
 	public void setRank(int rank)
 	{
@@ -637,6 +645,12 @@ public abstract class TitleTooltip extends NativeTooltip
 		// clog progress reads last. The first line under the title keeps the
 		// wider gap the larger title font needs.
 
+		if (obtainedFirst && subtitleLabel != null)
+		{
+			lineY += lineY == titleBaseline ? NAME_LINE_HEIGHT : LINE_HEIGHT;
+			drawLabelValue(g2, fm, inset, lineY, subtitleLabel, subtitleValue, subtitleColor);
+		}
+
 		// Info lines (KC/PB for boss cells, a raid's hard mode under them, Kills for unsynced)
 		for (InfoLine line : infoLines)
 		{
@@ -663,7 +677,7 @@ public abstract class TitleTooltip extends NativeTooltip
 		}
 
 		// Subtitle (label in orange, value in subtitleColor)
-		if (subtitleLabel != null)
+		if (!obtainedFirst && subtitleLabel != null)
 		{
 			lineY += lineY == titleBaseline ? NAME_LINE_HEIGHT : LINE_HEIGHT;
 			drawLabelValue(g2, fm, inset, lineY, subtitleLabel, subtitleValue, subtitleColor);

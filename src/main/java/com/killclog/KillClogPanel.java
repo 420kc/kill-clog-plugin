@@ -652,6 +652,7 @@ public class KillClogPanel extends PluginPanel
 		{
 			tip.setTitle(data.name);
 			tip.setObtained(data.obtainedCount, data.totalItems);
+			tip.setObtainedFirst(data.obtainedFirst);
 			boolean hasHeaderScore = isSolHeredit
 				? ColosseumGlory.hasHeaderScore(glory, data.kc) : data.kc >= 0;
 			if (hasHeaderScore && config.showTooltipKc())
