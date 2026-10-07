@@ -38,9 +38,9 @@ final class HttpUtil
 		String key, Supplier<CompletableFuture<T>> start)
 	{
 		CompletableFuture<T> flight = flights.computeIfAbsent(key, ignored -> start.get());
-		// Even an immediate response must be registered before cleanup runs.
-		flight.whenComplete((result, error) -> flights.remove(key, flight));
-		return flight.copy();
+		// Even an immediate response must be registered before cleanup runs, and subscribers hear
+		// only after it: a lookup started from their callback then starts a fresh flight.
+		return flight.whenComplete((result, error) -> flights.remove(key, flight)).copy();
 	}
 
 	/** Per-name lookup caches hold at most this many names. */

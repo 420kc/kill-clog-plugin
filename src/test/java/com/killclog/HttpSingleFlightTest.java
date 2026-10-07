@@ -72,6 +72,23 @@ public class HttpSingleFlightTest
 	}
 
 	@Test
+	public void aLookupStartedAsAFlightAnswersStartsAFreshOne()
+	{
+		AtomicInteger starts = new AtomicInteger();
+		java.util.function.Supplier<CompletableFuture<String>> start = () ->
+		{
+			starts.incrementAndGet();
+			return new CompletableFuture<>();
+		};
+		// The answer is spent: an outage after it must be fetched, not read from the old flight.
+		CompletableFuture<String> next = HttpUtil.singleFlightLookup(flights, "player", start)
+			.thenCompose(answer -> HttpUtil.singleFlightLookup(flights, "player", start));
+		flights.get("player").complete(null);
+		assertEquals(2, starts.get());
+		assertFalse(next.isDone());
+	}
+
+	@Test
 	public void lateExceptionalCompletionCannotRemoveReplacementFlight()
 	{
 		CompletableFuture<String> source = new CompletableFuture<>();
