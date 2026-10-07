@@ -669,6 +669,7 @@ public class KillClogPanel extends PluginPanel
 			{
 				tip.setInfoLine("PB: ", data.pb, Color.WHITE);
 			}
+			ClogHelper.addHardModeLine(tip, data, config.showTooltipKc(), config.showTooltipPb());
 			if (data.allItemIds != null)
 			{
 				tip.setItems(data.totalItems, data.allItemIds, data.obtainedIds,

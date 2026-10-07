@@ -7,8 +7,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 import javax.annotation.Nullable;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.hiscore.HiscoreSkill;
 
 /**
  * Builds {@link TooltipData} objects from a {@link ClogResult} without touching any UI.
@@ -76,6 +78,23 @@ final class TooltipDataBuilder
 			.itemNames(itemNamesFor(itemList, clogResult))
 			.kc(kc)
 			.pb(pb)
+			.build();
+	}
+
+	/** A raid's card with its hard mode's KC and PB, the PB looked up by the hard mode's name; others as they are. */
+	@Nullable
+	static TooltipData withHardMode(@Nullable TooltipData data, HiscoreSkill raid, @Nullable HiscoreResult result,
+		UnaryOperator<String> pb)
+	{
+		HiscoreSkill hard = PanelData.hardMode(raid);
+		if (data == null || hard == null)
+		{
+			return data;
+		}
+		return data.toBuilder()
+			.hardLabel(PanelData.hardLabel(raid))
+			.hardKc(result != null ? result.getKc(hard.getName()) : -1)
+			.hardPb(pb.apply(hard.getName()))
 			.build();
 	}
 

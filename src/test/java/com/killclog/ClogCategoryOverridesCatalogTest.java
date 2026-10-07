@@ -1,6 +1,7 @@
 package com.killclog;
 
 import java.util.Map;
+import net.runelite.client.hiscore.HiscoreSkill;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 
@@ -29,9 +30,9 @@ public class ClogCategoryOverridesCatalogTest
 		assertEquals("dagannoth_kings", overrides.get("Dagannoth Supreme"));
 		assertEquals("kree_arra", overrides.get("Kree'Arra"));
 		assertEquals("kril_tsutsaroth", overrides.get("K'ril Tsutsaroth"));
-		assertEquals(PanelData.COX_CATEGORY, overrides.get(PanelData.COX_HISCORE_HARD));
-		assertEquals(PanelData.TOB_CATEGORY, overrides.get(PanelData.TOB_HISCORE_HARD));
-		assertEquals(PanelData.TOA_CATEGORY, overrides.get(PanelData.TOA_HISCORE_HARD));
+		assertEquals(PanelData.COX_CATEGORY, overrides.get(HiscoreSkill.CHAMBERS_OF_XERIC_CHALLENGE_MODE.getName()));
+		assertEquals(PanelData.TOB_CATEGORY, overrides.get(HiscoreSkill.THEATRE_OF_BLOOD_HARD_MODE.getName()));
+		assertEquals(PanelData.TOA_CATEGORY, overrides.get(HiscoreSkill.TOMBS_OF_AMASCUT_EXPERT.getName()));
 		assertEquals("the_fight_caves", overrides.get("TzTok-Jad"));
 		assertEquals("the_inferno", overrides.get("TzKal-Zuk"));
 		assertEquals("fortis_colosseum", overrides.get("Sol Heredit"));

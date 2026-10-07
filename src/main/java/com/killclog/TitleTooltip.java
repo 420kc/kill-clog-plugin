@@ -10,6 +10,7 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.function.Consumer;
@@ -66,12 +67,8 @@ public abstract class TitleTooltip extends NativeTooltip
 	private String subtitleLabel;
 	private String subtitleValue;
 	private Color subtitleColor;
-	private String infoLabel;
-	private String infoValue;
-	private String infoLabel2;
-	private String infoValue2;
-	private Color infoColor2;
-	private Color infoColor;
+	// The header's stat lines (KC and PB; a raid's hard mode on a second), each a label and value and maybe a pair.
+	private final List<InfoLine> infoLines = new ArrayList<>();
 	private String rankText;
 	private String titleWikiPage;
 	@Nullable
@@ -384,20 +381,48 @@ public abstract class TitleTooltip extends NativeTooltip
 		}
 	}
 
-	/** Set an extra info line below the subtitle. Label in orange, value in given color. */
+	/** Set the info line under the title, in place of any before it. Label in orange, value in given color. */
 	public void setInfoLine(String label, String value, Color valueColor)
 	{
-		this.infoLabel = label;
-		this.infoValue = value;
-		this.infoColor = valueColor;
+		infoLines.clear();
+		addInfoLine(label, value, valueColor);
 	}
 
-	/** Optional second label+value pair painted after the first on the same info line. */
+	/** One more info line under the last. */
+	void addInfoLine(String label, String value, Color valueColor)
+	{
+		infoLines.add(new InfoLine(label, value, valueColor));
+	}
+
+	/** Optional second label+value pair painted after the first on the last info line. */
 	public void setInfoLinePair(String label, String value, Color valueColor)
 	{
-		this.infoLabel2 = label;
-		this.infoValue2 = value;
-		this.infoColor2 = valueColor;
+		if (!infoLines.isEmpty())
+		{
+			infoLines.get(infoLines.size() - 1).pair = new InfoLine(label, value, valueColor);
+		}
+	}
+
+	/** A label and value in the header's info lines, and the pair painted after it. */
+	private static final class InfoLine
+	{
+		private final String label;
+		private final String value;
+		private final Color color;
+		@Nullable
+		private InfoLine pair;
+
+		private InfoLine(String label, String value, Color color)
+		{
+			this.label = label;
+			this.value = value;
+			this.color = color;
+		}
+
+		private int width(FontMetrics fm)
+		{
+			return fm.stringWidth(label + value) + (pair != null ? INFO_PAIR_GAP + pair.width(fm) : 0);
+		}
 	}
 
 	/** Set the rank line. 0 = "Unranked". */
@@ -470,10 +495,7 @@ public abstract class TitleTooltip extends NativeTooltip
 		{
 			h += LINE_HEIGHT;
 		}
-		if (infoLabel != null)
-		{
-			h += LINE_HEIGHT;
-		}
+		h += infoLines.size() * LINE_HEIGHT;
 		if (rankText != null)
 		{
 			h += LINE_HEIGHT;
@@ -553,11 +575,10 @@ public abstract class TitleTooltip extends NativeTooltip
 		}
 		int subTextWidth = subtitleLabel != null
 			? sfm.stringWidth(subtitleLabel + subtitleValue) : 0;
-		int infoTextWidth = infoLabel != null
-			? sfm.stringWidth(infoLabel + infoValue) : 0;
-		if (infoLabel != null && infoLabel2 != null)
+		int infoTextWidth = 0;
+		for (InfoLine line : infoLines)
 		{
-			infoTextWidth += INFO_PAIR_GAP + sfm.stringWidth(infoLabel2 + infoValue2);
+			infoTextWidth = Math.max(infoTextWidth, line.width(sfm));
 		}
 		int rnkTextWidth = rankText != null ? sfm.stringWidth("Rank: " + rankText) : 0;
 		int maxTextWidth = Math.max(titleTextWidth,
@@ -639,14 +660,15 @@ public abstract class TitleTooltip extends NativeTooltip
 		// clog progress reads last. The first line under the title keeps the
 		// wider gap the larger title font needs.
 
-		// Info line (KC/PB for boss cells, Kills for unsynced)
-		if (infoLabel != null)
+		// Info lines (KC/PB for boss cells, a raid's hard mode under them, Kills for unsynced)
+		for (InfoLine line : infoLines)
 		{
 			lineY += lineY == titleBaseline ? NAME_LINE_HEIGHT : LINE_HEIGHT;
-			int infoWidth = drawLabelValue(g2, fm, inset, lineY, infoLabel, infoValue, infoColor);
-			if (infoLabel2 != null)
+			int infoWidth = drawLabelValue(g2, fm, inset, lineY, line.label, line.value, line.color);
+			if (line.pair != null)
 			{
-				drawLabelValue(g2, fm, inset + infoWidth + INFO_PAIR_GAP, lineY, infoLabel2, infoValue2, infoColor2);
+				drawLabelValue(g2, fm, inset + infoWidth + INFO_PAIR_GAP, lineY, line.pair.label, line.pair.value,
+					line.pair.color);
 			}
 		}
 

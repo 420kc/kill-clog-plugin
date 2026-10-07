@@ -248,9 +248,12 @@ public class ComparisonController
 			ClogResult catalog = getCompareClogResult() == null ? unsyncedCatalog.result() : null;
 			for (HiscoreSkill boss : PanelData.BOSSES)
 			{
-				String bossName = boss.getName();
+				HiscoreSkill card = PanelData.card(boss);
+				String bossName = card.getName();
 				String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(bossName, bossName);
-				TooltipData data = buildCompareBossData(bossName, hiscoreName, catalog);
+				// No red PB source exists, for a hard mode either.
+				TooltipData data = TooltipDataBuilder.withHardMode(buildCompareBossData(bossName, hiscoreName, catalog),
+					card, getCompareHiscoreResult(), name -> null);
 				if (data != null)
 				{
 					compareTooltipDataMap.put(boss, data);

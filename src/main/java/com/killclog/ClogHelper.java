@@ -62,6 +62,7 @@ final class ClogHelper
 			{
 				tip.setInfoLine(data.statLabel, statText(data.statValue), Color.WHITE);
 			}
+			addHardModeLine(tip, data, showKc, false);
 		}
 		else
 		{
@@ -72,6 +73,27 @@ final class ClogHelper
 		tip.setItems(data.totalItems, data.allItemIds, Collections.emptySet(),
 			Collections.emptyMap(), data.itemNames, itemManager);
 		return true;
+	}
+
+	/** A raid's hard mode on the line under the raid's own KC and PB, by the name the Combat Summary pairs it by. */
+	static void addHardModeLine(TitleTooltip tip, TooltipData data, boolean showKc, boolean showPb)
+	{
+		if (data.hardLabel == null)
+		{
+			return;
+		}
+		if (data.hardKc >= 0 && showKc)
+		{
+			tip.addInfoLine(data.hardLabel + ": ", formatKc(data.hardKc), Color.WHITE);
+			if (data.hardPb != null && showPb)
+			{
+				tip.setInfoLinePair("PB: ", data.hardPb, Color.WHITE);
+			}
+		}
+		else if (data.hardPb != null && showPb)
+		{
+			tip.addInfoLine(data.hardLabel + " PB: ", data.hardPb, Color.WHITE);
+		}
 	}
 
 	// Clog data helpers.

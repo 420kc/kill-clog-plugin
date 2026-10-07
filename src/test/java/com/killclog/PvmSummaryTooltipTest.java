@@ -293,9 +293,9 @@ public class PvmSummaryTooltipTest
 	{
 		tip.setData(110.5, 2_500, 40, PanelData.bossCount(), "Vorkath", 900);
 		Map<String, Integer> kills = new HashMap<>();
-		kills.put(PanelData.COX_HISCORE, 120);
-		kills.put(PanelData.TOB_HISCORE, 80);
-		kills.put(PanelData.TOA_HISCORE, 300);
+		kills.put(HiscoreSkill.CHAMBERS_OF_XERIC.getName(), 120);
+		kills.put(HiscoreSkill.THEATRE_OF_BLOOD.getName(), 80);
+		kills.put(HiscoreSkill.TOMBS_OF_AMASCUT.getName(), 300);
 		tip.setRaids(new HiscoreResult(AccountType.REGULAR, kills, Collections.emptyMap(),
 			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1), null);
 		return tip;

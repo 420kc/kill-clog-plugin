@@ -33,6 +33,11 @@ final class TooltipData
 	final int kc = -1;
 	/** The local player's recorded personal best for the KC/PB header line, null when none. */
 	final String pb;
+	/** A raid's hard mode, a second KC/PB line on the raid's card: its name, KC (-1 unknown) and PB. */
+	final String hardLabel;
+	@Builder.Default
+	final int hardKc = -1;
+	final String hardPb;
 
 	static List<Integer> itemList(int[] itemIds)
 	{

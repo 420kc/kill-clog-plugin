@@ -57,16 +57,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 	// CoX, ToB and ToA: normal and hard-mode kills as pairs, like a boss popup's KC and PB, then the raid's log.
 	private static final String[] RAID_LABELS = {"CoX: ", "ToB: ", "ToA: "};
-	private static final String[] HARD_LABELS = {"CM: ", "HM: ", "Expert: "};
 	private static final int PAIR_GAP = 8;
-	private static final String[][] RAID_HISCORES = {
-		{PanelData.COX_HISCORE, PanelData.COX_HISCORE_HARD},
-		{PanelData.TOB_HISCORE, PanelData.TOB_HISCORE_HARD},
-		{PanelData.TOA_HISCORE, PanelData.TOA_HISCORE_HARD}};
 	private static final String[] RAID_CATEGORIES = {PanelData.COX_CATEGORY, PanelData.TOB_CATEGORY, PanelData.TOA_CATEGORY};
-	// Each row opens its raid's own popup.
-	static final HiscoreSkill[] RAID_BOSSES = {HiscoreSkill.CHAMBERS_OF_XERIC,
-		HiscoreSkill.THEATRE_OF_BLOOD, HiscoreSkill.TOMBS_OF_AMASCUT};
 	private final int[] raidKc = new int[3];
 	private final int[] hardKc = new int[3];
 	private final int[] raidObtained = {-1, -1, -1};
@@ -77,7 +69,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 	{
 		if (onOpenRaid != null)
 		{
-			onOpenRaid.accept(e, RAID_BOSSES[row]);
+			// Each row opens its raid's own popup.
+			onOpenRaid.accept(e, PanelData.RAIDS[row]);
 			e.consume();
 		}
 	});
@@ -163,8 +156,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 	{
 		for (int i = 0; i < 3; i++)
 		{
-			raidKc[i] = Math.max(0, hiscoreResult.getKc(RAID_HISCORES[i][0]));
-			hardKc[i] = Math.max(0, hiscoreResult.getKc(RAID_HISCORES[i][1]));
+			raidKc[i] = Math.max(0, hiscoreResult.getKc(PanelData.RAIDS[i].getName()));
+			hardKc[i] = Math.max(0, hiscoreResult.getKc(PanelData.RAID_HARD_MODES[i].getName()));
 			int[] counts = clogResult != null ? ClogHelper.clogCounts(RAID_CATEGORIES[i], clogResult) : null;
 			if (counts != null)
 			{
@@ -259,11 +252,16 @@ public class PvmSummaryTooltip extends TitleTooltip
 		return raidKc[row] + hardKc[row] > 0 && raidObtained[row] >= 0;
 	}
 
+	private static String hardLabel(int row)
+	{
+		return PanelData.RAID_HARD_LABELS[row] + ": ";
+	}
+
 	/** A raid's normal and hard-mode kills, then its log; the row opens the raid's own popup. */
 	private CardBody.Part raidRow(int row)
 	{
 		return CardBody.clickRow(raidRows, row, c -> c.fm.stringWidth(RAID_LABELS[row] + scoreText(raidKc[row])) + PAIR_GAP
-			+ c.fm.stringWidth(HARD_LABELS[row] + scoreText(hardKc[row]))
+			+ c.fm.stringWidth(hardLabel(row) + scoreText(hardKc[row]))
 			+ (raidLog(row) ? wrappedProgressCountWidth(c.fm, raidObtained[row], raidTotal[row]) : 0), (c, y, hovered) ->
 		{
 			int textY = y + c.fm.getAscent();
@@ -271,7 +269,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 			Color label = hovered ? Color.WHITE : OSRS_ORANGE;
 			int end = c.inset() + drawLabelValue(c.g, c.fm, c.inset(), textY, RAID_LABELS[row], scoreText(raidKc[row]),
 				label, Color.WHITE) + PAIR_GAP;
-			end += drawLabelValue(c.g, c.fm, end, textY, HARD_LABELS[row], scoreText(hardKc[row]), label, Color.WHITE);
+			end += drawLabelValue(c.g, c.fm, end, textY, hardLabel(row), scoreText(hardKc[row]), label, Color.WHITE);
 			if (raidLog(row))
 			{
 				paintWrappedProgressCount(c.g, c.fm, end, textY, raidObtained[row], raidTotal[row]);

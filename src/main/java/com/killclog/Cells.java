@@ -405,9 +405,12 @@ public class Cells
 		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
 		{
 			HiscoreSkill skill = entry.getKey();
-			String bossName = skill.getName();
+			// A raid's hard mode holds its raid's card, so its cell opens, colors and counts as the raid.
+			HiscoreSkill card = PanelData.card(skill);
+			String bossName = card.getName();
 			String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(bossName, bossName);
-			TooltipData data = buildPrimaryBossData(bossName, hiscoreName, self, catalog);
+			TooltipData data = TooltipDataBuilder.withHardMode(buildPrimaryBossData(bossName, hiscoreName, self, catalog),
+				card, lookupSession.getHiscoreResult(), name -> pbFor(self, name));
 			if (data != null)
 			{
 				tooltipDataMap.put(skill, data);
@@ -503,8 +506,9 @@ public class Cells
 
 	private JToolTip buildBossTooltip(JLabel owner, HiscoreSkill boss)
 	{
+		HiscoreSkill card = PanelData.card(boss);
 		return buildBossTooltip(owner, tooltipDataMap.get(boss),
-			comparison.getCompareTooltipData(boss), boss.getName(), PanelData.bossWikiPage(boss));
+			comparison.getCompareTooltipData(boss), card.getName(), PanelData.bossWikiPage(card));
 	}
 
 	private JToolTip buildBossTooltip(JLabel owner, @Nullable TooltipData blueData,

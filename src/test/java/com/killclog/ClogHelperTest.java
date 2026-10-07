@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import net.runelite.client.hiscore.HiscoreSkill;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -270,5 +271,38 @@ public class ClogHelperTest
 			null,
 			null
 		);
+	}
+
+	@Test
+	public void aRaidsHardModeReadsOnTheRaidsOwnCard()
+	{
+		assertEquals(HiscoreSkill.CHAMBERS_OF_XERIC, PanelData.card(HiscoreSkill.CHAMBERS_OF_XERIC_CHALLENGE_MODE));
+		assertEquals(HiscoreSkill.TOMBS_OF_AMASCUT, PanelData.card(HiscoreSkill.TOMBS_OF_AMASCUT_EXPERT));
+		assertEquals(HiscoreSkill.ZULRAH, PanelData.card(HiscoreSkill.ZULRAH));
+
+		Map<String, Integer> kills = new HashMap<>();
+		kills.put(HiscoreSkill.CHAMBERS_OF_XERIC.getName(), 730);
+		kills.put(HiscoreSkill.CHAMBERS_OF_XERIC_CHALLENGE_MODE.getName(), 110);
+		HiscoreResult result = new HiscoreResult(AccountType.REGULAR, kills, Collections.emptyMap(),
+			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1);
+		TooltipData data = TooltipData.builder().name("Chambers of Xeric").totalItems(23).kc(730).build();
+		TooltipData raid = TooltipDataBuilder.withHardMode(data, HiscoreSkill.CHAMBERS_OF_XERIC, result,
+			name -> name.equals(HiscoreSkill.CHAMBERS_OF_XERIC_CHALLENGE_MODE.getName()) ? "28:01" : null);
+		assertEquals("CM", raid.hardLabel);
+		assertEquals(110, raid.hardKc);
+		assertEquals("28:01", raid.hardPb);
+		assertSame(data, TooltipDataBuilder.withHardMode(data, HiscoreSkill.ZULRAH, result, name -> "1:00"));
+
+		// The hard mode is one more line under the raid's own KC and PB.
+		ImgTooltip plain = new ImgTooltip(5);
+		plain.setTitle("Chambers of Xeric");
+		plain.setInfoLine("KC: ", "730", java.awt.Color.WHITE);
+		ImgTooltip both = new ImgTooltip(5);
+		both.setTitle("Chambers of Xeric");
+		both.setInfoLine("KC: ", "730", java.awt.Color.WHITE);
+		ClogHelper.addHardModeLine(both, raid, true, true);
+		assertEquals(NativeTooltip.LINE_HEIGHT, both.getHeaderHeight() - plain.getHeaderHeight());
+		ClogHelper.addHardModeLine(plain, raid, false, false);
+		assertEquals(both.getHeaderHeight() - NativeTooltip.LINE_HEIGHT, plain.getHeaderHeight());
 	}
 }

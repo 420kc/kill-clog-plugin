@@ -1,10 +1,12 @@
 package com.killclog;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import javax.annotation.Nullable;
 import net.runelite.client.hiscore.HiscoreSkill;
 
 /**
@@ -126,20 +128,40 @@ final class PanelData
 	static final int ETERNAL_GEM_ITEM_ID = 21270;
 	static final int[] SUPERIOR_ITEMS = {IMBUED_HEART_ITEM_ID, ETERNAL_GEM_ITEM_ID};
 
-	// Raids: hiscore rows (base + hard mode sum into one KC), clog category,
-	// and the megarare drop that headlines the Mega Rares row.
-	static final String COX_HISCORE = "Chambers of Xeric";
-	static final String COX_HISCORE_HARD = "Chambers of Xeric: Challenge Mode";
+	// The raids and their hard modes. A hard mode shares its raid's log, so it reads on the raid's own card:
+	// its cell opens that card, where its KC and PB are a second row under the name the Combat Summary pairs it by.
+	static final HiscoreSkill[] RAIDS = {HiscoreSkill.CHAMBERS_OF_XERIC, HiscoreSkill.THEATRE_OF_BLOOD,
+		HiscoreSkill.TOMBS_OF_AMASCUT};
+	static final HiscoreSkill[] RAID_HARD_MODES = {HiscoreSkill.CHAMBERS_OF_XERIC_CHALLENGE_MODE,
+		HiscoreSkill.THEATRE_OF_BLOOD_HARD_MODE, HiscoreSkill.TOMBS_OF_AMASCUT_EXPERT};
+	static final String[] RAID_HARD_LABELS = {"CM", "HM", "Expert"};
+
+	/** The card a boss cell opens: its own, or for a raid's hard mode, the raid's. */
+	static HiscoreSkill card(HiscoreSkill boss)
+	{
+		int i = Arrays.asList(RAID_HARD_MODES).indexOf(boss);
+		return i >= 0 ? RAIDS[i] : boss;
+	}
+
+	/** A raid's hard mode, null for anything else. */
+	@Nullable
+	static HiscoreSkill hardMode(HiscoreSkill raid)
+	{
+		int i = Arrays.asList(RAIDS).indexOf(raid);
+		return i >= 0 ? RAID_HARD_MODES[i] : null;
+	}
+
+	/** The name a raid's hard mode goes by beside the raid: CM, HM or Expert. */
+	static String hardLabel(HiscoreSkill raid)
+	{
+		return RAID_HARD_LABELS[Arrays.asList(RAIDS).indexOf(raid)];
+	}
+
+	// Each raid's log and the megarare drop that headlines the Mega Rares row.
 	static final String COX_CATEGORY = "chambers_of_xeric";
 	static final int TWISTED_BOW_ITEM_ID = 20997;
-
-	static final String TOB_HISCORE = "Theatre of Blood";
-	static final String TOB_HISCORE_HARD = "Theatre of Blood: Hard Mode";
 	static final String TOB_CATEGORY = "theatre_of_blood";
 	static final int SCYTHE_ITEM_ID = 22486;
-
-	static final String TOA_HISCORE = "Tombs of Amascut";
-	static final String TOA_HISCORE_HARD = "Tombs of Amascut: Expert Mode";
 	static final String TOA_CATEGORY = "tombs_of_amascut";
 	static final int SHADOW_ITEM_ID = 27277;
 
