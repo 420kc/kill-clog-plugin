@@ -67,6 +67,9 @@ public abstract class TitleTooltip extends NativeTooltip
 	// The header's stat lines (KC and PB; a raid's hard mode on a second), each a label and value and maybe a pair.
 	private final List<InfoLine> infoLines = new ArrayList<>();
 	private String rankText;
+	// A raid's hard mode ranks beside the raid on the same line.
+	private String rankPairLabel;
+	private String rankPairText;
 	private String titleWikiPage;
 	@Nullable
 	private BufferedImage titleIcon;
@@ -388,6 +391,13 @@ public abstract class TitleTooltip extends NativeTooltip
 		}
 	}
 
+	/** A second rank after the first on the rank line, as a raid's hard mode ranks beside the raid. */
+	void setRankPair(String label, int rank)
+	{
+		rankPairLabel = label;
+		rankPairText = rank > 0 ? grouped(rank) : "Unranked";
+	}
+
 	/** Set the rank line. 0 = "Unranked". */
 	public void setRank(int rank)
 	{
@@ -544,6 +554,10 @@ public abstract class TitleTooltip extends NativeTooltip
 			infoTextWidth = Math.max(infoTextWidth, line.width(sfm));
 		}
 		int rnkTextWidth = rankText != null ? sfm.stringWidth("Rank: " + rankText) : 0;
+		if (rankText != null && rankPairLabel != null)
+		{
+			rnkTextWidth += INFO_PAIR_GAP + sfm.stringWidth(rankPairLabel + rankPairText);
+		}
 		int maxTextWidth = Math.max(titleTextWidth,
 			Math.max(subTextWidth, Math.max(infoTextWidth, rnkTextWidth)));
 		if (onBack != null)
@@ -639,8 +653,13 @@ public abstract class TitleTooltip extends NativeTooltip
 		if (rankText != null)
 		{
 			lineY += lineY == titleBaseline ? NAME_LINE_HEIGHT : LINE_HEIGHT;
-			drawLabelValue(g2, fm, inset, lineY, "Rank: ", rankText,
+			int rankWidth = drawLabelValue(g2, fm, inset, lineY, "Rank: ", rankText,
 				"Unranked".equals(rankText) ? OSRS_ORANGE : Color.WHITE);
+			if (rankPairLabel != null)
+			{
+				drawLabelValue(g2, fm, inset + rankWidth + INFO_PAIR_GAP, lineY, rankPairLabel, rankPairText,
+					"Unranked".equals(rankPairText) ? OSRS_ORANGE : Color.WHITE);
+			}
 		}
 
 		// Subtitle (label in orange, value in subtitleColor)

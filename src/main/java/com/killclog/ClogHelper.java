@@ -106,6 +106,10 @@ final class ClogHelper
 			&& (data.obtainedCount >= 0 || data.statValue >= 0 || data.rank > 0))
 		{
 			tip.setRank(data.rank);
+			if (data.hardLabel != null)
+			{
+				tip.setRankPair(data.hardLabel + ": ", data.hardRank);
+			}
 		}
 	}
 

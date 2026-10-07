@@ -283,7 +283,9 @@ public class ClogHelperTest
 		Map<String, Integer> kills = new HashMap<>();
 		kills.put(HiscoreSkill.CHAMBERS_OF_XERIC.getName(), 730);
 		kills.put(HiscoreSkill.CHAMBERS_OF_XERIC_CHALLENGE_MODE.getName(), 110);
-		HiscoreResult result = new HiscoreResult(AccountType.REGULAR, kills, Collections.emptyMap(),
+		Map<String, Integer> ranks = new HashMap<>();
+		ranks.put(HiscoreSkill.CHAMBERS_OF_XERIC_CHALLENGE_MODE.getName(), 1204);
+		HiscoreResult result = new HiscoreResult(AccountType.REGULAR, kills, ranks,
 			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1);
 		TooltipData data = TooltipData.builder().name("Chambers of Xeric").totalItems(23).kc(730).build();
 		TooltipData raid = TooltipDataBuilder.withHardMode(data, HiscoreSkill.CHAMBERS_OF_XERIC, result,
@@ -291,6 +293,7 @@ public class ClogHelperTest
 		assertEquals("CM", raid.hardLabel);
 		assertEquals(110, raid.hardKc);
 		assertEquals("28:01", raid.hardPb);
+		assertEquals(1204, raid.hardRank);
 		assertSame(data, TooltipDataBuilder.withHardMode(data, HiscoreSkill.ZULRAH, result, name -> "1:00"));
 
 		// The hard mode is one more line under the raid's own KC and PB.

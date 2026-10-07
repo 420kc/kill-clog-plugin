@@ -94,6 +94,7 @@ final class TooltipDataBuilder
 		return data.toBuilder()
 			.hardLabel(PanelData.hardLabel(raid))
 			.hardKc(result != null ? result.getKc(hard.getName()) : -1)
+			.hardRank(result != null ? result.getRank(hard.getName()) : -1)
 			.hardPb(pb.apply(hard.getName()))
 			.build();
 	}
