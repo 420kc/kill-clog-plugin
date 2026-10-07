@@ -51,6 +51,9 @@ final class PanelData
 		BOSS_WIKI_PAGES.put(HiscoreSkill.NIGHTMARE, "The Nightmare");
 	}
 
+	// The wiki's Collection log article holds a section for every page, under the page's own name.
+	static final String CLOG_WIKI_PAGE = "Collection log";
+
 	static String bossWikiPage(HiscoreSkill boss)
 	{
 		String page = BOSS_WIKI_PAGES.get(boss);

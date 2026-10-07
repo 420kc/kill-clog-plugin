@@ -495,13 +495,22 @@ public class Cells
 		return buildBossTooltip(owner, boss);
 	}
 
-	/** A Collection Log page's popup: its grid for the player, or both players' side by side. */
+	/**
+	 * A Collection Log page's popup: its grid for the player, or both players' side by side. Its title opens the
+	 * page's section of the wiki's Collection log, where a boss's title opens the boss.
+	 */
 	public JToolTip buildPageTooltip(JLabel owner, String name, @Nullable TooltipData blue, @Nullable TooltipData red)
 	{
-		return comparison.isComparisonMode()
-			? wrapSideBySide(owner, singlePlayerBuilder.build(owner, blue, 5, name),
-				singlePlayerBuilder.buildCompared(owner, red, 5, name))
-			: singlePlayerBuilder.build(owner, blue, 5, name);
+		String wikiPage = PanelData.CLOG_WIKI_PAGE + "#" + name;
+		JToolTip tip = singlePlayerBuilder.build(owner, blue, 5, name);
+		decorate(tip, wikiPage, null);
+		if (!comparison.isComparisonMode())
+		{
+			return tip;
+		}
+		JToolTip rival = singlePlayerBuilder.buildCompared(owner, red, 5, name);
+		decorate(rival, wikiPage, null);
+		return wrapSideBySide(owner, tip, rival);
 	}
 
 	private JToolTip buildBossTooltip(JLabel owner, HiscoreSkill boss)
@@ -518,21 +527,21 @@ public class Cells
 		{
 			JToolTip blue = singlePlayerBuilder.build(owner, blueData, 5, name);
 			JToolTip red = singlePlayerBuilder.buildCompared(owner, redData, 5, name);
-			decorateBossTooltip(blue, wikiPage, lookupSession.getHiscoreResult());
-			decorateBossTooltip(red, wikiPage, comparison.getCompareHiscoreResult());
+			decorate(blue, wikiPage, lookupSession.getHiscoreResult());
+			decorate(red, wikiPage, comparison.getCompareHiscoreResult());
 			return wrapSideBySide(owner, blue, red);
 		}
 		JToolTip tip = singlePlayerBuilder.build(owner, blueData, 5, name);
-		decorateBossTooltip(tip, wikiPage, lookupSession.getHiscoreResult());
+		decorate(tip, wikiPage, lookupSession.getHiscoreResult());
 		return tip;
 	}
 
 	/**
-	 * Wiki link plus the shifted-CSV warning, per side: a result degrading to
+	 * Wiki link plus, for a boss, the shifted-CSV warning, per side: a result degrading to
 	 * the warned CSV fallback flags its own card - a silently wrong red card
 	 * breaks the ladder's rule the same as a blue one.
 	 */
-	private static void decorateBossTooltip(JToolTip tip, String wikiPage,
+	private static void decorate(JToolTip tip, String wikiPage,
 		@Nullable HiscoreResult result)
 	{
 		if (tip instanceof TitleTooltip)

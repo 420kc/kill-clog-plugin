@@ -77,11 +77,17 @@ final class TooltipItemLink
 		return name;
 	}
 
+	/** A page name, and after a '#' the section on it, as the wiki's URLs write them. */
 	private static String encodePageName(String pageName)
 	{
 		if (pageName == null)
 		{
 			return "";
+		}
+		int section = pageName.indexOf('#');
+		if (section >= 0)
+		{
+			return encodePageName(pageName.substring(0, section)) + "#" + encodePageName(pageName.substring(section + 1));
 		}
 		String normalized = pageName.trim().replace(' ', '_');
 		String[] parts = normalized.split("/", -1);

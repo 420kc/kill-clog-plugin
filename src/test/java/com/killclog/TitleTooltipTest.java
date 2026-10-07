@@ -56,6 +56,9 @@ public class TitleTooltipTest
 			TooltipItemLink.wikiPageUrl("Abyssal Sire"));
 		assertEquals("https://oldschool.runescape.wiki/w/Phosani%27s_Nightmare",
 			TooltipItemLink.wikiPageUrl("Phosani's Nightmare"));
+		// A page's section of the Collection log article keeps its '#'.
+		assertEquals("https://oldschool.runescape.wiki/w/Collection_log#Champion%27s_Challenge",
+			TooltipItemLink.wikiPageUrl("Collection log#Champion's Challenge"));
 	}
 
 	@Test
