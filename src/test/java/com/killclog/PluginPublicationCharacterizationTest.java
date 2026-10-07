@@ -243,6 +243,23 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void aPressQueuedBeforeALogoutNeverPushesTheNextAccountsLog() throws Exception
+	{
+		// The press is still waiting on the client thread when the account logs out and another logs in.
+		syncHandler.run();
+		gameState = GameState.LOGIN_SCREEN;
+		logout();
+		epoch = 8;
+		gameState = GameState.LOGGED_IN;
+		Player next = mock(Player.class);
+		when(next.getName()).thenReturn("Next account");
+		when(client.getLocalPlayer()).thenReturn(next);
+		when(client.getAccountHash()).thenReturn(HASH + 1);
+		settle();
+		assertTrue(syncs.isEmpty());
+	}
+
+	@Test
 	public void logoutBeforeTheClientHopSilencesTheAttempt() throws Exception
 	{
 		syncHandler.run();

@@ -138,8 +138,16 @@ final class PublicationCoordinator
 	 */
 	void scheduleSync(int delaySeconds, boolean manual)
 	{
-		// A press arrives on the panel's thread; the game it pushes is read on the client's.
-		clientThread.invoke(() -> scheduleSync(delaySeconds, manual, mode.get()));
+		// A press arrives on the panel's thread; the game it pushes is read on the client's. Its account is fixed at
+		// the press: a logout before the hop drops it, never letting it push the next account's log.
+		long pressed = localClogCache.currentSessionEpoch();
+		clientThread.invoke(() ->
+		{
+			if (localClogCache.currentSessionEpoch() == pressed)
+			{
+				scheduleSync(delaySeconds, manual, mode.get());
+			}
+		});
 	}
 
 	/** A retry keeps the game its attempt was for, wherever the player has hopped since. */
