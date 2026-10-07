@@ -112,11 +112,14 @@ public class ClogCanonicalizationTest
 
 		// Nine distinct items are itemized here. They still speak for a count of
 		// ten, but not for an account that has logged 1,189, and not for a log
-		// that arrived without a denominator.
-		assertEquals(3, index.tabProgress(result, new int[]{10, 1561}).size());
-		assertTrue(index.tabProgress(result, new int[]{11, 1561}).isEmpty());
-		assertTrue(index.tabProgress(result, new int[]{1189, 1561}).isEmpty());
-		assertTrue(index.tabProgress(result, new int[]{0, 0}).isEmpty());
+		// that arrived without a denominator: those keep every tab to browse, its count unknown.
+		assertArrayEquals(new int[]{2, 3}, index.tabProgress(result, new int[]{10, 1561}).get("Bosses"));
+		for (int[] totals : new int[][]{{11, 1561}, {1189, 1561}, {0, 0}})
+		{
+			Map<String, int[]> partial = index.tabProgress(result, totals);
+			assertArrayEquals(new int[]{-1, 3}, partial.get("Bosses"));
+			assertArrayEquals(new int[]{-1, 7}, partial.get("Minigames"));
+		}
 	}
 
 	@Test

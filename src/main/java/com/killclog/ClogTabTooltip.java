@@ -35,7 +35,7 @@ public class ClogTabTooltip extends TitleTooltip
 	void setTab(String tab, @Nullable int[] progress, int tabTotal)
 	{
 		setTitle(tab);
-		if (progress != null)
+		if (progress != null && progress[0] >= 0)
 		{
 			setObtained(progress[0], progress[1]);
 		}

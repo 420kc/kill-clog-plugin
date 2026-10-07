@@ -377,8 +377,9 @@ public class ClogSummaryTooltip extends TitleTooltip
 				{
 					body.add(CardBody.gap(TAB_GAP));
 				}
-				body.add(tabRow(row, tab.getKey(), progressCountText(count[0], count[1]),
-					completionColor(count[0], count[1]))).add(bar(count[0], count[1]));
+				body.add(tabRow(row, tab.getKey(), count[0] < 0 ? progressPlaceholderText(count[1])
+					: progressCountText(count[0], count[1]), count[0] < 0 ? MUTED_GRAY : completionColor(count[0], count[1])))
+					.add(bar(count[0], count[1]));
 				row++;
 			}
 		}

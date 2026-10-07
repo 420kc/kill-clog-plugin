@@ -261,7 +261,8 @@ final class ClogIndex
 	 * and an item counts once per tab however many pages list it. The rows sit
 	 * under the log's total and must agree with it: a partial sync itemizes a
 	 * handful of items under the account's full count, and a log without a
-	 * denominator has nothing to measure against, so neither gets any rows.
+	 * denominator has nothing to measure against, so neither gets counts: their
+	 * rows stay to browse, each at -1 obtained.
 	 */
 	Map<String, int[]> tabProgress(ClogResult clog, int[] totals)
 	{
@@ -279,10 +280,7 @@ final class ClogIndex
 				obtained.add(s.canonicalizer.canonicalItemId(item.getId()));
 			}
 		}
-		if (totals[1] <= 0 || obtained.size() * 10L < totals[0] * 9L)
-		{
-			return progress;
-		}
+		boolean partial = totals[1] <= 0 || obtained.size() * 10L < totals[0] * 9L;
 		for (Map.Entry<String, List<String>> tab : s.tabCategoryKeys.entrySet())
 		{
 			Set<Integer> slots = new HashSet<>();
@@ -295,7 +293,7 @@ final class ClogIndex
 			}
 			int total = slots.size();
 			slots.retainAll(obtained);
-			progress.put(tab.getKey(), new int[]{slots.size(), total});
+			progress.put(tab.getKey(), new int[]{partial ? -1 : slots.size(), total});
 		}
 		return progress;
 	}

@@ -111,7 +111,7 @@ public class ClogSummaryWiringTest
 		assertArrayEquals(new int[]{35, 40}, shown.get("Other"));
 		assertTrue(tip[0].completionText().startsWith("91."));
 		// The same items under an account that has counted far more are a partial
-		// sync, and the rows stay off the card rather than contradict its total.
+		// sync: every tab stays to browse, its count unknown rather than contradicting the total.
 		ClogResult partial = new ClogResult("Probe", obtained, categories, Collections.emptyMap(), null, null);
 		partial.setUniqueObtained(1189);
 		partial.setUniqueTotal(1561);
@@ -126,7 +126,10 @@ public class ClogSummaryWiringTest
 				throw new AssertionError(e);
 			}
 		});
-		assertTrue(((Map<?, ?>) field.get(tip[0])).isEmpty());
+		@SuppressWarnings("unchecked")
+		Map<String, int[]> browsed = (Map<String, int[]>) field.get(tip[0]);
+		assertArrayEquals(new int[]{-1, 80}, browsed.get("Bosses"));
+		assertArrayEquals(new int[]{-1, 40}, browsed.get("Other"));
 		assertTrue(tip[0].completionText().startsWith("76."));
 
 		// Which tier that is belongs to the tooltip's own tests; here it only has to be asked for.
