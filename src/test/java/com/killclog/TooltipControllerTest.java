@@ -378,6 +378,110 @@ public class TooltipControllerTest
 	}
 
 	@Test
+	public void aCardOpenedInPlaceOutlinesOnlyThePanelsOwnCells() throws Exception
+	{
+		PopupFactory original = PopupFactory.getSharedInstance();
+		PopupFactory.setSharedInstance(new PopupFactory()
+		{
+			@Override
+			public Popup getPopup(Component owner, Component contents, int x, int y)
+			{
+				return new Popup()
+				{
+					@Override
+					public void show()
+					{
+					}
+
+					@Override
+					public void hide()
+					{
+					}
+				};
+			}
+		});
+		GraphicsConfiguration screen = new BufferedImage(8, 8, BufferedImage.TYPE_INT_ARGB)
+			.createGraphics().getDeviceConfiguration();
+		java.awt.Color chrome = net.runelite.client.ui.ColorScheme.DARK_GRAY_COLOR;
+		JPanel infoRow = onScreen(screen);
+		infoRow.setBackground(chrome);
+		JPanel cell = onScreen(screen);
+		JLabel name = showingLabel();
+		JLabel boss = showingLabel();
+		infoRow.add(name);
+		cell.add(boss);
+		TooltipController controller = new TooltipController(config);
+		controller.addCellHoverEffect(cell, boss);
+
+		try
+		{
+			SwingUtilities.invokeAndWait(() ->
+			{
+				// The Clog Summary opens a tab from the info row: the row keeps its chrome, with no outline.
+				controller.pinTooltipFromPress(name, infoRow, press(name), new JToolTip());
+				assertNull(infoRow.getBorder());
+				controller.hidePinnedTooltip();
+				controller.clearHoveredCell();
+				assertEquals(chrome, infoRow.getBackground());
+				assertNull(infoRow.getBorder());
+
+				// A raid opened from a boss cell's summary still outlines that cell.
+				controller.pinTooltipFromPress(boss, cell, press(boss), new JToolTip());
+				assertTrue(cell.getBorder() instanceof javax.swing.border.MatteBorder);
+				controller.hidePinnedTooltip();
+			});
+		}
+		finally
+		{
+			controller.deactivate();
+			PopupFactory.setSharedInstance(original);
+		}
+	}
+
+	private static JPanel onScreen(GraphicsConfiguration screen)
+	{
+		return new JPanel()
+		{
+			@Override
+			public Point getLocationOnScreen()
+			{
+				return new Point(10, 10);
+			}
+
+			@Override
+			public GraphicsConfiguration getGraphicsConfiguration()
+			{
+				return screen;
+			}
+		};
+	}
+
+	private static JLabel showingLabel()
+	{
+		JLabel label = new JLabel()
+		{
+			@Override
+			public boolean isShowing()
+			{
+				return true;
+			}
+
+			@Override
+			public Point getLocationOnScreen()
+			{
+				return new Point(10, 10);
+			}
+		};
+		label.setToolTipText("card");
+		return label;
+	}
+
+	private static MouseEvent press(JComponent source)
+	{
+		return new MouseEvent(source, MouseEvent.MOUSE_PRESSED, 0L, 0, 5, 5, 1, false, MouseEvent.BUTTON1);
+	}
+
+	@Test
 	public void pinnedSourceTooltipIsSuppressedAndRestored() throws Exception
 	{
 		mode = TooltipMode.HOVER;

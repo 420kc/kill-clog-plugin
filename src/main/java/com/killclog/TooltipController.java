@@ -60,8 +60,10 @@ class TooltipController
 	private Window focusWindow;
 	private WindowAdapter windowFocusListener;
 
-	// Cell hover state.
+	// Cell hover state. Only the panel's own cells take the outline; a card pinned under another
+	// surface, like the info row the Clog Summary opens from, leaves that surface as it is.
 	private JPanel hoveredCell;
+	private final Set<JPanel> hoverCells = Collections.newSetFromMap(new WeakHashMap<>());
 	private Timer hoverExitTimer;
 
 	// ToolTipManager is shared by every RuneLite plugin. Track only Kill Clog's
@@ -131,6 +133,7 @@ class TooltipController
 				hoverExitTimer.start();
 			}
 		};
+		hoverCells.add(cell);
 		cell.addMouseListener(hoverAdapter);
 		for (JLabel surface : surfaces)
 		{
@@ -244,7 +247,10 @@ class TooltipController
 			dismissHoverPreview(event);
 		}
 		pinTooltip(source, cell, tip);
-		hoverCell(cell, source);
+		if (hoverCells.contains(cell))
+		{
+			hoverCell(cell, source);
+		}
 	}
 
 	private void hoverCell(JPanel cell, JComponent colorSource)

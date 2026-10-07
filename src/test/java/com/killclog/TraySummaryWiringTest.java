@@ -92,7 +92,7 @@ public class TraySummaryWiringTest
 			cells = field(panel, "cells", Cells.class);
 			clues = cells.getActivityLabels().get(HiscoreSkill.CLUE_SCROLL_ALL);
 			// Nothing here is on a screen, so the pin is recorded instead of shown.
-			set(cells, "tooltipController", new TooltipController(config)
+			TooltipController controller = new TooltipController(config)
 			{
 				@Override
 				void pinTooltip(JComponent source, JPanel cell, JToolTip tip)
@@ -106,7 +106,10 @@ public class TraySummaryWiringTest
 				{
 					previewsDismissed++;
 				}
-			});
+			};
+			set(cells, "tooltipController", controller);
+			// The panel registers its cells with the one controller it has; the stand-in takes the clue cell over.
+			controller.addCellHoverEffect((JPanel) clues.getParent(), clues);
 		});
 	}
 
