@@ -332,6 +332,17 @@ public class LeagueViewPanelTest
 	}
 
 	@Test
+	public void aFirstCaptureUnderAnotherSpellingOfYourNameStillShowsYou() throws Exception
+	{
+		SwingUtilities.invokeAndWait(() ->
+		{
+			panel.setLoggedInPlayer("My\u00A0Name", AccountType.REGULAR);
+			panel.onBulkCaptureComplete("My Name");
+		});
+		verify(hiscores).lookup(eq("My Name"), any());
+	}
+
+	@Test
 	public void everyNameInALeagueViewWearsTheLeaguesBadge() throws Exception
 	{
 		javax.swing.ImageIcon badge = field(panel, "leagueBadge", javax.swing.ImageIcon.class);

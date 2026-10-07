@@ -1077,6 +1077,21 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void theLoginLookupKnowsALookupOfYouTypedAnotherWay() throws Exception
+	{
+		// The game spells the name with a non-breaking space; the lookup box with an underscore.
+		when(client.getLocalPlayer().getName()).thenReturn("My\u00A0Name");
+		when(localClogCache.setActivePlayer("My\u00A0Name")).thenReturn(true);
+		when(panel.getDisplayedRsn()).thenReturn("my_name");
+		GameStateChanged login = new GameStateChanged();
+		login.setGameState(GameState.LOGGED_IN);
+		plugin.onGameStateChanged(login);
+		ticks(1);
+		drainEdt();
+		verify(panel).doLookup();
+	}
+
+	@Test
 	public void aLeagueWorldPointsThePanelAndChatAtItsLeague() throws Exception
 	{
 		KillClogChatCommand chat = (KillClogChatCommand) field("kclogCommand");

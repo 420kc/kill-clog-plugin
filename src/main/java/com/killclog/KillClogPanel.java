@@ -1176,7 +1176,7 @@ public class KillClogPanel extends PluginPanel
 
 	public void onBulkCaptureComplete(String name)
 	{
-		if (localRsn == null || !localRsn.equalsIgnoreCase(name)) return;
+		if (!RsnInputPolicy.sameName(localRsn, name)) return;
 		if (lookupSession.getCurrentLookupRsn() == null)
 		{
 			// First setup can populate an empty panel through the normal lookup.

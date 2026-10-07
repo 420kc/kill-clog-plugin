@@ -578,14 +578,8 @@ final class ProfileAppearanceService
 	{
 		Player local = client.getLocalPlayer();
 		return client.getGameState() == GameState.LOGGED_IN && local != null
-			&& samePlayer(expectedRsn, local.getName())
+			&& RsnInputPolicy.sameName(expectedRsn, local.getName())
 			&& client.getAccountHash() == accountHash;
-	}
-
-	private static boolean samePlayer(@Nullable String expectedRsn, @Nullable String localRsn)
-	{
-		return expectedRsn != null && localRsn != null
-			&& expectedRsn.trim().equalsIgnoreCase(localRsn.trim());
 	}
 
 	@Nullable

@@ -254,6 +254,17 @@ public class ProfileAppearanceFlowTest
 	}
 
 	@Test
+	public void theGamesOwnSpellingOfYourNameStillPublishes() throws Exception
+	{
+		try (Harness h = new Harness(chain -> response(chain, 200, READY)))
+		{
+			h.secret();
+			h.localName = "Test\u00A0player";
+			assertEquals(ProfileAppearanceService.Outcome.PUBLISHED, h.publish().get(5, TimeUnit.SECONDS).outcome);
+		}
+	}
+
+	@Test
 	public void logoutBeforeDispatchMakesNoRequest() throws Exception
 	{
 		try (Harness h = new Harness(chain ->
@@ -485,6 +496,7 @@ public class ProfileAppearanceFlowTest
 		private final int[] colors = new int[5];
 		private final AtomicInteger idle = new AtomicInteger(808);
 		private Player player;
+		private volatile String localName = "Test player";
 		private final Item[] worn = new Item[14];
 		private boolean equipmentReady = true;
 		private boolean loading;
@@ -511,7 +523,7 @@ public class ProfileAppearanceFlowTest
 				}
 			});
 			player = proxy(Player.class, name ->
-				"getName".equals(name) ? "Test player" : "getPlayerComposition".equals(name) ? composition
+				"getName".equals(name) ? localName : "getPlayerComposition".equals(name) ? composition
 					: "getIdlePoseAnimation".equals(name) ? idle.get() : null);
 			Client client = proxy(Client.class, name ->
 			{

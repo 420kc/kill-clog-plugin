@@ -710,7 +710,7 @@ public class KillClogPlugin extends Plugin
 						// Do not overwrite the user's research. LOGGED_IN fires on
 						// every world hop, so skip auto-lookup when viewing someone else.
 						String displayed = panel.getDisplayedRsn();
-						if (displayed != null && !displayed.equalsIgnoreCase(name))
+						if (displayed != null && !RsnInputPolicy.sameName(displayed, name))
 						{
 							return;
 						}
