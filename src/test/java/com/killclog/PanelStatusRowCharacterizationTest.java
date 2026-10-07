@@ -43,13 +43,24 @@ public class PanelStatusRowCharacterizationTest
 	private JLabel sync;
 	private JLabel character;
 
+	private SpriteManager sprites;
+
+	@Test
+	public void publishCharacterWearsTheWornEquipmentFigure()
+	{
+		// The game's Worn Equipment tab figure, so a resource pack reskins it with the tab.
+		org.mockito.Mockito.verify(sprites).getSpriteAsync(org.mockito.ArgumentMatchers.eq(
+			net.runelite.api.gameval.SpriteID.SideiconsNew.EQUIPMENT), org.mockito.ArgumentMatchers.eq(0),
+			ArgumentMatchers.<Consumer<BufferedImage>>any());
+	}
+
 	@Before
 	public void createPanel() throws Exception
 	{
 		ClogService catalog = mock(ClogService.class);
 		// Keep catalog completion out of status-row tests.
 		when(catalog.warmCatalog()).thenReturn(new CompletableFuture<>());
-		SpriteManager sprites = mock(SpriteManager.class);
+		sprites = mock(SpriteManager.class);
 		doAnswer(invocation ->
 		{
 			Consumer<BufferedImage> callback = invocation.getArgument(2);

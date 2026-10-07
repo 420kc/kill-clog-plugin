@@ -346,7 +346,7 @@ final class PanelStatusRow
 	/** Any thread; also re-run after a sprite reload so a resource pack swap redraws the icon. */
 	void requestCharacterIcon()
 	{
-		spriteManager.getSpriteAsync(SpriteID.AchievementDiaryIcons.BROWN_CHARACTER_SUMMARY, 0, sprite ->
+		spriteManager.getSpriteAsync(SpriteID.SideiconsNew.EQUIPMENT, 0, sprite ->
 		{
 			if (sprite == null)
 			{
