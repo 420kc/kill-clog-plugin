@@ -35,10 +35,10 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private static final int SOURCE_ICON_GAP = 5;
 	private static final int SOURCE_HIT_PAD = 2;
 	private static final int SOURCE_LABEL_GAP = 3;
-	// Hover sections: 0 highlights, 1 recent, then the tier ladder and the sources.
-	// An unreached tier sits one past TIER_SECTION so its readout can turn red.
+	// Hover sections: 0 highlights, 1 recent, then the tier ladder and the sources. A reached tier reads green and
+	// an unreached one red, as held and missing items do.
 	private static final int TIER_SECTION = 2;
-	private static final int SOURCE_SECTION = 4;
+	private static final int SOURCE_SECTION = 3;
 	private static final int BAR_HEIGHT = 3;
 	private static final int BAR_GAP = 3;
 	static final Color BAR_TRACK = new Color(40, 35, 28);
@@ -354,7 +354,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 			}))
 				.add(CardBody.line("Completion: ", completionText()))
 				.add(bar(obtained, totalSlots))
-				.add(tierLadder());
+				.add(tierLadder())
+				.add(CardBody.hoverLine(TIER_SECTION, ClogHelper.tierLabels(obtained, totalSlots)));
 		}
 
 		if (!tabs.isEmpty())
@@ -392,7 +393,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 		}
 		if (!clogSources.isEmpty())
 		{
-			body.add(sources());
+			body.add(sources()).add(CardBody.hoverLine(SOURCE_SECTION,
+				clogSources.stream().map(source -> source.name).toArray(String[]::new)));
 		}
 		return body;
 	}
@@ -417,15 +419,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private CardBody.Part tierLadder()
 	{
 		String[] labels = ClogHelper.tierLabels(obtained, totalSlots);
-		return CardBody.part(c ->
-		{
-			int width = legendWidth();
-			for (String label : labels)
-			{
-				width = Math.max(width, c.fm.stringWidth(label));
-			}
-			return width;
-		}, c -> ICON_SIZE + hoverRowHeight(c.fm), (c, y) ->
+		return CardBody.row(ICON_SIZE, c -> legendWidth(), (c, y) ->
 		{
 			int x = (c.w - legendWidth()) / 2;
 			Composite solid = c.g.getComposite();
@@ -438,16 +432,11 @@ public class ClogSummaryTooltip extends TitleTooltip
 					c.g.setComposite(reached ? solid : AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
 					c.g.drawImage(icon, x, y, null);
 				}
-				c.hits.add(new TooltipItemHover.HitBox(reached ? TIER_SECTION : TIER_SECTION + 1, 0, labels[i],
-					new Rectangle(x, y, ICON_SIZE, ICON_SIZE), false));
+				c.hits.add(new TooltipItemHover.HitBox(TIER_SECTION, 0, labels[i],
+					new Rectangle(x, y, ICON_SIZE, ICON_SIZE), reached));
 				x += ICON_SIZE + ICON_GAP;
 			}
 			c.g.setComposite(solid);
-			int section = itemHover.hoveredSection();
-			if (section >= TIER_SECTION && section < SOURCE_SECTION)
-			{
-				paintHeaderHoverLine(c.g, c.fm, c.w, y + ICON_SIZE + c.fm.getAscent());
-			}
 		});
 	}
 
@@ -470,7 +459,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 		List<Integer> ids = TooltipData.itemList(shelf.ids);
 		body.add(CardBody.separator(SEPARATOR_PAD)).add(CardBody.subheader(title)).add(CardBody.part(
 			c -> count * shelf.cellWidth(c.fm) + (count - 1) * RECENT_PAD,
-			c -> size + (shelf.dated() ? DATE_GAP + c.fm.getHeight() : 0) + hoverRowHeight(c.fm), (c, y) ->
+			c -> size + (shelf.dated() ? DATE_GAP + c.fm.getHeight() : 0), (c, y) ->
 			{
 				// Every shelved item is held: the grids' painter draws them, each centered over its date.
 				int cellWidth = shelf.cellWidth(c.fm);
@@ -488,9 +477,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 							y + size + DATE_GAP + c.fm.getAscent());
 					}
 				}
-				paintSectionHoverLine(c.g, c.fm, c.w, y + size + (shelf.dated() ? DATE_GAP + c.fm.getHeight() : 0),
-					section);
-			}));
+			})).add(CardBody.hoverLine(section));
 	}
 
 	/** Who supplied the log: each source's icon, its name on hover. */
@@ -504,7 +491,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 				width = Math.max(width, c.fm.stringWidth(source.name));
 			}
 			return width;
-		}, c -> c.fm.getHeight() + SOURCE_LABEL_GAP + SOURCE_ICON_SIZE + hoverRowHeight(c.fm), (c, y) ->
+		}, c -> c.fm.getHeight() + SOURCE_LABEL_GAP + SOURCE_ICON_SIZE, (c, y) ->
 		{
 			c.g.setColor(MUTED_GRAY);
 			c.g.drawString(SOURCE_LABEL, (c.w - c.fm.stringWidth(SOURCE_LABEL)) / 2, y + c.fm.getAscent());
@@ -525,22 +512,11 @@ public class ClogSummaryTooltip extends TitleTooltip
 					c.g.drawRect(iconX - SOURCE_HIT_PAD, y - SOURCE_HIT_PAD,
 						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2 - 1, SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2 - 1);
 				}
-				c.hits.add(new TooltipItemHover.HitBox(SOURCE_SECTION + i, 0, source.name,
+				c.hits.add(new TooltipItemHover.HitBox(SOURCE_SECTION, 0, source.name,
 					new Rectangle(iconX - SOURCE_HIT_PAD, y - SOURCE_HIT_PAD,
-						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2, SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2), false));
-			}
-			if (itemHover.hoveredSection() >= SOURCE_SECTION)
-			{
-				paintHeaderHoverLine(c.g, c.fm, c.w, y + SOURCE_ICON_SIZE + c.fm.getAscent());
+						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2, SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2), true));
 			}
 		});
-	}
-
-	@Override
-	protected Color getHeaderHoverLineColor()
-	{
-		// Obtained items, verified providers and reached tiers share the success color.
-		return itemHover.hoveredSection() == TIER_SECTION + 1 ? CLOG_RED : CLOG_GREEN;
 	}
 
 	private static final class ClogSource
