@@ -33,8 +33,6 @@ final class TooltipData
 	final int kc = -1;
 	/** That line's label where it is not "KC: ", as a clue card's "Master clues completed: ". */
 	final String kcLabel;
-	/** The card leads with its Obtained line, as the game's clue pages do. */
-	final boolean obtainedFirst;
 	/** The local player's recorded personal best for the KC/PB header line, null when none. */
 	final String pb;
 	/** A raid's hard mode on the raid's card, a second KC/PB line and a second rank: its name, KC, PB and rank. */

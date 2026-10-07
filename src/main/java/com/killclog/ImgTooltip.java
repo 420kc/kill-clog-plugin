@@ -31,6 +31,8 @@ public class ImgTooltip extends TitleTooltip
 	public ImgTooltip(int gridCols)
 	{
 		this.gridCols = gridCols;
+		// Every grid card is a Collection Log page's: Obtained first, then KC and PB, then rank, as the game reads.
+		setObtainedFirst(true);
 	}
 
 	@Override

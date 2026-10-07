@@ -675,8 +675,7 @@ public class Cells
 		@Nullable HiscoreResult result)
 	{
 		return data == null || tier == null || result == null ? data
-			: data.toBuilder().kcLabel(cluesCompletedLabel(tier)).kc(result.getActivityScore(tier.getName()))
-				.obtainedFirst(true).build();
+			: data.toBuilder().kcLabel(cluesCompletedLabel(tier)).kc(result.getActivityScore(tier.getName())).build();
 	}
 
 	/** Progress for a Clue Summary row; unsynced or unknown data shows none. */

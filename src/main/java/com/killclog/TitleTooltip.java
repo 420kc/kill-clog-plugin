@@ -62,7 +62,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	@Getter(AccessLevel.PROTECTED)
 	private Color titleSuffixColor;
 	private String subtitleLabel;
-	// A clue card reads as the game's own page does: Obtained first, then the tier's completed clues.
+	// A card for a Collection Log page reads as the game's own page does: Obtained first, then its stats.
 	private boolean obtainedFirst;
 	private String subtitleValue;
 	private Color subtitleColor;
@@ -400,7 +400,7 @@ public abstract class TitleTooltip extends NativeTooltip
 		rankPairText = rank > 0 ? grouped(rank) : "Unranked";
 	}
 
-	/** Leads the header with the Obtained line, as the game's clue pages do. */
+	/** Leads the header with the Obtained line, as the game's Collection Log pages do. */
 	void setObtainedFirst(boolean obtainedFirst)
 	{
 		this.obtainedFirst = obtainedFirst;
