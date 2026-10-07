@@ -94,7 +94,7 @@ final class SkillClogSectionRenderer
 			int cols = soloColumns(width, entry.section.itemIds().size());
 			if (entry.section.hasHeading())
 			{
-				height += headingMetrics.getHeight() + HEADER_GAP;
+				height += headingMetrics.getHeight() + HEADER_GAP + LabKnobs.headingExtra();
 			}
 			height += detailMetrics.getHeight() + HEADER_GAP;
 			if (showsRiftsClosed(entry.section))
@@ -103,7 +103,7 @@ final class SkillClogSectionRenderer
 			}
 			height += gridHeight(entry.section.itemIds().size(), cols);
 		}
-		height += SECTION_GAP * Math.max(0, entries.size() - 1);
+		height += (LabKnobs.style == 3 ? LabKnobs.sectionGap : SECTION_GAP) * Math.max(0, entries.size() - 1);
 		return height;
 	}
 
@@ -125,7 +125,9 @@ final class SkillClogSectionRenderer
 				g2.setFont(SECTION_FONT);
 				g2.setColor(TitleTooltip.OSRS_ORANGE);
 				g2.drawString(section.heading(), inset, y + headingMetrics.getAscent());
-				y += headingMetrics.getHeight() + HEADER_GAP;
+				LabKnobs.rule(g2, y + headingMetrics.getHeight() + HEADER_GAP - 1, inset,
+					headingMetrics.stringWidth(section.heading()), width, inset);
+				y += headingMetrics.getHeight() + HEADER_GAP + LabKnobs.headingExtra();
 			}
 			g2.setFont(DETAIL_FONT);
 			TitleTooltip.drawLabelValue(g2, detailMetrics, inset, y + detailMetrics.getAscent(), OBTAINED_LABEL,
@@ -140,7 +142,7 @@ final class SkillClogSectionRenderer
 				y += detailMetrics.getHeight() + HEADER_GAP;
 			}
 			y = paintGrid(g2, entry, section.primary(), i, inset, y, cols, hitBoxes);
-			if (i + 1 < entries.size()) y += SECTION_GAP;
+			if (i + 1 < entries.size()) y += LabKnobs.style == 3 ? LabKnobs.sectionGap : SECTION_GAP;
 		}
 		return y;
 	}

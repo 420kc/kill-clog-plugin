@@ -82,6 +82,12 @@ final class CardBody
 
 	CardBody add(Part part)
 	{
+		// LAB: a section title that owns its rule needs no divider above it, only room.
+		if (LabKnobs.style == 3 && LabKnobs.SUBHEADERS.contains(part) && !parts.isEmpty()
+			&& LabKnobs.SEPARATORS.contains(parts.get(parts.size() - 1)))
+		{
+			parts.set(parts.size() - 1, gap(LabKnobs.sectionGap));
+		}
 		parts.add(part);
 		return this;
 	}
@@ -186,12 +192,21 @@ final class CardBody
 
 	static Part subheader(String text)
 	{
-		return row(TitleTooltip.SUBHEADER_HEIGHT, c -> c.bfm.stringWidth(text), (c, y) -> c.card.paintSubheader(c.g, y, text));
+		Part part = row(TitleTooltip.SUBHEADER_HEIGHT + LabKnobs.headingExtra(), c -> c.bfm.stringWidth(text), (c, y) ->
+		{
+			c.card.paintSubheader(c.g, y, text);
+			LabKnobs.rule(c.g, y + TitleTooltip.SUBHEADER_HEIGHT, c.inset(), c.bfm.stringWidth(text), c.w, c.inset());
+		});
+		LabKnobs.SUBHEADERS.add(part);
+		return part;
 	}
 
 	static Part separator(int pad)
 	{
-		return row(TitleTooltip.separatorHeight(pad), c -> 0, (c, y) -> c.card.paintSeparator(c.g, c.w, y, pad));
+		int p = LabKnobs.dividerPad >= 0 ? LabKnobs.dividerPad : pad;
+		Part part = row(TitleTooltip.separatorHeight(p), c -> 0, (c, y) -> c.card.paintSeparator(c.g, c.w, y, p));
+		LabKnobs.SEPARATORS.add(part);
+		return part;
 	}
 
 	private static final int BAND_PAD = 4;
