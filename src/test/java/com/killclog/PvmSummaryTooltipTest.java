@@ -49,10 +49,10 @@ public class PvmSummaryTooltipTest
 		Map<CombatAchievementTier, Integer> easyDone = new java.util.EnumMap<>(CombatAchievementTier.class);
 		easyDone.put(CombatAchievementTier.EASY, CombatAchievementTier.EASY.totalTasks());
 
-		// The card scrolls under its band, so the room shows in how far it scrolls.
-		int noData = scrollRange(pvmCard(null));
-		int noTier = scrollRange(pvmCard(CombatAchievementResult.of(Collections.emptyMap(), totals)));
-		int easy = scrollRange(pvmCard(CombatAchievementResult.of(easyDone, totals)));
+		// The PvM rows stand above the band, so the room shows in the card's height.
+		int noData = pvmCard(null).getPreferredSize().height;
+		int noTier = pvmCard(CombatAchievementResult.of(Collections.emptyMap(), totals)).getPreferredSize().height;
+		int easy = pvmCard(CombatAchievementResult.of(easyDone, totals)).getPreferredSize().height;
 
 		assertEquals(noData, noTier);
 		// 4 px above, the 22 px row, 6 px below: the combat level row's room.
@@ -365,22 +365,4 @@ public class PvmSummaryTooltipTest
 			Collections.emptyMap(), 0, 0, 0, -1);
 	}
 
-	private static int scrollRange(PvmSummaryTooltip card)
-	{
-		java.awt.Dimension size = card.getPreferredSize();
-		card.setSize(size);
-		java.awt.Graphics2D g = new BufferedImage(size.width, size.height, BufferedImage.TYPE_INT_ARGB).createGraphics();
-		card.paint(g);
-		g.dispose();
-		try
-		{
-			java.lang.reflect.Field range = CardBody.Scroll.class.getDeclaredField("range");
-			range.setAccessible(true);
-			return range.getInt(card.scroll());
-		}
-		catch (ReflectiveOperationException e)
-		{
-			throw new AssertionError(e);
-		}
-	}
 }

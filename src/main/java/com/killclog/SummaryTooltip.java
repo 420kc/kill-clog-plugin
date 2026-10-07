@@ -24,7 +24,6 @@ import net.runelite.client.game.ItemManager;
 public class SummaryTooltip extends TitleTooltip
 {
 	private static final int PET_COLS = 5;
-	private static final int SECTION_GAP = 6;
 	private static final int FIGURE_GAP = 4;
 	private static final String PRESTIGE_LABEL = "Prestige: ";
 	private static final String FORMER_TITLE = "Player Summary";
@@ -132,38 +131,37 @@ public class SummaryTooltip extends TitleTooltip
 	@Override
 	protected CardBody body()
 	{
-		// The cape or character stands centered under the name, in the part that scrolls.
-		CardBody body = new CardBody();
+		// The cape or character stands centered under the name.
+		CardBody card = new CardBody().add(CardBody.minWidth(c -> getFontMetrics(getTitleFont()).stringWidth(FORMER_TITLE)));
 		if (figure != null)
 		{
-			body.add(CardBody.row(figure.getHeight() + FIGURE_GAP, c -> figure.getWidth(),
+			card.add(CardBody.row(figure.getHeight() + FIGURE_GAP, c -> figure.getWidth(),
 				(c, y) -> c.g.drawImage(figure, (c.w - figure.getWidth()) / 2, y, null)));
 		}
 		// Account type plus rank, then prestige, each centered under the figure.
 		if (hasRankLine())
 		{
-			body.add(centered(accountLabelText(), rankTail()));
+			card.add(centered(accountLabelText(), rankTail()));
 		}
 		if (prestige != null)
 		{
-			body.add(centered(PRESTIGE_LABEL, prestige));
+			card.add(centered(PRESTIGE_LABEL, prestige));
 		}
 		if (totalPetCount > 0)
 		{
-			// Pets under a separator, or straight under the title's own when nothing stands between.
-			if (hasBodyAbovePets())
-			{
-				body.add(CardBody.separator(SECTION_GAP));
-			}
+			// A pet's name shows in the band over the pets, straight under the title's divider when nothing stands
+			// between, and the pets scroll under it.
 			int count = hasPets() ? petList.size() : 0;
-			body.add(CardBody.line("Pets: ", String.valueOf(count), completionColor(count, totalPetCount)));
+			CardBody pets = new CardBody().add(CardBody.line("Pets: ", String.valueOf(count),
+				completionColor(count, totalPetCount)));
 			if (hasPets())
 			{
-				body.add(CardBody.grid(PET_COLS, petSprites, petNames, petList, new HashSet<>(petList), petCounts));
+				pets.add(CardBody.grid(PET_COLS, petSprites, petNames, petList, new HashSet<>(petList), petCounts));
 			}
+			card.add(hasBodyAbovePets() ? CardBody.hoverBand() : CardBody.headerHoverBand())
+				.add(CardBody.scroll(scroll, pets.asPart()));
 		}
-		return new CardBody().add(CardBody.minWidth(c -> getFontMetrics(getTitleFont()).stringWidth(FORMER_TITLE)))
-			.add(CardBody.headerHoverBand()).add(CardBody.scroll(scroll, body.asPart()));
+		return card;
 	}
 
 	private static CardBody.Part centered(String label, String value)

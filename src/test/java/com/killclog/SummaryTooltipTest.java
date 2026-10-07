@@ -99,8 +99,8 @@ public class SummaryTooltipTest
 		petTotal(bare, 65);
 		petTotal(ranked, 65);
 
-		// One stats line and its divider (6 + 1 + 6) above the pets, against nothing and no second divider.
-		assertEquals(14 + 13, ranked.getPreferredSize().height - bare.getPreferredSize().height);
+		// One stats line and the band's own divider (4 + 1 + 6) above the pets, against the title's divider alone.
+		assertEquals(14 + 11, ranked.getPreferredSize().height - bare.getPreferredSize().height);
 	}
 
 	private static void petTotal(SummaryTooltip tip, int total) throws ReflectiveOperationException
@@ -122,7 +122,7 @@ public class SummaryTooltipTest
 	}
 
 	@Test
-	public void theWholeCardScrollsUnderItsTitleAndBand()
+	public void thePetsScrollUnderTheBandWhileTheCharacterStays()
 	{
 		// A character whose top ten rows are solid, the rest clear.
 		BufferedImage figure = new BufferedImage(149, 200, BufferedImage.TYPE_INT_ARGB);
@@ -134,20 +134,38 @@ public class SummaryTooltipTest
 			}
 		}
 		SummaryTooltip few = withPets(null, 12);
-		SummaryTooltip many = withPets(figure, 50);
-		// A small card shows whole; past the window a card stops growing and scrolls instead.
+		SummaryTooltip many = withPets(figure, 60);
+		// A small card shows whole; past the window the pets stop growing the card and scroll instead.
 		assertTrue(few.getPreferredSize().height < many.getPreferredSize().height);
 		assertEquals(many.getPreferredSize(), withPets(figure, 70).getPreferredSize());
 
-		// The character scrolls with the pets: three notches down, its top has left the window.
-		int top = firstMagentaRow(paint(many));
+		// Three notches down the pets have moved, and the character stands where it was.
+		BufferedImage before = paint(many);
+		int top = firstMagentaRow(before);
 		assertTrue(top > 0);
 		for (java.awt.event.MouseWheelListener listener : many.getMouseWheelListeners())
 		{
 			listener.mouseWheelMoved(new java.awt.event.MouseWheelEvent(many, java.awt.event.MouseEvent.MOUSE_WHEEL,
 				0, 0, 10, 100, 0, false, java.awt.event.MouseWheelEvent.WHEEL_UNIT_SCROLL, 3, 3));
 		}
-		assertEquals(-1, firstMagentaRow(paint(many)));
+		BufferedImage after = paint(many);
+		assertEquals(top, firstMagentaRow(after));
+		assertTrue(differs(before, after));
+	}
+
+	private static boolean differs(BufferedImage a, BufferedImage b)
+	{
+		for (int y = 0; y < a.getHeight(); y++)
+		{
+			for (int x = 0; x < a.getWidth(); x++)
+			{
+				if (a.getRGB(x, y) != b.getRGB(x, y))
+				{
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	private static SummaryTooltip withPets(BufferedImage figure, int held)

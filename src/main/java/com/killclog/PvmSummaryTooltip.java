@@ -198,9 +198,9 @@ public class PvmSummaryTooltip extends TitleTooltip
 	@Override
 	protected CardBody body()
 	{
-		// The combat level leads the card; PvM and PvP each follow under their own subheader. Any sprite's name
-		// shows in the band under the header, and everything below it scrolls.
-		CardBody body = new CardBody()
+		// The combat level leads the card; PvM and PvP each follow under their own subheader. A sprite's name shows
+		// in the band over Slayer, the first section with sprites, and everything from there scrolls.
+		CardBody card = new CardBody()
 			.add(CardBody.gap(LEVEL_GAP_ABOVE))
 			.add(leadRow(combatIcon, combatText(combatLevel)))
 			.add(CardBody.gap(LEVEL_GAP_BELOW))
@@ -208,29 +208,28 @@ public class PvmSummaryTooltip extends TitleTooltip
 		// The CA tier leads the PvM rows, built like the combat level row above it, once one is held.
 		if (hasTierRow())
 		{
-			body.add(CardBody.gap(LEVEL_GAP_ABOVE))
+			card.add(CardBody.gap(LEVEL_GAP_ABOVE))
 				.add(leadRow(caRewardSprite, tierDisplayName(caResult)))
 				.add(CardBody.gap(LEVEL_GAP_BELOW));
 		}
-		body.add(CardBody.line("Total Kills: ", scoreText(totalKills)))
+		card.add(CardBody.line("Total Kills: ", scoreText(totalKills)))
 			.add(CardBody.line("EHB: ", ehbText(ehb)))
 			.add(CardBody.line("Bosses Killed: ", bossesWithKc + "/" + totalBosses,
 				completionColor(bossesWithKc, totalBosses)));
 		if (bossesCompleted >= 0)
 		{
-			body.add(CardBody.line("Logs Completed: ", bossesCompleted + "/" + bossesWithClog,
+			card.add(CardBody.line("Logs Completed: ", bossesCompleted + "/" + bossesWithClog,
 				completionColor(bossesCompleted, bossesWithClog)));
 		}
-		// Most Killed closes the PvM rows, then a small gap before the divider like every section.
+		// Most Killed closes the PvM rows.
 		if (mostKilled != null)
 		{
-			body.add(CardBody.gap(SECTION_GAP))
+			card.add(CardBody.gap(SECTION_GAP))
 				.add(CardBody.text("Most Killed:", OSRS_ORANGE, false))
 				.add(CardBody.text(mostKilled + " (" + grouped(mostKilledKc) + ")", Color.WHITE, true));
 		}
 		// Slayer: XP and Rank from the hiscores, then clog progress when a synced log is known.
-		body.add(CardBody.gap(SECTION_GAP))
-			.titled("Slayer")
+		CardBody body = new CardBody().titled("Slayer")
 			.add(CardBody.line("XP: ", slayerXpText(slayerXp)))
 			.add(CardBody.line("Rank: ", scoreText(slayerRank)));
 		if (slayerObtained >= 0)
@@ -251,7 +250,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 				weaponCounts, WEAPON_PAD))
 			.titled(PVP_HEADER)
 			.add(pvpRows.part());
-		return new CardBody().add(CardBody.headerHoverBand()).add(CardBody.scroll(scroll, body.asPart()));
+		return card.add(CardBody.hoverBand()).add(CardBody.scroll(scroll, body.asPart()));
 	}
 
 	/** Progress rides alongside a real kc in either mode; a raid never run stays dash-only. */
