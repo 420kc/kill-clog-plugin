@@ -360,10 +360,22 @@ final class CardBody
 			card.addMouseListener(mouse);
 		}
 
-		private void span(int top, int key)
+		void span(int top, int key)
 		{
 			spans.removeIf(s -> s[1] == key);
 			spans.add(new int[]{top, key});
+		}
+
+		/** Forgets every row: a scrolled list lays down only the rows it shows. */
+		void clear()
+		{
+			spans.clear();
+		}
+
+		/** Hovers whatever row now sits under y, as when a list scrolls beneath a still mouse. */
+		void moved(int y)
+		{
+			hover(at(y));
 		}
 
 		/** The row under a y coordinate, or -1. Rows are full width. */

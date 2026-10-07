@@ -262,6 +262,39 @@ public class ClogSummaryTooltipTest
 		assertNull(tip.getHeaderHoverLineText());
 	}
 
+	@Test
+	public void aTabRowOpensItsPagesOnceSomethingCanOpenThem()
+	{
+		Map<String, int[]> tabs = new LinkedHashMap<>();
+		tabs.put("Bosses", new int[]{1, 2});
+		tabs.put("Raids", new int[]{0, 3});
+		ClogSummaryTooltip tip = card(1, 5);
+		tip.setTabs(tabs);
+		Dimension reading = tip.getPreferredSize();
+		painted(tip);
+		for (int y = 0; y < tip.getHeight(); y++)
+		{
+			assertEquals(-1, tip.tabAt(y));
+		}
+
+		List<String> opened = new ArrayList<>();
+		tip.setOnOpenTab((press, tab) -> opened.add(tab));
+		// Clickable rows take no more room than the lines they replace.
+		assertEquals(reading, tip.getPreferredSize());
+		painted(tip);
+		int raids = -1;
+		for (int y = tip.getHeight() - 1; y >= 0; y--)
+		{
+			raids = tip.tabAt(y) == 1 ? y : raids;
+		}
+		for (java.awt.event.MouseListener listener : tip.getMouseListeners())
+		{
+			listener.mousePressed(new MouseEvent(tip, MouseEvent.MOUSE_PRESSED, 0, 0, 5, raids + 2, 1, false,
+				MouseEvent.BUTTON1));
+		}
+		assertEquals(List.of("Raids"), opened);
+	}
+
 	private static ClogSummaryTooltip card(int obtained, int total)
 	{
 		ClogSummaryTooltip tip = new ClogSummaryTooltip();

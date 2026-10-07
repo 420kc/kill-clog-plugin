@@ -1,0 +1,144 @@
+package com.killclog;
+
+import java.awt.Dimension;
+import java.awt.Graphics2D;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
+import java.awt.event.MouseWheelEvent;
+import java.awt.event.MouseWheelListener;
+import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
+
+public class ClogTabTooltipTest
+{
+	private static final int LINE = NativeTooltip.LINE_HEIGHT;
+
+	@Test
+	public void aLongTabShowsTwentyFourPagesAndTheWheelMovesThemThreeAtATime()
+	{
+		ClogTabTooltip card = painted(card(57));
+		int top = firstRowY(card);
+		assertEquals(0, card.pageAt(top));
+		assertEquals(23, card.pageAt(top + 23 * LINE));
+		assertEquals(-1, card.pageAt(top + 24 * LINE));
+
+		wheel(card, top + 5, 1);
+		assertEquals(3, card.offset());
+		// The mouse stayed put, so the page that scrolled under it is the one a press opens.
+		List<Integer> opened = new ArrayList<>();
+		card.setOnOpenPage((press, page) -> opened.add(page));
+		press(card, top + 5);
+		assertEquals(Arrays.asList(3), opened);
+
+		// The list stops at its ends.
+		wheel(card, top + 5, 50);
+		assertEquals(57 - ClogTabTooltip.VISIBLE_ROWS, card.offset());
+		wheel(card, top + 5, -50);
+		assertEquals(0, card.offset());
+	}
+
+	@Test
+	public void aTabThatFitsNeitherScrollsNorDrawsARail()
+	{
+		ClogTabTooltip fits = painted(card(ClogTabTooltip.VISIBLE_ROWS));
+		wheel(fits, firstRowY(fits), 3);
+		assertEquals(0, fits.offset());
+		// Only the longer tab makes room for its rail: the same rows, seven pixels wider.
+		assertEquals(card(ClogTabTooltip.VISIBLE_ROWS).getPreferredSize().width + 7,
+			card(ClogTabTooltip.VISIBLE_ROWS + 1).getPreferredSize().width);
+		assertEquals(card(ClogTabTooltip.VISIBLE_ROWS).getPreferredSize().height,
+			card(ClogTabTooltip.VISIBLE_ROWS + 1).getPreferredSize().height);
+	}
+
+	@Test
+	public void aComparisonsTwoSidesStayOnTheSamePages()
+	{
+		ClogTabTooltip blue = painted(card(57));
+		ClogTabTooltip red = painted(card(57));
+		blue.scrollWith(red);
+		wheel(blue, firstRowY(blue), 2);
+		assertEquals(6, red.offset());
+		wheel(red, firstRowY(red), -1);
+		assertEquals(3, blue.offset());
+	}
+
+	@Test
+	public void theWayBackIsARowOfItsOwnAboveThePages()
+	{
+		ClogTabTooltip bare = card(5);
+		ClogTabTooltip back = card(5);
+		int[] backs = new int[1];
+		back.setOnBack(press -> backs[0]++);
+		// The row and the divider under it.
+		assertEquals(bare.getPreferredSize().height + LINE + 5, back.getPreferredSize().height);
+
+		painted(back);
+		List<Integer> opened = new ArrayList<>();
+		back.setOnOpenPage((press, page) -> opened.add(page));
+		int top = firstRowY(back);
+		press(back, top - 5 - LINE + 2);
+		assertEquals(1, backs[0]);
+		assertTrue(opened.isEmpty());
+		press(back, top + 2);
+		assertEquals(1, backs[0]);
+		assertEquals(Arrays.asList(0), opened);
+	}
+
+	private static ClogTabTooltip card(int pages)
+	{
+		String[] names = new String[pages];
+		int[] obtained = new int[pages];
+		int[] total = new int[pages];
+		Arrays.fill(names, "Thermonuclear Smoke Devil");
+		Arrays.fill(total, 9);
+		ClogTabTooltip card = new ClogTabTooltip();
+		card.setTab("Bosses", new int[]{12, 34}, 34);
+		card.setPages(names, obtained, total);
+		return card;
+	}
+
+	private static ClogTabTooltip painted(ClogTabTooltip card)
+	{
+		Dimension size = card.getPreferredSize();
+		card.setSize(size);
+		Graphics2D graphics = new BufferedImage(size.width, size.height, BufferedImage.TYPE_INT_ARGB).createGraphics();
+		card.paint(graphics);
+		graphics.dispose();
+		return card;
+	}
+
+	/** The first y that answers as the first page in view, found the way a pointer would. */
+	private static int firstRowY(ClogTabTooltip card)
+	{
+		for (int y = 0; y < card.getHeight(); y++)
+		{
+			if (card.pageAt(y) == card.offset())
+			{
+				return y;
+			}
+		}
+		throw new AssertionError("no pages painted");
+	}
+
+	private static void wheel(ClogTabTooltip card, int y, int notches)
+	{
+		for (MouseWheelListener listener : card.getMouseWheelListeners())
+		{
+			listener.mouseWheelMoved(new MouseWheelEvent(card, MouseEvent.MOUSE_WHEEL, 0, 0, 5, y, 0, false,
+				MouseWheelEvent.WHEEL_UNIT_SCROLL, 3, notches));
+		}
+	}
+
+	private static void press(ClogTabTooltip card, int y)
+	{
+		for (MouseListener listener : card.getMouseListeners())
+		{
+			listener.mousePressed(new MouseEvent(card, MouseEvent.MOUSE_PRESSED, 0, 0, 5, y, 1, false, MouseEvent.BUTTON1));
+		}
+	}
+}

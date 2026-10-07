@@ -493,6 +493,22 @@ public class Cells
 		return buildBossTooltip(owner, boss);
 	}
 
+	/**
+	 * A Collection Log page's popup: its grid for the player, or both players' side by side. A dense page
+	 * draws small alone and header-only in a pair, as the dense clue tiers do.
+	 */
+	public JToolTip buildPageTooltip(JLabel owner, String name, boolean dense,
+		@Nullable TooltipData blue, @Nullable TooltipData red)
+	{
+		if (comparison.isComparisonMode())
+		{
+			return wrapSideBySide(owner,
+				singlePlayerBuilder.build(owner, dense && blue != null ? blue.withoutGrid() : blue, 5, name, false),
+				singlePlayerBuilder.buildCompared(owner, dense && red != null ? red.withoutGrid() : red, 5, name, false));
+		}
+		return singlePlayerBuilder.build(owner, blue, dense ? 10 : 5, name, dense);
+	}
+
 	private JToolTip buildBossTooltip(JLabel owner, HiscoreSkill boss)
 	{
 		return buildBossTooltip(owner, tooltipDataMap.get(boss),

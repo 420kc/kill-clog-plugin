@@ -309,7 +309,14 @@ public abstract class TitleTooltip extends NativeTooltip
 	static int drawLabelValue(Graphics2D g2, FontMetrics fm, int x, int y,
 		String label, String value, Color valueColor)
 	{
-		g2.setColor(OSRS_ORANGE);
+		return drawLabelValue(g2, fm, x, y, label, value, OSRS_ORANGE, valueColor);
+	}
+
+	/** A label in its own color (white on a hovered row) with its value right after it. */
+	static int drawLabelValue(Graphics2D g2, FontMetrics fm, int x, int y,
+		String label, String value, Color labelColor, Color valueColor)
+	{
+		g2.setColor(labelColor);
 		g2.drawString(label, x, y);
 		int labelWidth = fm.stringWidth(label);
 		g2.setColor(valueColor);

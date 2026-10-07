@@ -5,12 +5,15 @@ import java.awt.Color;
 import java.awt.Composite;
 import java.awt.FontMetrics;
 import java.awt.Rectangle;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.BiConsumer;
+import javax.annotation.Nullable;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.util.AsyncBufferedImage;
 
@@ -37,7 +40,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private static final int SOURCE_SECTION = 4;
 	private static final int BAR_HEIGHT = 3;
 	private static final int BAR_GAP = 3;
-	private static final Color BAR_TRACK = new Color(40, 35, 28);
+	static final Color BAR_TRACK = new Color(40, 35, 28);
 	private static final String SOURCE_LABEL = "Sources";
 	private static final String[] MONTHS = {
 		"Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -107,6 +110,16 @@ public class ClogSummaryTooltip extends TitleTooltip
 	}
 
 	private final List<ClogSource> clogSources = new ArrayList<>(3);
+	@Nullable
+	private BiConsumer<MouseEvent, String> onOpenTab;
+	private final CardBody.ClickRows tabRows = new CardBody.ClickRows(this, (e, row) ->
+	{
+		if (onOpenTab != null)
+		{
+			onOpenTab.accept(e, new ArrayList<>(tabs.keySet()).get(row));
+			e.consume();
+		}
+	});
 
 	public void setTierData(int obtained, int totalSlots, Map<String, BufferedImage> tierIcons,
 		ItemManager itemManager)
@@ -134,6 +147,18 @@ public class ClogSummaryTooltip extends TitleTooltip
 	void setTabs(Map<String, int[]> tabs)
 	{
 		this.tabs = tabs;
+	}
+
+	/** Called with the tab's name when the player presses its row; without it the rows only read. */
+	void setOnOpenTab(@Nullable BiConsumer<MouseEvent, String> onOpenTab)
+	{
+		this.onOpenTab = onOpenTab;
+	}
+
+	/** The tab row under a y coordinate, or -1. */
+	int tabAt(int y)
+	{
+		return tabRows.at(y);
 	}
 
 	@Override
@@ -328,12 +353,20 @@ public class ClogSummaryTooltip extends TitleTooltip
 		if (!tabs.isEmpty())
 		{
 			body.add(CardBody.separator(SEPARATOR_PAD)).add(CardBody.subheader("Collection Log"));
+			int row = 0;
 			for (Map.Entry<String, int[]> tab : tabs.entrySet())
 			{
 				int[] count = tab.getValue();
-				body.add(CardBody.line(tab.getKey() + ": ", progressCountText(count[0], count[1]),
-					completionColor(count[0], count[1])))
+				String label = tab.getKey() + ": ";
+				String value = progressCountText(count[0], count[1]);
+				Color color = completionColor(count[0], count[1]);
+				// A tab's row opens its pages, answering hover in white like the Clue Summary's rares.
+				body.add(onOpenTab == null ? CardBody.line(label, value, color)
+					: CardBody.clickRow(tabRows, row, c -> c.fm.stringWidth(label + value), (c, y, hovered) ->
+						drawLabelValue(c.g, c.fm, c.inset(), y + c.fm.getAscent(), label, value,
+							hovered ? Color.WHITE : OSRS_ORANGE, color)))
 					.add(bar(count[0], count[1]));
+				row++;
 			}
 		}
 

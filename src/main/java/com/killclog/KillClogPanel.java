@@ -172,6 +172,7 @@ public class KillClogPanel extends PluginPanel
 	private boolean flipped;
 	private java.util.function.BiFunction<String, String, String> selfPb = (league, boss) -> null;
 	private final Cells cells;
+	private final ClogPages clogPages;
 
 	// Comparison mode widgets (state fields all live on the controller)
 
@@ -228,6 +229,7 @@ public class KillClogPanel extends PluginPanel
 		this.skillCellGrid = new SkillCellGrid(skillIconManager, tooltipController, comparison,
 			config, itemManager);
 		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, clogService, killclogService, (league, boss) -> selfPb.apply(league, boss), config);
+		this.clogPages = new ClogPages(tooltipController, cells, comparison, lookupSession, tooltipDataBuilder);
 		this.activityTooltips = new ActivitySummaryTooltips(
 			lookupSession, comparison, cells, tooltipController, itemManager,
 			caRewardSprites, config::wikiItemLinks);
@@ -1222,6 +1224,7 @@ public class KillClogPanel extends PluginPanel
 	{
 		this.clogIndex = clogIndex;
 		cells.setClogIndex(clogIndex);
+		clogPages.setClogIndex(clogIndex);
 		comparison.setClogIndex(clogIndex);
 		skillCellGrid.setClogIndex(clogIndex);
 		tooltipDataBuilder.setClogIndex(clogIndex);
@@ -1429,6 +1432,7 @@ public class KillClogPanel extends PluginPanel
 			if (clogIndex != null)
 			{
 				tip.setTabs(clogIndex.tabProgress(clog, totals));
+				tip.setOnOpenTab((press, tab) -> clogPages.openTab(owner, press, tab));
 			}
 			tip.setClogSources(clog, runeProfileService.hasProfile(playerRsn));
 			if (hiscore != null && hiscore.isRankDataAvailable())

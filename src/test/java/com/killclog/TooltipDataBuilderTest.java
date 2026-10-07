@@ -44,6 +44,25 @@ public class TooltipDataBuilderTest
 	}
 
 	@Test
+	public void aPageCountsWhatThePlayerHoldsFromAnywhereInTheLogOnce()
+	{
+		Map<String, List<ClogResult.ClogItem>> obtained = new HashMap<>();
+		obtained.put("callisto", Arrays.asList(new ClogResult.ClogItem(100, 2, null), new ClogResult.ClogItem(101, 1, null)));
+		obtained.put("venenatis", Arrays.asList(new ClogResult.ClogItem(100, 5, null)));
+		ClogResult clog = clogWith(new HashMap<>(), obtained);
+
+		// The page lists item 100 twice: one slot, held under another page, at its highest count.
+		TooltipData data = builder.buildPageData("Shared", Arrays.asList(100, 102, 100), clog);
+		assertEquals("Shared", data.name);
+		assertEquals(2, data.totalItems);
+		assertEquals(Arrays.asList(100, 102), data.allItemIds);
+		assertEquals(1, data.obtainedCount);
+		assertEquals(Integer.valueOf(5), data.obtainedCounts.get(100));
+		assertFalse(data.rankTracked);
+		assertNull(builder.buildPageData("Shared", Arrays.asList(100), null));
+	}
+
+	@Test
 	public void testBuildTooltipDataMissingCategoryIsNull()
 	{
 		assertNull(builder.buildTooltipData("Zulrah", "zulrah", 1, vorkathClog()));

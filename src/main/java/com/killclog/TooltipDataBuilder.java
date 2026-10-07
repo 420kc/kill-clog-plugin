@@ -179,43 +179,44 @@ final class TooltipDataBuilder
 		return new ArrayList<>();
 	}
 
-	/**
-	 * Build TooltipData for a custom rare category (Hard/Elite/Master Rare).
-	 * Scans obtained items across all collection-log categories.
-	 */
+	/** A custom rare collection (Hard, Elite and Master Rare), held from anywhere in the log. */
 	TooltipData buildCustomRareData(String name, int[] itemIds, ClogResult clogResult)
 	{
+		return buildPageData(name, TooltipData.itemList(itemIds), clogResult);
+	}
+
+	/**
+	 * A set of items, such as a Collection Log page from the game, with what the player holds of each
+	 * anywhere in the log: an item counts once however many pages list it, the way the game counts it.
+	 */
+	TooltipData buildPageData(String name, List<Integer> itemIds, ClogResult clogResult)
+	{
 		if (clogResult == null) return null;
-		Set<Integer> allObtainedGlobal = new HashSet<>();
-		Map<Integer, Integer> allCountsGlobal = new HashMap<>();
+		Map<Integer, Integer> held = new HashMap<>();
 		for (List<ClogResult.ClogItem> catObtained : clogResult.getObtainedItems().values())
 		{
 			for (ClogResult.ClogItem item : catObtained)
 			{
-				int itemId = canonicalItemId(item.getId());
-				allObtainedGlobal.add(itemId);
-				allCountsGlobal.merge(itemId, item.getCount(), Integer::max);
+				held.merge(canonicalItemId(item.getId()), item.getCount(), Integer::max);
 			}
 		}
 
-		List<Integer> allItemsList = new ArrayList<>();
+		List<Integer> allItemsList = canonicalItemIds(itemIds);
 		Set<Integer> obtainedIds = new HashSet<>();
 		Map<Integer, Integer> obtainedCounts = new LinkedHashMap<>();
-		for (int id : itemIds)
+		for (int itemId : allItemsList)
 		{
-			int itemId = canonicalItemId(id);
-			allItemsList.add(itemId);
-			if (allObtainedGlobal.contains(itemId))
+			Integer count = held.get(itemId);
+			if (count != null)
 			{
 				obtainedIds.add(itemId);
-				obtainedCounts.put(itemId, allCountsGlobal.getOrDefault(itemId, 1));
+				obtainedCounts.put(itemId, count);
 			}
 		}
 
-		int obtainedCount = obtainedIds.size();
 		return TooltipData.builder()
 			.name(name)
-			.obtainedCount(obtainedCount)
+			.obtainedCount(obtainedIds.size())
 			.totalItems(allItemsList.size())
 			.allItemIds(allItemsList)
 			.obtainedIds(obtainedIds)
