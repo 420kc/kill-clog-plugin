@@ -659,7 +659,7 @@ public class Cells
 	private JToolTip buildClueTierTooltip(JLabel owner, HiscoreSkill tier, String displayName)
 	{
 		return gridTooltip(owner, tooltipDataMap.get(tier), () -> comparison.buildCompareClueTierData(tier),
-			displayName, null, false);
+			displayName, PanelData.clueWikiPage(tier), false);
 	}
 
 	/** Progress for a Clue Summary row; unsynced or unknown data shows none. */
@@ -680,7 +680,7 @@ public class Cells
 	private JToolTip buildRareTooltip(JLabel owner, int row)
 	{
 		return gridTooltip(owner, rareTooltips.get(PanelData.RARE_KEYS[row]), () -> rivalRare(row),
-			PanelData.RARE_NAMES[row], null, false);
+			PanelData.RARE_NAMES[row], PanelData.RARE_WIKI_PAGES[row], false);
 	}
 
 	// Helpers

@@ -14,6 +14,7 @@ import java.util.List;
 import java.util.Map;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
+import net.runelite.client.hiscore.HiscoreSkill;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -59,6 +60,9 @@ public class TitleTooltipTest
 		// A page's section of the Collection log article keeps its '#'.
 		assertEquals("https://oldschool.runescape.wiki/w/Collection_log#Champion%27s_Challenge",
 			TooltipItemLink.wikiPageUrl("Collection log#Champion's Challenge"));
+		// A clue tier's card opens its scroll's article; every Clue Summary rare row has a page too.
+		assertEquals("Clue scroll (beginner)", PanelData.clueWikiPage(HiscoreSkill.CLUE_SCROLL_BEGINNER));
+		assertEquals(PanelData.RARE_NAMES.length, PanelData.RARE_WIKI_PAGES.length);
 	}
 
 	@Test

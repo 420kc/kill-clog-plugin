@@ -91,6 +91,11 @@ final class PanelData
 	static final String[] RARE_NAMES = {
 		"3rd Age", "Gilded", "Hard Treasure (Rare)", "Elite Treasure (Rare)", "Master Treasure (Rare)",
 	};
+	// Each rare row's wiki page: the equipment set, or for a tier's rares their section of the Collection log.
+	static final String[] RARE_WIKI_PAGES = {
+		"3rd Age equipment", "Gilded equipment", CLOG_WIKI_PAGE + "#Hard Treasure Trail Rewards (Rare)",
+		CLOG_WIKI_PAGE + "#Elite Treasure Trail Rewards (Rare)", CLOG_WIKI_PAGE + "#Master Treasure Trail Rewards (Rare)",
+	};
 	static final int[][] RARE_ITEMS = {
 		THIRD_AGE_ITEMS, GILDED_ITEMS, HARD_RARE_ITEMS, ELITE_RARE_ITEMS, MASTER_RARE_ITEMS,
 	};
@@ -107,6 +112,12 @@ final class PanelData
 				.substring("CLUE_SCROLL_".length()).toLowerCase(Locale.US)
 				+ "_treasure_trails");
 		}
+	}
+
+	/** A clue tier's scroll article on the wiki, as a boss card's title opens the boss's: "Clue scroll (beginner)". */
+	static String clueWikiPage(HiscoreSkill tier)
+	{
+		return tier.getName().replace("Clue Scrolls", "Clue scroll");
 	}
 
 	// Clog tier trophy item IDs, bronze through gilded.
