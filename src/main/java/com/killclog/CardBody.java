@@ -289,17 +289,18 @@ final class CardBody
 	 */
 	static Part scroll(Scroll scroll, Part inner)
 	{
-		return part(c -> inner.width(c) + (inner.height(c) > scroll.window ? RAIL_GAP + RAIL_WIDTH : 0),
-			c -> Math.min(inner.height(c), scroll.window), (c, y) ->
+		return part(c -> inner.width(c) + (scroll.scrolls(inner.height(c)) ? RAIL_GAP + RAIL_WIDTH : 0),
+			c -> scroll.scrolls(inner.height(c)) ? scroll.window : inner.height(c), (c, y) ->
 			{
-				Ctx view = new Ctx(c.card, c.fm, c.bfm, c.available - RAIL_GAP - RAIL_WIDTH, c.g, c.w - RAIL_GAP - RAIL_WIDTH);
-				int height = inner.height(view);
-				scroll.range = Math.max(0, height - scroll.window);
-				if (scroll.range == 0)
+				if (!scroll.scrolls(inner.height(c)))
 				{
+					scroll.range = 0;
 					inner.paint(c, y);
 					return;
 				}
+				Ctx view = new Ctx(c.card, c.fm, c.bfm, c.available - RAIL_GAP - RAIL_WIDTH, c.g, c.w - RAIL_GAP - RAIL_WIDTH);
+				int height = inner.height(view);
+				scroll.range = Math.max(0, height - scroll.window);
 				scroll.offset = Math.min(scroll.offset, scroll.range);
 				Shape clip = c.g.getClip();
 				c.g.clipRect(0, y, c.w, scroll.window);
@@ -348,6 +349,12 @@ final class CardBody
 		int offset()
 		{
 			return offset;
+		}
+
+		/** Only a part that would move at least a notch scrolls; one that overflows by less shows whole. */
+		boolean scrolls(int height)
+		{
+			return height > window + step;
 		}
 
 		/** For a part that draws its own window, like a list: how far it can move; returns where it is. */

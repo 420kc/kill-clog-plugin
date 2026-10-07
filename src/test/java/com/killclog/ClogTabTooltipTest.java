@@ -44,16 +44,18 @@ public class ClogTabTooltipTest
 	}
 
 	@Test
-	public void aTabThatFitsNeitherScrollsNorDrawsARail()
+	public void aTabWithinANotchOfTheWindowShowsWholeAndALongerOneScrolls()
 	{
-		ClogTabTooltip fits = painted(card(ClogTabTooltip.VISIBLE_ROWS));
-		wheel(fits, firstRowY(fits), 3);
-		assertEquals(0, fits.offset());
-		// Only the longer tab makes room for its rail: the same rows, seven pixels wider.
-		assertEquals(card(ClogTabTooltip.VISIBLE_ROWS).getPreferredSize().width + 7,
-			card(ClogTabTooltip.VISIBLE_ROWS + 1).getPreferredSize().width);
-		assertEquals(card(ClogTabTooltip.VISIBLE_ROWS).getPreferredSize().height,
-			card(ClogTabTooltip.VISIBLE_ROWS + 1).getPreferredSize().height);
+		int notch = 3;
+		ClogTabTooltip whole = painted(card(ClogTabTooltip.VISIBLE_ROWS + notch));
+		wheel(whole, firstRowY(whole), 3);
+		assertEquals(0, whole.offset());
+		int last = ClogTabTooltip.VISIBLE_ROWS + notch - 1;
+		assertEquals("every page shows", last, whole.pageAt(firstRowY(whole) + last * LINE));
+		// One page more and the tab scrolls: the window's rows, seven pixels wider for the rail.
+		ClogTabTooltip scrolls = card(ClogTabTooltip.VISIBLE_ROWS + notch + 1);
+		assertEquals(whole.getPreferredSize().width + 7, scrolls.getPreferredSize().width);
+		assertEquals(whole.getPreferredSize().height - notch * LINE, scrolls.getPreferredSize().height);
 	}
 
 	@Test

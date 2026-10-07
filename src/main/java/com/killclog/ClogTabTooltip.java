@@ -8,7 +8,7 @@ import javax.annotation.Nullable;
 /**
  * One Collection Log tab, opened from the Clog Summary where it was: the tab's progress and the way back,
  * then every page in the game's order with the player's count. A page opens its own popup. A tab
- * longer than {@link #VISIBLE_ROWS} pages scrolls with the mouse wheel, a thin rail showing where.
+ * more than a notch past {@link #VISIBLE_ROWS} pages scrolls with the mouse wheel, a thin rail showing where.
  */
 public class ClogTabTooltip extends TitleTooltip
 {
@@ -79,12 +79,12 @@ public class ClogTabTooltip extends TitleTooltip
 
 	private boolean scrolls()
 	{
-		return names.length > VISIBLE_ROWS;
+		return scroll.scrolls(names.length * LINE_HEIGHT);
 	}
 
 	private int shown()
 	{
-		return Math.min(names.length, VISIBLE_ROWS);
+		return scrolls() ? VISIBLE_ROWS : names.length;
 	}
 
 	private String countText(int page)
