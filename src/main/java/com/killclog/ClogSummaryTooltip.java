@@ -497,7 +497,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 			{
 				// Every shelved item is held: the grids' painter draws them, each centered over its date.
 				int cellWidth = shelf.cellWidth(c.fm);
-				int startX = c.inset() + (c.w - 2 * c.inset() - (count * cellWidth + (count - 1) * RECENT_PAD)) / 2;
+				// Shelves start at the left, as killclog.com's do.
+				int startX = c.inset();
 				c.hits.addAll(TooltipItemSprites.paintGrid(c.g, shelf.sprites, named, section, ids, new HashSet<>(ids),
 					held, startX + (cellWidth - size) / 2, y, count, size, cellWidth + RECENT_PAD));
 				for (int i = 0; i < count; i++)

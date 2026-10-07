@@ -401,4 +401,29 @@ public class ClogSummaryTooltipTest
 				System.currentTimeMillis(), 0, x, y, 0, false, MouseEvent.NOBUTTON));
 		}
 	}
+
+	@Test
+	public void aShortShelfStartsAtTheLeft() throws Exception
+	{
+		ClogSummaryTooltip tip = card(1150, 1700);
+		java.lang.reflect.Field rare = ClogSummaryTooltip.class.getDeclaredField("rare");
+		rare.setAccessible(true);
+		rare.set(tip, new ClogSummaryTooltip.Shelf(null, new int[]{20590}, new String[]{"Stale baguette"},
+			new int[]{1}, null));
+		painted(tip);
+		java.lang.reflect.Field hits = TooltipItemHover.class.getDeclaredField("hitBoxes");
+		hits.setAccessible(true);
+		java.lang.reflect.Field bounds = TooltipItemHover.HitBox.class.getDeclaredField("bounds");
+		bounds.setAccessible(true);
+		int left = Integer.MAX_VALUE;
+		for (Object hit : (List<?>) hits.get(tip.itemHover))
+		{
+			java.awt.Rectangle box = (java.awt.Rectangle) bounds.get(hit);
+			if (box.width == CardBody.GRID_SPRITE)
+			{
+				left = Math.min(left, box.x);
+			}
+		}
+		assertEquals(NativeTooltip.getInset(), left);
+	}
 }
