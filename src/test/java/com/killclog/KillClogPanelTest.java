@@ -196,7 +196,8 @@ public class KillClogPanelTest
 		assertFalse(Arrays.stream(PanelData.THIRD_AGE_ITEMS)
 			.anyMatch(id -> id == PanelData.THIRD_AGE_RING_ITEM_ID));
 		assertEquals(23, PanelData.THIRD_AGE_ITEMS.length);
-		assertTrue(Arrays.stream(PanelData.MASTER_RARE_ITEMS)
+		// The game's Master rare page leaves the ring out too: it is the Mimic's alone.
+		assertFalse(Arrays.stream(PanelData.MASTER_RARE_ITEMS)
 			.anyMatch(id -> id == PanelData.THIRD_AGE_RING_ITEM_ID));
 	}
 
