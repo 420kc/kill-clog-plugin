@@ -13,6 +13,8 @@ import java.awt.event.MouseWheelEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.ObjIntConsumer;
 import java.util.function.ToIntFunction;
 import javax.annotation.Nullable;
@@ -392,6 +394,45 @@ final class CardBody
 				card.repaint();
 			}
 		}
+	}
+
+	// Full-size item sprites a gap apart; a scrolled grid's window holds whole rows of them.
+	static final int GRID_SPRITE = 32;
+	static final int GRID_GAP = 4;
+	static final int GRID_CELL = GRID_SPRITE + GRID_GAP;
+	static final int GRID_WINDOW = WINDOW / GRID_CELL * GRID_CELL - GRID_GAP;
+
+	/**
+	 * Full-size item sprites centered in at least {@code minCols} columns, or as many more as the card's
+	 * width already holds: unobtained ones dimmed, quantities in the corner, each hover-naming and wiki-linking.
+	 */
+	static Part grid(int minCols, @Nullable TooltipItemSprites sprites, @Nullable Map<Integer, String> names,
+		List<Integer> ids, Set<Integer> obtained, Map<Integer, Integer> counts)
+	{
+		int count = ids.size();
+		return part(c -> gridColumns(minCols, count, c.available) * GRID_CELL - GRID_GAP,
+			c -> (count + gridColumns(minCols, count, c.available) - 1) / gridColumns(minCols, count, c.available)
+				* GRID_CELL - GRID_GAP, (c, y) ->
+			{
+				int cols = gridColumns(minCols, count, c.available);
+				int width = cols * GRID_CELL - GRID_GAP;
+				c.hits.addAll(TooltipItemSprites.paintGrid(c.g, sprites, names, 0, ids, obtained, counts,
+					c.inset() + (c.w - 2 * c.inset() - width) / 2, y, cols, GRID_SPRITE, GRID_CELL));
+			});
+	}
+
+	/** A grid's own columns: the minimum asked for, no fewer than four even for a shorter list. */
+	static int gridColumns(int minCols, int count)
+	{
+		return Math.min(Math.max(minCols, 1), Math.max(4, Math.max(count, 1)));
+	}
+
+	/** The grid's own columns, or more when a long title already pays for the width. */
+	private static int gridColumns(int minCols, int count, int available)
+	{
+		int cols = gridColumns(minCols, count);
+		int fit = (available + GRID_GAP) / GRID_CELL;
+		return available > 0 && fit > cols ? Math.min(fit, count) : cols;
 	}
 
 	/**

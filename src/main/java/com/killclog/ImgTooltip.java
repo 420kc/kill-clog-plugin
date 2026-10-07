@@ -14,10 +14,6 @@ import net.runelite.client.game.ItemManager;
  */
 public class ImgTooltip extends TitleTooltip
 {
-	private static final int SPRITE_SIZE = 32;
-	private static final int PADDING = 4;
-	private static final int CELL = SPRITE_SIZE + PADDING;
-
 	private final int gridCols;
 	@Setter
 	private String notice = "No collection log synced";
@@ -28,7 +24,7 @@ public class ImgTooltip extends TitleTooltip
 	private Map<Integer, Integer> obtainedCounts;
 	private TooltipItemSprites itemSprites;
 	// The window holds whole sprite rows and moves a row a notch, so a scrolled grid never shows half a sprite.
-	private final CardBody.Scroll scroll = new CardBody.Scroll(this, CardBody.WINDOW / CELL * CELL - PADDING, CELL);
+	private final CardBody.Scroll scroll = new CardBody.Scroll(this, CardBody.GRID_WINDOW, CardBody.GRID_CELL);
 
 	/** Configurable min column count. */
 	public ImgTooltip(int gridCols)
@@ -76,19 +72,6 @@ public class ImgTooltip extends TitleTooltip
 			this);
 	}
 
-	static int gridColumnsForItemCount(int requestedCols, int itemCount)
-	{
-		return Math.min(Math.max(requestedCols, 1), Math.max(4, Math.max(itemCount, 1)));
-	}
-
-	/** The grid's own columns, or more when a long title already pays for the width. */
-	private int columns(int available, int count)
-	{
-		int cols = gridColumnsForItemCount(gridCols, count);
-		int fit = (available + PADDING) / CELL;
-		return available > 0 && fit > cols ? Math.min(fit, count) : cols;
-	}
-
 	@Override
 	protected CardBody body()
 	{
@@ -101,27 +84,18 @@ public class ImgTooltip extends TitleTooltip
 		{
 			return body.add(notice());
 		}
-		int count = allItemIds.size();
-		return body.add(CardBody.scroll(scroll, CardBody.part(c -> columns(c.available, count) * CELL - PADDING,
-			c -> (count + columns(c.available, count) - 1) / columns(c.available, count) * CELL - PADDING, (c, y) ->
-			{
-				int cols = columns(c.available, count);
-				int width = cols * CELL - PADDING;
-				if (itemSprites != null)
-				{
-					c.hits.addAll(TooltipItemSprites.paintGrid(c.g, itemSprites, null, 0, allItemIds, obtainedIds,
-						obtainedCounts, c.inset() + (c.w - 2 * c.inset() - width) / 2, y, cols, SPRITE_SIZE, CELL));
-				}
-			})));
+		return body.add(CardBody.scroll(scroll,
+			CardBody.grid(gridCols, itemSprites, null, allItemIds, obtainedIds, obtainedCounts)));
 	}
 
 	/** No clog data: the notice centered where the grid would be. */
 	private CardBody.Part notice()
 	{
 		int count = Math.max(totalItems, 1);
-		int cols = gridColumnsForItemCount(gridCols, count);
-		int height = (count + cols - 1) / cols * CELL - PADDING;
-		return CardBody.part(c -> Math.max(cols * CELL - PADDING, c.fm.stringWidth(notice)), c -> height, (c, y) ->
+		int cols = CardBody.gridColumns(gridCols, count);
+		int height = (count + cols - 1) / cols * CardBody.GRID_CELL - CardBody.GRID_GAP;
+		return CardBody.part(c -> Math.max(cols * CardBody.GRID_CELL - CardBody.GRID_GAP, c.fm.stringWidth(notice)),
+			c -> height, (c, y) ->
 		{
 			c.g.setColor(NOTICE_COLOR);
 			c.g.drawString(notice, c.inset() + (c.w - 2 * c.inset() - c.fm.stringWidth(notice)) / 2,

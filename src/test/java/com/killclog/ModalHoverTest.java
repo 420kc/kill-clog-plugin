@@ -10,6 +10,8 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import javax.imageio.ImageIO;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
@@ -83,8 +85,10 @@ public class ModalHoverTest
 		player.setData("Fixture", 12345, null, null, "Regular", null);
 		set(player, "totalPetCount", 65);
 		set(player, "petList", Arrays.asList(1337, 1338));
-		set(player, "petNames", new String[]{"Pet snakeling", "Abyssal orphan"});
-		set(player, "petSprites", new BufferedImage[]{tile(15), tile(15)});
+		Map<Integer, String> petNames = new HashMap<>();
+		petNames.put(1337, "Pet snakeling");
+		petNames.put(1338, "Abyssal orphan");
+		set(player, "petNames", petNames);
 		// The Skill Summary is two plain rows since 2.4.0: nothing in it hovers.
 		return new TitleTooltip[]{pvm, clog, player};
 	}

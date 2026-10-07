@@ -1,10 +1,13 @@
 package com.killclog;
 
 import java.awt.Color;
-import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.IntFunction;
 import javax.annotation.Nullable;
@@ -14,16 +17,15 @@ import net.runelite.client.game.ItemManager;
  * Player summary tooltip on the summary-bar name label.
  * The player's name is the title, in white beside their account badge. Under it stand the
  * prestige cape or a Kill Clog syncer's character, centered, then the account and prestige
- * lines, then obtained pet sprites.
- * Hovering a pet names it under the grid and left-click opens its wiki
- * page - same contract as the PvM summary sprites.
+ * lines, then the obtained pets at full size; past ten rows only the pets scroll, the rest anchored.
+ * Hovering a pet names it on the line above them and left-click opens its wiki
+ * page - same contract as the boss grids.
  */
 public class SummaryTooltip extends TitleTooltip
 {
-	private static final int PET_SIZE = 15;
-	private static final int PET_PAD = 2;
-	private static final int PET_COLS = 10;
+	private static final int PET_COLS = 5;
 	private static final int SECTION_GAP = 6;
+	private static final int BAND_PAD = 4;
 	private static final int FIGURE_GAP = 4;
 	private static final String PRESTIGE_LABEL = "Prestige: ";
 	private static final String FORMER_TITLE = "Player Summary";
@@ -38,8 +40,11 @@ public class SummaryTooltip extends TitleTooltip
 	// not the empty slots.
 	private int totalPetCount;
 	private List<Integer> petList;
-	private String[] petNames;
-	private BufferedImage[] petSprites;
+	private Map<Integer, String> petNames;
+	@Nullable
+	private TooltipItemSprites petSprites;
+	// The pets scroll at full size under the anchored top of the card, a sprite row a notch.
+	private final CardBody.Scroll scroll = new CardBody.Scroll(this, CardBody.GRID_WINDOW, CardBody.GRID_CELL);
 
 	public void setData(String rsn, int overallRank, BufferedImage figure,
 						BufferedImage badgeIcon, String accountLabel, String prestige)
@@ -78,20 +83,20 @@ public class SummaryTooltip extends TitleTooltip
 			}
 		}
 
-		if (petList.isEmpty())
+		// A pet without a name still hovers and links, under the name its id gives it.
+		petNames = new HashMap<>();
+		for (int id : petList)
 		{
-			return;
+			petNames.put(id, nameLookup != null ? nameLookup.apply(id) : null);
 		}
+		petSprites = !petList.isEmpty() && itemManager != null
+			? TooltipItemSprites.load(petList, petNames, itemManager, id -> 1, this) : null;
+	}
 
-		petNames = new String[petList.size()];
-		petSprites = new BufferedImage[petList.size()];
-
-		for (int i = 0; i < petList.size(); i++)
-		{
-			int id = petList.get(i);
-			petNames[i] = nameLookup != null ? nameLookup.apply(id) : null;
-			loadItemSprite(id, PET_SIZE, petSprites, i, itemManager);
-		}
+	@Override
+	CardBody.Scroll scroll()
+	{
+		return scroll;
 	}
 
 	private boolean hasRankLine()
@@ -106,14 +111,7 @@ public class SummaryTooltip extends TitleTooltip
 
 	private boolean hasPets()
 	{
-		return petList != null && !petList.isEmpty() && petSprites != null;
-	}
-
-	private int getPetGridHeight()
-	{
-		if (!hasPets()) return 0;
-		int rows = (petList.size() + PET_COLS - 1) / PET_COLS;
-		return rows * (PET_SIZE + PET_PAD) - PET_PAD;
+		return petList != null && !petList.isEmpty();
 	}
 
 	/** A player without hiscores or a figure has nothing above the pets but the title. */
@@ -149,7 +147,14 @@ public class SummaryTooltip extends TitleTooltip
 			{
 				body.add(CardBody.separator(SECTION_GAP));
 			}
-			body.add(pets());
+			int count = hasPets() ? petList.size() : 0;
+			body.add(CardBody.line("Pets: ", String.valueOf(count), completionColor(count, totalPetCount)));
+			if (hasPets())
+			{
+				// The pets scroll under the band their hovered one is named in, like a skill's log.
+				body.add(CardBody.hoverBand(BAND_PAD)).add(CardBody.scroll(scroll, CardBody.grid(PET_COLS, petSprites,
+					petNames, petList, new HashSet<>(petList), Collections.emptyMap())));
+			}
 		}
 		return body;
 	}
@@ -158,43 +163,6 @@ public class SummaryTooltip extends TitleTooltip
 	{
 		return CardBody.row(LINE_HEIGHT, c -> c.fm.stringWidth(label + value), (c, y) -> drawLabelValue(c.g, c.fm,
 			(c.w - c.fm.stringWidth(label + value)) / 2, y + c.fm.getAscent(), label, value));
-	}
-
-	/**
-	 * The pet count, then the full pet gallery: obtained at strength, unobtained dimmed. Hit boxes
-	 * share the draw geometry so hover-name and wiki-click track exactly.
-	 */
-	private CardBody.Part pets()
-	{
-		int count = hasPets() ? petList.size() : 0;
-		return CardBody.part(c -> count > 0 ? Math.min(count, PET_COLS) * (PET_SIZE + PET_PAD) - PET_PAD : 0,
-			c -> c.fm.getHeight() + PET_PAD + (hasPets() ? getPetGridHeight() + hoverRowHeight(c.fm) : 0), (c, y) ->
-			{
-				int headerY = y + c.fm.getAscent();
-				drawLabelValue(c.g, c.fm, c.inset(), headerY, "Pets: ", String.valueOf(count),
-					completionColor(count, totalPetCount));
-				if (!hasPets())
-				{
-					return;
-				}
-				int gridY = headerY + PET_PAD + c.bfm.getDescent();
-				int cellSize = PET_SIZE + PET_PAD;
-				for (int i = 0; i < petList.size(); i++)
-				{
-					int px = c.inset() + (i % PET_COLS) * cellSize;
-					int py = gridY + (i / PET_COLS) * cellSize;
-					if (petSprites[i] != null)
-					{
-						c.g.drawImage(petSprites[i], px, py, null);
-					}
-					if (petNames[i] != null)
-					{
-						c.hits.add(new TooltipItemHover.HitBox(0, petList.get(i), petNames[i],
-							new Rectangle(px, py, PET_SIZE, PET_SIZE), true));
-					}
-				}
-				paintHeaderHoverLine(c.g, c.fm, c.w, gridY + getPetGridHeight() + c.fm.getAscent());
-			});
 	}
 
 	private String accountLabelText()
