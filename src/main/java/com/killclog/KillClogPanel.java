@@ -1154,10 +1154,10 @@ public class KillClogPanel extends PluginPanel
 		this.localAccountType = accountType;
 	}
 
-	/** Returns the RSN currently displayed in the panel, or null if no lookup is shown. */
+	/** The RSN the panel shows, or the one it looked up when no provider named them; null with no lookup. */
 	public String getDisplayedRsn()
 	{
-		return rsn;
+		return rsn != null ? rsn : lookupSession.getCurrentLookupRsn();
 	}
 
 	/**

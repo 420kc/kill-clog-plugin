@@ -93,6 +93,19 @@ public class LeagueViewPanelTest
 	}
 
 	@Test
+	public void aLookupNoProviderNamedStillCountsAsTheShownPlayer() throws Exception
+	{
+		// Looked up at the login screen; only the hiscores answer, so no provider resolves the name.
+		SwingUtilities.invokeAndWait(() ->
+		{
+			field(panel, "searchBar", IconTextField.class).setText("Friend");
+			panel.doLookup();
+		});
+		// The login's own lookup must leave this one standing.
+		assertEquals("Friend", panel.getDisplayedRsn());
+	}
+
+	@Test
 	public void aWorldChangeReadsTheShownPlayerAgainInTheNewGame() throws Exception
 	{
 		SwingUtilities.invokeAndWait(() ->
