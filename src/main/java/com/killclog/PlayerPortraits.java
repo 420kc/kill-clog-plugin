@@ -22,7 +22,7 @@ import okhttp3.OkHttpClient;
 /**
  * Kill Clog syncers' characters for the Player Summary. When a player publishes their character,
  * killclog.com draws it in the game's own style, with their follower beside them, and serves it at
- * {@code /api/player/{rsn}/portrait}. Only lookups that came back from the player's own Kill Clog
+ * {@code /api/player/{rsn}/portrait/large}. Only lookups that came back from the player's own Kill Clog
  * sync (or the local player's own log) ask for one, so nobody else costs a request.
  *
  * <p>Every lookup re-checks the portrait (an unchanged one answers 304 with no body), and a portrait
@@ -40,8 +40,6 @@ class PlayerPortraits
 	// A miss is often a character still being drawn, or one about to be published, so it is asked
 	// about again sooner than a provider miss.
 	static final long NOT_FOUND_TTL_MS = 10 * 60 * 1000;
-	// The Player Summary draws characters 200 pixels tall, from /portrait/large; a player whose large one isn't
-	// drawn yet, or a server without them, answers 404 and is asked for today's size before counting as missing.
 	// Lookup counts kept past this are pruned to names with a portrait held or a check out.
 	static final int MAX_GENERATIONS = 2 * HttpUtil.CACHE_CAP;
 	private static final byte[] PNG_SIGNATURE = {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'};
@@ -54,8 +52,6 @@ class PlayerPortraits
 	// Each player's latest lookup, and the lookup the request now out for them was sent for.
 	private final Map<String, Integer> generations = new ConcurrentHashMap<>();
 	private final Map<String, Integer> asked = new ConcurrentHashMap<>();
-	// Players whose large portrait answered 404 since their latest lookup: asked at today's size instead.
-	private final Set<String> plain = ConcurrentHashMap.newKeySet();
 
 	/** A portrait and the ETag it was served with, for the next lookup's re-check. */
 	static final class Portrait
@@ -90,10 +86,7 @@ class PlayerPortraits
 				// A name with nothing held and nothing asked needs no count: its next lookup starts over.
 				generations.keySet().removeIf(other -> !other.equals(key) && !asked.containsKey(other)
 					&& !lane.values.containsKey(other));
-				plain.retainAll(generations.keySet());
 			}
-			// Each lookup asks for the large portrait again, in case it has been drawn since.
-			plain.remove(key);
 			confirmed.remove(key);
 			ask(name);
 		}
@@ -141,8 +134,8 @@ class PlayerPortraits
 		int generation = generations.getOrDefault(key, 0);
 		asked.put(key, generation);
 		Portrait held = lane.values.get(key);
-		String url = KillClogEndpoint.apiBaseUrl() + "/player/" + HttpUtil.pathSegment(name) + "/portrait"
-			+ (plain.contains(key) ? "" : "/large");
+		// The Player Summary draws characters 200 pixels tall; the server serves today's size until those are drawn.
+		String url = KillClogEndpoint.apiBaseUrl() + "/player/" + HttpUtil.pathSegment(name) + "/portrait/large";
 		CompletableFuture<HttpUtil.BytesResult> request;
 		try
 		{
@@ -180,11 +173,6 @@ class PlayerPortraits
 		String key = key(name);
 		asked.remove(key);
 		boolean latest = generation == generations.getOrDefault(key, 0);
-		if (code == 404 && plain.add(key))
-		{
-			ask(name);
-			return;
-		}
 		if (code == 404 || code == 451)
 		{
 			confirmed.remove(key);

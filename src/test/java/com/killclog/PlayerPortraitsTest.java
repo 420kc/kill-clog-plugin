@@ -134,11 +134,6 @@ public class PlayerPortraitsTest
 			assertNotNull(portraits.forSummary(clog("420 kc", true)));
 			portraits.lookedUp(clog("420 kc", true));
 			answer(portraits, key, code, null, null);
-			if (code == 404)
-			{
-				// No large one: today's size is asked before the character counts as gone.
-				answer(portraits, key, code, null, null);
-			}
 			assertNull(String.valueOf(code), portraits.forSummary(clog("420 kc", true)));
 		}
 	}
@@ -164,15 +159,13 @@ public class PlayerPortraitsTest
 		PlayerPortraits portraits = new PlayerPortraits(client);
 		String key = PlayerPortraits.key("CBC");
 		answer(portraits, key, 404, null, null);
-		answer(portraits, key, 404, null, null);
 		portraits.lookedUp(clog("CBC", true));
 		assertNull(portraits.forSummary(clog("CBC", true)));
-		// Only today's size was asked, after the large one's miss; nothing since.
-		requests(client, 1);
+		verify(client, never()).newCall(any(Request.class));
 		// Past the portrait's ten minutes, though well inside a provider miss's hour.
 		portraits.lane.notFound.put(key, System.currentTimeMillis() - PlayerPortraits.NOT_FOUND_TTL_MS - 1);
 		portraits.lookedUp(clog("CBC", true));
-		requests(client, 2);
+		requests(client, 1);
 	}
 
 	@Test
@@ -212,30 +205,12 @@ public class PlayerPortraitsTest
 	}
 
 	@Test
-	public void aLargePortraitFallsBackToTodaysSizeUntilTheNextLookup() throws IOException
-	{
-		OkHttpClient client = client();
-		PlayerPortraits portraits = new PlayerPortraits(client);
-		portraits.lookedUp(clog("420 kc", true));
-		answer(portraits, "420 kc", 404, null, null);
-		List<Request> sent = requests(client, 2);
-		assertEquals("https://killclog.com/api/player/420%20kc/portrait", sent.get(1).url().toString());
-		answer(portraits, "420 kc", 200, png(56, 80), "\"v1\"");
-		assertNotNull(portraits.forSummary(clog("420 kc", true)));
-		// The next lookup asks for the large one again, in case it has been drawn since.
-		portraits.lookedUp(clog("420 kc", true));
-		assertEquals("https://killclog.com/api/player/420%20kc/portrait/large",
-			requests(client, 3).get(2).url().toString());
-	}
-
-	@Test
 	public void lookupCountsStayBounded()
 	{
 		PlayerPortraits portraits = new PlayerPortraits(client());
 		for (int i = 0; i < PlayerPortraits.MAX_GENERATIONS + 50; i++)
 		{
 			portraits.lookedUp(clog("player " + i, true));
-			answer(portraits, "player " + i, 404, null, null);
 			answer(portraits, "player " + i, 404, null, null);
 		}
 		assertTrue(portraits.countedLookups() <= PlayerPortraits.MAX_GENERATIONS + 1);
