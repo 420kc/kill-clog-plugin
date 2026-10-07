@@ -130,11 +130,12 @@ public class RankSelectorLayoutTest
 		LookupTestFixture.edt(RankSelectorLayoutTest::noop);
 		session.setRankView(result -> result.withRanks(chosenRanks));
 		assertEquals(100, session.getHiscoreResult().getOverallRank());
-		assertEquals(100, comparison.getCompareHiscoreResult().getOverallRank());
+		// The rival keeps their own board: the selector steps aside in a comparison.
+		assertEquals(20, comparison.getCompareHiscoreResult().getOverallRank());
 		assertEquals(AccountType.IRONMAN, session.getHiscoreResult().getAccountType());
 		assertEquals(AccountType.HARDCORE_IRONMAN, comparison.getCompareHiscoreResult().getAccountType());
 		assertSame(nativeBlue, session.getNativeHiscoreResult());
-		assertSame(nativeRed, comparison.getNativeCompareHiscoreResult());
+		assertSame(nativeRed, comparison.getCompareHiscoreResult());
 	}
 
 	private static void noop()

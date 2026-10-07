@@ -69,17 +69,18 @@ public class RankSelectorTest
 	}
 
 	@Test
-	public void aFrozenRowHidesTodaysLogOnBothSidesButKeepsItForTheBadge() throws Exception
+	public void aFrozenRowHidesTodaysLogBesideItButNeverTheRivalsOwn() throws Exception
 	{
 		LookupTestFixture fixture = new LookupTestFixture();
 		HiscoreResult base = fixture.primary.getNativeHiscoreResult();
 		ClogResult log = fixture.primary.getNativeClogResult();
 		HiscoreResult frozen = base.withRow(result(AccountType.REGULAR, HiscoreTable.STANDARD, 5, 0));
 		LookupTestFixture.edt(() -> fixture.primary.setRankView(row -> frozen));
-		// A mirror compare started while frozen still takes the real log.
+		// A mirror compare started while frozen takes the real log, and reads it as the rival's own:
+		// the board view belongs to the looked-up player alone.
 		LookupTestFixture.edt(() -> fixture.comparison.doCompareLookup("Blue", "Blue", null));
 		assertNull(fixture.primary.getClogResult());
-		assertNull(fixture.comparison.getCompareClogResult());
+		assertSame(log, fixture.comparison.getCompareClogResult());
 		assertSame(log, fixture.primary.getNativeClogResult());
 		assertFalse("no setup prompt beside a frozen row", fixture.primary.readsOwnLog());
 

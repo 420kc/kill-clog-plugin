@@ -75,7 +75,7 @@ public class ComparisonSnapshotTest
 		fixture.cas.get("First").complete(ca(2));
 		assertPlayer(fixture, "Blue", 1, "Blue", 1);
 		assertFalse(fixture.hiscores.containsKey("Blue"));
-		assertSame(fixture.primary.getNativeHiscoreResult(), fixture.comparison.getNativeCompareHiscoreResult());
+		assertSame(fixture.primary.getNativeHiscoreResult(), fixture.comparison.getCompareHiscoreResult());
 	}
 
 	private static void commitFirstPlayer(LookupTestFixture fixture) throws Exception

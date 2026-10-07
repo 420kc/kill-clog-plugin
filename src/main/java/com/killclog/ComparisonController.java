@@ -426,13 +426,9 @@ public class ComparisonController
 
 	// Read-only state
 
+	/** The rival's own board: the leaderboard selector steps aside in a comparison. */
 	@Nullable
 	public HiscoreResult getCompareHiscoreResult()
-	{
-		return lookupSession.rankView(compared.hiscore);
-	}
-
-	HiscoreResult getNativeCompareHiscoreResult()
 	{
 		return compared.hiscore;
 	}
@@ -440,7 +436,7 @@ public class ComparisonController
 	@Nullable
 	public ClogResult getCompareClogResult()
 	{
-		return LookupSession.frozen(getCompareHiscoreResult()) ? null : compared.clog;
+		return compared.clog;
 	}
 
 	@Nullable
