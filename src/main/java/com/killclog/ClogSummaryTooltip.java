@@ -432,7 +432,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 		return CardBody.row(BAR_HEIGHT + BAR_GAP, c -> 0, (c, y) ->
 		{
 			int width = c.w - 2 * c.inset();
-			c.g.setColor(BAR_TRACK);
+			c.g.setColor(NativeTooltip.railTrack(BAR_TRACK));
 			c.g.fillRect(c.inset(), y, width, BAR_HEIGHT);
 			if (obtained > 0 && total > 0)
 			{

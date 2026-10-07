@@ -416,4 +416,34 @@ public class TitleTooltipTest
 			Collections.emptyMap(), 0, 0, 0, -1);
 	}
 
+
+	@Test
+	public void aPacksScrollbarColorIsItsBodyNotItsBevel()
+	{
+		// A 16 by 5 thumb: light bevels at the sides, its body in between, a transparent corner.
+		java.awt.image.BufferedImage thumb = new java.awt.image.BufferedImage(16, 5,
+			java.awt.image.BufferedImage.TYPE_INT_ARGB);
+		for (int x = 0; x < 16; x++)
+		{
+			for (int y = 0; y < 5; y++)
+			{
+				thumb.setRGB(x, y, x < 3 || x > 12 ? 0xffd0c0a0 : 0xff4d4233);
+			}
+		}
+		thumb.setRGB(8, 0, 0);
+		assertEquals(new Color(0x4d, 0x42, 0x33), NativeTooltip.bodyColor(thumb));
+		assertNull(NativeTooltip.bodyColor(null));
+		// The rail's thumb takes the bevel's light; a dark flat thumb is lifted until it reads.
+		assertEquals(new Color(0xd0, 0xc0, 0xa0), NativeTooltip.thumbColor(thumb));
+		java.awt.image.BufferedImage flat = new java.awt.image.BufferedImage(16, 5,
+			java.awt.image.BufferedImage.TYPE_INT_ARGB);
+		for (int x = 0; x < 16; x++)
+		{
+			for (int y = 0; y < 5; y++)
+			{
+				flat.setRGB(x, y, 0xff3f3f3f);
+			}
+		}
+		assertEquals(new Color(191, 191, 191), NativeTooltip.thumbColor(flat));
+	}
 }

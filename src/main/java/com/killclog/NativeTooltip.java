@@ -5,7 +5,11 @@ import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.function.Consumer;
+import javax.annotation.Nullable;
 import javax.swing.JToolTip;
 import net.runelite.api.Client;
 import net.runelite.api.SpritePixels;
@@ -50,12 +54,23 @@ public abstract class NativeTooltip extends JToolTip
 	private static volatile BufferedImage edgeTop, edgeBottom, edgeLeft, edgeRight;
 	private static volatile boolean spritesLoaded;
 
+	// A resource pack's own scrollbar, thumb and track: a scrolled card's rail and the summaries' bars wear its
+	// colors. Without a pack the rail keeps the card's orange.
+	private static final int SPRITE_SCROLL_THUMB = 790;
+	private static final int SPRITE_SCROLL_TRACK = 792;
+	@Nullable
+	private static volatile Color packThumb;
+	@Nullable
+	private static volatile Color packTrack;
+
 	/**
 	 * Load border sprites, preferring client sprite overrides when Resource
 	 * Packs or another UI theme plugin has replaced the same game sprites.
 	 */
 	public static void loadSprites(Client client, SpriteManager spriteManager)
 	{
+		packThumb = thumbColor(getOverrideSprite(client, SPRITE_SCROLL_THUMB));
+		packTrack = bodyColor(getOverrideSprite(client, SPRITE_SCROLL_TRACK));
 		loadSprite(client, spriteManager, SPRITE_PARCHMENT, img -> parchmentBg = img);
 		loadSprite(client, spriteManager, SPRITE_CORNER_TL, img ->
 		{
@@ -107,6 +122,77 @@ public abstract class NativeTooltip extends JToolTip
 		}
 		SpritePixels spritePixels = client.getSpriteOverrides().get(spriteId);
 		return spritePixels != null ? spritePixels.toBufferedImage() : null;
+	}
+
+	/** A scrollbar sprite's body: its middling color clear of the bevel at its sides. */
+	@Nullable
+	static Color bodyColor(@Nullable BufferedImage image)
+	{
+		return ranked(image, true, 0.5);
+	}
+
+	/**
+	 * A pack's thumb lit enough to read at the rail's three pixels: the hue of its bevel's light, never dimmer than
+	 * three quarters bright. A game thumb sixteen pixels wide reads by its bevel; a rail has none.
+	 */
+	@Nullable
+	static Color thumbColor(@Nullable BufferedImage image)
+	{
+		Color light = ranked(image, false, 0.9);
+		if (light == null)
+		{
+			return null;
+		}
+		float[] hsb = Color.RGBtoHSB(light.getRed(), light.getGreen(), light.getBlue(), null);
+		return Color.getHSBColor(hsb[0], hsb[1], Math.max(hsb[2], 0.75f));
+	}
+
+	/** The opaque color at a rank from dark to light, over the whole sprite or its middle half. */
+	@Nullable
+	private static Color ranked(@Nullable BufferedImage image, boolean middle, double rank)
+	{
+		if (image == null)
+		{
+			return null;
+		}
+		int w = image.getWidth();
+		List<Integer> colors = new ArrayList<>();
+		for (int x = middle ? w / 4 : 0; x < (middle ? Math.max(w / 4 + 1, w * 3 / 4) : w); x++)
+		{
+			for (int y = 0; y < image.getHeight(); y++)
+			{
+				int argb = image.getRGB(x, y);
+				if ((argb >>> 24) > 200)
+				{
+					colors.add(argb & 0xffffff);
+				}
+			}
+		}
+		if (colors.isEmpty())
+		{
+			return null;
+		}
+		colors.sort(Comparator.comparingInt(NativeTooltip::luma));
+		return new Color(colors.get((int) (colors.size() * rank)));
+	}
+
+	private static int luma(int rgb)
+	{
+		return (rgb >> 16 & 0xff) * 299 + (rgb >> 8 & 0xff) * 587 + (rgb & 0xff) * 114;
+	}
+
+	/** The rail's thumb: the pack's scrollbar, else the card's orange. */
+	static Color railThumb()
+	{
+		Color thumb = packThumb;
+		return thumb != null ? thumb : OSRS_ORANGE;
+	}
+
+	/** A track under a rail or a bar: the pack's scrollbar track, else the card's own. */
+	static Color railTrack(Color fallback)
+	{
+		Color track = packTrack;
+		return track != null ? track : fallback;
 	}
 
 	private static BufferedImage optionalOverride(Client client, int spriteId, BufferedImage fallback)

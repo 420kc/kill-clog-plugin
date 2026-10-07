@@ -293,9 +293,9 @@ final class CardBody
 	{
 		int x = c.w - c.inset() - RAIL_WIDTH;
 		int thumb = Math.max(NativeTooltip.LINE_HEIGHT, track * shown / total);
-		c.g.setColor(TitleTooltip.SEPARATOR_COLOR);
+		c.g.setColor(NativeTooltip.railTrack(TitleTooltip.SEPARATOR_COLOR));
 		c.g.fillRect(x, y, RAIL_WIDTH, track);
-		c.g.setColor(NativeTooltip.OSRS_ORANGE);
+		c.g.setColor(NativeTooltip.railThumb());
 		c.g.fillRect(x, y + (track - thumb) * offset / range, RAIL_WIDTH, thumb);
 	}
 
