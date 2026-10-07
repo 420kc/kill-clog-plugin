@@ -96,11 +96,27 @@ public class SummaryTooltipTest
 		bare.setData("Fixture", -1, null, null, null, null);
 		SummaryTooltip ranked = new SummaryTooltip();
 		ranked.setData("Fixture", 12345, null, null, "Ironman", null);
+		SummaryTooltip prestiged = new SummaryTooltip();
+		prestiged.setData("Fixture", 12345, null, null, "Ironman", "Maxed Infernal");
 		petTotal(bare, 65);
 		petTotal(ranked, 65);
+		petTotal(prestiged, 65);
 
-		// One stats line and the band's own divider (4 + 1 + 6) above the pets, against the title's divider alone.
-		assertEquals(14 + 11, ranked.getPreferredSize().height - bare.getPreferredSize().height);
+		// The account line reads in the header, one line under the name: the pets still follow the title's divider.
+		assertEquals(NativeTooltip.LINE_HEIGHT, ranked.getPreferredSize().height - bare.getPreferredSize().height);
+		// A prestige line stands between: it and the band's own divider (4 + 1 + 6).
+		assertEquals(14 + 11, prestiged.getPreferredSize().height - ranked.getPreferredSize().height);
+	}
+
+	@Test
+	public void theAccountLineReadsUnderTheName()
+	{
+		SummaryTooltip tip = new SummaryTooltip();
+		tip.setData("Fixture", 17000, null, null, "Ironman", null);
+		SummaryTooltip unranked = new SummaryTooltip();
+		unranked.setData("Fixture", -1, null, null, null, null);
+
+		assertEquals(unranked.getHeaderHeight() + NativeTooltip.LINE_HEIGHT, tip.getHeaderHeight());
 	}
 
 	private static void petTotal(SummaryTooltip tip, int total) throws ReflectiveOperationException

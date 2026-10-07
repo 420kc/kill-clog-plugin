@@ -56,6 +56,15 @@ public class SummaryTooltip extends TitleTooltip
 		this.figure = withoutHeadroom(figure);
 		this.accountLabel = accountLabel;
 		this.prestige = prestige;
+		// Account type and rank read under the name, above the title's divider.
+		if (hasRankLine())
+		{
+			setSubtitle(accountLabelText(), rankTail(), Color.WHITE);
+		}
+		else
+		{
+			clearSubtitle();
+		}
 	}
 
 	/** The player's name reads white, like the name it is, not an orange card label. */
@@ -112,20 +121,15 @@ public class SummaryTooltip extends TitleTooltip
 		return accountLabel != null || overallRank > 0;
 	}
 
-	private int getStatsLines()
-	{
-		return (hasRankLine() ? 1 : 0) + (prestige != null ? 1 : 0);
-	}
-
 	private boolean hasPets()
 	{
 		return petList != null && !petList.isEmpty();
 	}
 
-	/** A player without hiscores or a figure has nothing above the pets but the title. */
+	/** Without a figure or prestige, nothing stands between the title and the pets. */
 	private boolean hasBodyAbovePets()
 	{
-		return figure != null || getStatsLines() > 0;
+		return figure != null || prestige != null;
 	}
 
 	@Override
@@ -138,11 +142,7 @@ public class SummaryTooltip extends TitleTooltip
 			card.add(CardBody.row(figure.getHeight() + FIGURE_GAP, c -> figure.getWidth(),
 				(c, y) -> c.g.drawImage(figure, (c.w - figure.getWidth()) / 2, y, null)));
 		}
-		// Account type plus rank, then prestige, each centered under the figure.
-		if (hasRankLine())
-		{
-			card.add(centered(accountLabelText(), rankTail()));
-		}
+		// Prestige centered under the figure.
 		if (prestige != null)
 		{
 			card.add(centered(PRESTIGE_LABEL, prestige));
