@@ -163,12 +163,12 @@ public class HiscoreService
 		}
 	}
 
-	/** What a failed lookup tells the player: the hiscores are down, or the lookup failed. */
+	/** What a failed lookup tells the player: the hiscores are down (unanswered past the deadline too), or it failed. */
 	static String failureText(@Nullable Throwable error)
 	{
 		for (Throwable cause = error; cause != null; cause = cause.getCause())
 		{
-			if (cause instanceof HiscoresDown)
+			if (cause instanceof HiscoresDown || cause instanceof java.util.concurrent.TimeoutException)
 			{
 				return DOWN_MESSAGE;
 			}

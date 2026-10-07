@@ -117,4 +117,23 @@ public class LookupFanoutTest
 		assertEquals(10, LookupFanout.CA_TIMEOUT_SECONDS);
 		assertEquals(15, LookupFanout.HISCORE_TIMEOUT_SECONDS);
 	}
+
+	@Test
+	public void aLookupJagexNeverAnswersReadsAsTheHiscoresBeingDown() throws Exception
+	{
+		// Jagex holds the request open past the lookup's own deadline.
+		HiscoreService silent = org.mockito.Mockito.mock(HiscoreService.class);
+		org.mockito.Mockito.when(silent.lookup("Quiet", null)).thenReturn(new CompletableFuture<>());
+		LookupFanout fanout = new LookupFanout(silent, null, null, null);
+		java.util.concurrent.CountDownLatch delivered = new java.util.concurrent.CountDownLatch(1);
+		java.util.concurrent.atomic.AtomicReference<String> shown = new java.util.concurrent.atomic.AtomicReference<>();
+		javax.swing.SwingUtilities.invokeAndWait(() -> fanout.fetchHiscore("Quiet", null, fanout.begin(),
+			result -> delivered.countDown(), error ->
+			{
+				shown.set(HiscoreService.failureText(error));
+				delivered.countDown();
+			}));
+		org.junit.Assert.assertTrue(delivered.await(LookupFanout.HISCORE_TIMEOUT_SECONDS + 3, java.util.concurrent.TimeUnit.SECONDS));
+		assertEquals(HiscoreService.DOWN_MESSAGE, shown.get());
+	}
 }
