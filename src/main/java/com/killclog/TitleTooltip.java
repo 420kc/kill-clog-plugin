@@ -78,7 +78,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	private BufferedImage titleIcon;
 	private boolean wikiLinksEnabled = true;
 	private boolean titleHovered;
-	// The way back to the card this one opened from: the header's last line, white while hovered.
+	// The way back to the card this one opened from: the card's first line, above its title, white while hovered.
 	private String backLabel;
 	@Nullable
 	private Consumer<MouseEvent> onBack;
@@ -128,7 +128,7 @@ public abstract class TitleTooltip extends NativeTooltip
 		return titleIcon != null ? titleIcon.getWidth() + TITLE_ICON_GAP : 0;
 	}
 
-	/** The header's last line leads back to the card this one opened from. */
+	/** The card's first line, above its title, leads back to the card this one opened from. */
 	void setBack(String label, Consumer<MouseEvent> onBack)
 	{
 		backLabel = label;
@@ -633,13 +633,23 @@ public abstract class TitleTooltip extends NativeTooltip
 		}
 
 		int inset = getInset();
+		// The way back leads the card, top left above the title.
+		int top = inset;
+		if (onBack != null)
+		{
+			g2.setFont(FontManager.getRunescapeSmallFont());
+			g2.setColor(backHovered ? Color.WHITE : OSRS_ORANGE);
+			g2.drawString(backLabel, inset, inset + g2.getFontMetrics().getAscent());
+			backTop = inset;
+			top += LINE_HEIGHT;
+		}
 		// Modal titles remain stable while body labels change.
 		String headerTitle = title;
 		Color headerColor = titleColor();
 		boolean showTitleSuffix = titleSuffix != null;
 		g2.setFont(getTitleFont());
 		FontMetrics nfm = g2.getFontMetrics();
-		int lineY = inset + nfm.getAscent();
+		int lineY = top + nfm.getAscent();
 		int titleBaseline = lineY;
 		g2.setColor(headerColor);
 		// Long reveal texts (recent-item names) ellipsize instead of clipping.
@@ -648,7 +658,7 @@ public abstract class TitleTooltip extends NativeTooltip
 		if (titleIcon != null)
 		{
 			// Centered on the title's line, lifted a pixel to sit level with the letters.
-			g2.drawImage(titleIcon, inset, inset + (NAME_LINE_HEIGHT - titleIcon.getHeight()) / 2 - 1, null);
+			g2.drawImage(titleIcon, inset, top + (NAME_LINE_HEIGHT - titleIcon.getHeight()) / 2 - 1, null);
 		}
 		headerTitle = fitHeaderText(nfm, headerTitle,
 			w - inset - titleX - suffixWidth);
@@ -693,15 +703,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		{
 			lineY += lineY == titleBaseline ? NAME_LINE_HEIGHT : LINE_HEIGHT;
 			activeLineWidth = drawLabelValue(g2, fm, inset, lineY, subtitleLabel, subtitleValue, subtitleColor);
-		}
-
-		if (onBack != null)
-		{
-			lineY += lineY == titleBaseline ? NAME_LINE_HEIGHT : LINE_HEIGHT;
-			g2.setColor(backHovered ? Color.WHITE : OSRS_ORANGE);
-			g2.drawString(backLabel, inset, lineY);
-			activeLineWidth = fm.stringWidth(backLabel);
-			backTop = lineY - fm.getAscent();
 		}
 
 		if (itemNameInHeader)
@@ -822,6 +823,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	{
 		int inset = getInset();
 		int width = title != null ? getFontMetrics(getTitleFont()).stringWidth(title) : 0;
-		return new Rectangle(inset + titleIconWidth(), inset, width, NAME_LINE_HEIGHT);
+		return new Rectangle(inset + titleIconWidth(), inset + (onBack != null ? LINE_HEIGHT : 0), width,
+			NAME_LINE_HEIGHT);
 	}
 }

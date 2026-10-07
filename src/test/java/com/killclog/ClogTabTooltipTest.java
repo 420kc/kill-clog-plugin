@@ -69,13 +69,13 @@ public class ClogTabTooltipTest
 	}
 
 	@Test
-	public void theWayBackIsTheHeadersLastLine()
+	public void theWayBackLeadsTheCardAboveItsTitle()
 	{
 		ClogTabTooltip bare = card(5);
 		ClogTabTooltip back = card(5);
 		int[] backs = new int[1];
 		back.setBack("< Clog Summary", press -> backs[0]++);
-		// One header line more, and nothing else.
+		// One line more, and nothing else.
 		assertEquals(bare.getPreferredSize().height + LINE, back.getPreferredSize().height);
 
 		painted(back);
@@ -86,7 +86,7 @@ public class ClogTabTooltipTest
 		{
 			row = back.onBackRow(y) ? y : -1;
 		}
-		assertTrue("the way back sits above the pages", row >= 0 && row < firstRowY(back));
+		assertEquals("the way back is the card's first line", NativeTooltip.getInset(), row);
 		press(back, row + 2);
 		assertEquals(1, backs[0]);
 		assertTrue(opened.isEmpty());
