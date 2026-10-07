@@ -411,7 +411,7 @@ public class HiscoreService
 		{
 			if (base == null && ranked == null)
 			{
-				if (absent.contains(endpoint)) return null;
+				if (absent.contains("hiscore_oldschool")) return null;
 				throw new HiscoresDown();
 			}
 			// RuneLite supplies the current self type. Keep its selected ranks, but

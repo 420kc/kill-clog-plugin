@@ -273,6 +273,18 @@ public class HiscoreFailureTest
 	}
 
 	@Test
+	public void aKnownSoloTypeIsDownWhenTheMainBoardIs() throws Exception
+	{
+		// The main board fails and the type's own board has no row: the main board decides, so Jagex is down.
+		for (AccountType known : new AccountType[]{AccountType.IRONMAN, AccountType.HARDCORE_IRONMAN,
+			AccountType.ULTIMATE_IRONMAN})
+		{
+			assertDown(service(chain -> response(chain,
+				chain.request().url().encodedPath().startsWith(REGULAR) ? 503 : 404, "")).lookup("Test", known));
+		}
+	}
+
+	@Test
 	public void anEarlierNotFoundNeverDecidesALaterOutage() throws Exception
 	{
 		// The player is missing, then minutes later Jagex is down: the earlier answer must not stand in.
