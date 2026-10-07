@@ -1621,7 +1621,7 @@ public class KillClogPanel extends PluginPanel
 		cells.rebuildPrimaryTooltips(localRsn);
 		searchBar.setIcon(IconTextField.Icon.SEARCH);
 		searchBar.setText("");
-		setSearchStatus("Lookup failed", TEXT_DIM);
+		setSearchStatus(HiscoreService.failureText(error), TEXT_DIM);
 	}
 
 	// ComparisonController.Listener
@@ -1704,7 +1704,7 @@ public class KillClogPanel extends PluginPanel
 	{
 		if (err != null)
 		{
-			setSearchStatus("Lookup failed", ComparisonController.COMPARE_RED);
+			setSearchStatus(HiscoreService.failureText(err), ComparisonController.COMPARE_RED);
 		}
 		searchRowController.refreshIcon();
 	}

@@ -151,6 +151,45 @@ public class HiscoreService
 		.maximumSize(256).expireAfterWrite(CACHE_TTL_MS, TimeUnit.MILLISECONDS).build();
 
 	static final String LEAGUE_TABLE = "hiscore_oldschool_seasonal";
+	// killclog.com says the same, word for word.
+	static final String DOWN_MESSAGE = "Jagex hiscores are down. Try again soon.";
+
+	/** Jagex's hiscores answered nothing for a lookup, not even "not found": down, never "no such player". */
+	static final class HiscoresDown extends RuntimeException
+	{
+		HiscoresDown()
+		{
+			super("Jagex hiscores are down", null, false, false);
+		}
+	}
+
+	/** What a failed lookup tells the player: the hiscores are down, or the lookup failed. */
+	static String failureText(@Nullable Throwable error)
+	{
+		for (Throwable cause = error; cause != null; cause = cause.getCause())
+		{
+			if (cause instanceof HiscoresDown)
+			{
+				return DOWN_MESSAGE;
+			}
+		}
+		return "Lookup failed";
+	}
+
+	/** A board with no row for the player: "not found" only on that board's own 404, else Jagex is down. */
+	private <T> CompletableFuture<T> missing(String encodedPlayer, String board)
+	{
+		return absentTables.getIfPresent(rankKey(board, encodedPlayer)) != null
+			? CompletableFuture.completedFuture(null) : CompletableFuture.failedFuture(new HiscoresDown());
+	}
+
+	/** The player's League row, null when Jagex says they have none, failing when Jagex says nothing. */
+	CompletableFuture<HiscoreResult> lookupLeague(String player)
+	{
+		String encoded = URLEncoder.encode(player.toLowerCase(Locale.ROOT), StandardCharsets.UTF_8);
+		return lookupTable(player, LEAGUE_TABLE)
+			.thenCompose(row -> row != null ? CompletableFuture.completedFuture(row) : missing(encoded, LEAGUE_TABLE));
+	}
 
 	CompletableFuture<HiscoreResult> lookupRanks(String player, RankLeaderboard table)
 	{
@@ -334,7 +373,8 @@ public class HiscoreService
 				String bestBody = pickBestBody(type, uimBody, hcimBody, ironBody, regBody);
 				if (bestBody == null)
 				{
-					return CompletableFuture.completedFuture(null);
+					return uimBody == null && hcimBody == null && ironBody == null && regBody == null
+						? missing(encoded, "hiscore_oldschool") : CompletableFuture.completedFuture(null);
 				}
 
 				return parseAndRefine(encoded, bestBody, type).thenApply(result -> proven(result, ironmanNow));
@@ -363,11 +403,16 @@ public class HiscoreService
 			default:
 				// RuneLite's own type: not a solo Ironman now (a group ironman reads its regular row).
 				return regular.thenCompose(body -> body != null ? parseAndRefine(encodedPlayer, body, type)
-					: CompletableFuture.completedFuture(null)).thenApply(result -> proven(result, false));
+					: this.<HiscoreResult>missing(encodedPlayer, "hiscore_oldschool"))
+					.thenApply(result -> proven(result, false));
 		}
 		return regular.thenCombine(fetchAsync(endpoint, encodedPlayer), (base, ranked) ->
 		{
-			if (base == null && ranked == null) return null;
+			if (base == null && ranked == null)
+			{
+				if (absentTables.getIfPresent(rankKey(endpoint, encodedPlayer)) != null) return null;
+				throw new HiscoresDown();
+			}
 			// RuneLite supplies the current self type. Keep its selected ranks, but
 			// do not let a stale specialty row replace fresher regular-table stats.
 			String body = base != null && (ranked == null || extractTotalXp(base) >= extractTotalXp(ranked))

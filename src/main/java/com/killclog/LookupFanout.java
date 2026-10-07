@@ -135,7 +135,7 @@ final class LookupFanout
 	void fetchHiscore(String player, @Nullable AccountType knownType, int stamp,
 		Consumer<HiscoreResult> onResult, Consumer<Throwable> onError)
 	{
-		(league != null ? hiscoreService.lookupTable(player, HiscoreService.LEAGUE_TABLE)
+		(league != null ? hiscoreService.lookupLeague(player)
 			: hiscoreService.lookup(player, knownType))
 			.copy()
 			.orTimeout(HISCORE_TIMEOUT_SECONDS, TimeUnit.SECONDS)

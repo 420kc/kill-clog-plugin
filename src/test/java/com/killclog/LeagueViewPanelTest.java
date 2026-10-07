@@ -60,6 +60,7 @@ public class LeagueViewPanelTest
 		// Every remote read stays pending: the tests watch which ones start.
 		when(hiscores.lookup(any(), any())).thenReturn(new CompletableFuture<>());
 		when(hiscores.lookupTable(any(), any())).thenReturn(new CompletableFuture<>());
+		when(hiscores.lookupLeague(any())).thenReturn(new CompletableFuture<>());
 		when(clogs.lookup(any())).thenReturn(new CompletableFuture<>());
 		when(runeProfile.lookup(any())).thenReturn(new CompletableFuture<>());
 		when(runeProfile.lookupClog(any())).thenReturn(new CompletableFuture<>());
@@ -103,7 +104,7 @@ public class LeagueViewPanelTest
 			panel.followWorld("demonic-pacts", null, "demonic-pacts");
 		});
 		verify(hiscores).lookup("Friend", null);
-		verify(hiscores).lookupTable("Friend", HiscoreService.LEAGUE_TABLE);
+		verify(hiscores).lookupLeague("Friend");
 		verify(killclog).lookupClog("Friend", "demonic-pacts");
 		assertEquals("demonic-pacts", session.league());
 		LookupFanout comparison = field(field(panel, "comparison", ComparisonController.class), "fanout", LookupFanout.class);
@@ -124,7 +125,7 @@ public class LeagueViewPanelTest
 			panel.followWorld("demonic-pacts", null, "demonic-pacts");
 			assertFalse("the other side would still be the last game's", comparison.isComparisonMode());
 		});
-		verify(hiscores).lookupTable("Friend", HiscoreService.LEAGUE_TABLE);
+		verify(hiscores).lookupLeague("Friend");
 	}
 
 	@Test
@@ -168,7 +169,7 @@ public class LeagueViewPanelTest
 			assertEquals("a world change ends the flip", "demonic-pacts", session.league());
 		});
 		// Read again on each switch into the League, and on the flip back to main.
-		verify(hiscores, org.mockito.Mockito.times(2)).lookupTable("Friend", HiscoreService.LEAGUE_TABLE);
+		verify(hiscores, org.mockito.Mockito.times(2)).lookupLeague("Friend");
 		verify(hiscores, org.mockito.Mockito.times(2)).lookup("Friend", null);
 	}
 

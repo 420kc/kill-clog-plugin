@@ -58,7 +58,7 @@ public class LookupFanoutTest
 		HiscoreResult row = mock(HiscoreResult.class);
 		ClogResult theirs = mock(ClogResult.class);
 		ClogResult mine = mock(ClogResult.class);
-		when(hiscores.lookupTable("Friend", HiscoreService.LEAGUE_TABLE)).thenReturn(CompletableFuture.completedFuture(row));
+		when(hiscores.lookupLeague("Friend")).thenReturn(CompletableFuture.completedFuture(row));
 		when(killclog.lookupClog("Friend", "demonic-pacts")).thenReturn(CompletableFuture.completedFuture(theirs));
 		when(clogs.lookupLocal(own, "Me")).thenReturn(CompletableFuture.completedFuture(mine));
 		LookupFanout fanout = new LookupFanout(hiscores, clogs, runeProfile, killclog);

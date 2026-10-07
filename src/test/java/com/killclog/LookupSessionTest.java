@@ -20,7 +20,7 @@ public class LookupSessionTest
 	{
 		HiscoreService hiscores = org.mockito.Mockito.mock(HiscoreService.class);
 		org.mockito.Mockito.when(hiscores.getCached("Friend")).thenReturn(org.mockito.Mockito.mock(HiscoreResult.class));
-		org.mockito.Mockito.when(hiscores.lookupTable("Friend", HiscoreService.LEAGUE_TABLE)).thenReturn(new CompletableFuture<>());
+		org.mockito.Mockito.when(hiscores.lookupLeague("Friend")).thenReturn(new CompletableFuture<>());
 		KillclogService killclog = org.mockito.Mockito.mock(KillclogService.class);
 		org.mockito.Mockito.when(killclog.lookupClog("Friend", "demonic-pacts")).thenReturn(new CompletableFuture<>());
 		LookupSession session = new LookupSession(hiscores, org.mockito.Mockito.mock(ClogService.class),
@@ -29,7 +29,7 @@ public class LookupSessionTest
 			}, org.mockito.Mockito.mock(LookupSession.Listener.class));
 		session.readLeague("demonic-pacts", null);
 		SwingUtilities.invokeAndWait(() -> session.start("Friend", "Me", AccountType.REGULAR));
-		org.mockito.Mockito.verify(hiscores).lookupTable("Friend", HiscoreService.LEAGUE_TABLE);
+		org.mockito.Mockito.verify(hiscores).lookupLeague("Friend");
 		assertEquals("demonic-pacts", session.league());
 	}
 
@@ -37,7 +37,7 @@ public class LookupSessionTest
 	public void aLeagueCaptureRefreshesYourLeagueLogNotYourMainOne() throws Exception
 	{
 		HiscoreService hiscores = org.mockito.Mockito.mock(HiscoreService.class);
-		org.mockito.Mockito.when(hiscores.lookupTable("Me", HiscoreService.LEAGUE_TABLE)).thenReturn(new CompletableFuture<>());
+		org.mockito.Mockito.when(hiscores.lookupLeague("Me")).thenReturn(new CompletableFuture<>());
 		ClogService clogs = org.mockito.Mockito.mock(ClogService.class);
 		LocalClogCache own = org.mockito.Mockito.mock(LocalClogCache.class);
 		CompletableFuture<ClogResult> loading = new CompletableFuture<>();

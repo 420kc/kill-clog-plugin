@@ -1,8 +1,11 @@
 package com.killclog;
 
 import com.google.gson.Gson;
+import java.io.IOException;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import okhttp3.Interceptor;
@@ -115,7 +118,7 @@ public class HiscoreFailureTest
 			calls.incrementAndGet();
 			return response(chain, 503, "");
 		});
-		assertNull(service.lookup("Test", null).get(3, TimeUnit.SECONDS));
+		assertDown(service.lookup("Test", null));
 		assertEquals(16, calls.get());
 		assertNull(service.getCached("Test"));
 	}
@@ -214,6 +217,57 @@ public class HiscoreFailureTest
 		assertEquals(AccountType.REGULAR, later.getAccountType());
 		assertNull(later.getIronmanNow());
 		assertEquals(Boolean.TRUE, first.getIronmanNow());
+	}
+
+	@Test
+	public void jagexBeingDownIsNeverAMissingPlayer() throws Exception
+	{
+		// Down for the weekly update: every board fails, times out, shows a maintenance page or refuses.
+		Interceptor[] outages = {
+			chain -> response(chain, 503, ""),
+			chain ->
+			{
+				throw new IOException("timed out");
+			},
+			chain -> response(chain, 200, "<html>We are updating the game</html>"),
+			chain -> response(chain, 403, "Forbidden"),
+		};
+		for (Interceptor outage : outages)
+		{
+			for (AccountType known : new AccountType[]{null, AccountType.REGULAR, AccountType.IRONMAN})
+			{
+				assertDown(service(outage).lookup("Test", known));
+			}
+			assertDown(service(outage).lookupLeague("Test"));
+		}
+		assertEquals("Lookup failed", HiscoreService.failureText(new IllegalStateException("anything else")));
+	}
+
+	@Test
+	public void onlyTheBoardsOwnNotFoundIsAMissingPlayer() throws Exception
+	{
+		Interceptor absent = chain -> response(chain, 404, "");
+		for (AccountType known : new AccountType[]{null, AccountType.REGULAR, AccountType.IRONMAN})
+		{
+			assertNull(service(absent).lookup("Missing", known).get(3, TimeUnit.SECONDS));
+		}
+		assertNull(service(absent).lookupLeague("Missing").get(3, TimeUnit.SECONDS));
+		// A League row still answers.
+		assertEquals(5000, service(chain -> response(chain, 200, body(5000))).lookupLeague("Test")
+			.get(3, TimeUnit.SECONDS).getTotalXp());
+	}
+
+	private static void assertDown(CompletableFuture<HiscoreResult> lookup) throws Exception
+	{
+		try
+		{
+			lookup.get(5, TimeUnit.SECONDS);
+			fail("an outage read as a lookup's answer");
+		}
+		catch (ExecutionException e)
+		{
+			assertEquals(HiscoreService.DOWN_MESSAGE, HiscoreService.failureText(e));
+		}
 	}
 
 	/** Regular, Ironman and Hardcore answers by total XP; 404 is no row, 500 is a board that fails. */
