@@ -22,7 +22,6 @@ import net.runelite.api.events.PlayerChanged;
 import net.runelite.api.events.ScriptPreFired;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.events.WidgetLoaded;
-import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
@@ -58,15 +57,6 @@ public class KillClogPlugin extends Plugin
 	private static final int CLOG_SEARCH_TOGGLE_SCRIPT = 4084;
 	private static final int CLOG_SEARCH_CONTAINER = 71;
 	private static final String RUNEPROFILE_PLUGIN_NAME = "RuneProfile";
-	static final String CHARACTER_RENDERING_STATUS = "updating character...";
-	static final String CHARACTER_PUBLISHED_STATUS = "character updated!";
-	static final String CHARACTER_FAILED_STATUS = "Publish failed";
-	static final String CHARACTER_APPEARANCE_STATUS = "Change equipment, then retry";
-	static final String CHARACTER_PENDING_STATUS = "Still rendering...";
-	static final String CHARACTER_RECOVERY_STATUS = "Publishing on hold";
-	static final String CHARACTER_DISABLED_STATUS = "Publishing unavailable";
-	static final String CHARACTER_UNKNOWN_STATUS = "Check your profile";
-	static final String CHARACTER_BUSY_STATUS = "Finishing previous request...";
 
 	/** Config keys whose changes require rebuilding the right-click lookup menu entry. */
 	private static final java.util.Set<String> MENU_CONFIG_KEYS = java.util.Set.of(
@@ -145,16 +135,9 @@ public class KillClogPlugin extends Plugin
 
 	private NavigationButton navButton;
 	private String lastLocalName;
-	// Ticks on this world with an unchanged account type. Counters, CA tiers and the account
-	// type sent to the server wait for it, so a hop or login never carries another mode's
-	// values into this one.
-	private int settledTicks;
-	private static final int SETTLED_TICKS = 10;
 	@Inject
 	private Gson gson;
-	// The active League's own store, opened on first use; one League at a time.
-	private LocalClogCache leagueCache;
-	private String leagueCacheId;
+	// Opens a League's own store; a test seam.
 	private java.util.function.Function<String, LocalClogCache> leagueCacheFactory = id ->
 	{
 		Filepath folder = localClogCache.folder().getNow(null);
@@ -162,15 +145,14 @@ public class KillClogPlugin extends Plugin
 	};
 	// The store the collection log walk started with; a different one means start over.
 	private LocalClogCache walkCache;
-	// The logged-in account, for PB reads on the panel's thread, and the world's and running League last given to the panel.
+	// The logged-in account, for PB reads on the panel's thread.
 	private volatile long localAccountHash = -1;
-	private String panelLeague;
-
-	// Adventure-log pb harvest state, vanilla's two-stage shape: the menu
-	// load names the owner, the Counters scroll load triggers the parse.
-	private boolean advLogTitleLoaded;
-	private boolean advLogCountersLoaded;
-	private String advLogOwner;
+	private final WorldSession world = new WorldSession(
+		() -> client.getGameState() == GameState.LOGGED_IN
+			? GameMode.of(client.getWorldType(), killclogService.activeLeague()) : null,
+		() -> killclogService.activeLeague(), () -> localClogCache, id -> leagueCacheFactory.apply(id),
+		store -> store.setFirstPartyChangedListener(() -> firstPartyChanged(store)));
+	private final AdvLogPbs.Watch advLog = new AdvLogPbs.Watch();
 	// Once per login the account takes up its own log, latched when name, account
 	// hash and the open store are all there (they arrive on different ticks).
 	private boolean accountActivated;
@@ -223,15 +205,15 @@ public class KillClogPlugin extends Plugin
 		{
 			publication = new PublicationCoordinator(config, configManager, client, clientThread, executor,
 				localClogCache, syncService, profileAppearanceService, chatNotifier, panelFeedback(),
-				() -> mainSettled() ? getLocalAccountType() : null, this::mode, this::cacheFor,
+				() -> world.mainSettled() ? getLocalAccountType() : null, world::mode, world::cacheFor,
 				killclogService::leagueProfileType);
 		}
 		enforceCharacterSettingDependency();
 		panel.setKillclogSyncHandler(publication::manualSync);
 		panel.setCharacterPublishHandler(publication::publishCharacter);
 		panel.setSelfPb(this::selfPb);
-		// Nothing matches it, so the first tick hands the panel and chat this world's game again.
-		panelLeague = "";
+		// The first tick hands the panel and chat this world's game again.
+		world.showAgain();
 		panel.setSyncArrowEnabled(config.killclogSync());
 		panel.setCharacterPublishEnabled(publication.characterPublishingEnabled());
 		// The sync trigger lives at the data seam: any path that lands a
@@ -271,12 +253,7 @@ public class KillClogPlugin extends Plugin
 		kclogCommand.clear();
 		chatEmoji.clear();
 		localClogCache.shutdown();
-		if (leagueCache != null)
-		{
-			leagueCache.close();
-			leagueCache = null;
-			leagueCacheId = null;
-		}
+		world.close();
 		localCaCache.shutdown();
 		manualClogSync.reset();
 		clogIndex.clear();
@@ -306,7 +283,7 @@ public class KillClogPlugin extends Plugin
 
 		killclogService.refreshIndex();
 		Player local = client.getLocalPlayer();
-		LocalClogCache cache = captureCache();
+		LocalClogCache cache = world.captureCache();
 		if (local != null && local.getName() != null && cache != null)
 		{
 			String name = local.getName();
@@ -352,7 +329,7 @@ public class KillClogPlugin extends Plugin
 	private void reconcileClogTotalsFromVarps()
 	{
 		Player local = client.getLocalPlayer();
-		if (!mainSettled() || local == null || local.getName() == null)
+		if (!world.mainSettled() || local == null || local.getName() == null)
 		{
 			return;
 		}
@@ -416,10 +393,7 @@ public class KillClogPlugin extends Plugin
 			// session - a stale hash must never authorize the next account's
 			// saves.
 			localClogCache.onSessionEnded();
-			if (leagueCache != null)
-			{
-				leagueCache.onSessionEnded();
-			}
+			world.sessionEnded();
 			publication.cancelSync();
 			localAccountHash = -1;
 			followWorld();
@@ -433,7 +407,7 @@ public class KillClogPlugin extends Plugin
 		// A region load stays on the same world; everything else may change it.
 		if (event.getGameState() != GameState.LOGGED_IN && event.getGameState() != GameState.LOADING)
 		{
-			settledTicks = 0;
+			world.unsettle();
 		}
 
 		// The owner claim is scoped to one POH visit, exactly as vanilla
@@ -442,7 +416,7 @@ public class KillClogPlugin extends Plugin
 		if (event.getGameState() == GameState.LOADING
 			|| event.getGameState() == GameState.HOPPING)
 		{
-			advLogOwner = null;
+			advLog.dropOwner();
 		}
 	}
 
@@ -468,7 +442,7 @@ public class KillClogPlugin extends Plugin
 
 		// !kc <item name> provenance reveal. Boss arguments stay with the
 		// built-in plugin's own "!kc" registration; the handler ignores them.
-		LocalClogCache kcCache = captureCache();
+		LocalClogCache kcCache = world.captureCache();
 		if (kcCache != null)
 		{
 			kclogCommand.handleKcItem(event, clogIndex, kcCache);
@@ -544,14 +518,14 @@ public class KillClogPlugin extends Plugin
 
 	private void handleCollectionLogUnlock(String itemName, int broadcastObtained, int broadcastTotal)
 	{
-		LocalClogCache cache = captureCache();
+		LocalClogCache cache = world.captureCache();
 		if (cache == null)
 		{
 			return;
 		}
 		liveClogSync.handleUnlock(itemName, broadcastObtained, broadcastTotal, client,
 			itemManager, clogIndex, cache, chatNotifier,
-			panel::onBulkCaptureComplete, settledTicks >= SETTLED_TICKS);
+			panel::onBulkCaptureComplete, world.settled());
 	}
 
 	/**
@@ -564,22 +538,6 @@ public class KillClogPlugin extends Plugin
 		if (!config.killclogSync() && config.characterModel())
 		{
 			configManager.unsetConfiguration("killclog", "characterModel");
-		}
-	}
-
-	static String characterPublishTerminalStatus(ProfileAppearanceService.Outcome outcome)
-	{
-		switch (outcome)
-		{
-			case PUBLISHED: return CHARACTER_PUBLISHED_STATUS;
-			case RENDERING: return CHARACTER_PENDING_STATUS;
-			case RECOVERY_PENDING: return CHARACTER_RECOVERY_STATUS;
-			case DISABLED: return CHARACTER_DISABLED_STATUS;
-			case BUSY: return CHARACTER_BUSY_STATUS;
-			case UNKNOWN: return CHARACTER_UNKNOWN_STATUS;
-			case APPEARANCE_PENDING: return CHARACTER_APPEARANCE_STATUS;
-			case CANCELLED: return " ";
-			default: return CHARACTER_FAILED_STATUS;
 		}
 	}
 
@@ -600,14 +558,14 @@ public class KillClogPlugin extends Plugin
 		}
 		if (event.getVarbitId() == VarbitID.IRONMAN)
 		{
-			settledTicks = 0;
+			world.unsettle();
 		}
 	}
 
 	/** Read per-tier CA completed counts from game varbits and persist them for the active player. */
 	private boolean captureLocalCa()
 	{
-		if (!mainSettled())
+		if (!world.mainSettled())
 		{
 			return false;
 		}
@@ -620,45 +578,6 @@ public class KillClogPlugin extends Plugin
 		return pluginManager.getPlugins().stream()
 			.anyMatch(plugin -> RUNEPROFILE_PLUGIN_NAME.equals(plugin.getName())
 				&& pluginManager.isPluginActive(plugin));
-	}
-
-	/** Main, the announced League, or null: logged in on a world whose game is known. */
-	private String mode()
-	{
-		return client.getGameState() == GameState.LOGGED_IN
-			? GameMode.of(client.getWorldType(), killclogService.activeLeague()) : null;
-	}
-
-	private boolean onMainWorld()
-	{
-		return GameMode.MAIN.equals(mode());
-	}
-
-	/** The store this world's captures belong in, or null when the world's game is unknown. */
-	private LocalClogCache captureCache()
-	{
-		String mode = mode();
-		return mode == null ? null : cacheFor(mode);
-	}
-
-	private LocalClogCache cacheFor(String mode)
-	{
-		if (GameMode.MAIN.equals(mode))
-		{
-			return localClogCache;
-		}
-		if (!mode.equals(leagueCacheId))
-		{
-			if (leagueCache != null)
-			{
-				leagueCache.close();
-			}
-			LocalClogCache created = leagueCacheFactory.apply(mode);
-			created.setFirstPartyChangedListener(() -> firstPartyChanged(created));
-			leagueCache = created;
-			leagueCacheId = mode;
-		}
-		return leagueCache;
 	}
 
 	private void firstPartyChanged(LocalClogCache cache)
@@ -676,17 +595,11 @@ public class KillClogPlugin extends Plugin
 	/** A League world reads its League in the panel and chat; every other world, or none, the main game. */
 	private void followWorld()
 	{
-		String mode = mode();
-		String league = mode == null || GameMode.MAIN.equals(mode) ? null : mode;
-		String active = killclogService.activeLeague();
-		// Keyed on the mode itself, so a logout (no mode) ends a flip made on a main world.
-		if (!(mode + "/" + active).equals(panelLeague))
+		world.follow((league, leagueLog, active) ->
 		{
-			panelLeague = mode + "/" + active;
-			LocalClogCache leagueLog = league == null ? null : captureCache();
 			kclogCommand.readLeague(league, leagueLog);
 			SwingUtilities.invokeLater(() -> panel.followWorld(league, leagueLog, active));
-		}
+		});
 	}
 
 	/** Your PB for a panel boss in one game: the main game's profiles, or the League's announced one. */
@@ -701,21 +614,12 @@ public class KillClogPlugin extends Plugin
 		leagueCacheFactory = factory;
 	}
 
-	private boolean mainSettled()
-	{
-		return settledTicks >= SETTLED_TICKS && onMainWorld();
-	}
-
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
 		nameAutocompleter.refreshClientSnapshot();
 		localAccountHash = client.getAccountHash();
-		if (mode() == null)
-		{
-			settledTicks = 0;
-		}
-		else if (++settledTicks == SETTLED_TICKS && onMainWorld())
+		if (world.tick())
 		{
 			// Counters and CA tiers read before the world settled were skipped: take them now.
 			reconcileClogTotalsFromVarps();
@@ -726,7 +630,7 @@ public class KillClogPlugin extends Plugin
 		// The account takes up its own log, following any name change (the
 		// server migrates its own copy on the next sync). Memory only; the
 		// store says no until its folder has loaded, and this retries.
-		LocalClogCache activeCache = captureCache();
+		LocalClogCache activeCache = world.captureCache();
 		Player activeLocal = client.getLocalPlayer();
 		if (!accountActivated && activeCache != null && activeLocal != null
 			&& activeCache.activate(activeLocal.getName(), client.getAccountHash()))
@@ -778,7 +682,7 @@ public class KillClogPlugin extends Plugin
 			{
 				String name = local.getName();
 				// A world with no known game still shows the main log, as it always has.
-				LocalClogCache cache = captureCache() != null ? captureCache() : localClogCache;
+				LocalClogCache cache = world.captureCache() != null ? world.captureCache() : localClogCache;
 				if (cache.setActivePlayer(name))
 				{
 					sessionState.markAutoLookupStarted();
@@ -808,7 +712,7 @@ public class KillClogPlugin extends Plugin
 			}
 		}
 
-		LocalClogCache cache = captureCache();
+		LocalClogCache cache = world.captureCache();
 		if (cache != walkCache)
 		{
 			manualClogSync.reset();
@@ -821,35 +725,7 @@ public class KillClogPlugin extends Plugin
 				panel::onBulkCaptureComplete);
 		}
 
-		// Adventure-log pb harvest, one tick after each widget load so the
-		// children are populated (vanilla's own deferral). The new menu
-		// interface hosts more than the Adventure Log; a non-matching title
-		// simply leaves the owner as-is.
-		if (advLogTitleLoaded)
-		{
-			advLogTitleLoaded = false;
-			String owner = AdvLogPbs.readOwner(client);
-			if (owner != null)
-			{
-				advLogOwner = owner;
-			}
-		}
-		if (advLogCountersLoaded)
-		{
-			advLogCountersLoaded = false;
-			Player local = client.getLocalPlayer();
-			if (local != null && AdvLogPbs.sameName(local.getName(), advLogOwner))
-			{
-				new AdvLogPbs(configManager).harvest(client);
-			}
-			else
-			{
-				// Someone else's house, or the title never resolved. Saying so
-				// separates "not yours" from "parser found nothing".
-				log.debug("adventure log counters skipped: owner '{}' is not the local player",
-					advLogOwner);
-			}
-		}
+		advLog.onTick(client, configManager);
 	}
 
 	@Subscribe
@@ -862,17 +738,7 @@ public class KillClogPlugin extends Plugin
 			manualClogSync.onCollectionLogOpened(client);
 		}
 
-		// Both menu interfaces are watched: the player's interface-style
-		// setting decides which one the Adventure Log opens in, and watching
-		// only one harvests nothing for everyone on the other style.
-		if (event.getGroupId() == InterfaceID.MENU_NEW || event.getGroupId() == InterfaceID.MENU)
-		{
-			advLogTitleLoaded = true;
-		}
-		else if (event.getGroupId() == InterfaceID.JOURNALSCROLL)
-		{
-			advLogCountersLoaded = true;
-		}
+		advLog.onWidgetLoaded(event.getGroupId());
 	}
 
 	@Subscribe
@@ -996,16 +862,6 @@ public class KillClogPlugin extends Plugin
 		});
 	}
 
-	public void lookupFromExternalPlugin(String name)
-	{
-		if (name == null || name.isBlank())
-		{
-			return;
-		}
-
-		openPanelAndLookup(Text.toJagexName(name.trim()));
-	}
-
 	@Subscribe
 	public void onMenuEntryAdded(MenuEntryAdded event)
 	{
@@ -1028,7 +884,7 @@ public class KillClogPlugin extends Plugin
 	private void onCollectionLogSearch()
 	{
 		clogIndex.ensureParsed(client, itemManager);
-		LocalClogCache cache = captureCache();
+		LocalClogCache cache = world.captureCache();
 		if (cache != null)
 		{
 			manualClogSync.onCollectionLogSearch(client, clogIndex, cache, chatNotifier);

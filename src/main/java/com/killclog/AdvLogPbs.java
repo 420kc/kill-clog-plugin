@@ -31,6 +31,64 @@ import net.runelite.client.util.Text;
 final class AdvLogPbs
 {
 	/* package */ static final String CONFIG_GROUP = "killclog";
+
+	/**
+	 * The harvest's timing, vanilla's two-stage shape: a menu load names the log's owner and the
+	 * Counters scroll load triggers the parse a tick later, once its children are populated. The owner
+	 * is scoped to one POH visit, so a friend's log can never linger and gate a later harvest.
+	 */
+	static final class Watch
+	{
+		private boolean titleLoaded;
+		private boolean countersLoaded;
+		private String owner;
+
+		/** Both menu interfaces are watched: the interface-style setting decides which hosts the log. */
+		void onWidgetLoaded(int groupId)
+		{
+			if (groupId == InterfaceID.MENU_NEW || groupId == InterfaceID.MENU)
+			{
+				titleLoaded = true;
+			}
+			else if (groupId == InterfaceID.JOURNALSCROLL)
+			{
+				countersLoaded = true;
+			}
+		}
+
+		void dropOwner()
+		{
+			owner = null;
+		}
+
+		void onTick(Client client, ConfigManager configManager)
+		{
+			if (titleLoaded)
+			{
+				titleLoaded = false;
+				// The new menu hosts more than the Adventure Log; another title leaves the owner as-is.
+				String read = readOwner(client);
+				if (read != null)
+				{
+					owner = read;
+				}
+			}
+			if (countersLoaded)
+			{
+				countersLoaded = false;
+				net.runelite.api.Player local = client.getLocalPlayer();
+				if (local != null && sameName(local.getName(), owner))
+				{
+					new AdvLogPbs(configManager).harvest(client);
+				}
+				else
+				{
+					// Someone else's house, or the title never resolved: "not yours", not "found nothing".
+					log.debug("adventure log counters skipped: owner '{}' is not the local player", owner);
+				}
+			}
+		}
+	}
 	/* package */ static final String KEY_PREFIX = "advlogpb.";
 
 	private static final Pattern TITLE_PATTERN = Pattern.compile("The Exploits of (.+)");

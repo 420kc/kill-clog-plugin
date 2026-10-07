@@ -32,6 +32,32 @@ import net.runelite.client.hiscore.HiscoreSkill;
 @Slf4j
 final class PublicationCoordinator
 {
+	static final String CHARACTER_RENDERING_STATUS = "updating character...";
+	static final String CHARACTER_PUBLISHED_STATUS = "character updated!";
+	static final String CHARACTER_FAILED_STATUS = "Publish failed";
+	static final String CHARACTER_APPEARANCE_STATUS = "Change equipment, then retry";
+	static final String CHARACTER_PENDING_STATUS = "Still rendering...";
+	static final String CHARACTER_RECOVERY_STATUS = "Publishing on hold";
+	static final String CHARACTER_DISABLED_STATUS = "Publishing unavailable";
+	static final String CHARACTER_UNKNOWN_STATUS = "Check your profile";
+	static final String CHARACTER_BUSY_STATUS = "Finishing previous request...";
+
+	static String characterPublishTerminalStatus(ProfileAppearanceService.Outcome outcome)
+	{
+		switch (outcome)
+		{
+			case PUBLISHED: return CHARACTER_PUBLISHED_STATUS;
+			case RENDERING: return CHARACTER_PENDING_STATUS;
+			case RECOVERY_PENDING: return CHARACTER_RECOVERY_STATUS;
+			case DISABLED: return CHARACTER_DISABLED_STATUS;
+			case BUSY: return CHARACTER_BUSY_STATUS;
+			case UNKNOWN: return CHARACTER_UNKNOWN_STATUS;
+			case APPEARANCE_PENDING: return CHARACTER_APPEARANCE_STATUS;
+			case CANCELLED: return " ";
+			default: return CHARACTER_FAILED_STATUS;
+		}
+	}
+
 	/** The panel's side of the flow. Every call arrives on the EDT. */
 	interface Feedback
 	{
@@ -237,7 +263,7 @@ final class PublicationCoordinator
 			characterPrerequisiteAttempted.set(false);
 		}
 		int generation = characterPublishGeneration.incrementAndGet();
-		showCharacterPublishStatus(generation, KillClogPlugin.CHARACTER_RENDERING_STATUS, false, false);
+		showCharacterPublishStatus(generation, CHARACTER_RENDERING_STATUS, false, false);
 		clientThread.invokeLater(() ->
 		{
 			if (generation != characterPublishGeneration.get())
@@ -250,7 +276,7 @@ final class PublicationCoordinator
 			if (!characterPublishingEnabled() || rsn == null || accountHash == -1 || !GameMode.MAIN.equals(mode.get()))
 			{
 				characterPublishInFlight.set(false);
-				showCharacterPublishStatus(generation, KillClogPlugin.CHARACTER_FAILED_STATUS, false, true);
+				showCharacterPublishStatus(generation, CHARACTER_FAILED_STATUS, false, true);
 				return;
 			}
 
@@ -271,7 +297,7 @@ final class PublicationCoordinator
 		if (error != null || result == null)
 		{
 			characterPublishInFlight.set(false);
-			showCharacterPublishStatus(generation, KillClogPlugin.CHARACTER_FAILED_STATUS, false, true);
+			showCharacterPublishStatus(generation, CHARACTER_FAILED_STATUS, false, true);
 			return;
 		}
 
@@ -280,14 +306,14 @@ final class PublicationCoordinator
 			&& characterPrerequisiteAttempted.compareAndSet(false, true))
 		{
 			characterPublishAfterSync.set(true);
-			showCharacterPublishStatus(generation, KillClogPlugin.CHARACTER_RENDERING_STATUS, false, false);
+			showCharacterPublishStatus(generation, CHARACTER_RENDERING_STATUS, false, false);
 			syncNow(false);
 			return;
 		}
 
 		characterPublishInFlight.set(false);
 		boolean published = result.outcome == ProfileAppearanceService.Outcome.PUBLISHED;
-		showCharacterPublishStatus(generation, KillClogPlugin.characterPublishTerminalStatus(result.outcome),
+		showCharacterPublishStatus(generation, characterPublishTerminalStatus(result.outcome),
 			published, true, result.message);
 	}
 
@@ -299,7 +325,7 @@ final class PublicationCoordinator
 			return false;
 		}
 		characterPublishInFlight.set(false);
-		showCharacterPublishStatus(generation, KillClogPlugin.CHARACTER_FAILED_STATUS, false, true);
+		showCharacterPublishStatus(generation, CHARACTER_FAILED_STATUS, false, true);
 		return true;
 	}
 
@@ -321,7 +347,7 @@ final class PublicationCoordinator
 		catch (RuntimeException e)
 		{
 			characterPublishInFlight.set(false);
-			showCharacterPublishStatus(expectedGeneration, KillClogPlugin.CHARACTER_FAILED_STATUS, false, true);
+			showCharacterPublishStatus(expectedGeneration, CHARACTER_FAILED_STATUS, false, true);
 		}
 	}
 
@@ -470,7 +496,7 @@ final class PublicationCoordinator
 							if (characterWaiting)
 							{
 								showCharacterPublishStatus(characterGeneration,
-									KillClogPlugin.CHARACTER_RENDERING_STATUS, false, false);
+									CHARACTER_RENDERING_STATUS, false, false);
 							}
 							else
 							{
@@ -499,7 +525,7 @@ final class PublicationCoordinator
 							{
 								characterPublishInFlight.set(false);
 								showCharacterPublishStatus(characterGeneration,
-									KillClogPlugin.CHARACTER_FAILED_STATUS, false, true);
+									CHARACTER_FAILED_STATUS, false, true);
 							}
 						}
 						else

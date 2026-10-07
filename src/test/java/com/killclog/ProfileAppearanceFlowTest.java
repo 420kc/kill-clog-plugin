@@ -54,7 +54,7 @@ public class ProfileAppearanceFlowTest
 			h.worn[3] = new Item(4151, 1);
 			ProfileAppearanceService.PublishResult result = h.publish().get(3, TimeUnit.SECONDS);
 			assertEquals(ProfileAppearanceService.Outcome.APPEARANCE_PENDING, result.outcome);
-			assertEquals("Change equipment, then retry", KillClogPlugin.characterPublishTerminalStatus(result.outcome));
+			assertEquals("Change equipment, then retry", PublicationCoordinator.characterPublishTerminalStatus(result.outcome));
 			assertTrue(result.message.startsWith("Equip or unequip an item"));
 			assertEquals(0, calls.get());
 			h.secret();

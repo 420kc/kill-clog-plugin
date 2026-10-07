@@ -123,7 +123,7 @@ public class ProfileAppearanceServiceTest
 		assertEquals(ProfileAppearanceService.Outcome.values().length, expected.size());
 		for (ProfileAppearanceService.Outcome outcome : ProfileAppearanceService.Outcome.values())
 		{
-			assertEquals(expected.get(outcome), KillClogPlugin.characterPublishTerminalStatus(outcome));
+			assertEquals(expected.get(outcome), PublicationCoordinator.characterPublishTerminalStatus(outcome));
 		}
 		assertTrue(PanelStatusRow.isCharacterNotice("Still rendering..."));
 		assertTrue(PanelStatusRow.isCharacterNotice("Change equipment, then retry"));

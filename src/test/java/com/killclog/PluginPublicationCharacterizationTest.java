@@ -449,7 +449,7 @@ public class PluginPublicationCharacterizationTest
 		settle();
 		assertEquals(2, syncs.size());
 		assertEquals(1, publishes.size());
-		verify(panel, never()).showCharacterPublishStatus(eq(KillClogPlugin.CHARACTER_FAILED_STATUS),
+		verify(panel, never()).showCharacterPublishStatus(eq(PublicationCoordinator.CHARACTER_FAILED_STATUS),
 			anyBoolean(), anyBoolean(), any());
 
 		syncs.get(1).complete(new SyncService.SyncResult(true, false, "Synced"));
@@ -465,12 +465,12 @@ public class PluginPublicationCharacterizationTest
 		settle();
 		assertEquals(1, publishes.size());
 		verify(appearance).publishCurrent(eq(RSN), eq(HASH), any());
-		verify(panel).showCharacterPublishStatus(KillClogPlugin.CHARACTER_RENDERING_STATUS, false, false, null);
+		verify(panel).showCharacterPublishStatus(PublicationCoordinator.CHARACTER_RENDERING_STATUS, false, false, null);
 
 		publishes.get(0).complete(new ProfileAppearanceService.PublishResult(
 			ProfileAppearanceService.Outcome.PUBLISHED, "ok"));
 		settle();
-		verify(panel).showCharacterPublishStatus(KillClogPlugin.CHARACTER_PUBLISHED_STATUS, true, true, "ok");
+		verify(panel).showCharacterPublishStatus(PublicationCoordinator.CHARACTER_PUBLISHED_STATUS, true, true, "ok");
 
 		publishHandler.run();
 		settle();
@@ -495,12 +495,12 @@ public class PluginPublicationCharacterizationTest
 		assertEquals(2, publishes.size());
 		verify(panel, never()).showSyncResult(anyBoolean(), anyBoolean(), any());
 		// Rendering shows on the click, again when the publish parks behind the sync, and again on the retry.
-		verify(panel, times(3)).showCharacterPublishStatus(KillClogPlugin.CHARACTER_RENDERING_STATUS, false, false, null);
+		verify(panel, times(3)).showCharacterPublishStatus(PublicationCoordinator.CHARACTER_RENDERING_STATUS, false, false, null);
 
 		publishes.get(1).complete(new ProfileAppearanceService.PublishResult(
 			ProfileAppearanceService.Outcome.PROFILE_REQUIRED, "still"));
 		settle();
-		verify(panel).showCharacterPublishStatus(KillClogPlugin.CHARACTER_FAILED_STATUS, false, true, "still");
+		verify(panel).showCharacterPublishStatus(PublicationCoordinator.CHARACTER_FAILED_STATUS, false, true, "still");
 		assertEquals(1, syncs.size());
 		assertEquals(2, publishes.size());
 	}
@@ -515,7 +515,7 @@ public class PluginPublicationCharacterizationTest
 		settle();
 		syncs.get(0).complete(new SyncService.SyncResult(false, false, "Server unavailable"));
 		settle();
-		verify(panel).showCharacterPublishStatus(KillClogPlugin.CHARACTER_FAILED_STATUS, false, true, null);
+		verify(panel).showCharacterPublishStatus(PublicationCoordinator.CHARACTER_FAILED_STATUS, false, true, null);
 		verify(panel, never()).showSyncResult(anyBoolean(), anyBoolean(), any());
 		verify(chatNotifier).send(ChatNotice.SYNC_RESULT, "Server unavailable");
 		assertEquals(1, publishes.size());
@@ -543,7 +543,7 @@ public class PluginPublicationCharacterizationTest
 
 		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
 		settle();
-		verify(panel, never()).showCharacterPublishStatus(eq(KillClogPlugin.CHARACTER_FAILED_STATUS), anyBoolean(), anyBoolean(), any());
+		verify(panel, never()).showCharacterPublishStatus(eq(PublicationCoordinator.CHARACTER_FAILED_STATUS), anyBoolean(), anyBoolean(), any());
 		verify(panel, never()).showSyncResult(anyBoolean(), anyBoolean(), any());
 		assertEquals(1, publishes.size());
 	}
@@ -563,7 +563,7 @@ public class PluginPublicationCharacterizationTest
 		publishes.get(0).complete(new ProfileAppearanceService.PublishResult(
 			ProfileAppearanceService.Outcome.PUBLISHED, "late"));
 		settle();
-		verify(panel, never()).showCharacterPublishStatus(eq(KillClogPlugin.CHARACTER_PUBLISHED_STATUS), anyBoolean(), anyBoolean(), any());
+		verify(panel, never()).showCharacterPublishStatus(eq(PublicationCoordinator.CHARACTER_PUBLISHED_STATUS), anyBoolean(), anyBoolean(), any());
 
 		config.character = true;
 		configChanged("characterModel");

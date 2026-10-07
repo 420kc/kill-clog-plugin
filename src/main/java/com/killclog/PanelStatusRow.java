@@ -88,7 +88,7 @@ final class PanelStatusRow
 			this::flashSyncSuccess, "publish failed");
 		this.characterFeedback = new FirstPartyFeedback(config,
 			(kind, text, autoClear) -> showFeedback(Owner.CHARACTER, kind, text, autoClear),
-			this::flashCharacterSuccess, KillClogPlugin.CHARACTER_FAILED_STATUS);
+			this::flashCharacterSuccess, PublicationCoordinator.CHARACTER_FAILED_STATUS);
 		PanelSearchBox.configureStatus(searchStatus, textDim);
 		this.row = build();
 	}
@@ -393,11 +393,11 @@ final class PanelStatusRow
 	/** The plugin's actionable character hints; shown as notices and repeated on hover. */
 	static boolean isCharacterNotice(String text)
 	{
-		return KillClogPlugin.CHARACTER_PENDING_STATUS.equals(text)
-			|| KillClogPlugin.CHARACTER_RECOVERY_STATUS.equals(text)
-			|| KillClogPlugin.CHARACTER_DISABLED_STATUS.equals(text)
-			|| KillClogPlugin.CHARACTER_APPEARANCE_STATUS.equals(text)
-			|| KillClogPlugin.CHARACTER_UNKNOWN_STATUS.equals(text);
+		return PublicationCoordinator.CHARACTER_PENDING_STATUS.equals(text)
+			|| PublicationCoordinator.CHARACTER_RECOVERY_STATUS.equals(text)
+			|| PublicationCoordinator.CHARACTER_DISABLED_STATUS.equals(text)
+			|| PublicationCoordinator.CHARACTER_APPEARANCE_STATUS.equals(text)
+			|| PublicationCoordinator.CHARACTER_UNKNOWN_STATUS.equals(text);
 	}
 
 	// ── plugin-facing controls ─────────────────────────────────────────
@@ -508,7 +508,7 @@ final class PanelStatusRow
 					clear();
 				}
 			}
-			else if (ok || KillClogPlugin.CHARACTER_FAILED_STATUS.equals(text))
+			else if (ok || PublicationCoordinator.CHARACTER_FAILED_STATUS.equals(text))
 			{
 				characterFeedback.complete(true, ok, detail != null
 					? detail : "Character upload failed. Click to retry.");
@@ -520,11 +520,11 @@ final class PanelStatusRow
 				if (isCharacterNotice(text))
 				{
 					kind = Kind.NOTICE;
-					characterNoticeText = KillClogPlugin.CHARACTER_PENDING_STATUS.equals(text)
-						? KillClogPlugin.CHARACTER_UNKNOWN_STATUS : text;
+					characterNoticeText = PublicationCoordinator.CHARACTER_PENDING_STATUS.equals(text)
+						? PublicationCoordinator.CHARACTER_UNKNOWN_STATUS : text;
 					characterNoticeDetail = detail;
 				}
-				else if (KillClogPlugin.CHARACTER_RENDERING_STATUS.equals(text))
+				else if (PublicationCoordinator.CHARACTER_RENDERING_STATUS.equals(text))
 				{
 					kind = Kind.PROGRESS;
 				}
