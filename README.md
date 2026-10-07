@@ -4,7 +4,7 @@
 
 HiScores, Collection Logs, Personal Bests, and player comparison in one RuneLite panel.
 
-![Kill Clog's panel for 420 kc, with a popup from each kind of cell](screenshots/hero-2.5.0.png)
+![Kill Clog's panel for 420 kc, with a popup from each kind of cell](screenshots/hero-2.6.0.png)
 
 ## Setup
 
