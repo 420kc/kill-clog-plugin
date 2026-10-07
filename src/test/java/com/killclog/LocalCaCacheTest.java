@@ -71,12 +71,12 @@ public class LocalCaCacheTest
 	public void theLoggedInNameTypedAnotherWayStillReadsItsCas() throws Exception
 	{
 		LocalCaCache cache = open(new Gson(), temporaryFolder.newFolder());
-		cache.setActivePlayer("My Name");
-		cache.cacheResult("My Name", HASH, Map.of(CombatAchievementTier.EASY, 1));
+		cache.setActivePlayer("My\u00A0Name");
+		cache.cacheResult("My\u00A0Name", HASH, Map.of(CombatAchievementTier.EASY, 1));
 		assertNotNull(cache.getCached("my_name"));
 		assertTrue(cache.hasDataFor("My-Name"));
 		cache.setActivePlayer("My Name");
-		assertNotNull("the same account keeps its record", cache.getCached("My Name"));
+		assertNotNull("the same account keeps its record", cache.getCached("My\u00A0Name"));
 	}
 
 	@Test

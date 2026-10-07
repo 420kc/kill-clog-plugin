@@ -30,7 +30,7 @@ public class LookupSessionTest
 				new KillClogConfig()
 				{
 				}, listener);
-			SwingUtilities.invokeAndWait(() -> session.start(typed, "My Name", AccountType.REGULAR));
+			SwingUtilities.invokeAndWait(() -> session.start(typed, "My\u00A0Name", AccountType.REGULAR));
 			org.mockito.Mockito.verify(listener).onLookupStart(org.mockito.ArgumentMatchers.eq(typed),
 				org.mockito.ArgumentMatchers.eq(true), org.mockito.ArgumentMatchers.anyBoolean());
 		}

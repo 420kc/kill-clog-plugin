@@ -319,7 +319,7 @@ public class LeagueViewPanelTest
 			try
 			{
 				// The game spells the name with a non-breaking space; the lookup box with an underscore.
-				panel.setLoggedInPlayer("My Name", AccountType.REGULAR);
+				panel.setLoggedInPlayer("My\u00A0Name", AccountType.REGULAR);
 				assertTrue(field(summary.invoke(panel, owner, row, null, "my_name", null), "firstTimeSetup", Boolean.class));
 				String notice = field(cell.invoke(panel, owner, null, 4, "Zulrah", row, "My-Name"), "notice", String.class);
 				assertTrue(notice, notice.contains("setup"));

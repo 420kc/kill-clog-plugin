@@ -27,7 +27,7 @@ public class RsnInputPolicyTest
 	@Test
 	public void everySpellingJagexAcceptsIsOneName()
 	{
-		org.junit.Assert.assertTrue(RsnInputPolicy.sameName("My_Name", "My Name"));
+		org.junit.Assert.assertTrue(RsnInputPolicy.sameName("My_Name", "My\u00A0Name"));
 		org.junit.Assert.assertTrue(RsnInputPolicy.sameName("my-name", "My Name"));
 		org.junit.Assert.assertFalse(RsnInputPolicy.sameName("My Name", "My Names"));
 		org.junit.Assert.assertFalse(RsnInputPolicy.sameName(null, "My Name"));
