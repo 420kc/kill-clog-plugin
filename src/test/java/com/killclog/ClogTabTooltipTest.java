@@ -68,23 +68,28 @@ public class ClogTabTooltipTest
 	}
 
 	@Test
-	public void theWayBackIsARowOfItsOwnAboveThePages()
+	public void theWayBackIsTheHeadersLastLine()
 	{
 		ClogTabTooltip bare = card(5);
 		ClogTabTooltip back = card(5);
 		int[] backs = new int[1];
-		back.setOnBack(press -> backs[0]++);
-		// The row and the divider under it.
-		assertEquals(bare.getPreferredSize().height + LINE + 5, back.getPreferredSize().height);
+		back.setBack("< Clog Summary", press -> backs[0]++);
+		// One header line more, and nothing else.
+		assertEquals(bare.getPreferredSize().height + LINE, back.getPreferredSize().height);
 
 		painted(back);
 		List<Integer> opened = new ArrayList<>();
 		back.setOnOpenPage((press, page) -> opened.add(page));
-		int top = firstRowY(back);
-		press(back, top - 5 - LINE + 2);
+		int row = -1;
+		for (int y = 0; y < back.getHeight() && row < 0; y++)
+		{
+			row = back.onBackRow(y) ? y : -1;
+		}
+		assertTrue("the way back sits above the pages", row >= 0 && row < firstRowY(back));
+		press(back, row + 2);
 		assertEquals(1, backs[0]);
 		assertTrue(opened.isEmpty());
-		press(back, top + 2);
+		press(back, firstRowY(back) + 2);
 		assertEquals(1, backs[0]);
 		assertEquals(Arrays.asList(0), opened);
 	}

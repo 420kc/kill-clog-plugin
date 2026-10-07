@@ -12,8 +12,10 @@ import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import javax.annotation.Nullable;
+import javax.swing.JToolTip;
 import javax.swing.SwingUtilities;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -76,6 +78,12 @@ public abstract class TitleTooltip extends NativeTooltip
 	private BufferedImage titleIcon;
 	private boolean wikiLinksEnabled = true;
 	private boolean titleHovered;
+	// The way back to the card this one opened from: the header's last line, white while hovered.
+	private String backLabel;
+	@Nullable
+	private Consumer<MouseEvent> onBack;
+	private boolean backHovered;
+	private int backTop = -1;
 	// Item sprites on the card: hover names and wiki links. Installed after the
 	// title's own listeners, as the cards' own copies were.
 	final TooltipItemHover itemHover;
@@ -118,6 +126,26 @@ public abstract class TitleTooltip extends NativeTooltip
 	private int titleIconWidth()
 	{
 		return titleIcon != null ? titleIcon.getWidth() + TITLE_ICON_GAP : 0;
+	}
+
+	/** The header's last line leads back to the card this one opened from. */
+	void setBack(String label, Consumer<MouseEvent> onBack)
+	{
+		backLabel = label;
+		this.onBack = onBack;
+	}
+
+	/** The way back on a card, or on both cards of a comparison. */
+	static JToolTip withBack(JToolTip tip, String label, Consumer<MouseEvent> onBack)
+	{
+		for (JToolTip card : tip instanceof SideBySideTooltip ? ((SideBySideTooltip) tip).sides() : new JToolTip[]{tip})
+		{
+			if (card instanceof TitleTooltip)
+			{
+				((TitleTooltip) card).setBack(label, onBack);
+			}
+		}
+		return tip;
 	}
 
 	/** Optional OSRS Wiki page opened when the title is clicked. */
@@ -487,6 +515,10 @@ public abstract class TitleTooltip extends NativeTooltip
 		{
 			h += LINE_HEIGHT;
 		}
+		if (onBack != null)
+		{
+			h += LINE_HEIGHT;
+		}
 		return h;
 	}
 
@@ -555,6 +587,10 @@ public abstract class TitleTooltip extends NativeTooltip
 		int rnkTextWidth = rankText != null ? sfm.stringWidth("Rank: " + rankText) : 0;
 		int maxTextWidth = Math.max(titleTextWidth,
 			Math.max(subTextWidth, Math.max(infoTextWidth, rnkTextWidth)));
+		if (onBack != null)
+		{
+			maxTextWidth = Math.max(maxTextWidth, sfm.stringWidth(backLabel));
+		}
 		int headerMinWidth = maxTextWidth;
 
 		Dimension contentSize = getContentSize(Math.max(headerMinWidth, 1));
@@ -655,6 +691,17 @@ public abstract class TitleTooltip extends NativeTooltip
 			activeLineWidth = drawLabelValue(g2, fm, inset, lineY, subtitleLabel, subtitleValue, subtitleColor);
 		}
 
+		if (onBack != null)
+		{
+			upperLineY = lineY;
+			upperLineWidth = activeLineWidth;
+			lineY += lineY == titleBaseline ? NAME_LINE_HEIGHT : LINE_HEIGHT;
+			g2.setColor(backHovered ? Color.WHITE : OSRS_ORANGE);
+			g2.drawString(backLabel, inset, lineY);
+			activeLineWidth = fm.stringWidth(backLabel);
+			backTop = lineY - fm.getAscent();
+		}
+
 		if (itemNameInHeader)
 		{
 			// The hovered item's name on the last header row, its duplicate count above.
@@ -722,6 +769,12 @@ public abstract class TitleTooltip extends NativeTooltip
 			@Override
 			public void mousePressed(MouseEvent e)
 			{
+				if (e.getButton() == MouseEvent.BUTTON1 && onBack != null && onBackRow(e.getY()))
+				{
+					onBack.accept(e);
+					e.consume();
+					return;
+				}
 				if (e.getButton() == MouseEvent.BUTTON1 && titleLinkActive()
 					&& titleBounds().contains(e.getX(), e.getY()))
 				{
@@ -735,9 +788,10 @@ public abstract class TitleTooltip extends NativeTooltip
 			@Override
 			public void mouseExited(MouseEvent e)
 			{
-				if (titleHovered)
+				if (titleHovered || backHovered)
 				{
 					titleHovered = false;
+					backHovered = false;
 					repaint();
 				}
 			}
@@ -747,11 +801,19 @@ public abstract class TitleTooltip extends NativeTooltip
 	private void updateHeaderHover(int x, int y)
 	{
 		boolean nextTitle = titleLinkActive() && titleBounds().contains(x, y);
-		if (nextTitle != titleHovered)
+		boolean nextBack = onBack != null && onBackRow(y);
+		if (nextTitle != titleHovered || nextBack != backHovered)
 		{
 			titleHovered = nextTitle;
+			backHovered = nextBack;
 			repaint();
 		}
+	}
+
+	/** The back line answers across the card's whole width, a row like the others. */
+	boolean onBackRow(int y)
+	{
+		return backTop >= 0 && y >= backTop && y < backTop + LINE_HEIGHT;
 	}
 
 	private boolean titleLinkActive()

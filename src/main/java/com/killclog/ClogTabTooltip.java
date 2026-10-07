@@ -3,12 +3,11 @@ package com.killclog;
 import java.awt.Color;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
-import java.util.function.Consumer;
 import java.util.function.ObjIntConsumer;
 import javax.annotation.Nullable;
 
 /**
- * One Collection Log tab, opened from the Clog Summary where it was: the tab's progress, the way back,
+ * One Collection Log tab, opened from the Clog Summary where it was: the tab's progress and the way back,
  * then every page in the game's order with the player's count. A page opens its own popup. A tab
  * longer than {@link #VISIBLE_ROWS} pages scrolls with the mouse wheel, a thin rail showing where.
  */
@@ -19,8 +18,6 @@ public class ClogTabTooltip extends TitleTooltip
 	private static final int COUNT_GAP = 12;
 	private static final int RAIL_WIDTH = 3;
 	private static final int RAIL_GAP = 4;
-	private static final int SEPARATOR_PAD = 2;
-	private static final String BACK_LABEL = "< Clog Summary";
 	private static final Color RAIL_TRACK = SEPARATOR_COLOR;
 	private static final Color RAIL_THUMB = OSRS_ORANGE;
 
@@ -34,17 +31,7 @@ public class ClogTabTooltip extends TitleTooltip
 	@Nullable
 	private ClogTabTooltip partner;
 	@Nullable
-	private Consumer<MouseEvent> onBack;
-	@Nullable
 	private ObjIntConsumer<MouseEvent> onOpenPage;
-	private final CardBody.ClickRows backRow = new CardBody.ClickRows(this, (e, row) ->
-	{
-		if (onBack != null)
-		{
-			onBack.accept(e);
-			e.consume();
-		}
-	});
 	private final CardBody.ClickRows pageRows = new CardBody.ClickRows(this, (e, page) ->
 	{
 		if (onOpenPage != null)
@@ -80,11 +67,6 @@ public class ClogTabTooltip extends TitleTooltip
 		this.obtained = obtained;
 		this.total = total;
 		offset = 0;
-	}
-
-	void setOnBack(@Nullable Consumer<MouseEvent> onBack)
-	{
-		this.onBack = onBack;
 	}
 
 	/** Called with the page's index when the player presses its row. */
@@ -167,16 +149,7 @@ public class ClogTabTooltip extends TitleTooltip
 	@Override
 	protected CardBody body()
 	{
-		CardBody body = new CardBody();
-		if (onBack != null)
-		{
-			body.add(CardBody.clickRow(backRow, 0, c -> c.fm.stringWidth(BACK_LABEL), (c, y, hovered) ->
-			{
-				c.g.setColor(hovered ? Color.WHITE : OSRS_ORANGE);
-				c.g.drawString(BACK_LABEL, c.inset(), y + c.fm.getAscent());
-			})).add(CardBody.separator(SEPARATOR_PAD));
-		}
-		return body.add(pageList());
+		return new CardBody().add(pageList());
 	}
 
 	/** The pages in view: names on the left, counts right-aligned, the rail beside them when the tab scrolls. */

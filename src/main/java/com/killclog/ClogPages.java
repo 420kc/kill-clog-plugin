@@ -76,8 +76,13 @@ final class ClogPages
 		return comparison.wrapSideBySide(owner, blue, red);
 	}
 
-	/** A page's popup, as its row opens it. */
-	JToolTip pageCard(JComponent owner, String key)
+	/** A page's popup, as its row opens it, leading back to its tab. */
+	JToolTip pageCard(JComponent owner, String tab, String key)
+	{
+		return TitleTooltip.withBack(page(owner, key), "< " + tab, press -> pin(owner, press, tabCard(owner, tab)));
+	}
+
+	private JToolTip page(JComponent owner, String key)
 	{
 		JLabel anchor = anchor(owner);
 		String name = name(key);
@@ -130,8 +135,8 @@ final class ClogPages
 		card.setComponent(owner);
 		card.setTab(tab, progress.get(tab), slots.size());
 		card.setPages(names, obtained, total);
-		card.setOnBack(press -> pin(owner, press, owner.createToolTip()));
-		card.setOnOpenPage((press, page) -> pin(owner, press, pageCard(owner, keys.get(page))));
+		card.setBack("< Clog Summary", press -> pin(owner, press, owner.createToolTip()));
+		card.setOnOpenPage((press, page) -> pin(owner, press, pageCard(owner, tab, keys.get(page))));
 		return card;
 	}
 
