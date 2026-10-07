@@ -272,6 +272,19 @@ public class HiscoreFailureTest
 		}).lookup("Existing HC", null));
 	}
 
+	@Test
+	public void anEarlierNotFoundNeverDecidesALaterOutage() throws Exception
+	{
+		// The player is missing, then minutes later Jagex is down: the earlier answer must not stand in.
+		int[] code = {404};
+		HiscoreService service = service(chain -> response(chain, code[0], ""));
+		assertNull(service.lookup("Recent rename", null).get(3, TimeUnit.SECONDS));
+		code[0] = 503;
+		assertDown(service.lookup("Recent rename", null));
+		assertDown(service.lookup("Recent rename", AccountType.IRONMAN));
+		assertDown(service.lookupLeague("Recent rename"));
+	}
+
 	private static void assertDown(CompletableFuture<HiscoreResult> lookup) throws Exception
 	{
 		try

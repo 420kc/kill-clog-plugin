@@ -177,10 +177,9 @@ public class HiscoreService
 	}
 
 	/** A board with no row for the player: "not found" only on that board's own 404, else Jagex is down. */
-	private <T> CompletableFuture<T> missing(String encodedPlayer, String board)
+	private static <T> CompletableFuture<T> missing(boolean notFound)
 	{
-		return absentTables.getIfPresent(rankKey(board, encodedPlayer)) != null
-			? CompletableFuture.completedFuture(null) : CompletableFuture.failedFuture(new HiscoresDown());
+		return notFound ? CompletableFuture.completedFuture(null) : CompletableFuture.failedFuture(new HiscoresDown());
 	}
 
 	/** The player's League row, null when Jagex says they have none, failing when Jagex says nothing. */
@@ -188,7 +187,8 @@ public class HiscoreService
 	{
 		String encoded = URLEncoder.encode(player.toLowerCase(Locale.ROOT), StandardCharsets.UTF_8);
 		return lookupTable(player, LEAGUE_TABLE)
-			.thenCompose(row -> row != null ? CompletableFuture.completedFuture(row) : missing(encoded, LEAGUE_TABLE));
+			.thenCompose(row -> row != null ? CompletableFuture.completedFuture(row)
+				: missing(absentTables.getIfPresent(rankKey(LEAGUE_TABLE, encoded)) != null));
 	}
 
 	CompletableFuture<HiscoreResult> lookupRanks(String player, RankLeaderboard table)
@@ -211,7 +211,7 @@ public class HiscoreService
 		HiscoreResult cached = rankTables.getIfPresent(key);
 		if (cached != null || absentTables.getIfPresent(key) != null) return CompletableFuture.completedFuture(cached);
 		return HttpUtil.singleFlightLookup(rankRequests, key,
-			() -> fetchAsync(endpoint, encoded).thenApply(body -> rankTables.getIfPresent(key)))
+			() -> fetchAsync(endpoint, encoded, null).thenApply(body -> rankTables.getIfPresent(key)))
 			.completeOnTimeout(null, 12, TimeUnit.SECONDS).exceptionally(ex -> null);
 	}
 
@@ -345,12 +345,14 @@ public class HiscoreService
 		AccountType knownType)
 	{
 		String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
-		if (knownType != null) return lookupKnown(encoded, knownType);
+		// The boards that said "no such player" to this lookup: an earlier or overlapping one's 404 never decides it.
+		Set<String> absent = ConcurrentHashMap.newKeySet();
+		if (knownType != null) return lookupKnown(encoded, knownType, absent);
 
-		CompletableFuture<String> uimFuture = fetchAsync("hiscore_oldschool_ultimate", encoded);
-		CompletableFuture<String> hcimFuture = fetchAsync("hiscore_oldschool_hardcore_ironman", encoded);
-		CompletableFuture<String> ironFuture = fetchAsync("hiscore_oldschool_ironman", encoded);
-		CompletableFuture<String> regFuture = fetchAsync("hiscore_oldschool", encoded);
+		CompletableFuture<String> uimFuture = fetchAsync("hiscore_oldschool_ultimate", encoded, absent);
+		CompletableFuture<String> hcimFuture = fetchAsync("hiscore_oldschool_hardcore_ironman", encoded, absent);
+		CompletableFuture<String> ironFuture = fetchAsync("hiscore_oldschool_ironman", encoded, absent);
+		CompletableFuture<String> regFuture = fetchAsync("hiscore_oldschool", encoded, absent);
 
 		return CompletableFuture.allOf(uimFuture, hcimFuture, ironFuture, regFuture)
 			.thenCompose(v ->
@@ -373,7 +375,7 @@ public class HiscoreService
 				String bestBody = pickBestBody(type, uimBody, hcimBody, ironBody, regBody);
 				if (bestBody == null)
 				{
-					return missing(encoded, "hiscore_oldschool");
+					return missing(absent.contains("hiscore_oldschool"));
 				}
 
 				return parseAndRefine(encoded, bestBody, type).thenApply(result -> proven(result, ironmanNow));
@@ -390,9 +392,9 @@ public class HiscoreService
 		return result;
 	}
 
-	private CompletableFuture<HiscoreResult> lookupKnown(String encodedPlayer, AccountType type)
+	private CompletableFuture<HiscoreResult> lookupKnown(String encodedPlayer, AccountType type, Set<String> absent)
 	{
-		CompletableFuture<String> regular = fetchAsync("hiscore_oldschool", encodedPlayer);
+		CompletableFuture<String> regular = fetchAsync("hiscore_oldschool", encodedPlayer, absent);
 		String endpoint;
 		switch (type)
 		{
@@ -402,14 +404,14 @@ public class HiscoreService
 			default:
 				// RuneLite's own type: not a solo Ironman now (a group ironman reads its regular row).
 				return regular.thenCompose(body -> body != null ? parseAndRefine(encodedPlayer, body, type)
-					: this.<HiscoreResult>missing(encodedPlayer, "hiscore_oldschool"))
+					: HiscoreService.<HiscoreResult>missing(absent.contains("hiscore_oldschool")))
 					.thenApply(result -> proven(result, false));
 		}
-		return regular.thenCombine(fetchAsync(endpoint, encodedPlayer), (base, ranked) ->
+		return regular.thenCombine(fetchAsync(endpoint, encodedPlayer, absent), (base, ranked) ->
 		{
 			if (base == null && ranked == null)
 			{
-				if (absentTables.getIfPresent(rankKey(endpoint, encodedPlayer)) != null) return null;
+				if (absent.contains(endpoint)) return null;
 				throw new HiscoresDown();
 			}
 			// RuneLite supplies the current self type. Keep its selected ranks, but
@@ -431,7 +433,7 @@ public class HiscoreService
 			return CompletableFuture.completedFuture(result);
 		}
 
-		return fetchAsync(table.hiscoreKey(), encodedPlayer)
+		return fetchAsync(table.hiscoreKey(), encodedPlayer, null)
 			.thenApply(refinedBody ->
 			{
 				if (refinedBody == null)
@@ -835,7 +837,7 @@ public class HiscoreService
 		}
 	}
 
-	private CompletableFuture<String> fetchAsync(String hiscoreKey, String encodedPlayer)
+	private CompletableFuture<String> fetchAsync(String hiscoreKey, String encodedPlayer, @Nullable Set<String> absent)
 	{
 		return fetchTable(hiscoreKey, encodedPlayer).thenCompose(first ->
 		{
@@ -845,7 +847,20 @@ public class HiscoreService
 				.thenCompose(ignored -> fetchTable(hiscoreKey, encodedPlayer));
 		}).thenApply(result ->
 		{
-			if (result.status == FetchStatus.NOT_FOUND) absentTables.put(rankKey(hiscoreKey, encodedPlayer), true);
+			// Any answer but a 404 retires an earlier one: the player may have just been renamed or ranked.
+			String key = rankKey(hiscoreKey, encodedPlayer);
+			if (result.status == FetchStatus.NOT_FOUND)
+			{
+				absentTables.put(key, true);
+				if (absent != null)
+				{
+					absent.add(hiscoreKey);
+				}
+			}
+			else
+			{
+				absentTables.invalidate(key);
+			}
 			return rememberRanks(hiscoreKey, encodedPlayer, result.body);
 		});
 	}
