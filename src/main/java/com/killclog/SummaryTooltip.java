@@ -1,6 +1,7 @@
 package com.killclog;
 
 import java.awt.Color;
+import java.awt.Font;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -63,6 +64,13 @@ public class SummaryTooltip extends TitleTooltip
 	protected Color titleColor()
 	{
 		return Color.WHITE;
+	}
+
+	/** The player's name at the size the grid cards title in. */
+	@Override
+	protected Font getTitleFont()
+	{
+		return TITLE_FONT_SMALL;
 	}
 
 	public void setPets(List<Integer> allPetIds, Set<Integer> obtainedPetIds,
