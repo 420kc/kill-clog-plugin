@@ -55,8 +55,10 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private final BufferedImage[] superiorSprites = new BufferedImage[2];
 	private final int[] superiorCounts = new int[2];
 
-	// CoX, ToB and ToA: normal plus hard-mode kills, and the raid's collection progress.
+	// CoX, ToB and ToA: normal and hard-mode kills as pairs, like a boss popup's KC and PB, then the raid's log.
 	private static final String[] RAID_LABELS = {"CoX: ", "ToB: ", "ToA: "};
+	private static final String[] HARD_LABELS = {"CM: ", "HM: ", "Expert: "};
+	private static final int PAIR_GAP = 8;
 	private static final String[][] RAID_HISCORES = {
 		{PanelData.COX_HISCORE, PanelData.COX_HISCORE_HARD},
 		{PanelData.TOB_HISCORE, PanelData.TOB_HISCORE_HARD},
@@ -66,6 +68,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 	static final HiscoreSkill[] RAID_BOSSES = {HiscoreSkill.CHAMBERS_OF_XERIC,
 		HiscoreSkill.THEATRE_OF_BLOOD, HiscoreSkill.TOMBS_OF_AMASCUT};
 	private final int[] raidKc = new int[3];
+	private final int[] hardKc = new int[3];
 	private final int[] raidObtained = {-1, -1, -1};
 	private final int[] raidTotal = new int[3];
 	@Nullable
@@ -160,8 +163,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 	{
 		for (int i = 0; i < 3; i++)
 		{
-			raidKc[i] = Math.max(0, hiscoreResult.getKc(RAID_HISCORES[i][0]))
-				+ Math.max(0, hiscoreResult.getKc(RAID_HISCORES[i][1]));
+			raidKc[i] = Math.max(0, hiscoreResult.getKc(RAID_HISCORES[i][0]));
+			hardKc[i] = Math.max(0, hiscoreResult.getKc(RAID_HISCORES[i][1]));
 			int[] counts = clogResult != null ? ClogHelper.clogCounts(RAID_CATEGORIES[i], clogResult) : null;
 			if (counts != null)
 			{
@@ -250,30 +253,28 @@ public class PvmSummaryTooltip extends TitleTooltip
 			.add(pvpRows.part());
 	}
 
-	/** A raid's kills and collection progress; the row opens the raid's own popup. */
+	/** Progress rides alongside a real kc in either mode; a raid never run stays dash-only. */
+	private boolean raidLog(int row)
+	{
+		return raidKc[row] + hardKc[row] > 0 && raidObtained[row] >= 0;
+	}
+
+	/** A raid's normal and hard-mode kills, then its log; the row opens the raid's own popup. */
 	private CardBody.Part raidRow(int row)
 	{
-		return CardBody.clickRow(raidRows, row, c ->
+		return CardBody.clickRow(raidRows, row, c -> c.fm.stringWidth(RAID_LABELS[row] + scoreText(raidKc[row])) + PAIR_GAP
+			+ c.fm.stringWidth(HARD_LABELS[row] + scoreText(hardKc[row]))
+			+ (raidLog(row) ? wrappedProgressCountWidth(c.fm, raidObtained[row], raidTotal[row]) : 0), (c, y, hovered) ->
 		{
-			int width = c.fm.stringWidth(RAID_LABELS[row]) + c.fm.stringWidth(scoreText(raidKc[row]));
-			return raidKc[row] > 0 && raidObtained[row] >= 0
-				? width + wrappedProgressCountWidth(c.fm, raidObtained[row], raidTotal[row]) : width;
-		}, (c, y, hovered) ->
-		{
-			Graphics2D g2 = c.g;
 			int textY = y + c.fm.getAscent();
 			// No pointer cursor in this UI: the hovered row answers in white instead.
-			g2.setColor(hovered ? Color.WHITE : OSRS_ORANGE);
-			g2.drawString(RAID_LABELS[row], c.inset(), textY);
-			int end = c.inset() + c.fm.stringWidth(RAID_LABELS[row]);
-			String kc = scoreText(raidKc[row]);
-			g2.setColor(Color.WHITE);
-			g2.drawString(kc, end, textY);
-			end += c.fm.stringWidth(kc);
-			// Progress rides alongside a real kc; a "--" raid stays dash-only.
-			if (raidKc[row] > 0 && raidObtained[row] >= 0)
+			Color label = hovered ? Color.WHITE : OSRS_ORANGE;
+			int end = c.inset() + drawLabelValue(c.g, c.fm, c.inset(), textY, RAID_LABELS[row], scoreText(raidKc[row]),
+				label, Color.WHITE) + PAIR_GAP;
+			end += drawLabelValue(c.g, c.fm, end, textY, HARD_LABELS[row], scoreText(hardKc[row]), label, Color.WHITE);
+			if (raidLog(row))
 			{
-				paintWrappedProgressCount(g2, c.fm, end, textY, raidObtained[row], raidTotal[row]);
+				paintWrappedProgressCount(c.g, c.fm, end, textY, raidObtained[row], raidTotal[row]);
 			}
 		});
 	}
