@@ -86,6 +86,12 @@ final class CardBody
 		return this;
 	}
 
+	/** A titled section under the parts before it: room above, not a divider, since its title carries a rule. */
+	CardBody titled(String title)
+	{
+		return add(gap(SECTION_SPACE)).add(section(title));
+	}
+
 	/** The body's size: as wide as its widest part, as tall as its parts together. */
 	Dimension size(TitleTooltip card, int available)
 	{
@@ -184,9 +190,27 @@ final class CardBody
 		});
 	}
 
-	static Part subheader(String text)
+	// A section's title owns a full-width rule just under it, then room before its rows; sections stand apart by
+	// space alone. Every card titles its sections this way, and a skill log titles its headings the same.
+	static final int SECTION_SPACE = 8;
+	static final int SECTION_RULE = 3;
+	static final int SECTION_AFTER = 4;
+
+	/** A section's bold title with its rule under it. */
+	static Part section(String title)
 	{
-		return row(TitleTooltip.SUBHEADER_HEIGHT, c -> c.bfm.stringWidth(text), (c, y) -> c.card.paintSubheader(c.g, y, text));
+		return row(TitleTooltip.SUBHEADER_HEIGHT + SECTION_RULE + SECTION_AFTER, c -> c.bfm.stringWidth(title), (c, y) ->
+		{
+			c.card.paintSubheader(c.g, y, title);
+			sectionRule(c.g, y + TitleTooltip.SUBHEADER_HEIGHT + 1, c.inset(), c.w);
+		});
+	}
+
+	/** The rule under a section's title, across the card. */
+	static void sectionRule(Graphics2D g, int y, int inset, int w)
+	{
+		g.setColor(TitleTooltip.SEPARATOR_COLOR);
+		g.drawLine(inset, y, w - inset - 1, y);
 	}
 
 	static Part separator(int pad)

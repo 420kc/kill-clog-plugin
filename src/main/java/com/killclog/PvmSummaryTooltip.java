@@ -21,7 +21,6 @@ import net.runelite.client.util.QuantityFormatter;
 public class PvmSummaryTooltip extends TitleTooltip
 {
 	private static final int WEAPON_PAD = 6;
-	private static final int SEPARATOR_PAD = 2;
 	private static final int SECTION_GAP = 4;
 	// The combat level leads the card beside the combat cell's own icon, with room around it; the
 	// CA tier leads the PvM rows the same way, its reward at the combat icon's size.
@@ -195,7 +194,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 			.add(CardBody.gap(LEVEL_GAP_ABOVE))
 			.add(leadRow(combatIcon, combatText(combatLevel)))
 			.add(CardBody.gap(LEVEL_GAP_BELOW))
-			.add(CardBody.subheader(PVM_HEADER));
+			.add(CardBody.section(PVM_HEADER));
 		// The CA tier leads the PvM rows, built like the combat level row above it, once one is held.
 		if (hasTierRow())
 		{
@@ -221,8 +220,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		}
 		// Slayer: XP and Rank from the hiscores, then clog progress when a synced log is known.
 		body.add(CardBody.gap(SECTION_GAP))
-			.add(CardBody.separator(SEPARATOR_PAD))
-			.add(CardBody.subheader("Slayer"))
+			.titled("Slayer")
 			.add(CardBody.line("XP: ", slayerXpText(slayerXp)))
 			.add(CardBody.line("Rank: ", scoreText(slayerRank)));
 		if (slayerObtained >= 0)
@@ -234,8 +232,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 			.add(CardBody.sprites(0, superiorSprites, PanelData.SUPERIOR_ITEMS, PanelData.SUPERIOR_ITEM_NAMES,
 				superiorCounts, WEAPON_PAD))
 			.add(CardBody.hoverLine(0, PanelData.SUPERIOR_ITEM_NAMES))
-			.add(CardBody.separator(SEPARATOR_PAD))
-			.add(CardBody.subheader("Raids"));
+			.titled("Raids");
 		for (int i = 0; i < RAID_LABELS.length; i++)
 		{
 			body.add(raidRow(i));
@@ -244,8 +241,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 			.add(CardBody.sprites(1, weaponSprites, PanelData.MEGARARE_ITEM_IDS, PanelData.MEGARARE_ITEM_NAMES,
 				weaponCounts, WEAPON_PAD))
 			.add(CardBody.hoverLine(1, PanelData.MEGARARE_ITEM_NAMES))
-			.add(CardBody.separator(SEPARATOR_PAD))
-			.add(CardBody.subheader(PVP_HEADER))
+			.titled(PVP_HEADER)
 			.add(pvpRows.part());
 	}
 

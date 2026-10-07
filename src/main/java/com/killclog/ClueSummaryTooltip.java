@@ -21,7 +21,6 @@ public class ClueSummaryTooltip extends TitleTooltip
 	private static final int ICON_SIZE = 13;
 	private static final int ICON_GAP = 4;
 	private static final int COL_GAP = 6;
-	private static final int SECTION_PAD = 2;
 	private static final int MIMIC = 7;
 
 	private static final HiscoreSkill[] CLUE_TIERS = {
@@ -137,8 +136,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 		}
 		CardBody body = new CardBody()
 			.add(CardBody.table(icons, LABELS, scores, obtained, total, shownRanks, ICON_SIZE, ICON_GAP, COL_GAP))
-			.add(CardBody.separator(SECTION_PAD))
-			.add(CardBody.subheader("Rare Collections"));
+			.titled("Rare Collections");
 		for (int i = 0; i < RARE_LABELS.length; i++)
 		{
 			body.add(rareRow(i));

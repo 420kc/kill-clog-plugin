@@ -367,7 +367,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 		if (!tabs.isEmpty())
 		{
-			body.add(CardBody.separator(SEPARATOR_PAD)).add(CardBody.subheader("Collection Log"));
+			body.titled("Collection Log");
 			int row = 0;
 			for (Map.Entry<String, int[]> tab : tabs.entrySet())
 			{
@@ -484,7 +484,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 			held.put(shelf.ids[i], shelf.counts[i]);
 		}
 		List<Integer> ids = TooltipData.itemList(shelf.ids);
-		body.add(CardBody.separator(SEPARATOR_PAD)).add(CardBody.subheader(title)).add(CardBody.part(
+		body.titled(title).add(CardBody.part(
 			c -> count * shelf.cellWidth(c.fm) + (count - 1) * RECENT_PAD,
 			c -> size + (shelf.dated() ? DATE_GAP + c.fm.getHeight() : 0), (c, y) ->
 			{

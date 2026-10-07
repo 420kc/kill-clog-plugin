@@ -20,7 +20,6 @@ final class SkillClogSectionRenderer
 	static final int CELL_SIZE = SPRITE_SIZE + PADDING;
 	private static final int SOLO_MIN_COLS = 5;
 	private static final int HEADER_GAP = 2;
-	private static final int SECTION_GAP = 6;
 	private static final String OBTAINED_LABEL = "Obtained: ";
 	private static final Font SECTION_FONT = FontManager.getRunescapeBoldFont();
 	private static final Font DETAIL_FONT = FontManager.getRunescapeSmallFont();
@@ -94,7 +93,7 @@ final class SkillClogSectionRenderer
 			int cols = soloColumns(width, entry.section.itemIds().size());
 			if (entry.section.hasHeading())
 			{
-				height += headingMetrics.getHeight() + HEADER_GAP;
+				height += headingMetrics.getHeight() + HEADER_GAP + CardBody.SECTION_RULE + CardBody.SECTION_AFTER;
 			}
 			height += detailMetrics.getHeight() + HEADER_GAP;
 			if (showsRiftsClosed(entry.section))
@@ -103,7 +102,7 @@ final class SkillClogSectionRenderer
 			}
 			height += gridHeight(entry.section.itemIds().size(), cols);
 		}
-		height += SECTION_GAP * Math.max(0, entries.size() - 1);
+		height += CardBody.SECTION_SPACE * Math.max(0, entries.size() - 1);
 		return height;
 	}
 
@@ -125,7 +124,9 @@ final class SkillClogSectionRenderer
 				g2.setFont(SECTION_FONT);
 				g2.setColor(TitleTooltip.OSRS_ORANGE);
 				g2.drawString(section.heading(), inset, y + headingMetrics.getAscent());
-				y += headingMetrics.getHeight() + HEADER_GAP;
+				// A heading carries its rule like a card's section title.
+				CardBody.sectionRule(g2, y + headingMetrics.getHeight() + HEADER_GAP, inset, width);
+				y += headingMetrics.getHeight() + HEADER_GAP + CardBody.SECTION_RULE + CardBody.SECTION_AFTER;
 			}
 			g2.setFont(DETAIL_FONT);
 			TitleTooltip.drawLabelValue(g2, detailMetrics, inset, y + detailMetrics.getAscent(), OBTAINED_LABEL,
@@ -140,7 +141,7 @@ final class SkillClogSectionRenderer
 				y += detailMetrics.getHeight() + HEADER_GAP;
 			}
 			y = paintGrid(g2, entry, section.primary(), i, inset, y, cols, hitBoxes);
-			if (i + 1 < entries.size()) y += SECTION_GAP;
+			if (i + 1 < entries.size()) y += CardBody.SECTION_SPACE;
 		}
 		return y;
 	}
