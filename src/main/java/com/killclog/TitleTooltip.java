@@ -435,15 +435,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		return itemHover.hoveredItemObtained() ? CLOG_GREEN : CLOG_RED;
 	}
 
-	/** The hover line under a sprite row, while one of that section's items is hovered. */
-	void paintSectionHoverLine(Graphics2D g2, FontMetrics fm, int width, int y, int section)
-	{
-		if (itemHover.isSectionHovered(section))
-		{
-			paintHeaderHoverLine(g2, fm, width, y + fm.getAscent());
-		}
-	}
-
 	private static String fitHeaderText(FontMetrics fm, String text, int maxWidth)
 	{
 		if (fm.stringWidth(text) <= maxWidth)

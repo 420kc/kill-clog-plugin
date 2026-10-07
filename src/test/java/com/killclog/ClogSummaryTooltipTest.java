@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.runelite.client.game.ItemManager;
-import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.AsyncBufferedImage;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
@@ -384,8 +383,8 @@ public class ClogSummaryTooltipTest
 	/** The ladder is the last thing on a card with no tabs, items or sources. */
 	private static int ladderY(ClogSummaryTooltip tip)
 	{
-		return tip.getHeight() - NativeTooltip.getInset() - ICON / 2
-			- TitleTooltip.hoverRowHeight(tip.getFontMetrics(FontManager.getRunescapeSmallFont()));
+		// The ladder closes the card; its tier's range reads in the band under the header.
+		return tip.getHeight() - NativeTooltip.getInset() - ICON / 2;
 	}
 
 	private static int ladderX(ClogSummaryTooltip tip, int tier)

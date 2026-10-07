@@ -61,6 +61,9 @@ final class CardBody
 		final Graphics2D g;
 		final int w;
 		final List<TooltipItemHover.HitBox> hits = new ArrayList<>();
+		// What shows of a scrolled part: a row moved out of it can't be pressed.
+		@Nullable
+		Rectangle window;
 
 		private Ctx(TitleTooltip card, FontMetrics fm, FontMetrics bfm, int available, Graphics2D g, int w)
 		{
@@ -84,6 +87,36 @@ final class CardBody
 	{
 		parts.add(part);
 		return this;
+	}
+
+	/** The body's parts as one part, as a card scrolls everything under its anchored band. */
+	Part asPart()
+	{
+		return part(c ->
+		{
+			int width = 0;
+			for (Part part : parts)
+			{
+				width = Math.max(width, part.width(c));
+			}
+			return width;
+		}, c ->
+		{
+			int height = 0;
+			for (Part part : parts)
+			{
+				height += part.height(c);
+			}
+			return height;
+		}, (c, y) ->
+		{
+			int top = y;
+			for (Part part : parts)
+			{
+				part.paint(c, top);
+				top += part.height(c);
+			}
+		});
 	}
 
 	/** A titled section under the parts before it: room above, not a divider, since its title carries a rule. */
@@ -252,20 +285,6 @@ final class CardBody
 		});
 	}
 
-	/** The hovered item's name under its section's sprites, measured for every name it may show. */
-	static Part hoverLine(int section, String... names)
-	{
-		return part(c ->
-		{
-			int width = 0;
-			for (String name : names)
-			{
-				width = Math.max(width, c.fm.stringWidth(name));
-			}
-			return width;
-		}, c -> TitleTooltip.hoverRowHeight(c.fm), (c, y) -> c.card.paintSectionHoverLine(c.g, c.fm, c.w, y, section));
-	}
-
 	/**
 	 * A centered row of full-size item sprites, a grid one row high: unobtained ones dimmed, quantities in the
 	 * corner, each hover-naming and wiki-linking like the grids do.
@@ -302,8 +321,11 @@ final class CardBody
 	{
 		return row(height, width, (c, y) ->
 		{
-			rows.span(y, height, key);
-			painter.paint(c, y, rows.hovered == key);
+			// Only what shows of the row answers, so one scrolled out of view can't be pressed.
+			int top = c.window != null ? Math.max(y, c.window.y) : y;
+			int bottom = c.window != null ? Math.min(y + height, c.window.y + c.window.height) : y + height;
+			rows.span(top, bottom - top, key);
+			painter.paint(c, y, rows.lastY >= top && rows.lastY < bottom);
 		});
 	}
 
@@ -339,6 +361,8 @@ final class CardBody
 					return;
 				}
 				Ctx view = new Ctx(c.card, c.fm, c.bfm, c.available - RAIL_GAP - RAIL_WIDTH, c.g, c.w - RAIL_GAP - RAIL_WIDTH);
+				Rectangle window = new Rectangle(0, y, c.w, scroll.window);
+				view.window = window;
 				int height = inner.height(view);
 				scroll.range = Math.max(0, height - scroll.window);
 				scroll.offset = Math.min(scroll.offset, scroll.range);
@@ -346,7 +370,6 @@ final class CardBody
 				c.g.clipRect(0, y, c.w, scroll.window);
 				inner.paint(view, y - scroll.offset);
 				c.g.setClip(clip);
-				Rectangle window = new Rectangle(0, y, c.w, scroll.window);
 				for (TooltipItemHover.HitBox hit : view.hits)
 				{
 					TooltipItemHover.HitBox shown = hit.within(window);

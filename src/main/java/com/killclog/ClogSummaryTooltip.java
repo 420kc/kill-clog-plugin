@@ -123,6 +123,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private final List<ClogSource> clogSources = new ArrayList<>(3);
 	@Nullable
 	private BiConsumer<MouseEvent, String> onOpenTab;
+	// Everything under the anchored band scrolls once the card grows past a long tab's height, three lines a notch.
+	private final CardBody.Scroll scroll = new CardBody.Scroll(this, CardBody.WINDOW, 3 * LINE_HEIGHT);
 	private final CardBody.ClickRows tabRows = new CardBody.ClickRows(this, (e, row) ->
 	{
 		if (onOpenTab != null)
@@ -347,22 +349,21 @@ public class ClogSummaryTooltip extends TitleTooltip
 			return body.add(CardBody.text(notice, NOTICE_COLOR, true));
 		}
 
-		// Completion, its bar, the tier ladder and the ladder's readout row; the current tier sits large
-		// in the header's corner.
+		// The current tier sits large in the header's corner. Any tier's, item's or source's name shows in the band
+		// under the header, and everything below it scrolls: completion, its bar and the tier ladder first.
+		CardBody card = new CardBody().add(CardBody.row(0, c -> 0, (c, y) ->
+		{
+			if (hasTotals() && tierSprite != null)
+			{
+				c.g.drawImage(tierSprite, c.w - c.inset() - tierSprite.getWidth(),
+					c.inset() + (getHeaderHeight() - tierSprite.getHeight()) / 2, null);
+			}
+		})).add(CardBody.headerHoverBand());
 		if (hasTotals())
 		{
-			body.add(CardBody.row(0, c -> 0, (c, y) ->
-			{
-				if (tierSprite != null)
-				{
-					c.g.drawImage(tierSprite, c.w - c.inset() - tierSprite.getWidth(),
-						c.inset() + (getHeaderHeight() - tierSprite.getHeight()) / 2, null);
-				}
-			}))
-				.add(CardBody.line("Completion: ", completionText()))
+			body.add(CardBody.line("Completion: ", completionText()))
 				.add(bar(obtained, totalSlots))
-				.add(tierLadder())
-				.add(CardBody.hoverLine(TIER_SECTION, ClogHelper.tierLabels(obtained, totalSlots)));
+				.add(tierLadder());
 		}
 
 		if (!tabs.isEmpty())
@@ -397,10 +398,15 @@ public class ClogSummaryTooltip extends TitleTooltip
 		}
 		if (!clogSources.isEmpty())
 		{
-			body.add(sources()).add(CardBody.hoverLine(SOURCE_SECTION,
-				clogSources.stream().map(source -> source.name).toArray(String[]::new)));
+			body.add(sources());
 		}
-		return body;
+		return card.add(CardBody.scroll(scroll, body.asPart()));
+	}
+
+	@Override
+	CardBody.Scroll scroll()
+	{
+		return scroll;
 	}
 
 	/**
@@ -504,7 +510,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 							y + size + DATE_GAP + c.fm.getAscent());
 					}
 				}
-			})).add(CardBody.hoverLine(section));
+			}));
 	}
 
 	/** Who supplied the log: each source's icon, its name on hover. */

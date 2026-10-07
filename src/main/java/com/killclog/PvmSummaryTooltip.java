@@ -75,6 +75,9 @@ public class PvmSummaryTooltip extends TitleTooltip
 		}
 	});
 
+	// Everything under the anchored band scrolls once the card grows past a long tab's height, three lines a notch.
+	private final CardBody.Scroll scroll = new CardBody.Scroll(this, CardBody.WINDOW, 3 * LINE_HEIGHT);
+
 	@Setter
 	private Image combatIcon;
 	private CombatAchievementResult caResult;
@@ -187,9 +190,16 @@ public class PvmSummaryTooltip extends TitleTooltip
 	}
 
 	@Override
+	CardBody.Scroll scroll()
+	{
+		return scroll;
+	}
+
+	@Override
 	protected CardBody body()
 	{
-		// The combat level leads the card; PvM and PvP each follow under their own subheader.
+		// The combat level leads the card; PvM and PvP each follow under their own subheader. Any sprite's name
+		// shows in the band under the header, and everything below it scrolls.
 		CardBody body = new CardBody()
 			.add(CardBody.gap(LEVEL_GAP_ABOVE))
 			.add(leadRow(combatIcon, combatText(combatLevel)))
@@ -231,18 +241,17 @@ public class PvmSummaryTooltip extends TitleTooltip
 		body.add(CardBody.gap(WEAPON_PAD))
 			.add(CardBody.sprites(0, superiorSprites, PanelData.SUPERIOR_ITEMS, PanelData.SUPERIOR_ITEM_NAMES,
 				superiorCounts, WEAPON_PAD))
-			.add(CardBody.hoverLine(0, PanelData.SUPERIOR_ITEM_NAMES))
 			.titled("Raids");
 		for (int i = 0; i < RAID_LABELS.length; i++)
 		{
 			body.add(raidRow(i));
 		}
-		return body.add(CardBody.gap(WEAPON_PAD))
+		body.add(CardBody.gap(WEAPON_PAD))
 			.add(CardBody.sprites(1, weaponSprites, PanelData.MEGARARE_ITEM_IDS, PanelData.MEGARARE_ITEM_NAMES,
 				weaponCounts, WEAPON_PAD))
-			.add(CardBody.hoverLine(1, PanelData.MEGARARE_ITEM_NAMES))
 			.titled(PVP_HEADER)
 			.add(pvpRows.part());
+		return new CardBody().add(CardBody.headerHoverBand()).add(CardBody.scroll(scroll, body.asPart()));
 	}
 
 	/** Progress rides alongside a real kc in either mode; a raid never run stays dash-only. */
