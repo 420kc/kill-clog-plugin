@@ -185,10 +185,8 @@ public class HiscoreService
 	/** The player's League row, null when Jagex says they have none, failing when Jagex says nothing. */
 	CompletableFuture<HiscoreResult> lookupLeague(String player)
 	{
-		String encoded = URLEncoder.encode(player.toLowerCase(Locale.ROOT), StandardCharsets.UTF_8);
-		return lookupTable(player, LEAGUE_TABLE)
-			.thenCompose(row -> row != null ? CompletableFuture.completedFuture(row)
-				: missing(absentTables.getIfPresent(rankKey(LEAGUE_TABLE, encoded)) != null));
+		// Never a cached "not found": only this lookup's own answer can call the player missing.
+		return tableFlight(player, LEAGUE_TABLE);
 	}
 
 	CompletableFuture<HiscoreResult> lookupRanks(String player, RankLeaderboard table)
@@ -199,20 +197,33 @@ public class HiscoreService
 	/** True once Jagex has said this player has no row on this leaderboard. */
 	boolean notOnBoard(String player, RankLeaderboard table)
 	{
-		return absentTables.getIfPresent(rankKey(table.endpoint,
+		return notOnBoard(player, table.endpoint);
+	}
+
+	private boolean notOnBoard(String player, String endpoint)
+	{
+		return absentTables.getIfPresent(rankKey(endpoint,
 			URLEncoder.encode(player.toLowerCase(Locale.ROOT), StandardCharsets.UTF_8))) != null;
 	}
 
 	/** One leaderboard's full row for a player; null when absent or unreachable. */
 	CompletableFuture<HiscoreResult> lookupTable(String player, String endpoint)
 	{
+		if (notOnBoard(player, endpoint)) return CompletableFuture.completedFuture(null);
+		return tableFlight(player, endpoint).completeOnTimeout(null, 12, TimeUnit.SECONDS).exceptionally(ex -> null);
+	}
+
+	/** One shared fetch of a board's row: null on the board's own 404, failing when Jagex says nothing. */
+	private CompletableFuture<HiscoreResult> tableFlight(String player, String endpoint)
+	{
 		String encoded = URLEncoder.encode(player.toLowerCase(Locale.ROOT), StandardCharsets.UTF_8);
 		String key = rankKey(endpoint, encoded);
 		HiscoreResult cached = rankTables.getIfPresent(key);
-		if (cached != null || absentTables.getIfPresent(key) != null) return CompletableFuture.completedFuture(cached);
-		return HttpUtil.singleFlightLookup(rankRequests, key,
-			() -> fetchAsync(endpoint, encoded, null).thenApply(body -> rankTables.getIfPresent(key)))
-			.completeOnTimeout(null, 12, TimeUnit.SECONDS).exceptionally(ex -> null);
+		if (cached != null) return CompletableFuture.completedFuture(cached);
+		Set<String> absent = ConcurrentHashMap.newKeySet();
+		return HttpUtil.singleFlightLookup(rankRequests, key, () -> fetchAsync(endpoint, encoded, absent)
+			.handle((body, error) -> rankTables.getIfPresent(key))
+			.thenCompose(row -> row != null ? CompletableFuture.completedFuture(row) : missing(!absent.isEmpty())));
 	}
 
 	private static String rankKey(String endpoint, String encodedPlayer)

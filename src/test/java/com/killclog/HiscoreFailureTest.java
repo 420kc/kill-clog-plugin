@@ -297,6 +297,27 @@ public class HiscoreFailureTest
 		assertDown(service.lookupLeague("Recent rename"));
 	}
 
+	@Test
+	public void anEarlierLeagueNotFoundNeverDecidesALaterOutage() throws Exception
+	{
+		int[] code = {404};
+		int[] asked = {0};
+		HiscoreService service = service(chain ->
+		{
+			asked[0]++;
+			return response(chain, code[0], "");
+		});
+		assertNull(service.lookupLeague("Recent rename").get(3, TimeUnit.SECONDS));
+		code[0] = 503;
+		assertDown(service.lookupLeague("Recent rename"));
+		// A board that just said "not found" still goes unasked for its ranks.
+		code[0] = 404;
+		assertNull(service.lookupLeague("Recent rename").get(3, TimeUnit.SECONDS));
+		int before = asked[0];
+		assertNull(service.lookupTable("Recent rename", HiscoreService.LEAGUE_TABLE).get(3, TimeUnit.SECONDS));
+		assertEquals(before, asked[0]);
+	}
+
 	private static void assertDown(CompletableFuture<HiscoreResult> lookup) throws Exception
 	{
 		try
