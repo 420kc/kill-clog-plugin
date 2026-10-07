@@ -95,14 +95,27 @@ public class LeagueViewPanelTest
 	@Test
 	public void aLookupNoProviderNamedStillCountsAsTheShownPlayer() throws Exception
 	{
-		// Looked up at the login screen; only the hiscores answer, so no provider resolves the name.
+		// The hiscores answer; every log source and the name lookup find nothing, so no provider names the player.
+		HiscoreResult row = new HiscoreResult(AccountType.REGULAR, new java.util.HashMap<>(), new java.util.HashMap<>(),
+			new java.util.HashMap<>(), new java.util.HashMap<>(), new java.util.HashMap<>(), 100, 1000L, 30, 1);
+		when(hiscores.lookup(eq("Friend"), any())).thenReturn(CompletableFuture.completedFuture(row));
+		when(clogs.lookup(any())).thenReturn(CompletableFuture.completedFuture(null));
+		when(runeProfile.lookupClog(any())).thenReturn(CompletableFuture.completedFuture(null));
+		when(killclog.lookupClog(any())).thenReturn(CompletableFuture.completedFuture(null));
+		when(killclog.lookupClog(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
+		when(clogs.lookupRsn(any())).thenReturn(CompletableFuture.completedFuture(null));
 		SwingUtilities.invokeAndWait(() ->
 		{
 			field(panel, "searchBar", IconTextField.class).setText("Friend");
 			panel.doLookup();
 		});
-		// The login's own lookup must leave this one standing.
-		assertEquals("Friend", panel.getDisplayedRsn());
+		verify(clogs, org.mockito.Mockito.timeout(3000)).lookupRsn("Friend");
+		SwingUtilities.invokeAndWait(() ->
+		{
+			assertSame(row, session.getHiscoreResult());
+			assertNull("no provider named the player", field(panel, "rsn", String.class));
+			assertEquals("Friend", panel.getDisplayedRsn());
+		});
 	}
 
 	@Test

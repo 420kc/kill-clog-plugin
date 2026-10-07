@@ -1049,6 +1049,34 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void theLoginLookupLeavesALookupOfSomeoneElseStanding() throws Exception
+	{
+		when(localClogCache.setActivePlayer(RSN)).thenReturn(true);
+		// Looked up at the login screen, where no provider may have named the player yet.
+		when(panel.getDisplayedRsn()).thenReturn("Friend");
+		GameStateChanged login = new GameStateChanged();
+		login.setGameState(GameState.LOGGED_IN);
+		plugin.onGameStateChanged(login);
+		ticks(1);
+		drainEdt();
+		verify(panel, org.mockito.Mockito.atLeastOnce()).getDisplayedRsn();
+		verify(panel, never()).setPlayerName(any());
+		verify(panel, never()).doLookup();
+
+		// A lookup of yourself gives way to the login's own.
+		gameState = GameState.LOGIN_SCREEN;
+		logout();
+		drainEdt();
+		when(panel.getDisplayedRsn()).thenReturn(RSN.toLowerCase(java.util.Locale.ROOT));
+		gameState = GameState.LOGGED_IN;
+		plugin.onGameStateChanged(login);
+		ticks(1);
+		drainEdt();
+		verify(panel).setPlayerName(RSN);
+		verify(panel).doLookup();
+	}
+
+	@Test
 	public void aLeagueWorldPointsThePanelAndChatAtItsLeague() throws Exception
 	{
 		KillClogChatCommand chat = (KillClogChatCommand) field("kclogCommand");
