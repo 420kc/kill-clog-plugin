@@ -60,6 +60,8 @@ While a League runs, a **Leagues** switch beside the search bar flips the panel 
 
 HiScores load for any valid RSN, including Collection Log totals and ranks when listed. Item-by-item Collection Log details appear when that player has data available through TempleOSRS, RuneProfile, or Kill Clog.
 
+Browse the entire Collection Log through the Clog Summary's navigation.
+
 ## Grid and List views
 
 Toggle between the default Grid view and List view with the **Menu** button under the search bar. Comparison uses Grid view.
