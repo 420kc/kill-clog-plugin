@@ -19,7 +19,6 @@ final class TooltipItemHover
 	private int hoveredItemId = -1;
 	private int hoveredSection = -1;
 	private boolean hoveredObtained;
-	private int hoveredItemCount;
 	private String hoveredItemName;
 	// Where the mouse last was over the card, so a scroll can hover what now sits under it.
 	private int lastX = -1;
@@ -58,7 +57,6 @@ final class TooltipItemHover
 			hoveredItemName = null;
 			hoveredSection = -1;
 			hoveredObtained = false;
-			hoveredItemCount = 0;
 			component.repaint();
 		}
 	}
@@ -81,25 +79,6 @@ final class TooltipItemHover
 	boolean hoveredItemObtained()
 	{
 		return hoveredItemId > 0 && hoveredObtained;
-	}
-
-	String hoveredDuplicateCountText()
-	{
-		return hoveredItemObtained() ? duplicateCountText(hoveredItemCount) : null;
-	}
-
-	static String duplicateCountText(int count)
-	{
-		if (count <= 1)
-		{
-			return null;
-		}
-		if (count >= 10_000)
-		{
-			long thousands = Math.round(count / 1000.0);
-			return "x" + TitleTooltip.grouped(thousands) + "k";
-		}
-		return "x" + TitleTooltip.grouped(count);
 	}
 
 	private void install()
@@ -144,9 +123,8 @@ final class TooltipItemHover
 		int nextId = hitBox != null ? hitBox.itemId : -1;
 		int nextSection = hitBox != null ? hitBox.section : -1;
 		boolean nextObtained = hitBox != null && hitBox.obtained;
-		int nextCount = hitBox != null ? hitBox.count : 0;
 		if (nextId == hoveredItemId && nextSection == hoveredSection
-			&& nextObtained == hoveredObtained && nextCount == hoveredItemCount
+			&& nextObtained == hoveredObtained
 			&& Objects.equals(hitBox != null ? hitBox.itemName : null, hoveredItemName))
 		{
 			return;
@@ -155,7 +133,6 @@ final class TooltipItemHover
 		hoveredItemName = hitBox != null ? hitBox.itemName : null;
 		hoveredSection = nextSection;
 		hoveredObtained = nextObtained;
-		hoveredItemCount = nextCount;
 		component.repaint();
 	}
 
@@ -184,17 +161,14 @@ final class TooltipItemHover
 		private final String itemName;
 		private final Rectangle bounds;
 		private final boolean obtained;
-		private final int count;
 
-		HitBox(int section, int itemId, String itemName, Rectangle bounds,
-			boolean obtained, int count)
+		HitBox(int section, int itemId, String itemName, Rectangle bounds, boolean obtained)
 		{
 			this.section = section;
 			this.itemId = itemId;
 			this.itemName = TooltipItemLink.displayName(itemId, itemName);
 			this.bounds = bounds;
 			this.obtained = obtained;
-			this.count = Math.max(count, 0);
 		}
 
 		/** The part of this box a window shows, or null when it shows none of it. */
@@ -202,7 +176,7 @@ final class TooltipItemHover
 		HitBox within(Rectangle window)
 		{
 			Rectangle shown = bounds.intersection(window);
-			return shown.isEmpty() ? null : new HitBox(section, itemId, itemName, shown, obtained, count);
+			return shown.isEmpty() ? null : new HitBox(section, itemId, itemName, shown, obtained);
 		}
 	}
 }

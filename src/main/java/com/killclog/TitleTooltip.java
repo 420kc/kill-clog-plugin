@@ -528,13 +528,25 @@ public abstract class TitleTooltip extends NativeTooltip
 	 */
 	protected int getHeaderZoneHeight()
 	{
-		return getHeaderHeight() + (hasBody() ? SEPARATOR_GAP + 1 + SEPARATOR_GAP : 0);
+		return getHeaderHeight() + SEPARATOR_GAP + 1 + SEPARATOR_GAP;
 	}
 
-	/** False for a card that is its header alone, which then draws no divider under it. */
-	protected boolean hasBody()
+	/** The scroll window of a card that has one. */
+	@Nullable
+	CardBody.Scroll scroll()
 	{
-		return true;
+		return null;
+	}
+
+	/** A comparison's two cards scroll as one wherever both can. */
+	static void scrollTogether(JToolTip blue, JToolTip red)
+	{
+		CardBody.Scroll left = blue instanceof TitleTooltip ? ((TitleTooltip) blue).scroll() : null;
+		CardBody.Scroll right = red instanceof TitleTooltip ? ((TitleTooltip) red).scroll() : null;
+		if (left != null && right != null)
+		{
+			left.scrollWith(right);
+		}
 	}
 
 	/** The card's body as parts; a card that lists its body needs no sizing or painting of its own. */
@@ -648,8 +660,6 @@ public abstract class TitleTooltip extends NativeTooltip
 			g2.drawString(titleSuffix, inset + activeLineWidth, lineY);
 			activeLineWidth += suffixWidth;
 		}
-		int upperLineY = titleBaseline;
-		int upperLineWidth = activeLineWidth;
 
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		FontMetrics fm = g2.getFontMetrics();
@@ -661,8 +671,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		// Info line (KC/PB for boss cells, Kills for unsynced)
 		if (infoLabel != null)
 		{
-			upperLineY = lineY;
-			upperLineWidth = activeLineWidth;
 			lineY += lineY == titleBaseline ? NAME_LINE_HEIGHT : LINE_HEIGHT;
 			activeLineWidth = drawLabelValue(g2, fm, inset, lineY, infoLabel, infoValue, infoColor);
 			if (infoLabel2 != null)
@@ -675,8 +683,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		// Rank line
 		if (rankText != null)
 		{
-			upperLineY = lineY;
-			upperLineWidth = activeLineWidth;
 			lineY += lineY == titleBaseline ? NAME_LINE_HEIGHT : LINE_HEIGHT;
 			activeLineWidth = drawLabelValue(g2, fm, inset, lineY, "Rank: ", rankText,
 				"Unranked".equals(rankText) ? OSRS_ORANGE : Color.WHITE);
@@ -685,16 +691,12 @@ public abstract class TitleTooltip extends NativeTooltip
 		// Subtitle (label in orange, value in subtitleColor)
 		if (subtitleLabel != null)
 		{
-			upperLineY = lineY;
-			upperLineWidth = activeLineWidth;
 			lineY += lineY == titleBaseline ? NAME_LINE_HEIGHT : LINE_HEIGHT;
 			activeLineWidth = drawLabelValue(g2, fm, inset, lineY, subtitleLabel, subtitleValue, subtitleColor);
 		}
 
 		if (onBack != null)
 		{
-			upperLineY = lineY;
-			upperLineWidth = activeLineWidth;
 			lineY += lineY == titleBaseline ? NAME_LINE_HEIGHT : LINE_HEIGHT;
 			g2.setColor(backHovered ? Color.WHITE : OSRS_ORANGE);
 			g2.drawString(backLabel, inset, lineY);
@@ -704,19 +706,9 @@ public abstract class TitleTooltip extends NativeTooltip
 
 		if (itemNameInHeader)
 		{
-			// The hovered item's name on the last header row, its duplicate count above.
-			if (upperLineY != lineY)
-			{
-				paintHeaderRightText(g2, fm, w, upperLineY, upperLineWidth,
-					itemHover.hoveredDuplicateCountText(), CLOG_YELLOW);
-			}
+			// The hovered item's name on the last header row; full-size sprites carry their own counts.
 			paintHeaderRightText(g2, fm, w, lineY, activeLineWidth,
 				itemHover.hoveredItemName(), getHeaderHoverLineColor());
-		}
-
-		if (!hasBody())
-		{
-			return lineY;
 		}
 
 		// Separator

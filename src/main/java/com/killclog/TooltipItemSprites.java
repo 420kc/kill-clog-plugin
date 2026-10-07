@@ -14,12 +14,9 @@ import javax.swing.JComponent;
 import javax.swing.SwingUtilities;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.util.AsyncBufferedImage;
-import net.runelite.client.util.ImageUtil;
 
 final class TooltipItemSprites
 {
-	private static final int DEFAULT_SPRITE_SIZE = 32;
-
 	private final BufferedImage[] sprites;
 	private final String[] itemNames;
 
@@ -30,7 +27,7 @@ final class TooltipItemSprites
 	}
 
 	static TooltipItemSprites load(List<Integer> itemIds, Map<Integer, String> itemNames,
-		ItemManager itemManager, int spriteSize, IntUnaryOperator countForItem, JComponent repaintTarget)
+		ItemManager itemManager, IntUnaryOperator countForItem, JComponent repaintTarget)
 	{
 		TooltipItemSprites loaded = new TooltipItemSprites(itemIds.size());
 		for (int i = 0; i < itemIds.size(); i++)
@@ -44,11 +41,11 @@ final class TooltipItemSprites
 				((AsyncBufferedImage) img).onLoaded(() ->
 					SwingUtilities.invokeLater(() ->
 					{
-						loaded.sprites[idx] = resizeSprite(img, spriteSize);
+						loaded.sprites[idx] = img;
 						repaintTarget.repaint();
 					}));
 			}
-			loaded.sprites[i] = resizeSprite(img, spriteSize);
+			loaded.sprites[i] = img;
 		}
 		return loaded;
 	}
@@ -78,7 +75,7 @@ final class TooltipItemSprites
 	 */
 	static List<TooltipItemHover.HitBox> paintGrid(Graphics2D g2, TooltipItemSprites sprites,
 		Map<Integer, String> names, int section, List<Integer> ids, Set<Integer> obtainedIds,
-		Map<Integer, Integer> counts, int startX, int startY, int cols, int size, int cellSize, boolean quantities)
+		Map<Integer, Integer> counts, int startX, int startY, int cols, int size, int cellSize)
 	{
 		List<TooltipItemHover.HitBox> hitBoxes = new ArrayList<>(ids.size());
 		int ascent = g2.getFontMetrics().getAscent();
@@ -91,7 +88,7 @@ final class TooltipItemSprites
 			int count = obtained ? counts.getOrDefault(itemId, 1) : 1;
 			hitBoxes.add(new TooltipItemHover.HitBox(section, itemId,
 				sprites != null ? sprites.nameAt(i) : TooltipItemLink.itemName(names, itemId),
-				new Rectangle(x, y, size, size), obtained, count));
+				new Rectangle(x, y, size, size), obtained));
 			BufferedImage sprite = sprites != null ? sprites.spriteAt(i) : null;
 			if (sprite != null)
 			{
@@ -101,7 +98,7 @@ final class TooltipItemSprites
 				g2.drawImage(sprite, x + (size - sprite.getWidth()) / 2, y + (size - sprite.getHeight()) / 2, null);
 				g2.setComposite(AlphaComposite.SrcOver);
 			}
-			if (quantities && obtained && count > 1)
+			if (obtained && count > 1)
 			{
 				String quantity = String.valueOf(count);
 				g2.setColor(Color.BLACK);
@@ -111,16 +108,5 @@ final class TooltipItemSprites
 			}
 		}
 		return hitBoxes;
-	}
-
-	private static BufferedImage resizeSprite(BufferedImage img, int spriteSize)
-	{
-		if (img == null || spriteSize >= DEFAULT_SPRITE_SIZE)
-		{
-			return img;
-		}
-		return ImageUtil.resizeImage(
-			ImageUtil.resizeCanvas(img, DEFAULT_SPRITE_SIZE, DEFAULT_SPRITE_SIZE),
-			spriteSize, spriteSize);
 	}
 }

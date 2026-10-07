@@ -190,7 +190,7 @@ public class SummaryTooltip extends TitleTooltip
 					if (petNames[i] != null)
 					{
 						c.hits.add(new TooltipItemHover.HitBox(0, petList.get(i), petNames[i],
-							new Rectangle(px, py, PET_SIZE, PET_SIZE), true, 1));
+							new Rectangle(px, py, PET_SIZE, PET_SIZE), true));
 					}
 				}
 				paintHeaderHoverLine(c.g, c.fm, c.w, gridY + getPetGridHeight() + c.fm.getAscent());

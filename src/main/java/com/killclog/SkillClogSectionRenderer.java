@@ -46,7 +46,7 @@ final class SkillClogSectionRenderer
 		{
 			TooltipItemSprites sprites = itemManager != null
 				? TooltipItemSprites.load(section.itemIds(), section.itemNames(), itemManager,
-					SPRITE_SIZE, itemId -> 1, repaintTarget)
+					itemId -> 1, repaintTarget)
 				: null;
 			next.add(new Entry(section, sprites));
 		}
@@ -153,7 +153,7 @@ final class SkillClogSectionRenderer
 		g2.setFont(DETAIL_FONT);
 		hitBoxes.addAll(TooltipItemSprites.paintGrid(g2, entry.sprites, entry.section.itemNames(), sectionIndex,
 			itemIds, playerItems.obtainedIds(), playerItems.obtainedCounts(), startX, y, cols, SPRITE_SIZE,
-			CELL_SIZE, true));
+			CELL_SIZE));
 		return y + gridHeight(itemIds.size(), cols);
 	}
 

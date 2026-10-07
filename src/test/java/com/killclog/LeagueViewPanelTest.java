@@ -246,7 +246,7 @@ public class LeagueViewPanelTest
 			javax.swing.JComponent.class, HiscoreResult.class, ClogResult.class, String.class, String.class);
 		summary.setAccessible(true);
 		Method cell = KillClogPanel.class.getDeclaredMethod("makeSpriteTooltip", javax.swing.JLabel.class, TooltipData.class,
-			int.class, String.class, boolean.class, HiscoreResult.class, String.class);
+			int.class, String.class, HiscoreResult.class, String.class);
 		cell.setAccessible(true);
 		HiscoreResult row = new HiscoreResult(AccountType.REGULAR, new java.util.HashMap<>(), new java.util.HashMap<>(),
 			new java.util.HashMap<>(), new java.util.HashMap<>(), new java.util.HashMap<>(), 100, 1000L, 30, 1);
@@ -259,11 +259,11 @@ public class LeagueViewPanelTest
 				panel.setLoggedInPlayer("Me", AccountType.REGULAR);
 				assertTrue("your main log offers setup",
 					field(summary.invoke(panel, owner, row, null, "Me", null), "firstTimeSetup", Boolean.class));
-				String mainNotice = field(cell.invoke(panel, owner, null, 4, "Zulrah", false, row, "Me"), "notice", String.class);
+				String mainNotice = field(cell.invoke(panel, owner, null, 4, "Zulrah", row, "Me"), "notice", String.class);
 				session.readLeague("demonic-pacts", null);
 				assertFalse("a League read from another world never does",
 					field(summary.invoke(panel, owner, row, null, "Me", null), "firstTimeSetup", Boolean.class));
-				String leagueNotice = field(cell.invoke(panel, owner, null, 4, "Zulrah", false, row, "Me"), "notice", String.class);
+				String leagueNotice = field(cell.invoke(panel, owner, null, 4, "Zulrah", row, "Me"), "notice", String.class);
 				assertTrue(mainNotice, mainNotice.contains("setup"));
 				assertFalse(leagueNotice, leagueNotice.contains("setup"));
 			}

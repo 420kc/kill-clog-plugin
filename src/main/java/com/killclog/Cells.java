@@ -47,10 +47,9 @@ public class Cells
 	public interface SinglePlayerTooltipBuilder
 	{
 		/** Same tooltip, built against the compared (red) player's context. */
-		JToolTip buildCompared(JLabel owner, TooltipData data, int gridCols,
-			String name, boolean compact);
+		JToolTip buildCompared(JLabel owner, TooltipData data, int gridCols, String name);
 
-		JToolTip build(JLabel owner, @Nullable TooltipData data, int gridCols, String name, boolean compact);
+		JToolTip build(JLabel owner, @Nullable TooltipData data, int gridCols, String name);
 	}
 
 	// Deps
@@ -256,7 +255,7 @@ public class Cells
 		}
 	}
 
-	public JPanel buildClueTierCell(HiscoreSkill tier, int itemId, boolean compact)
+	public JPanel buildClueTierCell(HiscoreSkill tier, int itemId)
 	{
 		String displayName = capitalizeTier(tier);
 		JLabel label = new JLabel()
@@ -264,7 +263,7 @@ public class Cells
 			@Override
 			public JToolTip createToolTip()
 			{
-				return buildClueTierTooltip(this, tier, displayName, compact);
+				return buildClueTierTooltip(this, tier, displayName);
 			}
 		};
 		styleLabel(label, tier.getName());
@@ -493,20 +492,13 @@ public class Cells
 		return buildBossTooltip(owner, boss);
 	}
 
-	/**
-	 * A Collection Log page's popup: its grid for the player, or both players' side by side. A dense page
-	 * draws small alone and header-only in a pair, as the dense clue tiers do.
-	 */
-	public JToolTip buildPageTooltip(JLabel owner, String name, boolean dense,
-		@Nullable TooltipData blue, @Nullable TooltipData red)
+	/** A Collection Log page's popup: its grid for the player, or both players' side by side. */
+	public JToolTip buildPageTooltip(JLabel owner, String name, @Nullable TooltipData blue, @Nullable TooltipData red)
 	{
-		if (comparison.isComparisonMode())
-		{
-			return wrapSideBySide(owner,
-				singlePlayerBuilder.build(owner, dense && blue != null ? blue.withoutGrid() : blue, 5, name, false),
-				singlePlayerBuilder.buildCompared(owner, dense && red != null ? red.withoutGrid() : red, 5, name, false));
-		}
-		return singlePlayerBuilder.build(owner, blue, dense ? 10 : 5, name, dense);
+		return comparison.isComparisonMode()
+			? wrapSideBySide(owner, singlePlayerBuilder.build(owner, blue, 5, name),
+				singlePlayerBuilder.buildCompared(owner, red, 5, name))
+			: singlePlayerBuilder.build(owner, blue, 5, name);
 	}
 
 	private JToolTip buildBossTooltip(JLabel owner, HiscoreSkill boss)
@@ -520,13 +512,13 @@ public class Cells
 	{
 		if (comparison.isComparisonMode())
 		{
-			JToolTip blue = singlePlayerBuilder.build(owner, blueData, 5, name, false);
-			JToolTip red = singlePlayerBuilder.buildCompared(owner, redData, 5, name, false);
+			JToolTip blue = singlePlayerBuilder.build(owner, blueData, 5, name);
+			JToolTip red = singlePlayerBuilder.buildCompared(owner, redData, 5, name);
 			decorateBossTooltip(blue, wikiPage, lookupSession.getHiscoreResult());
 			decorateBossTooltip(red, wikiPage, comparison.getCompareHiscoreResult());
 			return wrapSideBySide(owner, blue, red);
 		}
-		JToolTip tip = singlePlayerBuilder.build(owner, blueData, 5, name, false);
+		JToolTip tip = singlePlayerBuilder.build(owner, blueData, 5, name);
 		decorateBossTooltip(tip, wikiPage, lookupSession.getHiscoreResult());
 		return tip;
 	}
@@ -647,32 +639,12 @@ public class Cells
 		return tip;
 	}
 
-	private JToolTip buildClueTierTooltip(JLabel owner, HiscoreSkill tier, String displayName, boolean compact)
+	private JToolTip buildClueTierTooltip(JLabel owner, HiscoreSkill tier, String displayName)
 	{
-		int gridCols = compact ? 10 : 5;
-		if (comparison.isComparisonMode())
-		{
-			TooltipData blueData = tooltipDataMap.get(tier);
-			TooltipData redData = comparison.buildCompareClueTierData(tier);
-			// The dense clue tiers stay header-only cards in comparison, as
-			// they always have: two full grids would dwarf the panel.
-			if (suppressComparisonClueGrid(tier))
-			{
-				blueData = blueData != null ? blueData.withoutGrid() : null;
-				redData = redData != null ? redData.withoutGrid() : null;
-			}
-			return wrapSideBySide(owner,
-				singlePlayerBuilder.build(owner, blueData, gridCols, displayName, compact),
-				singlePlayerBuilder.buildCompared(owner, redData, gridCols, displayName, compact));
-		}
-		return singlePlayerBuilder.build(owner, tooltipDataMap.get(tier), gridCols, displayName, compact);
-	}
-
-	private static boolean suppressComparisonClueGrid(HiscoreSkill tier)
-	{
-		return tier == HiscoreSkill.CLUE_SCROLL_EASY
-			|| tier == HiscoreSkill.CLUE_SCROLL_MEDIUM
-			|| tier == HiscoreSkill.CLUE_SCROLL_HARD;
+		return comparison.isComparisonMode()
+			? wrapSideBySide(owner, singlePlayerBuilder.build(owner, tooltipDataMap.get(tier), 5, displayName),
+				singlePlayerBuilder.buildCompared(owner, comparison.buildCompareClueTierData(tier), 5, displayName))
+			: singlePlayerBuilder.build(owner, tooltipDataMap.get(tier), 5, displayName);
 	}
 
 	/** Progress for a Clue Summary row; unsynced or unknown data shows none. */
@@ -705,10 +677,10 @@ public class Cells
 		{
 			TooltipData redData = comparison.buildClueRare(name, clogCategory);
 			return wrapSideBySide(owner,
-				singlePlayerBuilder.build(owner, data, 5, name, false),
-				singlePlayerBuilder.buildCompared(owner, redData, 5, name, false));
+				singlePlayerBuilder.build(owner, data, 5, name),
+				singlePlayerBuilder.buildCompared(owner, redData, 5, name));
 		}
-		return singlePlayerBuilder.build(owner, data, 5, name, false);
+		return singlePlayerBuilder.build(owner, data, 5, name);
 	}
 
 	private JToolTip buildCustomRareTooltip(JLabel owner, String name, String rareKey, int[] itemIds)
@@ -717,10 +689,10 @@ public class Cells
 		{
 			TooltipData redData = comparison.buildCustomRare(name, itemIds);
 			return wrapSideBySide(owner,
-				singlePlayerBuilder.build(owner, rareTooltips.get(rareKey), 5, name, false),
-				singlePlayerBuilder.buildCompared(owner, redData, 5, name, false));
+				singlePlayerBuilder.build(owner, rareTooltips.get(rareKey), 5, name),
+				singlePlayerBuilder.buildCompared(owner, redData, 5, name));
 		}
-		return singlePlayerBuilder.build(owner, rareTooltips.get(rareKey), 5, name, false);
+		return singlePlayerBuilder.build(owner, rareTooltips.get(rareKey), 5, name);
 	}
 
 	// Helpers

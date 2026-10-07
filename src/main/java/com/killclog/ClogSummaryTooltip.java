@@ -432,7 +432,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 					c.g.drawImage(icon, x, y, null);
 				}
 				c.hits.add(new TooltipItemHover.HitBox(reached ? TIER_SECTION : TIER_SECTION + 1, 0, labels[i],
-					new Rectangle(x, y, ICON_SIZE, ICON_SIZE), false, 1));
+					new Rectangle(x, y, ICON_SIZE, ICON_SIZE), false));
 				x += ICON_SIZE + ICON_GAP;
 			}
 			c.g.setComposite(solid);
@@ -467,7 +467,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 						c.g.drawImage(shelf.sprites[i], sx, y, null);
 					}
 					c.hits.add(new TooltipItemHover.HitBox(section, shelf.ids[i], shelf.names[i],
-						new Rectangle(sx, y, RECENT_SIZE, RECENT_SIZE), true, 1));
+						new Rectangle(sx, y, RECENT_SIZE, RECENT_SIZE), true));
 					String date = shelf.dates != null ? shelf.dates[i] : null;
 					if (date != null)
 					{
@@ -515,7 +515,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 				}
 				c.hits.add(new TooltipItemHover.HitBox(SOURCE_SECTION + i, 0, source.name,
 					new Rectangle(iconX - SOURCE_HIT_PAD, y - SOURCE_HIT_PAD,
-						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2, SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2), false, 1));
+						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2, SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2), false));
 			}
 			if (itemHover.hoveredSection() >= SOURCE_SECTION)
 			{

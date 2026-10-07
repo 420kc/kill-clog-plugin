@@ -29,7 +29,8 @@ public class ClogTabTooltipTest
 
 		wheel(card, top + 5, 1);
 		assertEquals(3, card.offset());
-		// The mouse stayed put, so the page that scrolled under it is the one a press opens.
+		// The mouse stayed put, so once the card repaints the page that scrolled under it is the one a press opens.
+		painted(card);
 		List<Integer> opened = new ArrayList<>();
 		card.setOnOpenPage((press, page) -> opened.add(page));
 		press(card, top + 5);
@@ -60,7 +61,7 @@ public class ClogTabTooltipTest
 	{
 		ClogTabTooltip blue = painted(card(57));
 		ClogTabTooltip red = painted(card(57));
-		blue.scrollWith(red);
+		TitleTooltip.scrollTogether(blue, red);
 		wheel(blue, firstRowY(blue), 2);
 		assertEquals(6, red.offset());
 		wheel(red, firstRowY(red), -1);

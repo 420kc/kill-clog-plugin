@@ -242,17 +242,16 @@ public class KillClogPanel extends PluginPanel
 		this.cells.setSinglePlayerTooltipBuilder(new Cells.SinglePlayerTooltipBuilder()
 		{
 			@Override
-			public JToolTip build(JLabel owner, TooltipData data, int gridCols, String name, boolean compact)
+			public JToolTip build(JLabel owner, TooltipData data, int gridCols, String name)
 			{
-				return makeSpriteTooltip(owner, data, gridCols, name, compact,
+				return makeSpriteTooltip(owner, data, gridCols, name,
 					lookupSession.getHiscoreResult(), lookupSession.getCurrentLookupRsn());
 			}
 
 			@Override
-			public JToolTip buildCompared(JLabel owner, TooltipData data, int gridCols,
-				String name, boolean compact)
+			public JToolTip buildCompared(JLabel owner, TooltipData data, int gridCols, String name)
 			{
-				return makeSpriteTooltip(owner, data, gridCols, name, compact,
+				return makeSpriteTooltip(owner, data, gridCols, name,
 					comparison.getCompareHiscoreResult(), comparison.getCompareRsn());
 			}
 		});
@@ -552,17 +551,17 @@ public class KillClogPanel extends PluginPanel
 		JPanel clueRow1 = new JPanel(new GridLayout(1, 3));
 		clueRow1.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		clueRow1.setAlignmentX(0f);
-		clueRow1.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[0], PanelData.CLUE_TIER_ITEM_IDS[0], false));
-		clueRow1.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[1], PanelData.CLUE_TIER_ITEM_IDS[1], true));
-		clueRow1.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[2], PanelData.CLUE_TIER_ITEM_IDS[2], true));
+		clueRow1.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[0], PanelData.CLUE_TIER_ITEM_IDS[0]));
+		clueRow1.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[1], PanelData.CLUE_TIER_ITEM_IDS[1]));
+		clueRow1.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[2], PanelData.CLUE_TIER_ITEM_IDS[2]));
 		grid.add(clueRow1);
 
 		JPanel clueRow2 = new JPanel(new GridLayout(1, 3));
 		clueRow2.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		clueRow2.setAlignmentX(0f);
-		clueRow2.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[3], PanelData.CLUE_TIER_ITEM_IDS[3], true));
-		clueRow2.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[4], PanelData.CLUE_TIER_ITEM_IDS[4], false));
-		clueRow2.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[5], PanelData.CLUE_TIER_ITEM_IDS[5], false));
+		clueRow2.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[3], PanelData.CLUE_TIER_ITEM_IDS[3]));
+		clueRow2.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[4], PanelData.CLUE_TIER_ITEM_IDS[4]));
+		clueRow2.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[5], PanelData.CLUE_TIER_ITEM_IDS[5]));
 		grid.add(clueRow2);
 
 		return grid;
@@ -640,10 +639,10 @@ public class KillClogPanel extends PluginPanel
 	 * @param result    with {@code rsn}, picks whose card this is
 	 */
 	private JToolTip makeSpriteTooltip(JLabel owner, TooltipData data, int gridCols,
-		String name, boolean compact, @Nullable HiscoreResult result, @Nullable String rsn)
+		String name, @Nullable HiscoreResult result, @Nullable String rsn)
 	{
 		JPanel parentCell = (JPanel) owner.getParent();
-		ImgTooltip tip = compact ? new ImgTooltip(gridCols, 15) : new ImgTooltip(gridCols);
+		ImgTooltip tip = new ImgTooltip(gridCols);
 		tip.setComponent(owner);
 		tip.setWikiLinksEnabled(config.wikiItemLinks());
 		boolean isSolHeredit = ColosseumGlory.replacesKc(name);
@@ -674,11 +673,6 @@ public class KillClogPanel extends PluginPanel
 			{
 				tip.setItems(data.totalItems, data.allItemIds, data.obtainedIds,
 					data.obtainedCounts, data.itemNames, itemManager);
-			}
-			else
-			{
-				// The count without its grid, as dense grids show in a comparison: no notice, nothing below.
-				tip.setNotice(null);
 			}
 		}
 		else if (!ClogHelper.configureNotSynced(tip, data, itemManager, config.showTooltipKc()))

@@ -26,17 +26,15 @@ public class ModalHoverTest
 			JPanel panel = new JPanel();
 			TooltipItemHover hover = new TooltipItemHover(panel);
 			hover.setHitBoxes(Collections.singletonList(new TooltipItemHover.HitBox(
-				0, 4151, "Item 4151", new Rectangle(0, 0, 32, 32), true, 4)));
+				0, 4151, "Item 4151", new Rectangle(0, 0, 32, 32), true)));
 			move(panel, 4, 4);
 			assertEquals("Item 4151", hover.hoveredItemName());
 			hover.setHitBoxes(Collections.singletonList(new TooltipItemHover.HitBox(
-				0, 4151, "Abyssal whip", new Rectangle(0, 0, 32, 32), true, 4)));
+				0, 4151, "Abyssal whip", new Rectangle(0, 0, 32, 32), true)));
 			move(panel, 5, 4);
 			assertEquals("Abyssal whip", hover.hoveredItemName());
-			assertEquals("x4", hover.hoveredDuplicateCountText());
 			move(panel, 40, 40);
 			assertNull(hover.hoveredItemName());
-			assertNull(hover.hoveredDuplicateCountText());
 		});
 	}
 

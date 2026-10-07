@@ -2,7 +2,6 @@ package com.killclog;
 
 import java.awt.Color;
 import java.awt.event.MouseEvent;
-import java.awt.event.MouseWheelEvent;
 import java.util.function.ObjIntConsumer;
 import javax.annotation.Nullable;
 
@@ -13,19 +12,14 @@ import javax.annotation.Nullable;
  */
 public class ClogTabTooltip extends TitleTooltip
 {
-	static final int VISIBLE_ROWS = 24;
-	private static final int WHEEL_ROWS = 3;
+	static final int VISIBLE_ROWS = CardBody.WINDOW / LINE_HEIGHT;
 	private static final int COUNT_GAP = 12;
 
 	private String[] names = new String[0];
 	private int[] obtained = new int[0];
 	private int[] total = new int[0];
-	private int offset;
-	private double wheel;
-	private int listTop;
-	// The other player's side of a comparison, kept on the same pages.
-	@Nullable
-	private ClogTabTooltip partner;
+	// Three pages a notch.
+	private final CardBody.Scroll scroll = new CardBody.Scroll(this, CardBody.WINDOW, 3 * LINE_HEIGHT);
 	@Nullable
 	private ObjIntConsumer<MouseEvent> onOpenPage;
 	private final CardBody.ClickRows pageRows = new CardBody.ClickRows(this, (e, page) ->
@@ -36,11 +30,6 @@ public class ClogTabTooltip extends TitleTooltip
 			e.consume();
 		}
 	});
-
-	public ClogTabTooltip()
-	{
-		addMouseWheelListener(this::scroll);
-	}
 
 	/** The tab and the player's progress through it; null progress shows the tab's size alone. */
 	void setTab(String tab, @Nullable int[] progress, int tabTotal)
@@ -62,7 +51,6 @@ public class ClogTabTooltip extends TitleTooltip
 		this.names = names;
 		this.obtained = obtained;
 		this.total = total;
-		offset = 0;
 	}
 
 	/** Called with the page's index when the player presses its row. */
@@ -71,17 +59,16 @@ public class ClogTabTooltip extends TitleTooltip
 		this.onOpenPage = onOpenPage;
 	}
 
-	/** Keeps two players' sides on the same pages as either one scrolls. */
-	void scrollWith(ClogTabTooltip other)
+	@Override
+	CardBody.Scroll scroll()
 	{
-		partner = other;
-		other.partner = this;
+		return scroll;
 	}
 
 	/** The first page in view. */
 	int offset()
 	{
-		return offset;
+		return scroll.offset() / LINE_HEIGHT;
 	}
 
 	/** The page row under a y coordinate, or -1. */
@@ -98,42 +85,6 @@ public class ClogTabTooltip extends TitleTooltip
 	private int shown()
 	{
 		return Math.min(names.length, VISIBLE_ROWS);
-	}
-
-	/** Moves the list by the wheel's rows, keeping the hover on whatever page now sits under the mouse. */
-	void scroll(MouseWheelEvent e)
-	{
-		if (!scrolls())
-		{
-			return;
-		}
-		wheel += e.getPreciseWheelRotation() * WHEEL_ROWS;
-		int step = (int) wheel;
-		wheel -= step;
-		int next = Math.max(0, Math.min(names.length - VISIBLE_ROWS, offset + step));
-		if (next != offset)
-		{
-			offset = next;
-			layRows();
-			pageRows.moved(e.getY());
-			repaint();
-			if (partner != null)
-			{
-				partner.offset = next;
-				partner.layRows();
-				partner.repaint();
-			}
-		}
-		e.consume();
-	}
-
-	private void layRows()
-	{
-		pageRows.clear();
-		for (int i = 0; i < shown(); i++)
-		{
-			pageRows.span(listTop + i * LINE_HEIGHT, offset + i);
-		}
 	}
 
 	private String countText(int page)
@@ -163,8 +114,14 @@ public class ClogTabTooltip extends TitleTooltip
 			return nameWidth + COUNT_GAP + countWidth + (scrolls() ? CardBody.RAIL_GAP + CardBody.RAIL_WIDTH : 0);
 		}, c -> shown() * LINE_HEIGHT, (c, y) ->
 		{
-			listTop = y;
-			layRows();
+			// Only the pages in view answer; the page under a still mouse is hovered as the list moves.
+			int offset = scroll.follow((names.length - shown()) * LINE_HEIGHT) / LINE_HEIGHT;
+			pageRows.clear();
+			for (int i = 0; i < shown(); i++)
+			{
+				pageRows.span(y + i * LINE_HEIGHT, offset + i);
+			}
+			pageRows.rehover();
 			int right = c.w - c.inset() - (scrolls() ? CardBody.RAIL_GAP + CardBody.RAIL_WIDTH : 0);
 			for (int i = 0; i < shown(); i++)
 			{

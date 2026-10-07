@@ -25,8 +25,6 @@ import net.runelite.client.hiscore.HiscoreSkill;
  */
 final class ClogPages
 {
-	// Pages past the longest normal grid (Elite clues, 59 items) draw small, like the dense clue tiers.
-	private static final int DENSE_PAGE = 60;
 	// Each page's panel bosses, keyed as the game's pages are.
 	private static final Map<String, List<HiscoreSkill>> PAGE_BOSSES = new HashMap<>();
 
@@ -71,9 +69,7 @@ final class ClogPages
 		{
 			return blue;
 		}
-		ClogTabTooltip red = side(owner, tab, comparison.getCompareClogResult(), true);
-		blue.scrollWith(red);
-		return comparison.wrapSideBySide(owner, blue, red);
+		return comparison.wrapSideBySide(owner, blue, side(owner, tab, comparison.getCompareClogResult(), true));
 	}
 
 	/** A page's popup, as its row opens it, leading back to its tab. */
@@ -102,7 +98,7 @@ final class ClogPages
 				tooltipDataBuilder.preloadItemImages(data);
 			}
 		}
-		return cells.buildPageTooltip(anchor, name, distinct(items).size() > DENSE_PAGE, blue, red);
+		return cells.buildPageTooltip(anchor, name, blue, red);
 	}
 
 	/** One player's side of a tab: each page's count from the popup its row opens. */

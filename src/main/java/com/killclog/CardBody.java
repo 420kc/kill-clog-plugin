@@ -220,7 +220,7 @@ final class CardBody
 			{
 				int sx = startX + i * (size + pad);
 				boolean obtained = counts[i] > 0;
-				c.hits.add(new TooltipItemHover.HitBox(section, ids[i], names[i], new Rectangle(sx, y, size, size), obtained, 1));
+				c.hits.add(new TooltipItemHover.HitBox(section, ids[i], names[i], new Rectangle(sx, y, size, size), obtained));
 				if (sprites[i] == null)
 				{
 					continue;
@@ -252,6 +252,8 @@ final class CardBody
 
 	static final int RAIL_WIDTH = 3;
 	static final int RAIL_GAP = 4;
+	// Every scrolled card shows the same height: 24 lines, the length of a long Collection Log tab.
+	static final int WINDOW = 24 * NativeTooltip.LINE_HEIGHT;
 
 	/** The thin rail beside a scrolled window: its track, and the thumb where the window sits. */
 	static void rail(Ctx c, int y, int track, int shown, int total, int offset, int range)
@@ -328,6 +330,14 @@ final class CardBody
 
 		int offset()
 		{
+			return offset;
+		}
+
+		/** For a part that draws its own window, like a list: how far it can move; returns where it is. */
+		int follow(int range)
+		{
+			this.range = range;
+			offset = Math.min(offset, range);
 			return offset;
 		}
 
@@ -442,6 +452,7 @@ final class CardBody
 		private final JComponent card;
 		private final List<int[]> spans = new ArrayList<>();
 		private int hovered = -1;
+		private int lastY = -1;
 
 		ClickRows(JComponent card, ObjIntConsumer<MouseEvent> onPress)
 		{
@@ -451,7 +462,8 @@ final class CardBody
 				@Override
 				public void mouseMoved(MouseEvent e)
 				{
-					hover(at(e.getY()));
+					lastY = e.getY();
+					hover(at(lastY));
 				}
 
 				@Override
@@ -467,6 +479,7 @@ final class CardBody
 				@Override
 				public void mouseExited(MouseEvent e)
 				{
+					lastY = -1;
 					hover(-1);
 				}
 			};
@@ -486,10 +499,10 @@ final class CardBody
 			spans.clear();
 		}
 
-		/** Hovers whatever row now sits under y, as when a list scrolls beneath a still mouse. */
-		void moved(int y)
+		/** Hovers whatever row now sits under the still mouse, as after a list scrolls beneath it. */
+		void rehover()
 		{
-			hover(at(y));
+			hover(at(lastY));
 		}
 
 		/** The row under a y coordinate, or -1. Rows are full width. */

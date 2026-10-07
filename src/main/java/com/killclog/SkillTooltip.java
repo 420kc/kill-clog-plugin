@@ -28,7 +28,7 @@ public class SkillTooltip extends TitleTooltip
 	private final SkillClogSectionRenderer sectionRenderer = new SkillClogSectionRenderer(this);
 	// A skill's log scrolls at full size past the height of a long Collection Log tab, a sprite row a notch.
 	private final CardBody.Scroll scroll = new CardBody.Scroll(this,
-		ClogTabTooltip.VISIBLE_ROWS * LINE_HEIGHT, SkillClogSectionRenderer.CELL_SIZE);
+		CardBody.WINDOW, SkillClogSectionRenderer.CELL_SIZE);
 
 	public void setData(Skill skill, @Nullable HiscoreResult result, boolean virtualLevels,
 		List<SkillClogSection> sections, @Nullable ItemManager itemManager)
@@ -89,10 +89,10 @@ public class SkillTooltip extends TitleTooltip
 		return Math.max(width, rowWidth(fm, XP_TO_LEVEL_LABEL, stats.xpToLevelText()));
 	}
 
-	/** Keeps a comparison's two skill cards at the same place in their logs. */
-	void scrollWith(SkillTooltip other)
+	@Override
+	CardBody.Scroll scroll()
 	{
-		scroll.scrollWith(other.scroll);
+		return scroll;
 	}
 
 	Stats stats()

@@ -1,32 +1,24 @@
 package com.killclog;
 
-import java.awt.Dimension;
 import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.Graphics2D;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.Setter;
 import net.runelite.client.game.ItemManager;
-import net.runelite.client.ui.FontManager;
 
 /**
- * Sprite grid tooltip for collection log data.
- * Header (title, obtained, rank) via TitleTooltip, then auto-wrapping item grid.
- *
- * <p>Compact 15px sprites for dense grids: {@code new ImgTooltip(5, 15)}
+ * Sprite grid tooltip for collection log data: the header (title, counts, rank) via TitleTooltip, then the
+ * item grid at full size. A grid taller than the rows {@link CardBody#WINDOW} holds scrolls, a row a notch.
  */
 public class ImgTooltip extends TitleTooltip
 {
-	private static final int DEFAULT_SPRITE_SIZE = 32;
+	private static final int SPRITE_SIZE = 32;
 	private static final int PADDING = 4;
-
+	private static final int CELL = SPRITE_SIZE + PADDING;
 
 	private final int gridCols;
-	private final int spriteSize;
-	private int effectiveCols;
 	@Setter
 	private String notice = "No collection log synced";
 
@@ -35,18 +27,13 @@ public class ImgTooltip extends TitleTooltip
 	private Set<Integer> obtainedIds;
 	private Map<Integer, Integer> obtainedCounts;
 	private TooltipItemSprites itemSprites;
+	// The window holds whole sprite rows and moves a row a notch, so a scrolled grid never shows half a sprite.
+	private final CardBody.Scroll scroll = new CardBody.Scroll(this, CardBody.WINDOW / CELL * CELL - PADDING, CELL);
 
 	/** Configurable min column count. */
 	public ImgTooltip(int gridCols)
 	{
-		this(gridCols, DEFAULT_SPRITE_SIZE);
-	}
-
-	/** Compact mode - smaller sprites for dense grids like clue tiers. */
-	public ImgTooltip(int gridCols, int spriteSize)
-	{
 		this.gridCols = gridCols;
-		this.spriteSize = spriteSize;
 		itemNameInHeader = true;
 	}
 
@@ -56,10 +43,12 @@ public class ImgTooltip extends TitleTooltip
 		return TITLE_FONT_SMALL;
 	}
 
-	/**
-	 * Set item grid data. Call after setTitle/setObtained/setRank.
-	 * Holds strong references to sprites so they survive ItemManager cache eviction.
-	 */
+	@Override
+	CardBody.Scroll scroll()
+	{
+		return scroll;
+	}
+
 	/**
 	 * Set item grid data. Call after setTitle/setObtained/setRank.
 	 * Holds strong references to sprites so they survive ItemManager cache eviction.
@@ -81,109 +70,62 @@ public class ImgTooltip extends TitleTooltip
 			return;
 		}
 
-		itemSprites = TooltipItemSprites.load(allItemIds, itemNames, itemManager, spriteSize,
+		itemSprites = TooltipItemSprites.load(allItemIds, itemNames, itemManager,
 			itemId -> obtainedIds != null && obtainedIds.contains(itemId) && obtainedCounts != null
 				? obtainedCounts.getOrDefault(itemId, 1) : 1,
 			this);
 	}
 
-	/** Without items or a notice the card is its header alone, as the dense grids are in a comparison. */
-	@Override
-	protected boolean hasBody()
+	static int gridColumnsForItemCount(int requestedCols, int itemCount)
 	{
-		return allItemIds != null && !allItemIds.isEmpty() || notice != null;
+		return Math.min(Math.max(requestedCols, 1), Math.max(4, Math.max(itemCount, 1)));
+	}
+
+	/** The grid's own columns, or more when a long title already pays for the width. */
+	private int columns(int available, int count)
+	{
+		int cols = gridColumnsForItemCount(gridCols, count);
+		int fit = (available + PADDING) / CELL;
+		return available > 0 && fit > cols ? Math.min(fit, count) : cols;
 	}
 
 	@Override
-	protected Dimension getContentSize(int availableWidth)
+	protected CardBody body()
 	{
-		if (!hasBody())
+		CardBody body = new CardBody();
+		if (getTitle() == null)
 		{
-			return new Dimension(0, 0);
+			return body;
 		}
-		boolean hasItems = allItemIds != null && !allItemIds.isEmpty();
-		int itemCount = hasItems ? allItemIds.size() : Math.max(totalItems, 1);
-		int cellSize = spriteSize + PADDING;
-
-		effectiveCols = gridColumnsForItemCount(gridCols, itemCount, spriteSize);
-
-		// A long title already pays for tooltip width; fill it with extra
-		// columns so the grid never floats between wide dead margins.
-		if (hasItems && availableWidth > 0)
+		if (allItemIds == null || allItemIds.isEmpty())
 		{
-			int fitCols = (availableWidth + PADDING) / cellSize;
-			if (fitCols > effectiveCols)
+			return body.add(notice());
+		}
+		int count = allItemIds.size();
+		return body.add(CardBody.scroll(scroll, CardBody.part(c -> columns(c.available, count) * CELL - PADDING,
+			c -> (count + columns(c.available, count) - 1) / columns(c.available, count) * CELL - PADDING, (c, y) ->
 			{
-				effectiveCols = Math.min(fitCols, itemCount);
-			}
-		}
-
-		int rows = (itemCount + effectiveCols - 1) / effectiveCols;
-		int gridWidth = effectiveCols * cellSize - PADDING;
-		int gridHeight = rows * cellSize - PADDING;
-
-		if (!hasItems)
-		{
-			FontMetrics sfm = getFontMetrics(FontManager.getRunescapeSmallFont());
-			gridWidth = Math.max(gridWidth, sfm.stringWidth(notice));
-		}
-
-		return new Dimension(gridWidth, gridHeight);
+				int cols = columns(c.available, count);
+				int width = cols * CELL - PADDING;
+				if (itemSprites != null)
+				{
+					c.hits.addAll(TooltipItemSprites.paintGrid(c.g, itemSprites, null, 0, allItemIds, obtainedIds,
+						obtainedCounts, c.inset() + (c.w - 2 * c.inset() - width) / 2, y, cols, SPRITE_SIZE, CELL));
+				}
+			})));
 	}
 
-	static int gridColumnsForItemCount(int requestedCols, int itemCount, int spriteSize)
+	/** No clog data: the notice centered where the grid would be. */
+	private CardBody.Part notice()
 	{
-		int normalizedItemCount = Math.max(itemCount, 1);
-		if (spriteSize < DEFAULT_SPRITE_SIZE)
+		int count = Math.max(totalItems, 1);
+		int cols = gridColumnsForItemCount(gridCols, count);
+		int height = (count + cols - 1) / cols * CELL - PADDING;
+		return CardBody.part(c -> Math.max(cols * CELL - PADDING, c.fm.stringWidth(notice)), c -> height, (c, y) ->
 		{
-			return Math.max(requestedCols, 1);
-		}
-		return Math.min(Math.max(requestedCols, 1), Math.max(4, normalizedItemCount));
+			c.g.setColor(NOTICE_COLOR);
+			c.g.drawString(notice, c.inset() + (c.w - 2 * c.inset() - c.fm.stringWidth(notice)) / 2,
+				y + (height - c.fm.getHeight()) / 2 + c.fm.getAscent());
+		});
 	}
-
-	@Override
-	protected void paintBody(Graphics2D g2, int w, int h, int startY)
-	{
-		if (getTitle() == null || !hasBody())
-		{
-			return;
-		}
-
-		int inset = getInset();
-		boolean hasItems = allItemIds != null && !allItemIds.isEmpty();
-		itemHover.setHitBoxes(Collections.emptyList());
-
-		// No clog data - center notice in the grid area
-		if (!hasItems)
-		{
-			g2.setFont(FontManager.getRunescapeSmallFont());
-			g2.setColor(NOTICE_COLOR);
-			String notice = this.notice;
-			FontMetrics nfm = g2.getFontMetrics();
-
-			int itemCount = Math.max(totalItems, 1);
-			int cols = Math.min(effectiveCols, Math.max(itemCount, 1));
-			int rows = (itemCount + cols - 1) / cols;
-			int cellSize = spriteSize + PADDING;
-			int gridHeight = rows * cellSize - PADDING;
-
-			int nx = inset + (w - inset * 2 - nfm.stringWidth(notice)) / 2;
-			int ny = startY + (gridHeight - nfm.getHeight()) / 2 + nfm.getAscent();
-			g2.drawString(notice, nx, ny);
-			return;
-		}
-
-		// Item grid with auto-wrapped columns
-		if (itemSprites != null)
-		{
-			g2.setFont(FontManager.getRunescapeSmallFont());
-			int cellSize = spriteSize + PADDING;
-			int gridWidth = effectiveCols * cellSize - PADDING;
-			// Quantities skip compact sprites, where the text is unreadable.
-			itemHover.setHitBoxes(TooltipItemSprites.paintGrid(g2, itemSprites, null, 0, allItemIds,
-				obtainedIds, obtainedCounts, inset + (w - 2 * inset - gridWidth) / 2, startY, effectiveCols,
-				spriteSize, cellSize, spriteSize >= DEFAULT_SPRITE_SIZE));
-		}
-	}
-
 }

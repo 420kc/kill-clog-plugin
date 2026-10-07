@@ -349,36 +349,22 @@ public class TitleTooltipTest
 	}
 
 	@Test
-	public void duplicateHoverCountIsExactUntilTenThousandThenRoundsToNearestK()
-	{
-		assertNull(TooltipItemHover.duplicateCountText(1));
-		assertEquals("x2", TooltipItemHover.duplicateCountText(2));
-		assertEquals("x9,999", TooltipItemHover.duplicateCountText(9_999));
-		assertEquals("x10k", TooltipItemHover.duplicateCountText(10_000));
-		assertEquals("x10k", TooltipItemHover.duplicateCountText(10_499));
-		assertEquals("x11k", TooltipItemHover.duplicateCountText(10_500));
-		assertEquals("x1,235k", TooltipItemHover.duplicateCountText(1_234_567));
-	}
-
-	@Test
-	public void itemHoverCarriesTheHoveredPlayersDuplicateCount()
+	public void itemHoverCarriesWhetherTheHoveredPlayerHoldsTheItem()
 	{
 		JPanel component = new JPanel();
 		TooltipItemHover hover = new TooltipItemHover(component);
 		hover.setHitBoxes(Collections.singletonList(new TooltipItemHover.HitBox(
-			1, 995, "Coins", new Rectangle(5, 5, 15, 15), true, 12_345)));
+			1, 995, "Coins", new Rectangle(5, 5, 15, 15), true)));
 
 		moveMouse(component, 6, 6);
 
 		assertEquals("Coins", hover.hoveredItemName());
 		assertTrue(hover.hoveredItemObtained());
-		assertEquals("x12k", hover.hoveredDuplicateCountText());
 
 		hover.setHitBoxes(Collections.singletonList(new TooltipItemHover.HitBox(
-			1, 995, "Coins", new Rectangle(5, 5, 15, 15), false, 12_345)));
+			1, 995, "Coins", new Rectangle(5, 5, 15, 15), false)));
 		moveMouse(component, 6, 6);
 		assertFalse(hover.hoveredItemObtained());
-		assertNull(hover.hoveredDuplicateCountText());
 	}
 
 	private static HiscoreResult pvpHiscore(String activity, int score)
@@ -418,21 +404,6 @@ public class TitleTooltipTest
 		return new HiscoreResult(AccountType.REGULAR,
 			Collections.emptyMap(), Collections.emptyMap(), scores, ranks,
 			Collections.emptyMap(), 0, 0, 0, -1);
-	}
-
-	@Test
-	public void aGridCardWithNeitherItemsNorANoticeIsItsHeaderAlone()
-	{
-		ImgTooltip header = new ImgTooltip(5);
-		header.setTitle("Easy");
-		header.setObtained(79, 131);
-		header.setNotice(null);
-		ImgTooltip notice = new ImgTooltip(5);
-		notice.setTitle("Easy");
-		notice.setObtained(79, 131);
-		// No divider and no notice: the title and its count, inside the card's own edges.
-		assertEquals(NativeTooltip.getInset() * 2 + header.getHeaderHeight(), header.getPreferredSize().height);
-		assertTrue(header.getPreferredSize().height < notice.getPreferredSize().height);
 	}
 
 }

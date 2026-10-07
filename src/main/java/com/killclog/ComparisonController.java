@@ -475,6 +475,7 @@ public class ComparisonController
 	 */
 	public JToolTip wrapSideBySide(JComponent owner, JToolTip blueTip, JToolTip redTip)
 	{
+		TitleTooltip.scrollTogether(blueTip, redTip);
 		String blueName = blueNameSupplier.get();
 		if (blueName == null || blueName.trim().isEmpty())
 		{
