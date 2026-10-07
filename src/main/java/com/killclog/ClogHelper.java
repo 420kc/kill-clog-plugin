@@ -56,7 +56,8 @@ final class ClogHelper
 			return false;
 		}
 		tip.setTitle(data.name);
-		if (data.statValue >= 0 || data.rank > 0)
+		// A raid's hard mode is the player's signal too: a raider of Expert alone keeps that line and rank.
+		if (data.statValue >= 0 || data.rank > 0 || data.hardKc >= 0 || data.hardRank > 0)
 		{
 			if (data.statLabel != null && showKc)
 			{
@@ -103,7 +104,7 @@ final class ClogHelper
 	{
 		if (showRank && result != null && result.isRankDataAvailable()
 			&& data != null && data.rankTracked
-			&& (data.obtainedCount >= 0 || data.statValue >= 0 || data.rank > 0))
+			&& (data.obtainedCount >= 0 || data.statValue >= 0 || data.rank > 0 || data.hardKc >= 0 || data.hardRank > 0))
 		{
 			tip.setRank(data.rank);
 			if (data.hardLabel != null)

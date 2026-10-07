@@ -331,4 +331,22 @@ public class ClogHelperTest
 		}
 		assertEquals(Arrays.asList(20590, 10350, 10348, 10346, 20997, 22486), shelf);
 	}
+
+	@Test
+	public void anUnsyncedRaiderOfTheHardModeAloneKeepsItsLineAndRank()
+	{
+		// Never ran normal ToA (no KC, unranked), but 100 Expert raids ranked 42.
+		TooltipData data = TooltipData.builder().name("Tombs of Amascut").totalItems(1)
+			.allItemIds(Collections.singletonList(27277)).statLabel("Kills: ").statValue(-1).rank(-1)
+			.hardLabel("Expert").hardKc(100).hardRank(42).build();
+		ImgTooltip bare = new ImgTooltip(5);
+		bare.setTitle("Tombs of Amascut");
+		ImgTooltip card = new ImgTooltip(5);
+		assertTrue(ClogHelper.configureNotSynced(card, data, null, true));
+		HiscoreResult result = new HiscoreResult(AccountType.REGULAR, Collections.emptyMap(), Collections.emptyMap(),
+			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1);
+		ClogHelper.configureRank(card, data, result, true);
+		// The Kills line, the Expert line and the rank line, not a bare title over a placeholder.
+		assertEquals(bare.getHeaderHeight() + 3 * NativeTooltip.LINE_HEIGHT, card.getHeaderHeight());
+	}
 }
