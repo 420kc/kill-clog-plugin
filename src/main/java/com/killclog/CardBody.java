@@ -6,13 +6,16 @@ import java.awt.Dimension;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
+import java.awt.Shape;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.ObjIntConsumer;
 import java.util.function.ToIntFunction;
+import javax.annotation.Nullable;
 import javax.swing.JComponent;
 import net.runelite.client.ui.FontManager;
 
@@ -99,7 +102,8 @@ final class CardBody
 	List<TooltipItemHover.HitBox> paint(TitleTooltip card, Graphics2D g, int w, int startY)
 	{
 		g.setFont(FontManager.getRunescapeSmallFont());
-		Ctx c = new Ctx(card, g.getFontMetrics(), g.getFontMetrics(FontManager.getRunescapeBoldFont()), 0, g, w);
+		Ctx c = new Ctx(card, g.getFontMetrics(), g.getFontMetrics(FontManager.getRunescapeBoldFont()),
+			w - 2 * NativeTooltip.getInset(), g, w);
 		int y = startY;
 		for (Part part : parts)
 		{
@@ -244,6 +248,116 @@ final class CardBody
 			rows.span(y, key);
 			painter.paint(c, y, rows.hovered == key);
 		});
+	}
+
+	static final int RAIL_WIDTH = 3;
+	static final int RAIL_GAP = 4;
+
+	/** The thin rail beside a scrolled window: its track, and the thumb where the window sits. */
+	static void rail(Ctx c, int y, int track, int shown, int total, int offset, int range)
+	{
+		int x = c.w - c.inset() - RAIL_WIDTH;
+		int thumb = Math.max(NativeTooltip.LINE_HEIGHT, track * shown / total);
+		c.g.setColor(TitleTooltip.SEPARATOR_COLOR);
+		c.g.fillRect(x, y, RAIL_WIDTH, track);
+		c.g.setColor(NativeTooltip.OSRS_ORANGE);
+		c.g.fillRect(x, y + (track - thumb) * offset / range, RAIL_WIDTH, thumb);
+	}
+
+	/**
+	 * A part shown through a window no taller than {@code window}: the mouse wheel moves it a step at a
+	 * time beside a rail, and only what shows can be hovered or pressed. A part that fits paints as it is.
+	 */
+	static Part scroll(Scroll scroll, Part inner)
+	{
+		return part(c -> inner.width(c) + (inner.height(c) > scroll.window ? RAIL_GAP + RAIL_WIDTH : 0),
+			c -> Math.min(inner.height(c), scroll.window), (c, y) ->
+			{
+				Ctx view = new Ctx(c.card, c.fm, c.bfm, c.available - RAIL_GAP - RAIL_WIDTH, c.g, c.w - RAIL_GAP - RAIL_WIDTH);
+				int height = inner.height(view);
+				scroll.range = Math.max(0, height - scroll.window);
+				if (scroll.range == 0)
+				{
+					inner.paint(c, y);
+					return;
+				}
+				scroll.offset = Math.min(scroll.offset, scroll.range);
+				Shape clip = c.g.getClip();
+				c.g.clipRect(0, y, c.w, scroll.window);
+				inner.paint(view, y - scroll.offset);
+				c.g.setClip(clip);
+				Rectangle window = new Rectangle(0, y, c.w, scroll.window);
+				for (TooltipItemHover.HitBox hit : view.hits)
+				{
+					TooltipItemHover.HitBox shown = hit.within(window);
+					if (shown != null)
+					{
+						c.hits.add(shown);
+					}
+				}
+				rail(c, y, scroll.window, scroll.window, height, scroll.offset, scroll.range);
+			});
+	}
+
+	/** Where a scrolled part's window sits; the card's mouse wheel moves it. */
+	static final class Scroll
+	{
+		private final TitleTooltip card;
+		private final int window;
+		private final int step;
+		private int offset;
+		private int range;
+		private double wheel;
+		@Nullable
+		private Scroll partner;
+
+		Scroll(TitleTooltip card, int window, int step)
+		{
+			this.card = card;
+			this.window = window;
+			this.step = step;
+			card.addMouseWheelListener(this::wheel);
+		}
+
+		/** Keeps two players' sides at the same place as either one scrolls. */
+		void scrollWith(Scroll other)
+		{
+			partner = other;
+			other.partner = this;
+		}
+
+		int offset()
+		{
+			return offset;
+		}
+
+		void wheel(MouseWheelEvent e)
+		{
+			if (range <= 0)
+			{
+				return;
+			}
+			wheel += e.getPreciseWheelRotation();
+			int notches = (int) wheel;
+			wheel -= notches;
+			moveTo(offset + notches * step);
+			if (partner != null)
+			{
+				partner.moveTo(offset);
+			}
+			e.consume();
+		}
+
+		private void moveTo(int next)
+		{
+			next = Math.max(0, Math.min(range, next));
+			if (next != offset)
+			{
+				offset = next;
+				card.itemHover.rehoverAfterPaint();
+				card.repaint();
+			}
+		}
 	}
 
 	/**

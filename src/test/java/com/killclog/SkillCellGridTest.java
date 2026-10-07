@@ -316,7 +316,8 @@ public class SkillCellGridTest
 		paint(slayer);
 		assertTrue(hoverItem(slayer, longItemName));
 		assertEquals(longItemName, slayer.getHeaderHoverLineText());
-		assertEquals("x4", slayer.getHeaderHoverLineRightText());
+		// Full-size sprites carry their own counts, so the hover line names the item alone.
+		assertNull(slayer.getHeaderHoverLineRightText());
 	}
 
 	@Test

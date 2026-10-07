@@ -437,16 +437,42 @@ public class SkillClogSectionTest
 	}
 
 	@Test
-	public void regularSpritesGiveWayToCompactSpritesOnlyForDenseSkillLogs()
+	public void aDenseSkillLogKeepsFullSizeSpritesAndScrollsInstead() throws Exception
 	{
-		SkillClogSectionRenderer renderer = new SkillClogSectionRenderer(new SkillTooltip());
-		renderer.setSections(SkillClogSection.forSkill(
-			Skill.SLAYER, null, null, clog(ids(1, 29), Collections.emptyList())), null);
-		assertFalse(renderer.usesCompactSprites());
+		SkillTooltip fits = card(10);
+		SkillTooltip dense = card(90);
+		int window = ClogTabTooltip.VISIBLE_ROWS * NativeTooltip.LINE_HEIGHT;
+		// Ninety items at full size run far past the window; the card stops at it.
+		assertTrue(dense.getPreferredSize().height - fits.getPreferredSize().height < window);
+		paint(dense);
+		paint(fits);
+		java.lang.reflect.Field field = SkillTooltip.class.getDeclaredField("scroll");
+		field.setAccessible(true);
+		CardBody.Scroll scroll = (CardBody.Scroll) field.get(dense);
+		wheel(dense, 2);
+		assertEquals("two notches, two sprite rows", 2 * SkillClogSectionRenderer.CELL_SIZE, scroll.offset());
+		wheel(dense, -9);
+		assertEquals(0, scroll.offset());
+		CardBody.Scroll still = (CardBody.Scroll) field.get(fits);
+		wheel(fits, 3);
+		assertEquals("a log that fits never moves", 0, still.offset());
+	}
 
-		renderer.setSections(SkillClogSection.forSkill(
-			Skill.SLAYER, null, null, clog(ids(1, 30), Collections.emptyList())), null);
-		assertTrue(renderer.usesCompactSprites());
+	private static SkillTooltip card(int items)
+	{
+		SkillTooltip card = new SkillTooltip();
+		card.setData(Skill.SLAYER, null, false, SkillClogSection.forSkill(
+			Skill.SLAYER, null, null, clog(ids(1, items), Collections.emptyList())), null);
+		return card;
+	}
+
+	private static void wheel(SkillTooltip card, int notches)
+	{
+		for (java.awt.event.MouseWheelListener listener : card.getMouseWheelListeners())
+		{
+			listener.mouseWheelMoved(new java.awt.event.MouseWheelEvent(card, java.awt.event.MouseEvent.MOUSE_WHEEL,
+				0, 0, 5, card.getHeight() - 10, 0, false, java.awt.event.MouseWheelEvent.WHEEL_UNIT_SCROLL, 3, notches));
+		}
 	}
 
 	@Test

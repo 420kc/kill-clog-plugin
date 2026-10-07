@@ -16,10 +16,6 @@ public class ClogTabTooltip extends TitleTooltip
 	static final int VISIBLE_ROWS = 24;
 	private static final int WHEEL_ROWS = 3;
 	private static final int COUNT_GAP = 12;
-	private static final int RAIL_WIDTH = 3;
-	private static final int RAIL_GAP = 4;
-	private static final Color RAIL_TRACK = SEPARATOR_COLOR;
-	private static final Color RAIL_THUMB = OSRS_ORANGE;
 
 	private String[] names = new String[0];
 	private int[] obtained = new int[0];
@@ -164,12 +160,12 @@ public class ClogTabTooltip extends TitleTooltip
 				nameWidth = Math.max(nameWidth, c.fm.stringWidth(names[i]));
 				countWidth = Math.max(countWidth, c.fm.stringWidth(countText(i)));
 			}
-			return nameWidth + COUNT_GAP + countWidth + (scrolls() ? RAIL_GAP + RAIL_WIDTH : 0);
+			return nameWidth + COUNT_GAP + countWidth + (scrolls() ? CardBody.RAIL_GAP + CardBody.RAIL_WIDTH : 0);
 		}, c -> shown() * LINE_HEIGHT, (c, y) ->
 		{
 			listTop = y;
 			layRows();
-			int right = c.w - c.inset() - (scrolls() ? RAIL_GAP + RAIL_WIDTH : 0);
+			int right = c.w - c.inset() - (scrolls() ? CardBody.RAIL_GAP + CardBody.RAIL_WIDTH : 0);
 			for (int i = 0; i < shown(); i++)
 			{
 				int page = offset + i;
@@ -181,13 +177,7 @@ public class ClogTabTooltip extends TitleTooltip
 			}
 			if (scrolls())
 			{
-				int x = c.w - c.inset() - RAIL_WIDTH;
-				int track = shown() * LINE_HEIGHT;
-				int thumb = Math.max(LINE_HEIGHT, track * VISIBLE_ROWS / names.length);
-				c.g.setColor(RAIL_TRACK);
-				c.g.fillRect(x, y, RAIL_WIDTH, track);
-				c.g.setColor(RAIL_THUMB);
-				c.g.fillRect(x, y + (track - thumb) * offset / (names.length - VISIBLE_ROWS), RAIL_WIDTH, thumb);
+				CardBody.rail(c, y, shown() * LINE_HEIGHT, VISIBLE_ROWS, names.length, offset, names.length - VISIBLE_ROWS);
 			}
 		});
 	}

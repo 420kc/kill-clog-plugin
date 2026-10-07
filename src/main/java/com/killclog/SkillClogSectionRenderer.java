@@ -7,9 +7,7 @@ import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import javax.annotation.Nullable;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
@@ -17,24 +15,18 @@ import net.runelite.client.ui.FontManager;
 /** Paints adaptive item sections inside solo and comparison skill tooltips. */
 final class SkillClogSectionRenderer
 {
-	private static final int REGULAR_SPRITE_SIZE = 32;
-	private static final int COMPACT_SPRITE_SIZE = 15;
-	private static final int REGULAR_MAX_ITEMS = 29;
+	private static final int SPRITE_SIZE = 32;
 	private static final int PADDING = 4;
-	private static final int REGULAR_SOLO_MIN_COLS = 5;
-	private static final int COMPACT_SOLO_MIN_COLS = 7;
+	static final int CELL_SIZE = SPRITE_SIZE + PADDING;
+	private static final int SOLO_MIN_COLS = 5;
 	private static final int HEADER_GAP = 2;
-	private static final int MAX_SECTION_HEIGHT = 580;
 	private static final int SECTION_GAP = 6;
-	private static final int MAX_SECTION_WIDTH = 280;
 	private static final String OBTAINED_LABEL = "Obtained: ";
 	private static final Font SECTION_FONT = FontManager.getRunescapeBoldFont();
 	private static final Font DETAIL_FONT = FontManager.getRunescapeSmallFont();
 
 	private final SkillTooltip repaintTarget;
 	private List<Entry> entries = Collections.emptyList();
-	private boolean compactSprites;
-	private int spriteSize = REGULAR_SPRITE_SIZE;
 
 	SkillClogSectionRenderer(SkillTooltip repaintTarget)
 	{
@@ -46,28 +38,19 @@ final class SkillClogSectionRenderer
 		if (sections == null || sections.isEmpty())
 		{
 			entries = Collections.emptyList();
-			compactSprites = false;
-			spriteSize = REGULAR_SPRITE_SIZE;
 			return;
 		}
 
-		compactSprites = distinctItemCount(sections) > REGULAR_MAX_ITEMS;
-		spriteSize = compactSprites ? COMPACT_SPRITE_SIZE : REGULAR_SPRITE_SIZE;
 		List<Entry> next = new ArrayList<>();
 		for (SkillClogSection section : sections)
 		{
 			TooltipItemSprites sprites = itemManager != null
 				? TooltipItemSprites.load(section.itemIds(), section.itemNames(), itemManager,
-					spriteSize, itemId -> 1, repaintTarget)
+					SPRITE_SIZE, itemId -> 1, repaintTarget)
 				: null;
 			next.add(new Entry(section, sprites));
 		}
 		entries = Collections.unmodifiableList(next);
-	}
-
-	boolean usesCompactSprites()
-	{
-		return compactSprites;
 	}
 
 	Dimension soloSize(int availableWidth)
@@ -100,23 +83,7 @@ final class SkillClogSectionRenderer
 			width = Math.max(width, gridWidth(cols));
 		}
 
-		int height = sectionHeight(width, headingMetrics, detailMetrics);
-		// Keep dense-card column choices stable when collapsing section readouts.
-		int densityAllowance = TitleTooltip.hoverRowHeight(detailMetrics) * entries.size()
-			- SECTION_GAP * Math.max(0, entries.size() - 1);
-		// Dense multi-section cards trade a little width for fewer sprite rows.
-		int candidateWidth = width;
-		while (height + densityAllowance > MAX_SECTION_HEIGHT && candidateWidth + cellSize() <= MAX_SECTION_WIDTH)
-		{
-			candidateWidth += cellSize();
-			int candidateHeight = sectionHeight(candidateWidth, headingMetrics, detailMetrics);
-			if (candidateHeight < height)
-			{
-				width = candidateWidth;
-				height = candidateHeight;
-			}
-		}
-		return new Dimension(width, height);
+		return new Dimension(width, sectionHeight(width, headingMetrics, detailMetrics));
 	}
 
 	private int sectionHeight(int width, FontMetrics headingMetrics, FontMetrics detailMetrics)
@@ -185,8 +152,8 @@ final class SkillClogSectionRenderer
 		List<Integer> itemIds = entry.section.itemIds();
 		g2.setFont(DETAIL_FONT);
 		hitBoxes.addAll(TooltipItemSprites.paintGrid(g2, entry.sprites, entry.section.itemNames(), sectionIndex,
-			itemIds, playerItems.obtainedIds(), playerItems.obtainedCounts(), startX, y, cols, spriteSize,
-			cellSize(), !compactSprites));
+			itemIds, playerItems.obtainedIds(), playerItems.obtainedCounts(), startX, y, cols, SPRITE_SIZE,
+			CELL_SIZE, true));
 		return y + gridHeight(itemIds.size(), cols);
 	}
 
@@ -217,35 +184,19 @@ final class SkillClogSectionRenderer
 
 	private int soloColumns(int availableWidth, int itemCount)
 	{
-		int minimum = compactSprites ? COMPACT_SOLO_MIN_COLS : REGULAR_SOLO_MIN_COLS;
-		int fit = Math.max(minimum, (availableWidth + PADDING) / cellSize());
+		int fit = Math.max(SOLO_MIN_COLS, (availableWidth + PADDING) / CELL_SIZE);
 		return Math.min(fit, Math.max(itemCount, 1));
 	}
 
-	private int gridWidth(int cols)
+	private static int gridWidth(int cols)
 	{
-		return cols * cellSize() - PADDING;
+		return cols * CELL_SIZE - PADDING;
 	}
 
-	private int gridHeight(int itemCount, int cols)
+	private static int gridHeight(int itemCount, int cols)
 	{
 		int rows = (Math.max(itemCount, 1) + cols - 1) / cols;
-		return rows * cellSize() - PADDING;
-	}
-
-	private int cellSize()
-	{
-		return spriteSize + PADDING;
-	}
-
-	private static int distinctItemCount(List<SkillClogSection> sections)
-	{
-		Set<Integer> itemIds = new HashSet<>();
-		for (SkillClogSection section : sections)
-		{
-			itemIds.addAll(section.itemIds());
-		}
-		return itemIds.size();
+		return rows * CELL_SIZE - PADDING;
 	}
 
 	private static final class Entry

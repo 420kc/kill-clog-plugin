@@ -185,11 +185,14 @@ final class SkillCellGrid
 		// In comparison mode each side is the ordinary solo tooltip, with the
 		// other player's clog unioned into its sections so both cards show the
 		// same slot census.
-		JToolTip tooltip = compared != null
-			? comparison.wrapSideBySide(owner,
-				soloTooltip(skill, primary, primaryClog, comparedClog),
-				soloTooltip(skill, compared, comparedClog, primaryClog))
-			: soloTooltip(skill, primary, primaryClog, comparedClog);
+		SkillTooltip blue = soloTooltip(skill, primary, primaryClog, comparedClog);
+		JToolTip tooltip = blue;
+		if (compared != null)
+		{
+			SkillTooltip red = soloTooltip(skill, compared, comparedClog, primaryClog);
+			blue.scrollWith(red);
+			tooltip = comparison.wrapSideBySide(owner, blue, red);
+		}
 		tooltip.setComponent(owner);
 		tooltipController.keepTooltipOnHover(tooltip, (JPanel) owner.getParent());
 		return tooltip;

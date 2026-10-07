@@ -7,6 +7,7 @@ import java.awt.event.MouseMotionAdapter;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+import javax.annotation.Nullable;
 import javax.swing.JComponent;
 import lombok.AccessLevel;
 import lombok.Setter;
@@ -20,6 +21,10 @@ final class TooltipItemHover
 	private boolean hoveredObtained;
 	private int hoveredItemCount;
 	private String hoveredItemName;
+	// Where the mouse last was over the card, so a scroll can hover what now sits under it.
+	private int lastX = -1;
+	private int lastY = -1;
+	private boolean rehover;
 	@Setter(AccessLevel.PACKAGE)
 	private boolean wikiLinksEnabled = true;
 
@@ -32,6 +37,17 @@ final class TooltipItemHover
 	void setHitBoxes(List<HitBox> hitBoxes)
 	{
 		this.hitBoxes = hitBoxes != null ? hitBoxes : Collections.emptyList();
+		if (rehover)
+		{
+			rehover = false;
+			updateHoveredItem(lastX, lastY);
+		}
+	}
+
+	/** After a scroll the item now under the still mouse becomes the hovered one, once the card repaints. */
+	void rehoverAfterPaint()
+	{
+		rehover = true;
 	}
 
 	void clear()
@@ -113,6 +129,8 @@ final class TooltipItemHover
 			@Override
 			public void mouseExited(MouseEvent e)
 			{
+				lastX = -1;
+				lastY = -1;
 				clear();
 			}
 		});
@@ -120,6 +138,8 @@ final class TooltipItemHover
 
 	private void updateHoveredItem(int mx, int my)
 	{
+		lastX = mx;
+		lastY = my;
 		HitBox hitBox = findHitBox(mx, my);
 		int nextId = hitBox != null ? hitBox.itemId : -1;
 		int nextSection = hitBox != null ? hitBox.section : -1;
@@ -175,6 +195,14 @@ final class TooltipItemHover
 			this.bounds = bounds;
 			this.obtained = obtained;
 			this.count = Math.max(count, 0);
+		}
+
+		/** The part of this box a window shows, or null when it shows none of it. */
+		@Nullable
+		HitBox within(Rectangle window)
+		{
+			Rectangle shown = bounds.intersection(window);
+			return shown.isEmpty() ? null : new HitBox(section, itemId, itemName, shown, obtained, count);
 		}
 	}
 }

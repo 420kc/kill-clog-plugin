@@ -26,6 +26,9 @@ public class SkillTooltip extends TitleTooltip
 	private boolean showRiftsClosed;
 	int riftsClosed = -1;
 	private final SkillClogSectionRenderer sectionRenderer = new SkillClogSectionRenderer(this);
+	// A skill's log scrolls at full size past the height of a long Collection Log tab, a sprite row a notch.
+	private final CardBody.Scroll scroll = new CardBody.Scroll(this,
+		ClogTabTooltip.VISIBLE_ROWS * LINE_HEIGHT, SkillClogSectionRenderer.CELL_SIZE);
 
 	public void setData(Skill skill, @Nullable HiscoreResult result, boolean virtualLevels,
 		List<SkillClogSection> sections, @Nullable ItemManager itemManager)
@@ -74,9 +77,9 @@ public class SkillTooltip extends TitleTooltip
 		return body.add(CardBody.separator(SECTION_SEPARATOR_PAD))
 			.add(CardBody.part(c -> 0, c -> hoverRowHeight(c.fm),
 				(c, y) -> paintHeaderHoverLine(c.g, c.fm, c.w, y + c.fm.getAscent())))
-			.add(CardBody.part(c -> sectionRenderer.soloSize(Math.max(statsWidth(c.fm), c.available)).width,
+			.add(CardBody.scroll(scroll, CardBody.part(c -> sectionRenderer.soloSize(Math.max(statsWidth(c.fm), c.available)).width,
 				c -> sectionRenderer.soloSize(Math.max(statsWidth(c.fm), c.available)).height,
-				(c, y) -> sectionRenderer.paintSolo(c.g, c.w, y, c.hits)));
+				(c, y) -> sectionRenderer.paintSolo(c.g, c.w, y, c.hits))));
 	}
 
 	private int statsWidth(FontMetrics fm)
@@ -84,6 +87,12 @@ public class SkillTooltip extends TitleTooltip
 		int width = Math.max(rowWidth(fm, LEVEL_LABEL, stats.levelText()), rowWidth(fm, XP_LABEL, stats.xpText()));
 		width = Math.max(width, rowWidth(fm, RANK_LABEL, stats.rankText()));
 		return Math.max(width, rowWidth(fm, XP_TO_LEVEL_LABEL, stats.xpToLevelText()));
+	}
+
+	/** Keeps a comparison's two skill cards at the same place in their logs. */
+	void scrollWith(SkillTooltip other)
+	{
+		scroll.scrollWith(other.scroll);
 	}
 
 	Stats stats()
@@ -104,19 +113,6 @@ public class SkillTooltip extends TitleTooltip
 	String riftsClosedText()
 	{
 		return riftsClosed >= 0 ? grouped(riftsClosed) : "--";
-	}
-
-	@Override
-	protected String getHeaderHoverLineRightText()
-	{
-		return sectionRenderer.usesCompactSprites()
-			? itemHover.hoveredDuplicateCountText() : null;
-	}
-
-	@Override
-	protected Color getHeaderHoverLineRightColor()
-	{
-		return CLOG_YELLOW;
 	}
 
 	private static int rowWidth(FontMetrics fm, String label, String value)
