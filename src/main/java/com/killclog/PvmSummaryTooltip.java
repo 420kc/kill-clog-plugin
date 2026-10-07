@@ -20,7 +20,6 @@ import net.runelite.client.util.QuantityFormatter;
  */
 public class PvmSummaryTooltip extends TitleTooltip
 {
-	private static final int WEAPON_SIZE = 28;
 	private static final int WEAPON_PAD = 6;
 	private static final int SEPARATOR_PAD = 2;
 	private static final int SECTION_GAP = 4;
@@ -50,9 +49,11 @@ public class PvmSummaryTooltip extends TitleTooltip
 	@Setter
 	private double ehb = -1;
 
-	private final BufferedImage[] weaponSprites = new BufferedImage[3];
+	@Nullable
+	private TooltipItemSprites weaponSprites;
 	private final int[] weaponCounts = new int[3];
-	private final BufferedImage[] superiorSprites = new BufferedImage[2];
+	@Nullable
+	private TooltipItemSprites superiorSprites;
 	private final int[] superiorCounts = new int[2];
 
 	// CoX, ToB and ToA: normal and hard-mode kills as pairs, like a boss popup's KC and PB, then the raid's log.
@@ -124,7 +125,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 		weaponCounts[1] = scytheCount;
 		weaponCounts[2] = shadowCount;
 
-		loadItemSprites(PanelData.MEGARARE_ITEM_IDS, WEAPON_SIZE, weaponSprites, itemManager);
+		weaponSprites = TooltipItemSprites.load(TooltipData.itemList(PanelData.MEGARARE_ITEM_IDS), null, itemManager,
+			id -> 1, this);
 	}
 
 	public void setSuperiors(int imbuedHeartCount, int eternalGemCount,
@@ -133,7 +135,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 		superiorCounts[0] = imbuedHeartCount;
 		superiorCounts[1] = eternalGemCount;
 
-		loadItemSprites(PanelData.SUPERIOR_ITEMS, WEAPON_SIZE, superiorSprites, itemManager);
+		superiorSprites = TooltipItemSprites.load(TooltipData.itemList(PanelData.SUPERIOR_ITEMS), null, itemManager,
+			id -> 1, this);
 	}
 
 	public void setSlayer(HiscoreResult hiscoreResult, ClogResult clogResult)
@@ -229,7 +232,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		}
 		body.add(CardBody.gap(WEAPON_PAD))
 			.add(CardBody.sprites(0, superiorSprites, PanelData.SUPERIOR_ITEMS, PanelData.SUPERIOR_ITEM_NAMES,
-				superiorCounts, WEAPON_SIZE, WEAPON_PAD))
+				superiorCounts, WEAPON_PAD))
 			.add(CardBody.hoverLine(0, PanelData.SUPERIOR_ITEM_NAMES))
 			.add(CardBody.separator(SEPARATOR_PAD))
 			.add(CardBody.subheader("Raids"));
@@ -239,7 +242,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		}
 		return body.add(CardBody.gap(WEAPON_PAD))
 			.add(CardBody.sprites(1, weaponSprites, PanelData.MEGARARE_ITEM_IDS, PanelData.MEGARARE_ITEM_NAMES,
-				weaponCounts, WEAPON_SIZE, WEAPON_PAD))
+				weaponCounts, WEAPON_PAD))
 			.add(CardBody.hoverLine(1, PanelData.MEGARARE_ITEM_NAMES))
 			.add(CardBody.separator(SEPARATOR_PAD))
 			.add(CardBody.subheader(PVP_HEADER))

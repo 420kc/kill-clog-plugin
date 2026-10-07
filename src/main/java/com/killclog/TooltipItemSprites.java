@@ -71,7 +71,8 @@ final class TooltipItemSprites
 	/**
 	 * One grid of item sprites in the current font: unobtained ones dimmed,
 	 * each centered in its cell, the quantity in the corner when wanted.
-	 * Returns a hit box per item. Without sprites the cells still hover.
+	 * Returns a hit box per item, named from {@code names} when given, else as the sprites were loaded.
+	 * Without sprites the cells still hover.
 	 */
 	static List<TooltipItemHover.HitBox> paintGrid(Graphics2D g2, TooltipItemSprites sprites,
 		Map<Integer, String> names, int section, List<Integer> ids, Set<Integer> obtainedIds,
@@ -87,7 +88,7 @@ final class TooltipItemSprites
 			boolean obtained = obtainedIds.contains(itemId);
 			int count = obtained ? counts.getOrDefault(itemId, 1) : 1;
 			hitBoxes.add(new TooltipItemHover.HitBox(section, itemId,
-				sprites != null ? sprites.nameAt(i) : TooltipItemLink.itemName(names, itemId),
+				names != null || sprites == null ? TooltipItemLink.itemName(names, itemId) : sprites.nameAt(i),
 				new Rectangle(x, y, size, size), obtained));
 			BufferedImage sprite = sprites != null ? sprites.spriteAt(i) : null;
 			if (sprite != null)

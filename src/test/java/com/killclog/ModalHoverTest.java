@@ -1,6 +1,5 @@
 package com.killclog;
 
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Rectangle;
@@ -77,9 +76,9 @@ public class ModalHoverTest
 		ClogSummaryTooltip clog = new ClogSummaryTooltip();
 		clog.setTierData(125, 1600, null, null);
 		clog.setClogSources(true, true, true, false);
-		set(clog, "special", new ClogSummaryTooltip.Shelf(new BufferedImage[]{tile(24)}, new int[]{13342},
+		set(clog, "special", new ClogSummaryTooltip.Shelf(null, new int[]{13342},
 			new String[]{"A very long collection log trophy name"}, null));
-		set(clog, "recent", new ClogSummaryTooltip.Shelf(new BufferedImage[]{tile(24)}, new int[]{4151},
+		set(clog, "recent", new ClogSummaryTooltip.Shelf(null, new int[]{4151},
 			new String[]{"Abyssal whip"}, new String[]{"Sep 11"}));
 		SummaryTooltip player = new SummaryTooltip();
 		player.setData("Fixture", 12345, null, null, "Regular", null);
@@ -91,16 +90,6 @@ public class ModalHoverTest
 		set(player, "petNames", petNames);
 		// The Skill Summary is two plain rows since 2.4.0: nothing in it hovers.
 		return new TitleTooltip[]{pvm, clog, player};
-	}
-
-	private static BufferedImage tile(int size)
-	{
-		BufferedImage image = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D g = image.createGraphics();
-		g.setColor(new Color(120, 150, 160));
-		g.fillRect(2, 2, size - 4, size - 4);
-		g.dispose();
-		return image;
 	}
 
 	private static void set(Object target, String name, Object value) throws ReflectiveOperationException

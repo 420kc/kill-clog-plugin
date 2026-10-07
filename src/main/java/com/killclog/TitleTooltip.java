@@ -17,13 +17,10 @@ import java.util.function.Consumer;
 import java.util.function.IntFunction;
 import javax.annotation.Nullable;
 import javax.swing.JToolTip;
-import javax.swing.SwingUtilities;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.Setter;
-import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
-import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
 
 /**
@@ -345,40 +342,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		g2.setColor(valueColor);
 		g2.drawString(value, x + labelWidth, y);
 		return labelWidth + fm.stringWidth(value);
-	}
-
-	protected void loadItemSprites(int[] itemIds, int size, BufferedImage[] sprites,
-		ItemManager itemManager)
-	{
-		for (int i = 0; i < itemIds.length && i < sprites.length; i++)
-		{
-			loadItemSprite(itemIds[i], size, sprites, i, itemManager);
-		}
-	}
-
-	protected void loadClogItemSprites(List<ClogResult.ClogItem> items, int count, int size,
-		BufferedImage[] sprites, ItemManager itemManager)
-	{
-		for (int i = 0; i < count && i < items.size() && i < sprites.length; i++)
-		{
-			loadItemSprite(items.get(i).getId(), size, sprites, i, itemManager);
-		}
-	}
-
-	void loadItemSprite(int itemId, int size, BufferedImage[] sprites, int index,
-		ItemManager itemManager)
-	{
-		BufferedImage img = itemManager.getImage(itemId, 1, false);
-		sprites[index] = ImageUtil.resizeImage(img, size, size);
-		if (img instanceof AsyncBufferedImage)
-		{
-			((AsyncBufferedImage) img).onLoaded(() -> SwingUtilities.invokeLater(() ->
-			{
-				BufferedImage loaded = itemManager.getImage(itemId, 1, false);
-				sprites[index] = ImageUtil.resizeImage(loaded, size, size);
-				repaint();
-			}));
-		}
 	}
 
 	/** Set the info line under the title, in place of any before it. Label in orange, value in given color. */

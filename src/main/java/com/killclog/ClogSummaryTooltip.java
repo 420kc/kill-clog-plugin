@@ -9,6 +9,8 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -27,7 +29,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private static final int ICON_SIZE = 13;
 	private static final int ICON_GAP = 3;
 	private static final int SEPARATOR_PAD = 2;
-	private static final int RECENT_SIZE = 24;
 	private static final int RECENT_PAD = 6;
 	private static final int DATE_GAP = 1;
 	private static final int SOURCE_ICON_SIZE = 13;
@@ -76,12 +77,13 @@ public class ClogSummaryTooltip extends TitleTooltip
 	/** One row of item sprites under its own subheader. */
 	static final class Shelf
 	{
-		final BufferedImage[] sprites;
+		@Nullable
+		final TooltipItemSprites sprites;
 		final int[] ids;
 		final String[] names;
 		final String[] dates;
 
-		Shelf(BufferedImage[] sprites, int[] ids, String[] names, String[] dates)
+		Shelf(@Nullable TooltipItemSprites sprites, int[] ids, String[] names, String[] dates)
 		{
 			this.sprites = sprites;
 			this.ids = ids;
@@ -97,7 +99,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 		/** Cells widen past the sprite when a date caption needs the room. */
 		int cellWidth(FontMetrics fm)
 		{
-			int w = RECENT_SIZE;
+			int w = CardBody.GRID_SPRITE;
 			for (String date : dates != null ? dates : new String[0])
 			{
 				if (date != null)
@@ -259,20 +261,21 @@ public class ClogSummaryTooltip extends TitleTooltip
 		{
 			return null;
 		}
-		Shelf shelf = new Shelf(new BufferedImage[count], new int[count], new String[count],
-			dated ? new String[count] : null);
+		int[] ids = new int[count];
+		String[] names = new String[count];
+		String[] dates = dated ? new String[count] : null;
 		for (int i = 0; i < count; i++)
 		{
 			ClogResult.ClogItem item = items.get(i);
-			shelf.ids[i] = item.getId();
-			shelf.names[i] = clog != null ? clog.getItemName(item.getId()) : null;
+			ids[i] = item.getId();
+			names[i] = clog != null ? clog.getItemName(item.getId()) : null;
 			if (dated)
 			{
-				shelf.dates[i] = shortDate(item.getDate());
+				dates[i] = shortDate(item.getDate());
 			}
 		}
-		loadClogItemSprites(items, count, RECENT_SIZE, shelf.sprites, itemManager);
-		return shelf;
+		return new Shelf(TooltipItemSprites.load(TooltipData.itemList(ids), null, itemManager, id -> 1, this),
+			ids, names, dates);
 	}
 
 	/** "2026-07-04 ..." from the provider becomes "Jul 4"; anything else is dropped. */
@@ -452,31 +455,34 @@ public class ClogSummaryTooltip extends TitleTooltip
 			return;
 		}
 		int count = shelf.ids.length;
+		int size = CardBody.GRID_SPRITE;
+		Map<Integer, String> named = new HashMap<>();
+		for (int i = 0; i < count; i++)
+		{
+			named.put(shelf.ids[i], shelf.names[i]);
+		}
+		List<Integer> ids = TooltipData.itemList(shelf.ids);
 		body.add(CardBody.separator(SEPARATOR_PAD)).add(CardBody.subheader(title)).add(CardBody.part(
 			c -> count * shelf.cellWidth(c.fm) + (count - 1) * RECENT_PAD,
-			c -> RECENT_SIZE + (shelf.dated() ? DATE_GAP + c.fm.getHeight() : 0) + hoverRowHeight(c.fm), (c, y) ->
+			c -> size + (shelf.dated() ? DATE_GAP + c.fm.getHeight() : 0) + hoverRowHeight(c.fm), (c, y) ->
 			{
+				// Every shelved item is held: the grids' painter draws them, each centered over its date.
 				int cellWidth = shelf.cellWidth(c.fm);
 				int startX = c.inset() + (c.w - 2 * c.inset() - (count * cellWidth + (count - 1) * RECENT_PAD)) / 2;
+				c.hits.addAll(TooltipItemSprites.paintGrid(c.g, shelf.sprites, named, section, ids, new HashSet<>(ids),
+					Collections.emptyMap(), startX + (cellWidth - size) / 2, y, count, size, cellWidth + RECENT_PAD));
 				for (int i = 0; i < count; i++)
 				{
-					int cellX = startX + i * (cellWidth + RECENT_PAD);
-					int sx = cellX + (cellWidth - RECENT_SIZE) / 2;
-					if (shelf.sprites[i] != null)
-					{
-						c.g.drawImage(shelf.sprites[i], sx, y, null);
-					}
-					c.hits.add(new TooltipItemHover.HitBox(section, shelf.ids[i], shelf.names[i],
-						new Rectangle(sx, y, RECENT_SIZE, RECENT_SIZE), true));
 					String date = shelf.dates != null ? shelf.dates[i] : null;
 					if (date != null)
 					{
+						int cellX = startX + i * (cellWidth + RECENT_PAD);
 						c.g.setColor(MUTED_GRAY);
 						c.g.drawString(date, cellX + (cellWidth - c.fm.stringWidth(date)) / 2,
-							y + RECENT_SIZE + DATE_GAP + c.fm.getAscent());
+							y + size + DATE_GAP + c.fm.getAscent());
 					}
 				}
-				paintSectionHoverLine(c.g, c.fm, c.w, y + RECENT_SIZE + (shelf.dated() ? DATE_GAP + c.fm.getHeight() : 0),
+				paintSectionHoverLine(c.g, c.fm, c.w, y + size + (shelf.dated() ? DATE_GAP + c.fm.getHeight() : 0),
 					section);
 			}));
 	}

@@ -1,6 +1,5 @@
 package com.killclog;
 
-import java.awt.AlphaComposite;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
@@ -12,6 +11,8 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -242,38 +243,28 @@ final class CardBody
 	}
 
 	/**
-	 * A centered row of item sprites, unobtained ones dimmed and quantities in the corner; each sprite
-	 * hover-names and wiki-links like the grids do.
+	 * A centered row of full-size item sprites, a grid one row high: unobtained ones dimmed, quantities in the
+	 * corner, each hover-naming and wiki-linking like the grids do.
 	 */
-	static Part sprites(int section, BufferedImage[] sprites, int[] ids, String[] names, int[] counts, int size, int pad)
+	static Part sprites(int section, @Nullable TooltipItemSprites sprites, int[] ids, String[] names, int[] counts,
+		int pad)
 	{
-		int count = Math.min(sprites.length, counts.length);
-		return row(size, c -> count * size + (count - 1) * pad, (c, y) ->
+		Map<Integer, String> named = new HashMap<>();
+		Map<Integer, Integer> held = new HashMap<>();
+		Set<Integer> obtained = new HashSet<>();
+		for (int i = 0; i < ids.length; i++)
 		{
-			Graphics2D g = c.g;
-			int startX = c.inset() + (c.w - 2 * c.inset() - (count * size + (count - 1) * pad)) / 2;
-			for (int i = 0; i < count; i++)
+			named.put(ids[i], names[i]);
+			held.put(ids[i], counts[i]);
+			if (counts[i] > 0)
 			{
-				int sx = startX + i * (size + pad);
-				boolean obtained = counts[i] > 0;
-				c.hits.add(new TooltipItemHover.HitBox(section, ids[i], names[i], new Rectangle(sx, y, size, size), obtained));
-				if (sprites[i] == null)
-				{
-					continue;
-				}
-				g.setComposite(obtained ? AlphaComposite.SrcOver : AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
-				g.drawImage(sprites[i], sx, y, null);
-				g.setComposite(AlphaComposite.SrcOver);
-				if (counts[i] > 1)
-				{
-					String quantity = String.valueOf(counts[i]);
-					g.setColor(Color.BLACK);
-					g.drawString(quantity, sx + 1, y + c.fm.getAscent() + 1);
-					g.setColor(TitleTooltip.CLOG_YELLOW);
-					g.drawString(quantity, sx, y + c.fm.getAscent());
-				}
+				obtained.add(ids[i]);
 			}
-		});
+		}
+		int width = ids.length * (GRID_SPRITE + pad) - pad;
+		return row(GRID_SPRITE, c -> width, (c, y) -> c.hits.addAll(TooltipItemSprites.paintGrid(c.g, sprites, named,
+			section, TooltipData.itemList(ids), obtained, held, c.inset() + (c.w - 2 * c.inset() - width) / 2, y,
+			ids.length, GRID_SPRITE, GRID_SPRITE + pad)));
 	}
 
 	/** One row that opens something: it answers hover in white and a left press with its key. */
