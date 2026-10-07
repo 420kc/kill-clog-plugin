@@ -9,8 +9,9 @@ import lombok.Setter;
 import net.runelite.client.game.ItemManager;
 
 /**
- * Sprite grid tooltip for collection log data: the header (title, counts, rank) via TitleTooltip, then the
- * item grid at full size. A grid taller than the rows {@link CardBody#WINDOW} holds scrolls, a row a notch.
+ * Sprite grid tooltip for collection log data: the header (title, counts, rank) via TitleTooltip, the band the
+ * hovered item is named in, then the item grid at full size. A grid taller than the rows {@link CardBody#WINDOW}
+ * holds scrolls, a row a notch.
  */
 public class ImgTooltip extends TitleTooltip
 {
@@ -30,7 +31,6 @@ public class ImgTooltip extends TitleTooltip
 	public ImgTooltip(int gridCols)
 	{
 		this.gridCols = gridCols;
-		itemNameInHeader = true;
 	}
 
 	@Override
@@ -84,7 +84,7 @@ public class ImgTooltip extends TitleTooltip
 		{
 			return body.add(notice());
 		}
-		return body.add(CardBody.scroll(scroll,
+		return body.add(CardBody.headerHoverBand()).add(CardBody.scroll(scroll,
 			CardBody.grid(gridCols, itemSprites, null, allItemIds, obtainedIds, obtainedCounts)));
 	}
 

@@ -193,18 +193,35 @@ final class CardBody
 		return row(TitleTooltip.separatorHeight(pad), c -> 0, (c, y) -> c.card.paintSeparator(c.g, c.w, y, pad));
 	}
 
+	private static final int BAND_PAD = 4;
+
 	/**
-	 * The line a scrolled card names its hovered item on, anchored between a divider above and one below, so
-	 * the name has its own place while the card moves under it.
+	 * The line a card names its hovered item on, above its sprites between a divider above and one below, so
+	 * the name has the card's full width and its own place while the sprites scroll under it.
 	 */
-	static Part hoverBand(int pad)
+	static Part hoverBand()
 	{
-		return part(c -> 0, c -> pad + TitleTooltip.hoverRowHeight(c.fm) + 2 + pad, (c, y) ->
+		return band(BAND_PAD);
+	}
+
+	/** The same band straight under the header, the header's own divider the one above it. */
+	static Part headerHoverBand()
+	{
+		return band(-1 - TitleTooltip.SEPARATOR_GAP);
+	}
+
+	/** A band whose top divider sits {@code above} the part's top; a negative one is the divider already there. */
+	private static Part band(int above)
+	{
+		return part(c -> 0, c -> above + 1 + TitleTooltip.hoverRowHeight(c.fm) + 1 + BAND_PAD, (c, y) ->
 		{
-			int top = y + pad;
+			int top = y + above;
 			int height = TitleTooltip.hoverRowHeight(c.fm);
 			c.g.setColor(TitleTooltip.SEPARATOR_COLOR);
-			c.g.drawLine(c.inset(), top, c.w - c.inset() - 1, top);
+			if (above >= 0)
+			{
+				c.g.drawLine(c.inset(), top, c.w - c.inset() - 1, top);
+			}
 			c.g.drawLine(c.inset(), top + height + 1, c.w - c.inset() - 1, top + height + 1);
 			c.card.paintHeaderHoverLine(c.g, c.fm, c.w, top + 1 + c.fm.getAscent());
 		});

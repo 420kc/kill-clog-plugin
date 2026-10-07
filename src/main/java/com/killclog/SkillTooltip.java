@@ -19,7 +19,6 @@ public class SkillTooltip extends TitleTooltip
 	static final String XP_TO_LEVEL_LABEL = "XP to Level: ";
 	static final String RIFTS_CLOSED_LABEL = "Rifts Closed: ";
 	private static final Color UNRANKED_COLOR = new Color(128, 128, 128);
-	private static final int SECTION_SEPARATOR_PAD = 4;
 
 	private Stats stats = Stats.empty();
 	private List<SkillClogSection> sections = Collections.emptyList();
@@ -74,7 +73,7 @@ public class SkillTooltip extends TitleTooltip
 			return body;
 		}
 		// The skill's clog sections fill the card's width under the band their hovered item is named in.
-		return body.add(CardBody.hoverBand(SECTION_SEPARATOR_PAD))
+		return body.add(CardBody.hoverBand())
 			.add(CardBody.scroll(scroll, CardBody.part(c -> sectionRenderer.soloSize(Math.max(statsWidth(c.fm), c.available)).width,
 				c -> sectionRenderer.soloSize(Math.max(statsWidth(c.fm), c.available)).height,
 				(c, y) -> sectionRenderer.paintSolo(c.g, c.w, y, c.hits))));

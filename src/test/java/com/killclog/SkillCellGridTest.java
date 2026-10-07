@@ -20,7 +20,6 @@ import net.runelite.client.ui.ColorScheme;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class SkillCellGridTest
@@ -316,12 +315,10 @@ public class SkillCellGridTest
 		paint(slayer);
 		assertTrue(hoverItem(slayer, longItemName));
 		assertEquals(longItemName, slayer.getHeaderHoverLineText());
-		// Full-size sprites carry their own counts, so the hover line names the item alone.
-		assertNull(slayer.getHeaderHoverLineRightText());
 	}
 
 	@Test
-	public void sparseSkillClogsKeepDuplicateCountsOffTheHoverLine()
+	public void sparseSkillClogsNameTheHoveredItem()
 	{
 		SkillCellGrid cells = grid();
 		HiscoreResult result = hiscores(Map.of(Skill.ATTACK, 99));
@@ -338,7 +335,6 @@ public class SkillCellGridTest
 		paint(attack);
 		assertTrue(hoverItem(attack, itemName));
 		assertEquals(itemName, attack.getHeaderHoverLineText());
-		assertNull(attack.getHeaderHoverLineRightText());
 	}
 
 	@Test

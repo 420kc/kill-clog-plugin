@@ -25,7 +25,6 @@ public class SummaryTooltip extends TitleTooltip
 {
 	private static final int PET_COLS = 5;
 	private static final int SECTION_GAP = 6;
-	private static final int BAND_PAD = 4;
 	private static final int FIGURE_GAP = 4;
 	private static final String PRESTIGE_LABEL = "Prestige: ";
 	private static final String FORMER_TITLE = "Player Summary";
@@ -152,7 +151,7 @@ public class SummaryTooltip extends TitleTooltip
 			if (hasPets())
 			{
 				// The pets scroll under the band their hovered one is named in, like a skill's log.
-				body.add(CardBody.hoverBand(BAND_PAD)).add(CardBody.scroll(scroll, CardBody.grid(PET_COLS, petSprites,
+				body.add(CardBody.hoverBand()).add(CardBody.scroll(scroll, CardBody.grid(PET_COLS, petSprites,
 					petNames, petList, new HashSet<>(petList), Collections.emptyMap())));
 			}
 		}
