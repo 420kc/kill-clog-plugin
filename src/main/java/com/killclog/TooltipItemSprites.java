@@ -6,6 +6,7 @@ import java.awt.Graphics2D;
 import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -104,10 +105,16 @@ final class TooltipItemSprites
 				String quantity = String.valueOf(count);
 				g2.setColor(Color.BLACK);
 				g2.drawString(quantity, x + 1, y + ascent + 1);
-				g2.setColor(TitleTooltip.CLOG_YELLOW);
+				g2.setColor(atCap(itemId, count) ? TitleTooltip.CLOG_GREEN : TitleTooltip.CLOG_YELLOW);
 				g2.drawString(quantity, x, y + ascent);
 			}
 		}
 		return hitBoxes;
+	}
+
+	/** A count the game stops at, 250 for most log items and 65,535 for the rest, reads green: there's no more to log. */
+	static boolean atCap(int itemId, int count)
+	{
+		return count >= 65535 || count == 250 && Arrays.stream(PanelData.COUNTS_PAST_250_ITEMS).noneMatch(id -> id == itemId);
 	}
 }

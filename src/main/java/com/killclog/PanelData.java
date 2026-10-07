@@ -74,6 +74,8 @@ final class PanelData
 	static final int THIRD_AGE_RING_ITEM_ID = 23185;
 	static final int[] THIRD_AGE_ITEMS = itemIds("third_age_items");
 	static final int[] GILDED_ITEMS = itemIds("gilded_items");
+	// The log items the game counts past 250, up to 65,535; every other item stops at 250.
+	static final int[] COUNTS_PAST_250_ITEMS = itemIds("counts_past_250_items");
 
 	// Native clog rare categories. Public provider APIs do not provide these.
 	static final String RARE_HARD = "hard_rare";
