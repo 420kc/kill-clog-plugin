@@ -44,7 +44,7 @@ public class SyncServiceModeTest
 		int generation = gate.beginAttempt();
 
 		SyncService.SyncResult result = new SyncService(http, new Gson(), main)
-			.syncCollectionLog("Tester", 42L, null, Map.of(), Map.of(), 3L, gate, generation, league, "demonic-pacts").get();
+			.syncCollectionLog("Tester", 42L, null, Map.of(), Map.of(), 3L, gate, generation, league, "demonic-pacts", false).get();
 
 		assertTrue(result.message, result.ok);
 		assertEquals(1, sent.size());

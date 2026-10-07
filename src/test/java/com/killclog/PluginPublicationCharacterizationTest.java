@@ -105,7 +105,7 @@ public class PluginPublicationCharacterizationTest
 		when(client.getWorldType()).thenReturn(java.util.EnumSet.of(net.runelite.api.WorldType.MEMBERS));
 		when(localClogCache.currentSessionEpoch()).thenAnswer(invocation -> epoch);
 		when(localClogCache.folder()).thenReturn(CompletableFuture.completedFuture(null));
-		when(syncService.syncCollectionLog(any(), anyLong(), any(), any(), any(), anyLong(), any(), anyInt(), any(), any()))
+		when(syncService.syncCollectionLog(any(), anyLong(), any(), any(), any(), anyLong(), any(), anyInt(), any(), any(), anyBoolean()))
 			.thenAnswer(invocation ->
 			{
 				CompletableFuture<SyncService.SyncResult> sync = new CompletableFuture<>();
@@ -179,7 +179,7 @@ public class PluginPublicationCharacterizationTest
 		verify(panel).showSyncProgress(true, "publishing...", false);
 		assertEquals(1, syncs.size());
 		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), any(), any(), any(), eq(7L), any(), eq(0),
-			eq(localClogCache), eq("main"));
+			eq(localClogCache), eq("main"), anyBoolean());
 
 		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced 12 items"));
 		settle();
@@ -296,7 +296,7 @@ public class PluginPublicationCharacterizationTest
 		captureListener.run();
 		settle();
 		assertEquals(2, syncs.size());
-		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), any(), any(), any(), eq(8L), any(), anyInt(), any(), any());
+		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), any(), any(), any(), eq(8L), any(), anyInt(), any(), any(), anyBoolean());
 	}
 
 	@Test
@@ -675,7 +675,7 @@ public class PluginPublicationCharacterizationTest
 	{
 		ArgumentCaptor<AccountType> type = ArgumentCaptor.forClass(AccountType.class);
 		verify(syncService, times(call)).syncCollectionLog(any(), anyLong(), type.capture(), any(), any(), anyLong(), any(), anyInt(),
-			any(), any());
+			any(), any(), anyBoolean());
 		return type.getAllValues().get(call - 1);
 	}
 
@@ -831,9 +831,9 @@ public class PluginPublicationCharacterizationTest
 		ticks(10);
 		settle();
 		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), any(), any(),
-			eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"));
+			eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"), anyBoolean());
 		verify(syncService, never()).syncCollectionLog(any(), anyLong(), any(), any(), any(), anyLong(), any(), anyInt(),
-			eq(localClogCache), eq("main"));
+			eq(localClogCache), eq("main"), anyBoolean());
 	}
 
 	@Test
@@ -848,7 +848,7 @@ public class PluginPublicationCharacterizationTest
 		settle();
 		assertEquals(2, syncs.size());
 		verify(syncService, times(2)).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), any(),
-			any(), eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"));
+			any(), eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"), anyBoolean());
 	}
 
 	@Test
@@ -869,7 +869,7 @@ public class PluginPublicationCharacterizationTest
 		settle();
 		assertEquals(2, syncs.size());
 		verify(syncService, times(2)).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), any(),
-			any(), eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"));
+			any(), eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"), anyBoolean());
 	}
 
 	@Test
@@ -902,7 +902,7 @@ public class PluginPublicationCharacterizationTest
 		settle();
 		ArgumentCaptor<java.util.Map<String, Double>> pbs = ArgumentCaptor.forClass(java.util.Map.class);
 		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), pbs.capture(), any(),
-			eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"));
+			eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"), anyBoolean());
 		return pbs.getValue();
 	}
 
@@ -950,7 +950,7 @@ public class PluginPublicationCharacterizationTest
 		ArgumentCaptor<java.util.Map<String, Double>> collapsed = ArgumentCaptor.forClass(java.util.Map.class);
 		ArgumentCaptor<java.util.Map<String, SyncService.DetailedPb>> detailed = ArgumentCaptor.forClass(java.util.Map.class);
 		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), any(), collapsed.capture(), detailed.capture(),
-			eq(7L), any(), anyInt(), eq(localClogCache), eq("main"));
+			eq(7L), any(), anyInt(), eq(localClogCache), eq("main"), anyBoolean());
 
 		java.util.Map<String, String> got = new java.util.TreeMap<>();
 		detailed.getValue().forEach((key, pb) -> got.put(key, pb.seconds + " " + pb.source));
@@ -1168,7 +1168,7 @@ public class PluginPublicationCharacterizationTest
 		assertEquals(1, executor.live());
 		settle();
 		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), any(), any(),
-			eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"));
+			eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"), anyBoolean());
 	}
 
 	@Test

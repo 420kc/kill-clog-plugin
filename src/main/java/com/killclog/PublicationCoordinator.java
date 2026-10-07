@@ -489,7 +489,7 @@ final class PublicationCoordinator
 		try
 		{
 			syncService.syncCollectionLog(rsn, accountHash, accountType, pbs, detailedPbs,
-				storeEpoch, syncGate, generation, cache, gameMode)
+				storeEpoch, syncGate, generation, cache, gameMode, manual || characterPublishAfterSync.get())
 				.whenComplete((result, err) ->
 				{
 					boolean current = syncGate.complete(generation);

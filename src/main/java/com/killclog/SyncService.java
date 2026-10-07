@@ -48,6 +48,11 @@ class SyncService
 	private ClogIndex clogIndex;
 	// The structure killclog.com holds, as its last sync reply named it; null until one has.
 	private volatile String serverStructureHash;
+	// Every loading screen schedules a push: one identical to the last that killclog.com took, within a day, stays home.
+	static final long RESEND_UNCHANGED_MS = 24 * 60 * 60 * 1000L;
+	private volatile String acceptedPush;
+	private volatile long acceptedAt;
+	private volatile SyncResult acceptedResult;
 
 	/** Outcome of a sync attempt, surfaced for chat feedback. */
 	static final class SyncResult
@@ -90,11 +95,14 @@ class SyncService
 	 * @param accountType the locally detected account type (client varbits),
 	 *                    never the provider-derived one
 	 */
-	/** {@code cache} is the mode's own store and {@code cacheEpoch} its gather-time session. */
+	/**
+	 * {@code cache} is the mode's own store and {@code cacheEpoch} its gather-time session; {@code always} sends even
+	 * what killclog.com already holds (a click, or a character publish that needs the profile).
+	 */
 	CompletableFuture<SyncResult> syncCollectionLog(String rsn, long accountHash,
 		@Nullable AccountType accountType, Map<String, Double> personalBests,
 		Map<String, DetailedPb> detailedPersonalBests, long cacheEpoch,
-		KillclogSyncGate syncGate, int generation, LocalClogCache cache, String mode)
+		KillclogSyncGate syncGate, int generation, LocalClogCache cache, String mode, boolean always)
 	{
 		if (rsn == null || rsn.isBlank())
 		{
@@ -134,6 +142,13 @@ class SyncService
 		String body = gson.toJson(root);
 		final int observedCount = ClogResult.coverageCount(clog);
 		String url = KillClogEndpoint.apiBaseUrl() + "/player/" + HttpUtil.pathSegment(rsn) + "/sync/" + mode;
+		String push = url + body;
+		SyncResult accepted = acceptedResult;
+		if (!always && accepted != null && push.equals(acceptedPush)
+			&& System.currentTimeMillis() - acceptedAt < RESEND_UNCHANGED_MS)
+		{
+			return CompletableFuture.completedFuture(accepted);
+		}
 
 		log.debug("Syncing collection log for '{}' to {} ({} items)",
 			rsn, url, observedCount);
@@ -146,7 +161,17 @@ class SyncService
 			return CompletableFuture.completedFuture(
 				new SyncResult(false, false, "Sync session ended before send."));
 		}
-		return request.thenApply(r -> outcome(r, rsn, observedCount, pbCount));
+		return request.thenApply(r ->
+		{
+			SyncResult result = outcome(r, rsn, observedCount, pbCount);
+			if (result.ok && !result.dryRun)
+			{
+				acceptedResult = result;
+				acceptedAt = System.currentTimeMillis();
+				acceptedPush = push;
+			}
+			return result;
+		});
 	}
 
 	/** The game's structure when killclog.com named a different one in its last reply, else null. */
