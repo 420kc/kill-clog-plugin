@@ -25,7 +25,7 @@ import net.runelite.client.util.AsyncBufferedImage;
 /**
  * Clog summary tooltip on the summary-bar clog cell.
  * The log's total with its completion, the tier ladder, progress per
- * collection-log tab, then the trophy shelf, recent items and sources.
+ * collection-log tab, then the Rare shelf, recent items and sources.
  */
 public class ClogSummaryTooltip extends TitleTooltip
 {
@@ -38,7 +38,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private static final int SOURCE_ICON_GAP = 5;
 	private static final int SOURCE_HIT_PAD = 2;
 	private static final int SOURCE_LABEL_GAP = 3;
-	// Hover sections: 0 highlights, 1 recent, then the tier ladder and the sources. A reached tier reads green and
+	// Hover sections: 0 rare, 1 recent, then the tier ladder and the sources. A reached tier reads green and
 	// an unreached one red, as held and missing items do.
 	private static final int TIER_SECTION = 2;
 	private static final int SOURCE_SECTION = 3;
@@ -78,7 +78,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 
 	// The trophy shelf holds only obtained specials; recent unlocks carry their dates.
 	// An empty shelf is null and paints nothing.
-	private Shelf special;
+	private Shelf rare;
 	private Shelf recent;
 
 	/** One row of item sprites under its own subheader. */
@@ -257,10 +257,10 @@ public class ClogSummaryTooltip extends TitleTooltip
 		recent = shelf(recentItems, clog, itemManager, true);
 	}
 
-	public void setSpecialItems(List<ClogResult.ClogItem> specialItems, ClogResult clog,
+	public void setRareItems(List<ClogResult.ClogItem> rareItems, ClogResult clog,
 		ItemManager itemManager)
 	{
-		special = shelf(specialItems, clog, itemManager, false);
+		rare = shelf(rareItems, clog, itemManager, false);
 	}
 
 	private Shelf shelf(List<ClogResult.ClogItem> items, ClogResult clog, ItemManager itemManager, boolean dated)
@@ -382,8 +382,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 			}
 		}
 
-		// The trophy shelf, present only when earned, then recent unlocks.
-		shelf(body, 0, "Highlights", special);
+		// The Rare shelf, present only when earned, then recent unlocks.
+		shelf(body, 0, "Rare", rare);
 		shelf(body, 1, "Recent", recent);
 
 		// The footer: when it last changed and who supplied it, under one rule.

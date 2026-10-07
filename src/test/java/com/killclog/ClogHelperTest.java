@@ -308,4 +308,27 @@ public class ClogHelperTest
 		ClogHelper.addHardModeLine(plain, raid, false, false);
 		assertEquals(both.getHeaderHeight() - NativeTooltip.LINE_HEIGHT, plain.getHeaderHeight());
 	}
+
+	@Test
+	public void theRareShelfFillsAsTheProfileCardDoes()
+	{
+		// A trophy, five 3rd age pieces and two megarares: the megarares keep their room among six.
+		List<ClogResult.ClogItem> held = new java.util.ArrayList<>();
+		for (int id : new int[]{20590, 10350, 10348, 10346, 23242, 10352})
+		{
+			held.add(new ClogResult.ClogItem(id, 1, null));
+		}
+		Map<String, List<ClogResult.ClogItem>> obtained = new HashMap<>();
+		obtained.put("misc", held);
+		obtained.put("chambers_of_xeric", Collections.singletonList(new ClogResult.ClogItem(20997, 2, null)));
+		obtained.put("theatre_of_blood", Collections.singletonList(new ClogResult.ClogItem(22486, 1, null)));
+		ClogResult clog = new ClogResult("Tester", obtained, Collections.emptyMap(), Collections.emptyMap(), null, null);
+
+		List<Integer> shelf = new java.util.ArrayList<>();
+		for (ClogResult.ClogItem item : ClogHelper.rareItems(clog))
+		{
+			shelf.add(item.getId());
+		}
+		assertEquals(Arrays.asList(20590, 10350, 10348, 10346, 20997, 22486), shelf);
+	}
 }

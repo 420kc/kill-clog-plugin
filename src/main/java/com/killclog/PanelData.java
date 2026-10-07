@@ -190,9 +190,8 @@ final class PanelData
 	};
 	static final String[] SUPERIOR_ITEM_NAMES = {"Imbued heart", "Eternal gem"};
 
-	// Clog-summary trophy items: shown in the Highlights section only when
-	// obtained. An unobtained special never renders; the section is a trophy
-	// shelf, not a checklist.
+	// Clog-summary trophy items, first on the Rare shelf when obtained. An unobtained
+	// special never renders; the shelf holds trophies, not a checklist.
 	static final int STALE_BAGUETTE_ITEM_ID = 20590;
 	static final int HELMET_OF_THE_MOON_ITEM_ID = 30111;
 	static final int[] SPECIAL_ITEM_IDS = {STALE_BAGUETTE_ITEM_ID, HELMET_OF_THE_MOON_ITEM_ID};
