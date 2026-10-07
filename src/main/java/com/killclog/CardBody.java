@@ -286,8 +286,8 @@ final class CardBody
 	}
 
 	/**
-	 * A centered row of full-size item sprites, a grid one row high: unobtained ones dimmed, quantities in the
-	 * corner, each hover-naming and wiki-linking like the grids do.
+	 * A row of full-size item sprites from the left edge, a grid one row high: unobtained ones dimmed,
+	 * quantities in the corner, each hover-naming and wiki-linking like the grids do.
 	 */
 	static Part sprites(int section, @Nullable TooltipItemSprites sprites, int[] ids, String[] names, int[] counts,
 		int pad)
@@ -306,7 +306,7 @@ final class CardBody
 		}
 		int width = ids.length * (GRID_SPRITE + pad) - pad;
 		return row(GRID_SPRITE, c -> width, (c, y) -> c.hits.addAll(TooltipItemSprites.paintGrid(c.g, sprites, named,
-			section, TooltipData.itemList(ids), obtained, held, c.inset() + (c.w - 2 * c.inset() - width) / 2, y,
+			section, TooltipData.itemList(ids), obtained, held, c.inset(), y,
 			ids.length, GRID_SPRITE, GRID_SPRITE + pad)));
 	}
 
