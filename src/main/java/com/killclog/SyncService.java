@@ -14,6 +14,7 @@ import java.util.concurrent.ThreadLocalRandom;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 
@@ -41,6 +42,12 @@ class SyncService
 	private final OkHttpClient httpClient;
 	private final Gson gson;
 	private final LocalClogCache localClogCache;
+	// The game's Collection Log as this client reads it, shared when killclog.com holds another.
+	@Setter
+	@Nullable
+	private ClogIndex clogIndex;
+	// The structure killclog.com holds, as its last sync reply named it; null until one has.
+	private volatile String serverStructureHash;
 
 	/** Outcome of a sync attempt, surfaced for chat feedback. */
 	static final class SyncResult
@@ -118,7 +125,13 @@ class SyncService
 				new SyncResult(false, false, "No local collection log to sync yet."));
 		}
 
-		String body = gson.toJson(buildBody(accountHash, accountType, clog, personalBests, detailedPersonalBests));
+		JsonObject root = buildBody(accountHash, accountType, clog, personalBests, detailedPersonalBests);
+		JsonObject structure = GameMode.MAIN.equals(mode) ? structureToShare() : null;
+		if (structure != null)
+		{
+			root.add("clog_structure", structure);
+		}
+		String body = gson.toJson(root);
 		final int observedCount = ClogResult.coverageCount(clog);
 		String url = KillClogEndpoint.apiBaseUrl() + "/player/" + HttpUtil.pathSegment(rsn) + "/sync/" + mode;
 
@@ -136,11 +149,22 @@ class SyncService
 		return request.thenApply(r -> outcome(r, rsn, observedCount, pbCount));
 	}
 
+	/** The game's structure when killclog.com named a different one in its last reply, else null. */
+	@Nullable
+	JsonObject structureToShare()
+	{
+		ClogIndex index = clogIndex;
+		String held = serverStructureHash;
+		JsonObject structure = index != null && held != null ? ClogStructure.of(index) : null;
+		return structure != null && !held.equals(ClogStructure.hash(gson, structure)) ? structure : null;
+	}
+
 	/** What one round trip means for the player, in plain words. */
 	SyncResult outcome(HttpUtil.HttpResult r, String rsn, int observedCount, int pbCount)
 	{
 		if (r.code >= 200 && r.code < 300)
 		{
+			rememberStructureHash(r.body);
 			boolean dryRun = responseSaysDryRun(r.body);
 			return new SyncResult(true, dryRun,
 				"Collection log published! ("
@@ -207,6 +231,22 @@ class SyncService
 			// fall through to the default
 		}
 		return 2;
+	}
+
+	private void rememberStructureHash(String body)
+	{
+		try
+		{
+			JsonObject obj = body != null ? gson.fromJson(body, JsonObject.class) : null;
+			if (obj != null && obj.has("clog_structure_hash") && obj.get("clog_structure_hash").isJsonPrimitive())
+			{
+				serverStructureHash = obj.get("clog_structure_hash").getAsString();
+			}
+		}
+		catch (RuntimeException e)
+		{
+			// a reply without it changes nothing
+		}
 	}
 
 	private boolean responseSaysDryRun(String body)

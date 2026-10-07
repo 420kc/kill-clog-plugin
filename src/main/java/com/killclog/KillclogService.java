@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 
@@ -46,6 +47,30 @@ public class KillclogService
 {
 	private static final String PROOF_SUFFIX = "/proof-view";
 
+	/** A page's items: the game's own when the client has read the log, else the provider catalog. */
+	@Nullable
+	private List<Integer> pageItems(String key)
+	{
+		ClogIndex index = clogIndex;
+		List<Integer> ids = index != null ? index.categoryItems().get(key) : null;
+		if (ids != null)
+		{
+			return new ArrayList<>(ids);
+		}
+		return clogService != null ? clogService.getCategoryCatalogIds(key) : null;
+	}
+
+	/** Every page a lookup is measured against: the game's own once read, else the provider catalog's. */
+	private Set<String> pageKeys()
+	{
+		ClogIndex index = clogIndex;
+		if (index != null && index.isParsed())
+		{
+			return new java.util.HashSet<>(index.categoryKeys());
+		}
+		return clogService != null ? clogService.getCatalogCategoryKeys() : Collections.emptySet();
+	}
+
 	private static final long INDEX_TTL_MS = 10 * 60 * 1000;      // 10 min -- membership list
 
 	private final CircuitBreaker breaker = new CircuitBreaker("killclog.com");
@@ -58,6 +83,10 @@ public class KillclogService
 	private final OkHttpClient httpClient;
 	private final Gson gson;
 	private final ClogService clogService;
+	// The game's own pages once the client has read the log; the provider catalog stands in before then.
+	@Setter
+	@Nullable
+	private ClogIndex clogIndex;
 
 	// Membership index: normalized names of players with first-party proof.
 	// Null until the first successful fetch; a null index degrades to "skip the
@@ -381,8 +410,7 @@ public class KillclogService
 				// "catalogs" would render every category as complete and hide
 				// what's missing. Categories the catalog doesn't know yet are
 				// simply left without a denominator.
-				List<Integer> catalogIds = clogService != null
-					? clogService.getCategoryCatalogIds(entry.getKey()) : null;
+				List<Integer> catalogIds = pageItems(entry.getKey());
 				if (catalogIds != null)
 				{
 					categoryItems.put(entry.getKey(), catalogIds);
@@ -401,13 +429,13 @@ public class KillclogService
 			// them with catalog denominators so a first-party-won lookup
 			// renders every boss as 0-of-N with a dimmed grid instead of the
 			// generic unsynced shape.
-			if (clogService != null)
+			if (clogService != null || clogIndex != null)
 			{
-				for (String catalogKey : clogService.getCatalogCategoryKeys())
+				for (String catalogKey : pageKeys())
 				{
 					if (!categoryItems.containsKey(catalogKey))
 					{
-						List<Integer> ids = clogService.getCategoryCatalogIds(catalogKey);
+						List<Integer> ids = pageItems(catalogKey);
 						if (ids != null)
 						{
 							categoryItems.put(catalogKey, ids);

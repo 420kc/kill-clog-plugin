@@ -240,6 +240,8 @@ public class KillClogPlugin extends Plugin
 		localClogCache.setFirstPartyChangedListener(() -> firstPartyChanged(localClogCache));
 
 		kclogCommand.setClogIndex(clogIndex);
+		syncService.setClogIndex(clogIndex);
+		killclogService.setClogIndex(clogIndex);
 		localCaCache.setCaCatalog(caCatalog);
 		runeProfileService.setCaCatalog(caCatalog);
 		chatCommandManager.registerCommandAsync(KillClogChatCommand.COMMAND, kclogCommand::handle);

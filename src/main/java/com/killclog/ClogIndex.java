@@ -45,6 +45,7 @@ final class ClogIndex
 		final Map<Integer, List<String>> itemCategoryKeys;
 		final Map<String, List<Integer>> itemNameIds;
 		final Map<Integer, String> itemNames;
+		final Map<String, String> categoryNames;
 		final ClogItemCanonicalizer canonicalizer;
 
 		Snapshot(Map<String, List<Integer>> categoryItems,
@@ -52,9 +53,11 @@ final class ClogIndex
 			Map<Integer, List<String>> itemCategoryKeys,
 			Map<String, List<Integer>> itemNameIds,
 			Map<Integer, String> itemNames,
+			Map<String, String> categoryNames,
 			ClogItemCanonicalizer canonicalizer)
 		{
 			this.categoryItems = categoryItems;
+			this.categoryNames = categoryNames;
 			this.tabCategoryKeys = tabCategoryKeys;
 			this.itemCategoryKeys = itemCategoryKeys;
 			this.itemNameIds = itemNameIds;
@@ -79,6 +82,7 @@ final class ClogIndex
 			Map<Integer, List<String>> nextItemCategoryKeys = new HashMap<>();
 			Map<String, List<Integer>> nextItemNameIds = new HashMap<>();
 			Map<Integer, String> nextItemNames = new HashMap<>();
+			Map<String, String> nextCategoryNames = new HashMap<>();
 			Map<Integer, Integer> nextCanonicalItemIds = readCanonicalItemIds(client);
 
 			EnumComposition tabs = client.getEnum(ENUM_CLOG_TABS);
@@ -105,6 +109,7 @@ final class ClogIndex
 					}
 
 					String categoryKey = ClogService.bossToCategory(name);
+					nextCategoryNames.put(categoryKey, name);
 					if (tabName != null)
 					{
 						nextTabCategoryKeys.computeIfAbsent(tabName, k -> new ArrayList<>())
@@ -141,7 +146,7 @@ final class ClogIndex
 				nextCategoryItems, nextCanonicalItemIds);
 			Snapshot parsed = new Snapshot(nextCategoryItems, nextTabCategoryKeys,
 				nextItemCategoryKeys,
-				nextItemNameIds, nextItemNames, canonicalizer);
+				nextItemNameIds, nextItemNames, nextCategoryNames, canonicalizer);
 			snapshot = parsed;
 			log.debug("Parsed clog enums: {} tabs, {} categories, {} items, {} names, "
 				+ "{} remaps, {} variants",
@@ -225,6 +230,21 @@ final class ClogIndex
 	{
 		Snapshot s = snapshot;
 		return s != null ? s.categoryItems : Collections.emptyMap();
+	}
+
+	/** The game's tabs in order, each with its pages' keys in order; empty when unparsed. */
+	Map<String, List<String>> tabPages()
+	{
+		Snapshot s = snapshot;
+		return s != null ? Collections.unmodifiableMap(s.tabCategoryKeys) : Collections.emptyMap();
+	}
+
+	/** A page's name as the game shows it, or null. */
+	@Nullable
+	String pageName(String key)
+	{
+		Snapshot s = snapshot;
+		return s != null ? s.categoryNames.get(key) : null;
 	}
 
 	/**
@@ -325,11 +345,19 @@ final class ClogIndex
 		Map<Integer, String> itemNames, Map<String, List<String>> tabCategoryKeys,
 		Map<Integer, Integer> canonicalItemIds)
 	{
+		publishForTest(categoryItems, itemNames, tabCategoryKeys, canonicalItemIds, Collections.emptyMap());
+	}
+
+	/** Test seam with the pages' own names, for the structure the sync shares. */
+	/* package */ void publishForTest(Map<String, List<Integer>> categoryItems,
+		Map<Integer, String> itemNames, Map<String, List<String>> tabCategoryKeys,
+		Map<Integer, Integer> canonicalItemIds, Map<String, String> categoryNames)
+	{
 		Map<Integer, Integer> remaps = new HashMap<>(FALLBACK_ITEM_REMAPS);
 		remaps.putAll(canonicalItemIds);
 		snapshot = new Snapshot(new HashMap<>(categoryItems), new LinkedHashMap<>(tabCategoryKeys),
 			itemCategoryKeys(categoryItems), new HashMap<>(), new HashMap<>(itemNames),
-			new ClogItemCanonicalizer(categoryItems, remaps));
+			new HashMap<>(categoryNames), new ClogItemCanonicalizer(categoryItems, remaps));
 	}
 
 	private static Map<Integer, List<String>> itemCategoryKeys(
