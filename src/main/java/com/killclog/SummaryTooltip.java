@@ -17,9 +17,9 @@ import net.runelite.client.game.ItemManager;
  * Player summary tooltip on the summary-bar name label.
  * The player's name is the title, in white beside their account badge. Under it stand the
  * prestige cape or a Kill Clog syncer's character, centered, then the account and prestige
- * lines, then the obtained pets at full size; past ten rows only the pets scroll, the rest anchored.
- * Hovering a pet names it on the line above them and left-click opens its wiki
- * page - same contract as the boss grids.
+ * lines, then the obtained pets at full size. Like the other summaries, only the title and the hover band
+ * under it stay put: the rest scrolls as one once it outgrows the window. Hovering a pet names it in that band
+ * and left-click opens its wiki page - same contract as the boss grids.
  */
 public class SummaryTooltip extends TitleTooltip
 {
@@ -43,8 +43,8 @@ public class SummaryTooltip extends TitleTooltip
 	private Map<Integer, Integer> petCounts = Collections.emptyMap();
 	@Nullable
 	private TooltipItemSprites petSprites;
-	// The pets scroll at full size under the anchored top of the card, a sprite row a notch.
-	private final CardBody.Scroll scroll = new CardBody.Scroll(this, CardBody.GRID_WINDOW, CardBody.GRID_CELL);
+	// Everything under the band scrolls in the standard window, a sprite row a notch, as a skill's log does.
+	private final CardBody.Scroll scroll = new CardBody.Scroll(this, CardBody.WINDOW, CardBody.GRID_CELL);
 
 	public void setData(String rsn, int overallRank, BufferedImage figure,
 						BufferedImage badgeIcon, String accountLabel, String prestige)
@@ -132,9 +132,8 @@ public class SummaryTooltip extends TitleTooltip
 	@Override
 	protected CardBody body()
 	{
-		// The cape or character stands centered under the name.
-		CardBody body = new CardBody()
-			.add(CardBody.minWidth(c -> getFontMetrics(getTitleFont()).stringWidth(FORMER_TITLE)));
+		// The cape or character stands centered under the name, in the part that scrolls.
+		CardBody body = new CardBody();
 		if (figure != null)
 		{
 			body.add(CardBody.row(figure.getHeight() + FIGURE_GAP, c -> figure.getWidth(),
@@ -160,12 +159,11 @@ public class SummaryTooltip extends TitleTooltip
 			body.add(CardBody.line("Pets: ", String.valueOf(count), completionColor(count, totalPetCount)));
 			if (hasPets())
 			{
-				// The pets scroll under the band their hovered one is named in, like a skill's log.
-				body.add(CardBody.hoverBand()).add(CardBody.scroll(scroll, CardBody.grid(PET_COLS, petSprites,
-					petNames, petList, new HashSet<>(petList), petCounts)));
+				body.add(CardBody.grid(PET_COLS, petSprites, petNames, petList, new HashSet<>(petList), petCounts));
 			}
 		}
-		return body;
+		return new CardBody().add(CardBody.minWidth(c -> getFontMetrics(getTitleFont()).stringWidth(FORMER_TITLE)))
+			.add(CardBody.headerHoverBand()).add(CardBody.scroll(scroll, body.asPart()));
 	}
 
 	private static CardBody.Part centered(String label, String value)
