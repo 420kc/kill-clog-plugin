@@ -489,7 +489,13 @@ public abstract class TitleTooltip extends NativeTooltip
 	 */
 	protected int getHeaderZoneHeight()
 	{
-		return getHeaderHeight() + SEPARATOR_GAP + 1 + SEPARATOR_GAP;
+		return getHeaderHeight() + (hasBody() ? SEPARATOR_GAP + 1 + SEPARATOR_GAP : 0);
+	}
+
+	/** False for a card that is its header alone, which then draws no divider under it. */
+	protected boolean hasBody()
+	{
+		return true;
 	}
 
 	/** The card's body as parts; a card that lists its body needs no sizing or painting of its own. */
@@ -652,6 +658,11 @@ public abstract class TitleTooltip extends NativeTooltip
 			}
 			paintHeaderRightText(g2, fm, w, lineY, activeLineWidth,
 				itemHover.hoveredItemName(), getHeaderHoverLineColor());
+		}
+
+		if (!hasBody())
+		{
+			return lineY;
 		}
 
 		// Separator

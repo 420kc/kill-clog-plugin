@@ -87,9 +87,20 @@ public class ImgTooltip extends TitleTooltip
 			this);
 	}
 
+	/** Without items or a notice the card is its header alone, as the dense grids are in a comparison. */
+	@Override
+	protected boolean hasBody()
+	{
+		return allItemIds != null && !allItemIds.isEmpty() || notice != null;
+	}
+
 	@Override
 	protected Dimension getContentSize(int availableWidth)
 	{
+		if (!hasBody())
+		{
+			return new Dimension(0, 0);
+		}
 		boolean hasItems = allItemIds != null && !allItemIds.isEmpty();
 		int itemCount = hasItems ? allItemIds.size() : Math.max(totalItems, 1);
 		int cellSize = spriteSize + PADDING;
@@ -133,7 +144,7 @@ public class ImgTooltip extends TitleTooltip
 	@Override
 	protected void paintBody(Graphics2D g2, int w, int h, int startY)
 	{
-		if (getTitle() == null)
+		if (getTitle() == null || !hasBody())
 		{
 			return;
 		}

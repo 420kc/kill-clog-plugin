@@ -673,6 +673,11 @@ public class KillClogPanel extends PluginPanel
 				tip.setItems(data.totalItems, data.allItemIds, data.obtainedIds,
 					data.obtainedCounts, data.itemNames, itemManager);
 			}
+			else
+			{
+				// The count without its grid, as dense grids show in a comparison: no notice, nothing below.
+				tip.setNotice(null);
+			}
 		}
 		else if (!ClogHelper.configureNotSynced(tip, data, itemManager, config.showTooltipKc()))
 		{

@@ -419,4 +419,20 @@ public class TitleTooltipTest
 			Collections.emptyMap(), Collections.emptyMap(), scores, ranks,
 			Collections.emptyMap(), 0, 0, 0, -1);
 	}
+
+	@Test
+	public void aGridCardWithNeitherItemsNorANoticeIsItsHeaderAlone()
+	{
+		ImgTooltip header = new ImgTooltip(5);
+		header.setTitle("Easy");
+		header.setObtained(79, 131);
+		header.setNotice(null);
+		ImgTooltip notice = new ImgTooltip(5);
+		notice.setTitle("Easy");
+		notice.setObtained(79, 131);
+		// No divider and no notice: the title and its count, inside the card's own edges.
+		assertEquals(NativeTooltip.getInset() * 2 + header.getHeaderHeight(), header.getPreferredSize().height);
+		assertTrue(header.getPreferredSize().height < notice.getPreferredSize().height);
+	}
+
 }
