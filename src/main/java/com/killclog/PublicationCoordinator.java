@@ -125,10 +125,10 @@ final class PublicationCoordinator
 		return config.killclogSync() && config.characterModel();
 	}
 
-	/** A capture, login or settled identity: one quiet push after the debounce. */
+	/** A capture, login or settled identity, on the client thread: one quiet push for this game after the debounce. */
 	void scheduleAutomaticSync()
 	{
-		scheduleSync(SYNC_DEBOUNCE_SECONDS, false);
+		scheduleSync(SYNC_DEBOUNCE_SECONDS, false, mode.get());
 	}
 
 	/**
@@ -136,9 +136,10 @@ final class PublicationCoordinator
 	 * automatic ones (capture debounce and login catch-up) default to silent
 	 * panel feedback. Chat still follows its separate setting.
 	 */
-	synchronized void scheduleSync(int delaySeconds, boolean manual)
+	void scheduleSync(int delaySeconds, boolean manual)
 	{
-		scheduleSync(delaySeconds, manual, mode.get());
+		// A press arrives on the panel's thread; the game it pushes is read on the client's.
+		clientThread.invoke(() -> scheduleSync(delaySeconds, manual, mode.get()));
 	}
 
 	/** A retry keeps the game its attempt was for, wherever the player has hopped since. */

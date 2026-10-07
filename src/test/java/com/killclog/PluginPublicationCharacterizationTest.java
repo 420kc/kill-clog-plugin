@@ -170,6 +170,9 @@ public class PluginPublicationCharacterizationTest
 	public void manualSyncNarratesAndReportsTheResult() throws Exception
 	{
 		syncHandler.run();
+		// The press reads its game on the client thread before any timer exists.
+		assertEquals(0, executor.live());
+		runClient();
 		assertEquals(1, executor.live());
 		settle();
 		verify(chatNotifier).send(ChatNotice.SYNC_RESULT, "Publishing collection log...");
@@ -182,6 +185,18 @@ public class PluginPublicationCharacterizationTest
 		settle();
 		verify(panel).showSyncResult(true, true, "Synced 12 items");
 		verify(chatNotifier).send(ChatNotice.SYNC_RESULT, "Synced 12 items");
+	}
+
+	@Test
+	public void aPressReadsItsGameOnTheClientThreadNotThePanels() throws Exception
+	{
+		clearInvocations(client);
+		syncHandler.run();
+		verify(client, never()).getWorldType();
+		verify(client, never()).getGameState();
+		runClient();
+		verify(client).getWorldType();
+		assertEquals(1, executor.live());
 	}
 
 	@Test
@@ -231,6 +246,7 @@ public class PluginPublicationCharacterizationTest
 	public void logoutBeforeTheClientHopSilencesTheAttempt() throws Exception
 	{
 		syncHandler.run();
+		runClient();
 		executor.runAll();
 		assertEquals(1, clientQueue.size());
 
@@ -270,6 +286,7 @@ public class PluginPublicationCharacterizationTest
 	public void sessionChangeBeforeTheTimerFiresDropsThePush() throws Exception
 	{
 		syncHandler.run();
+		runClient();
 		epoch = 8;
 		settle();
 		assertTrue(syncs.isEmpty());
@@ -609,6 +626,7 @@ public class PluginPublicationCharacterizationTest
 	public void shutDownDropsAScheduledPush() throws Exception
 	{
 		syncHandler.run();
+		runClient();
 		assertEquals(1, executor.live());
 		plugin.shutDown();
 		assertEquals(0, executor.live());
@@ -1176,6 +1194,14 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	/** Pump the executor, the client thread and the EDT until nothing is left to run. */
+	private void runClient()
+	{
+		while (!clientQueue.isEmpty())
+		{
+			clientQueue.poll().run();
+		}
+	}
+
 	/** One pass: the timers due now, then what they hand the client thread. */
 	private void fireOnce() throws Exception
 	{
