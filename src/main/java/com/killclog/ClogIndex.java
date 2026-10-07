@@ -107,7 +107,8 @@ final class ClogIndex
 					int itemsEnumId = catStruct.getIntValue(PARAM_CATEGORY_ITEMS);
 					if (name == null || itemsEnumId <= 0)
 					{
-						continue;
+						// A page read half-way fails the whole read: a smaller log is never shown or shared.
+						throw new IllegalStateException("Unreadable Collection Log page " + catStructId);
 					}
 
 					String categoryKey = ClogService.bossToCategory(name);

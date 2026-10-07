@@ -148,4 +148,51 @@ public class ClogStructureTest
 	{
 		return new HttpUtil.HttpResult(200, body);
 	}
+
+	@Test
+	public void aPageReadHalfWayFailsTheWholeRead()
+	{
+		// One tab of two pages: Zulrah reads whole, the second page's struct has no name or items.
+		net.runelite.api.Client client = org.mockito.Mockito.mock(net.runelite.api.Client.class);
+		net.runelite.client.game.ItemManager items = org.mockito.Mockito.mock(net.runelite.client.game.ItemManager.class);
+		net.runelite.api.ItemComposition item = org.mockito.Mockito.mock(net.runelite.api.ItemComposition.class);
+		org.mockito.Mockito.when(item.getName()).thenReturn("Fixture item");
+		org.mockito.Mockito.when(items.getItemComposition(org.mockito.ArgumentMatchers.anyInt())).thenReturn(item);
+		net.runelite.api.EnumComposition empty = enumOf(new int[0], new int[0]);
+		net.runelite.api.EnumComposition tabs = enumOf(new int[]{0}, new int[]{101});
+		net.runelite.api.EnumComposition pages = enumOf(new int[]{0, 1}, new int[]{102, 103});
+		net.runelite.api.EnumComposition zulrahItems = enumOf(new int[]{0}, new int[]{12921});
+		org.mockito.Mockito.when(client.getEnum(org.mockito.ArgumentMatchers.anyInt())).thenReturn(empty);
+		org.mockito.Mockito.when(client.getEnum(ClogIndex.ENUM_CLOG_TABS)).thenReturn(tabs);
+		net.runelite.api.StructComposition tab = org.mockito.Mockito.mock(net.runelite.api.StructComposition.class);
+		org.mockito.Mockito.when(tab.getStringValue(682)).thenReturn("Bosses");
+		org.mockito.Mockito.when(tab.getIntValue(683)).thenReturn(201);
+		org.mockito.Mockito.when(client.getStructComposition(101)).thenReturn(tab);
+		org.mockito.Mockito.when(client.getEnum(201)).thenReturn(pages);
+		net.runelite.api.StructComposition zulrah = org.mockito.Mockito.mock(net.runelite.api.StructComposition.class);
+		org.mockito.Mockito.when(zulrah.getStringValue(689)).thenReturn("Zulrah");
+		org.mockito.Mockito.when(zulrah.getIntValue(690)).thenReturn(202);
+		org.mockito.Mockito.when(client.getStructComposition(102)).thenReturn(zulrah);
+		net.runelite.api.StructComposition unread = org.mockito.Mockito.mock(net.runelite.api.StructComposition.class);
+		org.mockito.Mockito.when(client.getStructComposition(103)).thenReturn(unread);
+		org.mockito.Mockito.when(client.getEnum(202)).thenReturn(zulrahItems);
+
+		ClogIndex index = new ClogIndex();
+		index.ensureParsed(client, items);
+		// Nothing is shown or shared rather than a log a page short.
+		assertNull(ClogStructure.of(index));
+		org.junit.Assert.assertFalse(index.isParsed());
+	}
+
+	private static net.runelite.api.EnumComposition enumOf(int[] keys, int[] values)
+	{
+		net.runelite.api.EnumComposition e = org.mockito.Mockito.mock(net.runelite.api.EnumComposition.class);
+		org.mockito.Mockito.when(e.getKeys()).thenReturn(keys);
+		org.mockito.Mockito.when(e.getIntVals()).thenReturn(values);
+		for (int i = 0; i < keys.length; i++)
+		{
+			org.mockito.Mockito.when(e.getIntValue(keys[i])).thenReturn(values[i]);
+		}
+		return e;
+	}
 }
