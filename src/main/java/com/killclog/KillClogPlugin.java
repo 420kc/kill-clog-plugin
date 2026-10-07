@@ -157,7 +157,6 @@ public class KillClogPlugin extends Plugin
 	// hash and the open store are all there (they arrive on different ticks).
 	private boolean accountActivated;
 
-	private final ChatAutoLookupGate chatAutoLookup = new ChatAutoLookupGate();
 	private final ClogSessionState sessionState = new ClogSessionState();
 	private final ClogIndex clogIndex = new ClogIndex();
 	private final LiveClogSync liveClogSync = new LiveClogSync();
@@ -441,7 +440,6 @@ public class KillClogPlugin extends Plugin
 	}
 
 	// Live collection-log unlock messages update local cache immediately.
-	// Player-sent chat still rate-limits a self lookup refresh for older data paths.
 	@Subscribe
 	public void onChatMessage(ChatMessage event)
 	{
@@ -486,7 +484,6 @@ public class KillClogPlugin extends Plugin
 			if (unlockName != null)
 			{
 				clientThread.invokeLater(() -> handleCollectionLogUnlock(unlockName, -1, -1));
-				return;
 			}
 		}
 
@@ -504,26 +501,8 @@ public class KillClogPlugin extends Plugin
 			{
 				clientThread.invokeLater(() -> handleCollectionLogUnlock(
 					broadcast.itemName, broadcast.obtained, broadcast.total));
-				return;
 			}
 		}
-
-		Player local = client.getLocalPlayer();
-		if (local == null || local.getName() == null)
-		{
-			return;
-		}
-		String localName = local.getName();
-		if (!chatAutoLookup.shouldRefresh(event, localName, panel.getDisplayedRsn(), System.currentTimeMillis()))
-		{
-			return;
-		}
-
-		SwingUtilities.invokeLater(() ->
-		{
-			panel.setPlayerName(localName);
-			panel.doLookup();
-		});
 	}
 
 	private void handleCollectionLogUnlock(String itemName, int broadcastObtained, int broadcastTotal)

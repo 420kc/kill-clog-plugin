@@ -743,6 +743,31 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void yourOwnChatNeverRerunsYourLookup() throws Exception
+	{
+		LiveClogSync live = mock(LiveClogSync.class);
+		replace("liveClogSync", live);
+		when(panel.getDisplayedRsn()).thenReturn(RSN);
+		for (net.runelite.api.ChatMessageType type : new net.runelite.api.ChatMessageType[]{
+			net.runelite.api.ChatMessageType.PUBLICCHAT, net.runelite.api.ChatMessageType.PRIVATECHATOUT})
+		{
+			net.runelite.api.events.ChatMessage said = new net.runelite.api.events.ChatMessage();
+			said.setType(type);
+			// A private message carries the name it went to.
+			said.setName(type == net.runelite.api.ChatMessageType.PUBLICCHAT ? RSN : "Friend");
+			said.setMessage("hello");
+			plugin.onChatMessage(said);
+		}
+		settle();
+		verify(panel, never()).doLookup();
+		// A new collection log item still updates the panel, through the unlock.
+		unlockMessage();
+		verify(live).handleUnlock(eq("Twisted bow"), eq(-1), eq(-1), any(), any(), any(), eq(localClogCache), any(), any(),
+			anyBoolean());
+		verify(panel, never()).doLookup();
+	}
+
+	@Test
 	public void anUnknownWorldsUnlockReachesNoLog() throws Exception
 	{
 		LiveClogSync live = mock(LiveClogSync.class);
