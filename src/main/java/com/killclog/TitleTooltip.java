@@ -568,7 +568,8 @@ public abstract class TitleTooltip extends NativeTooltip
 		Dimension contentSize = getContentSize(Math.max(headerMinWidth, 1));
 
 		int contentWidth = Math.max(headerMinWidth, contentSize.width);
-		int totalHeight = inset + getHeaderZoneHeight() + contentSize.height + inset;
+		// The body paints at the card's final width, where a grid may take another column: measured there too.
+		int totalHeight = inset + getHeaderZoneHeight() + getContentSize(contentWidth).height + inset;
 		int totalWidth = contentWidth + inset * 2;
 
 		return new Dimension(totalWidth, totalHeight);

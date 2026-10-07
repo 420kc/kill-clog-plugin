@@ -190,4 +190,26 @@ public class SummaryTooltipTest
 		}
 		return -1;
 	}
+
+	@Test
+	public void aWideCharactersPetsAllShowOrScroll() throws ReflectiveOperationException
+	{
+		// A character wider than five pet columns: the card paints wider than its header asked for.
+		BufferedImage wide = new BufferedImage(205, 200, BufferedImage.TYPE_INT_ARGB);
+		wide.setRGB(0, 0, 0xffffffff);
+		Field hits = TooltipItemHover.class.getDeclaredField("hitBoxes");
+		hits.setAccessible(true);
+		Field bounds = TooltipItemHover.HitBox.class.getDeclaredField("bounds");
+		bounds.setAccessible(true);
+		for (int held = 1; held <= 71; held++)
+		{
+			SummaryTooltip card = withPets(wide, held);
+			paint(card);
+			for (Object hit : (java.util.List<?>) hits.get(card.itemHover))
+			{
+				java.awt.Rectangle box = (java.awt.Rectangle) bounds.get(hit);
+				assertTrue(held + " pets", box.y + box.height <= card.getHeight() - NativeTooltip.getInset());
+			}
+		}
+	}
 }
