@@ -68,6 +68,18 @@ public class LocalCaCacheTest
 	}
 
 	@Test
+	public void theLoggedInNameTypedAnotherWayStillReadsItsCas() throws Exception
+	{
+		LocalCaCache cache = open(new Gson(), temporaryFolder.newFolder());
+		cache.setActivePlayer("My Name");
+		cache.cacheResult("My Name", HASH, Map.of(CombatAchievementTier.EASY, 1));
+		assertNotNull(cache.getCached("my_name"));
+		assertTrue(cache.hasDataFor("My-Name"));
+		cache.setActivePlayer("My Name");
+		assertNotNull("the same account keeps its record", cache.getCached("My Name"));
+	}
+
+	@Test
 	public void failedTemporaryWritePreservesPreviousCaRecord() throws Exception
 	{
 		File directory = temporaryFolder.newFolder();

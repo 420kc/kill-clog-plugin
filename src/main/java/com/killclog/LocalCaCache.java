@@ -122,7 +122,7 @@ public class LocalCaCache
 
 	public boolean isActivePlayer(String name)
 	{
-		return activePlayer != null && name != null && activePlayer.equalsIgnoreCase(name);
+		return RsnInputPolicy.sameName(activePlayer, name);
 	}
 
 	public boolean hasDataFor(String name)

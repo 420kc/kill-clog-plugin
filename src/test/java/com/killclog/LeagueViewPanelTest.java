@@ -289,6 +289,36 @@ public class LeagueViewPanelTest
 	}
 
 	@Test
+	public void yourNameTypedAnotherWayStillOffersSetup() throws Exception
+	{
+		Method summary = KillClogPanel.class.getDeclaredMethod("buildClogSummaryTooltip",
+			javax.swing.JComponent.class, HiscoreResult.class, ClogResult.class, String.class, String.class);
+		summary.setAccessible(true);
+		Method cell = KillClogPanel.class.getDeclaredMethod("makeSpriteTooltip", javax.swing.JLabel.class, TooltipData.class,
+			int.class, String.class, HiscoreResult.class, String.class);
+		cell.setAccessible(true);
+		HiscoreResult row = new HiscoreResult(AccountType.REGULAR, new java.util.HashMap<>(), new java.util.HashMap<>(),
+			new java.util.HashMap<>(), new java.util.HashMap<>(), new java.util.HashMap<>(), 100, 1000L, 30, 1);
+		javax.swing.JLabel owner = new javax.swing.JLabel();
+		new javax.swing.JPanel().add(owner);
+		SwingUtilities.invokeAndWait(() ->
+		{
+			try
+			{
+				// The game spells the name with a non-breaking space; the lookup box with an underscore.
+				panel.setLoggedInPlayer("My Name", AccountType.REGULAR);
+				assertTrue(field(summary.invoke(panel, owner, row, null, "my_name", null), "firstTimeSetup", Boolean.class));
+				String notice = field(cell.invoke(panel, owner, null, 4, "Zulrah", row, "My-Name"), "notice", String.class);
+				assertTrue(notice, notice.contains("setup"));
+			}
+			catch (ReflectiveOperationException e)
+			{
+				throw new AssertionError(e);
+			}
+		});
+	}
+
+	@Test
 	public void everyNameInALeagueViewWearsTheLeaguesBadge() throws Exception
 	{
 		javax.swing.ImageIcon badge = field(panel, "leagueBadge", javax.swing.ImageIcon.class);
