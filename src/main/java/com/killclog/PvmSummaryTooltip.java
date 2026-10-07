@@ -199,7 +199,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 	protected CardBody body()
 	{
 		// The combat level leads the card; PvM and PvP each follow under their own subheader. A sprite's name shows
-		// in the band over Slayer, the first section with sprites, and everything from there scrolls.
+		// in the band over Raids, the first section with sprites, and everything from there scrolls.
 		CardBody card = new CardBody()
 			.add(CardBody.gap(LEVEL_GAP_ABOVE))
 			.add(leadRow(combatIcon, combatText(combatLevel)))
@@ -228,8 +228,17 @@ public class PvmSummaryTooltip extends TitleTooltip
 				.add(CardBody.text("Most Killed:", OSRS_ORANGE, false))
 				.add(CardBody.text(mostKilled + " (" + grouped(mostKilledKc) + ")", Color.WHITE, true));
 		}
+		// Raids lead the sections under the band, their megarares under the rows.
+		CardBody body = new CardBody().titled("Raids");
+		for (int i = 0; i < RAID_LABELS.length; i++)
+		{
+			body.add(raidRow(i));
+		}
+		body.add(CardBody.gap(WEAPON_PAD))
+			.add(CardBody.sprites(1, weaponSprites, PanelData.MEGARARE_ITEM_IDS, PanelData.MEGARARE_ITEM_NAMES,
+				weaponCounts, WEAPON_PAD));
 		// Slayer: XP and Rank from the hiscores, then clog progress when a synced log is known.
-		CardBody body = new CardBody().titled("Slayer")
+		body.titled("Slayer")
 			.add(CardBody.line("XP: ", slayerXpText(slayerXp)))
 			.add(CardBody.line("Rank: ", scoreText(slayerRank)));
 		if (slayerObtained >= 0)
@@ -240,14 +249,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 		body.add(CardBody.gap(WEAPON_PAD))
 			.add(CardBody.sprites(0, superiorSprites, PanelData.SUPERIOR_ITEMS, PanelData.SUPERIOR_ITEM_NAMES,
 				superiorCounts, WEAPON_PAD))
-			.titled("Raids");
-		for (int i = 0; i < RAID_LABELS.length; i++)
-		{
-			body.add(raidRow(i));
-		}
-		body.add(CardBody.gap(WEAPON_PAD))
-			.add(CardBody.sprites(1, weaponSprites, PanelData.MEGARARE_ITEM_IDS, PanelData.MEGARARE_ITEM_NAMES,
-				weaponCounts, WEAPON_PAD))
 			.titled(PVP_HEADER)
 			.add(pvpRows.part());
 		return card.add(CardBody.hoverBand()).add(CardBody.scroll(scroll, body.asPart()));
