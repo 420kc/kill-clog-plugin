@@ -27,7 +27,7 @@ import net.runelite.client.game.ItemManager;
 @Slf4j
 final class ClogIndex
 {
-	private static final int ENUM_CLOG_TABS = 2102;
+	static final int ENUM_CLOG_TABS = 2102;
 	private static final int ENUM_CLOG_DUPE_REMAP = 3721;
 	private static final int PARAM_TAB_NAME = 682;
 	private static final int PARAM_SUBTAB_ENUM = 683;
@@ -67,6 +67,8 @@ final class ClogIndex
 	}
 
 	private volatile Snapshot snapshot;
+	// A failed read is tried again on the next login or logout; it warns once until a read succeeds.
+	private boolean warned;
 
 	boolean ensureParsed(Client client, ItemManager itemManager)
 	{
@@ -148,6 +150,7 @@ final class ClogIndex
 				nextItemCategoryKeys,
 				nextItemNameIds, nextItemNames, nextCategoryNames, canonicalizer);
 			snapshot = parsed;
+			warned = false;
 			log.debug("Parsed clog enums: {} tabs, {} categories, {} items, {} names, "
 				+ "{} remaps, {} variants",
 				parsed.tabCategoryKeys.size(), parsed.categoryItems.size(),
@@ -157,7 +160,11 @@ final class ClogIndex
 		}
 		catch (Exception e)
 		{
-			log.warn("Failed to parse clog enums", e);
+			if (!warned)
+			{
+				log.warn("Failed to parse clog enums", e);
+			}
+			warned = true;
 			snapshot = null;
 			return false;
 		}

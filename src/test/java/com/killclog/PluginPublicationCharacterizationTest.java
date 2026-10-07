@@ -954,6 +954,29 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void aLogoutDropsTheCollectionLogsStructureAndReadsItAgainAtOnce() throws Exception
+	{
+		ClogIndex index = (ClogIndex) field("clogIndex");
+		index.publishForTest(java.util.Collections.emptyMap(), java.util.Collections.emptyMap());
+		clearInvocations(client);
+		gameState = GameState.LOGIN_SCREEN;
+		logout();
+		// Read again even though one was held: the logout dropped it, and lookups at the login screen need it.
+		verify(client).getEnum(ClogIndex.ENUM_CLOG_TABS);
+	}
+
+	@Test
+	public void startingAtTheLoginScreenReadsTheCollectionLogsStructure() throws Exception
+	{
+		plugin.shutDown();
+		gameState = GameState.LOGIN_SCREEN;
+		clearInvocations(client);
+		plugin.startUp();
+		runClient();
+		verify(client).getEnum(ClogIndex.ENUM_CLOG_TABS);
+	}
+
+	@Test
 	public void aLogoutFromAMainWorldEndsAFlip() throws Exception
 	{
 		when(((KillclogService) field("killclogService")).activeLeague()).thenReturn("demonic-pacts");

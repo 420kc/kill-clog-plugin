@@ -236,6 +236,14 @@ public class KillClogPlugin extends Plugin
 		{
 			clientThread.invokeLater(() -> enterLoggedInState(false));
 		}
+		else if (client.getGameState() == GameState.LOGIN_SCREEN)
+		{
+			// The game's Collection Log is readable at the login screen: lookups made there open every page.
+			clientThread.invokeLater(() ->
+			{
+				clogIndex.ensureParsed(client, itemManager);
+			});
+		}
 
 		log.debug("Kill Clog plugin started");
 	}
@@ -379,7 +387,9 @@ public class KillClogPlugin extends Plugin
 			panel.setSyncArrowHasData(false);
 			panel.resetSyncFeedback();
 			manualClogSync.reset();
+			// Read the game's own structure again at once, for lookups made before the next login.
 			clogIndex.clear();
+			clogIndex.ensureParsed(client, itemManager);
 			sessionState.resetAutoLookupSession();
 			liveClogSync.resetFirstSyncWarning();
 			nameAutocompleter.clearClientSnapshot();
