@@ -771,7 +771,7 @@ public class ComparisonController
 		int score = compared.hiscore != null
 			? getCompareHiscoreResult().getActivityScore(tier.getName()) : -1;
 		return tooltipDataBuilder.buildUnsyncedTooltipData(
-			Cells.capitalizeTier(tier), category, rank, "Score: ", score, unsyncedCatalog.result());
+			Cells.capitalizeTier(tier), category, rank, Cells.cluesCompletedLabel(tier), score, unsyncedCatalog.result());
 	}
 
 	private static int hiscoreKc(@Nullable HiscoreResult r, String hiscoreName)

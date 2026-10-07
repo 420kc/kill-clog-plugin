@@ -656,7 +656,7 @@ public class KillClogPanel extends PluginPanel
 				? ColosseumGlory.hasHeaderScore(glory, data.kc) : data.kc >= 0;
 			if (hasHeaderScore && config.showTooltipKc())
 			{
-				tip.setInfoLine(isSolHeredit ? ColosseumGlory.headerLabel(glory) : "KC: ",
+				tip.setInfoLine(isSolHeredit ? ColosseumGlory.headerLabel(glory) : data.kcLabel != null ? data.kcLabel : "KC: ",
 					isSolHeredit ? ColosseumGlory.headerValue(glory, data.kc) : ClogHelper.formatKc(data.kc),
 					Color.WHITE);
 				if (data.pb != null && config.showTooltipPb())

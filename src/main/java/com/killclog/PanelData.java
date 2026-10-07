@@ -89,7 +89,11 @@ final class PanelData
 	// The rare collections in Clue Summary order: the two clue-wide sets, then the tier rares.
 	static final String[] RARE_KEYS = {CLOG_THIRD_AGE, CLOG_GILDED, RARE_HARD, RARE_ELITE, RARE_MASTER};
 	static final String[] RARE_NAMES = {
-		"3rd Age", "Gilded", "Hard Treasure (Rare)", "Elite Treasure (Rare)", "Master Treasure (Rare)",
+		"3rd Age", "Gilded", "Hard Treasure Trails (Rare)", "Elite Treasure Trails (Rare)", "Master Treasure Trails (Rare)",
+	};
+	// The clue tier a rare row's page logs: its card reads the tier's completed clues, as the game's page does.
+	static final HiscoreSkill[] RARE_TIERS = {
+		null, null, HiscoreSkill.CLUE_SCROLL_HARD, HiscoreSkill.CLUE_SCROLL_ELITE, HiscoreSkill.CLUE_SCROLL_MASTER,
 	};
 	// Each rare row's wiki page: the equipment set, or for a tier's rares their section of the Collection log.
 	static final String[] RARE_WIKI_PAGES = {

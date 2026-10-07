@@ -64,6 +64,8 @@ public class TitleTooltipTest
 		assertEquals("Clue scroll (beginner)", PanelData.clueWikiPage(HiscoreSkill.CLUE_SCROLL_BEGINNER));
 		assertEquals(PanelData.RARE_NAMES.length, PanelData.RARE_WIKI_PAGES.length);
 		assertEquals(PanelData.RARE_NAMES.length, PanelData.RARE_PAGES.length);
+		assertEquals(PanelData.RARE_NAMES.length, PanelData.RARE_TIERS.length);
+		assertEquals("Master clues completed: ", Cells.cluesCompletedLabel(HiscoreSkill.CLUE_SCROLL_MASTER));
 	}
 
 	@Test

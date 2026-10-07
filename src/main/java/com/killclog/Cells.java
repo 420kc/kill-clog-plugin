@@ -464,7 +464,7 @@ public class Cells
 			int score = lookupSession.getHiscoreResult() != null
 				? lookupSession.getHiscoreResult().getActivityScore(skill.getName()) : -1;
 			TooltipData data = tooltipDataBuilder.buildUnsyncedTooltipData(
-				capitalizeTier(skill), entry.getValue(), rank, "Score: ", score, catalog);
+				capitalizeTier(skill), entry.getValue(), rank, cluesCompletedLabel(skill), score, catalog);
 			if (data != null)
 			{
 				tooltipDataMap.put(skill, data);
@@ -658,8 +658,24 @@ public class Cells
 
 	private JToolTip buildClueTierTooltip(JLabel owner, HiscoreSkill tier, String displayName)
 	{
-		return gridTooltip(owner, tooltipDataMap.get(tier), () -> comparison.buildCompareClueTierData(tier),
+		return gridTooltip(owner, cluesCompleted(tooltipDataMap.get(tier), tier, lookupSession.getHiscoreResult()),
+			() -> cluesCompleted(comparison.buildCompareClueTierData(tier), tier, comparison.getCompareHiscoreResult()),
 			displayName, PanelData.clueWikiPage(tier), false);
+	}
+
+	/** A clue tier's completed count, labeled as the game's own Collection Log page labels it. */
+	static String cluesCompletedLabel(HiscoreSkill tier)
+	{
+		return capitalizeTier(tier) + " clues completed: ";
+	}
+
+	/** A clue card's data reading its tier's completed clues where a boss card reads its KC. */
+	@Nullable
+	private static TooltipData cluesCompleted(@Nullable TooltipData data, @Nullable HiscoreSkill tier,
+		@Nullable HiscoreResult result)
+	{
+		return data == null || tier == null || result == null ? data
+			: data.toBuilder().kcLabel(cluesCompletedLabel(tier)).kc(result.getActivityScore(tier.getName())).build();
 	}
 
 	/** Progress for a Clue Summary row; unsynced or unknown data shows none. */
@@ -692,7 +708,9 @@ public class Cells
 
 	private JToolTip buildRareTooltip(JLabel owner, int row)
 	{
-		return gridTooltip(owner, rareTooltips.get(PanelData.RARE_KEYS[row]), () -> rivalRare(row),
+		HiscoreSkill tier = PanelData.RARE_TIERS[row];
+		return gridTooltip(owner, cluesCompleted(rareTooltips.get(PanelData.RARE_KEYS[row]), tier,
+			lookupSession.getHiscoreResult()), () -> cluesCompleted(rivalRare(row), tier, comparison.getCompareHiscoreResult()),
 			PanelData.RARE_NAMES[row], PanelData.RARE_WIKI_PAGES[row], false);
 	}
 
