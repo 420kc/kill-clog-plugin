@@ -88,7 +88,7 @@ public class PlayerPortraitsTest
 		portraits.lookedUp(clog("420 kc", true));
 		portraits.lookedUp(clog("420_KC", true));
 		Request request = requests(client, 1).get(0);
-		assertEquals("https://killclog.com/api/player/420%20kc/portrait?size=200", request.url().toString());
+		assertEquals("https://killclog.com/api/player/420%20kc/portrait/large", request.url().toString());
 		assertEquals(HttpUtil.USER_AGENT, request.header("User-Agent"));
 		assertNull("nothing held yet, so nothing to re-check", request.header("If-None-Match"));
 	}
@@ -224,7 +224,7 @@ public class PlayerPortraitsTest
 		assertNotNull(portraits.forSummary(clog("420 kc", true)));
 		// The next lookup asks for the large one again, in case it has been drawn since.
 		portraits.lookedUp(clog("420 kc", true));
-		assertEquals("https://killclog.com/api/player/420%20kc/portrait?size=200",
+		assertEquals("https://killclog.com/api/player/420%20kc/portrait/large",
 			requests(client, 3).get(2).url().toString());
 	}
 

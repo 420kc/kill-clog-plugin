@@ -40,9 +40,8 @@ class PlayerPortraits
 	// A miss is often a character still being drawn, or one about to be published, so it is asked
 	// about again sooner than a provider miss.
 	static final long NOT_FOUND_TTL_MS = 10 * 60 * 1000;
-	// The Player Summary draws characters 200 pixels tall; a player whose large one isn't drawn yet, or a server
-	// without them, answers 404 and is asked for today's size before their character counts as missing.
-	static final int LARGE_SIZE = 200;
+	// The Player Summary draws characters 200 pixels tall, from /portrait/large; a player whose large one isn't
+	// drawn yet, or a server without them, answers 404 and is asked for today's size before counting as missing.
 	// Lookup counts kept past this are pruned to names with a portrait held or a check out.
 	static final int MAX_GENERATIONS = 2 * HttpUtil.CACHE_CAP;
 	private static final byte[] PNG_SIGNATURE = {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'};
@@ -143,7 +142,7 @@ class PlayerPortraits
 		asked.put(key, generation);
 		Portrait held = lane.values.get(key);
 		String url = KillClogEndpoint.apiBaseUrl() + "/player/" + HttpUtil.pathSegment(name) + "/portrait"
-			+ (plain.contains(key) ? "" : "?size=" + LARGE_SIZE);
+			+ (plain.contains(key) ? "" : "/large");
 		CompletableFuture<HttpUtil.BytesResult> request;
 		try
 		{
