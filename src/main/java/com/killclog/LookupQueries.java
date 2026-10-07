@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -181,19 +182,19 @@ final class LookupQueries
 		return true;
 	}
 
-	static Set<Integer> getObtainedPetIds(ClogResult result)
+	/** Each obtained pet's count by item id, a duplicate's as the log holds it. */
+	static Map<Integer, Integer> getObtainedPetCounts(ClogResult result)
 	{
-		if (result == null) return new HashSet<>();
-		List<ClogResult.ClogItem> pets = result.getObtainedItems().get("all_pets");
-		Set<Integer> ids = new HashSet<>();
+		Map<Integer, Integer> counts = new HashMap<>();
+		List<ClogResult.ClogItem> pets = result != null ? result.getObtainedItems().get("all_pets") : null;
 		if (pets != null)
 		{
 			for (ClogResult.ClogItem item : pets)
 			{
-				ids.add(item.getId());
+				counts.merge(item.getId(), item.getCount(), Integer::max);
 			}
 		}
-		return ids;
+		return counts;
 	}
 
 	static String syncLine(String lastChanged, boolean stale)

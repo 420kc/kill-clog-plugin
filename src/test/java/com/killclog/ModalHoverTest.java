@@ -77,9 +77,9 @@ public class ModalHoverTest
 		clog.setTierData(125, 1600, null, null);
 		clog.setClogSources(true, true, true, false);
 		set(clog, "special", new ClogSummaryTooltip.Shelf(null, new int[]{13342},
-			new String[]{"A very long collection log trophy name"}, null));
+			new String[]{"A very long collection log trophy name"}, new int[]{1}, null));
 		set(clog, "recent", new ClogSummaryTooltip.Shelf(null, new int[]{4151},
-			new String[]{"Abyssal whip"}, new String[]{"Sep 11"}));
+			new String[]{"Abyssal whip"}, new int[]{3}, new String[]{"Sep 11"}));
 		SummaryTooltip player = new SummaryTooltip();
 		player.setData("Fixture", 12345, null, null, "Regular", null);
 		set(player, "totalPetCount", 65);

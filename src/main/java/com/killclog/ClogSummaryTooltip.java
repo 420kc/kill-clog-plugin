@@ -81,13 +81,15 @@ public class ClogSummaryTooltip extends TitleTooltip
 		final TooltipItemSprites sprites;
 		final int[] ids;
 		final String[] names;
+		final int[] counts;
 		final String[] dates;
 
-		Shelf(@Nullable TooltipItemSprites sprites, int[] ids, String[] names, String[] dates)
+		Shelf(@Nullable TooltipItemSprites sprites, int[] ids, String[] names, int[] counts, String[] dates)
 		{
 			this.sprites = sprites;
 			this.ids = ids;
 			this.names = names;
+			this.counts = counts;
 			this.dates = dates;
 		}
 
@@ -263,19 +265,21 @@ public class ClogSummaryTooltip extends TitleTooltip
 		}
 		int[] ids = new int[count];
 		String[] names = new String[count];
+		int[] counts = new int[count];
 		String[] dates = dated ? new String[count] : null;
 		for (int i = 0; i < count; i++)
 		{
 			ClogResult.ClogItem item = items.get(i);
 			ids[i] = item.getId();
 			names[i] = clog != null ? clog.getItemName(item.getId()) : null;
+			counts[i] = item.getCount();
 			if (dated)
 			{
 				dates[i] = shortDate(item.getDate());
 			}
 		}
 		return new Shelf(TooltipItemSprites.load(TooltipData.itemList(ids), null, itemManager, id -> 1, this),
-			ids, names, dates);
+			ids, names, counts, dates);
 	}
 
 	/** "2026-07-04 ..." from the provider becomes "Jul 4"; anything else is dropped. */
@@ -457,9 +461,11 @@ public class ClogSummaryTooltip extends TitleTooltip
 		int count = shelf.ids.length;
 		int size = CardBody.GRID_SPRITE;
 		Map<Integer, String> named = new HashMap<>();
+		Map<Integer, Integer> held = new HashMap<>();
 		for (int i = 0; i < count; i++)
 		{
 			named.put(shelf.ids[i], shelf.names[i]);
+			held.put(shelf.ids[i], shelf.counts[i]);
 		}
 		List<Integer> ids = TooltipData.itemList(shelf.ids);
 		body.add(CardBody.separator(SEPARATOR_PAD)).add(CardBody.subheader(title)).add(CardBody.part(
@@ -470,7 +476,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 				int cellWidth = shelf.cellWidth(c.fm);
 				int startX = c.inset() + (c.w - 2 * c.inset() - (count * cellWidth + (count - 1) * RECENT_PAD)) / 2;
 				c.hits.addAll(TooltipItemSprites.paintGrid(c.g, shelf.sprites, named, section, ids, new HashSet<>(ids),
-					Collections.emptyMap(), startX + (cellWidth - size) / 2, y, count, size, cellWidth + RECENT_PAD));
+					held, startX + (cellWidth - size) / 2, y, count, size, cellWidth + RECENT_PAD));
 				for (int i = 0; i < count; i++)
 				{
 					String date = shelf.dates != null ? shelf.dates[i] : null;

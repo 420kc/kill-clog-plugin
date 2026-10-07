@@ -9,7 +9,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.IntFunction;
 import javax.annotation.Nullable;
 import net.runelite.client.game.ItemManager;
@@ -41,6 +40,7 @@ public class SummaryTooltip extends TitleTooltip
 	private int totalPetCount;
 	private List<Integer> petList;
 	private Map<Integer, String> petNames;
+	private Map<Integer, Integer> petCounts = Collections.emptyMap();
 	@Nullable
 	private TooltipItemSprites petSprites;
 	// The pets scroll at full size under the anchored top of the card, a sprite row a notch.
@@ -73,17 +73,19 @@ public class SummaryTooltip extends TitleTooltip
 		return TITLE_FONT_SMALL;
 	}
 
-	public void setPets(List<Integer> allPetIds, Set<Integer> obtainedPetIds,
+	/** The pets held, in the log's order, each with its count for the corner like any item sprite. */
+	public void setPets(List<Integer> allPetIds, Map<Integer, Integer> obtainedPetCounts,
 		ItemManager itemManager, IntFunction<String> nameLookup)
 	{
 		this.totalPetCount = allPetIds != null ? allPetIds.size() : 0;
+		petCounts = obtainedPetCounts != null ? obtainedPetCounts : Collections.emptyMap();
 
 		petList = new ArrayList<>();
-		if (allPetIds != null && obtainedPetIds != null)
+		if (allPetIds != null)
 		{
 			for (int id : allPetIds)
 			{
-				if (obtainedPetIds.contains(id))
+				if (petCounts.containsKey(id))
 				{
 					petList.add(id);
 				}
@@ -160,7 +162,7 @@ public class SummaryTooltip extends TitleTooltip
 			{
 				// The pets scroll under the band their hovered one is named in, like a skill's log.
 				body.add(CardBody.hoverBand()).add(CardBody.scroll(scroll, CardBody.grid(PET_COLS, petSprites,
-					petNames, petList, new HashSet<>(petList), Collections.emptyMap())));
+					petNames, petList, new HashSet<>(petList), petCounts)));
 			}
 		}
 		return body;

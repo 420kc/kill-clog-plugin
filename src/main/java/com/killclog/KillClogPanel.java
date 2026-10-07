@@ -13,7 +13,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
@@ -1392,8 +1391,7 @@ public class KillClogPanel extends PluginPanel
 		if (clog != null)
 		{
 			List<Integer> allPets = clog.getCategoryItems().get("all_pets");
-			Set<Integer> obtainedPets = LookupQueries.getObtainedPetIds(clog);
-			tip.setPets(allPets, obtainedPets, itemManager, clog::getItemName);
+			tip.setPets(allPets, LookupQueries.getObtainedPetCounts(clog), itemManager, clog::getItemName);
 		}
 		return tip;
 	}
