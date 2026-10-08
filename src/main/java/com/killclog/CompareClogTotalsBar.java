@@ -11,7 +11,6 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JToolTip;
-import javax.swing.border.EmptyBorder;
 import net.runelite.client.ui.FontManager;
 
 final class CompareClogTotalsBar
@@ -92,7 +91,6 @@ final class CompareClogTotalsBar
 		label.setFont(FontManager.getRunescapeSmallFont());
 		label.setHorizontalAlignment(alignment);
 		label.setIconTextGap(3);
-		label.setBorder(new EmptyBorder(0, 0, 2, 0));
 		label.setToolTipText(" ");
 		ClogHelper.antialias(label);
 		return label;
