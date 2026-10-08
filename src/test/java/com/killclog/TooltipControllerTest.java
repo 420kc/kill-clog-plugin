@@ -29,6 +29,13 @@ public class TooltipControllerTest
 	private TooltipMode mode = TooltipMode.CLICK;
 	private final KillClogConfig config = new KillClogConfig()
 	{
+		// These check the outline; the default is now Tint.
+		@Override
+		public HoverStyle hoverStyle()
+		{
+			return HoverStyle.OUTLINE;
+		}
+
 		@Override
 		public TooltipMode tooltipMode()
 		{

@@ -256,7 +256,7 @@ public interface KillClogConfig extends Config
 	)
 	default HoverStyle hoverStyle()
 	{
-		return HoverStyle.OUTLINE;
+		return HoverStyle.TINT;
 	}
 
 	@ConfigItem(
