@@ -136,7 +136,7 @@ public class KillClogConfigStructureTest
 			.map(ConfigSection::name)
 			.collect(Collectors.toList());
 
-		assertEquals(Arrays.asList("Kill Clog Web Sync", "Modal Appearance", "Lookup",
+		assertEquals(Arrays.asList("Kill Clog Web Sync", "Card Appearance", "Lookup",
 			"Menu location", "Skills", "Chat", "Progress Highlighter"), sectionNames);
 	}
 
@@ -146,7 +146,7 @@ public class KillClogConfigStructureTest
 		assertEquals(Arrays.asList("tooltipMode", "hoverStyle", "wikiItemLinks",
 			"showTooltipKc", "showTooltipPb", "showTooltipRank"),
 			keysInSection(KillClogConfig.modalAppearanceSection));
-		assertEquals("Modal Activation", KillClogConfig.class.getDeclaredMethod("tooltipMode")
+		assertEquals("Card Activation", KillClogConfig.class.getDeclaredMethod("tooltipMode")
 			.getAnnotation(ConfigItem.class).name());
 
 		KillClogConfig defaults = new KillClogConfig()
@@ -188,7 +188,7 @@ public class KillClogConfigStructureTest
 		ConfigItem item = KillClogConfig.class.getDeclaredMethod("enableSkillClogs")
 			.getAnnotation(ConfigItem.class);
 		assertEquals("Enable Skill Clogs", item.name());
-		assertEquals("Show Skill Clog items in skill modals. When off, skills show "
+		assertEquals("Show Skill Clog items in skill cards. When off, skills show "
 			+ "level, XP, rank, and XP to level only", item.description());
 		assertEquals(Arrays.asList("skillDisplay", "virtualLevels", "skillLevelColor",
 			"skillColorMode", "enableSkillClogs"), keysInSection(KillClogConfig.skillsSection));

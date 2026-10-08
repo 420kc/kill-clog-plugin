@@ -34,15 +34,15 @@ The icon will flash green on a successful upload.
 
 ## Skill Clogs
 
-Every skill has its own Collection Log-style progression. Skill modals combine relevant activities, equipment, and unlocks with the skill's level, XP, rank, and XP to next level.
+Every skill has its own Collection Log-style progression. Skill cards combine relevant activities, equipment, and unlocks with the skill's level, XP, rank, and XP to next level.
 
 ![Enable Skill Clogs on](screenshots/skill-clogs-setting-on.png)
 
-![A Fletching skill modal with its Vale Totems skill clog](screenshots/skill-clog-on.png)
+![A Fletching skill card with its Vale Totems skill clog](screenshots/skill-clog-on.png)
 
 ![Enable Skill Clogs off](screenshots/skill-clogs-setting-off.png)
 
-![The same Fletching modal with Skill Clogs off](screenshots/skill-clog-off.png)
+![The same Fletching card with Skill Clogs off](screenshots/skill-clog-off.png)
 
 ## Player Lookup
 
@@ -99,7 +99,7 @@ Full page names work, and shorthand such as `gotr`, `mixology`, `pets`, and `hyd
 ## Settings
 
 - **Kill Clog Web Sync:** Collection Log sync, Publish Character Model, and Silent automatic sync
-- **Modal Appearance:** activation, hover feedback, Wiki links, KC, PB, and rank
+- **Card Appearance:** activation, hover feedback, Wiki links, KC, PB, and rank
 - **Lookup:** automatic self-lookup, player comparison, player-menu lookup, and the leaderboard selector
 - **Menu location:** choose which right-click menus show Kill Clog
 - **Skills:** location, virtual levels, synced-account color mode, and Skill Clogs on or off
@@ -138,4 +138,4 @@ The release jar is written to `build/libs/`.
 
 ## Support
 
-If setup, a total, an item mapping, or a modal looks wrong, open an [issue](https://github.com/420kc/kill-clog-plugin/issues) with your Kill Clog version, the RSN, and a screenshot.
+If setup, a total, an item mapping, or a card looks wrong, open an [issue](https://github.com/420kc/kill-clog-plugin/issues) with your Kill Clog version, the RSN, and a screenshot.

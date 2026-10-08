@@ -217,7 +217,7 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "enableSkillClogs",
 		name = "Enable Skill Clogs",
-		description = "Show Skill Clog items in skill modals. When off, skills show level, XP, rank, and XP to level only",
+		description = "Show Skill Clog items in skill cards. When off, skills show level, XP, rank, and XP to level only",
 		section = skillsSection,
 		position = 4
 	)
@@ -227,8 +227,8 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigSection(
-		name = "Modal Appearance",
-		description = "Appearance and interaction for modal popups: collection logs, "
+		name = "Card Appearance",
+		description = "Appearance and interaction for cards: collection logs, "
 			+ "skill summaries, PvM and PvP summaries, and combat achievements",
 		position = 1,
 		closedByDefault = true
@@ -237,7 +237,7 @@ public interface KillClogConfig extends Config
 
 	@ConfigItem(
 		keyName = "tooltipMode",
-		name = "Modal Activation",
+		name = "Card Activation",
 		description = "Hover to preview and click to pin, or use click-to-reveal",
 		section = modalAppearanceSection,
 		position = 0
@@ -262,7 +262,7 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "wikiItemLinks",
 		name = "Wiki Links",
-		description = "Open the OSRS Wiki from supported names and sprites in modal popups",
+		description = "Open the OSRS Wiki from supported names and sprites on cards",
 		section = modalAppearanceSection,
 		position = 2
 	)
@@ -288,7 +288,7 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(keyName = "showTooltipRank", name = "Show Rank",
-		description = "Hiscore rank line on boss, clue, and rare collection-log popups",
+		description = "Hiscore rank line on boss, clue, and rare Collection Log cards",
 		section = modalAppearanceSection, position = 5)
 	default boolean showTooltipRank()
 	{
