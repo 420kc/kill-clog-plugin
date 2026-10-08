@@ -121,13 +121,13 @@ public abstract class TitleTooltip extends NativeTooltip
 	}
 
 	/**
-	 * An image in the header's right corner, the title kept clear of it: the Collection Log's current tier, a
+	 * An image in the header's right corner, every header line kept clear of it: the Collection Log's current tier, a
 	 * published character's prestige cape. The room is kept whether or not the image has loaded yet, so the card
 	 * never changes size when it arrives. With a name, hovering it shows the name in the card's band.
 	 */
 	CardBody.Part headerCorner(boolean keepRoom, @Nullable BufferedImage image, @Nullable String name)
 	{
-		return CardBody.row(0, c -> keepRoom ? titleIconWidth() + getFontMetrics(getTitleFont()).stringWidth(title) + 40 : 0, (c, y) ->
+		return CardBody.row(0, c -> keepRoom ? headerTextWidth() + 40 : 0, (c, y) ->
 		{
 			if (image == null)
 			{
@@ -558,11 +558,25 @@ public abstract class TitleTooltip extends NativeTooltip
 	{
 		int inset = getInset();
 
-		FontMetrics nfm = getFontMetrics(getTitleFont());
-		FontMetrics sfm = getFontMetrics(FontManager.getRunescapeSmallFont());
-
 		// Header text widths drive minimum tooltip width.
 		// The full header width flows to getContentSize so grids can fill the space.
+		int headerMinWidth = headerTextWidth();
+
+		Dimension contentSize = getContentSize(Math.max(headerMinWidth, 1));
+
+		int contentWidth = Math.max(headerMinWidth, contentSize.width);
+		// The body paints at the card's final width, where a grid may take another column: measured there too.
+		int totalHeight = inset + getHeaderZoneHeight() + getContentSize(contentWidth).height + inset;
+		int totalWidth = contentWidth + inset * 2;
+
+		return new Dimension(totalWidth, totalHeight);
+	}
+
+	/** The widest header line: the card is never narrower, and a corner image keeps clear of every line. */
+	private int headerTextWidth()
+	{
+		FontMetrics nfm = getFontMetrics(getTitleFont());
+		FontMetrics sfm = getFontMetrics(FontManager.getRunescapeSmallFont());
 		int titleTextWidth = title != null ? titleIconWidth() + nfm.stringWidth(title) : 0;
 		if (titleSuffix != null)
 		{
@@ -586,16 +600,7 @@ public abstract class TitleTooltip extends NativeTooltip
 		{
 			maxTextWidth = Math.max(maxTextWidth, sfm.stringWidth(backLabel));
 		}
-		int headerMinWidth = maxTextWidth;
-
-		Dimension contentSize = getContentSize(Math.max(headerMinWidth, 1));
-
-		int contentWidth = Math.max(headerMinWidth, contentSize.width);
-		// The body paints at the card's final width, where a grid may take another column: measured there too.
-		int totalHeight = inset + getHeaderZoneHeight() + getContentSize(contentWidth).height + inset;
-		int totalWidth = contentWidth + inset * 2;
-
-		return new Dimension(totalWidth, totalHeight);
+		return maxTextWidth;
 	}
 
 	@Override

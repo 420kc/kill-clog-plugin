@@ -288,4 +288,17 @@ public class SummaryTooltipTest
 			}
 		}
 	}
+
+	@Test
+	public void theHeadersCapeKeepsClearOfALongAccountLine()
+	{
+		SummaryTooltip without = new SummaryTooltip();
+		without.setData("Al", 123456, null, null, "Hardcore Group Ironman", "Maxed Infernal");
+		SummaryTooltip with = new SummaryTooltip();
+		with.setData("Al", 123456, null, null, "Hardcore Group Ironman", "Maxed Infernal");
+		with.setCape(new BufferedImage(36, 32, BufferedImage.TYPE_INT_ARGB));
+
+		// The account line under a short name is the widest header line: the cape's room sits beside it.
+		assertEquals(40, with.getPreferredSize().width - without.getPreferredSize().width);
+	}
 }
