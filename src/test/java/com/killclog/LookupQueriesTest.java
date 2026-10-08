@@ -82,6 +82,31 @@ public class LookupQueriesTest
 	}
 
 	@Test
+	public void theLastUpdateReadsOnThePlayersOwnClock()
+	{
+		java.util.TimeZone before = java.util.TimeZone.getDefault();
+		java.util.Locale locale = java.util.Locale.getDefault();
+		try
+		{
+			java.util.Locale.setDefault(java.util.Locale.ENGLISH);
+			// 01:20 UTC on Oct 6 is 8:20 PM on Oct 5 in Chicago.
+			java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("America/Chicago"));
+			assertEquals("Oct 5 '25", LookupQueries.syncLine("2025-10-06 01:20:41", true).substring(0, 9));
+			assertEquals("Oct 5", ClogSummaryTooltip.shortDate("2025-10-06 01:20:41"));
+			java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"));
+			assertEquals("Oct 6", ClogSummaryTooltip.shortDate("2025-10-06 01:20:41"));
+			assertNull(ClogSummaryTooltip.shortDate("not a date"));
+			assertTrue(LookupQueries.isSyncStale("2025-10-06 01:20:41", 90));
+			assertTrue(LookupQueries.isSyncStale(null, 90));
+		}
+		finally
+		{
+			java.util.TimeZone.setDefault(before);
+			java.util.Locale.setDefault(locale);
+		}
+	}
+
+	@Test
 	public void testProviderGroupIronBadgeComesFromModiconCache()
 	{
 		BufferedImage gim = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);

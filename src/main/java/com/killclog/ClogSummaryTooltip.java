@@ -292,27 +292,11 @@ public class ClogSummaryTooltip extends TitleTooltip
 			ids, names, counts, dates);
 	}
 
-	/** "2026-07-04 ..." from the provider becomes "Jul 4"; anything else is dropped. */
+	/** A stored UTC date becomes the player's own day, "Jul 4"; anything else is dropped. */
 	static String shortDate(String date)
 	{
-		if (date == null || date.length() < 10)
-		{
-			return null;
-		}
-		try
-		{
-			int month = Integer.parseInt(date.substring(5, 7));
-			int day = Integer.parseInt(date.substring(8, 10));
-			if (month < 1 || month > 12 || day < 1 || day > 31)
-			{
-				return null;
-			}
-			return MONTHS[month - 1] + " " + day;
-		}
-		catch (NumberFormatException e)
-		{
-			return null;
-		}
+		java.time.LocalDateTime day = ClogDates.here(date);
+		return day == null ? null : MONTHS[day.getMonthValue() - 1] + " " + day.getDayOfMonth();
 	}
 
 	List<String> sourceNames()

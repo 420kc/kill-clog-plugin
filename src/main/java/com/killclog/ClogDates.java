@@ -2,6 +2,7 @@ package com.killclog;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.ResolverStyle;
@@ -33,5 +34,12 @@ final class ClogDates
 	{
 		String iso = iso(value);
 		return iso == null ? null : LOCAL.format(Instant.parse(iso).atOffset(ZoneOffset.UTC));
+	}
+
+	/** A stored UTC date on the player's own clock: an evening unlock keeps its evening's day. */
+	static LocalDateTime here(String value)
+	{
+		String iso = iso(value);
+		return iso == null ? null : LocalDateTime.ofInstant(Instant.parse(iso), ZoneId.systemDefault());
 	}
 }

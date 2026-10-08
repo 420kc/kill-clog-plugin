@@ -2,7 +2,6 @@ package com.killclog;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -197,37 +196,19 @@ final class LookupQueries
 		return counts;
 	}
 
+	/** The last update on the player's own clock (sources send UTC), and how many days ago. */
 	static String syncLine(String lastChanged, boolean stale)
 	{
-		if (lastChanged == null || lastChanged.isEmpty()) return null;
-		try
-		{
-			LocalDateTime syncTime = LocalDateTime.parse(lastChanged,
-				DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-			String pattern = stale ? "MMM d ''yy" : "MMM d";
-			String date = syncTime.format(DateTimeFormatter.ofPattern(pattern));
-			long days = java.time.Duration.between(syncTime, LocalDateTime.now()).toDays();
-			if (days < 1) return date;
-			return date + " (" + days + "d ago)";
-		}
-		catch (DateTimeParseException e)
-		{
-			return null;
-		}
+		LocalDateTime syncTime = ClogDates.here(lastChanged);
+		if (syncTime == null) return null;
+		String date = syncTime.format(DateTimeFormatter.ofPattern(stale ? "MMM d ''yy" : "MMM d"));
+		long days = java.time.Duration.between(syncTime, LocalDateTime.now()).toDays();
+		return days < 1 ? date : date + " (" + days + "d ago)";
 	}
 
 	static boolean isSyncStale(String lastChanged, int days)
 	{
-		if (lastChanged == null || lastChanged.isEmpty()) return true;
-		try
-		{
-			LocalDateTime syncTime = LocalDateTime.parse(lastChanged,
-				DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
-			return syncTime.isBefore(LocalDateTime.now().minusDays(days));
-		}
-		catch (DateTimeParseException e)
-		{
-			return true;
-		}
+		LocalDateTime syncTime = ClogDates.here(lastChanged);
+		return syncTime == null || syncTime.isBefore(LocalDateTime.now().minusDays(days));
 	}
 }
