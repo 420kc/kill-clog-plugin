@@ -42,7 +42,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 	// an unreached one red, as held and missing items do.
 	private static final int TIER_SECTION = 2;
 	private static final String TITLE = "Collection Log";
-	private static final String COMPLETION_LABEL = "Completion: ";
 	// The header holds the title and, clear of it in the corner, the current tier's item.
 	private static final int TIER_ROOM = 40;
 	private static final int SOURCE_SECTION = 3;
@@ -366,7 +365,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 		})).add(CardBody.headerHoverBand());
 		if (hasTotals())
 		{
-			body.add(completionRow())
+			// The completion heads the tab rows, read the same way: a row that opens nothing.
+			body.add(tabRow(-1, "Completion", completionText(), Color.WHITE))
 				.add(bar(obtained, totalSlots))
 				.add(tierLadder());
 		}
@@ -439,22 +439,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 			c.g.drawString(value, c.w - c.inset() - fm.stringWidth(value), baseline);
 			c.g.setFont(font);
 		};
-		return onOpenTab == null ? CardBody.row(fm.getHeight(), width, (c, y) -> painter.paint(c, y, false))
+		return row < 0 || onOpenTab == null ? CardBody.row(fm.getHeight(), width, (c, y) -> painter.paint(c, y, false))
 			: CardBody.clickRow(tabRows, row, fm.getHeight(), width, painter);
-	}
-
-	/** The log's completion, a size up like the tab rows under it. */
-	private CardBody.Part completionRow()
-	{
-		FontMetrics fm = getFontMetrics(TAB_FONT);
-		String value = completionText();
-		return CardBody.row(fm.getHeight(), c -> fm.stringWidth(COMPLETION_LABEL + value), (c, y) ->
-		{
-			Font font = c.g.getFont();
-			c.g.setFont(TAB_FONT);
-			drawLabelValue(c.g, fm, c.inset(), y + fm.getAscent(), COMPLETION_LABEL, value);
-			c.g.setFont(font);
-		});
 	}
 
 	/** A thin rail under a count: the share at a glance, the number still primary. */
