@@ -363,6 +363,28 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void syncsFollowersReadOffWithItAndTurnOnWithIt() throws Exception
+	{
+		config.sync = false;
+		configChanged("killclogSync");
+		verify(configManager).setConfiguration("killclog", "automaticSync", false);
+		verify(configManager).unsetConfiguration("killclog", "characterModel");
+		config.automatic = false;
+		config.character = false;
+
+		// RuneLite can't gray a setting out: a follower ticked while Sync is off doesn't stay ticked.
+		config.automatic = true;
+		configChanged("automaticSync");
+		verify(configManager, times(2)).setConfiguration("killclog", "automaticSync", false);
+		config.automatic = false;
+
+		config.sync = true;
+		configChanged("killclogSync");
+		verify(configManager).unsetConfiguration("killclog", "automaticSync");
+		verify(configManager).setConfiguration("killclog", "characterModel", true);
+	}
+
+	@Test
 	public void optOutMidFlightThenOptInQueuesBehindTheOldRequest() throws Exception
 	{
 		syncHandler.run();

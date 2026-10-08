@@ -207,7 +207,7 @@ public class KillClogPlugin extends Plugin
 				() -> world.mainSettled() ? getLocalAccountType() : null, world::mode, world::cacheFor,
 				killclogService::leagueProfileType);
 		}
-		enforceCharacterSettingDependency();
+		enforceSyncFollowers();
 		panel.setKillclogSyncHandler(publication::manualSync);
 		panel.setCharacterPublishHandler(publication::publishCharacter);
 		panel.setSelfPb(this::selfPb);
@@ -519,14 +519,21 @@ public class KillClogPlugin extends Plugin
 
 	/**
 	 * RuneLite's public config API has no dynamic disabled-state attribute.
-	 * Enforce the dependency at the data boundary instead: the child opt-in
-	 * cannot survive while first-party sync is disabled.
+	 * Enforce the dependency at the data boundary instead: Sync's two followers,
+	 * Automatic sync and Publish Character Model, read off while it is off.
 	 */
-	private void enforceCharacterSettingDependency()
+	private void enforceSyncFollowers()
 	{
-		if (!config.killclogSync() && config.characterModel())
+		if (!config.killclogSync())
 		{
-			configManager.unsetConfiguration("killclog", "characterModel");
+			if (config.automaticSync())
+			{
+				configManager.setConfiguration("killclog", "automaticSync", false);
+			}
+			if (config.characterModel())
+			{
+				configManager.unsetConfiguration("killclog", "characterModel");
+			}
 		}
 	}
 
@@ -804,6 +811,9 @@ public class KillClogPlugin extends Plugin
 			panel.setSyncArrowEnabled(config.killclogSync());
 			if (config.killclogSync())
 			{
+				// Turning Sync on turns its followers on with it.
+				configManager.unsetConfiguration("killclog", "automaticSync");
+				configManager.setConfiguration("killclog", "characterModel", true);
 				panel.setCharacterPublishEnabled(config.characterModel());
 				// Opting in mid-session pushes the already-captured log right
 				// away; nothing else fires until the next capture or unlock.
@@ -811,10 +821,7 @@ public class KillClogPlugin extends Plugin
 			}
 			else
 			{
-				if (config.characterModel())
-				{
-					configManager.unsetConfiguration("killclog", "characterModel");
-				}
+				enforceSyncFollowers();
 				panel.setCharacterPublishEnabled(false);
 				publication.cancelCharacterPublish();
 				publication.cancelSync();
@@ -824,12 +831,13 @@ public class KillClogPlugin extends Plugin
 		{
 			panel.refreshSyncFeedbackSettings();
 		}
+		else if ("automaticSync".equals(event.getKey()))
+		{
+			enforceSyncFollowers();
+		}
 		else if ("characterModel".equals(event.getKey()))
 		{
-			if (config.characterModel() && !config.killclogSync())
-			{
-				configManager.unsetConfiguration("killclog", "characterModel");
-			}
+			enforceSyncFollowers();
 			boolean enabled = publication.characterPublishingEnabled();
 			panel.setCharacterPublishEnabled(enabled);
 			if (!enabled)

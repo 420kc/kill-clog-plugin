@@ -22,9 +22,9 @@ Optional and off by default.
 
 **Sync Collection Log** keeps your killclog.com profile up to date with your Collection Log, unlock dates and personal bests. The chalice button (**sync collection log**) syncs right away. Open the in-game log first so it's current.
 
-**Automatic sync** is on by default: your profile updates at login, after new items, and when you open your Collection Log. Turn it off to sync only when you click the chalice.
+**Automatic sync** turns on with Sync Collection Log: your profile updates at login, after new items, and when you open your Collection Log. Turn it off to sync only when you click the chalice.
 
-**Publish Character Model** needs Sync Collection Log. It adds the **publish character** button beside the chalice, which publishes your character and follower in your real appearance. Anyone who looks you up in Kill Clog sees them in your Player Summary.
+**Publish Character Model** needs Sync Collection Log and turns on with it. It adds the **publish character** button beside the chalice, which publishes your character and follower in your real appearance. Anyone who looks you up in Kill Clog sees them in your Player Summary.
 
 ![Kill Clog Web Sync settings with Sync Collection Log and Publish Character Model on](screenshots/web-sync-settings.png)
 
