@@ -397,6 +397,8 @@ final class PublicationCoordinator
 		if (!sends(manual)
 			|| localClogCache.currentSessionEpoch() != scheduledEpoch)
 		{
+			// A push dropped before it claims the slot ends its episode: the next one starts with its retry.
+			syncGate.restoreRetryCredit();
 			return;
 		}
 		final int generation = syncGate.beginAttempt(manual, scheduledMode);

@@ -1622,4 +1622,26 @@ public class PluginPublicationCharacterizationTest
 		settle();
 		assertEquals(2, publishes.size());
 	}
+
+	@Test
+	public void anAutomaticRetryDroppedWhileItWaitsLeavesTheNextClickItsRetry() throws Exception
+	{
+		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		captureListener.run();
+		settle();
+		assertEquals(1, syncs.size());
+		// The server says busy: the automatic sync's one retry waits on its timer.
+		syncs.get(0).complete(new SyncService.SyncResult(false, false, "Busy", true, 2));
+		config.automatic = false;
+		configChanged("automaticSync");
+		settle();
+		assertEquals(1, syncs.size());
+
+		// The next click still gets its own retry.
+		syncHandler.run();
+		settle();
+		syncs.get(1).complete(new SyncService.SyncResult(false, false, "Busy", true, 2));
+		settle();
+		assertEquals(3, syncs.size());
+	}
 }
