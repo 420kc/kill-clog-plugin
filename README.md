@@ -26,7 +26,7 @@ Optional and off by default.
 
 **Publish Character Model** needs Sync Collection Log and turns on with it. It adds the **publish character** button beside the chalice, which publishes your character and follower in your real appearance. Anyone who looks you up in Kill Clog sees them in your Player Summary.
 
-![Kill Clog Web Sync settings with Sync Collection Log and Publish Character Model on](screenshots/web-sync-settings.png)
+![Kill Clog Web Sync settings with Sync Collection Log, Automatic sync and Publish Character Model on](screenshots/web-sync-settings.png)
 
 ![The publish character button beside the chalice at the top of the panel](screenshots/web-sync-publish-character.png)
 
