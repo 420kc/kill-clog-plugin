@@ -98,7 +98,7 @@ public class ClogTabTooltipTest
 	}
 
 	@Test
-	public void pageNamesWearTheirProgressionColorsWhenTheHighlighterIsOn()
+	public void pageRowsWearTheirProgressionColorsWhenTheHighlighterIsOn()
 	{
 		java.awt.Color done = new java.awt.Color(1, 2, 3);
 		java.awt.Color oneLeft = new java.awt.Color(4, 5, 6);
@@ -146,6 +146,9 @@ public class ClogTabTooltipTest
 			assertTrue(color.toString(), shown.contains(color.getRGB()));
 			assertTrue(color.toString(), !colors(plain).contains(color.getRGB()));
 		}
+		// The empty page's count follows its name: the log's red only shows with the highlighter off.
+		assertTrue(colors(plain).contains(TitleTooltip.CLOG_RED.getRGB()));
+		assertTrue(!shown.contains(TitleTooltip.CLOG_RED.getRGB()));
 	}
 
 	private static java.util.Set<Integer> colors(ClogTabTooltip card)

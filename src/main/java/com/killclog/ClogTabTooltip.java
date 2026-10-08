@@ -49,7 +49,7 @@ public class ClogTabTooltip extends TitleTooltip
 
 	/**
 	 * Each page's name and count in the game's order; a negative count is unknown and shows its size. With
-	 * {@code progress}, a known page's name wears its progression color from those settings.
+	 * {@code progress}, a known page's name and count wear its progression color from those settings.
 	 */
 	void setPages(String[] names, int[] obtained, int[] total, @Nullable KillClogConfig progress)
 	{
@@ -133,10 +133,13 @@ public class ClogTabTooltip extends TitleTooltip
 			{
 				int page = offset + i;
 				int textY = y + i * LINE_HEIGHT + c.fm.getAscent();
-				c.g.setColor(pageRows.hovered() == page ? Color.WHITE : progress != null && obtained[page] >= 0
-					? ClogHelper.clogColor(obtained[page], total[page], progress) : OSRS_ORANGE);
+				// With the highlighter on, a page's row wears its progression color whole, as the boss list's rows do.
+				Color count = obtained[page] < 0 ? MUTED_GRAY : progress != null
+					? ClogHelper.clogColor(obtained[page], total[page], progress) : completionColor(obtained[page], total[page]);
+				c.g.setColor(pageRows.hovered() == page ? Color.WHITE
+					: progress != null && obtained[page] >= 0 ? count : OSRS_ORANGE);
 				c.g.drawString(names[page], c.inset(), textY);
-				c.g.setColor(obtained[page] >= 0 ? completionColor(obtained[page], total[page]) : MUTED_GRAY);
+				c.g.setColor(count);
 				drawRightAligned(c.g, c.fm, countText(page), right, textY);
 			}
 			if (scrolls())
