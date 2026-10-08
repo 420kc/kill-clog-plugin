@@ -14,6 +14,7 @@ import javax.swing.JToolTip;
 import net.runelite.api.Client;
 import net.runelite.api.SpritePixels;
 import net.runelite.client.game.SpriteManager;
+import net.runelite.client.util.ImageUtil;
 
 /**
  * Base tooltip styled to match native OSRS interface elements.
@@ -328,16 +329,9 @@ public abstract class NativeTooltip extends JToolTip
 	}
 
 	/** A mirrored copy: top to bottom when vertical, else left to right. */
-	private static BufferedImage flip(BufferedImage src, boolean vertical)
+	static BufferedImage flip(@Nullable BufferedImage src, boolean vertical)
 	{
-		if (src == null) return null;
-		int w = src.getWidth();
-		int h = src.getHeight();
-		BufferedImage flipped = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D g = flipped.createGraphics();
-		g.drawImage(src, 0, 0, w, h, vertical ? 0 : w, vertical ? h : 0, vertical ? w : 0, vertical ? 0 : h, null);
-		g.dispose();
-		return flipped;
+		return src == null ? null : ImageUtil.flipImage(src, !vertical, vertical);
 	}
 
 	private static void paintBorder(Graphics2D g2, int w, int h)
