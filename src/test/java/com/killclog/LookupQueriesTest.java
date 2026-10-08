@@ -148,4 +148,25 @@ public class LookupQueriesTest
 			null,
 			accountType);
 	}
+
+	@Test
+	public void daysAgoCountsRealHours()
+	{
+		java.util.TimeZone before = java.util.TimeZone.getDefault();
+		try
+		{
+			java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("America/Chicago"));
+			java.time.Instant now = java.time.Instant.now();
+			String almostADay = now.minus(java.time.Duration.ofMinutes(23 * 60 + 30)).toString();
+			String overADay = now.minus(java.time.Duration.ofMinutes(24 * 60 + 30)).toString();
+			assertFalse(LookupQueries.syncLine(almostADay, false).contains("ago"));
+			assertTrue(LookupQueries.syncLine(overADay, false).endsWith("(1d ago)"));
+			assertFalse(LookupQueries.isSyncStale(almostADay, 1));
+			assertTrue(LookupQueries.isSyncStale(overADay, 1));
+		}
+		finally
+		{
+			java.util.TimeZone.setDefault(before);
+		}
+	}
 }

@@ -1,5 +1,6 @@
 package com.killclog;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -202,13 +203,14 @@ final class LookupQueries
 		LocalDateTime syncTime = ClogDates.here(lastChanged);
 		if (syncTime == null) return null;
 		String date = syncTime.format(DateTimeFormatter.ofPattern(stale ? "MMM d ''yy" : "MMM d"));
-		long days = java.time.Duration.between(syncTime, LocalDateTime.now()).toDays();
+		// Elapsed real time, not wall-clock time: a daylight-saving change never shifts it by an hour.
+		long days = java.time.Duration.between(Instant.parse(ClogDates.iso(lastChanged)), Instant.now()).toDays();
 		return days < 1 ? date : date + " (" + days + "d ago)";
 	}
 
 	static boolean isSyncStale(String lastChanged, int days)
 	{
-		LocalDateTime syncTime = ClogDates.here(lastChanged);
-		return syncTime == null || syncTime.isBefore(LocalDateTime.now().minusDays(days));
+		String iso = ClogDates.iso(lastChanged);
+		return iso == null || Instant.parse(iso).isBefore(Instant.now().minus(java.time.Duration.ofDays(days)));
 	}
 }
