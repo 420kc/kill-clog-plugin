@@ -352,8 +352,9 @@ public class ClogSummaryTooltip extends TitleTooltip
 			return body.add(CardBody.text(notice, NOTICE_COLOR, true));
 		}
 
-		// The current tier sits large in the header's corner. Any tier's, item's or source's name shows in the band
-		// under the header, and everything below it scrolls: completion, its bar and the tier ladder first.
+		// The current tier sits large in the header's corner. Completion, the tier ladder and the tabs stand under the
+		// header; any tier's, item's or source's name shows in the band under the progress bars, and the shelves and
+		// footer scroll below it.
 		CardBody card = new CardBody().add(CardBody.row(0,
 			c -> hasTotals() ? getFontMetrics(getTitleFont()).stringWidth(TITLE) + TIER_ROOM : 0, (c, y) ->
 		{
@@ -362,11 +363,11 @@ public class ClogSummaryTooltip extends TitleTooltip
 				c.g.drawImage(tierSprite, c.w - c.inset() - tierSprite.getWidth(),
 					c.inset() + (getHeaderHeight() - tierSprite.getHeight()) / 2, null);
 			}
-		})).add(CardBody.headerHoverBand());
+		}));
 		if (hasTotals())
 		{
 			// The completion heads the tab rows, read the same way: a row that opens nothing.
-			body.add(tabRow(-1, "Completion", completionText(), Color.WHITE))
+			card.add(tabRow(-1, "Completion", completionText(), Color.WHITE))
 				.add(bar(obtained, totalSlots))
 				.add(tierLadder());
 		}
@@ -377,7 +378,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 			// the completion above it.
 			if (hasTotals())
 			{
-				body.add(CardBody.separator(SEPARATOR_PAD));
+				card.add(CardBody.separator(SEPARATOR_PAD));
 			}
 			int row = 0;
 			for (Map.Entry<String, int[]> tab : tabs.entrySet())
@@ -385,14 +386,15 @@ public class ClogSummaryTooltip extends TitleTooltip
 				int[] count = tab.getValue();
 				if (row > 0)
 				{
-					body.add(CardBody.gap(TAB_GAP));
+					card.add(CardBody.gap(TAB_GAP));
 				}
-				body.add(tabRow(row, tab.getKey(), count[0] < 0 ? progressPlaceholderText(count[1])
+				card.add(tabRow(row, tab.getKey(), count[0] < 0 ? progressPlaceholderText(count[1])
 					: progressCountText(count[0], count[1]), count[0] < 0 ? MUTED_GRAY : completionColor(count[0], count[1])))
 					.add(bar(count[0], count[1]));
 				row++;
 			}
 		}
+		card.add(hasTotals() || !tabs.isEmpty() ? CardBody.hoverBand() : CardBody.headerHoverBand());
 
 		// The Rare shelf, present only when earned, then recent unlocks.
 		shelf(body, 0, "Rare", rare);

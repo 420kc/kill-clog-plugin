@@ -383,8 +383,17 @@ public class ClogSummaryTooltipTest
 	/** The ladder is the last thing on a card with no tabs, items or sources. */
 	private static int ladderY(ClogSummaryTooltip tip)
 	{
-		// The ladder closes the card; its tier's range reads in the band under the header.
-		return tip.getHeight() - NativeTooltip.getInset() - ICON / 2;
+		// The ladder stands under the completion, above the band that names its tiers: found as a pointer would.
+		for (int y = 0; y < tip.getHeight(); y++)
+		{
+			move(tip, ladderX(tip, 0) + 6, y);
+			if (tip.getHeaderHoverLineText() != null)
+			{
+				move(tip, 1, 1);
+				return y + ICON / 2;
+			}
+		}
+		throw new AssertionError("no tier ladder painted");
 	}
 
 	private static int ladderX(ClogSummaryTooltip tip, int tier)
