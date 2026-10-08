@@ -43,6 +43,7 @@ public class KillClogConfigStructureTest
 		expected.add("skillColorMode");
 		expected.add("enableSkillClogs");
 		expected.add("silentAutomaticSync");
+		expected.add("automaticSync");
 		expected.add("showLeaderboardSelector");
 		assertEquals(expected, keys);
 	}
@@ -54,10 +55,11 @@ public class KillClogConfigStructureTest
 		{
 		};
 		assertTrue(defaults.silentAutomaticSync());
+		assertTrue(defaults.automaticSync());
 		assertEquals(KillClogConfig.killclogSection,
 			KillClogConfig.class.getDeclaredMethod("silentAutomaticSync")
 				.getAnnotation(ConfigItem.class).section());
-		assertEquals(Arrays.asList("killclogSync", "characterModel", "silentAutomaticSync"),
+		assertEquals(Arrays.asList("killclogSync", "automaticSync", "characterModel", "silentAutomaticSync"),
 			keysInSection(KillClogConfig.killclogSection));
 	}
 
@@ -68,8 +70,8 @@ public class KillClogConfigStructureTest
 			.getAnnotation(ConfigItem.class);
 		assertEquals("characterModel", item.keyName());
 		assertEquals("Publish Character Model", item.name());
-		assertEquals("Adds a one-click button to publish your current character and "
-			+ "follower models to your Kill Clog web profile", item.description());
+		assertEquals("Needs Sync Collection Log. Adds a button beside the chalice that publishes "
+			+ "your current look and follower when you click it. Main game only.", item.description());
 		KillClogConfig defaults = new KillClogConfig()
 		{
 		};

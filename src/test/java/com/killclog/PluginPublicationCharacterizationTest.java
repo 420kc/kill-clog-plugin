@@ -80,11 +80,18 @@ public class PluginPublicationCharacterizationTest
 	{
 		boolean sync = true;
 		boolean character = true;
+		boolean automatic = true;
 
 		@Override
 		public boolean killclogSync()
 		{
 			return sync;
+		}
+
+		@Override
+		public boolean automaticSync()
+		{
+			return automatic;
 		}
 
 		@Override
@@ -105,11 +112,12 @@ public class PluginPublicationCharacterizationTest
 		when(client.getWorldType()).thenReturn(java.util.EnumSet.of(net.runelite.api.WorldType.MEMBERS));
 		when(localClogCache.currentSessionEpoch()).thenAnswer(invocation -> epoch);
 		when(localClogCache.folder()).thenReturn(CompletableFuture.completedFuture(null));
-		when(syncService.syncCollectionLog(any(), anyLong(), any(), any(), any(), anyLong(), any(), anyInt(), any(), any(), anyBoolean()))
+		when(syncService.syncCollectionLog(any(), anyLong(), any(), any(), any(), anyLong(), any(), anyInt(), any(), any(), anyBoolean(), any()))
 			.thenAnswer(invocation ->
 			{
 				CompletableFuture<SyncService.SyncResult> sync = new CompletableFuture<>();
 				syncs.add(sync);
+				((Runnable) invocation.getArgument(11)).run();
 				return sync;
 			});
 		when(appearance.publishCurrent(any(), anyLong(), any())).thenAnswer(invocation ->
@@ -175,16 +183,56 @@ public class PluginPublicationCharacterizationTest
 		runClient();
 		assertEquals(1, executor.live());
 		settle();
-		verify(chatNotifier).send(ChatNotice.SYNC_RESULT, "Publishing collection log...");
-		verify(panel).showSyncProgress(true, "publishing...", false);
+		verify(chatNotifier).send(ChatNotice.SYNC_RESULT, "Syncing collection log...");
+		verify(panel).showSyncProgress(true, "syncing...", false);
 		assertEquals(1, syncs.size());
 		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), any(), any(), any(), eq(7L), any(), eq(0),
-			eq(localClogCache), eq("main"), anyBoolean());
+			eq(localClogCache), eq("main"), anyBoolean(), any());
 
 		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced 12 items"));
 		settle();
 		verify(panel).showSyncResult(true, true, "Synced 12 items");
 		verify(chatNotifier).send(ChatNotice.SYNC_RESULT, "Synced 12 items");
+	}
+
+	@Test
+	public void withAutomaticSyncOffOnlyAClickOrACharacterSends() throws Exception
+	{
+		config.automatic = false;
+		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		captureListener.run();
+		assertEquals(0, executor.live());
+		settle();
+		assertEquals(0, syncs.size());
+
+		syncHandler.run();
+		settle();
+		assertEquals(1, syncs.size());
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
+		settle();
+
+		// A character publish that needs the profile first still gets its own sync, then publishes.
+		publishHandler.run();
+		settle();
+		publishes.get(0).complete(new ProfileAppearanceService.PublishResult(
+			ProfileAppearanceService.Outcome.PROFILE_REQUIRED, null));
+		settle();
+		assertEquals(2, syncs.size());
+		syncs.get(1).complete(new SyncService.SyncResult(true, false, "Synced"));
+		settle();
+		assertEquals(2, publishes.size());
+	}
+
+	@Test
+	public void anAutomaticSyncKillclogAlreadyHoldsFlashesNothing() throws Exception
+	{
+		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		captureListener.run();
+		settle();
+		syncs.get(0).complete(SyncService.UNCHANGED);
+		settle();
+		verify(panel, never()).showSyncResult(anyBoolean(), anyBoolean(), any());
+		verify(chatNotifier, never()).send(eq(ChatNotice.SYNC_RESULT), any());
 	}
 
 	@Test
@@ -216,7 +264,7 @@ public class PluginPublicationCharacterizationTest
 		syncs.get(1).complete(new SyncService.SyncResult(true, false, "Second"));
 		settle();
 		assertEquals(2, syncs.size());
-		verify(panel, times(2)).showSyncProgress(true, "publishing...", false);
+		verify(panel, times(2)).showSyncProgress(true, "syncing...", false);
 		verify(panel).showSyncResult(true, true, "First");
 		verify(panel).showSyncResult(true, true, "Second");
 	}
@@ -232,8 +280,8 @@ public class PluginPublicationCharacterizationTest
 		assertEquals(10_000L, executor.lastDelayMs());
 
 		settle();
-		verify(chatNotifier, never()).send(eq(ChatNotice.SYNC_RESULT), startsWith("Publishing"));
-		verify(panel).showSyncProgress(false, "publishing...", false);
+		verify(chatNotifier, never()).send(eq(ChatNotice.SYNC_RESULT), startsWith("Syncing"));
+		verify(panel).showSyncProgress(false, "syncing...", false);
 		assertEquals(1, syncs.size());
 
 		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
@@ -296,7 +344,7 @@ public class PluginPublicationCharacterizationTest
 		captureListener.run();
 		settle();
 		assertEquals(2, syncs.size());
-		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), any(), any(), any(), eq(8L), any(), anyInt(), any(), any(), anyBoolean());
+		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), any(), any(), any(), eq(8L), any(), anyInt(), any(), any(), anyBoolean(), any());
 	}
 
 	@Test
@@ -348,7 +396,7 @@ public class PluginPublicationCharacterizationTest
 	private static SyncService.SyncResult restarting()
 	{
 		return new SyncService.SyncResult(false, false,
-			"Collection log publication failed (HTTP 502).", true, 20);
+			"Collection log sync failed. Try again later.", true, 20);
 	}
 
 	@Test
@@ -377,7 +425,7 @@ public class PluginPublicationCharacterizationTest
 		settle();
 		assertEquals(1, syncs.size());
 
-		String failed = "Collection log publication failed (HTTP 502).";
+		String failed = "Collection log sync failed. Try again later.";
 		syncs.get(0).complete(new SyncService.SyncResult(false, false, failed, true, 20));
 		settle();
 		// Nobody is watching an automatic sync: it waits twice the advised delay.
@@ -399,7 +447,7 @@ public class PluginPublicationCharacterizationTest
 		captureListener.run();
 		settle();
 
-		String failed = "Collection log publication failed (HTTP 502).";
+		String failed = "Collection log sync failed. Try again later.";
 		syncs.get(0).complete(new SyncService.SyncResult(false, false, failed, true, 20));
 		settle();
 		syncs.get(1).complete(new SyncService.SyncResult(false, false, failed, true, 20));
@@ -675,7 +723,7 @@ public class PluginPublicationCharacterizationTest
 	{
 		ArgumentCaptor<AccountType> type = ArgumentCaptor.forClass(AccountType.class);
 		verify(syncService, times(call)).syncCollectionLog(any(), anyLong(), type.capture(), any(), any(), anyLong(), any(), anyInt(),
-			any(), any(), anyBoolean());
+			any(), any(), anyBoolean(), any());
 		return type.getAllValues().get(call - 1);
 	}
 
@@ -831,9 +879,9 @@ public class PluginPublicationCharacterizationTest
 		ticks(10);
 		settle();
 		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), any(), any(),
-			eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"), anyBoolean());
+			eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"), anyBoolean(), any());
 		verify(syncService, never()).syncCollectionLog(any(), anyLong(), any(), any(), any(), anyLong(), any(), anyInt(),
-			eq(localClogCache), eq("main"), anyBoolean());
+			eq(localClogCache), eq("main"), anyBoolean(), any());
 	}
 
 	@Test
@@ -848,7 +896,7 @@ public class PluginPublicationCharacterizationTest
 		settle();
 		assertEquals(2, syncs.size());
 		verify(syncService, times(2)).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), any(),
-			any(), eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"), anyBoolean());
+			any(), eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"), anyBoolean(), any());
 	}
 
 	@Test
@@ -869,7 +917,7 @@ public class PluginPublicationCharacterizationTest
 		settle();
 		assertEquals(2, syncs.size());
 		verify(syncService, times(2)).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), any(),
-			any(), eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"), anyBoolean());
+			any(), eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"), anyBoolean(), any());
 	}
 
 	@Test
@@ -902,7 +950,7 @@ public class PluginPublicationCharacterizationTest
 		settle();
 		ArgumentCaptor<java.util.Map<String, Double>> pbs = ArgumentCaptor.forClass(java.util.Map.class);
 		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), pbs.capture(), any(),
-			eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"), anyBoolean());
+			eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"), anyBoolean(), any());
 		return pbs.getValue();
 	}
 
@@ -950,7 +998,7 @@ public class PluginPublicationCharacterizationTest
 		ArgumentCaptor<java.util.Map<String, Double>> collapsed = ArgumentCaptor.forClass(java.util.Map.class);
 		ArgumentCaptor<java.util.Map<String, SyncService.DetailedPb>> detailed = ArgumentCaptor.forClass(java.util.Map.class);
 		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), any(), collapsed.capture(), detailed.capture(),
-			eq(7L), any(), anyInt(), eq(localClogCache), eq("main"), anyBoolean());
+			eq(7L), any(), anyInt(), eq(localClogCache), eq("main"), anyBoolean(), any());
 
 		java.util.Map<String, String> got = new java.util.TreeMap<>();
 		detailed.getValue().forEach((key, pb) -> got.put(key, pb.seconds + " " + pb.source));
@@ -1168,7 +1216,7 @@ public class PluginPublicationCharacterizationTest
 		assertEquals(1, executor.live());
 		settle();
 		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), any(), any(),
-			eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"), anyBoolean());
+			eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"), anyBoolean(), any());
 	}
 
 	@Test

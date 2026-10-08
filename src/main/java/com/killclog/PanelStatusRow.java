@@ -35,8 +35,8 @@ import net.runelite.client.util.ImageUtil;
  */
 final class PanelStatusRow
 {
-	private static final String SYNC_HOVER_TEXT = "publish collection log";
-	private static final String SYNC_FAILURE_HOVER_TEXT = "publish failed - click to retry";
+	private static final String SYNC_HOVER_TEXT = "sync collection log";
+	private static final String SYNC_FAILURE_HOVER_TEXT = "sync failed - click to retry";
 	private static final String CHARACTER_HOVER_TEXT = "publish character";
 	private static final String CHARACTER_FAILURE_HOVER_TEXT = "character failed - click to retry";
 	private static final int SYNC_EXPIRY_MS = 2500;
@@ -85,7 +85,7 @@ final class PanelStatusRow
 		this.textDim = textDim;
 		this.syncFeedback = new FirstPartyFeedback(config,
 			(kind, text, autoClear) -> showFeedback(Owner.SYNC, kind, text, autoClear),
-			this::flashSyncSuccess, "publish failed");
+			this::flashSyncSuccess, "sync failed");
 		this.characterFeedback = new FirstPartyFeedback(config,
 			(kind, text, autoClear) -> showFeedback(Owner.CHARACTER, kind, text, autoClear),
 			this::flashCharacterSuccess, PublicationCoordinator.CHARACTER_FAILED_STATUS);
@@ -511,7 +511,7 @@ final class PanelStatusRow
 			else if (ok || PublicationCoordinator.CHARACTER_FAILED_STATUS.equals(text))
 			{
 				characterFeedback.complete(true, ok, detail != null
-					? detail : "Character upload failed. Click to retry.");
+					? detail : "Character failed. Click to retry.");
 			}
 			else
 			{

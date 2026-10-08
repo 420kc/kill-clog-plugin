@@ -42,7 +42,7 @@ final class LiveClogSync
 		if (!clogIndex.ensureParsed(client, itemManager))
 		{
 			chatNotifier.send(ChatNotice.SYNC_HELP,
-				"Live sync could not read collection-log data. Open your Collection Log to update it.");
+				"Kill Clog could not read your Collection Log. Open it to update it.");
 			return;
 		}
 
@@ -50,7 +50,7 @@ final class LiveClogSync
 		if (!localClogCache.setActivePlayer(playerName))
 		{
 			chatNotifier.send(ChatNotice.SYNC_HELP,
-				"Live sync is waiting for local account identity. Open your Collection Log to update it.");
+				"Kill Clog is still checking this account. Open your Collection Log to update it.");
 			return;
 		}
 		if (!localClogCache.hasDataFor(playerName))

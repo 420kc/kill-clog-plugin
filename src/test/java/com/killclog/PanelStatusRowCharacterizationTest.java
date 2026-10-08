@@ -123,7 +123,7 @@ public class PanelStatusRowCharacterizationTest
 		edt(() ->
 		{
 			panel.onCompareStatus("Looking up player", Color.RED);
-			panel.showSyncProgress(true, "publishing...", false);
+			panel.showSyncProgress(true, "syncing...", false);
 			panel.showSyncResult(true, false, "HTTP 503");
 			panel.showCharacterPublishStatus(PublicationCoordinator.CHARACTER_FAILED_STATUS, false, true, "Render failed");
 			panel.showSyncResult(true, true, null);
@@ -143,9 +143,9 @@ public class PanelStatusRowCharacterizationTest
 		enableControls();
 		edt(() ->
 		{
-			panel.showSyncProgress(true, "publishing...", false);
+			panel.showSyncProgress(true, "syncing...", false);
 			panel.showCharacterPublishStatus(PublicationCoordinator.CHARACTER_RENDERING_STATUS, false, false, null);
-			assertEquals("publishing...", status.getText());
+			assertEquals("syncing...", status.getText());
 			panel.showSyncResult(true, true, null);
 			assertEquals(" ", status.getText());
 			panel.showCharacterPublishStatus(PublicationCoordinator.CHARACTER_RENDERING_STATUS, false, false, null);
@@ -182,14 +182,14 @@ public class PanelStatusRowCharacterizationTest
 			assertEquals(" ", status.getText());
 			assertNull(expiry());
 			mouse(sync, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
-			assertEquals("publish failed - click to retry", status.getText());
+			assertEquals("sync failed - click to retry", status.getText());
 			assertEquals("HTTP 503", sync.getToolTipText());
 			mouse(sync, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
 			assertEquals(" ", status.getText());
 			panel.showSyncResult(false, true, null);
 			assertNull(field("syncSuccessGlowTimer", Timer.class));
 			mouse(sync, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
-			assertEquals("publish collection log", status.getText());
+			assertEquals("sync collection log", status.getText());
 			assertNull(sync.getToolTipText());
 		});
 	}
@@ -254,7 +254,7 @@ public class PanelStatusRowCharacterizationTest
 		edt(() ->
 		{
 			mouse(sync, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
-			assertEquals("publish collection log", status.getText());
+			assertEquals("sync collection log", status.getText());
 			assertNull(sync.getToolTipText());
 			mouse(sync, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
 			mouse(character, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
@@ -282,7 +282,7 @@ public class PanelStatusRowCharacterizationTest
 			mouse(character, MouseEvent.MOUSE_PRESSED, MouseEvent.BUTTON1);
 			assertEquals(1, syncClicks.get());
 			assertEquals(1, characterClicks.get());
-			panel.showSyncProgress(true, "publishing...", false);
+			panel.showSyncProgress(true, "syncing...", false);
 			mouse(sync, MouseEvent.MOUSE_PRESSED, MouseEvent.BUTTON1);
 			mouse(character, MouseEvent.MOUSE_PRESSED, MouseEvent.BUTTON1);
 			assertEquals(1, syncClicks.get());
@@ -307,7 +307,7 @@ public class PanelStatusRowCharacterizationTest
 			assertEquals(PublicationCoordinator.CHARACTER_RENDERING_STATUS, status.getText());
 			panel.showCharacterPublishStatus(" ", false, false, null);
 			mouse(sync, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
-			assertEquals("publish collection log", status.getText());
+			assertEquals("sync collection log", status.getText());
 			assertNull(sync.getToolTipText());
 		});
 	}
@@ -359,7 +359,7 @@ public class PanelStatusRowCharacterizationTest
 			assertFalse(first.isRunning());
 			assertTrue(second.isRunning());
 			fire(first);
-			assertEquals("publish failed", status.getText());
+			assertEquals("sync failed", status.getText());
 			assertSame(second, expiry());
 			assertTrue(second.isRunning());
 			fire(second);
@@ -405,7 +405,7 @@ public class PanelStatusRowCharacterizationTest
 			fire(field("syncSuccessGlowTimer", Timer.class));
 			assertNull(field("syncSuccessGlowTimer", Timer.class));
 
-			panel.showSyncProgress(true, "publishing...", false);
+			panel.showSyncProgress(true, "syncing...", false);
 			panel.showSyncResult(true, true, null);
 			assertEquals(" ", status.getText());
 			assertNotNull(field("syncSuccessGlowTimer", Timer.class));

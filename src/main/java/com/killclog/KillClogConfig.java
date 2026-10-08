@@ -306,8 +306,8 @@ public interface KillClogConfig extends Config
 	// keyName is the legacy name; renaming it would reset users' saved setting.
 	@ConfigItem(
 		keyName = "chatNewClogMessages",
-		name = "Sync chat messages",
-		description = "Show Kill Clog sync messages in chat: new drop captures, sync results, and warnings. Setup guidance always shows.",
+		name = "Kill Clog chat messages",
+		description = "New items added to Kill Clog, sync results and failures, and other notices. Setup guidance always shows.",
 		section = chatSection,
 		position = 0
 	)
@@ -442,9 +442,9 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "killclogSync",
 		name = "Sync Collection Log",
-		description = "Publish your collection log and personal bests to your killclog.com "
-			+ "profile. Off by default. Nothing is sent until you turn it on, and the "
-			+ "opt-out page removes everything.",
+		description = "Keeps your killclog.com profile up to date with your Collection Log and "
+			+ "personal bests. The chalice syncs right away. Nothing is sent until you turn "
+			+ "this on, and the opt-out page removes everything.",
 		section = killclogSection,
 		position = 0
 	)
@@ -454,12 +454,25 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "silentAutomaticSync",
-		name = "Silent automatic sync",
-		description = "Hide panel status messages and the success flash for automatic "
-			+ "Collection Log publishing. Chat messages have their own setting.",
+		keyName = "automaticSync",
+		name = "Automatic sync",
+		description = "Also syncs on its own: at login, after new items, and when you open your "
+			+ "Collection Log. Off, only the chalice syncs.",
 		section = killclogSection,
-		position = 2
+		position = 1
+	)
+	default boolean automaticSync()
+	{
+		return true;
+	}
+
+	@ConfigItem(
+		keyName = "silentAutomaticSync",
+		name = "Quiet automatic sync",
+		description = "Hides the panel's progress and success flash for automatic syncs. "
+			+ "Failures still show on the chalice; chat has its own setting.",
+		section = killclogSection,
+		position = 3
 	)
 	default boolean silentAutomaticSync()
 	{
@@ -469,10 +482,10 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "characterModel",
 		name = "Publish Character Model",
-		description = "Adds a one-click button to publish your current character and "
-			+ "follower models to your Kill Clog web profile",
+		description = "Needs Sync Collection Log. Adds a button beside the chalice that publishes "
+			+ "your current look and follower when you click it. Main game only.",
 		section = killclogSection,
-		position = 1
+		position = 2
 	)
 	default boolean characterModel()
 	{

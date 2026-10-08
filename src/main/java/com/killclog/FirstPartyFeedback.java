@@ -10,7 +10,7 @@ final class FirstPartyFeedback
 	}
 
 	// A server that refuses this version: retrying cannot help, only an update can.
-	static final String UPDATE_REQUIRED = "Kill Clog needs an update to keep publishing. Restart RuneLite to update it.";
+	static final String UPDATE_REQUIRED = "Kill Clog needs an update to keep syncing. Restart RuneLite to update it.";
 
 	private final KillClogConfig config;
 	private final Status status;

@@ -34,7 +34,7 @@ final class PublicationCoordinator
 {
 	static final String CHARACTER_RENDERING_STATUS = "updating character...";
 	static final String CHARACTER_PUBLISHED_STATUS = "character updated!";
-	static final String CHARACTER_FAILED_STATUS = "Publish failed";
+	static final String CHARACTER_FAILED_STATUS = "Character failed";
 	static final String CHARACTER_APPEARANCE_STATUS = "Change equipment, then retry";
 	static final String CHARACTER_PENDING_STATUS = "Still rendering...";
 	static final String CHARACTER_RECOVERY_STATUS = "Publishing on hold";
@@ -150,10 +150,16 @@ final class PublicationCoordinator
 		});
 	}
 
+	/** Sync is on, and an automatic send has Automatic sync too: a click and a character's own sync always go. */
+	private boolean sends(boolean manual)
+	{
+		return config.killclogSync() && (manual || config.automaticSync() || characterPublishAfterSync.get());
+	}
+
 	/** A retry keeps the game its attempt was for, wherever the player has hopped since. */
 	private synchronized void scheduleSync(int delaySeconds, boolean manual, String scheduledMode)
 	{
-		if (!config.killclogSync())
+		if (!sends(manual))
 		{
 			return;
 		}
@@ -379,7 +385,7 @@ final class PublicationCoordinator
 		// debounce was pending. The session fence was captured when this exact
 		// timer was scheduled, so a task that escaped cancellation cannot bind
 		// itself to whichever account happens to be logged in later.
-		if (!config.killclogSync()
+		if (!sends(manual)
 			|| localClogCache.currentSessionEpoch() != scheduledEpoch)
 		{
 			return;
@@ -442,12 +448,7 @@ final class PublicationCoordinator
 				AccountType accountType = main ? localAccountType.get() : null;
 				if (manual)
 				{
-					chatNotifier.send(ChatNotice.SYNC_RESULT, "Publishing collection log...");
-				}
-				if (!characterPublishAfterSync.get())
-				{
-					withSyncFeedback(generation, scheduledEpoch,
-						() -> feedback.showSyncProgress(manual, "publishing...", false));
+					chatNotifier.send(ChatNotice.SYNC_RESULT, "Syncing collection log...");
 				}
 				List<String> profileKeys = PersonalBests.profileKeys(configManager.getRSProfiles(), accountHash,
 					main ? RuneScapeProfileType.STANDARD.name() : leagueProfileType.apply(gameMode));
@@ -489,7 +490,15 @@ final class PublicationCoordinator
 		try
 		{
 			syncService.syncCollectionLog(rsn, accountHash, accountType, pbs, detailedPbs,
-				storeEpoch, syncGate, generation, cache, gameMode, manual || characterPublishAfterSync.get())
+				storeEpoch, syncGate, generation, cache, gameMode, manual || characterPublishAfterSync.get(), () ->
+				{
+					// Only a push that really goes says so: one killclog.com already holds stays quiet.
+					if (!characterPublishAfterSync.get())
+					{
+						withSyncFeedback(generation, cacheEpoch,
+							() -> feedback.showSyncProgress(manual, "syncing...", false));
+					}
+				})
 				.whenComplete((result, err) ->
 				{
 					boolean current = syncGate.complete(generation);
@@ -537,7 +546,7 @@ final class PublicationCoordinator
 									CHARACTER_FAILED_STATUS, false, true);
 							}
 						}
-						else
+						else if (result != SyncService.UNCHANGED)
 						{
 							withSyncFeedback(generation, cacheEpoch,
 								() -> feedback.showSyncResult(manual, result.ok, result.message));
@@ -557,7 +566,7 @@ final class PublicationCoordinator
 						if (current && !failQueuedCharacterPublish() && err != null)
 						{
 							withSyncFeedback(generation, cacheEpoch, () -> feedback.showSyncResult(manual,
-								false, "Collection log publication failed. See the client log."));
+								false, "Collection log sync failed. See the client log."));
 						}
 					}
 					launchQueuedSync();
@@ -577,10 +586,10 @@ final class PublicationCoordinator
 		if (!failQueuedCharacterPublish())
 		{
 			withSyncFeedback(generation, epoch, () -> feedback.showSyncResult(manual,
-				false, "Collection log publication failed. See the client log."));
+				false, "Collection log sync failed. See the client log."));
 		}
 		clientThread.invoke(() -> chatNotifier.send(ChatNotice.SYNC_RESULT,
-			"Collection log publication failed - see the client log."));
+			"Collection log sync failed. See the client log."));
 		launchQueuedSync();
 	}
 

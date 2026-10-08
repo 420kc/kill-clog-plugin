@@ -245,7 +245,7 @@ final class ManualClogSync
 		{
 			reset();
 			chatNotifier.send(ChatNotice.SYNC_HELP,
-				"Local account identity is still settling - reopen the collection log in a moment.");
+				"Still checking this account. Reopen your Collection Log in a moment.");
 			return;
 		}
 

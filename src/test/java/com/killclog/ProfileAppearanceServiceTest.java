@@ -118,8 +118,8 @@ public class ProfileAppearanceServiceTest
 		expected.put(ProfileAppearanceService.Outcome.UNKNOWN, "Check your profile");
 		expected.put(ProfileAppearanceService.Outcome.APPEARANCE_PENDING, "Change equipment, then retry");
 		expected.put(ProfileAppearanceService.Outcome.CANCELLED, " ");
-		expected.put(ProfileAppearanceService.Outcome.FAILED, "Publish failed");
-		expected.put(ProfileAppearanceService.Outcome.PROFILE_REQUIRED, "Publish failed");
+		expected.put(ProfileAppearanceService.Outcome.FAILED, "Character failed");
+		expected.put(ProfileAppearanceService.Outcome.PROFILE_REQUIRED, "Character failed");
 		assertEquals(ProfileAppearanceService.Outcome.values().length, expected.size());
 		for (ProfileAppearanceService.Outcome outcome : ProfileAppearanceService.Outcome.values())
 		{
@@ -127,7 +127,7 @@ public class ProfileAppearanceServiceTest
 		}
 		assertTrue(PanelStatusRow.isCharacterNotice("Still rendering..."));
 		assertTrue(PanelStatusRow.isCharacterNotice("Change equipment, then retry"));
-		assertFalse(PanelStatusRow.isCharacterNotice("Publish failed"));
+		assertFalse(PanelStatusRow.isCharacterNotice("Character failed"));
 	}
 
 	private static NPC npc(int id, NPCComposition base, NPCComposition transformed)

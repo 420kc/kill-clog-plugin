@@ -37,7 +37,7 @@ final class ProfileAppearanceService
 	private static final String RECOVERY_AT_KEY = "recoveryActivatesAt";
 	static final long PUBLISH_RETRY_DELAY_MS = 2250L;
 	private static final PublishResult PROFILE_REQUIRED = new PublishResult(Outcome.PROFILE_REQUIRED,
-		"Publish your Collection Log, then retry character publishing.");
+		"Sync your Collection Log, then publish your character again.");
 
 	enum Outcome
 	{

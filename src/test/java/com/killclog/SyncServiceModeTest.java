@@ -44,7 +44,8 @@ public class SyncServiceModeTest
 		int generation = gate.beginAttempt();
 
 		SyncService.SyncResult result = new SyncService(http, new Gson(), main)
-			.syncCollectionLog("Tester", 42L, null, Map.of(), Map.of(), 3L, gate, generation, league, "demonic-pacts", false).get();
+			.syncCollectionLog("Tester", 42L, null, Map.of(), Map.of(), 3L, gate, generation, league, "demonic-pacts", false,
+				() -> assertEquals("it runs before the push goes", 0, sent.size())).get();
 
 		assertTrue(result.message, result.ok);
 		assertEquals(1, sent.size());

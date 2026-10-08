@@ -53,6 +53,8 @@ class SyncService
 	private volatile String acceptedPush;
 	private volatile long acceptedAt;
 	private volatile SyncResult acceptedResult;
+	/** What a push killclog.com already holds answers: nothing went, so nothing is said. */
+	static final SyncResult UNCHANGED = new SyncResult(true, false, "");
 
 	/** Outcome of a sync attempt, surfaced for chat feedback. */
 	static final class SyncResult
@@ -97,12 +99,13 @@ class SyncService
 	 */
 	/**
 	 * {@code cache} is the mode's own store and {@code cacheEpoch} its gather-time session; {@code always} sends even
-	 * what killclog.com already holds (a click, or a character publish that needs the profile).
+	 * what killclog.com already holds (a click, or a character publish that needs the profile). {@code sending} runs
+	 * just before a push goes.
 	 */
 	CompletableFuture<SyncResult> syncCollectionLog(String rsn, long accountHash,
 		@Nullable AccountType accountType, Map<String, Double> personalBests,
 		Map<String, DetailedPb> detailedPersonalBests, long cacheEpoch,
-		KillclogSyncGate syncGate, int generation, LocalClogCache cache, String mode, boolean always)
+		KillclogSyncGate syncGate, int generation, LocalClogCache cache, String mode, boolean always, Runnable sending)
 	{
 		if (rsn == null || rsn.isBlank())
 		{
@@ -116,7 +119,7 @@ class SyncService
 		if (!cache.servesAccount(rsn, accountHash, cacheEpoch))
 		{
 			return CompletableFuture.completedFuture(new SyncResult(false, false,
-				"Local name ownership is still settling - sync skipped this round."));
+				"Still checking this account. Try again in a moment."));
 		}
 
 		// The player's own accumulated local store is the payload: months of
@@ -143,12 +146,12 @@ class SyncService
 		final int observedCount = ClogResult.coverageCount(clog);
 		String url = KillClogEndpoint.apiBaseUrl() + "/player/" + HttpUtil.pathSegment(rsn) + "/sync/" + mode;
 		String push = url + body;
-		SyncResult accepted = acceptedResult;
-		if (!always && accepted != null && push.equals(acceptedPush)
+		if (!always && acceptedResult != null && push.equals(acceptedPush)
 			&& System.currentTimeMillis() - acceptedAt < RESEND_UNCHANGED_MS)
 		{
-			return CompletableFuture.completedFuture(accepted);
+			return CompletableFuture.completedFuture(UNCHANGED);
 		}
+		sending.run();
 
 		log.debug("Syncing collection log for '{}' to {} ({} items)",
 			rsn, url, observedCount);
@@ -192,10 +195,10 @@ class SyncService
 			rememberStructureHash(r.body);
 			boolean dryRun = responseSaysDryRun(r.body);
 			return new SyncResult(true, dryRun,
-				"Collection log published! ("
+				"Collection log synced! ("
 				+ observedCount + (observedCount == 1 ? " item" : " items")
 				+ (pbCount > 0 ? ", " + pbCount + (pbCount == 1 ? " pb" : " pbs") : "")
-				+ (dryRun ? ", server dry run" : "") + ").");
+				+ (dryRun ? ", not saved" : "") + ").");
 		}
 		// 409 sync_in_flight is contention, not failure: another client of
 		// this account holds the per-player lock for a moment. Advise a
@@ -227,7 +230,7 @@ class SyncService
 		if (r.code == 451)
 		{
 			return new SyncResult(false, false,
-				"This account has opted out of Kill Clog publishing.");
+				"This account has opted out of Kill Clog sync.");
 		}
 		log.debug("killclog sync failed for '{}': HTTP {}", rsn, r.code);
 		// A restarting server answers 502 to 504 for a few seconds: worth one
@@ -235,7 +238,7 @@ class SyncService
 		// clients it turned away do not all come back together.
 		boolean restarting = r.code >= 502 && r.code <= 504;
 		return new SyncResult(false, false,
-			"Collection log publication failed (HTTP " + r.code + ").",
+			"Collection log sync failed. Try again later.",
 			restarting, restarting ? 15 + ThreadLocalRandom.current().nextInt(16) : 0);
 	}
 

@@ -35,6 +35,7 @@ public class SyncServiceUnchangedTest
 	private LocalClogCache cache;
 	private SyncService service;
 	private ClogResult log;
+	private int sending;
 
 	@Before
 	@SuppressWarnings("unchecked")
@@ -66,7 +67,7 @@ public class SyncServiceUnchangedTest
 		KillclogSyncGate gate = new KillclogSyncGate();
 		int generation = gate.beginAttempt();
 		SyncService.SyncResult result = service.syncCollectionLog("Tester", 42L, type, pbs, Map.of(), 3L, gate,
-			generation, cache, mode, always).get();
+			generation, cache, mode, always, () -> sending++).get();
 		gate.complete(generation);
 		return result;
 	}
@@ -77,14 +78,17 @@ public class SyncServiceUnchangedTest
 	}
 
 	@Test
-	public void anUnchangedAutomaticPushStaysHomeAndReadsAsTheLastSuccess() throws Exception
+	public void anUnchangedAutomaticPushStaysHomeWithoutAWord() throws Exception
 	{
 		SyncService.SyncResult first = push();
 		SyncService.SyncResult second = push();
 
 		assertEquals(1, sent.size());
+		// Only the push that went said "syncing...", and the one that stayed home has nothing to flash.
+		assertEquals(1, sending);
+		assertTrue(first.ok);
 		assertTrue(second.ok);
-		assertSame(first, second);
+		assertSame(SyncService.UNCHANGED, second);
 	}
 
 	@Test
