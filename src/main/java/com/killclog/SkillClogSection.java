@@ -20,12 +20,6 @@ import net.runelite.api.Skill;
  */
 final class SkillClogSection
 {
-	private static final int LEGACY_FLAMTAER_BAG = 12854;
-	private static final int FLAMTAER_BAG = 25630;
-	private static final int COAL_BAG = 25627;
-	private static final int GEM_BAG = 25628;
-	private static final int PLANK_SACK = 25629;
-	private static final int ALCHEMISTS_AMULET = 29992;
 	private static final Map<Skill, List<Spec>> SPECS = buildSpecs();
 
 	@Nullable
@@ -159,36 +153,9 @@ final class SkillClogSection
 	@Nullable
 	private static String aliasName(ClogResult result, int canonicalItemId)
 	{
-		switch (canonicalItemId)
+		for (int alias : ClogIndex.nameAliases(canonicalItemId))
 		{
-			case COAL_BAG:
-				return firstName(result, 12019, 24480, 764);
-			case GEM_BAG:
-				return firstName(result, 12020, 24481, 766);
-			case 12013:
-				return result.getItemName(29472);
-			case 12014:
-				return result.getItemName(29474);
-			case 12015:
-				return result.getItemName(29476);
-			case 12016:
-				return result.getItemName(29478);
-			case FLAMTAER_BAG:
-				return result.getItemName(LEGACY_FLAMTAER_BAG);
-			case PLANK_SACK:
-				return result.getItemName(24882);
-			case ALCHEMISTS_AMULET:
-				return firstName(result, 29990, 29988);
-			default:
-				return null;
-		}
-	}
-
-	private static String firstName(ClogResult result, int... itemIds)
-	{
-		for (int itemId : itemIds)
-		{
-			String name = result.getItemName(itemId);
+			String name = result.getItemName(alias);
 			if (name != null)
 			{
 				return name;
