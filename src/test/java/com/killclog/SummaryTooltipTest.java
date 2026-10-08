@@ -119,6 +119,48 @@ public class SummaryTooltipTest
 		assertEquals(unranked.getHeaderHeight() + NativeTooltip.LINE_HEIGHT, tip.getHeaderHeight());
 	}
 
+	@Test
+	public void aPublishedCharactersCapeNamesItsPrestigeFromTheHeader()
+	{
+		BufferedImage character = new BufferedImage(60, 120, BufferedImage.TYPE_INT_ARGB);
+		BufferedImage cape = new BufferedImage(36, 32, BufferedImage.TYPE_INT_ARGB);
+		for (int y = 0; y < 32; y++)
+		{
+			for (int x = 0; x < 36; x++)
+			{
+				cape.setRGB(x, y, 0xffff00ff);
+			}
+		}
+		SummaryTooltip tip = new SummaryTooltip();
+		tip.setData("Fixture", 12345, character, null, "Ironman", "Maxed Infernal");
+		tip.setCape(cape);
+		BufferedImage painted = paint(tip);
+
+		int left = -1;
+		int top = -1;
+		for (int y = 0; y < painted.getHeight() && top < 0; y++)
+		{
+			for (int x = 0; x < painted.getWidth(); x++)
+			{
+				if (painted.getRGB(x, y) == 0xffff00ff)
+				{
+					left = x;
+					top = y;
+					break;
+				}
+			}
+		}
+		// In the header's right corner, above the title's divider.
+		assertTrue(top >= 0 && top < tip.getHeaderHeight() + NativeTooltip.getInset());
+		assertTrue(left > painted.getWidth() / 2);
+		for (java.awt.event.MouseMotionListener listener : tip.getMouseMotionListeners())
+		{
+			listener.mouseMoved(new java.awt.event.MouseEvent(tip, java.awt.event.MouseEvent.MOUSE_MOVED,
+				System.currentTimeMillis(), 0, left + 18, top + 16, 0, false, java.awt.event.MouseEvent.NOBUTTON));
+		}
+		assertEquals("Maxed Infernal", tip.getHeaderHoverLineText());
+	}
+
 	private static void petTotal(SummaryTooltip tip, int total) throws ReflectiveOperationException
 	{
 		Field field = SummaryTooltip.class.getDeclaredField("totalPetCount");

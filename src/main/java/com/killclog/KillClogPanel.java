@@ -1391,6 +1391,10 @@ public class KillClogPanel extends PluginPanel
 			AccountBadgeResolver.label(display),
 			LookupQueries.getPrestige(hiscore)
 		);
+		if (character != null)
+		{
+			tip.setCape(getCapeImage(hiscore));
+		}
 		tip.setWikiLinksEnabled(config.wikiItemLinks());
 		if (clog != null)
 		{
