@@ -127,20 +127,10 @@ final class PanelIconCache
 		}
 	}
 
+	/** An item image resized into an icon, delivered on the Swing thread once it has loaded. */
 	private void loadItemIcon(int itemId, int w, int h, Consumer<ImageIcon> setter)
 	{
-		BufferedImage img = itemManager.getImage(itemId, 1, false);
-		if (img instanceof AsyncBufferedImage)
-		{
-			((AsyncBufferedImage) img).onLoaded(() ->
-				SwingUtilities.invokeLater(() ->
-					setter.accept(new ImageIcon(ImageUtil.resizeImage(img, w, h)))));
-		}
-		else
-		{
-			SwingUtilities.invokeLater(() ->
-				setter.accept(new ImageIcon(ImageUtil.resizeImage(img, w, h))));
-		}
+		loadItemImage(itemId, img -> setter.accept(new ImageIcon(ImageUtil.resizeImage(img, w, h))));
 	}
 
 	private void loadItemImage(int itemId, Consumer<BufferedImage> setter)
