@@ -2,6 +2,7 @@ package com.killclog;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -477,24 +478,30 @@ final class ClogIndex
 	private static Map<Integer, Integer> fallbackItemRemaps()
 	{
 		Map<Integer, Integer> remaps = new HashMap<>();
-		remaps.put(764, 25627);
-		remaps.put(12019, 25627);
-		remaps.put(24480, 25627);
-		remaps.put(766, 25628);
-		remaps.put(12020, 25628);
-		remaps.put(24481, 25628);
-		remaps.put(29472, 12013);
-		remaps.put(29474, 12014);
-		remaps.put(29476, 12015);
-		remaps.put(29478, 12016);
-		remaps.put(12854, 25630);
-		remaps.put(24882, 25629);
-		remaps.put(29988, 29992);
-		remaps.put(29990, 29992);
-		remaps.put(13641, 13640);
-		remaps.put(13643, 13642);
-		remaps.put(13645, 13644);
-		remaps.put(13647, 13646);
+		for (String[] row : CatalogTsv.rows(ClogIndex.class, "item-aliases.tsv", 3))
+		{
+			remaps.put(Integer.parseInt(row[0]), Integer.parseInt(row[1]));
+		}
 		return Collections.unmodifiableMap(remaps);
+	}
+
+	/** The other ids whose names stand in for a counted item's own when it has none, in order (item-aliases.tsv). */
+	static List<Integer> nameAliases(int canonicalItemId)
+	{
+		List<String[]> rows = new ArrayList<>();
+		for (String[] row : CatalogTsv.rows(ClogIndex.class, "item-aliases.tsv", 3))
+		{
+			if (!row[2].isEmpty() && Integer.parseInt(row[1]) == canonicalItemId)
+			{
+				rows.add(row);
+			}
+		}
+		rows.sort(Comparator.comparingInt(row -> Integer.parseInt(row[2])));
+		List<Integer> aliases = new ArrayList<>();
+		for (String[] row : rows)
+		{
+			aliases.add(Integer.parseInt(row[0]));
+		}
+		return aliases;
 	}
 }
