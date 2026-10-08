@@ -260,4 +260,20 @@ public class PlayerPortraitsTest
 		assertEquals("ye ol buck", PlayerPortraits.key(" Ye_Ol-Buck "));
 		assertEquals(PlayerPortraits.key("420 kc"), PlayerPortraits.key("420_KC"));
 	}
+
+	@Test
+	public void aPublishOutranksACheckSentBeforeIt()
+	{
+		OkHttpClient client = client();
+		PlayerPortraits portraits = new PlayerPortraits(client);
+		portraits.lookedUp(clog("Zezima", true));
+		Integer beforePublish = portraits.askedFor("Zezima");
+		assertNotNull(beforePublish);
+
+		// The check already out answers 404 for the character before the publish: it asks again at once.
+		portraits.published("Zezima");
+		portraits.onResponse("Zezima", beforePublish, 404, null, null);
+		assertEquals(Integer.valueOf(beforePublish + 1), portraits.askedFor("Zezima"));
+		requests(client, 2);
+	}
 }

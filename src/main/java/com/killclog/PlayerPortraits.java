@@ -97,7 +97,11 @@ class PlayerPortraits
 	{
 		if (name != null && !name.trim().isEmpty())
 		{
-			lane.notFound.remove(key(name.trim()));
+			// A new generation: a check sent before the publish can neither confirm the old character nor rest a miss.
+			String key = key(name.trim());
+			generations.merge(key, 1, Integer::sum);
+			confirmed.remove(key);
+			lane.notFound.remove(key);
 			ask(name.trim());
 		}
 	}
@@ -188,7 +192,15 @@ class PlayerPortraits
 			confirmed.remove(key);
 			lane.values.remove(key);
 			lane.fetched.remove(key);
-			lane.missing(key);
+			// A miss rests only when it answers the latest lookup or publish; an older one asks again at once.
+			if (latest || code == 451)
+			{
+				lane.missing(key);
+			}
+			else
+			{
+				ask(name);
+			}
 			return;
 		}
 		Portrait held = lane.values.get(key);
