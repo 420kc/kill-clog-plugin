@@ -15,6 +15,7 @@ import java.util.TreeMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Function;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -572,52 +573,27 @@ public class ClogService
 	 */
 	private CompletableFuture<AccountType> fetchStatsAccountType(String encodedPlayer)
 	{
-		String url = TEMPLE_STATS_URL + "?player=" + encodedPlayer;
-		return httpGet(url).thenApply(json ->
+		return fetchStatsInfo(encodedPlayer, "stats account type", info ->
 		{
-			if (json == null)
+			if (info.has("Game mode") && !info.get("Game mode").isJsonNull())
 			{
-				return null;
+				AccountType type = parseGameMode(info.get("Game mode").getAsString());
+				if (type != null && type != AccountType.REGULAR)
+				{
+					return type;
+				}
 			}
-			try
+
+			if (info.has("GIM") && !info.get("GIM").isJsonNull())
 			{
-				JsonObject root = gson.fromJson(json, JsonObject.class);
-				JsonObject data = root.getAsJsonObject("data");
-				if (data == null)
+				int gimId = info.get("GIM").getAsInt();
+				if (gimId > 0)
 				{
-					return null;
+					return AccountType.GROUP_IRONMAN;
 				}
-				JsonObject info = data.getAsJsonObject("info");
-				if (info == null)
-				{
-					return null;
-				}
-
-				if (info.has("Game mode") && !info.get("Game mode").isJsonNull())
-				{
-					AccountType type = parseGameMode(info.get("Game mode").getAsString());
-					if (type != null && type != AccountType.REGULAR)
-					{
-						return type;
-					}
-				}
-
-				if (info.has("GIM") && !info.get("GIM").isJsonNull())
-				{
-					int gimId = info.get("GIM").getAsInt();
-					if (gimId > 0)
-					{
-						return AccountType.GROUP_IRONMAN;
-					}
-				}
-
-				return null;
 			}
-			catch (Exception e)
-			{
-				log.debug("Failed to parse stats account type: {}", e.getMessage());
-				return null;
-			}
+
+			return null;
 		});
 	}
 
@@ -627,9 +603,18 @@ public class ClogService
 	 */
 	public CompletableFuture<String> lookupRsn(String playerName)
 	{
-		String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
-		String url = TEMPLE_STATS_URL + "?player=" + encoded;
-		return httpGet(url).thenApply(json ->
+		return fetchStatsInfo(URLEncoder.encode(playerName, StandardCharsets.UTF_8), "canonical name",
+			info -> info.has("player_name_with_capitalization")
+				? info.get("player_name_with_capitalization").getAsString() : null);
+	}
+
+	/**
+	 * One player's TempleOSRS stats, as the response's data.info read by {@code reader}: null when the request, the
+	 * response or the reader comes up empty, and a malformed response is logged as failing to parse {@code what}.
+	 */
+	private <T> CompletableFuture<T> fetchStatsInfo(String encodedPlayer, String what, Function<JsonObject, T> reader)
+	{
+		return httpGet(TEMPLE_STATS_URL + "?player=" + encodedPlayer).thenApply(json ->
 		{
 			if (json == null)
 			{
@@ -637,22 +622,13 @@ public class ClogService
 			}
 			try
 			{
-				JsonObject root = gson.fromJson(json, JsonObject.class);
-				JsonObject data = root.getAsJsonObject("data");
-				if (data == null)
-				{
-					return null;
-				}
-				JsonObject info = data.getAsJsonObject("info");
-				if (info != null && info.has("player_name_with_capitalization"))
-				{
-					return info.get("player_name_with_capitalization").getAsString();
-				}
-				return null;
+				JsonObject data = gson.fromJson(json, JsonObject.class).getAsJsonObject("data");
+				JsonObject info = data != null ? data.getAsJsonObject("info") : null;
+				return info != null ? reader.apply(info) : null;
 			}
 			catch (Exception e)
 			{
-				log.debug("Failed to parse canonical name: {}", e.getMessage());
+				log.debug("Failed to parse {}: {}", what, e.getMessage());
 				return null;
 			}
 		});
