@@ -1,0 +1,25 @@
+# Character publish failures: the server's error code<TAB>the plain message players read.
+# update_required reads FirstPartyFeedback.UPDATE_REQUIRED, shared with the sync. Unknown codes fall back by status.
+invalid_client_version	Client version could not be read. Restart RuneLite and check for updates.
+invalid_game_build	Client version could not be read. Restart RuneLite and check for updates.
+invalid_gender	Character body type is unsupported.
+invalid_colors	Appearance colors are unsupported.
+invalid_equipment	Equipment appearance is unsupported.
+invalid_overrides	Equipment recolors are unsupported.
+invalid_follower_npc_id	Follower is unsupported. Pick it up and retry.
+invalid_idle_pose_animation	Character pose is unsupported.
+npc_transforms_not_supported	Return to your normal player form and retry.
+invalid_manifest_shape	Appearance format is unsupported.
+unsupported_manifest_schema	Appearance format is unsupported.
+body_too_large	Appearance request is too large.
+appearance_render_failed	Server could not render the character. Try again later.
+follower_catalog_unavailable	Follower service is unavailable. Try again later.
+opted_out	Publication is disabled by your privacy setting.
+account_hash_mismatch	Publication account does not match.
+missing_appearance_credential	Publishing access could not be restored. Try again later.
+invalid_appearance_credential	Publishing access could not be restored. Try again later.
+appearance_update_in_flight	Another character update is in progress. Retry shortly.
+appearance_superseded	Another character update is in progress. Retry shortly.
+rate_limited	Too many requests. Please wait before retrying.
+appearance_registration_locked	Publication is temporarily locked. Try again later.
+locked_out	Publication is temporarily locked. Try again later.
