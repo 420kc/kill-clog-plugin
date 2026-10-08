@@ -290,6 +290,7 @@ public class ClogResult
 	}
 
 	@RequiredArgsConstructor
+	@Getter
 	public static class ClogItem
 	{
 		private final int id;
@@ -307,29 +308,5 @@ public class ClogResult
 			this(id, count, date, 0, null);
 		}
 
-		public int getId()
-		{
-			return id;
-		}
-
-		public int getCount()
-		{
-			return count;
-		}
-
-		public String getDate()
-		{
-			return date;
-		}
-
-		public int getObtainedAtKc()
-		{
-			return obtainedAtKc;
-		}
-
-		public String getObtainedFrom()
-		{
-			return obtainedFrom;
-		}
 	}
 }
