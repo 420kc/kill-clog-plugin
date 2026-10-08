@@ -7,9 +7,12 @@ import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JToolTip;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.hiscore.HiscoreSkill;
 
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class ActivitySummaryTooltips
 {
 	private final LookupSession lookupSession;
@@ -19,20 +22,6 @@ final class ActivitySummaryTooltips
 	private final ItemManager itemManager;
 	private final CaRewardSprites caRewardSprites;
 	private final Supplier<Boolean> wikiLinks;
-
-	ActivitySummaryTooltips(LookupSession lookupSession, ComparisonController comparison,
-		Cells cells, TooltipController tooltipController, ItemManager itemManager,
-		CaRewardSprites caRewardSprites,
-		Supplier<Boolean> wikiLinks)
-	{
-		this.lookupSession = lookupSession;
-		this.comparison = comparison;
-		this.cells = cells;
-		this.tooltipController = tooltipController;
-		this.itemManager = itemManager;
-		this.caRewardSprites = caRewardSprites;
-		this.wikiLinks = wikiLinks;
-	}
 
 	JToolTip buildPvm(JLabel owner, JPanel parentCell)
 	{

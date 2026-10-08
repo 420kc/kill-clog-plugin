@@ -5,12 +5,15 @@ import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Set;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
 import javax.swing.SwingUtilities;
 
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class CaRewardSprites
 {
 	private final ItemManager itemManager;
@@ -20,13 +23,6 @@ final class CaRewardSprites
 		new EnumMap<>(CombatAchievementReward.class);
 	private final Set<CombatAchievementReward> loading =
 		EnumSet.noneOf(CombatAchievementReward.class);
-
-	CaRewardSprites(ItemManager itemManager, ClientThread clientThread, Runnable onLoaded)
-	{
-		this.itemManager = itemManager;
-		this.clientThread = clientThread;
-		this.onLoaded = onLoaded;
-	}
 
 	void preloadAll()
 	{

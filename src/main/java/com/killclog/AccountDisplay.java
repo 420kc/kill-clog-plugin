@@ -1,7 +1,9 @@
 package com.killclog;
 
 import javax.annotation.Nullable;
+import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Account identity as shown in the panel. AccountType remains the account mode;
@@ -11,6 +13,7 @@ import lombok.EqualsAndHashCode;
 final class AccountDisplay
 {
 	/** The mode an account left, worn on the frozen board it left behind. */
+	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 	enum Former
 	{
 		DEAD_HARDCORE("Dead Hardcore", "hardcore_ironman.png", "dead-hardcore-overlay.png"),
@@ -20,12 +23,6 @@ final class AccountDisplay
 		final String helm;
 		final String overlay;
 
-		Former(String label, String helm, String overlay)
-		{
-			this.label = label;
-			this.helm = helm;
-			this.overlay = overlay;
-		}
 	}
 
 	private final AccountType accountType;

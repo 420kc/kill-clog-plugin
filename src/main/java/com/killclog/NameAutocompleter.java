@@ -15,7 +15,9 @@ import javax.swing.text.BadLocationException;
 import javax.swing.text.Document;
 import javax.swing.text.JTextComponent;
 import com.google.common.collect.EvictingQueue;
+import lombok.AccessLevel;
 import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
@@ -32,6 +34,7 @@ import net.runelite.api.clan.ClanSettings;
  */
 @Slf4j
 @Singleton
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE, onConstructor_ = @Inject)
 public class NameAutocompleter implements KeyListener
 {
 	private static final String NBSP = Character.toString('\u00a0');
@@ -43,12 +46,6 @@ public class NameAutocompleter implements KeyListener
 	private volatile List<String> clientNameSnapshot = Collections.emptyList();
 	private String autofill;
 	private Pattern autofillPattern;
-
-	@Inject
-	NameAutocompleter(Client client)
-	{
-		this.client = client;
-	}
 
 	@Override
 	public void keyPressed(KeyEvent e)

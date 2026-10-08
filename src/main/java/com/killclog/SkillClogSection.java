@@ -9,6 +9,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import javax.annotation.Nullable;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import net.runelite.api.Skill;
 
 /**
@@ -396,16 +398,11 @@ final class SkillClogSection
 		}
 	}
 
+	@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 	static final class Progress
 	{
 		private final int obtained;
 		private final int total;
-
-		private Progress(int obtained, int total)
-		{
-			this.obtained = obtained;
-			this.total = total;
-		}
 
 		int obtained()
 		{

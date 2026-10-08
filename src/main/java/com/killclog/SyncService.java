@@ -14,6 +14,8 @@ import java.util.concurrent.ThreadLocalRandom;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
@@ -34,6 +36,7 @@ import okhttp3.OkHttpClient;
  */
 @Slf4j
 @Singleton
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE, onConstructor_ = @Inject)
 class SyncService
 {
 	// Attributed on the server per client build.
@@ -57,6 +60,7 @@ class SyncService
 	static final SyncResult UNCHANGED = new SyncResult(true, false, "");
 
 	/** Outcome of a sync attempt, surfaced for chat feedback. */
+	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 	static final class SyncResult
 	{
 		final boolean ok;
@@ -71,23 +75,6 @@ class SyncService
 			this(ok, dryRun, message, false, 0);
 		}
 
-		SyncResult(boolean ok, boolean dryRun, String message,
-			boolean retryAdvised, int retryAfterSeconds)
-		{
-			this.ok = ok;
-			this.dryRun = dryRun;
-			this.message = message;
-			this.retryAdvised = retryAdvised;
-			this.retryAfterSeconds = retryAfterSeconds;
-		}
-	}
-
-	@Inject
-	SyncService(OkHttpClient httpClient, Gson gson, LocalClogCache localClogCache)
-	{
-		this.httpClient = httpClient;
-		this.gson = gson;
-		this.localClogCache = localClogCache;
 	}
 
 	/**
@@ -396,16 +383,12 @@ class SyncService
 	}
 
 	/** One variant-keyed pb with the lane this client observed it through. */
+	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 	static final class DetailedPb
 	{
 		final double seconds;
 		final String source;
 
-		DetailedPb(double seconds, String source)
-		{
-			this.seconds = seconds;
-			this.source = source;
-		}
 	}
 
 	private static final class ItemEntry

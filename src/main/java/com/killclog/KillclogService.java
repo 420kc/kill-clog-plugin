@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
@@ -43,6 +44,7 @@ import okhttp3.OkHttpClient;
  */
 @Slf4j
 @Singleton
+@RequiredArgsConstructor(onConstructor_ = @Inject)
 public class KillclogService
 {
 	private static final String PROOF_SUFFIX = "/proof-view";
@@ -119,14 +121,6 @@ public class KillclogService
 	static String modeKey(String mode, String playerName)
 	{
 		return GameMode.MAIN.equals(mode) ? pbKey(playerName) : mode + "/" + pbKey(playerName);
-	}
-
-	@Inject
-	public KillclogService(OkHttpClient httpClient, Gson gson, ClogService clogService)
-	{
-		this.httpClient = httpClient;
-		this.gson = gson;
-		this.clogService = clogService;
 	}
 
 	/** Clear transient failure cooldowns immediately (called on login); TTLs auto-expire otherwise. */

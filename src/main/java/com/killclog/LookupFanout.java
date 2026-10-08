@@ -6,6 +6,7 @@ import javax.annotation.Nullable;
 import javax.swing.SwingUtilities;
 import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -22,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
  * version and in-flight fields make the guards observable across threads.
  */
 @Slf4j
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class LookupFanout
 {
 	static final int CA_TIMEOUT_SECONDS = 10;
@@ -44,15 +46,6 @@ final class LookupFanout
 	@Getter(AccessLevel.PACKAGE)
 	@Nullable private String league;
 	@Nullable private LocalClogCache leagueLog;
-
-	LookupFanout(HiscoreService hiscoreService, ClogService clogService,
-		RuneProfileService runeProfileService, KillclogService killclogService)
-	{
-		this.hiscoreService = hiscoreService;
-		this.clogService = clogService;
-		this.runeProfileService = runeProfileService;
-		this.killclogService = killclogService;
-	}
 
 	void readLeague(@Nullable String league, @Nullable LocalClogCache leagueLog)
 	{

@@ -5,6 +5,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.gameval.InterfaceID;
@@ -28,6 +30,7 @@ import net.runelite.client.util.Text;
  * payload tags them "advlog".
  */
 @Slf4j
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class AdvLogPbs
 {
 	/* package */ static final String CONFIG_GROUP = "killclog";
@@ -116,11 +119,6 @@ final class AdvLogPbs
 	}
 
 	private final ConfigManager configManager;
-
-	AdvLogPbs(ConfigManager configManager)
-	{
-		this.configManager = configManager;
-	}
 
 	/**
 	 * The Adventure Log owner, or null when the loaded menu is not an

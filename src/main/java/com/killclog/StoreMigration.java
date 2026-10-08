@@ -19,6 +19,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.util.Filepath;
 
@@ -84,16 +86,12 @@ final class StoreMigration
 		return String.format("%016x", Long.parseLong(hashKey)) + ".json";
 	}
 
+	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 	private static final class Candidate
 	{
 		final Filepath file;
 		final PlayerClogData data;
 
-		Candidate(Filepath file, PlayerClogData data)
-		{
-			this.file = file;
-			this.data = data;
-		}
 	}
 
 	private static void migrate(Gson gson, Filepath folder) throws IOException

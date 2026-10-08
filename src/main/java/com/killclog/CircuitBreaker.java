@@ -1,6 +1,8 @@
 package com.killclog;
 
 import java.util.Arrays;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -8,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
  * then short-circuits for a cooldown that doubles on each trip, up to 30 minutes.
  */
 @Slf4j
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class CircuitBreaker
 {
 	private static final int THRESHOLD = 5;
@@ -20,11 +23,6 @@ final class CircuitBreaker
 	private int failureIndex;
 	private volatile long trippedAt;
 	private volatile long cooldownMs = COOLDOWN_MS;
-
-	CircuitBreaker(String provider)
-	{
-		this.provider = provider;
-	}
 
 	synchronized void failure()
 	{

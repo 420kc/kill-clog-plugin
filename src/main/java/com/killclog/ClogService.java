@@ -18,6 +18,7 @@ import java.util.concurrent.CompletableFuture;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 
@@ -27,6 +28,7 @@ import okhttp3.OkHttpClient;
  */
 @Slf4j
 @Singleton
+@RequiredArgsConstructor(onConstructor_ = @Inject)
 public class ClogService
 {
 	private static final String TEMPLE_CATEGORIES_URL =
@@ -78,14 +80,6 @@ public class ClogService
 	// proof separately so the active-player result stays attributed during TTL.
 	private final Map<String, Long> templeOverlaySuccessTimes =
 		new java.util.concurrent.ConcurrentHashMap<>();
-
-	@Inject
-	public ClogService(OkHttpClient httpClient, Gson gson, LocalClogCache localClogCache)
-	{
-		this.httpClient = httpClient;
-		this.gson = gson;
-		this.localClogCache = localClogCache;
-	}
 
 	/** Clear all failure cooldowns immediately (called on login). TTL handles auto-expiry otherwise. */
 	public void clearTempleFailures()

@@ -15,6 +15,8 @@ import java.util.Set;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
@@ -108,6 +110,7 @@ class KillClogChatCommand
 	private static final Map<String, ClogTarget> CLUE_ALIASES = buildClueAliases();
 	private static final Map<String, String> PAGE_ALIASES = buildPageAliases();
 
+	@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 	static final class ClogTarget
 	{
 		final String label;
@@ -119,12 +122,6 @@ class KillClogChatCommand
 			this(label, categoryKey, null);
 		}
 
-		private ClogTarget(String label, String categoryKey, @Nullable String boss)
-		{
-			this.label = label;
-			this.categoryKey = categoryKey;
-			this.boss = boss;
-		}
 	}
 
 	/** Read-only view for canon-parity tests. */

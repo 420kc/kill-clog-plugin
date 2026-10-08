@@ -19,6 +19,7 @@ import javax.annotation.Nullable;
 import javax.swing.JToolTip;
 import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.ImageUtil;
@@ -395,6 +396,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	}
 
 	/** A label and value in the header's info lines, and the pair painted after it. */
+	@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 	private static final class InfoLine
 	{
 		private final String label;
@@ -402,13 +404,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		private final Color color;
 		@Nullable
 		private InfoLine pair;
-
-		private InfoLine(String label, String value, Color color)
-		{
-			this.label = label;
-			this.value = value;
-			this.color = color;
-		}
 
 		private int width(FontMetrics fm)
 		{

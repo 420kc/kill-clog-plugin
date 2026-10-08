@@ -19,6 +19,8 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 
@@ -29,6 +31,7 @@ import okhttp3.OkHttpClient;
  */
 @Slf4j
 @Singleton
+@RequiredArgsConstructor(onConstructor_ = @Inject)
 public class HiscoreService
 {
 	private static final String BASE_URL = "https://secure.runescape.com/m=";
@@ -125,16 +128,11 @@ public class HiscoreService
 	// Stale-while-revalidate cache.
 	private static final long CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes
 
+	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 	private static class CachedResult
 	{
 		final HiscoreResult result;
 		final long timestamp;
-
-		CachedResult(HiscoreResult result, long timestamp)
-		{
-			this.result = result;
-			this.timestamp = timestamp;
-		}
 
 		boolean isStale()
 		{
@@ -263,13 +261,6 @@ public class HiscoreService
 
 	private final OkHttpClient httpClient;
 	private final Gson gson;
-
-	@Inject
-	public HiscoreService(OkHttpClient httpClient, Gson gson)
-	{
-		this.httpClient = httpClient;
-		this.gson = gson;
-	}
 
 	/**
 	 * Get a cached result immediately, or null if none exists.
@@ -831,16 +822,11 @@ public class HiscoreService
 		FOUND, NOT_FOUND, TRANSIENT, MALFORMED, REJECTED
 	}
 
+	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 	private static final class TableResponse
 	{
 		final FetchStatus status;
 		final String body;
-
-		TableResponse(FetchStatus status, String body)
-		{
-			this.status = status;
-			this.body = body;
-		}
 
 		boolean retryable()
 		{

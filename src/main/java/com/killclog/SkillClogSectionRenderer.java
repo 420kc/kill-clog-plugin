@@ -9,10 +9,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import javax.annotation.Nullable;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
 
 /** Paints adaptive item sections inside solo and comparison skill tooltips. */
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class SkillClogSectionRenderer
 {
 	private static final int SPRITE_SIZE = 32;
@@ -26,11 +29,6 @@ final class SkillClogSectionRenderer
 
 	private final SkillTooltip repaintTarget;
 	private List<Entry> entries = Collections.emptyList();
-
-	SkillClogSectionRenderer(SkillTooltip repaintTarget)
-	{
-		this.repaintTarget = repaintTarget;
-	}
 
 	void setSections(List<SkillClogSection> sections, @Nullable ItemManager itemManager)
 	{
@@ -200,16 +198,12 @@ final class SkillClogSectionRenderer
 		return rows * CELL_SIZE - PADDING;
 	}
 
+	@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 	private static final class Entry
 	{
 		private final SkillClogSection section;
 		@Nullable
 		private final TooltipItemSprites sprites;
 
-		private Entry(SkillClogSection section, @Nullable TooltipItemSprites sprites)
-		{
-			this.section = section;
-			this.sprites = sprites;
-		}
 	}
 }

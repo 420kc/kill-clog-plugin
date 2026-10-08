@@ -3,6 +3,8 @@ package com.killclog;
 import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import net.runelite.client.util.Text;
 
 final class ClogUnlockParser
@@ -27,16 +29,12 @@ final class ClogUnlockParser
 			+ "(?<post>(?:(?:kill|harvest|lap|completion|success|Total Ticket) )?(?:count )?)is: ?"
 			+ "<col=[0-9a-f]{6}>(?<kc>[0-9,]+)</col>");
 
+	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 	static final class KillContext
 	{
 		final String boss;
 		final int kc;
 
-		KillContext(String boss, int kc)
-		{
-			this.boss = boss;
-			this.kc = kc;
-		}
 	}
 
 	static KillContext parseKillCount(String message)
@@ -62,6 +60,7 @@ final class ClogUnlockParser
 		}
 	}
 
+	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 	static final class BroadcastUnlock
 	{
 		final String playerName;
@@ -69,13 +68,6 @@ final class ClogUnlockParser
 		final int obtained;
 		final int total;
 
-		BroadcastUnlock(String playerName, String itemName, int obtained, int total)
-		{
-			this.playerName = playerName;
-			this.itemName = itemName;
-			this.obtained = obtained;
-			this.total = total;
-		}
 	}
 
 	private ClogUnlockParser()

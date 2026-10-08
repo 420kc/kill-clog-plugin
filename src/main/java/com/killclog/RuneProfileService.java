@@ -13,6 +13,8 @@ import java.util.concurrent.CompletableFuture;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.util.Text;
 import okhttp3.OkHttpClient;
@@ -38,6 +40,7 @@ import okhttp3.OkHttpClient;
  */
 @Slf4j
 @Singleton
+@RequiredArgsConstructor(onConstructor_ = @Inject)
 public class RuneProfileService
 {
 	private static final String BASE_URL = "https://api.runeprofile.com/v1/accounts/";
@@ -57,14 +60,6 @@ public class RuneProfileService
 	// Summary lane (CA tiers plus account metadata) and clog lane: independent, same TTLs.
 	private final HttpUtil.Lane<RuneProfileSummary> summaries = new HttpUtil.Lane<>(breaker);
 	private final HttpUtil.Lane<ClogResult> clogs = new HttpUtil.Lane<>(breaker);
-
-	@Inject
-	public RuneProfileService(OkHttpClient httpClient, Gson gson, LocalCaCache localCaCache)
-	{
-		this.httpClient = httpClient;
-		this.gson = gson;
-		this.localCaCache = localCaCache;
-	}
 
 	public void setCaCatalog(@Nullable CaCatalog caCatalog)
 	{
@@ -484,16 +479,11 @@ public class RuneProfileService
 		INVALID
 	}
 
+	@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 	static final class ClogParseOutcome
 	{
 		private final ClogParseState state;
 		@Nullable final ClogResult result;
-
-		private ClogParseOutcome(ClogParseState state, @Nullable ClogResult result)
-		{
-			this.state = state;
-			this.result = result;
-		}
 
 		private static ClogParseOutcome data(ClogResult result)
 		{
@@ -520,15 +510,11 @@ public class RuneProfileService
 		return ClogService.bossToCategory(pageName);
 	}
 
+	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 	static final class RuneProfileSummary
 	{
 		final AccountType accountType;
 		final CombatAchievementResult combatAchievements;
 
-		RuneProfileSummary(AccountType accountType, CombatAchievementResult combatAchievements)
-		{
-			this.accountType = accountType;
-			this.combatAchievements = combatAchievements;
-		}
 	}
 }

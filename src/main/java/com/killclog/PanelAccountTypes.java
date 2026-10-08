@@ -1,15 +1,13 @@
 package com.killclog;
 
 import javax.annotation.Nullable;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class PanelAccountTypes
 {
 	private final RuneProfileService runeProfileService;
-
-	PanelAccountTypes(RuneProfileService runeProfileService)
-	{
-		this.runeProfileService = runeProfileService;
-	}
 
 	AccountDisplay currentDisplay(@Nullable HiscoreResult hiscore, @Nullable ClogResult clog,
 		@Nullable String player)

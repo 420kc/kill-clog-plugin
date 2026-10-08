@@ -16,6 +16,8 @@ import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.util.Filepath;
 
@@ -30,6 +32,7 @@ import net.runelite.client.util.Filepath;
  */
 @Slf4j
 @Singleton
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class LocalCaCache
 {
 	// Captures by own-log file name, which carries the account hash.
@@ -50,12 +53,6 @@ public class LocalCaCache
 	public LocalCaCache(Gson gson)
 	{
 		this(gson, newDiskWriter());
-	}
-
-	LocalCaCache(Gson gson, ExecutorService diskWriter)
-	{
-		this.gson = gson;
-		this.diskWriter = diskWriter;
 	}
 
 	/** Load ca/ on the disk thread; saves queued behind it land in the same folder. */
