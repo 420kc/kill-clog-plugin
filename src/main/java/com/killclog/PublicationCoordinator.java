@@ -200,6 +200,15 @@ final class PublicationCoordinator
 		// generation and stays silent.
 	}
 
+	/** Automatic sync turned off: an automatic push not yet sent never goes; a click or a character's own sync does. */
+	void cancelAutomaticSync()
+	{
+		if (!characterPublishAfterSync.get())
+		{
+			syncGate.cancelAutomatic();
+		}
+	}
+
 	/**
 	 * The panel's sync arrow: push now, skipping any pending debounce. The
 	 * single-flight gate remembers a click during an in-flight request, so
@@ -478,10 +487,10 @@ final class PublicationCoordinator
 		Map<String, Double> pbs, Map<String, SyncService.DetailedPb> detailedPbs,
 		boolean manual, int generation, long cacheEpoch, LocalClogCache cache, String gameMode, long storeEpoch)
 	{
-		if (localClogCache.currentSessionEpoch() != cacheEpoch)
+		if (localClogCache.currentSessionEpoch() != cacheEpoch || !syncGate.isCurrent(generation))
 		{
-			// The session ended between gather and dispatch: release the
-			// single-flight slot and walk away clean.
+			// The session ended, or the player stopped this send, between gather and
+			// dispatch: release the single-flight slot and walk away clean.
 			syncGate.abortAttempt();
 			failQueuedCharacterPublish();
 			launchQueuedSync();

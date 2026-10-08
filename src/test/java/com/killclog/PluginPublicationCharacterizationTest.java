@@ -1561,4 +1561,32 @@ public class PluginPublicationCharacterizationTest
 			return 0;
 		}
 	}
+
+	@Test
+	public void automaticSyncOffStopsAnAutomaticSyncAtEitherHandoff() throws Exception
+	{
+		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+
+		// Off after the timer fires, before the client thread gathers the push.
+		captureListener.run();
+		executor.runAll();
+		config.automatic = false;
+		configChanged("automaticSync");
+		settle();
+		assertTrue(syncs.isEmpty());
+
+		// Off after the gather, before the dispatch.
+		config.automatic = true;
+		captureListener.run();
+		fireOnce();
+		config.automatic = false;
+		configChanged("automaticSync");
+		settle();
+		assertTrue(syncs.isEmpty());
+
+		// The chalice still sends.
+		syncHandler.run();
+		settle();
+		assertEquals(1, syncs.size());
+	}
 }

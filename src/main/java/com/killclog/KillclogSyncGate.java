@@ -17,6 +17,7 @@ final class KillclogSyncGate
 	private final AtomicBoolean queued = new AtomicBoolean();
 	private boolean queuedManual;
 	private String queuedMode;
+	private boolean inFlightManual;
 	private final AtomicInteger generation = new AtomicInteger();
 	// One server-advised contention retry per episode: consumed by the first
 	// 409, restored at every terminal outcome (success, failure, abort,
@@ -54,6 +55,7 @@ final class KillclogSyncGate
 			queued.set(true);
 			return -1;
 		}
+		inFlightManual = manual;
 		return gen;
 	}
 
@@ -144,6 +146,20 @@ final class KillclogSyncGate
 		queuedManual = false;
 		queuedMode = null;
 		return intent;
+	}
+
+	/** Automatic sync off: an automatic push not yet sent, or one queued, never goes; a click still does. */
+	synchronized void cancelAutomatic()
+	{
+		if (inFlight.get() && !inFlightManual)
+		{
+			generation.incrementAndGet();
+		}
+		if (!queuedManual)
+		{
+			queued.set(false);
+			queuedMode = null;
+		}
 	}
 
 	/** Opt-out / shutdown: silence prior eras and forget any queued intent. */

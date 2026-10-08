@@ -814,6 +814,10 @@ public class KillClogPlugin extends Plugin
 		else if ("automaticSync".equals(event.getKey()))
 		{
 			syncSettings.enforce();
+			if (!config.automaticSync())
+			{
+				publication.cancelAutomaticSync();
+			}
 		}
 		else if ("characterModel".equals(event.getKey()))
 		{

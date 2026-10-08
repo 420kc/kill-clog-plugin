@@ -224,4 +224,26 @@ public class KillclogSyncGateTest
 		gate.beginAttempt(true, "main");
 		return gate.consumeQueuedIntent().mode;
 	}
+
+	@Test
+	public void automaticSyncOffStopsOnlyAnAutomaticPushNotYetSent()
+	{
+		KillclogSyncGate gate = new KillclogSyncGate();
+		int automatic = gate.beginAttempt(false, null);
+		gate.cancelAutomatic();
+		assertNull(gate.commitIfCurrent(automatic, () -> "sent"));
+		gate.complete(automatic);
+
+		int click = gate.beginAttempt(true, null);
+		gate.cancelAutomatic();
+		assertEquals("sent", gate.commitIfCurrent(click, () -> "sent"));
+
+		// Behind that click, a queued automatic push is forgotten and a queued click is kept.
+		assertEquals(-1, gate.beginAttempt(false, null));
+		gate.cancelAutomatic();
+		assertFalse(gate.consumeQueued());
+		assertEquals(-1, gate.beginAttempt(true, null));
+		gate.cancelAutomatic();
+		assertTrue(gate.consumeQueued());
+	}
 }
