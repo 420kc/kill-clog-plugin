@@ -30,8 +30,8 @@ final class CompareClogTotalsBar
 		this.tooltipController = tooltipController;
 		this.tooltipFactory = tooltipFactory;
 		this.panel = buildPanel();
-		this.blueTotal = buildTotalLabel(true, JLabel.LEFT);
-		this.redTotal = buildTotalLabel(false, JLabel.RIGHT);
+		this.blueTotal = buildTotalLabel(JLabel.LEFT);
+		this.redTotal = buildTotalLabel(JLabel.RIGHT);
 		wireClickAndHover();
 		layoutLabels();
 	}
@@ -75,9 +75,9 @@ final class CompareClogTotalsBar
 		return totalsPanel;
 	}
 
-	private JLabel buildTotalLabel(boolean leftAligned, int alignment)
+	private JLabel buildTotalLabel(int alignment)
 	{
-		JLabel label = new UnderlineLabel(leftAligned)
+		JLabel label = new HoverLabel()
 		{
 			@Override
 			public JToolTip createToolTip()
@@ -120,9 +120,9 @@ final class CompareClogTotalsBar
 		panel.addMouseListener(clickHandler);
 		blueTotal.addMouseListener(clickHandler);
 		redTotal.addMouseListener(clickHandler);
-		UnderlineLabel.installHoverUnderline(blueTotal,
+		HoverLabel.installHover(blueTotal,
 			() -> blueTotal.getToolTipText() != null || comparisonMode.getAsBoolean());
-		UnderlineLabel.installHoverUnderline(redTotal,
+		HoverLabel.installHover(redTotal,
 			() -> redTotal.getToolTipText() != null || comparisonMode.getAsBoolean());
 	}
 

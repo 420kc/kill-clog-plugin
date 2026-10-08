@@ -90,7 +90,7 @@ public class KillClogPanel extends PluginPanel
 
 	private final PanelStatusRow statusRow;
 	private final IconTextField searchBar = new IconTextField();
-	private final JLabel playerName = new UnderlineLabel(true)
+	private final JLabel playerName = new HoverLabel()
 	{
 		@Override
 		public JToolTip createToolTip()
@@ -113,7 +113,7 @@ public class KillClogPanel extends PluginPanel
 		}
 
 	};
-	private final JLabel clogInfoLabel = new UnderlineLabel(false)
+	private final JLabel clogInfoLabel = new HoverLabel()
 	{
 		@Override
 		public JToolTip createToolTip()

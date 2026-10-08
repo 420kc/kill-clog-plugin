@@ -70,7 +70,7 @@ final class PanelInfoBar
 		installInfoClicks(clogInfoLabel, infoRow, tooltipController);
 		for (JLabel barLabel : new JLabel[]{playerName, clogInfoLabel})
 		{
-			UnderlineLabel.installHoverUnderline(barLabel,
+			HoverLabel.installHover(barLabel,
 				() -> barLabel.getToolTipText() != null || comparisonMode.getAsBoolean());
 		}
 
