@@ -42,8 +42,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 	// an unreached one red, as held and missing items do.
 	private static final int TIER_SECTION = 2;
 	private static final String TITLE = "Collection Log";
-	// The header holds the title and, clear of it in the corner, the current tier's item.
-	private static final int TIER_ROOM = 40;
 	private static final int SOURCE_SECTION = 3;
 	// The tab rows read a size up from the card's text, their counts at the right, each tab apart from the next.
 	private static final Font TAB_FONT = FontManager.getRunescapeFont();
@@ -355,15 +353,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 		// The current tier sits large in the header's corner. Completion, the tier ladder and the tabs stand under the
 		// header; any tier's, item's or source's name shows in the band under the progress bars, and the shelves and
 		// footer scroll below it.
-		CardBody card = new CardBody().add(CardBody.row(0,
-			c -> hasTotals() ? getFontMetrics(getTitleFont()).stringWidth(TITLE) + TIER_ROOM : 0, (c, y) ->
-		{
-			if (hasTotals() && tierSprite != null)
-			{
-				c.g.drawImage(tierSprite, c.w - c.inset() - tierSprite.getWidth(),
-					c.inset() + (getHeaderHeight() - tierSprite.getHeight()) / 2, null);
-			}
-		}));
+		CardBody card = new CardBody().add(headerCorner(hasTotals(), hasTotals() ? tierSprite : null, null));
 		if (hasTotals())
 		{
 			// The completion heads the tab rows, read the same way: a row that opens nothing.

@@ -120,6 +120,29 @@ public abstract class TitleTooltip extends NativeTooltip
 		titleIcon = icon;
 	}
 
+	/**
+	 * An image in the header's right corner, the title kept clear of it: the Collection Log's current tier, a
+	 * published character's prestige cape. The room is kept whether or not the image has loaded yet, so the card
+	 * never changes size when it arrives. With a name, hovering it shows the name in the card's band.
+	 */
+	CardBody.Part headerCorner(boolean keepRoom, @Nullable BufferedImage image, @Nullable String name)
+	{
+		return CardBody.row(0, c -> keepRoom ? titleIconWidth() + getFontMetrics(getTitleFont()).stringWidth(title) + 40 : 0, (c, y) ->
+		{
+			if (image == null)
+			{
+				return;
+			}
+			int x = c.w - c.inset() - image.getWidth();
+			int top = c.inset() + (getHeaderHeight() - image.getHeight()) / 2;
+			c.g.drawImage(image, x, top, null);
+			if (name != null)
+			{
+				c.hits.add(new TooltipItemHover.HitBox(9, 0, name, new Rectangle(x, top, image.getWidth(), image.getHeight()), true));
+			}
+		});
+	}
+
 	private int titleIconWidth()
 	{
 		return titleIcon != null ? titleIcon.getWidth() + TITLE_ICON_GAP : 0;

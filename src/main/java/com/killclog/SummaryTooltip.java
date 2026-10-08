@@ -2,7 +2,6 @@ package com.killclog;
 
 import java.awt.Color;
 import java.awt.Font;
-import java.awt.Rectangle;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -28,16 +27,12 @@ public class SummaryTooltip extends TitleTooltip
 	private static final int FIGURE_GAP = 4;
 	private static final String PRESTIGE_LABEL = "Prestige: ";
 	private static final String FORMER_TITLE = "Player Summary";
-	// The header keeps room for the name and, clear of it in the corner, the prestige cape.
-	private static final int CAPE_ROOM = 44;
-	private static final int CAPE_SECTION = 7;
 
 	private int overallRank;
 	// The prestige cape, or a Kill Clog syncer's character (PlayerPortraits) standing in its place.
 	private BufferedImage figure;
 	private String accountLabel;
 	private String prestige;
-	private String name;
 	// With a character standing in, the prestige cape sits small in the header's corner and names its prestige.
 	@Nullable
 	private BufferedImage cape;
@@ -58,8 +53,7 @@ public class SummaryTooltip extends TitleTooltip
 	{
 		itemHover.clear();
 		// The panel's own stand-in when a lookup has no name, so the card always keeps its title.
-		name = rsn != null ? rsn : "Player";
-		setTitle(name);
+		setTitle(rsn != null ? rsn : "Player");
 		setTitleIcon(badgeIcon);
 		this.overallRank = overallRank;
 		this.figure = withoutHeadroom(figure);
@@ -156,14 +150,7 @@ public class SummaryTooltip extends TitleTooltip
 		CardBody card = new CardBody().add(CardBody.minWidth(c -> getFontMetrics(getTitleFont()).stringWidth(FORMER_TITLE)));
 		if (capeInHeader)
 		{
-			card.add(CardBody.row(0, c -> getFontMetrics(getTitleFont()).stringWidth(name) + CAPE_ROOM, (c, y) ->
-			{
-				int x = c.w - c.inset() - cape.getWidth();
-				int top = c.inset() + (getHeaderHeight() - cape.getHeight()) / 2;
-				c.g.drawImage(cape, x, top, null);
-				c.hits.add(new TooltipItemHover.HitBox(CAPE_SECTION, 0, prestige,
-					new Rectangle(x, top, cape.getWidth(), cape.getHeight()), true));
-			}));
+			card.add(headerCorner(true, cape, prestige));
 		}
 		if (figure != null)
 		{
