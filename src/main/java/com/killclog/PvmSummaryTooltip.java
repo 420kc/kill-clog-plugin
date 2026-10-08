@@ -75,8 +75,9 @@ public class PvmSummaryTooltip extends TitleTooltip
 		}
 	});
 
-	// Everything under the anchored band scrolls once the card grows past a long tab's height, three lines a notch.
-	private final CardBody.Scroll scroll = new CardBody.Scroll(this, CardBody.WINDOW, 3 * LINE_HEIGHT);
+	// Everything under the anchored band scrolls, three lines a notch, in a window that keeps the whole card a long
+	// tab's height: the level and PvM rows above the band already take a third of it (Dylan, 2026-10-08).
+	private final CardBody.Scroll scroll = new CardBody.Scroll(this, 16 * LINE_HEIGHT, 3 * LINE_HEIGHT);
 
 	@Setter
 	private Image combatIcon;
