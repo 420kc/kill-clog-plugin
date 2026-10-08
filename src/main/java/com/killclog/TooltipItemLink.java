@@ -1,5 +1,6 @@
 package com.killclog;
 
+import java.util.HashMap;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -14,21 +15,20 @@ final class TooltipItemLink
 		"https://oldschool.runescape.wiki/w/";
 	private static final String FALLBACK_NAME_PREFIX = "Item ";
 
-	private static final String[] CHOMPY_TIERS = {
-		"Ogre Bowman", "Bowman", "Ogre Yeoman", "Yeoman", "Ogre Marksman", "Marksman",
-		"Ogre Woodsman", "Woodsman", "Ogre Forester", "Forester", "Ogre Bowmaster", "Bowmaster",
-		"Ogre Expert", "Expert", "Ogre Dragon Archer", "Dragon Archer",
-		"Expert Ogre Dragon Archer", "Expert Dragon Archer"
-	};
-	private static final int[] CHOMPY_KILLS = {
-		30, 40, 50, 70, 95, 125, 170, 225, 300, 400, 550, 700, 1000, 1300, 1700, 2250, 3000, 4000
-	};
+	// The chompy bird hats, from item 2978 up: the kills each takes and its rank (chompy-hats.tsv).
+	private static final Map<Integer, String> CHOMPY_HATS = new HashMap<>();
+
+	static
+	{
+		for (String[] row : CatalogTsv.rows(TooltipItemLink.class, "chompy-hats.tsv", 2))
+		{
+			CHOMPY_HATS.put(Integer.parseInt(row[0]), row[1]);
+		}
+	}
 
 	static String displayName(int itemId, String name)
 	{
-		int hat = itemId - 2978;
-		return hat >= 0 && hat < CHOMPY_TIERS.length
-			? CHOMPY_KILLS[hat] + ": " + CHOMPY_TIERS[hat] : name;
+		return CHOMPY_HATS.getOrDefault(itemId, name);
 	}
 
 	private TooltipItemLink()
