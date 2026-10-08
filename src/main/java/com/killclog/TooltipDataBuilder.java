@@ -65,18 +65,25 @@ final class TooltipDataBuilder
 			? ClogHelper.countObtained(allItems, obtainedIds) : obtainedIds.size();
 
 		List<Integer> itemList = allItems != null ? allItems : new ArrayList<>(obtainedIds);
-		return TooltipData.builder()
-			.name(displayName)
+		return itemData(displayName, obtainedCount, totalItems, itemList, obtainedIds, obtainedCounts, clogResult)
 			.rank(rank)
-			.obtainedCount(obtainedCount)
-			.totalItems(totalItems)
-			.allItemIds(itemList)
-			.obtainedIds(obtainedIds)
-			.obtainedCounts(obtainedCounts)
-			.itemNames(itemNamesFor(itemList, clogResult))
 			.kc(kc)
 			.pb(pb)
 			.build();
+	}
+
+	/** What every item card carries: its name, its items with what the player holds of them, and their names. */
+	private TooltipData.TooltipDataBuilder itemData(String name, int obtainedCount, int totalItems, List<Integer> items,
+		Set<Integer> obtainedIds, Map<Integer, Integer> obtainedCounts, ClogResult clogResult)
+	{
+		return TooltipData.builder()
+			.name(name)
+			.obtainedCount(obtainedCount)
+			.totalItems(totalItems)
+			.allItemIds(items)
+			.obtainedIds(obtainedIds)
+			.obtainedCounts(obtainedCounts)
+			.itemNames(itemNamesFor(items, clogResult));
 	}
 
 	/** A raid's card with its hard mode's KC and PB, the PB looked up by the hard mode's name; others as they are. */
@@ -135,14 +142,7 @@ final class TooltipDataBuilder
 		Set<Integer> obtainedIds = new HashSet<>(obtainedCounts.keySet());
 
 		int obtainedCount = ClogHelper.countObtained(allItems, obtainedIds);
-		return TooltipData.builder()
-			.name(name)
-			.obtainedCount(obtainedCount)
-			.totalItems(allItems.size())
-			.allItemIds(allItems)
-			.obtainedIds(obtainedIds)
-			.obtainedCounts(obtainedCounts)
-			.itemNames(itemNamesFor(allItems, clogResult))
+		return itemData(name, obtainedCount, allItems.size(), allItems, obtainedIds, obtainedCounts, clogResult)
 			.rankTracked(false)
 			.build();
 	}
@@ -232,16 +232,8 @@ final class TooltipDataBuilder
 			}
 		}
 
-		return TooltipData.builder()
-			.name(name)
-			.obtainedCount(obtainedIds.size())
-			.totalItems(allItemsList.size())
-			.allItemIds(allItemsList)
-			.obtainedIds(obtainedIds)
-			.obtainedCounts(obtainedCounts)
-			.itemNames(itemNamesFor(allItemsList, clogResult))
-			.rankTracked(false)
-			.build();
+		return itemData(name, obtainedIds.size(), allItemsList.size(), allItemsList, obtainedIds, obtainedCounts,
+			clogResult).rankTracked(false).build();
 	}
 
 	TooltipData buildUnsyncedItemData(String name, int[] itemIds, ClogResult catalog)
