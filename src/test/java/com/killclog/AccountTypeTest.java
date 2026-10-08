@@ -58,4 +58,14 @@ public class AccountTypeTest
 		assertEquals(AccountType.ULTIMATE_IRONMAN,
 			AccountType.displayType(AccountType.ULTIMATE_IRONMAN, null));
 	}
+
+	@Test
+	public void everyTypeNamesItselfAsBefore()
+	{
+		org.junit.Assert.assertArrayEquals(new String[]{"Regular", "Ironman", "Hardcore Ironman", "Ultimate Ironman",
+			"Group Ironman", "Hardcore Group Ironman", "Unranked Group Ironman"},
+			java.util.Arrays.stream(AccountType.values()).map(AccountType::displayName).toArray(String[]::new));
+		assertNull(AccountType.fromProviderId(-1));
+		assertNull(AccountType.fromProviderId(7));
+	}
 }

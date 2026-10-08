@@ -23,14 +23,8 @@ final class PersonalBests
 	 * old Nightmare records. The tooltip shows the fastest across sizes: one
 	 * line, the true personal best.
 	 */
-	/* package */ static final String[] TEAM_SUFFIXES = {
-		"", " solo", " 1 player", " 2 players", " 3 players", " 4 players",
-		" 5 players", " 6 players", " 7 players", " 8 players", " 9 players",
-		" 10 players", " 11-15 players", " 16-23 players", " 24+ players",
-		" 2+ players", " 3+ players", " 4+ players", " 5+ players",
-		" 6+ players", " 7+ players", " 8+ players", " 9+ players",
-		" 10+ players",
-	};
+	/* package */ static final String[] TEAM_SUFFIXES =
+		CatalogTsv.values(PersonalBests.class, "team-suffixes.tsv", "suffix").toArray(new String[0]);
 
 	private final ConfigManager configManager;
 

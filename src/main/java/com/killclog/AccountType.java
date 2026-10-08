@@ -2,6 +2,7 @@ package com.killclog;
 
 import java.util.Locale;
 import javax.annotation.Nullable;
+import net.runelite.client.util.Text;
 
 public enum AccountType
 {
@@ -39,17 +40,8 @@ public enum AccountType
 	@Nullable
 	static AccountType fromProviderId(int id)
 	{
-		switch (id)
-		{
-			case 0: return REGULAR;
-			case 1: return IRONMAN;
-			case 2: return HARDCORE_IRONMAN;
-			case 3: return ULTIMATE_IRONMAN;
-			case 4: return GROUP_IRONMAN;
-			case 5: return HARDCORE_GROUP_IRONMAN;
-			case 6: return UNRANKED_GROUP_IRONMAN;
-			default: return null;
-		}
+		// Provider ids follow the declaration order above.
+		return id >= 0 && id < values().length ? values()[id] : null;
 	}
 
 	@Nullable
@@ -116,17 +108,9 @@ public enum AccountType
 		}
 	}
 
+	/** "Hardcore Group Ironman" from HARDCORE_GROUP_IRONMAN. */
 	String displayName()
 	{
-		switch (this)
-		{
-			case IRONMAN: return "Ironman";
-			case HARDCORE_IRONMAN: return "Hardcore Ironman";
-			case ULTIMATE_IRONMAN: return "Ultimate Ironman";
-			case GROUP_IRONMAN: return "Group Ironman";
-			case HARDCORE_GROUP_IRONMAN: return "Hardcore Group Ironman";
-			case UNRANKED_GROUP_IRONMAN: return "Unranked Group Ironman";
-			default: return "Regular";
-		}
+		return Text.titleCase(this);
 	}
 }

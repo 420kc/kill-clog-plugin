@@ -105,23 +105,14 @@ final class AdvLogPbs
 	 * are vanilla's own store names (lowercased), so a scroll harvest and a
 	 * live kill-timer message land on the same key.
 	 */
-	private static final Map<String, String> SCROLL_RENAMES = buildScrollRenames();
+	private static final Map<String, String> SCROLL_RENAMES = new LinkedHashMap<>();
 
-	private static Map<String, String> buildScrollRenames()
+	static
 	{
-		Map<String, String> renames = new LinkedHashMap<>();
-		renames.put("tzhaar fight cave", "tztok-jad");
-		renames.put("inferno", "tzkal-zuk");
-		renames.put("fortis colosseum", "sol heredit");
-		renames.put("lunar chests", "lunar chest");
-		renames.put("doom", "doom of mokhaiotl");
-		renames.put("chambers of xeric - challenge mode", "chambers of xeric challenge mode");
-		renames.put("theatre of blood - hard mode", "theatre of blood hard mode");
-		renames.put("theatre of blood - entry mode", "theatre of blood entry mode");
-		renames.put("theatre of blood - story mode", "theatre of blood entry mode");
-		renames.put("tombs of amascut - entry", "tombs of amascut entry mode");
-		renames.put("tombs of amascut - expert", "tombs of amascut expert mode");
-		return renames;
+		for (String[] row : CatalogTsv.rows(AdvLogPbs.class, "adv-log-renames.tsv", 2))
+		{
+			SCROLL_RENAMES.put(row[0], row[1]);
+		}
 	}
 
 	private final ConfigManager configManager;
