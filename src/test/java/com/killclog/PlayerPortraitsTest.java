@@ -162,10 +162,29 @@ public class PlayerPortraitsTest
 		portraits.lookedUp(clog("CBC", true));
 		assertNull(portraits.forSummary(clog("CBC", true)));
 		verify(client, never()).newCall(any(Request.class));
-		// Past the portrait's ten minutes, though well inside a provider miss's hour.
+		// Past the portrait's minute, though well inside a provider miss's hour.
 		portraits.lane.notFound.put(key, System.currentTimeMillis() - PlayerPortraits.NOT_FOUND_TTL_MS - 1);
 		portraits.lookedUp(clog("CBC", true));
 		requests(client, 1);
+	}
+
+	@Test
+	public void publishingAsksForTheNewCharacterAtOnceWhateverMissCameBefore() throws IOException
+	{
+		OkHttpClient client = client();
+		PlayerPortraits portraits = new PlayerPortraits(client);
+		String key = PlayerPortraits.key("Sexy Kyle");
+		ClogResult own = clog("Sexy Kyle", false).withLocalSource(true);
+		// Their own summary asked before they published: no character yet, and the miss rests.
+		portraits.lookedUp(own);
+		answer(portraits, key, 404, null, null);
+		assertNull(portraits.forSummary(own));
+		requests(client, 1);
+
+		portraits.published("Sexy Kyle");
+		requests(client, 2);
+		answer(portraits, key, 200, png(56, 80), "\"v1\"");
+		assertNotNull(portraits.forSummary(own));
 	}
 
 	@Test

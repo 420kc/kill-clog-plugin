@@ -846,6 +846,11 @@ public class KillClogPanel extends PluginPanel
 	void showCharacterPublishStatus(String text, boolean ok, boolean autoClear, String detail)
 	{
 		statusRow.showCharacterPublishStatus(text, ok, autoClear, detail);
+		if (ok)
+		{
+			// The character that was just published shows in the player's own summary straight away.
+			portraits.published(localRsn);
+		}
 	}
 
 	void refreshSyncFeedbackSettings()

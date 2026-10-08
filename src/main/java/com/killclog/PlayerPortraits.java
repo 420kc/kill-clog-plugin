@@ -37,9 +37,9 @@ class PlayerPortraits
 {
 	static final int MAX_BYTES = 64 * 1024;
 	static final int MAX_SIDE = 256;
-	// A miss is often a character still being drawn, or one about to be published, so it is asked
-	// about again sooner than a provider miss.
-	static final long NOT_FOUND_TTL_MS = 10 * 60 * 1000;
+	// A miss is often a character still being drawn, or one about to be published (a lookup right
+	// after a player's first sync), so it is asked about again within a minute.
+	static final long NOT_FOUND_TTL_MS = 60 * 1000;
 	// Lookup counts kept past this are pruned to names with a portrait held or a check out.
 	static final int MAX_GENERATIONS = 2 * HttpUtil.CACHE_CAP;
 	private static final byte[] PNG_SIGNATURE = {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1a, '\n'};
@@ -89,6 +89,16 @@ class PlayerPortraits
 			}
 			confirmed.remove(key);
 			ask(name);
+		}
+	}
+
+	/** The local player just published their character: their own summary asks for it now, not after a miss rests. */
+	synchronized void published(@Nullable String name)
+	{
+		if (name != null && !name.trim().isEmpty())
+		{
+			lane.notFound.remove(key(name.trim()));
+			ask(name.trim());
 		}
 	}
 
