@@ -150,7 +150,7 @@ public class KillClogConfigStructureTest
 		KillClogConfig defaults = new KillClogConfig()
 		{
 		};
-		assertEquals(TooltipMode.CLICK, defaults.tooltipMode());
+		assertEquals(TooltipMode.HOVER, defaults.tooltipMode());
 		assertEquals(HoverStyle.TINT, defaults.hoverStyle());
 		assertTrue(defaults.wikiItemLinks());
 		assertTrue(defaults.showTooltipKc());

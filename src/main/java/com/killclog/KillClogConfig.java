@@ -244,7 +244,7 @@ public interface KillClogConfig extends Config
 	)
 	default TooltipMode tooltipMode()
 	{
-		return TooltipMode.CLICK;
+		return TooltipMode.HOVER;
 	}
 
 	@ConfigItem(
