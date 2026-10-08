@@ -154,6 +154,7 @@ final class KillclogSyncGate
 		if (inFlight.get() && !inFlightManual)
 		{
 			generation.incrementAndGet();
+			retryCredit.set(true);
 		}
 		if (!queuedManual)
 		{

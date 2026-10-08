@@ -246,4 +246,14 @@ public class KillclogSyncGateTest
 		gate.cancelAutomatic();
 		assertTrue(gate.consumeQueued());
 	}
+
+	@Test
+	public void aRetiredAutomaticPushGivesBackItsRetry()
+	{
+		KillclogSyncGate gate = new KillclogSyncGate();
+		gate.beginAttempt(false, null);
+		assertTrue(gate.consumeRetryCredit());
+		gate.cancelAutomatic();
+		assertTrue(gate.consumeRetryCredit());
+	}
 }

@@ -1589,4 +1589,37 @@ public class PluginPublicationCharacterizationTest
 		settle();
 		assertEquals(1, syncs.size());
 	}
+
+	@Test
+	public void anAutomaticSyncClaimedAsAutomaticSyncTurnsOffNeverSends() throws Exception
+	{
+		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		captureListener.run();
+		executor.runAll();
+		// Off between the timer's own check and its claim on the slot, so the cancel found nothing to stop.
+		config.automatic = false;
+		settle();
+		assertTrue(syncs.isEmpty());
+	}
+
+	@Test
+	public void aRetiredAutomaticSyncLeavesALaterCharacterPublishAlone() throws Exception
+	{
+		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		captureListener.run();
+		fireOnce();
+		config.automatic = false;
+		configChanged("automaticSync");
+
+		// A character publish that needs the profile first queues its sync behind the retired one.
+		publishHandler.run();
+		runClient();
+		publishes.get(0).complete(new ProfileAppearanceService.PublishResult(
+			ProfileAppearanceService.Outcome.PROFILE_REQUIRED, null));
+		settle();
+		assertEquals(1, syncs.size());
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
+		settle();
+		assertEquals(2, publishes.size());
+	}
 }

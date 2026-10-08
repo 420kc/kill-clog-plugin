@@ -487,12 +487,16 @@ final class PublicationCoordinator
 		Map<String, Double> pbs, Map<String, SyncService.DetailedPb> detailedPbs,
 		boolean manual, int generation, long cacheEpoch, LocalClogCache cache, String gameMode, long storeEpoch)
 	{
-		if (localClogCache.currentSessionEpoch() != cacheEpoch || !syncGate.isCurrent(generation))
+		boolean sessionEnded = localClogCache.currentSessionEpoch() != cacheEpoch;
+		if (sessionEnded || !syncGate.isCurrent(generation) || !sends(manual))
 		{
-			// The session ended, or the player stopped this send, between gather and
-			// dispatch: release the single-flight slot and walk away clean.
+			// The session ended, or the player stopped this send, between gather and dispatch: release the
+			// single-flight slot and walk away clean. Only a dead session fails a character publish behind it.
 			syncGate.abortAttempt();
-			failQueuedCharacterPublish();
+			if (sessionEnded)
+			{
+				failQueuedCharacterPublish();
+			}
 			launchQueuedSync();
 			return;
 		}
