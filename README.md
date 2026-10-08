@@ -20,7 +20,9 @@ To retry an update, reopen the log or choose **Search** at the top. If it says *
 
 Optional and off by default.
 
-**Sync Collection Log** publishes your Collection Log, unlock dates and personal bests to your killclog.com profile. The chalice button (**publish collection log**) publishes right away. Open the in-game log first so it's current.
+**Sync Collection Log** keeps your killclog.com profile up to date with your Collection Log, unlock dates and personal bests. The chalice button (**sync collection log**) syncs right away. Open the in-game log first so it's current.
+
+**Automatic sync** is on by default: your profile updates at login, after new items, and when you open your Collection Log. Turn it off to sync only when you click the chalice.
 
 **Publish Character Model** needs Sync Collection Log. It adds the **publish character** button beside the chalice, which publishes your character and follower in your real appearance. Anyone who looks you up in Kill Clog sees them in your Player Summary.
 
@@ -30,7 +32,7 @@ Optional and off by default.
 
 ![based batt's published character and follower on killclog.com and in Kill Clog's Player Summary](screenshots/web-sync-profile-and-summary.png)
 
-The icon will flash green on a successful upload.
+Each button flashes green when your click goes through.
 
 ## Skill Clogs
 
@@ -60,7 +62,9 @@ While a League runs, a **Leagues** switch beside the search bar flips the panel 
 
 HiScores load for any valid RSN, including Collection Log totals and ranks when listed. Item-by-item Collection Log details appear when that player has data available through TempleOSRS, RuneProfile, or Kill Clog.
 
-Browse the entire Collection Log through the Clog Summary's navigation.
+Hover your Collection Log total to see your log, and click it to pin and browse every tab and page.
+
+![Vorkath's card naming the item under the cursor: green when you have it, red when you don't](screenshots/item-name-hover.png)
 
 ## Grid and List views
 
