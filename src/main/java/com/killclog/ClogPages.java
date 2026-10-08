@@ -43,18 +43,20 @@ final class ClogPages
 	private final ComparisonController comparison;
 	private final LookupSession lookupSession;
 	private final TooltipDataBuilder tooltipDataBuilder;
+	private final KillClogConfig config;
 	@Setter
 	@Nullable
 	private ClogIndex clogIndex;
 
 	ClogPages(TooltipController tooltipController, Cells cells, ComparisonController comparison,
-		LookupSession lookupSession, TooltipDataBuilder tooltipDataBuilder)
+		LookupSession lookupSession, TooltipDataBuilder tooltipDataBuilder, KillClogConfig config)
 	{
 		this.tooltipController = tooltipController;
 		this.cells = cells;
 		this.comparison = comparison;
 		this.lookupSession = lookupSession;
 		this.tooltipDataBuilder = tooltipDataBuilder;
+		this.config = config;
 	}
 
 	/** A tab row's press: the tab's pages replace the Collection Log card it came from. */
@@ -139,7 +141,8 @@ final class ClogPages
 		ClogTabTooltip card = new ClogTabTooltip();
 		card.setComponent(owner);
 		card.setTab(tab, progress.get(tab), slots.size());
-		card.setPages(names, obtained, total);
+		// Page names wear the panel's progression colors when its highlighter is on, as the boss list does.
+		card.setPages(names, obtained, total, config.completionistHighlighter() ? config : null);
 		card.setBack("< Collection Log", press -> pin(owner, press, owner.createToolTip()));
 		card.setOnOpenPage((press, page) -> pin(owner, press, pageCard(owner, tab, keys.get(page))));
 		return card;

@@ -97,6 +97,76 @@ public class ClogTabTooltipTest
 		assertEquals(Arrays.asList(0), opened);
 	}
 
+	@Test
+	public void pageNamesWearTheirProgressionColorsWhenTheHighlighterIsOn()
+	{
+		java.awt.Color done = new java.awt.Color(1, 2, 3);
+		java.awt.Color oneLeft = new java.awt.Color(4, 5, 6);
+		java.awt.Color going = new java.awt.Color(7, 8, 9);
+		java.awt.Color none = new java.awt.Color(10, 11, 12);
+		KillClogConfig progress = new KillClogConfig()
+		{
+			@Override
+			public java.awt.Color completedClogColor()
+			{
+				return done;
+			}
+
+			@Override
+			public java.awt.Color missing1Color()
+			{
+				return oneLeft;
+			}
+
+			@Override
+			public java.awt.Color inProgressClogColor()
+			{
+				return going;
+			}
+
+			@Override
+			public java.awt.Color emptyClogColor()
+			{
+				return none;
+			}
+		};
+		String[] names = {"Zulrah", "Vorkath", "Giant Mole", "Obor", "Bryophyta"};
+		int[] obtained = {10, 9, 3, 0, -1};
+		int[] total = {10, 10, 10, 10, 10};
+		ClogTabTooltip colored = new ClogTabTooltip();
+		colored.setTab("Bosses", new int[]{22, 50}, 50);
+		colored.setPages(names, obtained, total, progress);
+		ClogTabTooltip plain = new ClogTabTooltip();
+		plain.setTab("Bosses", new int[]{22, 50}, 50);
+		plain.setPages(names, obtained, total, null);
+
+		java.util.Set<Integer> shown = colors(colored);
+		for (java.awt.Color color : new java.awt.Color[]{done, oneLeft, going, none})
+		{
+			assertTrue(color.toString(), shown.contains(color.getRGB()));
+			assertTrue(color.toString(), !colors(plain).contains(color.getRGB()));
+		}
+	}
+
+	private static java.util.Set<Integer> colors(ClogTabTooltip card)
+	{
+		Dimension size = card.getPreferredSize();
+		card.setSize(size);
+		BufferedImage image = new BufferedImage(size.width, size.height, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D graphics = image.createGraphics();
+		card.paint(graphics);
+		graphics.dispose();
+		java.util.Set<Integer> colors = new java.util.HashSet<>();
+		for (int y = 0; y < size.height; y++)
+		{
+			for (int x = 0; x < size.width; x++)
+			{
+				colors.add(image.getRGB(x, y));
+			}
+		}
+		return colors;
+	}
+
 	private static ClogTabTooltip card(int pages)
 	{
 		String[] names = new String[pages];
@@ -106,7 +176,7 @@ public class ClogTabTooltipTest
 		Arrays.fill(total, 9);
 		ClogTabTooltip card = new ClogTabTooltip();
 		card.setTab("Bosses", new int[]{12, 34}, 34);
-		card.setPages(names, obtained, total);
+		card.setPages(names, obtained, total, null);
 		return card;
 	}
 

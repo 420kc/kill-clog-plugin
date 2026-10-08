@@ -18,6 +18,8 @@ public class ClogTabTooltip extends TitleTooltip
 	private String[] names = new String[0];
 	private int[] obtained = new int[0];
 	private int[] total = new int[0];
+	@Nullable
+	private KillClogConfig progress;
 	// Three pages a notch.
 	private final CardBody.Scroll scroll = new CardBody.Scroll(this, CardBody.WINDOW, 3 * LINE_HEIGHT);
 	@Nullable
@@ -45,12 +47,16 @@ public class ClogTabTooltip extends TitleTooltip
 		}
 	}
 
-	/** Each page's name and count in the game's order; a negative count is unknown and shows its size. */
-	void setPages(String[] names, int[] obtained, int[] total)
+	/**
+	 * Each page's name and count in the game's order; a negative count is unknown and shows its size. With
+	 * {@code progress}, a known page's name wears its progression color from those settings.
+	 */
+	void setPages(String[] names, int[] obtained, int[] total, @Nullable KillClogConfig progress)
 	{
 		this.names = names;
 		this.obtained = obtained;
 		this.total = total;
+		this.progress = progress;
 	}
 
 	/** Called with the page's index when the player presses its row. */
@@ -127,7 +133,8 @@ public class ClogTabTooltip extends TitleTooltip
 			{
 				int page = offset + i;
 				int textY = y + i * LINE_HEIGHT + c.fm.getAscent();
-				c.g.setColor(pageRows.hovered() == page ? Color.WHITE : OSRS_ORANGE);
+				c.g.setColor(pageRows.hovered() == page ? Color.WHITE : progress != null && obtained[page] >= 0
+					? ClogHelper.clogColor(obtained[page], total[page], progress) : OSRS_ORANGE);
 				c.g.drawString(names[page], c.inset(), textY);
 				c.g.setColor(obtained[page] >= 0 ? completionColor(obtained[page], total[page]) : MUTED_GRAY);
 				drawRightAligned(c.g, c.fm, countText(page), right, textY);

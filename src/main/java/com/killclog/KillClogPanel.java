@@ -228,7 +228,7 @@ public class KillClogPanel extends PluginPanel
 		this.skillCellGrid = new SkillCellGrid(skillIconManager, tooltipController, comparison,
 			config, itemManager);
 		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, clogService, killclogService, (league, boss) -> selfPb.apply(league, boss), config);
-		this.clogPages = new ClogPages(tooltipController, cells, comparison, lookupSession, tooltipDataBuilder);
+		this.clogPages = new ClogPages(tooltipController, cells, comparison, lookupSession, tooltipDataBuilder, config);
 		this.activityTooltips = new ActivitySummaryTooltips(
 			lookupSession, comparison, cells, tooltipController, itemManager,
 			caRewardSprites, config::wikiItemLinks);
