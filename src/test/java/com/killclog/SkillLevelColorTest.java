@@ -99,7 +99,7 @@ public class SkillLevelColorTest
 		{
 		};
 		assertEquals(new Color(255, 87, 0), defaults.skillLevelColor());
-		assertEquals(SkillColorMode.LEVEL_COMPLETION, defaults.skillColorMode());
+		assertEquals(SkillColorMode.CLOG_PROGRESSION, defaults.skillColorMode());
 		assertEquals(SkillDisplay.FIXED, defaults.skillDisplay());
 	}
 

@@ -210,7 +210,8 @@ public interface KillClogConfig extends Config
 	)
 	default SkillColorMode skillColorMode()
 	{
-		return SkillColorMode.LEVEL_COMPLETION;
+		// Skill Clogs are on by default, so their progress is the default; with them off this reads as 99+.
+		return SkillColorMode.CLOG_PROGRESSION;
 	}
 
 	@ConfigItem(

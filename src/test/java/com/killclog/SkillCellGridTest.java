@@ -502,6 +502,13 @@ public class SkillCellGridTest
 	{
 		return new KillClogConfig()
 		{
+			// These cells check the 99+ marks; the default is now Clog Progression.
+			@Override
+			public SkillColorMode skillColorMode()
+			{
+				return SkillColorMode.LEVEL_COMPLETION;
+			}
+
 			@Override
 			public Color skillLevelColor()
 			{

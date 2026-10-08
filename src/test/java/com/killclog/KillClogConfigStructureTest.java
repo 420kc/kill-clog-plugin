@@ -209,7 +209,7 @@ public class KillClogConfigStructureTest
 		{
 		};
 		assertEquals(SkillDisplay.FIXED, defaults.skillDisplay());
-		assertEquals(SkillColorMode.LEVEL_COMPLETION, defaults.skillColorMode());
+		assertEquals(SkillColorMode.CLOG_PROGRESSION, defaults.skillColorMode());
 		assertEquals("99+ Completion", SkillColorMode.LEVEL_COMPLETION.toString());
 		assertEquals("Clog Progression", SkillColorMode.CLOG_PROGRESSION.toString());
 		assertEquals("Skill Color", SkillColorMode.SKILL_COLOR.toString());
