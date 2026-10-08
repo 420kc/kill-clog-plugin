@@ -2,12 +2,15 @@ package com.killclog;
 
 import java.awt.Color;
 import javax.swing.Timer;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 
 /**
  * One occupant of the panel status row: who wrote it, how it shares the row,
  * and the expiry that belongs to it. Two messages with the same text are still
  * two messages, so a stale expiry can never clear a newer one.
  */
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class StatusMessage
 {
 	enum Owner
@@ -32,14 +35,6 @@ final class StatusMessage
 	final String text;
 	final Color color;
 	private Timer expiry;
-
-	StatusMessage(Owner owner, Kind kind, String text, Color color)
-	{
-		this.owner = owner;
-		this.kind = kind;
-		this.text = text;
-		this.color = color;
-	}
 
 	/** Hover lines and notices leave the row free for the next writer. */
 	boolean yields()

@@ -1,6 +1,10 @@
 package com.killclog;
 
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+
 /** Rank selection is independent of the account identity and its current stats. */
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 enum RankLeaderboard
 {
 	NORMAL("Normal", "hiscore_oldschool", "normal.png"),
@@ -13,13 +17,6 @@ enum RankLeaderboard
 	final String label;
 	final String endpoint;
 	final String icon;
-
-	RankLeaderboard(String label, String endpoint, String icon)
-	{
-		this.label = label;
-		this.endpoint = endpoint;
-		this.icon = icon;
-	}
 
 	static RankLeaderboard nativeOf(HiscoreResult result)
 	{

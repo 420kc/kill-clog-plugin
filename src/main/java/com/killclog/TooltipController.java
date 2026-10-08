@@ -32,12 +32,15 @@ import javax.swing.ToolTipManager;
 import javax.swing.border.Border;
 import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import net.runelite.client.ui.ColorScheme;
 
 /**
  * Manages tooltip display mechanics: pinned popups, cell hover effects,
  * and component-scoped ToolTipManager registration.
  */
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 class TooltipController
 {
 	static final Border CELL_BORDER = new EmptyBorder(1, 1, 1, 1);
@@ -70,11 +73,6 @@ class TooltipController
 	// components so click mode never changes another plugin's tooltip behavior.
 	private final Set<JComponent> tooltipComponents =
 		Collections.newSetFromMap(new WeakHashMap<>());
-
-	TooltipController(KillClogConfig config)
-	{
-		this.config = config;
-	}
 
 	/**
 	 * Wire hover effect onto a cell panel.

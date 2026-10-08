@@ -20,6 +20,8 @@ import java.util.function.ObjIntConsumer;
 import java.util.function.ToIntFunction;
 import javax.annotation.Nullable;
 import javax.swing.JComponent;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import net.runelite.client.ui.FontManager;
 
 /**
@@ -52,6 +54,7 @@ final class CardBody
 	}
 
 	/** What a part sees: its card, the small and bold fonts, and while painting the surface and width. */
+	@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 	static final class Ctx
 	{
 		final TitleTooltip card;
@@ -64,16 +67,6 @@ final class CardBody
 		// What shows of a scrolled part: a row moved out of it can't be pressed.
 		@Nullable
 		Rectangle window;
-
-		private Ctx(TitleTooltip card, FontMetrics fm, FontMetrics bfm, int available, Graphics2D g, int w)
-		{
-			this.card = card;
-			this.fm = fm;
-			this.bfm = bfm;
-			this.available = available;
-			this.g = g;
-			this.w = w;
-		}
 
 		int inset()
 		{

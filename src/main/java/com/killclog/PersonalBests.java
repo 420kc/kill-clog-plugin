@@ -5,6 +5,8 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import javax.annotation.Nullable;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneScapeProfile;
 
@@ -15,6 +17,7 @@ import net.runelite.client.config.RuneScapeProfile;
  * kill-timer chat messages and adventure log reads, so they exist for the
  * local player only; other players never resolve.
  */
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class PersonalBests
 {
 	/**
@@ -27,11 +30,6 @@ final class PersonalBests
 		CatalogTsv.values(PersonalBests.class, "team-suffixes.tsv", "suffix").toArray(new String[0]);
 
 	private final ConfigManager configManager;
-
-	PersonalBests(ConfigManager configManager)
-	{
-		this.configManager = configManager;
-	}
 
 	/** Explicit ownership for publication, from RuneLite profiles of one type; names can change or be reused. */
 	static List<String> profileKeys(Iterable<RuneScapeProfile> profiles, long accountHash, @Nullable String type)

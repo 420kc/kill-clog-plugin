@@ -15,6 +15,8 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JToolTip;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import net.runelite.client.hiscore.HiscoreSkill;
 
@@ -24,6 +26,7 @@ import net.runelite.client.hiscore.HiscoreSkill;
  * opens that boss's own popup; any other shows the game's own items for it, held from anywhere in the
  * log. A row's count always comes from the popup it opens. A comparison pairs both players at every step.
  */
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class ClogPages
 {
 	// Each page's panel bosses, keyed as the game's pages are.
@@ -47,17 +50,6 @@ final class ClogPages
 	@Setter
 	@Nullable
 	private ClogIndex clogIndex;
-
-	ClogPages(TooltipController tooltipController, Cells cells, ComparisonController comparison,
-		LookupSession lookupSession, TooltipDataBuilder tooltipDataBuilder, KillClogConfig config)
-	{
-		this.tooltipController = tooltipController;
-		this.cells = cells;
-		this.comparison = comparison;
-		this.lookupSession = lookupSession;
-		this.tooltipDataBuilder = tooltipDataBuilder;
-		this.config = config;
-	}
 
 	/** A tab row's press: the tab's pages replace the Collection Log card it came from. */
 	void openTab(JComponent owner, MouseEvent press, String tab)

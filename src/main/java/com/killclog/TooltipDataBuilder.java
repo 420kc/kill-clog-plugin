@@ -9,22 +9,20 @@ import java.util.Map;
 import java.util.Set;
 import java.util.function.UnaryOperator;
 import javax.annotation.Nullable;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.hiscore.HiscoreSkill;
 
 /**
  * Builds {@link TooltipData} objects from a {@link ClogResult} without touching any UI.
  */
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class TooltipDataBuilder
 {
 	private final ItemManager itemManager;
 	@Nullable
 	private ClogIndex clogIndex;
-
-	TooltipDataBuilder(ItemManager itemManager)
-	{
-		this.itemManager = itemManager;
-	}
 
 	void setClogIndex(@Nullable ClogIndex clogIndex)
 	{

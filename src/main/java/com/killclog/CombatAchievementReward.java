@@ -1,8 +1,12 @@
 package com.killclog;
 
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+
 /**
  * Runtime item sprite leading a Combat Achievement tier in the Combat Summary.
  */
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 enum CombatAchievementReward
 {
 	EASY(25926),
@@ -13,11 +17,6 @@ enum CombatAchievementReward
 	GRANDMASTER(25910);
 
 	private final int itemId;
-
-	CombatAchievementReward(int itemId)
-	{
-		this.itemId = itemId;
-	}
 
 	int itemId()
 	{

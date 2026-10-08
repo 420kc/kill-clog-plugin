@@ -7,6 +7,8 @@ import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import javax.swing.ImageIcon;
 import javax.swing.SwingUtilities;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.SpriteManager;
@@ -14,6 +16,7 @@ import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
 
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class PanelIconCache
 {
 	private final ItemManager itemManager;
@@ -24,13 +27,6 @@ final class PanelIconCache
 	private BufferedImage maxCapeTip;
 	private BufferedImage infernalCapeTip;
 	private BufferedImage infernalMaxCapeTip;
-
-	PanelIconCache(ItemManager itemManager, ClientThread clientThread, SpriteManager spriteManager)
-	{
-		this.itemManager = itemManager;
-		this.clientThread = clientThread;
-		this.spriteManager = spriteManager;
-	}
 
 	ImageIcon clogTierIcon(@Nullable String tierName)
 	{

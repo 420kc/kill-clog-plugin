@@ -1,5 +1,9 @@
 package com.killclog;
 
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public enum SkillColorMode
 {
 	LEVEL_COMPLETION("99+ Completion"),
@@ -7,11 +11,6 @@ public enum SkillColorMode
 	SKILL_COLOR("Skill Color");
 
 	private final String label;
-
-	SkillColorMode(String label)
-	{
-		this.label = label;
-	}
 
 	@Override
 	public String toString()

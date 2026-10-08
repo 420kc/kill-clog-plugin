@@ -9,6 +9,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Call;
 import okhttp3.Callback;
@@ -157,6 +159,7 @@ final class HttpUtil
 	}
 
 	/** HTTP status code (-1 on transport failure) plus the body of a successful response. */
+	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 	static final class HttpResult
 	{
 		final int code;
@@ -168,12 +171,6 @@ final class HttpUtil
 			this(code, body, 0);
 		}
 
-		HttpResult(int code, String body, int retryAfterSeconds)
-		{
-			this.code = code;
-			this.body = body;
-			this.retryAfterSeconds = retryAfterSeconds;
-		}
 	}
 
 	static int retryAfterSeconds(@Nullable String value)
@@ -235,6 +232,7 @@ final class HttpUtil
 	}
 
 	/** HTTP status code (-1 on transport failure), the bytes of a successful response, and its ETag. */
+	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 	static final class BytesResult
 	{
 		final int code;
@@ -243,12 +241,6 @@ final class HttpUtil
 		@Nullable
 		final String etag;
 
-		BytesResult(int code, @Nullable byte[] bytes, @Nullable String etag)
-		{
-			this.code = code;
-			this.bytes = bytes;
-			this.etag = etag;
-		}
 	}
 
 	static CompletableFuture<HttpResult> httpPostJson(OkHttpClient client, String url, String json,

@@ -2,6 +2,8 @@ package com.killclog;
 
 import java.util.EnumMap;
 import java.util.Map;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Combat Achievement tiers and their Combat Summary reward sprites.
@@ -14,6 +16,7 @@ import java.util.Map;
  * build, which is what keeps tier math honest across a Combat Achievement
  * release.
  */
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 enum CombatAchievementTier
 {
 	EASY(1, 41),
@@ -25,12 +28,6 @@ enum CombatAchievementTier
 
 	private final int pointsPerTask;
 	private final int totalTasks;
-
-	CombatAchievementTier(int pointsPerTask, int totalTasks)
-	{
-		this.pointsPerTask = pointsPerTask;
-		this.totalTasks = totalTasks;
-	}
 
 	int pointsPerTask()
 	{

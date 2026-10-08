@@ -6,6 +6,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 
 /**
  * Shared empty collection-log catalog for players without synced clog data.
@@ -13,6 +15,7 @@ import javax.annotation.Nullable;
  * ids and item names as local/synced tooltip data, with provider categories as
  * a startup fallback.
  */
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class UnsyncedClogCatalog
 {
 	private static final String CATALOG_NAME = "Collection Log";
@@ -23,11 +26,6 @@ final class UnsyncedClogCatalog
 	@Nullable private ClogResult indexCatalog;
 	@Nullable private ClogResult fallbackCatalog;
 	@Nullable private Object builtFrom;
-
-	UnsyncedClogCatalog(ClogService clogService)
-	{
-		this.clogService = clogService;
-	}
 
 	void setClogIndex(@Nullable ClogIndex clogIndex)
 	{

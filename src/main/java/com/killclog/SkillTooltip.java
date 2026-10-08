@@ -6,6 +6,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import javax.annotation.Nullable;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import net.runelite.api.Experience;
 import net.runelite.api.Skill;
 import net.runelite.client.game.ItemManager;
@@ -117,6 +119,7 @@ public class SkillTooltip extends TitleTooltip
 		return fm.stringWidth(label) + fm.stringWidth(value);
 	}
 
+	@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 	static final class Stats
 	{
 		private final int level;
@@ -125,16 +128,6 @@ public class SkillTooltip extends TitleTooltip
 		private final long xpToLevel;
 		private final boolean maxed;
 		private final boolean rankAvailable;
-
-		private Stats(int level, long xp, int rank, long xpToLevel, boolean maxed, boolean rankAvailable)
-		{
-			this.level = level;
-			this.xp = xp;
-			this.rank = rank;
-			this.xpToLevel = xpToLevel;
-			this.maxed = maxed;
-			this.rankAvailable = rankAvailable;
-		}
 
 		static Stats empty()
 		{

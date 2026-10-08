@@ -1,11 +1,15 @@
 package com.killclog;
 
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+
 /**
  * Which Jagex hiscore table supplied the rank data.
  *
  * This is separate from AccountType. A player can be a regular, ironman, or UIM
  * account type, while pure/skiller hiscores are separate specialty tables.
  */
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 enum HiscoreTable
 {
 	STANDARD(null, null, null),
@@ -15,13 +19,6 @@ enum HiscoreTable
 	private final String hiscoreKey;
 	private final String badgeResource;
 	private final String displayName;
-
-	HiscoreTable(String hiscoreKey, String badgeResource, String displayName)
-	{
-		this.hiscoreKey = hiscoreKey;
-		this.badgeResource = badgeResource;
-		this.displayName = displayName;
-	}
 
 	String hiscoreKey()
 	{

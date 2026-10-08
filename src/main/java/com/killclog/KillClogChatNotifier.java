@@ -1,20 +1,16 @@
 package com.killclog;
 
 import javax.inject.Inject;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE, onConstructor_ = @Inject)
 final class KillClogChatNotifier
 {
 	private final Client client;
 	private final KillClogConfig config;
-
-	@Inject
-	KillClogChatNotifier(Client client, KillClogConfig config)
-	{
-		this.client = client;
-		this.config = config;
-	}
 
 	void send(ChatNotice notice, String message)
 	{

@@ -34,6 +34,8 @@ import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.util.Filepath;
@@ -52,6 +54,7 @@ import net.runelite.client.util.Filepath;
  */
 @Slf4j
 @Singleton
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class LocalClogCache
 {
 	private static final int LOOKUP_CAP = 256;
@@ -97,12 +100,6 @@ public class LocalClogCache
 	public LocalClogCache(Gson gson)
 	{
 		this(gson, newDiskWriter());
-	}
-
-	LocalClogCache(Gson gson, ScheduledExecutorService diskWriter)
-	{
-		this.gson = gson;
-		this.diskWriter = diskWriter;
 	}
 
 	/** A League's own store, opened at once in that League's folder. */

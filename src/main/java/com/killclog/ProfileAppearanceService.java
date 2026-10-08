@@ -14,6 +14,8 @@ import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
@@ -79,18 +81,13 @@ final class ProfileAppearanceService
 	private volatile RetryHold retryHold;
 	private volatile OriginalAppearance originalAppearance;
 
+	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 	private static final class OriginalAppearance
 	{
 		final Player player;
 		final long account;
 		final ProfileAppearanceManifest manifest;
 
-		OriginalAppearance(Player player, long account, ProfileAppearanceManifest manifest)
-		{
-			this.player = player;
-			this.account = account;
-			this.manifest = manifest;
-		}
 	}
 
 	/** Called before cosmetic plugins mutate the game's fresh appearance. */
@@ -110,18 +107,13 @@ final class ProfileAppearanceService
 		originalAppearance = null;
 	}
 
+	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 	private static final class RetryHold
 	{
 		final long account;
 		final long until;
 		final PublishResult result;
 
-		RetryHold(long account, long until, PublishResult result)
-		{
-			this.account = account;
-			this.until = until;
-			this.result = result;
-		}
 	}
 	private final okhttp3.OkHttpClient httpClient;
 	private final Gson gson;
@@ -231,19 +223,13 @@ final class ProfileAppearanceService
 	}
 
 	/** Each HTTP dispatch rechecks consent and identity on the client thread. */
+	@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 	private final class PublishAttempt
 	{
 		private final String rsn;
 		private final long accountHash;
 		private final BooleanSupplier authorized;
 		private String recoveryAt;
-
-		private PublishAttempt(String rsn, long accountHash, BooleanSupplier authorized)
-		{
-			this.rsn = rsn;
-			this.accountHash = accountHash;
-			this.authorized = authorized;
-		}
 
 		private boolean active()
 		{

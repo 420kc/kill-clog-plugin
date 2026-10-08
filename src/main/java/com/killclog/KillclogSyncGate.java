@@ -3,6 +3,8 @@ package com.killclog;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 
 /**
  * State machine for the killclog.com sync push: single-flight until the HTTP
@@ -101,16 +103,12 @@ final class KillclogSyncGate
 	}
 
 	/** A queued push: whether a user asked for it, and its game (null follows the world). */
+	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 	static final class Intent
 	{
 		final boolean manual;
 		final String mode;
 
-		Intent(boolean manual, String mode)
-		{
-			this.manual = manual;
-			this.mode = mode;
-		}
 	}
 
 	/** Null means no queued push. */

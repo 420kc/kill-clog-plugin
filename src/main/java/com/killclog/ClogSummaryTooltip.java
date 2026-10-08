@@ -18,6 +18,8 @@ import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.ToIntFunction;
 import javax.annotation.Nullable;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.AsyncBufferedImage;
@@ -83,6 +85,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private Shelf recent;
 
 	/** One row of item sprites under its own subheader. */
+	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 	static final class Shelf
 	{
 		@Nullable
@@ -91,15 +94,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 		final String[] names;
 		final int[] counts;
 		final String[] dates;
-
-		Shelf(@Nullable TooltipItemSprites sprites, int[] ids, String[] names, int[] counts, String[] dates)
-		{
-			this.sprites = sprites;
-			this.ids = ids;
-			this.names = names;
-			this.counts = counts;
-			this.dates = dates;
-		}
 
 		boolean dated()
 		{
@@ -540,15 +534,11 @@ public class ClogSummaryTooltip extends TitleTooltip
 		});
 	}
 
+	@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 	private static final class ClogSource
 	{
 		private final String name;
 		private final BufferedImage icon;
 
-		private ClogSource(String name, BufferedImage icon)
-		{
-			this.name = name;
-			this.icon = icon;
-		}
 	}
 }

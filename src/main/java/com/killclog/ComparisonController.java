@@ -25,7 +25,9 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JToolTip;
 import javax.swing.SwingUtilities;
+import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.ui.ColorScheme;
@@ -148,6 +150,7 @@ public class ComparisonController
 	}
 
 	/** Mutable optional evidence belongs only to this lookup's captured callbacks. */
+	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 	private static final class PendingLookup
 	{
 		final int generation;
@@ -155,12 +158,6 @@ public class ComparisonController
 		@Nullable final AccountType selfType;
 		CombatAchievementResult ca;
 
-		PendingLookup(int generation, String requestedName, @Nullable AccountType selfType)
-		{
-			this.generation = generation;
-			this.requestedName = requestedName;
-			this.selfType = selfType;
-		}
 	}
 
 	/**

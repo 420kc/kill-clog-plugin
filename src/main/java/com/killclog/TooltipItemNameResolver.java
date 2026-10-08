@@ -6,12 +6,15 @@ import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Set;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.game.ItemManager;
 import javax.swing.SwingUtilities;
 
 @Slf4j
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class TooltipItemNameResolver
 {
 	private static final int BATCH_SIZE = 48;
@@ -21,13 +24,6 @@ final class TooltipItemNameResolver
 	private final Runnable onComplete;
 	private final Set<ClogResult> inFlight = Collections.synchronizedSet(
 		Collections.newSetFromMap(new IdentityHashMap<>()));
-
-	TooltipItemNameResolver(ClientThread clientThread, ItemManager itemManager, Runnable onComplete)
-	{
-		this.clientThread = clientThread;
-		this.itemManager = itemManager;
-		this.onComplete = onComplete;
-	}
 
 	void resolve(ClogResult result)
 	{

@@ -3,6 +3,8 @@ package com.killclog;
 import com.google.gson.annotations.SerializedName;
 import java.util.Arrays;
 import javax.annotation.Nullable;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import net.runelite.api.ColorTextureOverride;
 import net.runelite.api.Item;
 import net.runelite.api.PlayerComposition;
@@ -130,15 +132,11 @@ final class ProfileAppearanceManifest
 		return result;
 	}
 
+	@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 	private static final class Override
 	{
 		private final int[] colors;
 		private final int[] textures;
 
-		private Override(int[] colors, int[] textures)
-		{
-			this.colors = colors;
-			this.textures = textures;
-		}
 	}
 }

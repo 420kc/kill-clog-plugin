@@ -1,6 +1,10 @@
 package com.killclog;
 
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
+
 /** Panel feedback for one first-party control. All access stays on the EDT. */
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class FirstPartyFeedback
 {
 	/** Receives the messages this control is allowed to show. */
@@ -17,14 +21,6 @@ final class FirstPartyFeedback
 	private final Runnable successFlash;
 	private final String failureText;
 	private String lastFailure;
-
-	FirstPartyFeedback(KillClogConfig config, Status status, Runnable successFlash, String failureText)
-	{
-		this.config = config;
-		this.status = status;
-		this.successFlash = successFlash;
-		this.failureText = failureText;
-	}
 
 	void progress(boolean manual, String text, boolean autoClear)
 	{

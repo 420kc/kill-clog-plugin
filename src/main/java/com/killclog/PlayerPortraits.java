@@ -16,6 +16,8 @@ import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.MemoryCacheImageInputStream;
 import javax.inject.Inject;
 import javax.inject.Singleton;
+import lombok.AccessLevel;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 
@@ -33,6 +35,7 @@ import okhttp3.OkHttpClient;
  */
 @Slf4j
 @Singleton
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE, onConstructor_ = @Inject)
 class PlayerPortraits
 {
 	static final int MAX_BYTES = 64 * 1024;
@@ -54,23 +57,13 @@ class PlayerPortraits
 	private final Map<String, Integer> asked = new ConcurrentHashMap<>();
 
 	/** A portrait and the ETag it was served with, for the next lookup's re-check. */
+	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 	static final class Portrait
 	{
 		final BufferedImage image;
 		@Nullable
 		final String etag;
 
-		Portrait(BufferedImage image, @Nullable String etag)
-		{
-			this.image = image;
-			this.etag = etag;
-		}
-	}
-
-	@Inject
-	PlayerPortraits(OkHttpClient httpClient)
-	{
-		this.httpClient = httpClient;
 	}
 
 	/** A lookup landed: withhold this player's portrait until the server confirms it again. */

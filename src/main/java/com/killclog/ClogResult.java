@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
 /**
@@ -288,6 +289,7 @@ public class ClogResult
 		return result.uniqueObtained >= 0 ? result.uniqueObtained : coverageCount(result);
 	}
 
+	@RequiredArgsConstructor
 	public static class ClogItem
 	{
 		private final int id;
@@ -303,15 +305,6 @@ public class ClogResult
 		public ClogItem(int id, int count, String date)
 		{
 			this(id, count, date, 0, null);
-		}
-
-		public ClogItem(int id, int count, String date, int obtainedAtKc, String obtainedFrom)
-		{
-			this.id = id;
-			this.count = count;
-			this.date = date;
-			this.obtainedAtKc = obtainedAtKc;
-			this.obtainedFrom = obtainedFrom;
 		}
 
 		public int getId()
