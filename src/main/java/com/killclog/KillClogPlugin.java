@@ -165,6 +165,7 @@ public class KillClogPlugin extends Plugin
 	private final CaCatalog caCatalog = new CaCatalog();
 	private final ClogLookupMenu lookupMenu = new ClogLookupMenu();
 	private PublicationCoordinator publication;
+	private SyncSettings syncSettings;
 
 	@Provides
 	KillClogConfig provideConfig(ConfigManager configManager)
@@ -207,7 +208,8 @@ public class KillClogPlugin extends Plugin
 				() -> world.mainSettled() ? getLocalAccountType() : null, world::mode, world::cacheFor,
 				killclogService::leagueProfileType);
 		}
-		enforceSyncFollowers();
+		syncSettings = new SyncSettings(config, configManager);
+		syncSettings.enforce();
 		panel.setKillclogSyncHandler(publication::manualSync);
 		panel.setCharacterPublishHandler(publication::publishCharacter);
 		panel.setSelfPb(this::selfPb);
@@ -517,26 +519,6 @@ public class KillClogPlugin extends Plugin
 			panel::onBulkCaptureComplete, world.settled());
 	}
 
-	/**
-	 * RuneLite's public config API has no dynamic disabled-state attribute.
-	 * Enforce the dependency at the data boundary instead: Sync's two followers,
-	 * Automatic sync and Publish Character Model, read off while it is off.
-	 */
-	private void enforceSyncFollowers()
-	{
-		if (!config.killclogSync())
-		{
-			if (config.automaticSync())
-			{
-				configManager.setConfiguration("killclog", "automaticSync", false);
-			}
-			if (config.characterModel())
-			{
-				configManager.unsetConfiguration("killclog", "characterModel");
-			}
-		}
-	}
-
 	// Keep local CA current when a task completes mid-session, and the live
 	// catalog current when the game moves a tier threshold (a CA release).
 	@Subscribe
@@ -811,9 +793,7 @@ public class KillClogPlugin extends Plugin
 			panel.setSyncArrowEnabled(config.killclogSync());
 			if (config.killclogSync())
 			{
-				// Turning Sync on turns its followers on with it.
-				configManager.unsetConfiguration("killclog", "automaticSync");
-				configManager.setConfiguration("killclog", "characterModel", true);
+				syncSettings.syncTurnedOn();
 				panel.setCharacterPublishEnabled(config.characterModel());
 				// Opting in mid-session pushes the already-captured log right
 				// away; nothing else fires until the next capture or unlock.
@@ -821,7 +801,7 @@ public class KillClogPlugin extends Plugin
 			}
 			else
 			{
-				enforceSyncFollowers();
+				syncSettings.enforce();
 				panel.setCharacterPublishEnabled(false);
 				publication.cancelCharacterPublish();
 				publication.cancelSync();
@@ -833,11 +813,11 @@ public class KillClogPlugin extends Plugin
 		}
 		else if ("automaticSync".equals(event.getKey()))
 		{
-			enforceSyncFollowers();
+			syncSettings.enforce();
 		}
 		else if ("characterModel".equals(event.getKey()))
 		{
-			enforceSyncFollowers();
+			syncSettings.enforce();
 			boolean enabled = publication.characterPublishingEnabled();
 			panel.setCharacterPublishEnabled(enabled);
 			if (!enabled)
