@@ -168,6 +168,7 @@ public class KillClogPlugin extends Plugin
 	private PublicationCoordinator publication;
 	private SyncSettings syncSettings;
 	private ClogPbs clogPbs;
+	private KillLog killLog;
 
 	@Provides
 	KillClogConfig provideConfig(ConfigManager configManager)
@@ -212,6 +213,7 @@ public class KillClogPlugin extends Plugin
 		}
 		syncSettings = new SyncSettings(config, configManager);
 		clogPbs = new ClogPbs(configManager);
+		killLog = new KillLog(configManager);
 		syncSettings.enforce();
 		panel.setKillclogSyncHandler(publication::manualSync);
 		panel.setCharacterPublishHandler(publication::publishCharacter);
@@ -470,6 +472,8 @@ public class KillClogPlugin extends Plugin
 		{
 			executor.execute(() -> kclogCommand.handleLogCompatibility(event, message));
 		}
+
+		killLog.chat(client, event.getType(), event.getMessage(), client.getTickCount());
 
 		// Kill-count messages land the same tick as the clog unlock they
 		// caused; remembering the freshest one lets the unlock carry its

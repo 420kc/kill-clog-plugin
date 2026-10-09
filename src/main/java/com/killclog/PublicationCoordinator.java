@@ -640,12 +640,24 @@ final class PublicationCoordinator
 			vanilla.forEach((key, seconds) -> mergeDetailedPb(out, key, seconds, "store"));
 			store.variantSecondsAcrossProfiles(AdvLogPbs.CONFIG_GROUP, AdvLogPbs.KEY_PREFIX, profileKeys, boss.getName())
 				.forEach((key, seconds) -> mergeDetailedPb(out, key, seconds, "advlog"));
-			// The collection log's line is the game's own record: it takes its key, whatever else is kept for it.
+			// The game's own records, the collection log's line and the kills seen, take their key.
 			store.variantSecondsAcrossProfiles(AdvLogPbs.CONFIG_GROUP, ClogPbs.KEY_PREFIX, profileKeys, boss.getName())
-				.forEach((key, seconds) -> out.put(key, new SyncService.DetailedPb(seconds, "clog")));
+				.forEach((key, seconds) -> putGameRecord(out, key, new SyncService.DetailedPb(seconds, "clog")));
+			store.variantSecondsAcrossProfiles(AdvLogPbs.CONFIG_GROUP, KillLog.KEY_PREFIX, profileKeys, boss.getName())
+				.forEach((key, seconds) -> putGameRecord(out, key, KillLog.labeled(configManager, profileKeys, key, seconds)));
 		}
 		log.debug("killclog sync pb gather: {} owned profiles, {} pbs", profileKeys.size(), pbs.size());
 		return out;
+	}
+
+	/** A game record replaces RuneLite's file and the adventure log; between two, faster wins, a kill seen on a tie. */
+	private static void putGameRecord(Map<String, SyncService.DetailedPb> out, String key, SyncService.DetailedPb pb)
+	{
+		SyncService.DetailedPb existing = out.get(key);
+		if (existing == null || !"clog".equals(existing.source) || pb.seconds <= existing.seconds)
+		{
+			out.put(key, pb);
+		}
 	}
 
 	/** Faster wins; on a tie the earlier lane keeps the tag. */
