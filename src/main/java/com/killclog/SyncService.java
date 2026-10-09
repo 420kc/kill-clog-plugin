@@ -326,15 +326,21 @@ class SyncService
 		// The collapsed map above stays for display compatibility; ladders
 		// need the split because solo and team runs rank separately. Each
 		// entry carries where this client observed it: "store" from
-		// RuneLite's own pb store, "advlog" from the Counters scroll harvest.
+		// RuneLite's own pb store, "advlog" from the Counters scroll harvest,
+		// "clog" from the collection log's line, "live" from a kill seen.
 		if (detailedPersonalBests != null && !detailedPersonalBests.isEmpty())
 		{
 			JsonObject detailed = new JsonObject();
 			for (Map.Entry<String, DetailedPb> entry : new TreeMap<>(detailedPersonalBests).entrySet())
 			{
 				JsonObject record = new JsonObject();
-				record.addProperty("seconds", entry.getValue().seconds);
-				record.addProperty("source", entry.getValue().source);
+				DetailedPb pb = entry.getValue();
+				record.addProperty("seconds", pb.seconds);
+				record.addProperty("source", pb.source);
+				if (pb.team != null) record.addProperty("team", pb.team);
+				if (pb.scale != null) record.addProperty("scale", pb.scale);
+				if (pb.timer != null) record.addProperty("timer", pb.timer);
+				if (pb.kc != null) record.addProperty("kc", pb.kc);
 				detailed.add(entry.getKey(), record);
 			}
 			root.add("pbs_detailed", detailed);
@@ -388,7 +394,11 @@ class SyncService
 	{
 		final double seconds;
 		final String source;
-
+		// What the game showed at the kill that set it, when Kill Clog saw that kill.
+		Integer team;
+		Integer scale;
+		String timer;
+		Integer kc;
 	}
 
 	private static final class ItemEntry
