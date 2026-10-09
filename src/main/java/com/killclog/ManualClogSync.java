@@ -158,7 +158,7 @@ final class ManualClogSync
 			&& root != null && !root.isHidden() && !isHostLog(client);
 	}
 
-	private static boolean isHostLog(Client client)
+	static boolean isHostLog(Client client)
 	{
 		return client.getVarbitValue(VarbitID.COLLECTION_POH_HOST_BOOK_OPEN) != 0;
 	}
