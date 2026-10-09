@@ -640,6 +640,9 @@ final class PublicationCoordinator
 			vanilla.forEach((key, seconds) -> mergeDetailedPb(out, key, seconds, "store"));
 			store.variantSecondsAcrossProfiles(AdvLogPbs.CONFIG_GROUP, AdvLogPbs.KEY_PREFIX, profileKeys, boss.getName())
 				.forEach((key, seconds) -> mergeDetailedPb(out, key, seconds, "advlog"));
+			// The collection log's line is the game's own record: it takes its key, whatever else is kept for it.
+			store.variantSecondsAcrossProfiles(AdvLogPbs.CONFIG_GROUP, ClogPbs.KEY_PREFIX, profileKeys, boss.getName())
+				.forEach((key, seconds) -> out.put(key, new SyncService.DetailedPb(seconds, "clog")));
 		}
 		log.debug("killclog sync pb gather: {} owned profiles, {} pbs", profileKeys.size(), pbs.size());
 		return out;

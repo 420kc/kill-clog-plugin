@@ -19,6 +19,7 @@ import net.runelite.api.events.GameTick;
 import net.runelite.api.events.MenuEntryAdded;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.PlayerChanged;
+import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.ScriptPreFired;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.events.WidgetLoaded;
@@ -166,6 +167,7 @@ public class KillClogPlugin extends Plugin
 	private final ClogLookupMenu lookupMenu = new ClogLookupMenu();
 	private PublicationCoordinator publication;
 	private SyncSettings syncSettings;
+	private ClogPbs clogPbs;
 
 	@Provides
 	KillClogConfig provideConfig(ConfigManager configManager)
@@ -209,6 +211,7 @@ public class KillClogPlugin extends Plugin
 				killclogService::leagueProfileType);
 		}
 		syncSettings = new SyncSettings(config, configManager);
+		clogPbs = new ClogPbs(configManager);
 		syncSettings.enforce();
 		panel.setKillclogSyncHandler(publication::manualSync);
 		panel.setCharacterPublishHandler(publication::publishCharacter);
@@ -737,6 +740,16 @@ public class KillClogPlugin extends Plugin
 
 		manualClogSync.captureScriptArguments(client, event.getScriptId(),
 			script.getArguments(), client.getTickCount());
+	}
+
+	// The log drew a page: its Personal Best line, the game's own record, when it has one.
+	@Subscribe
+	public void onScriptPostFired(ScriptPostFired event)
+	{
+		if (event.getScriptId() == net.runelite.api.ScriptID.COLLECTION_DRAW_LIST)
+		{
+			clogPbs.pageDrawn(client);
+		}
 	}
 
 	private boolean isCollectionLogSearchScript(int scriptId, ScriptEvent script)
