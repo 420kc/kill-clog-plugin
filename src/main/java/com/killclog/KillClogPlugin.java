@@ -13,9 +13,7 @@ import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.Player;
 import net.runelite.api.ScriptEvent;
-import net.runelite.api.clan.ClanID;
 import net.runelite.api.events.ChatMessage;
-import net.runelite.api.events.ClanChannelChanged;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.MenuEntryAdded;
@@ -34,6 +32,7 @@ import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.events.PluginChanged;
+import net.runelite.client.game.ChatIconManager;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.menus.MenuManager;
 import net.runelite.client.plugins.Plugin;
@@ -69,6 +68,9 @@ public class KillClogPlugin extends Plugin
 
 	@Inject
 	private Client client;
+
+	@Inject
+	private ChatIconManager chatIconManager;
 
 	@Inject
 	private KillClogConfig config;
@@ -199,6 +201,7 @@ public class KillClogPlugin extends Plugin
 		clientToolbar.addNavigation(navButton);
 		panel.setNameAutocompleter(nameAutocompleter);
 		panel.setClogIndex(clogIndex);
+		panel.setClans(new PlayerClans(client, chatIconManager, runeProfileService));
 
 		lookupMenu.start(config, menuManager);
 
@@ -367,16 +370,6 @@ public class KillClogPlugin extends Plugin
 	public void onPlayerChanged(PlayerChanged event)
 	{
 		profileAppearanceService.captureOriginalAppearance(event.getPlayer());
-	}
-
-	// Your own clan for the Player Summary, as the game shows it: the main clan, never a guest or group channel.
-	@Subscribe
-	public void onClanChannelChanged(ClanChannelChanged event)
-	{
-		if (!event.isGuest() && event.getClanId() == ClanID.CLAN)
-		{
-			runeProfileService.setOwnClan(event.getClanChannel() != null ? event.getClanChannel().getName() : null);
-		}
 	}
 
 	@Subscribe

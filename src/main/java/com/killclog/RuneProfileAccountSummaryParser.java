@@ -3,6 +3,7 @@ package com.killclog;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import javax.annotation.Nullable;
+import net.runelite.api.clan.ClanTitle;
 
 final class RuneProfileAccountSummaryParser
 {
@@ -36,9 +37,25 @@ final class RuneProfileAccountSummaryParser
 	@Nullable
 	static String parseClan(JsonObject root)
 	{
+		JsonElement name = clanField(root, "name");
+		return name != null && !name.getAsString().trim().isEmpty() ? name.getAsString().trim() : null;
+	}
+
+	/** The player's title in the clan: RuneProfile's icon is the title's id, which picks its clan-chat icon. */
+	@Nullable
+	static ClanTitle parseClanTitle(JsonObject root)
+	{
+		JsonElement icon = clanField(root, "icon");
+		JsonElement title = clanField(root, "title");
+		return icon != null ? new ClanTitle(icon.getAsInt(), title != null ? title.getAsString() : null) : null;
+	}
+
+	@Nullable
+	private static JsonElement clanField(JsonObject root, String field)
+	{
 		JsonElement clan = root.get("clan");
-		JsonElement name = clan != null && clan.isJsonObject() ? clan.getAsJsonObject().get("name") : null;
-		return name != null && name.isJsonPrimitive() && !name.getAsString().trim().isEmpty() ? name.getAsString().trim() : null;
+		JsonElement value = clan != null && clan.isJsonObject() ? clan.getAsJsonObject().get(field) : null;
+		return value != null && value.isJsonPrimitive() ? value : null;
 	}
 
 	@Nullable

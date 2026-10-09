@@ -70,6 +70,8 @@ public class KillClogPanel extends PluginPanel
 
 	private final ClogService clogService;
 	private final RuneProfileService runeProfileService;
+	// The Player Summary's clan and its title icon; set by the plugin at startup.
+	private PlayerClans clans;
 	private final PlayerPortraits portraits;
 	private final KillClogConfig config;
 	private final ConfigManager configManager;
@@ -1193,6 +1195,11 @@ public class KillClogPanel extends PluginPanel
 		lookupSession.refreshLocalClog(name, localRsn);
 	}
 
+	void setClans(PlayerClans clans)
+	{
+		this.clans = clans;
+	}
+
 	public void setNameAutocompleter(NameAutocompleter autocompleter)
 	{
 		lookupSession.setNameAutocompleter(autocompleter);
@@ -1396,7 +1403,10 @@ public class KillClogPanel extends PluginPanel
 		{
 			tip.setCape(getCapeImage(hiscore));
 		}
-		tip.setClan(runeProfileService.clan(shownName));
+		if (clans != null)
+		{
+			tip.setClan(clans.name(shownName), clans.icon(shownName));
+		}
 		tip.setWikiLinksEnabled(config.wikiItemLinks());
 		if (clog != null)
 		{

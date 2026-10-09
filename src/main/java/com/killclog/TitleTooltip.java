@@ -67,6 +67,12 @@ public abstract class TitleTooltip extends NativeTooltip
 	private boolean obtainedFirst;
 	private String subtitleValue;
 	private Color subtitleColor;
+	// An icon after the line under the title (the Player Summary's clan), and where it was last drawn.
+	@Nullable
+	private BufferedImage subtitleIcon;
+	@Nullable
+	@Getter(AccessLevel.PACKAGE)
+	private Rectangle subtitleIconBounds;
 	// The header's stat lines (KC and PB; a raid's hard mode on a second), each a label and value and maybe a pair.
 	private final List<InfoLine> infoLines = new ArrayList<>();
 	private String rankText;
@@ -579,6 +585,10 @@ public abstract class TitleTooltip extends NativeTooltip
 		}
 		int subTextWidth = subtitleLabel != null
 			? sfm.stringWidth(subtitleLabel + subtitleValue) : 0;
+		if (subtitleIcon != null && subtitleLabel != null)
+		{
+			subTextWidth += (subTextWidth > 0 ? TITLE_ICON_GAP : 0) + subtitleIcon.getWidth();
+		}
 		int infoTextWidth = 0;
 		for (InfoLine line : infoLines)
 		{
@@ -692,10 +702,18 @@ public abstract class TitleTooltip extends NativeTooltip
 		}
 
 		// Subtitle (label in orange, value in subtitleColor)
+		subtitleIconBounds = null;
 		if (!obtainedFirst && subtitleLabel != null)
 		{
 			lineY += lineY == titleBaseline ? NAME_LINE_HEIGHT : LINE_HEIGHT;
-			drawLabelValue(g2, fm, inset, lineY, subtitleLabel, subtitleValue, subtitleColor);
+			int textWidth = drawLabelValue(g2, fm, inset, lineY, subtitleLabel, subtitleValue, subtitleColor);
+			if (subtitleIcon != null)
+			{
+				// After the text, level with its figures (Dylan, 2026-10-09: never lower than the digits).
+				subtitleIconBounds = new Rectangle(inset + textWidth + (textWidth > 0 ? TITLE_ICON_GAP : 0),
+					lineY - 7 - subtitleIcon.getHeight() / 2, subtitleIcon.getWidth(), subtitleIcon.getHeight());
+				g2.drawImage(subtitleIcon, subtitleIconBounds.x, subtitleIconBounds.y, null);
+			}
 		}
 
 		// Separator
@@ -792,6 +810,11 @@ public abstract class TitleTooltip extends NativeTooltip
 	protected Color titleColor()
 	{
 		return titleHovered && titleLinkActive() ? Color.WHITE : OSRS_ORANGE;
+	}
+
+	void setSubtitleIcon(@Nullable BufferedImage icon)
+	{
+		subtitleIcon = icon;
 	}
 
 	/** The title with its icon: the name a card can tell more about in its band. */

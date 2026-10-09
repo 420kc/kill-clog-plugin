@@ -14,6 +14,7 @@ import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.AccessLevel;
+import net.runelite.api.clan.ClanTitle;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.util.Text;
@@ -52,8 +53,6 @@ public class RuneProfileService
 	private final OkHttpClient httpClient;
 	private final Gson gson;
 	private final LocalCaCache localCaCache;
-	@Nullable
-	private volatile String ownClan;
 
 	// Plugin-owned live catalog, set at startup. Read from HTTP threads; the
 	// catalog publishes complete immutable snapshots through a volatile field.
@@ -117,29 +116,20 @@ public class RuneProfileService
 		return cached != null ? cached.accountType : null;
 	}
 
-	/**
-	 * A player's clan for the Player Summary: your own as the game shows it, anyone else's as RuneProfile last said.
-	 * Null without one.
-	 */
+	/** A player's clan as RuneProfile last saw it; null without one. */
 	@Nullable
-	String clan(@Nullable String playerName)
+	String clan(String playerName)
 	{
-		if (playerName == null)
-		{
-			return null;
-		}
-		if (localCaCache != null && localCaCache.isActivePlayer(playerName))
-		{
-			return ownClan;
-		}
 		RuneProfileSummary cached = summaries.fresh(playerName.toLowerCase());
 		return cached != null ? cached.clan : null;
 	}
 
-	/** Your own clan's name from the game client, null outside one. */
-	void setOwnClan(@Nullable String clan)
+	/** The player's title in that clan, its id the game's clan-chat icon; null without one. */
+	@Nullable
+	ClanTitle clanTitle(String playerName)
 	{
-		ownClan = clan;
+		RuneProfileSummary cached = summaries.fresh(playerName.toLowerCase());
+		return cached != null ? cached.clanTitle : null;
 	}
 
 	/**
@@ -292,7 +282,8 @@ public class RuneProfileService
 			{
 				return null;
 			}
-			return new RuneProfileSummary(accountType, ca, clan);
+			return new RuneProfileSummary(accountType, ca, clan,
+				clan != null ? RuneProfileAccountSummaryParser.parseClanTitle(root) : null);
 		}
 		catch (Exception e)
 		{
@@ -544,6 +535,7 @@ public class RuneProfileService
 		final AccountType accountType;
 		final CombatAchievementResult combatAchievements;
 		final String clan;
+		final ClanTitle clanTitle;
 
 	}
 }

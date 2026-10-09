@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import net.runelite.api.clan.ClanTitle;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -81,7 +82,7 @@ public class RuneProfileServiceTest
 			Collections.singletonMap(CombatAchievementTier.EASY, 41)
 		);
 		RuneProfileService.RuneProfileSummary cached =
-			new RuneProfileService.RuneProfileSummary(AccountType.GROUP_IRONMAN, ca, null);
+			new RuneProfileService.RuneProfileSummary(AccountType.GROUP_IRONMAN, ca, null, null);
 
 		summaryCache().put("cached", cached);
 		longCache("summaryFetchTimes").put("cached", 0L);
@@ -106,7 +107,7 @@ public class RuneProfileServiceTest
 		assertEquals(CombatAchievementTier.GRANDMASTER, stale.getTier());
 
 		summaryCache().put("cbc",
-			new RuneProfileService.RuneProfileSummary(AccountType.GROUP_IRONMAN, stale, null));
+			new RuneProfileService.RuneProfileSummary(AccountType.GROUP_IRONMAN, stale, null, null));
 		longCache("summaryFetchTimes").put("cbc", System.currentTimeMillis());
 
 		Map<CombatAchievementTier, Integer> expanded = new EnumMap<>(full);
@@ -349,25 +350,25 @@ public class RuneProfileServiceTest
 		RuneProfileService.RuneProfileSummary withClan = service.parseAccountSummary(
 			"{\"clan\":{\"name\":\"Log Chasers\",\"rank\":40,\"icon\":24,\"title\":\"Recruit\"}}");
 		assertEquals("Log Chasers", withClan.clan);
+		assertEquals("the title's id picks its clan-chat icon", 24, withClan.clanTitle.getId());
+		assertEquals("Recruit", withClan.clanTitle.getName());
+		assertNull("a clan without a title has no icon", service.parseAccountSummary(
+			"{\"clan\":{\"name\":\"Log Chasers\"}}").clanTitle);
 		assertNull(service.parseAccountSummary("{\"clan\":null}"));
 		assertNull(service.parseAccountSummary("{\"clan\":{\"name\":\"  \"}}"));
 	}
 
 	@Test
-	public void testAPlayersClanComesFromRuneProfileAndYourOwnFromTheGame() throws Exception
+	public void testAPlayersClanAndTitleComeFromRuneProfilesSummary() throws Exception
 	{
-		service = new RuneProfileService(null, new Gson(), activeLocalCa("Self Probe", 3));
-		summaryCache().put("lynx titan", new RuneProfileService.RuneProfileSummary(null, null, "Clannabis"));
-		summaryCache().put("self probe", new RuneProfileService.RuneProfileSummary(null, null, "Their Copy"));
+		summaryCache().put("lynx titan", new RuneProfileService.RuneProfileSummary(null, null, "Clannabis",
+			new ClanTitle(-3, "Deputy Owner")));
 		Map<String, Long> fetched = cache("summaryFetchTimes");
 		fetched.put("lynx titan", System.currentTimeMillis());
-		fetched.put("self probe", System.currentTimeMillis());
 		assertEquals("Clannabis", service.clan("Lynx Titan"));
-		assertNull("the game says, not RuneProfile", service.clan("Self Probe"));
-		service.setOwnClan("Clannabis");
-		assertEquals("Clannabis", service.clan("self probe"));
+		assertEquals(-3, service.clanTitle("Lynx Titan").getId());
 		assertNull(service.clan("Nobody"));
-		assertNull(service.clan(null));
+		assertNull(service.clanTitle("Nobody"));
 	}
 
 	@Test
@@ -375,7 +376,7 @@ public class RuneProfileServiceTest
 	{
 		assertFalse(service.hasProfile(null));
 		assertFalse(service.hasProfile("420 kc"));
-		summaryCache().put("420_kc", new RuneProfileService.RuneProfileSummary(AccountType.IRONMAN, null, null));
+		summaryCache().put("420_kc", new RuneProfileService.RuneProfileSummary(AccountType.IRONMAN, null, null, null));
 		assertTrue(service.hasProfile("420 KC"));
 		assertFalse(service.hasProfile("421 kc"));
 	}

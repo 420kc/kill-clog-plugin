@@ -34,6 +34,8 @@ public class SummaryTooltip extends TitleTooltip
 	private String accountLabel;
 	@Nullable
 	private String clan;
+	@Nullable
+	private BufferedImage clanIcon;
 	private String prestige;
 	// With a character standing in, the prestige cape sits small in the header's corner and names its prestige.
 	@Nullable
@@ -64,19 +66,25 @@ public class SummaryTooltip extends TitleTooltip
 		rankLine();
 	}
 
-	/** The player's clan, after the rank under the name; null without one. */
-	void setClan(@Nullable String clan)
+	/**
+	 * The player's clan, after the rank under the name: the icon their title wears in clan chat, the clan's name in the
+	 * band while it's hovered (Dylan, 2026-10-09). Without the icon, the name itself follows the rank.
+	 */
+	void setClan(@Nullable String clan, @Nullable BufferedImage icon)
 	{
 		this.clan = clan;
+		clanIcon = clan != null ? icon : null;
+		setSubtitleIcon(clanIcon);
 		rankLine();
 	}
 
-	// "#1,200 \u00B7 Clannabis" under the name, above the title's divider: the rank, then the clan when there is one
-	// (Dylan, 2026-10-09). The account type's words show in the band while the name or its badge is hovered.
+	// "#1,200" and the clan's icon under the name, above the title's divider; "#1,200 \u00B7 Clannabis" when the icon
+	// can't be drawn. The account type's words show in the band while the name or its badge is hovered.
 	private void rankLine()
 	{
 		String rank = overallRank > 0 ? "#" + grouped(overallRank) : null;
-		String line = rank != null && clan != null ? rank + " \u00B7 " + clan : rank != null ? rank : clan;
+		String line = clanIcon != null ? (rank != null ? rank : "")
+			: rank != null && clan != null ? rank + " \u00B7 " + clan : rank != null ? rank : clan;
 		if (line != null)
 		{
 			setSubtitle("", line, Color.WHITE);
@@ -163,6 +171,16 @@ public class SummaryTooltip extends TitleTooltip
 		if (accountLabel != null)
 		{
 			card.add(CardBody.row(0, c -> 0, (c, y) -> c.hits.add(new TooltipItemHover.HitBox(9, 0, accountLabel, titleArea(), true))));
+		}
+		if (clanIcon != null)
+		{
+			card.add(CardBody.row(0, c -> 0, (c, y) ->
+			{
+				if (getSubtitleIconBounds() != null)
+				{
+					c.hits.add(new TooltipItemHover.HitBox(9, 0, clan, getSubtitleIconBounds(), true));
+				}
+			}));
 		}
 		if (capeInHeader)
 		{

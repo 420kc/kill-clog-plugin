@@ -297,14 +297,51 @@ public class SummaryTooltipTest
 		SummaryTooltip ranked = new SummaryTooltip();
 		ranked.setData("420 kc", 1200, null, null, "Ironman", null);
 		assertEquals("#1,200", value.get(ranked));
-		ranked.setClan("Clannabis");
-		assertEquals("#1,200 \u00B7 Clannabis", value.get(ranked));
+		ranked.setClan("Clannabis", null);
+		assertEquals("without its icon, the clan's name follows the rank", "#1,200 \u00B7 Clannabis", value.get(ranked));
 
 		SummaryTooltip unranked = new SummaryTooltip();
 		unranked.setData("420 kc", -1, null, null, "Ironman", null);
 		assertNull("the account type's words no longer stand alone under the name", value.get(unranked));
-		unranked.setClan("Clannabis");
+		unranked.setClan("Clannabis", null);
 		assertEquals("Clannabis", value.get(unranked));
+	}
+
+	@Test
+	public void theClansIconFollowsTheRankAndNamesTheClanInTheBand() throws ReflectiveOperationException
+	{
+		Field value = TitleTooltip.class.getDeclaredField("subtitleValue");
+		value.setAccessible(true);
+		Field hits = TooltipItemHover.class.getDeclaredField("hitBoxes");
+		hits.setAccessible(true);
+		Field name = TooltipItemHover.HitBox.class.getDeclaredField("itemName");
+		name.setAccessible(true);
+		Field bounds = TooltipItemHover.HitBox.class.getDeclaredField("bounds");
+		bounds.setAccessible(true);
+		BufferedImage key = new BufferedImage(11, 11, BufferedImage.TYPE_INT_ARGB);
+		SummaryTooltip card = withPets(null, 3);
+		card.setData("420 kc", 857, null, null, "Ironman", null);
+		int plainWidth = card.getPreferredSize().width;
+		card.setClan("Clannabis", key);
+		assertEquals("the icon stands for the clan", "#857", value.get(card));
+		paint(card);
+		java.awt.Rectangle icon = null;
+		for (Object hit : (java.util.List<?>) hits.get(card.itemHover))
+		{
+			if ("Clannabis".equals(name.get(hit)))
+			{
+				icon = (java.awt.Rectangle) bounds.get(hit);
+			}
+		}
+		assertTrue("hovering the icon names the clan", icon != null);
+		assertEquals(11, icon.width);
+		assertTrue("after the rank", icon.x > NativeTooltip.getInset() + 20);
+		assertTrue(card.getPreferredSize().width >= plainWidth);
+
+		SummaryTooltip unranked = new SummaryTooltip();
+		unranked.setData("Cbc", -1, null, null, null, null);
+		unranked.setClan("Clannabis", key);
+		assertEquals("an unranked player's line holds the icon alone", "", value.get(unranked));
 	}
 
 	@Test
@@ -337,10 +374,10 @@ public class SummaryTooltipTest
 		// A clan name as long as the game allows (12), after a six-digit rank.
 		SummaryTooltip without = new SummaryTooltip();
 		without.setData("Al", 123456, null, null, "Hardcore Group Ironman", "Maxed Infernal");
-		without.setClan("MMMMMMMMMMMM");
+		without.setClan("MMMMMMMMMMMM", null);
 		SummaryTooltip with = new SummaryTooltip();
 		with.setData("Al", 123456, null, null, "Hardcore Group Ironman", "Maxed Infernal");
-		with.setClan("MMMMMMMMMMMM");
+		with.setClan("MMMMMMMMMMMM", null);
 		with.setCape(new BufferedImage(36, 32, BufferedImage.TYPE_INT_ARGB));
 
 		// The rank line under a short name is the widest header line: the cape's room sits beside it.
