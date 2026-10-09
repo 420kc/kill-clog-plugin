@@ -34,6 +34,8 @@ public class SummaryTooltip extends TitleTooltip
 	private String accountLabel;
 	@Nullable
 	private String clan;
+	@Nullable
+	private BufferedImage clanIcon;
 	private String prestige;
 	// With a character standing in, the prestige cape sits small in the header's corner and names its prestige.
 	@Nullable
@@ -67,7 +69,15 @@ public class SummaryTooltip extends TitleTooltip
 	/** The player's clan, after the rank under the name; null without one. */
 	void setClan(@Nullable String clan)
 	{
+		setClan(clan, null);
+	}
+
+	/** MOCKUP (B31): the clan's title icon in the header, its name in the band while the icon is hovered. */
+	void setClan(@Nullable String clan, @Nullable BufferedImage icon)
+	{
 		this.clan = clan;
+		setClanIcon(clan != null ? icon : null);
+		clanIcon = clan != null ? icon : null;
 		rankLine();
 	}
 
@@ -77,6 +87,11 @@ public class SummaryTooltip extends TitleTooltip
 	{
 		String rank = overallRank > 0 ? "#" + grouped(overallRank) : null;
 		String line = rank != null && clan != null ? rank + " \u00B7 " + clan : rank != null ? rank : clan;
+		if (clanIcon != null)
+		{
+			// The icon stands for the clan: the rank alone, or an empty line holding the icon.
+			line = rank != null ? rank : TitleTooltip.labClanPlacement == 1 ? null : "";
+		}
 		if (line != null)
 		{
 			setSubtitle("", line, Color.WHITE);
@@ -163,6 +178,16 @@ public class SummaryTooltip extends TitleTooltip
 		if (accountLabel != null)
 		{
 			card.add(CardBody.row(0, c -> 0, (c, y) -> c.hits.add(new TooltipItemHover.HitBox(9, 0, accountLabel, titleArea(), true))));
+		}
+		if (clanIcon != null)
+		{
+			card.add(CardBody.row(0, c -> 0, (c, y) ->
+			{
+				if (clanIconBounds() != null)
+				{
+					c.hits.add(new TooltipItemHover.HitBox(9, 0, clan, clanIconBounds(), true));
+				}
+			}));
 		}
 		if (capeInHeader)
 		{

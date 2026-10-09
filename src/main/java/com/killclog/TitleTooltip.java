@@ -67,6 +67,13 @@ public abstract class TitleTooltip extends NativeTooltip
 	private boolean obtainedFirst;
 	private String subtitleValue;
 	private Color subtitleColor;
+	// MOCKUP (B31): the clan's icon in the header. labClanPlacement 0 after the line under the name, 1 after the
+	// name, 2 leading the line under the name in the title icon's column.
+	static int labClanPlacement;
+	@Nullable
+	private BufferedImage clanIcon;
+	@Nullable
+	private Rectangle clanIconBounds;
 	// The header's stat lines (KC and PB; a raid's hard mode on a second), each a label and value and maybe a pair.
 	private final List<InfoLine> infoLines = new ArrayList<>();
 	private String rankText;
@@ -579,6 +586,14 @@ public abstract class TitleTooltip extends NativeTooltip
 		}
 		int subTextWidth = subtitleLabel != null
 			? sfm.stringWidth(subtitleLabel + subtitleValue) : 0;
+		if (clanIcon != null && labClanPlacement == 1)
+		{
+			titleTextWidth += TITLE_ICON_GAP + clanIcon.getWidth();
+		}
+		else if (clanIcon != null && subtitleLabel != null)
+		{
+			subTextWidth += labClanPlacement == 2 ? clanColumn() : TITLE_ICON_GAP + clanIcon.getWidth();
+		}
 		int infoTextWidth = 0;
 		for (InfoLine line : infoLines)
 		{
@@ -652,6 +667,14 @@ public abstract class TitleTooltip extends NativeTooltip
 			g2.setColor(titleSuffixColor != null ? titleSuffixColor : OSRS_ORANGE);
 			g2.drawString(titleSuffix, titleX + nfm.stringWidth(headerTitle), lineY);
 		}
+		clanIconBounds = null;
+		if (clanIcon != null && labClanPlacement == 1)
+		{
+			int x = titleX + nfm.stringWidth(headerTitle) + TITLE_ICON_GAP;
+			clanIconBounds = new Rectangle(x, top + (NAME_LINE_HEIGHT - clanIcon.getHeight()) / 2 - 1,
+				clanIcon.getWidth(), clanIcon.getHeight());
+			g2.drawImage(clanIcon, clanIconBounds.x, clanIconBounds.y, null);
+		}
 
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		FontMetrics fm = g2.getFontMetrics();
@@ -695,7 +718,18 @@ public abstract class TitleTooltip extends NativeTooltip
 		if (!obtainedFirst && subtitleLabel != null)
 		{
 			lineY += lineY == titleBaseline ? NAME_LINE_HEIGHT : LINE_HEIGHT;
-			drawLabelValue(g2, fm, inset, lineY, subtitleLabel, subtitleValue, subtitleColor);
+			boolean leads = clanIcon != null && labClanPlacement == 2;
+			int textX = inset + (leads ? clanColumn() : 0);
+			int textWidth = drawLabelValue(g2, fm, textX, lineY, subtitleLabel, subtitleValue, subtitleColor);
+			if (clanIcon != null && labClanPlacement != 1)
+			{
+				// Centered on the digits: the small font's figures stand about 8 px above the baseline.
+				int x = leads ? inset + (clanColumn() - TITLE_ICON_GAP - clanIcon.getWidth()) / 2
+					: textX + textWidth + (textWidth > 0 ? TITLE_ICON_GAP : 0);
+				clanIconBounds = new Rectangle(x, lineY - 4 - clanIcon.getHeight() / 2, clanIcon.getWidth(),
+					clanIcon.getHeight());
+				g2.drawImage(clanIcon, clanIconBounds.x, clanIconBounds.y, null);
+			}
 		}
 
 		// Separator
@@ -792,6 +826,23 @@ public abstract class TitleTooltip extends NativeTooltip
 	protected Color titleColor()
 	{
 		return titleHovered && titleLinkActive() ? Color.WHITE : OSRS_ORANGE;
+	}
+
+	void setClanIcon(@Nullable BufferedImage icon)
+	{
+		clanIcon = icon;
+	}
+
+	@Nullable
+	Rectangle clanIconBounds()
+	{
+		return clanIconBounds;
+	}
+
+	// The clan icon's column when it leads the line under the name: the title icon's, or its own without one.
+	private int clanColumn()
+	{
+		return clanIcon == null ? 0 : Math.max(titleIconWidth(), clanIcon.getWidth() + TITLE_ICON_GAP);
 	}
 
 	/** The title with its icon: the name a card can tell more about in its band. */
