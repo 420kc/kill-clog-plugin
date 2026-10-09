@@ -8,15 +8,23 @@ package com.killclog;
 
 import java.awt.BorderLayout;
 import java.awt.Dimension;
+import java.awt.event.KeyAdapter;
+import java.awt.event.KeyEvent;
 import java.beans.PropertyChangeListener;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.BooleanSupplier;
 import javax.swing.BoxLayout;
+import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JTextField;
 import javax.swing.JToolTip;
 import javax.swing.border.EmptyBorder;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
@@ -54,6 +62,7 @@ public class BossListView
 		JLabel name;
 		JLabel kc;
 		JLabel gridLabel;
+		JPanel panel;
 	}
 
 	/**
@@ -72,6 +81,7 @@ public class BossListView
 		// Gauntlet then Corrupted). The list keeps vanilla's order rather
 		// than imposing a strict sort - players have already scanned this
 		// exact order in the game's own hiscores.
+		root.add(searchRow());
 		for (HiscoreSkill boss : PanelData.BOSSES)
 		{
 			root.add(buildRow(boss, tooltipController, cells));
@@ -205,8 +215,87 @@ public class BossListView
 		// name stays the popup anchor for bare-cell presses.
 		tooltipController.addCellHoverEffect(panel, row.kc, row.name, row.icon, row.kc);
 
+		row.panel = panel;
 		rows.put(boss, row);
 		return panel;
+	}
+
+	/** The list's own search: a row above the first boss, typed into like the panel's search bar. */
+	private JPanel searchRow()
+	{
+		JLabel icon = new JLabel(new ImageIcon(ClogHelper.makeSearchIcon(ColorScheme.LIGHT_GRAY_COLOR, 1f)));
+		icon.setPreferredSize(new Dimension(24, ROW_HEIGHT));
+		JTextField field = new JTextField();
+		field.setFont(FontManager.getRunescapeSmallFont());
+		field.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		field.setCaretColor(ColorScheme.LIGHT_GRAY_COLOR);
+		field.setOpaque(false);
+		field.setBorder(null);
+		field.getDocument().addDocumentListener(new DocumentListener()
+		{
+			@Override
+			public void insertUpdate(DocumentEvent e)
+			{
+				filter(field.getText());
+			}
+
+			@Override
+			public void removeUpdate(DocumentEvent e)
+			{
+				filter(field.getText());
+			}
+
+			@Override
+			public void changedUpdate(DocumentEvent e)
+			{
+			}
+		});
+		field.addKeyListener(new KeyAdapter()
+		{
+			@Override
+			public void keyPressed(KeyEvent e)
+			{
+				if (e.getKeyCode() == KeyEvent.VK_ESCAPE)
+				{
+					field.setText("");
+				}
+			}
+		});
+		JPanel panel = new JPanel(new BorderLayout(4, 0));
+		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+		panel.setBorder(TooltipController.CELL_BORDER);
+		panel.setPreferredSize(new Dimension(0, ROW_HEIGHT));
+		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, ROW_HEIGHT));
+		panel.add(icon, BorderLayout.WEST);
+		panel.add(field, BorderLayout.CENTER);
+		return panel;
+	}
+
+	/**
+	 * Shows the bosses whose name holds the text, or whose chat shorthand starts with it (cox, tob, cg). A raid's
+	 * hard mode shows with its raid: cox brings Challenge Mode too, while cm is Challenge Mode alone.
+	 */
+	void filter(String text)
+	{
+		String query = KillClogChatCommand.normalize(text);
+		Set<String> named = new HashSet<>();
+		KillClogChatCommand.aliases().forEach((alias, boss) ->
+		{
+			if (!query.isEmpty() && alias.startsWith(query))
+			{
+				named.add(boss);
+			}
+		});
+		rows.forEach((boss, row) -> row.panel.setVisible(query.isEmpty() || matches(boss, query, named)
+			|| matches(PanelData.card(boss), query, named)));
+		root.revalidate();
+		root.repaint();
+	}
+
+	private static boolean matches(HiscoreSkill boss, String query, Set<String> named)
+	{
+		return boss != null && (named.contains(boss.getName())
+			|| KillClogChatCommand.normalize(boss.getName()).contains(query));
 	}
 
 	/** A row label that routes its tooltip through the grid's boss popup. */
