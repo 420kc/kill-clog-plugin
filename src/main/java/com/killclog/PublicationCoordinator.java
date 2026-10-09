@@ -128,7 +128,7 @@ final class PublicationCoordinator
 	/** A capture, login or settled identity, on the client thread: one quiet push for this game after the debounce. */
 	void scheduleAutomaticSync()
 	{
-		scheduleSync(SYNC_DEBOUNCE_SECONDS, false, mode.get());
+		scheduleSync(SYNC_DEBOUNCE_SECONDS, false, mode.get(), false);
 	}
 
 	/**
@@ -145,7 +145,7 @@ final class PublicationCoordinator
 		{
 			if (localClogCache.currentSessionEpoch() == pressed)
 			{
-				scheduleSync(delaySeconds, manual, mode.get());
+				scheduleSync(delaySeconds, manual, mode.get(), false);
 			}
 		});
 	}
@@ -156,8 +156,11 @@ final class PublicationCoordinator
 		return config.killclogSync() && (manual || config.automaticSync() || characterPublishAfterSync.get());
 	}
 
-	/** A retry keeps the game its attempt was for, wherever the player has hopped since. */
-	private synchronized void scheduleSync(int delaySeconds, boolean manual, String scheduledMode)
+	/**
+	 * A retry keeps the game its attempt was for, wherever the player has hopped since. A push that is itself the
+	 * server-advised retry never retries again; every other push starts with its one retry.
+	 */
+	private synchronized void scheduleSync(int delaySeconds, boolean manual, String scheduledMode, boolean retry)
 	{
 		if (!sends(manual))
 		{
@@ -172,7 +175,7 @@ final class PublicationCoordinator
 			pendingKillclogSync.cancel(false);
 		}
 		long scheduledEpoch = localClogCache.currentSessionEpoch();
-		pendingKillclogSync = executor.schedule(() -> pushKillclogSync(manual, scheduledEpoch, scheduledMode),
+		pendingKillclogSync = executor.schedule(() -> pushKillclogSync(manual, scheduledEpoch, scheduledMode, retry),
 			delaySeconds, TimeUnit.SECONDS);
 	}
 
@@ -184,7 +187,7 @@ final class PublicationCoordinator
 			pendingKillclogSync.cancel(false);
 		}
 		pendingKillclogSync = null;
-		scheduleSync(delaySeconds, manual, gameMode);
+		scheduleSync(delaySeconds, manual, gameMode, true);
 	}
 
 	synchronized void cancelSync()
@@ -384,11 +387,11 @@ final class PublicationCoordinator
 		KillclogSyncGate.Intent queued = syncGate.consumeQueuedIntent();
 		if (queued != null && config.killclogSync())
 		{
-			scheduleSync(0, queued.manual, queued.mode);
+			scheduleSync(0, queued.manual, queued.mode, false);
 		}
 	}
 
-	private void pushKillclogSync(boolean manual, long scheduledEpoch, String scheduledMode)
+	private void pushKillclogSync(boolean manual, long scheduledEpoch, String scheduledMode, boolean retry)
 	{
 		// Re-checked at fire time: the player may have opted out while the
 		// debounce was pending. The session fence was captured when this exact
@@ -397,8 +400,6 @@ final class PublicationCoordinator
 		if (!sends(manual)
 			|| localClogCache.currentSessionEpoch() != scheduledEpoch)
 		{
-			// A push dropped before it claims the slot ends its episode; one still in flight keeps its own retry.
-			syncGate.restoreRetryCreditIfIdle();
 			return;
 		}
 		final int generation = syncGate.beginAttempt(manual, scheduledMode);
@@ -475,7 +476,7 @@ final class PublicationCoordinator
 				long storeEpoch = cache.currentSessionEpoch();
 				executor.execute(() -> dispatchKillclogSync(
 					rsn, accountHash, accountType, pbs, detailedPbs, manual, generation, cacheEpoch,
-					cache, gameMode, storeEpoch));
+					cache, gameMode, storeEpoch, retry));
 			}
 			catch (RuntimeException e)
 			{
@@ -487,7 +488,8 @@ final class PublicationCoordinator
 
 	private void dispatchKillclogSync(String rsn, long accountHash, AccountType accountType,
 		Map<String, Double> pbs, Map<String, SyncService.DetailedPb> detailedPbs,
-		boolean manual, int generation, long cacheEpoch, LocalClogCache cache, String gameMode, long storeEpoch)
+		boolean manual, int generation, long cacheEpoch, LocalClogCache cache, String gameMode, long storeEpoch,
+		boolean retry)
 	{
 		boolean sessionEnded = localClogCache.currentSessionEpoch() != cacheEpoch;
 		if (sessionEnded || !syncGate.isCurrent(generation) || !sends(manual))
@@ -524,7 +526,7 @@ final class PublicationCoordinator
 						// Server-advised contention retry: another client of
 						// this account held the lock. Keep a pending character
 						// publication attached to that one allowed retry.
-						if (result.retryAdvised && syncGate.consumeRetryCredit())
+						if (result.retryAdvised && !retry)
 						{
 							if (characterWaiting)
 							{
@@ -546,7 +548,6 @@ final class PublicationCoordinator
 						}
 
 						// Everything below is a terminal outcome for this episode.
-						syncGate.restoreRetryCredit();
 						if (characterWaiting)
 						{
 							characterPublishAfterSync.set(false);
@@ -574,10 +575,6 @@ final class PublicationCoordinator
 					}
 					else
 					{
-						if (current)
-						{
-							syncGate.restoreRetryCredit();
-						}
 						if (current && !failQueuedCharacterPublish() && err != null)
 						{
 							withSyncFeedback(generation, cacheEpoch, () -> feedback.showSyncResult(manual,

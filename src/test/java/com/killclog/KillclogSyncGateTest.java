@@ -164,37 +164,6 @@ public class KillclogSyncGateTest
 	}
 
 	@Test
-	public void retryCreditIsOnePerEpisodeAndNewEpisodesStartFresh()
-	{
-		KillclogSyncGate gate = new KillclogSyncGate();
-		// First 409 takes the credit; the second finds it consumed.
-		assertTrue(gate.consumeRetryCredit());
-		assertFalse("second 409 in the episode must not retry", gate.consumeRetryCredit());
-		// The terminal failure restores the credit; a later independent
-		// episode starts with its retry available again.
-		gate.restoreRetryCredit();
-		assertTrue("a new episode must start with credit", gate.consumeRetryCredit());
-	}
-
-	@Test
-	public void cancelRestoresRetryCredit()
-	{
-		KillclogSyncGate gate = new KillclogSyncGate();
-		assertTrue(gate.consumeRetryCredit());
-		gate.cancel();
-		assertTrue("opt-out/shutdown must not starve the next episode", gate.consumeRetryCredit());
-	}
-
-	@Test
-	public void abortRestoresRetryCredit()
-	{
-		KillclogSyncGate gate = new KillclogSyncGate();
-		assertTrue(gate.consumeRetryCredit());
-		gate.abortAttempt();
-		assertTrue("a pre-dispatch abort ends the episode", gate.consumeRetryCredit());
-	}
-
-	@Test
 	public void staleGenerationCompletesSilentButFreesTheSlot()
 	{
 		KillclogSyncGate gate = new KillclogSyncGate();
@@ -245,28 +214,5 @@ public class KillclogSyncGateTest
 		assertEquals(-1, gate.beginAttempt(true, null));
 		gate.cancelAutomatic();
 		assertTrue(gate.consumeQueued());
-	}
-
-	@Test
-	public void aRetiredAutomaticPushGivesBackItsRetry()
-	{
-		KillclogSyncGate gate = new KillclogSyncGate();
-		gate.beginAttempt(false, null);
-		assertTrue(gate.consumeRetryCredit());
-		gate.cancelAutomatic();
-		assertTrue(gate.consumeRetryCredit());
-	}
-
-	@Test
-	public void aDroppedPushNeverTopsUpTheRetryOfAnAttemptInFlight()
-	{
-		KillclogSyncGate gate = new KillclogSyncGate();
-		int click = gate.beginAttempt(true, null);
-		assertTrue(gate.consumeRetryCredit());
-		gate.restoreRetryCreditIfIdle();
-		assertFalse(gate.consumeRetryCredit());
-		gate.complete(click);
-		gate.restoreRetryCreditIfIdle();
-		assertTrue(gate.consumeRetryCredit());
 	}
 }

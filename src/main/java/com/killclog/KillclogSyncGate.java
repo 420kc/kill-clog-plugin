@@ -19,10 +19,6 @@ final class KillclogSyncGate
 	private String queuedMode;
 	private boolean inFlightManual;
 	private final AtomicInteger generation = new AtomicInteger();
-	// One server-advised contention retry per episode: consumed by the first
-	// 409, restored at every terminal outcome (success, failure, abort,
-	// cancel) so a later independent episode always starts with its credit.
-	private final AtomicBoolean retryCredit = new AtomicBoolean(true);
 
 	/**
 	 * Claim the single-flight slot.
@@ -84,33 +80,6 @@ final class KillclogSyncGate
 	void abortAttempt()
 	{
 		inFlight.set(false);
-		retryCredit.set(true);
-	}
-
-	/**
-	 * Claim the one contention-retry this episode is allowed.
-	 *
-	 * @return true exactly once between terminal outcomes - a second 409 in
-	 *         the same episode gets false and must surface as a failure.
-	 */
-	boolean consumeRetryCredit()
-	{
-		return retryCredit.compareAndSet(true, false);
-	}
-
-	/** A terminal outcome ends the episode; the next one starts with credit. */
-	void restoreRetryCredit()
-	{
-		retryCredit.set(true);
-	}
-
-	/** A push dropped before claiming the slot ends its episode, unless an attempt in flight owns the retry. */
-	synchronized void restoreRetryCreditIfIdle()
-	{
-		if (!inFlight.get())
-		{
-			retryCredit.set(true);
-		}
 	}
 
 	/**
@@ -163,7 +132,6 @@ final class KillclogSyncGate
 		if (inFlight.get() && !inFlightManual)
 		{
 			generation.incrementAndGet();
-			retryCredit.set(true);
 		}
 		if (!queuedManual)
 		{
@@ -179,6 +147,5 @@ final class KillclogSyncGate
 		queued.set(false);
 		queuedManual = false;
 		queuedMode = null;
-		retryCredit.set(true);
 	}
 }
