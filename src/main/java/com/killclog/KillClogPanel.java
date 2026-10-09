@@ -661,12 +661,12 @@ public class KillClogPanel extends PluginPanel
 					Color.WHITE);
 				if (data.pb != null && config.showTooltipPb())
 				{
-					tip.setInfoLinePair("PB: ", data.pb, Color.WHITE);
+					tip.setInfoLinePair(ClogHelper.pbLabel(data.pb), ClogHelper.pbTime(data.pb), Color.WHITE);
 				}
 			}
 			else if (data.pb != null && config.showTooltipPb())
 			{
-				tip.setInfoLine("PB: ", data.pb, Color.WHITE);
+				tip.setInfoLine(ClogHelper.pbLabel(data.pb), ClogHelper.pbTime(data.pb), Color.WHITE);
 			}
 			ClogHelper.addHardModeLine(tip, data, config.showTooltipKc(), config.showTooltipPb());
 			if (data.allItemIds != null)

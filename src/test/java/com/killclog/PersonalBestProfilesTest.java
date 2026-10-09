@@ -1,6 +1,8 @@
 package com.killclog;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import net.runelite.client.config.RuneScapeProfile;
 import net.runelite.client.config.RuneScapeProfileType;
 import org.junit.Test;
@@ -57,10 +59,29 @@ public class PersonalBestProfilesTest
 	{
 		// A null manager deliberately fails if any implicit profile read happens.
 		PersonalBests vanilla = new PersonalBests(null);
-		assertEquals(0, vanilla.bestSecondsAcrossProfiles(List.of(), "Zulrah"), 0);
+		assertNull(vanilla.pbText(List.of(), "Zulrah"));
 		assertTrue(vanilla.variantSecondsAcrossProfiles("personalbest", "", List.of(), "Zulrah").isEmpty());
 		assertTrue(vanilla.variantSecondsAcrossProfiles(AdvLogPbs.CONFIG_GROUP, AdvLogPbs.KEY_PREFIX,
 			List.of(), "Zulrah").isEmpty());
+	}
+
+	@Test
+	public void aTeamSizesTimeSaysWhichAsKillclogComDoes()
+	{
+		// RuneLite keeps a raid's best at any size beside each size's own: the size names the time.
+		Map<String, Double> variants = new LinkedHashMap<>();
+		variants.put("chambers of xeric", 1333.8);
+		variants.put("chambers of xeric solo", 2942.4);
+		variants.put("chambers of xeric 5 players", 1333.8);
+		String raid = PersonalBests.labeled(variants, "Chambers of Xeric");
+		assertEquals("(5 players) 22:13.80", raid);
+		assertEquals("PB (5 players): ", ClogHelper.pbLabel(raid));
+		assertEquals("22:13.80", ClogHelper.pbTime(raid));
+
+		String zulrah = PersonalBests.labeled(Map.of("zulrah", 66.0), "Zulrah");
+		assertEquals("PB: ", ClogHelper.pbLabel(zulrah));
+		assertEquals("1:06", ClogHelper.pbTime(zulrah));
+		assertNull(PersonalBests.labeled(Map.of(), "Zulrah"));
 	}
 
 	private static RuneScapeProfile profile(String name, long hash, String key)
