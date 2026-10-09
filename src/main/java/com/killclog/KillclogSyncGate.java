@@ -104,6 +104,15 @@ final class KillclogSyncGate
 		retryCredit.set(true);
 	}
 
+	/** A push dropped before claiming the slot ends its episode, unless an attempt in flight owns the retry. */
+	synchronized void restoreRetryCreditIfIdle()
+	{
+		if (!inFlight.get())
+		{
+			retryCredit.set(true);
+		}
+	}
+
 	/**
 	 * Release the slot after a round trip.
 	 *

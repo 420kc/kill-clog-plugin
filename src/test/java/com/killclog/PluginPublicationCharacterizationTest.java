@@ -1644,4 +1644,24 @@ public class PluginPublicationCharacterizationTest
 		settle();
 		assertEquals(3, syncs.size());
 	}
+
+	@Test
+	public void aDroppedAutomaticSyncNeverGivesAClickInFlightASecondRetry() throws Exception
+	{
+		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		syncHandler.run();
+		settle();
+		syncs.get(0).complete(new SyncService.SyncResult(false, false, "Busy", true, 2));
+		settle();
+		assertEquals(2, syncs.size());
+
+		// While the click's one retry is in flight, a capture's automatic sync is dropped.
+		captureListener.run();
+		config.automatic = false;
+		configChanged("automaticSync");
+		settle();
+		syncs.get(1).complete(new SyncService.SyncResult(false, false, "Busy", true, 2));
+		settle();
+		assertEquals(2, syncs.size());
+	}
 }

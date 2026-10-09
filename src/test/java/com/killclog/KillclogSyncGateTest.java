@@ -256,4 +256,17 @@ public class KillclogSyncGateTest
 		gate.cancelAutomatic();
 		assertTrue(gate.consumeRetryCredit());
 	}
+
+	@Test
+	public void aDroppedPushNeverTopsUpTheRetryOfAnAttemptInFlight()
+	{
+		KillclogSyncGate gate = new KillclogSyncGate();
+		int click = gate.beginAttempt(true, null);
+		assertTrue(gate.consumeRetryCredit());
+		gate.restoreRetryCreditIfIdle();
+		assertFalse(gate.consumeRetryCredit());
+		gate.complete(click);
+		gate.restoreRetryCreditIfIdle();
+		assertTrue(gate.consumeRetryCredit());
+	}
 }
