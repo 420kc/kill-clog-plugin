@@ -290,15 +290,60 @@ public class SummaryTooltipTest
 	}
 
 	@Test
-	public void theHeadersCapeKeepsClearOfALongAccountLine()
+	public void theLineUnderTheNameReadsTheRankThenTheClan() throws ReflectiveOperationException
 	{
+		Field value = TitleTooltip.class.getDeclaredField("subtitleValue");
+		value.setAccessible(true);
+		SummaryTooltip ranked = new SummaryTooltip();
+		ranked.setData("420 kc", 1200, null, null, "Ironman", null);
+		assertEquals("#1,200", value.get(ranked));
+		ranked.setClan("Clannabis");
+		assertEquals("#1,200 \u00B7 Clannabis", value.get(ranked));
+
+		SummaryTooltip unranked = new SummaryTooltip();
+		unranked.setData("420 kc", -1, null, null, "Ironman", null);
+		assertNull("the account type's words no longer stand alone under the name", value.get(unranked));
+		unranked.setClan("Clannabis");
+		assertEquals("Clannabis", value.get(unranked));
+	}
+
+	@Test
+	public void hoveringTheNameOrBadgeNamesTheAccountTypeInTheBand() throws ReflectiveOperationException
+	{
+		Field hits = TooltipItemHover.class.getDeclaredField("hitBoxes");
+		hits.setAccessible(true);
+		Field name = TooltipItemHover.HitBox.class.getDeclaredField("itemName");
+		name.setAccessible(true);
+		Field bounds = TooltipItemHover.HitBox.class.getDeclaredField("bounds");
+		bounds.setAccessible(true);
+		SummaryTooltip card = withPets(null, 3);
+		card.setData("420 kc", 1200, null, new BufferedImage(13, 12, BufferedImage.TYPE_INT_ARGB), "Ironman", null);
+		paint(card);
+		java.awt.Rectangle title = null;
+		for (Object hit : (java.util.List<?>) hits.get(card.itemHover))
+		{
+			if ("Ironman".equals(name.get(hit)))
+			{
+				title = (java.awt.Rectangle) bounds.get(hit);
+			}
+		}
+		assertTrue("the name and its badge name the account type", title != null);
+		assertEquals("from the badge's left edge", NativeTooltip.getInset(), title.x);
+	}
+
+	@Test
+	public void theHeadersCapeKeepsClearOfALongRankLine()
+	{
+		// A clan name as long as the game allows (12), after a six-digit rank.
 		SummaryTooltip without = new SummaryTooltip();
 		without.setData("Al", 123456, null, null, "Hardcore Group Ironman", "Maxed Infernal");
+		without.setClan("MMMMMMMMMMMM");
 		SummaryTooltip with = new SummaryTooltip();
 		with.setData("Al", 123456, null, null, "Hardcore Group Ironman", "Maxed Infernal");
+		with.setClan("MMMMMMMMMMMM");
 		with.setCape(new BufferedImage(36, 32, BufferedImage.TYPE_INT_ARGB));
 
-		// The account line under a short name is the widest header line: the cape's room sits beside it.
+		// The rank line under a short name is the widest header line: the cape's room sits beside it.
 		assertEquals(40, with.getPreferredSize().width - without.getPreferredSize().width);
 	}
 }

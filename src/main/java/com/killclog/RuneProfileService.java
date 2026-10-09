@@ -52,6 +52,8 @@ public class RuneProfileService
 	private final OkHttpClient httpClient;
 	private final Gson gson;
 	private final LocalCaCache localCaCache;
+	@Nullable
+	private volatile String ownClan;
 
 	// Plugin-owned live catalog, set at startup. Read from HTTP threads; the
 	// catalog publishes complete immutable snapshots through a volatile field.
@@ -113,6 +115,31 @@ public class RuneProfileService
 		}
 		RuneProfileSummary cached = summaries.fresh(playerName.toLowerCase());
 		return cached != null ? cached.accountType : null;
+	}
+
+	/**
+	 * A player's clan for the Player Summary: your own as the game shows it, anyone else's as RuneProfile last said.
+	 * Null without one.
+	 */
+	@Nullable
+	String clan(@Nullable String playerName)
+	{
+		if (playerName == null)
+		{
+			return null;
+		}
+		if (localCaCache != null && localCaCache.isActivePlayer(playerName))
+		{
+			return ownClan;
+		}
+		RuneProfileSummary cached = summaries.fresh(playerName.toLowerCase());
+		return cached != null ? cached.clan : null;
+	}
+
+	/** Your own clan's name from the game client, null outside one. */
+	void setOwnClan(@Nullable String clan)
+	{
+		ownClan = clan;
 	}
 
 	/**
@@ -260,11 +287,12 @@ public class RuneProfileService
 
 			AccountType accountType = RuneProfileAccountSummaryParser.parseAccountType(root);
 			CombatAchievementResult ca = parseCombatAchievements(json);
-			if (accountType == null && ca == null)
+			String clan = RuneProfileAccountSummaryParser.parseClan(root);
+			if (accountType == null && ca == null && clan == null)
 			{
 				return null;
 			}
-			return new RuneProfileSummary(accountType, ca);
+			return new RuneProfileSummary(accountType, ca, clan);
 		}
 		catch (Exception e)
 		{
@@ -515,6 +543,7 @@ public class RuneProfileService
 	{
 		final AccountType accountType;
 		final CombatAchievementResult combatAchievements;
+		final String clan;
 
 	}
 }

@@ -13,7 +13,9 @@ import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.Player;
 import net.runelite.api.ScriptEvent;
+import net.runelite.api.clan.ClanID;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.ClanChannelChanged;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.MenuEntryAdded;
@@ -365,6 +367,16 @@ public class KillClogPlugin extends Plugin
 	public void onPlayerChanged(PlayerChanged event)
 	{
 		profileAppearanceService.captureOriginalAppearance(event.getPlayer());
+	}
+
+	// Your own clan for the Player Summary, as the game shows it: the main clan, never a guest or group channel.
+	@Subscribe
+	public void onClanChannelChanged(ClanChannelChanged event)
+	{
+		if (!event.isGuest() && event.getClanId() == ClanID.CLAN)
+		{
+			runeProfileService.setOwnClan(event.getClanChannel() != null ? event.getClanChannel().getName() : null);
+		}
 	}
 
 	@Subscribe

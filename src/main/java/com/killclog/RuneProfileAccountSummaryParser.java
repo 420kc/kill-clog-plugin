@@ -1,5 +1,6 @@
 package com.killclog;
 
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import javax.annotation.Nullable;
 
@@ -29,6 +30,15 @@ final class RuneProfileAccountSummaryParser
 		}
 		return accountType.has("id") && !accountType.get("id").isJsonNull()
 			? AccountType.fromProviderId(accountType.get("id").getAsInt()) : null;
+	}
+
+	/** The clan's name, as RuneProfile's summary carries it; null without one. */
+	@Nullable
+	static String parseClan(JsonObject root)
+	{
+		JsonElement clan = root.get("clan");
+		JsonElement name = clan != null && clan.isJsonObject() ? clan.getAsJsonObject().get("name") : null;
+		return name != null && name.isJsonPrimitive() && !name.getAsString().trim().isEmpty() ? name.getAsString().trim() : null;
 	}
 
 	@Nullable

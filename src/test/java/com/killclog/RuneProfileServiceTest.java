@@ -81,7 +81,7 @@ public class RuneProfileServiceTest
 			Collections.singletonMap(CombatAchievementTier.EASY, 41)
 		);
 		RuneProfileService.RuneProfileSummary cached =
-			new RuneProfileService.RuneProfileSummary(AccountType.GROUP_IRONMAN, ca);
+			new RuneProfileService.RuneProfileSummary(AccountType.GROUP_IRONMAN, ca, null);
 
 		summaryCache().put("cached", cached);
 		longCache("summaryFetchTimes").put("cached", 0L);
@@ -106,7 +106,7 @@ public class RuneProfileServiceTest
 		assertEquals(CombatAchievementTier.GRANDMASTER, stale.getTier());
 
 		summaryCache().put("cbc",
-			new RuneProfileService.RuneProfileSummary(AccountType.GROUP_IRONMAN, stale));
+			new RuneProfileService.RuneProfileSummary(AccountType.GROUP_IRONMAN, stale, null));
 		longCache("summaryFetchTimes").put("cbc", System.currentTimeMillis());
 
 		Map<CombatAchievementTier, Integer> expanded = new EnumMap<>(full);
@@ -344,11 +344,38 @@ public class RuneProfileServiceTest
 	}
 
 	@Test
+	public void testTheSummaryCarriesTheClansName()
+	{
+		RuneProfileService.RuneProfileSummary withClan = service.parseAccountSummary(
+			"{\"clan\":{\"name\":\"Log Chasers\",\"rank\":40,\"icon\":24,\"title\":\"Recruit\"}}");
+		assertEquals("Log Chasers", withClan.clan);
+		assertNull(service.parseAccountSummary("{\"clan\":null}"));
+		assertNull(service.parseAccountSummary("{\"clan\":{\"name\":\"  \"}}"));
+	}
+
+	@Test
+	public void testAPlayersClanComesFromRuneProfileAndYourOwnFromTheGame() throws Exception
+	{
+		service = new RuneProfileService(null, new Gson(), activeLocalCa("Self Probe", 3));
+		summaryCache().put("lynx titan", new RuneProfileService.RuneProfileSummary(null, null, "Clannabis"));
+		summaryCache().put("self probe", new RuneProfileService.RuneProfileSummary(null, null, "Their Copy"));
+		Map<String, Long> fetched = cache("summaryFetchTimes");
+		fetched.put("lynx titan", System.currentTimeMillis());
+		fetched.put("self probe", System.currentTimeMillis());
+		assertEquals("Clannabis", service.clan("Lynx Titan"));
+		assertNull("the game says, not RuneProfile", service.clan("Self Probe"));
+		service.setOwnClan("Clannabis");
+		assertEquals("Clannabis", service.clan("self probe"));
+		assertNull(service.clan("Nobody"));
+		assertNull(service.clan(null));
+	}
+
+	@Test
 	public void testHasProfileMatchesTheCanonicalSpellingOfATypedName() throws Exception
 	{
 		assertFalse(service.hasProfile(null));
 		assertFalse(service.hasProfile("420 kc"));
-		summaryCache().put("420_kc", new RuneProfileService.RuneProfileSummary(AccountType.IRONMAN, null));
+		summaryCache().put("420_kc", new RuneProfileService.RuneProfileSummary(AccountType.IRONMAN, null, null));
 		assertTrue(service.hasProfile("420 KC"));
 		assertFalse(service.hasProfile("421 kc"));
 	}

@@ -1395,6 +1395,7 @@ public class KillClogPanel extends PluginPanel
 		{
 			tip.setCape(getCapeImage(hiscore));
 		}
+		tip.setClan(runeProfileService.clan(shownName));
 		tip.setWikiLinksEnabled(config.wikiItemLinks());
 		if (clog != null)
 		{
