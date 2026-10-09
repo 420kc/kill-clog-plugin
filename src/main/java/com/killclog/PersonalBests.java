@@ -54,23 +54,35 @@ final class PersonalBests
 		return List.copyOf(keys);
 	}
 
-	/** Formatted fastest time for a panel boss across the given profiles, or null when none recorded. */
+	/**
+	 * Formatted fastest time for a panel boss across team sizes AND across rs-profile fragments, or null when none
+	 * recorded. RuneLite splinters one account into many internal profiles over time (client changes, world types),
+	 * scattering its personal bests; the true pb is the minimum over the explicitly selected account-owned fragments.
+	 */
 	String pbText(java.util.List<String> profileKeys, String panelBossName)
 	{
-		double best = bestSecondsAcrossProfiles(profileKeys, panelBossName);
-		return best > 0 ? formatSeconds(best) : null;
+		return labeled(variantSecondsAcrossProfiles("personalbest", "", profileKeys, panelBossName), panelBossName);
 	}
 
 	/**
-	 * Fastest seconds across team sizes AND across rs-profile fragments.
-	 * RuneLite splinters one account into many internal profiles over time
-	 * (client changes, world types), scattering its personal bests; the true
-	 * pb is the minimum over the explicitly selected account-owned fragments.
+	 * The fastest variant's time; a team size's carries it, "(5 players) 22:13.80", which the card reads as
+	 * killclog.com does, "PB (5 players): 22:13.80" ({@link ClogHelper#pbLabel}). On a tie the team size wins.
 	 */
-	double bestSecondsAcrossProfiles(java.util.List<String> profileKeys, String panelBossName)
+	@Nullable
+	static String labeled(java.util.Map<String, Double> variants, String panelBossName)
 	{
-		return variantSecondsAcrossProfiles("personalbest", "", profileKeys, panelBossName)
-			.values().stream().min(Double::compare).orElse(0.0);
+		java.util.Map.Entry<String, Double> best = null;
+		for (java.util.Map.Entry<String, Double> variant : variants.entrySet())
+		{
+			best = best == null || variant.getValue() <= best.getValue() ? variant : best;
+		}
+		if (best == null)
+		{
+			return null;
+		}
+		String team = best.getKey().substring(keyCandidates(panelBossName)[0].length()).trim();
+		String time = formatSeconds(best.getValue());
+		return team.isEmpty() ? time : "(" + Character.toUpperCase(team.charAt(0)) + team.substring(1) + ") " + time;
 	}
 
 	/** One stored-key read, abstracted so the variant merge logic is testable. */

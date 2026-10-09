@@ -126,6 +126,8 @@ public class KillclogServiceTest
 			+ "\"last_changed\":\"2026-08-03T22:15:31.123Z\","
 			+ "\"unique_obtained\":1189,\"unique_total\":1561,"
 			+ "\"pbs\":{\"Zulrah\":58.2,\"Vorkath\":101.0},"
+			+ "\"pbs_detailed\":{\"zulrah\":{\"seconds\":58.2},\"chambers of xeric 5 players\":{\"seconds\":1333.8},"
+			+ "\"chambers of xeric solo\":{\"seconds\":2942.4},\"nightmare 6+ players\":{\"seconds\":215.4}},"
 			+ "\"clog\":{\"total_obtained\":3,\"items_by_category\":{"
 			+ "\"zulrah\":[{\"item_id\":12921,\"quantity\":2,\"last_seen_at\":\"2026-08-03T22:15:31.123Z\"}],"
 			+ "\"vorkath\":[{\"item_id\":21907,\"quantity\":1},{\"item_id\":22006,\"quantity\":1}]}}}";
@@ -153,6 +155,9 @@ public class KillclogServiceTest
 		assertEquals("0:58.20", service.pbText("420 KC", "Zulrah"));
 		assertEquals("1:41", service.pbText("420 kc", "Vorkath"));
 		assertNull(service.pbText("420 kc", "Kraken"));
+		// A raid's time comes only by team size, and says which, as killclog.com does.
+		assertEquals("(5 players) 22:13.80", service.pbText("420 kc", "Chambers of Xeric"));
+		assertEquals("(6+ players) 3:35.40", service.pbText("420 kc", "Nightmare"));
 		assertNull(service.pbText("Zezima", "Zulrah"));
 		assertNull(service.pbText(null, "Zulrah"));
 	}

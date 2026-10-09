@@ -88,13 +88,24 @@ final class ClogHelper
 			tip.addInfoLine(data.hardLabel + ": ", formatKc(data.hardKc), Color.WHITE);
 			if (data.hardPb != null && showPb)
 			{
-				tip.setInfoLinePair("PB: ", data.hardPb, Color.WHITE);
+				tip.setInfoLinePair(pbLabel(data.hardPb), pbTime(data.hardPb), Color.WHITE);
 			}
 		}
 		else if (data.hardPb != null && showPb)
 		{
-			tip.addInfoLine(data.hardLabel + " PB: ", data.hardPb, Color.WHITE);
+			tip.addInfoLine(data.hardLabel + " " + pbLabel(data.hardPb), pbTime(data.hardPb), Color.WHITE);
 		}
+	}
+
+	/** "PB: ", or a team size's "PB (5 players): " ({@link PersonalBests#labeled}). */
+	static String pbLabel(String pb)
+	{
+		return pb.startsWith("(") ? "PB " + pb.substring(0, pb.indexOf(')') + 1) + ": " : "PB: ";
+	}
+
+	static String pbTime(String pb)
+	{
+		return pb.substring(pb.indexOf(')') + 1).trim();
 	}
 
 	// Clog data helpers.

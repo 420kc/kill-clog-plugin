@@ -202,7 +202,8 @@ public class KillclogService
 			return null;
 		}
 		Double best = pbs.get(panelBossName);
-		return best != null && best > 0 ? PersonalBests.formatSeconds(best) : null;
+		return best != null && best > 0 ? PersonalBests.formatSeconds(best)
+			: PersonalBests.labeled(PersonalBests.variantSeconds(pbs::get, panelBossName), panelBossName);
 	}
 
 	private CompletableFuture<Set<String>> ensureIndex()
@@ -502,6 +503,17 @@ public class KillclogService
 				{
 					pbs.put(entry.getKey(), seconds);
 				}
+			}
+		}
+		// A group encounter's times come only by team size, under the game's store keys beside the names above.
+		JsonElement detailed = root.get("pbs_detailed");
+		for (Map.Entry<String, JsonElement> entry : detailed != null && detailed.isJsonObject()
+			? detailed.getAsJsonObject().entrySet() : Collections.<Map.Entry<String, JsonElement>>emptySet())
+		{
+			JsonElement seconds = entry.getValue().isJsonObject() ? entry.getValue().getAsJsonObject().get("seconds") : null;
+			if (seconds != null && seconds.isJsonPrimitive() && seconds.getAsJsonPrimitive().isNumber() && seconds.getAsDouble() > 0)
+			{
+				pbs.put(entry.getKey(), seconds.getAsDouble());
 			}
 		}
 		return pbs;
