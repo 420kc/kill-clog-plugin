@@ -794,6 +794,13 @@ public abstract class TitleTooltip extends NativeTooltip
 		return titleHovered && titleLinkActive() ? Color.WHITE : OSRS_ORANGE;
 	}
 
+	/** The title with its icon: the name a card can tell more about in its band. */
+	Rectangle titleArea()
+	{
+		Rectangle title = titleBounds();
+		return new Rectangle(getInset(), title.y, title.x + title.width - getInset(), title.height);
+	}
+
 	private Rectangle titleBounds()
 	{
 		int inset = getInset();

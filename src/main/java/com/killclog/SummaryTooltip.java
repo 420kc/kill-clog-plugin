@@ -32,6 +32,8 @@ public class SummaryTooltip extends TitleTooltip
 	// The prestige cape, or a Kill Clog syncer's character (PlayerPortraits) standing in its place.
 	private BufferedImage figure;
 	private String accountLabel;
+	@Nullable
+	private String clan;
 	private String prestige;
 	// With a character standing in, the prestige cape sits small in the header's corner and names its prestige.
 	@Nullable
@@ -59,10 +61,25 @@ public class SummaryTooltip extends TitleTooltip
 		this.figure = withoutHeadroom(figure);
 		this.accountLabel = accountLabel;
 		this.prestige = prestige;
-		// Account type and rank read under the name, above the title's divider.
-		if (hasRankLine())
+		rankLine();
+	}
+
+	/** The player's clan, after the rank under the name; null without one. */
+	void setClan(@Nullable String clan)
+	{
+		this.clan = clan;
+		rankLine();
+	}
+
+	// "#1,200 \u00B7 Clannabis" under the name, above the title's divider: the rank, then the clan when there is one
+	// (Dylan, 2026-10-09). The account type's words show in the band while the name or its badge is hovered.
+	private void rankLine()
+	{
+		String rank = overallRank > 0 ? "#" + grouped(overallRank) : null;
+		String line = rank != null && clan != null ? rank + " \u00B7 " + clan : rank != null ? rank : clan;
+		if (line != null)
 		{
-			setSubtitle(accountLabelText(), rankTail(), Color.WHITE);
+			setSubtitle("", line, Color.WHITE);
 		}
 		else
 		{
@@ -125,11 +142,6 @@ public class SummaryTooltip extends TitleTooltip
 		return scroll;
 	}
 
-	private boolean hasRankLine()
-	{
-		return accountLabel != null || overallRank > 0;
-	}
-
 	private boolean hasPets()
 	{
 		return petList != null && !petList.isEmpty();
@@ -148,6 +160,10 @@ public class SummaryTooltip extends TitleTooltip
 		// the header's corner instead of a line under the figure.
 		boolean capeInHeader = cape != null && prestige != null;
 		CardBody card = new CardBody().add(CardBody.minWidth(c -> getFontMetrics(getTitleFont()).stringWidth(FORMER_TITLE)));
+		if (accountLabel != null)
+		{
+			card.add(CardBody.row(0, c -> 0, (c, y) -> c.hits.add(new TooltipItemHover.HitBox(9, 0, accountLabel, titleArea(), true))));
+		}
 		if (capeInHeader)
 		{
 			card.add(headerCorner(true, cape, prestige));
@@ -187,17 +203,6 @@ public class SummaryTooltip extends TitleTooltip
 	{
 		return CardBody.row(LINE_HEIGHT, c -> c.fm.stringWidth(label + value), (c, y) -> drawLabelValue(c.g, c.fm,
 			(c.w - c.fm.stringWidth(label + value)) / 2, y + c.fm.getAscent(), label, value));
-	}
-
-	private String accountLabelText()
-	{
-		return accountLabel != null ? accountLabel : "";
-	}
-
-	/** " #1,234" after an account label, "#1,234" alone, nothing when unranked. */
-	private String rankTail()
-	{
-		return overallRank > 0 ? (accountLabel != null ? " #" : "#") + grouped(overallRank) : "";
 	}
 
 	/**
