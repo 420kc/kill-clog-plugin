@@ -46,7 +46,7 @@ public class KillClogPanel extends PluginPanel
 	implements LookupSession.Listener, ComparisonController.Listener,
 	ComparisonController.CellRenderTarget
 {
-	private static final Color TEXT_DIM = new Color(160, 160, 160);
+	static final Color TEXT_DIM = new Color(160, 160, 160);
 	private static final Color NOT_FOUND = new Color(0x81, 0x09, 0x09);
 	static final Color KC_COLOR = new Color(215, 215, 215);
 	private static final String SETUP_NOTICE =
