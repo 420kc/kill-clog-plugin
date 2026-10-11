@@ -22,23 +22,40 @@ class PlayerClans
 	private final Client client;
 	private final ChatIconManager icons;
 	private final RuneProfileService runeProfile;
+	// Your own, as the game showed it on the last tick. The card is built on Swing's thread, where the
+	// client's clan state must not be read, so it reads this instead.
+	private volatile Yours yours = Yours.NONE;
+
+	/** Reads your name, clan and title from the game; client thread only, each tick. */
+	void refreshClientSnapshot()
+	{
+		Player you = client.getLocalPlayer();
+		String name = you != null ? you.getName() : null;
+		ClanChannel clan = client.getClanChannel();
+		ClanSettings settings = client.getClanSettings();
+		ClanChannelMember member = clan != null && name != null ? clan.findMember(name) : null;
+		yours = new Yours(name, clan != null ? clan.getName() : null,
+			member != null && settings != null ? settings.titleForRank(member.getRank()) : null);
+	}
+
+	void clearClientSnapshot()
+	{
+		yours = Yours.NONE;
+	}
 
 	@Nullable
 	String name(String player)
 	{
-		if (isYou(player))
-		{
-			ClanChannel clan = client.getClanChannel();
-			return clan != null ? clan.getName() : null;
-		}
-		return runeProfile.clan(player);
+		Yours you = yours;
+		return you.is(player) ? you.clan : runeProfile.clan(player);
 	}
 
 	/** The title's icon, or null when there is none or it hasn't loaded (the card then names the clan instead). */
 	@Nullable
 	BufferedImage icon(String player)
 	{
-		ClanTitle title = isYou(player) ? yourTitle() : runeProfile.clanTitle(player);
+		Yours you = yours;
+		ClanTitle title = you.is(player) ? you.title : runeProfile.clanTitle(player);
 		try
 		{
 			return title != null ? icons.getRankImage(title) : null;
@@ -50,20 +67,18 @@ class PlayerClans
 		}
 	}
 
-	private boolean isYou(String player)
+	@RequiredArgsConstructor
+	private static final class Yours
 	{
-		Player you = client.getLocalPlayer();
-		return you != null && you.getName() != null
-			&& Text.toJagexName(you.getName()).equalsIgnoreCase(Text.toJagexName(player));
-	}
+		static final Yours NONE = new Yours(null, null, null);
 
-	@Nullable
-	private ClanTitle yourTitle()
-	{
-		ClanChannel clan = client.getClanChannel();
-		ClanSettings settings = client.getClanSettings();
-		Player you = client.getLocalPlayer();
-		ClanChannelMember member = clan != null && you != null ? clan.findMember(you.getName()) : null;
-		return member != null && settings != null ? settings.titleForRank(member.getRank()) : null;
+		final String name;
+		final String clan;
+		final ClanTitle title;
+
+		boolean is(String player)
+		{
+			return name != null && player != null && Text.toJagexName(name).equalsIgnoreCase(Text.toJagexName(player));
+		}
 	}
 }

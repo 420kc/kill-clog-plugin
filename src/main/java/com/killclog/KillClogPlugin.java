@@ -139,6 +139,7 @@ public class KillClogPlugin extends Plugin
 	private ConfigManager configManager;
 
 	private NavigationButton navButton;
+	private PlayerClans playerClans;
 	private String lastLocalName;
 	@Inject
 	private Gson gson;
@@ -201,7 +202,8 @@ public class KillClogPlugin extends Plugin
 		clientToolbar.addNavigation(navButton);
 		panel.setNameAutocompleter(nameAutocompleter);
 		panel.setClogIndex(clogIndex);
-		panel.setClans(new PlayerClans(client, chatIconManager, runeProfileService));
+		playerClans = new PlayerClans(client, chatIconManager, runeProfileService);
+		panel.setClans(playerClans);
 
 		lookupMenu.start(config, menuManager);
 
@@ -404,6 +406,7 @@ public class KillClogPlugin extends Plugin
 			sessionState.resetAutoLookupSession();
 			liveClogSync.resetFirstSyncWarning();
 			nameAutocompleter.clearClientSnapshot();
+			playerClans.clearClientSnapshot();
 			markLocalHiscoresDirty();
 			// Silence old completions before ending the cache epoch, then
 			// cancel again so an attempt that began in that narrow handoff
@@ -608,6 +611,7 @@ public class KillClogPlugin extends Plugin
 	public void onGameTick(GameTick event)
 	{
 		nameAutocompleter.refreshClientSnapshot();
+		playerClans.refreshClientSnapshot();
 		localAccountHash = client.getAccountHash();
 		if (world.tick())
 		{
