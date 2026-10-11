@@ -235,6 +235,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 		{
 			body.add(raidRow(i));
 		}
+		// The Fractured Archive opens 2026-10-20; its row takes the raid's kills and log once its hiscores exist.
+		body.add(CardBody.line("TFA: ", "Coming Soon", CLOG_GREEN));
 		body.add(CardBody.gap(WEAPON_PAD))
 			.add(CardBody.sprites(1, weaponSprites, PanelData.MEGARARE_ITEM_IDS, PanelData.MEGARARE_ITEM_NAMES,
 				weaponCounts, WEAPON_PAD));
