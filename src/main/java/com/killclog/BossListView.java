@@ -7,6 +7,7 @@
 package com.killclog;
 
 import java.awt.BorderLayout;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -18,6 +19,7 @@ import java.util.Set;
 import java.util.function.BooleanSupplier;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
+import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
@@ -55,6 +57,7 @@ public class BossListView
 	private final JPanel root;
 	private final Map<HiscoreSkill, Row> rows = new LinkedHashMap<>();
 	private final BooleanSupplier mirrorActive;
+	private final JTextField search = new JTextField();
 
 	private static final class Row
 	{
@@ -202,13 +205,7 @@ public class BossListView
 		row.kc.setBorder(new EmptyBorder(0, 0, 0, 4));
 		ClogHelper.antialias(row.kc);
 
-		JPanel panel = new JPanel(new BorderLayout(4, 0));
-		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		panel.setBorder(TooltipController.CELL_BORDER);
-		panel.setPreferredSize(new Dimension(0, ROW_HEIGHT));
-		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, ROW_HEIGHT));
-		panel.add(row.icon, BorderLayout.WEST);
-		panel.add(row.name, BorderLayout.CENTER);
+		JPanel panel = rowPanel(row.icon, row.name);
 		panel.add(row.kc, BorderLayout.EAST);
 		// Outline color follows the kc label (mirrored from the grid, so the
 		// completion highlighter shows through, same as the grid cell); the
@@ -225,7 +222,8 @@ public class BossListView
 	{
 		JLabel icon = new JLabel(new ImageIcon(ClogHelper.makeSearchIcon(ColorScheme.LIGHT_GRAY_COLOR, 1f)));
 		icon.setPreferredSize(new Dimension(24, ROW_HEIGHT));
-		JTextField field = new JTextField();
+		JTextField field = search;
+		field.setCursor(Cursor.getDefaultCursor());
 		field.setFont(FontManager.getRunescapeSmallFont());
 		field.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		field.setCaretColor(ColorScheme.LIGHT_GRAY_COLOR);
@@ -261,14 +259,26 @@ public class BossListView
 				}
 			}
 		});
+		return rowPanel(icon, field);
+	}
+
+	/** One list row: a fixed-height strip, its icon on the left and its content filling the rest. */
+	private static JPanel rowPanel(JComponent icon, JComponent content)
+	{
 		JPanel panel = new JPanel(new BorderLayout(4, 0));
 		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		panel.setBorder(TooltipController.CELL_BORDER);
 		panel.setPreferredSize(new Dimension(0, ROW_HEIGHT));
 		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, ROW_HEIGHT));
 		panel.add(icon, BorderLayout.WEST);
-		panel.add(field, BorderLayout.CENTER);
+		panel.add(content, BorderLayout.CENTER);
 		return panel;
+	}
+
+	/** Empties the search, so each new lookup opens on every boss. */
+	void clearSearch()
+	{
+		search.setText("");
 	}
 
 	/**

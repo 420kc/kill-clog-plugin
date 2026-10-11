@@ -940,6 +940,7 @@ public class KillClogPanel extends PluginPanel
 		rsn = null;
 		setClogSetupNoticeVisible(false);
 		cells.reset();
+		bossListView.clearSearch();
 
 		playerName.setText(" ");
 		playerName.setIcon(null);
