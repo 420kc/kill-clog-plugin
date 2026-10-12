@@ -267,6 +267,36 @@ public class LeagueViewPanelTest
 	}
 
 	@Test
+	public void afterLogoutYourNameIsAnyonesButTheSearchIconStillKnowsIt() throws Exception
+	{
+		// Logged out, a lookup of your name reads every site like anyone's, so it can show your character and clan;
+		// the search icon's double-click still looks you up.
+		Method summary = KillClogPanel.class.getDeclaredMethod("buildClogSummaryTooltip",
+			javax.swing.JComponent.class, HiscoreResult.class, ClogResult.class, String.class, String.class);
+		summary.setAccessible(true);
+		HiscoreResult row = new HiscoreResult(AccountType.REGULAR, new java.util.HashMap<>(), new java.util.HashMap<>(),
+			new java.util.HashMap<>(), new java.util.HashMap<>(), new java.util.HashMap<>(), 100, 1000L, 30, 1);
+		javax.swing.JLabel owner = new javax.swing.JLabel();
+		new javax.swing.JPanel().add(owner);
+		SwingUtilities.invokeAndWait(() ->
+		{
+			try
+			{
+				panel.setLoggedInPlayer("Me", AccountType.REGULAR);
+				panel.setLoggedInPlayer(null, null);
+				assertFalse("your log offers setup only while you're logged in",
+					field(summary.invoke(panel, owner, row, null, "Me", null), "firstTimeSetup", Boolean.class));
+				assertEquals(null, field(panel, "localRsn", String.class));
+				assertEquals("Me", field(panel, "lastLocalRsn", String.class));
+			}
+			catch (ReflectiveOperationException e)
+			{
+				throw new AssertionError(e);
+			}
+		});
+	}
+
+	@Test
 	public void yourHoverCardsOfferSetupOnlyForALogThisClientKeeps() throws Exception
 	{
 		Method summary = KillClogPanel.class.getDeclaredMethod("buildClogSummaryTooltip",

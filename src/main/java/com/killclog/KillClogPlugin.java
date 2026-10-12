@@ -395,6 +395,8 @@ public class KillClogPlugin extends Plugin
 		else if (event.getGameState() == GameState.LOGIN_SCREEN)
 		{
 			SwingUtilities.invokeLater(panel::reloadTooltipSprites);
+			// Logged out, your name is anyone's: its lookup reads every site, character and clan included.
+			SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(null, null));
 			// The sync affordance belongs to the account that just ended. Hiding
 			// it also fences a success callback queued during the logout handoff.
 			panel.setSyncArrowHasData(false);

@@ -1089,6 +1089,16 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void aLogoutTellsThePanelNobodyIsLoggedIn() throws Exception
+	{
+		// Logged out, a lookup of your name reads every site like anyone's, so it shows your character and clan.
+		gameState = GameState.LOGIN_SCREEN;
+		logout();
+		drainEdt();
+		verify(panel).setLoggedInPlayer(null, null);
+	}
+
+	@Test
 	public void aLogoutFromAMainWorldEndsAFlip() throws Exception
 	{
 		when(((KillclogService) field("killclogService")).activeLeague()).thenReturn("demonic-pacts");

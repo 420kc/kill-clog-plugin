@@ -153,8 +153,10 @@ public class KillClogPanel extends PluginPanel
 	// Current lookup state lives on lookupSession; rsn here is a separate
 	// display-name field set by fetchRsn for the playerName label.
 	private String rsn;
+	// Who is logged in now, null once logged out (a lookup of them is your own); your last login's name for the search icon.
 	private String localRsn;
 	private AccountType localAccountType;
+	private String lastLocalRsn;
 
 	private final TooltipController tooltipController;
 	private final LookupSession lookupSession;
@@ -922,12 +924,12 @@ public class KillClogPanel extends PluginPanel
 
 	private void lookupSelfFromSearchIcon()
 	{
-		if (localRsn == null || localRsn.isEmpty())
+		if (lastLocalRsn == null || lastLocalRsn.isEmpty())
 		{
 			return;
 		}
 		searchRowController.exitIfActive();
-		searchBar.setText(localRsn);
+		searchBar.setText(lastLocalRsn);
 		doLookup();
 	}
 
@@ -1159,6 +1161,10 @@ public class KillClogPanel extends PluginPanel
 	{
 		this.localRsn = name;
 		this.localAccountType = accountType;
+		if (name != null)
+		{
+			this.lastLocalRsn = name;
+		}
 	}
 
 	/** The RSN the panel shows, or the one it looked up when no provider named them; null with no lookup. */
