@@ -646,7 +646,8 @@ final class PublicationCoordinator
 			store.variantSecondsAcrossProfiles(AdvLogPbs.CONFIG_GROUP, KillLog.KEY_PREFIX, profileKeys, boss.getName())
 				.forEach((key, seconds) -> putGameRecord(out, key, KillLog.labeled(configManager, profileKeys, key, seconds)));
 		}
-		log.debug("killclog sync pb gather: {} owned profiles, {} pbs", profileKeys.size(), pbs.size());
+		log.debug("killclog sync pb gather: {} owned profiles, {} bosses from RuneLite's store, {} detailed pbs"
+			+ " (the store, the adventure log, the collection log, kills seen)", profileKeys.size(), pbs.size(), out.size());
 		return out;
 	}
 
