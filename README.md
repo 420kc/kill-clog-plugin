@@ -64,6 +64,10 @@ HiScores load for any valid RSN, including Collection Log totals and ranks when 
 
 ![The Player Summary under the cursor: the name shows the account type, the clan icon its clan, the prestige cape its prestige, and a pet its name](screenshots/player-summary-hovers.png)
 
+Your clan comes from the game. Other players' clans come from RuneProfile when they have a profile there.
+
+![CBC looked up: the name shows the account type, the clan icon the clan RuneProfile names, the prestige cape its prestige, and a pet its name](screenshots/player-summary-lookup-cbc.png)
+
 Hover your Collection Log total to see your log, and click it to pin and browse every tab and page.
 
 ![From the Collection Log card to a tab to a page: Minigames to Castle Wars, and Other to Elder Chaos Druids](screenshots/collection-log-tab-and-page.png)
