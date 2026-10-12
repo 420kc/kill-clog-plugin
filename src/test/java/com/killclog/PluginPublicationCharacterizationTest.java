@@ -1027,11 +1027,11 @@ public class PluginPublicationCharacterizationTest
 		java.util.Map<String, String> want = new java.util.TreeMap<>();
 		want.put("zulrah", "55.5 store");
 		want.put("chambers of xeric solo", "1400.0 advlog");
-		want.put("chambers of xeric 5 players", "1200.0 store");
+		want.put("chambers of xeric 5 players", "1200.0 advlog");
 		want.put("chambers of xeric challenge mode 3 players", "2000.0 store");
 		want.put("vorkath", "70.0 advlog");
 		want.put("the leviathan", "150.0 store");
-		assertEquals("faster lane wins, a tie keeps the store, another account never counts", want, got);
+		assertEquals("the adventure log is the game's: it takes RuneLite's time; another account never counts", want, got);
 		assertEquals(Double.valueOf(55.5), collapsed.getValue().get("Zulrah"));
 		assertEquals(Double.valueOf(1200.0), collapsed.getValue().get("Chambers of Xeric"));
 	}

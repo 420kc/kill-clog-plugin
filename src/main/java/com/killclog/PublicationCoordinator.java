@@ -623,8 +623,8 @@ final class PublicationCoordinator
 	 * RuneLite's own chat-commands store records the local player's personal
 	 * bests; no public provider serves them, which makes this map the sync's
 	 * defining cargo. One account splinters into many rs-profile fragments
-	 * over time, so the gather sweeps every fragment owned by the captured
-	 * account hash and keeps the fastest time per boss. STANDARD-world fragments
+	 * over time, so the gather reads every fragment owned by the captured
+	 * account hash ({@link PersonalBests#variantSecondsAcrossProfiles}). STANDARD-world fragments
 	 * only: Leagues and speedrun profiles share the display name but store
 	 * buffed-world times, and the min-merge would launder those into the
 	 * player's real record. Client thread (config reads).
@@ -637,10 +637,10 @@ final class PublicationCoordinator
 		{
 			Map<String, Double> vanilla = store.variantSecondsAcrossProfiles("personalbest", "", profileKeys, boss.getName());
 			vanilla.values().stream().min(Double::compare).ifPresent(seconds -> pbs.put(boss.getName(), seconds));
-			vanilla.forEach((key, seconds) -> mergeDetailedPb(out, key, seconds, "store"));
+			vanilla.forEach((key, seconds) -> out.putIfAbsent(key, new SyncService.DetailedPb(seconds, "store")));
+			// The game's own records, the adventure log Kill Clog read, the collection log's line and the kills seen.
 			store.variantSecondsAcrossProfiles(AdvLogPbs.CONFIG_GROUP, AdvLogPbs.KEY_PREFIX, profileKeys, boss.getName())
-				.forEach((key, seconds) -> mergeDetailedPb(out, key, seconds, "advlog"));
-			// The game's own records, the collection log's line and the kills seen, take their key.
+				.forEach((key, seconds) -> putGameRecord(out, key, new SyncService.DetailedPb(seconds, "advlog")));
 			store.variantSecondsAcrossProfiles(AdvLogPbs.CONFIG_GROUP, ClogPbs.KEY_PREFIX, profileKeys, boss.getName())
 				.forEach((key, seconds) -> putGameRecord(out, key, new SyncService.DetailedPb(seconds, "clog")));
 			store.variantSecondsAcrossProfiles(AdvLogPbs.CONFIG_GROUP, KillLog.KEY_PREFIX, profileKeys, boss.getName())
@@ -651,24 +651,22 @@ final class PublicationCoordinator
 		return out;
 	}
 
-	/** A game record replaces RuneLite's file and the adventure log; between two, faster wins, a kill seen on a tie. */
-	private static void putGameRecord(Map<String, SyncService.DetailedPb> out, String key, SyncService.DetailedPb pb)
+	/**
+	 * A game record replaces RuneLite's file even when slower; between two, faster wins and the later lane takes a
+	 * tie. A whole second leaves a file time inside it alone: the same time with its tenths, shown without them.
+	 */
+	/* package */ static void putGameRecord(Map<String, SyncService.DetailedPb> out, String key, SyncService.DetailedPb pb)
 	{
 		SyncService.DetailedPb existing = out.get(key);
-		if (existing == null || !"clog".equals(existing.source) || pb.seconds <= existing.seconds)
+		boolean file = existing != null && "store".equals(existing.source);
+		if (existing == null || (file ? !sameTimeInTenths(existing.seconds, pb.seconds) : pb.seconds <= existing.seconds))
 		{
 			out.put(key, pb);
 		}
 	}
 
-	/** Faster wins; on a tie the earlier lane keeps the tag. */
-	private static void mergeDetailedPb(Map<String, SyncService.DetailedPb> out,
-		String key, double seconds, String source)
+	private static boolean sameTimeInTenths(double tenths, double whole)
 	{
-		SyncService.DetailedPb existing = out.get(key);
-		if (existing == null || seconds < existing.seconds)
-		{
-			out.put(key, new SyncService.DetailedPb(seconds, source));
-		}
+		return whole == Math.rint(whole) && tenths != Math.rint(tenths) && Math.abs(tenths - whole) < 1;
 	}
 }

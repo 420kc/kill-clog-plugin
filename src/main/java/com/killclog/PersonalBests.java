@@ -47,7 +47,7 @@ final class PersonalBests
 				String key = profile.getKey();
 				if (key != null && !key.isEmpty())
 				{
-					keys.add(key.startsWith("rsprofile.") ? key : "rsprofile." + key);
+					keys.add(withPrefix(key));
 				}
 			}
 		}
@@ -55,9 +55,8 @@ final class PersonalBests
 	}
 
 	/**
-	 * Formatted fastest time for a panel boss across team sizes AND across rs-profile fragments, or null when none
-	 * recorded. RuneLite splinters one account into many internal profiles over time (client changes, world types),
-	 * scattering its personal bests; the true pb is the minimum over the explicitly selected account-owned fragments.
+	 * Formatted fastest time for a panel boss across team sizes, read from the account's rs-profile fragments
+	 * ({@link #variantSecondsAcrossProfiles}), or null when none recorded.
 	 */
 	String pbText(java.util.List<String> profileKeys, String panelBossName)
 	{
@@ -124,24 +123,53 @@ final class PersonalBests
 		return out;
 	}
 
-	/** {@link #variantSeconds} over the same fragment sweep the tooltips use. */
+	/**
+	 * {@link #variantSeconds} over the account's fragments. The one RuneLite chose for the account speaks for every
+	 * variant it has; the ones it ignores (it logs "multiple matching profiles") fill only the rest, their fastest. An
+	 * ignored fragment keeps times from before precise timing and team sizes an older RuneLite filed one player off.
+	 */
 	java.util.Map<String, Double> variantSecondsAcrossProfiles(String group, String prefix,
 		java.util.List<String> profileKeys, String panelBossName)
 	{
-		return variantSeconds(key ->
+		String chosen = profileKeys.isEmpty() ? null : withPrefix(configManager.getRSProfileKey());
+		java.util.Map<String, Double> now = variantSeconds(key -> fastest(group, prefix + key, profileKeys, chosen, true),
+			panelBossName);
+		java.util.Map<String, Double> ignored = variantSeconds(key -> fastest(group, prefix + key, profileKeys, chosen, false),
+			panelBossName);
+		java.util.Map<String, Double> out = new java.util.LinkedHashMap<>();
+		String base = keyCandidates(panelBossName)[0];
+		for (String suffix : TEAM_SUFFIXES)
 		{
-			Double best = null;
-			for (String profileKey : profileKeys)
+			Double seconds = now.getOrDefault(base + suffix, ignored.get(base + suffix));
+			if (seconds != null)
 			{
-				Double pb = configManager.getConfiguration(
-					group, profileKey, prefix + key, (java.lang.reflect.Type) double.class);
-				if (pb != null && pb > 0 && (best == null || pb < best))
-				{
-					best = pb;
-				}
+				out.put(base + suffix, seconds);
 			}
-			return best;
-		}, panelBossName);
+		}
+		return out;
+	}
+
+	@Nullable
+	private Double fastest(String group, String key, java.util.List<String> profileKeys, @Nullable String chosen,
+		boolean fromChosen)
+	{
+		Double best = null;
+		for (String profileKey : profileKeys)
+		{
+			Double pb = profileKey.equals(chosen) != fromChosen ? null
+				: configManager.getConfiguration(group, profileKey, key, (java.lang.reflect.Type) double.class);
+			if (pb != null && pb > 0 && (best == null || pb < best))
+			{
+				best = pb;
+			}
+		}
+		return best;
+	}
+
+	@Nullable
+	private static String withPrefix(@Nullable String key)
+	{
+		return key == null || key.startsWith("rsprofile.") ? key : "rsprofile." + key;
 	}
 
 	/**

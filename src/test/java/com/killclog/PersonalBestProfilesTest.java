@@ -3,10 +3,14 @@ package com.killclog;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneScapeProfile;
 import net.runelite.client.config.RuneScapeProfileType;
 import org.junit.Test;
 import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 public class PersonalBestProfilesTest
 {
@@ -82,6 +86,40 @@ public class PersonalBestProfilesTest
 		assertEquals("PB: ", ClogHelper.pbLabel(zulrah));
 		assertEquals("1:06", ClogHelper.pbTime(zulrah));
 		assertNull(PersonalBests.labeled(Map.of(), "Zulrah"));
+	}
+
+	@Test
+	public void theProfileRuneLiteChoseSpeaksAndTheOnesItIgnoresFillGaps()
+	{
+		// One account's two STANDARD fragments as RuneLite left them: the old one has whole seconds from before
+		// precise timing and ToA team sizes filed one player off (a real account's, 2026-10-12).
+		ConfigManager config = mock(ConfigManager.class);
+		when(config.getRSProfileKey()).thenReturn("rsprofile.chosen");
+		Object[][] stored = {
+			{"rsprofile.chosen", "alchemical hydra", 101.4},
+			{"rsprofile.old", "alchemical hydra", 101.0},
+			{"rsprofile.chosen", "tombs of amascut expert mode 6 players", 1798.8},
+			{"rsprofile.old", "tombs of amascut expert mode 6 players", 1634.4},
+			{"rsprofile.old", "tombs of amascut expert mode solo", 1651.2},
+			{"rsprofile.older", "tombs of amascut expert mode solo", 1700.4}};
+		for (Object[] pb : stored)
+		{
+			when(config.getConfiguration(eq("personalbest"), eq((String) pb[0]), eq((String) pb[1]),
+				eq((java.lang.reflect.Type) double.class))).thenReturn((Double) pb[2]);
+		}
+		PersonalBests bests = new PersonalBests(config);
+		List<String> keys = List.of("rsprofile.old", "rsprofile.chosen", "rsprofile.older");
+
+		assertEquals(Map.of("alchemical hydra", 101.4),
+			bests.variantSecondsAcrossProfiles("personalbest", "", keys, "Alchemical Hydra"));
+		Map<String, Double> toa = bests.variantSecondsAcrossProfiles("personalbest", "", keys, "Tombs of Amascut: Expert Mode");
+		assertEquals(Double.valueOf(1798.8), toa.get("tombs of amascut expert mode 6 players"));
+		assertEquals("a variant the chosen one lacks: the fastest ignored one", Double.valueOf(1651.2),
+			toa.get("tombs of amascut expert mode solo"));
+
+		when(config.getRSProfileKey()).thenReturn(null);
+		assertEquals("no chosen profile among them: the fastest of all", Map.of("alchemical hydra", 101.0),
+			bests.variantSecondsAcrossProfiles("personalbest", "", keys, "Alchemical Hydra"));
 	}
 
 	private static RuneScapeProfile profile(String name, long hash, String key)
