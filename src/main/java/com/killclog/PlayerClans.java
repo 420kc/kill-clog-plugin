@@ -7,6 +7,8 @@ import net.runelite.api.Client;
 import net.runelite.api.Player;
 import net.runelite.api.clan.ClanChannel;
 import net.runelite.api.clan.ClanChannelMember;
+import net.runelite.api.clan.ClanMember;
+import net.runelite.api.clan.ClanRank;
 import net.runelite.api.clan.ClanSettings;
 import net.runelite.api.clan.ClanTitle;
 import net.runelite.client.game.ChatIconManager;
@@ -31,11 +33,15 @@ class PlayerClans
 	{
 		Player you = client.getLocalPlayer();
 		String name = you != null ? you.getName() : null;
-		ClanChannel clan = client.getClanChannel();
 		ClanSettings settings = client.getClanSettings();
-		ClanChannelMember member = clan != null && name != null ? clan.findMember(name) : null;
-		yours = new Yours(name, clan != null ? clan.getName() : null,
-			member != null && settings != null ? settings.titleForRank(member.getRank()) : null);
+		ClanChannel channel = client.getClanChannel();
+		// Membership lives in the clan's settings, so it stands without the clan's chat channel joined; the channel
+		// names the clan only while the settings haven't loaded.
+		ClanMember member = settings != null && name != null ? settings.findMember(name) : null;
+		ClanChannelMember inChannel = member == null && channel != null && name != null ? channel.findMember(name) : null;
+		String clan = member != null ? settings.getName() : channel != null ? channel.getName() : null;
+		ClanRank rank = member != null ? member.getRank() : inChannel != null ? inChannel.getRank() : null;
+		yours = new Yours(name, clan, rank != null && settings != null ? settings.titleForRank(rank) : null);
 	}
 
 	void clearClientSnapshot()

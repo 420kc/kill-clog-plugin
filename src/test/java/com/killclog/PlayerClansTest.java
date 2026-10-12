@@ -5,6 +5,7 @@ import net.runelite.api.Client;
 import net.runelite.api.Player;
 import net.runelite.api.clan.ClanChannel;
 import net.runelite.api.clan.ClanChannelMember;
+import net.runelite.api.clan.ClanMember;
 import net.runelite.api.clan.ClanRank;
 import net.runelite.api.clan.ClanSettings;
 import net.runelite.api.clan.ClanTitle;
@@ -41,6 +42,30 @@ public class PlayerClansTest
 		assertEquals("Clogged", clans.name("420_kc"));
 		assertSame(image, clans.icon("420 KC"));
 		verifyNoInteractions(client);
+	}
+
+	@Test
+	public void yourClanStandsWithoutItsChatChannel()
+	{
+		// Membership is in the clan's settings: a player who left the clan's chat channel is still in the clan.
+		ClanTitle title = new ClanTitle(100, "Administrator");
+		Player you = mock(Player.class);
+		when(you.getName()).thenReturn("420 kc");
+		ClanMember member = mock(ClanMember.class);
+		when(member.getRank()).thenReturn(ClanRank.ADMINISTRATOR);
+		ClanSettings settings = mock(ClanSettings.class);
+		when(settings.getName()).thenReturn("Clogged");
+		when(settings.findMember("420 kc")).thenReturn(member);
+		when(settings.titleForRank(ClanRank.ADMINISTRATOR)).thenReturn(title);
+		when(client.getLocalPlayer()).thenReturn(you);
+		when(client.getClanSettings()).thenReturn(settings);
+		BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+		when(icons.getRankImage(title)).thenReturn(image);
+
+		clans.refreshClientSnapshot();
+
+		assertEquals("Clogged", clans.name("420 kc"));
+		assertSame(image, clans.icon("420 kc"));
 	}
 
 	@Test
