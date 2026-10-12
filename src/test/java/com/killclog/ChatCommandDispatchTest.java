@@ -44,7 +44,10 @@ public class ChatCommandDispatchTest
 			{
 				harness.command.setClogIndex(null);
 			}
-			assertEquals("Random Events: 1/2 <img=101>x2", harness.run("!kclog random events"));
+			// With the game's pages read, an item counts on every page that lists it, as the game counts it (item 2 is
+			// filed under Mixology); before then the page holds what the source filed under it.
+			assertEquals(warm ? "Random Events: 2/2 <img=101>x2 <img=102>" : "Random Events: 1/2 <img=101>x2",
+				harness.run("!kclog random events"));
 			assertEquals("Mastering Mixology: 1/2 <img=102>", harness.run("!kclog mixology"));
 			assertEquals("Mastering Mixology: 1/2 missing <img=103>", harness.run("!missing mastering mixology"));
 		}
@@ -60,11 +63,12 @@ public class ChatCommandDispatchTest
 		assertEquals("All Pets: no clog data", harness.run("!kclog pets"));
 		harness.result = result(Map.of(), Map.of());
 		assertEquals("All Pets: page not synced", harness.run("!missing pets"));
-		harness.result = result(Map.of("all_pets", List.of(item(1, 2))), Map.of("all_pets", List.of(1)));
+		// The game's page (three pets, read by the client) decides what complete and missing mean.
+		harness.result = result(Map.of("all_pets", List.of(item(1, 2), item(2, 1), item(3, 1))), Map.of("all_pets", List.of(1)));
 		assertEquals("All Pets: complete", harness.run("!missing pets"));
 		harness.result = result(Map.of(), Map.of("all_pets", List.of(1)));
-		assertEquals("All Pets: 0/1", harness.run("!kclog pets"));
-		assertEquals("All Pets: 1/1 missing <img=101>", harness.run("!missing pets"));
+		assertEquals("All Pets: 0/3", harness.run("!kclog pets"));
+		assertEquals("All Pets: 3/3 missing <img=101> <img=102> <img=103>", harness.run("!missing pets"));
 	}
 
 	@Test

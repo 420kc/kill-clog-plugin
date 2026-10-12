@@ -552,6 +552,11 @@ class KillClogChatCommand
 				() -> killclogService.lookupClog(rsn))
 				: leagueLog != null && leagueLog.isActivePlayer(rsn) ? clogService.lookupLocal(leagueLog, rsn)
 				: killclogService.lookupClog(rsn, league)).join();
+			ClogIndex index = clogIndex;
+			if (index != null)
+			{
+				cl = index.laid(cl);
+			}
 		}
 		catch (Exception e)
 		{

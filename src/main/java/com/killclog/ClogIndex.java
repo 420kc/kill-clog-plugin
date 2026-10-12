@@ -177,6 +177,13 @@ final class ClogIndex
 		snapshot = null;
 	}
 
+	/** A log laid on the game's own pages, whichever source sent it; as sent before the client has read the log. */
+	@Nullable
+	ClogResult laid(@Nullable ClogResult clog)
+	{
+		return clog != null && isParsed() ? clog.onPages(categoryItems(), this::canonicalItemId) : clog;
+	}
+
 	boolean isParsed()
 	{
 		return snapshot != null;

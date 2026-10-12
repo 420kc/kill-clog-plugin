@@ -1238,6 +1238,7 @@ public class KillClogPanel extends PluginPanel
 
 	public void onConfigChanged(String key)
 	{
+		lookupSession.setClogIndex(clogIndex);
 		switch (key)
 		{
 			case "showLeaderboardSelector":

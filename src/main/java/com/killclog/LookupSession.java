@@ -105,6 +105,12 @@ public class LookupSession
 		fanout.readLeague(league, leagueLog);
 	}
 
+	/** The game's own pages, which every log these lookups show is laid on. */
+	void setClogIndex(@Nullable ClogIndex clogIndex)
+	{
+		fanout.setClogIndex(clogIndex);
+	}
+
 	@Nullable
 	String league()
 	{
@@ -169,7 +175,7 @@ public class LookupSession
 
 		// The shared cache holds main-game rows only.
 		final HiscoreResult cachedHiscore = fanout.getLeague() == null ? hiscoreService.getCached(player) : null;
-		final ClogResult cachedClog = clogService.getCachedResult(player);
+		final ClogResult cachedClog = fanout.onGamePages(clogService.getCachedResult(player));
 		if (cachedHiscore != null && !hiscoreService.isStale(player))
 		{
 			startClogLookup(player, isSelf, thisLookup);

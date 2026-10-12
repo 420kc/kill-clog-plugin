@@ -1,8 +1,13 @@
 package com.killclog;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.IntUnaryOperator;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -78,9 +83,15 @@ public class ClogResult
 	 */
 	private ClogResult(ClogResult source, AccountType accountType)
 	{
+		this(source, accountType, source.obtainedItems, source.categoryItems);
+	}
+
+	private ClogResult(ClogResult source, AccountType accountType, Map<String, List<ClogItem>> obtainedItems,
+		Map<String, List<Integer>> categoryItems)
+	{
 		this.playerName = source.playerName;
-		this.obtainedItems = source.obtainedItems;
-		this.categoryItems = source.categoryItems;
+		this.obtainedItems = obtainedItems;
+		this.categoryItems = categoryItems;
 		this.itemNames = source.itemNames;
 		this.lastChanged = source.lastChanged;
 		this.providerAccountType = accountType;
@@ -121,6 +132,72 @@ public class ClogResult
 	{
 		return copyWithProvenanceAndAccountType(
 			temple, runeProfile, killclog, providerAccountType);
+	}
+
+	/**
+	 * This log on the game's own pages: each page the game has lists the game's items and holds every item the log
+	 * has, wherever the source filed it, as the game counts an item on every page that lists it. TempleOSRS files
+	 * the Ring of 3rd Age under its Mimic and keeps the Rare pages' leftovers on the tier pages; on the game's pages
+	 * neither shows. Pages the game doesn't have (Kill Clog's own 3rd Age, Gilded and Mimic, a provider's old page
+	 * name) keep what the source sent, and a page the source never knew, no key and none of its items anywhere, stays
+	 * unknown rather than empty. With no pages read yet it is this log as sent.
+	 */
+	ClogResult onPages(Map<String, List<Integer>> pages, IntUnaryOperator canonical)
+	{
+		if (pages.isEmpty())
+		{
+			return this;
+		}
+		Map<Integer, ClogItem> held = new HashMap<>();
+		for (List<ClogItem> items : obtainedItems.values())
+		{
+			for (ClogItem item : items)
+			{
+				int id = canonical.applyAsInt(item.id);
+				ClogItem as = id == item.id ? item : new ClogItem(id, item.count, item.date, item.obtainedAtKc, item.obtainedFrom);
+				held.merge(id, as, (a, b) -> b.count > a.count || b.count == a.count && a.date == null ? b : a);
+			}
+		}
+		Set<Integer> listed = new HashSet<>(held.keySet());
+		for (List<Integer> ids : categoryItems.values())
+		{
+			for (int id : ids)
+			{
+				listed.add(canonical.applyAsInt(id));
+			}
+		}
+		Map<String, List<ClogItem>> obtained = new HashMap<>(obtainedItems);
+		Map<String, List<Integer>> categories = new HashMap<>(categoryItems);
+		pages.forEach((page, ids) ->
+		{
+			if (!categoryItems.containsKey(page) && ids.stream().noneMatch(id -> listed.contains(canonical.applyAsInt(id))))
+			{
+				return;
+			}
+			List<ClogItem> onPage = new ArrayList<>();
+			for (int id : ids)
+			{
+				ClogItem item = held.get(canonical.applyAsInt(id));
+				if (item != null)
+				{
+					onPage.add(item);
+				}
+			}
+			categories.put(page, ids);
+			if (onPage.isEmpty())
+			{
+				obtained.remove(page);
+			}
+			else
+			{
+				obtained.put(page, onPage);
+			}
+		});
+		ClogResult copy = new ClogResult(this, providerAccountType, obtained, categories);
+		copy.fromTemple = fromTemple;
+		copy.fromRuneProfile = fromRuneProfile;
+		copy.fromKillclog = fromKillclog;
+		return copy;
 	}
 
 	ClogResult withLocalSource(boolean local)

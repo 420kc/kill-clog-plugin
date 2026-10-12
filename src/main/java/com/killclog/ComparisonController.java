@@ -214,6 +214,7 @@ public class ComparisonController
 	public void setClogIndex(@Nullable ClogIndex clogIndex)
 	{
 		unsyncedCatalog.setClogIndex(clogIndex);
+		fanout.setClogIndex(clogIndex);
 	}
 
 	public void setUnsyncedCatalogResolver(Consumer<ClogResult> resolver)

@@ -7,6 +7,7 @@ import javax.swing.SwingUtilities;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -46,6 +47,9 @@ final class LookupFanout
 	@Getter(AccessLevel.PACKAGE)
 	@Nullable private String league;
 	@Nullable private LocalClogCache leagueLog;
+	// The game's own pages once the client has read the log: every log a lookup shows is laid on them.
+	@Setter(AccessLevel.PACKAGE)
+	@Nullable private volatile ClogIndex clogIndex;
 
 	void readLeague(@Nullable String league, @Nullable LocalClogCache leagueLog)
 	{
@@ -63,8 +67,16 @@ final class LookupFanout
 	@Nullable
 	ClogResult ownLog(String player)
 	{
-		return league == null ? clogService.getCachedResult(player)
-			: leagueLog != null ? clogService.localResult(leagueLog, player) : null;
+		return onGamePages(league == null ? clogService.getCachedResult(player)
+			: leagueLog != null ? clogService.localResult(leagueLog, player) : null);
+	}
+
+	/** A log on the game's own pages ({@link ClogIndex#laid}). */
+	@Nullable
+	ClogResult onGamePages(@Nullable ClogResult clog)
+	{
+		ClogIndex index = clogIndex;
+		return index != null ? index.laid(clog) : clog;
 	}
 
 	/** Open a new fetch generation and return its version stamp. */
@@ -155,6 +167,7 @@ final class LookupFanout
 			() -> runeProfileService.lookupClog(player), () -> killclogService.lookupClog(player))
 			: isSelf && leagueLog != null ? clogService.lookupLocal(leagueLog, player)
 			: killclogService.lookupClog(player, league))
+			.thenApply(this::onGamePages)
 			.thenAccept(result -> onEdtIfCurrent(stamp, () -> onResult.accept(result)))
 			.exceptionally(ex ->
 			{
