@@ -243,14 +243,13 @@ public class ComparisonController
 		compareTooltipDataMap.clear();
 		if (compared.hiscore != null)
 		{
-			ClogResult catalog = getCompareClogResult() == null ? unsyncedCatalog.result() : null;
 			for (HiscoreSkill boss : PanelData.BOSSES)
 			{
 				HiscoreSkill card = PanelData.card(boss);
 				String bossName = card.getName();
 				String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(bossName, bossName);
 				// No red PB source exists, for a hard mode either.
-				TooltipData data = TooltipDataBuilder.withHardMode(buildCompareBossData(bossName, hiscoreName, catalog),
+				TooltipData data = TooltipDataBuilder.withHardMode(buildCompareBossData(bossName, hiscoreName),
 					card, getCompareHiscoreResult(), name -> null);
 				if (data != null)
 				{
@@ -262,24 +261,14 @@ public class ComparisonController
 
 	/** Build one boss cell's red-side TooltipData: synced clog data, else the unsynced catalog preview. */
 	@Nullable
-	private TooltipData buildCompareBossData(String displayName, String hiscoreName,
-		@Nullable ClogResult catalog)
+	private TooltipData buildCompareBossData(String displayName, String hiscoreName)
 	{
-		String category = ClogService.bossToCategory(hiscoreName);
 		HiscoreResult view = getCompareHiscoreResult();
-		int rank = view.getRank(hiscoreName);
+		int kc = view.getKc(hiscoreName);
 		// The red card is an ordinary solo card, so it carries the compared
 		// player's KC the same way the blue one does. No red PB source exists.
-		TooltipData data = tooltipDataBuilder.buildTooltipData(displayName, category, rank,
-			view.getKc(hiscoreName), null, getCompareClogResult());
-		if (data == null)
-		{
-			return tooltipDataBuilder.buildUnsyncedTooltipData(
-				displayName, category, rank, "Kills: ", view.getKc(hiscoreName),
-				catalog != null ? catalog : unsyncedCatalog.result());
-		}
-		tooltipDataBuilder.preloadItemImages(data);
-		return data;
+		return tooltipDataBuilder.buildBossCard(displayName, ClogService.bossToCategory(hiscoreName),
+			view.getRank(hiscoreName), kc, null, getCompareClogResult(), "Kills: ", kc, unsyncedCatalog.result());
 	}
 
 	/**
@@ -751,25 +740,8 @@ public class ComparisonController
 	@Nullable
 	TooltipData buildCompareClueTierData(HiscoreSkill tier)
 	{
-		String category = PanelData.CLUE_CATEGORIES.get(tier);
-		if (category == null)
-		{
-			return null;
-		}
-		int rank = compared.hiscore != null
-			? getCompareHiscoreResult().getActivityRank(tier.getName()) : -1;
-		ClogResult clog = getCompareClogResult();
-		TooltipData data = clog != null
-			? tooltipDataBuilder.buildTooltipData(Cells.capitalizeTier(tier),
-				category, rank, clog) : null;
-		if (data != null)
-		{
-			return data;
-		}
-		int score = compared.hiscore != null
-			? getCompareHiscoreResult().getActivityScore(tier.getName()) : -1;
-		return tooltipDataBuilder.buildUnsyncedTooltipData(
-			Cells.capitalizeTier(tier), category, rank, Cells.cluesCompletedLabel(tier), score, unsyncedCatalog.result());
+		return tooltipDataBuilder.buildClueTierCard(tier, getCompareHiscoreResult(), getCompareClogResult(),
+			unsyncedCatalog.result());
 	}
 
 	private static int hiscoreKc(@Nullable HiscoreResult r, String hiscoreName)

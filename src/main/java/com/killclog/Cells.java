@@ -409,7 +409,7 @@ public class Cells
 			HiscoreSkill card = PanelData.card(skill);
 			String bossName = card.getName();
 			String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(bossName, bossName);
-			TooltipData data = TooltipDataBuilder.withHardMode(buildPrimaryBossData(bossName, hiscoreName, self, catalog),
+			TooltipData data = TooltipDataBuilder.withHardMode(buildPrimaryBossData(bossName, hiscoreName, self),
 				card, lookupSession.getHiscoreResult(), name -> pbFor(self, name));
 			if (data != null)
 			{
@@ -434,10 +434,9 @@ public class Cells
 			{
 				continue;
 			}
-			int rank = lookupSession.getHiscoreResult() != null
-				? lookupSession.getHiscoreResult().getActivityRank(skill.getName()) : -1;
-			TooltipData data = tooltipDataBuilder.buildTooltipData(capitalizeTier(skill), entry.getValue(),
-				rank, lookupSession.getClogResult());
+			// A synced log without the tier shows no card, never the preview.
+			TooltipData data = tooltipDataBuilder.buildClueTierCard(skill, lookupSession.getHiscoreResult(),
+				lookupSession.getClogResult(), null);
 			if (data == null)
 			{
 				continue;
@@ -458,12 +457,7 @@ public class Cells
 			{
 				continue;
 			}
-			int rank = lookupSession.getHiscoreResult() != null
-				? lookupSession.getHiscoreResult().getActivityRank(skill.getName()) : -1;
-			int score = lookupSession.getHiscoreResult() != null
-				? lookupSession.getHiscoreResult().getActivityScore(skill.getName()) : -1;
-			TooltipData data = tooltipDataBuilder.buildUnsyncedTooltipData(
-				capitalizeTier(skill), entry.getValue(), rank, cluesCompletedLabel(skill), score, catalog);
+			TooltipData data = tooltipDataBuilder.buildClueTierCard(skill, lookupSession.getHiscoreResult(), null, catalog);
 			if (data != null)
 			{
 				tooltipDataMap.put(skill, data);
@@ -591,10 +585,13 @@ public class Cells
 	 * sync-prompt self-lookup).
 	 */
 	@Nullable
-	private TooltipData buildPrimaryBossData(String displayName, String hiscoreName,
-		boolean self, @Nullable ClogResult catalog)
+	private TooltipData buildPrimaryBossData(String displayName, String hiscoreName, boolean self)
 	{
 		boolean selfNoCache = self && lookupSession.getClogResult() == null && lookupSession.readsOwnLog();
+		if (selfNoCache)
+		{
+			return null;
+		}
 		String category = ClogService.bossToCategory(hiscoreName);
 		int rank = lookupSession.getHiscoreResult() != null
 			? lookupSession.getHiscoreResult().getRank(hiscoreName) : -1;
@@ -603,29 +600,11 @@ public class Cells
 		boolean isSolHeredit = ColosseumGlory.replacesKc(displayName);
 		int glory = ColosseumGlory.score(lookupSession.getHiscoreResult());
 		boolean showGlory = isSolHeredit && ColosseumGlory.isVisible(glory);
-		String fallbackStatLabel = showGlory ? null : "Kills: ";
-		int fallbackStatValue = showGlory ? -1 : kc;
 		// Vanilla records pbs on the local profile only; for looked-up players
 		// the killclog.com sync is the one source that serves them, cached by
 		// the same fetch that raced the clog providers.
-		String pb = pbFor(self, displayName);
-
-		if (lookupSession.getClogResult() == null)
-		{
-			return selfNoCache ? null : tooltipDataBuilder.buildUnsyncedTooltipData(
-				displayName, category, rank, fallbackStatLabel, fallbackStatValue, catalog);
-		}
-
-		TooltipData data = tooltipDataBuilder.buildTooltipData(
-			displayName, category, rank, kc, pb, lookupSession.getClogResult());
-		if (data == null)
-		{
-			return tooltipDataBuilder.buildUnsyncedTooltipData(
-				displayName, category, rank, fallbackStatLabel, fallbackStatValue,
-				unsyncedCatalog.result());
-		}
-		tooltipDataBuilder.preloadItemImages(data);
-		return data;
+		return tooltipDataBuilder.buildBossCard(displayName, category, rank, kc, pbFor(self, displayName),
+			lookupSession.getClogResult(), showGlory ? null : "Kills: ", showGlory ? -1 : kc, unsyncedCatalog.result());
 	}
 
 	private ClueSummaryTooltip clueSummaryTooltip(JLabel owner, @Nullable HiscoreResult result,

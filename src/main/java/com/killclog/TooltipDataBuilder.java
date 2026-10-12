@@ -104,6 +104,47 @@ final class TooltipDataBuilder
 			.build();
 	}
 
+	/**
+	 * A boss card on either side: the synced log's, else the catalog preview carrying the caller's
+	 * stat line. Null when neither holds the boss.
+	 */
+	@Nullable
+	TooltipData buildBossCard(String displayName, String category, int rank, int kc, @Nullable String pb,
+		@Nullable ClogResult clog, @Nullable String statLabel, int statValue, @Nullable ClogResult catalog)
+	{
+		TooltipData data = buildTooltipData(displayName, category, rank, kc, pb, clog);
+		if (data == null)
+		{
+			return buildUnsyncedTooltipData(displayName, category, rank, statLabel, statValue, catalog);
+		}
+		preloadItemImages(data);
+		return data;
+	}
+
+	/**
+	 * A clue tier card on either side: the synced log's, else the catalog preview with the tier's
+	 * completions. A null catalog leaves out the preview.
+	 */
+	@Nullable
+	TooltipData buildClueTierCard(HiscoreSkill tier, @Nullable HiscoreResult result, @Nullable ClogResult clog,
+		@Nullable ClogResult catalog)
+	{
+		String category = PanelData.CLUE_CATEGORIES.get(tier);
+		if (category == null)
+		{
+			return null;
+		}
+		String name = Cells.capitalizeTier(tier);
+		int rank = result != null ? result.getActivityRank(tier.getName()) : -1;
+		TooltipData data = buildTooltipData(name, category, rank, clog);
+		if (data != null)
+		{
+			return data;
+		}
+		int score = result != null ? result.getActivityScore(tier.getName()) : -1;
+		return buildUnsyncedTooltipData(name, category, rank, Cells.cluesCompletedLabel(tier), score, catalog);
+	}
+
 	TooltipData buildUnsyncedTooltipData(String displayName, String category, int rank,
 		String statLabel, int statValue, ClogResult catalog)
 	{
