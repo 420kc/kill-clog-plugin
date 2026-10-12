@@ -4,7 +4,7 @@
 
 HiScores, Collection Logs, Personal Bests, and player comparison in one RuneLite panel.
 
-![Kill Clog's panel for 420 kc, with a card from each kind of cell](screenshots/hero-2.6.1.png)
+![Kill Clog's panel for 420 kc, with a card from each kind of cell](screenshots/hero-2.6.2.png)
 
 ## Setup
 
@@ -62,7 +62,11 @@ While a League runs, a **Leagues** switch beside the search bar flips the panel 
 
 HiScores load for any valid RSN, including Collection Log totals and ranks when listed. Item-by-item Collection Log details appear when that player has data available through TempleOSRS, RuneProfile, or Kill Clog.
 
+![The Player Summary under the cursor: the name shows the account type, the clan icon its clan, the prestige cape its prestige, and a pet its name](screenshots/player-summary-hovers.png)
+
 Hover your Collection Log total to see your log, and click it to pin and browse every tab and page.
+
+![From the Collection Log card to a tab to a page: Minigames to Castle Wars, and Other to Elder Chaos Druids](screenshots/collection-log-tab-and-page.png)
 
 ![Vorkath's card naming the item under the cursor: green when you have it, red when you don't](screenshots/item-name-hover.png)
 
