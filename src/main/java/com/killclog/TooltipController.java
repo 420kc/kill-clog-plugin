@@ -110,6 +110,8 @@ class TooltipController
 			@Override
 			public void mouseEntered(MouseEvent e)
 			{
+				HoverTrace.note("enter " + HoverTrace.describe(e.getComponent()) + " pinned=" + hasPinnedTooltip()
+					+ " registered=" + java.util.Arrays.asList(e.getComponent().getMouseListeners()).contains(ToolTipManager.sharedInstance()));
 				if (hoverExitTimer != null) hoverExitTimer.stop();
 				hoverCell(cell, colorSource);
 			}
@@ -185,6 +187,7 @@ class TooltipController
 	 */
 	void keepTooltipOnHover(JToolTip tip, JPanel parentCell)
 	{
+		HoverTrace.card(tip, tip.getComponent() != null ? tip.getComponent() : parentCell);
 		attachToTipTree(tip, new MouseAdapter()
 		{
 			@Override
@@ -276,6 +279,7 @@ class TooltipController
 
 	void dismissHoverPreview(MouseEvent event)
 	{
+		HoverTrace.note("dismiss preview (event " + event.getID() + ") from " + HoverTrace.caller());
 		ToolTipManager.sharedInstance().mousePressed(event);
 	}
 
@@ -304,6 +308,8 @@ class TooltipController
 			return;
 		}
 		pinDismissedComponent = null;
+		HoverTrace.note("pin " + HoverTrace.describe(source) + " from " + HoverTrace.caller());
+		HoverTrace.card(tip, source);
 
 		hidePinnedTooltip();
 
@@ -339,6 +345,7 @@ class TooltipController
 		pinnedFromHover = config.tooltipMode() == TooltipMode.HOVER;
 		suppressPinnedSourceTooltip(source, tooltipText);
 		activePinnedPopup.show();
+		HoverTrace.note("pinned popup " + HoverTrace.id(activePinnedPopup) + " tip " + HoverTrace.id(tip));
 		refreshTooltipRegistrations();
 
 		pinDismissListener = event ->
@@ -372,6 +379,10 @@ class TooltipController
 		JPanel pinnedCell = activePinnedCell;
 		boolean clearPinnedHover = pinnedFromHover;
 		boolean hadPopup = activePinnedPopup != null;
+		if (hadPopup)
+		{
+			HoverTrace.note("hide pinned popup " + HoverTrace.id(activePinnedPopup) + " from " + HoverTrace.caller());
+		}
 
 		if (pinDismissListener != null)
 		{
@@ -440,6 +451,8 @@ class TooltipController
 
 	void activate(Component owner)
 	{
+		HoverTrace.start();
+		HoverTrace.note("activate");
 		onTooltipModeChanged();
 		installWindowFocusListener(owner);
 	}
@@ -498,10 +511,20 @@ class TooltipController
 		if (shouldRegister && !registered)
 		{
 			manager.registerComponent(component);
+			traceChanges++;
+			if (!traceInRefresh)
+			{
+				HoverTrace.note("register " + HoverTrace.describe(component) + " from " + HoverTrace.caller());
+			}
 		}
 		else if (!shouldRegister && registered)
 		{
 			manager.unregisterComponent(component);
+			traceChanges++;
+			if (!traceInRefresh)
+			{
+				HoverTrace.note("unregister " + HoverTrace.describe(component) + " from " + HoverTrace.caller());
+			}
 		}
 		if (!shouldRegister)
 		{
@@ -517,12 +540,20 @@ class TooltipController
 		return activePinnedPopup != null;
 	}
 
+	private int traceChanges;
+	private boolean traceInRefresh;
+
 	private void refreshTooltipRegistrations()
 	{
+		traceInRefresh = true;
+		traceChanges = 0;
 		for (JComponent component : new ArrayList<>(tooltipComponents))
 		{
 			applyTooltipMode(component);
 		}
+		traceInRefresh = false;
+		HoverTrace.note("refresh hover: " + traceChanges + " changed of " + tooltipComponents.size()
+			+ ", pinned=" + hasPinnedTooltip());
 	}
 
 	private void installWindowFocusListener(Component owner)
@@ -547,6 +578,7 @@ class TooltipController
 			@Override
 			public void windowLostFocus(WindowEvent e)
 			{
+				HoverTrace.note("window lost focus to " + e.getOppositeWindow());
 				hideTransientTooltipState();
 			}
 		};
