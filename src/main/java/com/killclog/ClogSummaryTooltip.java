@@ -198,14 +198,15 @@ public class ClogSummaryTooltip extends TitleTooltip
 	}
 
 	/**
-	 * Every provider this player is synced to. RuneProfile counts whenever it
-	 * holds a profile for them: its collection-log request is skipped for the
-	 * local player and can miss the lookup window for anyone else.
+	 * Every site that holds this player's log, whichever one's log the card shows (Dylan, 2026-10-12): one this lookup
+	 * heard from, or one known to hold them by RuneProfile's profile, Temple's last answer or Kill Clog's sync list, since
+	 * a request can be skipped (your own log) or time out. Your own log read from the game is Kill Clog's when you sync.
 	 */
-	void setClogSources(ClogResult result, boolean hasRuneProfile)
+	void setClogSources(ClogResult result, boolean onTemple, boolean onRuneProfile, boolean onKillclog)
 	{
-		setClogSources(result.isFromTemple(), result.isFromRuneProfile() || hasRuneProfile,
-			result.isFromKillclog(), result.isFromLocal());
+		boolean killclog = result.isFromKillclog() || onKillclog;
+		setClogSources(result.isFromTemple() || onTemple, result.isFromRuneProfile() || onRuneProfile,
+			killclog, result.isFromLocal() && !killclog);
 	}
 
 	/** Record contributing sources, including Kill Clog's local game capture. */

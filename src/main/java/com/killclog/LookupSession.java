@@ -105,6 +105,12 @@ public class LookupSession
 		fanout.readLeague(league, leagueLog);
 	}
 
+	/** Whether this player syncs to Kill Clog, by its sync list. */
+	boolean onKillclog(String player)
+	{
+		return fanout.onKillclog(player);
+	}
+
 	/** The game's own pages, which every log these lookups show is laid on. */
 	void setClogIndex(@Nullable ClogIndex clogIndex)
 	{

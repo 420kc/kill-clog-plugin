@@ -71,6 +71,12 @@ final class LookupFanout
 			: leagueLog != null ? clogService.localResult(leagueLog, player) : null);
 	}
 
+	/** Whether this player syncs to Kill Clog, by its sync list. */
+	boolean onKillclog(String player)
+	{
+		return killclogService.isSynced(player);
+	}
+
 	/** A log on the game's own pages ({@link ClogIndex#laid}). */
 	@Nullable
 	ClogResult onGamePages(@Nullable ClogResult clog)

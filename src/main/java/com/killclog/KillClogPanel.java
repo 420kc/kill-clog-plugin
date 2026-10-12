@@ -1238,13 +1238,13 @@ public class KillClogPanel extends PluginPanel
 		cells.setClogIndex(clogIndex);
 		clogPages.setClogIndex(clogIndex);
 		comparison.setClogIndex(clogIndex);
+		lookupSession.setClogIndex(clogIndex);
 		skillCellGrid.setClogIndex(clogIndex);
 		tooltipDataBuilder.setClogIndex(clogIndex);
 	}
 
 	public void onConfigChanged(String key)
 	{
-		lookupSession.setClogIndex(clogIndex);
 		switch (key)
 		{
 			case "showLeaderboardSelector":
@@ -1454,7 +1454,8 @@ public class KillClogPanel extends PluginPanel
 				tip.setTabs(clogIndex.tabProgress(clog, totals));
 				tip.setOnOpenTab((press, tab) -> clogPages.openTab(owner, press, tab));
 			}
-			tip.setClogSources(clog, runeProfileService.hasProfile(playerRsn));
+			tip.setClogSources(clog, clogService.onTemple(playerRsn), runeProfileService.hasProfile(playerRsn),
+				lookupSession.onKillclog(playerRsn));
 			if (hiscore != null && hiscore.isRankDataAvailable())
 			{
 				int clogRank = hiscore.getActivityRank("Collections Logged");

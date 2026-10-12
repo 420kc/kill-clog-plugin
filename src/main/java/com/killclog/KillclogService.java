@@ -261,6 +261,13 @@ public class KillclogService
 		return league.equals(active[0]) ? active[1] : null;
 	}
 
+	/** Whether this player syncs to Kill Clog, by the sync list held now; false before the first one arrives. */
+	boolean isSynced(@Nullable String playerName)
+	{
+		Set<String> index = syncIndex;
+		return playerName != null && index != null && index.contains(pbKey(playerName));
+	}
+
 	/** Login: learn the active League even when no lookup needs the index. */
 	void refreshIndex()
 	{

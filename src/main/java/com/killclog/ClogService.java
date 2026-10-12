@@ -81,6 +81,23 @@ public class ClogService
 	// proof separately so the active-player result stays attributed during TTL.
 	private final Map<String, Long> templeOverlaySuccessTimes =
 		new java.util.concurrent.ConcurrentHashMap<>();
+	// Players TempleOSRS answered with a log in the last day: the Collection Log card credits Temple even when this
+	// lookup's own request was skipped, as for your own log, or timed out.
+	private static final long TEMPLE_HOLDS_TTL_MS = 24 * 60 * 60 * 1000;
+	private final Map<String, Long> templeHolds = new java.util.concurrent.ConcurrentHashMap<>();
+
+	/** Whether TempleOSRS has answered with this player's log in the last day. */
+	boolean onTemple(@Nullable String playerName)
+	{
+		Long at = playerName != null ? templeHolds.get(playerName.toLowerCase()) : null;
+		return at != null && System.currentTimeMillis() - at < TEMPLE_HOLDS_TTL_MS;
+	}
+
+	private void heldByTemple(String normalizedName)
+	{
+		templeHolds.put(normalizedName, System.currentTimeMillis());
+		HttpUtil.prune(templeHolds, TEMPLE_HOLDS_TTL_MS);
+	}
 
 	/** Clear all failure cooldowns immediately (called on login). TTL handles auto-expiry otherwise. */
 	public void clearTempleFailures()
@@ -248,6 +265,7 @@ public class ClogService
 						accountType
 					).withSources(true, false, false);
 					localClogCache.cacheResult(result);
+					heldByTemple(normalizedName);
 					clogFetchTimes.put(normalizedName, System.currentTimeMillis());
 					HttpUtil.prune(clogFetchTimes, CLOG_TTL_MS);
 					return result;
@@ -333,6 +351,7 @@ public class ClogService
 				}
 				templeOverlaySuccessTimes.put(normalizedName, System.currentTimeMillis());
 				HttpUtil.prune(templeOverlaySuccessTimes, CLOG_TTL_MS);
+				heldByTemple(normalizedName);
 				return true;
 			})
 			.exceptionally(t ->

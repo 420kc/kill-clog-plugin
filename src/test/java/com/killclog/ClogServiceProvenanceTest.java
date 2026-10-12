@@ -127,7 +127,7 @@ public class ClogServiceProvenanceTest
 			}).join();
 		assertTrue(combined.isFromLocal());
 		ClogSummaryTooltip tooltip = new ClogSummaryTooltip();
-		tooltip.setClogSources(combined, false);
+		tooltip.setClogSources(combined, false, false, false);
 		assertEquals(expected, tooltip.sourceNames());
 	}
 

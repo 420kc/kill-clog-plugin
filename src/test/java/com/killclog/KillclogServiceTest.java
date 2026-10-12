@@ -37,6 +37,18 @@ public class KillclogServiceTest
 	}
 
 	@Test
+	public void aPlayerSyncsToKillClogWhenTheSyncListNamesThem() throws Exception
+	{
+		assertFalse("no list yet, no answer", service.isSynced("420 kc"));
+		Field index = KillclogService.class.getDeclaredField("syncIndex");
+		index.setAccessible(true);
+		index.set(service, service.parseSyncIndex("{\"names\":[\"420 kc\"]}"));
+		assertTrue("as the Kill Clog lookup keys it, whatever capitals", service.isSynced("420 KC"));
+		assertFalse(service.isSynced("Marni"));
+		assertFalse(service.isSynced(null));
+	}
+
+	@Test
 	public void theActiveLeagueIsOnlyEverAPlainSlug()
 	{
 		service.parseSyncIndex("{\"names\":[],\"active_league\":\"demonic-pacts\"}");

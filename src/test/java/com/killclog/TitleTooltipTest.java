@@ -114,12 +114,28 @@ public class TitleTooltipTest
 			.withSources(true, false, false).withLocalSource(true);
 
 		ClogSummaryTooltip tooltip = new ClogSummaryTooltip();
-		tooltip.setClogSources(selfCard, false);
+		tooltip.setClogSources(selfCard, false, false, false);
 		assertEquals(Arrays.asList("Local Collection Log", "TempleOSRS"), tooltip.sourceNames());
 
-		tooltip.setClogSources(selfCard, true);
+		tooltip.setClogSources(selfCard, false, true, false);
 		assertEquals(Arrays.asList("Local Collection Log", "TempleOSRS", "RuneProfile"),
 			tooltip.sourceNames());
+	}
+
+	@Test
+	public void clogSummaryNamesEverySiteThatHoldsThePlayerWhicheverLogItShows()
+	{
+		// Your own log, read from the game: Temple's and RuneProfile's requests were skipped and nothing came back from
+		// them, yet all three hold you, and your synced log is Kill Clog's (Dylan, 2026-10-12).
+		ClogResult selfCard = new ClogResult("Probe", Collections.emptyMap(),
+			Collections.emptyMap(), Collections.emptyMap(), null, null).withLocalSource(true);
+
+		ClogSummaryTooltip tooltip = new ClogSummaryTooltip();
+		tooltip.setClogSources(selfCard, true, true, true);
+		assertEquals(Arrays.asList("Kill Clog", "TempleOSRS", "RuneProfile"), tooltip.sourceNames());
+
+		tooltip.setClogSources(selfCard, false, false, false);
+		assertEquals(Collections.singletonList("Local Collection Log"), tooltip.sourceNames());
 	}
 
 	@Test
