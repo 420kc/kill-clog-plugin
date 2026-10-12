@@ -21,6 +21,15 @@ final class ColosseumGlory
 		return result != null ? result.getActivityScore(ACTIVITY_NAME) : -1;
 	}
 
+	/**
+	 * Whether a boss card leads with Glory instead of kills: Sol Heredit, once the player has Glory, on either side
+	 * of a comparison, synced log or not, as the game's own hiscores show it.
+	 */
+	static boolean leadsCard(String bossName, HiscoreResult result)
+	{
+		return replacesKc(bossName) && isVisible(score(result));
+	}
+
 	static boolean isVisible(int glory)
 	{
 		return glory > 0;

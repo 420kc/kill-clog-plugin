@@ -265,10 +265,12 @@ public class ComparisonController
 	{
 		HiscoreResult view = getCompareHiscoreResult();
 		int kc = view.getKc(hiscoreName);
-		// The red card is an ordinary solo card, so it carries the compared
-		// player's KC the same way the blue one does. No red PB source exists.
+		// The red card is an ordinary solo card, so it carries the compared player's KC, or Glory on Sol Heredit,
+		// the same way the blue one does. No red PB source exists.
+		boolean showGlory = ColosseumGlory.leadsCard(displayName, view);
 		return tooltipDataBuilder.buildBossCard(displayName, ClogService.bossToCategory(hiscoreName),
-			view.getRank(hiscoreName), kc, null, getCompareClogResult(), "Kills: ", kc, unsyncedCatalog.result());
+			view.getRank(hiscoreName), kc, null, getCompareClogResult(),
+			showGlory ? null : "Kills: ", showGlory ? -1 : kc, unsyncedCatalog.result());
 	}
 
 	/**
