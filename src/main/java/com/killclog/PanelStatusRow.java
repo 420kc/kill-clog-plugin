@@ -88,7 +88,7 @@ final class PanelStatusRow
 			this::flashSyncSuccess, "sync failed");
 		this.characterFeedback = new FirstPartyFeedback(config,
 			(kind, text, autoClear) -> showFeedback(Owner.CHARACTER, kind, text, autoClear),
-			this::flashCharacterSuccess, PublicationCoordinator.CHARACTER_FAILED_STATUS);
+			this::flashCharacterSuccess, CharacterStatus.FAILED.text);
 		PanelSearchBox.configureStatus(searchStatus, textDim);
 		this.row = build();
 	}
@@ -390,16 +390,6 @@ final class PanelStatusRow
 			.replace("<", "&lt;").replace(">", "&gt;") + "</div></html>";
 	}
 
-	/** The plugin's actionable character hints; shown as notices and repeated on hover. */
-	static boolean isCharacterNotice(String text)
-	{
-		return PublicationCoordinator.CHARACTER_PENDING_STATUS.equals(text)
-			|| PublicationCoordinator.CHARACTER_RECOVERY_STATUS.equals(text)
-			|| PublicationCoordinator.CHARACTER_DISABLED_STATUS.equals(text)
-			|| PublicationCoordinator.CHARACTER_APPEARANCE_STATUS.equals(text)
-			|| PublicationCoordinator.CHARACTER_UNKNOWN_STATUS.equals(text);
-	}
-
 	// ── plugin-facing controls ─────────────────────────────────────────
 
 	/** The plugin flips this with the sync checkbox; off hides the arrow. */
@@ -487,18 +477,17 @@ final class PanelStatusRow
 	}
 
 	/**
-	 * The plugin speaks in status strings; they are classified once here.
-	 * Blank withdraws the character's message, a success or failure completes
-	 * the request, the notice constants are notices, "updating character..."
-	 * is progress, and anything else is a result.
+	 * The status carries its meaning: CLEAR withdraws the character's message,
+	 * PUBLISHED or FAILED completes the request, and the rest show as their
+	 * kind, a notice repeating its detail on hover.
 	 */
-	void showCharacterPublishStatus(String text, boolean ok, boolean autoClear, String detail)
+	void showCharacterPublishStatus(CharacterStatus status, boolean autoClear, String detail)
 	{
 		runFeedbackOnEdt(() ->
 		{
 			characterNoticeText = null;
 			characterNoticeDetail = null;
-			if (text.trim().isEmpty())
+			if (status == CharacterStatus.CLEAR)
 			{
 				characterFeedback.reset();
 				tooltipController.setTooltipText(characterPublish, null);
@@ -508,27 +497,20 @@ final class PanelStatusRow
 					clear();
 				}
 			}
-			else if (ok || PublicationCoordinator.CHARACTER_FAILED_STATUS.equals(text))
+			else if (status.kind == null)
 			{
-				characterFeedback.complete(true, ok, detail != null
+				characterFeedback.complete(true, status == CharacterStatus.PUBLISHED, detail != null
 					? detail : "Character failed. Click to retry.");
 			}
 			else
 			{
 				characterFeedback.reset();
-				Kind kind = Kind.RESULT;
-				if (isCharacterNotice(text))
+				if (status.kind == Kind.NOTICE)
 				{
-					kind = Kind.NOTICE;
-					characterNoticeText = PublicationCoordinator.CHARACTER_PENDING_STATUS.equals(text)
-						? PublicationCoordinator.CHARACTER_UNKNOWN_STATUS : text;
+					characterNoticeText = (status == CharacterStatus.PENDING ? CharacterStatus.UNKNOWN : status).text;
 					characterNoticeDetail = detail;
 				}
-				else if (PublicationCoordinator.CHARACTER_RENDERING_STATUS.equals(text))
-				{
-					kind = Kind.PROGRESS;
-				}
-				characterFeedback.show(true, kind, text, autoClear);
+				characterFeedback.show(true, status.kind, status.text, autoClear);
 			}
 			if (characterHovered)
 			{

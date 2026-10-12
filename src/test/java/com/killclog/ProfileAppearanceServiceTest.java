@@ -8,6 +8,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class ProfileAppearanceServiceTest
@@ -123,11 +124,11 @@ public class ProfileAppearanceServiceTest
 		assertEquals(ProfileAppearanceService.Outcome.values().length, expected.size());
 		for (ProfileAppearanceService.Outcome outcome : ProfileAppearanceService.Outcome.values())
 		{
-			assertEquals(expected.get(outcome), PublicationCoordinator.characterPublishTerminalStatus(outcome));
+			assertEquals(expected.get(outcome), CharacterStatus.terminal(outcome).text);
 		}
-		assertTrue(PanelStatusRow.isCharacterNotice("Still rendering..."));
-		assertTrue(PanelStatusRow.isCharacterNotice("Change equipment, then retry"));
-		assertFalse(PanelStatusRow.isCharacterNotice("Character failed"));
+		assertEquals(StatusMessage.Kind.NOTICE, CharacterStatus.PENDING.kind);
+		assertEquals(StatusMessage.Kind.NOTICE, CharacterStatus.APPEARANCE.kind);
+		assertNull(CharacterStatus.FAILED.kind);
 	}
 
 	private static NPC npc(int id, NPCComposition base, NPCComposition transformed)

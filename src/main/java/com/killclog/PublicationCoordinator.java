@@ -32,32 +32,6 @@ import net.runelite.client.hiscore.HiscoreSkill;
 @Slf4j
 final class PublicationCoordinator
 {
-	static final String CHARACTER_RENDERING_STATUS = "updating character...";
-	static final String CHARACTER_PUBLISHED_STATUS = "character updated!";
-	static final String CHARACTER_FAILED_STATUS = "Character failed";
-	static final String CHARACTER_APPEARANCE_STATUS = "Change equipment, then retry";
-	static final String CHARACTER_PENDING_STATUS = "Still rendering...";
-	static final String CHARACTER_RECOVERY_STATUS = "Publishing on hold";
-	static final String CHARACTER_DISABLED_STATUS = "Publishing unavailable";
-	static final String CHARACTER_UNKNOWN_STATUS = "Check your profile";
-	static final String CHARACTER_BUSY_STATUS = "Finishing previous request...";
-
-	static String characterPublishTerminalStatus(ProfileAppearanceService.Outcome outcome)
-	{
-		switch (outcome)
-		{
-			case PUBLISHED: return CHARACTER_PUBLISHED_STATUS;
-			case RENDERING: return CHARACTER_PENDING_STATUS;
-			case RECOVERY_PENDING: return CHARACTER_RECOVERY_STATUS;
-			case DISABLED: return CHARACTER_DISABLED_STATUS;
-			case BUSY: return CHARACTER_BUSY_STATUS;
-			case UNKNOWN: return CHARACTER_UNKNOWN_STATUS;
-			case APPEARANCE_PENDING: return CHARACTER_APPEARANCE_STATUS;
-			case CANCELLED: return " ";
-			default: return CHARACTER_FAILED_STATUS;
-		}
-	}
-
 	/** The panel's side of the flow. Every call arrives on the EDT. */
 	interface Feedback
 	{
@@ -65,7 +39,7 @@ final class PublicationCoordinator
 
 		void showSyncResult(boolean manual, boolean ok, String message);
 
-		void showCharacterPublishStatus(String text, boolean ok, boolean autoClear, String failureMessage);
+		void showCharacterPublishStatus(CharacterStatus status, boolean autoClear, String failureMessage);
 	}
 
 	// Debounce window: a bulk capture completes many category writes in a
@@ -249,25 +223,25 @@ final class PublicationCoordinator
 		characterPublishAfterSync.set(false);
 		characterPublishInFlight.set(false);
 		characterPrerequisiteAttempted.set(false);
-		showCharacterPublishStatus(generation, " ", false, false);
+		showCharacterPublishStatus(generation, CharacterStatus.CLEAR, false);
 	}
 
 	// ── character publish ──────────────────────────────────────────────
 
-	private void showCharacterPublishStatus(int generation, String text, boolean ok, boolean autoClear)
+	private void showCharacterPublishStatus(int generation, CharacterStatus status, boolean autoClear)
 	{
-		showCharacterPublishStatus(generation, text, ok, autoClear, null);
+		showCharacterPublishStatus(generation, status, autoClear, null);
 	}
 
-	private void showCharacterPublishStatus(int generation, String text, boolean ok, boolean autoClear,
+	private void showCharacterPublishStatus(int generation, CharacterStatus status, boolean autoClear,
 		String failureMessage)
 	{
 		SwingUtilities.invokeLater(() ->
 		{
 			if (generation == characterPublishGeneration.get()
-				&& (text.trim().isEmpty() || characterPublishingEnabled()))
+				&& (status == CharacterStatus.CLEAR || characterPublishingEnabled()))
 			{
-				feedback.showCharacterPublishStatus(text, ok, autoClear, failureMessage);
+				feedback.showCharacterPublishStatus(status, autoClear, failureMessage);
 			}
 		});
 	}
@@ -290,7 +264,7 @@ final class PublicationCoordinator
 			characterPrerequisiteAttempted.set(false);
 		}
 		int generation = characterPublishGeneration.incrementAndGet();
-		showCharacterPublishStatus(generation, CHARACTER_RENDERING_STATUS, false, false);
+		showCharacterPublishStatus(generation, CharacterStatus.RENDERING, false);
 		clientThread.invokeLater(() ->
 		{
 			if (generation != characterPublishGeneration.get())
@@ -303,7 +277,7 @@ final class PublicationCoordinator
 			if (!characterPublishingEnabled() || rsn == null || accountHash == -1 || !GameMode.MAIN.equals(mode.get()))
 			{
 				characterPublishInFlight.set(false);
-				showCharacterPublishStatus(generation, CHARACTER_FAILED_STATUS, false, true);
+				showCharacterPublishStatus(generation, CharacterStatus.FAILED, true);
 				return;
 			}
 
@@ -324,7 +298,7 @@ final class PublicationCoordinator
 		if (error != null || result == null)
 		{
 			characterPublishInFlight.set(false);
-			showCharacterPublishStatus(generation, CHARACTER_FAILED_STATUS, false, true);
+			showCharacterPublishStatus(generation, CharacterStatus.FAILED, true);
 			return;
 		}
 
@@ -333,15 +307,14 @@ final class PublicationCoordinator
 			&& characterPrerequisiteAttempted.compareAndSet(false, true))
 		{
 			characterPublishAfterSync.set(true);
-			showCharacterPublishStatus(generation, CHARACTER_RENDERING_STATUS, false, false);
+			showCharacterPublishStatus(generation, CharacterStatus.RENDERING, false);
 			syncNow(false);
 			return;
 		}
 
 		characterPublishInFlight.set(false);
-		boolean published = result.outcome == ProfileAppearanceService.Outcome.PUBLISHED;
-		showCharacterPublishStatus(generation, characterPublishTerminalStatus(result.outcome),
-			published, true, result.message);
+		showCharacterPublishStatus(generation, CharacterStatus.terminal(result.outcome),
+			true, result.message);
 	}
 
 	private boolean failQueuedCharacterPublish()
@@ -352,7 +325,7 @@ final class PublicationCoordinator
 			return false;
 		}
 		characterPublishInFlight.set(false);
-		showCharacterPublishStatus(generation, CHARACTER_FAILED_STATUS, false, true);
+		showCharacterPublishStatus(generation, CharacterStatus.FAILED, true);
 		return true;
 	}
 
@@ -374,7 +347,7 @@ final class PublicationCoordinator
 		catch (RuntimeException e)
 		{
 			characterPublishInFlight.set(false);
-			showCharacterPublishStatus(expectedGeneration, CHARACTER_FAILED_STATUS, false, true);
+			showCharacterPublishStatus(expectedGeneration, CharacterStatus.FAILED, true);
 		}
 	}
 
@@ -531,7 +504,7 @@ final class PublicationCoordinator
 							if (characterWaiting)
 							{
 								showCharacterPublishStatus(characterGeneration,
-									CHARACTER_RENDERING_STATUS, false, false);
+									CharacterStatus.RENDERING, false);
 							}
 							else
 							{
@@ -559,7 +532,7 @@ final class PublicationCoordinator
 							{
 								characterPublishInFlight.set(false);
 								showCharacterPublishStatus(characterGeneration,
-									CHARACTER_FAILED_STATUS, false, true);
+									CharacterStatus.FAILED, true);
 							}
 						}
 						else if (result != SyncService.UNCHANGED)

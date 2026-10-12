@@ -931,9 +931,9 @@ public class KillClogPlugin extends Plugin
 			}
 
 			@Override
-			public void showCharacterPublishStatus(String text, boolean ok, boolean autoClear, String failureMessage)
+			public void showCharacterPublishStatus(CharacterStatus status, boolean autoClear, String failureMessage)
 			{
-				panel.showCharacterPublishStatus(text, ok, autoClear, failureMessage);
+				panel.showCharacterPublishStatus(status, autoClear, failureMessage);
 			}
 		};
 	}

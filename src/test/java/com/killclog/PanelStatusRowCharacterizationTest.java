@@ -125,9 +125,9 @@ public class PanelStatusRowCharacterizationTest
 			panel.onCompareStatus("Looking up player", Color.RED);
 			panel.showSyncProgress(true, "syncing...", false);
 			panel.showSyncResult(true, false, "HTTP 503");
-			panel.showCharacterPublishStatus(PublicationCoordinator.CHARACTER_FAILED_STATUS, false, true, "Render failed");
+			panel.showCharacterPublishStatus(CharacterStatus.FAILED, true, "Render failed");
 			panel.showSyncResult(true, true, null);
-			panel.showCharacterPublishStatus(PublicationCoordinator.CHARACTER_PUBLISHED_STATUS, true, true, null);
+			panel.showCharacterPublishStatus(CharacterStatus.PUBLISHED, true, null);
 			assertEquals("Looking up player", status.getText());
 			assertEquals(Color.RED, status.getForeground());
 			assertControls(false, false);
@@ -144,14 +144,14 @@ public class PanelStatusRowCharacterizationTest
 		edt(() ->
 		{
 			panel.showSyncProgress(true, "syncing...", false);
-			panel.showCharacterPublishStatus(PublicationCoordinator.CHARACTER_RENDERING_STATUS, false, false, null);
+			panel.showCharacterPublishStatus(CharacterStatus.RENDERING, false, null);
 			assertEquals("syncing...", status.getText());
 			panel.showSyncResult(true, true, null);
 			assertEquals(" ", status.getText());
-			panel.showCharacterPublishStatus(PublicationCoordinator.CHARACTER_RENDERING_STATUS, false, false, null);
+			panel.showCharacterPublishStatus(CharacterStatus.RENDERING, false, null);
 			panel.showSyncProgress(true, "retrying...", false);
 			panel.showSyncResult(true, true, null);
-			assertEquals(PublicationCoordinator.CHARACTER_RENDERING_STATUS, status.getText());
+			assertEquals(CharacterStatus.RENDERING.text, status.getText());
 			assertControls(false, false);
 		});
 	}
@@ -208,7 +208,7 @@ public class PanelStatusRowCharacterizationTest
 			assertEquals(FirstPartyFeedback.UPDATE_REQUIRED, sync.getToolTipText());
 			mouse(sync, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
 
-			panel.showCharacterPublishStatus(PublicationCoordinator.CHARACTER_FAILED_STATUS, false, true, FirstPartyFeedback.UPDATE_REQUIRED);
+			panel.showCharacterPublishStatus(CharacterStatus.FAILED, true, FirstPartyFeedback.UPDATE_REQUIRED);
 			assertEquals("update needed", status.getText());
 			fire(expiry());
 			mouse(character, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
@@ -222,8 +222,8 @@ public class PanelStatusRowCharacterizationTest
 		enableControls();
 		edt(() ->
 		{
-			panel.showCharacterPublishStatus(PublicationCoordinator.CHARACTER_FAILED_STATUS, false, true, "Bad <model> & retry");
-			assertEquals(PublicationCoordinator.CHARACTER_FAILED_STATUS, status.getText());
+			panel.showCharacterPublishStatus(CharacterStatus.FAILED, true, "Bad <model> & retry");
+			assertEquals(CharacterStatus.FAILED.text, status.getText());
 			assertControls(false, false);
 			fire(expiry());
 			assertEquals(" ", status.getText());
@@ -244,7 +244,7 @@ public class PanelStatusRowCharacterizationTest
 		edt(() ->
 		{
 			panel.showSyncResult(false, false, "Old sync failure");
-			panel.showCharacterPublishStatus(PublicationCoordinator.CHARACTER_FAILED_STATUS, false, true, "Old publish failure");
+			panel.showCharacterPublishStatus(CharacterStatus.FAILED, true, "Old publish failure");
 			fire(expiry());
 		});
 		panel.setSyncArrowEnabled(false);
@@ -298,14 +298,14 @@ public class PanelStatusRowCharacterizationTest
 		edt(() ->
 		{
 			panel.showSyncResult(false, false, "Old account failure");
-			panel.showCharacterPublishStatus(PublicationCoordinator.CHARACTER_RENDERING_STATUS, false, false, null);
+			panel.showCharacterPublishStatus(CharacterStatus.RENDERING, false, null);
 		});
 		panel.resetSyncFeedback();
 		drain();
 		edt(() ->
 		{
-			assertEquals(PublicationCoordinator.CHARACTER_RENDERING_STATUS, status.getText());
-			panel.showCharacterPublishStatus(" ", false, false, null);
+			assertEquals(CharacterStatus.RENDERING.text, status.getText());
+			panel.showCharacterPublishStatus(CharacterStatus.CLEAR, false, null);
 			mouse(sync, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
 			assertEquals("sync collection log", status.getText());
 			assertNull(sync.getToolTipText());
@@ -319,7 +319,7 @@ public class PanelStatusRowCharacterizationTest
 		edt(() ->
 		{
 			panel.showSyncResult(true, true, null);
-			panel.showCharacterPublishStatus(PublicationCoordinator.CHARACTER_PUBLISHED_STATUS, true, false, null);
+			panel.showCharacterPublishStatus(CharacterStatus.PUBLISHED, false, null);
 			Timer syncGlow = field("syncSuccessGlowTimer", Timer.class);
 			Timer characterGlow = field("characterSuccessGlowTimer", Timer.class);
 			assertTrue(syncGlow.isRunning());
@@ -375,18 +375,18 @@ public class PanelStatusRowCharacterizationTest
 		enableControls();
 		edt(() ->
 		{
-			panel.showCharacterPublishStatus(PublicationCoordinator.CHARACTER_APPEARANCE_STATUS, false, true, "Cosmetic override");
-			assertEquals(PublicationCoordinator.CHARACTER_APPEARANCE_STATUS, status.getText());
+			panel.showCharacterPublishStatus(CharacterStatus.APPEARANCE, true, "Cosmetic override");
+			assertEquals(CharacterStatus.APPEARANCE.text, status.getText());
 			assertControls(true, true);
 			Timer notice = expiry();
 			assertTrue(notice.isRunning());
 			mouse(character, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
-			assertEquals(PublicationCoordinator.CHARACTER_APPEARANCE_STATUS, status.getText());
+			assertEquals(CharacterStatus.APPEARANCE.text, status.getText());
 			assertEquals(new Color(78, 240, 21), status.getForeground());
 			assertFalse(notice.isRunning());
 			assertNull(expiry());
 			fire(notice);
-			assertEquals(PublicationCoordinator.CHARACTER_APPEARANCE_STATUS, status.getText());
+			assertEquals(CharacterStatus.APPEARANCE.text, status.getText());
 			assertEquals("<html><div style='width:220px'>Cosmetic override</div></html>", character.getToolTipText());
 			mouse(character, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
 			assertEquals(" ", status.getText());
@@ -424,11 +424,11 @@ public class PanelStatusRowCharacterizationTest
 			assertNull(field("syncSuccessGlowTimer", Timer.class));
 			mouse(character, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
 
-			panel.showCharacterPublishStatus(PublicationCoordinator.CHARACTER_RENDERING_STATUS, false, false, null);
+			panel.showCharacterPublishStatus(CharacterStatus.RENDERING, false, null);
 			panel.showSyncResult(true, true, null);
-			assertEquals(PublicationCoordinator.CHARACTER_RENDERING_STATUS, status.getText());
+			assertEquals(CharacterStatus.RENDERING.text, status.getText());
 			assertNull(field("syncSuccessGlowTimer", Timer.class));
-			panel.showCharacterPublishStatus(" ", false, false, null);
+			panel.showCharacterPublishStatus(CharacterStatus.CLEAR, false, null);
 
 			panel.onCompareStatus("Player not found", Color.RED);
 			panel.showSyncResult(true, true, null);
@@ -441,12 +441,12 @@ public class PanelStatusRowCharacterizationTest
 	public void syncResetLeavesCharacterExpiryRunning() throws Exception
 	{
 		enableControls();
-		edt(() -> panel.showCharacterPublishStatus(PublicationCoordinator.CHARACTER_FAILED_STATUS, false, true, "Render failed"));
+		edt(() -> panel.showCharacterPublishStatus(CharacterStatus.FAILED, true, "Render failed"));
 		panel.resetSyncFeedback();
 		drain();
 		edt(() ->
 		{
-			assertEquals(PublicationCoordinator.CHARACTER_FAILED_STATUS, status.getText());
+			assertEquals(CharacterStatus.FAILED.text, status.getText());
 			Timer expiry = expiry();
 			assertNotNull("character result keeps its expiry through a sync reset", expiry);
 			assertTrue(expiry.isRunning());
