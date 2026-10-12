@@ -15,6 +15,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -115,11 +117,45 @@ public class KillLogTest
 	}
 
 	@Test
+	public void aPartyThatChangesBeforeTheKillCountLeavesTheTimeUnlabeled()
+	{
+		when(client.getVarbitValue(VarbitID.TOB_CLIENT_P0)).thenReturn(1);
+		when(client.getVarbitValue(VarbitID.TOB_CLIENT_P1)).thenReturn(15);
+		game(10, "Wave 'The Final Challenge' (Normal Mode) complete!<br>Duration: <col=ff0000>2:42.0</col><br>"
+			+ "Theatre of Blood completion time: <col=ff0000>17:00.20</col> (new personal best)");
+		// The second player leaves before the kill count: the duo time must not read as a solo one.
+		when(client.getVarbitValue(VarbitID.TOB_CLIENT_P1)).thenReturn(0);
+		game(12, "Your completed Theatre of Blood count is: <col=ff0000>73</col>.");
+		kept("theatre of blood", "1020.2|||challenge|73", 1020.2);
+		verify(configManager, never()).setRSProfileConfiguration(eq("killclog"), eq("livepb.theatre of blood solo"), any());
+	}
+
+	@Test
+	public void anotherAccountsKillCountNeverPairsWithATime()
+	{
+		when(client.getAccountHash()).thenReturn(1L);
+		game(1, "Fight duration: <col=ff0000>1:02.40</col> (new personal best).");
+		when(client.getAccountHash()).thenReturn(2L);
+		game(2, "Your Vorkath kill count is: <col=ff0000>500</col>.");
+		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
+	}
+
+	@Test
+	public void aLogoutDropsAKillHalfSeen()
+	{
+		game(1, "Fight duration: <col=ff0000>1:02.40</col> (new personal best).");
+		log.reset();
+		game(2, "Your Vorkath kill count is: <col=ff0000>500</col>.");
+		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
+	}
+
+	@Test
 	public void titansAndYamaCountTheInstanceOnlyOnANewPb()
 	{
 		WorldView view = mock(WorldView.class);
 		IndexedObjectSet<?> players = mock(IndexedObjectSet.class);
-		doReturn(Stream.of(mock(Player.class), mock(Player.class))).when(players).stream();
+		// A fresh stream per call, as the client's own player set gives.
+		doAnswer(i -> Stream.of(mock(Player.class), mock(Player.class))).when(players).stream();
 		doReturn(players).when(view).players();
 		when(client.getTopLevelWorldView()).thenReturn(view);
 
@@ -146,5 +182,19 @@ public class KillLogTest
 		SyncService.DetailedPb other = KillLog.labeled(configManager, List.of("p1"), "the nightmare 5 players", 200.4);
 		assertNull(other.team);
 		assertNull(other.kc);
+	}
+
+	@Test
+	public void aLabelThatDoesntReadIsSkippedAndTheTimeStillSyncs()
+	{
+		when(configManager.getConfiguration("killclog", "p1", "livepbtag.nightmare 5 players")).thenReturn("208.0|five||kill|1130");
+		SyncService.DetailedPb pb = KillLog.labeled(configManager, List.of("p1"), "the nightmare 5 players", 208.0);
+		assertEquals("live", pb.source);
+		assertEquals(208.0, pb.seconds, 0);
+		assertNull(pb.team);
+		assertNull(pb.timer);
+
+		when(configManager.getConfiguration("killclog", "p1", "livepbtag.nightmare 5 players")).thenReturn("x|5||kill|1130");
+		assertNull(KillLog.labeled(configManager, List.of("p1"), "the nightmare 5 players", 208.0).team);
 	}
 }

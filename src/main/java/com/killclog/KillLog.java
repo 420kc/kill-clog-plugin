@@ -7,6 +7,7 @@ import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.WorldView;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.util.Text;
@@ -44,6 +45,14 @@ final class KillLog
 	private boolean fresh;
 	private String team;
 	private int pbTick = -PAIR_TICKS - 1;
+	// What the game showed when the time arrived: the raid parties and level, and the players in the instance. A party
+	// that changed before the kill count leaves the time without a team size (the site keeps such a time hidden).
+	private int tobAtTime;
+	private int toaAtTime;
+	private int toaLevelAtTime;
+	private int playersAtTime;
+	// The account the half-seen kill belongs to: another account's message never pairs with it.
+	private long account = -1;
 
 	KillLog(ConfigManager configManager)
 	{
@@ -58,6 +67,12 @@ final class KillLog
 		{
 			return;
 		}
+		long you = client.getAccountHash();
+		if (you != account)
+		{
+			reset();
+			account = you;
+		}
 		String text = Text.removeTags(message.replace("<br>", " ")).replaceAll("@[a-z_]+@", "");
 		// A raid's total time counts its waiting too; the challenge time in the message before it is the record.
 		Matcher duration = DURATION.matcher(text);
@@ -67,6 +82,10 @@ final class KillLog
 			pb = AdvLogPbs.timeToSeconds(duration.group(fresh ? "time" : "pb"));
 			team = duration.group("team");
 			pbTick = tick;
+			tobAtTime = party(client, TOB_PARTY);
+			toaAtTime = party(client, TOA_PARTY);
+			toaLevelAtTime = client.getVarbitValue(VarbitID.TOA_CLIENT_RAID_LEVEL);
+			playersAtTime = instancePlayers(client);
 		}
 		Matcher count = KILL_COUNT.matcher(text);
 		if (count.find() && !count.group("boss").contains("(Echo)"))
@@ -92,8 +111,17 @@ final class KillLog
 		{
 			return;
 		}
-		String size = tob || toa ? teamLabel(party(client, tob ? TOB_PARTY : TOA_PARTY))
-			: instanced ? teamLabel((int) Math.min(2, client.getTopLevelWorldView().players().stream().count())) : team;
+		String size = team;
+		if (tob || toa || instanced)
+		{
+			int atTime = tob ? tobAtTime : toa ? toaAtTime : playersAtTime;
+			int now = tob ? party(client, TOB_PARTY) : toa ? party(client, TOA_PARTY) : instancePlayers(client);
+			size = now == atTime ? teamLabel(atTime) : null;
+			if (size == null && instanced)
+			{
+				return;
+			}
+		}
 		String key = size != null ? boss + " " + size.toLowerCase(Locale.ROOT) : boss;
 		Double kept = configManager.getRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, KEY_PREFIX + key, double.class);
 		if (!fresh && kept != null && kept == pb)
@@ -104,7 +132,21 @@ final class KillLog
 		String timer = tob || toa ? "challenge" : boss.startsWith("chambers of xeric") ? "overall" : "kill";
 		configManager.setRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, KEY_PREFIX + key, pb);
 		configManager.setRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, TAG_PREFIX + key, pb + "|" + exact + "|"
-			+ (fresh && toa ? client.getVarbitValue(VarbitID.TOA_CLIENT_RAID_LEVEL) : "") + "|" + timer + "|" + (fresh ? kc : ""));
+			+ (fresh && toa ? toaLevelAtTime : "") + "|" + timer + "|" + (fresh ? kc : ""));
+	}
+
+	/** Drops a kill half seen: at logout, and when another account's messages arrive. */
+	void reset()
+	{
+		kcTick = pbTick = -PAIR_TICKS - 1;
+		boss = null;
+		team = null;
+	}
+
+	private static int instancePlayers(Client client)
+	{
+		WorldView view = client.getTopLevelWorldView();
+		return view == null ? 0 : (int) Math.min(2, view.players().stream().count());
 	}
 
 	private static int party(Client client, int[] slots)
@@ -133,13 +175,24 @@ final class KillLog
 			{
 				String tag = configManager.getConfiguration(AdvLogPbs.CONFIG_GROUP, profileKey, TAG_PREFIX + stored);
 				String[] parts = tag != null ? tag.split("\\|", -1) : new String[0];
-				if (parts.length == 5 && Double.parseDouble(parts[0]) == seconds)
+				try
 				{
-					pb.team = number(parts[1]);
-					pb.scale = number(parts[2]);
-					pb.timer = parts[3];
-					pb.kc = number(parts[4]);
-					return pb;
+					if (parts.length == 5 && Double.parseDouble(parts[0]) == seconds)
+					{
+						pb.team = number(parts[1]);
+						pb.scale = number(parts[2]);
+						pb.timer = parts[3];
+						pb.kc = number(parts[4]);
+						return pb;
+					}
+				}
+				catch (NumberFormatException e)
+				{
+					// A label that doesn't read is skipped: the time still syncs, unlabeled.
+					pb.team = null;
+					pb.scale = null;
+					pb.timer = null;
+					pb.kc = null;
 				}
 			}
 		}

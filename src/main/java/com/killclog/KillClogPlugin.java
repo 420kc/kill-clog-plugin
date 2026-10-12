@@ -407,6 +407,7 @@ public class KillClogPlugin extends Plugin
 			liveClogSync.resetFirstSyncWarning();
 			nameAutocompleter.clearClientSnapshot();
 			playerClans.clearClientSnapshot();
+			killLog.reset();
 			markLocalHiscoresDirty();
 			// Silence old completions before ending the cache epoch, then
 			// cancel again so an attempt that began in that narrow handoff
