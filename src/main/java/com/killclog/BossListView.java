@@ -85,6 +85,12 @@ public class BossListView
 		// than imposing a strict sort - players have already scanned this
 		// exact order in the game's own hiscores.
 		root.add(searchRow());
+		// A thin strip in the activities separator's gray sets the search apart from the first boss.
+		JPanel divider = new JPanel();
+		divider.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		divider.setPreferredSize(new Dimension(0, 3));
+		divider.setMaximumSize(new Dimension(Integer.MAX_VALUE, 3));
+		root.add(divider);
 		for (HiscoreSkill boss : PanelData.BOSSES)
 		{
 			root.add(buildRow(boss, tooltipController, cells));
