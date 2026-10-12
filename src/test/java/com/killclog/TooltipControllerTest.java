@@ -563,6 +563,49 @@ public class TooltipControllerTest
 	}
 
 	@Test
+	public void aCellHoveredThenClickedCannotOpenACardOverAPinnedOne() throws Exception
+	{
+		mode = TooltipMode.HOVER;
+		AtomicBoolean pinned = new AtomicBoolean();
+		ToolTipManager manager = ToolTipManager.sharedInstance();
+		TooltipController controller = new TooltipController(config)
+		{
+			@Override
+			boolean hasPinnedTooltip()
+			{
+				return pinned.get();
+			}
+		};
+		JLabel cell = new JLabel("870");
+		cell.setSize(40, 20);
+		cell.setToolTipText(" ");
+
+		try
+		{
+			SwingUtilities.invokeAndWait(() ->
+			{
+				controller.trackTooltipComponent(cell);
+				// Hovered, Swing listens to the cell's movement; a press then takes the preview down.
+				manager.mouseEntered(new MouseEvent(cell, MouseEvent.MOUSE_ENTERED, 0, 0, 5, 5, 0, false));
+				assertTrue(java.util.Arrays.asList(cell.getMouseMotionListeners()).contains(manager));
+				controller.dismissHoverPreview(new MouseEvent(cell, MouseEvent.MOUSE_PRESSED, 0, 0, 5, 5, 1, false));
+
+				// Another card is pinned: the cell's hover goes off, all of it, so crossing it later opens nothing.
+				pinned.set(true);
+				controller.trackTooltipComponent(cell);
+				assertFalse(isRegistered(cell, manager));
+				assertFalse("no listener left to restart the hover timer",
+					java.util.Arrays.asList(cell.getMouseMotionListeners()).contains(manager));
+			});
+		}
+		finally
+		{
+			cell.setToolTipText(null);
+			controller.deactivate();
+		}
+	}
+
+	@Test
 	public void enteringPinnedTooltipClearsResidualHoverPreview()
 	{
 		AtomicInteger dismissedHoverPreviews = new AtomicInteger();

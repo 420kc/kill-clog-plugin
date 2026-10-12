@@ -503,6 +503,13 @@ class TooltipController
 		{
 			manager.unregisterComponent(component);
 		}
+		if (!shouldRegister)
+		{
+			// Hovering adds the manager itself as a motion listener, and neither its unregister nor a press removes
+			// it; that listener alone restarts the hover timer, so a cell clicked earlier opened a second card over
+			// a pinned one whenever the mouse crossed it.
+			component.removeMouseMotionListener(manager);
+		}
 	}
 
 	boolean hasPinnedTooltip()
