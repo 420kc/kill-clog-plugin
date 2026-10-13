@@ -420,6 +420,30 @@ public class RuneProfileServiceTest
 		return local;
 	}
 
+	@Test
+	public void theClanStaysWithItsLookupWhateverItsAgeUntilRuneProfileHasNoProfile() throws Exception
+	{
+		// 2.6.2: a Player Summary hovered more than five minutes after its lookup (A q p Weed, 10/13) lost its clan,
+		// because the clan was read only while the answer was fresh enough to skip asking again.
+		summaryCache().put("a_q_p_weed", new RuneProfileService.RuneProfileSummary(AccountType.IRONMAN, null,
+			"Iron Clan", new ClanTitle(24, "Recruit")));
+		longCache("summaryFetchTimes").put("a_q_p_weed", System.currentTimeMillis() - 66 * 60 * 1000);
+		assertEquals("Iron Clan", service.clan("A q p Weed"));
+		assertEquals(24, service.clanTitle("A q p Weed").getId());
+		assertTrue(service.hasProfile("a q p weed"));
+
+		// The stale answer is asked again; RuneProfile no longer holding the player clears it.
+		AtomicInteger requests = new AtomicInteger();
+		service = new RuneProfileService(cannedClient(404, "{}", requests), new Gson(), null);
+		summaryCache().put("a q p weed", new RuneProfileService.RuneProfileSummary(AccountType.IRONMAN, null,
+			"Iron Clan", new ClanTitle(24, "Recruit")));
+		longCache("summaryFetchTimes").put("a q p weed", System.currentTimeMillis() - 66 * 60 * 1000);
+		service.lookup("a q p weed").get(5, TimeUnit.SECONDS);
+		assertEquals(1, requests.get());
+		assertNull(service.clan("A q p Weed"));
+		assertFalse(service.hasProfile("A q p Weed"));
+	}
+
 	private static OkHttpClient cannedClient(int code, String body, AtomicInteger requests)
 	{
 		return new OkHttpClient.Builder()

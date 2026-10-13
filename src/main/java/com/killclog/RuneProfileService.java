@@ -120,31 +120,42 @@ public class RuneProfileService
 	@Nullable
 	String clan(String playerName)
 	{
-		RuneProfileSummary cached = summaries.fresh(playerName.toLowerCase());
-		return cached != null ? cached.clan : null;
+		RuneProfileSummary held = held(playerName);
+		return held != null ? held.clan : null;
 	}
 
 	/** The player's title in that clan, its id the game's clan-chat icon; null without one. */
 	@Nullable
 	ClanTitle clanTitle(String playerName)
 	{
-		RuneProfileSummary cached = summaries.fresh(playerName.toLowerCase());
-		return cached != null ? cached.clanTitle : null;
+		RuneProfileSummary held = held(playerName);
+		return held != null ? held.clanTitle : null;
+	}
+
+	/** True once RuneProfile has answered with a profile for this name. */
+	boolean hasProfile(@Nullable String playerName)
+	{
+		return playerName != null && held(playerName) != null;
 	}
 
 	/**
-	 * True once RuneProfile has answered with a profile for this name. Matched
-	 * as Jagex names, because the panel asks with a provider's canonical
-	 * spelling while the cache is keyed by what was typed.
+	 * The profile RuneProfile last answered with for this name, whatever its age: a card shows what its own lookup
+	 * brought, and the next lookup asks again once it's stale (a card hovered five minutes on lost its clan, 2.6.2).
+	 * Matched as Jagex names, because the panel asks with a provider's canonical spelling while the cache is keyed by
+	 * what was typed.
 	 */
-	boolean hasProfile(@Nullable String playerName)
+	@Nullable
+	private RuneProfileSummary held(String playerName)
 	{
-		if (playerName == null)
-		{
-			return false;
-		}
 		String wanted = Text.toJagexName(playerName.toLowerCase());
-		return summaries.values.keySet().stream().anyMatch(key -> Text.toJagexName(key).equals(wanted));
+		for (Map.Entry<String, RuneProfileSummary> entry : summaries.values.entrySet())
+		{
+			if (Text.toJagexName(entry.getKey()).equals(wanted))
+			{
+				return entry.getValue();
+			}
+		}
+		return null;
 	}
 
 	/**
@@ -182,6 +193,8 @@ public class RuneProfileService
 		{
 			if (resp.code == 404)
 			{
+				// No profile now: what it held goes, so no card shows a clan or account from one that's gone.
+				summaries.values.remove(key);
 				return summaries.missing(key);
 			}
 			RuneProfileSummary result = resp.code == 200 && resp.body != null ? parseAccountSummary(resp.body) : null;
