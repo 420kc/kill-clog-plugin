@@ -74,6 +74,8 @@ public class ClogService
 	// proof separately so the active-player result stays attributed during TTL.
 	private final Map<String, Long> templeOverlaySuccessTimes =
 		new java.util.concurrent.ConcurrentHashMap<>();
+	// Your own Temple EHP and EHC, from the date overlay's answers: your log is the game's, Temple adds only these.
+	private final Map<String, double[]> ownTempleFigures = new java.util.concurrent.ConcurrentHashMap<>();
 	// Players TempleOSRS answered with a log in the last day: the Collection Log card credits Temple even when this
 	// lookup's own request was skipped, as for your own log, or timed out.
 	private static final long TEMPLE_HOLDS_TTL_MS = 24 * 60 * 60 * 1000;
@@ -187,6 +189,7 @@ public class ClogService
 						{
 							result = result.withLocalSource(true);
 						}
+						setTempleFigures(result, fromTemple ? ownTempleFigures.get(playerName.toLowerCase()) : null);
 						return fromTemple ? markTempleSource(result) : result;
 					}));
 			}
@@ -237,18 +240,10 @@ public class ClogService
 				Map<String, List<Integer>> categories = categoriesFuture.join();
 				Map<Integer, String> names = namesFuture.join();
 				TempleStats stats = statsFuture.join();
-				AccountType statsType = stats != null ? stats.accountType : null;
 
 				if (playerData != null)
 				{
-					// Clog endpoint returns game_mode 0 for GIMs.
-					// Prefer stats endpoint when clog has no useful type.
-					AccountType accountType = playerData.accountType;
-					if (statsType != null
-						&& (accountType == null || accountType == AccountType.REGULAR))
-					{
-						accountType = statsType;
-					}
+					AccountType accountType = templeType(playerData, stats);
 
 					ClogResult result = new ClogResult(
 						playerData.canonicalName,
@@ -258,8 +253,7 @@ public class ClogService
 						playerData.lastChanged,
 						accountType
 					).withSources(true, false, false);
-					result.setTempleEhp(stats != null ? stats.ehp : -1);
-					result.setTempleEhc(TempleStats.ehc(playerData.figures, accountType));
+					setTempleFigures(result, templeFigures(playerData, stats));
 					localClogCache.cacheResult(result);
 					heldByTemple(normalizedName);
 					clogFetchTimes.put(normalizedName, System.currentTimeMillis());
@@ -278,6 +272,29 @@ public class ClogService
 
 				return null;
 			});
+	}
+
+	/** The clog endpoint reports game_mode 0 for GIMs: the stats endpoint's type wins when the clog's says nothing more. */
+	private static AccountType templeType(PlayerClogData player, @Nullable TempleStats stats)
+	{
+		AccountType type = player.accountType;
+		return stats != null && stats.accountType != null && (type == null || type == AccountType.REGULAR)
+			? stats.accountType : type;
+	}
+
+	/** Temple's EHP and EHC for the account's flavour, from its stats and collection log answers. */
+	private static double[] templeFigures(PlayerClogData player, @Nullable TempleStats stats)
+	{
+		return new double[]{stats != null ? stats.ehp : -1, TempleStats.ehc(player.figures, templeType(player, stats))};
+	}
+
+	private static void setTempleFigures(@Nullable ClogResult result, @Nullable double[] figures)
+	{
+		if (result != null && figures != null)
+		{
+			result.setTempleEhp(figures[0]);
+			result.setTempleEhc(figures[1]);
+		}
 	}
 
 	private static ClogResult markTempleSource(ClogResult result)
@@ -336,14 +353,18 @@ public class ClogService
 		clogFetchTimes.put(ttlKey, now);
 		HttpUtil.prune(clogFetchTimes, CLOG_TTL_MS);
 		String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
+		// Your stats ride with the dates, under the same limit, for the Experience & Efficiency card's EHP.
+		CompletableFuture<TempleStats> stats = fetchStats(encoded).exceptionally(t -> null);
 		return fetchClog(encoded)
-			.thenApply(player ->
+			.thenCombine(stats, (player, yourStats) ->
 			{
 				if (player == null)
 				{
 					templeOverlaySuccessTimes.remove(normalizedName);
+					ownTempleFigures.remove(normalizedName);
 					return false;
 				}
+				ownTempleFigures.put(normalizedName, templeFigures(player, yourStats));
 				if (player.obtainedItems != null)
 				{
 					localClogCache.mergeProviderDates(playerName, player.obtainedItems);
@@ -356,6 +377,7 @@ public class ClogService
 			.exceptionally(t ->
 			{
 				templeOverlaySuccessTimes.remove(normalizedName);
+				ownTempleFigures.remove(normalizedName);
 				log.debug("Provider date overlay failed for '{}'", playerName, t);
 				return false;
 			});

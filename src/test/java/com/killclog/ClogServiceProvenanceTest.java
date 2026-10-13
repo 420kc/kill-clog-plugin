@@ -113,6 +113,33 @@ public class ClogServiceProvenanceTest
 		assertSelfSources(result, Collections.singletonList("Local Collection Log"));
 	}
 
+	@Test
+	public void yourOwnCardGetsTemplesFiguresWithItsDatesUnderTheSameLimit() throws Exception
+	{
+		// 2.6.3: your own lookup reads your log from the game and asks Temple only for dates; your stats now ride
+		// with them, so the Experience & Efficiency card shows your EHP and EHC as it does anyone else's.
+		String player = "Self Probe";
+		AtomicInteger clogRequests = new AtomicInteger();
+		AtomicInteger statsRequests = new AtomicInteger();
+		String templeJson = "{\"data\":{\"game_mode\":1,\"last_changed\":\"2026-09-06 12:00:00\",\"ehc\":3377.9,"
+			+ "\"ehc_im\":3417.4,\"items\":{\"zulrah\":[{\"id\":1,\"count\":1,\"date\":\"2026-09-06 12:00:00\"}]}}}";
+		ClogService service = activeService(player, null, templeJson,
+			"{\"data\":{\"info\":{\"Game mode\":1},\"Overall_ehp\":3043.1}}", clogRequests, statsRequests);
+
+		ClogResult first = service.lookup(player).join();
+		assertEquals(3043.1, first.getTempleEhp(), 1e-9);
+		assertEquals("an ironman's own rates", 3417.4, first.getTempleEhc(), 1e-9);
+		ClogResult again = service.lookup(player).join();
+		assertEquals(3043.1, again.getTempleEhp(), 1e-9);
+		assertEquals("one of each per limit", 1, clogRequests.get());
+		assertEquals(1, statsRequests.get());
+
+		ClogResult notOnTemple = activeService("Unsynced Self", null, "{\"data\":{\"items\":{}}}",
+			"{\"data\":{\"Overall_ehp\":12.0}}", new AtomicInteger(), new AtomicInteger()).lookup("Unsynced Self").join();
+		assertEquals("no Temple log, no Temple section", -1, notOnTemple.getTempleEhp(), 0);
+		assertFalse(SkillsTooltip.onTemple(notOnTemple));
+	}
+
 	private static void assertSelfSources(ClogResult local, List<String> expected)
 	{
 		ClogResult combined = ClogProviderFanout.lookup(true,
@@ -143,6 +170,13 @@ public class ClogServiceProvenanceTest
 	private static ClogService activeService(String player, String localDate,
 		String templeJson, AtomicInteger requests) throws Exception
 	{
+		return activeService(player, localDate, templeJson, "{\"data\":{\"info\":{}}}", requests, new AtomicInteger());
+	}
+
+	/** {@code requests} counts collection log requests, {@code statsRequests} stats ones; each URL gets its answer. */
+	private static ClogService activeService(String player, String localDate, String templeJson, String statsJson,
+		AtomicInteger requests, AtomicInteger statsRequests) throws Exception
+	{
 		Map<String, List<ClogResult.ClogItem>> obtained = new HashMap<>();
 		obtained.put("zulrah", Collections.singletonList(
 			new ClogResult.ClogItem(1, 1, localDate)));
@@ -157,13 +191,14 @@ public class ClogServiceProvenanceTest
 		OkHttpClient client = new OkHttpClient.Builder()
 			.addInterceptor(chain ->
 			{
-				requests.incrementAndGet();
+				boolean stats = chain.request().url().encodedPath().endsWith("player_stats.php");
+				(stats ? statsRequests : requests).incrementAndGet();
 				return new Response.Builder()
 					.request(chain.request())
 					.protocol(Protocol.HTTP_1_1)
 					.code(200)
 					.message("OK")
-					.body(ResponseBody.create(MediaType.parse("application/json"), templeJson))
+					.body(ResponseBody.create(MediaType.parse("application/json"), stats ? statsJson : templeJson))
 					.build();
 			})
 			.build();
