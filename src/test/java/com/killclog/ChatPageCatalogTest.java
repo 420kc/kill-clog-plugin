@@ -65,7 +65,7 @@ public class ChatPageCatalogTest
 		});
 		for (String[] row : CatalogTsv.rows(KillClogChatCommand.class, "chat-clue-aliases.tsv", 2))
 		{
-			assertEquals(KillClogChatCommand.resolveClueCategory(row[0]),
+			assertEquals(TestViews.clueCategory(row[0]),
 				KillClogChatCommand.resolvePage(row[0], pages()).categoryKey);
 		}
 	}
@@ -170,7 +170,7 @@ public class ChatPageCatalogTest
 		KillClogChatCommand.aliases().forEach((alias, boss) -> names.get(ClogService.bossToCategory(boss)).add(alias));
 		for (String[] row : CatalogTsv.rows(KillClogChatCommand.class, "chat-clue-aliases.tsv", 2))
 		{
-			names.get(KillClogChatCommand.resolveClueCategory(row[0])).add(row[0]);
+			names.get(TestViews.clueCategory(row[0])).add(row[0]);
 		}
 		for (String[] row : CatalogTsv.rows(KillClogChatCommand.class, "chat-page-aliases.tsv", 2))
 		{

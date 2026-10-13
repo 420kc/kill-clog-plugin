@@ -163,12 +163,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 		this.onOpenTab = onOpenTab;
 	}
 
-	/** The tab row under a y coordinate, or -1. */
-	int tabAt(int y)
-	{
-		return tabRows.at(y);
-	}
-
 	@Override
 	protected String obtainedLabel()
 	{
@@ -292,16 +286,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 	{
 		java.time.LocalDateTime day = ClogDates.here(date);
 		return day == null ? null : MONTHS[day.getMonthValue() - 1] + " " + day.getDayOfMonth();
-	}
-
-	List<String> sourceNames()
-	{
-		List<String> names = new ArrayList<>(clogSources.size());
-		for (ClogSource source : clogSources)
-		{
-			names.add(source.name);
-		}
-		return names;
 	}
 
 	static int sourceRowWidth(int count)

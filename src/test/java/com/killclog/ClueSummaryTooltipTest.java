@@ -20,15 +20,15 @@ public class ClueSummaryTooltipTest
 	{
 		ClueSummaryTooltip tip = painted(card());
 		// Nothing above the rare section answers, and nothing below its five rows.
-		assertEquals(-1, tip.rareAt(0));
+		assertEquals(-1, TestViews.rowAt(tip, "rareRows", 0));
 		int top = firstRareY(tip);
-		assertEquals(-1, tip.rareAt(top - 1));
+		assertEquals(-1, TestViews.rowAt(tip, "rareRows", top - 1));
 		for (int row = 0; row < ClueSummaryTooltip.RARE_LABELS.length; row++)
 		{
-			assertEquals(row, tip.rareAt(top + row * NativeTooltip.LINE_HEIGHT));
-			assertEquals(row, tip.rareAt(top + row * NativeTooltip.LINE_HEIGHT + NativeTooltip.LINE_HEIGHT - 1));
+			assertEquals(row, TestViews.rowAt(tip, "rareRows", top + row * NativeTooltip.LINE_HEIGHT));
+			assertEquals(row, TestViews.rowAt(tip, "rareRows", top + row * NativeTooltip.LINE_HEIGHT + NativeTooltip.LINE_HEIGHT - 1));
 		}
-		assertEquals(-1, tip.rareAt(top + ClueSummaryTooltip.RARE_LABELS.length * NativeTooltip.LINE_HEIGHT));
+		assertEquals(-1, TestViews.rowAt(tip, "rareRows", top + ClueSummaryTooltip.RARE_LABELS.length * NativeTooltip.LINE_HEIGHT));
 	}
 
 	@Test
@@ -62,7 +62,7 @@ public class ClueSummaryTooltipTest
 				if (rgb == new Color(255, 0, 255 - row).getRGB())
 				{
 					// Every painted pixel of a row's icon belongs to that row and no other.
-					assertEquals(row, tip.rareAt(y));
+					assertEquals(row, TestViews.rowAt(tip, "rareRows", y));
 					found++;
 				}
 			}
@@ -101,15 +101,15 @@ public class ClueSummaryTooltipTest
 		ClueSummaryTooltip tip = painted(card());
 		int top = firstRareY(tip);
 		move(tip, 5, top + NativeTooltip.LINE_HEIGHT + 2);
-		assertEquals(1, tip.hoveredRare());
+		assertEquals(1, TestViews.hoveredRow(tip, "rareRows"));
 		move(tip, 5, 2);
-		assertEquals(-1, tip.hoveredRare());
+		assertEquals(-1, TestViews.hoveredRow(tip, "rareRows"));
 		move(tip, 5, top + 2);
 		for (MouseListener listener : tip.getMouseListeners())
 		{
 			listener.mouseExited(event(tip, MouseEvent.MOUSE_EXITED, 5, top + 2, MouseEvent.NOBUTTON));
 		}
-		assertEquals(-1, tip.hoveredRare());
+		assertEquals(-1, TestViews.hoveredRow(tip, "rareRows"));
 	}
 
 	@Test
@@ -166,7 +166,7 @@ public class ClueSummaryTooltipTest
 	{
 		for (int y = 0; y < tip.getHeight(); y++)
 		{
-			if (tip.rareAt(y) == 0)
+			if (TestViews.rowAt(tip, "rareRows", y) == 0)
 			{
 				return y;
 			}

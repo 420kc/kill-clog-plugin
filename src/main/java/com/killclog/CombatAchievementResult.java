@@ -117,18 +117,6 @@ final class CombatAchievementResult
 		return new CombatAchievementResult(completed, providerTotal, liveTotals);
 	}
 
-	int getCompleted(CombatAchievementTier tier)
-	{
-		return completed.getOrDefault(tier, 0);
-	}
-
-	int getTotal(CombatAchievementTier tier)
-	{
-		return liveCatalog
-			? currentTotals.getOrDefault(tier, 0)
-			: providerTotal.getOrDefault(tier, 0);
-	}
-
 	/** The Combat Summary tier row's reward sprite for the held tier, or null when no tier is held. */
 	CombatAchievementReward getReward()
 	{

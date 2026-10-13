@@ -179,17 +179,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 		this.onOpenRaid = onOpenRaid;
 	}
 
-	int hoveredRaid()
-	{
-		return raidRows.hovered();
-	}
-
-	/** The raid row under a y coordinate, or -1. Rows are full width. */
-	int raidAt(int y)
-	{
-		return raidRows.at(y);
-	}
-
 	@Override
 	CardBody.Scroll scroll()
 	{

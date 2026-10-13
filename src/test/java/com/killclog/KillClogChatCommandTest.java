@@ -120,20 +120,20 @@ public class KillClogChatCommandTest
 	public void testClueAliasesMatchRuneProfileGrammar()
 	{
 		assertEquals("beginner_treasure_trails",
-			KillClogChatCommand.resolveClueCategory("beginner clues"));
+			TestViews.clueCategory("beginner clues"));
 		assertEquals("easy_treasure_trails",
-			KillClogChatCommand.resolveClueCategory("clues easy"));
+			TestViews.clueCategory("clues easy"));
 		assertEquals("medium_treasure_trails",
-			KillClogChatCommand.resolveClueCategory("medium clues"));
+			TestViews.clueCategory("medium clues"));
 		assertEquals("medium_treasure_trails",
-			KillClogChatCommand.resolveClueCategory("clues medium"));
+			TestViews.clueCategory("clues medium"));
 		assertEquals("hard_treasure_trails",
-			KillClogChatCommand.resolveClueCategory("hards"));
+			TestViews.clueCategory("hards"));
 		assertEquals("elite_treasure_trails",
-			KillClogChatCommand.resolveClueCategory("elite treasure trails"));
+			TestViews.clueCategory("elite treasure trails"));
 		assertEquals("master_treasure_trails",
-			KillClogChatCommand.resolveClueCategory("master clue"));
-		assertNull(KillClogChatCommand.resolveClueCategory("medium"));
+			TestViews.clueCategory("master clue"));
+		assertNull(TestViews.clueCategory("medium"));
 	}
 
 	@Test

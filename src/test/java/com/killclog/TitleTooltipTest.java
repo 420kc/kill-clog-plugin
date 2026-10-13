@@ -98,12 +98,12 @@ public class TitleTooltipTest
 		tooltip.setTitle("Clog Summary");
 		tooltip.setClogSources(true, true, true, false);
 		assertEquals(Arrays.asList("Kill Clog", "TempleOSRS", "RuneProfile"),
-			tooltip.sourceNames());
+			TestViews.sourceNames(tooltip));
 
 		tooltip.setClogSources(false, true, false, false);
-		assertEquals(Collections.singletonList("RuneProfile"), tooltip.sourceNames());
+		assertEquals(Collections.singletonList("RuneProfile"), TestViews.sourceNames(tooltip));
 		tooltip.setClogSources(false, false, false, false);
-		assertTrue(tooltip.sourceNames().isEmpty());
+		assertTrue(TestViews.sourceNames(tooltip).isEmpty());
 	}
 
 	@Test
@@ -115,11 +115,11 @@ public class TitleTooltipTest
 
 		ClogSummaryTooltip tooltip = new ClogSummaryTooltip();
 		tooltip.setClogSources(selfCard, false, false, false);
-		assertEquals(Arrays.asList("Local Collection Log", "TempleOSRS"), tooltip.sourceNames());
+		assertEquals(Arrays.asList("Local Collection Log", "TempleOSRS"), TestViews.sourceNames(tooltip));
 
 		tooltip.setClogSources(selfCard, false, true, false);
 		assertEquals(Arrays.asList("Local Collection Log", "TempleOSRS", "RuneProfile"),
-			tooltip.sourceNames());
+			TestViews.sourceNames(tooltip));
 	}
 
 	@Test
@@ -132,10 +132,10 @@ public class TitleTooltipTest
 
 		ClogSummaryTooltip tooltip = new ClogSummaryTooltip();
 		tooltip.setClogSources(selfCard, true, true, true);
-		assertEquals(Arrays.asList("Kill Clog", "TempleOSRS", "RuneProfile"), tooltip.sourceNames());
+		assertEquals(Arrays.asList("Kill Clog", "TempleOSRS", "RuneProfile"), TestViews.sourceNames(tooltip));
 
 		tooltip.setClogSources(selfCard, false, false, false);
-		assertEquals(Collections.singletonList("Local Collection Log"), tooltip.sourceNames());
+		assertEquals(Collections.singletonList("Local Collection Log"), TestViews.sourceNames(tooltip));
 	}
 
 	@Test

@@ -59,7 +59,7 @@ public class PlayerPortraitsTest
 	/** Answer the request out for a name, for the lookup it was sent for, as its completed call would. */
 	private static void answer(PlayerPortraits portraits, String name, int code, byte[] bytes, String etag)
 	{
-		Integer generation = portraits.askedFor(name);
+		Integer generation = TestViews.askedFor(portraits, name);
 		portraits.onResponse(name, generation != null ? generation : 0, code, bytes, etag);
 	}
 
@@ -232,7 +232,7 @@ public class PlayerPortraitsTest
 			portraits.lookedUp(clog("player " + i, true));
 			answer(portraits, "player " + i, 404, null, null);
 		}
-		assertTrue(portraits.countedLookups() <= PlayerPortraits.MAX_GENERATIONS + 1);
+		assertTrue(TestViews.countedLookups(portraits) <= PlayerPortraits.MAX_GENERATIONS + 1);
 	}
 
 	@Test
@@ -267,13 +267,13 @@ public class PlayerPortraitsTest
 		OkHttpClient client = client();
 		PlayerPortraits portraits = new PlayerPortraits(client);
 		portraits.lookedUp(clog("Zezima", true));
-		Integer beforePublish = portraits.askedFor("Zezima");
+		Integer beforePublish = TestViews.askedFor(portraits, "Zezima");
 		assertNotNull(beforePublish);
 
 		// The check already out answers 404 for the character before the publish: it asks again at once.
 		portraits.published("Zezima");
 		portraits.onResponse("Zezima", beforePublish, 404, null, null);
-		assertEquals(Integer.valueOf(beforePublish + 1), portraits.askedFor("Zezima"));
+		assertEquals(Integer.valueOf(beforePublish + 1), TestViews.askedFor(portraits, "Zezima"));
 		requests(client, 2);
 	}
 }

@@ -96,12 +96,6 @@ final class KillclogSyncGate
 		return gen == generation.get();
 	}
 
-	/** @return true exactly once per remembered push intent. */
-	boolean consumeQueued()
-	{
-		return consumeQueuedIntent() != null;
-	}
-
 	/** A queued push: whether a user asked for it, and its game (null follows the world). */
 	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 	static final class Intent

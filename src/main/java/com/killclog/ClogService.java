@@ -51,12 +51,6 @@ public class ClogService
 		}
 	}
 
-	/** Read-only view for catalog-parity tests. */
-	/* package */ static Map<String, String> bossCategoryOverrides()
-	{
-		return Collections.unmodifiableMap(BOSS_CATEGORY_OVERRIDES);
-	}
-
 	private final OkHttpClient httpClient;
 	private final Gson gson;
 	private final LocalClogCache localClogCache;

@@ -606,11 +606,6 @@ public class KillClogPlugin extends Plugin
 			league == null ? RuneScapeProfileType.STANDARD.name() : killclogService.leagueProfileType(league)), boss);
 	}
 
-	void setLeagueCacheFactory(java.util.function.Function<String, LocalClogCache> factory)
-	{
-		leagueCacheFactory = factory;
-	}
-
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{

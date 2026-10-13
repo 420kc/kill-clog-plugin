@@ -224,24 +224,6 @@ class KillClogChatCommand
 		return label.toString();
 	}
 
-	/** Read-only views for catalog-parity tests. */
-	/* package */ static String clueLabel(String query)
-	{
-		ClogTarget target = CLUE_ALIASES.get(normalize(query));
-		return target != null ? target.label : null;
-	}
-
-	/* package */ static int clueAliasCount()
-	{
-		return CLUE_ALIASES.size();
-	}
-
-	/* package */ static String resolveClueCategory(String query)
-	{
-		ClogTarget target = CLUE_ALIASES.get(normalize(query));
-		return target != null ? target.categoryKey : null;
-	}
-
 	/* package */ static String normalize(String s)
 	{
 		return s.toLowerCase(Locale.ROOT).replace("'", "").replace("\u2019", "").replace(":", "")

@@ -65,14 +65,6 @@ final class CaCatalog
 		return totals;
 	}
 
-	/** Test seam: a catalog pre-published with the given totals. */
-	/* package */ static CaCatalog withTotals(Map<CombatAchievementTier, Integer> totals)
-	{
-		CaCatalog catalog = new CaCatalog();
-		catalog.totals = Collections.unmodifiableMap(new EnumMap<>(totals));
-		return catalog;
-	}
-
 	void clear()
 	{
 		totals = null;

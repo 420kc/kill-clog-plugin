@@ -17,7 +17,7 @@ public class ClogCategoryOverridesCatalogTest
 	@Test
 	public void overridesMatchGoldenTable()
 	{
-		Map<String, String> overrides = ClogService.bossCategoryOverrides();
+		Map<String, String> overrides = TestViews.bossCategoryOverrides();
 		assertEquals(24, overrides.size());
 		assertEquals("callisto_and_artio", overrides.get("Artio"));
 		assertEquals("callisto_and_artio", overrides.get("Callisto"));

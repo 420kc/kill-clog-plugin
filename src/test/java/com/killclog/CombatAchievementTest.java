@@ -142,8 +142,8 @@ public class CombatAchievementTest
 		assertFalse(r.isAllComplete());
 		assertEquals(CombatAchievementTier.MASTER, r.getTier());
 		// Display denominators follow the live catalog, not the stale snapshot.
-		assertEquals(129, r.getTotal(CombatAchievementTier.GRANDMASTER));
-		assertEquals(121, r.getCompleted(CombatAchievementTier.GRANDMASTER));
+		assertEquals(129, TestViews.total(r, CombatAchievementTier.GRANDMASTER));
+		assertEquals(121, TestViews.completed(r, CombatAchievementTier.GRANDMASTER));
 	}
 
 	@Test
@@ -182,7 +182,7 @@ public class CombatAchievementTest
 		Map<CombatAchievementTier, Integer> live = liveCatalogWithNewBatch();
 		CombatAchievementResult healed = stale.rebasedOn(live);
 		assertEquals(CombatAchievementTier.MASTER, healed.getTier());
-		assertEquals(129, healed.getTotal(CombatAchievementTier.GRANDMASTER));
+		assertEquals(129, TestViews.total(healed, CombatAchievementTier.GRANDMASTER));
 		assertSame(healed, healed.rebasedOn(live));
 		assertSame(stale, stale.rebasedOn(null));
 	}
@@ -270,8 +270,8 @@ public class CombatAchievementTest
 		completed.put(CombatAchievementTier.HARD, 50);
 		total.put(CombatAchievementTier.HARD, 142);
 		CombatAchievementResult r = CombatAchievementResult.of(completed, total);
-		assertEquals(50, r.getCompleted(CombatAchievementTier.HARD));
-		assertEquals(142, r.getTotal(CombatAchievementTier.HARD));
-		assertEquals(0, r.getCompleted(CombatAchievementTier.MASTER));
+		assertEquals(50, TestViews.completed(r, CombatAchievementTier.HARD));
+		assertEquals(142, TestViews.total(r, CombatAchievementTier.HARD));
+		assertEquals(0, TestViews.completed(r, CombatAchievementTier.MASTER));
 	}
 }

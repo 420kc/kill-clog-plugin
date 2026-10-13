@@ -53,7 +53,7 @@ public class RuneProfileServiceTest
 		assertEquals(AccountType.HARDCORE_GROUP_IRONMAN, summary.accountType);
 		assertNotNull(summary.combatAchievements);
 		assertEquals(CombatAchievementTier.EASY, summary.combatAchievements.getTier());
-		assertEquals(41, summary.combatAchievements.getCompleted(CombatAchievementTier.EASY));
+		assertEquals(41, TestViews.completed(summary.combatAchievements, CombatAchievementTier.EASY));
 	}
 
 	@Test
@@ -113,7 +113,7 @@ public class RuneProfileServiceTest
 		Map<CombatAchievementTier, Integer> expanded = new EnumMap<>(full);
 		expanded.put(CombatAchievementTier.GRANDMASTER,
 			full.get(CombatAchievementTier.GRANDMASTER) + 8);
-		service.setCaCatalog(CaCatalog.withTotals(expanded));
+		service.setCaCatalog(TestViews.caCatalog(expanded));
 
 		CombatAchievementResult healed = service.lookup("cbc").join();
 		assertEquals(CombatAchievementTier.MASTER, healed.getTier());
@@ -152,8 +152,8 @@ public class RuneProfileServiceTest
 		assertEquals(161, r.getTotalPoints());
 		assertEquals(CombatAchievementTier.MEDIUM, r.getTier());
 		assertEquals(CombatAchievementReward.MEDIUM, r.getReward());
-		assertEquals(41, r.getCompleted(CombatAchievementTier.EASY));
-		assertEquals(60, r.getTotal(CombatAchievementTier.MEDIUM));
+		assertEquals(41, TestViews.completed(r, CombatAchievementTier.EASY));
+		assertEquals(60, TestViews.total(r, CombatAchievementTier.MEDIUM));
 	}
 
 	@Test
@@ -180,7 +180,7 @@ public class RuneProfileServiceTest
 		String json = "{\"data\":[{\"name\":\"Easy\",\"total\":33}]}";
 		CombatAchievementResult r = service.parseCombatAchievements(json);
 		assertNotNull(r);
-		assertEquals(0, r.getCompleted(CombatAchievementTier.EASY));
+		assertEquals(0, TestViews.completed(r, CombatAchievementTier.EASY));
 		assertEquals(0, r.getTotalPoints());
 		assertNull(r.getTier());
 	}
@@ -329,12 +329,12 @@ public class RuneProfileServiceTest
 		{
 			assertFalse(service.hasProfile("Self Probe"));
 			CombatAchievementResult ca = service.lookup("Self Probe").join();
-			assertEquals(3, ca.getCompleted(CombatAchievementTier.EASY));
+			assertEquals(3, TestViews.completed(ca, CombatAchievementTier.EASY));
 
 			awaitProfile("Self Probe", true);
 			// RuneProfile's view of the account never reaches the player's own badge.
 			assertNull(service.getCachedAccountType("Self Probe"));
-			assertEquals(3, service.lookup("self probe").join().getCompleted(CombatAchievementTier.EASY));
+			assertEquals(3, TestViews.completed(service.lookup("self probe").join(), CombatAchievementTier.EASY));
 			assertEquals(1, requests.get());
 		}
 		finally

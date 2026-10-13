@@ -127,8 +127,8 @@ public class PanelCellResetCharacterizationTest
 			JLabel vorkath = cells.getBossLabel(HiscoreSkill.VORKATH);
 			assertEquals(ClogHelper.pad("5"), zulrah.getText());
 			assertEquals(Cells.KC_COLOR, zulrah.getForeground());
-			assertSame(cells.getOriginalIcons().get(HiscoreSkill.ZULRAH), zulrah.getIcon());
-			assertSame(cells.getDimmedIcons().get(HiscoreSkill.VORKATH), vorkath.getIcon());
+			assertSame(TestViews.originalIcons(cells).get(HiscoreSkill.ZULRAH), zulrah.getIcon());
+			assertSame(TestViews.dimmedIcons(cells).get(HiscoreSkill.VORKATH), vorkath.getIcon());
 			assertNotEquals(ColorScheme.LIGHT_GRAY_COLOR, config.emptyClogColor());
 			assertEquals(config.emptyClogColor(), vorkath.getForeground());
 			assertEquals(ClogHelper.pad("3"), cells.getClueTierLabels().get(HiscoreSkill.CLUE_SCROLL_HARD).getText());
@@ -143,7 +143,7 @@ public class PanelCellResetCharacterizationTest
 			for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getBossLabels().entrySet())
 			{
 				assertResting(entry.getValue(), " ");
-				ImageIcon original = cells.getOriginalIcons().get(entry.getKey());
+				ImageIcon original = TestViews.originalIcons(cells).get(entry.getKey());
 				assertNotNull(original);
 				assertSame(original, entry.getValue().getIcon());
 			}
@@ -182,7 +182,7 @@ public class PanelCellResetCharacterizationTest
 			panel.onError("Next", new RuntimeException("offline"));
 			JLabel zulrah = cells.getBossLabel(HiscoreSkill.ZULRAH);
 			assertResting(zulrah, " ");
-			assertSame(cells.getOriginalIcons().get(HiscoreSkill.VORKATH), cells.getBossLabel(HiscoreSkill.VORKATH).getIcon());
+			assertSame(TestViews.originalIcons(cells).get(HiscoreSkill.VORKATH), cells.getBossLabel(HiscoreSkill.VORKATH).getIcon());
 			// Rare cells are rebuilt as catalog previews right after this reset; see rebuildPrimaryTooltips.
 			assertEquals(" ", panel.playerName().getText());
 			assertEquals("Lookup failed", field("statusRow", PanelStatusRow.class).statusText());

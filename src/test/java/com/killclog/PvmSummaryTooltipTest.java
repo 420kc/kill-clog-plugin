@@ -76,10 +76,10 @@ public class PvmSummaryTooltipTest
 		int tieredTop = paintedRaidTop(tiered);
 		// The tier row's room moves the raid rows down, and their clicks move with them.
 		assertEquals(plainTop + 4 + 22 + 6, tieredTop);
-		assertEquals(-1, tiered.raidAt(tieredTop - 1));
-		assertEquals(0, tiered.raidAt(tieredTop));
-		assertEquals(2, tiered.raidAt(tieredTop + 2 * 14 + 13));
-		assertEquals(-1, tiered.raidAt(tieredTop + 3 * 14));
+		assertEquals(-1, TestViews.rowAt(tiered, "raidRows", tieredTop - 1));
+		assertEquals(0, TestViews.rowAt(tiered, "raidRows", tieredTop));
+		assertEquals(2, TestViews.rowAt(tiered, "raidRows", tieredTop + 2 * 14 + 13));
+		assertEquals(-1, TestViews.rowAt(tiered, "raidRows", tieredTop + 3 * 14));
 	}
 
 	private static int paintedRaidTop(PvmSummaryTooltip tip) throws ReflectiveOperationException
@@ -93,7 +93,7 @@ public class PvmSummaryTooltipTest
 		// The first raid row's top, read through the card's own hit test.
 		for (int y = 0; y < size.height; y++)
 		{
-			if (tip.raidAt(y) == 0)
+			if (TestViews.rowAt(tip, "raidRows", y) == 0)
 			{
 				return y;
 			}
@@ -157,19 +157,19 @@ public class PvmSummaryTooltipTest
 	{
 		PvmSummaryTooltip tip = card();
 		// Before the first paint there is no raid section to answer.
-		assertEquals(-1, tip.raidAt(200));
+		assertEquals(-1, TestViews.rowAt(tip, "raidRows", 200));
 
 		painted(tip);
-		assertEquals(-1, tip.raidAt(0));
+		assertEquals(-1, TestViews.rowAt(tip, "raidRows", 0));
 		int top = firstRaidY(tip);
-		assertEquals(-1, tip.raidAt(top - 1));
+		assertEquals(-1, TestViews.rowAt(tip, "raidRows", top - 1));
 		for (int row = 0; row < 3; row++)
 		{
-			assertEquals(row, tip.raidAt(top + row * NativeTooltip.LINE_HEIGHT));
-			assertEquals(row, tip.raidAt(top + row * NativeTooltip.LINE_HEIGHT + NativeTooltip.LINE_HEIGHT - 1));
+			assertEquals(row, TestViews.rowAt(tip, "raidRows", top + row * NativeTooltip.LINE_HEIGHT));
+			assertEquals(row, TestViews.rowAt(tip, "raidRows", top + row * NativeTooltip.LINE_HEIGHT + NativeTooltip.LINE_HEIGHT - 1));
 		}
 		// The mega rare sprites below the rows are not part of them.
-		assertEquals(-1, tip.raidAt(top + 3 * NativeTooltip.LINE_HEIGHT));
+		assertEquals(-1, TestViews.rowAt(tip, "raidRows", top + 3 * NativeTooltip.LINE_HEIGHT));
 	}
 
 	@Test
@@ -183,7 +183,7 @@ public class PvmSummaryTooltipTest
 		for (int row = 0; row < 3; row++)
 		{
 			move(tip, 5, top + row * NativeTooltip.LINE_HEIGHT + 2);
-			assertEquals(row, tip.hoveredRaid());
+			assertEquals(row, TestViews.hoveredRow(tip, "raidRows"));
 			BufferedImage hovered = render(tip);
 			int changed = 0;
 			for (int y = 0; y < resting.getHeight(); y++)
@@ -193,7 +193,7 @@ public class PvmSummaryTooltipTest
 					if (resting.getRGB(x, y) != hovered.getRGB(x, y))
 					{
 						// Only this row's label moves, and only from orange to white.
-						assertEquals(row, tip.raidAt(y));
+						assertEquals(row, TestViews.rowAt(tip, "raidRows", y));
 						assertEquals(orange, resting.getRGB(x, y));
 						assertEquals(white, hovered.getRGB(x, y));
 						changed++;
@@ -204,7 +204,7 @@ public class PvmSummaryTooltipTest
 		}
 
 		move(tip, 5, 2);
-		assertEquals(-1, tip.hoveredRaid());
+		assertEquals(-1, TestViews.hoveredRow(tip, "raidRows"));
 		BufferedImage after = render(tip);
 		for (int y = 0; y < resting.getHeight(); y++)
 		{
@@ -277,12 +277,12 @@ public class PvmSummaryTooltipTest
 		PvmSummaryTooltip tip = painted(card());
 		int top = firstRaidY(tip);
 		move(tip, 5, top + 2);
-		assertEquals(0, tip.hoveredRaid());
+		assertEquals(0, TestViews.hoveredRow(tip, "raidRows"));
 		for (MouseListener listener : tip.getMouseListeners())
 		{
 			listener.mouseExited(event(tip, MouseEvent.MOUSE_EXITED, 5, top + 2, MouseEvent.NOBUTTON));
 		}
-		assertEquals(-1, tip.hoveredRaid());
+		assertEquals(-1, TestViews.hoveredRow(tip, "raidRows"));
 	}
 
 	private static PvmSummaryTooltip card()
@@ -324,7 +324,7 @@ public class PvmSummaryTooltipTest
 	{
 		for (int y = 0; y < tip.getHeight(); y++)
 		{
-			if (tip.raidAt(y) == 0)
+			if (TestViews.rowAt(tip, "raidRows", y) == 0)
 			{
 				return y;
 			}

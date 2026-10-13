@@ -23,9 +23,9 @@ public class ClogTabTooltipTest
 	{
 		ClogTabTooltip card = painted(card(57));
 		int top = firstRowY(card);
-		assertEquals(0, card.pageAt(top));
-		assertEquals(23, card.pageAt(top + 23 * LINE));
-		assertEquals(-1, card.pageAt(top + 24 * LINE));
+		assertEquals(0, TestViews.rowAt(card, "pageRows", top));
+		assertEquals(23, TestViews.rowAt(card, "pageRows", top + 23 * LINE));
+		assertEquals(-1, TestViews.rowAt(card, "pageRows", top + 24 * LINE));
 
 		wheel(card, top + 5, 1);
 		assertEquals(3, card.offset());
@@ -51,7 +51,7 @@ public class ClogTabTooltipTest
 		wheel(whole, firstRowY(whole), 3);
 		assertEquals(0, whole.offset());
 		int last = ClogTabTooltip.VISIBLE_ROWS + notch - 1;
-		assertEquals("every page shows", last, whole.pageAt(firstRowY(whole) + last * LINE));
+		assertEquals("every page shows", last, TestViews.rowAt(whole, "pageRows", firstRowY(whole) + last * LINE));
 		// One page more and the tab scrolls: the window's rows, seven pixels wider for the rail.
 		ClogTabTooltip scrolls = card(ClogTabTooltip.VISIBLE_ROWS + notch + 1);
 		assertEquals(whole.getPreferredSize().width + 7, scrolls.getPreferredSize().width);
@@ -198,7 +198,7 @@ public class ClogTabTooltipTest
 	{
 		for (int y = 0; y < card.getHeight(); y++)
 		{
-			if (card.pageAt(y) == card.offset())
+			if (TestViews.rowAt(card, "pageRows", y) == card.offset())
 			{
 				return y;
 			}

@@ -785,11 +785,6 @@ public class HiscoreService
 		}
 	}
 
-	/* package */ int calcCmbLvl(String[] lines)
-	{
-		return calcCmbLvlFromLevels(combatLevels(lines));
-	}
-
 	/** The seven combat skills from the CSV rows; null when a row is unreadable. */
 	private Map<String, Integer> combatLevels(String[] lines)
 	{

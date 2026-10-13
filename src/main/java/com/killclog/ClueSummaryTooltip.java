@@ -114,17 +114,6 @@ public class ClueSummaryTooltip extends TitleTooltip
 		this.onOpenRare = onOpenRare;
 	}
 
-	int hoveredRare()
-	{
-		return rareRows.hovered();
-	}
-
-	/** The rare row under a y coordinate, or -1. Rows are full width. */
-	int rareAt(int y)
-	{
-		return rareRows.at(y);
-	}
-
 	@Override
 	protected CardBody body()
 	{

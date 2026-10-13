@@ -755,16 +755,6 @@ public class Cells
 		return Collections.unmodifiableMap(clueTierLabels);
 	}
 
-	public Map<HiscoreSkill, ImageIcon> getOriginalIcons()
-	{
-		return Collections.unmodifiableMap(originalIcons);
-	}
-
-	public Map<HiscoreSkill, ImageIcon> getDimmedIcons()
-	{
-		return Collections.unmodifiableMap(dimmedIcons);
-	}
-
 	@Nullable
 	public JLabel getBossLabel(HiscoreSkill boss)
 	{

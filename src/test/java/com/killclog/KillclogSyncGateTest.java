@@ -118,8 +118,8 @@ public class KillclogSyncGateTest
 		assertEquals(-1, gate.beginAttempt());
 		assertEquals(-1, gate.beginAttempt());
 		gate.complete(gen);
-		assertTrue(gate.consumeQueued());
-		assertFalse(gate.consumeQueued());
+		assertTrue(TestViews.consumeQueued(gate));
+		assertFalse(TestViews.consumeQueued(gate));
 	}
 
 	@Test
@@ -136,7 +136,7 @@ public class KillclogSyncGateTest
 		// The old request completes: stale (no chat), but the queued intent
 		// survives so the current-era push launches next.
 		assertFalse(gate.complete(oldGen));
-		assertTrue(gate.consumeQueued());
+		assertTrue(TestViews.consumeQueued(gate));
 		int newGen = gate.beginAttempt();
 		assertTrue(newGen >= 0);
 		assertTrue(gate.complete(newGen));
@@ -150,7 +150,7 @@ public class KillclogSyncGateTest
 		assertEquals(-1, gate.beginAttempt());
 		gate.cancel();
 		gate.complete(gen);
-		assertFalse("opt-out must forget the queued push", gate.consumeQueued());
+		assertFalse("opt-out must forget the queued push", TestViews.consumeQueued(gate));
 	}
 
 	@Test
@@ -210,9 +210,9 @@ public class KillclogSyncGateTest
 		// Behind that click, a queued automatic push is forgotten and a queued click is kept.
 		assertEquals(-1, gate.beginAttempt(false, null));
 		gate.cancelAutomatic();
-		assertFalse(gate.consumeQueued());
+		assertFalse(TestViews.consumeQueued(gate));
 		assertEquals(-1, gate.beginAttempt(true, null));
 		gate.cancelAutomatic();
-		assertTrue(gate.consumeQueued());
+		assertTrue(TestViews.consumeQueued(gate));
 	}
 }

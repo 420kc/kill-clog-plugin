@@ -872,7 +872,7 @@ public class PluginPublicationCharacterizationTest
 		LocalClogCache league = mock(LocalClogCache.class);
 		when(league.currentSessionEpoch()).thenReturn(3L);
 		when(league.activate(any(), anyLong())).thenReturn(true);
-		plugin.setLeagueCacheFactory(id ->
+		TestViews.leagueCacheFactory(plugin, id ->
 		{
 			assertEquals("demonic-pacts", id);
 			return league;
@@ -1120,7 +1120,7 @@ public class PluginPublicationCharacterizationTest
 		verify(panel).followWorld("demonic-pacts", league, "demonic-pacts");
 		plugin.shutDown();
 		LocalClogCache reopened = mock(LocalClogCache.class);
-		plugin.setLeagueCacheFactory(id -> reopened);
+		TestViews.leagueCacheFactory(plugin, id -> reopened);
 		plugin.startUp();
 		ticks(1);
 		drainEdt();
@@ -1315,7 +1315,7 @@ public class PluginPublicationCharacterizationTest
 		replace("manualClogSync", walk);
 		KillclogService service = (KillclogService) field("killclogService");
 		java.util.Map<String, LocalClogCache> stores = new java.util.HashMap<>();
-		plugin.setLeagueCacheFactory(id -> stores.computeIfAbsent(id, key -> mock(LocalClogCache.class)));
+		TestViews.leagueCacheFactory(plugin, id -> stores.computeIfAbsent(id, key -> mock(LocalClogCache.class)));
 		when(service.activeLeague()).thenReturn("raging-echoes");
 		world(net.runelite.api.WorldType.SEASONAL, net.runelite.api.WorldType.MEMBERS);
 		ticks(1);

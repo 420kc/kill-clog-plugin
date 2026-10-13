@@ -273,7 +273,7 @@ public class ClogSummaryTooltipTest
 		painted(tip);
 		for (int y = 0; y < tip.getHeight(); y++)
 		{
-			assertEquals(-1, tip.tabAt(y));
+			assertEquals(-1, TestViews.rowAt(tip, "tabRows", y));
 		}
 
 		List<String> opened = new ArrayList<>();
@@ -284,7 +284,7 @@ public class ClogSummaryTooltipTest
 		int raids = -1;
 		for (int y = tip.getHeight() - 1; y >= 0; y--)
 		{
-			raids = tip.tabAt(y) == 1 ? y : raids;
+			raids = TestViews.rowAt(tip, "tabRows", y) == 1 ? y : raids;
 		}
 		for (java.awt.event.MouseListener listener : tip.getMouseListeners())
 		{

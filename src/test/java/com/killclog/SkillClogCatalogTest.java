@@ -20,17 +20,17 @@ public class SkillClogCatalogTest
 	{
 		assertEquals(Arrays.asList(
 			"category|Barbarian Assault|barbarian_assault"),
-			SkillClogSection.specSignature(Skill.ATTACK));
+			TestViews.specSignature(Skill.ATTACK));
 		assertEquals(Arrays.asList(
 			"items|Equipment Unlocks|24422,19529,29799,31109,33634",
 			"category|Pest Control|pest_control"),
-			SkillClogSection.specSignature(Skill.HITPOINTS));
+			TestViews.specSignature(Skill.HITPOINTS));
 		assertEquals(Arrays.asList(
 			"category|Defenders|cyclopes"),
-			SkillClogSection.specSignature(Skill.DEFENCE));
+			TestViews.specSignature(Skill.DEFENCE));
 		assertEquals(Arrays.asList(
 			"items|Weapon Unlocks|4153,21646,21742,29000,13576,6528,4718,4747,28997,21003,33631,22486"),
-			SkillClogSection.specSignature(Skill.STRENGTH));
+			TestViews.specSignature(Skill.STRENGTH));
 		assertEquals(Arrays.asList(
 			"items|Pets|13321,23760",
 			"category|Camdozaal|camdozaal",
@@ -39,7 +39,7 @@ public class SkillClogCatalogTest
 			"category|Shooting Stars|shooting_stars",
 			"category|Volcanic Mine|volcanic_mine",
 			"category|Zalcano|zalcano"),
-			SkillClogSection.specSignature(Skill.MINING));
+			TestViews.specSignature(Skill.MINING));
 		assertEquals(Arrays.asList(
 			"items|Pets|20659",
 			"category|Brimhaven Agility Arena|brimhaven_agility_arena",
@@ -48,13 +48,13 @@ public class SkillClogCatalogTest
 			"category|Monkey Backpacks|monkey_backpacks",
 			"category|Rooftop Agility|rooftop_agility",
 			"items|Underwater|21649"),
-			SkillClogSection.specSignature(Skill.AGILITY));
+			TestViews.specSignature(Skill.AGILITY));
 		assertEquals(Arrays.asList(
 			"category|Giants' Foundry|giants_foundry"),
-			SkillClogSection.specSignature(Skill.SMITHING));
+			TestViews.specSignature(Skill.SMITHING));
 		assertEquals(Arrays.asList(
 			"category|Mastering Mixology|mastering_mixology"),
-			SkillClogSection.specSignature(Skill.HERBLORE));
+			TestViews.specSignature(Skill.HERBLORE));
 		assertEquals(Arrays.asList(
 			"items|Pets|13320,25602",
 			"category|Aerial Fishing|aerial_fishing",
@@ -63,65 +63,65 @@ public class SkillClogCatalogTest
 			"category|Fishing Trawler|fishing_trawler",
 			"items|Lantern Harpooning|31572",
 			"category|Tempoross|tempoross"),
-			SkillClogSection.specSignature(Skill.FISHING));
+			TestViews.specSignature(Skill.FISHING));
 		assertEquals(Arrays.asList(
 			"category|Chompy Bird Hunting|chompy_bird_hunting"),
-			SkillClogSection.specSignature(Skill.RANGED));
+			TestViews.specSignature(Skill.RANGED));
 		assertEquals(Arrays.asList(
 			"items|Pets|20663",
 			"items|Pickpocketing|23959,24777",
 			"items|Pyramid Plunder|26945",
 			"category|Rogues' Den|rogues_den",
 			"items|Underwater|21649"),
-			SkillClogSection.specSignature(Skill.THIEVING));
+			TestViews.specSignature(Skill.THIEVING));
 		assertEquals(Arrays.asList(
 			"category|Gnome Restaurant|gnome_restaurant",
 			"category|Trouble Brewing|trouble_brewing"),
-			SkillClogSection.specSignature(Skill.COOKING));
+			TestViews.specSignature(Skill.COOKING));
 		assertEquals(Arrays.asList(
 			"category|Shades of Mort'ton|shades_of_mortton"),
-			SkillClogSection.specSignature(Skill.PRAYER));
+			TestViews.specSignature(Skill.PRAYER));
 		assertEquals(Arrays.asList(
 			"items|Rarities|34024,19707"),
-			SkillClogSection.specSignature(Skill.CRAFTING));
+			TestViews.specSignature(Skill.CRAFTING));
 		assertEquals(Arrays.asList(
 			"items|Pets|20693",
 			"category|Shades of Mort'ton|shades_of_mortton",
 			"category|Wintertodt|wintertodt"),
-			SkillClogSection.specSignature(Skill.FIREMAKING));
+			TestViews.specSignature(Skill.FIREMAKING));
 		assertEquals(Arrays.asList(
 			"category|Magic Training Arena|magic_training_arena"),
-			SkillClogSection.specSignature(Skill.MAGIC));
+			TestViews.specSignature(Skill.MAGIC));
 		assertEquals(Arrays.asList(
 			"category|Vale Totems|vale_totems"),
-			SkillClogSection.specSignature(Skill.FLETCHING));
+			TestViews.specSignature(Skill.FLETCHING));
 		assertEquals(Arrays.asList(
 			"items|Pets|13322",
 			"items|Evil Chicken Outfit|20439,20436,20442,20433",
 			"category|Forestry|forestry"),
-			SkillClogSection.specSignature(Skill.WOODCUTTING));
+			TestViews.specSignature(Skill.WOODCUTTING));
 		assertEquals(Arrays.asList(
 			"items|Pets|20665,26901",
 			"category|Guardians of the Rift|" + PanelData.GOTR_CATEGORY),
-			SkillClogSection.specSignature(Skill.RUNECRAFT));
+			TestViews.specSignature(Skill.RUNECRAFT));
 		assertEquals(Arrays.asList(
 			"category||" + PanelData.SLAYER_CATEGORY),
-			SkillClogSection.specSignature(Skill.SLAYER));
+			TestViews.specSignature(Skill.SLAYER));
 		assertEquals(Arrays.asList(
 			"items|Pets|20661",
 			"category|Hespori|hespori",
 			"category|Tithe Farm|tithe_farm"),
-			SkillClogSection.specSignature(Skill.FARMING));
+			TestViews.specSignature(Skill.FARMING));
 		assertEquals(Arrays.asList(
 			"category|Mahogany Homes|mahogany_homes"),
-			SkillClogSection.specSignature(Skill.CONSTRUCTION));
+			TestViews.specSignature(Skill.CONSTRUCTION));
 		assertEquals(Arrays.asList(
 			"items|Pets|13324,21509,28962,34040,13071",
 			"category|Aerial Fishing|aerial_fishing",
 			"category|Chompy Bird Hunting|chompy_bird_hunting",
 			"items|Crystal Impling|23943",
 			"category|Hunter Guild|hunter_guild"),
-			SkillClogSection.specSignature(Skill.HUNTER));
+			TestViews.specSignature(Skill.HUNTER));
 		assertEquals(Arrays.asList(
 			"items|Pets|31283",
 			"category|Barracuda Trials|barracuda_trials",
@@ -131,12 +131,12 @@ public class SkillClogCatalogTest
 			"category|Ocean Encounters|ocean_encounters",
 			"category|Sailing Miscellaneous|sailing_miscellaneous",
 			"category|Sea Treasures|sea_treasures"),
-			SkillClogSection.specSignature(Skill.SAILING));
+			TestViews.specSignature(Skill.SAILING));
 
 		int curated = 0;
 		for (Skill skill : Skill.values())
 		{
-			if (!SkillClogSection.specSignature(skill).isEmpty())
+			if (!TestViews.specSignature(skill).isEmpty())
 			{
 				curated++;
 			}

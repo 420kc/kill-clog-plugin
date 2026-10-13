@@ -166,7 +166,7 @@ public class ChatAliasCatalogTest
 			"master treasure trails", "masters", "master clues", "master clue", "clue master",
 			"clues master");
 
-		assertEquals(golden, KillClogChatCommand.clueAliasCount());
+		assertEquals(golden, TestViews.clueAliasCount());
 	}
 
 	private static int assertClueTier(String label, HiscoreSkill tier, String... aliases)
@@ -174,8 +174,8 @@ public class ChatAliasCatalogTest
 		String categoryKey = PanelData.CLUE_CATEGORIES.get(tier);
 		for (String alias : aliases)
 		{
-			assertEquals(alias, categoryKey, KillClogChatCommand.resolveClueCategory(alias));
-			assertEquals(alias, label, KillClogChatCommand.clueLabel(alias));
+			assertEquals(alias, categoryKey, TestViews.clueCategory(alias));
+			assertEquals(alias, label, TestViews.clueLabel(alias));
 		}
 		return aliases.length;
 	}

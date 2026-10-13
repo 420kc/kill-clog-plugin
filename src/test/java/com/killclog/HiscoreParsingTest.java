@@ -288,7 +288,7 @@ public class HiscoreParsingTest
 		{
 			lines[i] = "1,99,13034431";
 		}
-		assertEquals(126, service.calcCmbLvl(lines));
+		assertEquals(126, TestViews.combatLevel(service, lines));
 	}
 
 	@Test
@@ -304,7 +304,7 @@ public class HiscoreParsingTest
 		lines[5] = "0,1,0"; // ranged
 		lines[6] = "0,1,0"; // prayer
 		lines[7] = "0,1,0"; // magic
-		assertEquals(3, service.calcCmbLvl(lines));
+		assertEquals(3, TestViews.combatLevel(service, lines));
 	}
 
 	@Test
@@ -338,7 +338,7 @@ public class HiscoreParsingTest
 	{
 		// Only 3 lines, so skills 1-7 cannot be read.
 		String[] lines = {"1,2277,0", "1,99,0", "1,99,0"};
-		assertEquals(-1, service.calcCmbLvl(lines));
+		assertEquals(-1, TestViews.combatLevel(service, lines));
 	}
 
 	@Test

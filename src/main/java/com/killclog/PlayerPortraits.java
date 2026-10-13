@@ -156,19 +156,6 @@ class PlayerPortraits
 		request.thenAccept(response -> onResponse(name, generation, response.code, response.bytes, response.etag));
 	}
 
-	/** How many players' lookups are counted; bounded by {@link #MAX_GENERATIONS} plus those still in use. */
-	int countedLookups()
-	{
-		return generations.size();
-	}
-
-	/** The lookup generation the request now out for this player was sent for, or null. */
-	@Nullable
-	Integer askedFor(String name)
-	{
-		return asked.get(key(name));
-	}
-
 	/**
 	 * The answer to a check sent for lookup {@code generation}. 404 (no published character, or one
 	 * still being drawn) and 451 (opted out) drop the portrait whatever lookup asked; only an answer for

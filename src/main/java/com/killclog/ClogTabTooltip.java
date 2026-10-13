@@ -77,12 +77,6 @@ public class ClogTabTooltip extends TitleTooltip
 		return scroll.offset() / LINE_HEIGHT;
 	}
 
-	/** The page row under a y coordinate, or -1. */
-	int pageAt(int y)
-	{
-		return pageRows.at(y);
-	}
-
 	private boolean scrolls()
 	{
 		return scroll.scrolls(names.length * LINE_HEIGHT);

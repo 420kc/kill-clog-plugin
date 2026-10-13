@@ -253,39 +253,6 @@ final class SkillClogSection
 		return Collections.unmodifiableMap(specs);
 	}
 
-	/** Read-only projection for catalog-parity tests: kind|heading|category-or-ids. */
-	/* package */ static List<String> specSignature(Skill skill)
-	{
-		List<Spec> specs = SPECS.get(skill);
-		if (specs == null)
-		{
-			return Collections.emptyList();
-		}
-		List<String> signature = new ArrayList<>(specs.size());
-		for (Spec spec : specs)
-		{
-			StringBuilder line = new StringBuilder(spec.category != null ? "category" : "items");
-			line.append('|').append(spec.heading != null ? spec.heading : "").append('|');
-			if (spec.category != null)
-			{
-				line.append(spec.category);
-			}
-			else
-			{
-				for (int i = 0; i < spec.itemIds.size(); i++)
-				{
-					if (i > 0)
-					{
-						line.append(',');
-					}
-					line.append(spec.itemIds.get(i));
-				}
-			}
-			signature.add(line.toString());
-		}
-		return signature;
-	}
-
 	static final class PlayerItems
 	{
 		private final boolean synced;

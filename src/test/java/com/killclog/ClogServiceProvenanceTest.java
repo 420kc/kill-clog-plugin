@@ -128,7 +128,7 @@ public class ClogServiceProvenanceTest
 		assertTrue(combined.isFromLocal());
 		ClogSummaryTooltip tooltip = new ClogSummaryTooltip();
 		tooltip.setClogSources(combined, false, false, false);
-		assertEquals(expected, tooltip.sourceNames());
+		assertEquals(expected, TestViews.sourceNames(tooltip));
 	}
 
 	private static ClogService serviceWithWarmCatalog(LocalClogCache cache) throws Exception
