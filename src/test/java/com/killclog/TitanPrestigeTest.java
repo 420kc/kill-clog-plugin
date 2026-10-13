@@ -54,7 +54,7 @@ public class TitanPrestigeTest
 			bossKills.put(a.get("name").getAsString(), a.get("score").getAsInt());
 		}
 
-		return new HiscoreResult(AccountType.REGULAR, HiscoreTable.STANDARD,
+		return TestViews.hiscore(AccountType.REGULAR, HiscoreTable.STANDARD,
 			bossKills, Map.of(), Map.of(), Map.of(),
 			skillLevels, Map.of(), skillXps,
 			totalLevel, totalXp, 126, 1);
@@ -81,7 +81,7 @@ public class TitanPrestigeTest
 		}
 		xps.put("sailing", 199_999_999L);
 
-		HiscoreResult almost = new HiscoreResult(AccountType.REGULAR, HiscoreTable.STANDARD,
+		HiscoreResult almost = TestViews.hiscore(AccountType.REGULAR, HiscoreTable.STANDARD,
 			Map.of("TzKal-Zuk", 60), Map.of(), Map.of(), Map.of(),
 			levels, Map.of(), xps,
 			2376, 4_799_999_999L, 126, 2);
@@ -100,7 +100,7 @@ public class TitanPrestigeTest
 			xps.put(key, full.getSkillXp(key));
 			levels.put(key, full.getSkillLevel(key));
 		}
-		HiscoreResult peaceful = new HiscoreResult(AccountType.REGULAR, HiscoreTable.STANDARD,
+		HiscoreResult peaceful = TestViews.hiscore(AccountType.REGULAR, HiscoreTable.STANDARD,
 			Map.of("TzKal-Zuk", 0), Map.of(), Map.of(), Map.of(),
 			levels, Map.of(), xps,
 			2376, 4_800_000_000L, 126, 3);
@@ -111,7 +111,7 @@ public class TitanPrestigeTest
 	public void missingSkillXpIsNotTitan()
 	{
 		// A result with no skill data at all can never be Titan.
-		HiscoreResult empty = new HiscoreResult(AccountType.REGULAR, HiscoreTable.STANDARD,
+		HiscoreResult empty = TestViews.hiscore(AccountType.REGULAR, HiscoreTable.STANDARD,
 			Map.of(), Map.of(), Map.of(), Map.of(),
 			Map.of(), Map.of(), Map.of(),
 			2376, 0L, 126, 4);

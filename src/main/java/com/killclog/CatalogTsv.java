@@ -57,41 +57,50 @@ final class CatalogTsv
 	private static List<String[]> readRows(Class<?> owner, String resource, int columns)
 	{
 		List<String[]> rows = new ArrayList<>();
+		for (String line : lines(owner, resource))
+		{
+			String[] fields = line.split("\t", -1);
+			if (fields.length != columns)
+			{
+				log.warn("catalog row in {} has {} fields, expected {}: {}",
+					resource, fields.length, columns, line);
+				continue;
+			}
+			if (fields[0].trim().isEmpty())
+			{
+				log.warn("catalog row in {} has a blank key: {}", resource, line);
+				continue;
+			}
+			rows.add(fields);
+		}
+		return Collections.unmodifiableList(rows);
+	}
+
+	/** A bundled resource's lines, blanks and # comments left out; none when it's missing or unreadable. */
+	static List<String> lines(Class<?> owner, String resource)
+	{
+		List<String> lines = new ArrayList<>();
 		try (InputStream in = owner.getResourceAsStream(resource))
 		{
 			if (in == null)
 			{
 				log.warn("catalog resource missing: {}", resource);
-				return rows;
+				return lines;
 			}
-			BufferedReader reader = new BufferedReader(
-				new InputStreamReader(in, StandardCharsets.UTF_8));
+			BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
 			String line;
 			while ((line = reader.readLine()) != null)
 			{
-				if (line.isEmpty() || line.startsWith("#"))
+				if (!line.isEmpty() && !line.startsWith("#"))
 				{
-					continue;
+					lines.add(line);
 				}
-				String[] fields = line.split("\t", -1);
-				if (fields.length != columns)
-				{
-					log.warn("catalog row in {} has {} fields, expected {}: {}",
-						resource, fields.length, columns, line);
-					continue;
-				}
-				if (fields[0].trim().isEmpty())
-				{
-					log.warn("catalog row in {} has a blank key: {}", resource, line);
-					continue;
-				}
-				rows.add(fields);
 			}
 		}
 		catch (IOException e)
 		{
 			log.warn("catalog resource unreadable: {}", resource, e);
 		}
-		return Collections.unmodifiableList(rows);
+		return lines;
 	}
 }

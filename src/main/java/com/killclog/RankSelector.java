@@ -29,7 +29,8 @@ import net.runelite.client.util.ImageUtil;
 final class RankSelector extends JPanel
 {
 	/** The row a board without this player shows: nothing. */
-	private static final HiscoreResult NOTHING = new HiscoreResult(null, null, null, null, null, null, 0, 0, 0, -1);
+	private static final HiscoreResult NOTHING = new HiscoreResult(null, null, null, null, null, null, null, null, null,
+		0, 0, 0, -1);
 
 	private final BiFunction<String, RankLeaderboard, CompletableFuture<HiscoreResult>> fetch;
 	private final BiPredicate<String, RankLeaderboard> absent;

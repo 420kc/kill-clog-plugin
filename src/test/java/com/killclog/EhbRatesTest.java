@@ -17,14 +17,14 @@ public class EhbRatesTest
 {
 	private static HiscoreResult result(AccountType type, Map<String, Integer> kcs)
 	{
-		return new HiscoreResult(type, HiscoreTable.STANDARD, kcs, new HashMap<>(),
+		return TestViews.hiscore(type, HiscoreTable.STANDARD, kcs, new HashMap<>(),
 			new HashMap<>(), new HashMap<>(), new HashMap<>(), 0, 0, 0, -1);
 	}
 
 	/** A boss Temple rates 0 for mains but positive for ironmen, or null. */
 	private static String mainZeroIronPositiveBoss()
 	{
-		for (Map.Entry<String, double[]> e : EhbRates.rates().entrySet())
+		for (Map.Entry<String, double[]> e : TestViews.<java.util.Map<String, double[]>>field(EhbRates.class, "RATES").entrySet())
 		{
 			if (e.getValue()[0] == 0 && e.getValue()[1] > 0)
 			{
@@ -37,7 +37,7 @@ public class EhbRatesTest
 	@Test
 	public void testEveryHiscoreBossHasRates()
 	{
-		Map<String, double[]> rates = EhbRates.rates();
+		Map<String, double[]> rates = TestViews.<java.util.Map<String, double[]>>field(EhbRates.class, "RATES");
 		for (String boss : HiscoreService.bossNames())
 		{
 			double[] pair = rates.get(boss);
@@ -52,7 +52,7 @@ public class EhbRatesTest
 	public void testNoUnknownBossesInRates()
 	{
 		Set<String> known = new HashSet<>(Arrays.asList(HiscoreService.bossNames()));
-		for (String boss : EhbRates.rates().keySet())
+		for (String boss : TestViews.<java.util.Map<String, double[]>>field(EhbRates.class, "RATES").keySet())
 		{
 			assertTrue("Rates entry is not a hiscore boss: " + boss, known.contains(boss));
 		}
@@ -61,8 +61,8 @@ public class EhbRatesTest
 	@Test
 	public void testComputeSumsKcOverRate()
 	{
-		double vorkRate = EhbRates.rates().get("Vorkath")[0];
-		double zulrahRate = EhbRates.rates().get("Zulrah")[0];
+		double vorkRate = TestViews.<java.util.Map<String, double[]>>field(EhbRates.class, "RATES").get("Vorkath")[0];
+		double zulrahRate = TestViews.<java.util.Map<String, double[]>>field(EhbRates.class, "RATES").get("Zulrah")[0];
 		assertTrue(vorkRate > 0 && zulrahRate > 0);
 
 		Map<String, Integer> kcs = new HashMap<>();
@@ -84,7 +84,7 @@ public class EhbRatesTest
 		Map<String, Integer> kcs = new HashMap<>();
 		kcs.put(split, 1000);
 		assertEquals(0, EhbRates.compute(result(AccountType.REGULAR, kcs), null), 1e-9);
-		double imRate = EhbRates.rates().get(split)[1];
+		double imRate = TestViews.<java.util.Map<String, double[]>>field(EhbRates.class, "RATES").get(split)[1];
 		assertEquals(1000 / imRate,
 			EhbRates.compute(result(AccountType.IRONMAN, kcs), null), 1e-9);
 	}
@@ -103,7 +103,7 @@ public class EhbRatesTest
 		Map<String, Integer> kcs = new HashMap<>();
 		kcs.put(split, 1000);
 		HiscoreResult regularTagged = result(AccountType.REGULAR, kcs);
-		double imRate = EhbRates.rates().get(split)[1];
+		double imRate = TestViews.<java.util.Map<String, double[]>>field(EhbRates.class, "RATES").get(split)[1];
 		assertEquals(1000 / imRate,
 			EhbRates.compute(regularTagged, AccountType.GROUP_IRONMAN), 1e-9);
 	}

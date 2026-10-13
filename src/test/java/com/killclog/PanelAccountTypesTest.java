@@ -124,7 +124,6 @@ public class PanelAccountTypesTest
 	private static void assertAllDisplays(PanelAccountTypes resolver, HiscoreResult hiscore, ClogResult clog,
 		AccountType expectedType, HiscoreTable expectedTable, String expectedLabel)
 	{
-		assertDisplay(resolver.currentDisplay(hiscore, clog, PLAYER), expectedType, expectedTable, expectedLabel);
 		assertDisplay(resolver.currentDisplay(hiscore != null ? hiscore.getAccountType() : null, hiscore, clog, PLAYER),
 			expectedType, expectedTable, expectedLabel);
 		assertDisplay(resolver.displayIdentity(hiscore, clog, PLAYER), expectedType, expectedTable, expectedLabel);
@@ -139,7 +138,7 @@ public class PanelAccountTypesTest
 
 	private static HiscoreResult hiscore(AccountType type, HiscoreTable table)
 	{
-		return new HiscoreResult(type, table, Collections.emptyMap(), Collections.emptyMap(),
+		return TestViews.hiscore(type, table, Collections.emptyMap(), Collections.emptyMap(),
 			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 100, 0, 10, 1);
 	}
 

@@ -1508,9 +1508,8 @@ public class KillClogPanel extends PluginPanel
 	private AccountDisplay currentInfoAccountDisplay()
 	{
 		// A self lookup keeps RuneLite's own type, like a group ironman the hiscores read as regular.
-		return selfType != null ? currentInfoAccountDisplay(selfType)
-			: accountTypes.currentDisplay(lookupSession.getHiscoreResult(),
-			lookupSession.getNativeClogResult(), lookupSession.getCurrentLookupRsn());
+		HiscoreResult hiscore = lookupSession.getHiscoreResult();
+		return currentInfoAccountDisplay(selfType != null ? selfType : hiscore != null ? hiscore.getAccountType() : null);
 	}
 
 	private AccountDisplay currentInfoAccountDisplay(@Nullable AccountType fallback)
@@ -1542,12 +1541,7 @@ public class KillClogPanel extends PluginPanel
 	public void onCachedResult(String player, HiscoreResult hiscore, @Nullable ClogResult clog,
 		boolean isSelf, @Nullable AccountType knownType, boolean isFirstSelfGreeting)
 	{
-		searchBar.setIcon(IconTextField.Icon.SEARCH);
-		if (!isFirstSelfGreeting)
-		{
-			setSearchStatus(" ", TEXT_DIM);
-		}
-		renderHiscoreResult(hiscore, player, knownType);
+		showHiscore(player, hiscore, knownType, isFirstSelfGreeting);
 		if (clog != null)
 		{
 			renderClogResult(clog);
@@ -1558,12 +1552,7 @@ public class KillClogPanel extends PluginPanel
 	public void onHiscoreResult(String player, HiscoreResult hiscore,
 		boolean isSelf, @Nullable AccountType knownType, boolean isFirstSelfGreeting)
 	{
-		searchBar.setIcon(IconTextField.Icon.SEARCH);
-		if (!isFirstSelfGreeting)
-		{
-			setSearchStatus(" ", TEXT_DIM);
-		}
-		renderHiscoreResult(hiscore, player, knownType);
+		showHiscore(player, hiscore, knownType, isFirstSelfGreeting);
 		// Clog may have arrived first with a GIM type the hiscores can't detect.
 		ClogResult clog = lookupSession.getClogResult();
 		if (clog != null)
@@ -1571,6 +1560,18 @@ public class KillClogPanel extends PluginPanel
 			updateDisplayedInfoIcon();
 			cells.renderClog(clog);
 		}
+	}
+
+	/** A lookup's hiscores, cached or fresh: the search settles and the panel shows them. */
+	private void showHiscore(String player, HiscoreResult hiscore, @Nullable AccountType knownType,
+		boolean isFirstSelfGreeting)
+	{
+		searchBar.setIcon(IconTextField.Icon.SEARCH);
+		if (!isFirstSelfGreeting)
+		{
+			setSearchStatus(" ", TEXT_DIM);
+		}
+		renderHiscoreResult(hiscore, player, knownType);
 	}
 
 	@Override

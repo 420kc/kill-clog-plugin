@@ -39,7 +39,7 @@ public class AccountDisplayTest
 		assertEquals("Dead Hardcore", iron.shownOn(today.withRow(atTheDeath), RankLeaderboard.HARDCORE).label());
 
 		// Loading, unanswered, or not on the board: the placeholder row trails too, but records nothing.
-		HiscoreResult nothing = new HiscoreResult(null, null, null, null, null, null, 0, 0, 0, -1);
+		HiscoreResult nothing = TestViews.hiscore(null, null, null, null, null, null, 0, 0, 0, -1);
 		assertSame(iron, iron.shownOn(today.withRow(nothing), RankLeaderboard.HARDCORE));
 		// The account's own row, or a row level with it, isn't frozen.
 		assertSame(iron, iron.shownOn(today, RankLeaderboard.HARDCORE));
@@ -159,7 +159,7 @@ public class AccountDisplayTest
 
 	private static HiscoreResult row(AccountType type, int totalLevel, long totalXp, Boolean ironmanNow)
 	{
-		HiscoreResult row = new HiscoreResult(type, Collections.emptyMap(), Collections.emptyMap(),
+		HiscoreResult row = TestViews.hiscore(type, Collections.emptyMap(), Collections.emptyMap(),
 			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), totalLevel, totalXp, 100, 1);
 		row.setIronmanNow(ironmanNow);
 		return row;

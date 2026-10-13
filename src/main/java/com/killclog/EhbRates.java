@@ -1,11 +1,5 @@
 package com.killclog;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
-import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
@@ -59,31 +53,13 @@ final class EhbRates
 		return hours;
 	}
 
-	/** Read-only view for resource-integrity tests. */
-	static Map<String, double[]> rates()
-	{
-		return Collections.unmodifiableMap(RATES);
-	}
-
 	private static Map<String, double[]> load()
 	{
 		Map<String, double[]> rates = new LinkedHashMap<>();
-		try (InputStream in = EhbRates.class.getResourceAsStream(RESOURCE))
+		try
 		{
-			if (in == null)
+			for (String line : CatalogTsv.lines(EhbRates.class, RESOURCE))
 			{
-				log.warn("EHB rates resource missing");
-				return rates;
-			}
-			BufferedReader reader = new BufferedReader(
-				new InputStreamReader(in, StandardCharsets.UTF_8));
-			String line;
-			while ((line = reader.readLine()) != null)
-			{
-				if (line.isEmpty() || line.startsWith("#"))
-				{
-					continue;
-				}
 				// Boss names hold no commas; the last two fields are rates.
 				int imSep = line.lastIndexOf(',');
 				int mainSep = line.lastIndexOf(',', imSep - 1);
@@ -93,7 +69,7 @@ final class EhbRates
 				rates.put(name, new double[]{main, im});
 			}
 		}
-		catch (IOException | RuntimeException e)
+		catch (RuntimeException e)
 		{
 			log.warn("EHB rates failed to load", e);
 		}

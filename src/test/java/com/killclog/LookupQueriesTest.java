@@ -124,7 +124,7 @@ public class LookupQueriesTest
 
 	private static HiscoreResult hiscore(AccountType accountType, HiscoreTable table)
 	{
-		return new HiscoreResult(
+		return TestViews.hiscore(
 			accountType,
 			table,
 			Collections.emptyMap(),

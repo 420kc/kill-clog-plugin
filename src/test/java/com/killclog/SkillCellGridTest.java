@@ -78,8 +78,8 @@ public class SkillCellGridTest
 
 		SkillTooltip attack = (SkillTooltip) cells.labels().get(Skill.ATTACK).createToolTip();
 		assertEquals(" (--/2)", attack.getTitleSuffix());
-		assertEquals(1, attack.sections().size());
-		SkillClogSection section = attack.sections().get(0);
+		assertEquals(1, TestViews.sections(attack).size());
+		SkillClogSection section = TestViews.sections(attack).get(0);
 		assertEquals("--/2", SkillClogSectionRenderer.progressText(
 			section.primary(), section.itemIds().size()));
 		assertTrue(section.primary().obtainedIds().isEmpty());
@@ -108,14 +108,14 @@ public class SkillCellGridTest
 
 		SkillTooltip attack = (SkillTooltip) cells.labels().get(Skill.ATTACK).createToolTip();
 		long attackXp = Experience.getXpForLevel(49) + 10L;
-		assertEquals("49", attack.stats().levelText());
-		assertEquals(format(attackXp), attack.stats().xpText());
-		assertEquals("2,049", attack.stats().rankText());
+		assertEquals("49", TestViews.stats(attack).levelText());
+		assertEquals(format(attackXp), TestViews.stats(attack).xpText());
+		assertEquals("2,049", TestViews.stats(attack).rankText());
 		assertEquals(format(Experience.getXpForLevel(50) - attackXp),
-			attack.stats().xpToLevelText());
+			TestViews.stats(attack).xpToLevelText());
 
 		SkillTooltip defence = (SkillTooltip) cells.labels().get(Skill.DEFENCE).createToolTip();
-		assertEquals("Maxed", defence.stats().xpToLevelText());
+		assertEquals("Maxed", TestViews.stats(defence).xpToLevelText());
 	}
 
 	@Test
@@ -204,15 +204,15 @@ public class SkillCellGridTest
 			SkillTooltip modal = (SkillTooltip) cells.labels().get(skill).createToolTip();
 			SkillTooltip plain = new SkillTooltip();
 			plain.setData(skill, hiscore, false, Collections.emptyList(), null);
-			assertTrue(modal.sections().isEmpty());
+			assertTrue(TestViews.sections(modal).isEmpty());
 			assertEquals(plain.getTitleSuffix(), modal.getTitleSuffix());
 			assertEquals(plain.getPreferredSize(), modal.getPreferredSize());
 		}
 
 		cells.render(hiscore, hiscore, false, clog, clog, clog);
 		SideBySideTooltip pair = (SideBySideTooltip) cells.labels().get(Skill.ATTACK).createToolTip();
-		assertTrue(((SkillTooltip) pair.sides()[0]).sections().isEmpty());
-		assertTrue(((SkillTooltip) pair.sides()[1]).sections().isEmpty());
+		assertTrue(TestViews.sections((SkillTooltip) pair.sides()[0]).isEmpty());
+		assertTrue(TestViews.sections((SkillTooltip) pair.sides()[1]).isEmpty());
 	}
 
 	@Test
@@ -234,11 +234,11 @@ public class SkillCellGridTest
 		SideBySideTooltip tooltip = (SideBySideTooltip) attack.createToolTip();
 		SkillTooltip blueSide = (SkillTooltip) tooltip.sides()[0];
 		SkillTooltip redSide = (SkillTooltip) tooltip.sides()[1];
-		assertEquals("99", blueSide.stats().levelText());
-		assertEquals("98", redSide.stats().levelText());
-		assertEquals("Maxed", blueSide.stats().xpToLevelText());
+		assertEquals("99", TestViews.stats(blueSide).levelText());
+		assertEquals("98", TestViews.stats(redSide).levelText());
+		assertEquals("Maxed", TestViews.stats(blueSide).xpToLevelText());
 		assertEquals(format(Experience.getXpForLevel(99)
-			- Experience.getXpForLevel(98) - 10L), redSide.stats().xpToLevelText());
+			- Experience.getXpForLevel(98) - 10L), TestViews.stats(redSide).xpToLevelText());
 	}
 
 	@Test
@@ -263,7 +263,7 @@ public class SkillCellGridTest
 		assertEquals(" (0/3)", runecraft.getTitleSuffix());
 		assertFalse(herblore.showsRiftsClosed());
 		SkillTooltip withoutRifts = new SkillTooltip();
-		withoutRifts.setData(Skill.RUNECRAFT, blue, false, runecraft.sections(), null);
+		withoutRifts.setData(Skill.RUNECRAFT, blue, false, TestViews.sections(runecraft), null);
 		paint(withoutRifts);
 		paint(runecraft);
 		assertEquals(hoverItemY(withoutRifts, petName), hoverItemY(runecraft, petName));
@@ -301,15 +301,15 @@ public class SkillCellGridTest
 		SkillTooltip slayer = (SkillTooltip) cells.labels().get(Skill.SLAYER).createToolTip();
 		SkillTooltip attack = (SkillTooltip) cells.labels().get(Skill.ATTACK).createToolTip();
 
-		assertEquals(1, slayer.sections().size());
-		assertEquals(30, slayer.sections().get(0).itemIds().size());
-		assertFalse(slayer.sections().get(0).hasHeading());
+		assertEquals(1, TestViews.sections(slayer).size());
+		assertEquals(30, TestViews.sections(slayer).get(0).itemIds().size());
+		assertFalse(TestViews.sections(slayer).get(0).hasHeading());
 		assertEquals("Slayer", slayer.getTitle());
 		assertEquals(" (1/30)", slayer.getTitleSuffix());
 		assertEquals(TitleTooltip.CLOG_YELLOW, slayer.getTitleSuffixColor());
 		assertEquals(attack.getHeaderHeight(),
 			slayer.getHeaderHeight());
-		assertFalse(attack.sections().iterator().hasNext());
+		assertFalse(TestViews.sections(attack).iterator().hasNext());
 		assertTrue(slayer.getPreferredSize().height > attack.getPreferredSize().height);
 
 		paint(slayer);
@@ -379,24 +379,24 @@ public class SkillCellGridTest
 	{
 		SkillTooltip fresh = new SkillTooltip();
 		fresh.setData(Skill.HERBLORE, skillHiscores(Skill.HERBLORE, 1, 0, -1), false, Collections.emptyList(), null);
-		assertEquals("0", fresh.stats().xpText());
-		assertEquals("Unranked", fresh.stats().rankText());
-		assertEquals(format(Experience.getXpForLevel(2)), fresh.stats().xpToLevelText());
+		assertEquals("0", TestViews.stats(fresh).xpText());
+		assertEquals("Unranked", TestViews.stats(fresh).rankText());
+		assertEquals(format(Experience.getXpForLevel(2)), TestViews.stats(fresh).xpToLevelText());
 
 		long virtualXp = 32_643_866L;
 		int virtualLevel = Experience.getLevelForXp((int) virtualXp);
 		SkillTooltip virtual = new SkillTooltip();
 		virtual.setData(Skill.HERBLORE,
 			skillHiscores(Skill.HERBLORE, 99, virtualXp, 1_075), true, Collections.emptyList(), null);
-		assertEquals(String.valueOf(virtualLevel), virtual.stats().levelText());
+		assertEquals(String.valueOf(virtualLevel), TestViews.stats(virtual).levelText());
 		assertEquals(format(Experience.getXpForLevel(virtualLevel + 1) - virtualXp),
-			virtual.stats().xpToLevelText());
+			TestViews.stats(virtual).xpToLevelText());
 
 		SkillTooltip capped = new SkillTooltip();
 		capped.setData(Skill.HERBLORE,
 			skillHiscores(Skill.HERBLORE, 99, Experience.MAX_SKILL_XP, 1), true, Collections.emptyList(), null);
-		assertEquals(String.valueOf(Experience.MAX_VIRT_LEVEL), capped.stats().levelText());
-		assertEquals("Maxed", capped.stats().xpToLevelText());
+		assertEquals(String.valueOf(Experience.MAX_VIRT_LEVEL), TestViews.stats(capped).levelText());
+		assertEquals("Maxed", TestViews.stats(capped).xpToLevelText());
 	}
 
 	private static SkillCellGrid grid()
@@ -493,7 +493,7 @@ public class SkillCellGridTest
 			ranks.put(key, 2_000 + level);
 			xps.put(key, Experience.getXpForLevel(level) + 10L);
 		}
-		return new HiscoreResult(AccountType.REGULAR, HiscoreTable.STANDARD,
+		return TestViews.hiscore(AccountType.REGULAR, HiscoreTable.STANDARD,
 			Collections.emptyMap(), Collections.emptyMap(), activityScores,
 			Collections.emptyMap(), levels, ranks, xps, 1_200, 24_000_000L, 85, 10_000);
 	}
@@ -532,7 +532,7 @@ public class SkillCellGridTest
 	private static HiscoreResult skillHiscores(Skill skill, int level, long xp, int rank)
 	{
 		String key = skill.getName().toLowerCase(Locale.ROOT);
-		return new HiscoreResult(AccountType.REGULAR, HiscoreTable.STANDARD,
+		return TestViews.hiscore(AccountType.REGULAR, HiscoreTable.STANDARD,
 			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(),
 			Collections.emptyMap(), Map.of(key, level), Map.of(key, rank), Map.of(key, xp),
 			level, xp, 3, 100);

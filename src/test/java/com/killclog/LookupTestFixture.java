@@ -112,7 +112,7 @@ final class LookupTestFixture
 
 	static HiscoreResult hiscore(int marker)
 	{
-		return new HiscoreResult(AccountType.REGULAR, Map.of("Zulrah", marker),
+		return TestViews.hiscore(AccountType.REGULAR, Map.of("Zulrah", marker),
 			Map.of(), Map.of(), Map.of(), Map.of(), marker, marker, marker, marker);
 	}
 

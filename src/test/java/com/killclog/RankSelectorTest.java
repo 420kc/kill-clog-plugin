@@ -14,7 +14,7 @@ public class RankSelectorTest
 {
 	static HiscoreResult result(AccountType type, HiscoreTable table, int rank, long xp)
 	{
-		return new HiscoreResult(type, table, Map.of("Zulrah", 123), Map.of("Zulrah", rank),
+		return TestViews.hiscore(type, table, Map.of("Zulrah", 123), Map.of("Zulrah", rank),
 			Map.of("Clue Scrolls (all)", 42), Map.of("Clue Scrolls (all)", rank),
 			Map.of("attack", 99), Map.of("attack", rank), Map.of("attack", xp), 2277, xp, 126, rank);
 	}

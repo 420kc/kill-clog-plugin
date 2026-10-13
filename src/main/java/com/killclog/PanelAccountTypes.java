@@ -9,14 +9,6 @@ final class PanelAccountTypes
 {
 	private final RuneProfileService runeProfileService;
 
-	AccountDisplay currentDisplay(@Nullable HiscoreResult hiscore, @Nullable ClogResult clog,
-		@Nullable String player)
-	{
-		return display(hiscore != null ? hiscore.getAccountType() : null,
-			hiscore != null ? hiscore.getHiscoreTable() : HiscoreTable.STANDARD,
-			clog, player);
-	}
-
 	AccountDisplay currentDisplay(@Nullable AccountType fallback, @Nullable HiscoreResult hiscore,
 		@Nullable ClogResult clog, @Nullable String player)
 	{
@@ -28,9 +20,7 @@ final class PanelAccountTypes
 	AccountDisplay displayIdentity(@Nullable HiscoreResult hiscore, @Nullable ClogResult clog,
 		@Nullable String player)
 	{
-		return display(LookupQueries.accountType(hiscore, clog),
-			hiscore != null ? hiscore.getHiscoreTable() : HiscoreTable.STANDARD,
-			clog, player);
+		return currentDisplay(LookupQueries.accountType(hiscore, clog), hiscore, clog, player);
 	}
 
 	private AccountDisplay display(@Nullable AccountType accountType, @Nullable HiscoreTable hiscoreTable,

@@ -96,6 +96,32 @@ final class TestViews
 		throw new IllegalArgumentException("no method " + name + " on " + type);
 	}
 
+	/** The hiscores result the plugin builds, with whatever a test leaves out empty (STANDARD table, no ranks or XP). */
+	static HiscoreResult hiscore(AccountType accountType, HiscoreTable hiscoreTable, Map<String, Integer> bossKills,
+		Map<String, Integer> bossRanks, Map<String, Integer> activityScores, Map<String, Integer> activityRanks,
+		Map<String, Integer> skillLevels, Map<String, Integer> skillRanks, Map<String, Long> skillXps, int totalLevel,
+		long totalXp, double combatLevel, int overallRank)
+	{
+		return new HiscoreResult(accountType, hiscoreTable, bossKills, bossRanks, activityScores, activityRanks,
+			skillLevels, skillRanks, skillXps, totalLevel, totalXp, combatLevel, overallRank);
+	}
+
+	static HiscoreResult hiscore(AccountType accountType, HiscoreTable hiscoreTable, Map<String, Integer> bossKills,
+		Map<String, Integer> bossRanks, Map<String, Integer> activityScores, Map<String, Integer> activityRanks,
+		Map<String, Integer> skillLevels, int totalLevel, long totalXp, double combatLevel, int overallRank)
+	{
+		return hiscore(accountType, hiscoreTable, bossKills, bossRanks, activityScores, activityRanks, skillLevels,
+			null, null, totalLevel, totalXp, combatLevel, overallRank);
+	}
+
+	static HiscoreResult hiscore(AccountType accountType, Map<String, Integer> bossKills, Map<String, Integer> bossRanks,
+		Map<String, Integer> activityScores, Map<String, Integer> activityRanks, Map<String, Integer> skillLevels,
+		int totalLevel, long totalXp, double combatLevel, int overallRank)
+	{
+		return hiscore(accountType, null, bossKills, bossRanks, activityScores, activityRanks, skillLevels, null, null,
+			totalLevel, totalXp, combatLevel, overallRank);
+	}
+
 	/** A card's clickable row under a y coordinate, or -1 ({@code rows}: raidRows, rareRows, pageRows, tabRows). */
 	static int rowAt(Object card, String rows, int y)
 	{
@@ -213,7 +239,23 @@ final class TestViews
 	static int combatLevel(HiscoreService service, String[] lines)
 	{
 		Map<String, Integer> levels = call(service, "combatLevels", (Object) lines);
-		return service.calcCmbLvlFromLevels(levels);
+		return combatLevelFromLevels(service, levels);
+	}
+
+	/** The whole combat level the hiscores' skill levels give. */
+	static int combatLevelFromLevels(HiscoreService service, Map<String, Integer> levels)
+	{
+		return (int) Math.floor(service.calcCmbLvlExact(levels));
+	}
+
+	static SkillTooltip.Stats stats(SkillTooltip tip)
+	{
+		return field(tip, "stats");
+	}
+
+	static List<SkillClogSection> sections(SkillTooltip tip)
+	{
+		return field(tip, "sections");
 	}
 
 	static Map<String, String> bossCategoryOverrides()

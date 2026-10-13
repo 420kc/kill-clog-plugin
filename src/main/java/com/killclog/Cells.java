@@ -426,44 +426,36 @@ public class Cells
 			}
 			return;
 		}
-		for (Map.Entry<HiscoreSkill, String> entry : PanelData.CLUE_CATEGORIES.entrySet())
+		rebuildClueTooltips(lookupSession.getClogResult(), null);
+	}
+
+	/** Each clue tier cell's card, from the synced log or, without one, the catalog's preview. */
+	private void rebuildClueTooltips(@Nullable ClogResult clog, @Nullable ClogResult catalog)
+	{
+		for (HiscoreSkill skill : PanelData.CLUE_CATEGORIES.keySet())
 		{
-			HiscoreSkill skill = entry.getKey();
 			JLabel label = clueTierLabels.get(skill);
-			if (label == null)
-			{
-				continue;
-			}
 			// A synced log without the tier shows no card, never the preview.
-			TooltipData data = tooltipDataBuilder.buildClueTierCard(skill, lookupSession.getHiscoreResult(),
-				lookupSession.getClogResult(), null);
-			if (data == null)
+			TooltipData data = label == null ? null
+				: tooltipDataBuilder.buildClueTierCard(skill, lookupSession.getHiscoreResult(), clog, catalog);
+			if (data != null)
 			{
-				continue;
+				tooltipDataMap.put(skill, data);
+				if (clog != null)
+				{
+					tooltipDataBuilder.preloadItemImages(data);
+				}
 			}
-			tooltipDataMap.put(skill, data);
-			tooltipDataBuilder.preloadItemImages(data);
-			tooltipController.setTooltipText(label, " ");
+			if (label != null && (data != null || clog == null))
+			{
+				tooltipController.setTooltipText(label, " ");
+			}
 		}
 	}
 
 	private void rebuildUnsyncedClueTooltips(@Nullable ClogResult catalog)
 	{
-		for (Map.Entry<HiscoreSkill, String> entry : PanelData.CLUE_CATEGORIES.entrySet())
-		{
-			HiscoreSkill skill = entry.getKey();
-			JLabel label = clueTierLabels.get(skill);
-			if (label == null)
-			{
-				continue;
-			}
-			TooltipData data = tooltipDataBuilder.buildClueTierCard(skill, lookupSession.getHiscoreResult(), null, catalog);
-			if (data != null)
-			{
-				tooltipDataMap.put(skill, data);
-			}
-			tooltipController.setTooltipText(label, " ");
-		}
+		rebuildClueTooltips(null, catalog);
 
 		for (int i = 0; i < PanelData.RARE_KEYS.length; i++)
 		{
@@ -705,6 +697,12 @@ public class Cells
 
 	/** Wrap a label in a standard grid cell panel with hover effect wired. */
 	public JPanel wrapInCell(JLabel label)
+	{
+		return cell(label, tooltipController, comparison);
+	}
+
+	/** One panel cell around its label, with the grid's hover and the comparison's: every grid builds them here. */
+	static JPanel cell(JLabel label, TooltipController tooltipController, ComparisonController comparison)
 	{
 		JPanel cell = new JPanel();
 		cell.setBackground(ColorScheme.DARKER_GRAY_COLOR);

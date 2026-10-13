@@ -285,7 +285,7 @@ public class ClogHelperTest
 		kills.put(HiscoreSkill.CHAMBERS_OF_XERIC_CHALLENGE_MODE.getName(), 110);
 		Map<String, Integer> ranks = new HashMap<>();
 		ranks.put(HiscoreSkill.CHAMBERS_OF_XERIC_CHALLENGE_MODE.getName(), 1204);
-		HiscoreResult result = new HiscoreResult(AccountType.REGULAR, kills, ranks,
+		HiscoreResult result = TestViews.hiscore(AccountType.REGULAR, kills, ranks,
 			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1);
 		TooltipData data = TooltipData.builder().name("Chambers of Xeric").totalItems(23).kc(730).build();
 		TooltipData raid = TooltipDataBuilder.withHardMode(data, HiscoreSkill.CHAMBERS_OF_XERIC, result,
@@ -343,7 +343,7 @@ public class ClogHelperTest
 		bare.setTitle("Tombs of Amascut");
 		ImgTooltip card = new ImgTooltip(5);
 		assertTrue(ClogHelper.configureNotSynced(card, data, null, true));
-		HiscoreResult result = new HiscoreResult(AccountType.REGULAR, Collections.emptyMap(), Collections.emptyMap(),
+		HiscoreResult result = TestViews.hiscore(AccountType.REGULAR, Collections.emptyMap(), Collections.emptyMap(),
 			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1);
 		ClogHelper.configureRank(card, data, result, true);
 		// The Kills line, the Expert line and the rank line, not a bare title over a placeholder.

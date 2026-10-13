@@ -305,7 +305,7 @@ public class TraySummaryWiringTest
 		activities.put(HiscoreSkill.CLUE_SCROLL_ALL.getName(), 3);
 		activities.put("Soul Wars Zeal", 1_234_567);
 		activities.put("Bounty Hunter - Hunter", 42);
-		return new HiscoreResult(AccountType.REGULAR, new HashMap<>(), Collections.emptyMap(),
+		return TestViews.hiscore(AccountType.REGULAR, new HashMap<>(), Collections.emptyMap(),
 			activities, Collections.emptyMap(), Collections.emptyMap(), 0, 0L, 0, 0);
 	}
 

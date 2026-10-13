@@ -34,7 +34,7 @@ public class HiscoreLayoutCatalogTest
 			"Clue Scrolls (easy)", "Clue Scrolls (medium)", "Clue Scrolls (hard)",
 			"Clue Scrolls (elite)", "Clue Scrolls (master)", "LMS - Rank", "PvP Arena - Rank",
 			"Soul Wars Zeal", "Rifts closed", "Colosseum Glory", "Collections Logged"
-		}, HiscoreService.activityNames());
+		}, TestViews.<String[]>field(HiscoreService.class, "ACTIVITY_NAMES"));
 	}
 
 	@Test

@@ -77,7 +77,7 @@ public class VirtualLevelsTest
 	{
 		// A result whose per-skill maps are empty (hiscores hid the skills)
 		// still shows at least the real total the overall row carried.
-		HiscoreResult result = new HiscoreResult(AccountType.REGULAR, HiscoreTable.STANDARD,
+		HiscoreResult result = TestViews.hiscore(AccountType.REGULAR, HiscoreTable.STANDARD,
 			java.util.Map.of(), java.util.Map.of(), java.util.Map.of(), java.util.Map.of(),
 			java.util.Map.of(), java.util.Map.of(), java.util.Map.of(),
 			1500, 10_000_000L, 100, 1);
@@ -93,7 +93,7 @@ public class VirtualLevelsTest
 			levels.put(s.getName().toLowerCase(), 99);
 			xps.put(s.getName().toLowerCase(), 200_000_000L);
 		}
-		return new HiscoreResult(AccountType.REGULAR, HiscoreTable.STANDARD,
+		return TestViews.hiscore(AccountType.REGULAR, HiscoreTable.STANDARD,
 			java.util.Map.of(), java.util.Map.of(), java.util.Map.of(), java.util.Map.of(),
 			levels, java.util.Map.of(), xps,
 			2376, 4_800_000_000L, 126, 1);

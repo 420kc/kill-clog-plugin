@@ -94,16 +94,6 @@ public class SkillTooltip extends TitleTooltip
 		return scroll;
 	}
 
-	Stats stats()
-	{
-		return stats;
-	}
-
-	List<SkillClogSection> sections()
-	{
-		return sections;
-	}
-
 	boolean showsRiftsClosed()
 	{
 		return showRiftsClosed;

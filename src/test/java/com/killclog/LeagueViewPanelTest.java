@@ -96,7 +96,7 @@ public class LeagueViewPanelTest
 	public void aLookupNoProviderNamedStillCountsAsTheShownPlayer() throws Exception
 	{
 		// The hiscores answer; every log source and the name lookup find nothing, so no provider names the player.
-		HiscoreResult row = new HiscoreResult(AccountType.REGULAR, new java.util.HashMap<>(), new java.util.HashMap<>(),
+		HiscoreResult row = TestViews.hiscore(AccountType.REGULAR, new java.util.HashMap<>(), new java.util.HashMap<>(),
 			new java.util.HashMap<>(), new java.util.HashMap<>(), new java.util.HashMap<>(), 100, 1000L, 30, 1);
 		when(hiscores.lookup(eq("Friend"), any())).thenReturn(CompletableFuture.completedFuture(row));
 		when(clogs.lookup(any())).thenReturn(CompletableFuture.completedFuture(null));
@@ -252,7 +252,7 @@ public class LeagueViewPanelTest
 		Map<?, ?> tooltips = field(cells, "tooltipDataMap", Map.class);
 		java.util.Map<String, Integer> kills = new java.util.HashMap<>();
 		kills.put("Zulrah", 57);
-		HiscoreResult row = new HiscoreResult(AccountType.REGULAR, kills, new java.util.HashMap<>(), new java.util.HashMap<>(),
+		HiscoreResult row = TestViews.hiscore(AccountType.REGULAR, kills, new java.util.HashMap<>(), new java.util.HashMap<>(),
 			new java.util.HashMap<>(), new java.util.HashMap<>(), 100, 1000L, 30, 1);
 		SwingUtilities.invokeAndWait(() ->
 		{
@@ -274,7 +274,7 @@ public class LeagueViewPanelTest
 		Method summary = KillClogPanel.class.getDeclaredMethod("buildClogSummaryTooltip",
 			javax.swing.JComponent.class, HiscoreResult.class, ClogResult.class, String.class, String.class);
 		summary.setAccessible(true);
-		HiscoreResult row = new HiscoreResult(AccountType.REGULAR, new java.util.HashMap<>(), new java.util.HashMap<>(),
+		HiscoreResult row = TestViews.hiscore(AccountType.REGULAR, new java.util.HashMap<>(), new java.util.HashMap<>(),
 			new java.util.HashMap<>(), new java.util.HashMap<>(), new java.util.HashMap<>(), 100, 1000L, 30, 1);
 		javax.swing.JLabel owner = new javax.swing.JLabel();
 		new javax.swing.JPanel().add(owner);
@@ -305,7 +305,7 @@ public class LeagueViewPanelTest
 		Method cell = KillClogPanel.class.getDeclaredMethod("makeSpriteTooltip", javax.swing.JLabel.class, TooltipData.class,
 			int.class, String.class, HiscoreResult.class, String.class);
 		cell.setAccessible(true);
-		HiscoreResult row = new HiscoreResult(AccountType.REGULAR, new java.util.HashMap<>(), new java.util.HashMap<>(),
+		HiscoreResult row = TestViews.hiscore(AccountType.REGULAR, new java.util.HashMap<>(), new java.util.HashMap<>(),
 			new java.util.HashMap<>(), new java.util.HashMap<>(), new java.util.HashMap<>(), 100, 1000L, 30, 1);
 		javax.swing.JLabel owner = new javax.swing.JLabel();
 		new javax.swing.JPanel().add(owner);
@@ -340,7 +340,7 @@ public class LeagueViewPanelTest
 		Method cell = KillClogPanel.class.getDeclaredMethod("makeSpriteTooltip", javax.swing.JLabel.class, TooltipData.class,
 			int.class, String.class, HiscoreResult.class, String.class);
 		cell.setAccessible(true);
-		HiscoreResult row = new HiscoreResult(AccountType.REGULAR, new java.util.HashMap<>(), new java.util.HashMap<>(),
+		HiscoreResult row = TestViews.hiscore(AccountType.REGULAR, new java.util.HashMap<>(), new java.util.HashMap<>(),
 			new java.util.HashMap<>(), new java.util.HashMap<>(), new java.util.HashMap<>(), 100, 1000L, 30, 1);
 		javax.swing.JLabel owner = new javax.swing.JLabel();
 		new javax.swing.JPanel().add(owner);
@@ -571,7 +571,7 @@ public class LeagueViewPanelTest
 		Constructor<?> compared = Class.forName("com.killclog.ComparisonController$ComparedPlayer").getDeclaredConstructors()[0];
 		compared.setAccessible(true);
 		// Friend's hiscores carry a Collections Logged total, the count a late empty log would show.
-		HiscoreResult friend = new HiscoreResult(AccountType.REGULAR, HiscoreTable.STANDARD, Map.of(), Map.of(),
+		HiscoreResult friend = TestViews.hiscore(AccountType.REGULAR, HiscoreTable.STANDARD, Map.of(), Map.of(),
 			Map.of("Collections Logged", 900), Map.of("Collections Logged", 5), Map.of("attack", 99),
 			Map.of("attack", 5), Map.of("attack", 1000L), 2277, 1000, 126, 5);
 		HiscoreResult exo = RankSelectorTest.result(AccountType.IRONMAN, HiscoreTable.STANDARD, 20, 20000);
@@ -744,7 +744,7 @@ public class LeagueViewPanelTest
 		JLabel total = field(panel, "totalLvlCell", JLabel.class);
 		Constructor<?> compared = Class.forName("com.killclog.ComparisonController$ComparedPlayer").getDeclaredConstructors()[0];
 		compared.setAccessible(true);
-		Object rival = compared.newInstance(1, new HiscoreResult(AccountType.REGULAR, Map.of(), Map.of(), Map.of(), Map.of(),
+		Object rival = compared.newInstance(1, TestViews.hiscore(AccountType.REGULAR, Map.of(), Map.of(), Map.of(), Map.of(),
 			Map.of(), 1500, 50000, 100, 30), null, null, "Rival", null);
 		SwingUtilities.invokeAndWait(() ->
 		{

@@ -61,27 +61,6 @@ public class HiscoreResult
 	@Setter(AccessLevel.PACKAGE)
 	private Boolean diedAsHardcore;
 
-	public HiscoreResult(AccountType accountType, Map<String, Integer> bossKills,
-		Map<String, Integer> bossRanks, Map<String, Integer> activityScores,
-		Map<String, Integer> activityRanks, Map<String, Integer> skillLevels,
-		int totalLevel, long totalXp, double combatLevel, int overallRank)
-	{
-		this(accountType, HiscoreTable.STANDARD, bossKills, bossRanks, activityScores,
-			activityRanks, skillLevels, Collections.emptyMap(), Collections.emptyMap(),
-			totalLevel, totalXp, combatLevel, overallRank);
-	}
-
-	public HiscoreResult(AccountType accountType, HiscoreTable hiscoreTable,
-		Map<String, Integer> bossKills, Map<String, Integer> bossRanks,
-		Map<String, Integer> activityScores, Map<String, Integer> activityRanks,
-		Map<String, Integer> skillLevels, int totalLevel, long totalXp,
-		double combatLevel, int overallRank)
-	{
-		this(accountType, hiscoreTable, bossKills, bossRanks, activityScores,
-			activityRanks, skillLevels, Collections.emptyMap(), Collections.emptyMap(),
-			totalLevel, totalXp, combatLevel, overallRank);
-	}
-
 	public HiscoreResult(AccountType accountType, HiscoreTable hiscoreTable,
 		Map<String, Integer> bossKills, Map<String, Integer> bossRanks,
 		Map<String, Integer> activityScores, Map<String, Integer> activityRanks,

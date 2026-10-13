@@ -261,7 +261,7 @@ public class PvmSummaryTooltipTest
 		kills.put(PanelData.TFA_HISCORE, 7);
 		PvmSummaryTooltip with = new PvmSummaryTooltip();
 		with.setData(110.5, 2_500, 40, PanelData.bossCount(), "Vorkath", 900);
-		with.setRaids(new HiscoreResult(AccountType.REGULAR, kills, Collections.emptyMap(),
+		with.setRaids(TestViews.hiscore(AccountType.REGULAR, kills, Collections.emptyMap(),
 			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1), null);
 		painted(with);
 
@@ -385,7 +385,7 @@ public class PvmSummaryTooltipTest
 		kills.put(HiscoreSkill.CHAMBERS_OF_XERIC.getName(), 120);
 		kills.put(HiscoreSkill.THEATRE_OF_BLOOD.getName(), 80);
 		kills.put(HiscoreSkill.TOMBS_OF_AMASCUT.getName(), 300);
-		tip.setRaids(new HiscoreResult(AccountType.REGULAR, kills, Collections.emptyMap(),
+		tip.setRaids(TestViews.hiscore(AccountType.REGULAR, kills, Collections.emptyMap(),
 			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1), null);
 		return tip;
 	}
@@ -448,7 +448,7 @@ public class PvmSummaryTooltipTest
 	{
 		Map<String, Integer> scores = new HashMap<>();
 		scores.put(ColosseumGlory.ACTIVITY_NAME, glory);
-		return new HiscoreResult(AccountType.REGULAR,
+		return TestViews.hiscore(AccountType.REGULAR,
 			Collections.emptyMap(), Collections.emptyMap(), scores, Collections.emptyMap(),
 			Collections.emptyMap(), 0, 0, 0, -1);
 	}

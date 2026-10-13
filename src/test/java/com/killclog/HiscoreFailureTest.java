@@ -181,7 +181,7 @@ public class HiscoreFailureTest
 	@Test
 	public void anUnansweredIdentityBoardClaimsNoFormerMode() throws Exception
 	{
-		HiscoreResult hardcoreAtDeath = new HiscoreResult(AccountType.HARDCORE_IRONMAN, java.util.Collections.emptyMap(),
+		HiscoreResult hardcoreAtDeath = TestViews.hiscore(AccountType.HARDCORE_IRONMAN, java.util.Collections.emptyMap(),
 			java.util.Collections.emptyMap(), java.util.Collections.emptyMap(), java.util.Collections.emptyMap(),
 			java.util.Collections.emptyMap(), 100, 1000, 0, -1);
 

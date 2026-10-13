@@ -94,7 +94,7 @@ public class PanelCellResetCharacterizationTest
 		Method reveal = KillClogPanel.class.getDeclaredMethod("renderHiscoreResult",
 			HiscoreResult.class, String.class, AccountType.class);
 		reveal.setAccessible(true);
-		HiscoreResult hiscore = new HiscoreResult(AccountType.REGULAR, new HashMap<>(), Collections.emptyMap(),
+		HiscoreResult hiscore = TestViews.hiscore(AccountType.REGULAR, new HashMap<>(), Collections.emptyMap(),
 			new HashMap<>(), Collections.emptyMap(), Collections.emptyMap(), 0, 0L, 0, 0);
 		IconTextField searchBar = field("searchBar", IconTextField.class);
 		edt(() ->
@@ -197,7 +197,7 @@ public class PanelCellResetCharacterizationTest
 		Map<String, Integer> activities = new HashMap<>();
 		activities.put(HiscoreSkill.CLUE_SCROLL_HARD.getName(), 3);
 		activities.put("Bounty Hunter - Hunter", 2);
-		HiscoreResult hiscore = new HiscoreResult(AccountType.REGULAR, kills, Collections.emptyMap(),
+		HiscoreResult hiscore = TestViews.hiscore(AccountType.REGULAR, kills, Collections.emptyMap(),
 			activities, Collections.emptyMap(), Collections.emptyMap(), 0, 0L, 0, 0);
 		Map<String, List<ClogResult.ClogItem>> obtained = new HashMap<>();
 		obtained.put("hard_treasure_trails", Collections.singletonList(

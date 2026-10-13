@@ -401,7 +401,7 @@ public class TitleTooltipTest
 	{
 		Map<String, Integer> scores = new HashMap<>();
 		scores.put(activity, score);
-		return new HiscoreResult(AccountType.REGULAR,
+		return TestViews.hiscore(AccountType.REGULAR,
 			Collections.emptyMap(), Collections.emptyMap(), scores, Collections.emptyMap(),
 			Collections.emptyMap(), 0, 0, 0, -1);
 	}
@@ -431,7 +431,7 @@ public class TitleTooltipTest
 	{
 		Map<String, Integer> scores = new HashMap<>();
 		scores.put("Clue Scrolls (all)", 42);
-		return new HiscoreResult(AccountType.REGULAR,
+		return TestViews.hiscore(AccountType.REGULAR,
 			Collections.emptyMap(), Collections.emptyMap(), scores, ranks,
 			Collections.emptyMap(), 0, 0, 0, -1);
 	}

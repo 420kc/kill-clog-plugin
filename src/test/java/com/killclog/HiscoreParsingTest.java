@@ -320,9 +320,9 @@ public class HiscoreParsingTest
 		levels.put("magic", 77);
 		// 0.25 * (70 + 78 + 27) + 0.325 * (70 + 75) = 43.75 + 47.125
 		assertEquals(90.875, service.calcCmbLvlExact(levels), 1e-9);
-		assertEquals(90, service.calcCmbLvlFromLevels(levels));
+		assertEquals(90, TestViews.combatLevelFromLevels(service, levels));
 
-		HiscoreResult result = new HiscoreResult(AccountType.REGULAR, null, null, null, null,
+		HiscoreResult result = TestViews.hiscore(AccountType.REGULAR, null, null, null, null,
 			levels, 0, 0L, service.calcCmbLvlExact(levels), -1);
 		assertEquals(90, result.getCombatLevel());
 		assertEquals(90.875, result.getCombatLevelExact(), 1e-9);
@@ -330,7 +330,7 @@ public class HiscoreParsingTest
 
 		levels.remove("magic");
 		assertEquals(-1, service.calcCmbLvlExact(levels), 0);
-		assertEquals(-1, service.calcCmbLvlFromLevels(levels));
+		assertEquals(-1, TestViews.combatLevelFromLevels(service, levels));
 	}
 
 	@Test

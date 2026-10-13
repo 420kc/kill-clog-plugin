@@ -107,12 +107,6 @@ public class HiscoreService
 		return SKILL_NAMES;
 	}
 
-	/** Activity names in CSV order. Used by the layout-parity test. */
-	static String[] activityNames()
-	{
-		return ACTIVITY_NAMES;
-	}
-
 	/** Number of boss entries in the hiscore CSV. Used by tests to detect drift. */
 	static int bossCount()
 	{
@@ -617,29 +611,19 @@ public class HiscoreService
 				+ "best-effort and every boss surface carries the misalignment notice",
 				expected, lines.length);
 		}
-		Map<String, Integer> bossKills = new LinkedHashMap<>();
-		Map<String, Integer> bossRanks = new LinkedHashMap<>();
-		Map<String, Integer> activityScores = new LinkedHashMap<>();
-		Map<String, Integer> activityRanks = new LinkedHashMap<>();
-		Map<String, Integer> skillLevels = new LinkedHashMap<>();
-		Map<String, Integer> skillRanks = new LinkedHashMap<>();
-		Map<String, Long> skillXps = new LinkedHashMap<>();
-
-		int totalLevel = 0;
-		long totalXp = 0;
-		int overallRank = -1;
+		Board board = new Board();
+		board.totalLevel = 0;
+		board.totalXp = 0;
 		try
 		{
 			String[] overall = lines[0].split(",");
-			overallRank = Integer.parseInt(overall[0]);
-			totalLevel = Integer.parseInt(overall[1]);
-			totalXp = Long.parseLong(overall[2]);
+			board.overallRank = Integer.parseInt(overall[0]);
+			board.totalLevel = Integer.parseInt(overall[1]);
+			board.totalXp = Long.parseLong(overall[2]);
 		}
 		catch (Exception ignored)
 		{
 		}
-
-		double combatLevel = calcCmbLvlExact(combatLevels(lines));
 
 		for (int i = 0; i < SKILL_NAMES.length; i++)
 		{
@@ -651,32 +635,23 @@ public class HiscoreService
 			try
 			{
 				String[] parts = lines[lineIdx].split(",");
-				skillRanks.put(SKILL_NAMES[i], Integer.parseInt(parts[0]));
-				skillLevels.put(SKILL_NAMES[i], Integer.parseInt(parts[1]));
-				skillXps.put(SKILL_NAMES[i], Long.parseLong(parts[2]));
+				board.skill(SKILL_NAMES[i], Integer.parseInt(parts[0]), Integer.parseInt(parts[1]), Long.parseLong(parts[2]));
 			}
 			catch (Exception e)
 			{
-				skillLevels.put(SKILL_NAMES[i], -1);
-				skillRanks.put(SKILL_NAMES[i], -1);
-				skillXps.put(SKILL_NAMES[i], -1L);
+				board.skill(SKILL_NAMES[i], -1, -1, -1L);
 			}
 		}
 
-		readRows(lines, ACTIVITY_START_INDEX, ACTIVITY_NAMES, activityScores, activityRanks);
+		readRows(lines, ACTIVITY_START_INDEX, ACTIVITY_NAMES, board.activityScores, board.activityRanks);
 
 		// This CSV path only runs when the JSON endpoint is down, and a count
 		// mismatch means rows at and below the change wear their neighbors'
 		// numbers. The 2026-07-29 outage set the rule - visibly imperfect beats blank:
 		// parse best-effort and keep the shifted flag set so every boss surface
 		// shows the misalignment notice. Never silently wrong.
-		readRows(lines, BOSS_START_INDEX, bossNames, bossKills, bossRanks);
-
-		HiscoreResult result = new HiscoreResult(type, hiscoreTable, bossKills, bossRanks,
-			activityScores, activityRanks, skillLevels, skillRanks, skillXps, totalLevel,
-			totalXp, combatLevel, overallRank);
-		result.setBossSectionShifted(bossSectionShifted);
-		return result;
+		readRows(lines, BOSS_START_INDEX, bossNames, board.bossKills, board.bossRanks);
+		return board.result(type, hiscoreTable, calcCmbLvlExact(combatLevels(lines)), bossSectionShifted);
 	}
 
 	/**
@@ -693,18 +668,7 @@ public class HiscoreService
 	/* package */ HiscoreResult parseHiscoreJson(String body, AccountType type,
 		HiscoreTable hiscoreTable)
 	{
-		Map<String, Integer> bossKills = new LinkedHashMap<>();
-		Map<String, Integer> bossRanks = new LinkedHashMap<>();
-		Map<String, Integer> activityScores = new LinkedHashMap<>();
-		Map<String, Integer> activityRanks = new LinkedHashMap<>();
-		Map<String, Integer> skillLevels = new LinkedHashMap<>();
-		Map<String, Integer> skillRanks = new LinkedHashMap<>();
-		Map<String, Long> skillXps = new LinkedHashMap<>();
-
-		int totalLevel = -1;
-		long totalXp = -1;
-		int overallRank = -1;
-
+		Board board = new Board();
 		JsonObject root = gson.fromJson(body, JsonObject.class);
 		for (JsonElement e : root.getAsJsonArray("skills"))
 		{
@@ -712,16 +676,14 @@ public class HiscoreService
 			String name = s.get("name").getAsString();
 			if ("Overall".equals(name))
 			{
-				overallRank = s.get("rank").getAsInt();
-				totalLevel = s.get("level").getAsInt();
-				totalXp = s.get("xp").getAsLong();
+				board.overallRank = s.get("rank").getAsInt();
+				board.totalLevel = s.get("level").getAsInt();
+				board.totalXp = s.get("xp").getAsLong();
 				continue;
 			}
 			// Internal skill keys are the CSV-era lowercase names.
-			String key = name.toLowerCase(Locale.ROOT);
-			skillRanks.put(key, s.get("rank").getAsInt());
-			skillLevels.put(key, s.get("level").getAsInt());
-			skillXps.put(key, s.get("xp").getAsLong());
+			board.skill(name.toLowerCase(Locale.ROOT), s.get("rank").getAsInt(), s.get("level").getAsInt(),
+				s.get("xp").getAsLong());
 		}
 
 		Set<String> activityNames = new HashSet<>(Arrays.asList(ACTIVITY_NAMES));
@@ -734,15 +696,15 @@ public class HiscoreService
 			int score = a.get("score").getAsInt();
 			if (activityNames.contains(name))
 			{
-				activityScores.put(name, score);
-				activityRanks.put(name, rank);
+				board.activityScores.put(name, score);
+				board.activityRanks.put(name, rank);
 				continue;
 			}
 			String key = JSON_BOSS_NAME_OVERRIDES.getOrDefault(name, name);
 			if (knownBosses.contains(key))
 			{
-				bossKills.put(key, score);
-				bossRanks.put(key, rank);
+				board.bossKills.put(key, score);
+				board.bossRanks.put(key, rank);
 			}
 			else
 			{
@@ -752,18 +714,37 @@ public class HiscoreService
 			}
 		}
 
-		double combatLevel = calcCmbLvlExact(skillLevels);
-
-		HiscoreResult result = new HiscoreResult(type, hiscoreTable, bossKills, bossRanks,
-			activityScores, activityRanks, skillLevels, skillRanks, skillXps, totalLevel,
-			totalXp, combatLevel, overallRank);
-		result.setBossSectionShifted(false);
-		return result;
+		return board.result(type, hiscoreTable, calcCmbLvlExact(board.skillLevels), false);
 	}
 
-	/* package */ int calcCmbLvlFromLevels(Map<String, Integer> levels)
+	/** One read of a hiscores answer, CSV or JSON, as it fills in; result() makes it what lookups use. */
+	private static final class Board
 	{
-		return (int) Math.floor(calcCmbLvlExact(levels));
+		final Map<String, Integer> bossKills = new LinkedHashMap<>();
+		final Map<String, Integer> bossRanks = new LinkedHashMap<>();
+		final Map<String, Integer> activityScores = new LinkedHashMap<>();
+		final Map<String, Integer> activityRanks = new LinkedHashMap<>();
+		final Map<String, Integer> skillLevels = new LinkedHashMap<>();
+		final Map<String, Integer> skillRanks = new LinkedHashMap<>();
+		final Map<String, Long> skillXps = new LinkedHashMap<>();
+		int totalLevel = -1;
+		long totalXp = -1;
+		int overallRank = -1;
+
+		void skill(String key, int rank, int level, long xp)
+		{
+			skillRanks.put(key, rank);
+			skillLevels.put(key, level);
+			skillXps.put(key, xp);
+		}
+
+		HiscoreResult result(AccountType type, HiscoreTable table, double combatLevel, boolean shifted)
+		{
+			HiscoreResult result = new HiscoreResult(type, table, bossKills, bossRanks, activityScores,
+				activityRanks, skillLevels, skillRanks, skillXps, totalLevel, totalXp, combatLevel, overallRank);
+			result.setBossSectionShifted(shifted);
+			return result;
+		}
 	}
 
 	/** The unrounded combat level, the value vanilla's hiscore calls Exact Combat Level. */

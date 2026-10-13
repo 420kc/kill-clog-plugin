@@ -93,14 +93,14 @@ public class SkillsTooltipTest
 
 	private static HiscoreResult withXp(java.util.Map<String, Long> xp)
 	{
-		return new HiscoreResult(AccountType.REGULAR, HiscoreTable.STANDARD,
+		return TestViews.hiscore(AccountType.REGULAR, HiscoreTable.STANDARD,
 			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(),
 			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), xp, 2_376, 1, 126, 1);
 	}
 
 	private static HiscoreResult hiscores(long totalXp, int overallRank)
 	{
-		return new HiscoreResult(AccountType.REGULAR, HiscoreTable.STANDARD,
+		return TestViews.hiscore(AccountType.REGULAR, HiscoreTable.STANDARD,
 			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(),
 			Collections.emptyMap(), Collections.singletonMap("attack", 99),
 			Collections.singletonMap("attack", 987), Collections.singletonMap("attack", 13_034_431L),

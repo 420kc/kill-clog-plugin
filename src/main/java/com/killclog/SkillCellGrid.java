@@ -101,14 +101,8 @@ final class SkillCellGrid
 			// A missing icon must not suppress the skill's level.
 		}
 
-		JPanel cell = new JPanel();
-		cell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		cell.setBorder(TooltipController.CELL_BORDER);
-		cell.add(label);
-		tooltipController.addCellHoverEffect(cell, label);
-		comparison.installCompareCellHover(cell, label);
 		labels.put(skill, label);
-		return cell;
+		return Cells.cell(label, tooltipController, comparison);
 	}
 
 	private static JPanel buildDivider()

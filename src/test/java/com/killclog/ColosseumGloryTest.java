@@ -13,7 +13,7 @@ public class ColosseumGloryTest
 {
 	private static HiscoreResult withGlory(int glory)
 	{
-		return new HiscoreResult(AccountType.REGULAR, Collections.emptyMap(), Collections.emptyMap(),
+		return TestViews.hiscore(AccountType.REGULAR, Collections.emptyMap(), Collections.emptyMap(),
 			Collections.singletonMap(ColosseumGlory.ACTIVITY_NAME, glory), Collections.emptyMap(),
 			Collections.emptyMap(), 0, 0, 0, -1);
 	}
