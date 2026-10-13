@@ -608,16 +608,10 @@ final class PublicationCoordinator
 		Map<String, PbRecord> out = new LinkedHashMap<>();
 		for (HiscoreSkill boss : PanelData.BOSSES)
 		{
-			Map<String, Double> vanilla = store.variantSecondsAcrossProfiles("personalbest", "", profileKeys, boss.getName());
-			vanilla.values().stream().min(Double::compare).ifPresent(seconds -> pbs.put(boss.getName(), seconds));
-			vanilla.forEach((key, seconds) -> out.merge(key, new PbRecord(seconds, PbRecord.Source.STORE), PbRecord::pick));
-			// The game's own records, the adventure log Kill Clog read, the collection log's line and the kills seen.
-			store.variantSecondsAcrossProfiles(AdvLogPbs.CONFIG_GROUP, AdvLogPbs.KEY_PREFIX, profileKeys, boss.getName())
-				.forEach((key, seconds) -> out.merge(key, new PbRecord(seconds, PbRecord.Source.ADVLOG), PbRecord::pick));
-			store.variantSecondsAcrossProfiles(AdvLogPbs.CONFIG_GROUP, ClogPbs.KEY_PREFIX, profileKeys, boss.getName())
-				.forEach((key, seconds) -> out.merge(key, new PbRecord(seconds, PbRecord.Source.CLOG), PbRecord::pick));
-			store.variantSecondsAcrossProfiles(AdvLogPbs.CONFIG_GROUP, KillLog.KEY_PREFIX, profileKeys, boss.getName())
-				.forEach((key, seconds) -> out.merge(key, KillLog.labeled(configManager, profileKeys, key, seconds), PbRecord::pick));
+			store.variantSecondsAcrossProfiles("personalbest", "", profileKeys, boss.getName()).values().stream()
+				.min(Double::compare).ifPresent(seconds -> pbs.put(boss.getName(), seconds));
+			// Each team size's time as the card shows it: RuneLite's store, the game's own records over it.
+			store.records(profileKeys, boss.getName()).forEach((key, record) -> out.merge(key, record, PbRecord::pick));
 		}
 		log.debug("killclog sync pb gather: {} owned profiles, {} bosses from RuneLite's store, {} detailed pbs"
 			+ " (the store, the adventure log, the collection log, kills seen)", profileKeys.size(), pbs.size(), out.size());

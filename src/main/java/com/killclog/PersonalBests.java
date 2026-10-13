@@ -55,12 +55,33 @@ final class PersonalBests
 	}
 
 	/**
-	 * Formatted fastest time for a panel boss across team sizes, read from the account's rs-profile fragments
-	 * ({@link #variantSecondsAcrossProfiles}), or null when none recorded.
+	 * Formatted fastest time for a panel boss across team sizes, each the time {@link #records} picks (the one the
+	 * sync sends, so your card and killclog.com agree), or null when none recorded.
 	 */
 	String pbText(java.util.List<String> profileKeys, String panelBossName)
 	{
-		return labeled(variantSecondsAcrossProfiles("personalbest", "", profileKeys, panelBossName), panelBossName);
+		java.util.Map<String, Double> seconds = new java.util.LinkedHashMap<>();
+		records(profileKeys, panelBossName).forEach((key, record) -> seconds.put(key, record.seconds));
+		return labeled(seconds, panelBossName);
+	}
+
+	/**
+	 * A boss's time for each team size, from the account's rs-profile fragments: RuneLite's store, then the game's own
+	 * records over it (the adventure log Kill Clog read, the collection log's line and the kills seen), as
+	 * {@link PbRecord#pick} ranks them. The one place the card and the sync choose a PB. Client thread (config reads).
+	 */
+	java.util.Map<String, PbRecord> records(java.util.List<String> profileKeys, String bossName)
+	{
+		java.util.Map<String, PbRecord> out = new java.util.LinkedHashMap<>();
+		variantSecondsAcrossProfiles("personalbest", "", profileKeys, bossName)
+			.forEach((key, seconds) -> out.merge(key, new PbRecord(seconds, PbRecord.Source.STORE), PbRecord::pick));
+		variantSecondsAcrossProfiles(AdvLogPbs.CONFIG_GROUP, AdvLogPbs.KEY_PREFIX, profileKeys, bossName)
+			.forEach((key, seconds) -> out.merge(key, new PbRecord(seconds, PbRecord.Source.ADVLOG), PbRecord::pick));
+		variantSecondsAcrossProfiles(AdvLogPbs.CONFIG_GROUP, ClogPbs.KEY_PREFIX, profileKeys, bossName)
+			.forEach((key, seconds) -> out.merge(key, new PbRecord(seconds, PbRecord.Source.CLOG), PbRecord::pick));
+		variantSecondsAcrossProfiles(AdvLogPbs.CONFIG_GROUP, KillLog.KEY_PREFIX, profileKeys, bossName)
+			.forEach((key, seconds) -> out.merge(key, KillLog.labeled(configManager, profileKeys, key, seconds), PbRecord::pick));
+		return out;
 	}
 
 	/**

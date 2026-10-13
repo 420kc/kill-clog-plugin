@@ -97,6 +97,7 @@ public class PlayerClansTest
 			java.util.Collections.emptyMap(), java.util.Collections.emptyMap(), null, AccountType.IRONMAN);
 		ClanTitle recruit = new ClanTitle(24, "Recruit");
 		synced.setSyncedClan("Iron Clan");
+		synced.setSyncedClanKnown(true);
 		synced.setSyncedClanTitle(recruit);
 		BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
 		when(icons.getRankImage(recruit)).thenReturn(image);
@@ -117,20 +118,20 @@ public class PlayerClansTest
 
 		settled = false;
 		clans.refreshClientSnapshot();
-		assertNull("before the world settles the game hasn't said", clans.forSync());
+		assertNull("before the world settles the game hasn't said", clans.forSync("420 kc"));
 
 		settled = true;
 		clans.refreshClientSnapshot();
-		assertEquals("Clogged", clans.forSync().clan);
-		assertEquals(100, clans.forSync().title.getId());
+		assertEquals("Clogged", clans.forSync("420 kc").clan);
+		assertEquals(100, clans.forSync("420 kc").title.getId());
 
 		when(client.getClanSettings()).thenReturn(null);
 		when(client.getClanChannel()).thenReturn(null);
 		clans.refreshClientSnapshot();
-		assertNull("in no clan, the sync says none", clans.forSync().clan);
+		assertNull("in no clan, the sync says none", clans.forSync("420 kc").clan);
 
 		clans.clearClientSnapshot();
-		assertNull(clans.forSync());
+		assertNull(clans.forSync("420 kc"));
 	}
 
 	private void youAreIn(String name, String clanName, ClanTitle title)

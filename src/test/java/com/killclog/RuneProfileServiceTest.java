@@ -444,6 +444,15 @@ public class RuneProfileServiceTest
 		assertEquals(1, requests.get());
 		assertNull(service.clan("A q p Weed"));
 		assertFalse(service.hasProfile("A q p Weed"));
+
+		// Held under another spelling of the same name, the 404 clears that one too.
+		service = new RuneProfileService(cannedClient(404, "{}", requests), new Gson(), null);
+		summaryCache().put("a_q_p_weed", new RuneProfileService.RuneProfileSummary(AccountType.IRONMAN, null,
+			"Iron Clan", new ClanTitle(24, "Recruit")));
+		longCache("summaryFetchTimes").put("a_q_p_weed", System.currentTimeMillis() - 66 * 60 * 1000);
+		service.lookup("a q p weed").get(5, TimeUnit.SECONDS);
+		assertNull("no spelling keeps the gone profile's clan", service.clan("A q p Weed"));
+		assertNull(service.getCachedAccountType("A q p Weed"));
 	}
 
 	private static OkHttpClient cannedClient(int code, String body, AtomicInteger requests)

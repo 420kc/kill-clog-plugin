@@ -435,7 +435,7 @@ public class KillClogPlugin extends Plugin
 		// A region load stays on the same world; everything else may change it.
 		if (event.getGameState() != GameState.LOGGED_IN && event.getGameState() != GameState.LOADING)
 		{
-			world.unsettle();
+			unsettleWorld();
 		}
 
 		// The owner claim is scoped to one POH visit, exactly as vanilla
@@ -555,7 +555,17 @@ public class KillClogPlugin extends Plugin
 		}
 		if (event.getVarbitId() == VarbitID.IRONMAN)
 		{
-			world.unsettle();
+			unsettleWorld();
+		}
+	}
+
+	/** Until the world settles again the game hasn't said your clan, so a sync leaves it out (2.6.3). */
+	private void unsettleWorld()
+	{
+		world.unsettle();
+		if (playerClans != null)
+		{
+			playerClans.clearClientSnapshot();
 		}
 	}
 

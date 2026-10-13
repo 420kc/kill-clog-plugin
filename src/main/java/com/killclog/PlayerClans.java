@@ -53,12 +53,15 @@ class PlayerClans
 		yours = Yours.NONE;
 	}
 
-	/** Your clan for a sync, its clan null when you're in none; null while the game hasn't said. */
+	/**
+	 * Your clan for a sync of {@code player}, its clan null when you're in none; null while the game hasn't said
+	 * since the world last settled, or when the snapshot is another account's.
+	 */
 	@Nullable
-	Yours forSync()
+	Yours forSync(String player)
 	{
 		Yours you = yours;
-		return you.known ? you : null;
+		return you.known && you.is(player) ? you : null;
 	}
 
 	@Nullable
@@ -88,7 +91,7 @@ class PlayerClans
 
 	private static boolean synced(@Nullable ClogResult clog)
 	{
-		return clog != null && clog.getSyncedClan() != null;
+		return clog != null && clog.isSyncedClanKnown();
 	}
 
 	@RequiredArgsConstructor

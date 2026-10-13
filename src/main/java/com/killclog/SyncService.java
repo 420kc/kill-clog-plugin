@@ -391,7 +391,7 @@ class SyncService
 		root.add("clog", items);
 		root.addProperty("client_version", CLIENT_VERSION);
 		// Your clan and title, or null for none; left out until the game has said, so killclog.com keeps what it holds.
-		PlayerClans.Yours you = clans != null ? clans.forSync() : null;
+		PlayerClans.Yours you = clans != null ? clans.forSync(clog.getPlayerName()) : null;
 		if (you != null)
 		{
 			JsonObject clan = null;

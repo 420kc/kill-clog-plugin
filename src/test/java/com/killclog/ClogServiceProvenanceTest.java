@@ -34,6 +34,14 @@ public class ClogServiceProvenanceTest
 		assertNotNull(provenFresh);
 		assertTrue(provenFresh.isFromTemple());
 
+		// A repeat lookup inside the TTL rebuilds from the local cache, and its Temple figures come back with it.
+		@SuppressWarnings("unchecked")
+		Map<String, double[]> held = TestViews.field(freshService, "lookedUpTempleFigures");
+		held.put(player.toLowerCase(), new double[]{812.5, 1204.0});
+		ClogResult again = freshService.lookup(player).join();
+		assertEquals(812.5, again.getTempleEhp(), 1e-9);
+		assertEquals(1204.0, again.getTempleEhc(), 1e-9);
+
 		ClogService ambiguousService = serviceWithWarmCatalog(cache);
 		longCache(ambiguousService, "templeFailures").put(player.toLowerCase(),
 			System.currentTimeMillis());

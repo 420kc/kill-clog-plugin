@@ -76,6 +76,9 @@ public class ClogService
 		new java.util.concurrent.ConcurrentHashMap<>();
 	// Your own Temple EHP and EHC, from the date overlay's answers: your log is the game's, Temple adds only these.
 	private final Map<String, double[]> ownTempleFigures = new java.util.concurrent.ConcurrentHashMap<>();
+	// Anyone else's, from their last Temple answer: a repeat lookup inside the TTL rebuilds from the local cache,
+	// which keeps the log but not these. Pruned with clogFetchTimes.
+	private final Map<String, double[]> lookedUpTempleFigures = new java.util.concurrent.ConcurrentHashMap<>();
 	// Players TempleOSRS answered with a log in the last day: the Collection Log card credits Temple even when this
 	// lookup's own request was skipped, as for your own log, or timed out.
 	private static final long TEMPLE_HOLDS_TTL_MS = 24 * 60 * 60 * 1000;
@@ -205,8 +208,12 @@ public class ClogService
 		{
 			log.debug("Using fresh cached clog for '{}' ({}s old)",
 				playerName, (System.currentTimeMillis() - lastFetch) / 1000);
-			return fetchItemNames().thenApply(names -> markTempleSource(
-				localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>())));
+			return fetchItemNames().thenApply(names ->
+			{
+				ClogResult result = localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>());
+				setTempleFigures(result, lookedUpTempleFigures.get(normalizedName));
+				return markTempleSource(result);
+			});
 		}
 
 		// Skip TempleOSRS if it failed for this player within the cooldown window.
@@ -253,11 +260,14 @@ public class ClogService
 						playerData.lastChanged,
 						accountType
 					).withSources(true, false, false);
-					setTempleFigures(result, templeFigures(playerData, stats));
+					double[] figures = templeFigures(playerData, stats);
+					setTempleFigures(result, figures);
 					localClogCache.cacheResult(result);
 					heldByTemple(normalizedName);
 					clogFetchTimes.put(normalizedName, System.currentTimeMillis());
 					HttpUtil.prune(clogFetchTimes, CLOG_TTL_MS);
+					lookedUpTempleFigures.put(normalizedName, figures);
+					lookedUpTempleFigures.keySet().retainAll(clogFetchTimes.keySet());
 					return result;
 				}
 

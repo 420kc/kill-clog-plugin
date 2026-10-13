@@ -2,6 +2,7 @@ package com.killclog;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Map;
 import net.runelite.api.clan.ClanTitle;
@@ -22,17 +23,30 @@ public class ClanSyncTest
 		PlayerClans clans = mock(PlayerClans.class);
 		SyncService service = new SyncService(null, new Gson(), null);
 		service.setClans(clans);
-		when(clans.forSync()).thenReturn(new PlayerClans.Yours("420 kc", "Clogged", new ClanTitle(100, "Administrator"), true));
+		when(clans.forSync("420 kc")).thenReturn(new PlayerClans.Yours("420 kc", "Clogged", new ClanTitle(100, "Administrator"), true));
 		JsonObject clan = body(service).getAsJsonObject("clan");
 		assertEquals("Clogged", clan.get("name").getAsString());
 		assertEquals(100, clan.get("title_id").getAsInt());
 		assertEquals("Administrator", clan.get("title").getAsString());
 
-		when(clans.forSync()).thenReturn(new PlayerClans.Yours("420 kc", null, null, true));
+		when(clans.forSync("420 kc")).thenReturn(new PlayerClans.Yours("420 kc", null, null, true));
 		assertTrue("in no clan: an explicit none", body(service).get("clan").isJsonNull());
 
-		when(clans.forSync()).thenReturn(null);
+		when(clans.forSync("420 kc")).thenReturn(null);
 		assertFalse("before the game has said: left out, so killclog.com keeps it", body(service).has("clan"));
+	}
+
+	@Test
+	public void theSnapshotSpeaksOnlyForItsOwnAccountAndOnlyUntilTheWorldUnsettles() throws Exception
+	{
+		PlayerClans clans = new PlayerClans(null, null, null, () -> true);
+		Field yours = PlayerClans.class.getDeclaredField("yours");
+		yours.setAccessible(true);
+		yours.set(clans, new PlayerClans.Yours("420 kc", "Clogged", null, true));
+		assertEquals("Clogged", clans.forSync("420 kc").clan);
+		assertNull("another account's sync never carries it", clans.forSync("based batt"));
+		clans.clearClientSnapshot();
+		assertNull("an unsettled world clears it until the game says again", clans.forSync("420 kc"));
 	}
 
 	@Test
@@ -47,6 +61,11 @@ public class ClanSyncTest
 		ClogResult none = new KillclogService(null, new Gson(), null)
 			.parseProofView("x", "{\"clog\":{\"items_by_category\":{}},\"clan\":null}", "x");
 		assertNull(none.getSyncedClan());
+		assertTrue("in no clan is an answer: RuneProfile's never stands in for it", none.isSyncedClanKnown());
+
+		ClogResult unsaid = new KillclogService(null, new Gson(), null)
+			.parseProofView("x", "{\"clog\":{\"items_by_category\":{}}}", "x");
+		assertFalse("a sync that never said leaves RuneProfile to stand in", unsaid.isSyncedClanKnown());
 	}
 
 	@Test
@@ -54,6 +73,7 @@ public class ClanSyncTest
 	{
 		ClogResult synced = new ClogResult("A q p Weed", Map.of(), Map.of(), Map.of(), null, AccountType.IRONMAN);
 		synced.setSyncedClan("Iron Clan");
+		synced.setSyncedClanKnown(true);
 		ClogResult provider = new ClogResult("A q p Weed", Map.of("hats", java.util.List.of(new ClogResult.ClogItem(2991, 1, null))),
 			Map.of(), Map.of(), null, AccountType.IRONMAN);
 		assertEquals("Iron Clan", ClogResult.pickFullest(provider, synced).getSyncedClan());

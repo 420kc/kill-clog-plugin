@@ -70,6 +70,23 @@ public class PersonalBestProfilesTest
 	}
 
 	@Test
+	public void yourCardShowsTheTimeTheSyncSends()
+	{
+		// RuneLite's store says 2:00.00, the game's adventure log 2:10.00: the game's record wins on the card as in
+		// the sync, so the card and killclog.com never disagree (2.6.3).
+		ConfigManager config = mock(ConfigManager.class);
+		when(config.getRSProfileKey()).thenReturn("main");
+		org.mockito.Mockito.doReturn(120.0).when(config).getConfiguration(eq("personalbest"), eq("rsprofile.main"),
+			eq("zulrah"), org.mockito.ArgumentMatchers.any(java.lang.reflect.Type.class));
+		org.mockito.Mockito.doReturn(130.0).when(config).getConfiguration(eq(AdvLogPbs.CONFIG_GROUP), eq("rsprofile.main"),
+			eq(AdvLogPbs.KEY_PREFIX + "zulrah"), org.mockito.ArgumentMatchers.any(java.lang.reflect.Type.class));
+		PersonalBests store = new PersonalBests(config);
+		List<String> keys = List.of("rsprofile.main");
+		assertEquals(PbRecord.Source.ADVLOG, store.records(keys, "Zulrah").get("zulrah").source);
+		assertEquals(PersonalBests.formatSeconds(130.0), store.pbText(keys, "Zulrah"));
+	}
+
+	@Test
 	public void aTeamSizesTimeSaysWhichAsKillclogComDoes()
 	{
 		// RuneLite keeps a raid's best at any size beside each size's own: the size names the time.

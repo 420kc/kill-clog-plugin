@@ -54,6 +54,10 @@ public class ClogResult
 	@Getter
 	@Setter
 	private String syncedClan;
+	/** Whether their sync has said at all: then a null clan means "in none", not "unknown" */
+	@Getter
+	@Setter
+	private boolean syncedClanKnown;
 	@Getter
 	@Setter
 	private ClanTitle syncedClanTitle;
@@ -116,6 +120,7 @@ public class ClogResult
 		this.templeEhp = source.templeEhp;
 		this.templeEhc = source.templeEhc;
 		this.syncedClan = source.syncedClan;
+		this.syncedClanKnown = source.syncedClanKnown;
 		this.syncedClanTitle = source.syncedClanTitle;
 	}
 
@@ -234,9 +239,10 @@ public class ClogResult
 			templeEhp = other.templeEhp;
 			templeEhc = other.templeEhc;
 		}
-		if (other != null && syncedClan == null)
+		if (other != null && !syncedClanKnown)
 		{
 			syncedClan = other.syncedClan;
+			syncedClanKnown = other.syncedClanKnown;
 			syncedClanTitle = other.syncedClanTitle;
 		}
 		return this;

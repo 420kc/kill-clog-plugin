@@ -483,7 +483,9 @@ public class KillclogService
 			{
 				result = result.withSources(false, false, true);
 			}
-			// The clan the player's own sync named (2.6.3): the Player Summary reads it before RuneProfile's.
+			// The clan the player's own sync named (2.6.3), or null for none: once present, the Player Summary reads it
+			// instead of RuneProfile's. Absent until their sync has said.
+			result.setSyncedClanKnown(root.has("clan"));
 			JsonObject clan = root.has("clan") && root.get("clan").isJsonObject() ? root.getAsJsonObject("clan") : null;
 			if (clan != null && stringField(clan, "name") != null)
 			{
