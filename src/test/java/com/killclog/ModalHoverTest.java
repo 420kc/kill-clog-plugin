@@ -88,7 +88,7 @@ public class ModalHoverTest
 		petNames.put(1337, "Pet snakeling");
 		petNames.put(1338, "Abyssal orphan");
 		set(player, "petNames", petNames);
-		// The Skill Summary is two plain rows since 2.4.0: nothing in it hovers.
+		// Experience & Efficiency (the Skill Summary until 2.6.3) is plain rows: nothing in it hovers.
 		return new TitleTooltip[]{pvm, clog, player};
 	}
 
