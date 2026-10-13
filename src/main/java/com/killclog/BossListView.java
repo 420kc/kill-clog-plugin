@@ -86,11 +86,11 @@ public class BossListView
 		// than imposing a strict sort - players have already scanned this
 		// exact order in the game's own hiscores.
 		root.add(searchRow());
-		// A thin strip in the activities separator's gray sets the search apart from the first boss.
+		// A strip like the activities separator, in its gray and height, sets the search apart from the first boss.
 		JPanel divider = new JPanel();
 		divider.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		divider.setPreferredSize(new Dimension(0, 3));
-		divider.setMaximumSize(new Dimension(Integer.MAX_VALUE, 3));
+		divider.setPreferredSize(new Dimension(0, ActivitiesTray.SEPARATOR_HEIGHT));
+		divider.setMaximumSize(new Dimension(Integer.MAX_VALUE, ActivitiesTray.SEPARATOR_HEIGHT));
 		root.add(divider);
 		for (HiscoreSkill boss : PanelData.BOSSES)
 		{
@@ -212,7 +212,7 @@ public class BossListView
 		row.kc.setBorder(new EmptyBorder(0, 0, 0, 4));
 		ClogHelper.antialias(row.kc);
 
-		JPanel panel = rowPanel(row.icon, row.name);
+		JPanel panel = rowPanel(row.icon, row.name, ROW_HEIGHT);
 		panel.add(row.kc, BorderLayout.EAST);
 		// Outline color follows the kc label (mirrored from the grid, so the
 		// completion highlighter shows through, same as the grid cell); the
@@ -228,7 +228,7 @@ public class BossListView
 	private JPanel searchRow()
 	{
 		JLabel icon = new JLabel(new ImageIcon(ClogHelper.makeSearchIcon(KillClogPanel.TEXT_DIM, 0.70f)));
-		icon.setPreferredSize(new Dimension(24, ROW_HEIGHT));
+		icon.setPreferredSize(new Dimension(24, PanelSearchBox.HEIGHT));
 		JTextField field = search;
 		field.setFont(FontManager.getRunescapeSmallFont());
 		field.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
@@ -266,7 +266,7 @@ public class BossListView
 			}
 		});
 		// Like the panel's search bar: the text cursor over the field, and the row lightens while the mouse is on it.
-		JPanel row = rowPanel(icon, field);
+		JPanel row = rowPanel(icon, field, PanelSearchBox.HEIGHT);
 		MouseAdapter hover = new MouseAdapter()
 		{
 			@Override
@@ -287,13 +287,13 @@ public class BossListView
 	}
 
 	/** One list row: a fixed-height strip, its icon on the left and its content filling the rest. */
-	private static JPanel rowPanel(JComponent icon, JComponent content)
+	private static JPanel rowPanel(JComponent icon, JComponent content, int height)
 	{
 		JPanel panel = new JPanel(new BorderLayout(4, 0));
 		panel.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		panel.setBorder(TooltipController.CELL_BORDER);
-		panel.setPreferredSize(new Dimension(0, ROW_HEIGHT));
-		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, ROW_HEIGHT));
+		panel.setPreferredSize(new Dimension(0, height));
+		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, height));
 		panel.add(icon, BorderLayout.WEST);
 		panel.add(content, BorderLayout.CENTER);
 		return panel;

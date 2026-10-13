@@ -26,6 +26,8 @@ import net.runelite.client.ui.ColorScheme;
  */
 public class ActivitiesTray
 {
+	/** The separator's height, which the boss list's divider under its search matches. */
+	static final int SEPARATOR_HEIGHT = 7;
 	private static final long SLIDE_MS = 150;
 	private static final int SLIDE_TICK_MS = 12;
 
@@ -80,7 +82,7 @@ public class ActivitiesTray
 		// would make one collapse unrecoverable for the whole session.
 		this.separator = new JPanel();
 		separator.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		separator.setPreferredSize(new Dimension(0, 7));
+		separator.setPreferredSize(new Dimension(0, SEPARATOR_HEIGHT));
 		Color sepNormal = ColorScheme.DARK_GRAY_COLOR;
 		Color sepHover = new Color(46, 46, 46);
 		separator.addMouseListener(new MouseAdapter()

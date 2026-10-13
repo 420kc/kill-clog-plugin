@@ -33,4 +33,18 @@ public class BossListSearchTest
 		}
 		assertEquals(ColorScheme.DARKER_GRAY_COLOR, row.getBackground());
 	}
+
+	@Test
+	public void theSearchRowAndItsDividerMatchThePanelsSearchBarAndSeparator()
+	{
+		BossListView list = new BossListView(mock(TooltipController.class), mock(Cells.class), () -> false);
+		JTextField field = TestViews.field(list, "search");
+		JPanel row = (JPanel) field.getParent();
+		assertEquals(30, row.getPreferredSize().height);
+		assertEquals(30, row.getMaximumSize().height);
+		java.awt.Container root = row.getParent();
+		java.awt.Component divider = root.getComponent(1);
+		assertEquals(7, divider.getPreferredSize().height);
+		assertEquals(7, divider.getMaximumSize().height);
+	}
 }

@@ -16,6 +16,9 @@ import net.runelite.client.ui.components.IconTextField;
 
 final class PanelSearchBox
 {
+	/** The search bar's height, which the boss list's own search row matches. */
+	static final int HEIGHT = 30;
+
 	private PanelSearchBox()
 	{
 	}
@@ -36,7 +39,7 @@ final class PanelSearchBox
 		searchBar.setIcon(IconTextField.Icon.SEARCH);
 		searchBar.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 		searchBar.setHoverBackgroundColor(ColorScheme.DARK_GRAY_HOVER_COLOR);
-		searchBar.setPreferredSize(new Dimension(0, 30));
+		searchBar.setPreferredSize(new Dimension(0, HEIGHT));
 		searchBar.setAlignmentX(Component.LEFT_ALIGNMENT);
 
 		ClogHelper.styleSearchBar(searchBar);
@@ -77,8 +80,8 @@ final class PanelSearchBox
 			}
 		};
 		searchRow.setAlignmentX(Component.LEFT_ALIGNMENT);
-		searchRow.setPreferredSize(new Dimension(0, 30));
-		searchRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, 30));
+		searchRow.setPreferredSize(new Dimension(0, HEIGHT));
+		searchRow.setMaximumSize(new Dimension(Integer.MAX_VALUE, HEIGHT));
 		searchRow.setOpaque(false);
 		searchRow.add(compareLabel);
 		searchRow.add(leagueSwitch);
