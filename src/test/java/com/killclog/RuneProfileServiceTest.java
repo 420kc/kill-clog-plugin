@@ -431,6 +431,8 @@ public class RuneProfileServiceTest
 		assertEquals("Iron Clan", service.clan("A q p Weed"));
 		assertEquals(24, service.clanTitle("A q p Weed").getId());
 		assertTrue(service.hasProfile("a q p weed"));
+		assertEquals("a comparison's badge reads the same answer", AccountType.IRONMAN,
+			service.getCachedAccountType("A q p Weed"));
 
 		// The stale answer is asked again; RuneProfile no longer holding the player clears it.
 		AtomicInteger requests = new AtomicInteger();

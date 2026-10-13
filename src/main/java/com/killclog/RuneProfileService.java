@@ -102,7 +102,7 @@ public class RuneProfileService
 		return result.rebasedOn(catalog.totals());
 	}
 
-	/** Cached RuneProfile account type, or null when the summary is absent or stale. */
+	/** RuneProfile's account type from its last answer for this name, or null without one. */
 	@Nullable
 	public AccountType getCachedAccountType(String playerName)
 	{
@@ -112,8 +112,8 @@ public class RuneProfileService
 		{
 			return null;
 		}
-		RuneProfileSummary cached = summaries.fresh(playerName.toLowerCase());
-		return cached != null ? cached.accountType : null;
+		RuneProfileSummary held = held(playerName);
+		return held != null ? held.accountType : null;
 	}
 
 	/** A player's clan as RuneProfile last saw it; null without one. */
