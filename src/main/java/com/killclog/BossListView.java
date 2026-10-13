@@ -16,6 +16,7 @@ import java.awt.event.KeyEvent;
 import java.beans.PropertyChangeListener;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.BooleanSupplier;
@@ -161,13 +162,18 @@ public class BossListView
 		sync(row, gridLabel, "icon");
 	}
 
-	private static void sync(Row row, JLabel gridLabel, String property)
+	private void sync(Row row, JLabel gridLabel, String property)
 	{
 		switch (property)
 		{
 			case "text":
 				String text = gridLabel.getText();
 				row.kc.setText(text != null ? text.trim() : "");
+				// Counts landing under a typed search can change which rows it finds.
+				if (!search.getText().isEmpty())
+				{
+					filter(search.getText());
+				}
 				break;
 			case "foreground":
 				// The name wears the same color as the kc: completion
@@ -316,6 +322,9 @@ public class BossListView
 	void filter(String text)
 	{
 		String query = KillClogChatCommand.normalize(text);
+		// A search with a digit in it also finds a boss by its count, as the row shows it ("147k", "420").
+		String typed = text.trim().toLowerCase(Locale.ROOT);
+		boolean byCount = typed.chars().anyMatch(Character::isDigit);
 		Set<String> named = new HashSet<>();
 		KillClogChatCommand.aliases().forEach((alias, boss) ->
 		{
@@ -325,7 +334,8 @@ public class BossListView
 			}
 		});
 		rows.forEach((boss, row) -> row.panel.setVisible(query.isEmpty() || matches(boss, query, named)
-			|| matches(PanelData.card(boss), query, named)));
+			|| matches(PanelData.card(boss), query, named)
+			|| byCount && row.kc.getText().toLowerCase(Locale.ROOT).contains(typed)));
 		root.revalidate();
 		root.repaint();
 	}
