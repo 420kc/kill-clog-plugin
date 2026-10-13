@@ -1018,12 +1018,12 @@ public class PluginPublicationCharacterizationTest
 		syncHandler.run();
 		settle();
 		ArgumentCaptor<java.util.Map<String, Double>> collapsed = ArgumentCaptor.forClass(java.util.Map.class);
-		ArgumentCaptor<java.util.Map<String, SyncService.DetailedPb>> detailed = ArgumentCaptor.forClass(java.util.Map.class);
+		ArgumentCaptor<java.util.Map<String, PbRecord>> detailed = ArgumentCaptor.forClass(java.util.Map.class);
 		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), any(), collapsed.capture(), detailed.capture(),
 			eq(7L), any(), anyInt(), eq(localClogCache), eq("main"), anyBoolean(), any());
 
 		java.util.Map<String, String> got = new java.util.TreeMap<>();
-		detailed.getValue().forEach((key, pb) -> got.put(key, pb.seconds + " " + pb.source));
+		detailed.getValue().forEach((key, pb) -> got.put(key, pb.seconds + " " + pb.source.wire()));
 		java.util.Map<String, String> want = new java.util.TreeMap<>();
 		want.put("zulrah", "55.5 store");
 		want.put("chambers of xeric solo", "1400.0 advlog");

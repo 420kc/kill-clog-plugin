@@ -13,20 +13,20 @@ public class PbLanesTest
 {
 	private static final String KEY = "tombs of amascut expert mode 6 players";
 
-	private static String after(SyncService.DetailedPb... lanes)
+	private static String after(PbRecord... lanes)
 	{
-		Map<String, SyncService.DetailedPb> out = new HashMap<>();
+		Map<String, PbRecord> out = new HashMap<>();
 		out.put(KEY, lanes[0]);
 		for (int i = 1; i < lanes.length; i++)
 		{
-			PublicationCoordinator.putGameRecord(out, KEY, lanes[i]);
+			out.merge(KEY, lanes[i], PbRecord::pick);
 		}
-		return out.get(KEY).seconds + " " + out.get(KEY).source;
+		return out.get(KEY).seconds + " " + out.get(KEY).source.wire();
 	}
 
-	private static SyncService.DetailedPb pb(double seconds, String source)
+	private static PbRecord pb(double seconds, String source)
 	{
-		return new SyncService.DetailedPb(seconds, source);
+		return new PbRecord(seconds, PbRecord.Source.valueOf(source.toUpperCase(java.util.Locale.ROOT)));
 	}
 
 	@Test

@@ -438,7 +438,7 @@ final class PublicationCoordinator
 				List<String> profileKeys = PersonalBests.profileKeys(configManager.getRSProfiles(), accountHash,
 					main ? RuneScapeProfileType.STANDARD.name() : leagueProfileType.apply(gameMode));
 				Map<String, Double> pbs = new LinkedHashMap<>();
-				Map<String, SyncService.DetailedPb> detailedPbs = gatherPersonalBests(profileKeys, pbs);
+				Map<String, PbRecord> detailedPbs = gatherPersonalBests(profileKeys, pbs);
 				// Off the client thread before dispatch: the sync pre-flight
 				// can block up to ten seconds waiting for the rename disk
 				// verdict, and game ticks must never pay that wait. The
@@ -460,7 +460,7 @@ final class PublicationCoordinator
 	}
 
 	private void dispatchKillclogSync(String rsn, long accountHash, AccountType accountType,
-		Map<String, Double> pbs, Map<String, SyncService.DetailedPb> detailedPbs,
+		Map<String, Double> pbs, Map<String, PbRecord> detailedPbs,
 		boolean manual, int generation, long cacheEpoch, LocalClogCache cache, String gameMode, long storeEpoch,
 		boolean retry)
 	{
@@ -602,44 +602,26 @@ final class PublicationCoordinator
 	 * buffed-world times, and the min-merge would launder those into the
 	 * player's real record. Client thread (config reads).
 	 */
-	private Map<String, SyncService.DetailedPb> gatherPersonalBests(List<String> profileKeys, Map<String, Double> pbs)
+	private Map<String, PbRecord> gatherPersonalBests(List<String> profileKeys, Map<String, Double> pbs)
 	{
 		PersonalBests store = new PersonalBests(configManager);
-		Map<String, SyncService.DetailedPb> out = new LinkedHashMap<>();
+		Map<String, PbRecord> out = new LinkedHashMap<>();
 		for (HiscoreSkill boss : PanelData.BOSSES)
 		{
 			Map<String, Double> vanilla = store.variantSecondsAcrossProfiles("personalbest", "", profileKeys, boss.getName());
 			vanilla.values().stream().min(Double::compare).ifPresent(seconds -> pbs.put(boss.getName(), seconds));
-			vanilla.forEach((key, seconds) -> out.putIfAbsent(key, new SyncService.DetailedPb(seconds, "store")));
+			vanilla.forEach((key, seconds) -> out.merge(key, new PbRecord(seconds, PbRecord.Source.STORE), PbRecord::pick));
 			// The game's own records, the adventure log Kill Clog read, the collection log's line and the kills seen.
 			store.variantSecondsAcrossProfiles(AdvLogPbs.CONFIG_GROUP, AdvLogPbs.KEY_PREFIX, profileKeys, boss.getName())
-				.forEach((key, seconds) -> putGameRecord(out, key, new SyncService.DetailedPb(seconds, "advlog")));
+				.forEach((key, seconds) -> out.merge(key, new PbRecord(seconds, PbRecord.Source.ADVLOG), PbRecord::pick));
 			store.variantSecondsAcrossProfiles(AdvLogPbs.CONFIG_GROUP, ClogPbs.KEY_PREFIX, profileKeys, boss.getName())
-				.forEach((key, seconds) -> putGameRecord(out, key, new SyncService.DetailedPb(seconds, "clog")));
+				.forEach((key, seconds) -> out.merge(key, new PbRecord(seconds, PbRecord.Source.CLOG), PbRecord::pick));
 			store.variantSecondsAcrossProfiles(AdvLogPbs.CONFIG_GROUP, KillLog.KEY_PREFIX, profileKeys, boss.getName())
-				.forEach((key, seconds) -> putGameRecord(out, key, KillLog.labeled(configManager, profileKeys, key, seconds)));
+				.forEach((key, seconds) -> out.merge(key, KillLog.labeled(configManager, profileKeys, key, seconds), PbRecord::pick));
 		}
 		log.debug("killclog sync pb gather: {} owned profiles, {} bosses from RuneLite's store, {} detailed pbs"
 			+ " (the store, the adventure log, the collection log, kills seen)", profileKeys.size(), pbs.size(), out.size());
 		return out;
 	}
 
-	/**
-	 * A game record replaces RuneLite's file even when slower; between two, faster wins and the later lane takes a
-	 * tie. A whole second leaves a file time inside it alone: the same time with its tenths, shown without them.
-	 */
-	/* package */ static void putGameRecord(Map<String, SyncService.DetailedPb> out, String key, SyncService.DetailedPb pb)
-	{
-		SyncService.DetailedPb existing = out.get(key);
-		boolean file = existing != null && "store".equals(existing.source);
-		if (existing == null || (file ? !sameTimeInTenths(existing.seconds, pb.seconds) : pb.seconds <= existing.seconds))
-		{
-			out.put(key, pb);
-		}
-	}
-
-	private static boolean sameTimeInTenths(double tenths, double whole)
-	{
-		return whole == Math.rint(whole) && tenths != Math.rint(tenths) && Math.abs(tenths - whole) < 1;
-	}
 }

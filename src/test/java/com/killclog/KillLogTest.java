@@ -172,14 +172,14 @@ public class KillLogTest
 	public void theSyncReadsTheLabelsOfTheKeptTime()
 	{
 		when(configManager.getConfiguration("killclog", "p1", "livepbtag.nightmare 5 players")).thenReturn("208.0|5||kill|1130");
-		SyncService.DetailedPb pb = KillLog.labeled(configManager, List.of("p1"), "the nightmare 5 players", 208.0);
-		assertEquals("live", pb.source);
+		PbRecord pb = KillLog.labeled(configManager, List.of("p1"), "the nightmare 5 players", 208.0);
+		assertEquals(PbRecord.Source.LIVE, pb.source);
 		assertEquals(Integer.valueOf(5), pb.team);
 		assertNull(pb.scale);
 		assertEquals("kill", pb.timer);
 		assertEquals(Integer.valueOf(1130), pb.kc);
 
-		SyncService.DetailedPb other = KillLog.labeled(configManager, List.of("p1"), "the nightmare 5 players", 200.4);
+		PbRecord other = KillLog.labeled(configManager, List.of("p1"), "the nightmare 5 players", 200.4);
 		assertNull(other.team);
 		assertNull(other.kc);
 	}
@@ -188,8 +188,8 @@ public class KillLogTest
 	public void aLabelThatDoesntReadIsSkippedAndTheTimeStillSyncs()
 	{
 		when(configManager.getConfiguration("killclog", "p1", "livepbtag.nightmare 5 players")).thenReturn("208.0|five||kill|1130");
-		SyncService.DetailedPb pb = KillLog.labeled(configManager, List.of("p1"), "the nightmare 5 players", 208.0);
-		assertEquals("live", pb.source);
+		PbRecord pb = KillLog.labeled(configManager, List.of("p1"), "the nightmare 5 players", 208.0);
+		assertEquals(PbRecord.Source.LIVE, pb.source);
 		assertEquals(208.0, pb.seconds, 0);
 		assertNull(pb.team);
 		assertNull(pb.timer);

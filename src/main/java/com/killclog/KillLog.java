@@ -131,8 +131,8 @@ final class KillLog
 		String exact = size == null ? "" : size.equals("Solo") ? "1" : size.matches("\\d+ players?") ? size.split(" ")[0] : "";
 		String timer = tob || toa ? "challenge" : boss.startsWith("chambers of xeric") ? "overall" : "kill";
 		configManager.setRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, KEY_PREFIX + key, pb);
-		configManager.setRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, TAG_PREFIX + key, pb + "|" + exact + "|"
-			+ (fresh && toa ? toaLevelAtTime : "") + "|" + timer + "|" + (fresh ? kc : ""));
+		configManager.setRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, TAG_PREFIX + key, PbRecord.tag(pb, exact,
+			fresh && toa ? String.valueOf(toaLevelAtTime) : "", timer, fresh ? String.valueOf(kc) : ""));
 	}
 
 	/** Drops a kill half seen: at logout, and when another account's messages arrive. */
@@ -166,42 +166,20 @@ final class KillLog
 	}
 
 	/** A kept PB with what the game showed at the kill that set it, from a profile holding that same time. */
-	static SyncService.DetailedPb labeled(ConfigManager configManager, List<String> profileKeys, String key, double seconds)
+	static PbRecord labeled(ConfigManager configManager, List<String> profileKeys, String key, double seconds)
 	{
-		SyncService.DetailedPb pb = new SyncService.DetailedPb(seconds, "live");
 		for (String profileKey : profileKeys)
 		{
 			for (String stored : PersonalBests.keyCandidates(key))
 			{
-				String tag = configManager.getConfiguration(AdvLogPbs.CONFIG_GROUP, profileKey, TAG_PREFIX + stored);
-				String[] parts = tag != null ? tag.split("\\|", -1) : new String[0];
-				try
+				PbRecord pb = PbRecord.live(seconds,
+					configManager.getConfiguration(AdvLogPbs.CONFIG_GROUP, profileKey, TAG_PREFIX + stored));
+				if (pb.labeled())
 				{
-					if (parts.length == 5 && Double.parseDouble(parts[0]) == seconds)
-					{
-						pb.team = number(parts[1]);
-						pb.scale = number(parts[2]);
-						pb.timer = parts[3];
-						pb.kc = number(parts[4]);
-						return pb;
-					}
-				}
-				catch (NumberFormatException e)
-				{
-					// A label that doesn't read is skipped: the time still syncs, unlabeled.
-					pb.team = null;
-					pb.scale = null;
-					pb.timer = null;
-					pb.kc = null;
+					return pb;
 				}
 			}
 		}
-		return pb;
-	}
-
-	@Nullable
-	private static Integer number(String text)
-	{
-		return text.isEmpty() ? null : Integer.valueOf(text);
+		return new PbRecord(seconds, PbRecord.Source.LIVE);
 	}
 }

@@ -96,7 +96,7 @@ class SyncService
 	 */
 	CompletableFuture<SyncResult> syncCollectionLog(String rsn, long accountHash,
 		@Nullable AccountType accountType, Map<String, Double> personalBests,
-		Map<String, DetailedPb> detailedPersonalBests, long cacheEpoch,
+		Map<String, PbRecord> detailedPersonalBests, long cacheEpoch,
 		KillclogSyncGate syncGate, int generation, LocalClogCache cache, String mode, boolean always, Runnable sending)
 	{
 		if (rsn == null || rsn.isBlank())
@@ -294,7 +294,7 @@ class SyncService
 	 */
 	private JsonObject buildBody(long accountHash, @Nullable AccountType accountType,
 		ClogResult clog, Map<String, Double> personalBests,
-		Map<String, DetailedPb> detailedPersonalBests)
+		Map<String, PbRecord> detailedPersonalBests)
 	{
 		JsonObject root = new JsonObject();
 		root.addProperty("account_hash", Long.toString(accountHash));
@@ -336,12 +336,12 @@ class SyncService
 		if (detailedPersonalBests != null && !detailedPersonalBests.isEmpty())
 		{
 			JsonObject detailed = new JsonObject();
-			for (Map.Entry<String, DetailedPb> entry : new TreeMap<>(detailedPersonalBests).entrySet())
+			for (Map.Entry<String, PbRecord> entry : new TreeMap<>(detailedPersonalBests).entrySet())
 			{
 				JsonObject record = new JsonObject();
-				DetailedPb pb = entry.getValue();
+				PbRecord pb = entry.getValue();
 				record.addProperty("seconds", pb.seconds);
-				record.addProperty("source", pb.source);
+				record.addProperty("source", pb.source.wire());
 				if (pb.team != null) record.addProperty("team", pb.team);
 				if (pb.scale != null) record.addProperty("scale", pb.scale);
 				if (pb.timer != null) record.addProperty("timer", pb.timer);
@@ -410,18 +410,6 @@ class SyncService
 		return root;
 	}
 
-	/** One variant-keyed pb with the lane this client observed it through. */
-	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
-	static final class DetailedPb
-	{
-		final double seconds;
-		final String source;
-		// What the game showed at the kill that set it, when Kill Clog saw that kill.
-		Integer team;
-		Integer scale;
-		String timer;
-		Integer kc;
-	}
 
 	private static final class ItemEntry
 	{
