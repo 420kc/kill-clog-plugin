@@ -7,6 +7,7 @@
 package com.killclog;
 
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.Dimension;
@@ -233,6 +234,9 @@ public class BossListView
 		field.setFont(FontManager.getRunescapeSmallFont());
 		field.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		field.setCaretColor(ColorScheme.LIGHT_GRAY_COLOR);
+		// Selected text as the panel's search bar (RuneLite's FlatTextField) paints it: white on the brand orange.
+		field.setSelectedTextColor(Color.WHITE);
+		field.setSelectionColor(ColorScheme.BRAND_ORANGE_TRANSPARENT);
 		field.setOpaque(false);
 		field.setBorder(null);
 		field.getDocument().addDocumentListener(new DocumentListener()

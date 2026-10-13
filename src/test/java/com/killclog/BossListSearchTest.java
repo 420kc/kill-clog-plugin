@@ -20,6 +20,9 @@ public class BossListSearchTest
 		JTextField field = TestViews.field(list, "search");
 		JPanel row = (JPanel) field.getParent();
 		assertEquals(Cursor.TEXT_CURSOR, field.getCursor().getType());
+		// Selected text reads as it does in the panel's search bar: white on the brand orange.
+		assertEquals(java.awt.Color.WHITE, field.getSelectedTextColor());
+		assertEquals(ColorScheme.BRAND_ORANGE_TRANSPARENT, field.getSelectionColor());
 		assertEquals(ColorScheme.DARKER_GRAY_COLOR, row.getBackground());
 
 		for (MouseListener listener : field.getMouseListeners())
