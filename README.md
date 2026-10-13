@@ -20,7 +20,7 @@ To retry an update, reopen the log or choose **Search** at the top. If it says *
 
 Optional and off by default.
 
-**Sync Collection Log** keeps your killclog.com profile up to date with your Collection Log, unlock dates and personal bests. The chalice button (**sync collection log**) syncs right away. Open the in-game log first so it's current.
+**Sync Collection Log** keeps your killclog.com profile up to date with your Collection Log, unlock dates, personal bests and clan. The chalice button (**sync collection log**) syncs right away. Open the in-game log first so it's current.
 
 **Automatic sync** turns on with Sync Collection Log: your profile updates at login, after new items, and when you open your Collection Log. Turn it off to sync only when you click the chalice.
 
