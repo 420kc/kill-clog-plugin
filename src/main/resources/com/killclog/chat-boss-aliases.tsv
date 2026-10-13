@@ -53,6 +53,10 @@ tombs	Tombs of Amascut
 expert	Tombs of Amascut: Expert Mode
 toa expert	Tombs of Amascut: Expert Mode
 tob	Theatre of Blood
+# LAUNCH DAY (The Fractured Archive, 2026-10-20): uncomment once its hiscore row and log page are live, with
+# the canonical name the boss update kit prints. The alias test resolves every row against the game's pages.
+#tfa	The Fractured Archive
+#archive	The Fractured Archive
 hmt	Theatre of Blood: Hard Mode
 prime	Dagannoth Prime
 rex	Dagannoth Rex

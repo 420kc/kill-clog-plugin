@@ -55,22 +55,24 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private TooltipItemSprites superiorSprites;
 	private final int[] superiorCounts = new int[2];
 
-	// CoX, ToB and ToA: normal and hard-mode kills as pairs, like a boss popup's KC and PB, then the raid's log.
-	private static final String[] RAID_LABELS = {"CoX: ", "ToB: ", "ToA: "};
+	// CoX, ToB and ToA: normal and hard-mode kills as pairs, like a boss popup's KC and PB, then the raid's log. The
+	// Fractured Archive has no hard mode, so its row is its kills and its log.
+	private static final String[] RAID_LABELS = {"CoX: ", "ToB: ", "ToA: ", "TFA: "};
 	private static final int PAIR_GAP = 8;
-	private static final String[] RAID_CATEGORIES = {PanelData.COX_CATEGORY, PanelData.TOB_CATEGORY, PanelData.TOA_CATEGORY};
-	private final int[] raidKc = new int[3];
-	private final int[] hardKc = new int[3];
-	private final int[] raidObtained = {-1, -1, -1};
-	private final int[] raidTotal = new int[3];
+	private static final String[] RAID_CATEGORIES = {PanelData.COX_CATEGORY, PanelData.TOB_CATEGORY,
+		PanelData.TOA_CATEGORY, PanelData.TFA_CATEGORY};
+	private final int[] raidKc = new int[RAID_LABELS.length];
+	private final int[] hardKc = new int[RAID_LABELS.length];
+	private final int[] raidObtained = {-1, -1, -1, -1};
+	private final int[] raidTotal = new int[RAID_LABELS.length];
 	@Nullable
 	private BiConsumer<MouseEvent, HiscoreSkill> onOpenRaid;
 	private final CardBody.ClickRows raidRows = new CardBody.ClickRows(this, (e, row) ->
 	{
-		if (onOpenRaid != null)
+		// Each row opens its raid's own popup, once the client knows the raid.
+		if (onOpenRaid != null && raid(row) != null)
 		{
-			// Each row opens its raid's own popup.
-			onOpenRaid.accept(e, PanelData.RAIDS[row]);
+			onOpenRaid.accept(e, raid(row));
 			e.consume();
 		}
 	});
@@ -160,10 +162,10 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 	public void setRaids(HiscoreResult hiscoreResult, ClogResult clogResult)
 	{
-		for (int i = 0; i < 3; i++)
+		for (int i = 0; i < RAID_LABELS.length; i++)
 		{
-			raidKc[i] = Math.max(0, hiscoreResult.getKc(PanelData.RAIDS[i].getName()));
-			hardKc[i] = Math.max(0, hiscoreResult.getKc(PanelData.RAID_HARD_MODES[i].getName()));
+			raidKc[i] = Math.max(0, hiscoreResult.getKc(hasHardMode(i) ? PanelData.RAIDS[i].getName() : PanelData.TFA_HISCORE));
+			hardKc[i] = hasHardMode(i) ? Math.max(0, hiscoreResult.getKc(PanelData.RAID_HARD_MODES[i].getName())) : 0;
 			int[] counts = clogResult != null ? ClogHelper.clogCounts(RAID_CATEGORIES[i], clogResult) : null;
 			if (counts != null)
 			{
@@ -250,24 +252,44 @@ public class PvmSummaryTooltip extends TitleTooltip
 		return raidKc[row] + hardKc[row] > 0 && raidObtained[row] >= 0;
 	}
 
-	private static String hardLabel(int row)
+	/** CoX, ToB and ToA pair a hard mode; The Fractured Archive, the row after them, has none. */
+	private static boolean hasHardMode(int row)
 	{
-		return PanelData.RAID_HARD_LABELS[row] + ": ";
+		return row < PanelData.RAID_HARD_MODES.length;
+	}
+
+	/** The raid a row opens, null for one the running client doesn't know yet. */
+	@Nullable
+	private static HiscoreSkill raid(int row)
+	{
+		return hasHardMode(row) ? PanelData.RAIDS[row] : PanelData.TFA;
+	}
+
+	/** The hard mode's label and kills that follow the raid's, as wide as they paint; none for a raid without one. */
+	private static int hardWidth(FontMetrics fm, int row, int kills)
+	{
+		return hasHardMode(row) ? PAIR_GAP + fm.stringWidth(PanelData.RAID_HARD_LABELS[row] + ": " + scoreText(kills)) : 0;
 	}
 
 	/** A raid's normal and hard-mode kills, then its log; the row opens the raid's own popup. */
 	private CardBody.Part raidRow(int row)
 	{
-		return CardBody.clickRow(raidRows, row, c -> c.fm.stringWidth(RAID_LABELS[row] + scoreText(raidKc[row])) + PAIR_GAP
-			+ c.fm.stringWidth(hardLabel(row) + scoreText(hardKc[row]))
+		return CardBody.clickRow(raidRows, row, c -> c.fm.stringWidth(RAID_LABELS[row] + scoreText(raidKc[row]))
+			+ hardWidth(c.fm, row, hardKc[row])
 			+ (raidLog(row) ? wrappedProgressCountWidth(c.fm, raidObtained[row], raidTotal[row]) : 0), (c, y, hovered) ->
 		{
 			int textY = y + c.fm.getAscent();
-			// No pointer cursor in this UI: the hovered row answers in white instead.
-			Color label = hovered ? Color.WHITE : OSRS_ORANGE;
+			// No pointer cursor in this UI: the hovered row answers in white instead, and a row that opens
+			// nothing yet doesn't answer.
+			Color label = hovered && raid(row) != null ? Color.WHITE : OSRS_ORANGE;
 			int end = c.inset() + drawLabelValue(c.g, c.fm, c.inset(), textY, RAID_LABELS[row], scoreText(raidKc[row]),
-				label, Color.WHITE) + PAIR_GAP;
-			end += drawLabelValue(c.g, c.fm, end, textY, hardLabel(row), scoreText(hardKc[row]), label, Color.WHITE);
+				label, Color.WHITE);
+			if (hasHardMode(row))
+			{
+				end += PAIR_GAP;
+				end += drawLabelValue(c.g, c.fm, end, textY, PanelData.RAID_HARD_LABELS[row] + ": ",
+					scoreText(hardKc[row]), label, Color.WHITE);
+			}
 			if (raidLog(row))
 			{
 				paintWrappedProgressCount(c.g, c.fm, end, textY, raidObtained[row], raidTotal[row]);

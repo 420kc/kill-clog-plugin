@@ -160,6 +160,14 @@ final class PanelData
 		HiscoreSkill.THEATRE_OF_BLOOD_HARD_MODE, HiscoreSkill.TOMBS_OF_AMASCUT_EXPERT};
 	static final String[] RAID_HARD_LABELS = {"CM", "HM", "Expert"};
 
+	// The Fractured Archive (Raids 4, 2026-10-20) is the fourth raid row, with no hard mode. LAUNCH DAY: each value
+	// below comes from the boss update kit's output, not this guess.
+	static final String TFA_HISCORE = "The Fractured Archive"; // LAUNCH DAY: the live hiscore name
+	static final String TFA_CATEGORY = "the_fractured_archive"; // LAUNCH DAY: the log page key
+	/** The raid's popup once the running client's enum carries it; null before, and its row opens nothing. */
+	@Nullable
+	static final HiscoreSkill TFA = skillNamed("THE_FRACTURED_ARCHIVE"); // LAUNCH DAY: RuneLite's enum name
+
 	/** The card a boss cell opens: its own, or for a raid's hard mode, the raid's. */
 	static HiscoreSkill card(HiscoreSkill boss)
 	{
@@ -224,16 +232,27 @@ final class PanelData
 		List<HiscoreSkill> bosses = new ArrayList<>();
 		for (String name : catalogValues("boss"))
 		{
-			try
+			HiscoreSkill boss = skillNamed(name);
+			if (boss != null)
 			{
-				bosses.add(HiscoreSkill.valueOf(name));
-			}
-			catch (IllegalArgumentException e)
-			{
-				// Skip: enum not present in this client build.
+				bosses.add(boss);
 			}
 		}
 		return bosses.toArray(new HiscoreSkill[0]);
+	}
+
+	/** The running client's enum entry by name, or null when this client build doesn't carry it yet. */
+	@Nullable
+	private static HiscoreSkill skillNamed(String name)
+	{
+		try
+		{
+			return HiscoreSkill.valueOf(name);
+		}
+		catch (IllegalArgumentException e)
+		{
+			return null;
+		}
 	}
 
 	private static int[] itemIds(String kind)

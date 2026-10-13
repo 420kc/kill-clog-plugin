@@ -78,8 +78,8 @@ public class PvmSummaryTooltipTest
 		assertEquals(plainTop + 4 + 22 + 6, tieredTop);
 		assertEquals(-1, TestViews.rowAt(tiered, "raidRows", tieredTop - 1));
 		assertEquals(0, TestViews.rowAt(tiered, "raidRows", tieredTop));
-		assertEquals(2, TestViews.rowAt(tiered, "raidRows", tieredTop + 2 * 14 + 13));
-		assertEquals(-1, TestViews.rowAt(tiered, "raidRows", tieredTop + 3 * 14));
+		assertEquals(3, TestViews.rowAt(tiered, "raidRows", tieredTop + 3 * 14 + 13));
+		assertEquals(-1, TestViews.rowAt(tiered, "raidRows", tieredTop + 4 * 14));
 	}
 
 	private static int paintedRaidTop(PvmSummaryTooltip tip) throws ReflectiveOperationException
@@ -163,13 +163,13 @@ public class PvmSummaryTooltipTest
 		assertEquals(-1, TestViews.rowAt(tip, "raidRows", 0));
 		int top = firstRaidY(tip);
 		assertEquals(-1, TestViews.rowAt(tip, "raidRows", top - 1));
-		for (int row = 0; row < 3; row++)
+		for (int row = 0; row < 4; row++)
 		{
 			assertEquals(row, TestViews.rowAt(tip, "raidRows", top + row * NativeTooltip.LINE_HEIGHT));
 			assertEquals(row, TestViews.rowAt(tip, "raidRows", top + row * NativeTooltip.LINE_HEIGHT + NativeTooltip.LINE_HEIGHT - 1));
 		}
 		// The mega rare sprites below the rows are not part of them.
-		assertEquals(-1, TestViews.rowAt(tip, "raidRows", top + 3 * NativeTooltip.LINE_HEIGHT));
+		assertEquals(-1, TestViews.rowAt(tip, "raidRows", top + 4 * NativeTooltip.LINE_HEIGHT));
 	}
 
 	@Test
@@ -180,7 +180,9 @@ public class PvmSummaryTooltipTest
 		int top = firstRaidY(tip);
 		int orange = NativeTooltip.OSRS_ORANGE.getRGB();
 		int white = Color.WHITE.getRGB();
-		for (int row = 0; row < 3; row++)
+		// The Fractured Archive's row answers only once the client knows the raid, so its popup can open.
+		int answering = PanelData.TFA != null ? 4 : 3;
+		for (int row = 0; row < answering; row++)
 		{
 			move(tip, 5, top + row * NativeTooltip.LINE_HEIGHT + 2);
 			assertEquals(row, TestViews.hoveredRow(tip, "raidRows"));
@@ -235,12 +237,83 @@ public class PvmSummaryTooltipTest
 		}
 		assertEquals(List.of(HiscoreSkill.CHAMBERS_OF_XERIC, HiscoreSkill.THEATRE_OF_BLOOD,
 			HiscoreSkill.TOMBS_OF_AMASCUT), opened);
+		// The Fractured Archive's row opens its raid once the client knows it, and passes through before.
+		assertEquals(PanelData.TFA != null,
+			press(tip, 5, top + 3 * NativeTooltip.LINE_HEIGHT + 3, MouseEvent.BUTTON1).isConsumed());
+		int raids = PanelData.TFA != null ? 4 : 3;
+		assertEquals(raids, opened.size());
 
 		// The Slayer rows above, the sprites below and a right click are not links, and pass through.
 		assertFalse(press(tip, 5, top - 40, MouseEvent.BUTTON1).isConsumed());
-		assertFalse(press(tip, 5, top + 3 * NativeTooltip.LINE_HEIGHT + 3, MouseEvent.BUTTON1).isConsumed());
+		assertFalse(press(tip, 5, top + 4 * NativeTooltip.LINE_HEIGHT + 3, MouseEvent.BUTTON1).isConsumed());
 		assertFalse(press(tip, 5, top + 3, MouseEvent.BUTTON3).isConsumed());
-		assertEquals(3, opened.size());
+		assertEquals(raids, opened.size());
+	}
+
+	@Test
+	public void theFracturedArchiveRowReadsItsKillsWithNoHardMode()
+	{
+		PvmSummaryTooltip without = painted(card());
+		Map<String, Integer> kills = new HashMap<>();
+		kills.put(HiscoreSkill.CHAMBERS_OF_XERIC.getName(), 120);
+		kills.put(HiscoreSkill.THEATRE_OF_BLOOD.getName(), 80);
+		kills.put(HiscoreSkill.TOMBS_OF_AMASCUT.getName(), 300);
+		kills.put(PanelData.TFA_HISCORE, 7);
+		PvmSummaryTooltip with = new PvmSummaryTooltip();
+		with.setData(110.5, 2_500, 40, PanelData.bossCount(), "Vorkath", 900);
+		with.setRaids(new HiscoreResult(AccountType.REGULAR, kills, Collections.emptyMap(),
+			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1), null);
+		painted(with);
+
+		// Its kills come from its own hiscore row: "TFA: 7" paints where "TFA: --" did.
+		int top = firstRaidY(with);
+		BufferedImage before = render(without);
+		BufferedImage after = render(with);
+		assertTrue(rowDiffers(before, after, top + 3 * NativeTooltip.LINE_HEIGHT));
+		// The raids before it pair a hard mode, an orange label after their white kills; this row has none.
+		assertTrue(orangeAfterWhite(after, top + 2 * NativeTooltip.LINE_HEIGHT));
+		assertFalse(orangeAfterWhite(after, top + 3 * NativeTooltip.LINE_HEIGHT));
+	}
+
+	private static boolean rowDiffers(BufferedImage a, BufferedImage b, int top)
+	{
+		for (int y = top; y < top + NativeTooltip.LINE_HEIGHT; y++)
+		{
+			for (int x = 0; x < a.getWidth(); x++)
+			{
+				if (a.getRGB(x, y) != b.getRGB(x, y))
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/** Whether a row holds orange text to the right of its first white ink; the scrollbar's solid column isn't text. */
+	private static boolean orangeAfterWhite(BufferedImage image, int top)
+	{
+		int orange = NativeTooltip.OSRS_ORANGE.getRGB();
+		int firstWhite = Integer.MAX_VALUE;
+		int lastOrange = -1;
+		for (int x = 0; x < image.getWidth(); x++)
+		{
+			int orangeRows = 0;
+			for (int y = top; y < top + NativeTooltip.LINE_HEIGHT; y++)
+			{
+				int rgb = image.getRGB(x, y);
+				if (rgb == Color.WHITE.getRGB())
+				{
+					firstWhite = Math.min(firstWhite, x);
+				}
+				orangeRows += rgb == orange ? 1 : 0;
+			}
+			if (orangeRows > 0 && orangeRows < NativeTooltip.LINE_HEIGHT)
+			{
+				lastOrange = x;
+			}
+		}
+		return lastOrange > firstWhite;
 	}
 
 	@Test
