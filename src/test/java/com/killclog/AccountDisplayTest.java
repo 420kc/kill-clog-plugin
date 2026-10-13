@@ -137,6 +137,26 @@ public class AccountDisplayTest
 		}
 	}
 
+	@Test
+	public void aDeIronedAccountThatDiedAsAHardcoreWearsTheDeadHardcoreBadgeOnTheHardcoreBoard()
+	{
+		// My Specialty, 10/13: Hardcore 243M XP (stopped at the death), Ironman 471M (played on), regular 527M (now).
+		AccountDisplay main = AccountDisplay.of(AccountType.REGULAR, HiscoreTable.STANDARD);
+		HiscoreResult today = row(AccountType.REGULAR, 2_278, 526_533_458L, false);
+		today.setDiedAsHardcore(true);
+		HiscoreResult hardcoreRow = row(AccountType.HARDCORE_IRONMAN, 2_155, 243_370_767L, null);
+		HiscoreResult ironmanRow = row(AccountType.IRONMAN, 2_278, 470_950_791L, null);
+		assertEquals("Dead Hardcore", main.shownOn(today.withRow(hardcoreRow), RankLeaderboard.HARDCORE).label());
+		assertEquals("De-ironed", main.shownOn(today.withRow(ironmanRow), RankLeaderboard.IRONMAN).label());
+
+		// A Hardcore who de-ironed alive left both boards level: de-ironed on both.
+		today.setDiedAsHardcore(false);
+		assertEquals("De-ironed", main.shownOn(today.withRow(hardcoreRow), RankLeaderboard.HARDCORE).label());
+		// The answer travels with the lookup into its projections.
+		today.setDiedAsHardcore(true);
+		assertEquals(Boolean.TRUE, today.withRanks(null).getDiedAsHardcore());
+	}
+
 	private static HiscoreResult row(AccountType type, int totalLevel, long totalXp, Boolean ironmanNow)
 	{
 		HiscoreResult row = new HiscoreResult(type, Collections.emptyMap(), Collections.emptyMap(),

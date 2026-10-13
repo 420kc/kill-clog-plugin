@@ -55,6 +55,12 @@ public class HiscoreResult
 	@Setter(AccessLevel.PACKAGE)
 	private Boolean ironmanNow;
 
+	/** Whether this lookup's Hardcore row trails its Ironman row: the account died as a Hardcore, then played on as an
+	 *  Ironman. False when level, null when either board didn't answer. */
+	@Getter(AccessLevel.PACKAGE)
+	@Setter(AccessLevel.PACKAGE)
+	private Boolean diedAsHardcore;
+
 	public HiscoreResult(AccountType accountType, Map<String, Integer> bossKills,
 		Map<String, Integer> bossRanks, Map<String, Integer> activityScores,
 		Map<String, Integer> activityRanks, Map<String, Integer> skillLevels,
@@ -120,6 +126,7 @@ public class HiscoreResult
 		view.rankDataAvailable = row.rankDataAvailable;
 		view.frozen = row.totalXp < totalXp;
 		view.ironmanNow = ironmanNow;
+		view.diedAsHardcore = diedAsHardcore;
 		return view;
 	}
 
@@ -134,6 +141,7 @@ public class HiscoreResult
 		view.bossSectionShifted = bossSectionShifted;
 		view.rankDataAvailable = ranks != null && ranks.rankDataAvailable;
 		view.ironmanNow = ironmanNow;
+		view.diedAsHardcore = diedAsHardcore;
 		return view;
 	}
 

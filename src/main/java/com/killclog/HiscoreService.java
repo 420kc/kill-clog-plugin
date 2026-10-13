@@ -371,6 +371,10 @@ public class HiscoreService
 				long ironXp = extractTotalXp(ironBody);
 				Boolean ironmanNow = regXp > 0 && ironXp > 0 && ironXp <= regXp
 					? Boolean.valueOf(ironXp == regXp) : null;
+				// A Hardcore row behind the Ironman one stopped at a death, not when the account left iron.
+				long hardcoreXp = extractTotalXp(hcimBody);
+				Boolean diedAsHardcore = hardcoreXp > 0 && ironXp > 0 && hardcoreXp <= ironXp
+					? Boolean.valueOf(hardcoreXp < ironXp) : null;
 
 				// Missing tables have already used their own bounded retry. Keep the
 				// XP cross-check so a frozen HCIM row cannot override fresher stats.
@@ -380,16 +384,19 @@ public class HiscoreService
 					return missing(absent.contains("hiscore_oldschool"));
 				}
 
-				return parseAndRefine(encoded, bestBody, type).thenApply(result -> proven(result, ironmanNow));
+				return parseAndRefine(encoded, bestBody, type)
+					.thenApply(result -> proven(result, ironmanNow, diedAsHardcore));
 			});
 	}
 
 	@Nullable
-	private static HiscoreResult proven(@Nullable HiscoreResult result, @Nullable Boolean ironmanNow)
+	private static HiscoreResult proven(@Nullable HiscoreResult result, @Nullable Boolean ironmanNow,
+		@Nullable Boolean diedAsHardcore)
 	{
 		if (result != null)
 		{
 			result.setIronmanNow(ironmanNow);
+			result.setDiedAsHardcore(diedAsHardcore);
 		}
 		return result;
 	}
@@ -407,7 +414,7 @@ public class HiscoreService
 				// RuneLite's own type: not a solo Ironman now (a group ironman reads its regular row).
 				return regular.thenCompose(body -> body != null ? parseAndRefine(encodedPlayer, body, type)
 					: HiscoreService.<HiscoreResult>missing(absent.contains("hiscore_oldschool")))
-					.thenApply(result -> proven(result, false));
+					.thenApply(result -> proven(result, false, null));
 		}
 		return regular.thenCombine(fetchAsync(endpoint, encodedPlayer, absent), (base, ranked) ->
 		{
@@ -421,7 +428,7 @@ public class HiscoreService
 			String body = base != null && (ranked == null || extractTotalXp(base) >= extractTotalXp(ranked))
 				? base : ranked;
 			return proven(parseHiscoreBody(body, type)
-				.withRanks(ranked != null ? parseHiscoreBody(ranked, type) : null), true);
+				.withRanks(ranked != null ? parseHiscoreBody(ranked, type) : null), true, null);
 		});
 	}
 
