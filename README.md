@@ -62,7 +62,7 @@ While a League runs, a **Leagues** switch beside the search bar flips the panel 
 
 HiScores load for any valid RSN, including Collection Log totals and ranks when listed. Item-by-item Collection Log details appear when that player has data available through TempleOSRS, RuneProfile, or Kill Clog.
 
-Your clan comes from the game. Other players' clans come from RuneProfile when they have a profile there.
+Your clan comes from the game. Other players' clans come from their Kill Clog sync, or from RuneProfile when they have a profile there.
 
 ![Player Summaries in six Resource Packs](screenshots/player-summary-showcase.png)
 

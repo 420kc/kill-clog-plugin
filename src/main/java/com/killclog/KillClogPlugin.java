@@ -202,8 +202,9 @@ public class KillClogPlugin extends Plugin
 		clientToolbar.addNavigation(navButton);
 		panel.setNameAutocompleter(nameAutocompleter);
 		panel.setClogIndex(clogIndex);
-		playerClans = new PlayerClans(client, chatIconManager, runeProfileService);
+		playerClans = new PlayerClans(client, chatIconManager, runeProfileService, world::mainSettled);
 		panel.setClans(playerClans);
+		syncService.setClans(playerClans);
 
 		lookupMenu.start(config, menuManager);
 

@@ -9,6 +9,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntUnaryOperator;
 import lombok.Getter;
+import net.runelite.api.clan.ClanTitle;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 
@@ -49,6 +50,13 @@ public class ClogResult
 	@Getter
 	@Setter
 	private double templeEhc = -1;
+	/** The clan and title the player's own Kill Clog sync last named (2.6.3), or null */
+	@Getter
+	@Setter
+	private String syncedClan;
+	@Getter
+	@Setter
+	private ClanTitle syncedClanTitle;
 	/** True when TempleOSRS returned usable collection-log data for this lookup */
 	@Getter
 	private boolean fromTemple;
@@ -107,6 +115,8 @@ public class ClogResult
 		this.fromLocal = source.fromLocal;
 		this.templeEhp = source.templeEhp;
 		this.templeEhc = source.templeEhc;
+		this.syncedClan = source.syncedClan;
+		this.syncedClanTitle = source.syncedClanTitle;
 	}
 
 	/**
@@ -216,13 +226,18 @@ public class ClogResult
 		return copy;
 	}
 
-	/** Keeps TempleOSRS's figures when the other side of a combine carried them and this copy didn't. */
-	private ClogResult withTempleFrom(ClogResult other)
+	/** Keeps TempleOSRS's figures and the synced clan when the other side of a combine carried them and this didn't. */
+	private ClogResult carryFrom(ClogResult other)
 	{
 		if (other != null && templeEhp < 0 && templeEhc < 0)
 		{
 			templeEhp = other.templeEhp;
 			templeEhc = other.templeEhc;
+		}
+		if (other != null && syncedClan == null)
+		{
+			syncedClan = other.syncedClan;
+			syncedClanTitle = other.syncedClanTitle;
 		}
 		return this;
 	}
@@ -270,7 +285,7 @@ public class ClogResult
 		return winner.copyWithProvenance(sourceTemple(temple, rp),
 			sourceRuneProfile(temple, rp), sourceKillclog(temple, rp),
 			loser != null ? loser.providerAccountType : null)
-			.withLocalSource(sourceLocal(temple, rp)).withTempleFrom(loser);
+			.withLocalSource(sourceLocal(temple, rp)).carryFrom(loser);
 	}
 
 	/**
@@ -311,14 +326,14 @@ public class ClogResult
 		{
 			return killclog.copyWithProvenance(
 				templeSource, runeProfileSource, killclogSource,
-				provider.providerAccountType).withLocalSource(sourceLocal(provider, killclog)).withTempleFrom(provider);
+				provider.providerAccountType).withLocalSource(sourceLocal(provider, killclog)).carryFrom(provider);
 		}
 		AccountType firstPartyType = killclog.providerAccountType;
 		AccountType accountType = firstPartyType != null && firstPartyType.isGroupIronman()
 			? firstPartyType : provider.providerAccountType;
 		return provider.copyWithProvenanceAndAccountType(
 			templeSource, runeProfileSource, killclogSource, accountType)
-			.withLocalSource(sourceLocal(provider, killclog));
+			.withLocalSource(sourceLocal(provider, killclog)).carryFrom(killclog);
 	}
 
 	private static boolean sourceLocal(ClogResult first, ClogResult second)

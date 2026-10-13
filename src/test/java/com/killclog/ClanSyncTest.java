@@ -1,0 +1,70 @@
+package com.killclog;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import java.lang.reflect.Method;
+import java.util.Map;
+import net.runelite.api.clan.ClanTitle;
+import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+/** Your clan rides your sync (2.6.3): out in the body once the game has said, back to lookups from the proof view. */
+public class ClanSyncTest
+{
+	@Test
+	public void theSyncSaysYourClanNoneOrNothingYet() throws Exception
+	{
+		PlayerClans clans = mock(PlayerClans.class);
+		SyncService service = new SyncService(null, new Gson(), null);
+		service.setClans(clans);
+		when(clans.forSync()).thenReturn(new PlayerClans.Yours("420 kc", "Clogged", new ClanTitle(100, "Administrator"), true));
+		JsonObject clan = body(service).getAsJsonObject("clan");
+		assertEquals("Clogged", clan.get("name").getAsString());
+		assertEquals(100, clan.get("title_id").getAsInt());
+		assertEquals("Administrator", clan.get("title").getAsString());
+
+		when(clans.forSync()).thenReturn(new PlayerClans.Yours("420 kc", null, null, true));
+		assertTrue("in no clan: an explicit none", body(service).get("clan").isJsonNull());
+
+		when(clans.forSync()).thenReturn(null);
+		assertFalse("before the game has said: left out, so killclog.com keeps it", body(service).has("clan"));
+	}
+
+	@Test
+	public void aLookupReadsTheClanTheirSyncNamed()
+	{
+		String json = "{\"rsn\":\"A q p Weed\",\"clog\":{\"items_by_category\":{}},"
+			+ "\"clan\":{\"name\":\"Iron Clan\",\"title_id\":24,\"title\":\"Recruit\"}}";
+		ClogResult clog = new KillclogService(null, new Gson(), null).parseProofView("A q p Weed", json, "a q p weed");
+		assertEquals("Iron Clan", clog.getSyncedClan());
+		assertEquals(24, clog.getSyncedClanTitle().getId());
+
+		ClogResult none = new KillclogService(null, new Gson(), null)
+			.parseProofView("x", "{\"clog\":{\"items_by_category\":{}},\"clan\":null}", "x");
+		assertNull(none.getSyncedClan());
+	}
+
+	@Test
+	public void theSyncedClanSurvivesACombineWhicheverLogWins()
+	{
+		ClogResult synced = new ClogResult("A q p Weed", Map.of(), Map.of(), Map.of(), null, AccountType.IRONMAN);
+		synced.setSyncedClan("Iron Clan");
+		ClogResult provider = new ClogResult("A q p Weed", Map.of("hats", java.util.List.of(new ClogResult.ClogItem(2991, 1, null))),
+			Map.of(), Map.of(), null, AccountType.IRONMAN);
+		assertEquals("Iron Clan", ClogResult.pickFullest(provider, synced).getSyncedClan());
+	}
+
+	private static JsonObject body(SyncService service) throws Exception
+	{
+		Method build = SyncService.class.getDeclaredMethod("buildBody", long.class, AccountType.class,
+			ClogResult.class, Map.class, Map.class);
+		build.setAccessible(true);
+		return (JsonObject) build.invoke(service, 1L, null,
+			new ClogResult("420 kc", Map.of(), Map.of(), Map.of(), null, null), Map.of(), Map.of());
+	}
+}

@@ -2,6 +2,7 @@ package com.killclog;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
+import com.google.gson.JsonNull;
 import com.google.gson.JsonObject;
 import java.util.ArrayList;
 import java.util.List;
@@ -49,6 +50,10 @@ class SyncService
 	@Setter
 	@Nullable
 	private ClogIndex clogIndex;
+	// Your clan as the game shows it, for each sync (2.6.3).
+	@Setter
+	@Nullable
+	private volatile PlayerClans clans;
 	// The structure killclog.com holds, as its last sync reply named it; null until one has.
 	private volatile String serverStructureHash;
 	// Every loading screen schedules a push: one identical to the last that killclog.com took, within a day, stays home.
@@ -385,6 +390,23 @@ class SyncService
 		}
 		root.add("clog", items);
 		root.addProperty("client_version", CLIENT_VERSION);
+		// Your clan and title, or null for none; left out until the game has said, so killclog.com keeps what it holds.
+		PlayerClans.Yours you = clans != null ? clans.forSync() : null;
+		if (you != null)
+		{
+			JsonObject clan = null;
+			if (you.clan != null)
+			{
+				clan = new JsonObject();
+				clan.addProperty("name", you.clan);
+				if (you.title != null)
+				{
+					clan.addProperty("title_id", you.title.getId());
+					clan.addProperty("title", you.title.getName());
+				}
+			}
+			root.add("clan", clan != null ? clan : JsonNull.INSTANCE);
+		}
 		return root;
 	}
 

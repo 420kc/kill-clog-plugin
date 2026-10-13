@@ -12,6 +12,7 @@ import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import javax.annotation.Nullable;
+import net.runelite.api.clan.ClanTitle;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.RequiredArgsConstructor;
@@ -481,6 +482,14 @@ public class KillclogService
 			if (!obtainedItems.isEmpty())
 			{
 				result = result.withSources(false, false, true);
+			}
+			// The clan the player's own sync named (2.6.3): the Player Summary reads it before RuneProfile's.
+			JsonObject clan = root.has("clan") && root.get("clan").isJsonObject() ? root.getAsJsonObject("clan") : null;
+			if (clan != null && stringField(clan, "name") != null)
+			{
+				result.setSyncedClan(stringField(clan, "name"));
+				result.setSyncedClanTitle(clan.get("title_id") != null && clan.get("title_id").isJsonPrimitive()
+					? new ClanTitle(intField(clan, "title_id"), stringField(clan, "title")) : null);
 			}
 
 			pbCache.put(key, parsePbs(root));

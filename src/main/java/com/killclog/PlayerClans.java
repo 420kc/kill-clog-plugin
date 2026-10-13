@@ -1,6 +1,7 @@
 package com.killclog;
 
 import java.awt.image.BufferedImage;
+import java.util.function.BooleanSupplier;
 import javax.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
 import net.runelite.api.Client;
@@ -16,7 +17,7 @@ import net.runelite.client.util.Text;
 
 /**
  * A player's clan for the Player Summary: its name, and the icon their title in it wears in clan chat. Your own comes
- * from the game, anyone else's from RuneProfile's summary; nothing new is sent anywhere.
+ * from the game, anyone else's from their Kill Clog sync, else RuneProfile's summary. Your sync carries yours (2.6.3).
  */
 @RequiredArgsConstructor
 class PlayerClans
@@ -26,6 +27,8 @@ class PlayerClans
 	private final RuneProfileService runeProfile;
 	// Your own, as the game showed it on the last tick. The card is built on Swing's thread, where the
 	// client's clan state must not be read, so it reads this instead.
+	// Whether this main-game world has settled since login or a hop: until then the game hasn't said you're in no clan.
+	private final BooleanSupplier settled;
 	private volatile Yours yours = Yours.NONE;
 
 	/** Reads your name, clan and title from the game; client thread only, each tick. */
@@ -41,7 +44,8 @@ class PlayerClans
 		ClanChannelMember inChannel = member == null && channel != null && name != null ? channel.findMember(name) : null;
 		String clan = member != null ? settings.getName() : channel != null ? channel.getName() : null;
 		ClanRank rank = member != null ? member.getRank() : inChannel != null ? inChannel.getRank() : null;
-		yours = new Yours(name, clan, rank != null && settings != null ? settings.titleForRank(rank) : null);
+		yours = new Yours(name, clan, rank != null && settings != null ? settings.titleForRank(rank) : null,
+			settled.getAsBoolean() && (member != null || settings == null && channel == null));
 	}
 
 	void clearClientSnapshot()
@@ -49,19 +53,28 @@ class PlayerClans
 		yours = Yours.NONE;
 	}
 
+	/** Your clan for a sync, its clan null when you're in none; null while the game hasn't said. */
 	@Nullable
-	String name(String player)
+	Yours forSync()
 	{
 		Yours you = yours;
-		return you.is(player) ? you.clan : runeProfile.clan(player);
+		return you.known ? you : null;
+	}
+
+	@Nullable
+	String name(String player, @Nullable ClogResult clog)
+	{
+		Yours you = yours;
+		return you.is(player) ? you.clan : synced(clog) ? clog.getSyncedClan() : runeProfile.clan(player);
 	}
 
 	/** The title's icon, or null when there is none or it hasn't loaded (the card then names the clan instead). */
 	@Nullable
-	BufferedImage icon(String player)
+	BufferedImage icon(String player, @Nullable ClogResult clog)
 	{
 		Yours you = yours;
-		ClanTitle title = you.is(player) ? you.title : runeProfile.clanTitle(player);
+		ClanTitle title = you.is(player) ? you.title
+			: synced(clog) ? clog.getSyncedClanTitle() : runeProfile.clanTitle(player);
 		try
 		{
 			return title != null ? icons.getRankImage(title) : null;
@@ -73,14 +86,21 @@ class PlayerClans
 		}
 	}
 
-	@RequiredArgsConstructor
-	private static final class Yours
+	private static boolean synced(@Nullable ClogResult clog)
 	{
-		static final Yours NONE = new Yours(null, null, null);
+		return clog != null && clog.getSyncedClan() != null;
+	}
+
+	@RequiredArgsConstructor
+	static final class Yours
+	{
+		static final Yours NONE = new Yours(null, null, null, false);
 
 		final String name;
 		final String clan;
 		final ClanTitle title;
+		// The game has said: in this clan, or in none.
+		final boolean known;
 
 		boolean is(String player)
 		{

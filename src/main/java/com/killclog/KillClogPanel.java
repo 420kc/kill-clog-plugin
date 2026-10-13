@@ -1412,7 +1412,7 @@ public class KillClogPanel extends PluginPanel
 		}
 		if (clans != null)
 		{
-			tip.setClan(clans.name(shownName), clans.icon(shownName));
+			tip.setClan(clans.name(shownName, clog), clans.icon(shownName, clog));
 		}
 		tip.setWikiLinksEnabled(config.wikiItemLinks());
 		if (clog != null)

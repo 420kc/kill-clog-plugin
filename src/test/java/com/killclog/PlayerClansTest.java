@@ -24,7 +24,8 @@ public class PlayerClansTest
 	private final Client client = mock(Client.class);
 	private final ChatIconManager icons = mock(ChatIconManager.class);
 	private final RuneProfileService runeProfile = mock(RuneProfileService.class);
-	private final PlayerClans clans = new PlayerClans(client, icons, runeProfile);
+	private boolean settled = true;
+	private final PlayerClans clans = new PlayerClans(client, icons, runeProfile, () -> settled);
 
 	@Test
 	public void theCardReadsYourClanWithoutTouchingTheClient()
@@ -39,8 +40,8 @@ public class PlayerClansTest
 		clans.refreshClientSnapshot();
 		clearInvocations(client);
 
-		assertEquals("Clogged", clans.name("420_kc"));
-		assertSame(image, clans.icon("420 KC"));
+		assertEquals("Clogged", clans.name("420_kc", null));
+		assertSame(image, clans.icon("420 KC", null));
 		verifyNoInteractions(client);
 	}
 
@@ -64,8 +65,8 @@ public class PlayerClansTest
 
 		clans.refreshClientSnapshot();
 
-		assertEquals("Clogged", clans.name("420 kc"));
-		assertSame(image, clans.icon("420 kc"));
+		assertEquals("Clogged", clans.name("420 kc", null));
+		assertSame(image, clans.icon("420 kc", null));
 	}
 
 	@Test
@@ -74,7 +75,7 @@ public class PlayerClansTest
 		youAreIn("420 kc", "Clogged", new ClanTitle(100, "Administrator"));
 		when(runeProfile.clan("based batt")).thenReturn("Another Clan");
 		clans.refreshClientSnapshot();
-		assertEquals("Another Clan", clans.name("based batt"));
+		assertEquals("Another Clan", clans.name("based batt", null));
 	}
 
 	@Test
@@ -83,8 +84,53 @@ public class PlayerClansTest
 		youAreIn("420 kc", "Clogged", new ClanTitle(100, "Administrator"));
 		clans.refreshClientSnapshot();
 		clans.clearClientSnapshot();
-		assertNull(clans.name("420 kc"));
-		assertNull(clans.icon("420 kc"));
+		assertNull(clans.name("420 kc", null));
+		assertNull(clans.icon("420 kc", null));
+	}
+
+	@Test
+	public void anotherPlayersOwnSyncNamesTheirClanBeforeRuneProfile()
+	{
+		when(runeProfile.clan("A q p Weed")).thenReturn("Old Clan");
+		when(runeProfile.clanTitle("A q p Weed")).thenReturn(new ClanTitle(12, "Old"));
+		ClogResult synced = new ClogResult("A q p Weed", java.util.Collections.emptyMap(),
+			java.util.Collections.emptyMap(), java.util.Collections.emptyMap(), null, AccountType.IRONMAN);
+		ClanTitle recruit = new ClanTitle(24, "Recruit");
+		synced.setSyncedClan("Iron Clan");
+		synced.setSyncedClanTitle(recruit);
+		BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+		when(icons.getRankImage(recruit)).thenReturn(image);
+
+		assertEquals("Iron Clan", clans.name("A q p Weed", synced));
+		assertSame(image, clans.icon("A q p Weed", synced));
+		assertEquals("without their sync, RuneProfile's", "Old Clan", clans.name("A q p Weed", null));
+	}
+
+	@Test
+	public void yourSyncCarriesYourClanOrNoneOnlyOnceTheWorldHasSettled()
+	{
+		youAreIn("420 kc", "Clogged", new ClanTitle(100, "Administrator"));
+		ClanMember member = mock(ClanMember.class);
+		when(member.getRank()).thenReturn(ClanRank.ADMINISTRATOR);
+		when(client.getClanSettings().getName()).thenReturn("Clogged");
+		when(client.getClanSettings().findMember("420 kc")).thenReturn(member);
+
+		settled = false;
+		clans.refreshClientSnapshot();
+		assertNull("before the world settles the game hasn't said", clans.forSync());
+
+		settled = true;
+		clans.refreshClientSnapshot();
+		assertEquals("Clogged", clans.forSync().clan);
+		assertEquals(100, clans.forSync().title.getId());
+
+		when(client.getClanSettings()).thenReturn(null);
+		when(client.getClanChannel()).thenReturn(null);
+		clans.refreshClientSnapshot();
+		assertNull("in no clan, the sync says none", clans.forSync().clan);
+
+		clans.clearClientSnapshot();
+		assertNull(clans.forSync());
 	}
 
 	private void youAreIn(String name, String clanName, ClanTitle title)
