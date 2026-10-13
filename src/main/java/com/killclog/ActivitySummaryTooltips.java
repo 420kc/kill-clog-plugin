@@ -96,8 +96,12 @@ final class ActivitySummaryTooltips
 
 	JToolTip buildSkills(JLabel owner)
 	{
-		JToolTip tip = soloOrPair(owner, skillsTooltip(owner, lookupSession.getHiscoreResult()),
-			() -> skillsTooltip(owner, comparison.getCompareHiscoreResult()));
+		ClogResult blue = lookupSession.getClogResult();
+		ClogResult red = comparison.isComparisonMode() ? comparison.getCompareClogResult() : null;
+		// Both sides show TempleOSRS's rows when either player has them, so a pair's cards line up.
+		boolean temple = SkillsTooltip.onTemple(blue) || SkillsTooltip.onTemple(red);
+		JToolTip tip = soloOrPair(owner, skillsTooltip(owner, lookupSession.getHiscoreResult(), blue, temple),
+			() -> skillsTooltip(owner, comparison.getCompareHiscoreResult(), red, temple));
 		if (owner.getParent() instanceof JPanel)
 		{
 			tooltipController.keepTooltipOnHover(tip, (JPanel) owner.getParent());
@@ -113,11 +117,12 @@ final class ActivitySummaryTooltips
 	}
 
 	/** One player's skills summary card: solo mode shows it alone, comparison pairs two. */
-	private SkillsTooltip skillsTooltip(JLabel owner, @Nullable HiscoreResult result)
+	private SkillsTooltip skillsTooltip(JLabel owner, @Nullable HiscoreResult result, @Nullable ClogResult clog,
+		boolean temple)
 	{
 		SkillsTooltip tip = new SkillsTooltip();
 		tip.setComponent(owner);
-		tip.setData(result);
+		tip.setData(result, clog, temple);
 		return tip;
 	}
 }

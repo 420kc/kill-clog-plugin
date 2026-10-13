@@ -15,7 +15,6 @@ import java.util.TreeMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.Function;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -234,8 +233,8 @@ public class ClogService
 			fetchCategories();
 		CompletableFuture<Map<Integer, String>> namesFuture =
 			fetchItemNames();
-		CompletableFuture<AccountType> statsFuture =
-			fetchStatsAccountType(encoded);
+		CompletableFuture<TempleStats> statsFuture =
+			fetchStats(encoded);
 
 		return CompletableFuture.allOf(playerFuture, categoriesFuture, namesFuture, statsFuture)
 			.thenApply(v ->
@@ -243,7 +242,8 @@ public class ClogService
 				PlayerClogData playerData = playerFuture.join();
 				Map<String, List<Integer>> categories = categoriesFuture.join();
 				Map<Integer, String> names = namesFuture.join();
-				AccountType statsType = statsFuture.join();
+				TempleStats stats = statsFuture.join();
+				AccountType statsType = stats != null ? stats.accountType : null;
 
 				if (playerData != null)
 				{
@@ -264,6 +264,8 @@ public class ClogService
 						playerData.lastChanged,
 						accountType
 					).withSources(true, false, false);
+					result.setTempleEhp(stats != null ? stats.ehp : -1);
+					result.setTempleEhc(TempleStats.ehc(playerData.figures, accountType));
 					localClogCache.cacheResult(result);
 					heldByTemple(normalizedName);
 					clogFetchTimes.put(normalizedName, System.currentTimeMillis());
@@ -295,10 +297,13 @@ public class ClogService
 		final Map<String, List<ClogResult.ClogItem>> obtainedItems;
 		final String lastChanged;
 		final AccountType accountType;
+		/** The answer's data, for its figures (EHC). */
+		final JsonObject figures;
 
 		PlayerClogData(String canonicalName, Map<String, List<ClogResult.ClogItem>> obtainedItems,
-			String lastChanged, AccountType accountType)
+			String lastChanged, AccountType accountType, JsonObject figures)
 		{
+			this.figures = figures;
 			this.canonicalName = canonicalName;
 			this.obtainedItems = obtainedItems;
 			this.lastChanged = lastChanged;
@@ -434,7 +439,7 @@ public class ClogService
 					return null;
 				}
 
-				return new PlayerClogData(canonicalName, result, lastChanged, accountType);
+				return new PlayerClogData(canonicalName, result, lastChanged, accountType, data);
 			}
 			catch (Exception e)
 			{
@@ -586,52 +591,20 @@ public class ClogService
 	}
 
 	/**
-	 * Fetch account type from the TempleOSRS stats endpoint.
-	 * The clog endpoint reports game_mode 0 for GIMs, but the stats
-	 * endpoint exposes a GIM field with the group ID.
-	 */
-	private CompletableFuture<AccountType> fetchStatsAccountType(String encodedPlayer)
-	{
-		return fetchStatsInfo(encodedPlayer, "stats account type", info ->
-		{
-			if (info.has("Game mode") && !info.get("Game mode").isJsonNull())
-			{
-				AccountType type = parseGameMode(info.get("Game mode").getAsString());
-				if (type != null && type != AccountType.REGULAR)
-				{
-					return type;
-				}
-			}
-
-			if (info.has("GIM") && !info.get("GIM").isJsonNull())
-			{
-				int gimId = info.get("GIM").getAsInt();
-				if (gimId > 0)
-				{
-					return AccountType.GROUP_IRONMAN;
-				}
-			}
-
-			return null;
-		});
-	}
-
-	/**
 	 * Fetch only the canonical player name from TempleOSRS player stats.
 	 * Lightweight identity fallback when collection-log data is unavailable.
 	 */
 	public CompletableFuture<String> lookupRsn(String playerName)
 	{
-		return fetchStatsInfo(URLEncoder.encode(playerName, StandardCharsets.UTF_8), "canonical name",
-			info -> info.has("player_name_with_capitalization")
-				? info.get("player_name_with_capitalization").getAsString() : null);
+		return fetchStats(URLEncoder.encode(playerName, StandardCharsets.UTF_8))
+			.thenApply(stats -> stats != null ? stats.canonicalName : null);
 	}
 
 	/**
-	 * One player's TempleOSRS stats, as the response's data.info read by {@code reader}: null when the request, the
-	 * response or the reader comes up empty, and a malformed response is logged as failing to parse {@code what}.
+	 * One player's TempleOSRS stats: the account type (the clog endpoint reports game_mode 0 for GIMs, the stats
+	 * endpoint names the group), the name and EHP. Null when the request or the response comes up empty.
 	 */
-	private <T> CompletableFuture<T> fetchStatsInfo(String encodedPlayer, String what, Function<JsonObject, T> reader)
+	private CompletableFuture<TempleStats> fetchStats(String encodedPlayer)
 	{
 		return httpGet(TEMPLE_STATS_URL + "?player=" + encodedPlayer).thenApply(json ->
 		{
@@ -642,12 +615,11 @@ public class ClogService
 			try
 			{
 				JsonObject data = gson.fromJson(json, JsonObject.class).getAsJsonObject("data");
-				JsonObject info = data != null ? data.getAsJsonObject("info") : null;
-				return info != null ? reader.apply(info) : null;
+				return data != null ? new TempleStats(data) : null;
 			}
 			catch (Exception e)
 			{
-				log.debug("Failed to parse {}: {}", what, e.getMessage());
+				log.debug("Failed to parse TempleOSRS stats: {}", e.getMessage());
 				return null;
 			}
 		});

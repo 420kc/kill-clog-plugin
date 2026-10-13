@@ -42,6 +42,13 @@ public class ClogResult
 	@Getter
 	@Setter
 	private int uniqueTotal = -1;
+	/** TempleOSRS's EHP and EHC for the account's own flavour, or -1 when Temple gave none */
+	@Getter
+	@Setter
+	private double templeEhp = -1;
+	@Getter
+	@Setter
+	private double templeEhc = -1;
 	/** True when TempleOSRS returned usable collection-log data for this lookup */
 	@Getter
 	private boolean fromTemple;
@@ -98,6 +105,8 @@ public class ClogResult
 		this.uniqueObtained = source.uniqueObtained;
 		this.uniqueTotal = source.uniqueTotal;
 		this.fromLocal = source.fromLocal;
+		this.templeEhp = source.templeEhp;
+		this.templeEhc = source.templeEhc;
 	}
 
 	/**
@@ -207,6 +216,17 @@ public class ClogResult
 		return copy;
 	}
 
+	/** Keeps TempleOSRS's figures when the other side of a combine carried them and this copy didn't. */
+	private ClogResult withTempleFrom(ClogResult other)
+	{
+		if (other != null && templeEhp < 0 && templeEhc < 0)
+		{
+			templeEhp = other.templeEhp;
+			templeEhc = other.templeEhc;
+		}
+		return this;
+	}
+
 	public boolean isItemResolved(int id)
 	{
 		return itemNames.containsKey(id);
@@ -250,7 +270,7 @@ public class ClogResult
 		return winner.copyWithProvenance(sourceTemple(temple, rp),
 			sourceRuneProfile(temple, rp), sourceKillclog(temple, rp),
 			loser != null ? loser.providerAccountType : null)
-			.withLocalSource(sourceLocal(temple, rp));
+			.withLocalSource(sourceLocal(temple, rp)).withTempleFrom(loser);
 	}
 
 	/**
@@ -291,7 +311,7 @@ public class ClogResult
 		{
 			return killclog.copyWithProvenance(
 				templeSource, runeProfileSource, killclogSource,
-				provider.providerAccountType).withLocalSource(sourceLocal(provider, killclog));
+				provider.providerAccountType).withLocalSource(sourceLocal(provider, killclog)).withTempleFrom(provider);
 		}
 		AccountType firstPartyType = killclog.providerAccountType;
 		AccountType accountType = firstPartyType != null && firstPartyType.isGroupIronman()

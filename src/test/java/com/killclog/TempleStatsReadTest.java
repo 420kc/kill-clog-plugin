@@ -62,9 +62,10 @@ public class TempleStatsReadTest
 	private AccountType accountType(String body) throws Exception
 	{
 		reply = body;
-		Method fetch = ClogService.class.getDeclaredMethod("fetchStatsAccountType", String.class);
+		Method fetch = ClogService.class.getDeclaredMethod("fetchStats", String.class);
 		fetch.setAccessible(true);
-		return ((CompletableFuture<AccountType>) fetch.invoke(service(), "lynx+titan")).get();
+		TempleStats stats = ((CompletableFuture<TempleStats>) fetch.invoke(service(), "lynx+titan")).get();
+		return stats != null ? stats.accountType : null;
 	}
 
 	private ClogService service()
