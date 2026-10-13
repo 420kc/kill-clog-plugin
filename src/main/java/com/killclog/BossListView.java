@@ -7,7 +7,8 @@
 package com.killclog;
 
 import java.awt.BorderLayout;
-import java.awt.Cursor;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.awt.Dimension;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
@@ -229,7 +230,6 @@ public class BossListView
 		JLabel icon = new JLabel(new ImageIcon(ClogHelper.makeSearchIcon(KillClogPanel.TEXT_DIM, 0.70f)));
 		icon.setPreferredSize(new Dimension(24, ROW_HEIGHT));
 		JTextField field = search;
-		field.setCursor(Cursor.getDefaultCursor());
 		field.setFont(FontManager.getRunescapeSmallFont());
 		field.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
 		field.setCaretColor(ColorScheme.LIGHT_GRAY_COLOR);
@@ -265,7 +265,25 @@ public class BossListView
 				}
 			}
 		});
-		return rowPanel(icon, field);
+		// Like the panel's search bar: the text cursor over the field, and the row lightens while the mouse is on it.
+		JPanel row = rowPanel(icon, field);
+		MouseAdapter hover = new MouseAdapter()
+		{
+			@Override
+			public void mouseEntered(MouseEvent e)
+			{
+				row.setBackground(ColorScheme.DARK_GRAY_HOVER_COLOR);
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e)
+			{
+				row.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+			}
+		};
+		field.addMouseListener(hover);
+		icon.addMouseListener(hover);
+		return row;
 	}
 
 	/** One list row: a fixed-height strip, its icon on the left and its content filling the rest. */
