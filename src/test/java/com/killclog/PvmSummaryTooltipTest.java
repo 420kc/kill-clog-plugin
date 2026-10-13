@@ -358,6 +358,21 @@ public class PvmSummaryTooltipTest
 		assertEquals(-1, TestViews.hoveredRow(tip, "raidRows"));
 	}
 
+	@Test
+	public void raidRowsLineUpInColumnsTheirWidestEntriesSet()
+	{
+		// Dylan, 10/13: labels start their own column and kills and logs end theirs, so every row lines up.
+		PvmSummaryTooltip tip = card();
+		java.awt.FontMetrics fm = tip.getFontMetrics(tip.getFont());
+		int[] at = TestViews.call(tip, "raidColumns", fm);
+		int label = fm.stringWidth("CoX: ");
+		int kills = fm.stringWidth("300");
+		assertEquals("the kills end after the widest label and the widest count", label + kills, at[0]);
+		assertEquals(label + kills + 8, at[1]);
+		assertEquals(at[1] + fm.stringWidth("Expert: ") + fm.stringWidth("--"), at[2]);
+		assertEquals("no row has a log here, so nothing follows the hard modes", at[2], at[3]);
+	}
+
 	private static PvmSummaryTooltip card()
 	{
 		return fill(new PvmSummaryTooltip());

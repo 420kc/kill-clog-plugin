@@ -265,34 +265,68 @@ public class PvmSummaryTooltip extends TitleTooltip
 		return hasHardMode(row) ? PanelData.RAIDS[row] : PanelData.TFA;
 	}
 
-	/** The hard mode's label and kills that follow the raid's, as wide as they paint; none for a raid without one. */
-	private static int hardWidth(FontMetrics fm, int row, int kills)
+	/**
+	 * The raid rows' columns (Dylan, 2026-10-13): each label starts its own column and each value ends its own, so
+	 * the labels line up on their left and the kills and logs on their right. Offsets from the row's start: the
+	 * kills' right edge, the hard mode's label, its kills' right edge and the log's right edge.
+	 */
+	private int[] raidColumns(FontMetrics fm)
 	{
-		return hasHardMode(row) ? PAIR_GAP + fm.stringWidth(PanelData.RAID_HARD_LABELS[row] + ": " + scoreText(kills)) : 0;
-	}
-
-	/** A raid's normal and hard-mode kills, then its log; the row opens the raid's own popup. */
-	private CardBody.Part raidRow(int row)
-	{
-		return CardBody.clickRow(raidRows, row, c -> c.fm.stringWidth(RAID_LABELS[row] + scoreText(raidKc[row]))
-			+ hardWidth(c.fm, row, hardKc[row])
-			+ (raidLog(row) ? wrappedProgressCountWidth(c.fm, raidObtained[row], raidTotal[row]) : 0), (c, y, hovered) ->
+		int label = 0;
+		int kills = 0;
+		int hardLabel = 0;
+		int hard = 0;
+		int log = 0;
+		for (int row = 0; row < RAID_LABELS.length; row++)
 		{
-			int textY = y + c.fm.getAscent();
-			// No pointer cursor in this UI: the hovered row answers in white instead, and a row that opens
-			// nothing yet doesn't answer.
-			Color label = hovered && raid(row) != null ? Color.WHITE : OSRS_ORANGE;
-			int end = c.inset() + drawLabelValue(c.g, c.fm, c.inset(), textY, RAID_LABELS[row], scoreText(raidKc[row]),
-				label, Color.WHITE);
+			label = Math.max(label, fm.stringWidth(RAID_LABELS[row]));
+			kills = Math.max(kills, fm.stringWidth(scoreText(raidKc[row])));
 			if (hasHardMode(row))
 			{
-				end += PAIR_GAP;
-				end += drawLabelValue(c.g, c.fm, end, textY, PanelData.RAID_HARD_LABELS[row] + ": ",
-					scoreText(hardKc[row]), label, Color.WHITE);
+				hardLabel = Math.max(hardLabel, fm.stringWidth(PanelData.RAID_HARD_LABELS[row] + ": "));
+				hard = Math.max(hard, fm.stringWidth(scoreText(hardKc[row])));
 			}
 			if (raidLog(row))
 			{
-				paintWrappedProgressCount(c.g, c.fm, end, textY, raidObtained[row], raidTotal[row]);
+				log = Math.max(log, fm.stringWidth(raidLogText(row)));
+			}
+		}
+		int hardLabelX = label + kills + PAIR_GAP;
+		int hardEnd = hardLabelX + hardLabel + hard;
+		return new int[]{label + kills, hardLabelX, hardEnd, log > 0 ? hardEnd + PAIR_GAP + log : hardEnd};
+	}
+
+	private String raidLogText(int row)
+	{
+		return "(" + progressCountText(raidObtained[row], raidTotal[row]) + ")";
+	}
+
+	/** A raid's normal and hard-mode kills, then its log, in the rows' columns; the row opens the raid's own popup. */
+	private CardBody.Part raidRow(int row)
+	{
+		return CardBody.clickRow(raidRows, row, c -> raidColumns(c.fm)[3], (c, y, hovered) ->
+		{
+			int textY = y + c.fm.getAscent();
+			int[] at = raidColumns(c.fm);
+			int x = c.inset();
+			// No pointer cursor in this UI: the hovered row answers in white instead, and a row that opens
+			// nothing yet doesn't answer.
+			c.g.setColor(hovered && raid(row) != null ? Color.WHITE : OSRS_ORANGE);
+			c.g.drawString(RAID_LABELS[row], x, textY);
+			if (hasHardMode(row))
+			{
+				c.g.drawString(PanelData.RAID_HARD_LABELS[row] + ": ", x + at[1], textY);
+			}
+			c.g.setColor(Color.WHITE);
+			drawRightAligned(c.g, c.fm, scoreText(raidKc[row]), x + at[0], textY);
+			if (hasHardMode(row))
+			{
+				drawRightAligned(c.g, c.fm, scoreText(hardKc[row]), x + at[2], textY);
+			}
+			if (raidLog(row))
+			{
+				c.g.setColor(completionColor(raidObtained[row], raidTotal[row]));
+				drawRightAligned(c.g, c.fm, raidLogText(row), x + at[3], textY);
 			}
 		});
 	}
