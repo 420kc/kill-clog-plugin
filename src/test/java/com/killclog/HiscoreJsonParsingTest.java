@@ -108,6 +108,23 @@ public class HiscoreJsonParsingTest
 	}
 
 	@Test
+	public void theFracturedArchiveRowIsKeptBeforeTheLayoutListsIt()
+	{
+		// Jagex adds the raid's row on launch day; a release whose layout doesn't list it yet keeps it under the
+		// raid's own name, by the guess or any spelling that names the archive, ranked or not.
+		for (String name : new String[]{PanelData.TFA_HISCORE, "Fractured Archive", "The Fractured Archive (completions)"})
+		{
+			String body = "{\"skills\":[{\"id\":0,\"name\":\"Overall\",\"rank\":1,\"level\":2277,\"xp\":4600000000}],"
+				+ "\"activities\":[{\"id\":999,\"name\":\"" + name + "\",\"rank\":50,\"score\":12}]}";
+			assertEquals(name, 12, service.parseHiscoreBody(body, AccountType.REGULAR).getKc(PanelData.TFA_HISCORE));
+		}
+		String unranked = "{\"skills\":[{\"id\":0,\"name\":\"Overall\",\"rank\":1,\"level\":2277,\"xp\":4600000000}],"
+			+ "\"activities\":[{\"id\":999,\"name\":\"" + PanelData.TFA_HISCORE + "\",\"rank\":-1,\"score\":-1}]}";
+		assertTrue(service.parseHiscoreBody(unranked, AccountType.REGULAR).hasBossRow(PanelData.TFA_HISCORE));
+		assertFalse(service.parseHiscoreBody(fixture, AccountType.REGULAR).hasBossRow(PanelData.TFA_HISCORE));
+	}
+
+	@Test
 	public void testExtractTotalXpReadsJsonBodies()
 	{
 		// Account-type detection compares total xp across the four endpoint

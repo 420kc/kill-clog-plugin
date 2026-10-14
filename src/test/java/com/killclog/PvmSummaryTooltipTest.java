@@ -78,8 +78,9 @@ public class PvmSummaryTooltipTest
 		assertEquals(plainTop + 4 + 22 + 6, tieredTop);
 		assertEquals(-1, TestViews.rowAt(tiered, "raidRows", tieredTop - 1));
 		assertEquals(0, TestViews.rowAt(tiered, "raidRows", tieredTop));
-		assertEquals(3, TestViews.rowAt(tiered, "raidRows", tieredTop + 3 * 14 + 13));
-		assertEquals(-1, TestViews.rowAt(tiered, "raidRows", tieredTop + 4 * 14));
+		// The last of the three raid rows this lookup has (no Fractured Archive row before its hiscore row).
+		assertEquals(2, TestViews.rowAt(tiered, "raidRows", tieredTop + 2 * 14 + 13));
+		assertEquals(-1, TestViews.rowAt(tiered, "raidRows", tieredTop + 3 * 14));
 	}
 
 	private static int paintedRaidTop(PvmSummaryTooltip tip) throws ReflectiveOperationException
@@ -163,13 +164,14 @@ public class PvmSummaryTooltipTest
 		assertEquals(-1, TestViews.rowAt(tip, "raidRows", 0));
 		int top = firstRaidY(tip);
 		assertEquals(-1, TestViews.rowAt(tip, "raidRows", top - 1));
-		for (int row = 0; row < 4; row++)
+		// CoX, ToB and ToA; The Fractured Archive's row waits for its hiscore row, which this lookup hasn't.
+		for (int row = 0; row < 3; row++)
 		{
 			assertEquals(row, TestViews.rowAt(tip, "raidRows", top + row * NativeTooltip.LINE_HEIGHT));
 			assertEquals(row, TestViews.rowAt(tip, "raidRows", top + row * NativeTooltip.LINE_HEIGHT + NativeTooltip.LINE_HEIGHT - 1));
 		}
 		// The mega rare sprites below the rows are not part of them.
-		assertEquals(-1, TestViews.rowAt(tip, "raidRows", top + 4 * NativeTooltip.LINE_HEIGHT));
+		assertEquals(-1, TestViews.rowAt(tip, "raidRows", top + 3 * NativeTooltip.LINE_HEIGHT));
 	}
 
 	@Test
@@ -180,8 +182,8 @@ public class PvmSummaryTooltipTest
 		int top = firstRaidY(tip);
 		int orange = NativeTooltip.OSRS_ORANGE.getRGB();
 		int white = Color.WHITE.getRGB();
-		// The Fractured Archive's row answers only once the client knows the raid, so its popup can open.
-		int answering = PanelData.TFA != null ? 4 : 3;
+		// The Fractured Archive's row isn't drawn until the hiscores carry it (this lookup doesn't).
+		int answering = 3;
 		for (int row = 0; row < answering; row++)
 		{
 			move(tip, 5, top + row * NativeTooltip.LINE_HEIGHT + 2);
@@ -237,10 +239,9 @@ public class PvmSummaryTooltipTest
 		}
 		assertEquals(List.of(HiscoreSkill.CHAMBERS_OF_XERIC, HiscoreSkill.THEATRE_OF_BLOOD,
 			HiscoreSkill.TOMBS_OF_AMASCUT), opened);
-		// The Fractured Archive's row opens its raid once the client knows it, and passes through before.
-		assertEquals(PanelData.TFA != null,
-			press(tip, 5, top + 3 * NativeTooltip.LINE_HEIGHT + 3, MouseEvent.BUTTON1).isConsumed());
-		int raids = PanelData.TFA != null ? 4 : 3;
+		// The Fractured Archive's row isn't drawn before its hiscore row, so nothing there opens.
+		assertFalse(press(tip, 5, top + 3 * NativeTooltip.LINE_HEIGHT + 3, MouseEvent.BUTTON1).isConsumed());
+		int raids = 3;
 		assertEquals(raids, opened.size());
 
 		// The Slayer rows above, the sprites below and a right click are not links, and pass through.
@@ -273,6 +274,32 @@ public class PvmSummaryTooltipTest
 		// The raids before it pair a hard mode, an orange label after their white kills; this row has none.
 		assertTrue(orangeAfterWhite(after, top + 2 * NativeTooltip.LINE_HEIGHT));
 		assertFalse(orangeAfterWhite(after, top + 3 * NativeTooltip.LINE_HEIGHT));
+	}
+
+	@Test
+	public void theFracturedArchiveRowWaitsForItsHiscoreRow()
+	{
+		// Before Jagex adds the raid's row the card has three raid rows; from the lookup that carries it, a fourth,
+		// "--" until the player has kills, and pressing it opens the raid once the client knows it.
+		PvmSummaryTooltip before = painted(card());
+		int top = firstRaidY(before);
+		assertEquals(-1, TestViews.rowAt(before, "raidRows", top + 3 * NativeTooltip.LINE_HEIGHT));
+
+		Map<String, Integer> kills = new HashMap<>();
+		kills.put(HiscoreSkill.CHAMBERS_OF_XERIC.getName(), 120);
+		kills.put(HiscoreSkill.THEATRE_OF_BLOOD.getName(), 80);
+		kills.put(HiscoreSkill.TOMBS_OF_AMASCUT.getName(), 300);
+		kills.put(PanelData.TFA_HISCORE, -1);
+		PvmSummaryTooltip out = new PvmSummaryTooltip();
+		out.setData(110.5, 2_500, 40, PanelData.bossCount(), "Vorkath", 900);
+		out.setRaids(TestViews.hiscore(AccountType.REGULAR, kills, Collections.emptyMap(),
+			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1), null);
+		painted(out);
+		assertEquals(3, TestViews.rowAt(out, "raidRows", firstRaidY(out) + 3 * NativeTooltip.LINE_HEIGHT));
+		List<HiscoreSkill> opened = new ArrayList<>();
+		out.setOnOpenRaid((press, raid) -> opened.add(raid));
+		assertEquals(PanelData.TFA != null,
+			press(out, 5, firstRaidY(out) + 3 * NativeTooltip.LINE_HEIGHT + 3, MouseEvent.BUTTON1).isConsumed());
 	}
 
 	private static boolean rowDiffers(BufferedImage a, BufferedImage b, int top)

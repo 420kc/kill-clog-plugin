@@ -94,6 +94,12 @@ public class HiscoreResult
 		return bossKills.getOrDefault(bossName, -1);
 	}
 
+	/** Whether the hiscores carry this boss's row at all, ranked or not: a new boss's is there from Jagex's update. */
+	boolean hasBossRow(String bossName)
+	{
+		return bossKills.containsKey(bossName);
+	}
+
 	/** Another leaderboard's whole row under this player's own type and table, so a Hardcore
 	 *  who died reads their Hardcore stats as they stood at the death. */
 	HiscoreResult withRow(HiscoreResult row)

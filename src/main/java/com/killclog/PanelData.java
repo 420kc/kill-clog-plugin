@@ -168,6 +168,12 @@ final class PanelData
 	@Nullable
 	static final HiscoreSkill TFA = skillNamed("THE_FRACTURED_ARCHIVE"); // LAUNCH DAY: RuneLite's enum name
 
+	/** Whether a hiscore row is The Fractured Archive's, by the guess or any spelling that names the archive. */
+	static boolean isTfaRow(String name)
+	{
+		return name.equalsIgnoreCase(TFA_HISCORE) || name.toLowerCase(Locale.ROOT).contains("fractured archive");
+	}
+
 	/** The card a boss cell opens: its own, or for a raid's hard mode, the raid's. */
 	static HiscoreSkill card(HiscoreSkill boss)
 	{

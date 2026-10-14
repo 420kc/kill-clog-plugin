@@ -706,6 +706,13 @@ public class HiscoreService
 				board.bossKills.put(key, score);
 				board.bossRanks.put(key, rank);
 			}
+			else if (PanelData.isTfaRow(name))
+			{
+				// The Fractured Archive before this release's layout lists it: kept under the raid's own name,
+				// so its Combat Summary row shows the day Jagex adds it, whatever Jagex spells it.
+				board.bossKills.put(PanelData.TFA_HISCORE, score);
+				board.bossRanks.put(PanelData.TFA_HISCORE, rank);
+			}
 			else
 			{
 				// A boss added after this release. Its KC waits for the update

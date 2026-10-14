@@ -65,6 +65,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private final int[] hardKc = new int[RAID_LABELS.length];
 	private final int[] raidObtained = {-1, -1, -1, -1};
 	private final int[] raidTotal = new int[RAID_LABELS.length];
+	// The Fractured Archive's row waits for its hiscore row (Dylan, 2026-10-14): drawn from the lookup that carries it.
+	private boolean tfaOut;
 	@Nullable
 	private BiConsumer<MouseEvent, HiscoreSkill> onOpenRaid;
 	private final CardBody.ClickRows raidRows = new CardBody.ClickRows(this, (e, row) ->
@@ -162,6 +164,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 	public void setRaids(HiscoreResult hiscoreResult, ClogResult clogResult)
 	{
+		tfaOut = hiscoreResult.hasBossRow(PanelData.TFA_HISCORE);
 		for (int i = 0; i < RAID_LABELS.length; i++)
 		{
 			raidKc[i] = Math.max(0, hiscoreResult.getKc(hasHardMode(i) ? PanelData.RAIDS[i].getName() : PanelData.TFA_HISCORE));
@@ -222,7 +225,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		}
 		// Raids lead the sections under the band, their megarares under the rows.
 		CardBody body = new CardBody().titled("Raids");
-		for (int i = 0; i < RAID_LABELS.length; i++)
+		for (int i = 0; i < raidRowCount(); i++)
 		{
 			body.add(raidRow(i));
 		}
@@ -252,6 +255,12 @@ public class PvmSummaryTooltip extends TitleTooltip
 		return raidKc[row] + hardKc[row] > 0 && raidObtained[row] >= 0;
 	}
 
+	/** The rows drawn: CoX, ToB and ToA, then The Fractured Archive once the hiscores carry its row. */
+	private int raidRowCount()
+	{
+		return tfaOut ? RAID_LABELS.length : PanelData.RAID_HARD_MODES.length;
+	}
+
 	/** CoX, ToB and ToA pair a hard mode; The Fractured Archive, the row after them, has none. */
 	private static boolean hasHardMode(int row)
 	{
@@ -277,7 +286,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		int hardLabel = 0;
 		int hard = 0;
 		int log = 0;
-		for (int row = 0; row < RAID_LABELS.length; row++)
+		for (int row = 0; row < raidRowCount(); row++)
 		{
 			label = Math.max(label, fm.stringWidth(RAID_LABELS[row]));
 			kills = Math.max(kills, fm.stringWidth(scoreText(raidKc[row])));
