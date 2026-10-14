@@ -245,6 +245,8 @@ public class BossListView
 		field.setSelectionColor(ColorScheme.BRAND_ORANGE_TRANSPARENT);
 		field.setOpaque(false);
 		field.setBorder(null);
+		// Greyscale text like every panel label, not the desktop's ClearType colour fringes.
+		ClogHelper.antialias(field);
 		field.getDocument().addDocumentListener(new DocumentListener()
 		{
 			@Override

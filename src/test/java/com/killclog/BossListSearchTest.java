@@ -59,6 +59,16 @@ public class BossListSearchTest
 	}
 
 	@Test
+	public void theSearchTextIsGreyscaleLikeThePanelsLabels()
+	{
+		// Without the panel's text hint Swing takes the desktop's ClearType, colour fringes on the typed text.
+		BossListView list = new BossListView(mock(TooltipController.class), mock(Cells.class), () -> false);
+		JTextField field = TestViews.field(list, "search");
+		assertEquals(java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON,
+			field.getClientProperty(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING));
+	}
+
+	@Test
 	public void aSearchWithADigitAlsoFindsBossesByTheirCountAsTheRowShowsIt()
 	{
 		// Dylan 10/13: "147k" finds Marni's Callisto; "420" on 420 kc's board finds every count with 420 in it.
