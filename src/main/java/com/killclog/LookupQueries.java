@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import javax.annotation.Nullable;
 import net.runelite.api.Skill;
 import net.runelite.client.hiscore.HiscoreSkill;
 
@@ -28,6 +29,12 @@ final class LookupQueries
 			if (kc > 0) total += kc;
 		}
 		return total;
+	}
+
+	/** A player's EHB: TempleOSRS's rates over their kills, as their account type's rates. -1 without hiscores. */
+	static double ehb(@Nullable HiscoreResult hiscore, @Nullable ClogResult clog)
+	{
+		return EhbRates.compute(hiscore, accountType(hiscore, clog));
 	}
 
 	/** The bosses a player's count is out of: the panel's list, and the raid while its row stands beside it. */

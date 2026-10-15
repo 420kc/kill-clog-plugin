@@ -4,9 +4,9 @@ import java.awt.Color;
 import net.runelite.api.Experience;
 
 /**
- * Experience &amp; Efficiency on the total level cell: total XP, overall rank and the XP left to max, then
- * TempleOSRS's EHP and EHC under its own name when Temple tracks the player (Dylan, 2026-10-13). EHB stays on the
- * Combat Summary. Each skill's own numbers live in its cell, in the grid or the activity tray.
+ * Experience &amp; Efficiency on the total level cell: total XP, overall rank and the XP left to max, then Efficient
+ * Hours (Dylan, 2026-10-15): Played and Clogged, TempleOSRS's EHP and EHC, when Temple tracks the player, and Bossed,
+ * the Combat Summary's EHB, for anyone. Each skill's own numbers live in its cell, in the grid or the activity tray.
  */
 public class SkillsTooltip extends TitleTooltip
 {
@@ -17,6 +17,7 @@ public class SkillsTooltip extends TitleTooltip
 	private HiscoreResult result;
 	private double ehp = -1;
 	private double ehc = -1;
+	private double ehb = -1;
 	private boolean templeRows;
 
 	/** {@code templeRows}: show Temple's rows, "--" where this player has none, so a comparison pair lines up. */
@@ -25,6 +26,7 @@ public class SkillsTooltip extends TitleTooltip
 		this.result = result;
 		ehp = clog != null ? clog.getTempleEhp() : -1;
 		ehc = clog != null ? clog.getTempleEhc() : -1;
+		ehb = LookupQueries.ehb(result, clog);
 		this.templeRows = templeRows;
 		setTitle(TITLE);
 	}
@@ -44,11 +46,12 @@ public class SkillsTooltip extends TitleTooltip
 			.add(CardBody.line("Rank: ", scoreText(displayedRank()), displayedRank() > 0 ? Color.WHITE : UNRANKED_COLOR))
 			.add(CardBody.line("To max: ", toMax == 0 ? "Maxed" : toMax > 0 ? grouped(toMax) : "--",
 				toMax == 0 ? CLOG_GREEN : Color.WHITE));
+		card.titled("Efficient Hours");
 		if (templeRows)
 		{
-			card.titled("TempleOSRS").add(CardBody.line("EHP: ", ehbText(ehp))).add(CardBody.line("EHC: ", ehbText(ehc)));
+			card.add(CardBody.line("Played: ", ehbText(ehp))).add(CardBody.line("Clogged: ", ehbText(ehc)));
 		}
-		return card;
+		return card.add(CardBody.line("Bossed: ", ehbText(ehb)));
 	}
 
 	/** XP left until every skill is 99: 0 once maxed, -1 when a skill isn't on the hiscores. */

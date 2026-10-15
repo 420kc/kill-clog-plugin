@@ -58,7 +58,7 @@ final class ActivitySummaryTooltips
 			LookupQueries.getMostKilledKc(hiscore)
 		);
 		tip.setPvp(hiscore, clog, cells.getPvpActivityIcons());
-		tip.setEhb(EhbRates.compute(hiscore, LookupQueries.accountType(hiscore, clog)));
+		tip.setEhb(LookupQueries.ehb(hiscore, clog));
 		tip.setSlayer(hiscore, clog);
 		if (clog != null)
 		{

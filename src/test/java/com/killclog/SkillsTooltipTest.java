@@ -91,6 +91,20 @@ public class SkillsTooltipTest
 		org.junit.Assert.assertTrue(withTemple.getPreferredSize().height > plain.getPreferredSize().height);
 	}
 
+	@Test
+	public void efficientHoursBossedIsTheCombatSummarysEhb()
+	{
+		// Bossed repeats the Combat Summary's EHB, from the same rule, for anyone with hiscores, Temple or not.
+		HiscoreResult bosser = TestViews.hiscore(AccountType.IRONMAN, Collections.singletonMap("Zulrah", 1_000),
+			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1);
+		SkillsTooltip tip = new SkillsTooltip();
+		tip.setData(bosser, null, false);
+		double ehb = TestViews.field(tip, "ehb");
+		org.junit.Assert.assertTrue(ehb > 0);
+		assertEquals(LookupQueries.ehb(bosser, null), ehb, 1e-9);
+		assertEquals(EhbRates.compute(bosser, AccountType.IRONMAN), ehb, 1e-9);
+	}
+
 	private static HiscoreResult withXp(java.util.Map<String, Long> xp)
 	{
 		return TestViews.hiscore(AccountType.REGULAR, HiscoreTable.STANDARD,
