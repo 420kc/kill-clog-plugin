@@ -14,6 +14,9 @@ import java.util.HashMap;
 import java.util.TreeMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.concurrent.CompletableFuture;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
@@ -550,82 +553,75 @@ public class ClogService
 
 	private CompletableFuture<Map<String, List<Integer>>> fetchCategories()
 	{
-		// Rechecked inside the flight so a fetch that just landed is never repeated.
-		return cachedCategories != null ? CompletableFuture.completedFuture(cachedCategories)
-			: HttpUtil.singleFlightLookup(categoriesFlight, "", () -> cachedCategories != null
-			? CompletableFuture.completedFuture(cachedCategories) : httpGet(TEMPLE_CATEGORIES_URL).thenApply(json ->
+		return fetchOnce(() -> cachedCategories, categoriesFlight, TEMPLE_CATEGORIES_URL, json ->
+		{
+			JsonObject root = gson.fromJson(json, JsonObject.class);
+			Type type = new TypeToken<Map<String, List<Integer>>>()
 			{
-				try
+			}.getType();
+			Map<String, List<Integer>> categories = new HashMap<>();
+			for (Map.Entry<String, JsonElement> entry : root.entrySet())
+			{
+				if (entry.getValue().isJsonObject())
 				{
-					if (json == null)
+					Map<String, List<Integer>> sectionMap = gson.fromJson(entry.getValue(), type);
+					if (sectionMap != null)
 					{
-						return null;
+						categories.putAll(sectionMap);
 					}
-					JsonObject root = gson.fromJson(json, JsonObject.class);
-					Type type = new TypeToken<Map<String, List<Integer>>>()
-				{
-				}.getType();
-					Map<String, List<Integer>> categories = new HashMap<>();
-					for (Map.Entry<String, JsonElement> entry : root.entrySet())
-					{
-						if (!entry.getValue().isJsonObject())
-						{
-							continue;
-						}
-						Map<String, List<Integer>> sectionMap = gson.fromJson(entry.getValue(), type);
-						if (sectionMap != null)
-						{
-							categories.putAll(sectionMap);
-						}
-					}
-					if (categories.isEmpty())
-					{
-						return null;
-					}
-					cachedCategories = categories;
-					return categories;
 				}
-				catch (Exception e)
-				{
-					log.debug("Failed to parse clog categories: {}", e.getMessage());
-					return null;
-				}
-			}));
+			}
+			return categories.isEmpty() ? null : categories;
+		}, categories -> cachedCategories = categories);
 	}
 
 	private CompletableFuture<Map<Integer, String>> fetchItemNames()
 	{
-		return cachedItemNames != null ? CompletableFuture.completedFuture(cachedItemNames)
-			: HttpUtil.singleFlightLookup(namesFlight, "", () -> cachedItemNames != null
-			? CompletableFuture.completedFuture(cachedItemNames) : httpGet(WIKI_MAPPING_URL).thenApply(json ->
+		return fetchOnce(() -> cachedItemNames, namesFlight, WIKI_MAPPING_URL, json ->
+		{
+			Map<Integer, String> names = new HashMap<>();
+			for (JsonElement elem : gson.fromJson(json, JsonArray.class))
+			{
+				JsonObject obj = elem.getAsJsonObject();
+				if (obj.has("id") && obj.has("name"))
+				{
+					names.put(obj.get("id").getAsInt(), obj.get("name").getAsString());
+				}
+			}
+			return names;
+		}, names -> cachedItemNames = names);
+	}
+
+	/**
+	 * A file every lookup shares, fetched once at a time: what parse makes of it is kept, and a failure (no answer,
+	 * or a parse that throws or gives null) leaves nothing kept, so the next ask fetches again. Rechecked inside the
+	 * flight so a fetch that just landed is never repeated.
+	 */
+	private <T> CompletableFuture<T> fetchOnce(Supplier<T> held, Map<String, CompletableFuture<T>> flight, String url,
+		Function<String, T> parse, Consumer<T> keep)
+	{
+		T now = held.get();
+		return now != null ? CompletableFuture.completedFuture(now) : HttpUtil.singleFlightLookup(flight, "", () ->
+		{
+			T landed = held.get();
+			return landed != null ? CompletableFuture.completedFuture(landed) : httpGet(url).thenApply(json ->
 			{
 				try
 				{
-					if (json == null)
+					T value = json != null ? parse.apply(json) : null;
+					if (value != null)
 					{
-						return null;
+						keep.accept(value);
 					}
-					JsonArray arr = gson.fromJson(json, JsonArray.class);
-					Map<Integer, String> names = new HashMap<>();
-
-					for (JsonElement elem : arr)
-					{
-						JsonObject obj = elem.getAsJsonObject();
-						if (obj.has("id") && obj.has("name"))
-						{
-							names.put(obj.get("id").getAsInt(), obj.get("name").getAsString());
-						}
-					}
-
-					cachedItemNames = names;
-					return names;
+					return value;
 				}
 				catch (Exception e)
 				{
-					log.debug("Failed to parse item names: {}", e.getMessage());
+					log.debug("Failed to parse {}: {}", url, e.getMessage());
 					return null;
 				}
-			}));
+			});
+		});
 	}
 
 	/**

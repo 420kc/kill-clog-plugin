@@ -310,8 +310,7 @@ public class Cells
 			HiscoreSkill activity = entry.getKey();
 			JLabel label = entry.getValue();
 			int score = result.getActivityScore(activity.getName());
-			label.setText(ClogHelper.pad(score <= 0 ? "--" : ClogHelper.formatKc(score)));
-			label.setForeground(score > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
+			showScore(label, score);
 			tooltipController.setTooltipText(label, " ");
 		}
 
@@ -321,8 +320,7 @@ public class Cells
 			HiscoreSkill tier = entry.getKey();
 			JLabel label = entry.getValue();
 			int score = result.getActivityScore(tier.getName());
-			label.setText(ClogHelper.pad(score <= 0 ? "--" : ClogHelper.formatKc(score)));
-			label.setForeground(score > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
+			showScore(label, score);
 
 			String shortName = capitalizeTier(tier);
 			int rank = result.getActivityRank(tier.getName());
@@ -373,6 +371,13 @@ public class Cells
 		resetLabels(clueTierLabels);
 	}
 
+
+	/** A count cell's number, or a grey "--" without one. */
+	private static void showScore(JLabel label, int score)
+	{
+		label.setText(ClogHelper.pad(score <= 0 ? "--" : ClogHelper.formatKc(score)));
+		label.setForeground(score > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
+	}
 	private void resetLabels(Map<HiscoreSkill, JLabel> labels)
 	{
 		for (Map.Entry<HiscoreSkill, JLabel> entry : labels.entrySet())

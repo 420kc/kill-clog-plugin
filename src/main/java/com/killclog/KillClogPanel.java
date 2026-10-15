@@ -999,15 +999,7 @@ public class KillClogPanel extends PluginPanel
 	{
 		// Each lookup re-checks a syncer's character, so a withdrawn one is gone from this lookup on.
 		portraits.lookedUp(result);
-		String name = result.getPlayerName();
-		if (name != null && !name.isEmpty())
-		{
-			rsn = name;
-			if (lookupSession.getHiscoreResult() != null)
-			{
-				playerName.setText(name);
-			}
-		}
+		adoptName(result.getPlayerName());
 		AccountType providerType = result.getProviderAccountType();
 		if (providerType != null && providerType.isGroupIronman())
 		{
@@ -1029,17 +1021,22 @@ public class KillClogPanel extends PluginPanel
 		clogService.lookupRsn(player).thenAccept(name ->
 			SwingUtilities.invokeLater(() ->
 			{
-				if (thisLookup != lookupSession.getLookupVersion()) return;
-				if (name != null && !name.isEmpty())
-				{
-					rsn = name;
-					if (lookupSession.getHiscoreResult() != null)
-					{
-						playerName.setText(name);
-					}
-				}
+				if (thisLookup == lookupSession.getLookupVersion()) adoptName(name);
 			})
 		);
+	}
+
+	/** A provider's spelling of the name becomes the lookup's, shown once the hiscores have drawn the card. */
+	private void adoptName(@Nullable String name)
+	{
+		if (name != null && !name.isEmpty())
+		{
+			rsn = name;
+			if (lookupSession.getHiscoreResult() != null)
+			{
+				playerName.setText(name);
+			}
+		}
 	}
 
 	// Label update methods.

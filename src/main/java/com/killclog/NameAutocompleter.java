@@ -8,6 +8,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
+import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import javax.swing.SwingUtilities;
@@ -21,9 +22,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Actor;
 import net.runelite.api.Client;
-import net.runelite.api.FriendContainer;
-import net.runelite.api.FriendsChatManager;
 import net.runelite.api.Nameable;
+import net.runelite.api.NameableContainer;
 import net.runelite.api.WorldView;
 import net.runelite.api.clan.ClanMember;
 import net.runelite.api.clan.ClanSettings;
@@ -179,8 +179,8 @@ public class NameAutocompleter implements KeyListener
 		}
 
 		List<String> names = new ArrayList<>();
-		addFriendNames(names);
-		addFriendsChatNames(names);
+		addMembers(names, client.getFriendContainer());
+		addMembers(names, client.getFriendsChatManager());
 		addClanNames(names);
 		addNearbyPlayerNames(names);
 		setClientNameSnapshot(names);
@@ -197,27 +197,14 @@ public class NameAutocompleter implements KeyListener
 		clientNameSnapshot = Collections.unmodifiableList(copy);
 	}
 
-	private void addFriendNames(List<String> names)
+	/** The names in a friends list or a friends chat, either of which may not be loaded yet. */
+	private void addMembers(List<String> names, @Nullable NameableContainer<?> members)
 	{
-		FriendContainer friendContainer = client.getFriendContainer();
-		if (friendContainer == null || friendContainer.getMembers() == null)
+		if (members == null || members.getMembers() == null)
 		{
 			return;
 		}
-		Arrays.stream(friendContainer.getMembers())
-			.filter(Objects::nonNull)
-			.map(Nameable::getName)
-			.forEach(name -> addName(names, name));
-	}
-
-	private void addFriendsChatNames(List<String> names)
-	{
-		FriendsChatManager friendsChatManager = client.getFriendsChatManager();
-		if (friendsChatManager == null || friendsChatManager.getMembers() == null)
-		{
-			return;
-		}
-		Arrays.stream(friendsChatManager.getMembers())
+		Arrays.stream(members.getMembers())
 			.filter(Objects::nonNull)
 			.map(Nameable::getName)
 			.forEach(name -> addName(names, name));

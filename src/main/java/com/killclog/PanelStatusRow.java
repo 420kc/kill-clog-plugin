@@ -11,6 +11,8 @@ import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import javax.swing.BorderFactory;
 import javax.swing.BoxLayout;
 import javax.swing.ImageIcon;
@@ -170,6 +172,56 @@ final class PanelStatusRow
 
 	// ── layout ─────────────────────────────────────────────────────────
 
+	/**
+	 * The chalice's and the character's mouse: hovering lights the control, puts its tooltip up and its hover line
+	 * in the status, leaving takes them down, and a left press runs its handler while it shows.
+	 */
+	private MouseAdapter controlMouse(JLabel control, Owner owner, Consumer<Boolean> hover,
+		Supplier<String> tooltip, Supplier<String> hoverText, Supplier<Runnable> handler)
+	{
+		return new MouseAdapter()
+		{
+			@Override
+			public void mouseEntered(MouseEvent e)
+			{
+				if (control.isVisible())
+				{
+					hover.accept(true);
+					tooltipController.setTooltipText(control, tooltip.get());
+					show(new StatusMessage(owner, Kind.HOVER, hoverText.get(), SYNC_K1));
+				}
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e)
+			{
+				hover.accept(false);
+				tooltipController.setTooltipText(control, null);
+				clearYielding(owner);
+			}
+
+			@Override
+			public void mousePressed(MouseEvent e)
+			{
+				Runnable run = handler.get();
+				if (SwingUtilities.isLeftMouseButton(e) && control.isVisible() && run != null)
+				{
+					run.run();
+				}
+			}
+		};
+	}
+
+	/** The character control's notice, failure, hover and glow, gone. */
+	private void clearCharacterState()
+	{
+		characterFeedback.reset();
+		characterNoticeText = null;
+		characterNoticeDetail = null;
+		characterHovered = false;
+		clearCharacterSuccessGlow();
+	}
+
 	private JPanel build()
 	{
 		syncArrow.setIcon(SYNC_CHALICE_DIM);
@@ -178,41 +230,14 @@ final class PanelStatusRow
 		characterPublish.setBorder(BorderFactory.createEmptyBorder(0, 3, 6, 2));
 		characterPublish.setVerticalAlignment(JLabel.CENTER);
 		characterPublish.setVisible(false);
-		characterPublish.addMouseListener(new MouseAdapter()
+		characterPublish.addMouseListener(controlMouse(characterPublish, Owner.CHARACTER, hovered ->
 		{
-			@Override
-			public void mouseEntered(MouseEvent e)
-			{
-				if (characterPublish.isVisible())
-				{
-					characterHovered = true;
-					refreshCharacterIcon(true);
-					tooltipController.setTooltipText(characterPublish, characterTooltipText(characterNoticeDetail != null
-						? characterNoticeDetail : characterFeedback.lastFailure()));
-					show(new StatusMessage(Owner.CHARACTER, Kind.HOVER, characterNoticeText != null ? characterNoticeText
-						: characterFeedback.hoverText(CHARACTER_HOVER_TEXT, CHARACTER_FAILURE_HOVER_TEXT), SYNC_K1));
-				}
-			}
-
-			@Override
-			public void mouseExited(MouseEvent e)
-			{
-				characterHovered = false;
-				tooltipController.setTooltipText(characterPublish, null);
-				refreshCharacterIcon(false);
-				clearYielding(Owner.CHARACTER);
-			}
-
-			@Override
-			public void mousePressed(MouseEvent e)
-			{
-				if (SwingUtilities.isLeftMouseButton(e)
-					&& characterPublish.isVisible() && characterPublishHandler != null)
-				{
-					characterPublishHandler.run();
-				}
-			}
-		});
+			characterHovered = hovered;
+			refreshCharacterIcon(hovered);
+		}, () -> characterTooltipText(characterNoticeDetail != null ? characterNoticeDetail
+			: characterFeedback.lastFailure()), () -> characterNoticeText != null ? characterNoticeText
+			: characterFeedback.hoverText(CHARACTER_HOVER_TEXT, CHARACTER_FAILURE_HOVER_TEXT),
+			() -> characterPublishHandler));
 		requestCharacterIcon();
 
 		// Sits vertically centered in the band between the panel top and the
@@ -221,40 +246,12 @@ final class PanelStatusRow
 		syncArrow.setBorder(BorderFactory.createEmptyBorder(0, 4, 6, 5));
 		syncArrow.setVerticalAlignment(JLabel.CENTER);
 		syncArrow.setVisible(false);
-		syncArrow.addMouseListener(new MouseAdapter()
+		syncArrow.addMouseListener(controlMouse(syncArrow, Owner.SYNC, hovered ->
 		{
-			@Override
-			public void mouseEntered(MouseEvent e)
-			{
-				if (syncArrow.isVisible())
-				{
-					syncChaliceHovered = true;
-					refreshSyncChalice(true);
-					tooltipController.setTooltipText(syncArrow, syncFeedback.lastFailure());
-					show(new StatusMessage(Owner.SYNC, Kind.HOVER,
-						syncFeedback.hoverText(SYNC_HOVER_TEXT, SYNC_FAILURE_HOVER_TEXT), SYNC_K1));
-				}
-			}
-
-			@Override
-			public void mouseExited(MouseEvent e)
-			{
-				syncChaliceHovered = false;
-				tooltipController.setTooltipText(syncArrow, null);
-				refreshSyncChalice(false);
-				clearYielding(Owner.SYNC);
-			}
-
-			@Override
-			public void mousePressed(MouseEvent e)
-			{
-				if (SwingUtilities.isLeftMouseButton(e)
-					&& syncArrow.isVisible() && killclogSyncHandler != null)
-				{
-					killclogSyncHandler.run();
-				}
-			}
-		});
+			syncChaliceHovered = hovered;
+			refreshSyncChalice(hovered);
+		}, syncFeedback::lastFailure, () -> syncFeedback.hoverText(SYNC_HOVER_TEXT, SYNC_FAILURE_HOVER_TEXT),
+			() -> killclogSyncHandler));
 
 		JPanel row = new JPanel(new BorderLayout());
 		row.setBackground(ColorScheme.DARK_GRAY_COLOR);
@@ -435,12 +432,8 @@ final class PanelStatusRow
 			characterPublishEnabled = enabled;
 			if (!enabled)
 			{
-				characterFeedback.reset();
-				characterNoticeText = null;
-				characterNoticeDetail = null;
-				characterHovered = false;
+				clearCharacterState();
 				tooltipController.setTooltipText(characterPublish, null);
-				clearCharacterSuccessGlow();
 			}
 			refreshFirstPartyVisibility();
 		});
@@ -546,11 +539,7 @@ final class PanelStatusRow
 		syncArrowHasData = false;
 		syncChaliceHovered = false;
 		syncFeedback.reset();
-		characterFeedback.reset();
-		characterNoticeText = null;
-		characterNoticeDetail = null;
-		characterHovered = false;
-		clearCharacterSuccessGlow();
+		clearCharacterState();
 		clearSyncSuccessGlow();
 		refreshFirstPartyVisibility();
 	}
