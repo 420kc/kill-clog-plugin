@@ -117,7 +117,7 @@ Full page names work, and shorthand such as `gotr`, `mixology`, `pets`, and `hyd
 - **Lookup:** automatic self-lookup, player comparison, player-menu lookup, and the leaderboard selector
 - **Menu location:** choose which right-click menus show Kill Clog
 - **Skills:** location, virtual levels, synced-account color mode, and Skill Clogs on or off
-- **Chat:** plugin messages and custom emojis
+- **Chat:** plugin messages and custom emojis (`:killclog:` `:rune:` `:dragon:` `:gilded:` `:clog:` `:green:`)
 - **Progress Highlighter:** Collection Log progress colors
 
 ## Data and privacy
@@ -145,10 +145,6 @@ Launch the development client with:
 ```
 
 The release jar is written to `build/libs/`.
-
-## Custom emojis
-
-`:killclog:` `:rune:` `:dragon:` `:gilded:` `:clog:` `:green:`
 
 ## Support
 
