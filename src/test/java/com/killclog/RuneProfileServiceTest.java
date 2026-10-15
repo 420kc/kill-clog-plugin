@@ -466,6 +466,53 @@ public class RuneProfileServiceTest
 		assertEquals(AccountType.REGULAR, service.getCachedAccountType("a_q_p_weed"));
 	}
 
+	@Test
+	public void twoSpellingsAnsweringAtOnceLeaveOneAnswer() throws Exception
+	{
+		// Both answers land together, many times over: clearing the other spellings and storing the new answer is one
+		// step, so the name is never left holding both (and an older answer standing for it).
+		for (int round = 0; round < 40; round++)
+		{
+			CountDownLatch bothAsked = new CountDownLatch(2);
+			OkHttpClient client = new OkHttpClient.Builder()
+				.addInterceptor(chain ->
+				{
+					bothAsked.countDown();
+					try
+					{
+						bothAsked.await(5, TimeUnit.SECONDS);
+					}
+					catch (InterruptedException e)
+					{
+						Thread.currentThread().interrupt();
+					}
+					String clan = chain.request().url().toString().contains("_") ? "Old Clan" : "New Clan";
+					return new Response.Builder()
+						.request(chain.request())
+						.protocol(Protocol.HTTP_1_1)
+						.code(200)
+						.message("canned")
+						.body(ResponseBody.create(MediaType.parse("application/json"),
+							"{\"clan\":{\"name\":\"" + clan + "\",\"rank\":40,\"icon\":24,\"title\":\"Recruit\"}}"))
+						.build();
+				})
+				.build();
+			service = new RuneProfileService(client, new Gson(), null);
+			try
+			{
+				CompletableFuture<?> underscored = service.lookup("a_q_p_weed");
+				CompletableFuture<?> spaced = service.lookup("a q p weed");
+				CompletableFuture.allOf(underscored, spaced).get(10, TimeUnit.SECONDS);
+				assertEquals("round " + round, 1, summaryCache().size());
+			}
+			finally
+			{
+				client.dispatcher().executorService().shutdownNow();
+				client.connectionPool().evictAll();
+			}
+		}
+	}
+
 	private static OkHttpClient cannedClient(int code, String body, AtomicInteger requests)
 	{
 		return new OkHttpClient.Builder()

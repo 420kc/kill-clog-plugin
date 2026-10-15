@@ -271,7 +271,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 	@Nullable
 	private static HiscoreSkill raid(int row)
 	{
-		return hasHardMode(row) ? PanelData.RAIDS[row] : PanelData.tfaListed() ? PanelData.TFA : null;
+		return hasHardMode(row) ? PanelData.RAIDS[row] : PanelData.listed(PanelData.TFA);
 	}
 
 	/**

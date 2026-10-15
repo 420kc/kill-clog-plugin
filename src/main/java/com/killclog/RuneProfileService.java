@@ -203,9 +203,13 @@ public class RuneProfileService
 				return summaries.fail(key);
 			}
 			breaker.reset();
-			// The new answer is the only one held for the name, so no older spelling's answer can stand for it.
-			forgetSpellings(key);
-			return summaries.ok(key, result);
+			// The new answer is the only one held for the name, so no older spelling's answer can stand for it. Under
+			// the lane's lock, as ok() stores: two spellings answering at once can't both clear and then both stay.
+			synchronized (summaries)
+			{
+				forgetSpellings(key);
+				return summaries.ok(key, result);
+			}
 		});
 	}
 
@@ -213,7 +217,10 @@ public class RuneProfileService
 	private void forgetSpellings(String key)
 	{
 		String name = Text.toJagexName(key);
-		summaries.values.keySet().removeIf(held -> Text.toJagexName(held).equals(name));
+		synchronized (summaries)
+		{
+			summaries.values.keySet().removeIf(held -> Text.toJagexName(held).equals(name));
+		}
 	}
 
 	/**

@@ -303,6 +303,11 @@ public class PvmSummaryTooltipTest
 		assertEquals(PanelData.tfaListed(),
 			press(out, 5, firstRaidY(out) + 3 * NativeTooltip.LINE_HEIGHT + 3, MouseEvent.BUTTON1).isConsumed());
 		assertFalse("this release's panel doesn't list the raid yet", PanelData.tfaListed());
+		// The rule itself, for a client whose RuneLite does know the raid: a boss the list carries opens, one it
+		// doesn't (as the raid until the launch-day update) opens nothing, whatever RuneLite knows.
+		assertEquals(HiscoreSkill.ZULRAH, PanelData.listed(HiscoreSkill.ZULRAH));
+		assertNull(PanelData.listed(HiscoreSkill.OVERALL));
+		assertNull(PanelData.listed(null));
 	}
 
 	@Test

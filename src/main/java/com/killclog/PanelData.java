@@ -184,7 +184,14 @@ final class PanelData
 	 */
 	static boolean tfaListed()
 	{
-		return TFA != null && Arrays.asList(BOSSES).contains(TFA);
+		return listed(TFA) != null;
+	}
+
+	/** The boss when the panel's list carries it (its tile, popup and count), else null. */
+	@Nullable
+	static HiscoreSkill listed(@Nullable HiscoreSkill boss)
+	{
+		return boss != null && Arrays.asList(BOSSES).contains(boss) ? boss : null;
 	}
 
 	/** The card a boss cell opens: its own, or for a raid's hard mode, the raid's. */
