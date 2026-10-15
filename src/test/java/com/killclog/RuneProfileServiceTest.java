@@ -453,6 +453,17 @@ public class RuneProfileServiceTest
 		service.lookup("a q p weed").get(5, TimeUnit.SECONDS);
 		assertNull("no spelling keeps the gone profile's clan", service.clan("A q p Weed"));
 		assertNull(service.getCachedAccountType("A q p Weed"));
+
+		// A new answer replaces what another spelling held, so the older one's clan and type never stand for it.
+		service = new RuneProfileService(cannedClient(200, "{\"accountType\":{\"id\":0,\"key\":\"normal\"},"
+			+ "\"clan\":{\"name\":\"New Clan\",\"rank\":40,\"icon\":24,\"title\":\"Recruit\"}}", requests), new Gson(), null);
+		summaryCache().put("a_q_p_weed", new RuneProfileService.RuneProfileSummary(AccountType.IRONMAN, null,
+			"Old Clan", new ClanTitle(24, "Recruit")));
+		longCache("summaryFetchTimes").put("a_q_p_weed", System.currentTimeMillis() - 66 * 60 * 1000);
+		service.lookup("a q p weed").get(5, TimeUnit.SECONDS);
+		assertEquals("New Clan", service.clan("a q p weed"));
+		assertEquals("New Clan", service.clan("A_q_p_Weed"));
+		assertEquals(AccountType.REGULAR, service.getCachedAccountType("a_q_p_weed"));
 	}
 
 	private static OkHttpClient cannedClient(int code, String body, AtomicInteger requests)

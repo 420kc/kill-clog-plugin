@@ -111,8 +111,8 @@ public class HiscoreJsonParsingTest
 	public void theFracturedArchiveRowIsKeptBeforeTheLayoutListsIt()
 	{
 		// Jagex adds the raid's row on launch day; a release whose layout doesn't list it yet keeps it under the
-		// raid's own name, by the guess or any spelling that names the archive, ranked or not.
-		for (String name : new String[]{PanelData.TFA_HISCORE, "Fractured Archive", "The Fractured Archive (completions)"})
+		// raid's own name, by the guess or the name without "The", ranked or not.
+		for (String name : new String[]{PanelData.TFA_HISCORE, "Fractured Archive", "the fractured archive"})
 		{
 			String body = "{\"skills\":[{\"id\":0,\"name\":\"Overall\",\"rank\":1,\"level\":2277,\"xp\":4600000000}],"
 				+ "\"activities\":[{\"id\":999,\"name\":\"" + name + "\",\"rank\":50,\"score\":12}]}";
@@ -122,6 +122,15 @@ public class HiscoreJsonParsingTest
 			+ "\"activities\":[{\"id\":999,\"name\":\"" + PanelData.TFA_HISCORE + "\",\"rank\":-1,\"score\":-1}]}";
 		assertTrue(service.parseHiscoreBody(unranked, AccountType.REGULAR).hasBossRow(PanelData.TFA_HISCORE));
 		assertFalse(service.parseHiscoreBody(fixture, AccountType.REGULAR).hasBossRow(PanelData.TFA_HISCORE));
+
+		// A mode or boss of its own that also names the archive never stands in for the raid's completions.
+		String modes = "{\"skills\":[{\"id\":0,\"name\":\"Overall\",\"rank\":1,\"level\":2277,\"xp\":4600000000}],"
+			+ "\"activities\":[{\"id\":999,\"name\":\"The Fractured Archive\",\"rank\":50,\"score\":50},"
+			+ "{\"id\":1000,\"name\":\"The Fractured Archive: Challenge Mode\",\"rank\":9,\"score\":3}]}";
+		assertEquals(50, service.parseHiscoreBody(modes, AccountType.REGULAR).getKc(PanelData.TFA_HISCORE));
+		String modeAlone = "{\"skills\":[{\"id\":0,\"name\":\"Overall\",\"rank\":1,\"level\":2277,\"xp\":4600000000}],"
+			+ "\"activities\":[{\"id\":1000,\"name\":\"The Fractured Archive: Challenge Mode\",\"rank\":9,\"score\":3}]}";
+		assertFalse(service.parseHiscoreBody(modeAlone, AccountType.REGULAR).hasBossRow(PanelData.TFA_HISCORE));
 	}
 
 	@Test

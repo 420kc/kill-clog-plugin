@@ -267,11 +267,11 @@ public class PvmSummaryTooltip extends TitleTooltip
 		return row < PanelData.RAID_HARD_MODES.length;
 	}
 
-	/** The raid a row opens, null for one the running client doesn't know yet. */
+	/** The raid a row opens, null for one the panel has no popup for yet. */
 	@Nullable
 	private static HiscoreSkill raid(int row)
 	{
-		return hasHardMode(row) ? PanelData.RAIDS[row] : PanelData.TFA;
+		return hasHardMode(row) ? PanelData.RAIDS[row] : PanelData.tfaListed() ? PanelData.TFA : null;
 	}
 
 	/**

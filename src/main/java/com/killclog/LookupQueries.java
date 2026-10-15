@@ -30,6 +30,13 @@ final class LookupQueries
 		return total;
 	}
 
+	/** The bosses a player's count is out of: the panel's list, and the raid while its row stands beside it. */
+	static int bossTotal(HiscoreResult result)
+	{
+		boolean beside = result != null && result.hasBossRow(PanelData.TFA_HISCORE) && !PanelData.tfaListed();
+		return PanelData.bossCount() + (beside ? 1 : 0);
+	}
+
 	static int countBossesWithKc(HiscoreResult result)
 	{
 		if (result == null) return 0;

@@ -194,9 +194,7 @@ public class RuneProfileService
 			if (resp.code == 404)
 			{
 				// No profile now: what it held goes, so no card shows a clan or account from one that's gone.
-				// Every spelling of the name goes, as held() matches them all (a_q_p_weed held, a q p weed asked).
-				String gone = Text.toJagexName(key);
-				summaries.values.keySet().removeIf(held -> Text.toJagexName(held).equals(gone));
+				forgetSpellings(key);
 				return summaries.missing(key);
 			}
 			RuneProfileSummary result = resp.code == 200 && resp.body != null ? parseAccountSummary(resp.body) : null;
@@ -205,8 +203,17 @@ public class RuneProfileService
 				return summaries.fail(key);
 			}
 			breaker.reset();
+			// The new answer is the only one held for the name, so no older spelling's answer can stand for it.
+			forgetSpellings(key);
 			return summaries.ok(key, result);
 		});
+	}
+
+	/** Drop every spelling of a name, as held() matches them all (a_q_p_weed held, a q p weed asked). */
+	private void forgetSpellings(String key)
+	{
+		String name = Text.toJagexName(key);
+		summaries.values.keySet().removeIf(held -> Text.toJagexName(held).equals(name));
 	}
 
 	/**

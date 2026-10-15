@@ -41,6 +41,7 @@ public class ClogServiceProvenanceTest
 		ClogResult again = freshService.lookup(player).join();
 		assertEquals(812.5, again.getTempleEhp(), 1e-9);
 		assertEquals(1204.0, again.getTempleEhc(), 1e-9);
+		assertEquals("and a rebuild without a lookup", 812.5, freshService.getCachedResult(player).getTempleEhp(), 1e-9);
 
 		ClogService ambiguousService = serviceWithWarmCatalog(cache);
 		longCache(ambiguousService, "templeFailures").put(player.toLowerCase(),
@@ -139,6 +140,10 @@ public class ClogServiceProvenanceTest
 		assertEquals("an ironman's own rates", 3417.4, first.getTempleEhc(), 1e-9);
 		ClogResult again = service.lookup(player).join();
 		assertEquals(3043.1, again.getTempleEhp(), 1e-9);
+		// A log rebuilt without a lookup (a local capture, the log opened) keeps them too.
+		ClogResult refreshed = service.getCachedResult(player);
+		assertEquals(3043.1, refreshed.getTempleEhp(), 1e-9);
+		assertEquals(3417.4, refreshed.getTempleEhc(), 1e-9);
 		assertEquals("one of each per limit", 1, clogRequests.get());
 		assertEquals(1, statsRequests.get());
 

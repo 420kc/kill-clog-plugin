@@ -298,8 +298,26 @@ public class PvmSummaryTooltipTest
 		assertEquals(3, TestViews.rowAt(out, "raidRows", firstRaidY(out) + 3 * NativeTooltip.LINE_HEIGHT));
 		List<HiscoreSkill> opened = new ArrayList<>();
 		out.setOnOpenRaid((press, raid) -> opened.add(raid));
-		assertEquals(PanelData.TFA != null,
+		// Its popup comes with the launch-day update's boss tile: before the panel lists the raid, even a client whose
+		// RuneLite knows it opens nothing, rather than a popup with no data asking a synced player to set up.
+		assertEquals(PanelData.tfaListed(),
 			press(out, 5, firstRaidY(out) + 3 * NativeTooltip.LINE_HEIGHT + 3, MouseEvent.BUTTON1).isConsumed());
+		assertFalse("this release's panel doesn't list the raid yet", PanelData.tfaListed());
+	}
+
+	@Test
+	public void theRaidCountsInTheBossTotalOnlyWhileItsRowStandsBesideTheList()
+	{
+		// Kills in every listed boss and the raid read 72/72, not 72/71.
+		Map<String, Integer> kills = new HashMap<>();
+		kills.put(PanelData.TFA_HISCORE, 4);
+		HiscoreResult withRaid = TestViews.hiscore(AccountType.REGULAR, kills, Collections.emptyMap(),
+			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1);
+		assertEquals(PanelData.bossCount() + 1, LookupQueries.bossTotal(withRaid));
+		HiscoreResult without = TestViews.hiscore(AccountType.REGULAR, Collections.emptyMap(), Collections.emptyMap(),
+			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1);
+		assertEquals(PanelData.bossCount(), LookupQueries.bossTotal(without));
+		assertEquals(PanelData.bossCount(), LookupQueries.bossTotal(null));
 	}
 
 	private static boolean rowDiffers(BufferedImage a, BufferedImage b, int top)

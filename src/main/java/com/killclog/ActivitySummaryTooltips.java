@@ -53,7 +53,7 @@ final class ActivitySummaryTooltips
 			hiscore != null ? hiscore.getCombatLevelExact() : 0,
 			LookupQueries.sumBossKills(hiscore),
 			LookupQueries.countBossesWithKc(hiscore),
-			PanelData.bossCount(),
+			LookupQueries.bossTotal(hiscore),
 			LookupQueries.getMostKilledBoss(hiscore),
 			LookupQueries.getMostKilledKc(hiscore)
 		);

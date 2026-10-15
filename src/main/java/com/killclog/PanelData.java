@@ -168,10 +168,23 @@ final class PanelData
 	@Nullable
 	static final HiscoreSkill TFA = skillNamed("THE_FRACTURED_ARCHIVE"); // LAUNCH DAY: RuneLite's enum name
 
-	/** Whether a hiscore row is The Fractured Archive's, by the guess or any spelling that names the archive. */
+	/**
+	 * Whether a hiscore row is The Fractured Archive's: the guess, or the name with or without "The". Nothing more,
+	 * so a mode or a boss of its own whose row also names the archive can never stand in for its completions.
+	 */
 	static boolean isTfaRow(String name)
 	{
-		return name.equalsIgnoreCase(TFA_HISCORE) || name.toLowerCase(Locale.ROOT).contains("fractured archive");
+		return name.equalsIgnoreCase(TFA_HISCORE)
+			|| name.trim().toLowerCase(Locale.ROOT).replaceFirst("^the ", "").equals("fractured archive");
+	}
+
+	/**
+	 * True once the panel's boss list carries the raid (its tile, popup and boss count), which the launch-day
+	 * update adds. Before that its row is the Combat Summary's alone: it opens nothing and counts beside the list.
+	 */
+	static boolean tfaListed()
+	{
+		return TFA != null && Arrays.asList(BOSSES).contains(TFA);
 	}
 
 	/** The card a boss cell opens: its own, or for a raid's hard mode, the raid's. */

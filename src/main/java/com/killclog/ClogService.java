@@ -134,13 +134,25 @@ public class ClogService
 		}
 		Map<Integer, String> names = cachedItemNames;
 		ClogResult result = localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>());
+		// Temple's EHP and EHC ride along as a lookup attaches them, under the same freshness, so a log rebuilt
+		// here (a local capture, the log opened) keeps the Experience & Efficiency card's figures.
+		String key = playerName.toLowerCase();
 		if (result != null && localClogCache.isActivePlayer(playerName))
 		{
 			result = result.withLocalSource(true);
-			Long successfulAt = templeOverlaySuccessTimes.get(playerName.toLowerCase());
+			Long successfulAt = templeOverlaySuccessTimes.get(key);
 			if (successfulAt != null && System.currentTimeMillis() - successfulAt < CLOG_TTL_MS)
 			{
 				result = markTempleSource(result);
+				setTempleFigures(result, ownTempleFigures.get(key));
+			}
+		}
+		else
+		{
+			Long lastFetch = clogFetchTimes.get(key);
+			if (lastFetch != null && System.currentTimeMillis() - lastFetch < CLOG_TTL_MS)
+			{
+				setTempleFigures(result, lookedUpTempleFigures.get(key));
 			}
 		}
 		return result;
