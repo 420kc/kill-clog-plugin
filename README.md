@@ -64,13 +64,17 @@ HiScores load for any valid RSN, including Collection Log totals and ranks when 
 
 Your clan comes from the game. Other players' clans come from their Kill Clog sync, or from RuneProfile when they have a profile there.
 
-![Player Summaries in six Resource Packs](screenshots/player-summary-showcase.png)
-
 Hover your Collection Log total to see your log, and click it to pin and browse every tab and page.
 
 ![From the Collection Log card to a tab to a page: Minigames to Castle Wars, and Other to Elder Chaos Druids](screenshots/collection-log-tab-and-page.png)
 
 ![Vorkath's card naming the item under the cursor: green when you have it, red when you don't](screenshots/item-name-hover.png)
+
+## Resource Pack Themes
+
+Kill Clog draws its cards with the game's own interface frames, so they wear whichever Resource Pack you use.
+
+![Six players' Player Summaries, each in a different Resource Pack under its Resource Packs hub picture: Kill Clog & Olives, Ferox Black, KuromiLite, Dark Cherry, Dank Mode Teal and DeadScape](screenshots/player-summary-showcase.png)
 
 ## Grid and List views
 
