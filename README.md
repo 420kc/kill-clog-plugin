@@ -74,7 +74,7 @@ Hover your Collection Log total to see your log, and click it to pin and browse 
 
 Kill Clog draws its cards with the game's own interface frames, so they wear whichever Resource Pack you use.
 
-![Six players' Player Summaries, each in a different Resource Pack under its Resource Packs hub picture: Kill Clog & Olives, Ferox Black, KuromiLite, Dark Cherry, Dank Mode Teal and DeadScape](screenshots/player-summary-showcase.png)
+![Six players' Player Summaries, each in a different Resource Pack under its Resource Packs hub picture: Kill Clog & Olives, 07 Zuvelox, KuromiLite, Dark Cherry, Dank Mode Teal and DeadScape](screenshots/player-summary-showcase.png)
 
 ## Grid and List views
 
