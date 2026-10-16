@@ -1,5 +1,6 @@
 package com.killclog;
 
+import java.util.Locale;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
 import net.runelite.client.util.Text;
@@ -19,7 +20,16 @@ final class RsnInputPolicy
 	/** One player whatever the spelling Jagex accepts: an underscore, hyphen or non-breaking space for a space. */
 	static boolean sameName(@Nullable String a, @Nullable String b)
 	{
-		return a != null && b != null && Text.toJagexName(a).equalsIgnoreCase(Text.toJagexName(b));
+		return a != null && b != null && key(a).equals(key(b));
+	}
+
+	/**
+	 * The one key for a player, by the same rule: every cache, index and file keyed by name uses it, so each spelling
+	 * Jagex accepts finds the same entry ("Foo_Bar" and "foo-bar" are "foo bar").
+	 */
+	static String key(String name)
+	{
+		return Text.toJagexName(name).toLowerCase(Locale.ROOT);
 	}
 
 	static boolean isValid(String raw)

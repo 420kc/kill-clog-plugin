@@ -88,7 +88,7 @@ public class ClogService
 	/** Whether TempleOSRS has answered with this player's log in the last day. */
 	boolean onTemple(@Nullable String playerName)
 	{
-		Long at = playerName != null ? templeHolds.get(playerName.toLowerCase()) : null;
+		Long at = playerName != null ? templeHolds.get(RsnInputPolicy.key(playerName)) : null;
 		return at != null && System.currentTimeMillis() - at < TEMPLE_HOLDS_TTL_MS;
 	}
 
@@ -137,7 +137,7 @@ public class ClogService
 		ClogResult result = localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>());
 		// Temple's EHP and EHC ride along as a lookup attaches them, under the same freshness, so a log rebuilt
 		// here (a local capture, the log opened) keeps the Experience & Efficiency card's figures.
-		String key = playerName.toLowerCase();
+		String key = RsnInputPolicy.key(playerName);
 		if (result != null && localClogCache.isActivePlayer(playerName))
 		{
 			result = result.withLocalSource(true);
@@ -205,7 +205,7 @@ public class ClogService
 						{
 							result = result.withLocalSource(true);
 						}
-						setTempleFigures(result, fromTemple ? ownTempleFigures.get(playerName.toLowerCase()) : null);
+						setTempleFigures(result, fromTemple ? ownTempleFigures.get(RsnInputPolicy.key(playerName)) : null);
 						return fromTemple ? markTempleSource(result) : result;
 					}));
 			}
@@ -214,7 +214,7 @@ public class ClogService
 		}
 
 		// Fresh data: skip the TempleOSRS lane if we fetched recently.
-		String normalizedName = playerName.toLowerCase();
+		String normalizedName = RsnInputPolicy.key(playerName);
 		Long lastFetch = clogFetchTimes.get(normalizedName);
 		if (lastFetch != null && System.currentTimeMillis() - lastFetch < CLOG_TTL_MS
 			&& localClogCache.hasDataFor(playerName))
@@ -363,7 +363,7 @@ public class ClogService
 	 */
 	private CompletableFuture<Boolean> overlayProviderDates(String playerName)
 	{
-		String normalizedName = playerName.toLowerCase();
+		String normalizedName = RsnInputPolicy.key(playerName);
 		String ttlKey = "dates:" + normalizedName;
 		long now = System.currentTimeMillis();
 		Long lastFetch = clogFetchTimes.get(ttlKey);

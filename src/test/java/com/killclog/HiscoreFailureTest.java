@@ -153,8 +153,8 @@ public class HiscoreFailureTest
 			return response(chain, 503, "");
 		});
 		assertDown(service.lookup("Test", null));
-		// Each of the four boards: its JSON and one retry.
-		assertEquals(8, calls.get());
+		// Each of the four boards: its JSON and at most one retry; the breaker can trip before the last retries start.
+		assertTrue("at most 8 requests, got " + calls.get(), calls.get() >= 5 && calls.get() <= 8);
 		assertNull(service.getCached("Test"));
 	}
 

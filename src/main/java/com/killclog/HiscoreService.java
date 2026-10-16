@@ -246,7 +246,7 @@ public class HiscoreService
 	 */
 	public HiscoreResult getCached(String playerName)
 	{
-		CachedResult cached = cache.get(playerName.toLowerCase(Locale.ROOT));
+		CachedResult cached = cache.get(RsnInputPolicy.key(playerName));
 		return cached != null ? cached.result : null;
 	}
 
@@ -255,7 +255,7 @@ public class HiscoreService
 	 */
 	public boolean isStale(String playerName)
 	{
-		String key = playerName.toLowerCase(Locale.ROOT);
+		String key = RsnInputPolicy.key(playerName);
 		CachedResult cached = cache.get(key);
 		return cached == null || cached.isStale() || dirtySince.containsKey(key);
 	}
@@ -271,7 +271,7 @@ public class HiscoreService
 
 	/* package */ void markDirty(String playerName, long now)
 	{
-		dirtySince.put(playerName.toLowerCase(Locale.ROOT), now);
+		dirtySince.put(RsnInputPolicy.key(playerName), now);
 	}
 
 	/**
@@ -294,7 +294,7 @@ public class HiscoreService
 
 	/* package */ synchronized void cacheResult(String playerName, HiscoreResult result, long now)
 	{
-		String key = playerName.toLowerCase(Locale.ROOT);
+		String key = RsnInputPolicy.key(playerName);
 		cache.put(key, new CachedResult(result, now));
 		if (cache.size() > HttpUtil.CACHE_CAP)
 		{

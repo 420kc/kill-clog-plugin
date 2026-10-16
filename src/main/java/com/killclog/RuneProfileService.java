@@ -82,7 +82,7 @@ public class RuneProfileService
 		{
 			return null;
 		}
-		RuneProfileSummary cached = summaries.values.get(playerName.toLowerCase());
+		RuneProfileSummary cached = summaries.values.get(RsnInputPolicy.key(playerName));
 		return cached != null ? rebased(cached.combatAchievements) : null;
 	}
 
@@ -147,7 +147,7 @@ public class RuneProfileService
 	@Nullable
 	private RuneProfileSummary held(String playerName)
 	{
-		String wanted = Text.toJagexName(playerName.toLowerCase());
+		String wanted = RsnInputPolicy.key(playerName);
 		for (Map.Entry<String, RuneProfileSummary> entry : summaries.values.entrySet())
 		{
 			if (Text.toJagexName(entry.getKey()).equals(wanted))
@@ -183,7 +183,7 @@ public class RuneProfileService
 
 	private CompletableFuture<RuneProfileSummary> lookupSummary(String playerName)
 	{
-		String key = playerName.toLowerCase();
+		String key = RsnInputPolicy.key(playerName);
 		return summaries.lookup(key, () -> startSummaryLookup(playerName, key));
 	}
 
@@ -339,7 +339,7 @@ public class RuneProfileService
 	 */
 	public CompletableFuture<ClogResult> lookupClog(String playerName)
 	{
-		String key = playerName.toLowerCase();
+		String key = RsnInputPolicy.key(playerName);
 		return clogs.lookup(key, () -> startClogLookup(playerName, key));
 	}
 

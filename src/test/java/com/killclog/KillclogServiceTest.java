@@ -44,6 +44,11 @@ public class KillclogServiceTest
 		index.setAccessible(true);
 		index.set(service, service.parseSyncIndex("{\"names\":[\"420 kc\"]}"));
 		assertTrue("as the Kill Clog lookup keys it, whatever capitals", service.isSynced("420 KC"));
+		// Whatever spelling Jagex accepts, on either side: the list's "am_trick" is the lookup's "am trick".
+		assertTrue(service.isSynced("420_kc"));
+		assertTrue(service.isSynced("420-KC"));
+		index.set(service, service.parseSyncIndex("{\"names\":[\"am_trick\"]}"));
+		assertTrue(service.isSynced("Am Trick"));
 		assertFalse(service.isSynced("Marni"));
 		assertFalse(service.isSynced(null));
 	}

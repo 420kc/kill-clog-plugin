@@ -108,14 +108,10 @@ public class KillclogService
 	// keys by HiscoreSkill name), so lookups need no key translation.
 	private final Map<String, Map<String, Double>> pbCache = new ConcurrentHashMap<>();
 
-	/**
-	 * The one pb-cache key normalization. Both sides previously used the
-	 * default locale - consistent with each other, but wrong for locales
-	 * that fold I/i differently (tr/az). Locale.ROOT keys everywhere now.
-	 */
+	/** A player's PB-cache and sync-index key: the shared name key (RsnInputPolicy.key), every spelling Jagex accepts. */
 	private static String pbKey(String playerName)
 	{
-		return playerName.toLowerCase(java.util.Locale.ROOT);
+		return RsnInputPolicy.key(playerName);
 	}
 
 	/** Cache key for one player in one mode, also accepted by {@link #pbText}; main keeps the plain name. */
@@ -197,7 +193,10 @@ public class KillclogService
 		{
 			return null;
 		}
-		Map<String, Double> pbs = pbCache.get(pbKey(playerName));
+		// A League's key (modeKey) is its id, then a slash, then the name; only the name is a player's to fold.
+		int slash = playerName.indexOf('/');
+		Map<String, Double> pbs = pbCache.get(slash < 0 ? pbKey(playerName)
+			: playerName.substring(0, slash + 1) + pbKey(playerName.substring(slash + 1)));
 		if (pbs == null)
 		{
 			return null;
@@ -290,7 +289,7 @@ public class KillclogService
 			{
 				if (el.isJsonPrimitive() && el.getAsJsonPrimitive().isString())
 				{
-					names.add(el.getAsString().toLowerCase(java.util.Locale.ROOT));
+					names.add(RsnInputPolicy.key(el.getAsString()));
 				}
 			}
 			JsonElement league = root.get("active_league");

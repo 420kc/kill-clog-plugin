@@ -16,7 +16,6 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.Callable;
@@ -124,7 +123,7 @@ public class LocalClogCache
 
 	private static String cacheKey(String playerName)
 	{
-		return playerName.toLowerCase(Locale.ROOT);
+		return RsnInputPolicy.key(playerName);
 	}
 
 	/**

@@ -32,4 +32,12 @@ public class RsnInputPolicyTest
 		org.junit.Assert.assertFalse(RsnInputPolicy.sameName("My Name", "My Names"));
 		org.junit.Assert.assertFalse(RsnInputPolicy.sameName(null, "My Name"));
 	}
+
+	@Test
+	public void everySpellingKeysTheSameEntry()
+	{
+		org.junit.Assert.assertEquals("foo bar", RsnInputPolicy.key("Foo_Bar"));
+		org.junit.Assert.assertEquals("foo bar", RsnInputPolicy.key("foo-bar"));
+		org.junit.Assert.assertEquals(LocalClogCache.fileName("Foo Bar"), LocalClogCache.fileName("foo-bar"));
+	}
 }
