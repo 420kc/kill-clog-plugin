@@ -79,6 +79,17 @@ public class ComparisonSnapshotTest
 	}
 
 	@Test
+	public void aMirrorsLineOutlastsTheComparisonOpening() throws Exception
+	{
+		// Entering a comparison clears the status line; the mirror's line comes after it, so it stays on screen.
+		LookupTestFixture fixture = new LookupTestFixture();
+		edt(() -> fixture.comparison.doCompareLookup("Blue", "Blue", null));
+		int entered = fixture.order.lastIndexOf("onComparisonEnter");
+		assertTrue(entered >= 0);
+		assertTrue(fixture.order.lastIndexOf("onCompareStatus") > entered);
+	}
+
+	@Test
 	public void aLateCaKeepsTheLocalPlayersOwnAccountType() throws Exception
 	{
 		LookupTestFixture fixture = new LookupTestFixture();

@@ -323,6 +323,9 @@ public class ComparisonController
 
 		if (samePlayer)
 		{
+			// Entering the comparison clears the status line, so the mirror's line is set after it, or it never shows.
+			publish(new ComparedPlayer(thisLookup, lookupSession.getNativeHiscoreResult(),
+				lookupSession.getNativeClogResult(), lookupSession.getCaResult(), blueName, redSelfType));
 			if (blueIsSelf)
 			{
 				setCompareStatus(SearchMessages.COMPARE_SELF_MIRROR, SearchMessages.SELF_COLOR, blueName, redPlayer);
@@ -331,8 +334,6 @@ public class ComparisonController
 			{
 				setCompareStatus(SearchMessages.COMPARE_MIRROR, COMPARE_DIM, blueName, redPlayer);
 			}
-			publish(new ComparedPlayer(thisLookup, lookupSession.getNativeHiscoreResult(),
-				lookupSession.getNativeClogResult(), lookupSession.getCaResult(), blueName, redSelfType));
 			return;
 		}
 
