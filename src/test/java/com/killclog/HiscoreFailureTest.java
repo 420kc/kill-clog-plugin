@@ -70,27 +70,61 @@ public class HiscoreFailureTest
 	}
 
 	@Test
-	public void malformedJsonAndSchemaUseCsvAndRetainShiftWarning() throws Exception
+	public void aMalformedAnswerIsUnavailableAfterOneRetryNeverMissing() throws Exception
 	{
-		for (String broken : new String[]{"{broken", "{}", "{\"skills\":[],\"activities\":[]}"})
+		for (String broken : new String[]{"{broken", "{}", "{\"skills\":[],\"activities\":[]}", "-1,100,12345\n-1,1,0"})
 		{
 			AtomicInteger calls = new AtomicInteger();
 			HiscoreService service = service(chain ->
 			{
 				calls.incrementAndGet();
 				String path = chain.request().url().encodedPath();
-				if (!path.startsWith(REGULAR)) return response(chain, 404, "");
-				return response(chain, 200, path.endsWith(".json") ? broken : "-1,100,12345\n-1,1,0");
+				assertTrue(path.endsWith("/index_lite.json"));
+				return path.startsWith(REGULAR) ? response(chain, 200, broken) : response(chain, 404, "");
 			});
-			HiscoreResult result = service.lookup("Test", null).get(3, TimeUnit.SECONDS);
-			assertEquals(12345, result.getTotalXp());
-			assertTrue(result.isBossSectionShifted());
+			// The main board's bad body is retried once, then the board is unavailable: down, never "no such player".
+			assertDown(service.lookup("Test", null));
 			assertEquals(5, calls.get());
+			assertFalse(service.notOnBoard("Test", RankLeaderboard.NORMAL));
 		}
 	}
 
 	@Test
-	public void retryOnlyFailedTableAndNeverTreatFallback404AsAbsence() throws Exception
+	public void malformedAnswersCountAgainstJagexLikeAnOutage() throws Exception
+	{
+		AtomicInteger calls = new AtomicInteger();
+		HiscoreService service = service(chain ->
+		{
+			calls.incrementAndGet();
+			return response(chain, 200, "{broken");
+		});
+		assertDown(service.lookup("Test", null));
+		int first = calls.get();
+		assertDown(service.lookup("Other", null));
+		assertEquals("Jagex is left alone while it answers nonsense", first, calls.get());
+	}
+
+	@Test
+	public void anUnknownOrPartialRowNeverCostsTheBoard() throws Exception
+	{
+		String partial = body(5000).replace("\"activities\":[]", "\"activities\":[{\"name\":\"A Boss Added Today\"},"
+			+ "{\"name\":\"Zulrah\",\"score\":12},{\"name\":\"Vorkath\",\"rank\":3,\"score\":40}]");
+		AtomicInteger calls = new AtomicInteger();
+		HiscoreService service = service(chain ->
+		{
+			calls.incrementAndGet();
+			return chain.request().url().encodedPath().startsWith(REGULAR) ? response(chain, 200, partial)
+				: response(chain, 404, "");
+		});
+		HiscoreResult result = service.lookup("Test", null).get(3, TimeUnit.SECONDS);
+		assertEquals(5000, result.getTotalXp());
+		assertEquals(40, result.getKc("Vorkath"));
+		assertFalse(result.hasBossRow("Zulrah"));
+		assertEquals("accepted first time, nothing retried", 4, calls.get());
+	}
+
+	@Test
+	public void retryOnlyFailedTableAndNeverTreatAFailureAsAbsence() throws Exception
 	{
 		for (int failure : new int[]{429, 502, 503, 200})
 		{
@@ -100,12 +134,11 @@ public class HiscoreFailureTest
 				String path = chain.request().url().encodedPath();
 				int count = calls.computeIfAbsent(path, ignored -> new AtomicInteger()).incrementAndGet();
 				if (!path.startsWith(REGULAR)) return response(chain, 404, "");
-				if (path.endsWith(".ws")) return response(chain, 404, "");
 				return response(chain, count == 1 ? failure : 200, count == 1 ? "{bad" : body(5000));
 			});
 			assertEquals(5000, service.lookup("Test", null).get(3, TimeUnit.SECONDS).getTotalXp());
-			// An outage or a 429 retries the JSON once; only a bad body also tries the CSV.
-			assertEquals(failure == 200 ? 6 : 5, calls.values().stream().mapToInt(AtomicInteger::get).sum());
+			// An outage, a 429 or a bad body retries the JSON once.
+			assertEquals(5, calls.values().stream().mapToInt(AtomicInteger::get).sum());
 			assertEquals(2, calls.get(REGULAR + "index_lite.json").get());
 		}
 	}
@@ -120,7 +153,7 @@ public class HiscoreFailureTest
 			return response(chain, 503, "");
 		});
 		assertDown(service.lookup("Test", null));
-		// Each of the four boards: its JSON and one retry, never the CSV behind an outage.
+		// Each of the four boards: its JSON and one retry.
 		assertEquals(8, calls.get());
 		assertNull(service.getCached("Test"));
 	}

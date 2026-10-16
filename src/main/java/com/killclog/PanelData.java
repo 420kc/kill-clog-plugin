@@ -33,7 +33,7 @@ final class PanelData
 		return BOSSES.length;
 	}
 
-	// HiscoreSkill.getName() -> boss name used in hiscore CSV data.
+	// HiscoreSkill.getName() -> boss name the hiscores use.
 	// Only entries where the two differ are needed.
 	static final Map<String, String> NAME_OVERRIDES = new LinkedHashMap<>();
 	static

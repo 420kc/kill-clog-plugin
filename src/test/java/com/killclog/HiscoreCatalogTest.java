@@ -1,22 +1,28 @@
 package com.killclog;
 
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 import org.junit.Test;
-import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 /**
- * Pins the bundled hiscore CSV layout to the exact arrays the plugin shipped
- * with in 2.3.0, when they lived in HiscoreService itself. Order is part of
- * the contract: rows are positional against the Jagex feed.
+ * Pins the bundled hiscore catalog: the names Kill Clog reads, each listed
+ * once. Rows are matched by name, so only membership is checked, never order.
  *
  * These goldens are drift alarms, not invariants: a deliberate catalog edit
  * updates the golden alongside it in the same commit.
  */
-public class HiscoreLayoutCatalogTest
+public class HiscoreCatalogTest
 {
+	private static final String[] ACTIVITIES = TestViews.field(HiscoreService.class, "ACTIVITY_NAMES");
+
 	@Test
-	public void skillsMatchGoldenLayout()
+	public void skillsMatchGoldenCatalog()
 	{
-		assertArrayEquals(new String[]{
+		assertCatalog(new String[]{
 			"attack", "defence", "strength", "hitpoints", "ranged", "prayer", "magic",
 			"cooking", "woodcutting", "fletching", "fishing", "firemaking", "crafting",
 			"smithing", "mining", "herblore", "agility", "thieving", "slayer", "farming",
@@ -25,22 +31,22 @@ public class HiscoreLayoutCatalogTest
 	}
 
 	@Test
-	public void activitiesMatchGoldenLayout()
+	public void activitiesMatchGoldenCatalog()
 	{
-		assertArrayEquals(new String[]{
+		assertCatalog(new String[]{
 			"Grid Points", "League Points", "Deadman Points", "Bounty Hunter - Hunter",
 			"Bounty Hunter - Rogue", "Bounty Hunter (Legacy) - Hunter",
 			"Bounty Hunter (Legacy) - Rogue", "Clue Scrolls (all)", "Clue Scrolls (beginner)",
 			"Clue Scrolls (easy)", "Clue Scrolls (medium)", "Clue Scrolls (hard)",
 			"Clue Scrolls (elite)", "Clue Scrolls (master)", "LMS - Rank", "PvP Arena - Rank",
 			"Soul Wars Zeal", "Rifts closed", "Colosseum Glory", "Collections Logged"
-		}, TestViews.<String[]>field(HiscoreService.class, "ACTIVITY_NAMES"));
+		}, ACTIVITIES);
 	}
 
 	@Test
-	public void bossesMatchGoldenLayout()
+	public void bossesMatchGoldenCatalog()
 	{
-		assertArrayEquals(new String[]{
+		assertCatalog(new String[]{
 			"Abyssal Sire", "Alchemical Hydra", "Amoxliatl", "Araxxor", "Artio",
 			"Barrows Chests", "Brutus", "Bryophyta", "Callisto", "Cal'varion", "Cerberus",
 			"Chambers of Xeric", "Chambers of Xeric: Challenge Mode", "Chaos Elemental",
@@ -57,5 +63,20 @@ public class HiscoreLayoutCatalogTest
 			"Tombs of Amascut: Expert Mode", "TzKal-Zuk", "TzTok-Jad", "Vardorvis",
 			"Venenatis", "Vet'ion", "Vorkath", "Wintertodt", "Yama", "Zalcano", "Zulrah"
 		}, HiscoreService.bossNames());
+	}
+
+	@Test
+	public void noBossSharesAnActivitysName()
+	{
+		// An activity row is read as an activity first, so a boss under the same name would never get its KC.
+		Set<String> bosses = new HashSet<>(Arrays.asList(HiscoreService.bossNames()));
+		assertTrue(Collections.disjoint(bosses, Arrays.asList(ACTIVITIES)));
+	}
+
+	private static void assertCatalog(String[] golden, String[] catalog)
+	{
+		Set<String> names = new HashSet<>(Arrays.asList(catalog));
+		assertEquals("a name is listed twice", catalog.length, names.size());
+		assertEquals(new HashSet<>(Arrays.asList(golden)), names);
 	}
 }

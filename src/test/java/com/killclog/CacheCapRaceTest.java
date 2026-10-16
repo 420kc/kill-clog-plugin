@@ -28,7 +28,7 @@ public class CacheCapRaceTest
 	public void hiscoresStayAtTheCapUnderConcurrentResults() throws Exception
 	{
 		HiscoreService service = new HiscoreService(null, new Gson());
-		HiscoreResult result = service.parseHiscoreBody("1,2277,200000000", AccountType.REGULAR);
+		HiscoreResult result = service.parseHiscoreBody(HiscoreParsingTest.OVERALL_ONLY, AccountType.REGULAR);
 		long now = System.currentTimeMillis();
 		race(i -> service.cacheResult("name" + i, result, now + i % 7));
 		int cached = 0;

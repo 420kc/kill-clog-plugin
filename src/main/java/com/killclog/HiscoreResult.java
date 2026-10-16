@@ -35,13 +35,6 @@ public class HiscoreResult
 	@Getter(AccessLevel.PACKAGE)
 	private boolean rankDataAvailable = true;
 
-	// Set when the hiscore CSV line count no longer matches the known format:
-	// the boss maps were left empty on purpose (positions cannot be trusted).
-	// Surfaces render their normal quiet absent state; no banner, by design.
-	@Getter
-	@Setter(AccessLevel.PACKAGE)
-	private boolean bossSectionShifted;
-
 	/** Another leaderboard's row that trails this player's stats, like a Hardcore's after the death. */
 	@Getter(AccessLevel.PACKAGE)
 	private boolean frozen;
@@ -107,7 +100,6 @@ public class HiscoreResult
 		HiscoreResult view = new HiscoreResult(accountType, hiscoreTable, row.bossKills, row.bossRanks,
 			row.activityScores, row.activityRanks, row.skillLevels, row.skillRanks, row.skillXps,
 			row.totalLevel, row.totalXp, row.combatLevelExact, row.overallRank);
-		view.bossSectionShifted = row.bossSectionShifted;
 		view.rankDataAvailable = row.rankDataAvailable;
 		view.frozen = row.totalXp < totalXp;
 		view.ironmanNow = ironmanNow;
@@ -123,7 +115,6 @@ public class HiscoreResult
 			ranks != null ? ranks.activityRanks : Collections.emptyMap(), skillLevels,
 			ranks != null ? ranks.skillRanks : Collections.emptyMap(), skillXps,
 			totalLevel, totalXp, combatLevelExact, ranks != null ? ranks.overallRank : -1);
-		view.bossSectionShifted = bossSectionShifted;
 		view.rankDataAvailable = ranks != null && ranks.rankDataAvailable;
 		view.ironmanNow = ironmanNow;
 		view.diedAsHardcore = diedAsHardcore;

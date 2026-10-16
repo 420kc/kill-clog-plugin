@@ -35,85 +35,66 @@ import okhttp3.OkHttpClient;
 public class HiscoreService
 {
 	private static final String BASE_URL = "https://secure.runescape.com/m=";
-	// JSON first: every row carries its name, so Jagex inserting, reordering,
-	// or renaming hiscore rows cannot misalign the parse. The 2026-07-29
-	// update blanked boss KCs for a full release cycle under positional
-	// parsing; the CSV is the fallback transport only now.
+	// Every JSON row carries its name, so Jagex inserting, reordering, or
+	// renaming hiscore rows cannot misalign the parse.
 	private static final String JSON_SUFFIX = "/index_lite.json?player=";
-	private static final String CSV_SUFFIX = "/index_lite.ws?player=";
 
 	// Jagex JSON spelling -> internal key, where the internal key predates the feed spelling.
 	private static final Map<String, String> JSON_BOSS_NAME_OVERRIDES =
 		Map.of("Calvar'ion", "Cal'varion");
 
-	// Skill names in hiscore CSV order (lines 1-24).
-	private static final String[] SKILL_NAMES = layoutNames("skill");
+	// The names Kill Clog reads from the hiscores, from hiscore-layout.tsv.
+	// Rows are matched by name; the file's order is for reading only.
+	private static final String[] SKILL_NAMES = catalogNames("skill");
 
-	// Activity names in hiscore CSV order.
-	// Includes deprecated entries (Grid Points, Deadman Points, BH Legacy).
-	// Retired activity rows still occupy CSV lines, so indices must stay aligned.
-	private static final String[] ACTIVITY_NAMES = layoutNames("activity");
+	// Includes retired entries (Grid Points, Deadman Points, BH Legacy).
+	private static final String[] ACTIVITY_NAMES = catalogNames("activity");
 
-	// Hiscore CSV layout: line 0 = Overall, then skills, then activities, then bosses.
-	// Derived from array lengths so they can never go out of sync.
-	private static final int ACTIVITY_START_INDEX = 1 + SKILL_NAMES.length;
-	private static final int BOSS_START_INDEX = ACTIVITY_START_INDEX + ACTIVITY_NAMES.length;
-
-	// Boss names in Jagex hiscore CSV row order. This can diverge from the
-	// panel's vanilla display order - name-keyed lookups bridge the two lists.
-	// The Wyrmscraig update (2026-07-29) re-alphabetized Mimic/Maggot King when
-	// inserting Mad Angel, so CSV growth can REORDER neighbors, not just shift
-	// the tail: promote the whole list from a live response, never a guessed
-	// single insert.
+	// Boss names as the hiscores spell them. These can diverge from the
+	// panel's vanilla display order and names - name-keyed lookups bridge the
+	// two lists. A row whose name is not listed is held until a release lists it.
 	// Boss update playbook:
-	//   1. Add the CSV name here in Jagex hiscore order
-	//   2. Add a temporary bossNamesForLineCount guard if Jagex ships the row
-	//      before RuneLite ships the enum
-	//   3. Add an optional enum bridge in PanelData if the official enum can
+	//   1. Add the boss's hiscore name to hiscore-layout.tsv
+	//   2. Add an optional enum bridge in PanelData if the official enum can
 	//      appear before Kill Clog's next release
-	//   4. Once RuneLite exposes the enum, promote it from optional to the base
-	//      BOSSES list in PanelData and move the CSV name into BOSS_NAMES
-	//   5. If HiscoreSkill.getName() != CSV name, add to NAME_OVERRIDES
-	//   6. If collection-log provider category keys differ, add to BOSS_CATEGORY_OVERRIDES in ClogService
-	private static final String[] BOSS_NAMES = layoutNames("boss");
+	//   3. Once RuneLite exposes the enum, promote it from optional to the base
+	//      BOSSES list in PanelData
+	//   4. If HiscoreSkill.getName() != hiscore name, add to NAME_OVERRIDES
+	//   5. If collection-log provider category keys differ, add to BOSS_CATEGORY_OVERRIDES in ClogService
+	private static final String[] BOSS_NAMES = catalogNames("boss");
 
-	/**
-	 * Rows of the bundled hiscore-layout.tsv with this kind, in feed order.
-	 * The layout catalog is positional against the Jagex CSV; the parity test
-	 * pins its exact contents.
-	 */
-	private static String[] layoutNames(String kind)
+	/** Rows of the bundled hiscore-layout.tsv with this kind. */
+	private static String[] catalogNames(String kind)
 	{
 		return CatalogTsv.values(HiscoreService.class, "hiscore-layout.tsv", kind)
 			.toArray(new String[0]);
 	}
 
-	// The layout is positional against the Jagex CSV: a silently short list
-	// would attribute every following row to the wrong name. Counts only ever
-	// grow, so anything below the shipped floor means the catalog did not load
-	// intact and lookups cannot be trusted.
+	// A short catalog silently drops every row it no longer names. Counts only
+	// ever grow, so anything below the shipped floor means the catalog did not
+	// load intact and lookups cannot be trusted.
 	static
 	{
 		if (SKILL_NAMES.length < 24 || ACTIVITY_NAMES.length < 20 || BOSS_NAMES.length < 71)
 		{
-			log.error("hiscore layout catalog incomplete: {} skills, {} activities, {} bosses",
+			log.error("hiscore catalog incomplete: {} skills, {} activities, {} bosses",
 				SKILL_NAMES.length, ACTIVITY_NAMES.length, BOSS_NAMES.length);
 		}
 	}
 
-	/** Skill names in CSV order. Used by the layout-parity test. */
+	/** Every skill on the hiscores; the skills tooltip's "To max" counts them. */
 	static String[] skillNames()
 	{
 		return SKILL_NAMES;
 	}
 
-	/** Number of boss entries in the hiscore CSV. Used by tests to detect drift. */
+	/** Number of bosses the hiscores carry. Used by tests to detect drift. */
 	static int bossCount()
 	{
 		return bossNames().length;
 	}
 
-	/** Boss names in CSV order. Used by tests to validate PanelData consistency. */
+	/** Boss names as the hiscores spell them. */
 	static String[] bossNames()
 	{
 		return BOSS_NAMES;
@@ -232,7 +213,7 @@ public class HiscoreService
 			try
 			{
 				HiscoreResult result = parseHiscoreBody(body, AccountType.REGULAR);
-				if (result != null && result.getTotalLevel() > 0 && !result.isBossSectionShifted())
+				if (result != null && result.getTotalLevel() > 0)
 				{
 					rankTables.put(rankKey(endpoint, encodedPlayer), result);
 				}
@@ -498,24 +479,17 @@ public class HiscoreService
 		try
 		{
 			// Account-type detection compares this value across the four
-			// endpoint variants, and the transport is JSON-first now: read
-			// Overall xp from whichever shape arrived.
-			if (body.trim().startsWith("{"))
+			// endpoint variants.
+			JsonObject root = gson.fromJson(body, JsonObject.class);
+			for (JsonElement e : root.getAsJsonArray("skills"))
 			{
-				JsonObject root = gson.fromJson(body, JsonObject.class);
-				for (JsonElement e : root.getAsJsonArray("skills"))
+				JsonObject s = e.getAsJsonObject();
+				if ("Overall".equals(s.get("name").getAsString()))
 				{
-					JsonObject s = e.getAsJsonObject();
-					if ("Overall".equals(s.get("name").getAsString()))
-					{
-						return s.get("xp").getAsLong();
-					}
+					return s.get("xp").getAsLong();
 				}
-				return -1;
 			}
-			String firstLine = body.trim().split("\\r?\\n")[0];
-			String[] parts = firstLine.split(",");
-			return parts.length >= 3 ? Long.parseLong(parts[2]) : -1;
+			return -1;
 		}
 		catch (Exception e)
 		{
@@ -570,104 +544,18 @@ public class HiscoreService
 			&& Arrays.stream(NON_DEFENCE_COMBAT).anyMatch(skill -> result.getSkillLevel(skill) > 1);
 	}
 
-	/** One CSV row per name: rank then score; an unreadable row reads -1 for both. */
-	private static void readRows(String[] lines, int start, String[] names,
-		Map<String, Integer> scores, Map<String, Integer> ranks)
-	{
-		for (int i = 0; i < names.length && start + i < lines.length; i++)
-		{
-			try
-			{
-				String[] parts = lines[start + i].split(",");
-				int rank = Integer.parseInt(parts[0]);
-				scores.put(names[i], Integer.parseInt(parts[1]));
-				ranks.put(names[i], rank);
-			}
-			catch (Exception e)
-			{
-				scores.put(names[i], -1);
-				ranks.put(names[i], -1);
-			}
-		}
-	}
-
 	/* package */ HiscoreResult parseHiscoreBody(String body, AccountType type)
 	{
 		return parseHiscoreBody(body, type, HiscoreTable.STANDARD);
 	}
 
+	/**
+	 * Name-keyed parse of Jagex's JSON hiscores. Every row carries its name, so
+	 * row insertions, reorders (the 2026-07-29 Mimic/Maggot King swap), and
+	 * renames cannot misalign anything. A row this release doesn't name (a boss
+	 * added since) or can't read is skipped; the rest of the answer stands.
+	 */
 	/* package */ HiscoreResult parseHiscoreBody(String body, AccountType type,
-		HiscoreTable hiscoreTable)
-	{
-		if (body != null && body.trim().startsWith("{"))
-		{
-			return parseHiscoreJson(body, type, hiscoreTable);
-		}
-		String[] lines = body.trim().split("\\r?\\n");
-		String[] bossNames = bossNames();
-		int expected = 1 + SKILL_NAMES.length + ACTIVITY_NAMES.length + bossNames.length;
-		boolean bossSectionShifted = lines.length != expected;
-		if (bossSectionShifted)
-		{
-			log.warn("Hiscore CSV line count changed: expected {} but got {} - boss rows parse "
-				+ "best-effort and every boss surface carries the misalignment notice",
-				expected, lines.length);
-		}
-		Board board = new Board();
-		board.totalLevel = 0;
-		board.totalXp = 0;
-		try
-		{
-			String[] overall = lines[0].split(",");
-			board.overallRank = Integer.parseInt(overall[0]);
-			board.totalLevel = Integer.parseInt(overall[1]);
-			board.totalXp = Long.parseLong(overall[2]);
-		}
-		catch (Exception ignored)
-		{
-		}
-
-		for (int i = 0; i < SKILL_NAMES.length; i++)
-		{
-			int lineIdx = 1 + i;
-			if (lineIdx >= lines.length)
-			{
-				break;
-			}
-			try
-			{
-				String[] parts = lines[lineIdx].split(",");
-				board.skill(SKILL_NAMES[i], Integer.parseInt(parts[0]), Integer.parseInt(parts[1]), Long.parseLong(parts[2]));
-			}
-			catch (Exception e)
-			{
-				board.skill(SKILL_NAMES[i], -1, -1, -1L);
-			}
-		}
-
-		readRows(lines, ACTIVITY_START_INDEX, ACTIVITY_NAMES, board.activityScores, board.activityRanks);
-
-		// This CSV path only runs when the JSON endpoint is down, and a count
-		// mismatch means rows at and below the change wear their neighbors'
-		// numbers. The 2026-07-29 outage set the rule - visibly imperfect beats blank:
-		// parse best-effort and keep the shifted flag set so every boss surface
-		// shows the misalignment notice. Never silently wrong.
-		readRows(lines, BOSS_START_INDEX, bossNames, board.bossKills, board.bossRanks);
-		return board.result(type, hiscoreTable, calcCmbLvlExact(combatLevels(lines)), bossSectionShifted);
-	}
-
-	/**
-	 * Calculate combat level from hiscore CSV skill lines.
-	 * Skills: 1=Attack, 2=Defence, 3=Strength, 4=Hitpoints, 5=Ranged, 6=Prayer, 7=Magic
-	 */
-	/**
-	 * Name-keyed parse of Jagex's JSON hiscores. Every row carries its name,
-	 * so this path is structurally immune to the CSV failure class: row
-	 * insertions, reorders (the 2026-07-29 Mimic/Maggot King swap), and
-	 * renames cannot misalign anything. Unknown names are future bosses and
-	 * simply wait for their display cell; the shifted flag is never set here.
-	 */
-	/* package */ HiscoreResult parseHiscoreJson(String body, AccountType type,
 		HiscoreTable hiscoreTable)
 	{
 		Board board = new Board();
@@ -683,7 +571,7 @@ public class HiscoreService
 				board.totalXp = s.get("xp").getAsLong();
 				continue;
 			}
-			// Internal skill keys are the CSV-era lowercase names.
+			// Internal skill keys are the lowercase names.
 			board.skill(name.toLowerCase(Locale.ROOT), s.get("rank").getAsInt(), s.get("level").getAsInt(),
 				s.get("xp").getAsLong());
 		}
@@ -692,41 +580,40 @@ public class HiscoreService
 		Set<String> knownBosses = new HashSet<>(Arrays.asList(BOSS_NAMES));
 		for (JsonElement e : root.getAsJsonArray("activities"))
 		{
-			JsonObject a = e.getAsJsonObject();
-			String name = a.get("name").getAsString();
-			int rank = a.get("rank").getAsInt();
-			int score = a.get("score").getAsInt();
-			if (activityNames.contains(name))
+			try
 			{
-				board.activityScores.put(name, score);
-				board.activityRanks.put(name, rank);
-				continue;
+				JsonObject a = e.getAsJsonObject();
+				String name = a.get("name").getAsString();
+				boolean activity = activityNames.contains(name);
+				String key = activity ? name : JSON_BOSS_NAME_OVERRIDES.getOrDefault(name, name);
+				if (!activity && !knownBosses.contains(key))
+				{
+					if (!PanelData.isTfaRow(name))
+					{
+						// A boss added after this release. Its KC waits for the update
+						// that gives it a cell; nothing else in the parse is disturbed.
+						log.debug("Unknown hiscore row '{}' - future boss, holding", name);
+						continue;
+					}
+					// The Fractured Archive before this release's catalog lists it: kept under the raid's own name,
+					// so its Combat Summary row shows the day Jagex adds it, whatever Jagex spells it.
+					key = PanelData.TFA_HISCORE;
+				}
+				int rank = a.get("rank").getAsInt();
+				int score = a.get("score").getAsInt();
+				(activity ? board.activityScores : board.bossKills).put(key, score);
+				(activity ? board.activityRanks : board.bossRanks).put(key, rank);
 			}
-			String key = JSON_BOSS_NAME_OVERRIDES.getOrDefault(name, name);
-			if (knownBosses.contains(key))
+			catch (RuntimeException ignored)
 			{
-				board.bossKills.put(key, score);
-				board.bossRanks.put(key, rank);
-			}
-			else if (PanelData.isTfaRow(name))
-			{
-				// The Fractured Archive before this release's layout lists it: kept under the raid's own name,
-				// so its Combat Summary row shows the day Jagex adds it, whatever Jagex spells it.
-				board.bossKills.put(PanelData.TFA_HISCORE, score);
-				board.bossRanks.put(PanelData.TFA_HISCORE, rank);
-			}
-			else
-			{
-				// A boss added after this release. Its KC waits for the update
-				// that gives it a cell; nothing else in the parse is disturbed.
-				log.debug("Unknown hiscore row '{}' (score {}) - future boss, holding", name, score);
+				// A row without its name, rank or score says nothing; it never costs the rows around it.
 			}
 		}
 
-		return board.result(type, hiscoreTable, calcCmbLvlExact(board.skillLevels), false);
+		return board.result(type, hiscoreTable, calcCmbLvlExact(board.skillLevels));
 	}
 
-	/** One read of a hiscores answer, CSV or JSON, as it fills in; result() makes it what lookups use. */
+	/** One read of a hiscores answer as it fills in; result() makes it what lookups use. */
 	private static final class Board
 	{
 		final Map<String, Integer> bossKills = new LinkedHashMap<>();
@@ -747,12 +634,10 @@ public class HiscoreService
 			skillXps.put(key, xp);
 		}
 
-		HiscoreResult result(AccountType type, HiscoreTable table, double combatLevel, boolean shifted)
+		HiscoreResult result(AccountType type, HiscoreTable table, double combatLevel)
 		{
-			HiscoreResult result = new HiscoreResult(type, table, bossKills, bossRanks, activityScores,
+			return new HiscoreResult(type, table, bossKills, bossRanks, activityScores,
 				activityRanks, skillLevels, skillRanks, skillXps, totalLevel, totalXp, combatLevel, overallRank);
-			result.setBossSectionShifted(shifted);
-			return result;
 		}
 	}
 
@@ -780,33 +665,6 @@ public class HiscoreService
 		{
 			return -1;
 		}
-	}
-
-	/** The seven combat skills from the CSV rows; null when a row is unreadable. */
-	private Map<String, Integer> combatLevels(String[] lines)
-	{
-		try
-		{
-			Map<String, Integer> levels = new LinkedHashMap<>();
-			levels.put("attack", parseSkillLevel(lines, 1));
-			levels.put("defence", parseSkillLevel(lines, 2));
-			levels.put("strength", parseSkillLevel(lines, 3));
-			levels.put("hitpoints", parseSkillLevel(lines, 4));
-			levels.put("ranged", parseSkillLevel(lines, 5));
-			levels.put("prayer", parseSkillLevel(lines, 6));
-			levels.put("magic", parseSkillLevel(lines, 7));
-			return levels;
-		}
-		catch (Exception e)
-		{
-			return null;
-		}
-	}
-
-	private int parseSkillLevel(String[] lines, int lineIndex)
-	{
-		String[] parts = lines[lineIndex].split(",");
-		return Integer.parseInt(parts[1]);
 	}
 
 	private enum FetchStatus
@@ -858,21 +716,13 @@ public class HiscoreService
 	{
 		if (breaker.isOpen()) return CompletableFuture.completedFuture(new TableResponse(FetchStatus.REJECTED, null));
 		return HttpUtil.httpGet(httpClient, BASE_URL + hiscoreKey + JSON_SUFFIX + encodedPlayer)
-			.thenCompose(response ->
+			.thenApply(response ->
 			{
-				TableResponse json = classify(response);
-				if (json.status == FetchStatus.TRANSIENT) breaker.failure();
-				else if (json.status != FetchStatus.REJECTED) breaker.success();
-				// Only a bad body tries the CSV: an outage or a rate limit would just answer it the same way.
-				if (json.status != FetchStatus.MALFORMED) return CompletableFuture.completedFuture(json);
-				return HttpUtil.httpGet(httpClient, BASE_URL + hiscoreKey + CSV_SUFFIX + encodedPlayer)
-					.thenApply(csvResponse ->
-					{
-						TableResponse csv = classify(csvResponse);
-						// Only the primary endpoint can establish absence. A missing
-						// fallback after an outage or bad JSON remains retryable.
-						return csv.status == FetchStatus.FOUND ? csv : json;
-					});
+				TableResponse table = classify(response);
+				// An outage, a rate limit and a body that isn't the hiscores all count against Jagex.
+				if (table.retryable()) breaker.failure();
+				else if (table.status != FetchStatus.REJECTED) breaker.success();
+				return table;
 			});
 	}
 
@@ -884,34 +734,20 @@ public class HiscoreService
 			try
 			{
 				String body = response.body;
-				boolean overallFound = false;
-				if (body != null && body.trim().startsWith("{"))
+				JsonObject root = gson.fromJson(body, JsonObject.class);
+				for (JsonElement skill : root.getAsJsonArray("skills"))
 				{
-					JsonObject root = gson.fromJson(body, JsonObject.class);
-					for (JsonElement skill : root.getAsJsonArray("skills"))
+					if ("Overall".equals(skill.getAsJsonObject().get("name").getAsString()))
 					{
-						if ("Overall".equals(skill.getAsJsonObject().get("name").getAsString())) overallFound = true;
+						// Parse before accepting: a body that only looks like the hiscores is not a schema.
+						parseHiscoreBody(body, AccountType.REGULAR);
+						return new TableResponse(FetchStatus.FOUND, body);
 					}
-				}
-				else if (body != null)
-				{
-					String[] overall = body.trim().split("\\r?\\n", 2)[0].split(",");
-					Integer.parseInt(overall[0]);
-					Integer.parseInt(overall[1]);
-					Long.parseLong(overall[2]);
-					overallFound = true;
-				}
-				if (overallFound)
-				{
-					// Parse before accepting JSON: a leading brace alone is not a schema.
-					// CSV keeps its existing best-effort parse and shifted-row warning.
-					parseHiscoreBody(body, AccountType.REGULAR);
-					return new TableResponse(FetchStatus.FOUND, body);
 				}
 			}
 			catch (RuntimeException ignored)
 			{
-				// Malformed and schema-invalid bodies use the same bounded fallback.
+				// Malformed and schema-invalid bodies are retried once, then the board is unavailable.
 			}
 			return new TableResponse(FetchStatus.MALFORMED, null);
 		}

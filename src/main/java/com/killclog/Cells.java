@@ -279,16 +279,6 @@ public class Cells
 	static final Color KC_COLOR = new Color(215, 215, 215);
 
 	/**
-	 * Info line shown on every boss tooltip when the fallback CSV parse hit a
-	 * row-count mismatch: values render best-effort but rows below the format
-	 * change may wear a neighbor's numbers, and the reader deserves to know.
-	 * The JSON path never sets the flag, so this only appears when the JSON
-	 * endpoint is down during a hiscore format change.
-	 */
-	static final String BOSS_SECTION_SHIFTED_LABEL = "Boss KC: ";
-	static final String BOSS_SECTION_SHIFTED_VALUE = "may be misaligned until the next update";
-
-	/**
 	 * Write hiscore-driven values into every primary-side cell: bosses
 	 * (text + color + dimmed-icon swap), activities
 	 * and clue tiers. Mirrors
@@ -496,7 +486,7 @@ public class Cells
 	 */
 	public JToolTip buildPageTooltip(JLabel owner, String name, @Nullable TooltipData blue, @Nullable TooltipData red)
 	{
-		return gridTooltip(owner, blue, () -> red, name, PanelData.CLOG_WIKI_PAGE + "#" + name, false);
+		return gridTooltip(owner, blue, () -> red, name, PanelData.CLOG_WIKI_PAGE + "#" + name);
 	}
 
 	private JToolTip buildBossTooltip(JLabel owner, HiscoreSkill boss)
@@ -509,44 +499,29 @@ public class Cells
 	private JToolTip buildBossTooltip(JLabel owner, @Nullable TooltipData blueData,
 		@Nullable TooltipData redData, String name, String wikiPage)
 	{
-		return gridTooltip(owner, blueData, () -> redData, name, wikiPage, true);
+		return gridTooltip(owner, blueData, () -> redData, name, wikiPage);
 	}
 
-	/**
-	 * One log's card: the player's grid, or both players' side by side, the title opening the wiki. A boss's
-	 * card also carries each side's shifted-hiscores warning.
-	 */
+	/** One log's card: the player's grid, or both players' side by side, the title opening the wiki. */
 	private JToolTip gridTooltip(JLabel owner, @Nullable TooltipData blue, Supplier<TooltipData> red, String name,
-		@Nullable String wikiPage, boolean boss)
+		@Nullable String wikiPage)
 	{
 		JToolTip tip = singlePlayerBuilder.build(owner, blue, 5, name);
-		decorate(tip, wikiPage, boss ? lookupSession.getHiscoreResult() : null);
+		linkTitle(tip, wikiPage);
 		if (!comparison.isComparisonMode())
 		{
 			return tip;
 		}
 		JToolTip rival = singlePlayerBuilder.buildCompared(owner, red.get(), 5, name);
-		decorate(rival, wikiPage, boss ? comparison.getCompareHiscoreResult() : null);
+		linkTitle(rival, wikiPage);
 		return wrapSideBySide(owner, tip, rival);
 	}
 
-	/**
-	 * Wiki link plus, for a boss, the shifted-CSV warning, per side: a result degrading to
-	 * the warned CSV fallback flags its own card - a silently wrong red card
-	 * breaks the ladder's rule the same as a blue one.
-	 */
-	private static void decorate(JToolTip tip, @Nullable String wikiPage,
-		@Nullable HiscoreResult result)
+	private static void linkTitle(JToolTip tip, @Nullable String wikiPage)
 	{
 		if (tip instanceof TitleTooltip)
 		{
-			TitleTooltip titled = (TitleTooltip) tip;
-			titled.setTitleWikiPage(wikiPage);
-			if (result != null && result.isBossSectionShifted())
-			{
-				titled.setInfoLine(BOSS_SECTION_SHIFTED_LABEL, BOSS_SECTION_SHIFTED_VALUE,
-					ColorScheme.LIGHT_GRAY_COLOR);
-			}
+			((TitleTooltip) tip).setTitleWikiPage(wikiPage);
 		}
 	}
 
@@ -633,7 +608,7 @@ public class Cells
 	{
 		return gridTooltip(owner, cluesCompleted(tooltipDataMap.get(tier), tier, lookupSession.getHiscoreResult()),
 			() -> cluesCompleted(comparison.buildCompareClueTierData(tier), tier, comparison.getCompareHiscoreResult()),
-			displayName, PanelData.clueWikiPage(tier), false);
+			displayName, PanelData.clueWikiPage(tier));
 	}
 
 	/** A clue tier's completed count, labeled as the game's own Collection Log page labels it. */
@@ -684,7 +659,7 @@ public class Cells
 		HiscoreSkill tier = PanelData.RARE_TIERS[row];
 		return gridTooltip(owner, cluesCompleted(rareTooltips.get(PanelData.RARE_KEYS[row]), tier,
 			lookupSession.getHiscoreResult()), () -> cluesCompleted(rivalRare(row), tier, comparison.getCompareHiscoreResult()),
-			PanelData.RARE_NAMES[row], PanelData.RARE_WIKI_PAGES[row], false);
+			PanelData.RARE_NAMES[row], PanelData.RARE_WIKI_PAGES[row]);
 	}
 
 	// Helpers

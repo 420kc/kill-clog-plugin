@@ -23,7 +23,6 @@ public class RankSelectorTest
 	public void rankProjectionChangesEveryRankAndNothingElse()
 	{
 		HiscoreResult base = result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000);
-		base.setBossSectionShifted(true);
 		HiscoreResult other = result(AccountType.REGULAR, HiscoreTable.STANDARD, 100, 5000);
 		HiscoreResult view = base.withRanks(other);
 		assertEquals(100, view.getRank("Zulrah"));
@@ -38,7 +37,6 @@ public class RankSelectorTest
 		assertEquals(99, view.getSkillLevel("attack"));
 		assertEquals(123, view.getKc("Zulrah"));
 		assertEquals(42, view.getActivityScore("Clue Scrolls (all)"));
-		assertTrue(view.isBossSectionShifted());
 		assertEquals(10, base.getOverallRank());
 		HiscoreResult missing = base.withRanks(null);
 		assertEquals(-1, missing.getOverallRank());
@@ -53,7 +51,6 @@ public class RankSelectorTest
 	{
 		HiscoreResult base = result(AccountType.IRONMAN, HiscoreTable.ONE_DEFENCE, 10, 10000);
 		HiscoreResult died = result(AccountType.REGULAR, HiscoreTable.STANDARD, 50, 5000);
-		died.setBossSectionShifted(true);
 		HiscoreResult view = base.withRow(died);
 		assertEquals(5000, view.getTotalXp());
 		assertEquals(5000, view.getSkillXp("attack"));
@@ -61,7 +58,6 @@ public class RankSelectorTest
 		assertEquals(50, view.getRank("Zulrah"));
 		assertEquals(AccountType.IRONMAN, view.getAccountType());
 		assertEquals(HiscoreTable.ONE_DEFENCE, view.getHiscoreTable());
-		assertTrue(view.isBossSectionShifted());
 		assertEquals(10000, base.getTotalXp());
 		assertTrue(view.isFrozen());
 		assertFalse(base.withRow(base).isFrozen());

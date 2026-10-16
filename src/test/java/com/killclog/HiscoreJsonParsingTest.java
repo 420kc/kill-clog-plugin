@@ -14,8 +14,8 @@ import static org.junit.Assert.assertTrue;
 /**
  * Name-keyed JSON hiscore parsing. The fixture is the real Jagex response
  * captured on Wyrmscraig launch day (2026-07-29), which bakes in the exact
- * conditions that blanked the CSV path: Mad Angel newly inserted, the
- * Mimic/Maggot King reorder, and the Calvar'ion respelling.
+ * conditions that once blanked positional parsing: Mad Angel newly inserted,
+ * the Mimic/Maggot King reorder, and the Calvar'ion respelling.
  */
 public class HiscoreJsonParsingTest
 {
@@ -40,14 +40,6 @@ public class HiscoreJsonParsingTest
 	}
 
 	@Test
-	public void testJsonBodyDispatchesAndNeverFlagsShifted()
-	{
-		HiscoreResult result = service.parseHiscoreBody(fixture, AccountType.REGULAR);
-		assertNotNull(result);
-		assertFalse(result.isBossSectionShifted());
-	}
-
-	@Test
 	public void testDayOneBossParsesWithoutAnyListUpdate()
 	{
 		// The property the whole change exists for: a boss Jagex added this
@@ -59,11 +51,29 @@ public class HiscoreJsonParsingTest
 	@Test
 	public void testReorderedNeighborsKeyCorrectly()
 	{
-		// Mimic and Maggot King swapped CSV positions in this update; by name
-		// they cannot cross.
-		HiscoreResult result = service.parseHiscoreBody(fixture, AccountType.REGULAR);
-		assertEquals(result.getBossKills().get("Mimic").intValue(), result.getKc("Mimic"));
-		assertEquals(result.getBossKills().get("Maggot King").intValue(), result.getKc("Maggot King"));
+		// Mimic and Maggot King swapped feed positions in this update, beside the
+		// newly inserted Mad Angel; by name the neighbours cannot cross.
+		String[] names = {"Lunar Chests", "Mad Angel", "Maggot King", "Mimic", "Nex"};
+		com.google.gson.JsonObject root = new Gson().fromJson(fixture, com.google.gson.JsonObject.class);
+		for (com.google.gson.JsonElement e : root.getAsJsonArray("activities"))
+		{
+			com.google.gson.JsonObject row = e.getAsJsonObject();
+			int i = java.util.Arrays.asList(names).indexOf(row.get("name").getAsString());
+			if (i >= 0)
+			{
+				row.addProperty("score", 10 * (i + 1));
+				row.addProperty("rank", 1000 + i);
+			}
+		}
+		HiscoreResult result = service.parseHiscoreBody(new Gson().toJson(root), AccountType.REGULAR);
+		assertEquals(10, result.getKc("Lunar Chests"));
+		assertEquals(20, result.getKc("Mad Angel"));
+		assertEquals(30, result.getKc("Maggot King"));
+		assertEquals(40, result.getKc("Mimic"));
+		assertEquals(50, result.getKc("Nex"));
+		assertEquals(1001, result.getRank("Mad Angel"));
+		assertEquals(1002, result.getRank("Maggot King"));
+		assertEquals(1003, result.getRank("Mimic"));
 	}
 
 	@Test
@@ -102,9 +112,38 @@ public class HiscoreJsonParsingTest
 		String body = "{\"skills\":[{\"id\":0,\"name\":\"Overall\",\"rank\":1,\"level\":2277,\"xp\":4600000000}],"
 			+ "\"activities\":[{\"id\":999,\"name\":\"Boss That Does Not Exist Yet\",\"rank\":50,\"score\":420}]}";
 		HiscoreResult result = service.parseHiscoreBody(body, AccountType.REGULAR);
-		assertFalse(result.isBossSectionShifted());
 		assertEquals(-1, result.getKc("Boss That Does Not Exist Yet"));
+		assertTrue(result.getBossKills().isEmpty());
 		assertEquals(2277, result.getTotalLevel());
+	}
+
+	@Test
+	public void testUnknownOrPartialRowIsSkippedNotFatal()
+	{
+		// A row Kill Clog doesn't know, or one missing its name, rank or score, says nothing about its
+		// neighbours: it is skipped and the rest of the answer stands.
+		String body = "{\"skills\":[{\"id\":0,\"name\":\"Overall\",\"rank\":1,\"level\":2277,\"xp\":4600000000}],"
+			+ "\"activities\":["
+			+ "{\"id\":998,\"name\":\"Boss That Does Not Exist Yet\"},"
+			+ "{\"id\":999,\"name\":\"Another New Boss\",\"rank\":null,\"score\":\"n/a\"},"
+			+ "{\"id\":1,\"rank\":5,\"score\":9},"
+			+ "{\"id\":2,\"name\":\"Zulrah\",\"score\":77},"
+			+ "{\"id\":3,\"name\":\"Clue Scrolls (all)\",\"rank\":12},"
+			+ "\"not a row\","
+			+ "{\"id\":4,\"name\":\"Vorkath\",\"rank\":40,\"score\":300},"
+			+ "{\"id\":5,\"name\":\"LMS - Rank\",\"rank\":8,\"score\":600}]}";
+		HiscoreResult result = service.parseHiscoreBody(body, AccountType.REGULAR);
+		assertEquals(2277, result.getTotalLevel());
+		assertEquals(300, result.getKc("Vorkath"));
+		assertEquals(40, result.getRank("Vorkath"));
+		assertEquals(600, result.getActivityScore("LMS - Rank"));
+		assertEquals(8, result.getActivityRank("LMS - Rank"));
+		// A known row missing a number is left out whole, never half-written.
+		assertFalse(result.hasBossRow("Zulrah"));
+		assertEquals(-1, result.getRank("Zulrah"));
+		assertEquals(-1, result.getActivityScore("Clue Scrolls (all)"));
+		assertEquals(-1, result.getActivityRank("Clue Scrolls (all)"));
+		assertEquals(1, result.getBossKills().size());
 	}
 
 	@Test
@@ -137,16 +176,9 @@ public class HiscoreJsonParsingTest
 	public void testExtractTotalXpReadsJsonBodies()
 	{
 		// Account-type detection compares total xp across the four endpoint
-		// variants. With the JSON-first transport those bodies are JSON, and
-		// a CSV-only reader returns -1 for all four - every ironman would
-		// misidentify as a regular account.
+		// variants: a reader that returns -1 for all four would misidentify
+		// every ironman as a regular account.
 		assertEquals(4_600_000_000L, service.extractTotalXp(fixture));
-	}
-
-	@Test
-	public void testExtractTotalXpStillReadsCsv()
-	{
-		assertEquals(4_600_000_000L, service.extractTotalXp("1,2277,4600000000\n1,99,13034431"));
 	}
 
 	@Test

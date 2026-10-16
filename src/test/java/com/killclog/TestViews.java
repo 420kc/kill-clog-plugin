@@ -235,13 +235,6 @@ final class TestViews
 		return Collections.unmodifiableMap(field(cells, "dimmedIcons"));
 	}
 
-	/** The combat level the hiscores CSV's rows give. */
-	static int combatLevel(HiscoreService service, String[] lines)
-	{
-		Map<String, Integer> levels = call(service, "combatLevels", (Object) lines);
-		return combatLevelFromLevels(service, levels);
-	}
-
 	/** The whole combat level the hiscores' skill levels give. */
 	static int combatLevelFromLevels(HiscoreService service, Map<String, Integer> levels)
 	{

@@ -163,8 +163,8 @@ public class KillClogChatCommandTest
 		// The alias table carries its own copy of the boss canon. This pins it
 		// to the hiscore list in both directions so the duplicate can never
 		// drift (2026-07-16 pre-Mad-Angel hardening review).
-		Set<String> csvNames = new HashSet<>(Arrays.asList(HiscoreService.bossNames()));
-		for (String name : csvNames)
+		Set<String> hiscoreNames = new HashSet<>(Arrays.asList(HiscoreService.bossNames()));
+		for (String name : hiscoreNames)
 		{
 			assertEquals("Hiscore boss missing from chat canon: " + name,
 				name, KillClogChatCommand.aliases().get(KillClogChatCommand.normalize(name)));
@@ -172,7 +172,7 @@ public class KillClogChatCommandTest
 		for (String canonical : KillClogChatCommand.aliases().values())
 		{
 			assertTrue("Chat canon points at a boss the hiscores do not know: " + canonical,
-				csvNames.contains(canonical));
+				hiscoreNames.contains(canonical));
 		}
 	}
 }

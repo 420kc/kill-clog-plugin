@@ -15,7 +15,7 @@ final class EhbRates
 {
 	private static final String RESOURCE = "ehb-rates.csv";
 
-	// Boss name (hiscore CSV form) -> [main rate, ironman rate].
+	// Boss name (hiscore form) -> [main rate, ironman rate].
 	private static final Map<String, double[]> RATES = load();
 
 	private EhbRates()

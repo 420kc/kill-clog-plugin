@@ -151,8 +151,8 @@ public class KillClogPanelTest
 	public void testMaggotKingPromotedIntoBossGrid()
 	{
 		// RuneLite 1.12.32 shipped the enum; the boss rides the base list now.
-		// Vanilla declares it BEFORE Mimic (display), while Jagex's CSV rows
-		// carry it after - HiscoreParsingTest holds the parse-order side.
+		// Vanilla declares it BEFORE Mimic (display), while Jagex's hiscore rows
+		// carry it after - the hiscores are read by name, so the orders may differ.
 		java.util.List<net.runelite.client.hiscore.HiscoreSkill> bosses =
 			java.util.Arrays.asList(PanelData.BOSSES);
 		int mimic = bosses.indexOf(net.runelite.client.hiscore.HiscoreSkill.MIMIC);
@@ -173,11 +173,11 @@ public class KillClogPanelTest
 	}
 
 	@Test
-	public void testBossGridAndCsvNamesAgree()
+	public void testBossGridAndHiscoreNamesAgree()
 	{
-		// Display order and CSV row order may diverge (name-keyed lookups
+		// Display order and hiscore row order may diverge (name-keyed lookups
 		// bridge them), but the two lists must always name the same bosses.
-		java.util.Set<String> csvNames =
+		java.util.Set<String> hiscoreNames =
 			new java.util.HashSet<>(java.util.Arrays.asList(HiscoreService.bossNames()));
 		java.util.Set<String> panelNames = new java.util.HashSet<>();
 		for (int i = 0; i < PanelData.BOSSES.length; i++)
@@ -185,7 +185,7 @@ public class KillClogPanelTest
 			String displayName = PanelData.BOSSES[i].getName();
 			panelNames.add(PanelData.NAME_OVERRIDES.getOrDefault(displayName, displayName));
 		}
-		assertEquals(csvNames, panelNames);
+		assertEquals(hiscoreNames, panelNames);
 		assertEquals(HiscoreService.bossNames().length,
 			PanelData.BOSSES.length);
 	}

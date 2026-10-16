@@ -1,9 +1,8 @@
-# Jagex hiscore CSV layout: kind<TAB>name, in exact feed row order.
-# Line 0 of the feed is Overall, then skills, then activities, then bosses.
-# ORDER IS THE CONTRACT: rows are positional against the feed, and CSV growth
-# can reorder neighbors, not just extend the tail (Wyrmscraig, 2026-07-29).
-# Promote the whole boss list from a live response, never a guessed insert.
-# Retired activities still occupy feed lines, so they keep their rows here.
+# The hiscore names Kill Clog reads: kind<TAB>name.
+# Rows are matched by name, never by position; the order follows Jagex's feed
+# for readability only. An activity or boss row the feed carries that is not
+# listed here is skipped, and the skill rows are the skills "To max" counts.
+# Adding a boss is adding its name. Retired activities keep their rows.
 skill	attack
 skill	defence
 skill	strength
