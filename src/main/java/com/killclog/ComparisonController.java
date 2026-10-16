@@ -247,7 +247,7 @@ public class ComparisonController
 			{
 				HiscoreSkill card = PanelData.card(boss);
 				String bossName = card.getName();
-				String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(bossName, bossName);
+				String hiscoreName = PanelData.hiscoreName(bossName);
 				// No red PB source exists, for a hard mode either.
 				TooltipData data = TooltipDataBuilder.withHardMode(buildCompareBossData(bossName, hiscoreName),
 					card, getCompareHiscoreResult(), name -> null);
@@ -712,7 +712,7 @@ public class ComparisonController
 
 		for (Map.Entry<HiscoreSkill, JLabel> entry : cells.getBossLabels().entrySet())
 		{
-			String name = PanelData.NAME_OVERRIDES.getOrDefault(entry.getKey().getName(), entry.getKey().getName());
+			String name = PanelData.hiscoreName(entry.getKey().getName());
 			compareOrRestore(entry.getValue(), hiscoreKc(blueHiscore, name), hiscoreKc(redHiscore, name),
 				cells.getTooltipData(entry.getKey()), compareTooltipDataMap.get(entry.getKey()));
 		}

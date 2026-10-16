@@ -11,6 +11,7 @@ import net.runelite.api.Client;
 import net.runelite.api.MenuAction;
 import net.runelite.api.Player;
 import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 
@@ -54,7 +55,7 @@ final class ManualClogSync
 			requestOpeningCapture(client, clogIndex, localClogCache, chatNotifier);
 		}
 		bulk.deferEmptyFinalizationIfItemsReported(
-			client.getVarpValue(ClogVarps.OBTAINED));
+			client.getVarpValue(VarPlayerID.COLLECTION_COUNT));
 		if (bulk.readyToFinalize(tickCount))
 		{
 			finalizeBulkCapture(client, clogIndex, localClogCache,
@@ -114,13 +115,13 @@ final class ManualClogSync
 		String name = openingPlayer;
 		openingPlayer = null;
 		Player local = client.getLocalPlayer();
-		Widget root = client.getWidget(KillClogPlugin.CLOG_INTERFACE, 0);
+		Widget root = client.getWidget(InterfaceID.Collection.FRAME);
 		if (bulk.isActive() || local == null || !name.equals(local.getName())
 			|| root == null || root.isHidden())
 		{
 			return;
 		}
-		Widget search = client.getWidget(KillClogPlugin.CLOG_INTERFACE, 71);
+		Widget search = client.getWidget(InterfaceID.Collection.CONTENT_SEARCH);
 		if (search == null || !search.isSelfHidden())
 		{
 			// Never toggle an already-open Search back or accept a partial walk.
@@ -153,7 +154,7 @@ final class ManualClogSync
 	private boolean captureStillValid(Client client)
 	{
 		Player local = client.getLocalPlayer();
-		Widget root = client.getWidget(KillClogPlugin.CLOG_INTERFACE, 0);
+		Widget root = client.getWidget(InterfaceID.Collection.FRAME);
 		return local != null && capturePlayer != null && capturePlayer.equals(local.getName())
 			&& root != null && !root.isHidden() && !isHostLog(client);
 	}
@@ -212,8 +213,8 @@ final class ManualClogSync
 		openingPlayer = null;
 
 		bulk.arm(client.getTickCount(),
-			client.getVarpValue(ClogVarps.OBTAINED),
-			client.getVarpValue(ClogVarps.TOTAL));
+			client.getVarpValue(VarPlayerID.COLLECTION_COUNT),
+			client.getVarpValue(VarPlayerID.COLLECTION_COUNT_MAX));
 		// Leave room for unsettled counters and delayed item scripts, including
 		// empty logs, which produce no item events at all.
 		bulk.scheduleEmptySearchFinalization(client.getTickCount());
@@ -253,9 +254,9 @@ final class ManualClogSync
 		// Re-read them before accepting the stream so an early zero cannot make
 		// a partial walk look like a valid empty or one-item first capture.
 		int reportedCount = Math.max(bulk.clogCount,
-			client.getVarpValue(ClogVarps.OBTAINED));
+			client.getVarpValue(VarPlayerID.COLLECTION_COUNT));
 		int reportedTotal = Math.max(bulk.clogTotal,
-			client.getVarpValue(ClogVarps.TOTAL));
+			client.getVarpValue(VarPlayerID.COLLECTION_COUNT_MAX));
 
 		// Group obtained items by category.
 		Map<String, List<ClogResult.ClogItem>> obtainedByCategory = new HashMap<>();

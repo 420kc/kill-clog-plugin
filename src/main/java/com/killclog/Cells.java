@@ -290,7 +290,7 @@ public class Cells
 		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
 		{
 			HiscoreSkill skill = entry.getKey();
-			String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(skill.getName(), skill.getName());
+			String hiscoreName = PanelData.hiscoreName(skill.getName());
 			renderBossValue(entry.getValue(), hiscoreName,
 				originalIcons.get(skill), dimmedIcons.get(skill), result);
 		}
@@ -403,7 +403,7 @@ public class Cells
 			// A raid's hard mode holds its raid's card, so its cell opens, colors and counts as the raid.
 			HiscoreSkill card = PanelData.card(skill);
 			String bossName = card.getName();
-			String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(bossName, bossName);
+			String hiscoreName = PanelData.hiscoreName(bossName);
 			TooltipData data = TooltipDataBuilder.withHardMode(buildPrimaryBossData(bossName, hiscoreName, self),
 				card, lookupSession.getHiscoreResult(), name -> pbFor(self, name));
 			if (data != null)

@@ -23,6 +23,8 @@ import net.runelite.api.events.ScriptPostFired;
 import net.runelite.api.events.ScriptPreFired;
 import net.runelite.api.events.VarbitChanged;
 import net.runelite.api.events.WidgetLoaded;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.callback.ClientThread;
@@ -55,9 +57,7 @@ import net.runelite.client.util.Text;
 )
 public class KillClogPlugin extends Plugin
 {
-	static final int CLOG_INTERFACE = 621;
 	private static final int CLOG_SEARCH_TOGGLE_SCRIPT = 4084;
-	private static final int CLOG_SEARCH_CONTAINER = 71;
 	private static final String RUNEPROFILE_PLUGIN_NAME = "RuneProfile";
 
 	/** Config keys whose changes require rebuilding the right-click lookup menu entry. */
@@ -273,8 +273,6 @@ public class KillClogPlugin extends Plugin
 		chatCommandManager.unregisterCommand(KillClogChatCommand.COMMAND_MISSING);
 		chatCommandManager.unregisterCommand(KillClogChatCommand.COMMAND_THIRD_AGE);
 		chatCommandManager.unregisterCommand(KillClogChatCommand.COMMAND_GILDED);
-		kclogCommand.clear();
-		chatEmoji.clear();
 		localClogCache.shutdown();
 		world.close();
 		localCaCache.shutdown();
@@ -361,8 +359,8 @@ public class KillClogPlugin extends Plugin
 		{
 			return;
 		}
-		int obtained = client.getVarpValue(ClogVarps.OBTAINED);
-		int total = client.getVarpValue(ClogVarps.TOTAL);
+		int obtained = client.getVarpValue(VarPlayerID.COLLECTION_COUNT);
+		int total = client.getVarpValue(VarPlayerID.COLLECTION_COUNT_MAX);
 		if ((obtained > 0 || total > 0) && localClogCache.updateTotalsUpward(name, obtained, total))
 		{
 			SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(name));
@@ -550,7 +548,7 @@ public class KillClogPlugin extends Plugin
 			sessionState.requestCaRead();
 		}
 
-		if (event.getVarpId() == ClogVarps.OBTAINED || event.getVarpId() == ClogVarps.TOTAL)
+		if (event.getVarpId() == VarPlayerID.COLLECTION_COUNT || event.getVarpId() == VarPlayerID.COLLECTION_COUNT_MAX)
 		{
 			reconcileClogTotalsFromVarps();
 		}
@@ -620,7 +618,11 @@ public class KillClogPlugin extends Plugin
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
-		nameAutocompleter.refreshClientSnapshot();
+		// The names only feed the search box's autofill, so a refresh every three seconds is fresh enough.
+		if (client.getTickCount() % 5 == 0)
+		{
+			nameAutocompleter.refreshClientSnapshot();
+		}
 		playerClans.refreshClientSnapshot();
 		localAccountHash = client.getAccountHash();
 		if (world.tick())
@@ -735,7 +737,7 @@ public class KillClogPlugin extends Plugin
 	@Subscribe
 	public void onWidgetLoaded(WidgetLoaded event)
 	{
-		if (event.getGroupId() == CLOG_INTERFACE)
+		if (event.getGroupId() == InterfaceID.COLLECTION)
 		{
 			// Request a full Search walk after the player's log has initialized.
 			// Ordinary visible-category scripts cannot establish a full capture.
@@ -783,14 +785,14 @@ public class KillClogPlugin extends Plugin
 		}
 		Widget source = script.getSource();
 		Object[] args = script.getArguments();
-		if (source == null || source.getId() >>> 16 != CLOG_INTERFACE || source.isHidden()
+		if (source == null || source.getId() >>> 16 != InterfaceID.COLLECTION || source.isHidden()
 			|| args == null || args.length < 2 || !(args[1] instanceof Integer) || (int) args[1] != 0)
 		{
 			return false;
 		}
 		// 4084 calls toggle procedure 4085: an already visible Search or a
 		// force-close argument closes it. Neither is a new full-log capture.
-		Widget search = client.getWidget(CLOG_INTERFACE, CLOG_SEARCH_CONTAINER);
+		Widget search = client.getWidget(InterfaceID.Collection.CONTENT_SEARCH);
 		return search != null && search.isSelfHidden();
 	}
 
@@ -912,7 +914,7 @@ public class KillClogPlugin extends Plugin
 	{
 		return option != null
 			&& "Search".equalsIgnoreCase(Text.removeTags(option).trim())
-			&& widgetId >>> 16 == CLOG_INTERFACE;
+			&& widgetId >>> 16 == InterfaceID.COLLECTION;
 	}
 
 	private AccountType getLocalAccountType()

@@ -183,7 +183,7 @@ public class KillClogPanelTest
 		for (int i = 0; i < PanelData.BOSSES.length; i++)
 		{
 			String displayName = PanelData.BOSSES[i].getName();
-			panelNames.add(PanelData.NAME_OVERRIDES.getOrDefault(displayName, displayName));
+			panelNames.add(PanelData.hiscoreName(displayName));
 		}
 		assertEquals(hiscoreNames, panelNames);
 		assertEquals(HiscoreService.bossNames().length,

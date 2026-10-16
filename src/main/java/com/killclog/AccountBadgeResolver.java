@@ -97,6 +97,13 @@ final class AccountBadgeResolver
 		return loadResource(HiscorePanel.class, resource);
 	}
 
+	/** A core Hiscore plugin icon, blank if core renames it: another plugin's files never stop Kill Clog starting. */
+	static BufferedImage hiscoreIcon(String resource)
+	{
+		BufferedImage image = loadHiscoreResource(resource);
+		return image != null ? image : new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+	}
+
 	@Nullable
 	private static BufferedImage loadResource(Class<?> owner, @Nullable String resource)
 	{

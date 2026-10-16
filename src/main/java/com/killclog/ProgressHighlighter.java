@@ -42,7 +42,7 @@ final class ProgressHighlighter
 		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
 		{
 			HiscoreSkill skill = entry.getKey();
-			String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(skill.getName(), skill.getName());
+			String hiscoreName = PanelData.hiscoreName(skill.getName());
 			colorBossCell(entry.getValue(), hiscoreName, hiscoreResult, clogResult);
 		}
 		colorClueTiers(hiscoreResult, clogResult);

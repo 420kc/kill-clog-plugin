@@ -37,7 +37,7 @@ final class ClogPages
 		for (HiscoreSkill boss : PanelData.BOSSES)
 		{
 			PAGE_BOSSES.computeIfAbsent(ClogService.bossToCategory(
-				PanelData.NAME_OVERRIDES.getOrDefault(boss.getName(), boss.getName())), k -> new ArrayList<>()).add(boss);
+				PanelData.hiscoreName(boss.getName())), k -> new ArrayList<>()).add(boss);
 		}
 	}
 

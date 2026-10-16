@@ -258,7 +258,7 @@ public class HiscoreParsingTest
 		for (HiscoreSkill boss : PanelData.BOSSES)
 		{
 			String displayName = boss.getName();
-			String hiscoreName = PanelData.NAME_OVERRIDES.getOrDefault(displayName, displayName);
+			String hiscoreName = PanelData.hiscoreName(displayName);
 			assertTrue(
 				"Boss '" + displayName + "' (mapped to '" + hiscoreName + "') not found in BOSS_NAMES[]. " +
 				"Add a NAME_OVERRIDES entry if HiscoreSkill.getName() differs from the Jagex hiscore name.",

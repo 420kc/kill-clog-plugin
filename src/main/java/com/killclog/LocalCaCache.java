@@ -169,7 +169,8 @@ public class LocalCaCache
 				{
 					if (folder == null)
 					{
-						throw new IOException("no data folder this session");
+						// A memory-only session holds CA in memory: nothing to save, and nothing failed.
+						return;
 					}
 					folder.createDirectories();
 					StoreMigration.write(gson, folder, folder.join(file), data);

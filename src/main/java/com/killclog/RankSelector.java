@@ -21,9 +21,7 @@ import javax.swing.ImageIcon;
 import javax.swing.JButton;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
-import net.runelite.client.plugins.hiscore.HiscorePanel;
 import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.util.ImageUtil;
 
 /** EDT-owned leaderboard views for the looked-up player. Cached service results stay untouched. */
 final class RankSelector extends JPanel
@@ -56,7 +54,7 @@ final class RankSelector extends JPanel
 		setBackground(ColorScheme.DARK_GRAY_COLOR);
 		for (RankLeaderboard table : RankLeaderboard.values())
 		{
-			BufferedImage image = ImageUtil.loadImageResource(HiscorePanel.class, table.icon);
+			BufferedImage image = AccountBadgeResolver.hiscoreIcon(table.icon);
 			JButton button = new JButton(icon(image, 0.45f));
 			button.setRolloverIcon(icon(image, 0.8f));
 			button.setSelectedIcon(icon(image, 1f));

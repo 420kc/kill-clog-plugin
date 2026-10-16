@@ -77,8 +77,8 @@ class KillClogChatCommand
 	@Inject private HiscoreService hiscoreService;
 	@Inject private ItemManager itemManager;
 
-	// itemId -> absolute index into client.getModIcons(). Persists for the plugin's lifetime;
-	// cleared in clear() on shutdown so a disable/enable cycle re-registers cleanly.
+	// itemId -> absolute index into client.getModIcons(). The slots live as long as the client, so the
+	// indices outlive a disable/enable too: re-registering would only grow the array again.
 	private final Map<Integer, Integer> itemIconIdx = new HashMap<>();
 
 	// Plugin-owned (not injected): set at startup like the panel's reference.
@@ -721,15 +721,6 @@ class KillClogChatCommand
 		}
 
 		client.setModIcons(grown);
-	}
-
-	/**
-	 * Drops cached mod-icon indices on plugin shutdown so a disable/enable cycle re-registers
-	 * against whatever modIcons looks like next time. Called from KillClogPlugin.shutDown.
-	 */
-	void clear()
-	{
-		itemIconIdx.clear();
 	}
 
 	private void replaceText(ChatMessage chatMessage, String text)

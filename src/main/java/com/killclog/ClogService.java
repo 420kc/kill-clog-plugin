@@ -504,7 +504,7 @@ public class ClogService
 	/**
 	 * Canonical item ids for a category from the cached global definitions,
 	 * or null when the catalog hasn't loaded or the category is unknown.
-	 * Returns a defensive copy.
+	 * The catalog's own list, shared by every result like the game index's pages: never changed in place.
 	 */
 	@Nullable
 	public List<Integer> getCategoryCatalogIds(String category)
@@ -514,8 +514,7 @@ public class ClogService
 		{
 			return null;
 		}
-		List<Integer> items = cats.get(category);
-		return items != null ? new ArrayList<>(items) : null;
+		return cats.get(category);
 	}
 
 	/**

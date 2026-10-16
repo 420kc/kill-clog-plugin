@@ -504,10 +504,8 @@ public class LocalClogCache
 			data.obtained.put(cat, preserveItemMetadata(entry.getValue(),
 				existing != null && existing.obtained != null ? existing.obtained.get(cat) : null));
 		}
-		for (Map.Entry<String, List<Integer>> entry : result.getCategoryItems().entrySet())
-		{
-			data.categories.put(entry.getKey(), new ArrayList<>(entry.getValue()));
-		}
+		// Page lists are the catalog's, shared and never changed in place.
+		data.categories.putAll(result.getCategoryItems());
 
 		if (firstParty)
 		{

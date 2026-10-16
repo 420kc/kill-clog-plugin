@@ -2,6 +2,7 @@ package com.killclog;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -20,7 +21,7 @@ final class ClogDates
 		try
 		{
 			Instant time = value.matches("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}")
-				? LocalDateTime.parse(value, LOCAL).toInstant(ZoneOffset.UTC) : Instant.parse(value);
+				? LocalDateTime.parse(value, LOCAL).toInstant(ZoneOffset.UTC) : OffsetDateTime.parse(value).toInstant();
 			return time.isBefore(EARLIEST) || time.isAfter(Instant.now().plusSeconds(300))
 				? null : time.truncatedTo(java.time.temporal.ChronoUnit.SECONDS).toString();
 		}

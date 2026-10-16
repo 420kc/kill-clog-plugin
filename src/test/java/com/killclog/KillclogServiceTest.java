@@ -249,13 +249,13 @@ public class KillclogServiceTest
 	}
 
 	@Test
-	public void testTempleStyleTimestamp()
+	public void testLastChangedReadsAsUtcInTheSyncLineForm()
 	{
-		assertEquals("2026-08-03 22:15:31",
-			KillclogService.templeStyleTimestamp("2026-08-03T22:15:31.123Z"));
-		assertEquals("2026-08-03 22:15:31",
-			KillclogService.templeStyleTimestamp("2026-08-03 22:15:31"));
-		assertNull(KillclogService.templeStyleTimestamp(null));
+		// The sync line speaks Temple's yyyy-MM-dd HH:mm:ss in UTC, whatever offset the server sends.
+		assertEquals("2026-08-03 22:15:31", ClogDates.local("2026-08-03T22:15:31.123Z"));
+		assertEquals("2026-08-03 22:15:31", ClogDates.local("2026-08-03T17:15:31-05:00"));
+		assertEquals("2026-08-03 22:15:31", ClogDates.local("2026-08-03 22:15:31"));
+		assertNull(ClogDates.local(null));
 	}
 
 	@Test

@@ -33,12 +33,14 @@ final class PanelData
 		return BOSSES.length;
 	}
 
-	// HiscoreSkill.getName() -> boss name the hiscores use.
+	// RuneLite's or Jagex's spelling -> the name Kill Clog keys a boss on, where the key predates the spelling.
 	// Only entries where the two differ are needed.
-	static final Map<String, String> NAME_OVERRIDES = new LinkedHashMap<>();
-	static
+	private static final Map<String, String> NAME_OVERRIDES = Map.of("Calvar'ion", "Cal'varion");
+
+	/** The name Kill Clog keys this boss on, for a HiscoreSkill name or a hiscore feed name. */
+	static String hiscoreName(String name)
 	{
-		NAME_OVERRIDES.put("Calvar'ion", "Cal'varion");
+		return NAME_OVERRIDES.getOrDefault(name, name);
 	}
 
 	// Hiscore display name -> OSRS Wiki page where the page title differs.

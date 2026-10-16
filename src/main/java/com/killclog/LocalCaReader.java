@@ -10,8 +10,8 @@ final class LocalCaReader
 {
 	boolean isCaVarbit(int id)
 	{
-		return id == -1
-			|| id == VarbitID.CA_TOTAL_TASKS_COMPLETED_EASY
+		// Each varbit's change arrives with its own id; a plain varp change (id -1) is never a CA total.
+		return id == VarbitID.CA_TOTAL_TASKS_COMPLETED_EASY
 			|| id == VarbitID.CA_TOTAL_TASKS_COMPLETED_MEDIUM
 			|| id == VarbitID.CA_TOTAL_TASKS_COMPLETED_HARD
 			|| id == VarbitID.CA_TOTAL_TASKS_COMPLETED_ELITE

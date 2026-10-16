@@ -56,11 +56,7 @@ public class KillclogService
 	{
 		ClogIndex index = clogIndex;
 		List<Integer> ids = index != null ? index.categoryItems().get(key) : null;
-		if (ids != null)
-		{
-			return new ArrayList<>(ids);
-		}
-		return clogService != null ? clogService.getCategoryCatalogIds(key) : null;
+		return ids != null || clogService == null ? ids : clogService.getCategoryCatalogIds(key);
 	}
 
 	/** Every page a lookup is measured against: the game's own once read, else the provider catalog's. */
@@ -456,7 +452,7 @@ public class KillclogService
 				obtainedItems,
 				categoryItems,
 				null,   // item names resolve client-side through ItemManager
-				templeStyleTimestamp(stringField(root, "last_changed")),
+				ClogDates.local(stringField(root, "last_changed")),
 				AccountType.fromProviderValue(stringField(root, "account_type"))
 			);
 			// The obtained counter decides coverage races, so it needs the
@@ -534,21 +530,6 @@ public class KillclogService
 			}
 		}
 		return pbs;
-	}
-
-	/**
-	 * The server publishes ISO timestamps; the panel's sync-line parser speaks
-	 * Temple's {@code yyyy-MM-dd HH:mm:ss}. Convert so "Last synced" renders.
-	 */
-	@Nullable
-	static String templeStyleTimestamp(@Nullable String iso)
-	{
-		if (iso == null)
-		{
-			return null;
-		}
-		String flattened = iso.replace('T', ' ');
-		return flattened.length() >= 19 ? flattened.substring(0, 19) : flattened;
 	}
 
 	private static int intField(JsonObject obj, String field)

@@ -1,5 +1,6 @@
 package com.killclog;
 
+import net.runelite.api.gameval.InterfaceID;
 import org.junit.Test;
 
 import static org.junit.Assert.assertFalse;
@@ -10,7 +11,7 @@ public class CollectionLogSearchSetupTest
 	@Test
 	public void onlyCollectionLogSearchStartsFirstTimeCapture()
 	{
-		int collectionLogHeader = KillClogPlugin.CLOG_INTERFACE << 16 | 1;
+		int collectionLogHeader = InterfaceID.COLLECTION << 16 | 1;
 		int unrelatedWidget = 320 << 16 | 1;
 
 		assertTrue(KillClogPlugin.isCollectionLogSearchClick("Search", collectionLogHeader));

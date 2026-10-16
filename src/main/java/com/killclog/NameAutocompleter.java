@@ -5,6 +5,7 @@ import java.awt.event.KeyListener;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -193,7 +194,8 @@ public class NameAutocompleter implements KeyListener
 
 	void setClientNameSnapshot(List<String> names)
 	{
-		List<String> copy = names == null ? Collections.emptyList() : new ArrayList<>(names);
+		// A friend in your clan and in view is one name to offer.
+		List<String> copy = names == null ? Collections.emptyList() : new ArrayList<>(new LinkedHashSet<>(names));
 		clientNameSnapshot = Collections.unmodifiableList(copy);
 	}
 

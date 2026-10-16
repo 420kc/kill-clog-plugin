@@ -39,10 +39,6 @@ public class HiscoreService
 	// renaming hiscore rows cannot misalign the parse.
 	private static final String JSON_SUFFIX = "/index_lite.json?player=";
 
-	// Jagex JSON spelling -> internal key, where the internal key predates the feed spelling.
-	private static final Map<String, String> JSON_BOSS_NAME_OVERRIDES =
-		Map.of("Calvar'ion", "Cal'varion");
-
 	// The names Kill Clog reads from the hiscores, from hiscore-layout.tsv.
 	// Rows are matched by name; the file's order is for reading only.
 	private static final String[] SKILL_NAMES = catalogNames("skill");
@@ -59,7 +55,7 @@ public class HiscoreService
 	//      appear before Kill Clog's next release
 	//   3. Once RuneLite exposes the enum, promote it from optional to the base
 	//      BOSSES list in PanelData
-	//   4. If HiscoreSkill.getName() != hiscore name, add to NAME_OVERRIDES
+	//   4. If HiscoreSkill.getName() != hiscore name, add to PanelData's NAME_OVERRIDES
 	//   5. If collection-log provider category keys differ, add to BOSS_CATEGORY_OVERRIDES in ClogService
 	private static final String[] BOSS_NAMES = catalogNames("boss");
 
@@ -585,7 +581,7 @@ public class HiscoreService
 				JsonObject a = e.getAsJsonObject();
 				String name = a.get("name").getAsString();
 				boolean activity = activityNames.contains(name);
-				String key = activity ? name : JSON_BOSS_NAME_OVERRIDES.getOrDefault(name, name);
+				String key = activity ? name : PanelData.hiscoreName(name);
 				if (!activity && !knownBosses.contains(key))
 				{
 					if (!PanelData.isTfaRow(name))

@@ -82,4 +82,28 @@ public class PluginFolderTest
 		ca.cacheResult("Tester", 77L, Map.of(CombatAchievementTier.EASY, 1));
 		assertEquals(1, ca.getCached("Tester").getTotalPoints());
 	}
+
+	@Test
+	public void aMemoryOnlySessionSavesNothingAndRetriesNothing()
+	{
+		int[] tasks = {0};
+		LocalCaCache ca = new LocalCaCache(new Gson(), new java.util.concurrent.ScheduledThreadPoolExecutor(1)
+		{
+			@Override
+			public void execute(Runnable command)
+			{
+				tasks[0]++;
+				command.run();
+			}
+		});
+		ca.open(null);
+		ca.setActivePlayer("Tester");
+		ca.cacheResult("Tester", 77L, Map.of(CombatAchievementTier.EASY, 1));
+		int afterFirst = tasks[0];
+		// The same counts read again are already held: no write queued, so no warning each read.
+		ca.cacheResult("Tester", 77L, Map.of(CombatAchievementTier.EASY, 1));
+		assertEquals(afterFirst, tasks[0]);
+		assertEquals(1, ca.getCached("Tester").getTotalPoints());
+		assertFalse("a plain varp change is not a CA total", new LocalCaReader().isCaVarbit(-1));
+	}
 }

@@ -3,6 +3,7 @@ package com.killclog;
 import java.util.List;
 import net.runelite.api.Client;
 import net.runelite.api.Player;
+import net.runelite.api.gameval.VarPlayerID;
 import org.junit.Test;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -19,8 +20,8 @@ public class LiveClogSyncTest
 		when(local.getName()).thenReturn("Tester");
 		when(client.getLocalPlayer()).thenReturn(local);
 		// Right after a hop the counters may still be the last world's.
-		when(client.getVarpValue(ClogVarps.OBTAINED)).thenReturn(900);
-		when(client.getVarpValue(ClogVarps.TOTAL)).thenReturn(1600);
+		when(client.getVarpValue(VarPlayerID.COLLECTION_COUNT)).thenReturn(900);
+		when(client.getVarpValue(VarPlayerID.COLLECTION_COUNT_MAX)).thenReturn(1600);
 		ClogIndex index = mock(ClogIndex.class);
 		when(index.ensureParsed(any(), any())).thenReturn(true);
 		when(index.itemIdsForName(any())).thenReturn(List.of(20997));

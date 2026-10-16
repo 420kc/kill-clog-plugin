@@ -7,6 +7,7 @@ import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.Player;
+import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.client.game.ItemManager;
 
 @Slf4j
@@ -85,8 +86,8 @@ final class LiveClogSync
 		// A lagging varp must not undo a newer broadcast count, and right after a
 		// hop the varps may still hold the last world's. Full log refresh remains
 		// the downward authority.
-		int liveObtained = Math.max(countersSettled ? client.getVarpValue(ClogVarps.OBTAINED) : 0, broadcastObtained);
-		int liveTotal = Math.max(countersSettled ? client.getVarpValue(ClogVarps.TOTAL) : 0, broadcastTotal);
+		int liveObtained = Math.max(countersSettled ? client.getVarpValue(VarPlayerID.COLLECTION_COUNT) : 0, broadcastObtained);
+		int liveTotal = Math.max(countersSettled ? client.getVarpValue(VarPlayerID.COLLECTION_COUNT_MAX) : 0, broadcastTotal);
 		if (liveObtained > 0 || liveTotal > 0)
 		{
 			localClogCache.updateTotalsUpward(playerName, liveObtained, liveTotal);

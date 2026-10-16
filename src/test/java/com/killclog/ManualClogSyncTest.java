@@ -15,6 +15,8 @@ import net.runelite.api.ScriptEvent;
 import net.runelite.api.events.MenuOptionClicked;
 import net.runelite.api.events.ScriptPreFired;
 import net.runelite.api.events.WidgetLoaded;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.widgets.Widget;
 import org.junit.Before;
 import org.junit.Rule;
@@ -39,12 +41,12 @@ public class ManualClogSyncTest
 	private LocalClogCache cache;
 	private File directory;
 	private ClogIndex index;
-	private Widget searchResults = widget(KillClogPlugin.CLOG_INTERFACE, 71, true);
+	private Widget searchResults = widget(InterfaceID.COLLECTION, 71, true);
 	private int automaticSearches;
 	private int viewRestores;
 	private boolean failAutomaticSearch;
 	private final List<Integer> automaticItems = new ArrayList<>();
-	private Widget clogRoot = widget(KillClogPlugin.CLOG_INTERFACE, 0, false);
+	private Widget clogRoot = widget(InterfaceID.COLLECTION, 0, false);
 	private String playerName = "Tester";
 	private boolean hostLog;
 
@@ -67,13 +69,14 @@ public class ManualClogSyncTest
 					case "getGameState": return net.runelite.api.GameState.LOGGED_IN;
 					case "getWorldType": return java.util.EnumSet.of(net.runelite.api.WorldType.MEMBERS);
 					case "getTickCount": return tick;
-					case "getVarpValue": return (int) args[0] == ClogVarps.OBTAINED ? obtained : total;
+					case "getVarpValue": return (int) args[0] == VarPlayerID.COLLECTION_COUNT ? obtained : total;
 					case "getVarbitValue": return hostLog ? 1 : 0;
 					case "getWidget":
-						if (args.length != 2 || (int) args[0] != KillClogPlugin.CLOG_INTERFACE) return null;
-						return (int) args[1] == 0 ? clogRoot : (int) args[1] == 71 ? searchResults : null;
+						if (args.length != 1) return null;
+						return (int) args[0] == InterfaceID.Collection.FRAME ? clogRoot
+							: (int) args[0] == InterfaceID.Collection.CONTENT_SEARCH ? searchResults : null;
 					case "menuAction":
-						assertArrayEquals(new Object[]{-1, KillClogPlugin.CLOG_INTERFACE << 16 | 76,
+						assertArrayEquals(new Object[]{-1, InterfaceID.COLLECTION << 16 | 76,
 							MenuAction.CC_OP, 1, -1, "Search", null}, args);
 						automaticSearches++;
 						if (failAutomaticSearch) throw new IllegalStateException("test request failure");
@@ -109,7 +112,7 @@ public class ManualClogSyncTest
 			Map.of(), null, null));
 		assertFalse(cache.hasCompletedFirstPartySetupFor("Tester"));
 		openCollectionLog();
-		menu("Search", KillClogPlugin.CLOG_INTERFACE << 16 | 76);
+		menu("Search", InterfaceID.COLLECTION << 16 | 76);
 		itemScript(1, 2, 101);
 		tick(103);
 		assertEquals(0, completions);
@@ -132,7 +135,7 @@ public class ManualClogSyncTest
 		tick(110);
 		assertFalse(cache.hasCompletedFirstPartySetupFor("Tester"));
 		// Retain the menu route for clients that emit this event for Search.
-		menu("Search", KillClogPlugin.CLOG_INTERFACE << 16 | 76);
+		menu("Search", InterfaceID.COLLECTION << 16 | 76);
 		assertTrue(notices.stream().anyMatch(text -> text.contains("is reading")));
 		tick(119);
 		assertEquals(0, completions);
@@ -153,8 +156,8 @@ public class ManualClogSyncTest
 		// The toggle's false argument comes from the matching cached script.
 		obtained = 0;
 		total = 1717;
-		searchResults = widget(KillClogPlugin.CLOG_INTERFACE, 71, true);
-		script(4084, widget(KillClogPlugin.CLOG_INTERFACE, 76, false), 4084, 0);
+		searchResults = widget(InterfaceID.COLLECTION, 71, true);
+		script(4084, widget(InterfaceID.COLLECTION, 76, false), 4084, 0);
 		tick(102);
 		assertEquals(0, completions);
 		tick(103);
@@ -221,8 +224,8 @@ public class ManualClogSyncTest
 	{
 		obtained = 0;
 		openCollectionLog();
-		menu("Search", KillClogPlugin.CLOG_INTERFACE << 16 | 76);
-		script(4084, widget(KillClogPlugin.CLOG_INTERFACE, 76, false), 4084, 0);
+		menu("Search", InterfaceID.COLLECTION << 16 | 76);
+		script(4084, widget(InterfaceID.COLLECTION, 76, false), 4084, 0);
 		tick(103);
 		assertEquals(1, completions);
 		assertEquals(0, automaticSearches);
@@ -241,7 +244,7 @@ public class ManualClogSyncTest
 		assertEquals(0, viewRestores);
 		assertEquals(0, completions);
 		assertTrue(notices.stream().anyMatch(text -> text.contains("choose Search")));
-		menu("Search", KillClogPlugin.CLOG_INTERFACE << 16 | 76);
+		menu("Search", InterfaceID.COLLECTION << 16 | 76);
 		tick(113);
 		assertEquals(1, completions);
 	}
@@ -266,10 +269,10 @@ public class ManualClogSyncTest
 		openCollectionLog();
 		clogRoot = null;
 		tick(101);
-		clogRoot = widget(KillClogPlugin.CLOG_INTERFACE, 0, true);
+		clogRoot = widget(InterfaceID.COLLECTION, 0, true);
 		openCollectionLog();
 		tick(102);
-		clogRoot = widget(KillClogPlugin.CLOG_INTERFACE, 0, false);
+		clogRoot = widget(InterfaceID.COLLECTION, 0, false);
 		openCollectionLog();
 		sync.reset();
 		tick(103);
@@ -287,10 +290,10 @@ public class ManualClogSyncTest
 		searchResults = null;
 		openCollectionLog();
 		tick(101);
-		searchResults = widget(KillClogPlugin.CLOG_INTERFACE, 71, false);
+		searchResults = widget(InterfaceID.COLLECTION, 71, false);
 		openCollectionLog();
 		tick(102);
-		searchResults = widget(KillClogPlugin.CLOG_INTERFACE, 71, true);
+		searchResults = widget(InterfaceID.COLLECTION, 71, true);
 		index.clear();
 		openCollectionLog();
 		tick(103);
@@ -305,13 +308,13 @@ public class ManualClogSyncTest
 		obtained = 0;
 		hostLog = true;
 		openCollectionLog();
-		menu("Search", KillClogPlugin.CLOG_INTERFACE << 16 | 76);
+		menu("Search", InterfaceID.COLLECTION << 16 | 76);
 		tick(110);
 		assertEquals(0, completions);
 		assertFalse(cache.hasCompletedFirstPartySetupFor("Tester"));
 		assertTrue(notices.isEmpty());
 		hostLog = false;
-		menu("Search", KillClogPlugin.CLOG_INTERFACE << 16 | 76);
+		menu("Search", InterfaceID.COLLECTION << 16 | 76);
 		hostLog = true;
 		itemScript(1, 1, 111);
 		hostLog = false;
@@ -326,8 +329,8 @@ public class ManualClogSyncTest
 		cache.cacheResult(new ClogResult("Tester", Map.of("zulrah", List.of(
 			new ClogResult.ClogItem(3, 5, null))), Map.of("zulrah", List.of(1, 2, 3)),
 			Map.of(), null, null));
-		searchResults = widget(KillClogPlugin.CLOG_INTERFACE, 71, true);
-		script(4084, widget(KillClogPlugin.CLOG_INTERFACE, 74, false), 4084, 0);
+		searchResults = widget(InterfaceID.COLLECTION, 71, true);
+		script(4084, widget(InterfaceID.COLLECTION, 74, false), 4084, 0);
 		itemScript(1, 2, 101);
 		tick(104);
 		assertEquals(1, completions);
@@ -343,10 +346,10 @@ public class ManualClogSyncTest
 	{
 		obtained = 0;
 		total = 0;
-		searchResults = widget(KillClogPlugin.CLOG_INTERFACE, 71, true);
-		menu("Search", KillClogPlugin.CLOG_INTERFACE << 16 | 76);
+		searchResults = widget(InterfaceID.COLLECTION, 71, true);
+		menu("Search", InterfaceID.COLLECTION << 16 | 76);
 		tick(105);
-		script(4084, widget(KillClogPlugin.CLOG_INTERFACE, 70, false), 4084, 0);
+		script(4084, widget(InterfaceID.COLLECTION, 70, false), 4084, 0);
 		tick(110);
 		assertEquals(1, completions);
 		assertEquals(1, notices.stream().filter(text -> text.contains("is reading")).count());
@@ -356,17 +359,17 @@ public class ManualClogSyncTest
 	public void nativeBackInitializationAndUnrelatedScriptsCannotArmSetup() throws Exception
 	{
 		obtained = 0;
-		Widget source = widget(KillClogPlugin.CLOG_INTERFACE, 76, false);
-		searchResults = widget(KillClogPlugin.CLOG_INTERFACE, 71, false);
+		Widget source = widget(InterfaceID.COLLECTION, 76, false);
+		searchResults = widget(InterfaceID.COLLECTION, 71, false);
 		script(4084, source, 4084, 0); // Search already open: this is Back.
-		searchResults = widget(KillClogPlugin.CLOG_INTERFACE, 71, true);
+		searchResults = widget(InterfaceID.COLLECTION, 71, true);
 		script(4084, source, 4084, 1); // Forced close during initialization.
 		script(4082, source, 4082, 0);
 		script(4085, source, 4085, 0);
 		plugin.onScriptPreFired(new ScriptPreFired(4084));
 		script(4084, null, 4084, 0);
 		script(4084, widget(320, 76, false), 4084, 0);
-		script(4084, widget(KillClogPlugin.CLOG_INTERFACE, 76, true), 4084, 0);
+		script(4084, widget(InterfaceID.COLLECTION, 76, true), 4084, 0);
 		script(4084, source, (Object[]) null);
 		script(4084, source, 4084);
 		script(4084, source, 4084, "0");
@@ -382,7 +385,7 @@ public class ManualClogSyncTest
 	public void otherSearchBackAndPageScriptsCannotCompleteSetup() throws Exception
 	{
 		menu("Search", 320 << 16 | 76);
-		menu("Back", KillClogPlugin.CLOG_INTERFACE << 16 | 76);
+		menu("Back", InterfaceID.COLLECTION << 16 | 76);
 		itemScript(1, 1, 101);
 		tick(115);
 		assertEquals(0, completions);
@@ -396,12 +399,12 @@ public class ManualClogSyncTest
 		obtained = 0;
 		total = 0;
 		openCollectionLog();
-		menu("Search", KillClogPlugin.CLOG_INTERFACE << 16 | 76);
+		menu("Search", InterfaceID.COLLECTION << 16 | 76);
 		tick(105);
-		menu("Search", KillClogPlugin.CLOG_INTERFACE << 16 | 76);
+		menu("Search", InterfaceID.COLLECTION << 16 | 76);
 		tick(110);
 		assertEquals(1, completions);
-		menu("Search", KillClogPlugin.CLOG_INTERFACE << 16 | 76);
+		menu("Search", InterfaceID.COLLECTION << 16 | 76);
 		tick(120);
 		assertEquals(2, completions);
 		assertEquals(1, notices.stream().filter(text -> text.contains("is reading")).count());
@@ -643,7 +646,7 @@ public class ManualClogSyncTest
 	private void openCollectionLog()
 	{
 		WidgetLoaded event = new WidgetLoaded();
-		event.setGroupId(KillClogPlugin.CLOG_INTERFACE);
+		event.setGroupId(InterfaceID.COLLECTION);
 		plugin.onWidgetLoaded(event);
 	}
 

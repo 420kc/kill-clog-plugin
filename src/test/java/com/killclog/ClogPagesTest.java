@@ -50,7 +50,7 @@ public class ClogPagesTest
 				// Its one slot, the 3rd age ring, sits on the clue pages; the plugin keeps a page of its own for it.
 				continue;
 			}
-			String key = ClogService.bossToCategory(PanelData.NAME_OVERRIDES.getOrDefault(boss.getName(), boss.getName()));
+			String key = ClogService.bossToCategory(PanelData.hiscoreName(boss.getName()));
 			assertTrue(boss.getName() + " has no page " + key, pages.contains(key));
 		}
 	}

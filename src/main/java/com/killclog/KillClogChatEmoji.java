@@ -36,6 +36,7 @@ class KillClogChatEmoji
 	@Inject private Client client;
 	@Inject private ItemManager itemManager;
 
+	// Like the chat command's item icons, the slots live as long as the client and are kept across a disable/enable.
 	private final Map<String, Integer> iconIdxByTrigger = new LinkedHashMap<>();
 
 	void rewrite(ChatMessage chatMessage)
@@ -285,10 +286,5 @@ class KillClogChatEmoji
 
 		modIcons[slot] = ImageUtil.getImageIndexedSprite(image, client);
 		client.refreshChat();
-	}
-
-	void clear()
-	{
-		iconIdxByTrigger.clear();
 	}
 }

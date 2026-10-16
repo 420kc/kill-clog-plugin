@@ -16,6 +16,8 @@ import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.Player;
 import net.runelite.api.events.GameStateChanged;
+import net.runelite.api.gameval.InterfaceID;
+import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneScapeProfile;
@@ -787,9 +789,9 @@ public class PluginPublicationCharacterizationTest
 	{
 		LocalCaCache caCache = (LocalCaCache) field("localCaCache");
 		when(localClogCache.hasDataFor(RSN)).thenReturn(true);
-		when(client.getVarpValue(ClogVarps.OBTAINED)).thenReturn(5);
-		when(client.getVarpValue(ClogVarps.TOTAL)).thenReturn(10);
-		varp(ClogVarps.OBTAINED);
+		when(client.getVarpValue(VarPlayerID.COLLECTION_COUNT)).thenReturn(5);
+		when(client.getVarpValue(VarPlayerID.COLLECTION_COUNT_MAX)).thenReturn(10);
+		varp(VarPlayerID.COLLECTION_COUNT);
 		ticks(9);
 		verify(localClogCache, never()).updateTotalsUpward(any(), anyInt(), anyInt());
 		verify(caCache, never()).cacheResult(any(), anyLong(), any());
@@ -797,7 +799,7 @@ public class PluginPublicationCharacterizationTest
 		verify(localClogCache).updateTotalsUpward(RSN, 5, 10);
 		verify(caCache).cacheResult(eq(RSN), anyLong(), any());
 		world(net.runelite.api.WorldType.SEASONAL);
-		varp(ClogVarps.OBTAINED);
+		varp(VarPlayerID.COLLECTION_COUNT);
 		ticks(20);
 		verify(localClogCache).updateTotalsUpward(RSN, 5, 10);
 		verify(caCache).cacheResult(eq(RSN), anyLong(), any());
@@ -859,10 +861,10 @@ public class PluginPublicationCharacterizationTest
 		// The walk reads the obtained counter every tick; nothing else here does without a local log.
 		world(net.runelite.api.WorldType.SEASONAL);
 		ticks(3);
-		verify(client, never()).getVarpValue(ClogVarps.OBTAINED);
+		verify(client, never()).getVarpValue(VarPlayerID.COLLECTION_COUNT);
 		world(net.runelite.api.WorldType.MEMBERS);
 		ticks(1);
-		verify(client).getVarpValue(ClogVarps.OBTAINED);
+		verify(client).getVarpValue(VarPlayerID.COLLECTION_COUNT);
 	}
 
 	/** The server announces a League, and the player is on one of its worlds. */
@@ -1348,7 +1350,7 @@ public class PluginPublicationCharacterizationTest
 	{
 		net.runelite.api.MenuEntry entry = mock(net.runelite.api.MenuEntry.class);
 		when(entry.getOption()).thenReturn("Search");
-		when(entry.getParam1()).thenReturn(KillClogPlugin.CLOG_INTERFACE << 16);
+		when(entry.getParam1()).thenReturn(InterfaceID.COLLECTION << 16);
 		plugin.onMenuOptionClicked(new net.runelite.api.events.MenuOptionClicked(entry));
 	}
 

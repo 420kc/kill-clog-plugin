@@ -34,7 +34,6 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.game.SpriteManager;
-import net.runelite.client.plugins.hiscore.HiscorePanel;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
@@ -167,7 +166,7 @@ public class KillClogPanel extends PluginPanel
 	// world changes. Every name in a League view wears the Leagues badge.
 	private final JLabel leagueSwitch = new JLabel();
 	private final ImageIcon leagueBadge = new ImageIcon(ImageUtil.resizeImage(
-		ImageUtil.loadImageResource(HiscorePanel.class, "seasonal.png"), 15, 15));
+		AccountBadgeResolver.hiscoreIcon("seasonal.png"), 15, 15));
 	private final ImageIcon leagueOff = RankSelector.icon((BufferedImage) leagueBadge.getImage(), 0.35f);
 	private String worldLeague;
 	private String activeLeague;
@@ -526,16 +525,8 @@ public class KillClogPanel extends PluginPanel
 			}
 		};
 		Cells.styleLabel(totalLvlCell, "Total");
-		try
-		{
-			BufferedImage img = ImageUtil.loadImageResource(HiscorePanel.class, "overall.png");
-			totalLvlCell.setIcon(new ImageIcon(ImageUtil.resizeImage(
-				ImageUtil.resizeCanvas(img, 25, 25), 20, 20)));
-		}
-		catch (Exception e)
-		{
-			// overall.png not available
-		}
+		totalLvlCell.setIcon(new ImageIcon(ImageUtil.resizeImage(
+			ImageUtil.resizeCanvas(AccountBadgeResolver.hiscoreIcon("overall.png"), 25, 25), 20, 20)));
 		statsRow.add(cells.wrapInCell(totalLvlCell));
 		// The three summaries: Combat, Skills, Clues.
 		statsRow.add(cells.buildClueSummaryCell());

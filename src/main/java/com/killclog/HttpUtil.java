@@ -304,7 +304,7 @@ final class HttpUtil
 				{
 					future.complete(reader.read(response, body));
 				}
-				catch (IOException e)
+				catch (IOException | RuntimeException e)
 				{
 					log.debug("Failed to read response for {}: {}", url, e.getMessage());
 					future.complete(unreadable.apply(response));
