@@ -139,6 +139,8 @@ public class HiscoreService
 		.maximumSize(256).expireAfterWrite(CACHE_TTL_MS, TimeUnit.MILLISECONDS).build();
 	private final ConcurrentHashMap<String, CompletableFuture<HiscoreResult>> rankRequests = new ConcurrentHashMap<>();
 	/** Boards Jagex answered "not found" on: the player has no row there to show. */
+	// While Jagex is failing, lookups wait it out instead of adding to its load (as every other provider's do).
+	private final CircuitBreaker breaker = new CircuitBreaker("Jagex hiscores");
 	private final Cache<String, Boolean> absentTables = CacheBuilder.newBuilder()
 		.maximumSize(256).expireAfterWrite(CACHE_TTL_MS, TimeUnit.MILLISECONDS).build();
 
@@ -854,11 +856,15 @@ public class HiscoreService
 
 	private CompletableFuture<TableResponse> fetchTable(String hiscoreKey, String encodedPlayer)
 	{
+		if (breaker.isOpen()) return CompletableFuture.completedFuture(new TableResponse(FetchStatus.REJECTED, null));
 		return HttpUtil.httpGet(httpClient, BASE_URL + hiscoreKey + JSON_SUFFIX + encodedPlayer)
 			.thenCompose(response ->
 			{
 				TableResponse json = classify(response);
-				if (!json.retryable()) return CompletableFuture.completedFuture(json);
+				if (json.status == FetchStatus.TRANSIENT) breaker.failure();
+				else if (json.status != FetchStatus.REJECTED) breaker.success();
+				// Only a bad body tries the CSV: an outage or a rate limit would just answer it the same way.
+				if (json.status != FetchStatus.MALFORMED) return CompletableFuture.completedFuture(json);
 				return HttpUtil.httpGet(httpClient, BASE_URL + hiscoreKey + CSV_SUFFIX + encodedPlayer)
 					.thenApply(csvResponse ->
 					{

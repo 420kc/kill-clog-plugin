@@ -195,6 +195,12 @@ public class LocalClogCache
 							loadedLookups.add(0, data);
 						}
 					}
+					// The cap holds on disk too: every name looked up, or seen running a chat command, left a file
+					// for good, about 76 KB each.
+					for (Filepath file : files.subList(Math.min(LOOKUP_CAP, files.size()), files.size()))
+					{
+						file.deleteIfExists();
+					}
 				}
 			}
 			catch (IOException | RuntimeException e)

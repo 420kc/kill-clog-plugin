@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -566,8 +567,10 @@ class KillClogChatCommand
 				return cached.getKc(boss);
 			}
 
+			// The panel's time limit: this runs on the executor RuneLite shares with every plugin.
 			HiscoreResult result = (main ? hiscoreService.lookup(rsn, null)
-				: hiscoreService.lookupTable(rsn, HiscoreService.LEAGUE_TABLE)).join();
+				: hiscoreService.lookupTable(rsn, HiscoreService.LEAGUE_TABLE))
+				.copy().orTimeout(LookupFanout.HISCORE_TIMEOUT_SECONDS, TimeUnit.SECONDS).join();
 			return result != null ? result.getKc(boss) : -1;
 		}
 		catch (Exception e)

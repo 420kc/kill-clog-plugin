@@ -104,7 +104,8 @@ public class HiscoreFailureTest
 				return response(chain, count == 1 ? failure : 200, count == 1 ? "{bad" : body(5000));
 			});
 			assertEquals(5000, service.lookup("Test", null).get(3, TimeUnit.SECONDS).getTotalXp());
-			assertEquals(6, calls.values().stream().mapToInt(AtomicInteger::get).sum());
+			// An outage or a 429 retries the JSON once; only a bad body also tries the CSV.
+			assertEquals(failure == 200 ? 6 : 5, calls.values().stream().mapToInt(AtomicInteger::get).sum());
 			assertEquals(2, calls.get(REGULAR + "index_lite.json").get());
 		}
 	}
@@ -119,8 +120,24 @@ public class HiscoreFailureTest
 			return response(chain, 503, "");
 		});
 		assertDown(service.lookup("Test", null));
-		assertEquals(16, calls.get());
+		// Each of the four boards: its JSON and one retry, never the CSV behind an outage.
+		assertEquals(8, calls.get());
 		assertNull(service.getCached("Test"));
+	}
+
+	@Test
+	public void anOutageTripsTheBreakerSoTheNextLookupSendsNothing() throws Exception
+	{
+		AtomicInteger calls = new AtomicInteger();
+		HiscoreService service = service(chain ->
+		{
+			calls.incrementAndGet();
+			return response(chain, 503, "");
+		});
+		assertDown(service.lookup("Test", null));
+		int first = calls.get();
+		assertDown(service.lookup("Other", null));
+		assertEquals("Jagex is left alone while it's down", first, calls.get());
 	}
 
 	@Test

@@ -200,6 +200,9 @@ public class LocalClogCacheTest
 		assertTrue(restarted.hasDataFor("Player 259"));
 		assertTrue(restarted.hasDataFor("Player 4"));
 		assertFalse("only the newest 256 load", restarted.hasDataFor("Player 3"));
+		assertFalse("and the cap holds on disk", new File(dir, "lookups/player_3.json").exists());
+		assertTrue(new File(dir, "lookups/player_4.json").exists());
+		assertEquals(256, new File(dir, "lookups").list().length);
 	}
 
 	// ── capture, merge and provenance ──
