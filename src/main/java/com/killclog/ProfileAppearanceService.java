@@ -121,15 +121,16 @@ final class ProfileAppearanceService
 	@Inject
 	ProfileAppearanceService(Client client, ClientThread clientThread,
 		ScheduledExecutorService executor,
-		ConfigManager configManager, okhttp3.OkHttpClient httpClient, Gson gson)
+		ConfigManager configManager, okhttp3.OkHttpClient httpClient, Gson gson, LocalClogCache store)
 	{
-		this(client, clientThread, executor, httpClient, gson,
-			key -> configManager.getConfiguration(CONFIG_GROUP, key, String.class),
-			(key, value) ->
-			{
-				if (value == null) configManager.unsetConfiguration(CONFIG_GROUP, key);
-				else configManager.setConfiguration(CONFIG_GROUP, key, value);
-			});
+		// The credentials stay on this device: in Kill Clog's data folder, never synced config (DeviceSecrets).
+		this(client, clientThread, executor, httpClient, gson, new DeviceSecrets(configManager, CONFIG_GROUP, store, gson));
+	}
+
+	private ProfileAppearanceService(Client client, ClientThread clientThread, ScheduledExecutorService executor,
+		okhttp3.OkHttpClient httpClient, Gson gson, DeviceSecrets secrets)
+	{
+		this(client, clientThread, executor, httpClient, gson, secrets::read, secrets::write);
 	}
 
 	ProfileAppearanceService(Client client, ClientThread clientThread,
