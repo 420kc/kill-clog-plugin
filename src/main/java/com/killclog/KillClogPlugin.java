@@ -238,6 +238,7 @@ public class KillClogPlugin extends Plugin
 		kclogCommand.setClogIndex(clogIndex);
 		syncService.setClogIndex(clogIndex);
 		killclogService.setClogIndex(clogIndex);
+		clogService.setClogIndex(clogIndex);
 		localCaCache.setCaCatalog(caCatalog);
 		runeProfileService.setCaCatalog(caCatalog);
 		chatCommandManager.registerCommandAsync(KillClogChatCommand.COMMAND, kclogCommand::handle);

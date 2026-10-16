@@ -174,9 +174,6 @@ public class ClogServiceProvenanceTest
 	private static ClogService serviceWithWarmCatalog(LocalClogCache cache) throws Exception
 	{
 		ClogService service = new ClogService(null, new Gson(), cache);
-		Field names = ClogService.class.getDeclaredField("cachedItemNames");
-		names.setAccessible(true);
-		names.set(service, Collections.emptyMap());
 		return service;
 	}
 
@@ -216,9 +213,6 @@ public class ClogServiceProvenanceTest
 			})
 			.build();
 		ClogService service = new ClogService(client, new Gson(), cache);
-		Field names = ClogService.class.getDeclaredField("cachedItemNames");
-		names.setAccessible(true);
-		names.set(service, Collections.emptyMap());
 		return service;
 	}
 

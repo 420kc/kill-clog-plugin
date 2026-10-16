@@ -40,8 +40,6 @@ public class ClogService
 		"https://templeosrs.com/api/collection-log/player_collection_log.php";
 	private static final String TEMPLE_STATS_URL =
 		"https://templeosrs.com/api/player_stats.php";
-	private static final String WIKI_MAPPING_URL =
-		"https://prices.runescape.wiki/api/v1/osrs/mapping";
 
 	// Boss name to TempleOSRS category key overrides, from the bundled
 	// catalog; the parity test pins its exact contents.
@@ -60,11 +58,11 @@ public class ClogService
 
 	// Cached data loaded once per session.
 	private volatile Map<String, List<Integer>> cachedCategories;
-	private volatile Map<Integer, String> cachedItemNames;
+	// Item names come from the game cache, through the log's own index (the plugin hands it over at start).
+	private volatile ClogIndex clogIndex;
 
 	// In-flight futures prevent duplicate HTTP requests from concurrent callers.
 	private final Map<String, CompletableFuture<Map<String, List<Integer>>>> categoriesFlight = new java.util.concurrent.ConcurrentHashMap<>();
-	private final Map<String, CompletableFuture<Map<Integer, String>>> namesFlight = new java.util.concurrent.ConcurrentHashMap<>();
 
 	// Failure cooldown skips TempleOSRS briefly after transient errors.
 	private static final long TEMPLE_FAILURE_TTL_MS = 3 * 60 * 1000;
@@ -135,7 +133,7 @@ public class ClogService
 		{
 			return null;
 		}
-		Map<Integer, String> names = cachedItemNames;
+		Map<Integer, String> names = itemNames();
 		ClogResult result = localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>());
 		// Temple's EHP and EHC ride along as a lookup attaches them, under the same freshness, so a log rebuilt
 		// here (a local capture, the log opened) keeps the Experience & Efficiency card's figures.
@@ -175,7 +173,7 @@ public class ClogService
 		{
 			return null;
 		}
-		Map<Integer, String> names = cachedItemNames;
+		Map<Integer, String> names = itemNames();
 		ClogResult result = cache.toClogResult(playerName, names != null ? names : new HashMap<>());
 		return result != null ? result.withLocalSource(true) : null;
 	}
@@ -546,8 +544,7 @@ public class ClogService
 			obtained.put(entry.getKey(), Collections.emptyList());
 		}
 
-		Map<Integer, String> names = cachedItemNames != null
-			? new HashMap<>(cachedItemNames) : new HashMap<>();
+		Map<Integer, String> names = new HashMap<>(itemNames());
 		return new ClogResult(playerName, obtained, categories, names, null, null);
 	}
 
@@ -575,21 +572,22 @@ public class ClogService
 		}, categories -> cachedCategories = categories);
 	}
 
+	void setClogIndex(ClogIndex clogIndex)
+	{
+		this.clogIndex = clogIndex;
+	}
+
+	/** The game cache's names for every log item, now; empty before the catalog is parsed. */
+	private Map<Integer, String> itemNames()
+	{
+		ClogIndex index = clogIndex;
+		return index != null ? index.itemNames() : Collections.emptyMap();
+	}
+
+	/** The names as a lookup's next step takes them: there is nothing to wait for, so it is already done. */
 	private CompletableFuture<Map<Integer, String>> fetchItemNames()
 	{
-		return fetchOnce(() -> cachedItemNames, namesFlight, WIKI_MAPPING_URL, json ->
-		{
-			Map<Integer, String> names = new HashMap<>();
-			for (JsonElement elem : gson.fromJson(json, JsonArray.class))
-			{
-				JsonObject obj = elem.getAsJsonObject();
-				if (obj.has("id") && obj.has("name"))
-				{
-					names.put(obj.get("id").getAsInt(), obj.get("name").getAsString());
-				}
-			}
-			return names;
-		}, names -> cachedItemNames = names);
+		return CompletableFuture.completedFuture(itemNames());
 	}
 
 	/**

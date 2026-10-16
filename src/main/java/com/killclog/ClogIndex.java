@@ -221,6 +221,13 @@ final class ClogIndex
 	}
 
 	@Nullable
+	/** Every log item's name, from the game cache; empty until the log's catalog is parsed. Read-only. */
+	Map<Integer, String> itemNames()
+	{
+		Snapshot s = snapshot;
+		return s != null ? Collections.unmodifiableMap(s.itemNames) : Collections.emptyMap();
+	}
+
 	String itemName(ClogResult result, int itemId)
 	{
 		String direct = result.getItemName(itemId);

@@ -122,7 +122,7 @@ Full page names work, and shorthand such as `gotr`, `mixology`, `pets`, and `hyd
 
 ## Data and privacy
 
-Kill Clog contacts secure.runescape.com (Jagex HiScores), templeosrs.com ([TempleOSRS](https://templeosrs.com)), api.runeprofile.com ([RuneProfile](https://runeprofile.com), which also names other players' clans), killclog.com, and prices.runescape.wiki (the [OSRS Wiki's item list](https://prices.runescape.wiki/api/v1/osrs/mapping), for item names). With wiki links on, clicking an item opens it on oldschool.runescape.wiki in your browser. A developer-only setting sends sync to staging.killclog.com instead. Each request shows your IP address to the host it contacts, which is why RuneLite shows a third-party warning on install.
+Kill Clog contacts secure.runescape.com (Jagex HiScores), templeosrs.com ([TempleOSRS](https://templeosrs.com)), api.runeprofile.com ([RuneProfile](https://runeprofile.com), which also names other players' clans), and killclog.com. With wiki links on, clicking an item opens it on oldschool.runescape.wiki in your browser. A developer-only setting sends sync to staging.killclog.com instead. Each request shows your IP address to the host it contacts, which is why RuneLite shows a third-party warning on install.
 
 Web publication is opt-in. Nothing from your local Collection Log is published until you enable **Sync Collection Log**. Disable that setting to stop all web publication, or **Publish Character Model** to stop character updates. Already published data remains until you request deletion through the [opt-out page](https://killclog.com/p/opt-out.html).
 

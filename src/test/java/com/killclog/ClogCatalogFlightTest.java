@@ -23,7 +23,7 @@ public class ClogCatalogFlightTest
 	@Test
 	public void immediateFailureCanRetryAndCacheSuccess() throws Exception
 	{
-		for (String name : List.of("fetchCategories", "fetchItemNames"))
+		for (String name : List.of("fetchCategories"))
 		{
 			for (boolean malformed : List.of(false, true))
 			{
@@ -43,7 +43,7 @@ public class ClogCatalogFlightTest
 	@Test
 	public void delayedFailureIsSharedAndNextRequestCanSucceed() throws Exception
 	{
-		for (String name : List.of("fetchCategories", "fetchItemNames"))
+		for (String name : List.of("fetchCategories"))
 		{
 			CatalogHttp http = new CatalogHttp();
 			http.delayed = true;
@@ -69,7 +69,7 @@ public class ClogCatalogFlightTest
 	@Test
 	public void immediateSuccessReturnsStableFuture() throws Exception
 	{
-		for (String name : List.of("fetchCategories", "fetchItemNames"))
+		for (String name : List.of("fetchCategories"))
 		{
 			CatalogHttp http = new CatalogHttp();
 			http.body = successBody(name);
@@ -80,10 +80,24 @@ public class ClogCatalogFlightTest
 		}
 	}
 
+	@Test
+	public void itemNamesComeFromTheGameCacheIndexWithNoRequest() throws Exception
+	{
+		// Untradeables included (a pet here): the game cache names every log item, and naming one sends nothing.
+		CatalogHttp http = new CatalogHttp();
+		http.body = successBody("fetchCategories");
+		ClogService service = service(http);
+		ClogIndex index = new ClogIndex();
+		index.publishForTest(Map.of("zulrah", List.of(12921)), Map.of(12921, "Pet snakeling"));
+		service.setClogIndex(index);
+		fetch(service, "fetchCategories").join();
+		assertEquals("Pet snakeling", service.getCatalogResult("Anyone").getItemName(12921));
+		assertEquals("only the categories went over the network", 1, http.starts);
+	}
+
 	private static String successBody(String name)
 	{
-		return name.equals("fetchCategories") ? "{\"bosses\":{\"zulrah\":[1]}}"
-			: "[{\"id\":1,\"name\":\"Item\"}]";
+		return "{\"bosses\":{\"zulrah\":[1]}}";
 	}
 
 	private static ClogService service(OkHttpClient http)
