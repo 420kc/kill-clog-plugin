@@ -51,7 +51,8 @@ import net.runelite.client.util.Text;
 	description = "HiScores and Collection Log Overhaul",
 	tags = {"boss", "kc", "kill count", "collection log", "clog", "hiscores", "pvm", "pb",
 		"personal best", "ironman", "comparison", "sync", "templeosrs", "runeprofile",
-		"combat achievements"},
+		"combat achievements", "lookup", "player lookup", "hiscores replacement", "leaderboard", "profile",
+		"ehb", "pets", "raids", "clues", "stats"},
 	internalName = "kill-clog",
 	legacyDataDirectory = "kill-clog"
 )
