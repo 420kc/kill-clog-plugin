@@ -130,8 +130,8 @@ public class ClogTabTooltip extends TitleTooltip
 				// With the highlighter on, a page's row wears its progression color whole, as the boss list's rows do.
 				Color count = obtained[page] < 0 ? MUTED_GRAY : progress != null
 					? ClogHelper.clogColor(obtained[page], total[page], progress) : completionColor(obtained[page], total[page]);
-				c.g.setColor(pageRows.hovered() == page ? Color.WHITE
-					: progress != null && obtained[page] >= 0 ? count : OSRS_ORANGE);
+				c.g.setColor(pageRows.hovered() == page ? NativeTooltip.valueColor
+					: progress != null && obtained[page] >= 0 ? count : labelColor);
 				c.g.drawString(names[page], c.inset(), textY);
 				c.g.setColor(count);
 				drawRightAligned(c.g, c.fm, countText(page), right, textY);

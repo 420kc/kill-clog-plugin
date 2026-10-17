@@ -45,7 +45,6 @@ public abstract class TitleTooltip extends NativeTooltip
 	private static final String ELLIPSIS = "...";
 	private static final Font TITLE_FONT = FontManager.getRunescapeBoldFont().deriveFont(18f);
 	static final Font TITLE_FONT_SMALL = FontManager.getRunescapeBoldFont().deriveFont(16f);
-	static final Color SEPARATOR_COLOR = new Color(80, 70, 50);
 
 	protected static final Color CLOG_RED = new Color(255, 0, 0);
 	protected static final Color CLOG_GREEN = new Color(0, 255, 0);
@@ -337,7 +336,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	{
 		int inset = getInset();
 		y += pad;
-		g2.setColor(SEPARATOR_COLOR);
+		g2.setColor(dividerColor);
 		g2.drawLine(inset, y, w - inset - 1, y);
 		return y + 1 + pad;
 	}
@@ -348,7 +347,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	int paintSubheader(Graphics2D g2, int y, String text)
 	{
 		g2.setFont(FontManager.getRunescapeBoldFont());
-		g2.setColor(OSRS_ORANGE);
+		g2.setColor(labelColor);
 		g2.drawString(text, getInset(), y + g2.getFontMetrics().getAscent());
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		return y + SUBHEADER_HEIGHT;
@@ -357,14 +356,14 @@ public abstract class TitleTooltip extends NativeTooltip
 	static int drawLabelValue(Graphics2D g2, FontMetrics fm, int x, int y,
 		String label, String value)
 	{
-		return drawLabelValue(g2, fm, x, y, label, value, Color.WHITE);
+		return drawLabelValue(g2, fm, x, y, label, value, NativeTooltip.valueColor);
 	}
 
 	/** An orange label with its value right after it; returns the pair's width. */
 	static int drawLabelValue(Graphics2D g2, FontMetrics fm, int x, int y,
 		String label, String value, Color valueColor)
 	{
-		return drawLabelValue(g2, fm, x, y, label, value, OSRS_ORANGE, valueColor);
+		return drawLabelValue(g2, fm, x, y, label, value, labelColor, valueColor);
 	}
 
 	/** A label in its own color (white on a hovered row) with its value right after it. */
@@ -632,7 +631,7 @@ public abstract class TitleTooltip extends NativeTooltip
 		if (onBack != null)
 		{
 			g2.setFont(FontManager.getRunescapeSmallFont());
-			g2.setColor(backHovered ? Color.WHITE : OSRS_ORANGE);
+			g2.setColor(backHovered ? NativeTooltip.valueColor : labelColor);
 			g2.drawString(backLabel, inset, inset + g2.getFontMetrics().getAscent());
 			backTop = inset;
 			top += LINE_HEIGHT;
@@ -659,7 +658,7 @@ public abstract class TitleTooltip extends NativeTooltip
 		g2.drawString(headerTitle, titleX, lineY);
 		if (showTitleSuffix)
 		{
-			g2.setColor(titleSuffixColor != null ? titleSuffixColor : OSRS_ORANGE);
+			g2.setColor(titleSuffixColor != null ? titleSuffixColor : labelColor);
 			g2.drawString(titleSuffix, titleX + nfm.stringWidth(headerTitle), lineY);
 		}
 
@@ -693,11 +692,11 @@ public abstract class TitleTooltip extends NativeTooltip
 		{
 			lineY += lineY == titleBaseline ? NAME_LINE_HEIGHT : LINE_HEIGHT;
 			int rankWidth = drawLabelValue(g2, fm, inset, lineY, "Rank: ", rankText,
-				"Unranked".equals(rankText) ? OSRS_ORANGE : Color.WHITE);
+				"Unranked".equals(rankText) ? labelColor : NativeTooltip.valueColor);
 			if (rankPairLabel != null)
 			{
 				drawLabelValue(g2, fm, inset + rankWidth + INFO_PAIR_GAP, lineY, rankPairLabel, rankPairText,
-					"Unranked".equals(rankPairText) ? OSRS_ORANGE : Color.WHITE);
+					"Unranked".equals(rankPairText) ? labelColor : NativeTooltip.valueColor);
 			}
 		}
 
@@ -718,7 +717,7 @@ public abstract class TitleTooltip extends NativeTooltip
 
 		// Separator
 		int sepY = lineY + SEPARATOR_GAP;
-		g2.setColor(SEPARATOR_COLOR);
+		g2.setColor(dividerColor);
 		g2.drawLine(inset, sepY, w - inset - 1, sepY);
 
 		return sepY + 1 + SEPARATOR_GAP;
@@ -809,7 +808,7 @@ public abstract class TitleTooltip extends NativeTooltip
 
 	protected Color titleColor()
 	{
-		return titleHovered && titleLinkActive() ? Color.WHITE : OSRS_ORANGE;
+		return titleHovered && titleLinkActive() ? NativeTooltip.valueColor : labelColor;
 	}
 
 	void setSubtitleIcon(@Nullable BufferedImage icon)

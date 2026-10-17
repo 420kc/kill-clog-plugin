@@ -653,15 +653,15 @@ public class KillClogPanel extends PluginPanel
 			{
 				tip.setInfoLine(isSolHeredit ? ColosseumGlory.headerLabel(glory) : data.kcLabel != null ? data.kcLabel : "KC: ",
 					isSolHeredit ? ColosseumGlory.headerValue(glory, data.kc) : ClogHelper.formatKc(data.kc),
-					Color.WHITE);
+					NativeTooltip.valueColor);
 				if (data.pb != null && config.showTooltipPb())
 				{
-					tip.setInfoLinePair(ClogHelper.pbLabel(data.pb), ClogHelper.pbTime(data.pb), Color.WHITE);
+					tip.setInfoLinePair(ClogHelper.pbLabel(data.pb), ClogHelper.pbTime(data.pb), NativeTooltip.valueColor);
 				}
 			}
 			else if (data.pb != null && config.showTooltipPb())
 			{
-				tip.setInfoLine(ClogHelper.pbLabel(data.pb), ClogHelper.pbTime(data.pb), Color.WHITE);
+				tip.setInfoLine(ClogHelper.pbLabel(data.pb), ClogHelper.pbTime(data.pb), NativeTooltip.valueColor);
 			}
 			ClogHelper.addHardModeLine(tip, data, config.showTooltipKc(), config.showTooltipPb());
 			if (data.allItemIds != null)
@@ -693,7 +693,7 @@ public class KillClogPanel extends PluginPanel
 		if (isSolHeredit && ColosseumGlory.isVisible(glory)
 			&& config.showTooltipKc() && (data == null || data.obtainedCount < 0))
 		{
-			tip.setInfoLine(ColosseumGlory.LABEL, ColosseumGlory.format(glory), Color.WHITE);
+			tip.setInfoLine(ColosseumGlory.LABEL, ColosseumGlory.format(glory), NativeTooltip.valueColor);
 		}
 
 		tooltipController.keepTooltipOnHover(tip, parentCell);
@@ -1251,6 +1251,12 @@ public class KillClogPanel extends PluginPanel
 				renderResults();
 				cells.rebuildPrimaryTooltips(localRsn);
 				break;
+			case "cardLabelColor":
+			case "cardValueColor":
+			case "cardDividerColor":
+				NativeTooltip.cardColors(config.cardLabelColor(), config.cardValueColor(), config.cardDividerColor());
+				tooltipController.hidePinnedTooltip();
+				break;
 			case "hoverStyle":
 				tooltipController.hidePinnedTooltip();
 				tooltipController.clearHoveredCell();
@@ -1274,6 +1280,7 @@ public class KillClogPanel extends PluginPanel
 
 	public void reloadTooltipSprites()
 	{
+		NativeTooltip.cardColors(config.cardLabelColor(), config.cardValueColor(), config.cardDividerColor());
 		clientThread.invokeLater(() ->
 		{
 			NativeTooltip.loadSprites(client, spriteManager);

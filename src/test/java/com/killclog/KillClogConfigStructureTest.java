@@ -45,6 +45,9 @@ public class KillClogConfigStructureTest
 		expected.add("silentAutomaticSync");
 		expected.add("automaticSync");
 		expected.add("showLeaderboardSelector");
+		expected.add("cardLabelColor");
+		expected.add("cardValueColor");
+		expected.add("cardDividerColor");
 		assertEquals(expected, keys);
 	}
 
@@ -144,7 +147,7 @@ public class KillClogConfigStructureTest
 	public void allModalControlsShareOneSection() throws Exception
 	{
 		assertEquals(Arrays.asList("tooltipMode", "hoverStyle", "wikiItemLinks",
-			"showTooltipKc", "showTooltipPb", "showTooltipRank"),
+			"showTooltipKc", "showTooltipPb", "showTooltipRank", "cardLabelColor", "cardValueColor", "cardDividerColor"),
 			keysInSection(KillClogConfig.modalAppearanceSection));
 		assertEquals("Card Activation", KillClogConfig.class.getDeclaredMethod("tooltipMode")
 			.getAnnotation(ConfigItem.class).name());
@@ -158,6 +161,10 @@ public class KillClogConfigStructureTest
 		assertTrue(defaults.showTooltipKc());
 		assertTrue(defaults.showTooltipPb());
 		assertTrue(defaults.showTooltipRank());
+		// The cards' colors are the game's until a player picks their own.
+		assertEquals(NativeTooltip.OSRS_ORANGE, defaults.cardLabelColor());
+		assertEquals(java.awt.Color.WHITE, defaults.cardValueColor());
+		assertEquals(NativeTooltip.DIVIDER, defaults.cardDividerColor());
 	}
 
 	private static List<String> keysInSection(String section)

@@ -1,6 +1,5 @@
 package com.killclog;
 
-import java.awt.Color;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.event.MouseEvent;
@@ -142,7 +141,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 			int textY = y + c.fm.getAscent();
 			paintIcon(c.g, rareIcons, row, c.inset(), y);
 			// No pointer cursor in this UI: the hovered row answers in white instead.
-			c.g.setColor(hovered ? Color.WHITE : OSRS_ORANGE);
+			c.g.setColor(hovered ? NativeTooltip.valueColor : labelColor);
 			c.g.drawString(RARE_LABELS[row], c.inset() + ICON_SIZE + ICON_GAP, textY);
 			if (rareObtained[row] >= 0)
 			{

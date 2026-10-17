@@ -320,7 +320,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 		if (hasTotals())
 		{
 			// The completion heads the tab rows, read the same way: a row that opens nothing.
-			card.add(tabRow(-1, "Completion", completionText(), Color.WHITE))
+			card.add(tabRow(-1, "Completion", completionText(), NativeTooltip.valueColor))
 				.add(bar(obtained, totalSlots))
 				.add(tierLadder());
 		}
@@ -388,7 +388,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 			Font font = c.g.getFont();
 			c.g.setFont(TAB_FONT);
 			int baseline = y + fm.getAscent();
-			c.g.setColor(hovered ? Color.WHITE : OSRS_ORANGE);
+			c.g.setColor(hovered ? NativeTooltip.valueColor : labelColor);
 			c.g.drawString(label, c.inset(), baseline);
 			c.g.setColor(color);
 			c.g.drawString(value, c.w - c.inset() - fm.stringWidth(value), baseline);

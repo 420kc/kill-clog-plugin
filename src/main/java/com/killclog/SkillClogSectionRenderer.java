@@ -120,7 +120,7 @@ final class SkillClogSectionRenderer
 			if (section.hasHeading())
 			{
 				g2.setFont(SECTION_FONT);
-				g2.setColor(TitleTooltip.OSRS_ORANGE);
+				g2.setColor(NativeTooltip.labelColor);
 				g2.drawString(section.heading(), inset, y + headingMetrics.getAscent());
 				// A heading carries its rule like a card's section title.
 				CardBody.sectionRule(g2, y + headingMetrics.getHeight() + HEADER_GAP, inset, width);
@@ -135,7 +135,7 @@ final class SkillClogSectionRenderer
 			{
 				TitleTooltip.drawLabelValue(g2, detailMetrics, inset, y + detailMetrics.getAscent(),
 					SkillTooltip.RIFTS_CLOSED_LABEL, repaintTarget.riftsClosedText(),
-					repaintTarget.riftsClosed >= 0 ? Color.WHITE : TitleTooltip.MUTED_GRAY);
+					repaintTarget.riftsClosed >= 0 ? NativeTooltip.valueColor : TitleTooltip.MUTED_GRAY);
 				y += detailMetrics.getHeight() + HEADER_GAP;
 			}
 			y = paintGrid(g2, entry, section.primary(), i, inset, y, cols, hitBoxes);

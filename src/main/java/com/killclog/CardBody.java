@@ -204,7 +204,7 @@ final class CardBody
 
 	static Part line(String label, String value)
 	{
-		return line(label, value, Color.WHITE);
+		return line(label, value, NativeTooltip.valueColor);
 	}
 
 	static Part text(String text, Color color, boolean measured)
@@ -235,7 +235,7 @@ final class CardBody
 	/** The rule under a section's title, across the card. */
 	static void sectionRule(Graphics2D g, int y, int inset, int w)
 	{
-		g.setColor(TitleTooltip.SEPARATOR_COLOR);
+		g.setColor(NativeTooltip.dividerColor);
 		g.drawLine(inset, y, w - inset - 1, y);
 	}
 
@@ -268,7 +268,7 @@ final class CardBody
 		{
 			int top = y + above;
 			int height = TitleTooltip.hoverRowHeight(c.fm);
-			c.g.setColor(TitleTooltip.SEPARATOR_COLOR);
+			c.g.setColor(NativeTooltip.dividerColor);
 			if (above >= 0)
 			{
 				c.g.drawLine(c.inset(), top, c.w - c.inset() - 1, top);
@@ -332,7 +332,7 @@ final class CardBody
 	{
 		int x = c.w - c.inset() - RAIL_WIDTH;
 		int thumb = Math.max(NativeTooltip.LINE_HEIGHT, track * shown / total);
-		c.g.setColor(NativeTooltip.railTrack(TitleTooltip.SEPARATOR_COLOR));
+		c.g.setColor(NativeTooltip.railTrack(NativeTooltip.dividerColor));
 		c.g.fillRect(x, y, RAIL_WIDTH, track);
 		c.g.setColor(NativeTooltip.railThumb());
 		c.g.fillRect(x, y + (track - thumb) * offset / range, RAIL_WIDTH, thumb);
@@ -545,9 +545,9 @@ final class CardBody
 					{
 						g.drawImage(icon, x, y + (NativeTooltip.LINE_HEIGHT - iconSize) / 2, null);
 					}
-					g.setColor(NativeTooltip.OSRS_ORANGE);
+					g.setColor(NativeTooltip.labelColor);
 					g.drawString(labels[i], x + iconSize + iconGap, textY);
-					g.setColor(Color.WHITE);
+					g.setColor(NativeTooltip.valueColor);
 					TitleTooltip.drawRightAligned(g, fm, TitleTooltip.scoreText(scores[i]), right, textY);
 					if (obtained[i] >= 0)
 					{

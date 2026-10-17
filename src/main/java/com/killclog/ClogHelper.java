@@ -61,7 +61,7 @@ final class ClogHelper
 		{
 			if (data.statLabel != null && showKc)
 			{
-				tip.setInfoLine(data.statLabel, statText(data.statValue), Color.WHITE);
+				tip.setInfoLine(data.statLabel, statText(data.statValue), NativeTooltip.valueColor);
 			}
 			addHardModeLine(tip, data, showKc, false);
 		}
@@ -85,15 +85,15 @@ final class ClogHelper
 		}
 		if (data.hardKc >= 0 && showKc)
 		{
-			tip.addInfoLine(data.hardLabel + ": ", formatKc(data.hardKc), Color.WHITE);
+			tip.addInfoLine(data.hardLabel + ": ", formatKc(data.hardKc), NativeTooltip.valueColor);
 			if (data.hardPb != null && showPb)
 			{
-				tip.setInfoLinePair(pbLabel(data.hardPb), pbTime(data.hardPb), Color.WHITE);
+				tip.setInfoLinePair(pbLabel(data.hardPb), pbTime(data.hardPb), NativeTooltip.valueColor);
 			}
 		}
 		else if (data.hardPb != null && showPb)
 		{
-			tip.addInfoLine(data.hardLabel + " " + pbLabel(data.hardPb), pbTime(data.hardPb), Color.WHITE);
+			tip.addInfoLine(data.hardLabel + " " + pbLabel(data.hardPb), pbTime(data.hardPb), NativeTooltip.valueColor);
 		}
 	}
 

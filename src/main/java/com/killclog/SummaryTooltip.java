@@ -87,7 +87,7 @@ public class SummaryTooltip extends TitleTooltip
 			: rank != null && clan != null ? rank + " \u00B7 " + clan : rank != null ? rank : clan;
 		if (line != null)
 		{
-			setSubtitle("", line, Color.WHITE);
+			setSubtitle("", line, NativeTooltip.valueColor);
 		}
 		else
 		{
@@ -105,7 +105,7 @@ public class SummaryTooltip extends TitleTooltip
 	@Override
 	protected Color titleColor()
 	{
-		return Color.WHITE;
+		return NativeTooltip.valueColor;
 	}
 
 	/** The player's name at the size the grid cards title in. */

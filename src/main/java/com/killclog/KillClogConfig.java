@@ -295,6 +295,30 @@ public interface KillClogConfig extends Config
 		return true;
 	}
 
+	@ConfigItem(keyName = "cardLabelColor", name = "Labels",
+		description = "Card titles and labels, so any theme can recolor them; the game's orange by default",
+		section = modalAppearanceSection, position = 6)
+	default Color cardLabelColor()
+	{
+		return NativeTooltip.OSRS_ORANGE;
+	}
+
+	@ConfigItem(keyName = "cardValueColor", name = "Values",
+		description = "Card values, and a label under the mouse; white by default",
+		section = modalAppearanceSection, position = 7)
+	default Color cardValueColor()
+	{
+		return Color.WHITE;
+	}
+
+	@ConfigItem(keyName = "cardDividerColor", name = "Dividers",
+		description = "The lines between a card's sections",
+		section = modalAppearanceSection, position = 8)
+	default Color cardDividerColor()
+	{
+		return NativeTooltip.DIVIDER;
+	}
+
 	@ConfigSection(
 		name = "Chat",
 		description = "Kill Clog messages and emoji rendering",

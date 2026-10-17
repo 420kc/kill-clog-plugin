@@ -1,6 +1,5 @@
 package com.killclog;
 
-import java.awt.Color;
 import java.awt.FontMetrics;
 import java.awt.Graphics2D;
 import java.awt.Image;
@@ -220,8 +219,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 		if (mostKilled != null)
 		{
 			card.add(CardBody.gap(SECTION_GAP))
-				.add(CardBody.text("Most Killed:", OSRS_ORANGE, false))
-				.add(CardBody.text(mostKilled + " (" + grouped(mostKilledKc) + ")", Color.WHITE, true));
+				.add(CardBody.text("Most Killed:", labelColor, false))
+				.add(CardBody.text(mostKilled + " (" + grouped(mostKilledKc) + ")", NativeTooltip.valueColor, true));
 		}
 		// Raids lead the sections under the band, their megarares under the rows.
 		CardBody body = new CardBody().titled("Raids");
@@ -320,13 +319,13 @@ public class PvmSummaryTooltip extends TitleTooltip
 			int x = c.inset();
 			// No pointer cursor in this UI: the hovered row answers in white instead, and a row that opens
 			// nothing yet doesn't answer.
-			c.g.setColor(hovered && raid(row) != null ? Color.WHITE : OSRS_ORANGE);
+			c.g.setColor(hovered && raid(row) != null ? NativeTooltip.valueColor : labelColor);
 			c.g.drawString(RAID_LABELS[row], x, textY);
 			if (hasHardMode(row))
 			{
 				c.g.drawString(PanelData.RAID_HARD_LABELS[row] + ": ", x + at[1], textY);
 			}
-			c.g.setColor(Color.WHITE);
+			c.g.setColor(NativeTooltip.valueColor);
 			drawRightAligned(c.g, c.fm, scoreText(raidKc[row]), x + at[0], textY);
 			if (hasHardMode(row))
 			{
@@ -367,7 +366,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 			}
 			g2.setFont(FontManager.getRunescapeBoldFont());
 			FontMetrics bfm = g2.getFontMetrics();
-			g2.setColor(Color.WHITE);
+			g2.setColor(NativeTooltip.valueColor);
 			g2.drawString(text, c.inset() + iconColumnWidth(),
 				y + (LEVEL_ROW_HEIGHT + bfm.getAscent() - bfm.getDescent()) / 2);
 			g2.setFont(FontManager.getRunescapeSmallFont());

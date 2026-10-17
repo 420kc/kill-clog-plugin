@@ -42,10 +42,10 @@ public class SkillsTooltip extends TitleTooltip
 		long toMax = xpToMax(result);
 		CardBody card = new CardBody()
 			.add(CardBody.line("XP: ", displayedXpText(),
-				result != null && result.getTotalXp() >= 0 ? Color.WHITE : UNRANKED_COLOR))
-			.add(CardBody.line("Rank: ", scoreText(displayedRank()), displayedRank() > 0 ? Color.WHITE : UNRANKED_COLOR))
+				result != null && result.getTotalXp() >= 0 ? NativeTooltip.valueColor : UNRANKED_COLOR))
+			.add(CardBody.line("Rank: ", scoreText(displayedRank()), displayedRank() > 0 ? NativeTooltip.valueColor : UNRANKED_COLOR))
 			.add(CardBody.line("To max: ", toMax == 0 ? "Maxed" : toMax > 0 ? grouped(toMax) : "--",
-				toMax == 0 ? CLOG_GREEN : Color.WHITE));
+				toMax == 0 ? CLOG_GREEN : NativeTooltip.valueColor));
 		card.titled("Efficient Hours");
 		if (templeRows)
 		{

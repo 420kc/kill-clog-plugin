@@ -169,17 +169,17 @@ public class SkillTooltip extends TitleTooltip
 
 		private Color levelColor()
 		{
-			return level > 0 ? Color.WHITE : UNRANKED_COLOR;
+			return level > 0 ? NativeTooltip.valueColor : UNRANKED_COLOR;
 		}
 
 		private Color xpColor()
 		{
-			return xp >= 0 ? Color.WHITE : UNRANKED_COLOR;
+			return xp >= 0 ? NativeTooltip.valueColor : UNRANKED_COLOR;
 		}
 
 		private Color rankColor()
 		{
-			return rank > 0 ? Color.WHITE : UNRANKED_COLOR;
+			return rank > 0 ? NativeTooltip.valueColor : UNRANKED_COLOR;
 		}
 
 		private Color xpToLevelColor()
@@ -188,7 +188,7 @@ public class SkillTooltip extends TitleTooltip
 			{
 				return CLOG_GREEN;
 			}
-			return xpToLevel >= 0 ? Color.WHITE : UNRANKED_COLOR;
+			return xpToLevel >= 0 ? NativeTooltip.valueColor : UNRANKED_COLOR;
 		}
 	}
 }

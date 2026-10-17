@@ -27,6 +27,12 @@ public abstract class NativeTooltip extends JToolTip
 	static final int MARGIN = 8;
 	static final int LINE_HEIGHT = 14;
 	static final Color OSRS_ORANGE = new Color(255, 152, 31);
+	static final Color DIVIDER = new Color(80, 70, 50);
+	// Every card's labels, values and dividers, as Card Appearance's colors set them (Dylan, 2026-10-17); the
+	// defaults are the game's.
+	static Color labelColor = OSRS_ORANGE;
+	static Color valueColor = Color.WHITE;
+	static Color dividerColor = DIVIDER;
 	static final Color NOTICE_COLOR = new Color(160, 160, 160);
 
 	// Programmatic fallback border.
@@ -68,6 +74,13 @@ public abstract class NativeTooltip extends JToolTip
 	 * Load border sprites, preferring client sprite overrides when Resource
 	 * Packs or another UI theme plugin has replaced the same game sprites.
 	 */
+	static void cardColors(Color label, Color value, Color divider)
+	{
+		labelColor = label != null ? label : OSRS_ORANGE;
+		valueColor = value != null ? value : Color.WHITE;
+		dividerColor = divider != null ? divider : DIVIDER;
+	}
+
 	public static void loadSprites(Client client, SpriteManager spriteManager)
 	{
 		packThumb = thumbColor(getOverrideSprite(client, SPRITE_SCROLL_THUMB));
