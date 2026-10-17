@@ -35,6 +35,27 @@ final class TooltipItemLink
 	{
 	}
 
+	// A player's or a clan's page elsewhere (Dylan, 2026-10-17): the addresses killclog.com's badges open.
+	static String templeUrl(String rsn)
+	{
+		return "https://templeosrs.com/player/overview.php?player=" + URLEncoder.encode(rsn, StandardCharsets.UTF_8);
+	}
+
+	static String runeProfileUrl(String rsn)
+	{
+		return "https://runeprofile.com/" + HttpUtil.pathSegment(rsn);
+	}
+
+	static String runeProfileClanUrl(String clan)
+	{
+		return "https://runeprofile.com/clan/" + HttpUtil.pathSegment(clan);
+	}
+
+	static String killclogUrl(String rsn)
+	{
+		return "https://killclog.com/p/" + HttpUtil.pathSegment(rsn.trim().replaceAll("\\s+", "-"));
+	}
+
 	static String wikiUrl(int itemId)
 	{
 		return WIKI_ITEM_LOOKUP + itemId;

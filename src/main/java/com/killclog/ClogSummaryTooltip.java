@@ -116,6 +116,9 @@ public class ClogSummaryTooltip extends TitleTooltip
 	}
 
 	private final List<ClogSource> clogSources = new ArrayList<>(3);
+	// Whose log the sources hold, for their pages.
+	@Nullable
+	private String sourcesPlayer;
 	@Nullable
 	private BiConsumer<MouseEvent, String> onOpenTab;
 	// Everything under the anchored band scrolls once the card grows past a long tab's height, three lines a notch.
@@ -199,6 +202,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 	void setClogSources(ClogResult result, boolean onTemple, boolean onRuneProfile, boolean onKillclog)
 	{
 		boolean killclog = result.isFromKillclog() || onKillclog;
+		sourcesPlayer = result.getPlayerName();
 		setClogSources(result.isFromTemple() || onTemple, result.isFromRuneProfile() || onRuneProfile,
 			killclog, result.isFromLocal() && !killclog);
 	}
@@ -211,22 +215,28 @@ public class ClogSummaryTooltip extends TitleTooltip
 		{
 			clogSources.add(new ClogSource(
 				local ? LOCAL_SOURCE : KILLCLOG_SOURCE,
-				KillClogIcons.killClogSourceIcon(SOURCE_ICON_SIZE)));
+				KillClogIcons.killClogSourceIcon(SOURCE_ICON_SIZE), local ? null : link(TooltipItemLink::killclogUrl)));
 		}
 		if (temple)
 		{
 			clogSources.add(new ClogSource(
-				TEMPLE_SOURCE, KillClogIcons.templeSourceIcon(SOURCE_ICON_SIZE)));
+				TEMPLE_SOURCE, KillClogIcons.templeSourceIcon(SOURCE_ICON_SIZE), link(TooltipItemLink::templeUrl)));
 		}
 		if (runeProfile)
 		{
 			clogSources.add(new ClogSource(
-				RUNEPROFILE_SOURCE, KillClogIcons.runeProfileSourceIcon(SOURCE_ICON_SIZE)));
+				RUNEPROFILE_SOURCE, KillClogIcons.runeProfileSourceIcon(SOURCE_ICON_SIZE), link(TooltipItemLink::runeProfileUrl)));
 		}
 		itemHover.clear();
 		itemHover.setHitBoxes(Collections.emptyList());
 		revalidate();
 		repaint();
+	}
+
+	@Nullable
+	private String link(java.util.function.UnaryOperator<String> page)
+	{
+		return sourcesPlayer != null && !sourcesPlayer.isEmpty() ? page.apply(sourcesPlayer) : null;
 	}
 
 	public void setNotice(String notice)
@@ -497,7 +507,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 			c.g.drawString(SOURCE_LABEL, (c.w - c.fm.stringWidth(SOURCE_LABEL)) / 2, y + c.fm.getAscent());
 			y += c.fm.getHeight() + SOURCE_LABEL_GAP;
 			int sourceX = sourceRowStartX(c.w, clogSources.size());
-			String hoveredName = itemHover.hoveredItemName();
 			for (int i = 0; i < clogSources.size(); i++)
 			{
 				ClogSource source = clogSources.get(i);
@@ -506,15 +515,9 @@ public class ClogSummaryTooltip extends TitleTooltip
 				{
 					c.g.drawImage(source.icon, iconX, y, null);
 				}
-				if (source.name.equals(hoveredName))
-				{
-					c.g.setColor(CLOG_GREEN);
-					c.g.drawRect(iconX - SOURCE_HIT_PAD, y - SOURCE_HIT_PAD,
-						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2 - 1, SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2 - 1);
-				}
 				c.hits.add(new TooltipItemHover.HitBox(SOURCE_SECTION, 0, source.name,
 					new Rectangle(iconX - SOURCE_HIT_PAD, y - SOURCE_HIT_PAD,
-						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2, SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2), true));
+						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2, SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2), true, source.url));
 			}
 		});
 	}
@@ -524,6 +527,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 	{
 		private final String name;
 		private final BufferedImage icon;
+		@Nullable
+		private final String url;
 
 	}
 }

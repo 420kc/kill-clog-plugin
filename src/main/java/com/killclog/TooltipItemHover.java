@@ -11,6 +11,7 @@ import javax.annotation.Nullable;
 import javax.swing.JComponent;
 import lombok.AccessLevel;
 import lombok.Setter;
+import net.runelite.client.util.LinkBrowser;
 
 final class TooltipItemHover
 {
@@ -93,7 +94,14 @@ final class TooltipItemHover
 			public void mousePressed(MouseEvent e)
 			{
 				updateHoveredItem(e.getX(), e.getY());
-				if (wikiLinksEnabled && e.getButton() == MouseEvent.BUTTON1 && hoveredItemId > 0)
+				HitBox pressed = findHitBox(e.getX(), e.getY());
+				if (e.getButton() == MouseEvent.BUTTON1 && pressed != null && pressed.url != null)
+				{
+					LinkBrowser.browse(pressed.url);
+					closeTooltip();
+					e.consume();
+				}
+				else if (wikiLinksEnabled && e.getButton() == MouseEvent.BUTTON1 && hoveredItemId > 0)
 				{
 					TooltipItemLink.openWiki(hoveredItemId);
 					closeTooltip();
@@ -157,14 +165,23 @@ final class TooltipItemHover
 		private final String itemName;
 		private final Rectangle bounds;
 		private final boolean obtained;
+		@Nullable
+		private final String url;
 
 		HitBox(int section, int itemId, String itemName, Rectangle bounds, boolean obtained)
+		{
+			this(section, itemId, itemName, bounds, obtained, null);
+		}
+
+		/** A named box that opens {@code url} when pressed. */
+		HitBox(int section, int itemId, String itemName, Rectangle bounds, boolean obtained, @Nullable String url)
 		{
 			this.section = section;
 			this.itemId = itemId;
 			this.itemName = TooltipItemLink.displayName(itemId, itemName);
 			this.bounds = bounds;
 			this.obtained = obtained;
+			this.url = url;
 		}
 
 		/** The part of this box a window shows, or null when it shows none of it. */

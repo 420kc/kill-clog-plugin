@@ -178,7 +178,8 @@ public class SummaryTooltip extends TitleTooltip
 			{
 				if (getSubtitleIconBounds() != null)
 				{
-					c.hits.add(new TooltipItemHover.HitBox(9, 0, clan, getSubtitleIconBounds(), true));
+					c.hits.add(new TooltipItemHover.HitBox(9, 0, clan, getSubtitleIconBounds(), true,
+						TooltipItemLink.runeProfileClanUrl(clan)));
 				}
 			}));
 		}
