@@ -3,10 +3,12 @@ plugins {
     id 'checkstyle'
 }
 
+// RuneLite's own repository first: a release-numbered client a local core build left in ~/.m2 must never stand in
+// for RuneLite's (shop audit 2026-10-16).
 repositories {
-    mavenLocal()
     maven { url = 'https://repo.runelite.net' }
     mavenCentral()
+    mavenLocal()
 }
 
 def runeLiteVersion = 'latest.release'
