@@ -10,6 +10,7 @@ package com.killclog;
 
 import java.awt.Color;
 import java.awt.GridLayout;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -594,14 +595,21 @@ public class Cells
 		{
 			tip.setRare(i, counts(rival ? rivalRare(i) : rareTooltips.get(PanelData.RARE_KEYS[i])));
 		}
-		// A rare row opens that collection's own modal where the summary was.
-		tip.setOnOpenRare((press, row) -> tooltipController.pinTooltipFromPress(owner, (JPanel) owner.getParent(), press,
-			TitleTooltip.withBack(buildRareTooltip(owner, row), "< Clue Summary", back ->
-				tooltipController.pinTooltipFromPress(owner, (JPanel) owner.getParent(), back, owner.createToolTip()))));
+		// A rare row, a tier's line or Mimic's opens that card where the summary was, its back the summary.
+		tip.setOnOpenRare((press, row) -> openFromClueSummary(owner, press, buildRareTooltip(owner, row)));
+		tip.setOnOpenLine((press, line) -> openFromClueSummary(owner, press, buildCellTooltipFor(owner,
+			line == ClueSummaryTooltip.MIMIC ? HiscoreSkill.MIMIC : PanelData.CLUE_TIERS[line - 1])));
 		tip.setComponent(owner);
 		tip.setIcons(clueIcons);
 		tip.setData(result, config.showTooltipRank());
 		return tip;
+	}
+
+	private void openFromClueSummary(JLabel owner, MouseEvent press, JToolTip card)
+	{
+		tooltipController.pinTooltipFromPress(owner, (JPanel) owner.getParent(), press,
+			TitleTooltip.withBack(card, "< Clue Summary", back ->
+				tooltipController.pinTooltipFromPress(owner, (JPanel) owner.getParent(), back, owner.createToolTip())));
 	}
 
 	private JToolTip buildClueTierTooltip(JLabel owner, HiscoreSkill tier, String displayName)

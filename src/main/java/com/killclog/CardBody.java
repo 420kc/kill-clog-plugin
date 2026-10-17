@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.IntPredicate;
 import java.util.function.ObjIntConsumer;
 import java.util.function.ToIntFunction;
 import javax.annotation.Nullable;
@@ -496,6 +497,13 @@ final class CardBody
 	static Part table(BufferedImage[] icons, String[] labels, int[] scores, int[] obtained, int[] total,
 		int[] ranks, int iconSize, int iconGap, int colGap)
 	{
+		return table(icons, labels, scores, obtained, total, ranks, iconSize, iconGap, colGap, null, line -> false);
+	}
+
+	/** The same table, the lines {@code opens} names each a click row of {@code rows} (its key the line). */
+	static Part table(BufferedImage[] icons, String[] labels, int[] scores, int[] obtained, int[] total,
+		int[] ranks, int iconSize, int iconGap, int colGap, @Nullable ClickRows rows, IntPredicate opens)
+	{
 		ToIntFunction<FontMetrics> scoreRight = fm ->
 		{
 			int labelCol = 0;
@@ -545,7 +553,17 @@ final class CardBody
 					{
 						g.drawImage(icon, x, y + (NativeTooltip.LINE_HEIGHT - iconSize) / 2, null);
 					}
-					g.setColor(NativeTooltip.labelColor);
+					boolean hovered = false;
+					if (rows != null && opens.test(i))
+					{
+						// Only what shows of the line answers, as a click row's.
+						int top = c.window != null ? Math.max(y, c.window.y) : y;
+						int bottom = c.window != null ? Math.min(y + NativeTooltip.LINE_HEIGHT, c.window.y + c.window.height)
+							: y + NativeTooltip.LINE_HEIGHT;
+						rows.span(top, bottom - top, i);
+						hovered = rows.lastY >= top && rows.lastY < bottom;
+					}
+					g.setColor(hovered ? NativeTooltip.valueColor : NativeTooltip.labelColor);
 					g.drawString(labels[i], x + iconSize + iconGap, textY);
 					g.setColor(NativeTooltip.valueColor);
 					TitleTooltip.drawRightAligned(g, fm, TitleTooltip.scoreText(scores[i]), right, textY);

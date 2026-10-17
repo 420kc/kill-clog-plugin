@@ -13,14 +13,16 @@ import net.runelite.client.hiscore.HiscoreSkill;
 /**
  * Clue Summary on the Clues cell. Eight lines, All through Mimic, each with its
  * score and rank and, for the six tiers and Mimic, collection progress. Below
- * them the rare collections, each a row that opens its own modal.
+ * them the rare collections, each a row that opens its own modal. The six tiers
+ * and Mimic open theirs the same way (Dylan, 2026-10-17: every clue reached from
+ * the summary as from its own cell, and nothing passed over without answering).
  */
 public class ClueSummaryTooltip extends TitleTooltip
 {
 	private static final int ICON_SIZE = 13;
 	private static final int ICON_GAP = 4;
 	private static final int COL_GAP = 6;
-	private static final int MIMIC = 7;
+	static final int MIMIC = 7;
 
 	private static final HiscoreSkill[] CLUE_TIERS = {
 		HiscoreSkill.CLUE_SCROLL_ALL,
@@ -57,6 +59,16 @@ public class ClueSummaryTooltip extends TitleTooltip
 		if (onOpenRare != null)
 		{
 			onOpenRare.accept(e, row);
+			e.consume();
+		}
+	});
+	@Nullable
+	private ObjIntConsumer<MouseEvent> onOpenLine;
+	private final CardBody.ClickRows lineRows = new CardBody.ClickRows(this, (e, line) ->
+	{
+		if (onOpenLine != null)
+		{
+			onOpenLine.accept(e, line);
 			e.consume();
 		}
 	});
@@ -107,6 +119,12 @@ public class ClueSummaryTooltip extends TitleTooltip
 		rareTotal[row] = counts != null ? counts[1] : 0;
 	}
 
+	/** Called with the line (1 to 6 the tiers, 7 Mimic) when the player presses one. */
+	void setOnOpenLine(@Nullable ObjIntConsumer<MouseEvent> onOpenLine)
+	{
+		this.onOpenLine = onOpenLine;
+	}
+
 	/** Called with the rare row index when the player presses one. */
 	void setOnOpenRare(@Nullable ObjIntConsumer<MouseEvent> onOpenRare)
 	{
@@ -123,7 +141,8 @@ public class ClueSummaryTooltip extends TitleTooltip
 			shownRanks[i] = scores[i] > 0 && ranks[i] > 0 ? ranks[i] : 0;
 		}
 		CardBody body = new CardBody()
-			.add(CardBody.table(icons, LABELS, scores, obtained, total, shownRanks, ICON_SIZE, ICON_GAP, COL_GAP))
+			.add(CardBody.table(icons, LABELS, scores, obtained, total, shownRanks, ICON_SIZE, ICON_GAP, COL_GAP,
+				lineRows, line -> line > 0))
 			.titled("Rare Collections");
 		for (int i = 0; i < RARE_LABELS.length; i++)
 		{

@@ -89,10 +89,40 @@ public class ClueSummaryTooltipTest
 		press(tip, 5, top + 2 * NativeTooltip.LINE_HEIGHT + 3, MouseEvent.BUTTON1);
 		assertEquals(List.of(2), opened);
 
-		// A tier line is not a link, and neither is a right click on a rare row.
+		// A tier line opens its own card, not a rare one, and a right click on a rare row opens nothing.
 		press(tip, 5, top - 40, MouseEvent.BUTTON1);
 		press(tip, 5, top + 3, MouseEvent.BUTTON3);
 		assertEquals(List.of(2), opened);
+	}
+
+	@Test
+	public void everyTierAndMimicOpensItsCardFromTheSummaryButAllDoesNot()
+	{
+		ClueSummaryTooltip tip = painted(card());
+		List<Integer> opened = new ArrayList<>();
+		tip.setOnOpenLine((press, line) -> opened.add(line));
+		int beginner = lineY(tip, 1);
+		for (int line = 1; line <= ClueSummaryTooltip.MIMIC; line++)
+		{
+			press(tip, 5, lineY(tip, line) + 3, MouseEvent.BUTTON1);
+		}
+		assertEquals(List.of(1, 2, 3, 4, 5, 6, 7), opened);
+		// All sums the tiers: there's no one log for it to open.
+		assertEquals(-1, TestViews.rowAt(tip, "lineRows", beginner - NativeTooltip.LINE_HEIGHT + 3));
+		press(tip, 5, firstRareY(tip) + 3, MouseEvent.BUTTON1);
+		assertEquals(7, opened.size());
+	}
+
+	private static int lineY(ClueSummaryTooltip tip, int line)
+	{
+		for (int y = 0; y < tip.getHeight(); y++)
+		{
+			if (TestViews.rowAt(tip, "lineRows", y) == line)
+			{
+				return y;
+			}
+		}
+		throw new AssertionError("no line " + line + " painted");
 	}
 
 	@Test
