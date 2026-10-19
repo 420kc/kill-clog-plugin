@@ -182,6 +182,35 @@ public class HiscoreParsingTest
 	}
 
 	@Test
+	public void theExactCombatLevelReadsAsItsOwnFormulaDid()
+	{
+		// RuneLite's precise combat level now does the sum; every level from 1 to 99 in each skill reads as the
+		// plugin's own formula read it, bit for bit.
+		java.util.Random random = new java.util.Random(2410);
+		String[] skills = {"attack", "strength", "defence", "hitpoints", "ranged", "prayer", "magic"};
+		for (int round = 0; round < 200_000; round++)
+		{
+			java.util.Map<String, Integer> levels = new java.util.HashMap<>();
+			for (String skill : skills)
+			{
+				levels.put(skill, round < 99 * 7 ? (skill.equals(skills[round / 99]) ? round % 99 + 1 : 1)
+					: 1 + random.nextInt(99));
+			}
+			assertEquals(levels.toString(), Double.doubleToLongBits(formerFormula(levels)),
+				Double.doubleToLongBits(service.calcCmbLvlExact(levels)));
+		}
+	}
+
+	private static double formerFormula(java.util.Map<String, Integer> levels)
+	{
+		double base = 0.25 * (levels.get("defence") + levels.get("hitpoints") + Math.floor(levels.get("prayer") / 2.0));
+		double melee = 0.325 * (levels.get("attack") + levels.get("strength"));
+		double range = 0.325 * (Math.floor(levels.get("ranged") * 3.0 / 2.0));
+		double mage = 0.325 * (Math.floor(levels.get("magic") * 3.0 / 2.0));
+		return base + Math.max(melee, Math.max(range, mage));
+	}
+
+	@Test
 	public void testCalcCmbLvlMissingCombatSkill()
 	{
 		// An answer without Magic cannot give a combat level.

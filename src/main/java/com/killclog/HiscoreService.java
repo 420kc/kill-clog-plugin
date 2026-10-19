@@ -22,6 +22,7 @@ import javax.inject.Singleton;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import net.runelite.api.Experience;
 import okhttp3.OkHttpClient;
 
 /**
@@ -642,20 +643,8 @@ public class HiscoreService
 	{
 		try
 		{
-			int attack = levels.get("attack");
-			int defence = levels.get("defence");
-			int strength = levels.get("strength");
-			int hitpoints = levels.get("hitpoints");
-			int ranged = levels.get("ranged");
-			int prayer = levels.get("prayer");
-			int magic = levels.get("magic");
-
-			double base = 0.25 * (defence + hitpoints + Math.floor(prayer / 2.0));
-			double melee = 0.325 * (attack + strength);
-			double range = 0.325 * (Math.floor(ranged * 3.0 / 2.0));
-			double mage = 0.325 * (Math.floor(magic * 3.0 / 2.0));
-
-			return base + Math.max(melee, Math.max(range, mage));
+			return Experience.getCombatLevelPrecise(levels.get("attack"), levels.get("strength"), levels.get("defence"),
+				levels.get("hitpoints"), levels.get("magic"), levels.get("ranged"), levels.get("prayer"));
 		}
 		catch (Exception e)
 		{
