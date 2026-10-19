@@ -27,7 +27,10 @@ dependencies {
 }
 
 group = 'com.killclog'
-version = '2.6.6'
+// The release number lives in runelite-plugin.properties, where the Plugin Hub reads it.
+def pluginProperties = new Properties()
+file('runelite-plugin.properties').withInputStream { pluginProperties.load(it) }
+version = pluginProperties.getProperty('version')
 sourceCompatibility = '11'
 targetCompatibility = '11'
 
