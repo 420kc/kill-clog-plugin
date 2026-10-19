@@ -11,6 +11,7 @@ package com.killclog;
 import java.util.function.UnaryOperator;
 import javax.annotation.Nullable;
 import javax.swing.Timer;
+import lombok.Getter;
 
 /**
  * One player's lookup lifecycle. Subscribers receive typed events through
@@ -74,8 +75,11 @@ public class LookupSession
 	// State
 	@Nullable private HiscoreResult hiscoreResult;
 	@Nullable private ClogResult clogResult;
+	@Getter
 	@Nullable private CombatAchievementResult caResult;
+	@Getter
 	@Nullable private String currentLookupRsn;
+	@Getter
 	@Nullable private String clogLastChanged;
 	private int localClogRevision;
 	private UnaryOperator<HiscoreResult> rankView = UnaryOperator.identity();
@@ -412,24 +416,6 @@ public class LookupSession
 	static boolean frozen(@Nullable HiscoreResult view)
 	{
 		return view != null && view.isFrozen();
-	}
-
-	@Nullable
-	public CombatAchievementResult getCaResult()
-	{
-		return caResult;
-	}
-
-	@Nullable
-	public String getCurrentLookupRsn()
-	{
-		return currentLookupRsn;
-	}
-
-	@Nullable
-	public String getClogLastChanged()
-	{
-		return clogLastChanged;
 	}
 
 	public int getLookupVersion()
