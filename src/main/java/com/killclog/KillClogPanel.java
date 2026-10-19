@@ -541,22 +541,18 @@ public class KillClogPanel extends PluginPanel
 		traySkillsHost = buildSkillHost();
 		grid.add(traySkillsHost);
 
-		// The six clue tiers. The rare collections open from the Clue Summary.
-		JPanel clueRow1 = new JPanel(new GridLayout(1, 3));
-		clueRow1.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		clueRow1.setAlignmentX(0f);
-		clueRow1.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[0], PanelData.CLUE_TIER_ITEM_IDS[0]));
-		clueRow1.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[1], PanelData.CLUE_TIER_ITEM_IDS[1]));
-		clueRow1.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[2], PanelData.CLUE_TIER_ITEM_IDS[2]));
-		grid.add(clueRow1);
-
-		JPanel clueRow2 = new JPanel(new GridLayout(1, 3));
-		clueRow2.setBackground(ColorScheme.DARKER_GRAY_COLOR);
-		clueRow2.setAlignmentX(0f);
-		clueRow2.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[3], PanelData.CLUE_TIER_ITEM_IDS[3]));
-		clueRow2.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[4], PanelData.CLUE_TIER_ITEM_IDS[4]));
-		clueRow2.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[5], PanelData.CLUE_TIER_ITEM_IDS[5]));
-		grid.add(clueRow2);
+		// The six clue tiers, three to a row. The rare collections open from the Clue Summary.
+		for (int first = 0; first < 6; first += 3)
+		{
+			JPanel clueRow = new JPanel(new GridLayout(1, 3));
+			clueRow.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+			clueRow.setAlignmentX(0f);
+			for (int tier = first; tier < first + 3; tier++)
+			{
+				clueRow.add(cells.buildClueTierCell(PanelData.CLUE_TIERS[tier], PanelData.CLUE_TIER_ITEM_IDS[tier]));
+			}
+			grid.add(clueRow);
+		}
 
 		return grid;
 	}
@@ -908,9 +904,15 @@ public class KillClogPanel extends PluginPanel
 
 	private void showInvalidName()
 	{
+		clearSearch(SearchMessages.INVALID_NAME, NOT_FOUND);
+	}
+
+	/** The search box empties, its icon back to the magnifier, and the status line says why. */
+	private void clearSearch(String status, Color color)
+	{
 		searchBar.setIcon(IconTextField.Icon.SEARCH);
 		searchBar.setText("");
-		setSearchStatus(SearchMessages.INVALID_NAME, NOT_FOUND);
+		setSearchStatus(status, color);
 	}
 
 	private void lookupSelfFromSearchIcon()
@@ -1632,9 +1634,7 @@ public class KillClogPanel extends PluginPanel
 		resetForLookup();
 		cells.rebuildPrimaryTooltips(localRsn);
 		int notFoundIdx = ThreadLocalRandom.current().nextInt(SearchMessages.NOT_FOUND.length);
-		setSearchStatus(String.format(SearchMessages.NOT_FOUND[notFoundIdx], player), NOT_FOUND);
-		searchBar.setIcon(IconTextField.Icon.SEARCH);
-		searchBar.setText("");
+		clearSearch(String.format(SearchMessages.NOT_FOUND[notFoundIdx], player), NOT_FOUND);
 	}
 
 	@Override
@@ -1642,9 +1642,7 @@ public class KillClogPanel extends PluginPanel
 	{
 		resetForLookup();
 		cells.rebuildPrimaryTooltips(localRsn);
-		searchBar.setIcon(IconTextField.Icon.SEARCH);
-		searchBar.setText("");
-		setSearchStatus(HiscoreService.failureText(error), TEXT_DIM);
+		clearSearch(HiscoreService.failureText(error), TEXT_DIM);
 	}
 
 	// ComparisonController.Listener
