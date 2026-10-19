@@ -296,7 +296,8 @@ final class StoreMigration
 		}
 	}
 
-	private static List<Filepath> list(Filepath dir) throws IOException
+	/** The files directly in a folder; the store lists its own folder the same way. */
+	static List<Filepath> list(Filepath dir) throws IOException
 	{
 		try (Stream<Filepath> walk = dir.walk(1))
 		{

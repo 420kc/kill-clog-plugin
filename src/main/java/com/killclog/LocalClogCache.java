@@ -28,8 +28,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -165,7 +163,7 @@ public class LocalClogCache
 			StoreMigration.run(gson, folder);
 			try
 			{
-				for (Filepath file : list(folder))
+				for (Filepath file : StoreMigration.list(folder))
 				{
 					if (!file.getFileName().matches("[0-9a-f]{16}\\.json"))
 					{
@@ -184,7 +182,7 @@ public class LocalClogCache
 				Filepath lookupDir = folder.join(StoreMigration.LOOKUPS);
 				if (lookupDir.isDirectory())
 				{
-					List<Filepath> files = list(lookupDir);
+					List<Filepath> files = StoreMigration.list(lookupDir);
 					files.sort(Comparator.comparing(LocalClogCache::modified).reversed());
 					for (Filepath file : files.subList(0, Math.min(LOOKUP_CAP, files.size())))
 					{
@@ -246,14 +244,6 @@ public class LocalClogCache
 		catch (IOException e)
 		{
 			return FileTime.fromMillis(0);
-		}
-	}
-
-	private static List<Filepath> list(Filepath dir) throws IOException
-	{
-		try (Stream<Filepath> walk = dir.walk(1))
-		{
-			return walk.filter(Filepath::isFile).collect(Collectors.toList());
 		}
 	}
 

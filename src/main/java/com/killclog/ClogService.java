@@ -18,6 +18,7 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -62,28 +63,28 @@ public class ClogService
 	private volatile ClogIndex clogIndex;
 
 	// In-flight futures prevent duplicate HTTP requests from concurrent callers.
-	private final Map<String, CompletableFuture<Map<String, List<Integer>>>> categoriesFlight = new java.util.concurrent.ConcurrentHashMap<>();
+	private final Map<String, CompletableFuture<Map<String, List<Integer>>>> categoriesFlight = new ConcurrentHashMap<>();
 
 	// Failure cooldown skips TempleOSRS briefly after transient errors.
 	private static final long TEMPLE_FAILURE_TTL_MS = 3 * 60 * 1000;
-	private final Map<String, Long> templeFailures = new java.util.concurrent.ConcurrentHashMap<>();
+	private final Map<String, Long> templeFailures = new ConcurrentHashMap<>();
 
 	// Freshness gate skips TempleOSRS when the cache is still hot.
 	private static final long CLOG_TTL_MS = 5 * 60 * 1000; // 5 minutes
-	private final Map<String, Long> clogFetchTimes = new java.util.concurrent.ConcurrentHashMap<>();
+	private final Map<String, Long> clogFetchTimes = new ConcurrentHashMap<>();
 	// A date-overlay attempt is recorded before HTTP; keep successful Temple
 	// proof separately so the active-player result stays attributed during TTL.
 	private final Map<String, Long> templeOverlaySuccessTimes =
-		new java.util.concurrent.ConcurrentHashMap<>();
+		new ConcurrentHashMap<>();
 	// Your own Temple EHP and EHC, from the date overlay's answers: your log is the game's, Temple adds only these.
-	private final Map<String, double[]> ownTempleFigures = new java.util.concurrent.ConcurrentHashMap<>();
+	private final Map<String, double[]> ownTempleFigures = new ConcurrentHashMap<>();
 	// Anyone else's, from their last Temple answer: a repeat lookup inside the TTL rebuilds from the local cache,
 	// which keeps the log but not these. Pruned with clogFetchTimes.
-	private final Map<String, double[]> lookedUpTempleFigures = new java.util.concurrent.ConcurrentHashMap<>();
+	private final Map<String, double[]> lookedUpTempleFigures = new ConcurrentHashMap<>();
 	// Players TempleOSRS answered with a log in the last day: the Collection Log card credits Temple even when this
 	// lookup's own request was skipped, as for your own log, or timed out.
 	private static final long TEMPLE_HOLDS_TTL_MS = 24 * 60 * 60 * 1000;
-	private final Map<String, Long> templeHolds = new java.util.concurrent.ConcurrentHashMap<>();
+	private final Map<String, Long> templeHolds = new ConcurrentHashMap<>();
 
 	/** Whether TempleOSRS has answered with this player's log in the last day. */
 	boolean onTemple(@Nullable String playerName)
@@ -134,7 +135,7 @@ public class ClogService
 			return null;
 		}
 		Map<Integer, String> names = itemNames();
-		ClogResult result = localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>());
+		ClogResult result = logFrom(localClogCache, playerName, names);
 		// Temple's EHP and EHC ride along as a lookup attaches them, under the same freshness, so a log rebuilt
 		// here (a local capture, the log opened) keeps the Experience & Efficiency card's figures.
 		String key = RsnInputPolicy.key(playerName);
@@ -159,6 +160,13 @@ public class ClogService
 		return result;
 	}
 
+	/** A player's log from a store, its items named with the names loaded so far. */
+	@Nullable
+	private static ClogResult logFrom(LocalClogCache cache, String playerName, @Nullable Map<Integer, String> names)
+	{
+		return cache.toClogResult(playerName, names != null ? names : new HashMap<>());
+	}
+
 	/** A League's own local log for the active player, once item names have loaded. */
 	CompletableFuture<ClogResult> lookupLocal(LocalClogCache cache, String playerName)
 	{
@@ -174,7 +182,7 @@ public class ClogService
 			return null;
 		}
 		Map<Integer, String> names = itemNames();
-		ClogResult result = cache.toClogResult(playerName, names != null ? names : new HashMap<>());
+		ClogResult result = logFrom(cache, playerName, names);
 		return result != null ? result.withLocalSource(true) : null;
 	}
 
@@ -199,8 +207,7 @@ public class ClogService
 				return overlayProviderDates(playerName)
 					.thenCompose(fromTemple -> fetchItemNames().thenApply(names ->
 					{
-						ClogResult result = localClogCache.toClogResult(playerName,
-							names != null ? names : new HashMap<>());
+						ClogResult result = logFrom(localClogCache, playerName, names);
 						if (result != null)
 						{
 							result = result.withLocalSource(true);
@@ -223,7 +230,7 @@ public class ClogService
 				playerName, (System.currentTimeMillis() - lastFetch) / 1000);
 			return fetchItemNames().thenApply(names ->
 			{
-				ClogResult result = localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>());
+				ClogResult result = logFrom(localClogCache, playerName, names);
 				setTempleFigures(result, lookedUpTempleFigures.get(normalizedName));
 				return markTempleSource(result);
 			});
@@ -236,7 +243,7 @@ public class ClogService
 			if (localClogCache.hasDataFor(playerName))
 			{
 				return fetchItemNames().thenApply(names ->
-					localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>()));
+					logFrom(localClogCache, playerName, names));
 			}
 			return CompletableFuture.completedFuture(null);
 		}
@@ -290,7 +297,7 @@ public class ClogService
 				if (localClogCache.hasDataFor(playerName))
 				{
 					log.debug("TempleOSRS unavailable, using cached data for: {}", playerName);
-					return localClogCache.toClogResult(playerName, names != null ? names : new HashMap<>());
+					return logFrom(localClogCache, playerName, names);
 				}
 
 				return null;
