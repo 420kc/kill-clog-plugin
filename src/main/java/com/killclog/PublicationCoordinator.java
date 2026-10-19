@@ -228,6 +228,13 @@ final class PublicationCoordinator
 
 	// ── character publish ──────────────────────────────────────────────
 
+	/** The attempt is over and failed: the slot frees and the row says so. */
+	private void failCharacterPublish(int generation)
+	{
+		characterPublishInFlight.set(false);
+		showCharacterPublishStatus(generation, CharacterStatus.FAILED, true);
+	}
+
 	private void showCharacterPublishStatus(int generation, CharacterStatus status, boolean autoClear)
 	{
 		showCharacterPublishStatus(generation, status, autoClear, null);
@@ -276,8 +283,7 @@ final class PublicationCoordinator
 			long accountHash = client.getAccountHash();
 			if (!characterPublishingEnabled() || rsn == null || accountHash == -1 || !GameMode.MAIN.equals(mode.get()))
 			{
-				characterPublishInFlight.set(false);
-				showCharacterPublishStatus(generation, CharacterStatus.FAILED, true);
+				failCharacterPublish(generation);
 				return;
 			}
 
@@ -297,8 +303,7 @@ final class PublicationCoordinator
 		}
 		if (error != null || result == null)
 		{
-			characterPublishInFlight.set(false);
-			showCharacterPublishStatus(generation, CharacterStatus.FAILED, true);
+			failCharacterPublish(generation);
 			return;
 		}
 
@@ -324,8 +329,7 @@ final class PublicationCoordinator
 		{
 			return false;
 		}
-		characterPublishInFlight.set(false);
-		showCharacterPublishStatus(generation, CharacterStatus.FAILED, true);
+		failCharacterPublish(generation);
 		return true;
 	}
 
@@ -346,8 +350,7 @@ final class PublicationCoordinator
 		}
 		catch (RuntimeException e)
 		{
-			characterPublishInFlight.set(false);
-			showCharacterPublishStatus(expectedGeneration, CharacterStatus.FAILED, true);
+			failCharacterPublish(expectedGeneration);
 		}
 	}
 
@@ -530,9 +533,7 @@ final class PublicationCoordinator
 							}
 							else
 							{
-								characterPublishInFlight.set(false);
-								showCharacterPublishStatus(characterGeneration,
-									CharacterStatus.FAILED, true);
+								failCharacterPublish(characterGeneration);
 							}
 						}
 						else if (result != SyncService.UNCHANGED)

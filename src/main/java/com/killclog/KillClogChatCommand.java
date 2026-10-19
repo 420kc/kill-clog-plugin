@@ -599,32 +599,18 @@ class KillClogChatCommand
 
 	static String buildCommandHeader(String boss, int bossKc, int count, int total, boolean missingMode)
 	{
-		StringBuilder sb = new StringBuilder();
-		sb.append(boss).append(": ");
-		appendKc(sb, bossKc);
-		sb.append(count).append("/").append(total);
-		if (missingMode)
-		{
-			sb.append(" missing");
-		}
-		return sb.toString();
+		return headerStart(boss, bossKc) + count + "/" + total + (missingMode ? " missing" : "");
 	}
 
 	static String buildCompleteHeader(String boss, int bossKc)
 	{
-		StringBuilder sb = new StringBuilder();
-		sb.append(boss).append(": ");
-		appendKc(sb, bossKc);
-		sb.append("complete");
-		return sb.toString();
+		return headerStart(boss, bossKc) + "complete";
 	}
 
-	private static void appendKc(StringBuilder sb, int bossKc)
+	/** "Zulrah: 1,234 kc, ", the kill count left out when the hiscores have none. */
+	private static String headerStart(String boss, int bossKc)
 	{
-		if (bossKc >= 0)
-		{
-			sb.append(ClogHelper.formatKc(bossKc)).append(" kc, ");
-		}
+		return boss + ": " + (bossKc >= 0 ? ClogHelper.formatKc(bossKc) + " kc, " : "");
 	}
 
 	/**
