@@ -553,6 +553,7 @@ public class KillClogPlugin extends Plugin
 		{
 			reconcileClogTotalsFromVarps();
 		}
+		clogPbs.varpChanged(client, event.getVarpId());
 		if (event.getVarbitId() == VarbitID.IRONMAN)
 		{
 			unsettleWorld();
