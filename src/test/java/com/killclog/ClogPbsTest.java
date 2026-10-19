@@ -54,7 +54,7 @@ public class ClogPbsTest
 			"Vorkath kills: <col=ffffff>500</col>");
 		when(client.getVarpValue(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT)).thenReturn(104);
 		pbs.pageDrawn(client);
-		verify(configManager).setRSProfileConfiguration("killclog", "clogpb.vorkath", 62.4);
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.vorkath", 62.4);
 	}
 
 	@Test
@@ -65,13 +65,13 @@ public class ClogPbsTest
 		when(client.getVarpValue(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT)).thenReturn(200);
 		when(client.getVarpValue(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT_2)).thenReturn(600);
 		pbs.pageDrawn(client);
-		verify(configManager).setRSProfileConfiguration("killclog", "clogpb.gauntlet", 120.0);
-		verify(configManager).setRSProfileConfiguration("killclog", "clogpb.corrupted gauntlet", 360.0);
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.gauntlet", 120.0);
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.corrupted gauntlet", 360.0);
 
 		page("Fortis Colosseum", "Obtained: <col=ffff00>1/8</col>", "Personal Best: <col=ffffff>20:25.20</col>");
 		when(client.getVarpValue(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT)).thenReturn(2042);
 		pbs.pageDrawn(client);
-		verify(configManager).setRSProfileConfiguration("killclog", "clogpb.sol heredit", 1225.2);
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.sol heredit", 1225.2);
 	}
 
 	@Test
@@ -103,17 +103,17 @@ public class ClogPbsTest
 		page("Amoxliatl", "Obtained: <col=ffff00>1/5</col>", "Personal Best: <col=ffffff>0:31.80</col>");
 		when(client.getVarpValue(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT)).thenReturn(53);
 		pbs.pageDrawn(client);
-		verify(configManager).setRSProfileConfiguration("killclog", "clogpb.amoxliatl", 31.8);
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.amoxliatl", 31.8);
 
 		page("Alchemical Hydra", "Obtained: <col=ffff00>3/8</col>", "Personal Best: <col=ffffff>0:31.80</col>");
 		pbs.pageDrawn(client);
-		verify(configManager, never()).setRSProfileConfiguration("killclog", "clogpb.alchemical hydra", 31.8);
+		verify(configManager, never()).setRSProfileConfiguration("killclog", "pagepb.alchemical hydra", 31.8);
 
 		// The server's value for the Hydra lands a tick later, the page still on screen.
 		when(client.getTickCount()).thenReturn(1);
 		when(client.getVarpValue(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT)).thenReturn(168);
 		pbs.varpChanged(client, VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT);
-		verify(configManager).setRSProfileConfiguration("killclog", "clogpb.alchemical hydra", 100.8);
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.alchemical hydra", 100.8);
 	}
 
 	@Test
@@ -128,14 +128,14 @@ public class ClogPbsTest
 		when(client.getTickCount()).thenReturn(ClogPbs.WAIT_TICKS + 1);
 		when(client.getVarpValue(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT)).thenReturn(168);
 		pbs.varpChanged(client, VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT);
-		verify(configManager, never()).setRSProfileConfiguration(anyString(), eq("clogpb.alchemical hydra"), any());
+		verify(configManager, never()).setRSProfileConfiguration(anyString(), eq("pagepb.alchemical hydra"), any());
 
 		page("Araxxor", "Obtained: <col=ffff00>2/9</col>", "Personal Best: <col=ffffff>1:40.80</col>");
 		pbs.pageDrawn(client);
 		page("Barrows Chests", "Obtained: <col=ffff00>20/25</col>", "Barrows Chests opened: <col=ffffff>300</col>");
 		when(client.getVarpValue(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT)).thenReturn(160);
 		pbs.varpChanged(client, VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT);
-		verify(configManager, never()).setRSProfileConfiguration(anyString(), eq("clogpb.araxxor"), any());
+		verify(configManager, never()).setRSProfileConfiguration(anyString(), eq("pagepb.araxxor"), any());
 	}
 
 	@Test
@@ -147,10 +147,27 @@ public class ClogPbsTest
 		pbs.pageDrawn(client);
 		when(client.getVarpValue(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT)).thenReturn(104);
 		pbs.varpChanged(client, VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT);
-		verify(configManager).setRSProfileConfiguration("killclog", "clogpb.vorkath", 62.4);
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.vorkath", 62.4);
 
 		// A redraw of the page on screen (the log resized) is still its own time.
 		pbs.pageDrawn(client);
-		verify(configManager, times(2)).setRSProfileConfiguration("killclog", "clogpb.vorkath", 62.4);
+		verify(configManager, times(2)).setRSProfileConfiguration("killclog", "pagepb.vorkath", 62.4);
+	}
+
+	@Test
+	public void theTimesKeptBeforeThePageCheckAreClearedOnceAndNeverRead()
+	{
+		when(configManager.getRSProfileKey()).thenReturn("rsprofile.abc");
+		when(configManager.getRSProfileConfigurationKeys("killclog", "rsprofile.abc", ClogPbs.OLD_PREFIX))
+			.thenReturn(java.util.List.of("clogpb.alchemical hydra", "clogpb.amoxliatl"));
+		page("Vorkath", "Obtained: <col=ffff00>5/6</col>", "Personal Best: <col=ffffff>1:02.40</col>");
+		when(client.getVarpValue(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT)).thenReturn(104);
+		pbs.pageDrawn(client);
+		page("Zulrah", "Obtained: <col=ffff00>4/9</col>", "Personal Best: <col=ffffff>0:55.80</col>");
+		when(client.getVarpValue(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT)).thenReturn(93);
+		pbs.pageDrawn(client);
+		verify(configManager, times(1)).unsetConfiguration("killclog", "rsprofile.abc", "clogpb.alchemical hydra");
+		verify(configManager, times(1)).unsetConfiguration("killclog", "rsprofile.abc", "clogpb.amoxliatl");
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.zulrah", 55.8);
 	}
 }

@@ -20,10 +20,15 @@ import net.runelite.client.util.Text;
  * players' Alchemical Hydra times were their Amoxliatl times, the next page). So a new page takes the varp as it
  * draws only if the varp changed since the last page drew; otherwise it waits for the varp to change while it is
  * on screen, for a couple of ticks. Two pages with the same time read nothing on that visit, which is harmless.
+ *
+ * Times read this way are kept under their own keys ("pagepb."): the ones 2.6.3 and earlier kept ("clogpb.") may be
+ * another page's, so they are never read or sent again, and each account's are cleared the first time it reads a
+ * page. A page shows its time again when it is next opened.
  */
 final class ClogPbs
 {
-	/* package */ static final String KEY_PREFIX = "clogpb.";
+	/* package */ static final String KEY_PREFIX = "pagepb.";
+	/* package */ static final String OLD_PREFIX = "clogpb.";
 
 	// Pages whose one line doesn't yet say which encounter it times (the Nightmare's or Phosani's; which delve).
 	private static final Set<String> UNSETTLED = Set.of("the nightmare", "doom of mokhaiotl");
@@ -38,6 +43,7 @@ final class ClogPbs
 	private final int[] drawnTicks = {-1, -1};
 	private final String[] waiting = new String[VARPS.length];
 	private final int[] waitingSince = new int[VARPS.length];
+	private final java.util.Set<String> cleared = new java.util.HashSet<>();
 
 	ClogPbs(ConfigManager configManager)
 	{
@@ -132,7 +138,27 @@ final class ClogPbs
 	{
 		if (ticks > 0)
 		{
+			clearOldTimes();
 			configManager.setRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, KEY_PREFIX + key, ticks * 6 / 10.0);
+		}
+	}
+
+	/** The account's times from before the page check, once a session: they are never read, so they only go. */
+	private void clearOldTimes()
+	{
+		String profile = configManager.getRSProfileKey();
+		if (profile == null)
+		{
+			return;
+		}
+		profile = profile.startsWith("rsprofile.") ? profile : "rsprofile." + profile;
+		if (!cleared.add(profile))
+		{
+			return;
+		}
+		for (String key : configManager.getRSProfileConfigurationKeys(AdvLogPbs.CONFIG_GROUP, profile, OLD_PREFIX))
+		{
+			configManager.unsetConfiguration(AdvLogPbs.CONFIG_GROUP, profile, key);
 		}
 	}
 }
