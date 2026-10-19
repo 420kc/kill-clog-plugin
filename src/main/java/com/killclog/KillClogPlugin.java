@@ -226,7 +226,7 @@ public class KillClogPlugin extends Plugin
 		syncSettings.enforce();
 		panel.setKillclogSyncHandler(publication::manualSync);
 		panel.setCharacterPublishHandler(publication::publishCharacter);
-		panel.setSelfPb(this::selfPb);
+		panel.setSelfPbs(this::selfPbs);
 		// The first tick hands the panel and chat this world's game again.
 		world.showAgain();
 		panel.setSyncArrowEnabled(config.killclogSync());
@@ -610,11 +610,16 @@ public class KillClogPlugin extends Plugin
 		});
 	}
 
-	/** Your PB for a panel boss in one game: the main game's profiles, or the League's announced one. */
-	private String selfPb(String league, String boss)
+	/**
+	 * Your PBs for panel bosses in one game: the main game's profiles, or the League's announced one. RuneLite lists
+	 * every saved profile on each ask, so the grid asks once for all its bosses.
+	 */
+	private java.util.function.UnaryOperator<String> selfPbs(String league)
 	{
-		return new PersonalBests(configManager).pbText(PersonalBests.profileKeys(configManager.getRSProfiles(), localAccountHash,
-			league == null ? RuneScapeProfileType.STANDARD.name() : killclogService.leagueProfileType(league)), boss);
+		java.util.List<String> keys = PersonalBests.profileKeys(configManager.getRSProfiles(), localAccountHash,
+			league == null ? RuneScapeProfileType.STANDARD.name() : killclogService.leagueProfileType(league));
+		PersonalBests pbs = new PersonalBests(configManager);
+		return boss -> pbs.pbText(keys, boss);
 	}
 
 	@Subscribe

@@ -76,6 +76,7 @@ public class PluginPublicationCharacterizationTest
 	private Runnable syncHandler;
 	private Runnable publishHandler;
 	private Runnable captureListener;
+	private java.util.function.Function<String, java.util.function.UnaryOperator<String>> selfPbs;
 	private java.util.function.BiFunction<String, String, String> selfPb;
 
 	private static final class Settings implements KillClogConfig
@@ -162,10 +163,11 @@ public class PluginPublicationCharacterizationTest
 		verify(localClogCache).setFirstPartyChangedListener(handler.capture());
 		captureListener = handler.getValue();
 		@SuppressWarnings("unchecked")
-		ArgumentCaptor<java.util.function.BiFunction<String, String, String>> pbReader =
-			ArgumentCaptor.forClass(java.util.function.BiFunction.class);
-		verify(panel).setSelfPb(pbReader.capture());
-		selfPb = pbReader.getValue();
+		ArgumentCaptor<java.util.function.Function<String, java.util.function.UnaryOperator<String>>> pbReader =
+			ArgumentCaptor.forClass(java.util.function.Function.class);
+		verify(panel).setSelfPbs(pbReader.capture());
+		selfPbs = pbReader.getValue();
+		selfPb = (league, boss) -> selfPbs.apply(league).apply(boss);
 		clearInvocations(panel, chatNotifier, localClogCache);
 	}
 
@@ -992,9 +994,8 @@ public class PluginPublicationCharacterizationTest
 		}
 	}
 
-	@Test
-	@SuppressWarnings("unchecked")
-	public void theLadderPayloadKeepsTeamSizesSplitAndNamesEachBestsLane() throws Exception
+	/** Two fragments of your account and another account's, with times in RuneLite's store and the adventure log. */
+	private void ladderPbs()
 	{
 		when(configManager.getRSProfiles()).thenReturn(List.of(
 			new RuneScapeProfile(RSN, RuneScapeProfileType.STANDARD, HASH, "main"),
@@ -1017,6 +1018,13 @@ public class PluginPublicationCharacterizationTest
 			when(configManager.getConfiguration(eq((String) pb[0]), eq((String) pb[1]), eq((String) pb[2]),
 				eq((java.lang.reflect.Type) double.class))).thenReturn((Double) pb[3]);
 		}
+	}
+
+	@Test
+	@SuppressWarnings("unchecked")
+	public void theLadderPayloadKeepsTeamSizesSplitAndNamesEachBestsLane() throws Exception
+	{
+		ladderPbs();
 		syncHandler.run();
 		settle();
 		ArgumentCaptor<java.util.Map<String, Double>> collapsed = ArgumentCaptor.forClass(java.util.Map.class);
@@ -1049,6 +1057,33 @@ public class PluginPublicationCharacterizationTest
 		assertEquals(PersonalBests.formatSeconds(9.6), selfPb.apply("demonic-pacts", "Zulrah"));
 		when(service.leagueProfileType("demonic-pacts")).thenReturn(null);
 		org.junit.Assert.assertNull("a League RuneLite does not know yet shows no PB", selfPb.apply("demonic-pacts", "Zulrah"));
+	}
+
+	@Test
+	public void yourPbsForEveryBossComeFromOneReadOfTheProfiles() throws Exception
+	{
+		ticks(1);
+		ladderPbs();
+		// What each boss read before: RuneLite's profiles listed again for every boss.
+		java.util.List<String> bosses = new java.util.ArrayList<>();
+		java.util.List<String> want = new java.util.ArrayList<>();
+		for (net.runelite.client.hiscore.HiscoreSkill skill : net.runelite.client.hiscore.HiscoreSkill.values())
+		{
+			if (skill.getType() == net.runelite.client.hiscore.HiscoreSkillType.BOSS)
+			{
+				bosses.add(skill.getName());
+				want.add(new PersonalBests(configManager).pbText(PersonalBests.profileKeys(configManager.getRSProfiles(),
+					HASH, RuneScapeProfileType.STANDARD.name()), skill.getName()));
+			}
+		}
+		org.junit.Assert.assertTrue(want.contains(PersonalBests.formatSeconds(55.5)));
+		org.junit.Assert.assertTrue(want.contains("(5 players) " + PersonalBests.formatSeconds(1200.0)));
+		clearInvocations(configManager);
+		java.util.function.UnaryOperator<String> pbs = selfPbs.apply(null);
+		java.util.List<String> got = new java.util.ArrayList<>();
+		bosses.forEach(boss -> got.add(pbs.apply(boss)));
+		assertEquals(want, got);
+		verify(configManager, org.mockito.Mockito.times(1)).getRSProfiles();
 	}
 
 	@Test

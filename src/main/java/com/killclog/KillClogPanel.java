@@ -172,7 +172,7 @@ public class KillClogPanel extends PluginPanel
 	private String activeLeague;
 	private LocalClogCache worldLeagueLog;
 	private boolean flipped;
-	private java.util.function.BiFunction<String, String, String> selfPb = (league, boss) -> null;
+	private java.util.function.Function<String, java.util.function.UnaryOperator<String>> selfPbs = league -> boss -> null;
 	private final Cells cells;
 	private final ClogPages clogPages;
 
@@ -230,7 +230,7 @@ public class KillClogPanel extends PluginPanel
 			() -> ClogHelper.virtualTotalLevelEnabled(configManager));
 		this.skillCellGrid = new SkillCellGrid(skillIconManager, tooltipController, comparison,
 			config, itemManager);
-		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, clogService, killclogService, (league, boss) -> selfPb.apply(league, boss), config);
+		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, clogService, killclogService, league -> selfPbs.apply(league), config);
 		this.clogPages = new ClogPages(tooltipController, cells, comparison, lookupSession, tooltipDataBuilder, config);
 		this.activityTooltips = new ActivitySummaryTooltips(
 			lookupSession, comparison, cells, tooltipController, itemManager,
@@ -1139,10 +1139,10 @@ public class KillClogPanel extends PluginPanel
 		}
 	}
 
-	/** Your own PB reader: panel boss in the viewed game (null: the main game) to its text, or null. */
-	public void setSelfPb(java.util.function.BiFunction<String, String, String> selfPb)
+	/** Your own PB reader for the viewed game (null: the main game): panel boss to its text, or null. */
+	public void setSelfPbs(java.util.function.Function<String, java.util.function.UnaryOperator<String>> selfPbs)
 	{
-		this.selfPb = selfPb;
+		this.selfPbs = selfPbs;
 	}
 
 	public void setLoggedInPlayer(String name, AccountType accountType)

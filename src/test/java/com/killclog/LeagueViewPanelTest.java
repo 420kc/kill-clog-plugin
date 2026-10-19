@@ -267,6 +267,37 @@ public class LeagueViewPanelTest
 	}
 
 	@Test
+	public void oneGridRebuildAsksForYourPbsOnce() throws Exception
+	{
+		// RuneLite lists every saved profile each time your PBs are asked for, so the grid asks once for all bosses.
+		ClogIndex index = new ClogIndex();
+		index.publishForTest(Map.of("zulrah", java.util.List.of(1, 2, 3), "vorkath", java.util.List.of(4)), Map.of());
+		Cells cells = field(panel, "cells", Cells.class);
+		Map<?, ?> bossCells = field(cells, "bossLabels", Map.class);
+		java.util.concurrent.atomic.AtomicInteger asks = new java.util.concurrent.atomic.AtomicInteger();
+		java.util.List<String> read = new java.util.ArrayList<>();
+		SwingUtilities.invokeAndWait(() ->
+		{
+			panel.setClogIndex(index);
+			panel.setSelfPbs(league ->
+			{
+				asks.incrementAndGet();
+				return boss ->
+				{
+					read.add(boss);
+					return league + " " + boss;
+				};
+			});
+			session.adoptState(null, null, null, "Me");
+			session.readLeague("demonic-pacts", null);
+			cells.rebuildPrimaryTooltips("Me");
+			assertEquals(1, asks.get());
+			assertTrue("every boss cell read its PB from the one reader", read.size() >= bossCells.size());
+			assertTrue(read.contains("Zulrah"));
+		});
+	}
+
+	@Test
 	public void afterLogoutYourNameIsAnyonesButTheSearchIconStillKnowsIt() throws Exception
 	{
 		// Logged out, a lookup of your name reads every site like anyone's, so it can show your character and clan;
@@ -783,15 +814,15 @@ public class LeagueViewPanelTest
 		when(killclog.pbText(KillclogService.modeKey("demonic-pacts", "Friend"), "Zulrah")).thenReturn("1:01.20");
 		SwingUtilities.invokeAndWait(() ->
 		{
-			panel.setSelfPb((league, boss) -> league + " " + boss);
+			panel.setSelfPbs(league -> boss -> league + " " + boss);
 			session.adoptState(null, friend, null, "Friend");
-			assertEquals("0:58.20", cells.pbFor(false, "Zulrah"));
-			assertEquals("null Zulrah", cells.pbFor(true, "Zulrah"));
+			assertEquals("0:58.20", cells.pbs(false).apply("Zulrah"));
+			assertEquals("null Zulrah", cells.pbs(true).apply("Zulrah"));
 			session.readLeague("demonic-pacts", null);
-			assertEquals("1:01.20", cells.pbFor(false, "Zulrah"));
-			assertEquals("demonic-pacts Zulrah", cells.pbFor(true, "Zulrah"));
+			assertEquals("1:01.20", cells.pbs(false).apply("Zulrah"));
+			assertEquals("demonic-pacts Zulrah", cells.pbs(true).apply("Zulrah"));
 			session.adoptState(null, null, null, "Friend");
-			assertNull(cells.pbFor(false, "Zulrah"));
+			assertNull(cells.pbs(false).apply("Zulrah"));
 		});
 	}
 

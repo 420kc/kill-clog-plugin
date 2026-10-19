@@ -15,9 +15,10 @@ import java.awt.image.BufferedImage;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 import javax.annotation.Nullable;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
@@ -62,8 +63,8 @@ public class Cells
 	private final TooltipDataBuilder tooltipDataBuilder;
 	private final LookupSession lookupSession;
 	private final KillclogService killclogService;
-	// Your own PB for a panel boss in the viewed game (null: the main game).
-	private final BiFunction<String, String, String> selfPb;
+	// Your own PB reader for the viewed game (null: the main game).
+	private final Function<String, UnaryOperator<String>> selfPbs;
 	private final KillClogConfig config;
 	private final UnsyncedClogCatalog unsyncedCatalog;
 	@Nullable private SinglePlayerTooltipBuilder singlePlayerBuilder;
@@ -89,22 +90,25 @@ public class Cells
 	private final Map<HiscoreSkill, ImageIcon> originalIcons = new LinkedHashMap<>();
 	private final Map<HiscoreSkill, ImageIcon> dimmedIcons = new LinkedHashMap<>();
 
-	/** A boss PB in the viewed game: yours from RuneLite's profiles, anyone else's from their Kill Clog sync. */
-	String pbFor(boolean self, String displayName)
+	/**
+	 * Boss PBs in the viewed game: yours from RuneLite's profiles, read once for the whole grid, anyone else's from
+	 * their Kill Clog sync.
+	 */
+	UnaryOperator<String> pbs(boolean self)
 	{
 		ClogResult lookupClog = lookupSession.getClogResult();
 		String league = lookupSession.league();
-		return self ? selfPb.apply(league, displayName)
-			: lookupClog == null ? null
-			: killclogService.pbText(league == null ? lookupClog.getPlayerName()
-				: KillclogService.modeKey(league, lookupClog.getPlayerName()), displayName);
+		return self ? selfPbs.apply(league)
+			: lookupClog == null ? boss -> null
+			: boss -> killclogService.pbText(league == null ? lookupClog.getPlayerName()
+				: KillclogService.modeKey(league, lookupClog.getPlayerName()), boss);
 	}
 
 	public Cells(SpriteManager spriteManager, ItemManager itemManager,
 		TooltipController tooltipController, ComparisonController comparison,
 		TooltipDataBuilder tooltipDataBuilder, LookupSession lookupSession,
 		ClogService clogService, KillclogService killclogService,
-		BiFunction<String, String, String> selfPb, KillClogConfig config)
+		Function<String, UnaryOperator<String>> selfPbs, KillClogConfig config)
 	{
 		this.config = config;
 		this.spriteManager = spriteManager;
@@ -114,7 +118,7 @@ public class Cells
 		this.tooltipDataBuilder = tooltipDataBuilder;
 		this.lookupSession = lookupSession;
 		this.killclogService = killclogService;
-		this.selfPb = selfPb;
+		this.selfPbs = selfPbs;
 		loadPvpActivityIcons();
 		this.unsyncedCatalog = new UnsyncedClogCatalog(clogService);
 	}
@@ -398,6 +402,7 @@ public class Cells
 			? unsyncedCatalog.result() : null;
 
 		// Boss cells
+		UnaryOperator<String> pbs = pbs(self);
 		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
 		{
 			HiscoreSkill skill = entry.getKey();
@@ -405,8 +410,8 @@ public class Cells
 			HiscoreSkill card = PanelData.card(skill);
 			String bossName = card.getName();
 			String hiscoreName = PanelData.hiscoreName(bossName);
-			TooltipData data = TooltipDataBuilder.withHardMode(buildPrimaryBossData(bossName, hiscoreName, self),
-				card, lookupSession.getHiscoreResult(), name -> pbFor(self, name));
+			TooltipData data = TooltipDataBuilder.withHardMode(buildPrimaryBossData(bossName, hiscoreName, self, pbs),
+				card, lookupSession.getHiscoreResult(), pbs);
 			if (data != null)
 			{
 				tooltipDataMap.put(skill, data);
@@ -558,7 +563,8 @@ public class Cells
 	 * sync-prompt self-lookup).
 	 */
 	@Nullable
-	private TooltipData buildPrimaryBossData(String displayName, String hiscoreName, boolean self)
+	private TooltipData buildPrimaryBossData(String displayName, String hiscoreName, boolean self,
+		UnaryOperator<String> pbs)
 	{
 		boolean selfNoCache = self && lookupSession.getClogResult() == null && lookupSession.readsOwnLog();
 		if (selfNoCache)
@@ -574,7 +580,7 @@ public class Cells
 		// Vanilla records pbs on the local profile only; for looked-up players
 		// the killclog.com sync is the one source that serves them, cached by
 		// the same fetch that raced the clog providers.
-		return tooltipDataBuilder.buildBossCard(displayName, category, rank, kc, pbFor(self, displayName),
+		return tooltipDataBuilder.buildBossCard(displayName, category, rank, kc, pbs.apply(displayName),
 			lookupSession.getClogResult(), showGlory ? null : "Kills: ", showGlory ? -1 : kc, unsyncedCatalog.result());
 	}
 
