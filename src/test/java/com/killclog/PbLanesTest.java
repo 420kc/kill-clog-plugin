@@ -53,5 +53,9 @@ public class PbLanesTest
 		assertEquals("66.0 advlog", after(pb(66.0, "store"), pb(66.0, "advlog")));
 		assertEquals("more than a second apart is another time", "66.0 advlog",
 			after(pb(64.8, "store"), pb(66.0, "advlog")));
+		// The game rounds to the nearest second: 65.6 shows as 1:06, while 66.6 shows as 1:07 and 65.4 as 1:05.
+		assertEquals("65.6 store", after(pb(65.6, "store"), pb(66.0, "advlog")));
+		assertEquals("66.0 advlog", after(pb(66.6, "store"), pb(66.0, "advlog")));
+		assertEquals("66.0 advlog", after(pb(65.4, "store"), pb(66.0, "advlog")));
 	}
 }

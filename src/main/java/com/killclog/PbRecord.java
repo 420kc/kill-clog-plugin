@@ -66,8 +66,8 @@ final class PbRecord
 
 	/**
 	 * The record that wins a key. RuneLite's file fills only what nothing has, the profile RuneLite chose first. A
-	 * game record replaces the file's even when slower, except that a whole second leaves a file time inside it alone:
-	 * the same time with its tenths, shown without them. Between game records, faster wins and the later takes a tie.
+	 * game record replaces the file's even when slower, except that a whole second leaves a file time it rounds from
+	 * alone: the same time with its tenths, shown without them. Between game records, faster wins and the later takes a tie.
 	 */
 	static PbRecord pick(@Nullable PbRecord kept, PbRecord seen)
 	{
@@ -86,9 +86,14 @@ final class PbRecord
 		return seen.seconds <= kept.seconds ? seen : kept;
 	}
 
+	/**
+	 * Whether a whole second is this tenths time as the game shows it with precise timing off: rounded to the nearest
+	 * second, half up (its formatter, client script 2410), so a time on the 0.6 s tick grid is never more than 0.4 s
+	 * from what it shows. "0:32" is 31.8 or 32.4; 32.6 shows as "0:33".
+	 */
 	private static boolean sameTimeInTenths(double tenths, double whole)
 	{
-		return whole == Math.rint(whole) && tenths != Math.rint(tenths) && Math.abs(tenths - whole) < 1;
+		return whole == Math.rint(whole) && tenths != Math.rint(tenths) && Math.abs(tenths - whole) < 0.45;
 	}
 
 	@Nullable
