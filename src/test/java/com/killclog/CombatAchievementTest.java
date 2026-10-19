@@ -11,17 +11,17 @@ public class CombatAchievementTest
 	public void testHighestForPointsBoundaries()
 	{
 		// Current OSRS Combat Achievement thresholds.
-		assertNull(CombatAchievementTier.highestForPoints(0));
-		assertNull(CombatAchievementTier.highestForPoints(40));
-		assertEquals(CombatAchievementTier.EASY, CombatAchievementTier.highestForPoints(41));
-		assertEquals(CombatAchievementTier.EASY, CombatAchievementTier.highestForPoints(160));
-		assertEquals(CombatAchievementTier.MEDIUM, CombatAchievementTier.highestForPoints(161));
-		assertEquals(CombatAchievementTier.MEDIUM, CombatAchievementTier.highestForPoints(418));
-		assertEquals(CombatAchievementTier.HARD, CombatAchievementTier.highestForPoints(419));
-		assertEquals(CombatAchievementTier.ELITE, CombatAchievementTier.highestForPoints(1075));
-		assertEquals(CombatAchievementTier.MASTER, CombatAchievementTier.highestForPoints(1945));
+		assertNull(CombatAchievementTier.highestForPoints(0, java.util.Map.of()));
+		assertNull(CombatAchievementTier.highestForPoints(40, java.util.Map.of()));
+		assertEquals(CombatAchievementTier.EASY, CombatAchievementTier.highestForPoints(41, java.util.Map.of()));
+		assertEquals(CombatAchievementTier.EASY, CombatAchievementTier.highestForPoints(160, java.util.Map.of()));
+		assertEquals(CombatAchievementTier.MEDIUM, CombatAchievementTier.highestForPoints(161, java.util.Map.of()));
+		assertEquals(CombatAchievementTier.MEDIUM, CombatAchievementTier.highestForPoints(418, java.util.Map.of()));
+		assertEquals(CombatAchievementTier.HARD, CombatAchievementTier.highestForPoints(419, java.util.Map.of()));
+		assertEquals(CombatAchievementTier.ELITE, CombatAchievementTier.highestForPoints(1075, java.util.Map.of()));
+		assertEquals(CombatAchievementTier.MASTER, CombatAchievementTier.highestForPoints(1945, java.util.Map.of()));
 		// Grandmaster is completion-gated, never returned by highestForPoints.
-		assertEquals(CombatAchievementTier.MASTER, CombatAchievementTier.highestForPoints(99999));
+		assertEquals(CombatAchievementTier.MASTER, CombatAchievementTier.highestForPoints(99999, java.util.Map.of()));
 	}
 
 	@Test

@@ -654,12 +654,6 @@ public class LocalClogCache
 		submitSave(activeHashKey, true, data);
 	}
 
-	public boolean mergeObtainedItem(String playerName, int itemId,
-		List<String> categoryKeys, Map<String, List<Integer>> categoryItems)
-	{
-		return mergeObtainedItem(playerName, itemId, categoryKeys, categoryItems, 0, null);
-	}
-
 	public synchronized boolean mergeObtainedItem(String playerName, int itemId,
 		List<String> categoryKeys, Map<String, List<Integer>> categoryItems,
 		int obtainedAtKc, String obtainedFrom)

@@ -28,7 +28,7 @@ public class ClogTabTooltipTest
 		assertEquals(-1, TestViews.rowAt(card, "pageRows", top + 24 * LINE));
 
 		wheel(card, top + 5, 1);
-		assertEquals(3, card.offset());
+		assertEquals(3, offset(card));
 		// The mouse stayed put, so once the card repaints the page that scrolled under it is the one a press opens.
 		painted(card);
 		List<Integer> opened = new ArrayList<>();
@@ -38,9 +38,9 @@ public class ClogTabTooltipTest
 
 		// The list stops at its ends.
 		wheel(card, top + 5, 50);
-		assertEquals(57 - ClogTabTooltip.VISIBLE_ROWS, card.offset());
+		assertEquals(57 - ClogTabTooltip.VISIBLE_ROWS, offset(card));
 		wheel(card, top + 5, -50);
-		assertEquals(0, card.offset());
+		assertEquals(0, offset(card));
 	}
 
 	@Test
@@ -49,7 +49,7 @@ public class ClogTabTooltipTest
 		int notch = 3;
 		ClogTabTooltip whole = painted(card(ClogTabTooltip.VISIBLE_ROWS + notch));
 		wheel(whole, firstRowY(whole), 3);
-		assertEquals(0, whole.offset());
+		assertEquals(0, offset(whole));
 		int last = ClogTabTooltip.VISIBLE_ROWS + notch - 1;
 		assertEquals("every page shows", last, TestViews.rowAt(whole, "pageRows", firstRowY(whole) + last * LINE));
 		// One page more and the tab scrolls: the window's rows, seven pixels wider for the rail.
@@ -65,9 +65,9 @@ public class ClogTabTooltipTest
 		ClogTabTooltip red = painted(card(57));
 		TitleTooltip.scrollTogether(blue, red);
 		wheel(blue, firstRowY(blue), 2);
-		assertEquals(6, red.offset());
+		assertEquals(6, offset(red));
 		wheel(red, firstRowY(red), -1);
-		assertEquals(3, blue.offset());
+		assertEquals(3, offset(blue));
 	}
 
 	@Test
@@ -198,7 +198,7 @@ public class ClogTabTooltipTest
 	{
 		for (int y = 0; y < card.getHeight(); y++)
 		{
-			if (TestViews.rowAt(card, "pageRows", y) == card.offset())
+			if (TestViews.rowAt(card, "pageRows", y) == offset(card))
 			{
 				return y;
 			}
@@ -221,5 +221,11 @@ public class ClogTabTooltipTest
 		{
 			listener.mousePressed(new MouseEvent(card, MouseEvent.MOUSE_PRESSED, 0, 0, 5, y, 1, false, MouseEvent.BUTTON1));
 		}
+	}
+
+	/** The first page in view. */
+	private static int offset(ClogTabTooltip card)
+	{
+		return card.scroll().offset() / NativeTooltip.LINE_HEIGHT;
 	}
 }

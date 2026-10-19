@@ -27,19 +27,9 @@ final class KillclogSyncGate
 	 *
 	 * @return the generation to carry through the attempt, or -1 when a
 	 *         request is already in flight - the intent is remembered and
-	 *         {@link #consumeQueued()} will report it once the slot frees.
+	 *         {@link #consumeQueued()} will report it once the slot frees. A queued click keeps its game over later
+	 *         automatic pushes; the latest click wins among clicks.
 	 */
-	int beginAttempt()
-	{
-		return beginAttempt(false);
-	}
-
-	int beginAttempt(boolean manual)
-	{
-		return beginAttempt(manual, null);
-	}
-
-	/** A queued click keeps its game over later automatic pushes; the latest click wins among clicks. */
 	synchronized int beginAttempt(boolean manual, String mode)
 	{
 		int gen = generation.get();

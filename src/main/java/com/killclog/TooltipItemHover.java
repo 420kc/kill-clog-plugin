@@ -67,11 +67,6 @@ final class TooltipItemHover
 		return hoveredItemName;
 	}
 
-	int hoveredSection()
-	{
-		return hoveredSection;
-	}
-
 	/** Whether the hovered thing is held: an item the player has, a tier reached, a source that supplied the log. */
 	boolean hoveredItemObtained()
 	{

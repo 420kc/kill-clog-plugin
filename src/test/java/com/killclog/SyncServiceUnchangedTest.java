@@ -65,7 +65,7 @@ public class SyncServiceUnchangedTest
 		throws Exception
 	{
 		KillclogSyncGate gate = new KillclogSyncGate();
-		int generation = gate.beginAttempt();
+		int generation = gate.beginAttempt(false, null);
 		SyncService.SyncResult result = service.syncCollectionLog("Tester", 42L, type, pbs, Map.of(), 3L, gate,
 			generation, cache, mode, always, () -> sending++).get();
 		gate.complete(generation);

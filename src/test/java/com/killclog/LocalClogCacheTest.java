@@ -337,7 +337,7 @@ public class LocalClogCacheTest
 		categories.put("all_pets", itemList(2, 4));
 		cache.cacheFirstPartyResult(clog("Fast 07", categories, obtainedItems("magus", 1)));
 
-		boolean changed = cache.mergeObtainedItem("Fast 07", 2, itemListAsStrings("magus", "all_pets"), categories);
+		boolean changed = cache.mergeObtainedItem("Fast 07", 2, itemListAsStrings("magus", "all_pets"), categories, 0, null);
 
 		ClogResult cached = cache.toClogResult("Fast 07", Collections.emptyMap());
 		assertTrue(changed);
@@ -352,7 +352,7 @@ public class LocalClogCacheTest
 		LocalClogCache cache = memory("Fast 07");
 		Map<String, List<Integer>> categories = categoryItems("magus", 1, 2, 3);
 		cache.cacheFirstPartyResult(clog("Fast 07", categories, obtainedItems("magus", 1, 2)));
-		assertFalse(cache.mergeObtainedItem("Fast 07", 2, itemListAsStrings("magus"), categories));
+		assertFalse(cache.mergeObtainedItem("Fast 07", 2, itemListAsStrings("magus"), categories, 0, null));
 		assertEquals(2, cache.toClogResult("Fast 07", Collections.emptyMap()).getObtainedItems().get("magus").size());
 	}
 
@@ -384,13 +384,13 @@ public class LocalClogCacheTest
 				cache.mergeObtainedItem("Tester", 1, List.of("hats", "other"), categories, 42, "Boss");
 				if (!counterFirst) cache.updateTotalsUpward("Tester", initial + 1, 100);
 				// A duplicate notification and a lagging counter cannot add another slot.
-				cache.mergeObtainedItem("Tester", 1, List.of("hats", "other"), categories);
+				cache.mergeObtainedItem("Tester", 1, List.of("hats", "other"), categories, 0, null);
 				cache.updateTotalsUpward("Tester", initial, 100);
 				ClogResult payload = cache.toFirstPartySyncResult("Tester");
 				assertEquals(initial + 1, payload.getUniqueObtained());
 				assertNotNull(payload.getObtainedItems().get("hats").get(0).getDate());
 				assertEquals(42, payload.getObtainedItems().get("hats").get(0).getObtainedAtKc());
-				cache.mergeObtainedItem("Tester", 2, List.of("hats"), categories);
+				cache.mergeObtainedItem("Tester", 2, List.of("hats"), categories, 0, null);
 				cache.updateTotalsUpward("Tester", initial + 2, 100);
 				LocalClogCache restarted = onDisk(dir);
 				assertTrue(restarted.activate("Tester", HASH));
@@ -403,7 +403,7 @@ public class LocalClogCacheTest
 	public void testMergeObtainedItemRequiresExistingCache() throws Exception
 	{
 		LocalClogCache cache = memory("Fast 07");
-		assertFalse(cache.mergeObtainedItem("Fast 07", 2, itemListAsStrings("magus"), categoryItems("magus", 1, 2, 3)));
+		assertFalse(cache.mergeObtainedItem("Fast 07", 2, itemListAsStrings("magus"), categoryItems("magus", 1, 2, 3), 0, null));
 	}
 
 	@Test
@@ -531,13 +531,13 @@ public class LocalClogCacheTest
 		assertFalse("they make no own log", cache.hasDataFor("Zezima"));
 		assertNull(cache.toFirstPartySyncResult("Zezima"));
 		assertFalse("and a live unlock needs the account's own log", cache.mergeObtainedItem("Zezima", 3,
-			itemListAsStrings("zulrah"), categoryItems("zulrah", 1, 2, 3)));
+			itemListAsStrings("zulrah"), categoryItems("zulrah", 1, 2, 3), 0, null));
 
 		cache.cacheFirstPartyResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3), obtainedItems("zulrah", 1)));
 		cache.cacheResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3), obtainedItems("zulrah", 1, 2)));
 		assertEquals("a later provider copy changes nothing", 1,
 			cache.toFirstPartySyncResult("Zezima").getObtainedItems().get("zulrah").size());
-		cache.mergeObtainedItem("Zezima", 3, itemListAsStrings("zulrah"), categoryItems("zulrah", 1, 2, 3));
+		cache.mergeObtainedItem("Zezima", 3, itemListAsStrings("zulrah"), categoryItems("zulrah", 1, 2, 3), 0, null);
 		assertEquals(2, notified[0]);
 		assertEquals(2, cache.toFirstPartySyncResult("Zezima").getObtainedItems().get("zulrah").size());
 		assertEquals(2, cache.toClogResult("Zezima", Collections.emptyMap()).getObtainedItems().get("zulrah").size());
@@ -623,7 +623,7 @@ public class LocalClogCacheTest
 			"2026-08-01 00:00:00", AccountType.REGULAR));
 		assertTrue("an empty walk completes setup", cache.hasCompletedFirstPartySetupFor("Zezima"));
 		assertFalse("but carries nothing", cache.hasFirstPartyDataFor("Zezima"));
-		cache.mergeObtainedItem("Zezima", 3, itemListAsStrings("zulrah"), categoryItems("zulrah", 1, 2, 3));
+		cache.mergeObtainedItem("Zezima", 3, itemListAsStrings("zulrah"), categoryItems("zulrah", 1, 2, 3), 0, null);
 		assertTrue(cache.hasFirstPartyDataFor("Zezima"));
 		assertTrue(cache.hasFirstPartyDataForActive());
 	}

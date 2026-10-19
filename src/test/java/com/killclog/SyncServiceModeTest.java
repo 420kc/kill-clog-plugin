@@ -41,7 +41,7 @@ public class SyncServiceModeTest
 			Map.of("boss", List.of(new ClogResult.ClogItem(1, 1, null))), Map.of("boss", List.of(1)), Map.of(), null, null));
 		when(league.commitIfSessionCurrent(eq(3L), any())).thenAnswer(call -> ((Supplier<Object>) call.getArgument(1)).get());
 		KillclogSyncGate gate = new KillclogSyncGate();
-		int generation = gate.beginAttempt();
+		int generation = gate.beginAttempt(false, null);
 
 		SyncService.SyncResult result = new SyncService(http, new Gson(), main)
 			.syncCollectionLog("Tester", 42L, null, Map.of(), Map.of(), 3L, gate, generation, league, "demonic-pacts", false,

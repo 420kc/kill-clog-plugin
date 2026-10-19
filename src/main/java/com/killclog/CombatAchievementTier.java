@@ -1,6 +1,5 @@
 package com.killclog;
 
-import java.util.EnumMap;
 import java.util.Map;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -78,12 +77,6 @@ enum CombatAchievementTier
 		return null;
 	}
 
-	/** Highest points-unlocked tier against the fallback task counts. */
-	static CombatAchievementTier highestForPoints(int totalPoints)
-	{
-		return highestForPoints(totalPoints, fallbackTotals());
-	}
-
 	/**
 	 * Highest points-unlocked tier against the given task counts, with each
 	 * threshold derived as the cumulative points of that tier and below.
@@ -107,16 +100,5 @@ enum CombatAchievementTier
 			}
 		}
 		return unlocked;
-	}
-
-	/** The fallback task counts as a map, for callers that merge with live data. */
-	static Map<CombatAchievementTier, Integer> fallbackTotals()
-	{
-		Map<CombatAchievementTier, Integer> totals = new EnumMap<>(CombatAchievementTier.class);
-		for (CombatAchievementTier tier : values())
-		{
-			totals.put(tier, tier.totalTasks);
-		}
-		return totals;
 	}
 }

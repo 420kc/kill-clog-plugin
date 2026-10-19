@@ -71,12 +71,6 @@ public class ClogTabTooltip extends TitleTooltip
 		return scroll;
 	}
 
-	/** The first page in view. */
-	int offset()
-	{
-		return scroll.offset() / LINE_HEIGHT;
-	}
-
 	private boolean scrolls()
 	{
 		return scroll.scrolls(names.length * LINE_HEIGHT);
