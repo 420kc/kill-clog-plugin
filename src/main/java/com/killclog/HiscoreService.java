@@ -680,13 +680,16 @@ public class HiscoreService
 		}
 	}
 
+	/** How long a failed board waits before its one retry; tests shorten it. */
+	static long retryDelayMs = 500;
+
 	private CompletableFuture<String> fetchAsync(String hiscoreKey, String encodedPlayer, @Nullable Set<String> absent)
 	{
 		return fetchTable(hiscoreKey, encodedPlayer).thenCompose(first ->
 		{
 			if (!first.retryable()) return CompletableFuture.completedFuture(first);
 			return CompletableFuture.supplyAsync(() -> null,
-				CompletableFuture.delayedExecutor(500, TimeUnit.MILLISECONDS))
+				CompletableFuture.delayedExecutor(retryDelayMs, TimeUnit.MILLISECONDS))
 				.thenCompose(ignored -> fetchTable(hiscoreKey, encodedPlayer));
 		}).thenApply(result ->
 		{

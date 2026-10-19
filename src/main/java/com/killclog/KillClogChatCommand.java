@@ -570,7 +570,7 @@ class KillClogChatCommand
 			// The panel's time limit: this runs on the executor RuneLite shares with every plugin.
 			HiscoreResult result = (main ? hiscoreService.lookup(rsn, null)
 				: hiscoreService.lookupTable(rsn, HiscoreService.LEAGUE_TABLE))
-				.copy().orTimeout(LookupFanout.HISCORE_TIMEOUT_SECONDS, TimeUnit.SECONDS).join();
+				.copy().orTimeout(LookupFanout.hiscoreTimeoutSeconds, TimeUnit.SECONDS).join();
 			return result != null ? result.getKc(boss) : -1;
 		}
 		catch (Exception e)

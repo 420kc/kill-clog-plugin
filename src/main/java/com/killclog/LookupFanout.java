@@ -28,7 +28,8 @@ import lombok.extern.slf4j.Slf4j;
 final class LookupFanout
 {
 	static final int CA_TIMEOUT_SECONDS = 10;
-	static final int HISCORE_TIMEOUT_SECONDS = 15;
+	// Tests shorten it.
+	static int hiscoreTimeoutSeconds = 15;
 
 	private final HiscoreService hiscoreService;
 	private final ClogService clogService;
@@ -149,7 +150,7 @@ final class LookupFanout
 		(league != null ? hiscoreService.lookupLeague(player)
 			: hiscoreService.lookup(player, knownType))
 			.copy()
-			.orTimeout(HISCORE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+			.orTimeout(hiscoreTimeoutSeconds, TimeUnit.SECONDS)
 			.thenAccept(result -> onEdtIfCurrent(stamp, () -> onResult.accept(result)))
 			.exceptionally(ex ->
 			{

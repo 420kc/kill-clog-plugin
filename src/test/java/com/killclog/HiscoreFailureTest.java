@@ -14,6 +14,8 @@ import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -22,6 +24,19 @@ public class HiscoreFailureTest
 	private static final String REGULAR = "/m=hiscore_oldschool/";
 	private static final String IRON = "/m=hiscore_oldschool_ironman/";
 	private static final String HARDCORE = "/m=hiscore_oldschool_hardcore_ironman/";
+
+	// The real half-second wait before a board's retry changes nothing these tests check.
+	@Before
+	public void shortenRetries()
+	{
+		HiscoreService.retryDelayMs = 1;
+	}
+
+	@After
+	public void restoreRetries()
+	{
+		HiscoreService.retryDelayMs = 500;
+	}
 
 	static String body(long xp)
 	{

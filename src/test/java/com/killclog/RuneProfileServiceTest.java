@@ -3,6 +3,7 @@ package com.killclog;
 import com.google.gson.Gson;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.List;
@@ -469,48 +470,73 @@ public class RuneProfileServiceTest
 	@Test
 	public void twoSpellingsAnsweringAtOnceLeaveOneAnswer() throws Exception
 	{
-		// Both answers land together, many times over: clearing the other spellings and storing the new answer is one
-		// step, so the name is never left holding both (and an older answer standing for it).
-		for (int round = 0; round < 40; round++)
+		// Asked together, two spellings of one name are one lookup: one request, and one answer held for both.
+		AtomicInteger requests = new AtomicInteger();
+		CountDownLatch release = new CountDownLatch(1);
+		OkHttpClient client = clanClient(chain ->
+		{
+			requests.incrementAndGet();
+			release.await(5, TimeUnit.SECONDS);
+		});
+		service = new RuneProfileService(client, new Gson(), null);
+		CompletableFuture<?> spaced = service.lookup("a q p weed");
+		CompletableFuture<?> underscored = service.lookup("a_q_p_weed");
+		release.countDown();
+		CompletableFuture.allOf(underscored, spaced).get(5, TimeUnit.SECONDS);
+		assertEquals(1, requests.get());
+		assertEquals(1, summaryCache().size());
+		assertEquals("New Clan", service.clan("A_q_p_Weed"));
+
+		// Answers for two keys that are one name, landing together many times over: clearing the other spellings and
+		// storing the new answer is one step, so the name is never left holding both (and an older answer standing for
+		// it). Lookups can't start two such flights, so they're started directly.
+		Method start = RuneProfileService.class.getDeclaredMethod("startSummaryLookup", String.class, String.class);
+		start.setAccessible(true);
+		for (int round = 0; round < 200; round++)
 		{
 			CountDownLatch bothAsked = new CountDownLatch(2);
-			OkHttpClient client = new OkHttpClient.Builder()
-				.addInterceptor(chain ->
-				{
-					bothAsked.countDown();
-					try
-					{
-						bothAsked.await(5, TimeUnit.SECONDS);
-					}
-					catch (InterruptedException e)
-					{
-						Thread.currentThread().interrupt();
-					}
-					String clan = chain.request().url().toString().contains("_") ? "Old Clan" : "New Clan";
-					return new Response.Builder()
-						.request(chain.request())
-						.protocol(Protocol.HTTP_1_1)
-						.code(200)
-						.message("canned")
-						.body(ResponseBody.create(MediaType.parse("application/json"),
-							"{\"clan\":{\"name\":\"" + clan + "\",\"rank\":40,\"icon\":24,\"title\":\"Recruit\"}}"))
-						.build();
-				})
-				.build();
-			service = new RuneProfileService(client, new Gson(), null);
-			try
+			service = new RuneProfileService(clanClient(chain ->
 			{
-				CompletableFuture<?> underscored = service.lookup("a_q_p_weed");
-				CompletableFuture<?> spaced = service.lookup("a q p weed");
-				CompletableFuture.allOf(underscored, spaced).get(10, TimeUnit.SECONDS);
-				assertEquals("round " + round, 1, summaryCache().size());
-			}
-			finally
-			{
-				client.dispatcher().executorService().shutdownNow();
-				client.connectionPool().evictAll();
-			}
+				bothAsked.countDown();
+				bothAsked.await(5, TimeUnit.SECONDS);
+			}), new Gson(), null);
+			CompletableFuture<?> first = (CompletableFuture<?>) start.invoke(service, "a_q_p_weed", "a_q_p_weed");
+			CompletableFuture<?> second = (CompletableFuture<?>) start.invoke(service, "a q p weed", "a q p weed");
+			CompletableFuture.allOf(first, second).get(5, TimeUnit.SECONDS);
+			assertEquals("round " + round, 1, summaryCache().size());
 		}
+	}
+
+	/** Answers every RuneProfile summary with a clan named for the spelling asked, after {@code before} runs. */
+	private static OkHttpClient clanClient(InterruptibleStep before)
+	{
+		return new OkHttpClient.Builder()
+			.addInterceptor(chain ->
+			{
+				try
+				{
+					before.run(chain);
+				}
+				catch (InterruptedException e)
+				{
+					Thread.currentThread().interrupt();
+				}
+				String clan = chain.request().url().toString().contains("_") ? "Old Clan" : "New Clan";
+				return new Response.Builder()
+					.request(chain.request())
+					.protocol(Protocol.HTTP_1_1)
+					.code(200)
+					.message("canned")
+					.body(ResponseBody.create(MediaType.parse("application/json"),
+						"{\"clan\":{\"name\":\"" + clan + "\",\"rank\":40,\"icon\":24,\"title\":\"Recruit\"}}"))
+					.build();
+			})
+			.build();
+	}
+
+	private interface InterruptibleStep
+	{
+		void run(okhttp3.Interceptor.Chain chain) throws InterruptedException;
 	}
 
 	private static OkHttpClient cannedClient(int code, String body, AtomicInteger requests)
