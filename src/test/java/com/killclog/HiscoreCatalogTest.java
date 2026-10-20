@@ -59,7 +59,7 @@ public class HiscoreCatalogTest
 			"Sarachnis", "Scorpia", "Scurrius", "Shellbane Gryphon", "Skotizo", "Sol Heredit",
 			"Spindel", "Tempoross", "The Gauntlet", "The Corrupted Gauntlet", "The Hueycoatl",
 			"The Leviathan", "The Royal Titans", "The Whisperer", "Theatre of Blood",
-			"Theatre of Blood: Hard Mode", "Thermonuclear Smoke Devil", "Tombs of Amascut",
+			"Theatre of Blood: Hard Mode", "The Fractured Archive", "Thermonuclear Smoke Devil", "Tombs of Amascut",
 			"Tombs of Amascut: Expert Mode", "TzKal-Zuk", "TzTok-Jad", "Vardorvis",
 			"Venenatis", "Vet'ion", "Vorkath", "Wintertodt", "Yama", "Zalcano", "Zulrah"
 		}, HiscoreService.bossNames());

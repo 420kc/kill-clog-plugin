@@ -21,7 +21,7 @@ public class PvmSummaryTooltipTest
 	@Test
 	public void megaRareHoverNamesUseFullDisplayNames()
 	{
-		assertArrayEquals(new String[]{"Twisted Bow", "Scythe of Vitur", "Tumeken's Shadow"},
+		assertArrayEquals(new String[]{"Twisted Bow", "Scythe of Vitur", "Tumeken's Shadow", "Obligator"},
 			PanelData.MEGARARE_ITEM_NAMES);
 	}
 
@@ -302,7 +302,7 @@ public class PvmSummaryTooltipTest
 		// RuneLite knows it opens nothing, rather than a popup with no data asking a synced player to set up.
 		assertEquals(PanelData.tfaListed(),
 			press(out, 5, firstRaidY(out) + 3 * NativeTooltip.LINE_HEIGHT + 3, MouseEvent.BUTTON1).isConsumed());
-		assertFalse("this release's panel doesn't list the raid yet", PanelData.tfaListed());
+		assertTrue("this release's panel lists the raid", PanelData.tfaListed());
 		// The rule itself, for a client whose RuneLite does know the raid: a boss the list carries opens, one it
 		// doesn't (as the raid until the launch-day update) opens nothing, whatever RuneLite knows.
 		assertEquals(HiscoreSkill.ZULRAH, PanelData.listed(HiscoreSkill.ZULRAH));
@@ -313,12 +313,13 @@ public class PvmSummaryTooltipTest
 	@Test
 	public void theRaidCountsInTheBossTotalOnlyWhileItsRowStandsBesideTheList()
 	{
-		// Kills in every listed boss and the raid read 72/72, not 72/71.
+		// The panel lists the raid now, so its row is one of the list's and counts once: 72/72, never 73.
 		Map<String, Integer> kills = new HashMap<>();
 		kills.put(PanelData.TFA_HISCORE, 4);
 		HiscoreResult withRaid = TestViews.hiscore(AccountType.REGULAR, kills, Collections.emptyMap(),
 			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1);
-		assertEquals(PanelData.bossCount() + 1, LookupQueries.bossTotal(withRaid));
+		assertTrue(PanelData.tfaListed());
+		assertEquals(PanelData.bossCount(), LookupQueries.bossTotal(withRaid));
 		HiscoreResult without = TestViews.hiscore(AccountType.REGULAR, Collections.emptyMap(), Collections.emptyMap(),
 			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1);
 		assertEquals(PanelData.bossCount(), LookupQueries.bossTotal(without));

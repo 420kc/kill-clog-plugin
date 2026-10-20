@@ -21,8 +21,9 @@ import org.junit.Test;
 
 public class ClogStructureTest
 {
-	// What killclog.com serves for its seed, read from the game cache on 2026-10-05.
-	private static final String SERVER_SEED_HASH = "6b5868202e703969";
+	// What killclog.com serves: the game's structure with The Fractured Archive, as 140 verified clients reported it
+	// (2026-10-20) and the server hashed it.
+	private static final String SERVER_SEED_HASH = "13c735f9eec3ac18";
 
 	private static JsonObject seed()
 	{

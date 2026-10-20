@@ -70,6 +70,7 @@ final class ActivitySummaryTooltips
 			LookupQueries.getClogItemCount(clog, PanelData.COX_CATEGORY, PanelData.TWISTED_BOW_ITEM_ID),
 			LookupQueries.getClogItemCount(clog, PanelData.TOB_CATEGORY, PanelData.SCYTHE_ITEM_ID),
 			LookupQueries.getClogItemCount(clog, PanelData.TOA_CATEGORY, PanelData.SHADOW_ITEM_ID),
+			LookupQueries.getClogItemCount(clog, PanelData.TFA_CATEGORY, PanelData.OBLIGATOR_ITEM_ID),
 			itemManager
 		);
 		tip.setSuperiors(

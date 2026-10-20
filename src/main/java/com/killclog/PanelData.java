@@ -162,13 +162,12 @@ final class PanelData
 		HiscoreSkill.THEATRE_OF_BLOOD_HARD_MODE, HiscoreSkill.TOMBS_OF_AMASCUT_EXPERT};
 	static final String[] RAID_HARD_LABELS = {"CM", "HM", "Expert"};
 
-	// The Fractured Archive (Raids 4, 2026-10-20) is the fourth raid row, with no hard mode. LAUNCH DAY: each value
-	// below comes from the boss update kit's output, not this guess.
-	static final String TFA_HISCORE = "The Fractured Archive"; // LAUNCH DAY: the live hiscore name
-	static final String TFA_CATEGORY = "the_fractured_archive"; // LAUNCH DAY: the log page key
+	// The Fractured Archive (Raids 4, 2026-10-20) is the fourth raid row, with no hard mode.
+	static final String TFA_HISCORE = "The Fractured Archive"; // the live hiscore name
+	static final String TFA_CATEGORY = "the_fractured_archive"; // the game's log page key
 	/** The raid's popup once the running client's enum carries it; null before, and its row opens nothing. */
 	@Nullable
-	static final HiscoreSkill TFA = skillNamed("THE_FRACTURED_ARCHIVE"); // LAUNCH DAY: RuneLite's enum name
+	static final HiscoreSkill TFA = skillNamed("FRACTURED_ARCHIVE"); // RuneLite's enum name (HiscoreSkill, 1.13.3)
 
 	/**
 	 * Whether a hiscore row is The Fractured Archive's: the guess, or the name with or without "The". Nothing more,
@@ -225,14 +224,15 @@ final class PanelData
 	static final String TOA_CATEGORY = "tombs_of_amascut";
 	static final int SHADOW_ITEM_ID = 27277;
 
-	static final int[] MEGARARE_ITEM_IDS = {TWISTED_BOW_ITEM_ID, SCYTHE_ITEM_ID, SHADOW_ITEM_ID};
+	static final int OBLIGATOR_ITEM_ID = 34717; // uncharged, the raid's log slot
+	static final int[] MEGARARE_ITEM_IDS = {TWISTED_BOW_ITEM_ID, SCYTHE_ITEM_ID, SHADOW_ITEM_ID, OBLIGATOR_ITEM_ID};
 
 	// Hover names for the fixed pvm-summary sprites. Static because the pvm
 	// summary renders these rows with or without a synced clog result; display
 	// names use their full display form; TitleTooltip ellipsizes them when a
 	// narrow summary cannot fit the whole hover title.
 	static final String[] MEGARARE_ITEM_NAMES = {
-		"Twisted Bow", "Scythe of Vitur", "Tumeken's Shadow",
+		"Twisted Bow", "Scythe of Vitur", "Tumeken's Shadow", "Obligator",
 	};
 	static final String[] SUPERIOR_ITEM_NAMES = {"Imbued heart", "Eternal gem"};
 

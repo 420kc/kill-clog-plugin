@@ -150,6 +150,7 @@ This chart lists the 125 catalog pages checked for 2.3.2. Newly added game pages
 | `temple trekking` | `trekking` |
 | `tempoross` | `tempo` |
 | `the fight caves` | `fight caves`, `jad`, `tztok jad` |
+| `the fractured archive` | `archive`, `tfa` |
 | `the gauntlet` | `cg`, `corrupted gauntlet`, `gauntlet`, `the corrupted gauntlet` |
 | `the inferno` | `inferno`, `tzkal zuk`, `zuk` |
 | `the leviathan` | `levi`, `leviathan` |

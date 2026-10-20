@@ -26,7 +26,7 @@ public class ChatAliasCatalogTest
 			"Chambers of Xeric", "Chambers of Xeric: Challenge Mode", "Chaos Elemental",
 			"Chaos Fanatic", "Commander Zilyana", "Corporeal Beast", "Crazy Archaeologist",
 			"Dagannoth Prime", "Dagannoth Rex", "Dagannoth Supreme", "Deranged Archaeologist",
-			"Doom of Mokhaiotl", "Duke Sucellus", "General Graardor", "Giant Mole",
+			"Doom of Mokhaiotl", "Duke Sucellus", "The Fractured Archive", "General Graardor", "Giant Mole",
 			"Grotesque Guardians", "Hespori", "Kalphite Queen", "King Black Dragon", "Kraken",
 			"Kree'Arra", "K'ril Tsutsaroth", "Lunar Chests", "Mad Angel", "Maggot King",
 			"Mimic", "Nex", "Nightmare", "Phosani's Nightmare", "Obor", "Phantom Muspah",
@@ -95,6 +95,8 @@ public class ChatAliasCatalogTest
 		golden.put("toa expert", "Tombs of Amascut: Expert Mode");
 		golden.put("tob", "Theatre of Blood");
 		golden.put("hmt", "Theatre of Blood: Hard Mode");
+		golden.put("tfa", "The Fractured Archive");
+		golden.put("archive", "The Fractured Archive");
 		golden.put("prime", "Dagannoth Prime");
 		golden.put("rex", "Dagannoth Rex");
 		golden.put("supreme", "Dagannoth Supreme");

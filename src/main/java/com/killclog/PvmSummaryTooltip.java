@@ -49,7 +49,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 	@Nullable
 	private TooltipItemSprites weaponSprites;
-	private final int[] weaponCounts = new int[3];
+	private final int[] weaponCounts = new int[4];
 	@Nullable
 	private TooltipItemSprites superiorSprites;
 	private final int[] superiorCounts = new int[2];
@@ -125,11 +125,12 @@ public class PvmSummaryTooltip extends TitleTooltip
 	}
 
 	public void setMegarares(int tbowCount, int scytheCount,
-		int shadowCount, ItemManager itemManager)
+		int shadowCount, int obligatorCount, ItemManager itemManager)
 	{
 		weaponCounts[0] = tbowCount;
 		weaponCounts[1] = scytheCount;
 		weaponCounts[2] = shadowCount;
+		weaponCounts[3] = obligatorCount;
 
 		weaponSprites = TooltipItemSprites.load(TooltipData.itemList(PanelData.MEGARARE_ITEM_IDS), null, itemManager,
 			id -> 1, this);

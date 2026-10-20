@@ -349,12 +349,16 @@ public class TitleTooltipTest
 		PvmSummaryTooltip small = new PvmSummaryTooltip();
 		small.setData(126, 999, 50, 60, null, 0);
 
-		// Far past the old "999,999" placeholder ceiling: the width must track the
-		// real total-kills string, not a capped guess.
+		// Far past the old "999,999" placeholder ceiling: the width tracks the real
+		// strings, not a capped guess. The four megarares' row is wider than any
+		// total kills, so a long Most Killed line is what widens it.
 		PvmSummaryTooltip large = new PvmSummaryTooltip();
-		large.setData(126, 1_234_567_890, 50, 60, null, 0);
+		large.setData(126, 1_234_567_890, 50, 60, "Thermonuclear Smoke Devil", 1_234_567);
 
 		assertTrue(small.getPreferredSize().width < large.getPreferredSize().width);
+		PvmSummaryTooltip largestTotal = new PvmSummaryTooltip();
+		largestTotal.setData(126, Integer.MAX_VALUE, 50, 60, null, 0);
+		assertTrue(small.getPreferredSize().width <= largestTotal.getPreferredSize().width);
 	}
 
 	@Test
@@ -367,7 +371,7 @@ public class TitleTooltipTest
 		SideBySideTooltip small = new SideBySideTooltip("Blue", blueSmall, "Red", redSmall);
 
 		PvmSummaryTooltip blueLarge = new PvmSummaryTooltip();
-		blueLarge.setData(126, 1_234_567_890, 50, 60, null, 0);
+		blueLarge.setData(126, 1_234_567_890, 50, 60, "Thermonuclear Smoke Devil", 1_234_567);
 		PvmSummaryTooltip redLarge = new PvmSummaryTooltip();
 		redLarge.setData(126, 999, 50, 60, null, 0);
 		SideBySideTooltip large = new SideBySideTooltip("Blue", blueLarge, "Red", redLarge);

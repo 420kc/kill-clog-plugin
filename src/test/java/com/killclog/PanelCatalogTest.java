@@ -27,7 +27,7 @@ public class PanelCatalogTest
 			HiscoreSkill.CORPOREAL_BEAST, HiscoreSkill.CRAZY_ARCHAEOLOGIST,
 			HiscoreSkill.DAGANNOTH_PRIME, HiscoreSkill.DAGANNOTH_REX,
 			HiscoreSkill.DAGANNOTH_SUPREME, HiscoreSkill.DERANGED_ARCHAEOLOGIST,
-			HiscoreSkill.DOOM_OF_MOKHAIOTL, HiscoreSkill.DUKE_SUCELLUS,
+			HiscoreSkill.DOOM_OF_MOKHAIOTL, HiscoreSkill.DUKE_SUCELLUS, HiscoreSkill.FRACTURED_ARCHIVE,
 			HiscoreSkill.GENERAL_GRAARDOR, HiscoreSkill.GIANT_MOLE,
 			HiscoreSkill.GROTESQUE_GUARDIANS, HiscoreSkill.HESPORI, HiscoreSkill.KALPHITE_QUEEN,
 			HiscoreSkill.KING_BLACK_DRAGON, HiscoreSkill.KRAKEN, HiscoreSkill.KREEARRA,
