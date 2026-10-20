@@ -112,13 +112,13 @@ Full page names work, and shorthand such as `gotr`, `mixology`, `pets`, and `hyd
 
 ## Settings
 
-- **Kill Clog Web Sync:** Collection Log sync, Publish Character Model, and Silent automatic sync
-- **Card Appearance:** activation, hover feedback, Wiki links, KC, PB, and rank
-- **Lookup:** automatic self-lookup, player comparison, player-menu lookup, and the leaderboard selector
-- **Menu location:** choose which right-click menus show Kill Clog
-- **Skills:** location, virtual levels, synced-account color mode, and Skill Clogs on or off
+- **Kill Clog Web Sync:** Sync Collection Log, Automatic sync, Quiet automatic sync, and Publish Character Model
+- **Card Appearance:** card activation, cell hover feedback, Wiki links, the KC (or Glory), PB and rank lines, and colors for labels, values and dividers
+- **Lookup:** automatic lookup on login, player comparison, the player-menu lookup and its label, and the leaderboard selector
+- **Menu location:** which right-click menus show Kill Clog (players, friends, ignore, clan and guest clan lists, chat channels, public chat, private messages, Group Ironman)
+- **Skills:** location, virtual levels, level color, color mode (skill colors, 99+, or Skill Clog progress), and Skill Clogs on or off
 - **Chat:** plugin messages and custom emojis (`:killclog:` `:rune:` `:dragon:` `:gilded:` `:clog:` `:green:`)
-- **Progress Highlighter:** Collection Log progress colors
+- **Progress Highlighter:** on or off, the summary bar's text color, and the Collection Log progress colors (completed, 1 away, in progress, empty)
 
 ## Data and privacy
 
