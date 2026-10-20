@@ -123,6 +123,45 @@ final class PanelStatusRow
 		}
 	}
 
+	/** Blank hands the row back to whoever writes next. */
+	void clearSearchStatus()
+	{
+		clear();
+	}
+
+	/** Lookup text that clears itself after the delay, unless something else has replaced it by then. */
+	void flashSearchStatus(String text, Color color, int expiryMs)
+	{
+		StatusMessage message = new StatusMessage(Owner.LOOKUP, Kind.RESULT, text, color);
+		show(message);
+		expireIfCurrent(message, expiryMs);
+	}
+
+	/** The rank board's notice, which only the board clears ({@link #clearBoardStatus}). */
+	void setBoardStatus(String text)
+	{
+		show(new StatusMessage(Owner.BOARD, Kind.RESULT, text, textDim));
+	}
+
+	void clearBoardStatus()
+	{
+		if (ownedBy(Owner.BOARD))
+		{
+			clear();
+		}
+	}
+
+	private void expireIfCurrent(StatusMessage message, int expiryMs)
+	{
+		message.expireAfter(expiryMs, () ->
+		{
+			if (current == message)
+			{
+				clear();
+			}
+		});
+	}
+
 	// ── occupancy ──────────────────────────────────────────────────────
 
 	/** Replacing a message retires it: its expiry can never fire on a successor. */
@@ -519,7 +558,7 @@ final class PanelStatusRow
 		{
 			// Changing feedback preferences clears existing transient chrome;
 			// the next callback reads the new settings. Failure history remains.
-			if (current != null && current.owner != Owner.LOOKUP)
+			if (ownedBy(Owner.SYNC) || ownedBy(Owner.CHARACTER))
 			{
 				clear();
 			}
@@ -586,13 +625,7 @@ final class PanelStatusRow
 			show(message);
 			if (autoClear)
 			{
-				message.expireAfter(owner == Owner.SYNC ? SYNC_EXPIRY_MS : CHARACTER_EXPIRY_MS, () ->
-				{
-					if (current == message)
-					{
-						clear();
-					}
-				});
+				expireIfCurrent(message, owner == Owner.SYNC ? SYNC_EXPIRY_MS : CHARACTER_EXPIRY_MS);
 			}
 		});
 	}

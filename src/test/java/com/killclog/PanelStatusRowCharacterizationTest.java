@@ -346,6 +346,39 @@ public class PanelStatusRowCharacterizationTest
 	}
 
 	@Test
+	public void aSecondRefusalOutlivesTheFirstOnesTimer() throws Exception
+	{
+		edt(() ->
+		{
+			statusRow.flashSearchStatus("exit compare to switch views", Color.GRAY, 2500);
+			Timer first = expiry();
+			statusRow.flashSearchStatus("exit compare to switch views", Color.GRAY, 2500);
+			Timer second = expiry();
+			fire(first);
+			assertEquals("exit compare to switch views", status.getText());
+			fire(second);
+			assertEquals(" ", status.getText());
+		});
+	}
+
+	@Test
+	public void theBoardClearsOnlyItsOwnNoticeAndSettingsLeaveIt() throws Exception
+	{
+		edt(() ->
+		{
+			statusRow.setBoardStatus("Not on this leaderboard");
+			statusRow.refreshSyncFeedbackSettings();
+			assertEquals("Not on this leaderboard", status.getText());
+			panel.onCompareStatus("Player not found", Color.RED);
+			statusRow.clearBoardStatus();
+			assertEquals("Player not found", status.getText());
+			statusRow.setBoardStatus("Not on this leaderboard");
+			statusRow.clearBoardStatus();
+			assertEquals(" ", status.getText());
+		});
+	}
+
+	@Test
 	public void sameTextReplacementKeepsItsOwnExpiry() throws Exception
 	{
 		enableControls();

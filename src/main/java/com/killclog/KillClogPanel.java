@@ -26,7 +26,6 @@ import javax.swing.JScrollPane;
 import javax.swing.JTextField;
 import javax.swing.JToolTip;
 import javax.swing.SwingUtilities;
-import javax.swing.Timer;
 import javax.swing.border.EmptyBorder;
 import net.runelite.api.Client;
 import net.runelite.client.callback.ClientThread;
@@ -397,7 +396,7 @@ public class KillClogPanel extends PluginPanel
 			this::doLookup,
 			this::doCompareLookupFromSearchBar,
 			comparison::exit,
-			() -> setSearchStatus(" ", TEXT_DIM),
+			statusRow::clearSearchStatus,
 			this::lookupSelfFromSearchIcon,
 			this::revalidate);
 		searchRowController.install();
@@ -463,19 +462,8 @@ public class KillClogPanel extends PluginPanel
 	{
 		if (!bossListAvailable())
 		{
-			setSearchStatus(COMPARE_VIEW_STATUS, TEXT_DIM);
-			// Transient refusal: clears itself unless something else has
-			// already written over it. Every other status here is cleared by
-			// a follow-up path; this one has none.
-			Timer clear = new Timer(2500, e ->
-			{
-				if (COMPARE_VIEW_STATUS.equals(statusRow.statusText()))
-				{
-					setSearchStatus(" ", TEXT_DIM);
-				}
-			});
-			clear.setRepeats(false);
-			clear.start();
+			// Every other status here is cleared by a follow-up path; this one clears itself.
+			statusRow.flashSearchStatus(COMPARE_VIEW_STATUS, TEXT_DIM, 2500);
 			return;
 		}
 		configManager.setConfiguration("killclog", "bossListView", !config.bossListView());
@@ -732,7 +720,7 @@ public class KillClogPanel extends PluginPanel
 	public void onComparisonExit()
 	{
 		// Clear first: the board's own notice, set while its players change, must survive.
-		setSearchStatus(" ", TEXT_DIM);
+		statusRow.clearSearchStatus();
 		updateRankPlayers();
 		searchRowController.onComparisonExit();
 		compareClogTotals.setVisible(false);
@@ -752,7 +740,7 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void onComparisonEnter(String redRsn)
 	{
-		setSearchStatus(" ", TEXT_DIM);
+		statusRow.clearSearchStatus();
 		updateRankPlayers();
 		searchRowController.onComparisonEnter();
 		applyBossViewStyle();
@@ -966,7 +954,7 @@ public class KillClogPanel extends PluginPanel
 	{
 		selfType = knownType;
 		updateRankPlayers();
-		setSearchStatus(" ", TEXT_DIM);
+		statusRow.clearSearchStatus();
 		playerName.setText(rsn != null ? rsn : player);
 		playerName.setForeground(getInfoColor());
 		updateInfoIcon(currentInfoAccountDisplay(knownType != null ? knownType : result.getAccountType()));
@@ -1566,7 +1554,7 @@ public class KillClogPanel extends PluginPanel
 		searchBar.setIcon(IconTextField.Icon.SEARCH);
 		if (!isFirstSelfGreeting)
 		{
-			setSearchStatus(" ", TEXT_DIM);
+			statusRow.clearSearchStatus();
 		}
 		renderHiscoreResult(hiscore, player, knownType);
 	}
@@ -1684,9 +1672,6 @@ public class KillClogPanel extends PluginPanel
 		getWrappedPanel().repaint();
 	}
 
-	/** What the board last put on the status line, so it clears only its own text. */
-	private String boardStatus;
-
 	/**
 	 * RuneLite's own type on a self lookup, the identity the name row keeps, and what the name
 	 * labels show: the hover cards repeat exactly these.
@@ -1706,11 +1691,11 @@ public class KillClogPanel extends PluginPanel
 		HiscoreResult view = lookupSession.getHiscoreResult();
 		if (LookupSession.frozen(view))
 		{
-			setSearchStatus(boardStatus = frozenLogNotice(view), TEXT_DIM);
+			statusRow.setBoardStatus(frozenLogNotice(view));
 		}
-		else if (statusRow.statusText().equals(boardStatus))
+		else
 		{
-			setSearchStatus(" ", TEXT_DIM);
+			statusRow.clearBoardStatus();
 		}
 	}
 
