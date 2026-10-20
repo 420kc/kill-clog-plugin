@@ -15,6 +15,40 @@ import static org.mockito.Mockito.when;
 public class ConfigMigrationsTest
 {
 	@Test
+	public void wikiLinksTurnedOffStayOffAsCardLinks()
+	{
+		ConfigManager off = mock(ConfigManager.class);
+		when(off.getConfiguration("killclog", "wikiItemLinks")).thenReturn("false");
+		ConfigMigrations.run(off);
+		verify(off).setConfiguration("killclog", "cardLinks", CardLinks.OFF);
+		verify(off).unsetConfiguration("killclog", "wikiItemLinks");
+
+		// Left on, they're the default: nothing to keep but the old key to clear.
+		ConfigManager on = mock(ConfigManager.class);
+		when(on.getConfiguration("killclog", "wikiItemLinks")).thenReturn("true");
+		ConfigMigrations.run(on);
+		verify(on, org.mockito.Mockito.never()).setConfiguration(org.mockito.ArgumentMatchers.eq("killclog"),
+			org.mockito.ArgumentMatchers.eq("cardLinks"), org.mockito.ArgumentMatchers.<Object>any());
+		verify(on).unsetConfiguration("killclog", "wikiItemLinks");
+	}
+
+	@Test
+	public void aCardLinkOpensOnAClickAShiftClickOnlyOrNever()
+	{
+		java.awt.Component card = new java.awt.Canvas();
+		java.awt.event.MouseEvent click = new java.awt.event.MouseEvent(card, java.awt.event.MouseEvent.MOUSE_PRESSED,
+			0, 0, 1, 1, 1, false, java.awt.event.MouseEvent.BUTTON1);
+		java.awt.event.MouseEvent shiftClick = new java.awt.event.MouseEvent(card, java.awt.event.MouseEvent.MOUSE_PRESSED,
+			0, java.awt.event.InputEvent.SHIFT_DOWN_MASK, 1, 1, 1, false, java.awt.event.MouseEvent.BUTTON1);
+		org.junit.Assert.assertTrue(CardLinks.ON.opens(click));
+		org.junit.Assert.assertTrue(CardLinks.ON.opens(shiftClick));
+		org.junit.Assert.assertFalse(CardLinks.SHIFT.opens(click));
+		org.junit.Assert.assertTrue(CardLinks.SHIFT.opens(shiftClick));
+		org.junit.Assert.assertFalse(CardLinks.OFF.opens(click));
+		org.junit.Assert.assertFalse(CardLinks.OFF.opens(shiftClick));
+	}
+
+	@Test
 	public void skillSummaryOnlyPlayersMoveToTheActivityTray()
 	{
 		ConfigManager config = mock(ConfigManager.class);

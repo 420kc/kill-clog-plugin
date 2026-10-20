@@ -78,7 +78,7 @@ public class TitleTooltipTest
 		moveMouse(tooltip, NativeTooltip.getInset() + 1, NativeTooltip.getInset() + 1);
 		assertEquals(Color.WHITE, tooltip.titleColor());
 
-		tooltip.setWikiLinksEnabled(false);
+		tooltip.setLinks(CardLinks.OFF);
 		moveMouse(tooltip, NativeTooltip.getInset() + 1, NativeTooltip.getInset() + 1);
 		assertEquals(NativeTooltip.OSRS_ORANGE, tooltip.titleColor());
 	}

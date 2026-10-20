@@ -473,7 +473,7 @@ public class Cells
 		JPanel parentCell = (JPanel) owner.getParent();
 		ImgTooltip tip = new ImgTooltip(gridCols);
 		tip.setComponent(owner);
-		tip.setWikiLinksEnabled(config.wikiItemLinks());
+		tip.setLinks(config.cardLinks());
 		boolean isSolHeredit = ColosseumGlory.replacesKc(name);
 		int glory = ColosseumGlory.score(result);
 

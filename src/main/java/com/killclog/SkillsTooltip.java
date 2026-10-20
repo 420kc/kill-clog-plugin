@@ -25,7 +25,7 @@ public class SkillsTooltip extends TitleTooltip
 	private String temple;
 	private final CardBody.ClickRows hourRows = new CardBody.ClickRows(this, (e, row) ->
 	{
-		if (temple != null)
+		if (temple != null && linkOpens(e))
 		{
 			LinkBrowser.browse(temple);
 			hideTooltipTree(this);

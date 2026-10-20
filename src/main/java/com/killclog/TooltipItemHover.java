@@ -26,7 +26,7 @@ final class TooltipItemHover
 	private int lastY = -1;
 	private boolean rehover;
 	@Setter(AccessLevel.PACKAGE)
-	private boolean wikiLinksEnabled = true;
+	private CardLinks links = CardLinks.ON;
 
 	TooltipItemHover(JComponent component)
 	{
@@ -90,13 +90,13 @@ final class TooltipItemHover
 			{
 				updateHoveredItem(e.getX(), e.getY());
 				HitBox pressed = findHitBox(e.getX(), e.getY());
-				if (e.getButton() == MouseEvent.BUTTON1 && pressed != null && pressed.url != null)
+				if (e.getButton() == MouseEvent.BUTTON1 && pressed != null && pressed.url != null && links.opens(e))
 				{
 					LinkBrowser.browse(pressed.url);
 					closeTooltip();
 					e.consume();
 				}
-				else if (wikiLinksEnabled && e.getButton() == MouseEvent.BUTTON1 && hoveredItemId > 0)
+				else if (links.opens(e) && e.getButton() == MouseEvent.BUTTON1 && hoveredItemId > 0)
 				{
 					TooltipItemLink.openWiki(hoveredItemId);
 					closeTooltip();

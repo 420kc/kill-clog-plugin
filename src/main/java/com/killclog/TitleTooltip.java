@@ -77,7 +77,9 @@ public abstract class TitleTooltip extends NativeTooltip
 	private String titleWikiPage;
 	@Nullable
 	private BufferedImage titleIcon;
-	private boolean wikiLinksEnabled = true;
+	private CardLinks links = CardLinks.ON;
+	// Whether shift was down at the pointer's last move or press, for a link that opens on a shift-click only.
+	private boolean shiftDown;
 	private boolean titleHovered;
 	// The way back to the card this one opened from: the card's first line, above its title, white while hovered.
 	private String backLabel;
@@ -177,11 +179,11 @@ public abstract class TitleTooltip extends NativeTooltip
 		titleHovered = false;
 	}
 
-	public void setWikiLinksEnabled(boolean wikiLinksEnabled)
+	public void setLinks(CardLinks links)
 	{
-		this.wikiLinksEnabled = wikiLinksEnabled;
-		itemHover.setWikiLinksEnabled(wikiLinksEnabled);
-		if (!wikiLinksEnabled && titleHovered)
+		this.links = links;
+		itemHover.setLinks(links);
+		if (links == CardLinks.OFF && titleHovered)
 		{
 			titleHovered = false;
 			repaint();
@@ -742,6 +744,7 @@ public abstract class TitleTooltip extends NativeTooltip
 			@Override
 			public void mouseMoved(MouseEvent e)
 			{
+				shiftDown = e.isShiftDown();
 				updateHeaderHover(e.getX(), e.getY());
 			}
 		});
@@ -750,6 +753,7 @@ public abstract class TitleTooltip extends NativeTooltip
 			@Override
 			public void mousePressed(MouseEvent e)
 			{
+				shiftDown = e.isShiftDown();
 				if (e.getButton() == MouseEvent.BUTTON1 && onBack != null && onBackRow(e.getY()))
 				{
 					onBack.accept(e);
@@ -797,9 +801,16 @@ public abstract class TitleTooltip extends NativeTooltip
 		return backTop >= 0 && y >= backTop && y < backTop + LINE_HEIGHT;
 	}
 
+	/** Whether this press opens a link on the card ({@link CardLinks}). */
+	protected boolean linkOpens(MouseEvent press)
+	{
+		return links.opens(press);
+	}
+
 	private boolean titleLinkActive()
 	{
-		return wikiLinksEnabled && titleWikiPage != null && !titleWikiPage.trim().isEmpty();
+		return (links == CardLinks.ON || links == CardLinks.SHIFT && shiftDown)
+			&& titleWikiPage != null && !titleWikiPage.trim().isEmpty();
 	}
 
 	protected Color titleColor()

@@ -230,7 +230,7 @@ public class KillClogPanel extends PluginPanel
 		this.clogPages = new ClogPages(tooltipController, cells, comparison, lookupSession, tooltipDataBuilder, config);
 		this.activityTooltips = new ActivitySummaryTooltips(
 			lookupSession, comparison, cells, tooltipController, itemManager,
-			caRewardSprites, config::wikiItemLinks);
+			caRewardSprites, config::cardLinks);
 		this.itemNameResolver = new TooltipItemNameResolver(clientThread, itemManager,
 			this::onTooltipItemNamesResolved);
 		this.unsyncedCatalog.setResolver(itemNameResolver::resolve);
@@ -1295,7 +1295,7 @@ public class KillClogPanel extends PluginPanel
 		{
 			tip.setClan(clans.name(shownName, clog), clans.icon(shownName, clog));
 		}
-		tip.setWikiLinksEnabled(config.wikiItemLinks());
+		tip.setLinks(config.cardLinks());
 		if (clog != null)
 		{
 			List<Integer> allPets = clog.getCategoryItems().get("all_pets");
@@ -1323,7 +1323,7 @@ public class KillClogPanel extends PluginPanel
 	{
 		ClogSummaryTooltip tip = new ClogSummaryTooltip();
 		tip.setComponent(owner);
-		tip.setWikiLinksEnabled(config.wikiItemLinks());
+		tip.setLinks(config.cardLinks());
 		if (clog != null)
 		{
 			int[] totals = clogIndex != null

@@ -201,7 +201,7 @@ final class SkillCellGrid
 		{
 			solo.setRiftsClosed(riftsClosed(result));
 		}
-		solo.setWikiLinksEnabled(config.wikiItemLinks());
+		solo.setLinks(config.cardLinks());
 		return solo;
 	}
 

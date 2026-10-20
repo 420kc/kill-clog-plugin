@@ -15,6 +15,22 @@ final class ConfigMigrations
 	{
 		skillColorMode(configManager);
 		skillLocation(configManager);
+		cardLinks(configManager);
+	}
+
+	/** "Wiki Links" became "Card Links", with a shift-click choice: a player who turned links off keeps them off. */
+	private static void cardLinks(ConfigManager configManager)
+	{
+		String legacy = configManager.getConfiguration(GROUP, "wikiItemLinks");
+		if (legacy == null)
+		{
+			return;
+		}
+		if ("false".equals(legacy) && configManager.getConfiguration(GROUP, "cardLinks") == null)
+		{
+			configManager.setConfiguration(GROUP, "cardLinks", CardLinks.OFF);
+		}
+		configManager.unsetConfiguration(GROUP, "wikiItemLinks");
 	}
 
 	private static void skillColorMode(ConfigManager configManager)

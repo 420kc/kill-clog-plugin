@@ -260,15 +260,16 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "wikiItemLinks",
-		name = "Wiki Links",
-		description = "Open the OSRS Wiki from supported names and sprites on cards",
+		keyName = "cardLinks",
+		name = "Card Links",
+		description = "Open the OSRS Wiki, TempleOSRS, RuneProfile and killclog.com from names and sprites on cards:"
+			+ " on a click, only on a shift-click, or never",
 		section = modalAppearanceSection,
 		position = 2
 	)
-	default boolean wikiItemLinks()
+	default CardLinks cardLinks()
 	{
-		return true;
+		return CardLinks.ON;
 	}
 
 	@ConfigItem(keyName = "showTooltipKc", name = "Show KC / Glory",

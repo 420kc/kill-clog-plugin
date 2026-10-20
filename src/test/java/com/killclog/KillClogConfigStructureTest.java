@@ -20,7 +20,7 @@ public class KillClogConfigStructureTest
 		"menuOnPlayers", "menuOnFriendsList", "menuOnIgnoreList",
 		"menuOnClanList", "menuOnGuestClanList", "menuOnChatChannels",
 		"menuOnChat", "menuOnPrivateMessages", "menuOnGroupIronman",
-		"tooltipMode", "hoverStyle", "virtualLevels", "wikiItemLinks",
+		"tooltipMode", "hoverStyle", "virtualLevels", "cardLinks",
 		"chatNewClogMessages", "showChatEmojis", "showTooltipKc",
 		"showTooltipPb", "showTooltipRank", "completionistHighlighter",
 		"infoBarColor", "completedClogColor", "missing1Color",
@@ -146,7 +146,7 @@ public class KillClogConfigStructureTest
 	@Test
 	public void allModalControlsShareOneSection() throws Exception
 	{
-		assertEquals(Arrays.asList("tooltipMode", "hoverStyle", "wikiItemLinks",
+		assertEquals(Arrays.asList("tooltipMode", "hoverStyle", "cardLinks",
 			"showTooltipKc", "showTooltipPb", "showTooltipRank", "cardLabelColor", "cardValueColor", "cardDividerColor"),
 			keysInSection(KillClogConfig.modalAppearanceSection));
 		assertEquals("Card Activation", KillClogConfig.class.getDeclaredMethod("tooltipMode")
@@ -157,7 +157,7 @@ public class KillClogConfigStructureTest
 		};
 		assertEquals(TooltipMode.HOVER, defaults.tooltipMode());
 		assertEquals(HoverStyle.TINT, defaults.hoverStyle());
-		assertTrue(defaults.wikiItemLinks());
+		assertEquals(CardLinks.ON, defaults.cardLinks());
 		assertTrue(defaults.showTooltipKc());
 		assertTrue(defaults.showTooltipPb());
 		assertTrue(defaults.showTooltipRank());

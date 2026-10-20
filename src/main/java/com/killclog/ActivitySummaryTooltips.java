@@ -21,7 +21,7 @@ final class ActivitySummaryTooltips
 	private final TooltipController tooltipController;
 	private final ItemManager itemManager;
 	private final CaRewardSprites caRewardSprites;
-	private final Supplier<Boolean> wikiLinks;
+	private final Supplier<CardLinks> links;
 
 	JToolTip buildPvm(JLabel owner, JPanel parentCell)
 	{
@@ -48,7 +48,7 @@ final class ActivitySummaryTooltips
 		{
 			tip.setCombatIcon(((ImageIcon) owner.getIcon()).getImage());
 		}
-		tip.setWikiLinksEnabled(wikiLinks.get());
+		tip.setLinks(links.get());
 		tip.setData(
 			hiscore != null ? hiscore.getCombatLevelExact() : 0,
 			LookupQueries.sumBossKills(hiscore),
