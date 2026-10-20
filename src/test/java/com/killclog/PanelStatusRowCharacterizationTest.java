@@ -101,7 +101,7 @@ public class PanelStatusRowCharacterizationTest
 		panel.setCharacterPublishEnabled(true);
 		drain();
 		edt(() -> assertControls(false, false));
-		panel.setSyncArrowHasData(true);
+		panel.setFirstParty(PanelStatusRow.FirstParty.READY);
 		drain();
 		edt(() -> assertControls(true, true));
 		panel.setSyncArrowEnabled(false);
@@ -111,9 +111,52 @@ public class PanelStatusRowCharacterizationTest
 		panel.setCharacterPublishEnabled(false);
 		drain();
 		edt(() -> assertControls(true, false));
-		panel.setSyncArrowHasData(false);
+		panel.setFirstParty(PanelStatusRow.FirstParty.HIDDEN);
 		drain();
 		edt(() -> assertControls(false, false));
+	}
+
+	@Test
+	public void anEmptyLogShowsBothControlsLockedAndAClickOnlyExplains() throws Exception
+	{
+		panel.setSyncArrowEnabled(true);
+		panel.setCharacterPublishEnabled(true);
+		panel.setFirstParty(PanelStatusRow.FirstParty.LOCKED);
+		drain();
+		edt(() ->
+		{
+			assertControls(true, true);
+			AtomicInteger syncs = new AtomicInteger();
+			AtomicInteger publishes = new AtomicInteger();
+			AtomicInteger deletes = new AtomicInteger();
+			AtomicInteger explained = new AtomicInteger();
+			panel.setKillclogSyncHandler(syncs::incrementAndGet);
+			panel.setCharacterPublishHandler(publishes::incrementAndGet);
+			panel.setCharacterDeleteHandler(deletes::incrementAndGet);
+			panel.setFirstPartyLockedHandler(explained::incrementAndGet);
+			for (JLabel control : new JLabel[]{sync, character})
+			{
+				mouse(control, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
+				assertEquals("Unavailable until first collection", status.getText());
+				mouse(control, MouseEvent.MOUSE_PRESSED, MouseEvent.BUTTON1);
+				mouse(control, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
+			}
+			shifted(character, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
+			assertEquals("Unavailable until first collection", status.getText());
+			shifted(character, MouseEvent.MOUSE_PRESSED, MouseEvent.BUTTON1);
+			mouse(character, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
+			assertEquals(3, explained.get());
+			assertEquals(0, syncs.get() + publishes.get() + deletes.get());
+		});
+		// Its first item unlocks both.
+		panel.setFirstParty(PanelStatusRow.FirstParty.READY);
+		drain();
+		edt(() ->
+		{
+			mouse(sync, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
+			assertEquals("sync collection log", status.getText());
+			mouse(sync, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
+		});
 	}
 
 	@Test
@@ -556,7 +599,7 @@ public class PanelStatusRowCharacterizationTest
 	private void enableControls() throws Exception
 	{
 		panel.setSyncArrowEnabled(true);
-		panel.setSyncArrowHasData(true);
+		panel.setFirstParty(PanelStatusRow.FirstParty.READY);
 		panel.setCharacterPublishEnabled(true);
 		drain();
 	}

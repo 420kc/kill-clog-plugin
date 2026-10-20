@@ -290,7 +290,7 @@ public class PluginPublicationCharacterizationTest
 		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
 		captureListener.run();
 		captureListener.run();
-		verify(panel, times(2)).setSyncArrowHasData(true);
+		verify(panel, times(2)).setFirstParty(PanelStatusRow.FirstParty.READY);
 		assertEquals(1, executor.live());
 		assertEquals(10_000L, executor.lastDelayMs());
 
@@ -385,7 +385,7 @@ public class PluginPublicationCharacterizationTest
 		settle();
 		assertTrue(syncs.isEmpty());
 		verify(panel, never()).showSyncProgress(anyBoolean(), any(), anyBoolean());
-		verify(panel).setSyncArrowHasData(false);
+		verify(panel).setFirstParty(PanelStatusRow.FirstParty.HIDDEN);
 		verify(panel).resetSyncFeedback();
 	}
 
@@ -1358,7 +1358,7 @@ public class PluginPublicationCharacterizationTest
 		assertEquals("an empty capture schedules nothing", 0, executor.live());
 		when(league.hasFirstPartyDataForActive()).thenReturn(true);
 		listener.getValue().run();
-		verify(panel).setSyncArrowHasData(true);
+		verify(panel).setFirstParty(PanelStatusRow.FirstParty.READY);
 		assertEquals(1, executor.live());
 		settle();
 		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), any(), any(),

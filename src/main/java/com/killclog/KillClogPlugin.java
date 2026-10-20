@@ -227,6 +227,9 @@ public class KillClogPlugin extends Plugin
 		panel.setKillclogSyncHandler(publication::manualSync);
 		panel.setCharacterPublishHandler(publication::publishCharacter);
 		panel.setCharacterDeleteHandler(publication::deleteCharacter);
+		panel.setFirstPartyLockedHandler(() -> clientThread.invokeLater(() -> chatNotifier.send(ChatNotice.SYNC_HELP,
+			"Kill Clog syncs from your first Collection Log item. Open your Collection Log so Kill Clog can read it:"
+				+ " the chalice and the character button unlock once it holds an item.")));
 		panel.setSelfPbs(this::selfPbs);
 		// The first tick hands the panel and chat this world's game again.
 		world.showAgain();
@@ -326,7 +329,7 @@ public class KillClogPlugin extends Plugin
 			// nothing changed.
 			boolean hasLocalClog = localClogReady
 				&& cache.hasFirstPartyDataFor(name);
-			panel.setSyncArrowHasData(hasLocalClog);
+			panel.setFirstParty(!localClogReady ? PanelStatusRow.FirstParty.HIDDEN : firstParty(hasLocalClog));
 			if (hasLocalClog)
 			{
 				publication.scheduleAutomaticSync();
@@ -401,7 +404,7 @@ public class KillClogPlugin extends Plugin
 			SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(null, null));
 			// The sync affordance belongs to the account that just ended. Hiding
 			// it also fences a success callback queued during the logout handoff.
-			panel.setSyncArrowHasData(false);
+			panel.setFirstParty(PanelStatusRow.FirstParty.HIDDEN);
 			panel.resetSyncFeedback();
 			manualClogSync.reset();
 			// Read the game's own structure again at once, for lookups made before the next login.
@@ -589,6 +592,12 @@ public class KillClogPlugin extends Plugin
 				&& pluginManager.isPluginActive(plugin));
 	}
 
+	/** A logged-in account whose own log has loaded: locked until it holds an item. */
+	private static PanelStatusRow.FirstParty firstParty(boolean hasLocalClog)
+	{
+		return hasLocalClog ? PanelStatusRow.FirstParty.READY : PanelStatusRow.FirstParty.LOCKED;
+	}
+
 	private void firstPartyChanged(LocalClogCache cache)
 	{
 		// A capture only counts once the payload is genuinely non-empty:
@@ -596,7 +605,7 @@ public class KillClogPlugin extends Plugin
 		// schedule a push that would fail with nothing to send.
 		if (cache.hasFirstPartyDataForActive())
 		{
-			panel.setSyncArrowHasData(true);
+			panel.setFirstParty(PanelStatusRow.FirstParty.READY);
 			publication.scheduleAutomaticSync();
 		}
 	}
@@ -652,7 +661,7 @@ public class KillClogPlugin extends Plugin
 			accountActivated = true;
 			String name = activeLocal.getName();
 			boolean hasLocalClog = activeCache.hasFirstPartyDataFor(name);
-			SwingUtilities.invokeLater(() -> panel.setSyncArrowHasData(hasLocalClog));
+			panel.setFirstParty(firstParty(hasLocalClog));
 			if (hasLocalClog)
 			{
 				publication.scheduleAutomaticSync();
@@ -704,7 +713,7 @@ public class KillClogPlugin extends Plugin
 					// The login transition often fires before the player's name is
 					// readable. This tick path waits for identity arbitration too,
 					// so a resident name-slot file can never become the self view.
-					panel.setSyncArrowHasData(cache.hasFirstPartyDataFor(name));
+					panel.setFirstParty(firstParty(cache.hasFirstPartyDataFor(name)));
 					captureLocalCa();
 					AccountType acctType = getLocalAccountType();
 					SwingUtilities.invokeLater(() ->

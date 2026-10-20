@@ -703,9 +703,14 @@ public class KillClogPanel extends PluginPanel
 		statusRow.setSyncArrowEnabled(enabled);
 	}
 
-	void setSyncArrowHasData(boolean hasData)
+	void setFirstParty(PanelStatusRow.FirstParty state)
 	{
-		statusRow.setSyncArrowHasData(hasData);
+		statusRow.setFirstParty(state);
+	}
+
+	void setFirstPartyLockedHandler(Runnable handler)
+	{
+		statusRow.setLockedHandler(handler);
 	}
 
 	void setCharacterPublishEnabled(boolean enabled)

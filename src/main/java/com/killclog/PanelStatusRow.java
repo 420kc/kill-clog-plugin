@@ -46,6 +46,7 @@ final class PanelStatusRow
 	private static final String CHARACTER_DELETE_HOVER_TEXT = "delete character model";
 	private static final String CHARACTER_FAILURE_HOVER_TEXT = "character failed - click to retry";
 	private static final String CHARACTER_DELETE_FAILURE_HOVER_TEXT = "delete failed - click to retry";
+	private static final String LOCKED_HOVER_TEXT = "Unavailable until first collection";
 	private static final int SYNC_EXPIRY_MS = 2500;
 	private static final int CHARACTER_EXPIRY_MS = 3000;
 	// k1: the brand lime. Status chrome, not data coloring, so it does not
@@ -54,6 +55,9 @@ final class PanelStatusRow
 	private static final ImageIcon SYNC_CHALICE_DIM = chaliceTinted(0.45f, null);
 	private static final ImageIcon SYNC_CHALICE_LIT = chaliceTinted(1f, null);
 	private static final ImageIcon SYNC_CHALICE_SYNCED = chaliceTinted(1f, SYNC_K1);
+	// Locked: grey and fainter than at rest, and hovering never lights it.
+	private static final Color LOCKED_GREY = new Color(150, 150, 150);
+	private static final ImageIcon SYNC_CHALICE_LOCKED = chaliceTinted(0.35f, LOCKED_GREY);
 
 	private final JPanel row;
 	private final JLabel searchStatus = new JLabel(" ");
@@ -69,8 +73,23 @@ final class PanelStatusRow
 	/** What the row shows now; null while blank. */
 	private StatusMessage current;
 
+	/**
+	 * Whether this account's own log lets the chalice and the character work: hidden while nobody is logged in or
+	 * the log is still loading, locked (grey, with a hover line and a chat explanation) until it holds its first
+	 * item, ready after.
+	 */
+	enum FirstParty
+	{
+		HIDDEN,
+		LOCKED,
+		READY
+	}
+
 	private boolean syncArrowEnabled;
-	private boolean syncArrowHasData;
+	private FirstParty firstParty = FirstParty.HIDDEN;
+	// A click on either control while locked: the chat explains, nothing is sent.
+	@Setter(AccessLevel.PACKAGE)
+	private Runnable lockedHandler;
 	private boolean characterPublishEnabled;
 	@Setter(AccessLevel.PACKAGE)
 	private Runnable killclogSyncHandler;
@@ -273,6 +292,10 @@ final class PanelStatusRow
 	/** What a click here does now: a failure is offered back only on the action that failed. */
 	private String characterHoverText()
 	{
+		if (firstParty == FirstParty.LOCKED)
+		{
+			return LOCKED_HOVER_TEXT;
+		}
 		if (characterShift)
 		{
 			return characterDeleteRequest
@@ -354,9 +377,10 @@ final class PanelStatusRow
 		{
 			characterHovered = hovered;
 			refreshCharacterIcon(hovered);
-		}, () -> characterTooltipText(characterNoticeDetail != null ? characterNoticeDetail
-			: characterFeedback.lastFailure()), this::characterHoverText,
-			() -> characterShift ? characterDeleteHandler : characterPublishHandler));
+		}, () -> firstParty == FirstParty.LOCKED ? null : characterTooltipText(characterNoticeDetail != null
+			? characterNoticeDetail : characterFeedback.lastFailure()), this::characterHoverText,
+			() -> firstParty == FirstParty.LOCKED ? lockedHandler
+				: characterShift ? characterDeleteHandler : characterPublishHandler));
 		requestCharacterIcon();
 
 		// Sits vertically centered in the band between the panel top and the
@@ -369,8 +393,10 @@ final class PanelStatusRow
 		{
 			syncChaliceHovered = hovered;
 			refreshSyncChalice(hovered);
-		}, syncFeedback::lastFailure, () -> syncFeedback.hoverText(SYNC_HOVER_TEXT, SYNC_FAILURE_HOVER_TEXT),
-			() -> killclogSyncHandler));
+		}, () -> firstParty == FirstParty.LOCKED ? null : syncFeedback.lastFailure(),
+			() -> firstParty == FirstParty.LOCKED ? LOCKED_HOVER_TEXT
+				: syncFeedback.hoverText(SYNC_HOVER_TEXT, SYNC_FAILURE_HOVER_TEXT),
+			() -> firstParty == FirstParty.LOCKED ? lockedHandler : killclogSyncHandler));
 
 		JPanel row = new JPanel(new BorderLayout());
 		row.setBackground(ColorScheme.DARK_GRAY_COLOR);
@@ -455,7 +481,7 @@ final class PanelStatusRow
 
 	private void refreshSyncChalice(boolean hovered)
 	{
-		syncArrow.setIcon(syncedGlow ? SYNC_CHALICE_SYNCED
+		syncArrow.setIcon(firstParty == FirstParty.LOCKED ? SYNC_CHALICE_LOCKED : syncedGlow ? SYNC_CHALICE_SYNCED
 			: hovered ? SYNC_CHALICE_LIT : SYNC_CHALICE_DIM);
 	}
 
@@ -487,14 +513,15 @@ final class PanelStatusRow
 			characterPublish.setIcon(null);
 			return;
 		}
+		boolean locked = firstParty == FirstParty.LOCKED;
 		characterPublish.setIcon(imageTinted(characterBase,
-			characterPublishedGlow || hovered ? 1f : 0.45f,
-			characterPublishedGlow ? SYNC_K1 : null));
+			locked ? 0.35f : characterPublishedGlow || hovered ? 1f : 0.45f,
+			locked ? LOCKED_GREY : characterPublishedGlow ? SYNC_K1 : null));
 	}
 
 	private void refreshFirstPartyVisibility()
 	{
-		boolean visible = syncArrowHasData && free();
+		boolean visible = firstParty != FirstParty.HIDDEN && free();
 		syncArrow.setVisible(syncArrowEnabled && visible);
 		characterPublish.setVisible(characterPublishEnabled && characterBase != null && visible);
 	}
@@ -526,20 +553,21 @@ final class PanelStatusRow
 	}
 
 	/**
-	 * The chalice earns its appearance: hidden until this player's local
-	 * collection log holds at least one first-party capture, so a fresh
-	 * install can never click sync with nothing to send.
+	 * The chalice and the character earn their use: locked until this player's local Collection Log holds at least
+	 * one first-party capture, so a fresh account sees why it cannot sync yet and can never send nothing.
 	 */
-	void setSyncArrowHasData(boolean hasData)
+	void setFirstParty(FirstParty state)
 	{
 		SwingUtilities.invokeLater(() ->
 		{
-			syncArrowHasData = hasData;
-			if (!hasData)
+			firstParty = state;
+			if (state != FirstParty.READY)
 			{
 				syncChaliceHovered = false;
 				clearSyncSuccessGlow();
 			}
+			refreshSyncChalice(syncChaliceHovered);
+			refreshCharacterIcon(characterHovered);
 			refreshFirstPartyVisibility();
 		});
 	}
@@ -659,7 +687,7 @@ final class PanelStatusRow
 			current.cancelExpiry();
 		}
 		syncArrowEnabled = false;
-		syncArrowHasData = false;
+		firstParty = FirstParty.HIDDEN;
 		syncChaliceHovered = false;
 		syncFeedback.reset();
 		watchShift(false);
@@ -741,7 +769,7 @@ final class PanelStatusRow
 	{
 		runFeedbackOnEdt(() ->
 		{
-			if (!syncArrowEnabled || !syncArrowHasData
+			if (!syncArrowEnabled || firstParty != FirstParty.READY
 				|| current != null && !ownedBy(Owner.SYNC))
 			{
 				return;
@@ -778,7 +806,7 @@ final class PanelStatusRow
 
 	private void flashCharacterSuccess()
 	{
-		if (!characterPublishEnabled || !syncArrowHasData
+		if (!characterPublishEnabled || firstParty != FirstParty.READY
 			|| !free() && !ownedBy(Owner.CHARACTER))
 		{
 			return;
