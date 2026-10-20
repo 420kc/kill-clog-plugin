@@ -159,6 +159,8 @@ public class LocalClogCache
 		{
 			try
 			{
+				// RuneLite makes plugin-data, not this folder: a fresh install's first start has none yet.
+				folder.createDirectories();
 				for (Filepath file : StoreFiles.list(folder))
 				{
 					if (!file.getFileName().matches("[0-9a-f]{16}\\.json"))
@@ -168,9 +170,18 @@ public class LocalClogCache
 					PlayerClogData data = readRecord(file);
 					if (data == null || !file.getFileName().equals(ownFile(data.ownerHash)))
 					{
-						// Damaged bytes are kept aside, never overwritten by the next save.
-						atomicMove(file, folder.join(".unreadable-" + file.getFileName() + "-"
-							+ System.currentTimeMillis() + ".json"));
+						// Damaged bytes are kept aside, never overwritten by the next save. A second client starting
+						// on this folder may move them first; either way the rest still loads, so no account's log is
+						// left unread and then saved over.
+						try
+						{
+							atomicMove(file, folder.join(".unreadable-" + file.getFileName() + "-"
+								+ System.currentTimeMillis() + ".json"));
+						}
+						catch (IOException e)
+						{
+							log.debug("Kill Clog could not set aside '{}': {}", file.getFileName(), e.getMessage());
+						}
 						continue;
 					}
 					loadedOwn.put(data.ownerHash, data);

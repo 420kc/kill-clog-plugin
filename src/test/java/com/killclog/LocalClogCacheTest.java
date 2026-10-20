@@ -141,6 +141,65 @@ public class LocalClogCacheTest
 		}
 	}
 
+	@Test
+	public void aFolderStillHoldingTwoPointFourFilesLoadsTheOwnLogAndLeavesTheRestByteForByte() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		LocalClogCache first = onDisk(dir);
+		assertTrue(first.activate("Tester", HASH));
+		first.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 1), obtainedItems("hats", 1)));
+		// 2.4's name-keyed files and the old move's leftovers beside the own log, and an own-log name one folder down.
+		Map<String, String> left = new HashMap<>();
+		left.put("tester.json", "{\"playerName\":\"Tester\"}");
+		left.put("stranger.json", "{}");
+		left.put(".kill-clog-identity.json", "{}");
+		left.put(".kill-clog-layout", "2");
+		left.put(".displaced-77-before.json", "{}");
+		left.put(".unreadable-old.json", "{broken");
+		left.put("legacy/main.json", "{}");
+		left.put("ca/main.json", "{}");
+		left.put("ca/" + StoreFiles.ownFileName(Long.toString(HASH)), "{\"ca\":1}");
+		for (Map.Entry<String, String> entry : left.entrySet())
+		{
+			File file = new File(dir, entry.getKey());
+			file.getParentFile().mkdirs();
+			Files.writeString(file.toPath(), entry.getValue());
+		}
+		LocalClogCache cache = onDisk(dir);
+		assertTrue(cache.activate("Tester", HASH));
+		assertTrue(cache.hasDataFor("Tester"));
+		for (Map.Entry<String, String> entry : left.entrySet())
+		{
+			assertEquals(entry.getKey(), entry.getValue(), Files.readString(new File(dir, entry.getKey()).toPath()));
+		}
+		assertEquals(1, dir.listFiles((folder, name) -> name.startsWith(".unreadable-")).length);
+	}
+
+	@Test
+	public void anOwnLogNamedForAnotherAccountIsSetAsideAndTheRestLoad() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		LocalClogCache first = onDisk(dir);
+		assertTrue(first.activate("Other", 78L));
+		first.cacheFirstPartyResult(clog("Other", categoryItems("hats", 1), obtainedItems("hats", 1)));
+		Files.copy(ownFile(dir, 78L).toPath(), ownFile(dir, HASH).toPath());
+		LocalClogCache cache = onDisk(dir);
+		assertTrue(cache.activate("Other", 78L));
+		assertTrue(cache.hasDataFor("Other"));
+		assertFalse(ownFile(dir, HASH).exists());
+		assertEquals(1, dir.listFiles((folder, name) -> name.startsWith(".unreadable-")).length);
+	}
+
+	@Test
+	public void aFreshInstallsFolderIsMadeOnLoad()
+	{
+		File dir = new File(temporaryFolder.getRoot(), "fresh-kill-clog");
+		assertFalse(dir.exists());
+		LocalClogCache cache = onDisk(dir);
+		assertTrue(cache.activate("Tester", HASH));
+		assertTrue(dir.isDirectory());
+	}
+
 	// ── lookups and local alts ──
 
 	@Test
