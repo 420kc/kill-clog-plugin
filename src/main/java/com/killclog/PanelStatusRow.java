@@ -265,7 +265,7 @@ final class PanelStatusRow
 				{
 					hover.accept(true);
 					tooltipController.setTooltipText(control, tooltip.get());
-					show(new StatusMessage(owner, Kind.HOVER, hoverText.get(), SYNC_K1));
+					show(new StatusMessage(owner, Kind.HOVER, hoverText.get(), hoverColor()));
 				}
 			}
 
@@ -306,6 +306,12 @@ final class PanelStatusRow
 			: characterFeedback.hoverText(CHARACTER_HOVER_TEXT, CHARACTER_FAILURE_HOVER_TEXT);
 	}
 
+	/** A control's hover line: k1 green for what a click does, the not-found red while it is locked. */
+	private Color hoverColor()
+	{
+		return firstParty == FirstParty.LOCKED ? KillClogPanel.NOT_FOUND : SYNC_K1;
+	}
+
 	/** Watches shift only while the pointer is on the character, so nothing listens the rest of the time. */
 	private void watchShift(boolean on)
 	{
@@ -327,7 +333,7 @@ final class PanelStatusRow
 		characterShift = down;
 		if (characterHovered && ownedBy(Owner.CHARACTER) && current.kind == Kind.HOVER)
 		{
-			show(new StatusMessage(Owner.CHARACTER, Kind.HOVER, characterHoverText(), SYNC_K1));
+			show(new StatusMessage(Owner.CHARACTER, Kind.HOVER, characterHoverText(), hoverColor()));
 		}
 	}
 

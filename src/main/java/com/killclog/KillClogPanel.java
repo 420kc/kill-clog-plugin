@@ -45,7 +45,7 @@ public class KillClogPanel extends PluginPanel
 	ComparisonController.CellRenderTarget
 {
 	static final Color TEXT_DIM = new Color(160, 160, 160);
-	private static final Color NOT_FOUND = new Color(0x81, 0x09, 0x09);
+	static final Color NOT_FOUND = new Color(0x81, 0x09, 0x09);
 
 	/** Info bar text color - only applies when highlighter is active AND clog data exists. */
 	@Override
