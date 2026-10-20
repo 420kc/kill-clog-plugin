@@ -168,6 +168,67 @@ public class KillLogTest
 		kept("yama 2 players", "124.2|2||kill|13", 124.2);
 	}
 
+	private void inInstance(int... counts)
+	{
+		WorldView view = mock(WorldView.class);
+		IndexedObjectSet<?> players = mock(IndexedObjectSet.class);
+		int[] call = {0};
+		doAnswer(i -> Stream.generate(() -> mock(Player.class)).limit(counts[Math.min(call[0]++, counts.length - 1)]))
+			.when(players).stream();
+		doReturn(players).when(view).players();
+		when(client.getTopLevelWorldView()).thenReturn(view);
+	}
+
+	private void archive(int tick, String total, int kc)
+	{
+		game(tick, "Challenge complete: Ocellus. Duration: <col=ef1020>2:25.80</col>. Total: <col=ef1020>2:25.80</col>"
+			+ " (new personal best)");
+		game(tick, "The Fractured Archive: Total completion time: <col=ef1020>" + total);
+		game(tick, "Your completed Fractured Archive count is: <col=ff0000>" + kc + "</col>.");
+	}
+
+	@Test
+	public void theFracturedArchivesTotalIsItsRecordAndTheInstanceGivesItsTeam()
+	{
+		inInstance(3);
+		archive(1, "2:54.60</col>. Personal best: 0:00.60", 3);
+		// One PB at any team size: a run that didn't set it can't say which size did.
+		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
+
+		archive(9, "2:25.80</col> (new personal best)", 4);
+		kept("fractured archive 3 players", "145.8|3||overall|4", 145.8);
+	}
+
+	@Test
+	public void theFracturedArchiveCountsASoloRunAsSoloAndNoMoreThanEight()
+	{
+		inInstance(1);
+		archive(1, "2:25.80</col> (new personal best)", 1);
+		kept("fractured archive solo", "145.8|1||overall|1", 145.8);
+
+		inInstance(11);
+		archive(9, "2:20.40</col> (new personal best)", 2);
+		kept("fractured archive 8 players", "140.4|8||overall|2", 140.4);
+	}
+
+	@Test
+	public void aRoomTimeAloneNeverKeysTheFracturedArchive()
+	{
+		inInstance(2);
+		game(1, "Challenge complete: Ocellus. Duration: <col=ef1020>2:25.80</col>. Total: <col=ef1020>2:25.80</col>"
+			+ " (new personal best)");
+		game(1, "Your completed Fractured Archive count is: <col=ff0000>1</col>.");
+		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
+	}
+
+	@Test
+	public void aPlayerWhoLeavesBeforeTheCountLeavesTheArchiveUnkept()
+	{
+		inInstance(4, 3);
+		archive(1, "2:25.80</col> (new personal best)", 1);
+		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
+	}
+
 	@Test
 	public void theSyncReadsTheLabelsOfTheKeptTime()
 	{

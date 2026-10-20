@@ -2,6 +2,7 @@ package com.killclog;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
@@ -16,7 +17,7 @@ import net.runelite.client.util.Text;
  * Kill Clog's own record of the kills it sees. A kill-count message and its time pair only within two ticks of each
  * other, so a time can never land on a later kill as RuneLite's leftover one can. What it keeps is the PB the game
  * states at the kill, keyed by the team size the game gives (the raids, the Nightmare) or the players in the instance
- * (Royal Titans, Yama), with the timer and, from a kill that set a new PB, the raid level and kill count. The sync
+ * (Royal Titans, Yama, The Fractured Archive), with the timer and, from a kill that set a new PB, the raid level and kill count. The sync
  * sends it as source "live".
  */
 final class KillLog
@@ -29,13 +30,16 @@ final class KillLog
 	private static final Pattern KILL_COUNT = Pattern.compile("Your (?:completion count for |subdued |completed )?"
 		+ "(?<boss>.+?) (?:(?:kill|harvest|lap|completion|success) )?(?:count )?is: ?(?<kc>[0-9,]+)");
 	private static final Pattern DURATION = Pattern.compile("(?i)(?:Team size: (?<team>Solo|\\d+(?:\\+|-\\d+)? players?) )?"
-		+ "(?:(?:fight |challenge |corrupted challenge )?duration:|subdued in|(?<total>total )?completion time:) "
+		+ "(?:(?:fight |challenge |corrupted challenge )?duration:|subdued in"
+		+ "|(?<record>the fractured archive: )?(?<total>total )?completion time:) "
 		+ "(?<time>" + TIME + ")(?:\\.? personal best: (?<pb>" + TIME + ")| \\(new personal best\\))");
 	private static final int[] TOB_PARTY = {VarbitID.TOB_CLIENT_P0, VarbitID.TOB_CLIENT_P1, VarbitID.TOB_CLIENT_P2,
 		VarbitID.TOB_CLIENT_P3, VarbitID.TOB_CLIENT_P4};
 	private static final int[] TOA_PARTY = {VarbitID.TOA_CLIENT_P0, VarbitID.TOA_CLIENT_P1, VarbitID.TOA_CLIENT_P2,
 		VarbitID.TOA_CLIENT_P3, VarbitID.TOA_CLIENT_P4, VarbitID.TOA_CLIENT_P5, VarbitID.TOA_CLIENT_P6,
 		VarbitID.TOA_CLIENT_P7};
+	// The encounters with no team size in their message: the most players the instance counts toward one.
+	private static final Map<String, Integer> INSTANCE_TEAMS = Map.of("royal titans", 2, "yama", 2, "fractured archive", 8);
 
 	private final ConfigManager configManager;
 	private String boss;
@@ -74,9 +78,10 @@ final class KillLog
 			account = you;
 		}
 		String text = Text.removeTags(message.replace("<br>", " ")).replaceAll("@[a-z_]+@", "");
-		// A raid's total time counts its waiting too; the challenge time in the message before it is the record.
+		// A raid's total time counts its waiting too; the challenge time in the message before it is the record. The
+		// Fractured Archive's total is its record, as RuneLite keeps it.
 		Matcher duration = DURATION.matcher(text);
-		if (duration.find() && duration.group("total") == null)
+		if (duration.find() && (duration.group("total") == null || duration.group("record") != null))
 		{
 			fresh = duration.group("pb") == null;
 			pb = AdvLogPbs.timeToSeconds(duration.group(fresh ? "time" : "pb"));
@@ -105,8 +110,9 @@ final class KillLog
 	{
 		boolean tob = boss.startsWith("theatre of blood");
 		boolean toa = boss.startsWith("tombs of amascut");
-		boolean instanced = boss.equals("royal titans") || boss.equals("yama");
-		// Titans and Yama keep one PB at any team size, so only a kill that set a new one says which size set it.
+		Integer most = INSTANCE_TEAMS.get(boss);
+		boolean instanced = most != null;
+		// These keep one PB at any team size, so only a kill that set a new one says which size set it.
 		if (instanced && !fresh)
 		{
 			return;
@@ -114,8 +120,8 @@ final class KillLog
 		String size = team;
 		if (tob || toa || instanced)
 		{
-			int atTime = tob ? tobAtTime : toa ? toaAtTime : playersAtTime;
-			int now = tob ? party(client, TOB_PARTY) : toa ? party(client, TOA_PARTY) : instancePlayers(client);
+			int atTime = tob ? tobAtTime : toa ? toaAtTime : Math.min(most, playersAtTime);
+			int now = tob ? party(client, TOB_PARTY) : toa ? party(client, TOA_PARTY) : Math.min(most, instancePlayers(client));
 			size = now == atTime ? teamLabel(atTime) : null;
 			if (size == null && instanced)
 			{
@@ -129,7 +135,8 @@ final class KillLog
 			return;
 		}
 		String exact = size == null ? "" : size.equals("Solo") ? "1" : size.matches("\\d+ players?") ? size.split(" ")[0] : "";
-		String timer = tob || toa ? "challenge" : boss.startsWith("chambers of xeric") ? "overall" : "kill";
+		String timer = tob || toa ? "challenge"
+			: boss.startsWith("chambers of xeric") || boss.equals("fractured archive") ? "overall" : "kill";
 		configManager.setRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, KEY_PREFIX + key, pb);
 		configManager.setRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, TAG_PREFIX + key, PbRecord.tag(pb, exact,
 			fresh && toa ? String.valueOf(toaLevelAtTime) : "", timer, fresh ? String.valueOf(kc) : ""));
@@ -146,7 +153,7 @@ final class KillLog
 	private static int instancePlayers(Client client)
 	{
 		WorldView view = client.getTopLevelWorldView();
-		return view == null ? 0 : (int) Math.min(2, view.players().stream().count());
+		return view == null ? 0 : (int) view.players().stream().count();
 	}
 
 	private static int party(Client client, int[] slots)
