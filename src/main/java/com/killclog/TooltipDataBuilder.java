@@ -238,6 +238,25 @@ final class TooltipDataBuilder
 		return new ArrayList<>();
 	}
 
+	/**
+	 * A Clue Summary rare row's data, for either player: from their log when there is one (rows 0 and 1 are its 3rd
+	 * age and gilded pages, rows 2 to 4 the tiers' rare items, held from anywhere in it), else the catalog's dimmed
+	 * preview of the row.
+	 */
+	@Nullable
+	TooltipData rareRow(int row, @Nullable ClogResult clog, @Nullable ClogResult catalog)
+	{
+		String name = PanelData.RARE_NAMES[row];
+		TooltipData data = clog == null ? null : row < 2
+			? buildClueRareData(name, PanelData.RARE_KEYS[row], clog)
+			: buildCustomRareData(name, PanelData.RARE_ITEMS[row], clog);
+		if (data == null)
+		{
+			data = buildUnsyncedTooltipData(name, PanelData.RARE_KEYS[row], -1, null, -1, catalog);
+		}
+		return data != null ? data : buildUnsyncedItemData(name, PanelData.RARE_ITEMS[row], catalog);
+	}
+
 	/** A custom rare collection (Hard, Elite and Master Rare), held from anywhere in the log. */
 	TooltipData buildCustomRareData(String name, int[] itemIds, ClogResult clogResult)
 	{

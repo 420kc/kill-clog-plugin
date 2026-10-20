@@ -488,46 +488,6 @@ public class ComparisonController
 		return tip;
 	}
 
-	@Nullable
-	public TooltipData buildClueRare(String name, String clogCategory)
-	{
-		ClogResult clog = getCompareClogResult();
-		TooltipData data = clog != null
-			? tooltipDataBuilder.buildClueRareData(name, clogCategory, clog) : null;
-		return data != null ? data : unsyncedClueRare(name, clogCategory);
-	}
-
-	@Nullable
-	public TooltipData buildCustomRare(String name, int[] itemIds)
-	{
-		ClogResult clog = getCompareClogResult();
-		TooltipData data = clog != null
-			? tooltipDataBuilder.buildCustomRareData(name, itemIds, clog) : null;
-		return data != null ? data
-			: tooltipDataBuilder.buildUnsyncedItemData(name, itemIds, unsyncedCatalog.result());
-	}
-
-	@Nullable
-	private TooltipData unsyncedClueRare(String name, String clogCategory)
-	{
-		ClogResult catalog = unsyncedCatalog.result();
-		TooltipData data = tooltipDataBuilder.buildUnsyncedTooltipData(
-			name, clogCategory, -1, null, -1, catalog);
-		if (data != null)
-		{
-			return data;
-		}
-		if (PanelData.CLOG_THIRD_AGE.equals(clogCategory))
-		{
-			return tooltipDataBuilder.buildUnsyncedItemData(name, PanelData.THIRD_AGE_ITEMS, catalog);
-		}
-		if (PanelData.CLOG_GILDED.equals(clogCategory))
-		{
-			return tooltipDataBuilder.buildUnsyncedItemData(name, PanelData.GILDED_ITEMS, catalog);
-		}
-		return null;
-	}
-
 	/** Set a cell to dual blue/red values, with optional completion-color hover state. */
 	public void setCompareCell(JLabel label, int blueVal, int redVal,
 		@Nullable Color blueHover, @Nullable Color redHover)

@@ -297,20 +297,7 @@ public class Cells
 	/** Build the rare clue collections from the clog; the Clue Summary lists and opens them. */
 	public void renderClog(ClogResult result)
 	{
-		for (int i = 0; i < 2; i++)
-		{
-			TooltipData data = tooltipDataBuilder.buildClueRareData(
-				PanelData.RARE_NAMES[i], PanelData.RARE_KEYS[i], result);
-			if (data != null)
-			{
-				rareTooltips.put(PanelData.RARE_KEYS[i], data);
-			}
-		}
-		for (int i = 2; i < PanelData.RARE_KEYS.length; i++)
-		{
-			rareTooltips.put(PanelData.RARE_KEYS[i], tooltipDataBuilder.buildCustomRareData(
-				PanelData.RARE_NAMES[i], PanelData.RARE_ITEMS[i], result));
-		}
+		putRareRows(result, null);
 	}
 
 	/**
@@ -428,18 +415,17 @@ public class Cells
 	{
 		rebuildClueTooltips(null, catalog);
 
+		putRareRows(null, catalog);
+	}
+
+	private void putRareRows(@Nullable ClogResult clog, @Nullable ClogResult catalog)
+	{
 		for (int i = 0; i < PanelData.RARE_KEYS.length; i++)
 		{
-			String key = PanelData.RARE_KEYS[i];
-			String name = PanelData.RARE_NAMES[i];
-			TooltipData data = tooltipDataBuilder.buildUnsyncedTooltipData(name, key, -1, null, -1, catalog);
-			if (data == null)
-			{
-				data = tooltipDataBuilder.buildUnsyncedItemData(name, PanelData.RARE_ITEMS[i], catalog);
-			}
+			TooltipData data = tooltipDataBuilder.rareRow(i, clog, catalog);
 			if (data != null)
 			{
-				rareTooltips.put(key, data);
+				rareTooltips.put(PanelData.RARE_KEYS[i], data);
 			}
 		}
 	}
@@ -698,9 +684,7 @@ public class Cells
 
 	private TooltipData rivalRare(int row)
 	{
-		return row < 2
-			? comparison.buildClueRare(PanelData.RARE_NAMES[row], PanelData.RARE_KEYS[row])
-			: comparison.buildCustomRare(PanelData.RARE_NAMES[row], PanelData.RARE_ITEMS[row]);
+		return tooltipDataBuilder.rareRow(row, comparison.getCompareClogResult(), unsyncedCatalog.result());
 	}
 
 	/** A rare row's data for either player, as its card shows it. */
