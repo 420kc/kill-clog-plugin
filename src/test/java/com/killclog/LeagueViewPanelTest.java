@@ -726,6 +726,44 @@ public class LeagueViewPanelTest
 		});
 	}
 
+	@Test
+	public void yourOwnBadgeIsRuneLitesOnBothSidesWhenAStaleLogSaysAGroup() throws Exception
+	{
+		ComparisonController comparison = field(panel, "comparison", ComparisonController.class);
+		JLabel name = field(panel, "playerName", JLabel.class);
+		Constructor<?> compared = Class.forName("com.killclog.ComparisonController$ComparedPlayer").getDeclaredConstructors()[0];
+		compared.setAccessible(true);
+		// RuneLite reads an ironman who has left their group; the synced log still says group ironman.
+		HiscoreResult me = RankSelectorTest.result(AccountType.IRONMAN, HiscoreTable.STANDARD, 10, 10000);
+		ClogResult stale = new ClogResult("Me", Map.of(), Map.of(), Map.of(), null, AccountType.GROUP_IRONMAN);
+		when(hiscores.lookupRanks(any(), any())).thenReturn(CompletableFuture.completedFuture(null));
+		SwingUtilities.invokeAndWait(() ->
+		{
+			try
+			{
+				panel.setLoggedInPlayer("Me", AccountType.IRONMAN);
+				show(me, "Me", AccountType.IRONMAN);
+				session.adoptState(me, stale, null, "Me");
+				panel.onClogResult("Me", stale, true, session.getLookupVersion());
+				assertEquals("Ironman", shownLabel());
+
+				setField(comparison, "compared", compared.newInstance(1, me, stale, null, "Me", AccountType.IRONMAN));
+				setField(comparison, "comparisonMode", true);
+				panel.onComparisonEnter("Me");
+				comparison.updateInfoBar();
+				assertEquals("Ironman", shownLabel());
+				assertEquals("Ironman", rivalLabel());
+				javax.swing.JToolTip mirror = name.createToolTip();
+				assertEquals("Ironman", cardLabel(field(mirror, "blueTip", javax.swing.JToolTip.class)));
+				assertEquals("Ironman", cardLabel(field(mirror, "redTip", javax.swing.JToolTip.class)));
+			}
+			catch (ReflectiveOperationException e)
+			{
+				throw new AssertionError(e);
+			}
+		});
+	}
+
 	/** A finished lookup, the way the session reports one. */
 	private void show(HiscoreResult result, String rsn, AccountType selfType)
 	{

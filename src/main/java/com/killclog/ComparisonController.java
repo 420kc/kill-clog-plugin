@@ -104,7 +104,8 @@ public class ComparisonController
 	static final String COMPARE_BLUE_HEX = colorHex(COMPARE_BLUE);
 	static final String COMPARE_RED_HEX = colorHex(COMPARE_RED);
 	// Deps
-	private final RuneProfileService runeProfileService;
+	// The badge rule both name rows share.
+	private final PanelAccountTypes accountTypes;
 	private final LookupSession lookupSession;
 
 	private final KillClogConfig config;
@@ -177,7 +178,7 @@ public class ComparisonController
 		KillClogConfig config, TooltipController tooltipController,
 		TooltipDataBuilder tooltipDataBuilder, UnsyncedClogCatalog unsyncedCatalog, Listener listener)
 	{
-		this.runeProfileService = runeProfileService;
+		this.accountTypes = new PanelAccountTypes(runeProfileService);
 		this.lookupSession = lookupSession;
 		this.config = config;
 		this.tooltipController = tooltipController;
@@ -677,20 +678,8 @@ public class ComparisonController
 	@Nullable
 	private AccountDisplay compareAccountDisplay()
 	{
-		AccountType type = compared.selfType != null ? compared.selfType
-			: LookupQueries.accountType(compared.hiscore, compared.clog);
-		if (compared.rsn == null)
-		{
-			return AccountDisplay.of(type,
-				compared.hiscore != null ? compared.hiscore.getHiscoreTable()
-					: HiscoreTable.STANDARD);
-		}
-		AccountType providerType = runeProfileService.getCachedAccountType(compared.rsn);
-		return AccountDisplay.of(
-			AccountType.displayType(type,
-				providerType != null && providerType.isGroupIronman() ? providerType : null),
-			compared.hiscore != null ? compared.hiscore.getHiscoreTable()
-				: HiscoreTable.STANDARD);
+		return compared.selfType != null ? accountTypes.own(compared.selfType, compared.hiscore)
+			: accountTypes.displayIdentity(compared.hiscore, compared.clog, compared.rsn);
 	}
 
 	/**

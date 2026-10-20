@@ -1372,14 +1372,14 @@ public class KillClogPanel extends PluginPanel
 
 	private AccountDisplay currentInfoAccountDisplay()
 	{
-		// A self lookup keeps RuneLite's own type, like a group ironman the hiscores read as regular.
 		HiscoreResult hiscore = lookupSession.getHiscoreResult();
-		return currentInfoAccountDisplay(selfType != null ? selfType : hiscore != null ? hiscore.getAccountType() : null);
+		return currentInfoAccountDisplay(hiscore != null ? hiscore.getAccountType() : null);
 	}
 
 	private AccountDisplay currentInfoAccountDisplay(@Nullable AccountType fallback)
 	{
-		return accountTypes.currentDisplay(fallback, lookupSession.getHiscoreResult(),
+		HiscoreResult hiscore = lookupSession.getHiscoreResult();
+		return selfType != null ? accountTypes.own(selfType, hiscore) : accountTypes.currentDisplay(fallback, hiscore,
 			lookupSession.getNativeClogResult(), lookupSession.getCurrentLookupRsn());
 	}
 

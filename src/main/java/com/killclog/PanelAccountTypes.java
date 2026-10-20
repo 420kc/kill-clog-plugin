@@ -9,6 +9,15 @@ final class PanelAccountTypes
 {
 	private final RuneProfileService runeProfileService;
 
+	/**
+	 * Your own account wears RuneLite's live type, read from the game: a provider's copy can be stale, like a group
+	 * a player has left. Anyone else's comes from the hiscores and the providers ({@link #currentDisplay}).
+	 */
+	AccountDisplay own(AccountType selfType, @Nullable HiscoreResult hiscore)
+	{
+		return AccountDisplay.of(selfType, hiscore != null ? hiscore.getHiscoreTable() : HiscoreTable.STANDARD);
+	}
+
 	AccountDisplay currentDisplay(@Nullable AccountType fallback, @Nullable HiscoreResult hiscore,
 		@Nullable ClogResult clog, @Nullable String player)
 	{
