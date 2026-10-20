@@ -95,7 +95,7 @@ public class KillClogPanel extends PluginPanel
 		@Override
 		public JToolTip createToolTip()
 		{
-			if (comparison.isComparisonMode() && comparison.getCompareHiscoreResult() != null)
+			if (comparison.showsPair())
 			{
 				return buildComparePlayerSummary(this);
 			}
@@ -119,7 +119,7 @@ public class KillClogPanel extends PluginPanel
 		public JToolTip createToolTip()
 		{
 			// Comparison mode: this label is the red RSN.
-			if (comparison.isComparisonMode() && comparison.getCompareHiscoreResult() != null)
+			if (comparison.showsPair())
 			{
 				return buildComparePlayerSummary(this);
 			}

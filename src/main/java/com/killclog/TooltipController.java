@@ -238,6 +238,13 @@ class TooltipController
 	 * window of its own and has to be taken down like any other press does, and
 	 * the cell keeps the outline that modal's closing just cleared.
 	 */
+	/** Opens a card where the owner's card was, with a back line that reopens the owner's own card. */
+	void openInPlace(JLabel owner, MouseEvent press, JToolTip card, String backLabel)
+	{
+		pinTooltipFromPress(owner, (JPanel) owner.getParent(), press, TitleTooltip.withBack(card, backLabel, back ->
+			pinTooltipFromPress(owner, (JPanel) owner.getParent(), back, owner.createToolTip())));
+	}
+
 	void pinTooltipFromPress(JComponent source, JPanel cell, MouseEvent event, JToolTip tip)
 	{
 		if (config.tooltipMode() == TooltipMode.HOVER)

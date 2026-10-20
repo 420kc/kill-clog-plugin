@@ -191,7 +191,7 @@ public class Cells
 			@Override
 			public JToolTip createToolTip()
 			{
-				if (comparison.isComparisonMode() && comparison.getCompareHiscoreResult() != null)
+				if (comparison.showsPair())
 				{
 					return wrapSideBySide(this,
 						clueSummaryTooltip(this, lookupSession.getHiscoreResult(),
@@ -482,14 +482,8 @@ public class Cells
 	private JToolTip buildBossTooltip(JLabel owner, HiscoreSkill boss)
 	{
 		HiscoreSkill card = PanelData.card(boss);
-		return buildBossTooltip(owner, tooltipDataMap.get(boss),
-			comparison.getCompareTooltipData(boss), card.getName(), PanelData.bossWikiPage(card));
-	}
-
-	private JToolTip buildBossTooltip(JLabel owner, @Nullable TooltipData blueData,
-		@Nullable TooltipData redData, String name, String wikiPage)
-	{
-		return gridTooltip(owner, blueData, () -> redData, name, wikiPage);
+		TooltipData red = comparison.getCompareTooltipData(boss);
+		return gridTooltip(owner, tooltipDataMap.get(boss), () -> red, card.getName(), PanelData.bossWikiPage(card));
 	}
 
 	/** One log's card: the player's grid, or both players' side by side, the title opening the wiki. */
@@ -585,7 +579,7 @@ public class Cells
 			tip.setRare(i, counts(rival ? rivalRare(i) : rareTooltips.get(PanelData.RARE_KEYS[i])));
 		}
 		// A rare row, a tier's line or Mimic's opens that card where the summary was, its back the summary.
-		tip.setOnOpenRare((press, row) -> openFromClueSummary(owner, press, buildRareTooltip(owner, row)));
+		tip.setOnOpenRare((press, row) -> openFromClueSummary(owner, press, buildRareTooltipFor(owner, row)));
 		tip.setOnOpenLine((press, line) -> openFromClueSummary(owner, press, buildCellTooltipFor(owner,
 			line == ClueSummaryTooltip.MIMIC ? HiscoreSkill.MIMIC : PanelData.CLUE_TIERS[line - 1])));
 		tip.setComponent(owner);
@@ -596,9 +590,7 @@ public class Cells
 
 	private void openFromClueSummary(JLabel owner, MouseEvent press, JToolTip card)
 	{
-		tooltipController.pinTooltipFromPress(owner, (JPanel) owner.getParent(), press,
-			TitleTooltip.withBack(card, "< Clue Summary", back ->
-				tooltipController.pinTooltipFromPress(owner, (JPanel) owner.getParent(), back, owner.createToolTip())));
+		tooltipController.openInPlace(owner, press, card, "< Clue Summary");
 	}
 
 	private JToolTip buildClueTierTooltip(JLabel owner, HiscoreSkill tier, String displayName)
@@ -638,12 +630,6 @@ public class Cells
 			: comparison.buildCustomRare(PanelData.RARE_NAMES[row], PanelData.RARE_ITEMS[row]);
 	}
 
-	/** A Clue Summary rare row's card, for the Collection Log page it stands for. */
-	public JToolTip buildRareTooltipFor(JLabel owner, int row)
-	{
-		return buildRareTooltip(owner, row);
-	}
-
 	/** A rare row's data for either player, as its card shows it. */
 	@Nullable
 	TooltipData rareData(int row, boolean rival)
@@ -651,7 +637,8 @@ public class Cells
 		return rival ? rivalRare(row) : rareTooltips.get(PanelData.RARE_KEYS[row]);
 	}
 
-	private JToolTip buildRareTooltip(JLabel owner, int row)
+	/** A Clue Summary rare row's card, for the Collection Log page it stands for. */
+	JToolTip buildRareTooltipFor(JLabel owner, int row)
 	{
 		HiscoreSkill tier = PanelData.RARE_TIERS[row];
 		return gridTooltip(owner, cluesCompleted(rareTooltips.get(PanelData.RARE_KEYS[row]), tier,

@@ -85,9 +85,8 @@ final class ActivitySummaryTooltips
 			tip.setRaids(hiscore, clog);
 		}
 		// A raid row opens that raid's popup where the summary was, like the Clue Summary's rares.
-		tip.setOnOpenRaid((press, raid) -> tooltipController.pinTooltipFromPress(owner, (JPanel) owner.getParent(), press,
-			TitleTooltip.withBack(cells.buildCellTooltipFor(owner, raid), "< Combat Summary", back ->
-				tooltipController.pinTooltipFromPress(owner, (JPanel) owner.getParent(), back, owner.createToolTip()))));
+		tip.setOnOpenRaid((press, raid) ->
+			tooltipController.openInPlace(owner, press, cells.buildCellTooltipFor(owner, raid), "< Combat Summary"));
 		if (ca != null)
 		{
 			tip.setCombatAchievements(ca, caRewardSprites.sprite(ca.getReward(), PvmSummaryTooltip.ICON_SIZE));
@@ -113,7 +112,7 @@ final class ActivitySummaryTooltips
 	/** The card alone, or beside the rival's while comparing. */
 	private JToolTip soloOrPair(JLabel owner, JToolTip solo, Supplier<JToolTip> rival)
 	{
-		return comparison.isComparisonMode() && comparison.getCompareHiscoreResult() != null
+		return comparison.showsPair()
 			? comparison.wrapSideBySide(owner, solo, rival.get()) : solo;
 	}
 
