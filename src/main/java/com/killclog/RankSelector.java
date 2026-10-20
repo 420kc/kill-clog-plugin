@@ -163,6 +163,13 @@ final class RankSelector extends JPanel
 		return null;
 	}
 
+	/** Why a frozen or empty board shows no log, for the status line and the cards alike. */
+	String logNotice(HiscoreResult view)
+	{
+		String blank = blankNotice(view);
+		return blank != null ? blank : active().label.replace(" Ironman", "") + " collection log not recorded";
+	}
+
 	private void reload()
 	{
 		int requestVersion = ++version;

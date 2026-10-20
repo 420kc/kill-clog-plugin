@@ -39,21 +39,11 @@ import net.runelite.client.util.ImageUtil;
  * construct them, and the renderers that fill them with the looked-up player's
  * values (ComparisonController fills in a comparison's). Single source of truth
  * for "what cells does the panel show, and how do they hover."
- *
- * <p>The single-player tooltip body is built by the panel ({@code
- * SinglePlayerTooltipBuilder}) because it reaches the panel's sync-notice
- * text; everything else lives here.
+
  */
 public class Cells
 {
-	/** Builds the single-player sprite tooltip body. Implemented by the panel (it owns the sync-notice text). */
-	public interface SinglePlayerTooltipBuilder
-	{
-		/** Same tooltip, built against the compared (red) player's context. */
-		JToolTip buildCompared(JLabel owner, TooltipData data, int gridCols, String name);
-
-		JToolTip build(JLabel owner, @Nullable TooltipData data, int gridCols, String name);
-	}
+	private static final String SETUP_NOTICE = "Open your Collection Log to start setup automatically";
 
 	// Deps
 	private final SpriteManager spriteManager;
@@ -67,7 +57,8 @@ public class Cells
 	private final Function<String, UnaryOperator<String>> selfPbs;
 	private final KillClogConfig config;
 	private final UnsyncedClogCatalog unsyncedCatalog;
-	@Nullable private SinglePlayerTooltipBuilder singlePlayerBuilder;
+	private final RankSelector ranks;
+	private final Supplier<String> localRsn;
 
 	// Tooltip data caches
 	@Getter
@@ -108,9 +99,12 @@ public class Cells
 		TooltipController tooltipController, ComparisonController comparison,
 		TooltipDataBuilder tooltipDataBuilder, LookupSession lookupSession,
 		UnsyncedClogCatalog unsyncedCatalog, KillclogService killclogService,
-		Function<String, UnaryOperator<String>> selfPbs, KillClogConfig config)
+		Function<String, UnaryOperator<String>> selfPbs, KillClogConfig config, RankSelector ranks,
+		Supplier<String> localRsn)
 	{
 		this.config = config;
+		this.ranks = ranks;
+		this.localRsn = localRsn;
 		this.spriteManager = spriteManager;
 		this.itemManager = itemManager;
 		this.tooltipController = tooltipController;
@@ -121,11 +115,6 @@ public class Cells
 		this.selfPbs = selfPbs;
 		loadPvpActivityIcons();
 		this.unsyncedCatalog = unsyncedCatalog;
-	}
-
-	public void setSinglePlayerTooltipBuilder(SinglePlayerTooltipBuilder builder)
-	{
-		this.singlePlayerBuilder = builder;
 	}
 
 	// Cell builders
@@ -483,17 +472,104 @@ public class Cells
 		return gridTooltip(owner, tooltipDataMap.get(boss), () -> red, card.getName(), PanelData.bossWikiPage(card));
 	}
 
+	/**
+	 * Build a sprite tooltip for a cell - always ImgTooltip, with contextual notice when no data.
+	 *
+	 * @param owner     the label whose parent cell drives hover tint
+	 * @param data      tooltip data, or null for notice-only display
+	 * @param gridCols  min columns for the sprite grid
+	 * @param name      display name shown as title when data is null
+	 * @param result    with {@code rsn}, picks whose card this is
+	 */
+	JToolTip cellCard(JLabel owner, TooltipData data, int gridCols,
+		String name, @Nullable HiscoreResult result, @Nullable String rsn)
+	{
+		JPanel parentCell = (JPanel) owner.getParent();
+		ImgTooltip tip = new ImgTooltip(gridCols);
+		tip.setComponent(owner);
+		tip.setWikiLinksEnabled(config.wikiItemLinks());
+		boolean isSolHeredit = ColosseumGlory.replacesKc(name);
+		int glory = ColosseumGlory.score(result);
+
+		// Synced clog data with real item counts.
+		if (data != null && data.obtainedCount >= 0)
+		{
+			tip.setTitle(data.name);
+			tip.setObtained(data.obtainedCount, data.totalItems);
+			boolean hasHeaderScore = isSolHeredit
+				? ColosseumGlory.hasHeaderScore(glory, data.kc) : data.kc >= 0;
+			if (hasHeaderScore && config.showTooltipKc())
+			{
+				tip.setInfoLine(isSolHeredit ? ColosseumGlory.headerLabel(glory) : data.kcLabel != null ? data.kcLabel : "KC: ",
+					isSolHeredit ? ColosseumGlory.headerValue(glory, data.kc) : ClogHelper.formatKc(data.kc),
+					NativeTooltip.valueColor);
+				if (data.pb != null && config.showTooltipPb())
+				{
+					tip.setInfoLinePair(ClogHelper.pbLabel(data.pb), ClogHelper.pbTime(data.pb), NativeTooltip.valueColor);
+				}
+			}
+			else if (data.pb != null && config.showTooltipPb())
+			{
+				tip.setInfoLine(ClogHelper.pbLabel(data.pb), ClogHelper.pbTime(data.pb), NativeTooltip.valueColor);
+			}
+			ClogHelper.addHardModeLine(tip, data, config.showTooltipKc(), config.showTooltipPb());
+			if (data.allItemIds != null)
+			{
+				tip.setItems(data.totalItems, data.allItemIds, data.obtainedIds,
+					data.obtainedCounts, data.itemNames, itemManager);
+			}
+		}
+		else if (!ClogHelper.configureNotSynced(tip, data, itemManager, config.showTooltipKc()))
+		{
+			tip.setTitle(data != null ? data.name : name);
+			boolean isSelfNoCache = result != null && lookupSession.offersSetup(localRsn.get(), rsn);
+			if (isSelfNoCache)
+			{
+				tip.setNotice(SETUP_NOTICE);
+			}
+			else if (result != null)
+			{
+				tip.setNotice(noClogNotice(rsn, result));
+			}
+			else
+			{
+				// Cold and the catalog has not arrived yet; the warm-up
+				// rebuild replaces this with the dimmed preview.
+				tip.setNotice("Loading catalog...");
+			}
+		}
+		ClogHelper.configureRank(tip, data, result, config.showTooltipRank());
+		if (isSolHeredit && ColosseumGlory.isVisible(glory)
+			&& config.showTooltipKc() && (data == null || data.obtainedCount < 0))
+		{
+			tip.setInfoLine(ColosseumGlory.LABEL, ColosseumGlory.format(glory), NativeTooltip.valueColor);
+		}
+
+		tooltipController.keepTooltipOnHover(tip, parentCell);
+		return tip;
+	}
+
+	// No-data copy stays quiet: another player simply has no synced collection log.
+	// No provider names, no "missing data" framing - just a calm statement.
+	String noClogNotice(String rsn, @Nullable HiscoreResult hiscore)
+	{
+		return LookupSession.frozen(hiscore) ? ranks.logNotice(hiscore)
+			: rsn != null && !rsn.isEmpty()
+			? rsn + " hasn't synced a collection log"
+			: "No collection log synced";
+	}
+
 	/** One log's card: the player's grid, or both players' side by side, the title opening the wiki. */
 	private JToolTip gridTooltip(JLabel owner, @Nullable TooltipData blue, Supplier<TooltipData> red, String name,
 		@Nullable String wikiPage)
 	{
-		JToolTip tip = singlePlayerBuilder.build(owner, blue, 5, name);
+		JToolTip tip = cellCard(owner, blue, 5, name, lookupSession.getHiscoreResult(), lookupSession.getCurrentLookupRsn());
 		linkTitle(tip, wikiPage);
 		if (!comparison.isComparisonMode())
 		{
 			return tip;
 		}
-		JToolTip rival = singlePlayerBuilder.buildCompared(owner, red.get(), 5, name);
+		JToolTip rival = cellCard(owner, red.get(), 5, name, comparison.getCompareHiscoreResult(), comparison.getCompareRsn());
 		linkTitle(rival, wikiPage);
 		return wrapSideBySide(owner, tip, rival);
 	}

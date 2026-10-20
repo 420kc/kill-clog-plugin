@@ -333,9 +333,7 @@ public class LeagueViewPanelTest
 		Method summary = KillClogPanel.class.getDeclaredMethod("buildClogSummaryTooltip",
 			javax.swing.JComponent.class, HiscoreResult.class, ClogResult.class, String.class, String.class);
 		summary.setAccessible(true);
-		Method cell = KillClogPanel.class.getDeclaredMethod("makeSpriteTooltip", javax.swing.JLabel.class, TooltipData.class,
-			int.class, String.class, HiscoreResult.class, String.class);
-		cell.setAccessible(true);
+		Cells cell = field(panel, "cells", Cells.class);
 		HiscoreResult row = TestViews.hiscore(AccountType.REGULAR, new java.util.HashMap<>(), new java.util.HashMap<>(),
 			new java.util.HashMap<>(), new java.util.HashMap<>(), new java.util.HashMap<>(), 100, 1000L, 30, 1);
 		javax.swing.JLabel owner = new javax.swing.JLabel();
@@ -347,11 +345,11 @@ public class LeagueViewPanelTest
 				panel.setLoggedInPlayer("Me", AccountType.REGULAR);
 				assertTrue("your main log offers setup",
 					field(summary.invoke(panel, owner, row, null, "Me", null), "firstTimeSetup", Boolean.class));
-				String mainNotice = field(cell.invoke(panel, owner, null, 4, "Zulrah", row, "Me"), "notice", String.class);
+				String mainNotice = field(cell.cellCard(owner, null, 4, "Zulrah", row, "Me"), "notice", String.class);
 				session.readLeague("demonic-pacts", null);
 				assertFalse("a League read from another world never does",
 					field(summary.invoke(panel, owner, row, null, "Me", null), "firstTimeSetup", Boolean.class));
-				String leagueNotice = field(cell.invoke(panel, owner, null, 4, "Zulrah", row, "Me"), "notice", String.class);
+				String leagueNotice = field(cell.cellCard(owner, null, 4, "Zulrah", row, "Me"), "notice", String.class);
 				assertTrue(mainNotice, mainNotice.contains("setup"));
 				assertFalse(leagueNotice, leagueNotice.contains("setup"));
 			}
@@ -368,9 +366,7 @@ public class LeagueViewPanelTest
 		Method summary = KillClogPanel.class.getDeclaredMethod("buildClogSummaryTooltip",
 			javax.swing.JComponent.class, HiscoreResult.class, ClogResult.class, String.class, String.class);
 		summary.setAccessible(true);
-		Method cell = KillClogPanel.class.getDeclaredMethod("makeSpriteTooltip", javax.swing.JLabel.class, TooltipData.class,
-			int.class, String.class, HiscoreResult.class, String.class);
-		cell.setAccessible(true);
+		Cells cell = field(panel, "cells", Cells.class);
 		HiscoreResult row = TestViews.hiscore(AccountType.REGULAR, new java.util.HashMap<>(), new java.util.HashMap<>(),
 			new java.util.HashMap<>(), new java.util.HashMap<>(), new java.util.HashMap<>(), 100, 1000L, 30, 1);
 		javax.swing.JLabel owner = new javax.swing.JLabel();
@@ -382,7 +378,7 @@ public class LeagueViewPanelTest
 				// The game spells the name with a non-breaking space; the lookup box with an underscore.
 				panel.setLoggedInPlayer("My\u00A0Name", AccountType.REGULAR);
 				assertTrue(field(summary.invoke(panel, owner, row, null, "my_name", null), "firstTimeSetup", Boolean.class));
-				String notice = field(cell.invoke(panel, owner, null, 4, "Zulrah", row, "My-Name"), "notice", String.class);
+				String notice = field(cell.cellCard(owner, null, 4, "Zulrah", row, "My-Name"), "notice", String.class);
 				assertTrue(notice, notice.contains("setup"));
 			}
 			catch (ReflectiveOperationException e)

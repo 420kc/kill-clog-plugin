@@ -46,8 +46,6 @@ public class KillClogPanel extends PluginPanel
 {
 	static final Color TEXT_DIM = new Color(160, 160, 160);
 	private static final Color NOT_FOUND = new Color(0x81, 0x09, 0x09);
-	private static final String SETUP_NOTICE =
-		"Open your Collection Log to start setup automatically";
 
 	/** Info bar text color - only applies when highlighter is active AND clog data exists. */
 	@Override
@@ -178,23 +176,6 @@ public class KillClogPanel extends PluginPanel
 
 	// Comparison mode widgets (state fields all live on the controller)
 
-	// No-data copy stays quiet: another player simply has no synced collection log.
-	// No provider names, no "missing data" framing - just a calm statement.
-	private String noClogNotice(String rsn, @Nullable HiscoreResult hiscore)
-	{
-		return LookupSession.frozen(hiscore) ? frozenLogNotice(hiscore)
-			: rsn != null && !rsn.isEmpty()
-			? rsn + " hasn't synced a collection log"
-			: "No collection log synced";
-	}
-
-	/** A frozen row's log wasn't recorded; a board with no row at all says why it's empty. */
-	private String frozenLogNotice(HiscoreResult view)
-	{
-		String blank = rankSelector.blankNotice(view);
-		return blank != null ? blank : rankSelector.active().label.replace(" Ironman", "") + " collection log not recorded";
-	}
-
 	@Inject
 	public KillClogPanel(HiscoreService hiscoreService, ClogService clogService,
 		RuneProfileService runeProfileService, KillclogService killclogService,
@@ -231,7 +212,8 @@ public class KillClogPanel extends PluginPanel
 			() -> ClogHelper.virtualTotalLevelEnabled(configManager));
 		this.skillCellGrid = new SkillCellGrid(skillIconManager, tooltipController, comparison,
 			config, itemManager);
-		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, unsyncedCatalog, killclogService, league -> selfPbs.apply(league), config);
+		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, unsyncedCatalog, killclogService, league -> selfPbs.apply(league), config,
+			rankSelector, () -> localRsn);
 		this.clogPages = new ClogPages(tooltipController, cells, comparison, lookupSession, tooltipDataBuilder, config);
 		this.activityTooltips = new ActivitySummaryTooltips(
 			lookupSession, comparison, cells, tooltipController, itemManager,
@@ -241,22 +223,6 @@ public class KillClogPanel extends PluginPanel
 		this.unsyncedCatalog.setResolver(itemNameResolver::resolve);
 		this.comparison.setBlueNameSupplier(this::comparisonBlueName);
 		this.comparison.setCells(this.cells);
-		this.cells.setSinglePlayerTooltipBuilder(new Cells.SinglePlayerTooltipBuilder()
-		{
-			@Override
-			public JToolTip build(JLabel owner, TooltipData data, int gridCols, String name)
-			{
-				return makeSpriteTooltip(owner, data, gridCols, name,
-					lookupSession.getHiscoreResult(), lookupSession.getCurrentLookupRsn());
-			}
-
-			@Override
-			public JToolTip buildCompared(JLabel owner, TooltipData data, int gridCols, String name)
-			{
-				return makeSpriteTooltip(owner, data, gridCols, name,
-					comparison.getCompareHiscoreResult(), comparison.getCompareRsn());
-			}
-		});
 
 		reloadTooltipSprites();
 
@@ -605,83 +571,6 @@ public class KillClogPanel extends PluginPanel
 	}
 
 	// Cell factory helpers.
-
-	/**
-	 * Build a sprite tooltip for a cell - always ImgTooltip, with contextual notice when no data.
-	 *
-	 * @param owner     the label whose parent cell drives hover tint
-	 * @param data      tooltip data, or null for notice-only display
-	 * @param gridCols  min columns for the sprite grid
-	 * @param name      display name shown as title when data is null
-	 * @param result    with {@code rsn}, picks whose card this is
-	 */
-	private JToolTip makeSpriteTooltip(JLabel owner, TooltipData data, int gridCols,
-		String name, @Nullable HiscoreResult result, @Nullable String rsn)
-	{
-		JPanel parentCell = (JPanel) owner.getParent();
-		ImgTooltip tip = new ImgTooltip(gridCols);
-		tip.setComponent(owner);
-		tip.setWikiLinksEnabled(config.wikiItemLinks());
-		boolean isSolHeredit = ColosseumGlory.replacesKc(name);
-		int glory = ColosseumGlory.score(result);
-
-		// Synced clog data with real item counts.
-		if (data != null && data.obtainedCount >= 0)
-		{
-			tip.setTitle(data.name);
-			tip.setObtained(data.obtainedCount, data.totalItems);
-			boolean hasHeaderScore = isSolHeredit
-				? ColosseumGlory.hasHeaderScore(glory, data.kc) : data.kc >= 0;
-			if (hasHeaderScore && config.showTooltipKc())
-			{
-				tip.setInfoLine(isSolHeredit ? ColosseumGlory.headerLabel(glory) : data.kcLabel != null ? data.kcLabel : "KC: ",
-					isSolHeredit ? ColosseumGlory.headerValue(glory, data.kc) : ClogHelper.formatKc(data.kc),
-					NativeTooltip.valueColor);
-				if (data.pb != null && config.showTooltipPb())
-				{
-					tip.setInfoLinePair(ClogHelper.pbLabel(data.pb), ClogHelper.pbTime(data.pb), NativeTooltip.valueColor);
-				}
-			}
-			else if (data.pb != null && config.showTooltipPb())
-			{
-				tip.setInfoLine(ClogHelper.pbLabel(data.pb), ClogHelper.pbTime(data.pb), NativeTooltip.valueColor);
-			}
-			ClogHelper.addHardModeLine(tip, data, config.showTooltipKc(), config.showTooltipPb());
-			if (data.allItemIds != null)
-			{
-				tip.setItems(data.totalItems, data.allItemIds, data.obtainedIds,
-					data.obtainedCounts, data.itemNames, itemManager);
-			}
-		}
-		else if (!ClogHelper.configureNotSynced(tip, data, itemManager, config.showTooltipKc()))
-		{
-			tip.setTitle(data != null ? data.name : name);
-			boolean isSelfNoCache = result != null && lookupSession.offersSetup(localRsn, rsn);
-			if (isSelfNoCache)
-			{
-				tip.setNotice(SETUP_NOTICE);
-			}
-			else if (result != null)
-			{
-				tip.setNotice(noClogNotice(rsn, result));
-			}
-			else
-			{
-				// Cold and the catalog has not arrived yet; the warm-up
-				// rebuild replaces this with the dimmed preview.
-				tip.setNotice("Loading catalog...");
-			}
-		}
-		ClogHelper.configureRank(tip, data, result, config.showTooltipRank());
-		if (isSolHeredit && ColosseumGlory.isVisible(glory)
-			&& config.showTooltipKc() && (data == null || data.obtainedCount < 0))
-		{
-			tip.setInfoLine(ColosseumGlory.LABEL, ColosseumGlory.format(glory), NativeTooltip.valueColor);
-		}
-
-		tooltipController.keepTooltipOnHover(tip, parentCell);
-		return tip;
-	}
 
 	// Comparison mode.
 
@@ -1452,7 +1341,7 @@ public class KillClogPanel extends PluginPanel
 			}
 			else if (hiscore != null)
 			{
-				tip.setNotice(noClogNotice(playerRsn, hiscore));
+				tip.setNotice(cells.noClogNotice(playerRsn, hiscore));
 			}
 			else
 			{
@@ -1681,7 +1570,7 @@ public class KillClogPanel extends PluginPanel
 		HiscoreResult view = lookupSession.getHiscoreResult();
 		if (LookupSession.frozen(view))
 		{
-			statusRow.setBoardStatus(frozenLogNotice(view));
+			statusRow.setBoardStatus(rankSelector.logNotice(view));
 		}
 		else
 		{
