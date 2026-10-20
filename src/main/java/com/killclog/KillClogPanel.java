@@ -153,6 +153,19 @@ public class KillClogPanel extends PluginPanel
 	private AccountType localAccountType;
 	private String lastLocalRsn;
 
+	/**
+	 * RuneLite's own type on a self lookup, the identity the name row keeps, and what the name
+	 * labels show: the hover cards repeat exactly these.
+	 */
+	@Nullable
+	private AccountType selfType;
+	@Nullable
+	private AccountDisplay keptIdentity;
+	@Nullable
+	private AccountDisplay rowIdentity;
+	@Nullable
+	private AccountDisplay rivalIdentity;
+
 	private final TooltipController tooltipController;
 	private final LookupSession lookupSession;
 	private final ComparisonController comparison;
@@ -1551,19 +1564,6 @@ public class KillClogPanel extends PluginPanel
 		getWrappedPanel().revalidate();
 		getWrappedPanel().repaint();
 	}
-
-	/**
-	 * RuneLite's own type on a self lookup, the identity the name row keeps, and what the name
-	 * labels show: the hover cards repeat exactly these.
-	 */
-	@Nullable
-	private AccountType selfType;
-	@Nullable
-	private AccountDisplay keptIdentity;
-	@Nullable
-	private AccountDisplay rowIdentity;
-	@Nullable
-	private AccountDisplay rivalIdentity;
 
 	/** A frozen or empty board shows no log, so the status line says why; it clears only its own line. */
 	private void showFrozenLogNotice()
