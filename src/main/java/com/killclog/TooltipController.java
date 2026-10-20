@@ -35,6 +35,7 @@ import javax.swing.border.MatteBorder;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.util.ColorUtil;
 
 /**
  * Manages tooltip display mechanics: pinned popups, cell hover effects,
@@ -45,7 +46,8 @@ class TooltipController
 {
 	static final Border CELL_BORDER = new EmptyBorder(1, 1, 1, 1);
 	private static final Color HOVER_OUTLINE_DIM = new Color(90, 90, 90);
-	private static final Color HOVER_TINT_BG = new Color(41, 41, 41);
+	// Tint lifts a hovered cell's own background this far toward white: RuneLite's grey 30 becomes 41, a green 39 becomes 50.
+	private static final double HOVER_TINT = 0.05;
 
 	private final KillClogConfig config;
 
@@ -65,6 +67,8 @@ class TooltipController
 	// Cell hover state. Only the panel's own cells take the outline; a card pinned under another
 	// surface, like the info row the Collection Log card opens from, leaves that surface as it is.
 	private JPanel hoveredCell;
+	// The hovered cell's own background, which it gets back when the pointer leaves.
+	private Color hoveredRest;
 	private final Set<JPanel> hoverCells = Collections.newSetFromMap(new WeakHashMap<>());
 	private Timer hoverExitTimer;
 
@@ -171,7 +175,7 @@ class TooltipController
 		if (hoveredCell != null)
 		{
 			hoveredCell.setBorder(CELL_BORDER);
-			hoveredCell.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+			hoveredCell.setBackground(hoveredRest);
 		}
 	}
 
@@ -264,6 +268,7 @@ class TooltipController
 		if (hoveredCell != null) resetCellHover();
 
 		hoveredCell = cell;
+		hoveredRest = cell.getBackground();
 		switch (config.hoverStyle())
 		{
 			case OUTLINE:
@@ -273,7 +278,7 @@ class TooltipController
 				cell.setBorder(new MatteBorder(1, 1, 1, 1, outline));
 				break;
 			case TINT:
-				cell.setBackground(HOVER_TINT_BG);
+				cell.setBackground(ColorUtil.colorLerp(hoveredRest, Color.WHITE, HOVER_TINT));
 				break;
 			case NONE:
 				break;

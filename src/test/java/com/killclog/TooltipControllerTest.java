@@ -44,6 +44,33 @@ public class TooltipControllerTest
 	};
 
 	@Test
+	public void tintLiftsTheCellsOwnBackgroundAndGivesItBack()
+	{
+		TooltipController controller = new TooltipController(new KillClogConfig()
+		{
+		});
+		for (java.awt.Color rest : new java.awt.Color[]{net.runelite.client.ui.ColorScheme.DARKER_GRAY_COLOR,
+			new java.awt.Color(13, 39, 18)})
+		{
+			javax.swing.JPanel cell = new javax.swing.JPanel();
+			cell.setBackground(rest);
+			javax.swing.JLabel label = new javax.swing.JLabel();
+			cell.add(label);
+			controller.addCellHoverEffect(cell, label);
+			for (java.awt.event.MouseListener listener : label.getMouseListeners())
+			{
+				listener.mouseEntered(new MouseEvent(label, MouseEvent.MOUSE_ENTERED, 0, 0, 1, 1, 0, false));
+			}
+			// 5% toward white: RuneLite's grey 30 is the 41 Tint has always shown; a green is lifted, never greyed.
+			java.awt.Color lifted = cell.getBackground();
+			assertEquals(rest.getRed() + Math.round((255 - rest.getRed()) * 0.05f), lifted.getRed(), 1);
+			assertEquals(rest.getGreen() + Math.round((255 - rest.getGreen()) * 0.05f), lifted.getGreen(), 1);
+			controller.resetCellHover();
+			assertEquals(rest, cell.getBackground());
+		}
+	}
+
+	@Test
 	public void modeLifecycleNeverChangesGlobalTooltipDelays()
 	{
 		ToolTipManager manager = ToolTipManager.sharedInstance();
