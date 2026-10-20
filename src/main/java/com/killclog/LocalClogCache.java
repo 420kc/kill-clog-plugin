@@ -45,8 +45,9 @@ import net.runelite.client.util.Filepath;
  * opened on this store's disk thread: RuneLite's own move, then every own log
  * and the newest lookups load into memory ({@link StoreFiles} reads and writes
  * them). Until that finishes the store is not ready and serves nothing; after
- * it, every read and write is memory-only and disk only receives debounced
- * saves.
+ * it, reads and writes are memory-only and disk only receives debounced saves,
+ * except that each login reads its account's own log fresh, on the disk thread:
+ * another client on this PC may have played that account since this one loaded it.
  */
 @Slf4j
 @Singleton
@@ -84,6 +85,9 @@ public class LocalClogCache
 	private final AtomicReference<String> pendingRenameNotice = new AtomicReference<>();
 	// Bumped at logout: deferred work from a dead session must not act.
 	private final AtomicLong sessionEpoch = new AtomicLong();
+	// The accounts whose own log this session has read fresh from disk, and those being read.
+	private final java.util.Set<String> readThisSession = ConcurrentHashMap.newKeySet();
+	private final java.util.Set<String> reading = ConcurrentHashMap.newKeySet();
 
 	// Debounced saves by file: bursts of category navigation collapse to one write.
 	private final Map<String, Runnable> pendingByFile = new ConcurrentHashMap<>();
@@ -283,6 +287,7 @@ public class LocalClogCache
 	public synchronized void onSessionEnded()
 	{
 		sessionEpoch.incrementAndGet();
+		readThisSession.clear();
 		pendingRenameNotice.set(null);
 		activeHashKey = null;
 		activePlayer = null;
@@ -309,13 +314,20 @@ public class LocalClogCache
 
 	/**
 	 * The logged-in account takes up its own log. False until the store is
-	 * ready; the caller retries next tick. A different stored name is a name
-	 * change: the log follows the account, and one chat line says so.
+	 * ready and the log has been read fresh for this login; the caller retries
+	 * next tick. A different stored name is a name change: the log follows the
+	 * account, and one chat line says so.
 	 */
 	public synchronized boolean activate(String name, long accountHash)
 	{
 		if (!ready || name == null || accountHash == -1)
 		{
+			return false;
+		}
+		String hash = Long.toString(accountHash);
+		if (logs != null && !readThisSession.contains(hash))
+		{
+			readFresh(hash);
 			return false;
 		}
 		activePlayer = name;
@@ -333,6 +345,57 @@ public class LocalClogCache
 			submitSave(activeHashKey, true, data);
 		}
 		return true;
+	}
+
+	/**
+	 * Reads an account's own log from disk on the disk thread, behind any save this client still has queued for it, so
+	 * the newest copy serves: another client may have played the account since this one loaded the folder, and an
+	 * older copy here would save over what it captured, a drop's date and kill count included. A copy this client
+	 * has not saved yet is its own newest and stays.
+	 */
+	private void readFresh(String hash)
+	{
+		if (!reading.add(hash))
+		{
+			return;
+		}
+		long epoch = sessionEpoch.get();
+		Runnable read = () ->
+		{
+			try
+			{
+				String file = ownFile(hash);
+				Filepath folder = logs;
+				PlayerClogData data = folder != null && file != null && !unsavedFiles.containsKey(file)
+					&& folder.join(file).isFile() ? readRecord(folder.join(file)) : null;
+				synchronized (this)
+				{
+					if (data != null && hash.equals(data.ownerHash) && !unsavedFiles.containsKey(file))
+					{
+						own.put(hash, data);
+						index(data.playerName, hash);
+					}
+				}
+			}
+			finally
+			{
+				reading.remove(hash);
+				if (sessionEpoch.get() == epoch)
+				{
+					readThisSession.add(hash);
+				}
+			}
+		};
+		try
+		{
+			diskWriter.execute(read);
+		}
+		catch (RejectedExecutionException e)
+		{
+			// A store closing for good serves what it holds.
+			reading.remove(hash);
+			readThisSession.add(hash);
+		}
 	}
 
 	/** One chat line per name change, consumed by the plugin's tick. */

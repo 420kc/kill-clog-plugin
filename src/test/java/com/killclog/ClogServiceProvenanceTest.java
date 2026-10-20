@@ -194,7 +194,7 @@ public class ClogServiceProvenanceTest
 		categories.put("zulrah", Arrays.asList(1, 2, 3));
 
 		LocalClogCache cache = LocalClogCacheTest.ready();
-		cache.activate(player, 1L);
+		StoreLogin.activate(cache, player, 1L);
 		cache.cacheFirstPartyResult(new ClogResult(player, obtained, categories,
 			Collections.emptyMap(), localDate, null));
 

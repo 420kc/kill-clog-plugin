@@ -50,7 +50,7 @@ public class LocalClogCacheAtomicTest
 		File directory = temporaryFolder.newFolder();
 		LocalClogCache cache = new LocalClogCache(gson, new InlineScheduledExecutorService());
 		cache.open(() -> TestFolders.folder(directory));
-		assertTrue(cache.activate("Tester", 77L));
+		assertTrue(StoreLogin.activate(cache, "Tester", 77L));
 		cache.cacheFirstPartyResult(result(1));
 		File file = LocalClogCacheTest.ownFile(directory, 77L);
 		byte[] valid = Files.readAllBytes(file.toPath());
@@ -71,7 +71,7 @@ public class LocalClogCacheAtomicTest
 	private static ClogResult.ClogItem reload(File directory)
 	{
 		LocalClogCache cache = LocalClogCacheTest.onDisk(directory);
-		assertTrue(cache.activate("Tester", 77L));
+		assertTrue(StoreLogin.activate(cache, "Tester", 77L));
 		assertTrue(cache.hasDataFor("Tester"));
 		return cache.toClogResult("Tester", Map.of()).getObtainedItems().get("zulrah").get(0);
 	}

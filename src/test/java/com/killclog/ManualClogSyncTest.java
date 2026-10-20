@@ -708,7 +708,7 @@ public class ManualClogSyncTest
 	private LocalClogCache reload()
 	{
 		LocalClogCache store = LocalClogCacheTest.onDisk(directory);
-		assertTrue(store.activate("Tester", 42L));
+		assertTrue(StoreLogin.activate(store, "Tester", 42L));
 		return store;
 	}
 }

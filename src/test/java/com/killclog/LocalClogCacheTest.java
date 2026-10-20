@@ -34,11 +34,11 @@ public class LocalClogCacheTest
 		CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
 		LocalClogCache cache = new LocalClogCache(new Gson(), writer);
 		cache.open(() -> null);
-		assertFalse("the store says no until its load lands", cache.activate("Tester", HASH));
+		assertFalse("the store says no until its load lands", StoreLogin.activate(cache, "Tester", HASH));
 		cache.cacheResult(clog("Zezima", categoryItems("zulrah", 1), obtainedItems("zulrah", 1)));
 		assertFalse(cache.hasDataFor("Zezima"));
 		writer.runQueued();
-		assertTrue(cache.activate("Tester", HASH));
+		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
 		assertTrue(cache.folder().isDone());
 		assertNull("a memory-only session has no folder", cache.folder().join());
 	}
@@ -53,13 +53,13 @@ public class LocalClogCacheTest
 		assertFalse("a capture before activation waits, as it waited for identity", cache.hasDataFor("Tester"));
 		cache.onSessionEnded();
 		assertFalse("and it landed nowhere else either", cache.hasDataFor("Tester"));
-		assertTrue(cache.activate("Tester", HASH));
+		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
 		assertTrue(cache.setActivePlayer("Tester"));
 		cache.cacheFirstPartyResult(clog("Tester", categoryItems("zulrah", 1, 2), obtainedItems("zulrah", 1)));
 		assertTrue(cache.hasFirstPartyDataFor("Tester"));
 		assertTrue(cache.hasFirstPartyDataForActive());
 		assertFalse("another name is another account", cache.setActivePlayer("Someone"));
-		assertFalse(cache.activate("Someone", -1L));
+		assertFalse(StoreLogin.activate(cache, "Someone", -1L));
 	}
 
 	@Test
@@ -67,7 +67,7 @@ public class LocalClogCacheTest
 	{
 		File dir = temporaryFolder.newFolder();
 		LocalClogCache cache = onDisk(dir);
-		assertTrue(cache.activate("Old Name", HASH));
+		assertTrue(StoreLogin.activate(cache, "Old Name", HASH));
 		cache.cacheFirstPartyResult(clog("Old Name", categoryItems("hats", 1, 2), obtainedItems("hats", 1)));
 		File own = ownFile(dir, HASH);
 		assertTrue(own.exists());
@@ -76,7 +76,7 @@ public class LocalClogCacheTest
 		assertEquals("Old Name", saved.playerName);
 
 		cache.onSessionEnded();
-		assertTrue(cache.activate("New Name", HASH));
+		assertTrue(StoreLogin.activate(cache, "New Name", HASH));
 		assertEquals("Old Name", cache.consumeRenameNotice());
 		assertNull(cache.consumeRenameNotice());
 		assertTrue(cache.hasFirstPartyDataFor("New Name"));
@@ -84,7 +84,7 @@ public class LocalClogCacheTest
 		assertEquals("one file, renamed inside", 1, dir.list((d, n) -> n.endsWith(".json")).length);
 
 		LocalClogCache restarted = onDisk(dir);
-		assertTrue(restarted.activate("New Name", HASH));
+		assertTrue(StoreLogin.activate(restarted, "New Name", HASH));
 		assertNull("no change, no notice", restarted.consumeRenameNotice());
 		assertTrue(restarted.hasFirstPartyDataFor("New Name"));
 	}
@@ -99,7 +99,7 @@ public class LocalClogCacheTest
 		assertFalse(cache.servesAccount("Someone", HASH, epoch));
 		cache.onSessionEnded();
 		assertFalse(cache.servesAccount("Tester", HASH, epoch));
-		assertTrue(cache.activate("Tester", HASH));
+		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
 		assertFalse("a dead session's epoch never serves", cache.servesAccount("Tester", HASH, epoch));
 		assertTrue(cache.servesAccount("Tester", HASH, cache.currentSessionEpoch()));
 	}
@@ -111,10 +111,10 @@ public class LocalClogCacheTest
 		CapturingScheduledDebounceService writer = new CapturingScheduledDebounceService();
 		LocalClogCache cache = new LocalClogCache(new Gson(), writer);
 		cache.open(() -> TestFolders.folder(dir));
-		assertTrue(cache.activate("Shared", HASH));
+		assertTrue(StoreLogin.activate(cache, "Shared", HASH));
 		cache.cacheFirstPartyResult(clog("Shared", categoryItems("hats", 1, 2), obtainedItems("hats", 1)));
 		cache.onSessionEnded();
-		assertTrue(cache.activate("Shared", 78L));
+		assertTrue(StoreLogin.activate(cache, "Shared", 78L));
 		writer.runQueued();
 		assertTrue(ownFile(dir, HASH).exists());
 		assertFalse("the next account's file is not written by the last one's capture", ownFile(dir, 78L).exists());
@@ -129,14 +129,14 @@ public class LocalClogCacheTest
 			File dir = temporaryFolder.newFolder();
 			Files.writeString(ownFile(dir, HASH).toPath(), damaged);
 			LocalClogCache cache = onDisk(dir);
-			assertTrue(cache.activate("Tester", HASH));
+			assertTrue(StoreLogin.activate(cache, "Tester", HASH));
 			assertFalse(cache.hasDataFor("Tester"));
 			File[] preserved = dir.listFiles((folder, name) -> name.startsWith(".unreadable-"));
 			assertEquals(1, preserved.length);
 			assertEquals(damaged, Files.readString(preserved[0].toPath()));
 			cache.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 1), obtainedItems("hats", 1)));
 			LocalClogCache restarted = onDisk(dir);
-			assertTrue(restarted.activate("Tester", HASH));
+			assertTrue(StoreLogin.activate(restarted, "Tester", HASH));
 			assertNotNull(restarted.toFirstPartySyncResult("Tester"));
 		}
 	}
@@ -146,7 +146,7 @@ public class LocalClogCacheTest
 	{
 		File dir = temporaryFolder.newFolder();
 		LocalClogCache first = onDisk(dir);
-		assertTrue(first.activate("Tester", HASH));
+		assertTrue(StoreLogin.activate(first, "Tester", HASH));
 		first.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 1), obtainedItems("hats", 1)));
 		// 2.4's name-keyed files and the old move's leftovers beside the own log, and an own-log name one folder down.
 		Map<String, String> left = new HashMap<>();
@@ -166,7 +166,7 @@ public class LocalClogCacheTest
 			Files.writeString(file.toPath(), entry.getValue());
 		}
 		LocalClogCache cache = onDisk(dir);
-		assertTrue(cache.activate("Tester", HASH));
+		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
 		assertTrue(cache.hasDataFor("Tester"));
 		for (Map.Entry<String, String> entry : left.entrySet())
 		{
@@ -180,11 +180,11 @@ public class LocalClogCacheTest
 	{
 		File dir = temporaryFolder.newFolder();
 		LocalClogCache first = onDisk(dir);
-		assertTrue(first.activate("Other", 78L));
+		assertTrue(StoreLogin.activate(first, "Other", 78L));
 		first.cacheFirstPartyResult(clog("Other", categoryItems("hats", 1), obtainedItems("hats", 1)));
 		Files.copy(ownFile(dir, 78L).toPath(), ownFile(dir, HASH).toPath());
 		LocalClogCache cache = onDisk(dir);
-		assertTrue(cache.activate("Other", 78L));
+		assertTrue(StoreLogin.activate(cache, "Other", 78L));
 		assertTrue(cache.hasDataFor("Other"));
 		assertFalse(ownFile(dir, HASH).exists());
 		assertEquals(1, dir.listFiles((folder, name) -> name.startsWith(".unreadable-")).length);
@@ -196,7 +196,7 @@ public class LocalClogCacheTest
 		File dir = new File(temporaryFolder.getRoot(), "fresh-kill-clog");
 		assertFalse(dir.exists());
 		LocalClogCache cache = onDisk(dir);
-		assertTrue(cache.activate("Tester", HASH));
+		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
 		assertTrue(dir.isDirectory());
 	}
 
@@ -207,10 +207,10 @@ public class LocalClogCacheTest
 	{
 		File dir = temporaryFolder.newFolder();
 		LocalClogCache cache = onDisk(dir);
-		assertTrue(cache.activate("Alt", 78L));
+		assertTrue(StoreLogin.activate(cache, "Alt", 78L));
 		cache.cacheFirstPartyResult(clog("Alt", categoryItems("hats", 1, 2), obtainedItems("hats", 1)));
 		cache.onSessionEnded();
-		assertTrue(cache.activate("Main", HASH));
+		assertTrue(StoreLogin.activate(cache, "Main", HASH));
 
 		assertTrue("a local alt previews its own log", cache.hasFirstPartyDataFor("Alt"));
 		cache.cacheResult(clog("Alt", categoryItems("hats", 1, 2), obtainedItems("hats", 1, 2)));
@@ -229,14 +229,14 @@ public class LocalClogCacheTest
 		LocalClogCache cache = onDisk(dir);
 		for (long hash : new long[]{78L, 79L})
 		{
-			assertTrue(cache.activate("Traded", hash));
+			assertTrue(StoreLogin.activate(cache, "Traded", hash));
 			cache.cacheFirstPartyResult(clog("Traded", categoryItems("hats", 1), obtainedItems("hats", 1)));
 			cache.onSessionEnded();
 		}
 		LocalClogCache restarted = onDisk(dir);
-		assertTrue(restarted.activate("Main", HASH));
+		assertTrue(StoreLogin.activate(restarted, "Main", HASH));
 		assertFalse(restarted.hasDataFor("Traded"));
-		assertTrue("the account itself still gets its own", restarted.activate("Traded", 79L));
+		assertTrue("the account itself still gets its own", StoreLogin.activate(restarted, "Traded", 79L));
 		assertTrue(restarted.hasFirstPartyDataFor("Traded"));
 	}
 
@@ -245,7 +245,7 @@ public class LocalClogCacheTest
 	{
 		File dir = temporaryFolder.newFolder();
 		LocalClogCache cache = onDisk(dir);
-		assertTrue(cache.activate("Main", HASH));
+		assertTrue(StoreLogin.activate(cache, "Main", HASH));
 		for (int i = 0; i < 260; i++)
 		{
 			cache.cacheResult(clog("Player " + i, categoryItems("hats", 1), obtainedItems("hats", 1)));
@@ -254,7 +254,7 @@ public class LocalClogCacheTest
 		assertFalse("the oldest fell out of memory", cache.hasDataFor("Player 0"));
 		assertTrue(cache.hasDataFor("Player 259"));
 		LocalClogCache restarted = onDisk(dir);
-		assertTrue(restarted.activate("Main", HASH));
+		assertTrue(StoreLogin.activate(restarted, "Main", HASH));
 		assertTrue(restarted.hasDataFor("Player 259"));
 		assertTrue(restarted.hasDataFor("Player 4"));
 		assertFalse("only the newest 256 load", restarted.hasDataFor("Player 3"));
@@ -271,7 +271,7 @@ public class LocalClogCacheTest
 		File dir = temporaryFolder.newFolder();
 		Gson gson = new Gson();
 		LocalClogCache cache = onDisk(dir);
-		assertTrue(cache.activate("Tester", HASH));
+		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
 		Map<String, List<Integer>> cats = categoryItems("hats", 2978, 2991, 2992);
 		cache.cacheFirstPartyResult(clog("Tester", cats, obtainedItems("hats", 2978)));
 		String date = ClogDates.local(java.time.Instant.now().minusSeconds(60).toString());
@@ -280,7 +280,7 @@ public class LocalClogCacheTest
 		PlayerClogData saved = gson.fromJson(Files.readString(ownFile(dir, HASH).toPath()), PlayerClogData.class);
 		assertEquals(1, saved.pendingUnlocks.size());
 		LocalClogCache restarted = onDisk(dir);
-		assertTrue(restarted.activate("Tester", HASH));
+		assertTrue(StoreLogin.activate(restarted, "Tester", HASH));
 		restarted.cacheFirstPartyResult(clog("Tester", cats, obtainedItems("hats", 2978, 2991)));
 		ClogResult result = restarted.toFirstPartySyncResult("Tester");
 		assertEquals(date, LookupQueries.getRecentItems(result, 5).get(0).getDate());
@@ -298,7 +298,7 @@ public class LocalClogCacheTest
 		File dir = temporaryFolder.newFolder();
 		Gson gson = new Gson();
 		LocalClogCache cache = onDisk(dir);
-		assertTrue(cache.activate("Tester", HASH));
+		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
 		Map<String, List<Integer>> cats = categoryItems("hats", 2978, 2991, 2992);
 		cache.cacheResult(clog("Tester", cats, obtainedItems("hats", 2978)));
 		cache.rememberPendingUnlock("Tester", List.of(2991, 2992));
@@ -433,7 +433,7 @@ public class LocalClogCacheTest
 			{
 				File dir = temporaryFolder.newFolder();
 				LocalClogCache cache = onDisk(dir);
-				assertTrue(cache.activate("Tester", HASH));
+				assertTrue(StoreLogin.activate(cache, "Tester", HASH));
 				Map<String, List<Integer>> categories = Map.of("hats", itemList(1, 2), "other", itemList(1));
 				ClogResult baseline = clog("Tester", categories, obtainedItems("hats"));
 				baseline.setUniqueObtained(initial);
@@ -451,7 +451,7 @@ public class LocalClogCacheTest
 				cache.mergeObtainedItem("Tester", 2, List.of("hats"), categories, 0, null);
 				cache.updateTotalsUpward("Tester", initial + 2, 100);
 				LocalClogCache restarted = onDisk(dir);
-				assertTrue(restarted.activate("Tester", HASH));
+				assertTrue(StoreLogin.activate(restarted, "Tester", HASH));
 				assertEquals(initial + 2, restarted.toFirstPartySyncResult("Tester").getUniqueObtained());
 			}
 		}
@@ -748,7 +748,7 @@ public class LocalClogCacheTest
 	{
 		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService());
 		cache.open(() -> null);
-		assertTrue(cache.activate(player, HASH));
+		assertTrue(StoreLogin.activate(cache, player, HASH));
 		return cache;
 	}
 
@@ -758,6 +758,27 @@ public class LocalClogCacheTest
 		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService());
 		cache.open(() -> null);
 		return cache;
+	}
+
+	@Test
+	public void aLoginReadsItsOwnLogFreshSoAnotherClientsDropsSurvive() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		Map<String, List<Integer>> categories = Map.of("hats", itemList(1, 2));
+		LocalClogCache first = onDisk(dir);
+		assertTrue(StoreLogin.activate(first, "Tester", HASH));
+		first.cacheFirstPartyResult(clog("Tester", categories, obtainedItems("hats")));
+		// A second client starts for an alt and loads the folder as it is now.
+		LocalClogCache second = onDisk(dir);
+		// The first plays on: a drop, dated, at its kill count.
+		assertTrue(first.mergeObtainedItem("Tester", 1, List.of("hats"), categories, 42, "Boss"));
+		first.onSessionEnded();
+		// The account logs into the second client, whose next capture rewrites the log.
+		assertTrue(StoreLogin.activate(second, "Tester", HASH));
+		second.cacheFirstPartyResult(clog("Tester", categories, obtainedItems("hats", 1)));
+		ClogResult.ClogItem drop = obtainedItem(onDisk(dir), "Tester", "hats", 1);
+		assertEquals("the drop's kill count, which a page capture can't recover", 42, drop.getObtainedAtKc());
+		assertNotNull(drop.getDate());
 	}
 
 	static LocalClogCache onDisk(File dir)

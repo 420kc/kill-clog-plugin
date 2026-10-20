@@ -36,12 +36,12 @@ public class PluginFolderTest
 	{
 		File logs = temporaryFolder.newFolder();
 		LocalClogCache cache = LocalClogCacheTest.onDisk(logs);
-		assertTrue(cache.activate("Main", 77L));
+		assertTrue(StoreLogin.activate(cache, "Main", 77L));
 		cache.cacheResult(LocalClogCacheTest.clog("Con", LocalClogCacheTest.categoryItems("hats", 1),
 			LocalClogCacheTest.obtainedItems("hats", 1)));
 		assertTrue(new File(logs, "lookups/+con.json").isFile());
 		LocalClogCache reloaded = LocalClogCacheTest.onDisk(logs);
-		assertTrue(reloaded.activate("Main", 77L));
+		assertTrue(StoreLogin.activate(reloaded, "Main", 77L));
 		assertTrue(reloaded.hasDataFor("Con"));
 	}
 
@@ -54,7 +54,7 @@ public class PluginFolderTest
 			throw new java.io.IOException("refused");
 		});
 		assertNull(cache.folder().join());
-		assertTrue(cache.activate("Tester", 77L));
+		assertTrue(StoreLogin.activate(cache, "Tester", 77L));
 		cache.cacheFirstPartyResult(LocalClogCacheTest.clog("Tester", LocalClogCacheTest.categoryItems("hats", 1, 2),
 			LocalClogCacheTest.obtainedItems("hats", 1)));
 		assertTrue(cache.hasFirstPartyDataFor("Tester"));
