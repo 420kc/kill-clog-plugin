@@ -44,6 +44,8 @@ final class ProfileAppearanceService
 	enum Outcome
 	{
 		PUBLISHED,
+		DELETED,
+		NO_CHARACTER,
 		PROFILE_REQUIRED,
 		DISABLED,
 		RENDERING,
@@ -148,8 +150,31 @@ final class ProfileAppearanceService
 	CompletableFuture<PublishResult> publishCurrent(String expectedRsn, long accountHash,
 		BooleanSupplier authorized)
 	{
+		return run(new PublishAttempt(expectedRsn, accountHash, authorized), this::captureAndPublish);
+	}
+
+	/**
+	 * Removes the player's character from killclog.com, so their profile goes back to having none; nothing else of
+	 * theirs changes. The same per-installation credential a publish proves ownership with proves it here.
+	 */
+	CompletableFuture<PublishResult> deleteCurrent(String expectedRsn, long accountHash, BooleanSupplier authorized)
+	{
+		return run(new PublishAttempt(expectedRsn, accountHash, authorized), attempt ->
+		{
+			if (!attempt.active()) return completed(Outcome.CANCELLED);
+			String secret = accountConfig(attempt.accountHash, DEVICE_SECRET_KEY);
+			attempt.recoveryAt = accountConfig(attempt.accountHash, RECOVERY_AT_KEY);
+			return secret != null ? deleteWithSecret(attempt, secret, true)
+				: ensureCredential(attempt, fresh -> deleteWithSecret(attempt, fresh, false),
+					accountConfig(attempt.accountHash, RECOVERY_TOKEN_KEY));
+		});
+	}
+
+	/** One character request at a time: it starts on the client thread and frees the slot when its chain settles. */
+	private CompletableFuture<PublishResult> run(PublishAttempt attempt,
+		Function<PublishAttempt, CompletableFuture<PublishResult>> request)
+	{
 		if (!inFlight.compareAndSet(false, true)) return completed(Outcome.BUSY);
-		PublishAttempt attempt = new PublishAttempt(expectedRsn, accountHash, authorized);
 		CompletableFuture<PublishResult> result = new CompletableFuture<>();
 		try
 		{
@@ -157,7 +182,7 @@ final class ProfileAppearanceService
 			{
 				try
 				{
-					captureAndPublish(attempt).whenComplete((value, error) ->
+					request.apply(attempt).whenComplete((value, error) ->
 					{
 						// Retain the slot across cancellation until the whole chain settles.
 						inFlight.set(false);
@@ -219,7 +244,7 @@ final class ProfileAppearanceService
 		String manifestJson = gson.toJson(manifest);
 		return secret != null
 			? publishWithSecret(attempt, manifestJson, secret, true)
-			: ensureCredential(attempt, manifestJson, recoveryToken);
+			: ensureCredential(attempt, fresh -> publishWithSecret(attempt, manifestJson, fresh, false), recoveryToken);
 	}
 
 	/** Each HTTP dispatch rechecks consent and identity on the client thread. */
@@ -296,18 +321,19 @@ final class ProfileAppearanceService
 		return transformed != null ? transformed.getId() : follower.getId();
 	}
 
+	/** This installation's credential, registered or recovered, handed to the request that needs it. */
 	private CompletableFuture<PublishResult> ensureCredential(PublishAttempt attempt,
-		String manifestJson, @Nullable String recoveryToken)
+		Function<String, CompletableFuture<PublishResult>> withSecret, @Nullable String recoveryToken)
 	{
 		if (validSecret(recoveryToken))
 		{
-			return claimRecovery(attempt, manifestJson, recoveryToken);
+			return claimRecovery(attempt, withSecret, recoveryToken);
 		}
-		return requestDevice(attempt, manifestJson);
+		return requestDevice(attempt, withSecret);
 	}
 
 	private CompletableFuture<PublishResult> requestDevice(PublishAttempt attempt,
-		String manifestJson)
+		Function<String, CompletableFuture<PublishResult>> withSecret)
 	{
 		JsonObject body = new JsonObject();
 		body.addProperty("account_hash", Long.toString(attempt.accountHash));
@@ -315,7 +341,7 @@ final class ProfileAppearanceService
 		{
 			if (response.code == 201)
 			{
-				return adoptSecret(attempt, manifestJson, json);
+				return adoptSecret(attempt, withSecret, json);
 			}
 			if (response.code == 202)
 			{
@@ -343,15 +369,16 @@ final class ProfileAppearanceService
 		});
 	}
 
-	private CompletableFuture<PublishResult> adoptSecret(PublishAttempt attempt, String manifestJson, JsonObject json)
+	private CompletableFuture<PublishResult> adoptSecret(PublishAttempt attempt,
+		Function<String, CompletableFuture<PublishResult>> withSecret, JsonObject json)
 	{
 		String secret = stringValue(json, "device_secret");
 		return !validSecret(secret) ? completed(Outcome.FAILED) : saveDeviceSecret(attempt.accountHash, secret)
-			.thenCompose(saved -> saved ? publishWithSecret(attempt, manifestJson, secret, false) : completed(Outcome.FAILED));
+			.thenCompose(saved -> saved ? withSecret.apply(secret) : completed(Outcome.FAILED));
 	}
 
 	private CompletableFuture<PublishResult> claimRecovery(PublishAttempt attempt,
-		String manifestJson, String recoveryToken)
+		Function<String, CompletableFuture<PublishResult>> withSecret, String recoveryToken)
 	{
 		JsonObject body = new JsonObject();
 		body.addProperty("account_hash", Long.toString(attempt.accountHash));
@@ -360,7 +387,7 @@ final class ProfileAppearanceService
 		{
 			if (response.code >= 200 && response.code < 300)
 			{
-				return adoptSecret(attempt, manifestJson, json);
+				return adoptSecret(attempt, withSecret, json);
 			}
 			if (response.code == 409 && hasError(json, "appearance_recovery_wait"))
 			{
@@ -374,7 +401,7 @@ final class ProfileAppearanceService
 			{
 				return clearRecovery(attempt.accountHash)
 					.thenCompose(cleared -> cleared
-						? requestDevice(attempt, manifestJson)
+						? requestDevice(attempt, withSecret)
 						: completed(Outcome.FAILED));
 			}
 			return failedResponse(attempt, "recovery", response, json);
@@ -399,7 +426,7 @@ final class ProfileAppearanceService
 			{
 				return clearDeviceSecret(attempt.accountHash)
 					.thenCompose(cleared -> cleared
-						? requestDevice(attempt, manifestJson)
+						? requestDevice(attempt, fresh -> publishWithSecret(attempt, manifestJson, fresh, false))
 						: completed(Outcome.FAILED));
 			}
 			if (shouldCancelPendingRecovery(response.code, json, recoverInvalidSecret))
@@ -415,6 +442,35 @@ final class ProfileAppearanceService
 				return CompletableFuture.completedFuture(PROFILE_REQUIRED);
 			}
 			return failedResponse(attempt, "publish", response, json);
+		});
+	}
+
+	private CompletableFuture<PublishResult> deleteWithSecret(PublishAttempt attempt, String secret,
+		boolean recoverInvalidSecret)
+	{
+		return attempt.post("appearance/delete", "{}", secret, (response, json) ->
+		{
+			if (response.code == 200 && json != null && json.has("deleted") && json.get("deleted").getAsBoolean())
+			{
+				return completed(Outcome.DELETED);
+			}
+			if (response.code == 401 && recoverInvalidSecret)
+			{
+				return clearDeviceSecret(attempt.accountHash)
+					.thenCompose(cleared -> cleared
+						? requestDevice(attempt, fresh -> deleteWithSecret(attempt, fresh, false))
+						: completed(Outcome.FAILED));
+			}
+			if (response.code == 409 && hasError(json, "appearance_recovery_pending"))
+			{
+				return CompletableFuture.completedFuture(recoveryPending(json, attempt));
+			}
+			// No synced profile here, so no character on killclog.com: nothing to remove.
+			if (isProfileRequired(response.code, json))
+			{
+				return completed(Outcome.NO_CHARACTER);
+			}
+			return failedResponse(attempt, "delete", response, json);
 		});
 	}
 

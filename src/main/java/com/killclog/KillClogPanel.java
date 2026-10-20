@@ -688,6 +688,11 @@ public class KillClogPanel extends PluginPanel
 		statusRow.setKillclogSyncHandler(handler);
 	}
 
+	void setCharacterDeleteHandler(Runnable handler)
+	{
+		statusRow.setCharacterDeleteHandler(handler);
+	}
+
 	void setCharacterPublishHandler(Runnable handler)
 	{
 		statusRow.setCharacterPublishHandler(handler);
@@ -726,9 +731,9 @@ public class KillClogPanel extends PluginPanel
 	void showCharacterPublishStatus(CharacterStatus status, boolean autoClear, String detail)
 	{
 		statusRow.showCharacterPublishStatus(status, autoClear, detail);
-		if (status == CharacterStatus.PUBLISHED)
+		if (status == CharacterStatus.PUBLISHED || status == CharacterStatus.DELETED)
 		{
-			// The character that was just published shows in the player's own summary straight away.
+			// The player's own summary asks again at once: the character just published shows, a deleted one goes.
 			portraits.published(localRsn);
 		}
 	}

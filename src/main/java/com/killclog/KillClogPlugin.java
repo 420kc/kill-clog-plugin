@@ -226,6 +226,7 @@ public class KillClogPlugin extends Plugin
 		syncSettings.enforce();
 		panel.setKillclogSyncHandler(publication::manualSync);
 		panel.setCharacterPublishHandler(publication::publishCharacter);
+		panel.setCharacterDeleteHandler(publication::deleteCharacter);
 		panel.setSelfPbs(this::selfPbs);
 		// The first tick hands the panel and chat this world's game again.
 		world.showAgain();

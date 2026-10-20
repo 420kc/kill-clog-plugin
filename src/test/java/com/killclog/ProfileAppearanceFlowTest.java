@@ -213,6 +213,83 @@ public class ProfileAppearanceFlowTest
 	}
 
 	@Test
+	public void shiftClickDeletesTheCharacterWithThisInstallationsCredential() throws Exception
+	{
+		AtomicInteger calls = new AtomicInteger();
+		try (Harness h = new Harness(chain ->
+		{
+			calls.incrementAndGet();
+			assertTrue(chain.request().url().encodedPath().endsWith("/appearance/delete"));
+			assertEquals("Bearer " + SECRET, chain.request().header("Authorization"));
+			return response(chain, 200, "{\"deleted\":true}");
+		}))
+		{
+			h.secret();
+			ProfileAppearanceService.PublishResult result = h.delete().get(5, TimeUnit.SECONDS);
+			assertEquals(ProfileAppearanceService.Outcome.DELETED, result.outcome);
+			assertEquals("character deleted", CharacterStatus.terminal(result.outcome).text);
+			assertEquals(1, calls.get());
+		}
+	}
+
+	@Test
+	public void aDeleteWithoutACredentialRegistersFirstAsAPublishDoes() throws Exception
+	{
+		String fresh = "c".repeat(64);
+		AtomicInteger calls = new AtomicInteger();
+		try (Harness h = new Harness(chain ->
+		{
+			String path = chain.request().url().encodedPath();
+			switch (calls.incrementAndGet())
+			{
+				case 1:
+					// The saved credential is stale: the server no longer takes it.
+					assertTrue(path.endsWith("/appearance/delete"));
+					return response(chain, 401, "{\"error\":\"invalid_appearance_credential\"}");
+				case 2:
+					assertTrue(path.endsWith("/device"));
+					return response(chain, 201, "{\"device_secret\":\"" + fresh + "\"}");
+				default:
+					assertTrue(path.endsWith("/appearance/delete"));
+					assertEquals("Bearer " + fresh, chain.request().header("Authorization"));
+					return response(chain, 200, "{\"deleted\":true}");
+			}
+		}))
+		{
+			h.secret();
+			assertEquals(ProfileAppearanceService.Outcome.DELETED, h.delete().get(5, TimeUnit.SECONDS).outcome);
+			assertEquals(3, calls.get());
+			assertEquals(fresh, h.config.get(h.key("deviceSecret")));
+		}
+	}
+
+	@Test
+	public void anAccountWithNoProfileHasNoCharacterToDelete() throws Exception
+	{
+		try (Harness h = new Harness(chain -> response(chain, 409, "{\"error\":\"no_bound_account\"}")))
+		{
+			h.secret();
+			ProfileAppearanceService.PublishResult result = h.delete().get(5, TimeUnit.SECONDS);
+			assertEquals(ProfileAppearanceService.Outcome.NO_CHARACTER, result.outcome);
+			assertEquals("no character to delete", CharacterStatus.terminal(result.outcome).text);
+		}
+	}
+
+	@Test
+	public void aDeleteAfterLogoutSendsNothing() throws Exception
+	{
+		try (Harness h = new Harness(chain ->
+		{
+			throw new AssertionError("Unexpected HTTP request");
+		}))
+		{
+			h.secret();
+			h.authorized.set(false);
+			assertEquals(ProfileAppearanceService.Outcome.CANCELLED, h.delete().get(5, TimeUnit.SECONDS).outcome);
+		}
+	}
+
+	@Test
 	public void disablingDuringRegistrationSavesIssuedSecretButDoesNotPublish() throws Exception
 	{
 		cancelRegistration(false);
@@ -567,6 +644,11 @@ public class ProfileAppearanceFlowTest
 		private CompletableFuture<ProfileAppearanceService.PublishResult> publish()
 		{
 			return service.publishCurrent("Test player", 1, authorized::get);
+		}
+
+		private CompletableFuture<ProfileAppearanceService.PublishResult> delete()
+		{
+			return service.deleteCurrent("Test player", 1, authorized::get);
 		}
 
 		@Override public void close()

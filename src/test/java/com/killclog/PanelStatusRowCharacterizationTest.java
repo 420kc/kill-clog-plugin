@@ -379,6 +379,35 @@ public class PanelStatusRowCharacterizationTest
 	}
 
 	@Test
+	public void shiftOnTheCharacterSaysDeleteAndAShiftClickDeletes() throws Exception
+	{
+		enableControls();
+		edt(() ->
+		{
+			AtomicInteger publishes = new AtomicInteger();
+			AtomicInteger deletes = new AtomicInteger();
+			panel.setCharacterPublishHandler(publishes::incrementAndGet);
+			panel.setCharacterDeleteHandler(deletes::incrementAndGet);
+			shifted(character, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
+			assertEquals("delete character model", status.getText());
+			shifted(character, MouseEvent.MOUSE_PRESSED, MouseEvent.BUTTON1);
+			assertEquals(1, deletes.get());
+			assertEquals(0, publishes.get());
+			// Shift let go while still on it: the line says publish before any click, and a click publishes.
+			shiftKey(false);
+			assertEquals("publish character", status.getText());
+			mouse(character, MouseEvent.MOUSE_PRESSED, MouseEvent.BUTTON1);
+			assertEquals(1, publishes.get());
+			// And pressed again, without moving.
+			shiftKey(true);
+			assertEquals("delete character model", status.getText());
+			mouse(character, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
+			assertEquals(" ", status.getText());
+			assertEquals(1, deletes.get());
+		});
+	}
+
+	@Test
 	public void sameTextReplacementKeepsItsOwnExpiry() throws Exception
 	{
 		enableControls();
@@ -512,6 +541,18 @@ public class PanelStatusRowCharacterizationTest
 	private static void mouse(JLabel label, int type, int button)
 	{
 		label.dispatchEvent(new MouseEvent(label, type, 0, 0, 1, 1, 1, false, button));
+	}
+
+	private static void shifted(JLabel label, int type, int button)
+	{
+		label.dispatchEvent(new MouseEvent(label, type, 0, java.awt.event.InputEvent.SHIFT_DOWN_MASK, 1, 1, 1, false, button));
+	}
+
+	private void shiftKey(boolean pressed)
+	{
+		field("shiftWatch", java.awt.KeyEventDispatcher.class).dispatchKeyEvent(new java.awt.event.KeyEvent(character,
+			pressed ? java.awt.event.KeyEvent.KEY_PRESSED : java.awt.event.KeyEvent.KEY_RELEASED, 0, 0,
+			java.awt.event.KeyEvent.VK_SHIFT, java.awt.event.KeyEvent.CHAR_UNDEFINED));
 	}
 
 	private static void fire(Timer timer)

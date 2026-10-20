@@ -7,7 +7,10 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.awt.KeyEventDispatcher;
+import java.awt.KeyboardFocusManager;
 import java.awt.RenderingHints;
+import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
@@ -40,6 +43,7 @@ final class PanelStatusRow
 	private static final String SYNC_HOVER_TEXT = "sync collection log";
 	private static final String SYNC_FAILURE_HOVER_TEXT = "sync failed - click to retry";
 	private static final String CHARACTER_HOVER_TEXT = "publish character";
+	private static final String CHARACTER_DELETE_HOVER_TEXT = "delete character model";
 	private static final String CHARACTER_FAILURE_HOVER_TEXT = "character failed - click to retry";
 	private static final int SYNC_EXPIRY_MS = 2500;
 	private static final int CHARACTER_EXPIRY_MS = 3000;
@@ -71,6 +75,18 @@ final class PanelStatusRow
 	private Runnable killclogSyncHandler;
 	@Setter(AccessLevel.PACKAGE)
 	private Runnable characterPublishHandler;
+	// Shift-click on the character deletes it from killclog.com; while shift is held on it, its hover line says so.
+	@Setter(AccessLevel.PACKAGE)
+	private Runnable characterDeleteHandler;
+	private boolean characterShift;
+	private final KeyEventDispatcher shiftWatch = event ->
+	{
+		if (event.getKeyCode() == KeyEvent.VK_SHIFT && event.getID() != KeyEvent.KEY_TYPED)
+		{
+			setCharacterShift(event.getID() == KeyEvent.KEY_PRESSED);
+		}
+		return false;
+	};
 	private Timer syncSuccessGlowTimer;
 	private Timer characterSuccessGlowTimer;
 	private BufferedImage characterBase;
@@ -251,6 +267,37 @@ final class PanelStatusRow
 		};
 	}
 
+	private String characterHoverText()
+	{
+		return characterShift ? CHARACTER_DELETE_HOVER_TEXT : characterNoticeText != null ? characterNoticeText
+			: characterFeedback.hoverText(CHARACTER_HOVER_TEXT, CHARACTER_FAILURE_HOVER_TEXT);
+	}
+
+	/** Watches shift only while the pointer is on the character, so nothing listens the rest of the time. */
+	private void watchShift(boolean on)
+	{
+		KeyboardFocusManager keys = KeyboardFocusManager.getCurrentKeyboardFocusManager();
+		keys.removeKeyEventDispatcher(shiftWatch);
+		if (on)
+		{
+			keys.addKeyEventDispatcher(shiftWatch);
+		}
+	}
+
+	/** Shift pressed or let go on the character: its hover line follows at once, before any click. */
+	private void setCharacterShift(boolean down)
+	{
+		if (down == characterShift)
+		{
+			return;
+		}
+		characterShift = down;
+		if (characterHovered && ownedBy(Owner.CHARACTER) && current.kind == Kind.HOVER)
+		{
+			show(new StatusMessage(Owner.CHARACTER, Kind.HOVER, characterHoverText(), SYNC_K1));
+		}
+	}
+
 	/** The character control's notice, failure, hover and glow, gone. */
 	private void clearCharacterState()
 	{
@@ -269,14 +316,36 @@ final class PanelStatusRow
 		characterPublish.setBorder(BorderFactory.createEmptyBorder(0, 3, 6, 2));
 		characterPublish.setVerticalAlignment(JLabel.CENTER);
 		characterPublish.setVisible(false);
+		// Added first, so shift is known before the hover line and the press are read.
+		characterPublish.addMouseListener(new MouseAdapter()
+		{
+			@Override
+			public void mouseEntered(MouseEvent e)
+			{
+				characterShift = e.isShiftDown();
+				watchShift(true);
+			}
+
+			@Override
+			public void mouseExited(MouseEvent e)
+			{
+				watchShift(false);
+				characterShift = false;
+			}
+
+			@Override
+			public void mousePressed(MouseEvent e)
+			{
+				characterShift = e.isShiftDown();
+			}
+		});
 		characterPublish.addMouseListener(controlMouse(characterPublish, Owner.CHARACTER, hovered ->
 		{
 			characterHovered = hovered;
 			refreshCharacterIcon(hovered);
 		}, () -> characterTooltipText(characterNoticeDetail != null ? characterNoticeDetail
-			: characterFeedback.lastFailure()), () -> characterNoticeText != null ? characterNoticeText
-			: characterFeedback.hoverText(CHARACTER_HOVER_TEXT, CHARACTER_FAILURE_HOVER_TEXT),
-			() -> characterPublishHandler));
+			: characterFeedback.lastFailure()), this::characterHoverText,
+			() -> characterShift ? characterDeleteHandler : characterPublishHandler));
 		requestCharacterIcon();
 
 		// Sits vertically centered in the band between the panel top and the
@@ -578,6 +647,8 @@ final class PanelStatusRow
 		syncArrowHasData = false;
 		syncChaliceHovered = false;
 		syncFeedback.reset();
+		watchShift(false);
+		characterShift = false;
 		clearCharacterState();
 		clearSyncSuccessGlow();
 		refreshFirstPartyVisibility();

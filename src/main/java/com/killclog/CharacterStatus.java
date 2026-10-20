@@ -19,7 +19,10 @@ enum CharacterStatus
 	RECOVERY("Publishing on hold", StatusMessage.Kind.NOTICE),
 	DISABLED("Publishing unavailable", StatusMessage.Kind.NOTICE),
 	UNKNOWN("Check your profile", StatusMessage.Kind.NOTICE),
-	BUSY("Finishing previous request...", StatusMessage.Kind.RESULT);
+	BUSY("Finishing previous request...", StatusMessage.Kind.RESULT),
+	DELETING("deleting character...", StatusMessage.Kind.PROGRESS),
+	DELETED("character deleted", StatusMessage.Kind.RESULT),
+	NO_CHARACTER("no character to delete", StatusMessage.Kind.RESULT);
 
 	final String text;
 	/** How the row shows it; null for the three that withdraw or complete instead. */
@@ -36,6 +39,8 @@ enum CharacterStatus
 		switch (outcome)
 		{
 			case PUBLISHED: return PUBLISHED;
+			case DELETED: return DELETED;
+			case NO_CHARACTER: return NO_CHARACTER;
 			case RENDERING: return PENDING;
 			case RECOVERY_PENDING: return RECOVERY;
 			case DISABLED: return DISABLED;

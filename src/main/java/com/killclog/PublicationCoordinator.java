@@ -247,6 +247,52 @@ final class PublicationCoordinator
 		startCharacterPublish(true);
 	}
 
+	/**
+	 * Shift-click on the character: removes it from killclog.com, so the profile goes back to having none. It shares
+	 * the publish's one-at-a-time slot and its status line.
+	 */
+	void deleteCharacter()
+	{
+		if (!characterPublishingEnabled() || !characterPublishInFlight.compareAndSet(false, true))
+		{
+			return;
+		}
+		int generation = characterPublishGeneration.incrementAndGet();
+		characterPublishAfterSync.set(false);
+		showCharacterPublishStatus(generation, CharacterStatus.DELETING, false);
+		clientThread.invokeLater(() ->
+		{
+			if (generation != characterPublishGeneration.get())
+			{
+				return;
+			}
+			Player local = client.getLocalPlayer();
+			String rsn = local != null ? local.getName() : null;
+			long accountHash = client.getAccountHash();
+			if (!characterPublishingEnabled() || rsn == null || accountHash == -1 || !GameMode.MAIN.equals(mode.get()))
+			{
+				failCharacterPublish(generation);
+				return;
+			}
+			profileAppearanceService.deleteCurrent(rsn, accountHash,
+				() -> generation == characterPublishGeneration.get() && characterPublishingEnabled())
+				.whenComplete((result, error) ->
+				{
+					if (generation != characterPublishGeneration.get())
+					{
+						return;
+					}
+					characterPublishInFlight.set(false);
+					if (error != null || result == null)
+					{
+						failCharacterPublish(generation);
+						return;
+					}
+					showCharacterPublishStatus(generation, CharacterStatus.terminal(result.outcome), true, result.message);
+				});
+		});
+	}
+
 	void cancelCharacterPublish()
 	{
 		int generation = characterPublishGeneration.incrementAndGet();

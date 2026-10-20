@@ -112,6 +112,8 @@ public class ProfileAppearanceServiceTest
 	{
 		java.util.Map<ProfileAppearanceService.Outcome, String> expected = new java.util.EnumMap<>(ProfileAppearanceService.Outcome.class);
 		expected.put(ProfileAppearanceService.Outcome.PUBLISHED, "character updated!");
+		expected.put(ProfileAppearanceService.Outcome.DELETED, "character deleted");
+		expected.put(ProfileAppearanceService.Outcome.NO_CHARACTER, "no character to delete");
 		expected.put(ProfileAppearanceService.Outcome.RENDERING, "Still rendering...");
 		expected.put(ProfileAppearanceService.Outcome.RECOVERY_PENDING, "Publishing on hold");
 		expected.put(ProfileAppearanceService.Outcome.DISABLED, "Publishing unavailable");
