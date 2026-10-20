@@ -264,6 +264,35 @@ public class ProfileAppearanceFlowTest
 	}
 
 	@Test
+	public void aPublishWithAStaleCredentialRegistersAgainAndPublishes() throws Exception
+	{
+		String fresh = "c".repeat(64);
+		AtomicInteger calls = new AtomicInteger();
+		try (Harness h = new Harness(chain ->
+		{
+			String path = chain.request().url().encodedPath();
+			switch (calls.incrementAndGet())
+			{
+				case 1:
+					assertTrue(path.endsWith("/appearance/publish/main"));
+					return response(chain, 401, "{\"error\":\"invalid_appearance_credential\"}");
+				case 2:
+					assertTrue(path.endsWith("/device"));
+					return response(chain, 201, "{\"device_secret\":\"" + fresh + "\"}");
+				default:
+					assertTrue(path.endsWith("/appearance/publish/main"));
+					assertEquals("Bearer " + fresh, chain.request().header("Authorization"));
+					return response(chain, 200, READY);
+			}
+		}))
+		{
+			h.secret();
+			assertEquals(ProfileAppearanceService.Outcome.PUBLISHED, h.publish().get(5, TimeUnit.SECONDS).outcome);
+			assertEquals(3, calls.get());
+		}
+	}
+
+	@Test
 	public void anAccountWithNoProfileHasNoCharacterToDelete() throws Exception
 	{
 		try (Harness h = new Harness(chain -> response(chain, 409, "{\"error\":\"no_bound_account\"}")))

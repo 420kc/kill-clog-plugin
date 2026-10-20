@@ -404,6 +404,35 @@ public class PanelStatusRowCharacterizationTest
 			mouse(character, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
 			assertEquals(" ", status.getText());
 			assertEquals(1, deletes.get());
+			// Off the character nothing listens: shift changes nothing.
+			shiftKey(false);
+			shiftKey(true);
+			assertEquals(" ", status.getText());
+		});
+	}
+
+	@Test
+	public void aFailedDeleteIsOfferedBackOnShiftAndAPlainClickStillSaysPublish() throws Exception
+	{
+		enableControls();
+		edt(() ->
+		{
+			AtomicInteger publishes = new AtomicInteger();
+			AtomicInteger deletes = new AtomicInteger();
+			panel.setCharacterPublishHandler(publishes::incrementAndGet);
+			panel.setCharacterDeleteHandler(deletes::incrementAndGet);
+			panel.showCharacterPublishStatus(CharacterStatus.DELETING, false, null);
+			panel.showCharacterPublishStatus(CharacterStatus.FAILED, true, "Too many requests. Try again shortly.");
+			fire(expiry());
+			mouse(character, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
+			assertEquals("publish character", status.getText());
+			shiftKey(true);
+			assertEquals("delete failed - click to retry", status.getText());
+			shifted(character, MouseEvent.MOUSE_PRESSED, MouseEvent.BUTTON1);
+			assertEquals(1, deletes.get());
+			assertEquals(0, publishes.get());
+			shiftKey(false);
+			mouse(character, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
 		});
 	}
 
@@ -550,7 +579,8 @@ public class PanelStatusRowCharacterizationTest
 
 	private void shiftKey(boolean pressed)
 	{
-		field("shiftWatch", java.awt.KeyEventDispatcher.class).dispatchKeyEvent(new java.awt.event.KeyEvent(character,
+		// Through the focus manager, as RuneLite's keys arrive: only a watch that is registered hears it.
+		java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().dispatchEvent(new java.awt.event.KeyEvent(character,
 			pressed ? java.awt.event.KeyEvent.KEY_PRESSED : java.awt.event.KeyEvent.KEY_RELEASED, 0, 0,
 			java.awt.event.KeyEvent.VK_SHIFT, java.awt.event.KeyEvent.CHAR_UNDEFINED));
 	}

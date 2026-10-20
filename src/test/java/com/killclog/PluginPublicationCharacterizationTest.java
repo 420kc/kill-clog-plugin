@@ -75,6 +75,8 @@ public class PluginPublicationCharacterizationTest
 	private KillClogPlugin plugin;
 	private Runnable syncHandler;
 	private Runnable publishHandler;
+	private Runnable deleteHandler;
+	private final List<CompletableFuture<ProfileAppearanceService.PublishResult>> deletes = new ArrayList<>();
 	private Runnable captureListener;
 	private java.util.function.Function<String, java.util.function.UnaryOperator<String>> selfPbs;
 	private java.util.function.BiFunction<String, String, String> selfPb;
@@ -129,6 +131,12 @@ public class PluginPublicationCharacterizationTest
 			publishes.add(publish);
 			return publish;
 		});
+		when(appearance.deleteCurrent(any(), anyLong(), any())).thenAnswer(invocation ->
+		{
+			CompletableFuture<ProfileAppearanceService.PublishResult> delete = new CompletableFuture<>();
+			deletes.add(delete);
+			return delete;
+		});
 		doAnswer(invocation ->
 		{
 			clientQueue.add(invocation.getArgument(0));
@@ -159,6 +167,9 @@ public class PluginPublicationCharacterizationTest
 		handler = ArgumentCaptor.forClass(Runnable.class);
 		verify(panel).setCharacterPublishHandler(handler.capture());
 		publishHandler = handler.getValue();
+		handler = ArgumentCaptor.forClass(Runnable.class);
+		verify(panel).setCharacterDeleteHandler(handler.capture());
+		deleteHandler = handler.getValue();
 		handler = ArgumentCaptor.forClass(Runnable.class);
 		verify(localClogCache).setFirstPartyChangedListener(handler.capture());
 		captureListener = handler.getValue();
@@ -633,6 +644,28 @@ public class PluginPublicationCharacterizationTest
 		publishHandler.run();
 		settle();
 		assertEquals(2, publishes.size());
+	}
+
+	@Test
+	public void aShiftClickDeletesAndAPublishWaitsItsTurn() throws Exception
+	{
+		deleteHandler.run();
+		publishHandler.run();
+		settle();
+		assertEquals(1, deletes.size());
+		assertEquals(0, publishes.size());
+		verify(appearance).deleteCurrent(eq(RSN), eq(HASH), any());
+		verify(panel).showCharacterPublishStatus(CharacterStatus.DELETING, false, null);
+
+		deletes.get(0).complete(new ProfileAppearanceService.PublishResult(
+			ProfileAppearanceService.Outcome.DELETED, null));
+		settle();
+		verify(panel).showCharacterPublishStatus(CharacterStatus.DELETED, true, null);
+
+		publishHandler.run();
+		settle();
+		assertEquals(1, publishes.size());
+		assertEquals(1, deletes.size());
 	}
 
 	@Test

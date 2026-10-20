@@ -45,6 +45,7 @@ final class PanelStatusRow
 	private static final String CHARACTER_HOVER_TEXT = "publish character";
 	private static final String CHARACTER_DELETE_HOVER_TEXT = "delete character model";
 	private static final String CHARACTER_FAILURE_HOVER_TEXT = "character failed - click to retry";
+	private static final String CHARACTER_DELETE_FAILURE_HOVER_TEXT = "delete failed - click to retry";
 	private static final int SYNC_EXPIRY_MS = 2500;
 	private static final int CHARACTER_EXPIRY_MS = 3000;
 	// k1: the brand lime. Status chrome, not data coloring, so it does not
@@ -79,6 +80,8 @@ final class PanelStatusRow
 	@Setter(AccessLevel.PACKAGE)
 	private Runnable characterDeleteHandler;
 	private boolean characterShift;
+	// Whether the character's last request was a delete, so its failure is offered back on shift, not on a plain click.
+	private boolean characterDeleteRequest;
 	private final KeyEventDispatcher shiftWatch = event ->
 	{
 		if (event.getKeyCode() == KeyEvent.VK_SHIFT && event.getID() != KeyEvent.KEY_TYPED)
@@ -267,9 +270,16 @@ final class PanelStatusRow
 		};
 	}
 
+	/** What a click here does now: a failure is offered back only on the action that failed. */
 	private String characterHoverText()
 	{
-		return characterShift ? CHARACTER_DELETE_HOVER_TEXT : characterNoticeText != null ? characterNoticeText
+		if (characterShift)
+		{
+			return characterDeleteRequest
+				? characterFeedback.hoverText(CHARACTER_DELETE_HOVER_TEXT, CHARACTER_DELETE_FAILURE_HOVER_TEXT)
+				: CHARACTER_DELETE_HOVER_TEXT;
+		}
+		return characterNoticeText != null ? characterNoticeText : characterDeleteRequest ? CHARACTER_HOVER_TEXT
 			: characterFeedback.hoverText(CHARACTER_HOVER_TEXT, CHARACTER_FAILURE_HOVER_TEXT);
 	}
 
@@ -305,6 +315,7 @@ final class PanelStatusRow
 		characterNoticeText = null;
 		characterNoticeDetail = null;
 		characterHovered = false;
+		characterDeleteRequest = false;
 		clearCharacterSuccessGlow();
 	}
 
@@ -606,6 +617,10 @@ final class PanelStatusRow
 			else
 			{
 				characterFeedback.reset();
+				if (status.kind == Kind.PROGRESS)
+				{
+					characterDeleteRequest = status == CharacterStatus.DELETING;
+				}
 				if (status.kind == Kind.NOTICE)
 				{
 					characterNoticeText = (status == CharacterStatus.PENDING ? CharacterStatus.UNKNOWN : status).text;
