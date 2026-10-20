@@ -6,7 +6,8 @@ import java.util.function.Supplier;
 
 final class ClogProviderFanout
 {
-	private static final long PROVIDER_TIMEOUT_SECONDS = 7;
+	// Every provider leg gets this long; tests shorten it.
+	static long providerTimeoutSeconds = 7;
 
 	private ClogProviderFanout()
 	{
@@ -39,7 +40,7 @@ final class ClogProviderFanout
 		CompletableFuture<ClogResult> temple,
 		CompletableFuture<ClogResult> runeProfile)
 	{
-		return chooseFreshest(temple, runeProfile, PROVIDER_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+		return chooseFreshest(temple, runeProfile, providerTimeoutSeconds, TimeUnit.SECONDS);
 	}
 
 	/**
@@ -54,7 +55,7 @@ final class ClogProviderFanout
 	{
 		return chooseFreshest(temple, runeProfile)
 			.thenCombine(
-				providerOrNull(killclog, PROVIDER_TIMEOUT_SECONDS, TimeUnit.SECONDS),
+				providerOrNull(killclog, providerTimeoutSeconds, TimeUnit.SECONDS),
 				ClogResult::pickFullest);
 	}
 
@@ -66,6 +67,12 @@ final class ClogProviderFanout
 	{
 		return providerOrNull(temple, timeout, unit)
 			.thenCombine(providerOrNull(runeProfile, timeout, unit), ClogResult::pickFreshest);
+	}
+
+	/** One provider's answer within the time every provider gets, or none. */
+	static CompletableFuture<ClogResult> bounded(CompletableFuture<ClogResult> provider)
+	{
+		return providerOrNull(provider, providerTimeoutSeconds, TimeUnit.SECONDS);
 	}
 
 	private static CompletableFuture<ClogResult> providerOrNull(

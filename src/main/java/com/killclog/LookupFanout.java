@@ -172,8 +172,8 @@ final class LookupFanout
 	{
 		(league == null ? ClogProviderFanout.lookup(isSelf, () -> clogService.lookup(player),
 			() -> runeProfileService.lookupClog(player), () -> killclogService.lookupClog(player))
-			: isSelf && leagueLog != null ? clogService.lookupLocal(leagueLog, player)
-			: killclogService.lookupClog(player, league))
+			: ClogProviderFanout.bounded(isSelf && leagueLog != null ? clogService.lookupLocal(leagueLog, player)
+			: killclogService.lookupClog(player, league)))
 			.thenApply(this::onGamePages)
 			.thenAccept(result -> onEdtIfCurrent(stamp, () -> onResult.accept(result)))
 			.exceptionally(ex ->

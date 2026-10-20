@@ -85,6 +85,28 @@ public class LookupFanoutTest
 	}
 
 	@Test
+	public void aLeagueLogThatNeverAnswersEndsInsideTheProvidersBound() throws Exception
+	{
+		long kept = ClogProviderFanout.providerTimeoutSeconds;
+		ClogProviderFanout.providerTimeoutSeconds = 1;
+		try
+		{
+			KillclogService killclog = mock(KillclogService.class);
+			when(killclog.lookupClog("Friend", "demonic-pacts")).thenReturn(new CompletableFuture<>());
+			LookupFanout fanout = new LookupFanout(null, null, null, killclog);
+			fanout.readLeague("demonic-pacts", null);
+			CompletableFuture<ClogResult> shown = new CompletableFuture<>();
+			fanout.fetchClog("Friend", false, fanout.begin(), shown::complete, () -> shown.complete(null));
+			// No log, like any provider past its time, so the hiscore a lookup holds for it shows.
+			assertNull(shown.get(5, java.util.concurrent.TimeUnit.SECONDS));
+		}
+		finally
+		{
+			ClogProviderFanout.providerTimeoutSeconds = kept;
+		}
+	}
+
+	@Test
 	public void yourOwnLogIsTheViewedGamesAndOnlyYours()
 	{
 		ClogService clogs = mock(ClogService.class);
