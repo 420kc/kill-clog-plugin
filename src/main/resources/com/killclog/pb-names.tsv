@@ -1,5 +1,6 @@
-# Adventure log PB scroll sections that store under another name: the scroll's section (lowercased)<TAB>
-# vanilla's own PB store name, so a scroll harvest and a live kill-timer message land on the same key.
+# Boss names that differ beyond case, a mode's colon and a leading "The": a spelling one lane meets<TAB>
+# the name RuneLite's store uses, which every lane reaches (PersonalBests.encounter). The adventure log's
+# section titles, and the panel's Lunar Chests, which RuneLite files as "lunar chest".
 tzhaar fight cave	tztok-jad
 inferno	tzkal-zuk
 fortis colosseum	sol heredit

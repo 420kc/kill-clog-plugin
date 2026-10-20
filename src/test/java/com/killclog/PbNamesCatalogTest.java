@@ -6,8 +6,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.Test;
 
-/** adv-log-renames.tsv holds exactly the scroll sections that store under vanilla's other names. */
-public class AdvLogRenamesCatalogTest
+/** pb-names.tsv holds exactly the spellings that reach another boss name: the scroll sections and Lunar Chests. */
+public class PbNamesCatalogTest
 {
 	@Test
 	public void everyRenameLandsOnVanillasStoreName()
@@ -26,7 +26,7 @@ public class AdvLogRenamesCatalogTest
 		golden.put("tombs of amascut - expert", "tombs of amascut expert mode");
 
 		Map<String, String> catalog = new LinkedHashMap<>();
-		for (String[] row : CatalogTsv.rows(AdvLogPbs.class, "adv-log-renames.tsv", 2))
+		for (String[] row : CatalogTsv.rows(PersonalBests.class, "pb-names.tsv", 2))
 		{
 			catalog.put(row[0], row[1]);
 		}

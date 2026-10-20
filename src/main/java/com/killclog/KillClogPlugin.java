@@ -618,8 +618,8 @@ public class KillClogPlugin extends Plugin
 	{
 		java.util.List<String> keys = PersonalBests.profileKeys(configManager.getRSProfiles(), localAccountHash,
 			league == null ? RuneScapeProfileType.STANDARD.name() : killclogService.leagueProfileType(league));
-		PersonalBests pbs = new PersonalBests(configManager);
-		return boss -> pbs.pbText(keys, boss);
+		PersonalBests pbs = new PersonalBests(configManager, keys);
+		return pbs::pbText;
 	}
 
 	@Subscribe

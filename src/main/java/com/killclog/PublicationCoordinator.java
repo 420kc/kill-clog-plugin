@@ -598,21 +598,23 @@ final class PublicationCoordinator
 	 * bests; no public provider serves them, which makes this map the sync's
 	 * defining cargo. One account splinters into many rs-profile fragments
 	 * over time, so the gather reads every fragment owned by the captured
-	 * account hash ({@link PersonalBests#variantSecondsAcrossProfiles}). STANDARD-world fragments
+	 * account hash ({@link PersonalBests#records}). STANDARD-world fragments
 	 * only: Leagues and speedrun profiles share the display name but store
 	 * buffed-world times, and the min-merge would launder those into the
 	 * player's real record. Client thread (config reads).
 	 */
 	private Map<String, PbRecord> gatherPersonalBests(List<String> profileKeys, Map<String, Double> pbs)
 	{
-		PersonalBests store = new PersonalBests(configManager);
+		PersonalBests store = new PersonalBests(configManager, profileKeys);
 		Map<String, PbRecord> out = new LinkedHashMap<>();
 		for (HiscoreSkill boss : PanelData.BOSSES)
 		{
-			store.variantSecondsAcrossProfiles("personalbest", "", profileKeys, boss.getName()).values().stream()
-				.min(Double::compare).ifPresent(seconds -> pbs.put(boss.getName(), seconds));
 			// Each team size's time as the card shows it: RuneLite's store, the game's own records over it.
-			store.records(profileKeys, boss.getName()).forEach((key, record) -> out.merge(key, record, PbRecord::pick));
+			Map<String, PbRecord> records = store.records(boss.getName());
+			records.forEach((key, record) -> out.merge(key, record, PbRecord::pick));
+			// The boss's best at any team size, from those same records.
+			records.values().stream().mapToDouble(record -> record.seconds).min()
+				.ifPresent(seconds -> pbs.put(boss.getName(), seconds));
 		}
 		log.debug("killclog sync pb gather: {} owned profiles, {} bosses from RuneLite's store, {} detailed pbs"
 			+ " (the store, the adventure log, the collection log, kills seen)", profileKeys.size(), pbs.size(), out.size());

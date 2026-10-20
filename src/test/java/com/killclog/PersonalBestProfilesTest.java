@@ -8,7 +8,6 @@ import net.runelite.client.config.RuneScapeProfile;
 import net.runelite.client.config.RuneScapeProfileType;
 import org.junit.Test;
 import static org.junit.Assert.*;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -62,11 +61,11 @@ public class PersonalBestProfilesTest
 	public void emptySelectionNeverReadsTheCurrentProfileAsFallback()
 	{
 		// A null manager deliberately fails if any implicit profile read happens.
-		PersonalBests vanilla = new PersonalBests(null);
-		assertNull(vanilla.pbText(List.of(), "Zulrah"));
-		assertTrue(vanilla.variantSecondsAcrossProfiles("personalbest", "", List.of(), "Zulrah").isEmpty());
-		assertTrue(vanilla.variantSecondsAcrossProfiles(AdvLogPbs.CONFIG_GROUP, AdvLogPbs.KEY_PREFIX,
-			List.of(), "Zulrah").isEmpty());
+		ConfigManager config = mock(ConfigManager.class);
+		PersonalBests none = new PersonalBests(config, List.of());
+		assertNull(none.pbText("Zulrah"));
+		assertTrue(none.records("Zulrah").isEmpty());
+		org.mockito.Mockito.verifyNoInteractions(config);
 	}
 
 	@Test
@@ -76,14 +75,12 @@ public class PersonalBestProfilesTest
 		// the sync, so the card and killclog.com never disagree (2.6.3).
 		ConfigManager config = mock(ConfigManager.class);
 		when(config.getRSProfileKey()).thenReturn("main");
-		org.mockito.Mockito.doReturn(120.0).when(config).getConfiguration(eq("personalbest"), eq("rsprofile.main"),
-			eq("zulrah"), org.mockito.ArgumentMatchers.any(java.lang.reflect.Type.class));
-		org.mockito.Mockito.doReturn(130.0).when(config).getConfiguration(eq(AdvLogPbs.CONFIG_GROUP), eq("rsprofile.main"),
-			eq(AdvLogPbs.KEY_PREFIX + "zulrah"), org.mockito.ArgumentMatchers.any(java.lang.reflect.Type.class));
-		PersonalBests store = new PersonalBests(config);
-		List<String> keys = List.of("rsprofile.main");
-		assertEquals(PbRecord.Source.ADVLOG, store.records(keys, "Zulrah").get("zulrah").source);
-		assertEquals(PersonalBests.formatSeconds(130.0), store.pbText(keys, "Zulrah"));
+		StoredPbs.stub(config, new Object[][]{
+			{"personalbest", "rsprofile.main", "zulrah", 120.0},
+			{AdvLogPbs.CONFIG_GROUP, "rsprofile.main", AdvLogPbs.KEY_PREFIX + "zulrah", 130.0}});
+		PersonalBests store = new PersonalBests(config, List.of("rsprofile.main"));
+		assertEquals(PbRecord.Source.ADVLOG, store.records("Zulrah").get("zulrah").source);
+		assertEquals(PersonalBests.formatSeconds(130.0), store.pbText("Zulrah"));
 	}
 
 	@Test
@@ -119,24 +116,57 @@ public class PersonalBestProfilesTest
 			{"rsprofile.old", "tombs of amascut expert mode 6 players", 1634.4},
 			{"rsprofile.old", "tombs of amascut expert mode solo", 1651.2},
 			{"rsprofile.older", "tombs of amascut expert mode solo", 1700.4}};
-		for (Object[] pb : stored)
+		Object[][] rows = new Object[stored.length][];
+		for (int i = 0; i < stored.length; i++)
 		{
-			when(config.getConfiguration(eq("personalbest"), eq((String) pb[0]), eq((String) pb[1]),
-				eq((java.lang.reflect.Type) double.class))).thenReturn((Double) pb[2]);
+			rows[i] = new Object[]{"personalbest", stored[i][0], stored[i][1], stored[i][2]};
 		}
-		PersonalBests bests = new PersonalBests(config);
+		StoredPbs.stub(config, rows);
 		List<String> keys = List.of("rsprofile.old", "rsprofile.chosen", "rsprofile.older");
+		PersonalBests bests = new PersonalBests(config, keys);
 
-		assertEquals(Map.of("alchemical hydra", 101.4),
-			bests.variantSecondsAcrossProfiles("personalbest", "", keys, "Alchemical Hydra"));
-		Map<String, Double> toa = bests.variantSecondsAcrossProfiles("personalbest", "", keys, "Tombs of Amascut: Expert Mode");
+		assertEquals(Map.of("alchemical hydra", 101.4), seconds(bests.records("Alchemical Hydra")));
+		Map<String, Double> toa = seconds(bests.records("Tombs of Amascut: Expert Mode"));
 		assertEquals(Double.valueOf(1798.8), toa.get("tombs of amascut expert mode 6 players"));
 		assertEquals("a variant the chosen one lacks: the fastest ignored one", Double.valueOf(1651.2),
 			toa.get("tombs of amascut expert mode solo"));
 
 		when(config.getRSProfileKey()).thenReturn(null);
 		assertEquals("no chosen profile among them: the fastest of all", Map.of("alchemical hydra", 101.0),
-			bests.variantSecondsAcrossProfiles("personalbest", "", keys, "Alchemical Hydra"));
+			seconds(new PersonalBests(config, keys).records("Alchemical Hydra")));
+	}
+
+	@Test
+	public void lunarChestsReadTheTimesRuneLiteFilesAsLunarChest()
+	{
+		// RuneLite and the adventure log name the boss "Lunar Chest"; the panel and the hiscores, "Lunar Chests".
+		ConfigManager config = mock(ConfigManager.class);
+		StoredPbs.stub(config, new Object[][]{
+			{"personalbest", "rsprofile.main", "lunar chest", 95.4},
+			{AdvLogPbs.CONFIG_GROUP, "rsprofile.main", AdvLogPbs.KEY_PREFIX + "lunar chest", 99.0}});
+		Map<String, PbRecord> lunar = new PersonalBests(config, List.of("rsprofile.main")).records("Lunar Chests");
+		assertEquals("the sync keeps the name the server files it under", List.of("lunar chests"),
+			List.copyOf(lunar.keySet()));
+		assertEquals(PbRecord.Source.ADVLOG, lunar.get("lunar chests").source);
+	}
+
+	@Test
+	public void aTeamSizeNoTableListedIsStillRead()
+	{
+		// Read from the keys a profile holds, a size RuneLite starts writing tomorrow shows the day it lands.
+		ConfigManager config = mock(ConfigManager.class);
+		StoredPbs.stub(config, new Object[][]{
+			{"personalbest", "rsprofile.main", "chambers of xeric 100 players", 2400.0},
+			{"personalbest", "rsprofile.main", "chambers of xeric challenge mode 3 players", 2000.0}});
+		assertEquals(Map.of("chambers of xeric 100 players", 2400.0),
+			seconds(new PersonalBests(config, List.of("rsprofile.main")).records("Chambers of Xeric")));
+	}
+
+	private static Map<String, Double> seconds(Map<String, PbRecord> records)
+	{
+		Map<String, Double> out = new LinkedHashMap<>();
+		records.forEach((key, record) -> out.put(key, record.seconds));
+		return out;
 	}
 
 	private static RuneScapeProfile profile(String name, long hash, String key)

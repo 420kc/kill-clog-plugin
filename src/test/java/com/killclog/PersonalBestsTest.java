@@ -1,7 +1,5 @@
 package com.killclog;
 
-import java.util.Arrays;
-import java.util.List;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -18,27 +16,18 @@ public class PersonalBestsTest
 	}
 
 	@Test
-	public void teamSuffixesCoverEveryVanillaSizeBucket()
+	public void everyTeamSizeShapeVanillaAndTheAdventureLogWriteIsRead()
 	{
-		// Vanilla's longBossName emits these exact size keys for CoX/CM;
-		// missing one means a pb stored there shows absent or slower.
-		List<String> suffixes = Arrays.asList(PersonalBests.TEAM_SUFFIXES);
-		assertTrue(suffixes.contains(""));
-		assertTrue(suffixes.contains(" solo"));
-		for (int size = 1; size <= 10; size++)
+		java.util.Map<String, Double> store = new java.util.HashMap<>();
+		String[] sizes = {"", " solo", " 1 player", " 2 players", " 10 players", " 11-15 players", " 16-23 players",
+			" 24+ players", " 6+ players"};
+		for (String size : sizes)
 		{
-			assertTrue("missing size " + size,
-				suffixes.contains(" " + size + " player" + (size == 1 ? "" : "s")));
+			store.put("chambers of xeric" + size, 1000.0);
 		}
-		assertTrue(suffixes.contains(" 11-15 players"));
-		assertTrue(suffixes.contains(" 16-23 players"));
-		assertTrue(suffixes.contains(" 24+ players"));
-		// The adventure log emits open-ended sizes for old Nightmare records.
-		for (int size = 2; size <= 10; size++)
-		{
-			assertTrue("missing size " + size + "+",
-				suffixes.contains(" " + size + "+ players"));
-		}
+		assertEquals(sizes.length, PersonalBests.variantSeconds(store, "Chambers of Xeric").size());
+		assertEquals("the plain key first, so a team size names a tie", "chambers of xeric",
+			PersonalBests.variantSeconds(store, "Chambers of Xeric").keySet().iterator().next());
 	}
 
 	@Test
@@ -47,7 +36,7 @@ public class PersonalBestsTest
 		// Vanilla's chat commands (99b3c90a) file the raid's time as "fractured archive", no "The", no team size.
 		java.util.Map<String, Double> store = java.util.Map.of("fractured archive", 145.8);
 		assertEquals(java.util.Map.of("the fractured archive", 145.8),
-			PersonalBests.variantSeconds(store::get, PanelData.TFA_HISCORE));
+			PersonalBests.variantSeconds(store, PanelData.TFA_HISCORE));
 	}
 
 	@Test
@@ -62,7 +51,7 @@ public class PersonalBestsTest
 		store.put("corrupted gauntlet", 452.5);
 
 		java.util.Map<String, Double> cox =
-			PersonalBests.variantSeconds(store::get, "Chambers of Xeric");
+			PersonalBests.variantSeconds(store, "Chambers of Xeric");
 		assertEquals(2, cox.size());
 		assertEquals(1800.0, cox.get("chambers of xeric solo"), 0.001);
 		assertEquals(1500.0, cox.get("chambers of xeric 3 players"), 0.001);
@@ -70,23 +59,38 @@ public class PersonalBestsTest
 		assertFalse(cox.containsKey("chambers of xeric"));
 
 		java.util.Map<String, Double> gauntlet =
-			PersonalBests.variantSeconds(store::get, "The Corrupted Gauntlet");
+			PersonalBests.variantSeconds(store, "The Corrupted Gauntlet");
 		assertEquals(1, gauntlet.size());
 		assertEquals(452.5, gauntlet.get("the corrupted gauntlet"), 0.001);
 	}
 
 	@Test
-	public void keyCandidatesMatchVanillaStorageNames()
+	public void everyLanesSpellingReachesOneName()
 	{
-		// Vanilla stores mode raids without the colon.
-		assertArrayEquals(new String[]{"chambers of xeric challenge mode"},
-			PersonalBests.keyCandidates("Chambers of Xeric: Challenge Mode"));
-		assertArrayEquals(new String[]{"theatre of blood hard mode"},
-			PersonalBests.keyCandidates("Theatre of Blood: Hard Mode"));
-		// "The" bosses try both shapes; vanilla's names drop the article.
-		assertArrayEquals(new String[]{"the corrupted gauntlet", "corrupted gauntlet"},
-			PersonalBests.keyCandidates("The Corrupted Gauntlet"));
-		assertArrayEquals(new String[]{"zulrah"},
-			PersonalBests.keyCandidates("Zulrah"));
+		assertEquals("chambers of xeric challenge mode", PersonalBests.encounter("Chambers of Xeric: Challenge Mode"));
+		assertEquals("theatre of blood hard mode", PersonalBests.encounter("theatre of blood hard mode"));
+		assertEquals("corrupted gauntlet", PersonalBests.encounter("The Corrupted Gauntlet"));
+		assertEquals("lunar chest", PersonalBests.encounter("Lunar Chests"));
+		assertEquals("tztok-jad", PersonalBests.encounter("TzHaar Fight Cave"));
+		// The sync's name never moves: the server files every time under it.
+		assertEquals("the corrupted gauntlet", PersonalBests.syncBase("The Corrupted Gauntlet"));
+		assertEquals("theatre of blood hard mode", PersonalBests.syncBase("Theatre of Blood: Hard Mode"));
+	}
+
+	@Test
+	public void everyPanelBossReadsTheKeyRuneLiteStoresItUnder() throws Exception
+	{
+		// RuneLite's chat commands file a boss's time under longBossName's answer for the name, lowercased.
+		java.lang.reflect.Method store = net.runelite.client.plugins.chatcommands.ChatCommandsPlugin.class
+			.getDeclaredMethod("longBossName", String.class);
+		store.setAccessible(true);
+		java.util.Set<String> names = new java.util.HashSet<>();
+		for (net.runelite.client.hiscore.HiscoreSkill boss : PanelData.BOSSES)
+		{
+			String key = ((String) store.invoke(null, boss.getName().toLowerCase(java.util.Locale.ROOT)))
+				.toLowerCase(java.util.Locale.ROOT);
+			assertEquals(boss.getName(), PersonalBests.encounter(boss.getName()), PersonalBests.encounter(key));
+			assertTrue("two bosses share a name: " + boss.getName(), names.add(PersonalBests.encounter(boss.getName())));
+		}
 	}
 }

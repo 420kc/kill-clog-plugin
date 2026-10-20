@@ -199,7 +199,7 @@ public class KillclogService
 		}
 		Double best = pbs.get(panelBossName);
 		return best != null && best > 0 ? PersonalBests.formatSeconds(best)
-			: PersonalBests.labeled(PersonalBests.variantSeconds(pbs::get, panelBossName), panelBossName);
+			: PersonalBests.labeled(PersonalBests.variantSeconds(pbs, panelBossName), panelBossName);
 	}
 
 	private CompletableFuture<Set<String>> ensureIndex()

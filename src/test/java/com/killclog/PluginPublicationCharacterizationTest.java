@@ -986,12 +986,8 @@ public class PluginPublicationCharacterizationTest
 			new RuneScapeProfile(RSN, RuneScapeProfileType.STANDARD, HASH, "main"),
 			new RuneScapeProfile(RSN, RuneScapeProfileType.RAGING_ECHOES_LEAGUE, HASH, "earlier"),
 			new RuneScapeProfile(RSN, RuneScapeProfileType.DEMONIC_PACTS_LEAGUE, HASH, "league")));
-		String[][] recorded = {{"rsprofile.main", "5.0"}, {"rsprofile.earlier", "7.0"}, {"rsprofile.league", "9.6"}};
-		for (String[] pb : recorded)
-		{
-			when(configManager.getConfiguration(eq("personalbest"), eq(pb[0]), eq("zulrah"),
-				eq((java.lang.reflect.Type) double.class))).thenReturn(Double.valueOf(pb[1]));
-		}
+		StoredPbs.stub(configManager, new Object[][]{{"personalbest", "rsprofile.main", "zulrah", 5.0},
+			{"personalbest", "rsprofile.earlier", "zulrah", 7.0}, {"personalbest", "rsprofile.league", "zulrah", 9.6}});
 	}
 
 	/** Two fragments of your account and another account's, with times in RuneLite's store and the adventure log. */
@@ -1013,11 +1009,7 @@ public class PluginPublicationCharacterizationTest
 			{"killclog", "rsprofile.main", "advlogpb.vorkath", 70.0},
 			{"personalbest", "rsprofile.frag", "leviathan", 150.0},
 			{"killclog", "rsprofile.other", "advlogpb.leviathan", 2.0}};
-		for (Object[] pb : stored)
-		{
-			when(configManager.getConfiguration(eq((String) pb[0]), eq((String) pb[1]), eq((String) pb[2]),
-				eq((java.lang.reflect.Type) double.class))).thenReturn((Double) pb[3]);
-		}
+		StoredPbs.stub(configManager, stored);
 	}
 
 	@Test
@@ -1044,6 +1036,8 @@ public class PluginPublicationCharacterizationTest
 		assertEquals("the adventure log is the game's: it takes RuneLite's time; another account never counts", want, got);
 		assertEquals(Double.valueOf(55.5), collapsed.getValue().get("Zulrah"));
 		assertEquals(Double.valueOf(1200.0), collapsed.getValue().get("Chambers of Xeric"));
+		// Each boss's one time is the best of the records above, so a time only the game's own log holds is there too.
+		assertEquals(Double.valueOf(70.0), collapsed.getValue().get("Vorkath"));
 	}
 
 	@Test
@@ -1072,8 +1066,8 @@ public class PluginPublicationCharacterizationTest
 			if (skill.getType() == net.runelite.client.hiscore.HiscoreSkillType.BOSS)
 			{
 				bosses.add(skill.getName());
-				want.add(new PersonalBests(configManager).pbText(PersonalBests.profileKeys(configManager.getRSProfiles(),
-					HASH, RuneScapeProfileType.STANDARD.name()), skill.getName()));
+				want.add(new PersonalBests(configManager, PersonalBests.profileKeys(configManager.getRSProfiles(),
+					HASH, RuneScapeProfileType.STANDARD.name())).pbText(skill.getName()));
 			}
 		}
 		org.junit.Assert.assertTrue(want.contains(PersonalBests.formatSeconds(55.5)));

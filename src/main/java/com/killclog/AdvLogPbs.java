@@ -102,22 +102,6 @@ final class AdvLogPbs
 	private static final Pattern PB_PATTERN = Pattern.compile(
 		"Fastest (?:kill|run|Room time)(?: - \\(Team size: \\(?" + TEAM_SIZES + "\\)\\)?)?: (?<time>[0-9:]+(?:\\.[0-9]+)?)");
 
-	/**
-	 * Scroll section titles whose stored pb key differs beyond the article and
-	 * colon shapes {@link PersonalBests#keyCandidates} already bridges. Values
-	 * are vanilla's own store names (lowercased), so a scroll harvest and a
-	 * live kill-timer message land on the same key.
-	 */
-	private static final Map<String, String> SCROLL_RENAMES = new LinkedHashMap<>();
-
-	static
-	{
-		for (String[] row : CatalogTsv.rows(AdvLogPbs.class, "adv-log-renames.tsv", 2))
-		{
-			SCROLL_RENAMES.put(row[0], row[1]);
-		}
-	}
-
 	private final ConfigManager configManager;
 
 	/**
@@ -251,18 +235,10 @@ final class AdvLogPbs
 		return out;
 	}
 
-	/**
-	 * A scroll section title in the pb store's key space: lowercase, leading
-	 * article dropped (vanilla's store names do - "The Nightmare" lives under
-	 * "nightmare"), the mode-raid separator collapsed, true renames applied.
-	 * Whatever shape survives, the gather probes both article forms via
-	 * {@link PersonalBests#keyCandidates}, so the lanes converge either way.
-	 */
+	/** A scroll section title as the reader names its boss ({@link PersonalBests#encounter}). */
 	/* package */ static String canonicalSection(String title)
 	{
-		String key = title.toLowerCase(Locale.ROOT).trim();
-		String[] keys = PersonalBests.keyCandidates(key);
-		return SCROLL_RENAMES.getOrDefault(key, keys[keys.length - 1]);
+		return PersonalBests.encounter(title);
 	}
 
 	/** Vanilla's time parser: mm:ss(.f) and h:mm:ss(.f). */

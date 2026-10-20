@@ -1,6 +1,5 @@
 package com.killclog;
 
-import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Matcher;
@@ -23,7 +22,7 @@ import net.runelite.client.util.Text;
 final class KillLog
 {
 	/* package */ static final String KEY_PREFIX = "livepb.";
-	private static final String TAG_PREFIX = "livepbtag.";
+	/* package */ static final String TAG_PREFIX = "livepbtag.";
 	// RuneLite's window: a kill count and its time arrive on the same tick, now and then a tick or two apart.
 	private static final int PAIR_TICKS = 2;
 	private static final String TIME = "\\d+(?::\\d{2})+(?:\\.\\d+)?";
@@ -170,23 +169,5 @@ final class KillLog
 	private static String teamLabel(int players)
 	{
 		return players < 1 ? null : players == 1 ? "Solo" : players + " players";
-	}
-
-	/** A kept PB with what the game showed at the kill that set it, from a profile holding that same time. */
-	static PbRecord labeled(ConfigManager configManager, List<String> profileKeys, String key, double seconds)
-	{
-		for (String profileKey : profileKeys)
-		{
-			for (String stored : PersonalBests.keyCandidates(key))
-			{
-				PbRecord pb = PbRecord.live(seconds,
-					configManager.getConfiguration(AdvLogPbs.CONFIG_GROUP, profileKey, TAG_PREFIX + stored));
-				if (pb.labeled())
-				{
-					return pb;
-				}
-			}
-		}
-		return new PbRecord(seconds, PbRecord.Source.LIVE);
 	}
 }

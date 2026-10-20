@@ -229,18 +229,26 @@ public class KillLogTest
 		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
 	}
 
+	private PbRecord kept(double seconds, String tag)
+	{
+		ConfigManager config = mock(ConfigManager.class);
+		StoredPbs.stub(config, new Object[][]{{"killclog", "rsprofile.p1", "livepb.nightmare 5 players", seconds}});
+		when(config.getConfiguration("killclog", "rsprofile.p1", "livepbtag.nightmare 5 players")).thenReturn(tag);
+		return new PersonalBests(config, List.of("rsprofile.p1")).records("Nightmare").get("nightmare 5 players");
+	}
+
 	@Test
 	public void theSyncReadsTheLabelsOfTheKeptTime()
 	{
-		when(configManager.getConfiguration("killclog", "p1", "livepbtag.nightmare 5 players")).thenReturn("208.0|5||kill|1130");
-		PbRecord pb = KillLog.labeled(configManager, List.of("p1"), "the nightmare 5 players", 208.0);
+		PbRecord pb = kept(208.0, "208.0|5||kill|1130");
 		assertEquals(PbRecord.Source.LIVE, pb.source);
 		assertEquals(Integer.valueOf(5), pb.team);
 		assertNull(pb.scale);
 		assertEquals("kill", pb.timer);
 		assertEquals(Integer.valueOf(1130), pb.kc);
 
-		PbRecord other = KillLog.labeled(configManager, List.of("p1"), "the nightmare 5 players", 200.4);
+		// A label kept for another time names nothing.
+		PbRecord other = kept(200.4, "208.0|5||kill|1130");
 		assertNull(other.team);
 		assertNull(other.kc);
 	}
@@ -248,14 +256,11 @@ public class KillLogTest
 	@Test
 	public void aLabelThatDoesntReadIsSkippedAndTheTimeStillSyncs()
 	{
-		when(configManager.getConfiguration("killclog", "p1", "livepbtag.nightmare 5 players")).thenReturn("208.0|five||kill|1130");
-		PbRecord pb = KillLog.labeled(configManager, List.of("p1"), "the nightmare 5 players", 208.0);
+		PbRecord pb = kept(208.0, "208.0|five||kill|1130");
 		assertEquals(PbRecord.Source.LIVE, pb.source);
 		assertEquals(208.0, pb.seconds, 0);
 		assertNull(pb.team);
 		assertNull(pb.timer);
-
-		when(configManager.getConfiguration("killclog", "p1", "livepbtag.nightmare 5 players")).thenReturn("x|5||kill|1130");
-		assertNull(KillLog.labeled(configManager, List.of("p1"), "the nightmare 5 players", 208.0).team);
+		assertNull(kept(208.0, "x|5||kill|1130").team);
 	}
 }

@@ -6,8 +6,9 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 
 /**
- * Which time a sync sends for one key. The game's records (the adventure log Kill Clog read off the player's own
- * screen, the collection log's line, a kill seen) outrank RuneLite's file; between them the faster is the newer.
+ * Which time a sync sends for one key. The collection log's line is the game's current record and wins whenever
+ * it was read. The game's other records (the adventure log Kill Clog read off the player's own screen, a kill seen)
+ * outrank RuneLite's file; between them the faster is the newer.
  */
 public class PbLanesTest
 {
@@ -38,12 +39,21 @@ public class PbLanesTest
 	}
 
 	@Test
-	public void betweenTheGamesRecordsTheFasterWinsAndTheLaterLaneTakesATie()
+	public void theCollectionLogsLineIsTheGamesCurrentRecordAndWinsWheneverItWasRead()
 	{
-		assertEquals("88.8 advlog", after(pb(88.8, "advlog"), pb(90.0, "clog")));
-		assertEquals("88.8 clog", after(pb(88.8, "advlog"), pb(88.8, "clog")));
+		// A record the game has since changed (a reset, a rework) can't outlast the line the server sends now.
+		assertEquals("90.0 clog", after(pb(88.8, "advlog"), pb(90.0, "clog")));
+		assertEquals("90.0 clog", after(pb(90.0, "clog"), pb(87.6, "live")));
+		assertEquals("90.0 clog", after(pb(88.8, "store"), pb(90.0, "clog"), pb(88.2, "advlog")));
 		assertEquals("87.6 clog", after(pb(88.8, "advlog"), pb(87.6, "clog")));
-		assertEquals("88.8 live", after(pb(88.8, "store"), pb(88.8, "advlog"), pb(88.8, "clog"), pb(88.8, "live")));
+	}
+
+	@Test
+	public void betweenTheOtherGameRecordsTheFasterWinsAndTheLaterLaneTakesATie()
+	{
+		assertEquals("88.2 live", after(pb(88.8, "advlog"), pb(88.2, "live")));
+		assertEquals("88.8 advlog", after(pb(88.8, "advlog"), pb(90.0, "live")));
+		assertEquals("88.8 live", after(pb(88.8, "store"), pb(88.8, "advlog"), pb(88.8, "live")));
 	}
 
 	@Test

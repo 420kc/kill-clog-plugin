@@ -65,7 +65,9 @@ final class PbRecord
 	}
 
 	/**
-	 * The record that wins a key. RuneLite's file fills only what nothing has, the profile RuneLite chose first. A
+	 * The record that wins a key. The collection log's line is the game's current record, read from the server
+	 * exactly, so it wins whenever this client has read it: an older, faster time elsewhere can't outlast a record
+	 * the game has since changed. RuneLite's file fills only what nothing has, the profile RuneLite chose first. A
 	 * game record replaces the file's even when slower, except that a whole second leaves a file time it rounds from
 	 * alone: the same time with its tenths, shown without them. Between game records, faster wins and the later takes a tie.
 	 */
@@ -74,6 +76,10 @@ final class PbRecord
 		if (kept == null)
 		{
 			return seen;
+		}
+		if ((kept.source == Source.CLOG) != (seen.source == Source.CLOG))
+		{
+			return kept.source == Source.CLOG ? kept : seen;
 		}
 		if (seen.source == Source.STORE)
 		{
