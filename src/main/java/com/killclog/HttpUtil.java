@@ -243,15 +243,16 @@ final class HttpUtil
 
 	}
 
+	/** A POST; a character request names its account, whose bound name it must be for. */
 	static CompletableFuture<HttpResult> httpPostJson(OkHttpClient client, String url, String json,
-		@Nullable String bearerToken)
+		@Nullable String accountHash)
 	{
-		return send(client, url, json, bearerToken);
+		return send(client, url, json, accountHash);
 	}
 
 	/** GETs keep only a successful body; POSTs keep every body and the Retry-After advice. */
 	private static CompletableFuture<HttpResult> send(OkHttpClient client, String url, @Nullable String json,
-		@Nullable String bearerToken)
+		@Nullable String accountHash)
 	{
 		boolean post = json != null;
 		Request.Builder request = request(url);
@@ -259,9 +260,9 @@ final class HttpUtil
 		{
 			request.post(RequestBody.create(MediaType.parse("application/json; charset=utf-8"), json));
 		}
-		if (bearerToken != null && bearerToken.matches("[a-f0-9]{64}"))
+		if (accountHash != null)
 		{
-			request.header("Authorization", "Bearer " + bearerToken);
+			request.header("X-Account-Hash", accountHash);
 		}
 		return enqueue(client, request.build(),
 			(response, body) -> new HttpResult(response.code(),

@@ -16,7 +16,6 @@ enum CharacterStatus
 	FAILED("Character failed", null),
 	APPEARANCE("Change equipment, then retry", StatusMessage.Kind.NOTICE),
 	PENDING("Still rendering...", StatusMessage.Kind.NOTICE),
-	RECOVERY("Publishing on hold", StatusMessage.Kind.NOTICE),
 	DISABLED("Publishing unavailable", StatusMessage.Kind.NOTICE),
 	UNKNOWN("Check your profile", StatusMessage.Kind.NOTICE),
 	BUSY("Finishing previous request...", StatusMessage.Kind.RESULT),
@@ -42,7 +41,6 @@ enum CharacterStatus
 			case DELETED: return DELETED;
 			case NO_CHARACTER: return NO_CHARACTER;
 			case RENDERING: return PENDING;
-			case RECOVERY_PENDING: return RECOVERY;
 			case DISABLED: return DISABLED;
 			case BUSY: return BUSY;
 			case UNKNOWN: return UNKNOWN;

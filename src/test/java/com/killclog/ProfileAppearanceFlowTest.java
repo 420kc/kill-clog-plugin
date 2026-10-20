@@ -3,12 +3,8 @@ package com.killclog;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import java.lang.reflect.Proxy;
-import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -36,8 +32,6 @@ import static org.junit.Assert.*;
 
 public class ProfileAppearanceFlowTest
 {
-	private static final String SECRET = "a".repeat(64);
-	private static final String TOKEN = "b".repeat(64);
 	private static final String READY = "{\"published\":true,\"render_status\":\"ready\"}";
 
 	@Test
@@ -57,7 +51,6 @@ public class ProfileAppearanceFlowTest
 			assertEquals("Change equipment, then retry", CharacterStatus.terminal(result.outcome).text);
 			assertTrue(result.message.startsWith("Equip or unequip an item"));
 			assertEquals(0, calls.get());
-			h.secret();
 			h.equipment[3] = 4151 + PlayerComposition.ITEM_OFFSET;
 			h.service.captureOriginalAppearance(h.player);
 			assertEquals(ProfileAppearanceService.Outcome.PUBLISHED, h.publish().get(3, TimeUnit.SECONDS).outcome);
@@ -80,7 +73,6 @@ public class ProfileAppearanceFlowTest
 			return response(chain, 200, READY);
 		}))
 		{
-			h.secret();
 			h.equipment[3] = 4151 + PlayerComposition.ITEM_OFFSET;
 			h.equipment[6] = 300;
 			h.colors[0] = 2;
@@ -192,39 +184,36 @@ public class ProfileAppearanceFlowTest
 	}
 
 	@Test
-	public void registrationThenPublishUsesNewCredential() throws Exception
+	public void aPublishProvesItsAccountByItsHashAlone() throws Exception
 	{
 		AtomicInteger calls = new AtomicInteger();
 		try (Harness h = new Harness(chain ->
 		{
-			if (calls.incrementAndGet() == 1)
-			{
-				assertTrue(chain.request().url().encodedPath().endsWith("/device"));
-				return response(chain, 201, "{\"device_secret\":\"" + SECRET + "\"}");
-			}
-			assertEquals("Bearer " + SECRET, chain.request().header("Authorization"));
+			calls.incrementAndGet();
+			assertTrue(chain.request().url().encodedPath().endsWith("/appearance/publish/main"));
+			assertEquals("1", chain.request().header("X-Account-Hash"));
+			assertNull(chain.request().header("Authorization"));
 			return response(chain, 200, READY);
 		}))
 		{
 			assertEquals(ProfileAppearanceService.Outcome.PUBLISHED, h.publish().get(5, TimeUnit.SECONDS).outcome);
-			assertEquals(2, calls.get());
-			assertEquals(SECRET, h.config.get(h.key("deviceSecret")));
+			assertEquals(1, calls.get());
 		}
 	}
 
 	@Test
-	public void shiftClickDeletesTheCharacterWithThisInstallationsCredential() throws Exception
+	public void shiftClickDeletesTheCharacterWithItsAccountHash() throws Exception
 	{
 		AtomicInteger calls = new AtomicInteger();
 		try (Harness h = new Harness(chain ->
 		{
 			calls.incrementAndGet();
 			assertTrue(chain.request().url().encodedPath().endsWith("/appearance/delete"));
-			assertEquals("Bearer " + SECRET, chain.request().header("Authorization"));
+			assertEquals("1", chain.request().header("X-Account-Hash"));
+			assertNull(chain.request().header("Authorization"));
 			return response(chain, 200, "{\"deleted\":true}");
 		}))
 		{
-			h.secret();
 			ProfileAppearanceService.PublishResult result = h.delete().get(5, TimeUnit.SECONDS);
 			assertEquals(ProfileAppearanceService.Outcome.DELETED, result.outcome);
 			assertEquals("character deleted", CharacterStatus.terminal(result.outcome).text);
@@ -233,71 +222,10 @@ public class ProfileAppearanceFlowTest
 	}
 
 	@Test
-	public void aDeleteWithoutACredentialRegistersFirstAsAPublishDoes() throws Exception
-	{
-		String fresh = "c".repeat(64);
-		AtomicInteger calls = new AtomicInteger();
-		try (Harness h = new Harness(chain ->
-		{
-			String path = chain.request().url().encodedPath();
-			switch (calls.incrementAndGet())
-			{
-				case 1:
-					// The saved credential is stale: the server no longer takes it.
-					assertTrue(path.endsWith("/appearance/delete"));
-					return response(chain, 401, "{\"error\":\"invalid_appearance_credential\"}");
-				case 2:
-					assertTrue(path.endsWith("/device"));
-					return response(chain, 201, "{\"device_secret\":\"" + fresh + "\"}");
-				default:
-					assertTrue(path.endsWith("/appearance/delete"));
-					assertEquals("Bearer " + fresh, chain.request().header("Authorization"));
-					return response(chain, 200, "{\"deleted\":true}");
-			}
-		}))
-		{
-			h.secret();
-			assertEquals(ProfileAppearanceService.Outcome.DELETED, h.delete().get(5, TimeUnit.SECONDS).outcome);
-			assertEquals(3, calls.get());
-			assertEquals(fresh, h.config.get(h.key("deviceSecret")));
-		}
-	}
-
-	@Test
-	public void aPublishWithAStaleCredentialRegistersAgainAndPublishes() throws Exception
-	{
-		String fresh = "c".repeat(64);
-		AtomicInteger calls = new AtomicInteger();
-		try (Harness h = new Harness(chain ->
-		{
-			String path = chain.request().url().encodedPath();
-			switch (calls.incrementAndGet())
-			{
-				case 1:
-					assertTrue(path.endsWith("/appearance/publish/main"));
-					return response(chain, 401, "{\"error\":\"invalid_appearance_credential\"}");
-				case 2:
-					assertTrue(path.endsWith("/device"));
-					return response(chain, 201, "{\"device_secret\":\"" + fresh + "\"}");
-				default:
-					assertTrue(path.endsWith("/appearance/publish/main"));
-					assertEquals("Bearer " + fresh, chain.request().header("Authorization"));
-					return response(chain, 200, READY);
-			}
-		}))
-		{
-			h.secret();
-			assertEquals(ProfileAppearanceService.Outcome.PUBLISHED, h.publish().get(5, TimeUnit.SECONDS).outcome);
-			assertEquals(3, calls.get());
-		}
-	}
-
-	@Test
 	public void anAccountWithNoProfileHasNoCharacterToDelete() throws Exception
 	{
 		try (Harness h = new Harness(chain -> response(chain, 409, "{\"error\":\"no_bound_account\"}")))
 		{
-			h.secret();
 			ProfileAppearanceService.PublishResult result = h.delete().get(5, TimeUnit.SECONDS);
 			assertEquals(ProfileAppearanceService.Outcome.NO_CHARACTER, result.outcome);
 			assertEquals("no character to delete", CharacterStatus.terminal(result.outcome).text);
@@ -312,50 +240,8 @@ public class ProfileAppearanceFlowTest
 			throw new AssertionError("Unexpected HTTP request");
 		}))
 		{
-			h.secret();
 			h.authorized.set(false);
 			assertEquals(ProfileAppearanceService.Outcome.CANCELLED, h.delete().get(5, TimeUnit.SECONDS).outcome);
-		}
-	}
-
-	@Test
-	public void disablingDuringRegistrationSavesIssuedSecretButDoesNotPublish() throws Exception
-	{
-		cancelRegistration(false);
-	}
-
-	@Test
-	public void accountSwitchDuringRegistrationDoesNotPublish() throws Exception
-	{
-		cancelRegistration(true);
-	}
-
-	private void cancelRegistration(boolean switchAccount) throws Exception
-	{
-		CountDownLatch entered = new CountDownLatch(1);
-		CountDownLatch release = new CountDownLatch(1);
-		AtomicInteger calls = new AtomicInteger();
-		try (Harness h = new Harness(chain ->
-		{
-			calls.incrementAndGet();
-			entered.countDown();
-			await(release);
-			return response(chain, 201, "{\"device_secret\":\"" + SECRET + "\"}");
-		}))
-		{
-			CompletableFuture<ProfileAppearanceService.PublishResult> first = h.publish();
-			assertTrue(entered.await(3, TimeUnit.SECONDS));
-			if (switchAccount) h.account.set(2); else h.authorized.set(false);
-			assertEquals(ProfileAppearanceService.Outcome.BUSY, h.publish().get(3, TimeUnit.SECONDS).outcome);
-			release.countDown();
-			assertEquals(ProfileAppearanceService.Outcome.CANCELLED, first.get(3, TimeUnit.SECONDS).outcome);
-			assertEquals(1, calls.get());
-			assertEquals(SECRET, h.config.get(h.key("deviceSecret")));
-			assertNull(h.config.get(ProfileAppearanceService.scopedKey(2, "deviceSecret")));
-		}
-		finally
-		{
-			release.countDown();
 		}
 	}
 
@@ -364,7 +250,6 @@ public class ProfileAppearanceFlowTest
 	{
 		try (Harness h = new Harness(chain -> response(chain, 200, READY)))
 		{
-			h.secret();
 			h.localName = "Test\u00A0player";
 			assertEquals(ProfileAppearanceService.Outcome.PUBLISHED, h.publish().get(5, TimeUnit.SECONDS).outcome);
 		}
@@ -393,35 +278,9 @@ public class ProfileAppearanceFlowTest
 			return response(chain, 202, "{\"accepted\":true,\"published\":false,\"render_status\":\"pending_renderer\"}");
 		}))
 		{
-			h.secret();
 			assertEquals(ProfileAppearanceService.Outcome.RENDERING, h.publish().get(3, TimeUnit.SECONDS).outcome);
 			assertEquals(ProfileAppearanceService.Outcome.RENDERING, h.publish().get(3, TimeUnit.SECONDS).outcome);
 			assertEquals(1, calls.get());
-		}
-	}
-
-	@Test
-	public void recoveryWaitRetainsDateAndDoesNotClaimSuccess() throws Exception
-	{
-		try (Harness h = new Harness(chain -> response(chain, 409, "{\"error\":\"appearance_recovery_wait\"}")))
-		{
-			h.config.put(h.key("recoveryToken"), TOKEN);
-			h.config.put(h.key("recoveryActivatesAt"), "2030-09-20T12:00:00Z");
-			ProfileAppearanceService.PublishResult result = h.publish().get(3, TimeUnit.SECONDS);
-			assertEquals(ProfileAppearanceService.Outcome.RECOVERY_PENDING, result.outcome);
-			assertTrue(result.message.contains("Sep 20"));
-			assertEquals("2030-09-20T12:00:00Z", h.config.get(h.key("recoveryActivatesAt")));
-		}
-	}
-
-	@Test
-	public void freshRecoverySavesTokenAndShowsWait() throws Exception
-	{
-		try (Harness h = new Harness(chain -> response(chain, 202,
-			"{\"recovery_token\":\"" + TOKEN + "\",\"activates_at\":\"2030-09-20T12:00:00Z\"}")))
-		{
-			assertEquals(ProfileAppearanceService.Outcome.RECOVERY_PENDING, h.publish().get(3, TimeUnit.SECONDS).outcome);
-			assertEquals(TOKEN, h.config.get(h.key("recoveryToken")));
 		}
 	}
 
@@ -436,7 +295,6 @@ public class ProfileAppearanceFlowTest
 				.newBuilder().header("Retry-After", "120").build();
 		}))
 		{
-			h.secret();
 			ProfileAppearanceService.PublishResult result = h.publish().get(3, TimeUnit.SECONDS);
 			assertEquals(ProfileAppearanceService.Outcome.FAILED, result.outcome);
 			assertTrue(result.message.contains("Retry after"));
@@ -456,7 +314,6 @@ public class ProfileAppearanceFlowTest
 			throw new java.io.IOException("test connection loss");
 		}))
 		{
-			h.secret();
 			assertEquals(ProfileAppearanceService.Outcome.UNKNOWN, h.publish().get(3, TimeUnit.SECONDS).outcome);
 			h.publish().get(3, TimeUnit.SECONDS);
 			assertEquals(1, calls.get());
@@ -483,54 +340,9 @@ public class ProfileAppearanceFlowTest
 	{
 		try (Harness h = new Harness(chain -> response(chain, 200, "<html>private upstream detail</html>")))
 		{
-			h.secret();
 			ProfileAppearanceService.PublishResult result = h.publish().get(3, TimeUnit.SECONDS);
 			assertEquals(ProfileAppearanceService.Outcome.FAILED, result.outcome);
 			assertFalse(result.message.contains("private upstream detail"));
-		}
-	}
-
-	@Test
-	public void cancelledRecoveryRetryDoesNotSendPublish() throws Exception
-	{
-		AtomicInteger calls = new AtomicInteger();
-		AtomicBoolean allowed = new AtomicBoolean(true);
-		try (Harness h = new Harness(chain ->
-		{
-			if (calls.incrementAndGet() == 1)
-			{
-				return response(chain, 409, "{\"error\":\"appearance_recovery_pending\"}");
-			}
-			assertTrue(chain.request().url().encodedPath().endsWith("/device/cancel"));
-			allowed.set(false);
-			return response(chain, 200, "{\"recovery_cancelled\":true}");
-		}))
-		{
-			h.secret();
-			assertEquals(ProfileAppearanceService.Outcome.CANCELLED,
-				h.service.publishCurrent("Test player", 1, allowed::get).get(5, TimeUnit.SECONDS).outcome);
-			assertEquals(2, calls.get());
-		}
-	}
-
-	@Test
-	public void claimedRecoveryPublishesOnceAndClearsPendingToken() throws Exception
-	{
-		AtomicInteger calls = new AtomicInteger();
-		try (Harness h = new Harness(chain ->
-		{
-			if (calls.incrementAndGet() == 1)
-			{
-				assertTrue(chain.request().url().encodedPath().endsWith("/device/claim"));
-				return response(chain, 200, "{\"device_secret\":\"" + SECRET + "\"}");
-			}
-			return response(chain, 200, READY);
-		}))
-		{
-			h.config.put(h.key("recoveryToken"), TOKEN);
-			assertEquals(ProfileAppearanceService.Outcome.PUBLISHED, h.publish().get(3, TimeUnit.SECONDS).outcome);
-			assertNull(h.config.get(h.key("recoveryToken")));
-			assertEquals(2, calls.get());
 		}
 	}
 
@@ -544,7 +356,6 @@ public class ProfileAppearanceFlowTest
 			return response(chain, 503, "{\"accepted\":true,\"error\":\"appearance_render_failed\"}");
 		}))
 		{
-			h.secret();
 			ProfileAppearanceService.PublishResult result = h.publish().get(3, TimeUnit.SECONDS);
 			assertEquals(ProfileAppearanceService.Outcome.FAILED, result.outcome);
 			assertTrue(result.message.contains("render"));
@@ -563,19 +374,6 @@ public class ProfileAppearanceFlowTest
 		assertTrue(delay >= 119 && delay <= 120);
 		assertEquals(0, HttpUtil.retryAfterSeconds("<html>"));
 		assertEquals(0, HttpUtil.retryAfterSeconds(null));
-	}
-
-	@Test
-	public void missingRecoveryTokenDoesNotPromiseTimedRetry() throws Exception
-	{
-		try (Harness h = new Harness(chain -> response(chain, 409,
-			"{\"error\":\"appearance_recovery_pending\",\"activates_at\":\"2030-09-20T12:00:00Z\"}")))
-		{
-			ProfileAppearanceService.PublishResult result = h.publish().get(3, TimeUnit.SECONDS);
-			assertEquals(ProfileAppearanceService.Outcome.RECOVERY_PENDING, result.outcome);
-			assertTrue(result.message.contains("started elsewhere"));
-			assertFalse(result.message.contains("Sep 20"));
-		}
 	}
 
 	private static void await(CountDownLatch latch) throws java.io.IOException
@@ -610,8 +408,6 @@ public class ProfileAppearanceFlowTest
 		private final AtomicBoolean loggedIn = new AtomicBoolean(true);
 		private final AtomicLong account = new AtomicLong(1);
 		private final AtomicInteger transform = new AtomicInteger(-1);
-		private final Map<String, String> config = new ConcurrentHashMap<>();
-		private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
 		private final OkHttpClient http;
 		private final ProfileAppearanceService service;
 
@@ -654,22 +450,10 @@ public class ProfileAppearanceFlowTest
 				}
 			};
 			http = new OkHttpClient.Builder().addInterceptor(interceptor).build();
-			service = new ProfileAppearanceService(client, clientThread, executor, http, new Gson(), config::get,
-				(key, value) ->
-				{
-					if (value == null) config.remove(key); else config.put(key, value);
-				});
+			service = new ProfileAppearanceService(client, clientThread, http, new Gson());
 			service.captureOriginalAppearance(player);
 		}
 
-		private String key(String name)
-		{
-			return ProfileAppearanceService.scopedKey(1, name);
-		}
-		private void secret()
-		{
-			config.put(key("deviceSecret"), SECRET);
-		}
 		private CompletableFuture<ProfileAppearanceService.PublishResult> publish()
 		{
 			return service.publishCurrent("Test player", 1, authorized::get);
@@ -682,7 +466,6 @@ public class ProfileAppearanceFlowTest
 
 		@Override public void close()
 		{
-			executor.shutdownNow();
 			http.dispatcher().executorService().shutdownNow();
 			http.connectionPool().evictAll();
 		}

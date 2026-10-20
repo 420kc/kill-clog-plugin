@@ -3,14 +3,11 @@ package com.killclog;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import java.util.Arrays;
-import java.util.function.BiConsumer;
 import java.util.function.BiFunction;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -26,17 +23,12 @@ import net.runelite.api.Player;
 import net.runelite.api.PlayerComposition;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.client.callback.ClientThread;
-import net.runelite.client.config.ConfigManager;
 
 /** Publishes the current player's bounded appearance recipe, never image data. */
 @Slf4j
 @Singleton
 final class ProfileAppearanceService
 {
-	private static final String CONFIG_GROUP = "killclog-profile-appearance";
-	private static final String DEVICE_SECRET_KEY = "deviceSecret";
-	private static final String RECOVERY_TOKEN_KEY = "recoveryToken";
-	private static final String RECOVERY_AT_KEY = "recoveryActivatesAt";
 	static final long PUBLISH_RETRY_DELAY_MS = 2250L;
 	private static final PublishResult PROFILE_REQUIRED = new PublishResult(Outcome.PROFILE_REQUIRED,
 		"Sync your Collection Log, then publish your character again.");
@@ -49,7 +41,6 @@ final class ProfileAppearanceService
 		PROFILE_REQUIRED,
 		DISABLED,
 		RENDERING,
-		RECOVERY_PENDING,
 		BUSY,
 		CANCELLED,
 		UNKNOWN,
@@ -76,9 +67,6 @@ final class ProfileAppearanceService
 
 	private final Client client;
 	private final ClientThread clientThread;
-	private final ScheduledExecutorService executor;
-	private final Function<String, String> readConfig;
-	private final BiConsumer<String, String> writeConfig;
 	private final AtomicBoolean inFlight = new AtomicBoolean();
 	private volatile RetryHold retryHold;
 	private volatile OriginalAppearance originalAppearance;
@@ -121,30 +109,12 @@ final class ProfileAppearanceService
 	private final Gson gson;
 
 	@Inject
-	ProfileAppearanceService(Client client, ClientThread clientThread,
-		ScheduledExecutorService executor,
-		ConfigManager configManager, okhttp3.OkHttpClient httpClient, Gson gson)
-	{
-		this(client, clientThread, executor, httpClient, gson,
-			key -> configManager.getConfiguration(CONFIG_GROUP, key, String.class),
-			(key, value) ->
-			{
-				if (value == null) configManager.unsetConfiguration(CONFIG_GROUP, key);
-				else configManager.setConfiguration(CONFIG_GROUP, key, value);
-			});
-	}
-
-	ProfileAppearanceService(Client client, ClientThread clientThread,
-		ScheduledExecutorService executor, okhttp3.OkHttpClient httpClient, Gson gson,
-		Function<String, String> readConfig, BiConsumer<String, String> writeConfig)
+	ProfileAppearanceService(Client client, ClientThread clientThread, okhttp3.OkHttpClient httpClient, Gson gson)
 	{
 		this.client = client;
 		this.clientThread = clientThread;
-		this.executor = executor;
 		this.httpClient = httpClient;
 		this.gson = gson;
-		this.readConfig = readConfig;
-		this.writeConfig = writeConfig;
 	}
 
 	CompletableFuture<PublishResult> publishCurrent(String expectedRsn, long accountHash,
@@ -155,19 +125,22 @@ final class ProfileAppearanceService
 
 	/**
 	 * Removes the player's character from killclog.com, so their profile goes back to having none; nothing else of
-	 * theirs changes. The same per-installation credential a publish proves ownership with proves it here.
+	 * theirs changes.
 	 */
 	CompletableFuture<PublishResult> deleteCurrent(String expectedRsn, long accountHash, BooleanSupplier authorized)
 	{
-		return run(new PublishAttempt(expectedRsn, accountHash, authorized), attempt ->
-		{
-			if (!attempt.active()) return completed(Outcome.CANCELLED);
-			String secret = accountConfig(attempt.accountHash, DEVICE_SECRET_KEY);
-			attempt.recoveryAt = accountConfig(attempt.accountHash, RECOVERY_AT_KEY);
-			return secret != null ? deleteWithSecret(attempt, secret, true)
-				: ensureCredential(attempt, fresh -> deleteWithSecret(attempt, fresh, false),
-					accountConfig(attempt.accountHash, RECOVERY_TOKEN_KEY));
-		});
+		return run(new PublishAttempt(expectedRsn, accountHash, authorized), attempt -> !attempt.active()
+			? completed(Outcome.CANCELLED)
+			: attempt.post("appearance/delete", "{}", (response, json) ->
+			{
+				if (response.code == 200 && json != null && json.has("deleted") && json.get("deleted").getAsBoolean())
+				{
+					return completed(Outcome.DELETED);
+				}
+				// No synced profile here, so no character on killclog.com: nothing to remove.
+				return isProfileRequired(response.code, json) ? completed(Outcome.NO_CHARACTER)
+					: failedResponse(attempt, "delete", response, json);
+			}));
 	}
 
 	/** One character request at a time: it starts on the client thread and frees the slot when its chain settles. */
@@ -238,30 +211,39 @@ final class ProfileAppearanceService
 				"Equip or unequip an item, then publish again so Kill Clog can read your real appearance."));
 		}
 		ProfileAppearanceManifest manifest = original.manifest.withFollower(visibleFollowerNpcId(client.getFollower()));
-		String secret = accountConfig(attempt.accountHash, DEVICE_SECRET_KEY);
-		String recoveryToken = accountConfig(attempt.accountHash, RECOVERY_TOKEN_KEY);
-		attempt.recoveryAt = accountConfig(attempt.accountHash, RECOVERY_AT_KEY);
-		String manifestJson = gson.toJson(manifest);
-		return secret != null
-			? publishWithSecret(attempt, manifestJson, secret, true)
-			: ensureCredential(attempt, fresh -> publishWithSecret(attempt, manifestJson, fresh, false), recoveryToken);
+		return attempt.post("appearance/publish/main", gson.toJson(manifest), (response, json) ->
+		{
+			if (isRenderedPublishResponse(response.code, json))
+			{
+				return completed(Outcome.PUBLISHED);
+			}
+			if (isAcceptedPendingPublishResponse(response.code, json))
+			{
+				return holdRetry(attempt, new PublishResult(Outcome.RENDERING,
+					"Your character was accepted and is still rendering. Check your profile shortly."), 15);
+			}
+			return isProfileRequired(response.code, json) ? CompletableFuture.completedFuture(PROFILE_REQUIRED)
+				: failedResponse(attempt, "publish", response, json);
+		});
 	}
 
-	/** Each HTTP dispatch rechecks consent and identity on the client thread. */
+	/**
+	 * Each HTTP dispatch rechecks consent and identity on the client thread. A request proves its account by the
+	 * account hash its name is bound to, as a sync does.
+	 */
 	@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 	private final class PublishAttempt
 	{
 		private final String rsn;
 		private final long accountHash;
 		private final BooleanSupplier authorized;
-		private String recoveryAt;
 
 		private boolean active()
 		{
 			return authorized.getAsBoolean() && isStillSelf(rsn, accountHash);
 		}
 
-		private CompletableFuture<PublishResult> post(String suffix, String body, String secret,
+		private CompletableFuture<PublishResult> post(String suffix, String body,
 			BiFunction<HttpUtil.HttpResult, JsonObject, CompletableFuture<PublishResult>> handle)
 		{
 			CompletableFuture<HttpUtil.HttpResult> result = new CompletableFuture<>();
@@ -276,7 +258,7 @@ final class ProfileAppearanceService
 							result.complete(new HttpUtil.HttpResult(-2, null));
 							return;
 						}
-						HttpUtil.httpPostJson(httpClient, endpoint(rsn, suffix), body, secret)
+						HttpUtil.httpPostJson(httpClient, endpoint(rsn, suffix), body, Long.toString(accountHash))
 							.whenComplete((response, error) ->
 							{
 								if (error != null) result.completeExceptionally(error);
@@ -321,159 +303,6 @@ final class ProfileAppearanceService
 		return transformed != null ? transformed.getId() : follower.getId();
 	}
 
-	/** This installation's credential, registered or recovered, handed to the request that needs it. */
-	private CompletableFuture<PublishResult> ensureCredential(PublishAttempt attempt,
-		Function<String, CompletableFuture<PublishResult>> withSecret, @Nullable String recoveryToken)
-	{
-		if (validSecret(recoveryToken))
-		{
-			return claimRecovery(attempt, withSecret, recoveryToken);
-		}
-		return requestDevice(attempt, withSecret);
-	}
-
-	private CompletableFuture<PublishResult> requestDevice(PublishAttempt attempt,
-		Function<String, CompletableFuture<PublishResult>> withSecret)
-	{
-		JsonObject body = new JsonObject();
-		body.addProperty("account_hash", Long.toString(attempt.accountHash));
-		return attempt.post("appearance/device", gson.toJson(body), null, (response, json) ->
-		{
-			if (response.code == 201)
-			{
-				return adoptSecret(attempt, withSecret, json);
-			}
-			if (response.code == 202)
-			{
-				String token = stringValue(json, "recovery_token");
-				String activatesAt = stringValue(json, "activates_at");
-				if (!validSecret(token))
-				{
-					return completed(Outcome.FAILED);
-				}
-				return saveRecovery(attempt.accountHash, token, activatesAt)
-					.thenApply(saved -> saved
-						? recoveryPending(activatesAt) : failed());
-			}
-			if (response.code == 409 && hasError(json, "appearance_recovery_pending"))
-			{
-				// This installation has no token for the already-pending request.
-				return CompletableFuture.completedFuture(new PublishResult(Outcome.RECOVERY_PENDING,
-					"Publishing recovery was started elsewhere. Finish it from that installation, or contact Kill Clog support."));
-			}
-			if (isProfileRequired(response.code, json))
-			{
-				return CompletableFuture.completedFuture(PROFILE_REQUIRED);
-			}
-			return failedResponse(attempt, "registration", response, json);
-		});
-	}
-
-	private CompletableFuture<PublishResult> adoptSecret(PublishAttempt attempt,
-		Function<String, CompletableFuture<PublishResult>> withSecret, JsonObject json)
-	{
-		String secret = stringValue(json, "device_secret");
-		return !validSecret(secret) ? completed(Outcome.FAILED) : saveDeviceSecret(attempt.accountHash, secret)
-			.thenCompose(saved -> saved ? withSecret.apply(secret) : completed(Outcome.FAILED));
-	}
-
-	private CompletableFuture<PublishResult> claimRecovery(PublishAttempt attempt,
-		Function<String, CompletableFuture<PublishResult>> withSecret, String recoveryToken)
-	{
-		JsonObject body = new JsonObject();
-		body.addProperty("account_hash", Long.toString(attempt.accountHash));
-		body.addProperty("recovery_token", recoveryToken);
-		return attempt.post("appearance/device/claim", gson.toJson(body), null, (response, json) ->
-		{
-			if (response.code >= 200 && response.code < 300)
-			{
-				return adoptSecret(attempt, withSecret, json);
-			}
-			if (response.code == 409 && hasError(json, "appearance_recovery_wait"))
-			{
-				return CompletableFuture.completedFuture(recoveryPending(json, attempt));
-			}
-			if (isProfileRequired(response.code, json))
-			{
-				return CompletableFuture.completedFuture(PROFILE_REQUIRED);
-			}
-			if (response.code == 409 && hasError(json, "appearance_recovery_missing"))
-			{
-				return clearRecovery(attempt.accountHash)
-					.thenCompose(cleared -> cleared
-						? requestDevice(attempt, withSecret)
-						: completed(Outcome.FAILED));
-			}
-			return failedResponse(attempt, "recovery", response, json);
-		});
-	}
-
-	private CompletableFuture<PublishResult> publishWithSecret(PublishAttempt attempt,
-		String manifestJson, String secret, boolean recoverInvalidSecret)
-	{
-		return attempt.post("appearance/publish/main", manifestJson, secret, (response, json) ->
-		{
-			if (isRenderedPublishResponse(response.code, json))
-			{
-				return completed(Outcome.PUBLISHED);
-			}
-			if (isAcceptedPendingPublishResponse(response.code, json))
-			{
-				return holdRetry(attempt, new PublishResult(Outcome.RENDERING,
-					"Your character was accepted and is still rendering. Check your profile shortly."), 15);
-			}
-			if (response.code == 401 && recoverInvalidSecret)
-			{
-				return clearDeviceSecret(attempt.accountHash)
-					.thenCompose(cleared -> cleared
-						? requestDevice(attempt, fresh -> publishWithSecret(attempt, manifestJson, fresh, false))
-						: completed(Outcome.FAILED));
-			}
-			if (shouldCancelPendingRecovery(response.code, json, recoverInvalidSecret))
-			{
-				return cancelRecoveryAndPublish(attempt, manifestJson, secret);
-			}
-			if (response.code == 409 && hasError(json, "appearance_recovery_pending"))
-			{
-				return CompletableFuture.completedFuture(recoveryPending(json, attempt));
-			}
-			if (isProfileRequired(response.code, json))
-			{
-				return CompletableFuture.completedFuture(PROFILE_REQUIRED);
-			}
-			return failedResponse(attempt, "publish", response, json);
-		});
-	}
-
-	private CompletableFuture<PublishResult> deleteWithSecret(PublishAttempt attempt, String secret,
-		boolean recoverInvalidSecret)
-	{
-		return attempt.post("appearance/delete", "{}", secret, (response, json) ->
-		{
-			if (response.code == 200 && json != null && json.has("deleted") && json.get("deleted").getAsBoolean())
-			{
-				return completed(Outcome.DELETED);
-			}
-			if (response.code == 401 && recoverInvalidSecret)
-			{
-				return clearDeviceSecret(attempt.accountHash)
-					.thenCompose(cleared -> cleared
-						? requestDevice(attempt, fresh -> deleteWithSecret(attempt, fresh, false))
-						: completed(Outcome.FAILED));
-			}
-			if (response.code == 409 && hasError(json, "appearance_recovery_pending"))
-			{
-				return CompletableFuture.completedFuture(recoveryPending(json, attempt));
-			}
-			// No synced profile here, so no character on killclog.com: nothing to remove.
-			if (isProfileRequired(response.code, json))
-			{
-				return completed(Outcome.NO_CHARACTER);
-			}
-			return failedResponse(attempt, "delete", response, json);
-		});
-	}
-
 	private CompletableFuture<PublishResult> failedResponse(PublishAttempt attempt, String operation,
 		HttpUtil.HttpResult response, @Nullable JsonObject json)
 	{
@@ -498,21 +327,6 @@ final class ProfileAppearanceService
 		return CompletableFuture.completedFuture(result);
 	}
 
-	private static PublishResult recoveryPending(@Nullable JsonObject json, PublishAttempt attempt)
-	{
-		String activatesAt = stringValue(json, "activates_at");
-		return recoveryPending(activatesAt != null ? activatesAt : attempt.recoveryAt);
-	}
-
-	private static PublishResult recoveryPending(@Nullable String activatesAt)
-	{
-		String time = displayTime(activatesAt);
-		return new PublishResult(Outcome.RECOVERY_PENDING,
-			"Publishing access is being restored for this installation. "
-				+ (time == null ? "Try again after the recovery wait." : "Try again after " + time + ".")
-				+ " This does not affect your game login or Collection Log sync.");
-	}
-
 	@Nullable
 	private static String displayTime(@Nullable String value)
 	{
@@ -527,139 +341,12 @@ final class ProfileAppearanceService
 		}
 	}
 
-	private CompletableFuture<PublishResult> cancelRecoveryAndPublish(PublishAttempt attempt,
-		String manifestJson, String secret)
-	{
-		return attempt.post("appearance/device/cancel", "{}", secret, (response, json) ->
-		{
-			boolean cancelled = response.code >= 200 && response.code < 300
-				&& json != null && json.has("recovery_cancelled")
-				&& json.get("recovery_cancelled").getAsBoolean();
-			boolean alreadyClear = response.code == 409
-				&& hasError(json, "appearance_recovery_missing");
-			return cancelled || alreadyClear
-				? retryPublishAfterCooldown(attempt, manifestJson, secret)
-				: failedResponse(attempt, "cancel_recovery", response, json);
-		});
-	}
-
-	private CompletableFuture<PublishResult> retryPublishAfterCooldown(PublishAttempt attempt,
-		String manifestJson, String secret)
-	{
-		CompletableFuture<Boolean> delay = new CompletableFuture<>();
-		try
-		{
-			executor.schedule(() -> delay.complete(true), PUBLISH_RETRY_DELAY_MS, TimeUnit.MILLISECONDS);
-		}
-		catch (RuntimeException e)
-		{
-			delay.complete(false);
-		}
-		return delay.thenCompose(ready -> ready
-			? publishWithSecret(attempt, manifestJson, secret, false)
-			: completed(Outcome.CANCELLED));
-	}
-
-	private CompletableFuture<Boolean> saveDeviceSecret(long accountHash, String secret)
-	{
-		return updateAccountConfig(() ->
-		{
-			writeConfig.accept(scopedKey(accountHash, DEVICE_SECRET_KEY), secret);
-			writeConfig.accept(scopedKey(accountHash, RECOVERY_TOKEN_KEY), null);
-			writeConfig.accept(scopedKey(accountHash, RECOVERY_AT_KEY), null);
-		});
-	}
-
-	private CompletableFuture<Boolean> saveRecovery(long accountHash, String token,
-		@Nullable String activatesAt)
-	{
-		return updateAccountConfig(() ->
-		{
-			writeConfig.accept(scopedKey(accountHash, RECOVERY_TOKEN_KEY), token);
-			if (activatesAt != null)
-			{
-				writeConfig.accept(scopedKey(accountHash, RECOVERY_AT_KEY), activatesAt);
-			}
-		});
-	}
-
-	private CompletableFuture<Boolean> clearDeviceSecret(long accountHash)
-	{
-		return updateAccountConfig(() -> writeConfig.accept(scopedKey(accountHash, DEVICE_SECRET_KEY), null));
-	}
-
-	private CompletableFuture<Boolean> clearRecovery(long accountHash)
-	{
-		return updateAccountConfig(() ->
-		{
-			writeConfig.accept(scopedKey(accountHash, RECOVERY_TOKEN_KEY), null);
-			writeConfig.accept(scopedKey(accountHash, RECOVERY_AT_KEY), null);
-		});
-	}
-
-	private CompletableFuture<Boolean> updateAccountConfig(Runnable update)
-	{
-		CompletableFuture<Boolean> result = new CompletableFuture<>();
-		clientThread.invokeLater(() ->
-		{
-			try
-			{
-				update.run();
-				result.complete(true);
-			}
-			catch (RuntimeException e)
-			{
-				log.warn("Character credential storage failed");
-				result.complete(false);
-			}
-		});
-		return result;
-	}
-
 	private boolean isStillSelf(String expectedRsn, long accountHash)
 	{
 		Player local = client.getLocalPlayer();
 		return client.getGameState() == GameState.LOGGED_IN && local != null
 			&& RsnInputPolicy.sameName(expectedRsn, local.getName())
 			&& client.getAccountHash() == accountHash;
-	}
-
-	@Nullable
-	private String accountConfig(long accountHash, String key)
-	{
-		String storageKey = scopedKey(accountHash, key);
-		String value = readConfig.apply(storageKey);
-		if ((value == null || value.isBlank())
-			&& KillClogEndpoint.STAGING_API.equals(KillClogEndpoint.apiBaseUrl()))
-		{
-			// Early staging builds predated endpoint-scoped credentials. Move that
-			// one developer credential away from the production namespace.
-			String legacyKey = legacyScopedKey(accountHash, key);
-			value = readConfig.apply(legacyKey);
-			if (value != null && !value.isBlank())
-			{
-				writeConfig.accept(storageKey, value);
-				writeConfig.accept(legacyKey, null);
-			}
-		}
-		if (value != null && !value.isBlank() && !RECOVERY_AT_KEY.equals(key) && !validSecret(value))
-		{
-			writeConfig.accept(storageKey, null);
-			value = null;
-		}
-		return value != null && !value.isBlank() ? value : null;
-	}
-
-	static String scopedKey(long accountHash, String key)
-	{
-		String environment = KillClogEndpoint.STAGING_API.equals(KillClogEndpoint.apiBaseUrl())
-			? "staging" : "production";
-		return Long.toUnsignedString(accountHash, 16) + "." + environment + "." + key;
-	}
-
-	private static String legacyScopedKey(long accountHash, String key)
-	{
-		return Long.toUnsignedString(accountHash, 16) + "." + key;
 	}
 
 	private JsonObject parse(@Nullable String body)
@@ -687,13 +374,6 @@ final class ProfileAppearanceService
 	private static boolean hasError(@Nullable JsonObject json, String error)
 	{
 		return error.equals(stringValue(json, "error"));
-	}
-
-	static boolean shouldCancelPendingRecovery(int responseCode,
-		@Nullable JsonObject json, boolean incumbentCredential)
-	{
-		return incumbentCredential && responseCode == 409
-			&& hasError(json, "appearance_recovery_pending");
 	}
 
 	static boolean isProfileRequired(int responseCode, @Nullable JsonObject json)
@@ -746,11 +426,6 @@ final class ProfileAppearanceService
 		{
 			return null;
 		}
-	}
-
-	static boolean validSecret(@Nullable String value)
-	{
-		return value != null && value.matches("[a-f0-9]{64}");
 	}
 
 	private static String endpoint(String rsn, String suffix)

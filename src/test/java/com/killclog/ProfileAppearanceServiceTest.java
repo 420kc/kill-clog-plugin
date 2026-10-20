@@ -46,18 +46,6 @@ public class ProfileAppearanceServiceTest
 	}
 
 	@Test
-	public void incumbentCredentialCancelsPendingRecoveryBeforePublishing()
-	{
-		JsonObject pending = new JsonObject();
-		pending.addProperty("error", "appearance_recovery_pending");
-
-		assertTrue(ProfileAppearanceService.shouldCancelPendingRecovery(409, pending, true));
-		assertFalse(ProfileAppearanceService.shouldCancelPendingRecovery(409, pending, false));
-		assertFalse(ProfileAppearanceService.shouldCancelPendingRecovery(401, pending, true));
-		assertTrue(ProfileAppearanceService.PUBLISH_RETRY_DELAY_MS > 2000L);
-	}
-
-	@Test
 	public void missingOrUnverifiedProfileRequestsOneSyncPrerequisite()
 	{
 		JsonObject missing = new JsonObject();
@@ -68,14 +56,6 @@ public class ProfileAppearanceServiceTest
 		assertTrue(ProfileAppearanceService.isProfileRequired(409, missing));
 		assertTrue(ProfileAppearanceService.isProfileRequired(409, unverified));
 		assertFalse(ProfileAppearanceService.isProfileRequired(403, missing));
-	}
-
-	@Test
-	public void appearanceCredentialsAreStrictLowercaseHex()
-	{
-		assertTrue(ProfileAppearanceService.validSecret("a".repeat(64)));
-		assertFalse(ProfileAppearanceService.validSecret("A".repeat(64)));
-		assertFalse(ProfileAppearanceService.validSecret("short"));
 	}
 
 	@Test
@@ -108,14 +88,13 @@ public class ProfileAppearanceServiceTest
 	}
 
 	@Test
-	public void pendingAndRecoveryAreNotFailures()
+	public void pendingIsNotAFailure()
 	{
 		java.util.Map<ProfileAppearanceService.Outcome, String> expected = new java.util.EnumMap<>(ProfileAppearanceService.Outcome.class);
 		expected.put(ProfileAppearanceService.Outcome.PUBLISHED, "character updated!");
 		expected.put(ProfileAppearanceService.Outcome.DELETED, "character deleted");
 		expected.put(ProfileAppearanceService.Outcome.NO_CHARACTER, "no character to delete");
 		expected.put(ProfileAppearanceService.Outcome.RENDERING, "Still rendering...");
-		expected.put(ProfileAppearanceService.Outcome.RECOVERY_PENDING, "Publishing on hold");
 		expected.put(ProfileAppearanceService.Outcome.DISABLED, "Publishing unavailable");
 		expected.put(ProfileAppearanceService.Outcome.BUSY, "Finishing previous request...");
 		expected.put(ProfileAppearanceService.Outcome.UNKNOWN, "Check your profile");

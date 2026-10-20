@@ -49,6 +49,20 @@ public class ConfigMigrationsTest
 	}
 
 	@Test
+	public void characterCredentialsKeptBefore270AreCleared()
+	{
+		ConfigManager config = mock(ConfigManager.class);
+		when(config.getConfigurationKeys("killclog-profile-appearance.")).thenReturn(java.util.List.of(
+			"killclog-profile-appearance.1.production.deviceSecret",
+			"killclog-profile-appearance.1.production.recoveryToken"));
+
+		ConfigMigrations.run(config);
+
+		verify(config).unsetConfiguration("killclog-profile-appearance", "1.production.deviceSecret");
+		verify(config).unsetConfiguration("killclog-profile-appearance", "1.production.recoveryToken");
+	}
+
+	@Test
 	public void skillSummaryOnlyPlayersMoveToTheActivityTray()
 	{
 		ConfigManager config = mock(ConfigManager.class);

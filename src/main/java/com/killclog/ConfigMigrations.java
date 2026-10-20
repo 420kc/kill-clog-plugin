@@ -16,6 +16,17 @@ final class ConfigMigrations
 		skillColorMode(configManager);
 		skillLocation(configManager);
 		cardLinks(configManager);
+		characterCredentials(configManager);
+	}
+
+	/** A character request proves its account by its hash since 2.7.0, so the installation credentials kept go. */
+	private static void characterCredentials(ConfigManager configManager)
+	{
+		String group = "killclog-profile-appearance";
+		for (String key : configManager.getConfigurationKeys(group + "."))
+		{
+			configManager.unsetConfiguration(group, key.substring(group.length() + 1));
+		}
 	}
 
 	/** "Wiki Links" became "Card Links", with a shift-click choice: a player who turned links off keeps them off. */
