@@ -2,8 +2,11 @@ package com.killclog;
 
 import com.google.gson.Gson;
 import java.io.BufferedReader;
-import java.io.BufferedWriter;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.channels.FileChannel;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.StandardOpenOption;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -34,9 +37,16 @@ final class StoreFiles
 		Filepath tmp = folder.createTempFile(".write-", ".tmp");
 		try
 		{
-			try (BufferedWriter writer = tmp.openBufferedWriter())
+			// On the disk before it takes the file's place: a power cut then leaves the old log or the new one, never
+			// an empty file where a log was.
+			ByteBuffer json = ByteBuffer.wrap(gson.toJson(data).getBytes(StandardCharsets.UTF_8));
+			try (FileChannel channel = tmp.openFileChannel(StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING))
 			{
-				gson.toJson(data, writer);
+				while (json.hasRemaining())
+				{
+					channel.write(json);
+				}
+				channel.force(true);
 			}
 			LocalClogCache.atomicMove(tmp, dest);
 		}
