@@ -74,10 +74,23 @@ class SyncService
 		/** Server says another sync holds this player's lock: retry, don't fail. */
 		final boolean retryAdvised;
 		final int retryAfterSeconds;
+		/** The server turned this account away for the session (opted out, the name another's, an update needed). */
+		final boolean stopsSession;
 
 		SyncResult(boolean ok, boolean dryRun, String message)
 		{
-			this(ok, dryRun, message, false, 0);
+			this(ok, dryRun, message, false, 0, false);
+		}
+
+		SyncResult(boolean ok, boolean dryRun, String message, boolean retryAdvised, int retryAfterSeconds)
+		{
+			this(ok, dryRun, message, retryAdvised, retryAfterSeconds, false);
+		}
+
+		/** A refusal that holds for the session: automatic pushes stop until the next login or a click. */
+		static SyncResult stopping(String message)
+		{
+			return new SyncResult(false, false, message, false, 0, true);
 		}
 
 	}
@@ -205,24 +218,22 @@ class SyncService
 		// contract): each gets plain words instead of a bare HTTP code.
 		if (r.code == 409 && r.body != null && r.body.contains("name_active_with_another_account"))
 		{
-			return new SyncResult(false, false,
+			return SyncResult.stopping(
 				"This name's previous owner played recently - Kill Clog will "
 				+ "accept your log after their continuity window passes.");
 		}
 		if (r.code == 409 && r.body != null && r.body.contains("account_hash_mismatch"))
 		{
-			return new SyncResult(false, false,
-				"This name is registered to a different account on Kill Clog.");
+			return SyncResult.stopping("This name is registered to a different account on Kill Clog.");
 		}
 		// The server no longer takes this version's syncs (a League cutover): only an update helps.
 		if (r.code == 426)
 		{
-			return new SyncResult(false, false, FirstPartyFeedback.UPDATE_REQUIRED);
+			return SyncResult.stopping(FirstPartyFeedback.UPDATE_REQUIRED);
 		}
 		if (r.code == 451)
 		{
-			return new SyncResult(false, false,
-				"This account has opted out of Kill Clog sync.");
+			return SyncResult.stopping("This account has opted out of Kill Clog sync.");
 		}
 		log.debug("killclog sync failed for '{}': HTTP {}", rsn, r.code);
 		// A restarting server answers 502 to 504 for a few seconds: worth one

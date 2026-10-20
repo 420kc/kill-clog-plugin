@@ -295,6 +295,56 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void aLogWalkSendsOnceItsCapturesPauseAndAtMostAMinuteAfterItsFirst() throws Exception
+	{
+		long[] now = {0};
+		((PublicationCoordinator) field("publication")).clock = () -> now[0];
+		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		captureListener.run();
+		assertEquals(10_000L, executor.lastDelayMs());
+		// The walk goes on: each page starts the quiet time again, and only one push waits.
+		now[0] = 8_000;
+		captureListener.run();
+		assertEquals(10_000L, executor.lastDelayMs());
+		assertEquals(1, executor.live());
+		// Near the minute, what's left of it.
+		now[0] = 55_000;
+		captureListener.run();
+		assertEquals(5_000L, executor.lastDelayMs());
+		// Past it, the waiting push keeps its time.
+		now[0] = 61_000;
+		captureListener.run();
+		assertEquals(5_000L, executor.lastDelayMs());
+		assertEquals(1, executor.live());
+		settle();
+		assertEquals(1, syncs.size());
+	}
+
+	@Test
+	public void anAccountTheServerTurnsAwayStopsSendingUntilAClick() throws Exception
+	{
+		String optedOut = "This account has opted out of Kill Clog sync.";
+		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		captureListener.run();
+		settle();
+		syncs.get(0).complete(SyncService.SyncResult.stopping(optedOut));
+		settle();
+		verify(chatNotifier, times(1)).send(ChatNotice.SYNC_RESULT, optedOut);
+		// The rest of the session's captures send nothing, and say nothing.
+		captureListener.run();
+		captureListener.run();
+		assertEquals(0, executor.live());
+		settle();
+		assertEquals(1, syncs.size());
+		verify(chatNotifier, times(1)).send(ChatNotice.SYNC_RESULT, optedOut);
+		// A click asks again.
+		syncHandler.run();
+		runClient();
+		settle();
+		assertEquals(2, syncs.size());
+	}
+
+	@Test
 	public void aPressQueuedBeforeALogoutNeverPushesTheNextAccountsLog() throws Exception
 	{
 		// The press is still waiting on the client thread when the account logs out and another logs in.

@@ -42,9 +42,10 @@ final class PublicationCoordinator
 		void showCharacterPublishStatus(CharacterStatus status, boolean autoClear, String failureMessage);
 	}
 
-	// Debounce window: a bulk capture completes many category writes in a
-	// burst; one push carries them all.
+	// Quiet time: a log walk lands page after page, and one push carries them all once the captures stop for this
+	// long. A walk that never pauses still sends a minute after its first capture.
 	static final int SYNC_DEBOUNCE_SECONDS = 10;
+	static final long SYNC_MAX_WAIT_MS = 60_000L;
 
 	private final KillClogConfig config;
 	private final ConfigManager configManager;
@@ -64,6 +65,13 @@ final class PublicationCoordinator
 	private final Function<String, String> leagueProfileType;
 
 	private volatile ScheduledFuture<?> pendingKillclogSync;
+	// Whether the push waiting is an automatic one, which a capture may push back, and when its first capture came.
+	private boolean pendingAutomatic;
+	private long quietSince;
+	// The session the server turned away (opted out, the name another account's, an update needed): its automatic
+	// pushes stop, so the log stops leaving the client, until the next login or a click.
+	private volatile long stoppedEpoch = -1;
+	/* package */ java.util.function.LongSupplier clock = System::currentTimeMillis;
 	private final KillclogSyncGate syncGate = new KillclogSyncGate();
 	private final AtomicBoolean characterPublishInFlight = new AtomicBoolean();
 	private final AtomicBoolean characterPublishAfterSync = new AtomicBoolean();
@@ -127,7 +135,8 @@ final class PublicationCoordinator
 	/** Sync is on, and an automatic send has Automatic sync too: a click and a character's own sync always go. */
 	private boolean sends(boolean manual)
 	{
-		return config.killclogSync() && (manual || config.automaticSync() || characterPublishAfterSync.get());
+		return config.killclogSync() && (manual || (config.automaticSync() || characterPublishAfterSync.get())
+			&& localClogCache.currentSessionEpoch() != stoppedEpoch);
 	}
 
 	/**
@@ -136,21 +145,42 @@ final class PublicationCoordinator
 	 */
 	private synchronized void scheduleSync(int delaySeconds, boolean manual, String scheduledMode, boolean retry)
 	{
+		if (manual)
+		{
+			stoppedEpoch = -1;
+		}
 		if (!sends(manual))
 		{
 			return;
 		}
+		long now = clock.getAsLong();
+		long delayMs = delaySeconds * 1000L;
 		if (pendingKillclogSync != null && !pendingKillclogSync.isDone())
 		{
 			if (!manual)
 			{
+				// A capture while an automatic push waits starts its quiet time again, up to the minute's cap; a
+				// waiting retry or click keeps its own time.
+				long left = quietSince + SYNC_MAX_WAIT_MS - now;
+				if (pendingAutomatic && !retry && left > 0)
+				{
+					pendingKillclogSync.cancel(false);
+					schedulePush(Math.min(delayMs, left), false, scheduledMode, false);
+				}
 				return;
 			}
 			pendingKillclogSync.cancel(false);
 		}
+		quietSince = now;
+		schedulePush(delayMs, manual, scheduledMode, retry);
+	}
+
+	private void schedulePush(long delayMs, boolean manual, String scheduledMode, boolean retry)
+	{
+		pendingAutomatic = !manual && !retry;
 		long scheduledEpoch = localClogCache.currentSessionEpoch();
 		pendingKillclogSync = executor.schedule(() -> pushKillclogSync(manual, scheduledEpoch, scheduledMode, retry),
-			delaySeconds, TimeUnit.SECONDS);
+			delayMs, TimeUnit.MILLISECONDS);
 	}
 
 	/** The retry keeps its own delay: a capture's shorter debounce must not stand in for it. */
@@ -524,6 +554,10 @@ final class PublicationCoordinator
 						}
 
 						// Everything below is a terminal outcome for this episode.
+						if (result.stopsSession)
+						{
+							stoppedEpoch = cacheEpoch;
+						}
 						if (characterWaiting)
 						{
 							characterPublishAfterSync.set(false);
