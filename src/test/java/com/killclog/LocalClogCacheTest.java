@@ -127,7 +127,6 @@ public class LocalClogCacheTest
 		for (String damaged : List.of("", "{broken"))
 		{
 			File dir = temporaryFolder.newFolder();
-			Files.writeString(new File(dir, StoreMigration.MARKER).toPath(), "2");
 			Files.writeString(ownFile(dir, HASH).toPath(), damaged);
 			LocalClogCache cache = onDisk(dir);
 			assertTrue(cache.activate("Tester", HASH));
@@ -711,7 +710,7 @@ public class LocalClogCacheTest
 
 	static File ownFile(File dir, long hash)
 	{
-		return new File(dir, StoreMigration.ownFileName(Long.toString(hash)));
+		return new File(dir, StoreFiles.ownFileName(Long.toString(hash)));
 	}
 
 	private static ClogResult.ClogItem obtainedItem(LocalClogCache cache, String playerName, String category, int itemId)

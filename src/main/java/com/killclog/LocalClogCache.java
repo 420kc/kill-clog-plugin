@@ -3,7 +3,6 @@ package com.killclog;
 import com.google.gson.Gson;
 import java.io.IOException;
 import java.nio.file.AtomicMoveNotSupportedException;
-import java.nio.file.NoSuchFileException;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileTime;
 import java.time.Instant;
@@ -43,9 +42,9 @@ import net.runelite.client.util.Filepath;
  * <p>Each account that captures on this PC has one own log, {@code <hash>.json},
  * written only by the client logged into that account; other players' lookups
  * live apart in {@code lookups/<name>.json} and can never ship. The folder is
- * opened on this store's disk thread: RuneLite's own move, the one-time
- * {@link StoreMigration}, then every own log and the newest lookups load into
- * memory. Until that finishes the store is not ready and serves nothing; after
+ * opened on this store's disk thread: RuneLite's own move, then every own log
+ * and the newest lookups load into memory ({@link StoreFiles} reads and writes
+ * them). Until that finishes the store is not ready and serves nothing; after
  * it, every read and write is memory-only and disk only receives debounced
  * saves.
  */
@@ -158,12 +157,9 @@ public class LocalClogCache
 		List<PlayerClogData> loadedLookups = new ArrayList<>();
 		if (folder != null)
 		{
-			// A failed migration leaves 2.4's files for the next start; what is
-			// already in the new layout still loads.
-			StoreMigration.run(gson, folder);
 			try
 			{
-				for (Filepath file : StoreMigration.list(folder))
+				for (Filepath file : StoreFiles.list(folder))
 				{
 					if (!file.getFileName().matches("[0-9a-f]{16}\\.json"))
 					{
@@ -179,10 +175,10 @@ public class LocalClogCache
 					}
 					loadedOwn.put(data.ownerHash, data);
 				}
-				Filepath lookupDir = folder.join(StoreMigration.LOOKUPS);
+				Filepath lookupDir = folder.join(StoreFiles.LOOKUPS);
 				if (lookupDir.isDirectory())
 				{
-					List<Filepath> files = StoreMigration.list(lookupDir);
+					List<Filepath> files = StoreFiles.list(lookupDir);
 					files.sort(Comparator.comparing(LocalClogCache::modified).reversed());
 					for (Filepath file : files.subList(0, Math.min(LOOKUP_CAP, files.size())))
 					{
@@ -227,7 +223,7 @@ public class LocalClogCache
 	{
 		try
 		{
-			return StoreMigration.ownFileName(hashKey);
+			return StoreFiles.ownFileName(hashKey);
 		}
 		catch (RuntimeException e)
 		{
@@ -249,7 +245,7 @@ public class LocalClogCache
 
 	private PlayerClogData readRecord(Filepath file)
 	{
-		PlayerClogData data = StoreMigration.read(gson, file, PlayerClogData.class);
+		PlayerClogData data = StoreFiles.read(gson, file, PlayerClogData.class);
 		if (data == null || data.categories == null)
 		{
 			return null;
@@ -1001,7 +997,7 @@ public class LocalClogCache
 
 	private String fileKey(String slot, boolean ownLog, String name)
 	{
-		return ownLog ? StoreMigration.ownFileName(slot) : StoreMigration.LOOKUPS + "/" + fileName(name);
+		return ownLog ? StoreFiles.ownFileName(slot) : StoreFiles.LOOKUPS + "/" + fileName(name);
 	}
 
 	/**
@@ -1019,13 +1015,13 @@ public class LocalClogCache
 		{
 			return;
 		}
-		Filepath dest = ownLog ? folder.join(file) : folder.join(StoreMigration.LOOKUPS, fileName(snapshot.playerName));
+		Filepath dest = ownLog ? folder.join(file) : folder.join(StoreFiles.LOOKUPS, fileName(snapshot.playerName));
 		submitDiskWrite(file, () ->
 		{
 			try
 			{
 				dest.getParent().createDirectories();
-				StoreMigration.write(gson, folder, dest, snapshot);
+				StoreFiles.write(gson, folder, dest, snapshot);
 				// An older write must not clear a newer pending snapshot.
 				unsavedFiles.remove(file, snapshot);
 			}
@@ -1087,28 +1083,6 @@ public class LocalClogCache
 		catch (AtomicMoveNotSupportedException e)
 		{
 			from.moveTo(to, StandardCopyOption.REPLACE_EXISTING);
-		}
-	}
-
-	/**
-	 * Files.notExists for a Filepath: true only when the file is confirmed
-	 * missing. One that cannot be checked counts as present, so the migration
-	 * never writes over a file it could not see.
-	 */
-	static boolean absent(Filepath file)
-	{
-		try
-		{
-			file.getLastModifiedTime();
-			return false;
-		}
-		catch (NoSuchFileException e)
-		{
-			return true;
-		}
-		catch (IOException e)
-		{
-			return false;
 		}
 	}
 

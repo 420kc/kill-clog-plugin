@@ -123,7 +123,7 @@ public class LocalCaCacheTest
 
 	private static File caFile(File directory)
 	{
-		return new File(directory, StoreMigration.ownFileName(Long.toString(HASH)));
+		return new File(directory, StoreFiles.ownFileName(Long.toString(HASH)));
 	}
 
 	private static int easy(File directory) throws IOException

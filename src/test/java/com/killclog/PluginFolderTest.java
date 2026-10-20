@@ -2,7 +2,6 @@ package com.killclog;
 
 import com.google.gson.Gson;
 import java.io.File;
-import java.nio.file.Files;
 import java.util.Map;
 import org.junit.Rule;
 import org.junit.Test;
@@ -19,21 +18,6 @@ public class PluginFolderTest
 	{
 		assertTrue(net.runelite.client.RuneLite.RUNELITE_DIR.getPath()
 			.replace(File.separatorChar, '/').contains("/build/test-home/"));
-	}
-
-	@Test
-	public void onlyAConfirmedMissingFileCountsAsAbsent() throws Exception
-	{
-		File dir = temporaryFolder.newFolder();
-		Files.writeString(new File(dir, "tester.json").toPath(), "{}");
-		assertFalse(LocalClogCache.absent(TestFolders.folder(dir).join("tester.json")));
-		assertTrue(LocalClogCache.absent(TestFolders.folder(dir).join("nobody.json")));
-		// Same answer as Files.notExists, which the 2.4 checks used.
-		for (String path : new String[]{"tester.json", "nobody.json", "tester.json/inside.json", "."})
-		{
-			assertEquals(path, Files.notExists(dir.toPath().resolve(path)),
-				LocalClogCache.absent(TestFolders.folder(dir).join(path)));
-		}
 	}
 
 	@Test

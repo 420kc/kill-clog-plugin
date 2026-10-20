@@ -66,7 +66,7 @@ public class LocalCaCache
 				{
 					walk.filter(f -> f.getFileName().matches("[0-9a-f]{16}\\.json")).forEach(file ->
 					{
-						CaData data = StoreMigration.read(gson, file, CaData.class);
+						CaData data = StoreFiles.read(gson, file, CaData.class);
 						if (data != null && data.completed != null && !data.completed.isEmpty())
 						{
 							accounts.putIfAbsent(file.getFileName(), data);
@@ -141,7 +141,7 @@ public class LocalCaCache
 		{
 			return;
 		}
-		String file = StoreMigration.ownFileName(Long.toString(accountHash));
+		String file = StoreFiles.ownFileName(Long.toString(accountHash));
 		activeFile = file;
 		Map<String, Integer> completedByTier = new LinkedHashMap<>();
 		for (Map.Entry<CombatAchievementTier, Integer> entry : completed.entrySet())
@@ -173,7 +173,7 @@ public class LocalCaCache
 						return;
 					}
 					folder.createDirectories();
-					StoreMigration.write(gson, folder, folder.join(file), data);
+					StoreFiles.write(gson, folder, folder.join(file), data);
 				}
 				catch (IOException | RuntimeException e)
 				{
