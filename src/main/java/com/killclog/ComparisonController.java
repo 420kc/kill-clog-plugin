@@ -17,7 +17,6 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import javax.swing.JComponent;
@@ -177,14 +176,14 @@ public class ComparisonController
 		RuneProfileService runeProfileService, KillclogService killclogService,
 		LookupSession lookupSession,
 		KillClogConfig config, TooltipController tooltipController,
-		TooltipDataBuilder tooltipDataBuilder, Listener listener)
+		TooltipDataBuilder tooltipDataBuilder, UnsyncedClogCatalog unsyncedCatalog, Listener listener)
 	{
 		this.runeProfileService = runeProfileService;
 		this.lookupSession = lookupSession;
 		this.config = config;
 		this.tooltipController = tooltipController;
 		this.tooltipDataBuilder = tooltipDataBuilder;
-		this.unsyncedCatalog = new UnsyncedClogCatalog(clogService);
+		this.unsyncedCatalog = unsyncedCatalog;
 		this.listener = listener;
 		this.fanout = new LookupFanout(hiscoreService, clogService, runeProfileService, killclogService);
 	}
@@ -213,13 +212,7 @@ public class ComparisonController
 
 	public void setClogIndex(@Nullable ClogIndex clogIndex)
 	{
-		unsyncedCatalog.setClogIndex(clogIndex);
 		fanout.setClogIndex(clogIndex);
-	}
-
-	public void setUnsyncedCatalogResolver(Consumer<ClogResult> resolver)
-	{
-		unsyncedCatalog.setResolver(resolver);
 	}
 
 	// Lifecycle

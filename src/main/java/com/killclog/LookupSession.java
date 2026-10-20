@@ -133,6 +133,12 @@ public class LookupSession
 		return fanout.readsOwnLog() && !frozen(getHiscoreResult());
 	}
 
+	/** Setup is offered for your own name's log, when this client keeps it. */
+	boolean offersSetup(@Nullable String localRsn, @Nullable String name)
+	{
+		return RsnInputPolicy.sameName(localRsn, name) && readsOwnLog();
+	}
+
 	/** Wire (or rewire) the autocompleter that records search history on each successful lookup. */
 	public void setNameAutocompleter(@Nullable NameAutocompleter nameAutocompleter)
 	{

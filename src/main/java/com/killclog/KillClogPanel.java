@@ -159,6 +159,8 @@ public class KillClogPanel extends PluginPanel
 	private final TooltipController tooltipController;
 	private final LookupSession lookupSession;
 	private final ComparisonController comparison;
+	// The empty log behind cold and unsynced previews, one copy for both sides.
+	private final UnsyncedClogCatalog unsyncedCatalog;
 	private final RankSelector rankSelector;
 	// The Leagues switch: shown while a League runs, lit while the panel reads one. A League
 	// world reads its League and any other world the main game; a click flips that until the
@@ -218,10 +220,11 @@ public class KillClogPanel extends PluginPanel
 		this.accountTypes = new PanelAccountTypes(runeProfileService);
 		this.tooltipController = new TooltipController(config);
 		this.statusRow = new PanelStatusRow(config, spriteManager, tooltipController, TEXT_DIM);
+		this.unsyncedCatalog = new UnsyncedClogCatalog(clogService);
 		this.lookupSession = new LookupSession(hiscoreService, clogService, runeProfileService,
 			killclogService, config, this);
 		this.comparison = new ComparisonController(hiscoreService, clogService, runeProfileService,
-			killclogService, lookupSession, config, tooltipController, tooltipDataBuilder, this);
+			killclogService, lookupSession, config, tooltipController, tooltipDataBuilder, unsyncedCatalog, this);
 		this.comparison.setRenderTarget(this);
 		this.rankSelector = new RankSelector(hiscoreService::lookupRanks, hiscoreService::notOnBoard, this::refreshRankDisplay);
 		this.lookupSession.setRankView(rankSelector::view);
@@ -229,16 +232,15 @@ public class KillClogPanel extends PluginPanel
 			() -> ClogHelper.virtualTotalLevelEnabled(configManager));
 		this.skillCellGrid = new SkillCellGrid(skillIconManager, tooltipController, comparison,
 			config, itemManager);
-		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, clogService, killclogService, league -> selfPbs.apply(league), config);
+		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, unsyncedCatalog, killclogService, league -> selfPbs.apply(league), config);
 		this.clogPages = new ClogPages(tooltipController, cells, comparison, lookupSession, tooltipDataBuilder, config);
 		this.activityTooltips = new ActivitySummaryTooltips(
 			lookupSession, comparison, cells, tooltipController, itemManager,
 			caRewardSprites, config::wikiItemLinks);
 		this.itemNameResolver = new TooltipItemNameResolver(clientThread, itemManager,
 			this::onTooltipItemNamesResolved);
-		this.cells.setUnsyncedCatalogResolver(itemNameResolver::resolve);
+		this.unsyncedCatalog.setResolver(itemNameResolver::resolve);
 		this.comparison.setBlueNameSupplier(this::comparisonBlueName);
-		this.comparison.setUnsyncedCatalogResolver(itemNameResolver::resolve);
 		this.comparison.setCells(this.cells);
 		this.cells.setSinglePlayerTooltipBuilder(new Cells.SinglePlayerTooltipBuilder()
 		{
@@ -585,11 +587,11 @@ public class KillClogPanel extends PluginPanel
 				? comparison.getCompareHiscoreResult() : null;
 			skillCellGrid.render(result, compared, config.virtualLevels(),
 				lookupSession.getClogResult(), comparison.getCompareClogResult(),
-				cells.unsyncedCatalogResult());
+				unsyncedCatalog.result());
 		}
 		else
 		{
-			skillCellGrid.clear(cells.unsyncedCatalogResult());
+			skillCellGrid.clear(unsyncedCatalog.result());
 		}
 		JPanel host = config.skillDisplay() == SkillDisplay.TRAY ? traySkillsHost : fixedSkillsHost;
 		host.add(skillCellGrid.component(), BorderLayout.CENTER);
@@ -657,7 +659,7 @@ public class KillClogPanel extends PluginPanel
 		else if (!ClogHelper.configureNotSynced(tip, data, itemManager, config.showTooltipKc()))
 		{
 			tip.setTitle(data != null ? data.name : name);
-			boolean isSelfNoCache = result != null && RsnInputPolicy.sameName(localRsn, rsn) && lookupSession.readsOwnLog();
+			boolean isSelfNoCache = result != null && lookupSession.offersSetup(localRsn, rsn);
 			if (isSelfNoCache)
 			{
 				tip.setNotice(SETUP_NOTICE);
@@ -711,9 +713,9 @@ public class KillClogPanel extends PluginPanel
 	{
 		compareClogTotals.update(
 			ClogHelper.summaryTotals(lookupSession.getClogResult(), lookupSession.getHiscoreResult(),
-				cells.unsyncedCatalogResult()),
+				unsyncedCatalog.result()),
 			ClogHelper.summaryTotals(comparison.getCompareClogResult(), comparison.getCompareHiscoreResult(),
-				cells.unsyncedCatalogResult()), iconCache);
+				unsyncedCatalog.result()), iconCache);
 	}
 
 	@Override
@@ -1030,7 +1032,7 @@ public class KillClogPanel extends PluginPanel
 			return;
 		}
 		int[] totals = ClogHelper.summaryTotals(result, lookupSession.getHiscoreResult(),
-			cells.unsyncedCatalogResult());
+			unsyncedCatalog.result());
 		if (totals[0] >= 0)
 		{
 			String tierName = totals[1] > 0 ? ClogHelper.getClogTierName(totals[0], totals[1]) : null;
@@ -1213,7 +1215,7 @@ public class KillClogPanel extends PluginPanel
 	public void setClogIndex(ClogIndex clogIndex)
 	{
 		this.clogIndex = clogIndex;
-		cells.setClogIndex(clogIndex);
+		unsyncedCatalog.setClogIndex(clogIndex);
 		clogPages.setClogIndex(clogIndex);
 		comparison.setClogIndex(clogIndex);
 		lookupSession.setClogIndex(clogIndex);
@@ -1454,9 +1456,7 @@ public class KillClogPanel extends PluginPanel
 		}
 		else
 		{
-			// Setup is only offered for a log this client keeps.
-			boolean isSelf = RsnInputPolicy.sameName(localRsn, playerRsn) && lookupSession.readsOwnLog();
-			if (isSelf)
+			if (lookupSession.offersSetup(localRsn, playerRsn))
 			{
 				tip.setFirstTimeSetup();
 			}
@@ -1467,7 +1467,7 @@ public class KillClogPanel extends PluginPanel
 			else
 			{
 				// No player yet: preview the log's shape from the catalog.
-				ClogResult catalog = cells.unsyncedCatalogResult();
+				ClogResult catalog = unsyncedCatalog.result();
 				if (catalog != null)
 				{
 					tip.setTitle("Collection Log");
@@ -1483,7 +1483,7 @@ public class KillClogPanel extends PluginPanel
 		}
 		if (clog == null && hiscore != null)
 		{
-			int[] totals = ClogHelper.summaryTotals(null, hiscore, cells.unsyncedCatalogResult());
+			int[] totals = ClogHelper.summaryTotals(null, hiscore, unsyncedCatalog.result());
 			if (totals[0] >= 0) tip.setObtained(totals[0], totals[1]);
 			if (hiscore.isRankDataAvailable()) tip.setRank(hiscore.getActivityRank("Collections Logged"));
 		}

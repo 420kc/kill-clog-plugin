@@ -30,7 +30,7 @@ public class SideBySideTooltipTest
 			JLabel blueName = new JLabel("Blue Player", blueBadge, JLabel.LEFT);
 			JLabel redName = new JLabel("Red Player", redBadge, JLabel.RIGHT);
 			ComparisonController controller = new ComparisonController(null, null, null, null,
-				null, null, null, null, null);
+				null, null, null, null, new UnsyncedClogCatalog(null), null);
 			controller.setRenderTarget((ComparisonController.CellRenderTarget) Proxy.newProxyInstance(
 				getClass().getClassLoader(), new Class<?>[]{ComparisonController.CellRenderTarget.class},
 				(proxy, method, args) -> "playerName".equals(method.getName()) ? blueName

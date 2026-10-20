@@ -413,7 +413,7 @@ public class SkillCellGridTest
 	private static ComparisonController bareComparison(KillClogConfig config)
 	{
 		return new ComparisonController(null, null, null, null, null,
-			config, new TooltipController(config), null, null);
+			config, new TooltipController(config), null, new UnsyncedClogCatalog(null), null);
 	}
 
 	private static void paint(TitleTooltip tooltip)

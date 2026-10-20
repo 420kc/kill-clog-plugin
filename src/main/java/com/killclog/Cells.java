@@ -107,7 +107,7 @@ public class Cells
 	public Cells(SpriteManager spriteManager, ItemManager itemManager,
 		TooltipController tooltipController, ComparisonController comparison,
 		TooltipDataBuilder tooltipDataBuilder, LookupSession lookupSession,
-		ClogService clogService, KillclogService killclogService,
+		UnsyncedClogCatalog unsyncedCatalog, KillclogService killclogService,
 		Function<String, UnaryOperator<String>> selfPbs, KillClogConfig config)
 	{
 		this.config = config;
@@ -120,29 +120,12 @@ public class Cells
 		this.killclogService = killclogService;
 		this.selfPbs = selfPbs;
 		loadPvpActivityIcons();
-		this.unsyncedCatalog = new UnsyncedClogCatalog(clogService);
+		this.unsyncedCatalog = unsyncedCatalog;
 	}
 
 	public void setSinglePlayerTooltipBuilder(SinglePlayerTooltipBuilder builder)
 	{
 		this.singlePlayerBuilder = builder;
-	}
-
-	public void setClogIndex(ClogIndex clogIndex)
-	{
-		this.unsyncedCatalog.setClogIndex(clogIndex);
-	}
-
-	public void setUnsyncedCatalogResolver(Consumer<ClogResult> resolver)
-	{
-		this.unsyncedCatalog.setResolver(resolver);
-	}
-
-	/** The empty catalog backing cold and unsynced previews, if available yet. */
-	@Nullable
-	public ClogResult unsyncedCatalogResult()
-	{
-		return unsyncedCatalog.result();
 	}
 
 	// Cell builders
@@ -397,7 +380,8 @@ public class Cells
 			rareTooltips.clear();
 		}
 		boolean self = RsnInputPolicy.sameName(localRsn, lookupSession.getCurrentLookupRsn());
-		boolean selfNoCache = lookupSession.getClogResult() == null && self && lookupSession.readsOwnLog();
+		boolean selfNoCache = lookupSession.getClogResult() == null
+			&& lookupSession.offersSetup(localRsn, lookupSession.getCurrentLookupRsn());
 		ClogResult catalog = lookupSession.getClogResult() == null && !selfNoCache
 			? unsyncedCatalog.result() : null;
 
@@ -410,7 +394,7 @@ public class Cells
 			HiscoreSkill card = PanelData.card(skill);
 			String bossName = card.getName();
 			String hiscoreName = PanelData.hiscoreName(bossName);
-			TooltipData data = TooltipDataBuilder.withHardMode(buildPrimaryBossData(bossName, hiscoreName, self, pbs),
+			TooltipData data = TooltipDataBuilder.withHardMode(buildPrimaryBossData(bossName, hiscoreName, selfNoCache, pbs),
 				card, lookupSession.getHiscoreResult(), pbs);
 			if (data != null)
 			{
@@ -563,10 +547,9 @@ public class Cells
 	 * sync-prompt self-lookup).
 	 */
 	@Nullable
-	private TooltipData buildPrimaryBossData(String displayName, String hiscoreName, boolean self,
+	private TooltipData buildPrimaryBossData(String displayName, String hiscoreName, boolean selfNoCache,
 		UnaryOperator<String> pbs)
 	{
-		boolean selfNoCache = self && lookupSession.getClogResult() == null && lookupSession.readsOwnLog();
 		if (selfNoCache)
 		{
 			return null;

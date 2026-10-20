@@ -68,7 +68,7 @@ final class LookupTestFixture
 	final LookupSession primary = new LookupSession(hiscoreService, clogService,
 		runeProfile, killclog, config, listener(LookupSession.Listener.class));
 	final ComparisonController comparison = new ComparisonController(hiscoreService, clogService,
-		runeProfile, killclog, primary, config, null, null, listener(ComparisonController.Listener.class))
+		runeProfile, killclog, primary, config, null, null, new UnsyncedClogCatalog(clogService), listener(ComparisonController.Listener.class))
 	{
 		@Override
 		public void rebuildTooltipData()
