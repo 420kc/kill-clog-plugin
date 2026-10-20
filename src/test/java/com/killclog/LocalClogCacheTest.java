@@ -246,21 +246,21 @@ public class LocalClogCacheTest
 		File dir = temporaryFolder.newFolder();
 		LocalClogCache cache = onDisk(dir);
 		assertTrue(StoreLogin.activate(cache, "Main", HASH));
-		for (int i = 0; i < 260; i++)
+		for (int i = 0; i < 68; i++)
 		{
 			cache.cacheResult(clog("Player " + i, categoryItems("hats", 1), obtainedItems("hats", 1)));
 			new File(dir, "lookups/player_" + i + ".json").setLastModified(1_000_000L + i * 1000L);
 		}
 		assertFalse("the oldest fell out of memory", cache.hasDataFor("Player 0"));
-		assertTrue(cache.hasDataFor("Player 259"));
+		assertTrue(cache.hasDataFor("Player 67"));
 		LocalClogCache restarted = onDisk(dir);
 		assertTrue(StoreLogin.activate(restarted, "Main", HASH));
-		assertTrue(restarted.hasDataFor("Player 259"));
+		assertTrue(restarted.hasDataFor("Player 67"));
 		assertTrue(restarted.hasDataFor("Player 4"));
-		assertFalse("only the newest 256 load", restarted.hasDataFor("Player 3"));
+		assertFalse("only the newest 64 load", restarted.hasDataFor("Player 3"));
 		assertFalse("and the cap holds on disk", new File(dir, "lookups/player_3.json").exists());
 		assertTrue(new File(dir, "lookups/player_4.json").exists());
-		assertEquals(256, new File(dir, "lookups").list().length);
+		assertEquals(64, new File(dir, "lookups").list().length);
 	}
 
 	// ── capture, merge and provenance ──

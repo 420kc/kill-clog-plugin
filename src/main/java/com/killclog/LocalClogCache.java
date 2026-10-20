@@ -54,7 +54,9 @@ import net.runelite.client.util.Filepath;
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public class LocalClogCache
 {
-	private static final int LOOKUP_CAP = 256;
+	// Lookups kept, in memory and on disk: an instant repaint of a name looked up again, and a fallback while Temple is
+	// down. A lookup fetches fresh either way, so this is a convenience, sized for it.
+	private static final int LOOKUP_CAP = 64;
 	private static final long DEBOUNCE_MS = 500;
 	// A name two local accounts both carry maps to nothing.
 	private static final String AMBIGUOUS = "";
