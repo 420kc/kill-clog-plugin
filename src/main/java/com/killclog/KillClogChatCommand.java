@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
@@ -283,7 +284,8 @@ class KillClogChatCommand
 
 	/**
 	 * !kclog handler: renders obtained items.
-	 * Async per ChatCommandManager.registerCommandAsync. Blocking I/O fine here, UI work jumps to clientThread.
+	 * Runs on the executor RuneLite shares with every plugin (ChatCommandManager.registerCommandAsync), so it only
+	 * asks: the reply is finished when the answers arrive, and UI work jumps to clientThread.
 	 */
 	void handle(ChatMessage chatMessage, String message)
 	{
@@ -404,12 +406,38 @@ class KillClogChatCommand
 		}
 
 		String rsn = resolveTargetRsn(chatMessage);
-		ClogResult cl = lookup(chatMessage, rsn, target != null ? target.label : "Collection Log");
-		if (cl == null)
+		ClogTarget known = target;
+		String label = known != null ? known.label : "Collection Log";
+		lookup(rsn).whenComplete((cl, error) ->
 		{
-			return;
-		}
+			if (error != null)
+			{
+				log.warn("clog lookup failed for {}", rsn, error);
+				replaceText(chatMessage, label + ": lookup failed");
+			}
+			else if (cl == null)
+			{
+				replaceText(chatMessage, label + ": no clog data");
+			}
+			else
+			{
+				try
+				{
+					reply(chatMessage, query, known, index, rsn, cl, missingMode);
+				}
+				catch (RuntimeException e)
+				{
+					log.warn("clog command failed for {}", rsn, e);
+					replaceText(chatMessage, label + ": lookup failed");
+				}
+			}
+		});
+	}
 
+	/** The reply once the log has arrived: the page, then the boss's kill count when the page has one. */
+	private void reply(ChatMessage chatMessage, String query, @Nullable ClogTarget target, @Nullable ClogIndex index,
+		String rsn, ClogResult cl, boolean missingMode)
+	{
 		if (target == null)
 		{
 			target = resolvePage(query, cl.getCategoryItems().keySet());
@@ -435,7 +463,19 @@ class KillClogChatCommand
 			return;
 		}
 
-		int bossKc = target.boss != null ? lookupBossKc(rsn, target.boss) : -1;
+		CompletableFuture<Integer> kc = target.boss != null ? bossKc(rsn, target.boss)
+			: CompletableFuture.completedFuture(-1);
+		kc.thenAccept(bossKc -> respond(chatMessage, label, page, missingMode, bossKc)).exceptionally(e ->
+		{
+			log.warn("clog command failed for {}", rsn, e);
+			replaceText(chatMessage, label + ": lookup failed");
+			return null;
+		});
+	}
+
+	private void respond(ChatMessage chatMessage, String label, PageItems page, boolean missingMode, int bossKc)
+	{
+		final List<Integer> totalList = page.total;
 		final List<Integer> renderIds;
 		final Map<Integer, Integer> renderQuantities;
 		final String header;
@@ -523,40 +563,35 @@ class KillClogChatCommand
 		return page;
 	}
 
-	private ClogResult lookup(ChatMessage chatMessage, String rsn, String label)
+	/** The player's log from the providers (or this League's), laid on the game's pages; a failure completes it so. */
+	private CompletableFuture<ClogResult> lookup(String rsn)
 	{
-		ClogResult cl;
+		CompletableFuture<ClogResult> asked;
 		try
 		{
 			String league = this.league;
 			LocalClogCache leagueLog = this.leagueLog;
-			cl = (league == null ? ClogProviderFanout.lookup(localClogCache.isActivePlayer(rsn),
+			asked = league == null ? ClogProviderFanout.lookup(localClogCache.isActivePlayer(rsn),
 				() -> clogService.lookup(rsn), () -> runeProfileService.lookupClog(rsn),
 				() -> killclogService.lookupClog(rsn))
 				: leagueLog != null && leagueLog.isActivePlayer(rsn) ? clogService.lookupLocal(leagueLog, rsn)
-				: killclogService.lookupClog(rsn, league)).join();
+				: killclogService.lookupClog(rsn, league);
+		}
+		catch (RuntimeException e)
+		{
+			CompletableFuture<ClogResult> failed = new CompletableFuture<>();
+			failed.completeExceptionally(e);
+			return failed;
+		}
+		return asked.thenApply(cl ->
+		{
 			ClogIndex index = clogIndex;
-			if (index != null)
-			{
-				cl = index.laid(cl);
-			}
-		}
-		catch (Exception e)
-		{
-			log.warn("clog lookup failed for {}", rsn, e);
-			replaceText(chatMessage, label + ": lookup failed");
-			return null;
-		}
-
-		if (cl == null)
-		{
-			replaceText(chatMessage, label + ": no clog data");
-			return null;
-		}
-		return cl;
+			return index != null && cl != null ? index.laid(cl) : cl;
+		});
 	}
 
-	private int lookupBossKc(String rsn, String boss)
+	/** The boss's kill count for the reply's header, or -1 when the hiscores don't answer in the panel's time limit. */
+	private CompletableFuture<Integer> bossKc(String rsn, String boss)
 	{
 		try
 		{
@@ -564,19 +599,24 @@ class KillClogChatCommand
 			HiscoreResult cached = hiscoreService.getCached(rsn);
 			if (main && cached != null && !hiscoreService.isStale(rsn))
 			{
-				return cached.getKc(boss);
+				return CompletableFuture.completedFuture(cached.getKc(boss));
 			}
-
-			// The panel's time limit: this runs on the executor RuneLite shares with every plugin.
-			HiscoreResult result = (main ? hiscoreService.lookup(rsn, null)
+			return (main ? hiscoreService.lookup(rsn, null)
 				: hiscoreService.lookupTable(rsn, HiscoreService.LEAGUE_TABLE))
-				.copy().orTimeout(LookupFanout.hiscoreTimeoutSeconds, TimeUnit.SECONDS).join();
-			return result != null ? result.getKc(boss) : -1;
+				.copy().orTimeout(LookupFanout.hiscoreTimeoutSeconds, TimeUnit.SECONDS)
+				.handle((result, error) ->
+				{
+					if (error != null)
+					{
+						log.debug("hiscore lookup failed for chat command {}", rsn, error);
+					}
+					return error == null && result != null ? result.getKc(boss) : -1;
+				});
 		}
-		catch (Exception e)
+		catch (RuntimeException e)
 		{
 			log.debug("hiscore lookup failed for chat command {}", rsn, e);
-			return -1;
+			return CompletableFuture.completedFuture(-1);
 		}
 	}
 

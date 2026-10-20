@@ -138,6 +138,36 @@ public class ChatCommandDispatchTest
 		assertEquals("[Leagues] Zulrah: 57 kc, 1/2 <img=101>", harness.run("!kclog zulrah", ChatMessageType.PRIVATECHAT));
 	}
 
+	@Test
+	public void aReplyWaitsForItsAnswersWithoutHoldingTheHandler() throws Exception
+	{
+		// The handler runs on the executor RuneLite shares with every plugin: it asks and returns, and the reply is
+		// written when the answers arrive, the log first, then the boss's kill count.
+		ClogResult zulrah = result(Map.of("zulrah", List.of(item(1, 1))), Map.of("zulrah", List.of(1, 2)));
+		Harness harness = new Harness(zulrah);
+		CompletableFuture<ClogResult> log = new CompletableFuture<>();
+		set(harness.command, "clogService", new ClogService(null, null, null)
+		{
+			@Override
+			public CompletableFuture<ClogResult> lookup(String name)
+			{
+				return log;
+			}
+		});
+		HiscoreService hiscores = org.mockito.Mockito.mock(HiscoreService.class);
+		CompletableFuture<HiscoreResult> row = new CompletableFuture<>();
+		org.mockito.Mockito.when(hiscores.lookup("Other player", null)).thenReturn(row);
+		set(harness.command, "hiscoreService", hiscores);
+
+		assertNull("the handler returned without waiting", harness.run("!kclog zulrah"));
+		log.complete(zulrah);
+		assertNull("the log is in, the kill count isn't", harness.rewritten.get());
+		HiscoreResult kills = org.mockito.Mockito.mock(HiscoreResult.class);
+		org.mockito.Mockito.when(kills.getKc(org.mockito.ArgumentMatchers.any())).thenReturn(57);
+		row.complete(kills);
+		assertEquals("Zulrah: 57 kc, 1/2 <img=101>", harness.rewritten.get());
+	}
+
 	private static final class Harness
 	{
 		private final KillClogChatCommand command = new KillClogChatCommand();
