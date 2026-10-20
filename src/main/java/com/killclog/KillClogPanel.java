@@ -872,7 +872,8 @@ public class KillClogPanel extends PluginPanel
 		AccountType providerType = result.getProviderAccountType();
 		if (providerType != null && providerType.isGroupIronman())
 		{
-			updateDisplayedInfoIcon(accountTypes.displayIdentity(lookupSession.getHiscoreResult(), result, rsn));
+			// Through the one badge rule, so your own account keeps RuneLite's type (a hardcore group ironman stays one).
+			updateDisplayedInfoIcon(currentInfoAccountDisplay());
 		}
 		itemNameResolver.resolve(result);
 		if (lookupSession.getHiscoreResult() != null)

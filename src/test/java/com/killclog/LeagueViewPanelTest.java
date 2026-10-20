@@ -710,6 +710,22 @@ public class LeagueViewPanelTest
 		return AccountBadgeResolver.label(field(panel, "rivalIdentity", AccountDisplay.class));
 	}
 
+	@Test
+	public void yourHardcoreGroupBadgeOutlivesALogThatSaysGroupIronman() throws Exception
+	{
+		HiscoreResult regular = RankSelectorTest.result(AccountType.REGULAR, HiscoreTable.STANDARD, 10, 10000);
+		ClogResult log = new ClogResult("Me", Map.of(), Map.of(), Map.of(), null, AccountType.GROUP_IRONMAN);
+		SwingUtilities.invokeAndWait(() ->
+		{
+			panel.setLoggedInPlayer("Me", AccountType.HARDCORE_GROUP_IRONMAN);
+			show(regular, "Me", AccountType.HARDCORE_GROUP_IRONMAN);
+			assertEquals("Hardcore Group Ironman", shownLabel());
+			session.adoptState(regular, log, null, "Me");
+			panel.onClogResult("Me", log, true, session.getLookupVersion());
+			assertEquals("Hardcore Group Ironman", shownLabel());
+		});
+	}
+
 	/** A finished lookup, the way the session reports one. */
 	private void show(HiscoreResult result, String rsn, AccountType selfType)
 	{
