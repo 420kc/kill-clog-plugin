@@ -23,6 +23,10 @@ import static org.mockito.Mockito.when;
 /** A mode's sync reads, fences and posts through that mode's own store and path. No network. */
 public class SyncServiceModeTest
 {
+	private static final Runnable NOTHING = () ->
+	{
+	};
+
 	@Test
 	@SuppressWarnings("unchecked")
 	public void aLeagueSyncUsesOnlyTheLeagueStoreAndPath() throws Exception
@@ -51,5 +55,28 @@ public class SyncServiceModeTest
 		assertEquals(1, sent.size());
 		assertTrue(sent.get(0).url().toString(), sent.get(0).url().encodedPath().endsWith("/player/Tester/sync/demonic-pacts"));
 		verifyNoInteractions(main);
+	}
+
+	@Test
+	public void aLogNeverReadOrEmptySaysWhichAndWhatToDo() throws Exception
+	{
+		OkHttpClient http = new OkHttpClient.Builder().addInterceptor(chain ->
+		{
+			throw new AssertionError("nothing to send");
+		}).build();
+		LocalClogCache main = mock(LocalClogCache.class);
+		when(main.servesAccount("Tester", 42L, 3L)).thenReturn(true);
+		SyncService service = new SyncService(http, new Gson(), main);
+		KillclogSyncGate gate = new KillclogSyncGate();
+
+		SyncService.SyncResult unread = service.syncCollectionLog("Tester", 42L, null, Map.of(), Map.of(), 3L, gate,
+			gate.beginAttempt(false, null), main, "main", false, NOTHING).get();
+		assertEquals("Open your Collection Log to set up Kill Clog automatically.", unread.message);
+
+		when(main.toFirstPartySyncResult("Tester")).thenReturn(new ClogResult("Tester", Map.of(), Map.of(), Map.of(),
+			null, null));
+		SyncService.SyncResult empty = service.syncCollectionLog("Tester", 42L, null, Map.of(), Map.of(), 3L, gate,
+			gate.beginAttempt(false, null), main, "main", false, NOTHING).get();
+		assertEquals("Your Collection Log is empty: Kill Clog syncs from your first item.", empty.message);
 	}
 }

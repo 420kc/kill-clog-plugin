@@ -137,8 +137,10 @@ class SyncService
 		ClogResult clog = cache.toFirstPartySyncResult(rsn);
 		if (clog == null || clog.getObtainedItems().isEmpty())
 		{
-			return CompletableFuture.completedFuture(
-				new SyncResult(false, false, "No local collection log to sync yet."));
+			// Never read on this PC, or read and empty: say which, and what to do.
+			return CompletableFuture.completedFuture(new SyncResult(false, false, clog == null
+				? "Open your Collection Log to set up Kill Clog automatically."
+				: "Your Collection Log is empty: Kill Clog syncs from your first item."));
 		}
 
 		JsonObject root = buildBody(accountHash, accountType, clog, personalBests, detailedPersonalBests);
