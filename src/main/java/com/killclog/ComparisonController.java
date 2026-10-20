@@ -101,9 +101,8 @@ public class ComparisonController
 	// Constants
 	static final Color COMPARE_BLUE = TitleTooltip.COMPARE_BLUE;
 	static final Color COMPARE_RED = TitleTooltip.COMPARE_RED;
-	private static final Color COMPARE_DIM = new Color(160, 160, 160);
-	static final String COMPARE_BLUE_HEX = String.format("#%06x", COMPARE_BLUE.getRGB() & 0xFFFFFF);
-	static final String COMPARE_RED_HEX = String.format("#%06x", COMPARE_RED.getRGB() & 0xFFFFFF);
+	static final String COMPARE_BLUE_HEX = colorHex(COMPARE_BLUE);
+	static final String COMPARE_RED_HEX = colorHex(COMPARE_RED);
 	// Deps
 	private final RuneProfileService runeProfileService;
 	private final LookupSession lookupSession;
@@ -325,7 +324,7 @@ public class ComparisonController
 			}
 			else
 			{
-				setCompareStatus(SearchMessages.COMPARE_MIRROR, COMPARE_DIM, blueName, redPlayer);
+				setCompareStatus(SearchMessages.COMPARE_MIRROR, KillClogPanel.TEXT_DIM, blueName, redPlayer);
 			}
 			return;
 		}
@@ -340,7 +339,7 @@ public class ComparisonController
 		}
 		else
 		{
-			setCompareStatus(SearchMessages.COMPARE_SEARCH, COMPARE_DIM, blueName, blueName);
+			setCompareStatus(SearchMessages.COMPARE_SEARCH, KillClogPanel.TEXT_DIM, blueName, blueName);
 		}
 
 		// CA lookup runs in parallel with hiscore+clog

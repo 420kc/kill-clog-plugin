@@ -28,9 +28,10 @@ final class PanelIconCache
 	private BufferedImage infernalCapeTip;
 	private BufferedImage infernalMaxCapeTip;
 
-	ImageIcon clogTierIcon(@Nullable String tierName)
+	/** The log tier's icon for obtained and total slots, or none before the total is known. */
+	ImageIcon clogTierIcon(int[] totals)
 	{
-		return tierName != null ? clogTierIcons.get(tierName) : null;
+		return totals[1] > 0 ? clogTierIcons.get(ClogHelper.getClogTierName(totals[0], totals[1])) : null;
 	}
 
 	Map<String, BufferedImage> clogTierImages()
@@ -49,8 +50,8 @@ final class PanelIconCache
 		{
 			return null;
 		}
-		boolean maxed = result.getTotalLevel() >= PanelData.MAX_TOTAL_LEVEL;
-		boolean infernal = result.getKc("TzKal-Zuk") > 0;
+		boolean maxed = LookupQueries.maxed(result);
+		boolean infernal = LookupQueries.infernal(result);
 		if (maxed && infernal)
 		{
 			return infernalMaxCapeTip;
@@ -91,18 +92,15 @@ final class PanelIconCache
 			{
 				final int idx = i + 1;
 				loadItemImage(PanelData.CLUE_TIER_ITEM_IDS[i], img ->
-					cells.getClueIcons()[idx] = ImageUtil.resizeImage(
-						ImageUtil.resizeCanvas(img, 25, 25), 13, 13));
+					cells.getClueIcons()[idx] = cellIcon(img, 13));
 			}
 			loadItemImage(23184, img ->
-				cells.getClueIcons()[7] = ImageUtil.resizeImage(
-					ImageUtil.resizeCanvas(img, 25, 25), 13, 13));
+				cells.getClueIcons()[7] = cellIcon(img, 13));
 			for (int i = 0; i < PanelData.RARE_ICON_ITEM_IDS.length; i++)
 			{
 				final int idx = i;
 				loadItemImage(PanelData.RARE_ICON_ITEM_IDS[i], img ->
-					cells.getRareIcons()[idx] = ImageUtil.resizeImage(
-						ImageUtil.resizeCanvas(img, 25, 25), 13, 13));
+					cells.getRareIcons()[idx] = cellIcon(img, 13));
 			}
 		});
 
@@ -120,8 +118,7 @@ final class PanelIconCache
 				{
 					if (sprite != null)
 					{
-						cells.getClueIcons()[0] = ImageUtil.resizeImage(
-							ImageUtil.resizeCanvas(sprite, 25, 25), 13, 13);
+						cells.getClueIcons()[0] = cellIcon(sprite, 13);
 					}
 				}));
 		}
@@ -145,5 +142,11 @@ final class PanelIconCache
 		{
 			SwingUtilities.invokeLater(() -> setter.accept(img));
 		}
+	}
+
+	/** A game icon centred on the 25 px cell canvas, then scaled to the size shown. */
+	static BufferedImage cellIcon(BufferedImage icon, int size)
+	{
+		return ImageUtil.resizeImage(ImageUtil.resizeCanvas(icon, 25, 25), size, size);
 	}
 }

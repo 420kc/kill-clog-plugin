@@ -48,7 +48,6 @@ final class PanelData
 	static
 	{
 		BOSS_WIKI_PAGES.put(HiscoreSkill.BARROWS_CHESTS, "Barrows");
-		// MAD_ANGEL -> "The Mad Angel" rides the same 1.12.34 fold-in as BOSSES.
 		BOSS_WIKI_PAGES.put(HiscoreSkill.MIMIC, "The Mimic");
 		BOSS_WIKI_PAGES.put(HiscoreSkill.NIGHTMARE, "The Nightmare");
 	}

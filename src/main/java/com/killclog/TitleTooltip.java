@@ -29,10 +29,6 @@ import net.runelite.client.util.ImageUtil;
  * optional subtitle (label: value), optional rank line, then separator.
  * Subclasses provide content below the separator via
  * {@link #getContentSize(int)} and {@link #paintBody(Graphics2D, int, int, int)}.
- *
- * <p>Family convention: every Compare* tooltip pairs with a solo sibling, and
- * paint/format helpers shared by a pair live package-private on the solo class,
- * never duplicated across the pair.
  */
 public abstract class TitleTooltip extends NativeTooltip
 {

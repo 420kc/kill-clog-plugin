@@ -340,11 +340,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		});
 	}
 
-	/**
-	 * Solo summary only: the exact amount, never rounded. Max slayer xp is
-	 * 200,000,000 and the summary has the width for it. The comparison side
-	 * keeps the shared compact form, where column width is the constraint.
-	 */
+	/** The exact amount, never rounded: max slayer xp is 200,000,000 and the summary has the width for it. */
 	/* package */ static String slayerXpText(long xp)
 	{
 		return scoreText(xp);

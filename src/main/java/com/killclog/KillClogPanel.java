@@ -46,7 +46,6 @@ public class KillClogPanel extends PluginPanel
 {
 	static final Color TEXT_DIM = new Color(160, 160, 160);
 	private static final Color NOT_FOUND = new Color(0x81, 0x09, 0x09);
-	static final Color KC_COLOR = new Color(215, 215, 215);
 	private static final String SETUP_NOTICE =
 		"Open your Collection Log to start setup automatically";
 
@@ -55,7 +54,7 @@ public class KillClogPanel extends PluginPanel
 	public Color getInfoColor()
 	{
 		return config.completionistHighlighter() && lookupSession.getClogResult() != null
-			? config.infoBarColor() : KC_COLOR;
+			? config.infoBarColor() : Cells.KC_COLOR;
 	}
 
 	/** Combat and total level take the info color together; the Clues cell follows the highlighter. */
@@ -500,8 +499,7 @@ public class KillClogPanel extends PluginPanel
 			{
 				if (sprite != null)
 				{
-					combatCell.setIcon(new ImageIcon(ImageUtil.resizeImage(
-						ImageUtil.resizeCanvas(sprite, 25, 25), 20, 20)));
+					combatCell.setIcon(new ImageIcon(PanelIconCache.cellIcon(sprite, 20)));
 				}
 			}));
 		statsRow.add(cells.wrapInCell(combatCell));
@@ -515,8 +513,7 @@ public class KillClogPanel extends PluginPanel
 			}
 		};
 		Cells.styleLabel(totalLvlCell, "Total");
-		totalLvlCell.setIcon(new ImageIcon(ImageUtil.resizeImage(
-			ImageUtil.resizeCanvas(AccountBadgeResolver.hiscoreIcon("overall.png"), 25, 25), 20, 20)));
+		totalLvlCell.setIcon(new ImageIcon(PanelIconCache.cellIcon(AccountBadgeResolver.hiscoreIcon("overall.png"), 20)));
 		statsRow.add(cells.wrapInCell(totalLvlCell));
 		// The three summaries: Combat, Skills, Clues.
 		statsRow.add(cells.buildClueSummaryCell());
@@ -847,9 +844,9 @@ public class KillClogPanel extends PluginPanel
 		statusRow.setSearchStatus(text, color);
 	}
 
-	private String selfSearchMessage(String player)
+	private String selfSearchMessage(String player, boolean firstGreeting)
 	{
-		if (!config.seenSelfGreeting())
+		if (firstGreeting)
 		{
 			configManager.setConfiguration("killclog", "seenSelfGreeting", true);
 			return "Hey, that's you!";
@@ -1035,9 +1032,7 @@ public class KillClogPanel extends PluginPanel
 			unsyncedCatalog.result());
 		if (totals[0] >= 0)
 		{
-			String tierName = totals[1] > 0 ? ClogHelper.getClogTierName(totals[0], totals[1]) : null;
-			ImageIcon icon = iconCache.clogTierIcon(tierName);
-			clogInfoLabel.setIcon(icon);
+			clogInfoLabel.setIcon(iconCache.clogTierIcon(totals));
 			clogInfoLabel.setText(ClogHelper.pad(ClogHelper.formatKc(totals[0])));
 			clogInfoLabel.setForeground(getInfoColor());
 
@@ -1310,11 +1305,6 @@ public class KillClogPanel extends PluginPanel
 		tooltipController.hidePinnedTooltip();
 	}
 
-	private BufferedImage getCapeImage(@Nullable HiscoreResult result)
-	{
-		return iconCache.capeFor(result);
-	}
-
 	private void updateInfoIcon(AccountDisplay display)
 	{
 		keptIdentity = display;
@@ -1388,14 +1378,14 @@ public class KillClogPanel extends PluginPanel
 		tip.setData(
 			shownName.isEmpty() ? "Player" : shownName,
 			hiscore != null ? hiscore.getOverallRank() : -1,
-			character != null ? character : getCapeImage(hiscore),
+			character != null ? character : iconCache.capeFor(hiscore),
 			AccountBadgeResolver.badge(display),
 			AccountBadgeResolver.label(display),
 			LookupQueries.getPrestige(hiscore)
 		);
 		if (character != null)
 		{
-			tip.setCape(getCapeImage(hiscore));
+			tip.setCape(iconCache.capeFor(hiscore));
 		}
 		if (clans != null)
 		{
@@ -1511,7 +1501,7 @@ public class KillClogPanel extends PluginPanel
 		rankSelector.reset();
 		if (isSelf)
 		{
-			setSearchStatus(selfSearchMessage(player), SearchMessages.SELF_COLOR);
+			setSearchStatus(selfSearchMessage(player, isFirstSelfGreeting), SearchMessages.SELF_COLOR);
 		}
 		else
 		{

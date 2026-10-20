@@ -1,9 +1,9 @@
 /*
  * Copyright (c) 2026, 420 kc <dyl@420kc.dev>
  * Owns the cells of the kill clog panel: builds them, holds the labels,
- * caches tooltip + icon data, renders both primary and comparison values,
- * and routes between single-player and dual-player tooltips. KillClogPanel
- * (layout) and ComparisonController (dual-player rendering) talk to Cells
+ * caches tooltip + icon data, renders the looked-up player's values, and
+ * routes between single-player and dual-player tooltips. KillClogPanel
+ * (layout) and ComparisonController (the comparison's values) talk to Cells
  * directly.
  */
 package com.killclog;
@@ -36,9 +36,9 @@ import net.runelite.client.util.ImageUtil;
 
 /**
  * Per-skill {@link JLabel} cells, their tooltip data caches, the helpers that
- * construct them, and the renderers that fill them with primary or comparison
- * values. Single source of truth for "what cells does the panel show, and how
- * do they hover."
+ * construct them, and the renderers that fill them with the looked-up player's
+ * values (ComparisonController fills in a comparison's). Single source of truth
+ * for "what cells does the panel show, and how do they hover."
  *
  * <p>The single-player tooltip body is built by the panel ({@code
  * SinglePlayerTooltipBuilder}) because it reaches the panel's sync-notice
@@ -175,8 +175,7 @@ public class Cells
 				{
 					return;
 				}
-				ImageIcon icon = new ImageIcon(ImageUtil.resizeImage(
-					ImageUtil.resizeCanvas(sprite, 25, 25), 20, 20));
+				ImageIcon icon = new ImageIcon(PanelIconCache.cellIcon(sprite, 20));
 				label.setIcon(icon);
 				sink.accept(icon);
 			}));
@@ -212,8 +211,7 @@ public class Cells
 			{
 				if (sprite != null)
 				{
-					label.setIcon(new ImageIcon(ImageUtil.resizeCanvas(ImageUtil.resizeImage(
-						ImageUtil.resizeCanvas(sprite, 25, 25), 16, 16), 20, 20)));
+					label.setIcon(new ImageIcon(ImageUtil.resizeCanvas(PanelIconCache.cellIcon(sprite, 16), 20, 20)));
 				}
 			}));
 
@@ -237,8 +235,7 @@ public class Cells
 				{
 					if (sprite != null)
 					{
-						pvpActivityIcons[idx] = ImageUtil.resizeImage(
-							ImageUtil.resizeCanvas(sprite, 25, 25), 13, 13);
+						pvpActivityIcons[idx] = PanelIconCache.cellIcon(sprite, 13);
 					}
 				}));
 		}

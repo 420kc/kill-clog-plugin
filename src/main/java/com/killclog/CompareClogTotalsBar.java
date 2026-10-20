@@ -6,7 +6,6 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
-import javax.swing.ImageIcon;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -146,9 +145,7 @@ final class CompareClogTotalsBar
 			label.setText("--");
 			return;
 		}
-		String tierName = totals[1] > 0 ? ClogHelper.getClogTierName(totals[0], totals[1]) : null;
-		ImageIcon icon = iconCache.clogTierIcon(tierName);
-		label.setIcon(icon);
+		label.setIcon(iconCache.clogTierIcon(totals));
 		label.setText(String.valueOf(totals[0]));
 	}
 }

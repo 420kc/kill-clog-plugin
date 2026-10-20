@@ -10,7 +10,6 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -458,13 +457,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 		}
 		int count = shelf.ids.length;
 		int size = CardBody.GRID_SPRITE;
-		Map<Integer, String> named = new HashMap<>();
-		Map<Integer, Integer> held = new HashMap<>();
-		for (int i = 0; i < count; i++)
-		{
-			named.put(shelf.ids[i], shelf.names[i]);
-			held.put(shelf.ids[i], shelf.counts[i]);
-		}
+		Map<Integer, String> named = CardBody.byId(shelf.ids, i -> shelf.names[i]);
+		Map<Integer, Integer> held = CardBody.byId(shelf.ids, i -> shelf.counts[i]);
 		List<Integer> ids = TooltipData.itemList(shelf.ids);
 		body.titled(title).add(CardBody.part(
 			c -> count * shelf.cellWidth(c.fm) + (count - 1) * RECENT_PAD,

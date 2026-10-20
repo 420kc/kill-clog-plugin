@@ -165,12 +165,23 @@ final class LookupQueries
 	/** 200m, the per-skill xp cap. */
 	private static final long MAX_SKILL_XP = 200_000_000L;
 
+	static boolean maxed(HiscoreResult result)
+	{
+		return result.getTotalLevel() >= PanelData.MAX_TOTAL_LEVEL;
+	}
+
+	/** An infernal cape: a TzKal-Zuk kill. */
+	static boolean infernal(HiscoreResult result)
+	{
+		return result.getKc("TzKal-Zuk") > 0;
+	}
+
 	static String getPrestige(HiscoreResult result)
 	{
 		if (result == null) return null;
 		boolean titan = isTitan(result);
-		boolean maxed = result.getTotalLevel() >= PanelData.MAX_TOTAL_LEVEL;
-		boolean infernal = result.getKc("TzKal-Zuk") > 0;
+		boolean maxed = maxed(result);
+		boolean infernal = infernal(result);
 		if (titan && infernal) return "Titan Infernal";
 		if (titan) return "Titan";
 		if (maxed && infernal) return "Maxed Infernal";

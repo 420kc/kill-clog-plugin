@@ -16,6 +16,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
 import java.util.function.ObjIntConsumer;
 import java.util.function.ToIntFunction;
@@ -83,6 +84,17 @@ final class CardBody
 		return this;
 	}
 
+	/** Each item id's value, as the grids' painter reads names and counts. */
+	static <T> Map<Integer, T> byId(int[] ids, IntFunction<T> value)
+	{
+		Map<Integer, T> out = new HashMap<>();
+		for (int i = 0; i < ids.length; i++)
+		{
+			out.put(ids[i], value.apply(i));
+		}
+		return out;
+	}
+
 	/** The body's parts as one part, as a card scrolls everything under its anchored band. */
 	Part asPart()
 	{
@@ -124,14 +136,8 @@ final class CardBody
 	{
 		Ctx c = new Ctx(card, card.getFontMetrics(FontManager.getRunescapeSmallFont()),
 			card.getFontMetrics(FontManager.getRunescapeBoldFont()), available, null, 0);
-		int width = 0;
-		int height = 0;
-		for (Part part : parts)
-		{
-			width = Math.max(width, part.width(c));
-			height += part.height(c);
-		}
-		return new Dimension(width, height);
+		Part all = asPart();
+		return new Dimension(all.width(c), all.height(c));
 	}
 
 	/** Paints every part down from startY in the small font; returns the item hit boxes they laid down. */
@@ -286,13 +292,11 @@ final class CardBody
 	static Part sprites(int section, @Nullable TooltipItemSprites sprites, int[] ids, String[] names, int[] counts,
 		int pad)
 	{
-		Map<Integer, String> named = new HashMap<>();
-		Map<Integer, Integer> held = new HashMap<>();
+		Map<Integer, String> named = byId(ids, i -> names[i]);
+		Map<Integer, Integer> held = byId(ids, i -> counts[i]);
 		Set<Integer> obtained = new HashSet<>();
 		for (int i = 0; i < ids.length; i++)
 		{
-			named.put(ids[i], names[i]);
-			held.put(ids[i], counts[i]);
 			if (counts[i] > 0)
 			{
 				obtained.add(ids[i]);
@@ -315,11 +319,7 @@ final class CardBody
 	{
 		return row(height, width, (c, y) ->
 		{
-			// Only what shows of the row answers, so one scrolled out of view can't be pressed.
-			int top = c.window != null ? Math.max(y, c.window.y) : y;
-			int bottom = c.window != null ? Math.min(y + height, c.window.y + c.window.height) : y + height;
-			rows.span(top, bottom - top, key);
-			painter.paint(c, y, rows.lastY >= top && rows.lastY < bottom);
+			painter.paint(c, y, rows.spanShown(c, y, height, key));
 		});
 	}
 
@@ -556,12 +556,7 @@ final class CardBody
 					boolean hovered = false;
 					if (rows != null && opens.test(i))
 					{
-						// Only what shows of the line answers, as a click row's.
-						int top = c.window != null ? Math.max(y, c.window.y) : y;
-						int bottom = c.window != null ? Math.min(y + NativeTooltip.LINE_HEIGHT, c.window.y + c.window.height)
-							: y + NativeTooltip.LINE_HEIGHT;
-						rows.span(top, bottom - top, i);
-						hovered = rows.lastY >= top && rows.lastY < bottom;
+						hovered = rows.spanShown(c, y, NativeTooltip.LINE_HEIGHT, i);
 					}
 					g.setColor(hovered ? NativeTooltip.valueColor : NativeTooltip.labelColor);
 					g.drawString(labels[i], x + iconSize + iconGap, textY);
@@ -633,6 +628,18 @@ final class CardBody
 		{
 			spans.removeIf(s -> s[1] == key);
 			spans.add(new int[]{top, key, height});
+		}
+
+		/**
+		 * Lays down only what shows of a row, so one scrolled out of view can't be pressed; whether the still
+		 * mouse is on it.
+		 */
+		boolean spanShown(Ctx c, int y, int height, int key)
+		{
+			int top = c.window != null ? Math.max(y, c.window.y) : y;
+			int bottom = c.window != null ? Math.min(y + height, c.window.y + c.window.height) : y + height;
+			span(top, bottom - top, key);
+			return lastY >= top && lastY < bottom;
 		}
 
 		/** Forgets every row: a scrolled list lays down only the rows it shows. */
