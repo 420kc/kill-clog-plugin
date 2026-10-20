@@ -3,11 +3,13 @@ package com.killclog;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import javax.swing.SwingUtilities;
@@ -253,43 +255,19 @@ final class PublicationCoordinator
 	 */
 	void deleteCharacter()
 	{
-		if (!characterPublishingEnabled() || !characterPublishInFlight.compareAndSet(false, true))
-		{
-			return;
-		}
-		int generation = characterPublishGeneration.incrementAndGet();
-		characterPublishAfterSync.set(false);
-		showCharacterPublishStatus(generation, CharacterStatus.DELETING, false);
-		clientThread.invokeLater(() ->
+		startCharacterRequest(CharacterStatus.DELETING, profileAppearanceService::deleteCurrent, (result, error, generation) ->
 		{
 			if (generation != characterPublishGeneration.get())
 			{
 				return;
 			}
-			Player local = client.getLocalPlayer();
-			String rsn = local != null ? local.getName() : null;
-			long accountHash = client.getAccountHash();
-			if (!characterPublishingEnabled() || rsn == null || accountHash == -1 || !GameMode.MAIN.equals(mode.get()))
+			characterPublishInFlight.set(false);
+			if (error != null || result == null)
 			{
 				failCharacterPublish(generation);
 				return;
 			}
-			profileAppearanceService.deleteCurrent(rsn, accountHash,
-				() -> generation == characterPublishGeneration.get() && characterPublishingEnabled())
-				.whenComplete((result, error) ->
-				{
-					if (generation != characterPublishGeneration.get())
-					{
-						return;
-					}
-					characterPublishInFlight.set(false);
-					if (error != null || result == null)
-					{
-						failCharacterPublish(generation);
-						return;
-					}
-					showCharacterPublishStatus(generation, CharacterStatus.terminal(result.outcome), true, result.message);
-				});
+			showCharacterPublishStatus(generation, CharacterStatus.terminal(result.outcome), true, result.message);
 		});
 	}
 
@@ -336,18 +314,40 @@ final class PublicationCoordinator
 
 	private void startCharacterPublish(boolean newRequest)
 	{
-		if (!characterPublishingEnabled()
-			|| !characterPublishInFlight.compareAndSet(false, true))
-		{
-			return;
-		}
-
-		if (newRequest)
+		if (startCharacterRequest(CharacterStatus.RENDERING, profileAppearanceService::publishCurrent,
+			this::handleCharacterPublishResult) && newRequest)
 		{
 			characterPrerequisiteAttempted.set(false);
 		}
+	}
+
+	/** A character request: publish or delete, for the logged-in player of the main game. */
+	@FunctionalInterface
+	private interface CharacterRequest
+	{
+		CompletableFuture<ProfileAppearanceService.PublishResult> start(String rsn, long accountHash,
+			BooleanSupplier authorized);
+	}
+
+	@FunctionalInterface
+	private interface CharacterOutcome
+	{
+		void handle(ProfileAppearanceService.PublishResult result, Throwable error, int generation);
+	}
+
+	/**
+	 * One character request at a time: its status line at once, then on the client thread the player it is for (a
+	 * logout, a hop to a League or a new request since makes it fail or stand down), then the request. False when one
+	 * is already running or the character setting is off.
+	 */
+	private boolean startCharacterRequest(CharacterStatus progress, CharacterRequest request, CharacterOutcome outcome)
+	{
+		if (!characterPublishingEnabled() || !characterPublishInFlight.compareAndSet(false, true))
+		{
+			return false;
+		}
 		int generation = characterPublishGeneration.incrementAndGet();
-		showCharacterPublishStatus(generation, CharacterStatus.RENDERING, false);
+		showCharacterPublishStatus(generation, progress, false);
 		clientThread.invokeLater(() ->
 		{
 			if (generation != characterPublishGeneration.get())
@@ -362,12 +362,10 @@ final class PublicationCoordinator
 				failCharacterPublish(generation);
 				return;
 			}
-
-			profileAppearanceService.publishCurrent(rsn, accountHash,
-				() -> generation == characterPublishGeneration.get() && characterPublishingEnabled())
-				.whenComplete((result, error) ->
-					handleCharacterPublishResult(result, error, generation));
+			request.start(rsn, accountHash, () -> generation == characterPublishGeneration.get() && characterPublishingEnabled())
+				.whenComplete((result, error) -> outcome.handle(result, error, generation));
 		});
+		return true;
 	}
 
 	private void handleCharacterPublishResult(ProfileAppearanceService.PublishResult result,
