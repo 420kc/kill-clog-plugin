@@ -42,6 +42,15 @@ public class PersonalBestsTest
 	}
 
 	@Test
+	public void theFracturedArchiveReadsTheKeyVanillaFilesItUnder()
+	{
+		// Vanilla's chat commands (99b3c90a) file the raid's time as "fractured archive", no "The", no team size.
+		java.util.Map<String, Double> store = java.util.Map.of("fractured archive", 145.8);
+		assertEquals(java.util.Map.of("the fractured archive", 145.8),
+			PersonalBests.variantSeconds(store::get, PanelData.TFA_HISCORE));
+	}
+
+	@Test
 	public void variantSecondsKeepsTeamSizesSplitAndMergesSpellings()
 	{
 		java.util.Map<String, Double> store = new java.util.HashMap<>();
