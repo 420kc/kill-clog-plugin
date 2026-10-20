@@ -139,6 +139,12 @@ final class KillLog
 		configManager.setRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, KEY_PREFIX + key, pb);
 		configManager.setRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, TAG_PREFIX + key, PbRecord.tag(pb, exact,
 			fresh && toa ? String.valueOf(toaLevelAtTime) : "", timer, fresh ? String.valueOf(kc) : ""));
+		// A new PB is the game's record now, so the log page's reading of the old one is stale until the page is next
+		// opened; it would otherwise win over this kill (PbRecord.pick). Only a plain key meets the page's.
+		if (fresh && size == null)
+		{
+			configManager.unsetRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, ClogPbs.KEY_PREFIX + PersonalBests.encounter(boss));
+		}
 	}
 
 	/** Drops a kill half seen: at logout, and when another account's messages arrive. */

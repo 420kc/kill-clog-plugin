@@ -20,6 +20,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -227,6 +228,22 @@ public class KillLogTest
 		inInstance(4, 3);
 		archive(1, "2:25.80</col> (new personal best)", 1);
 		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
+	}
+
+	@Test
+	public void aNewPbRetiresTheLogPagesOlderReading()
+	{
+		game(1, "Your Zulrah kill count is: <col=ff0000>812</col>.");
+		game(1, "Fight duration: <col=ff0000>0:58.20</col> (new personal best)");
+		kept("zulrah", "58.2|||kill|812", 58.2);
+		verify(configManager).unsetRSProfileConfiguration("killclog", "pagepb.zulrah");
+
+		// A kill that set no new PB, or a team size's, leaves the page's reading: it is still the game's record.
+		game(9, "Your Zulrah kill count is: <col=ff0000>813</col>.");
+		game(9, "Fight duration: <col=ff0000>1:04.20</col>. Personal best: 0:57.60");
+		game(17, "Your Nightmare kill count is: <col=ff0000>1130</col>");
+		game(17, "Team size: <col=ff0000>5 players</col> Fight duration: <col=ff0000>3:28</col> (new personal best)");
+		verify(configManager, times(1)).unsetRSProfileConfiguration(anyString(), anyString());
 	}
 
 	private PbRecord kept(double seconds, String tag)
