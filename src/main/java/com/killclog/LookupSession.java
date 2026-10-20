@@ -148,17 +148,17 @@ public class LookupSession
 	// Lifecycle
 
 	/**
-	 * Begin a lookup for {@code player}. No-op if {@code player} is empty or a
-	 * lookup is already in flight (early return preserves the existing
-	 * pipeline). Otherwise: cache check with a reveal-on-delay if fresh, or a
-	 * full parallel hiscore + public clog provider fan-out if stale or missing.
+	 * Begin a lookup for {@code player}, in place of any still in flight: its stamp goes stale, so nothing it fetched
+	 * paints (a right-click lookup on someone new never shows the last name's results under the new one). No-op for
+	 * an empty name. Otherwise: cache check with a reveal-on-delay if fresh, or a full parallel hiscore + public clog
+	 * provider fan-out if stale or missing.
 	 *
 	 * <p>Caller must invoke on the EDT. All listener callbacks are also on the
 	 * EDT.
 	 */
 	public void start(String player, @Nullable String localRsn, @Nullable AccountType localAccountType)
 	{
-		if (player.isEmpty() || fanout.isInFlight())
+		if (player.isEmpty())
 		{
 			return;
 		}

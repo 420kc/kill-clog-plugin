@@ -184,6 +184,29 @@ public class LookupSessionTest
 	}
 
 	@Test
+	public void aNewLookupTakesThePlaceOfOneStillLoading() throws Exception
+	{
+		LookupTestFixture fixture = new LookupTestFixture();
+		edt(() -> fixture.primary.start("Red", "Blue", AccountType.REGULAR));
+		// A right-click lookup on someone else while Red's hiscores are still on their way.
+		edt(() -> fixture.primary.start("Green", "Blue", AccountType.REGULAR));
+		assertTrue(fixture.hiscores.containsKey("Green"));
+		// Red's answers arrive late and paint nothing.
+		fixture.hiscores.get("Red").complete(hiscore(7));
+		fixture.clogs.get("Red").complete(clog("Red"));
+		fixture.hiscores.get("Green").complete(hiscore(9));
+		fixture.clogs.get("Green").complete(clog("Green"));
+		edt(() ->
+		{
+			assertEquals("Green", fixture.primary.getCurrentLookupRsn());
+			assertEquals(9, fixture.primary.getHiscoreResult().getTotalLevel());
+			assertEquals("Green", fixture.primary.getClogResult().getPlayerName());
+		});
+		assertEquals(1, fixture.events("onHiscoreResult"));
+		assertEquals(1, fixture.events("onClogResult"));
+	}
+
+	@Test
 	public void playerWithoutAClogIsShownAsSoonAsThatIsKnown() throws Exception
 	{
 		LookupTestFixture fixture = new LookupTestFixture();

@@ -22,8 +22,6 @@ public class ComparisonSnapshotTest
 				edt(() -> assertTrue(fixture.comparison.isCompareLookupInFlight()));
 				if (caStage == 1) fixture.cas.get("Second").complete(ca(3));
 				assertPlayer(fixture, "First", 2, "First", 2);
-				edt(() -> fixture.comparison.doCompareLookup("Third", "Blue", null));
-				assertFalse(fixture.hiscores.containsKey("Third"));
 				assertEquals(1, fixture.events("onComparisonEnter"));
 				fixture.clogs.get("Second").complete(clogPresent ? clog("Second") : null);
 				assertPlayer(fixture, "Second", 3, clogPresent ? "Second" : null, caStage < 2 ? 3 : null);
@@ -33,6 +31,25 @@ public class ComparisonSnapshotTest
 				assertEquals(2, fixture.events("onComparisonEnter"));
 			}
 		}
+	}
+
+	@Test
+	public void aNewComparisonTakesThePlaceOfOneStillLoading() throws Exception
+	{
+		LookupTestFixture fixture = new LookupTestFixture();
+		commitFirstPlayer(fixture);
+		edt(() -> fixture.comparison.doCompareLookup("Second", "Blue", null));
+		edt(() -> fixture.comparison.doCompareLookup("Third", "Blue", null));
+		assertTrue(fixture.hiscores.containsKey("Third"));
+		// Second's answers arrive late and paint nothing: its log is never even asked for.
+		fixture.cas.get("Second").complete(ca(3));
+		fixture.hiscores.get("Second").complete(hiscore(3));
+		edt(() -> assertFalse(fixture.clogs.containsKey("Second")));
+		assertPlayer(fixture, "First", 2, "First", 2);
+		fixture.cas.get("Third").complete(ca(4));
+		fixture.hiscores.get("Third").complete(hiscore(4));
+		edt(() -> fixture.clogs.get("Third").complete(clog("Third")));
+		assertPlayer(fixture, "Third", 4, "Third", 4);
 	}
 
 	@Test

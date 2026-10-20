@@ -296,7 +296,8 @@ public class ComparisonController
 	public void doCompareLookup(String player, @Nullable String localRsn, @Nullable AccountType localAccountType)
 	{
 		final String redPlayer = player.trim();
-		if (!RsnInputPolicy.isValid(redPlayer) || fanout.isInFlight())
+		// A new comparison takes the place of one still in flight: its stamp goes stale.
+		if (!RsnInputPolicy.isValid(redPlayer))
 		{
 			return;
 		}

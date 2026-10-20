@@ -774,10 +774,6 @@ public class KillClogPanel extends PluginPanel
 	public void doLookup()
 	{
 		String player = searchBar.getText().trim();
-		if (lookupSession.isLookupInFlight())
-		{
-			return;
-		}
 		if (player.isEmpty())
 		{
 			setSearchStatus("Enter RSN", TEXT_DIM);
