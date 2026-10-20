@@ -24,7 +24,7 @@ Optional and off by default.
 
 **Automatic sync** turns on with Sync Collection Log: your profile updates at login, after new items, and when you open your Collection Log. Turn it off to sync only when you click the chalice.
 
-**Publish Character Model** needs Sync Collection Log and turns on with it. It adds the **publish character** button beside the chalice, which publishes your character and follower in your real appearance. Anyone who looks you up in Kill Clog sees them in your Player Summary.
+**Publish Character Model** needs Sync Collection Log and turns on with it. It adds the **publish character** button beside the chalice, which publishes your character and follower in your real appearance. Anyone who looks you up in Kill Clog sees them in your Player Summary. Hold shift on the button and it reads **delete character model**: a shift-click removes your character from killclog.com, and nothing else changes.
 
 ![Kill Clog Web Sync settings with Sync Collection Log, Automatic sync and Publish Character Model on](screenshots/web-sync-settings.png)
 
@@ -113,7 +113,7 @@ Full page names work, and shorthand such as `gotr`, `mixology`, `pets`, and `hyd
 ## Settings
 
 - **Kill Clog Web Sync:** Sync Collection Log, Automatic sync, Quiet automatic sync, and Publish Character Model
-- **Card Appearance:** card activation, cell hover feedback, Wiki links, the KC (or Glory), PB and rank lines, and colors for labels, values and dividers
+- **Card Appearance:** card activation, cell hover feedback, card links (on a click, only on a shift-click, or off), the KC (or Glory), PB and rank lines, and colors for labels, values and dividers
 - **Lookup:** automatic lookup on login, player comparison, the player-menu lookup and its label, and the leaderboard selector
 - **Menu location:** which right-click menus show Kill Clog (players, friends, ignore, clan and guest clan lists, chat channels, public chat, private messages, Group Ironman)
 - **Skills:** location, virtual levels, level color, color mode (skill colors, 99+, or Skill Clog progress), and Skill Clogs on or off
@@ -122,9 +122,9 @@ Full page names work, and shorthand such as `gotr`, `mixology`, `pets`, and `hyd
 
 ## Data and privacy
 
-Kill Clog contacts secure.runescape.com (Jagex HiScores), templeosrs.com ([TempleOSRS](https://templeosrs.com)), api.runeprofile.com ([RuneProfile](https://runeprofile.com), which also names other players' clans), and killclog.com. With wiki links on, clicking an item opens it on oldschool.runescape.wiki in your browser. A developer-only setting sends sync to staging.killclog.com instead. Each request shows your IP address to the host it contacts, which is why RuneLite shows a third-party warning on install.
+Kill Clog contacts secure.runescape.com (Jagex HiScores), templeosrs.com ([TempleOSRS](https://templeosrs.com)), api.runeprofile.com ([RuneProfile](https://runeprofile.com), which also names other players' clans), and killclog.com. With card links on, clicking an item, a card's title or a source opens it in your browser: oldschool.runescape.wiki, templeosrs.com, runeprofile.com or killclog.com. A developer-only setting sends sync to staging.killclog.com instead. Each request shows your IP address to the host it contacts, which is why RuneLite shows a third-party warning on install.
 
-Web publication is opt-in. Nothing from your local Collection Log is published until you enable **Sync Collection Log**. Disable that setting to stop all web publication, or **Publish Character Model** to stop character updates. Already published data remains until you request deletion through the [opt-out page](https://killclog.com/p/opt-out.html).
+Web publication is opt-in. Nothing from your local Collection Log is published until you enable **Sync Collection Log**. Disable that setting to stop all web publication, or **Publish Character Model** to stop character updates. A shift-click on the publish character button removes your character at any time. Other published data remains until you request deletion through the [opt-out page](https://killclog.com/p/opt-out.html).
 
 TempleOSRS EHB rates are bundled with the plugin and refreshed with releases. Computing EHB does not make another request.
 
