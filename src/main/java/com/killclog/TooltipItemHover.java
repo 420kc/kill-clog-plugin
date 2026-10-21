@@ -153,6 +153,9 @@ final class TooltipItemHover
 		return null;
 	}
 
+	/** The hover section of a name in a card's header (its title, badge, clan or corner image), apart from its body's. */
+	static final int HEADER_SECTION = 9;
+
 	static final class HitBox
 	{
 		private final int section;

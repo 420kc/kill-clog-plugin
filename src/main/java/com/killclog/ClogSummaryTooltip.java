@@ -39,11 +39,13 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private static final int SOURCE_ICON_GAP = 5;
 	private static final int SOURCE_HIT_PAD = 2;
 	private static final int SOURCE_LABEL_GAP = 3;
-	// Hover sections: 0 rare, 1 recent, then the tier ladder and the sources. A reached tier reads green and
-	// an unreached one red, as held and missing items do.
+	// Hover sections: the shelves, the tier ladder and the sources. A reached tier reads green and an unreached one
+	// red, as held and missing items do.
+	private static final int RARE_SECTION = 0;
+	private static final int RECENT_SECTION = 1;
 	private static final int TIER_SECTION = 2;
-	private static final String TITLE = "Collection Log";
 	private static final int SOURCE_SECTION = 3;
+	private static final String TITLE = "Collection Log";
 	// The tab rows read a size up from the card's text, their counts at the right, each tab apart from the next.
 	private static final Font TAB_FONT = FontManager.getRunescapeFont();
 	private static final int TAB_GAP = 4;
@@ -359,8 +361,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 		card.add(hasTotals() || !tabs.isEmpty() ? CardBody.hoverBand() : CardBody.headerHoverBand());
 
 		// The Rare shelf, present only when earned, then recent unlocks.
-		shelf(body, 0, "Rare", rare);
-		shelf(body, 1, "Recent", recent);
+		shelf(body, RARE_SECTION, "Rare", rare);
+		shelf(body, RECENT_SECTION, "Recent", recent);
 
 		// The footer: when it last changed and who supplied it, under one rule.
 		if (syncDate != null || !clogSources.isEmpty())
@@ -523,6 +525,5 @@ public class ClogSummaryTooltip extends TitleTooltip
 		private final BufferedImage icon;
 		@Nullable
 		private final String url;
-
 	}
 }

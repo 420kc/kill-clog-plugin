@@ -170,7 +170,7 @@ public class SummaryTooltip extends TitleTooltip
 		CardBody card = new CardBody().add(CardBody.minWidth(c -> getFontMetrics(getTitleFont()).stringWidth(FORMER_TITLE)));
 		if (accountLabel != null)
 		{
-			card.add(CardBody.row(0, c -> 0, (c, y) -> c.hits.add(new TooltipItemHover.HitBox(9, 0, accountLabel, titleArea(), true))));
+			card.add(CardBody.row(0, c -> 0, (c, y) -> c.hits.add(new TooltipItemHover.HitBox(TooltipItemHover.HEADER_SECTION, 0, accountLabel, titleArea(), true))));
 		}
 		if (clanIcon != null)
 		{
@@ -178,7 +178,7 @@ public class SummaryTooltip extends TitleTooltip
 			{
 				if (getSubtitleIconBounds() != null)
 				{
-					c.hits.add(new TooltipItemHover.HitBox(9, 0, clan, getSubtitleIconBounds(), true,
+					c.hits.add(new TooltipItemHover.HitBox(TooltipItemHover.HEADER_SECTION, 0, clan, getSubtitleIconBounds(), true,
 						TooltipItemLink.runeProfileClanUrl(clan)));
 				}
 			}));

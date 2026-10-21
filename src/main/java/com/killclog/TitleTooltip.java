@@ -142,7 +142,7 @@ public abstract class TitleTooltip extends NativeTooltip
 			c.g.drawImage(image, x, top, null);
 			if (name != null)
 			{
-				c.hits.add(new TooltipItemHover.HitBox(9, 0, name, new Rectangle(x, top, image.getWidth(), image.getHeight()), true));
+				c.hits.add(new TooltipItemHover.HitBox(TooltipItemHover.HEADER_SECTION, 0, name, new Rectangle(x, top, image.getWidth(), image.getHeight()), true));
 			}
 		});
 	}
