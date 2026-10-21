@@ -218,7 +218,7 @@ public class KillClogPlugin extends Plugin
 		if (publication == null)
 		{
 			publication = new PublicationCoordinator(config, configManager, clientThread, executor,
-				sessions, syncService, profileAppearanceService, chatNotifier, panelFeedback(),
+				sessions, syncService, profileAppearanceService, chatNotifier, panel,
 				() -> world.mainSettled() ? getLocalAccountType() : null, world::mode, world::cacheFor,
 				killclogService::leagueProfileType);
 			sessions.addListener(this::sessionChanged);
@@ -944,31 +944,6 @@ public class KillClogPlugin extends Plugin
 	private AccountType getLocalAccountType()
 	{
 		return AccountType.fromRuneLiteVarbit(client.getVarbitValue(VarbitID.IRONMAN));
-	}
-
-	/** The panel's status row speaks for the publication flow; the coordinator already lands on the EDT. */
-	private PublicationCoordinator.Feedback panelFeedback()
-	{
-		return new PublicationCoordinator.Feedback()
-		{
-			@Override
-			public void showSyncProgress(boolean manual, String text, boolean autoClear)
-			{
-				panel.showSyncProgress(manual, text, autoClear);
-			}
-
-			@Override
-			public void showSyncResult(boolean manual, boolean ok, String message)
-			{
-				panel.showSyncResult(manual, ok, message);
-			}
-
-			@Override
-			public void showCharacterPublishStatus(CharacterStatus status, boolean autoClear, String failureMessage)
-			{
-				panel.showCharacterPublishStatus(status, autoClear, failureMessage);
-			}
-		};
 	}
 
 	private BufferedImage getIcon()

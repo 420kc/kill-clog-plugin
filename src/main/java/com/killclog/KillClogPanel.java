@@ -42,7 +42,7 @@ import net.runelite.client.util.ImageUtil;
 
 public class KillClogPanel extends PluginPanel
 	implements LookupSession.Listener, ComparisonController.Listener,
-	ComparisonController.CellRenderTarget
+	ComparisonController.CellRenderTarget, PublicationCoordinator.Feedback
 {
 	static final Color TEXT_DIM = new Color(160, 160, 160);
 	static final Color NOT_FOUND = new Color(0x81, 0x09, 0x09);
@@ -779,12 +779,14 @@ public class KillClogPanel extends PluginPanel
 		statusRow.setCharacterPublishEnabled(enabled);
 	}
 
-	void showSyncProgress(boolean manual, String text, boolean autoClear)
+	@Override
+	public void showSyncProgress(boolean manual, String text, boolean autoClear)
 	{
 		statusRow.showSyncProgress(manual, text, autoClear);
 	}
 
-	void showSyncResult(boolean manual, boolean ok, String message)
+	@Override
+	public void showSyncResult(boolean manual, boolean ok, String message)
 	{
 		statusRow.showSyncResult(manual, ok, message);
 	}
@@ -794,7 +796,8 @@ public class KillClogPanel extends PluginPanel
 		statusRow.resetSyncFeedback();
 	}
 
-	void showCharacterPublishStatus(CharacterStatus status, boolean autoClear, String detail)
+	@Override
+	public void showCharacterPublishStatus(CharacterStatus status, boolean autoClear, String detail)
 	{
 		statusRow.showCharacterPublishStatus(status, autoClear, detail);
 		if (status == CharacterStatus.PUBLISHED || status == CharacterStatus.DELETED)
