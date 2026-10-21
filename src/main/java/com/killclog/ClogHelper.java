@@ -20,6 +20,7 @@ import net.runelite.api.Experience;
 import net.runelite.api.Skill;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.util.QuantityFormatter;
 import org.apache.commons.lang3.StringUtils;
 
@@ -227,7 +228,7 @@ final class ClogHelper
 	static int[] summaryTotals(ClogResult clog, HiscoreResult hiscore, ClogResult catalog)
 	{
 		if (clog != null) return sumClogTotals(clog);
-		int count = hiscore != null ? hiscore.getActivityScore("Collections Logged") : -1;
+		int count = hiscore != null ? hiscore.getActivityScore(HiscoreSkill.COLLECTIONS_LOGGED.getName()) : -1;
 		int total = catalog != null ? sumClogTotals(catalog)[1] : -1;
 		return new int[]{count, total > 0 ? total : -1};
 	}

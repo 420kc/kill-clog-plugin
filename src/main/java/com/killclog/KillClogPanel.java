@@ -33,6 +33,7 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.game.SkillIconManager;
 import net.runelite.client.game.SpriteManager;
+import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.PluginPanel;
@@ -169,10 +170,10 @@ public class KillClogPanel extends PluginPanel
 	private final TooltipController tooltipController;
 	// Middle-button autoscroll; null only if RuneLite ever hands the panel no scroll pane.
 	private PanelAutoscroll autoscroll;
-	// The panel's top, which stays put while everything under it scrolls: the setup notice, the status row, search
-	// and the info bar. As wide as the content under it, under the same rules.
 	// Where an open tray's toggle sits, under the tray; a closed tray's sits in the anchored top.
 	private final JPanel trayToggle = new JPanel(new BorderLayout());
+	// The panel's top, which stays put while everything under it scrolls: the setup notice, the status row, search
+	// and the info bar. As wide as the content under it, under the same rules.
 	private final JPanel anchoredTop = new JPanel()
 	{
 		@Override
@@ -636,8 +637,6 @@ public class KillClogPanel extends PluginPanel
 		revalidate();
 		repaint();
 	}
-
-	// Cell factory helpers.
 
 	// Comparison mode.
 
@@ -1409,11 +1408,6 @@ public class KillClogPanel extends PluginPanel
 			}
 			tip.setClogSources(clog, clogService.onTemple(playerRsn), runeProfileService.hasProfile(playerRsn),
 				lookupSession.onKillclog(playerRsn));
-			if (hiscore != null && hiscore.isRankDataAvailable())
-			{
-				int clogRank = hiscore.getActivityRank("Collections Logged");
-				tip.setRank(clogRank);
-			}
 			boolean stale = LookupQueries.isSyncStale(lastChanged, 90);
 			String sync = LookupQueries.syncLine(lastChanged, stale);
 			if (sync != null) tip.setSyncData(sync, stale);
@@ -1449,7 +1443,10 @@ public class KillClogPanel extends PluginPanel
 		{
 			int[] totals = ClogHelper.summaryTotals(null, hiscore, unsyncedCatalog.result());
 			if (totals[0] >= 0) tip.setObtained(totals[0], totals[1]);
-			if (hiscore.isRankDataAvailable()) tip.setRank(hiscore.getActivityRank("Collections Logged"));
+		}
+		if (hiscore != null && hiscore.isRankDataAvailable())
+		{
+			tip.setRank(hiscore.getActivityRank(HiscoreSkill.COLLECTIONS_LOGGED.getName()));
 		}
 		return tip;
 	}
