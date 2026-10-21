@@ -319,16 +319,11 @@ final class ClogHelper
 
 	// Account helpers. GIM badge state lives in GimBadgeLoader.
 
+	/** A solo Ironman's badge, its board's icon; none otherwise (GIM badges come from game modicons through AccountBadgeResolver). */
 	static String accountBadgeResource(AccountType type)
 	{
-		switch (type)
-		{
-			case IRONMAN: return "ironman.png";
-			case HARDCORE_IRONMAN: return "hardcore_ironman.png";
-			case ULTIMATE_IRONMAN: return "ultimate_ironman.png";
-			// GIM badges come from game modicons through AccountBadgeResolver.
-			default: return null;
-		}
+		RankLeaderboard board = RankLeaderboard.of(type);
+		return board != RankLeaderboard.NORMAL ? board.icon : null;
 	}
 
 	static String accountLabel(AccountType type)

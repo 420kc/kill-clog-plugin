@@ -378,19 +378,15 @@ public class HiscoreService
 	private CompletableFuture<HiscoreResult> lookupKnown(String encodedPlayer, AccountType type, Set<String> absent)
 	{
 		CompletableFuture<String> regular = fetchAsync("hiscore_oldschool", encodedPlayer, absent);
-		String endpoint;
-		switch (type)
+		RankLeaderboard board = RankLeaderboard.of(type);
+		if (board == RankLeaderboard.NORMAL)
 		{
-			case ULTIMATE_IRONMAN: endpoint = "hiscore_oldschool_ultimate"; break;
-			case HARDCORE_IRONMAN: endpoint = "hiscore_oldschool_hardcore_ironman"; break;
-			case IRONMAN: endpoint = "hiscore_oldschool_ironman"; break;
-			default:
-				// RuneLite's own type: not a solo Ironman now (a group ironman reads its regular row).
-				return regular.thenCompose(body -> body != null ? parseAndRefine(encodedPlayer, body, type)
-					: HiscoreService.<HiscoreResult>missing(absent.contains("hiscore_oldschool")))
-					.thenApply(result -> proven(result, false, null));
+			// RuneLite's own type: not a solo Ironman now (a group ironman reads its regular row).
+			return regular.thenCompose(body -> body != null ? parseAndRefine(encodedPlayer, body, type)
+				: HiscoreService.<HiscoreResult>missing(absent.contains("hiscore_oldschool")))
+				.thenApply(result -> proven(result, false, null));
 		}
-		return regular.thenCombine(fetchAsync(endpoint, encodedPlayer, absent), (base, ranked) ->
+		return regular.thenCombine(fetchAsync(board.endpoint, encodedPlayer, absent), (base, ranked) ->
 		{
 			if (base == null && ranked == null)
 			{

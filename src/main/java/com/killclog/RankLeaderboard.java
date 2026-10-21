@@ -1,5 +1,6 @@
 package com.killclog;
 
+import javax.annotation.Nullable;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 
@@ -22,8 +23,14 @@ enum RankLeaderboard
 	{
 		if (result.getHiscoreTable() == HiscoreTable.SKILLER) return SKILLER;
 		if (result.getHiscoreTable() == HiscoreTable.ONE_DEFENCE) return PURE;
-		if (result.getAccountType() == null) return NORMAL;
-		switch (result.getAccountType())
+		return of(result.getAccountType());
+	}
+
+	/** A solo Ironman type's own board; every other type, a group one among them, ranks on the normal board. */
+	static RankLeaderboard of(@Nullable AccountType type)
+	{
+		if (type == null) return NORMAL;
+		switch (type)
 		{
 			case IRONMAN: return IRONMAN;
 			case HARDCORE_IRONMAN: return HARDCORE;
