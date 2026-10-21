@@ -4,10 +4,15 @@ import java.awt.AWTEvent;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Graphics2D;
+import java.awt.HeadlessException;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
 import java.awt.Window;
+import java.awt.datatransfer.DataFlavor;
+import java.awt.datatransfer.Transferable;
+import java.awt.datatransfer.UnsupportedFlavorException;
 import java.awt.event.AWTEventListener;
 import java.awt.event.HierarchyEvent;
 import java.awt.event.KeyEvent;
@@ -16,10 +21,13 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Set;
 import java.util.WeakHashMap;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -34,6 +42,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.MatteBorder;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.util.ColorUtil;
 
@@ -54,6 +63,7 @@ class TooltipController
 	// Stable popup state. Click mode opens this directly; hover mode promotes its
 	// transient preview into the same popup when the source is pressed.
 	private Popup activePinnedPopup;
+	private JToolTip activePinnedTip;
 	private JComponent activePinnedComponent;
 	private JPanel activePinnedCell;
 	private boolean pinnedFromHover;
@@ -76,6 +86,15 @@ class TooltipController
 	// components so click mode never changes another plugin's tooltip behavior.
 	private final Set<JComponent> tooltipComponents =
 		Collections.newSetFromMap(new WeakHashMap<>());
+
+	// A shift-press opens a card and copies it as a picture, ready to paste (Dylan, 2026-10-20): where it goes, and
+	// who says whether it went.
+	@Setter(AccessLevel.PACKAGE)
+	private Predicate<BufferedImage> clipboard = TooltipController::toClipboard;
+	@Setter(AccessLevel.PACKAGE)
+	private Consumer<Boolean> cardCopied = copied ->
+	{
+	};
 
 	/**
 	 * Wire hover effect onto a cell panel.
@@ -233,6 +252,7 @@ class TooltipController
 			dismissHoverPreview(event);
 		}
 		showPinnedTooltip(source, cell);
+		copyIfShifted(source, event);
 	}
 
 	/**
@@ -258,6 +278,77 @@ class TooltipController
 		if (hoverCells.contains(cell))
 		{
 			hoverCell(cell, source);
+		}
+		copyIfShifted(source, event);
+	}
+
+	/** A shift-press that opened a card copies it too, once its popup has laid it out. */
+	private void copyIfShifted(JComponent source, MouseEvent press)
+	{
+		JToolTip tip = activePinnedTip;
+		if (!press.isShiftDown() || activePinnedComponent != source || tip == null)
+		{
+			return;
+		}
+		SwingUtilities.invokeLater(() ->
+		{
+			if (activePinnedTip == tip)
+			{
+				cardCopied.accept(clipboard.test(cardImage(tip)));
+			}
+		});
+	}
+
+	/** The card exactly as it opened, at its own size, the way the lab draws one: before the pointer is on it. */
+	static BufferedImage cardImage(JToolTip tip)
+	{
+		if (tip.getWidth() <= 0 || tip.getHeight() <= 0)
+		{
+			tip.setSize(tip.getPreferredSize());
+			tip.doLayout();
+		}
+		BufferedImage image = new BufferedImage(Math.max(1, tip.getWidth()), Math.max(1, tip.getHeight()),
+			BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = image.createGraphics();
+		tip.paint(g);
+		g.dispose();
+		return image;
+	}
+
+	private static boolean toClipboard(BufferedImage image)
+	{
+		try
+		{
+			Toolkit.getDefaultToolkit().getSystemClipboard().setContents(new Transferable()
+			{
+				@Override
+				public DataFlavor[] getTransferDataFlavors()
+				{
+					return new DataFlavor[]{DataFlavor.imageFlavor};
+				}
+
+				@Override
+				public boolean isDataFlavorSupported(DataFlavor flavor)
+				{
+					return DataFlavor.imageFlavor.equals(flavor);
+				}
+
+				@Override
+				public Object getTransferData(DataFlavor flavor) throws UnsupportedFlavorException
+				{
+					if (!isDataFlavorSupported(flavor))
+					{
+						throw new UnsupportedFlavorException(flavor);
+					}
+					return image;
+				}
+			}, null);
+			return true;
+		}
+		catch (IllegalStateException | HeadlessException e)
+		{
+			// Another program holds the clipboard, or there is no desktop to hold one.
+			return false;
 		}
 	}
 
@@ -345,6 +436,7 @@ class TooltipController
 		y = Math.max(y, screen.y);
 
 		activePinnedPopup = PopupFactory.getSharedInstance().getPopup(cell, tip, x, y);
+		activePinnedTip = tip;
 		activePinnedComponent = source;
 		activePinnedCell = cell;
 		pinnedFromHover = config.tooltipMode() == TooltipMode.HOVER;
@@ -394,6 +486,7 @@ class TooltipController
 			activePinnedPopup.hide();
 			activePinnedPopup = null;
 		}
+		activePinnedTip = null;
 		activePinnedComponent = null;
 		activePinnedCell = null;
 		pinnedFromHover = false;

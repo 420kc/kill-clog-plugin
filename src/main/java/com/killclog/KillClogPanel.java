@@ -213,6 +213,7 @@ public class KillClogPanel extends PluginPanel
 		this.accountTypes = new PanelAccountTypes(runeProfileService);
 		this.tooltipController = new TooltipController(config);
 		this.statusRow = new PanelStatusRow(config, spriteManager, tooltipController, TEXT_DIM);
+		tooltipController.setCardCopied(statusRow::flashCardCopy);
 		this.unsyncedCatalog = new UnsyncedClogCatalog(clogService);
 		this.lookupSession = new LookupSession(hiscoreService, clogService, runeProfileService,
 			killclogService, config, this);

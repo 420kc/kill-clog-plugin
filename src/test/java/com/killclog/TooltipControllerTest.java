@@ -472,6 +472,129 @@ public class TooltipControllerTest
 		}
 	}
 
+	@Test
+	public void aShiftPressOpensTheCardAndCopiesItAsDrawn() throws Exception
+	{
+		PopupFactory original = PopupFactory.getSharedInstance();
+		PopupFactory.setSharedInstance(new PopupFactory()
+		{
+			@Override
+			public Popup getPopup(Component owner, Component contents, int x, int y)
+			{
+				return new Popup()
+				{
+					@Override
+					public void show()
+					{
+					}
+
+					@Override
+					public void hide()
+					{
+					}
+				};
+			}
+		});
+		GraphicsConfiguration screen = new BufferedImage(8, 8, BufferedImage.TYPE_INT_ARGB)
+			.createGraphics().getDeviceConfiguration();
+		JPanel cell = onScreen(screen);
+		JLabel boss = showingLabel();
+		cell.add(boss);
+		TooltipController controller = new TooltipController(config);
+		List<BufferedImage> copies = new ArrayList<>();
+		List<Boolean> said = new ArrayList<>();
+		controller.setClipboard(image -> copies.add(image));
+		controller.setCardCopied(said::add);
+		java.awt.Color drawn = new java.awt.Color(61, 51, 34);
+		try
+		{
+			SwingUtilities.invokeAndWait(() ->
+			{
+				controller.pinTooltipFromPress(boss, cell, press(boss), card(drawn));
+				controller.pinTooltipFromPress(boss, cell, new MouseEvent(boss, MouseEvent.MOUSE_PRESSED, 0L,
+					java.awt.event.InputEvent.SHIFT_DOWN_MASK, 5, 5, 1, false, MouseEvent.BUTTON1), card(drawn));
+			});
+			// The copy waits a turn of the Swing thread, for the popup to lay the card out.
+			SwingUtilities.invokeAndWait(() ->
+			{
+			});
+			assertEquals("only the shift-press copies", 1, copies.size());
+			assertEquals(List.of(true), said);
+			BufferedImage copy = copies.get(0);
+			assertEquals(30, copy.getWidth());
+			assertEquals(20, copy.getHeight());
+			assertEquals(drawn.getRGB(), copy.getRGB(15, 10));
+
+			// A cell's own press, the way every panel cell opens its card, copies on shift too.
+			JLabel cellLabel = new JLabel()
+			{
+				@Override
+				public boolean isShowing()
+				{
+					return true;
+				}
+
+				@Override
+				public Point getLocationOnScreen()
+				{
+					return new Point(10, 10);
+				}
+
+				@Override
+				public JToolTip createToolTip()
+				{
+					return card(drawn);
+				}
+			};
+			cellLabel.setToolTipText("card");
+			cell.add(cellLabel);
+			SwingUtilities.invokeAndWait(() -> controller.pinTooltipFromPress(cellLabel, cell,
+				new MouseEvent(cellLabel, MouseEvent.MOUSE_PRESSED, 0L, java.awt.event.InputEvent.SHIFT_DOWN_MASK, 5, 5,
+					1, false, MouseEvent.BUTTON1)));
+			SwingUtilities.invokeAndWait(() ->
+			{
+			});
+			assertEquals(2, copies.size());
+
+			// A card closed before its turn is not copied.
+			SwingUtilities.invokeAndWait(() ->
+			{
+				controller.pinTooltipFromPress(boss, cell, new MouseEvent(boss, MouseEvent.MOUSE_PRESSED, 0L,
+					java.awt.event.InputEvent.SHIFT_DOWN_MASK, 5, 5, 1, false, MouseEvent.BUTTON1), card(drawn));
+				controller.hidePinnedTooltip();
+			});
+			SwingUtilities.invokeAndWait(() ->
+			{
+			});
+			assertEquals(2, copies.size());
+		}
+		finally
+		{
+			controller.deactivate();
+			PopupFactory.setSharedInstance(original);
+		}
+	}
+
+	/** A card 30 by 20 that paints itself one colour. */
+	private static JToolTip card(java.awt.Color color)
+	{
+		return new JToolTip()
+		{
+			@Override
+			public java.awt.Dimension getPreferredSize()
+			{
+				return new java.awt.Dimension(30, 20);
+			}
+
+			@Override
+			public void paint(java.awt.Graphics g)
+			{
+				g.setColor(color);
+				g.fillRect(0, 0, getWidth(), getHeight());
+			}
+		};
+	}
+
 	private static JPanel onScreen(GraphicsConfiguration screen)
 	{
 		return new JPanel()

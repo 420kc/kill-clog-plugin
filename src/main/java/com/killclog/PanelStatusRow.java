@@ -175,6 +175,13 @@ final class PanelStatusRow
 		expireIfCurrent(message, expiryMs);
 	}
 
+	/** A shift-click copied the card it opened, or the clipboard would not take it. */
+	void flashCardCopy(boolean copied)
+	{
+		flashSearchStatus(copied ? "card copied!" : "card copy failed", copied ? SYNC_K1 : KillClogPanel.NOT_FOUND,
+			CHARACTER_EXPIRY_MS);
+	}
+
 	/** The rank board's notice, which only the board clears ({@link #clearBoardStatus}). */
 	void setBoardStatus(String text)
 	{
