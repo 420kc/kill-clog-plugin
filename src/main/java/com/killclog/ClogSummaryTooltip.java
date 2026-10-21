@@ -147,10 +147,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 		{
 			// The item image at its own size, which stays crisp; it fills in once loaded.
 			AsyncBufferedImage sprite = itemManager.getImage(PanelData.CLOG_TIER_ITEM_IDS[tier]);
-			if (sprite != null)
-			{
-				sprite.onLoaded(this::repaint);
-			}
+			TooltipItemSprites.whenLoaded(sprite, this, this::repaint);
 			tierSprite = sprite;
 		}
 	}

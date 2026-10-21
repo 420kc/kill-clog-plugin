@@ -37,18 +37,59 @@ final class TooltipItemSprites
 			loaded.itemNames[i] = TooltipItemLink.itemName(itemNames, itemId);
 			BufferedImage img = itemManager.getImage(itemId, Math.max(1, countForItem.applyAsInt(itemId)), false);
 			final int idx = i;
-			if (img instanceof AsyncBufferedImage)
+			whenLoaded(img, repaintTarget, () ->
 			{
-				((AsyncBufferedImage) img).onLoaded(() ->
-					SwingUtilities.invokeLater(() ->
-					{
-						loaded.sprites[idx] = img;
-						repaintTarget.repaint();
-					}));
-			}
+				loaded.sprites[idx] = img;
+				repaintTarget.repaint();
+			});
 			loaded.sprites[i] = img;
 		}
 		return loaded;
+	}
+
+	// How many of a card's pictures are still on their way, kept on the card itself.
+	private static final String LOADING = "killclog.card.loading";
+
+	/**
+	 * Runs on the Swing thread once a picture the card asked for has drawn; until then the card counts it as loading,
+	 * so a copy of the card waits for it. A picture already there needs nothing.
+	 */
+	static void whenLoaded(BufferedImage image, JComponent card, Runnable loaded)
+	{
+		if (!(image instanceof AsyncBufferedImage))
+		{
+			return;
+		}
+		count(card, 1);
+		((AsyncBufferedImage) image).onLoaded(() -> SwingUtilities.invokeLater(() ->
+		{
+			count(card, -1);
+			loaded.run();
+		}));
+	}
+
+	/** Whether a card, or either card of a comparison, still waits on a picture. Swing thread. */
+	static boolean loading(JComponent card)
+	{
+		Object pending = card.getClientProperty(LOADING);
+		if (pending instanceof Integer && (Integer) pending > 0)
+		{
+			return true;
+		}
+		for (java.awt.Component child : card.getComponents())
+		{
+			if (child instanceof JComponent && loading((JComponent) child))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	private static void count(JComponent card, int change)
+	{
+		Object pending = card.getClientProperty(LOADING);
+		card.putClientProperty(LOADING, (pending instanceof Integer ? (Integer) pending : 0) + change);
 	}
 
 	BufferedImage spriteAt(int index)

@@ -130,6 +130,10 @@ public class ClogSummaryTooltipTest
 		});
 		loader.start();
 		loader.join();
+		// The card redraws on the Swing thread.
+		javax.swing.SwingUtilities.invokeAndWait(() ->
+		{
+		});
 		assertEquals(1, repaints.get() - before);
 		assertEquals(36 * 32, count(paint(tip), Color.MAGENTA.getRGB()));
 	}

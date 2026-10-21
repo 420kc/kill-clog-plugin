@@ -332,8 +332,8 @@ class TooltipController
 
 	/**
 	 * Copies the card the source just opened, once it has finished drawing: a card's item pictures load as it first
-	 * draws, so the copy waits until the card has looked the same for {@link #COPY_QUIET_LOOKS} looks in a row, at
-	 * most {@link #COPY_WAIT_MS}. A card closed first is not copied.
+	 * draws, so the copy waits until none is still on its way and the card has looked the same for
+	 * {@link #COPY_QUIET_LOOKS} looks in a row, at most {@link #COPY_WAIT_MS}. A card closed first is not copied.
 	 */
 	private void copyPinned(JComponent source)
 	{
@@ -354,7 +354,7 @@ class TooltipController
 				return;
 			}
 			BufferedImage now = cardImage(tip);
-			same[0] = last[0] != null && samePicture(last[0], now) ? same[0] + 1 : 0;
+			same[0] = !TooltipItemSprites.loading(tip) && last[0] != null && samePicture(last[0], now) ? same[0] + 1 : 0;
 			if (same[0] >= COPY_QUIET_LOOKS || System.currentTimeMillis() >= until)
 			{
 				stopCopy();

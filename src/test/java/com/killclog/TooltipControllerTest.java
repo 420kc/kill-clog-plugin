@@ -932,4 +932,90 @@ public class TooltipControllerTest
 			}
 		}
 	}
+
+	@Test
+	public void aCopyWaitsForAPictureStillOnItsWay() throws Exception
+	{
+		KillClogConfig config = org.mockito.Mockito.mock(KillClogConfig.class);
+		org.mockito.Mockito.when(config.tooltipMode()).thenReturn(TooltipMode.CLICK);
+		TooltipController controller = new TooltipController(config);
+		List<BufferedImage> copies = new java.util.concurrent.CopyOnWriteArrayList<>();
+		controller.setClipboard(copies::add);
+		java.util.concurrent.atomic.AtomicBoolean drawn = new java.util.concurrent.atomic.AtomicBoolean();
+		// The card draws its placeholder, unchanged, until its picture arrives 900 ms in: well past two quiet looks.
+		JToolTip tip = new JToolTip()
+		{
+			@Override
+			public java.awt.Dimension getPreferredSize()
+			{
+				return new java.awt.Dimension(30, 20);
+			}
+
+			@Override
+			public void paint(java.awt.Graphics g)
+			{
+				g.setColor(drawn.get() ? java.awt.Color.GREEN : java.awt.Color.RED);
+				g.fillRect(0, 0, getWidth(), getHeight());
+			}
+		};
+		net.runelite.client.util.AsyncBufferedImage picture = org.mockito.Mockito.mock(net.runelite.client.util.AsyncBufferedImage.class);
+		Runnable[] arrives = new Runnable[1];
+		org.mockito.Mockito.doAnswer(invocation ->
+		{
+			arrives[0] = invocation.getArgument(0);
+			return null;
+		}).when(picture).onLoaded(org.mockito.ArgumentMatchers.any());
+		JLabel source = new JLabel();
+		javax.swing.Timer load = new javax.swing.Timer(900, e ->
+		{
+			drawn.set(true);
+			arrives[0].run();
+		});
+		load.setRepeats(false);
+		try
+		{
+			SwingUtilities.invokeAndWait(() ->
+			{
+				TooltipItemSprites.whenLoaded(picture, tip, tip::repaint);
+				setField(controller, "activePinnedTip", tip);
+				setField(controller, "activePinnedComponent", source);
+				load.start();
+				try
+				{
+					java.lang.reflect.Method copy = TooltipController.class.getDeclaredMethod("copyPinned", javax.swing.JComponent.class);
+					copy.setAccessible(true);
+					copy.invoke(controller, source);
+				}
+				catch (ReflectiveOperationException e)
+				{
+					throw new AssertionError(e);
+				}
+			});
+			waitFor(() -> copies.size() == 1);
+			assertEquals("the copy holds the picture, not the placeholder", java.awt.Color.GREEN.getRGB(),
+				copies.get(0).getRGB(10, 10));
+		}
+		finally
+		{
+			SwingUtilities.invokeAndWait(() ->
+			{
+				load.stop();
+				controller.deactivate();
+			});
+		}
+	}
+
+	private static void setField(Object target, String name, Object value)
+	{
+		try
+		{
+			java.lang.reflect.Field field = target.getClass().getDeclaredField(name);
+			field.setAccessible(true);
+			field.set(target, value);
+		}
+		catch (ReflectiveOperationException e)
+		{
+			throw new AssertionError(e);
+		}
+	}
 }
