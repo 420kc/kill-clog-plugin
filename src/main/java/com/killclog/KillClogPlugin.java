@@ -249,10 +249,7 @@ public class KillClogPlugin extends Plugin
 		clogService.setClogIndex(clogIndex);
 		localCaCache.setCaCatalog(caCatalog);
 		runeProfileService.setCaCatalog(caCatalog);
-		chatCommandManager.registerCommandAsync(KillClogChatCommand.COMMAND, kclogCommand::handle);
-		chatCommandManager.registerCommandAsync(KillClogChatCommand.COMMAND_MISSING, kclogCommand::handleMissing);
-		chatCommandManager.registerCommandAsync(KillClogChatCommand.COMMAND_THIRD_AGE, kclogCommand::handleThirdAge);
-		chatCommandManager.registerCommandAsync(KillClogChatCommand.COMMAND_GILDED, kclogCommand::handleGilded);
+		kclogCommand.commands().forEach(chatCommandManager::registerCommandAsync);
 
 		// If installed mid-session, run login init on the client thread
 		if (client.getGameState() == GameState.LOGGED_IN)
@@ -283,10 +280,7 @@ public class KillClogPlugin extends Plugin
 		// worn gear.
 		clientToolbar.removeNavigation(navButton);
 		lookupMenu.stop(config, menuManager);
-		chatCommandManager.unregisterCommand(KillClogChatCommand.COMMAND);
-		chatCommandManager.unregisterCommand(KillClogChatCommand.COMMAND_MISSING);
-		chatCommandManager.unregisterCommand(KillClogChatCommand.COMMAND_THIRD_AGE);
-		chatCommandManager.unregisterCommand(KillClogChatCommand.COMMAND_GILDED);
+		kclogCommand.commands().keySet().forEach(chatCommandManager::unregisterCommand);
 		localClogCache.shutdown();
 		world.close();
 		localCaCache.shutdown();

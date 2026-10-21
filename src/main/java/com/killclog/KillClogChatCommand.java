@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -232,12 +233,27 @@ class KillClogChatCommand
 			.replaceAll("[^a-z0-9]+", " ").trim();
 	}
 
+	/** Whether the text opens with this word and a space after it, in any case. */
+	/* package */ static boolean startsWithWord(String text, String word)
+	{
+		return text.regionMatches(true, 0, word + " ", 0, word.length() + 1);
+	}
+
 	/* package */ static boolean isCompatibleLogCommand(ChatMessageType type, String message)
 	{
 		return PLAYER_CHAT_TYPES.contains(type) && message != null
-			&& (message.equalsIgnoreCase(COMMAND_LOG_COMPATIBILITY)
-				|| message.regionMatches(true, 0, COMMAND_LOG_COMPATIBILITY + " ", 0,
-					COMMAND_LOG_COMPATIBILITY.length() + 1));
+			&& (message.equalsIgnoreCase(COMMAND_LOG_COMPATIBILITY) || startsWithWord(message, COMMAND_LOG_COMPATIBILITY));
+	}
+
+	/** The commands the chat command manager runs for us, each with its handler. */
+	Map<String, BiConsumer<ChatMessage, String>> commands()
+	{
+		Map<String, BiConsumer<ChatMessage, String>> commands = new LinkedHashMap<>();
+		commands.put(COMMAND, this::handle);
+		commands.put(COMMAND_MISSING, this::handleMissing);
+		commands.put(COMMAND_THIRD_AGE, this::handleThirdAge);
+		commands.put(COMMAND_GILDED, this::handleGilded);
+		return commands;
 	}
 
 	/* package */ static String toKillClogCommand(String message)
@@ -253,7 +269,7 @@ class KillClogChatCommand
 		{
 			return null;
 		}
-		if (query.regionMatches(true, 0, "missing ", 0, "missing ".length()))
+		if (startsWithWord(query, "missing"))
 		{
 			return COMMAND_MISSING + " " + query.substring("missing ".length()).trim();
 		}
@@ -313,9 +329,7 @@ class KillClogChatCommand
 			return;
 		}
 
-		boolean missingMode = delegated.regionMatches(true, 0, COMMAND_MISSING + " ", 0,
-			COMMAND_MISSING.length() + 1);
-		dispatch(chatMessage, delegated, missingMode);
+		dispatch(chatMessage, delegated, startsWithWord(delegated, COMMAND_MISSING));
 	}
 
 	/**
@@ -339,7 +353,7 @@ class KillClogChatCommand
 			return;
 		}
 		String message = chatMessage.getMessage();
-		if (!message.regionMatches(true, 0, COMMAND_KC + " ", 0, COMMAND_KC.length() + 1))
+		if (!startsWithWord(message, COMMAND_KC))
 		{
 			return;
 		}
@@ -412,8 +426,7 @@ class KillClogChatCommand
 		{
 			if (error != null)
 			{
-				log.warn("clog lookup failed for {}", rsn, error);
-				replaceText(chatMessage, label + ": lookup failed");
+				lookupFailed(chatMessage, label, rsn, error);
 			}
 			else if (cl == null)
 			{
@@ -427,8 +440,7 @@ class KillClogChatCommand
 				}
 				catch (RuntimeException e)
 				{
-					log.warn("clog command failed for {}", rsn, e);
-					replaceText(chatMessage, label + ": lookup failed");
+					lookupFailed(chatMessage, label, rsn, e);
 				}
 			}
 		});
@@ -467,10 +479,16 @@ class KillClogChatCommand
 			: CompletableFuture.completedFuture(-1);
 		kc.thenAccept(bossKc -> respond(chatMessage, label, page, missingMode, bossKc)).exceptionally(e ->
 		{
-			log.warn("clog command failed for {}", rsn, e);
-			replaceText(chatMessage, label + ": lookup failed");
+			lookupFailed(chatMessage, label, rsn, e);
 			return null;
 		});
+	}
+
+	/** A lookup that broke: logged with its cause, and the chat line says so. */
+	private void lookupFailed(ChatMessage chatMessage, String label, String rsn, Throwable error)
+	{
+		log.warn("clog lookup failed for {}", rsn, error);
+		replaceText(chatMessage, label + ": lookup failed");
 	}
 
 	private void respond(ChatMessage chatMessage, String label, PageItems page, boolean missingMode, int bossKc)
