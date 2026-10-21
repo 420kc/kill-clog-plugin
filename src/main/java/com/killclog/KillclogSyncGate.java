@@ -47,6 +47,12 @@ final class KillclogSyncGate<P>
 		return gen;
 	}
 
+	/** Whether an attempt holds the slot. */
+	boolean busy()
+	{
+		return inFlight.get();
+	}
+
 	/** Whether deferred pre-dispatch work still belongs to the live era. */
 	boolean isCurrent(int gen)
 	{

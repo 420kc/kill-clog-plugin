@@ -84,7 +84,7 @@ final class PublicationCoordinator
 	// The character request, one at a time, all under this coordinator's lock so a check and the change it allows are
 	// one step. The generation only grows: a withdrawal (a logout, a setting turned off) moves it on, so work from
 	// before can never act, wait or free the slot again. A request keeps its slot through its log's sync and retry.
-	private static final int NONE = -1;
+	static final int NONE = -1;
 	private int characterGeneration;
 	private int characterHolder = NONE;
 	private int characterWaiting = NONE;
@@ -128,7 +128,7 @@ final class PublicationCoordinator
 	 * two pushes go as one the same way in whatever order they meet.
 	 */
 	@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-	private static final class Push
+	static final class Push
 	{
 		private static final java.util.concurrent.atomic.AtomicLong ASKED = new java.util.concurrent.atomic.AtomicLong();
 
@@ -163,17 +163,22 @@ final class PublicationCoordinator
 		}
 
 		/**
-		 * Two pushes go as one, the same in whichever order they meet: a click's game over an automatic one's, the
-		 * later-asked click's among clicks, the newer character request (generations only grow), and one advised retry
-		 * for both.
+		 * Two pushes go as one, the same in whichever order they meet: pushes of two logins never mix (the newer login's
+		 * stands whole; login numbers only grow); within one, a click's game over an automatic one's, the later-asked
+		 * click's among clicks, the newer character request (generations only grow), and one advised retry for both.
+		 * The pair is as old as its lead, so a click asked later still leads it.
 		 */
 		static Push merge(Push one, Push other)
 		{
+			if (one.session.getNumber() != other.session.getNumber())
+			{
+				return one.session.getNumber() > other.session.getNumber() ? one : other;
+			}
 			Push earlier = one.asked <= other.asked ? one : other;
 			Push later = earlier == one ? other : one;
 			Push lead = later.manual || !earlier.manual ? later : earlier;
 			return new Push(lead.session, lead.mode, one.manual || other.manual, one.retry || other.retry,
-				Math.max(one.forCharacter, other.forCharacter), later.asked);
+				Math.max(one.forCharacter, other.forCharacter), lead.asked);
 		}
 	}
 
@@ -860,12 +865,19 @@ final class PublicationCoordinator
 		{
 			SwingUtilities.invokeLater(() ->
 			{
-				if (sessions.isCurrent(push.session))
+				// Only a line nothing newer is using: a sync in the air or waiting on its timer keeps its own.
+				if (sessions.isCurrent(push.session) && syncIdle())
 				{
 					feedback.resetSyncFeedback();
 				}
 			});
 		}
+	}
+
+	/** No sync is in the air and none waits on its timer. */
+	private synchronized boolean syncIdle()
+	{
+		return !syncGate.busy() && (pendingKillclogSync == null || pendingKillclogSync.isDone());
 	}
 
 	/** A sync's chat line, said only while its login lasts: the next login never hears the last one's. */

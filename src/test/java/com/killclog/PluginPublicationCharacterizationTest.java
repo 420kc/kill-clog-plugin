@@ -1547,6 +1547,43 @@ public class PluginPublicationCharacterizationTest
 		verify(panel, atLeastOnce()).resetSyncFeedback();
 	}
 
+	@Test
+	public void anOldTimerThatWaitsAtTheGateNeverTakesTheNextLoginsCharacterSync() throws Exception
+	{
+		syncHandler.run();
+		runClient();
+		Object publication = field("publication");
+		Runnable old = (Runnable) read(read(publication, "pendingKillclogSync"), "command");
+		Object gate = read(publication, "syncGate");
+		java.util.concurrent.atomic.AtomicReference<Thread> waiting = new java.util.concurrent.atomic.AtomicReference<>();
+		CompletableFuture<Void> done;
+		// The old timer passed its own checks and waits to claim the gate while another account logs in, syncs and
+		// queues a character request's sync.
+		synchronized (gate)
+		{
+			done = CompletableFuture.runAsync(() ->
+			{
+				waiting.set(Thread.currentThread());
+				old.run();
+			});
+			long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+			while ((waiting.get() == null || waiting.get().getState() != Thread.State.BLOCKED) && System.nanoTime() < until)
+			{
+				Thread.yield();
+			}
+			assertEquals(Thread.State.BLOCKED, waiting.get().getState());
+			nextAccount();
+			syncHandler.run();
+			settle();
+			profileRequired(0);
+			assertEquals(1, syncs.size());
+		}
+		done.get(5, TimeUnit.SECONDS);
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
+		settle();
+		assertEquals("the next login's character sync still goes", 2, syncs.size());
+	}
+
 	/** The server's "another sync holds the lock, try again in 2 s". */
 	private static SyncService.SyncResult busy()
 	{
