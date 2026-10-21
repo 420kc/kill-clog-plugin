@@ -12,11 +12,14 @@ import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
+import net.runelite.client.util.ColorUtil;
 
 final class PanelInfoBar
 {
-	private static final Color HAMBURGER_COLOR = new Color(70, 70, 70);
-	private static final Color HAMBURGER_HOVER_COLOR = new Color(96, 96, 96);
+	// The menu button lifts the bar it sits on toward white, at rest and hovered, so it reads on any background: on
+	// RuneLite's grey 40 these are the 70 and 96 it always drew (30 and 56 of the 215 steps to white).
+	private static final double HAMBURGER_TINT = 30 / 215.0;
+	private static final double HAMBURGER_HOVER_TINT = 56 / 215.0;
 
 	private PanelInfoBar()
 	{
@@ -75,7 +78,7 @@ final class PanelInfoBar
 		}
 
 		infoRow.add(playerName);
-		infoRow.add(buildViewToggle(toggleBossView));
+		infoRow.add(buildViewToggle(toggleBossView, infoRow.getBackground()));
 		infoRow.add(clogInfoLabel);
 		return infoRow;
 	}
@@ -108,11 +111,13 @@ final class PanelInfoBar
 	}
 
 	/** The hamburger: switches the boss area between grid and list views. */
-	private static JLabel buildViewToggle(Runnable toggleBossView)
+	private static JLabel buildViewToggle(Runnable toggleBossView, Color bar)
 	{
 		JLabel viewToggle = new JLabel();
-		ImageIcon hamburgerIcon = new ImageIcon(ClogHelper.makeHamburgerIcon(HAMBURGER_COLOR));
-		ImageIcon hamburgerHoverIcon = new ImageIcon(ClogHelper.makeHamburgerIcon(HAMBURGER_HOVER_COLOR));
+		ImageIcon hamburgerIcon = new ImageIcon(ClogHelper.makeHamburgerIcon(
+			ColorUtil.colorLerp(bar, Color.WHITE, HAMBURGER_TINT)));
+		ImageIcon hamburgerHoverIcon = new ImageIcon(ClogHelper.makeHamburgerIcon(
+			ColorUtil.colorLerp(bar, Color.WHITE, HAMBURGER_HOVER_TINT)));
 		viewToggle.setIcon(hamburgerIcon);
 		viewToggle.setHorizontalAlignment(JLabel.CENTER);
 		viewToggle.setVerticalAlignment(JLabel.CENTER);
