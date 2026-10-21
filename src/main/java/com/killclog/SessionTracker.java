@@ -46,21 +46,32 @@ final class SessionTracker
 		Session now = current;
 		if (state == GameState.LOGIN_SCREEN)
 		{
-			if (now.loggedIn())
-			{
-				change(now, Session.none(now.getNumber() + 1));
-			}
+			end();
+			return;
+		}
+		if (state != GameState.LOGGED_IN)
+		{
 			return;
 		}
 		String name = RsnInputPolicy.localName(client);
 		long accountHash = client.getAccountHash();
-		if (state != GameState.LOGGED_IN || name == null || accountHash == -1)
+		if (name == null || accountHash == -1)
 		{
 			return;
 		}
 		if (!now.loggedIn() || now.getAccountHash() != accountHash || !RsnInputPolicy.sameName(now.getName(), name))
 		{
 			change(now, new Session(now.getNumber() + 1, name, accountHash));
+		}
+	}
+
+	/** The plugin stopping ends the login as the login screen would. */
+	void end()
+	{
+		Session now = current;
+		if (now.loggedIn())
+		{
+			change(now, Session.none(now.getNumber() + 1));
 		}
 	}
 

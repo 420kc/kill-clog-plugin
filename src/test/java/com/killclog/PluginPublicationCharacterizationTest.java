@@ -29,6 +29,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -69,7 +70,6 @@ public class PluginPublicationCharacterizationTest
 	private final ConfigManager configManager = mock(ConfigManager.class);
 	private final List<CompletableFuture<SyncService.SyncResult>> syncs = new ArrayList<>();
 	private final List<CompletableFuture<ProfileAppearanceService.PublishResult>> publishes = new ArrayList<>();
-	private long epoch = 7;
 	// Startup sees no session, as before; the player is then on a main-game members world.
 	private GameState gameState;
 	private KillClogPlugin plugin;
@@ -115,23 +115,22 @@ public class PluginPublicationCharacterizationTest
 		when(client.getAccountHash()).thenReturn(HASH);
 		when(client.getGameState()).thenAnswer(invocation -> gameState);
 		when(client.getWorldType()).thenReturn(java.util.EnumSet.of(net.runelite.api.WorldType.MEMBERS));
-		when(localClogCache.currentSessionEpoch()).thenAnswer(invocation -> epoch);
 		when(localClogCache.folder()).thenReturn(CompletableFuture.completedFuture(null));
-		when(syncService.syncCollectionLog(any(), anyLong(), any(), any(), any(), anyLong(), any(), anyInt(), any(), any(), anyBoolean(), any()))
+		when(syncService.syncCollectionLog(any(),  any(),  any(),  any(),  any(),  anyInt(),  any(),  any(),  anyBoolean(),  any()))
 			.thenAnswer(invocation ->
 			{
 				CompletableFuture<SyncService.SyncResult> sync = new CompletableFuture<>();
 				syncs.add(sync);
-				((Runnable) invocation.getArgument(11)).run();
+				((Runnable) invocation.getArgument(9)).run();
 				return sync;
 			});
-		when(appearance.publishCurrent(any(), anyLong(), any())).thenAnswer(invocation ->
+		when(appearance.publishCurrent(any(), any())).thenAnswer(invocation ->
 		{
 			CompletableFuture<ProfileAppearanceService.PublishResult> publish = new CompletableFuture<>();
 			publishes.add(publish);
 			return publish;
 		});
-		when(appearance.deleteCurrent(any(), anyLong(), any())).thenAnswer(invocation ->
+		when(appearance.deleteCurrent(any(), any())).thenAnswer(invocation ->
 		{
 			CompletableFuture<ProfileAppearanceService.PublishResult> delete = new CompletableFuture<>();
 			deletes.add(delete);
@@ -160,6 +159,8 @@ public class PluginPublicationCharacterizationTest
 		}
 		plugin.startUp();
 		gameState = GameState.LOGGED_IN;
+		// The game has named the player and the account: the tracker makes the login.
+		((SessionTracker) field("sessions")).update(client);
 
 		ArgumentCaptor<Runnable> handler = ArgumentCaptor.forClass(Runnable.class);
 		verify(panel).setKillclogSyncHandler(handler.capture());
@@ -201,8 +202,8 @@ public class PluginPublicationCharacterizationTest
 		verify(chatNotifier).send(ChatNotice.SYNC_RESULT, "Syncing collection log...");
 		verify(panel).showSyncProgress(true, "syncing...", false);
 		assertEquals(1, syncs.size());
-		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), any(), any(), any(), eq(7L), any(), eq(0),
-			eq(localClogCache), eq("main"), anyBoolean(), any());
+		verify(syncService).syncCollectionLog(you(),  any(),  any(),  any(),  any(),  eq(0),
+			eq(localClogCache),  eq("main"),  anyBoolean(),  any());
 
 		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced 12 items"));
 		settle();
@@ -362,12 +363,12 @@ public class PluginPublicationCharacterizationTest
 		syncHandler.run();
 		gameState = GameState.LOGIN_SCREEN;
 		logout();
-		epoch = 8;
 		gameState = GameState.LOGGED_IN;
 		Player next = mock(Player.class);
 		when(next.getName()).thenReturn("Next account");
 		when(client.getLocalPlayer()).thenReturn(next);
 		when(client.getAccountHash()).thenReturn(HASH + 1);
+		((SessionTracker) field("sessions")).update(client);
 		settle();
 		assertTrue(syncs.isEmpty());
 	}
@@ -381,7 +382,6 @@ public class PluginPublicationCharacterizationTest
 		assertEquals(1, clientQueue.size());
 
 		logout();
-		epoch = 8;
 		settle();
 		assertTrue(syncs.isEmpty());
 		verify(panel, never()).showSyncProgress(anyBoolean(), any(), anyBoolean());
@@ -398,18 +398,18 @@ public class PluginPublicationCharacterizationTest
 		clearInvocations(panel, chatNotifier);
 
 		logout();
-		epoch = 8;
 		settle();
 		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
 		settle();
 		verify(panel, never()).showSyncResult(anyBoolean(), anyBoolean(), any());
 		verify(chatNotifier, never()).send(any(), any());
+		login();
 
 		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
 		captureListener.run();
 		settle();
 		assertEquals(2, syncs.size());
-		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), any(), any(), any(), eq(8L), any(), anyInt(), any(), any(), anyBoolean(), any());
+		verify(syncService, times(2)).syncCollectionLog(you(),  any(),  any(),  any(),  any(),  anyInt(),  any(),  any(),  anyBoolean(),  any());
 	}
 
 	@Test
@@ -417,7 +417,8 @@ public class PluginPublicationCharacterizationTest
 	{
 		syncHandler.run();
 		runClient();
-		epoch = 8;
+		logout();
+		login();
 		settle();
 		assertTrue(syncs.isEmpty());
 		verify(panel, never()).showSyncProgress(anyBoolean(), any(), anyBoolean());
@@ -593,7 +594,6 @@ public class PluginPublicationCharacterizationTest
 		assertEquals(1, executor.live());
 
 		logout();
-		epoch = 8;
 		assertEquals(0, executor.live());
 		settle();
 		assertEquals(1, syncs.size());
@@ -633,7 +633,7 @@ public class PluginPublicationCharacterizationTest
 		publishHandler.run();
 		settle();
 		assertEquals(1, publishes.size());
-		verify(appearance).publishCurrent(eq(RSN), eq(HASH), any());
+		verify(appearance).publishCurrent(you(), any());
 		verify(panel).showCharacterPublishStatus(CharacterStatus.RENDERING, false, null);
 
 		publishes.get(0).complete(new ProfileAppearanceService.PublishResult(
@@ -647,6 +647,22 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void aCharacterRequestIsForTheLoginItBeganInAndStandsDownWhenItEnds() throws Exception
+	{
+		publishHandler.run();
+		settle();
+		ArgumentCaptor<java.util.function.BooleanSupplier> stillWanted =
+			ArgumentCaptor.forClass(java.util.function.BooleanSupplier.class);
+		verify(appearance).publishCurrent(you(), stillWanted.capture());
+		assertTrue(stillWanted.getValue().getAsBoolean());
+
+		// Logged out, then back in on the same account: a new login, and the request from the old one never acts.
+		logout();
+		login();
+		assertFalse(stillWanted.getValue().getAsBoolean());
+	}
+
+	@Test
 	public void aShiftClickDeletesAndAPublishWaitsItsTurn() throws Exception
 	{
 		deleteHandler.run();
@@ -654,7 +670,7 @@ public class PluginPublicationCharacterizationTest
 		settle();
 		assertEquals(1, deletes.size());
 		assertEquals(0, publishes.size());
-		verify(appearance).deleteCurrent(eq(RSN), eq(HASH), any());
+		verify(appearance).deleteCurrent(you(), any());
 		verify(panel).showCharacterPublishStatus(CharacterStatus.DELETING, false, null);
 
 		deletes.get(0).complete(new ProfileAppearanceService.PublishResult(
@@ -728,7 +744,6 @@ public class PluginPublicationCharacterizationTest
 		clearInvocations(panel);
 
 		logout();
-		epoch = 8;
 		settle();
 		verify(panel).showCharacterPublishStatus(CharacterStatus.CLEAR, false, null);
 
@@ -776,6 +791,8 @@ public class PluginPublicationCharacterizationTest
 		plugin.shutDown();
 		drainEdt();
 		plugin.startUp();
+		// The re-enabled plugin's login init runs on the client thread before the next press.
+		runClient();
 		ArgumentCaptor<Runnable> handler = ArgumentCaptor.forClass(Runnable.class);
 		verify(panel).setKillclogSyncHandler(handler.capture());
 		syncHandler = handler.getValue();
@@ -831,8 +848,8 @@ public class PluginPublicationCharacterizationTest
 	private AccountType sentType(int call)
 	{
 		ArgumentCaptor<AccountType> type = ArgumentCaptor.forClass(AccountType.class);
-		verify(syncService, times(call)).syncCollectionLog(any(), anyLong(), type.capture(), any(), any(), anyLong(), any(), anyInt(),
-			any(), any(), anyBoolean(), any());
+		verify(syncService, times(call)).syncCollectionLog(any(),  type.capture(),  any(),  any(),  any(),  anyInt(),
+			any(),  any(),  anyBoolean(),  any());
 		return type.getAllValues().get(call - 1);
 	}
 
@@ -957,8 +974,7 @@ public class PluginPublicationCharacterizationTest
 	{
 		when(((KillclogService) field("killclogService")).activeLeague()).thenReturn("demonic-pacts");
 		LocalClogCache league = mock(LocalClogCache.class);
-		when(league.currentSessionEpoch()).thenReturn(3L);
-		when(league.activate(any(), anyLong())).thenReturn(true);
+		when(league.serve(any())).thenReturn(true);
 		TestViews.leagueCacheFactory(plugin, id ->
 		{
 			assertEquals("demonic-pacts", id);
@@ -987,10 +1003,9 @@ public class PluginPublicationCharacterizationTest
 		world(net.runelite.api.WorldType.MEMBERS);
 		ticks(10);
 		settle();
-		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), any(), any(),
-			eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"), anyBoolean(), any());
-		verify(syncService, never()).syncCollectionLog(any(), anyLong(), any(), any(), any(), anyLong(), any(), anyInt(),
-			eq(localClogCache), eq("main"), anyBoolean(), any());
+		verify(syncService).syncCollectionLog(you(),  org.mockito.ArgumentMatchers.isNull(),  any(),  any(),  any(),  anyInt(),  eq(league),  eq("demonic-pacts"),  anyBoolean(),  any());
+		verify(syncService, never()).syncCollectionLog(any(),  any(),  any(),  any(),  any(),  anyInt(),
+			eq(localClogCache),  eq("main"),  anyBoolean(),  any());
 	}
 
 	@Test
@@ -1004,8 +1019,8 @@ public class PluginPublicationCharacterizationTest
 		syncs.get(0).complete(new SyncService.SyncResult(false, false, "Another sync holds the lock", true, 5));
 		settle();
 		assertEquals(2, syncs.size());
-		verify(syncService, times(2)).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), any(),
-			any(), eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"), anyBoolean(), any());
+		verify(syncService, times(2)).syncCollectionLog(you(),  org.mockito.ArgumentMatchers.isNull(),  any(),
+			any(),  any(),  anyInt(),  eq(league),  eq("demonic-pacts"),  anyBoolean(),  any());
 	}
 
 	@Test
@@ -1025,8 +1040,8 @@ public class PluginPublicationCharacterizationTest
 		syncs.get(0).complete(new SyncService.SyncResult(true, false, "First"));
 		settle();
 		assertEquals(2, syncs.size());
-		verify(syncService, times(2)).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), any(),
-			any(), eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"), anyBoolean(), any());
+		verify(syncService, times(2)).syncCollectionLog(you(),  org.mockito.ArgumentMatchers.isNull(),  any(),
+			any(),  any(),  anyInt(),  eq(league),  eq("demonic-pacts"),  anyBoolean(),  any());
 	}
 
 	@Test
@@ -1058,8 +1073,7 @@ public class PluginPublicationCharacterizationTest
 		syncHandler.run();
 		settle();
 		ArgumentCaptor<java.util.Map<String, Double>> pbs = ArgumentCaptor.forClass(java.util.Map.class);
-		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), pbs.capture(), any(),
-			eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"), anyBoolean(), any());
+		verify(syncService).syncCollectionLog(you(),  org.mockito.ArgumentMatchers.isNull(),  pbs.capture(),  any(),  any(),  anyInt(),  eq(league),  eq("demonic-pacts"),  anyBoolean(),  any());
 		return pbs.getValue();
 	}
 
@@ -1104,8 +1118,7 @@ public class PluginPublicationCharacterizationTest
 		settle();
 		ArgumentCaptor<java.util.Map<String, Double>> collapsed = ArgumentCaptor.forClass(java.util.Map.class);
 		ArgumentCaptor<java.util.Map<String, PbRecord>> detailed = ArgumentCaptor.forClass(java.util.Map.class);
-		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), any(), collapsed.capture(), detailed.capture(),
-			eq(7L), any(), anyInt(), eq(localClogCache), eq("main"), anyBoolean(), any());
+		verify(syncService).syncCollectionLog(you(),  any(),  collapsed.capture(),  detailed.capture(),  any(),  anyInt(),  eq(localClogCache),  eq("main"),  anyBoolean(),  any());
 
 		java.util.Map<String, String> got = new java.util.TreeMap<>();
 		detailed.getValue().forEach((key, pb) -> got.put(key, pb.seconds + " " + pb.source.wire()));
@@ -1245,7 +1258,7 @@ public class PluginPublicationCharacterizationTest
 	public void aWorldWithNoKnownGameStillShowsYouAtLogin() throws Exception
 	{
 		world(net.runelite.api.WorldType.DEADMAN);
-		when(localClogCache.setActivePlayer(RSN)).thenReturn(true);
+		when(localClogCache.serve(any())).thenReturn(true);
 		GameStateChanged login = new GameStateChanged();
 		login.setGameState(GameState.LOGGED_IN);
 		plugin.onGameStateChanged(login);
@@ -1258,7 +1271,7 @@ public class PluginPublicationCharacterizationTest
 	public void theLoginLookupWaitsForTheLeaguesOwnLog() throws Exception
 	{
 		LocalClogCache league = announceLeague();
-		when(league.setActivePlayer(RSN)).thenReturn(true);
+		when(league.serve(any())).thenReturn(true);
 		GameStateChanged login = new GameStateChanged();
 		login.setGameState(GameState.LOGGED_IN);
 		plugin.onGameStateChanged(login);
@@ -1270,7 +1283,7 @@ public class PluginPublicationCharacterizationTest
 	@Test
 	public void theLoginLookupLeavesALookupOfSomeoneElseStanding() throws Exception
 	{
-		when(localClogCache.setActivePlayer(RSN)).thenReturn(true);
+		when(localClogCache.serve(any())).thenReturn(true);
 		// Looked up at the login screen, where no provider may have named the player yet.
 		when(panel.getDisplayedRsn()).thenReturn("Friend");
 		GameStateChanged login = new GameStateChanged();
@@ -1300,7 +1313,7 @@ public class PluginPublicationCharacterizationTest
 	{
 		// The game spells the name with a non-breaking space; the lookup box with an underscore.
 		when(client.getLocalPlayer().getName()).thenReturn("My\u00A0Name");
-		when(localClogCache.setActivePlayer("My\u00A0Name")).thenReturn(true);
+		when(localClogCache.serve(any())).thenReturn(true);
 		when(panel.getDisplayedRsn()).thenReturn("my_name");
 		GameStateChanged login = new GameStateChanged();
 		login.setGameState(GameState.LOGGED_IN);
@@ -1361,8 +1374,7 @@ public class PluginPublicationCharacterizationTest
 		verify(panel).setFirstParty(PanelStatusRow.FirstParty.READY);
 		assertEquals(1, executor.live());
 		settle();
-		verify(syncService).syncCollectionLog(eq(RSN), eq(HASH), org.mockito.ArgumentMatchers.isNull(), any(), any(),
-			eq(3L), any(), anyInt(), eq(league), eq("demonic-pacts"), anyBoolean(), any());
+		verify(syncService).syncCollectionLog(you(),  org.mockito.ArgumentMatchers.isNull(),  any(),  any(),  any(),  anyInt(),  eq(league),  eq("demonic-pacts"),  anyBoolean(),  any());
 	}
 
 	@Test
@@ -1375,11 +1387,9 @@ public class PluginPublicationCharacterizationTest
 		ticks(1);
 		settle();
 		verify((KillclogService) field("killclogService")).refreshIndex();
-		verify(league, org.mockito.Mockito.atLeastOnce()).activate(RSN, HASH);
-		verify(league, org.mockito.Mockito.atLeastOnce()).setActivePlayer(RSN);
-		verify(localClogCache, never()).activate(any(), anyLong());
+		verify(league, org.mockito.Mockito.atLeastOnce()).serve(you());
 		logout();
-		verify(league).onSessionEnded();
+		verify(league).serve(org.mockito.ArgumentMatchers.argThat((Session session) -> !session.loggedIn()));
 	}
 
 	@Test
@@ -1482,9 +1492,24 @@ public class PluginPublicationCharacterizationTest
 
 	private void logout()
 	{
+		gameState = GameState.LOGIN_SCREEN;
 		GameStateChanged event = new GameStateChanged();
 		event.setGameState(GameState.LOGIN_SCREEN);
 		plugin.onGameStateChanged(event);
+	}
+
+	/** The same account logs in again: a new login. */
+	private void login() throws Exception
+	{
+		gameState = GameState.LOGGED_IN;
+		((SessionTracker) field("sessions")).update(client);
+	}
+
+	/** The player and account this test logs in as. */
+	private static Session you()
+	{
+		return org.mockito.ArgumentMatchers.argThat((Session session) -> session != null && RSN.equals(session.getName())
+			&& session.getAccountHash() == HASH);
 	}
 
 	private void configChanged(String key)

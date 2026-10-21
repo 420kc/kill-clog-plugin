@@ -157,8 +157,13 @@ public class ProfileAppearanceFlowTest
 			java.lang.reflect.Field field = KillClogPlugin.class.getDeclaredField("profileAppearanceService");
 			field.setAccessible(true);
 			field.set(plugin, h.service);
+			java.util.concurrent.atomic.AtomicReference<GameState> game = new java.util.concurrent.atomic.AtomicReference<>();
+			java.lang.reflect.Field clientField = KillClogPlugin.class.getDeclaredField("client");
+			clientField.setAccessible(true);
+			clientField.set(plugin, proxy(Client.class, name -> "getGameState".equals(name) ? game.get() : null));
 			for (GameState state : new GameState[]{GameState.HOPPING, GameState.CONNECTION_LOST})
 			{
+				game.set(state);
 				h.service.captureOriginalAppearance(h.player);
 				GameStateChanged event = new GameStateChanged();
 				event.setGameState(state);
@@ -454,14 +459,23 @@ public class ProfileAppearanceFlowTest
 			service.captureOriginalAppearance(player);
 		}
 
+		// The login the requests are for, and whether it is still the one logged in and still wanted, as the session
+		// tracker and the publication flow would say: a logout or another account ends it.
+		private final Session login = new Session(1, "Test player", 1);
+
+		private boolean current()
+		{
+			return authorized.get() && loggedIn.get() && account.get() == 1;
+		}
+
 		private CompletableFuture<ProfileAppearanceService.PublishResult> publish()
 		{
-			return service.publishCurrent("Test player", 1, authorized::get);
+			return service.publishCurrent(login, this::current);
 		}
 
 		private CompletableFuture<ProfileAppearanceService.PublishResult> delete()
 		{
-			return service.deleteCurrent("Test player", 1, authorized::get);
+			return service.deleteCurrent(login, this::current);
 		}
 
 		@Override public void close()

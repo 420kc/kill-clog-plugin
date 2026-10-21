@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
 import net.runelite.api.GameState;
-import net.runelite.api.Player;
 import net.runelite.api.ScriptEvent;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.api.events.GameStateChanged;
@@ -141,7 +140,8 @@ public class KillClogPlugin extends Plugin
 
 	private NavigationButton navButton;
 	private PlayerClans playerClans;
-	private String lastLocalName;
+	// Who is logged in, decided in this one place; the stores, the panel and the publication flow follow it.
+	private final SessionTracker sessions = new SessionTracker();
 	@Inject
 	private Gson gson;
 	// Opens a League's own store; a test seam.
@@ -152,16 +152,18 @@ public class KillClogPlugin extends Plugin
 	};
 	// The store the collection log walk started with; a different one means start over.
 	private LocalClogCache walkCache;
-	// The logged-in account, for PB reads on the panel's thread.
-	private volatile long localAccountHash = -1;
 	private final WorldSession world = new WorldSession(
 		() -> client.getGameState() == GameState.LOGGED_IN
 			? GameMode.of(client.getWorldType(), killclogService.activeLeague()) : null,
 		() -> killclogService.activeLeague(), () -> localClogCache, id -> leagueCacheFactory.apply(id),
-		store -> store.setFirstPartyChangedListener(() -> firstPartyChanged(store)));
+		store ->
+		{
+			store.setFirstPartyChangedListener(() -> firstPartyChanged(store));
+			store.serve(sessions.current());
+		});
 	private final AdvLogPbs.Watch advLog = new AdvLogPbs.Watch();
-	// Once per login the account takes up its own log, latched when name, account
-	// hash and the open store are all there (they arrive on different ticks).
+	// The account takes up its own log once per login and per store, latched when the open store says so (its folder
+	// and the account's log arrive on later ticks than the login).
 	private boolean accountActivated;
 
 	private final ClogSessionState sessionState = new ClogSessionState();
@@ -215,10 +217,11 @@ public class KillClogPlugin extends Plugin
 		// plugin would run a second sync beside the old one.
 		if (publication == null)
 		{
-			publication = new PublicationCoordinator(config, configManager, client, clientThread, executor,
-				localClogCache, syncService, profileAppearanceService, chatNotifier, panelFeedback(),
+			publication = new PublicationCoordinator(config, configManager, clientThread, executor,
+				sessions, syncService, profileAppearanceService, chatNotifier, panelFeedback(),
 				() -> world.mainSettled() ? getLocalAccountType() : null, world::mode, world::cacheFor,
 				killclogService::leagueProfileType);
+			sessions.addListener(this::sessionChanged);
 		}
 		syncSettings = new SyncSettings(config, configManager);
 		clogPbs = new ClogPbs(configManager);
@@ -254,7 +257,11 @@ public class KillClogPlugin extends Plugin
 		// If installed mid-session, run login init on the client thread
 		if (client.getGameState() == GameState.LOGGED_IN)
 		{
-			clientThread.invokeLater(() -> enterLoggedInState(false));
+			clientThread.invokeLater(() ->
+			{
+				sessions.update(client);
+				enterLoggedInState(false);
+			});
 		}
 		else if (client.getGameState() == GameState.LOGIN_SCREEN)
 		{
@@ -293,10 +300,8 @@ public class KillClogPlugin extends Plugin
 		publication.cancelCharacterPublish();
 		publication.cancelSync();
 		SwingUtilities.invokeLater(() -> panel.shutdown());
-		// The account's session dies with the plugin: a surviving latch would
-		// carry the old account into whoever logs in next.
-		accountActivated = false;
-		localClogCache.onSessionEnded();
+		// The login dies with the plugin: a surviving one would carry the old account into whoever logs in next.
+		sessions.end();
 		log.debug("Kill Clog plugin stopped");
 	}
 
@@ -308,15 +313,13 @@ public class KillClogPlugin extends Plugin
 		}
 
 		killclogService.refreshIndex();
-		Player local = client.getLocalPlayer();
+		Session session = sessions.current();
 		LocalClogCache cache = world.captureCache();
-		if (local != null && local.getName() != null && cache != null)
+		if (session.loggedIn() && cache != null)
 		{
-			String name = local.getName();
-			lastLocalName = name;
+			String name = session.getName();
 			AccountType acctType = getLocalAccountType();
-			boolean localClogReady = cache.setActivePlayer(name);
-			localCaCache.setActivePlayer(name);
+			boolean localClogReady = cache.serve(session);
 			SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name, acctType));
 			if (!requestLocalReads)
 			{
@@ -354,12 +357,11 @@ public class KillClogPlugin extends Plugin
 	 */
 	private void reconcileClogTotalsFromVarps()
 	{
-		Player local = client.getLocalPlayer();
-		if (!world.mainSettled() || local == null || local.getName() == null)
+		String name = sessions.current().getName();
+		if (!world.mainSettled() || name == null)
 		{
 			return;
 		}
-		String name = local.getName();
 		if (!localClogCache.hasDataFor(name))
 		{
 			return;
@@ -379,9 +381,29 @@ public class KillClogPlugin extends Plugin
 		profileAppearanceService.captureOriginalAppearance(event.getPlayer());
 	}
 
+	/**
+	 * Who is logged in changed: the stores take up the new login (or none), the previous account's hiscore row is
+	 * refetched next time, and work from the previous login stands down. On the client thread, before anything else
+	 * sees the new session.
+	 */
+	private void sessionChanged(Session previous, Session now)
+	{
+		localClogCache.serve(now);
+		world.serve(now);
+		localCaCache.serve(now);
+		accountActivated = false;
+		if (previous.loggedIn())
+		{
+			hiscoreService.markDirty(previous.getName());
+			publication.cancelCharacterPublish();
+			publication.cancelSync();
+		}
+	}
+
 	@Subscribe
 	public void onGameStateChanged(GameStateChanged event)
 	{
+		sessions.update(client);
 		if (event.getGameState() == GameState.LOGIN_SCREEN
 			|| event.getGameState() == GameState.HOPPING
 			|| event.getGameState() == GameState.CONNECTION_LOST)
@@ -415,19 +437,7 @@ public class KillClogPlugin extends Plugin
 			nameAutocompleter.clearClientSnapshot();
 			playerClans.clearClientSnapshot();
 			killLog.reset();
-			markLocalHiscoresDirty();
-			// Silence old completions before ending the cache epoch, then
-			// cancel again so an attempt that began in that narrow handoff
-			// cannot narrate into the next login.
-			publication.cancelCharacterPublish();
-			publication.cancelSync();
-			// The capture anchor and any queued rename checks die with the
-			// session - a stale hash must never authorize the next account's
-			// saves.
-			localClogCache.onSessionEnded();
-			world.sessionEnded();
-			publication.cancelSync();
-			localAccountHash = -1;
+			// The login itself ended in the tracker, first: its stores, its account, its hiscore row and its work.
 			followWorld();
 		}
 		else if (event.getGameState() == GameState.HOPPING)
@@ -456,9 +466,10 @@ public class KillClogPlugin extends Plugin
 	// hop; the cached self-row predates it, so the next self-search refetches.
 	private void markLocalHiscoresDirty()
 	{
-		if (lastLocalName != null)
+		String name = sessions.current().getName();
+		if (name != null)
 		{
-			hiscoreService.markDirty(lastLocalName);
+			hiscoreService.markDirty(name);
 		}
 	}
 
@@ -519,10 +530,9 @@ public class KillClogPlugin extends Plugin
 		{
 			ClogUnlockParser.BroadcastUnlock broadcast =
 				ClogUnlockParser.parseClanBroadcast(event.getMessage());
-			Player broadcastLocal = client.getLocalPlayer();
-			if (broadcast != null && broadcastLocal != null && broadcastLocal.getName() != null
-				&& Text.toJagexName(broadcast.playerName)
-					.equalsIgnoreCase(Text.toJagexName(broadcastLocal.getName())))
+			String you = sessions.current().getName();
+			if (broadcast != null && you != null
+				&& Text.toJagexName(broadcast.playerName).equalsIgnoreCase(Text.toJagexName(you)))
 			{
 				clientThread.invokeLater(() -> handleCollectionLogUnlock(
 					broadcast.itemName, broadcast.obtained, broadcast.total));
@@ -582,7 +592,7 @@ public class KillClogPlugin extends Plugin
 			return false;
 		}
 		caCatalog.capture(client);
-		return localCaReader.capture(client, localCaCache);
+		return localCaReader.capture(client, sessions.current(), localCaCache);
 	}
 
 	private boolean isRuneProfileActive()
@@ -626,7 +636,7 @@ public class KillClogPlugin extends Plugin
 	 */
 	private java.util.function.UnaryOperator<String> selfPbs(String league)
 	{
-		java.util.List<String> keys = PersonalBests.profileKeys(configManager.getRSProfiles(), localAccountHash,
+		java.util.List<String> keys = PersonalBests.profileKeys(configManager.getRSProfiles(), sessions.current().getAccountHash(),
 			league == null ? RuneScapeProfileType.STANDARD.name() : killclogService.leagueProfileType(league));
 		PersonalBests pbs = new PersonalBests(configManager, keys);
 		return pbs::pbText;
@@ -641,7 +651,7 @@ public class KillClogPlugin extends Plugin
 			nameAutocompleter.refreshClientSnapshot();
 		}
 		playerClans.refreshClientSnapshot();
-		localAccountHash = client.getAccountHash();
+		sessions.update(client);
 		if (world.tick())
 		{
 			// Counters and CA tiers read before the world settled were skipped: take them now.
@@ -654,12 +664,11 @@ public class KillClogPlugin extends Plugin
 		// server migrates its own copy on the next sync). Memory only; the
 		// store says no until its folder has loaded, and this retries.
 		LocalClogCache activeCache = world.captureCache();
-		Player activeLocal = client.getLocalPlayer();
-		if (!accountActivated && activeCache != null && activeLocal != null
-			&& activeCache.activate(activeLocal.getName(), client.getAccountHash()))
+		Session session = sessions.current();
+		if (!accountActivated && activeCache != null && activeCache.serve(session))
 		{
 			accountActivated = true;
-			String name = activeLocal.getName();
+			String name = session.getName();
 			boolean hasLocalClog = activeCache.hasFirstPartyDataFor(name);
 			panel.setFirstParty(firstParty(hasLocalClog));
 			if (hasLocalClog)
@@ -673,21 +682,19 @@ public class KillClogPlugin extends Plugin
 			chatNotifier.send(ChatNotice.SYNC_RESULT,
 				"Kill Clog followed your name change from '" + previousName
 				+ "' - your collection log came along.");
-			Player noticeLocal = client.getLocalPlayer();
-			if (noticeLocal != null && noticeLocal.getName() != null)
+			String renameName = session.getName();
+			if (renameName != null)
 			{
-				String renameName = noticeLocal.getName();
 				SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(renameName));
 			}
 		}
 
 		if (sessionState.pendingAcctTypeRecheck())
 		{
-			Player local = client.getLocalPlayer();
-			if (local != null && local.getName() != null)
+			String name = session.getName();
+			if (name != null)
 			{
 				sessionState.clearAcctTypeRecheck();
-				String name = local.getName();
 				AccountType acctType = getLocalAccountType();
 				SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name, acctType));
 			}
@@ -700,16 +707,14 @@ public class KillClogPlugin extends Plugin
 
 		if (sessionState.pendingAutoLookup())
 		{
-			Player local = client.getLocalPlayer();
-			if (local != null && local.getName() != null)
+			String name = session.getName();
+			if (name != null)
 			{
-				String name = local.getName();
 				// A world with no known game still shows the main log, as it always has.
 				LocalClogCache cache = world.captureCache() != null ? world.captureCache() : localClogCache;
-				if (cache.setActivePlayer(name))
+				if (cache.serve(session))
 				{
 					sessionState.markAutoLookupStarted();
-					localCaCache.setActivePlayer(name);
 					// The login transition often fires before the player's name is
 					// readable. This tick path waits for identity arbitration too,
 					// so a resident name-slot file can never become the self view.

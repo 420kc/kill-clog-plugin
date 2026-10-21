@@ -48,17 +48,17 @@ public class LocalClogCacheTest
 	{
 		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService());
 		cache.open(() -> null);
-		assertFalse(cache.setActivePlayer("Tester"));
+		assertFalse(cache.serving("Tester"));
 		cache.cacheFirstPartyResult(clog("Tester", categoryItems("zulrah", 1, 2), obtainedItems("zulrah", 1)));
 		assertFalse("a capture before activation waits, as it waited for identity", cache.hasDataFor("Tester"));
-		cache.onSessionEnded();
+		StoreLogin.logout(cache);
 		assertFalse("and it landed nowhere else either", cache.hasDataFor("Tester"));
 		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
-		assertTrue(cache.setActivePlayer("Tester"));
+		assertTrue(cache.serving("Tester"));
 		cache.cacheFirstPartyResult(clog("Tester", categoryItems("zulrah", 1, 2), obtainedItems("zulrah", 1)));
 		assertTrue(cache.hasFirstPartyDataFor("Tester"));
 		assertTrue(cache.hasFirstPartyDataForActive());
-		assertFalse("another name is another account", cache.setActivePlayer("Someone"));
+		assertFalse("another name is another account", cache.serving("Someone"));
 		assertFalse(StoreLogin.activate(cache, "Someone", -1L));
 	}
 
@@ -75,7 +75,7 @@ public class LocalClogCacheTest
 		assertEquals("77", saved.ownerHash);
 		assertEquals("Old Name", saved.playerName);
 
-		cache.onSessionEnded();
+		StoreLogin.logout(cache);
 		assertTrue(StoreLogin.activate(cache, "New Name", HASH));
 		assertEquals("Old Name", cache.consumeRenameNotice());
 		assertNull(cache.consumeRenameNotice());
@@ -93,15 +93,15 @@ public class LocalClogCacheTest
 	public void theSyncPreflightNeedsThisSessionAccountAndName() throws Exception
 	{
 		LocalClogCache cache = memory("Tester");
-		long epoch = cache.currentSessionEpoch();
-		assertTrue(cache.servesAccount("Tester", HASH, epoch));
-		assertFalse(cache.servesAccount("Tester", 78L, epoch));
-		assertFalse(cache.servesAccount("Someone", HASH, epoch));
-		cache.onSessionEnded();
-		assertFalse(cache.servesAccount("Tester", HASH, epoch));
+		Session login = StoreLogin.session(cache, "Tester", HASH);
+		assertTrue(cache.servesAccount(login));
+		assertFalse(cache.servesAccount(new Session(login.getNumber(), "Tester", 78L)));
+		assertFalse(cache.servesAccount(new Session(login.getNumber(), "Someone", HASH)));
+		StoreLogin.logout(cache);
+		assertFalse(cache.servesAccount(login));
 		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
-		assertFalse("a dead session's epoch never serves", cache.servesAccount("Tester", HASH, epoch));
-		assertTrue(cache.servesAccount("Tester", HASH, cache.currentSessionEpoch()));
+		assertFalse("a dead session never serves", cache.servesAccount(login));
+		assertTrue(cache.servesAccount(StoreLogin.session(cache, "Tester", HASH)));
 	}
 
 	@Test
@@ -113,7 +113,7 @@ public class LocalClogCacheTest
 		cache.open(() -> TestFolders.folder(dir));
 		assertTrue(StoreLogin.activate(cache, "Shared", HASH));
 		cache.cacheFirstPartyResult(clog("Shared", categoryItems("hats", 1, 2), obtainedItems("hats", 1)));
-		cache.onSessionEnded();
+		StoreLogin.logout(cache);
 		assertTrue(StoreLogin.activate(cache, "Shared", 78L));
 		writer.runQueued();
 		assertTrue(ownFile(dir, HASH).exists());
@@ -209,7 +209,7 @@ public class LocalClogCacheTest
 		LocalClogCache cache = onDisk(dir);
 		assertTrue(StoreLogin.activate(cache, "Alt", 78L));
 		cache.cacheFirstPartyResult(clog("Alt", categoryItems("hats", 1, 2), obtainedItems("hats", 1)));
-		cache.onSessionEnded();
+		StoreLogin.logout(cache);
 		assertTrue(StoreLogin.activate(cache, "Main", HASH));
 
 		assertTrue("a local alt previews its own log", cache.hasFirstPartyDataFor("Alt"));
@@ -231,7 +231,7 @@ public class LocalClogCacheTest
 		{
 			assertTrue(StoreLogin.activate(cache, "Traded", hash));
 			cache.cacheFirstPartyResult(clog("Traded", categoryItems("hats", 1), obtainedItems("hats", 1)));
-			cache.onSessionEnded();
+			StoreLogin.logout(cache);
 		}
 		LocalClogCache restarted = onDisk(dir);
 		assertTrue(StoreLogin.activate(restarted, "Main", HASH));
@@ -702,7 +702,7 @@ public class LocalClogCacheTest
 	public void testSessionEndAndRequestCommitHaveOneAtomicOrder() throws Exception
 	{
 		LocalClogCache cache = new LocalClogCache(new Gson(), new NoopScheduledExecutorService());
-		long epoch = cache.currentSessionEpoch();
+		Session epoch = Session.none(0);
 		CountDownLatch commitEntered = new CountDownLatch(1);
 		CountDownLatch releaseCommit = new CountDownLatch(1);
 		CountDownLatch logoutStarted = new CountDownLatch(1);
@@ -726,7 +726,7 @@ public class LocalClogCacheTest
 			Future<?> logout = workers.submit(() ->
 			{
 				logoutStarted.countDown();
-				cache.onSessionEnded();
+				StoreLogin.logout(cache);
 			});
 			assertTrue(logoutStarted.await(1, TimeUnit.SECONDS));
 			assertFalse("logout waits behind an already-committed enqueue", logout.isDone());
@@ -772,7 +772,7 @@ public class LocalClogCacheTest
 		LocalClogCache second = onDisk(dir);
 		// The first plays on: a drop, dated, at its kill count.
 		assertTrue(first.mergeObtainedItem("Tester", 1, List.of("hats"), categories, 42, "Boss"));
-		first.onSessionEnded();
+		StoreLogin.logout(first);
 		// The account logs into the second client, whose next capture rewrites the log.
 		assertTrue(StoreLogin.activate(second, "Tester", HASH));
 		second.cacheFirstPartyResult(clog("Tester", categories, obtainedItems("hats", 1)));

@@ -242,7 +242,7 @@ final class ManualClogSync
 		}
 
 		String name = local.getName();
-		if (!localClogCache.setActivePlayer(name))
+		if (!localClogCache.serving(name))
 		{
 			reset();
 			chatNotifier.send(ChatNotice.SYNC_HELP,

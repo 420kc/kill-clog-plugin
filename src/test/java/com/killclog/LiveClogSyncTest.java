@@ -26,7 +26,7 @@ public class LiveClogSyncTest
 		when(index.ensureParsed(any(), any())).thenReturn(true);
 		when(index.itemIdsForName(any())).thenReturn(List.of(20997));
 		LocalClogCache cache = mock(LocalClogCache.class);
-		when(cache.setActivePlayer("Tester")).thenReturn(true);
+		when(cache.serving("Tester")).thenReturn(true);
 		when(cache.hasDataFor("Tester")).thenReturn(true);
 		LiveClogSync sync = new LiveClogSync();
 

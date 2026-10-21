@@ -24,7 +24,6 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
@@ -81,12 +80,11 @@ public class LocalClogCache
 		}
 	};
 
-	private volatile String activePlayer;
+	// The login this store serves, as the session tracker hands it over.
+	private volatile Session session = Session.none(0);
 	// The logged-in account, set once its own log is serving.
 	private volatile String activeHashKey;
 	private final AtomicReference<String> pendingRenameNotice = new AtomicReference<>();
-	// Bumped at logout: deferred work from a dead session must not act.
-	private final AtomicLong sessionEpoch = new AtomicLong();
 	// The accounts whose own log this session has read fresh from disk, and those being read.
 	private final java.util.Set<String> readThisSession = ConcurrentHashMap.newKeySet();
 	private final java.util.Set<String> reading = ConcurrentHashMap.newKeySet();
@@ -285,55 +283,37 @@ public class LocalClogCache
 		}
 	}
 
-	/** Logout: the session's account and any queued notice end with it. */
-	public synchronized void onSessionEnded()
-	{
-		sessionEpoch.incrementAndGet();
-		readThisSession.clear();
-		pendingRenameNotice.set(null);
-		activeHashKey = null;
-		activePlayer = null;
-	}
-
-	/** The current session fence value, captured while the session is live. */
-	public long currentSessionEpoch()
-	{
-		return sessionEpoch.get();
-	}
-
 	/**
-	 * Commit a non-blocking side effect only while the caller's login session
-	 * is still current, under the same monitor as {@link #onSessionEnded()}.
+	 * The login this store serves, from the session tracker, and the account taking up its own log: false until the
+	 * store is ready and the log has been read fresh for this login, so the plugin asks again each tick. A different
+	 * stored name is a name change: the log follows the account, and one chat line says so. A new session ends the
+	 * last one first: its account, its fresh reads and any notice still queued.
 	 */
-	public synchronized <T> T commitIfSessionCurrent(long expectedEpoch, Supplier<T> commit)
+	public synchronized boolean serve(Session next)
 	{
-		if (sessionEpoch.get() != expectedEpoch)
+		if (next.getNumber() != session.getNumber())
 		{
-			return null;
+			session = next;
+			activeHashKey = null;
+			readThisSession.clear();
+			pendingRenameNotice.set(null);
 		}
-		return commit.get();
-	}
-
-	/**
-	 * The logged-in account takes up its own log. False until the store is
-	 * ready and the log has been read fresh for this login; the caller retries
-	 * next tick. A different stored name is a name change: the log follows the
-	 * account, and one chat line says so.
-	 */
-	public synchronized boolean activate(String name, long accountHash)
-	{
-		if (!ready || name == null || accountHash == -1)
+		if (!ready || !next.loggedIn())
 		{
 			return false;
 		}
-		String hash = Long.toString(accountHash);
+		String hash = Long.toString(next.getAccountHash());
 		if (logs != null && !readThisSession.contains(hash))
 		{
 			readFresh(hash);
 			return false;
 		}
-		activePlayer = name;
-		activeHashKey = Long.toString(accountHash);
+		if (hash.equals(activeHashKey))
+		{
+			return true;
+		}
+		String name = next.getName();
+		activeHashKey = hash;
 		PlayerClogData data = own.get(activeHashKey);
 		if (data != null && data.playerName != null && !cacheKey(data.playerName).equals(cacheKey(name)))
 		{
@@ -361,7 +341,7 @@ public class LocalClogCache
 		{
 			return;
 		}
-		long epoch = sessionEpoch.get();
+		long number = session.getNumber();
 		Runnable read = () ->
 		{
 			try
@@ -382,7 +362,7 @@ public class LocalClogCache
 			finally
 			{
 				reading.remove(hash);
-				if (sessionEpoch.get() == epoch)
+				if (session.getNumber() == number)
 				{
 					readThisSession.add(hash);
 				}
@@ -406,11 +386,17 @@ public class LocalClogCache
 		return pendingRenameNotice.getAndSet(null);
 	}
 
-	/** The sync pre-flight: this session, this account, its own log serving. */
-	public synchronized boolean servesAccount(String rsn, long accountHash, long expectedEpoch)
+	/** The sync pre-flight: this store still serves that login, with its account's own log. */
+	public synchronized boolean servesAccount(Session expected)
 	{
-		return sessionEpoch.get() == expectedEpoch && serving(rsn)
-			&& Long.toString(accountHash).equals(activeHashKey);
+		return expected.getNumber() == session.getNumber() && serving(expected.getName())
+			&& Long.toString(expected.getAccountHash()).equals(activeHashKey);
+	}
+
+	/** A side effect that happens only while that login is the one served, under the same monitor as {@link #serve}. */
+	public synchronized <T> T commitIfSessionCurrent(Session expected, Supplier<T> commit)
+	{
+		return expected.getNumber() == session.getNumber() ? commit.get() : null;
 	}
 
 	/** Flush accepted saves on the same queue; a new session cannot overtake them. */
@@ -436,24 +422,14 @@ public class LocalClogCache
 		diskWriter.shutdown();
 	}
 
-	/** The player whose captures this store takes; true once their own log is serving. */
-	public synchronized boolean setActivePlayer(String name)
-	{
-		if (name == null || activePlayer == null || !cacheKey(name).equals(cacheKey(activePlayer)))
-		{
-			// A different player waits for activate() with their account.
-			activePlayer = name;
-			activeHashKey = null;
-		}
-		return serving(name);
-	}
-
+	/** Whether this name is the logged-in player's, whose captures this store takes. */
 	public boolean isActivePlayer(String name)
 	{
-		return RsnInputPolicy.sameName(activePlayer, name);
+		return RsnInputPolicy.sameName(session.getName(), name);
 	}
 
-	private boolean serving(String name)
+	/** Whether this name's own log is the one serving: the logged-in player's, taken up for this login. */
+	public synchronized boolean serving(String name)
 	{
 		return ready && activeHashKey != null && isActivePlayer(name);
 	}
@@ -1030,7 +1006,7 @@ public class LocalClogCache
 	/** {@link #hasFirstPartyDataFor} for the logged-in player. */
 	public boolean hasFirstPartyDataForActive()
 	{
-		return hasFirstPartyDataFor(activePlayer);
+		return hasFirstPartyDataFor(session.getName());
 	}
 
 	/**

@@ -18,7 +18,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -29,6 +28,9 @@ import static org.mockito.Mockito.when;
  */
 public class SyncServiceUnchangedTest
 {
+	// The login a push is gathered in.
+	private static final Session TESTER = new Session(3, "Tester", 42L);
+
 	private final List<Request> sent = new ArrayList<>();
 	private int code = 200;
 	private String reply = "{}";
@@ -48,9 +50,9 @@ public class SyncServiceUnchangedTest
 				.body(ResponseBody.create(MediaType.get("application/json"), reply)).build();
 		}).build();
 		cache = mock(LocalClogCache.class);
-		when(cache.servesAccount(anyString(), anyLong(), anyLong())).thenReturn(true);
+		when(cache.servesAccount(any())).thenReturn(true);
 		when(cache.toFirstPartySyncResult(anyString())).thenAnswer(call -> log);
-		when(cache.commitIfSessionCurrent(anyLong(), any())).thenAnswer(call -> ((Supplier<Object>) call.getArgument(1)).get());
+		when(cache.commitIfSessionCurrent(any(), any())).thenAnswer(call -> ((Supplier<Object>) call.getArgument(1)).get());
 		service = new SyncService(http, new Gson(), cache);
 		log = clog(1);
 	}
@@ -66,7 +68,7 @@ public class SyncServiceUnchangedTest
 	{
 		KillclogSyncGate gate = new KillclogSyncGate();
 		int generation = gate.beginAttempt(false, null);
-		SyncService.SyncResult result = service.syncCollectionLog("Tester", 42L, type, pbs, Map.of(), 3L, gate,
+		SyncService.SyncResult result = service.syncCollectionLog(TESTER, type, pbs, Map.of(), gate,
 			generation, cache, mode, always, () -> sending++).get();
 		gate.complete(generation);
 		return result;

@@ -103,25 +103,26 @@ class SyncService
 	 *                    never the provider-derived one
 	 */
 	/**
-	 * {@code cache} is the mode's own store and {@code cacheEpoch} its gather-time session; {@code always} sends even
-	 * what killclog.com already holds (a click, or a character publish that needs the profile). {@code sending} runs
-	 * just before a push goes.
+	 * {@code session} is the login the push was gathered in and {@code cache} the mode's own store; {@code always}
+	 * sends even what killclog.com already holds (a click, or a character publish that needs the profile).
+	 * {@code sending} runs just before a push goes.
 	 */
-	CompletableFuture<SyncResult> syncCollectionLog(String rsn, long accountHash,
+	CompletableFuture<SyncResult> syncCollectionLog(Session session,
 		@Nullable AccountType accountType, Map<String, Double> personalBests,
-		Map<String, PbRecord> detailedPersonalBests, long cacheEpoch,
+		Map<String, PbRecord> detailedPersonalBests,
 		KillclogSyncGate syncGate, int generation, LocalClogCache cache, String mode, boolean always, Runnable sending)
 	{
+		String rsn = session.getName();
+		long accountHash = session.getAccountHash();
 		if (rsn == null || rsn.isBlank())
 		{
 			return CompletableFuture.completedFuture(
 				new SyncResult(false, false, "No player to sync."));
 		}
 
-		// Only this session's account, its own log serving, can be the payload.
-		// The caller's gather-time epoch rides in so a logout since then fences
+		// Only this session's account, its own log serving, can be the payload: a logout since the gather fences
 		// the whole pre-flight inside the cache monitor.
-		if (!cache.servesAccount(rsn, accountHash, cacheEpoch))
+		if (!cache.servesAccount(session))
 		{
 			return CompletableFuture.completedFuture(new SyncResult(false, false,
 				"Still checking this account. Try again in a moment."));
@@ -164,7 +165,7 @@ class SyncService
 			rsn, url, observedCount);
 		final int pbCount = personalBests != null ? personalBests.size() : 0;
 		CompletableFuture<HttpUtil.HttpResult> request = cache.commitIfSessionCurrent(
-			cacheEpoch, () -> syncGate.commitIfCurrent(generation,
+			session, () -> syncGate.commitIfCurrent(generation,
 				() -> HttpUtil.httpPostJson(httpClient, url, body, null)));
 		if (request == null)
 		{

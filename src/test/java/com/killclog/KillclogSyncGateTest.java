@@ -76,7 +76,7 @@ public class KillclogSyncGateTest
 		LocalClogCache cache = new LocalClogCache(
 			new Gson(), new NoopScheduledExecutorService());
 		int generation = gate.beginAttempt(false, null);
-		long epoch = cache.currentSessionEpoch();
+		Session epoch = Session.none(0);
 		CountDownLatch preflightBlocked = new CountDownLatch(1);
 		CountDownLatch releasePreflight = new CountDownLatch(1);
 		AtomicBoolean httpEnqueued = new AtomicBoolean();

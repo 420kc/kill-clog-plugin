@@ -14,8 +14,6 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Client;
-import net.runelite.api.Player;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneScapeProfileType;
@@ -51,10 +49,10 @@ final class PublicationCoordinator
 
 	private final KillClogConfig config;
 	private final ConfigManager configManager;
-	private final Client client;
 	private final ClientThread clientThread;
 	private final ScheduledExecutorService executor;
-	private final LocalClogCache localClogCache;
+	// Who is logged in: every push and character request is for the login it began in, and stands down once it ends.
+	private final SessionTracker sessions;
 	private final SyncService syncService;
 	private final ProfileAppearanceService profileAppearanceService;
 	private final KillClogChatNotifier chatNotifier;
@@ -70,9 +68,9 @@ final class PublicationCoordinator
 	// Whether the push waiting is an automatic one, which a capture may push back, and when its first capture came.
 	private boolean pendingAutomatic;
 	private long quietSince;
-	// The session the server turned away (opted out, the name another account's, an update needed): its automatic
+	// The login the server turned away (opted out, the name another account's, an update needed): its automatic
 	// pushes stop, so the log stops leaving the client, until the next login or a click.
-	private volatile long stoppedEpoch = -1;
+	private volatile long stoppedSession = -1;
 	/* package */ java.util.function.LongSupplier clock = System::currentTimeMillis;
 	private final KillclogSyncGate syncGate = new KillclogSyncGate();
 	private final AtomicBoolean characterPublishInFlight = new AtomicBoolean();
@@ -80,18 +78,17 @@ final class PublicationCoordinator
 	private final AtomicBoolean characterPrerequisiteAttempted = new AtomicBoolean();
 	private final AtomicInteger characterPublishGeneration = new AtomicInteger();
 
-	PublicationCoordinator(KillClogConfig config, ConfigManager configManager, Client client,
-		ClientThread clientThread, ScheduledExecutorService executor, LocalClogCache localClogCache,
+	PublicationCoordinator(KillClogConfig config, ConfigManager configManager,
+		ClientThread clientThread, ScheduledExecutorService executor, SessionTracker sessions,
 		SyncService syncService, ProfileAppearanceService profileAppearanceService,
 		KillClogChatNotifier chatNotifier, Feedback feedback, Supplier<AccountType> localAccountType,
 		Supplier<String> mode, Function<String, LocalClogCache> modeCache, Function<String, String> leagueProfileType)
 	{
 		this.config = config;
 		this.configManager = configManager;
-		this.client = client;
 		this.clientThread = clientThread;
 		this.executor = executor;
-		this.localClogCache = localClogCache;
+		this.sessions = sessions;
 		this.syncService = syncService;
 		this.profileAppearanceService = profileAppearanceService;
 		this.chatNotifier = chatNotifier;
@@ -124,10 +121,10 @@ final class PublicationCoordinator
 	{
 		// A press arrives on the panel's thread; the game it pushes is read on the client's. Its account is fixed at
 		// the press: a logout before the hop drops it, never letting it push the next account's log.
-		long pressed = localClogCache.currentSessionEpoch();
+		Session pressed = sessions.current();
 		clientThread.invoke(() ->
 		{
-			if (localClogCache.currentSessionEpoch() == pressed)
+			if (sessions.isCurrent(pressed))
 			{
 				scheduleSync(delaySeconds, manual, mode.get(), false);
 			}
@@ -138,7 +135,7 @@ final class PublicationCoordinator
 	private boolean sends(boolean manual)
 	{
 		return config.killclogSync() && (manual || (config.automaticSync() || characterPublishAfterSync.get())
-			&& localClogCache.currentSessionEpoch() != stoppedEpoch);
+			&& sessions.current().getNumber() != stoppedSession);
 	}
 
 	/**
@@ -149,7 +146,7 @@ final class PublicationCoordinator
 	{
 		if (manual)
 		{
-			stoppedEpoch = -1;
+			stoppedSession = -1;
 		}
 		if (!sends(manual))
 		{
@@ -180,8 +177,8 @@ final class PublicationCoordinator
 	private void schedulePush(long delayMs, boolean manual, String scheduledMode, boolean retry)
 	{
 		pendingAutomatic = !manual && !retry;
-		long scheduledEpoch = localClogCache.currentSessionEpoch();
-		pendingKillclogSync = executor.schedule(() -> pushKillclogSync(manual, scheduledEpoch, scheduledMode, retry),
+		Session scheduled = sessions.current();
+		pendingKillclogSync = executor.schedule(() -> pushKillclogSync(manual, scheduled, scheduledMode, retry),
 			delayMs, TimeUnit.MILLISECONDS);
 	}
 
@@ -325,8 +322,7 @@ final class PublicationCoordinator
 	@FunctionalInterface
 	private interface CharacterRequest
 	{
-		CompletableFuture<ProfileAppearanceService.PublishResult> start(String rsn, long accountHash,
-			BooleanSupplier authorized);
+		CompletableFuture<ProfileAppearanceService.PublishResult> start(Session session, BooleanSupplier authorized);
 	}
 
 	@FunctionalInterface
@@ -354,15 +350,14 @@ final class PublicationCoordinator
 			{
 				return;
 			}
-			Player local = client.getLocalPlayer();
-			String rsn = local != null ? local.getName() : null;
-			long accountHash = client.getAccountHash();
-			if (!characterPublishingEnabled() || rsn == null || accountHash == -1 || !GameMode.MAIN.equals(mode.get()))
+			Session session = sessions.current();
+			if (!characterPublishingEnabled() || !session.loggedIn() || !GameMode.MAIN.equals(mode.get()))
 			{
 				failCharacterPublish(generation);
 				return;
 			}
-			request.start(rsn, accountHash, () -> generation == characterPublishGeneration.get() && characterPublishingEnabled())
+			request.start(session, () -> generation == characterPublishGeneration.get() && characterPublishingEnabled()
+					&& sessions.isCurrent(session))
 				.whenComplete((result, error) -> outcome.handle(result, error, generation));
 		});
 		return true;
@@ -441,14 +436,12 @@ final class PublicationCoordinator
 		}
 	}
 
-	private void pushKillclogSync(boolean manual, long scheduledEpoch, String scheduledMode, boolean retry)
+	private void pushKillclogSync(boolean manual, Session session, String scheduledMode, boolean retry)
 	{
-		// Re-checked at fire time: the player may have opted out while the
-		// debounce was pending. The session fence was captured when this exact
-		// timer was scheduled, so a task that escaped cancellation cannot bind
-		// itself to whichever account happens to be logged in later.
-		if (!sends(manual)
-			|| localClogCache.currentSessionEpoch() != scheduledEpoch)
+		// Re-checked at fire time: the player may have opted out while the debounce was pending. The login was
+		// taken when this exact timer was scheduled, so a task that escaped cancellation cannot bind itself to
+		// whichever account happens to be logged in later.
+		if (!sends(manual) || !sessions.isCurrent(session))
 		{
 			return;
 		}
@@ -457,7 +450,7 @@ final class PublicationCoordinator
 		{
 			return;
 		}
-		if (localClogCache.currentSessionEpoch() != scheduledEpoch)
+		if (!sessions.isCurrent(session))
 		{
 			syncGate.abortAttempt();
 			launchQueuedSync();
@@ -475,22 +468,18 @@ final class PublicationCoordinator
 				// logout, leaving this client-thread callback queued behind the
 				// account switch. Never gather the next account under the old
 				// attempt's generation.
-				if (!syncGate.isCurrent(generation)
-					|| localClogCache.currentSessionEpoch() != scheduledEpoch)
+				if (!syncGate.isCurrent(generation) || !sessions.isCurrent(session))
 				{
 					syncGate.abortAttempt();
 					launchQueuedSync();
 					return;
 				}
-				Player local = client.getLocalPlayer();
-				String rsn = local != null ? local.getName() : null;
-				long accountHash = client.getAccountHash();
 				// A League sync reads only that League's store and profile, so it finishes after a hop
 				// off its worlds; a main sync needs a settled main world, so it follows this one.
 				String gameMode = scheduledMode == null || GameMode.MAIN.equals(scheduledMode)
 					? mode.get() : scheduledMode;
 				LocalClogCache cache = gameMode == null ? null : modeCache.apply(gameMode);
-				if (rsn == null || accountHash == -1 || gameMode == null || cache == null)
+				if (!session.loggedIn() || gameMode == null || cache == null)
 				{
 					syncGate.abortAttempt();
 					failQueuedCharacterPublish();
@@ -512,36 +501,29 @@ final class PublicationCoordinator
 				{
 					chatNotifier.send(ChatNotice.SYNC_RESULT, "Syncing collection log...");
 				}
-				List<String> profileKeys = PersonalBests.profileKeys(configManager.getRSProfiles(), accountHash,
+				List<String> profileKeys = PersonalBests.profileKeys(configManager.getRSProfiles(), session.getAccountHash(),
 					main ? RuneScapeProfileType.STANDARD.name() : leagueProfileType.apply(gameMode));
 				Map<String, Double> pbs = new LinkedHashMap<>();
 				Map<String, PbRecord> detailedPbs = gatherPersonalBests(profileKeys, pbs);
-				// Off the client thread before dispatch: the sync pre-flight
-				// can block up to ten seconds waiting for the rename disk
-				// verdict, and game ticks must never pay that wait. The
-				// session fence rides along - a logout between this gather
-				// and the dispatch must kill the attempt, not let a dead
-				// session's sync restore its anchor or post after the end.
-				long cacheEpoch = scheduledEpoch;
-				long storeEpoch = cache.currentSessionEpoch();
+				// Off the client thread before dispatch: the sync pre-flight can block up to ten seconds waiting for
+				// the rename disk verdict, and game ticks must never pay that wait. The login rides along: a logout
+				// between this gather and the dispatch must kill the attempt, not let a dead session post.
 				executor.execute(() -> dispatchKillclogSync(
-					rsn, accountHash, accountType, pbs, detailedPbs, manual, generation, cacheEpoch,
-					cache, gameMode, storeEpoch, retry));
+					session, accountType, pbs, detailedPbs, manual, generation, cache, gameMode, retry));
 			}
 			catch (RuntimeException e)
 			{
 				log.warn("killclog sync push failed before dispatch", e);
-				failBeforeSend(generation, scheduledEpoch, manual);
+				failBeforeSend(generation, session, manual);
 			}
 		});
 	}
 
-	private void dispatchKillclogSync(String rsn, long accountHash, AccountType accountType,
+	private void dispatchKillclogSync(Session session, AccountType accountType,
 		Map<String, Double> pbs, Map<String, PbRecord> detailedPbs,
-		boolean manual, int generation, long cacheEpoch, LocalClogCache cache, String gameMode, long storeEpoch,
-		boolean retry)
+		boolean manual, int generation, LocalClogCache cache, String gameMode, boolean retry)
 	{
-		boolean sessionEnded = localClogCache.currentSessionEpoch() != cacheEpoch;
+		boolean sessionEnded = !sessions.isCurrent(session);
 		if (sessionEnded || !syncGate.isCurrent(generation) || !sends(manual))
 		{
 			// The session ended, or the player stopped this send, between gather and dispatch: release the
@@ -556,13 +538,13 @@ final class PublicationCoordinator
 		}
 		try
 		{
-			syncService.syncCollectionLog(rsn, accountHash, accountType, pbs, detailedPbs,
-				storeEpoch, syncGate, generation, cache, gameMode, manual || characterPublishAfterSync.get(), () ->
+			syncService.syncCollectionLog(session, accountType, pbs, detailedPbs,
+				syncGate, generation, cache, gameMode, manual || characterPublishAfterSync.get(), () ->
 				{
 					// Only a push that really goes says so: one killclog.com already holds stays quiet.
 					if (!characterPublishAfterSync.get())
 					{
-						withSyncFeedback(generation, cacheEpoch,
+						withSyncFeedback(generation, session,
 							() -> feedback.showSyncProgress(manual, "syncing...", false));
 					}
 				})
@@ -585,7 +567,7 @@ final class PublicationCoordinator
 							}
 							else
 							{
-								withSyncFeedback(generation, cacheEpoch,
+								withSyncFeedback(generation, session,
 									() -> feedback.showSyncProgress(manual, "retrying...", false));
 							}
 							// Nobody is watching an automatic sync, so it waits out a
@@ -600,7 +582,7 @@ final class PublicationCoordinator
 						// Everything below is a terminal outcome for this episode.
 						if (result.stopsSession)
 						{
-							stoppedEpoch = cacheEpoch;
+							stoppedSession = session.getNumber();
 						}
 						if (characterWaiting)
 						{
@@ -616,7 +598,7 @@ final class PublicationCoordinator
 						}
 						else if (result != SyncService.UNCHANGED)
 						{
-							withSyncFeedback(generation, cacheEpoch,
+							withSyncFeedback(generation, session,
 								() -> feedback.showSyncResult(manual, result.ok, result.message));
 						}
 						if (manual || !result.ok)
@@ -629,7 +611,7 @@ final class PublicationCoordinator
 					{
 						if (current && !failQueuedCharacterPublish() && err != null)
 						{
-							withSyncFeedback(generation, cacheEpoch, () -> feedback.showSyncResult(manual,
+							withSyncFeedback(generation, session, () -> feedback.showSyncResult(manual,
 								false, "Collection log sync failed. See the client log."));
 						}
 					}
@@ -639,17 +621,17 @@ final class PublicationCoordinator
 		catch (RuntimeException e)
 		{
 			log.warn("killclog sync push failed at dispatch", e);
-			failBeforeSend(generation, cacheEpoch, manual);
+			failBeforeSend(generation, session, manual);
 		}
 	}
 
 	/** Failures always chat; chat sends need the client thread, which invoke runs at once when already on it. */
-	private void failBeforeSend(int generation, long epoch, boolean manual)
+	private void failBeforeSend(int generation, Session session, boolean manual)
 	{
 		syncGate.abortAttempt();
 		if (!failQueuedCharacterPublish())
 		{
-			withSyncFeedback(generation, epoch, () -> feedback.showSyncResult(manual,
+			withSyncFeedback(generation, session, () -> feedback.showSyncResult(manual,
 				false, "Collection log sync failed. See the client log."));
 		}
 		clientThread.invoke(() -> chatNotifier.send(ChatNotice.SYNC_RESULT,
@@ -657,12 +639,11 @@ final class PublicationCoordinator
 		launchQueuedSync();
 	}
 
-	private void withSyncFeedback(int generation, long epoch, Runnable feedbackCall)
+	private void withSyncFeedback(int generation, Session session, Runnable feedbackCall)
 	{
 		SwingUtilities.invokeLater(() ->
 		{
-			if (syncGate.isCurrent(generation) && config.killclogSync()
-				&& localClogCache.currentSessionEpoch() == epoch)
+			if (syncGate.isCurrent(generation) && config.killclogSync() && sessions.isCurrent(session))
 			{
 				feedbackCall.run();
 			}

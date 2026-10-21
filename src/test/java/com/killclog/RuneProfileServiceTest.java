@@ -416,7 +416,7 @@ public class RuneProfileServiceTest
 	{
 		LocalCaCache local = new LocalCaCache(new Gson(), new InlineScheduledExecutorService());
 		local.open(TestFolders.folder(temporaryFolder.newFolder()));
-		local.setActivePlayer(player);
+		local.serve(new Session(1, player, 1L));
 		local.cacheResult(player, 1L, Map.of(CombatAchievementTier.EASY, easyCompleted));
 		return local;
 	}

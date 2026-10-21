@@ -48,7 +48,7 @@ final class LiveClogSync
 		}
 
 		String playerName = local.getName();
-		if (!localClogCache.setActivePlayer(playerName))
+		if (!localClogCache.serving(playerName))
 		{
 			chatNotifier.send(ChatNotice.SYNC_HELP,
 				"Kill Clog is still checking this account. Open your Collection Log to update it.");

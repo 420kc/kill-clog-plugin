@@ -62,7 +62,7 @@ public class PluginFolderTest
 
 		LocalCaCache ca = new LocalCaCache(new Gson(), new InlineScheduledExecutorService());
 		ca.open(null);
-		ca.setActivePlayer("Tester");
+		ca.serve(new Session(1, "Tester", 1L));
 		ca.cacheResult("Tester", 77L, Map.of(CombatAchievementTier.EASY, 1));
 		assertEquals(1, ca.getCached("Tester").getTotalPoints());
 	}
@@ -81,7 +81,7 @@ public class PluginFolderTest
 			}
 		});
 		ca.open(null);
-		ca.setActivePlayer("Tester");
+		ca.serve(new Session(1, "Tester", 1L));
 		ca.cacheResult("Tester", 77L, Map.of(CombatAchievementTier.EASY, 1));
 		int afterFirst = tasks[0];
 		// The same counts read again are already held: no write queued, so no warning each read.

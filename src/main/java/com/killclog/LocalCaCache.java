@@ -108,8 +108,10 @@ public class LocalCaCache
 		caCatalog = null;
 	}
 
-	public void setActivePlayer(String name)
+	/** The login whose tiers this store serves, from the session tracker. */
+	public void serve(Session session)
 	{
+		String name = session.getName();
 		if (name == null || !isActivePlayer(name))
 		{
 			activeFile = null;

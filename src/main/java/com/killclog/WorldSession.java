@@ -128,11 +128,12 @@ final class WorldSession
 		shown = "";
 	}
 
-	void sessionEnded()
+	/** The open League's store serves the same login as the main one. */
+	void serve(Session session)
 	{
 		if (leagueCache != null)
 		{
-			leagueCache.onSessionEnded();
+			leagueCache.serve(session);
 		}
 	}
 

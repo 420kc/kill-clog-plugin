@@ -30,7 +30,7 @@ public class LocalCaCacheTest
 		CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
 		LocalCaCache cache = new LocalCaCache(new Gson(), writer);
 		cache.open(TestFolders.folder(directory));
-		cache.setActivePlayer("Tester");
+		cache.serve(new Session(1, "Tester", 1L));
 		cache.cacheResult("Tester", HASH, Map.of(CombatAchievementTier.EASY, 1));
 		cache.shutdown();
 		assertFalse(cache.isActivePlayer("Tester"));
@@ -39,7 +39,7 @@ public class LocalCaCacheTest
 
 		cache.cacheResult("Tester", HASH, Map.of(CombatAchievementTier.EASY, 2));
 		cache.shutdown();
-		cache.setActivePlayer("Tester");
+		cache.serve(new Session(1, "Tester", 1L));
 		cache.cacheResult("Tester", HASH, Map.of(CombatAchievementTier.EASY, 3));
 		writer.runQueued();
 		assertEquals(3, easy(directory));
@@ -51,18 +51,18 @@ public class LocalCaCacheTest
 	{
 		File directory = temporaryFolder.newFolder();
 		LocalCaCache cache = open(new Gson(), directory);
-		cache.setActivePlayer("Tester");
+		cache.serve(new Session(1, "Tester", 1L));
 		assertNull("nothing until this session's account is known", cache.getCached("Tester"));
 		cache.cacheResult("Tester", -1L, Map.of(CombatAchievementTier.EASY, 1));
 		assertNull(cache.getCached("Tester"));
 		cache.cacheResult("Tester", HASH, Map.of(CombatAchievementTier.EASY, 1));
 		assertTrue(cache.hasDataFor("Tester"));
 		assertFalse(cache.hasDataFor("Someone"));
-		cache.setActivePlayer("Someone");
+		cache.serve(new Session(1, "Someone", 1L));
 		assertNull("another player never reads this account's counts", cache.getCached("Tester"));
 
 		LocalCaCache restarted = open(new Gson(), directory);
-		restarted.setActivePlayer("Tester");
+		restarted.serve(new Session(1, "Tester", 1L));
 		restarted.cacheResult("Tester", HASH, Map.of(CombatAchievementTier.EASY, 1));
 		assertTrue(restarted.hasDataFor("Tester"));
 	}
@@ -71,11 +71,11 @@ public class LocalCaCacheTest
 	public void theLoggedInNameTypedAnotherWayStillReadsItsCas() throws Exception
 	{
 		LocalCaCache cache = open(new Gson(), temporaryFolder.newFolder());
-		cache.setActivePlayer("My\u00A0Name");
+		cache.serve(new Session(1, "My\u00A0Name", 1L));
 		cache.cacheResult("My\u00A0Name", HASH, Map.of(CombatAchievementTier.EASY, 1));
 		assertNotNull(cache.getCached("my_name"));
 		assertTrue(cache.hasDataFor("My-Name"));
-		cache.setActivePlayer("My Name");
+		cache.serve(new Session(1, "My Name", 1L));
 		assertNotNull("the same account keeps its record", cache.getCached("My\u00A0Name"));
 	}
 

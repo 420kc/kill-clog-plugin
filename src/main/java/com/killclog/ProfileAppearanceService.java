@@ -15,7 +15,6 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
-import net.runelite.api.GameState;
 import net.runelite.api.ItemContainer;
 import net.runelite.api.NPC;
 import net.runelite.api.NPCComposition;
@@ -117,19 +116,22 @@ final class ProfileAppearanceService
 		this.gson = gson;
 	}
 
-	CompletableFuture<PublishResult> publishCurrent(String expectedRsn, long accountHash,
-		BooleanSupplier authorized)
+	/**
+	 * Publishes the logged-in player's character, for the login it was asked in: {@code authorized} says whether that
+	 * login is still current and the request still wanted, and each step asks it again before it acts.
+	 */
+	CompletableFuture<PublishResult> publishCurrent(Session session, BooleanSupplier authorized)
 	{
-		return run(new PublishAttempt(expectedRsn, accountHash, authorized), this::captureAndPublish);
+		return run(new PublishAttempt(session.getName(), session.getAccountHash(), authorized), this::captureAndPublish);
 	}
 
 	/**
 	 * Removes the player's character from killclog.com, so their profile goes back to having none; nothing else of
 	 * theirs changes.
 	 */
-	CompletableFuture<PublishResult> deleteCurrent(String expectedRsn, long accountHash, BooleanSupplier authorized)
+	CompletableFuture<PublishResult> deleteCurrent(Session session, BooleanSupplier authorized)
 	{
-		return run(new PublishAttempt(expectedRsn, accountHash, authorized), attempt -> !attempt.active()
+		return run(new PublishAttempt(session.getName(), session.getAccountHash(), authorized), attempt -> !attempt.active()
 			? completed(Outcome.CANCELLED)
 			: attempt.post("appearance/delete", "{}", (response, json) ->
 			{
@@ -228,8 +230,8 @@ final class ProfileAppearanceService
 	}
 
 	/**
-	 * Each HTTP dispatch rechecks consent and identity on the client thread. A request proves its account by the
-	 * account hash its name is bound to, as a sync does.
+	 * Each HTTP dispatch asks again, on the client thread, whether its login is still current and the request still
+	 * wanted. A request proves its account by the account hash its name is bound to, as a sync does.
 	 */
 	@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 	private final class PublishAttempt
@@ -240,7 +242,7 @@ final class ProfileAppearanceService
 
 		private boolean active()
 		{
-			return authorized.getAsBoolean() && isStillSelf(rsn, accountHash);
+			return authorized.getAsBoolean();
 		}
 
 		private CompletableFuture<PublishResult> post(String suffix, String body,
@@ -339,14 +341,6 @@ final class ProfileAppearanceService
 		{
 			return null;
 		}
-	}
-
-	private boolean isStillSelf(String expectedRsn, long accountHash)
-	{
-		Player local = client.getLocalPlayer();
-		return client.getGameState() == GameState.LOGGED_IN && local != null
-			&& RsnInputPolicy.sameName(expectedRsn, local.getName())
-			&& client.getAccountHash() == accountHash;
 	}
 
 	private JsonObject parse(@Nullable String body)

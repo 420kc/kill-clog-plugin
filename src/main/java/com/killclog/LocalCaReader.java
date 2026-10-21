@@ -3,7 +3,6 @@ package com.killclog;
 import java.util.EnumMap;
 import java.util.Map;
 import net.runelite.api.Client;
-import net.runelite.api.Player;
 import net.runelite.api.gameval.VarbitID;
 
 final class LocalCaReader
@@ -19,18 +18,14 @@ final class LocalCaReader
 			|| id == VarbitID.CA_TOTAL_TASKS_COMPLETED_GRANDMASTER;
 	}
 
-	boolean capture(Client client, LocalCaCache localCaCache)
+	/** The logged-in player's tiers as the game counts them now, kept for this login. */
+	boolean capture(Client client, Session session, LocalCaCache localCaCache)
 	{
-		Player local = client.getLocalPlayer();
-		long accountHash = client.getAccountHash();
-		if (local == null || local.getName() == null || accountHash == -1)
+		if (!session.loggedIn())
 		{
 			return false;
 		}
-
-		String name = local.getName();
-		localCaCache.setActivePlayer(name);
-		localCaCache.cacheResult(name, accountHash, completed(client));
+		localCaCache.cacheResult(session.getName(), session.getAccountHash(), completed(client));
 		return true;
 	}
 
