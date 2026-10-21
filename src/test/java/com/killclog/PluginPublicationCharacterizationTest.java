@@ -203,7 +203,7 @@ public class PluginPublicationCharacterizationTest
 		verify(chatNotifier).send(ChatNotice.SYNC_RESULT, "Syncing collection log...");
 		verify(panel).showSyncProgress(true, "syncing...", false);
 		assertEquals(1, syncs.size());
-		verify(syncService).syncCollectionLog(you(),  any(),  any(),  any(),  any(),  eq(0),
+		verify(syncService).syncCollectionLog(you(),  any(),  any(),  any(),  any(),  eq(1),
 			eq(localClogCache),  eq("main"),  anyBoolean(),  any());
 
 		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced 12 items"));
@@ -1190,21 +1190,13 @@ public class PluginPublicationCharacterizationTest
 	{
 		publishHandler.run();
 		settle();
-		try (Hold hold = new Hold(1))
-		{
-			held(hold, true);
-			CompletableFuture<Void> done = hold.onWorker(() -> publishes.get(0).complete(
-				new ProfileAppearanceService.PublishResult(ProfileAppearanceService.Outcome.PUBLISHED, null)));
-			hold.reached();
-			nextAccount();
-			publishHandler.run();
-			settle();
-			assertEquals("the next login's own request goes", 2, publishes.size());
-			hold.close();
-			done.get(5, TimeUnit.SECONDS);
-		}
+		nextAccount();
+		publishHandler.run();
 		settle();
-		// The old answer landed after the new request began: the new one still holds the one-at-a-time slot.
+		assertEquals("the next login's own request goes", 2, publishes.size());
+		// The old login's answer lands after the new request began: the new one still holds the one-at-a-time slot.
+		publishes.get(0).complete(new ProfileAppearanceService.PublishResult(ProfileAppearanceService.Outcome.PUBLISHED, null));
+		settle();
 		publishHandler.run();
 		settle();
 		assertEquals(2, publishes.size());
@@ -1275,19 +1267,13 @@ public class PluginPublicationCharacterizationTest
 	{
 		profileRequired(0);
 		assertEquals(1, syncs.size());
-		try (Hold hold = new Hold(1))
-		{
-			held(hold, false);
-			CompletableFuture<Void> done = hold.onWorker(() ->
-				syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced")));
-			hold.reached();
-			nextAccount();
-			profileRequired(1);
-			assertEquals(2, syncs.size());
-			hold.close();
-			done.get(5, TimeUnit.SECONDS);
-		}
+		nextAccount();
+		// The next login's request waits on its own sync, queued behind the old one still in the air.
+		profileRequired(1);
+		assertEquals(1, syncs.size());
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
 		settle();
+		assertEquals("its own sync goes", 2, syncs.size());
 		assertFalse(syncs.get(1).isDone());
 		assertEquals("the next character goes on only after its own sync", 2, publishes.size());
 	}
@@ -1354,26 +1340,14 @@ public class PluginPublicationCharacterizationTest
 		syncHandler.run();
 		settle();
 		syncs.get(0).complete(busy());
-		Runnable retry = (Runnable) read(read(field("publication"), "pendingKillclogSync"), "command");
-		try (Hold hold = new Hold(1))
-		{
-			held(hold, false);
-			// The retry's timer has fired; a click lands while it runs, and the retry waits behind it.
-			CompletableFuture<Void> done = hold.onWorker(retry::run);
-			hold.reached();
-			syncHandler.run();
-			runClient();
-			settle();
-			assertEquals(2, syncs.size());
-			hold.close();
-			done.get(5, TimeUnit.SECONDS);
-		}
-		syncs.get(1).complete(new SyncService.SyncResult(true, false, "Synced"));
+		// A click while the retry waits on its timer goes as that retry: the one advised retry, spent.
+		syncHandler.run();
+		runClient();
 		settle();
-		assertEquals("the waiting retry goes once the click is done", 3, syncs.size());
-		syncs.get(2).complete(busy());
+		assertEquals(2, syncs.size());
+		syncs.get(1).complete(busy());
 		settle();
-		assertEquals("and, being the retry, never retries again", 3, syncs.size());
+		assertEquals("being the retry, it never retries again", 2, syncs.size());
 	}
 
 	@Test
@@ -1486,33 +1460,22 @@ public class PluginPublicationCharacterizationTest
 		syncHandler.run();
 		settle();
 		publishHandler.run();
-		runClient();
+		settle();
 		publishes.get(0).complete(new ProfileAppearanceService.PublishResult(ProfileAppearanceService.Outcome.PROFILE_REQUIRED, null));
-		runClient();
 		syncHandler.run();
 		runClient();
-		Runnable old = (Runnable) read(read(field("publication"), "pendingKillclogSync"), "command");
-		try (Hold hold = new Hold(1))
-		{
-			KillClogConfig held = held(hold, false);
-			// The first request's sync, merged with a click, has fired and is held; the request is withdrawn and a
-			// second one queues its own sync behind the sync in the air.
-			CompletableFuture<Void> done = hold.onWorker(old::run);
-			hold.reached();
-			when(held.characterModel()).thenReturn(false);
-			config.character = false;
-			configChanged("characterModel");
-			when(held.characterModel()).thenReturn(true);
-			config.character = true;
-			configChanged("characterModel");
-			publishHandler.run();
-			runClient();
-			publishes.get(1).complete(new ProfileAppearanceService.PublishResult(ProfileAppearanceService.Outcome.PROFILE_REQUIRED, null));
-			runClient();
-			settle();
-			hold.close();
-			done.get(5, TimeUnit.SECONDS);
-		}
+		Runnable old = (Runnable) read(read(field("publication"), "pendingTimer"), "command");
+		// The first request is withdrawn and a second one asks for its own sync; then the first's timer fires late.
+		config.character = false;
+		configChanged("characterModel");
+		config.character = true;
+		configChanged("characterModel");
+		publishHandler.run();
+		settle();
+		publishes.get(1).complete(new ProfileAppearanceService.PublishResult(ProfileAppearanceService.Outcome.PROFILE_REQUIRED, null));
+		settle();
+		old.run();
+		settle();
 		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
 		settle();
 		syncs.get(syncs.size() - 1).complete(new SyncService.SyncResult(true, false, "Synced"));
@@ -1552,33 +1515,16 @@ public class PluginPublicationCharacterizationTest
 	{
 		syncHandler.run();
 		runClient();
-		Object publication = field("publication");
-		Runnable old = (Runnable) read(read(publication, "pendingKillclogSync"), "command");
-		Object gate = read(publication, "syncGate");
-		java.util.concurrent.atomic.AtomicReference<Thread> waiting = new java.util.concurrent.atomic.AtomicReference<>();
-		CompletableFuture<Void> done;
-		// The old timer passed its own checks and waits to claim the gate while another account logs in, syncs and
-		// queues a character request's sync.
-		synchronized (gate)
-		{
-			done = CompletableFuture.runAsync(() ->
-			{
-				waiting.set(Thread.currentThread());
-				old.run();
-			});
-			long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
-			while ((waiting.get() == null || waiting.get().getState() != Thread.State.BLOCKED) && System.nanoTime() < until)
-			{
-				Thread.yield();
-			}
-			assertEquals(Thread.State.BLOCKED, waiting.get().getState());
-			nextAccount();
-			syncHandler.run();
-			settle();
-			profileRequired(0);
-			assertEquals(1, syncs.size());
-		}
-		done.get(5, TimeUnit.SECONDS);
+		Runnable old = (Runnable) read(read(field("publication"), "pendingTimer"), "command");
+		nextAccount();
+		// The old login's timer escaped its cancellation and fires now.
+		old.run();
+		settle();
+		assertTrue(syncs.isEmpty());
+		syncHandler.run();
+		settle();
+		profileRequired(0);
+		assertEquals(1, syncs.size());
 		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
 		settle();
 		assertEquals("the next login's character sync still goes", 2, syncs.size());
@@ -1590,22 +1536,16 @@ public class PluginPublicationCharacterizationTest
 	@Test
 	public void anOlderRefusalNeverStopsTheLoginAfterANewerClickSucceeds() throws Exception
 	{
+		// A click waits behind the first push; the first push's refusal lands, then the waiting click succeeds.
 		syncHandler.run();
 		settle();
-		try (Hold hold = new Hold(1))
-		{
-			held(hold, false);
-			CompletableFuture<Void> done = hold.onWorker(() ->
-				syncs.get(0).complete(SyncService.SyncResult.stopping("Old refusal")));
-			hold.reached();
-			syncHandler.run();
-			settle();
-			assertEquals(2, syncs.size());
-			syncs.get(1).complete(new SyncService.SyncResult(true, false, "Synced"));
-			settle();
-			hold.close();
-			done.get(5, TimeUnit.SECONDS);
-		}
+		syncHandler.run();
+		settle();
+		assertEquals(1, syncs.size());
+		syncs.get(0).complete(SyncService.SyncResult.stopping("Old refusal"));
+		settle();
+		assertEquals(2, syncs.size());
+		syncs.get(1).complete(new SyncService.SyncResult(true, false, "Synced"));
 		settle();
 		((PublicationCoordinator) field("publication")).scheduleAutomaticSync();
 		settle();

@@ -1,8 +1,11 @@
 package com.killclog;
 
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
@@ -19,14 +22,17 @@ import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.hiscore.HiscoreSkill;
 
 /**
- * The plugin's publication flow: the debounced, session-fenced killclog.com
- * sync push with its single-flight gate and queued intent, and the character
- * publish that may run one prerequisite sync and retry once. Event
- * subscriptions stay in the plugin; it forwards the moments that matter
- * (captures, login, logout, opt-in, opt-out, shutdown) and hands the panel's
- * feedback in through {@link Feedback}. Sync and character publish share
- * state on purpose: a publish can be parked behind a sync, so they are one
- * unit.
+ * The plugin's publication flow: the debounced killclog.com sync push with its one slot and the push waiting for it,
+ * and the character publish that may run one sync of the log first and try again once. Event subscriptions stay in
+ * the plugin; it forwards the moments that matter (captures, login, logout, opt-in, opt-out, shutdown) and hands the
+ * panel's feedback in through {@link Feedback}.
+ *
+ * <p>One owner: every bit of the flow's state belongs to a serial executor, and every other thread (the client's, the
+ * panel's, a timer's, a network reply's) only posts to it, so a check and the change it allows are never pulled apart.
+ * Work that leaves the owner (the client thread's gather, the network) carries tokens back: the login it is for, the
+ * era it was asked in (an opt-out, logout or shutdown moves it on at once), and its attempt's number. The two places a
+ * request goes out, the sync gate's commit and the character's send, check their tokens under their own lock, so
+ * nothing goes once its withdrawal has returned.
  */
 @Slf4j
 final class PublicationCoordinator
@@ -49,12 +55,12 @@ final class PublicationCoordinator
 	static final int SYNC_DEBOUNCE_SECONDS = 10;
 	static final long SYNC_MAX_WAIT_MS = 60_000L;
 	private static final String SYNC_FAILED = "Collection log sync failed. See the client log.";
+	static final int NONE = -1;
 
 	private final KillClogConfig config;
 	private final ConfigManager configManager;
 	private final ClientThread clientThread;
 	private final ScheduledExecutorService executor;
-	// Who is logged in: every push and character request is for the login it began in, and stands down once it ends.
 	private final SessionTracker sessions;
 	private final SyncService syncService;
 	private final ProfileAppearanceService profileAppearanceService;
@@ -67,31 +73,35 @@ final class PublicationCoordinator
 	private final Function<String, LocalClogCache> modeCache;
 	private final Function<String, String> leagueProfileType;
 
-	private volatile ScheduledFuture<?> pendingKillclogSync;
-	// The push that timer sends.
+	// The owner, and everything only its tasks touch.
+	private final SerialExecutor owner;
+	private final KillclogSyncGate<Push> syncGate = new KillclogSyncGate<>(Push::deliberate, Push::merge);
+	private ScheduledFuture<?> pendingTimer;
+	// The push that timer sends; a timer whose push is no longer this one was superseded.
 	private Push pendingPush;
-	private int withdrawals;
-	// Attempts begun so far: a completion acts only while its attempt is the latest and its era current.
-	private int attempts;
 	// Whether the push waiting is an automatic one, which a capture may push back, and when its first capture came.
 	private boolean pendingAutomatic;
 	private long quietSince;
 	// The login the server turned away (opted out, the name another account's, an update needed): its automatic
-	// pushes stop, so the log stops leaving the client, until the next login or a click.
-	private volatile long stoppedSession = -1;
+	// pushes stop, so the log stops leaving the client, until the next login or a click's attempt.
+	private long stoppedSession = -1;
 	/* package */ java.util.function.LongSupplier clock = System::currentTimeMillis;
-	private final KillclogSyncGate<Push> syncGate = new KillclogSyncGate<>(Push::deliberate, Push::merge);
+	// The attempt whose line ("syncing...", "retrying...") the row shows, 0 for none: a line comes down only for its own.
+	private volatile int lineAttempt;
 
-	// The character request, one at a time, all under this coordinator's lock so a check and the change it allows are
-	// one step. The generation only grows: a withdrawal (a logout, a setting turned off) moves it on, so work from
-	// before can never act, wait or free the slot again. A request keeps its slot through its log's sync and retry.
-	static final int NONE = -1;
-	private int characterGeneration;
+	// The character request, one at a time. The generation only grows: a withdrawal moves it on, so work from before
+	// can never act, wait or free the slot again. A request keeps its slot through its log's sync and retry. Read on
+	// the Swing thread to fence status lines, so volatile; changed only by the owner.
+	private volatile int characterGeneration;
 	private int characterHolder = NONE;
 	private int characterWaiting = NONE;
 	private boolean characterPrerequisiteAttempted;
-	// The login the request in flight belongs to, taken where it began (the press).
 	private Session characterSession = Session.none(0);
+	private int characterRequestEra;
+	// The character's withdrawal fence: turning publication off, or a logout, moves the era at once, and a request's
+	// final send checks it in the same step, so nothing goes once the withdrawal has returned.
+	private final Object characterFence = new Object();
+	private int characterEra;
 
 	PublicationCoordinator(KillClogConfig config, ConfigManager configManager,
 		ClientThread clientThread, ScheduledExecutorService executor, SessionTracker sessions,
@@ -112,9 +122,8 @@ final class PublicationCoordinator
 		this.mode = mode;
 		this.modeCache = modeCache;
 		this.leagueProfileType = leagueProfileType;
+		this.owner = new SerialExecutor();
 	}
-
-	// ── plugin-facing ──────────────────────────────────────────────────
 
 	boolean characterPublishingEnabled()
 	{
@@ -122,11 +131,10 @@ final class PublicationCoordinator
 	}
 
 	/**
-	 * One push of the log: the login it is for, taken where it began (a press, the opt-in, a capture) and carried
-	 * through its timer, its retry and its queue, so nothing begun in one login sends another's; its game (null follows
-	 * the world); whether a player asked for it; whether it is the server's one advised retry; and the character request
-	 * it is the sync for, by generation (NONE for none), which only this push can let go on; and when it was asked, so
-	 * two pushes go as one the same way in whatever order they meet.
+	 * One push of the log: the login it is for, taken where it began (a press, the opt-in, a capture); the era it was
+	 * asked in; its game (null follows the world); whether a player asked for it; the character request it is the sync
+	 * for, by generation (NONE for none); when it was asked; the games whose one advised retry it has spent; and the
+	 * attempt whose line speaks for it while it waits (0 for none).
 	 */
 	@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 	static final class Push
@@ -134,27 +142,37 @@ final class PublicationCoordinator
 		private static final java.util.concurrent.atomic.AtomicLong ASKED = new java.util.concurrent.atomic.AtomicLong();
 
 		final Session session;
+		final int era;
 		final String mode;
 		final boolean manual;
-		final boolean retry;
 		final int forCharacter;
 		final long asked;
+		final Set<String> retried;
+		final int line;
 
 		/** A push asked for now. */
-		static Push ask(Session session, String mode, boolean manual, int forCharacter)
+		static Push ask(Session session, int era, String mode, boolean manual, int forCharacter)
 		{
-			return new Push(session, mode, manual, false, forCharacter, ASKED.incrementAndGet());
+			return new Push(session, era, mode, manual, forCharacter, ASKED.incrementAndGet(), Collections.emptySet(), 0);
 		}
 
-		/** The server's one retry, for the game the attempt resolved, wherever the player has hopped since. */
-		Push retriedIn(String gameMode)
+		/** The server's one retry, for the game its attempt resolved, its line kept by that attempt. */
+		Push retriedIn(String game, int attempt)
 		{
-			return new Push(session, gameMode, manual, true, forCharacter, asked);
+			Set<String> spent = new HashSet<>(retried);
+			spent.add(game);
+			return new Push(session, era, game, manual, forCharacter, asked, Collections.unmodifiableSet(spent), attempt);
 		}
 
 		Push withoutCharacter()
 		{
-			return new Push(session, mode, manual, retry, NONE, asked);
+			return new Push(session, era, mode, manual, NONE, asked, retried, line);
+		}
+
+		/** Whether its one advised retry is spent for its game: it never retries again. */
+		boolean retry()
+		{
+			return retried.contains(mode);
 		}
 
 		/** A click's or a character's: it goes past Automatic sync being off, and nothing automatic stands in for it. */
@@ -163,12 +181,24 @@ final class PublicationCoordinator
 			return manual || forCharacter != NONE;
 		}
 
+		/** The later of two to lead: a click over an automatic push, then the later asked, a retry after its own push. */
+		private static boolean leads(Push one, Push other)
+		{
+			if (one.manual != other.manual)
+			{
+				return one.manual;
+			}
+			if (one.asked != other.asked)
+			{
+				return one.asked > other.asked;
+			}
+			return one.retry() && !other.retry();
+		}
+
 		/**
-		 * Two pushes go as one, the same in whichever order they meet: pushes of two logins never mix (the newer login's
-		 * stands whole; login numbers only grow); within one, a click's game over an automatic one's, the later-asked
-		 * click's among clicks, and the newer character request (generations only grow). The lead's game stands; a retry
-		 * spends its one retry for both only when both are for that game, else the lead goes as itself. The pair is as
-		 * old as its lead, so a click asked later still leads it.
+		 * Two pushes go as one, the same in whatever order and grouping they meet: pushes of two logins never mix (the
+		 * newer login's stands whole; login numbers only grow); within one, the lead's game and age, a click if either
+		 * was, the newer character request (generations only grow), and the retries spent by either.
 		 */
 		static Push merge(Push one, Push other)
 		{
@@ -176,26 +206,22 @@ final class PublicationCoordinator
 			{
 				return one.session.getNumber() > other.session.getNumber() ? one : other;
 			}
-			// A push and its own retry share an asked time: the retry is the later of the two.
-			Push earlier = one.asked < other.asked || one.asked == other.asked && !one.retry ? one : other;
-			Push later = earlier == one ? other : one;
-			Push lead = later.manual || !earlier.manual ? later : earlier;
-			Push follower = lead == later ? earlier : later;
-			boolean retry = lead.retry || follower.retry && java.util.Objects.equals(lead.mode, follower.mode);
-			return new Push(lead.session, lead.mode, one.manual || other.manual, retry,
-				Math.max(one.forCharacter, other.forCharacter), lead.asked);
+			Push lead = leads(other, one) ? other : one;
+			Set<String> spent = new HashSet<>(one.retried);
+			spent.addAll(other.retried);
+			return new Push(lead.session, Math.max(one.era, other.era), lead.mode, one.manual || other.manual,
+				Math.max(one.forCharacter, other.forCharacter), lead.asked, Collections.unmodifiableSet(spent),
+				Math.max(one.line, other.line));
 		}
 	}
+
+	// ── entry points: any thread; each takes its tokens where it begins, then posts to the owner ──
 
 	/** A capture, login or settled identity, on the client thread: one quiet push for this game after the debounce. */
 	void scheduleAutomaticSync()
 	{
-		scheduleAutomaticSync(sessions.current());
-	}
-
-	private void scheduleAutomaticSync(Session session)
-	{
-		schedule(SYNC_DEBOUNCE_SECONDS, Push.ask(session, mode.get(), false, NONE));
+		Push push = Push.ask(sessions.current(), syncGate.era(), mode.get(), false, NONE);
+		owner.execute(() -> schedule(SYNC_DEBOUNCE_SECONDS, push));
 	}
 
 	/**
@@ -205,187 +231,27 @@ final class PublicationCoordinator
 	 */
 	void pushNow(Session origin, boolean manual)
 	{
-		pushNow(origin, manual, NONE);
+		pushNow(origin, syncGate.era(), manual, NONE);
 	}
 
-	private void pushNow(Session origin, boolean manual, int forCharacter)
+	private void pushNow(Session origin, int era, boolean manual, int forCharacter)
 	{
 		// The game it pushes is read on the client thread; a logout before the hop drops it.
 		clientThread.invoke(() ->
 		{
-			if (sessions.isCurrent(origin))
+			String game = mode.get();
+			owner.execute(() ->
 			{
-				schedule(0, Push.ask(origin, mode.get(), manual, forCharacter));
-			}
-			else
-			{
-				failWaiting(forCharacter);
-			}
-		});
-	}
-
-	/**
-	 * Whether a push goes now: sync is on and its login lasts; a click always; a character's own sync while that
-	 * request still waits on it; an automatic one with Automatic sync on and its login not turned away.
-	 */
-	private boolean sends(Push push)
-	{
-		if (!config.killclogSync() || !sessions.isCurrent(push.session))
-		{
-			return false;
-		}
-		if (push.manual)
-		{
-			return true;
-		}
-		if (push.forCharacter != NONE)
-		{
-			return waitingFor(push.forCharacter);
-		}
-		return config.automaticSync() && push.session.getNumber() != stoppedSession;
-	}
-
-	/**
-	 * A push after its delay. A push that can't go fails the character request it was for, so none waits forever. An
-	 * automatic push while another automatic one waits starts its quiet time again, up to the minute's cap; one behind
-	 * a click, a character's sync or a retry rides it. A click or a character's sync takes over what waits, keeping
-	 * any character request that rode on it.
-	 */
-	private synchronized void schedule(int delaySeconds, Push asked)
-	{
-		Push push = live(asked);
-		if (push.manual)
-		{
-			stoppedSession = -1;
-		}
-		if (!sends(push))
-		{
-			failWaiting(push.forCharacter);
-			return;
-		}
-		long now = clock.getAsLong();
-		long delayMs = delaySeconds * 1000L;
-		if (pendingKillclogSync != null && !pendingKillclogSync.isDone())
-		{
-			if (!push.deliberate())
-			{
-				long left = quietSince + SYNC_MAX_WAIT_MS - now;
-				if (pendingAutomatic && !push.retry && left > 0)
+				if (sessions.isCurrent(origin))
 				{
-					pendingKillclogSync.cancel(false);
-					schedulePush(Math.min(delayMs, left), push);
+					schedule(0, Push.ask(origin, era, game, manual, forCharacter));
 				}
-				return;
-			}
-			pendingKillclogSync.cancel(false);
-			push = Push.merge(pendingPush, push);
-		}
-		quietSince = now;
-		schedulePush(delayMs, push);
-	}
-
-	private void schedulePush(long delayMs, Push push)
-	{
-		pendingPush = push;
-		pendingAutomatic = !push.deliberate() && !push.retry;
-		pendingKillclogSync = executor.schedule(() -> send(push), delayMs, TimeUnit.MILLISECONDS);
-	}
-
-	/**
-	 * The server's one advised retry, after its own delay: a capture's shorter debounce must not stand in for it. Its
-	 * login is checked before anything waiting is touched, so a retry from an ended login cancels nothing of the next.
-	 */
-	private synchronized boolean scheduleRetry(int delaySeconds, Push retry, int generation, int attempt)
-	{
-		// One step with a cancellation and with any newer attempt: an earlier era's retry never spends a newer push's.
-		if (!latest(generation, attempt) || !sends(live(retry)))
-		{
-			failWaiting(retry.forCharacter);
-			return false;
-		}
-		// A click or a character's sync asked meanwhile is the later of the two, and rides this retry.
-		Push next = pendingKillclogSync != null && !pendingKillclogSync.isDone() && pendingPush.deliberate()
-			? Push.merge(retry, pendingPush) : retry;
-		dropPendingSync();
-		schedule(delaySeconds, next);
-		return true;
-	}
-
-	private synchronized int beganAttempt()
-	{
-		return ++attempts;
-	}
-
-	/** Whether this attempt is still the latest one begun, in an era nothing has cancelled. */
-	private synchronized boolean latest(int generation, int attempt)
-	{
-		return attempt == attempts && syncGate.isCurrent(generation);
-	}
-
-	/** The server turned this login away; an older attempt's answer never outlasts a newer one's. */
-	private synchronized void stopSession(Session session, int generation, int attempt)
-	{
-		if (latest(generation, attempt))
-		{
-			stoppedSession = session.getNumber();
-		}
-	}
-
-	/** A push whose character request was withdrawn is just a push again, so it goes, or not, on its own terms. */
-	private Push live(Push push)
-	{
-		return push.forCharacter == NONE || waitingFor(push.forCharacter) ? push : push.withoutCharacter();
-	}
-
-	/** How many times automatic pushes were withdrawn (Automatic sync off, opt-out): a retry's line checks it. */
-	private synchronized int withdrawals()
-	{
-		return withdrawals;
-	}
-
-	/** The push waiting on its timer, if any, never fires. */
-	private synchronized void dropPendingSync()
-	{
-		if (pendingKillclogSync != null)
-		{
-			pendingKillclogSync.cancel(false);
-			pendingKillclogSync = null;
-			pendingPush = null;
-		}
-	}
-
-	synchronized void cancelSync()
-	{
-		withdrawals++;
-		syncGate.cancel();
-		dropPendingSync();
-		// A request already in the air keeps the single-flight slot until it
-		// completes (no overlap on re-enable); its completion sees a newer
-		// generation and stays silent.
-	}
-
-	/**
-	 * Automatic sync turned off: an automatic push not yet sent never goes, waiting on its timer or its retry, and one
-	 * in the air ends quietly, its line taken down; a click or a character's own sync goes on.
-	 */
-	void cancelAutomaticSync()
-	{
-		boolean silenced = syncGate.cancelAutomatic();
-		if (dropPendingAutomatic() || silenced)
-		{
-			SwingUtilities.invokeLater(feedback::resetSyncFeedback);
-		}
-	}
-
-	private synchronized boolean dropPendingAutomatic()
-	{
-		withdrawals++;
-		if (pendingKillclogSync == null || pendingKillclogSync.isDone() || pendingPush.deliberate())
-		{
-			return false;
-		}
-		dropPendingSync();
-		return true;
+				else
+				{
+					failWaiting(forCharacter);
+				}
+			});
+		});
 	}
 
 	/**
@@ -402,9 +268,39 @@ final class PublicationCoordinator
 		}
 	}
 
+	/** Opt-out, logout, shutdown: the era moves on at once, so nothing begun before claims, commits or speaks. */
+	void cancelSync()
+	{
+		syncGate.cancel();
+		owner.execute(this::dropPending);
+		// A request already in the air keeps the slot until it completes (no overlap on re-enable); its completion
+		// finds its era passed and stays silent.
+	}
+
+	/**
+	 * Automatic sync turned off: an automatic push not yet sent never goes, waiting on its timer or its retry, and one
+	 * in the air is silenced, its line taken down; a click or a character's own sync goes on.
+	 */
+	void cancelAutomaticSync()
+	{
+		int silenced = syncGate.silenceAutomatic();
+		owner.execute(() ->
+		{
+			takeLineDown(silenced);
+			if (pendingPush != null && !pendingPush.deliberate())
+			{
+				takeLineDown(pendingPush.line);
+				dropPending();
+			}
+		});
+	}
+
 	void publishCharacter()
 	{
-		startCharacterPublish(sessions.current(), NONE);
+		Session pressed = sessions.current();
+		int era = characterEra();
+		owner.execute(() -> startCharacterRequest(pressed, era, NONE, CharacterStatus.RENDERING,
+			profileAppearanceService::publishCurrent, this::handleCharacterPublishResult));
 	}
 
 	/**
@@ -414,8 +310,9 @@ final class PublicationCoordinator
 	void deleteCharacter()
 	{
 		Session pressed = sessions.current();
-		startCharacterRequest(pressed, NONE, CharacterStatus.DELETING, profileAppearanceService::deleteCurrent,
-			(result, error, generation) ->
+		int era = characterEra();
+		owner.execute(() -> startCharacterRequest(pressed, era, NONE, CharacterStatus.DELETING,
+			profileAppearanceService::deleteCurrent, (result, error, generation) ->
 			{
 				if (error != null || result == null)
 				{
@@ -425,73 +322,449 @@ final class PublicationCoordinator
 				{
 					showCharacterPublishStatus(generation, CharacterStatus.terminal(result.outcome), true, result.message);
 				}
-			});
+			}));
 	}
 
+	/** Publication turned off, or a logout: no character request goes out from the moment this returns. */
 	void cancelCharacterPublish()
 	{
-		int generation;
-		synchronized (this)
+		synchronized (characterFence)
 		{
-			generation = ++characterGeneration;
+			characterEra++;
+		}
+		owner.execute(() ->
+		{
+			int generation = ++characterGeneration;
 			characterHolder = NONE;
 			characterWaiting = NONE;
 			characterPrerequisiteAttempted = false;
-		}
-		showCharacterPublishStatus(generation, CharacterStatus.CLEAR, false);
+			showCharacterPublishStatus(generation, CharacterStatus.CLEAR, false);
+		});
 	}
 
-	// ── character publish ──────────────────────────────────────────────
-
-	/** The attempt is over and failed: the slot frees and the row says so, only while the attempt is still current. */
-	private void failCharacterPublish(int generation)
+	private int characterEra()
 	{
-		if (finishCharacter(generation))
+		synchronized (characterFence)
 		{
-			showCharacterPublishStatus(generation, CharacterStatus.FAILED, true);
+			return characterEra;
 		}
 	}
 
-	/** The request still current, holding the slot, ends and frees it; false for anything withdrawn or stale. */
-	private synchronized boolean finishCharacter(int generation)
+	// ── sync push: the owner's ─────────────────────────────────────────
+
+	/**
+	 * Whether a push goes now: sync is on, its era and login last; a click always; a character's own sync while that
+	 * request still waits on it; an automatic one with Automatic sync on and its login not turned away.
+	 */
+	private boolean sends(Push push)
 	{
-		if (generation != characterGeneration || characterHolder != generation)
+		if (!config.killclogSync() || push.era != syncGate.era() || !sessions.isCurrent(push.session))
 		{
 			return false;
 		}
-		characterHolder = NONE;
-		characterWaiting = NONE;
-		return true;
-	}
-
-	private synchronized boolean currentCharacter(int generation)
-	{
-		return generation == characterGeneration;
-	}
-
-	private void showCharacterPublishStatus(int generation, CharacterStatus status, boolean autoClear)
-	{
-		showCharacterPublishStatus(generation, status, autoClear, null);
-	}
-
-	private void showCharacterPublishStatus(int generation, CharacterStatus status, boolean autoClear,
-		String failureMessage)
-	{
-		SwingUtilities.invokeLater(() ->
+		if (push.manual)
 		{
-			if (currentCharacter(generation) && (status == CharacterStatus.CLEAR || characterPublishingEnabled()))
+			return true;
+		}
+		if (push.forCharacter != NONE)
+		{
+			return waitingFor(push.forCharacter);
+		}
+		return config.automaticSync() && push.session.getNumber() != stoppedSession;
+	}
+
+	/** The settings still want it sent: sync on, and an automatic push with Automatic sync on. Any thread. */
+	private boolean stillWanted(Push push)
+	{
+		return config.killclogSync() && (push.deliberate() || config.automaticSync());
+	}
+
+	/** A push whose character request was withdrawn is just a push again, so it goes, or not, on its own terms. */
+	private Push live(Push push)
+	{
+		return push.forCharacter == NONE || waitingFor(push.forCharacter) ? push : push.withoutCharacter();
+	}
+
+	/**
+	 * A push after its delay. A push that can't go fails the character request it was for, so none waits forever. An
+	 * automatic push while another automatic one waits starts its quiet time again, up to the minute's cap; one behind
+	 * a click, a character's sync or a retry rides it. A click or a character's sync takes over what waits, merged.
+	 */
+	private void schedule(int delaySeconds, Push asked)
+	{
+		Push push = live(asked);
+		if (!sends(push))
+		{
+			abandon(push, 0);
+			return;
+		}
+		long now = clock.getAsLong();
+		long delayMs = delaySeconds * 1000L;
+		if (pendingPush != null)
+		{
+			if (!push.deliberate())
 			{
-				feedback.showCharacterPublishStatus(status, autoClear, failureMessage);
+				long left = quietSince + SYNC_MAX_WAIT_MS - now;
+				if (pendingAutomatic && !push.retry() && left > 0)
+				{
+					startTimer(Math.min(delayMs, left), push);
+				}
+				return;
+			}
+			push = Push.merge(pendingPush, push);
+		}
+		quietSince = now;
+		startTimer(delayMs, push);
+	}
+
+	private void startTimer(long delayMs, Push push)
+	{
+		if (pendingTimer != null)
+		{
+			pendingTimer.cancel(false);
+		}
+		pendingPush = push;
+		pendingAutomatic = !push.deliberate() && !push.retry();
+		try
+		{
+			pendingTimer = executor.schedule(() -> owner.execute(() -> fire(push)), delayMs, TimeUnit.MILLISECONDS);
+		}
+		catch (RuntimeException e)
+		{
+			pendingPush = null;
+			pendingTimer = null;
+			abandon(push, 0);
+		}
+	}
+
+	/** The push waiting on its timer, if any, never fires. */
+	private void dropPending()
+	{
+		if (pendingTimer != null)
+		{
+			pendingTimer.cancel(false);
+		}
+		pendingTimer = null;
+		pendingPush = null;
+	}
+
+	/** A timer fired: its push goes, unless another has taken its place since. */
+	private void fire(Push push)
+	{
+		if (push != pendingPush)
+		{
+			return;
+		}
+		pendingPush = null;
+		pendingTimer = null;
+		send(push);
+	}
+
+	private void launchQueued()
+	{
+		Push queued = syncGate.takeQueued();
+		if (queued != null)
+		{
+			schedule(0, queued);
+		}
+	}
+
+	private void send(Push asked)
+	{
+		Push push = live(asked);
+		if (!sends(push))
+		{
+			abandon(push, 0);
+			return;
+		}
+		int attempt = syncGate.begin(push, push.era);
+		if (attempt == KillclogSyncGate.BUSY)
+		{
+			return;
+		}
+		if (attempt == KillclogSyncGate.STALE)
+		{
+			abandon(push, 0);
+			return;
+		}
+		if (push.manual)
+		{
+			// A click's attempt begins: its login's automatic pushes go again.
+			stoppedSession = -1;
+		}
+		Session session = push.session;
+		clientThread.invoke(() ->
+		{
+			// Any throw before the request takes ownership must release the slot, or sync is silently dead until
+			// restart: the client thread swallows the exception and the player sees nothing.
+			try
+			{
+				gather(push, attempt, session);
+			}
+			catch (RuntimeException e)
+			{
+				log.warn("killclog sync push failed before dispatch", e);
+				owner.execute(() -> failBeforeSend(push, attempt));
 			}
 		});
 	}
 
-	/** A publish: a press's own ({@code continues} NONE), or the same request again after its log's sync. */
-	private void startCharacterPublish(Session origin, int continues)
+	/** On the client thread: the game, its store, the account type and the PBs the attempt carries. */
+	private void gather(Push push, int attempt, Session session)
 	{
-		startCharacterRequest(origin, continues, CharacterStatus.RENDERING, profileAppearanceService::publishCurrent,
-			this::handleCharacterPublishResult);
+		// Queued behind a logout, an opt-out or Automatic sync going off, it never gathers the next account.
+		if (!syncGate.live(attempt) || !sessions.isCurrent(session) || !stillWanted(push))
+		{
+			owner.execute(() -> stopped(push, attempt, false));
+			return;
+		}
+		// A League sync reads only that League's store and profile, so it finishes after a hop off its worlds; a
+		// main sync needs a settled main world, so it follows this one. A retry is for the game its attempt resolved:
+		// a main one off the main game is let go, since the main account type answers only on a settled main world.
+		String world = mode.get();
+		String gameMode = push.retry() ? (GameMode.MAIN.equals(push.mode) && !GameMode.MAIN.equals(world) ? null
+			: push.mode) : push.mode == null || GameMode.MAIN.equals(push.mode) ? world : push.mode;
+		LocalClogCache cache = gameMode == null ? null : modeCache.apply(gameMode);
+		if (!session.loggedIn() || gameMode == null || cache == null)
+		{
+			// Fired before a new world settled: its login catch-up waited behind this timer.
+			boolean again = push.mode != null && gameMode == null && !push.manual && !push.retry();
+			owner.execute(() -> stopped(push, attempt, again));
+			return;
+		}
+		boolean main = GameMode.MAIN.equals(gameMode);
+		// A League is one account status for everyone: its sync never carries a main type.
+		AccountType accountType = main ? localAccountType.get() : null;
+		if (push.manual)
+		{
+			chatNotifier.send(ChatNotice.SYNC_RESULT, "Syncing collection log...");
+		}
+		List<String> profileKeys = PersonalBests.profileKeys(configManager.getRSProfiles(), session.getAccountHash(),
+			main ? RuneScapeProfileType.STANDARD.name() : leagueProfileType.apply(gameMode));
+		Map<String, Double> pbs = new LinkedHashMap<>();
+		Map<String, PbRecord> detailedPbs = gatherPersonalBests(profileKeys, pbs);
+		// Off the client thread before dispatch: the sync pre-flight can block up to ten seconds waiting for the
+		// rename disk verdict, and game ticks must never pay that wait.
+		executor.execute(() -> dispatch(push, attempt, accountType, pbs, detailedPbs, cache, gameMode));
 	}
+
+	/** The attempt never went: its slot frees, it ends what it began, and the push waiting goes. */
+	private void stopped(Push push, int attempt, boolean scheduleCatchUp)
+	{
+		syncGate.release(attempt);
+		abandon(push, attempt);
+		launchQueued();
+		if (scheduleCatchUp)
+		{
+			// The catch-up follows the world, so a world still unknown when it fires gets no more.
+			schedule(SYNC_DEBOUNCE_SECONDS, Push.ask(push.session, push.era, null, false, NONE));
+		}
+	}
+
+	/** Off the owner (the pre-flight can block): the request, its reply posted back to the owner. */
+	private void dispatch(Push push, int attempt, AccountType accountType, Map<String, Double> pbs,
+		Map<String, PbRecord> detailedPbs, LocalClogCache cache, String gameMode)
+	{
+		Session session = push.session;
+		if (!syncGate.live(attempt) || !sessions.isCurrent(session) || !stillWanted(push))
+		{
+			owner.execute(() -> stopped(push, attempt, false));
+			return;
+		}
+		try
+		{
+			syncService.syncCollectionLog(session, accountType, pbs, detailedPbs, syncGate, attempt, cache, gameMode,
+				push.deliberate(), () -> owner.execute(() -> sending(push, attempt)))
+				.whenComplete((result, error) -> owner.execute(() -> completed(push, attempt, gameMode, result, error)));
+		}
+		catch (RuntimeException e)
+		{
+			log.warn("killclog sync push failed at dispatch", e);
+			owner.execute(() -> failBeforeSend(push, attempt));
+		}
+	}
+
+	/** The push really goes: only then does the row say so (one killclog.com already holds stays quiet). */
+	private void sending(Push push, int attempt)
+	{
+		if (push.forCharacter == NONE && syncGate.live(attempt))
+		{
+			lineAttempt = attempt;
+			say(push, () -> feedback.showSyncProgress(push.manual, "syncing...", false));
+		}
+	}
+
+	private void completed(Push push, int attempt, String gameMode, SyncService.SyncResult result, Throwable error)
+	{
+		boolean live = syncGate.release(attempt);
+		boolean character = push.forCharacter != NONE;
+		if (live && result != null && config.killclogSync())
+		{
+			// Server-advised contention retry: another client of this account held the lock. A character request
+			// rides that one allowed retry.
+			if (result.retryAdvised && !push.retry())
+			{
+				retry(push, attempt, gameMode, result.retryAfterSeconds);
+				launchQueued();
+				return;
+			}
+			if (result.stopsSession)
+			{
+				stoppedSession = push.session.getNumber();
+			}
+			if (character)
+			{
+				// Only the request this sync was for goes on or fails; a withdrawn one has nothing to say.
+				if (takeWaiting(push.forCharacter))
+				{
+					if (result.ok && !result.dryRun && characterPublishingEnabled())
+					{
+						scheduleCharacterPublishAfterSync(push.forCharacter);
+					}
+					else
+					{
+						failCharacterPublish(push.forCharacter);
+					}
+				}
+			}
+			else if (result != SyncService.UNCHANGED)
+			{
+				lineAttempt = 0;
+				say(push, () -> feedback.showSyncResult(push.manual, result.ok, result.message));
+			}
+			if (push.manual || !result.ok)
+			{
+				chatFor(push.session, result.message);
+			}
+		}
+		else if (live)
+		{
+			if (character)
+			{
+				failWaiting(push.forCharacter);
+			}
+			else if (error != null)
+			{
+				lineAttempt = 0;
+				say(push, () -> feedback.showSyncResult(push.manual, false, SYNC_FAILED));
+			}
+		}
+		else
+		{
+			// Silenced or from a passed era: what it began ends quietly.
+			abandon(push, attempt);
+		}
+		launchQueued();
+	}
+
+	/**
+	 * The server's one advised retry, after its own delay: a capture's shorter debounce must not stand in for it.
+	 * Nobody is watching an automatic sync, so it waits out a slow restart; a player waiting on a click or a
+	 * character publish gets the advised delay as it is.
+	 */
+	private void retry(Push push, int attempt, String gameMode, int retryAfterSeconds)
+	{
+		Push retry = live(push.retriedIn(gameMode, attempt));
+		if (!sends(retry))
+		{
+			abandon(push, attempt);
+			return;
+		}
+		int delay = Math.max(retryAfterSeconds, 2);
+		// A click or a character's sync asked meanwhile rides this retry; an automatic push waiting gives way to it.
+		Push next = pendingPush != null && pendingPush.deliberate() ? Push.merge(retry, pendingPush) : retry;
+		dropPending();
+		schedule(retry.deliberate() ? delay : delay * 2, next);
+		if (retry.forCharacter != NONE)
+		{
+			showCharacterPublishStatus(retry.forCharacter, CharacterStatus.RENDERING, false);
+		}
+		else if (pendingPush == next)
+		{
+			lineAttempt = attempt;
+			say(push, () -> feedback.showSyncProgress(push.manual, "retrying...", false));
+		}
+	}
+
+	/** Failures always chat; chat sends need the client thread, which invoke runs at once when already on it. */
+	private void failBeforeSend(Push push, int attempt)
+	{
+		boolean live = syncGate.release(attempt);
+		if (push.forCharacter != NONE)
+		{
+			failWaiting(push.forCharacter);
+		}
+		else if (live)
+		{
+			lineAttempt = 0;
+			say(push, () -> feedback.showSyncResult(push.manual, false, SYNC_FAILED));
+		}
+		if (live)
+		{
+			chatFor(push.session, SYNC_FAILED);
+		}
+		launchQueued();
+	}
+
+	/**
+	 * A push that will not go after all, perhaps after saying "syncing..." or "retrying...": the character request it
+	 * was for fails, or its line comes down, if the row still shows it ({@code attempt}'s, or the one it waits under).
+	 */
+	private void abandon(Push push, int attempt)
+	{
+		if (push.forCharacter != NONE)
+		{
+			failWaiting(push.forCharacter);
+			return;
+		}
+		takeLineDown(attempt);
+		takeLineDown(push.line);
+	}
+
+	/** The row's sync line comes down, only if it is this attempt's (never a newer sync's, never the next login's). */
+	private void takeLineDown(int attempt)
+	{
+		if (attempt == 0 || lineAttempt != attempt)
+		{
+			return;
+		}
+		lineAttempt = 0;
+		SwingUtilities.invokeLater(() ->
+		{
+			if (lineAttempt == 0)
+			{
+				feedback.resetSyncFeedback();
+			}
+		});
+	}
+
+	/** A line for the row, said only while its era and login last and sync is on, and the row still answers to it. */
+	private void say(Push push, Runnable line)
+	{
+		int shown = lineAttempt;
+		SwingUtilities.invokeLater(() ->
+		{
+			if (lineAttempt == shown && push.era == syncGate.era() && config.killclogSync()
+				&& sessions.isCurrent(push.session))
+			{
+				line.run();
+			}
+		});
+	}
+
+	/** A sync's chat line, said only while its login lasts: the next login never hears the last one's. */
+	private void chatFor(Session session, String message)
+	{
+		clientThread.invoke(() ->
+		{
+			if (sessions.isCurrent(session))
+			{
+				chatNotifier.send(ChatNotice.SYNC_RESULT, message);
+			}
+		});
+	}
+
+	// ── character publish: the owner's ─────────────────────────────────
 
 	/** A character request: publish or delete, for the logged-in player of the main game. */
 	@FunctionalInterface
@@ -508,48 +781,44 @@ final class PublicationCoordinator
 	}
 
 	/**
-	 * One character request at a time, for the login it was pressed in ({@code origin}): its status line at once, then
-	 * on the client thread the request, unless that login has ended or left the main game (it fails, or a withdrawn
-	 * one stands down). A request that {@code continues} an earlier one (its generation) takes its place only while
-	 * that one is still current and holds the slot, keeping its login.
+	 * One character request at a time, for the login it was pressed in ({@code origin}) and the withdrawal era of the
+	 * press: its status line at once, then on the client thread the request, unless that login has ended or left the
+	 * main game (it fails, or a withdrawn one stands down). A request that {@code continues} an earlier one (its
+	 * generation) takes its place only while that one is still current and holds the slot, keeping its login and era.
 	 */
-	private void startCharacterRequest(Session origin, int continues, CharacterStatus progress, CharacterRequest request,
-		CharacterOutcome outcome)
+	private void startCharacterRequest(Session origin, int era, int continues, CharacterStatus progress,
+		CharacterRequest request, CharacterOutcome outcome)
 	{
 		if (!characterPublishingEnabled())
 		{
 			return;
 		}
-		int generation;
-		Session session;
-		synchronized (this)
+		if (continues == NONE ? characterHolder != NONE || era != characterEra() || !sessions.isCurrent(origin)
+			: continues != characterGeneration || characterHolder != continues)
 		{
-			// A press whose login has ended claims nothing; a continuation needs its own request still holding the slot.
-			if (continues == NONE ? characterHolder != NONE || !sessions.isCurrent(origin)
-				: continues != characterGeneration || characterHolder != continues)
-			{
-				return;
-			}
-			if (continues == NONE)
-			{
-				characterSession = origin;
-				characterPrerequisiteAttempted = false;
-			}
-			generation = ++characterGeneration;
-			characterHolder = generation;
-			session = characterSession;
+			return;
 		}
+		if (continues == NONE)
+		{
+			characterSession = origin;
+			characterRequestEra = era;
+			characterPrerequisiteAttempted = false;
+		}
+		int generation = ++characterGeneration;
+		characterHolder = generation;
+		Session session = characterSession;
+		int requestEra = characterRequestEra;
 		showCharacterPublishStatus(generation, progress, false);
 		clientThread.invokeLater(() ->
 		{
-			if (!currentCharacter(generation))
+			if (generation != characterGeneration)
 			{
 				return;
 			}
 			if (!characterPublishingEnabled() || !session.loggedIn() || !sessions.isCurrent(session)
 				|| !GameMode.MAIN.equals(mode.get()))
 			{
-				failCharacterPublish(generation);
+				owner.execute(() -> failCharacterPublish(generation));
 				return;
 			}
 			request.start(session, new ProfileAppearanceService.Authorization()
@@ -557,16 +826,16 @@ final class PublicationCoordinator
 				@Override
 				public boolean getAsBoolean()
 				{
-					return currentCharacter(generation) && characterPublishingEnabled() && sessions.isCurrent(session);
+					return generation == characterGeneration && characterPublishingEnabled() && sessions.isCurrent(session);
 				}
 
 				@Override
 				public boolean sendIf(Runnable send)
 				{
-					// One step with a withdrawal (cancelCharacterPublish takes this lock): withdrawn first, nothing goes.
-					synchronized (PublicationCoordinator.this)
+					// One step with a withdrawal (cancelCharacterPublish moves the era under this lock).
+					synchronized (characterFence)
 					{
-						if (generation != characterGeneration || !sessions.isCurrent(session))
+						if (requestEra != characterEra || !sessions.isCurrent(session))
 						{
 							return false;
 						}
@@ -574,14 +843,14 @@ final class PublicationCoordinator
 						return true;
 					}
 				}
-			}).whenComplete((result, error) -> outcome.handle(result, error, generation));
+			}).whenComplete((result, error) -> owner.execute(() -> outcome.handle(result, error, generation)));
 		});
 	}
 
 	private void handleCharacterPublishResult(ProfileAppearanceService.PublishResult result,
 		Throwable error, int generation)
 	{
-		if (!currentCharacter(generation) || !characterPublishingEnabled())
+		if (generation != characterGeneration || !characterPublishingEnabled())
 		{
 			return;
 		}
@@ -590,12 +859,14 @@ final class PublicationCoordinator
 			failCharacterPublish(generation);
 			return;
 		}
-
-		Session waiting = result.outcome == ProfileAppearanceService.Outcome.PROFILE_REQUIRED ? waitOnSync(generation) : null;
-		if (waiting != null)
+		if (result.outcome == ProfileAppearanceService.Outcome.PROFILE_REQUIRED && characterHolder == generation
+			&& !characterPrerequisiteAttempted)
 		{
+			// It waits on one sync of its log first, for its own login and era.
+			characterPrerequisiteAttempted = true;
+			characterWaiting = generation;
 			showCharacterPublishStatus(generation, CharacterStatus.RENDERING, false);
-			pushNow(waiting, false, generation);
+			pushNow(characterSession, syncGate.era(), false, generation);
 		}
 		else if (finishCharacter(generation))
 		{
@@ -603,29 +874,35 @@ final class PublicationCoordinator
 		}
 	}
 
-	/**
-	 * The request, still current and holding the slot, waits on one sync of its log first; its login, which the sync
-	 * is for. Null when it was withdrawn, or has had its one sync already.
-	 */
-	private synchronized Session waitOnSync(int generation)
+	/** The attempt is over and failed: the slot frees and the row says so, only while the attempt is still current. */
+	private void failCharacterPublish(int generation)
 	{
-		if (generation != characterGeneration || characterHolder != generation || characterPrerequisiteAttempted)
+		if (finishCharacter(generation))
 		{
-			return null;
+			showCharacterPublishStatus(generation, CharacterStatus.FAILED, true);
 		}
-		characterPrerequisiteAttempted = true;
-		characterWaiting = generation;
-		return characterSession;
+	}
+
+	/** The request still current, holding the slot, ends and frees it; false for anything withdrawn or stale. */
+	private boolean finishCharacter(int generation)
+	{
+		if (generation != characterGeneration || characterHolder != generation)
+		{
+			return false;
+		}
+		characterHolder = NONE;
+		characterWaiting = NONE;
+		return true;
 	}
 
 	/** Whether this request is still current and waits on its sync. */
-	private synchronized boolean waitingFor(int generation)
+	private boolean waitingFor(int generation)
 	{
 		return generation != NONE && characterWaiting == generation && generation == characterGeneration;
 	}
 
 	/** Its sync ended: the request stops waiting; false when it was no longer the one waiting. */
-	private synchronized boolean takeWaiting(int generation)
+	private boolean takeWaiting(int generation)
 	{
 		if (!waitingFor(generation))
 		{
@@ -644,18 +921,14 @@ final class PublicationCoordinator
 		}
 	}
 
-	/** The publish again once its log's sync landed: the same request, keeping its slot and its login. */
+	/** The publish again once its log's sync landed: the same request, keeping its slot, login and era. */
 	private void scheduleCharacterPublishAfterSync(int generation)
 	{
 		try
 		{
-			executor.schedule(() ->
-			{
-				if (characterPublishingEnabled())
-				{
-					startCharacterPublish(null, generation);
-				}
-			}, ProfileAppearanceService.PUBLISH_RETRY_DELAY_MS, TimeUnit.MILLISECONDS);
+			executor.schedule(() -> owner.execute(() -> startCharacterRequest(null, NONE, generation,
+					CharacterStatus.RENDERING, profileAppearanceService::publishCurrent, this::handleCharacterPublishResult)),
+				ProfileAppearanceService.PUBLISH_RETRY_DELAY_MS, TimeUnit.MILLISECONDS);
 		}
 		catch (RuntimeException e)
 		{
@@ -663,291 +936,19 @@ final class PublicationCoordinator
 		}
 	}
 
-	// ── sync push ──────────────────────────────────────────────────────
-
-	// If a push arrived while the slot was occupied, launch it now that the
-	// slot is free (the opt-out/opt-in-mid-request case).
-	private void launchQueuedSync()
+	private void showCharacterPublishStatus(int generation, CharacterStatus status, boolean autoClear)
 	{
-		Push queued = syncGate.consumeQueued();
-		if (queued != null && config.killclogSync())
-		{
-			schedule(0, queued);
-		}
+		showCharacterPublishStatus(generation, status, autoClear, null);
 	}
 
-	private void send(Push asked)
-	{
-		// Re-checked at fire time: the player may have opted out while the debounce was pending, and the login is the
-		// push's own, so a task that escaped cancellation can never bind itself to whoever is logged in later.
-		Push push = live(asked);
-		if (!sends(push))
-		{
-			failWaiting(push.forCharacter);
-			return;
-		}
-		final int generation = syncGate.beginAttempt(push);
-		if (generation < 0)
-		{
-			return;
-		}
-		final int attempt = beganAttempt();
-		Session session = push.session;
-		if (!sessions.isCurrent(session))
-		{
-			syncGate.abortAttempt();
-			failWaiting(push.forCharacter);
-			launchQueuedSync();
-			return;
-		}
-		clientThread.invoke(() ->
-		{
-			// Any throw before the future takes ownership must release the
-			// single-flight slot, or sync is silently dead until restart -
-			// the client thread swallows the exception and the user sees
-			// nothing.
-			try
-			{
-				// The timer may have entered send just before logout, leaving this client-thread callback queued
-				// behind the account switch. Never gather the next account under the old attempt's generation.
-				if (!syncGate.isCurrent(generation) || !sessions.isCurrent(session))
-				{
-					syncGate.abortAttempt();
-					abandon(push);
-					launchQueuedSync();
-					return;
-				}
-				// A League sync reads only that League's store and profile, so it finishes after a hop
-				// off its worlds; a main sync needs a settled main world, so it follows this one.
-				// A retry is for the game its attempt resolved: a main one off the main game waits for no hop back.
-				String world = mode.get();
-				String gameMode = push.retry ? (GameMode.MAIN.equals(push.mode) && !GameMode.MAIN.equals(world) ? null
-					: push.mode) : push.mode == null || GameMode.MAIN.equals(push.mode) ? world : push.mode;
-				LocalClogCache cache = gameMode == null ? null : modeCache.apply(gameMode);
-				if (!session.loggedIn() || gameMode == null || cache == null)
-				{
-					syncGate.abortAttempt();
-					abandon(push);
-					launchQueuedSync();
-					if (push.mode != null && gameMode == null && !push.manual)
-					{
-						// Fired before a new world settled: its login catch-up waited behind this timer.
-						scheduleAutomaticSync(session);
-					}
-					return;
-				}
-				// The type supplier answers only on a settled main world. A League's PBs come only from
-				// the RuneLite profile the server names: until RuneLite knows a new League, it files
-				// that League's PBs under an older one.
-				boolean main = GameMode.MAIN.equals(gameMode);
-				// A League is one account status for everyone: its sync never carries a main type.
-				AccountType accountType = main ? localAccountType.get() : null;
-				if (push.manual)
-				{
-					chatNotifier.send(ChatNotice.SYNC_RESULT, "Syncing collection log...");
-				}
-				List<String> profileKeys = PersonalBests.profileKeys(configManager.getRSProfiles(), session.getAccountHash(),
-					main ? RuneScapeProfileType.STANDARD.name() : leagueProfileType.apply(gameMode));
-				Map<String, Double> pbs = new LinkedHashMap<>();
-				Map<String, PbRecord> detailedPbs = gatherPersonalBests(profileKeys, pbs);
-				// Off the client thread before dispatch: the sync pre-flight can block up to ten seconds waiting for
-				// the rename disk verdict, and game ticks must never pay that wait. The login rides along: a logout
-				// between this gather and the dispatch must kill the attempt, not let a dead session post.
-				executor.execute(() -> dispatch(push, accountType, pbs, detailedPbs, generation, attempt, cache, gameMode));
-			}
-			catch (RuntimeException e)
-			{
-				log.warn("killclog sync push failed before dispatch", e);
-				failBeforeSend(generation, push);
-			}
-		});
-	}
-
-	private void dispatch(Push push, AccountType accountType, Map<String, Double> pbs, Map<String, PbRecord> detailedPbs,
-		int generation, int attempt, LocalClogCache cache, String gameMode)
-	{
-		Session session = push.session;
-		boolean character = push.forCharacter != NONE;
-		if (!syncGate.isCurrent(generation) || !sends(push))
-		{
-			// The login ended, or the player stopped this send, between gather and dispatch: release the
-			// single-flight slot and walk away clean, failing the character request it was for.
-			syncGate.abortAttempt();
-			abandon(push);
-			launchQueuedSync();
-			return;
-		}
-		try
-		{
-			syncService.syncCollectionLog(session, accountType, pbs, detailedPbs,
-				syncGate, generation, cache, gameMode, push.deliberate(), () ->
-				{
-					// Only a push that really goes says so: one killclog.com already holds stays quiet.
-					if (!character)
-					{
-						withSyncFeedback(generation, session,
-							() -> feedback.showSyncProgress(push.manual, "syncing...", false));
-					}
-				})
-				.whenComplete((result, err) ->
-				{
-					boolean current = syncGate.complete(generation);
-					if (result != null && current && config.killclogSync())
-					{
-						// Server-advised contention retry: another client of this account held the lock. A character
-						// request rides that one allowed retry.
-						if (result.retryAdvised && !push.retry)
-						{
-							// Nobody is watching an automatic sync, so it waits out a
-							// slow restart. A player waiting on a click or a character
-							// publish gets the advised delay as it is.
-							int delay = Math.max(result.retryAfterSeconds, 2);
-							int withdrawn = withdrawals();
-							boolean retrying = scheduleRetry(push.deliberate() ? delay : delay * 2, push.retriedIn(gameMode),
-								generation, attempt);
-							if (character)
-							{
-								showCharacterPublishStatus(push.forCharacter, CharacterStatus.RENDERING, false);
-							}
-							else if (retrying)
-							{
-								// Said only while nothing withdrew it: Automatic sync turned off meanwhile drops an automatic one.
-								SwingUtilities.invokeLater(() ->
-								{
-									if ((push.deliberate() || withdrawals() == withdrawn) && config.killclogSync()
-										&& sessions.isCurrent(session))
-									{
-										feedback.showSyncProgress(push.manual, "retrying...", false);
-									}
-								});
-							}
-							else
-							{
-								// Its "syncing..." has nothing left to say.
-								abandon(push);
-							}
-							launchQueuedSync();
-							return;
-						}
-
-						// Everything below is a terminal outcome for this episode.
-						if (result.stopsSession)
-						{
-							stopSession(session, generation, attempt);
-						}
-						if (character)
-						{
-							// Only the request this sync was for goes on or fails; a withdrawn one has nothing to say.
-							if (takeWaiting(push.forCharacter))
-							{
-								if (result.ok && !result.dryRun && characterPublishingEnabled())
-								{
-									scheduleCharacterPublishAfterSync(push.forCharacter);
-								}
-								else
-								{
-									failCharacterPublish(push.forCharacter);
-								}
-							}
-						}
-						else if (result != SyncService.UNCHANGED)
-						{
-							withSyncFeedback(generation, session,
-								() -> feedback.showSyncResult(push.manual, result.ok, result.message));
-						}
-						if (push.manual || !result.ok)
-						{
-							chatFor(session, result.message);
-						}
-					}
-					else if (current)
-					{
-						if (character)
-						{
-							failWaiting(push.forCharacter);
-						}
-						else if (err != null)
-						{
-							withSyncFeedback(generation, session, () -> feedback.showSyncResult(push.manual,
-								false, SYNC_FAILED));
-						}
-					}
-					launchQueuedSync();
-				});
-		}
-		catch (RuntimeException e)
-		{
-			log.warn("killclog sync push failed at dispatch", e);
-			failBeforeSend(generation, push);
-		}
-	}
-
-	/** Failures always chat; chat sends need the client thread, which invoke runs at once when already on it. */
-	private void failBeforeSend(int generation, Push push)
-	{
-		syncGate.abortAttempt();
-		if (push.forCharacter != NONE)
-		{
-			failWaiting(push.forCharacter);
-		}
-		else
-		{
-			withSyncFeedback(generation, push.session, () -> feedback.showSyncResult(push.manual,
-				false, SYNC_FAILED));
-		}
-		chatFor(push.session, SYNC_FAILED);
-		launchQueuedSync();
-	}
-
-	/**
-	 * A push that will not go after all, perhaps after saying "syncing..." or "retrying...": the character request it
-	 * was for fails, or the sync's line comes down while its login lasts (a logout clears the row itself, and the next
-	 * login's line is its own).
-	 */
-	private void abandon(Push push)
-	{
-		if (push.forCharacter != NONE)
-		{
-			failWaiting(push.forCharacter);
-		}
-		else if (sessions.isCurrent(push.session))
-		{
-			SwingUtilities.invokeLater(() ->
-			{
-				// Only a line nothing newer is using: a sync in the air or waiting on its timer keeps its own.
-				if (sessions.isCurrent(push.session) && syncIdle())
-				{
-					feedback.resetSyncFeedback();
-				}
-			});
-		}
-	}
-
-	/** No sync is in the air and none waits on its timer. */
-	private synchronized boolean syncIdle()
-	{
-		return !syncGate.busy() && (pendingKillclogSync == null || pendingKillclogSync.isDone());
-	}
-
-	/** A sync's chat line, said only while its login lasts: the next login never hears the last one's. */
-	private void chatFor(Session session, String message)
-	{
-		clientThread.invoke(() ->
-		{
-			if (sessions.isCurrent(session))
-			{
-				chatNotifier.send(ChatNotice.SYNC_RESULT, message);
-			}
-		});
-	}
-
-	private void withSyncFeedback(int generation, Session session, Runnable feedbackCall)
+	private void showCharacterPublishStatus(int generation, CharacterStatus status, boolean autoClear,
+		String failureMessage)
 	{
 		SwingUtilities.invokeLater(() ->
 		{
-			if (syncGate.isCurrent(generation) && config.killclogSync() && sessions.isCurrent(session))
+			if (generation == characterGeneration && (status == CharacterStatus.CLEAR || characterPublishingEnabled()))
 			{
-				feedbackCall.run();
+				feedback.showCharacterPublishStatus(status, autoClear, failureMessage);
 			}
 		});
 	}
@@ -981,5 +982,4 @@ final class PublicationCoordinator
 			+ " (the store, the adventure log, the collection log, kills seen)", profileKeys.size(), pbs.size(), out.size());
 		return out;
 	}
-
 }

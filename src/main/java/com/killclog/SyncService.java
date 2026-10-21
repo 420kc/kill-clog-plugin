@@ -110,7 +110,7 @@ class SyncService
 	CompletableFuture<SyncResult> syncCollectionLog(Session session,
 		@Nullable AccountType accountType, Map<String, Double> personalBests,
 		Map<String, PbRecord> detailedPersonalBests,
-		KillclogSyncGate<?> syncGate, int generation, LocalClogCache cache, String mode, boolean always, Runnable sending)
+		KillclogSyncGate<?> syncGate, int attempt, LocalClogCache cache, String mode, boolean always, Runnable sending)
 	{
 		String rsn = session.getName();
 		long accountHash = session.getAccountHash();
@@ -165,7 +165,7 @@ class SyncService
 			rsn, url, observedCount);
 		final int pbCount = personalBests != null ? personalBests.size() : 0;
 		CompletableFuture<HttpUtil.HttpResult> request = cache.commitIfSessionCurrent(
-			session, () -> syncGate.commitIfCurrent(generation,
+			session, () -> syncGate.commitIfCurrent(attempt,
 				() -> HttpUtil.httpPostJson(httpClient, url, body, null)));
 		if (request == null)
 		{

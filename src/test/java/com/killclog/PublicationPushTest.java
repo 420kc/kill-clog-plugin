@@ -13,12 +13,12 @@ public class PublicationPushTest
 
 	private static PublicationCoordinator.Push click(String mode)
 	{
-		return PublicationCoordinator.Push.ask(LOGIN, mode, true, NONE);
+		return PublicationCoordinator.Push.ask(LOGIN, 0, mode, true, NONE);
 	}
 
 	private static PublicationCoordinator.Push automatic(String mode)
 	{
-		return PublicationCoordinator.Push.ask(LOGIN, mode, false, NONE);
+		return PublicationCoordinator.Push.ask(LOGIN, 0, mode, false, NONE);
 	}
 
 	private static PublicationCoordinator.Push merge(PublicationCoordinator.Push one, PublicationCoordinator.Push other)
@@ -43,18 +43,18 @@ public class PublicationPushTest
 	@Test
 	public void theNewerCharacterRequestAndOneRetryAreKept()
 	{
-		PublicationCoordinator.Push first = PublicationCoordinator.Push.ask(LOGIN, "main", true, 1);
-		PublicationCoordinator.Push second = PublicationCoordinator.Push.ask(LOGIN, "main", false, 3);
+		PublicationCoordinator.Push first = PublicationCoordinator.Push.ask(LOGIN, 0, "main", true, 1);
+		PublicationCoordinator.Push second = PublicationCoordinator.Push.ask(LOGIN, 0, "main", false, 3);
 		assertEquals(3, merge(second, first).forCharacter);
 		assertEquals(3, merge(first, second).forCharacter);
-		assertTrue(merge(first.retriedIn("main"), second).retry);
+		assertTrue(merge(first.retriedIn("main", 1), second).retry());
 	}
 
 	@Test
 	public void pushesOfTwoLoginsNeverMix()
 	{
-		PublicationCoordinator.Push old = PublicationCoordinator.Push.ask(LOGIN, "main", true, NONE);
-		PublicationCoordinator.Push next = PublicationCoordinator.Push.ask(NEXT, "main", false, 5);
+		PublicationCoordinator.Push old = PublicationCoordinator.Push.ask(LOGIN, 0, "main", true, NONE);
+		PublicationCoordinator.Push next = PublicationCoordinator.Push.ask(NEXT, 0, "main", false, 5);
 		assertSame(next, merge(old, next));
 		assertSame(next, merge(next, old));
 	}
@@ -63,7 +63,7 @@ public class PublicationPushTest
 	public void aPushAndItsOwnRetryGoAsOneTheSameEitherWay()
 	{
 		PublicationCoordinator.Push asked = click("main");
-		PublicationCoordinator.Push retry = asked.retriedIn("demonic-pacts");
+		PublicationCoordinator.Push retry = asked.retriedIn("demonic-pacts", 1);
 		assertEquals("demonic-pacts", merge(asked, retry).mode);
 		assertEquals("demonic-pacts", merge(retry, asked).mode);
 	}
@@ -71,11 +71,25 @@ public class PublicationPushTest
 	@Test
 	public void aRetrySpendsItsOneRetryForAPushOnlyOfItsOwnGame()
 	{
-		PublicationCoordinator.Push leagueRetry = click("demonic-pacts").retriedIn("demonic-pacts");
+		PublicationCoordinator.Push leagueRetry = click("demonic-pacts").retriedIn("demonic-pacts", 1);
 		PublicationCoordinator.Push mainClick = click("main");
 		PublicationCoordinator.Push merged = merge(leagueRetry, mainClick);
 		assertEquals("the later click leads", "main", merged.mode);
-		assertEquals("and goes as itself, with its own retry", false, merged.retry);
-		assertTrue(merge(click("main").retriedIn("main"), click("main")).retry);
+		assertEquals("and goes as itself, with its own retry", false, merged.retry());
+		assertTrue(merge(click("main").retriedIn("main", 1), click("main")).retry());
+	}
+
+	@Test
+	public void theRetrySpentIsTheSameInAnyGroupingAcrossGames()
+	{
+		// Asked oldest first: a main retry, a League click, a main click.
+		PublicationCoordinator.Push mainRetry = click("main").retriedIn("main", 1);
+		PublicationCoordinator.Push leagueClick = click("demonic-pacts");
+		PublicationCoordinator.Push mainClick = click("main");
+		PublicationCoordinator.Push left = merge(merge(mainRetry, leagueClick), mainClick);
+		PublicationCoordinator.Push right = merge(mainRetry, merge(leagueClick, mainClick));
+		assertEquals("main", left.mode);
+		assertEquals(left.mode, right.mode);
+		assertEquals(left.retry(), right.retry());
 	}
 }

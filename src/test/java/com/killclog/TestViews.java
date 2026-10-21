@@ -270,6 +270,6 @@ final class TestViews
 	/** True exactly once per remembered push intent. */
 	static boolean consumeQueued(KillclogSyncGate<?> gate)
 	{
-		return gate.consumeQueued() != null;
+		return gate.takeQueued() != null;
 	}
 }

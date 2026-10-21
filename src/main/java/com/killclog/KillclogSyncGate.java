@@ -1,26 +1,31 @@
 package com.killclog;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.BinaryOperator;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
- * State machine for the killclog.com sync push: single-flight until the HTTP
- * round trip completes, a generation stamp so cancelled eras stay silent, and
- * the push asked for while the slot is occupied (opt-out then opt-in during a
- * live request), held whole and fired as soon as the slot frees instead of
- * being dropped. Several asked meanwhile go as one, by the push's own rule.
+ * The killclog.com sync's one slot: one attempt in the air at a time, numbered, until its round trip completes; the
+ * push asked for meanwhile, held whole (several go as one, by the push's own rule) and handed over once the slot frees;
+ * and the era that an opt-out, a logout or a shutdown moves on, so anything begun before can never claim the slot,
+ * commit its request or speak. Every release names its attempt, so a stale one can never free a newer one's slot.
+ * Its own lock, so the final request enqueue and a cancellation have one total order.
  */
 final class KillclogSyncGate<P>
 {
-	private final AtomicBoolean inFlight = new AtomicBoolean();
-	private final AtomicInteger generation = new AtomicInteger();
+	static final int BUSY = -1;
+	static final int STALE = -2;
+
 	// Which pushes Automatic sync turned off leaves alone, and how two waiting go as one.
 	private final Predicate<P> deliberate;
 	private final BinaryOperator<P> merge;
+	private int era;
+	private int attempts;
+	// The attempt in the air (0 for none), its era and push, and whether Automatic sync turned off silenced it.
+	private int inFlight;
+	private int inFlightEra;
 	private P inFlightPush;
+	private boolean silenced;
 	private P queued;
 
 	KillclogSyncGate(Predicate<P> deliberate, BinaryOperator<P> merge)
@@ -29,71 +34,75 @@ final class KillclogSyncGate<P>
 		this.merge = merge;
 	}
 
-	/**
-	 * Claim the single-flight slot.
-	 *
-	 * @return the generation to carry through the attempt, or -1 when a request is already in flight: the push waits,
-	 *         merged with any already waiting, and {@link #consumeQueued()} hands it over once the slot frees.
-	 */
-	synchronized int beginAttempt(P push)
+	/** The era now; a push carries the one it was asked in. */
+	synchronized int era()
 	{
-		int gen = generation.get();
-		if (!inFlight.compareAndSet(false, true))
+		return era;
+	}
+
+	/**
+	 * Claim the slot for a push asked in {@code pushEra}: the attempt's number, or {@link #STALE} when its era has
+	 * passed (it is dropped), or {@link #BUSY} while another attempt is in the air (it waits, merged with any already
+	 * waiting).
+	 */
+	synchronized int begin(P push, int pushEra)
+	{
+		if (pushEra != era)
+		{
+			return STALE;
+		}
+		if (inFlight != 0)
 		{
 			queued = queued == null ? push : merge.apply(queued, push);
-			return -1;
+			return BUSY;
 		}
+		inFlight = ++attempts;
+		inFlightEra = era;
 		inFlightPush = push;
-		return gen;
+		silenced = false;
+		return inFlight;
+	}
+
+	/** Whether this attempt is the one in the air, in its era, not silenced: its work may go on. */
+	synchronized boolean live(int attempt)
+	{
+		return attempt == inFlight && inFlightEra == era && !silenced;
+	}
+
+	/**
+	 * Commit the final non-blocking request enqueue only while this attempt is live. One lock with {@link #cancel()},
+	 * so an opt-out has one total order with the enqueue: before means no request; after means the request already
+	 * enqueued stays silent on completion.
+	 */
+	synchronized <T> T commitIfCurrent(int attempt, Supplier<T> commit)
+	{
+		return live(attempt) ? commit.get() : null;
 	}
 
 	/** Whether an attempt holds the slot. */
-	boolean busy()
+	synchronized boolean busy()
 	{
-		return inFlight.get();
-	}
-
-	/** Whether deferred pre-dispatch work still belongs to the live era. */
-	boolean isCurrent(int gen)
-	{
-		return gen == generation.get();
+		return inFlight != 0;
 	}
 
 	/**
-	 * Commit the final non-blocking request enqueue only while this attempt's
-	 * generation is still authorized. Synchronized with {@link #cancel()} so
-	 * opt-out has one total order with the enqueue: before means no request;
-	 * after means the already-enqueued request remains silent on completion.
+	 * The attempt's round trip is over, or it never went: its slot frees, if it is still the one holding it. True when
+	 * it was live (its outcome may be acted on and said).
 	 */
-	synchronized <T> T commitIfCurrent(int gen, Supplier<T> commit)
+	synchronized boolean release(int attempt)
 	{
-		if (gen != generation.get())
+		if (attempt != inFlight)
 		{
-			return null;
+			return false;
 		}
-		return commit.get();
-	}
-
-	/** Release the slot without a round trip (unusable state: no rsn/hash). */
-	void abortAttempt()
-	{
-		inFlight.set(false);
-	}
-
-	/**
-	 * Release the slot after a round trip.
-	 *
-	 * @return true when the completing attempt belongs to the current
-	 *         generation (its feedback may be surfaced).
-	 */
-	boolean complete(int gen)
-	{
-		inFlight.set(false);
-		return gen == generation.get();
+		boolean wasLive = live(attempt);
+		inFlight = 0;
+		inFlightPush = null;
+		return wasLive;
 	}
 
 	/** The push that waited for the slot, no longer waiting; null for none. */
-	synchronized P consumeQueued()
+	synchronized P takeQueued()
 	{
 		P push = queued;
 		queued = null;
@@ -101,27 +110,28 @@ final class KillclogSyncGate<P>
 	}
 
 	/**
-	 * Automatic sync off: an automatic push not yet sent, or one waiting, never goes; a deliberate one still does.
-	 * True when it silenced an automatic push already in the air.
+	 * Automatic sync off: an automatic push waiting never goes, and one in the air is silenced; a deliberate one goes
+	 * on. The silenced attempt's number, or 0.
 	 */
-	synchronized boolean cancelAutomatic()
+	synchronized int silenceAutomatic()
 	{
-		boolean silenced = inFlight.get() && inFlightPush != null && !deliberate.test(inFlightPush);
-		if (silenced)
+		int quieted = 0;
+		if (inFlight != 0 && !silenced && !deliberate.test(inFlightPush))
 		{
-			generation.incrementAndGet();
+			silenced = true;
+			quieted = inFlight;
 		}
 		if (queued != null && !deliberate.test(queued))
 		{
 			queued = null;
 		}
-		return silenced;
+		return quieted;
 	}
 
-	/** Opt-out / shutdown: silence prior eras and forget any queued push. */
+	/** Opt-out, logout, shutdown: the era moves on, so nothing begun before claims, commits or speaks. */
 	synchronized void cancel()
 	{
-		generation.incrementAndGet();
+		era++;
 		queued = null;
 	}
 }

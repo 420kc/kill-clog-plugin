@@ -43,54 +43,54 @@ public class KillclogSyncGateTest
 	public void manualClickBehindAutomaticSyncKeepsManualFeedback()
 	{
 		KillclogSyncGate<Ask> gate = newGate();
-		int automatic = gate.beginAttempt(new Ask(false, null));
-		assertEquals(-1, gate.beginAttempt(new Ask(true, null)));
-		assertEquals(-1, gate.beginAttempt(new Ask(false, null)));
-		gate.complete(automatic);
-		assertTrue(gate.consumeQueued().manual);
-		assertNull(gate.consumeQueued());
+		int automatic = gate.begin(new Ask(false, null), gate.era());
+		assertEquals(-1, gate.begin(new Ask(true, null), gate.era()));
+		assertEquals(-1, gate.begin(new Ask(false, null), gate.era()));
+		gate.release(automatic);
+		assertTrue(gate.takeQueued().manual);
+		assertNull(gate.takeQueued());
 	}
 
 	@Test
 	public void backgroundQueueDoesNotBecomeManual()
 	{
 		KillclogSyncGate<Ask> gate = newGate();
-		int manual = gate.beginAttempt(new Ask(true, null));
-		assertEquals(-1, gate.beginAttempt(new Ask(false, null)));
-		gate.complete(manual);
-		assertFalse(gate.consumeQueued().manual);
+		int manual = gate.begin(new Ask(true, null), gate.era());
+		assertEquals(-1, gate.begin(new Ask(false, null), gate.era()));
+		gate.release(manual);
+		assertFalse(gate.takeQueued().manual);
 	}
 
 	@Test
 	public void cancellationForgetsManualFeedbackIntent()
 	{
 		KillclogSyncGate<Ask> gate = newGate();
-		int old = gate.beginAttempt(new Ask(false, null));
-		gate.beginAttempt(new Ask(true, null));
+		int old = gate.begin(new Ask(false, null), gate.era());
+		gate.begin(new Ask(true, null), gate.era());
 		gate.cancel();
-		gate.beginAttempt(new Ask(false, null));
-		gate.complete(old);
-		assertFalse(gate.consumeQueued().manual);
+		gate.begin(new Ask(false, null), gate.era());
+		gate.release(old);
+		assertFalse(gate.takeQueued().manual);
 	}
 
 	@Test
 	public void singleAttemptCompletesCurrent()
 	{
 		KillclogSyncGate<Ask> gate = newGate();
-		int gen = gate.beginAttempt(new Ask(false, null));
+		int gen = gate.begin(new Ask(false, null), gate.era());
 		assertTrue(gen >= 0);
-		assertTrue(gate.complete(gen));
+		assertTrue(gate.release(gen));
 	}
 
 	@Test
 	public void cancelledGenerationCannotGatherALaterAccount()
 	{
 		KillclogSyncGate<Ask> gate = newGate();
-		int gen = gate.beginAttempt(new Ask(false, null));
-		assertTrue(gate.isCurrent(gen));
+		int gen = gate.begin(new Ask(false, null), gate.era());
+		assertTrue(gate.live(gen));
 		gate.cancel();
 		assertFalse("a queued client callback must stop before gathering identity",
-			gate.isCurrent(gen));
+			gate.live(gen));
 	}
 
 	@Test
@@ -99,7 +99,7 @@ public class KillclogSyncGateTest
 		KillclogSyncGate<Ask> gate = newGate();
 		LocalClogCache cache = new LocalClogCache(
 			new Gson(), new NoopScheduledExecutorService());
-		int generation = gate.beginAttempt(new Ask(false, null));
+		int generation = gate.begin(new Ask(false, null), gate.era());
 		Session epoch = Session.none(0);
 		CountDownLatch preflightBlocked = new CountDownLatch(1);
 		CountDownLatch releasePreflight = new CountDownLatch(1);
@@ -138,10 +138,10 @@ public class KillclogSyncGateTest
 	public void occupiedSlotQueuesTheIntentExactlyOnce()
 	{
 		KillclogSyncGate<Ask> gate = newGate();
-		int gen = gate.beginAttempt(new Ask(false, null));
-		assertEquals(-1, gate.beginAttempt(new Ask(false, null)));
-		assertEquals(-1, gate.beginAttempt(new Ask(false, null)));
-		gate.complete(gen);
+		int gen = gate.begin(new Ask(false, null), gate.era());
+		assertEquals(-1, gate.begin(new Ask(false, null), gate.era()));
+		assertEquals(-1, gate.begin(new Ask(false, null), gate.era()));
+		gate.release(gen);
 		assertTrue(TestViews.consumeQueued(gate));
 		assertFalse(TestViews.consumeQueued(gate));
 	}
@@ -150,30 +150,30 @@ public class KillclogSyncGateTest
 	public void optOutOptInDuringLiveRequestStillDeliversThePush()
 	{
 		KillclogSyncGate<Ask> gate = newGate();
-		int oldGen = gate.beginAttempt(new Ask(false, null));
+		int oldGen = gate.begin(new Ask(false, null), gate.era());
 
 		// Opt-out mid-flight, then opt-in: the immediate push finds the slot
 		// occupied and queues.
 		gate.cancel();
-		assertEquals(-1, gate.beginAttempt(new Ask(false, null)));
+		assertEquals(-1, gate.begin(new Ask(false, null), gate.era()));
 
 		// The old request completes: stale (no chat), but the queued intent
 		// survives so the current-era push launches next.
-		assertFalse(gate.complete(oldGen));
+		assertFalse(gate.release(oldGen));
 		assertTrue(TestViews.consumeQueued(gate));
-		int newGen = gate.beginAttempt(new Ask(false, null));
+		int newGen = gate.begin(new Ask(false, null), gate.era());
 		assertTrue(newGen >= 0);
-		assertTrue(gate.complete(newGen));
+		assertTrue(gate.release(newGen));
 	}
 
 	@Test
 	public void cancelForgetsQueuedIntent()
 	{
 		KillclogSyncGate<Ask> gate = newGate();
-		int gen = gate.beginAttempt(new Ask(false, null));
-		assertEquals(-1, gate.beginAttempt(new Ask(false, null)));
+		int gen = gate.begin(new Ask(false, null), gate.era());
+		assertEquals(-1, gate.begin(new Ask(false, null), gate.era()));
 		gate.cancel();
-		gate.complete(gen);
+		gate.release(gen);
 		assertFalse("opt-out must forget the queued push", TestViews.consumeQueued(gate));
 	}
 
@@ -181,62 +181,85 @@ public class KillclogSyncGateTest
 	public void abortReleasesTheSlot()
 	{
 		KillclogSyncGate<Ask> gate = newGate();
-		int first = gate.beginAttempt(new Ask(false, null));
-		assertTrue(first >= 0);
-		gate.abortAttempt();
-		assertTrue(gate.beginAttempt(new Ask(false, null)) >= 0);
+		int first = gate.begin(new Ask(false, null), gate.era());
+		assertTrue(first > 0);
+		gate.release(first);
+		assertTrue(gate.begin(new Ask(false, null), gate.era()) >= 0);
 	}
 
 	@Test
 	public void staleGenerationCompletesSilentButFreesTheSlot()
 	{
 		KillclogSyncGate<Ask> gate = newGate();
-		int gen = gate.beginAttempt(new Ask(false, null));
+		int gen = gate.begin(new Ask(false, null), gate.era());
 		gate.cancel();
-		assertFalse(gate.complete(gen));
-		assertTrue("slot must free after a stale completion", gate.beginAttempt(new Ask(false, null)) >= 0);
+		assertFalse(gate.release(gen));
+		assertTrue("slot must free after a stale completion", gate.begin(new Ask(false, null), gate.era()) >= 0);
 	}
 
 	@Test
 	public void aQueuedClickKeepsItsGameOverLaterAutomaticPushes()
 	{
 		KillclogSyncGate<Ask> gate = newGate();
-		gate.beginAttempt(new Ask(false, "main"));
-		gate.beginAttempt(new Ask(true, "demonic-pacts"));
-		gate.beginAttempt(new Ask(false, "main"));
-		Ask intent = gate.consumeQueued();
+		gate.begin(new Ask(false, "main"), gate.era());
+		gate.begin(new Ask(true, "demonic-pacts"), gate.era());
+		gate.begin(new Ask(false, "main"), gate.era());
+		Ask intent = gate.takeQueued();
 		assertTrue(intent.manual);
 		assertEquals("demonic-pacts", intent.mode);
-		gate.beginAttempt(new Ask(false, "main"));
-		gate.beginAttempt(new Ask(true, "demonic-pacts"));
+		gate.begin(new Ask(false, "main"), gate.era());
+		gate.begin(new Ask(true, "demonic-pacts"), gate.era());
 		assertEquals("the latest click wins", "main", pairAfterClick(gate));
 	}
 
 	private static String pairAfterClick(KillclogSyncGate<Ask> gate)
 	{
-		gate.beginAttempt(new Ask(true, "main"));
-		return gate.consumeQueued().mode;
+		gate.begin(new Ask(true, "main"), gate.era());
+		return gate.takeQueued().mode;
 	}
 
 	@Test
 	public void automaticSyncOffStopsOnlyAnAutomaticPushNotYetSent()
 	{
 		KillclogSyncGate<Ask> gate = newGate();
-		int automatic = gate.beginAttempt(new Ask(false, null));
-		gate.cancelAutomatic();
+		int automatic = gate.begin(new Ask(false, null), gate.era());
+		gate.silenceAutomatic();
 		assertNull(gate.commitIfCurrent(automatic, () -> "sent"));
-		gate.complete(automatic);
+		gate.release(automatic);
 
-		int click = gate.beginAttempt(new Ask(true, null));
-		gate.cancelAutomatic();
+		int click = gate.begin(new Ask(true, null), gate.era());
+		gate.silenceAutomatic();
 		assertEquals("sent", gate.commitIfCurrent(click, () -> "sent"));
 
 		// Behind that click, a queued automatic push is forgotten and a queued click is kept.
-		assertEquals(-1, gate.beginAttempt(new Ask(false, null)));
-		gate.cancelAutomatic();
+		assertEquals(-1, gate.begin(new Ask(false, null), gate.era()));
+		gate.silenceAutomatic();
 		assertFalse(TestViews.consumeQueued(gate));
-		assertEquals(-1, gate.beginAttempt(new Ask(true, null)));
-		gate.cancelAutomatic();
+		assertEquals(-1, gate.begin(new Ask(true, null), gate.era()));
+		gate.silenceAutomatic();
 		assertTrue(TestViews.consumeQueued(gate));
+	}
+
+	@Test
+	public void aPushFromAPassedEraNeverClaimsTheSlot()
+	{
+		KillclogSyncGate<Ask> gate = newGate();
+		int asked = gate.era();
+		gate.cancel();
+		assertEquals(KillclogSyncGate.STALE, gate.begin(new Ask(true, null), asked));
+		assertFalse(gate.busy());
+		assertNull("nor waits for it", gate.takeQueued());
+	}
+
+	@Test
+	public void aStaleReleaseNeverFreesANewerAttempt()
+	{
+		KillclogSyncGate<Ask> gate = newGate();
+		int old = gate.begin(new Ask(false, null), gate.era());
+		gate.release(old);
+		int newer = gate.begin(new Ask(true, null), gate.era());
+		assertFalse(gate.release(old));
+		assertTrue("the newer attempt still holds the slot", gate.busy());
+		assertTrue(gate.live(newer));
 	}
 }
