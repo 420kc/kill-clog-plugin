@@ -165,6 +165,8 @@ public class KillClogPlugin extends Plugin
 	// The account takes up its own log once per login and per store, latched when the open store says so (its folder
 	// and the account's log arrive on later ticks than the login).
 	private boolean accountActivated;
+	// Whether this login has been on the main game: the main store keeps it from then on (serveMainStore).
+	private boolean mainReached;
 
 	private final ClogSessionState sessionState = new ClogSessionState();
 	private final ClogIndex clogIndex = new ClogIndex();
@@ -390,17 +392,29 @@ public class KillClogPlugin extends Plugin
 	}
 
 	/**
+	 * The main store serves this login once it has been on the main game, and while its world's game is still unknown;
+	 * a League world, even one learned a few ticks after the login (the running League arrives with the sync index),
+	 * leaves it serving no one until a hop reaches the main game. So looking yourself up in Main game stats there reads
+	 * the providers until your own main log is here, and a hop from the main game to a League keeps it, as 2.6.6 does.
+	 * Asked again whenever the login or its world's game changes.
+	 */
+	private void serveMainStore()
+	{
+		String game = world.mode();
+		mainReached |= GameMode.MAIN.equals(game);
+		Session now = sessions.current();
+		localClogCache.serve(mainReached || game == null ? now : Session.none(now.getNumber()));
+	}
+
+	/**
 	 * Who is logged in changed: the stores take up the new login (or none), the previous account's hiscore row is
 	 * refetched next time, and work from the previous login stands down. On the client thread, before anything else
 	 * sees the new session.
 	 */
 	private void sessionChanged(Session previous, Session now)
 	{
-		// The main store takes up a login made on the main game or a world whose game is unknown. One made straight
-		// onto a League world waits for a hop to the main game, so the main view of yourself there still reads the
-		// providers until your own main log is here.
-		String game = world.mode();
-		localClogCache.serve(game == null || GameMode.MAIN.equals(game) ? now : Session.none(now.getNumber()));
+		mainReached = false;
+		serveMainStore();
 		world.serve(now);
 		localCaCache.serve(now);
 		accountActivated = false;
@@ -637,6 +651,7 @@ public class KillClogPlugin extends Plugin
 	{
 		world.follow((league, leagueLog, active) ->
 		{
+			serveMainStore();
 			kclogCommand.readLeague(league, leagueLog);
 			SwingUtilities.invokeLater(() -> panel.followWorld(league, leagueLog, active));
 		});

@@ -999,6 +999,41 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void aLeagueLearnedAfterTheLoginStillLeavesTheMainStoreToTheMainGame() throws Exception
+	{
+		// A cold client: the running League arrives with the sync index, a few ticks after the login.
+		logout();
+		world(net.runelite.api.WorldType.SEASONAL, net.runelite.api.WorldType.MEMBERS);
+		loggedIn();
+		ticks(1);
+		clearInvocations(localClogCache);
+		announceLeague();
+		ticks(2);
+		verify(localClogCache).serve(org.mockito.ArgumentMatchers.argThat((Session s) -> s != null && !s.loggedIn()));
+		verify(localClogCache, never()).serve(you());
+	}
+
+	@Test
+	public void aWorldWhoseGameIsUnknownStillShowsTheMainLog() throws Exception
+	{
+		logout();
+		world(net.runelite.api.WorldType.DEADMAN);
+		loggedIn();
+		verify(localClogCache, atLeastOnce()).serve(you());
+	}
+
+	@Test
+	public void aHopFromTheMainGameToALeagueKeepsTheMainStore() throws Exception
+	{
+		ticks(1);
+		clearInvocations(localClogCache);
+		announceLeague();
+		hop();
+		ticks(2);
+		verify(localClogCache, never()).serve(org.mockito.ArgumentMatchers.argThat((Session s) -> s != null && !s.loggedIn()));
+	}
+
+	@Test
 	public void anAccountThatArrivesAfterTheLoginStillMakesIt() throws Exception
 	{
 		SessionTracker sessions = (SessionTracker) field("sessions");
