@@ -58,6 +58,9 @@ public class BossListView
 	private static final int KC_WIDTH = 46;
 
 	private final JPanel root;
+	// While a search filters the list, it keeps the height it had before: the rows it hides leave empty space at the
+	// bottom, so a shorter list never pulls the panel's scroll position.
+	private int filterHeight;
 	private final Map<HiscoreSkill, Row> rows = new LinkedHashMap<>();
 	private final BooleanSupplier mirrorActive;
 	private final JTextField search = new JTextField();
@@ -78,7 +81,15 @@ public class BossListView
 	public BossListView(TooltipController tooltipController, Cells cells, BooleanSupplier mirrorActive)
 	{
 		this.mirrorActive = mirrorActive;
-		root = new JPanel();
+		root = new JPanel()
+		{
+			@Override
+			public Dimension getPreferredSize()
+			{
+				Dimension size = super.getPreferredSize();
+				return new Dimension(size.width, Math.max(size.height, filterHeight));
+			}
+		};
 		root.setLayout(new BoxLayout(root, BoxLayout.Y_AXIS));
 		root.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 
@@ -335,6 +346,7 @@ public class BossListView
 				named.add(boss);
 			}
 		});
+		filterHeight = query.isEmpty() ? 0 : filterHeight > 0 ? filterHeight : root.getHeight();
 		rows.forEach((boss, row) -> row.panel.setVisible(query.isEmpty() || matches(boss, query, named)
 			|| matches(PanelData.card(boss), query, named)
 			|| byCount && row.kc.getText().toLowerCase(Locale.ROOT).contains(typed)));

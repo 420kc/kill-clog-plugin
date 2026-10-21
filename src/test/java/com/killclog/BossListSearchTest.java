@@ -69,6 +69,31 @@ public class BossListSearchTest
 	}
 
 	@Test
+	public void aSearchKeepsTheListsHeightSoAShorterListNeverMovesTheScroll()
+	{
+		BossListView list = new BossListView(mock(TooltipController.class), mock(Cells.class), () -> false);
+		javax.swing.JPanel root = list.component();
+		root.setSize(root.getPreferredSize());
+		int full = root.getHeight();
+
+		// The hidden rows leave empty space at the bottom while the search is typed.
+		list.filter("vork");
+		assertEquals(full, root.getPreferredSize().height);
+		list.filter("vorkath");
+		assertEquals(full, root.getPreferredSize().height);
+
+		// Cleared, the list is its own height again.
+		list.filter("");
+		assertEquals(full, root.getPreferredSize().height);
+		list.filter("zzzz");
+		root.setSize(root.getPreferredSize());
+		list.filter("");
+		root.setSize(root.getPreferredSize());
+		list.filter("vork");
+		assertEquals("a new search starts from the list's full height", full, root.getPreferredSize().height);
+	}
+
+	@Test
 	public void aSearchWithADigitAlsoFindsBossesByTheirCountAsTheRowShowsIt()
 	{
 		// Dylan 10/13: "147k" finds Marni's Callisto; "420" on 420 kc's board finds every count with 420 in it.
