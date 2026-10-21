@@ -177,8 +177,8 @@ public class PanelStatusRowCharacterizationTest
 			assertEquals(Color.RED, status.getForeground());
 			assertControls(false, false);
 			assertNull(expiry());
-			assertNull(field("syncSuccessGlowTimer", Timer.class));
-			assertNull(field("characterSuccessGlowTimer", Timer.class));
+			assertNull(glowTimer("syncGlow"));
+			assertNull(glowTimer("characterGlow"));
 		});
 	}
 
@@ -232,7 +232,7 @@ public class PanelStatusRowCharacterizationTest
 			mouse(sync, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
 			assertEquals(" ", status.getText());
 			panel.showSyncResult(false, true, null);
-			assertNull(field("syncSuccessGlowTimer", Timer.class));
+			assertNull(glowTimer("syncGlow"));
 			mouse(sync, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
 			assertEquals("sync collection log", status.getText());
 			assertNull(sync.getToolTipText());
@@ -365,15 +365,15 @@ public class PanelStatusRowCharacterizationTest
 		{
 			panel.showSyncResult(true, true, null);
 			panel.showCharacterPublishStatus(CharacterStatus.PUBLISHED, false, null);
-			Timer syncGlow = field("syncSuccessGlowTimer", Timer.class);
-			Timer characterGlow = field("characterSuccessGlowTimer", Timer.class);
+			Timer syncGlow = glowTimer("syncGlow");
+			Timer characterGlow = glowTimer("characterGlow");
 			assertTrue(syncGlow.isRunning());
 			assertTrue(characterGlow.isRunning());
 			panel.shutdown();
 			assertFalse(syncGlow.isRunning());
 			assertFalse(characterGlow.isRunning());
-			assertNull(field("syncSuccessGlowTimer", Timer.class));
-			assertNull(field("characterSuccessGlowTimer", Timer.class));
+			assertNull(glowTimer("syncGlow"));
+			assertNull(glowTimer("characterGlow"));
 			assertControls(false, false);
 		});
 		enableControls();
@@ -537,39 +537,39 @@ public class PanelStatusRowCharacterizationTest
 		edt(() ->
 		{
 			panel.showSyncResult(true, true, null);
-			assertNotNull(field("syncSuccessGlowTimer", Timer.class));
-			fire(field("syncSuccessGlowTimer", Timer.class));
-			assertNull(field("syncSuccessGlowTimer", Timer.class));
+			assertNotNull(glowTimer("syncGlow"));
+			fire(glowTimer("syncGlow"));
+			assertNull(glowTimer("syncGlow"));
 
 			panel.showSyncProgress(true, "syncing...", false);
 			panel.showSyncResult(true, true, null);
 			assertEquals(" ", status.getText());
-			assertNotNull(field("syncSuccessGlowTimer", Timer.class));
-			fire(field("syncSuccessGlowTimer", Timer.class));
+			assertNotNull(glowTimer("syncGlow"));
+			fire(glowTimer("syncGlow"));
 
 			mouse(sync, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
 			panel.showSyncResult(true, true, null);
 			assertEquals(" ", status.getText());
-			assertNotNull(field("syncSuccessGlowTimer", Timer.class));
+			assertNotNull(glowTimer("syncGlow"));
 			mouse(sync, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
-			fire(field("syncSuccessGlowTimer", Timer.class));
+			fire(glowTimer("syncGlow"));
 
 			mouse(character, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
 			panel.showSyncResult(true, true, null);
 			assertEquals("publish character", status.getText());
-			assertNull(field("syncSuccessGlowTimer", Timer.class));
+			assertNull(glowTimer("syncGlow"));
 			mouse(character, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
 
 			panel.showCharacterPublishStatus(CharacterStatus.RENDERING, false, null);
 			panel.showSyncResult(true, true, null);
 			assertEquals(CharacterStatus.RENDERING.text, status.getText());
-			assertNull(field("syncSuccessGlowTimer", Timer.class));
+			assertNull(glowTimer("syncGlow"));
 			panel.showCharacterPublishStatus(CharacterStatus.CLEAR, false, null);
 
 			panel.onCompareStatus("Player not found", Color.RED);
 			panel.showSyncResult(true, true, null);
 			assertEquals("Player not found", status.getText());
-			assertNull(field("syncSuccessGlowTimer", Timer.class));
+			assertNull(glowTimer("syncGlow"));
 		});
 	}
 
@@ -643,6 +643,12 @@ public class PanelStatusRowCharacterizationTest
 	private <T> T field(String name, Class<T> type)
 	{
 		return field(statusRow, name, type);
+	}
+
+	/** A control's success glow's running timer, or null when it is out. */
+	private Timer glowTimer(String glow)
+	{
+		return field(field(glow, Object.class), "timer", Timer.class);
 	}
 
 	private static <T> T field(Object owner, String name, Class<T> type)

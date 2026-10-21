@@ -109,12 +109,11 @@ final class PanelStatusRow
 		}
 		return false;
 	};
-	private Timer syncSuccessGlowTimer;
-	private Timer characterSuccessGlowTimer;
 	private BufferedImage characterBase;
-	private boolean syncedGlow;
 	private boolean syncChaliceHovered;
-	private boolean characterPublishedGlow;
+	// Each control's success glow: the chalice's after a sync, the character's after a publish.
+	private final Glow syncGlow = new Glow(() -> refreshSyncChalice(this.syncChaliceHovered));
+	private final Glow characterGlow = new Glow(() -> refreshCharacterIcon(this.characterHovered));
 	private boolean characterHovered;
 
 	PanelStatusRow(KillClogConfig config, SpriteManager spriteManager,
@@ -352,7 +351,7 @@ final class PanelStatusRow
 		characterNoticeDetail = null;
 		characterHovered = false;
 		characterDeleteRequest = false;
-		clearCharacterSuccessGlow();
+		characterGlow.clear();
 	}
 
 	private JPanel build()
@@ -494,7 +493,7 @@ final class PanelStatusRow
 
 	private void refreshSyncChalice(boolean hovered)
 	{
-		syncArrow.setIcon(firstParty == FirstParty.LOCKED ? SYNC_CHALICE_LOCKED : syncedGlow ? SYNC_CHALICE_SYNCED
+		syncArrow.setIcon(firstParty == FirstParty.LOCKED ? SYNC_CHALICE_LOCKED : syncGlow.lit() ? SYNC_CHALICE_SYNCED
 			: hovered ? SYNC_CHALICE_LIT : SYNC_CHALICE_DIM);
 	}
 
@@ -528,8 +527,8 @@ final class PanelStatusRow
 		}
 		boolean locked = firstParty == FirstParty.LOCKED;
 		characterPublish.setIcon(imageTinted(characterBase,
-			locked ? 0.35f : characterPublishedGlow || hovered ? 1f : 0.45f,
-			locked ? LOCKED_GREY : characterPublishedGlow ? SYNC_K1 : null));
+			locked ? 0.35f : characterGlow.lit() || hovered ? 1f : 0.45f,
+			locked ? LOCKED_GREY : characterGlow.lit() ? SYNC_K1 : null));
 	}
 
 	private void refreshFirstPartyVisibility()
@@ -559,7 +558,7 @@ final class PanelStatusRow
 				syncChaliceHovered = false;
 				syncFeedback.reset();
 				tooltipController.setTooltipText(syncArrow, null);
-				clearSyncSuccessGlow();
+				syncGlow.clear();
 			}
 			refreshFirstPartyVisibility();
 		});
@@ -577,7 +576,7 @@ final class PanelStatusRow
 			if (state != FirstParty.READY)
 			{
 				syncChaliceHovered = false;
-				clearSyncSuccessGlow();
+				syncGlow.clear();
 			}
 			refreshSyncChalice(syncChaliceHovered);
 			refreshCharacterIcon(characterHovered);
@@ -621,7 +620,7 @@ final class PanelStatusRow
 			syncFeedback.reset();
 			tooltipController.setTooltipText(syncArrow, null);
 			syncChaliceHovered = false;
-			clearSyncSuccessGlow();
+			syncGlow.clear();
 			if (ownedBy(Owner.SYNC))
 			{
 				clear();
@@ -644,7 +643,7 @@ final class PanelStatusRow
 			{
 				characterFeedback.reset();
 				tooltipController.setTooltipText(characterPublish, null);
-				clearCharacterSuccessGlow();
+				characterGlow.clear();
 				if (ownedBy(Owner.CHARACTER))
 				{
 					clear();
@@ -687,8 +686,8 @@ final class PanelStatusRow
 			{
 				clear();
 			}
-			clearSyncSuccessGlow();
-			clearCharacterSuccessGlow();
+			syncGlow.clear();
+			characterGlow.clear();
 		});
 	}
 
@@ -706,7 +705,7 @@ final class PanelStatusRow
 		watchShift(false);
 		characterShift = false;
 		clearCharacterState();
-		clearSyncSuccessGlow();
+		syncGlow.clear();
 		refreshFirstPartyVisibility();
 	}
 
@@ -741,11 +740,11 @@ final class PanelStatusRow
 			}
 			if (owner == Owner.SYNC)
 			{
-				clearSyncSuccessGlow();
+				syncGlow.clear();
 			}
 			else
 			{
-				clearCharacterSuccessGlow();
+				characterGlow.clear();
 			}
 			StatusMessage message = new StatusMessage(owner, kind, text,
 				kind == Kind.PROGRESS ? SYNC_K1 : textDim);
@@ -755,22 +754,6 @@ final class PanelStatusRow
 				expireIfCurrent(message, owner == Owner.SYNC ? SYNC_EXPIRY_MS : CHARACTER_EXPIRY_MS);
 			}
 		});
-	}
-
-	private void stopSyncSuccessGlowTimer()
-	{
-		if (syncSuccessGlowTimer != null)
-		{
-			syncSuccessGlowTimer.stop();
-			syncSuccessGlowTimer = null;
-		}
-	}
-
-	private void clearSyncSuccessGlow()
-	{
-		stopSyncSuccessGlowTimer();
-		syncedGlow = false;
-		refreshSyncChalice(syncChaliceHovered);
 	}
 
 	/**
@@ -787,34 +770,12 @@ final class PanelStatusRow
 			{
 				return;
 			}
-			stopSyncSuccessGlowTimer();
 			if (ownedBy(Owner.SYNC))
 			{
 				clear();
 			}
-			syncedGlow = true;
-			refreshSyncChalice(syncChaliceHovered);
-
-			syncSuccessGlowTimer = new Timer(2500, e ->
-			{
-				syncedGlow = false;
-				refreshSyncChalice(syncChaliceHovered);
-				syncSuccessGlowTimer = null;
-			});
-			syncSuccessGlowTimer.setRepeats(false);
-			syncSuccessGlowTimer.start();
+			syncGlow.flash();
 		});
-	}
-
-	private void clearCharacterSuccessGlow()
-	{
-		if (characterSuccessGlowTimer != null)
-		{
-			characterSuccessGlowTimer.stop();
-			characterSuccessGlowTimer = null;
-		}
-		characterPublishedGlow = false;
-		refreshCharacterIcon(characterHovered);
 	}
 
 	private void flashCharacterSuccess()
@@ -824,15 +785,54 @@ final class PanelStatusRow
 		{
 			return;
 		}
-		clearCharacterSuccessGlow();
 		if (ownedBy(Owner.CHARACTER))
 		{
 			clear();
 		}
-		characterPublishedGlow = true;
-		refreshCharacterIcon(characterHovered);
-		characterSuccessGlowTimer = new Timer(2500, e -> clearCharacterSuccessGlow());
-		characterSuccessGlowTimer.setRepeats(false);
-		characterSuccessGlowTimer.start();
+		characterGlow.flash();
+	}
+
+	/** A control's success glow: lit at once, out again on its own after 2.5 s, its icon redrawn each way. */
+	private static final class Glow
+	{
+		private final Runnable redraw;
+		private Timer timer;
+		private boolean lit;
+
+		Glow(Runnable redraw)
+		{
+			this.redraw = redraw;
+		}
+
+		boolean lit()
+		{
+			return lit;
+		}
+
+		void flash()
+		{
+			stop();
+			lit = true;
+			redraw.run();
+			timer = new Timer(2500, e -> clear());
+			timer.setRepeats(false);
+			timer.start();
+		}
+
+		void clear()
+		{
+			stop();
+			lit = false;
+			redraw.run();
+		}
+
+		private void stop()
+		{
+			if (timer != null)
+			{
+				timer.stop();
+				timer = null;
+			}
+		}
 	}
 }
