@@ -1712,6 +1712,29 @@ public class PluginPublicationCharacterizationTest
 		return moved;
 	}
 
+	@Test
+	public void aLateAutomaticCleanupLeavesACaptureAskedAfterIt() throws Exception
+	{
+		PublicationCoordinator publication = (PublicationCoordinator) field("publication");
+		publication.scheduleAutomaticSync();
+		settle();
+		syncs.get(0).complete(new SyncService.SyncResult(false, false, "Wait", true, 20));
+		// Automatic sync off, its first half only: the era moves while the cleanup has not run yet. Back on, a new
+		// capture is asked while the old retry still waits.
+		Field gate = PublicationCoordinator.class.getDeclaredField("syncGate");
+		gate.setAccessible(true);
+		KillclogSyncGate<?> syncGate = (KillclogSyncGate<?>) gate.get(publication);
+		int silenced = syncGate.withdrawAutomatic();
+		int cutoff = syncGate.automaticEra();
+		publication.scheduleAutomaticSync();
+		java.lang.reflect.Method withdraw = PublicationCoordinator.class.getDeclaredMethod("withdrawAutomatic",
+			int.class, int.class);
+		withdraw.setAccessible(true);
+		withdraw.invoke(publication, silenced, cutoff);
+		settle();
+		assertEquals("the capture asked after the cutoff goes", 2, syncs.size());
+	}
+
 	/** The server's "another sync holds the lock, try again in 2 s". */
 	private static SyncService.SyncResult busy()
 	{

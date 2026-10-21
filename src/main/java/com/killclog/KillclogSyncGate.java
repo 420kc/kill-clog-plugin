@@ -1,14 +1,15 @@
 package com.killclog;
 
 import java.util.function.BinaryOperator;
-import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 /**
  * The killclog.com sync's one slot: one attempt in the air at a time, numbered, until its round trip completes; the
  * push asked for meanwhile, held whole (several go as one, by the push's own rule) and handed over once the slot frees;
  * and the era that an opt-out, a logout or a shutdown moves on, so anything begun before can never claim the slot,
- * commit its request or speak. Every release names its attempt, so a stale one can never free a newer one's slot.
+ * commit its request or speak; and Automatic sync's own era, which turning it off moves, so an automatic push asked
+ * before can never claim, stay live or commit either. Every release names its attempt, so a stale one can never free
+ * a newer one's slot.
  * Its own lock, so the final request enqueue and a cancellation have one total order.
  */
 final class KillclogSyncGate<P>
@@ -19,13 +20,15 @@ final class KillclogSyncGate<P>
 	// How two pushes waiting go as one.
 	private final BinaryOperator<P> merge;
 	private int era;
+	private int automaticEra;
 	private int attempts;
-	// The attempt in the air (0 for none), its era and push, and whether Automatic sync turned off silenced it.
+	// The attempt in the air (0 for none), its eras (the automatic one NONE for a deliberate push) and its push.
 	private int inFlight;
 	private int inFlightEra;
+	private int inFlightAutomaticEra;
 	private P inFlightPush;
-	private boolean silenced;
 	private P queued;
+	static final int DELIBERATE = -1;
 
 	KillclogSyncGate(BinaryOperator<P> merge)
 	{
@@ -38,14 +41,21 @@ final class KillclogSyncGate<P>
 		return era;
 	}
 
-	/**
-	 * Claim the slot for a push asked in {@code pushEra}: the attempt's number, or {@link #STALE} when its era has
-	 * passed (it is dropped), or {@link #BUSY} while another attempt is in the air (it waits, merged with any already
-	 * waiting).
-	 */
-	synchronized int begin(P push, int pushEra)
+	/** Automatic sync's era now; an automatic push carries the one it was asked in. */
+	synchronized int automaticEra()
 	{
-		if (pushEra != era)
+		return automaticEra;
+	}
+
+	/**
+	 * Claim the slot for a push asked in {@code pushEra} and, for an automatic one, {@code pushAutomaticEra}
+	 * ({@link #DELIBERATE} for a click's or a character's): the attempt's number, or {@link #STALE} when an era it was
+	 * asked in has passed (it is dropped), or {@link #BUSY} while another attempt is in the air (it waits, merged with
+	 * any already waiting).
+	 */
+	synchronized int begin(P push, int pushEra, int pushAutomaticEra)
+	{
+		if (pushEra != era || pushAutomaticEra != DELIBERATE && pushAutomaticEra != automaticEra)
 		{
 			return STALE;
 		}
@@ -56,15 +66,16 @@ final class KillclogSyncGate<P>
 		}
 		inFlight = ++attempts;
 		inFlightEra = era;
+		inFlightAutomaticEra = pushAutomaticEra;
 		inFlightPush = push;
-		silenced = false;
 		return inFlight;
 	}
 
-	/** Whether this attempt is the one in the air, in its era, not silenced: its work may go on. */
+	/** Whether this attempt is the one in the air, in its eras: its work may go on. */
 	synchronized boolean live(int attempt)
 	{
-		return attempt == inFlight && inFlightEra == era && !silenced;
+		return attempt == inFlight && inFlightEra == era
+			&& (inFlightAutomaticEra == DELIBERATE || inFlightAutomaticEra == automaticEra);
 	}
 
 	/**
@@ -108,22 +119,14 @@ final class KillclogSyncGate<P>
 	}
 
 	/**
-	 * Automatic sync off: the pushes it withdraws (asked before it, and automatic) never go: one waiting is forgotten,
-	 * one in the air is silenced. The silenced attempt's number, or 0.
+	 * Automatic sync off: its era moves, so no automatic push asked before claims, stays live or commits; one waiting
+	 * for the slot is refused when it comes to claim it. The automatic attempt this silenced, or 0.
 	 */
-	synchronized int silence(Predicate<P> withdrawn)
+	synchronized int withdrawAutomatic()
 	{
-		int quieted = 0;
-		if (inFlight != 0 && !silenced && withdrawn.test(inFlightPush))
-		{
-			silenced = true;
-			quieted = inFlight;
-		}
-		if (queued != null && withdrawn.test(queued))
-		{
-			queued = null;
-		}
-		return quieted;
+		boolean quieted = inFlight != 0 && inFlightAutomaticEra == automaticEra;
+		automaticEra++;
+		return quieted ? inFlight : 0;
 	}
 
 	/** Opt-out, logout, shutdown: the era moves on, so nothing begun before claims, commits or speaks; the new era. */

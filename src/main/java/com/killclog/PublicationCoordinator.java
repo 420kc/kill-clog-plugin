@@ -76,9 +76,6 @@ final class PublicationCoordinator
 	// The owner, and everything only its tasks touch.
 	private final SerialExecutor owner;
 	private final KillclogSyncGate<Push> syncGate = new KillclogSyncGate<>(Push::merge);
-	// Automatic sync's withdrawal era: turning it off moves it at once, and an automatic push carries the one it was
-	// asked in, so the gate, the cleanup and the send check all draw the same line.
-	private final java.util.concurrent.atomic.AtomicInteger automaticEra = new java.util.concurrent.atomic.AtomicInteger();
 	private ScheduledFuture<?> pendingTimer;
 	// The push that timer sends; a timer whose push is no longer this one was superseded.
 	private Push pendingPush;
@@ -236,7 +233,7 @@ final class PublicationCoordinator
 	/** A capture, login or settled identity, on the client thread: one quiet push for this game after the debounce. */
 	void scheduleAutomaticSync()
 	{
-		int automatic = automaticEra.get();
+		int automatic = syncGate.automaticEra();
 		int era = syncGate.era();
 		Push push = Push.ask(sessions.current(), era, automatic, mode.get(), false, NONE);
 		owner.execute(() -> schedule(SYNC_DEBOUNCE_SECONDS, push));
@@ -260,7 +257,7 @@ final class PublicationCoordinator
 
 	private void pushNow(Session origin, int era, boolean manual, int forCharacter)
 	{
-		int automatic = automaticEra.get();
+		int automatic = syncGate.automaticEra();
 		// The game it pushes is read on the client thread; a logout before the hop drops it.
 		clientThread.invoke(() ->
 		{
@@ -309,8 +306,8 @@ final class PublicationCoordinator
 	 */
 	void cancelAutomaticSync()
 	{
-		int cutoff = automaticEra.incrementAndGet();
-		int silenced = syncGate.silence(push -> withdrawnBy(push, cutoff));
+		int silenced = syncGate.withdrawAutomatic();
+		int cutoff = syncGate.automaticEra();
 		owner.execute(() -> withdrawAutomatic(silenced, cutoff));
 	}
 
@@ -424,7 +421,7 @@ final class PublicationCoordinator
 		{
 			return waitingFor(push.forCharacter);
 		}
-		return config.automaticSync() && push.automaticEra == automaticEra.get()
+		return config.automaticSync() && push.automaticEra == syncGate.automaticEra()
 			&& push.session.getNumber() != stoppedSession;
 	}
 
@@ -455,6 +452,13 @@ final class PublicationCoordinator
 		}
 		long now = clock.getAsLong();
 		long delayMs = delaySeconds * 1000L;
+		if (pendingPush != null && !sends(live(pendingPush)))
+		{
+			// Waiting work a withdrawal has made obsolete never stands in for a live push; its cleanup may still be
+			// on its way.
+			takeLineDown(pendingPush.line);
+			dropPending();
+		}
 		if (pendingPush != null)
 		{
 			if (!push.deliberate())
@@ -538,7 +542,8 @@ final class PublicationCoordinator
 			abandon(push, 0);
 			return;
 		}
-		int attempt = syncGate.begin(push, push.era);
+		int attempt = syncGate.begin(push, push.era,
+			push.deliberate() ? KillclogSyncGate.DELIBERATE : push.automaticEra);
 		if (attempt == KillclogSyncGate.BUSY)
 		{
 			return;
