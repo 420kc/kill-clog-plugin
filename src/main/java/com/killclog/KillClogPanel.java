@@ -170,8 +170,15 @@ public class KillClogPanel extends PluginPanel
 	// Middle-button autoscroll; null only if RuneLite ever hands the panel no scroll pane.
 	private PanelAutoscroll autoscroll;
 	// The panel's top, which stays put while everything under it scrolls: the setup notice, the status row, search
-	// and the info bar.
-	private final JPanel anchoredTop = new JPanel();
+	// and the info bar. As wide as the content under it, under the same rules.
+	private final JPanel anchoredTop = new JPanel()
+	{
+		@Override
+		public Dimension getPreferredSize()
+		{
+			return new Dimension(PluginPanel.PANEL_WIDTH, super.getPreferredSize().height);
+		}
+	};
 	private final LookupSession lookupSession;
 	private final ComparisonController comparison;
 	// The empty log behind cold and unsynced previews, one copy for both sides.
@@ -276,17 +283,16 @@ public class KillClogPanel extends PluginPanel
 		clogNotice.setBorder(new EmptyBorder(0, 0, 5, 0));
 		clogNotice.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-		// The top stays on screen down the whole boss list (Dylan, 2026-10-20): above RuneLite's scroll pane, inset on
-		// the right by the scrollbar's width so it lines up with the content beside the bar.
+		// The top stays on screen down the whole boss list (Dylan, 2026-10-20): the scroll pane's column header, which
+		// lays it out as wide as the content and passes the wheel on. Its 5 under the info bar is the gap the boss list
+		// always started below.
 		anchoredTop.setLayout(new BoxLayout(anchoredTop, BoxLayout.Y_AXIS));
 		anchoredTop.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		// Its 5 under the info bar is the gap the boss list always started below.
-		anchoredTop.setBorder(new EmptyBorder(6, 10, 5, 10 + MinimalScrollBarUI.WIDTH));
+		anchoredTop.setBorder(new EmptyBorder(6, 10, 5, 10));
 		anchoredTop.add(clogNotice);
 		JPanel search = buildSearchPanel();
 		search.setAlignmentX(Component.LEFT_ALIGNMENT);
 		anchoredTop.add(search);
-		getWrappedPanel().add(anchoredTop, BorderLayout.NORTH);
 
 		// Activities tray with slide animation
 		c.insets = new Insets(0, 0, 0, 0);
@@ -326,6 +332,12 @@ public class KillClogPanel extends PluginPanel
 			sp.getVerticalScrollBar().setUI(new MinimalScrollBarUI());
 			sp.getVerticalScrollBar().setPreferredSize(new Dimension(MinimalScrollBarUI.WIDTH, 0));
 			sp.getVerticalScrollBar().setUnitIncrement(16);
+			sp.setColumnHeaderView(anchoredTop);
+			sp.getColumnHeader().setBackground(ColorScheme.DARK_GRAY_COLOR);
+			// The scrollbar's track still runs the panel's full height beside the top, as it always did.
+			JPanel trackCorner = new JPanel();
+			trackCorner.setBackground(ColorScheme.DARKER_GRAY_COLOR);
+			sp.setCorner(JScrollPane.UPPER_RIGHT_CORNER, trackCorner);
 			autoscroll = new PanelAutoscroll(sp, tooltipController::suspendHover, tooltipController::resumeHover);
 		}
 
