@@ -501,8 +501,8 @@ public class TooltipControllerTest
 		JLabel boss = showingLabel();
 		cell.add(boss);
 		TooltipController controller = new TooltipController(config);
-		List<BufferedImage> copies = new ArrayList<>();
-		List<Boolean> said = new ArrayList<>();
+		List<BufferedImage> copies = new java.util.concurrent.CopyOnWriteArrayList<>();
+		List<Boolean> said = new java.util.concurrent.CopyOnWriteArrayList<>();
 		controller.setClipboard(image -> copies.add(image));
 		controller.setCardCopied(said::add);
 		java.awt.Color drawn = new java.awt.Color(61, 51, 34);
@@ -514,10 +514,8 @@ public class TooltipControllerTest
 				controller.pinTooltipFromPress(boss, cell, new MouseEvent(boss, MouseEvent.MOUSE_PRESSED, 0L,
 					java.awt.event.InputEvent.SHIFT_DOWN_MASK, 5, 5, 1, false, MouseEvent.BUTTON1), card(drawn));
 			});
-			// The copy waits a turn of the Swing thread, for the popup to lay the card out.
-			SwingUtilities.invokeAndWait(() ->
-			{
-			});
+			// The copy waits until the card has finished drawing.
+			waitFor(() -> copies.size() == 1);
 			assertEquals("only the shift-press copies", 1, copies.size());
 			assertEquals(List.of(true), said);
 			BufferedImage copy = copies.get(0);
@@ -551,9 +549,7 @@ public class TooltipControllerTest
 			SwingUtilities.invokeAndWait(() -> controller.pinTooltipFromPress(cellLabel, cell,
 				new MouseEvent(cellLabel, MouseEvent.MOUSE_PRESSED, 0L, java.awt.event.InputEvent.SHIFT_DOWN_MASK, 5, 5,
 					1, false, MouseEvent.BUTTON1)));
-			SwingUtilities.invokeAndWait(() ->
-			{
-			});
+			waitFor(() -> copies.size() == 2);
 			assertEquals(2, copies.size());
 
 			// A card closed before its turn is not copied.
@@ -563,10 +559,52 @@ public class TooltipControllerTest
 					java.awt.event.InputEvent.SHIFT_DOWN_MASK, 5, 5, 1, false, MouseEvent.BUTTON1), card(drawn));
 				controller.hidePinnedTooltip();
 			});
+			Thread.sleep(600);
+			assertEquals(2, copies.size());
+
+			// A card whose pictures arrive after it opens is copied with them.
+			long opened = System.currentTimeMillis();
+			java.awt.Color loaded = new java.awt.Color(200, 40, 40);
+			SwingUtilities.invokeAndWait(() -> controller.pinTooltipFromPress(boss, cell, new MouseEvent(boss,
+				MouseEvent.MOUSE_PRESSED, 0L, java.awt.event.InputEvent.SHIFT_DOWN_MASK, 5, 5, 1, false, MouseEvent.BUTTON1),
+				new JToolTip()
+				{
+					@Override
+					public java.awt.Dimension getPreferredSize()
+					{
+						return new java.awt.Dimension(30, 20);
+					}
+
+					@Override
+					public void paint(java.awt.Graphics g)
+					{
+						g.setColor(System.currentTimeMillis() - opened < 300 ? drawn : loaded);
+						g.fillRect(0, 0, getWidth(), getHeight());
+					}
+				}));
+			waitFor(() -> copies.size() == 3);
+			assertEquals(loaded.getRGB(), copies.get(2).getRGB(15, 10));
+
+			// The right button's menu names both: Open opens, Copy opens and copies.
+			javax.swing.JPopupMenu[] menu = new javax.swing.JPopupMenu[1];
 			SwingUtilities.invokeAndWait(() ->
 			{
+				controller.hidePinnedTooltip();
+				menu[0] = controller.cardMenu(cellLabel, cell, new MouseEvent(cellLabel, MouseEvent.MOUSE_PRESSED, 0L,
+					java.awt.event.InputEvent.BUTTON3_DOWN_MASK, 5, 5, 1, true, MouseEvent.BUTTON3));
+				assertEquals("Open", ((javax.swing.JMenuItem) menu[0].getComponent(0)).getText());
+				assertEquals("Copy (Shift+Click)", ((javax.swing.JMenuItem) menu[0].getComponent(1)).getText());
+				((javax.swing.JMenuItem) menu[0].getComponent(0)).doClick();
+				assertTrue(controller.hasPinnedTooltip());
 			});
-			assertEquals(2, copies.size());
+			Thread.sleep(600);
+			assertEquals("Open copies nothing", 3, copies.size());
+			SwingUtilities.invokeAndWait(() ->
+			{
+				controller.hidePinnedTooltip();
+				((javax.swing.JMenuItem) menu[0].getComponent(1)).doClick();
+			});
+			waitFor(() -> copies.size() == 4);
 		}
 		finally
 		{
@@ -629,6 +667,16 @@ public class TooltipControllerTest
 			controller.deactivate();
 			PopupFactory.setSharedInstance(original);
 		}
+	}
+
+	private static void waitFor(java.util.function.BooleanSupplier done) throws InterruptedException
+	{
+		long until = System.currentTimeMillis() + 4000;
+		while (!done.getAsBoolean() && System.currentTimeMillis() < until)
+		{
+			Thread.sleep(20);
+		}
+		assertTrue(done.getAsBoolean());
 	}
 
 	/** A card 30 by 20 that paints itself one colour. */

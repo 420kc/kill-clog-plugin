@@ -66,7 +66,7 @@ Your clan comes from the game. Other players' clans come from their Kill Clog sy
 
 Hover your Collection Log total to see your log, and click it to pin and browse every tab and page.
 
-Shift-click anything that opens a card, and the card opens and is copied to your clipboard as a picture, ready to paste into Discord.
+Shift-click anything that opens a card, or right-click it and choose **Copy**, and the card opens and is copied to your clipboard as a picture, ready to paste into Discord.
 
 Hold the middle mouse button over the panel and move up or down to scroll, faster the farther you move; let go to stop.
 

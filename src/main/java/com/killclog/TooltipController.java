@@ -25,12 +25,15 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Set;
+import java.util.Arrays;
 import java.util.WeakHashMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
+import javax.swing.JMenuItem;
 import javax.swing.JPanel;
+import javax.swing.JPopupMenu;
 import javax.swing.JToolTip;
 import javax.swing.Popup;
 import javax.swing.PopupFactory;
@@ -97,6 +100,11 @@ class TooltipController
 	private Consumer<Boolean> cardCopied = copied ->
 	{
 	};
+	// A look every 200 ms; unchanged for two in a row (400 ms) means drawn, and 2.5 s copies whatever shows.
+	private static final int COPY_LOOK_MS = 200;
+	private static final int COPY_QUIET_LOOKS = 2;
+	private static final int COPY_WAIT_MS = 2500;
+	private Timer copyTimer;
 
 	/**
 	 * Wire hover effect onto a cell panel.
@@ -122,11 +130,6 @@ class TooltipController
 			@Override
 			public void mousePressed(MouseEvent e)
 			{
-				// The middle button scrolls the panel (PanelAutoscroll), it never opens a card.
-				if (SwingUtilities.isMiddleMouseButton(e))
-				{
-					return;
-				}
 				JLabel source = e.getSource() instanceof JLabel
 					&& ((JLabel) e.getSource()).getToolTipText() != null
 					? (JLabel) e.getSource() : surfaces[0];
@@ -252,14 +255,48 @@ class TooltipController
 		}
 	}
 
+	/**
+	 * A press on anything in the panel that opens a card: the left button opens it (with shift, copies it too), the
+	 * right one offers both, and the middle one scrolls the panel ({@link PanelAutoscroll}).
+	 */
 	void pinTooltipFromPress(JComponent source, JPanel cell, MouseEvent event)
+	{
+		if (SwingUtilities.isMiddleMouseButton(event))
+		{
+			return;
+		}
+		if (SwingUtilities.isRightMouseButton(event))
+		{
+			cardMenu(source, cell, event).show(event.getComponent(), event.getX(), event.getY());
+			return;
+		}
+		openFromPress(source, cell, event, event.isShiftDown());
+	}
+
+	/** The right button's menu: what a click and a shift-click do, named. */
+	JPopupMenu cardMenu(JComponent source, JPanel cell, MouseEvent press)
+	{
+		JPopupMenu menu = new JPopupMenu();
+		JMenuItem open = new JMenuItem("Open");
+		open.addActionListener(a -> openFromPress(source, cell, press, false));
+		JMenuItem copy = new JMenuItem("Copy (Shift+Click)");
+		copy.addActionListener(a -> openFromPress(source, cell, press, true));
+		menu.add(open);
+		menu.add(copy);
+		return menu;
+	}
+
+	private void openFromPress(JComponent source, JPanel cell, MouseEvent event, boolean copy)
 	{
 		if (config.tooltipMode() == TooltipMode.HOVER)
 		{
 			dismissHoverPreview(event);
 		}
 		showPinnedTooltip(source, cell);
-		copyIfShifted(source, event);
+		if (copy)
+		{
+			copyPinned(source);
+		}
 	}
 
 	/**
@@ -286,24 +323,63 @@ class TooltipController
 		{
 			hoverCell(cell, source);
 		}
-		copyIfShifted(source, event);
+		if (event.isShiftDown())
+		{
+			copyPinned(source);
+		}
 	}
 
-	/** A shift-press that opened a card copies it too, once its popup has laid it out. */
-	private void copyIfShifted(JComponent source, MouseEvent press)
+	/**
+	 * Copies the card the source just opened, once it has finished drawing: a card's item pictures load as it first
+	 * draws, so the copy waits until the card has looked the same for {@link #COPY_QUIET_LOOKS} looks in a row, at
+	 * most {@link #COPY_WAIT_MS}. A card closed first is not copied.
+	 */
+	private void copyPinned(JComponent source)
 	{
 		JToolTip tip = activePinnedTip;
-		if (!press.isShiftDown() || activePinnedComponent != source || tip == null)
+		if (activePinnedComponent != source || tip == null)
 		{
 			return;
 		}
-		SwingUtilities.invokeLater(() ->
+		stopCopy();
+		long until = System.currentTimeMillis() + COPY_WAIT_MS;
+		BufferedImage[] last = new BufferedImage[1];
+		int[] same = new int[1];
+		copyTimer = new Timer(COPY_LOOK_MS, e ->
 		{
-			if (activePinnedTip == tip)
+			if (activePinnedTip != tip)
 			{
-				cardCopied.accept(clipboard.test(cardImage(tip)));
+				stopCopy();
+				return;
 			}
+			BufferedImage now = cardImage(tip);
+			same[0] = last[0] != null && samePicture(last[0], now) ? same[0] + 1 : 0;
+			if (same[0] >= COPY_QUIET_LOOKS || System.currentTimeMillis() >= until)
+			{
+				stopCopy();
+				cardCopied.accept(clipboard.test(now));
+			}
+			last[0] = now;
 		});
+		copyTimer.setInitialDelay(0);
+		copyTimer.start();
+	}
+
+	private void stopCopy()
+	{
+		if (copyTimer != null)
+		{
+			copyTimer.stop();
+			copyTimer = null;
+		}
+	}
+
+	private static boolean samePicture(BufferedImage a, BufferedImage b)
+	{
+		int w = a.getWidth();
+		int h = a.getHeight();
+		return w == b.getWidth() && h == b.getHeight()
+			&& Arrays.equals(a.getRGB(0, 0, w, h, null, 0, w), b.getRGB(0, 0, w, h, null, 0, w));
 	}
 
 	/** The card exactly as it opened, at its own size, the way the lab draws one: before the pointer is on it. */
