@@ -14,6 +14,8 @@ import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import javax.swing.JPanel;
 import javax.swing.Timer;
+import lombok.AccessLevel;
+import lombok.Setter;
 import lombok.Getter;
 import net.runelite.client.ui.ColorScheme;
 
@@ -39,6 +41,11 @@ public class ActivitiesTray
 	private final Runnable onToggle;
 	private boolean expanded;
 	private Timer slideTimer;
+	// Told when a close has finished sliding: the panel moves the toggle up under its top then.
+	@Setter(AccessLevel.PACKAGE)
+	private Runnable onClosed = () ->
+	{
+	};
 
 	/**
 	 * @param content the JPanel to show / hide inside the tray
@@ -143,6 +150,7 @@ public class ActivitiesTray
 				if (!expanded)
 				{
 					clip.setVisible(false);
+					onClosed.run();
 				}
 			}
 		});

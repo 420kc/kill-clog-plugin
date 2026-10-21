@@ -127,6 +127,29 @@ public class TraySummaryWiringTest
 	}
 
 	@Test
+	public void aClosedTraysToggleSitsUnderTheInfoBarAndAnOpenOnesUnderTheTray() throws Exception
+	{
+		ActivitiesTray[] tray = new ActivitiesTray[1];
+		JPanel[] homes = new JPanel[2];
+		edt(() ->
+		{
+			tray[0] = field(panel, "activitiesTray", ActivitiesTray.class);
+			homes[0] = field(panel, "trayToggle", JPanel.class);
+			homes[1] = field(panel, "anchoredTop", JPanel.class);
+			assertSame("open, under the tray", homes[0], tray[0].getSeparator().getParent());
+			tray[0].toggle();
+			assertSame("it moves up only once the tray has slid shut", homes[0], tray[0].getSeparator().getParent());
+		});
+		Thread.sleep(400);
+		edt(() ->
+		{
+			assertSame(homes[1], tray[0].getSeparator().getParent());
+			tray[0].toggle();
+			assertSame(homes[0], tray[0].getSeparator().getParent());
+		});
+	}
+
+	@Test
 	public void theClueSummaryReadsEachLineFromItsOwnPage() throws Exception
 	{
 		edt(() ->

@@ -171,6 +171,8 @@ public class KillClogPanel extends PluginPanel
 	private PanelAutoscroll autoscroll;
 	// The panel's top, which stays put while everything under it scrolls: the setup notice, the status row, search
 	// and the info bar. As wide as the content under it, under the same rules.
+	// Where an open tray's toggle sits, under the tray; a closed tray's sits in the anchored top.
+	private final JPanel trayToggle = new JPanel(new BorderLayout());
 	private final JPanel anchoredTop = new JPanel()
 	{
 		@Override
@@ -288,21 +290,32 @@ public class KillClogPanel extends PluginPanel
 		// always started below.
 		anchoredTop.setLayout(new BoxLayout(anchoredTop, BoxLayout.Y_AXIS));
 		anchoredTop.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		anchoredTop.setBorder(new EmptyBorder(6, 10, 5, 10));
+		anchoredTop.setBorder(new EmptyBorder(6, 10, 0, 10));
 		anchoredTop.add(clogNotice);
 		JPanel search = buildSearchPanel();
 		search.setAlignmentX(Component.LEFT_ALIGNMENT);
+		search.setBorder(new EmptyBorder(0, 0, 5, 0));
 		anchoredTop.add(search);
 
 		// Activities tray with slide animation
 		c.insets = new Insets(0, 0, 0, 0);
-		activitiesTray = new ActivitiesTray(buildActivitiesGrid(), config.activitiesExpanded(),
-			expanded -> configManager.setConfiguration("killclog", "activitiesExpanded", expanded));
+		activitiesTray = new ActivitiesTray(buildActivitiesGrid(), config.activitiesExpanded(), expanded ->
+		{
+			configManager.setConfiguration("killclog", "activitiesExpanded", expanded);
+			if (expanded)
+			{
+				// Opened from under the top: the toggle goes back under the tray, and the panel to the top to show it.
+				placeTrayToggle(true);
+				getScrollPane().getVerticalScrollBar().setValue(0);
+			}
+		});
+		activitiesTray.setOnClosed(() -> placeTrayToggle(false));
 		add(activitiesTray.getClip(), c);
 
 		// Separator between activities and boss grid (also the click target to toggle the tray)
 		c.gridy++;
-		add(activitiesTray.getSeparator(), c);
+		add(trayToggle, c);
+		placeTrayToggle(config.activitiesExpanded());
 
 		c.gridy++;
 		fixedSkillsHost = buildSkillHost();
@@ -428,6 +441,27 @@ public class KillClogPanel extends PluginPanel
 
 		iconCache.loadRuntimeIcons(cells, caRewardSprites);
 		return panel;
+	}
+
+	/**
+	 * A closed tray's toggle lives in the pinned top under the info bar, so it never scrolls out of reach (Dylan,
+	 * 2026-10-20); an open tray's lives under the tray. Closed, it is the content's first line anyway, so at the top
+	 * of the scroll nothing moves.
+	 */
+	private void placeTrayToggle(boolean expanded)
+	{
+		JPanel separator = activitiesTray.getSeparator();
+		JPanel home = expanded ? trayToggle : anchoredTop;
+		if (separator.getParent() != home)
+		{
+			separator.setAlignmentX(Component.LEFT_ALIGNMENT);
+			home.add(separator);
+			for (JPanel side : new JPanel[]{trayToggle, anchoredTop})
+			{
+				side.revalidate();
+				side.repaint();
+			}
+		}
 	}
 
 	// Boss view style (grid / list).
