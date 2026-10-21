@@ -384,4 +384,18 @@ public class LookupSessionTest
 		assertNull(session.getClogLastChanged());
 		assertNull(session.getCaResult());
 	}
+
+	@Test
+	public void theShownLogsDateIsTheLogsOwn()
+	{
+		LookupSession session = new LookupSession(org.mockito.Mockito.mock(HiscoreService.class),
+			org.mockito.Mockito.mock(ClogService.class), org.mockito.Mockito.mock(RuneProfileService.class), null,
+			new KillClogConfig()
+			{
+			}, org.mockito.Mockito.mock(LookupSession.Listener.class));
+		ClogResult log = new ClogResult("Friend", java.util.Collections.emptyMap(), java.util.Collections.emptyMap(),
+			java.util.Collections.emptyMap(), "2026-10-20T12:00:00Z", null);
+		session.adoptState(null, log, null, "Friend");
+		assertEquals("2026-10-20T12:00:00Z", session.getClogLastChanged());
+	}
 }

@@ -384,4 +384,15 @@ public class ClogResultTest
 			items.get(5).getId(),
 			items.get(6).getId());
 	}
+
+	@Test
+	public void copiedPagesShareNoListWithTheOriginal()
+	{
+		Map<String, List<Integer>> pages = new HashMap<>();
+		pages.put("vorkath", new java.util.ArrayList<>(Arrays.asList(1, 2)));
+		Map<String, List<Integer>> copy = ClogResult.copyPages(pages);
+		copy.get("vorkath").add(3);
+		assertEquals(Arrays.asList(1, 2), pages.get("vorkath"));
+		assertEquals(Arrays.asList(1, 2, 3), copy.get("vorkath"));
+	}
 }

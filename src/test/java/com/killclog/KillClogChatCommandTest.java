@@ -175,4 +175,11 @@ public class KillClogChatCommandTest
 				hiscoreNames.contains(canonical));
 		}
 	}
+
+	@Test
+	public void theChatCommandsAreTheFourItRegisters()
+	{
+		assertEquals(Arrays.asList("!kclog", "!missing", "!3a", "!gilded"),
+			new java.util.ArrayList<>(new KillClogChatCommand().commands().keySet()));
+	}
 }
