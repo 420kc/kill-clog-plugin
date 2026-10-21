@@ -333,8 +333,7 @@ final class TooltipDataBuilder
 		Map<Integer, String> names = new LinkedHashMap<>();
 		for (int itemId : itemIds)
 		{
-			String name = clogIndex != null
-				? clogIndex.itemName(clogResult, itemId) : clogResult.getItemName(itemId);
+			String name = ClogIndex.itemNameOrAlias(clogIndex, clogResult, itemId);
 			if (name != null)
 			{
 				names.put(itemId, name);

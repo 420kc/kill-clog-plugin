@@ -131,12 +131,7 @@ final class SkillClogSection
 		}
 		for (int itemId : itemIds)
 		{
-			String name = clogIndex != null
-				? clogIndex.itemName(result, itemId) : result.getItemName(itemId);
-			if (name == null)
-			{
-				name = aliasName(result, itemId);
-			}
+			String name = ClogIndex.itemNameOrAlias(clogIndex, result, itemId);
 			if (name != null)
 			{
 				destination.put(itemId, name);
@@ -148,20 +143,6 @@ final class SkillClogSection
 	{
 		return clogIndex != null
 			? clogIndex.canonicalItemId(itemId) : ClogIndex.fallbackCanonicalItemId(itemId);
-	}
-
-	@Nullable
-	private static String aliasName(ClogResult result, int canonicalItemId)
-	{
-		for (int alias : ClogIndex.nameAliases(canonicalItemId))
-		{
-			String name = result.getItemName(alias);
-			if (name != null)
-			{
-				return name;
-			}
-		}
-		return null;
 	}
 
 	static Progress combinedProgress(List<SkillClogSection> sections)
