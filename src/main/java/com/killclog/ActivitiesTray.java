@@ -149,11 +149,6 @@ public class ActivitiesTray
 		slideTimer.start();
 	}
 
-	boolean isExpanded()
-	{
-		return expanded;
-	}
-
 	/** Toggle callback the panel implements (typically: persist the new state to config). */
 	public interface OnToggle
 	{

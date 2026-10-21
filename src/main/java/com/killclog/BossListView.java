@@ -30,8 +30,6 @@ import javax.swing.JToolTip;
 import javax.swing.border.EmptyBorder;
 import javax.swing.event.DocumentEvent;
 import javax.swing.event.DocumentListener;
-import lombok.AccessLevel;
-import lombok.Getter;
 import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
@@ -63,8 +61,6 @@ public class BossListView
 	private final Map<HiscoreSkill, Row> rows = new LinkedHashMap<>();
 	private final BooleanSupplier mirrorActive;
 	private final JTextField search = new JTextField();
-	@Getter(AccessLevel.PACKAGE)
-	private final JPanel searchStrip = new JPanel();
 
 	private static final class Row
 	{
@@ -91,17 +87,13 @@ public class BossListView
 		// Gauntlet then Corrupted). The list keeps vanilla's order rather
 		// than imposing a strict sort - players have already scanned this
 		// exact order in the game's own hiscores.
-		// The search and the strip under it are one piece, which pins under the panel's top once it scrolls past.
-		searchStrip.setLayout(new BoxLayout(searchStrip, BoxLayout.Y_AXIS));
-		searchStrip.setOpaque(false);
-		searchStrip.add(searchRow());
+		root.add(searchRow());
 		// A strip like the activities separator, in its gray and height, sets the search apart from the first boss.
 		JPanel divider = new JPanel();
 		divider.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		divider.setPreferredSize(new Dimension(0, ActivitiesTray.SEPARATOR_HEIGHT));
 		divider.setMaximumSize(new Dimension(Integer.MAX_VALUE, ActivitiesTray.SEPARATOR_HEIGHT));
-		searchStrip.add(divider);
-		root.add(searchStrip);
+		root.add(divider);
 		for (HiscoreSkill boss : PanelData.BOSSES)
 		{
 			root.add(buildRow(boss, tooltipController, cells));
