@@ -46,6 +46,7 @@ final class PublicationCoordinator
 	// long. A walk that never pauses still sends a minute after its first capture.
 	static final int SYNC_DEBOUNCE_SECONDS = 10;
 	static final long SYNC_MAX_WAIT_MS = 60_000L;
+	private static final String SYNC_FAILED = "Collection log sync failed. See the client log.";
 
 	private final KillClogConfig config;
 	private final ConfigManager configManager;
@@ -185,22 +186,24 @@ final class PublicationCoordinator
 	/** The retry keeps its own delay: a capture's shorter debounce must not stand in for it. */
 	private synchronized void scheduleRetry(int delaySeconds, boolean manual, String gameMode)
 	{
-		if (pendingKillclogSync != null)
-		{
-			pendingKillclogSync.cancel(false);
-		}
-		pendingKillclogSync = null;
+		dropPendingSync();
 		scheduleSync(delaySeconds, manual, gameMode, true);
 	}
 
-	synchronized void cancelSync()
+	/** The push waiting on its timer, if any, never fires. */
+	private synchronized void dropPendingSync()
 	{
-		syncGate.cancel();
 		if (pendingKillclogSync != null)
 		{
 			pendingKillclogSync.cancel(false);
 			pendingKillclogSync = null;
 		}
+	}
+
+	synchronized void cancelSync()
+	{
+		syncGate.cancel();
+		dropPendingSync();
 		// A request already in the air keeps the single-flight slot until it
 		// completes (no overlap on re-enable); its completion sees a newer
 		// generation and stays silent.
@@ -230,14 +233,7 @@ final class PublicationCoordinator
 
 	private void syncNow(boolean manual)
 	{
-		synchronized (this)
-		{
-			if (pendingKillclogSync != null && !pendingKillclogSync.isDone())
-			{
-				pendingKillclogSync.cancel(false);
-				pendingKillclogSync = null;
-			}
-		}
+		dropPendingSync();
 		scheduleSync(0, manual);
 	}
 
@@ -612,7 +608,7 @@ final class PublicationCoordinator
 						if (current && !failQueuedCharacterPublish() && err != null)
 						{
 							withSyncFeedback(generation, session, () -> feedback.showSyncResult(manual,
-								false, "Collection log sync failed. See the client log."));
+								false, SYNC_FAILED));
 						}
 					}
 					launchQueuedSync();
@@ -632,10 +628,10 @@ final class PublicationCoordinator
 		if (!failQueuedCharacterPublish())
 		{
 			withSyncFeedback(generation, session, () -> feedback.showSyncResult(manual,
-				false, "Collection log sync failed. See the client log."));
+				false, SYNC_FAILED));
 		}
 		clientThread.invoke(() -> chatNotifier.send(ChatNotice.SYNC_RESULT,
-			"Collection log sync failed. See the client log."));
+			SYNC_FAILED));
 		launchQueuedSync();
 	}
 
