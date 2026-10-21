@@ -473,21 +473,29 @@ public class HiscoreService
 		{
 			// Account-type detection compares this value across the four
 			// endpoint variants.
-			JsonObject root = gson.fromJson(body, JsonObject.class);
-			for (JsonElement e : root.getAsJsonArray("skills"))
-			{
-				JsonObject s = e.getAsJsonObject();
-				if ("Overall".equals(s.get("name").getAsString()))
-				{
-					return s.get("xp").getAsLong();
-				}
-			}
-			return -1;
+			JsonObject overall = overallRow(body);
+			return overall != null ? overall.get("xp").getAsLong() : -1;
 		}
 		catch (Exception e)
 		{
 			return -1;
 		}
+	}
+
+	/** A hiscore body's Overall row, or null when it has none; a body that isn't JSON throws. */
+	@Nullable
+	private JsonObject overallRow(String body)
+	{
+		JsonObject root = gson.fromJson(body, JsonObject.class);
+		for (JsonElement e : root.getAsJsonArray("skills"))
+		{
+			JsonObject row = e.getAsJsonObject();
+			if ("Overall".equals(row.get("name").getAsString()))
+			{
+				return row;
+			}
+		}
+		return null;
 	}
 
 	private String pickBestBody(AccountType type, String uim, String hcim, String iron, String reg)
@@ -718,15 +726,11 @@ public class HiscoreService
 			try
 			{
 				String body = response.body;
-				JsonObject root = gson.fromJson(body, JsonObject.class);
-				for (JsonElement skill : root.getAsJsonArray("skills"))
+				if (overallRow(body) != null)
 				{
-					if ("Overall".equals(skill.getAsJsonObject().get("name").getAsString()))
-					{
-						// Parse before accepting: a body that only looks like the hiscores is not a schema.
-						parseHiscoreBody(body, AccountType.REGULAR);
-						return new TableResponse(FetchStatus.FOUND, body);
-					}
+					// Parse before accepting: a body that only looks like the hiscores is not a schema.
+					parseHiscoreBody(body, AccountType.REGULAR);
+					return new TableResponse(FetchStatus.FOUND, body);
 				}
 			}
 			catch (RuntimeException ignored)

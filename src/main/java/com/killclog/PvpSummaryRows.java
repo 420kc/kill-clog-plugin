@@ -14,13 +14,14 @@ final class PvpSummaryRows
 	private static final int ICON_GAP = 4;
 	private static final int COL_GAP = 6;
 
+	// Short names for PanelData.PVP_ACTIVITIES, in its order.
 	private static final String[] LABELS = {
 		"LMS", "Soul Wars", "PvP Arena", "BH Hunter", "BH Rogue",
 	};
 
-	private final int[] scores = new int[5];
-	private final int[] obtained = new int[5];
-	private final int[] total = new int[5];
+	private final int[] scores = new int[LABELS.length];
+	private final int[] obtained = new int[LABELS.length];
+	private final int[] total = new int[LABELS.length];
 
 	@Setter
 	private BufferedImage[] icons;
@@ -35,11 +36,10 @@ final class PvpSummaryRows
 			return;
 		}
 
-		scores[0] = hiscoreResult.getActivityScore("LMS - Rank");
-		scores[1] = hiscoreResult.getActivityScore("Soul Wars Zeal");
-		scores[2] = hiscoreResult.getActivityScore("PvP Arena - Rank");
-		scores[3] = hiscoreResult.getActivityScore("Bounty Hunter - Hunter");
-		scores[4] = hiscoreResult.getActivityScore("Bounty Hunter - Rogue");
+		for (int i = 0; i < LABELS.length; i++)
+		{
+			scores[i] = hiscoreResult.getActivityScore(PanelData.PVP_ACTIVITIES[i].getName());
+		}
 
 		if (clogResult != null)
 		{
