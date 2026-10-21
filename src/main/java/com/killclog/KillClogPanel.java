@@ -171,6 +171,8 @@ public class KillClogPanel extends PluginPanel
 	private PanelAutoscroll autoscroll;
 	// The panel's top, which stays put while everything under it scrolls: the setup notice, the status row, search
 	// and the info bar. As wide as the content under it, under the same rules.
+	// The strips that pin under the top as they scroll past it.
+	private StickyStrips sticky;
 	private final JPanel anchoredTop = new JPanel()
 	{
 		@Override
@@ -288,21 +290,34 @@ public class KillClogPanel extends PluginPanel
 		// always started below.
 		anchoredTop.setLayout(new BoxLayout(anchoredTop, BoxLayout.Y_AXIS));
 		anchoredTop.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		anchoredTop.setBorder(new EmptyBorder(6, 10, 5, 10));
+		anchoredTop.setBorder(new EmptyBorder(6, 10, 0, 10));
 		anchoredTop.add(clogNotice);
 		JPanel search = buildSearchPanel();
 		search.setAlignmentX(Component.LEFT_ALIGNMENT);
+		search.setBorder(new EmptyBorder(0, 0, 5, 0));
 		anchoredTop.add(search);
 
 		// Activities tray with slide animation
 		c.insets = new Insets(0, 0, 0, 0);
-		activitiesTray = new ActivitiesTray(buildActivitiesGrid(), config.activitiesExpanded(),
-			expanded -> configManager.setConfiguration("killclog", "activitiesExpanded", expanded));
+		activitiesTray = new ActivitiesTray(buildActivitiesGrid(), config.activitiesExpanded(), expanded ->
+		{
+			configManager.setConfiguration("killclog", "activitiesExpanded", expanded);
+			// Opened from under the top, far down the panel: back to the top, where the tray opens.
+			if (expanded && sticky != null && sticky.pinned(activitiesTray.getSeparator()))
+			{
+				getScrollPane().getVerticalScrollBar().setValue(0);
+			}
+		});
 		add(activitiesTray.getClip(), c);
 
-		// Separator between activities and boss grid (also the click target to toggle the tray)
+		// Separator between activities and boss grid (also the click target to toggle the tray), in a column of its
+		// own so it can pin under the top while the tray is closed.
 		c.gridy++;
-		add(activitiesTray.getSeparator(), c);
+		JPanel trayToggle = new JPanel();
+		trayToggle.setLayout(new BoxLayout(trayToggle, BoxLayout.Y_AXIS));
+		trayToggle.setOpaque(false);
+		trayToggle.add(activitiesTray.getSeparator());
+		add(trayToggle, c);
 
 		c.gridy++;
 		fixedSkillsHost = buildSkillHost();
@@ -338,6 +353,9 @@ public class KillClogPanel extends PluginPanel
 			JPanel trackCorner = new JPanel();
 			trackCorner.setBackground(ColorScheme.DARKER_GRAY_COLOR);
 			sp.setCorner(JScrollPane.UPPER_RIGHT_CORNER, trackCorner);
+			sticky = new StickyStrips(sp, anchoredTop);
+			sticky.add(activitiesTray.getSeparator(), () -> !activitiesTray.isExpanded());
+			sticky.add(bossListView.getSearchStrip(), () -> true);
 			autoscroll = new PanelAutoscroll(sp, tooltipController::suspendHover, tooltipController::resumeHover);
 		}
 
