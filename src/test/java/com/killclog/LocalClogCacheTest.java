@@ -90,6 +90,20 @@ public class LocalClogCacheTest
 	}
 
 	@Test
+	public void aLoginHeldBackAsNoOneIsTakenUpLater() throws Exception
+	{
+		// A login straight onto a League world: the main store serves no one under that login's number, then a hop
+		// to the main game hands it the login itself.
+		LocalClogCache cache = ready();
+		Session login = new Session(7, "Tester", HASH);
+		assertFalse(cache.serve(Session.none(login.getNumber())));
+		assertFalse(cache.isActivePlayer("Tester"));
+		assertTrue(cache.serve(login) || cache.serve(login));
+		assertTrue(cache.isActivePlayer("Tester"));
+		assertTrue(cache.servesAccount(login));
+	}
+
+	@Test
 	public void theSyncPreflightNeedsThisSessionAccountAndName() throws Exception
 	{
 		LocalClogCache cache = memory("Tester");

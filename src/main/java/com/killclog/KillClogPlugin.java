@@ -384,7 +384,11 @@ public class KillClogPlugin extends Plugin
 	 */
 	private void sessionChanged(Session previous, Session now)
 	{
-		localClogCache.serve(now);
+		// The main store takes up a login made on the main game or a world whose game is unknown. One made straight
+		// onto a League world waits for a hop to the main game, so the main view of yourself there still reads the
+		// providers until your own main log is here.
+		String game = world.mode();
+		localClogCache.serve(game == null || GameMode.MAIN.equals(game) ? now : Session.none(now.getNumber()));
 		world.serve(now);
 		localCaCache.serve(now);
 		accountActivated = false;

@@ -37,6 +37,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.startsWith;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -978,6 +979,77 @@ public class PluginPublicationCharacterizationTest
 		world(net.runelite.api.WorldType.MEMBERS);
 		ticks(1);
 		verify(client).getVarpValue(VarPlayerID.COLLECTION_COUNT);
+	}
+
+	@Test
+	public void aLoginStraightOntoALeagueWorldLeavesTheMainStoreToTheMainGame() throws Exception
+	{
+		logout();
+		LocalClogCache league = announceLeague();
+		loggedIn();
+		ticks(1);
+		verify(league, atLeastOnce()).serve(you());
+		verify(localClogCache, never()).serve(you());
+
+		// A hop to the main game: the main store takes up the same login.
+		world(net.runelite.api.WorldType.MEMBERS);
+		hop();
+		ticks(1);
+		verify(localClogCache, atLeastOnce()).serve(you());
+	}
+
+	@Test
+	public void anAccountThatArrivesAfterTheLoginStillMakesIt() throws Exception
+	{
+		SessionTracker sessions = (SessionTracker) field("sessions");
+		logout();
+		when(client.getAccountHash()).thenReturn(-1L);
+		loggedIn();
+		assertFalse(sessions.current().loggedIn());
+
+		// The game sends the account a tick later.
+		when(client.getAccountHash()).thenReturn(HASH);
+		ticks(1);
+		assertEquals(RSN, sessions.current().getName());
+		assertEquals(HASH, sessions.current().getAccountHash());
+	}
+
+	@Test
+	public void aCharacterRequestAsksItsOwnLoginEvenIfNothingCancelledIt() throws Exception
+	{
+		publishHandler.run();
+		settle();
+		ArgumentCaptor<java.util.function.BooleanSupplier> stillWanted =
+			ArgumentCaptor.forClass(java.util.function.BooleanSupplier.class);
+		verify(appearance).publishCurrent(you(), stillWanted.capture());
+
+		// No listener hears the change, so only the request's own check stands between it and the next login.
+		SessionTracker sessions = (SessionTracker) field("sessions");
+		Field listeners = SessionTracker.class.getDeclaredField("listeners");
+		listeners.setAccessible(true);
+		((java.util.List<?>) listeners.get(sessions)).clear();
+		when(client.getAccountHash()).thenReturn(HASH + 1);
+		sessions.update(client);
+		assertFalse(stillWanted.getValue().getAsBoolean());
+	}
+
+	/** The game says LOGGED_IN, as it does at a login and after every hop. */
+	private void loggedIn()
+	{
+		gameState = GameState.LOGGED_IN;
+		GameStateChanged event = new GameStateChanged();
+		event.setGameState(GameState.LOGGED_IN);
+		plugin.onGameStateChanged(event);
+	}
+
+	/** A world hop: HOPPING, then LOGGED_IN on the new world. */
+	private void hop()
+	{
+		gameState = GameState.HOPPING;
+		GameStateChanged event = new GameStateChanged();
+		event.setGameState(GameState.HOPPING);
+		plugin.onGameStateChanged(event);
+		loggedIn();
 	}
 
 	/** The server announces a League, and the player is on one of its worlds. */

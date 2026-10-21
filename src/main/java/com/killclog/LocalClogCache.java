@@ -293,11 +293,11 @@ public class LocalClogCache
 	{
 		if (next.getNumber() != session.getNumber())
 		{
-			session = next;
 			activeHashKey = null;
 			readThisSession.clear();
 			pendingRenameNotice.set(null);
 		}
+		session = next;
 		if (!ready || !next.loggedIn())
 		{
 			return false;
