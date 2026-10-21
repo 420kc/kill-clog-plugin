@@ -38,8 +38,8 @@ final class ClogItemCanonicalizer
 			{
 				int itemId = canonicalItemId(item.getId());
 				ClogResult.ClogItem prior = canonical.get(itemId);
-				canonical.put(itemId, prior == null
-					? copyItem(item, itemId) : mergeItems(prior, item, itemId));
+				canonical.put(itemId, prior == null ? item.withId(itemId)
+					: item.filledFrom(prior).withId(itemId).withCount(Math.max(prior.getCount(), item.getCount())));
 			}
 		}
 		return new ArrayList<>(canonical.values());
@@ -100,19 +100,4 @@ final class ClogItemCanonicalizer
 		}
 	}
 
-	private static ClogResult.ClogItem copyItem(ClogResult.ClogItem item, int itemId)
-	{
-		return new ClogResult.ClogItem(itemId, item.getCount(), item.getDate(),
-			item.getObtainedAtKc(), item.getObtainedFrom());
-	}
-
-	private static ClogResult.ClogItem mergeItems(ClogResult.ClogItem prior,
-		ClogResult.ClogItem current, int itemId)
-	{
-		return new ClogResult.ClogItem(itemId, Math.max(prior.getCount(), current.getCount()),
-			current.getDate() != null ? current.getDate() : prior.getDate(),
-			current.getObtainedAtKc() > 0 ? current.getObtainedAtKc() : prior.getObtainedAtKc(),
-			current.getObtainedFrom() != null
-				? current.getObtainedFrom() : prior.getObtainedFrom());
-	}
 }

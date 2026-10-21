@@ -608,27 +608,11 @@ public class LocalClogCache
 			|| !Objects.equals(data.lastChanged, prior.lastChanged)
 			|| !Objects.equals(data.pendingUnlocks, prior.pendingUnlocks)
 			|| !Objects.equals(data.firstPartySetupComplete, prior.firstPartySetupComplete)
-			|| !Objects.equals(data.categories, prior.categories)
-			|| prior.obtained == null || !data.obtained.keySet().equals(prior.obtained.keySet()))
+			|| !Objects.equals(data.categories, prior.categories))
 		{
 			return false;
 		}
-		for (String category : data.obtained.keySet())
-		{
-			List<ClogResult.ClogItem> items = data.obtained.get(category);
-			List<ClogResult.ClogItem> previous = prior.obtained.get(category);
-			if (previous == null || items.size() != previous.size()) return false;
-			for (int i = 0; i < items.size(); i++)
-			{
-				ClogResult.ClogItem item = items.get(i);
-				ClogResult.ClogItem old = previous.get(i);
-				if (item.getId() != old.getId() || item.getCount() != old.getCount()
-					|| item.getObtainedAtKc() != old.getObtainedAtKc()
-					|| !Objects.equals(item.getDate(), old.getDate())
-					|| !Objects.equals(item.getObtainedFrom(), old.getObtainedFrom())) return false;
-			}
-		}
-		return true;
+		return Objects.equals(data.obtained, prior.obtained);
 	}
 
 
@@ -673,16 +657,7 @@ public class LocalClogCache
 		List<ClogResult.ClogItem> merged = new ArrayList<>(incoming.size());
 		for (ClogResult.ClogItem item : incoming)
 		{
-			ClogResult.ClogItem prior = priorById.get(item.getId());
-			if (prior == null)
-			{
-				merged.add(item);
-				continue;
-			}
-			String date = item.getDate() != null ? item.getDate() : prior.getDate();
-			int kc = item.getObtainedAtKc() > 0 ? item.getObtainedAtKc() : prior.getObtainedAtKc();
-			String from = item.getObtainedFrom() != null ? item.getObtainedFrom() : prior.getObtainedFrom();
-			merged.add(new ClogResult.ClogItem(item.getId(), item.getCount(), date, kc, from));
+			merged.add(item.filledFrom(priorById.get(item.getId())));
 		}
 		return merged;
 	}
@@ -862,8 +837,7 @@ public class LocalClogCache
 				String date = item.getDate() == null ? providerDates.get(item.getId()) : null;
 				if (date != null)
 				{
-					items.set(i, new ClogResult.ClogItem(item.getId(), item.getCount(), date,
-						item.getObtainedAtKc(), item.getObtainedFrom()));
+					items.set(i, item.withDate(date));
 					listChanged = true;
 					if (newestApplied == null || date.compareTo(newestApplied) > 0)
 					{

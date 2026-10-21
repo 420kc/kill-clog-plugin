@@ -58,9 +58,7 @@ final class PendingClogUnlock
 			for (ClogResult.ClogItem item : category.getValue())
 			{
 				String date = resolved.get(item.getId());
-				updated.add(item.getDate() == null && date != null
-					? new ClogResult.ClogItem(item.getId(), item.getCount(), date,
-						item.getObtainedAtKc(), item.getObtainedFrom()) : item);
+				updated.add(item.getDate() == null && date != null ? item.withDate(date) : item);
 			}
 			category.setValue(updated);
 		}

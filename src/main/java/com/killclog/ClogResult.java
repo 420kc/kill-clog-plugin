@@ -8,10 +8,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntUnaryOperator;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import net.runelite.api.clan.ClanTitle;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import lombok.With;
 
 /**
  * Parsed collection log data for a player from the active provider.
@@ -178,7 +180,7 @@ public class ClogResult
 			for (ClogItem item : items)
 			{
 				int id = canonical.applyAsInt(item.id);
-				ClogItem as = id == item.id ? item : new ClogItem(id, item.count, item.date, item.obtainedAtKc, item.obtainedFrom);
+				ClogItem as = item.withId(id);
 				held.merge(id, as, (a, b) -> b.count > a.count || b.count == a.count && a.date == null ? b : a);
 			}
 		}
@@ -409,6 +411,8 @@ public class ClogResult
 
 	@RequiredArgsConstructor
 	@Getter
+	@EqualsAndHashCode
+	@With
 	public static class ClogItem
 	{
 		private final int id;
@@ -424,6 +428,16 @@ public class ClogResult
 		public ClogItem(int id, int count, String date)
 		{
 			this(id, count, date, 0, null);
+		}
+
+		/**
+		 * This record with what it doesn't know taken from an earlier record of the item: a later reading never
+		 * loses an earlier one's date, kill count or source.
+		 */
+		ClogItem filledFrom(ClogItem prior)
+		{
+			return prior == null ? this : new ClogItem(id, count, date != null ? date : prior.date,
+				obtainedAtKc > 0 ? obtainedAtKc : prior.obtainedAtKc, obtainedFrom != null ? obtainedFrom : prior.obtainedFrom);
 		}
 
 	}
