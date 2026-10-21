@@ -124,26 +124,36 @@ final class PublicationCoordinator
 	 * One push of the log: the login it is for, taken where it began (a press, the opt-in, a capture) and carried
 	 * through its timer, its retry and its queue, so nothing begun in one login sends another's; its game (null follows
 	 * the world); whether a player asked for it; whether it is the server's one advised retry; and the character request
-	 * it is the sync for, by generation (NONE for none), which only this push can let go on.
+	 * it is the sync for, by generation (NONE for none), which only this push can let go on; and when it was asked, so
+	 * two pushes go as one the same way in whatever order they meet.
 	 */
 	@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
 	private static final class Push
 	{
+		private static final java.util.concurrent.atomic.AtomicLong ASKED = new java.util.concurrent.atomic.AtomicLong();
+
 		final Session session;
 		final String mode;
 		final boolean manual;
 		final boolean retry;
 		final int forCharacter;
+		final long asked;
+
+		/** A push asked for now. */
+		static Push ask(Session session, String mode, boolean manual, int forCharacter)
+		{
+			return new Push(session, mode, manual, false, forCharacter, ASKED.incrementAndGet());
+		}
 
 		/** The server's one retry, for the game the attempt resolved, wherever the player has hopped since. */
 		Push retriedIn(String gameMode)
 		{
-			return new Push(session, gameMode, manual, true, forCharacter);
+			return new Push(session, gameMode, manual, true, forCharacter, asked);
 		}
 
 		Push withoutCharacter()
 		{
-			return new Push(session, mode, manual, retry, NONE);
+			return new Push(session, mode, manual, retry, NONE, asked);
 		}
 
 		/** A click's or a character's: it goes past Automatic sync being off, and nothing automatic stands in for it. */
@@ -153,14 +163,17 @@ final class PublicationCoordinator
 		}
 
 		/**
-		 * Two pushes, the one waiting and a later one, go as one: a click's game over an automatic one's, the later
-		 * click's among clicks, the later character request over an earlier one, and one advised retry for both.
+		 * Two pushes go as one, the same in whichever order they meet: a click's game over an automatic one's, the
+		 * later-asked click's among clicks, the newer character request (generations only grow), and one advised retry
+		 * for both.
 		 */
-		static Push merge(Push waiting, Push later)
+		static Push merge(Push one, Push other)
 		{
-			Push lead = later.manual || !waiting.manual ? later : waiting;
-			return new Push(lead.session, lead.mode, waiting.manual || later.manual, waiting.retry || later.retry,
-				later.forCharacter != NONE ? later.forCharacter : waiting.forCharacter);
+			Push earlier = one.asked <= other.asked ? one : other;
+			Push later = earlier == one ? other : one;
+			Push lead = later.manual || !earlier.manual ? later : earlier;
+			return new Push(lead.session, lead.mode, one.manual || other.manual, one.retry || other.retry,
+				Math.max(one.forCharacter, other.forCharacter), later.asked);
 		}
 	}
 
@@ -172,7 +185,7 @@ final class PublicationCoordinator
 
 	private void scheduleAutomaticSync(Session session)
 	{
-		schedule(SYNC_DEBOUNCE_SECONDS, new Push(session, mode.get(), false, false, NONE));
+		schedule(SYNC_DEBOUNCE_SECONDS, Push.ask(session, mode.get(), false, NONE));
 	}
 
 	/**
@@ -192,7 +205,7 @@ final class PublicationCoordinator
 		{
 			if (sessions.isCurrent(origin))
 			{
-				schedule(0, new Push(origin, mode.get(), manual, false, forCharacter));
+				schedule(0, Push.ask(origin, mode.get(), manual, forCharacter));
 			}
 			else
 			{
@@ -647,18 +660,21 @@ final class PublicationCoordinator
 				if (!syncGate.isCurrent(generation) || !sessions.isCurrent(session))
 				{
 					syncGate.abortAttempt();
-					failWaiting(push.forCharacter);
+					abandon(push);
 					launchQueuedSync();
 					return;
 				}
 				// A League sync reads only that League's store and profile, so it finishes after a hop
 				// off its worlds; a main sync needs a settled main world, so it follows this one.
-				String gameMode = push.mode == null || GameMode.MAIN.equals(push.mode) ? mode.get() : push.mode;
+				// A retry is for the game its attempt resolved: a main one off the main game waits for no hop back.
+				String world = mode.get();
+				String gameMode = push.retry ? (GameMode.MAIN.equals(push.mode) && !GameMode.MAIN.equals(world) ? null
+					: push.mode) : push.mode == null || GameMode.MAIN.equals(push.mode) ? world : push.mode;
 				LocalClogCache cache = gameMode == null ? null : modeCache.apply(gameMode);
 				if (!session.loggedIn() || gameMode == null || cache == null)
 				{
 					syncGate.abortAttempt();
-					failWaiting(push.forCharacter);
+					abandon(push);
 					launchQueuedSync();
 					if (push.mode != null && gameMode == null && !push.manual)
 					{
@@ -704,7 +720,7 @@ final class PublicationCoordinator
 			// The login ended, or the player stopped this send, between gather and dispatch: release the
 			// single-flight slot and walk away clean, failing the character request it was for.
 			syncGate.abortAttempt();
-			failWaiting(push.forCharacter);
+			abandon(push);
 			launchQueuedSync();
 			return;
 		}
@@ -754,7 +770,7 @@ final class PublicationCoordinator
 							else
 							{
 								// Its "syncing..." has nothing left to say.
-								SwingUtilities.invokeLater(feedback::resetSyncFeedback);
+								abandon(push);
 							}
 							launchQueuedSync();
 							return;
@@ -827,6 +843,29 @@ final class PublicationCoordinator
 		}
 		chatFor(push.session, SYNC_FAILED);
 		launchQueuedSync();
+	}
+
+	/**
+	 * A push that will not go after all, perhaps after saying "syncing..." or "retrying...": the character request it
+	 * was for fails, or the sync's line comes down while its login lasts (a logout clears the row itself, and the next
+	 * login's line is its own).
+	 */
+	private void abandon(Push push)
+	{
+		if (push.forCharacter != NONE)
+		{
+			failWaiting(push.forCharacter);
+		}
+		else if (sessions.isCurrent(push.session))
+		{
+			SwingUtilities.invokeLater(() ->
+			{
+				if (sessions.isCurrent(push.session))
+				{
+					feedback.resetSyncFeedback();
+				}
+			});
+		}
 	}
 
 	/** A sync's chat line, said only while its login lasts: the next login never hears the last one's. */

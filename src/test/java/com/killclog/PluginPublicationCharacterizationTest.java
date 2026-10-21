@@ -1457,6 +1457,96 @@ public class PluginPublicationCharacterizationTest
 		assertEquals(1, syncs.size());
 	}
 
+	// Two pushes go as one the same way in whatever order they meet; a push that will not go ends what it began.
+
+	@Test
+	public void aLaterClickLeadsAnEarlierOneWaitingForTheSlot() throws Exception
+	{
+		syncHandler.run();
+		settle();
+		// A League click waits for the slot; then, back on the main game, a later click waits on its timer.
+		announceLeague();
+		ticks(1);
+		syncHandler.run();
+		runClient();
+		executor.runAll();
+		runClient();
+		world(net.runelite.api.WorldType.MEMBERS);
+		ticks(1);
+		syncHandler.run();
+		runClient();
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
+		settle();
+		assertEquals(List.of("main", "main"), sentModes());
+	}
+
+	@Test
+	public void aLateTimerFromAWithdrawnRequestNeverOverwritesTheNewerOnesSync() throws Exception
+	{
+		syncHandler.run();
+		settle();
+		publishHandler.run();
+		runClient();
+		publishes.get(0).complete(new ProfileAppearanceService.PublishResult(ProfileAppearanceService.Outcome.PROFILE_REQUIRED, null));
+		runClient();
+		syncHandler.run();
+		runClient();
+		Runnable old = (Runnable) read(read(field("publication"), "pendingKillclogSync"), "command");
+		try (Hold hold = new Hold(1))
+		{
+			KillClogConfig held = held(hold, false);
+			// The first request's sync, merged with a click, has fired and is held; the request is withdrawn and a
+			// second one queues its own sync behind the sync in the air.
+			CompletableFuture<Void> done = hold.onWorker(old::run);
+			hold.reached();
+			when(held.characterModel()).thenReturn(false);
+			config.character = false;
+			configChanged("characterModel");
+			when(held.characterModel()).thenReturn(true);
+			config.character = true;
+			configChanged("characterModel");
+			publishHandler.run();
+			runClient();
+			publishes.get(1).complete(new ProfileAppearanceService.PublishResult(ProfileAppearanceService.Outcome.PROFILE_REQUIRED, null));
+			runClient();
+			settle();
+			hold.close();
+			done.get(5, TimeUnit.SECONDS);
+		}
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
+		settle();
+		syncs.get(syncs.size() - 1).complete(new SyncService.SyncResult(true, false, "Synced"));
+		settle();
+		assertEquals("the second request goes on after its sync", 3, publishes.size());
+	}
+
+	@Test
+	public void aRetryForAWorldWhoseGameIsUnknownTakesItsLineDown() throws Exception
+	{
+		syncHandler.run();
+		settle();
+		syncs.get(0).complete(busy());
+		drainEdt();
+		world(net.runelite.api.WorldType.SEASONAL);
+		settle();
+		assertEquals(1, syncs.size());
+		verify(panel, atLeastOnce()).resetSyncFeedback();
+	}
+
+	@Test
+	public void aMainGameRetryAfterAHopToALeagueWaitsForTheNextMainSync() throws Exception
+	{
+		syncHandler.run();
+		settle();
+		assertEquals(List.of("main"), sentModes());
+		// A League world can't name the main account type, so the main log is not sent from there.
+		announceLeague();
+		syncs.get(0).complete(busy());
+		settle();
+		assertEquals(List.of("main"), sentModes());
+		verify(panel, atLeastOnce()).resetSyncFeedback();
+	}
+
 	/** The server's "another sync holds the lock, try again in 2 s". */
 	private static SyncService.SyncResult busy()
 	{
