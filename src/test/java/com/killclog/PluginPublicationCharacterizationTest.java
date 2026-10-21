@@ -999,6 +999,54 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void aCharacterRequestWithdrawnWhileItHandsOverToASyncNeverPublishesForTheNextLogin() throws Exception
+	{
+		publishHandler.run();
+		settle();
+		assertEquals(1, publishes.size());
+
+		// The answer "sync first" lands on another thread and passes its checks; then the player logs out and another
+		// account logs in before it hands over.
+		java.util.concurrent.CountDownLatch checked = new java.util.concurrent.CountDownLatch(1);
+		java.util.concurrent.CountDownLatch resume = new java.util.concurrent.CountDownLatch(1);
+		java.util.concurrent.atomic.AtomicInteger reads = new java.util.concurrent.atomic.AtomicInteger();
+		KillClogConfig held = mock(KillClogConfig.class);
+		when(held.killclogSync()).thenReturn(true);
+		when(held.automaticSync()).thenReturn(true);
+		when(held.characterModel()).thenAnswer(invocation ->
+		{
+			if (!SwingUtilities.isEventDispatchThread() && reads.incrementAndGet() == 2)
+			{
+				checked.countDown();
+				assertTrue(resume.await(5, TimeUnit.SECONDS));
+			}
+			return true;
+		});
+		Object publication = field("publication");
+		Field config = PublicationCoordinator.class.getDeclaredField("config");
+		config.setAccessible(true);
+		config.set(publication, held);
+		CompletableFuture<Void> answer = CompletableFuture.runAsync(() -> publishes.get(0).complete(
+			new ProfileAppearanceService.PublishResult(ProfileAppearanceService.Outcome.PROFILE_REQUIRED, null)));
+		assertTrue(checked.await(5, TimeUnit.SECONDS));
+		logout();
+		Player next = mock(Player.class);
+		when(next.getName()).thenReturn("Other");
+		when(client.getLocalPlayer()).thenReturn(next);
+		when(client.getAccountHash()).thenReturn(HASH + 1);
+		login();
+		resume.countDown();
+		answer.get(5, TimeUnit.SECONDS);
+		settle();
+		for (CompletableFuture<SyncService.SyncResult> sync : new ArrayList<>(syncs))
+		{
+			sync.complete(new SyncService.SyncResult(true, false, "Synced"));
+		}
+		settle();
+		verify(appearance, times(1)).publishCurrent(any(), any());
+	}
+
+	@Test
 	public void aLeagueLearnedAfterTheLoginStillLeavesTheMainStoreToTheMainGame() throws Exception
 	{
 		// A cold client: the running League arrives with the sync index, a few ticks after the login.

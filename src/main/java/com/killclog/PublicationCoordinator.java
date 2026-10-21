@@ -75,7 +75,9 @@ final class PublicationCoordinator
 	/* package */ java.util.function.LongSupplier clock = System::currentTimeMillis;
 	private final KillclogSyncGate syncGate = new KillclogSyncGate();
 	private final AtomicBoolean characterPublishInFlight = new AtomicBoolean();
-	private final AtomicBoolean characterPublishAfterSync = new AtomicBoolean();
+	// The character request waiting on a sync of the log first, by its generation; -1 for none. Only the request still
+	// current is waiting, so one withdrawn while it handed over can never publish for whoever logs in next.
+	private final AtomicInteger characterWaitingGeneration = new AtomicInteger(-1);
 	private final AtomicBoolean characterPrerequisiteAttempted = new AtomicBoolean();
 	private final AtomicInteger characterPublishGeneration = new AtomicInteger();
 
@@ -135,7 +137,7 @@ final class PublicationCoordinator
 	/** Sync is on, and an automatic send has Automatic sync too: a click and a character's own sync always go. */
 	private boolean sends(boolean manual)
 	{
-		return config.killclogSync() && (manual || (config.automaticSync() || characterPublishAfterSync.get())
+		return config.killclogSync() && (manual || (config.automaticSync() || characterWaiting())
 			&& sessions.current().getNumber() != stoppedSession);
 	}
 
@@ -212,7 +214,7 @@ final class PublicationCoordinator
 	/** Automatic sync turned off: an automatic push not yet sent never goes; a click or a character's own sync does. */
 	void cancelAutomaticSync()
 	{
-		if (!characterPublishAfterSync.get())
+		if (!characterWaiting())
 		{
 			syncGate.cancelAutomatic();
 		}
@@ -267,7 +269,7 @@ final class PublicationCoordinator
 	void cancelCharacterPublish()
 	{
 		int generation = characterPublishGeneration.incrementAndGet();
-		characterPublishAfterSync.set(false);
+		characterWaitingGeneration.set(-1);
 		characterPublishInFlight.set(false);
 		characterPrerequisiteAttempted.set(false);
 		showCharacterPublishStatus(generation, CharacterStatus.CLEAR, false);
@@ -376,7 +378,12 @@ final class PublicationCoordinator
 			&& characterPublishingEnabled()
 			&& characterPrerequisiteAttempted.compareAndSet(false, true))
 		{
-			characterPublishAfterSync.set(true);
+			characterWaitingGeneration.set(generation);
+			// Withdrawn while it handed over (a logout, say): it waits for nothing, and starts no sync.
+			if (!characterWaiting())
+			{
+				return;
+			}
 			showCharacterPublishStatus(generation, CharacterStatus.RENDERING, false);
 			syncNow(false);
 			return;
@@ -387,10 +394,16 @@ final class PublicationCoordinator
 			true, result.message);
 	}
 
+	/** Whether the character request still current waits on a sync of the log. */
+	private boolean characterWaiting()
+	{
+		return characterWaitingGeneration.get() == characterPublishGeneration.get();
+	}
+
 	private boolean failQueuedCharacterPublish()
 	{
 		int generation = characterPublishGeneration.get();
-		if (!characterPublishAfterSync.getAndSet(false))
+		if (characterWaitingGeneration.getAndSet(-1) != generation)
 		{
 			return false;
 		}
@@ -535,10 +548,10 @@ final class PublicationCoordinator
 		try
 		{
 			syncService.syncCollectionLog(session, accountType, pbs, detailedPbs,
-				syncGate, generation, cache, gameMode, manual || characterPublishAfterSync.get(), () ->
+				syncGate, generation, cache, gameMode, manual || characterWaiting(), () ->
 				{
 					// Only a push that really goes says so: one killclog.com already holds stays quiet.
-					if (!characterPublishAfterSync.get())
+					if (!characterWaiting())
 					{
 						withSyncFeedback(generation, session,
 							() -> feedback.showSyncProgress(manual, "syncing...", false));
@@ -548,7 +561,7 @@ final class PublicationCoordinator
 				{
 					boolean current = syncGate.complete(generation);
 					int characterGeneration = characterPublishGeneration.get();
-					boolean characterWaiting = characterPublishAfterSync.get();
+					boolean characterWaiting = characterWaiting();
 					if (result != null && current && config.killclogSync())
 					{
 						// Server-advised contention retry: another client of
@@ -582,7 +595,7 @@ final class PublicationCoordinator
 						}
 						if (characterWaiting)
 						{
-							characterPublishAfterSync.set(false);
+							characterWaitingGeneration.set(-1);
 							if (result.ok && !result.dryRun && characterPublishingEnabled())
 							{
 								scheduleCharacterPublishAfterSync(characterGeneration);
