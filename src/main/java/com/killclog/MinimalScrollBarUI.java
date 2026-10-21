@@ -18,21 +18,26 @@ final class MinimalScrollBarUI extends BasicScrollBarUI
 	// it is 70, hovered 110.
 	private static final double THUMB_TINT = 40 / 225.0;
 	private static final double ROLLOVER_TINT = 80 / 225.0;
-	private Color rolloverColor;
 
+	// The track and thumb are read from the panel's background as they paint, so they follow it whatever it is now.
 	@Override
 	protected void configureScrollBarColors()
 	{
 		trackColor = ColorScheme.DARKER_GRAY_COLOR;
-		thumbColor = ColorUtil.colorLerp(trackColor, Color.WHITE, THUMB_TINT);
-		rolloverColor = ColorUtil.colorLerp(trackColor, Color.WHITE, ROLLOVER_TINT);
+	}
+
+	@Override
+	public void paint(Graphics g, JComponent c)
+	{
+		trackColor = ColorScheme.DARKER_GRAY_COLOR;
+		super.paint(g, c);
 	}
 
 	@Override
 	protected void paintThumb(Graphics g, JComponent c, Rectangle thumbBounds)
 	{
 		if (thumbBounds.isEmpty() || !scrollbar.isEnabled()) return;
-		g.setColor(isThumbRollover() ? rolloverColor : thumbColor);
+		g.setColor(ColorUtil.colorLerp(trackColor, Color.WHITE, isThumbRollover() ? ROLLOVER_TINT : THUMB_TINT));
 		g.fillRect(thumbBounds.x, thumbBounds.y, thumbBounds.width, thumbBounds.height);
 	}
 

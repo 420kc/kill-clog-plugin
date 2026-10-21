@@ -392,19 +392,6 @@ final class ClogHelper
 	}
 
 	/** Paints a 12x10 hamburger icon. */
-	static BufferedImage makeHamburgerIcon(Color barColor)
-	{
-		int w = 12, h = 10;
-		BufferedImage img = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D g = img.createGraphics();
-		g.setColor(barColor);
-		g.fillRect(1, 0, w - 2, 2);   // top line
-		g.fillRect(1, 4, w - 2, 2);   // middle line (1px gap)
-		g.fillRect(1, 8, w - 2, 2);   // bottom line (1px gap)
-		g.dispose();
-		return img;
-	}
-
 	/** Paints a 15x15 split-color magnifying glass. */
 	static BufferedImage makeCompareIcon(Color left, Color right, float brightness)
 	{

@@ -3,10 +3,11 @@ package com.killclog;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
+import java.awt.Graphics;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.util.function.BooleanSupplier;
-import javax.swing.ImageIcon;
+import javax.swing.Icon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
@@ -78,7 +79,7 @@ final class PanelInfoBar
 		}
 
 		infoRow.add(playerName);
-		infoRow.add(buildViewToggle(toggleBossView, infoRow.getBackground()));
+		infoRow.add(buildViewToggle(toggleBossView));
 		infoRow.add(clogInfoLabel);
 		return infoRow;
 	}
@@ -110,15 +111,39 @@ final class PanelInfoBar
 		});
 	}
 
-	/** The hamburger: switches the boss area between grid and list views. */
-	private static JLabel buildViewToggle(Runnable toggleBossView, Color bar)
+	/**
+	 * The hamburger: switches the boss area between grid and list views. Its three bars are painted from the bar it
+	 * sits on each time, so they follow that bar's colour whatever it is now.
+	 */
+	private static JLabel buildViewToggle(Runnable toggleBossView)
 	{
 		JLabel viewToggle = new JLabel();
-		ImageIcon hamburgerIcon = new ImageIcon(ClogHelper.makeHamburgerIcon(
-			ColorUtil.colorLerp(bar, Color.WHITE, HAMBURGER_TINT)));
-		ImageIcon hamburgerHoverIcon = new ImageIcon(ClogHelper.makeHamburgerIcon(
-			ColorUtil.colorLerp(bar, Color.WHITE, HAMBURGER_HOVER_TINT)));
-		viewToggle.setIcon(hamburgerIcon);
+		boolean[] hovered = {false};
+		viewToggle.setIcon(new Icon()
+		{
+			@Override
+			public void paintIcon(Component c, Graphics g, int x, int y)
+			{
+				Color bar = c.getParent() != null ? c.getParent().getBackground() : ColorScheme.DARK_GRAY_COLOR;
+				g.setColor(ColorUtil.colorLerp(bar, Color.WHITE, hovered[0] ? HAMBURGER_HOVER_TINT : HAMBURGER_TINT));
+				for (int line = 0; line < 3; line++)
+				{
+					g.fillRect(x + 1, y + line * 4, 10, 2);
+				}
+			}
+
+			@Override
+			public int getIconWidth()
+			{
+				return 12;
+			}
+
+			@Override
+			public int getIconHeight()
+			{
+				return 10;
+			}
+		});
 		viewToggle.setHorizontalAlignment(JLabel.CENTER);
 		viewToggle.setVerticalAlignment(JLabel.CENTER);
 		viewToggle.setPreferredSize(new Dimension(18, 18));
@@ -133,13 +158,15 @@ final class PanelInfoBar
 			@Override
 			public void mouseEntered(MouseEvent e)
 			{
-				viewToggle.setIcon(hamburgerHoverIcon);
+				hovered[0] = true;
+				viewToggle.repaint();
 			}
 
 			@Override
 			public void mouseExited(MouseEvent e)
 			{
-				viewToggle.setIcon(hamburgerIcon);
+				hovered[0] = false;
+				viewToggle.repaint();
 			}
 		});
 		return viewToggle;

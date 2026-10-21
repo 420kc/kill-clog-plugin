@@ -93,8 +93,7 @@ public class ActivitiesTray
 		this.separator = new JPanel();
 		separator.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		separator.setPreferredSize(new Dimension(0, SEPARATOR_HEIGHT));
-		Color sepNormal = ColorScheme.DARK_GRAY_COLOR;
-		Color sepHover = ColorUtil.colorLerp(sepNormal, Color.WHITE, HOVER_TINT);
+		// Its colours are read as the mouse comes and goes, so they follow the panel's background whatever it is now.
 		separator.addMouseListener(new MouseAdapter()
 		{
 			@Override
@@ -106,13 +105,13 @@ public class ActivitiesTray
 			@Override
 			public void mouseEntered(MouseEvent e)
 			{
-				separator.setBackground(sepHover);
+				separator.setBackground(ColorUtil.colorLerp(ColorScheme.DARK_GRAY_COLOR, Color.WHITE, HOVER_TINT));
 			}
 
 			@Override
 			public void mouseExited(MouseEvent e)
 			{
-				separator.setBackground(sepNormal);
+				separator.setBackground(ColorScheme.DARK_GRAY_COLOR);
 			}
 		});
 	}
