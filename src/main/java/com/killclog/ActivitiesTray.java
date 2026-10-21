@@ -18,6 +18,7 @@ import lombok.AccessLevel;
 import lombok.Setter;
 import lombok.Getter;
 import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.util.ColorUtil;
 
 /**
  * Expandable tray with an eased height animation. Construction wires a content
@@ -29,6 +30,8 @@ import net.runelite.client.ui.ColorScheme;
 public class ActivitiesTray
 {
 	/** The separator's height, which the boss list's divider under its search matches. */
+	// The toggle lifts its bar toward white while hovered, so it reads on any theme: RuneLite's grey 40 becomes 46.
+	private static final double HOVER_TINT = 6 / 215.0;
 	static final int SEPARATOR_HEIGHT = 7;
 	private static final long SLIDE_MS = 150;
 	private static final int SLIDE_TICK_MS = 12;
@@ -91,7 +94,7 @@ public class ActivitiesTray
 		separator.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		separator.setPreferredSize(new Dimension(0, SEPARATOR_HEIGHT));
 		Color sepNormal = ColorScheme.DARK_GRAY_COLOR;
-		Color sepHover = new Color(46, 46, 46);
+		Color sepHover = ColorUtil.colorLerp(sepNormal, Color.WHITE, HOVER_TINT);
 		separator.addMouseListener(new MouseAdapter()
 		{
 			@Override

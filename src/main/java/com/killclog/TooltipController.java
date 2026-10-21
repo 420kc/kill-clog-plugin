@@ -57,7 +57,8 @@ import net.runelite.client.util.ColorUtil;
 class TooltipController
 {
 	static final Border CELL_BORDER = new EmptyBorder(1, 1, 1, 1);
-	private static final Color HOVER_OUTLINE_DIM = new Color(90, 90, 90);
+	// A grey-text cell's outline lifts the cell's own background toward white: RuneLite's grey 30 becomes 90.
+	private static final double OUTLINE_TINT = 60 / 225.0;
 	// Tint lifts a hovered cell's own background this far toward white: RuneLite's grey 30 becomes 41, a green 39 becomes 50.
 	private static final double HOVER_TINT = 0.05;
 
@@ -448,7 +449,7 @@ class TooltipController
 			case OUTLINE:
 				Color fg = colorSource.getForeground();
 				Color outline = (fg.equals(Cells.KC_COLOR) || fg.equals(ColorScheme.LIGHT_GRAY_COLOR))
-					? HOVER_OUTLINE_DIM : fg;
+					? ColorUtil.colorLerp(hoveredRest, Color.WHITE, OUTLINE_TINT) : fg;
 				cell.setBorder(new MatteBorder(1, 1, 1, 1, outline));
 				break;
 			case TINT:

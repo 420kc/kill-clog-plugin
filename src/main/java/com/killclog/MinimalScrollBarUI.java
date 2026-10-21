@@ -8,24 +8,31 @@ import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.plaf.basic.BasicScrollBarUI;
 import net.runelite.client.ui.ColorScheme;
+import net.runelite.client.util.ColorUtil;
 
 /** Slim thumb, no arrow buttons, dark theme. */
 final class MinimalScrollBarUI extends BasicScrollBarUI
 {
 	static final int WIDTH = 7;
+	// The thumb lifts its track toward white, more while hovered, so it reads on any theme: on RuneLite's grey 30
+	// it is 70, hovered 110.
+	private static final double THUMB_TINT = 40 / 225.0;
+	private static final double ROLLOVER_TINT = 80 / 225.0;
+	private Color rolloverColor;
 
 	@Override
 	protected void configureScrollBarColors()
 	{
-		thumbColor = new Color(70, 70, 70);
 		trackColor = ColorScheme.DARKER_GRAY_COLOR;
+		thumbColor = ColorUtil.colorLerp(trackColor, Color.WHITE, THUMB_TINT);
+		rolloverColor = ColorUtil.colorLerp(trackColor, Color.WHITE, ROLLOVER_TINT);
 	}
 
 	@Override
 	protected void paintThumb(Graphics g, JComponent c, Rectangle thumbBounds)
 	{
 		if (thumbBounds.isEmpty() || !scrollbar.isEnabled()) return;
-		g.setColor(isThumbRollover() ? new Color(110, 110, 110) : thumbColor);
+		g.setColor(isThumbRollover() ? rolloverColor : thumbColor);
 		g.fillRect(thumbBounds.x, thumbBounds.y, thumbBounds.width, thumbBounds.height);
 	}
 
