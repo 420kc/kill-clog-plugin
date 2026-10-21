@@ -19,6 +19,7 @@ final class KillclogSyncGate
 	private final AtomicBoolean queued = new AtomicBoolean();
 	private boolean queuedManual;
 	private String queuedMode;
+	private Session queuedSession;
 	private boolean inFlightManual;
 	private final AtomicInteger generation = new AtomicInteger();
 
@@ -30,7 +31,7 @@ final class KillclogSyncGate
 	 *         {@link #consumeQueued()} will report it once the slot frees. A queued click keeps its game over later
 	 *         automatic pushes; the latest click wins among clicks.
 	 */
-	synchronized int beginAttempt(boolean manual, String mode)
+	synchronized int beginAttempt(boolean manual, String mode, Session session)
 	{
 		int gen = generation.get();
 		if (!inFlight.compareAndSet(false, true))
@@ -38,6 +39,7 @@ final class KillclogSyncGate
 			if (manual || !queuedManual)
 			{
 				queuedMode = mode;
+				queuedSession = session;
 			}
 			queuedManual |= manual;
 			queued.set(true);
@@ -86,13 +88,13 @@ final class KillclogSyncGate
 		return gen == generation.get();
 	}
 
-	/** A queued push: whether a user asked for it, and its game (null follows the world). */
+	/** A queued push: whether a user asked for it, its game (null follows the world), and the login it is for. */
 	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 	static final class Intent
 	{
 		final boolean manual;
 		final String mode;
-
+		final Session session;
 	}
 
 	/** Null means no queued push. */
@@ -102,16 +104,21 @@ final class KillclogSyncGate
 		{
 			return null;
 		}
-		Intent intent = new Intent(queuedManual, queuedMode);
+		Intent intent = new Intent(queuedManual, queuedMode, queuedSession);
 		queuedManual = false;
 		queuedMode = null;
+		queuedSession = null;
 		return intent;
 	}
 
-	/** Automatic sync off: an automatic push not yet sent, or one queued, never goes; a click still does. */
-	synchronized void cancelAutomatic()
+	/**
+	 * Automatic sync off: an automatic push not yet sent, or one queued, never goes; a click still does. True when it
+	 * silenced an automatic push already in the air.
+	 */
+	synchronized boolean cancelAutomatic()
 	{
-		if (inFlight.get() && !inFlightManual)
+		boolean silenced = inFlight.get() && !inFlightManual;
+		if (silenced)
 		{
 			generation.incrementAndGet();
 		}
@@ -119,7 +126,9 @@ final class KillclogSyncGate
 		{
 			queued.set(false);
 			queuedMode = null;
+			queuedSession = null;
 		}
+		return silenced;
 	}
 
 	/** Opt-out / shutdown: silence prior eras and forget any queued intent. */
@@ -129,5 +138,6 @@ final class KillclogSyncGate
 		queued.set(false);
 		queuedManual = false;
 		queuedMode = null;
+		queuedSession = null;
 	}
 }

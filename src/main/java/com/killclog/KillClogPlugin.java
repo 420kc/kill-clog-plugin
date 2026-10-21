@@ -866,6 +866,8 @@ public class KillClogPlugin extends Plugin
 
 		if ("killclogSync".equals(event.getKey()))
 		{
+			// The opt-in pushes the log of the login it was made in.
+			Session optedIn = sessions.current();
 			panel.setSyncArrowEnabled(config.killclogSync());
 			if (config.killclogSync())
 			{
@@ -873,7 +875,7 @@ public class KillClogPlugin extends Plugin
 				panel.setCharacterPublishEnabled(config.characterModel());
 				// Opting in mid-session pushes the already-captured log right
 				// away; nothing else fires until the next capture or unlock.
-				publication.scheduleSync(0, true);
+				publication.pushNow(optedIn, true);
 			}
 			else
 			{

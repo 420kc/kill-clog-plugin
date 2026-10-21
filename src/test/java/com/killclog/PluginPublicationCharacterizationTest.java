@@ -1015,7 +1015,7 @@ public class PluginPublicationCharacterizationTest
 		when(held.automaticSync()).thenReturn(true);
 		when(held.characterModel()).thenAnswer(invocation ->
 		{
-			if (!SwingUtilities.isEventDispatchThread() && reads.incrementAndGet() == 2)
+			if (!SwingUtilities.isEventDispatchThread() && reads.incrementAndGet() == 1)
 			{
 				checked.countDown();
 				assertTrue(resume.await(5, TimeUnit.SECONDS));
@@ -1095,6 +1095,262 @@ public class PluginPublicationCharacterizationTest
 		retry.get(5, TimeUnit.SECONDS);
 		settle();
 		verify(appearance, times(1)).publishCurrent(any(), any());
+	}
+
+	// Work begun in one login never acts for the next: each case holds the work between a check and what it allows,
+	// while the player logs out and another account logs in.
+
+	@Test
+	public void aPublishPressedJustBeforeALogoutNeverActsForTheNextLogin() throws Exception
+	{
+		pressedThenNextAccount(publishHandler, true);
+		assertEquals(0, publishes.size());
+	}
+
+	@Test
+	public void aDeletePressedJustBeforeALogoutNeverActsForTheNextLogin() throws Exception
+	{
+		pressedThenNextAccount(deleteHandler, true);
+		assertEquals(0, deletes.size());
+	}
+
+	@Test
+	public void aSyncPressedJustBeforeALogoutNeverSyncsTheNextLogin() throws Exception
+	{
+		pressedThenNextAccount(syncHandler, false);
+		assertEquals(0, syncs.size());
+	}
+
+	@Test
+	public void anOptInJustBeforeALogoutNeverSyncsTheNextLogin() throws Exception
+	{
+		try (Hold hold = new Hold(1))
+		{
+			KillClogConfig held = held(hold, false);
+			Field pluginConfig = KillClogPlugin.class.getDeclaredField("config");
+			pluginConfig.setAccessible(true);
+			pluginConfig.set(plugin, held);
+			ConfigChanged optIn = new ConfigChanged();
+			optIn.setGroup("killclog");
+			optIn.setKey("killclogSync");
+			CompletableFuture<Void> done = hold.onEdt(() -> plugin.onConfigChanged(optIn));
+			hold.reached();
+			nextAccount();
+			hold.close();
+			done.get(5, TimeUnit.SECONDS);
+		}
+		settle();
+		assertEquals(0, syncs.size());
+	}
+
+	@Test
+	public void aServerAdvisedRetryNeverSyncsTheNextLogin() throws Exception
+	{
+		syncHandler.run();
+		settle();
+		assertEquals(1, syncs.size());
+		try (Hold hold = new Hold(1))
+		{
+			held(hold, false);
+			CompletableFuture<Void> done = hold.onWorker(() ->
+				syncs.get(0).complete(new SyncService.SyncResult(false, false, "Busy", true, 2)));
+			hold.reached();
+			nextAccount();
+			hold.close();
+			done.get(5, TimeUnit.SECONDS);
+		}
+		settle();
+		assertEquals(1, syncs.size());
+	}
+
+	@Test
+	public void aQueuedSyncNeverRunsForTheNextLogin() throws Exception
+	{
+		syncHandler.run();
+		settle();
+		syncHandler.run();
+		settle();
+		assertEquals("the second press waits behind the first", 1, syncs.size());
+		try (Hold hold = new Hold(2))
+		{
+			held(hold, false);
+			CompletableFuture<Void> done = hold.onWorker(() ->
+				syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced")));
+			hold.reached();
+			nextAccount();
+			hold.close();
+			done.get(5, TimeUnit.SECONDS);
+		}
+		settle();
+		assertEquals(1, syncs.size());
+	}
+
+	@Test
+	public void aStaleCharacterAnswerNeverFreesTheNextLoginsRequest() throws Exception
+	{
+		publishHandler.run();
+		settle();
+		try (Hold hold = new Hold(1))
+		{
+			held(hold, true);
+			CompletableFuture<Void> done = hold.onWorker(() -> publishes.get(0).complete(
+				new ProfileAppearanceService.PublishResult(ProfileAppearanceService.Outcome.PUBLISHED, null)));
+			hold.reached();
+			nextAccount();
+			publishHandler.run();
+			settle();
+			assertEquals("the next login's own request goes", 2, publishes.size());
+			hold.close();
+			done.get(5, TimeUnit.SECONDS);
+		}
+		settle();
+		// The old answer landed after the new request began: the new one still holds the one-at-a-time slot.
+		publishHandler.run();
+		settle();
+		assertEquals(2, publishes.size());
+	}
+
+	@Test
+	public void aSyncsChatLineNeverReachesTheNextLogin() throws Exception
+	{
+		syncHandler.run();
+		settle();
+		clearInvocations(chatNotifier);
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
+		nextAccount();
+		settle();
+		verify(chatNotifier, never()).send(ChatNotice.SYNC_RESULT, "Synced");
+	}
+
+	@Test
+	public void turningAutomaticSyncOffTakesDownTheSyncInTheAir() throws Exception
+	{
+		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		captureListener.run();
+		settle();
+		assertEquals(1, syncs.size());
+		config.automatic = false;
+		configChanged("automaticSync");
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
+		settle();
+		verify(panel).resetSyncFeedback();
+	}
+
+	/** A press on the Swing thread, held at its first read of a setting while another account logs in. */
+	private void pressedThenNextAccount(Runnable press, boolean characterRead) throws Exception
+	{
+		try (Hold hold = new Hold(1))
+		{
+			held(hold, characterRead);
+			CompletableFuture<Void> done = hold.onEdt(press::run);
+			hold.reached();
+			nextAccount();
+			hold.close();
+			done.get(5, TimeUnit.SECONDS);
+		}
+		settle();
+	}
+
+	/** The publication flow's settings, the character's or sync's read held; everything else on. */
+	private KillClogConfig held(Hold hold, boolean characterRead) throws Exception
+	{
+		KillClogConfig held = mock(KillClogConfig.class);
+		when(held.automaticSync()).thenReturn(true);
+		if (characterRead)
+		{
+			when(held.killclogSync()).thenReturn(true);
+			when(held.characterModel()).thenAnswer(invocation -> hold.read());
+		}
+		else
+		{
+			when(held.characterModel()).thenReturn(true);
+			when(held.killclogSync()).thenAnswer(invocation -> hold.read());
+		}
+		Field config = PublicationCoordinator.class.getDeclaredField("config");
+		config.setAccessible(true);
+		config.set(field("publication"), held);
+		return held;
+	}
+
+	/** Logged out, then another account logs in. */
+	private void nextAccount() throws Exception
+	{
+		logout();
+		Player next = mock(Player.class);
+		when(next.getName()).thenReturn("Other");
+		when(client.getLocalPlayer()).thenReturn(next);
+		when(client.getAccountHash()).thenReturn(HASH + 1);
+		login();
+	}
+
+	/** Holds one thread at its {@code at}-th read of a setting until let go: the moment between a check and its act. */
+	private static final class Hold implements AutoCloseable
+	{
+		private final java.util.concurrent.CountDownLatch reached = new java.util.concurrent.CountDownLatch(1);
+		private final java.util.concurrent.CountDownLatch go = new java.util.concurrent.CountDownLatch(1);
+		private final java.util.concurrent.atomic.AtomicInteger reads = new java.util.concurrent.atomic.AtomicInteger();
+		private final int at;
+		private volatile Thread worker;
+
+		Hold(int at)
+		{
+			this.at = at;
+		}
+
+		boolean read() throws InterruptedException
+		{
+			if (Thread.currentThread() == worker && reads.incrementAndGet() == at)
+			{
+				reached.countDown();
+				assertTrue(go.await(8, TimeUnit.SECONDS));
+			}
+			return true;
+		}
+
+		CompletableFuture<Void> onEdt(Work work)
+		{
+			CompletableFuture<Void> done = new CompletableFuture<>();
+			SwingUtilities.invokeLater(() -> run(work, done));
+			return done;
+		}
+
+		CompletableFuture<Void> onWorker(Work work)
+		{
+			CompletableFuture<Void> done = new CompletableFuture<>();
+			new Thread(() -> run(work, done)).start();
+			return done;
+		}
+
+		private void run(Work work, CompletableFuture<Void> done)
+		{
+			worker = Thread.currentThread();
+			try
+			{
+				work.run();
+				done.complete(null);
+			}
+			catch (Throwable e)
+			{
+				done.completeExceptionally(e);
+			}
+		}
+
+		void reached() throws InterruptedException
+		{
+			assertTrue("the work reached its check", reached.await(5, TimeUnit.SECONDS));
+		}
+
+		@Override
+		public void close()
+		{
+			go.countDown();
+		}
+	}
+
+	@FunctionalInterface
+	private interface Work
+	{
+		void run() throws Exception;
 	}
 
 	@Test

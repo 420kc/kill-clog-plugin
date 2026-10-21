@@ -783,7 +783,8 @@ public class KillClogPanel extends PluginPanel
 		statusRow.showSyncResult(manual, ok, message);
 	}
 
-	void resetSyncFeedback()
+	@Override
+	public void resetSyncFeedback()
 	{
 		statusRow.resetSyncFeedback();
 	}
