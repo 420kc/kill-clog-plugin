@@ -82,6 +82,8 @@ public class LookupFanoutTest
 		fanout.readLeague(null, null);
 		fanout.fetchHiscore("Friend", null, stamp, shown::add, error -> fail(error.toString()));
 		verify(hiscores).lookup("Friend", null);
+		// The main-game read never answers here: it ends with the test, so its timeout can't fail a later one.
+		fanout.invalidate();
 	}
 
 	@Test
