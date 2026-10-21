@@ -652,8 +652,8 @@ public class PluginPublicationCharacterizationTest
 	{
 		publishHandler.run();
 		settle();
-		ArgumentCaptor<java.util.function.BooleanSupplier> stillWanted =
-			ArgumentCaptor.forClass(java.util.function.BooleanSupplier.class);
+		ArgumentCaptor<ProfileAppearanceService.Authorization> stillWanted =
+			ArgumentCaptor.forClass(ProfileAppearanceService.Authorization.class);
 		verify(appearance).publishCurrent(you(), stillWanted.capture());
 		assertTrue(stillWanted.getValue().getAsBoolean());
 
@@ -1584,6 +1584,78 @@ public class PluginPublicationCharacterizationTest
 		assertEquals("the next login's character sync still goes", 2, syncs.size());
 	}
 
+	// A completion acts only while its attempt is the latest and nothing has cancelled it; a withdrawn character
+	// request sends nothing.
+
+	@Test
+	public void anOlderRefusalNeverStopsTheLoginAfterANewerClickSucceeds() throws Exception
+	{
+		syncHandler.run();
+		settle();
+		try (Hold hold = new Hold(1))
+		{
+			held(hold, false);
+			CompletableFuture<Void> done = hold.onWorker(() ->
+				syncs.get(0).complete(SyncService.SyncResult.stopping("Old refusal")));
+			hold.reached();
+			syncHandler.run();
+			settle();
+			assertEquals(2, syncs.size());
+			syncs.get(1).complete(new SyncService.SyncResult(true, false, "Synced"));
+			settle();
+			hold.close();
+			done.get(5, TimeUnit.SECONDS);
+		}
+		settle();
+		((PublicationCoordinator) field("publication")).scheduleAutomaticSync();
+		settle();
+		assertEquals("automatic sync still goes for this login", 3, syncs.size());
+	}
+
+	@Test
+	public void aCancelledCompletionNeverSpendsTheNextOptInsRetry() throws Exception
+	{
+		syncHandler.run();
+		settle();
+		PublicationCoordinator publication = (PublicationCoordinator) field("publication");
+		try (Hold hold = new Hold(1))
+		{
+			KillClogConfig held = held(hold, false);
+			CompletableFuture<Void> done = hold.onWorker(() -> syncs.get(0).complete(busy()));
+			hold.reached();
+			// Opted out and straight back in while the old answer waits.
+			when(held.killclogSync()).thenReturn(false);
+			publication.cancelSync();
+			when(held.killclogSync()).thenReturn(true);
+			publication.pushNow(((SessionTracker) field("sessions")).current(), true);
+			runClient();
+			hold.close();
+			done.get(5, TimeUnit.SECONDS);
+		}
+		settle();
+		assertEquals(2, syncs.size());
+		syncs.get(1).complete(busy());
+		settle();
+		assertEquals("the opt-in keeps its own one retry", 3, syncs.size());
+	}
+
+	@Test
+	public void aWithdrawnCharacterRequestSendsNothing() throws Exception
+	{
+		publishHandler.run();
+		settle();
+		ArgumentCaptor<ProfileAppearanceService.Authorization> authorization =
+			ArgumentCaptor.forClass(ProfileAppearanceService.Authorization.class);
+		verify(appearance).publishCurrent(you(), authorization.capture());
+		java.util.concurrent.atomic.AtomicInteger sent = new java.util.concurrent.atomic.AtomicInteger();
+		assertTrue(authorization.getValue().sendIf(sent::incrementAndGet));
+		// Publish Character Model off: from the moment that returns, the request's send never goes.
+		config.character = false;
+		configChanged("characterModel");
+		assertFalse(authorization.getValue().sendIf(sent::incrementAndGet));
+		assertEquals(1, sent.get());
+	}
+
 	/** The server's "another sync holds the lock, try again in 2 s". */
 	private static SyncService.SyncResult busy()
 	{
@@ -1804,8 +1876,8 @@ public class PluginPublicationCharacterizationTest
 	{
 		publishHandler.run();
 		settle();
-		ArgumentCaptor<java.util.function.BooleanSupplier> stillWanted =
-			ArgumentCaptor.forClass(java.util.function.BooleanSupplier.class);
+		ArgumentCaptor<ProfileAppearanceService.Authorization> stillWanted =
+			ArgumentCaptor.forClass(ProfileAppearanceService.Authorization.class);
 		verify(appearance).publishCurrent(you(), stillWanted.capture());
 
 		// No listener hears the change, so only the request's own check stands between it and the next login.

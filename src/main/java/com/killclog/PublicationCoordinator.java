@@ -7,7 +7,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BooleanSupplier;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import javax.swing.SwingUtilities;
@@ -72,6 +71,8 @@ final class PublicationCoordinator
 	// The push that timer sends.
 	private Push pendingPush;
 	private int withdrawals;
+	// Attempts begun so far: a completion acts only while its attempt is the latest and its era current.
+	private int attempts;
 	// Whether the push waiting is an automatic one, which a capture may push back, and when its first capture came.
 	private boolean pendingAutomatic;
 	private long quietSince;
@@ -165,8 +166,9 @@ final class PublicationCoordinator
 		/**
 		 * Two pushes go as one, the same in whichever order they meet: pushes of two logins never mix (the newer login's
 		 * stands whole; login numbers only grow); within one, a click's game over an automatic one's, the later-asked
-		 * click's among clicks, the newer character request (generations only grow), and one advised retry for both.
-		 * The pair is as old as its lead, so a click asked later still leads it.
+		 * click's among clicks, and the newer character request (generations only grow). The lead's game stands; a retry
+		 * spends its one retry for both only when both are for that game, else the lead goes as itself. The pair is as
+		 * old as its lead, so a click asked later still leads it.
 		 */
 		static Push merge(Push one, Push other)
 		{
@@ -174,10 +176,13 @@ final class PublicationCoordinator
 			{
 				return one.session.getNumber() > other.session.getNumber() ? one : other;
 			}
-			Push earlier = one.asked <= other.asked ? one : other;
+			// A push and its own retry share an asked time: the retry is the later of the two.
+			Push earlier = one.asked < other.asked || one.asked == other.asked && !one.retry ? one : other;
 			Push later = earlier == one ? other : one;
 			Push lead = later.manual || !earlier.manual ? later : earlier;
-			return new Push(lead.session, lead.mode, one.manual || other.manual, one.retry || other.retry,
+			Push follower = lead == later ? earlier : later;
+			boolean retry = lead.retry || follower.retry && java.util.Objects.equals(lead.mode, follower.mode);
+			return new Push(lead.session, lead.mode, one.manual || other.manual, retry,
 				Math.max(one.forCharacter, other.forCharacter), lead.asked);
 		}
 	}
@@ -290,9 +295,10 @@ final class PublicationCoordinator
 	 * The server's one advised retry, after its own delay: a capture's shorter debounce must not stand in for it. Its
 	 * login is checked before anything waiting is touched, so a retry from an ended login cancels nothing of the next.
 	 */
-	private synchronized boolean scheduleRetry(int delaySeconds, Push retry)
+	private synchronized boolean scheduleRetry(int delaySeconds, Push retry, int generation, int attempt)
 	{
-		if (!sends(live(retry)))
+		// One step with a cancellation and with any newer attempt: an earlier era's retry never spends a newer push's.
+		if (!latest(generation, attempt) || !sends(live(retry)))
 		{
 			failWaiting(retry.forCharacter);
 			return false;
@@ -303,6 +309,26 @@ final class PublicationCoordinator
 		dropPendingSync();
 		schedule(delaySeconds, next);
 		return true;
+	}
+
+	private synchronized int beganAttempt()
+	{
+		return ++attempts;
+	}
+
+	/** Whether this attempt is still the latest one begun, in an era nothing has cancelled. */
+	private synchronized boolean latest(int generation, int attempt)
+	{
+		return attempt == attempts && syncGate.isCurrent(generation);
+	}
+
+	/** The server turned this login away; an older attempt's answer never outlasts a newer one's. */
+	private synchronized void stopSession(Session session, int generation, int attempt)
+	{
+		if (latest(generation, attempt))
+		{
+			stoppedSession = session.getNumber();
+		}
 	}
 
 	/** A push whose character request was withdrawn is just a push again, so it goes, or not, on its own terms. */
@@ -471,7 +497,8 @@ final class PublicationCoordinator
 	@FunctionalInterface
 	private interface CharacterRequest
 	{
-		CompletableFuture<ProfileAppearanceService.PublishResult> start(Session session, BooleanSupplier authorized);
+		CompletableFuture<ProfileAppearanceService.PublishResult> start(Session session,
+			ProfileAppearanceService.Authorization authorized);
 	}
 
 	@FunctionalInterface
@@ -525,9 +552,29 @@ final class PublicationCoordinator
 				failCharacterPublish(generation);
 				return;
 			}
-			request.start(session, () -> currentCharacter(generation) && characterPublishingEnabled()
-					&& sessions.isCurrent(session))
-				.whenComplete((result, error) -> outcome.handle(result, error, generation));
+			request.start(session, new ProfileAppearanceService.Authorization()
+			{
+				@Override
+				public boolean getAsBoolean()
+				{
+					return currentCharacter(generation) && characterPublishingEnabled() && sessions.isCurrent(session);
+				}
+
+				@Override
+				public boolean sendIf(Runnable send)
+				{
+					// One step with a withdrawal (cancelCharacterPublish takes this lock): withdrawn first, nothing goes.
+					synchronized (PublicationCoordinator.this)
+					{
+						if (generation != characterGeneration || !sessions.isCurrent(session))
+						{
+							return false;
+						}
+						send.run();
+						return true;
+					}
+				}
+			}).whenComplete((result, error) -> outcome.handle(result, error, generation));
 		});
 	}
 
@@ -644,6 +691,7 @@ final class PublicationCoordinator
 		{
 			return;
 		}
+		final int attempt = beganAttempt();
 		Session session = push.session;
 		if (!sessions.isCurrent(session))
 		{
@@ -705,7 +753,7 @@ final class PublicationCoordinator
 				// Off the client thread before dispatch: the sync pre-flight can block up to ten seconds waiting for
 				// the rename disk verdict, and game ticks must never pay that wait. The login rides along: a logout
 				// between this gather and the dispatch must kill the attempt, not let a dead session post.
-				executor.execute(() -> dispatch(push, accountType, pbs, detailedPbs, generation, cache, gameMode));
+				executor.execute(() -> dispatch(push, accountType, pbs, detailedPbs, generation, attempt, cache, gameMode));
 			}
 			catch (RuntimeException e)
 			{
@@ -716,7 +764,7 @@ final class PublicationCoordinator
 	}
 
 	private void dispatch(Push push, AccountType accountType, Map<String, Double> pbs, Map<String, PbRecord> detailedPbs,
-		int generation, LocalClogCache cache, String gameMode)
+		int generation, int attempt, LocalClogCache cache, String gameMode)
 	{
 		Session session = push.session;
 		boolean character = push.forCharacter != NONE;
@@ -755,7 +803,8 @@ final class PublicationCoordinator
 							// publish gets the advised delay as it is.
 							int delay = Math.max(result.retryAfterSeconds, 2);
 							int withdrawn = withdrawals();
-							boolean retrying = scheduleRetry(push.deliberate() ? delay : delay * 2, push.retriedIn(gameMode));
+							boolean retrying = scheduleRetry(push.deliberate() ? delay : delay * 2, push.retriedIn(gameMode),
+								generation, attempt);
 							if (character)
 							{
 								showCharacterPublishStatus(push.forCharacter, CharacterStatus.RENDERING, false);
@@ -784,7 +833,7 @@ final class PublicationCoordinator
 						// Everything below is a terminal outcome for this episode.
 						if (result.stopsSession)
 						{
-							stoppedSession = session.getNumber();
+							stopSession(session, generation, attempt);
 						}
 						if (character)
 						{

@@ -58,4 +58,24 @@ public class PublicationPushTest
 		assertSame(next, merge(old, next));
 		assertSame(next, merge(next, old));
 	}
+
+	@Test
+	public void aPushAndItsOwnRetryGoAsOneTheSameEitherWay()
+	{
+		PublicationCoordinator.Push asked = click("main");
+		PublicationCoordinator.Push retry = asked.retriedIn("demonic-pacts");
+		assertEquals("demonic-pacts", merge(asked, retry).mode);
+		assertEquals("demonic-pacts", merge(retry, asked).mode);
+	}
+
+	@Test
+	public void aRetrySpendsItsOneRetryForAPushOnlyOfItsOwnGame()
+	{
+		PublicationCoordinator.Push leagueRetry = click("demonic-pacts").retriedIn("demonic-pacts");
+		PublicationCoordinator.Push mainClick = click("main");
+		PublicationCoordinator.Push merged = merge(leagueRetry, mainClick);
+		assertEquals("the later click leads", "main", merged.mode);
+		assertEquals("and goes as itself, with its own retry", false, merged.retry);
+		assertTrue(merge(click("main").retriedIn("main"), click("main")).retry);
+	}
 }
