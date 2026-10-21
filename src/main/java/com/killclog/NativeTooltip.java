@@ -70,10 +70,7 @@ public abstract class NativeTooltip extends JToolTip
 	@Nullable
 	private static volatile Color packTrack;
 
-	/**
-	 * Load border sprites, preferring client sprite overrides when Resource
-	 * Packs or another UI theme plugin has replaced the same game sprites.
-	 */
+	/** Card Appearance's label, value and divider colors; one left unset is the game's. */
 	static void cardColors(Color label, Color value, Color divider)
 	{
 		labelColor = label != null ? label : OSRS_ORANGE;
@@ -81,6 +78,10 @@ public abstract class NativeTooltip extends JToolTip
 		dividerColor = divider != null ? divider : DIVIDER;
 	}
 
+	/**
+	 * Load border sprites, preferring client sprite overrides when Resource
+	 * Packs or another UI theme plugin has replaced the same game sprites.
+	 */
 	public static void loadSprites(Client client, SpriteManager spriteManager)
 	{
 		packThumb = thumbColor(getOverrideSprite(client, SPRITE_SCROLL_THUMB));

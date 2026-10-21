@@ -23,9 +23,9 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.awt.image.BufferedImage;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Set;
-import java.util.Arrays;
 import java.util.WeakHashMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -300,12 +300,6 @@ class TooltipController
 		}
 	}
 
-	/**
-	 * A press inside one modal that opens another in its place, the way a rare
-	 * row opens its collection from the Clue Summary. The hover preview is a
-	 * window of its own and has to be taken down like any other press does, and
-	 * the cell keeps the outline that modal's closing just cleared.
-	 */
 	/** Opens a card where the owner's card was, with a back line that reopens the owner's own card. */
 	void openInPlace(JLabel owner, MouseEvent press, JToolTip card, String backLabel)
 	{
@@ -313,6 +307,12 @@ class TooltipController
 			pinTooltipFromPress(owner, (JPanel) owner.getParent(), back, owner.createToolTip())));
 	}
 
+	/**
+	 * A press inside one modal that opens another in its place, the way a rare
+	 * row opens its collection from the Clue Summary. The hover preview is a
+	 * window of its own and has to be taken down like any other press does, and
+	 * the cell keeps the outline that modal's closing just cleared.
+	 */
 	void pinTooltipFromPress(JComponent source, JPanel cell, MouseEvent event, JToolTip tip)
 	{
 		if (config.tooltipMode() == TooltipMode.HOVER)
