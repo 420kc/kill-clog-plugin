@@ -280,7 +280,8 @@ public class KillClogPanel extends PluginPanel
 		// the right by the scrollbar's width so it lines up with the content beside the bar.
 		anchoredTop.setLayout(new BoxLayout(anchoredTop, BoxLayout.Y_AXIS));
 		anchoredTop.setBackground(ColorScheme.DARK_GRAY_COLOR);
-		anchoredTop.setBorder(new EmptyBorder(6, 10, 0, 10 + MinimalScrollBarUI.WIDTH));
+		// Its 5 under the info bar is the gap the boss list always started below.
+		anchoredTop.setBorder(new EmptyBorder(6, 10, 5, 10 + MinimalScrollBarUI.WIDTH));
 		anchoredTop.add(clogNotice);
 		JPanel search = buildSearchPanel();
 		search.setAlignmentX(Component.LEFT_ALIGNMENT);
