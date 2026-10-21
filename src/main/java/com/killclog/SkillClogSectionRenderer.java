@@ -123,7 +123,7 @@ final class SkillClogSectionRenderer
 				g2.setColor(NativeTooltip.labelColor);
 				g2.drawString(section.heading(), inset, y + headingMetrics.getAscent());
 				// A heading carries its rule like a card's section title.
-				CardBody.sectionRule(g2, y + headingMetrics.getHeight() + HEADER_GAP, inset, width);
+				CardBody.divider(g2, y + headingMetrics.getHeight() + HEADER_GAP, inset, width);
 				y += headingMetrics.getHeight() + HEADER_GAP + CardBody.SECTION_RULE + CardBody.SECTION_AFTER;
 			}
 			g2.setFont(DETAIL_FONT);

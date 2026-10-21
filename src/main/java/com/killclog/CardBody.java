@@ -146,12 +146,7 @@ final class CardBody
 		g.setFont(FontManager.getRunescapeSmallFont());
 		Ctx c = new Ctx(card, g.getFontMetrics(), g.getFontMetrics(FontManager.getRunescapeBoldFont()),
 			w - 2 * NativeTooltip.getInset(), g, w);
-		int y = startY;
-		for (Part part : parts)
-		{
-			part.paint(c, y);
-			y += part.height(c);
-		}
+		asPart().paint(c, startY);
 		return c.hits;
 	}
 
@@ -235,12 +230,12 @@ final class CardBody
 		return row(TitleTooltip.SUBHEADER_HEIGHT + SECTION_RULE + SECTION_AFTER, c -> c.bfm.stringWidth(title), (c, y) ->
 		{
 			c.card.paintSubheader(c.g, y, title);
-			sectionRule(c.g, y + TitleTooltip.SUBHEADER_HEIGHT + 1, c.inset(), c.w);
+			divider(c.g, y + TitleTooltip.SUBHEADER_HEIGHT + 1, c.inset(), c.w);
 		});
 	}
 
-	/** The rule under a section's title, across the card. */
-	static void sectionRule(Graphics2D g, int y, int inset, int w)
+	/** A divider across the card between its insets: under a section's title, a band's edges, a separator. */
+	static void divider(Graphics2D g, int y, int inset, int w)
 	{
 		g.setColor(NativeTooltip.dividerColor);
 		g.drawLine(inset, y, w - inset - 1, y);
@@ -275,12 +270,11 @@ final class CardBody
 		{
 			int top = y + above;
 			int height = TitleTooltip.hoverRowHeight(c.fm);
-			c.g.setColor(NativeTooltip.dividerColor);
 			if (above >= 0)
 			{
-				c.g.drawLine(c.inset(), top, c.w - c.inset() - 1, top);
+				divider(c.g, top, c.inset(), c.w);
 			}
-			c.g.drawLine(c.inset(), top + height + 1, c.w - c.inset() - 1, top + height + 1);
+			divider(c.g, top + height + 1, c.inset(), c.w);
 			c.card.paintHeaderHoverLine(c.g, c.fm, c.w, top + 1 + c.fm.getAscent());
 		});
 	}

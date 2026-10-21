@@ -334,8 +334,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	{
 		int inset = getInset();
 		y += pad;
-		g2.setColor(dividerColor);
-		g2.drawLine(inset, y, w - inset - 1, y);
+		CardBody.divider(g2, y, inset, w);
 		return y + 1 + pad;
 	}
 
@@ -713,12 +712,7 @@ public abstract class TitleTooltip extends NativeTooltip
 			}
 		}
 
-		// Separator
-		int sepY = lineY + SEPARATOR_GAP;
-		g2.setColor(dividerColor);
-		g2.drawLine(inset, sepY, w - inset - 1, sepY);
-
-		return sepY + 1 + SEPARATOR_GAP;
+		return paintSeparator(g2, w, lineY, SEPARATOR_GAP);
 	}
 
 	/** Room above and below the label, shared by sprite-section readouts. */
