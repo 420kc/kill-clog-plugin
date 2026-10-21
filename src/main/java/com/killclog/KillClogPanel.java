@@ -1267,11 +1267,13 @@ public class KillClogPanel extends PluginPanel
 		searchRowController.onComparisonExit();
 		rankSelector.reset();
 		statusRow.shutdown();
-		if (autoscroll != null)
-		{
-			autoscroll.uninstall();
-		}
-		tooltipController.deactivate();
+		onDeactivate();
+	}
+
+	/** A log's obtained and total counts, counted on the game's own items once the game's log has been read. */
+	private int[] totals(ClogResult log)
+	{
+		return clogIndex != null ? ClogHelper.sumClogTotals(log, clogIndex::canonicalItemId) : ClogHelper.sumClogTotals(log);
 	}
 
 	@Override
@@ -1398,9 +1400,7 @@ public class KillClogPanel extends PluginPanel
 		tip.setLinks(config.cardLinks());
 		if (clog != null)
 		{
-			int[] totals = clogIndex != null
-				? ClogHelper.sumClogTotals(clog, clogIndex::canonicalItemId)
-				: ClogHelper.sumClogTotals(clog);
+			int[] totals = totals(clog);
 			tip.setTierData(totals[0], totals[1], iconCache.clogTierImages(), itemManager);
 			if (clogIndex != null)
 			{
@@ -1437,9 +1437,7 @@ public class KillClogPanel extends PluginPanel
 				if (catalog != null)
 				{
 					tip.setTitle("Collection Log");
-					tip.setObtainedPlaceholder(clogIndex != null
-						? ClogHelper.sumClogTotals(catalog, clogIndex::canonicalItemId)[1]
-						: ClogHelper.sumClogTotals(catalog)[1]);
+					tip.setObtainedPlaceholder(totals(catalog)[1]);
 				}
 				else
 				{

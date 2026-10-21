@@ -321,17 +321,13 @@ public class KillClogPlugin extends Plugin
 			{
 				sessionState.requestLocalReads();
 			}
-			// Login catch-up: a debounced push that fired after logout (or
-			// mid world-hop) aborted with nothing to relaunch it, so the last
-			// capture of a session stayed unpublished. One quiet scheduled
-			// push per login closes that hole; the server merge no-ops when
-			// nothing changed.
-			boolean hasLocalClog = localClogReady
-				&& cache.hasFirstPartyDataFor(name);
-			panel.setFirstParty(!localClogReady ? PanelStatusRow.FirstParty.HIDDEN : firstParty(hasLocalClog));
-			if (hasLocalClog)
+			if (localClogReady)
 			{
-				publication.scheduleAutomaticSync();
+				ownLogServing(cache, name);
+			}
+			else
+			{
+				panel.setFirstParty(PanelStatusRow.FirstParty.HIDDEN);
 			}
 		}
 
@@ -375,6 +371,22 @@ public class KillClogPlugin extends Plugin
 	public void onPlayerChanged(PlayerChanged event)
 	{
 		profileAppearanceService.captureOriginalAppearance(event.getPlayer());
+	}
+
+	/**
+	 * The store serves this login's own log: the chalice and the character button say whether it holds one, and a log
+	 * that does is pushed once. That catch-up closes a hole: a debounced push that fired after logout (or mid world-hop)
+	 * aborted with nothing to relaunch it, so a session's last capture stayed unpublished; the server merge no-ops when
+	 * nothing changed.
+	 */
+	private void ownLogServing(LocalClogCache cache, String name)
+	{
+		boolean hasLocalClog = cache.hasFirstPartyDataFor(name);
+		panel.setFirstParty(firstParty(hasLocalClog));
+		if (hasLocalClog)
+		{
+			publication.scheduleAutomaticSync();
+		}
 	}
 
 	/**
@@ -668,13 +680,7 @@ public class KillClogPlugin extends Plugin
 		if (!accountActivated && activeCache != null && activeCache.serve(session))
 		{
 			accountActivated = true;
-			String name = session.getName();
-			boolean hasLocalClog = activeCache.hasFirstPartyDataFor(name);
-			panel.setFirstParty(firstParty(hasLocalClog));
-			if (hasLocalClog)
-			{
-				publication.scheduleAutomaticSync();
-			}
+			ownLogServing(activeCache, session.getName());
 		}
 		String previousName = localClogCache.consumeRenameNotice();
 		if (previousName != null)

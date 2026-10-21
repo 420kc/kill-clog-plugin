@@ -310,6 +310,7 @@ public class Cells
 		label.setText(ClogHelper.pad(ClogHelper.countText(count)));
 		label.setForeground(count > 0 ? color : ColorScheme.LIGHT_GRAY_COLOR);
 	}
+
 	private void resetLabels(Map<HiscoreSkill, JLabel> labels)
 	{
 		for (Map.Entry<HiscoreSkill, JLabel> entry : labels.entrySet())
