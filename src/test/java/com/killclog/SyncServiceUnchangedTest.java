@@ -66,7 +66,7 @@ public class SyncServiceUnchangedTest
 	private SyncService.SyncResult push(Map<String, Double> pbs, AccountType type, String mode, boolean always)
 		throws Exception
 	{
-		KillclogSyncGate<Object> gate = new KillclogSyncGate<>(push -> false, (waiting, later) -> later);
+		KillclogSyncGate<Object> gate = new KillclogSyncGate<>((waiting, later) -> later);
 		int generation = gate.begin(null, gate.era());
 		SyncService.SyncResult result = service.syncCollectionLog(TESTER, type, pbs, Map.of(), gate,
 			generation, cache, mode, always, () -> sending++).get();

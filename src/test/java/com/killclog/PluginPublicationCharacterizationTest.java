@@ -1661,6 +1661,57 @@ public class PluginPublicationCharacterizationTest
 		assertEquals("the click rides the advised wait", 20_000L, executor.lastDelayMs());
 	}
 
+	@Test
+	public void everyClickDuringTheServersWaitRidesIt() throws Exception
+	{
+		profileRequired(0);
+		syncHandler.run();
+		settle();
+		syncs.get(0).complete(new SyncService.SyncResult(false, false, "Busy", true, 20));
+		assertEquals(20_000L, executor.lastDelayMs());
+		syncHandler.run();
+		runClient();
+		assertEquals("a second click rides it too", 20_000L, executor.lastDelayMs());
+	}
+
+	@Test
+	public void aRequestFromAWithdrawnEraNeverBlocksANewerPress() throws Exception
+	{
+		publishHandler.run();
+		settle();
+		assertEquals(1, publishes.size());
+		// The withdrawal has moved the era; its cleanup has not run yet when the player presses again.
+		movedCharacterEra();
+		publishHandler.run();
+		settle();
+		assertEquals("the newer press goes", 2, publishes.size());
+	}
+
+	@Test
+	public void aLateCleanupLeavesANewerRequestsFinishedStatus() throws Exception
+	{
+		int moved = movedCharacterEra();
+		publishHandler.run();
+		settle();
+		publishes.get(0).complete(new ProfileAppearanceService.PublishResult(ProfileAppearanceService.Outcome.PUBLISHED, null));
+		settle();
+		java.lang.reflect.Method withdraw = PublicationCoordinator.class.getDeclaredMethod("withdrawCharacter", int.class);
+		withdraw.setAccessible(true);
+		withdraw.invoke(field("publication"), moved);
+		drainEdt();
+		verify(panel, never()).showCharacterPublishStatus(CharacterStatus.CLEAR, false, null);
+	}
+
+	/** The first half of a character withdrawal: its era moved, its cleanup not yet run. The new era. */
+	private int movedCharacterEra() throws Exception
+	{
+		Field era = PublicationCoordinator.class.getDeclaredField("characterEra");
+		era.setAccessible(true);
+		int moved = (int) era.get(field("publication")) + 1;
+		era.set(field("publication"), moved);
+		return moved;
+	}
+
 	/** The server's "another sync holds the lock, try again in 2 s". */
 	private static SyncService.SyncResult busy()
 	{
@@ -2549,7 +2600,7 @@ public class PluginPublicationCharacterizationTest
 		public ScheduledFuture<?> schedule(Runnable command, long delay, TimeUnit unit)
 		{
 			lastDelayMs = unit.toMillis(delay);
-			Task task = new Task(command);
+			Task task = new Task(command, lastDelayMs);
 			tasks.add(task);
 			return task;
 		}
@@ -2589,12 +2640,20 @@ public class PluginPublicationCharacterizationTest
 	private static final class Task implements ScheduledFuture<Object>
 	{
 		private final Runnable command;
+		// What is left of its delay: time never passes in these tests.
+		private final long delayMs;
 		private boolean cancelled;
 		private boolean done;
 
 		Task(Runnable command)
 		{
+			this(command, 0);
+		}
+
+		Task(Runnable command, long delayMs)
+		{
 			this.command = command;
+			this.delayMs = delayMs;
 		}
 
 		boolean live()
@@ -2646,7 +2705,7 @@ public class PluginPublicationCharacterizationTest
 		@Override
 		public long getDelay(TimeUnit unit)
 		{
-			return 0;
+			return unit.convert(delayMs, TimeUnit.MILLISECONDS);
 		}
 
 		@Override

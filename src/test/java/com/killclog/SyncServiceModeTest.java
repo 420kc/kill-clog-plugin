@@ -47,7 +47,7 @@ public class SyncServiceModeTest
 		when(league.toFirstPartySyncResult("Tester")).thenReturn(new ClogResult("Tester",
 			Map.of("boss", List.of(new ClogResult.ClogItem(1, 1, null))), Map.of("boss", List.of(1)), Map.of(), null, null));
 		when(league.commitIfSessionCurrent(eq(TESTER), any())).thenAnswer(call -> ((Supplier<Object>) call.getArgument(1)).get());
-		KillclogSyncGate<Object> gate = new KillclogSyncGate<>(push -> false, (waiting, later) -> later);
+		KillclogSyncGate<Object> gate = new KillclogSyncGate<>((waiting, later) -> later);
 		int generation = gate.begin(null, gate.era());
 
 		SyncService.SyncResult result = new SyncService(http, new Gson(), main)
@@ -70,7 +70,7 @@ public class SyncServiceModeTest
 		LocalClogCache main = mock(LocalClogCache.class);
 		when(main.servesAccount(TESTER)).thenReturn(true);
 		SyncService service = new SyncService(http, new Gson(), main);
-		KillclogSyncGate<Object> gate = new KillclogSyncGate<>(push -> false, (waiting, later) -> later);
+		KillclogSyncGate<Object> gate = new KillclogSyncGate<>((waiting, later) -> later);
 
 		SyncService.SyncResult unread = service.syncCollectionLog(TESTER, null, Map.of(), Map.of(), gate,
 			gate.begin(null, gate.era()), main, "main", false, NOTHING).get();

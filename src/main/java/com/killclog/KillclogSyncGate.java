@@ -16,8 +16,7 @@ final class KillclogSyncGate<P>
 	static final int BUSY = -1;
 	static final int STALE = -2;
 
-	// Which pushes Automatic sync turned off leaves alone, and how two waiting go as one.
-	private final Predicate<P> deliberate;
+	// How two pushes waiting go as one.
 	private final BinaryOperator<P> merge;
 	private int era;
 	private int attempts;
@@ -28,9 +27,8 @@ final class KillclogSyncGate<P>
 	private boolean silenced;
 	private P queued;
 
-	KillclogSyncGate(Predicate<P> deliberate, BinaryOperator<P> merge)
+	KillclogSyncGate(BinaryOperator<P> merge)
 	{
-		this.deliberate = deliberate;
 		this.merge = merge;
 	}
 
@@ -110,18 +108,18 @@ final class KillclogSyncGate<P>
 	}
 
 	/**
-	 * Automatic sync off: an automatic push waiting never goes, and one in the air is silenced; a deliberate one goes
-	 * on. The silenced attempt's number, or 0.
+	 * Automatic sync off: the pushes it withdraws (asked before it, and automatic) never go: one waiting is forgotten,
+	 * one in the air is silenced. The silenced attempt's number, or 0.
 	 */
-	synchronized int silenceAutomatic()
+	synchronized int silence(Predicate<P> withdrawn)
 	{
 		int quieted = 0;
-		if (inFlight != 0 && !silenced && !deliberate.test(inFlightPush))
+		if (inFlight != 0 && !silenced && withdrawn.test(inFlightPush))
 		{
 			silenced = true;
 			quieted = inFlight;
 		}
-		if (queued != null && !deliberate.test(queued))
+		if (queued != null && withdrawn.test(queued))
 		{
 			queued = null;
 		}

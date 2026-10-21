@@ -36,7 +36,7 @@ public class KillclogSyncGateTest
 
 	private static KillclogSyncGate<Ask> newGate()
 	{
-		return new KillclogSyncGate<>(ask -> ask.manual, Ask::merge);
+		return new KillclogSyncGate<>(Ask::merge);
 	}
 
 	@Test
@@ -223,20 +223,20 @@ public class KillclogSyncGateTest
 	{
 		KillclogSyncGate<Ask> gate = newGate();
 		int automatic = gate.begin(new Ask(false, null), gate.era());
-		gate.silenceAutomatic();
+		gate.silence(ask -> !ask.manual);
 		assertNull(gate.commitIfCurrent(automatic, () -> "sent"));
 		gate.release(automatic);
 
 		int click = gate.begin(new Ask(true, null), gate.era());
-		gate.silenceAutomatic();
+		gate.silence(ask -> !ask.manual);
 		assertEquals("sent", gate.commitIfCurrent(click, () -> "sent"));
 
 		// Behind that click, a queued automatic push is forgotten and a queued click is kept.
 		assertEquals(-1, gate.begin(new Ask(false, null), gate.era()));
-		gate.silenceAutomatic();
+		gate.silence(ask -> !ask.manual);
 		assertFalse(TestViews.consumeQueued(gate));
 		assertEquals(-1, gate.begin(new Ask(true, null), gate.era()));
-		gate.silenceAutomatic();
+		gate.silence(ask -> !ask.manual);
 		assertTrue(TestViews.consumeQueued(gate));
 	}
 

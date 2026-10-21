@@ -13,12 +13,12 @@ public class PublicationPushTest
 
 	private static PublicationCoordinator.Push click(String mode)
 	{
-		return PublicationCoordinator.Push.ask(LOGIN, 0, mode, true, NONE);
+		return PublicationCoordinator.Push.ask(LOGIN, 0, 0, mode, true, NONE);
 	}
 
 	private static PublicationCoordinator.Push automatic(String mode)
 	{
-		return PublicationCoordinator.Push.ask(LOGIN, 0, mode, false, NONE);
+		return PublicationCoordinator.Push.ask(LOGIN, 0, 0, mode, false, NONE);
 	}
 
 	private static PublicationCoordinator.Push merge(PublicationCoordinator.Push one, PublicationCoordinator.Push other)
@@ -43,8 +43,8 @@ public class PublicationPushTest
 	@Test
 	public void theNewerCharacterRequestAndOneRetryAreKept()
 	{
-		PublicationCoordinator.Push first = PublicationCoordinator.Push.ask(LOGIN, 0, "main", true, 1);
-		PublicationCoordinator.Push second = PublicationCoordinator.Push.ask(LOGIN, 0, "main", false, 3);
+		PublicationCoordinator.Push first = PublicationCoordinator.Push.ask(LOGIN, 0, 0, "main", true, 1);
+		PublicationCoordinator.Push second = PublicationCoordinator.Push.ask(LOGIN, 0, 0, "main", false, 3);
 		assertEquals(3, merge(second, first).forCharacter);
 		assertEquals(3, merge(first, second).forCharacter);
 		assertTrue(merge(first.retriedIn("main", 1), second).retry());
@@ -53,8 +53,8 @@ public class PublicationPushTest
 	@Test
 	public void pushesOfTwoLoginsNeverMix()
 	{
-		PublicationCoordinator.Push old = PublicationCoordinator.Push.ask(LOGIN, 0, "main", true, NONE);
-		PublicationCoordinator.Push next = PublicationCoordinator.Push.ask(NEXT, 0, "main", false, 5);
+		PublicationCoordinator.Push old = PublicationCoordinator.Push.ask(LOGIN, 0, 0, "main", true, NONE);
+		PublicationCoordinator.Push next = PublicationCoordinator.Push.ask(NEXT, 0, 0, "main", false, 5);
 		assertSame(next, merge(old, next));
 		assertSame(next, merge(next, old));
 	}
@@ -101,5 +101,16 @@ public class PublicationPushTest
 		PublicationCoordinator.Push newerRetry = newerAsk.retriedIn("demonic-pacts", 2);
 		assertEquals(merge(merge(olderRetry, newerAsk), newerRetry).mode,
 			merge(olderRetry, merge(newerAsk, newerRetry)).mode);
+	}
+
+	@Test
+	public void pushesOfTwoErasNeverShareARetry()
+	{
+		PublicationCoordinator.Push cancelled = PublicationCoordinator.Push.ask(LOGIN, 0, 0, "main", true, NONE)
+			.retriedIn("main", 1);
+		PublicationCoordinator.Push fresh = PublicationCoordinator.Push.ask(LOGIN, 1, 0, "main", true, NONE);
+		assertSame(fresh, merge(cancelled, fresh));
+		assertSame(fresh, merge(fresh, cancelled));
+		assertEquals("the fresh push keeps its own retry", false, merge(cancelled, fresh).retry());
 	}
 }
