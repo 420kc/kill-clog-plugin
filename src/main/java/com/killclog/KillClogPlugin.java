@@ -13,6 +13,7 @@ import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.api.ScriptEvent;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.api.events.ClientTick;
 import net.runelite.api.events.GameStateChanged;
 import net.runelite.api.events.GameTick;
 import net.runelite.api.events.MenuEntryAdded;
@@ -32,7 +33,6 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.config.RuneScapeProfileType;
 import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
-import net.runelite.client.events.PluginChanged;
 import net.runelite.client.game.ChatIconManager;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.menus.MenuManager;
@@ -839,11 +839,11 @@ public class KillClogPlugin extends Plugin
 		return search != null && search.isSelfHidden();
 	}
 
+	/** A pack or theme that replaced a sprite the cards wear redraws them in it, however long it took to apply. */
 	@Subscribe
-	public void onPluginChanged(PluginChanged event)
+	public void onClientTick(ClientTick event)
 	{
-		String pluginName = event.getPlugin().getClass().getSimpleName();
-		if (pluginName.equals("ResourcePacksPlugin"))
+		if (NativeTooltip.wornSpritesChanged(client))
 		{
 			SwingUtilities.invokeLater(panel::reloadTooltipSprites);
 		}
@@ -852,11 +852,6 @@ public class KillClogPlugin extends Plugin
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
-		if ("resourcepacks".equals(event.getGroup()))
-		{
-			SwingUtilities.invokeLater(panel::reloadTooltipSprites);
-			return;
-		}
 
 		if (!event.getGroup().equals("killclog"))
 		{

@@ -8,11 +8,13 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import javax.swing.JToolTip;
 import net.runelite.api.Client;
 import net.runelite.api.SpritePixels;
+import net.runelite.api.gameval.SpriteID;
 import net.runelite.client.game.SpriteManager;
 import net.runelite.client.util.ImageUtil;
 
@@ -70,12 +72,40 @@ public abstract class NativeTooltip extends JToolTip
 	@Nullable
 	private static volatile Color packTrack;
 
+	// Every sprite a card wears, and the status row's character icon: what a pack or theme replacing one changes.
+	private static final int[] WORN = {SPRITE_PARCHMENT, SPRITE_CORNER_TL, SPRITE_CORNER_TR, SPRITE_CORNER_BL,
+		SPRITE_CORNER_BR, SPRITE_EDGE_HORIZ, SPRITE_EDGE_VERT, SPRITE_EDGE_BOTTOM, SPRITE_EDGE_LEFT, SPRITE_SCROLL_THUMB,
+		SPRITE_SCROLL_TRACK, SpriteID.SideiconsNew.EQUIPMENT};
+	// Each worn sprite's replacement at the last look, null for the game's own.
+	private static final SpritePixels[] WORN_SEEN = new SpritePixels[WORN.length];
+
 	/** Card Appearance's label, value and divider colors; one left unset is the game's. */
 	static void cardColors(Color label, Color value, Color divider)
 	{
 		labelColor = label != null ? label : OSRS_ORANGE;
 		valueColor = value != null ? value : Color.WHITE;
 		dividerColor = divider != null ? divider : DIVIDER;
+	}
+
+	/**
+	 * Whether a pack or theme has replaced, swapped or restored a worn sprite since the last look. A pack applies a
+	 * moment after it is chosen (a Hub pack downloads first), so the cards ask every client tick rather than when a
+	 * setting changes. Client thread.
+	 */
+	static boolean wornSpritesChanged(Client client)
+	{
+		Map<Integer, SpritePixels> overrides = client.getSpriteOverrides();
+		boolean changed = false;
+		for (int i = 0; i < WORN.length; i++)
+		{
+			SpritePixels now = overrides.get(WORN[i]);
+			if (now != WORN_SEEN[i])
+			{
+				WORN_SEEN[i] = now;
+				changed = true;
+			}
+		}
+		return changed;
 	}
 
 	/**
