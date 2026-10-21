@@ -972,12 +972,7 @@ public class LocalClogCache
 				obtainedCopy.put(entry.getKey(), new ArrayList<>(entry.getValue()));
 			}
 		}
-		Map<String, List<Integer>> categoriesCopy = new HashMap<>();
-		for (Map.Entry<String, List<Integer>> entry : data.categories.entrySet())
-		{
-			categoriesCopy.put(entry.getKey(), new ArrayList<>(entry.getValue()));
-		}
-		ClogResult result = new ClogResult(data.playerName, obtainedCopy, categoriesCopy, itemNames,
+		ClogResult result = new ClogResult(data.playerName, obtainedCopy, ClogResult.copyPages(data.categories), itemNames,
 			data.lastChanged, data.providerAccountType);
 		// A sync sends a counted zero; the panel shows only a real count.
 		if (data.uniqueObtained > (sync ? -1 : 0))

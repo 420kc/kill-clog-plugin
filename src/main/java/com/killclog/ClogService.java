@@ -542,16 +542,10 @@ public class ClogService
 			return null;
 		}
 
-		Map<String, List<Integer>> categories = new HashMap<>();
+		// Every page, none of it obtained.
 		Map<String, List<ClogResult.ClogItem>> obtained = new HashMap<>();
-		for (Map.Entry<String, List<Integer>> entry : cats.entrySet())
-		{
-			categories.put(entry.getKey(), new ArrayList<>(entry.getValue()));
-			obtained.put(entry.getKey(), Collections.emptyList());
-		}
-
-		Map<Integer, String> names = new HashMap<>(itemNames());
-		return new ClogResult(playerName, obtained, categories, names, null, null);
+		cats.keySet().forEach(page -> obtained.put(page, Collections.emptyList()));
+		return new ClogResult(playerName, obtained, ClogResult.copyPages(cats), new HashMap<>(itemNames()), null, null);
 	}
 
 	private CompletableFuture<Map<String, List<Integer>>> fetchCategories()

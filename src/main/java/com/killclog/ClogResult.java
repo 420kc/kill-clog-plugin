@@ -351,6 +351,14 @@ public class ClogResult
 		return first != null && source.test(first) || second != null && source.test(second);
 	}
 
+	/** A page-keyed map with each page's list its own copy, so the copy and the original never share a list. */
+	static <T> Map<String, List<T>> copyPages(Map<String, List<T>> pages)
+	{
+		Map<String, List<T>> copy = new HashMap<>();
+		pages.forEach((page, items) -> copy.put(page, new ArrayList<>(items)));
+		return copy;
+	}
+
 	/** Distinct itemized coverage, deliberately ignoring the varp counter. */
 	static int coverageCount(ClogResult result)
 	{

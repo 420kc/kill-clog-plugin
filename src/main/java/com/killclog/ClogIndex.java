@@ -315,12 +315,7 @@ final class ClogIndex
 
 	Map<String, List<Integer>> copyCategoryItems()
 	{
-		Map<String, List<Integer>> copy = new HashMap<>();
-		for (Map.Entry<String, List<Integer>> entry : categoryItems().entrySet())
-		{
-			copy.put(entry.getKey(), new ArrayList<>(entry.getValue()));
-		}
-		return copy;
+		return ClogResult.copyPages(categoryItems());
 	}
 
 	/**
@@ -346,12 +341,7 @@ final class ClogIndex
 		{
 			return null;
 		}
-		Map<String, List<Integer>> categories = new HashMap<>();
-		for (Map.Entry<String, List<Integer>> entry : s.categoryItems.entrySet())
-		{
-			categories.put(entry.getKey(), new ArrayList<>(entry.getValue()));
-		}
-		return new CatalogCopy(s, categories, new HashMap<>(s.itemNames));
+		return new CatalogCopy(s, ClogResult.copyPages(s.categoryItems), new HashMap<>(s.itemNames));
 	}
 
 	/** Test seam: publish a parse with the given categories and item names. */
