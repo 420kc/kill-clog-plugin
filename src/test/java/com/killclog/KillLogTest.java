@@ -233,14 +233,14 @@ public class KillLogTest
 	@Test
 	public void aNewPbRetiresTheLogPagesOlderReading()
 	{
+		page("zulrah", 60.0);
 		game(1, "Your Zulrah kill count is: <col=ff0000>812</col>.");
 		game(1, "Fight duration: <col=ff0000>0:58.20</col> (new personal best)");
 		kept("zulrah", "58.2|||kill|812", 58.2);
 		verify(configManager).unsetRSProfileConfiguration("killclog", "pagepb.zulrah");
 
-		// A kill that set no new PB, or a team size's, leaves the page's reading: it is still the game's record.
-		game(9, "Your Zulrah kill count is: <col=ff0000>813</col>.");
-		game(9, "Fight duration: <col=ff0000>1:04.20</col>. Personal best: 0:57.60");
+		// A team size's kill leaves the page's plain reading alone.
+		page("nightmare", 200.0);
 		game(17, "Your Nightmare kill count is: <col=ff0000>1130</col>");
 		game(17, "Team size: <col=ff0000>5 players</col> Fight duration: <col=ff0000>3:28</col> (new personal best)");
 		verify(configManager, times(1)).unsetRSProfileConfiguration(anyString(), anyString());
@@ -279,5 +279,45 @@ public class KillLogTest
 		assertNull(pb.team);
 		assertNull(pb.timer);
 		assertNull(kept(208.0, "x|5||kill|1130").team);
+	}
+
+	/** The log page's reading of a boss, as ClogPbs keeps it. */
+	private void page(String boss, double seconds)
+	{
+		doReturn(seconds).when(configManager).getRSProfileConfiguration("killclog", "pagepb." + boss, double.class);
+	}
+
+	@Test
+	public void aKillStatingAFasterRecordRetiresAnOlderPageReadingThoughItSetNoNewPb()
+	{
+		// Read from the page at 1:05; a faster 1:00 was set since (another client, or a release before this rule).
+		page("zulrah", 65.0);
+		doReturn(60.0).when(configManager).getRSProfileConfiguration("killclog", "livepb.zulrah", double.class);
+		game(1, "Your Zulrah kill count is: <col=ff0000>900</col>.");
+		game(1, "Fight duration: <col=ff0000>1:12.00</col>. Personal best: 1:00.00");
+		verify(configManager).unsetRSProfileConfiguration("killclog", "pagepb.zulrah");
+	}
+
+	@Test
+	public void theSameRecordWithoutItsTenthsKeepsThePageReading()
+	{
+		// Precise timing off: the kill says 1:05, the page holds the 64.8 it rounds from.
+		page("zulrah", 64.8);
+		game(1, "Your Zulrah kill count is: <col=ff0000>900</col>.");
+		game(1, "Fight duration: <col=ff0000>1:12</col>. Personal best: 1:05");
+		page("vorkath", 60.0);
+		game(9, "Your Vorkath kill count is: <col=ff0000>50</col>.");
+		game(9, "Fight duration: <col=ff0000>1:12.00</col>. Personal best: 1:00.00");
+		verify(configManager, never()).unsetRSProfileConfiguration(anyString(), anyString());
+	}
+
+	@Test
+	public void aRecordIsTheSameWithOrWithoutItsTenths()
+	{
+		assertEquals(true, PbRecord.sameRecord(64.8, 65.0));
+		assertEquals(true, PbRecord.sameRecord(65.0, 64.8));
+		assertEquals(true, PbRecord.sameRecord(60.0, 60.0));
+		assertEquals(false, PbRecord.sameRecord(65.0, 60.0));
+		assertEquals(false, PbRecord.sameRecord(65.4, 64.8));
 	}
 }

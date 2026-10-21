@@ -92,6 +92,12 @@ final class PbRecord
 		return seen.seconds <= kept.seconds ? seen : kept;
 	}
 
+	/** Whether two times are one record: the same, or one of them the other shown without its tenths. */
+	static boolean sameRecord(double a, double b)
+	{
+		return a == b || sameTimeInTenths(a, b) || sameTimeInTenths(b, a);
+	}
+
 	/**
 	 * Whether a whole second is this tenths time as the game shows it with precise timing off: rounded to the nearest
 	 * second, half up (its formatter, client script 2410), so a time on the 0.6 s tick grid is never more than 0.4 s

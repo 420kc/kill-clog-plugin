@@ -128,6 +128,7 @@ final class KillLog
 			}
 		}
 		String key = size != null ? boss + " " + size.toLowerCase(Locale.ROOT) : boss;
+		retirePageReading(size);
 		Double kept = configManager.getRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, KEY_PREFIX + key, double.class);
 		if (!fresh && kept != null && kept == pb)
 		{
@@ -139,11 +140,25 @@ final class KillLog
 		configManager.setRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, KEY_PREFIX + key, pb);
 		configManager.setRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, TAG_PREFIX + key, PbRecord.tag(pb, exact,
 			fresh && toa ? String.valueOf(toaLevelAtTime) : "", timer, fresh ? String.valueOf(kc) : ""));
-		// A new PB is the game's record now, so the log page's reading of the old one is stale until the page is next
-		// opened; it would otherwise win over this kill (PbRecord.pick). Only a plain key meets the page's.
-		if (fresh && size == null)
+	}
+
+	/**
+	 * A kill states the game's record as it is now, a new PB or the one already held. A log page reading that differs
+	 * from it is older (a PB set since, or set while the page was closed, on another client or in a release that kept
+	 * no such rule), so it gives way until the page is next opened; it would otherwise win over this kill
+	 * (PbRecord.pick). The same record shown without its tenths is the same record. Only a plain key meets the page's.
+	 */
+	private void retirePageReading(@Nullable String size)
+	{
+		if (size != null)
 		{
-			configManager.unsetRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, ClogPbs.KEY_PREFIX + PersonalBests.encounter(boss));
+			return;
+		}
+		String page = ClogPbs.KEY_PREFIX + PersonalBests.encounter(boss);
+		Double read = configManager.getRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, page, double.class);
+		if (read != null && !PbRecord.sameRecord(read, pb))
+		{
+			configManager.unsetRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, page);
 		}
 	}
 
