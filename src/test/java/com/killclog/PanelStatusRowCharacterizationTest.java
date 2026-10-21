@@ -438,21 +438,35 @@ public class PanelStatusRowCharacterizationTest
 			shifted(character, MouseEvent.MOUSE_PRESSED, MouseEvent.BUTTON1);
 			assertEquals(1, deletes.get());
 			assertEquals(0, publishes.get());
-			// Shift let go while still on it: the line says publish before any click, and a click publishes.
-			shiftKey(false);
+			// Shift let go while still on it: the line says publish as the pointer moves, and a click publishes.
+			mouse(character, MouseEvent.MOUSE_MOVED, MouseEvent.NOBUTTON);
 			assertEquals("publish character", status.getText());
 			mouse(character, MouseEvent.MOUSE_PRESSED, MouseEvent.BUTTON1);
 			assertEquals(1, publishes.get());
-			// And pressed again, without moving.
-			shiftKey(true);
+			// And held again.
+			shifted(character, MouseEvent.MOUSE_MOVED, MouseEvent.NOBUTTON);
 			assertEquals("delete character model", status.getText());
 			mouse(character, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
 			assertEquals(" ", status.getText());
 			assertEquals(1, deletes.get());
-			// Off the character nothing listens: shift changes nothing.
-			shiftKey(false);
-			shiftKey(true);
-			assertEquals(" ", status.getText());
+		});
+	}
+
+	@Test
+	public void shiftHeldOnlyOnTheWayInLeavesAPlainClickAPublish() throws Exception
+	{
+		enableControls();
+		edt(() ->
+		{
+			AtomicInteger publishes = new AtomicInteger();
+			AtomicInteger deletes = new AtomicInteger();
+			panel.setCharacterPublishHandler(publishes::incrementAndGet);
+			panel.setCharacterDeleteHandler(deletes::incrementAndGet);
+			// Shift let go before the click, with the pointer still: the press reads its own event, so it publishes.
+			shifted(character, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
+			mouse(character, MouseEvent.MOUSE_PRESSED, MouseEvent.BUTTON1);
+			assertEquals(1, publishes.get());
+			assertEquals(0, deletes.get());
 		});
 	}
 
@@ -471,12 +485,11 @@ public class PanelStatusRowCharacterizationTest
 			fire(expiry());
 			mouse(character, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
 			assertEquals("publish character", status.getText());
-			shiftKey(true);
+			shifted(character, MouseEvent.MOUSE_MOVED, MouseEvent.NOBUTTON);
 			assertEquals("delete failed - click to retry", status.getText());
 			shifted(character, MouseEvent.MOUSE_PRESSED, MouseEvent.BUTTON1);
 			assertEquals(1, deletes.get());
 			assertEquals(0, publishes.get());
-			shiftKey(false);
 			mouse(character, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
 		});
 	}
@@ -620,14 +633,6 @@ public class PanelStatusRowCharacterizationTest
 	private static void shifted(JLabel label, int type, int button)
 	{
 		label.dispatchEvent(new MouseEvent(label, type, 0, java.awt.event.InputEvent.SHIFT_DOWN_MASK, 1, 1, 1, false, button));
-	}
-
-	private void shiftKey(boolean pressed)
-	{
-		// Through the focus manager, as RuneLite's keys arrive: only a watch that is registered hears it.
-		java.awt.KeyboardFocusManager.getCurrentKeyboardFocusManager().dispatchEvent(new java.awt.event.KeyEvent(character,
-			pressed ? java.awt.event.KeyEvent.KEY_PRESSED : java.awt.event.KeyEvent.KEY_RELEASED, 0, 0,
-			java.awt.event.KeyEvent.VK_SHIFT, java.awt.event.KeyEvent.CHAR_UNDEFINED));
 	}
 
 	private static void fire(Timer timer)

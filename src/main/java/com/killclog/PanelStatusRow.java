@@ -7,12 +7,10 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
-import java.awt.KeyEventDispatcher;
-import java.awt.KeyboardFocusManager;
 import java.awt.RenderingHints;
-import java.awt.event.KeyEvent;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionAdapter;
 import java.awt.image.BufferedImage;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
@@ -101,14 +99,6 @@ final class PanelStatusRow
 	private boolean characterShift;
 	// Whether the character's last request was a delete, so its failure is offered back on shift, not on a plain click.
 	private boolean characterDeleteRequest;
-	private final KeyEventDispatcher shiftWatch = event ->
-	{
-		if (event.getKeyCode() == KeyEvent.VK_SHIFT && event.getID() != KeyEvent.KEY_TYPED)
-		{
-			setCharacterShift(event.getID() == KeyEvent.KEY_PRESSED);
-		}
-		return false;
-	};
 	private BufferedImage characterBase;
 	private boolean syncChaliceHovered;
 	// Each control's success glow: the chalice's after a sync, the character's after a publish.
@@ -318,18 +308,7 @@ final class PanelStatusRow
 		return firstParty == FirstParty.LOCKED ? KillClogPanel.NOT_FOUND : SYNC_K1;
 	}
 
-	/** Watches shift only while the pointer is on the character, so nothing listens the rest of the time. */
-	private void watchShift(boolean on)
-	{
-		KeyboardFocusManager keys = KeyboardFocusManager.getCurrentKeyboardFocusManager();
-		keys.removeKeyEventDispatcher(shiftWatch);
-		if (on)
-		{
-			keys.addKeyEventDispatcher(shiftWatch);
-		}
-	}
-
-	/** Shift pressed or let go on the character: its hover line follows at once, before any click. */
+	/** Shift held or let go on the character, as the pointer's last event there says: its hover line follows. */
 	private void setCharacterShift(boolean down)
 	{
 		if (down == characterShift)
@@ -369,13 +348,11 @@ final class PanelStatusRow
 			public void mouseEntered(MouseEvent e)
 			{
 				characterShift = e.isShiftDown();
-				watchShift(true);
 			}
 
 			@Override
 			public void mouseExited(MouseEvent e)
 			{
-				watchShift(false);
 				characterShift = false;
 			}
 
@@ -383,6 +360,14 @@ final class PanelStatusRow
 			public void mousePressed(MouseEvent e)
 			{
 				characterShift = e.isShiftDown();
+			}
+		});
+		characterPublish.addMouseMotionListener(new MouseMotionAdapter()
+		{
+			@Override
+			public void mouseMoved(MouseEvent e)
+			{
+				setCharacterShift(e.isShiftDown());
 			}
 		});
 		characterPublish.addMouseListener(controlMouse(characterPublish, Owner.CHARACTER, hovered ->
@@ -702,7 +687,6 @@ final class PanelStatusRow
 		firstParty = FirstParty.HIDDEN;
 		syncChaliceHovered = false;
 		syncFeedback.reset();
-		watchShift(false);
 		characterShift = false;
 		clearCharacterState();
 		syncGlow.clear();
