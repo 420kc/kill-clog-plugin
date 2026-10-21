@@ -907,10 +907,8 @@ public class KillClogPanel extends PluginPanel
 		clogInfoLabel.setText("");
 		tooltipController.setTooltipText(clogInfoLabel, null);
 
-		combatCell.setText(ClogHelper.pad("--"));
-		combatCell.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-		totalLvlCell.setText(ClogHelper.pad("--"));
-		totalLvlCell.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		Cells.showCount(combatCell, 0, null);
+		Cells.showCount(totalLvlCell, 0, null);
 		tooltipController.setTooltipText(totalLvlCell, null);
 		refreshSkillDisplay();
 	}
@@ -1051,9 +1049,9 @@ public class KillClogPanel extends PluginPanel
 	private void renderLevels(HiscoreResult result)
 	{
 		int combatLevel = result.getCombatLevel();
-		combatCell.setText(ClogHelper.pad(combatLevel > 0 ? String.valueOf(combatLevel) : "--"));
+		combatCell.setText(ClogHelper.pad(ClogHelper.countText(combatLevel)));
 		int totalLevel = ClogHelper.displayTotalLevel(result, ClogHelper.virtualTotalLevelEnabled(configManager));
-		totalLvlCell.setText(ClogHelper.pad(totalLevel > 0 ? String.valueOf(totalLevel) : "--"));
+		totalLvlCell.setText(ClogHelper.pad(ClogHelper.countText(totalLevel)));
 		tooltipController.setTooltipText(totalLvlCell, totalLevel > 0 ? " " : null);
 	}
 

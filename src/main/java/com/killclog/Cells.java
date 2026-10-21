@@ -274,7 +274,7 @@ public class Cells
 			HiscoreSkill activity = entry.getKey();
 			JLabel label = entry.getValue();
 			int score = result.getActivityScore(activity.getName());
-			showScore(label, score);
+			showCount(label, score, KC_COLOR);
 			tooltipController.setTooltipText(label, " ");
 		}
 
@@ -284,7 +284,7 @@ public class Cells
 			HiscoreSkill tier = entry.getKey();
 			JLabel label = entry.getValue();
 			int score = result.getActivityScore(tier.getName());
-			showScore(label, score);
+			showCount(label, score, KC_COLOR);
 
 			String shortName = capitalizeTier(tier);
 			int rank = result.getActivityRank(tier.getName());
@@ -312,8 +312,7 @@ public class Cells
 		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
 		{
 			JLabel label = entry.getValue();
-			label.setText(ClogHelper.pad("--"));
-			label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+			showCount(label, 0, null);
 			tooltipController.setTooltipText(label, " ");
 			ImageIcon orig = originalIcons.get(entry.getKey());
 			if (orig != null) label.setIcon(orig);
@@ -323,19 +322,18 @@ public class Cells
 	}
 
 
-	/** A count cell's number, or a grey "--" without one. */
-	private static void showScore(JLabel label, int score)
+	/** A count cell's number in its colour, or a grey "--" without one: every count cell on the panel. */
+	static void showCount(JLabel label, int count, @Nullable Color color)
 	{
-		label.setText(ClogHelper.pad(score <= 0 ? "--" : ClogHelper.formatKc(score)));
-		label.setForeground(score > 0 ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
+		label.setText(ClogHelper.pad(ClogHelper.countText(count)));
+		label.setForeground(count > 0 ? color : ColorScheme.LIGHT_GRAY_COLOR);
 	}
 	private void resetLabels(Map<HiscoreSkill, JLabel> labels)
 	{
 		for (Map.Entry<HiscoreSkill, JLabel> entry : labels.entrySet())
 		{
 			JLabel label = entry.getValue();
-			label.setText(ClogHelper.pad("--"));
-			label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+			showCount(label, 0, null);
 			tooltipController.setTooltipText(label, entry.getKey().getName());
 		}
 	}
@@ -586,8 +584,7 @@ public class Cells
 		}
 		int kc = result.getBossKills().getOrDefault(hiscoreName, -1);
 		boolean hasKc = kc > 0;
-		label.setText(ClogHelper.pad(kc <= 0 ? "--" : ClogHelper.formatKc(kc)));
-		label.setForeground(hasKc ? KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR);
+		showCount(label, kc, KC_COLOR);
 		if (orig != null)
 		{
 			label.setIcon(hasKc ? orig : dimmed);
@@ -709,8 +706,7 @@ public class Cells
 	public static void styleLabel(JLabel label, String tooltipText)
 	{
 		label.setFont(FontManager.getRunescapeSmallFont());
-		label.setText(ClogHelper.pad("--"));
-		label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
+		showCount(label, 0, null);
 		label.setIconTextGap(4);
 		label.setToolTipText(tooltipText);
 		ClogHelper.antialias(label);

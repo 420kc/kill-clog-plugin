@@ -61,7 +61,7 @@ final class ClogHelper
 		{
 			if (data.statLabel != null && showKc)
 			{
-				tip.setInfoLine(data.statLabel, statText(data.statValue), NativeTooltip.valueColor);
+				tip.setInfoLine(data.statLabel, countText(data.statValue), NativeTooltip.valueColor);
 			}
 			addHardModeLine(tip, data, showKc, false);
 		}
@@ -364,9 +364,10 @@ final class ClogHelper
 		return String.valueOf(kc);
 	}
 
-	private static String statText(int value)
+	/** A count as every cell and card shows one: shortened past 10k, or "--" when there is none. */
+	static String countText(int count)
 	{
-		return value > 0 ? formatKc(value) : "--";
+		return count > 0 ? formatKc(count) : "--";
 	}
 
 	// Image utilities.

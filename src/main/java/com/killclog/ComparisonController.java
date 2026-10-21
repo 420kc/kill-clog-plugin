@@ -493,8 +493,8 @@ public class ComparisonController
 	public void setCompareCell(JLabel label, int blueVal, int redVal,
 		@Nullable Color blueHover, @Nullable Color redHover)
 	{
-		String blueText = blueVal > 0 ? ClogHelper.formatKc(blueVal) : "--";
-		String redText = redVal > 0 ? ClogHelper.formatKc(redVal) : "--";
+		String blueText = ClogHelper.countText(blueVal);
+		String redText = ClogHelper.countText(redVal);
 		label.putClientProperty(COMPARE_BLUE_TEXT_KEY, blueText);
 		label.putClientProperty(COMPARE_RED_TEXT_KEY, redText);
 		label.putClientProperty(COMPARE_BLUE_HOVER_KEY, blueHover != null ? colorHex(blueHover) : null);
@@ -589,16 +589,7 @@ public class ComparisonController
 		label.setHorizontalAlignment(JLabel.LEADING);
 		Color infoColor = renderTarget != null ? renderTarget.getInfoColor()
 			: ColorScheme.LIGHT_GRAY_COLOR;
-		if (val > 0)
-		{
-			label.setText(ClogHelper.pad(ClogHelper.formatKc(val)));
-			label.setForeground(infoColor);
-		}
-		else
-		{
-			label.setText(ClogHelper.pad("--"));
-			label.setForeground(ColorScheme.LIGHT_GRAY_COLOR);
-		}
+		Cells.showCount(label, val, infoColor);
 	}
 
 	/**
