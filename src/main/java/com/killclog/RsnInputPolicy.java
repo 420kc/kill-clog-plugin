@@ -3,6 +3,8 @@ package com.killclog;
 import java.util.Locale;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
+import net.runelite.api.Client;
+import net.runelite.api.Player;
 import net.runelite.client.util.Text;
 
 /** RSN shape validation for names entered in the panel search box. */
@@ -18,6 +20,14 @@ final class RsnInputPolicy
 	}
 
 	/** One player whatever the spelling Jagex accepts: an underscore, hyphen or non-breaking space for a space. */
+	/** The local player's name as the client has it now, or null while it doesn't know it yet. */
+	@Nullable
+	static String localName(Client client)
+	{
+		Player local = client.getLocalPlayer();
+		return local != null ? local.getName() : null;
+	}
+
 	static boolean sameName(@Nullable String a, @Nullable String b)
 	{
 		return a != null && b != null && key(a).equals(key(b));
