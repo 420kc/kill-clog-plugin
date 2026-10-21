@@ -128,10 +128,10 @@ final class KillclogSyncGate<P>
 		return quieted;
 	}
 
-	/** Opt-out, logout, shutdown: the era moves on, so nothing begun before claims, commits or speaks. */
-	synchronized void cancel()
+	/** Opt-out, logout, shutdown: the era moves on, so nothing begun before claims, commits or speaks; the new era. */
+	synchronized int cancel()
 	{
-		era++;
 		queued = null;
+		return ++era;
 	}
 }

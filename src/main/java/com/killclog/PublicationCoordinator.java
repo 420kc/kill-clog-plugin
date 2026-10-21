@@ -77,6 +77,8 @@ final class PublicationCoordinator
 	private final SerialExecutor owner;
 	private final KillclogSyncGate<Push> syncGate = new KillclogSyncGate<>(Push::deliberate, Push::merge);
 	private ScheduledFuture<?> pendingTimer;
+	// When the pending timer fires, by the flow's clock: a retry's advised wait is never cut short.
+	private long pendingDue;
 	// The push that timer sends; a timer whose push is no longer this one was superseded.
 	private Push pendingPush;
 	// Whether the push waiting is an automatic one, which a capture may push back, and when its first capture came.
@@ -149,11 +151,20 @@ final class PublicationCoordinator
 		final long asked;
 		final Set<String> retried;
 		final int line;
+		// Whether this is the server's retry of its own ask: fixed, so the lead between two never shifts with merging.
+		final boolean retryOfAsk;
 
 		/** A push asked for now. */
 		static Push ask(Session session, int era, String mode, boolean manual, int forCharacter)
 		{
-			return new Push(session, era, mode, manual, forCharacter, ASKED.incrementAndGet(), Collections.emptySet(), 0);
+			return new Push(session, era, mode, manual, forCharacter, ASKED.incrementAndGet(), Collections.emptySet(), 0,
+				false);
+		}
+
+		/** The newest push asked so far, by its asked time: a withdrawal leaves anything asked after it alone. */
+		static long askedSoFar()
+		{
+			return ASKED.get();
 		}
 
 		/** The server's one retry, for the game its attempt resolved, its line kept by that attempt. */
@@ -161,12 +172,13 @@ final class PublicationCoordinator
 		{
 			Set<String> spent = new HashSet<>(retried);
 			spent.add(game);
-			return new Push(session, era, game, manual, forCharacter, asked, Collections.unmodifiableSet(spent), attempt);
+			return new Push(session, era, game, manual, forCharacter, asked, Collections.unmodifiableSet(spent), attempt,
+				true);
 		}
 
 		Push withoutCharacter()
 		{
-			return new Push(session, era, mode, manual, NONE, asked, retried, line);
+			return new Push(session, era, mode, manual, NONE, asked, retried, line, retryOfAsk);
 		}
 
 		/** Whether its one advised retry is spent for its game: it never retries again. */
@@ -192,7 +204,7 @@ final class PublicationCoordinator
 			{
 				return one.asked > other.asked;
 			}
-			return one.retry() && !other.retry();
+			return one.retryOfAsk && !other.retryOfAsk;
 		}
 
 		/**
@@ -211,7 +223,7 @@ final class PublicationCoordinator
 			spent.addAll(other.retried);
 			return new Push(lead.session, Math.max(one.era, other.era), lead.mode, one.manual || other.manual,
 				Math.max(one.forCharacter, other.forCharacter), lead.asked, Collections.unmodifiableSet(spent),
-				Math.max(one.line, other.line));
+				Math.max(one.line, other.line), lead.retryOfAsk);
 		}
 	}
 
@@ -220,7 +232,8 @@ final class PublicationCoordinator
 	/** A capture, login or settled identity, on the client thread: one quiet push for this game after the debounce. */
 	void scheduleAutomaticSync()
 	{
-		Push push = Push.ask(sessions.current(), syncGate.era(), mode.get(), false, NONE);
+		int era = syncGate.era();
+		Push push = Push.ask(sessions.current(), era, mode.get(), false, NONE);
 		owner.execute(() -> schedule(SYNC_DEBOUNCE_SECONDS, push));
 	}
 
@@ -229,9 +242,15 @@ final class PublicationCoordinator
 	 * automatic ones (capture debounce and login catch-up) default to silent
 	 * panel feedback. Chat still follows its separate setting.
 	 */
-	void pushNow(Session origin, boolean manual)
+	void pushNow(Session origin, int era, boolean manual)
 	{
-		pushNow(origin, syncGate.era(), manual, NONE);
+		pushNow(origin, era, manual, NONE);
+	}
+
+	/** The sync's era now: a press or an opt-in takes it with its login, before anything else. */
+	int syncEra()
+	{
+		return syncGate.era();
 	}
 
 	private void pushNow(Session origin, int era, boolean manual, int forCharacter)
@@ -261,18 +280,19 @@ final class PublicationCoordinator
 	 */
 	void manualSync()
 	{
+		int era = syncGate.era();
 		Session pressed = sessions.current();
 		if (config.killclogSync())
 		{
-			pushNow(pressed, true);
+			pushNow(pressed, era, true);
 		}
 	}
 
 	/** Opt-out, logout, shutdown: the era moves on at once, so nothing begun before claims, commits or speaks. */
 	void cancelSync()
 	{
-		syncGate.cancel();
-		owner.execute(this::dropPending);
+		int era = syncGate.cancel();
+		owner.execute(() -> withdrawSync(era));
 		// A request already in the air keeps the slot until it completes (no overlap on re-enable); its completion
 		// finds its era passed and stays silent.
 	}
@@ -283,16 +303,29 @@ final class PublicationCoordinator
 	 */
 	void cancelAutomaticSync()
 	{
+		long askedBefore = Push.askedSoFar();
 		int silenced = syncGate.silenceAutomatic();
-		owner.execute(() ->
+		owner.execute(() -> withdrawAutomatic(silenced, askedBefore));
+	}
+
+	/** The owner's half of an opt-out: only what was asked before it goes; a push asked in the new era stays. */
+	private void withdrawSync(int era)
+	{
+		if (pendingPush != null && pendingPush.era < era)
 		{
-			takeLineDown(silenced);
-			if (pendingPush != null && !pendingPush.deliberate())
-			{
-				takeLineDown(pendingPush.line);
-				dropPending();
-			}
-		});
+			dropPending();
+		}
+	}
+
+	/** The owner's half of Automatic sync off: only an automatic push asked before it; one asked since stays. */
+	private void withdrawAutomatic(int silenced, long askedBefore)
+	{
+		takeLineDown(silenced);
+		if (pendingPush != null && !pendingPush.deliberate() && pendingPush.asked <= askedBefore)
+		{
+			takeLineDown(pendingPush.line);
+			dropPending();
+		}
 	}
 
 	void publishCharacter()
@@ -328,18 +361,26 @@ final class PublicationCoordinator
 	/** Publication turned off, or a logout: no character request goes out from the moment this returns. */
 	void cancelCharacterPublish()
 	{
+		int era;
 		synchronized (characterFence)
 		{
-			characterEra++;
+			era = ++characterEra;
 		}
-		owner.execute(() ->
+		owner.execute(() -> withdrawCharacter(era));
+	}
+
+	/** The owner's half of a character withdrawal: a request pressed in the new era is newer than it, and stays. */
+	private void withdrawCharacter(int era)
+	{
+		if (characterHolder != NONE && characterRequestEra >= era)
 		{
-			int generation = ++characterGeneration;
-			characterHolder = NONE;
-			characterWaiting = NONE;
-			characterPrerequisiteAttempted = false;
-			showCharacterPublishStatus(generation, CharacterStatus.CLEAR, false);
-		});
+			return;
+		}
+		int generation = ++characterGeneration;
+		characterHolder = NONE;
+		characterWaiting = NONE;
+		characterPrerequisiteAttempted = false;
+		showCharacterPublishStatus(generation, CharacterStatus.CLEAR, false);
 	}
 
 	private int characterEra()
@@ -411,6 +452,11 @@ final class PublicationCoordinator
 				}
 				return;
 			}
+			if (pendingPush.retryOfAsk)
+			{
+				// The server asked for this wait: a click or a character's sync asked meanwhile rides it.
+				delayMs = Math.max(delayMs, pendingDue - now);
+			}
 			push = Push.merge(pendingPush, push);
 		}
 		quietSince = now;
@@ -424,6 +470,7 @@ final class PublicationCoordinator
 			pendingTimer.cancel(false);
 		}
 		pendingPush = push;
+		pendingDue = clock.getAsLong() + delayMs;
 		pendingAutomatic = !push.deliberate() && !push.retry();
 		try
 		{

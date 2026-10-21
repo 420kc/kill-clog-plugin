@@ -1567,7 +1567,7 @@ public class PluginPublicationCharacterizationTest
 			when(held.killclogSync()).thenReturn(false);
 			publication.cancelSync();
 			when(held.killclogSync()).thenReturn(true);
-			publication.pushNow(((SessionTracker) field("sessions")).current(), true);
+			publication.pushNow(((SessionTracker) field("sessions")).current(), publication.syncEra(), true);
 			runClient();
 			hold.close();
 			done.get(5, TimeUnit.SECONDS);
@@ -1594,6 +1594,71 @@ public class PluginPublicationCharacterizationTest
 		configChanged("characterModel");
 		assertFalse(authorization.getValue().sendIf(sent::incrementAndGet));
 		assertEquals(1, sent.get());
+	}
+
+	// A withdrawal's cleanup names what it withdraws; a press takes its era with its login; the server's wait holds.
+
+	@Test
+	public void aWithdrawalsCleanupLeavesARequestPressedAfterIt() throws Exception
+	{
+		PublicationCoordinator publication = (PublicationCoordinator) field("publication");
+		// The withdrawal has moved the character's era; a press in the new era lands before its cleanup runs.
+		Field era = PublicationCoordinator.class.getDeclaredField("characterEra");
+		era.setAccessible(true);
+		int moved = (int) era.get(publication) + 1;
+		era.set(publication, moved);
+		publishHandler.run();
+		settle();
+		assertEquals(1, publishes.size());
+		java.lang.reflect.Method withdraw = PublicationCoordinator.class.getDeclaredMethod("withdrawCharacter", int.class);
+		withdraw.setAccessible(true);
+		withdraw.invoke(publication, moved);
+		publishes.get(0).complete(new ProfileAppearanceService.PublishResult(ProfileAppearanceService.Outcome.PUBLISHED, null));
+		settle();
+		verify(panel).showCharacterPublishStatus(CharacterStatus.PUBLISHED, true, null);
+	}
+
+	@Test
+	public void anOptOutsCleanupLeavesAPushAskedAfterIt() throws Exception
+	{
+		PublicationCoordinator publication = (PublicationCoordinator) field("publication");
+		int moved = ((KillclogSyncGate<?>) read(publication, "syncGate")).cancel();
+		// Pressed in the new era, waiting on its timer when the old withdrawal's cleanup runs.
+		syncHandler.run();
+		runClient();
+		java.lang.reflect.Method withdraw = PublicationCoordinator.class.getDeclaredMethod("withdrawSync", int.class);
+		withdraw.setAccessible(true);
+		withdraw.invoke(publication, moved);
+		settle();
+		assertEquals(1, syncs.size());
+	}
+
+	@Test
+	public void aClickHeldAsItsSyncIsTurnedOffNeverSends() throws Exception
+	{
+		PublicationCoordinator publication = (PublicationCoordinator) field("publication");
+		try (Hold hold = new Hold(1))
+		{
+			held(hold, false);
+			CompletableFuture<Void> done = hold.onEdt(syncHandler::run);
+			hold.reached();
+			publication.cancelSync();
+			hold.close();
+			done.get(5, TimeUnit.SECONDS);
+		}
+		settle();
+		assertTrue(syncs.isEmpty());
+	}
+
+	@Test
+	public void aClickQueuedBehindACharactersSyncKeepsTheServersWait() throws Exception
+	{
+		profileRequired(0);
+		assertEquals(1, syncs.size());
+		syncHandler.run();
+		settle();
+		syncs.get(0).complete(new SyncService.SyncResult(false, false, "Busy", true, 20));
+		assertEquals("the click rides the advised wait", 20_000L, executor.lastDelayMs());
 	}
 
 	/** The server's "another sync holds the lock, try again in 2 s". */

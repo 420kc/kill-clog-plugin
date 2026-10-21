@@ -92,4 +92,14 @@ public class PublicationPushTest
 		assertEquals(left.mode, right.mode);
 		assertEquals(left.retry(), right.retry());
 	}
+
+	@Test
+	public void aRetrySpentByMergingNeverShiftsTheLead()
+	{
+		PublicationCoordinator.Push olderRetry = click("main").retriedIn("main", 1);
+		PublicationCoordinator.Push newerAsk = click("main");
+		PublicationCoordinator.Push newerRetry = newerAsk.retriedIn("demonic-pacts", 2);
+		assertEquals(merge(merge(olderRetry, newerAsk), newerRetry).mode,
+			merge(olderRetry, merge(newerAsk, newerRetry)).mode);
+	}
 }
