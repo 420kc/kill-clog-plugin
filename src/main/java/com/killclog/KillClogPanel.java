@@ -169,6 +169,9 @@ public class KillClogPanel extends PluginPanel
 	private final TooltipController tooltipController;
 	// Middle-button autoscroll; null only if RuneLite ever hands the panel no scroll pane.
 	private PanelAutoscroll autoscroll;
+	// The panel's top, which stays put while everything under it scrolls: the setup notice, the status row, search
+	// and the info bar.
+	private final JPanel anchoredTop = new JPanel();
 	private final LookupSession lookupSession;
 	private final ComparisonController comparison;
 	// The empty log behind cold and unsynced previews, one copy for both sides.
@@ -242,11 +245,11 @@ public class KillClogPanel extends PluginPanel
 
 		reloadTooltipSprites();
 
-		// Top border 6 not 10: the missing 4px live inside the status row
+		// The anchored top's border is 6 not 10: the missing 4px live inside the status row
 		// (taller row + compensating label inset), which lets the sync
 		// chalice center truly in the panel-top-to-search-bar band while
 		// the search bar and status text keep their exact positions.
-		setBorder(new EmptyBorder(6, 10, 0, 10));
+		setBorder(new EmptyBorder(0, 10, 0, 10));
 		setBackground(ColorScheme.DARK_GRAY_COLOR);
 		setLayout(new GridBagLayout());
 
@@ -270,14 +273,21 @@ public class KillClogPanel extends PluginPanel
 			clogNotice.add(label);
 		}
 		clogNotice.setVisible(false);
-		c.insets = new Insets(0, 0, 5, 0);
-		add(clogNotice, c);
+		clogNotice.setBorder(new EmptyBorder(0, 0, 5, 0));
+		clogNotice.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-		c.gridy++;
-		add(buildSearchPanel(), c);
+		// The top stays on screen down the whole boss list (Dylan, 2026-10-20): above RuneLite's scroll pane, inset on
+		// the right by the scrollbar's width so it lines up with the content beside the bar.
+		anchoredTop.setLayout(new BoxLayout(anchoredTop, BoxLayout.Y_AXIS));
+		anchoredTop.setBackground(ColorScheme.DARK_GRAY_COLOR);
+		anchoredTop.setBorder(new EmptyBorder(6, 10, 0, 10 + MinimalScrollBarUI.WIDTH));
+		anchoredTop.add(clogNotice);
+		JPanel search = buildSearchPanel();
+		search.setAlignmentX(Component.LEFT_ALIGNMENT);
+		anchoredTop.add(search);
+		getWrappedPanel().add(anchoredTop, BorderLayout.NORTH);
 
 		// Activities tray with slide animation
-		c.gridy++;
 		c.insets = new Insets(0, 0, 0, 0);
 		activitiesTray = new ActivitiesTray(buildActivitiesGrid(), config.activitiesExpanded(),
 			expanded -> configManager.setConfiguration("killclog", "activitiesExpanded", expanded));
@@ -382,7 +392,7 @@ public class KillClogPanel extends PluginPanel
 			comparison::exit,
 			statusRow::clearSearchStatus,
 			this::lookupSelfFromSearchIcon,
-			this::revalidate);
+			anchoredTop::revalidate);
 		searchRowController.install();
 		searchRowController.setComparisonEnabled(config.enableComparison());
 
@@ -1508,8 +1518,8 @@ public class KillClogPanel extends PluginPanel
 	private void setClogSetupNoticeVisible(boolean visible)
 	{
 		clogNotice.setVisible(visible);
-		revalidate();
-		repaint();
+		anchoredTop.revalidate();
+		anchoredTop.repaint();
 	}
 
 	@Override
