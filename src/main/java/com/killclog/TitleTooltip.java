@@ -417,7 +417,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	void setRankPair(String label, int rank)
 	{
 		rankPairLabel = label;
-		rankPairText = rank > 0 ? grouped(rank) : "Unranked";
+		rankPairText = rankText(rank);
 	}
 
 	/** Leads the header with the Obtained line, as the game's Collection Log pages do. */
@@ -429,14 +429,21 @@ public abstract class TitleTooltip extends NativeTooltip
 	/** Set the rank line. 0 = "Unranked". */
 	public void setRank(int rank)
 	{
-		if (rank > 0)
-		{
-			this.rankText = grouped(rank);
-		}
-		else
-		{
-			this.rankText = "Unranked";
-		}
+		rankText = rankText(rank);
+	}
+
+	private static final String UNRANKED = "Unranked";
+
+	/** A rank as the header shows it: grouped, or "Unranked" without one. */
+	private static String rankText(int rank)
+	{
+		return rank > 0 ? grouped(rank) : UNRANKED;
+	}
+
+	/** An unranked rank reads in the label's colour, a rank in the value's. */
+	private static Color rankColor(String rankText)
+	{
+		return UNRANKED.equals(rankText) ? labelColor : NativeTooltip.valueColor;
 	}
 
 	/** Override in subclasses that need a smaller title font. */
@@ -663,19 +670,18 @@ public abstract class TitleTooltip extends NativeTooltip
 		FontMetrics fm = g2.getFontMetrics();
 
 		// Header line order: stats read first (KC/PB info line, then rank),
-		// clog progress reads last. The first line under the title keeps the
-		// wider gap the larger title font needs.
+		// clog progress reads last.
 
 		if (obtainedFirst && subtitleLabel != null)
 		{
-			lineY += lineY == titleBaseline ? NAME_LINE_HEIGHT : LINE_HEIGHT;
+			lineY = nextLine(lineY, titleBaseline);
 			drawLabelValue(g2, fm, inset, lineY, subtitleLabel, subtitleValue, subtitleColor);
 		}
 
 		// Info lines (KC/PB for boss cells, a raid's hard mode under them, Kills for unsynced)
 		for (InfoLine line : infoLines)
 		{
-			lineY += lineY == titleBaseline ? NAME_LINE_HEIGHT : LINE_HEIGHT;
+			lineY = nextLine(lineY, titleBaseline);
 			int infoWidth = drawLabelValue(g2, fm, inset, lineY, line.label, line.value, line.color);
 			if (line.pair != null)
 			{
@@ -687,13 +693,12 @@ public abstract class TitleTooltip extends NativeTooltip
 		// Rank line
 		if (rankText != null)
 		{
-			lineY += lineY == titleBaseline ? NAME_LINE_HEIGHT : LINE_HEIGHT;
-			int rankWidth = drawLabelValue(g2, fm, inset, lineY, "Rank: ", rankText,
-				"Unranked".equals(rankText) ? labelColor : NativeTooltip.valueColor);
+			lineY = nextLine(lineY, titleBaseline);
+			int rankWidth = drawLabelValue(g2, fm, inset, lineY, "Rank: ", rankText, rankColor(rankText));
 			if (rankPairLabel != null)
 			{
 				drawLabelValue(g2, fm, inset + rankWidth + INFO_PAIR_GAP, lineY, rankPairLabel, rankPairText,
-					"Unranked".equals(rankPairText) ? labelColor : NativeTooltip.valueColor);
+					rankColor(rankPairText));
 			}
 		}
 
@@ -701,7 +706,7 @@ public abstract class TitleTooltip extends NativeTooltip
 		subtitleIconBounds = null;
 		if (!obtainedFirst && subtitleLabel != null)
 		{
-			lineY += lineY == titleBaseline ? NAME_LINE_HEIGHT : LINE_HEIGHT;
+			lineY = nextLine(lineY, titleBaseline);
 			int textWidth = drawLabelValue(g2, fm, inset, lineY, subtitleLabel, subtitleValue, subtitleColor);
 			if (subtitleIcon != null)
 			{
@@ -713,6 +718,12 @@ public abstract class TitleTooltip extends NativeTooltip
 		}
 
 		return paintSeparator(g2, w, lineY, SEPARATOR_GAP);
+	}
+
+	/** The baseline of the header's next line: the first under the title keeps the wider gap its larger font needs. */
+	private static int nextLine(int lineY, int titleBaseline)
+	{
+		return lineY + (lineY == titleBaseline ? NAME_LINE_HEIGHT : LINE_HEIGHT);
 	}
 
 	/** Room above and below the label, shared by sprite-section readouts. */
@@ -803,8 +814,7 @@ public abstract class TitleTooltip extends NativeTooltip
 
 	private boolean titleLinkActive()
 	{
-		return (links == CardLinks.ON || links == CardLinks.SHIFT && shiftDown)
-			&& titleWikiPage != null && !titleWikiPage.trim().isEmpty();
+		return links.opens(shiftDown) && titleWikiPage != null && !titleWikiPage.trim().isEmpty();
 	}
 
 	protected Color titleColor()

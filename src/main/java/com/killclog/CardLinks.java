@@ -16,7 +16,13 @@ public enum CardLinks
 	/** Whether this press opens the link under it. */
 	boolean opens(InputEvent press)
 	{
-		return this == ON || this == SHIFT && press.isShiftDown();
+		return opens(press.isShiftDown());
+	}
+
+	/** Whether a link opens with shift held or not. */
+	boolean opens(boolean shiftDown)
+	{
+		return this == ON || this == SHIFT && shiftDown;
 	}
 
 	@Override
