@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntUnaryOperator;
+import java.util.function.Predicate;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import net.runelite.api.clan.ClanTitle;
@@ -290,10 +291,10 @@ public class ClogResult
 		// Provenance comes from provider-stamped inputs, never argument position:
 		// the Temple-shaped leg can legitimately contain unmarked local data.
 		ClogResult loser = winner == temple ? rp : temple;
-		return winner.copyWithProvenance(sourceTemple(temple, rp),
-			sourceRuneProfile(temple, rp), sourceKillclog(temple, rp),
+		return winner.copyWithProvenance(either(temple, rp, ClogResult::isFromTemple),
+			either(temple, rp, ClogResult::isFromRuneProfile), either(temple, rp, ClogResult::isFromKillclog),
 			loser != null ? loser.providerAccountType : null)
-			.withLocalSource(sourceLocal(temple, rp)).carryFrom(loser);
+			.withLocalSource(either(temple, rp, ClogResult::isFromLocal)).carryFrom(loser);
 	}
 
 	/**
@@ -322,9 +323,9 @@ public class ClogResult
 			return killclog.copyWithProvenance(
 				killclog.fromTemple, killclog.fromRuneProfile, killclog.fromKillclog, null);
 		}
-		boolean templeSource = sourceTemple(provider, killclog);
-		boolean runeProfileSource = sourceRuneProfile(provider, killclog);
-		boolean killclogSource = sourceKillclog(provider, killclog);
+		boolean templeSource = either(provider, killclog, ClogResult::isFromTemple);
+		boolean runeProfileSource = either(provider, killclog, ClogResult::isFromRuneProfile);
+		boolean killclogSource = either(provider, killclog, ClogResult::isFromKillclog);
 		// The coverage race compares the same metric on both sides: distinct
 		// itemized coverage. The varp counter describes the ACCOUNT, not the
 		// payload - a six-item partial sync still carries the account's full
@@ -334,34 +335,20 @@ public class ClogResult
 		{
 			return killclog.copyWithProvenance(
 				templeSource, runeProfileSource, killclogSource,
-				provider.providerAccountType).withLocalSource(sourceLocal(provider, killclog)).carryFrom(provider);
+				provider.providerAccountType).withLocalSource(either(provider, killclog, ClogResult::isFromLocal)).carryFrom(provider);
 		}
 		AccountType firstPartyType = killclog.providerAccountType;
 		AccountType accountType = firstPartyType != null && firstPartyType.isGroupIronman()
 			? firstPartyType : provider.providerAccountType;
 		return provider.copyWithProvenanceAndAccountType(
 			templeSource, runeProfileSource, killclogSource, accountType)
-			.withLocalSource(sourceLocal(provider, killclog)).carryFrom(killclog);
+			.withLocalSource(either(provider, killclog, ClogResult::isFromLocal)).carryFrom(killclog);
 	}
 
-	private static boolean sourceLocal(ClogResult first, ClogResult second)
+	/** A merge carries a source when either side came from it. */
+	private static boolean either(ClogResult first, ClogResult second, Predicate<ClogResult> source)
 	{
-		return first != null && first.fromLocal || second != null && second.fromLocal;
-	}
-
-	private static boolean sourceTemple(ClogResult first, ClogResult second)
-	{
-		return first != null && first.fromTemple || second != null && second.fromTemple;
-	}
-
-	private static boolean sourceRuneProfile(ClogResult first, ClogResult second)
-	{
-		return first != null && first.fromRuneProfile || second != null && second.fromRuneProfile;
-	}
-
-	private static boolean sourceKillclog(ClogResult first, ClogResult second)
-	{
-		return first != null && first.fromKillclog || second != null && second.fromKillclog;
+		return first != null && source.test(first) || second != null && source.test(second);
 	}
 
 	/** Distinct itemized coverage, deliberately ignoring the varp counter. */
