@@ -79,8 +79,6 @@ public class LookupSession
 	@Nullable private CombatAchievementResult caResult;
 	@Getter
 	@Nullable private String currentLookupRsn;
-	@Getter
-	@Nullable private String clogLastChanged;
 	private int localClogRevision;
 	private UnaryOperator<HiscoreResult> rankView = UnaryOperator.identity();
 
@@ -167,7 +165,6 @@ public class LookupSession
 		hiscoreResult = null;
 		clogResult = null;
 		caResult = null;
-		clogLastChanged = null;
 		clearHold();
 		clogSettled = false;
 		final int thisLookup = fanout.begin();
@@ -204,16 +201,11 @@ public class LookupSession
 				fanout.settle();
 				revealWithClog(thisLookup, cachedClog != null, () ->
 				{
-					hiscoreResult = cachedHiscore;
-					if (nameAutocompleter != null)
-					{
-						nameAutocompleter.addToSearchHistory(player);
-					}
+					showHiscore(player, cachedHiscore);
 					ClogResult displayClog = clogResult;
 					if (displayClog == null && cachedClog != null)
 					{
 						clogResult = cachedClog;
-						clogLastChanged = cachedClog.getLastChanged();
 						displayClog = cachedClog;
 					}
 					listener.onCachedResult(player, cachedHiscore, displayClog, isSelf, knownType,
@@ -241,11 +233,7 @@ public class LookupSession
 			fanout.settle();
 			revealWithClog(thisLookup, false, () ->
 			{
-				hiscoreResult = result;
-				if (nameAutocompleter != null)
-				{
-					nameAutocompleter.addToSearchHistory(player);
-				}
+				showHiscore(player, result);
 				listener.onHiscoreResult(player, result, isSelf, knownType, isFirstSelfGreeting);
 			});
 		}, ex ->
@@ -255,6 +243,16 @@ public class LookupSession
 		});
 
 		startClogLookup(player, isSelf, thisLookup);
+	}
+
+	/** The hiscore this lookup shows, its name kept in the search history. */
+	private void showHiscore(String player, HiscoreResult result)
+	{
+		hiscoreResult = result;
+		if (nameAutocompleter != null)
+		{
+			nameAutocompleter.addToSearchHistory(player);
+		}
 	}
 
 	/**
@@ -277,7 +275,6 @@ public class LookupSession
 				}
 			}
 			clogResult = result;
-			clogLastChanged = result != null ? result.getLastChanged() : null;
 			settleClog(thisLookup);
 			listener.onClogResult(player, result, isSelf, thisLookup);
 		}, () -> settleClog(thisLookup));
@@ -344,7 +341,6 @@ public class LookupSession
 		if (local == null || !local.isFromLocal()) return;
 		localClogRevision++;
 		clogResult = local;
-		clogLastChanged = local.getLastChanged();
 		settleClog(fanout.version());
 		listener.onClogResult(player, local, true, fanout.version());
 	}
@@ -376,7 +372,6 @@ public class LookupSession
 		this.clogResult = clog;
 		this.caResult = ca;
 		this.currentLookupRsn = name;
-		this.clogLastChanged = clog != null ? clog.getLastChanged() : null;
 	}
 
 	/** Quietly discard the session before panel shutdown or reuse. */
@@ -412,6 +407,13 @@ public class LookupSession
 	public ClogResult getClogResult()
 	{
 		return frozen(getHiscoreResult()) ? null : clogResult;
+	}
+
+	/** When the shown log last changed, as its provider dates it. */
+	@Nullable
+	String getClogLastChanged()
+	{
+		return clogResult != null ? clogResult.getLastChanged() : null;
 	}
 
 	ClogResult getNativeClogResult()
