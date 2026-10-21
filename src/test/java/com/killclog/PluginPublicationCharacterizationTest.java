@@ -814,6 +814,17 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void aReEnableKeepsTheRealAppearanceTheGameLastSent() throws Exception
+	{
+		plugin.shutDown();
+		plugin.startUp();
+		verify(appearance, never()).clearOriginalAppearance();
+		// A logout still drops it.
+		logout();
+		verify(appearance).clearOriginalAppearance();
+	}
+
+	@Test
 	public void shutDownDropsAScheduledPush() throws Exception
 	{
 		syncHandler.run();

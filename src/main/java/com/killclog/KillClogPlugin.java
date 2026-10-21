@@ -278,7 +278,9 @@ public class KillClogPlugin extends Plugin
 	@Override
 	protected void shutDown()
 	{
-		profileAppearanceService.clearOriginalAppearance();
+		// The real appearance the game last sent is kept, like the other data, so a re-enable mid-login can publish
+		// without a gear change: logout, a hop or a lost connection drops it, and a publish checks it against the
+		// worn gear.
 		clientToolbar.removeNavigation(navButton);
 		lookupMenu.stop(config, menuManager);
 		chatCommandManager.unregisterCommand(KillClogChatCommand.COMMAND);
