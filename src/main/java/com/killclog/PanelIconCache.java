@@ -73,9 +73,9 @@ final class PanelIconCache
 		clientThread.invokeLater(() ->
 		{
 			// Tooltip cape icons - native aspect ratio, taller.
-			loadItemImage(PanelData.MAX_CAPE_ITEM_ID, img -> maxCapeTip = img);
-			loadItemImage(PanelData.INFERNAL_CAPE_ITEM_ID, img -> infernalCapeTip = img);
-			loadItemImage(PanelData.INFERNAL_MAX_CAPE_ITEM_ID, img -> infernalMaxCapeTip = img);
+			loadItemImage(itemManager, PanelData.MAX_CAPE_ITEM_ID, img -> maxCapeTip = img);
+			loadItemImage(itemManager, PanelData.INFERNAL_CAPE_ITEM_ID, img -> infernalCapeTip = img);
+			loadItemImage(itemManager, PanelData.INFERNAL_MAX_CAPE_ITEM_ID, img -> infernalMaxCapeTip = img);
 
 			caRewardSprites.preloadAll();
 
@@ -91,15 +91,15 @@ final class PanelIconCache
 			for (int i = 0; i < PanelData.CLUE_TIER_ITEM_IDS.length; i++)
 			{
 				final int idx = i + 1;
-				loadItemImage(PanelData.CLUE_TIER_ITEM_IDS[i], img ->
+				loadItemImage(itemManager, PanelData.CLUE_TIER_ITEM_IDS[i], img ->
 					cells.getClueIcons()[idx] = cellIcon(img, 13));
 			}
-			loadItemImage(23184, img ->
+			loadItemImage(itemManager, 23184, img ->
 				cells.getClueIcons()[7] = cellIcon(img, 13));
 			for (int i = 0; i < PanelData.RARE_ICON_ITEM_IDS.length; i++)
 			{
 				final int idx = i;
-				loadItemImage(PanelData.RARE_ICON_ITEM_IDS[i], img ->
+				loadItemImage(itemManager, PanelData.RARE_ICON_ITEM_IDS[i], img ->
 					cells.getRareIcons()[idx] = cellIcon(img, 13));
 			}
 		});
@@ -113,24 +113,18 @@ final class PanelIconCache
 		int allSpriteId = HiscoreSkill.CLUE_SCROLL_ALL.getSpriteId();
 		if (allSpriteId != -1)
 		{
-			spriteManager.getSpriteAsync(allSpriteId, 0, sprite ->
-				SwingUtilities.invokeLater(() ->
-				{
-					if (sprite != null)
-					{
-						cells.getClueIcons()[0] = cellIcon(sprite, 13);
-					}
-				}));
+			cellSprite(spriteManager, allSpriteId, 13, icon -> cells.getClueIcons()[0] = icon);
 		}
 	}
 
 	/** An item image resized into an icon, delivered on the Swing thread once it has loaded. */
 	private void loadItemIcon(int itemId, int w, int h, Consumer<ImageIcon> setter)
 	{
-		loadItemImage(itemId, img -> setter.accept(new ImageIcon(ImageUtil.resizeImage(img, w, h))));
+		loadItemImage(itemManager, itemId, img -> setter.accept(new ImageIcon(ImageUtil.resizeImage(img, w, h))));
 	}
 
-	private void loadItemImage(int itemId, Consumer<BufferedImage> setter)
+	/** An item's image, handed over on the Swing thread once the game has loaded it. */
+	static void loadItemImage(ItemManager itemManager, int itemId, Consumer<BufferedImage> setter)
 	{
 		BufferedImage img = itemManager.getImage(itemId, 1, false);
 		if (img instanceof AsyncBufferedImage)
@@ -142,6 +136,19 @@ final class PanelIconCache
 		{
 			SwingUtilities.invokeLater(() -> setter.accept(img));
 		}
+	}
+
+	/** A game sprite at cell size ({@link #cellIcon}), handed over on the Swing thread once loaded; a missing one is skipped. */
+	static void cellSprite(SpriteManager spriteManager, int spriteId, int size, Consumer<BufferedImage> sink)
+	{
+		spriteManager.getSpriteAsync(spriteId, 0, sprite ->
+			SwingUtilities.invokeLater(() ->
+			{
+				if (sprite != null)
+				{
+					sink.accept(cellIcon(sprite, size));
+				}
+			}));
 	}
 
 	/** A game icon centred on the 25 px cell canvas, then scaled to the size shown. */

@@ -9,9 +9,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.game.ItemManager;
-import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
-import javax.swing.SwingUtilities;
 
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class CaRewardSprites
@@ -63,16 +61,7 @@ final class CaRewardSprites
 
 	private void load(CombatAchievementReward reward)
 	{
-		BufferedImage img = itemManager.getImage(reward.itemId(), 1, false);
-		if (img instanceof AsyncBufferedImage)
-		{
-			((AsyncBufferedImage) img).onLoaded(() ->
-				SwingUtilities.invokeLater(() -> store(reward, img)));
-		}
-		else
-		{
-			SwingUtilities.invokeLater(() -> store(reward, img));
-		}
+		PanelIconCache.loadItemImage(itemManager, reward.itemId(), img -> store(reward, img));
 	}
 
 	private void store(CombatAchievementReward reward, BufferedImage img)

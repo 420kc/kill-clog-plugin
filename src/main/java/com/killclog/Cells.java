@@ -157,17 +157,12 @@ public class Cells
 	/** Load a 25x25 game sprite into a boss label at cell size, then hand it to the icon sink. */
 	private void loadBossIcon(JLabel label, int spriteId, Consumer<ImageIcon> sink)
 	{
-		spriteManager.getSpriteAsync(spriteId, 0, sprite ->
-			SwingUtilities.invokeLater(() ->
-			{
-				if (sprite == null)
-				{
-					return;
-				}
-				ImageIcon icon = new ImageIcon(PanelIconCache.cellIcon(sprite, 20));
-				label.setIcon(icon);
-				sink.accept(icon);
-			}));
+		PanelIconCache.cellSprite(spriteManager, spriteId, 20, image ->
+		{
+			ImageIcon icon = new ImageIcon(image);
+			label.setIcon(icon);
+			sink.accept(icon);
+		});
 	}
 
 	/** Build the All Clues cell, which opens the Clue Summary. */
@@ -195,14 +190,8 @@ public class Cells
 		};
 		styleLabel(label, activity.getName());
 
-		spriteManager.getSpriteAsync(activity.getSpriteId(), 0, sprite ->
-			SwingUtilities.invokeLater(() ->
-			{
-				if (sprite != null)
-				{
-					label.setIcon(new ImageIcon(ImageUtil.resizeCanvas(PanelIconCache.cellIcon(sprite, 16), 20, 20)));
-				}
-			}));
+		PanelIconCache.cellSprite(spriteManager, activity.getSpriteId(), 16,
+			image -> label.setIcon(new ImageIcon(ImageUtil.resizeCanvas(image, 20, 20))));
 
 		activityLabels.put(activity, label);
 		return wrapInCell(label);
@@ -219,14 +208,7 @@ public class Cells
 				continue;
 			}
 			final int idx = i;
-			spriteManager.getSpriteAsync(spriteId, 0, sprite ->
-				SwingUtilities.invokeLater(() ->
-				{
-					if (sprite != null)
-					{
-						pvpActivityIcons[idx] = PanelIconCache.cellIcon(sprite, 13);
-					}
-				}));
+			PanelIconCache.cellSprite(spriteManager, spriteId, 13, icon -> pvpActivityIcons[idx] = icon);
 		}
 	}
 

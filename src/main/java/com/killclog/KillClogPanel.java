@@ -534,14 +534,7 @@ public class KillClogPanel extends PluginPanel
 			}
 		};
 		Cells.styleLabel(combatCell, "Combat");
-		spriteManager.getSpriteAsync(168, 0, sprite ->
-			SwingUtilities.invokeLater(() ->
-			{
-				if (sprite != null)
-				{
-					combatCell.setIcon(new ImageIcon(PanelIconCache.cellIcon(sprite, 20)));
-				}
-			}));
+		PanelIconCache.cellSprite(spriteManager, 168, 20, icon -> combatCell.setIcon(new ImageIcon(icon)));
 		statsRow.add(cells.wrapInCell(combatCell));
 
 		totalLvlCell = new JLabel()
