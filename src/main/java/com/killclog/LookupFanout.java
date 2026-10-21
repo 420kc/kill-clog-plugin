@@ -58,10 +58,13 @@ final class LookupFanout
 		this.leagueLog = leagueLog;
 	}
 
-	/** Whether this client keeps the log read here: the main game's, or the League's on its own world. */
-	boolean readsOwnLog()
+	/**
+	 * Whether this client keeps this player's log for the game read here: the main game's while the main store serves
+	 * them (not yet on a login made straight onto a League world), or the League's on its own world.
+	 */
+	boolean readsOwnLog(String player)
 	{
-		return league == null || leagueLog != null;
+		return league == null ? clogService.keepsOwnLog(player) : leagueLog != null;
 	}
 
 	/** Your own log for the game these lookups read, as it is now. */
@@ -170,9 +173,11 @@ final class LookupFanout
 	void fetchClog(String player, boolean isSelf, int stamp,
 		Consumer<ClogResult> onResult, @Nullable Runnable onError)
 	{
-		(league == null ? ClogProviderFanout.lookup(isSelf, () -> clogService.lookup(player),
+		// Your own log stands in for the remote sites only where this client keeps it.
+		boolean own = isSelf && readsOwnLog(player);
+		(league == null ? ClogProviderFanout.lookup(own, () -> clogService.lookup(player),
 			() -> runeProfileService.lookupClog(player), () -> killclogService.lookupClog(player))
-			: ClogProviderFanout.bounded(isSelf && leagueLog != null ? clogService.lookupLocal(leagueLog, player)
+			: ClogProviderFanout.bounded(own ? clogService.lookupLocal(leagueLog, player)
 			: killclogService.lookupClog(player, league)))
 			.thenApply(this::onGamePages)
 			.thenAccept(result -> onEdtIfCurrent(stamp, () -> onResult.accept(result)))

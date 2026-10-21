@@ -78,12 +78,12 @@ public class RankSelectorTest
 		assertNull(fixture.primary.getClogResult());
 		assertSame(log, fixture.comparison.getCompareClogResult());
 		assertSame(log, fixture.primary.getNativeClogResult());
-		assertFalse("no setup prompt beside a frozen row", fixture.primary.readsOwnLog());
+		assertFalse("no setup prompt beside a frozen row", fixture.primary.readsOwnLog("Blue"));
 
 		LookupTestFixture.edt(() -> fixture.primary.setRankView(row -> row));
 		assertSame(log, fixture.primary.getClogResult());
 		assertSame(log, fixture.comparison.getCompareClogResult());
-		assertTrue(fixture.primary.readsOwnLog());
+		assertTrue(fixture.primary.readsOwnLog("Blue"));
 	}
 
 	@Test

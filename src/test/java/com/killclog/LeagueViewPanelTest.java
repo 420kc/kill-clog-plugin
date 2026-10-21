@@ -57,6 +57,8 @@ public class LeagueViewPanelTest
 	public void createPanel() throws Exception
 	{
 		when(clogs.warmCatalog()).thenReturn(new CompletableFuture<>());
+		// The main store serves the logged-in player, as on a main-game world.
+		when(clogs.keepsOwnLog(any())).thenReturn(true);
 		// Every remote read stays pending: the tests watch which ones start.
 		when(hiscores.lookup(any(), any())).thenReturn(new CompletableFuture<>());
 		when(hiscores.lookupTable(any(), any())).thenReturn(new CompletableFuture<>());
@@ -213,6 +215,41 @@ public class LeagueViewPanelTest
 			panel.followWorld(null, null, "demonic-pacts");
 			row.doLayout();
 			assertEquals(178, searchBar.getWidth());
+		});
+	}
+
+	@Test
+	public void yourMainLogLookedUpFromALeagueLoginReadsEverySiteAndOffersNoSetup() throws Exception
+	{
+		// Logged straight onto a League world: the main store serves no one until a hop reaches the main game.
+		when(clogs.keepsOwnLog(any())).thenReturn(false);
+		when(clogs.lookupRsn(any())).thenReturn(new CompletableFuture<>());
+		javax.swing.JComponent notice = field(panel, "clogNotice", javax.swing.JComponent.class);
+		javax.swing.JLabel toggle = field(panel, "leagueSwitch", javax.swing.JLabel.class);
+		java.awt.event.MouseEvent press = new java.awt.event.MouseEvent(toggle, java.awt.event.MouseEvent.MOUSE_PRESSED, 0, 0, 5, 5, 1, false);
+		SwingUtilities.invokeAndWait(() ->
+		{
+			panel.setLoggedInPlayer("Me", AccountType.REGULAR);
+			panel.followWorld("demonic-pacts", mock(LocalClogCache.class), "demonic-pacts");
+			// Main game stats, then your own name.
+			for (java.awt.event.MouseListener listener : toggle.getMouseListeners())
+			{
+				listener.mousePressed(press);
+			}
+			field(panel, "searchBar", IconTextField.class).setText("Me");
+			panel.doLookup();
+		});
+		SwingUtilities.invokeAndWait(() ->
+		{
+		});
+		assertNull(session.league());
+		verify(runeProfile).lookupClog("Me");
+		verify(killclog).lookupClog("Me");
+		SwingUtilities.invokeAndWait(() ->
+		{
+			panel.onClogResult("Me", null, true, session.getLookupVersion());
+			assertFalse("your main log isn't kept here yet, so there is nothing to set up", notice.isVisible());
+			assertFalse(session.offersSetup("Me", "Me"));
 		});
 	}
 

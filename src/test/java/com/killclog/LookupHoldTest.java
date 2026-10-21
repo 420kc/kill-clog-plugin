@@ -145,6 +145,12 @@ public class LookupHoldTest
 		ClogService clogs = new ClogService(null, null, null)
 		{
 			@Override
+			boolean keepsOwnLog(String player)
+			{
+				return true;
+			}
+
+			@Override
 			public ClogResult getCachedResult(String name)
 			{
 				return null;

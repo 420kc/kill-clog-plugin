@@ -126,15 +126,15 @@ public class LookupSession
 	}
 
 	/** Setup applies only to a log this client keeps; a League read from another world has none here. */
-	boolean readsOwnLog()
+	boolean readsOwnLog(@Nullable String player)
 	{
-		return fanout.readsOwnLog() && !frozen(getHiscoreResult());
+		return player != null && fanout.readsOwnLog(player) && !frozen(getHiscoreResult());
 	}
 
 	/** Setup is offered for your own name's log, when this client keeps it. */
 	boolean offersSetup(@Nullable String localRsn, @Nullable String name)
 	{
-		return RsnInputPolicy.sameName(localRsn, name) && readsOwnLog();
+		return RsnInputPolicy.sameName(localRsn, name) && readsOwnLog(name);
 	}
 
 	/** Wire (or rewire) the autocompleter that records search history on each successful lookup. */

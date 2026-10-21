@@ -1530,7 +1530,7 @@ public class KillClogPanel extends PluginPanel
 		}
 		else
 		{
-			if (isSelf && lookupSession.readsOwnLog())
+			if (isSelf && lookupSession.readsOwnLog(player))
 			{
 				setClogSetupNoticeVisible(true);
 				if (!comparison.isComparisonMode())

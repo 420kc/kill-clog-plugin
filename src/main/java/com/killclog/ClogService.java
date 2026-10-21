@@ -186,6 +186,12 @@ public class ClogService
 		return result != null ? result.withLocalSource(true) : null;
 	}
 
+	/** Whether the main store serves this name's own log: the logged-in player, once their login reaches the main game. */
+	boolean keepsOwnLog(String playerName)
+	{
+		return localClogCache.isActivePlayer(playerName);
+	}
+
 	/**
 	 * Look up this service's TempleOSRS collection-log lane for a player.
 	 * Active player with widget-read data is served from cache (authoritative).

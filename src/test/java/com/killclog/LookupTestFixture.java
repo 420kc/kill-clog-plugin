@@ -31,6 +31,13 @@ final class LookupTestFixture
 	};
 	final ClogService clogService = new ClogService(null, null, null)
 	{
+		// The main store serves the logged-in player, as on a main-game world.
+		@Override
+		boolean keepsOwnLog(String player)
+		{
+			return true;
+		}
+
 		@Override
 		public ClogResult getCachedResult(String player)
 		{
