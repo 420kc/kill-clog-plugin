@@ -21,7 +21,7 @@ public class ClanSyncTest
 	public void theSyncSaysYourClanNoneOrNothingYet() throws Exception
 	{
 		PlayerClans clans = mock(PlayerClans.class);
-		SyncService service = new SyncService(null, new Gson(), null);
+		SyncService service = new SyncService(null, new Gson());
 		service.setClans(clans);
 		when(clans.forSync("420 kc")).thenReturn(new PlayerClans.Yours("420 kc", "Clogged", new ClanTitle(100, "Administrator"), true));
 		JsonObject clan = body(service).getAsJsonObject("clan");

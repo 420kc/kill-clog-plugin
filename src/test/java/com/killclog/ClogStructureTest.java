@@ -79,7 +79,7 @@ public class ClogStructureTest
 	public void theSyncSharesTheStructureOnlyWhenTheServerHoldsAnother()
 	{
 		JsonObject seed = seed();
-		SyncService sync = new SyncService(null, new Gson(), null);
+		SyncService sync = new SyncService(null, new Gson());
 		sync.setClogIndex(indexOf(seed));
 		// Before any reply names the server's structure, nothing goes.
 		assertNull(sync.structureToShare());

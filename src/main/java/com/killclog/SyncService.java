@@ -45,7 +45,6 @@ class SyncService
 
 	private final OkHttpClient httpClient;
 	private final Gson gson;
-	private final LocalClogCache localClogCache;
 	// The game's Collection Log as this client reads it, shared when killclog.com holds another.
 	@Setter
 	@Nullable

@@ -60,7 +60,7 @@ public class ClogUnlockHistoryTest
 	@Test
 	public void payloadAndProofViewRoundTripAcquisitionDatesOnly() throws Exception
 	{
-		SyncService service = new SyncService(null, new Gson(), null);
+		SyncService service = new SyncService(null, new Gson());
 		Method build = SyncService.class.getDeclaredMethod("buildBody", long.class, AccountType.class,
 			ClogResult.class, Map.class, Map.class);
 		build.setAccessible(true);

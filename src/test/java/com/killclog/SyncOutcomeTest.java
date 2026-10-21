@@ -9,7 +9,7 @@ import static org.junit.Assert.assertTrue;
 
 public class SyncOutcomeTest
 {
-	private final SyncService service = new SyncService(null, new Gson(), null);
+	private final SyncService service = new SyncService(null, new Gson());
 
 	@Test
 	public void aRestartingServerIsWorthOneSpreadOutRetry()

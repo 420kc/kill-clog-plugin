@@ -87,10 +87,10 @@ final class PersonalBests
 	@Nullable
 	private final ConfigManager configManager;
 	private final List<String> profileKeys;
-	// Every time the profiles hold, by boss; read once, on the first ask.
-	private Map<String, List<Kept>> kept;
+	// Every time the profiles hold, by boss; read once, on the first ask, and kept only once whole.
+	private volatile Map<String, List<Kept>> kept;
 	@Nullable
-	private String chosen;
+	private volatile String chosen;
 
 	/** The times kept on these profiles of one account ({@link #profileKeys}); nothing is read until asked. */
 	PersonalBests(@Nullable ConfigManager configManager, List<String> profileKeys)
@@ -242,17 +242,22 @@ final class PersonalBests
 			: String.format(Locale.US, "%05.2f", secs));
 	}
 
-	/** Every lane's times on every profile, listed once per lane and profile; any thread. */
+	/**
+	 * Every lane's times on every profile, listed once per lane and profile, on the first ask. The list is kept only
+	 * once whole, so a reader on another thread sees it whole or reads it again; never a half-built one.
+	 */
 	private Map<String, List<Kept>> kept()
 	{
-		if (kept != null)
+		Map<String, List<Kept>> list = kept;
+		if (list != null)
 		{
-			return kept;
+			return list;
 		}
-		kept = new HashMap<>();
+		list = new HashMap<>();
 		if (configManager == null || profileKeys.isEmpty())
 		{
-			return kept;
+			kept = list;
+			return list;
 		}
 		chosen = withPrefix(configManager.getRSProfileKey());
 		for (Lane lane : Lane.values())
@@ -266,14 +271,15 @@ final class PersonalBests
 					Matcher variant = VARIANT.matcher(key.substring(lane.prefix.length()));
 					if (seconds != null && seconds > 0 && variant.matches())
 					{
-						kept.computeIfAbsent(encounter(variant.group(1)), boss -> new ArrayList<>()).add(new Kept(lane,
+						list.computeIfAbsent(encounter(variant.group(1)), boss -> new ArrayList<>()).add(new Kept(lane,
 							profile, key.substring(lane.prefix.length()), variant.group(2) != null ? variant.group(2) : "",
 							seconds));
 					}
 				}
 			}
 		}
-		return kept;
+		kept = list;
+		return list;
 	}
 
 	/** A kept time as the sync sends it; a kill's time with the labels Kill Clog kept beside it. */

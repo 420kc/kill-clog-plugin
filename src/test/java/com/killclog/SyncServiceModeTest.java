@@ -50,7 +50,7 @@ public class SyncServiceModeTest
 		KillclogSyncGate<Object> gate = new KillclogSyncGate<>((waiting, later) -> later);
 		int generation = gate.begin(null, gate.era(), KillclogSyncGate.DELIBERATE);
 
-		SyncService.SyncResult result = new SyncService(http, new Gson(), main)
+		SyncService.SyncResult result = new SyncService(http, new Gson())
 			.syncCollectionLog(TESTER, null, Map.of(), Map.of(), gate, generation, league, "demonic-pacts", false,
 				() -> assertEquals("it runs before the push goes", 0, sent.size())).get();
 
@@ -69,7 +69,7 @@ public class SyncServiceModeTest
 		}).build();
 		LocalClogCache main = mock(LocalClogCache.class);
 		when(main.servesAccount(TESTER)).thenReturn(true);
-		SyncService service = new SyncService(http, new Gson(), main);
+		SyncService service = new SyncService(http, new Gson());
 		KillclogSyncGate<Object> gate = new KillclogSyncGate<>((waiting, later) -> later);
 
 		SyncService.SyncResult unread = service.syncCollectionLog(TESTER, null, Map.of(), Map.of(), gate,

@@ -27,17 +27,4 @@ class PlayerClogData
 	 * False keeps provider-only and live-unlock-only stores in setup.
 	 */
 	Boolean firstPartySetupComplete;
-	/**
-	 * Per-category item ids this CLIENT observed first-hand (bulk
-	 * capture, page capture, live unlock). The sync payload ships only
-	 * records marked IN THEIR OWN CATEGORY - a global id mark would let
-	 * a provider record of the same item in another category launder
-	 * through (multi-category items are routine: clue rares span pages).
-	 * Null means a legacy pre-marking store file: those were built by
-	 * this client's own captures, so the store ships whole and the first
-	 * capture grandfathers everything obtained at that moment. Live
-	 * provider writes initialize the field EMPTY instead, which never
-	 * grandfathers.
-	 */
-	Map<String, List<Integer>> firstPartyByCategory;
 }

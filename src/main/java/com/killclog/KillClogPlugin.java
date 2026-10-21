@@ -852,7 +852,6 @@ public class KillClogPlugin extends Plugin
 	@Subscribe
 	public void onConfigChanged(ConfigChanged event)
 	{
-
 		if (!event.getGroup().equals("killclog"))
 		{
 			return;
