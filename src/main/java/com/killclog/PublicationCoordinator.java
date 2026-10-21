@@ -241,7 +241,7 @@ final class PublicationCoordinator
 
 	void publishCharacter()
 	{
-		startCharacterPublish(true);
+		startCharacterPublish(NEW_REQUEST);
 	}
 
 	/**
@@ -250,7 +250,7 @@ final class PublicationCoordinator
 	 */
 	void deleteCharacter()
 	{
-		startCharacterRequest(CharacterStatus.DELETING, profileAppearanceService::deleteCurrent, (result, error, generation) ->
+		startCharacterRequest(CharacterStatus.DELETING, NEW_REQUEST, profileAppearanceService::deleteCurrent, (result, error, generation) ->
 		{
 			if (generation != characterPublishGeneration.get())
 			{
@@ -302,15 +302,19 @@ final class PublicationCoordinator
 		});
 	}
 
-	private void retryCharacterPublish()
+	// A click's own request, not the continuation of one already under way.
+	private static final int NEW_REQUEST = -1;
+
+	/** The publish again after its log's sync, as the same request: withdrawn since, it stands down. */
+	private void retryCharacterPublish(int generation)
 	{
-		startCharacterPublish(false);
+		startCharacterPublish(generation);
 	}
 
-	private void startCharacterPublish(boolean newRequest)
+	private void startCharacterPublish(int continues)
 	{
-		if (startCharacterRequest(CharacterStatus.RENDERING, profileAppearanceService::publishCurrent,
-			this::handleCharacterPublishResult) && newRequest)
+		if (startCharacterRequest(CharacterStatus.RENDERING, continues, profileAppearanceService::publishCurrent,
+			this::handleCharacterPublishResult) && continues == NEW_REQUEST)
 		{
 			characterPrerequisiteAttempted.set(false);
 		}
@@ -331,16 +335,33 @@ final class PublicationCoordinator
 
 	/**
 	 * One character request at a time: its status line at once, then on the client thread the player it is for (a
-	 * logout, a hop to a League or a new request since makes it fail or stand down), then the request. False when one
-	 * is already running or the character setting is off.
+	 * logout, a hop to a League or a new request since makes it fail or stand down), then the request. A request that
+	 * {@code continues} an earlier one (its generation) takes that one's place only while it is still current, so a
+	 * logout in between leaves nothing to act for the next login. False when one is already running, the character
+	 * setting is off, or the request it continues was withdrawn.
 	 */
-	private boolean startCharacterRequest(CharacterStatus progress, CharacterRequest request, CharacterOutcome outcome)
+	private boolean startCharacterRequest(CharacterStatus progress, int continues, CharacterRequest request,
+		CharacterOutcome outcome)
 	{
 		if (!characterPublishingEnabled() || !characterPublishInFlight.compareAndSet(false, true))
 		{
 			return false;
 		}
-		int generation = characterPublishGeneration.incrementAndGet();
+		int generation;
+		if (continues == NEW_REQUEST)
+		{
+			generation = characterPublishGeneration.incrementAndGet();
+		}
+		else if (characterPublishGeneration.compareAndSet(continues, continues + 1))
+		{
+			generation = continues + 1;
+		}
+		else
+		{
+			// Withdrawn meanwhile, and the withdrawal already cleared the row: the slot this took goes back.
+			characterPublishInFlight.set(false);
+			return false;
+		}
 		showCharacterPublishStatus(generation, progress, false);
 		clientThread.invokeLater(() ->
 		{
@@ -423,7 +444,7 @@ final class PublicationCoordinator
 					return;
 				}
 				characterPublishInFlight.set(false);
-				retryCharacterPublish();
+				retryCharacterPublish(expectedGeneration);
 			}, ProfileAppearanceService.PUBLISH_RETRY_DELAY_MS, TimeUnit.MILLISECONDS);
 		}
 		catch (RuntimeException e)

@@ -1047,6 +1047,57 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void aPublishRetriedAfterItsSyncNeverActsForTheNextLogin() throws Exception
+	{
+		publishHandler.run();
+		settle();
+		publishes.get(0).complete(new ProfileAppearanceService.PublishResult(ProfileAppearanceService.Outcome.PROFILE_REQUIRED, null));
+		settle();
+		assertEquals(1, syncs.size());
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
+		// Only the delayed retry waits on the scheduler now.
+		drainEdt();
+
+		// The retry passes its own check on the scheduler's thread; then the player logs out and another logs in.
+		java.util.concurrent.CountDownLatch checked = new java.util.concurrent.CountDownLatch(1);
+		java.util.concurrent.CountDownLatch resume = new java.util.concurrent.CountDownLatch(1);
+		java.util.concurrent.atomic.AtomicBoolean first = new java.util.concurrent.atomic.AtomicBoolean(true);
+		KillClogConfig held = mock(KillClogConfig.class);
+		when(held.killclogSync()).thenReturn(true);
+		when(held.automaticSync()).thenReturn(true);
+		when(held.characterModel()).thenAnswer(invocation ->
+		{
+			if (!SwingUtilities.isEventDispatchThread() && first.compareAndSet(true, false))
+			{
+				checked.countDown();
+				assertTrue(resume.await(5, TimeUnit.SECONDS));
+			}
+			return true;
+		});
+		Field config = PublicationCoordinator.class.getDeclaredField("config");
+		config.setAccessible(true);
+		config.set(field("publication"), held);
+		CompletableFuture<Void> retry = CompletableFuture.runAsync(executor::runAll);
+		try
+		{
+			assertTrue(checked.await(5, TimeUnit.SECONDS));
+			logout();
+			Player next = mock(Player.class);
+			when(next.getName()).thenReturn("Other");
+			when(client.getLocalPlayer()).thenReturn(next);
+			when(client.getAccountHash()).thenReturn(HASH + 1);
+			login();
+		}
+		finally
+		{
+			resume.countDown();
+		}
+		retry.get(5, TimeUnit.SECONDS);
+		settle();
+		verify(appearance, times(1)).publishCurrent(any(), any());
+	}
+
+	@Test
 	public void aLeagueLearnedAfterTheLoginStillLeavesTheMainStoreToTheMainGame() throws Exception
 	{
 		// A cold client: the running League arrives with the sync index, a few ticks after the login.
