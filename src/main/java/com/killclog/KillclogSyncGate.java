@@ -20,6 +20,10 @@ final class KillclogSyncGate
 	private boolean queuedManual;
 	private String queuedMode;
 	private Session queuedSession;
+	// The character request a queued or in-flight push is the sync for; -1 for none. Automatic sync turned off never
+	// touches one.
+	private int queuedCharacter = -1;
+	private int inFlightCharacter = -1;
 	private boolean inFlightManual;
 	private final AtomicInteger generation = new AtomicInteger();
 
@@ -31,7 +35,7 @@ final class KillclogSyncGate
 	 *         {@link #consumeQueued()} will report it once the slot frees. A queued click keeps its game over later
 	 *         automatic pushes; the latest click wins among clicks.
 	 */
-	synchronized int beginAttempt(boolean manual, String mode, Session session)
+	synchronized int beginAttempt(boolean manual, String mode, Session session, int forCharacter)
 	{
 		int gen = generation.get();
 		if (!inFlight.compareAndSet(false, true))
@@ -42,10 +46,15 @@ final class KillclogSyncGate
 				queuedSession = session;
 			}
 			queuedManual |= manual;
+			if (forCharacter >= 0)
+			{
+				queuedCharacter = forCharacter;
+			}
 			queued.set(true);
 			return -1;
 		}
 		inFlightManual = manual;
+		inFlightCharacter = forCharacter;
 		return gen;
 	}
 
@@ -95,6 +104,7 @@ final class KillclogSyncGate
 		final boolean manual;
 		final String mode;
 		final Session session;
+		final int forCharacter;
 	}
 
 	/** Null means no queued push. */
@@ -104,10 +114,11 @@ final class KillclogSyncGate
 		{
 			return null;
 		}
-		Intent intent = new Intent(queuedManual, queuedMode, queuedSession);
+		Intent intent = new Intent(queuedManual, queuedMode, queuedSession, queuedCharacter);
 		queuedManual = false;
 		queuedMode = null;
 		queuedSession = null;
+		queuedCharacter = -1;
 		return intent;
 	}
 
@@ -117,12 +128,12 @@ final class KillclogSyncGate
 	 */
 	synchronized boolean cancelAutomatic()
 	{
-		boolean silenced = inFlight.get() && !inFlightManual;
+		boolean silenced = inFlight.get() && !inFlightManual && inFlightCharacter < 0;
 		if (silenced)
 		{
 			generation.incrementAndGet();
 		}
-		if (!queuedManual)
+		if (!queuedManual && queuedCharacter < 0)
 		{
 			queued.set(false);
 			queuedMode = null;
@@ -139,5 +150,6 @@ final class KillclogSyncGate
 		queuedManual = false;
 		queuedMode = null;
 		queuedSession = null;
+		queuedCharacter = -1;
 	}
 }

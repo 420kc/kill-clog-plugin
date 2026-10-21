@@ -1236,6 +1236,125 @@ public class PluginPublicationCharacterizationTest
 		verify(panel).resetSyncFeedback();
 	}
 
+	// A character request waits only on its own sync, which only it ends, and that sync always ends it.
+
+	@Test
+	public void aLoginTheServerTurnedAwayStillGivesALaterCharacterItsSync() throws Exception
+	{
+		syncHandler.run();
+		settle();
+		syncs.get(0).complete(SyncService.SyncResult.stopping("Update required"));
+		settle();
+		profileRequired(0);
+		assertEquals("the character's own sync goes as a click's would", 2, syncs.size());
+	}
+
+	@Test
+	public void aRetryFromAnEndedLoginNeverCancelsTheNextLoginsClick() throws Exception
+	{
+		syncHandler.run();
+		settle();
+		try (Hold hold = new Hold(1))
+		{
+			held(hold, false);
+			CompletableFuture<Void> done = hold.onWorker(() ->
+				syncs.get(0).complete(new SyncService.SyncResult(false, false, "Busy", true, 2)));
+			hold.reached();
+			nextAccount();
+			syncHandler.run();
+			runClient();
+			hold.close();
+			done.get(5, TimeUnit.SECONDS);
+		}
+		settle();
+		assertEquals("the next login's click still goes", 2, syncs.size());
+	}
+
+	@Test
+	public void anEarlierSyncNeverStandsInForTheNextCharactersOwn() throws Exception
+	{
+		profileRequired(0);
+		assertEquals(1, syncs.size());
+		try (Hold hold = new Hold(1))
+		{
+			held(hold, false);
+			CompletableFuture<Void> done = hold.onWorker(() ->
+				syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced")));
+			hold.reached();
+			nextAccount();
+			profileRequired(1);
+			assertEquals(2, syncs.size());
+			hold.close();
+			done.get(5, TimeUnit.SECONDS);
+		}
+		settle();
+		assertFalse(syncs.get(1).isDone());
+		assertEquals("the next character goes on only after its own sync", 2, publishes.size());
+	}
+
+	@Test
+	public void turningAutomaticSyncOffWhileACharacterQueuesItsSyncKeepsThatSync() throws Exception
+	{
+		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		captureListener.run();
+		settle();
+		assertEquals(1, syncs.size());
+		publishHandler.run();
+		settle();
+		config.automatic = false;
+		Object publication = field("publication");
+		Field gateField = PublicationCoordinator.class.getDeclaredField("syncGate");
+		gateField.setAccessible(true);
+		Object gate = gateField.get(publication);
+		java.util.concurrent.atomic.AtomicReference<Thread> off = new java.util.concurrent.atomic.AtomicReference<>();
+		CompletableFuture<Void> turnedOff;
+		// Automatic sync goes off just as the character queues its sync behind the automatic push in the air.
+		synchronized (gate)
+		{
+			turnedOff = CompletableFuture.runAsync(() ->
+			{
+				off.set(Thread.currentThread());
+				((PublicationCoordinator) publication).cancelAutomaticSync();
+			});
+			long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+			while ((off.get() == null || off.get().getState() != Thread.State.BLOCKED) && System.nanoTime() < until)
+			{
+				Thread.yield();
+			}
+			assertEquals(Thread.State.BLOCKED, off.get().getState());
+			publishes.get(0).complete(new ProfileAppearanceService.PublishResult(ProfileAppearanceService.Outcome.PROFILE_REQUIRED, null));
+			settle();
+		}
+		turnedOff.get(5, TimeUnit.SECONDS);
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
+		settle();
+		assertEquals("the character's own sync still goes", 2, syncs.size());
+	}
+
+	@Test
+	public void turningAutomaticSyncOffDuringItsRetryTakesItsLineDown() throws Exception
+	{
+		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		captureListener.run();
+		settle();
+		syncs.get(0).complete(new SyncService.SyncResult(false, false, "Busy", true, 2));
+		drainEdt();
+		config.automatic = false;
+		configChanged("automaticSync");
+		settle();
+		verify(panel).resetSyncFeedback();
+		assertEquals("the retry never goes", 1, syncs.size());
+	}
+
+	/** A publish pressed now that the server answers "sync the log first": its own sync starts. */
+	private void profileRequired(int publish) throws Exception
+	{
+		publishHandler.run();
+		settle();
+		publishes.get(publish).complete(new ProfileAppearanceService.PublishResult(ProfileAppearanceService.Outcome.PROFILE_REQUIRED, null));
+		settle();
+	}
+
 	/** A press on the Swing thread, held at its first read of a setting while another account logs in. */
 	private void pressedThenNextAccount(Runnable press, boolean characterRead) throws Exception
 	{
