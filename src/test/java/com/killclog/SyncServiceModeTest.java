@@ -47,8 +47,8 @@ public class SyncServiceModeTest
 		when(league.toFirstPartySyncResult("Tester")).thenReturn(new ClogResult("Tester",
 			Map.of("boss", List.of(new ClogResult.ClogItem(1, 1, null))), Map.of("boss", List.of(1)), Map.of(), null, null));
 		when(league.commitIfSessionCurrent(eq(TESTER), any())).thenAnswer(call -> ((Supplier<Object>) call.getArgument(1)).get());
-		KillclogSyncGate gate = new KillclogSyncGate();
-		int generation = gate.beginAttempt(false, null, null, -1);
+		KillclogSyncGate<Object> gate = new KillclogSyncGate<>(push -> false, (waiting, later) -> later);
+		int generation = gate.beginAttempt(null);
 
 		SyncService.SyncResult result = new SyncService(http, new Gson(), main)
 			.syncCollectionLog(TESTER, null, Map.of(), Map.of(), gate, generation, league, "demonic-pacts", false,
@@ -70,16 +70,16 @@ public class SyncServiceModeTest
 		LocalClogCache main = mock(LocalClogCache.class);
 		when(main.servesAccount(TESTER)).thenReturn(true);
 		SyncService service = new SyncService(http, new Gson(), main);
-		KillclogSyncGate gate = new KillclogSyncGate();
+		KillclogSyncGate<Object> gate = new KillclogSyncGate<>(push -> false, (waiting, later) -> later);
 
 		SyncService.SyncResult unread = service.syncCollectionLog(TESTER, null, Map.of(), Map.of(), gate,
-			gate.beginAttempt(false, null, null, -1), main, "main", false, NOTHING).get();
+			gate.beginAttempt(null), main, "main", false, NOTHING).get();
 		assertEquals("Open your Collection Log to set up Kill Clog automatically.", unread.message);
 
 		when(main.toFirstPartySyncResult("Tester")).thenReturn(new ClogResult("Tester", Map.of(), Map.of(), Map.of(),
 			null, null));
 		SyncService.SyncResult empty = service.syncCollectionLog(TESTER, null, Map.of(), Map.of(), gate,
-			gate.beginAttempt(false, null, null, -1), main, "main", false, NOTHING).get();
+			gate.beginAttempt(null), main, "main", false, NOTHING).get();
 		assertEquals("Your Collection Log is empty: Kill Clog syncs from your first item.", empty.message);
 	}
 }

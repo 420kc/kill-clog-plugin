@@ -110,7 +110,7 @@ class SyncService
 	CompletableFuture<SyncResult> syncCollectionLog(Session session,
 		@Nullable AccountType accountType, Map<String, Double> personalBests,
 		Map<String, PbRecord> detailedPersonalBests,
-		KillclogSyncGate syncGate, int generation, LocalClogCache cache, String mode, boolean always, Runnable sending)
+		KillclogSyncGate<?> syncGate, int generation, LocalClogCache cache, String mode, boolean always, Runnable sending)
 	{
 		String rsn = session.getName();
 		long accountHash = session.getAccountHash();

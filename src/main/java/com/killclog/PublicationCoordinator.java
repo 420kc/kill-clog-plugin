@@ -71,6 +71,7 @@ final class PublicationCoordinator
 	private volatile ScheduledFuture<?> pendingKillclogSync;
 	// The push that timer sends.
 	private Push pendingPush;
+	private int withdrawals;
 	// Whether the push waiting is an automatic one, which a capture may push back, and when its first capture came.
 	private boolean pendingAutomatic;
 	private long quietSince;
@@ -78,7 +79,7 @@ final class PublicationCoordinator
 	// pushes stop, so the log stops leaving the client, until the next login or a click.
 	private volatile long stoppedSession = -1;
 	/* package */ java.util.function.LongSupplier clock = System::currentTimeMillis;
-	private final KillclogSyncGate syncGate = new KillclogSyncGate();
+	private final KillclogSyncGate<Push> syncGate = new KillclogSyncGate<>(Push::deliberate, Push::merge);
 
 	// The character request, one at a time, all under this coordinator's lock so a check and the change it allows are
 	// one step. The generation only grows: a withdrawal (a logout, a setting turned off) moves it on, so work from
@@ -134,9 +135,15 @@ final class PublicationCoordinator
 		final boolean retry;
 		final int forCharacter;
 
-		Push retried()
+		/** The server's one retry, for the game the attempt resolved, wherever the player has hopped since. */
+		Push retriedIn(String gameMode)
 		{
-			return new Push(session, mode, manual, true, forCharacter);
+			return new Push(session, gameMode, manual, true, forCharacter);
+		}
+
+		Push withoutCharacter()
+		{
+			return new Push(session, mode, manual, retry, NONE);
 		}
 
 		/** A click's or a character's: it goes past Automatic sync being off, and nothing automatic stands in for it. */
@@ -146,13 +153,13 @@ final class PublicationCoordinator
 		}
 
 		/**
-		 * Two pushes asked while one waits go as one: a click's game over an automatic one's, the latest click's among
-		 * clicks, and a character's request kept whichever leads.
+		 * Two pushes, the one waiting and a later one, go as one: a click's game over an automatic one's, the later
+		 * click's among clicks, the later character request over an earlier one, and one advised retry for both.
 		 */
 		static Push merge(Push waiting, Push later)
 		{
 			Push lead = later.manual || !waiting.manual ? later : waiting;
-			return new Push(lead.session, lead.mode, waiting.manual || later.manual, false,
+			return new Push(lead.session, lead.mode, waiting.manual || later.manual, waiting.retry || later.retry,
 				later.forCharacter != NONE ? later.forCharacter : waiting.forCharacter);
 		}
 	}
@@ -221,8 +228,9 @@ final class PublicationCoordinator
 	 * a click, a character's sync or a retry rides it. A click or a character's sync takes over what waits, keeping
 	 * any character request that rode on it.
 	 */
-	private synchronized void schedule(int delaySeconds, Push push)
+	private synchronized void schedule(int delaySeconds, Push asked)
 	{
+		Push push = live(asked);
 		if (push.manual)
 		{
 			stoppedSession = -1;
@@ -264,17 +272,31 @@ final class PublicationCoordinator
 	 * The server's one advised retry, after its own delay: a capture's shorter debounce must not stand in for it. Its
 	 * login is checked before anything waiting is touched, so a retry from an ended login cancels nothing of the next.
 	 */
-	private synchronized void scheduleRetry(int delaySeconds, Push push)
+	private synchronized boolean scheduleRetry(int delaySeconds, Push retry)
 	{
-		if (!sends(push))
+		if (!sends(live(retry)))
 		{
-			failWaiting(push.forCharacter);
-			return;
+			failWaiting(retry.forCharacter);
+			return false;
 		}
-		Push retry = pendingKillclogSync != null && !pendingKillclogSync.isDone() && pendingPush.deliberate()
-			? Push.merge(pendingPush, push).retried() : push.retried();
+		// A click or a character's sync asked meanwhile is the later of the two, and rides this retry.
+		Push next = pendingKillclogSync != null && !pendingKillclogSync.isDone() && pendingPush.deliberate()
+			? Push.merge(retry, pendingPush) : retry;
 		dropPendingSync();
-		schedule(delaySeconds, retry);
+		schedule(delaySeconds, next);
+		return true;
+	}
+
+	/** A push whose character request was withdrawn is just a push again, so it goes, or not, on its own terms. */
+	private Push live(Push push)
+	{
+		return push.forCharacter == NONE || waitingFor(push.forCharacter) ? push : push.withoutCharacter();
+	}
+
+	/** How many times automatic pushes were withdrawn (Automatic sync off, opt-out): a retry's line checks it. */
+	private synchronized int withdrawals()
+	{
+		return withdrawals;
 	}
 
 	/** The push waiting on its timer, if any, never fires. */
@@ -290,6 +312,7 @@ final class PublicationCoordinator
 
 	synchronized void cancelSync()
 	{
+		withdrawals++;
 		syncGate.cancel();
 		dropPendingSync();
 		// A request already in the air keeps the single-flight slot until it
@@ -312,6 +335,7 @@ final class PublicationCoordinator
 
 	private synchronized boolean dropPendingAutomatic()
 	{
+		withdrawals++;
 		if (pendingKillclogSync == null || pendingKillclogSync.isDone() || pendingPush.deliberate())
 		{
 			return false;
@@ -580,23 +604,24 @@ final class PublicationCoordinator
 	// slot is free (the opt-out/opt-in-mid-request case).
 	private void launchQueuedSync()
 	{
-		KillclogSyncGate.Intent queued = syncGate.consumeQueuedIntent();
+		Push queued = syncGate.consumeQueued();
 		if (queued != null && config.killclogSync())
 		{
-			schedule(0, new Push(queued.session, queued.mode, queued.manual, false, queued.forCharacter));
+			schedule(0, queued);
 		}
 	}
 
-	private void send(Push push)
+	private void send(Push asked)
 	{
 		// Re-checked at fire time: the player may have opted out while the debounce was pending, and the login is the
 		// push's own, so a task that escaped cancellation can never bind itself to whoever is logged in later.
+		Push push = live(asked);
 		if (!sends(push))
 		{
 			failWaiting(push.forCharacter);
 			return;
 		}
-		final int generation = syncGate.beginAttempt(push.manual, push.mode, push.session, push.forCharacter);
+		final int generation = syncGate.beginAttempt(push);
 		if (generation < 0)
 		{
 			return;
@@ -704,20 +729,33 @@ final class PublicationCoordinator
 						// request rides that one allowed retry.
 						if (result.retryAdvised && !push.retry)
 						{
-							if (character)
-							{
-								showCharacterPublishStatus(push.forCharacter, CharacterStatus.RENDERING, false);
-							}
-							else
-							{
-								withSyncFeedback(generation, session,
-									() -> feedback.showSyncProgress(push.manual, "retrying...", false));
-							}
 							// Nobody is watching an automatic sync, so it waits out a
 							// slow restart. A player waiting on a click or a character
 							// publish gets the advised delay as it is.
 							int delay = Math.max(result.retryAfterSeconds, 2);
-							scheduleRetry(push.deliberate() ? delay : delay * 2, push);
+							int withdrawn = withdrawals();
+							boolean retrying = scheduleRetry(push.deliberate() ? delay : delay * 2, push.retriedIn(gameMode));
+							if (character)
+							{
+								showCharacterPublishStatus(push.forCharacter, CharacterStatus.RENDERING, false);
+							}
+							else if (retrying)
+							{
+								// Said only while nothing withdrew it: Automatic sync turned off meanwhile drops an automatic one.
+								SwingUtilities.invokeLater(() ->
+								{
+									if ((push.deliberate() || withdrawals() == withdrawn) && config.killclogSync()
+										&& sessions.isCurrent(session))
+									{
+										feedback.showSyncProgress(push.manual, "retrying...", false);
+									}
+								});
+							}
+							else
+							{
+								// Its "syncing..." has nothing left to say.
+								SwingUtilities.invokeLater(feedback::resetSyncFeedback);
+							}
 							launchQueuedSync();
 							return;
 						}

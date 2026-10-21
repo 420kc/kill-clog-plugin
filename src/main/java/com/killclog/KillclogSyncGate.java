@@ -2,59 +2,48 @@ package com.killclog;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BinaryOperator;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
 
 /**
  * State machine for the killclog.com sync push: single-flight until the HTTP
  * round trip completes, a generation stamp so cancelled eras stay silent, and
- * a queued-intent so a push requested while the slot is occupied (opt-out then
- * opt-in during a live request) fires as soon as the slot frees instead of
- * being dropped.
+ * the push asked for while the slot is occupied (opt-out then opt-in during a
+ * live request), held whole and fired as soon as the slot frees instead of
+ * being dropped. Several asked meanwhile go as one, by the push's own rule.
  */
-final class KillclogSyncGate
+final class KillclogSyncGate<P>
 {
 	private final AtomicBoolean inFlight = new AtomicBoolean();
-	private final AtomicBoolean queued = new AtomicBoolean();
-	private boolean queuedManual;
-	private String queuedMode;
-	private Session queuedSession;
-	// The character request a queued or in-flight push is the sync for; -1 for none. Automatic sync turned off never
-	// touches one.
-	private int queuedCharacter = -1;
-	private int inFlightCharacter = -1;
-	private boolean inFlightManual;
 	private final AtomicInteger generation = new AtomicInteger();
+	// Which pushes Automatic sync turned off leaves alone, and how two waiting go as one.
+	private final Predicate<P> deliberate;
+	private final BinaryOperator<P> merge;
+	private P inFlightPush;
+	private P queued;
+
+	KillclogSyncGate(Predicate<P> deliberate, BinaryOperator<P> merge)
+	{
+		this.deliberate = deliberate;
+		this.merge = merge;
+	}
 
 	/**
 	 * Claim the single-flight slot.
 	 *
-	 * @return the generation to carry through the attempt, or -1 when a
-	 *         request is already in flight - the intent is remembered and
-	 *         {@link #consumeQueued()} will report it once the slot frees. A queued click keeps its game over later
-	 *         automatic pushes; the latest click wins among clicks.
+	 * @return the generation to carry through the attempt, or -1 when a request is already in flight: the push waits,
+	 *         merged with any already waiting, and {@link #consumeQueued()} hands it over once the slot frees.
 	 */
-	synchronized int beginAttempt(boolean manual, String mode, Session session, int forCharacter)
+	synchronized int beginAttempt(P push)
 	{
 		int gen = generation.get();
 		if (!inFlight.compareAndSet(false, true))
 		{
-			if (manual || !queuedManual)
-			{
-				queuedMode = mode;
-				queuedSession = session;
-			}
-			queuedManual |= manual;
-			if (forCharacter >= 0)
-			{
-				queuedCharacter = forCharacter;
-			}
-			queued.set(true);
+			queued = queued == null ? push : merge.apply(queued, push);
 			return -1;
 		}
-		inFlightManual = manual;
-		inFlightCharacter = forCharacter;
+		inFlightPush = push;
 		return gen;
 	}
 
@@ -97,59 +86,36 @@ final class KillclogSyncGate
 		return gen == generation.get();
 	}
 
-	/** A queued push: whether a user asked for it, its game (null follows the world), and the login it is for. */
-	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
-	static final class Intent
+	/** The push that waited for the slot, no longer waiting; null for none. */
+	synchronized P consumeQueued()
 	{
-		final boolean manual;
-		final String mode;
-		final Session session;
-		final int forCharacter;
-	}
-
-	/** Null means no queued push. */
-	synchronized Intent consumeQueuedIntent()
-	{
-		if (!queued.compareAndSet(true, false))
-		{
-			return null;
-		}
-		Intent intent = new Intent(queuedManual, queuedMode, queuedSession, queuedCharacter);
-		queuedManual = false;
-		queuedMode = null;
-		queuedSession = null;
-		queuedCharacter = -1;
-		return intent;
+		P push = queued;
+		queued = null;
+		return push;
 	}
 
 	/**
-	 * Automatic sync off: an automatic push not yet sent, or one queued, never goes; a click still does. True when it
-	 * silenced an automatic push already in the air.
+	 * Automatic sync off: an automatic push not yet sent, or one waiting, never goes; a deliberate one still does.
+	 * True when it silenced an automatic push already in the air.
 	 */
 	synchronized boolean cancelAutomatic()
 	{
-		boolean silenced = inFlight.get() && !inFlightManual && inFlightCharacter < 0;
+		boolean silenced = inFlight.get() && inFlightPush != null && !deliberate.test(inFlightPush);
 		if (silenced)
 		{
 			generation.incrementAndGet();
 		}
-		if (!queuedManual && queuedCharacter < 0)
+		if (queued != null && !deliberate.test(queued))
 		{
-			queued.set(false);
-			queuedMode = null;
-			queuedSession = null;
+			queued = null;
 		}
 		return silenced;
 	}
 
-	/** Opt-out / shutdown: silence prior eras and forget any queued intent. */
+	/** Opt-out / shutdown: silence prior eras and forget any queued push. */
 	synchronized void cancel()
 	{
 		generation.incrementAndGet();
-		queued.set(false);
-		queuedManual = false;
-		queuedMode = null;
-		queuedSession = null;
-		queuedCharacter = -1;
+		queued = null;
 	}
 }

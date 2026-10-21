@@ -1346,6 +1346,155 @@ public class PluginPublicationCharacterizationTest
 		assertEquals("the retry never goes", 1, syncs.size());
 	}
 
+	// A push keeps everything it is through the gate's queue and a retry: its retry, its game, its character.
+
+	@Test
+	public void aRetryThatQueuesBehindAClickStaysTheOneRetry() throws Exception
+	{
+		syncHandler.run();
+		settle();
+		syncs.get(0).complete(busy());
+		Runnable retry = (Runnable) read(read(field("publication"), "pendingKillclogSync"), "command");
+		try (Hold hold = new Hold(1))
+		{
+			held(hold, false);
+			// The retry's timer has fired; a click lands while it runs, and the retry waits behind it.
+			CompletableFuture<Void> done = hold.onWorker(retry::run);
+			hold.reached();
+			syncHandler.run();
+			runClient();
+			settle();
+			assertEquals(2, syncs.size());
+			hold.close();
+			done.get(5, TimeUnit.SECONDS);
+		}
+		syncs.get(1).complete(new SyncService.SyncResult(true, false, "Synced"));
+		settle();
+		assertEquals("the waiting retry goes once the click is done", 3, syncs.size());
+		syncs.get(2).complete(busy());
+		settle();
+		assertEquals("and, being the retry, never retries again", 3, syncs.size());
+	}
+
+	@Test
+	public void aCharacterRequestNeverLosesItsSyncToAnOlderRetry() throws Exception
+	{
+		// The first request's sync and a click merge while they wait on the timer.
+		publishHandler.run();
+		settle();
+		publishes.get(0).complete(new ProfileAppearanceService.PublishResult(ProfileAppearanceService.Outcome.PROFILE_REQUIRED, null));
+		runClient();
+		syncHandler.run();
+		runClient();
+		settle();
+		assertEquals(1, syncs.size());
+		// The character setting off and on withdraws the first request; a second one waits on its own sync.
+		config.character = false;
+		configChanged("characterModel");
+		config.character = true;
+		configChanged("characterModel");
+		publishHandler.run();
+		settle();
+		publishes.get(1).complete(new ProfileAppearanceService.PublishResult(ProfileAppearanceService.Outcome.PROFILE_REQUIRED, null));
+		runClient();
+		syncs.get(0).complete(busy());
+		settle();
+		assertEquals(2, syncs.size());
+		syncs.get(1).complete(new SyncService.SyncResult(true, false, "Synced"));
+		settle();
+		assertEquals("the second request goes on after the retry that carried its sync", 3, publishes.size());
+	}
+
+	@Test
+	public void aRetryIsForTheGameItsAttemptWasFor() throws Exception
+	{
+		((PublicationCoordinator) field("publication")).scheduleAutomaticSync();
+		announceLeague();
+		settle();
+		assertEquals(List.of("demonic-pacts"), sentModes());
+		world(net.runelite.api.WorldType.MEMBERS);
+		ticks(1);
+		syncs.get(0).complete(busy());
+		settle();
+		assertEquals(List.of("demonic-pacts", "demonic-pacts"), sentModes());
+	}
+
+	@Test
+	public void aLaterMainGameClickIsNeverReplacedByAnEarlierLeagueRetry() throws Exception
+	{
+		announceLeague();
+		syncHandler.run();
+		settle();
+		world(net.runelite.api.WorldType.MEMBERS);
+		ticks(1);
+		syncHandler.run();
+		runClient();
+		syncs.get(0).complete(busy());
+		settle();
+		assertTrue(sentModes().contains("main"));
+	}
+
+	@Test
+	public void automaticSyncOffJustAsARetryIsDecidedLeavesNoRetryingLine() throws Exception
+	{
+		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		captureListener.run();
+		settle();
+		try (Hold hold = new Hold(1))
+		{
+			KillClogConfig held = held(hold, false);
+			CompletableFuture<Void> done = hold.onWorker(() -> syncs.get(0).complete(busy()));
+			hold.reached();
+			when(held.automaticSync()).thenReturn(false);
+			config.automatic = false;
+			configChanged("automaticSync");
+			hold.close();
+			done.get(5, TimeUnit.SECONDS);
+		}
+		settle();
+		verify(panel, never()).showSyncProgress(false, "retrying...", false);
+		verify(panel, atLeastOnce()).resetSyncFeedback();
+		assertEquals(1, syncs.size());
+	}
+
+	/** The server's "another sync holds the lock, try again in 2 s". */
+	private static SyncService.SyncResult busy()
+	{
+		return new SyncService.SyncResult(false, false, "Busy", true, 2);
+	}
+
+	/** The game each sync so far was sent for. */
+	private List<String> sentModes()
+	{
+		List<String> modes = new ArrayList<>();
+		for (org.mockito.invocation.Invocation call : org.mockito.Mockito.mockingDetails(syncService).getInvocations())
+		{
+			if (call.getMethod().getName().equals("syncCollectionLog"))
+			{
+				modes.add(call.getArgument(7));
+			}
+		}
+		return modes;
+	}
+
+	private static Object read(Object target, String name) throws Exception
+	{
+		for (Class<?> type = target.getClass(); type != null; type = type.getSuperclass())
+		{
+			try
+			{
+				Field field = type.getDeclaredField(name);
+				field.setAccessible(true);
+				return field.get(target);
+			}
+			catch (NoSuchFieldException e)
+			{
+				// the field lives on a superclass
+			}
+		}
+		throw new NoSuchFieldException(name);
+	}
+
 	/** A publish pressed now that the server answers "sync the log first": its own sync starts. */
 	private void profileRequired(int publish) throws Exception
 	{
