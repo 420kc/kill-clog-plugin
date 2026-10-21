@@ -166,19 +166,21 @@ final class TooltipDataBuilder
 		if (clogResult == null) return null;
 		List<Integer> allItems = canonicalItemIds(
 			clogResult.getCategoryItems().get(clogCategory));
-		List<ClogResult.ClogItem> obtained = clogResult.getObtainedItems().get(clogCategory);
-
 		if (allItems == null || allItems.isEmpty())
 		{
 			allItems = canonicalItemIds(staticClueRareItems(clogCategory));
 		}
-
 		if (allItems.isEmpty())
 		{
 			return null;
 		}
 
-		obtained = rareObtainedItems(obtained, allItems, clogResult);
+		List<ClogResult.ClogItem> obtained = clogResult.getObtainedItems().get(clogCategory);
+		if (obtained == null || obtained.isEmpty())
+		{
+			// A log without the page's own items still holds them wherever else it lists them.
+			return buildPageData(name, allItems, clogResult);
+		}
 		Map<Integer, Integer> obtainedCounts = obtainedCounts(obtained);
 		Set<Integer> obtainedIds = new HashSet<>(obtainedCounts.keySet());
 
@@ -200,29 +202,6 @@ final class TooltipDataBuilder
 			}
 		}
 		return counts;
-	}
-
-	private List<ClogResult.ClogItem> rareObtainedItems(List<ClogResult.ClogItem> obtained,
-		List<Integer> allItems, ClogResult clogResult)
-	{
-		if (obtained != null && !obtained.isEmpty())
-		{
-			return obtained;
-		}
-
-		Set<Integer> rareIds = new HashSet<>(allItems);
-		List<ClogResult.ClogItem> matches = new ArrayList<>();
-		for (List<ClogResult.ClogItem> catObtained : clogResult.getObtainedItems().values())
-		{
-			for (ClogResult.ClogItem item : catObtained)
-			{
-				if (rareIds.contains(canonicalItemId(item.getId())))
-				{
-					matches.add(item);
-				}
-			}
-		}
-		return matches;
 	}
 
 	private static List<Integer> staticClueRareItems(String clogCategory)
