@@ -167,6 +167,8 @@ public class KillClogPanel extends PluginPanel
 	private AccountDisplay rivalIdentity;
 
 	private final TooltipController tooltipController;
+	// Middle-button autoscroll; null only if RuneLite ever hands the panel no scroll pane.
+	private PanelAutoscroll autoscroll;
 	private final LookupSession lookupSession;
 	private final ComparisonController comparison;
 	// The empty log behind cold and unsynced previews, one copy for both sides.
@@ -313,6 +315,7 @@ public class KillClogPanel extends PluginPanel
 			sp.getVerticalScrollBar().setUI(new MinimalScrollBarUI());
 			sp.getVerticalScrollBar().setPreferredSize(new Dimension(MinimalScrollBarUI.WIDTH, 0));
 			sp.getVerticalScrollBar().setUnitIncrement(16);
+			autoscroll = new PanelAutoscroll(sp, tooltipController::suspendHover, tooltipController::resumeHover);
 		}
 
 		highlighter = new ProgressHighlighter(
@@ -1189,11 +1192,19 @@ public class KillClogPanel extends PluginPanel
 	public void onActivate()
 	{
 		tooltipController.activate(this);
+		if (autoscroll != null)
+		{
+			autoscroll.install();
+		}
 	}
 
 	@Override
 	public void onDeactivate()
 	{
+		if (autoscroll != null)
+		{
+			autoscroll.uninstall();
+		}
 		tooltipController.deactivate();
 	}
 
@@ -1205,6 +1216,10 @@ public class KillClogPanel extends PluginPanel
 		searchRowController.onComparisonExit();
 		rankSelector.reset();
 		statusRow.shutdown();
+		if (autoscroll != null)
+		{
+			autoscroll.uninstall();
+		}
 		tooltipController.deactivate();
 	}
 

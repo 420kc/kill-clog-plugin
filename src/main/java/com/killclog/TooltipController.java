@@ -81,6 +81,8 @@ class TooltipController
 	private Color hoveredRest;
 	private final Set<JPanel> hoverCells = Collections.newSetFromMap(new WeakHashMap<>());
 	private Timer hoverExitTimer;
+	// While the panel autoscrolls, cells pass under a still pointer: no hover tint and no hover card until it ends.
+	private boolean hoverSuspended;
 
 	// ToolTipManager is shared by every RuneLite plugin. Track only Kill Clog's
 	// components so click mode never changes another plugin's tooltip behavior.
@@ -120,6 +122,11 @@ class TooltipController
 			@Override
 			public void mousePressed(MouseEvent e)
 			{
+				// The middle button scrolls the panel (PanelAutoscroll), it never opens a card.
+				if (SwingUtilities.isMiddleMouseButton(e))
+				{
+					return;
+				}
 				JLabel source = e.getSource() instanceof JLabel
 					&& ((JLabel) e.getSource()).getToolTipText() != null
 					? (JLabel) e.getSource() : surfaces[0];
@@ -354,7 +361,7 @@ class TooltipController
 
 	private void hoverCell(JPanel cell, JComponent colorSource)
 	{
-		if (hoveredCell == cell) return;
+		if (hoveredCell == cell || hoverSuspended) return;
 
 		if (hoveredCell != null) resetCellHover();
 
@@ -598,6 +605,7 @@ class TooltipController
 
 		boolean shouldRegister = config.tooltipMode() == TooltipMode.HOVER
 			&& !hasPinnedTooltip()
+			&& !hoverSuspended
 			&& component.getToolTipText() != null;
 		if (shouldRegister && !registered)
 		{
@@ -614,6 +622,21 @@ class TooltipController
 			// a pinned one whenever the mouse crossed it.
 			component.removeMouseMotionListener(manager);
 		}
+	}
+
+	/** Autoscroll began: the hover card the press found goes, and hovering waits until {@link #resumeHover}. */
+	void suspendHover(MouseEvent press)
+	{
+		dismissHoverPreview(press);
+		hoverSuspended = true;
+		clearHoveredCell();
+		refreshTooltipRegistrations();
+	}
+
+	void resumeHover()
+	{
+		hoverSuspended = false;
+		refreshTooltipRegistrations();
 	}
 
 	boolean hasPinnedTooltip()

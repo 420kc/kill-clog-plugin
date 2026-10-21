@@ -68,6 +68,8 @@ Hover your Collection Log total to see your log, and click it to pin and browse 
 
 Shift-click anything that opens a card, and the card opens and is copied to your clipboard as a picture, ready to paste into Discord.
 
+Hold the middle mouse button over the panel and move up or down to scroll, faster the farther you move; let go to stop.
+
 ![From the Collection Log card to a tab to a page: Minigames to Castle Wars, and Other to Elder Chaos Druids](screenshots/collection-log-tab-and-page.png)
 
 ![Vorkath's card naming the item under the cursor: green when you have it, red when you don't](screenshots/item-name-hover.png)

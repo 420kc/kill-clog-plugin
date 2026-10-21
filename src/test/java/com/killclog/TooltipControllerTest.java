@@ -575,6 +575,62 @@ public class TooltipControllerTest
 		}
 	}
 
+	@Test
+	public void theMiddleButtonNeverOpensACardItScrollsThePanel() throws Exception
+	{
+		PopupFactory original = PopupFactory.getSharedInstance();
+		PopupFactory.setSharedInstance(new PopupFactory()
+		{
+			@Override
+			public Popup getPopup(Component owner, Component contents, int x, int y)
+			{
+				return new Popup()
+				{
+					@Override
+					public void show()
+					{
+					}
+
+					@Override
+					public void hide()
+					{
+					}
+				};
+			}
+		});
+		GraphicsConfiguration screen = new BufferedImage(8, 8, BufferedImage.TYPE_INT_ARGB)
+			.createGraphics().getDeviceConfiguration();
+		JPanel cell = onScreen(screen);
+		JLabel boss = showingLabel();
+		boss.setToolTipText("card");
+		cell.add(boss);
+		TooltipController controller = new TooltipController(config);
+		controller.addCellHoverEffect(cell, boss);
+		try
+		{
+			SwingUtilities.invokeAndWait(() ->
+			{
+				for (MouseListener listener : boss.getMouseListeners())
+				{
+					listener.mousePressed(new MouseEvent(boss, MouseEvent.MOUSE_PRESSED, 0L,
+						java.awt.event.InputEvent.BUTTON2_DOWN_MASK, 5, 5, 1, false, MouseEvent.BUTTON2));
+				}
+				assertFalse(controller.hasPinnedTooltip());
+				for (MouseListener listener : boss.getMouseListeners())
+				{
+					listener.mousePressed(press(boss));
+				}
+				assertTrue("the left button still opens it", controller.hasPinnedTooltip());
+				controller.hidePinnedTooltip();
+			});
+		}
+		finally
+		{
+			controller.deactivate();
+			PopupFactory.setSharedInstance(original);
+		}
+	}
+
 	/** A card 30 by 20 that paints itself one colour. */
 	private static JToolTip card(java.awt.Color color)
 	{
