@@ -167,10 +167,29 @@ public class ComparisonController
 
 	private final Map<HiscoreSkill, TooltipData> compareTooltipDataMap = new LinkedHashMap<>();
 
-	private static final String COMPARE_BLUE_TEXT_KEY = "killclog.compare.blueText";
-	private static final String COMPARE_RED_TEXT_KEY = "killclog.compare.redText";
-	private static final String COMPARE_BLUE_HOVER_KEY = "killclog.compare.blueHover";
-	private static final String COMPARE_RED_HOVER_KEY = "killclog.compare.redHover";
+	private static final String COMPARE_CELL_KEY = "killclog.compare.cell";
+
+	/**
+	 * A cell in a comparison: both players' values, and the colour each takes while the cell is hovered, held as one
+	 * so a cell is never half in a comparison.
+	 */
+	@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
+	private static final class CompareCell
+	{
+		private final String blue;
+		private final String red;
+		private final String blueHover;
+		private final String redHover;
+
+		/** The two values stacked, each in its player's colour, or its completion colour while hovered. */
+		String html(boolean hovering)
+		{
+			return "<html><div style='text-align:center;'>"
+				+ "<span style='color:" + (hovering ? blueHover : COMPARE_BLUE_HEX) + ";'>" + blue + "</span><br>"
+				+ "<span style='color:" + (hovering ? redHover : COMPARE_RED_HEX) + ";'>" + red + "</span>"
+				+ "</div></html>";
+		}
+	}
 
 	public ComparisonController(HiscoreService hiscoreService, ClogService clogService,
 		RuneProfileService runeProfileService, KillclogService killclogService,
@@ -493,13 +512,10 @@ public class ComparisonController
 	public void setCompareCell(JLabel label, int blueVal, int redVal,
 		@Nullable Color blueHover, @Nullable Color redHover)
 	{
-		String blueText = ClogHelper.countText(blueVal);
-		String redText = ClogHelper.countText(redVal);
-		label.putClientProperty(COMPARE_BLUE_TEXT_KEY, blueText);
-		label.putClientProperty(COMPARE_RED_TEXT_KEY, redText);
-		label.putClientProperty(COMPARE_BLUE_HOVER_KEY, blueHover != null ? colorHex(blueHover) : null);
-		label.putClientProperty(COMPARE_RED_HOVER_KEY, redHover != null ? colorHex(redHover) : null);
-		renderCompareCell(label, false);
+		CompareCell cell = new CompareCell(ClogHelper.countText(blueVal), ClogHelper.countText(redVal),
+			blueHover != null ? colorHex(blueHover) : COMPARE_BLUE_HEX, redHover != null ? colorHex(redHover) : COMPARE_RED_HEX);
+		label.putClientProperty(COMPARE_CELL_KEY, cell);
+		label.setText(cell.html(false));
 		label.setForeground(null);
 		label.setHorizontalAlignment(JLabel.CENTER);
 	}
@@ -507,10 +523,7 @@ public class ComparisonController
 	/** Drop a cell's comparison state without repainting; caller renders solo. */
 	public void clearCompareCell(JLabel label)
 	{
-		label.putClientProperty(COMPARE_BLUE_TEXT_KEY, null);
-		label.putClientProperty(COMPARE_RED_TEXT_KEY, null);
-		label.putClientProperty(COMPARE_BLUE_HOVER_KEY, null);
-		label.putClientProperty(COMPARE_RED_HOVER_KEY, null);
+		label.putClientProperty(COMPARE_CELL_KEY, null);
 	}
 
 	/**
@@ -556,30 +569,11 @@ public class ComparisonController
 	/** Apply or clear the hover-only completion colors for a comparison cell. */
 	public void setCompareCellHover(JLabel label, boolean hovering)
 	{
-		if (label != null && label.getClientProperty(COMPARE_BLUE_TEXT_KEY) instanceof String)
+		Object cell = label != null ? label.getClientProperty(COMPARE_CELL_KEY) : null;
+		if (cell instanceof CompareCell)
 		{
-			renderCompareCell(label, hovering);
+			label.setText(((CompareCell) cell).html(hovering));
 		}
-	}
-
-	private void renderCompareCell(JLabel label, boolean hovering)
-	{
-		String blueText = String.valueOf(label.getClientProperty(COMPARE_BLUE_TEXT_KEY));
-		String redText = String.valueOf(label.getClientProperty(COMPARE_RED_TEXT_KEY));
-		String blueColor = hovering ? (String) label.getClientProperty(COMPARE_BLUE_HOVER_KEY) : null;
-		String redColor = hovering ? (String) label.getClientProperty(COMPARE_RED_HOVER_KEY) : null;
-		if (blueColor == null)
-		{
-			blueColor = COMPARE_BLUE_HEX;
-		}
-		if (redColor == null)
-		{
-			redColor = COMPARE_RED_HEX;
-		}
-		label.setText("<html><div style='text-align:center;'>"
-			+ "<span style='color:" + blueColor + ";'>" + blueText + "</span><br>"
-			+ "<span style='color:" + redColor + ";'>" + redText + "</span>"
-			+ "</div></html>");
 	}
 
 	/** Restore a cell to single-player solo display. */
