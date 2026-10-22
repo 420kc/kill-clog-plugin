@@ -182,15 +182,7 @@ public class LocalClogCache
 						// Damaged bytes are kept aside, never overwritten by the next save. A second client starting
 						// on this folder may move them first; either way the rest still loads, so no account's log is
 						// left unread and then saved over.
-						try
-						{
-							atomicMove(file, folder.join(".unreadable-" + file.getFileName() + "-"
-								+ System.currentTimeMillis() + ".json"));
-						}
-						catch (IOException e)
-						{
-							log.debug("Kill Clog could not set aside '{}': {}", file.getFileName(), e.getMessage());
-						}
+						setAside(folder, file);
 						continue;
 					}
 					loadedOwn.put(data.ownerHash, data);
@@ -353,13 +345,22 @@ public class LocalClogCache
 			{
 				String file = ownFile(hash);
 				Filepath folder = logs;
-				PlayerClogData data = folder != null && file != null && !unsavedFiles.containsKey(file)
-					&& folder.join(file).isFile() ? readRecord(folder.join(file)) : null;
+				Filepath path = folder != null && file != null ? folder.join(file) : null;
+				boolean onDisk = path != null && !unsavedFiles.containsKey(file) && path.isFile();
+				PlayerClogData data = onDisk ? readRecord(path) : null;
+				if (onDisk && (data == null || !hash.equals(data.ownerHash)))
+				{
+					// Damaged since the folder loaded: kept aside as load() keeps it, and the copy in memory serves.
+					setAside(folder, path);
+				}
 				synchronized (this)
 				{
 					if (data != null && hash.equals(data.ownerHash) && !unsavedFiles.containsKey(file))
 					{
 						own.put(hash, data);
+						// The log names the account as it is now: a name it wore before (renamed on another client)
+						// no longer points at it, as serve()'s own rename leaves none.
+						ownerByName.values().removeIf(hash::equals);
 						index(data.playerName, hash);
 					}
 				}
@@ -1056,6 +1057,19 @@ public class LocalClogCache
 				log.warn("Kill Clog could not save '{}': {}", file, e.getMessage());
 			}
 		});
+	}
+
+	/** A damaged log, moved aside under a name no load reads, so no save writes over the evidence. */
+	private static void setAside(Filepath folder, Filepath file)
+	{
+		try
+		{
+			atomicMove(file, folder.join(".unreadable-" + file.getFileName() + "-" + System.currentTimeMillis() + ".json"));
+		}
+		catch (IOException e)
+		{
+			log.debug("Kill Clog could not set aside '{}': {}", file.getFileName(), e.getMessage());
+		}
 	}
 
 	/**

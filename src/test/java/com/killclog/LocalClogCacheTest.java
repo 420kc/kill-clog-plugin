@@ -868,4 +868,39 @@ public class LocalClogCacheTest
 		obtained.put(category, items);
 		return obtained;
 	}
+
+	@Test
+	public void aLogDamagedSinceTheFolderLoadedIsSetAsideAtTheNextLogin() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		LocalClogCache cache = onDisk(dir);
+		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
+		cache.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 2978), obtainedItems("hats", 2978)));
+		StoreLogin.logout(cache);
+		Files.writeString(ownFile(dir, HASH).toPath(), "{broken");
+		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
+		String[] aside = dir.list((folder, name) -> name.startsWith(".unreadable-"));
+		assertEquals("the damaged bytes are kept aside", 1, aside.length);
+		assertTrue("and the copy in memory still serves", cache.hasFirstPartyDataFor("Tester"));
+	}
+
+	@Test
+	public void aFreshReadOfALogRenamedOnAnotherClientLeavesTheOldNameToNobody() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		LocalClogCache a = onDisk(dir);
+		assertTrue(StoreLogin.activate(a, "Old Name", HASH));
+		a.cacheFirstPartyResult(clog("Old Name", categoryItems("hats", 2978), obtainedItems("hats", 2978)));
+		StoreLogin.logout(a);
+		LocalClogCache b = onDisk(dir);
+		assertTrue(StoreLogin.activate(b, "Main", 79L));
+		StoreLogin.logout(b);
+		// The account comes back as New Name on the first client, then logs in on the second.
+		assertTrue(StoreLogin.activate(a, "New Name", HASH));
+		StoreLogin.logout(a);
+		assertTrue(StoreLogin.activate(b, "New Name", HASH));
+		StoreLogin.logout(b);
+		assertFalse("a stranger who takes the old name is never served this account's log", b.hasDataFor("Old Name"));
+		assertTrue(b.hasDataFor("New Name"));
+	}
 }
