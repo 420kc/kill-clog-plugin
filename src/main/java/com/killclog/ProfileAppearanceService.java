@@ -117,10 +117,6 @@ final class ProfileAppearanceService
 	}
 
 	/**
-	 * Publishes the logged-in player's character, for the login it was asked in: {@code authorized} says whether that
-	 * login is still current and the request still wanted, and each step asks it again before it acts.
-	 */
-	/**
 	 * Whether a character request still stands, asked at each step; and its final send, made only while it does. The
 	 * request's owner can make that send one step with its withdrawal, so nothing goes out once it has been withdrawn.
 	 */
@@ -138,6 +134,10 @@ final class ProfileAppearanceService
 		}
 	}
 
+	/**
+	 * Publishes the logged-in player's character, for the login it was asked in: {@code authorized} says whether that
+	 * login is still current and the request still wanted, and each step asks it again before it acts.
+	 */
 	CompletableFuture<PublishResult> publishCurrent(Session session, Authorization authorized)
 	{
 		return run(new PublishAttempt(session.getName(), session.getAccountHash(), authorized), this::captureAndPublish);

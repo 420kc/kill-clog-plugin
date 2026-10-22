@@ -39,7 +39,6 @@ import net.runelite.client.util.ImageUtil;
  * construct them, and the renderers that fill them with the looked-up player's
  * values (ComparisonController fills in a comparison's). Single source of truth
  * for "what cells does the panel show, and how do they hover."
-
  */
 public class Cells
 {

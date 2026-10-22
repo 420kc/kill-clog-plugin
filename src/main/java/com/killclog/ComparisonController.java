@@ -432,14 +432,14 @@ public class ComparisonController
 
 	// Read-only state
 
-	/** The rival's own board: the leaderboard selector steps aside in a comparison. */
-	@Nullable
 	/** Comparing with a rival whose hiscores have answered: the cards show side by side. */
 	boolean showsPair()
 	{
 		return isComparisonMode() && getCompareHiscoreResult() != null;
 	}
 
+	/** The rival's own board: the leaderboard selector steps aside in a comparison. */
+	@Nullable
 	public HiscoreResult getCompareHiscoreResult()
 	{
 		return compared.hiscore;
