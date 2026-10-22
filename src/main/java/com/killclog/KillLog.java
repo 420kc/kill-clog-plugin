@@ -128,7 +128,8 @@ final class KillLog
 			}
 		}
 		String key = size != null ? boss + " " + size.toLowerCase(Locale.ROOT) : boss;
-		retirePageReading(size);
+		// A raid's kill states its team size's record, even when the party changed too late to say which size.
+		retirePageReading(size != null || tob || toa);
 		Double kept = configManager.getRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, KEY_PREFIX + key, double.class);
 		// With precise timing off the game states the same record without its tenths: the kept time and its kill
 		// count stay. A whole second kept and a tenths time stated is the same record told more exactly: kept anew.
@@ -139,9 +140,19 @@ final class KillLog
 		String exact = size == null ? "" : size.equals("Solo") ? "1" : size.matches("\\d+ players?") ? size.split(" ")[0] : "";
 		String timer = tob || toa ? "challenge"
 			: boss.startsWith("chambers of xeric") || boss.equals("fractured archive") ? "overall" : "kill";
+		// The same record told more exactly keeps the labels its kept time had: the kill count and raid level that set it.
+		PbRecord before = !fresh && kept != null && PbRecord.sameRecord(kept, pb)
+			? PbRecord.live(kept, configManager.getRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, TAG_PREFIX + key)) : null;
+		String scale = fresh && toa ? String.valueOf(toaLevelAtTime) : label(before == null ? null : before.scale);
+		String setAt = fresh ? String.valueOf(kc) : label(before == null ? null : before.kc);
 		configManager.setRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, KEY_PREFIX + key, pb);
 		configManager.setRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, TAG_PREFIX + key, PbRecord.tag(pb, exact,
-			fresh && toa ? String.valueOf(toaLevelAtTime) : "", timer, fresh ? String.valueOf(kc) : ""));
+			scale, timer, setAt));
+	}
+
+	private static String label(@Nullable Integer value)
+	{
+		return value == null ? "" : String.valueOf(value);
 	}
 
 	/**
@@ -152,11 +163,11 @@ final class KillLog
 	 * that size's record, while the page shows the fastest of any size (a raid's, Dylan 10/21), so only a faster one
 	 * makes the page's older.
 	 */
-	private void retirePageReading(@Nullable String size)
+	private void retirePageReading(boolean teamSized)
 	{
 		String page = ClogPbs.KEY_PREFIX + PersonalBests.encounter(boss);
 		Double read = configManager.getRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, page, double.class);
-		if (read != null && !PbRecord.sameRecord(read, pb) && (size == null || pb < read))
+		if (read != null && !PbRecord.sameRecord(read, pb) && (!teamSized || pb < read))
 		{
 			configManager.unsetRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, page);
 		}

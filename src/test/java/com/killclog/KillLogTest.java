@@ -338,6 +338,30 @@ public class KillLogTest
 	}
 
 	@Test
+	public void theSameRecordToldMoreExactlyKeepsTheKillCountThatSetIt()
+	{
+		doReturn(55.0).when(configManager).getRSProfileConfiguration("killclog", "livepb.vorkath", double.class);
+		when(configManager.getRSProfileConfiguration("killclog", "livepbtag.vorkath")).thenReturn("55.0|||kill|50");
+		game(9, "Your Vorkath kill count is: <col=ff0000>90</col>.");
+		game(9, "Fight duration: <col=ff0000>1:12.00</col>. Personal best: 0:55.20");
+		verify(configManager).setRSProfileConfiguration("killclog", "livepbtag.vorkath", "55.2|||kill|50");
+	}
+
+	@Test
+	public void aRaidWhosePartyChangedLeavesTheFasterPageReadingAlone()
+	{
+		// The page's 15:00 is faster than this 17:00.20; the party changed before the kill count, so no size is known.
+		page("theatre of blood", 900.0);
+		when(client.getVarbitValue(VarbitID.TOB_CLIENT_P0)).thenReturn(1);
+		when(client.getVarbitValue(VarbitID.TOB_CLIENT_P1)).thenReturn(15);
+		game(10, "Wave 'The Final Challenge' (Normal Mode) complete!<br>Duration: <col=ff0000>2:42.0</col><br>"
+			+ "Theatre of Blood completion time: <col=ff0000>17:00.20</col> (new personal best)");
+		when(client.getVarbitValue(VarbitID.TOB_CLIENT_P1)).thenReturn(0);
+		game(12, "Your completed Theatre of Blood count is: <col=ff0000>73</col>.");
+		verify(configManager, never()).unsetRSProfileConfiguration("killclog", "pagepb.theatre of blood");
+	}
+
+	@Test
 	public void aTeamSizesFasterRecordRetiresTheRaidPagesOlderReadingAndASlowerOneLeavesIt()
 	{
 		// The raid page shows the fastest time of any team size: 38:20 is older than this 37:04.20.
