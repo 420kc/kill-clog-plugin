@@ -21,6 +21,11 @@ import net.runelite.client.util.Text;
  * draws only if the varp changed since the last page drew; otherwise it waits for the varp to change while it is
  * on screen, for a couple of ticks. Two pages with the same time read nothing on that visit, which is harmless.
  *
+ * A time that lands while no page waits for it is spent all the same: it was a page's the player already left (one
+ * opened, then another without a PB line, before its time arrived), and the next page must never take it. A page
+ * redrawn on screen repeats only the time it took itself; one still waiting goes on waiting. Missing a reading costs
+ * nothing (the kills still say the record); taking another page's costs a wrong time shown and synced.
+ *
  * One time, one page: a reading equal to another page's kept time is nobody's. Two bosses almost never share a
  * record to the tick, and a leftover always repeats the page it came from (10/22: 42 players had one page's time
  * under a second boss, tribrd's Gauntlet 13:27.6 as their Sol Heredit). The page's own copy, if it has one, goes too,
@@ -45,7 +50,10 @@ final class ClogPbs
 
 	private final ConfigManager configManager;
 	private String shownPage;
+	// The varp as the reader last accounted for it: at a page's draw, and at every change since, taken or not.
 	private final int[] drawnTicks = {-1, -1};
+	// The time the page on screen took on this visit, per line; -1 while it has none.
+	private final int[] taken = {-1, -1};
 	private final String[] waiting = new String[VARPS.length];
 	private final int[] waitingSince = new int[VARPS.length];
 	private final java.util.Set<String> cleared = new java.util.HashSet<>();
@@ -68,6 +76,7 @@ final class ClogPbs
 		if (newPage)
 		{
 			java.util.Arrays.fill(waiting, null);
+			java.util.Arrays.fill(taken, -1);
 		}
 		if (UNSETTLED.contains(page.toLowerCase(Locale.ROOT)))
 		{
@@ -99,11 +108,18 @@ final class ClogPbs
 			String key = waiting[slot];
 			waiting[slot] = null;
 			int ticks = client.getVarpValue(varpId);
-			drawnTicks[slot] = ticks;
 			if (client.getTickCount() - waitingSince[slot] <= WAIT_TICKS && shownPage != null
 				&& shownPage.equals(shownPage(client)))
 			{
-				record(key, ticks);
+				take(slot, key, ticks);
+			}
+		}
+		// Taken or not, a value that lands is spent: the next page never takes it.
+		for (int slot = 0; slot < VARPS.length; slot++)
+		{
+			if (VARPS[slot] == varpId)
+			{
+				drawnTicks[slot] = client.getVarpValue(varpId);
 			}
 		}
 	}
@@ -112,18 +128,33 @@ final class ClogPbs
 	private void line(Client client, int slot, String key, boolean newPage)
 	{
 		int ticks = client.getVarpValue(VARPS[slot]);
-		boolean ours = ticks > 0 && (!newPage || ticks != drawnTicks[slot]);
+		if (!newPage)
+		{
+			// A redraw of the page on screen: its own time again, or nothing while it still waits.
+			if (taken[slot] > 0 && ticks == taken[slot])
+			{
+				record(key, ticks);
+			}
+			return;
+		}
+		boolean ours = ticks > 0 && ticks != drawnTicks[slot];
 		drawnTicks[slot] = ticks;
 		if (ours)
 		{
-			waiting[slot] = null;
-			record(key, ticks);
+			take(slot, key, ticks);
 		}
 		else
 		{
 			waiting[slot] = key;
 			waitingSince[slot] = client.getTickCount();
 		}
+	}
+
+	private void take(int slot, String key, int ticks)
+	{
+		waiting[slot] = null;
+		taken[slot] = ticks;
+		record(key, ticks);
 	}
 
 	/** The page the log's header shows, when it is the player's own log; null otherwise. */

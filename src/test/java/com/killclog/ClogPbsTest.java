@@ -192,4 +192,43 @@ public class ClogPbsTest
 		pbs.pageDrawn(client);
 		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.vorkath", 62.4);
 	}
+
+	@Test
+	public void aTimeThatLandsAfterThePlayerLeftItsPageIsNeverTheNextPages()
+	{
+		// tribrd's likely path, 10/22: the Gauntlet opened and left for a page without a PB line before its time
+		// arrived; then Fortis Colosseum, where they have no record, so the server sends nothing new.
+		page("Hespori", "Obtained: <col=ffff00>2/3</col>", "Personal Best: <col=ffffff>0:56.40</col>");
+		when(client.getVarpValue(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT)).thenReturn(94);
+		pbs.pageDrawn(client);
+		page("The Gauntlet", "Obtained: <col=ffff00>3/9</col>", "Personal Best: <col=ffffff>13:27.60</col>");
+		pbs.pageDrawn(client);
+		page("Barrows Chests", "Obtained: <col=ffff00>20/25</col>", "Barrows Chests opened: <col=ffffff>300</col>");
+		pbs.pageDrawn(client);
+		when(client.getVarpValue(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT)).thenReturn(1346);
+		pbs.varpChanged(client, VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT);
+		page("Fortis Colosseum", "Obtained: <col=ffff00>0/8</col>", "Personal Best: <col=ffffff>13:27.60</col>");
+		pbs.pageDrawn(client);
+		verify(configManager, never()).setRSProfileConfiguration(eq("killclog"), eq("pagepb.sol heredit"), any());
+		verify(configManager, never()).setRSProfileConfiguration(eq("killclog"), eq("pagepb.gauntlet"), any());
+	}
+
+	@Test
+	public void aPageRedrawnWhileItWaitsNeverTakesTheVarpAsItStands()
+	{
+		page("Amoxliatl", "Obtained: <col=ffff00>1/5</col>", "Personal Best: <col=ffffff>0:31.80</col>");
+		when(client.getVarpValue(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT)).thenReturn(53);
+		pbs.pageDrawn(client);
+		page("Alchemical Hydra", "Obtained: <col=ffff00>3/8</col>", "Personal Best: <col=ffffff>1:40.80</col>");
+		pbs.pageDrawn(client);
+		// The log resizes while the Hydra still waits: the varp is still Amoxliatl's.
+		pbs.pageDrawn(client);
+		verify(configManager, never()).setRSProfileConfiguration(eq("killclog"), eq("pagepb.alchemical hydra"), any());
+		// Its own time lands, and a redraw after that repeats it.
+		when(client.getTickCount()).thenReturn(1);
+		when(client.getVarpValue(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT)).thenReturn(168);
+		pbs.varpChanged(client, VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT);
+		pbs.pageDrawn(client);
+		verify(configManager, times(2)).setRSProfileConfiguration("killclog", "pagepb.alchemical hydra", 100.8);
+	}
 }
