@@ -173,4 +173,22 @@ public class PersonalBestProfilesTest
 	{
 		return new RuneScapeProfile(name, RuneScapeProfileType.STANDARD, hash, key);
 	}
+
+	@Test
+	public void aPageTimeTwoBossesShareIsNeitherOnesAndTheirOtherTimesStand()
+	{
+		// tribrd, 10/22: the Gauntlet's 13:27.6 kept under Sol Heredit too, before the page rule refused it.
+		ConfigManager config = mock(ConfigManager.class);
+		when(config.getRSProfileKey()).thenReturn("main");
+		StoredPbs.stub(config, new Object[][]{
+			{AdvLogPbs.CONFIG_GROUP, "rsprofile.main", ClogPbs.KEY_PREFIX + "gauntlet", 807.6},
+			{AdvLogPbs.CONFIG_GROUP, "rsprofile.main", ClogPbs.KEY_PREFIX + "sol heredit", 807.6},
+			{"personalbest", "rsprofile.main", "gauntlet", 807.6},
+			{AdvLogPbs.CONFIG_GROUP, "rsprofile.main", ClogPbs.KEY_PREFIX + "vorkath", 62.4}});
+		PersonalBests store = new PersonalBests(config, List.of("rsprofile.main"));
+		assertEquals(null, store.pbText("Sol Heredit"));
+		assertEquals("the Gauntlet's own store time stands", PbRecord.Source.STORE,
+			store.records("The Gauntlet").get("the gauntlet").source);
+		assertEquals(PbRecord.Source.CLOG, store.records("Vorkath").get("vorkath").source);
+	}
 }

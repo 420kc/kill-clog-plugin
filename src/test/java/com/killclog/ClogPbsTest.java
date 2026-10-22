@@ -170,4 +170,26 @@ public class ClogPbsTest
 		verify(configManager, times(1)).unsetConfiguration("killclog", "rsprofile.abc", "clogpb.amoxliatl");
 		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.zulrah", 55.8);
 	}
+
+	@Test
+	public void aPagesTimeThatAnotherPageAlreadyHoldsIsNobodysAndItsOldCopyGoes()
+	{
+		// tribrd, 10/22: their Gauntlet's 13:27.6 read again as their Sol Heredit.
+		when(configManager.getRSProfileKey()).thenReturn("rsprofile.abc");
+		when(configManager.getRSProfileConfigurationKeys("killclog", "rsprofile.abc", ClogPbs.KEY_PREFIX))
+			.thenReturn(java.util.List.of("pagepb.gauntlet", "pagepb.sol heredit"));
+		when(configManager.getConfiguration("killclog", "rsprofile.abc", "pagepb.gauntlet", (java.lang.reflect.Type) double.class))
+			.thenReturn(807.6);
+		page("Fortis Colosseum", "Obtained: <col=ffff00>0/8</col>", "Personal Best: <col=ffffff>13:27.60</col>");
+		when(client.getVarpValue(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT)).thenReturn(1346);
+		pbs.pageDrawn(client);
+		verify(configManager, never()).setRSProfileConfiguration(eq("killclog"), eq("pagepb.sol heredit"), any());
+		verify(configManager).unsetRSProfileConfiguration("killclog", "pagepb.sol heredit");
+
+		// A time of its own still lands.
+		page("Vorkath", "Obtained: <col=ffff00>5/6</col>", "Personal Best: <col=ffffff>1:02.40</col>");
+		when(client.getVarpValue(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT)).thenReturn(104);
+		pbs.pageDrawn(client);
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.vorkath", 62.4);
+	}
 }

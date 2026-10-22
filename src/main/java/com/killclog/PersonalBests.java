@@ -278,6 +278,13 @@ final class PersonalBests
 				}
 			}
 		}
+		// One time, one page (ClogPbs): a page time two bosses share on one profile is a leftover, never a record, so
+		// neither takes it and their other lanes stand. Readings kept before the rule never show or sync again.
+		Map<String, Integer> pageTimes = new HashMap<>();
+		list.values().forEach(times -> times.stream().filter(time -> time.lane == Lane.CLOG)
+			.forEach(time -> pageTimes.merge(time.profile + "|" + time.seconds, 1, Integer::sum)));
+		list.values().forEach(times -> times.removeIf(time -> time.lane == Lane.CLOG
+			&& pageTimes.get(time.profile + "|" + time.seconds) > 1));
 		kept = list;
 		return list;
 	}

@@ -21,6 +21,11 @@ import net.runelite.client.util.Text;
  * draws only if the varp changed since the last page drew; otherwise it waits for the varp to change while it is
  * on screen, for a couple of ticks. Two pages with the same time read nothing on that visit, which is harmless.
  *
+ * One time, one page: a reading equal to another page's kept time is nobody's. Two bosses almost never share a
+ * record to the tick, and a leftover always repeats the page it came from (10/22: 42 players had one page's time
+ * under a second boss, tribrd's Gauntlet 13:27.6 as their Sol Heredit). The page's own copy, if it has one, goes too,
+ * so a reading misfiled before this rule heals the next time its page is opened; the kills still say the record.
+ *
  * Times read this way are kept under their own keys ("pagepb."): the ones 2.6.3 and earlier kept ("clogpb.") may be
  * another page's, so they are never read or sent again, and each account's are cleared the first time it reads a
  * page. A page shows its time again when it is next opened.
@@ -136,11 +141,39 @@ final class ClogPbs
 
 	private void record(String key, int ticks)
 	{
-		if (ticks > 0)
+		if (ticks <= 0)
 		{
-			clearOldTimes();
-			configManager.setRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, KEY_PREFIX + key, ticks * 6 / 10.0);
+			return;
 		}
+		clearOldTimes();
+		double seconds = ticks * 6 / 10.0;
+		if (anotherPageHas(key, seconds))
+		{
+			configManager.unsetRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, KEY_PREFIX + key);
+			return;
+		}
+		configManager.setRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, KEY_PREFIX + key, seconds);
+	}
+
+	/** Whether another page's kept time on this profile is this one. */
+	private boolean anotherPageHas(String key, double seconds)
+	{
+		String profile = configManager.getRSProfileKey();
+		if (profile == null)
+		{
+			return false;
+		}
+		profile = profile.startsWith("rsprofile.") ? profile : "rsprofile." + profile;
+		for (String other : configManager.getRSProfileConfigurationKeys(AdvLogPbs.CONFIG_GROUP, profile, KEY_PREFIX))
+		{
+			Double kept = other.equals(KEY_PREFIX + key) ? null
+				: configManager.getConfiguration(AdvLogPbs.CONFIG_GROUP, profile, other, (java.lang.reflect.Type) double.class);
+			if (kept != null && kept == seconds)
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/** The account's times from before the page check, once a session: they are never read, so they only go. */
