@@ -130,7 +130,9 @@ final class KillLog
 		String key = size != null ? boss + " " + size.toLowerCase(Locale.ROOT) : boss;
 		retirePageReading(size);
 		Double kept = configManager.getRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, KEY_PREFIX + key, double.class);
-		if (!fresh && kept != null && kept == pb)
+		// With precise timing off the game states the same record without its tenths: the kept time and its kill
+		// count stay. A whole second kept and a tenths time stated is the same record told more exactly: kept anew.
+		if (!fresh && kept != null && (kept == pb || pb == Math.rint(pb) && PbRecord.sameRecord(kept, pb)))
 		{
 			return;
 		}
@@ -146,17 +148,15 @@ final class KillLog
 	 * A kill states the game's record as it is now, a new PB or the one already held. A log page reading that differs
 	 * from it is older (a PB set since, or set while the page was closed, on another client or in a release that kept
 	 * no such rule), so it gives way until the page is next opened; it would otherwise win over this kill
-	 * (PbRecord.pick). The same record shown without its tenths is the same record. Only a plain key meets the page's.
+	 * (PbRecord.pick). The same record shown without its tenths is the same record. A team size's kill states only
+	 * that size's record, while the page shows the fastest of any size (a raid's, Dylan 10/21), so only a faster one
+	 * makes the page's older.
 	 */
 	private void retirePageReading(@Nullable String size)
 	{
-		if (size != null)
-		{
-			return;
-		}
 		String page = ClogPbs.KEY_PREFIX + PersonalBests.encounter(boss);
 		Double read = configManager.getRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, page, double.class);
-		if (read != null && !PbRecord.sameRecord(read, pb))
+		if (read != null && !PbRecord.sameRecord(read, pb) && (size == null || pb < read))
 		{
 			configManager.unsetRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, page);
 		}

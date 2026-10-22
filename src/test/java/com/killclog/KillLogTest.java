@@ -320,4 +320,41 @@ public class KillLogTest
 		assertEquals(false, PbRecord.sameRecord(65.0, 60.0));
 		assertEquals(false, PbRecord.sameRecord(65.4, 64.8));
 	}
+
+	@Test
+	public void theSameRecordStatedWithoutItsTenthsKeepsTheKeptTimeAndItsKillCount()
+	{
+		doReturn(55.4).when(configManager).getRSProfileConfiguration("killclog", "livepb.zulrah", double.class);
+		game(1, "Your Zulrah kill count is: <col=ff0000>900</col>.");
+		game(1, "Fight duration: <col=ff0000>1:12</col>. Personal best: 0:55");
+		verify(configManager, never()).setRSProfileConfiguration(eq("killclog"), eq("livepb.zulrah"), any());
+		verify(configManager, never()).setRSProfileConfiguration(eq("killclog"), eq("livepbtag.zulrah"), any());
+
+		// A whole second kept, then the record told to the tenth: the exact time is kept.
+		doReturn(55.0).when(configManager).getRSProfileConfiguration("killclog", "livepb.vorkath", double.class);
+		game(9, "Your Vorkath kill count is: <col=ff0000>50</col>.");
+		game(9, "Fight duration: <col=ff0000>1:12.00</col>. Personal best: 0:55.20");
+		verify(configManager).setRSProfileConfiguration("killclog", "livepb.vorkath", 55.2);
+	}
+
+	@Test
+	public void aTeamSizesFasterRecordRetiresTheRaidPagesOlderReadingAndASlowerOneLeavesIt()
+	{
+		// The raid page shows the fastest time of any team size: 38:20 is older than this 37:04.20.
+		page("chambers of xeric", 2300.0);
+		raid(1, 51);
+		verify(configManager).unsetRSProfileConfiguration("killclog", "pagepb.chambers of xeric");
+
+		// 35:00 on the page is another size's faster record: this size's slower one leaves it.
+		page("chambers of xeric", 2100.0);
+		raid(9, 52);
+		verify(configManager, times(1)).unsetRSProfileConfiguration("killclog", "pagepb.chambers of xeric");
+	}
+
+	private void raid(int tick, int kc)
+	{
+		log.chat(client, ChatMessageType.FRIENDSCHATNOTIFICATION, "<col=ef20ff>Congratulations - your raid is complete!</col><br>"
+			+ "Team size: <col=ff0000>24+ players</col> Duration:</col> <col=ff0000>37:04.20</col> (new personal best)</col>>", tick);
+		game(tick, "Your completed Chambers of Xeric count is: <col=ff0000>" + kc + "</col>.");
+	}
 }
