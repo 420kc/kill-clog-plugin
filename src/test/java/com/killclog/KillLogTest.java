@@ -381,4 +381,32 @@ public class KillLogTest
 			+ "Team size: <col=ff0000>24+ players</col> Duration:</col> <col=ff0000>37:04.20</col> (new personal best)</col>>", tick);
 		game(tick, "Your completed Chambers of Xeric count is: <col=ff0000>" + kc + "</col>.");
 	}
+
+	@Test
+	public void theGrotesqueGuardiansKillCountArrivesAfterTheDeathAnimation()
+	{
+		// RuneLite's fixture: the time, then the kill count six ticks later; ten ticks still pairs.
+		game(100, "Fight duration: <col=ff0000>1:36.40</col> (new personal best)");
+		game(106, "Your Grotesque Guardians kill count is: <col=ff0000>179</col>.");
+		kept("grotesque guardians", "96.4|||kill|179", 96.4);
+		game(300, "Fight duration: <col=ff0000>1:30.00</col> (new personal best)");
+		game(310, "Your Grotesque Guardians kill count is: <col=ff0000>180</col>.");
+		kept("grotesque guardians", "90.0|||kill|180", 90.0);
+		// A kill count in the client's first ticks, with no time at all, is no kill's time.
+		KillLog fresh = new KillLog(configManager);
+		fresh.chat(client, ChatMessageType.GAMEMESSAGE, "Your Grotesque Guardians kill count is: <col=ff0000>181</col>.", 7);
+		verify(configManager, never()).setRSProfileConfiguration("killclog", "livepb.grotesque guardians", 0.0);
+	}
+
+	@Test
+	public void onlyTheGuardiansWaitLongForTheirKillCount()
+	{
+		// Another boss's kill count that late is another kill's.
+		game(100, "Fight duration: <col=ff0000>1:02.40</col> (new personal best)");
+		game(106, "Your Vorkath kill count is: <col=ff0000>500</col>.");
+		// And the Guardians' own time stops waiting after ten ticks.
+		game(200, "Fight duration: <col=ff0000>1:36.40</col> (new personal best)");
+		game(211, "Your Grotesque Guardians kill count is: <col=ff0000>180</col>.");
+		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
+	}
 }

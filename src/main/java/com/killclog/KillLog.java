@@ -14,7 +14,8 @@ import net.runelite.client.util.Text;
 
 /**
  * Kill Clog's own record of the kills it sees. A kill-count message and its time pair only within two ticks of each
- * other, so a time can never land on a later kill as RuneLite's leftover one can. What it keeps is the PB the game
+ * other (the Grotesque Guardians' time waits up to ten for its count), so a time can never land on a later kill as
+ * RuneLite's leftover one can. What it keeps is the PB the game
  * states at the kill, keyed by the team size the game gives (the raids, the Nightmare) or the players in the instance
  * (Royal Titans, Yama, The Fractured Archive), with the timer and, from a kill that set a new PB, the raid level and kill count. The sync
  * sends it as source "live".
@@ -25,6 +26,12 @@ final class KillLog
 	/* package */ static final String TAG_PREFIX = "livepbtag.";
 	// RuneLite's window: a kill count and its time arrive on the same tick, now and then a tick or two apart.
 	private static final int PAIR_TICKS = 2;
+	// The Grotesque Guardians' kill count waits out Dusk's death animation, seconds after the time (none of 362 stored
+	// Guardians times came from a kill, 10/22), so their time waits up to ten ticks for it, as Dink's pairing does.
+	private static final int LATE_COUNT_TICKS = 10;
+	private static final String LATE_COUNT_BOSS = "grotesque guardians";
+	// No half of a kill seen: outside every window, so nothing pairs with it.
+	private static final int NONE = -LATE_COUNT_TICKS - PAIR_TICKS - 1;
 	private static final String TIME = "\\d+(?::\\d{2})+(?:\\.\\d+)?";
 	private static final Pattern KILL_COUNT = Pattern.compile("Your (?:completion count for |subdued |completed )?"
 		+ "(?<boss>.+?) (?:(?:kill|harvest|lap|completion|success) )?(?:count )?is: ?(?<kc>[0-9,]+)");
@@ -43,11 +50,11 @@ final class KillLog
 	private final ConfigManager configManager;
 	private String boss;
 	private int kc;
-	private int kcTick = -PAIR_TICKS - 1;
+	private int kcTick = NONE;
 	private double pb;
 	private boolean fresh;
 	private String team;
-	private int pbTick = -PAIR_TICKS - 1;
+	private int pbTick = NONE;
 	// What the game showed when the time arrived: the raid parties and level, and the players in the instance. A party
 	// that changed before the kill count leaves the time without a team size (the site keeps such a time hidden).
 	private int tobAtTime;
@@ -98,10 +105,12 @@ final class KillLog
 			kc = Integer.parseInt(count.group("kc").replace(",", ""));
 			kcTick = tick;
 		}
-		if (Math.abs(kcTick - pbTick) <= PAIR_TICKS && tick - kcTick <= PAIR_TICKS)
+		// A count arriving after its time can come late; a time after its count can't (the count must be this tick's).
+		int window = LATE_COUNT_BOSS.equals(boss) ? LATE_COUNT_TICKS : PAIR_TICKS;
+		if (Math.abs(kcTick - pbTick) <= window && tick - kcTick <= PAIR_TICKS)
 		{
 			record(client);
-			kcTick = pbTick = -PAIR_TICKS - 1;
+			kcTick = pbTick = NONE;
 		}
 	}
 
@@ -176,7 +185,7 @@ final class KillLog
 	/** Drops a kill half seen: at logout, and when another account's messages arrive. */
 	void reset()
 	{
-		kcTick = pbTick = -PAIR_TICKS - 1;
+		kcTick = pbTick = NONE;
 		boss = null;
 		team = null;
 	}
