@@ -903,4 +903,55 @@ public class LocalClogCacheTest
 		assertFalse("a stranger who takes the old name is never served this account's log", b.hasDataFor("Old Name"));
 		assertTrue(b.hasDataFor("New Name"));
 	}
+
+	@Test
+	public void eachLoginReadsWhatAnotherClientSavedSinceOnTheRealDiskThread() throws Exception
+	{
+		// The store's own disk thread, as the plugin runs it: the read lands later, behind any save it queued.
+		File dir = temporaryFolder.newFolder();
+		LocalClogCache played = new LocalClogCache(new Gson());
+		LocalClogCache other = new LocalClogCache(new Gson());
+		played.open(() -> TestFolders.folder(dir));
+		other.open(() -> TestFolders.folder(dir));
+		try
+		{
+			assertTrue(StoreLogin.activate(played, "Tester", HASH));
+			played.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 2978, 2991), obtainedItems("hats", 2978)));
+			StoreLogin.logout(played);
+			String first = awaitSaved(dir, null);
+			assertTrue("the other client takes up the account", StoreLogin.activate(other, "Tester", HASH));
+			assertNotNull("with what the first one saved", obtainedItem(other, "Tester", "hats", 2978));
+			StoreLogin.logout(other);
+
+			// Played again on the first client: the next login on the other reads it fresh, not its earlier copy.
+			assertTrue(StoreLogin.activate(played, "Tester", HASH));
+			played.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 2978, 2991), obtainedItems("hats", 2978, 2991)));
+			StoreLogin.logout(played);
+			awaitSaved(dir, first);
+			assertTrue(StoreLogin.activate(other, "Tester", HASH));
+			assertNotNull(obtainedItem(other, "Tester", "hats", 2991));
+		}
+		finally
+		{
+			played.shutdown();
+			other.shutdown();
+		}
+	}
+
+	/** Waits for the debounced save on the store's own thread to write the account's file anew; its contents. */
+	private static String awaitSaved(File dir, String before) throws Exception
+	{
+		long until = System.currentTimeMillis() + 5000;
+		File own = ownFile(dir, HASH);
+		while (true)
+		{
+			String now = own.isFile() ? Files.readString(own.toPath()) : null;
+			if (now != null && !now.equals(before))
+			{
+				return now;
+			}
+			assertTrue("the save landed within 5 s", System.currentTimeMillis() < until);
+			Thread.sleep(25);
+		}
+	}
 }
