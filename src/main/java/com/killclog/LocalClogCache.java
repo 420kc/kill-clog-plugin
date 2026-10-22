@@ -76,7 +76,12 @@ public class LocalClogCache
 		@Override
 		protected boolean removeEldestEntry(Map.Entry<String, PlayerClogData> eldest)
 		{
-			return size() > LOOKUP_CAP;
+			if (size() <= LOOKUP_CAP)
+			{
+				return false;
+			}
+			forgetLookupFile(eldest.getValue().playerName);
+			return true;
 		}
 	};
 
@@ -1049,6 +1054,33 @@ public class LocalClogCache
 			catch (IOException | RuntimeException e)
 			{
 				log.warn("Kill Clog could not save '{}': {}", file, e.getMessage());
+			}
+		});
+	}
+
+	/**
+	 * The cap holds on disk within a session too, not only at the next start: a lookup that falls out of memory
+	 * takes its file with it, on the disk thread and in place of any save still queued for it.
+	 */
+	private void forgetLookupFile(String name)
+	{
+		Filepath folder = logs;
+		if (folder == null || name == null)
+		{
+			return;
+		}
+		String file = fileKey(null, false, name);
+		unsavedFiles.remove(file);
+		Filepath dest = folder.join(StoreFiles.LOOKUPS, fileName(name));
+		submitDiskWrite(file, () ->
+		{
+			try
+			{
+				dest.deleteIfExists();
+			}
+			catch (IOException | RuntimeException e)
+			{
+				log.debug("Kill Clog could not remove '{}': {}", file, e.getMessage());
 			}
 		});
 	}

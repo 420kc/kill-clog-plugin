@@ -267,6 +267,8 @@ public class LocalClogCacheTest
 		}
 		assertFalse("the oldest fell out of memory", cache.hasDataFor("Player 0"));
 		assertTrue(cache.hasDataFor("Player 67"));
+		assertEquals("and its file went with it, before any restart", 64, new File(dir, "lookups").list().length);
+		assertFalse(new File(dir, "lookups/player_0.json").exists());
 		LocalClogCache restarted = onDisk(dir);
 		assertTrue(StoreLogin.activate(restarted, "Main", HASH));
 		assertTrue(restarted.hasDataFor("Player 67"));
