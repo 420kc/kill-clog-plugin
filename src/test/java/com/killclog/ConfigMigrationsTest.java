@@ -74,18 +74,39 @@ public class ConfigMigrationsTest
 	}
 
 	@Test
-	public void savedSettingsMoveBeforeTheConfigIsHandedToAnything()
+	public void savedSettingsMoveAtStartUpBeforeThePanelIsBuiltAndNeverAtInjection() throws Exception
 	{
-		// The panel is built at injection and reads its skill location then,
-		// so the move belongs to the provider rather than to startUp.
+		// RuneLite injects a plugin that is turned off too: handing it its config changes nothing.
 		ConfigManager config = mock(ConfigManager.class);
 		when(config.getConfiguration("killclog", "skillDisplay")).thenReturn("TOOLTIP");
+		KillClogPlugin plugin = new KillClogPlugin();
+		plugin.provideConfig(config);
+		verify(config, never()).setConfiguration(anyString(), anyString(), any(Object.class));
 
-		new KillClogPlugin().provideConfig(config);
-
-		InOrder order = inOrder(config);
+		// Started, the move comes first, then the panel, which reads its skill location as it is built.
+		@SuppressWarnings("unchecked")
+		javax.inject.Provider<KillClogPanel> panels = mock(javax.inject.Provider.class);
+		when(panels.get()).thenThrow(new IllegalStateException("built"));
+		set(plugin, "configManager", config);
+		set(plugin, "panelProvider", panels);
+		try
+		{
+			plugin.startUp();
+		}
+		catch (IllegalStateException built)
+		{
+			// The panel was asked for; nothing after it is under test here.
+		}
+		InOrder order = inOrder(config, panels);
 		order.verify(config).setConfiguration("killclog", "skillDisplay", SkillDisplay.TRAY);
-		order.verify(config).getConfig(KillClogConfig.class);
+		order.verify(panels).get();
+	}
+
+	private static void set(Object target, String name, Object value) throws ReflectiveOperationException
+	{
+		java.lang.reflect.Field field = KillClogPlugin.class.getDeclaredField(name);
+		field.setAccessible(true);
+		field.set(target, value);
 	}
 
 	@Test

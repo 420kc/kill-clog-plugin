@@ -78,7 +78,10 @@ public class KillClogPlugin extends Plugin
 	@Inject
 	private ClientToolbar clientToolbar;
 
+	// RuneLite injects every installed plugin, turned on or not, before it decides whether to start it: the panel
+	// is built in startUp, so a plugin left off builds nothing and asks no site for anything.
 	@Inject
+	private Provider<KillClogPanel> panelProvider;
 	private KillClogPanel panel;
 
 	@Inject
@@ -183,15 +186,19 @@ public class KillClogPlugin extends Plugin
 	@Provides
 	KillClogConfig provideConfig(ConfigManager configManager)
 	{
-		// Saved settings take their current shape before anything reads them:
-		// the panel is built at injection, ahead of startUp.
-		ConfigMigrations.run(configManager);
 		return configManager.getConfig(KillClogConfig.class);
 	}
 
 	@Override
 	protected void startUp()
 	{
+		// Saved settings take their current shape before anything reads them, the panel first.
+		ConfigMigrations.run(configManager);
+		// Built once: RuneLite reuses this instance across disable and enable, and the publication flow keeps it.
+		if (panel == null)
+		{
+			panel = panelProvider.get();
+		}
 		// RuneLite moves the 2.4 folder in on first use. The store opens it on its
 		// own disk thread; a folder that cannot open keeps this session in memory.
 		localClogCache.open(this::getPluginDirectory);

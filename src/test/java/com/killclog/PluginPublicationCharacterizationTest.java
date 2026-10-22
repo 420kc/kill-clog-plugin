@@ -2586,7 +2586,7 @@ public class PluginPublicationCharacterizationTest
 		{
 			case "client": return client;
 			case "config": return config;
-			case "panel": return panel;
+			case "panelProvider": return (Provider<KillClogPanel>) () -> panel;
 			case "clientThread": return clientThread;
 			case "localClogCache": return localClogCache;
 			case "syncService": return syncService;
