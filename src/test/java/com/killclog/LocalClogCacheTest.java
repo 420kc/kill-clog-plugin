@@ -938,10 +938,13 @@ public class LocalClogCacheTest
 		}
 	}
 
-	/** Waits for the debounced save on the store's own thread to write the account's file anew; its contents. */
+	/**
+	 * Waits for the debounced save on the store's own thread to write the account's file anew; its contents. Generous:
+	 * a loaded gate (compile, checkstyle and every test at once) once kept a 0.5 s debounce past 5 s.
+	 */
 	private static String awaitSaved(File dir, String before) throws Exception
 	{
-		long until = System.currentTimeMillis() + 5000;
+		long until = System.currentTimeMillis() + 15000;
 		File own = ownFile(dir, HASH);
 		while (true)
 		{
@@ -950,7 +953,7 @@ public class LocalClogCacheTest
 			{
 				return now;
 			}
-			assertTrue("the save landed within 5 s", System.currentTimeMillis() < until);
+			assertTrue("the save landed within 15 s", System.currentTimeMillis() < until);
 			Thread.sleep(25);
 		}
 	}
