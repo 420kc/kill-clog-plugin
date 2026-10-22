@@ -15,11 +15,14 @@ import net.runelite.client.util.Text;
  * shows it. Only the player's own log is read, only when the page has the line, and the time replaces whatever was
  * kept for it: it is the game's current record. The sync sends it as source "clog".
  *
- * A page's time is only taken once the varp holds it. Moving to another page draws its header at once, and the
- * server's value for it can land after that draw, so the varp can still hold the last page's time (10/18: two
- * players' Alchemical Hydra times were their Amoxliatl times, the next page). So a new page takes the varp as it
- * draws only if the varp changed since the last page drew; otherwise it waits for the varp to change while it is
- * on screen, for a couple of ticks. Two pages with the same time read nothing on that visit, which is harmless.
+ * The server sends a page's time to the varp just before it draws the page, a client cycle ahead, and 0 for a page
+ * with no record; a value the varp already holds isn't sent again (10/22, logged click by click).
+ * So a page takes the time only when it is newly on screen and the varp changed just before it drew: a page that got
+ * no value, a redraw of the page on screen, and a value that lands at any other moment take nothing. 2.7.1 let a
+ * page with no record wait for a value, so the next page's, landing a cycle before that page drew, was filed under it
+ * (tribrd's Gauntlet 13:27.6 as their Sol Heredit, the page before), and a redraw took the varp as it stood. Missing a
+ * reading costs nothing (the kills still say the record); two pages with the same time, or a page opened again, read
+ * nothing on that visit.
  *
  * Times read this way are kept under their own keys ("pagepb."): the ones 2.6.3 and earlier kept ("clogpb.") may be
  * another page's, so they are never read or sent again, and each account's are cleared the first time it reads a
@@ -35,14 +38,13 @@ final class ClogPbs
 	// The page's own line, and the Gauntlet page's second one for the Corrupted Gauntlet.
 	private static final int[] VARPS = {VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT,
 		VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT_2};
-	// How long a page waits for its time after drawing: the server's answer lands within a tick or two.
-	/* package */ static final int WAIT_TICKS = 2;
+	// How many client cycles a page's time can land before its draw: one in every logged click.
+	/* package */ static final int ARRIVAL_CYCLES = 5;
 
 	private final ConfigManager configManager;
 	private String shownPage;
-	private final int[] drawnTicks = {-1, -1};
-	private final String[] waiting = new String[VARPS.length];
-	private final int[] waitingSince = new int[VARPS.length];
+	// The client cycle each line's varp last changed, until a draw uses it; -1 when no draw may.
+	private final int[] arrived = {-1, -1};
 	private final java.util.Set<String> cleared = new java.util.HashSet<>();
 
 	ClogPbs(ConfigManager configManager)
@@ -53,6 +55,14 @@ final class ClogPbs
 	/** The log redrew a page's header (script 2731); client thread. */
 	void pageDrawn(Client client)
 	{
+		// Whatever this draw does, a value that landed before it is used up: no later draw takes it.
+		boolean[] sent = new boolean[VARPS.length];
+		for (int slot = 0; slot < VARPS.length; slot++)
+		{
+			int since = client.getGameCycle() - arrived[slot];
+			sent[slot] = arrived[slot] >= 0 && since >= 0 && since <= ARRIVAL_CYCLES;
+			arrived[slot] = -1;
+		}
 		String page = shownPage(client);
 		if (page == null)
 		{
@@ -60,64 +70,33 @@ final class ClogPbs
 		}
 		boolean newPage = !page.equals(shownPage);
 		shownPage = page;
-		if (newPage)
-		{
-			java.util.Arrays.fill(waiting, null);
-		}
-		if (UNSETTLED.contains(page.toLowerCase(Locale.ROOT)))
+		if (!newPage || UNSETTLED.contains(page.toLowerCase(Locale.ROOT)))
 		{
 			return;
 		}
 		for (Widget line : client.getWidget(InterfaceID.Collection.HEADER_TEXT).getDynamicChildren())
 		{
 			String text = Text.removeTags(line.getText());
-			if (text.startsWith("Personal Best Corrupted:"))
+			if (text.startsWith("Personal Best Corrupted:") && sent[1])
 			{
-				line(client, 1, AdvLogPbs.canonicalSection("The Corrupted Gauntlet"), newPage);
+				record(AdvLogPbs.canonicalSection("The Corrupted Gauntlet"), client.getVarpValue(VARPS[1]));
 			}
-			else if (text.startsWith("Personal Best:"))
+			else if (text.startsWith("Personal Best:") && sent[0])
 			{
-				line(client, 0, AdvLogPbs.canonicalSection(page), newPage);
+				record(AdvLogPbs.canonicalSection(page), client.getVarpValue(VARPS[0]));
 			}
 		}
 	}
 
-	/** A varp changed (onVarbitChanged); client thread. A page waiting for its time takes it, if still on screen. */
+	/** A varp changed (onVarbitChanged); client thread. A PB time, for the page the log draws next. */
 	void varpChanged(Client client, int varpId)
 	{
 		for (int slot = 0; slot < VARPS.length; slot++)
 		{
-			if (VARPS[slot] != varpId || waiting[slot] == null)
+			if (VARPS[slot] == varpId)
 			{
-				continue;
+				arrived[slot] = client.getGameCycle();
 			}
-			String key = waiting[slot];
-			waiting[slot] = null;
-			int ticks = client.getVarpValue(varpId);
-			drawnTicks[slot] = ticks;
-			if (client.getTickCount() - waitingSince[slot] <= WAIT_TICKS && shownPage != null
-				&& shownPage.equals(shownPage(client)))
-			{
-				record(key, ticks);
-			}
-		}
-	}
-
-	/** One PB line of the page just drawn: its time now if the varp is this page's, else wait for it. */
-	private void line(Client client, int slot, String key, boolean newPage)
-	{
-		int ticks = client.getVarpValue(VARPS[slot]);
-		boolean ours = ticks > 0 && (!newPage || ticks != drawnTicks[slot]);
-		drawnTicks[slot] = ticks;
-		if (ours)
-		{
-			waiting[slot] = null;
-			record(key, ticks);
-		}
-		else
-		{
-			waiting[slot] = key;
-			waitingSince[slot] = client.getTickCount();
 		}
 	}
 
