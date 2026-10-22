@@ -209,11 +209,12 @@ class SyncService
 		}
 		// 409 sync_in_flight is contention, not failure: another client of
 		// this account holds the per-player lock for a moment. Advise a
-		// short retry instead of booking a failure.
+		// short retry instead of booking a failure. The retry says so itself
+		// ("retrying..."), so these words only show once it is spent.
 		if (r.code == 409 && r.body != null && r.body.contains("sync_in_flight"))
 		{
 			return new SyncResult(false, false,
-				"Another sync for this account is in flight - retrying shortly.",
+				"Another sync for this account is in flight. Try again in a moment.",
 				true, parseRetryAfterSeconds(r.body));
 		}
 		// The server's identity arbitration answers (2026-08-16 wire

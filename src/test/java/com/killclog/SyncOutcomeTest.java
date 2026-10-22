@@ -63,6 +63,8 @@ public class SyncOutcomeTest
 		SyncService.SyncResult result = outcome(409, "{\"error\":\"sync_in_flight\",\"retry_after_seconds\":4}");
 		assertTrue(result.retryAdvised);
 		assertEquals(4, result.retryAfterSeconds);
+		// Shown only when the one retry is already spent, so it promises none.
+		assertEquals("Another sync for this account is in flight. Try again in a moment.", result.message);
 	}
 
 	@Test
