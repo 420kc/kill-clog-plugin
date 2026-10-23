@@ -11,6 +11,8 @@ import java.awt.RenderingHints;
 import java.awt.Toolkit;
 import java.awt.event.AWTEventListener;
 import java.awt.event.MouseEvent;
+import java.awt.geom.Ellipse2D;
+import java.awt.geom.Path2D;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import javax.swing.JComponent;
@@ -176,7 +178,10 @@ final class PanelAutoscroll implements AWTEventListener
 		return info != null ? info.getLocation() : null;
 	}
 
-	/** The anchor, as browsers draw it for a page that scrolls up and down: a ring, an arrow each way, a dot. */
+	/**
+	 * The anchor: a ring, and the up and down arrow itself in it, both drawn about the ring's exact centre (Dylan,
+	 * 10/23; the two triangles and dot before sat half a pixel left of the ring's).
+	 */
 	private static final class Marker extends JComponent
 	{
 		@Override
@@ -184,15 +189,30 @@ final class PanelAutoscroll implements AWTEventListener
 		{
 			Graphics2D g = (Graphics2D) graphics.create();
 			g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-			int s = MARKER_SIZE - 1;
-			int c = s / 2;
+			g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
+			double s = MARKER_SIZE;
+			double c = s / 2;
+			Ellipse2D ring = new Ellipse2D.Double(0.5, 0.5, s - 1, s - 1);
 			g.setColor(new Color(20, 20, 20, 210));
-			g.fillOval(0, 0, s, s);
+			g.fill(ring);
 			g.setColor(ColorScheme.LIGHT_GRAY_COLOR);
-			g.drawOval(0, 0, s, s);
-			g.fillPolygon(new int[]{c - 4, c + 4, c}, new int[]{8, 8, 3}, 3);
-			g.fillPolygon(new int[]{c - 4, c + 4, c}, new int[]{s - 8, s - 8, s - 3}, 3);
-			g.fillOval(c - 1, c - 1, 3, 3);
+			g.draw(ring);
+			// A head each way, 8 wide and 4.5 deep, on a shaft 2 wide: tip to tip 14 of the ring's 22.
+			double tip = 4;
+			double base = tip + 4.5;
+			Path2D arrow = new Path2D.Double();
+			arrow.moveTo(c, tip);
+			arrow.lineTo(c + 4, base);
+			arrow.lineTo(c + 1, base);
+			arrow.lineTo(c + 1, s - base);
+			arrow.lineTo(c + 4, s - base);
+			arrow.lineTo(c, s - tip);
+			arrow.lineTo(c - 4, s - base);
+			arrow.lineTo(c - 1, s - base);
+			arrow.lineTo(c - 1, base);
+			arrow.lineTo(c - 4, base);
+			arrow.closePath();
+			g.fill(arrow);
 			g.dispose();
 		}
 	}
