@@ -19,6 +19,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -71,6 +72,8 @@ public class ClogService
 
 	// Freshness gate skips TempleOSRS when the cache is still hot.
 	private static final long CLOG_TTL_MS = 5 * 60 * 1000; // 5 minutes
+	// How long your own log waits for TempleOSRS's dates before it shows without them; inside every source's 7 s.
+	static long ownLogDatesWaitMs = 2000;
 	private final Map<String, Long> clogFetchTimes = new ConcurrentHashMap<>();
 	// A date-overlay attempt is recorded before HTTP; keep successful Temple
 	// proof separately so the active-player result stays attributed during TTL.
@@ -210,7 +213,11 @@ public class ClogService
 				// cache entries (pre-dating live merges, or unlocks while the
 				// plugin was off) so the recents shelf stays current. TTL-gated
 				// and failure-proof; counts and membership stay chalice-owned.
-				return overlayProviderDates(playerName)
+				// Your own log never waits long for the dates: past a short wait it serves without the overlay, which
+				// still lands for the next look (Dylan, 10/23: a date check longer than every source's 7 s timed the
+				// whole log out at login, and the panel asked for setup over a saved log).
+				return overlayProviderDates(playerName).copy()
+					.completeOnTimeout(false, ownLogDatesWaitMs, TimeUnit.MILLISECONDS)
 					.thenCompose(fromTemple -> fetchItemNames().thenApply(names ->
 					{
 						ClogResult result = logFrom(localClogCache, playerName, names);

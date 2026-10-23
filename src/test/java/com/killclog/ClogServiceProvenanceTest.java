@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -153,6 +154,32 @@ public class ClogServiceProvenanceTest
 		assertFalse(SkillsTooltip.onTemple(notOnTemple));
 	}
 
+	@Test
+	public void yourOwnLogNeverWaitsLongForItsDates() throws Exception
+	{
+		// 10/23: at login the date check took longer than every source's 7 s, the own log timed out with it, and the
+		// panel asked for setup over a saved log. Past a short wait the log shows without Temple's dates.
+		String player = "Own Log";
+		ClogService service = activeService(player, null, "{\"data\":{\"items\":{}}}", "{\"data\":{}}",
+			new AtomicInteger(), new AtomicInteger(), 3000);
+		long wait = ClogService.ownLogDatesWaitMs;
+		ClogService.ownLogDatesWaitMs = 100;
+		try
+		{
+			long start = System.currentTimeMillis();
+			ClogResult own = service.lookup(player).get(2, TimeUnit.SECONDS);
+			long took = System.currentTimeMillis() - start;
+			assertTrue("shown in " + took + " ms", took < 2000);
+			assertNotNull(own);
+			assertTrue(own.isFromLocal());
+			assertFalse("Temple's dates never came", own.isFromTemple());
+		}
+		finally
+		{
+			ClogService.ownLogDatesWaitMs = wait;
+		}
+	}
+
 	private static void assertSelfSources(ClogResult local, List<String> expected)
 	{
 		ClogResult combined = ClogProviderFanout.lookup(true,
@@ -187,6 +214,13 @@ public class ClogServiceProvenanceTest
 	private static ClogService activeService(String player, String localDate, String templeJson, String statsJson,
 		AtomicInteger requests, AtomicInteger statsRequests) throws Exception
 	{
+		return activeService(player, localDate, templeJson, statsJson, requests, statsRequests, 0);
+	}
+
+	/** As above, each answer {@code delayMs} late. */
+	private static ClogService activeService(String player, String localDate, String templeJson, String statsJson,
+		AtomicInteger requests, AtomicInteger statsRequests, long delayMs) throws Exception
+	{
 		Map<String, List<ClogResult.ClogItem>> obtained = new HashMap<>();
 		obtained.put("zulrah", Collections.singletonList(
 			new ClogResult.ClogItem(1, 1, localDate)));
@@ -203,6 +237,17 @@ public class ClogServiceProvenanceTest
 			{
 				boolean stats = chain.request().url().encodedPath().endsWith("player_stats.php");
 				(stats ? statsRequests : requests).incrementAndGet();
+				if (delayMs > 0)
+				{
+					try
+					{
+						Thread.sleep(delayMs);
+					}
+					catch (InterruptedException e)
+					{
+						Thread.currentThread().interrupt();
+					}
+				}
 				return new Response.Builder()
 					.request(chain.request())
 					.protocol(Protocol.HTTP_1_1)
