@@ -71,7 +71,8 @@ final class PbRecord
 	 * game record replaces the file's even when slower. Between game records, faster wins and the later takes a tie.
 	 * A whole second the game stated and a time with tenths it rounds from are one record told two ways (Dylan,
 	 * 2026-10-23): it keeps the tenths and goes as the game's, so a kill or the adventure log with precise timing off
-	 * still confirms the file's exact time.
+	 * still confirms the file's exact time; told by a kill and the adventure log, it goes as the kill, with its labels,
+	 * whichever came first.
 	 */
 	static PbRecord pick(@Nullable PbRecord kept, PbRecord seen)
 	{
@@ -87,15 +88,25 @@ final class PbRecord
 		{
 			return sameTimeInTenths(seen.seconds, kept.seconds) ? kept.at(seen.seconds) : kept;
 		}
-		if (kept.source == Source.STORE || sameTimeInTenths(kept.seconds, seen.seconds))
+		if (kept.source == Source.STORE)
 		{
 			return sameTimeInTenths(kept.seconds, seen.seconds) ? seen.at(kept.seconds) : seen;
 		}
+		if (sameTimeInTenths(kept.seconds, seen.seconds))
+		{
+			return teller(kept, seen).at(kept.seconds);
+		}
 		if (sameTimeInTenths(seen.seconds, kept.seconds))
 		{
-			return seen;
+			return teller(kept, seen).at(seen.seconds);
 		}
 		return seen.seconds <= kept.seconds ? seen : kept;
+	}
+
+	/** Of two game records of one time, the one it goes as: a kill over the adventure log, else the later. */
+	private static PbRecord teller(PbRecord kept, PbRecord seen)
+	{
+		return kept.source == Source.LIVE && seen.source != Source.LIVE ? kept : seen;
 	}
 
 	/** This record told with its tenths: the same source and labels, at the exact time. */

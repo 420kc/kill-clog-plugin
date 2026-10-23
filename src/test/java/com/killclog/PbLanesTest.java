@@ -76,9 +76,12 @@ public class PbLanesTest
 	@Test
 	public void betweenGameRecordsTheSameRecordToldTwoWaysKeepsItsTenths()
 	{
-		// The adventure log read 1:19.20; a kill with precise timing off said 1:19. The kill's word, the log's tenths.
+		// The adventure log read 1:19.20; a kill with precise timing off said 1:19. The kill's word, the log's tenths,
+		// whichever came first; and the same the other way round, a kill's tenths and the log's whole second.
 		assertEquals("79.2 live", after(pb(79.2, "advlog"), pb(79.0, "live")));
-		assertEquals("79.2 advlog", after(pb(79.0, "live"), pb(79.2, "advlog")));
+		assertEquals("79.2 live", after(pb(79.0, "live"), pb(79.2, "advlog")));
+		assertEquals("79.2 live", after(pb(79.0, "advlog"), pb(79.2, "live")));
+		assertEquals("79.2 live", after(pb(79.2, "live"), pb(79.0, "advlog")));
 		// A kill's labels ride along at the exact time.
 		PbRecord kill = pb(79.0, "live");
 		kill.kc = 412;
@@ -90,5 +93,14 @@ public class PbLanesTest
 		assertEquals(PbRecord.Source.LIVE, out.get(KEY).source);
 		assertEquals(Integer.valueOf(412), out.get(KEY).kc);
 		assertEquals("kill", out.get(KEY).timer);
+		// The kill seen before the adventure log's tenths keeps its labels too (QA, 10/23).
+		PbRecord first = pb(79.0, "live");
+		first.kc = 412;
+		first.timer = "kill";
+		PbRecord picked = PbRecord.pick(first, pb(79.2, "advlog"));
+		assertEquals(79.2, picked.seconds, 0);
+		assertEquals(PbRecord.Source.LIVE, picked.source);
+		assertEquals(Integer.valueOf(412), picked.kc);
+		assertEquals("kill", picked.timer);
 	}
 }

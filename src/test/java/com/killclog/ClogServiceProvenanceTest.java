@@ -160,8 +160,11 @@ public class ClogServiceProvenanceTest
 		// 10/23: at login the date check took longer than every source's 7 s, the own log timed out with it, and the
 		// panel asked for setup over a saved log. Past a short wait the log shows without Temple's dates.
 		String player = "Own Log";
-		ClogService service = activeService(player, null, "{\"data\":{\"items\":{}}}", "{\"data\":{}}",
-			new AtomicInteger(), new AtomicInteger(), 3000);
+		AtomicInteger requests = new AtomicInteger();
+		String templeJson = "{\"data\":{\"game_mode\":1,\"last_changed\":\"2026-09-06 12:00:00\",\"items\":{\"zulrah\":"
+			+ "[{\"id\":1,\"count\":1,\"date\":\"2026-09-06 12:00:00\"}]}}}";
+		ClogService service = activeService(player, null, templeJson, "{\"data\":{}}", requests, new AtomicInteger(),
+			600);
 		long wait = ClogService.ownLogDatesWaitMs;
 		ClogService.ownLogDatesWaitMs = 100;
 		try
@@ -169,10 +172,18 @@ public class ClogServiceProvenanceTest
 			long start = System.currentTimeMillis();
 			ClogResult own = service.lookup(player).get(2, TimeUnit.SECONDS);
 			long took = System.currentTimeMillis() - start;
-			assertTrue("shown in " + took + " ms", took < 2000);
+			assertTrue("shown in " + took + " ms", took < 500);
 			assertNotNull(own);
 			assertTrue(own.isFromLocal());
-			assertFalse("Temple's dates never came", own.isFromTemple());
+			assertFalse("shown before Temple's dates came", own.isFromTemple());
+			assertNull(own.getObtainedItems().get("zulrah").get(0).getDate());
+
+			// The date check kept running, and its dates are there for the next look, without asking Temple again.
+			Thread.sleep(900);
+			ClogResult next = service.lookup(player).get(2, TimeUnit.SECONDS);
+			assertTrue(next.isFromTemple());
+			assertEquals("2026-09-06 12:00:00", next.getObtainedItems().get("zulrah").get(0).getDate());
+			assertEquals(1, requests.get());
 		}
 		finally
 		{
