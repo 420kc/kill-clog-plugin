@@ -68,8 +68,10 @@ final class PbRecord
 	 * The record that wins a key. The collection log's line is the game's current record, read from the server
 	 * exactly, so it wins whenever this client has read it: an older, faster time elsewhere can't outlast a record
 	 * the game has since changed. RuneLite's file fills only what nothing has, the profile RuneLite chose first. A
-	 * game record replaces the file's even when slower, except that a whole second leaves a file time it rounds from
-	 * alone: the same time with its tenths, shown without them. Between game records, faster wins and the later takes a tie.
+	 * game record replaces the file's even when slower. Between game records, faster wins and the later takes a tie.
+	 * A whole second the game stated and a time with tenths it rounds from are one record told two ways (Dylan,
+	 * 2026-10-23): it keeps the tenths and goes as the game's, so a kill or the adventure log with precise timing off
+	 * still confirms the file's exact time.
 	 */
 	static PbRecord pick(@Nullable PbRecord kept, PbRecord seen)
 	{
@@ -83,13 +85,28 @@ final class PbRecord
 		}
 		if (seen.source == Source.STORE)
 		{
-			return kept;
+			return sameTimeInTenths(seen.seconds, kept.seconds) ? kept.at(seen.seconds) : kept;
 		}
-		if (kept.source == Source.STORE)
+		if (kept.source == Source.STORE || sameTimeInTenths(kept.seconds, seen.seconds))
 		{
-			return sameTimeInTenths(kept.seconds, seen.seconds) ? kept : seen;
+			return sameTimeInTenths(kept.seconds, seen.seconds) ? seen.at(kept.seconds) : seen;
+		}
+		if (sameTimeInTenths(seen.seconds, kept.seconds))
+		{
+			return seen;
 		}
 		return seen.seconds <= kept.seconds ? seen : kept;
+	}
+
+	/** This record told with its tenths: the same source and labels, at the exact time. */
+	private PbRecord at(double exact)
+	{
+		PbRecord pb = new PbRecord(exact, source);
+		pb.team = team;
+		pb.scale = scale;
+		pb.timer = timer;
+		pb.kc = kc;
+		return pb;
 	}
 
 	/** Whether two times are one record: the same, or one of them the other shown without its tenths. */

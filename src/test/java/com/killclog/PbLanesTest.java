@@ -57,15 +57,38 @@ public class PbLanesTest
 	}
 
 	@Test
-	public void aWholeSecondLeavesTheSameTimeWithItsTenthsAlone()
+	public void aWholeSecondTheGameStatedConfirmsTheTimeWithTenthsItRoundsFrom()
 	{
-		assertEquals("66.4 store", after(pb(66.4, "store"), pb(66.0, "advlog")));
+		// Precise timing off: the game says 1:06 of a record RuneLite's file keeps as 1:06.40. One record, the game's.
+		assertEquals("66.4 advlog", after(pb(66.4, "store"), pb(66.0, "advlog")));
+		assertEquals("whichever lane comes first", "66.4 advlog", after(pb(66.0, "advlog"), pb(66.4, "store")));
 		assertEquals("66.0 advlog", after(pb(66.0, "store"), pb(66.0, "advlog")));
 		assertEquals("more than a second apart is another time", "66.0 advlog",
 			after(pb(64.8, "store"), pb(66.0, "advlog")));
 		// The game rounds to the nearest second: 65.6 shows as 1:06, while 66.6 shows as 1:07 and 65.4 as 1:05.
-		assertEquals("65.6 store", after(pb(65.6, "store"), pb(66.0, "advlog")));
+		assertEquals("65.6 advlog", after(pb(65.6, "store"), pb(66.0, "advlog")));
 		assertEquals("66.0 advlog", after(pb(66.6, "store"), pb(66.0, "advlog")));
 		assertEquals("66.0 advlog", after(pb(65.4, "store"), pb(66.0, "advlog")));
+		assertEquals("a file time no game record states stays the file's", "66.4 store",
+			after(pb(66.4, "store"), pb(66.4, "store")));
+	}
+
+	@Test
+	public void betweenGameRecordsTheSameRecordToldTwoWaysKeepsItsTenths()
+	{
+		// The adventure log read 1:19.20; a kill with precise timing off said 1:19. The kill's word, the log's tenths.
+		assertEquals("79.2 live", after(pb(79.2, "advlog"), pb(79.0, "live")));
+		assertEquals("79.2 advlog", after(pb(79.0, "live"), pb(79.2, "advlog")));
+		// A kill's labels ride along at the exact time.
+		PbRecord kill = pb(79.0, "live");
+		kill.kc = 412;
+		kill.timer = "kill";
+		Map<String, PbRecord> out = new HashMap<>();
+		out.put(KEY, pb(79.2, "store"));
+		out.merge(KEY, kill, PbRecord::pick);
+		assertEquals(79.2, out.get(KEY).seconds, 0);
+		assertEquals(PbRecord.Source.LIVE, out.get(KEY).source);
+		assertEquals(Integer.valueOf(412), out.get(KEY).kc);
+		assertEquals("kill", out.get(KEY).timer);
 	}
 }
