@@ -348,6 +348,39 @@ public class KillclogServiceTest
 		assertNull("pbs are evicted with the clog", service.pbText("420 kc", "Zulrah"));
 	}
 
+	@Test
+	public void aLookupThatMissesAMinuteOldListAsksAgainAndFindsAFirstSync() throws Exception
+	{
+		List<String> paths = new java.util.ArrayList<>();
+		okhttp3.OkHttpClient http = new okhttp3.OkHttpClient.Builder().addInterceptor(chain ->
+		{
+			String path = chain.request().url().encodedPath();
+			paths.add(path);
+			String body = path.endsWith("/sync-index")
+				? "{\"schema\":1,\"names\":[\"someone else\",\"mole druid\"]}"
+				: "{\"rsn\":\"mole druid\",\"clog\":{\"items_by_category\":{\"zulrah\":[{\"item_id\":1,\"quantity\":1}]}}}";
+			return new okhttp3.Response.Builder().request(chain.request()).protocol(okhttp3.Protocol.HTTP_1_1).code(200)
+				.message("OK").body(okhttp3.ResponseBody.create(okhttp3.MediaType.get("application/json"), body)).build();
+		}).build();
+		service = new KillclogService(http, new Gson(), null);
+		Set<String> index = java.util.concurrent.ConcurrentHashMap.newKeySet();
+		index.add("someone else");
+		setField("syncIndex", index);
+		// Fetched two minutes ago, before the player's first sync.
+		setField("indexFetchedAt", System.currentTimeMillis() - 2 * 60 * 1000);
+
+		assertNotNull(service.lookupClog("Mole Druid").join());
+		assertEquals(2, paths.size());
+		assertTrue(paths.get(0), paths.get(0).endsWith("/player/sync-index"));
+		assertTrue(paths.get(1), paths.get(1).endsWith("/player/Mole%20Druid/proof-view"));
+		assertTrue(service.isSynced("Mole Druid"));
+
+		// A miss against a list just fetched is the answer: nobody asks again.
+		paths.clear();
+		assertNull(service.lookupClog("Never Synced").join());
+		assertEquals(List.of(), paths);
+	}
+
 	private void setField(String name, Object value) throws Exception
 	{
 		Field field = KillclogService.class.getDeclaredField(name);

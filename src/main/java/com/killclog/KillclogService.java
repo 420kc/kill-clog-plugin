@@ -71,6 +71,9 @@ public class KillclogService
 	}
 
 	private static final long INDEX_TTL_MS = 10 * 60 * 1000;      // 10 min -- membership list
+	// A name the list doesn't hold may have synced since it was fetched: a lookup that misses asks again once the
+	// list is a minute old, so a player's first sync shows within a minute, not ten (10/23).
+	private static final long MISS_RECHECK_MS = 60 * 1000;
 
 	private final CircuitBreaker breaker = new CircuitBreaker("killclog.com");
 
@@ -148,7 +151,8 @@ public class KillclogService
 			return CompletableFuture.completedFuture(clogs.values.get(key));
 		}
 
-		return ensureIndex().thenCompose(index ->
+		return ensureIndex().thenCompose(index -> index == null || index.contains(pbKey(playerName))
+			? CompletableFuture.completedFuture(index) : ensureIndex(MISS_RECHECK_MS)).thenCompose(index ->
 		{
 			// Unknown membership (index never fetched, server unreachable):
 			// keep whatever is cached rather than guessing either way.
@@ -204,9 +208,15 @@ public class KillclogService
 
 	private CompletableFuture<Set<String>> ensureIndex()
 	{
+		return ensureIndex(INDEX_TTL_MS);
+	}
+
+	/** The sync list, fetched again when the one held is older than {@code maxAgeMs}. */
+	private CompletableFuture<Set<String>> ensureIndex(long maxAgeMs)
+	{
 		long now = System.currentTimeMillis();
 		Set<String> cached = syncIndex;
-		if (cached != null && now - indexFetchedAt < INDEX_TTL_MS)
+		if (cached != null && now - indexFetchedAt < maxAgeMs)
 		{
 			return CompletableFuture.completedFuture(cached);
 		}
