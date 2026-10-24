@@ -179,40 +179,28 @@ final class ClogHelper
 		return found;
 	}
 
-	// The Rare shelf holds six at most, as killclog.com's profile card does.
-	static final int MAX_RARES = 6;
+	// The Rare shelf's row, as killclog.com's profile card lays it: more rares wrap to the next.
+	static final int RARES_PER_ROW = 6;
 
 	/**
-	 * The Collection Log card's Rare shelf, filled as killclog.com's profile card fills it: the trophies, then 3rd age
-	 * with room kept for the megarares, then the megarares, then any 3rd age left.
+	 * The Collection Log card's Rare shelf, filled as killclog.com's profile card fills it: every trophy, then every
+	 * 3rd age piece in the game's order, then every megarare (2.7.2: six at most hid most of a big 3rd age log).
 	 */
 	static List<ClogResult.ClogItem> rareItems(ClogResult clog)
 	{
-		List<ClogResult.ClogItem> thirdAge = obtainedSpecialItems(PanelData.THIRD_AGE_ITEMS, clog);
-		List<ClogResult.ClogItem> megarares = obtainedSpecialItems(PanelData.MEGARARE_ITEM_IDS, clog);
 		List<ClogResult.ClogItem> rares = new ArrayList<>();
 		Set<Integer> seen = new HashSet<>();
-		addRares(rares, seen, obtainedSpecialItems(PanelData.SPECIAL_ITEM_IDS, clog), MAX_RARES);
-		addRares(rares, seen, thirdAge, Math.max(rares.size(), MAX_RARES - megarares.size()));
-		addRares(rares, seen, megarares, MAX_RARES);
-		addRares(rares, seen, thirdAge, MAX_RARES);
-		return rares;
-	}
-
-	private static void addRares(List<ClogResult.ClogItem> rares, Set<Integer> seen,
-		List<ClogResult.ClogItem> items, int limit)
-	{
-		for (ClogResult.ClogItem item : items)
+		for (int[] ids : new int[][]{PanelData.SPECIAL_ITEM_IDS, PanelData.THIRD_AGE_ITEMS, PanelData.MEGARARE_ITEM_IDS})
 		{
-			if (rares.size() >= limit)
+			for (ClogResult.ClogItem item : obtainedSpecialItems(ids, clog))
 			{
-				return;
-			}
-			if (seen.add(item.getId()))
-			{
-				rares.add(item);
+				if (seen.add(item.getId()))
+				{
+					rares.add(item);
+				}
 			}
 		}
+		return rares;
 	}
 
 	static int[] clogCounts(String category, ClogResult clogResult)

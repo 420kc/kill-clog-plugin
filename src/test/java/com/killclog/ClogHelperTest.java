@@ -310,16 +310,19 @@ public class ClogHelperTest
 	}
 
 	@Test
-	public void theRareShelfFillsAsTheProfileCardDoes()
+	public void theRareShelfHoldsEveryRareAsTheProfileCardDoes()
 	{
-		// A trophy, five 3rd age pieces and two megarares: the megarares keep their room among six.
+		// A log with both trophies, eleven 3rd age pieces and three megarares (a looked-up player's, 10/24): six
+		// slots showed one 3rd age piece of the eleven. Every one shows now: the trophies, then 3rd age in the game's
+		// order, then the megarares, however the log lists them.
 		List<ClogResult.ClogItem> held = new java.util.ArrayList<>();
-		for (int id : new int[]{20590, 10350, 10348, 10346, 23242, 10352})
+		for (int id : new int[]{20014, 23339, 12424, 12437, 12422, 10344, 10340, 10342, 10332, 23242, 10348, 30111, 20590})
 		{
 			held.add(new ClogResult.ClogItem(id, 1, null));
 		}
 		Map<String, List<ClogResult.ClogItem>> obtained = new HashMap<>();
 		obtained.put("misc", held);
+		obtained.put("tombs_of_amascut", Collections.singletonList(new ClogResult.ClogItem(27277, 1, null)));
 		obtained.put("chambers_of_xeric", Collections.singletonList(new ClogResult.ClogItem(20997, 2, null)));
 		obtained.put("theatre_of_blood", Collections.singletonList(new ClogResult.ClogItem(22486, 1, null)));
 		ClogResult clog = new ClogResult("Tester", obtained, Collections.emptyMap(), Collections.emptyMap(), null, null);
@@ -329,7 +332,8 @@ public class ClogHelperTest
 		{
 			shelf.add(item.getId());
 		}
-		assertEquals(Arrays.asList(20590, 10350, 10348, 10346, 20997, 22486), shelf);
+		assertEquals(Arrays.asList(20590, 30111, 10348, 23242, 10332, 10342, 10340, 10344, 12422, 12437, 12424, 23339,
+			20014, 20997, 22486, 27277), shelf);
 	}
 
 	@Test

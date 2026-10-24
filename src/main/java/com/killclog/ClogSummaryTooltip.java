@@ -358,8 +358,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 		card.add(hasTotals() || !tabs.isEmpty() ? CardBody.hoverBand() : CardBody.headerHoverBand());
 
 		// The Rare shelf, present only when earned, then recent unlocks.
-		shelf(body, RARE_SECTION, "Rare", rare);
-		shelf(body, RECENT_SECTION, "Recent", recent);
+		shelf(body, RARE_SECTION, "Rare", rare, ClogHelper.RARES_PER_ROW);
+		shelf(body, RECENT_SECTION, "Recent", recent, Integer.MAX_VALUE);
 
 		// The footer: when it last changed and who supplied it, under one rule.
 		if (syncDate != null || !clogSources.isEmpty())
@@ -447,28 +447,33 @@ public class ClogSummaryTooltip extends TitleTooltip
 		});
 	}
 
-	/** A shelf under its subheader: sprites centered in a row, dates below, then its hover line. */
-	private void shelf(CardBody body, int section, String title, Shelf shelf)
+	/**
+	 * A shelf under its subheader: sprites from the left in rows of at most this many, dates below, then its hover
+	 * line. Recent is one row; the Rare shelf wraps.
+	 */
+	private void shelf(CardBody body, int section, String title, Shelf shelf, int perRow)
 	{
 		if (shelf == null)
 		{
 			return;
 		}
 		int count = shelf.ids.length;
+		int cols = Math.min(count, perRow);
+		int rows = (count + cols - 1) / cols;
 		int size = CardBody.GRID_SPRITE;
 		Map<Integer, String> named = CardBody.byId(shelf.ids, i -> shelf.names[i]);
 		Map<Integer, Integer> held = CardBody.byId(shelf.ids, i -> shelf.counts[i]);
 		List<Integer> ids = TooltipData.itemList(shelf.ids);
 		body.titled(title).add(CardBody.part(
-			c -> count * shelf.cellWidth(c.fm) + (count - 1) * RECENT_PAD,
-			c -> size + (shelf.dated() ? DATE_GAP + c.fm.getHeight() : 0), (c, y) ->
+			c -> cols * shelf.cellWidth(c.fm) + (cols - 1) * RECENT_PAD,
+			c -> rows * size + (rows - 1) * RECENT_PAD + (shelf.dated() ? DATE_GAP + c.fm.getHeight() : 0), (c, y) ->
 			{
 				// Every shelved item is held: the grids' painter draws them, each centered over its date.
 				int cellWidth = shelf.cellWidth(c.fm);
 				// Shelves start at the left, as killclog.com's do.
 				int startX = c.inset();
 				c.hits.addAll(TooltipItemSprites.paintGrid(c.g, shelf.sprites, named, section, ids, new HashSet<>(ids),
-					held, startX + (cellWidth - size) / 2, y, count, size, cellWidth + RECENT_PAD));
+					held, startX + (cellWidth - size) / 2, y, cols, size, cellWidth + RECENT_PAD));
 				for (int i = 0; i < count; i++)
 				{
 					String date = shelf.dates != null ? shelf.dates[i] : null;
