@@ -50,8 +50,6 @@ Every skill has its own Collection Log-style progression. Skill cards combine re
 
 Enter an RSN in the search bar, or right-click a supported player or name and choose **Kill Clog**.
 
-Use the comparison button beside the search bar to load a second player.
-
 While a League runs, a **Leagues** switch beside the search bar flips the panel between League and main game stats.
 
 **Recommended for a full HiScore replacement:** Turn off RuneLite's **HiScore** plugin and set **Menu Label** to **Lookup** in Kill Clog's settings.
@@ -73,6 +71,12 @@ Hold the middle mouse button over the panel and move up or down to scroll, faste
 ![From the Collection Log card to a tab to a page: Minigames to Castle Wars, and Other to Elder Chaos Druids](screenshots/collection-log-tab-and-page.png)
 
 ![Vorkath's card naming the item under the cursor: green when you have it, red when you don't](screenshots/item-name-hover.png)
+
+## Comparison
+
+Use the comparison button beside the search bar to load a second player. Every number and card compares the two side by side, the first player in blue and the second in red.
+
+![420 kc and CBC compared on killclog.com and in Kill Clog's Player Summary](screenshots/comparison-site-and-summary.png)
 
 ## Resource Pack Themes
 
