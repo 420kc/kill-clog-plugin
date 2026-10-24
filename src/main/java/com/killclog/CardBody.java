@@ -3,7 +3,9 @@ package com.killclog;
 import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.FontMetrics;
+import java.awt.Component;
 import java.awt.Graphics2D;
+import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Shape;
 import java.awt.event.MouseAdapter;
@@ -322,15 +324,29 @@ final class CardBody
 	// Every scrolled card shows the same height: 24 lines, the length of a long Collection Log tab.
 	static final int WINDOW = 24 * NativeTooltip.LINE_HEIGHT;
 
-	/** The thin rail beside a scrolled window: its track, and the thumb where the window sits. */
-	static void rail(Ctx c, int y, int track, int shown, int total, int offset, int range)
+	/**
+	 * The thin rail beside a scrolled window: its track, and the thumb where the window sits, brighter while the
+	 * pointer is on it. The scroll keeps where it drew them, for a press or a drag on the rail.
+	 */
+	static void rail(Ctx c, Scroll scroll, int y, int track, int shown, int total, int offset, int range)
 	{
 		int x = c.w - c.inset() - RAIL_WIDTH;
 		int thumb = Math.max(NativeTooltip.LINE_HEIGHT, track * shown / total);
+		int thumbY = y + (track - thumb) * offset / range;
+		scroll.rail = new Rectangle(x, y, RAIL_WIDTH, track);
+		scroll.thumb = new Rectangle(x, thumbY, RAIL_WIDTH, thumb);
 		c.g.setColor(NativeTooltip.railTrack(NativeTooltip.dividerColor));
 		c.g.fillRect(x, y, RAIL_WIDTH, track);
-		c.g.setColor(NativeTooltip.railThumb());
-		c.g.fillRect(x, y + (track - thumb) * offset / range, RAIL_WIDTH, thumb);
+		Color color = NativeTooltip.railThumb();
+		c.g.setColor(scroll.hot ? color.brighter() : color);
+		c.g.fillRect(x, thumbY, RAIL_WIDTH, thumb);
+	}
+
+	/** Whether a press at this point of a card, in its own pixels, takes its scroll's rail. */
+	static boolean onRail(Component card, Point p)
+	{
+		Scroll scroll = card instanceof TitleTooltip ? ((TitleTooltip) card).scroll() : null;
+		return scroll != null && scroll.grabs(p);
 	}
 
 	/**
@@ -366,7 +382,7 @@ final class CardBody
 						c.hits.add(shown);
 					}
 				}
-				rail(c, y, scroll.window, scroll.window, height, scroll.offset, scroll.range);
+				rail(c, scroll, y, scroll.window, scroll.window, height, scroll.offset, scroll.range);
 			});
 	}
 
@@ -381,6 +397,15 @@ final class CardBody
 		private double wheel;
 		@Nullable
 		private Scroll partner;
+		// Where the rail and its thumb last drew, in the card's pixels; a press on either drags the window, for a
+		// player without a scroll wheel (2.7.3).
+		@Nullable
+		private Rectangle rail;
+		@Nullable
+		private Rectangle thumb;
+		private boolean hot;
+		// While dragging: how far below the thumb's top the pointer holds it, else -1.
+		private int held = -1;
 
 		Scroll(TitleTooltip card, int window, int step)
 		{
@@ -388,6 +413,78 @@ final class CardBody
 			this.window = window;
 			this.step = step;
 			card.addMouseWheelListener(this::wheel);
+			MouseAdapter mouse = new MouseAdapter()
+			{
+				@Override
+				public void mousePressed(MouseEvent e)
+				{
+					if (e.getButton() != MouseEvent.BUTTON1 || !grabs(e.getPoint()))
+					{
+						return;
+					}
+					// On the thumb it holds where it was taken; on the track the thumb's middle jumps there.
+					held = thumb.contains(thumb.x, e.getY()) ? e.getY() - thumb.y : thumb.height / 2;
+					drag(e.getY());
+					e.consume();
+				}
+
+				@Override
+				public void mouseDragged(MouseEvent e)
+				{
+					if (held >= 0)
+					{
+						drag(e.getY());
+					}
+				}
+
+				@Override
+				public void mouseReleased(MouseEvent e)
+				{
+					held = -1;
+					hover(grabs(e.getPoint()));
+				}
+
+				@Override
+				public void mouseMoved(MouseEvent e)
+				{
+					hover(grabs(e.getPoint()));
+				}
+
+				@Override
+				public void mouseExited(MouseEvent e)
+				{
+					hover(held >= 0);
+				}
+			};
+			card.addMouseListener(mouse);
+			card.addMouseMotionListener(mouse);
+		}
+
+		/** Whether a press here takes the rail: the rail and its gap, a grab zone wider than the 3 px it draws. */
+		boolean grabs(Point p)
+		{
+			return range > 0 && rail != null && p.y >= rail.y && p.y < rail.y + rail.height
+				&& p.x >= rail.x - RAIL_GAP - 4 && p.x < rail.x + RAIL_WIDTH + 4;
+		}
+
+		private void drag(int y)
+		{
+			int travel = rail.height - thumb.height;
+			int next = travel <= 0 ? 0 : (int) Math.round((double) (y - held - rail.y) * range / travel);
+			moveTo(next);
+			if (partner != null)
+			{
+				partner.moveTo(offset);
+			}
+		}
+
+		private void hover(boolean on)
+		{
+			if (on != hot)
+			{
+				hot = on;
+				card.repaint();
+			}
 		}
 
 		/** Keeps two players' sides at the same place as either one scrolls. */
@@ -596,7 +693,7 @@ final class CardBody
 				public void mousePressed(MouseEvent e)
 				{
 					int key = at(e.getY());
-					if (key >= 0 && e.getButton() == MouseEvent.BUTTON1)
+					if (key >= 0 && e.getButton() == MouseEvent.BUTTON1 && !onRail(card, e.getPoint()))
 					{
 						onPress.accept(e, key);
 					}

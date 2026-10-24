@@ -2,8 +2,10 @@ package com.killclog;
 
 import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.awt.event.MouseMotionListener;
 import java.awt.event.MouseWheelEvent;
 import java.awt.event.MouseWheelListener;
 import java.awt.image.BufferedImage;
@@ -41,6 +43,53 @@ public class ClogTabTooltipTest
 		assertEquals(57 - ClogTabTooltip.VISIBLE_ROWS, offset(card));
 		wheel(card, top + 5, -50);
 		assertEquals(0, offset(card));
+	}
+
+	@Test
+	public void theRailScrollsTheTabOnAPressOrADragAndOpensNoPage()
+	{
+		// For a player without a scroll wheel (2.7.3): the rail is a scroll bar.
+		ClogTabTooltip card = painted(card(57));
+		int top = firstRowY(card);
+		int rail = card.getWidth() - NativeTooltip.getInset() - CardBody.RAIL_WIDTH;
+		int bottom = top + ClogTabTooltip.VISIBLE_ROWS * LINE - 2;
+		List<Integer> opened = new ArrayList<>();
+		card.setOnOpenPage((press, page) -> opened.add(page));
+		assertTrue("the grab zone is wider than the rail", CardBody.onRail(card, new Point(rail - 5, top + 5)));
+		assertTrue(!CardBody.onRail(card, new Point(rail / 2, top + 5)));
+
+		// A press low on the track jumps the window there, and opens no page under it.
+		press(card, rail, bottom);
+		release(card, rail, bottom);
+		assertEquals(57 - ClogTabTooltip.VISIBLE_ROWS, offset(card));
+		assertEquals(new ArrayList<>(), opened);
+
+		// The thumb, taken where it sits, follows the pointer back to the top and stops there.
+		painted(card);
+		press(card, rail, bottom - 2);
+		drag(card, rail, -100);
+		assertEquals(0, offset(card));
+		release(card, rail, -100);
+		// The thumb moved half its travel is the list moved half its way, however the pointer wanders sideways.
+		painted(card);
+		int track = ClogTabTooltip.VISIBLE_ROWS * LINE;
+		int travel = track - track * ClogTabTooltip.VISIBLE_ROWS / 57;
+		press(card, rail, top + 5);
+		drag(card, rail + 40, top + 5 + travel / 2);
+		release(card, rail + 40, top + 5 + travel / 2);
+		assertEquals((57 - ClogTabTooltip.VISIBLE_ROWS) / 2, offset(card));
+		assertEquals(new ArrayList<>(), opened);
+
+		// A press on a row still opens its page.
+		painted(card);
+		press(card, rail / 2, top + 5);
+		assertEquals(1, opened.size());
+
+		// A pinned card stays open through a press on its rail, and closes on one anywhere else.
+		assertTrue(TooltipController.onCardRail(new MouseEvent(card, MouseEvent.MOUSE_PRESSED, 0, 0, rail, top + 5, 1,
+			false, MouseEvent.BUTTON1)));
+		assertTrue(!TooltipController.onCardRail(new MouseEvent(card, MouseEvent.MOUSE_PRESSED, 0, 0, rail / 2, top + 5,
+			1, false, MouseEvent.BUTTON1)));
 	}
 
 	@Test
@@ -217,9 +266,30 @@ public class ClogTabTooltipTest
 
 	private static void press(ClogTabTooltip card, int y)
 	{
+		press(card, 5, y);
+	}
+
+	private static void press(ClogTabTooltip card, int x, int y)
+	{
 		for (MouseListener listener : card.getMouseListeners())
 		{
-			listener.mousePressed(new MouseEvent(card, MouseEvent.MOUSE_PRESSED, 0, 0, 5, y, 1, false, MouseEvent.BUTTON1));
+			listener.mousePressed(new MouseEvent(card, MouseEvent.MOUSE_PRESSED, 0, 0, x, y, 1, false, MouseEvent.BUTTON1));
+		}
+	}
+
+	private static void drag(ClogTabTooltip card, int x, int y)
+	{
+		for (MouseMotionListener listener : card.getMouseMotionListeners())
+		{
+			listener.mouseDragged(new MouseEvent(card, MouseEvent.MOUSE_DRAGGED, 0, 0, x, y, 0, false, MouseEvent.BUTTON1));
+		}
+	}
+
+	private static void release(ClogTabTooltip card, int x, int y)
+	{
+		for (MouseListener listener : card.getMouseListeners())
+		{
+			listener.mouseReleased(new MouseEvent(card, MouseEvent.MOUSE_RELEASED, 0, 0, x, y, 1, false, MouseEvent.BUTTON1));
 		}
 	}
 

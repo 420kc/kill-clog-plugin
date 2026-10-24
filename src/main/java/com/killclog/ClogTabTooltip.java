@@ -132,7 +132,7 @@ public class ClogTabTooltip extends TitleTooltip
 			}
 			if (scrolls())
 			{
-				CardBody.rail(c, y, shown() * LINE_HEIGHT, VISIBLE_ROWS, names.length, offset, names.length - VISIBLE_ROWS);
+				CardBody.rail(c, scroll, y, shown() * LINE_HEIGHT, VISIBLE_ROWS, names.length, offset, names.length - VISIBLE_ROWS);
 			}
 		});
 	}

@@ -532,6 +532,10 @@ class TooltipController
 		{
 			if (event.getID() == MouseEvent.MOUSE_PRESSED)
 			{
+				if (onCardRail((MouseEvent) event))
+				{
+					return;
+				}
 				JComponent dismissedComponent = activePinnedComponent;
 				pinDismissedComponent = dismissedComponent;
 				hidePinnedTooltip();
@@ -552,6 +556,15 @@ class TooltipController
 		};
 		Toolkit.getDefaultToolkit().addAWTEventListener(
 			pinDismissListener, AWTEvent.MOUSE_EVENT_MASK | AWTEvent.KEY_EVENT_MASK);
+	}
+
+	/** A press on a card's own scroll rail scrolls it, and the card stays. */
+	static boolean onCardRail(MouseEvent press)
+	{
+		Component source = press.getComponent();
+		Component card = source instanceof TitleTooltip ? source
+			: SwingUtilities.getAncestorOfClass(TitleTooltip.class, source);
+		return card != null && CardBody.onRail(card, SwingUtilities.convertPoint(source, press.getPoint(), card));
 	}
 
 	void hidePinnedTooltip()
