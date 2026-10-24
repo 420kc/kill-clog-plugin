@@ -143,13 +143,7 @@ class SyncService
 				: "Your Collection Log is empty: Kill Clog syncs from your first item."));
 		}
 
-		JsonObject root = buildBody(accountHash, accountType, clog, personalBests, detailedPersonalBests);
-		JsonObject structure = GameMode.MAIN.equals(mode) ? structureToShare() : null;
-		if (structure != null)
-		{
-			root.add("clog_structure", structure);
-		}
-		String body = wire(gson, root);
+		String body = requestBody(accountHash, accountType, clog, personalBests, detailedPersonalBests, mode);
 		final int observedCount = ClogResult.coverageCount(clog);
 		String url = KillClogEndpoint.apiBaseUrl() + "/player/" + HttpUtil.pathSegment(rsn) + "/sync/" + mode;
 		String push = url + body;
@@ -184,8 +178,19 @@ class SyncService
 		});
 	}
 
-	/** The game's structure when killclog.com named a different one in its last reply, else null. */
-	@Nullable
+	/** The text a push sends: the body, and the game's structure on a main-game sync that should carry it. */
+	String requestBody(long accountHash, @Nullable AccountType accountType, ClogResult clog,
+		Map<String, Double> personalBests, Map<String, PbRecord> detailedPersonalBests, String mode)
+	{
+		JsonObject root = buildBody(accountHash, accountType, clog, personalBests, detailedPersonalBests);
+		JsonObject structure = GameMode.MAIN.equals(mode) ? structureToShare() : null;
+		if (structure != null)
+		{
+			root.add("clog_structure", structure);
+		}
+		return wire(gson, root);
+	}
+
 	/**
 	 * The body as sent. Gson leaves a null field out by default, and "clan": null is how a sync says you're in no
 	 * clan (or Share Clan is off): left out, killclog.com kept the clan it held, since 2.6.3.
@@ -195,6 +200,8 @@ class SyncService
 		return gson.newBuilder().serializeNulls().create().toJson(root);
 	}
 
+	/** The game's structure when killclog.com named a different one in its last reply, else null. */
+	@Nullable
 	JsonObject structureToShare()
 	{
 		ClogIndex index = clogIndex;

@@ -112,8 +112,10 @@ public class ClanSyncTest
 		JsonObject sent = body(service);
 		assertTrue("the field is there, so killclog.com replaces what it holds", sent.has("clan"));
 		assertTrue("and it says none", sent.get("clan").isJsonNull());
-		// As it goes over the wire, too: Gson's default leaves a null field out, so the server never heard "none".
-		assertTrue(SyncService.wire(new Gson(), sent).contains("\"clan\":null"));
+		// As a push sends it, too: Gson's default leaves a null field out, so the server never heard "none".
+		String text = service.requestBody(1L, null, new ClogResult("420 kc", Map.of(), Map.of(), Map.of(), null, null),
+			Map.of(), Map.of(), GameMode.MAIN);
+		assertTrue(text.contains("\"clan\":null"));
 	}
 
 	private static JsonObject body(SyncService service) throws Exception

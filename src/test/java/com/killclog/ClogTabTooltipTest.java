@@ -55,7 +55,8 @@ public class ClogTabTooltipTest
 		int bottom = top + ClogTabTooltip.VISIBLE_ROWS * LINE - 2;
 		List<Integer> opened = new ArrayList<>();
 		card.setOnOpenPage((press, page) -> opened.add(page));
-		assertTrue("the grab zone is wider than the rail", CardBody.onRail(card, new Point(rail - 5, top + 5)));
+		assertTrue("the grab zone takes the rail's gap too", CardBody.onRail(card, new Point(rail - CardBody.RAIL_GAP, top + 5)));
+		assertTrue("and stops there", !CardBody.onRail(card, new Point(rail - CardBody.RAIL_GAP - 1, top + 5)));
 		assertTrue(!CardBody.onRail(card, new Point(rail / 2, top + 5)));
 
 		// A press low on the track jumps the window there, and opens no page under it.
@@ -105,6 +106,83 @@ public class ClogTabTooltipTest
 		ClogTabTooltip scrolls = card(ClogTabTooltip.VISIBLE_ROWS + notch + 1);
 		assertEquals(whole.getPreferredSize().width + 7, scrolls.getPreferredSize().width);
 		assertEquals(whole.getPreferredSize().height - notch * LINE, scrolls.getPreferredSize().height);
+	}
+
+	@Test
+	public void aDragOnOneSideOfAComparisonMovesTheOtherAndTheThumbLightsUnderThePointer()
+	{
+		ClogTabTooltip blue = painted(card(57));
+		ClogTabTooltip red = painted(card(57));
+		TitleTooltip.scrollTogether(blue, red);
+		int top = firstRowY(blue);
+		int rail = blue.getWidth() - NativeTooltip.getInset() - CardBody.RAIL_WIDTH;
+		press(blue, rail, top + ClogTabTooltip.VISIBLE_ROWS * LINE - 2);
+		release(blue, rail, top + ClogTabTooltip.VISIBLE_ROWS * LINE - 2);
+		assertEquals(57 - ClogTabTooltip.VISIBLE_ROWS, offset(blue));
+		assertEquals("the other side follows the drag", offset(blue), offset(red));
+
+		// The thumb, now at the bottom, draws brighter while the pointer is on the rail.
+		int y = top + ClogTabTooltip.VISIBLE_ROWS * LINE - 4;
+		move(blue, rail / 2, y);
+		int dim = pixel(blue, rail + 1, y);
+		move(blue, rail, y);
+		assertTrue("brighter under the pointer", brightness(pixel(blue, rail + 1, y)) > brightness(dim));
+	}
+
+	@Test
+	public void aGridCardsRailNeverReachesItsLastColumn() throws Exception
+	{
+		ImgTooltip grid = new ImgTooltip(4);
+		grid.setTitle("Sixty");
+		List<Integer> ids = new ArrayList<>();
+		for (int i = 1; i <= 60; i++)
+		{
+			ids.add(i);
+		}
+		grid.setObtained(0, 60);
+		grid.setItems(60, ids, java.util.Collections.emptySet(), java.util.Collections.emptyMap(),
+			java.util.Collections.emptyMap(), null);
+		java.awt.Dimension size = grid.getPreferredSize();
+		grid.setSize(size);
+		Graphics2D graphics = new BufferedImage(size.width, size.height, BufferedImage.TYPE_INT_ARGB).createGraphics();
+		grid.paint(graphics);
+		graphics.dispose();
+		java.lang.reflect.Field field = TooltipItemHover.class.getDeclaredField("hitBoxes");
+		field.setAccessible(true);
+		java.lang.reflect.Field bounds = TooltipItemHover.HitBox.class.getDeclaredField("bounds");
+		bounds.setAccessible(true);
+		List<?> boxes = (List<?>) field.get(grid.itemHover);
+		assertTrue("the grid scrolls", grid.scroll().offset() == 0 && !boxes.isEmpty());
+		for (Object box : boxes)
+		{
+			java.awt.Rectangle r = (java.awt.Rectangle) bounds.get(box);
+			for (int x = r.x; x < r.x + r.width; x++)
+			{
+				assertTrue("an item's pixel is never the rail's", !CardBody.onRail(grid, new Point(x, r.y + r.height / 2)));
+			}
+		}
+	}
+
+	private static void move(ClogTabTooltip card, int x, int y)
+	{
+		for (java.awt.event.MouseMotionListener listener : card.getMouseMotionListeners())
+		{
+			listener.mouseMoved(new MouseEvent(card, MouseEvent.MOUSE_MOVED, 0, 0, x, y, 0, false));
+		}
+	}
+
+	private static int pixel(ClogTabTooltip card, int x, int y)
+	{
+		BufferedImage image = new BufferedImage(card.getWidth(), card.getHeight(), BufferedImage.TYPE_INT_ARGB);
+		Graphics2D graphics = image.createGraphics();
+		card.paint(graphics);
+		graphics.dispose();
+		return image.getRGB(x, y);
+	}
+
+	private static int brightness(int rgb)
+	{
+		return ((rgb >> 16) & 0xff) + ((rgb >> 8) & 0xff) + (rgb & 0xff);
 	}
 
 	@Test

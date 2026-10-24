@@ -420,6 +420,8 @@ final class CardBody
 				{
 					if (e.getButton() != MouseEvent.BUTTON1 || !grabs(e.getPoint()))
 					{
+						// A drag whose release never reached the card (it closed mid-drag) ends here.
+						held = -1;
 						return;
 					}
 					// On the thumb it holds where it was taken; on the track the thumb's middle jumps there.
@@ -460,11 +462,14 @@ final class CardBody
 			card.addMouseMotionListener(mouse);
 		}
 
-		/** Whether a press here takes the rail: the rail and its gap, a grab zone wider than the 3 px it draws. */
+		/**
+		 * Whether a press here takes the rail: the rail, its gap and 4 px of the inset past it, 11 px against the 3 it
+		 * draws, and never into the part beside it (a grid's last column ends at the gap).
+		 */
 		boolean grabs(Point p)
 		{
 			return range > 0 && rail != null && p.y >= rail.y && p.y < rail.y + rail.height
-				&& p.x >= rail.x - RAIL_GAP - 4 && p.x < rail.x + RAIL_WIDTH + 4;
+				&& p.x >= rail.x - RAIL_GAP && p.x < rail.x + RAIL_WIDTH + 4;
 		}
 
 		private void drag(int y)

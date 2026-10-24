@@ -88,6 +88,11 @@ final class TooltipItemHover
 			@Override
 			public void mousePressed(MouseEvent e)
 			{
+				// A press on the card's scroll rail scrolls it; it never opens an item too.
+				if (CardBody.onRail(component, e.getPoint()))
+				{
+					return;
+				}
 				updateHoveredItem(e.getX(), e.getY());
 				HitBox pressed = findHitBox(e.getX(), e.getY());
 				if (e.getButton() == MouseEvent.BUTTON1 && pressed != null && pressed.url != null && links.opens(e))
