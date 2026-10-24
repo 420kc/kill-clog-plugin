@@ -57,11 +57,11 @@ public abstract class TitleTooltip extends NativeTooltip
 	private String titleSuffix;
 	@Getter(AccessLevel.PROTECTED)
 	private Color titleSuffixColor;
-	private String subtitleLabel;
+	// The line under the title: the Obtained count, or the Player Summary's own line.
+	@Nullable
+	private InfoLine subtitle;
 	// A card for a Collection Log page reads as the game's own page does: Obtained first, then its stats.
 	private boolean obtainedFirst;
-	private String subtitleValue;
-	private Color subtitleColor;
 	// An icon after the line under the title (the Player Summary's clan), and where it was last drawn.
 	@Nullable
 	private BufferedImage subtitleIcon;
@@ -70,10 +70,9 @@ public abstract class TitleTooltip extends NativeTooltip
 	private Rectangle subtitleIconBounds;
 	// The header's stat lines (KC and PB; a raid's hard mode on a second), each a label and value and maybe a pair.
 	private final List<InfoLine> infoLines = new ArrayList<>();
-	private String rankText;
-	// A raid's hard mode ranks beside the raid on the same line.
-	private String rankPairLabel;
-	private String rankPairText;
+	// The rank line; a raid's hard mode ranks beside the raid on the same line.
+	@Nullable
+	private InfoLine rank;
 	private String titleWikiPage;
 	@Nullable
 	private BufferedImage titleIcon;
@@ -195,16 +194,12 @@ public abstract class TitleTooltip extends NativeTooltip
 	 */
 	public void setSubtitle(String label, String value, Color valueColor)
 	{
-		this.subtitleLabel = label;
-		this.subtitleValue = value;
-		this.subtitleColor = valueColor;
+		subtitle = new InfoLine(label, value, valueColor);
 	}
 
 	protected void clearSubtitle()
 	{
-		subtitleLabel = null;
-		subtitleValue = null;
-		subtitleColor = null;
+		subtitle = null;
 	}
 
 	/**
@@ -416,8 +411,10 @@ public abstract class TitleTooltip extends NativeTooltip
 	/** A second rank after the first on the rank line, as a raid's hard mode ranks beside the raid. */
 	void setRankPair(String label, int rank)
 	{
-		rankPairLabel = label;
-		rankPairText = rankText(rank);
+		if (this.rank != null)
+		{
+			this.rank.pair = rankLine(label, rank);
+		}
 	}
 
 	/** Leads the header with the Obtained line, as the game's Collection Log pages do. */
@@ -429,21 +426,43 @@ public abstract class TitleTooltip extends NativeTooltip
 	/** Set the rank line. 0 = "Unranked". */
 	public void setRank(int rank)
 	{
-		rankText = rankText(rank);
+		this.rank = rankLine("Rank: ", rank);
 	}
 
-	private static final String UNRANKED = "Unranked";
-
-	/** A rank as the header shows it: grouped, or "Unranked" without one. */
-	private static String rankText(int rank)
+	/** A rank as the header shows it: grouped in the value's colour, or "Unranked" in the label's. */
+	private static InfoLine rankLine(String label, int rank)
 	{
-		return rank > 0 ? grouped(rank) : UNRANKED;
+		return rank > 0 ? new InfoLine(label, grouped(rank), NativeTooltip.valueColor)
+			: new InfoLine(label, "Unranked", labelColor);
 	}
 
-	/** An unranked rank reads in the label's colour, a rank in the value's. */
-	private static Color rankColor(String rankText)
+	/** The header's lines under the title, in the order they paint: one list sizes, counts and paints them. */
+	private List<InfoLine> headerLines()
 	{
-		return UNRANKED.equals(rankText) ? labelColor : NativeTooltip.valueColor;
+		List<InfoLine> lines = new ArrayList<>();
+		if (obtainedFirst && subtitle != null)
+		{
+			lines.add(subtitle);
+		}
+		// Stats read first (KC/PB info lines, then rank), clog progress last.
+		lines.addAll(infoLines);
+		if (rank != null)
+		{
+			lines.add(rank);
+		}
+		if (!obtainedFirst && subtitle != null)
+		{
+			lines.add(subtitle);
+		}
+		return lines;
+	}
+
+	/** A header line's text width, with the subtitle's icon after it. */
+	private int lineWidth(FontMetrics fm, InfoLine line)
+	{
+		int width = line.width(fm);
+		return line == subtitle && subtitleIcon != null ? width + (width > 0 ? TITLE_ICON_GAP : 0) + subtitleIcon.getWidth()
+			: width;
 	}
 
 	/** Override in subclasses that need a smaller title font. */
@@ -489,21 +508,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	 */
 	int getHeaderHeight()
 	{
-		int h = NAME_LINE_HEIGHT;
-		if (subtitleLabel != null)
-		{
-			h += LINE_HEIGHT;
-		}
-		h += infoLines.size() * LINE_HEIGHT;
-		if (rankText != null)
-		{
-			h += LINE_HEIGHT;
-		}
-		if (onBack != null)
-		{
-			h += LINE_HEIGHT;
-		}
-		return h;
+		return NAME_LINE_HEIGHT + (headerLines().size() + (onBack != null ? 1 : 0)) * LINE_HEIGHT;
 	}
 
 	/**
@@ -586,24 +591,11 @@ public abstract class TitleTooltip extends NativeTooltip
 		{
 			titleTextWidth += nfm.stringWidth(titleSuffix);
 		}
-		int subTextWidth = subtitleLabel != null
-			? sfm.stringWidth(subtitleLabel + subtitleValue) : 0;
-		if (subtitleIcon != null && subtitleLabel != null)
+		int maxTextWidth = titleTextWidth;
+		for (InfoLine line : headerLines())
 		{
-			subTextWidth += (subTextWidth > 0 ? TITLE_ICON_GAP : 0) + subtitleIcon.getWidth();
+			maxTextWidth = Math.max(maxTextWidth, lineWidth(sfm, line));
 		}
-		int infoTextWidth = 0;
-		for (InfoLine line : infoLines)
-		{
-			infoTextWidth = Math.max(infoTextWidth, line.width(sfm));
-		}
-		int rnkTextWidth = rankText != null ? sfm.stringWidth("Rank: " + rankText) : 0;
-		if (rankText != null && rankPairLabel != null)
-		{
-			rnkTextWidth += INFO_PAIR_GAP + sfm.stringWidth(rankPairLabel + rankPairText);
-		}
-		int maxTextWidth = Math.max(titleTextWidth,
-			Math.max(subTextWidth, Math.max(infoTextWidth, rnkTextWidth)));
 		if (onBack != null)
 		{
 			maxTextWidth = Math.max(maxTextWidth, sfm.stringWidth(backLabel));
@@ -669,49 +661,21 @@ public abstract class TitleTooltip extends NativeTooltip
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		FontMetrics fm = g2.getFontMetrics();
 
-		// Header line order: stats read first (KC/PB info line, then rank),
-		// clog progress reads last.
-
-		if (obtainedFirst && subtitleLabel != null)
+		// Each line a label in orange and its value in its own colour, then any pair after it.
+		subtitleIconBounds = null;
+		for (InfoLine line : headerLines())
 		{
 			lineY = nextLine(lineY, titleBaseline);
-			drawLabelValue(g2, fm, inset, lineY, subtitleLabel, subtitleValue, subtitleColor);
-		}
-
-		// Info lines (KC/PB for boss cells, a raid's hard mode under them, Kills for unsynced)
-		for (InfoLine line : infoLines)
-		{
-			lineY = nextLine(lineY, titleBaseline);
-			int infoWidth = drawLabelValue(g2, fm, inset, lineY, line.label, line.value, line.color);
+			int width = drawLabelValue(g2, fm, inset, lineY, line.label, line.value, line.color);
 			if (line.pair != null)
 			{
-				drawLabelValue(g2, fm, inset + infoWidth + INFO_PAIR_GAP, lineY, line.pair.label, line.pair.value,
+				drawLabelValue(g2, fm, inset + width + INFO_PAIR_GAP, lineY, line.pair.label, line.pair.value,
 					line.pair.color);
 			}
-		}
-
-		// Rank line
-		if (rankText != null)
-		{
-			lineY = nextLine(lineY, titleBaseline);
-			int rankWidth = drawLabelValue(g2, fm, inset, lineY, "Rank: ", rankText, rankColor(rankText));
-			if (rankPairLabel != null)
-			{
-				drawLabelValue(g2, fm, inset + rankWidth + INFO_PAIR_GAP, lineY, rankPairLabel, rankPairText,
-					rankColor(rankPairText));
-			}
-		}
-
-		// Subtitle (label in orange, value in subtitleColor)
-		subtitleIconBounds = null;
-		if (!obtainedFirst && subtitleLabel != null)
-		{
-			lineY = nextLine(lineY, titleBaseline);
-			int textWidth = drawLabelValue(g2, fm, inset, lineY, subtitleLabel, subtitleValue, subtitleColor);
-			if (subtitleIcon != null)
+			if (line == subtitle && subtitleIcon != null)
 			{
 				// After the text, level with its figures (Dylan, 2026-10-09: never lower than the digits).
-				subtitleIconBounds = new Rectangle(inset + textWidth + (textWidth > 0 ? TITLE_ICON_GAP : 0),
+				subtitleIconBounds = new Rectangle(inset + width + (width > 0 ? TITLE_ICON_GAP : 0),
 					lineY - 7 - subtitleIcon.getHeight() / 2, subtitleIcon.getWidth(), subtitleIcon.getHeight());
 				g2.drawImage(subtitleIcon, subtitleIconBounds.x, subtitleIconBounds.y, null);
 			}

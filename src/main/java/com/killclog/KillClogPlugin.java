@@ -369,7 +369,7 @@ public class KillClogPlugin extends Plugin
 		}
 		int obtained = client.getVarpValue(VarPlayerID.COLLECTION_COUNT);
 		int total = client.getVarpValue(VarPlayerID.COLLECTION_COUNT_MAX);
-		if ((obtained > 0 || total > 0) && localClogCache.updateTotalsUpward(name, obtained, total))
+		if (localClogCache.updateTotalsUpward(name, obtained, total))
 		{
 			SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(name));
 		}
@@ -563,9 +563,7 @@ public class KillClogPlugin extends Plugin
 		{
 			ClogUnlockParser.BroadcastUnlock broadcast =
 				ClogUnlockParser.parseClanBroadcast(event.getMessage());
-			String you = sessions.current().getName();
-			if (broadcast != null && you != null
-				&& Text.toJagexName(broadcast.playerName).equalsIgnoreCase(Text.toJagexName(you)))
+			if (broadcast != null && RsnInputPolicy.sameName(broadcast.playerName, sessions.current().getName()))
 			{
 				clientThread.invokeLater(() -> handleCollectionLogUnlock(
 					broadcast.itemName, broadcast.obtained, broadcast.total));
@@ -872,14 +870,14 @@ public class KillClogPlugin extends Plugin
 
 		if ("killclogSync".equals(event.getKey()))
 		{
-			// The opt-in pushes the log of the login and era it was made in.
+			// The opt-in pushes the log of the login and era it was made in: a logout can land while this runs.
 			int optedInEra = publication.syncEra();
 			Session optedIn = sessions.current();
 			panel.setSyncArrowEnabled(config.killclogSync());
 			if (config.killclogSync())
 			{
 				syncSettings.syncTurnedOn();
-				panel.setCharacterPublishEnabled(config.characterModel());
+				characterPublishFollowsSettings();
 				// Opting in mid-session pushes the already-captured log right
 				// away; nothing else fires until the next capture or unlock.
 				publication.pushNow(optedIn, optedInEra, true);
@@ -887,8 +885,7 @@ public class KillClogPlugin extends Plugin
 			else
 			{
 				syncSettings.enforce();
-				panel.setCharacterPublishEnabled(false);
-				publication.cancelCharacterPublish();
+				characterPublishFollowsSettings();
 				publication.cancelSync();
 			}
 		}
@@ -907,15 +904,21 @@ public class KillClogPlugin extends Plugin
 		else if ("characterModel".equals(event.getKey()))
 		{
 			syncSettings.enforce();
-			boolean enabled = publication.characterPublishingEnabled();
-			panel.setCharacterPublishEnabled(enabled);
-			if (!enabled)
-			{
-				publication.cancelCharacterPublish();
-			}
+			characterPublishFollowsSettings();
 		}
 
 		SwingUtilities.invokeLater(() -> panel.onConfigChanged(event.getKey()));
+	}
+
+	/** The character button follows sync and the character setting together; turning either off withdraws it. */
+	private void characterPublishFollowsSettings()
+	{
+		boolean enabled = publication.characterPublishingEnabled();
+		panel.setCharacterPublishEnabled(enabled);
+		if (!enabled)
+		{
+			publication.cancelCharacterPublish();
+		}
 	}
 
 	private void openPanelAndLookup(String name)

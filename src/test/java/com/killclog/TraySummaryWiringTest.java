@@ -301,7 +301,7 @@ public class TraySummaryWiringTest
 		field(panel, "lookupSession", LookupSession.class).adoptState(hiscore, clog, null, "Seeded");
 		cells.renderHiscore(hiscore);
 		cells.renderClog(clog);
-		cells.rebuildPrimaryTooltips("SomeoneElse");
+		cells.rebuildPrimaryTooltips();
 	}
 
 	private void seedRival(ClogResult clog)

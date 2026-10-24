@@ -36,11 +36,10 @@ public class LookupSession
 
 		/** Cache hit: hiscore and possibly clog returned from service caches without an API call. */
 		void onCachedResult(String player, HiscoreResult hiscore, @Nullable ClogResult clog,
-			boolean isSelf, @Nullable AccountType knownType, boolean isFirstSelfGreeting);
+			@Nullable AccountType knownType);
 
 		/** Live hiscore result arrived from the API. */
-		void onHiscoreResult(String player, HiscoreResult hiscore,
-			boolean isSelf, @Nullable AccountType knownType, boolean isFirstSelfGreeting);
+		void onHiscoreResult(String player, HiscoreResult hiscore, @Nullable AccountType knownType);
 
 		/**
 		 * Live clog result arrived from the API (independent of hiscore timing).
@@ -208,8 +207,7 @@ public class LookupSession
 						clogResult = cachedClog;
 						displayClog = cachedClog;
 					}
-					listener.onCachedResult(player, cachedHiscore, displayClog, isSelf, knownType,
-						isFirstSelfGreeting);
+					listener.onCachedResult(player, cachedHiscore, displayClog, knownType);
 				});
 			});
 			revealTimer.setRepeats(false);
@@ -234,7 +232,7 @@ public class LookupSession
 			revealWithClog(thisLookup, false, () ->
 			{
 				showHiscore(player, result);
-				listener.onHiscoreResult(player, result, isSelf, knownType, isFirstSelfGreeting);
+				listener.onHiscoreResult(player, result, knownType);
 			});
 		}, ex ->
 		{

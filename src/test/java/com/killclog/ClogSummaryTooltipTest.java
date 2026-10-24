@@ -184,14 +184,12 @@ public class ClogSummaryTooltipTest
 	public void theHeaderCountsATotalAndTheCompletionNeverPassesOneHundred() throws ReflectiveOperationException
 	{
 		ClogSummaryTooltip tip = card(1150, 1700);
-		Field label = TitleTooltip.class.getDeclaredField("subtitleLabel");
-		label.setAccessible(true);
-		assertEquals("Total: ", label.get(tip));
+		assertEquals("Total: ", TestViews.headerLine(tip, "subtitle", "label"));
 		assertEquals("67.6%", tip.completionText());
 
 		ClogSummaryTooltip preview = new ClogSummaryTooltip();
 		preview.setObtainedPlaceholder(1700);
-		assertEquals("Total: ", label.get(preview));
+		assertEquals("Total: ", TestViews.headerLine(preview, "subtitle", "label"));
 
 		// A provider can count more than the catalog it sent.
 		assertEquals("100.0%", card(1800, 1700).completionText());

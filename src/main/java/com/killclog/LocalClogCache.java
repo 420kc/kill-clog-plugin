@@ -265,7 +265,6 @@ public class LocalClogCache
 		// Gson builds plain maps; cache writes and EDT reads share these.
 		data.categories = new ConcurrentHashMap<>(data.categories);
 		data.obtained = data.obtained != null ? new ConcurrentHashMap<>(data.obtained) : new ConcurrentHashMap<>();
-		data.firstPartySetupComplete = ClogRecords.hasCompletedFirstPartySetup(data);
 		// Files written before live unlocks bumped lastChanged can hold items
 		// newer than the stamp; heal on load so the notice never trails the shelf.
 		bumpLastChanged(data, newestObtainedDate(data.obtained));
@@ -278,6 +277,13 @@ public class LocalClogCache
 		{
 			ownerByName.merge(cacheKey(name), hash, (a, b) -> a.equals(b) ? a : AMBIGUOUS);
 		}
+	}
+
+	/** An account's log under the name it wears now: a name it wore before no longer points at it. */
+	private void reindex(String name, String hash)
+	{
+		ownerByName.values().removeIf(hash::equals);
+		index(name, hash);
 	}
 
 	/**
@@ -315,12 +321,8 @@ public class LocalClogCache
 		if (data != null && data.playerName != null && !cacheKey(data.playerName).equals(cacheKey(name)))
 		{
 			pendingRenameNotice.set(data.playerName);
-			if (activeHashKey.equals(ownerByName.get(cacheKey(data.playerName))))
-			{
-				ownerByName.remove(cacheKey(data.playerName));
-			}
 			data.playerName = name;
-			index(name, activeHashKey);
+			reindex(name, activeHashKey);
 			submitSave(activeHashKey, true, data);
 		}
 		return true;
@@ -358,10 +360,8 @@ public class LocalClogCache
 					if (data != null && hash.equals(data.ownerHash) && !unsavedFiles.containsKey(file))
 					{
 						own.put(hash, data);
-						// The log names the account as it is now: a name it wore before (renamed on another client)
-						// no longer points at it, as serve()'s own rename leaves none.
-						ownerByName.values().removeIf(hash::equals);
-						index(data.playerName, hash);
+						// Renamed on another client: the log names the account as it is now.
+						reindex(data.playerName, hash);
 					}
 				}
 			}
@@ -408,17 +408,7 @@ public class LocalClogCache
 	/** Flush accepted saves on the same queue; a new session cannot overtake them. */
 	public void shutdown()
 	{
-		diskWriter.execute(() ->
-		{
-			for (String file : new ArrayList<>(pendingByFile.keySet()))
-			{
-				Runnable latest = pendingByFile.remove(file);
-				if (latest != null)
-				{
-					latest.run();
-				}
-			}
-		});
+		diskWriter.execute(() -> new ArrayList<>(pendingByFile.keySet()).forEach(this::flush));
 	}
 
 	/** A League store that is done for good: flush its saves, then let its writer end. */
@@ -440,6 +430,12 @@ public class LocalClogCache
 		return ready && activeHashKey != null && isActivePlayer(name);
 	}
 
+	/** The serving account's own log, when this name is the one it serves. */
+	private PlayerClogData ownLog(String name)
+	{
+		return serving(name) ? own.get(activeHashKey) : null;
+	}
+
 	/** What a read serves: your own log for the logged-in name, else a lookup, else a local alt's own log. */
 	private PlayerClogData record(String name)
 	{
@@ -449,7 +445,7 @@ public class LocalClogCache
 		}
 		if (isActivePlayer(name))
 		{
-			return activeHashKey != null ? own.get(activeHashKey) : null;
+			return ownLog(name);
 		}
 		String key = cacheKey(name);
 		PlayerClogData lookup = lookups.get(key);
@@ -503,10 +499,6 @@ public class LocalClogCache
 		PlayerClogData existing = store.get(slot);
 
 		PlayerClogData data = existing != null ? shallowCopy(existing) : new PlayerClogData();
-		if (existing == null)
-		{
-			data.firstPartySetupComplete = false;
-		}
 		data.playerName = name;
 		data.lastUpdated = Instant.now().toString();
 		data.uniqueObtained = result.getUniqueObtained();
@@ -534,19 +526,17 @@ public class LocalClogCache
 		{
 			data.providerAccountType = result.getProviderAccountType();
 		}
-		data.obtained = !firstParty && data.obtained != null
-			? new ConcurrentHashMap<>(data.obtained)
-			: new ConcurrentHashMap<>();
-		data.categories = !firstParty && data.categories != null
-			? new ConcurrentHashMap<>(data.categories)
-			: new ConcurrentHashMap<>();
+		// A provider result builds on what the lookup held; a capture replaces it whole.
+		boolean builds = !firstParty && existing != null;
+		data.obtained = builds ? new ConcurrentHashMap<>(data.obtained) : new ConcurrentHashMap<>();
+		data.categories = builds ? new ConcurrentHashMap<>(data.categories) : new ConcurrentHashMap<>();
 
 		for (Map.Entry<String, List<ClogResult.ClogItem>> entry
 			: result.getObtainedItems().entrySet())
 		{
 			String cat = entry.getKey();
 			data.obtained.put(cat, preserveItemMetadata(entry.getValue(),
-				existing != null && existing.obtained != null ? existing.obtained.get(cat) : null));
+				existing != null ? existing.obtained.get(cat) : null));
 		}
 		// Page lists are the catalog's, shared and never changed in place.
 		data.categories.putAll(result.getCategoryItems());
@@ -589,7 +579,7 @@ public class LocalClogCache
 			|| data.providerAccountType != prior.providerAccountType
 			|| !Objects.equals(data.lastChanged, prior.lastChanged)
 			|| !Objects.equals(data.pendingUnlocks, prior.pendingUnlocks)
-			|| !Objects.equals(data.firstPartySetupComplete, prior.firstPartySetupComplete)
+			|| data.firstPartySetupComplete != prior.firstPartySetupComplete
 			|| !Objects.equals(data.categories, prior.categories))
 		{
 			return false;
@@ -651,10 +641,10 @@ public class LocalClogCache
 
 	synchronized void rememberPendingUnlock(String playerName, List<Integer> candidates, String date)
 	{
-		if (playerName == null || candidates == null || candidates.size() < 2 || candidates.size() > 256) return;
+		if (candidates == null || candidates.size() < 2 || candidates.size() > 256) return;
 		// Missing candidates need a completed local baseline on the serving account.
-		PlayerClogData data = serving(playerName) ? own.get(activeHashKey) : null;
-		if (data == null || !Boolean.TRUE.equals(data.firstPartySetupComplete)) return;
+		PlayerClogData data = ownLog(playerName);
+		if (data == null || !data.firstPartySetupComplete) return;
 		String validDate = ClogDates.local(date);
 		if (validDate == null) return;
 		PendingClogUnlock event = new PendingClogUnlock(candidates, validDate, activeHashKey);
@@ -677,12 +667,8 @@ public class LocalClogCache
 		List<String> categoryKeys, Map<String, List<Integer>> categoryItems,
 		int obtainedAtKc, String obtainedFrom)
 	{
-		if (playerName == null || categoryKeys == null || categoryItems == null || !serving(playerName))
-		{
-			return false;
-		}
-		PlayerClogData data = own.get(activeHashKey);
-		if (data == null)
+		PlayerClogData data = ownLog(playerName);
+		if (data == null || categoryKeys == null || categoryItems == null)
 		{
 			return false;
 		}
@@ -746,10 +732,13 @@ public class LocalClogCache
 	// string order is chronological order.
 	private static void bumpLastChanged(PlayerClogData data, String date)
 	{
-		if (date != null && (data.lastChanged == null || date.compareTo(data.lastChanged) > 0))
-		{
-			data.lastChanged = date;
-		}
+		data.lastChanged = later(data.lastChanged, date);
+	}
+
+	/** The later of two dates, either of which may be missing. */
+	private static String later(String a, String b)
+	{
+		return a == null || (b != null && b.compareTo(a) > 0) ? b : a;
 	}
 
 	/** Newest obtained-item date across all categories, or null when none carry one. */
@@ -760,11 +749,7 @@ public class LocalClogCache
 		{
 			for (ClogResult.ClogItem item : items)
 			{
-				String date = item.getDate();
-				if (date != null && (newest == null || date.compareTo(newest) > 0))
-				{
-					newest = date;
-				}
+				newest = later(newest, item.getDate());
 			}
 		}
 		return newest;
@@ -786,7 +771,7 @@ public class LocalClogCache
 		boolean self = serving(playerName);
 		String slot = self ? activeHashKey : cacheKey(playerName);
 		PlayerClogData data = self ? own.get(slot) : lookups.get(slot);
-		if (data == null || data.obtained == null)
+		if (data == null)
 		{
 			return false;
 		}
@@ -808,7 +793,6 @@ public class LocalClogCache
 		}
 
 		boolean changed = false;
-		String newestApplied = null;
 		for (Map.Entry<String, List<ClogResult.ClogItem>> entry : data.obtained.entrySet())
 		{
 			List<ClogResult.ClogItem> items = new ArrayList<>(entry.getValue());
@@ -821,10 +805,9 @@ public class LocalClogCache
 				{
 					items.set(i, item.withDate(date));
 					listChanged = true;
-					if (newestApplied == null || date.compareTo(newestApplied) > 0)
-					{
-						newestApplied = date;
-					}
+					// A healed date can outrank the notice's current stamp; the shelf
+					// and the last-updated line must tell the same story.
+					bumpLastChanged(data, date);
 				}
 			}
 			if (listChanged)
@@ -836,9 +819,6 @@ public class LocalClogCache
 
 		if (changed)
 		{
-			// A healed date can outrank the notice's current stamp; the shelf
-			// and the last-updated line must tell the same story.
-			bumpLastChanged(data, newestApplied);
 			data.lastUpdated = Instant.now().toString();
 			submitSave(slot, self, data);
 			log.debug("Merged provider dates into local clog cache for '{}'", playerName);
@@ -849,7 +829,7 @@ public class LocalClogCache
 	public synchronized boolean hasObtainedItem(String playerName, int itemId, List<String> categoryKeys)
 	{
 		PlayerClogData data = record(playerName);
-		if (data == null || data.obtained == null || categoryKeys == null)
+		if (data == null || categoryKeys == null)
 		{
 			return false;
 		}
@@ -880,7 +860,7 @@ public class LocalClogCache
 	public synchronized ClogResult.ClogItem provenancedItem(String playerName, List<Integer> itemIds)
 	{
 		PlayerClogData data = record(playerName);
-		if (data == null || data.obtained == null || itemIds == null)
+		if (data == null || itemIds == null)
 		{
 			return null;
 		}
@@ -905,49 +885,30 @@ public class LocalClogCache
 	 */
 	public synchronized boolean updateTotalsUpward(String playerName, int obtained, int total)
 	{
-		PlayerClogData data = serving(playerName) ? own.get(activeHashKey) : null;
+		PlayerClogData data = ownLog(playerName);
 		if (data == null)
 		{
 			return false;
 		}
-		// Zero is no-signal (updateTotals ignores it); without this guard a
-		// partial cache with -1 totals would report 0 > -1 as a change and
-		// trigger a redundant full panel lookup.
-		int risenObtained = obtained > 0 && obtained > data.uniqueObtained ? obtained : -1;
-		int risenTotal = total > 0 && total > data.uniqueTotal ? total : -1;
-		if (risenObtained < 0 && risenTotal < 0)
-		{
-			return false;
-		}
-		updateTotals(playerName, risenObtained, risenTotal);
-		return true;
-	}
-
-	public synchronized void updateTotals(String playerName, int obtained, int total)
-	{
-		PlayerClogData data = serving(playerName) ? own.get(activeHashKey) : null;
-		if (data == null)
-		{
-			return;
-		}
-
+		// Zero is no signal; without this guard a partial cache with -1 totals
+		// would report 0 > -1 as a change and trigger a redundant full panel lookup.
 		boolean changed = false;
-		if (obtained > 0 && obtained != data.uniqueObtained)
+		if (obtained > 0 && obtained > data.uniqueObtained)
 		{
 			data.uniqueObtained = obtained;
 			changed = true;
 		}
-		if (total > 0 && total != data.uniqueTotal)
+		if (total > 0 && total > data.uniqueTotal)
 		{
 			data.uniqueTotal = total;
 			changed = true;
 		}
-
 		if (changed)
 		{
 			submitSave(activeHashKey, true, data);
-			log.debug("Updated clog totals for '{}': {}/{}", playerName, obtained, total);
+			log.debug("Updated clog totals for '{}': {}/{}", playerName, data.uniqueObtained, data.uniqueTotal);
 		}
+		return changed;
 	}
 
 	public synchronized boolean hasDataFor(String playerName)
@@ -958,7 +919,8 @@ public class LocalClogCache
 	/** Whether this player completed the full local Collection Log Search walk. */
 	public synchronized boolean hasCompletedFirstPartySetupFor(String playerName)
 	{
-		return ClogRecords.hasCompletedFirstPartySetup(record(playerName));
+		PlayerClogData data = record(playerName);
+		return data != null && data.firstPartySetupComplete;
 	}
 
 	public synchronized ClogResult toClogResult(String playerName, Map<Integer, String> itemNames)
@@ -1016,8 +978,8 @@ public class LocalClogCache
 	 */
 	public synchronized ClogResult toFirstPartySyncResult(String playerName)
 	{
-		return serving(playerName) && own.get(activeHashKey) != null
-			? result(own.get(activeHashKey), new HashMap<>(), true) : null;
+		PlayerClogData data = ownLog(playerName);
+		return data != null ? result(data, new HashMap<>(), true) : null;
 	}
 
 	// Disk I/O, always on the diskWriter thread.
@@ -1042,7 +1004,7 @@ public class LocalClogCache
 		{
 			return;
 		}
-		Filepath dest = ownLog ? folder.join(file) : folder.join(StoreFiles.LOOKUPS, fileName(snapshot.playerName));
+		Filepath dest = folder.join(file);
 		submitDiskWrite(file, () ->
 		{
 			try
@@ -1085,7 +1047,7 @@ public class LocalClogCache
 		}
 		String file = fileKey(null, false, name);
 		unsavedFiles.remove(file);
-		Filepath dest = folder.join(StoreFiles.LOOKUPS, fileName(name));
+		Filepath dest = folder.join(file);
 		submitDiskWrite(file, () ->
 		{
 			try
@@ -1112,30 +1074,23 @@ public class LocalClogCache
 		}
 		try
 		{
-			diskWriter.schedule(() ->
-			{
-				Runnable latest = pendingByFile.remove(file);
-				if (latest != null)
-				{
-					latest.run();
-				}
-			}, DEBOUNCE_MS, TimeUnit.MILLISECONDS);
+			diskWriter.schedule(() -> flush(file), DEBOUNCE_MS, TimeUnit.MILLISECONDS);
 		}
 		catch (RejectedExecutionException ignored)
 		{
-			if (pendingByFile.remove(file, task))
-			{
-				try
-				{
-					diskWriter.execute(task);
-					return;
-				}
-				catch (RejectedExecutionException retryIgnored)
-				{
-					// Leave it unsaved; the next capture will resave.
-				}
-			}
+			// A writer that has shut down takes nothing more; the file stays unsaved and the next capture resaves it.
+			pendingByFile.remove(file, task);
 			log.debug("Disk write rejected (executor shutting down)");
+		}
+	}
+
+	/** Runs a file's latest queued write, if one is still waiting. */
+	private void flush(String file)
+	{
+		Runnable latest = pendingByFile.remove(file);
+		if (latest != null)
+		{
+			latest.run();
 		}
 	}
 
@@ -1175,8 +1130,8 @@ public class LocalClogCache
 		copy.providerAccountType = src.providerAccountType;
 		copy.uniqueObtained = src.uniqueObtained;
 		copy.uniqueTotal = src.uniqueTotal;
-		copy.categories = src.categories != null ? new HashMap<>(src.categories) : new HashMap<>();
-		copy.obtained = src.obtained != null ? new HashMap<>(src.obtained) : new HashMap<>();
+		copy.categories = new HashMap<>(src.categories);
+		copy.obtained = new HashMap<>(src.obtained);
 		copy.firstPartySetupComplete = src.firstPartySetupComplete;
 		copy.pendingUnlocks = src.pendingUnlocks != null ? new ArrayList<>(src.pendingUnlocks) : null;
 		return copy;

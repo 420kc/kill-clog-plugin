@@ -88,10 +88,7 @@ final class LiveClogSync
 		// the downward authority.
 		int liveObtained = Math.max(countersSettled ? client.getVarpValue(VarPlayerID.COLLECTION_COUNT) : 0, broadcastObtained);
 		int liveTotal = Math.max(countersSettled ? client.getVarpValue(VarPlayerID.COLLECTION_COUNT_MAX) : 0, broadcastTotal);
-		if (liveObtained > 0 || liveTotal > 0)
-		{
-			localClogCache.updateTotalsUpward(playerName, liveObtained, liveTotal);
-		}
+		localClogCache.updateTotalsUpward(playerName, liveObtained, liveTotal);
 
 		if (changed)
 		{

@@ -4,7 +4,6 @@ import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.lang.reflect.Field;
 import javax.imageio.ImageIO;
 import net.runelite.api.Skill;
 import org.junit.Test;
@@ -19,9 +18,7 @@ public class UnrankedTooltipTest
 
 	private static String rankText(TitleTooltip tip) throws Exception
 	{
-		Field field = TitleTooltip.class.getDeclaredField("rankText");
-		field.setAccessible(true);
-		return (String) field.get(tip);
+		return TestViews.headerLine(tip, "rank", "value");
 	}
 
 	private static TitleTooltip tooltip(TooltipData data, HiscoreResult result, boolean enabled)

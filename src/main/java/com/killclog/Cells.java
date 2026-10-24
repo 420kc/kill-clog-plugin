@@ -244,10 +244,7 @@ public class Cells
 		// Boss cells
 		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
 		{
-			HiscoreSkill skill = entry.getKey();
-			String hiscoreName = PanelData.hiscoreName(skill.getName());
-			renderBossValue(entry.getValue(), hiscoreName,
-				originalIcons.get(skill), dimmedIcons.get(skill), result);
+			renderBossValue(entry.getKey(), entry.getValue(), result);
 		}
 		// Activity cells
 		for (Map.Entry<HiscoreSkill, JLabel> entry : activityLabels.entrySet())
@@ -325,16 +322,17 @@ public class Cells
 	 * the current lookup session results. Mirrors what
 	 * {@link ComparisonController#enter()} does for the comparison side.
 	 */
-	public void rebuildPrimaryTooltips(@Nullable String localRsn)
+	public void rebuildPrimaryTooltips()
 	{
 		tooltipDataMap.clear();
 		if (lookupSession.getClogResult() == null)
 		{
 			rareTooltips.clear();
 		}
-		boolean self = RsnInputPolicy.sameName(localRsn, lookupSession.getCurrentLookupRsn());
+		String you = localRsn.get();
+		boolean self = RsnInputPolicy.sameName(you, lookupSession.getCurrentLookupRsn());
 		boolean selfNoCache = lookupSession.getClogResult() == null
-			&& lookupSession.offersSetup(localRsn, lookupSession.getCurrentLookupRsn());
+			&& lookupSession.offersSetup(you, lookupSession.getCurrentLookupRsn());
 		ClogResult catalog = lookupSession.getClogResult() == null && !selfNoCache
 			? unsyncedCatalog.result() : null;
 
@@ -360,7 +358,8 @@ public class Cells
 		{
 			if (!selfNoCache)
 			{
-				rebuildUnsyncedClueTooltips(catalog);
+				rebuildClueTooltips(null, catalog);
+				putRareRows(null, catalog);
 			}
 			return;
 		}
@@ -389,13 +388,6 @@ public class Cells
 				tooltipController.setTooltipText(label, " ");
 			}
 		}
-	}
-
-	private void rebuildUnsyncedClueTooltips(@Nullable ClogResult catalog)
-	{
-		rebuildClueTooltips(null, catalog);
-
-		putRareRows(null, catalog);
 	}
 
 	private void putRareRows(@Nullable ClogResult clog, @Nullable ClogResult catalog)
@@ -556,20 +548,14 @@ public class Cells
 	}
 
 	/** Write one boss cell's KC text, color, and icon dim state from the name-keyed hiscore map. */
-	private void renderBossValue(@Nullable JLabel label, String hiscoreName,
-		@Nullable ImageIcon orig, @Nullable ImageIcon dimmed,
-		HiscoreResult result)
+	private void renderBossValue(HiscoreSkill boss, JLabel label, HiscoreResult result)
 	{
-		if (label == null)
-		{
-			return;
-		}
-		int kc = result.getBossKills().getOrDefault(hiscoreName, -1);
-		boolean hasKc = kc > 0;
+		int kc = result.getBossKills().getOrDefault(PanelData.hiscoreName(boss.getName()), -1);
 		showCount(label, kc, KC_COLOR);
+		ImageIcon orig = originalIcons.get(boss);
 		if (orig != null)
 		{
-			label.setIcon(hasKc ? orig : dimmed);
+			label.setIcon(kc > 0 ? orig : dimmedIcons.get(boss));
 		}
 	}
 
@@ -587,11 +573,10 @@ public class Cells
 			return null;
 		}
 		String category = ClogService.bossToCategory(hiscoreName);
-		int rank = lookupSession.getHiscoreResult() != null
-			? lookupSession.getHiscoreResult().getRank(hiscoreName) : -1;
-		int kc = lookupSession.getHiscoreResult() != null
-			? lookupSession.getHiscoreResult().getKc(hiscoreName) : -1;
-		boolean showGlory = ColosseumGlory.leadsCard(displayName, lookupSession.getHiscoreResult());
+		HiscoreResult hiscore = lookupSession.getHiscoreResult();
+		int rank = hiscore != null ? hiscore.getRank(hiscoreName) : -1;
+		int kc = hiscore != null ? hiscore.getKc(hiscoreName) : -1;
+		boolean showGlory = ColosseumGlory.leadsCard(displayName, hiscore);
 		// Vanilla records pbs on the local profile only; for looked-up players
 		// the killclog.com sync is the one source that serves them, cached by
 		// the same fetch that raced the clog providers.
@@ -614,7 +599,7 @@ public class Cells
 			"Mimic", new int[]{PanelData.THIRD_AGE_RING_ITEM_ID}, clog)));
 		for (int i = 0; i < PanelData.RARE_KEYS.length; i++)
 		{
-			tip.setRare(i, counts(rival ? rivalRare(i) : rareTooltips.get(PanelData.RARE_KEYS[i])));
+			tip.setRare(i, counts(rareData(i, rival)));
 		}
 		// A rare row, a tier's line or Mimic's opens that card where the summary was, its back the summary.
 		tip.setOnOpenRare((press, row) -> openFromClueSummary(owner, press, buildRareTooltipFor(owner, row)));

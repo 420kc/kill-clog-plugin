@@ -22,9 +22,8 @@ class PlayerClogData
 	Map<String, List<ClogResult.ClogItem>> obtained;
 	List<PendingClogUnlock> pendingUnlocks;
 	/**
-	 * Whether this client completed the full Collection Log Search walk.
-	 * Null is a pre-2.3.3 file; those use the first-party marker migration rule.
-	 * False keeps provider-only and live-unlock-only stores in setup.
+	 * Whether this client completed the full Collection Log Search walk. False (and a missing or null field in an
+	 * older file) keeps provider-only and live-unlock-only stores in setup.
 	 */
-	Boolean firstPartySetupComplete;
+	boolean firstPartySetupComplete;
 }

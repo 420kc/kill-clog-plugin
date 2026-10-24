@@ -16,7 +16,6 @@ import java.awt.event.MouseEvent;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import javax.swing.JComponent;
@@ -423,7 +422,7 @@ public class ComparisonController
 
 	private void setCompareStatus(String[] pool, Color color, String singleArg, String secondArg, String firstArg)
 	{
-		String template = pool[ThreadLocalRandom.current().nextInt(pool.length)];
+		String template = SearchMessages.pick(pool);
 		String msg = template.indexOf("%s") == template.lastIndexOf("%s")
 			? String.format(template, singleArg)
 			: String.format(template, firstArg, secondArg);

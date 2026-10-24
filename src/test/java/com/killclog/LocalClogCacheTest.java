@@ -441,6 +441,40 @@ public class LocalClogCacheTest
 	}
 
 	@Test
+	public void onlyTheServedNameReachesItsOwnLog() throws Exception
+	{
+		LocalClogCache cache = onDisk(temporaryFolder.newFolder());
+		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
+		Map<String, List<Integer>> categories = Map.of("hats", itemList(1, 2));
+		cache.cacheFirstPartyResult(clog("Tester", categories, obtainedItems("hats")));
+		assertFalse("another name never raises your totals", cache.updateTotalsUpward("Zezima", 99, 99));
+		assertFalse(cache.updateTotalsUpward(null, 99, 99));
+		assertFalse("another name never adds to your log",
+			cache.mergeObtainedItem("Zezima", 2, List.of("hats"), categories, 0, null));
+		assertNull("and never sends it", cache.toFirstPartySyncResult("Zezima"));
+		assertTrue(cache.updateTotalsUpward("Tester", 99, 99));
+		assertEquals(99, cache.toFirstPartySyncResult("Tester").getUniqueObtained());
+	}
+
+	@Test
+	public void aHealedDateMovesTheLastUpdatedStamp() throws Exception
+	{
+		LocalClogCache cache = onDisk(temporaryFolder.newFolder());
+		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
+		Map<String, List<ClogResult.ClogItem>> undated = new HashMap<>();
+		undated.put("hats", new java.util.ArrayList<>(List.of(new ClogResult.ClogItem(1, 1, null),
+			new ClogResult.ClogItem(2, 1, null))));
+		cache.cacheFirstPartyResult(clog("Tester", Map.of("hats", itemList(1, 2)), undated));
+		assertNull(cache.toClogResult("Tester", Collections.emptyMap()).getLastChanged());
+		Map<String, List<ClogResult.ClogItem>> provider = new HashMap<>();
+		provider.put("hats", List.of(new ClogResult.ClogItem(1, 1, "2025-03-01 10:00:00"),
+			new ClogResult.ClogItem(2, 1, "2024-01-01 10:00:00")));
+		assertTrue(cache.mergeProviderDates("Tester", provider));
+		assertEquals("the newest healed date", "2025-03-01 10:00:00",
+			cache.toClogResult("Tester", Collections.emptyMap()).getLastChanged());
+	}
+
+	@Test
 	public void liveUnlockTotalsFollowGameCountersInEitherEventOrder() throws Exception
 	{
 		for (int initial : List.of(0, 5))

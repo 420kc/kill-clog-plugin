@@ -363,14 +363,14 @@ public class KillClogPanel extends PluginPanel
 		// (dimmed grids, --/Y slot counts) before any player has been searched.
 		clogService.warmCatalog().thenRun(() -> SwingUtilities.invokeLater(() ->
 		{
-			cells.rebuildPrimaryTooltips(localRsn);
+			cells.rebuildPrimaryTooltips();
 			refreshSkillDisplay();
 		}));
 	}
 
 	private void onTooltipItemNamesResolved()
 	{
-		cells.rebuildPrimaryTooltips(localRsn);
+		cells.rebuildPrimaryTooltips();
 		if (comparison.isComparisonMode())
 		{
 			comparison.rebuildTooltipData();
@@ -699,7 +699,7 @@ public class KillClogPanel extends PluginPanel
 		searchRowController.onComparisonEnter();
 		applyBossViewStyle();
 		updateClogTotalsBar();
-		cells.rebuildPrimaryTooltips(localRsn);
+		cells.rebuildPrimaryTooltips();
 		comparison.updateAllCells();
 		comparison.updateInfoBar();
 		refreshSkillDisplay();
@@ -822,20 +822,8 @@ public class KillClogPanel extends PluginPanel
 		}
 
 		int roll = ThreadLocalRandom.current().nextInt(100);
-		String[] pool;
-		if (roll < 1)
-		{
-			pool = SearchMessages.SELF_ULTRA;
-		}
-		else if (roll < 10)
-		{
-			pool = SearchMessages.SELF_RARE;
-		}
-		else
-		{
-			pool = SearchMessages.SELF;
-		}
-		return String.format(pool[ThreadLocalRandom.current().nextInt(pool.length)], player);
+		String[] pool = roll < 1 ? SearchMessages.SELF_ULTRA : roll < 10 ? SearchMessages.SELF_RARE : SearchMessages.SELF;
+		return String.format(SearchMessages.pick(pool), player);
 	}
 
 	public void doLookup()
@@ -909,11 +897,10 @@ public class KillClogPanel extends PluginPanel
 		refreshSkillDisplay();
 	}
 
-	/**
-	 * Render hiscore data to the panel (extracted for cache/SWR reuse).
-	 */
+	/** A lookup's hiscores, cached or fresh: the search settles and the panel shows them. */
 	private void renderHiscoreResult(HiscoreResult result, String player, AccountType knownType)
 	{
+		searchBar.setIcon(IconTextField.Icon.SEARCH);
 		selfType = knownType;
 		updateRankPlayers();
 		statusRow.clearSearchStatus();
@@ -930,7 +917,7 @@ public class KillClogPanel extends PluginPanel
 			searchBar.setText("");
 		}
 		renderResults();
-		cells.rebuildPrimaryTooltips(localRsn);
+		cells.rebuildPrimaryTooltips();
 		updateClogCell(lookupSession.getClogResult());
 		if (comparison.isComparisonMode()) updateClogTotalsBar();
 	}
@@ -955,7 +942,7 @@ public class KillClogPanel extends PluginPanel
 			cells.renderClog(result);
 			updateClogCell(result);
 		}
-		cells.rebuildPrimaryTooltips(localRsn);
+		cells.rebuildPrimaryTooltips();
 		renderResults();
 		if (comparison.isComparisonMode()) updateClogTotalsBar();
 	}
@@ -1200,7 +1187,7 @@ public class KillClogPanel extends PluginPanel
 			case "emptyClogColor":
 			case "infoBarColor":
 				renderResults();
-				cells.rebuildPrimaryTooltips(localRsn);
+				cells.rebuildPrimaryTooltips();
 				break;
 			case "cardLabelColor":
 			case "cardValueColor":
@@ -1208,8 +1195,7 @@ public class KillClogPanel extends PluginPanel
 			case "cardBackgroundColor":
 			case "cardBorderColor":
 			case "cardScrollbarColor":
-				NativeTooltip.cardColors(config.cardLabelColor(), config.cardValueColor(), config.cardDividerColor(),
-					config.cardBackgroundColor(), config.cardBorderColor(), config.cardScrollbarColor());
+				applyCardColors();
 				tooltipController.hidePinnedTooltip();
 				break;
 			case "hoverStyle":
@@ -1235,13 +1221,19 @@ public class KillClogPanel extends PluginPanel
 
 	public void reloadTooltipSprites()
 	{
-		NativeTooltip.cardColors(config.cardLabelColor(), config.cardValueColor(), config.cardDividerColor(),
-			config.cardBackgroundColor(), config.cardBorderColor(), config.cardScrollbarColor());
+		applyCardColors();
 		clientThread.invokeLater(() ->
 		{
 			NativeTooltip.loadSprites(client, spriteManager);
 			statusRow.requestCharacterIcon();
 		});
+	}
+
+	/** The cards wear the colours the player set. */
+	private void applyCardColors()
+	{
+		NativeTooltip.cardColors(config.cardLabelColor(), config.cardValueColor(), config.cardDividerColor(),
+			config.cardBackgroundColor(), config.cardBorderColor(), config.cardScrollbarColor());
 	}
 
 	@Override
@@ -1482,8 +1474,7 @@ public class KillClogPanel extends PluginPanel
 		}
 		else
 		{
-			int searchIdx = ThreadLocalRandom.current().nextInt(SearchMessages.SEARCH.length);
-			setSearchStatus(String.format(SearchMessages.SEARCH[searchIdx], player), TEXT_DIM);
+			setSearchStatus(String.format(SearchMessages.pick(SearchMessages.SEARCH), player), TEXT_DIM);
 		}
 		searchBar.setIcon(IconTextField.Icon.LOADING_DARKER);
 		resetForLookup();
@@ -1491,9 +1482,9 @@ public class KillClogPanel extends PluginPanel
 
 	@Override
 	public void onCachedResult(String player, HiscoreResult hiscore, @Nullable ClogResult clog,
-		boolean isSelf, @Nullable AccountType knownType, boolean isFirstSelfGreeting)
+		@Nullable AccountType knownType)
 	{
-		showHiscore(player, hiscore, knownType, isFirstSelfGreeting);
+		renderHiscoreResult(hiscore, player, knownType);
 		if (clog != null)
 		{
 			renderClogResult(clog);
@@ -1501,10 +1492,9 @@ public class KillClogPanel extends PluginPanel
 	}
 
 	@Override
-	public void onHiscoreResult(String player, HiscoreResult hiscore,
-		boolean isSelf, @Nullable AccountType knownType, boolean isFirstSelfGreeting)
+	public void onHiscoreResult(String player, HiscoreResult hiscore, @Nullable AccountType knownType)
 	{
-		showHiscore(player, hiscore, knownType, isFirstSelfGreeting);
+		renderHiscoreResult(hiscore, player, knownType);
 		// Clog may have arrived first with a GIM type the hiscores can't detect.
 		ClogResult clog = lookupSession.getClogResult();
 		if (clog != null)
@@ -1512,18 +1502,6 @@ public class KillClogPanel extends PluginPanel
 			updateDisplayedInfoIcon();
 			cells.renderClog(clog);
 		}
-	}
-
-	/** A lookup's hiscores, cached or fresh: the search settles and the panel shows them. */
-	private void showHiscore(String player, HiscoreResult hiscore, @Nullable AccountType knownType,
-		boolean isFirstSelfGreeting)
-	{
-		searchBar.setIcon(IconTextField.Icon.SEARCH);
-		if (!isFirstSelfGreeting)
-		{
-			statusRow.clearSearchStatus();
-		}
-		renderHiscoreResult(hiscore, player, knownType);
 	}
 
 	@Override
@@ -1586,18 +1564,21 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void onNotFound(String player)
 	{
-		resetForLookup();
-		cells.rebuildPrimaryTooltips(localRsn);
-		int notFoundIdx = ThreadLocalRandom.current().nextInt(SearchMessages.NOT_FOUND.length);
-		clearSearch(String.format(SearchMessages.NOT_FOUND[notFoundIdx], player), NOT_FOUND);
+		lookupFailed(String.format(SearchMessages.pick(SearchMessages.NOT_FOUND), player), NOT_FOUND);
 	}
 
 	@Override
 	public void onError(String player, Throwable error)
 	{
+		lookupFailed(HiscoreService.failureText(error), TEXT_DIM);
+	}
+
+	/** A lookup that found no player: a clean slate, and the status line says why. */
+	private void lookupFailed(String status, Color color)
+	{
 		resetForLookup();
-		cells.rebuildPrimaryTooltips(localRsn);
-		clearSearch(HiscoreService.failureText(error), TEXT_DIM);
+		cells.rebuildPrimaryTooltips();
+		clearSearch(status, color);
 	}
 
 	// ComparisonController.Listener
@@ -1629,7 +1610,7 @@ public class KillClogPanel extends PluginPanel
 		{
 			showIdentity();
 		}
-		cells.rebuildPrimaryTooltips(localRsn);
+		cells.rebuildPrimaryTooltips();
 		// A frozen row without a Collections Logged score must not keep today's count.
 		if (comparison.isComparisonMode()) updateClogTotalsBar();
 		else if (LookupSession.frozen(lookupSession.getHiscoreResult())) restoreClogCellForCompare(null);

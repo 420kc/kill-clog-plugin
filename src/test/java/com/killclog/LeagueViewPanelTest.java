@@ -294,11 +294,12 @@ public class LeagueViewPanelTest
 		SwingUtilities.invokeAndWait(() ->
 		{
 			panel.setClogIndex(index);
+			panel.setLoggedInPlayer("Me", AccountType.REGULAR);
 			session.adoptState(row, null, null, "Me");
-			cells.rebuildPrimaryTooltips("Me");
+			cells.rebuildPrimaryTooltips();
 			assertTrue("your main log is waiting for setup", tooltips.isEmpty());
 			session.readLeague("demonic-pacts", null);
-			cells.rebuildPrimaryTooltips("Me");
+			cells.rebuildPrimaryTooltips();
 			assertFalse("a League read from another world shows its empty log, like anyone's", tooltips.isEmpty());
 		});
 	}
@@ -325,9 +326,10 @@ public class LeagueViewPanelTest
 					return league + " " + boss;
 				};
 			});
+			panel.setLoggedInPlayer("Me", AccountType.REGULAR);
 			session.adoptState(null, null, null, "Me");
 			session.readLeague("demonic-pacts", null);
-			cells.rebuildPrimaryTooltips("Me");
+			cells.rebuildPrimaryTooltips();
 			assertEquals(1, asks.get());
 			assertTrue("every boss cell read its PB from the one reader", read.size() >= bossCells.size());
 			assertTrue(read.contains("Zulrah"));
@@ -806,7 +808,7 @@ public class LeagueViewPanelTest
 	{
 		panel.onLookupStart(rsn, selfType != null, false);
 		session.adoptState(result, null, null, rsn);
-		panel.onHiscoreResult(rsn, result, selfType != null, selfType, false);
+		panel.onHiscoreResult(rsn, result, selfType);
 	}
 
 	private String shownLabel()

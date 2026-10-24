@@ -35,6 +35,7 @@ import net.runelite.client.hiscore.HiscoreSkill;
  * nothing goes once its withdrawal has returned.
  */
 @Slf4j
+@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class PublicationCoordinator
 {
 	/** The panel's side of the flow. Every call arrives on the EDT. */
@@ -74,7 +75,7 @@ final class PublicationCoordinator
 	private final Function<String, String> leagueProfileType;
 
 	// The owner, and everything only its tasks touch.
-	private final SerialExecutor owner;
+	private final SerialExecutor owner = new SerialExecutor();
 	private final KillclogSyncGate<Push> syncGate = new KillclogSyncGate<>(Push::merge);
 	private ScheduledFuture<?> pendingTimer;
 	// The push that timer sends; a timer whose push is no longer this one was superseded.
@@ -102,28 +103,6 @@ final class PublicationCoordinator
 	// final send checks it in the same step, so nothing goes once the withdrawal has returned.
 	private final Object characterFence = new Object();
 	private int characterEra;
-
-	PublicationCoordinator(KillClogConfig config, ConfigManager configManager,
-		ClientThread clientThread, ScheduledExecutorService executor, SessionTracker sessions,
-		SyncService syncService, ProfileAppearanceService profileAppearanceService,
-		KillClogChatNotifier chatNotifier, Feedback feedback, Supplier<AccountType> localAccountType,
-		Supplier<String> mode, Function<String, LocalClogCache> modeCache, Function<String, String> leagueProfileType)
-	{
-		this.config = config;
-		this.configManager = configManager;
-		this.clientThread = clientThread;
-		this.executor = executor;
-		this.sessions = sessions;
-		this.syncService = syncService;
-		this.profileAppearanceService = profileAppearanceService;
-		this.chatNotifier = chatNotifier;
-		this.feedback = feedback;
-		this.localAccountType = localAccountType;
-		this.mode = mode;
-		this.modeCache = modeCache;
-		this.leagueProfileType = leagueProfileType;
-		this.owner = new SerialExecutor();
-	}
 
 	boolean characterPublishingEnabled()
 	{
@@ -354,17 +333,7 @@ final class PublicationCoordinator
 		int era = characterEra();
 		Session pressed = sessions.current();
 		owner.execute(() -> startCharacterRequest(pressed, era, NONE, CharacterStatus.DELETING,
-			profileAppearanceService::deleteCurrent, (result, error, generation) ->
-			{
-				if (error != null || result == null)
-				{
-					failCharacterPublish(generation);
-				}
-				else if (finishCharacter(generation))
-				{
-					showCharacterPublishStatus(generation, CharacterStatus.terminal(result.outcome), true, result.message);
-				}
-			}));
+			profileAppearanceService::deleteCurrent, this::characterDone));
 	}
 
 	/** Publication turned off, or a logout: no character request goes out from the moment this returns. */
@@ -558,14 +527,13 @@ final class PublicationCoordinator
 			// A click's attempt begins: its login's automatic pushes go again.
 			stoppedSession = -1;
 		}
-		Session session = push.session;
 		clientThread.invoke(() ->
 		{
 			// Any throw before the request takes ownership must release the slot, or sync is silently dead until
 			// restart: the client thread swallows the exception and the player sees nothing.
 			try
 			{
-				gather(push, attempt, session);
+				gather(push, attempt);
 			}
 			catch (RuntimeException e)
 			{
@@ -576,12 +544,10 @@ final class PublicationCoordinator
 	}
 
 	/** On the client thread: the game, its store, the account type and the PBs the attempt carries. */
-	private void gather(Push push, int attempt, Session session)
+	private void gather(Push push, int attempt)
 	{
-		// Queued behind a logout, an opt-out or Automatic sync going off, it never gathers the next account.
-		if (!syncGate.live(attempt) || !sessions.isCurrent(session) || !stillWanted(push))
+		if (standsDown(push, attempt))
 		{
-			owner.execute(() -> stopped(push, attempt, false));
 			return;
 		}
 		// A League sync reads only that League's store and profile, so it finishes after a hop off its worlds; a
@@ -591,7 +557,7 @@ final class PublicationCoordinator
 		String gameMode = push.retry() ? (GameMode.MAIN.equals(push.mode) && !GameMode.MAIN.equals(world) ? null
 			: push.mode) : push.mode == null || GameMode.MAIN.equals(push.mode) ? world : push.mode;
 		LocalClogCache cache = gameMode == null ? null : modeCache.apply(gameMode);
-		if (!session.loggedIn() || gameMode == null || cache == null)
+		if (!push.session.loggedIn() || gameMode == null || cache == null)
 		{
 			// Fired before a new world settled: its login catch-up waited behind this timer.
 			boolean again = push.mode != null && gameMode == null && !push.manual && !push.retry();
@@ -605,13 +571,27 @@ final class PublicationCoordinator
 		{
 			chatNotifier.send(ChatNotice.SYNC_RESULT, "Syncing collection log...");
 		}
-		List<String> profileKeys = PersonalBests.profileKeys(configManager.getRSProfiles(), session.getAccountHash(),
+		List<String> profileKeys = PersonalBests.profileKeys(configManager.getRSProfiles(), push.session.getAccountHash(),
 			main ? RuneScapeProfileType.STANDARD.name() : leagueProfileType.apply(gameMode));
 		Map<String, Double> pbs = new LinkedHashMap<>();
 		Map<String, PbRecord> detailedPbs = gatherPersonalBests(profileKeys, pbs);
 		// Off the client thread before dispatch: the sync pre-flight can block up to ten seconds waiting for the
 		// rename disk verdict, and game ticks must never pay that wait.
 		executor.execute(() -> dispatch(push, attempt, accountType, pbs, detailedPbs, cache, gameMode));
+	}
+
+	/**
+	 * Queued behind a logout, an opt-out or Automatic sync going off, an attempt never gathers or sends for the next
+	 * account: it stops instead.
+	 */
+	private boolean standsDown(Push push, int attempt)
+	{
+		if (!syncGate.live(attempt) || !sessions.isCurrent(push.session) || !stillWanted(push))
+		{
+			owner.execute(() -> stopped(push, attempt, false));
+			return true;
+		}
+		return false;
 	}
 
 	/** The attempt never went: its slot frees, it ends what it began, and the push waiting goes. */
@@ -631,15 +611,13 @@ final class PublicationCoordinator
 	private void dispatch(Push push, int attempt, AccountType accountType, Map<String, Double> pbs,
 		Map<String, PbRecord> detailedPbs, LocalClogCache cache, String gameMode)
 	{
-		Session session = push.session;
-		if (!syncGate.live(attempt) || !sessions.isCurrent(session) || !stillWanted(push))
+		if (standsDown(push, attempt))
 		{
-			owner.execute(() -> stopped(push, attempt, false));
 			return;
 		}
 		try
 		{
-			syncService.syncCollectionLog(session, accountType, pbs, detailedPbs, syncGate, attempt, cache, gameMode,
+			syncService.syncCollectionLog(push.session, accountType, pbs, detailedPbs, syncGate, attempt, cache, gameMode,
 				push.deliberate(), () -> owner.execute(() -> sending(push, attempt)))
 				.whenComplete((result, error) -> owner.execute(() -> completed(push, attempt, gameMode, result, error)));
 		}
@@ -695,8 +673,7 @@ final class PublicationCoordinator
 			}
 			else if (result != SyncService.UNCHANGED)
 			{
-				lineAttempt = 0;
-				say(push, () -> feedback.showSyncResult(push.manual, result.ok, result.message));
+				sayResult(push, result.ok, result.message);
 			}
 			if (push.manual || !result.ok)
 			{
@@ -711,8 +688,7 @@ final class PublicationCoordinator
 			}
 			else if (error != null)
 			{
-				lineAttempt = 0;
-				say(push, () -> feedback.showSyncResult(push.manual, false, SYNC_FAILED));
+				sayResult(push, false, SYNC_FAILED);
 			}
 		}
 		else
@@ -762,8 +738,7 @@ final class PublicationCoordinator
 		}
 		else if (live)
 		{
-			lineAttempt = 0;
-			say(push, () -> feedback.showSyncResult(push.manual, false, SYNC_FAILED));
+			sayResult(push, false, SYNC_FAILED);
 		}
 		if (live)
 		{
@@ -785,6 +760,13 @@ final class PublicationCoordinator
 		}
 		takeLineDown(attempt);
 		takeLineDown(push.line);
+	}
+
+	/** The push's last word on the row, which then answers to no attempt. */
+	private void sayResult(Push push, boolean ok, String message)
+	{
+		lineAttempt = 0;
+		say(push, () -> feedback.showSyncResult(push.manual, ok, message));
 	}
 
 	/** The row's sync line comes down, only if it is this attempt's (never a newer sync's, never the next login's). */
@@ -922,19 +904,27 @@ final class PublicationCoordinator
 		{
 			return;
 		}
-		if (error != null || result == null)
-		{
-			failCharacterPublish(generation);
-			return;
-		}
-		if (result.outcome == ProfileAppearanceService.Outcome.PROFILE_REQUIRED && characterHolder == generation
-			&& !characterPrerequisiteAttempted)
+		if (error == null && result != null && result.outcome == ProfileAppearanceService.Outcome.PROFILE_REQUIRED
+			&& characterHolder == generation && !characterPrerequisiteAttempted)
 		{
 			// It waits on one sync of its log first, for its own login and era.
 			characterPrerequisiteAttempted = true;
 			characterWaiting = generation;
 			showCharacterPublishStatus(generation, CharacterStatus.RENDERING, false);
 			pushNow(characterSession, syncGate.era(), false, generation);
+		}
+		else
+		{
+			characterDone(result, error, generation);
+		}
+	}
+
+	/** A publish or delete is over: failed without an answer, else the row shows how it ended. */
+	private void characterDone(ProfileAppearanceService.PublishResult result, Throwable error, int generation)
+	{
+		if (error != null || result == null)
+		{
+			failCharacterPublish(generation);
 		}
 		else if (finishCharacter(generation))
 		{

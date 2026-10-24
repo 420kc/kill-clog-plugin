@@ -686,6 +686,20 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void aDeleteWithoutAnAnswerFailsAndFreesTheSlot() throws Exception
+	{
+		deleteHandler.run();
+		settle();
+		deletes.get(0).completeExceptionally(new java.io.IOException("offline"));
+		settle();
+		verify(panel).showCharacterPublishStatus(CharacterStatus.FAILED, true, null);
+
+		publishHandler.run();
+		settle();
+		assertEquals("the slot is free for the next request", 1, publishes.size());
+	}
+
+	@Test
 	public void profileRequiredRunsOneQuietPrerequisiteSyncThenRetriesOnce() throws Exception
 	{
 		publishHandler.run();

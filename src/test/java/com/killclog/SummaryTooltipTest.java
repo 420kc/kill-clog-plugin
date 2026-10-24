@@ -292,26 +292,22 @@ public class SummaryTooltipTest
 	@Test
 	public void theLineUnderTheNameReadsTheRankThenTheClan() throws ReflectiveOperationException
 	{
-		Field value = TitleTooltip.class.getDeclaredField("subtitleValue");
-		value.setAccessible(true);
 		SummaryTooltip ranked = new SummaryTooltip();
 		ranked.setData("420 kc", 1200, null, null, "Ironman", null);
-		assertEquals("#1,200", value.get(ranked));
+		assertEquals("#1,200", TestViews.headerLine(ranked, "subtitle", "value"));
 		ranked.setClan("Clannabis", null);
-		assertEquals("without its icon, the clan's name follows the rank", "#1,200 \u00B7 Clannabis", value.get(ranked));
+		assertEquals("without its icon, the clan's name follows the rank", "#1,200 \u00B7 Clannabis", TestViews.headerLine(ranked, "subtitle", "value"));
 
 		SummaryTooltip unranked = new SummaryTooltip();
 		unranked.setData("420 kc", -1, null, null, "Ironman", null);
-		assertNull("the account type's words no longer stand alone under the name", value.get(unranked));
+		assertNull("the account type's words no longer stand alone under the name", TestViews.headerLine(unranked, "subtitle", "value"));
 		unranked.setClan("Clannabis", null);
-		assertEquals("Clannabis", value.get(unranked));
+		assertEquals("Clannabis", TestViews.headerLine(unranked, "subtitle", "value"));
 	}
 
 	@Test
 	public void theClansIconFollowsTheRankAndNamesTheClanInTheBand() throws ReflectiveOperationException
 	{
-		Field value = TitleTooltip.class.getDeclaredField("subtitleValue");
-		value.setAccessible(true);
 		Field hits = TooltipItemHover.class.getDeclaredField("hitBoxes");
 		hits.setAccessible(true);
 		Field name = TooltipItemHover.HitBox.class.getDeclaredField("itemName");
@@ -323,7 +319,7 @@ public class SummaryTooltipTest
 		card.setData("420 kc", 857, null, null, "Ironman", null);
 		int plainWidth = card.getPreferredSize().width;
 		card.setClan("Clannabis", key);
-		assertEquals("the icon stands for the clan", "#857", value.get(card));
+		assertEquals("the icon stands for the clan", "#857", TestViews.headerLine(card, "subtitle", "value"));
 		paint(card);
 		java.awt.Rectangle icon = null;
 		for (Object hit : (java.util.List<?>) hits.get(card.itemHover))
@@ -341,7 +337,7 @@ public class SummaryTooltipTest
 		SummaryTooltip unranked = new SummaryTooltip();
 		unranked.setData("Cbc", -1, null, null, null, null);
 		unranked.setClan("Clannabis", key);
-		assertEquals("an unranked player's line holds the icon alone", "", value.get(unranked));
+		assertEquals("an unranked player's line holds the icon alone", "", TestViews.headerLine(unranked, "subtitle", "value"));
 	}
 
 	@Test

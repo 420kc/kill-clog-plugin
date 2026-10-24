@@ -26,7 +26,6 @@ final class KillclogSyncGate<P>
 	private int inFlight;
 	private int inFlightEra;
 	private int inFlightAutomaticEra;
-	private P inFlightPush;
 	private P queued;
 	static final int DELIBERATE = -1;
 
@@ -67,7 +66,6 @@ final class KillclogSyncGate<P>
 		inFlight = ++attempts;
 		inFlightEra = era;
 		inFlightAutomaticEra = pushAutomaticEra;
-		inFlightPush = push;
 		return inFlight;
 	}
 
@@ -106,7 +104,6 @@ final class KillclogSyncGate<P>
 		}
 		boolean wasLive = live(attempt);
 		inFlight = 0;
-		inFlightPush = null;
 		return wasLive;
 	}
 

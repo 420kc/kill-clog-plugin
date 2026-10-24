@@ -272,4 +272,19 @@ final class TestViews
 	{
 		return gate.takeQueued() != null;
 	}
+
+	/** A card header's line ("subtitle" or "rank"), its part ("label" or "value"), or null without the line. */
+	static String headerLine(TitleTooltip tip, String line, String part) throws ReflectiveOperationException
+	{
+		java.lang.reflect.Field lineField = TitleTooltip.class.getDeclaredField(line);
+		lineField.setAccessible(true);
+		Object value = lineField.get(tip);
+		if (value == null)
+		{
+			return null;
+		}
+		java.lang.reflect.Field partField = value.getClass().getDeclaredField(part);
+		partField.setAccessible(true);
+		return (String) partField.get(value);
+	}
 }
