@@ -66,6 +66,8 @@ public class CardColorsTest
 		NativeTooltip.cardColors(null, null, orange, null, null, LIME);
 		assertEquals(LIME, NativeTooltip.railThumb());
 		assertEquals(new Color(54, 69, 0), NativeTooltip.railTrackFor(LIME));
+		// Black can't shade darker: its track is lighter instead, so the two never meet.
+		assertEquals(new Color(60, 60, 60), NativeTooltip.railTrackFor(Color.BLACK));
 	}
 
 	private static int brightness(Color c)

@@ -260,7 +260,10 @@ public abstract class NativeTooltip extends JToolTip
 		{
 			return track;
 		}
-		return new Color(thumb.getRed() * 3 / 10, thumb.getGreen() * 3 / 10, thumb.getBlue() * 3 / 10);
+		// A thumb too dark to shade darker gets a lighter track instead.
+		int lift = thumb.getRed() + thumb.getGreen() + thumb.getBlue() < 90 ? 60 : 0;
+		return new Color(Math.min(255, thumb.getRed() * 3 / 10 + lift), Math.min(255, thumb.getGreen() * 3 / 10 + lift),
+			Math.min(255, thumb.getBlue() * 3 / 10 + lift));
 	}
 
 	/** A track under a rail or a bar: the pack's scrollbar track, else the card's own. */
