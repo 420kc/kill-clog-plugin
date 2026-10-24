@@ -1,6 +1,7 @@
 package com.killclog;
 
 import java.awt.AWTEvent;
+import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
@@ -23,7 +24,6 @@ import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.swing.text.JTextComponent;
-import net.runelite.client.ui.ColorScheme;
 
 /**
  * Middle-button autoscroll over the panel, as browsers do (Dylan, 2026-10-20): hold it down and move away from where
@@ -136,6 +136,7 @@ final class PanelAutoscroll implements AWTEventListener
 		}
 		int dy = at.y - anchor.y;
 		int beyond = Math.abs(dy) - DEAD_ZONE;
+		marker.head(beyond <= 0 ? 0 : (int) Math.signum(dy));
 		if (beyond <= 0)
 		{
 			return;
@@ -158,6 +159,7 @@ final class PanelAutoscroll implements AWTEventListener
 		Point at = new Point(anchor);
 		SwingUtilities.convertPointFromScreen(at, layers);
 		marker.setBounds(at.x - MARKER_SIZE / 2, at.y - MARKER_SIZE / 2, MARKER_SIZE, MARKER_SIZE);
+		marker.head(0);
 		layers.add(marker, JLayeredPane.DRAG_LAYER);
 		marker.repaint();
 	}
@@ -179,40 +181,46 @@ final class PanelAutoscroll implements AWTEventListener
 	}
 
 	/**
-	 * The anchor: a ring, and the up and down arrow itself in it, both drawn about the ring's exact centre (Dylan,
-	 * 10/23; the two triangles and dot before sat half a pixel left of the ring's).
+	 * The anchor: a small dot, and a caret the way it scrolls, black in a white outline so it reads on any card
+	 * (Dylan, 10/24: no ring). Held still, the dot alone.
 	 */
 	private static final class Marker extends JComponent
 	{
+		// -1 up, 1 down, 0 held still.
+		private int heading;
+
+		void head(int next)
+		{
+			if (next != heading)
+			{
+				heading = next;
+				repaint();
+			}
+		}
+
 		@Override
 		protected void paintComponent(Graphics graphics)
 		{
 			Graphics2D g = (Graphics2D) graphics.create();
 			g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 			g.setRenderingHint(RenderingHints.KEY_STROKE_CONTROL, RenderingHints.VALUE_STROKE_PURE);
-			double s = MARKER_SIZE;
-			double c = s / 2;
-			Ellipse2D ring = new Ellipse2D.Double(0.5, 0.5, s - 1, s - 1);
-			g.setColor(new Color(20, 20, 20, 210));
-			g.fill(ring);
-			g.setColor(ColorScheme.LIGHT_GRAY_COLOR);
-			g.draw(ring);
-			// A head each way, 8 wide and 4.5 deep, on a shaft 2 wide: tip to tip 14 of the ring's 22.
-			double tip = 4;
-			double base = tip + 4.5;
-			Path2D arrow = new Path2D.Double();
-			arrow.moveTo(c, tip);
-			arrow.lineTo(c + 4, base);
-			arrow.lineTo(c + 1, base);
-			arrow.lineTo(c + 1, s - base);
-			arrow.lineTo(c + 4, s - base);
-			arrow.lineTo(c, s - tip);
-			arrow.lineTo(c - 4, s - base);
-			arrow.lineTo(c - 1, s - base);
-			arrow.lineTo(c - 1, base);
-			arrow.lineTo(c - 4, base);
-			arrow.closePath();
-			g.fill(arrow);
+			double c = MARKER_SIZE / 2.0;
+			Path2D caret = new Path2D.Double();
+			caret.moveTo(c - 3.5, c + heading * 5.5);
+			caret.lineTo(c, c + heading * 8.5);
+			caret.lineTo(c + 3.5, c + heading * 5.5);
+			// White under, black over: the outline is the white the black leaves showing.
+			for (int pass = 0; pass < 2; pass++)
+			{
+				g.setColor(pass == 0 ? Color.WHITE : Color.BLACK);
+				double r = pass == 0 ? 3.5 : 2.5;
+				g.fill(new Ellipse2D.Double(c - r, c - r, 2 * r, 2 * r));
+				if (heading != 0)
+				{
+					g.setStroke(new BasicStroke(pass == 0 ? 4f : 2f, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+					g.draw(caret);
+				}
+			}
 			g.dispose();
 		}
 	}
