@@ -100,6 +100,22 @@ public class ClanSyncTest
 		assertEquals("Iron Clan", ClogResult.pickFullest(provider, synced).getSyncedClan());
 	}
 
+	@Test
+	public void shareClanOffSendsAnExplicitNoneThroughTheRealBody() throws Exception
+	{
+		PlayerClans clans = new PlayerClans(null, null, null, () -> true, () -> false);
+		Field yours = PlayerClans.class.getDeclaredField("yours");
+		yours.setAccessible(true);
+		yours.set(clans, new PlayerClans.Yours("420 kc", "Clannabis", new ClanTitle(-3, "Deputy Owner"), true));
+		SyncService service = new SyncService(null, new Gson());
+		service.setClans(clans);
+		JsonObject sent = body(service);
+		assertTrue("the field is there, so killclog.com replaces what it holds", sent.has("clan"));
+		assertTrue("and it says none", sent.get("clan").isJsonNull());
+		// As it goes over the wire, too: Gson's default leaves a null field out, so the server never heard "none".
+		assertTrue(SyncService.wire(new Gson(), sent).contains("\"clan\":null"));
+	}
+
 	private static JsonObject body(SyncService service) throws Exception
 	{
 		Method build = SyncService.class.getDeclaredMethod("buildBody", long.class, AccountType.class,

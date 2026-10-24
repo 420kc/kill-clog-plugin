@@ -149,7 +149,7 @@ class SyncService
 		{
 			root.add("clog_structure", structure);
 		}
-		String body = gson.toJson(root);
+		String body = wire(gson, root);
 		final int observedCount = ClogResult.coverageCount(clog);
 		String url = KillClogEndpoint.apiBaseUrl() + "/player/" + HttpUtil.pathSegment(rsn) + "/sync/" + mode;
 		String push = url + body;
@@ -186,6 +186,15 @@ class SyncService
 
 	/** The game's structure when killclog.com named a different one in its last reply, else null. */
 	@Nullable
+	/**
+	 * The body as sent. Gson leaves a null field out by default, and "clan": null is how a sync says you're in no
+	 * clan (or Share Clan is off): left out, killclog.com kept the clan it held, since 2.6.3.
+	 */
+	static String wire(Gson gson, JsonObject root)
+	{
+		return gson.newBuilder().serializeNulls().create().toJson(root);
+	}
+
 	JsonObject structureToShare()
 	{
 		ClogIndex index = clogIndex;
