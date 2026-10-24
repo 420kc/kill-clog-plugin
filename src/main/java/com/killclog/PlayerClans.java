@@ -74,7 +74,9 @@ class PlayerClans
 	String name(String player, @Nullable ClogResult clog)
 	{
 		Yours you = yours;
-		return you.is(player) ? you.clan : synced(clog) ? clog.getSyncedClan() : runeProfile.clan(player);
+		// Share Clan off, your own card shows none too, so it never looks like it's being shared.
+		return you.is(player) ? (shared.getAsBoolean() ? you.clan : null)
+			: synced(clog) ? clog.getSyncedClan() : runeProfile.clan(player);
 	}
 
 	/** The title's icon, or null when there is none or it hasn't loaded (the card then names the clan instead). */
@@ -82,7 +84,7 @@ class PlayerClans
 	BufferedImage icon(String player, @Nullable ClogResult clog)
 	{
 		Yours you = yours;
-		ClanTitle title = you.is(player) ? you.title
+		ClanTitle title = you.is(player) ? (shared.getAsBoolean() ? you.title : null)
 			: synced(clog) ? clog.getSyncedClanTitle() : runeProfile.clanTitle(player);
 		try
 		{

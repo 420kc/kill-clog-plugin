@@ -25,7 +25,8 @@ public class PlayerClansTest
 	private final ChatIconManager icons = mock(ChatIconManager.class);
 	private final RuneProfileService runeProfile = mock(RuneProfileService.class);
 	private boolean settled = true;
-	private final PlayerClans clans = new PlayerClans(client, icons, runeProfile, () -> settled, () -> true);
+	private boolean shared = true;
+	private final PlayerClans clans = new PlayerClans(client, icons, runeProfile, () -> settled, () -> shared);
 
 	@Test
 	public void theCardReadsYourClanWithoutTouchingTheClient()
@@ -43,6 +44,11 @@ public class PlayerClansTest
 		assertEquals("Clogged", clans.name("420_kc", null));
 		assertSame(image, clans.icon("420 KC", null));
 		verifyNoInteractions(client);
+
+		// Share Clan off: your own card shows none too, title and all.
+		shared = false;
+		assertNull(clans.name("420 kc", null));
+		assertNull(clans.icon("420 kc", null));
 	}
 
 	@Test
