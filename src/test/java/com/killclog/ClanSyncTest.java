@@ -39,7 +39,7 @@ public class ClanSyncTest
 	@Test
 	public void theSnapshotSpeaksOnlyForItsOwnAccountAndOnlyUntilTheWorldUnsettles() throws Exception
 	{
-		PlayerClans clans = new PlayerClans(null, null, null, () -> true);
+		PlayerClans clans = new PlayerClans(null, null, null, () -> true, () -> true);
 		Field yours = PlayerClans.class.getDeclaredField("yours");
 		yours.setAccessible(true);
 		yours.set(clans, new PlayerClans.Yours("420 kc", "Clogged", null, true));
@@ -47,6 +47,27 @@ public class ClanSyncTest
 		assertNull("another account's sync never carries it", clans.forSync("based batt"));
 		clans.clearClientSnapshot();
 		assertNull("an unsettled world clears it until the game says again", clans.forSync("420 kc"));
+	}
+
+	@Test
+	public void shareClanOffSaysNoneAtOnceSoNoKillClogSurfaceNamesIt() throws Exception
+	{
+		boolean[] shared = {false};
+		PlayerClans clans = new PlayerClans(null, null, null, () -> true, () -> shared[0]);
+		Field yours = PlayerClans.class.getDeclaredField("yours");
+		yours.setAccessible(true);
+		yours.set(clans, new PlayerClans.Yours("420 kc", "Clogged", null, true));
+		PlayerClans.Yours sent = clans.forSync("420 kc");
+		assertNull("off: the sync says none, an explicit answer, so RuneProfile never stands in", sent.clan);
+		assertNull(sent.title);
+		assertTrue(sent.known);
+		// Even before the game has said, so turning it off never leaves the last clan standing.
+		yours.set(clans, new PlayerClans.Yours("420 kc", null, null, false));
+		assertNull(clans.forSync("420 kc").clan);
+		assertNull("another account's sync still carries nothing", clans.forSync("based batt"));
+		shared[0] = true;
+		yours.set(clans, new PlayerClans.Yours("420 kc", "Clogged", null, true));
+		assertEquals("on again: the clan the game shows", "Clogged", clans.forSync("420 kc").clan);
 	}
 
 	@Test

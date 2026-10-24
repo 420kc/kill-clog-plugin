@@ -29,6 +29,8 @@ class PlayerClans
 	// client's clan state must not be read, so it reads this instead.
 	// Whether this main-game world has settled since login or a hop: until then the game hasn't said you're in no clan.
 	private final BooleanSupplier settled;
+	// Share Clan (2.7.3, a player's ask): off, your sync says you're in no clan, so no Kill Clog surface names it.
+	private final BooleanSupplier shared;
 	private volatile Yours yours = Yours.NONE;
 
 	/** Reads your name, clan and title from the game; client thread only, each tick. */
@@ -61,7 +63,11 @@ class PlayerClans
 	Yours forSync(String player)
 	{
 		Yours you = yours;
-		return you.known && you.is(player) ? you : null;
+		if (!you.is(player))
+		{
+			return null;
+		}
+		return !shared.getAsBoolean() ? new Yours(you.name, null, null, true) : you.known ? you : null;
 	}
 
 	@Nullable

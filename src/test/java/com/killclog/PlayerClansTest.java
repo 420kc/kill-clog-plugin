@@ -25,7 +25,7 @@ public class PlayerClansTest
 	private final ChatIconManager icons = mock(ChatIconManager.class);
 	private final RuneProfileService runeProfile = mock(RuneProfileService.class);
 	private boolean settled = true;
-	private final PlayerClans clans = new PlayerClans(client, icons, runeProfile, () -> settled);
+	private final PlayerClans clans = new PlayerClans(client, icons, runeProfile, () -> settled, () -> true);
 
 	@Test
 	public void theCardReadsYourClanWithoutTouchingTheClient()

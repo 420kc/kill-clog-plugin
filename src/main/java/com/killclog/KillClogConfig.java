@@ -532,4 +532,17 @@ public interface KillClogConfig extends Config
 	{
 		return false;
 	}
+
+	@ConfigItem(
+		keyName = "shareClan",
+		name = "Share Clan",
+		description = "Your sync names your clan and title on killclog.com and in other players' Kill Clog. "
+			+ "Off, it says you're in none. RuneProfile has its own setting for its profiles.",
+		section = killclogSection,
+		position = 4
+	)
+	default boolean shareClan()
+	{
+		return true;
+	}
 }

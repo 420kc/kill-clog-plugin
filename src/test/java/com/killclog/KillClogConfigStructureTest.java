@@ -50,6 +50,7 @@ public class KillClogConfigStructureTest
 		expected.add("cardDividerColor");
 		expected.add("cardBackgroundColor");
 		expected.add("cardBorderColor");
+		expected.add("shareClan");
 		assertEquals(expected, keys);
 	}
 
@@ -64,8 +65,9 @@ public class KillClogConfigStructureTest
 		assertEquals(KillClogConfig.killclogSection,
 			KillClogConfig.class.getDeclaredMethod("silentAutomaticSync")
 				.getAnnotation(ConfigItem.class).section());
-		assertEquals(Arrays.asList("killclogSync", "automaticSync", "characterModel", "silentAutomaticSync"),
+		assertEquals(Arrays.asList("killclogSync", "automaticSync", "characterModel", "silentAutomaticSync", "shareClan"),
 			keysInSection(KillClogConfig.killclogSection));
+		assertTrue("your clan is shared until you turn it off", defaults.shareClan());
 	}
 
 	@Test
