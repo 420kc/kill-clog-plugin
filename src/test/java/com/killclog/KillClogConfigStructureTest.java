@@ -50,6 +50,7 @@ public class KillClogConfigStructureTest
 		expected.add("cardDividerColor");
 		expected.add("cardBackgroundColor");
 		expected.add("cardBorderColor");
+		expected.add("cardScrollbarColor");
 		expected.add("shareClan");
 		assertEquals(expected, keys);
 	}
@@ -152,7 +153,7 @@ public class KillClogConfigStructureTest
 	{
 		assertEquals(Arrays.asList("tooltipMode", "hoverStyle", "cardLinks",
 			"showTooltipKc", "showTooltipPb", "showTooltipRank", "cardLabelColor", "cardValueColor", "cardDividerColor",
-			"cardBackgroundColor", "cardBorderColor"), keysInSection(KillClogConfig.modalAppearanceSection));
+			"cardBackgroundColor", "cardBorderColor", "cardScrollbarColor"), keysInSection(KillClogConfig.modalAppearanceSection));
 		assertEquals("Card Activation", KillClogConfig.class.getDeclaredMethod("tooltipMode")
 			.getAnnotation(ConfigItem.class).name());
 

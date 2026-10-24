@@ -321,7 +321,8 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(keyName = "cardBackgroundColor", name = "Background",
-		description = "Card backgrounds in one flat color; at its default, the parchment, or your resource pack's",
+		description = "Card backgrounds in one flat color; at its default, the parchment, or your resource pack's. "
+			+ "Right-click the name to Reset it",
 		section = modalAppearanceSection, position = 9)
 	default Color cardBackgroundColor()
 	{
@@ -329,11 +330,21 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(keyName = "cardBorderColor", name = "Border",
-		description = "Card borders in one flat color; at its default, the iron rivets, or your resource pack's",
+		description = "Card borders in one flat color; at its default, the iron rivets, or your resource pack's. "
+			+ "Right-click the name to Reset it",
 		section = modalAppearanceSection, position = 10)
 	default Color cardBorderColor()
 	{
 		return NativeTooltip.BORDER_MID;
+	}
+
+	@ConfigItem(keyName = "cardScrollbarColor", name = "Scroll Bars",
+		description = "Card scroll bars in one color, their track a darker shade of it; at its default, your resource "
+			+ "pack's or the game's orange. Right-click the name to Reset it",
+		section = modalAppearanceSection, position = 11)
+	default Color cardScrollbarColor()
+	{
+		return NativeTooltip.OSRS_ORANGE;
 	}
 
 	@ConfigSection(

@@ -152,7 +152,9 @@ public class ClogTabTooltipTest
 		java.lang.reflect.Field bounds = TooltipItemHover.HitBox.class.getDeclaredField("bounds");
 		bounds.setAccessible(true);
 		List<?> boxes = (List<?>) field.get(grid.itemHover);
-		assertTrue("the grid scrolls", grid.scroll().offset() == 0 && !boxes.isEmpty());
+		java.lang.reflect.Field range = CardBody.Scroll.class.getDeclaredField("range");
+		range.setAccessible(true);
+		assertTrue("the grid scrolls, so it has a rail to stay clear of", (int) range.get(grid.scroll()) > 0 && !boxes.isEmpty());
 		for (Object box : boxes)
 		{
 			java.awt.Rectangle r = (java.awt.Rectangle) bounds.get(box);

@@ -335,9 +335,9 @@ final class CardBody
 		int thumbY = y + (track - thumb) * offset / range;
 		scroll.rail = new Rectangle(x, y, RAIL_WIDTH, track);
 		scroll.thumb = new Rectangle(x, thumbY, RAIL_WIDTH, thumb);
-		c.g.setColor(NativeTooltip.railTrack(NativeTooltip.dividerColor));
-		c.g.fillRect(x, y, RAIL_WIDTH, track);
 		Color color = NativeTooltip.railThumb();
+		c.g.setColor(NativeTooltip.railTrackFor(color));
+		c.g.fillRect(x, y, RAIL_WIDTH, track);
 		c.g.setColor(scroll.hot ? color.brighter() : color);
 		c.g.fillRect(x, thumbY, RAIL_WIDTH, thumb);
 	}

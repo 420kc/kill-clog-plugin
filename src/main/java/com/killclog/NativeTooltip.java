@@ -41,6 +41,9 @@ public abstract class NativeTooltip extends JToolTip
 	private static Color flatBackground;
 	@Nullable
 	private static Color flatBorder;
+	// Card Appearance's scroll bar (2.7.3): the thumb's one shade, else null, the pack's thumb or the game's orange.
+	@Nullable
+	private static Color flatScroll;
 	static final Color NOTICE_COLOR = new Color(160, 160, 160);
 
 	// Programmatic fallback border.
@@ -89,8 +92,9 @@ public abstract class NativeTooltip extends JToolTip
 	 * Card Appearance's label, value, divider, background and border colors; one left unset is the game's. A
 	 * background or border at its default keeps the sprites, so a resource pack still dresses the cards.
 	 */
-	static void cardColors(Color label, Color value, Color divider, Color background, Color border)
+	static void cardColors(Color label, Color value, Color divider, Color background, Color border, Color scroll)
 	{
+		flatScroll = scroll == null || scroll.equals(OSRS_ORANGE) ? null : scroll;
 		labelColor = label != null ? label : OSRS_ORANGE;
 		valueColor = value != null ? value : Color.WHITE;
 		dividerColor = divider != null ? divider : DIVIDER;
@@ -237,11 +241,26 @@ public abstract class NativeTooltip extends JToolTip
 		return (rgb >> 16 & 0xff) * 299 + (rgb >> 8 & 0xff) * 587 + (rgb & 0xff) * 114;
 	}
 
-	/** The rail's thumb: the pack's scrollbar, else the card's orange. */
+	/** The rail's thumb: Card Appearance's scroll bar, else the pack's, else the card's orange. */
 	static Color railThumb()
 	{
-		Color thumb = packThumb;
+		Color thumb = flatScroll != null ? flatScroll : packThumb;
 		return thumb != null ? thumb : OSRS_ORANGE;
+	}
+
+	/**
+	 * The rail's track: the pack's when its thumb is the pack's, else a darker shade of the thumb, so the two never
+	 * meet in one colour whatever the dividers are (Dylan 10/24: orange dividers put an orange track under the orange
+	 * thumb).
+	 */
+	static Color railTrackFor(Color thumb)
+	{
+		Color track = packTrack;
+		if (flatScroll == null && packThumb != null && track != null)
+		{
+			return track;
+		}
+		return new Color(thumb.getRed() * 3 / 10, thumb.getGreen() * 3 / 10, thumb.getBlue() * 3 / 10);
 	}
 
 	/** A track under a rail or a bar: the pack's scrollbar track, else the card's own. */

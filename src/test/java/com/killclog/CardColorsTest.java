@@ -9,6 +9,7 @@ import org.junit.After;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertTrue;
 
 public class CardColorsTest
 {
@@ -18,7 +19,7 @@ public class CardColorsTest
 	@After
 	public void theGamesColors()
 	{
-		NativeTooltip.cardColors(null, null, null, null, null);
+		NativeTooltip.cardColors(null, null, null, null, null, null);
 	}
 
 	@Test
@@ -27,7 +28,7 @@ public class CardColorsTest
 		Dimension plain = card().getPreferredSize();
 		BufferedImage before = paint(card());
 
-		NativeTooltip.cardColors(null, null, null, TEAL, LIME);
+		NativeTooltip.cardColors(null, null, null, TEAL, LIME, null);
 		ClogTabTooltip card = card();
 		assertEquals("nothing moves", plain, card.getPreferredSize());
 		BufferedImage image = paint(card);
@@ -45,11 +46,31 @@ public class CardColorsTest
 	@Test
 	public void aColorAtItsDefaultKeepsTheSpritesAsUnsetDoes()
 	{
-		NativeTooltip.cardColors(null, null, null, NativeTooltip.FALLBACK_BG, NativeTooltip.BORDER_MID);
+		NativeTooltip.cardColors(null, null, null, NativeTooltip.FALLBACK_BG, NativeTooltip.BORDER_MID, NativeTooltip.OSRS_ORANGE);
 		BufferedImage atDefault = paint(card());
-		NativeTooltip.cardColors(null, null, null, null, null);
+		NativeTooltip.cardColors(null, null, null, null, null, null);
 		BufferedImage unset = paint(card());
 		assertEquals(Arrays.toString(pixels(unset)), Arrays.toString(pixels(atDefault)));
+	}
+
+	@Test
+	public void theScrollBarTakesItsColorAndItsTrackADarkerShadeWhateverTheDividersAre()
+	{
+		Color orange = new Color(220, 138, 0);
+		// Orange dividers no longer make an orange track: the track is the thumb's own darker shade.
+		NativeTooltip.cardColors(null, null, orange, null, null, null);
+		assertEquals(NativeTooltip.OSRS_ORANGE, NativeTooltip.railThumb());
+		assertNotEquals(orange, NativeTooltip.railTrackFor(NativeTooltip.railThumb()));
+		assertTrue("the track sits well under the thumb",
+			brightness(NativeTooltip.railTrackFor(NativeTooltip.railThumb())) * 3 < brightness(NativeTooltip.railThumb()));
+		NativeTooltip.cardColors(null, null, orange, null, null, LIME);
+		assertEquals(LIME, NativeTooltip.railThumb());
+		assertEquals(new Color(54, 69, 0), NativeTooltip.railTrackFor(LIME));
+	}
+
+	private static int brightness(Color c)
+	{
+		return c.getRed() + c.getGreen() + c.getBlue();
 	}
 
 	private static ClogTabTooltip card()
