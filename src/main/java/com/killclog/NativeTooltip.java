@@ -35,14 +35,20 @@ public abstract class NativeTooltip extends JToolTip
 	static Color labelColor = OSRS_ORANGE;
 	static Color valueColor = Color.WHITE;
 	static Color dividerColor = DIVIDER;
+	// Card Appearance's background and border (2.7.3): one flat color each in place of the parchment or the iron
+	// rivets, else null, the sprites (a resource pack's when one replaces them).
+	@Nullable
+	private static Color flatBackground;
+	@Nullable
+	private static Color flatBorder;
 	static final Color NOTICE_COLOR = new Color(160, 160, 160);
 
 	// Programmatic fallback border.
 	private static final int BORDER_THICKNESS = 3;
 	private static final Color BORDER_OUTER = new Color(26, 26, 26);
-	private static final Color BORDER_MID = new Color(61, 51, 34);
+	static final Color BORDER_MID = new Color(61, 51, 34);
 	private static final Color BORDER_INNER = new Color(84, 72, 53);
-	private static final Color FALLBACK_BG = new Color(60, 50, 35);
+	static final Color FALLBACK_BG = new Color(60, 50, 35);
 
 	// Sprite IDs for game interface elements.
 	private static final int SPRITE_PARCHMENT = 297;
@@ -79,12 +85,17 @@ public abstract class NativeTooltip extends JToolTip
 	// Each worn sprite's replacement at the last look, null for the game's own.
 	private static final SpritePixels[] WORN_SEEN = new SpritePixels[WORN.length];
 
-	/** Card Appearance's label, value and divider colors; one left unset is the game's. */
-	static void cardColors(Color label, Color value, Color divider)
+	/**
+	 * Card Appearance's label, value, divider, background and border colors; one left unset is the game's. A
+	 * background or border at its default keeps the sprites, so a resource pack still dresses the cards.
+	 */
+	static void cardColors(Color label, Color value, Color divider, Color background, Color border)
 	{
 		labelColor = label != null ? label : OSRS_ORANGE;
 		valueColor = value != null ? value : Color.WHITE;
 		dividerColor = divider != null ? divider : DIVIDER;
+		flatBackground = background == null || background.equals(FALLBACK_BG) ? null : background;
+		flatBorder = border == null || border.equals(BORDER_MID) ? null : border;
 	}
 
 	/**
@@ -321,7 +332,12 @@ public abstract class NativeTooltip extends JToolTip
 
 	private static void paintBackground(Graphics2D g2, int w, int h)
 	{
-		if (parchmentBg != null)
+		if (flatBackground != null)
+		{
+			g2.setColor(flatBackground);
+			g2.fillRect(0, 0, w, h);
+		}
+		else if (parchmentBg != null)
 		{
 			int tw = parchmentBg.getWidth();
 			int th = parchmentBg.getHeight();
@@ -380,13 +396,15 @@ public abstract class NativeTooltip extends JToolTip
 
 	private static void paintBorder(Graphics2D g2, int w, int h)
 	{
-		if (!spritesLoaded)
+		// A flat border keeps the frame's three pixels, so nothing inside the card moves: a dark outer line, then
+		// the color.
+		if (!spritesLoaded || flatBorder != null)
 		{
 			g2.setColor(BORDER_OUTER);
 			g2.drawRect(0, 0, w - 1, h - 1);
-			g2.setColor(BORDER_MID);
+			g2.setColor(flatBorder != null ? flatBorder : BORDER_MID);
 			g2.drawRect(1, 1, w - 3, h - 3);
-			g2.setColor(BORDER_INNER);
+			g2.setColor(flatBorder != null ? flatBorder : BORDER_INNER);
 			g2.drawRect(2, 2, w - 5, h - 5);
 			return;
 		}

@@ -48,6 +48,8 @@ public class KillClogConfigStructureTest
 		expected.add("cardLabelColor");
 		expected.add("cardValueColor");
 		expected.add("cardDividerColor");
+		expected.add("cardBackgroundColor");
+		expected.add("cardBorderColor");
 		assertEquals(expected, keys);
 	}
 
@@ -147,8 +149,8 @@ public class KillClogConfigStructureTest
 	public void allModalControlsShareOneSection() throws Exception
 	{
 		assertEquals(Arrays.asList("tooltipMode", "hoverStyle", "cardLinks",
-			"showTooltipKc", "showTooltipPb", "showTooltipRank", "cardLabelColor", "cardValueColor", "cardDividerColor"),
-			keysInSection(KillClogConfig.modalAppearanceSection));
+			"showTooltipKc", "showTooltipPb", "showTooltipRank", "cardLabelColor", "cardValueColor", "cardDividerColor",
+			"cardBackgroundColor", "cardBorderColor"), keysInSection(KillClogConfig.modalAppearanceSection));
 		assertEquals("Card Activation", KillClogConfig.class.getDeclaredMethod("tooltipMode")
 			.getAnnotation(ConfigItem.class).name());
 
@@ -165,6 +167,9 @@ public class KillClogConfigStructureTest
 		assertEquals(NativeTooltip.OSRS_ORANGE, defaults.cardLabelColor());
 		assertEquals(java.awt.Color.WHITE, defaults.cardValueColor());
 		assertEquals(NativeTooltip.DIVIDER, defaults.cardDividerColor());
+		// The background and border at their defaults keep the sprites (CardColorsTest).
+		assertEquals(NativeTooltip.FALLBACK_BG, defaults.cardBackgroundColor());
+		assertEquals(NativeTooltip.BORDER_MID, defaults.cardBorderColor());
 	}
 
 	private static List<String> keysInSection(String section)

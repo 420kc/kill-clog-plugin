@@ -1205,7 +1205,10 @@ public class KillClogPanel extends PluginPanel
 			case "cardLabelColor":
 			case "cardValueColor":
 			case "cardDividerColor":
-				NativeTooltip.cardColors(config.cardLabelColor(), config.cardValueColor(), config.cardDividerColor());
+			case "cardBackgroundColor":
+			case "cardBorderColor":
+				NativeTooltip.cardColors(config.cardLabelColor(), config.cardValueColor(), config.cardDividerColor(),
+					config.cardBackgroundColor(), config.cardBorderColor());
 				tooltipController.hidePinnedTooltip();
 				break;
 			case "hoverStyle":
@@ -1231,7 +1234,8 @@ public class KillClogPanel extends PluginPanel
 
 	public void reloadTooltipSprites()
 	{
-		NativeTooltip.cardColors(config.cardLabelColor(), config.cardValueColor(), config.cardDividerColor());
+		NativeTooltip.cardColors(config.cardLabelColor(), config.cardValueColor(), config.cardDividerColor(),
+			config.cardBackgroundColor(), config.cardBorderColor());
 		clientThread.invokeLater(() ->
 		{
 			NativeTooltip.loadSprites(client, spriteManager);

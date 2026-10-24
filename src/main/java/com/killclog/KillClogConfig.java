@@ -320,6 +320,22 @@ public interface KillClogConfig extends Config
 		return NativeTooltip.DIVIDER;
 	}
 
+	@ConfigItem(keyName = "cardBackgroundColor", name = "Background",
+		description = "Card backgrounds in one flat color; at its default, the parchment, or your resource pack's",
+		section = modalAppearanceSection, position = 9)
+	default Color cardBackgroundColor()
+	{
+		return NativeTooltip.FALLBACK_BG;
+	}
+
+	@ConfigItem(keyName = "cardBorderColor", name = "Border",
+		description = "Card borders in one flat color; at its default, the iron rivets, or your resource pack's",
+		section = modalAppearanceSection, position = 10)
+	default Color cardBorderColor()
+	{
+		return NativeTooltip.BORDER_MID;
+	}
+
 	@ConfigSection(
 		name = "Chat",
 		description = "Kill Clog messages and emoji rendering",
