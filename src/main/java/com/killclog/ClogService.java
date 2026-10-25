@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.TreeMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -66,9 +67,12 @@ public class ClogService
 	// In-flight futures prevent duplicate HTTP requests from concurrent callers.
 	private final Map<String, CompletableFuture<Map<String, List<Integer>>>> categoriesFlight = new ConcurrentHashMap<>();
 
-	// Failure cooldown skips TempleOSRS briefly after transient errors.
-	private static final long TEMPLE_FAILURE_TTL_MS = 3 * 60 * 1000;
+	// Failure cooldown skips TempleOSRS briefly after transient errors, as every lane does (HttpUtil.Lane).
 	private final Map<String, Long> templeFailures = new ConcurrentHashMap<>();
+	// Players whose log TempleOSRS is still being asked for, and those it could not be reached for just now: their
+	// missing log is one that hasn't loaded, never one that isn't there.
+	private final Set<String> templeAsking = ConcurrentHashMap.newKeySet();
+	private final Map<String, Long> templeUnreached = new ConcurrentHashMap<>();
 
 	// Freshness gate skips TempleOSRS when the cache is still hot.
 	private static final long CLOG_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -251,7 +255,7 @@ public class ClogService
 
 		// Skip TempleOSRS if it failed for this player within the cooldown window.
 		Long failedAt = templeFailures.get(normalizedName);
-		if (failedAt != null && System.currentTimeMillis() - failedAt < TEMPLE_FAILURE_TTL_MS)
+		if (failedAt != null && System.currentTimeMillis() - failedAt < HttpUtil.Lane.FAILURE_TTL_MS)
 		{
 			if (localClogCache.hasDataFor(playerName))
 			{
@@ -264,8 +268,9 @@ public class ClogService
 		// Build the TempleOSRS lane, with local cache as fallback.
 		String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
 
+		templeAsking.add(normalizedName);
 		CompletableFuture<PlayerClogData> playerFuture =
-			fetchClog(encoded);
+			fetchClog(encoded, normalizedName);
 		CompletableFuture<Map<String, List<Integer>>> categoriesFuture =
 			fetchCategories();
 		CompletableFuture<Map<Integer, String>> namesFuture =
@@ -306,7 +311,7 @@ public class ClogService
 
 				// TempleOSRS lane failed. Remember timestamp and fall back to local cache.
 				templeFailures.put(normalizedName, System.currentTimeMillis());
-				HttpUtil.prune(templeFailures, TEMPLE_FAILURE_TTL_MS);
+				HttpUtil.prune(templeFailures, HttpUtil.Lane.FAILURE_TTL_MS);
 				if (localClogCache.hasDataFor(playerName))
 				{
 					log.debug("TempleOSRS unavailable, using cached data for: {}", playerName);
@@ -314,7 +319,21 @@ public class ClogService
 				}
 
 				return null;
-			});
+			})
+			.whenComplete((result, error) -> templeAsking.remove(normalizedName));
+	}
+
+	/** Whether this player's log hasn't loaded: TempleOSRS is still being asked, or could not be reached just now. */
+	boolean templeUnanswered(@Nullable String playerName)
+	{
+		if (playerName == null)
+		{
+			return false;
+		}
+		String key = RsnInputPolicy.key(playerName);
+		Long unreachedAt = templeUnreached.get(key);
+		return templeAsking.contains(key)
+			|| unreachedAt != null && System.currentTimeMillis() - unreachedAt < HttpUtil.Lane.FAILURE_TTL_MS;
 	}
 
 	/** The clog endpoint reports game_mode 0 for GIMs: the stats endpoint's type wins when the clog's says nothing more. */
@@ -398,7 +417,7 @@ public class ClogService
 		String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
 		// Your stats ride with the dates, under the same limit, for the Experience & Efficiency card's EHP.
 		CompletableFuture<TempleStats> stats = fetchStats(encoded).exceptionally(t -> null);
-		return fetchClog(encoded)
+		return fetchClog(encoded, normalizedName)
 			.thenCombine(stats, (player, yourStats) ->
 			{
 				if (player == null)
@@ -426,11 +445,22 @@ public class ClogService
 			});
 	}
 
-	private CompletableFuture<PlayerClogData> fetchClog(String encodedPlayer)
+	private CompletableFuture<PlayerClogData> fetchClog(String encodedPlayer, String key)
 	{
 		String url = TEMPLE_PLAYER_URL + "?player=" + encodedPlayer + "&categories=all";
-		return httpGet(url).thenApply(json ->
+		return HttpUtil.httpGet(httpClient, url).thenApply(response ->
 		{
+			// Any answer, a player TempleOSRS doesn't track included, reached it; no answer did not.
+			if (response.code == 200)
+			{
+				templeUnreached.remove(key);
+			}
+			else
+			{
+				templeUnreached.put(key, System.currentTimeMillis());
+				HttpUtil.prune(templeUnreached, HttpUtil.Lane.FAILURE_TTL_MS);
+			}
+			String json = response.body;
 			if (json == null)
 			{
 				return null;

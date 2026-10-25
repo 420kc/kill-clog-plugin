@@ -507,14 +507,14 @@ public class Cells
 		return tip;
 	}
 
-	// No-data copy stays quiet: another player simply has no synced collection log.
-	// No provider names, no "missing data" framing - just a calm statement.
+	// No-data copy stays quiet: another player simply has no synced collection log, or theirs hasn't loaded.
+	// No provider names, no blame - just a calm statement.
 	String noClogNotice(String rsn, @Nullable HiscoreResult hiscore)
 	{
 		return LookupSession.frozen(hiscore) ? ranks.logNotice(hiscore)
-			: rsn != null && !rsn.isEmpty()
-			? rsn + " hasn't synced a collection log"
-			: "No collection log synced";
+			: rsn == null || rsn.isEmpty() ? "No collection log synced"
+			: lookupSession.logUnanswered(rsn) ? rsn + "'s collection log hasn't loaded"
+			: rsn + " hasn't synced a collection log";
 	}
 
 	/** One log's card: the player's grid, or both players' side by side, the title opening the wiki. */

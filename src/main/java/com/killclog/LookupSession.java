@@ -243,6 +243,12 @@ public class LookupSession
 		startClogLookup(player, isSelf, thisLookup);
 	}
 
+	/** Whether this player's log hasn't loaded yet, rather than isn't there ({@link ClogService#templeUnanswered}). */
+	boolean logUnanswered(@Nullable String player)
+	{
+		return clogService.templeUnanswered(player);
+	}
+
 	/** The hiscore this lookup shows, its name kept in the search history. */
 	private void showHiscore(String player, HiscoreResult result)
 	{

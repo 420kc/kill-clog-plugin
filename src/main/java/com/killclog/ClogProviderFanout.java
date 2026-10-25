@@ -19,9 +19,40 @@ final class ClogProviderFanout
 		Supplier<CompletableFuture<ClogResult>> runeProfile,
 		Supplier<CompletableFuture<ClogResult>> killclog)
 	{
-		return chooseFullest(fetch(temple),
-			isSelf ? CompletableFuture.completedFuture(null) : fetch(runeProfile),
-			isSelf ? CompletableFuture.completedFuture(null) : fetch(killclog));
+		return answers(isSelf, temple, runeProfile, killclog).first;
+	}
+
+	/** A lookup's log as the wait ends, and again if TempleOSRS answers only after it. */
+	static final class Answers
+	{
+		final CompletableFuture<ClogResult> first;
+		/**
+		 * TempleOSRS's answer folded in with the others', when it came after the wait (10/24: a log that missed the
+		 * wait only reached the cache, so the open lookup showed none until a second search); null otherwise.
+		 */
+		final CompletableFuture<ClogResult> late;
+
+		private Answers(CompletableFuture<ClogResult> first, CompletableFuture<ClogResult> late)
+		{
+			this.first = first;
+			this.late = late;
+		}
+	}
+
+	static Answers answers(boolean isSelf,
+		Supplier<CompletableFuture<ClogResult>> temple,
+		Supplier<CompletableFuture<ClogResult>> runeProfile,
+		Supplier<CompletableFuture<ClogResult>> killclog)
+	{
+		CompletableFuture<ClogResult> templeAnswer = fetch(temple);
+		CompletableFuture<ClogResult> rp = bounded(isSelf ? CompletableFuture.completedFuture(null) : fetch(runeProfile));
+		CompletableFuture<ClogResult> kc = bounded(isSelf ? CompletableFuture.completedFuture(null) : fetch(killclog));
+		CompletableFuture<ClogResult> first = chooseFullest(templeAnswer, rp, kc);
+		CompletableFuture<ClogResult> late = first.thenCompose(shown -> templeAnswer.isDone()
+			? CompletableFuture.completedFuture(null)
+			: templeAnswer.exceptionally(ex -> null).thenApply(answer -> answer == null ? null
+				: ClogResult.pickFullest(ClogResult.pickFreshest(answer, rp.join()), kc.join())));
+		return new Answers(first, late);
 	}
 
 	private static CompletableFuture<ClogResult> fetch(Supplier<CompletableFuture<ClogResult>> provider)

@@ -82,7 +82,10 @@ final class HttpUtil
 	{
 		static final long RESULT_TTL_MS = 5 * 60 * 1000;       // 5 min -- fresh success
 		static final long NOT_FOUND_TTL_MS = 60 * 60 * 1000;  // 1 hour -- not synced
-		static final long FAILURE_TTL_MS = 3 * 60 * 1000;     // 3 min -- transient failure
+		// 30 s -- transient failure. Long enough to spare a site that is struggling, short enough that the next search
+		// asks again (10/24: a three-minute wait after one missed TempleOSRS read kept a player's log away from every
+		// search in between).
+		static final long FAILURE_TTL_MS = 30 * 1000;
 
 		final Map<String, T> values = new ConcurrentHashMap<>();
 		final Map<String, Long> fetched = new ConcurrentHashMap<>();

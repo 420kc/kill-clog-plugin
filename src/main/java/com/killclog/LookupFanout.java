@@ -175,9 +175,21 @@ final class LookupFanout
 	{
 		// Your own log stands in for the remote sites only where this client keeps it.
 		boolean own = isSelf && readsOwnLog(player);
-		(league == null ? ClogProviderFanout.lookup(own, () -> clogService.lookup(player),
-			() -> runeProfileService.lookupClog(player), () -> killclogService.lookupClog(player))
-			: ClogProviderFanout.bounded(own ? clogService.lookupLocal(leagueLog, player)
+		ClogProviderFanout.Answers answers = league == null ? ClogProviderFanout.answers(own,
+			() -> clogService.lookup(player), () -> runeProfileService.lookupClog(player),
+			() -> killclogService.lookupClog(player)) : null;
+		if (answers != null)
+		{
+			// A late TempleOSRS answer lands in the open lookup, as the first did.
+			answers.late.thenApply(this::onGamePages).thenAccept(late ->
+			{
+				if (late != null)
+				{
+					onEdtIfCurrent(stamp, () -> onResult.accept(late));
+				}
+			});
+		}
+		(answers != null ? answers.first : ClogProviderFanout.bounded(own ? clogService.lookupLocal(leagueLog, player)
 			: killclogService.lookupClog(player, league)))
 			.thenApply(this::onGamePages)
 			.thenAccept(result -> onEdtIfCurrent(stamp, () -> onResult.accept(result)))
