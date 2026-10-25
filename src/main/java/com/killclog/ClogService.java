@@ -79,7 +79,7 @@ public class ClogService
 	// own): every moment is kept as when it happened, so each check is one age against its own limit.
 	private final Map<String, Temple> temple = new ConcurrentHashMap<>();
 
-	/** One player's TempleOSRS moments, 0 for never; written through {@link #note}, read on any thread. */
+	/** One player's TempleOSRS moments, 0 for never; written only inside the map's compute on its name, read on any thread. */
 	private static final class Temple
 	{
 		static final Temple NONE = new Temple();
@@ -131,7 +131,8 @@ public class ClogService
 		if (temple.size() > HttpUtil.CACHE_CAP)
 		{
 			long now = System.currentTimeMillis();
-			temple.values().removeIf(t -> t.stale(now));
+			// The check and the removal are one step on each name, so a write that lands meanwhile keeps its record.
+			temple.keySet().forEach(name -> temple.computeIfPresent(name, (k, t) -> t.stale(now) ? null : t));
 		}
 	}
 
@@ -144,7 +145,11 @@ public class ClogService
 	/** Clear all failure cooldowns immediately (called on login). TTL handles auto-expiry otherwise. */
 	public void clearTempleFailures()
 	{
-		temple.values().forEach(t -> t.failed = 0);
+		temple.keySet().forEach(name -> temple.computeIfPresent(name, (k, t) ->
+		{
+			t.failed = 0;
+			return t;
+		}));
 	}
 
 	/**

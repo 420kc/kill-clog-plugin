@@ -59,6 +59,7 @@ public class ClogServiceProvenanceTest
 			+ "{\"id\":1,\"count\":99,\"date\":\"2026-09-06 12:00:00\"},"
 			+ "{\"id\":2,\"count\":1,\"date\":\"2026-09-06 12:00:00\"}]}}}";
 		ClogService service = activeService(player, null, templeJson, requests);
+		assertFalse(service.onTemple(player));
 		ClogResult localOnly = service.getCachedResult(player);
 		assertTrue(localOnly.isFromLocal());
 		assertFalse(localOnly.isFromTemple());
@@ -66,6 +67,9 @@ public class ClogServiceProvenanceTest
 
 		ClogResult first = service.lookup(player).join();
 		assertTrue(first.isFromTemple());
+		// Temple answered with the log, so the Collection Log card credits it for a day, whatever capitals are asked.
+		assertTrue(service.onTemple("OVERLAY PROBE"));
+		assertFalse(service.onTemple(null));
 		assertEquals("2026-09-06 12:00:00",
 			first.getObtainedItems().get("zulrah").get(0).getDate());
 
