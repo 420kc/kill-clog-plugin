@@ -383,8 +383,35 @@ class TooltipController
 			&& Arrays.equals(a.getRGB(0, 0, w, h, null, 0, w), b.getRGB(0, 0, w, h, null, 0, w));
 	}
 
-	/** The card exactly as it opened, at its own size, the way the lab draws one: before the pointer is on it. */
+	/**
+	 * The card exactly as it opened, the way the lab draws one: before the pointer is on it. A card that scrolls is
+	 * drawn whole at its full height, then laid back down at its own size, so the one on screen keeps its rows where
+	 * they show.
+	 */
 	static BufferedImage cardImage(JToolTip tip)
+	{
+		CardBody.Scroll scroll = tip instanceof TitleTooltip ? ((TitleTooltip) tip).scroll() : null;
+		if (scroll == null)
+		{
+			return drawn(tip);
+		}
+		Dimension shown = tip.getSize();
+		BufferedImage whole = scroll.unrolled(() ->
+		{
+			tip.setSize(tip.getPreferredSize());
+			tip.doLayout();
+			return drawn(tip);
+		});
+		tip.setSize(shown);
+		tip.doLayout();
+		if (shown.width > 0 && shown.height > 0)
+		{
+			drawn(tip);
+		}
+		return whole;
+	}
+
+	private static BufferedImage drawn(JToolTip tip)
 	{
 		if (tip.getWidth() <= 0 || tip.getHeight() <= 0)
 		{

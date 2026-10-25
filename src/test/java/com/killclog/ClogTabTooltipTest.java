@@ -200,6 +200,52 @@ public class ClogTabTooltipTest
 	}
 
 	@Test
+	public void aCopyHoldsEveryPageAndTheCardOnScreenStaysWhereItWas()
+	{
+		ClogTabTooltip card = painted(card(57));
+		int top = firstRowY(card);
+		wheel(card, top + 5, 1);
+		painted(card);
+		Dimension shown = card.getSize();
+		BufferedImage copy = TooltipController.cardImage(card);
+		// All 57 pages at full height in place of the 24-page window, and no rail beside them.
+		assertEquals(shown.height + (57 - ClogTabTooltip.VISIBLE_ROWS) * LINE, copy.getHeight());
+		assertEquals(shown.width - CardBody.RAIL_GAP - CardBody.RAIL_WIDTH, copy.getWidth());
+		assertEquals(shown, card.getSize());
+		assertEquals(3, offset(card));
+		assertEquals("the page under the pointer is still the one in view", 3, TestViews.rowAt(card, "pageRows", top));
+		wheel(card, top + 5, 1);
+		assertEquals("and the wheel still moves it", 6, offset(card));
+	}
+
+	@Test
+	public void aCopyOfAScrolledGridHoldsEveryRow()
+	{
+		ImgTooltip grid = new ImgTooltip(4);
+		grid.setTitle("Sixty");
+		List<Integer> ids = new ArrayList<>();
+		for (int i = 1; i <= 60; i++)
+		{
+			ids.add(i);
+		}
+		grid.setObtained(0, 60);
+		grid.setItems(60, ids, java.util.Collections.emptySet(), java.util.Collections.emptyMap(),
+			java.util.Collections.emptyMap(), null);
+		Dimension shown = grid.getPreferredSize();
+		grid.setSize(shown);
+		Graphics2D graphics = new BufferedImage(shown.width, shown.height, BufferedImage.TYPE_INT_ARGB).createGraphics();
+		grid.paint(graphics);
+		graphics.dispose();
+		assertTrue("the grid scrolls", CardBody.onRail(grid, new Point(shown.width - NativeTooltip.getInset() - 1,
+			shown.height / 2)));
+		BufferedImage copy = TooltipController.cardImage(grid);
+		assertTrue("the copy runs past the window", copy.getHeight() > shown.height + CardBody.GRID_CELL);
+		assertEquals(shown, grid.getSize());
+		assertTrue("the card on screen still scrolls", CardBody.onRail(grid, new Point(shown.width - NativeTooltip.getInset() - 1,
+			shown.height / 2)));
+	}
+
+	@Test
 	public void theWayBackLeadsTheCardAboveItsTitle()
 	{
 		ClogTabTooltip bare = card(5);

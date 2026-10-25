@@ -21,6 +21,7 @@ import java.util.Set;
 import java.util.function.IntFunction;
 import java.util.function.IntPredicate;
 import java.util.function.ObjIntConsumer;
+import java.util.function.Supplier;
 import java.util.function.ToIntFunction;
 import javax.annotation.Nullable;
 import javax.swing.JComponent;
@@ -406,6 +407,8 @@ final class CardBody
 		private boolean hot;
 		// While dragging: how far below the thumb's top the pointer holds it, else -1.
 		private int held = -1;
+		// While a copy draws the card: every row shows, with no window and no rail.
+		private boolean whole;
 
 		Scroll(TitleTooltip card, int window, int step)
 		{
@@ -507,7 +510,28 @@ final class CardBody
 		/** Only a part that would move at least a notch scrolls; one that overflows by less shows whole. */
 		boolean scrolls(int height)
 		{
-			return height > window + step;
+			return !whole && height > window + step;
+		}
+
+		/**
+		 * Draws the card with every row showing, however tall, the way a copy holds it (Dylan 10/25: a copy cut a long
+		 * card off at its window), then puts the window back where it sat.
+		 */
+		<T> T unrolled(Supplier<T> draw)
+		{
+			int keptOffset = offset;
+			int keptRange = range;
+			whole = true;
+			try
+			{
+				return draw.get();
+			}
+			finally
+			{
+				whole = false;
+				offset = keptOffset;
+				range = keptRange;
+			}
 		}
 
 		/** For a part that draws its own window, like a list: how far it can move; returns where it is. */
