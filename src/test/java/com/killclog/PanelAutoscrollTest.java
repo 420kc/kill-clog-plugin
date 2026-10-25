@@ -96,6 +96,35 @@ public class PanelAutoscrollTest
 		});
 	}
 
+	@Test
+	public void aPressOverAPlainLabelReachesTheWindowAndStillStarts() throws Exception
+	{
+		SwingUtilities.invokeAndWait(() ->
+		{
+			// Nothing in the panel listens for the mouse, so the press goes to the window holding it.
+			JScrollPane pane = pane(3000, new JLabel("cell"));
+			JPanel window = new JPanel(null);
+			window.setSize(400, 200);
+			window.add(pane);
+			PanelAutoscroll scroll = autoscroll(pane);
+			scroll.eventDispatched(new MouseEvent(window, MouseEvent.MOUSE_PRESSED, 0L, 0, 50, 100, 1, false,
+				MouseEvent.BUTTON2));
+			assertTrue("the content under the pointer is the panel's", scroll.active());
+			scroll.eventDispatched(new MouseEvent(window, MouseEvent.MOUSE_RELEASED, 0L, 0, 50, 100, 1, false,
+				MouseEvent.BUTTON2));
+
+			// Beside the panel, or on its scroll bar, it doesn't.
+			scroll.eventDispatched(new MouseEvent(window, MouseEvent.MOUSE_PRESSED, 0L, 0, 300, 100, 1, false,
+				MouseEvent.BUTTON2));
+			assertFalse(scroll.active());
+			int bar = pane.getVerticalScrollBar().getX() + 2;
+			scroll.eventDispatched(new MouseEvent(window, MouseEvent.MOUSE_PRESSED, 0L, 0, bar, 100, 1, false,
+				MouseEvent.BUTTON2));
+			assertFalse(scroll.active());
+			assertEquals(List.of("start", "stop"), calls);
+		});
+	}
+
 	private PanelAutoscroll autoscroll(JScrollPane pane)
 	{
 		return new PanelAutoscroll(pane, press -> calls.add("start"), () -> calls.add("stop"), pointer::get);

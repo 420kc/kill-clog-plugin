@@ -1,6 +1,7 @@
 package com.killclog;
 
 import java.awt.AWTEvent;
+import java.awt.Component;
 import java.awt.BasicStroke;
 import java.awt.Color;
 import java.awt.Graphics;
@@ -96,11 +97,17 @@ final class PanelAutoscroll implements AWTEventListener
 		return anchor != null;
 	}
 
-	/** Over the panel's own content, where it can scroll; a text field keeps its middle button (Linux pastes there). */
+	/**
+	 * Over the panel's own content, where it can scroll; a text field keeps its middle button (Linux pastes there).
+	 * The press reaches the nearest component listening for the mouse, the client's window itself over a plain label
+	 * or a gap (10/25: Hive Ops never scrolled), so what counts is what's drawn under the pointer.
+	 */
 	private boolean startsHere(MouseEvent e)
 	{
-		return e.getComponent() != null && !(e.getComponent() instanceof JTextComponent)
-			&& SwingUtilities.isDescendingFrom(e.getComponent(), pane.getViewport())
+		Component under = e.getComponent() == null ? null
+			: SwingUtilities.getDeepestComponentAt(e.getComponent(), e.getX(), e.getY());
+		return under != null && !(under instanceof JTextComponent)
+			&& SwingUtilities.isDescendingFrom(under, pane.getViewport())
 			&& pane.getVerticalScrollBar().getMaximum() - pane.getVerticalScrollBar().getVisibleAmount() > 0;
 	}
 
