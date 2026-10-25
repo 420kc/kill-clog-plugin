@@ -73,7 +73,43 @@ final class ClogPages
 		return TitleTooltip.withBack(page(owner, key), "< " + tab, press -> pin(owner, press, tabCard(owner, tab)));
 	}
 
-	private JToolTip page(JComponent owner, String key)
+	/** The pages the boss list's search reaches beyond its own rows: every page no panel boss stands for, in the game's order. */
+	List<String> searchPages()
+	{
+		List<String> keys = new ArrayList<>();
+		ClogIndex index = clogIndex;
+		if (index != null)
+		{
+			for (List<String> tab : index.tabPages().values())
+			{
+				for (String key : tab)
+				{
+					if (!PAGE_BOSSES.containsKey(key))
+					{
+						keys.add(key);
+					}
+				}
+			}
+		}
+		return keys;
+	}
+
+	/** A page's first item, which its search row shows as its icon (Better Collection Log's way), or -1 for none. */
+	int firstItem(String key)
+	{
+		List<Integer> items = items(key);
+		return items.isEmpty() ? -1 : items.get(0);
+	}
+
+	/** The looked-up player's obtained and total on a page, as its popup counts them; obtained is -1 without a log. */
+	int[] count(String key)
+	{
+		TooltipData data = data(key, name(key), lookupSession.getClogResult(), false);
+		return new int[]{data != null ? data.obtainedCount : -1, data != null ? data.totalItems : distinct(items(key)).size()};
+	}
+
+	/** A page's popup: its panel cell's card when it has one, a Clue Summary rare row's, else the page's own grid. */
+	JToolTip page(JComponent owner, String key)
 	{
 		JLabel anchor = anchor(owner);
 		String name = name(key);
@@ -117,13 +153,7 @@ final class ClogPages
 			names[i] = name(key);
 			Set<Integer> items = distinct(items(key));
 			slots.addAll(items);
-			HiscoreSkill cell = cell(key, names[i]);
-			int rare = rare(key);
-			TooltipData data = cell == null && rare < 0 ? tooltipDataBuilder.buildPageData(names[i], items(key), clog)
-				: rare >= 0 ? cells.rareData(rare, red)
-				: !red ? cells.getTooltipDataMap().get(cell)
-				: PanelData.CLUE_CATEGORIES.containsKey(cell) ? comparison.buildCompareClueTierData(cell)
-				: comparison.getCompareTooltipData(cell);
+			TooltipData data = data(key, names[i], clog, red);
 			obtained[i] = data != null ? data.obtainedCount : -1;
 			total[i] = data != null ? data.totalItems : items.size();
 		}
@@ -138,6 +168,19 @@ final class ClogPages
 		card.setBack("< Collection Log", press -> pin(owner, press, owner.createToolTip()));
 		card.setOnOpenPage((press, page) -> pin(owner, press, pageCard(owner, tab, keys.get(page))));
 		return card;
+	}
+
+	/** A page's data for one player, from the popup it opens: one count wherever the page is listed. */
+	@Nullable
+	private TooltipData data(String key, String name, @Nullable ClogResult clog, boolean red)
+	{
+		HiscoreSkill cell = cell(key, name);
+		int rare = rare(key);
+		return cell == null && rare < 0 ? tooltipDataBuilder.buildPageData(name, items(key), clog)
+			: rare >= 0 ? cells.rareData(rare, red)
+			: !red ? cells.getTooltipDataMap().get(cell)
+			: PanelData.CLUE_CATEGORIES.containsKey(cell) ? comparison.buildCompareClueTierData(cell)
+			: comparison.getCompareTooltipData(cell);
 	}
 
 	/**
@@ -182,7 +225,7 @@ final class ClogPages
 		return row >= 0 && cells.rareData(row, false) != null ? row : -1;
 	}
 
-	private String name(String key)
+	String name(String key)
 	{
 		String name = clogIndex != null ? clogIndex.pageName(key) : null;
 		return name != null ? name : key;

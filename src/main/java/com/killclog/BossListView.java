@@ -62,8 +62,14 @@ public class BossListView
 	// bottom, so a shorter list never pulls the panel's scroll position.
 	private int filterHeight;
 	private final Map<HiscoreSkill, Row> rows = new LinkedHashMap<>();
+	// The Collection Log pages no boss row stands for: rows of their own, shown only while a search finds them.
+	private final Map<String, Row> pageRows = new LinkedHashMap<>();
 	private final BooleanSupplier mirrorActive;
 	private final JTextField search = new JTextField();
+	private final TooltipController tooltipController;
+	private final Cells cells;
+	private final ClogPages pages;
+	private final KillClogConfig config;
 
 	private static final class Row
 	{
@@ -78,8 +84,13 @@ public class BossListView
 	 * @param mirrorActive false while the grid is the forced view (compare);
 	 * the mirror skips those writes and the exit rewrite resyncs the rows
 	 */
-	public BossListView(TooltipController tooltipController, Cells cells, BooleanSupplier mirrorActive)
+	public BossListView(TooltipController tooltipController, Cells cells, ClogPages pages, KillClogConfig config,
+		BooleanSupplier mirrorActive)
 	{
+		this.tooltipController = tooltipController;
+		this.cells = cells;
+		this.pages = pages;
+		this.config = config;
 		this.mirrorActive = mirrorActive;
 		root = new JPanel()
 		{
@@ -322,6 +333,15 @@ public class BossListView
 		return panel;
 	}
 
+	/** A typed search reads the results again: a log landing changes the counts its page rows show. */
+	void refresh()
+	{
+		if (!search.getText().isEmpty())
+		{
+			filter(search.getText());
+		}
+	}
+
 	/** Empties the search, so each new lookup opens on every boss. */
 	void clearSearch()
 	{
@@ -350,8 +370,84 @@ public class BossListView
 		rows.forEach((boss, row) -> row.panel.setVisible(query.isEmpty() || matches(boss, query, named)
 			|| matches(PanelData.card(boss), query, named)
 			|| byCount && row.kc.getText().toLowerCase(Locale.ROOT).contains(typed)));
+		if (!query.isEmpty() && pageRows.isEmpty())
+		{
+			for (String key : pages.searchPages())
+			{
+				pageRows.put(key, buildPageRow(key));
+			}
+		}
+		// A page row is found by its name alone.
+		pageRows.forEach((key, row) ->
+		{
+			boolean found = !query.isEmpty() && KillClogChatCommand.normalize(row.name.getText()).contains(query);
+			if (found)
+			{
+				showCount(row, pages.count(key));
+			}
+			row.panel.setVisible(found);
+		});
 		root.revalidate();
 		root.repaint();
+	}
+
+	/** A page's row, after the bosses: its first item, its name, and its count, opening the page's own popup. */
+	private Row buildPageRow(String key)
+	{
+		Row row = new Row();
+		row.icon = pageTooltipLabel(key);
+		row.icon.setPreferredSize(new Dimension(24, ROW_HEIGHT));
+		row.icon.setHorizontalAlignment(JLabel.CENTER);
+		int item = pages.firstItem(key);
+		if (item > 0)
+		{
+			cells.setItemIcon(row.icon, item);
+		}
+		row.name = pageTooltipLabel(key);
+		row.name.setText(pages.name(key));
+		row.name.setFont(FontManager.getRunescapeSmallFont());
+		ClogHelper.antialias(row.name);
+		row.kc = pageTooltipLabel(key);
+		row.kc.setFont(FontManager.getRunescapeSmallFont());
+		row.kc.setHorizontalAlignment(JLabel.RIGHT);
+		row.kc.setPreferredSize(new Dimension(KC_WIDTH, ROW_HEIGHT));
+		row.kc.setBorder(new EmptyBorder(0, 0, 0, 4));
+		ClogHelper.antialias(row.kc);
+		row.panel = rowPanel(row.icon, row.name, ROW_HEIGHT);
+		row.panel.add(row.kc, BorderLayout.EAST);
+		row.panel.setVisible(false);
+		tooltipController.addCellHoverEffect(row.panel, row.kc, row.name, row.icon, row.kc);
+		root.add(row.panel);
+		return row;
+	}
+
+	/**
+	 * A page's obtained/total in the boss rows' colors: the player's progression colors under the highlighter,
+	 * else the count color, and grey without a log.
+	 */
+	private void showCount(Row row, int[] count)
+	{
+		row.kc.setText(count[0] >= 0 ? count[0] + "/" + count[1] : "--/" + count[1]);
+		Color color = count[0] < 0 ? ColorScheme.LIGHT_GRAY_COLOR
+			: config.completionistHighlighter() ? ClogHelper.clogColor(count[0], count[1], config)
+			: count[0] > 0 ? Cells.KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR;
+		row.kc.setForeground(color);
+		row.name.setForeground(color);
+	}
+
+	/** A page row's label, opening the page's popup. */
+	private JLabel pageTooltipLabel(String key)
+	{
+		JLabel label = new JLabel()
+		{
+			@Override
+			public JToolTip createToolTip()
+			{
+				return pages.page(this, key);
+			}
+		};
+		label.setToolTipText(" ");
+		return label;
 	}
 
 	private static boolean matches(HiscoreSkill boss, String query, Set<String> named)

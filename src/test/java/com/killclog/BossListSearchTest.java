@@ -23,7 +23,7 @@ public class BossListSearchTest
 	@Test
 	public void theSearchRowShowsTheTextCursorAndLightensUnderTheMouse()
 	{
-		BossListView list = new BossListView(mock(TooltipController.class), mock(Cells.class), () -> false);
+		BossListView list = new BossListView(mock(TooltipController.class), mock(Cells.class), mock(ClogPages.class), mock(KillClogConfig.class), () -> false);
 		JTextField field = TestViews.field(list, "search");
 		JPanel row = (JPanel) field.getParent();
 		assertEquals(Cursor.TEXT_CURSOR, field.getCursor().getType());
@@ -47,7 +47,7 @@ public class BossListSearchTest
 	@Test
 	public void theSearchRowAndItsDividerMatchThePanelsSearchBarAndSeparator()
 	{
-		BossListView list = new BossListView(mock(TooltipController.class), mock(Cells.class), () -> false);
+		BossListView list = new BossListView(mock(TooltipController.class), mock(Cells.class), mock(ClogPages.class), mock(KillClogConfig.class), () -> false);
 		JTextField field = TestViews.field(list, "search");
 		JPanel row = (JPanel) field.getParent();
 		assertEquals(30, row.getPreferredSize().height);
@@ -62,7 +62,7 @@ public class BossListSearchTest
 	public void theSearchTextIsGreyscaleLikeThePanelsLabels()
 	{
 		// Without the panel's text hint Swing takes the desktop's ClearType, colour fringes on the typed text.
-		BossListView list = new BossListView(mock(TooltipController.class), mock(Cells.class), () -> false);
+		BossListView list = new BossListView(mock(TooltipController.class), mock(Cells.class), mock(ClogPages.class), mock(KillClogConfig.class), () -> false);
 		JTextField field = TestViews.field(list, "search");
 		assertEquals(java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON,
 			field.getClientProperty(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING));
@@ -71,7 +71,7 @@ public class BossListSearchTest
 	@Test
 	public void aSearchKeepsTheListsHeightSoAShorterListNeverMovesTheScroll()
 	{
-		BossListView list = new BossListView(mock(TooltipController.class), mock(Cells.class), () -> false);
+		BossListView list = new BossListView(mock(TooltipController.class), mock(Cells.class), mock(ClogPages.class), mock(KillClogConfig.class), () -> false);
 		javax.swing.JPanel root = list.component();
 		root.setSize(root.getPreferredSize());
 		int full = root.getHeight();
@@ -105,7 +105,7 @@ public class BossListSearchTest
 			grid.put(boss, label);
 			when(cells.getBossLabel(boss)).thenReturn(label);
 		}
-		BossListView list = new BossListView(mock(TooltipController.class), cells, () -> true);
+		BossListView list = new BossListView(mock(TooltipController.class), cells, mock(ClogPages.class), mock(KillClogConfig.class), () -> true);
 		grid.get(HiscoreSkill.CALLISTO).setText("147k");
 		grid.get(HiscoreSkill.ARTIO).setText("1420");
 		grid.get(HiscoreSkill.VORKATH).setText("420");
@@ -126,6 +126,54 @@ public class BossListSearchTest
 		field.setText("420");
 		grid.get(HiscoreSkill.CALLISTO).setText("420");
 		assertEquals(List.of("Artio", "Callisto", "Vorkath", "Zulrah"), shown(list));
+	}
+
+	@Test
+	public void aSearchReachesEveryCollectionLogPageWithItsCountInTheListsColors()
+	{
+		// Dylan 10/24 (B237): 'mix' lists Mastering Mixology, a page with no hiscore row, its count where a kill count goes.
+		ClogPages pages = mock(ClogPages.class);
+		when(pages.searchPages()).thenReturn(List.of("mastering_mixology", "barbarian_assault"));
+		when(pages.name("mastering_mixology")).thenReturn("Mastering Mixology");
+		when(pages.name("barbarian_assault")).thenReturn("Barbarian Assault");
+		when(pages.firstItem(org.mockito.ArgumentMatchers.anyString())).thenReturn(-1);
+		when(pages.count("mastering_mixology")).thenReturn(new int[]{12, 31});
+		KillClogConfig config = mock(KillClogConfig.class);
+		BossListView list = new BossListView(mock(TooltipController.class), mock(Cells.class), pages, config, () -> false);
+		Map<String, Object> rows = TestViews.field(list, "pageRows");
+		assertEquals("the unfiltered list has no page rows", 0, rows.size());
+
+		JTextField field = TestViews.field(list, "search");
+		field.setText("mix");
+		assertEquals(List.of("Mastering Mixology"), shownPages(list));
+		JLabel count = TestViews.field(rows.get("mastering_mixology"), "kc");
+		assertEquals("12/31", count.getText());
+		assertEquals("without the highlighter, the count color", Cells.KC_COLOR, count.getForeground());
+
+		when(config.completionistHighlighter()).thenReturn(true);
+		when(config.inProgressClogColor()).thenReturn(java.awt.Color.ORANGE);
+		list.refresh();
+		assertEquals("under it, the progression colors", java.awt.Color.ORANGE, count.getForeground());
+
+		field.setText("vorkath");
+		assertEquals(List.of(), shownPages(list));
+		field.setText("");
+		assertEquals(List.of(), shownPages(list));
+	}
+
+	private static List<String> shownPages(BossListView list)
+	{
+		List<String> names = new ArrayList<>();
+		Map<String, Object> rows = TestViews.field(list, "pageRows");
+		rows.forEach((key, row) ->
+		{
+			JPanel panel = TestViews.field(row, "panel");
+			if (panel.isVisible())
+			{
+				names.add(((JLabel) TestViews.field(row, "name")).getText());
+			}
+		});
+		return names;
 	}
 
 	private static List<String> shown(BossListView list)

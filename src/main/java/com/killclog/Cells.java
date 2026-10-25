@@ -697,7 +697,8 @@ public class Cells
 		return cell;
 	}
 
-	private void setItemIcon(JLabel label, int itemId)
+	/** An item's sprite in a label at cell size, swapped in again once a still-loading image arrives. */
+	void setItemIcon(JLabel label, int itemId)
 	{
 		BufferedImage img = itemManager.getImage(itemId, 1, false);
 		if (img == null)

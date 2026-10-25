@@ -324,7 +324,7 @@ public class KillClogPanel extends PluginPanel
 
 		c.gridy++;
 		bossGridPanel = cells.buildBossGrid();
-		bossListView = new BossListView(tooltipController, cells,
+		bossListView = new BossListView(tooltipController, cells, clogPages, config,
 			this::bossListAvailable);
 		bossViewContainer = new JPanel(new BorderLayout());
 		bossViewContainer.setBackground(ColorScheme.DARKER_GRAY_COLOR);
@@ -1025,6 +1025,7 @@ public class KillClogPanel extends PluginPanel
 			comparison.updateAllCells();
 			comparison.updateInfoBar();
 		}
+		bossListView.refresh();
 		refreshSkillDisplay();
 	}
 
