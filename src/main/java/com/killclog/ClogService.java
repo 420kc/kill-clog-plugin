@@ -14,7 +14,6 @@ import java.util.HashMap;
 import java.util.TreeMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -67,49 +66,85 @@ public class ClogService
 	// In-flight futures prevent duplicate HTTP requests from concurrent callers.
 	private final Map<String, CompletableFuture<Map<String, List<Integer>>>> categoriesFlight = new ConcurrentHashMap<>();
 
-	// Failure cooldown skips TempleOSRS briefly after transient errors, as every lane does (HttpUtil.Lane).
-	private final Map<String, Long> templeFailures = new ConcurrentHashMap<>();
-	// Players whose log TempleOSRS is still being asked for, and those it couldn't be reached for until it next answers:
-	// their missing log is one that hasn't loaded, never one that isn't there.
+	// One TempleOSRS lane per player at a time; a player in here is one whose log is still being asked for.
 	private final Map<String, CompletableFuture<ClogResult>> templeLanes = new ConcurrentHashMap<>();
-	private final Set<String> templeUnreached = ConcurrentHashMap.newKeySet();
 
 	// Freshness gate skips TempleOSRS when the cache is still hot.
 	private static final long CLOG_TTL_MS = 5 * 60 * 1000; // 5 minutes
 	// How long your own log waits for TempleOSRS's dates before it shows without them; inside every source's 7 s.
 	static long ownLogDatesWaitMs = 2000;
-	private final Map<String, Long> clogFetchTimes = new ConcurrentHashMap<>();
-	// A date-overlay attempt is recorded before HTTP; keep successful Temple
-	// proof separately so the active-player result stays attributed during TTL.
-	private final Map<String, Long> templeOverlaySuccessTimes =
-		new ConcurrentHashMap<>();
-	// Your own Temple EHP and EHC, from the date overlay's answers: your log is the game's, Temple adds only these.
-	private final Map<String, double[]> ownTempleFigures = new ConcurrentHashMap<>();
-	// Anyone else's, from their last Temple answer: a repeat lookup inside the TTL rebuilds from the local cache,
-	// which keeps the log but not these. Pruned with clogFetchTimes.
-	private final Map<String, double[]> lookedUpTempleFigures = new ConcurrentHashMap<>();
-	// Players TempleOSRS answered with a log in the last day: the Collection Log card credits Temple even when this
-	// lookup's own request was skipped, as for your own log, or timed out.
 	private static final long TEMPLE_HOLDS_TTL_MS = 24 * 60 * 60 * 1000;
-	private final Map<String, Long> templeHolds = new ConcurrentHashMap<>();
+
+	// What TempleOSRS said about each player lately, one record a name (was seven maps and a set, each pruned on its
+	// own): every moment is kept as when it happened, so each check is one age against its own limit.
+	private final Map<String, Temple> temple = new ConcurrentHashMap<>();
+
+	/** One player's TempleOSRS moments, 0 for never; written through {@link #note}, read on any thread. */
+	private static final class Temple
+	{
+		static final Temple NONE = new Temple();
+
+		// A lookup's answer with the log: the local cache serves it, these figures with it, for CLOG_TTL_MS.
+		volatile long fetched;
+		volatile double[] figures;
+		// Your own log's date check, asked before its request, and its last answer with a log, with your EHP and EHC:
+		// your log is the game's, Temple adds only these, and the result stays credited to Temple meanwhile.
+		volatile long datesAsked;
+		volatile long datesAnswered;
+		volatile double[] ownFigures;
+		// The lane failed: skipped for a failure's wait, as every lane does (HttpUtil.Lane).
+		volatile long failed;
+		// Not reached until it next answers: the missing log is one that hasn't loaded, never one that isn't there.
+		volatile boolean unreached;
+		// An answer with a log in the last day: the Collection Log card credits Temple even when this lookup's own
+		// request was skipped, as for your own log, or timed out.
+		volatile long held;
+
+		boolean stale(long now)
+		{
+			// Unreached holds no record: a long outage forgets past the cap, and those logs then read as unsynced
+			// until TempleOSRS is asked again.
+			return now - Math.max(fetched, Math.max(datesAsked, datesAnswered)) >= CLOG_TTL_MS
+				&& now - failed >= HttpUtil.Lane.FAILURE_TTL_MS && now - held >= TEMPLE_HOLDS_TTL_MS;
+		}
+	}
+
+	private static boolean within(long at, long ttlMs)
+	{
+		return System.currentTimeMillis() - at < ttlMs;
+	}
+
+	private Temple temple(String key)
+	{
+		return temple.getOrDefault(key, Temple.NONE);
+	}
+
+	/** Writes a player's record, then past the per-name cap drops records whose every moment has aged out. */
+	private void note(String key, Consumer<Temple> write)
+	{
+		temple.compute(key, (k, record) ->
+		{
+			Temple t = record != null ? record : new Temple();
+			write.accept(t);
+			return t;
+		});
+		if (temple.size() > HttpUtil.CACHE_CAP)
+		{
+			long now = System.currentTimeMillis();
+			temple.values().removeIf(t -> t.stale(now));
+		}
+	}
 
 	/** Whether TempleOSRS has answered with this player's log in the last day. */
 	boolean onTemple(@Nullable String playerName)
 	{
-		Long at = playerName != null ? templeHolds.get(RsnInputPolicy.key(playerName)) : null;
-		return at != null && System.currentTimeMillis() - at < TEMPLE_HOLDS_TTL_MS;
-	}
-
-	private void heldByTemple(String normalizedName)
-	{
-		templeHolds.put(normalizedName, System.currentTimeMillis());
-		HttpUtil.prune(templeHolds, TEMPLE_HOLDS_TTL_MS);
+		return playerName != null && within(temple(RsnInputPolicy.key(playerName)).held, TEMPLE_HOLDS_TTL_MS);
 	}
 
 	/** Clear all failure cooldowns immediately (called on login). TTL handles auto-expiry otherwise. */
 	public void clearTempleFailures()
 	{
-		templeFailures.clear();
+		temple.values().forEach(t -> t.failed = 0);
 	}
 
 	/**
@@ -149,20 +184,15 @@ public class ClogService
 		if (result != null && localClogCache.isActivePlayer(playerName))
 		{
 			result = result.withLocalSource(true);
-			Long successfulAt = templeOverlaySuccessTimes.get(key);
-			if (successfulAt != null && System.currentTimeMillis() - successfulAt < CLOG_TTL_MS)
+			if (within(temple(key).datesAnswered, CLOG_TTL_MS))
 			{
 				result = markTempleSource(result);
-				setTempleFigures(result, ownTempleFigures.get(key));
+				setTempleFigures(result, temple(key).ownFigures);
 			}
 		}
-		else
+		else if (within(temple(key).fetched, CLOG_TTL_MS))
 		{
-			Long lastFetch = clogFetchTimes.get(key);
-			if (lastFetch != null && System.currentTimeMillis() - lastFetch < CLOG_TTL_MS)
-			{
-				setTempleFigures(result, lookedUpTempleFigures.get(key));
-			}
+			setTempleFigures(result, temple(key).figures);
 		}
 		return result;
 	}
@@ -229,7 +259,7 @@ public class ClogService
 						{
 							result = result.withLocalSource(true);
 						}
-						setTempleFigures(result, fromTemple ? ownTempleFigures.get(RsnInputPolicy.key(playerName)) : null);
+						setTempleFigures(result, fromTemple ? temple(RsnInputPolicy.key(playerName)).ownFigures : null);
 						return fromTemple ? markTempleSource(result) : result;
 					}));
 			}
@@ -239,23 +269,21 @@ public class ClogService
 
 		// Fresh data: skip the TempleOSRS lane if we fetched recently.
 		String normalizedName = RsnInputPolicy.key(playerName);
-		Long lastFetch = clogFetchTimes.get(normalizedName);
-		if (lastFetch != null && System.currentTimeMillis() - lastFetch < CLOG_TTL_MS
-			&& localClogCache.hasDataFor(playerName))
+		Temple seen = temple(normalizedName);
+		if (within(seen.fetched, CLOG_TTL_MS) && localClogCache.hasDataFor(playerName))
 		{
 			log.debug("Using fresh cached clog for '{}' ({}s old)",
-				playerName, (System.currentTimeMillis() - lastFetch) / 1000);
+				playerName, (System.currentTimeMillis() - seen.fetched) / 1000);
 			return fetchItemNames().thenApply(names ->
 			{
 				ClogResult result = logFrom(localClogCache, playerName, names);
-				setTempleFigures(result, lookedUpTempleFigures.get(normalizedName));
+				setTempleFigures(result, temple(normalizedName).figures);
 				return markTempleSource(result);
 			});
 		}
 
 		// Skip TempleOSRS if it failed for this player within the cooldown window.
-		Long failedAt = templeFailures.get(normalizedName);
-		if (failedAt != null && System.currentTimeMillis() - failedAt < HttpUtil.Lane.FAILURE_TTL_MS)
+		if (within(seen.failed, HttpUtil.Lane.FAILURE_TTL_MS))
 		{
 			if (localClogCache.hasDataFor(playerName))
 			{
@@ -303,17 +331,16 @@ public class ClogService
 						double[] figures = templeFigures(playerData, stats);
 						setTempleFigures(result, figures);
 						localClogCache.cacheResult(result);
-						heldByTemple(normalizedName);
-						clogFetchTimes.put(normalizedName, System.currentTimeMillis());
-						HttpUtil.prune(clogFetchTimes, CLOG_TTL_MS);
-						lookedUpTempleFigures.put(normalizedName, figures);
-						lookedUpTempleFigures.keySet().retainAll(clogFetchTimes.keySet());
+						note(normalizedName, t ->
+						{
+							t.held = t.fetched = System.currentTimeMillis();
+							t.figures = figures;
+						});
 						return result;
 					}
 
 					// TempleOSRS lane failed. Remember timestamp and fall back to local cache.
-					templeFailures.put(normalizedName, System.currentTimeMillis());
-					HttpUtil.prune(templeFailures, HttpUtil.Lane.FAILURE_TTL_MS);
+					note(normalizedName, t -> t.failed = System.currentTimeMillis());
 					if (localClogCache.hasDataFor(playerName))
 					{
 						log.debug("TempleOSRS unavailable, using cached data for: {}", playerName);
@@ -333,7 +360,7 @@ public class ClogService
 			return false;
 		}
 		String key = RsnInputPolicy.key(playerName);
-		return templeLanes.containsKey(key) || templeUnreached.contains(key);
+		return templeLanes.containsKey(key) || temple(key).unreached;
 	}
 
 	/** The clog endpoint reports game_mode 0 for GIMs: the stats endpoint's type wins when the clog's says nothing more. */
@@ -403,17 +430,12 @@ public class ClogService
 	private CompletableFuture<Boolean> overlayProviderDates(String playerName)
 	{
 		String normalizedName = RsnInputPolicy.key(playerName);
-		String ttlKey = "dates:" + normalizedName;
-		long now = System.currentTimeMillis();
-		Long lastFetch = clogFetchTimes.get(ttlKey);
-		if (lastFetch != null && now - lastFetch < CLOG_TTL_MS)
+		Temple seen = temple(normalizedName);
+		if (within(seen.datesAsked, CLOG_TTL_MS))
 		{
-			Long successfulAt = templeOverlaySuccessTimes.get(normalizedName);
-			return CompletableFuture.completedFuture(successfulAt != null
-				&& now - successfulAt < CLOG_TTL_MS);
+			return CompletableFuture.completedFuture(within(seen.datesAnswered, CLOG_TTL_MS));
 		}
-		clogFetchTimes.put(ttlKey, now);
-		HttpUtil.prune(clogFetchTimes, CLOG_TTL_MS);
+		note(normalizedName, t -> t.datesAsked = System.currentTimeMillis());
 		String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
 		// Your stats ride with the dates, under the same limit, for the Experience & Efficiency card's EHP.
 		CompletableFuture<TempleStats> stats = fetchStats(encoded).exceptionally(t -> null);
@@ -422,27 +444,31 @@ public class ClogService
 			{
 				if (player == null)
 				{
-					templeOverlaySuccessTimes.remove(normalizedName);
-					ownTempleFigures.remove(normalizedName);
+					note(normalizedName, ClogService::noDates);
 					return false;
 				}
-				ownTempleFigures.put(normalizedName, templeFigures(player, yourStats));
+				double[] figures = templeFigures(player, yourStats);
+				note(normalizedName, t -> t.ownFigures = figures);
 				if (player.obtainedItems != null)
 				{
 					localClogCache.mergeProviderDates(playerName, player.obtainedItems);
 				}
-				templeOverlaySuccessTimes.put(normalizedName, System.currentTimeMillis());
-				HttpUtil.prune(templeOverlaySuccessTimes, CLOG_TTL_MS);
-				heldByTemple(normalizedName);
+				note(normalizedName, t -> t.datesAnswered = t.held = System.currentTimeMillis());
 				return true;
 			})
 			.exceptionally(t ->
 			{
-				templeOverlaySuccessTimes.remove(normalizedName);
-				ownTempleFigures.remove(normalizedName);
+				note(normalizedName, ClogService::noDates);
 				log.debug("Provider date overlay failed for '{}'", playerName, t);
 				return false;
 			});
+	}
+
+	/** Your own log's date check came back without a log: it no longer counts as Temple's. */
+	private static void noDates(Temple t)
+	{
+		t.datesAnswered = 0;
+		t.ownFigures = null;
 	}
 
 	private CompletableFuture<PlayerClogData> fetchClog(String encodedPlayer, String key)
@@ -451,19 +477,8 @@ public class ClogService
 		return HttpUtil.httpGet(httpClient, url).thenApply(response ->
 		{
 			// Any answer, a player TempleOSRS doesn't track included, reached it; no answer did not.
-			if (response.code == 200)
-			{
-				templeUnreached.remove(key);
-			}
-			else
-			{
-				// A long outage forgets past the cap: those logs then read as unsynced until TempleOSRS is asked again.
-				if (templeUnreached.size() >= HttpUtil.CACHE_CAP)
-				{
-					templeUnreached.clear();
-				}
-				templeUnreached.add(key);
-			}
+			boolean unreached = response.code != 200;
+			note(key, t -> t.unreached = unreached);
 			String json = response.body;
 			if (json == null)
 			{

@@ -1,7 +1,6 @@
 package com.killclog;
 
 import com.google.gson.Gson;
-import java.lang.reflect.Method;
 import org.junit.Test;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
@@ -14,9 +13,7 @@ public class TempleHoldsTest
 		ClogService service = new ClogService(null, new Gson(),
 			new LocalClogCache(new Gson(), new NoopScheduledExecutorService()));
 		assertFalse(service.onTemple("Marni"));
-		Method held = ClogService.class.getDeclaredMethod("heldByTemple", String.class);
-		held.setAccessible(true);
-		held.invoke(service, "marni");
+		ClogServiceProvenanceTest.moment(service, "marni", "held", System.currentTimeMillis());
 		assertTrue("whatever capitals the lookup used", service.onTemple("MARNI"));
 		assertFalse(service.onTemple(null));
 	}

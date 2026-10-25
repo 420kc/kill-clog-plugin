@@ -1,7 +1,6 @@
 package com.killclog;
 
 import com.google.gson.Gson;
-import java.lang.reflect.Field;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -29,24 +28,20 @@ public class ClogServiceProvenanceTest
 			Collections.emptyMap(), new HashMap<>(), null, null));
 
 		ClogService freshService = serviceWithWarmCatalog(cache);
-		longCache(freshService, "clogFetchTimes").put(player.toLowerCase(),
-			System.currentTimeMillis());
+		moment(freshService, player.toLowerCase(), "fetched", System.currentTimeMillis());
 		ClogResult provenFresh = freshService.lookup(player).join();
 		assertNotNull(provenFresh);
 		assertTrue(provenFresh.isFromTemple());
 
 		// A repeat lookup inside the TTL rebuilds from the local cache, and its Temple figures come back with it.
-		@SuppressWarnings("unchecked")
-		Map<String, double[]> held = TestViews.field(freshService, "lookedUpTempleFigures");
-		held.put(player.toLowerCase(), new double[]{812.5, 1204.0});
+		moment(freshService, player.toLowerCase(), "figures", new double[]{812.5, 1204.0});
 		ClogResult again = freshService.lookup(player).join();
 		assertEquals(812.5, again.getTempleEhp(), 1e-9);
 		assertEquals(1204.0, again.getTempleEhc(), 1e-9);
 		assertEquals("and a rebuild without a lookup", 812.5, freshService.getCachedResult(player).getTempleEhp(), 1e-9);
 
 		ClogService ambiguousService = serviceWithWarmCatalog(cache);
-		longCache(ambiguousService, "templeFailures").put(player.toLowerCase(),
-			System.currentTimeMillis());
+		moment(ambiguousService, player.toLowerCase(), "failed", System.currentTimeMillis());
 		ClogResult coldFallback = ambiguousService.lookup(player).join();
 		assertNotNull(coldFallback);
 		assertFalse(coldFallback.isFromTemple());
@@ -272,12 +267,9 @@ public class ClogServiceProvenanceTest
 		return service;
 	}
 
-	@SuppressWarnings("unchecked")
-	private static Map<String, Long> longCache(ClogService service, String fieldName)
-		throws Exception
+	/** One of a player's TempleOSRS moments, written as the service writes them. */
+	static void moment(ClogService service, String key, String name, Object value)
 	{
-		Field field = ClogService.class.getDeclaredField(fieldName);
-		field.setAccessible(true);
-		return (Map<String, Long>) field.get(service);
+		TestViews.call(service, "note", key, (java.util.function.Consumer<Object>) t -> TestViews.set(t, name, value));
 	}
 }
