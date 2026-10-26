@@ -219,6 +219,7 @@ public class KillClogPlugin extends Plugin
 		syncService.setClans(playerClans);
 		syncService.setHardcoreWorld(() -> client.getGameState() == GameState.LOGGED_IN
 			&& GameMode.hardcore(client.getWorldType()));
+		hiscoreService.setHardcoreTable(killclogService::hardcoreHiscores);
 
 		lookupMenu.start(config, menuManager);
 

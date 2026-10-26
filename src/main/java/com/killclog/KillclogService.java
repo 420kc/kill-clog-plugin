@@ -252,6 +252,15 @@ public class KillclogService
 	// path segment, so anything but a plain slug is ignored.
 	private volatile String[] activeLeague = new String[2];
 	private static final java.util.regex.Pattern LEAGUE_ID = java.util.regex.Pattern.compile("[a-z0-9]+(-[a-z0-9]+){0,5}");
+	// Hardcore Worlds' hiscores table, once killclog.com names it (Jagex hadn't before launch).
+	private volatile String hardcoreHiscores;
+	private static final java.util.regex.Pattern HISCORE_TABLE = java.util.regex.Pattern.compile("hiscore_oldschool_[a-z_]{1,40}");
+
+	@Nullable
+	String hardcoreHiscores()
+	{
+		return hardcoreHiscores;
+	}
 
 	@Nullable
 	String activeLeague()
@@ -303,6 +312,9 @@ public class KillclogService
 			String id = league != null && league.isJsonPrimitive() ? league.getAsString() : "";
 			activeLeague = id.length() <= 40 && LEAGUE_ID.matcher(id).matches() && !GameMode.MAIN.equals(id)
 				? new String[]{id, profile != null && profile.isJsonPrimitive() ? profile.getAsString() : null} : new String[2];
+			JsonElement hardcore = root.get("hardcore_hiscores");
+			String table = hardcore != null && hardcore.isJsonPrimitive() ? hardcore.getAsString() : "";
+			hardcoreHiscores = HISCORE_TABLE.matcher(table).matches() ? table : null;
 			return names;
 		}
 		catch (Exception e)

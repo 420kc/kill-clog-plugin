@@ -21,6 +21,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Experience;
 import okhttp3.OkHttpClient;
@@ -123,6 +124,10 @@ public class HiscoreService
 		.maximumSize(256).expireAfterWrite(CACHE_TTL_MS, TimeUnit.MILLISECONDS).build();
 
 	static final String LEAGUE_TABLE = "hiscore_oldschool_seasonal";
+	// Hardcore Worlds' own table, as killclog.com names it, or null.
+	@Setter
+	@Nullable
+	private volatile java.util.function.Supplier<String> hardcoreTable;
 	// killclog.com says the same, word for word.
 	static final String DOWN_MESSAGE = "Jagex hiscores are down. Try again soon.";
 
@@ -328,7 +333,7 @@ public class HiscoreService
 		CompletableFuture<String> uimFuture = fetchAsync("hiscore_oldschool_ultimate", encoded, absent);
 		CompletableFuture<String> hcimFuture = fetchAsync("hiscore_oldschool_hardcore_ironman", encoded, absent);
 		CompletableFuture<String> ironFuture = fetchAsync("hiscore_oldschool_ironman", encoded, absent);
-		CompletableFuture<String> regFuture = fetchAsync("hiscore_oldschool", encoded, absent);
+		CompletableFuture<String> regFuture = fetchRegular(encoded, absent);
 
 		return CompletableFuture.allOf(uimFuture, hcimFuture, ironFuture, regFuture)
 			.thenCompose(v ->
@@ -377,7 +382,7 @@ public class HiscoreService
 
 	private CompletableFuture<HiscoreResult> lookupKnown(String encodedPlayer, AccountType type, Set<String> absent)
 	{
-		CompletableFuture<String> regular = fetchAsync("hiscore_oldschool", encodedPlayer, absent);
+		CompletableFuture<String> regular = fetchRegular(encodedPlayer, absent);
 		RankLeaderboard board = RankLeaderboard.of(type);
 		if (board == RankLeaderboard.NORMAL)
 		{
@@ -675,6 +680,27 @@ public class HiscoreService
 
 	/** How long a failed board waits before its one retry; tests shorten it. */
 	static long retryDelayMs = 500;
+
+	/**
+	 * The regular board's row; for a player it has none for, a Hardcore Worlds character's from that table, when
+	 * killclog.com names one. Its "not found" stands only when that table says so too.
+	 */
+	private CompletableFuture<String> fetchRegular(String encodedPlayer, Set<String> absent)
+	{
+		java.util.function.Supplier<String> named = hardcoreTable;
+		String table = named != null ? named.get() : null;
+		CompletableFuture<String> regular = fetchAsync("hiscore_oldschool", encodedPlayer, absent);
+		return table == null ? regular : regular.thenCompose(body -> body != null || !absent.contains("hiscore_oldschool")
+			? CompletableFuture.completedFuture(body)
+			: fetchAsync(table, encodedPlayer, absent).thenApply(row ->
+			{
+				if (row != null || !absent.contains(table))
+				{
+					absent.remove("hiscore_oldschool");
+				}
+				return row;
+			}));
+	}
 
 	private CompletableFuture<String> fetchAsync(String hiscoreKey, String encodedPlayer, @Nullable Set<String> absent)
 	{
