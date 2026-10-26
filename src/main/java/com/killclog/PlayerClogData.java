@@ -26,8 +26,9 @@ class PlayerClogData
 	 * older file) keeps provider-only and live-unlock-only stores in setup.
 	 */
 	boolean firstPartySetupComplete;
-	// Hardcore Worlds: the character's total XP as last seen there, and when a reset started this log over (null
-	// for the first run). XP only ever grows, so a fall is a reset.
+	// Hardcore Worlds: the character's total XP as last seen there, and when a reset started this log over and at
+	// what XP (null and 0 for the first run). XP only ever grows, so a fall is a reset.
 	long overallXp;
 	String runStartedAt;
+	long runStartXp;
 }

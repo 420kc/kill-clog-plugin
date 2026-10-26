@@ -952,6 +952,7 @@ public class LocalClogCache
 			result.setUniqueTotal(data.uniqueTotal);
 		}
 		result.setRunStartedAt(data.runStartedAt);
+		result.setRunStartXp(data.runStartXp);
 		return result;
 	}
 
@@ -978,6 +979,7 @@ public class LocalClogCache
 			fresh.categories = new HashMap<>();
 			fresh.obtained = new HashMap<>();
 			fresh.runStartedAt = Instant.now().toString();
+			fresh.runStartXp = overallXp;
 			fresh.lastUpdated = fresh.runStartedAt;
 			own.put(activeHashKey, fresh);
 			data = fresh;
@@ -1173,6 +1175,7 @@ public class LocalClogCache
 		copy.pendingUnlocks = src.pendingUnlocks != null ? new ArrayList<>(src.pendingUnlocks) : null;
 		copy.overallXp = src.overallXp;
 		copy.runStartedAt = src.runStartedAt;
+		copy.runStartXp = src.runStartXp;
 		return copy;
 	}
 }

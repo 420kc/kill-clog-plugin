@@ -86,9 +86,12 @@ public class SyncServiceModeTest
 		JsonObject first = new Gson().fromJson(service.requestBody(42L, null, clog, Map.of(), Map.of(), "main"), JsonObject.class);
 		assertEquals("hardcore", first.get("world").getAsString());
 		assertTrue("the first run names no reset", first.get("run_started_at").isJsonNull());
+		assertFalse("the first run names no reset XP", first.has("run_start_xp"));
 		clog.setRunStartedAt("2026-11-04T12:00:00Z");
+		clog.setRunStartXp(1_154);
 		JsonObject reset = new Gson().fromJson(service.requestBody(42L, null, clog, Map.of(), Map.of(), "main"), JsonObject.class);
 		assertEquals("2026-11-04T12:00:00Z", reset.get("run_started_at").getAsString());
+		assertEquals(1_154, reset.get("run_start_xp").getAsLong());
 	}
 
 	@Test

@@ -58,10 +58,13 @@ public class ClogResult
 	@Setter
 	private String syncedClan;
 
-	// Hardcore Worlds: when a reset started this log over, for the sync.
+	// Hardcore Worlds: when a reset started this log over, and at what XP, for the sync.
 	@Getter
 	@Setter
 	private String runStartedAt;
+	@Getter
+	@Setter
+	private long runStartXp;
 	/** Whether their sync has said at all: then a null clan means "in none", not "unknown" */
 	@Getter
 	@Setter
@@ -129,6 +132,7 @@ public class ClogResult
 		this.templeEhc = source.templeEhc;
 		this.syncedClan = source.syncedClan;
 		this.runStartedAt = source.runStartedAt;
+		this.runStartXp = source.runStartXp;
 		this.syncedClanKnown = source.syncedClanKnown;
 		this.syncedClanTitle = source.syncedClanTitle;
 	}

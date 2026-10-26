@@ -190,10 +190,7 @@ class SyncService
 		return xp != null ? xp.getAsLong() : -1;
 	}
 
-	/**
-	 * A Hardcore Worlds push also carries your total XP, which killclog.com checks a reset against (a second PC
-	 * catching up on one never starts another); it never makes a push new by itself.
-	 */
+	/** A Hardcore Worlds push also carries your total XP, the run's highest for killclog.com; it never makes a push new. */
 	String withOverallXp(String body)
 	{
 		long xp = hardcoreXp();
@@ -453,6 +450,10 @@ class SyncService
 		{
 			root.addProperty("world", "hardcore");
 			root.addProperty("run_started_at", clog.getRunStartedAt());
+			if (clog.getRunStartXp() > 0)
+			{
+				root.addProperty("run_start_xp", clog.getRunStartXp());
+			}
 		}
 		// Your clan and title, or null for none; left out until the game has said, so killclog.com keeps what it holds.
 		PlayerClans.Yours you = clans != null ? clans.forSync(clog.getPlayerName()) : null;

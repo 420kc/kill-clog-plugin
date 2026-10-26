@@ -476,6 +476,7 @@ public class LocalClogCacheTest
 		ClogResult run = cache.toFirstPartySyncResult("Tester");
 		assertTrue(run.getObtainedItems().isEmpty());
 		assertNotNull(run.getRunStartedAt());
+		assertEquals("the XP it started at", 1_154, run.getRunStartXp());
 		assertFalse("the new run grows", cache.startOverOnReset("Tester", 1_200, false));
 
 		StoreLogin.logout(cache);
@@ -483,6 +484,7 @@ public class LocalClogCacheTest
 		assertTrue(StoreLogin.activate(restarted, "Tester", HASH));
 		assertEquals("the new run is what's saved", run.getRunStartedAt(),
 			restarted.toFirstPartySyncResult("Tester").getRunStartedAt());
+		assertEquals(1_154, restarted.toFirstPartySyncResult("Tester").getRunStartXp());
 		assertTrue(restarted.toFirstPartySyncResult("Tester").getObtainedItems().isEmpty());
 	}
 
