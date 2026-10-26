@@ -1,9 +1,12 @@
 package com.killclog;
 
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
+import net.runelite.api.WorldType;
 
 /**
  * Which game the logged-in world plays (the main game, the announced League, or none known), the store
@@ -62,6 +65,16 @@ final class WorldSession
 	boolean mainSettled()
 	{
 		return settled() && GameMode.MAIN.equals(mode());
+	}
+
+	/** On a Hardcore Worlds world, the character's total XP once the world has settled (0 before); else -1. */
+	long hardcoreXp(@Nullable Set<WorldType> flags, LongSupplier overallXp)
+	{
+		if (!GameMode.hardcore(flags))
+		{
+			return -1;
+		}
+		return mainSettled() ? overallXp.getAsLong() : 0;
 	}
 
 	void unsettle()

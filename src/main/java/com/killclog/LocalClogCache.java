@@ -958,9 +958,10 @@ public class LocalClogCache
 	/**
 	 * Hardcore Worlds: a reset sends the character back to Tutorial Island with nothing, so its total XP falls. The
 	 * own log then starts over, dated, and the game's own Collection Log fills it again; true when it did. Read only
-	 * once the world has settled, so a login's stats are all in.
+	 * once the world has settled, so a login's stats are all in; {@code save} keeps a higher reading on disk (once a
+	 * login), so a reset across a relog is still seen.
 	 */
-	public synchronized boolean startOverOnReset(String playerName, long overallXp)
+	public synchronized boolean startOverOnReset(String playerName, long overallXp, boolean save)
 	{
 		PlayerClogData data = ownLog(playerName);
 		if (data == null || overallXp <= 0)
@@ -981,8 +982,9 @@ public class LocalClogCache
 			own.put(activeHashKey, fresh);
 			data = fresh;
 		}
+		boolean rose = overallXp > data.overallXp;
 		data.overallXp = overallXp;
-		if (reset)
+		if (reset || save && rose)
 		{
 			submitSave(activeHashKey, true, data);
 		}

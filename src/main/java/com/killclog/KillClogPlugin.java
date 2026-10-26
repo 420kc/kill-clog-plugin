@@ -170,6 +170,9 @@ public class KillClogPlugin extends Plugin
 	private boolean accountActivated;
 	// Whether this login has been on the main game: the main store keeps it from then on (serveMainStore).
 	private boolean mainReached;
+	// Hardcore Worlds, as this login's last tick read it: the character's total XP once settled, 0 before, -1 on any
+	// other world. Held through a hop's loading screen, so a push built then still says where it's from.
+	private volatile long hardcoreXp = -1;
 
 	private final ClogSessionState sessionState = new ClogSessionState();
 	private final ClogIndex clogIndex = new ClogIndex();
@@ -217,8 +220,7 @@ public class KillClogPlugin extends Plugin
 		playerClans = new PlayerClans(client, chatIconManager, runeProfileService, world::mainSettled, config::shareClan);
 		panel.setClans(playerClans);
 		syncService.setClans(playerClans);
-		syncService.setHardcoreWorld(() -> client.getGameState() == GameState.LOGGED_IN
-			&& GameMode.hardcore(client.getWorldType()));
+		syncService.setHardcoreXp(() -> hardcoreXp);
 		hiscoreService.setHardcoreTable(killclogService::hardcoreHiscores);
 
 		lookupMenu.start(config, menuManager);
@@ -687,13 +689,15 @@ public class KillClogPlugin extends Plugin
 		}
 		playerClans.refreshClientSnapshot();
 		sessions.update(client);
-		if (world.tick())
+		boolean settledNow = world.tick();
+		if (settledNow)
 		{
 			// Counters and CA tiers read before the world settled were skipped: take them now.
 			reconcileClogTotalsFromVarps();
 			sessionState.requestCaRead();
 		}
 		followWorld();
+		hardcoreXp = world.hardcoreXp(client.getWorldType(), client::getOverallExperience);
 
 		// The account takes up its own log, following any name change (the
 		// server migrates its own copy on the next sync). Memory only; the
@@ -706,10 +710,10 @@ public class KillClogPlugin extends Plugin
 			ownLogServing(activeCache, session.getName());
 		}
 		String hardcoreName = session.getName();
-		if (world.mainSettled() && GameMode.hardcore(client.getWorldType())
-			&& localClogCache.startOverOnReset(hardcoreName, client.getOverallExperience()))
+		if (hardcoreXp > 0 && localClogCache.startOverOnReset(hardcoreName, hardcoreXp, settledNow))
 		{
 			chatNotifier.send(ChatNotice.SYNC_RESULT, "Kill Clog started your collection log over for your new run.");
+			ownLogServing(localClogCache, hardcoreName);
 			SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(hardcoreName));
 		}
 		String previousName = localClogCache.consumeRenameNotice();

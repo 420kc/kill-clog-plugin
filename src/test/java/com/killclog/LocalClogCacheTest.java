@@ -464,19 +464,19 @@ public class LocalClogCacheTest
 		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
 		Map<String, List<Integer>> categories = Map.of("hats", itemList(1, 2));
 		cache.cacheFirstPartyResult(clog("Tester", categories, obtainedItems("hats", 1, 2)));
-		assertFalse("the first look", cache.startOverOnReset("Tester", 50_000));
-		assertFalse("XP that grows", cache.startOverOnReset("Tester", 60_000));
-		assertFalse("XP that stands", cache.startOverOnReset("Tester", 60_000));
-		assertFalse("no reading", cache.startOverOnReset("Tester", 0));
-		assertFalse("another name", cache.startOverOnReset("Zezima", 1_154));
+		assertFalse("the first look", cache.startOverOnReset("Tester", 50_000, false));
+		assertFalse("XP that grows", cache.startOverOnReset("Tester", 60_000, false));
+		assertFalse("XP that stands", cache.startOverOnReset("Tester", 60_000, false));
+		assertFalse("no reading", cache.startOverOnReset("Tester", 0, false));
+		assertFalse("another name", cache.startOverOnReset("Zezima", 1_154, false));
 		assertEquals(2, cache.toFirstPartySyncResult("Tester").getObtainedItems().get("hats").size());
 		assertNull(cache.toFirstPartySyncResult("Tester").getRunStartedAt());
 
-		assertTrue("XP that falls is a reset", cache.startOverOnReset("Tester", 1_154));
+		assertTrue("XP that falls is a reset", cache.startOverOnReset("Tester", 1_154, false));
 		ClogResult run = cache.toFirstPartySyncResult("Tester");
 		assertTrue(run.getObtainedItems().isEmpty());
 		assertNotNull(run.getRunStartedAt());
-		assertFalse("the new run grows", cache.startOverOnReset("Tester", 1_200));
+		assertFalse("the new run grows", cache.startOverOnReset("Tester", 1_200, false));
 
 		StoreLogin.logout(cache);
 		LocalClogCache restarted = onDisk(dir);
@@ -484,6 +484,22 @@ public class LocalClogCacheTest
 		assertEquals("the new run is what's saved", run.getRunStartedAt(),
 			restarted.toFirstPartySyncResult("Tester").getRunStartedAt());
 		assertTrue(restarted.toFirstPartySyncResult("Tester").getObtainedItems().isEmpty());
+	}
+
+	@Test
+	public void aHardcoreResetAcrossARelogIsStillSeen() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		LocalClogCache cache = onDisk(dir);
+		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
+		cache.cacheFirstPartyResult(clog("Tester", Map.of("hats", itemList(1, 2)), obtainedItems("hats", 1, 2)));
+		assertFalse("the settle tick keeps its reading", cache.startOverOnReset("Tester", 5_000_000, true));
+		StoreLogin.logout(cache);
+
+		LocalClogCache relogged = onDisk(dir);
+		assertTrue(StoreLogin.activate(relogged, "Tester", HASH));
+		assertTrue(relogged.startOverOnReset("Tester", 1_154, false));
+		assertTrue(relogged.toFirstPartySyncResult("Tester").getObtainedItems().isEmpty());
 	}
 
 	@Test

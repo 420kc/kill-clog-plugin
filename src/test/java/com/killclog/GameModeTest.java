@@ -1,6 +1,7 @@
 package com.killclog;
 
 import java.util.EnumSet;
+import java.util.Set;
 import net.runelite.api.WorldType;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
@@ -34,6 +35,24 @@ public class GameModeTest
 		assertFalse("a world with a separate character", GameMode.hardcore(EnumSet.of(WorldType.HARDCORE_MAIN, WorldType.DEADMAN)));
 		assertFalse("a League world", GameMode.hardcore(EnumSet.of(WorldType.HARDCORE_MAIN, WorldType.SEASONAL)));
 		assertFalse(GameMode.hardcore(null));
+	}
+
+	@Test
+	public void onlyASettledHardcoreWorldReadsTheXp()
+	{
+		WorldSession world = new WorldSession(() -> GameMode.MAIN, () -> null, () -> null, id -> null, store ->
+		{
+		});
+		Set<WorldType> hardcore = EnumSet.of(WorldType.MEMBERS, WorldType.HARDCORE_MAIN);
+		assertEquals(0, world.hardcoreXp(hardcore, () -> 5_000));
+		for (int tick = 0; tick < WorldSession.SETTLED_TICKS; tick++)
+		{
+			world.tick();
+		}
+		assertEquals(5_000, world.hardcoreXp(hardcore, () -> 5_000));
+		assertEquals("a main-game world never reads it", -1,
+			world.hardcoreXp(EnumSet.of(WorldType.MEMBERS), () -> 5_000));
+		assertEquals(-1, world.hardcoreXp(null, () -> 5_000));
 	}
 
 	@Test

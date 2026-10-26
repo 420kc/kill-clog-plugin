@@ -12,7 +12,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.function.BooleanSupplier;
+import java.util.function.LongSupplier;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -54,10 +54,10 @@ class SyncService
 	@Setter
 	@Nullable
 	private volatile PlayerClans clans;
-	// Whether you're on a Hardcore Worlds world, for each sync (2.7.4).
+	// On a Hardcore Worlds world, your total XP (0 until the world settles), else -1; for each sync (2.7.4).
 	@Setter
 	@Nullable
-	private volatile BooleanSupplier hardcoreWorld;
+	private volatile LongSupplier hardcoreXp;
 	// The structure killclog.com holds, as its last sync reply named it; null until one has.
 	private volatile String serverStructureHash;
 	// Every loading screen schedules a push: one identical to the last that killclog.com took, within a day, stays home.
@@ -162,9 +162,10 @@ class SyncService
 		log.debug("Syncing collection log for '{}' to {} ({} items)",
 			rsn, url, observedCount);
 		final int pbCount = personalBests != null ? personalBests.size() : 0;
+		String sent = withOverallXp(body);
 		CompletableFuture<HttpUtil.HttpResult> request = cache.commitIfSessionCurrent(
 			session, () -> syncGate.commitIfCurrent(attempt,
-				() -> HttpUtil.httpPostJson(httpClient, url, body, null)));
+				() -> HttpUtil.httpPostJson(httpClient, url, sent, null)));
 		if (request == null)
 		{
 			return CompletableFuture.completedFuture(
@@ -181,6 +182,28 @@ class SyncService
 			}
 			return result;
 		});
+	}
+
+	private long hardcoreXp()
+	{
+		LongSupplier xp = hardcoreXp;
+		return xp != null ? xp.getAsLong() : -1;
+	}
+
+	/**
+	 * A Hardcore Worlds push also carries your total XP, which killclog.com checks a reset against (a second PC
+	 * catching up on one never starts another); it never makes a push new by itself.
+	 */
+	String withOverallXp(String body)
+	{
+		long xp = hardcoreXp();
+		if (xp <= 0)
+		{
+			return body;
+		}
+		JsonObject root = gson.fromJson(body, JsonObject.class);
+		root.addProperty("overall_xp", xp);
+		return wire(gson, root);
 	}
 
 	/** The text a push sends: the body, and the game's structure on a main-game sync that should carry it. */
@@ -426,7 +449,7 @@ class SyncService
 		root.add("clog", items);
 		root.addProperty("client_version", CLIENT_VERSION);
 		// A Hardcore Worlds character says so, with the reset its log started from: killclog.com starts its run over.
-		if (hardcoreWorld != null && hardcoreWorld.getAsBoolean())
+		if (hardcoreXp() >= 0)
 		{
 			root.addProperty("world", "hardcore");
 			root.addProperty("run_started_at", clog.getRunStartedAt());

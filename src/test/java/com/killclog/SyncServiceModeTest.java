@@ -69,10 +69,20 @@ public class SyncServiceModeTest
 			Map.of("boss", List.of(1)), Map.of(), null, null);
 		SyncService service = new SyncService(new OkHttpClient(), new Gson());
 		assertFalse(service.requestBody(42L, null, clog, Map.of(), Map.of(), "main").contains("\"world\""));
-		service.setHardcoreWorld(() -> false);
-		assertFalse(service.requestBody(42L, null, clog, Map.of(), Map.of(), "main").contains("\"world\""));
+		service.setHardcoreXp(() -> -1);
+		String main = service.requestBody(42L, null, clog, Map.of(), Map.of(), "main");
+		assertFalse(main.contains("\"world\""));
+		assertEquals("a main-game push is sent as built", main, service.withOverallXp(main));
 
-		service.setHardcoreWorld(() -> true);
+		service.setHardcoreXp(() -> 0);
+		String unsettled = service.requestBody(42L, null, clog, Map.of(), Map.of(), "main");
+		assertTrue("the world says so before its XP is read", unsettled.contains("\"world\":\"hardcore\""));
+		assertEquals("no XP until it's read", unsettled, service.withOverallXp(unsettled));
+
+		service.setHardcoreXp(() -> 5_000L);
+		String built = service.requestBody(42L, null, clog, Map.of(), Map.of(), "main");
+		assertFalse("the XP never makes a push new", built.contains("overall_xp"));
+		assertEquals(5_000L, new Gson().fromJson(service.withOverallXp(built), JsonObject.class).get("overall_xp").getAsLong());
 		JsonObject first = new Gson().fromJson(service.requestBody(42L, null, clog, Map.of(), Map.of(), "main"), JsonObject.class);
 		assertEquals("hardcore", first.get("world").getAsString());
 		assertTrue("the first run names no reset", first.get("run_started_at").isJsonNull());
