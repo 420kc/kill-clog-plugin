@@ -23,10 +23,12 @@ public class TempleRecordsTest
 		Map<String, ?> records = TestViews.field(service, "temple");
 		assertEquals(1, records.size());
 		fill(service, HttpUtil.CACHE_CAP - 1, now - 2 * DAY);
-		// Past it again: one still being asked about has no moment yet, and stays too.
-		ClogServiceProvenanceTest.moment(service, "asking", "asking", true);
-		assertEquals(2, records.size());
-		assertTrue(records.containsKey("held") && records.containsKey("asking"));
+		// Past it again: one TempleOSRS couldn't reach, with no moment left, is forgotten like the rest and reads as
+		// unsynced until it's asked again.
+		ClogServiceProvenanceTest.moment(service, "unreached", "unreached", true);
+		assertEquals(1, records.size());
+		assertTrue(records.containsKey("held"));
+		assertFalse(service.templeUnanswered("unreached"));
 		assertTrue(service.onTemple("held"));
 		assertFalse("an aged-out name reads as never seen", service.onTemple("old 0"));
 	}
