@@ -35,13 +35,14 @@ final class SearchMessages
 	static final String[] COMPARE_SELF_BLUE = pool("compare_self_blue");
 
 	static final String[] COMPARE_SELF_RED = pool("compare_self_red");
-	/** Bundled pool rows of this kind; the parity test pins contents. */
+
 	/** One line from a pool, at random. */
 	static String pick(String[] pool)
 	{
 		return pool[ThreadLocalRandom.current().nextInt(pool.length)];
 	}
 
+	/** Bundled pool rows of this kind; the parity test pins contents. */
 	private static String[] pool(String kind)
 	{
 		java.util.List<String> texts =
