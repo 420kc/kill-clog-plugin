@@ -28,7 +28,8 @@ final class ClogProviderFanout
 		final CompletableFuture<ClogResult> first;
 		/**
 		 * TempleOSRS's answer folded in with the others', when it came after the wait (10/24: a log that missed the
-		 * wait only reached the cache, so the open lookup showed none until a second search); null otherwise.
+		 * wait only reached the cache, so the open lookup showed none until a second search); null when it came in
+		 * time, or lost to RuneProfile's fresher log and so adds nothing.
 		 */
 		final CompletableFuture<ClogResult> late;
 
@@ -50,8 +51,9 @@ final class ClogProviderFanout
 		CompletableFuture<ClogResult> first = chooseFullest(templeAnswer, rp, kc);
 		CompletableFuture<ClogResult> late = first.thenCompose(shown -> templeAnswer.isDone()
 			? CompletableFuture.completedFuture(null)
-			: templeAnswer.exceptionally(ex -> null).thenApply(answer -> answer == null ? null
-				: ClogResult.pickFullest(ClogResult.pickFreshest(answer, rp.join()), kc.join())));
+			: templeAnswer.exceptionally(ex -> null).thenApply(answer ->
+				answer == null || ClogResult.chooseFreshest(answer, rp.join()) != answer ? null
+					: ClogResult.pickFullest(ClogResult.pickFreshest(answer, rp.join()), kc.join())));
 		return new Answers(first, late);
 	}
 

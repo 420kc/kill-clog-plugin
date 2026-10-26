@@ -373,7 +373,7 @@ public class ClogResult
 		return distinct.size();
 	}
 
-	private static ClogResult chooseFreshest(ClogResult temple, ClogResult rp)
+	static ClogResult chooseFreshest(ClogResult temple, ClogResult rp)
 	{
 		if (temple == null)
 		{

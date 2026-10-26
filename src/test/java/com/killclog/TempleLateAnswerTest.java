@@ -61,6 +61,19 @@ public class TempleLateAnswerTest
 	}
 
 	@Test
+	public void aLateAnswerThatLosesToTheShownLogAddsNothing() throws Exception
+	{
+		ClogProviderFanout.providerTimeoutSeconds = 1;
+		CompletableFuture<ClogResult> temple = new CompletableFuture<>();
+		ClogProviderFanout.Answers answers = ClogProviderFanout.answers(false, () -> temple,
+			() -> CompletableFuture.completedFuture(result("From RuneProfile", 1200)),
+			() -> CompletableFuture.completedFuture(null));
+		assertEquals("From RuneProfile", answers.first.get(5, TimeUnit.SECONDS).getPlayerName());
+		temple.complete(result("From Temple", 300));
+		assertNull("no second draw of the same log", answers.late.get(5, TimeUnit.SECONDS));
+	}
+
+	@Test
 	public void theOpenLookupShowsTheLateLogAndANewOneNeverDoes() throws Exception
 	{
 		ClogProviderFanout.providerTimeoutSeconds = 1;
@@ -126,8 +139,28 @@ public class TempleLateAnswerTest
 		assertFalse("other players are untouched", service.templeUnanswered("Zezima"));
 	}
 
+	@Test
+	public void aTempleThatCouldNotBeReachedHasNotLoadedUntilItAnswers() throws Exception
+	{
+		AtomicInteger code = new AtomicInteger(503);
+		ClogService service = service(code, "{\"error\":{\"Code\":402,\"Message\":\"Player has not synced\"}}", null);
+		service.lookup("Marni").get(5, TimeUnit.SECONDS);
+		service.clearTempleFailures();
+		service.lookup("Marni").get(5, TimeUnit.SECONDS);
+		assertTrue("a second miss is still a miss, however long ago the first", service.templeUnanswered("Marni"));
+		code.set(200);
+		service.clearTempleFailures();
+		service.lookup("Marni").get(5, TimeUnit.SECONDS);
+		assertFalse("its answer, that it has none, is an answer", service.templeUnanswered("Marni"));
+	}
+
 	/** A service whose TempleOSRS answers every log request with this code and body, once {@code answer} opens. */
 	private static ClogService service(int code, String body, CountDownLatch answer) throws Exception
+	{
+		return service(new AtomicInteger(code), body, answer);
+	}
+
+	private static ClogService service(AtomicInteger code, String body, CountDownLatch answer) throws Exception
 	{
 		AtomicInteger requests = new AtomicInteger();
 		OkHttpClient client = new OkHttpClient.Builder()
@@ -149,7 +182,7 @@ public class TempleLateAnswerTest
 				return new Response.Builder()
 					.request(chain.request())
 					.protocol(Protocol.HTTP_1_1)
-					.code(log ? code : 404)
+					.code(log ? code.get() : 404)
 					.message("answer")
 					.body(ResponseBody.create(MediaType.parse("application/json"), log ? body : ""))
 					.build();

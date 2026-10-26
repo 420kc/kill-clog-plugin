@@ -69,10 +69,10 @@ public class ClogService
 
 	// Failure cooldown skips TempleOSRS briefly after transient errors, as every lane does (HttpUtil.Lane).
 	private final Map<String, Long> templeFailures = new ConcurrentHashMap<>();
-	// Players whose log TempleOSRS is still being asked for, and those it could not be reached for just now: their
-	// missing log is one that hasn't loaded, never one that isn't there.
+	// Players whose log TempleOSRS is still being asked for, and those it couldn't be reached for until it next answers:
+	// their missing log is one that hasn't loaded, never one that isn't there.
 	private final Set<String> templeAsking = ConcurrentHashMap.newKeySet();
-	private final Map<String, Long> templeUnreached = new ConcurrentHashMap<>();
+	private final Set<String> templeUnreached = ConcurrentHashMap.newKeySet();
 
 	// Freshness gate skips TempleOSRS when the cache is still hot.
 	private static final long CLOG_TTL_MS = 5 * 60 * 1000; // 5 minutes
@@ -323,7 +323,7 @@ public class ClogService
 			.whenComplete((result, error) -> templeAsking.remove(normalizedName));
 	}
 
-	/** Whether this player's log hasn't loaded: TempleOSRS is still being asked, or could not be reached just now. */
+	/** Whether this player's log hasn't loaded: TempleOSRS is still being asked, or hasn't answered since it failed. */
 	boolean templeUnanswered(@Nullable String playerName)
 	{
 		if (playerName == null)
@@ -331,9 +331,7 @@ public class ClogService
 			return false;
 		}
 		String key = RsnInputPolicy.key(playerName);
-		Long unreachedAt = templeUnreached.get(key);
-		return templeAsking.contains(key)
-			|| unreachedAt != null && System.currentTimeMillis() - unreachedAt < HttpUtil.Lane.FAILURE_TTL_MS;
+		return templeAsking.contains(key) || templeUnreached.contains(key);
 	}
 
 	/** The clog endpoint reports game_mode 0 for GIMs: the stats endpoint's type wins when the clog's says nothing more. */
@@ -457,8 +455,7 @@ public class ClogService
 			}
 			else
 			{
-				templeUnreached.put(key, System.currentTimeMillis());
-				HttpUtil.prune(templeUnreached, HttpUtil.Lane.FAILURE_TTL_MS);
+				templeUnreached.add(key);
 			}
 			String json = response.body;
 			if (json == null)
