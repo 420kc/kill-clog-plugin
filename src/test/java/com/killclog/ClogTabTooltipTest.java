@@ -219,6 +219,24 @@ public class ClogTabTooltipTest
 	}
 
 	@Test
+	public void aCopyOfAComparisonHoldsBothCardsWhole()
+	{
+		ClogTabTooltip blue = card(57);
+		ClogTabTooltip red = card(57);
+		SideBySideTooltip pair = new SideBySideTooltip("Blue", blue, "Red", red);
+		Dimension shown = pair.getPreferredSize();
+		pair.setSize(shown);
+		pair.doLayout();
+		Graphics2D graphics = new BufferedImage(shown.width, shown.height, BufferedImage.TYPE_INT_ARGB).createGraphics();
+		pair.paint(graphics);
+		graphics.dispose();
+		BufferedImage copy = TooltipController.cardImage(pair);
+		assertEquals(shown.height + (57 - ClogTabTooltip.VISIBLE_ROWS) * LINE, copy.getHeight());
+		assertEquals(shown, pair.getSize());
+		assertEquals("each card on screen keeps its window", shown.height, pair.getPreferredSize().height);
+	}
+
+	@Test
 	public void aCopyOfAScrolledGridHoldsEveryRow()
 	{
 		ImgTooltip grid = new ImgTooltip(4);

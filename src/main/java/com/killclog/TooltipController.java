@@ -25,10 +25,12 @@ import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 import java.util.WeakHashMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
@@ -384,31 +386,49 @@ class TooltipController
 	}
 
 	/**
-	 * The card exactly as it opened, the way the lab draws one: before the pointer is on it. A card that scrolls is
-	 * drawn whole at its full height, then laid back down at its own size, so the one on screen keeps its rows where
-	 * they show.
+	 * The card exactly as it opened, the way the lab draws one: before the pointer is on it. A card that scrolls, or a
+	 * comparison's cards that do, is drawn whole at its full height, then laid back down at its own size, so the one
+	 * on screen keeps its rows where they show.
 	 */
 	static BufferedImage cardImage(JToolTip tip)
 	{
-		CardBody.Scroll scroll = tip instanceof TitleTooltip ? ((TitleTooltip) tip).scroll() : null;
-		if (scroll == null)
+		List<CardBody.Scroll> scrolls = new ArrayList<>();
+		for (Component card : tip instanceof SideBySideTooltip ? tip.getComponents() : new Component[]{tip})
+		{
+			CardBody.Scroll scroll = card instanceof TitleTooltip ? ((TitleTooltip) card).scroll() : null;
+			if (scroll != null)
+			{
+				scrolls.add(scroll);
+			}
+		}
+		if (scrolls.isEmpty())
 		{
 			return drawn(tip);
 		}
 		Dimension shown = tip.getSize();
-		BufferedImage whole = scroll.unrolled(() ->
+		try
 		{
-			tip.setSize(tip.getPreferredSize());
-			tip.doLayout();
-			return drawn(tip);
-		});
-		tip.setSize(shown);
-		tip.doLayout();
-		if (shown.width > 0 && shown.height > 0)
-		{
-			drawn(tip);
+			return unrolled(scrolls, 0, () ->
+			{
+				tip.setSize(tip.getPreferredSize());
+				tip.doLayout();
+				return drawn(tip);
+			});
 		}
-		return whole;
+		finally
+		{
+			tip.setSize(shown);
+			tip.doLayout();
+			if (shown.width > 0 && shown.height > 0)
+			{
+				drawn(tip);
+			}
+		}
+	}
+
+	private static BufferedImage unrolled(List<CardBody.Scroll> scrolls, int from, Supplier<BufferedImage> draw)
+	{
+		return from == scrolls.size() ? draw.get() : scrolls.get(from).unrolled(() -> unrolled(scrolls, from + 1, draw));
 	}
 
 	private static BufferedImage drawn(JToolTip tip)
