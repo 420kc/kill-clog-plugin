@@ -4,7 +4,9 @@ import java.util.EnumSet;
 import net.runelite.api.WorldType;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 public class GameModeTest
 {
@@ -20,6 +22,18 @@ public class GameModeTest
 			assertNull(separate.name(), GameMode.of(EnumSet.of(WorldType.MEMBERS, separate), "demonic-pacts"));
 		}
 		assertNull(GameMode.of(null, "demonic-pacts"));
+	}
+
+	@Test
+	public void aHardcoreWorldIsTheMainGameAndSaysSo()
+	{
+		assertEquals("main", GameMode.of(EnumSet.of(WorldType.MEMBERS, WorldType.HARDCORE_MAIN), "demonic-pacts"));
+		assertTrue(GameMode.hardcore(EnumSet.of(WorldType.MEMBERS, WorldType.HARDCORE_MAIN)));
+		assertTrue(GameMode.hardcore(EnumSet.of(WorldType.MEMBERS, WorldType.PVP, WorldType.HARDCORE_MAIN)));
+		assertFalse("a main world", GameMode.hardcore(EnumSet.of(WorldType.MEMBERS)));
+		assertFalse("a world with a separate character", GameMode.hardcore(EnumSet.of(WorldType.HARDCORE_MAIN, WorldType.DEADMAN)));
+		assertFalse("a League world", GameMode.hardcore(EnumSet.of(WorldType.HARDCORE_MAIN, WorldType.SEASONAL)));
+		assertFalse(GameMode.hardcore(null));
 	}
 
 	@Test

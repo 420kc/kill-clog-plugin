@@ -9,9 +9,11 @@ import net.runelite.api.WorldType;
 final class GameMode
 {
 	static final String MAIN = "main";
-	// World flags that do not create a separate character.
+	// World flags that do not create a separate character. A Hardcore Worlds character is a main account on the main
+	// game's save, its own name from Tutorial Island, and a transfer takes it to the main game as it is (Jagex 10/22).
 	private static final Set<WorldType> MAIN_FLAGS = EnumSet.of(WorldType.MEMBERS, WorldType.PVP,
-		WorldType.BOUNTY, WorldType.SKILL_TOTAL, WorldType.HIGH_RISK, WorldType.LAST_MAN_STANDING);
+		WorldType.BOUNTY, WorldType.SKILL_TOTAL, WorldType.HIGH_RISK, WorldType.LAST_MAN_STANDING,
+		WorldType.HARDCORE_MAIN);
 
 	private GameMode()
 	{
@@ -33,5 +35,11 @@ final class GameMode
 			}
 		}
 		return flags.contains(WorldType.SEASONAL) ? activeLeague : MAIN;
+	}
+
+	/** A Hardcore Worlds world: its syncs say so, and a reset starts the character's log over. */
+	static boolean hardcore(@Nullable Set<WorldType> flags)
+	{
+		return flags != null && flags.contains(WorldType.HARDCORE_MAIN) && MAIN.equals(of(flags, null));
 	}
 }

@@ -217,6 +217,8 @@ public class KillClogPlugin extends Plugin
 		playerClans = new PlayerClans(client, chatIconManager, runeProfileService, world::mainSettled, config::shareClan);
 		panel.setClans(playerClans);
 		syncService.setClans(playerClans);
+		syncService.setHardcoreWorld(() -> client.getGameState() == GameState.LOGGED_IN
+			&& GameMode.hardcore(client.getWorldType()));
 
 		lookupMenu.start(config, menuManager);
 
@@ -701,6 +703,13 @@ public class KillClogPlugin extends Plugin
 		{
 			accountActivated = true;
 			ownLogServing(activeCache, session.getName());
+		}
+		String hardcoreName = session.getName();
+		if (world.mainSettled() && GameMode.hardcore(client.getWorldType())
+			&& localClogCache.startOverOnReset(hardcoreName, client.getOverallExperience()))
+		{
+			chatNotifier.send(ChatNotice.SYNC_RESULT, "Kill Clog started your collection log over for your new run.");
+			SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(hardcoreName));
 		}
 		String previousName = localClogCache.consumeRenameNotice();
 		if (previousName != null)

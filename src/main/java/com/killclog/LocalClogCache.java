@@ -951,7 +951,42 @@ public class LocalClogCache
 		{
 			result.setUniqueTotal(data.uniqueTotal);
 		}
+		result.setRunStartedAt(data.runStartedAt);
 		return result;
+	}
+
+	/**
+	 * Hardcore Worlds: a reset sends the character back to Tutorial Island with nothing, so its total XP falls. The
+	 * own log then starts over, dated, and the game's own Collection Log fills it again; true when it did. Read only
+	 * once the world has settled, so a login's stats are all in.
+	 */
+	public synchronized boolean startOverOnReset(String playerName, long overallXp)
+	{
+		PlayerClogData data = ownLog(playerName);
+		if (data == null || overallXp <= 0)
+		{
+			return false;
+		}
+		boolean reset = overallXp < data.overallXp;
+		if (reset)
+		{
+			PlayerClogData fresh = new PlayerClogData();
+			fresh.playerName = data.playerName;
+			fresh.ownerHash = data.ownerHash;
+			fresh.uniqueTotal = data.uniqueTotal;
+			fresh.categories = new HashMap<>();
+			fresh.obtained = new HashMap<>();
+			fresh.runStartedAt = Instant.now().toString();
+			fresh.lastUpdated = fresh.runStartedAt;
+			own.put(activeHashKey, fresh);
+			data = fresh;
+		}
+		data.overallXp = overallXp;
+		if (reset)
+		{
+			submitSave(activeHashKey, true, data);
+		}
+		return reset;
 	}
 
 	/**
@@ -1134,6 +1169,8 @@ public class LocalClogCache
 		copy.obtained = new HashMap<>(src.obtained);
 		copy.firstPartySetupComplete = src.firstPartySetupComplete;
 		copy.pendingUnlocks = src.pendingUnlocks != null ? new ArrayList<>(src.pendingUnlocks) : null;
+		copy.overallXp = src.overallXp;
+		copy.runStartedAt = src.runStartedAt;
 		return copy;
 	}
 }

@@ -1,6 +1,7 @@
 package com.killclog;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -13,6 +14,7 @@ import okhttp3.Response;
 import okhttp3.ResponseBody;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -58,6 +60,25 @@ public class SyncServiceModeTest
 		assertEquals(1, sent.size());
 		assertTrue(sent.get(0).url().toString(), sent.get(0).url().encodedPath().endsWith("/player/Tester/sync/demonic-pacts"));
 		verifyNoInteractions(main);
+	}
+
+	@Test
+	public void aHardcoreWorldSyncSaysSoWithItsRun()
+	{
+		ClogResult clog = new ClogResult("Tester", Map.of("boss", List.of(new ClogResult.ClogItem(1, 1, null))),
+			Map.of("boss", List.of(1)), Map.of(), null, null);
+		SyncService service = new SyncService(new OkHttpClient(), new Gson());
+		assertFalse(service.requestBody(42L, null, clog, Map.of(), Map.of(), "main").contains("\"world\""));
+		service.setHardcoreWorld(() -> false);
+		assertFalse(service.requestBody(42L, null, clog, Map.of(), Map.of(), "main").contains("\"world\""));
+
+		service.setHardcoreWorld(() -> true);
+		JsonObject first = new Gson().fromJson(service.requestBody(42L, null, clog, Map.of(), Map.of(), "main"), JsonObject.class);
+		assertEquals("hardcore", first.get("world").getAsString());
+		assertTrue("the first run names no reset", first.get("run_started_at").isJsonNull());
+		clog.setRunStartedAt("2026-11-04T12:00:00Z");
+		JsonObject reset = new Gson().fromJson(service.requestBody(42L, null, clog, Map.of(), Map.of(), "main"), JsonObject.class);
+		assertEquals("2026-11-04T12:00:00Z", reset.get("run_started_at").getAsString());
 	}
 
 	@Test

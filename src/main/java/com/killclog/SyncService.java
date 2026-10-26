@@ -12,6 +12,7 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.BooleanSupplier;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -53,6 +54,10 @@ class SyncService
 	@Setter
 	@Nullable
 	private volatile PlayerClans clans;
+	// Whether you're on a Hardcore Worlds world, for each sync (2.7.4).
+	@Setter
+	@Nullable
+	private volatile BooleanSupplier hardcoreWorld;
 	// The structure killclog.com holds, as its last sync reply named it; null until one has.
 	private volatile String serverStructureHash;
 	// Every loading screen schedules a push: one identical to the last that killclog.com took, within a day, stays home.
@@ -420,6 +425,12 @@ class SyncService
 		}
 		root.add("clog", items);
 		root.addProperty("client_version", CLIENT_VERSION);
+		// A Hardcore Worlds character says so, with the reset its log started from: killclog.com starts its run over.
+		if (hardcoreWorld != null && hardcoreWorld.getAsBoolean())
+		{
+			root.addProperty("world", "hardcore");
+			root.addProperty("run_started_at", clog.getRunStartedAt());
+		}
 		// Your clan and title, or null for none; left out until the game has said, so killclog.com keeps what it holds.
 		PlayerClans.Yours you = clans != null ? clans.forSync(clog.getPlayerName()) : null;
 		if (you != null)
