@@ -26,6 +26,7 @@ import static org.junit.Assert.assertTrue;
 public class TempleLateAnswerTest
 {
 	private final long timeout = ClogProviderFanout.providerTimeoutSeconds;
+	private final AtomicInteger logRequests = new AtomicInteger();
 
 	@After
 	public void restore()
@@ -58,6 +59,44 @@ public class TempleLateAnswerTest
 		temple.complete(result("From Temple", 1200));
 		assertEquals("the fuller log wins, as in time", "From Temple",
 			answers.late.get(5, TimeUnit.SECONDS).getPlayerName());
+	}
+
+	@Test
+	public void anAnswerLandingAsTheWaitEndsIsLateNotLost() throws Exception
+	{
+		ClogProviderFanout.providerTimeoutSeconds = 1;
+		CompletableFuture<ClogResult> temple = new CompletableFuture<>();
+		// RuneProfile's ask holds the fan-out past TempleOSRS's wait, and TempleOSRS answers before it lets go.
+		ClogProviderFanout.Answers answers = ClogProviderFanout.answers(false, () -> temple, () ->
+		{
+			try
+			{
+				Thread.sleep(1500);
+			}
+			catch (InterruptedException e)
+			{
+				Thread.currentThread().interrupt();
+			}
+			temple.complete(result("Marni", 1200));
+			return CompletableFuture.completedFuture(null);
+		}, () -> CompletableFuture.completedFuture(null));
+		assertNull(answers.first.get(5, TimeUnit.SECONDS));
+		assertEquals("Marni", answers.late.get(5, TimeUnit.SECONDS).getPlayerName());
+	}
+
+	@Test
+	public void twoLookupsOfOnePlayerAskTempleOnceAndWaitAsOne() throws Exception
+	{
+		CountDownLatch answer = new CountDownLatch(1);
+		ClogService service = service(200, "{\"error\":{\"Code\":402,\"Message\":\"Player has not synced\"}}", answer);
+		CompletableFuture<ClogResult> one = service.lookup("Marni");
+		CompletableFuture<ClogResult> two = service.lookup("marni");
+		assertTrue(service.templeUnanswered("Marni"));
+		answer.countDown();
+		one.get(5, TimeUnit.SECONDS);
+		two.get(5, TimeUnit.SECONDS);
+		assertEquals("one ask", 1, logRequests.get());
+		assertFalse(service.templeUnanswered("Marni"));
 	}
 
 	@Test
@@ -155,21 +194,20 @@ public class TempleLateAnswerTest
 	}
 
 	/** A service whose TempleOSRS answers every log request with this code and body, once {@code answer} opens. */
-	private static ClogService service(int code, String body, CountDownLatch answer) throws Exception
+	private ClogService service(int code, String body, CountDownLatch answer) throws Exception
 	{
 		return service(new AtomicInteger(code), body, answer);
 	}
 
-	private static ClogService service(AtomicInteger code, String body, CountDownLatch answer) throws Exception
+	private ClogService service(AtomicInteger code, String body, CountDownLatch answer) throws Exception
 	{
-		AtomicInteger requests = new AtomicInteger();
 		OkHttpClient client = new OkHttpClient.Builder()
 			.addInterceptor(chain ->
 			{
 				boolean log = chain.request().url().encodedPath().endsWith("player_collection_log.php");
 				if (log && answer != null)
 				{
-					requests.incrementAndGet();
+					logRequests.incrementAndGet();
 					try
 					{
 						answer.await(5, TimeUnit.SECONDS);

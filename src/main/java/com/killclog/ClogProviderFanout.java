@@ -46,10 +46,12 @@ final class ClogProviderFanout
 		Supplier<CompletableFuture<ClogResult>> killclog)
 	{
 		CompletableFuture<ClogResult> templeAnswer = fetch(temple);
+		// What the wait saw of TempleOSRS, so an answer landing as the wait ends is late, not lost.
+		CompletableFuture<ClogResult> templeInTime = bounded(templeAnswer);
 		CompletableFuture<ClogResult> rp = bounded(isSelf ? CompletableFuture.completedFuture(null) : fetch(runeProfile));
 		CompletableFuture<ClogResult> kc = bounded(isSelf ? CompletableFuture.completedFuture(null) : fetch(killclog));
-		CompletableFuture<ClogResult> first = chooseFullest(templeAnswer, rp, kc);
-		CompletableFuture<ClogResult> late = first.thenCompose(shown -> templeAnswer.isDone()
+		CompletableFuture<ClogResult> first = chooseFullest(templeInTime, rp, kc);
+		CompletableFuture<ClogResult> late = first.thenCompose(shown -> templeInTime.join() != null
 			? CompletableFuture.completedFuture(null)
 			: templeAnswer.exceptionally(ex -> null).thenApply(answer ->
 				answer == null || ClogResult.chooseFreshest(answer, rp.join()) != answer ? null

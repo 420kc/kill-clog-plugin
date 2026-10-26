@@ -71,7 +71,7 @@ public class ClogService
 	private final Map<String, Long> templeFailures = new ConcurrentHashMap<>();
 	// Players whose log TempleOSRS is still being asked for, and those it couldn't be reached for until it next answers:
 	// their missing log is one that hasn't loaded, never one that isn't there.
-	private final Set<String> templeAsking = ConcurrentHashMap.newKeySet();
+	private final Map<String, CompletableFuture<ClogResult>> templeLanes = new ConcurrentHashMap<>();
 	private final Set<String> templeUnreached = ConcurrentHashMap.newKeySet();
 
 	// Freshness gate skips TempleOSRS when the cache is still hot.
@@ -267,60 +267,62 @@ public class ClogService
 
 		// Build the TempleOSRS lane, with local cache as fallback.
 		String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
+		// One TempleOSRS lane per player at a time: a second lookup joins the one in flight, which is also how
+		// a log still being asked for reads as not loaded.
+		return HttpUtil.singleFlightLookup(templeLanes, normalizedName, () ->
+		{
+			CompletableFuture<PlayerClogData> playerFuture =
+				fetchClog(encoded, normalizedName);
+			CompletableFuture<Map<String, List<Integer>>> categoriesFuture =
+				fetchCategories();
+			CompletableFuture<Map<Integer, String>> namesFuture =
+				fetchItemNames();
+			CompletableFuture<TempleStats> statsFuture =
+				fetchStats(encoded);
 
-		templeAsking.add(normalizedName);
-		CompletableFuture<PlayerClogData> playerFuture =
-			fetchClog(encoded, normalizedName);
-		CompletableFuture<Map<String, List<Integer>>> categoriesFuture =
-			fetchCategories();
-		CompletableFuture<Map<Integer, String>> namesFuture =
-			fetchItemNames();
-		CompletableFuture<TempleStats> statsFuture =
-			fetchStats(encoded);
-
-		return CompletableFuture.allOf(playerFuture, categoriesFuture, namesFuture, statsFuture)
-			.thenApply(v ->
-			{
-				PlayerClogData playerData = playerFuture.join();
-				Map<String, List<Integer>> categories = categoriesFuture.join();
-				Map<Integer, String> names = namesFuture.join();
-				TempleStats stats = statsFuture.join();
-
-				if (playerData != null)
+			return CompletableFuture.allOf(playerFuture, categoriesFuture, namesFuture, statsFuture)
+				.thenApply(v ->
 				{
-					AccountType accountType = templeType(playerData, stats);
+					PlayerClogData playerData = playerFuture.join();
+					Map<String, List<Integer>> categories = categoriesFuture.join();
+					Map<Integer, String> names = namesFuture.join();
+					TempleStats stats = statsFuture.join();
 
-					ClogResult result = new ClogResult(
-						playerData.canonicalName,
-						playerData.obtainedItems,
-						categories != null ? categories : new HashMap<>(),
-						names != null ? names : new HashMap<>(),
-						playerData.lastChanged,
-						accountType
-					).withSources(true, false, false);
-					double[] figures = templeFigures(playerData, stats);
-					setTempleFigures(result, figures);
-					localClogCache.cacheResult(result);
-					heldByTemple(normalizedName);
-					clogFetchTimes.put(normalizedName, System.currentTimeMillis());
-					HttpUtil.prune(clogFetchTimes, CLOG_TTL_MS);
-					lookedUpTempleFigures.put(normalizedName, figures);
-					lookedUpTempleFigures.keySet().retainAll(clogFetchTimes.keySet());
-					return result;
-				}
+					if (playerData != null)
+					{
+						AccountType accountType = templeType(playerData, stats);
 
-				// TempleOSRS lane failed. Remember timestamp and fall back to local cache.
-				templeFailures.put(normalizedName, System.currentTimeMillis());
-				HttpUtil.prune(templeFailures, HttpUtil.Lane.FAILURE_TTL_MS);
-				if (localClogCache.hasDataFor(playerName))
-				{
-					log.debug("TempleOSRS unavailable, using cached data for: {}", playerName);
-					return logFrom(localClogCache, playerName, names);
-				}
+						ClogResult result = new ClogResult(
+							playerData.canonicalName,
+							playerData.obtainedItems,
+							categories != null ? categories : new HashMap<>(),
+							names != null ? names : new HashMap<>(),
+							playerData.lastChanged,
+							accountType
+						).withSources(true, false, false);
+						double[] figures = templeFigures(playerData, stats);
+						setTempleFigures(result, figures);
+						localClogCache.cacheResult(result);
+						heldByTemple(normalizedName);
+						clogFetchTimes.put(normalizedName, System.currentTimeMillis());
+						HttpUtil.prune(clogFetchTimes, CLOG_TTL_MS);
+						lookedUpTempleFigures.put(normalizedName, figures);
+						lookedUpTempleFigures.keySet().retainAll(clogFetchTimes.keySet());
+						return result;
+					}
 
-				return null;
-			})
-			.whenComplete((result, error) -> templeAsking.remove(normalizedName));
+					// TempleOSRS lane failed. Remember timestamp and fall back to local cache.
+					templeFailures.put(normalizedName, System.currentTimeMillis());
+					HttpUtil.prune(templeFailures, HttpUtil.Lane.FAILURE_TTL_MS);
+					if (localClogCache.hasDataFor(playerName))
+					{
+						log.debug("TempleOSRS unavailable, using cached data for: {}", playerName);
+						return logFrom(localClogCache, playerName, names);
+					}
+
+					return null;
+				});
+		});
 	}
 
 	/** Whether this player's log hasn't loaded: TempleOSRS is still being asked, or hasn't answered since it failed. */
@@ -331,7 +333,7 @@ public class ClogService
 			return false;
 		}
 		String key = RsnInputPolicy.key(playerName);
-		return templeAsking.contains(key) || templeUnreached.contains(key);
+		return templeLanes.containsKey(key) || templeUnreached.contains(key);
 	}
 
 	/** The clog endpoint reports game_mode 0 for GIMs: the stats endpoint's type wins when the clog's says nothing more. */
@@ -455,6 +457,11 @@ public class ClogService
 			}
 			else
 			{
+				// A long outage forgets past the cap: those logs then read as unsynced until TempleOSRS is asked again.
+				if (templeUnreached.size() >= HttpUtil.CACHE_CAP)
+				{
+					templeUnreached.clear();
+				}
 				templeUnreached.add(key);
 			}
 			String json = response.body;
