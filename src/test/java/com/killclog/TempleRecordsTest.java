@@ -53,6 +53,11 @@ public class TempleRecordsTest
 		ClogServiceProvenanceTest.moment(service, "marni", "unreached", true);
 		ClogServiceProvenanceTest.moment(service, "marni", "failed", now);
 		assertTrue(service.templeUnanswered("marni"));
+		// Another name noted meanwhile, reached or not, leaves it so.
+		ClogServiceProvenanceTest.moment(service, "zezima", "unreached", true);
+		ClogServiceProvenanceTest.moment(service, "own", "datesAsked", now);
+		assertTrue(service.templeUnanswered("marni"));
+		assertTrue(service.templeUnanswered("zezima"));
 	}
 
 	@Test

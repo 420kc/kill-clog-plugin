@@ -118,9 +118,9 @@ public class ClogService
 	}
 
 	/**
-	 * Writes a player's record, then past the per-name cap drops records whose every moment has aged out. Still past it,
-	 * a long outage forgets every other player TempleOSRS couldn't reach: those logs then read as unsynced until it's
-	 * asked again, and the one just written keeps reading as not loaded.
+	 * Writes a player's record, then past the per-name cap drops records whose every moment has aged out. A long outage,
+	 * more players TempleOSRS couldn't reach than the cap, forgets every one but the one just written: those logs then
+	 * read as unsynced until it's asked again.
 	 */
 	private void note(String key, Consumer<Temple> write)
 	{
@@ -135,7 +135,7 @@ public class ClogService
 			long now = System.currentTimeMillis();
 			// The check and the removal are one step on each name, so a write that lands meanwhile keeps its record.
 			temple.keySet().forEach(name -> temple.computeIfPresent(name, (k, t) -> t.stale(now) ? null : t));
-			if (temple.size() > HttpUtil.CACHE_CAP)
+			if (temple.values().stream().filter(t -> t.unreached).count() > HttpUtil.CACHE_CAP)
 			{
 				temple.keySet().forEach(name -> temple.computeIfPresent(name, (k, t) ->
 				{
