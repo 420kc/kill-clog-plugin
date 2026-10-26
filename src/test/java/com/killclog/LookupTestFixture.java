@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
 
@@ -50,6 +51,7 @@ final class LookupTestFixture
 			return clogs.computeIfAbsent(player, ignored -> new CompletableFuture<>());
 		}
 	};
+	Supplier<CompletableFuture<ClogResult>> runeProfileClog = () -> CompletableFuture.completedFuture(null);
 	final RuneProfileService runeProfile = new RuneProfileService(null, null, null)
 	{
 		@Override
@@ -61,7 +63,7 @@ final class LookupTestFixture
 		@Override
 		public CompletableFuture<ClogResult> lookupClog(String player)
 		{
-			return CompletableFuture.completedFuture(null);
+			return runeProfileClog.get();
 		}
 	};
 	final KillclogService killclog = new KillclogService(null, null, null)

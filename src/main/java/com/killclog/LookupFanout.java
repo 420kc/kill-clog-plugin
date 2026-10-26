@@ -1,5 +1,6 @@
 package com.killclog;
 
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
@@ -178,18 +179,8 @@ final class LookupFanout
 		ClogProviderFanout.Answers answers = league == null ? ClogProviderFanout.answers(own,
 			() -> clogService.lookup(player), () -> runeProfileService.lookupClog(player),
 			() -> killclogService.lookupClog(player)) : null;
-		if (answers != null)
-		{
-			// A late TempleOSRS answer lands in the open lookup, as the first did.
-			answers.late.thenApply(this::onGamePages).thenAccept(late ->
-			{
-				if (late != null)
-				{
-					onEdtIfCurrent(stamp, () -> onResult.accept(late));
-				}
-			});
-		}
-		(answers != null ? answers.first : ClogProviderFanout.bounded(own ? clogService.lookupLocal(leagueLog, player)
+		CompletableFuture<Void> delivered = (answers != null ? answers.first
+			: ClogProviderFanout.bounded(own ? clogService.lookupLocal(leagueLog, player)
 			: killclogService.lookupClog(player, league)))
 			.thenApply(this::onGamePages)
 			.thenAccept(result -> onEdtIfCurrent(stamp, () -> onResult.accept(result)))
@@ -202,6 +193,17 @@ final class LookupFanout
 				}
 				return null;
 			});
+		if (answers != null)
+		{
+			// A late TempleOSRS answer lands in the open lookup after the first, never before it.
+			delivered.thenCompose(done -> answers.late).thenApply(this::onGamePages).thenAccept(late ->
+			{
+				if (late != null)
+				{
+					onEdtIfCurrent(stamp, () -> onResult.accept(late));
+				}
+			});
+		}
 	}
 
 	private void onEdtIfCurrent(int stamp, Runnable action)

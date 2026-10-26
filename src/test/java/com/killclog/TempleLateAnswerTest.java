@@ -100,7 +100,7 @@ public class TempleLateAnswerTest
 	}
 
 	@Test
-	public void aLateAnswerThatLosesToTheShownLogAddsNothing() throws Exception
+	public void aLateAnswerThatLosesToAFullerLogStillBringsTemplesFigures() throws Exception
 	{
 		ClogProviderFanout.providerTimeoutSeconds = 1;
 		CompletableFuture<ClogResult> temple = new CompletableFuture<>();
@@ -108,8 +108,42 @@ public class TempleLateAnswerTest
 			() -> CompletableFuture.completedFuture(result("From RuneProfile", 1200)),
 			() -> CompletableFuture.completedFuture(null));
 		assertEquals("From RuneProfile", answers.first.get(5, TimeUnit.SECONDS).getPlayerName());
-		temple.complete(result("From Temple", 300));
-		assertNull("no second draw of the same log", answers.late.get(5, TimeUnit.SECONDS));
+		ClogResult templeLog = result("From Temple", 300);
+		templeLog.setTempleEhp(123.5);
+		templeLog.setTempleEhc(456.5);
+		temple.complete(templeLog);
+		ClogResult late = answers.late.get(5, TimeUnit.SECONDS);
+		assertEquals("the fuller log still leads", "From RuneProfile", late.getPlayerName());
+		assertEquals(123.5, late.getTempleEhp(), 0);
+		assertEquals(456.5, late.getTempleEhc(), 0);
+	}
+
+	@Test
+	public void aLateLogAlreadyInHandIsNeverOverwrittenByTheFirstAnswer() throws Exception
+	{
+		ClogProviderFanout.providerTimeoutSeconds = 1;
+		LookupTestFixture fixture = new LookupTestFixture();
+		CompletableFuture<ClogResult> temple = new CompletableFuture<>();
+		fixture.clogs.put("Marni", temple);
+		// RuneProfile's ask holds the fan-out past TempleOSRS's wait; TempleOSRS answers meanwhile, so the late log
+		// is ready before the first answer is handed on.
+		fixture.runeProfileClog = () ->
+		{
+			try
+			{
+				Thread.sleep(1500);
+			}
+			catch (InterruptedException e)
+			{
+				Thread.currentThread().interrupt();
+			}
+			temple.complete(LookupTestFixture.clog("Marni"));
+			return CompletableFuture.completedFuture(null);
+		};
+		LookupTestFixture.edt(() -> fixture.primary.start("Marni", "Blue", AccountType.REGULAR));
+		fixture.hiscores.get("Marni").complete(LookupTestFixture.hiscore(7));
+		awaitClogResults(fixture, 2);
+		LookupTestFixture.edt(() -> assertEquals("Marni", fixture.primary.getClogResult().getPlayerName()));
 	}
 
 	@Test
