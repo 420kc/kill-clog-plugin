@@ -14,23 +14,83 @@ public class TempleRecordsTest
 	@Test
 	public void pastTheCapOnlyRecordsWhoseEveryMomentAgedOutGo()
 	{
-		ClogService service = new ClogService(null, new Gson(),
-			new LocalClogCache(new Gson(), new NoopScheduledExecutorService()));
+		ClogService service = service();
 		long now = System.currentTimeMillis();
 		fill(service, HttpUtil.CACHE_CAP, now - 2 * DAY);
 		// One record past the cap: the aged ones go, the one Temple answered an hour ago stays for its day.
 		ClogServiceProvenanceTest.moment(service, "held", "held", now - DAY / 24);
 		Map<String, ?> records = TestViews.field(service, "temple");
 		assertEquals(1, records.size());
-		fill(service, HttpUtil.CACHE_CAP - 1, now - 2 * DAY);
-		// Past it again: one TempleOSRS couldn't reach, with no moment left, is forgotten like the rest and reads as
-		// unsynced until it's asked again.
-		ClogServiceProvenanceTest.moment(service, "unreached", "unreached", true);
-		assertEquals(1, records.size());
-		assertTrue(records.containsKey("held"));
-		assertFalse(service.templeUnanswered("unreached"));
 		assertTrue(service.onTemple("held"));
 		assertFalse("an aged-out name reads as never seen", service.onTemple("old 0"));
+	}
+
+	@Test
+	public void everyLiveMomentKeepsItsRecordPastTheCap()
+	{
+		ClogService service = service();
+		long now = System.currentTimeMillis();
+		ClogServiceProvenanceTest.moment(service, "fetched", "fetched", now);
+		ClogServiceProvenanceTest.moment(service, "dates asked", "datesAsked", now);
+		ClogServiceProvenanceTest.moment(service, "dates answered", "datesAnswered", now);
+		ClogServiceProvenanceTest.moment(service, "failed", "failed", now);
+		// The last aged name is the one past the cap.
+		fill(service, HttpUtil.CACHE_CAP - 3, now - 2 * DAY);
+		Map<String, ?> records = TestViews.field(service, "temple");
+		assertEquals(4, records.size());
+	}
+
+	@Test
+	public void oneTempleCouldNotReachStaysNotLoadedPastTheCap()
+	{
+		ClogService service = service();
+		long now = System.currentTimeMillis();
+		// A full day of answers keeps the map past the cap; the lookup in hand still reads as not loaded.
+		for (int i = 0; i <= HttpUtil.CACHE_CAP; i++)
+		{
+			ClogServiceProvenanceTest.moment(service, "held " + i, "held", now - DAY / 24);
+		}
+		ClogServiceProvenanceTest.moment(service, "marni", "unreached", true);
+		ClogServiceProvenanceTest.moment(service, "marni", "failed", now);
+		assertTrue(service.templeUnanswered("marni"));
+	}
+
+	@Test
+	public void aLongOutageForgetsTheOthersButNotTheOneInHand()
+	{
+		ClogService service = service();
+		for (int i = 0; i < HttpUtil.CACHE_CAP; i++)
+		{
+			ClogServiceProvenanceTest.moment(service, "unreached " + i, "unreached", true);
+		}
+		assertTrue(service.templeUnanswered("unreached 0"));
+		ClogServiceProvenanceTest.moment(service, "marni", "unreached", true);
+		Map<String, ?> records = TestViews.field(service, "temple");
+		assertEquals(1, records.size());
+		assertFalse(service.templeUnanswered("unreached 0"));
+		assertTrue(service.templeUnanswered("marni"));
+	}
+
+	@Test
+	public void theLoginClearKeepsEverythingButTheFailure()
+	{
+		ClogService service = service();
+		long now = System.currentTimeMillis();
+		ClogServiceProvenanceTest.moment(service, "marni", "held", now);
+		ClogServiceProvenanceTest.moment(service, "marni", "unreached", true);
+		ClogServiceProvenanceTest.moment(service, "marni", "failed", now);
+		service.clearTempleFailures();
+		Map<String, Object> records = TestViews.field(service, "temple");
+		Object record = records.get("marni");
+		assertEquals(0L, (long) TestViews.field(record, "failed"));
+		assertTrue(service.onTemple("marni"));
+		assertTrue(service.templeUnanswered("marni"));
+	}
+
+	private static ClogService service()
+	{
+		return new ClogService(null, new Gson(),
+			new LocalClogCache(new Gson(), new NoopScheduledExecutorService()));
 	}
 
 	private static void fill(ClogService service, int names, long at)

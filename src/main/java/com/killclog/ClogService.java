@@ -102,9 +102,7 @@ public class ClogService
 
 		boolean stale(long now)
 		{
-			// Unreached holds no record: a long outage forgets past the cap, and those logs then read as unsynced
-			// until TempleOSRS is asked again.
-			return now - Math.max(fetched, Math.max(datesAsked, datesAnswered)) >= CLOG_TTL_MS
+			return !unreached && now - Math.max(fetched, Math.max(datesAsked, datesAnswered)) >= CLOG_TTL_MS
 				&& now - failed >= HttpUtil.Lane.FAILURE_TTL_MS && now - held >= TEMPLE_HOLDS_TTL_MS;
 		}
 	}
@@ -119,7 +117,11 @@ public class ClogService
 		return temple.getOrDefault(key, Temple.NONE);
 	}
 
-	/** Writes a player's record, then past the per-name cap drops records whose every moment has aged out. */
+	/**
+	 * Writes a player's record, then past the per-name cap drops records whose every moment has aged out. Still past it,
+	 * a long outage forgets every other player TempleOSRS couldn't reach: those logs then read as unsynced until it's
+	 * asked again, and the one just written keeps reading as not loaded.
+	 */
 	private void note(String key, Consumer<Temple> write)
 	{
 		temple.compute(key, (k, record) ->
@@ -133,6 +135,17 @@ public class ClogService
 			long now = System.currentTimeMillis();
 			// The check and the removal are one step on each name, so a write that lands meanwhile keeps its record.
 			temple.keySet().forEach(name -> temple.computeIfPresent(name, (k, t) -> t.stale(now) ? null : t));
+			if (temple.size() > HttpUtil.CACHE_CAP)
+			{
+				temple.keySet().forEach(name -> temple.computeIfPresent(name, (k, t) ->
+				{
+					if (!k.equals(key))
+					{
+						t.unreached = false;
+					}
+					return t.stale(now) ? null : t;
+				}));
+			}
 		}
 	}
 
