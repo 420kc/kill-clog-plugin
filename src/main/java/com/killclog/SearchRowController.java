@@ -80,9 +80,9 @@ final class SearchRowController
 		this.lookupSelf = lookupSelf;
 		this.panelRevalidate = panelRevalidate;
 		compareIconDim = new ImageIcon(ClogHelper.makeCompareIcon(
-			ComparisonController.COMPARE_BLUE, ComparisonController.COMPARE_RED, 0.55f));
+			KillClogColors.COMPARE_BLUE, KillClogColors.COMPARE_RED, 0.55f));
 		compareIconBright = new ImageIcon(ClogHelper.makeCompareIcon(
-			ComparisonController.COMPARE_BLUE, ComparisonController.COMPARE_RED, 1.0f));
+			KillClogColors.COMPARE_BLUE, KillClogColors.COMPARE_RED, 1.0f));
 		searchIconDim = new ImageIcon(ClogHelper.makeSearchIcon(textDim, 0.70f));
 		searchIconBright = new ImageIcon(ClogHelper.makeSearchIcon(textDim, 1.0f));
 		compareEntryKeyListener = new KeyAdapter()
@@ -297,8 +297,8 @@ final class SearchRowController
 		if (searchTextField != null)
 		{
 			searchTextField.setText("");
-			searchTextField.setForeground(ComparisonController.COMPARE_RED);
-			searchTextField.setCaretColor(ComparisonController.COMPARE_RED);
+			searchTextField.setForeground(KillClogColors.COMPARE_RED);
+			searchTextField.setCaretColor(KillClogColors.COMPARE_RED);
 			searchTextField.addKeyListener(compareEntryKeyListener);
 			searchTextField.requestFocusInWindow();
 		}

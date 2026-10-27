@@ -13,7 +13,7 @@ final class SkillLevelColor
 	{
 		if (!synced)
 		{
-			return Cells.KC_COLOR;
+			return KillClogColors.KC_COLOR;
 		}
 		if (config.skillColorMode() == SkillColorMode.SKILL_COLOR)
 		{

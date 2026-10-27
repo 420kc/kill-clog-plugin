@@ -137,7 +137,7 @@ public class PanelStatusRowCharacterizationTest
 			{
 				mouse(control, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
 				assertEquals("Unavailable until first collection", status.getText());
-				assertEquals(KillClogPanel.NOT_FOUND, status.getForeground());
+				assertEquals(KillClogColors.NOT_FOUND, status.getForeground());
 				mouse(control, MouseEvent.MOUSE_PRESSED, MouseEvent.BUTTON1);
 				mouse(control, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
 			}

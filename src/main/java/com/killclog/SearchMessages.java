@@ -1,6 +1,5 @@
 package com.killclog;
 
-import java.awt.Color;
 import java.util.concurrent.ThreadLocalRandom;
 
 /** Search status message pools: lookup, comparison, not-found, and self flavor text. */
@@ -22,7 +21,6 @@ final class SearchMessages
 
 	static final String[] SELF_ULTRA = pool("self_ultra");
 
-	static final Color SELF_COLOR = new Color(0x4c, 0xaf, 0x6e);
 
 	static final String[] COMPARE_SEARCH = pool("compare_search");
 

@@ -230,8 +230,6 @@ public class Cells
 
 	// Primary-side rendering
 
-	/** Standard kc text color (light gray-white) used for any cell that has a non-zero kc / score. */
-	static final Color KC_COLOR = new Color(215, 215, 215);
 
 	/**
 	 * Write hiscore-driven values into every primary-side cell: bosses
@@ -252,7 +250,7 @@ public class Cells
 			HiscoreSkill activity = entry.getKey();
 			JLabel label = entry.getValue();
 			int score = result.getActivityScore(activity.getName());
-			showCount(label, score, KC_COLOR);
+			showCount(label, score, KillClogColors.KC_COLOR);
 			tooltipController.setTooltipText(label, " ");
 		}
 
@@ -262,7 +260,7 @@ public class Cells
 			HiscoreSkill tier = entry.getKey();
 			JLabel label = entry.getValue();
 			int score = result.getActivityScore(tier.getName());
-			showCount(label, score, KC_COLOR);
+			showCount(label, score, KillClogColors.KC_COLOR);
 
 			String shortName = capitalizeTier(tier);
 			int rank = result.getActivityRank(tier.getName());
@@ -551,7 +549,7 @@ public class Cells
 	private void renderBossValue(HiscoreSkill boss, JLabel label, HiscoreResult result)
 	{
 		int kc = result.getBossKills().getOrDefault(PanelData.hiscoreName(boss.getName()), -1);
-		showCount(label, kc, KC_COLOR);
+		showCount(label, kc, KillClogColors.KC_COLOR);
 		ImageIcon orig = originalIcons.get(boss);
 		if (orig != null)
 		{

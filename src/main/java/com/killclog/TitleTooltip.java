@@ -46,8 +46,6 @@ public abstract class TitleTooltip extends NativeTooltip
 	protected static final Color CLOG_GREEN = new Color(0, 255, 0);
 	protected static final Color STALE_RED = new Color(255, 60, 60);
 	protected static final Color CLOG_YELLOW = new Color(255, 255, 0);
-	protected static final Color COMPARE_BLUE = new Color(91, 164, 207);
-	protected static final Color COMPARE_RED = new Color(224, 86, 86);
 	protected static final Color MUTED_GRAY = new Color(148, 148, 148);
 
 	@Getter(AccessLevel.PROTECTED)

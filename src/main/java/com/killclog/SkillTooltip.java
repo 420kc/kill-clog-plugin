@@ -20,7 +20,6 @@ public class SkillTooltip extends TitleTooltip
 	static final String RANK_LABEL = "Rank: ";
 	static final String XP_TO_LEVEL_LABEL = "XP to Level: ";
 	static final String RIFTS_CLOSED_LABEL = "Rifts Closed: ";
-	private static final Color UNRANKED_COLOR = new Color(128, 128, 128);
 
 	private Stats stats = Stats.empty();
 	private List<SkillClogSection> sections = Collections.emptyList();
@@ -169,17 +168,17 @@ public class SkillTooltip extends TitleTooltip
 
 		private Color levelColor()
 		{
-			return level > 0 ? NativeTooltip.valueColor : UNRANKED_COLOR;
+			return level > 0 ? NativeTooltip.valueColor : KillClogColors.UNRANKED_COLOR;
 		}
 
 		private Color xpColor()
 		{
-			return xp >= 0 ? NativeTooltip.valueColor : UNRANKED_COLOR;
+			return xp >= 0 ? NativeTooltip.valueColor : KillClogColors.UNRANKED_COLOR;
 		}
 
 		private Color rankColor()
 		{
-			return rank > 0 ? NativeTooltip.valueColor : UNRANKED_COLOR;
+			return rank > 0 ? NativeTooltip.valueColor : KillClogColors.UNRANKED_COLOR;
 		}
 
 		private Color xpToLevelColor()
@@ -188,7 +187,7 @@ public class SkillTooltip extends TitleTooltip
 			{
 				return CLOG_GREEN;
 			}
-			return xpToLevel >= 0 ? NativeTooltip.valueColor : UNRANKED_COLOR;
+			return xpToLevel >= 0 ? NativeTooltip.valueColor : KillClogColors.UNRANKED_COLOR;
 		}
 	}
 }

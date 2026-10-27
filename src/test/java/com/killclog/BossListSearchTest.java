@@ -148,7 +148,7 @@ public class BossListSearchTest
 		assertEquals(List.of("Mastering Mixology"), shownPages(list));
 		JLabel count = TestViews.field(rows.get("mastering_mixology"), "kc");
 		assertEquals("12/31", count.getText());
-		assertEquals("without the highlighter, the count color", Cells.KC_COLOR, count.getForeground());
+		assertEquals("without the highlighter, the count color", KillClogColors.KC_COLOR, count.getForeground());
 
 		when(config.completionistHighlighter()).thenReturn(true);
 		when(config.inProgressClogColor()).thenReturn(java.awt.Color.ORANGE);

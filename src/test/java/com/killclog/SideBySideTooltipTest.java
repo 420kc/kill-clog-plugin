@@ -66,8 +66,8 @@ public class SideBySideTooltipTest
 			{
 				for (int x = gapStart; x < gapEnd; x++)
 				{
-					assertNotEquals(TitleTooltip.COMPARE_BLUE.getRGB(), painted.getRGB(x, y));
-					assertNotEquals(TitleTooltip.COMPARE_RED.getRGB(), painted.getRGB(x, y));
+					assertNotEquals(KillClogColors.COMPARE_BLUE.getRGB(), painted.getRGB(x, y));
+					assertNotEquals(KillClogColors.COMPARE_RED.getRGB(), painted.getRGB(x, y));
 				}
 			}
 			pair.setAccountBadges(null, null);

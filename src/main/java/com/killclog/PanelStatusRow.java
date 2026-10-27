@@ -167,7 +167,7 @@ final class PanelStatusRow
 	/** A shift-click copied the card it opened, or the clipboard would not take it. */
 	void flashCardCopy(boolean copied)
 	{
-		flashSearchStatus(copied ? "card copied!" : "card copy failed", copied ? SYNC_K1 : KillClogPanel.NOT_FOUND,
+		flashSearchStatus(copied ? "card copied!" : "card copy failed", copied ? SYNC_K1 : KillClogColors.NOT_FOUND,
 			CHARACTER_EXPIRY_MS);
 	}
 
@@ -305,7 +305,7 @@ final class PanelStatusRow
 	/** A control's hover line: k1 green for what a click does, the not-found red while it is locked. */
 	private Color hoverColor()
 	{
-		return firstParty == FirstParty.LOCKED ? KillClogPanel.NOT_FOUND : SYNC_K1;
+		return firstParty == FirstParty.LOCKED ? KillClogColors.NOT_FOUND : SYNC_K1;
 	}
 
 	/** Shift held or let go on the character, as the pointer's last event there says: its hover line follows. */
@@ -427,7 +427,7 @@ final class PanelStatusRow
 	 */
 	private static BufferedImage chaliceBase()
 	{
-		BufferedImage src = ImageUtil.loadImageResource(KillClogPlugin.class, "icon.png");
+		BufferedImage src = KillClogIcons.pluginIcon();
 		int h = 13;
 		int w = Math.max(1, src.getWidth() * h / src.getHeight());
 		BufferedImage out = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);

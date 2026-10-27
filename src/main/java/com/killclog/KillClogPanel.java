@@ -44,15 +44,13 @@ public class KillClogPanel extends PluginPanel
 	implements LookupSession.Listener, ComparisonController.Listener,
 	ComparisonController.CellRenderTarget, PublicationCoordinator.Feedback
 {
-	static final Color TEXT_DIM = new Color(160, 160, 160);
-	static final Color NOT_FOUND = new Color(0x81, 0x09, 0x09);
 
 	/** Info bar text color - only applies when highlighter is active AND clog data exists. */
 	@Override
 	public Color getInfoColor()
 	{
 		return config.completionistHighlighter() && lookupSession.getClogResult() != null
-			? config.infoBarColor() : Cells.KC_COLOR;
+			? config.infoBarColor() : KillClogColors.KC_COLOR;
 	}
 
 	/** Combat and total level take the info color together; the Clues cell follows the highlighter. */
@@ -224,7 +222,7 @@ public class KillClogPanel extends PluginPanel
 		this.iconCache = new PanelIconCache(itemManager, clientThread, spriteManager);
 		this.accountTypes = new PanelAccountTypes(runeProfileService);
 		this.tooltipController = new TooltipController(config);
-		this.statusRow = new PanelStatusRow(config, spriteManager, tooltipController, TEXT_DIM);
+		this.statusRow = new PanelStatusRow(config, spriteManager, tooltipController, KillClogColors.TEXT_DIM);
 		tooltipController.setCardCopied(statusRow::flashCardCopy);
 		this.unsyncedCatalog = new UnsyncedClogCatalog(clogService);
 		this.lookupSession = new LookupSession(hiscoreService, clogService, runeProfileService,
@@ -408,7 +406,7 @@ public class KillClogPanel extends PluginPanel
 			searchBar,
 			compareLabel,
 			searchTextField,
-			TEXT_DIM,
+			KillClogColors.TEXT_DIM,
 			comparison::isComparisonMode,
 			comparison::isCompareLookupInFlight,
 			this::doLookup,
@@ -502,7 +500,7 @@ public class KillClogPanel extends PluginPanel
 		if (!bossListAvailable())
 		{
 			// Every other status here is cleared by a follow-up path; this one clears itself.
-			statusRow.flashSearchStatus(COMPARE_VIEW_STATUS, TEXT_DIM, 2500);
+			statusRow.flashSearchStatus(COMPARE_VIEW_STATUS, KillClogColors.TEXT_DIM, 2500);
 			return;
 		}
 		configManager.setConfiguration("killclog", "bossListView", !config.bossListView());
@@ -828,7 +826,7 @@ public class KillClogPanel extends PluginPanel
 		String player = searchBar.getText().trim();
 		if (player.isEmpty())
 		{
-			setSearchStatus("Enter RSN", TEXT_DIM);
+			setSearchStatus("Enter RSN", KillClogColors.TEXT_DIM);
 			return;
 		}
 		if (!RsnInputPolicy.isValid(player))
@@ -841,7 +839,7 @@ public class KillClogPanel extends PluginPanel
 
 	private void showInvalidName()
 	{
-		clearSearch(SearchMessages.INVALID_NAME, NOT_FOUND);
+		clearSearch(SearchMessages.INVALID_NAME, KillClogColors.NOT_FOUND);
 	}
 
 	/** The search box empties, its icon back to the magnifier, and the status line says why. */
@@ -1465,11 +1463,11 @@ public class KillClogPanel extends PluginPanel
 		rankSelector.reset();
 		if (isSelf)
 		{
-			setSearchStatus(selfSearchMessage(player, isFirstSelfGreeting), SearchMessages.SELF_COLOR);
+			setSearchStatus(selfSearchMessage(player, isFirstSelfGreeting), KillClogColors.SELF_COLOR);
 		}
 		else
 		{
-			setSearchStatus(String.format(SearchMessages.pick(SearchMessages.SEARCH), player), TEXT_DIM);
+			setSearchStatus(String.format(SearchMessages.pick(SearchMessages.SEARCH), player), KillClogColors.TEXT_DIM);
 		}
 		searchBar.setIcon(IconTextField.Icon.LOADING_DARKER);
 		resetForLookup();
@@ -1559,13 +1557,13 @@ public class KillClogPanel extends PluginPanel
 	@Override
 	public void onNotFound(String player)
 	{
-		lookupFailed(String.format(SearchMessages.pick(SearchMessages.NOT_FOUND), player), NOT_FOUND);
+		lookupFailed(String.format(SearchMessages.pick(SearchMessages.NOT_FOUND), player), KillClogColors.NOT_FOUND);
 	}
 
 	@Override
 	public void onError(String player, Throwable error)
 	{
-		lookupFailed(HiscoreService.failureText(error), TEXT_DIM);
+		lookupFailed(HiscoreService.failureText(error), KillClogColors.TEXT_DIM);
 	}
 
 	/** A lookup that found no player: a clean slate, and the status line says why. */
@@ -1640,7 +1638,7 @@ public class KillClogPanel extends PluginPanel
 	{
 		if (err != null)
 		{
-			setSearchStatus(HiscoreService.failureText(err), ComparisonController.COMPARE_RED);
+			setSearchStatus(HiscoreService.failureText(err), KillClogColors.COMPARE_RED);
 		}
 		searchRowController.refreshIcon();
 	}

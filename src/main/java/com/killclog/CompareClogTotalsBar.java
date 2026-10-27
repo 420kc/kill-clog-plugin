@@ -97,8 +97,8 @@ final class CompareClogTotalsBar
 
 	private void wireClickAndHover()
 	{
-		blueTotal.setForeground(ComparisonController.COMPARE_BLUE);
-		redTotal.setForeground(ComparisonController.COMPARE_RED);
+		blueTotal.setForeground(KillClogColors.COMPARE_BLUE);
+		redTotal.setForeground(KillClogColors.COMPARE_RED);
 		tooltipController.trackTooltipComponent(panel);
 		tooltipController.trackTooltipComponent(blueTotal);
 		tooltipController.trackTooltipComponent(redTotal);

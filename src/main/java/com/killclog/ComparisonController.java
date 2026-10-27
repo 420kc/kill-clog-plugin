@@ -98,10 +98,8 @@ public class ComparisonController
 	}
 
 	// Constants
-	static final Color COMPARE_BLUE = TitleTooltip.COMPARE_BLUE;
-	static final Color COMPARE_RED = TitleTooltip.COMPARE_RED;
-	static final String COMPARE_BLUE_HEX = colorHex(COMPARE_BLUE);
-	static final String COMPARE_RED_HEX = colorHex(COMPARE_RED);
+	static final String COMPARE_BLUE_HEX = colorHex(KillClogColors.COMPARE_BLUE);
+	static final String COMPARE_RED_HEX = colorHex(KillClogColors.COMPARE_RED);
 	// Deps
 	// The badge rule both name rows share.
 	private final PanelAccountTypes accountTypes;
@@ -340,26 +338,26 @@ public class ComparisonController
 				lookupSession.getNativeClogResult(), lookupSession.getCaResult(), blueName, redSelfType));
 			if (blueIsSelf)
 			{
-				setCompareStatus(SearchMessages.COMPARE_SELF_MIRROR, SearchMessages.SELF_COLOR, blueName, redPlayer);
+				setCompareStatus(SearchMessages.COMPARE_SELF_MIRROR, KillClogColors.SELF_COLOR, blueName, redPlayer);
 			}
 			else
 			{
-				setCompareStatus(SearchMessages.COMPARE_MIRROR, KillClogPanel.TEXT_DIM, blueName, redPlayer);
+				setCompareStatus(SearchMessages.COMPARE_MIRROR, KillClogColors.TEXT_DIM, blueName, redPlayer);
 			}
 			return;
 		}
 
 		if (blueIsSelf)
 		{
-			setCompareStatus(SearchMessages.COMPARE_SELF_BLUE, SearchMessages.SELF_COLOR, redPlayer, redPlayer, blueName);
+			setCompareStatus(SearchMessages.COMPARE_SELF_BLUE, KillClogColors.SELF_COLOR, redPlayer, redPlayer, blueName);
 		}
 		else if (redIsSelf)
 		{
-			setCompareStatus(SearchMessages.COMPARE_SELF_RED, SearchMessages.SELF_COLOR, blueName, redPlayer, blueName);
+			setCompareStatus(SearchMessages.COMPARE_SELF_RED, KillClogColors.SELF_COLOR, blueName, redPlayer, blueName);
 		}
 		else
 		{
-			setCompareStatus(SearchMessages.COMPARE_SEARCH, KillClogPanel.TEXT_DIM, blueName, blueName);
+			setCompareStatus(SearchMessages.COMPARE_SEARCH, KillClogColors.TEXT_DIM, blueName, blueName);
 		}
 
 		// CA lookup runs in parallel with hiscore+clog
@@ -380,7 +378,7 @@ public class ComparisonController
 			if (result == null)
 			{
 				fanout.invalidate();
-				setCompareStatus(SearchMessages.COMPARE_NOT_FOUND, COMPARE_RED, redPlayer, redPlayer);
+				setCompareStatus(SearchMessages.COMPARE_NOT_FOUND, KillClogColors.COMPARE_RED, redPlayer, redPlayer);
 				listener.onCompareError(redPlayer, null);
 				return;
 			}
@@ -599,10 +597,10 @@ public class ComparisonController
 		JLabel clogInfoLabel = renderTarget.clogInfoLabel();
 		if (comparisonMode)
 		{
-			playerName.setForeground(COMPARE_BLUE);
+			playerName.setForeground(KillClogColors.COMPARE_BLUE);
 			tooltipController.setTooltipText(playerName, " ");
 			clogInfoLabel.setText(compared.rsn != null ? compared.rsn : "");
-			clogInfoLabel.setForeground(COMPARE_RED);
+			clogInfoLabel.setForeground(KillClogColors.COMPARE_RED);
 			tooltipController.setTooltipText(clogInfoLabel, " ");
 			clogInfoLabel.setIcon(null);
 			clogInfoLabel.setHorizontalAlignment(JLabel.RIGHT);

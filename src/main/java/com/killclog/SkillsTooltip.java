@@ -1,6 +1,5 @@
 package com.killclog;
 
-import java.awt.Color;
 import javax.annotation.Nullable;
 import net.runelite.api.Experience;
 import net.runelite.client.util.LinkBrowser;
@@ -14,7 +13,6 @@ public class SkillsTooltip extends TitleTooltip
 {
 	static final String TITLE = "Experience & Efficiency";
 	private static final long MAX_SKILL_XP = Experience.getXpForLevel(Experience.MAX_REAL_LEVEL);
-	private static final Color UNRANKED_COLOR = new Color(128, 128, 128);
 
 	private HiscoreResult result;
 	private double ehp = -1;
@@ -57,8 +55,8 @@ public class SkillsTooltip extends TitleTooltip
 		long toMax = xpToMax(result);
 		CardBody card = new CardBody()
 			.add(CardBody.line("XP: ", displayedXpText(),
-				result != null && result.getTotalXp() >= 0 ? NativeTooltip.valueColor : UNRANKED_COLOR))
-			.add(CardBody.line("Rank: ", scoreText(displayedRank()), displayedRank() > 0 ? NativeTooltip.valueColor : UNRANKED_COLOR))
+				result != null && result.getTotalXp() >= 0 ? NativeTooltip.valueColor : KillClogColors.UNRANKED_COLOR))
+			.add(CardBody.line("Rank: ", scoreText(displayedRank()), displayedRank() > 0 ? NativeTooltip.valueColor : KillClogColors.UNRANKED_COLOR))
 			.add(CardBody.line("To max: ", toMax == 0 ? "Maxed" : toMax > 0 ? grouped(toMax) : "--",
 				toMax == 0 ? CLOG_GREEN : NativeTooltip.valueColor));
 		card.titled("Efficient Hours");

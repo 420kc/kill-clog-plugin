@@ -495,7 +495,7 @@ class TooltipController
 		{
 			case OUTLINE:
 				Color fg = colorSource.getForeground();
-				Color outline = (fg.equals(Cells.KC_COLOR) || fg.equals(ColorScheme.LIGHT_GRAY_COLOR))
+				Color outline = (fg.equals(KillClogColors.KC_COLOR) || fg.equals(ColorScheme.LIGHT_GRAY_COLOR))
 					? ColorUtil.colorLerp(hoveredRest, Color.WHITE, OUTLINE_TINT) : fg;
 				cell.setBorder(new MatteBorder(1, 1, 1, 1, outline));
 				break;

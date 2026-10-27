@@ -127,9 +127,9 @@ public class SkillCellGridTest
 			Skill.DEFENCE, 99));
 		cells.render(result, null, false, null, null, emptyClog());
 
-		assertEquals(Cells.KC_COLOR,
+		assertEquals(KillClogColors.KC_COLOR,
 			cells.labels().get(Skill.ATTACK).getForeground());
-		assertEquals(Cells.KC_COLOR,
+		assertEquals(KillClogColors.KC_COLOR,
 			cells.labels().get(Skill.DEFENCE).getForeground());
 	}
 

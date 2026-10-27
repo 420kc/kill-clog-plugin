@@ -256,7 +256,7 @@ public class BossListView
 	/** The list's own search: a row above the first boss, typed into like the panel's search bar. */
 	private JPanel searchRow()
 	{
-		JLabel icon = new JLabel(new ImageIcon(ClogHelper.makeSearchIcon(KillClogPanel.TEXT_DIM, 0.70f)));
+		JLabel icon = new JLabel(new ImageIcon(ClogHelper.makeSearchIcon(KillClogColors.TEXT_DIM, 0.70f)));
 		icon.setPreferredSize(new Dimension(24, PanelSearchBox.HEIGHT));
 		JTextField field = search;
 		field.setFont(FontManager.getRunescapeSmallFont());
@@ -430,7 +430,7 @@ public class BossListView
 		row.kc.setText(count[0] >= 0 ? count[0] + "/" + count[1] : "--/" + count[1]);
 		Color color = count[0] < 0 ? ColorScheme.LIGHT_GRAY_COLOR
 			: config.completionistHighlighter() ? ClogHelper.clogColor(count[0], count[1], config)
-			: count[0] > 0 ? Cells.KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR;
+			: count[0] > 0 ? KillClogColors.KC_COLOR : ColorScheme.LIGHT_GRAY_COLOR;
 		row.kc.setForeground(color);
 		row.name.setForeground(color);
 	}

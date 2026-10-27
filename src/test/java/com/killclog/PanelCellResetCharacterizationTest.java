@@ -125,7 +125,7 @@ public class PanelCellResetCharacterizationTest
 			JLabel zulrah = cells.getBossLabel(HiscoreSkill.ZULRAH);
 			JLabel vorkath = cells.getBossLabel(HiscoreSkill.VORKATH);
 			assertEquals(ClogHelper.pad("5"), zulrah.getText());
-			assertEquals(Cells.KC_COLOR, zulrah.getForeground());
+			assertEquals(KillClogColors.KC_COLOR, zulrah.getForeground());
 			assertSame(TestViews.originalIcons(cells).get(HiscoreSkill.ZULRAH), zulrah.getIcon());
 			assertSame(TestViews.dimmedIcons(cells).get(HiscoreSkill.VORKATH), vorkath.getIcon());
 			assertNotEquals(ColorScheme.LIGHT_GRAY_COLOR, config.emptyClogColor());
@@ -215,9 +215,9 @@ public class PanelCellResetCharacterizationTest
 		panel.clogInfoLabel().setText("1234");
 		panel.clogInfoLabel().setIcon(new ImageIcon(new BufferedImage(8, 8, BufferedImage.TYPE_INT_ARGB)));
 		panel.combatCell().setText(ClogHelper.pad("126"));
-		panel.combatCell().setForeground(Cells.KC_COLOR);
+		panel.combatCell().setForeground(KillClogColors.KC_COLOR);
 		panel.totalLvlCell().setText(ClogHelper.pad("2277"));
-		panel.totalLvlCell().setForeground(Cells.KC_COLOR);
+		panel.totalLvlCell().setForeground(KillClogColors.KC_COLOR);
 		panel.totalLvlCell().setToolTipText(" ");
 	}
 

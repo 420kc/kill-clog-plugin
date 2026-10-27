@@ -101,8 +101,8 @@ public class SideBySideTooltip extends NativeTooltip
 		int top = inset + (nameStripHeight() - NAME_GAP - fm.getHeight()) / 2 + fm.getAscent();
 		Dimension blue = blueTip.getPreferredSize();
 		Dimension red = redTip.getPreferredSize();
-		paintName(g2, fm, blueName, blueBadge, TitleTooltip.COMPARE_BLUE, inset, blue.width, top);
-		paintName(g2, fm, redName, redBadge, TitleTooltip.COMPARE_RED,
+		paintName(g2, fm, blueName, blueBadge, KillClogColors.COMPARE_BLUE, inset, blue.width, top);
+		paintName(g2, fm, redName, redBadge, KillClogColors.COMPARE_RED,
 			inset + blue.width + CARD_GAP, red.width, top);
 	}
 

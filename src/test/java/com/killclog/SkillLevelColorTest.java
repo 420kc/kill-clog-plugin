@@ -88,8 +88,8 @@ public class SkillLevelColorTest
 	public void unsyncedSkillsKeepNormalWhiteNumbers()
 	{
 		KillClogConfig config = config(SkillColorMode.CLOG_PROGRESSION);
-		assertEquals(Cells.KC_COLOR, SkillLevelColor.forCell(50, false, 1, 4, config));
-		assertEquals(Cells.KC_COLOR, SkillLevelColor.forCell(99, false, 4, 4, config));
+		assertEquals(KillClogColors.KC_COLOR, SkillLevelColor.forCell(50, false, 1, 4, config));
+		assertEquals(KillClogColors.KC_COLOR, SkillLevelColor.forCell(99, false, 4, 4, config));
 	}
 
 	@Test
