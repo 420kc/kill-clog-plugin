@@ -776,12 +776,16 @@ public class LocalClogCache
 			return false;
 		}
 
+		// A Hardcore Worlds run's log takes no date from before its reset: the provider may still hold the ended run's,
+		// in an answer asked before the reset too (Sol 10/27).
+		String runStart = ClogDates.iso(data.runStartedAt);
 		Map<Integer, String> providerDates = new HashMap<>();
 		for (List<ClogResult.ClogItem> items : providerItems.values())
 		{
 			for (ClogResult.ClogItem item : items)
 			{
-				if (item.getDate() != null)
+				String when = runStart == null ? item.getDate() : ClogDates.iso(item.getDate());
+				if (when != null && (runStart == null || Instant.parse(when).compareTo(Instant.parse(runStart)) >= 0))
 				{
 					providerDates.putIfAbsent(item.getId(), item.getDate());
 				}

@@ -523,6 +523,36 @@ public class LocalClogCacheTest
 		assertTrue(relogged.toFirstPartySyncResult("Tester").getObtainedItems().isEmpty());
 	}
 
+	// Sol 10/27: a new run's log takes no provider date from before its reset, the ended run's included.
+	@Test
+	public void aNewRunTakesNoDateFromBeforeItsReset() throws Exception
+	{
+		LocalClogCache cache = onDisk(temporaryFolder.newFolder());
+		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
+		Map<String, List<Integer>> categories = Map.of("hats", itemList(1, 2));
+		cache.cacheFirstPartyResult(clog("Tester", categories, obtainedItems("hats", 1)));
+		cache.startOverOnReset("Tester", 5_000_000, true);
+		assertTrue(cache.startOverOnReset("Tester", 1_154, false));
+		Map<String, List<ClogResult.ClogItem>> undated = new HashMap<>();
+		undated.put("hats", new java.util.ArrayList<>(List.of(new ClogResult.ClogItem(1, 1, null),
+			new ClogResult.ClogItem(2, 1, null))));
+		cache.cacheFirstPartyResult(clog("Tester", categories, undated));
+		assertNotNull("the bulk capture keeps the run", cache.toFirstPartySyncResult("Tester").getRunStartedAt());
+
+		String later = ClogDates.local(Instant.now().plusSeconds(60).toString());
+		Map<String, List<ClogResult.ClogItem>> provider = new HashMap<>();
+		provider.put("hats", List.of(new ClogResult.ClogItem(1, 1, "2026-09-01 10:00:00"),
+			new ClogResult.ClogItem(2, 1, later)));
+		assertTrue(cache.mergeProviderDates("Tester", provider));
+		Map<Integer, String> dates = new HashMap<>();
+		for (ClogResult.ClogItem item : cache.toFirstPartySyncResult("Tester").getObtainedItems().get("hats"))
+		{
+			dates.put(item.getId(), item.getDate());
+		}
+		assertNull("the ended run's date stays out", dates.get(1));
+		assertEquals("a date in this run heals", later, dates.get(2));
+	}
+
 	@Test
 	public void aHealedDateMovesTheLastUpdatedStamp() throws Exception
 	{
