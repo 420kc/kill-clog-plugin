@@ -33,6 +33,7 @@ import java.util.WeakHashMap;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.function.Supplier;
+import javax.annotation.Nullable;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JMenuItem;
@@ -530,20 +531,32 @@ class TooltipController
 	 * The monitor a card opens on: the one holding its anchor. The window's own record of its monitor can be stale
 	 * (10/27: a client started during a remote desktop session pulled every card onto the other monitor).
 	 */
-	static Rectangle screenAt(Point at, Component fallback)
+	private static Rectangle screenAt(Point at, Component fallback)
 	{
+		List<Rectangle> screens = new ArrayList<>();
 		if (!GraphicsEnvironment.isHeadless())
 		{
 			for (GraphicsDevice device : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices())
 			{
-				Rectangle bounds = device.getDefaultConfiguration().getBounds();
-				if (bounds.contains(at))
-				{
-					return bounds;
-				}
+				screens.add(device.getDefaultConfiguration().getBounds());
 			}
 		}
-		return fallback.getGraphicsConfiguration().getBounds();
+		Rectangle screen = screenAt(at, screens);
+		return screen != null ? screen : fallback.getGraphicsConfiguration().getBounds();
+	}
+
+	/** The first of these monitors that holds the point, as Swing's hover cards pick theirs; null when none does. */
+	@Nullable
+	static Rectangle screenAt(Point at, List<Rectangle> screens)
+	{
+		for (Rectangle bounds : screens)
+		{
+			if (bounds.contains(at))
+			{
+				return bounds;
+			}
+		}
+		return null;
 	}
 
 	/**
