@@ -49,6 +49,20 @@ public class ClogSummaryFallbackTest
 	}
 
 	@Test
+	public void anOlderSyncReadsAgainstTheGamesCurrentLog()
+	{
+		java.util.Map<String, java.util.List<Integer>> pages = new java.util.HashMap<>();
+		pages.put("a", java.util.Arrays.asList(1, 2, 3));
+		pages.put("b", java.util.Arrays.asList(3, 4));
+		ClogResult synced = new ClogResult("test", Collections.emptyMap(), pages, Collections.emptyMap(), null, null);
+		synced.setUniqueObtained(2);
+		synced.setUniqueTotal(3);
+		assertArrayEquals(new int[]{2, 4}, ClogHelper.sumClogTotals(synced));
+		synced.setUniqueTotal(6);
+		assertArrayEquals(new int[]{2, 6}, ClogHelper.sumClogTotals(synced));
+	}
+
+	@Test
 	public void comparisonShowsIndependentTotalsAndClearsUnknown() throws Exception
 	{
 		javax.swing.SwingUtilities.invokeAndWait(() ->
