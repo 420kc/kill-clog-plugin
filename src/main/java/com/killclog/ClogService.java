@@ -4,6 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
 import com.google.gson.reflect.TypeToken;
 import java.lang.reflect.Type;
 import java.net.URLEncoder;
@@ -494,85 +495,106 @@ public class ClogService
 		String url = TEMPLE_PLAYER_URL + "?player=" + encodedPlayer + "&categories=all";
 		return HttpUtil.httpGet(httpClient, url).thenApply(response ->
 		{
-			// Any answer, a player TempleOSRS doesn't track included, reached it; no answer did not.
-			boolean unreached = response.code != 200;
+			// Reached only on an answer TempleOSRS gives: the log, or that it has none (a player it doesn't track
+			// included). A 200 with a body it doesn't send (empty, not JSON, another shape) is no answer, so the lookup
+			// says it hasn't loaded, never that the player hasn't synced (2.7.3 review).
+			PlayerClogData clog = null;
+			boolean answered = false;
+			if (response.code == 200)
+			{
+				try
+				{
+					clog = parseClog(response.body);
+					answered = true;
+				}
+				catch (RuntimeException e)
+				{
+					log.debug("Failed to parse player clog: {}", e.getMessage());
+				}
+			}
+			boolean unreached = !answered;
 			note(key, t -> t.unreached = unreached);
-			String json = response.body;
-			if (json == null)
-			{
-				return null;
-			}
-			try
-			{
-				JsonObject root = gson.fromJson(json, JsonObject.class);
-				JsonObject data = root.getAsJsonObject("data");
-				if (data == null || !data.has("items"))
-				{
-					return null;
-				}
-
-				String canonicalName = null;
-				if (data.has("player_name_with_capitalization"))
-				{
-					canonicalName = data.get("player_name_with_capitalization").getAsString();
-				}
-
-				String lastChanged = null;
-				if (data.has("last_changed"))
-				{
-					lastChanged = data.get("last_changed").getAsString();
-				}
-
-				AccountType accountType = null;
-				if (data.has("game_mode") && !data.get("game_mode").isJsonNull())
-				{
-					accountType = parseGameMode(data.get("game_mode").getAsString());
-				}
-
-				JsonObject itemsObj = data.getAsJsonObject("items");
-				Map<String, List<ClogResult.ClogItem>> result = new HashMap<>();
-
-				for (Map.Entry<String, JsonElement> entry : itemsObj.entrySet())
-				{
-					String category = entry.getKey();
-					JsonArray items = entry.getValue().getAsJsonArray();
-					List<ClogResult.ClogItem> itemList = new ArrayList<>();
-
-					for (JsonElement item : items)
-					{
-						JsonObject obj = item.getAsJsonObject();
-						int id = obj.get("id").getAsInt();
-						int count = obj.has("count") ? obj.get("count").getAsInt() : 1;
-						String date = obj.has("date") ? obj.get("date").getAsString() : null;
-						itemList.add(new ClogResult.ClogItem(id, count, date));
-					}
-
-					result.put(category, itemList);
-				}
-
-				// A player TempleOSRS tracks from hiscores but who never synced a
-				// collection log returns zero obtained items and no last_changed.
-				// Treat that as no clog data, not a real 0% profile: return null so
-				// the provider fanout can fall back to RuneProfile, and the panel
-				// shows the unknown state instead of painting every boss as empty.
-				int obtainedTotal = 0;
-				for (List<ClogResult.ClogItem> categoryItems : result.values())
-				{
-					obtainedTotal += categoryItems.size();
-				}
-				if (obtainedTotal == 0 && lastChanged == null)
-				{
-					return null;
-				}
-
-				return new PlayerClogData(canonicalName, result, lastChanged, accountType, data);
-			}
-			catch (Exception e)
-			{
-				log.debug("Failed to parse player clog: {}", e.getMessage());
-				return null;
-			}
+			return clog;
 		});
+	}
+
+	/**
+	 * TempleOSRS's answer about a player's log: the log, or null when it says there is none (its error, or a player
+	 * it tracks from hiscores who never synced one). Throws on a body it doesn't send.
+	 */
+	@Nullable
+	private PlayerClogData parseClog(String json)
+	{
+		JsonObject root = gson.fromJson(json, JsonObject.class);
+		if (root == null)
+		{
+			throw new JsonParseException("empty answer");
+		}
+		if (root.has("error"))
+		{
+			return null;
+		}
+		JsonObject data = root.getAsJsonObject("data");
+		if (data == null || !data.has("items"))
+		{
+			throw new JsonParseException("neither a log nor an error");
+		}
+
+		String canonicalName = null;
+		if (data.has("player_name_with_capitalization"))
+		{
+			canonicalName = data.get("player_name_with_capitalization").getAsString();
+		}
+
+		String lastChanged = null;
+		if (data.has("last_changed"))
+		{
+			lastChanged = data.get("last_changed").getAsString();
+		}
+
+		AccountType accountType = null;
+		if (data.has("game_mode") && !data.get("game_mode").isJsonNull())
+		{
+			accountType = parseGameMode(data.get("game_mode").getAsString());
+		}
+
+		JsonObject itemsObj = data.getAsJsonObject("items");
+		Map<String, List<ClogResult.ClogItem>> result = new HashMap<>();
+
+		for (Map.Entry<String, JsonElement> entry : itemsObj.entrySet())
+		{
+			String category = entry.getKey();
+			JsonArray items = entry.getValue().getAsJsonArray();
+			List<ClogResult.ClogItem> itemList = new ArrayList<>();
+
+			for (JsonElement item : items)
+			{
+				JsonObject obj = item.getAsJsonObject();
+				int id = obj.get("id").getAsInt();
+				int count = obj.has("count") ? obj.get("count").getAsInt() : 1;
+				String date = obj.has("date") ? obj.get("date").getAsString() : null;
+				itemList.add(new ClogResult.ClogItem(id, count, date));
+			}
+
+			result.put(category, itemList);
+		}
+
+		// A player TempleOSRS tracks from hiscores but who never synced a
+		// collection log returns zero obtained items and no last_changed.
+		// Treat that as no clog data, not a real 0% profile: return null so
+		// the provider fanout can fall back to RuneProfile, and the panel
+		// shows the unknown state instead of painting every boss as empty.
+		int obtainedTotal = 0;
+		for (List<ClogResult.ClogItem> categoryItems : result.values())
+		{
+			obtainedTotal += categoryItems.size();
+		}
+		if (obtainedTotal == 0 && lastChanged == null)
+		{
+			return null;
+		}
+
+		return new PlayerClogData(canonicalName, result, lastChanged, accountType, data);
 	}
 
 	/** True once the global category catalog has loaded. */

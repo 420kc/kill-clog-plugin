@@ -215,6 +215,18 @@ public class TempleLateAnswerTest
 		assertFalse("other players are untouched", service.templeUnanswered("Zezima"));
 	}
 
+	// A 200 TempleOSRS never sends is no answer (2.7.3 review): the lookup reads "hasn't loaded", not "hasn't synced".
+	@Test
+	public void aBodyTempleNeverSendsHasNotLoaded() throws Exception
+	{
+		for (String body : new String[]{"", "<html>busy</html>", "{\"data\":{}}", "[]"})
+		{
+			ClogService service = service(200, body, null);
+			assertNull(service.lookup("Marni").get(5, TimeUnit.SECONDS));
+			assertTrue("'" + body + "' is no answer", service.templeUnanswered("Marni"));
+		}
+	}
+
 	@Test
 	public void aTempleThatCouldNotBeReachedHasNotLoadedUntilItAnswers() throws Exception
 	{
