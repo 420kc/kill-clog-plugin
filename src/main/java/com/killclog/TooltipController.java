@@ -5,6 +5,8 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.awt.GraphicsDevice;
+import java.awt.GraphicsEnvironment;
 import java.awt.HeadlessException;
 import java.awt.Point;
 import java.awt.Rectangle;
@@ -525,6 +527,26 @@ class TooltipController
 	}
 
 	/**
+	 * The monitor a card opens on: the one holding its anchor. The window's own record of its monitor can be stale
+	 * (10/27: a client started during a remote desktop session pulled every card onto the other monitor).
+	 */
+	static Rectangle screenAt(Point at, Component fallback)
+	{
+		if (!GraphicsEnvironment.isHeadless())
+		{
+			for (GraphicsDevice device : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices())
+			{
+				Rectangle bounds = device.getDefaultConfiguration().getBounds();
+				if (bounds.contains(at))
+				{
+					return bounds;
+				}
+			}
+		}
+		return fallback.getGraphicsConfiguration().getBounds();
+	}
+
+	/**
 	 * Pin a specific modal on a cell: how one modal opens another in its place.
 	 * It skips the toggle-off check above, because the press that asked for this
 	 * is the same press that just dismissed the modal it came from.
@@ -548,7 +570,7 @@ class TooltipController
 
 		Point sourceLoc = source.getLocationOnScreen();
 		Point cellLoc = cell.getLocationOnScreen();
-		Rectangle screen = cell.getGraphicsConfiguration().getBounds();
+		Rectangle screen = screenAt(sourceLoc, cell);
 
 		int x = sourceLoc.x;
 		int y = cellLoc.y + cell.getHeight();
