@@ -2,6 +2,7 @@ package com.killclog;
 
 import com.google.gson.Gson;
 import java.util.Collections;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -27,6 +28,8 @@ public class TempleLateAnswerTest
 {
 	private final long timeout = ClogProviderFanout.providerTimeoutSeconds;
 	private final AtomicInteger logRequests = new AtomicInteger();
+	// What TempleOSRS's player stats answer, or null for none (404).
+	private String stats;
 
 	@After
 	public void restore()
@@ -227,6 +230,45 @@ public class TempleLateAnswerTest
 		assertFalse("its answer, that it has none, is an answer", service.templeUnanswered("Marni"));
 	}
 
+	// The lane's own writes, through a real lookup (QA 10/26, B251: held, figures and failed were proven only by moments
+	// set by hand).
+	@Test
+	public void theLaneHoldsFetchesAndKeepsFiguresThroughARealLookup() throws Exception
+	{
+		String log = "{\"data\":{\"player_name_with_capitalization\":\"Marni\",\"game_mode\":1,"
+			+ "\"last_changed\":\"2026-09-06 12:00:00\",\"ehc\":3377.9,\"ehc_im\":3417.4,"
+			+ "\"items\":{\"zulrah\":[{\"id\":1,\"count\":99,\"date\":\"2026-09-06 12:00:00\"}]}}}";
+		stats = "{\"data\":{\"info\":{\"Game mode\":1},\"Overall_ehp\":3043.1}}";
+		ClogService service = service(200, log, null);
+		assertFalse(service.onTemple("Marni"));
+		ClogResult first = service.lookup("Marni").get(5, TimeUnit.SECONDS);
+		assertTrue(first.isFromTemple());
+		assertEquals(3043.1, first.getTempleEhp(), 1e-9);
+		assertEquals(3417.4, first.getTempleEhc(), 1e-9);
+		assertTrue("the lane's held write, whatever capitals", service.onTemple("MARNI"));
+		assertFalse(service.templeUnanswered("Marni"));
+		// A repeat inside the TTL is the local cache with the lane's figures, no second ask.
+		ClogResult again = service.lookup("Marni").get(5, TimeUnit.SECONDS);
+		assertTrue(again.isFromTemple());
+		assertEquals(3043.1, again.getTempleEhp(), 1e-9);
+		assertEquals(1, logRequests.get());
+		assertEquals(3043.1, service.getCachedResult("Marni").getTempleEhp(), 1e-9);
+	}
+
+	@Test
+	public void aLaneFailureWritesFailedAndSkipsTempleForTheCooldown() throws Exception
+	{
+		AtomicInteger code = new AtomicInteger(503);
+		ClogService service = service(code, "", null);
+		assertNull(service.lookup("Marni").get(5, TimeUnit.SECONDS));
+		Map<String, Object> records = TestViews.field(service, "temple");
+		assertTrue("the lane's failed write", (long) TestViews.field(records.get("marni"), "failed") > 0);
+		code.set(200);
+		assertNull("skipped inside the cooldown", service.lookup("Marni").get(5, TimeUnit.SECONDS));
+		assertEquals(1, logRequests.get());
+		assertTrue(service.templeUnanswered("Marni"));
+	}
+
 	/** A service whose TempleOSRS answers every log request with this code and body, once {@code answer} opens. */
 	private ClogService service(int code, String body, CountDownLatch answer) throws Exception
 	{
@@ -239,9 +281,13 @@ public class TempleLateAnswerTest
 			.addInterceptor(chain ->
 			{
 				boolean log = chain.request().url().encodedPath().endsWith("player_collection_log.php");
-				if (log && answer != null)
+				boolean player = chain.request().url().encodedPath().endsWith("player_stats.php") && stats != null;
+				if (log)
 				{
 					logRequests.incrementAndGet();
+				}
+				if (log && answer != null)
+				{
 					try
 					{
 						answer.await(5, TimeUnit.SECONDS);
@@ -254,9 +300,9 @@ public class TempleLateAnswerTest
 				return new Response.Builder()
 					.request(chain.request())
 					.protocol(Protocol.HTTP_1_1)
-					.code(log ? code.get() : 404)
+					.code(log ? code.get() : player ? 200 : 404)
 					.message("answer")
-					.body(ResponseBody.create(MediaType.parse("application/json"), log ? body : ""))
+					.body(ResponseBody.create(MediaType.parse("application/json"), log ? body : player ? stats : ""))
 					.build();
 			})
 			.build();
