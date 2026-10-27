@@ -114,16 +114,16 @@ public class ClanSyncTest
 		assertTrue("and it says none", sent.get("clan").isJsonNull());
 		// As a push sends it, too: Gson's default leaves a null field out, so the server never heard "none".
 		String text = service.requestBody(1L, null, new ClogResult("420 kc", Map.of(), Map.of(), Map.of(), null, null),
-			Map.of(), Map.of(), GameMode.MAIN);
+			Map.of(), Map.of(), GameMode.MAIN, -1);
 		assertTrue(text.contains("\"clan\":null"));
 	}
 
 	private static JsonObject body(SyncService service) throws Exception
 	{
 		Method build = SyncService.class.getDeclaredMethod("buildBody", long.class, AccountType.class,
-			ClogResult.class, Map.class, Map.class);
+			ClogResult.class, Map.class, Map.class, long.class);
 		build.setAccessible(true);
 		return (JsonObject) build.invoke(service, 1L, null,
-			new ClogResult("420 kc", Map.of(), Map.of(), Map.of(), null, null), Map.of(), Map.of());
+			new ClogResult("420 kc", Map.of(), Map.of(), Map.of(), null, null), Map.of(), Map.of(), -1L);
 	}
 }

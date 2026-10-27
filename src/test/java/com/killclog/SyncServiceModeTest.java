@@ -53,7 +53,7 @@ public class SyncServiceModeTest
 		int generation = gate.begin(null, gate.era(), KillclogSyncGate.DELIBERATE);
 
 		SyncService.SyncResult result = new SyncService(http, new Gson())
-			.syncCollectionLog(TESTER, null, Map.of(), Map.of(), gate, generation, league, "demonic-pacts", false,
+			.syncCollectionLog(TESTER, null, Map.of(), Map.of(), gate, generation, league, "demonic-pacts", -1, false,
 				() -> assertEquals("it runs before the push goes", 0, sent.size())).get();
 
 		assertTrue(result.message, result.ok);
@@ -68,28 +68,27 @@ public class SyncServiceModeTest
 		ClogResult clog = new ClogResult("Tester", Map.of("boss", List.of(new ClogResult.ClogItem(1, 1, null))),
 			Map.of("boss", List.of(1)), Map.of(), null, null);
 		SyncService service = new SyncService(new OkHttpClient(), new Gson());
-		assertFalse(service.requestBody(42L, null, clog, Map.of(), Map.of(), "main").contains("\"world\""));
-		service.setHardcoreXp(() -> -1);
-		String main = service.requestBody(42L, null, clog, Map.of(), Map.of(), "main");
+		// Each push carries its own reading, taken as it gathered for its login (Sol 10/27): -1 off Hardcore Worlds.
+		String main = service.requestBody(42L, null, clog, Map.of(), Map.of(), "main", -1);
 		assertFalse(main.contains("\"world\""));
-		assertEquals("a main-game push is sent as built", main, service.withOverallXp(main));
+		assertEquals("a main-game push is sent as built", main, service.withOverallXp(main, -1));
 
-		service.setHardcoreXp(() -> 0);
-		String unsettled = service.requestBody(42L, null, clog, Map.of(), Map.of(), "main");
+		String unsettled = service.requestBody(42L, null, clog, Map.of(), Map.of(), "main", 0);
 		assertTrue("the world says so before its XP is read", unsettled.contains("\"world\":\"hardcore\""));
-		assertEquals("no XP until it's read", unsettled, service.withOverallXp(unsettled));
+		assertEquals("no XP until it's read", unsettled, service.withOverallXp(unsettled, 0));
 
-		service.setHardcoreXp(() -> 5_000L);
-		String built = service.requestBody(42L, null, clog, Map.of(), Map.of(), "main");
+		String built = service.requestBody(42L, null, clog, Map.of(), Map.of(), "main", 5_000L);
 		assertFalse("the XP never makes a push new", built.contains("overall_xp"));
-		assertEquals(5_000L, new Gson().fromJson(service.withOverallXp(built), JsonObject.class).get("overall_xp").getAsLong());
-		JsonObject first = new Gson().fromJson(service.requestBody(42L, null, clog, Map.of(), Map.of(), "main"), JsonObject.class);
+		assertEquals(5_000L, new Gson().fromJson(service.withOverallXp(built, 5_000L), JsonObject.class).get("overall_xp")
+			.getAsLong());
+		JsonObject first = new Gson().fromJson(built, JsonObject.class);
 		assertEquals("hardcore", first.get("world").getAsString());
 		assertTrue("the first run names no reset", first.get("run_started_at").isJsonNull());
 		assertFalse("the first run names no reset XP", first.has("run_start_xp"));
 		clog.setRunStartedAt("2026-11-04T12:00:00Z");
 		clog.setRunStartXp(1_154);
-		JsonObject reset = new Gson().fromJson(service.requestBody(42L, null, clog, Map.of(), Map.of(), "main"), JsonObject.class);
+		JsonObject reset = new Gson().fromJson(service.requestBody(42L, null, clog, Map.of(), Map.of(), "main", 5_000L),
+			JsonObject.class);
 		assertEquals("2026-11-04T12:00:00Z", reset.get("run_started_at").getAsString());
 		assertEquals(1_154, reset.get("run_start_xp").getAsLong());
 	}
@@ -107,13 +106,13 @@ public class SyncServiceModeTest
 		KillclogSyncGate<Object> gate = new KillclogSyncGate<>((waiting, later) -> later);
 
 		SyncService.SyncResult unread = service.syncCollectionLog(TESTER, null, Map.of(), Map.of(), gate,
-			gate.begin(null, gate.era(), KillclogSyncGate.DELIBERATE), main, "main", false, NOTHING).get();
+			gate.begin(null, gate.era(), KillclogSyncGate.DELIBERATE), main, "main", -1, false, NOTHING).get();
 		assertEquals("Open your Collection Log to set up Kill Clog automatically.", unread.message);
 
 		when(main.toFirstPartySyncResult("Tester")).thenReturn(new ClogResult("Tester", Map.of(), Map.of(), Map.of(),
 			null, null));
 		SyncService.SyncResult empty = service.syncCollectionLog(TESTER, null, Map.of(), Map.of(), gate,
-			gate.begin(null, gate.era(), KillclogSyncGate.DELIBERATE), main, "main", false, NOTHING).get();
+			gate.begin(null, gate.era(), KillclogSyncGate.DELIBERATE), main, "main", -1, false, NOTHING).get();
 		assertEquals("Your Collection Log is empty: Kill Clog syncs from your first item.", empty.message);
 	}
 }

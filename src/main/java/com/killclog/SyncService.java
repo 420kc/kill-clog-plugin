@@ -12,7 +12,6 @@ import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.function.LongSupplier;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
@@ -54,10 +53,6 @@ class SyncService
 	@Setter
 	@Nullable
 	private volatile PlayerClans clans;
-	// On a Hardcore Worlds world, your total XP (0 until the world settles), else -1; for each sync (2.7.4).
-	@Setter
-	@Nullable
-	private volatile LongSupplier hardcoreXp;
 	// The structure killclog.com holds, as its last sync reply named it; null until one has.
 	private volatile String serverStructureHash;
 	// Every loading screen schedules a push: one identical to the last that killclog.com took, within a day, stays home.
@@ -114,7 +109,8 @@ class SyncService
 	CompletableFuture<SyncResult> syncCollectionLog(Session session,
 		@Nullable AccountType accountType, Map<String, Double> personalBests,
 		Map<String, PbRecord> detailedPersonalBests,
-		KillclogSyncGate<?> syncGate, int attempt, LocalClogCache cache, String mode, boolean always, Runnable sending)
+		KillclogSyncGate<?> syncGate, int attempt, LocalClogCache cache, String mode, long hardcoreXp, boolean always,
+		Runnable sending)
 	{
 		String rsn = session.getName();
 		long accountHash = session.getAccountHash();
@@ -148,7 +144,7 @@ class SyncService
 				: "Your Collection Log is empty: Kill Clog syncs from your first item."));
 		}
 
-		String body = requestBody(accountHash, accountType, clog, personalBests, detailedPersonalBests, mode);
+		String body = requestBody(accountHash, accountType, clog, personalBests, detailedPersonalBests, mode, hardcoreXp);
 		final int observedCount = ClogResult.coverageCount(clog);
 		String url = KillClogEndpoint.apiBaseUrl() + "/player/" + HttpUtil.pathSegment(rsn) + "/sync/" + mode;
 		String push = url + body;
@@ -162,7 +158,7 @@ class SyncService
 		log.debug("Syncing collection log for '{}' to {} ({} items)",
 			rsn, url, observedCount);
 		final int pbCount = personalBests != null ? personalBests.size() : 0;
-		String sent = withOverallXp(body);
+		String sent = withOverallXp(body, hardcoreXp);
 		CompletableFuture<HttpUtil.HttpResult> request = cache.commitIfSessionCurrent(
 			session, () -> syncGate.commitIfCurrent(attempt,
 				() -> HttpUtil.httpPostJson(httpClient, url, sent, null)));
@@ -184,30 +180,27 @@ class SyncService
 		});
 	}
 
-	private long hardcoreXp()
+	/**
+	 * A Hardcore Worlds push also carries your total XP, the run's highest for killclog.com; it never makes a push new.
+	 * {@code hardcoreXp} is the push's own reading, taken as it gathered: the total XP, 0 before the world settles, -1
+	 * off Hardcore Worlds.
+	 */
+	String withOverallXp(String body, long hardcoreXp)
 	{
-		LongSupplier xp = hardcoreXp;
-		return xp != null ? xp.getAsLong() : -1;
-	}
-
-	/** A Hardcore Worlds push also carries your total XP, the run's highest for killclog.com; it never makes a push new. */
-	String withOverallXp(String body)
-	{
-		long xp = hardcoreXp();
-		if (xp <= 0)
+		if (hardcoreXp <= 0)
 		{
 			return body;
 		}
 		JsonObject root = gson.fromJson(body, JsonObject.class);
-		root.addProperty("overall_xp", xp);
+		root.addProperty("overall_xp", hardcoreXp);
 		return wire(gson, root);
 	}
 
 	/** The text a push sends: the body, and the game's structure on a main-game sync that should carry it. */
 	String requestBody(long accountHash, @Nullable AccountType accountType, ClogResult clog,
-		Map<String, Double> personalBests, Map<String, PbRecord> detailedPersonalBests, String mode)
+		Map<String, Double> personalBests, Map<String, PbRecord> detailedPersonalBests, String mode, long hardcoreXp)
 	{
-		JsonObject root = buildBody(accountHash, accountType, clog, personalBests, detailedPersonalBests);
+		JsonObject root = buildBody(accountHash, accountType, clog, personalBests, detailedPersonalBests, hardcoreXp);
 		JsonObject structure = GameMode.MAIN.equals(mode) ? structureToShare() : null;
 		if (structure != null)
 		{
@@ -349,7 +342,7 @@ class SyncService
 	 */
 	private JsonObject buildBody(long accountHash, @Nullable AccountType accountType,
 		ClogResult clog, Map<String, Double> personalBests,
-		Map<String, PbRecord> detailedPersonalBests)
+		Map<String, PbRecord> detailedPersonalBests, long hardcoreXp)
 	{
 		JsonObject root = new JsonObject();
 		root.addProperty("account_hash", Long.toString(accountHash));
@@ -446,7 +439,7 @@ class SyncService
 		root.add("clog", items);
 		root.addProperty("client_version", CLIENT_VERSION);
 		// A Hardcore Worlds character says so, with the reset its log started from: killclog.com starts its run over.
-		if (hardcoreXp() >= 0)
+		if (hardcoreXp >= 0)
 		{
 			root.addProperty("world", "hardcore");
 			root.addProperty("run_started_at", clog.getRunStartedAt());

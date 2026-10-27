@@ -69,7 +69,7 @@ public class SyncServiceUnchangedTest
 		KillclogSyncGate<Object> gate = new KillclogSyncGate<>((waiting, later) -> later);
 		int generation = gate.begin(null, gate.era(), KillclogSyncGate.DELIBERATE);
 		SyncService.SyncResult result = service.syncCollectionLog(TESTER, type, pbs, Map.of(), gate,
-			generation, cache, mode, always, () -> sending++).get();
+			generation, cache, mode, -1, always, () -> sending++).get();
 		gate.release(generation);
 		return result;
 	}

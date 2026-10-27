@@ -62,12 +62,12 @@ public class ClogUnlockHistoryTest
 	{
 		SyncService service = new SyncService(null, new Gson());
 		Method build = SyncService.class.getDeclaredMethod("buildBody", long.class, AccountType.class,
-			ClogResult.class, Map.class, Map.class);
+			ClogResult.class, Map.class, Map.class, long.class);
 		build.setAccessible(true);
 		Map<String, List<ClogResult.ClogItem>> obtained = items(2991, 2992);
 		obtained.get("hats").set(0, new ClogResult.ClogItem(2991, 1, date));
 		ClogResult clog = new ClogResult("Tester", obtained, Map.of(), Map.of(), null, null);
-		JsonObject body = (JsonObject) build.invoke(service, 123L, null, clog, Map.of(), Map.of());
+		JsonObject body = (JsonObject) build.invoke(service, 123L, null, clog, Map.of(), Map.of(), -1L);
 		JsonArray payload = body.getAsJsonArray("clog");
 		assertEquals(ClogDates.iso(date), payload.get(0).getAsJsonObject().get("obtained_at").getAsString());
 		assertFalse(payload.get(1).getAsJsonObject().has("obtained_at"));

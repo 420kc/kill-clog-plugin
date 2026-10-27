@@ -11,6 +11,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
+import java.util.function.LongSupplier;
 import java.util.function.Supplier;
 import javax.swing.SwingUtilities;
 import lombok.AccessLevel;
@@ -71,6 +72,9 @@ final class PublicationCoordinator
 	// The world's game mode, each mode's own store and a League's RuneLite PB profile type;
 	// no mode means nothing is sent.
 	private final Supplier<String> mode;
+	// On the client thread: the world's Hardcore Worlds reading (total XP, 0 before it settles, -1 off it), taken with
+	// the game each push gathers for, so a push never carries another login's (Sol 10/27).
+	private final LongSupplier hardcoreXp;
 	private final Function<String, LocalClogCache> modeCache;
 	private final Function<String, String> leagueProfileType;
 
@@ -554,6 +558,7 @@ final class PublicationCoordinator
 		// main sync needs a settled main world, so it follows this one. A retry is for the game its attempt resolved:
 		// a main one off the main game is let go, since the main account type answers only on a settled main world.
 		String world = mode.get();
+		long hardcore = hardcoreXp.getAsLong();
 		String gameMode = push.retry() ? (GameMode.MAIN.equals(push.mode) && !GameMode.MAIN.equals(world) ? null
 			: push.mode) : push.mode == null || GameMode.MAIN.equals(push.mode) ? world : push.mode;
 		LocalClogCache cache = gameMode == null ? null : modeCache.apply(gameMode);
@@ -577,7 +582,8 @@ final class PublicationCoordinator
 		Map<String, PbRecord> detailedPbs = gatherPersonalBests(profileKeys, pbs);
 		// Off the client thread before dispatch: the sync pre-flight can block up to ten seconds waiting for the
 		// rename disk verdict, and game ticks must never pay that wait.
-		executor.execute(() -> dispatch(push, attempt, accountType, pbs, detailedPbs, cache, gameMode));
+		long pushHardcore = main ? hardcore : -1;
+		executor.execute(() -> dispatch(push, attempt, accountType, pbs, detailedPbs, cache, gameMode, pushHardcore));
 	}
 
 	/**
@@ -609,7 +615,7 @@ final class PublicationCoordinator
 
 	/** Off the owner (the pre-flight can block): the request, its reply posted back to the owner. */
 	private void dispatch(Push push, int attempt, AccountType accountType, Map<String, Double> pbs,
-		Map<String, PbRecord> detailedPbs, LocalClogCache cache, String gameMode)
+		Map<String, PbRecord> detailedPbs, LocalClogCache cache, String gameMode, long hardcore)
 	{
 		if (standsDown(push, attempt))
 		{
@@ -618,7 +624,7 @@ final class PublicationCoordinator
 		try
 		{
 			syncService.syncCollectionLog(push.session, accountType, pbs, detailedPbs, syncGate, attempt, cache, gameMode,
-				push.deliberate(), () -> owner.execute(() -> sending(push, attempt)))
+				hardcore, push.deliberate(), () -> owner.execute(() -> sending(push, attempt)))
 				.whenComplete((result, error) -> owner.execute(() -> completed(push, attempt, gameMode, result, error)));
 		}
 		catch (RuntimeException e)
