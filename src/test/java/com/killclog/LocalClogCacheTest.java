@@ -2,6 +2,7 @@ package com.killclog;
 
 import com.google.gson.Gson;
 import java.io.File;
+import java.time.Instant;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -496,6 +497,24 @@ public class LocalClogCacheTest
 		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
 		cache.cacheFirstPartyResult(clog("Tester", Map.of("hats", itemList(1, 2)), obtainedItems("hats", 1, 2)));
 		assertFalse("the settle tick keeps its reading", cache.startOverOnReset("Tester", 5_000_000, true));
+		StoreLogin.logout(cache);
+
+		LocalClogCache relogged = onDisk(dir);
+		assertTrue(StoreLogin.activate(relogged, "Tester", HASH));
+		assertTrue(relogged.startOverOnReset("Tester", 1_154, false));
+		assertTrue(relogged.toFirstPartySyncResult("Tester").getObtainedItems().isEmpty());
+	}
+
+	// Sol 10/27: a log set up after its world settled has no settle tick left to save its XP, so its first reading
+	// is saved at once, or a reset across the next relog compared with 0 and went unseen.
+	@Test
+	public void aLogSetUpAfterItsWorldSettledStillSeesAResetAcrossARelog() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		LocalClogCache cache = onDisk(dir);
+		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
+		cache.cacheFirstPartyResult(clog("Tester", Map.of("hats", itemList(1, 2)), obtainedItems("hats", 1, 2)));
+		assertFalse("a reading after the settle tick", cache.startOverOnReset("Tester", 5_000_000, false));
 		StoreLogin.logout(cache);
 
 		LocalClogCache relogged = onDisk(dir);

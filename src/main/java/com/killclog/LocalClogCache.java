@@ -984,9 +984,11 @@ public class LocalClogCache
 			own.put(activeHashKey, fresh);
 			data = fresh;
 		}
-		boolean rose = overallXp > data.overallXp;
+		long before = data.overallXp;
 		data.overallXp = overallXp;
-		if (reset || save && rose)
+		// Saved on a reset, once a login on the settle tick when the XP rose, and for the first reading a log gets: a
+		// log set up after its world settled kept 0 on disk, so a reset across the next relog went unseen (Sol 10/27).
+		if (reset || overallXp > before && (save || before == 0))
 		{
 			submitSave(activeHashKey, true, data);
 		}
