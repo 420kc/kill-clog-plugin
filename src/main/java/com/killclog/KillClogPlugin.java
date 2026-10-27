@@ -920,6 +920,12 @@ public class KillClogPlugin extends Plugin
 			syncSettings.enforce();
 			characterPublishFollowsSettings();
 		}
+		else if ("shareClan".equals(event.getKey()) && config.killclogSync())
+		{
+			// Share Clan takes effect at once, either way: off, killclog.com stops naming the clan now rather than at
+			// the next sync, which with Automatic Sync off waits for a press. The push is the opt-in's, on this login.
+			publication.pushNow(sessions.current(), publication.syncEra(), true);
+		}
 
 		SwingUtilities.invokeLater(() -> panel.onConfigChanged(event.getKey()));
 	}

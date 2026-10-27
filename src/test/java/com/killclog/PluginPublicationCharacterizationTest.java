@@ -87,6 +87,13 @@ public class PluginPublicationCharacterizationTest
 		boolean sync = true;
 		boolean character = true;
 		boolean automatic = true;
+		boolean clan = true;
+
+		@Override
+		public boolean shareClan()
+		{
+			return clan;
+		}
 
 		@Override
 		public boolean killclogSync()
@@ -427,6 +434,34 @@ public class PluginPublicationCharacterizationTest
 		syncHandler.run();
 		settle();
 		assertEquals(1, syncs.size());
+	}
+
+	@Test
+	public void shareClanSyncsAtOnceEitherWayWhileSyncIsOn() throws Exception
+	{
+		// Off: killclog.com stops naming the clan now, not at the next sync, Automatic Sync off included.
+		config.automatic = false;
+		config.clan = false;
+		configChanged("shareClan");
+		settle();
+		assertEquals(1, syncs.size());
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Cleared"));
+		settle();
+
+		config.clan = true;
+		configChanged("shareClan");
+		settle();
+		assertEquals(2, syncs.size());
+		syncs.get(1).complete(new SyncService.SyncResult(true, false, "Shared"));
+		settle();
+
+		// Sync off: the setting only shapes the next sync, and nothing goes.
+		config.sync = false;
+		configChanged("killclogSync");
+		config.clan = false;
+		configChanged("shareClan");
+		settle();
+		assertEquals(2, syncs.size());
 	}
 
 	@Test
