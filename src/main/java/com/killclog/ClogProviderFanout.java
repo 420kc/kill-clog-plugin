@@ -78,9 +78,9 @@ final class ClogProviderFanout
 	}
 
 	/**
-	 * All three legs: the provider pair races on recency as before, then the
-	 * player's own killclog.com sync joins on coverage -- fullest leads, ties
-	 * prefer first-party ({@link ClogResult#pickFullest}).
+	 * All three legs: the fuller of TempleOSRS's and RuneProfile's logs ({@link ClogResult#pickFullerProvider}),
+	 * then the player's own killclog.com sync joins on coverage: fullest leads, ties prefer first-party
+	 * ({@link ClogResult#pickFullest}).
 	 */
 	static CompletableFuture<ClogResult> chooseFullest(
 		CompletableFuture<ClogResult> temple,

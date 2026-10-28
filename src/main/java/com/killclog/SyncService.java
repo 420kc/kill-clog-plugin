@@ -94,16 +94,11 @@ class SyncService
 	}
 
 	/**
-	 * Build the ingest body from this client's in-game observations and POST
-	 * it. Completes with a failed-shape result rather than throwing.
-	 *
-	 * @param accountType the locally detected account type (client varbits),
-	 *                    never the provider-derived one
-	 */
-	/**
-	 * {@code session} is the login the push was gathered in and {@code cache} the mode's own store; {@code always}
-	 * sends even what killclog.com already holds (a click, or a character publish that needs the profile).
-	 * {@code sending} runs just before a push goes.
+	 * Build the ingest body from this client's in-game observations and POST it; completes with a failed-shape result
+	 * rather than throwing. {@code session} is the login the push was gathered in and {@code cache} the mode's own
+	 * store; {@code accountType} is the one the client's varbits say, never a provider's; {@code always} sends even what
+	 * killclog.com already holds (a click, or a character publish that needs the profile). {@code sending} runs just
+	 * before a push goes.
 	 */
 	CompletableFuture<SyncResult> syncCollectionLog(Session session,
 		@Nullable AccountType accountType, Map<String, Double> personalBests,
@@ -119,8 +114,8 @@ class SyncService
 				new SyncResult(false, false, "No player to sync."));
 		}
 
-		// Only this session's account, its own log serving, can be the payload: a logout since the gather fences
-		// the whole pre-flight inside the cache monitor.
+		// Only this session's account, its own log serving, can be the payload; the send itself is fenced again under
+		// the store's lock (commitIfSessionCurrent), so a logout since the gather stops it.
 		if (!cache.servesAccount(session))
 		{
 			return CompletableFuture.completedFuture(new SyncResult(false, false,
@@ -134,6 +129,8 @@ class SyncService
 		// ever push, and only its own file - filtered to items this client
 		// observed first-hand, so provider-cached data (pre-login lookups,
 		// cross-character searches) can never launder into first-party proof.
+		// The one thing a provider adds is TempleOSRS's date on an item you
+		// hold without one (ClogService.overlayProviderDates).
 		ClogResult clog = cache.toFirstPartySyncResult(rsn);
 		if (clog == null || clog.getObtainedItems().isEmpty())
 		{

@@ -10,10 +10,8 @@ class PlayerClogData
 	String playerName;
 	String lastUpdated;
 	String lastChanged;
-	// Which account hash wrote this file: claims in the identity ledger
-	// order NAMES, but the bytes belong to whoever wrote them. Parking
-	// targets this over any claim-derived guess. Null on legacy files and
-	// pure lookup caches.
+	// The account whose own log this is, by its hash: a file loads only under its own name, <hash>.json
+	// (LocalClogCache.load), so a name change can't move a log to another account. Null for a lookup.
 	String ownerHash;
 	AccountType providerAccountType;
 	int uniqueObtained = -1;

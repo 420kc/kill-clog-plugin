@@ -2,7 +2,7 @@
  * Copyright (c) 2026, 420 kc <dyl@420kc.dev>
  * Owns the GIM badge images: loads them from the game's modicons and holds
  * the per-type cache the badge resolver reads. Badge state is game-sprite
- * runtime state, so it lives here rather than in ClogHelper's pure helpers.
+ * runtime state, so it lives here, read on the client thread.
  */
 package com.killclog;
 

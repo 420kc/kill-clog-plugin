@@ -185,7 +185,7 @@ final class PersonalBests
 
 	/**
 	 * The fastest variant's time; a team size's carries it, "(5 players) 22:13.80", which the card reads as
-	 * killclog.com does, "PB (5 players): 22:13.80" ({@link ClogHelper#pbLabel}). On a tie the team size wins.
+	 * killclog.com does, "PB (5 players): 22:13.80" ({@link Cells#pbLabel}). On a tie the team size wins.
 	 */
 	@Nullable
 	static String labeled(Map<String, Double> variants, String bossName)

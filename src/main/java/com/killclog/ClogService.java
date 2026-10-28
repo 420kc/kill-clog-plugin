@@ -252,7 +252,7 @@ public class ClogService
 	/**
 	 * Look up this service's TempleOSRS collection-log lane for a player.
 	 * Active player with widget-read data is served from cache (authoritative).
-	 * Public lookup orchestration races this with RuneProfile and picks the fresher result.
+	 * A lookup races this with RuneProfile and killclog.com and picks the fullest ({@link ClogProviderFanout}).
 	 */
 	public CompletableFuture<ClogResult> lookup(String playerName)
 	{

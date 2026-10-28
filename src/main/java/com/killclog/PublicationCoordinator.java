@@ -580,8 +580,7 @@ final class PublicationCoordinator
 			main ? RuneScapeProfileType.STANDARD.name() : leagueProfileType.apply(gameMode));
 		Map<String, Double> pbs = new LinkedHashMap<>();
 		Map<String, PbRecord> detailedPbs = gatherPersonalBests(profileKeys, pbs);
-		// Off the client thread before dispatch: the sync pre-flight can block up to ten seconds waiting for the
-		// rename disk verdict, and game ticks must never pay that wait.
+		// Off the client thread before dispatch: the pre-flight and the request's build are no work for a game tick.
 		long pushHardcore = main ? hardcore : -1;
 		executor.execute(() -> dispatch(push, attempt, accountType, pbs, detailedPbs, cache, gameMode, pushHardcore));
 	}
