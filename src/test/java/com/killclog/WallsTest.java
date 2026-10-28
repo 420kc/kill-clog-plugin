@@ -39,7 +39,7 @@ public class WallsTest
 	/** The classes that read the game, each on the client thread. */
 	private static final Set<String> READERS = new TreeSet<>(Arrays.asList(
 		"AdvLogPbs", "CaCatalog", "CardSprites", "ClogIndex", "ClogLookupMenu", "ClogPbs", "GimBadgeLoader",
-		"KillClogChatCommand", "KillClogChatEmoji", "KillClogChatNotifier", "KillClogPlugin", "KillLog",
+		"KillClogChatCommand", "KillClogChatEmoji", "KillClogPlugin", "KillLog",
 		"LiveClogSync", "LocalCaReader", "ManualClogSync", "NameAutocompleter", "PlayerClans",
 		"ProfileAppearanceService", "RsnInputPolicy", "SessionTracker"));
 

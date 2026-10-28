@@ -91,9 +91,15 @@ public class ManualClogSyncTest
 					default: throw new AssertionError(method.getName());
 				}
 			});
-		notifier = new KillClogChatNotifier(client, new KillClogConfig()
+		net.runelite.client.chat.ChatMessageManager chat = org.mockito.Mockito.mock(net.runelite.client.chat.ChatMessageManager.class);
+		org.mockito.Mockito.doAnswer(invocation ->
 		{
-		}, TestViews.inlineClientThread());
+			notices.add(((net.runelite.client.chat.QueuedMessage) invocation.getArgument(0)).getRuneLiteFormattedMessage());
+			return null;
+		}).when(chat).queue(org.mockito.ArgumentMatchers.any());
+		notifier = new KillClogChatNotifier(chat, new KillClogConfig()
+		{
+		});
 		directory = temporaryFolder.newFolder();
 		cache = reload();
 		pluginField("clogIndex").set(plugin, new ClogIndex());
