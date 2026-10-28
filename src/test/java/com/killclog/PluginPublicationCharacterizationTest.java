@@ -995,6 +995,41 @@ public class PluginPublicationCharacterizationTest
 		verify(caCache).cacheResult(eq(RSN), anyLong(), any());
 	}
 
+	/**
+	 * The game tick's order, written down: the world settles (the counters and CA tiers it held back), the account
+	 * takes up its own log, that log's name-change line, the CA read, and last the automatic lookup, which reads what
+	 * every step before it decided. One tick, so the order is one list in the plugin rather than a priority on each
+	 * of eight subscribers.
+	 */
+	@Test
+	public void theTicksStepsRunInTheOrderTheyDependOn() throws Exception
+	{
+		LocalCaCache caCache = (LocalCaCache) field("localCaCache");
+		boolean[] ready = {false};
+		when(localClogCache.serve(any())).thenAnswer(invocation -> ready[0]);
+		when(localClogCache.hasDataFor(RSN)).thenReturn(true);
+		when(client.getVarpValue(VarPlayerID.COLLECTION_COUNT)).thenReturn(5);
+		when(client.getVarpValue(VarPlayerID.COLLECTION_COUNT_MAX)).thenReturn(10);
+		((ClogSessionState) field("sessionState")).requestAutoLookup(true);
+		ticks(9);
+		verify(localClogCache, never()).updateTotalsUpward(any(), anyInt(), anyInt());
+		verify(panel, never()).setFirstParty(any());
+
+		// The tick the world settles on is the one the account's log is ready on, and the name it wore before shows.
+		ready[0] = true;
+		when(localClogCache.consumeRenameNotice()).thenReturn("Old Name", (String) null);
+		clearInvocations(localClogCache, chatNotifier, caCache, panel);
+		ticks(1);
+		org.mockito.InOrder order = org.mockito.Mockito.inOrder(localClogCache, chatNotifier, caCache, panel);
+		order.verify(localClogCache).updateTotalsUpward(RSN, 5, 10);
+		order.verify(panel).setFirstParty(any());
+		order.verify(localClogCache).consumeRenameNotice();
+		order.verify(chatNotifier).send(eq(ChatNotice.SYNC_RESULT), startsWith("Kill Clog followed your name change"));
+		order.verify(caCache).cacheResult(eq(RSN), anyLong(), any());
+		order.verify(localClogCache).serve(any());
+		order.verify(panel).setFirstParty(any());
+	}
+
 	private void unlockMessage() throws Exception
 	{
 		net.runelite.api.events.ChatMessage unlock = new net.runelite.api.events.ChatMessage();
