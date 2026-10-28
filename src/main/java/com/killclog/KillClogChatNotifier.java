@@ -1,5 +1,7 @@
 package com.killclog;
 
+import java.util.ArrayDeque;
+import java.util.Deque;
 import javax.inject.Inject;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -18,6 +20,8 @@ final class KillClogChatNotifier
 	private final Client client;
 	private final KillClogConfig config;
 	private final ClientThread clientThread;
+	// Lines waiting for your character, oldest first. Every line is sent from the client thread, so this is its alone.
+	private final Deque<String> waiting = new ArrayDeque<>();
 
 	void send(ChatNotice notice, String message)
 	{
@@ -26,24 +30,33 @@ final class KillClogChatNotifier
 			return;
 		}
 
-		String line = "<col=4caf6e>Kill Clog:</col> " + message;
-		if (client.getLocalPlayer() != null)
+		// A line waits for your character, behind any line before it, through a hop or a lost connection: other plugins
+		// read the character on every game message, and RuneLite's Loot Tracker threw on one that came first (10/28).
+		// The login screen drops what waits. Client thread.
+		waiting.add("<col=4caf6e>Kill Clog:</col> " + message);
+		if (waiting.size() == 1)
 		{
-			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", line, null);
-			return;
+			clientThread.invoke(this::sendWaiting);
 		}
-		// A line sent as the game logs in waits for your character: other plugins read it on every game message, and
-		// RuneLite's Loot Tracker threw on one that came first (10/28). A logout before then drops it.
-		clientThread.invokeLater(() ->
+	}
+
+	/** True once what waits is sent, or dropped at the login screen; until then the client thread asks again. */
+	private boolean sendWaiting()
+	{
+		if (client.getLocalPlayer() == null)
 		{
-			if (client.getLocalPlayer() == null)
+			if (client.getGameState() != GameState.LOGIN_SCREEN)
 			{
-				GameState state = client.getGameState();
-				return state != GameState.LOGGED_IN && state != GameState.LOADING;
+				return false;
 			}
-			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", line, null);
+			waiting.clear();
 			return true;
-		});
+		}
+		while (!waiting.isEmpty())
+		{
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", waiting.poll(), null);
+		}
+		return true;
 	}
 
 	private boolean show(ChatNotice notice)

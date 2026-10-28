@@ -18,6 +18,24 @@ import javax.swing.ImageIcon;
  */
 final class TestViews
 {
+	/** A client thread that runs what it's handed at once, as the real one does when already on it. */
+	static net.runelite.client.callback.ClientThread inlineClientThread()
+	{
+		net.runelite.client.callback.ClientThread thread =
+			org.mockito.Mockito.mock(net.runelite.client.callback.ClientThread.class);
+		org.mockito.Mockito.doAnswer(invocation ->
+		{
+			((Runnable) invocation.getArgument(0)).run();
+			return null;
+		}).when(thread).invoke(org.mockito.ArgumentMatchers.any(Runnable.class));
+		org.mockito.Mockito.doAnswer(invocation ->
+		{
+			((java.util.function.BooleanSupplier) invocation.getArgument(0)).getAsBoolean();
+			return null;
+		}).when(thread).invoke(org.mockito.ArgumentMatchers.any(java.util.function.BooleanSupplier.class));
+		return thread;
+	}
+
 	/** A catalog handed to the class that reads it, as the plugin's injector hands it over. */
 	static void inject(Object target, Object catalog)
 	{
