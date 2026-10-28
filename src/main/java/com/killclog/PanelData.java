@@ -131,9 +131,6 @@ final class PanelData
 		return tier.getName().replace("Clue Scrolls", "Clue scroll");
 	}
 
-	// Clog tier trophy item IDs, bronze through gilded.
-	static final int[] CLOG_TIER_ITEM_IDS = itemIds("clog_tier_items");
-
 	// Collection log book item, used for chat icons and plugin icon fallbacks.
 	static final int COLLECTION_LOG_ITEM_ID = 22711;
 

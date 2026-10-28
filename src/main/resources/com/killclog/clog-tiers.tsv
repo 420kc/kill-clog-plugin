@@ -1,0 +1,11 @@
+# The Collection Log tiers, bronze to gilded, one row each: name<TAB>trophy item id<TAB>the unique items the tier
+# starts at. Gilded's is "-": it floats at 90% of the log in steps of 25 (ClogHelper.tierThreshold).
+bronze	30579	100
+iron	30581	300
+steel	30583	500
+black	30585	700
+mithril	30587	900
+adamant	30589	1000
+rune	30591	1100
+dragon	30593	1200
+gilded	30595	-

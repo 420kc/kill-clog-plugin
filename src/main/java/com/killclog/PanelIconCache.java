@@ -82,7 +82,7 @@ final class PanelIconCache
 			for (int i = 0; i < ClogHelper.CLOG_TIERS.length; i++)
 			{
 				final String tier = ClogHelper.CLOG_TIERS[i];
-				final int itemId = PanelData.CLOG_TIER_ITEM_IDS[i];
+				final int itemId = ClogHelper.CLOG_TIER_ITEM_IDS[i];
 				loadItemIcon(itemId, 13, 13, icon ->
 					clogTierIcons.put(tier, icon));
 			}

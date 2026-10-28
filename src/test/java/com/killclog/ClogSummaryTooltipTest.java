@@ -88,11 +88,11 @@ public class ClogSummaryTooltipTest
 	{
 		ItemManager items = mock(ItemManager.class);
 		new ClogSummaryTooltip().setTierData(1150, 1700, null, items);
-		verify(items).getImage(PanelData.CLOG_TIER_ITEM_IDS[6]);
+		verify(items).getImage(ClogHelper.CLOG_TIER_ITEM_IDS[6]);
 
 		items = mock(ItemManager.class);
 		new ClogSummaryTooltip().setTierData(100, 1700, null, items);
-		verify(items).getImage(PanelData.CLOG_TIER_ITEM_IDS[0]);
+		verify(items).getImage(ClogHelper.CLOG_TIER_ITEM_IDS[0]);
 
 		// Below bronze there is no tier to show.
 		items = mock(ItemManager.class);
@@ -114,7 +114,7 @@ public class ClogSummaryTooltipTest
 		};
 		ItemManager items = mock(ItemManager.class);
 		AsyncBufferedImage sprite = new AsyncBufferedImage(null, 36, 32, BufferedImage.TYPE_INT_ARGB);
-		when(items.getImage(PanelData.CLOG_TIER_ITEM_IDS[6])).thenReturn(sprite);
+		when(items.getImage(ClogHelper.CLOG_TIER_ITEM_IDS[6])).thenReturn(sprite);
 		tip.setTierData(1150, 1700, null, items);
 		assertEquals(0, count(paint(tip), Color.MAGENTA.getRGB()));
 

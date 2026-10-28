@@ -353,4 +353,17 @@ public class ClogHelperTest
 		// The Kills line, the Expert line and the rank line, not a bare title over a placeholder.
 		assertEquals(bare.getHeaderHeight() + 3 * NativeTooltip.LINE_HEIGHT, card.getHeaderHeight());
 	}
+
+	@Test
+	public void theTiersAreClogTiersTsvRowForRow()
+	{
+		assertArrayEquals(new String[]{
+			"bronze", "iron", "steel", "black", "mithril", "adamant", "rune", "dragon", "gilded"
+		}, ClogHelper.CLOG_TIERS);
+		assertArrayEquals(new int[]{
+			30579, 30581, 30583, 30585, 30587, 30589, 30591, 30593, 30595
+		}, ClogHelper.CLOG_TIER_ITEM_IDS);
+		// Gilded has no fixed start: it floats with the log.
+		assertArrayEquals(new int[]{100, 300, 500, 700, 900, 1000, 1100, 1200}, ClogHelper.CLOG_TIER_THRESHOLDS);
+	}
 }

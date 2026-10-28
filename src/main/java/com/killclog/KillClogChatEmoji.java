@@ -190,11 +190,11 @@ class KillClogChatEmoji
 	private static int tierItemId(String tier)
 	{
 		for (int i = 0; i < ClogHelper.CLOG_TIERS.length
-			&& i < PanelData.CLOG_TIER_ITEM_IDS.length; i++)
+			&& i < ClogHelper.CLOG_TIER_ITEM_IDS.length; i++)
 		{
 			if (tier.equals(ClogHelper.CLOG_TIERS[i]))
 			{
-				return PanelData.CLOG_TIER_ITEM_IDS[i];
+				return ClogHelper.CLOG_TIER_ITEM_IDS[i];
 			}
 		}
 		return -1;

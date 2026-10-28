@@ -132,7 +132,7 @@ public class ClogSummaryWiringTest
 		assertTrue(tip[0].completionText().startsWith("76."));
 
 		// Which tier that is belongs to the tooltip's own tests; here it only has to be asked for.
-		verify(items).getImage(PanelData.CLOG_TIER_ITEM_IDS[ClogHelper.tierIndex(110, 120)]);
+		verify(items).getImage(ClogHelper.CLOG_TIER_ITEM_IDS[ClogHelper.tierIndex(110, 120)]);
 	}
 
 	private static List<Integer> ids(int from, int count)

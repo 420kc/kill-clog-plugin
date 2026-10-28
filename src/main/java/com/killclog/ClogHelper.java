@@ -29,13 +29,16 @@ import org.apache.commons.lang3.StringUtils;
  */
 final class ClogHelper
 {
-	static final String[] CLOG_TIERS = {
-		"bronze", "iron", "steel", "black", "mithril", "adamant", "rune", "dragon", "gilded"
-	};
+	// The tiers, bronze to gilded, one row each in clog-tiers.tsv: name, trophy item, and the unique items it starts
+	// at (gilded's is "-": it floats with the log, tierThreshold).
+	private static final List<String[]> TIER_ROWS = CatalogTsv.rows(ClogHelper.class, "clog-tiers.tsv", 3);
+	static final String[] CLOG_TIERS = TIER_ROWS.stream().map(row -> row[0]).toArray(String[]::new);
+	static final int[] CLOG_TIER_ITEM_IDS = TIER_ROWS.stream().mapToInt(row -> Integer.parseInt(row[1])).toArray();
+	static final int[] CLOG_TIER_THRESHOLDS = TIER_ROWS.stream().filter(row -> !row[2].equals("-"))
+		.mapToInt(row -> Integer.parseInt(row[2])).toArray();
 
 	static final String[] CLOG_GROUP_NAMES = {"Bosses", "Raids", "Clues", "Minigames", "Other"};
 
-	static final int[] CLOG_TIER_THRESHOLDS = {100, 300, 500, 700, 900, 1000, 1100, 1200};
 
 	private ClogHelper()
 	{
