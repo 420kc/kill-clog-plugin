@@ -22,7 +22,8 @@ public class SearchMessagesCatalogTest
 			"Searching for %s...",
 			"Scouring for %s...",
 			"Hot on %s's trail...",
-			"APB out on %s..."
+			"APB out on %s...",
+			"Checking the Archive for %s..."
 		}, SearchMessages.SEARCH);
 		assertArrayEquals(new String[]{
 			"WANTED: %s",
@@ -41,7 +42,9 @@ public class SearchMessagesCatalogTest
 			"%s is off the grid",
 			"%s failed the vibe check",
 			"No clog trail for %s",
-			"%s is hiding from the hiscores"
+			"%s is hiding from the hiscores",
+			"%s is lost in the Archive",
+			"%s's file was fractured"
 		}, SearchMessages.NOT_FOUND);
 		assertArrayEquals(new String[]{
 			"Oh hey it's you again",

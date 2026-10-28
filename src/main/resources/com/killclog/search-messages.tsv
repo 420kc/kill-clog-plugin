@@ -7,6 +7,7 @@ search	Searching for %s...
 search	Scouring for %s...
 search	Hot on %s's trail...
 search	APB out on %s...
+search	Checking the Archive for %s...
 not_found	WANTED: %s
 not_found	%s has gone AWOL
 not_found	%s is touching grass
@@ -24,6 +25,8 @@ not_found	%s is off the grid
 not_found	%s failed the vibe check
 not_found	No clog trail for %s
 not_found	%s is hiding from the hiscores
+not_found	%s is lost in the Archive
+not_found	%s's file was fractured
 self	Oh hey it's you again
 self	%s returns for more
 self	Welcome back %s
