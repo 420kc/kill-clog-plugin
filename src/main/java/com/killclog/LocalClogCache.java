@@ -620,8 +620,9 @@ public class LocalClogCache
 	// Fires after any in-client observation lands (bulk page capture, live
 	// unlock), whatever path delivered it - the killclog.com sync trigger
 	// lives here at the data seam so no capture route can be forgotten.
-	// The listener only schedules a debounced task; it must stay cheap and
-	// must not call back into this cache.
+	// The listener only schedules a debounced task: it runs under this cache's
+	// lock, so it stays cheap and never waits on another thread (a read back
+	// into this cache is fine, the lock is the same thread's).
 	private void notifyFirstPartyChanged()
 	{
 		Runnable listener = firstPartyChangedListener;
