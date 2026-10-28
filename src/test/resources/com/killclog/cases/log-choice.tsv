@@ -1,0 +1,21 @@
+# Which provider's Collection Log a lookup shows, and whose dates fill Recent (Dylan, 2026-10-27).
+# One copy of the rule's answers: the plugin's tests, killclog-api's and the site's run these same rows.
+# The grid: the fullest log by distinct items obtained; ties go to Kill Clog's own sync, then TempleOSRS, then RuneProfile.
+# Recent: the log whose newest dated item is newest, whichever won the grid; ties go to TempleOSRS, then Kill Clog's
+# sync, then RuneProfile. A log with no dates never fills Recent.
+# Columns: case<TAB>temple<TAB>runeprofile<TAB>killclog<TAB>grid<TAB>recent
+# A provider cell is "-" (no log), "<items>" (a log without dates) or "<items>@<newest date>".
+runeprofile fuller by one	900@2026-10-01	901	-	runeprofile	temple
+runeprofile fuller by six	900@2026-10-01	906	-	runeprofile	temple
+temple and runeprofile tied	900@2026-10-01	900	-	temple	temple
+temple fuller	950@2026-10-01	900	-	temple	temple
+only runeprofile	-	700	-	runeprofile	none
+only temple	650@2026-09-01	-	-	temple	temple
+nothing anywhere	-	-	-	none	none
+killclog ties the providers	900@2026-09-01	880	900@2026-10-20	killclog	killclog
+killclog partial	900@2026-10-01	880	6@2026-10-26	temple	killclog
+killclog fullest	900@2026-10-01	901	950@2026-10-25	killclog	killclog
+temple fullest, killclog newest dates	950@2026-10-01	901	940@2026-10-25	temple	killclog
+same newest date, temple first	900@2026-10-01	901	890@2026-10-01	runeprofile	temple
+runeprofile fullest, killclog dated	800@2026-08-01	950	900@2026-09-15	runeprofile	killclog
+runeprofile dated and newest	900@2026-10-01	901@2026-10-05	-	runeprofile	runeprofile

@@ -54,7 +54,7 @@ public class TempleStatsTest
 		ClogResult combined = ClogResult.pickFullest(temple, killclog);
 		assertEquals(3043.07, combined.getTempleEhp(), 1e-9);
 		assertEquals(3417.36, combined.getTempleEhc(), 1e-9);
-		ClogResult freshest = ClogResult.pickFreshest(temple, null);
+		ClogResult freshest = ClogResult.pickFullerProvider(temple, null);
 		assertEquals(3043.07, freshest.getTempleEhp(), 1e-9);
 	}
 

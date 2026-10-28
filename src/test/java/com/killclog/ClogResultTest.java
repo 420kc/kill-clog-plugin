@@ -33,7 +33,7 @@ public class ClogResultTest
 		ClogResult rp = result("RuneProfileName", 7, 10, rpItems, null, null);
 		rp.markItemResolved(7);
 
-		ClogResult picked = ClogResult.pickFreshest(temple, rp);
+		ClogResult picked = ClogResult.pickFullerProvider(temple, rp);
 
 		assertEquals("RuneProfileName", picked.getPlayerName());
 		assertEquals(7, picked.getUniqueObtained());
@@ -62,14 +62,16 @@ public class ClogResultTest
 			null,
 			AccountType.HARDCORE_GROUP_IRONMAN);
 
-		ClogResult picked = ClogResult.pickFreshest(temple, rp);
+		ClogResult picked = ClogResult.pickFullerProvider(temple, rp);
 
 		assertEquals("RuneProfileName", picked.getPlayerName());
 		assertEquals(AccountType.HARDCORE_GROUP_IRONMAN, picked.getProviderAccountType());
 	}
 
+	// The fuller log wins by any margin, as on the website (Dylan 2026-10-27; TempleOSRS's old five-item lead is gone),
+	// and TempleOSRS wins a tie. The shared cases (LogChoiceCasesTest) hold the rest of the rule.
 	@Test
-	public void testTempleWinsNearTie()
+	public void testFullerProviderWinsByOneAndTempleWinsTie()
 	{
 		ClogResult temple = result(
 			"TempleName",
@@ -80,16 +82,17 @@ public class ClogResultTest
 			AccountType.IRONMAN);
 		ClogResult rp = result(
 			"RuneProfileName",
-			9,
+			6,
 			10,
 			Collections.singletonMap("boss", Arrays.asList(new ClogResult.ClogItem(2, 1, null))),
 			null,
 			null);
 
-		ClogResult picked = ClogResult.pickFreshest(temple, rp);
-
-		assertEquals("TempleName", picked.getPlayerName());
-		assertEquals("2026-05-31 12:00:00", picked.getLastChanged());
+		assertEquals("RuneProfileName", ClogResult.pickFullerProvider(temple, rp).getPlayerName());
+		rp.setUniqueObtained(5);
+		ClogResult tie = ClogResult.pickFullerProvider(temple, rp);
+		assertEquals("TempleName", tie.getPlayerName());
+		assertEquals("2026-05-31 12:00:00", tie.getLastChanged());
 	}
 
 	// pickFullest: the first-party combine. Fullest leads, ties prefer the
@@ -244,13 +247,13 @@ public class ClogResultTest
 			null, null).withSources(false, false, true);
 
 		// Combine A: killclog participates (equal coverage, first-party wins).
-		ClogResult a = ClogResult.pickFullest(ClogResult.pickFreshest(temple, null), killclog);
+		ClogResult a = ClogResult.pickFullest(ClogResult.pickFullerProvider(temple, null), killclog);
 		assertNotSame(temple, a);
 		assertTrue(a.isFromKillclog());
 		assertTrue(a.isFromTemple());
 
 		// Combine B: provider-only race reusing the same cached instance.
-		ClogResult b = ClogResult.pickFreshest(temple, null);
+		ClogResult b = ClogResult.pickFullerProvider(temple, null);
 		assertNotSame(temple, b);
 		assertFalse(b.isFromKillclog());
 
@@ -281,7 +284,7 @@ public class ClogResultTest
 		ClogResult temple = result("TempleName", 3, 10,
 			Collections.singletonMap("boss", Arrays.asList(new ClogResult.ClogItem(1, 1, null))),
 			"2026-08-03 12:00:00", null).withSources(true, false, false);
-		ClogResult providerWinner = ClogResult.pickFreshest(temple, null);
+		ClogResult providerWinner = ClogResult.pickFullerProvider(temple, null);
 		ClogResult killclog = result("420 kc", 9, 10,
 			Collections.singletonMap("boss", Arrays.asList(new ClogResult.ClogItem(2, 1, null))),
 			null, null).withSources(false, false, true);
@@ -301,7 +304,7 @@ public class ClogResultTest
 			Collections.singletonMap("boss", Collections.singletonList(
 				new ClogResult.ClogItem(1, 1, null))), null, null);
 
-		ClogResult providerSlot = ClogResult.pickFreshest(local, null);
+		ClogResult providerSlot = ClogResult.pickFullerProvider(local, null);
 		ClogResult killclogSlot = ClogResult.pickFullest(null, local);
 		for (ClogResult picked : Arrays.asList(providerSlot, killclogSlot))
 		{
@@ -323,7 +326,7 @@ public class ClogResultTest
 				new ClogResult.ClogItem(1, 1, null), new ClogResult.ClogItem(2, 1, null))),
 			null, null).withSources(true, false, false);
 		for (ClogResult combined : Arrays.asList(
-			ClogResult.pickFreshest(provider, local), ClogResult.pickFreshest(local, null),
+			ClogResult.pickFullerProvider(provider, local), ClogResult.pickFullerProvider(local, null),
 			ClogResult.pickFullest(provider, local), ClogResult.pickFullest(local, provider),
 			ClogResult.pickFullest(null, local), ClogResult.pickFullest(local, null)))
 		{
@@ -351,7 +354,7 @@ public class ClogResultTest
 			.withSources(false, false, true);
 
 		ClogResult picked = ClogResult.pickFullest(
-			ClogResult.pickFreshest(temple, runeProfile), killclog);
+			ClogResult.pickFullerProvider(temple, runeProfile), killclog);
 		assertTrue(picked.isFromTemple());
 		assertTrue(picked.isFromRuneProfile());
 		assertTrue(picked.isFromKillclog());

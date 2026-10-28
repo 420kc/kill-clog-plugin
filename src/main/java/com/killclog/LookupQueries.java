@@ -114,7 +114,9 @@ final class LookupQueries
 		{
 			return all;
 		}
-		for (List<ClogResult.ClogItem> items : result.getObtainedItems().values())
+		// Recent reads the log with the newest dated item, which needn't be the one that won the grid (the website's
+		// rule, 2026-10-27).
+		for (List<ClogResult.ClogItem> items : result.recentItemsSource().getObtainedItems().values())
 		{
 			for (ClogResult.ClogItem item : items)
 			{

@@ -54,7 +54,7 @@ final class ClogProviderFanout
 		CompletableFuture<ClogResult> late = first.thenCompose(shown -> templeInTime.join() != null
 			? CompletableFuture.completedFuture(null)
 			: templeAnswer.exceptionally(ex -> null).thenApply(answer -> answer == null ? null
-				: ClogResult.pickFullest(ClogResult.pickFreshest(answer, rp.join()), kc.join())));
+				: ClogResult.pickFullest(ClogResult.pickFullerProvider(answer, rp.join()), kc.join())));
 		return new Answers(first, late);
 	}
 
@@ -70,11 +70,11 @@ final class ClogProviderFanout
 		}
 	}
 
-	static CompletableFuture<ClogResult> chooseFreshest(
+	static CompletableFuture<ClogResult> chooseFullerProvider(
 		CompletableFuture<ClogResult> temple,
 		CompletableFuture<ClogResult> runeProfile)
 	{
-		return chooseFreshest(temple, runeProfile, providerTimeoutSeconds, TimeUnit.SECONDS);
+		return chooseFullerProvider(temple, runeProfile, providerTimeoutSeconds, TimeUnit.SECONDS);
 	}
 
 	/**
@@ -87,20 +87,20 @@ final class ClogProviderFanout
 		CompletableFuture<ClogResult> runeProfile,
 		CompletableFuture<ClogResult> killclog)
 	{
-		return chooseFreshest(temple, runeProfile)
+		return chooseFullerProvider(temple, runeProfile)
 			.thenCombine(
 				providerOrNull(killclog, providerTimeoutSeconds, TimeUnit.SECONDS),
 				ClogResult::pickFullest);
 	}
 
-	static CompletableFuture<ClogResult> chooseFreshest(
+	static CompletableFuture<ClogResult> chooseFullerProvider(
 		CompletableFuture<ClogResult> temple,
 		CompletableFuture<ClogResult> runeProfile,
 		long timeout,
 		TimeUnit unit)
 	{
 		return providerOrNull(temple, timeout, unit)
-			.thenCombine(providerOrNull(runeProfile, timeout, unit), ClogResult::pickFreshest);
+			.thenCombine(providerOrNull(runeProfile, timeout, unit), ClogResult::pickFullerProvider);
 	}
 
 	/** One provider's answer within the time every provider gets, or none. */

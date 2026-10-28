@@ -84,6 +84,12 @@ public class ClogResult
 	/** True when the result includes the local player's completed game capture. */
 	@Getter
 	private boolean fromLocal;
+	/**
+	 * The log whose dated items fill Recent, whichever log won the grid: the one with the newest dated item (the
+	 * website's rule, Dylan 2026-10-27), so a RuneProfile log that wins the grid by a few items keeps TempleOSRS's
+	 * dates. Null means this log's own. Always a single provider's log, never a combine.
+	 */
+	private ClogResult datedHistory;
 
 	public ClogResult(
 		String playerName,
@@ -135,6 +141,7 @@ public class ClogResult
 		this.runStartXp = source.runStartXp;
 		this.syncedClanKnown = source.syncedClanKnown;
 		this.syncedClanTitle = source.syncedClanTitle;
+		this.datedHistory = source.datedHistory;
 	}
 
 	/**
@@ -286,14 +293,13 @@ public class ClogResult
 	}
 
 	/**
-	 * Compare two clog results and return whichever represents the most
-	 * recent sync. Collection log items only accumulate, so the result
-	 * with more obtained items is fresher. When counts are close (within 5),
-	 * prefer TempleOSRS for its richer sync timestamp.
+	 * The fuller of TempleOSRS's and RuneProfile's logs, TempleOSRS on a tie (Dylan, 2026-10-27: the fuller log wins,
+	 * as on the website; until 2.7.5 TempleOSRS also won by up to five items, to keep its dates, which
+	 * {@link #datedHistory} now keeps whichever log wins).
 	 */
-	public static ClogResult pickFreshest(ClogResult temple, ClogResult rp)
+	public static ClogResult pickFullerProvider(ClogResult temple, ClogResult rp)
 	{
-		ClogResult winner = chooseFreshest(temple, rp);
+		ClogResult winner = chooseFuller(temple, rp);
 		if (winner == null)
 		{
 			return null;
@@ -304,12 +310,13 @@ public class ClogResult
 		return winner.copyWithProvenance(either(temple, rp, ClogResult::isFromTemple),
 			either(temple, rp, ClogResult::isFromRuneProfile), either(temple, rp, ClogResult::isFromKillclog),
 			loser != null ? loser.providerAccountType : null)
-			.withLocalSource(either(temple, rp, ClogResult::isFromLocal)).carryFrom(loser);
+			.withLocalSource(either(temple, rp, ClogResult::isFromLocal)).carryFrom(loser)
+			.withDatedHistory(temple, rp);
 	}
 
 	/**
 	 * Combine the provider winner with the player's own killclog.com sync.
-	 * The rule is the website's, not {@link #pickFreshest}'s recency lean:
+	 * The rule is the website's, as {@link #pickFullerProvider}'s is:
 	 * the FULLEST result leads, and ties prefer first-party. A partial sync
 	 * (six items from a fresh install) must never shrink a profile below
 	 * what providers prove; a complete sync must never lose to a stale
@@ -323,15 +330,17 @@ public class ClogResult
 		}
 		if (killclog == null)
 		{
-			// Copied even though the composed caller hands us pickFreshest's
+			// Copied even though the composed caller hands us pickFullerProvider's
 			// own copy: this method must be safe on cached instances too.
 			return provider.copyWithProvenance(
-				provider.fromTemple, provider.fromRuneProfile, provider.fromKillclog, null);
+				provider.fromTemple, provider.fromRuneProfile, provider.fromKillclog, null)
+				.withDatedHistory(provider, null);
 		}
 		if (provider == null)
 		{
 			return killclog.copyWithProvenance(
-				killclog.fromTemple, killclog.fromRuneProfile, killclog.fromKillclog, null);
+				killclog.fromTemple, killclog.fromRuneProfile, killclog.fromKillclog, null)
+				.withDatedHistory(killclog, null);
 		}
 		boolean templeSource = either(provider, killclog, ClogResult::isFromTemple);
 		boolean runeProfileSource = either(provider, killclog, ClogResult::isFromRuneProfile);
@@ -345,14 +354,16 @@ public class ClogResult
 		{
 			return killclog.copyWithProvenance(
 				templeSource, runeProfileSource, killclogSource,
-				provider.providerAccountType).withLocalSource(either(provider, killclog, ClogResult::isFromLocal)).carryFrom(provider);
+				provider.providerAccountType).withLocalSource(either(provider, killclog, ClogResult::isFromLocal)).carryFrom(provider)
+				.withDatedHistory(provider, killclog);
 		}
 		AccountType firstPartyType = killclog.providerAccountType;
 		AccountType accountType = firstPartyType != null && firstPartyType.isGroupIronman()
 			? firstPartyType : provider.providerAccountType;
 		return provider.copyWithProvenanceAndAccountType(
 			templeSource, runeProfileSource, killclogSource, accountType)
-			.withLocalSource(either(provider, killclog, ClogResult::isFromLocal)).carryFrom(killclog);
+			.withLocalSource(either(provider, killclog, ClogResult::isFromLocal)).carryFrom(killclog)
+			.withDatedHistory(provider, killclog);
 	}
 
 	/** A merge carries a source when either side came from it. */
@@ -383,7 +394,7 @@ public class ClogResult
 		return distinct.size();
 	}
 
-	private static ClogResult chooseFreshest(ClogResult temple, ClogResult rp)
+	private static ClogResult chooseFuller(ClogResult temple, ClogResult rp)
 	{
 		if (temple == null)
 		{
@@ -393,17 +404,64 @@ public class ClogResult
 		{
 			return temple;
 		}
+		return obtainedCount(rp) > obtainedCount(temple) ? rp : temple;
+	}
 
-		int templeCount = obtainedCount(temple);
-		int rpCount = obtainedCount(rp);
-
-		// RuneProfile has significantly more items, so it is clearly fresher.
-		if (rpCount > templeCount + 5)
+	/** This log's Recent source, of first and second's, whose newest dated item is newest; ties by {@link #rank}. */
+	private ClogResult withDatedHistory(ClogResult first, ClogResult second)
+	{
+		ClogResult a = first != null ? first.recentItemsSource() : null;
+		ClogResult b = second != null ? second.recentItemsSource() : null;
+		String newestA = newestDate(a);
+		String newestB = newestDate(b);
+		if (newestA == null && newestB == null)
 		{
-			return rp;
+			datedHistory = null;
 		}
-		// TempleOSRS wins ties and near-ties because it has lastChanged.
-		return temple;
+		else if (newestB == null || newestA != null
+			&& (newestA.compareTo(newestB) > 0 || newestA.equals(newestB) && rank(a) <= rank(b)))
+		{
+			datedHistory = a;
+		}
+		else
+		{
+			datedHistory = b;
+		}
+		return this;
+	}
+
+	/** Recent's tie order, the website's: TempleOSRS (or this PC's own log in its place), the Kill Clog sync, RuneProfile. */
+	private static int rank(ClogResult log)
+	{
+		return log.fromRuneProfile && !log.fromTemple ? 2 : log.fromKillclog && !log.fromTemple ? 1 : 0;
+	}
+
+	/** The newest dated item's moment as UTC ISO text, comparable across providers' formats, or null when none. */
+	private static String newestDate(ClogResult log)
+	{
+		if (log == null)
+		{
+			return null;
+		}
+		String newest = null;
+		for (List<ClogItem> items : log.obtainedItems.values())
+		{
+			for (ClogItem item : items)
+			{
+				String iso = ClogDates.iso(item.getDate());
+				if (iso != null && (newest == null || iso.compareTo(newest) > 0))
+				{
+					newest = iso;
+				}
+			}
+		}
+		return newest;
+	}
+
+	/** The log whose dated items fill Recent: {@link #datedHistory}, or this log's own. */
+	ClogResult recentItemsSource()
+	{
+		return datedHistory != null ? datedHistory : this;
 	}
 
 	private static int obtainedCount(ClogResult result)

@@ -74,7 +74,7 @@ public class ClogProviderFanoutTest
 		ClogResult temple = result("Temple", 4);
 		CompletableFuture<ClogResult> hangingRp = new CompletableFuture<>();
 
-		ClogResult picked = ClogProviderFanout.chooseFreshest(
+		ClogResult picked = ClogProviderFanout.chooseFullerProvider(
 			CompletableFuture.completedFuture(temple),
 			hangingRp,
 			25,
@@ -94,7 +94,7 @@ public class ClogProviderFanoutTest
 		ClogResult runeProfile = result("RuneProfile", 10);
 		CompletableFuture<ClogResult> hangingTemple = new CompletableFuture<>();
 
-		ClogResult picked = ClogProviderFanout.chooseFreshest(
+		ClogResult picked = ClogProviderFanout.chooseFullerProvider(
 			hangingTemple,
 			CompletableFuture.completedFuture(runeProfile),
 			25,
@@ -112,7 +112,7 @@ public class ClogProviderFanoutTest
 		CompletableFuture<ClogResult> failedTemple = new CompletableFuture<>();
 		failedTemple.completeExceptionally(new IllegalStateException("provider failed"));
 
-		ClogResult picked = ClogProviderFanout.chooseFreshest(
+		ClogResult picked = ClogProviderFanout.chooseFullerProvider(
 			failedTemple,
 			CompletableFuture.completedFuture(runeProfile),
 			25,
