@@ -10,16 +10,16 @@ public class CombatAchievementTest
 	@Test
 	public void testHighestForPointsBoundaries()
 	{
-		// Current OSRS Combat Achievement thresholds.
+		// The game's Combat Achievement thresholds on 2026-10-28 (the OSRS Wiki's tier table).
 		assertNull(CombatAchievementTier.highestForPoints(0, java.util.Map.of()));
 		assertNull(CombatAchievementTier.highestForPoints(40, java.util.Map.of()));
 		assertEquals(CombatAchievementTier.EASY, CombatAchievementTier.highestForPoints(41, java.util.Map.of()));
-		assertEquals(CombatAchievementTier.EASY, CombatAchievementTier.highestForPoints(160, java.util.Map.of()));
-		assertEquals(CombatAchievementTier.MEDIUM, CombatAchievementTier.highestForPoints(161, java.util.Map.of()));
-		assertEquals(CombatAchievementTier.MEDIUM, CombatAchievementTier.highestForPoints(418, java.util.Map.of()));
-		assertEquals(CombatAchievementTier.HARD, CombatAchievementTier.highestForPoints(419, java.util.Map.of()));
-		assertEquals(CombatAchievementTier.ELITE, CombatAchievementTier.highestForPoints(1075, java.util.Map.of()));
-		assertEquals(CombatAchievementTier.MASTER, CombatAchievementTier.highestForPoints(1945, java.util.Map.of()));
+		assertEquals(CombatAchievementTier.EASY, CombatAchievementTier.highestForPoints(168, java.util.Map.of()));
+		assertEquals(CombatAchievementTier.MEDIUM, CombatAchievementTier.highestForPoints(169, java.util.Map.of()));
+		assertEquals(CombatAchievementTier.MEDIUM, CombatAchievementTier.highestForPoints(435, java.util.Map.of()));
+		assertEquals(CombatAchievementTier.HARD, CombatAchievementTier.highestForPoints(436, java.util.Map.of()));
+		assertEquals(CombatAchievementTier.ELITE, CombatAchievementTier.highestForPoints(1100, java.util.Map.of()));
+		assertEquals(CombatAchievementTier.MASTER, CombatAchievementTier.highestForPoints(1965, java.util.Map.of()));
 		// Grandmaster is completion-gated, never returned by highestForPoints.
 		assertEquals(CombatAchievementTier.MASTER, CombatAchievementTier.highestForPoints(99999, java.util.Map.of()));
 	}
@@ -50,9 +50,9 @@ public class CombatAchievementTest
 	{
 		Map<CombatAchievementTier, Integer> completed = new EnumMap<>(CombatAchievementTier.class);
 		completed.put(CombatAchievementTier.EASY, 41);
-		completed.put(CombatAchievementTier.MEDIUM, 60);
+		completed.put(CombatAchievementTier.MEDIUM, 64);
 		CombatAchievementResult r = CombatAchievementResult.of(completed, null);
-		assertEquals(161, r.getTotalPoints());
+		assertEquals(169, r.getTotalPoints());
 		assertEquals(CombatAchievementTier.MEDIUM, r.getTier());
 		assertEquals(CombatAchievementReward.MEDIUM, r.getReward());
 	}
@@ -68,7 +68,7 @@ public class CombatAchievementTest
 			completed.put(tier, 99); // one short in every tier
 		}
 		CombatAchievementResult r = CombatAchievementResult.of(completed, total);
-		assertTrue(r.getTotalPoints() > 1945);
+		assertTrue(r.getTotalPoints() > 1965);
 		assertEquals(CombatAchievementTier.MASTER, r.getTier());
 		assertEquals(CombatAchievementReward.MASTER, r.getReward());
 		assertFalse(r.isAllComplete());
@@ -116,7 +116,7 @@ public class CombatAchievementTest
 			total.put(tier, tier.totalTasks());
 		}
 		CombatAchievementResult r = CombatAchievementResult.of(completed, total);
-		assertEquals(2671, r.getTotalPoints());
+		assertEquals(2697, r.getTotalPoints());
 		assertEquals(CombatAchievementTier.GRANDMASTER, r.getTier());
 		assertEquals(CombatAchievementReward.GRANDMASTER, r.getReward());
 	}
@@ -138,12 +138,12 @@ public class CombatAchievementTest
 		Map<CombatAchievementTier, Integer> live = liveCatalogWithNewBatch();
 
 		CombatAchievementResult r = CombatAchievementResult.of(completed, total, live);
-		assertEquals(2671, r.getTotalPoints());
+		assertEquals(2697, r.getTotalPoints());
 		assertFalse(r.isAllComplete());
 		assertEquals(CombatAchievementTier.MASTER, r.getTier());
 		// Display denominators follow the live catalog, not the stale snapshot.
 		assertEquals(129, TestViews.total(r, CombatAchievementTier.GRANDMASTER));
-		assertEquals(121, TestViews.completed(r, CombatAchievementTier.GRANDMASTER));
+		assertEquals(122, TestViews.completed(r, CombatAchievementTier.GRANDMASTER));
 	}
 
 	@Test
@@ -193,11 +193,11 @@ public class CombatAchievementTest
 		// The live thresholds encode the fallback catalog exactly.
 		Map<CombatAchievementTier, Integer> thresholds = new EnumMap<>(CombatAchievementTier.class);
 		thresholds.put(CombatAchievementTier.EASY, 41);
-		thresholds.put(CombatAchievementTier.MEDIUM, 161);
-		thresholds.put(CombatAchievementTier.HARD, 419);
-		thresholds.put(CombatAchievementTier.ELITE, 1075);
-		thresholds.put(CombatAchievementTier.MASTER, 1945);
-		thresholds.put(CombatAchievementTier.GRANDMASTER, 2671);
+		thresholds.put(CombatAchievementTier.MEDIUM, 169);
+		thresholds.put(CombatAchievementTier.HARD, 436);
+		thresholds.put(CombatAchievementTier.ELITE, 1100);
+		thresholds.put(CombatAchievementTier.MASTER, 1965);
+		thresholds.put(CombatAchievementTier.GRANDMASTER, 2697);
 
 		Map<CombatAchievementTier, Integer> totals = CaCatalog.deriveTotals(thresholds);
 		assertNotNull(totals);
@@ -254,10 +254,10 @@ public class CombatAchievementTest
 	{
 		Map<CombatAchievementTier, Integer> live = new EnumMap<>(CombatAchievementTier.class);
 		live.put(CombatAchievementTier.EASY, 42);
-		live.put(CombatAchievementTier.MEDIUM, 61);
-		live.put(CombatAchievementTier.HARD, 87);
-		live.put(CombatAchievementTier.ELITE, 165);
-		live.put(CombatAchievementTier.MASTER, 177);
+		live.put(CombatAchievementTier.MEDIUM, 65);
+		live.put(CombatAchievementTier.HARD, 90);
+		live.put(CombatAchievementTier.ELITE, 167);
+		live.put(CombatAchievementTier.MASTER, 176);
 		live.put(CombatAchievementTier.GRANDMASTER, 129);
 		return live;
 	}
