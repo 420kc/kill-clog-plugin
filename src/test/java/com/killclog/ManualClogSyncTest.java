@@ -93,7 +93,7 @@ public class ManualClogSyncTest
 			});
 		notifier = new KillClogChatNotifier(client, new KillClogConfig()
 		{
-		});
+		}, org.mockito.Mockito.mock(net.runelite.client.callback.ClientThread.class));
 		directory = temporaryFolder.newFolder();
 		cache = reload();
 		index = (ClogIndex) pluginField("clogIndex").get(plugin);

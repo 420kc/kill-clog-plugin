@@ -5,12 +5,15 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
+import net.runelite.api.GameState;
+import net.runelite.client.callback.ClientThread;
 
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE, onConstructor_ = @Inject)
 final class KillClogChatNotifier
 {
 	private final Client client;
 	private final KillClogConfig config;
+	private final ClientThread clientThread;
 
 	void send(ChatNotice notice, String message)
 	{
@@ -19,9 +22,24 @@ final class KillClogChatNotifier
 			return;
 		}
 
-		client.addChatMessage(ChatMessageType.GAMEMESSAGE, "",
-			"<col=4caf6e>Kill Clog:</col> " + message,
-			null);
+		String line = "<col=4caf6e>Kill Clog:</col> " + message;
+		if (client.getLocalPlayer() != null)
+		{
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", line, null);
+			return;
+		}
+		// A line sent as the game logs in waits for your character: other plugins read it on every game message, and
+		// RuneLite's Loot Tracker threw on one that came first (10/28). A logout before then drops it.
+		clientThread.invokeLater(() ->
+		{
+			if (client.getLocalPlayer() == null)
+			{
+				GameState state = client.getGameState();
+				return state != GameState.LOGGED_IN && state != GameState.LOADING;
+			}
+			client.addChatMessage(ChatMessageType.GAMEMESSAGE, "", line, null);
+			return true;
+		});
 	}
 
 	private boolean show(ChatNotice notice)
