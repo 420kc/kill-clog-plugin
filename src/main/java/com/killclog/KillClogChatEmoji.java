@@ -2,23 +2,23 @@ package com.killclog;
 
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
-import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import net.runelite.api.ChatMessageType;
 import net.runelite.api.Client;
-import net.runelite.api.IndexedSprite;
 import net.runelite.api.MessageNode;
 import net.runelite.api.events.ChatMessage;
+import net.runelite.client.game.ChatIconManager;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
 
 /**
  * Chat emoji: :killclog:, :clog:, :green:, :rune:, :dragon: and :gilded: in a chat line become their icons while the
- * setting is on. The icons take the client's mod icon slots once and keep them for the life of the client.
+ * setting is on. Each icon is reserved from RuneLite's chat icon manager once and kept for the life of the client, as
+ * RuneLite's emoji plugin keeps its own.
  */
 @Singleton
 class KillClogChatEmoji
@@ -39,9 +39,10 @@ class KillClogChatEmoji
 
 	@Inject private Client client;
 	@Inject private ItemManager itemManager;
+	@Inject private ChatIconManager chatIconManager;
 
-	// Like the chat command's item icons, the slots live as long as the client and are kept across a disable/enable.
-	private final Map<String, Integer> iconIdxByTrigger = new LinkedHashMap<>();
+	// trigger -> RuneLite's chat icon id; like the chat command's item icons, kept across a disable/enable.
+	private final Map<String, Integer> iconIdByTrigger = new LinkedHashMap<>();
 
 	void rewrite(ChatMessage chatMessage)
 	{
@@ -62,8 +63,8 @@ class KillClogChatEmoji
 		{
 			if (message.contains(trigger))
 			{
-				Integer iconIdx = iconFor(trigger);
-				if (iconIdx != null)
+				int iconIdx = iconIndex(trigger);
+				if (iconIdx >= 0)
 				{
 					icons.put(trigger, iconIdx);
 				}
@@ -125,70 +126,59 @@ class KillClogChatEmoji
 		}
 	}
 
-	private Integer killClogIcon()
+	/** The trigger's index in the chat's icons, reserving its icon the first time; -1 when it has no image. */
+	private int iconIndex(String trigger)
 	{
-		Integer cached = iconIdxByTrigger.get(KILLCLOG_TRIGGER);
-		if (cached == null)
+		Integer iconId = iconIdByTrigger.get(trigger);
+		if (iconId == null)
 		{
-			BufferedImage image = KillClogIcons.pluginIcon();
-			cached = image != null
-				? registerIcon(resizeKillClogIcon(image))
-				: itemIcon(KILLCLOG_TRIGGER, PanelData.COLLECTION_LOG_ITEM_ID, false);
-			if (cached != null)
+			BufferedImage plugin = KILLCLOG_TRIGGER.equals(trigger) ? KillClogIcons.pluginIcon() : null;
+			int itemId = itemId(trigger);
+			if (plugin == null && itemId <= 0)
 			{
-				iconIdxByTrigger.put(KILLCLOG_TRIGGER, cached);
+				return -1;
+			}
+			// Usable at once (client thread only); the image fills it when ready, as RuneLite's emoji plugin does.
+			int reserved = chatIconManager.reserveChatIcon();
+			iconId = reserved;
+			iconIdByTrigger.put(trigger, reserved);
+			if (plugin != null)
+			{
+				show(reserved, resizeKillClogIcon(plugin));
+			}
+			else
+			{
+				boolean green = GREEN_TRIGGER.equals(trigger);
+				AsyncBufferedImage image = itemManager.getImage(itemId, 1, false);
+				image.onLoaded(() -> show(reserved, resizeInlineIcon(green ? greenIcon(image) : image)));
 			}
 		}
-		return cached;
+		return chatIconManager.chatIconIndex(iconId);
 	}
 
-	private Integer iconFor(String trigger)
+	private static int itemId(String trigger)
 	{
 		switch (trigger)
 		{
 			case KILLCLOG_TRIGGER:
-				return killClogIcon();
 			case CLOG_TRIGGER:
-				return itemIcon(CLOG_TRIGGER, PanelData.COLLECTION_LOG_ITEM_ID, false);
 			case GREEN_TRIGGER:
-				return itemIcon(GREEN_TRIGGER, PanelData.COLLECTION_LOG_ITEM_ID, true);
+				return PanelData.COLLECTION_LOG_ITEM_ID;
 			case RUNE_TRIGGER:
-				return itemIcon(RUNE_TRIGGER, tierItemId("rune"), false);
+				return tierItemId("rune");
 			case DRAGON_TRIGGER:
-				return itemIcon(DRAGON_TRIGGER, tierItemId("dragon"), false);
+				return tierItemId("dragon");
 			case GILDED_TRIGGER:
-				return itemIcon(GILDED_TRIGGER, tierItemId("gilded"), false);
+				return tierItemId("gilded");
 			default:
-				return null;
+				return -1;
 		}
 	}
 
-	private Integer itemIcon(String trigger, int itemId, boolean green)
+	private void show(int iconId, BufferedImage image)
 	{
-		Integer cached = iconIdxByTrigger.get(trigger);
-		if (cached != null || itemId <= 0)
-		{
-			return cached;
-		}
-
-		int slot = reserveIconSlot();
-		if (slot == -1)
-		{
-			return null;
-		}
-		iconIdxByTrigger.put(trigger, slot);
-
-		BufferedImage image = itemManager.getImage(itemId, 1, false);
-		if (image instanceof AsyncBufferedImage)
-		{
-			((AsyncBufferedImage) image).onLoaded(() ->
-				writeIcon(slot, resizeInlineIcon(green ? greenIcon(image) : image)));
-		}
-		else
-		{
-			writeIcon(slot, resizeInlineIcon(green ? greenIcon(image) : image));
-		}
-		return slot;
+		chatIconManager.updateChatIcon(iconId, image);
+		client.refreshChat();
 	}
 
 	private static int tierItemId(String tier)
@@ -255,40 +245,4 @@ class KillClogChatEmoji
 		return canvas;
 	}
 
-	private Integer registerIcon(BufferedImage image)
-	{
-		int slot = reserveIconSlot();
-		if (slot == -1)
-		{
-			return null;
-		}
-		writeIcon(slot, image);
-		return slot;
-	}
-
-	private int reserveIconSlot()
-	{
-		IndexedSprite[] modIcons = client.getModIcons();
-		if (modIcons == null)
-		{
-			return -1;
-		}
-
-		int slot = modIcons.length;
-		IndexedSprite[] grown = Arrays.copyOf(modIcons, slot + 1);
-		client.setModIcons(grown);
-		return slot;
-	}
-
-	private void writeIcon(int slot, BufferedImage image)
-	{
-		IndexedSprite[] modIcons = client.getModIcons();
-		if (modIcons == null || slot >= modIcons.length)
-		{
-			return;
-		}
-
-		modIcons[slot] = ImageUtil.getImageIndexedSprite(image, client);
-		client.refreshChat();
-	}
 }

@@ -1,5 +1,6 @@
 package com.killclog;
 
+import java.awt.image.BufferedImage;
 import java.lang.reflect.Field;
 import java.lang.reflect.Proxy;
 import java.util.HashMap;
@@ -13,6 +14,9 @@ import net.runelite.api.MessageNode;
 import net.runelite.api.Player;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.client.callback.ClientThread;
+import net.runelite.client.game.ChatIconManager;
+import net.runelite.client.game.ItemManager;
+import net.runelite.client.util.AsyncBufferedImage;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -168,9 +172,32 @@ public class ChatCommandDispatchTest
 		assertEquals("Zulrah: 57 kc, 1/2 <img=101>", harness.rewritten.get());
 	}
 
+	@Test
+	public void anItemNotSeenBeforeReservesRuneLitesChatIconOnceAndFillsItWhenItsSpriteLoads() throws Exception
+	{
+		Harness harness = new Harness(result(Map.of("random_events", List.of(item(4, 1))),
+			Map.of("random_events", List.of(4))));
+		ItemManager items = org.mockito.Mockito.mock(ItemManager.class);
+		AsyncBufferedImage sprite = new AsyncBufferedImage(null, 36, 32, BufferedImage.TYPE_INT_ARGB);
+		org.mockito.Mockito.when(items.getImage(4)).thenReturn(sprite);
+		set(harness.command, "itemManager", items);
+		org.mockito.Mockito.when(harness.chatIcons.reserveChatIcon()).thenReturn(4);
+
+		assertEquals("the reserved icon is usable at once", "Random Events: 1/1 <img=104>", harness.run("!kclog random events"));
+		assertEquals("Random Events: 1/1 <img=104>", harness.run("!kclog random events"));
+		org.mockito.Mockito.verify(harness.chatIcons).reserveChatIcon();
+		org.mockito.Mockito.verify(harness.chatIcons, org.mockito.Mockito.never())
+			.updateChatIcon(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.any());
+
+		sprite.loaded();
+		org.mockito.Mockito.verify(harness.chatIcons).updateChatIcon(org.mockito.ArgumentMatchers.eq(4),
+			org.mockito.ArgumentMatchers.argThat(icon -> icon.getWidth() == 18 && icon.getHeight() == 16));
+	}
+
 	private static final class Harness
 	{
 		private final KillClogChatCommand command = new KillClogChatCommand();
+		private final ChatIconManager chatIcons = org.mockito.Mockito.mock(ChatIconManager.class);
 		private final AtomicReference<String> rewritten = new AtomicReference<>();
 		private ClogResult result;
 		private String lookedUp;
@@ -219,12 +246,16 @@ public class ChatCommandDispatchTest
 			Client client = (Client) Proxy.newProxyInstance(Client.class.getClassLoader(), new Class<?>[]{Client.class},
 				(proxy, method, args) -> method.getName().equals("getLocalPlayer") ? player : null);
 			set(command, "client", client);
-			Field icons = KillClogChatCommand.class.getDeclaredField("itemIconIdx");
+			// Each item's chat icon already reserved, at index id + 100.
+			org.mockito.Mockito.when(chatIcons.chatIconIndex(org.mockito.ArgumentMatchers.anyInt()))
+				.thenAnswer(invocation -> (int) invocation.getArgument(0) + 100);
+			set(command, "chatIconManager", chatIcons);
+			Field icons = KillClogChatCommand.class.getDeclaredField("itemIconId");
 			icons.setAccessible(true);
 			Map<Integer, Integer> registered = (Map<Integer, Integer>) icons.get(command);
 			for (int id : new int[]{1, 2, 3, PanelData.THIRD_AGE_ITEMS[0], PanelData.GILDED_ITEMS[0]})
 			{
-				registered.put(id, id + 100);
+				registered.put(id, id);
 			}
 		}
 

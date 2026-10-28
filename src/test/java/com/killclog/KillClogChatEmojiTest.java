@@ -3,8 +3,24 @@ package com.killclog;
 import java.awt.image.BufferedImage;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import net.runelite.api.ChatMessageType;
+import net.runelite.api.Client;
+import net.runelite.api.MessageNode;
+import net.runelite.api.events.ChatMessage;
+import net.runelite.client.game.ChatIconManager;
+import net.runelite.client.game.ItemManager;
+import net.runelite.client.util.AsyncBufferedImage;
 import org.junit.Test;
 import static org.junit.Assert.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 public class KillClogChatEmojiTest
 {
@@ -50,6 +66,33 @@ public class KillClogChatEmojiTest
 
 		assertEquals("<img=9> <img=10> <img=11> <img=12>",
 			KillClogChatEmoji.rewriteText(":rune: :dragon: :gilded: :green:", icons));
+	}
+
+	@Test
+	public void anEmojiReservesRuneLitesChatIconOnceAndFillsItWhenTheItemLoads()
+	{
+		KillClogChatEmoji emoji = new KillClogChatEmoji();
+		ItemManager items = mock(ItemManager.class);
+		AsyncBufferedImage clog = new AsyncBufferedImage(null, 36, 32, BufferedImage.TYPE_INT_ARGB);
+		when(items.getImage(PanelData.COLLECTION_LOG_ITEM_ID, 1, false)).thenReturn(clog);
+		ChatIconManager chatIcons = mock(ChatIconManager.class);
+		when(chatIcons.reserveChatIcon()).thenReturn(4);
+		when(chatIcons.chatIconIndex(4)).thenReturn(57);
+		TestViews.set(emoji, "client", mock(Client.class));
+		TestViews.set(emoji, "itemManager", items);
+		TestViews.set(emoji, "chatIconManager", chatIcons);
+		MessageNode node = mock(MessageNode.class);
+		when(node.getValue()).thenReturn("gz :clog:");
+		ChatMessage line = new ChatMessage(node, ChatMessageType.PUBLICCHAT, "Other player", "gz :clog:", "", 0);
+
+		emoji.rewrite(line);
+		emoji.rewrite(line);
+
+		verify(node, times(2)).setValue("gz <img=57>");
+		verify(chatIcons).reserveChatIcon();
+		verify(chatIcons, never()).updateChatIcon(anyInt(), any());
+		clog.loaded();
+		verify(chatIcons).updateChatIcon(eq(4), argThat(icon -> icon.getHeight() == 14));
 	}
 
 	@Test
