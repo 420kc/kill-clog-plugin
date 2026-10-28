@@ -8,6 +8,7 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * One provider's circuit breaker: five failures inside a minute trip it, and it
  * then short-circuits for a cooldown that doubles on each trip, up to 30 minutes.
+ * One guard, its monitor: a lookup's check reads the trip and its cooldown together.
  */
 @Slf4j
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
@@ -21,8 +22,8 @@ final class CircuitBreaker
 	private final String provider;
 	private final long[] recentFailures = new long[THRESHOLD];
 	private int failureIndex;
-	private volatile long trippedAt;
-	private volatile long cooldownMs = COOLDOWN_MS;
+	private long trippedAt;
+	private long cooldownMs = COOLDOWN_MS;
 
 	synchronized void failure()
 	{
@@ -58,9 +59,8 @@ final class CircuitBreaker
 		cooldownMs = COOLDOWN_MS;
 	}
 
-	boolean isOpen()
+	synchronized boolean isOpen()
 	{
-		long tripped = trippedAt;
-		return tripped > 0 && System.currentTimeMillis() - tripped < cooldownMs;
+		return trippedAt > 0 && System.currentTimeMillis() - trippedAt < cooldownMs;
 	}
 }
