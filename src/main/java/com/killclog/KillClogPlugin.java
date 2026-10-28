@@ -681,6 +681,13 @@ public class KillClogPlugin extends Plugin
 		return pbs::pbText;
 	}
 
+	/**
+	 * The tick, in the order its steps depend on: who is logged in, the world settling (the counters and CA tiers it
+	 * held back), the account taking up its own log, that log's reset and name-change lines, the account type and CA
+	 * reads, the automatic lookup, which reads what every step before it decided, then the log walk and the Adventure
+	 * Log. One handler on purpose: split across subscribers, the order would be a priority on each of them
+	 * (PluginPublicationCharacterizationTest.theTicksStepsRunInTheOrderTheyDependOn).
+	 */
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
@@ -711,6 +718,20 @@ public class KillClogPlugin extends Plugin
 			accountActivated = true;
 			ownLogServing(activeCache, session.getName());
 		}
+		ownLogLines(session, hardcoreXp, settledNow);
+		recheckAccountType(session);
+		if (sessionState.pendingCaRead())
+		{
+			sessionState.setPendingCaRead(!captureLocalCa());
+		}
+		autoLookup(session);
+		walkLog();
+		advLog.onTick(client, configManager);
+	}
+
+	/** A Hardcore Worlds reset starts your log over, and a name change takes it along; each says so in chat. */
+	private void ownLogLines(Session session, long hardcoreXp, boolean settledNow)
+	{
 		String hardcoreName = session.getName();
 		if (hardcoreXp > 0 && localClogCache.startOverOnReset(hardcoreName, hardcoreXp, settledNow))
 		{
@@ -730,7 +751,10 @@ public class KillClogPlugin extends Plugin
 				SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(renameName));
 			}
 		}
+	}
 
+	private void recheckAccountType(Session session)
+	{
 		if (sessionState.pendingAcctTypeRecheck())
 		{
 			String name = session.getName();
@@ -741,12 +765,11 @@ public class KillClogPlugin extends Plugin
 				SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(name, acctType));
 			}
 		}
+	}
 
-		if (sessionState.pendingCaRead())
-		{
-			sessionState.setPendingCaRead(!captureLocalCa());
-		}
-
+	/** Your own profile looks itself up once a login, when nobody else's is showing. */
+	private void autoLookup(Session session)
+	{
 		if (sessionState.pendingAutoLookup())
 		{
 			String name = session.getName();
@@ -781,7 +804,11 @@ public class KillClogPlugin extends Plugin
 				}
 			}
 		}
+	}
 
+	/** The Collection Log walk, started over when the world's store changes under it. */
+	private void walkLog()
+	{
 		LocalClogCache cache = world.captureCache();
 		if (cache != walkCache)
 		{
@@ -794,8 +821,6 @@ public class KillClogPlugin extends Plugin
 				chatNotifier, liveClogSync::resetFirstSyncWarning,
 				panel::onBulkCaptureComplete);
 		}
-
-		advLog.onTick(client, configManager);
 	}
 
 	@Subscribe
