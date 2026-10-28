@@ -13,6 +13,10 @@ import lombok.AccessLevel;
 import lombok.Setter;
 import net.runelite.client.util.LinkBrowser;
 
+/**
+ * What on a card is under the mouse (an item, a tier, a source): the card's hit boxes, the hovered name for its
+ * tooltip, the hover again after a scroll, and a press on the scroll rail that scrolls rather than opens.
+ */
 final class TooltipItemHover
 {
 	private final JComponent component;

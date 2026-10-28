@@ -2,6 +2,9 @@ package com.killclog;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * When cards open: on hover, or on a click.
+ */
 @RequiredArgsConstructor
 public enum TooltipMode
 {

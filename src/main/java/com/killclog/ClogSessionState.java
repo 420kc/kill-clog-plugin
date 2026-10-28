@@ -3,6 +3,10 @@ package com.killclog;
 import lombok.AccessLevel;
 import lombok.Setter;
 
+/**
+ * This login's pending reads, which the tick runs: the automatic lookup (once a login), the account-type recheck and
+ * the Combat Achievement read.
+ */
 final class ClogSessionState
 {
 	private boolean pendingAutoLookup;

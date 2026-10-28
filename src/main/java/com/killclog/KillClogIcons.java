@@ -6,6 +6,10 @@ import java.awt.image.BufferedImage;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.util.ImageUtil;
 
+/**
+ * Kill Clog's own icons, bundled or drawn: the plugin icon, the three source icons (Kill Clog, RuneProfile,
+ * TempleOSRS) and the search row's magnifiers.
+ */
 final class KillClogIcons
 {
 	private static final String ICON_RESOURCE = "/com/killclog/icon.png";

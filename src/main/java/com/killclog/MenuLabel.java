@@ -3,6 +3,9 @@ package com.killclog;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * The words of Kill Clog's right-click option.
+ */
 @Getter
 @RequiredArgsConstructor
 public enum MenuLabel

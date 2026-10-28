@@ -12,6 +12,10 @@ import javax.swing.JPanel;
 import javax.swing.JToolTip;
 import net.runelite.client.ui.FontManager;
 
+/**
+ * The comparison's log totals bar: each player's log count and tier icon side by side, each opening its player's
+ * Collection Log card.
+ */
 final class CompareClogTotalsBar
 {
 	private final BooleanSupplier comparisonMode;

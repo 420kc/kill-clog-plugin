@@ -13,6 +13,10 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.game.ItemManager;
 import javax.swing.SwingUtilities;
 
+/**
+ * Names for the items a log shows that the item cache hasn't named (untradeables), read from the game in batches of 48
+ * a tick, one run per log at a time; the cards repaint once when they're in.
+ */
 @Slf4j
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class TooltipItemNameResolver

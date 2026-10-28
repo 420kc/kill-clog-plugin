@@ -12,6 +12,10 @@ import net.runelite.api.widgets.WidgetUtil;
 import net.runelite.client.menus.MenuManager;
 import net.runelite.client.util.Text;
 
+/**
+ * The right-click Kill Clog Lookup option on players, where the setting places it, and the one chat line when the
+ * game's four plugin slots on the player menu are already full.
+ */
 final class ClogLookupMenu
 {
 	// OSRS player right-click menu reserves indexes 4-7 for plugins (4 slots total).

@@ -2,6 +2,10 @@ package com.killclog;
 
 import java.awt.Color;
 
+/**
+ * A skill cell's level colour: a light grey before a sync, else the setting's mode (one skill colour, the skill's
+ * Skill Clog progress, or 99+ completion).
+ */
 final class SkillLevelColor
 {
 	private SkillLevelColor()

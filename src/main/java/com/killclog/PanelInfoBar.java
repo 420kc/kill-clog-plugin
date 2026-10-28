@@ -15,6 +15,10 @@ import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.ColorUtil;
 
+/**
+ * The header row: the player's name and badge, the log count, and the menu button that switches the boss area between
+ * grid and list.
+ */
 final class PanelInfoBar
 {
 	// The menu button lifts the bar it sits on toward white, at rest and hovered, so it reads on any background: on

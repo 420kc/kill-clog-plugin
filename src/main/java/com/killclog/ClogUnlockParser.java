@@ -7,6 +7,11 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import net.runelite.client.util.Text;
 
+/**
+ * Reads the chat lines a live unlock needs: the game's "New item added to your collection log", the clan broadcast
+ * that stands in for a player whose notification is popup-only (carrying the game's obtained and total), and the kill-
+ * count lines behind "obtained at N kc".
+ */
 final class ClogUnlockParser
 {
 	private static final String COLLECTION_LOG_UNLOCK_PREFIX =

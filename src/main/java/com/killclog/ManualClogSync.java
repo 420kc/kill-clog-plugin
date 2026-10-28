@@ -15,6 +15,11 @@ import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.api.gameval.VarbitID;
 import net.runelite.api.widgets.Widget;
 
+/**
+ * The Collection Log walk, the only full read of your log: opening the log presses its own Search (the request a
+ * Plugin Hub maintainer approved, plugin-hub#12380), the game streams every obtained entry, and the walk replaces your
+ * own log only when it's complete (every entry maps to a page and the count reaches the game's). Client thread.
+ */
 @Slf4j
 final class ManualClogSync
 {

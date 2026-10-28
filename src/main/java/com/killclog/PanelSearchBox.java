@@ -15,6 +15,10 @@ import net.runelite.client.ui.FontManager;
 import net.runelite.client.ui.components.FlatTextField;
 import net.runelite.client.ui.components.IconTextField;
 
+/**
+ * The search row's look and layout: the search bar styled as RuneLite's, its status line, and the row that gives the
+ * bar what the compare button and the League switch leave.
+ */
 final class PanelSearchBox
 {
 	/** The search bar's height, which the boss list's own search row matches. */

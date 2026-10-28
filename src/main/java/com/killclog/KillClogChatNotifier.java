@@ -8,6 +8,10 @@ import net.runelite.api.Client;
 import net.runelite.api.GameState;
 import net.runelite.client.callback.ClientThread;
 
+/**
+ * Kill Clog's chat lines: setup help always shows; drops, sync results and warnings follow the chat setting; a line
+ * sent before your character exists waits for it.
+ */
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE, onConstructor_ = @Inject)
 final class KillClogChatNotifier
 {

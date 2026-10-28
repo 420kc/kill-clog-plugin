@@ -16,6 +16,10 @@ import net.runelite.client.game.ItemManager;
 import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
 
+/**
+ * Chat emoji: :killclog:, :clog:, :green:, :rune:, :dragon: and :gilded: in a chat line become their icons while the
+ * setting is on. The icons take the client's mod icon slots once and keep them for the life of the client.
+ */
 @Singleton
 class KillClogChatEmoji
 {

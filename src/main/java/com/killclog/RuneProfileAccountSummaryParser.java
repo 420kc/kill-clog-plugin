@@ -5,6 +5,10 @@ import com.google.gson.JsonObject;
 import javax.annotation.Nullable;
 import net.runelite.api.clan.ClanTitle;
 
+/**
+ * Reads RuneProfile's account summary: the account type (its key, else its name, else its id), the clan's name and the
+ * player's clan title.
+ */
 final class RuneProfileAccountSummaryParser
 {
 	private RuneProfileAccountSummaryParser()

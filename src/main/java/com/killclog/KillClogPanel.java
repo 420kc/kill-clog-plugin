@@ -40,6 +40,13 @@ import net.runelite.client.ui.components.FlatTextField;
 import net.runelite.client.ui.components.IconTextField;
 import net.runelite.client.util.ImageUtil;
 
+/**
+ * The Kill Clog sidebar: lays out the search row, the status row, the header (name, badge, log count), the skill grid,
+ * the boss grid and list, the activity tray and the comparison's totals bar, and draws a lookup as LookupSession and
+ * ComparisonController report it. Its own methods run on the Swing thread, so a caller on another thread posts to it
+ * (SwingUtilities.invokeLater); the status row's setters post themselves ({@link PanelStatusRow}). The header has two
+ * writers: this panel for a lookup, and ComparisonController while comparing.
+ */
 public class KillClogPanel extends PluginPanel
 	implements LookupSession.Listener, ComparisonController.Listener,
 	ComparisonController.CellRenderTarget, PublicationCoordinator.Feedback

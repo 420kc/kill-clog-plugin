@@ -16,6 +16,10 @@ import javax.swing.SwingUtilities;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.util.AsyncBufferedImage;
 
+/**
+ * A card's item pictures: loaded once per card, counted while any is still on its way (so a copy of the card waits for
+ * it), and painted as a grid with what isn't held dimmed.
+ */
 final class TooltipItemSprites
 {
 	private final BufferedImage[] sprites;

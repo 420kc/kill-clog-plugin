@@ -6,6 +6,10 @@ import net.runelite.client.config.ConfigGroup;
 import net.runelite.client.config.ConfigItem;
 import net.runelite.client.config.ConfigSection;
 
+/**
+ * Kill Clog's settings as RuneLite's config panel shows them. A key name is a player's saved setting: renaming one
+ * resets it, so an old name stays, and {@link ConfigMigrations} moves a value whose shape changes.
+ */
 @ConfigGroup("killclog")
 public interface KillClogConfig extends Config
 {

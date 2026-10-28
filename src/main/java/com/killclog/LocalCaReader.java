@@ -5,6 +5,10 @@ import java.util.Map;
 import net.runelite.api.Client;
 import net.runelite.api.gameval.VarbitID;
 
+/**
+ * Reads your Combat Achievement tier counts from the game's varbits and keeps them for this login ({@link
+ * LocalCaCache}).
+ */
 final class LocalCaReader
 {
 	boolean isCaVarbit(int id)

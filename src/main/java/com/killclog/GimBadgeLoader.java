@@ -1,8 +1,5 @@
 /*
  * Copyright (c) 2026, 420 kc <dyl@420kc.dev>
- * Owns the GIM badge images: loads them from the game's modicons and holds
- * the per-type cache the badge resolver reads. Badge state is game-sprite
- * runtime state, so it lives here, read on the client thread.
  */
 package com.killclog;
 
@@ -12,6 +9,10 @@ import net.runelite.api.Client;
 import net.runelite.api.IconID;
 import net.runelite.api.IndexedSprite;
 
+/**
+ * The group ironman badge images, loaded from the game's mod icons on the client thread and held per type for the
+ * badge resolver: game-sprite state, so it lives here.
+ */
 final class GimBadgeLoader
 {
 	private static final int MODICON_GIM = IconID.GROUP_IRONMAN.getIndex();

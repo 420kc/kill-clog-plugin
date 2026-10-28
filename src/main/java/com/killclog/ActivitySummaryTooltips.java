@@ -12,6 +12,10 @@ import lombok.RequiredArgsConstructor;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.hiscore.HiscoreSkill;
 
+/**
+ * The Combat Summary and Skills cards, alone or beside the rival's while comparing, built from the lookup's results
+ * each time one opens.
+ */
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class ActivitySummaryTooltips
 {

@@ -11,6 +11,10 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.util.ImageUtil;
 
+/**
+ * The Combat Achievement reward icons the Combat Summary shows, loaded once each through the item manager and scaled
+ * to the row.
+ */
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class CaRewardSprites
 {

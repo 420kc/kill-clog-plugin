@@ -10,6 +10,11 @@ import net.runelite.api.Player;
 import net.runelite.api.gameval.VarPlayerID;
 import net.runelite.client.game.ItemManager;
 
+/**
+ * Live unlocks between walks: a "New item added" line, or the clan broadcast, adds that one item to your own log,
+ * dated, with the kill that caused it; a name that matches two missing items is remembered for the next walk to
+ * settle; totals only rise. Client thread.
+ */
 @Slf4j
 final class LiveClogSync
 {

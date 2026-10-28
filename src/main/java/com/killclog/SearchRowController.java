@@ -22,6 +22,11 @@ import lombok.Getter;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.components.IconTextField;
 
+/**
+ * The search row's behaviour: Enter looks a name up, the compare icon switches the row into entering a second player
+ * and back out, and the search glass looks you up. It holds no lookup state of its own: it calls the panel's lookups
+ * and asks whether a comparison runs.
+ */
 final class SearchRowController
 {
 	private static final int SEARCH_ICON_HIT_X = 32;

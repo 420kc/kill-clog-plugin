@@ -34,7 +34,8 @@ import net.runelite.client.util.ImageUtil;
  * text arrives through {@link #setSearchStatus}, sync and character feedback
  * through the show/reset methods. Feedback only lands while the row is free
  * or already its owner's, and an expiry only ever clears the message it was
- * started for. Widgets are touched on the EDT only.
+ * started for. Widgets are touched on the EDT only, and its setters post
+ * themselves there, so the plugin calls them from any thread.
  */
 final class PanelStatusRow
 {

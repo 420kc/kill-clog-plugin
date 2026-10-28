@@ -1,6 +1,10 @@
 package com.killclog;
 
 
+/**
+ * Sol Heredit's card leads with the player's Colosseum Glory, as the game's hiscores show it, once they have any;
+ * kills otherwise.
+ */
 final class ColosseumGlory
 {
 	static final String BOSS_NAME = "Sol Heredit";

@@ -45,6 +45,13 @@ import net.runelite.client.ui.NavigationButton;
 import net.runelite.client.util.Filepath;
 import net.runelite.client.util.Text;
 
+/**
+ * Kill Clog's plugin: builds the services and the panel, and routes the game's events to them in the order they depend
+ * on (the tick's order is pinned by a test, so it stays one handler rather than a subscriber per feature). It is the
+ * session tracker's only listener, so the stores, the CA store and the publication flow follow each login from here.
+ * RuneLite keeps this instance across disable and enable: the panel and the publication flow are built once and kept,
+ * everything else at each start.
+ */
 @Slf4j
 @PluginDescriptor(
 	name = "Kill Clog",

@@ -4,6 +4,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
+/**
+ * Chooses a player's log across the three sources, for the panel and chat alike: TempleOSRS, RuneProfile and
+ * killclog.com asked at once with 7 seconds each, the fuller of TempleOSRS's and RuneProfile's first, then
+ * killclog.com's sync on coverage (the rules the site shares in cases/log-choice.tsv). Your own log never takes a
+ * remote one in place of what you captured.
+ */
 final class ClogProviderFanout
 {
 	// Every provider leg gets this long; tests shorten it.

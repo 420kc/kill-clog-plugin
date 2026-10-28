@@ -18,6 +18,10 @@ import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
 
+/**
+ * The panel's images: log tier icons, capes, CA reward and clue tier icons, and any item or game sprite at cell size,
+ * each handed to the Swing thread once the game has loaded it, with the dimmed copies cells show for what isn't held.
+ */
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 final class PanelIconCache
 {

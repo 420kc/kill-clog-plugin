@@ -4,6 +4,10 @@ import java.util.Locale;
 import javax.annotation.Nullable;
 import net.runelite.client.util.Text;
 
+/**
+ * An account's type as the game and the providers name it: RuneLite's varbit values, the providers' ids and names, the
+ * label the panel shows, and which type wins when two sources disagree.
+ */
 public enum AccountType
 {
 	REGULAR,

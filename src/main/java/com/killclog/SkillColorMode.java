@@ -3,6 +3,9 @@ package com.killclog;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * How skill cells are coloured, as the setting names it.
+ */
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public enum SkillColorMode
 {
