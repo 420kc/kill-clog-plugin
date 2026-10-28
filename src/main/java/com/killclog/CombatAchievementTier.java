@@ -18,12 +18,13 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 enum CombatAchievementTier
 {
+	// The game's counts on 2026-10-28 (the OSRS Wiki's tier table, 655 tasks; RuneProfile's live totals agree).
 	EASY(1, 41),
-	MEDIUM(2, 60),
-	HARD(3, 86),
-	ELITE(4, 164),
-	MASTER(5, 174),
-	GRANDMASTER(6, 121);
+	MEDIUM(2, 64),
+	HARD(3, 89),
+	ELITE(4, 166),
+	MASTER(5, 173),
+	GRANDMASTER(6, 122);
 
 	private final int pointsPerTask;
 	private final int totalTasks;

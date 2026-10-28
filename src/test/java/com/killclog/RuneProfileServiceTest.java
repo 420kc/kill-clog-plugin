@@ -146,15 +146,15 @@ public class RuneProfileServiceTest
 	{
 		String json = "{\"data\":["
 			+ "{\"id\":1,\"name\":\"Easy\",\"completed\":41,\"total\":41},"
-			+ "{\"id\":2,\"name\":\"Medium\",\"completed\":60,\"total\":60}"
+			+ "{\"id\":2,\"name\":\"Medium\",\"completed\":64,\"total\":64}"
 			+ "]}";
 		CombatAchievementResult r = service.parseCombatAchievements(json);
 		assertNotNull(r);
-		assertEquals(161, r.getTotalPoints());
+		assertEquals(169, r.getTotalPoints());
 		assertEquals(CombatAchievementTier.MEDIUM, r.getTier());
 		assertEquals(CombatAchievementReward.MEDIUM, r.getReward());
 		assertEquals(41, TestViews.completed(r, CombatAchievementTier.EASY));
-		assertEquals(60, TestViews.total(r, CombatAchievementTier.MEDIUM));
+		assertEquals(64, TestViews.total(r, CombatAchievementTier.MEDIUM));
 	}
 
 	@Test
@@ -162,11 +162,11 @@ public class RuneProfileServiceTest
 	{
 		String json = "{\"data\":["
 			+ "{\"name\":\"Easy\",\"completed\":41,\"total\":41},"
-			+ "{\"name\":\"Medium\",\"completed\":60,\"total\":60},"
-			+ "{\"name\":\"Hard\",\"completed\":86,\"total\":86},"
-			+ "{\"name\":\"Elite\",\"completed\":164,\"total\":164},"
-			+ "{\"name\":\"Master\",\"completed\":174,\"total\":174},"
-			+ "{\"name\":\"Grandmaster\",\"completed\":121,\"total\":121}"
+			+ "{\"name\":\"Medium\",\"completed\":64,\"total\":64},"
+			+ "{\"name\":\"Hard\",\"completed\":89,\"total\":89},"
+			+ "{\"name\":\"Elite\",\"completed\":166,\"total\":166},"
+			+ "{\"name\":\"Master\",\"completed\":173,\"total\":173},"
+			+ "{\"name\":\"Grandmaster\",\"completed\":122,\"total\":122}"
 			+ "]}";
 		CombatAchievementResult r = service.parseCombatAchievements(json);
 		assertNotNull(r);
