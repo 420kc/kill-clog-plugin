@@ -91,7 +91,7 @@ final class PanelData
 	static final int[] MASTER_RARE_ITEMS = itemIds("master_rare_items");
 
 	// The Clue Summary's rare rows in its order, one per collection (clue-rare-rows.tsv).
-	static final List<RareRow> RARE_ROWS = rareRows();
+	static final List<RareRow> RARE_ROWS = rareRows(CatalogTsv.rows(PanelData.class, "clue-rare-rows.tsv", 8));
 
 	// Clue tier -> collection-log category key, derived from the enum name:
 	// CLUE_SCROLL_BEGINNER -> beginner_treasure_trails.
@@ -260,10 +260,11 @@ final class PanelData
 		}
 	}
 
-	private static List<RareRow> rareRows()
+	/** clue-rare-rows.tsv's rows as RareRows. */
+	static List<RareRow> rareRows(List<String[]> table)
 	{
 		List<RareRow> rows = new ArrayList<>();
-		for (String[] f : CatalogTsv.rows(PanelData.class, "clue-rare-rows.tsv", 8))
+		for (String[] f : table)
 		{
 			// A tier this client build doesn't carry skips its row, as an unknown boss does: a row short beats a dead panel.
 			HiscoreSkill tier = f[3].equals("-") ? null : skillNamed(f[3]);

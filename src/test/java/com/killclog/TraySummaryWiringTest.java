@@ -275,6 +275,17 @@ public class TraySummaryWiringTest
 	}
 
 	@Test
+	public void aRareRowWhoseTierTheClientLacksIsSkippedNotFatal()
+	{
+		List<RareRow> rows = PanelData.rareRows(Arrays.asList(
+			new String[]{"gilded", "Gilded", "Gilded", "-", "Gilded equipment", "-", "gilded_items", "3481"},
+			new String[]{"new_rare", "New (Rare)", "New Rare", "CLUE_SCROLL_NOT_YET", "Page", "page", "gilded_items", "1"},
+			new String[]{"hard_rare", "Hard", "Hard Rare", "CLUE_SCROLL_HARD", "Page", "page", "hard_rare_items", "20544"}));
+		assertEquals(Arrays.asList("gilded", "hard_rare"), rows.stream().map(RareRow::getKey).collect(Collectors.toList()));
+		assertEquals(HiscoreSkill.CLUE_SCROLL_HARD, rows.get(1).getTier());
+	}
+
+	@Test
 	public void theRareRowsAreClueRareRowsTsvRowForRow()
 	{
 		List<RareRow> rows = PanelData.RARE_ROWS;
