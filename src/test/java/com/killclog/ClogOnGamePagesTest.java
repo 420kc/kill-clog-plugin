@@ -98,6 +98,40 @@ public class ClogOnGamePagesTest
 	}
 
 	@Test
+	public void aLogSentBeforeTheGameGrewAPageCountsAgainstEverySlotTheGameHas()
+	{
+		Map<String, List<Integer>> pages = gamePages();
+		pages.put("the_fractured_archive", Arrays.asList(30001, 30002, 30003));
+
+		ClogResult laid = templeLog().onPages(pages, id -> id);
+
+		assertEquals("the page its source never knew stays unknown", null, laid.getCategoryItems().get("the_fractured_archive"));
+		assertEquals("but its slots count: 3 known and 3 new", 6, ClogHelper.sumClogTotals(laid)[1]);
+	}
+
+	@Test
+	public void recentShowsOneFormOfASlotWhicheverLogItsDatesComeFrom()
+	{
+		Map<String, List<ClogResult.ClogItem>> dated = new HashMap<>();
+		dated.put("mimic", Arrays.asList(new ClogResult.ClogItem(99999, 1, "2026-10-01 10:00:00"),
+			new ClogResult.ClogItem(RING_OF_3RD_AGE, 1, "2026-10-02 10:00:00")));
+		ClogResult temple = new ClogResult("Marni", dated, Collections.singletonMap("mimic",
+			Arrays.asList(99999, RING_OF_3RD_AGE)), null, null, AccountType.REGULAR).withSources(true, false, false);
+		Map<String, List<ClogResult.ClogItem>> undated = new HashMap<>();
+		undated.put("elite_treasure_trails", Arrays.asList(new ClogResult.ClogItem(RING_OF_3RD_AGE, 1, null),
+			new ClogResult.ClogItem(LIGHT_TUXEDO_JACKET, 1, null), new ClogResult.ClogItem(LAVA_DRAGON_MASK, 1, null)));
+		ClogResult runeProfile = new ClogResult("Marni", undated, gamePages(), null, null, AccountType.REGULAR)
+			.withSources(false, true, false);
+
+		ClogResult shown = ClogResult.pickFullerProvider(temple, runeProfile)
+			.onPages(gamePages(), id -> id == 99999 ? RING_OF_3RD_AGE : id);
+
+		List<ClogResult.ClogItem> recent = LookupQueries.getRecentItems(shown, 4, id -> id == 99999 ? RING_OF_3RD_AGE : id);
+		assertEquals(1, recent.size());
+		assertEquals(RING_OF_3RD_AGE, recent.get(0).getId());
+	}
+
+	@Test
 	public void beforeTheClientHasReadTheLogTheLogIsShownAsSent()
 	{
 		ClogResult log = templeLog();

@@ -14,6 +14,7 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.IntUnaryOperator;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.swing.Box;
@@ -1410,7 +1411,8 @@ public class KillClogPanel extends PluginPanel
 			String sync = LookupQueries.syncLine(lastChanged, stale);
 			if (sync != null) tip.setSyncData(sync, stale);
 			tip.setRareItems(ClogHelper.rareItems(clog), clog, itemManager);
-			tip.setRecentItems(LookupQueries.getRecentItems(clog, 4), clog, itemManager);
+			tip.setRecentItems(LookupQueries.getRecentItems(clog, 4,
+				clogIndex != null ? clogIndex::canonicalItemId : IntUnaryOperator.identity()), clog, itemManager);
 		}
 		else
 		{

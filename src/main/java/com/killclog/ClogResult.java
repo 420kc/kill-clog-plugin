@@ -184,7 +184,9 @@ public class ClogResult
 	 * the Ring of 3rd Age under its Mimic and keeps the Rare pages' leftovers on the tier pages; on the game's pages
 	 * neither shows. Pages the game doesn't have (Kill Clog's own 3rd Age, Gilded and Mimic, a provider's old page
 	 * name) keep what the source sent, and a page the source never knew, no key and none of its items anywhere, stays
-	 * unknown rather than empty. With no pages read yet it is this log as sent.
+	 * unknown rather than empty, though its slots still count in the total: a log counts against every slot the game
+	 * has, so one a source sent before the game grew a page isn't shown out of the old number (Sol, 10/28: 1,717 of a
+	 * 1,734-slot log). With no pages read yet it is this log as sent.
 	 */
 	ClogResult onPages(Map<String, List<Integer>> pages, IntUnaryOperator canonical)
 	{
@@ -203,6 +205,8 @@ public class ClogResult
 			}
 		}
 		Set<Integer> listed = new HashSet<>(held.keySet());
+		Set<Integer> slots = new HashSet<>();
+		pages.values().forEach(ids -> ids.forEach(id -> slots.add(canonical.applyAsInt(id))));
 		for (List<Integer> ids : categoryItems.values())
 		{
 			for (int id : ids)
@@ -238,6 +242,7 @@ public class ClogResult
 			}
 		});
 		ClogResult copy = new ClogResult(this, providerAccountType, obtained, categories);
+		copy.uniqueTotal = Math.max(uniqueTotal, slots.size());
 		copy.fromTemple = fromTemple;
 		copy.fromRuneProfile = fromRuneProfile;
 		copy.fromKillclog = fromKillclog;

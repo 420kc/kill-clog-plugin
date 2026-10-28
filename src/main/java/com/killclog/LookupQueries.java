@@ -9,6 +9,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.IntUnaryOperator;
 import javax.annotation.Nullable;
 import net.runelite.api.Skill;
 import net.runelite.client.hiscore.HiscoreSkill;
@@ -109,6 +110,12 @@ final class LookupQueries
 
 	static List<ClogResult.ClogItem> getRecentItems(ClogResult result, int limit)
 	{
+		return getRecentItems(result, limit, IntUnaryOperator.identity());
+	}
+
+	/** The newest dated items, a slot once whichever form of it the log holds ({@code slot} folds forms as the grid does). */
+	static List<ClogResult.ClogItem> getRecentItems(ClogResult result, int limit, IntUnaryOperator slot)
+	{
 		List<ClogResult.ClogItem> all = new ArrayList<>();
 		if (result == null)
 		{
@@ -131,7 +138,7 @@ final class LookupQueries
 		Set<Integer> seen = new HashSet<>();
 		for (ClogResult.ClogItem item : all)
 		{
-			if (seen.add(item.getId()) && unique.size() < limit)
+			if (seen.add(slot.applyAsInt(item.getId())) && unique.size() < limit)
 			{
 				unique.add(item);
 			}

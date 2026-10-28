@@ -156,8 +156,9 @@ final class ClogHelper
 		}
 		int obtained = result.getUniqueObtained() > 0
 			? result.getUniqueObtained() : allObtained.size();
-		// The game's log as this client knows it, unless the sync knew a newer one: a sync carries the game's total at
-		// that moment, so a player who hasn't synced since the log grew kept the old one (1717 against 1734 on 10/27).
+		// The largest total known: the game's slots once the log is on the game's pages (ClogResult.onPages), else the
+		// pages the log was sent with, unless the sync knew more. A sync carries the game's total at that moment, so a
+		// player who hasn't synced since the log grew kept the old one (1717 against 1734 on 10/27).
 		int total = Math.max(result.getUniqueTotal(), allItems.size());
 		return new int[]{obtained, total};
 	}
