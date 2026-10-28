@@ -19,7 +19,6 @@ import javax.swing.JPanel;
 import javax.swing.JToolTip;
 import javax.swing.SwingUtilities;
 import javax.swing.border.MatteBorder;
-import net.runelite.api.Client;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
@@ -95,7 +94,7 @@ public class TraySummaryWiringTest
 			panel = new KillClogPanel(mock(HiscoreService.class), catalog,
 				mock(RuneProfileService.class), mock(KillclogService.class),
 				config, mock(ConfigManager.class), sprites,
-				items, clientThread, new SkillIconManager(), mock(Client.class), mock(PlayerPortraits.class));
+				items, clientThread, new SkillIconManager(), mock(PlayerPortraits.class));
 			cells = field(panel, "cells", Cells.class);
 			clues = cells.getActivityLabels().get(HiscoreSkill.CLUE_SCROLL_ALL);
 			// Nothing here is on a screen, so the pin is recorded instead of shown.

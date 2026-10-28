@@ -455,10 +455,10 @@ public class TitleTooltipTest
 			}
 		}
 		thumb.setRGB(8, 0, 0);
-		assertEquals(new Color(0x4d, 0x42, 0x33), NativeTooltip.bodyColor(thumb));
-		assertNull(NativeTooltip.bodyColor(null));
+		assertEquals(new Color(0x4d, 0x42, 0x33), CardSprites.bodyColor(thumb));
+		assertNull(CardSprites.bodyColor(null));
 		// The rail's thumb takes the bevel's light; a dark flat thumb is lifted until it reads.
-		assertEquals(new Color(0xd0, 0xc0, 0xa0), NativeTooltip.thumbColor(thumb));
+		assertEquals(new Color(0xd0, 0xc0, 0xa0), CardSprites.thumbColor(thumb));
 		java.awt.image.BufferedImage flat = new java.awt.image.BufferedImage(16, 5,
 			java.awt.image.BufferedImage.TYPE_INT_ARGB);
 		for (int x = 0; x < 16; x++)
@@ -468,6 +468,6 @@ public class TitleTooltipTest
 				flat.setRGB(x, y, 0xff3f3f3f);
 			}
 		}
-		assertEquals(new Color(191, 191, 191), NativeTooltip.thumbColor(flat));
+		assertEquals(new Color(191, 191, 191), CardSprites.thumbColor(flat));
 	}
 }

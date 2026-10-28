@@ -12,7 +12,6 @@ import java.util.function.Consumer;
 import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
-import net.runelite.api.Client;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
@@ -75,7 +74,7 @@ public class PanelStatusRowCharacterizationTest
 			panel = new KillClogPanel(mock(HiscoreService.class), catalog,
 				mock(RuneProfileService.class), mock(KillclogService.class),
 				config, mock(ConfigManager.class), sprites,
-				mock(ItemManager.class), mock(ClientThread.class), new SkillIconManager(), mock(Client.class), mock(PlayerPortraits.class));
+				mock(ItemManager.class), mock(ClientThread.class), new SkillIconManager(), mock(PlayerPortraits.class));
 			statusRow = field(panel, "statusRow", PanelStatusRow.class);
 			status = field("searchStatus", JLabel.class);
 			sync = field("syncArrow", JLabel.class);

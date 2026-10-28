@@ -9,7 +9,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
-import net.runelite.api.Client;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
@@ -79,7 +78,7 @@ public class LeagueViewPanelTest
 		SwingUtilities.invokeAndWait(() ->
 		{
 			panel = new KillClogPanel(hiscores, clogs, runeProfile, killclog, config, mock(ConfigManager.class), sprites,
-				mock(ItemManager.class), mock(ClientThread.class), new SkillIconManager(), mock(Client.class), mock(PlayerPortraits.class));
+				mock(ItemManager.class), mock(ClientThread.class), new SkillIconManager(), mock(PlayerPortraits.class));
 			session = field(panel, "lookupSession", LookupSession.class);
 		});
 	}

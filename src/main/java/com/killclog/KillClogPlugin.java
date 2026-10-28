@@ -35,6 +35,7 @@ import net.runelite.client.eventbus.Subscribe;
 import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.game.ChatIconManager;
 import net.runelite.client.game.ItemManager;
+import net.runelite.client.game.SpriteManager;
 import net.runelite.client.menus.MenuManager;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
@@ -98,6 +99,9 @@ public class KillClogPlugin extends Plugin
 
 	@Inject
 	private ItemManager itemManager;
+
+	@Inject
+	private SpriteManager spriteManager;
 
 	@Inject
 	private ClogService clogService;
@@ -198,6 +202,7 @@ public class KillClogPlugin extends Plugin
 		if (panel == null)
 		{
 			panel = panelProvider.get();
+			clientThread.invokeLater(() -> CardSprites.load(client, spriteManager));
 		}
 		// RuneLite moves the 2.4 folder in on first use. The store opens it on its
 		// own disk thread; a folder that cannot open keeps this session in memory.
@@ -448,7 +453,7 @@ public class KillClogPlugin extends Plugin
 		if (event.getGameState() == GameState.LOGGED_IN)
 		{
 			accountActivated = false;
-			SwingUtilities.invokeLater(panel::reloadTooltipSprites);
+			reloadCardSprites();
 			clogService.clearTempleFailures();
 			runeProfileService.clearFailures();
 			killclogService.clearFailures();
@@ -456,7 +461,7 @@ public class KillClogPlugin extends Plugin
 		}
 		else if (event.getGameState() == GameState.LOGIN_SCREEN)
 		{
-			SwingUtilities.invokeLater(panel::reloadTooltipSprites);
+			reloadCardSprites();
 			// Logged out, your name is anyone's: its lookup reads every site, character and clan included.
 			SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(null, null));
 			// The sync affordance belongs to the account that just ended. Hiding
@@ -859,10 +864,17 @@ public class KillClogPlugin extends Plugin
 	@Subscribe
 	public void onClientTick(ClientTick event)
 	{
-		if (NativeTooltip.wornSpritesChanged(client))
+		if (CardSprites.changed(client))
 		{
-			SwingUtilities.invokeLater(panel::reloadTooltipSprites);
+			reloadCardSprites();
 		}
+	}
+
+	/** The cards' sprites read again (a pack's where one replaces them), then their colours and the character icon. */
+	private void reloadCardSprites()
+	{
+		CardSprites.load(client, spriteManager);
+		SwingUtilities.invokeLater(panel::reloadCardLook);
 	}
 
 	@Subscribe

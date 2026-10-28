@@ -27,7 +27,6 @@ import javax.swing.JTextField;
 import javax.swing.JToolTip;
 import javax.swing.SwingUtilities;
 import javax.swing.border.EmptyBorder;
-import net.runelite.api.Client;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
@@ -74,7 +73,6 @@ public class KillClogPanel extends PluginPanel
 	private final SpriteManager spriteManager;
 	private final ItemManager itemManager;
 	private final ClientThread clientThread;
-	private final Client client;
 	private final TooltipDataBuilder tooltipDataBuilder;
 	private final CaRewardSprites caRewardSprites;
 	private final TooltipItemNameResolver itemNameResolver;
@@ -210,7 +208,7 @@ public class KillClogPanel extends PluginPanel
 		KillClogConfig config, ConfigManager configManager,
 		SpriteManager spriteManager,
 		ItemManager itemManager, ClientThread clientThread,
-		SkillIconManager skillIconManager, Client client, PlayerPortraits portraits)
+		SkillIconManager skillIconManager, PlayerPortraits portraits)
 	{
 		super(true); // wrap in JScrollPane
 		this.clogService = clogService;
@@ -221,7 +219,6 @@ public class KillClogPanel extends PluginPanel
 		this.spriteManager = spriteManager;
 		this.itemManager = itemManager;
 		this.clientThread = clientThread;
-		this.client = client;
 		this.tooltipDataBuilder = new TooltipDataBuilder(itemManager);
 		this.caRewardSprites = new CaRewardSprites(itemManager, clientThread, this::repaint);
 		this.iconCache = new PanelIconCache(itemManager, clientThread, spriteManager);
@@ -253,7 +250,7 @@ public class KillClogPanel extends PluginPanel
 		this.comparison.setBlueNameSupplier(this::comparisonBlueName);
 		this.comparison.setCells(this.cells);
 
-		reloadTooltipSprites();
+		applyCardColors();
 
 		// The anchored top's border is 6 not 10: the missing 4px live inside the status row
 		// (taller row + compensating label inset), which lets the sync
@@ -1220,14 +1217,11 @@ public class KillClogPanel extends PluginPanel
 		}
 	}
 
-	public void reloadTooltipSprites()
+	/** The cards wear the colours the player set, and the status row the game's character icon (a pack's, if any). */
+	public void reloadCardLook()
 	{
 		applyCardColors();
-		clientThread.invokeLater(() ->
-		{
-			NativeTooltip.loadSprites(client, spriteManager);
-			statusRow.requestCharacterIcon();
-		});
+		statusRow.requestCharacterIcon();
 	}
 
 	/** The cards wear the colours the player set. */

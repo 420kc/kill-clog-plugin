@@ -12,7 +12,6 @@ import java.util.function.Consumer;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
-import net.runelite.api.Client;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
@@ -69,7 +68,7 @@ public class PanelCellResetCharacterizationTest
 			panel = new KillClogPanel(mock(HiscoreService.class), catalog,
 				mock(RuneProfileService.class), mock(KillclogService.class),
 				config, mock(ConfigManager.class), sprites,
-				mock(ItemManager.class), mock(ClientThread.class), new SkillIconManager(), mock(Client.class), mock(PlayerPortraits.class));
+				mock(ItemManager.class), mock(ClientThread.class), new SkillIconManager(), mock(PlayerPortraits.class));
 			cells = field("cells", Cells.class);
 			highlighter = field("highlighter", ProgressHighlighter.class);
 			searchRow = field("searchRowController", SearchRowController.class);

@@ -9,7 +9,7 @@ import java.util.Random;
 import org.junit.Test;
 
 /** The frame's mirrored corners and edges come out pixel for pixel as the hand-written flip drew them. */
-public class NativeTooltipFlipTest
+public class CardSpritesFlipTest
 {
 	@Test
 	public void runeLitesFlipMatchesTheOldOneBothWays()
@@ -27,7 +27,7 @@ public class NativeTooltipFlipTest
 		for (boolean vertical : new boolean[]{true, false})
 		{
 			BufferedImage expected = oldFlip(source, vertical);
-			BufferedImage actual = NativeTooltip.flip(source, vertical);
+			BufferedImage actual = CardSprites.flip(source, vertical);
 			for (int y = 0; y < 5; y++)
 			{
 				for (int x = 0; x < 7; x++)
@@ -36,7 +36,7 @@ public class NativeTooltipFlipTest
 				}
 			}
 		}
-		assertNull(NativeTooltip.flip(null, true));
+		assertNull(CardSprites.flip(null, true));
 	}
 
 	/** The plugin's flip before it used RuneLite's ImageUtil.flipImage. */
