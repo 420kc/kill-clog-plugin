@@ -213,6 +213,7 @@ public class KillClogPlugin extends Plugin
 			panel = panelProvider.get();
 			clientThread.invokeLater(() -> CardSprites.load(client, spriteManager));
 		}
+		chatNotifier.start();
 		// RuneLite moves the 2.4 folder in on first use. The store opens it on its
 		// own disk thread; a folder that cannot open keeps this session in memory.
 		localClogCache.open(this::getPluginDirectory);
@@ -300,6 +301,7 @@ public class KillClogPlugin extends Plugin
 		clientToolbar.removeNavigation(navButton);
 		lookupMenu.stop(config, menuManager);
 		kclogCommand.commands().keySet().forEach(chatCommandManager::unregisterCommand);
+		chatNotifier.stop();
 		localClogCache.shutdown();
 		world.close();
 		localCaCache.shutdown();

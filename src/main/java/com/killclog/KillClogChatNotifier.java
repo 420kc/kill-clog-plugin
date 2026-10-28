@@ -22,6 +22,24 @@ final class KillClogChatNotifier
 	private final ClientThread clientThread;
 	// Lines waiting for your character, oldest first. Every line is sent from the client thread, so this is its alone.
 	private final Deque<String> waiting = new ArrayDeque<>();
+	// The plugin's starts and whether it runs, set on the EDT; the waiting lines belong to one start (Sol, 10/28: a
+	// line queued before a disable reached chat after it).
+	private volatile int starts;
+	private volatile boolean running = true;
+	private int waitingFrom;
+
+	/** The plugin started: nothing that waited from before shows. */
+	void start()
+	{
+		starts++;
+		running = true;
+	}
+
+	/** The plugin stopped: what waits never shows. */
+	void stop()
+	{
+		running = false;
+	}
 
 	void send(ChatNotice notice, String message)
 	{
@@ -32,7 +50,12 @@ final class KillClogChatNotifier
 
 		// A line waits for your character, behind any line before it, through a hop or a lost connection: other plugins
 		// read the character on every game message, and RuneLite's Loot Tracker threw on one that came first (10/28).
-		// The login screen drops what waits. Client thread.
+		// The login screen drops what waits, as does the plugin stopping. Client thread.
+		if (waitingFrom != starts)
+		{
+			waiting.clear();
+			waitingFrom = starts;
+		}
 		waiting.add("<col=4caf6e>Kill Clog:</col> " + message);
 		if (waiting.size() == 1)
 		{
@@ -40,9 +63,14 @@ final class KillClogChatNotifier
 		}
 	}
 
-	/** True once what waits is sent, or dropped at the login screen; until then the client thread asks again. */
+	/** True once what waits is sent, or dropped; until then the client thread asks again. */
 	private boolean sendWaiting()
 	{
+		if (!running || waitingFrom != starts)
+		{
+			waiting.clear();
+			return true;
+		}
 		if (client.getLocalPlayer() == null)
 		{
 			if (client.getGameState() != GameState.LOGIN_SCREEN)

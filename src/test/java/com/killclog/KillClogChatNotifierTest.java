@@ -92,6 +92,28 @@ public class KillClogChatNotifierTest
 	}
 
 	@Test
+	public void aLineWaitingWhenThePluginStopsNeverShowsAndARestartBeginsClean()
+	{
+		when(client.getGameState()).thenReturn(GameState.HOPPING);
+		notifier.send(ChatNotice.SYNC_RESULT, "before the disable");
+		notifier.stop();
+		when(client.getLocalPlayer()).thenReturn(mock(Player.class));
+		assertEquals(true, later.get(0).getAsBoolean());
+		verify(client, never()).addChatMessage(any(), anyString(), anyString(), any());
+
+		when(client.getLocalPlayer()).thenReturn(null);
+		notifier.start();
+		notifier.send(ChatNotice.SYNC_RESULT, "old");
+		notifier.stop();
+		notifier.start();
+		notifier.send(ChatNotice.SYNC_RESULT, "new");
+		when(client.getLocalPlayer()).thenReturn(mock(Player.class));
+		later.forEach(BooleanSupplier::getAsBoolean);
+		verify(client, never()).addChatMessage(ChatMessageType.GAMEMESSAGE, "", PREFIX + "old", null);
+		verify(client).addChatMessage(ChatMessageType.GAMEMESSAGE, "", PREFIX + "new", null);
+	}
+
+	@Test
 	public void theLoginScreenDropsWhatWaits()
 	{
 		when(client.getGameState()).thenReturn(GameState.LOGGED_IN);
