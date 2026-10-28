@@ -2,6 +2,7 @@ package com.killclog;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -89,28 +90,8 @@ final class PanelData
 
 	static final int[] MASTER_RARE_ITEMS = itemIds("master_rare_items");
 
-	// The rare collections in Clue Summary order: the two clue-wide sets, then the tier rares.
-	static final String[] RARE_KEYS = {CLOG_THIRD_AGE, CLOG_GILDED, RARE_HARD, RARE_ELITE, RARE_MASTER};
-	static final String[] RARE_NAMES = {
-		"3rd Age", "Gilded", "Hard Treasure Trails (Rare)", "Elite Treasure Trails (Rare)", "Master Treasure Trails (Rare)",
-	};
-	// The clue tier a rare row's page logs: its card reads the tier's completed clues, as the game's page does.
-	static final HiscoreSkill[] RARE_TIERS = {
-		null, null, HiscoreSkill.CLUE_SCROLL_HARD, HiscoreSkill.CLUE_SCROLL_ELITE, HiscoreSkill.CLUE_SCROLL_MASTER,
-	};
-	// Each rare row's wiki page: the equipment set, or for a tier's rares their section of the Collection log.
-	static final String[] RARE_WIKI_PAGES = {
-		"3rd Age equipment", "Gilded equipment", CLOG_WIKI_PAGE + "#Hard Treasure Trail Rewards (Rare)",
-		CLOG_WIKI_PAGE + "#Elite Treasure Trail Rewards (Rare)", CLOG_WIKI_PAGE + "#Master Treasure Trail Rewards (Rare)",
-	};
-	// The game's Collection Log page each rare row stands for, where one does: its page opens the row's card.
-	static final String[] RARE_PAGES = {
-		null, null, "hard_treasure_trails_rare", "elite_treasure_trails_rare", "master_treasure_trails_rare",
-	};
-	static final int[][] RARE_ITEMS = {
-		THIRD_AGE_ITEMS, GILDED_ITEMS, HARD_RARE_ITEMS, ELITE_RARE_ITEMS, MASTER_RARE_ITEMS,
-	};
-	static final int[] RARE_ICON_ITEM_IDS = {THIRD_AGE_ITEM_ID, GILDED_ITEM_ID, 20544, 20543, 19836};
+	// The Clue Summary's rare rows in its order, one per collection (clue-rare-rows.tsv).
+	static final List<RareRow> RARE_ROWS = rareRows();
 
 	// Clue tier -> collection-log category key, derived from the enum name:
 	// CLUE_SCROLL_BEGINNER -> beginner_treasure_trails.
@@ -277,6 +258,17 @@ final class PanelData
 		{
 			return null;
 		}
+	}
+
+	private static List<RareRow> rareRows()
+	{
+		List<RareRow> rows = new ArrayList<>();
+		for (String[] f : CatalogTsv.rows(PanelData.class, "clue-rare-rows.tsv", 8))
+		{
+			rows.add(new RareRow(f[0], f[1], f[2], f[3].equals("-") ? null : HiscoreSkill.valueOf(f[3]), f[4],
+				f[5].equals("-") ? null : f[5], itemIds(f[6]), Integer.parseInt(f[7])));
+		}
+		return Collections.unmodifiableList(rows);
 	}
 
 	private static int[] itemIds(String kind)

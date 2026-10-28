@@ -225,15 +225,16 @@ final class TooltipDataBuilder
 	@Nullable
 	TooltipData rareRow(int row, @Nullable ClogResult clog, @Nullable ClogResult catalog)
 	{
-		String name = PanelData.RARE_NAMES[row];
+		RareRow rare = PanelData.RARE_ROWS.get(row);
+		String name = rare.getName();
 		TooltipData data = clog == null ? null : row < 2
-			? buildClueRareData(name, PanelData.RARE_KEYS[row], clog)
-			: buildCustomRareData(name, PanelData.RARE_ITEMS[row], clog);
+			? buildClueRareData(name, rare.getKey(), clog)
+			: buildCustomRareData(name, rare.getItems(), clog);
 		if (data == null)
 		{
-			data = buildUnsyncedTooltipData(name, PanelData.RARE_KEYS[row], -1, null, -1, catalog);
+			data = buildUnsyncedTooltipData(name, rare.getKey(), -1, null, -1, catalog);
 		}
-		return data != null ? data : buildUnsyncedItemData(name, PanelData.RARE_ITEMS[row], catalog);
+		return data != null ? data : buildUnsyncedItemData(name, rare.getItems(), catalog);
 	}
 
 	/** A custom rare collection (Hard, Elite and Master Rare), held from anywhere in the log. */

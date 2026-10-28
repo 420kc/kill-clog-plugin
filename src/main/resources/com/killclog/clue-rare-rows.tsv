@@ -1,0 +1,9 @@
+# The Clue Summary's rare rows in its order, one per collection: the two clue-wide sets, then the tier rares.
+# Columns: key<TAB>card name<TAB>row label<TAB>the clue tier whose completed clues its card reads ("-": none)<TAB>
+# wiki page<TAB>the game's Collection Log page it stands for ("-": none)<TAB>its items (a panel-catalog.tsv
+# kind)<TAB>its icon's item id.
+third_age	3rd Age	3rd Age	-	3rd Age equipment	-	third_age_items	10348
+gilded	Gilded	Gilded	-	Gilded equipment	-	gilded_items	3481
+hard_rare	Hard Treasure Trails (Rare)	Hard Rare	CLUE_SCROLL_HARD	Collection log#Hard Treasure Trail Rewards (Rare)	hard_treasure_trails_rare	hard_rare_items	20544
+elite_rare	Elite Treasure Trails (Rare)	Elite Rare	CLUE_SCROLL_ELITE	Collection log#Elite Treasure Trail Rewards (Rare)	elite_treasure_trails_rare	elite_rare_items	20543
+master_rare	Master Treasure Trails (Rare)	Master Rare	CLUE_SCROLL_MASTER	Collection log#Master Treasure Trail Rewards (Rare)	master_treasure_trails_rare	master_rare_items	19836

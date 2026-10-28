@@ -96,10 +96,10 @@ final class PanelIconCache
 			}
 			loadItemImage(itemManager, 23184, img ->
 				cells.getClueIcons()[7] = cellIcon(img, 13));
-			for (int i = 0; i < PanelData.RARE_ICON_ITEM_IDS.length; i++)
+			for (int i = 0; i < PanelData.RARE_ROWS.size(); i++)
 			{
 				final int idx = i;
-				loadItemImage(itemManager, PanelData.RARE_ICON_ITEM_IDS[i], img ->
+				loadItemImage(itemManager, PanelData.RARE_ROWS.get(i).getIconItemId(), img ->
 					cells.getRareIcons()[idx] = cellIcon(img, 13));
 			}
 		});

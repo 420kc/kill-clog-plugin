@@ -36,9 +36,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 		"Hard", "Elite", "Master", "Mimic",
 	};
 
-	static final String[] RARE_LABELS = {
-		"3rd Age", "Gilded", "Hard Rare", "Elite Rare", "Master Rare",
-	};
+	static final String[] RARE_LABELS = PanelData.RARE_ROWS.stream().map(RareRow::getLabel).toArray(String[]::new);
 
 	private final int[] scores = new int[8];
 	private final int[] ranks = new int[8];

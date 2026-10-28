@@ -71,7 +71,7 @@ public class Cells
 	@Getter
 	private final BufferedImage[] pvpActivityIcons = new BufferedImage[5];
 	@Getter
-	private final BufferedImage[] rareIcons = new BufferedImage[PanelData.RARE_KEYS.length];
+	private final BufferedImage[] rareIcons = new BufferedImage[PanelData.RARE_ROWS.size()];
 
 	// Cell labels
 	private final Map<HiscoreSkill, JLabel> bossLabels = new LinkedHashMap<>();
@@ -392,12 +392,12 @@ public class Cells
 
 	private void putRareRows(@Nullable ClogResult clog, @Nullable ClogResult catalog)
 	{
-		for (int i = 0; i < PanelData.RARE_KEYS.length; i++)
+		for (int i = 0; i < PanelData.RARE_ROWS.size(); i++)
 		{
 			TooltipData data = tooltipDataBuilder.rareRow(i, clog, catalog);
 			if (data != null)
 			{
-				rareTooltips.put(PanelData.RARE_KEYS[i], data);
+				rareTooltips.put(PanelData.RARE_ROWS.get(i).getKey(), data);
 			}
 		}
 	}
@@ -597,7 +597,7 @@ public class Cells
 		// The Mimic's one log slot is the 3rd age ring.
 		tip.setProgress(7, clog == null ? null : counts(tooltipDataBuilder.buildCustomRareData(
 			"Mimic", new int[]{PanelData.THIRD_AGE_RING_ITEM_ID}, clog)));
-		for (int i = 0; i < PanelData.RARE_KEYS.length; i++)
+		for (int i = 0; i < PanelData.RARE_ROWS.size(); i++)
 		{
 			tip.setRare(i, counts(rareData(i, rival)));
 		}
@@ -655,16 +655,17 @@ public class Cells
 	@Nullable
 	TooltipData rareData(int row, boolean rival)
 	{
-		return rival ? rivalRare(row) : rareTooltips.get(PanelData.RARE_KEYS[row]);
+		return rival ? rivalRare(row) : rareTooltips.get(PanelData.RARE_ROWS.get(row).getKey());
 	}
 
 	/** A Clue Summary rare row's card, for the Collection Log page it stands for. */
 	JToolTip buildRareTooltipFor(JLabel owner, int row)
 	{
-		HiscoreSkill tier = PanelData.RARE_TIERS[row];
-		return gridTooltip(owner, cluesCompleted(rareTooltips.get(PanelData.RARE_KEYS[row]), tier,
+		RareRow rare = PanelData.RARE_ROWS.get(row);
+		HiscoreSkill tier = rare.getTier();
+		return gridTooltip(owner, cluesCompleted(rareTooltips.get(rare.getKey()), tier,
 			lookupSession.getHiscoreResult()), () -> cluesCompleted(rivalRare(row), tier, comparison.getCompareHiscoreResult()),
-			PanelData.RARE_NAMES[row], PanelData.RARE_WIKI_PAGES[row]);
+			rare.getName(), rare.getWikiPage());
 	}
 
 	// Helpers

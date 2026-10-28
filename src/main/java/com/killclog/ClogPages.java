@@ -3,13 +3,13 @@ package com.killclog;
 import java.awt.Component;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -221,7 +221,7 @@ final class ClogPages
 	/** The Clue Summary rare row this page stands for, while that row has a card; -1 otherwise. */
 	private int rare(String key)
 	{
-		int row = Arrays.asList(PanelData.RARE_PAGES).indexOf(key);
+		int row = PanelData.RARE_ROWS.stream().map(RareRow::getPage).collect(Collectors.toList()).indexOf(key);
 		return row >= 0 && cells.rareData(row, false) != null ? row : -1;
 	}
 

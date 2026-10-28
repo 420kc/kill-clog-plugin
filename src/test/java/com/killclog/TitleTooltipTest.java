@@ -62,9 +62,6 @@ public class TitleTooltipTest
 			TooltipItemLink.wikiPageUrl("Collection log#Champion's Challenge"));
 		// A clue tier's card opens its scroll's article; every Clue Summary rare row has a page too.
 		assertEquals("Clue scroll (beginner)", PanelData.clueWikiPage(HiscoreSkill.CLUE_SCROLL_BEGINNER));
-		assertEquals(PanelData.RARE_NAMES.length, PanelData.RARE_WIKI_PAGES.length);
-		assertEquals(PanelData.RARE_NAMES.length, PanelData.RARE_PAGES.length);
-		assertEquals(PanelData.RARE_NAMES.length, PanelData.RARE_TIERS.length);
 		assertEquals("Master clues completed: ", Cells.cluesCompletedLabel(HiscoreSkill.CLUE_SCROLL_MASTER));
 	}
 

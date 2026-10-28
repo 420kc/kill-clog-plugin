@@ -6,6 +6,7 @@ import java.awt.image.BufferedImage;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -13,6 +14,7 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.function.ObjIntConsumer;
+import java.util.stream.Collectors;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -178,13 +180,13 @@ public class TraySummaryWiringTest
 		edt(() ->
 		{
 			seedSelf(clog("Seeded", 1, true));
-			for (int row = 0; row < PanelData.RARE_NAMES.length; row++)
+			for (int row = 0; row < PanelData.RARE_ROWS.size(); row++)
 			{
 				ClueSummaryTooltip tip = (ClueSummaryTooltip) clues.createToolTip();
 				openRare(tip, row);
 				assertEquals(row + 1, pinned.size());
 				assertSame(clues, pinnedOn.get(row));
-				assertEquals(PanelData.RARE_NAMES[row], ((TitleTooltip) pinned.get(row)).getTitle());
+				assertEquals(PanelData.RARE_ROWS.get(row).getName(), ((TitleTooltip) pinned.get(row)).getTitle());
 			}
 			// A pinned summary was already closed by the press; there is no preview to take down.
 			assertEquals(0, previewsDismissed);
@@ -273,18 +275,30 @@ public class TraySummaryWiringTest
 	}
 
 	@Test
-	public void theRareCollectionsLineUpWithTheirItemLists()
+	public void theRareRowsAreClueRareRowsTsvRowForRow()
 	{
-		assertArrayEquals(new String[]{PanelData.CLOG_THIRD_AGE, PanelData.CLOG_GILDED,
-			PanelData.RARE_HARD, PanelData.RARE_ELITE, PanelData.RARE_MASTER}, PanelData.RARE_KEYS);
-		assertSame(PanelData.THIRD_AGE_ITEMS, PanelData.RARE_ITEMS[0]);
-		assertSame(PanelData.GILDED_ITEMS, PanelData.RARE_ITEMS[1]);
-		assertSame(PanelData.HARD_RARE_ITEMS, PanelData.RARE_ITEMS[2]);
-		assertSame(PanelData.ELITE_RARE_ITEMS, PanelData.RARE_ITEMS[3]);
-		assertSame(PanelData.MASTER_RARE_ITEMS, PanelData.RARE_ITEMS[4]);
-		assertEquals(PanelData.RARE_KEYS.length, PanelData.RARE_NAMES.length);
-		assertEquals(PanelData.RARE_KEYS.length, PanelData.RARE_ICON_ITEM_IDS.length);
-		assertEquals(PanelData.RARE_KEYS.length, ClueSummaryTooltip.RARE_LABELS.length);
+		List<RareRow> rows = PanelData.RARE_ROWS;
+		assertEquals(Arrays.asList(PanelData.CLOG_THIRD_AGE, PanelData.CLOG_GILDED, PanelData.RARE_HARD,
+			PanelData.RARE_ELITE, PanelData.RARE_MASTER), rows.stream().map(RareRow::getKey).collect(Collectors.toList()));
+		assertEquals(Arrays.asList("3rd Age", "Gilded", "Hard Treasure Trails (Rare)", "Elite Treasure Trails (Rare)",
+			"Master Treasure Trails (Rare)"), rows.stream().map(RareRow::getName).collect(Collectors.toList()));
+		assertArrayEquals(new String[]{"3rd Age", "Gilded", "Hard Rare", "Elite Rare", "Master Rare"},
+			ClueSummaryTooltip.RARE_LABELS);
+		assertEquals(Arrays.asList(null, null, HiscoreSkill.CLUE_SCROLL_HARD, HiscoreSkill.CLUE_SCROLL_ELITE,
+			HiscoreSkill.CLUE_SCROLL_MASTER), rows.stream().map(RareRow::getTier).collect(Collectors.toList()));
+		assertEquals(Arrays.asList("3rd Age equipment", "Gilded equipment",
+			"Collection log#Hard Treasure Trail Rewards (Rare)", "Collection log#Elite Treasure Trail Rewards (Rare)",
+			"Collection log#Master Treasure Trail Rewards (Rare)"), rows.stream().map(RareRow::getWikiPage)
+			.collect(Collectors.toList()));
+		assertEquals(Arrays.asList(null, null, "hard_treasure_trails_rare", "elite_treasure_trails_rare",
+			"master_treasure_trails_rare"), rows.stream().map(RareRow::getPage).collect(Collectors.toList()));
+		assertArrayEquals(PanelData.THIRD_AGE_ITEMS, rows.get(0).getItems());
+		assertArrayEquals(PanelData.GILDED_ITEMS, rows.get(1).getItems());
+		assertArrayEquals(PanelData.HARD_RARE_ITEMS, rows.get(2).getItems());
+		assertArrayEquals(PanelData.ELITE_RARE_ITEMS, rows.get(3).getItems());
+		assertArrayEquals(PanelData.MASTER_RARE_ITEMS, rows.get(4).getItems());
+		assertArrayEquals(new int[]{PanelData.THIRD_AGE_ITEM_ID, PanelData.GILDED_ITEM_ID, 20544, 20543, 19836},
+			rows.stream().mapToInt(RareRow::getIconItemId).toArray());
 	}
 
 	@SuppressWarnings("unchecked")
