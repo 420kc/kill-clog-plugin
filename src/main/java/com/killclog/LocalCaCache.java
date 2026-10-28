@@ -4,9 +4,9 @@ import com.google.gson.Gson;
 import java.io.IOException;
 import java.time.Instant;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
@@ -29,6 +29,9 @@ import net.runelite.client.util.Filepath;
  * authoritative source for the logged-in player and needs no RuneProfile;
  * other players come from {@link RuneProfileService}'s API. The folder loads
  * whole on this cache's disk thread when it opens.
+ *
+ * <p>One guard, as {@link LocalClogCache} has: what it holds in memory is read and
+ * changed only under its monitor, and the disk thread hands its results back under it.
  */
 @Slf4j
 @Singleton
@@ -36,18 +39,18 @@ import net.runelite.client.util.Filepath;
 public class LocalCaCache
 {
 	// Captures by own-log file name, which carries the account hash.
-	private final Map<String, CaData> accounts = new ConcurrentHashMap<>();
+	private final Map<String, CaData> accounts = new HashMap<>();
 	private final Gson gson;
 	// ca/ in the plugin's folder; null keeps captures in memory for the session.
 	@Nullable
-	private volatile Filepath folder;
-	private volatile String activePlayer;
+	private Filepath folder;
+	private String activePlayer;
 	// The logged-in account's file, known from its first capture this session.
-	private volatile String activeFile;
+	private String activeFile;
 	private final ExecutorService diskWriter;
 
 	// Plugin-owned live catalog, set at startup like the panel's ClogIndex.
-	@Nullable private volatile CaCatalog caCatalog;
+	@Nullable private CaCatalog caCatalog;
 
 	@Inject
 	public LocalCaCache(Gson gson)
@@ -60,6 +63,7 @@ public class LocalCaCache
 	{
 		diskWriter.execute(() ->
 		{
+			Map<String, CaData> loaded = new HashMap<>();
 			if (folder != null && folder.isDirectory())
 			{
 				try (Stream<Filepath> walk = folder.walk(1))
@@ -69,7 +73,7 @@ public class LocalCaCache
 						CaData data = StoreFiles.read(gson, file, CaData.class);
 						if (data != null && data.completed != null && !data.completed.isEmpty())
 						{
-							accounts.putIfAbsent(file.getFileName(), data);
+							loaded.putIfAbsent(file.getFileName(), data);
 						}
 					});
 				}
@@ -78,11 +82,18 @@ public class LocalCaCache
 					log.warn("Kill Clog could not read its CA folder: {}", e.getMessage());
 				}
 			}
-			this.folder = folder;
+			opened(folder, loaded);
 		});
 	}
 
-	public void setCaCatalog(@Nullable CaCatalog caCatalog)
+	/** Anything captured while the folder loaded is newer and stays. */
+	private synchronized void opened(@Nullable Filepath folder, Map<String, CaData> loaded)
+	{
+		loaded.forEach(accounts::putIfAbsent);
+		this.folder = folder;
+	}
+
+	public synchronized void setCaCatalog(@Nullable CaCatalog caCatalog)
 	{
 		this.caCatalog = caCatalog;
 	}
@@ -101,7 +112,7 @@ public class LocalCaCache
 	}
 
 	/** Accepted writes drain in order, including across an immediate re-enable. */
-	public void shutdown()
+	public synchronized void shutdown()
 	{
 		activePlayer = null;
 		activeFile = null;
@@ -109,7 +120,7 @@ public class LocalCaCache
 	}
 
 	/** The login whose tiers this store serves, from the session tracker. */
-	public void serve(Session session)
+	public synchronized void serve(Session session)
 	{
 		String name = session.getName();
 		if (name == null || !isActivePlayer(name))
@@ -119,12 +130,12 @@ public class LocalCaCache
 		activePlayer = name;
 	}
 
-	public boolean isActivePlayer(String name)
+	public synchronized boolean isActivePlayer(String name)
 	{
 		return RsnInputPolicy.sameName(activePlayer, name);
 	}
 
-	public boolean hasDataFor(String name)
+	public synchronized boolean hasDataFor(String name)
 	{
 		return active(name) != null;
 	}
@@ -132,8 +143,7 @@ public class LocalCaCache
 	@Nullable
 	private CaData active(String name)
 	{
-		String file = activeFile;
-		return file != null && isActivePlayer(name) ? accounts.get(file) : null;
+		return activeFile != null && isActivePlayer(name) ? accounts.get(activeFile) : null;
 	}
 
 	/** Store per-tier completed counts for an account (sourced from game varbits) and persist. */
@@ -166,7 +176,7 @@ public class LocalCaCache
 		{
 			diskWriter.execute(() ->
 			{
-				Filepath folder = this.folder;
+				Filepath folder = savesTo();
 				try
 				{
 					if (folder == null)
@@ -179,7 +189,7 @@ public class LocalCaCache
 				}
 				catch (IOException | RuntimeException e)
 				{
-					data.saveFailed = true;
+					saveFailed(data);
 					log.warn("Failed to save CA cache for '{}': {}", name, e.getMessage());
 				}
 			});
@@ -191,8 +201,21 @@ public class LocalCaCache
 		}
 	}
 
+	/** The folder saves go to, read when each save runs: the open queued ahead of it has set it by then. */
+	@Nullable
+	private synchronized Filepath savesTo()
+	{
+		return folder;
+	}
+
+	/** A failed save is tried again by the next capture, even an unchanged one. */
+	private synchronized void saveFailed(CaData data)
+	{
+		data.saveFailed = true;
+	}
+
 	/** Stored CA for the logged-in player as a {@link CombatAchievementResult}, or null if none is held. */
-	public CombatAchievementResult getCached(String name)
+	public synchronized CombatAchievementResult getCached(String name)
 	{
 		CaData data = active(name);
 		if (data == null || data.completed == null || data.completed.isEmpty())
@@ -217,14 +240,13 @@ public class LocalCaCache
 		{
 			totals.put(tier, tier.totalTasks());
 		}
-		CaCatalog catalog = caCatalog;
 		return CombatAchievementResult.of(completed, totals,
-			catalog != null ? catalog.totals() : null);
+			caCatalog != null ? caCatalog.totals() : null);
 	}
 
 	static class CaData
 	{
-		transient volatile boolean saveFailed;
+		transient boolean saveFailed;
 		String playerName;
 		String lastUpdated;
 		Map<String, Integer> completed;

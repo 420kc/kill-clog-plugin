@@ -13,25 +13,24 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.util.Filepath;
 
@@ -47,6 +46,12 @@ import net.runelite.client.util.Filepath;
  * it, reads and writes are memory-only and disk only receives debounced saves,
  * except that each login reads its account's own log fresh, on the disk thread:
  * another client on this PC may have played that account since this one loaded it.
+ *
+ * <p>One guard: everything the store holds in memory (the logs, the name index, the
+ * login it serves, its fresh reads and its queued saves) is read and changed only
+ * under the store's own monitor, so a check and the change it allows are never
+ * pulled apart. The disk thread does the file work outside it and hands each result
+ * back under it. Its methods answer at once, as the game thread's captures need.
  */
 @Slf4j
 @Singleton
@@ -65,8 +70,8 @@ public class LocalClogCache
 	private final CompletableFuture<Filepath> opened = new CompletableFuture<>();
 	// The opened folder; null keeps the store in memory.
 	@Nullable
-	private volatile Filepath logs;
-	private volatile boolean ready;
+	private Filepath logs;
+	private boolean ready;
 
 	// Own logs by account hash, and the advisory name index over them.
 	private final Map<String, PlayerClogData> own = new HashMap<>();
@@ -86,20 +91,20 @@ public class LocalClogCache
 	};
 
 	// The login this store serves, as the session tracker hands it over.
-	private volatile Session session = Session.none(0);
+	private Session session = Session.none(0);
 	// The logged-in account, set once its own log is serving.
-	private volatile String activeHashKey;
-	private final AtomicReference<String> pendingRenameNotice = new AtomicReference<>();
+	private String activeHashKey;
+	// The name a name change left behind, until the plugin's tick says so in chat.
+	private String pendingRenameNotice;
 	// The accounts whose own log this session has read fresh from disk, and those being read.
-	private final java.util.Set<String> readThisSession = ConcurrentHashMap.newKeySet();
-	private final java.util.Set<String> reading = ConcurrentHashMap.newKeySet();
+	private final Set<String> readThisSession = new HashSet<>();
+	private final Set<String> reading = new HashSet<>();
 
 	// Debounced saves by file: bursts of category navigation collapse to one write.
-	private final Map<String, Runnable> pendingByFile = new ConcurrentHashMap<>();
-	private final Map<String, PlayerClogData> unsavedFiles = new ConcurrentHashMap<>();
+	private final Map<String, Runnable> pendingByFile = new HashMap<>();
+	private final Map<String, PlayerClogData> unsavedFiles = new HashMap<>();
 
-	@Setter
-	private volatile Runnable firstPartyChangedListener;
+	private Runnable firstPartyChangedListener;
 
 	@Inject
 	public LocalClogCache(Gson gson)
@@ -262,9 +267,10 @@ public class LocalClogCache
 		{
 			return null;
 		}
-		// Gson builds plain maps; cache writes and EDT reads share these.
-		data.categories = new ConcurrentHashMap<>(data.categories);
-		data.obtained = data.obtained != null ? new ConcurrentHashMap<>(data.obtained) : new ConcurrentHashMap<>();
+		if (data.obtained == null)
+		{
+			data.obtained = new HashMap<>();
+		}
 		// Files written before live unlocks bumped lastChanged can hold items
 		// newer than the stamp; heal on load so the notice never trails the shelf.
 		bumpLastChanged(data, newestObtainedDate(data.obtained));
@@ -298,7 +304,7 @@ public class LocalClogCache
 		{
 			activeHashKey = null;
 			readThisSession.clear();
-			pendingRenameNotice.set(null);
+			pendingRenameNotice = null;
 		}
 		session = next;
 		if (!ready || !next.loggedIn())
@@ -320,7 +326,7 @@ public class LocalClogCache
 		PlayerClogData data = own.get(activeHashKey);
 		if (data != null && data.playerName != null && !cacheKey(data.playerName).equals(cacheKey(name)))
 		{
-			pendingRenameNotice.set(data.playerName);
+			pendingRenameNotice = data.playerName;
 			data.playerName = name;
 			reindex(name, activeHashKey);
 			submitSave(activeHashKey, true, data);
@@ -341,37 +347,25 @@ public class LocalClogCache
 			return;
 		}
 		long number = session.getNumber();
+		String file = ownFile(hash);
+		Filepath folder = logs;
 		Runnable read = () ->
 		{
+			PlayerClogData data = null;
 			try
 			{
-				String file = ownFile(hash);
-				Filepath folder = logs;
 				Filepath path = folder != null && file != null ? folder.join(file) : null;
-				boolean onDisk = path != null && !unsavedFiles.containsKey(file) && path.isFile();
-				PlayerClogData data = onDisk ? readRecord(path) : null;
+				boolean onDisk = path != null && !unsaved(file) && path.isFile();
+				data = onDisk ? readRecord(path) : null;
 				if (onDisk && (data == null || !hash.equals(data.ownerHash)))
 				{
 					// Damaged since the folder loaded: kept aside as load() keeps it, and the copy in memory serves.
 					setAside(folder, path);
 				}
-				synchronized (this)
-				{
-					if (data != null && hash.equals(data.ownerHash) && !unsavedFiles.containsKey(file))
-					{
-						own.put(hash, data);
-						// Renamed on another client: the log names the account as it is now.
-						reindex(data.playerName, hash);
-					}
-				}
 			}
 			finally
 			{
-				reading.remove(hash);
-				if (session.getNumber() == number)
-				{
-					readThisSession.add(hash);
-				}
+				readFreshDone(hash, file, number, data);
 			}
 		};
 		try
@@ -386,10 +380,39 @@ public class LocalClogCache
 		}
 	}
 
-	/** One chat line per name change, consumed by the plugin's tick. */
-	public String consumeRenameNotice()
+	/** A fresh read's log takes over unless this client has saved since; the read counts for its own login only. */
+	private synchronized void readFreshDone(String hash, @Nullable String file, long number, @Nullable PlayerClogData data)
 	{
-		return pendingRenameNotice.getAndSet(null);
+		if (data != null && hash.equals(data.ownerHash) && !unsavedFiles.containsKey(file))
+		{
+			own.put(hash, data);
+			// Renamed on another client: the log names the account as it is now.
+			reindex(data.playerName, hash);
+		}
+		reading.remove(hash);
+		if (session.getNumber() == number)
+		{
+			readThisSession.add(hash);
+		}
+	}
+
+	private synchronized boolean unsaved(String file)
+	{
+		return unsavedFiles.containsKey(file);
+	}
+
+	/** One chat line per name change, consumed by the plugin's tick. */
+	public synchronized String consumeRenameNotice()
+	{
+		String name = pendingRenameNotice;
+		pendingRenameNotice = null;
+		return name;
+	}
+
+	/** Called on each capture landing; it only schedules (see {@link #notifyFirstPartyChanged}). */
+	public synchronized void setFirstPartyChangedListener(Runnable listener)
+	{
+		firstPartyChangedListener = listener;
 	}
 
 	/** The sync pre-flight: this store still serves that login, with its account's own log. */
@@ -408,7 +431,12 @@ public class LocalClogCache
 	/** Flush accepted saves on the same queue; a new session cannot overtake them. */
 	public void shutdown()
 	{
-		diskWriter.execute(() -> new ArrayList<>(pendingByFile.keySet()).forEach(this::flush));
+		diskWriter.execute(() -> queuedFiles().forEach(this::flush));
+	}
+
+	private synchronized List<String> queuedFiles()
+	{
+		return new ArrayList<>(pendingByFile.keySet());
 	}
 
 	/** A League store that is done for good: flush its saves, then let its writer end. */
@@ -419,7 +447,7 @@ public class LocalClogCache
 	}
 
 	/** Whether this name is the logged-in player's, whose captures this store takes. */
-	public boolean isActivePlayer(String name)
+	public synchronized boolean isActivePlayer(String name)
 	{
 		return RsnInputPolicy.sameName(session.getName(), name);
 	}
@@ -528,8 +556,8 @@ public class LocalClogCache
 		}
 		// A provider result builds on what the lookup held; a capture replaces it whole.
 		boolean builds = !firstParty && existing != null;
-		data.obtained = builds ? new ConcurrentHashMap<>(data.obtained) : new ConcurrentHashMap<>();
-		data.categories = builds ? new ConcurrentHashMap<>(data.categories) : new ConcurrentHashMap<>();
+		data.obtained = builds ? new HashMap<>(data.obtained) : new HashMap<>();
+		data.categories = builds ? new HashMap<>(data.categories) : new HashMap<>();
 
 		for (Map.Entry<String, List<ClogResult.ClogItem>> entry
 			: result.getObtainedItems().entrySet())
@@ -1012,7 +1040,7 @@ public class LocalClogCache
 	}
 
 	/** {@link #hasFirstPartyDataFor} for the logged-in player. */
-	public boolean hasFirstPartyDataForActive()
+	public synchronized boolean hasFirstPartyDataForActive()
 	{
 		return hasFirstPartyDataFor(session.getName());
 	}
@@ -1027,7 +1055,7 @@ public class LocalClogCache
 		return data != null ? result(data, new HashMap<>(), true) : null;
 	}
 
-	// Disk I/O, always on the diskWriter thread.
+	// Disk I/O, always on the diskWriter thread: queued under the monitor, written outside it.
 
 	private String fileKey(String slot, boolean ownLog, String name)
 	{
@@ -1056,14 +1084,19 @@ public class LocalClogCache
 			{
 				dest.getParent().createDirectories();
 				StoreFiles.write(gson, folder, dest, snapshot);
-				// An older write must not clear a newer pending snapshot.
-				unsavedFiles.remove(file, snapshot);
+				saved(file, snapshot);
 			}
 			catch (IOException | RuntimeException e)
 			{
 				log.warn("Kill Clog could not save '{}': {}", file, e.getMessage());
 			}
 		});
+	}
+
+	/** A written snapshot is saved; an older write must not clear a newer one still pending. */
+	private synchronized void saved(String file, PlayerClogData snapshot)
+	{
+		unsavedFiles.remove(file, snapshot);
 	}
 
 	/** A damaged log, moved aside under a name no load reads, so no save writes over the evidence. */
@@ -1132,7 +1165,11 @@ public class LocalClogCache
 	/** Runs a file's latest queued write, if one is still waiting. */
 	private void flush(String file)
 	{
-		Runnable latest = pendingByFile.remove(file);
+		Runnable latest;
+		synchronized (this)
+		{
+			latest = pendingByFile.remove(file);
+		}
 		if (latest != null)
 		{
 			latest.run();
