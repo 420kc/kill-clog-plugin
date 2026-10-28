@@ -1,21 +1,22 @@
 # A player's Combat Achievement tier from their completed tasks per tier (Dylan, 2026-10-27, B274 step 6).
 # One copy of the rule's answers: the plugin's CaTierCasesTest, killclog-api's and the site's tests run these rows.
-# Easy through Master unlock by points (a task is worth 1 to 6 by its tier, wherever it was done); each tier's line
-# is every task in it and below, times their points, against the task counts the plugin knows (41, 60, 86, 164, 174,
-# 121 without a live game). Grandmaster is every task done against those counts. A provider's own totals never move
-# a line: its snapshot can be older than the game.
-# Columns: case<TAB>completed easy,medium,hard,elite,master,grandmaster<TAB>the provider's totals ("-": none)<TAB>tier
-nothing done	0,0,0,0,0,0	-	none
-one point short of easy	40,0,0,0,0,0	-	none
-easy at 41 points	41,0,0,0,0,0	-	easy
-medium at 161 points	41,60,0,0,0,0	-	medium
-416 points is still medium	41,60,85,0,0,0	-	medium
-hard at 419 points	41,60,86,0,0,0	-	hard
-1,068 points is still hard	41,60,86,161,1,0	-	hard
-elite at 1,075 points	41,60,86,164,0,0	-	elite
-master at 1,945 points	41,60,86,164,174,0	-	master
-points count wherever they were earned	0,0,0,0,174,0	-	hard
-every task done is grandmaster	41,60,86,164,174,121	-	grandmaster
-one grandmaster task short is master	41,60,86,164,174,120	-	master
-a provider's older totals never make a grandmaster	41,60,86,164,174,120	41,60,86,164,174,120	master
-a provider's newer totals never move a line	41,60,86,0,0,0	41,62,90,170,180,125	hard
+# Easy through Master unlock by points (a task is worth 1 to 6 by its tier, wherever it was done); each tier's line is
+# every task in it and below, times their points, against the game's current task counts. Grandmaster is every task
+# done against those counts. The plugin reads the counts from the game (CaCatalog); killclog.com and killclog-api read
+# them from the provider's totals, which come from the game. A release that adds tasks moves every line above it.
+# Columns: case<TAB>completed easy,medium,hard,elite,master,grandmaster<TAB>the game's task counts, the same order<TAB>tier
+nothing done	0,0,0,0,0,0	41,64,89,166,173,122	none
+one point short of easy	40,0,0,0,0,0	41,64,89,166,173,122	none
+easy at 41 points	41,0,0,0,0,0	41,64,89,166,173,122	easy
+167 points is still easy	41,63,0,0,0,0	41,64,89,166,173,122	easy
+medium at 169 points	41,64,0,0,0,0	41,64,89,166,173,122	medium
+433 points is still medium	41,64,88,0,0,0	41,64,89,166,173,122	medium
+hard at 436 points	41,64,89,0,0,0	41,64,89,166,173,122	hard
+1,096 points is still hard	41,64,89,165,0,0	41,64,89,166,173,122	hard
+elite at 1,100 points	41,64,89,166,0,0	41,64,89,166,173,122	elite
+master at 1,965 points	41,64,89,166,173,0	41,64,89,166,173,122	master
+points count wherever they were earned	0,0,0,0,173,0	41,64,89,166,173,122	hard
+every task done is grandmaster	41,64,89,166,173,122	41,64,89,166,173,122	grandmaster
+one grandmaster task short is master	41,64,89,166,173,121	41,64,89,166,173,122	master
+new master tasks move the master line	41,64,89,166,173,0	41,64,89,166,175,122	elite
+new master tasks mean grandmaster waits for them	41,64,89,166,173,122	41,64,89,166,175,122	master

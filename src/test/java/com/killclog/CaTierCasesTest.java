@@ -27,8 +27,8 @@ public class CaTierCasesTest
 		assertFalse("the shared cases are present", rows.isEmpty());
 		for (String[] row : rows)
 		{
-			CombatAchievementTier tier = CombatAchievementResult.of(counts(row[1]), row[2].equals("-") ? null
-				: counts(row[2])).getTier();
+			// The counts column is the game's, as CaCatalog reads them while logged in.
+			CombatAchievementTier tier = CombatAchievementResult.of(counts(row[1]), null, counts(row[2])).getTier();
 			assertEquals(row[0], row[3], tier == null ? "none" : tier.name().toLowerCase(Locale.ROOT));
 		}
 	}
