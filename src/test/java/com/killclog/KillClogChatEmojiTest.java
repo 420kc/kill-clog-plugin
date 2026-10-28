@@ -78,7 +78,7 @@ public class KillClogChatEmojiTest
 		ChatIconManager chatIcons = mock(ChatIconManager.class);
 		when(chatIcons.reserveChatIcon()).thenReturn(4);
 		when(chatIcons.chatIconIndex(4)).thenReturn(57);
-		TestViews.set(emoji, "client", mock(Client.class));
+		TestViews.set(emoji, "client", withIcons());
 		TestViews.set(emoji, "itemManager", items);
 		TestViews.set(emoji, "chatIconManager", chatIcons);
 		MessageNode node = mock(MessageNode.class);
@@ -104,7 +104,7 @@ public class KillClogChatEmojiTest
 			.thenReturn(new AsyncBufferedImage(null, 36, 32, BufferedImage.TYPE_INT_ARGB));
 		ChatIconManager chatIcons = mock(ChatIconManager.class);
 		when(chatIcons.chatIconIndex(anyInt())).thenReturn(-1);
-		TestViews.set(emoji, "client", mock(Client.class));
+		TestViews.set(emoji, "client", withIcons());
 		TestViews.set(emoji, "itemManager", items);
 		TestViews.set(emoji, "chatIconManager", chatIcons);
 		MessageNode node = mock(MessageNode.class);
@@ -113,6 +113,29 @@ public class KillClogChatEmojiTest
 		emoji.rewrite(new ChatMessage(node, ChatMessageType.PUBLICCHAT, "Other player", "gz :clog:", "", 0));
 
 		verify(node, never()).setValue(any());
+	}
+
+	@Test
+	public void anEmojiStaysTextBeforeTheClientHasItsIcons()
+	{
+		KillClogChatEmoji emoji = new KillClogChatEmoji();
+		ChatIconManager chatIcons = mock(ChatIconManager.class);
+		TestViews.set(emoji, "client", mock(Client.class));
+		TestViews.set(emoji, "chatIconManager", chatIcons);
+		MessageNode node = mock(MessageNode.class);
+		when(node.getValue()).thenReturn("gz :clog:");
+
+		emoji.rewrite(new ChatMessage(node, ChatMessageType.PUBLICCHAT, "Other player", "gz :clog:", "", 0));
+
+		verify(node, never()).setValue(any());
+		verify(chatIcons, never()).reserveChatIcon();
+	}
+
+	private static Client withIcons()
+	{
+		Client client = mock(Client.class);
+		when(client.getModIcons()).thenReturn(new net.runelite.api.IndexedSprite[0]);
+		return client;
 	}
 
 	@Test

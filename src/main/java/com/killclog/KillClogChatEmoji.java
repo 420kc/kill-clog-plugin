@@ -46,7 +46,8 @@ class KillClogChatEmoji
 
 	void rewrite(ChatMessage chatMessage)
 	{
-		if (!isChatType(chatMessage.getType()))
+		// Before the client has its icons (a reset, until the login screen) an emoji stays text.
+		if (!isChatType(chatMessage.getType()) || client.getModIcons() == null)
 		{
 			return;
 		}

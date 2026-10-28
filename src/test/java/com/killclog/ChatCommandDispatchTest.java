@@ -195,6 +195,16 @@ public class ChatCommandDispatchTest
 	}
 
 	@Test
+	public void aReplyBeforeTheClientHasItsIconsGoesWithoutThem() throws Exception
+	{
+		Harness harness = new Harness(pets());
+		harness.modIcons.set(null);
+
+		assertEquals("All Pets: 2/3", harness.run("!kclog pets"));
+		org.mockito.Mockito.verify(harness.chatIcons, org.mockito.Mockito.never()).reserveChatIcon();
+	}
+
+	@Test
 	public void anItemWithNoPlaceInChatsIconsIsLeftOutOfTheLine() throws Exception
 	{
 		Harness harness = new Harness(pets());
@@ -207,6 +217,8 @@ public class ChatCommandDispatchTest
 	{
 		private final KillClogChatCommand command = new KillClogChatCommand();
 		private final ChatIconManager chatIcons = org.mockito.Mockito.mock(ChatIconManager.class);
+		private final AtomicReference<net.runelite.api.IndexedSprite[]> modIcons =
+			new AtomicReference<>(new net.runelite.api.IndexedSprite[0]);
 		private final AtomicReference<String> rewritten = new AtomicReference<>();
 		private ClogResult result;
 		private String lookedUp;
@@ -253,7 +265,8 @@ public class ChatCommandDispatchTest
 			Player player = (Player) Proxy.newProxyInstance(Player.class.getClassLoader(), new Class<?>[]{Player.class},
 				(proxy, method, args) -> method.getName().equals("getName") ? "Local player" : null);
 			Client client = (Client) Proxy.newProxyInstance(Client.class.getClassLoader(), new Class<?>[]{Client.class},
-				(proxy, method, args) -> method.getName().equals("getLocalPlayer") ? player : null);
+				(proxy, method, args) -> method.getName().equals("getLocalPlayer") ? player
+					: method.getName().equals("getModIcons") ? modIcons.get() : null);
 			set(command, "client", client);
 			// Each item's chat icon already reserved, at index id + 100.
 			org.mockito.Mockito.when(chatIcons.chatIconIndex(org.mockito.ArgumentMatchers.anyInt()))

@@ -670,8 +670,9 @@ class KillClogChatCommand
 	private void render(ChatMessage chatMessage, String header, List<Integer> itemIds,
 		Map<Integer, Integer> itemQuantities)
 	{
-		chatMessage.getMessageNode().setRuneLiteFormatMessage(
-			formatMessage(inGame(header), itemIds, itemQuantities, iconIndices(itemIds)));
+		// Before the client has its icons (a reset, until the login screen) the reply goes without them.
+		chatMessage.getMessageNode().setRuneLiteFormatMessage(formatMessage(inGame(header), itemIds, itemQuantities,
+			client.getModIcons() != null ? iconIndices(itemIds) : Collections.emptyMap()));
 		client.refreshChat();
 	}
 
