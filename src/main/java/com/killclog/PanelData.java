@@ -265,8 +265,13 @@ final class PanelData
 		List<RareRow> rows = new ArrayList<>();
 		for (String[] f : CatalogTsv.rows(PanelData.class, "clue-rare-rows.tsv", 8))
 		{
-			rows.add(new RareRow(f[0], f[1], f[2], f[3].equals("-") ? null : HiscoreSkill.valueOf(f[3]), f[4],
-				f[5].equals("-") ? null : f[5], itemIds(f[6]), Integer.parseInt(f[7])));
+			// A tier this client build doesn't carry skips its row, as an unknown boss does: a row short beats a dead panel.
+			HiscoreSkill tier = f[3].equals("-") ? null : skillNamed(f[3]);
+			if (tier != null || f[3].equals("-"))
+			{
+				rows.add(new RareRow(f[0], f[1], f[2], tier, f[4], f[5].equals("-") ? null : f[5], itemIds(f[6]),
+					Integer.parseInt(f[7])));
+			}
 		}
 		return Collections.unmodifiableList(rows);
 	}
