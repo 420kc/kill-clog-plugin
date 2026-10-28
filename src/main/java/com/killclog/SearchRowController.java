@@ -79,12 +79,12 @@ final class SearchRowController
 		this.clearSearchStatus = clearSearchStatus;
 		this.lookupSelf = lookupSelf;
 		this.panelRevalidate = panelRevalidate;
-		compareIconDim = new ImageIcon(ClogHelper.makeCompareIcon(
+		compareIconDim = new ImageIcon(KillClogIcons.makeCompareIcon(
 			KillClogColors.COMPARE_BLUE, KillClogColors.COMPARE_RED, 0.55f));
-		compareIconBright = new ImageIcon(ClogHelper.makeCompareIcon(
+		compareIconBright = new ImageIcon(KillClogIcons.makeCompareIcon(
 			KillClogColors.COMPARE_BLUE, KillClogColors.COMPARE_RED, 1.0f));
-		searchIconDim = new ImageIcon(ClogHelper.makeSearchIcon(textDim, 0.70f));
-		searchIconBright = new ImageIcon(ClogHelper.makeSearchIcon(textDim, 1.0f));
+		searchIconDim = new ImageIcon(KillClogIcons.makeSearchIcon(textDim, 0.70f));
+		searchIconBright = new ImageIcon(KillClogIcons.makeSearchIcon(textDim, 1.0f));
 		compareEntryKeyListener = new KeyAdapter()
 		{
 			@Override

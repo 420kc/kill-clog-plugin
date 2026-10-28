@@ -233,7 +233,7 @@ public class KillClogPanel extends PluginPanel
 		this.rankSelector = new RankSelector(hiscoreService::lookupRanks, hiscoreService::notOnBoard, this::refreshRankDisplay);
 		this.lookupSession.setRankView(rankSelector::view);
 		this.comparison.setVirtualTotalLevel(
-			() -> ClogHelper.virtualTotalLevelEnabled(configManager));
+			() -> SkillCellGrid.virtualTotalLevelEnabled(configManager));
 		this.skillCellGrid = new SkillCellGrid(skillIconManager, tooltipController, comparison,
 			config, itemManager);
 		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, unsyncedCatalog, killclogService, league -> selfPbs.apply(league), config,
@@ -1029,7 +1029,7 @@ public class KillClogPanel extends PluginPanel
 	{
 		int combatLevel = result.getCombatLevel();
 		combatCell.setText(ClogHelper.pad(ClogHelper.countText(combatLevel)));
-		int totalLevel = ClogHelper.displayTotalLevel(result, ClogHelper.virtualTotalLevelEnabled(configManager));
+		int totalLevel = SkillCellGrid.displayTotalLevel(result, SkillCellGrid.virtualTotalLevelEnabled(configManager));
 		totalLvlCell.setText(ClogHelper.pad(ClogHelper.countText(totalLevel)));
 		tooltipController.setTooltipText(totalLvlCell, totalLevel > 0 ? " " : null);
 	}

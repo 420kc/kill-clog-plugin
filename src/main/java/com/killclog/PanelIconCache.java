@@ -1,5 +1,7 @@
 package com.killclog;
 
+import java.awt.AlphaComposite;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -39,7 +41,7 @@ final class PanelIconCache
 		Map<String, BufferedImage> icons = new LinkedHashMap<>();
 		for (Map.Entry<String, ImageIcon> entry : clogTierIcons.entrySet())
 		{
-			icons.put(entry.getKey(), ClogHelper.iconToImage(entry.getValue()));
+			icons.put(entry.getKey(), iconToImage(entry.getValue()));
 		}
 		return icons;
 	}
@@ -155,5 +157,28 @@ final class PanelIconCache
 	static BufferedImage cellIcon(BufferedImage icon, int size)
 	{
 		return ImageUtil.resizeImage(ImageUtil.resizeCanvas(icon, 25, 25), size, size);
+	}
+
+	static BufferedImage iconToImage(ImageIcon icon)
+	{
+		if (icon == null) return null;
+		BufferedImage img = new BufferedImage(
+			icon.getIconWidth(), icon.getIconHeight(), BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = img.createGraphics();
+		icon.paintIcon(null, g, 0, 0);
+		g.dispose();
+		return img;
+	}
+
+	static BufferedImage createDimmedImage(ImageIcon icon)
+	{
+		BufferedImage original = iconToImage(icon);
+		BufferedImage dimmed = new BufferedImage(
+			original.getWidth(), original.getHeight(), BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g2 = dimmed.createGraphics();
+		g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
+		g2.drawImage(original, 0, 0, null);
+		g2.dispose();
+		return dimmed;
 	}
 }

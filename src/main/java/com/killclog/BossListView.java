@@ -256,7 +256,7 @@ public class BossListView
 	/** The list's own search: a row above the first boss, typed into like the panel's search bar. */
 	private JPanel searchRow()
 	{
-		JLabel icon = new JLabel(new ImageIcon(ClogHelper.makeSearchIcon(KillClogColors.TEXT_DIM, 0.70f)));
+		JLabel icon = new JLabel(new ImageIcon(KillClogIcons.makeSearchIcon(KillClogColors.TEXT_DIM, 0.70f)));
 		icon.setPreferredSize(new Dimension(24, PanelSearchBox.HEIGHT));
 		JTextField field = search;
 		field.setFont(FontManager.getRunescapeSmallFont());

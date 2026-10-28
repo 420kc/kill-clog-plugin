@@ -5,6 +5,7 @@ import java.awt.Component;
 import java.awt.Container;
 import java.awt.Dimension;
 import java.util.function.IntSupplier;
+import javax.swing.JButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
@@ -42,7 +43,7 @@ final class PanelSearchBox
 		searchBar.setPreferredSize(new Dimension(0, HEIGHT));
 		searchBar.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-		ClogHelper.styleSearchBar(searchBar);
+		styleSearchBar(searchBar);
 		JTextField searchTextField = null;
 		for (Component c : searchBar.getComponents())
 		{
@@ -58,7 +59,7 @@ final class PanelSearchBox
 			}
 			else if (c instanceof Container)
 			{
-				ClogHelper.styleSearchBar((Container) c);
+				styleSearchBar((Container) c);
 			}
 		}
 		return searchTextField;
@@ -87,5 +88,23 @@ final class PanelSearchBox
 		searchRow.add(leagueSwitch);
 		searchRow.add(searchBar);
 		return searchRow;
+	}
+
+	static void styleSearchBar(Container container)
+	{
+		for (Component c : container.getComponents())
+		{
+			if (c instanceof JButton)
+			{
+				JButton btn = (JButton) c;
+				btn.setOpaque(false);
+				btn.setContentAreaFilled(false);
+				btn.setBorderPainted(false);
+			}
+			else if (c instanceof Container)
+			{
+				styleSearchBar((Container) c);
+			}
+		}
 	}
 }

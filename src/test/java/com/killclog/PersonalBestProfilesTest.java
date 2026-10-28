@@ -93,12 +93,12 @@ public class PersonalBestProfilesTest
 		variants.put("chambers of xeric 5 players", 1333.8);
 		String raid = PersonalBests.labeled(variants, "Chambers of Xeric");
 		assertEquals("(5 players) 22:13.80", raid);
-		assertEquals("PB (5 players): ", ClogHelper.pbLabel(raid));
-		assertEquals("22:13.80", ClogHelper.pbTime(raid));
+		assertEquals("PB (5 players): ", Cells.pbLabel(raid));
+		assertEquals("22:13.80", Cells.pbTime(raid));
 
 		String zulrah = PersonalBests.labeled(Map.of("zulrah", 66.0), "Zulrah");
-		assertEquals("PB: ", ClogHelper.pbLabel(zulrah));
-		assertEquals("1:06", ClogHelper.pbTime(zulrah));
+		assertEquals("PB: ", Cells.pbLabel(zulrah));
+		assertEquals("1:06", Cells.pbTime(zulrah));
 		assertNull(PersonalBests.labeled(Map.of(), "Zulrah"));
 	}
 

@@ -132,7 +132,7 @@ public class SkillTooltip extends TitleTooltip
 
 			String key = skill.getName().toLowerCase(Locale.ROOT);
 			long xp = result.getSkillXp(key);
-			int level = ClogHelper.displayLevel(result.getSkillLevel(key), xp, virtualLevels);
+			int level = SkillCellGrid.displayLevel(result.getSkillLevel(key), xp, virtualLevels);
 			int rank = result.getSkillRank(key);
 			int maxLevel = virtualLevels ? Experience.MAX_VIRT_LEVEL : Experience.MAX_REAL_LEVEL;
 			boolean maxed = level >= maxLevel && xp >= 0;

@@ -666,8 +666,8 @@ public class ComparisonController
 
 		boolean virtualTotal = virtualTotalLevel.get();
 		compareOrRestore(renderTarget.totalLvlCell(),
-			blueHiscore != null ? ClogHelper.displayTotalLevel(blueHiscore, virtualTotal) : -1,
-			redHiscore != null ? ClogHelper.displayTotalLevel(redHiscore, virtualTotal) : -1);
+			blueHiscore != null ? SkillCellGrid.displayTotalLevel(blueHiscore, virtualTotal) : -1,
+			redHiscore != null ? SkillCellGrid.displayTotalLevel(redHiscore, virtualTotal) : -1);
 	}
 
 	@Nullable

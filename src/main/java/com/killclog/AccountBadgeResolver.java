@@ -63,7 +63,7 @@ final class AccountBadgeResolver
 	@Nullable
 	private static BufferedImage staticBadge(AccountType type)
 	{
-		String resource = ClogHelper.accountBadgeResource(type);
+		String resource = accountBadgeResource(type);
 		return loadHiscoreResource(resource);
 	}
 
@@ -125,5 +125,12 @@ final class AccountBadgeResolver
 	{
 		int width = (int) Math.round((double) badge.getWidth() / badge.getHeight() * height);
 		return ImageUtil.resizeImage(badge, width, height);
+	}
+
+	/** A solo Ironman's badge, its board's icon; none otherwise (GIM badges come from game modicons through AccountBadgeResolver). */
+	static String accountBadgeResource(AccountType type)
+	{
+		RankLeaderboard board = RankLeaderboard.of(type);
+		return board != RankLeaderboard.NORMAL ? board.icon : null;
 	}
 }

@@ -1,31 +1,21 @@
 package com.killclog;
 
-import java.awt.AlphaComposite;
 import java.awt.Color;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.Graphics2D;
-import java.awt.image.BufferedImage;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.IntUnaryOperator;
-import javax.swing.ImageIcon;
-import javax.swing.JButton;
 import javax.swing.JComponent;
-import net.runelite.api.Experience;
-import net.runelite.api.Skill;
-import net.runelite.client.config.ConfigManager;
-import net.runelite.client.game.ItemManager;
 import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.util.QuantityFormatter;
 import org.apache.commons.lang3.StringUtils;
 
 /**
- * Static formatting, image manipulation, clog tier, and account helpers.
+ * The Collection Log's numbers: what a log holds (counts, the Rare shelf, the totals), its tiers bronze to gilded, and
+ * how the panel writes a count. A cell's popup lines live in Cells, account badges in AccountBadgeResolver, icons in
+ * KillClogIcons and PanelIconCache, and virtual levels in SkillCellGrid.
  */
 final class ClogHelper
 {
@@ -39,95 +29,11 @@ final class ClogHelper
 
 	static final String[] CLOG_GROUP_NAMES = {"Bosses", "Raids", "Clues", "Minigames", "Other"};
 
-
 	private ClogHelper()
 	{
 	}
 
-	// Not-synced popup config shared by every clog cell system.
-
-	/**
-	 * Configure an ImgTooltip for a player who has not synced any collection log.
-	 * Keeps native hiscore rows when the player has any signal (kc or rank);
-	 * otherwise shows the muted "Obtained: --/Y" preview. Every category item
-	 * draws dimmed either way so wiki links remain explorable.
-	 */
-	static boolean configureNotSynced(ImgTooltip tip, TooltipData data, ItemManager itemManager,
-		boolean showKc)
-	{
-		if (data == null || data.allItemIds == null || data.allItemIds.isEmpty())
-		{
-			return false;
-		}
-		tip.setTitle(data.name);
-		// A raid's hard mode is the player's signal too: a raider of Expert alone keeps that line and rank.
-		if (data.statValue >= 0 || data.rank > 0 || data.hardKc >= 0 || data.hardRank > 0)
-		{
-			if (data.statLabel != null && showKc)
-			{
-				tip.setInfoLine(data.statLabel, countText(data.statValue), NativeTooltip.valueColor);
-			}
-			addHardModeLine(tip, data, showKc, false);
-		}
-		else
-		{
-			// No player signal behind this grid: preview the shape and count
-			// the slots instead of painting dashes for stats nobody has.
-			tip.setObtainedPlaceholder(data.allItemIds.size());
-		}
-		tip.setItems(data.totalItems, data.allItemIds, Collections.emptySet(),
-			Collections.emptyMap(), data.itemNames, itemManager);
-		return true;
-	}
-
-	/** A raid's hard mode on the line under the raid's own KC and PB, by the name the Combat Summary pairs it by. */
-	static void addHardModeLine(TitleTooltip tip, TooltipData data, boolean showKc, boolean showPb)
-	{
-		if (data.hardLabel == null)
-		{
-			return;
-		}
-		if (data.hardKc >= 0 && showKc)
-		{
-			tip.addInfoLine(data.hardLabel + ": ", formatKc(data.hardKc), NativeTooltip.valueColor);
-			if (data.hardPb != null && showPb)
-			{
-				tip.setInfoLinePair(pbLabel(data.hardPb), pbTime(data.hardPb), NativeTooltip.valueColor);
-			}
-		}
-		else if (data.hardPb != null && showPb)
-		{
-			tip.addInfoLine(data.hardLabel + " " + pbLabel(data.hardPb), pbTime(data.hardPb), NativeTooltip.valueColor);
-		}
-	}
-
-	/** "PB: ", or a team size's "PB (5 players): " ({@link PersonalBests#labeled}). */
-	static String pbLabel(String pb)
-	{
-		return pb.startsWith("(") ? "PB " + pb.substring(0, pb.indexOf(')') + 1) + ": " : "PB: ";
-	}
-
-	static String pbTime(String pb)
-	{
-		return pb.substring(pb.indexOf(')') + 1).trim();
-	}
-
 	// Clog data helpers.
-
-	/** Missing entries on a loaded leaderboard are unranked, not failed lookups. */
-	static void configureRank(TitleTooltip tip, TooltipData data, HiscoreResult result, boolean showRank)
-	{
-		if (showRank && result != null && result.isRankDataAvailable()
-			&& data != null && data.rankTracked
-			&& (data.obtainedCount >= 0 || data.statValue >= 0 || data.rank > 0 || data.hardKc >= 0 || data.hardRank > 0))
-		{
-			tip.setRank(data.rank);
-			if (data.hardLabel != null)
-			{
-				tip.setRankPair(data.hardLabel + ": ", data.hardRank);
-			}
-		}
-	}
 
 	static Set<Integer> getObtainedIds(String category, ClogResult clogResult)
 	{
@@ -310,20 +216,6 @@ final class ClogHelper
 		return labels;
 	}
 
-	// Account helpers. GIM badge state lives in GimBadgeLoader.
-
-	/** A solo Ironman's badge, its board's icon; none otherwise (GIM badges come from game modicons through AccountBadgeResolver). */
-	static String accountBadgeResource(AccountType type)
-	{
-		RankLeaderboard board = RankLeaderboard.of(type);
-		return board != RankLeaderboard.NORMAL ? board.icon : null;
-	}
-
-	static String accountLabel(AccountType type)
-	{
-		return type != null && type != AccountType.REGULAR ? type.displayName() : null;
-	}
-
 	// Swing text treatment.
 
 	/**
@@ -358,168 +250,4 @@ final class ClogHelper
 		return count > 0 ? formatKc(count) : "--";
 	}
 
-	// Image utilities.
-
-	static BufferedImage iconToImage(ImageIcon icon)
-	{
-		if (icon == null) return null;
-		BufferedImage img = new BufferedImage(
-			icon.getIconWidth(), icon.getIconHeight(), BufferedImage.TYPE_INT_ARGB);
-		Graphics2D g = img.createGraphics();
-		icon.paintIcon(null, g, 0, 0);
-		g.dispose();
-		return img;
-	}
-
-	static BufferedImage createDimmedImage(ImageIcon icon)
-	{
-		BufferedImage original = iconToImage(icon);
-		BufferedImage dimmed = new BufferedImage(
-			original.getWidth(), original.getHeight(), BufferedImage.TYPE_INT_ARGB);
-		Graphics2D g2 = dimmed.createGraphics();
-		g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
-		g2.drawImage(original, 0, 0, null);
-		g2.dispose();
-		return dimmed;
-	}
-
-	/** Paints a 12x10 hamburger icon. */
-	/** Paints a 15x15 split-color magnifying glass. */
-	static BufferedImage makeCompareIcon(Color left, Color right, float brightness)
-	{
-		BufferedImage img = new BufferedImage(15, 15, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D g = lens(img);
-		// Lens circle: center (7,5), radius 4
-		int cx = 7, cy = 5, r = 4;
-		// Left half: blue.
-		g.setClip(0, 0, cx, 15);
-		g.setColor(brighten(left, brightness));
-		g.drawOval(cx - r, cy - r, r * 2, r * 2);
-		// Blue handle.
-		g.drawLine(cx - 3, cy + 3, cx - 6, cy + 6);
-		// Right half: red.
-		g.setClip(cx, 0, 15, 15);
-		g.setColor(brighten(right, brightness));
-		g.drawOval(cx - r, cy - r, r * 2, r * 2);
-		// Red handle.
-		g.drawLine(cx + 3, cy + 3, cx + 6, cy + 6);
-		g.setClip(null);
-		g.dispose();
-		return img;
-	}
-
-	/** Paints a 15x15 single-color magnifying glass for compact icon buttons. */
-	static BufferedImage makeSearchIcon(Color color, float brightness)
-	{
-		BufferedImage img = new BufferedImage(15, 15, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D g = lens(img);
-		g.setColor(brighten(color, brightness));
-		int cx = 7, cy = 5, r = 4;
-		g.drawOval(cx - r, cy - r, r * 2, r * 2);
-		g.drawLine(cx + 3, cy + 3, cx + 6, cy + 6);
-		g.dispose();
-		return img;
-	}
-
-	/** A magnifying glass's canvas: antialiased, with its 1.5 px stroke. */
-	private static Graphics2D lens(BufferedImage img)
-	{
-		Graphics2D g = img.createGraphics();
-		g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
-		g.setStroke(new java.awt.BasicStroke(1.5f));
-		return g;
-	}
-
-	private static Color brighten(Color c, float factor)
-	{
-		int r = Math.min(255, (int) (c.getRed() * factor));
-		int g = Math.min(255, (int) (c.getGreen() * factor));
-		int b = Math.min(255, (int) (c.getBlue() * factor));
-		return new Color(r, g, b, c.getAlpha());
-	}
-
-	static void styleSearchBar(Container container)
-	{
-		for (Component c : container.getComponents())
-		{
-			if (c instanceof JButton)
-			{
-				JButton btn = (JButton) c;
-				btn.setOpaque(false);
-				btn.setContentAreaFilled(false);
-				btn.setBorderPainted(false);
-			}
-			else if (c instanceof Container)
-			{
-				styleSearchBar((Container) c);
-			}
-		}
-	}
-
-	/**
-	 * True when RuneLite's core Virtual Levels plugin is switched on.
-	 */
-	private static boolean virtualLevelsPluginEnabled(ConfigManager configManager)
-	{
-		return Boolean.parseBoolean(
-			configManager.getConfiguration("runelite", "virtuallevelsplugin"));
-	}
-
-	/**
-	 * The level a skill summary cell shows: the hiscore level normally, the
-	 * xp-derived virtual level (cap 126) when Kill Clog's setting is on.
-	 * Unranked skills (no xp) keep the hiscore value either way.
-	 */
-	static int displayLevel(int hiscoreLevel, long xp, boolean virtualLevels)
-	{
-		if (!virtualLevels || xp <= 0)
-		{
-			return hiscoreLevel;
-		}
-		return Experience.getLevelForXp((int) xp);
-	}
-
-	/**
-	 * True when the Virtual Levels plugin is on AND its "virtual total level"
-	 * sub-setting is too (their default: on). Mirrors the vanilla skill tab's
-	 * total exactly.
-	 */
-	static boolean virtualTotalLevelEnabled(ConfigManager configManager)
-	{
-		if (!virtualLevelsPluginEnabled(configManager))
-		{
-			return false;
-		}
-		String v = configManager.getConfiguration("virtuallevels", "virtualTotalLevel");
-		return v == null || Boolean.parseBoolean(v);
-	}
-
-	/**
-	 * Total level for display: the hiscore total normally, the sum of
-	 * xp-derived virtual levels when the vanilla virtual-total setting is on.
-	 * Skills the hiscores hide (unranked) contribute their hiscore value via
-	 * the max guard, so a partially-ranked account never shows a virtual
-	 * total below its real one. Never used for maxed detection - identity
-	 * logic stays on real levels.
-	 */
-	static int displayTotalLevel(HiscoreResult result, boolean virtualTotal)
-	{
-		int real = result.getTotalLevel();
-		if (!virtualTotal)
-		{
-			return real;
-		}
-		int total = 0;
-		for (Skill skill : Skill.values())
-		{
-			String key = skill.getName().toLowerCase();
-			int level = result.getSkillLevel(key);
-			if (level <= 0)
-			{
-				continue;
-			}
-			total += displayLevel(level, result.getSkillXp(key), true);
-		}
-		return Math.max(total, real);
-	}
 }

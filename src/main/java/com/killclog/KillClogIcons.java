@@ -1,5 +1,6 @@
 package com.killclog;
 
+import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import net.runelite.client.game.ItemManager;
@@ -82,5 +83,59 @@ final class KillClogIcons
 		{
 			return null;
 		}
+	}
+
+	/** Paints a 15x15 split-color magnifying glass. */
+	static BufferedImage makeCompareIcon(Color left, Color right, float brightness)
+	{
+		BufferedImage img = new BufferedImage(15, 15, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = lens(img);
+		// Lens circle: center (7,5), radius 4
+		int cx = 7, cy = 5, r = 4;
+		// Left half: blue.
+		g.setClip(0, 0, cx, 15);
+		g.setColor(brighten(left, brightness));
+		g.drawOval(cx - r, cy - r, r * 2, r * 2);
+		// Blue handle.
+		g.drawLine(cx - 3, cy + 3, cx - 6, cy + 6);
+		// Right half: red.
+		g.setClip(cx, 0, 15, 15);
+		g.setColor(brighten(right, brightness));
+		g.drawOval(cx - r, cy - r, r * 2, r * 2);
+		// Red handle.
+		g.drawLine(cx + 3, cy + 3, cx + 6, cy + 6);
+		g.setClip(null);
+		g.dispose();
+		return img;
+	}
+
+	/** Paints a 15x15 single-color magnifying glass for compact icon buttons. */
+	static BufferedImage makeSearchIcon(Color color, float brightness)
+	{
+		BufferedImage img = new BufferedImage(15, 15, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D g = lens(img);
+		g.setColor(brighten(color, brightness));
+		int cx = 7, cy = 5, r = 4;
+		g.drawOval(cx - r, cy - r, r * 2, r * 2);
+		g.drawLine(cx + 3, cy + 3, cx + 6, cy + 6);
+		g.dispose();
+		return img;
+	}
+
+	/** A magnifying glass's canvas: antialiased, with its 1.5 px stroke. */
+	private static Graphics2D lens(BufferedImage img)
+	{
+		Graphics2D g = img.createGraphics();
+		g.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_ON);
+		g.setStroke(new java.awt.BasicStroke(1.5f));
+		return g;
+	}
+
+	private static Color brighten(Color c, float factor)
+	{
+		int r = Math.min(255, (int) (c.getRed() * factor));
+		int g = Math.min(255, (int) (c.getGreen() * factor));
+		int b = Math.min(255, (int) (c.getBlue() * factor));
+		return new Color(r, g, b, c.getAlpha());
 	}
 }

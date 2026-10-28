@@ -111,6 +111,11 @@ final class AccountDisplay
 		{
 			return hiscoreTable.displayName();
 		}
-		return accountType != null ? ClogHelper.accountLabel(accountType) : null;
+		return accountType != null ? accountLabel(accountType) : null;
+	}
+
+	static String accountLabel(AccountType type)
+	{
+		return type != null && type != AccountType.REGULAR ? type.displayName() : null;
 	}
 }

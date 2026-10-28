@@ -303,9 +303,9 @@ public class ClogHelperTest
 		ImgTooltip both = new ImgTooltip(5);
 		both.setTitle("Chambers of Xeric");
 		both.setInfoLine("KC: ", "730", java.awt.Color.WHITE);
-		ClogHelper.addHardModeLine(both, raid, true, true);
+		Cells.addHardModeLine(both, raid, true, true);
 		assertEquals(NativeTooltip.LINE_HEIGHT, both.getHeaderHeight() - plain.getHeaderHeight());
-		ClogHelper.addHardModeLine(plain, raid, false, false);
+		Cells.addHardModeLine(plain, raid, false, false);
 		assertEquals(both.getHeaderHeight() - NativeTooltip.LINE_HEIGHT, plain.getHeaderHeight());
 	}
 
@@ -346,10 +346,10 @@ public class ClogHelperTest
 		ImgTooltip bare = new ImgTooltip(5);
 		bare.setTitle("Tombs of Amascut");
 		ImgTooltip card = new ImgTooltip(5);
-		assertTrue(ClogHelper.configureNotSynced(card, data, null, true));
+		assertTrue(Cells.configureNotSynced(card, data, null, true));
 		HiscoreResult result = TestViews.hiscore(AccountType.REGULAR, Collections.emptyMap(), Collections.emptyMap(),
 			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1);
-		ClogHelper.configureRank(card, data, result, true);
+		Cells.configureRank(card, data, result, true);
 		// The Kills line, the Expert line and the rank line, not a bare title over a placeholder.
 		assertEquals(bare.getHeaderHeight() + 3 * NativeTooltip.LINE_HEIGHT, card.getHeaderHeight());
 	}

@@ -146,7 +146,7 @@ public class Cells
 		loadBossIcon(label, boss.getSpriteId(), icon ->
 		{
 			originalIcons.put(boss, icon);
-			dimmedIcons.put(boss, new ImageIcon(ClogHelper.createDimmedImage(icon)));
+			dimmedIcons.put(boss, new ImageIcon(PanelIconCache.createDimmedImage(icon)));
 		});
 
 		bossLabels.put(boss, label);
@@ -461,21 +461,21 @@ public class Cells
 					NativeTooltip.valueColor);
 				if (data.pb != null && config.showTooltipPb())
 				{
-					tip.setInfoLinePair(ClogHelper.pbLabel(data.pb), ClogHelper.pbTime(data.pb), NativeTooltip.valueColor);
+					tip.setInfoLinePair(pbLabel(data.pb), pbTime(data.pb), NativeTooltip.valueColor);
 				}
 			}
 			else if (data.pb != null && config.showTooltipPb())
 			{
-				tip.setInfoLine(ClogHelper.pbLabel(data.pb), ClogHelper.pbTime(data.pb), NativeTooltip.valueColor);
+				tip.setInfoLine(pbLabel(data.pb), pbTime(data.pb), NativeTooltip.valueColor);
 			}
-			ClogHelper.addHardModeLine(tip, data, config.showTooltipKc(), config.showTooltipPb());
+			addHardModeLine(tip, data, config.showTooltipKc(), config.showTooltipPb());
 			if (data.allItemIds != null)
 			{
 				tip.setItems(data.totalItems, data.allItemIds, data.obtainedIds,
 					data.obtainedCounts, data.itemNames, itemManager);
 			}
 		}
-		else if (!ClogHelper.configureNotSynced(tip, data, itemManager, config.showTooltipKc()))
+		else if (!configureNotSynced(tip, data, itemManager, config.showTooltipKc()))
 		{
 			tip.setTitle(data != null ? data.name : name);
 			boolean isSelfNoCache = result != null && lookupSession.offersSetup(localRsn.get(), rsn);
@@ -494,7 +494,7 @@ public class Cells
 				tip.setNotice("Loading catalog...");
 			}
 		}
-		ClogHelper.configureRank(tip, data, result, config.showTooltipRank());
+		configureRank(tip, data, result, config.showTooltipRank());
 		if (isSolHeredit && ColosseumGlory.isVisible(glory)
 			&& config.showTooltipKc() && (data == null || data.obtainedCount < 0))
 		{
@@ -747,5 +747,86 @@ public class Cells
 	public TooltipData getTooltipData(HiscoreSkill skill)
 	{
 		return tooltipDataMap.get(skill);
+	}
+
+	/**
+	 * Configure an ImgTooltip for a player who has not synced any collection log.
+	 * Keeps native hiscore rows when the player has any signal (kc or rank);
+	 * otherwise shows the muted "Obtained: --/Y" preview. Every category item
+	 * draws dimmed either way so wiki links remain explorable.
+	 */
+	static boolean configureNotSynced(ImgTooltip tip, TooltipData data, ItemManager itemManager,
+		boolean showKc)
+	{
+		if (data == null || data.allItemIds == null || data.allItemIds.isEmpty())
+		{
+			return false;
+		}
+		tip.setTitle(data.name);
+		// A raid's hard mode is the player's signal too: a raider of Expert alone keeps that line and rank.
+		if (data.statValue >= 0 || data.rank > 0 || data.hardKc >= 0 || data.hardRank > 0)
+		{
+			if (data.statLabel != null && showKc)
+			{
+				tip.setInfoLine(data.statLabel, ClogHelper.countText(data.statValue), NativeTooltip.valueColor);
+			}
+			addHardModeLine(tip, data, showKc, false);
+		}
+		else
+		{
+			// No player signal behind this grid: preview the shape and count
+			// the slots instead of painting dashes for stats nobody has.
+			tip.setObtainedPlaceholder(data.allItemIds.size());
+		}
+		tip.setItems(data.totalItems, data.allItemIds, Collections.emptySet(),
+			Collections.emptyMap(), data.itemNames, itemManager);
+		return true;
+	}
+
+	/** A raid's hard mode on the line under the raid's own KC and PB, by the name the Combat Summary pairs it by. */
+	static void addHardModeLine(TitleTooltip tip, TooltipData data, boolean showKc, boolean showPb)
+	{
+		if (data.hardLabel == null)
+		{
+			return;
+		}
+		if (data.hardKc >= 0 && showKc)
+		{
+			tip.addInfoLine(data.hardLabel + ": ", ClogHelper.formatKc(data.hardKc), NativeTooltip.valueColor);
+			if (data.hardPb != null && showPb)
+			{
+				tip.setInfoLinePair(pbLabel(data.hardPb), pbTime(data.hardPb), NativeTooltip.valueColor);
+			}
+		}
+		else if (data.hardPb != null && showPb)
+		{
+			tip.addInfoLine(data.hardLabel + " " + pbLabel(data.hardPb), pbTime(data.hardPb), NativeTooltip.valueColor);
+		}
+	}
+
+	/** "PB: ", or a team size's "PB (5 players): " ({@link PersonalBests#labeled}). */
+	static String pbLabel(String pb)
+	{
+		return pb.startsWith("(") ? "PB " + pb.substring(0, pb.indexOf(')') + 1) + ": " : "PB: ";
+	}
+
+	static String pbTime(String pb)
+	{
+		return pb.substring(pb.indexOf(')') + 1).trim();
+	}
+
+	/** Missing entries on a loaded leaderboard are unranked, not failed lookups. */
+	static void configureRank(TitleTooltip tip, TooltipData data, HiscoreResult result, boolean showRank)
+	{
+		if (showRank && result != null && result.isRankDataAvailable()
+			&& data != null && data.rankTracked
+			&& (data.obtainedCount >= 0 || data.statValue >= 0 || data.rank > 0 || data.hardKc >= 0 || data.hardRank > 0))
+		{
+			tip.setRank(data.rank);
+			if (data.hardLabel != null)
+			{
+				tip.setRankPair(data.hardLabel + ": ", data.hardRank);
+			}
+		}
 	}
 }

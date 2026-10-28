@@ -25,7 +25,7 @@ public class UnrankedTooltipTest
 	{
 		TitleTooltip tip = new ImgTooltip(5);
 		tip.setTitle("Alchemical Hydra");
-		ClogHelper.configureRank(tip, data, result, enabled);
+		Cells.configureRank(tip, data, result, enabled);
 		return tip;
 	}
 
