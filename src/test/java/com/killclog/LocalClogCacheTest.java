@@ -928,6 +928,46 @@ public class LocalClogCacheTest
 		assertNotNull(drop.getDate());
 	}
 
+	@Test
+	public void aFreshReadFromTheLastLoginNeverCountsForTheNext() throws Exception
+	{
+		CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
+		LocalClogCache cache = new LocalClogCache(new Gson(), writer);
+		File dir = temporaryFolder.newFolder();
+		cache.open(() -> TestFolders.folder(dir));
+		writer.runQueued();
+		assertFalse(cache.serve(new Session(1, "Tester", HASH)));
+		// A relog onto the same account while the last login's fresh read is still on the disk thread.
+		Session next = new Session(2, "Tester", HASH);
+		assertFalse(cache.serve(next));
+		writer.runQueued();
+		assertFalse("the next login waits for a fresh read of its own", cache.serve(next));
+		writer.runQueued();
+		assertTrue(cache.serve(next));
+	}
+
+	@Test
+	public void aCaptureNotYetWrittenOutlivesTheNextLoginsFreshRead() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		Map<String, List<Integer>> categories = Map.of("hats", itemList(1, 2));
+		LocalClogCache before = onDisk(dir);
+		assertTrue(StoreLogin.activate(before, "Tester", HASH));
+		before.cacheFirstPartyResult(clog("Tester", categories, obtainedItems("hats", 1)));
+		CapturingScheduledDebounceService writer = new CapturingScheduledDebounceService();
+		LocalClogCache cache = new LocalClogCache(new Gson(), writer);
+		cache.open(() -> TestFolders.folder(dir));
+		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
+		assertTrue(cache.mergeObtainedItem("Tester", 2, List.of("hats"), categories, 7, "Boss"));
+		StoreLogin.logout(cache);
+		// The drop's save is still waiting out its debounce when the account logs in again.
+		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
+		assertTrue("the older copy on disk never replaces it", cache.hasObtainedItem("Tester", 2, List.of("hats")));
+		writer.runQueued();
+		assertTrue(cache.hasObtainedItem("Tester", 2, List.of("hats")));
+		assertTrue(onDisk(dir).hasObtainedItem("Tester", 2, List.of("hats")));
+	}
+
 	static LocalClogCache onDisk(File dir)
 	{
 		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService());

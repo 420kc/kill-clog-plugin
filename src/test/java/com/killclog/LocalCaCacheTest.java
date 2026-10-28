@@ -113,6 +113,27 @@ public class LocalCaCacheTest
 		assertEquals(0, directory.listFiles((dir, name) -> name.endsWith(".tmp")).length);
 	}
 
+	@Test
+	public void aCaptureWhileTheFolderLoadsIsNewerAndStays() throws Exception
+	{
+		File directory = temporaryFolder.newFolder();
+		open(new Gson(), directory).cacheResult("Tester", HASH, Map.of(CombatAchievementTier.EASY, 1));
+		LocalCaCache twoTasks = new LocalCaCache(new Gson(), new InlineScheduledExecutorService());
+		twoTasks.open(null);
+		twoTasks.serve(new Session(1, "Tester", HASH));
+		twoTasks.cacheResult("Tester", HASH, Map.of(CombatAchievementTier.EASY, 2));
+
+		CapturingScheduledExecutorService writer = new CapturingScheduledExecutorService();
+		LocalCaCache cache = new LocalCaCache(new Gson(), writer);
+		cache.open(TestFolders.folder(directory));
+		cache.serve(new Session(1, "Tester", HASH));
+		cache.cacheResult("Tester", HASH, Map.of(CombatAchievementTier.EASY, 2));
+		writer.runQueued();
+		assertEquals("the file's older count never replaces it", twoTasks.getCached("Tester").getTotalPoints(),
+			cache.getCached("Tester").getTotalPoints());
+		assertEquals(2, easy(directory));
+	}
+
 	private static LocalCaCache open(Gson gson, File directory)
 	{
 		LocalCaCache cache = new LocalCaCache(gson, new InlineScheduledExecutorService());

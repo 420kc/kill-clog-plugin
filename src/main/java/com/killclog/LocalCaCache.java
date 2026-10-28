@@ -201,7 +201,10 @@ public class LocalCaCache
 		}
 	}
 
-	/** The folder saves go to, read when each save runs: the open queued ahead of it has set it by then. */
+	/**
+	 * The folder saves go to, read when each save runs. A capture can come before the folder opens (the open waits
+	 * for the log's folder on a cold start): its save finds none and skips, memory keeps it, and the next login saves it.
+	 */
 	@Nullable
 	private synchronized Filepath savesTo()
 	{
