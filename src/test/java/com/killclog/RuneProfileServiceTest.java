@@ -114,7 +114,7 @@ public class RuneProfileServiceTest
 		Map<CombatAchievementTier, Integer> expanded = new EnumMap<>(full);
 		expanded.put(CombatAchievementTier.GRANDMASTER,
 			full.get(CombatAchievementTier.GRANDMASTER) + 8);
-		service.setCaCatalog(TestViews.caCatalog(expanded));
+		TestViews.inject(service, TestViews.caCatalog(expanded));
 
 		CombatAchievementResult healed = service.lookup("cbc").join();
 		assertEquals(CombatAchievementTier.MASTER, healed.getTier());

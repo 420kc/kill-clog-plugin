@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import javax.annotation.Nullable;
+import javax.inject.Singleton;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.EnumComposition;
@@ -26,6 +27,7 @@ import net.runelite.client.game.ItemManager;
  * parse or none; the maps are never mutated after publication.
  */
 @Slf4j
+@Singleton
 final class ClogIndex
 {
 	static final int ENUM_CLOG_TABS = 2102;

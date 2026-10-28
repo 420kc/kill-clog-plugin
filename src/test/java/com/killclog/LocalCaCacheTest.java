@@ -134,6 +134,19 @@ public class LocalCaCacheTest
 		assertEquals(2, easy(directory));
 	}
 
+	@Test
+	public void theInjectorHandsTheStoreAndThePluginOneCatalog() throws Exception
+	{
+		com.google.inject.Injector injector = com.google.inject.Guice.createInjector();
+		LocalCaCache cache = injector.getInstance(LocalCaCache.class);
+		CaCatalog catalog = injector.getInstance(CaCatalog.class);
+		java.lang.reflect.Field held = LocalCaCache.class.getDeclaredField("caCatalog");
+		held.setAccessible(true);
+		assertSame("one catalog for every class the plugin's injector builds", catalog, held.get(cache));
+		assertSame(catalog, injector.getInstance(CaCatalog.class));
+		assertSame(injector.getInstance(ClogIndex.class), injector.getInstance(ClogIndex.class));
+	}
+
 	private static LocalCaCache open(Gson gson, File directory)
 	{
 		LocalCaCache cache = new LocalCaCache(gson, new InlineScheduledExecutorService());

@@ -89,7 +89,7 @@ public class ClogCatalogFlightTest
 		ClogService service = service(http);
 		ClogIndex index = new ClogIndex();
 		index.publishForTest(Map.of("zulrah", List.of(12921)), Map.of(12921, "Pet snakeling"));
-		service.setClogIndex(index);
+		TestViews.inject(service, index);
 		fetch(service, "fetchCategories").join();
 		assertEquals("Pet snakeling", service.getCatalogResult("Anyone").getItemName(12921));
 		assertEquals("only the categories went over the network", 1, http.starts);

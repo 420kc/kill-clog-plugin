@@ -83,14 +83,9 @@ class KillClogChatCommand
 	// indices outlive a disable/enable too: re-registering would only grow the array again.
 	private final Map<Integer, Integer> itemIconIdx = new HashMap<>();
 
-	// Plugin-owned (not injected): set at startup like the panel's reference.
 	// Backs the new-content catalog fallback in dispatch.
-	@Nullable private ClogIndex clogIndex;
+	@Inject private ClogIndex clogIndex;
 
-	void setClogIndex(@Nullable ClogIndex clogIndex)
-	{
-		this.clogIndex = clogIndex;
-	}
 
 	// On a League world, replies read that League (null: the main game) and the player's own log for it.
 	static final String LEAGUE_PREFIX = "[Leagues] ";

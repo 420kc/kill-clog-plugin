@@ -46,8 +46,7 @@ class SyncService
 	private final OkHttpClient httpClient;
 	private final Gson gson;
 	// The game's Collection Log as this client reads it, shared when killclog.com holds another.
-	@Setter
-	@Nullable
+	@Inject
 	private ClogIndex clogIndex;
 	// Your clan as the game shows it, for each sync (2.6.3).
 	@Setter

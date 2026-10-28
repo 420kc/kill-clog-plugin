@@ -96,6 +96,7 @@ public class ManualClogSyncTest
 		}, org.mockito.Mockito.mock(net.runelite.client.callback.ClientThread.class));
 		directory = temporaryFolder.newFolder();
 		cache = reload();
+		pluginField("clogIndex").set(plugin, new ClogIndex());
 		index = (ClogIndex) pluginField("clogIndex").get(plugin);
 		index.publishForTest(Map.of("zulrah", List.of(1, 2, 3)), Map.of());
 		pluginField("client").set(plugin, client);

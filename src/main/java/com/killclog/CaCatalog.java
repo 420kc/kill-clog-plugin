@@ -3,6 +3,7 @@ package com.killclog;
 import java.util.Collections;
 import java.util.EnumMap;
 import java.util.Map;
+import javax.inject.Singleton;
 import net.runelite.api.Client;
 import net.runelite.api.gameval.VarbitID;
 
@@ -20,6 +21,7 @@ import net.runelite.api.gameval.VarbitID;
  * volatile field so HTTP-thread consumers (RuneProfile parsing) see a complete
  * snapshot or none.
  */
+@Singleton
 final class CaCatalog
 {
 	private volatile Map<CombatAchievementTier, Integer> totals;

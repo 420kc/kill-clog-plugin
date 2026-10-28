@@ -16,7 +16,6 @@ import net.runelite.api.clan.ClanTitle;
 import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 
@@ -86,8 +85,7 @@ public class KillclogService
 	private final Gson gson;
 	private final ClogService clogService;
 	// The game's own pages once the client has read the log; the provider catalog stands in before then.
-	@Setter
-	@Nullable
+	@Inject
 	private ClogIndex clogIndex;
 
 	// Membership index: normalized names of players with first-party proof.

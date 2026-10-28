@@ -49,8 +49,9 @@ public class LocalCaCache
 	private String activeFile;
 	private final ExecutorService diskWriter;
 
-	// Plugin-owned live catalog, set at startup like the panel's ClogIndex.
-	@Nullable private CaCatalog caCatalog;
+	// The game's live task counts, empty until the game answers and after shutdown.
+	@Inject
+	private CaCatalog caCatalog;
 
 	@Inject
 	public LocalCaCache(Gson gson)
@@ -93,10 +94,6 @@ public class LocalCaCache
 		this.folder = folder;
 	}
 
-	public synchronized void setCaCatalog(@Nullable CaCatalog caCatalog)
-	{
-		this.caCatalog = caCatalog;
-	}
 
 	private static ExecutorService newDiskWriter()
 	{
@@ -116,7 +113,6 @@ public class LocalCaCache
 	{
 		activePlayer = null;
 		activeFile = null;
-		caCatalog = null;
 	}
 
 	/** The login whose tiers this store serves, from the session tracker. */

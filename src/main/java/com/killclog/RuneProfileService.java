@@ -54,18 +54,15 @@ public class RuneProfileService
 	private final Gson gson;
 	private final LocalCaCache localCaCache;
 
-	// Plugin-owned live catalog, set at startup. Read from HTTP threads; the
-	// catalog publishes complete immutable snapshots through a volatile field.
-	@Nullable private volatile CaCatalog caCatalog;
+	// The game's live task counts. Read from HTTP threads; the catalog publishes
+	// complete immutable snapshots through a volatile field.
+	@Inject
+	private CaCatalog caCatalog;
 
 	// Summary lane (CA tiers plus account metadata) and clog lane: independent, same TTLs.
 	private final HttpUtil.Lane<RuneProfileSummary> summaries = new HttpUtil.Lane<>(breaker);
 	private final HttpUtil.Lane<ClogResult> clogs = new HttpUtil.Lane<>(breaker);
 
-	public void setCaCatalog(@Nullable CaCatalog caCatalog)
-	{
-		this.caCatalog = caCatalog;
-	}
 
 	/** Clear transient failure cooldowns immediately (called on login); TTLs auto-expire otherwise. */
 	public void clearFailures()

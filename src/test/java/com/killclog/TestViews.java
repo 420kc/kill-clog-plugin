@@ -18,6 +18,32 @@ import javax.swing.ImageIcon;
  */
 final class TestViews
 {
+	/** A catalog handed to the class that reads it, as the plugin's injector hands it over. */
+	static void inject(Object target, Object catalog)
+	{
+		try
+		{
+			for (Class<?> type = target.getClass(); type != null; type = type.getSuperclass())
+			{
+				for (java.lang.reflect.Field field : type.getDeclaredFields())
+				{
+					if (field.getType() == ClogIndex.class && (catalog == null || catalog instanceof ClogIndex)
+						|| field.getType() == CaCatalog.class && (catalog == null || catalog instanceof CaCatalog))
+					{
+						field.setAccessible(true);
+						field.set(target, catalog);
+						return;
+					}
+				}
+			}
+		}
+		catch (IllegalAccessException e)
+		{
+			throw new AssertionError(e);
+		}
+		throw new AssertionError("no catalog field in " + target.getClass().getSimpleName());
+	}
+
 	private TestViews()
 	{
 	}

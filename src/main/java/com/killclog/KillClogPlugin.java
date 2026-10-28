@@ -176,11 +176,13 @@ public class KillClogPlugin extends Plugin
 	private boolean mainReached;
 
 	private final ClogSessionState sessionState = new ClogSessionState();
-	private final ClogIndex clogIndex = new ClogIndex();
+	@Inject
+	private ClogIndex clogIndex;
 	private final LiveClogSync liveClogSync = new LiveClogSync();
 	private final ManualClogSync manualClogSync = new ManualClogSync();
 	private final LocalCaReader localCaReader = new LocalCaReader();
-	private final CaCatalog caCatalog = new CaCatalog();
+	@Inject
+	private CaCatalog caCatalog;
 	private final ClogLookupMenu lookupMenu = new ClogLookupMenu();
 	private PublicationCoordinator publication;
 	private SyncSettings syncSettings;
@@ -259,12 +261,6 @@ public class KillClogPlugin extends Plugin
 		// live unlock) schedules a debounced push.
 		localClogCache.setFirstPartyChangedListener(() -> firstPartyChanged(localClogCache));
 
-		kclogCommand.setClogIndex(clogIndex);
-		syncService.setClogIndex(clogIndex);
-		killclogService.setClogIndex(clogIndex);
-		clogService.setClogIndex(clogIndex);
-		localCaCache.setCaCatalog(caCatalog);
-		runeProfileService.setCaCatalog(caCatalog);
 		kclogCommand.commands().forEach(chatCommandManager::registerCommandAsync);
 
 		// If installed mid-session, run login init on the client thread
@@ -302,8 +298,6 @@ public class KillClogPlugin extends Plugin
 		localCaCache.shutdown();
 		manualClogSync.reset();
 		clogIndex.clear();
-		localCaCache.setCaCatalog(null);
-		runeProfileService.setCaCatalog(null);
 		caCatalog.clear();
 		sessionState.reset();
 		liveClogSync.resetFirstSyncWarning();

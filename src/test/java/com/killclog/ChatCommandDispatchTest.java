@@ -42,7 +42,7 @@ public class ChatCommandDispatchTest
 		{
 			if (!warm)
 			{
-				harness.command.setClogIndex(null);
+				TestViews.inject(harness.command, null);
 			}
 			// With the game's pages read, an item counts on every page that lists it, as the game counts it (item 2 is
 			// filed under Mixology); before then the page holds what the source filed under it.
@@ -181,7 +181,7 @@ public class ChatCommandDispatchTest
 			this.result = result;
 			ClogIndex index = new ClogIndex();
 			index.publishForTest(result.getCategoryItems(), Map.of());
-			command.setClogIndex(index);
+			TestViews.inject(command, index);
 			set(command, "localClogCache", new LocalClogCache(null, new NoopScheduledExecutorService())
 			{
 				@Override

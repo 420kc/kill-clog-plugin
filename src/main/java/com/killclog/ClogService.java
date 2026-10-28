@@ -61,8 +61,9 @@ public class ClogService
 
 	// Cached data loaded once per session.
 	private volatile Map<String, List<Integer>> cachedCategories;
-	// Item names come from the game cache, through the log's own index (the plugin hands it over at start).
-	private volatile ClogIndex clogIndex;
+	// Item names come from the game cache, through the log's own index.
+	@Inject
+	private ClogIndex clogIndex;
 
 	// In-flight futures prevent duplicate HTTP requests from concurrent callers.
 	private final Map<String, CompletableFuture<Map<String, List<Integer>>>> categoriesFlight = new ConcurrentHashMap<>();
@@ -674,10 +675,6 @@ public class ClogService
 		}, categories -> cachedCategories = categories);
 	}
 
-	void setClogIndex(ClogIndex clogIndex)
-	{
-		this.clogIndex = clogIndex;
-	}
 
 	/** The game cache's names for every log item, now; empty before the catalog is parsed. */
 	private Map<Integer, String> itemNames()

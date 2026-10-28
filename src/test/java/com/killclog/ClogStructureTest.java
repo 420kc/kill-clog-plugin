@@ -80,7 +80,7 @@ public class ClogStructureTest
 	{
 		JsonObject seed = seed();
 		SyncService sync = new SyncService(null, new Gson());
-		sync.setClogIndex(indexOf(seed));
+		TestViews.inject(sync, indexOf(seed));
 		// Before any reply names the server's structure, nothing goes.
 		assertNull(sync.structureToShare());
 		sync.outcome(reply("{\"clog_structure_hash\":\"" + SERVER_SEED_HASH + "\"}"), "Me", 1, 0);
@@ -123,7 +123,7 @@ public class ClogStructureTest
 		pages.add(page("Elder Chaos Druids", "elder_chaos_druids", 301, 302));
 		tab.add("pages", pages);
 		tabs.add(tab);
-		service.setClogIndex(indexOf(game));
+		TestViews.inject(service, indexOf(game));
 		ClogResult result = service.parseProofView("420 kc", json, "420 kc");
 		assertEquals(Arrays.asList(101, 102, 103), result.getCategoryItems().get("master_treasure_trails"));
 		// The game's own pages, not the provider's: Elder Chaos Druids, never chaos_druids.

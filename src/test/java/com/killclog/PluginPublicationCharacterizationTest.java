@@ -2696,6 +2696,8 @@ public class PluginPublicationCharacterizationTest
 		switch (field.getName())
 		{
 			case "client": return client;
+			case "clogIndex": return new ClogIndex();
+			case "caCatalog": return new CaCatalog();
 			case "config": return config;
 			case "panelProvider": return (Provider<KillClogPanel>) () -> panel;
 			case "clientThread": return clientThread;
