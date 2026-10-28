@@ -194,6 +194,15 @@ public class ChatCommandDispatchTest
 			org.mockito.ArgumentMatchers.argThat(icon -> icon.getWidth() == 18 && icon.getHeight() == 16));
 	}
 
+	@Test
+	public void anItemWithNoPlaceInChatsIconsIsLeftOutOfTheLine() throws Exception
+	{
+		Harness harness = new Harness(pets());
+		org.mockito.Mockito.when(harness.chatIcons.chatIconIndex(2)).thenReturn(-1);
+
+		assertEquals("All Pets: 2/3 <img=101>x3", harness.run("!kclog pets"));
+	}
+
 	private static final class Harness
 	{
 		private final KillClogChatCommand command = new KillClogChatCommand();

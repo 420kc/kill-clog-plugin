@@ -96,6 +96,26 @@ public class KillClogChatEmojiTest
 	}
 
 	@Test
+	public void anEmojiStaysTextWhileRuneLiteHasNoPlaceForItsIcon()
+	{
+		KillClogChatEmoji emoji = new KillClogChatEmoji();
+		ItemManager items = mock(ItemManager.class);
+		when(items.getImage(PanelData.COLLECTION_LOG_ITEM_ID, 1, false))
+			.thenReturn(new AsyncBufferedImage(null, 36, 32, BufferedImage.TYPE_INT_ARGB));
+		ChatIconManager chatIcons = mock(ChatIconManager.class);
+		when(chatIcons.chatIconIndex(anyInt())).thenReturn(-1);
+		TestViews.set(emoji, "client", mock(Client.class));
+		TestViews.set(emoji, "itemManager", items);
+		TestViews.set(emoji, "chatIconManager", chatIcons);
+		MessageNode node = mock(MessageNode.class);
+		when(node.getValue()).thenReturn("gz :clog:");
+
+		emoji.rewrite(new ChatMessage(node, ChatMessageType.PUBLICCHAT, "Other player", "gz :clog:", "", 0));
+
+		verify(node, never()).setValue(any());
+	}
+
+	@Test
 	public void testResizeInlineIconPreservesAspectRatio()
 	{
 		BufferedImage wide = new BufferedImage(28, 14, BufferedImage.TYPE_INT_ARGB);
