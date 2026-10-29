@@ -81,6 +81,19 @@ public interface KillClogConfig extends Config
 		return false;
 	}
 
+	@ConfigItem(
+		keyName = "sidebarPriority",
+		name = "Sidebar Priority",
+		description = "Where the Kill Clog icon sits in RuneLite's sidebar: a lower number sits higher, among other "
+			+ "plugins' own numbers",
+		section = lookupSection,
+		position = 5
+	)
+	default int sidebarPriority()
+	{
+		return 6;
+	}
+
 	@ConfigSection(
 		name = "Menu location",
 		description = "Which right-click menus show the lookup option",

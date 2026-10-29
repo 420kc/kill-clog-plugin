@@ -124,7 +124,7 @@ Full page names work, and shorthand such as `gotr`, `mixology`, `pets`, and `hyd
 
 - **Kill Clog Web Sync:** Sync Collection Log, Automatic sync, Quiet automatic sync, Publish Character Model, and Share Clan (off, your sync says you are in no clan)
 - **Card Appearance:** card activation, cell hover feedback, card links (on a click, only on a shift-click, or off), the KC (or Glory), PB and rank lines, and colors for labels, values, dividers, backgrounds, borders and scroll bars
-- **Lookup:** automatic lookup on login, player comparison, the player-menu lookup and its label, and the leaderboard selector
+- **Lookup:** automatic lookup on login, player comparison, the player-menu lookup and its label, the leaderboard selector, and Sidebar Priority (where the Kill Clog icon sits in the sidebar; lower is higher)
 - **Menu location:** which right-click menus show Kill Clog (players, friends, ignore, clan and guest clan lists, chat channels, public chat, private messages, Group Ironman)
 - **Skills:** location, virtual levels, level color, color mode (skill colors, 99+, or Skill Clog progress), and Skill Clogs on or off
 - **Chat:** plugin messages and custom emojis (`:killclog:` `:rune:` `:dragon:` `:gilded:` `:clog:` `:green:`)

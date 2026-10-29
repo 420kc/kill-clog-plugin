@@ -88,6 +88,13 @@ public class PluginPublicationCharacterizationTest
 		boolean character = true;
 		boolean automatic = true;
 		boolean clan = true;
+		int sidebar = 6;
+
+		@Override
+		public int sidebarPriority()
+		{
+			return sidebar;
+		}
 
 		@Override
 		public boolean shareClan()
@@ -2596,6 +2603,24 @@ public class PluginPublicationCharacterizationTest
 		syncHandler.run();
 		settle();
 		org.junit.Assert.assertNull(sentType(2));
+	}
+
+	@Test
+	public void sidebarPriorityMovesTheIconByTakingItOutAndBack() throws Exception
+	{
+		net.runelite.client.ui.ClientToolbar toolbar = (net.runelite.client.ui.ClientToolbar) field("clientToolbar");
+		net.runelite.client.ui.NavigationButton before = (net.runelite.client.ui.NavigationButton) field("navButton");
+		assertEquals("today's place by default, so nobody's sidebar moves", 6, before.getPriority());
+
+		config.sidebar = -3;
+		configChanged("sidebarPriority");
+
+		net.runelite.client.ui.NavigationButton after = (net.runelite.client.ui.NavigationButton) field("navButton");
+		assertEquals(-3, after.getPriority());
+		assertTrue("the same panel comes back", before.getPanel() == after.getPanel());
+		org.mockito.InOrder order = org.mockito.Mockito.inOrder(toolbar);
+		order.verify(toolbar).removeNavigation(before);
+		order.verify(toolbar).addNavigation(after);
 	}
 
 	private void searchClick()

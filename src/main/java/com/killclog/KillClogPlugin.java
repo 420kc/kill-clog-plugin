@@ -218,13 +218,7 @@ public class KillClogPlugin extends Plugin
 		localClogCache.open(this::getPluginDirectory);
 		localClogCache.folder().thenAccept(folder -> localCaCache.open(folder == null ? null : folder.join("ca")));
 
-		navButton = NavigationButton.builder()
-			.tooltip("Kill Clog")
-			.icon(getIcon())
-			.priority(6)
-			.panel(panel)
-			.build();
-
+		navButton = sidebarButton();
 		clientToolbar.addNavigation(navButton);
 		panel.setNameAutocompleter(nameAutocompleter);
 		panel.setClogIndex(clogIndex);
@@ -955,6 +949,14 @@ public class KillClogPlugin extends Plugin
 			syncSettings.enforce();
 			characterPublishFollowsSettings();
 		}
+		else if ("sidebarPriority".equals(event.getKey()))
+		{
+			// RuneLite places an icon by its priority only as it's added, so the icon moves by leaving and coming
+			// back; the toolbar runs both on Swing's thread, in this order.
+			clientToolbar.removeNavigation(navButton);
+			navButton = sidebarButton();
+			clientToolbar.addNavigation(navButton);
+		}
 		else if ("shareClan".equals(event.getKey()) && config.killclogSync())
 		{
 			// Share Clan takes effect at once, either way: off, killclog.com stops naming the clan now rather than at
@@ -963,6 +965,16 @@ public class KillClogPlugin extends Plugin
 		}
 
 		SwingUtilities.invokeLater(() -> panel.onConfigChanged(event.getKey()));
+	}
+
+	private NavigationButton sidebarButton()
+	{
+		return NavigationButton.builder()
+			.tooltip("Kill Clog")
+			.icon(getIcon())
+			.priority(config.sidebarPriority())
+			.panel(panel)
+			.build();
 	}
 
 	/** The character button follows sync and the character setting together; turning either off withdraws it. */
