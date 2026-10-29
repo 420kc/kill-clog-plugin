@@ -1,5 +1,6 @@
 package com.killclog;
 
+import java.awt.Insets;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.util.Arrays;
@@ -29,6 +30,18 @@ public class CardScreenTest
 	{
 		assertEquals(ULTRAWIDE, TooltipController.screenAt(new Point(1920, 10), DESK));
 		assertEquals(PRIMARY, TooltipController.screenAt(new Point(1919, 10), DESK));
+	}
+
+	@Test
+	public void aCardKeepsClearOfTheTaskbarMenuBarAndDock()
+	{
+		// Windows: a 40 px taskbar along the bottom.
+		assertEquals(new Rectangle(0, 0, 1920, 1040), TooltipController.usable(PRIMARY, new Insets(0, 0, 40, 0)));
+		// A Mac: the menu bar on top, the Dock on the left, on a monitor right of the main one.
+		assertEquals(new Rectangle(1990, 25, 3370, 1415),
+			TooltipController.usable(ULTRAWIDE, new Insets(25, 70, 0, 0)));
+		// Nothing along the edges: the whole monitor.
+		assertEquals(LEFT, TooltipController.usable(LEFT, new Insets(0, 0, 0, 0)));
 	}
 
 	@Test

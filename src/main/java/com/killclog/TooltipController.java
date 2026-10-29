@@ -5,9 +5,11 @@ import java.awt.Color;
 import java.awt.Component;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.awt.GraphicsConfiguration;
 import java.awt.GraphicsDevice;
 import java.awt.GraphicsEnvironment;
 import java.awt.HeadlessException;
+import java.awt.Insets;
 import java.awt.Point;
 import java.awt.Rectangle;
 import java.awt.Toolkit;
@@ -537,21 +539,34 @@ class TooltipController
 	}
 
 	/**
-	 * The monitor a card opens on: the one holding its anchor. The window's own record of its monitor can be stale
-	 * (10/27: a client started during a remote desktop session pulled every card onto the other monitor).
+	 * The room a card has on the monitor holding its anchor: the monitor less the taskbar, or a Mac's menu bar and Dock,
+	 * as Swing's hover cards keep clear of them. The window's own record of its monitor can be stale (10/27: a client
+	 * started during a remote desktop session pulled every card onto the other monitor).
 	 */
 	private static Rectangle screenAt(Point at, Component fallback)
 	{
 		List<Rectangle> screens = new ArrayList<>();
+		List<GraphicsConfiguration> monitors = new ArrayList<>();
 		if (!GraphicsEnvironment.isHeadless())
 		{
 			for (GraphicsDevice device : GraphicsEnvironment.getLocalGraphicsEnvironment().getScreenDevices())
 			{
+				monitors.add(device.getDefaultConfiguration());
 				screens.add(device.getDefaultConfiguration().getBounds());
 			}
 		}
 		Rectangle screen = screenAt(at, screens);
-		return screen != null ? screen : fallback.getGraphicsConfiguration().getBounds();
+		GraphicsConfiguration monitor = screen != null ? monitors.get(screens.indexOf(screen))
+			: fallback.getGraphicsConfiguration();
+		return GraphicsEnvironment.isHeadless() ? monitor.getBounds()
+			: usable(monitor.getBounds(), Toolkit.getDefaultToolkit().getScreenInsets(monitor));
+	}
+
+	/** A monitor less what its edges hold: the taskbar, a Mac's menu bar and Dock. */
+	static Rectangle usable(Rectangle monitor, Insets edges)
+	{
+		return new Rectangle(monitor.x + edges.left, monitor.y + edges.top,
+			monitor.width - edges.left - edges.right, monitor.height - edges.top - edges.bottom);
 	}
 
 	/** The first of these monitors that holds the point, as Swing's hover cards pick theirs; null when none does. */
