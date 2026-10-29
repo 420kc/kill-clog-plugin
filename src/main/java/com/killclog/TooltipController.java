@@ -271,12 +271,21 @@ class TooltipController
 		{
 			return;
 		}
-		if (SwingUtilities.isRightMouseButton(event))
+		if (opensMenu(event))
 		{
 			cardMenu(source, cell, event).show(event.getComponent(), event.getX(), event.getY());
 			return;
 		}
 		openFromPress(source, cell, event, event.isShiftDown());
+	}
+
+	/**
+	 * Whether a press asks for the menu: the right button, or a Mac's Ctrl+click, which Java reports as the left button
+	 * held with Ctrl and marks as the menu's trigger (OpenJDK's macOS NSEvent.isPopupTrigger).
+	 */
+	static boolean opensMenu(MouseEvent press)
+	{
+		return SwingUtilities.isRightMouseButton(press) || press.isPopupTrigger();
 	}
 
 	/** The right button's menu: what a click and a shift-click do, named. */
