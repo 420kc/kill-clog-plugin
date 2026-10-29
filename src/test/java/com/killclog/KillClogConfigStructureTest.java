@@ -52,6 +52,7 @@ public class KillClogConfigStructureTest
 		expected.add("cardBorderColor");
 		expected.add("cardScrollbarColor");
 		expected.add("shareClan");
+		expected.add("sidebarPriority");
 		assertEquals(expected, keys);
 	}
 
@@ -109,6 +110,18 @@ public class KillClogConfigStructureTest
 			.getAnnotation(ConfigItem.class);
 		assertEquals(KillClogConfig.lookupSection, item.section());
 		assertEquals("Show Leaderboard Selector", item.name());
+	}
+
+	@Test
+	public void sidebarPriorityKeepsTodaysPlaceUnderLookup() throws Exception
+	{
+		assertEquals("the priority Kill Clog always had, so nobody's sidebar moves", 6, new KillClogConfig()
+		{
+		}.sidebarPriority());
+		ConfigItem item = KillClogConfig.class.getDeclaredMethod("sidebarPriority")
+			.getAnnotation(ConfigItem.class);
+		assertEquals(KillClogConfig.lookupSection, item.section());
+		assertEquals("Sidebar Priority", item.name());
 	}
 
 	@Test
