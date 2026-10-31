@@ -2623,6 +2623,20 @@ public class PluginPublicationCharacterizationTest
 		order.verify(toolbar).addNavigation(after);
 	}
 
+	@Test
+	public void aSidebarPriorityChangeAfterShutdownLeavesTheIconOut() throws Exception
+	{
+		net.runelite.client.ui.ClientToolbar toolbar = (net.runelite.client.ui.ClientToolbar) field("clientToolbar");
+		plugin.shutDown();
+		clearInvocations(toolbar);
+
+		config.sidebar = -3;
+		configChanged("sidebarPriority");
+
+		verify(toolbar, never()).addNavigation(any());
+		plugin.startUp();
+	}
+
 	private void searchClick()
 	{
 		net.runelite.api.MenuEntry entry = mock(net.runelite.api.MenuEntry.class);
