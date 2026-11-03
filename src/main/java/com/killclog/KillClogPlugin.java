@@ -690,6 +690,7 @@ public class KillClogPlugin extends Plugin
 			nameAutocompleter.refreshClientSnapshot();
 		}
 		playerClans.refreshClientSnapshot();
+		hiscoreService.setOnHardcoreWorld(GameMode.hardcore(client.getWorldType()));
 		sessions.update(client);
 		boolean settledNow = world.tick();
 		if (settledNow)

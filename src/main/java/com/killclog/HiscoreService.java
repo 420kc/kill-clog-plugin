@@ -21,6 +21,7 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Experience;
 import okhttp3.OkHttpClient;
@@ -125,6 +126,9 @@ public class HiscoreService
 	static final String LEAGUE_TABLE = "hiscore_oldschool_seasonal";
 	private static final String REGULAR_TABLE = "hiscore_oldschool";
 	private static final String HARDCORE_MAIN_TABLE = HiscoreTable.HARDCORE_MAIN.hiscoreKey();
+	// Whether the world last logged in on is a Hardcore world, copied on the client thread each tick.
+	@Setter
+	private volatile boolean onHardcoreWorld;
 	// killclog.com says the same, word for word.
 	static final String DOWN_MESSAGE = "Jagex hiscores are down. Try again soon.";
 
@@ -331,7 +335,7 @@ public class HiscoreService
 		CompletableFuture<String> hcimFuture = fetchAsync("hiscore_oldschool_hardcore_ironman", encoded, absent);
 		CompletableFuture<String> ironFuture = fetchAsync("hiscore_oldschool_ironman", encoded, absent);
 		CompletableFuture<String> regFuture = fetchAsync(REGULAR_TABLE, encoded, absent);
-		CompletableFuture<String> hardcoreMainFuture = fetchAsync(HARDCORE_MAIN_TABLE, encoded, absent);
+		CompletableFuture<String> hardcoreMainFuture = hardcoreMainBeside(encoded, regFuture, absent);
 
 		return CompletableFuture.allOf(uimFuture, hcimFuture, ironFuture, regFuture, hardcoreMainFuture)
 			.thenCompose(v ->
@@ -391,7 +395,7 @@ public class HiscoreService
 		{
 			// RuneLite's own type: not a solo Ironman now (a group ironman reads its regular row), maybe a
 			// Hardcore Worlds character.
-			return regular.thenCombine(fetchAsync(HARDCORE_MAIN_TABLE, encodedPlayer, absent),
+			return regular.thenCombine(hardcoreMainBeside(encodedPlayer, regular, absent),
 				(body, hardcore) -> new String[]{body, hardcoreMainRow(body, hardcore, absent)})
 				.thenCompose(rows -> rows[1] != null ? CompletableFuture.completedFuture(hardcoreMain(rows[1]))
 					: rows[0] != null ? parseAndRefine(encodedPlayer, rows[0], type)
@@ -412,6 +416,22 @@ public class HiscoreService
 			return proven(parseHiscoreBody(body, type)
 				.withRanks(ranked != null ? parseHiscoreBody(ranked, type) : null), true, null);
 		});
+	}
+
+	/**
+	 * The Hardcore Main row a lookup reads: asked beside the regular board on a Hardcore world, where RuneLite's own
+	 * hiscores read that table too; elsewhere only once the regular board says "not found", so a main game lookup
+	 * asks Jagex nothing more. Null when it isn't asked.
+	 */
+	private CompletableFuture<String> hardcoreMainBeside(String encodedPlayer, CompletableFuture<String> regular,
+		Set<String> absent)
+	{
+		if (onHardcoreWorld)
+		{
+			return fetchAsync(HARDCORE_MAIN_TABLE, encodedPlayer, absent);
+		}
+		return regular.thenCompose(body -> body == null && absent.contains(REGULAR_TABLE)
+			? fetchAsync(HARDCORE_MAIN_TABLE, encodedPlayer, absent) : CompletableFuture.completedFuture(null));
 	}
 
 	/**

@@ -27,8 +27,7 @@ public class HiscoreKnownTypeTest
 			assertEquals(type, result.getAccountType());
 			assertEquals(2000, result.getTotalXp());
 			assertEquals(42, result.getOverallRank());
-			// The regular board and the type's own: a main's own is Hardcore Main, which this player isn't on.
-			assertEquals(2, calls.get());
+			assertEquals(type == AccountType.REGULAR || type.isGroupIronman() ? 1 : 2, calls.get());
 		}
 	}
 
