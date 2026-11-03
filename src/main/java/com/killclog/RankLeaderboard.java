@@ -13,7 +13,8 @@ enum RankLeaderboard
 	HARDCORE("Hardcore Ironman", "hiscore_oldschool_hardcore_ironman", "hardcore_ironman.png"),
 	ULTIMATE("Ultimate Ironman", "hiscore_oldschool_ultimate", "ultimate_ironman.png"),
 	SKILLER("Skiller", "hiscore_oldschool_skiller", "level_3_skiller.png"),
-	PURE("Pure", "hiscore_oldschool_skiller_defence", "pure.png");
+	PURE("Pure", "hiscore_oldschool_skiller_defence", "pure.png"),
+	HARDCORE_MAIN("Hardcore Main", "hiscore_oldschool_hardcore_mains", "hardcore_main.png");
 
 	final String label;
 	final String endpoint;
@@ -23,6 +24,7 @@ enum RankLeaderboard
 	{
 		if (result.getHiscoreTable() == HiscoreTable.SKILLER) return SKILLER;
 		if (result.getHiscoreTable() == HiscoreTable.ONE_DEFENCE) return PURE;
+		if (result.getHiscoreTable() == HiscoreTable.HARDCORE_MAIN) return HARDCORE_MAIN;
 		return of(result.getAccountType());
 	}
 

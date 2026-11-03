@@ -21,7 +21,6 @@ import javax.inject.Inject;
 import javax.inject.Singleton;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Experience;
 import okhttp3.OkHttpClient;
@@ -124,10 +123,8 @@ public class HiscoreService
 		.maximumSize(256).expireAfterWrite(CACHE_TTL_MS, TimeUnit.MILLISECONDS).build();
 
 	static final String LEAGUE_TABLE = "hiscore_oldschool_seasonal";
-	// Hardcore Worlds' own table, as killclog.com names it, or null.
-	@Setter
-	@Nullable
-	private volatile java.util.function.Supplier<String> hardcoreTable;
+	private static final String REGULAR_TABLE = "hiscore_oldschool";
+	private static final String HARDCORE_MAIN_TABLE = HiscoreTable.HARDCORE_MAIN.hiscoreKey();
 	// killclog.com says the same, word for word.
 	static final String DOWN_MESSAGE = "Jagex hiscores are down. Try again soon.";
 
@@ -333,9 +330,10 @@ public class HiscoreService
 		CompletableFuture<String> uimFuture = fetchAsync("hiscore_oldschool_ultimate", encoded, absent);
 		CompletableFuture<String> hcimFuture = fetchAsync("hiscore_oldschool_hardcore_ironman", encoded, absent);
 		CompletableFuture<String> ironFuture = fetchAsync("hiscore_oldschool_ironman", encoded, absent);
-		CompletableFuture<String> regFuture = fetchRegular(encoded, absent);
+		CompletableFuture<String> regFuture = fetchAsync(REGULAR_TABLE, encoded, absent);
+		CompletableFuture<String> hardcoreMainFuture = fetchAsync(HARDCORE_MAIN_TABLE, encoded, absent);
 
-		return CompletableFuture.allOf(uimFuture, hcimFuture, ironFuture, regFuture)
+		return CompletableFuture.allOf(uimFuture, hcimFuture, ironFuture, regFuture, hardcoreMainFuture)
 			.thenCompose(v ->
 			{
 				String uimBody = uimFuture.join();
@@ -344,6 +342,11 @@ public class HiscoreService
 				String regBody = regFuture.join();
 
 				AccountType type = detectAccountType(uimBody, hcimBody, ironBody, regBody);
+				String hardcoreMainBody = hardcoreMainRow(regBody, hardcoreMainFuture.join(), absent);
+				if (type == AccountType.REGULAR && hardcoreMainBody != null)
+				{
+					return CompletableFuture.completedFuture(hardcoreMain(hardcoreMainBody));
+				}
 				// This lookup's own regular and Ironman answers say whether it's an Ironman now;
 				// an Ironman row ahead of the regular one is a mismatched read and says nothing.
 				long regXp = extractTotalXp(regBody);
@@ -360,7 +363,7 @@ public class HiscoreService
 				String bestBody = pickBestBody(type, uimBody, hcimBody, ironBody, regBody);
 				if (bestBody == null)
 				{
-					return missing(absent.contains("hiscore_oldschool"));
+					return missing(notOnEither(absent));
 				}
 
 				return parseAndRefine(encoded, bestBody, type)
@@ -382,20 +385,24 @@ public class HiscoreService
 
 	private CompletableFuture<HiscoreResult> lookupKnown(String encodedPlayer, AccountType type, Set<String> absent)
 	{
-		CompletableFuture<String> regular = fetchRegular(encodedPlayer, absent);
+		CompletableFuture<String> regular = fetchAsync(REGULAR_TABLE, encodedPlayer, absent);
 		RankLeaderboard board = RankLeaderboard.of(type);
 		if (board == RankLeaderboard.NORMAL)
 		{
-			// RuneLite's own type: not a solo Ironman now (a group ironman reads its regular row).
-			return regular.thenCompose(body -> body != null ? parseAndRefine(encodedPlayer, body, type)
-				: HiscoreService.<HiscoreResult>missing(absent.contains("hiscore_oldschool")))
-				.thenApply(result -> proven(result, false, null));
+			// RuneLite's own type: not a solo Ironman now (a group ironman reads its regular row), maybe a
+			// Hardcore Worlds character.
+			return regular.thenCombine(fetchAsync(HARDCORE_MAIN_TABLE, encodedPlayer, absent),
+				(body, hardcore) -> new String[]{body, hardcoreMainRow(body, hardcore, absent)})
+				.thenCompose(rows -> rows[1] != null ? CompletableFuture.completedFuture(hardcoreMain(rows[1]))
+					: rows[0] != null ? parseAndRefine(encodedPlayer, rows[0], type)
+					.thenApply(result -> proven(result, false, null))
+					: HiscoreService.<HiscoreResult>missing(notOnEither(absent)));
 		}
 		return regular.thenCombine(fetchAsync(board.endpoint, encodedPlayer, absent), (base, ranked) ->
 		{
 			if (base == null && ranked == null)
 			{
-				if (absent.contains("hiscore_oldschool")) return null;
+				if (absent.contains(REGULAR_TABLE)) return null;
 				throw new HiscoresDown();
 			}
 			// RuneLite supplies the current self type. Keep its selected ranks, but
@@ -405,6 +412,28 @@ public class HiscoreService
 			return proven(parseHiscoreBody(body, type)
 				.withRanks(ranked != null ? parseHiscoreBody(ranked, type) : null), true, null);
 		});
+	}
+
+	/**
+	 * A Hardcore Worlds character's row: there when the regular board has none for the player, or the same as the
+	 * regular one. A row behind the regular one is not the account as it is now, so the regular board's stands.
+	 */
+	@Nullable
+	private String hardcoreMainRow(@Nullable String regular, @Nullable String hardcore, Set<String> absent)
+	{
+		long xp = extractTotalXp(hardcore);
+		return xp > 0 && (absent.contains(REGULAR_TABLE) || extractTotalXp(regular) == xp) ? hardcore : null;
+	}
+
+	private HiscoreResult hardcoreMain(String body)
+	{
+		return proven(parseHiscoreBody(body, AccountType.REGULAR, HiscoreTable.HARDCORE_MAIN), false, null);
+	}
+
+	/** "Not found" stands only when both of a main's boards say so; anything else unanswered is Jagex down. */
+	private static boolean notOnEither(Set<String> absent)
+	{
+		return absent.contains(REGULAR_TABLE) && absent.contains(HARDCORE_MAIN_TABLE);
 	}
 
 	private CompletableFuture<HiscoreResult> parseAndRefine(String encodedPlayer,
@@ -680,27 +709,6 @@ public class HiscoreService
 
 	/** How long a failed board waits before its one retry; tests shorten it. */
 	static long retryDelayMs = 500;
-
-	/**
-	 * The regular board's row; for a player it has none for, a Hardcore Worlds character's from that table, when
-	 * killclog.com names one. Its "not found" stands only when that table says so too.
-	 */
-	private CompletableFuture<String> fetchRegular(String encodedPlayer, Set<String> absent)
-	{
-		java.util.function.Supplier<String> named = hardcoreTable;
-		String table = named != null ? named.get() : null;
-		CompletableFuture<String> regular = fetchAsync("hiscore_oldschool", encodedPlayer, absent);
-		return table == null ? regular : regular.thenCompose(body -> body != null || !absent.contains("hiscore_oldschool")
-			? CompletableFuture.completedFuture(body)
-			: fetchAsync(table, encodedPlayer, absent).thenApply(row ->
-			{
-				if (row != null || !absent.contains(table))
-				{
-					absent.remove("hiscore_oldschool");
-				}
-				return row;
-			}));
-	}
 
 	private CompletableFuture<String> fetchAsync(String hiscoreKey, String encodedPlayer, @Nullable Set<String> absent)
 	{

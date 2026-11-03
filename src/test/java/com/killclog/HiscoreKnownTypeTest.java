@@ -27,7 +27,8 @@ public class HiscoreKnownTypeTest
 			assertEquals(type, result.getAccountType());
 			assertEquals(2000, result.getTotalXp());
 			assertEquals(42, result.getOverallRank());
-			assertEquals(type == AccountType.REGULAR || type.isGroupIronman() ? 1 : 2, calls.get());
+			// The regular board and the type's own: a main's own is Hardcore Main, which this player isn't on.
+			assertEquals(2, calls.get());
 		}
 	}
 
@@ -66,7 +67,8 @@ public class HiscoreKnownTypeTest
 			Locale.setDefault(new Locale("tr", "TR"));
 			AtomicInteger calls = new AtomicInteger();
 			HiscoreService service = new HiscoreService(new OkHttpClient.Builder().addInterceptor(chain ->
-				HiscoreFailureTest.response(chain, calls.incrementAndGet() == 1 ? 404 : 200,
+				chain.request().url().encodedPath().contains("hardcore_mains") ? HiscoreFailureTest.response(chain, 404, "")
+					: HiscoreFailureTest.response(chain, calls.incrementAndGet() == 1 ? 404 : 200,
 					HiscoreFailureTest.body(3000))).build(), new Gson());
 			assertNull(service.lookup("IRON", AccountType.REGULAR).get(3, TimeUnit.SECONDS));
 			HiscoreResult result = service.lookup("IRON", AccountType.REGULAR).get(3, TimeUnit.SECONDS);

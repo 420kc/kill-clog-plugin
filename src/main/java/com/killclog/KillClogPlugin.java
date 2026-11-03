@@ -219,7 +219,6 @@ public class KillClogPlugin extends Plugin
 		playerClans = new PlayerClans(client, chatIconManager, runeProfileService, world::mainSettled, config::shareClan);
 		panel.setClans(playerClans);
 		syncService.setClans(playerClans);
-		hiscoreService.setHardcoreTable(killclogService::hardcoreHiscores);
 
 		lookupMenu.start(config, menuManager);
 

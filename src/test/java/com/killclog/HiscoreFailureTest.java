@@ -61,7 +61,7 @@ public class HiscoreFailureTest
 			return response(chain, 404, "");
 		});
 		assertNull(service.lookup("Missing", null).get(3, TimeUnit.SECONDS));
-		assertEquals(4, calls.get());
+		assertEquals(5, calls.get()); // the five boards a lookup asks, Hardcore Main among them
 	}
 
 	@Test
@@ -80,7 +80,7 @@ public class HiscoreFailureTest
 			assertNotNull(result);
 			assertEquals(xp, result.getTotalXp());
 			assertEquals(-1, result.getOverallRank());
-			assertEquals(4, calls.get());
+			assertEquals(5, calls.get());
 		}
 	}
 
@@ -99,7 +99,7 @@ public class HiscoreFailureTest
 			});
 			// The main board's bad body is retried once, then the board is unavailable: down, never "no such player".
 			assertDown(service.lookup("Test", null));
-			assertEquals(5, calls.get());
+			assertEquals(6, calls.get());
 			assertFalse(service.notOnBoard("Test", RankLeaderboard.NORMAL));
 		}
 	}
@@ -135,7 +135,7 @@ public class HiscoreFailureTest
 		assertEquals(5000, result.getTotalXp());
 		assertEquals(40, result.getKc("Vorkath"));
 		assertFalse(result.hasBossRow("Zulrah"));
-		assertEquals("accepted first time, nothing retried", 4, calls.get());
+		assertEquals("accepted first time, nothing retried", 5, calls.get());
 	}
 
 	@Test
@@ -153,7 +153,7 @@ public class HiscoreFailureTest
 			});
 			assertEquals(5000, service.lookup("Test", null).get(3, TimeUnit.SECONDS).getTotalXp());
 			// An outage, a 429 or a bad body retries the JSON once.
-			assertEquals(5, calls.values().stream().mapToInt(AtomicInteger::get).sum());
+			assertEquals(6, calls.values().stream().mapToInt(AtomicInteger::get).sum());
 			assertEquals(2, calls.get(REGULAR + "index_lite.json").get());
 		}
 	}
@@ -218,7 +218,7 @@ public class HiscoreFailureTest
 		HiscoreResult result = service.lookup("Test", null).get(3, TimeUnit.SECONDS);
 		assertEquals(1000, result.getTotalXp());
 		assertEquals(HiscoreTable.STANDARD, result.getHiscoreTable());
-		assertEquals(5, calls.get());
+		assertEquals(6, calls.get());
 	}
 
 	@Test
