@@ -166,7 +166,7 @@ final class PanelData
 	static final String TFA_CATEGORY = "the_fractured_archive"; // the game's log page key
 	/** The raid's popup once the running client's enum carries it; null before, and its row opens nothing. */
 	@Nullable
-	static final HiscoreSkill TFA = skillNamed("FRACTURED_ARCHIVE"); // RuneLite's enum name (HiscoreSkill, 1.13.3)
+	static final HiscoreSkill TFA = skillNamed("THE_FRACTURED_ARCHIVE"); // RuneLite's enum name (HiscoreSkill, 1.13.6)
 
 	/**
 	 * Whether a hiscore row is The Fractured Archive's: the guess, or the name with or without "The". Nothing more,
@@ -270,16 +270,29 @@ final class PanelData
 
 	/** The running client's enum entry by name, or null when this client build doesn't carry it yet. */
 	@Nullable
-	private static HiscoreSkill skillNamed(String name)
+	static HiscoreSkill skillNamed(String name)
 	{
-		try
+		for (String known : new String[]{name, formerName(name)})
 		{
-			return HiscoreSkill.valueOf(name);
+			try
+			{
+				return HiscoreSkill.valueOf(known);
+			}
+			catch (IllegalArgumentException e)
+			{
+				// Not in this client build under this name.
+			}
 		}
-		catch (IllegalArgumentException e)
-		{
-			return null;
-		}
+		return null;
+	}
+
+	/**
+	 * A constant's name before RuneLite renamed it, so a client from before the rename still finds it: 1.13.6 renamed
+	 * FRACTURED_ARCHIVE to THE_FRACTURED_ARCHIVE, and Kill Clog asking for the old name lost the raid's tile (11/3).
+	 */
+	private static String formerName(String name)
+	{
+		return name.equals("THE_FRACTURED_ARCHIVE") ? "FRACTURED_ARCHIVE" : name;
 	}
 
 	private static int[] itemIds(String kind)
