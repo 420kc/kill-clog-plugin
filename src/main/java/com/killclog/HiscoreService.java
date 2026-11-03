@@ -126,9 +126,9 @@ public class HiscoreService
 	static final String LEAGUE_TABLE = "hiscore_oldschool_seasonal";
 	private static final String REGULAR_TABLE = "hiscore_oldschool";
 	private static final String HARDCORE_MAIN_TABLE = HiscoreTable.HARDCORE_MAIN.hiscoreKey();
-	// Whether the world last logged in on is a Hardcore world, copied on the client thread each tick.
+	// Whether the logged-in world is a Hardcore world, as the plugin last copied it on the client thread.
 	@Setter
-	private volatile boolean onHardcoreWorld;
+	private volatile java.util.function.BooleanSupplier onHardcoreWorld = () -> false;
 	// killclog.com says the same, word for word.
 	static final String DOWN_MESSAGE = "Jagex hiscores are down. Try again soon.";
 
@@ -426,7 +426,7 @@ public class HiscoreService
 	private CompletableFuture<String> hardcoreMainBeside(String encodedPlayer, CompletableFuture<String> regular,
 		Set<String> absent)
 	{
-		if (onHardcoreWorld)
+		if (onHardcoreWorld.getAsBoolean())
 		{
 			return fetchAsync(HARDCORE_MAIN_TABLE, encodedPlayer, absent);
 		}

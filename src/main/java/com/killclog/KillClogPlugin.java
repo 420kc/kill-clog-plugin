@@ -172,6 +172,9 @@ public class KillClogPlugin extends Plugin
 	// The account takes up its own log once per login and per store, latched when the open store says so (its folder
 	// and the account's log arrive on later ticks than the login).
 	private boolean accountActivated;
+	// Whether this login's world is a Hardcore world, copied each tick; lookups ask that world's hiscores beside the
+	// regular ones, and a logout, hop or shutdown clears it.
+	private volatile boolean onHardcoreWorld;
 	// Whether this login has been on the main game: the main store keeps it from then on (serveMainStore).
 	private boolean mainReached;
 
@@ -219,6 +222,7 @@ public class KillClogPlugin extends Plugin
 		playerClans = new PlayerClans(client, chatIconManager, runeProfileService, world::mainSettled, config::shareClan);
 		panel.setClans(playerClans);
 		syncService.setClans(playerClans);
+		hiscoreService.setOnHardcoreWorld(() -> onHardcoreWorld);
 
 		lookupMenu.start(config, menuManager);
 
@@ -287,6 +291,7 @@ public class KillClogPlugin extends Plugin
 	@Override
 	protected void shutDown()
 	{
+		onHardcoreWorld = false;
 		// The real appearance the game last sent is kept, like the other data, so a re-enable mid-login can publish
 		// without a gear change: logout, a hop or a lost connection drops it, and a publish checks it against the
 		// worn gear.
@@ -449,6 +454,7 @@ public class KillClogPlugin extends Plugin
 			|| event.getGameState() == GameState.CONNECTION_LOST)
 		{
 			profileAppearanceService.clearOriginalAppearance();
+			onHardcoreWorld = false;
 		}
 		if (event.getGameState() == GameState.LOGGED_IN)
 		{
@@ -690,7 +696,7 @@ public class KillClogPlugin extends Plugin
 			nameAutocompleter.refreshClientSnapshot();
 		}
 		playerClans.refreshClientSnapshot();
-		hiscoreService.setOnHardcoreWorld(GameMode.hardcore(client.getWorldType()));
+		onHardcoreWorld = GameMode.hardcore(client.getWorldType());
 		sessions.update(client);
 		boolean settledNow = world.tick();
 		if (settledNow)

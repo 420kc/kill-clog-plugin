@@ -30,7 +30,7 @@ public class HiscoreHardcoreWorldsTest
 			int code = path.startsWith("/m=hiscore_oldschool/") ? regular : there ? hardcore : 404;
 			return HiscoreFailureTest.response(chain, code, HiscoreFailureTest.body(there ? hardcoreXp : regularXp));
 		}).build(), new Gson());
-		service.setOnHardcoreWorld(onHardcoreWorld);
+		service.setOnHardcoreWorld(() -> onHardcoreWorld);
 		return service;
 	}
 
@@ -72,7 +72,7 @@ public class HiscoreHardcoreWorldsTest
 	}
 
 	@Test
-	public void onAHardcoreWorldTheSameRowOnBothIsAHardcoreMainAndARowAheadIsAMain() throws Exception
+	public void onAHardcoreWorldOnlyTheSameRowOnBothIsAHardcoreMain() throws Exception
 	{
 		for (AccountType type : new AccountType[]{null, AccountType.REGULAR})
 		{
@@ -82,6 +82,9 @@ public class HiscoreHardcoreWorldsTest
 				.get(3, TimeUnit.SECONDS), 5000);
 			assertMain(String.valueOf(type), service(true, 200, 5000, 404, 0).lookup("Main", type)
 				.get(3, TimeUnit.SECONDS), 5000);
+			// A Hardcore Main row ahead of the regular one is no match either: the regular board's stands.
+			assertMain(String.valueOf(type), service(true, 200, 1200, 200, 5000).lookup("Ahead", type)
+				.get(3, TimeUnit.SECONDS), 1200);
 		}
 	}
 
