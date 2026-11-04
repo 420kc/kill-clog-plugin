@@ -53,7 +53,7 @@ final class ClogLookupMenu
 	}
 
 	void warnIfPlayerMenuSlotUnavailable(Client client, KillClogConfig config,
-		KillClogChatNotifier chatNotifier)
+		KillClogChatNotifier chatNotifier, Provider<MenuManager> menuManager)
 	{
 		if (playerMenuSlotWarned || !config.playerMenuLookup() || !config.menuOnPlayers())
 		{
@@ -69,6 +69,16 @@ final class ClogLookupMenu
 		{
 			if (menuOption.equals(options[i]))
 			{
+				return;
+			}
+		}
+		// RuneLite tells player options apart by their text alone, so another plugin taking out its own option of the
+		// same name (the Hiscore plugin's Lookup) can take out Kill Clog's: with a slot free, it goes back in.
+		for (int i = FIRST_PLUGIN_PLAYER_SLOT; i < LAST_PLUGIN_PLAYER_SLOT_EXCLUSIVE; i++)
+		{
+			if (options[i] == null)
+			{
+				menuManager.get().addPlayerMenuItem(menuOption);
 				return;
 			}
 		}

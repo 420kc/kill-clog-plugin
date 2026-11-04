@@ -364,7 +364,7 @@ public class KillClogPlugin extends Plugin
 		clogIndex.ensureParsed(client, itemManager);
 		caCatalog.capture(client);
 		sessionState.requestAutoLookup(config.autoLookupOnLogin());
-		lookupMenu.warnIfPlayerMenuSlotUnavailable(client, config, chatNotifier);
+		lookupMenu.warnIfPlayerMenuSlotUnavailable(client, config, chatNotifier, menuManager);
 		reconcileClogTotalsFromVarps();
 	}
 

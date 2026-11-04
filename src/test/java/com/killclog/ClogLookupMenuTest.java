@@ -85,15 +85,31 @@ public class ClogLookupMenuTest
 		Client client = mock(Client.class);
 		KillClogChatNotifier notifier = mock(KillClogChatNotifier.class);
 		when(client.getPlayerOptions()).thenReturn(new String[]{"", "", "", "", "Trade", "Follow", "Report", "Walk"});
-		menu.warnIfPlayerMenuSlotUnavailable(client, ALL_ON, notifier);
-		menu.warnIfPlayerMenuSlotUnavailable(client, ALL_ON, notifier);
+		javax.inject.Provider<net.runelite.client.menus.MenuManager> menus = () -> mock(net.runelite.client.menus.MenuManager.class);
+		menu.warnIfPlayerMenuSlotUnavailable(client, ALL_ON, notifier, menus);
+		menu.warnIfPlayerMenuSlotUnavailable(client, ALL_ON, notifier, menus);
 		verify(notifier, times(1)).send(eq(ChatNotice.WARNING), contains("Right-click menu is full"));
 
 		ClogLookupMenu placed = new ClogLookupMenu();
 		KillClogChatNotifier quiet = mock(KillClogChatNotifier.class);
 		when(client.getPlayerOptions()).thenReturn(new String[]{"", "", "", "", "Trade", "Kill Clog", "Report", "Walk"});
-		placed.warnIfPlayerMenuSlotUnavailable(client, ALL_ON, quiet);
+		placed.warnIfPlayerMenuSlotUnavailable(client, ALL_ON, quiet, menus);
 		verifyNoInteractions(quiet);
+	}
+
+	@Test
+	public void anOptionTakenOutBySameNamedOneGoesBackInWhileASlotIsFree()
+	{
+		// The Hiscore plugin removing its own Lookup took out Kill Clog's Lookup (11/4): RuneLite removes the first
+		// player option with that text. The menu wasn't full, so the option goes back in, with no warning.
+		ClogLookupMenu menu = new ClogLookupMenu();
+		Client client = mock(Client.class);
+		KillClogChatNotifier notifier = mock(KillClogChatNotifier.class);
+		net.runelite.client.menus.MenuManager menus = mock(net.runelite.client.menus.MenuManager.class);
+		when(client.getPlayerOptions()).thenReturn(new String[]{"", "", "", "", "Trade", null, null, "Walk"});
+		menu.warnIfPlayerMenuSlotUnavailable(client, ALL_ON, notifier, () -> menus);
+		verify(menus).addPlayerMenuItem("Kill Clog");
+		verifyNoInteractions(notifier);
 	}
 
 	/** Whether a right-click on this component and option gained a lookup entry; a click on it records the name. */
