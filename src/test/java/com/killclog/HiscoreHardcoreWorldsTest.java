@@ -5,22 +5,29 @@ import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import okhttp3.OkHttpClient;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
 /**
  * A Hardcore Worlds character is a Hardcore Main: its row on that table (RuneLite 1.13.6's HiscoreEndpoint.HARDCORE_MAIN)
- * when the regular board has none for it, or the same row on both. A lookup asks that table beside the regular board
- * on a Hardcore world, where RuneLite's own hiscores read it, and elsewhere only after the regular board's "not found".
+ * when the regular board has none for it, or at least as far along as the regular row, which Jagex keeps small and
+ * unranked for these characters (11/4: the board's top three were 200 on the regular table at levels 33 to 55, rank
+ * -1). A lookup asks that table beside the regular board on a Hardcore world, where RuneLite's own hiscores read it,
+ * and elsewhere only for a player the regular board has unranked or not at all.
  */
 public class HiscoreHardcoreWorldsTest
 {
 	private static final String TABLE = "hiscore_oldschool_hardcore_mains";
+	private static final int RANKED = 812_345;
 
-	/** Jagex with a regular and a Hardcore Main answer (a code, and the row's total XP); every other board has no row. */
-	private static HiscoreService service(List<String> asked, boolean onHardcoreWorld, int regular, long regularXp,
-		int hardcore, long hardcoreXp)
+	/**
+	 * Jagex with a regular answer (a code, its rank and total XP) and a Hardcore Main one (a code and total XP); every
+	 * other board has no row.
+	 */
+	private static HiscoreService service(List<String> asked, AtomicBoolean onHardcoreWorld, int regular, int regularRank,
+		long regularXp, int hardcore, long hardcoreXp)
 	{
 		HiscoreService service = new HiscoreService(new OkHttpClient.Builder().addInterceptor(chain ->
 		{
@@ -28,16 +35,19 @@ public class HiscoreHardcoreWorldsTest
 			asked.add(path);
 			boolean there = path.startsWith("/m=" + TABLE + "/");
 			int code = path.startsWith("/m=hiscore_oldschool/") ? regular : there ? hardcore : 404;
-			return HiscoreFailureTest.response(chain, code, HiscoreFailureTest.body(there ? hardcoreXp : regularXp));
+			String body = there ? HiscoreFailureTest.body(hardcoreXp)
+				: HiscoreFailureTest.body(regularXp).replaceFirst("\"rank\":-1", "\"rank\":" + regularRank);
+			return HiscoreFailureTest.response(chain, code, body);
 		}).build(), new Gson());
-		service.setOnHardcoreWorld(() -> onHardcoreWorld);
+		service.setOnHardcoreWorld(onHardcoreWorld::get);
 		return service;
 	}
 
-	private static HiscoreService service(boolean onHardcoreWorld, int regular, long regularXp, int hardcore,
-		long hardcoreXp)
+	private static HiscoreService service(boolean onHardcoreWorld, int regular, int regularRank, long regularXp,
+		int hardcore, long hardcoreXp)
 	{
-		return service(new CopyOnWriteArrayList<>(), onHardcoreWorld, regular, regularXp, hardcore, hardcoreXp);
+		return service(new CopyOnWriteArrayList<>(), new AtomicBoolean(onHardcoreWorld), regular, regularRank, regularXp,
+			hardcore, hardcoreXp);
 	}
 
 	private static void assertHardcoreMain(String why, HiscoreResult result, long xp)
@@ -65,37 +75,52 @@ public class HiscoreHardcoreWorldsTest
 		{
 			for (AccountType type : new AccountType[]{null, AccountType.REGULAR})
 			{
-				assertHardcoreMain(onHardcoreWorld + " " + type, service(onHardcoreWorld, 404, 0, 200, 1200)
+				assertHardcoreMain(onHardcoreWorld + " " + type, service(onHardcoreWorld, 404, -1, 0, 200, 1200)
 					.lookup("Hc Tester", type).get(3, TimeUnit.SECONDS), 1200);
 			}
 		}
 	}
 
 	@Test
-	public void onAHardcoreWorldOnlyTheSameRowOnBothIsAHardcoreMain() throws Exception
+	public void theSmallUnrankedRegularRowGivesWayToTheHardcoreMainRowFromAnyWorld() throws Exception
 	{
-		for (AccountType type : new AccountType[]{null, AccountType.REGULAR})
+		// SunxSioux, the board's first, 11/4: Hardcore Main 204,437 XP; the regular table 200, rank -1, 3,207 XP.
+		for (boolean onHardcoreWorld : new boolean[]{false, true})
 		{
-			assertHardcoreMain(String.valueOf(type), service(true, 200, 1200, 200, 1200).lookup("Hc Tester", type)
-				.get(3, TimeUnit.SECONDS), 1200);
-			assertMain(String.valueOf(type), service(true, 200, 5000, 200, 1200).lookup("Left", type)
-				.get(3, TimeUnit.SECONDS), 5000);
-			assertMain(String.valueOf(type), service(true, 200, 5000, 404, 0).lookup("Main", type)
-				.get(3, TimeUnit.SECONDS), 5000);
-			// A Hardcore Main row ahead of the regular one is no match either: the regular board's stands.
-			assertMain(String.valueOf(type), service(true, 200, 1200, 200, 5000).lookup("Ahead", type)
-				.get(3, TimeUnit.SECONDS), 1200);
+			for (AccountType type : new AccountType[]{null, AccountType.REGULAR})
+			{
+				assertHardcoreMain(onHardcoreWorld + " " + type, service(onHardcoreWorld, 200, -1, 3207, 200, 204_437)
+					.lookup("Hc Tester", type).get(3, TimeUnit.SECONDS), 204_437);
+			}
 		}
 	}
 
 	@Test
-	public void offAHardcoreWorldARegularRowAsksJagexNothingMore() throws Exception
+	public void aRowBehindTheRegularOneIsNotTheAccountNow() throws Exception
+	{
+		for (boolean onHardcoreWorld : new boolean[]{false, true})
+		{
+			for (AccountType type : new AccountType[]{null, AccountType.REGULAR})
+			{
+				String why = onHardcoreWorld + " " + type;
+				assertHardcoreMain(why, service(onHardcoreWorld, 200, -1, 1200, 200, 1200).lookup("Hc Tester", type)
+					.get(3, TimeUnit.SECONDS), 1200);
+				assertMain(why, service(onHardcoreWorld, 200, -1, 5000, 200, 1200).lookup("Left", type)
+					.get(3, TimeUnit.SECONDS), 5000);
+				assertMain(why, service(onHardcoreWorld, 200, -1, 5000, 404, 0).lookup("Low Main", type)
+					.get(3, TimeUnit.SECONDS), 5000);
+			}
+		}
+	}
+
+	@Test
+	public void offAHardcoreWorldARankedRegularRowAsksJagexNothingMore() throws Exception
 	{
 		for (AccountType type : new AccountType[]{null, AccountType.REGULAR})
 		{
 			List<String> asked = new CopyOnWriteArrayList<>();
-			assertMain(String.valueOf(type), service(asked, false, 200, 1200, 200, 1200).lookup("Main", type)
-				.get(3, TimeUnit.SECONDS), 1200);
+			assertMain(String.valueOf(type), service(asked, new AtomicBoolean(false), 200, RANKED, 1200, 200, 5000)
+				.lookup("Main", type).get(3, TimeUnit.SECONDS), 1200);
 			assertTrue(asked.toString(), asked.stream().noneMatch(path -> path.contains(TABLE)));
 		}
 	}
@@ -107,10 +132,10 @@ public class HiscoreHardcoreWorldsTest
 		{
 			for (AccountType type : new AccountType[]{null, AccountType.REGULAR})
 			{
-				assertNull(service(onHardcoreWorld, 404, 0, 404, 0).lookup("Nobody", type).get(3, TimeUnit.SECONDS));
+				assertNull(service(onHardcoreWorld, 404, -1, 0, 404, 0).lookup("Nobody", type).get(3, TimeUnit.SECONDS));
 				try
 				{
-					service(onHardcoreWorld, 404, 0, 503, 0).lookup("Hc Tester", type).get(10, TimeUnit.SECONDS);
+					service(onHardcoreWorld, 404, -1, 0, 503, 0).lookup("Hc Tester", type).get(10, TimeUnit.SECONDS);
 					fail("a table that answers nothing never says not found");
 				}
 				catch (ExecutionException e)

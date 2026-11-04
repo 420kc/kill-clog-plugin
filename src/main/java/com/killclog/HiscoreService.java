@@ -420,8 +420,9 @@ public class HiscoreService
 
 	/**
 	 * The Hardcore Main row a lookup reads: asked beside the regular board on a Hardcore world, where RuneLite's own
-	 * hiscores read that table too; elsewhere only once the regular board says "not found", so a main game lookup
-	 * asks Jagex nothing more. Null when it isn't asked.
+	 * hiscores read that table too; elsewhere only for a player the regular board has unranked or not at all, since
+	 * Jagex keeps a small unranked regular row for every Hardcore Worlds character (seen 11/4), so a ranked player's
+	 * lookup asks Jagex nothing more. Null when it isn't asked.
 	 */
 	private CompletableFuture<String> hardcoreMainBeside(String encodedPlayer, CompletableFuture<String> regular,
 		Set<String> absent)
@@ -430,19 +431,34 @@ public class HiscoreService
 		{
 			return fetchAsync(HARDCORE_MAIN_TABLE, encodedPlayer, absent);
 		}
-		return regular.thenCompose(body -> body == null && absent.contains(REGULAR_TABLE)
+		return regular.thenCompose(body -> (body == null ? absent.contains(REGULAR_TABLE) : overallRank(body) < 0)
 			? fetchAsync(HARDCORE_MAIN_TABLE, encodedPlayer, absent) : CompletableFuture.completedFuture(null));
 	}
 
 	/**
-	 * A Hardcore Worlds character's row: there when the regular board has none for the player, or the same as the
-	 * regular one. A row behind the regular one is not the account as it is now, so the regular board's stands.
+	 * A Hardcore Worlds character's row: there when the regular board has none for the player, or at least as far along
+	 * as the regular one, which for these characters is that small row. A row behind the regular one is not the account
+	 * as it is now, so the regular board's stands.
 	 */
 	@Nullable
 	private String hardcoreMainRow(@Nullable String regular, @Nullable String hardcore, Set<String> absent)
 	{
 		long xp = extractTotalXp(hardcore);
-		return xp > 0 && (absent.contains(REGULAR_TABLE) || extractTotalXp(regular) == xp) ? hardcore : null;
+		return xp > 0 && (regular == null ? absent.contains(REGULAR_TABLE) : xp >= extractTotalXp(regular)) ? hardcore : null;
+	}
+
+	/** The Overall row's rank, -1 when Jagex ranks it nowhere or the body doesn't read. */
+	private long overallRank(String body)
+	{
+		try
+		{
+			JsonObject overall = overallRow(body);
+			return overall != null ? overall.get("rank").getAsLong() : -1;
+		}
+		catch (Exception e)
+		{
+			return -1;
+		}
 	}
 
 	private HiscoreResult hardcoreMain(String body)
