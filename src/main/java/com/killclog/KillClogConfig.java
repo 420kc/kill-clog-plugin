@@ -60,7 +60,8 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "menuLabel",
 		name = "Menu Label",
-		description = "Text shown on the right-click lookup option",
+		description = "Text shown on the right-click lookup option. For Lookup, first turn off the Hiscore plugin's"
+			+ " Player option and Menu option, which use the same text",
 		section = lookupSection,
 		position = 3
 	)
