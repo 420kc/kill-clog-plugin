@@ -1,7 +1,6 @@
 package com.killclog;
 
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 
 /**
  * How skill cells are coloured, as the setting names it.

@@ -1,12 +1,8 @@
 package com.killclog;
 
 import java.awt.image.BufferedImage;
-import java.util.EnumMap;
-import java.util.EnumSet;
-import java.util.Map;
-import java.util.Set;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import java.util.*;
+import lombok.*;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.util.ImageUtil;

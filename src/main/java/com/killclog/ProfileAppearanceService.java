@@ -1,25 +1,15 @@
 package com.killclog;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonObject;
+import com.google.gson.*;
 import java.util.Arrays;
-import java.util.function.BiFunction;
-import java.util.function.BooleanSupplier;
-import java.util.function.Function;
+import java.util.function.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.CompletableFuture;
 import javax.annotation.Nullable;
-import javax.inject.Inject;
-import javax.inject.Singleton;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import javax.inject.*;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Client;
-import net.runelite.api.ItemContainer;
-import net.runelite.api.NPC;
-import net.runelite.api.NPCComposition;
-import net.runelite.api.Player;
-import net.runelite.api.PlayerComposition;
+import net.runelite.api.*;
 import net.runelite.api.gameval.InventoryID;
 import net.runelite.client.callback.ClientThread;
 

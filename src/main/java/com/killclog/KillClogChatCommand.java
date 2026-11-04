@@ -1,35 +1,18 @@
 package com.killclog;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.concurrent.*;
 import java.util.function.BiConsumer;
 import javax.annotation.Nullable;
-import javax.inject.Inject;
-import javax.inject.Singleton;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import javax.inject.*;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.ChatMessageType;
-import net.runelite.api.Client;
-import net.runelite.api.Player;
+import net.runelite.api.*;
 import net.runelite.api.events.ChatMessage;
 import net.runelite.client.callback.ClientThread;
-import net.runelite.client.game.ChatIconManager;
-import net.runelite.client.game.ItemManager;
+import net.runelite.client.game.*;
 import net.runelite.client.hiscore.HiscoreSkill;
-import net.runelite.client.util.AsyncBufferedImage;
-import net.runelite.client.util.ImageUtil;
-import net.runelite.client.util.Text;
+import net.runelite.client.util.*;
 
 /**
  * Handler for the !kclog and !missing chat commands. Both replace the user's chat line with

@@ -1,11 +1,9 @@
 package com.killclog;
 
 import javax.inject.Inject;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 import net.runelite.api.ChatMessageType;
-import net.runelite.client.chat.ChatMessageManager;
-import net.runelite.client.chat.QueuedMessage;
+import net.runelite.client.chat.*;
 
 /**
  * Kill Clog's chat lines: setup help always shows; drops, sync results and warnings follow the chat setting. Each goes

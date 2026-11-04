@@ -1,19 +1,11 @@
 package com.killclog;
 
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Container;
-import java.awt.Dimension;
+import java.awt.*;
 import java.util.function.IntSupplier;
-import javax.swing.JButton;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JTextField;
+import javax.swing.*;
 import javax.swing.border.EmptyBorder;
-import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
-import net.runelite.client.ui.components.FlatTextField;
-import net.runelite.client.ui.components.IconTextField;
+import net.runelite.client.ui.*;
+import net.runelite.client.ui.components.*;
 
 /**
  * The search row's look and layout: the search bar styled as RuneLite's, its status line, and the row that gives the

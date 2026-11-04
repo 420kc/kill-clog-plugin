@@ -1,7 +1,6 @@
 package com.killclog;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import javax.swing.JLabel;
 import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.ui.ColorScheme;

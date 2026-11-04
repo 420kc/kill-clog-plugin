@@ -1,7 +1,6 @@
 package com.killclog;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
+import com.google.gson.*;
 import javax.annotation.Nullable;
 import net.runelite.api.clan.ClanTitle;
 

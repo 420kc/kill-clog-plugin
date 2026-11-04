@@ -1,16 +1,11 @@
 package com.killclog;
 
 import java.awt.Rectangle;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionAdapter;
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.awt.event.*;
+import java.util.*;
 import javax.annotation.Nullable;
 import javax.swing.JComponent;
-import lombok.AccessLevel;
-import lombok.Setter;
+import lombok.*;
 import net.runelite.client.util.LinkBrowser;
 
 /**

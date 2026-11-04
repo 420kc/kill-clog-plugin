@@ -1,11 +1,7 @@
 package com.killclog;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-import lombok.AccessLevel;
-import lombok.Getter;
+import java.util.*;
+import lombok.*;
 
 /**
  * One walk's progress: when it was armed, the game's counts then, the entries streamed so far, and when it may finish

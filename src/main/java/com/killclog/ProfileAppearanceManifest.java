@@ -3,11 +3,8 @@ package com.killclog;
 import com.google.gson.annotations.SerializedName;
 import java.util.Arrays;
 import javax.annotation.Nullable;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
-import net.runelite.api.ColorTextureOverride;
-import net.runelite.api.Item;
-import net.runelite.api.PlayerComposition;
+import lombok.*;
+import net.runelite.api.*;
 
 /** Fixed, data-only PlayerComposition recipe accepted by killclog.com. */
 final class ProfileAppearanceManifest

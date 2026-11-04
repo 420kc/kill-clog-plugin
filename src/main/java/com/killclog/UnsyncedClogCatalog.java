@@ -1,13 +1,9 @@
 package com.killclog;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 
 /**
  * Shared empty collection-log catalog for players without synced clog data.

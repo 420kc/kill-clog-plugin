@@ -1,15 +1,9 @@
 package com.killclog;
 
-import java.awt.GridBagConstraints;
-import java.awt.GridBagLayout;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.util.function.BooleanSupplier;
-import java.util.function.Function;
-import javax.swing.JComponent;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JToolTip;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.function.*;
+import javax.swing.*;
 import net.runelite.client.ui.FontManager;
 
 /**

@@ -3,8 +3,7 @@ package com.killclog;
 import java.util.Locale;
 import java.util.regex.Pattern;
 import javax.annotation.Nullable;
-import net.runelite.api.Client;
-import net.runelite.api.Player;
+import net.runelite.api.*;
 import net.runelite.client.util.Text;
 
 /** RSN shape validation for names entered in the panel search box. */

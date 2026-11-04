@@ -2,8 +2,7 @@ package com.killclog;
 
 import java.awt.Color;
 import javax.swing.Timer;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 
 /**
  * One occupant of the panel status row: who wrote it, how it shares the row,

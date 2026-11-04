@@ -1,16 +1,9 @@
 package com.killclog;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.UnaryOperator;
 import javax.annotation.Nullable;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.hiscore.HiscoreSkill;
 

@@ -2,8 +2,7 @@ package com.killclog;
 
 import java.util.Locale;
 import javax.annotation.Nullable;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 
 /**
  * One variant-keyed PB, where this client saw it and, from a kill Kill Clog saw, what the game showed at that kill.

@@ -1,7 +1,6 @@
 package com.killclog;
 
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 
 /**
  * Which Jagex hiscore table supplied the rank data.

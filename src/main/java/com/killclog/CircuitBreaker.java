@@ -1,8 +1,7 @@
 package com.killclog;
 
 import java.util.Arrays;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 
 /**

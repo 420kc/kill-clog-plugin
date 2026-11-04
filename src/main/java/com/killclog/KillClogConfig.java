@@ -1,10 +1,7 @@
 package com.killclog;
 
 import java.awt.Color;
-import net.runelite.client.config.Config;
-import net.runelite.client.config.ConfigGroup;
-import net.runelite.client.config.ConfigItem;
-import net.runelite.client.config.ConfigSection;
+import net.runelite.client.config.*;
 
 /**
  * Kill Clog's settings as RuneLite's config panel shows them. A key name is a player's saved setting: renaming one

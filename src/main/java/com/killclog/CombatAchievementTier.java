@@ -1,8 +1,7 @@
 package com.killclog;
 
 import java.util.Map;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 
 /**
  * Combat Achievement tiers and their Combat Summary reward sprites.

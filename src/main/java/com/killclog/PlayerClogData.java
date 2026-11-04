@@ -1,7 +1,6 @@
 package com.killclog;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /** One player's locally cached collection log, as persisted by
  *  {@link LocalClogCache} (one JSON file per player). */

@@ -1,10 +1,8 @@
 package com.killclog;
 
-import java.util.Locale;
-import java.util.Set;
+import java.util.*;
 import net.runelite.api.Client;
-import net.runelite.api.gameval.InterfaceID;
-import net.runelite.api.gameval.VarPlayerID;
+import net.runelite.api.gameval.*;
 import net.runelite.api.widgets.Widget;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.util.Text;

@@ -1,20 +1,10 @@
 package com.killclog;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.IntUnaryOperator;
-import java.util.function.Predicate;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
+import java.util.function.*;
+import lombok.*;
 import net.runelite.api.clan.ClanTitle;
-import lombok.RequiredArgsConstructor;
-import lombok.Setter;
-import lombok.With;
 
 /**
  * Parsed collection log data for a player from the active provider.

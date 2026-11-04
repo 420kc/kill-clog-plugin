@@ -1,7 +1,6 @@
 package com.killclog;
 
-import lombok.AccessLevel;
-import lombok.Setter;
+import lombok.*;
 
 /**
  * This login's pending reads, which the tick runs: the automatic lookup (once a login), the account-type recheck and

@@ -1,14 +1,8 @@
 package com.killclog;
 
-import java.time.Instant;
-import java.time.LocalDateTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.IntUnaryOperator;
 import javax.annotation.Nullable;
 import net.runelite.api.Skill;

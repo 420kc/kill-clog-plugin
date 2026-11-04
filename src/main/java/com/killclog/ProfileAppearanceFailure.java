@@ -1,9 +1,7 @@
 package com.killclog;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import java.util.HashMap;
-import java.util.Map;
+import com.google.gson.*;
+import java.util.*;
 import javax.annotation.Nullable;
 
 /** Only known codes and a bounded support reference may reach logs or tooltips. */

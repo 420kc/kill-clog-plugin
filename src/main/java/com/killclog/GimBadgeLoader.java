@@ -5,9 +5,7 @@ package com.killclog;
 
 import java.awt.image.BufferedImage;
 import javax.annotation.Nullable;
-import net.runelite.api.Client;
-import net.runelite.api.IconID;
-import net.runelite.api.IndexedSprite;
+import net.runelite.api.*;
 
 /**
  * The group ironman badge images, loaded from the game's mod icons on the client thread and held per type for the

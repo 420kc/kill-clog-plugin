@@ -1,25 +1,13 @@
 package com.killclog;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-import java.util.function.Function;
-import java.util.function.LongSupplier;
-import java.util.function.Supplier;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.function.*;
 import javax.swing.SwingUtilities;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.client.callback.ClientThread;
-import net.runelite.client.config.ConfigManager;
-import net.runelite.client.config.RuneScapeProfileType;
+import net.runelite.client.config.*;
 import net.runelite.client.hiscore.HiscoreSkill;
 
 /**

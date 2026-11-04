@@ -1,8 +1,7 @@
 package com.killclog;
 
 import javax.annotation.Nullable;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 
 /** Rank selection is independent of the account identity and its current stats. */
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)

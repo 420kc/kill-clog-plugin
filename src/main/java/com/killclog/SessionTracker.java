@@ -2,8 +2,7 @@ package com.killclog;
 
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
-import net.runelite.api.Client;
-import net.runelite.api.GameState;
+import net.runelite.api.*;
 
 /**
  * The one place the plugin decides who is logged in. The client thread hands it the game's state on each game state

@@ -1,7 +1,6 @@
 package com.killclog;
 
-import java.util.EnumMap;
-import java.util.Map;
+import java.util.*;
 import net.runelite.api.Client;
 import net.runelite.api.gameval.VarbitID;
 

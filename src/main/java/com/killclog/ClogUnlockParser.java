@@ -1,10 +1,8 @@
 package com.killclog;
 
 import java.util.Locale;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import java.util.regex.*;
+import lombok.*;
 import net.runelite.client.util.Text;
 
 /**

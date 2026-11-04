@@ -1,20 +1,11 @@
 package com.killclog;
 
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
+import com.google.gson.*;
+import java.util.*;
+import java.util.concurrent.*;
 import javax.annotation.Nullable;
 import net.runelite.api.clan.ClanTitle;
-import javax.inject.Inject;
-import javax.inject.Singleton;
+import javax.inject.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;

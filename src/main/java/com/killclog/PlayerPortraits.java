@@ -1,23 +1,14 @@
 package com.killclog;
 
 import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.util.Iterator;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
+import java.io.*;
+import java.util.*;
+import java.util.concurrent.*;
 import javax.annotation.Nullable;
-import javax.imageio.ImageIO;
-import javax.imageio.ImageReader;
-import javax.imageio.stream.ImageInputStream;
-import javax.imageio.stream.MemoryCacheImageInputStream;
-import javax.inject.Inject;
-import javax.inject.Singleton;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import javax.imageio.*;
+import javax.imageio.stream.*;
+import javax.inject.*;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 

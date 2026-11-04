@@ -1,10 +1,6 @@
 package com.killclog;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import lombok.Builder;
 
 /** Immutable data holder for sprite tooltip content. */

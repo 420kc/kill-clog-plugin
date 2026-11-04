@@ -2,11 +2,8 @@ package com.killclog;
 
 import java.util.function.Consumer;
 import javax.inject.Provider;
-import net.runelite.api.Client;
-import net.runelite.api.MenuAction;
-import net.runelite.api.Player;
-import net.runelite.api.events.MenuEntryAdded;
-import net.runelite.api.events.MenuOptionClicked;
+import net.runelite.api.*;
+import net.runelite.api.events.*;
 import net.runelite.api.gameval.InterfaceID;
 import net.runelite.api.widgets.WidgetUtil;
 import net.runelite.client.menus.MenuManager;

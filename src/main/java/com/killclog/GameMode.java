@@ -1,7 +1,6 @@
 package com.killclog;
 
-import java.util.EnumSet;
-import java.util.Set;
+import java.util.*;
 import javax.annotation.Nullable;
 import net.runelite.api.WorldType;
 

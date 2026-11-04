@@ -1,10 +1,7 @@
 package com.killclog;
 
-import java.util.Collections;
-import java.util.Map;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.Setter;
+import java.util.*;
+import lombok.*;
 
 /**
  * Parsed hiscore data for a player.

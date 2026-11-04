@@ -1,10 +1,7 @@
 package com.killclog;
 
 import java.awt.Font;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import lombok.Setter;
 import net.runelite.client.game.ItemManager;
 

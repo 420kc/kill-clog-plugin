@@ -1,18 +1,11 @@
 package com.killclog;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Consumer;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
-import net.runelite.api.Client;
-import net.runelite.api.MenuAction;
-import net.runelite.api.Player;
-import net.runelite.api.gameval.InterfaceID;
-import net.runelite.api.gameval.VarPlayerID;
-import net.runelite.api.gameval.VarbitID;
+import net.runelite.api.*;
+import net.runelite.api.gameval.*;
 import net.runelite.api.widgets.Widget;
 
 /**

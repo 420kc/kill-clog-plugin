@@ -1,11 +1,7 @@
 package com.killclog;
 
 import java.awt.Color;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.IntUnaryOperator;
 import javax.swing.JComponent;
 import net.runelite.client.hiscore.HiscoreSkill;

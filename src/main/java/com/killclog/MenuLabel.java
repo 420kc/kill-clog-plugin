@@ -1,7 +1,6 @@
 package com.killclog;
 
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 
 /**
  * The words of Kill Clog's right-click option.

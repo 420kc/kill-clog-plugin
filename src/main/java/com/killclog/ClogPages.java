@@ -2,22 +2,11 @@ package com.killclog;
 
 import java.awt.Component;
 import java.awt.event.MouseEvent;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 import javax.annotation.Nullable;
-import javax.swing.JComponent;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JToolTip;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
-import lombok.Setter;
+import javax.swing.*;
+import lombok.*;
 import net.runelite.client.hiscore.HiscoreSkill;
 
 /**

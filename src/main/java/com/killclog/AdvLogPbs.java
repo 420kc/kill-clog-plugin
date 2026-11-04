@@ -1,12 +1,8 @@
 package com.killclog;
 
-import java.util.LinkedHashMap;
-import java.util.Locale;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import java.util.*;
+import java.util.regex.*;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.Client;
 import net.runelite.api.gameval.InterfaceID;

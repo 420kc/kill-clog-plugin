@@ -1,7 +1,6 @@
 package com.killclog;
 
-import java.awt.Color;
-import java.awt.Graphics2D;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.util.ImageUtil;

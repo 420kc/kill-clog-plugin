@@ -1,10 +1,7 @@
 package com.killclog;
 
 import java.util.Set;
-import java.util.function.Consumer;
-import java.util.function.Function;
-import java.util.function.LongSupplier;
-import java.util.function.Supplier;
+import java.util.function.*;
 import javax.annotation.Nullable;
 import net.runelite.api.WorldType;
 

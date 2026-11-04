@@ -1,8 +1,6 @@
 package com.killclog;
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import net.runelite.api.Skill;
 
 /** Shared 3x8 in-game skill-tab order for every skill grid surface. */

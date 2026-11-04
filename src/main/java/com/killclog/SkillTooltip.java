@@ -1,15 +1,11 @@
 package com.killclog;
 
-import java.awt.Color;
-import java.awt.FontMetrics;
-import java.util.Collections;
+import java.awt.*;
+import java.util.*;
 import java.util.List;
-import java.util.Locale;
 import javax.annotation.Nullable;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
-import net.runelite.api.Experience;
-import net.runelite.api.Skill;
+import lombok.*;
+import net.runelite.api.*;
 import net.runelite.client.game.ItemManager;
 
 /** Compact Kill Clog-native stat tooltip for one skill cell. */

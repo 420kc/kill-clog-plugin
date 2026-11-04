@@ -1,9 +1,7 @@
 package com.killclog;
 
-import java.util.EnumMap;
-import java.util.Map;
-import lombok.AccessLevel;
-import lombok.Getter;
+import java.util.*;
+import lombok.*;
 
 /**
  * Immutable Combat Achievement lookup result from per-tier task counts.

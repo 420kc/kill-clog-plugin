@@ -1,8 +1,7 @@
 package com.killclog;
 
 import javax.annotation.Nullable;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 
 /**
  * Which account type a name wears in the panel: your own is RuneLite's live type; anyone else's comes from the

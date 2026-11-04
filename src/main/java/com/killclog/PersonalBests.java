@@ -1,19 +1,9 @@
 package com.killclog;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.*;
+import java.util.regex.*;
 import javax.annotation.Nullable;
-import net.runelite.client.config.ConfigManager;
-import net.runelite.client.config.RuneScapeProfile;
+import net.runelite.client.config.*;
 
 /**
  * A player's personal bests from the four places this client keeps them: RuneLite's own store ("personalbest",

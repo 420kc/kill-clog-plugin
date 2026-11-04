@@ -2,18 +2,12 @@ package com.killclog;
 
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import javax.inject.Inject;
-import javax.inject.Singleton;
-import net.runelite.api.ChatMessageType;
-import net.runelite.api.Client;
-import net.runelite.api.MessageNode;
+import java.util.*;
+import javax.inject.*;
+import net.runelite.api.*;
 import net.runelite.api.events.ChatMessage;
-import net.runelite.client.game.ChatIconManager;
-import net.runelite.client.game.ItemManager;
-import net.runelite.client.util.AsyncBufferedImage;
-import net.runelite.client.util.ImageUtil;
+import net.runelite.client.game.*;
+import net.runelite.client.util.*;
 
 /**
  * Chat emoji: :killclog:, :clog:, :green:, :rune:, :dragon: and :gilded: in a chat line become their icons while the

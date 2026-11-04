@@ -3,12 +3,8 @@ package com.killclog;
 import java.util.Map;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
-import javax.swing.ImageIcon;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JToolTip;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import javax.swing.*;
+import lombok.*;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.hiscore.HiscoreSkill;
 

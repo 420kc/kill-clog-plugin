@@ -8,31 +8,18 @@
  */
 package com.killclog;
 
-import java.awt.Color;
-import java.awt.GridLayout;
+import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
-import java.util.function.UnaryOperator;
+import java.util.*;
+import java.util.function.*;
 import javax.annotation.Nullable;
-import javax.swing.ImageIcon;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JToolTip;
-import javax.swing.SwingUtilities;
+import javax.swing.*;
 import lombok.Getter;
-import net.runelite.client.game.ItemManager;
-import net.runelite.client.game.SpriteManager;
+import net.runelite.client.game.*;
 import net.runelite.client.hiscore.HiscoreSkill;
-import net.runelite.client.ui.ColorScheme;
-import net.runelite.client.ui.FontManager;
-import net.runelite.client.util.AsyncBufferedImage;
-import net.runelite.client.util.ImageUtil;
+import net.runelite.client.ui.*;
+import net.runelite.client.util.*;
 
 /**
  * Per-skill {@link JLabel} cells, their tooltip data caches, the helpers that

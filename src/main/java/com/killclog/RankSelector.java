@@ -1,26 +1,11 @@
 package com.killclog;
 
-import java.awt.AlphaComposite;
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.FlowLayout;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
+import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.util.EnumMap;
-import java.util.EnumSet;
-import java.util.IdentityHashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
-import java.util.function.BiFunction;
-import java.util.function.BiPredicate;
-import javax.swing.BorderFactory;
-import javax.swing.ImageIcon;
-import javax.swing.JButton;
-import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
+import java.util.function.*;
+import javax.swing.*;
 import net.runelite.client.ui.ColorScheme;
 
 /** EDT-owned leaderboard views for the looked-up player. Cached service results stay untouched. */

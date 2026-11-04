@@ -1,7 +1,6 @@
 package com.killclog;
 
-import java.util.function.BinaryOperator;
-import java.util.function.Supplier;
+import java.util.function.*;
 
 /**
  * The killclog.com sync's one slot: one attempt in the air at a time, numbered, until its round trip completes; the

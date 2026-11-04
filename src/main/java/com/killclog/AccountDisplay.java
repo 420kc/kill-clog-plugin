@@ -1,9 +1,7 @@
 package com.killclog;
 
 import javax.annotation.Nullable;
-import lombok.AccessLevel;
-import lombok.EqualsAndHashCode;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 
 /**
  * Account identity as shown in the panel. AccountType remains the account mode;

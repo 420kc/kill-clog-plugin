@@ -1,11 +1,7 @@
 package com.killclog;
 
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.FontMetrics;
-import java.awt.Graphics2D;
-import javax.swing.Icon;
-import javax.swing.JToolTip;
+import java.awt.*;
+import javax.swing.*;
 
 /**
  * Comparison tooltip: the two players' complete single tooltips side by side

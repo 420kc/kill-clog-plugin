@@ -1,9 +1,8 @@
 package com.killclog;
 
-import java.util.HashMap;
+import java.util.*;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.Map;
 import net.runelite.client.util.LinkBrowser;
 
 /** Wiki-link and display helpers for tooltip affordances. */

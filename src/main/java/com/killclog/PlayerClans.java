@@ -4,14 +4,8 @@ import java.awt.image.BufferedImage;
 import java.util.function.BooleanSupplier;
 import javax.annotation.Nullable;
 import lombok.RequiredArgsConstructor;
-import net.runelite.api.Client;
-import net.runelite.api.Player;
-import net.runelite.api.clan.ClanChannel;
-import net.runelite.api.clan.ClanChannelMember;
-import net.runelite.api.clan.ClanMember;
-import net.runelite.api.clan.ClanRank;
-import net.runelite.api.clan.ClanSettings;
-import net.runelite.api.clan.ClanTitle;
+import net.runelite.api.*;
+import net.runelite.api.clan.*;
 import net.runelite.client.game.ChatIconManager;
 import net.runelite.client.util.Text;
 

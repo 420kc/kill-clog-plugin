@@ -1,7 +1,6 @@
 package com.killclog;
 
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 
 /** Panel feedback for one first-party control. All access stays on the EDT. */
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)

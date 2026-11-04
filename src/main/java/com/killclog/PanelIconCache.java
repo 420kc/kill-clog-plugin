@@ -1,22 +1,16 @@
 package com.killclog;
 
-import java.awt.AlphaComposite;
-import java.awt.Graphics2D;
+import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
-import javax.swing.ImageIcon;
-import javax.swing.SwingUtilities;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import javax.swing.*;
+import lombok.*;
 import net.runelite.client.callback.ClientThread;
-import net.runelite.client.game.ItemManager;
-import net.runelite.client.game.SpriteManager;
+import net.runelite.client.game.*;
 import net.runelite.client.hiscore.HiscoreSkill;
-import net.runelite.client.util.AsyncBufferedImage;
-import net.runelite.client.util.ImageUtil;
+import net.runelite.client.util.*;
 
 /**
  * The panel's images: log tier icons, capes, CA reward and clue tier icons, and any item or game sprite at cell size,

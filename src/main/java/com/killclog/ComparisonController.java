@@ -8,25 +8,13 @@
  */
 package com.killclog;
 
-import java.awt.Color;
-import java.awt.Component;
-import java.awt.Point;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.awt.*;
+import java.awt.event.*;
+import java.util.*;
 import java.util.function.Supplier;
 import javax.annotation.Nullable;
-import javax.swing.JComponent;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JToolTip;
-import javax.swing.SwingUtilities;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.RequiredArgsConstructor;
-import lombok.Setter;
+import javax.swing.*;
+import lombok.*;
 import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.ui.ColorScheme;
 

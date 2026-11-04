@@ -1,32 +1,14 @@
 package com.killclog;
 
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.FontMetrics;
-import java.awt.Component;
-import java.awt.Graphics2D;
-import java.awt.Point;
-import java.awt.Rectangle;
-import java.awt.Shape;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseWheelEvent;
+import java.awt.*;
+import java.awt.event.*;
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
+import java.util.*;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.IntFunction;
-import java.util.function.IntPredicate;
-import java.util.function.ObjIntConsumer;
-import java.util.function.Supplier;
-import java.util.function.ToIntFunction;
+import java.util.function.*;
 import javax.annotation.Nullable;
 import javax.swing.JComponent;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 import net.runelite.client.ui.FontManager;
 
 /**

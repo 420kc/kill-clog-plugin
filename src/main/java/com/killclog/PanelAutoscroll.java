@@ -1,29 +1,10 @@
 package com.killclog;
 
-import java.awt.AWTEvent;
-import java.awt.Component;
-import java.awt.BasicStroke;
-import java.awt.Color;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.MouseInfo;
-import java.awt.Point;
-import java.awt.PointerInfo;
-import java.awt.RenderingHints;
-import java.awt.Toolkit;
-import java.awt.event.AWTEventListener;
-import java.awt.event.MouseEvent;
-import java.awt.geom.Ellipse2D;
-import java.awt.geom.Path2D;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
-import javax.swing.JComponent;
-import javax.swing.JLayeredPane;
-import javax.swing.JRootPane;
-import javax.swing.JScrollBar;
-import javax.swing.JScrollPane;
-import javax.swing.SwingUtilities;
-import javax.swing.Timer;
+import java.awt.*;
+import java.awt.event.*;
+import java.awt.geom.*;
+import java.util.function.*;
+import javax.swing.*;
 import javax.swing.text.JTextComponent;
 
 /**

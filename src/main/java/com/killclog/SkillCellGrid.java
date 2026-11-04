@@ -1,24 +1,13 @@
 package com.killclog;
 
-import java.awt.Color;
-import java.awt.Dimension;
-import java.awt.GridLayout;
+import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Locale;
-import java.util.Map;
+import java.util.*;
 import javax.annotation.Nullable;
-import javax.swing.BoxLayout;
-import javax.swing.ImageIcon;
-import javax.swing.JLabel;
-import javax.swing.JPanel;
-import javax.swing.JToolTip;
-import net.runelite.api.Experience;
-import net.runelite.api.Skill;
+import javax.swing.*;
+import net.runelite.api.*;
 import net.runelite.client.config.ConfigManager;
-import net.runelite.client.game.ItemManager;
-import net.runelite.client.game.SkillIconManager;
+import net.runelite.client.game.*;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.util.ImageUtil;
 

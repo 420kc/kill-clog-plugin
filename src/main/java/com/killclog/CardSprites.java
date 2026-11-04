@@ -2,14 +2,10 @@ package com.killclog;
 
 import java.awt.Color;
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
-import net.runelite.api.Client;
-import net.runelite.api.SpritePixels;
+import net.runelite.api.*;
 import net.runelite.api.gameval.SpriteID;
 import net.runelite.client.game.SpriteManager;
 import net.runelite.client.util.ImageUtil;

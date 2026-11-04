@@ -1,7 +1,6 @@
 package com.killclog;
 
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 
 /**
  * Runtime item sprite leading a Combat Achievement tier in the Combat Summary.
