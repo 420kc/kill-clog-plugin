@@ -359,7 +359,7 @@ public class HiscoreParsingTest
 	{
 		long now = System.currentTimeMillis();
 		HiscoreResult result = service.parseHiscoreBody(OVERALL_ONLY, AccountType.REGULAR);
-		service.cacheResult("Zezima", result, now);
+		service.cacheResult("Zezima", result, false, now);
 		assertFalse(service.isStale("Zezima"));
 
 		service.markDirty("Zezima", now);
@@ -372,7 +372,7 @@ public class HiscoreParsingTest
 		long now = System.currentTimeMillis();
 		HiscoreResult result = service.parseHiscoreBody(OVERALL_ONLY, AccountType.REGULAR);
 		service.markDirty("Zezima", now);
-		service.cacheResult("Zezima", result, now + 10_000);
+		service.cacheResult("Zezima", result, false, now + 10_000);
 		assertFalse(service.isStale("Zezima"));
 	}
 
@@ -384,7 +384,7 @@ public class HiscoreParsingTest
 		long now = System.currentTimeMillis();
 		HiscoreResult result = service.parseHiscoreBody(OVERALL_ONLY, AccountType.REGULAR);
 		service.markDirty("Zezima", now);
-		service.cacheResult("Zezima", result, now + 3_000);
+		service.cacheResult("Zezima", result, false, now + 3_000);
 		assertTrue(service.isStale("Zezima"));
 	}
 
@@ -393,7 +393,7 @@ public class HiscoreParsingTest
 	{
 		long now = System.currentTimeMillis();
 		HiscoreResult result = service.parseHiscoreBody(OVERALL_ONLY, AccountType.REGULAR);
-		service.cacheResult("Zezima", result, now);
+		service.cacheResult("Zezima", result, false, now);
 		service.markDirty("ZEZIMA", now);
 		assertTrue(service.isStale("zezima"));
 	}
@@ -406,7 +406,7 @@ public class HiscoreParsingTest
 		// fresh so the assertion can only pass through the surviving mark.
 		long now = System.currentTimeMillis();
 		HiscoreResult result = service.parseHiscoreBody(OVERALL_ONLY, AccountType.REGULAR);
-		service.cacheResult("Zezima", result, now);
+		service.cacheResult("Zezima", result, false, now);
 		service.markDirty("Zezima", now);
 		service.markDirty("Zezima", now + 5_000);
 		service.clearMarkIfSettled("zezima", now, now + 10_000);
@@ -418,7 +418,7 @@ public class HiscoreParsingTest
 	{
 		long now = System.currentTimeMillis();
 		HiscoreResult result = service.parseHiscoreBody(OVERALL_ONLY, AccountType.REGULAR);
-		service.cacheResult("Woox", result, now);
+		service.cacheResult("Woox", result, false, now);
 		service.markDirty("Zezima", now);
 		assertFalse(service.isStale("Woox"));
 	}

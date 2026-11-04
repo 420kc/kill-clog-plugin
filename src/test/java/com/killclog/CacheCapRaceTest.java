@@ -30,7 +30,7 @@ public class CacheCapRaceTest
 		HiscoreService service = new HiscoreService(null, new Gson());
 		HiscoreResult result = service.parseHiscoreBody(HiscoreParsingTest.OVERALL_ONLY, AccountType.REGULAR);
 		long now = System.currentTimeMillis();
-		race(i -> service.cacheResult("name" + i, result, now + i % 7));
+		race(i -> service.cacheResult("name" + i, result, false, now + i % 7));
 		int cached = 0;
 		for (int i = 0; i < THREADS * EACH; i++)
 		{

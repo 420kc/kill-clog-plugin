@@ -105,6 +105,8 @@ public class HiscoreService
 	private static class CachedResult
 	{
 		final HiscoreResult result;
+		// Whether it was looked up on a Hardcore world, which decides between a main's two boards.
+		final boolean hardcoreWorld;
 		final long timestamp;
 
 		boolean isStale()
@@ -243,14 +245,14 @@ public class HiscoreService
 	private final Gson gson;
 
 	/**
-	 * Get a cached result immediately, or null if none exists.
+	 * Get a cached result immediately, or null if none exists for the world the player is on now.
 	 * Used by the panel for stale-while-revalidate: show cached data
 	 * instantly, then fire a background refresh.
 	 */
 	public HiscoreResult getCached(String playerName)
 	{
 		CachedResult cached = cache.get(RsnInputPolicy.key(playerName));
-		return cached != null ? cached.result : null;
+		return cached != null && cached.hardcoreWorld == onHardcoreWorld.getAsBoolean() ? cached.result : null;
 	}
 
 	/**
@@ -260,7 +262,8 @@ public class HiscoreService
 	{
 		String key = RsnInputPolicy.key(playerName);
 		CachedResult cached = cache.get(key);
-		return cached == null || cached.isStale() || dirtySince.containsKey(key);
+		return cached == null || cached.isStale() || cached.hardcoreWorld != onHardcoreWorld.getAsBoolean()
+			|| dirtySince.containsKey(key);
 	}
 
 	/**
@@ -283,22 +286,19 @@ public class HiscoreService
 	 */
 	public CompletableFuture<HiscoreResult> lookup(String playerName, AccountType knownType)
 	{
-		return attemptLookup(playerName, knownType).thenApply(result ->
+		// The world as the lookup starts decides its boards and keeps its answer, even when it lands after a hop.
+		boolean hardcoreWorld = onHardcoreWorld.getAsBoolean();
+		return attemptLookup(playerName, knownType, hardcoreWorld).thenApply(result ->
 		{
-			if (result != null) cacheResult(playerName, result);
+			if (result != null) cacheResult(playerName, result, hardcoreWorld, System.currentTimeMillis());
 			return result;
 		});
 	}
 
-	private void cacheResult(String playerName, HiscoreResult result)
-	{
-		cacheResult(playerName, result, System.currentTimeMillis());
-	}
-
-	/* package */ synchronized void cacheResult(String playerName, HiscoreResult result, long now)
+	/* package */ synchronized void cacheResult(String playerName, HiscoreResult result, boolean hardcoreWorld, long now)
 	{
 		String key = RsnInputPolicy.key(playerName);
-		cache.put(key, new CachedResult(result, now));
+		cache.put(key, new CachedResult(result, hardcoreWorld, now));
 		if (cache.size() > HttpUtil.CACHE_CAP)
 		{
 			// The name fetched longest ago goes; it is fetched again when asked for.
@@ -324,18 +324,18 @@ public class HiscoreService
 	}
 
 	private CompletableFuture<HiscoreResult> attemptLookup(String playerName,
-		AccountType knownType)
+		AccountType knownType, boolean hardcoreWorld)
 	{
 		String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
 		// The boards that said "no such player" to this lookup: an earlier or overlapping one's 404 never decides it.
 		Set<String> absent = ConcurrentHashMap.newKeySet();
-		if (knownType != null) return lookupKnown(encoded, knownType, absent);
+		if (knownType != null) return lookupKnown(encoded, knownType, absent, hardcoreWorld);
 
 		CompletableFuture<String> uimFuture = fetchAsync("hiscore_oldschool_ultimate", encoded, absent);
 		CompletableFuture<String> hcimFuture = fetchAsync("hiscore_oldschool_hardcore_ironman", encoded, absent);
 		CompletableFuture<String> ironFuture = fetchAsync("hiscore_oldschool_ironman", encoded, absent);
 		CompletableFuture<String> regFuture = fetchAsync(REGULAR_TABLE, encoded, absent);
-		CompletableFuture<String> hardcoreMainFuture = hardcoreMainBeside(encoded, regFuture, absent);
+		CompletableFuture<String> hardcoreMainFuture = hardcoreMainBeside(encoded, regFuture, absent, hardcoreWorld);
 
 		return CompletableFuture.allOf(uimFuture, hcimFuture, ironFuture, regFuture, hardcoreMainFuture)
 			.thenCompose(v ->
@@ -387,7 +387,8 @@ public class HiscoreService
 		return result;
 	}
 
-	private CompletableFuture<HiscoreResult> lookupKnown(String encodedPlayer, AccountType type, Set<String> absent)
+	private CompletableFuture<HiscoreResult> lookupKnown(String encodedPlayer, AccountType type, Set<String> absent,
+		boolean hardcoreWorld)
 	{
 		CompletableFuture<String> regular = fetchAsync(REGULAR_TABLE, encodedPlayer, absent);
 		RankLeaderboard board = RankLeaderboard.of(type);
@@ -395,7 +396,7 @@ public class HiscoreService
 		{
 			// RuneLite's own type: not a solo Ironman now (a group ironman reads its regular row), maybe a
 			// Hardcore Worlds character.
-			return regular.thenCombine(hardcoreMainBeside(encodedPlayer, regular, absent),
+			return regular.thenCombine(hardcoreMainBeside(encodedPlayer, regular, absent, hardcoreWorld),
 				(body, hardcore) -> new String[]{body, hardcoreMainRow(body, hardcore, absent)})
 				.thenCompose(rows -> rows[1] != null ? CompletableFuture.completedFuture(hardcoreMain(rows[1]))
 					: rows[0] != null ? parseAndRefine(encodedPlayer, rows[0], type)
@@ -425,9 +426,9 @@ public class HiscoreService
 	 * lookup asks Jagex nothing more. Null when it isn't asked.
 	 */
 	private CompletableFuture<String> hardcoreMainBeside(String encodedPlayer, CompletableFuture<String> regular,
-		Set<String> absent)
+		Set<String> absent, boolean hardcoreWorld)
 	{
-		if (onHardcoreWorld.getAsBoolean())
+		if (hardcoreWorld)
 		{
 			return fetchAsync(HARDCORE_MAIN_TABLE, encodedPlayer, absent);
 		}

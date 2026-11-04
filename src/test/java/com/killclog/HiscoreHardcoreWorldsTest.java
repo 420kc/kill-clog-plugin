@@ -147,6 +147,55 @@ public class HiscoreHardcoreWorldsTest
 	}
 
 	@Test
+	public void aCachedAnswerStandsOnlyOnTheWorldItWasLookedUpOn() throws Exception
+	{
+		// A main on both boards with the same row (Sol, 11/4): a Hardcore world reads it as a Hardcore Main, the main
+		// game as a ranked main, so neither world's answer stands on the other.
+		AtomicBoolean onHardcoreWorld = new AtomicBoolean(true);
+		HiscoreService service = service(new CopyOnWriteArrayList<>(), onHardcoreWorld, 200, RANKED, 1200, 200, 1200);
+		assertHardcoreMain("looked up on a Hardcore world", service.lookup("Both", null).get(3, TimeUnit.SECONDS), 1200);
+		assertFalse(service.isStale("Both"));
+
+		onHardcoreWorld.set(false);
+		assertNull("the Hardcore world's answer, off it", service.getCached("Both"));
+		assertTrue(service.isStale("Both"));
+		assertMain("looked up again on the main game", service.lookup("Both", null).get(3, TimeUnit.SECONDS), 1200);
+		assertEquals(HiscoreTable.STANDARD, service.getCached("Both").getHiscoreTable());
+
+		onHardcoreWorld.set(true);
+		assertNull("the main game's answer, on a Hardcore world", service.getCached("Both"));
+		assertTrue(service.isStale("Both"));
+	}
+
+	@Test
+	public void anAnswerLandingAfterAHopKeepsTheWorldItWasAskedOn() throws Exception
+	{
+		AtomicBoolean onHardcoreWorld = new AtomicBoolean(true);
+		java.util.concurrent.CountDownLatch hold = new java.util.concurrent.CountDownLatch(1);
+		HiscoreService service = new HiscoreService(new OkHttpClient.Builder().addInterceptor(chain ->
+		{
+			try
+			{
+				hold.await(3, TimeUnit.SECONDS);
+			}
+			catch (InterruptedException e)
+			{
+				Thread.currentThread().interrupt();
+			}
+			String path = chain.request().url().encodedPath();
+			boolean known = path.startsWith("/m=hiscore_oldschool/") || path.startsWith("/m=" + TABLE + "/");
+			return HiscoreFailureTest.response(chain, known ? 200 : 404, HiscoreFailureTest.body(1200)
+				.replaceFirst("\"rank\":-1", "\"rank\":" + RANKED));
+		}).build(), new Gson());
+		service.setOnHardcoreWorld(onHardcoreWorld::get);
+		java.util.concurrent.CompletableFuture<HiscoreResult> lookup = service.lookup("Both", null);
+		onHardcoreWorld.set(false);
+		hold.countDown();
+		assertHardcoreMain("asked on the Hardcore world", lookup.get(3, TimeUnit.SECONDS), 1200);
+		assertNull("kept as the Hardcore world's answer", service.getCached("Both"));
+	}
+
+	@Test
 	public void theBoardCarriesRuneLitesTableAndIcon()
 	{
 		assertEquals(TABLE, RankLeaderboard.HARDCORE_MAIN.endpoint);
