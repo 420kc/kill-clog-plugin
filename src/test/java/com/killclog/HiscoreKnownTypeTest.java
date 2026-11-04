@@ -66,7 +66,8 @@ public class HiscoreKnownTypeTest
 			Locale.setDefault(new Locale("tr", "TR"));
 			AtomicInteger calls = new AtomicInteger();
 			HiscoreService service = new HiscoreService(new OkHttpClient.Builder().addInterceptor(chain ->
-				HiscoreFailureTest.response(chain, calls.incrementAndGet() == 1 ? 404 : 200,
+				chain.request().url().encodedPath().contains("hardcore_mains") ? HiscoreFailureTest.response(chain, 404, "")
+					: HiscoreFailureTest.response(chain, calls.incrementAndGet() == 1 ? 404 : 200,
 					HiscoreFailureTest.body(3000))).build(), new Gson());
 			assertNull(service.lookup("IRON", AccountType.REGULAR).get(3, TimeUnit.SECONDS));
 			HiscoreResult result = service.lookup("IRON", AccountType.REGULAR).get(3, TimeUnit.SECONDS);

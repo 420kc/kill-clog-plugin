@@ -2637,6 +2637,39 @@ public class PluginPublicationCharacterizationTest
 		plugin.startUp();
 	}
 
+	@Test
+	public void aTickCaughtByShutdownLeavesTheHardcoreWorldFlagClear() throws Exception
+	{
+		// 11/4: a tick reading the world's flags while shutdown runs on another thread set the flag again after
+		// shutdown cleared it, and a re-enable on the login screen then asked the Hardcore Main hiscores.
+		ArgumentCaptor<java.util.function.BooleanSupplier> onHardcoreWorld =
+			ArgumentCaptor.forClass(java.util.function.BooleanSupplier.class);
+		verify((HiscoreService) field("hiscoreService")).setOnHardcoreWorld(onHardcoreWorld.capture());
+		world(net.runelite.api.WorldType.MEMBERS, net.runelite.api.WorldType.HARDCORE_MAIN);
+		ticks(1);
+		assertTrue(onHardcoreWorld.getValue().getAsBoolean());
+
+		Thread[] shutdown = new Thread[1];
+		when(client.getWorldType()).thenAnswer(invocation ->
+		{
+			if (shutdown[0] == null)
+			{
+				shutdown[0] = new Thread(() -> plugin.shutDown());
+				shutdown[0].start();
+				// Shutdown gets every chance to finish while the tick still holds the world's flags.
+				shutdown[0].join(300);
+			}
+			return java.util.EnumSet.of(net.runelite.api.WorldType.MEMBERS, net.runelite.api.WorldType.HARDCORE_MAIN);
+		});
+		ticks(1);
+		shutdown[0].join(3000);
+		assertFalse(shutdown[0].isAlive());
+		assertFalse("shutdown's clear stands", onHardcoreWorld.getValue().getAsBoolean());
+		ticks(1);
+		assertFalse("a tick after shutdown copies nothing", onHardcoreWorld.getValue().getAsBoolean());
+		plugin.startUp();
+	}
+
 	private void searchClick()
 	{
 		net.runelite.api.MenuEntry entry = mock(net.runelite.api.MenuEntry.class);

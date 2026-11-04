@@ -3,6 +3,9 @@ package com.killclog;
 import net.runelite.client.hiscore.HiscoreSkill;
 import org.junit.Test;
 import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
+import static org.junit.Assert.assertTrue;
 
 /**
  * Pins the bundled panel catalog to the exact tables the plugin shipped with
@@ -27,7 +30,7 @@ public class PanelCatalogTest
 			HiscoreSkill.CORPOREAL_BEAST, HiscoreSkill.CRAZY_ARCHAEOLOGIST,
 			HiscoreSkill.DAGANNOTH_PRIME, HiscoreSkill.DAGANNOTH_REX,
 			HiscoreSkill.DAGANNOTH_SUPREME, HiscoreSkill.DERANGED_ARCHAEOLOGIST,
-			HiscoreSkill.DOOM_OF_MOKHAIOTL, HiscoreSkill.DUKE_SUCELLUS, HiscoreSkill.FRACTURED_ARCHIVE,
+			HiscoreSkill.DOOM_OF_MOKHAIOTL, HiscoreSkill.DUKE_SUCELLUS,
 			HiscoreSkill.GENERAL_GRAARDOR, HiscoreSkill.GIANT_MOLE,
 			HiscoreSkill.GROTESQUE_GUARDIANS, HiscoreSkill.HESPORI, HiscoreSkill.KALPHITE_QUEEN,
 			HiscoreSkill.KING_BLACK_DRAGON, HiscoreSkill.KRAKEN, HiscoreSkill.KREEARRA,
@@ -40,12 +43,24 @@ public class PanelCatalogTest
 			HiscoreSkill.THE_CORRUPTED_GAUNTLET, HiscoreSkill.THE_HUEYCOATL,
 			HiscoreSkill.THE_LEVIATHAN, HiscoreSkill.THE_ROYAL_TITANS, HiscoreSkill.THE_WHISPERER,
 			HiscoreSkill.THEATRE_OF_BLOOD, HiscoreSkill.THEATRE_OF_BLOOD_HARD_MODE,
+			HiscoreSkill.THE_FRACTURED_ARCHIVE,
 			HiscoreSkill.THERMONUCLEAR_SMOKE_DEVIL, HiscoreSkill.TOMBS_OF_AMASCUT,
 			HiscoreSkill.TOMBS_OF_AMASCUT_EXPERT, HiscoreSkill.TZKAL_ZUK, HiscoreSkill.TZTOK_JAD,
 			HiscoreSkill.VARDORVIS, HiscoreSkill.VENENATIS, HiscoreSkill.VETION,
 			HiscoreSkill.VORKATH, HiscoreSkill.WINTERTODT, HiscoreSkill.YAMA, HiscoreSkill.ZALCANO,
 			HiscoreSkill.ZULRAH
 		}, PanelData.BOSSES);
+	}
+
+	@Test
+	public void theFracturedArchiveHasItsTileUnderRuneLitesCurrentName()
+	{
+		// RuneLite 1.13.6 renamed FRACTURED_ARCHIVE to THE_FRACTURED_ARCHIVE; asking for the old name alone lost the
+		// raid's tile (11/3). A client from before the rename finds it under the old one.
+		assertSame(HiscoreSkill.THE_FRACTURED_ARCHIVE, PanelData.TFA);
+		assertTrue(PanelData.tfaListed());
+		assertSame(HiscoreSkill.THE_FRACTURED_ARCHIVE, PanelData.skillNamed("THE_FRACTURED_ARCHIVE"));
+		assertNull(PanelData.skillNamed("NOT_A_BOSS"));
 	}
 
 	@Test

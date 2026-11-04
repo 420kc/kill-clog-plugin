@@ -105,6 +105,8 @@ public class HiscoreService
 	private static class CachedResult
 	{
 		final HiscoreResult result;
+		// Whether it was looked up on a Hardcore world, which decides between a main's two boards.
+		final boolean hardcoreWorld;
 		final long timestamp;
 
 		boolean isStale()
@@ -124,10 +126,11 @@ public class HiscoreService
 		.maximumSize(256).expireAfterWrite(CACHE_TTL_MS, TimeUnit.MILLISECONDS).build();
 
 	static final String LEAGUE_TABLE = "hiscore_oldschool_seasonal";
-	// Hardcore Worlds' own table, as killclog.com names it, or null.
+	private static final String REGULAR_TABLE = "hiscore_oldschool";
+	private static final String HARDCORE_MAIN_TABLE = HiscoreTable.HARDCORE_MAIN.hiscoreKey();
+	// Whether the logged-in world is a Hardcore world, as the plugin last copied it on the client thread.
 	@Setter
-	@Nullable
-	private volatile java.util.function.Supplier<String> hardcoreTable;
+	private volatile java.util.function.BooleanSupplier onHardcoreWorld = () -> false;
 	// killclog.com says the same, word for word.
 	static final String DOWN_MESSAGE = "Jagex hiscores are down. Try again soon.";
 
@@ -242,14 +245,14 @@ public class HiscoreService
 	private final Gson gson;
 
 	/**
-	 * Get a cached result immediately, or null if none exists.
+	 * Get a cached result immediately, or null if none exists for the world the player is on now.
 	 * Used by the panel for stale-while-revalidate: show cached data
 	 * instantly, then fire a background refresh.
 	 */
 	public HiscoreResult getCached(String playerName)
 	{
 		CachedResult cached = cache.get(RsnInputPolicy.key(playerName));
-		return cached != null ? cached.result : null;
+		return cached != null && cached.hardcoreWorld == onHardcoreWorld.getAsBoolean() ? cached.result : null;
 	}
 
 	/**
@@ -259,7 +262,8 @@ public class HiscoreService
 	{
 		String key = RsnInputPolicy.key(playerName);
 		CachedResult cached = cache.get(key);
-		return cached == null || cached.isStale() || dirtySince.containsKey(key);
+		return cached == null || cached.isStale() || cached.hardcoreWorld != onHardcoreWorld.getAsBoolean()
+			|| dirtySince.containsKey(key);
 	}
 
 	/**
@@ -282,22 +286,19 @@ public class HiscoreService
 	 */
 	public CompletableFuture<HiscoreResult> lookup(String playerName, AccountType knownType)
 	{
-		return attemptLookup(playerName, knownType).thenApply(result ->
+		// The world as the lookup starts decides its boards and keeps its answer, even when it lands after a hop.
+		boolean hardcoreWorld = onHardcoreWorld.getAsBoolean();
+		return attemptLookup(playerName, knownType, hardcoreWorld).thenApply(result ->
 		{
-			if (result != null) cacheResult(playerName, result);
+			if (result != null) cacheResult(playerName, result, hardcoreWorld, System.currentTimeMillis());
 			return result;
 		});
 	}
 
-	private void cacheResult(String playerName, HiscoreResult result)
-	{
-		cacheResult(playerName, result, System.currentTimeMillis());
-	}
-
-	/* package */ synchronized void cacheResult(String playerName, HiscoreResult result, long now)
+	/* package */ synchronized void cacheResult(String playerName, HiscoreResult result, boolean hardcoreWorld, long now)
 	{
 		String key = RsnInputPolicy.key(playerName);
-		cache.put(key, new CachedResult(result, now));
+		cache.put(key, new CachedResult(result, hardcoreWorld, now));
 		if (cache.size() > HttpUtil.CACHE_CAP)
 		{
 			// The name fetched longest ago goes; it is fetched again when asked for.
@@ -323,19 +324,20 @@ public class HiscoreService
 	}
 
 	private CompletableFuture<HiscoreResult> attemptLookup(String playerName,
-		AccountType knownType)
+		AccountType knownType, boolean hardcoreWorld)
 	{
 		String encoded = URLEncoder.encode(playerName, StandardCharsets.UTF_8);
 		// The boards that said "no such player" to this lookup: an earlier or overlapping one's 404 never decides it.
 		Set<String> absent = ConcurrentHashMap.newKeySet();
-		if (knownType != null) return lookupKnown(encoded, knownType, absent);
+		if (knownType != null) return lookupKnown(encoded, knownType, absent, hardcoreWorld);
 
 		CompletableFuture<String> uimFuture = fetchAsync("hiscore_oldschool_ultimate", encoded, absent);
 		CompletableFuture<String> hcimFuture = fetchAsync("hiscore_oldschool_hardcore_ironman", encoded, absent);
 		CompletableFuture<String> ironFuture = fetchAsync("hiscore_oldschool_ironman", encoded, absent);
-		CompletableFuture<String> regFuture = fetchRegular(encoded, absent);
+		CompletableFuture<String> regFuture = fetchAsync(REGULAR_TABLE, encoded, absent);
+		CompletableFuture<String> hardcoreMainFuture = hardcoreMainBeside(encoded, regFuture, absent, hardcoreWorld);
 
-		return CompletableFuture.allOf(uimFuture, hcimFuture, ironFuture, regFuture)
+		return CompletableFuture.allOf(uimFuture, hcimFuture, ironFuture, regFuture, hardcoreMainFuture)
 			.thenCompose(v ->
 			{
 				String uimBody = uimFuture.join();
@@ -344,6 +346,11 @@ public class HiscoreService
 				String regBody = regFuture.join();
 
 				AccountType type = detectAccountType(uimBody, hcimBody, ironBody, regBody);
+				String hardcoreMainBody = hardcoreMainRow(regBody, hardcoreMainFuture.join(), absent);
+				if (type == AccountType.REGULAR && hardcoreMainBody != null)
+				{
+					return CompletableFuture.completedFuture(hardcoreMain(hardcoreMainBody));
+				}
 				// This lookup's own regular and Ironman answers say whether it's an Ironman now;
 				// an Ironman row ahead of the regular one is a mismatched read and says nothing.
 				long regXp = extractTotalXp(regBody);
@@ -360,7 +367,7 @@ public class HiscoreService
 				String bestBody = pickBestBody(type, uimBody, hcimBody, ironBody, regBody);
 				if (bestBody == null)
 				{
-					return missing(absent.contains("hiscore_oldschool"));
+					return missing(notOnEither(absent));
 				}
 
 				return parseAndRefine(encoded, bestBody, type)
@@ -380,22 +387,27 @@ public class HiscoreService
 		return result;
 	}
 
-	private CompletableFuture<HiscoreResult> lookupKnown(String encodedPlayer, AccountType type, Set<String> absent)
+	private CompletableFuture<HiscoreResult> lookupKnown(String encodedPlayer, AccountType type, Set<String> absent,
+		boolean hardcoreWorld)
 	{
-		CompletableFuture<String> regular = fetchRegular(encodedPlayer, absent);
+		CompletableFuture<String> regular = fetchAsync(REGULAR_TABLE, encodedPlayer, absent);
 		RankLeaderboard board = RankLeaderboard.of(type);
 		if (board == RankLeaderboard.NORMAL)
 		{
-			// RuneLite's own type: not a solo Ironman now (a group ironman reads its regular row).
-			return regular.thenCompose(body -> body != null ? parseAndRefine(encodedPlayer, body, type)
-				: HiscoreService.<HiscoreResult>missing(absent.contains("hiscore_oldschool")))
-				.thenApply(result -> proven(result, false, null));
+			// RuneLite's own type: not a solo Ironman now (a group ironman reads its regular row), maybe a
+			// Hardcore Worlds character.
+			return regular.thenCombine(hardcoreMainBeside(encodedPlayer, regular, absent, hardcoreWorld),
+				(body, hardcore) -> new String[]{body, hardcoreMainRow(body, hardcore, absent)})
+				.thenCompose(rows -> rows[1] != null ? CompletableFuture.completedFuture(hardcoreMain(rows[1]))
+					: rows[0] != null ? parseAndRefine(encodedPlayer, rows[0], type)
+					.thenApply(result -> proven(result, false, null))
+					: HiscoreService.<HiscoreResult>missing(notOnEither(absent)));
 		}
 		return regular.thenCombine(fetchAsync(board.endpoint, encodedPlayer, absent), (base, ranked) ->
 		{
 			if (base == null && ranked == null)
 			{
-				if (absent.contains("hiscore_oldschool")) return null;
+				if (absent.contains(REGULAR_TABLE)) return null;
 				throw new HiscoresDown();
 			}
 			// RuneLite supplies the current self type. Keep its selected ranks, but
@@ -405,6 +417,61 @@ public class HiscoreService
 			return proven(parseHiscoreBody(body, type)
 				.withRanks(ranked != null ? parseHiscoreBody(ranked, type) : null), true, null);
 		});
+	}
+
+	/**
+	 * The Hardcore Main row a lookup reads: asked beside the regular board on a Hardcore world, where RuneLite's own
+	 * hiscores read that table too; elsewhere only for a player the regular board has unranked or not at all, since
+	 * Jagex keeps a small unranked regular row for every Hardcore Worlds character (seen 11/4), so a ranked player's
+	 * lookup asks Jagex nothing more. Null when it isn't asked.
+	 */
+	private CompletableFuture<String> hardcoreMainBeside(String encodedPlayer, CompletableFuture<String> regular,
+		Set<String> absent, boolean hardcoreWorld)
+	{
+		if (hardcoreWorld)
+		{
+			return fetchAsync(HARDCORE_MAIN_TABLE, encodedPlayer, absent);
+		}
+		return regular.thenCompose(body -> (body == null ? absent.contains(REGULAR_TABLE) : overallRank(body) < 0)
+			? fetchAsync(HARDCORE_MAIN_TABLE, encodedPlayer, absent) : CompletableFuture.completedFuture(null));
+	}
+
+	/**
+	 * A Hardcore Worlds character's row: there when the regular board has none for the player, or at least as far along
+	 * as the regular one, which for these characters is that small row. A row behind the regular one is not the account
+	 * as it is now, so the regular board's stands: a transfer playing on, ranked or not. A reset's fresh row is behind
+	 * the small row too until it passes it (a few thousand XP at most); the hiscores can't tell the two apart (11/4).
+	 */
+	@Nullable
+	private String hardcoreMainRow(@Nullable String regular, @Nullable String hardcore, Set<String> absent)
+	{
+		long xp = extractTotalXp(hardcore);
+		return xp > 0 && (regular == null ? absent.contains(REGULAR_TABLE) : xp >= extractTotalXp(regular)) ? hardcore : null;
+	}
+
+	/** The Overall row's rank, -1 when Jagex ranks it nowhere or the body doesn't read. */
+	private long overallRank(String body)
+	{
+		try
+		{
+			JsonObject overall = overallRow(body);
+			return overall != null ? overall.get("rank").getAsLong() : -1;
+		}
+		catch (Exception e)
+		{
+			return -1;
+		}
+	}
+
+	private HiscoreResult hardcoreMain(String body)
+	{
+		return proven(parseHiscoreBody(body, AccountType.REGULAR, HiscoreTable.HARDCORE_MAIN), false, null);
+	}
+
+	/** "Not found" stands only when both of a main's boards say so; anything else unanswered is Jagex down. */
+	private static boolean notOnEither(Set<String> absent)
+	{
+		return absent.contains(REGULAR_TABLE) && absent.contains(HARDCORE_MAIN_TABLE);
 	}
 
 	private CompletableFuture<HiscoreResult> parseAndRefine(String encodedPlayer,
@@ -680,27 +747,6 @@ public class HiscoreService
 
 	/** How long a failed board waits before its one retry; tests shorten it. */
 	static long retryDelayMs = 500;
-
-	/**
-	 * The regular board's row; for a player it has none for, a Hardcore Worlds character's from that table, when
-	 * killclog.com names one. Its "not found" stands only when that table says so too.
-	 */
-	private CompletableFuture<String> fetchRegular(String encodedPlayer, Set<String> absent)
-	{
-		java.util.function.Supplier<String> named = hardcoreTable;
-		String table = named != null ? named.get() : null;
-		CompletableFuture<String> regular = fetchAsync("hiscore_oldschool", encodedPlayer, absent);
-		return table == null ? regular : regular.thenCompose(body -> body != null || !absent.contains("hiscore_oldschool")
-			? CompletableFuture.completedFuture(body)
-			: fetchAsync(table, encodedPlayer, absent).thenApply(row ->
-			{
-				if (row != null || !absent.contains(table))
-				{
-					absent.remove("hiscore_oldschool");
-				}
-				return row;
-			}));
-	}
 
 	private CompletableFuture<String> fetchAsync(String hiscoreKey, String encodedPlayer, @Nullable Set<String> absent)
 	{

@@ -61,7 +61,7 @@ public class HiscoreFailureTest
 			return response(chain, 404, "");
 		});
 		assertNull(service.lookup("Missing", null).get(3, TimeUnit.SECONDS));
-		assertEquals(4, calls.get());
+		assertEquals(5, calls.get()); // the four, then Hardcore Main once the regular board says not found
 	}
 
 	@Test
@@ -80,7 +80,7 @@ public class HiscoreFailureTest
 			assertNotNull(result);
 			assertEquals(xp, result.getTotalXp());
 			assertEquals(-1, result.getOverallRank());
-			assertEquals(4, calls.get());
+			assertEquals(5, calls.get()); // the four, and Hardcore Main for an unranked regular row
 		}
 	}
 
@@ -135,7 +135,8 @@ public class HiscoreFailureTest
 		assertEquals(5000, result.getTotalXp());
 		assertEquals(40, result.getKc("Vorkath"));
 		assertFalse(result.hasBossRow("Zulrah"));
-		assertEquals("accepted first time, nothing retried", 4, calls.get());
+		// The four, and Hardcore Main for the unranked regular row.
+		assertEquals("accepted first time, nothing retried", 5, calls.get());
 	}
 
 	@Test
@@ -152,8 +153,8 @@ public class HiscoreFailureTest
 				return response(chain, count == 1 ? failure : 200, count == 1 ? "{bad" : body(5000));
 			});
 			assertEquals(5000, service.lookup("Test", null).get(3, TimeUnit.SECONDS).getTotalXp());
-			// An outage, a 429 or a bad body retries the JSON once.
-			assertEquals(5, calls.values().stream().mapToInt(AtomicInteger::get).sum());
+			// An outage, a 429 or a bad body retries the JSON once; the unranked row also asks Hardcore Main.
+			assertEquals(6, calls.values().stream().mapToInt(AtomicInteger::get).sum());
 			assertEquals(2, calls.get(REGULAR + "index_lite.json").get());
 		}
 	}
@@ -218,7 +219,7 @@ public class HiscoreFailureTest
 		HiscoreResult result = service.lookup("Test", null).get(3, TimeUnit.SECONDS);
 		assertEquals(1000, result.getTotalXp());
 		assertEquals(HiscoreTable.STANDARD, result.getHiscoreTable());
-		assertEquals(5, calls.get());
+		assertEquals(6, calls.get()); // with Hardcore Main for the unranked regular row
 	}
 
 	@Test
