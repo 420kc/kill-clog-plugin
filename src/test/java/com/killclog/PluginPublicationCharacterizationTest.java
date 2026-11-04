@@ -2605,7 +2605,7 @@ public class PluginPublicationCharacterizationTest
 	@Test
 	public void aTickCaughtByShutdownLeavesTheHardcoreWorldFlagClear() throws Exception
 	{
-		// Sol, 11/4: a tick reading the world's flags while shutdown runs on another thread set the flag again after
+		// 11/4: a tick reading the world's flags while shutdown runs on another thread set the flag again after
 		// shutdown cleared it, and a re-enable on the login screen then asked the Hardcore Main hiscores.
 		ArgumentCaptor<java.util.function.BooleanSupplier> onHardcoreWorld =
 			ArgumentCaptor.forClass(java.util.function.BooleanSupplier.class);

@@ -105,7 +105,7 @@ public class HiscoreHardcoreWorldsTest
 				String why = onHardcoreWorld + " " + type;
 				assertHardcoreMain(why, service(onHardcoreWorld, 200, -1, 1200, 200, 1200).lookup("Hc Tester", type)
 					.get(3, TimeUnit.SECONDS), 1200);
-				// A transfer playing on, still unranked (Sol, 11/4): its regular row is the account now. A reset's fresh
+				// A transfer playing on, still unranked: its regular row is the account now. A reset's fresh
 				// row behind the small regular one reads the same way until it passes it, minutes of play.
 				assertMain(why, service(onHardcoreWorld, 200, -1, 5000, 200, 1200).lookup("Left", type)
 					.get(3, TimeUnit.SECONDS), 5000);
@@ -153,7 +153,7 @@ public class HiscoreHardcoreWorldsTest
 	@Test
 	public void aCachedAnswerStandsOnlyOnTheWorldItWasLookedUpOn() throws Exception
 	{
-		// A main on both boards with the same row (Sol, 11/4): a Hardcore world reads it as a Hardcore Main, the main
+		// A main on both boards with the same row: a Hardcore world reads it as a Hardcore Main, the main
 		// game as a ranked main, so neither world's answer stands on the other.
 		AtomicBoolean onHardcoreWorld = new AtomicBoolean(true);
 		HiscoreService service = service(new CopyOnWriteArrayList<>(), onHardcoreWorld, 200, RANKED, 1200, 200, 1200);
