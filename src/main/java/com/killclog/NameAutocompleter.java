@@ -31,7 +31,8 @@ import net.runelite.api.clan.ClanSettings;
 
 /**
  * Autocompletes player names in the search bar from search history plus a
- * client-thread snapshot of friends, clan, and nearby players.
+ * client-thread snapshot of friends, clan, and nearby players, and brings back
+ * this session's searches with the right arrow.
  */
 @Slf4j
 @Singleton
@@ -47,10 +48,30 @@ public class NameAutocompleter implements KeyListener
 	private volatile List<String> clientNameSnapshot = Collections.emptyList();
 	private String autofill;
 	private Pattern autofillPattern;
+	// Which of this session's searches Right shows, newest at 0.
+	private int recalled = -1;
 
+	/**
+	 * With the box empty, or showing a search Right brought back unchanged, Right steps back through this session's
+	 * searches, from the newest round to it again (Dylan 11/4). Once the box holds anything else Right moves the cursor,
+	 * as it accepts an autofill.
+	 */
 	@Override
 	public void keyPressed(KeyEvent e)
 	{
+		JTextComponent input = (JTextComponent) e.getSource();
+		String text = input.getText();
+		List<String> newestFirst = new ArrayList<>(searchHistory);
+		Collections.reverse(newestFirst);
+		boolean showing = recalled >= 0 && recalled < newestFirst.size() && text.equals(newestFirst.get(recalled));
+		if (e.getKeyCode() != KeyEvent.VK_RIGHT || newestFirst.isEmpty() || !(text.isEmpty() || showing))
+		{
+			return;
+		}
+		recalled = showing ? (recalled + 1) % newestFirst.size() : 0;
+		input.setText(newestFirst.get(recalled));
+		autofill = null;
+		e.consume();
 	}
 
 	@Override
