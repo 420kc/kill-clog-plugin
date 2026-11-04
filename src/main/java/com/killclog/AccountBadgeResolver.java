@@ -27,7 +27,9 @@ final class AccountBadgeResolver
 			return null;
 		}
 		AccountType type = display.accountType();
-		return new ImageIcon(type != null && type.isGroupIronman() ? badge : resize(badge, 15));
+		// The game's own chat badges keep their size; RuneLite's hiscore icons come down to it.
+		boolean game = type != null && type.isGroupIronman() || badge == GimBadgeLoader.getHardcoreMainBadge();
+		return new ImageIcon(game ? badge : resize(badge, 15));
 	}
 
 	@Nullable
@@ -44,7 +46,9 @@ final class AccountBadgeResolver
 		HiscoreTable table = display.hiscoreTable();
 		if (table.isSpecial())
 		{
-			return staticBadge(table);
+			// A Hardcore Main wears the game's badge once the client has it; RuneLite's tombstone before.
+			BufferedImage game = table == HiscoreTable.HARDCORE_MAIN ? GimBadgeLoader.getHardcoreMainBadge() : null;
+			return game != null ? game : staticBadge(table);
 		}
 		AccountType type = display.accountType();
 		if (type == null)

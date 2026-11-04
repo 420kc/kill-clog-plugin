@@ -17,11 +17,15 @@ final class GimBadgeLoader
 	private static final int MODICON_GIM = IconID.GROUP_IRONMAN.getIndex();
 	private static final int MODICON_HCGIM = IconID.HARDCORE_GROUP_IRONMAN.getIndex();
 	private static final int MODICON_UNRANKED_GIM = IconID.UNRANKED_GROUP_IRONMAN.getIndex();
+	// Hardcore Worlds' chat badge, the skull on a tombstone the game draws by their names (11/4), until RuneLite's
+	// IconID names it.
+	private static final int MODICON_HARDCORE_MAIN = 56;
 
 	// Cached GIM badge images (loaded from game modicons at runtime)
 	private static volatile BufferedImage gimBadge;
 	private static volatile BufferedImage hcgimBadge;
 	private static volatile BufferedImage unrankedGimBadge;
+	private static volatile BufferedImage hardcoreMainBadge;
 
 	private GimBadgeLoader()
 	{
@@ -39,6 +43,13 @@ final class GimBadgeLoader
 			imageAt(modIcons, MODICON_GIM),
 			imageAt(modIcons, MODICON_HCGIM),
 			imageAt(modIcons, MODICON_UNRANKED_GIM));
+		hardcoreMainBadge = imageAt(modIcons, MODICON_HARDCORE_MAIN);
+	}
+
+	/** The game's Hardcore Main badge, or null before the client has its icons. */
+	static BufferedImage getHardcoreMainBadge()
+	{
+		return hardcoreMainBadge;
 	}
 
 	static void setGimBadges(BufferedImage gim, BufferedImage hcgim, BufferedImage unrankedGim)
