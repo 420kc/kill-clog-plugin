@@ -2637,17 +2637,61 @@ public class PluginPublicationCharacterizationTest
 		plugin.startUp();
 	}
 
+	/** The flag lookups read, as the plugin hands it to the hiscores. */
+	private java.util.function.BooleanSupplier hardcoreWorldFlag() throws Exception
+	{
+		ArgumentCaptor<java.util.function.BooleanSupplier> flag = ArgumentCaptor.forClass(java.util.function.BooleanSupplier.class);
+		verify((HiscoreService) field("hiscoreService"), atLeastOnce()).setOnHardcoreWorld(flag.capture());
+		return flag.getValue();
+	}
+
+	@Test
+	public void theTickCopiesTheHardcoreWorldBeforeItsAutomaticLookup() throws Exception
+	{
+		// The first tick on a Hardcore world starts your own lookup; it must already read that world's hiscores.
+		java.util.function.BooleanSupplier flag = hardcoreWorldFlag();
+		world(net.runelite.api.WorldType.MEMBERS, net.runelite.api.WorldType.HARDCORE_MAIN);
+		java.util.List<Boolean> seen = new java.util.ArrayList<>();
+		when(localClogCache.serve(any())).thenAnswer(invocation ->
+		{
+			seen.add(flag.getAsBoolean());
+			return true;
+		});
+		GameStateChanged login = new GameStateChanged();
+		login.setGameState(GameState.LOGGED_IN);
+		plugin.onGameStateChanged(login);
+		ticks(1);
+		assertFalse("the automatic lookup ran", seen.isEmpty());
+		assertTrue("its world was already copied: " + seen, seen.get(seen.size() - 1));
+	}
+
+	@Test
+	public void leavingAHardcoreWorldClearsTheFlagBeforeTheNextTick() throws Exception
+	{
+		java.util.function.BooleanSupplier flag = hardcoreWorldFlag();
+		world(net.runelite.api.WorldType.MEMBERS, net.runelite.api.WorldType.HARDCORE_MAIN);
+		ticks(1);
+		assertTrue(flag.getAsBoolean());
+		for (GameState leaving : new GameState[]{GameState.HOPPING, GameState.LOGIN_SCREEN, GameState.CONNECTION_LOST})
+		{
+			ticks(1);
+			assertTrue(flag.getAsBoolean());
+			GameStateChanged event = new GameStateChanged();
+			event.setGameState(leaving);
+			plugin.onGameStateChanged(event);
+			assertFalse(leaving + " clears it at once", flag.getAsBoolean());
+		}
+	}
+
 	@Test
 	public void aTickCaughtByShutdownLeavesTheHardcoreWorldFlagClear() throws Exception
 	{
 		// 11/4: a tick reading the world's flags while shutdown runs on another thread set the flag again after
 		// shutdown cleared it, and a re-enable on the login screen then asked the Hardcore Main hiscores.
-		ArgumentCaptor<java.util.function.BooleanSupplier> onHardcoreWorld =
-			ArgumentCaptor.forClass(java.util.function.BooleanSupplier.class);
-		verify((HiscoreService) field("hiscoreService")).setOnHardcoreWorld(onHardcoreWorld.capture());
+		java.util.function.BooleanSupplier onHardcoreWorld = hardcoreWorldFlag();
 		world(net.runelite.api.WorldType.MEMBERS, net.runelite.api.WorldType.HARDCORE_MAIN);
 		ticks(1);
-		assertTrue(onHardcoreWorld.getValue().getAsBoolean());
+		assertTrue(onHardcoreWorld.getAsBoolean());
 
 		Thread[] shutdown = new Thread[1];
 		when(client.getWorldType()).thenAnswer(invocation ->
@@ -2664,9 +2708,9 @@ public class PluginPublicationCharacterizationTest
 		ticks(1);
 		shutdown[0].join(3000);
 		assertFalse(shutdown[0].isAlive());
-		assertFalse("shutdown's clear stands", onHardcoreWorld.getValue().getAsBoolean());
+		assertFalse("shutdown's clear stands", onHardcoreWorld.getAsBoolean());
 		ticks(1);
-		assertFalse("a tick after shutdown copies nothing", onHardcoreWorld.getValue().getAsBoolean());
+		assertFalse("a tick after shutdown copies nothing", onHardcoreWorld.getAsBoolean());
 		plugin.startUp();
 	}
 
