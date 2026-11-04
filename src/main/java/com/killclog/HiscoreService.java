@@ -437,15 +437,16 @@ public class HiscoreService
 	}
 
 	/**
-	 * A Hardcore Worlds character's row: there when the regular board has none for the player, or at least as far along
-	 * as the regular one, which for these characters is that small row. A row behind the regular one is not the account
-	 * as it is now, so the regular board's stands.
+	 * A Hardcore Worlds character's row: there when the regular board has none for the player or ranks it nowhere (that
+	 * small row, which a reset's fresh start can fall behind), or at least as far along as a ranked regular row. A row
+	 * behind a ranked one (a transfer that has played on) is not the account as it is now, so the regular board's stands.
 	 */
 	@Nullable
 	private String hardcoreMainRow(@Nullable String regular, @Nullable String hardcore, Set<String> absent)
 	{
 		long xp = extractTotalXp(hardcore);
-		return xp > 0 && (regular == null ? absent.contains(REGULAR_TABLE) : xp >= extractTotalXp(regular)) ? hardcore : null;
+		return xp > 0 && (regular == null ? absent.contains(REGULAR_TABLE)
+			: overallRank(regular) < 0 || xp >= extractTotalXp(regular)) ? hardcore : null;
 	}
 
 	/** The Overall row's rank, -1 when Jagex ranks it nowhere or the body doesn't read. */

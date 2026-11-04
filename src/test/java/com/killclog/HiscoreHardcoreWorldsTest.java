@@ -12,10 +12,10 @@ import static org.junit.Assert.*;
 
 /**
  * A Hardcore Worlds character is a Hardcore Main: its row on that table (RuneLite 1.13.6's HiscoreEndpoint.HARDCORE_MAIN)
- * when the regular board has none for it, or at least as far along as the regular row, which Jagex keeps small and
- * unranked for these characters (11/4: the board's top three were 200 on the regular table at levels 33 to 55, rank
- * -1). A lookup asks that table beside the regular board on a Hardcore world, where RuneLite's own hiscores read it,
- * and elsewhere only for a player the regular board has unranked or not at all.
+ * when the regular board has none for it or ranks it nowhere (Jagex keeps a small unranked regular row for these
+ * characters; 11/4: the board's top three were 200 on the regular table at levels 33 to 55, rank -1), or at least as
+ * far along as a ranked regular row. A lookup asks that table beside the regular board on a Hardcore world, where
+ * RuneLite's own hiscores read it, and elsewhere only for a player the regular board has unranked or not at all.
  */
 public class HiscoreHardcoreWorldsTest
 {
@@ -105,7 +105,11 @@ public class HiscoreHardcoreWorldsTest
 				String why = onHardcoreWorld + " " + type;
 				assertHardcoreMain(why, service(onHardcoreWorld, 200, -1, 1200, 200, 1200).lookup("Hc Tester", type)
 					.get(3, TimeUnit.SECONDS), 1200);
-				assertMain(why, service(onHardcoreWorld, 200, -1, 5000, 200, 1200).lookup("Left", type)
+				// A reset starts the Hardcore row over, below the small unranked regular row (Sol, 11/4).
+				assertHardcoreMain(why, service(onHardcoreWorld, 200, -1, 3207, 200, 1154).lookup("Reset", type)
+					.get(3, TimeUnit.SECONDS), 1154);
+				// A transfer that has played on is ranked on the regular board, ahead of its Hardcore row.
+				assertMain(why, service(onHardcoreWorld, 200, RANKED, 5000, 200, 1200).lookup("Left", type)
 					.get(3, TimeUnit.SECONDS), 5000);
 				assertMain(why, service(onHardcoreWorld, 200, -1, 5000, 404, 0).lookup("Low Main", type)
 					.get(3, TimeUnit.SECONDS), 5000);
