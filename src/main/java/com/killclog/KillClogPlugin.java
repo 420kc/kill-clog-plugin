@@ -142,10 +142,11 @@ public class KillClogPlugin extends Plugin
 	private ConfigManager configManager;
 
 	private NavigationButton navButton;
-	// The sidebar button's swaps and shutdown's removal, in one order: a priority change on a profile switch's thread
-	// can't put the icon back after shutdown took it out (the toolbar queues each step onto Swing as it's called).
-	private final Object sidebarLock = new Object();
-	private boolean sidebarUp;
+	// Whether the plugin is running, set by start and shutdown under this lock, so a step on another thread that ends after
+	// shutdown can't undo it: the sidebar button's swaps (a priority change on a profile switch's thread can't put the
+	// icon back; the toolbar queues each step onto Swing as it's called) and the tick's copy of the Hardcore world flag.
+	private final Object lifecycleLock = new Object();
+	private boolean running;
 	private PlayerClans playerClans;
 	// Who is logged in, decided in this one place; the stores, the panel and the publication flow follow it.
 	private final SessionTracker sessions = new SessionTracker();
@@ -172,8 +173,8 @@ public class KillClogPlugin extends Plugin
 	// The account takes up its own log once per login and per store, latched when the open store says so (its folder
 	// and the account's log arrive on later ticks than the login).
 	private boolean accountActivated;
-	// Whether this login's world is a Hardcore world, copied each tick; lookups ask that world's hiscores beside the
-	// regular ones, and a logout, hop or shutdown clears it.
+	// Whether this login's world is a Hardcore world, copied each tick while running; lookups ask that world's hiscores
+	// beside the regular ones, and a logout, hop or shutdown clears it.
 	private volatile boolean onHardcoreWorld;
 	// Whether this login has been on the main game: the main store keeps it from then on (serveMainStore).
 	private boolean mainReached;
@@ -211,11 +212,11 @@ public class KillClogPlugin extends Plugin
 		localClogCache.open(this::getPluginDirectory);
 		localClogCache.folder().thenAccept(folder -> localCaCache.open(folder == null ? null : folder.join("ca")));
 
-		synchronized (sidebarLock)
+		synchronized (lifecycleLock)
 		{
 			navButton = sidebarButton();
 			clientToolbar.addNavigation(navButton);
-			sidebarUp = true;
+			running = true;
 		}
 		panel.setNameAutocompleter(nameAutocompleter);
 		panel.setClogIndex(clogIndex);
@@ -291,13 +292,13 @@ public class KillClogPlugin extends Plugin
 	@Override
 	protected void shutDown()
 	{
-		onHardcoreWorld = false;
 		// The real appearance the game last sent is kept, like the other data, so a re-enable mid-login can publish
 		// without a gear change: logout, a hop or a lost connection drops it, and a publish checks it against the
 		// worn gear.
-		synchronized (sidebarLock)
+		synchronized (lifecycleLock)
 		{
-			sidebarUp = false;
+			running = false;
+			onHardcoreWorld = false;
 			clientToolbar.removeNavigation(navButton);
 		}
 		lookupMenu.stop(config, menuManager);
@@ -696,7 +697,10 @@ public class KillClogPlugin extends Plugin
 			nameAutocompleter.refreshClientSnapshot();
 		}
 		playerClans.refreshClientSnapshot();
-		onHardcoreWorld = GameMode.hardcore(client.getWorldType());
+		synchronized (lifecycleLock)
+		{
+			onHardcoreWorld = running && GameMode.hardcore(client.getWorldType());
+		}
 		sessions.update(client);
 		boolean settledNow = world.tick();
 		if (settledNow)
@@ -933,9 +937,9 @@ public class KillClogPlugin extends Plugin
 		{
 			// RuneLite places an icon by its priority only as it's added, so the icon moves by leaving and coming
 			// back; the toolbar runs both on Swing's thread, in this order.
-			synchronized (sidebarLock)
+			synchronized (lifecycleLock)
 			{
-				if (sidebarUp)
+				if (running)
 				{
 					clientToolbar.removeNavigation(navButton);
 					navButton = sidebarButton();
