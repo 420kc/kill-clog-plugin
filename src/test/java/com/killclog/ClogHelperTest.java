@@ -359,9 +359,12 @@ public class ClogHelperTest
 	{
 		// cubeee, issue 21: past 10k the grid's cell shortens a count to fit ("12k"); the card has the room to show it.
 		assertEquals("12k", ClogHelper.countText(12_345));
-		assertEquals("12345", ClogHelper.cardCountText(12_345));
+		assertEquals("12,345", ClogHelper.cardCountText(12_345));
+		assertEquals("a count under 10k is grouped too, as the card's rank and Glory are", "3,420",
+			ClogHelper.cardCountText(3420));
+		assertEquals("999", ClogHelper.cardCountText(999));
 		assertEquals("--", ClogHelper.cardCountText(0));
-		assertEquals("Sol Heredit before any Glory reads its kills in full", "12345",
+		assertEquals("Sol Heredit before any Glory reads its kills in full", "12,345",
 			ColosseumGlory.headerValue(-1, 12_345));
 
 		TooltipData data = TooltipData.builder().name("Tombs of Amascut").totalItems(1)
@@ -378,7 +381,7 @@ public class ClogHelperTest
 			value.setAccessible(true);
 			values.add((String) value.get(line));
 		}
-		assertEquals(Arrays.asList("12345", "43210"), values);
+		assertEquals(Arrays.asList("12,345", "43,210"), values);
 	}
 
 	@Test
