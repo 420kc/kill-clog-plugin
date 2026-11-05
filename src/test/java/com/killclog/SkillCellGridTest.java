@@ -307,8 +307,14 @@ public class SkillCellGridTest
 		cells.render(blue, red, false, gambled, unsaid, gambled);
 		SideBySideTooltip comparison = (SideBySideTooltip) cells.labels().get(Skill.ATTACK).createToolTip();
 		assertEquals("1,057", ((SkillTooltip) comparison.sides()[0]).countText());
-		assertEquals("a log that doesn't carry it reads --, as Rifts Closed does",
-			"--", ((SkillTooltip) comparison.sides()[1]).countText());
+		assertNull("a log whose sync never sent it has no line: the count is the sync's, like a PB, not the hiscores'",
+			((SkillTooltip) comparison.sides()[1]).countLabel());
+		cells.render(blue, null, false, unsaid, null, unsaid);
+		assertNull(((SkillTooltip) cells.labels().get(Skill.ATTACK).createToolTip()).countLabel());
+		gambled.setHighGambles(0);
+		cells.render(blue, null, false, gambled, null, gambled);
+		assertEquals("a counted 0 is a count, as the game's page shows it",
+			"0", ((SkillTooltip) cells.labels().get(Skill.ATTACK).createToolTip()).countText());
 	}
 
 	@Test
