@@ -112,6 +112,24 @@ public class ClogLookupMenuTest
 		verifyNoInteractions(notifier);
 	}
 
+	@Test
+	public void aSlotFreedAfterTheWarningStillTakesTheOption()
+	{
+		// QA 11/5: the full-menu warning fires once a session, but the next login's check still runs, so a slot freed
+		// since puts the option back without Kill Clog being turned off and on.
+		ClogLookupMenu menu = new ClogLookupMenu();
+		Client client = mock(Client.class);
+		KillClogChatNotifier notifier = mock(KillClogChatNotifier.class);
+		net.runelite.client.menus.MenuManager menus = mock(net.runelite.client.menus.MenuManager.class);
+		when(client.getPlayerOptions()).thenReturn(new String[]{"", "", "", "", "Trade", "Follow", "Report", "Walk"});
+		menu.warnIfPlayerMenuSlotUnavailable(client, ALL_ON, notifier, () -> menus);
+		verify(notifier, times(1)).send(eq(ChatNotice.WARNING), contains("Right-click menu is full"));
+		when(client.getPlayerOptions()).thenReturn(new String[]{"", "", "", "", "Trade", null, "Report", "Walk"});
+		menu.warnIfPlayerMenuSlotUnavailable(client, ALL_ON, notifier, () -> menus);
+		verify(menus).addPlayerMenuItem("Kill Clog");
+		verify(notifier, times(1)).send(eq(ChatNotice.WARNING), contains("Right-click menu is full"));
+	}
+
 	/** Whether a right-click on this component and option gained a lookup entry; a click on it records the name. */
 	private static boolean offer(KillClogConfig config, int componentId, String option, String target, List<String> looked)
 	{

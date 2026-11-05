@@ -52,7 +52,7 @@ final class ClogLookupMenu
 	void warnIfPlayerMenuSlotUnavailable(Client client, KillClogConfig config,
 		KillClogChatNotifier chatNotifier, Provider<MenuManager> menuManager)
 	{
-		if (playerMenuSlotWarned || !config.playerMenuLookup() || !config.menuOnPlayers())
+		if (!config.playerMenuLookup() || !config.menuOnPlayers())
 		{
 			return;
 		}
@@ -80,9 +80,13 @@ final class ClogLookupMenu
 			}
 		}
 
-		playerMenuSlotWarned = true;
-		chatNotifier.send(ChatNotice.WARNING,
-			"Right-click menu is full. Use the side panel or right-click names in chat instead.");
+		// The warning once a session; the check above still runs at every login, so a slot freed later takes the option.
+		if (!playerMenuSlotWarned)
+		{
+			playerMenuSlotWarned = true;
+			chatNotifier.send(ChatNotice.WARNING,
+				"Right-click menu is full. Use the side panel or right-click names in chat instead.");
+		}
 	}
 
 	void addLookupEntry(MenuEntryAdded event, Client client, KillClogConfig config,
