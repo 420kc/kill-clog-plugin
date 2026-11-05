@@ -528,6 +528,8 @@ public class LocalClogCache
 				data.uniqueTotal = existing.uniqueTotal;
 			}
 		}
+		// The game only ever counts gambles up, so a log that doesn't carry the count keeps the one held.
+		data.highGambles = Math.max(data.highGambles, result.getHighGambles());
 		// Upward-only, like the totals above: a provider snapshot must not
 		// drag the last-updated notice behind a live merge stamped moments ago.
 		bumpLastChanged(data, result.getLastChanged());
@@ -925,6 +927,22 @@ public class LocalClogCache
 		return changed;
 	}
 
+	/**
+	 * Your High-level Gambles as the game's varbit reads, raised only: the game never counts them down, and a reading
+	 * taken before the login's varbits arrive is a 0. True when the count rose.
+	 */
+	public synchronized boolean updateHighGamblesUpward(String playerName, int gambles)
+	{
+		PlayerClogData data = ownLog(playerName);
+		if (data == null || gambles <= data.highGambles)
+		{
+			return false;
+		}
+		data.highGambles = gambles;
+		submitSave(activeHashKey, true, data);
+		return true;
+	}
+
 	public synchronized boolean hasDataFor(String playerName)
 	{
 		return record(playerName) != null;
@@ -967,6 +985,7 @@ public class LocalClogCache
 		}
 		result.setRunStartedAt(data.runStartedAt);
 		result.setRunStartXp(data.runStartXp);
+		result.setHighGambles(data.highGambles);
 		return result;
 	}
 
@@ -1194,6 +1213,7 @@ public class LocalClogCache
 		copy.providerAccountType = src.providerAccountType;
 		copy.uniqueObtained = src.uniqueObtained;
 		copy.uniqueTotal = src.uniqueTotal;
+		copy.highGambles = src.highGambles;
 		copy.categories = new HashMap<>(src.categories);
 		copy.obtained = new HashMap<>(src.obtained);
 		copy.firstPartySetupComplete = src.firstPartySetupComplete;

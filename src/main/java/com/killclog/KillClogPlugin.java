@@ -365,7 +365,11 @@ public class KillClogPlugin extends Plugin
 		}
 		int obtained = client.getVarpValue(VarPlayerID.COLLECTION_COUNT);
 		int total = client.getVarpValue(VarPlayerID.COLLECTION_COUNT_MAX);
-		if (localClogCache.updateTotalsUpward(name, obtained, total))
+		// The Barbarian Assault page's own count, which the game keeps beside the log's (!gc reads the same varbit).
+		int gambles = client.getVarbitValue(VarbitID.BARBASSAULT_GAMBLECOUNT);
+		boolean totalsRose = localClogCache.updateTotalsUpward(name, obtained, total);
+		boolean gamblesRose = localClogCache.updateHighGamblesUpward(name, gambles);
+		if (totalsRose || gamblesRose)
 		{
 			SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(name));
 		}
@@ -591,7 +595,8 @@ public class KillClogPlugin extends Plugin
 			sessionState.requestCaRead();
 		}
 
-		if (event.getVarpId() == VarPlayerID.COLLECTION_COUNT || event.getVarpId() == VarPlayerID.COLLECTION_COUNT_MAX)
+		if (event.getVarpId() == VarPlayerID.COLLECTION_COUNT || event.getVarpId() == VarPlayerID.COLLECTION_COUNT_MAX
+			|| event.getVarbitId() == VarbitID.BARBASSAULT_GAMBLECOUNT)
 		{
 			reconcileClogTotalsFromVarps();
 		}

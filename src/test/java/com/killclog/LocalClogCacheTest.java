@@ -458,6 +458,28 @@ public class LocalClogCacheTest
 	}
 
 	@Test
+	public void yourGambleCountOnlyRisesSurvivesARestartAndTheNextWalk() throws Exception
+	{
+		File dir = temporaryFolder.newFolder();
+		LocalClogCache cache = onDisk(dir);
+		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
+		Map<String, List<Integer>> categories = Map.of("hats", itemList(1, 2));
+		cache.cacheFirstPartyResult(clog("Tester", categories, obtainedItems("hats")));
+		assertEquals("unread until the varbit says", -1, cache.toFirstPartySyncResult("Tester").getHighGambles());
+		assertFalse("another name never sets yours", cache.updateHighGamblesUpward("Zezima", 50));
+		assertTrue("a counted zero is a count, as the game's page shows it", cache.updateHighGamblesUpward("Tester", 0));
+		assertTrue(cache.updateHighGamblesUpward("Tester", 57));
+		assertFalse("a reading before the login's varbits arrive never lowers it", cache.updateHighGamblesUpward("Tester", 0));
+		cache.cacheFirstPartyResult(clog("Tester", categories, obtainedItems("hats", 1)));
+		assertEquals("a Collection Log walk doesn't carry the count, so it keeps it",
+			57, cache.toFirstPartySyncResult("Tester").getHighGambles());
+		assertEquals(57, cache.toClogResult("Tester", null).getHighGambles());
+		LocalClogCache restarted = onDisk(dir);
+		assertTrue(StoreLogin.activate(restarted, "Tester", HASH));
+		assertEquals(57, restarted.toFirstPartySyncResult("Tester").getHighGambles());
+	}
+
+	@Test
 	public void aHardcoreResetStartsTheOwnLogOverAndNothingElseDoes() throws Exception
 	{
 		File dir = temporaryFolder.newFolder();

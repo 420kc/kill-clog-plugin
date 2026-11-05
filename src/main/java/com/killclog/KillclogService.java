@@ -469,6 +469,10 @@ public class KillclogService
 					result.setUniqueObtained(uniqueObtained);
 				}
 			}
+			if (root.has(HighGambles.FIELD))
+			{
+				result.setHighGambles(HighGambles.plausible(intField(root, HighGambles.FIELD)));
+			}
 			// This footer describes collection-log provenance, not merely account
 			// presence on killclog.com. PB-only proof views intentionally parse
 			// and cache as healthy empty results, but do not earn a clog source.

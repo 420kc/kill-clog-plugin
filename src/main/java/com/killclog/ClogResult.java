@@ -37,6 +37,10 @@ public class ClogResult
 	@Setter
 	private int uniqueTotal = -1;
 	/** TempleOSRS's EHP and EHC for the account's own flavour, or -1 when Temple gave none */
+	/** The Barbarian Assault page's High-level Gambles, from the player's own client or sync; -1 when unknown */
+	@Getter
+	@Setter
+	private int highGambles = -1;
 	@Getter
 	@Setter
 	private double templeEhp = -1;
@@ -123,6 +127,7 @@ public class ClogResult
 		this.providerAccountType = accountType;
 		this.uniqueObtained = source.uniqueObtained;
 		this.uniqueTotal = source.uniqueTotal;
+		this.highGambles = source.highGambles;
 		this.fromLocal = source.fromLocal;
 		this.templeEhp = source.templeEhp;
 		this.templeEhc = source.templeEhc;
@@ -246,9 +251,16 @@ public class ClogResult
 		return copy;
 	}
 
-	/** Keeps TempleOSRS's figures and the synced clan when the other side of a combine carried them and this didn't. */
+	/**
+	 * Keeps TempleOSRS's figures, the synced clan and the gamble count when the other side of a combine carried them
+	 * and this didn't: only the player's own sync knows the count, so a provider's fuller log mustn't drop it.
+	 */
 	private ClogResult carryFrom(ClogResult other)
 	{
+		if (other != null)
+		{
+			highGambles = Math.max(highGambles, other.highGambles);
+		}
 		if (other != null && templeEhp < 0 && templeEhc < 0)
 		{
 			templeEhp = other.templeEhp;

@@ -15,6 +15,8 @@ class PlayerClogData
 	AccountType providerAccountType;
 	int uniqueObtained = -1;
 	int uniqueTotal = -1;
+	// The Barbarian Assault page's High-level Gambles, as the game's varbit counts them; -1 until read.
+	int highGambles = -1;
 	Map<String, List<Integer>> categories;
 	Map<String, List<ClogResult.ClogItem>> obtained;
 	List<PendingClogUnlock> pendingUnlocks;

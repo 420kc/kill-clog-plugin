@@ -345,6 +345,13 @@ class SyncService
 		{
 			root.addProperty("unique_total", clog.getUniqueTotal());
 		}
+		// The Barbarian Assault page's count, in the sync's score map: killclog.com keeps the highest it was sent.
+		if (clog.getHighGambles() >= 0)
+		{
+			JsonObject activities = new JsonObject();
+			activities.addProperty(HighGambles.ACTIVITY, clog.getHighGambles());
+			root.add("activities", activities);
+		}
 		// PBs are the sync's defining cargo: RuneLite records them locally per
 		// profile and no public provider serves them. Raw seconds; the site
 		// owns formatting.
