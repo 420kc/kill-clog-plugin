@@ -248,12 +248,12 @@ final class ClogHelper
 	}
 
 	/**
-	 * A count as a card shows one: in full and grouped (12,345), since a card has the room the grid's cell lacks
-	 * (cubeee, issue 21), or "--" when there is none.
+	 * A count as a card shows one: in full (12345), since a card has the room the grid's cell lacks (cubeee, issue 21),
+	 * or "--" when there is none.
 	 */
 	static String cardCountText(int count)
 	{
-		return count > 0 ? TitleTooltip.grouped(count) : "--";
+		return count > 0 ? String.valueOf(count) : "--";
 	}
 
 }
