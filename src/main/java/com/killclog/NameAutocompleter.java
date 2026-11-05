@@ -32,23 +32,35 @@ public class NameAutocompleter implements KeyListener
 	private volatile List<String> clientNameSnapshot = Collections.emptyList();
 	private String autofill;
 	private Pattern autofillPattern;
-	// Which of this session's searches Right shows, newest at 0.
+	// A modifier pressed alone, which leaves a recall standing.
+	private static final Set<Integer> MODIFIER_KEYS = new HashSet<>(Arrays.asList(KeyEvent.VK_SHIFT,
+		KeyEvent.VK_CONTROL, KeyEvent.VK_ALT, KeyEvent.VK_META, KeyEvent.VK_ALT_GRAPH));
+	// Which of this session's searches Right last put in the box, newest at 0; -1 once anything else happened there.
 	private int recalled = -1;
 
 	/**
-	 * With the box empty, or showing a search Right brought back unchanged, Right steps back through this session's
-	 * searches, from the newest round to it again (Dylan 11/4). Once the box holds anything else Right moves the cursor,
-	 * as it accepts an autofill.
+	 * With the box empty, or showing the search Right just brought back, Right steps back through this session's
+	 * searches, from the newest round to it again (Dylan 11/4). Any other key, typed or pressed, ends the recall, so
+	 * Right moves the cursor and accepts an autofill again even when the box holds a name it once brought back; with
+	 * Shift, Ctrl or Alt held, Right is always the box's own.
 	 */
 	@Override
 	public void keyPressed(KeyEvent e)
 	{
+		if (e.getKeyCode() != KeyEvent.VK_RIGHT || e.getModifiersEx() != 0)
+		{
+			if (!MODIFIER_KEYS.contains(e.getKeyCode()))
+			{
+				recalled = -1;
+			}
+			return;
+		}
 		JTextComponent input = (JTextComponent) e.getSource();
 		String text = input.getText();
 		List<String> newestFirst = new ArrayList<>(searchHistory);
 		Collections.reverse(newestFirst);
 		boolean showing = recalled >= 0 && recalled < newestFirst.size() && text.equals(newestFirst.get(recalled));
-		if (e.getKeyCode() != KeyEvent.VK_RIGHT || newestFirst.isEmpty() || !(text.isEmpty() || showing))
+		if (newestFirst.isEmpty() || !(text.isEmpty() || showing))
 		{
 			return;
 		}
@@ -66,6 +78,7 @@ public class NameAutocompleter implements KeyListener
 	@Override
 	public void keyTyped(KeyEvent e)
 	{
+		recalled = -1;
 		JTextComponent input = (JTextComponent) e.getSource();
 		String inputText = input.getText();
 
