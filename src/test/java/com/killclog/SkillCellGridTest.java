@@ -20,6 +20,7 @@ import net.runelite.client.ui.ColorScheme;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 public class SkillCellGridTest
@@ -258,10 +259,10 @@ public class SkillCellGridTest
 		cells.render(blue, null, false, clog, null, clog);
 		SkillTooltip runecraft = (SkillTooltip) cells.labels().get(Skill.RUNECRAFT).createToolTip();
 		SkillTooltip herblore = (SkillTooltip) cells.labels().get(Skill.HERBLORE).createToolTip();
-		assertTrue(runecraft.showsRiftsClosed());
-		assertEquals("34", runecraft.riftsClosedText());
+		assertEquals(SkillTooltip.RIFTS_CLOSED_LABEL, runecraft.countLabel());
+		assertEquals("34", runecraft.countText());
 		assertEquals(" (0/3)", runecraft.getTitleSuffix());
-		assertFalse(herblore.showsRiftsClosed());
+		assertNull(herblore.countLabel());
 		SkillTooltip withoutRifts = new SkillTooltip();
 		withoutRifts.setData(Skill.RUNECRAFT, blue, false, TestViews.sections(runecraft), null);
 		paint(withoutRifts);
@@ -274,9 +275,40 @@ public class SkillCellGridTest
 			.get(Skill.RUNECRAFT).createToolTip();
 		SkillTooltip blueSide = (SkillTooltip) comparison.sides()[0];
 		SkillTooltip redSide = (SkillTooltip) comparison.sides()[1];
-		assertTrue(blueSide.showsRiftsClosed());
-		assertEquals("34", blueSide.riftsClosedText());
-		assertEquals("1,234", redSide.riftsClosedText());
+		assertEquals(SkillTooltip.RIFTS_CLOSED_LABEL, blueSide.countLabel());
+		assertEquals("34", blueSide.countText());
+		assertEquals("1,234", redSide.countText());
+	}
+
+	@Test
+	public void attackTooltipCarriesTheGambleCountInBarbarianAssault()
+	{
+		SkillCellGrid cells = grid();
+		HiscoreResult blue = hiscores(Map.of(Skill.ATTACK, 99));
+		HiscoreResult red = hiscores(Map.of(Skill.ATTACK, 90));
+		String baName = "Granite helm";
+		ClogResult gambled = new ClogResult("8lD", Collections.emptyMap(),
+			Collections.singletonMap(HighGambles.CATEGORY, Collections.singletonList(1)), Map.of(1, baName), null, null);
+		gambled.setHighGambles(1_057);
+		ClogResult unsaid = new ClogResult("420 kc", Collections.emptyMap(),
+			Collections.singletonMap(HighGambles.CATEGORY, Collections.singletonList(1)), Map.of(1, baName), null, null);
+
+		cells.render(blue, null, false, gambled, null, gambled);
+		SkillTooltip attack = (SkillTooltip) cells.labels().get(Skill.ATTACK).createToolTip();
+		assertEquals(HighGambles.LABEL, attack.countLabel());
+		assertEquals("1,057", attack.countText());
+		SkillTooltip withoutCount = new SkillTooltip();
+		withoutCount.setData(Skill.ATTACK, blue, false, TestViews.sections(attack), null);
+		paint(withoutCount);
+		paint(attack);
+		assertTrue("the line sits in the Barbarian Assault section, above its items",
+			hoverItemY(attack, baName) > hoverItemY(withoutCount, baName));
+
+		cells.render(blue, red, false, gambled, unsaid, gambled);
+		SideBySideTooltip comparison = (SideBySideTooltip) cells.labels().get(Skill.ATTACK).createToolTip();
+		assertEquals("1,057", ((SkillTooltip) comparison.sides()[0]).countText());
+		assertEquals("a log that doesn't carry it reads --, as Rifts Closed does",
+			"--", ((SkillTooltip) comparison.sides()[1]).countText());
 	}
 
 	@Test

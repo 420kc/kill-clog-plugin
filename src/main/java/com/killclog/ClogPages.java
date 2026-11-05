@@ -113,9 +113,11 @@ final class ClogPages
 			return cells.buildRareTooltipFor(anchor, rare);
 		}
 		List<Integer> items = items(key);
-		TooltipData blue = tooltipDataBuilder.buildPageData(name, items, lookupSession.getClogResult());
+		ClogResult blueLog = lookupSession.getClogResult();
+		ClogResult redLog = comparison.getCompareClogResult();
+		TooltipData blue = HighGambles.onPage(key, tooltipDataBuilder.buildPageData(name, items, blueLog), blueLog);
 		TooltipData red = comparison.isComparisonMode()
-			? tooltipDataBuilder.buildPageData(name, items, comparison.getCompareClogResult()) : null;
+			? HighGambles.onPage(key, tooltipDataBuilder.buildPageData(name, items, redLog), redLog) : null;
 		for (TooltipData data : new TooltipData[]{blue, red})
 		{
 			if (data != null)

@@ -188,9 +188,14 @@ final class SkillCellGrid
 		solo.setData(skill, result, virtualLevels, config.enableSkillClogs()
 			? SkillClogSection.forSkill(skill, clog, otherClog, catalog, clogIndex)
 			: Collections.emptyList(), itemManager);
+		// A section's own count rides under its Obtained line, as the game's page for it shows.
 		if (skill == Skill.RUNECRAFT)
 		{
-			solo.setRiftsClosed(riftsClosed(result));
+			solo.setSectionCount(PanelData.GOTR_CATEGORY, SkillTooltip.RIFTS_CLOSED_LABEL, riftsClosed(result));
+		}
+		else if (skill == Skill.ATTACK)
+		{
+			solo.setSectionCount(HighGambles.CATEGORY, HighGambles.LABEL, HighGambles.of(clog));
 		}
 		solo.setLinks(config.cardLinks());
 		return solo;

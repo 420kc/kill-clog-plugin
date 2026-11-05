@@ -62,10 +62,10 @@ final class SkillClogSectionRenderer
 					headingMetrics.stringWidth(entry.section.heading()));
 			}
 			width = Math.max(width, soloProgressWidth(detailMetrics, entry.section));
-			if (showsRiftsClosed(entry.section))
+			if (repaintTarget.countsSection(entry.section))
 			{
 				width = Math.max(width, detailMetrics.stringWidth(
-					SkillTooltip.RIFTS_CLOSED_LABEL + repaintTarget.riftsClosedText()));
+					repaintTarget.countLabel() + repaintTarget.countText()));
 			}
 		}
 		for (Entry entry : entries)
@@ -88,7 +88,7 @@ final class SkillClogSectionRenderer
 				height += headingMetrics.getHeight() + HEADER_GAP + CardBody.SECTION_RULE + CardBody.SECTION_AFTER;
 			}
 			height += detailMetrics.getHeight() + HEADER_GAP;
-			if (showsRiftsClosed(entry.section))
+			if (repaintTarget.countsSection(entry.section))
 			{
 				height += detailMetrics.getHeight() + HEADER_GAP;
 			}
@@ -125,11 +125,11 @@ final class SkillClogSectionRenderer
 				progressText(section.primary(), section.itemIds().size()),
 				progressColor(section.primary(), section.itemIds().size()));
 			y += detailMetrics.getHeight() + HEADER_GAP;
-			if (showsRiftsClosed(section))
+			if (repaintTarget.countsSection(section))
 			{
 				TitleTooltip.drawLabelValue(g2, detailMetrics, inset, y + detailMetrics.getAscent(),
-					SkillTooltip.RIFTS_CLOSED_LABEL, repaintTarget.riftsClosedText(),
-					repaintTarget.riftsClosed >= 0 ? NativeTooltip.valueColor : TitleTooltip.MUTED_GRAY);
+					repaintTarget.countLabel(), repaintTarget.countText(),
+					repaintTarget.count >= 0 ? NativeTooltip.valueColor : TitleTooltip.MUTED_GRAY);
 				y += detailMetrics.getHeight() + HEADER_GAP;
 			}
 			y = paintGrid(g2, entry, section.primary(), i, inset, y, cols, hitBoxes);
@@ -168,11 +168,6 @@ final class SkillClogSectionRenderer
 	{
 		return fm.stringWidth(OBTAINED_LABEL
 			+ progressText(section.primary(), section.itemIds().size()));
-	}
-
-	private boolean showsRiftsClosed(SkillClogSection section)
-	{
-		return repaintTarget.showsRiftsClosed() && section.isCategory(PanelData.GOTR_CATEGORY);
 	}
 
 	private int soloColumns(int availableWidth, int itemCount)

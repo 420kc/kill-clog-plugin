@@ -48,6 +48,21 @@ public class HighGamblesTest
 		assertEquals(57, ClogResult.pickFullerProvider(provider, synced).getHighGambles());
 	}
 
+	@Test
+	public void theBarbarianAssaultPageLeadsWithTheCount()
+	{
+		TooltipData page = TooltipData.builder().name("Barbarian Assault").obtainedCount(3).totalItems(11).build();
+		ClogResult log = new ClogResult("420 kc", Map.of(), Map.of(), Map.of(), null, null);
+		assertSame("not carried: the card stays as it was", page, HighGambles.onPage(HighGambles.CATEGORY, page, log));
+		log.setHighGambles(0);
+		TooltipData shown = HighGambles.onPage(HighGambles.CATEGORY, page, log);
+		assertEquals(HighGambles.LABEL, shown.kcLabel);
+		assertEquals(0, shown.kc);
+		assertSame("another page never shows it", page, HighGambles.onPage("pest_control", page, log));
+		assertNull(HighGambles.onPage(HighGambles.CATEGORY, null, log));
+		assertSame(page, HighGambles.onPage(HighGambles.CATEGORY, page, null));
+	}
+
 	private static JsonObject body(ClogResult log) throws Exception
 	{
 		Method build = SyncService.class.getDeclaredMethod("buildBody", long.class, AccountType.class,

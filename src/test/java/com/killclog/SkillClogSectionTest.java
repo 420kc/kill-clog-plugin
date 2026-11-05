@@ -535,7 +535,7 @@ public class SkillClogSectionTest
 		boolean runecraft = skill == Skill.RUNECRAFT;
 		if (runecraft)
 		{
-			target.setRiftsClosed(34);
+			target.setSectionCount(PanelData.GOTR_CATEGORY, SkillTooltip.RIFTS_CLOSED_LABEL, 34);
 		}
 		Dimension soloSize = solo.soloSize(100);
 		BufferedImage image = new BufferedImage(

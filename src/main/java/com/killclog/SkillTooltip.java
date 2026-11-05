@@ -19,8 +19,11 @@ public class SkillTooltip extends TitleTooltip
 
 	private Stats stats = Stats.empty();
 	private List<SkillClogSection> sections = Collections.emptyList();
-	private boolean showRiftsClosed;
-	int riftsClosed = -1;
+	// One clog section's own count, as the game shows it for that activity: Runecraft's Rifts Closed in Guardians of
+	// the Rift, Attack's High-level Gambles in Barbarian Assault. No category, no count.
+	private String countCategory;
+	private String countLabel;
+	int count = -1;
 	private final SkillClogSectionRenderer sectionRenderer = new SkillClogSectionRenderer(this);
 	// A skill's log scrolls at full size past the height of a long Collection Log tab, a sprite row a notch.
 	private final CardBody.Scroll scroll = new CardBody.Scroll(this,
@@ -35,8 +38,9 @@ public class SkillTooltip extends TitleTooltip
 		clearSubtitle();
 		stats = Stats.from(skill, result, virtualLevels);
 		this.sections = sections != null ? sections : Collections.emptyList();
-		showRiftsClosed = false;
-		riftsClosed = -1;
+		countCategory = null;
+		countLabel = null;
+		count = -1;
 		sectionRenderer.setSections(this.sections, itemManager);
 		if (!this.sections.isEmpty())
 		{
@@ -51,10 +55,12 @@ public class SkillTooltip extends TitleTooltip
 		}
 	}
 
-	public void setRiftsClosed(int riftsClosed)
+	/** The count the section for {@code category} shows under its Obtained line; -1 reads "--". */
+	public void setSectionCount(String category, String label, int count)
 	{
-		showRiftsClosed = true;
-		this.riftsClosed = riftsClosed;
+		countCategory = category;
+		countLabel = label;
+		this.count = count;
 	}
 
 	@Override
@@ -89,14 +95,19 @@ public class SkillTooltip extends TitleTooltip
 		return scroll;
 	}
 
-	boolean showsRiftsClosed()
+	boolean countsSection(SkillClogSection section)
 	{
-		return showRiftsClosed;
+		return countCategory != null && section.isCategory(countCategory);
 	}
 
-	String riftsClosedText()
+	String countLabel()
 	{
-		return riftsClosed >= 0 ? grouped(riftsClosed) : "--";
+		return countLabel;
+	}
+
+	String countText()
+	{
+		return count >= 0 ? grouped(count) : "--";
 	}
 
 	private static int rowWidth(FontMetrics fm, String label, String value)
