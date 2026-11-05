@@ -241,10 +241,19 @@ final class ClogHelper
 		return String.valueOf(kc);
 	}
 
-	/** A count as every cell and card shows one: shortened past 10k, or "--" when there is none. */
+	/** A count as every cell shows one: shortened past 10k, or "--" when there is none. */
 	static String countText(int count)
 	{
 		return count > 0 ? formatKc(count) : "--";
+	}
+
+	/**
+	 * A count as a card shows one: in full and grouped (12,345), since a card has the room the grid's cell lacks
+	 * (cubeee, issue 21), or "--" when there is none.
+	 */
+	static String cardCountText(int count)
+	{
+		return count > 0 ? TitleTooltip.grouped(count) : "--";
 	}
 
 }

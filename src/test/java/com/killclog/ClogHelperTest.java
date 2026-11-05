@@ -355,6 +355,33 @@ public class ClogHelperTest
 	}
 
 	@Test
+	public void cardsShowAKillCountInFullWhereTheGridShortensIt() throws Exception
+	{
+		// cubeee, issue 21: past 10k the grid's cell shortens a count to fit ("12k"); the card has the room to show it.
+		assertEquals("12k", ClogHelper.countText(12_345));
+		assertEquals("12,345", ClogHelper.cardCountText(12_345));
+		assertEquals("--", ClogHelper.cardCountText(0));
+		assertEquals("Sol Heredit before any Glory reads its kills in full", "12,345",
+			ColosseumGlory.headerValue(-1, 12_345));
+
+		TooltipData data = TooltipData.builder().name("Tombs of Amascut").totalItems(1)
+			.allItemIds(Collections.singletonList(27277)).statLabel("Kills: ").statValue(12_345).rank(-1)
+			.hardLabel("Expert").hardKc(43_210).build();
+		ImgTooltip card = new ImgTooltip(5);
+		assertTrue(Cells.configureNotSynced(card, data, null, true));
+		java.lang.reflect.Field linesField = TitleTooltip.class.getDeclaredField("infoLines");
+		linesField.setAccessible(true);
+		List<String> values = new java.util.ArrayList<>();
+		for (Object line : (List<?>) linesField.get(card))
+		{
+			java.lang.reflect.Field value = line.getClass().getDeclaredField("value");
+			value.setAccessible(true);
+			values.add((String) value.get(line));
+		}
+		assertEquals(Arrays.asList("12,345", "43,210"), values);
+	}
+
+	@Test
 	public void theTiersAreClogTiersTsvRowForRow()
 	{
 		assertArrayEquals(new String[]{

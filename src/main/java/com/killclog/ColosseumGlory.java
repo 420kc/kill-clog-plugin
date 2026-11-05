@@ -56,6 +56,6 @@ final class ColosseumGlory
 
 	static String headerValue(int glory, int kc)
 	{
-		return isVisible(glory) ? format(glory) : ClogHelper.formatKc(kc);
+		return isVisible(glory) ? format(glory) : TitleTooltip.grouped(kc);
 	}
 }

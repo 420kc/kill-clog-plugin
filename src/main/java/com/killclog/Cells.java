@@ -444,7 +444,7 @@ public class Cells
 			if (hasHeaderScore && config.showTooltipKc())
 			{
 				tip.setInfoLine(isSolHeredit ? ColosseumGlory.headerLabel(glory) : data.kcLabel != null ? data.kcLabel : "KC: ",
-					isSolHeredit ? ColosseumGlory.headerValue(glory, data.kc) : ClogHelper.formatKc(data.kc),
+					isSolHeredit ? ColosseumGlory.headerValue(glory, data.kc) : TitleTooltip.grouped(data.kc),
 					NativeTooltip.valueColor);
 				if (data.pb != null && config.showTooltipPb())
 				{
@@ -755,7 +755,7 @@ public class Cells
 		{
 			if (data.statLabel != null && showKc)
 			{
-				tip.setInfoLine(data.statLabel, ClogHelper.countText(data.statValue), NativeTooltip.valueColor);
+				tip.setInfoLine(data.statLabel, ClogHelper.cardCountText(data.statValue), NativeTooltip.valueColor);
 			}
 			addHardModeLine(tip, data, showKc, false);
 		}
@@ -779,7 +779,7 @@ public class Cells
 		}
 		if (data.hardKc >= 0 && showKc)
 		{
-			tip.addInfoLine(data.hardLabel + ": ", ClogHelper.formatKc(data.hardKc), NativeTooltip.valueColor);
+			tip.addInfoLine(data.hardLabel + ": ", TitleTooltip.grouped(data.hardKc), NativeTooltip.valueColor);
 			if (data.hardPb != null && showPb)
 			{
 				tip.setInfoLinePair(pbLabel(data.hardPb), pbTime(data.hardPb), NativeTooltip.valueColor);
