@@ -49,6 +49,20 @@ public class HighGamblesTest
 	}
 
 	@Test
+	public void everyCopyOfALogKeepsItsCount()
+	{
+		ClogResult synced = new ClogResult("8lD", Map.of(HighGambles.CATEGORY, List.of(new ClogResult.ClogItem(10548, 1, null),
+			new ClogResult.ClogItem(10550, 1, null))), Map.of(), Map.of(), null, null);
+		synced.setHighGambles(57);
+		ClogResult empty = new ClogResult("8lD", Map.of(), Map.of(), Map.of(), null, null);
+		assertEquals("the synced log wins the grid and keeps its own count",
+			57, ClogResult.pickFullest(empty, synced).getHighGambles());
+		assertEquals(57, synced.withSources(false, false, true).getHighGambles());
+		assertEquals(57, synced.withLocalSource(true).getHighGambles());
+		assertEquals(57, synced.onPages(Map.of(HighGambles.CATEGORY, List.of(10548, 10550)), id -> id).getHighGambles());
+	}
+
+	@Test
 	public void theBarbarianAssaultPageLeadsWithTheCount()
 	{
 		TooltipData page = TooltipData.builder().name("Barbarian Assault").obtainedCount(3).totalItems(11).build();

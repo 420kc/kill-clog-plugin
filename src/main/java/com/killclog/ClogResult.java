@@ -36,11 +36,11 @@ public class ClogResult
 	@Getter
 	@Setter
 	private int uniqueTotal = -1;
-	/** TempleOSRS's EHP and EHC for the account's own flavour, or -1 when Temple gave none */
 	/** The Barbarian Assault page's High-level Gambles, from the player's own client or sync; -1 when unknown */
 	@Getter
 	@Setter
 	private int highGambles = -1;
+	/** TempleOSRS's EHP and EHC for the account's own flavour, or -1 when Temple gave none */
 	@Getter
 	@Setter
 	private double templeEhp = -1;

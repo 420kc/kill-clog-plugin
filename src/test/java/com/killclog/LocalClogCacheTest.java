@@ -480,6 +480,22 @@ public class LocalClogCacheTest
 	}
 
 	@Test
+	public void aLookupKeepsTheCountTheirSyncSentAndNoOtherNameGetsIt()
+	{
+		LocalClogCache cache = memory("Tester");
+		ClogResult synced = clog("Zezima", categoryItems("barbarian_assault", 1), obtainedItems("barbarian_assault", 1));
+		synced.setHighGambles(57);
+		cache.cacheResult(synced);
+		assertEquals("the cached lookup serves the count, as a fresh-cache lookup reads it",
+			57, cache.toClogResult("Zezima", null).getHighGambles());
+		cache.cacheResult(clog("Zezima", categoryItems("barbarian_assault", 1), obtainedItems("barbarian_assault", 1)));
+		assertEquals("a provider's log that doesn't carry it keeps the one held",
+			57, cache.toClogResult("Zezima", null).getHighGambles());
+		cache.cacheResult(clog("Lynx Titan", categoryItems("barbarian_assault", 1), obtainedItems("barbarian_assault", 1)));
+		assertEquals(-1, cache.toClogResult("Lynx Titan", null).getHighGambles());
+	}
+
+	@Test
 	public void aHardcoreResetStartsTheOwnLogOverAndNothingElseDoes() throws Exception
 	{
 		File dir = temporaryFolder.newFolder();

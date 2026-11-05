@@ -735,6 +735,8 @@ public class KillClogPlugin extends Plugin
 		if (hardcoreXp > 0 && localClogCache.startOverOnReset(hardcoreName, hardcoreXp, settledNow))
 		{
 			chatNotifier.send(ChatNotice.SYNC_RESULT, "Kill Clog started your collection log over for your new run.");
+			// This tick's counter reads went to the run that ended: the fresh log takes the new run's, gambles too.
+			reconcileClogTotalsFromVarps();
 			ownLogServing(localClogCache, hardcoreName);
 			SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(hardcoreName));
 		}
