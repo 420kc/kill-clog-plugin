@@ -177,6 +177,18 @@ public class NameAutocompleterTest
 	}
 
 	@Test
+	public void aSelectionRunningToTheEndKeepsRightForTheBox()
+	{
+		// QA 11/5: an autofill's tail is selected to the box's end; with no key between, only the selection's start
+		// tells it from a recall, and Right accepts it.
+		JTextField box = new JTextField();
+		NameAutocompleter autocompleter = recalledLynxTitan(box);
+		box.select(1, box.getText().length());
+		assertFalse(press(autocompleter, box, KeyEvent.VK_RIGHT));
+		assertEquals("Lynx Titan", box.getText());
+	}
+
+	@Test
 	public void shiftAloneLeavesTheRecallStanding()
 	{
 		JTextField box = new JTextField();
