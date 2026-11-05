@@ -35,14 +35,16 @@ public class NameAutocompleter implements KeyListener
 	// A modifier pressed alone, which leaves a recall standing.
 	private static final Set<Integer> MODIFIER_KEYS = new HashSet<>(Arrays.asList(KeyEvent.VK_SHIFT,
 		KeyEvent.VK_CONTROL, KeyEvent.VK_ALT, KeyEvent.VK_META, KeyEvent.VK_ALT_GRAPH));
-	// Which of this session's searches Right last put in the box, newest at 0; -1 once anything else happened there.
+	// Which of this session's searches Right last put in the box, newest at 0, and its text; -1 once a key ended it.
 	private int recalled = -1;
+	private String recalledText;
 
 	/**
-	 * With the box empty, or showing the search Right just brought back, Right steps back through this session's
-	 * searches, from the newest round to it again (Dylan 11/4). Any other key, typed or pressed, ends the recall, so
-	 * Right moves the cursor and accepts an autofill again even when the box holds a name it once brought back; with
-	 * Shift, Ctrl or Alt held, Right is always the box's own.
+	 * With the box empty, or still showing just what Right last brought back with the cursor at its end, Right steps
+	 * back through this session's searches, from the newest round to it again (Dylan 11/4). At the end of the box Right
+	 * has nothing to move, so it never takes a cursor move; a click elsewhere in the name, a selection (an autofill's),
+	 * a name written in by a lookup, or any other key, typed or pressed, leaves Right as the box's own. With Shift, Ctrl
+	 * or Alt held it is always the box's own.
 	 */
 	@Override
 	public void keyPressed(KeyEvent e)
@@ -59,13 +61,16 @@ public class NameAutocompleter implements KeyListener
 		String text = input.getText();
 		List<String> newestFirst = new ArrayList<>(searchHistory);
 		Collections.reverse(newestFirst);
-		boolean showing = recalled >= 0 && recalled < newestFirst.size() && text.equals(newestFirst.get(recalled));
+		boolean atEnd = input.getSelectionStart() == text.length() && input.getSelectionEnd() == text.length();
+		boolean showing = recalled >= 0 && text.equals(recalledText) && atEnd;
 		if (newestFirst.isEmpty() || !(text.isEmpty() || showing))
 		{
 			return;
 		}
 		recalled = showing ? (recalled + 1) % newestFirst.size() : 0;
-		input.setText(newestFirst.get(recalled));
+		recalledText = newestFirst.get(recalled);
+		input.setText(recalledText);
+		input.setCaretPosition(recalledText.length());
 		autofill = null;
 		e.consume();
 	}

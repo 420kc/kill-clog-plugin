@@ -135,6 +135,61 @@ public class NameAutocompleterTest
 	}
 
 	@Test
+	public void enterOnTheNewestRecallEndsIt()
+	{
+		// QA 11/5: Enter on the newest search, which stays the newest, still hands Right back to the box.
+		JTextField box = new JTextField();
+		NameAutocompleter autocompleter = new NameAutocompleter(null);
+		autocompleter.addToSearchHistory("Zezima");
+		autocompleter.addToSearchHistory("420 kc");
+		press(autocompleter, box, KeyEvent.VK_RIGHT);
+		assertEquals("420 kc", box.getText());
+		press(autocompleter, box, KeyEvent.VK_ENTER);
+		autocompleter.addToSearchHistory("420 kc");
+		box.setText("420 kc");
+		assertFalse(press(autocompleter, box, KeyEvent.VK_RIGHT));
+		assertEquals("420 kc", box.getText());
+	}
+
+	@Test
+	public void aClickIntoARecallOrALookupWrittenInKeepsRightForTheCursor()
+	{
+		// QA 11/5: no key ends these, so the recall holds only while the box shows just what it put there, cursor at
+		// its end, where Right has nothing to move.
+		JTextField box = new JTextField();
+		NameAutocompleter autocompleter = recalledLynxTitan(box);
+		box.setCaretPosition(2);
+		assertFalse("a click into the name: Right moves the cursor", press(autocompleter, box, KeyEvent.VK_RIGHT));
+		assertEquals("Lynx Titan", box.getText());
+
+		// The newest recalled, then a lookup's name written in becomes the newest search in its place.
+		box = new JTextField();
+		autocompleter = new NameAutocompleter(null);
+		autocompleter.addToSearchHistory("Zezima");
+		autocompleter.addToSearchHistory("420 kc");
+		press(autocompleter, box, KeyEvent.VK_RIGHT);
+		assertEquals("420 kc", box.getText());
+		autocompleter.addToSearchHistory("Woox");
+		box.setText("Woox");
+		box.setCaretPosition(4);
+		assertFalse("a lookup's name written in is the player's own", press(autocompleter, box, KeyEvent.VK_RIGHT));
+		assertEquals("Woox", box.getText());
+	}
+
+	@Test
+	public void shiftAloneLeavesTheRecallStanding()
+	{
+		JTextField box = new JTextField();
+		NameAutocompleter autocompleter = recalledLynxTitan(box);
+		press(autocompleter, box, KeyEvent.VK_SHIFT);
+		assertTrue(press(autocompleter, box, KeyEvent.VK_RIGHT));
+		assertEquals("Zezima", box.getText());
+		press(autocompleter, box, KeyEvent.VK_LEFT);
+		box.setCaretPosition(box.getText().length());
+		assertFalse("Left ends it, though no character was typed", press(autocompleter, box, KeyEvent.VK_RIGHT));
+	}
+
+	@Test
 	public void rightWithAModifierIsTheBoxsOwn()
 	{
 		JTextField box = new JTextField();
