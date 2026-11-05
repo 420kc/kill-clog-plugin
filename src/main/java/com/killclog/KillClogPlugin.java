@@ -394,6 +394,8 @@ public class KillClogPlugin extends Plugin
 		panel.setFirstParty(firstParty(hasLocalClog));
 		if (hasLocalClog)
 		{
+			// The log may have loaded after the settle tick's counter reads skipped it: read them for it now.
+			clientThread.invokeLater(this::reconcileClogTotalsFromVarps);
 			publication.scheduleAutomaticSync();
 		}
 	}
@@ -649,6 +651,9 @@ public class KillClogPlugin extends Plugin
 		if (cache.hasFirstPartyDataForActive())
 		{
 			panel.setFirstParty(PanelStatusRow.FirstParty.READY);
+			// A first capture makes the log the settle tick's counter reads found missing: read them now, ahead of the
+			// debounced push, so a new setup's first sync carries its gambles (Sol, 11/5).
+			clientThread.invokeLater(this::reconcileClogTotalsFromVarps);
 			publication.scheduleAutomaticSync();
 		}
 	}
