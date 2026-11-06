@@ -1,6 +1,7 @@
 package com.killclog;
 
 import java.util.*;
+import javax.annotation.*;
 import net.runelite.api.Client;
 import net.runelite.api.gameval.*;
 import net.runelite.api.widgets.Widget;
@@ -21,6 +22,12 @@ import net.runelite.client.util.Text;
  * (tribrd's Gauntlet 13:27.6 as their Sol Heredit, the page before), and a redraw took the varp as it stood. Missing a
  * reading costs nothing (the kills still say the record); two pages with the same time, or a page opened again, read
  * nothing on that visit.
+ *
+ * The timing alone still let Amoxliatl's time through to the page above or below it (Xinical's and im ladyrin's
+ * Alchemical Hydra 0:28.80 on 2.7.2 and 2.7.4, Medium CoX's Araxxor on 2.7.7), so a page also never takes the time
+ * the page shown before it holds, read from its page, its kills or the Adventure Log. Two neighbours with truly the
+ * same time read the second on a later visit, from another page. It looks one page back, at times already held: a
+ * page that holds nothing in between, or a page never held at all, still leaves the timing as the only guard.
  *
  * Times read this way are kept under their own keys ("pagepb."): the ones 2.6.3 and earlier kept ("clogpb.") may be
  * another page's, so they are never read or sent again, and each account's are cleared the first time it reads a
@@ -67,6 +74,7 @@ final class ClogPbs
 			return;
 		}
 		boolean newPage = !page.equals(shownPage);
+		String before = shownPage;
 		shownPage = page;
 		if (!newPage || UNSETTLED.contains(page.toLowerCase(Locale.ROOT)))
 		{
@@ -77,13 +85,35 @@ final class ClogPbs
 			String text = Text.removeTags(line.getText());
 			if (text.startsWith("Personal Best Corrupted:") && sent[1])
 			{
-				record(AdvLogPbs.canonicalSection("The Corrupted Gauntlet"), client.getVarpValue(VARPS[1]));
+				record(AdvLogPbs.canonicalSection("The Corrupted Gauntlet"), client.getVarpValue(VARPS[1]), before);
 			}
 			else if (text.startsWith("Personal Best:") && sent[0])
 			{
-				record(AdvLogPbs.canonicalSection(page), client.getVarpValue(VARPS[0]));
+				record(AdvLogPbs.canonicalSection(page), client.getVarpValue(VARPS[0]), before);
 			}
 		}
+	}
+
+	/**
+	 * Whether the page shown before holds this time, from its page, its kills or the Adventure Log, the same record
+	 * shown without its tenths (precise timing off) included.
+	 */
+	private boolean heldBefore(@Nullable String before, double seconds)
+	{
+		if (before == null)
+		{
+			return false;
+		}
+		String key = AdvLogPbs.canonicalSection(before);
+		for (String prefix : new String[]{KEY_PREFIX, KillLog.KEY_PREFIX, AdvLogPbs.KEY_PREFIX})
+		{
+			Double held = configManager.getRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, prefix + key, double.class);
+			if (held != null && PbRecord.sameRecord(held, seconds))
+			{
+				return true;
+			}
+		}
+		return false;
 	}
 
 	/** A varp changed (onVarbitChanged); client thread. A PB time, for the page the log draws next. */
@@ -111,12 +141,13 @@ final class ClogPbs
 		return page.isEmpty() ? null : page;
 	}
 
-	private void record(String key, int ticks)
+	private void record(String key, int ticks, @Nullable String before)
 	{
-		if (ticks > 0)
+		double seconds = ticks * 6 / 10.0;
+		if (ticks > 0 && !heldBefore(before, seconds))
 		{
 			clearOldTimes();
-			configManager.setRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, KEY_PREFIX + key, ticks * 6 / 10.0);
+			configManager.setRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, KEY_PREFIX + key, seconds);
 		}
 	}
 

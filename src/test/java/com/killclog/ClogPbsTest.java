@@ -197,6 +197,67 @@ public class ClogPbsTest
 	}
 
 	@Test
+	public void aPageNeverTakesTheTimeThePageBeforeHolds()
+	{
+		// Medium CoX, 11/6 on 2.7.7: Amoxliatl's 0:28.80, then Araxxor, a page they have no record on, which the game
+		// still draws with that time, and the time arriving just before Araxxor drew. The timing alone took it.
+		page("Amoxliatl", "Obtained: <col=ffff00>2/5</col>", "Personal Best: <col=ffffff>0:28.80</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 48);
+		draws(1);
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.amoxliatl", 28.8);
+		when(configManager.getRSProfileConfiguration("killclog", "pagepb.amoxliatl", double.class)).thenReturn(28.8);
+		page("Araxxor", "Obtained: <col=ffff00>0/9</col>", "Personal Best: <col=ffffff>0:28.80</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 48);
+		draws(1);
+		verify(configManager, never()).setRSProfileConfiguration(eq("killclog"), eq("pagepb.araxxor"), any());
+
+		// Xinical's way, 10/26 on 2.7.2: up to the Alchemical Hydra, the time the page before holds from its kills.
+		when(configManager.getRSProfileConfiguration("killclog", "pagepb.amoxliatl", double.class)).thenReturn(null);
+		when(configManager.getRSProfileConfiguration("killclog", "livepb.amoxliatl", double.class)).thenReturn(28.8);
+		page("Amoxliatl", "Obtained: <col=ffff00>2/5</col>", "Personal Best: <col=ffffff>0:28.80</col>");
+		draws(1);
+		page("Alchemical Hydra", "Obtained: <col=ffff00>3/11</col>", "Personal Best: <col=ffffff>0:28.80</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 48);
+		draws(1);
+		verify(configManager, never()).setRSProfileConfiguration(eq("killclog"), eq("pagepb.alchemical hydra"), any());
+
+		// A time of the page's own, different from the page before's, is read as ever.
+		page("Araxxor", "Obtained: <col=ffff00>2/9</col>", "Personal Best: <col=ffffff>1:40.80</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 168);
+		draws(1);
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.araxxor", 100.8);
+	}
+
+	@Test
+	public void thePageBeforesTimeCountsWithoutItsTenthsAndFromTheAdventureLog()
+	{
+		// Kills with precise timing off keep "0:29" for Amoxliatl's 0:28.80: the same record.
+		when(configManager.getRSProfileConfiguration("killclog", "livepb.amoxliatl", double.class)).thenReturn(29.0);
+		page("Amoxliatl", "Obtained: <col=ffff00>2/5</col>", "Personal Best: <col=ffffff>0:28.80</col>");
+		draws(1);
+		page("Araxxor", "Obtained: <col=ffff00>0/9</col>", "Personal Best: <col=ffffff>0:28.80</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 48);
+		draws(1);
+		// Held only from the Adventure Log.
+		when(configManager.getRSProfileConfiguration("killclog", "livepb.amoxliatl", double.class)).thenReturn(null);
+		when(configManager.getRSProfileConfiguration("killclog", "advlogpb.araxxor", double.class)).thenReturn(28.8);
+		page("Alchemical Hydra", "Obtained: <col=ffff00>3/11</col>", "Personal Best: <col=ffffff>0:28.80</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 48);
+		draws(1);
+		verify(configManager, never()).setRSProfileConfiguration(eq("killclog"), eq("pagepb.araxxor"), any());
+		verify(configManager, never()).setRSProfileConfiguration(eq("killclog"), eq("pagepb.alchemical hydra"), any());
+
+		// One tick apart is another time: Amoxliatl 0:28.80, then Araxxor's own 0:29.40.
+		when(configManager.getRSProfileConfiguration("killclog", "pagepb.amoxliatl", double.class)).thenReturn(28.8);
+		page("Amoxliatl", "Obtained: <col=ffff00>2/5</col>", "Personal Best: <col=ffffff>0:28.80</col>");
+		draws(1);
+		page("Araxxor", "Obtained: <col=ffff00>2/9</col>", "Personal Best: <col=ffffff>0:29.40</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 49);
+		draws(1);
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.araxxor", 29.4);
+	}
+
+	@Test
 	public void aTimeThatLandsAtAnyOtherMomentIsNobodys()
 	{
 		// A value that lands with no page drawing just after it (the log closed between the two) goes unused, and
