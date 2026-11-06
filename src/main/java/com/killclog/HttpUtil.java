@@ -178,6 +178,7 @@ final class HttpUtil
 		}
 		catch (RuntimeException e)
 		{
+			// A Retry-After in neither the seconds nor the date form adds no wait of its own.
 			return 0;
 		}
 	}

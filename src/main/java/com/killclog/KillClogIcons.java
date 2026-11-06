@@ -84,6 +84,7 @@ final class KillClogIcons
 		}
 		catch (RuntimeException ignored)
 		{
+			// Only a broken jar lacks a bundled icon; the sidebar button then wears the Collection Log item instead.
 			return null;
 		}
 	}

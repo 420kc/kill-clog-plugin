@@ -22,6 +22,7 @@ final class ClogDates
 		}
 		catch (RuntimeException ignored)
 		{
+			// A date in neither shape is no date at all: a wrong acquisition date is worse than none.
 			return null;
 		}
 	}

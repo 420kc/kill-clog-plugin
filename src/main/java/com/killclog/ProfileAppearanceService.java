@@ -347,6 +347,7 @@ final class ProfileAppearanceService
 		}
 		catch (RuntimeException e)
 		{
+			// Never taken: the caller passes Instant's own text, which always reads back.
 			return null;
 		}
 	}
@@ -363,6 +364,7 @@ final class ProfileAppearanceService
 		}
 		catch (RuntimeException e)
 		{
+			// A reply that is not JSON is no reply, and no success check passes on one.
 			return null;
 		}
 	}
@@ -396,6 +398,7 @@ final class ProfileAppearanceService
 		}
 		catch (RuntimeException e)
 		{
+			// A field of the wrong type is no success.
 			return false;
 		}
 	}
@@ -412,6 +415,7 @@ final class ProfileAppearanceService
 		}
 		catch (RuntimeException e)
 		{
+			// A field of the wrong type is no success.
 			return false;
 		}
 	}
@@ -426,6 +430,7 @@ final class ProfileAppearanceService
 		}
 		catch (RuntimeException e)
 		{
+			// A field that is not a string reads as absent.
 			return null;
 		}
 	}

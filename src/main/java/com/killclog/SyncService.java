@@ -314,6 +314,7 @@ class SyncService
 		}
 		catch (RuntimeException e)
 		{
+			// The server took the sync (this is a 2xx reply), so a body that does not read is no dry run: the sync counts as saved.
 			return false;
 		}
 	}

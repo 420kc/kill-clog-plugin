@@ -537,6 +537,7 @@ public class HiscoreService
 		}
 		catch (Exception e)
 		{
+			// A body that does not read has no total, so account-type detection never picks this table from it.
 			return -1;
 		}
 	}
@@ -711,6 +712,7 @@ public class HiscoreService
 		}
 		catch (Exception e)
 		{
+			// A board missing a combat skill has no combat level, and its cell shows dashes.
 			return -1;
 		}
 	}

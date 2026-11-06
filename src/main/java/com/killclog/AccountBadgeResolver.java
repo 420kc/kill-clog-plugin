@@ -121,6 +121,7 @@ final class AccountBadgeResolver
 		}
 		catch (Exception e)
 		{
+			// A badge picture that will not load is no badge; the name still shows.
 			return null;
 		}
 	}

@@ -71,6 +71,7 @@ final class ClogProviderFanout
 		}
 		catch (Exception ex)
 		{
+			// A source that fails before it even starts is no answer; the other sources still answer.
 			return CompletableFuture.completedFuture(null);
 		}
 	}
