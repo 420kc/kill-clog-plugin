@@ -9,7 +9,6 @@ import javax.swing.*;
 import lombok.*;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.game.*;
-import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.util.*;
 
 /**
@@ -87,28 +86,8 @@ final class PanelIconCache
 					clogTierIcons.put(tier, icon));
 			}
 
-			// Clue summary tooltip icons: 1-6=tier scrolls, 7=Mimic (0=All loaded via spriteManager below).
-			for (int i = 0; i < PanelData.CLUE_TIER_ITEM_IDS.length; i++)
-			{
-				final int idx = i + 1;
-				loadItemImage(itemManager, PanelData.CLUE_TIER_ITEM_IDS[i], img ->
-					cells.getClueIcons()[idx] = cellIcon(img, 13));
-			}
-			loadItemImage(itemManager, 23184, img ->
-				cells.getClueIcons()[7] = cellIcon(img, 13));
 		});
 
-		loadClueAllIcon(cells);
-	}
-
-	private void loadClueAllIcon(Cells cells)
-	{
-		// Clue All icon via spriteManager (game sprite, not item).
-		int allSpriteId = HiscoreSkill.CLUE_SCROLL_ALL.getSpriteId();
-		if (allSpriteId != -1)
-		{
-			cellSprite(spriteManager, allSpriteId, 13, icon -> cells.getClueIcons()[0] = icon);
-		}
 	}
 
 	/** An item image resized into an icon, delivered on the Swing thread once it has loaded. */

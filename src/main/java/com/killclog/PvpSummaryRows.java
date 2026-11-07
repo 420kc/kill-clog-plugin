@@ -65,6 +65,6 @@ final class PvpSummaryRows
 		{
 			shown[i] = scores[i] > 0 ? obtained[i] : -1;
 		}
-		return CardBody.table(icons, LABELS, scores, shown, total, null, ICON_SIZE, ICON_GAP, COL_GAP);
+		return CardBody.table(icons, LABELS, scores, shown, total, ICON_SIZE, ICON_GAP, COL_GAP);
 	}
 }

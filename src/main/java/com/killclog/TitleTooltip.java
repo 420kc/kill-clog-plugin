@@ -301,12 +301,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		return value > 0 ? grouped(value) : "--";
 	}
 
-	/** Rank tail that flows after a score column, e.g. " #1,234,567". */
-	protected static String rankTailText(int rank)
-	{
-		return " #" + grouped(rank);
-	}
-
 	/** Efficient-hours text: one decimal, thousands-grouped, "--" when absent. */
 	protected static String ehbText(double hours)
 	{

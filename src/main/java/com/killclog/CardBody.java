@@ -593,18 +593,11 @@ final class CardBody
 	}
 
 	/**
-	 * A table of icon, label, a right-aligned score column, then a progress column and a rank column,
-	 * each as wide as its widest entry. Progress and rank show only where the caller gives them.
+	 * A table of icon, label, a right-aligned score column, then a progress column as wide as its widest entry.
+	 * Progress shows only where the caller gives it.
 	 */
 	static Part table(BufferedImage[] icons, String[] labels, int[] scores, int[] obtained, int[] total,
-		int[] ranks, int iconSize, int iconGap, int colGap)
-	{
-		return table(icons, labels, scores, obtained, total, ranks, iconSize, iconGap, colGap, null, line -> false);
-	}
-
-	/** The same table, the lines {@code opens} names each a click row of {@code rows} (its key the line). */
-	static Part table(BufferedImage[] icons, String[] labels, int[] scores, int[] obtained, int[] total,
-		int[] ranks, int iconSize, int iconGap, int colGap, @Nullable ClickRows rows, IntPredicate opens)
+		int iconSize, int iconGap, int colGap)
 	{
 		ToIntFunction<FontMetrics> scoreRight = fm ->
 		{
@@ -627,26 +620,13 @@ final class CardBody
 			}
 			return width;
 		};
-		ToIntFunction<FontMetrics> rankCol = fm ->
-		{
-			int width = 0;
-			for (int i = 0; ranks != null && i < labels.length; i++)
-			{
-				if (ranks[i] > 0)
-				{
-					width = Math.max(width, 1 + fm.stringWidth(TitleTooltip.rankTailText(ranks[i])));
-				}
-			}
-			return width;
-		};
-		return part(c -> scoreRight.applyAsInt(c.fm) + progressCol.applyAsInt(c.fm) + rankCol.applyAsInt(c.fm),
+		return part(c -> scoreRight.applyAsInt(c.fm) + progressCol.applyAsInt(c.fm),
 			c -> NativeTooltip.LINE_HEIGHT * labels.length, (c, y) ->
 			{
 				Graphics2D g = c.g;
 				FontMetrics fm = c.fm;
 				int x = c.inset();
 				int right = x + scoreRight.applyAsInt(fm);
-				int rankX = right + progressCol.applyAsInt(fm);
 				for (int i = 0; i < labels.length; i++)
 				{
 					int textY = y + fm.getAscent();
@@ -655,22 +635,13 @@ final class CardBody
 					{
 						g.drawImage(icon, x, y + (NativeTooltip.LINE_HEIGHT - iconSize) / 2, null);
 					}
-					boolean hovered = false;
-					if (rows != null && opens.test(i))
-					{
-						hovered = rows.spanShown(c, y, NativeTooltip.LINE_HEIGHT, i);
-					}
-					g.setColor(hovered ? NativeTooltip.valueColor : NativeTooltip.labelColor);
+					g.setColor(NativeTooltip.labelColor);
 					g.drawString(labels[i], x + iconSize + iconGap, textY);
 					g.setColor(NativeTooltip.valueColor);
 					TitleTooltip.drawRightAligned(g, fm, TitleTooltip.scoreText(scores[i]), right, textY);
 					if (obtained[i] >= 0)
 					{
 						TitleTooltip.paintWrappedProgressCount(g, fm, right, textY, obtained[i], total[i]);
-					}
-					if (ranks != null && ranks[i] > 0)
-					{
-						TitleTooltip.drawLabelValue(g, fm, rankX + 1, textY, " #", TitleTooltip.grouped(ranks[i]));
 					}
 					y += NativeTooltip.LINE_HEIGHT;
 				}

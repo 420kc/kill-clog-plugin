@@ -54,8 +54,6 @@ public class Cells
 
 	// Icon caches
 	@Getter
-	private final BufferedImage[] clueIcons = new BufferedImage[8];
-	@Getter
 	private final BufferedImage[] pvpActivityIcons = new BufferedImage[5];
 
 	// Cell labels
@@ -571,7 +569,7 @@ public class Cells
 		@Nullable ClogResult clog, boolean rival)
 	{
 		ClueSummaryTooltip tip = new ClueSummaryTooltip();
-		tip.setRareSprites(itemManager);
+		tip.setSprites(itemManager);
 		for (int i = 0; i < PanelData.CLUE_TIERS.length; i++)
 		{
 			tip.setProgress(i + 1, ClogHelper.clogCounts(
@@ -589,7 +587,6 @@ public class Cells
 		tip.setOnOpenLine((press, line) -> openFromClueSummary(owner, press, buildCellTooltipFor(owner,
 			line == ClueSummaryTooltip.MIMIC ? HiscoreSkill.MIMIC : PanelData.CLUE_TIERS[line - 1])));
 		tip.setComponent(owner);
-		tip.setIcons(clueIcons);
 		tip.setData(result, config.showTooltipRank());
 		return tip;
 	}

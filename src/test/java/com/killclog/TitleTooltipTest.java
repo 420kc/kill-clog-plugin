@@ -30,12 +30,6 @@ public class TitleTooltipTest
 	}
 
 	@Test
-	public void rankTailTextIsHashPrefixedAndGrouped()
-	{
-		assertEquals(" #1,234,567", TitleTooltip.rankTailText(1_234_567));
-	}
-
-	@Test
 	public void completionColorUsesOsrsStoplight()
 	{
 		assertEquals(Color.RED, TitleTooltip.completionColor(0, 5));
@@ -253,21 +247,6 @@ public class TitleTooltipTest
 	}
 
 	@Test
-	public void clueSummaryWidthUsesActualRankTail()
-	{
-		ClueSummaryTooltip unranked = new ClueSummaryTooltip();
-		unranked.setData(clueHiscore(Collections.emptyMap()), true);
-
-		Map<String, Integer> ranks = new HashMap<>();
-		ranks.put("Clue Scrolls (all)", 1_234_567);
-		ClueSummaryTooltip ranked = new ClueSummaryTooltip();
-		ranked.setData(clueHiscore(ranks), true);
-
-		// A rank widens the card only past what the rare tiles already hold it to; it never narrows it.
-		assertTrue(unranked.getPreferredSize().width <= ranked.getPreferredSize().width);
-	}
-
-	@Test
 	public void pvpRowsWidthGrowsWithLargeScore()
 	{
 		PvpSummaryRows small = new PvpSummaryRows();
@@ -428,17 +407,6 @@ public class TitleTooltipTest
 			listener.mouseMoved(event);
 		}
 	}
-
-	private static HiscoreResult clueHiscore(Map<String, Integer> ranks)
-	{
-		Map<String, Integer> scores = new HashMap<>();
-		scores.put("Clue Scrolls (all)", 42);
-		return TestViews.hiscore(AccountType.REGULAR,
-			Collections.emptyMap(), Collections.emptyMap(), scores, ranks,
-			Collections.emptyMap(), 0, 0, 0, -1);
-	}
-
-
 	@Test
 	public void aPacksScrollbarColorIsItsBodyNotItsBevel()
 	{

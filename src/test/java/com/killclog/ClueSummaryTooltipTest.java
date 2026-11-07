@@ -23,6 +23,7 @@ public class ClueSummaryTooltipTest
 		{
 		});
 		List<Point> tiles = TestViews.tiles(paint(tip));
+		tiles = tiles.subList(ClueSummaryTooltip.MIMIC, tiles.size());
 		// The five rare collections, three across.
 		assertEquals(ClueSummaryTooltip.RARE_LABELS.length, tiles.size());
 		assertEquals(tiles.get(0).x, tiles.get(3).x);
@@ -49,12 +50,11 @@ public class ClueSummaryTooltipTest
 		assertTrue(opened.isEmpty());
 
 		List<Point> tiles = TestViews.tiles(paint(tip));
-		Point hardRare = tiles.get(2);
+		Point hardRare = tiles.get(ClueSummaryTooltip.MIMIC + 2);
 		press(tip, hardRare.x + 10, hardRare.y + 10, MouseEvent.BUTTON1);
 		assertEquals(List.of(2), opened);
 
-		// A tier line opens its own card, not a rare one; a right click and the gap between tiles open nothing.
-		press(tip, 5, hardRare.y - 40, MouseEvent.BUTTON1);
+		// A right click and the gap between tiles open nothing.
 		press(tip, hardRare.x + 10, hardRare.y + 10, MouseEvent.BUTTON3);
 		press(tip, hardRare.x - 2, hardRare.y + 10, MouseEvent.BUTTON1);
 		assertEquals(List.of(2), opened);
@@ -65,38 +65,30 @@ public class ClueSummaryTooltipTest
 	{
 		ClueSummaryTooltip tip = card();
 		List<Point> tiles = TestViews.tiles(paint(tip));
-		assertEquals(-1, TestViews.tileAt(tip, "rareRows", tiles.get(0).x + 10, tiles.get(0).y + 10));
+		Point rare = tiles.get(ClueSummaryTooltip.MIMIC);
+		assertEquals(-1, TestViews.tileAt(tip, "rareRows", rare.x + 10, rare.y + 10));
 	}
 
 	@Test
-	public void everyTierAndMimicOpensItsCardFromTheSummaryButAllDoesNot()
+	public void everyTierAndMimicIsATileThatOpensItsCard()
 	{
 		ClueSummaryTooltip tip = card();
-		paint(tip);
 		List<Integer> opened = new ArrayList<>();
 		tip.setOnOpenLine((press, line) -> opened.add(line));
-		int beginner = lineY(tip, 1);
+		List<Point> tiles = TestViews.tiles(paint(tip));
+		// Beginner to Master and Mimic, then the five rare collections.
+		assertEquals(ClueSummaryTooltip.MIMIC + ClueSummaryTooltip.RARE_LABELS.length, tiles.size());
 		for (int line = 1; line <= ClueSummaryTooltip.MIMIC; line++)
 		{
-			press(tip, 5, lineY(tip, line) + 3, MouseEvent.BUTTON1);
+			Point tile = tiles.get(line - 1);
+			press(tip, tile.x + 10, tile.y + 10, MouseEvent.BUTTON1);
 		}
 		assertEquals(List.of(1, 2, 3, 4, 5, 6, 7), opened);
-		// All sums the tiers: there's no one log for it to open.
-		assertEquals(-1, TestViews.rowAt(tip, "lineRows", beginner - NativeTooltip.LINE_HEIGHT + 3));
+		// The rare tiles open nothing of the lines'.
+		Point rare = tiles.get(ClueSummaryTooltip.MIMIC);
+		press(tip, rare.x + 10, rare.y + 10, MouseEvent.BUTTON1);
+		assertEquals(7, opened.size());
 	}
-
-	private static int lineY(ClueSummaryTooltip tip, int line)
-	{
-		for (int y = 0; y < tip.getHeight(); y++)
-		{
-			if (TestViews.rowAt(tip, "lineRows", y) == line)
-			{
-				return y;
-			}
-		}
-		throw new AssertionError("no line " + line + " painted");
-	}
-
 	@Test
 	public void theHoveredRareTileIsTrackedAndClearedOnExit()
 	{
@@ -104,7 +96,7 @@ public class ClueSummaryTooltipTest
 		tip.setOnOpenRare((press, row) ->
 		{
 		});
-		Point raids = TestViews.tiles(paint(tip)).get(1);
+		Point raids = TestViews.tiles(paint(tip)).get(ClueSummaryTooltip.MIMIC + 1);
 		move(tip, raids.x + 10, raids.y + 10);
 		assertEquals(1, TestViews.hoveredRow(tip, "rareRows"));
 		move(tip, 5, 2);
