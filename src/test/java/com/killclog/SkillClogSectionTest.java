@@ -339,14 +339,14 @@ public class SkillClogSectionTest
 
 		assertTotal(catalog, Skill.ATTACK, 50);
 		assertTotal(catalog, Skill.HITPOINTS, 13);
-		assertTotal(catalog, Skill.DEFENCE, 67);
-		assertTotal(catalog, Skill.STRENGTH, 29);
+		assertTotal(catalog, Skill.DEFENCE, 68);
+		assertTotal(catalog, Skill.STRENGTH, 30);
 		assertTotal(catalog, Skill.MINING, 31);
 		assertTotal(catalog, Skill.AGILITY, 48);
 		assertTotal(catalog, Skill.SMITHING, 9);
 		assertTotal(catalog, Skill.HERBLORE, 7);
 		assertTotal(catalog, Skill.FISHING, 32);
-		assertTotal(catalog, Skill.RANGED, 45);
+		assertTotal(catalog, Skill.RANGED, 46);
 		assertTotal(catalog, Skill.THIEVING, 10);
 		assertTotal(catalog, Skill.COOKING, 34);
 		assertTotal(catalog, Skill.PRAYER, 19);
