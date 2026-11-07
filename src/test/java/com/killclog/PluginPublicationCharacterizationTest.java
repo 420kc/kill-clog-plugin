@@ -2575,13 +2575,17 @@ public class PluginPublicationCharacterizationTest
 	{
 		LiveClogSync live = mock(LiveClogSync.class);
 		replace("liveClogSync", live);
+		ManualClogSync walk = mock(ManualClogSync.class);
+		replace("manualClogSync", walk);
 		LocalClogCache league = announceLeague();
 		ticks(9);
 		unlockMessage();
 		verify(live).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), eq(league), any(), any(), eq(false));
+		verify(walk, never()).onGameTick(any(), any(), any(), any(), any(), any(), eq(true));
 		ticks(1);
 		unlockMessage();
 		verify(live).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), eq(league), any(), any(), eq(true));
+		verify(walk).onGameTick(any(), any(), eq(league), any(), any(), any(), eq(true));
 	}
 
 	@Test
