@@ -64,9 +64,9 @@ Your clan comes from the game. Other players' clans come from their Kill Clog sy
 
 Hover your Collection Log total to see your log, and click it to pin and browse every tab and page.
 
-Shift-click anything that opens a card, or right-click it and choose **Copy**, and the card opens and is copied to your clipboard as a picture, ready to paste into Discord.
+Some counts appear only on the game's own Collection Log pages, like Revenant kills, Hunter Guild rumours and the raids' Entry completions. Open a page once and its card shows the count from then on, here and on killclog.com, updated each time you open it.
 
-Hold the middle mouse button over the panel and move up or down to scroll, faster the farther you move; let go to stop.
+Shift-click anything that opens a card, or right-click it and choose **Copy**, and the card opens and is copied to your clipboard as a picture, ready to paste into Discord.
 
 ![From the Collection Log card to a tab to a page: Minigames to Castle Wars, and Other to Elder Chaos Druids](screenshots/collection-log-tab-and-page.png)
 
