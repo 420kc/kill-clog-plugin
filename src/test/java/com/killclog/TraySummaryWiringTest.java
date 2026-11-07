@@ -293,7 +293,7 @@ public class TraySummaryWiringTest
 			PanelData.RARE_ELITE, PanelData.RARE_MASTER), rows.stream().map(RareRow::getKey).collect(Collectors.toList()));
 		assertEquals(Arrays.asList("3rd Age", "Gilded", "Hard Treasure Trails (Rare)", "Elite Treasure Trails (Rare)",
 			"Master Treasure Trails (Rare)"), rows.stream().map(RareRow::getName).collect(Collectors.toList()));
-		assertArrayEquals(new String[]{"3rd Age", "Gilded", "Hard Rare", "Elite Rare", "Master Rare"},
+		assertArrayEquals(new String[]{"3rd Age", "Gilded", "Hard", "Elite", "Master"},
 			ClueSummaryTooltip.RARE_LABELS);
 		assertEquals(Arrays.asList(null, null, HiscoreSkill.CLUE_SCROLL_HARD, HiscoreSkill.CLUE_SCROLL_ELITE,
 			HiscoreSkill.CLUE_SCROLL_MASTER), rows.stream().map(RareRow::getTier).collect(Collectors.toList()));
