@@ -125,6 +125,43 @@ public class PageCountsTest
 	}
 
 	@Test
+	public void aSyncCarriesOnlyTheCountsReadSinceKillclogTookOne() throws Exception
+	{
+		// QA 11/7: a count another PC read since, newer on killclog.com, is never replaced by this PC's older one.
+		File dir = temporaryFolder.newFolder();
+		LocalClogCache cache = LocalClogCacheTest.onDisk(dir);
+		assertTrue(StoreLogin.activate(cache, "Tester", 77L));
+		cache.cacheFirstPartyResult(new ClogResult("Tester", Map.of("revenants", List.of(
+			new ClogResult.ClogItem(21804, 1, null))), Map.of("revenants", List.of(21804)), Map.of(), null, null));
+		cache.setPageCount("Tester", REVS, 1204);
+		cache.setPageCount("Tester", TOB_ENTRY, 6);
+		assertEquals(Map.of(REVS, 1204, TOB_ENTRY, 6), cache.toFirstPartySyncResult("Tester").getPageCounts());
+
+		// killclog.com took a sync with the Revenants' count, and the Theatre's was read again since, to another number.
+		cache.setPageCount("Tester", TOB_ENTRY, 7);
+		cache.pageCountsSent("Tester", Map.of(REVS, 1204, TOB_ENTRY, 6));
+		assertEquals(Map.of(TOB_ENTRY, 7), cache.toFirstPartySyncResult("Tester").getPageCounts());
+		assertEquals("the cards still show every count", Map.of(REVS, 1204, TOB_ENTRY, 7),
+			cache.toClogResult("Tester", null).getPageCounts());
+		assertEquals(Integer.valueOf(1204), cache.pageCount("Tester", REVS));
+
+		// The same number read again is nothing new, so it stays home; a new one goes.
+		cache.setPageCount("Tester", REVS, 1204);
+		assertEquals(Map.of(TOB_ENTRY, 7), cache.toFirstPartySyncResult("Tester").getPageCounts());
+		cache.setPageCount("Tester", REVS, 1300);
+		assertEquals(Map.of(REVS, 1300, TOB_ENTRY, 7), cache.toFirstPartySyncResult("Tester").getPageCounts());
+
+		// Saved: a restart doesn't send what killclog.com already took.
+		cache.pageCountsSent("Tester", Map.of(REVS, 1300, TOB_ENTRY, 7));
+		StoreLogin.logout(cache);
+		LocalClogCache reloaded = LocalClogCacheTest.onDisk(dir);
+		assertTrue(StoreLogin.activate(reloaded, "Tester", 77L));
+		assertTrue(reloaded.toFirstPartySyncResult("Tester").getPageCounts().isEmpty());
+		assertEquals(Integer.valueOf(1300), reloaded.pageCount("Tester", REVS));
+		assertNull("only the serving account's own", reloaded.pageCount("Someone", REVS));
+	}
+
+	@Test
 	public void theOwnLogKeepsTheNewestReadingSavesItAndASyncSendsIt() throws Exception
 	{
 		File dir = temporaryFolder.newFolder();
@@ -141,7 +178,7 @@ public class PageCountsTest
 		cache.setPageCount("Tester", REVS, 57);
 		assertEquals("the same reading changes nothing", 1, changes[0]);
 		cache.setPageCount("Tester", REVS, 50);
-		assertEquals("a lower reading replaces it: the next reading mends a misread", 50,
+		assertEquals("a lower reading replaces it: a misread gives way to the page's next new number", 50,
 			(int) cache.toFirstPartySyncResult("Tester").getPageCounts().get(REVS));
 		cache.setPageCount("Someone", REVS, 9);
 		assertNull("only the serving account's own log", cache.toClogResult("Someone", null));

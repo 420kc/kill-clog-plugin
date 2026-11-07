@@ -948,8 +948,8 @@ public class LocalClogCache
 	}
 
 	/**
-	 * A page count read off the player's own log page (PageCounts): the newest reading replaces the last, as the page's
-	 * next reading mends one that was another page's, and a change syncs.
+	 * A page count read off the player's own log page (PageCounts): the newest reading replaces the last, and a change
+	 * syncs. It waits to be sent until killclog.com takes a sync with it ({@link #pageCountsSent}).
 	 */
 	public synchronized void setPageCount(String playerName, String label, int count)
 	{
@@ -960,8 +960,44 @@ public class LocalClogCache
 		}
 		data.pageCounts = data.pageCounts != null ? new HashMap<>(data.pageCounts) : new HashMap<>();
 		data.pageCounts.put(label, count);
+		data.pageCountsUnsent = data.pageCountsUnsent != null ? new HashSet<>(data.pageCountsUnsent) : new HashSet<>();
+		data.pageCountsUnsent.add(label);
 		submitSave(activeHashKey, true, data);
 		notifyFirstPartyChanged();
+	}
+
+	/** The serving account's own count for a label, or null when its log holds none. */
+	@Nullable
+	public synchronized Integer pageCount(String playerName, String label)
+	{
+		PlayerClogData data = ownLog(playerName);
+		return data != null && data.pageCounts != null ? data.pageCounts.get(label) : null;
+	}
+
+	/**
+	 * killclog.com took a sync carrying these counts: each still held as sent no longer waits to go. One read again
+	 * since, to another number, still waits.
+	 */
+	public synchronized void pageCountsSent(String playerName, Map<String, Integer> sent)
+	{
+		PlayerClogData data = ownLog(playerName);
+		if (data == null || data.pageCountsUnsent == null || data.pageCounts == null || sent.isEmpty())
+		{
+			return;
+		}
+		Set<String> unsent = new HashSet<>(data.pageCountsUnsent);
+		sent.forEach((label, count) ->
+		{
+			if (Objects.equals(data.pageCounts.get(label), count))
+			{
+				unsent.remove(label);
+			}
+		});
+		if (unsent.size() != data.pageCountsUnsent.size())
+		{
+			data.pageCountsUnsent = unsent.isEmpty() ? null : unsent;
+			submitSave(activeHashKey, true, data);
+		}
 	}
 
 	public synchronized boolean hasDataFor(String playerName)
@@ -1026,7 +1062,13 @@ public class LocalClogCache
 		result.setHighGambles(data.highGambles);
 		if (data.pageCounts != null)
 		{
-			result.setPageCounts(new HashMap<>(data.pageCounts));
+			// A sync carries only the counts read since killclog.com last took one: another PC may hold a newer one.
+			Map<String, Integer> counts = new HashMap<>(data.pageCounts);
+			if (sync)
+			{
+				counts.keySet().retainAll(data.pageCountsUnsent != null ? data.pageCountsUnsent : Set.of());
+			}
+			result.setPageCounts(counts);
 		}
 		return result;
 	}
@@ -1250,6 +1292,7 @@ public class LocalClogCache
 		copy.uniqueTotal = src.uniqueTotal;
 		copy.highGambles = src.highGambles;
 		copy.pageCounts = src.pageCounts != null ? new HashMap<>(src.pageCounts) : null;
+		copy.pageCountsUnsent = src.pageCountsUnsent != null ? new HashSet<>(src.pageCountsUnsent) : null;
 		copy.categories = new HashMap<>(src.categories);
 		copy.obtained = new HashMap<>(src.obtained);
 		copy.firstPartySetupComplete = src.firstPartySetupComplete;

@@ -19,6 +19,9 @@ class PlayerClogData
 	int highGambles = -1;
 	// The counts only the game's own pages show (PageCounts), label to count, the newest reading; null until one.
 	Map<String, Integer> pageCounts;
+	// The ones read since killclog.com last took a sync: only these go, so another PC's older reading never replaces a
+	// newer one there. Null when none.
+	Set<String> pageCountsUnsent;
 	Map<String, List<Integer>> categories;
 	Map<String, List<ClogResult.ClogItem>> obtained;
 	List<PendingClogUnlock> pendingUnlocks;

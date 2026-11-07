@@ -141,4 +141,20 @@ public class SyncServiceUnchangedTest
 
 		assertEquals(2, sent.size());
 	}
+
+	@Test
+	public void onlyASyncKillclogTookMarksItsCountsSent() throws Exception
+	{
+		log.getPageCounts().put("Revenant kills", 1204);
+		code = 500;
+		push();
+		org.mockito.Mockito.verify(cache, org.mockito.Mockito.never()).pageCountsSent(anyString(), any());
+		code = 200;
+		reply = "{\"dry_run\":true}";
+		push();
+		org.mockito.Mockito.verify(cache, org.mockito.Mockito.never()).pageCountsSent(anyString(), any());
+		reply = "{}";
+		push();
+		org.mockito.Mockito.verify(cache).pageCountsSent("Tester", Map.of("Revenant kills", 1204));
+	}
 }

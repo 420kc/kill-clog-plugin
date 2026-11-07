@@ -158,6 +158,7 @@ class SyncService
 				acceptedResult = result;
 				acceptedAt = System.currentTimeMillis();
 				acceptedPush = push;
+				cache.pageCountsSent(rsn, clog.getPageCounts());
 			}
 			return result;
 		});
@@ -352,7 +353,8 @@ class SyncService
 			activities.addProperty(HighGambles.ACTIVITY, clog.getHighGambles());
 			root.add("activities", activities);
 		}
-		// The counts only the game's pages show (PageCounts): killclog.com keeps the newest it was sent.
+		// The counts only the game's pages show (PageCounts), the ones read since killclog.com last took a sync: it keeps
+		// the newest it was sent, so a count this PC read long ago never replaces one another PC read since.
 		if (!clog.getPageCounts().isEmpty())
 		{
 			JsonObject counts = new JsonObject();
