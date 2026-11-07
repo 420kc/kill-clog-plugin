@@ -25,13 +25,13 @@ public class SkillClogCatalogTest
 			"items|Equipment|22983"),
 			TestViews.specSignature(Skill.ATTACK));
 		assertEquals(Arrays.asList(
-			"items|Zenyte & Upgrades|19529,29799,31109,33634",
+			"items|Equipment|19529,29799,31109,33634",
 			"items|Pest Control|8839,8840,8842,8841,11663,11665,11664,13072,13073"),
 			TestViews.specSignature(Skill.HITPOINTS));
 		assertEquals(Arrays.asList(
 			"items|Armour|10551,10555,10548,10547,10550,10549,11335,3140,22103,21298,21301,21304,11832,11834,23956,4716,4720,4722,4724,4728,4730,24268,4745,4749,4751,4753,4757,4759,22326,22327,22328,12927,30750,30765,30756,30753,26376,26378,26380",
 			"items|Shields|22100,2366,11931,11932,11933,11928,11929,11930,6524,4207,11286,34719",
-			"items|Boots, Gloves & Rings|10553,4131,10552,21643,21739,11840,11836",
+			"items|Equipment|10553,4131,10552,21643,21739,11840,11836",
 			"items|Defenders|8844,8845,8846,8847,8848,8849,8850,12954,22477"),
 			TestViews.specSignature(Skill.DEFENCE));
 		assertEquals(Arrays.asList(
@@ -78,7 +78,7 @@ public class SkillClogCatalogTest
 			"items|Standard Weapons|6724,11235,4207,29000,29580,25859,27614,20997",
 			"items|Heavy Weapons|21918,19586,11785,21012,4734,19592,19601,19589,19610,34681,26372",
 			"items|Armour|11826,11828,11830,4732,4736,4738,29010,29004,29007,27226,27229,27232,26235",
-			"items|Accessories|22006,28947,13229,21000,34669"),
+			"items|Equipment|22006,28947,13229,21000,34669"),
 			TestViews.specSignature(Skill.RANGED));
 		assertEquals(Arrays.asList(
 			"items|Pets|20663",
@@ -94,7 +94,7 @@ public class SkillClogCatalogTest
 		assertEquals(Arrays.asList(
 			"items|Prayer Unlocks|21047,21034,21079,30626,30627,34679",
 			"items|Armour|28933,28936,28939",
-			"items|Shields & Accessories|31081,12829,12833,22960,12827,22111,25346,12823,12819,25985"),
+			"items|Equipment|31081,12829,12833,22960,12827,22111,25346,12823,12819,25985"),
 			TestViews.specSignature(Skill.PRAYER));
 		assertEquals(Arrays.asList(
 			"items|Rarities|34024,19707"),
@@ -107,7 +107,7 @@ public class SkillClogCatalogTest
 		assertEquals(Arrays.asList(
 			"items|Staves & Wands|20736,20730,6562,11998,11787,6908,6910,6914,6912,6526,28583,30070,4710,27627,24517,24511,24422,24514,28268,28270,28272,28274,28988,11791,11905,11908,29580,12932,21043,30759,22481,31115,27277,34727",
 			"items|Robes|20595,20517,20520,4099,23047,4109,4101,23050,4111,4103,23053,4113,6918,6916,6924,6922,6920,4708,4712,4714,24288,24291,24294,21018,21021,21024,29019,29013,29016,26241,26243,26245",
-			"items|Accessories|25474,34404,34416,34422,34410,25476,6889,21637,12002,13227,31088",
+			"items|Equipment|25474,34404,34416,34422,34410,25476,6889,21637,12002,13227,31088",
 			"items|Spell Upgrades|34671,34673,34675,34677"),
 			TestViews.specSignature(Skill.MAGIC));
 		assertEquals(Arrays.asList(

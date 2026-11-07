@@ -140,8 +140,8 @@ public class SkillClogSectionTest
 		ClogResult catalog = mappedCatalog();
 
 		assertHeadings(catalog, Skill.ATTACK, "Stab Weapons|Slash Weapons|Crush Weapons|Equipment");
-		assertHeadings(catalog, Skill.HITPOINTS, "Zenyte & Upgrades|Pest Control");
-		assertHeadings(catalog, Skill.DEFENCE, "Armour|Shields|Boots, Gloves & Rings|Defenders");
+		assertHeadings(catalog, Skill.HITPOINTS, "Equipment|Pest Control");
+		assertHeadings(catalog, Skill.DEFENCE, "Armour|Shields|Equipment|Defenders");
 		assertHeadings(catalog, Skill.STRENGTH, "Slash Weapons|Crush Weapons|Armour");
 		assertEquals(VOID_KNIGHT_IDS, SkillClogSection.forSkill(
 			Skill.HITPOINTS, null, null, catalog).get(1).itemIds());
@@ -160,18 +160,18 @@ public class SkillClogSectionTest
 		assertHeadings(catalog, Skill.FISHING,
 			"Pets|Aerial Fishing|Big Fish|Deep Sea Trawling|Fishing Trawler"
 				+ "|Lantern Harpooning|Tempoross");
-		assertHeadings(catalog, Skill.RANGED, "Light Weapons|Standard Weapons|Heavy Weapons|Armour|Accessories");
+		assertHeadings(catalog, Skill.RANGED, "Light Weapons|Standard Weapons|Heavy Weapons|Armour|Equipment");
 		assertHeadings(catalog, Skill.THIEVING,
 			"Pets|Pickpocketing|Pyramid Plunder|Rogues' Den|Underwater");
 		assertEquals(Arrays.asList(23959, 24777), SkillClogSection.forSkill(
 			Skill.THIEVING, null, null, catalog).get(1).itemIds());
 		assertHeadings(catalog, Skill.COOKING, "Gnome Restaurant|Trouble Brewing");
-		assertHeadings(catalog, Skill.PRAYER, "Prayer Unlocks|Armour|Shields & Accessories");
+		assertHeadings(catalog, Skill.PRAYER, "Prayer Unlocks|Armour|Equipment");
 		assertHeadings(catalog, Skill.CRAFTING, "Rarities");
 		assertEquals(CRAFTING_RARITY_IDS, SkillClogSection.forSkill(
 			Skill.CRAFTING, null, null, catalog).get(0).itemIds());
 		assertHeadings(catalog, Skill.FIREMAKING, "Pets|Shades of Mort'ton|Wintertodt");
-		assertHeadings(catalog, Skill.MAGIC, "Staves & Wands|Robes|Accessories|Spell Upgrades");
+		assertHeadings(catalog, Skill.MAGIC, "Staves & Wands|Robes|Equipment|Spell Upgrades");
 		assertHeadings(catalog, Skill.FLETCHING, "Vale Totems");
 		assertHeadings(catalog, Skill.WOODCUTTING, "Pets|Tools|Evil Chicken Outfit|Forestry");
 		assertHeadings(catalog, Skill.RUNECRAFT, "Pets|Guardians of the Rift");
