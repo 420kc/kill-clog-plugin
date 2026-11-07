@@ -22,8 +22,8 @@ final class GameTile
 	static final int GAP = 4;
 	static final int COLS = 3;
 	static final int PAGE_WIDTH = (COLS * WIDTH - GAP) / 2;
-	static final int PAGE_HEIGHT = 58;
-	private static final int PAGE_COUNT_TOP = 31;
+	static final int PAGE_HEIGHT = 62;
+	private static final int PAGE_COUNT_TOP = 34;
 	private static final int NAME_LINE = 13;
 	// The frame keeps its corners, brackets and all, and stretches between them; a hovered tile's is a shade lighter.
 	private static final int FRAME_EDGE = 7;
@@ -92,9 +92,16 @@ final class GameTile
 		boolean page = box.height == PAGE_HEIGHT;
 		Font font = g.getFont();
 
-		// The name in bold where it fits, else the regular font, broken at a space onto two lines where it must be.
-		FontMetrics nfm = c.bfm.stringWidth(tile.name) <= box.width - 2 * BAR_PAD ? c.bfm : g.getFontMetrics(COUNT_FONT);
-		String[] lines = nfm.stringWidth(tile.name) <= box.width - 2 * BAR_PAD ? new String[]{tile.name} : split(tile.name, nfm);
+		// The name in bold, broken at a space onto two lines where it must be; the regular font only where even that
+		// won't fit.
+		int room = box.width - 2 * BAR_PAD;
+		FontMetrics nfm = c.bfm;
+		String[] lines = nfm.stringWidth(tile.name) <= room ? new String[]{tile.name} : split(tile.name, nfm);
+		if (Math.max(nfm.stringWidth(lines[0]), nfm.stringWidth(lines[lines.length - 1])) > room)
+		{
+			nfm = g.getFontMetrics(COUNT_FONT);
+			lines = split(tile.name, nfm);
+		}
 		g.setFont(nfm.getFont());
 		g.setColor(complete ? color : NativeTooltip.labelColor);
 		int nameY = box.y + NAME_TOP + nfm.getAscent() + (page && lines.length == 1 ? NAME_LINE / 2 : 0);
