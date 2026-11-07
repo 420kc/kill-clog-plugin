@@ -30,7 +30,7 @@ final class PanelStatusRow
 	private static final String CHARACTER_DELETE_HOVER_TEXT = "delete character model";
 	private static final String CHARACTER_FAILURE_HOVER_TEXT = "character failed - click to retry";
 	private static final String CHARACTER_DELETE_FAILURE_HOVER_TEXT = "delete failed - click to retry";
-	private static final String LOCKED_HOVER_TEXT = "Unavailable until first collection";
+	private static final String LOCKED_HOVER_TEXT = "Unavailable until setup";
 	private static final int SYNC_EXPIRY_MS = 2500;
 	private static final int CHARACTER_EXPIRY_MS = 3000;
 	// k1: the brand lime. Status chrome, not data coloring, so it does not

@@ -136,13 +136,13 @@ public class PanelStatusRowCharacterizationTest
 			for (JLabel control : new JLabel[]{sync, character})
 			{
 				mouse(control, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
-				assertEquals("Unavailable until first collection", status.getText());
+				assertEquals("Unavailable until setup", status.getText());
 				assertEquals(KillClogColors.NOT_FOUND, status.getForeground());
 				mouse(control, MouseEvent.MOUSE_PRESSED, MouseEvent.BUTTON1);
 				mouse(control, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
 			}
 			shifted(character, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
-			assertEquals("Unavailable until first collection", status.getText());
+			assertEquals("Unavailable until setup", status.getText());
 			shifted(character, MouseEvent.MOUSE_PRESSED, MouseEvent.BUTTON1);
 			mouse(character, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
 			assertEquals(3, explained.get());

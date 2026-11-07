@@ -10,7 +10,7 @@ HiScores, Collection Logs, Personal Bests, and player comparison in one RuneLite
 
 Install **Kill Clog** from the RuneLite Plugin Hub and open its panel while logged in. Your account loads automatically.
 
-Open your Collection Log and leave it open until setup confirms completion in chat. Setup runs automatically.
+Open your Collection Log and leave it open until setup confirms completion in chat. Setup runs automatically. An empty log (a new account, or a Hardcore Worlds character after a death) sets itself up at login, with nothing to open.
 
 Your log is saved locally and updates with new unlocks as you play. Open the Collection Log any time to catch items you got on mobile or another device.
 

@@ -239,8 +239,8 @@ public class KillClogPlugin extends Plugin
 		panel.setCharacterPublishHandler(publication::publishCharacter);
 		panel.setCharacterDeleteHandler(publication::deleteCharacter);
 		panel.setFirstPartyLockedHandler(() -> clientThread.invokeLater(() -> chatNotifier.send(ChatNotice.SYNC_HELP,
-			"Kill Clog syncs from your first Collection Log item. Open your Collection Log so Kill Clog can read it:"
-				+ " the chalice and the character button unlock once it holds an item.")));
+			"Open your Collection Log once so Kill Clog can read it: the chalice and the character button unlock"
+				+ " when setup finishes.")));
 		panel.setSelfPbs(this::selfPbs);
 		// The first tick hands the panel and chat this world's game again.
 		world.showAgain();
