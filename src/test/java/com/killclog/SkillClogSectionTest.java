@@ -23,7 +23,7 @@ public class SkillClogSectionTest
 	private static final List<Integer> DEFENDER_IDS = Arrays.asList(
 		8844, 8845, 8846, 8847, 8848, 8849, 8850, 12954);
 	private static final List<Integer> HITPOINTS_EQUIPMENT_IDS = Arrays.asList(
-		19529, 33634, 29799, 31109);
+		19529, 29799, 31109, 33634);
 	private static final List<Integer> VOID_KNIGHT_IDS = Arrays.asList(
 		8839, 8840, 8842, 8841, 11663, 11665, 11664, 13072,
 		13073);

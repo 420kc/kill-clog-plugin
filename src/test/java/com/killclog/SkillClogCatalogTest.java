@@ -26,7 +26,7 @@ public class SkillClogCatalogTest
 			TestViews.specSignature(Skill.ATTACK));
 		assertEquals(Arrays.asList(
 			"items|Void Knight|8839,8840,8842,8841,11663,11665,11664,13072,13073",
-			"items|Zenyte & Upgrades|19529,33634,29799,31109"),
+			"items|Zenyte & Upgrades|19529,29799,31109,33634"),
 			TestViews.specSignature(Skill.HITPOINTS));
 		assertEquals(Arrays.asList(
 			"items|Armour|10551,10555,10548,10547,10550,10549,11335,3140,22103,21298,21301,21304,11832,11834,23956,4716,4720,4722,4724,4728,4730,24268,4745,4749,4751,4753,4757,4759,22326,22327,22328,12927,30750,30765,30756,30753,26376,26378,26380",
