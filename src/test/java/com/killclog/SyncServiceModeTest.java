@@ -94,14 +94,19 @@ public class SyncServiceModeTest
 	}
 
 	@Test
-	public void aLogNeverReadOrEmptySaysWhichAndWhatToDo() throws Exception
+	@SuppressWarnings("unchecked")
+	public void aLogNeverSetUpSaysWhatToDoAndASetUpEmptyLogSyncs() throws Exception
 	{
+		List<Request> sent = new ArrayList<>();
 		OkHttpClient http = new OkHttpClient.Builder().addInterceptor(chain ->
 		{
-			throw new AssertionError("nothing to send");
+			sent.add(chain.request());
+			return new Response.Builder().request(chain.request()).protocol(Protocol.HTTP_1_1).code(200).message("OK")
+				.body(ResponseBody.create(MediaType.get("application/json"), "{}")).build();
 		}).build();
 		LocalClogCache main = mock(LocalClogCache.class);
 		when(main.servesAccount(TESTER)).thenReturn(true);
+		when(main.commitIfSessionCurrent(eq(TESTER), any())).thenAnswer(call -> ((Supplier<Object>) call.getArgument(1)).get());
 		SyncService service = new SyncService(http, new Gson());
 		KillclogSyncGate<Object> gate = new KillclogSyncGate<>((waiting, later) -> later);
 
@@ -109,10 +114,24 @@ public class SyncServiceModeTest
 			gate.begin(null, gate.era(), KillclogSyncGate.DELIBERATE), main, "main", -1, false, NOTHING).get();
 		assertEquals("Open your Collection Log to set up Kill Clog automatically.", unread.message);
 
+		// An empty log not yet set up is no log: what to do, nothing sent.
 		when(main.toFirstPartySyncResult("Tester")).thenReturn(new ClogResult("Tester", Map.of(), Map.of(), Map.of(),
 			null, null));
-		SyncService.SyncResult empty = service.syncCollectionLog(TESTER, null, Map.of(), Map.of(), gate,
+		SyncService.SyncResult notSetUp = service.syncCollectionLog(TESTER, null, Map.of(), Map.of(), gate,
 			gate.begin(null, gate.era(), KillclogSyncGate.DELIBERATE), main, "main", -1, false, NOTHING).get();
-		assertEquals("Your Collection Log is empty: Kill Clog syncs from your first item.", empty.message);
+		assertEquals("Open your Collection Log to set up Kill Clog automatically.", notSetUp.message);
+		assertEquals(0, sent.size());
+
+		// Set up and empty (a new account, a fresh Hardcore Worlds run): it syncs, with an empty log.
+		when(main.ownLogReady("Tester")).thenReturn(true);
+		KillclogSyncGate<Object> fresh = new KillclogSyncGate<>((waiting, later) -> later);
+		SyncService.SyncResult empty = service.syncCollectionLog(TESTER, null, Map.of(), Map.of(), fresh,
+			fresh.begin(null, fresh.era(), KillclogSyncGate.DELIBERATE), main, "main", -1, false, NOTHING).get();
+		assertTrue(empty.message, empty.ok);
+		assertEquals(1, sent.size());
+		okio.Buffer buffer = new okio.Buffer();
+		sent.get(0).body().writeTo(buffer);
+		JsonObject posted = new Gson().fromJson(buffer.readUtf8(), JsonObject.class);
+		assertEquals(0, posted.getAsJsonArray("clog").size());
 	}
 }

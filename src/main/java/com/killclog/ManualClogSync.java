@@ -18,12 +18,16 @@ final class ManualClogSync
 {
 	private static final int CLOG_ITEM_SCRIPT = 4100;
 	private static final int CAPTURE_TIMEOUT_TICKS = 100;
+	// Ticks the count must read 0 before an empty log is set up without a walk: the login's counters can arrive late.
+	private static final int EMPTY_TICKS = 5;
 
 	private final BulkCaptureState bulk = new BulkCaptureState();
 	private String openingPlayer;
 	private int openingTick;
 	private String capturePlayer;
 	private boolean firstCapture;
+	// Settled ticks in a row the game's own count has read 0 obtained for a log not yet set up.
+	private int emptyTicks;
 
 	void reset()
 	{
@@ -65,6 +69,44 @@ final class ManualClogSync
 			chatNotifier.send(ChatNotice.SYNC_HELP,
 				"Collection Log update timed out. Reopen the log or choose Search to retry.");
 		}
+		setUpEmptyLog(client, clogIndex, localClogCache, captureComplete, panelRefresh);
+	}
+
+	/**
+	 * An empty Collection Log needs no walk. When the game's own count has read 0 obtained, with its total in (so the
+	 * login's counters have arrived), for {@link #EMPTY_TICKS} ticks in a row, a log not yet set up is set up as it is:
+	 * empty and complete, stored as a finished walk is, so it syncs. A new account, and a Hardcore Worlds character
+	 * after each death, otherwise stayed off killclog.com until they opened their Collection Log (Dylan, 11/6).
+	 */
+	private void setUpEmptyLog(Client client, ClogIndex clogIndex, LocalClogCache localClogCache,
+		Runnable captureComplete, Consumer<String> panelRefresh)
+	{
+		Player local = client.getLocalPlayer();
+		String name = local != null ? local.getName() : null;
+		if (bulk.isActive() || name == null || !clogIndex.isParsed() || !localClogCache.serving(name)
+			|| localClogCache.hasCompletedFirstPartySetupFor(name)
+			|| client.getVarpValue(VarPlayerID.COLLECTION_COUNT) != 0
+			|| client.getVarpValue(VarPlayerID.COLLECTION_COUNT_MAX) <= 0)
+		{
+			emptyTicks = 0;
+			return;
+		}
+		if (++emptyTicks < EMPTY_TICKS)
+		{
+			return;
+		}
+		emptyTicks = 0;
+		Map<String, List<ClogResult.ClogItem>> empty = new HashMap<>();
+		for (String cat : clogIndex.categoryKeys())
+		{
+			empty.put(cat, new ArrayList<>());
+		}
+		ClogResult result = new ClogResult(name, empty, clogIndex.copyCategoryItems(), new HashMap<>(), null, null);
+		result.setUniqueObtained(0);
+		result.setUniqueTotal(client.getVarpValue(VarPlayerID.COLLECTION_COUNT_MAX));
+		localClogCache.cacheFirstPartyResult(result);
+		captureComplete.run();
+		SwingUtilities.invokeLater(() -> panelRefresh.accept(name));
 	}
 
 	void captureScriptArguments(Client client, int scriptId, Object[] args, int tickCount)

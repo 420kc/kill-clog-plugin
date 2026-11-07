@@ -390,7 +390,7 @@ public class KillClogPlugin extends Plugin
 	 */
 	private void ownLogServing(LocalClogCache cache, String name)
 	{
-		boolean hasLocalClog = cache.hasFirstPartyDataFor(name);
+		boolean hasLocalClog = cache.ownLogReady(name);
 		panel.setFirstParty(firstParty(hasLocalClog));
 		if (hasLocalClog)
 		{
@@ -637,7 +637,7 @@ public class KillClogPlugin extends Plugin
 				&& pluginManager.isPluginActive(plugin));
 	}
 
-	/** A logged-in account whose own log has loaded: locked until it holds an item. */
+	/** A logged-in account whose own log has loaded: locked until it's set up, empty or not. */
 	private static PanelStatusRow.FirstParty firstParty(boolean hasLocalClog)
 	{
 		return hasLocalClog ? PanelStatusRow.FirstParty.READY : PanelStatusRow.FirstParty.LOCKED;
@@ -645,10 +645,9 @@ public class KillClogPlugin extends Plugin
 
 	private void firstPartyChanged(LocalClogCache cache)
 	{
-		// A capture only counts once the payload is genuinely non-empty:
-		// an empty first walk must neither reveal the chalice nor
-		// schedule a push that would fail with nothing to send.
-		if (cache.hasFirstPartyDataForActive())
+		// A set-up log counts, an empty one too: a new account's or a fresh Hardcore Worlds run's empty log is its whole
+		// truth, and its profile shows from the first login rather than the first item.
+		if (cache.ownLogReadyForActive())
 		{
 			panel.setFirstParty(PanelStatusRow.FirstParty.READY);
 			// A first capture makes the log the settle tick's counter reads found missing: read them now, ahead of the
@@ -789,7 +788,7 @@ public class KillClogPlugin extends Plugin
 					// The login transition often fires before the player's name is
 					// readable. This tick path waits for identity arbitration too,
 					// so a resident name-slot file can never become the self view.
-					panel.setFirstParty(firstParty(cache.hasFirstPartyDataFor(name)));
+					panel.setFirstParty(firstParty(cache.ownLogReady(name)));
 					captureLocalCa();
 					AccountType acctType = getLocalAccountType();
 					SwingUtilities.invokeLater(() ->

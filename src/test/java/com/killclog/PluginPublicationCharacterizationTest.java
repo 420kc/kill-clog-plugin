@@ -230,7 +230,7 @@ public class PluginPublicationCharacterizationTest
 	public void withAutomaticSyncOffOnlyAClickOrACharacterSends() throws Exception
 	{
 		config.automatic = false;
-		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		when(localClogCache.ownLogReadyForActive()).thenReturn(true);
 		captureListener.run();
 		assertEquals(0, executor.live());
 		settle();
@@ -257,7 +257,7 @@ public class PluginPublicationCharacterizationTest
 	@Test
 	public void anAutomaticSyncKillclogAlreadyHoldsFlashesNothing() throws Exception
 	{
-		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		when(localClogCache.ownLogReadyForActive()).thenReturn(true);
 		captureListener.run();
 		settle();
 		syncs.get(0).complete(SyncService.UNCHANGED);
@@ -303,7 +303,7 @@ public class PluginPublicationCharacterizationTest
 	@Test
 	public void captureDebounceCoalescesAndStaysQuiet() throws Exception
 	{
-		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		when(localClogCache.ownLogReadyForActive()).thenReturn(true);
 		captureListener.run();
 		captureListener.run();
 		verify(panel, times(2)).setFirstParty(PanelStatusRow.FirstParty.READY);
@@ -326,7 +326,7 @@ public class PluginPublicationCharacterizationTest
 	{
 		long[] now = {0};
 		((PublicationCoordinator) field("publication")).clock = () -> now[0];
-		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		when(localClogCache.ownLogReadyForActive()).thenReturn(true);
 		captureListener.run();
 		assertEquals(10_000L, executor.lastDelayMs());
 		// The walk goes on: each page starts the quiet time again, and only one push waits.
@@ -351,7 +351,7 @@ public class PluginPublicationCharacterizationTest
 	public void anAccountTheServerTurnsAwayStopsSendingUntilAClick() throws Exception
 	{
 		String optedOut = "This account has opted out of Kill Clog sync.";
-		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		when(localClogCache.ownLogReadyForActive()).thenReturn(true);
 		captureListener.run();
 		settle();
 		syncs.get(0).complete(SyncService.SyncResult.stopping(optedOut));
@@ -420,7 +420,7 @@ public class PluginPublicationCharacterizationTest
 		verify(chatNotifier, never()).send(any(), any());
 		login();
 
-		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		when(localClogCache.ownLogReadyForActive()).thenReturn(true);
 		captureListener.run();
 		settle();
 		assertEquals(2, syncs.size());
@@ -578,7 +578,7 @@ public class PluginPublicationCharacterizationTest
 	@Test
 	public void aRestartingServerNeverReachesChatWhenTheQuietRetryLands() throws Exception
 	{
-		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		when(localClogCache.ownLogReadyForActive()).thenReturn(true);
 		captureListener.run();
 		settle();
 		assertEquals(1, syncs.size());
@@ -601,7 +601,7 @@ public class PluginPublicationCharacterizationTest
 	@Test
 	public void aServerStillDownAfterTheQuietRetryIsReportedOnce() throws Exception
 	{
-		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		when(localClogCache.ownLogReadyForActive()).thenReturn(true);
 		captureListener.run();
 		settle();
 
@@ -618,7 +618,7 @@ public class PluginPublicationCharacterizationTest
 	@Test
 	public void aCaptureWhileTheFirstPushIsInTheAirDoesNotShortenTheQuietRetry() throws Exception
 	{
-		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		when(localClogCache.ownLogReadyForActive()).thenReturn(true);
 		captureListener.run();
 		settle();
 		assertEquals(1, syncs.size());
@@ -637,7 +637,7 @@ public class PluginPublicationCharacterizationTest
 	@Test
 	public void everyEpisodeGetsItsOwnQuietRetry() throws Exception
 	{
-		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		when(localClogCache.ownLogReadyForActive()).thenReturn(true);
 		captureListener.run();
 		settle();
 		syncs.get(0).complete(restarting());
@@ -657,7 +657,7 @@ public class PluginPublicationCharacterizationTest
 	@Test
 	public void logoutDuringTheWaitDropsTheQuietRetry() throws Exception
 	{
-		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		when(localClogCache.ownLogReadyForActive()).thenReturn(true);
 		captureListener.run();
 		settle();
 		syncs.get(0).complete(restarting());
@@ -1335,7 +1335,7 @@ public class PluginPublicationCharacterizationTest
 	@Test
 	public void turningAutomaticSyncOffTakesDownTheSyncInTheAir() throws Exception
 	{
-		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		when(localClogCache.ownLogReadyForActive()).thenReturn(true);
 		captureListener.run();
 		settle();
 		assertEquals(1, syncs.size());
@@ -1399,7 +1399,7 @@ public class PluginPublicationCharacterizationTest
 	@Test
 	public void turningAutomaticSyncOffWhileACharacterQueuesItsSyncKeepsThatSync() throws Exception
 	{
-		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		when(localClogCache.ownLogReadyForActive()).thenReturn(true);
 		captureListener.run();
 		settle();
 		assertEquals(1, syncs.size());
@@ -1438,7 +1438,7 @@ public class PluginPublicationCharacterizationTest
 	@Test
 	public void turningAutomaticSyncOffDuringItsRetryTakesItsLineDown() throws Exception
 	{
-		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		when(localClogCache.ownLogReadyForActive()).thenReturn(true);
 		captureListener.run();
 		settle();
 		syncs.get(0).complete(new SyncService.SyncResult(false, false, "Busy", true, 2));
@@ -1529,7 +1529,7 @@ public class PluginPublicationCharacterizationTest
 	@Test
 	public void automaticSyncOffJustAsARetryIsDecidedLeavesNoRetryingLine() throws Exception
 	{
-		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		when(localClogCache.ownLogReadyForActive()).thenReturn(true);
 		captureListener.run();
 		settle();
 		try (Hold hold = new Hold(1))
@@ -2506,7 +2506,7 @@ public class PluginPublicationCharacterizationTest
 		verify(league).setFirstPartyChangedListener(listener.capture());
 		listener.getValue().run();
 		assertEquals("an empty capture schedules nothing", 0, executor.live());
-		when(league.hasFirstPartyDataForActive()).thenReturn(true);
+		when(league.ownLogReadyForActive()).thenReturn(true);
 		listener.getValue().run();
 		verify(panel).setFirstParty(PanelStatusRow.FirstParty.READY);
 		assertEquals(1, executor.live());
@@ -2970,7 +2970,7 @@ public class PluginPublicationCharacterizationTest
 	@Test
 	public void automaticSyncOffStopsAnAutomaticSyncAtEitherHandoff() throws Exception
 	{
-		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		when(localClogCache.ownLogReadyForActive()).thenReturn(true);
 
 		// Off after the timer fires, before the client thread gathers the push.
 		captureListener.run();
@@ -2998,7 +2998,7 @@ public class PluginPublicationCharacterizationTest
 	@Test
 	public void anAutomaticSyncClaimedAsAutomaticSyncTurnsOffNeverSends() throws Exception
 	{
-		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		when(localClogCache.ownLogReadyForActive()).thenReturn(true);
 		captureListener.run();
 		executor.runAll();
 		// Off between the timer's own check and its claim on the slot, so the cancel found nothing to stop.
@@ -3010,7 +3010,7 @@ public class PluginPublicationCharacterizationTest
 	@Test
 	public void aRetiredAutomaticSyncLeavesALaterCharacterPublishAlone() throws Exception
 	{
-		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		when(localClogCache.ownLogReadyForActive()).thenReturn(true);
 		captureListener.run();
 		fireOnce();
 		config.automatic = false;
@@ -3031,7 +3031,7 @@ public class PluginPublicationCharacterizationTest
 	@Test
 	public void anAutomaticRetryDroppedWhileItWaitsLeavesTheNextClickItsRetry() throws Exception
 	{
-		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		when(localClogCache.ownLogReadyForActive()).thenReturn(true);
 		captureListener.run();
 		settle();
 		assertEquals(1, syncs.size());
@@ -3053,7 +3053,7 @@ public class PluginPublicationCharacterizationTest
 	@Test
 	public void aDroppedAutomaticSyncNeverGivesAClickInFlightASecondRetry() throws Exception
 	{
-		when(localClogCache.hasFirstPartyDataForActive()).thenReturn(true);
+		when(localClogCache.ownLogReadyForActive()).thenReturn(true);
 		syncHandler.run();
 		settle();
 		syncs.get(0).complete(new SyncService.SyncResult(false, false, "Busy", true, 2));

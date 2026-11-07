@@ -120,12 +120,11 @@ class SyncService
 		// The one thing a provider adds is TempleOSRS's date on an item you
 		// hold without one (ClogService.overlayProviderDates).
 		ClogResult clog = cache.toFirstPartySyncResult(rsn);
-		if (clog == null || clog.getObtainedItems().isEmpty())
+		if (clog == null || clog.getObtainedItems().isEmpty() && !cache.ownLogReady(rsn))
 		{
-			// Never read on this PC, or read and empty: say which, and what to do.
-			return CompletableFuture.completedFuture(new SyncResult(false, false, clog == null
-				? "Open your Collection Log to set up Kill Clog automatically."
-				: "Your Collection Log is empty: Kill Clog syncs from your first item."));
+			// Never set up on this PC: say what to do. A set-up empty log syncs (a new Hardcore Worlds run shows at once).
+			return CompletableFuture.completedFuture(new SyncResult(false, false,
+				"Open your Collection Log to set up Kill Clog automatically."));
 		}
 
 		String body = requestBody(accountHash, accountType, clog, personalBests, detailedPersonalBests, mode, hardcoreXp);

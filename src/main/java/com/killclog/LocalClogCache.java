@@ -948,6 +948,23 @@ public class LocalClogCache
 		return record(playerName) != null;
 	}
 
+	/**
+	 * Whether the serving account's own log can sync: set up (an empty log included, which is the whole truth of a new
+	 * account or a fresh Hardcore Worlds run) or holding items. An empty log waited for its first item, so a Hardcore
+	 * character stayed off killclog.com through a run with nothing logged.
+	 */
+	public synchronized boolean ownLogReady(String playerName)
+	{
+		// Setup is only ever set on an own log (a lookup never carries it), so either says this one can sync.
+		return hasFirstPartyDataFor(playerName) || hasCompletedFirstPartySetupFor(playerName);
+	}
+
+	/** {@link #ownLogReady} for the logged-in player. */
+	public synchronized boolean ownLogReadyForActive()
+	{
+		return ownLogReady(session.getName());
+	}
+
 	/** Whether this player completed the full local Collection Log Search walk. */
 	public synchronized boolean hasCompletedFirstPartySetupFor(String playerName)
 	{

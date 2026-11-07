@@ -633,6 +633,68 @@ public class ManualClogSyncTest
 		assertEquals(3, cache.toFirstPartySyncResult("Tester").getUniqueTotal());
 	}
 
+	@Test
+	public void aZeroCountSetsUpAnEmptyLogWithoutAWalkOnceItHoldsFiveTicks() throws Exception
+	{
+		// A new account, or a Hardcore Worlds run just begun: the game says nothing is obtained, its total is in.
+		obtained = 0;
+		total = 1717;
+		for (int t = 200; t < 204; t++)
+		{
+			tick(t);
+		}
+		assertFalse("four ticks is not yet settled", cache.hasCompletedFirstPartySetupFor("Tester"));
+		tick(204);
+		assertTrue(cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertTrue("an empty set-up log can sync", cache.ownLogReady("Tester"));
+		assertFalse("and carries no items", cache.hasFirstPartyDataFor("Tester"));
+		assertEquals(1, completions);
+		assertEquals(1, refreshes);
+		assertTrue("it says nothing in chat", notices.isEmpty());
+		for (int t = 205; t < 215; t++)
+		{
+			tick(t);
+		}
+		assertEquals("once set up, never again", 1, completions);
+		assertTrue(reload().hasCompletedFirstPartySetupFor("Tester"));
+	}
+
+	@Test
+	public void aCountNotZeroNotInYetOrFlickeringSetsUpNothing() throws Exception
+	{
+		obtained = 0;
+		total = 0;
+		for (int t = 300; t < 310; t++)
+		{
+			tick(t);
+		}
+		assertFalse("counters not in yet", cache.hasCompletedFirstPartySetupFor("Tester"));
+		obtained = 3;
+		total = 1717;
+		for (int t = 310; t < 320; t++)
+		{
+			tick(t);
+		}
+		assertFalse("items need the walk", cache.hasCompletedFirstPartySetupFor("Tester"));
+		obtained = 0;
+		for (int t = 320; t < 324; t++)
+		{
+			tick(t);
+		}
+		obtained = 1;
+		tick(324);
+		obtained = 0;
+		for (int t = 325; t < 329; t++)
+		{
+			tick(t);
+		}
+		assertFalse("a zero that flickers starts its count again", cache.hasCompletedFirstPartySetupFor("Tester"));
+		tick(329);
+		assertTrue(cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertEquals(1, completions);
+	}
+
+
 	private void tick(int count) throws Exception
 	{
 		tick = count;
