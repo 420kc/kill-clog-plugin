@@ -330,7 +330,7 @@ public class SkillClogSectionTest
 		assertTotal(catalog, Skill.PRAYER, 20);
 		assertTotal(catalog, Skill.CRAFTING, 2);
 		assertTotal(catalog, Skill.FIREMAKING, 24);
-		assertTotal(catalog, Skill.MAGIC, 47);
+		assertTotal(catalog, Skill.MAGIC, 51);
 		assertTotal(catalog, Skill.FLETCHING, 4);
 		assertTotal(catalog, Skill.WOODCUTTING, 28);
 		assertTotal(catalog, Skill.RUNECRAFT, 18);
