@@ -267,6 +267,29 @@ public class TempleLateAnswerTest
 		assertEquals(3043.1, service.getCachedResult("Marni").getTempleEhp(), 1e-9);
 	}
 
+	// Dylan 11/7: TempleOSRS's plugin turned back on dated everything it had missed at that one second.
+	@Test
+	public void aCatchUpStampReadsAsNoDate() throws Exception
+	{
+		StringBuilder items = new StringBuilder();
+		for (int id = 1; id <= ClogDates.CHECK_BATCH; id++)
+		{
+			items.append("{\"id\":").append(id).append(",\"count\":1,\"date\":\"2026-11-07 05:52:16\"},");
+		}
+		items.append("{\"id\":6,\"count\":1,\"date\":\"2026-10-20 13:45:58\"}");
+		String log = "{\"data\":{\"player_name_with_capitalization\":\"Marni\",\"last_changed\":\"2026-11-07 05:52:16\","
+			+ "\"items\":{\"zulrah\":[" + items + "]}}}";
+		ClogResult result = service(200, log, null).lookup("Marni").get(5, TimeUnit.SECONDS);
+		Map<Integer, String> dates = new java.util.HashMap<>();
+		result.getObtainedItems().values().forEach(page -> page.forEach(item -> dates.put(item.getId(), item.getDate())));
+		assertEquals(6, dates.size());
+		for (int id = 1; id <= ClogDates.CHECK_BATCH; id++)
+		{
+			assertNull("item " + id + " has no date", dates.get(id));
+		}
+		assertEquals("a date of its own stays", "2026-10-20 13:45:58", dates.get(6));
+	}
+
 	@Test
 	public void aLaneFailureWritesFailedAndSkipsTempleForTheCooldown() throws Exception
 	{

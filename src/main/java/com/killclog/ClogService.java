@@ -405,11 +405,14 @@ public class ClogService
 		final AccountType accountType;
 		/** The answer's data, for its figures (EHC). */
 		final JsonObject figures;
+		/** Its import and catch-up moments (ClogDates.checkStamps), already taken off its items. */
+		final Set<String> checkStamps;
 
 		PlayerClogData(String canonicalName, Map<String, List<ClogResult.ClogItem>> obtainedItems,
-			String lastChanged, AccountType accountType, JsonObject figures)
+			String lastChanged, AccountType accountType, JsonObject figures, Set<String> checkStamps)
 		{
 			this.figures = figures;
+			this.checkStamps = checkStamps;
 			this.canonicalName = canonicalName;
 			this.obtainedItems = obtainedItems;
 			this.lastChanged = lastChanged;
@@ -457,7 +460,7 @@ public class ClogService
 				note(normalizedName, t -> t.ownFigures = figures);
 				if (player.obtainedItems != null)
 				{
-					localClogCache.mergeProviderDates(playerName, player.obtainedItems);
+					localClogCache.mergeProviderDates(playerName, player.obtainedItems, player.checkStamps);
 				}
 				note(normalizedName, t -> t.datesAnswered = t.held = System.currentTimeMillis());
 				return true;
@@ -581,7 +584,16 @@ public class ClogService
 			return null;
 		}
 
-		return new PlayerClogData(canonicalName, result, lastChanged, accountType, data);
+		// An import or catch-up stamp is no date (ClogDates.checkStamps): those items read as undated, for a lookup's Recent and for
+		// your own log's fill alike.
+		Set<String> stamps = ClogDates.checkStamps(result);
+		for (Map.Entry<String, List<ClogResult.ClogItem>> entry : result.entrySet())
+		{
+			List<ClogResult.ClogItem> dated = new ArrayList<>(entry.getValue());
+			dated.replaceAll(item -> ClogDates.isCheckStamp(item.getDate(), stamps) ? item.withDate(null) : item);
+			entry.setValue(dated);
+		}
+		return new PlayerClogData(canonicalName, result, lastChanged, accountType, data, stamps);
 	}
 
 	/** True once the global category catalog has loaded. */

@@ -775,10 +775,11 @@ public class LocalClogCache
 	 * Overlay provider dates onto cached items that have none. Membership and
 	 * counts never change here: the chalice and live merges own those. This
 	 * heals the recents shelf for items merged before live-unlock dating
-	 * existed, or obtained while the plugin was off.
+	 * existed, or obtained while the plugin was off. A date this log took from one of the provider's import or
+	 * catch-up stamps (ClogDates.checkStamps) before 2.8.0 comes off: it was the provider's moment, never the item's.
 	 */
 	public synchronized boolean mergeProviderDates(String playerName,
-		Map<String, List<ClogResult.ClogItem>> providerItems)
+		Map<String, List<ClogResult.ClogItem>> providerItems, Set<String> checkStamps)
 	{
 		if (playerName == null || providerItems == null || providerItems.isEmpty() || !ready)
 		{
@@ -807,7 +808,7 @@ public class LocalClogCache
 				}
 			}
 		}
-		if (providerDates.isEmpty())
+		if (providerDates.isEmpty() && checkStamps.isEmpty())
 		{
 			return false;
 		}
@@ -820,6 +821,12 @@ public class LocalClogCache
 			for (int i = 0; i < items.size(); i++)
 			{
 				ClogResult.ClogItem item = items.get(i);
+				if (ClogDates.isCheckStamp(item.getDate(), checkStamps))
+				{
+					items.set(i, item.withDate(null));
+					listChanged = true;
+					continue;
+				}
 				String date = item.getDate() == null ? providerDates.get(item.getId()) : null;
 				if (date != null)
 				{

@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -597,7 +598,7 @@ public class LocalClogCacheTest
 		Map<String, List<ClogResult.ClogItem>> provider = new HashMap<>();
 		provider.put("hats", List.of(new ClogResult.ClogItem(1, 1, "2026-09-01 10:00:00"),
 			new ClogResult.ClogItem(2, 1, later)));
-		assertTrue(cache.mergeProviderDates("Tester", provider));
+		assertTrue(cache.mergeProviderDates("Tester", provider, Collections.emptySet()));
 		Map<Integer, String> dates = new HashMap<>();
 		for (ClogResult.ClogItem item : cache.toFirstPartySyncResult("Tester").getObtainedItems().get("hats"))
 		{
@@ -605,6 +606,46 @@ public class LocalClogCacheTest
 		}
 		assertNull("the ended run's date stays out", dates.get(1));
 		assertEquals("a date in this run heals", later, dates.get(2));
+	}
+
+	@Test
+	public void aCatchUpStampIsNoDateAndComesOffAnItemThatTookOne() throws Exception
+	{
+		// Dylan 11/7: turning TempleOSRS's plugin back on dated 12 of 420 kc's items at 05:52:16; two his log held
+		// undated took it and led his Recent as today's. Five or more items sharing a second are a catch-up.
+		Map<String, List<ClogResult.ClogItem>> answer = new HashMap<>();
+		List<ClogResult.ClogItem> batch = new java.util.ArrayList<>();
+		for (int id = 1; id <= ClogDates.CHECK_BATCH; id++)
+		{
+			batch.add(new ClogResult.ClogItem(id, 1, "2026-11-07 05:52:16"));
+		}
+		batch.add(new ClogResult.ClogItem(6, 1, "2026-10-20 13:45:58"));
+		batch.add(new ClogResult.ClogItem(7, 1, "2026-10-21 08:00:00"));
+		batch.add(new ClogResult.ClogItem(8, 1, "2026-10-21 08:00:00"));
+		answer.put("hats", batch);
+		answer.put("all_pets", List.of(new ClogResult.ClogItem(2, 1, "2026-11-07 05:52:16")));
+		assertEquals("five items share the second; one repeated on a second page counts once", Set.of("2026-11-07T05:52:16Z"),
+			ClogDates.checkStamps(answer));
+		answer.put("hats", batch.subList(1, batch.size()));
+		assertEquals("four left under five, with the repeat", Set.of(), ClogDates.checkStamps(answer));
+
+		LocalClogCache cache = onDisk(temporaryFolder.newFolder());
+		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
+		Map<String, List<ClogResult.ClogItem>> held = new HashMap<>();
+		held.put("hats", new java.util.ArrayList<>(List.of(new ClogResult.ClogItem(1, 1, "2026-11-07 05:52:16"),
+			new ClogResult.ClogItem(2, 1, "2026-11-05 20:41:34"), new ClogResult.ClogItem(3, 1, null))));
+		cache.cacheFirstPartyResult(clog("Tester", Map.of("hats", itemList(1, 2, 3)), held));
+		Map<String, List<ClogResult.ClogItem>> provider = new HashMap<>();
+		provider.put("hats", List.of(new ClogResult.ClogItem(3, 1, "2026-10-01 09:00:00")));
+		assertTrue(cache.mergeProviderDates("Tester", provider, Set.of("2026-11-07T05:52:16Z")));
+		Map<Integer, String> dates = new HashMap<>();
+		for (ClogResult.ClogItem item : cache.toFirstPartySyncResult("Tester").getObtainedItems().get("hats"))
+		{
+			dates.put(item.getId(), item.getDate());
+		}
+		assertNull("a date taken from a catch-up comes off", dates.get(1));
+		assertEquals("Kill Clog's own date stays", "2026-11-05 20:41:34", dates.get(2));
+		assertEquals("a real dated reading still fills a gap", "2026-10-01 09:00:00", dates.get(3));
 	}
 
 	@Test
@@ -620,7 +661,7 @@ public class LocalClogCacheTest
 		Map<String, List<ClogResult.ClogItem>> provider = new HashMap<>();
 		provider.put("hats", List.of(new ClogResult.ClogItem(1, 1, "2025-03-01 10:00:00"),
 			new ClogResult.ClogItem(2, 1, "2024-01-01 10:00:00")));
-		assertTrue(cache.mergeProviderDates("Tester", provider));
+		assertTrue(cache.mergeProviderDates("Tester", provider, Collections.emptySet()));
 		assertEquals("the newest healed date", "2025-03-01 10:00:00",
 			cache.toClogResult("Tester", Collections.emptyMap()).getLastChanged());
 	}
@@ -749,7 +790,7 @@ public class LocalClogCacheTest
 					Thread.currentThread().interrupt();
 					return;
 				}
-				cache.mergeProviderDates("Fast 07", providerDates);
+				cache.mergeProviderDates("Fast 07", providerDates, Collections.emptySet());
 			});
 			overlay.start();
 			start.countDown();
