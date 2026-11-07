@@ -25,6 +25,7 @@ final class GameTile
 	static final int PAGE_HEIGHT = 62;
 	private static final int PAGE_COUNT_TOP = 34;
 	private static final int NAME_LINE = 13;
+	private static final int NAME_PAD = 4;
 	// The frame keeps its corners, brackets and all, and stretches between them; a hovered tile's is a shade lighter.
 	private static final int FRAME_EDGE = 7;
 	private static final BufferedImage FRAME = ImageUtil.loadImageResource(GameTile.class, "game-tile.png");
@@ -100,12 +101,12 @@ final class GameTile
 		boolean page = box.height == PAGE_HEIGHT;
 		Font font = g.getFont();
 
-		// The name in bold, broken at a space onto two lines where it must be; the regular font only where even that
-		// won't fit.
-		int room = box.width - 2 * BAR_PAD;
+		// The name in bold. A page's, with no sprite under it, breaks at a space onto two lines where it must, and takes
+		// the regular font only where even that won't fit; a sprite's tile keeps its short name on one line.
+		int room = box.width - 2 * NAME_PAD;
 		FontMetrics nfm = c.bfm;
-		String[] lines = nfm.stringWidth(tile.name) <= room ? new String[]{tile.name} : split(tile.name, nfm);
-		if (Math.max(nfm.stringWidth(lines[0]), nfm.stringWidth(lines[lines.length - 1])) > room)
+		String[] lines = !page || nfm.stringWidth(tile.name) <= room ? new String[]{tile.name} : split(tile.name, nfm);
+		if (page && Math.max(nfm.stringWidth(lines[0]), nfm.stringWidth(lines[lines.length - 1])) > room)
 		{
 			nfm = g.getFontMetrics(COUNT_FONT);
 			lines = split(tile.name, nfm);
