@@ -72,15 +72,15 @@ public class SkillCellGridTest
 	{
 		SkillCellGrid cells = grid();
 		ClogResult catalog = new ClogResult("Catalog", Collections.emptyMap(),
-			Collections.singletonMap("barbarian_assault", java.util.List.of(1, 2)),
-			Map.of(1, "Fighter torso", 2, "Granite body"), null, null);
+			Collections.singletonMap("giants_foundry", java.util.List.of(1, 2)),
+			Map.of(1, "Smiths tunic", 2, "Smiths trousers"), null, null);
 
 		cells.clear(catalog);
 
-		SkillTooltip attack = (SkillTooltip) cells.labels().get(Skill.ATTACK).createToolTip();
-		assertEquals(" (--/2)", attack.getTitleSuffix());
-		assertEquals(1, TestViews.sections(attack).size());
-		SkillClogSection section = TestViews.sections(attack).get(0);
+		SkillTooltip smithing = (SkillTooltip) cells.labels().get(Skill.SMITHING).createToolTip();
+		assertEquals(" (--/2)", smithing.getTitleSuffix());
+		assertEquals(1, TestViews.sections(smithing).size());
+		SkillClogSection section = TestViews.sections(smithing).get(0);
 		assertEquals("--/2", SkillClogSectionRenderer.progressText(
 			section.primary(), section.itemIds().size()));
 		assertTrue(section.primary().obtainedIds().isEmpty());
@@ -152,16 +152,16 @@ public class SkillCellGridTest
 			new ClogResult.ClogItem(102, 1, null),
 			new ClogResult.ClogItem(103, 1, null));
 		ClogResult clog = new ClogResult("Tester",
-			Collections.singletonMap("barbarian_assault", obtained),
-			Collections.singletonMap("barbarian_assault", allItems),
+			Collections.singletonMap("giants_foundry", obtained),
+			Collections.singletonMap("giants_foundry", allItems),
 			Collections.emptyMap(), null, null);
 
-		cells.render(hiscores(Map.of(Skill.ATTACK, 99)), null, false,
+		cells.render(hiscores(Map.of(Skill.SMITHING, 99)), null, false,
 			clog, null, clog);
 
 		assertEquals(progressionConfig.missing1Color(),
-			cells.labels().get(Skill.ATTACK).getForeground());
-		SkillTooltip tooltip = (SkillTooltip) cells.labels().get(Skill.ATTACK).createToolTip();
+			cells.labels().get(Skill.SMITHING).getForeground());
+		SkillTooltip tooltip = (SkillTooltip) cells.labels().get(Skill.SMITHING).createToolTip();
 		assertEquals(" (3/4)", tooltip.getTitleSuffix());
 	}
 
@@ -297,12 +297,10 @@ public class SkillCellGridTest
 		SkillTooltip attack = (SkillTooltip) cells.labels().get(Skill.ATTACK).createToolTip();
 		assertEquals(HighGambles.LABEL, attack.countLabel());
 		assertEquals("1,057", attack.countText());
-		SkillTooltip withoutCount = new SkillTooltip();
-		withoutCount.setData(Skill.ATTACK, blue, false, TestViews.sections(attack), null);
-		paint(withoutCount);
-		paint(attack);
-		assertTrue("the line sits in the Barbarian Assault section, above its items",
-			hoverItemY(attack, baName) > hoverItemY(withoutCount, baName));
+		// The line belongs to Barbarian Assault's section, after the Weapon Unlocks (B338), never to the weapons'.
+		java.util.List<SkillClogSection> sections = TestViews.sections(attack);
+		assertFalse(attack.countsSection(sections.get(0)));
+		assertTrue(attack.countsSection(sections.get(sections.size() - 1)));
 
 		cells.render(blue, red, false, gambled, unsaid, gambled);
 		SideBySideTooltip comparison = (SideBySideTooltip) cells.labels().get(Skill.ATTACK).createToolTip();
@@ -359,7 +357,7 @@ public class SkillCellGridTest
 		cells.render(result, null, false, clog, null, clog);
 
 		SkillTooltip slayer = (SkillTooltip) cells.labels().get(Skill.SLAYER).createToolTip();
-		SkillTooltip attack = (SkillTooltip) cells.labels().get(Skill.ATTACK).createToolTip();
+		SkillTooltip smithing = (SkillTooltip) cells.labels().get(Skill.SMITHING).createToolTip();
 
 		assertEquals(1, TestViews.sections(slayer).size());
 		assertEquals(30, TestViews.sections(slayer).get(0).itemIds().size());
@@ -367,10 +365,10 @@ public class SkillCellGridTest
 		assertEquals("Slayer", slayer.getTitle());
 		assertEquals(" (1/30)", slayer.getTitleSuffix());
 		assertEquals(TitleTooltip.CLOG_YELLOW, slayer.getTitleSuffixColor());
-		assertEquals(attack.getHeaderHeight(),
+		assertEquals(smithing.getHeaderHeight(),
 			slayer.getHeaderHeight());
-		assertFalse(TestViews.sections(attack).iterator().hasNext());
-		assertTrue(slayer.getPreferredSize().height > attack.getPreferredSize().height);
+		assertFalse(TestViews.sections(smithing).iterator().hasNext());
+		assertTrue(slayer.getPreferredSize().height > smithing.getPreferredSize().height);
 
 		paint(slayer);
 		assertTrue(hoverItem(slayer, longItemName));

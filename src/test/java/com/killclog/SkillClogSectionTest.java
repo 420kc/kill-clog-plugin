@@ -27,7 +27,7 @@ public class SkillClogSectionTest
 	private static final List<Integer> STRENGTH_WEAPON_IDS = Arrays.asList(
 		4153, 21646, 21742, 29000,
 		13576, 6528, 4718, 4747,
-		28997, 21003, 33631, 22486);
+		28997, 21003, 33631, 22486, 34027, 34717);
 	private static final List<Integer> CRAFTING_RARITY_IDS = Arrays.asList(
 		34024, 19707);
 	private static final List<Integer> PEST_CONTROL_IDS = Arrays.asList(
@@ -138,14 +138,15 @@ public class SkillClogSectionTest
 	{
 		ClogResult catalog = mappedCatalog();
 
-		assertHeadings(catalog, Skill.ATTACK, "Barbarian Assault");
+		assertHeadings(catalog, Skill.ATTACK, "Weapon Unlocks|Barbarian Assault");
 		assertHeadings(catalog, Skill.HITPOINTS, "Equipment Unlocks|Pest Control");
-		assertHeadings(catalog, Skill.DEFENCE, "Defenders");
+		assertHeadings(catalog, Skill.DEFENCE, "Equipment Unlocks|Defenders");
 		assertHeadings(catalog, Skill.STRENGTH, "Weapon Unlocks");
 		assertEquals(HITPOINTS_EQUIPMENT_IDS, SkillClogSection.forSkill(
 			Skill.HITPOINTS, null, null, catalog).get(0).itemIds());
-		assertEquals(DEFENDER_IDS, SkillClogSection.forSkill(
-			Skill.DEFENCE, null, null, catalog).get(0).itemIds());
+		// The Defenders are their own list since 2.8.0 (B338), the Avernic defender hilt after the dragon defender.
+		assertEquals(concat(DEFENDER_IDS, Arrays.asList(22477)), SkillClogSection.forSkill(
+			Skill.DEFENCE, null, null, catalog).get(1).itemIds());
 		assertEquals(STRENGTH_WEAPON_IDS, SkillClogSection.forSkill(
 			Skill.STRENGTH, null, null, catalog).get(0).itemIds());
 		assertHeadings(catalog, Skill.MINING,
@@ -158,18 +159,18 @@ public class SkillClogSectionTest
 		assertHeadings(catalog, Skill.FISHING,
 			"Pets|Aerial Fishing|Big Fish|Deep Sea Trawling|Fishing Trawler"
 				+ "|Lantern Harpooning|Tempoross");
-		assertHeadings(catalog, Skill.RANGED, "Chompy Bird Hunting");
+		assertHeadings(catalog, Skill.RANGED, "Equipment Unlocks|Chompy Bird Hunting");
 		assertHeadings(catalog, Skill.THIEVING,
 			"Pets|Pickpocketing|Pyramid Plunder|Rogues' Den|Underwater");
 		assertEquals(Arrays.asList(23959, 24777), SkillClogSection.forSkill(
 			Skill.THIEVING, null, null, catalog).get(1).itemIds());
 		assertHeadings(catalog, Skill.COOKING, "Gnome Restaurant|Trouble Brewing");
-		assertHeadings(catalog, Skill.PRAYER, "Shades of Mort'ton");
+		assertHeadings(catalog, Skill.PRAYER, "Prayer Unlocks|Shades of Mort'ton");
 		assertHeadings(catalog, Skill.CRAFTING, "Rarities");
 		assertEquals(CRAFTING_RARITY_IDS, SkillClogSection.forSkill(
 			Skill.CRAFTING, null, null, catalog).get(0).itemIds());
 		assertHeadings(catalog, Skill.FIREMAKING, "Pets|Shades of Mort'ton|Wintertodt");
-		assertHeadings(catalog, Skill.MAGIC, "Magic Training Arena");
+		assertHeadings(catalog, Skill.MAGIC, "Equipment Unlocks|Spell Upgrades|Magic Training Arena");
 		assertHeadings(catalog, Skill.FLETCHING, "Vale Totems");
 		assertHeadings(catalog, Skill.WOODCUTTING, "Pets|Evil Chicken Outfit|Forestry");
 		assertHeadings(catalog, Skill.RUNECRAFT, "Pets|Guardians of the Rift");
@@ -255,8 +256,9 @@ public class SkillClogSectionTest
 			Collections.singletonMap("shades_of_mortton", playerItems),
 			Collections.singletonMap(12854, "Flamtaer bag"), null, null);
 
+		// Shades of Mort'ton follows Prayer Unlocks (B338).
 		SkillClogSection prayer = SkillClogSection.forSkill(
-			Skill.PRAYER, player, null, catalog).get(0);
+			Skill.PRAYER, player, null, catalog).get(1);
 		assertEquals(14, prayer.itemIds().size());
 		assertTrue(prayer.itemIds().contains(25630));
 		assertFalse(prayer.itemIds().contains(12854));
@@ -313,22 +315,22 @@ public class SkillClogSectionTest
 	{
 		ClogResult catalog = mappedCatalog();
 
-		assertTotal(catalog, Skill.ATTACK, 11);
+		assertTotal(catalog, Skill.ATTACK, 42);
 		assertTotal(catalog, Skill.HITPOINTS, 15);
-		assertTotal(catalog, Skill.DEFENCE, 8);
-		assertTotal(catalog, Skill.STRENGTH, 12);
+		assertTotal(catalog, Skill.DEFENCE, 41);
+		assertTotal(catalog, Skill.STRENGTH, 14);
 		assertTotal(catalog, Skill.MINING, 30);
 		assertTotal(catalog, Skill.AGILITY, 48);
 		assertTotal(catalog, Skill.SMITHING, 9);
 		assertTotal(catalog, Skill.HERBLORE, 7);
 		assertTotal(catalog, Skill.FISHING, 32);
-		assertTotal(catalog, Skill.RANGED, 19);
+		assertTotal(catalog, Skill.RANGED, 46);
 		assertTotal(catalog, Skill.THIEVING, 10);
 		assertTotal(catalog, Skill.COOKING, 34);
-		assertTotal(catalog, Skill.PRAYER, 14);
+		assertTotal(catalog, Skill.PRAYER, 20);
 		assertTotal(catalog, Skill.CRAFTING, 2);
 		assertTotal(catalog, Skill.FIREMAKING, 24);
-		assertTotal(catalog, Skill.MAGIC, 11);
+		assertTotal(catalog, Skill.MAGIC, 47);
 		assertTotal(catalog, Skill.FLETCHING, 4);
 		assertTotal(catalog, Skill.WOODCUTTING, 28);
 		assertTotal(catalog, Skill.RUNECRAFT, 18);

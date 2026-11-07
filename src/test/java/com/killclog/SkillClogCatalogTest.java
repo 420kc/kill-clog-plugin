@@ -19,6 +19,7 @@ public class SkillClogCatalogTest
 	public void taxonomyMatchesGoldenTable()
 	{
 		assertEquals(Arrays.asList(
+			"items|Weapon Unlocks|4151,13265,13274,13275,13276,11824,22324,26219,25859,24417,22486,34027,34717,22966,29580,28319,28321,28323,28325,13576,21003,13652,29574,11810,11812,11814,11816,26370,27684,27681,27687",
 			"category|Barbarian Assault|barbarian_assault"),
 			TestViews.specSignature(Skill.ATTACK));
 		assertEquals(Arrays.asList(
@@ -26,10 +27,11 @@ public class SkillClogCatalogTest
 			"category|Pest Control|pest_control"),
 			TestViews.specSignature(Skill.HITPOINTS));
 		assertEquals(Arrays.asList(
-			"category|Defenders|cyclopes"),
+			"items|Equipment Unlocks|10551,4716,4720,4722,4724,4728,4730,4745,4749,4751,4753,4757,4759,29028,29022,29025,11832,11834,11836,24419,24420,24421,22326,22327,22328,30750,30753,30756,26376,26378,26380,34719",
+			"items|Defenders|8844,8845,8846,8847,8848,8849,8850,12954,22477"),
 			TestViews.specSignature(Skill.DEFENCE));
 		assertEquals(Arrays.asList(
-			"items|Weapon Unlocks|4153,21646,21742,29000,13576,6528,4718,4747,28997,21003,33631,22486"),
+			"items|Weapon Unlocks|4153,21646,21742,29000,13576,6528,4718,4747,28997,21003,33631,22486,34027,34717"),
 			TestViews.specSignature(Skill.STRENGTH));
 		assertEquals(Arrays.asList(
 			"items|Pets|13321,23760",
@@ -65,6 +67,7 @@ public class SkillClogCatalogTest
 			"category|Tempoross|tempoross"),
 			TestViews.specSignature(Skill.FISHING));
 		assertEquals(Arrays.asList(
+			"items|Equipment Unlocks|4734,21918,11785,26372,21012,31572,12922,34681,34669,23956,25859,20997,29580,27614,29000,4732,4736,4738,29010,29004,29007,11826,11828,11830,27226,27229,27232",
 			"category|Chompy Bird Hunting|chompy_bird_hunting"),
 			TestViews.specSignature(Skill.RANGED));
 		assertEquals(Arrays.asList(
@@ -79,6 +82,7 @@ public class SkillClogCatalogTest
 			"category|Trouble Brewing|trouble_brewing"),
 			TestViews.specSignature(Skill.COOKING));
 		assertEquals(Arrays.asList(
+			"items|Prayer Unlocks|21047,21034,21079,30626,30627,34679",
 			"category|Shades of Mort'ton|shades_of_mortton"),
 			TestViews.specSignature(Skill.PRAYER));
 		assertEquals(Arrays.asList(
@@ -90,6 +94,8 @@ public class SkillClogCatalogTest
 			"category|Wintertodt|wintertodt"),
 			TestViews.specSignature(Skill.FIREMAKING));
 		assertEquals(Arrays.asList(
+			"items|Equipment Unlocks|28583,11905,12932,22481,31115,27277,34727,27627,28268,28270,28272,28274,21043,24422,24511,24514,24517,30070,29580,30759,4708,4712,4714,29019,29013,29016,26241,26243,26245,21018,21021,21024",
+			"items|Spell Upgrades|34671,34673,34675,34677",
 			"category|Magic Training Arena|magic_training_arena"),
 			TestViews.specSignature(Skill.MAGIC));
 		assertEquals(Arrays.asList(

@@ -3,11 +3,13 @@
 # (comma separated, in presentation order). Empty heading renders headingless.
 # Rows are presentation order per skill: pets first, then activities alphabetically.
 # Presentation-only view; never feeds canonical collection-log totals.
+ATTACK	items	Weapon Unlocks	4151,13265,13274,13275,13276,11824,22324,26219,25859,24417,22486,34027,34717,22966,29580,28319,28321,28323,28325,13576,21003,13652,29574,11810,11812,11814,11816,26370,27684,27681,27687
 ATTACK	category	Barbarian Assault	barbarian_assault
 HITPOINTS	items	Equipment Unlocks	24422,19529,29799,31109,33634
 HITPOINTS	category	Pest Control	pest_control
-DEFENCE	category	Defenders	cyclopes
-STRENGTH	items	Weapon Unlocks	4153,21646,21742,29000,13576,6528,4718,4747,28997,21003,33631,22486
+DEFENCE	items	Equipment Unlocks	10551,4716,4720,4722,4724,4728,4730,4745,4749,4751,4753,4757,4759,29028,29022,29025,11832,11834,11836,24419,24420,24421,22326,22327,22328,30750,30753,30756,26376,26378,26380,34719
+DEFENCE	items	Defenders	8844,8845,8846,8847,8848,8849,8850,12954,22477
+STRENGTH	items	Weapon Unlocks	4153,21646,21742,29000,13576,6528,4718,4747,28997,21003,33631,22486,34027,34717
 MINING	items	Pets	13321,23760
 MINING	category	Camdozaal	camdozaal
 MINING	items	Mining Guild	21343,21345,21392
@@ -31,6 +33,7 @@ FISHING	items	Deep Sea Trawling	31408,31412,31416,31420,31424,31428
 FISHING	category	Fishing Trawler	fishing_trawler
 FISHING	items	Lantern Harpooning	31572
 FISHING	category	Tempoross	tempoross
+RANGED	items	Equipment Unlocks	4734,21918,11785,26372,21012,31572,12922,34681,34669,23956,25859,20997,29580,27614,29000,4732,4736,4738,29010,29004,29007,11826,11828,11830,27226,27229,27232
 RANGED	category	Chompy Bird Hunting	chompy_bird_hunting
 THIEVING	items	Pets	20663
 THIEVING	items	Pickpocketing	23959,24777
@@ -39,11 +42,14 @@ THIEVING	category	Rogues' Den	rogues_den
 THIEVING	items	Underwater	21649
 COOKING	category	Gnome Restaurant	gnome_restaurant
 COOKING	category	Trouble Brewing	trouble_brewing
+PRAYER	items	Prayer Unlocks	21047,21034,21079,30626,30627,34679
 PRAYER	category	Shades of Mort'ton	shades_of_mortton
 CRAFTING	items	Rarities	34024,19707
 FIREMAKING	items	Pets	20693
 FIREMAKING	category	Shades of Mort'ton	shades_of_mortton
 FIREMAKING	category	Wintertodt	wintertodt
+MAGIC	items	Equipment Unlocks	28583,11905,12932,22481,31115,27277,34727,27627,28268,28270,28272,28274,21043,24422,24511,24514,24517,30070,29580,30759,4708,4712,4714,29019,29013,29016,26241,26243,26245,21018,21021,21024
+MAGIC	items	Spell Upgrades	34671,34673,34675,34677
 MAGIC	category	Magic Training Arena	magic_training_arena
 FLETCHING	category	Vale Totems	vale_totems
 WOODCUTTING	items	Pets	13322
