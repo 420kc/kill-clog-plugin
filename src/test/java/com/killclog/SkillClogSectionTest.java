@@ -346,7 +346,7 @@ public class SkillClogSectionTest
 		assertTotal(catalog, Skill.SMITHING, 9);
 		assertTotal(catalog, Skill.HERBLORE, 7);
 		assertTotal(catalog, Skill.FISHING, 32);
-		assertTotal(catalog, Skill.RANGED, 46);
+		assertTotal(catalog, Skill.RANGED, 45);
 		assertTotal(catalog, Skill.THIEVING, 10);
 		assertTotal(catalog, Skill.COOKING, 34);
 		assertTotal(catalog, Skill.PRAYER, 19);

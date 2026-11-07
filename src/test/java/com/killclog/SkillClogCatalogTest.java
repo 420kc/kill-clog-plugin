@@ -78,7 +78,7 @@ public class SkillClogCatalogTest
 			"items|Standard Weapons|6724,22547,11235,4207,27670,29000,29580,25859,27614,20997",
 			"items|Heavy Weapons|21918,19586,11785,21012,4734,19592,19601,19589,19610,34681,26372",
 			"items|Armour|11826,11828,11830,4732,4736,4738,29010,29004,29007,27226,27229,27232,26235",
-			"items|Equipment|22006,28947,13229,21000,34669,31088"),
+			"items|Equipment|22006,28947,13229,21000,31088"),
 			TestViews.specSignature(Skill.RANGED));
 		assertEquals(Arrays.asList(
 			"items|Pets|20663",
