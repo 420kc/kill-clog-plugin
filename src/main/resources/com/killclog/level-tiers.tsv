@@ -1,0 +1,6 @@
+# Level Progression's tiers, one row per Progress Highlighter colour: the level each starts at with standard levels,
+# then with virtual levels shown (a step up, toward 200M XP at 126). colour<TAB>standard<TAB>virtual
+empty	1	1
+inProgress	2	92
+oneAway	92	120
+completed	99	126

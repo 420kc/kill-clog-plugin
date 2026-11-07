@@ -1,18 +1,22 @@
 package com.killclog;
 
 import java.awt.Color;
+import java.util.*;
 
 /**
  * A skill cell's level colour: a light grey before a sync, else the setting's mode (one skill colour, the skill's
- * Skill Clog progress, or 99+ completion).
+ * Skill Clog progress, or Level Progression).
  */
 final class SkillLevelColor
 {
+	// Level Progression's four tiers, empty to completed: the level each starts at, standard then virtual (Dylan 11/7).
+	private static final List<String[]> TIERS = CatalogTsv.rows(SkillLevelColor.class, "level-tiers.tsv", 3);
+
 	private SkillLevelColor()
 	{
 	}
 
-	static Color forCell(int level, boolean synced, int obtained, int total,
+	static Color forCell(int level, boolean virtual, boolean synced, int obtained, int total,
 		KillClogConfig config)
 	{
 		if (!synced)
@@ -29,14 +33,26 @@ final class SkillLevelColor
 				? ClogHelper.clogColor(obtained, total, config)
 				: config.skillLevelColor();
 		}
-		if (level >= 99)
-		{
-			return config.completedClogColor();
-		}
-		return config.skillLevelColor();
+		return levelColor(level, virtual, config);
 	}
 
-	/** Clog Progression needs Skill Clogs on; with them off it reads as the 99+ default. */
+	/** Level Progression: the Progress Highlighter colour of the highest tier the level has reached. */
+	static Color levelColor(int level, boolean virtual, KillClogConfig config)
+	{
+		Color[] colors = {config.emptyClogColor(), config.inProgressClogColor(), config.missing1Color(),
+			config.completedClogColor()};
+		Color color = colors[0];
+		for (int tier = 0; tier < TIERS.size(); tier++)
+		{
+			if (level >= Integer.parseInt(TIERS.get(tier)[virtual ? 2 : 1]))
+			{
+				color = colors[tier];
+			}
+		}
+		return color;
+	}
+
+	/** Clog Progression needs Skill Clogs on; with them off it reads as Level Progression. */
 	static boolean usesClogProgress(KillClogConfig config)
 	{
 		return config.enableSkillClogs()

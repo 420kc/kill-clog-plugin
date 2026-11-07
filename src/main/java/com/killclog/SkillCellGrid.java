@@ -261,7 +261,7 @@ final class SkillCellGrid
 			obtained = progress.obtained();
 			total = progress.total();
 		}
-		return SkillLevelColor.forCell(level, clog != null, obtained, total, config);
+		return SkillLevelColor.forCell(level, virtualLevels, clog != null, obtained, total, config);
 	}
 
 	private static int level(HiscoreResult result, Skill skill, boolean virtualLevels)

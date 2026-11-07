@@ -219,13 +219,13 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "skillColorMode",
 		name = "Skill Color Mode",
-		description = "Use Skill Color, mark level 99+, or show overall Skill Clog progress. Clog Progression marks level 99+ while Skill Clogs are off",
+		description = "Use Skill Color, color each level by how far it has come, or show overall Skill Clog progress. Clog Progression reads as Level Progression while Skill Clogs are off",
 		section = skillsSection,
 		position = 3
 	)
 	default SkillColorMode skillColorMode()
 	{
-		// Skill Clogs are on by default, so their progress is the default; with them off this reads as 99+.
+		// Skill Clogs are on by default, so their progress is the default; with them off this reads as Level Progression.
 		return SkillColorMode.CLOG_PROGRESSION;
 	}
 

@@ -8,7 +8,7 @@ import lombok.*;
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 public enum SkillColorMode
 {
-	LEVEL_COMPLETION("99+ Completion"),
+	LEVEL_COMPLETION("Level Progression"),
 	CLOG_PROGRESSION("Clog Progression"),
 	SKILL_COLOR("Skill Color");
 

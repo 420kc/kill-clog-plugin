@@ -14,31 +14,47 @@ public class SkillLevelColorTest
 	private static final Color IN_PROGRESS_COLOR = new Color(3, 3, 3);
 	private static final Color EMPTY_COLOR = new Color(5, 5, 5);
 
+	// Level Progression (Dylan 11/7): the four Progress Highlighter colours by level, a step up with virtual levels.
 	@Test
-	public void usesConfiguredLevelColorBelow99()
+	public void levelProgressionClimbsTheFourColorsByStandardLevel()
 	{
 		KillClogConfig config = config(SkillColorMode.LEVEL_COMPLETION);
-		assertEquals(LEVEL_COLOR, SkillLevelColor.forCell(1, true, -1, -1, config));
-		assertEquals(LEVEL_COLOR, SkillLevelColor.forCell(50, true, -1, -1, config));
-		assertEquals(LEVEL_COLOR, SkillLevelColor.forCell(93, true, -1, -1, config));
-		assertEquals(LEVEL_COLOR, SkillLevelColor.forCell(98, true, -1, -1, config));
+		assertEquals(EMPTY_COLOR, SkillLevelColor.forCell(1, false, true, -1, -1, config));
+		assertEquals(IN_PROGRESS_COLOR, SkillLevelColor.forCell(2, false, true, -1, -1, config));
+		assertEquals(IN_PROGRESS_COLOR, SkillLevelColor.forCell(91, false, true, -1, -1, config));
+		assertEquals(ONE_AWAY_COLOR, SkillLevelColor.forCell(92, false, true, -1, -1, config));
+		assertEquals(ONE_AWAY_COLOR, SkillLevelColor.forCell(98, false, true, -1, -1, config));
+		assertEquals(COMPLETION_COLOR, SkillLevelColor.forCell(99, false, true, -1, -1, config));
 	}
 
 	@Test
-	public void usesCompletionColorAt99AndAbove()
+	public void levelProgressionWithVirtualLevelsCountsTowardTwoHundredMillion()
 	{
 		KillClogConfig config = config(SkillColorMode.LEVEL_COMPLETION);
-		assertEquals(COMPLETION_COLOR, SkillLevelColor.forCell(99, true, -1, -1, config));
-		assertEquals(COMPLETION_COLOR, SkillLevelColor.forCell(126, true, -1, -1, config));
+		assertEquals(EMPTY_COLOR, SkillLevelColor.forCell(1, true, true, -1, -1, config));
+		assertEquals(EMPTY_COLOR, SkillLevelColor.forCell(91, true, true, -1, -1, config));
+		assertEquals(IN_PROGRESS_COLOR, SkillLevelColor.forCell(92, true, true, -1, -1, config));
+		assertEquals(IN_PROGRESS_COLOR, SkillLevelColor.forCell(99, true, true, -1, -1, config));
+		assertEquals(IN_PROGRESS_COLOR, SkillLevelColor.forCell(119, true, true, -1, -1, config));
+		assertEquals(ONE_AWAY_COLOR, SkillLevelColor.forCell(120, true, true, -1, -1, config));
+		assertEquals(ONE_AWAY_COLOR, SkillLevelColor.forCell(125, true, true, -1, -1, config));
+		assertEquals(COMPLETION_COLOR, SkillLevelColor.forCell(126, true, true, -1, -1, config));
+	}
+
+	@Test
+	public void levelProgressionNamesItself()
+	{
+		// The saved key stays LEVEL_COMPLETION, so a player's choice carries over.
+		assertEquals("Level Progression", SkillColorMode.LEVEL_COMPLETION.toString());
 	}
 
 	@Test
 	public void skillColorModeNeverUsesCompletionOrProgressColors()
 	{
 		KillClogConfig config = config(SkillColorMode.SKILL_COLOR);
-		assertEquals(LEVEL_COLOR, SkillLevelColor.forCell(50, true, 1, 4, config));
-		assertEquals(LEVEL_COLOR, SkillLevelColor.forCell(99, true, 4, 4, config));
-		assertEquals(LEVEL_COLOR, SkillLevelColor.forCell(126, true, 0, 4, config));
+		assertEquals(LEVEL_COLOR, SkillLevelColor.forCell(50, false, true, 1, 4, config));
+		assertEquals(LEVEL_COLOR, SkillLevelColor.forCell(99, false, true, 4, 4, config));
+		assertEquals(LEVEL_COLOR, SkillLevelColor.forCell(126, false, true, 0, 4, config));
 	}
 
 	@Test
@@ -54,18 +70,18 @@ public class SkillLevelColorTest
 	public void clogProgressionUsesTheFullFourColorLadder()
 	{
 		KillClogConfig config = config(SkillColorMode.CLOG_PROGRESSION);
-		assertEquals(EMPTY_COLOR, SkillLevelColor.forCell(99, true, 0, 4, config));
-		assertEquals(IN_PROGRESS_COLOR, SkillLevelColor.forCell(99, true, 1, 4, config));
-		assertEquals(ONE_AWAY_COLOR, SkillLevelColor.forCell(99, true, 3, 4, config));
-		assertEquals(COMPLETION_COLOR, SkillLevelColor.forCell(1, true, 4, 4, config));
+		assertEquals(EMPTY_COLOR, SkillLevelColor.forCell(99, false, true, 0, 4, config));
+		assertEquals(IN_PROGRESS_COLOR, SkillLevelColor.forCell(99, false, true, 1, 4, config));
+		assertEquals(ONE_AWAY_COLOR, SkillLevelColor.forCell(99, false, true, 3, 4, config));
+		assertEquals(COMPLETION_COLOR, SkillLevelColor.forCell(1, false, true, 4, 4, config));
 	}
 
 	@Test
 	public void clogProgressionFallsBackWhenItsTotalIsUnavailable()
 	{
 		KillClogConfig config = config(SkillColorMode.CLOG_PROGRESSION);
-		assertEquals(LEVEL_COLOR, SkillLevelColor.forCell(99, true, -1, -1, config));
-		assertEquals(LEVEL_COLOR, SkillLevelColor.forCell(99, true, 0, 0, config));
+		assertEquals(LEVEL_COLOR, SkillLevelColor.forCell(99, false, true, -1, -1, config));
+		assertEquals(LEVEL_COLOR, SkillLevelColor.forCell(99, false, true, 0, 0, config));
 	}
 
 	@Test
@@ -77,10 +93,10 @@ public class SkillLevelColorTest
 		assertFalse(SkillLevelColor.usesClogProgress(off));
 		assertFalse(SkillLevelColor.usesClogProgress(config(SkillColorMode.LEVEL_COMPLETION)));
 
-		assertEquals(COMPLETION_COLOR, SkillLevelColor.forCell(99, true, 1, 4, off));
-		assertEquals(LEVEL_COLOR, SkillLevelColor.forCell(50, true, 4, 4, off));
+		assertEquals(COMPLETION_COLOR, SkillLevelColor.forCell(99, false, true, 1, 4, off));
+		assertEquals(IN_PROGRESS_COLOR, SkillLevelColor.forCell(50, false, true, 4, 4, off));
 		// The other modes never depended on Skill Clogs.
-		assertEquals(LEVEL_COLOR, SkillLevelColor.forCell(99, true, 4, 4,
+		assertEquals(LEVEL_COLOR, SkillLevelColor.forCell(99, false, true, 4, 4,
 			config(SkillColorMode.SKILL_COLOR, false)));
 	}
 
@@ -88,8 +104,8 @@ public class SkillLevelColorTest
 	public void unsyncedSkillsKeepNormalWhiteNumbers()
 	{
 		KillClogConfig config = config(SkillColorMode.CLOG_PROGRESSION);
-		assertEquals(KillClogColors.KC_COLOR, SkillLevelColor.forCell(50, false, 1, 4, config));
-		assertEquals(KillClogColors.KC_COLOR, SkillLevelColor.forCell(99, false, 4, 4, config));
+		assertEquals(KillClogColors.KC_COLOR, SkillLevelColor.forCell(50, false, false, 1, 4, config));
+		assertEquals(KillClogColors.KC_COLOR, SkillLevelColor.forCell(99, false, false, 4, 4, config));
 	}
 
 	@Test

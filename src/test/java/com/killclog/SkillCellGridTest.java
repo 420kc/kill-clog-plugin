@@ -98,11 +98,12 @@ public class SkillCellGridTest
 		ClogResult clog = emptyClog();
 		cells.render(result, null, false, clog, null, clog);
 
-		assertEquals(config().skillLevelColor(),
+		// Level Progression: in progress below 92, one tier below at 92 to 98, completed at 99.
+		assertEquals(config().inProgressClogColor(),
 			cells.labels().get(Skill.ATTACK).getForeground());
-		assertEquals(config().skillLevelColor(),
+		assertEquals(config().inProgressClogColor(),
 			cells.labels().get(Skill.HITPOINTS).getForeground());
-		assertEquals(config().skillLevelColor(),
+		assertEquals(config().missing1Color(),
 			cells.labels().get(Skill.MINING).getForeground());
 		assertEquals(config().completedClogColor(),
 			cells.labels().get(Skill.DEFENCE).getForeground());
@@ -194,10 +195,10 @@ public class SkillCellGridTest
 
 		cells.render(hiscore, null, false, clog, null, clog);
 
-		// Clog Progression has nothing to show, so it reads as the 99+ default.
+		// Clog Progression has nothing to show, so it reads as Level Progression: 99 completed, 93 one tier below.
 		assertEquals(statsOnly.completedClogColor(),
 			cells.labels().get(Skill.ATTACK).getForeground());
-		assertEquals(statsOnly.skillLevelColor(),
+		assertEquals(statsOnly.missing1Color(),
 			cells.labels().get(Skill.RUNECRAFT).getForeground());
 
 		for (Skill skill : Arrays.asList(Skill.ATTACK, Skill.RUNECRAFT))
@@ -560,7 +561,7 @@ public class SkillCellGridTest
 	{
 		return new KillClogConfig()
 		{
-			// These cells check the 99+ marks; the default is now Clog Progression.
+			// These cells check Level Progression; the default is Clog Progression.
 			@Override
 			public SkillColorMode skillColorMode()
 			{
