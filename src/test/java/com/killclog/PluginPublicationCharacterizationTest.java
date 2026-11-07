@@ -1037,6 +1037,21 @@ public class PluginPublicationCharacterizationTest
 		order.verify(panel).setFirstParty(any());
 	}
 
+	/** An empty log that's set up (a new account, a fresh Hardcore Worlds run) is ready at login and catches up. */
+	@Test
+	public void anEmptySetUpLogIsReadyAtLoginAndPushesOnce() throws Exception
+	{
+		when(localClogCache.serve(any())).thenReturn(true);
+		when(localClogCache.ownLogReady(RSN)).thenReturn(true);
+		when(localClogCache.hasFirstPartyDataFor(RSN)).thenReturn(false);
+		((ClogSessionState) field("sessionState")).requestAutoLookup(true);
+		ticks(10);
+		verify(panel, never()).setFirstParty(PanelStatusRow.FirstParty.LOCKED);
+		verify(panel, times(2)).setFirstParty(PanelStatusRow.FirstParty.READY);
+		settle();
+		assertEquals("the login's catch-up push", 1, syncs.size());
+	}
+
 	private void unlockMessage() throws Exception
 	{
 		net.runelite.api.events.ChatMessage unlock = new net.runelite.api.events.ChatMessage();
@@ -2541,17 +2556,17 @@ public class PluginPublicationCharacterizationTest
 		ticks(1);
 		searchClick();
 		verify(live).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), eq(league), any(), any(), anyBoolean());
-		verify(walk).onGameTick(any(), any(), eq(league), any(), any(), any());
+		verify(walk).onGameTick(any(), any(), eq(league), any(), any(), any(), anyBoolean());
 		verify(walk).onCollectionLogSearch(any(), any(), eq(league), any());
 		verify(live, never()).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), eq(localClogCache), any(), any(), anyBoolean());
-		verify(walk, never()).onGameTick(any(), any(), eq(localClogCache), any(), any(), any());
+		verify(walk, never()).onGameTick(any(), any(), eq(localClogCache), any(), any(), any(), anyBoolean());
 		verify(walk, never()).onCollectionLogSearch(any(), any(), eq(localClogCache), any());
 		world(net.runelite.api.WorldType.MEMBERS);
 		unlockMessage();
 		ticks(1);
 		searchClick();
 		verify(live).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), eq(localClogCache), any(), any(), anyBoolean());
-		verify(walk).onGameTick(any(), any(), eq(localClogCache), any(), any(), any());
+		verify(walk).onGameTick(any(), any(), eq(localClogCache), any(), any(), any(), anyBoolean());
 		verify(walk).onCollectionLogSearch(any(), any(), eq(localClogCache), any());
 	}
 
@@ -2583,7 +2598,7 @@ public class PluginPublicationCharacterizationTest
 		when(service.activeLeague()).thenReturn("demonic-pacts");
 		ticks(1);
 		verify(stores.get("raging-echoes")).close();
-		verify(walk).onGameTick(any(), any(), eq(stores.get("demonic-pacts")), any(), any(), any());
+		verify(walk).onGameTick(any(), any(), eq(stores.get("demonic-pacts")), any(), any(), any(), anyBoolean());
 	}
 
 	@Test

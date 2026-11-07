@@ -59,8 +59,8 @@ final class PanelStatusRow
 
 	/**
 	 * Whether this account's own log lets the chalice and the character work: hidden while nobody is logged in or
-	 * the log is still loading, locked (grey, with a hover line and a chat explanation) until it holds its first
-	 * item, ready after.
+	 * the log is still loading, locked (grey, with a hover line and a chat explanation) until it's set up, ready
+	 * after, an empty log included.
 	 */
 	enum FirstParty
 	{

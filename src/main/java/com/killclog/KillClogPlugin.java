@@ -824,7 +824,7 @@ public class KillClogPlugin extends Plugin
 		{
 			manualClogSync.onGameTick(client, clogIndex, cache,
 				chatNotifier, liveClogSync::resetFirstSyncWarning,
-				panel::onBulkCaptureComplete);
+				panel::onBulkCaptureComplete, world.settled());
 		}
 	}
 

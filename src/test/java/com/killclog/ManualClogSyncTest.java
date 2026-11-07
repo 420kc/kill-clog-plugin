@@ -49,6 +49,7 @@ public class ManualClogSyncTest
 	private Widget clogRoot = widget(InterfaceID.COLLECTION, 0, false);
 	private String playerName = "Tester";
 	private boolean hostLog;
+	private boolean settled = true;
 
 	@Before
 	public void setUp() throws Exception
@@ -694,12 +695,85 @@ public class ManualClogSyncTest
 		assertEquals(1, completions);
 	}
 
+	@Test
+	public void anEmptyLogWaitsForTheWorldToSettleAndAHopStartsItsWaitOver() throws Exception
+	{
+		obtained = 0;
+		total = 1717;
+		settled = false;
+		for (int t = 400; t < 420; t++)
+		{
+			tick(t);
+		}
+		assertFalse("before the world settles the counters may be the last world's",
+			cache.hasCompletedFirstPartySetupFor("Tester"));
+		settled = true;
+		for (int t = 420; t < 424; t++)
+		{
+			tick(t);
+		}
+		sync.reset(); // a hop, a reconnect, a store change
+		for (int t = 424; t < 428; t++)
+		{
+			tick(t);
+		}
+		assertFalse("after a hop the five-tick wait starts over", cache.hasCompletedFirstPartySetupFor("Tester"));
+		tick(428);
+		assertTrue(cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertEquals(1, completions);
+	}
+
+	@Test
+	public void anEmptyLogIsSetUpOnlyForTheServedAccountOnceTheLogIsKnown() throws Exception
+	{
+		obtained = 0;
+		total = 1717;
+		playerName = "Other";
+		for (int t = 500; t < 510; t++)
+		{
+			tick(t);
+		}
+		assertEquals("an account the store doesn't serve", 0, completions);
+		assertEquals(0, refreshes);
+		playerName = "Tester";
+		ClogIndex parsed = index;
+		index = new ClogIndex();
+		for (int t = 510; t < 520; t++)
+		{
+			tick(t);
+		}
+		assertFalse("the log's pages not read yet", cache.hasCompletedFirstPartySetupFor("Tester"));
+		index = parsed;
+		for (int t = 520; t < 525; t++)
+		{
+			tick(t);
+		}
+		assertTrue(cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertEquals(1, completions);
+	}
+
+	@Test
+	public void aWalkUnderWayFinishesTheSetupItself() throws Exception
+	{
+		// The walk starts before the total is in, so it waits ten ticks; the total arrives while it runs.
+		obtained = 0;
+		total = 0;
+		tick(110);
+		menu("Search", InterfaceID.COLLECTION << 16 | 76);
+		total = 1717;
+		for (int t = 111; t <= 120; t++)
+		{
+			tick(t);
+		}
+		assertEquals("the walk's own setup, not a second one under it", 1, completions);
+		assertTrue(notices.stream().anyMatch(text -> text.contains("Setup complete")));
+	}
 
 	private void tick(int count) throws Exception
 	{
 		tick = count;
 		sync.onGameTick(client, index, cache, notifier,
-			() -> completions++, name -> refreshes++);
+			() -> completions++, name -> refreshes++, settled);
 		SwingUtilities.invokeAndWait(() ->
 		{
 		});

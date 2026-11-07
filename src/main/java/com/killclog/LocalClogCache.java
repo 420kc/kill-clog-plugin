@@ -1046,21 +1046,14 @@ public class LocalClogCache
 	}
 
 	/**
-	 * Whether this player's own log holds anything a sync would carry. Lookups
-	 * and empty first walks both answer false: the sync chalice and the
-	 * automatic sync triggers key off this, never off mere cache presence.
+	 * Whether this player's own log holds any item. Lookups and empty logs both answer false; whether the log can
+	 * sync (the chalice, the automatic sync) is {@link #ownLogReady}, which an empty set-up log also passes.
 	 */
 	public synchronized boolean hasFirstPartyDataFor(String playerName)
 	{
 		PlayerClogData data = record(playerName);
 		return data != null && (isActivePlayer(playerName) || data != lookups.get(cacheKey(playerName)))
 			&& data.obtained.values().stream().anyMatch(items -> !items.isEmpty());
-	}
-
-	/** {@link #hasFirstPartyDataFor} for the logged-in player. */
-	public synchronized boolean hasFirstPartyDataForActive()
-	{
-		return hasFirstPartyDataFor(session.getName());
 	}
 
 	/**

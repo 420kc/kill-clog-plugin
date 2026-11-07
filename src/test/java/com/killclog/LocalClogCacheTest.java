@@ -58,7 +58,7 @@ public class LocalClogCacheTest
 		assertTrue(cache.serving("Tester"));
 		cache.cacheFirstPartyResult(clog("Tester", categoryItems("zulrah", 1, 2), obtainedItems("zulrah", 1)));
 		assertTrue(cache.hasFirstPartyDataFor("Tester"));
-		assertTrue(cache.hasFirstPartyDataForActive());
+		assertTrue(cache.ownLogReadyForActive());
 		assertFalse("another name is another account", cache.serving("Someone"));
 		assertFalse(StoreLogin.activate(cache, "Someone", -1L));
 	}
@@ -528,6 +528,22 @@ public class LocalClogCacheTest
 	}
 
 	@Test
+	public void aFreshRunsLogCanSyncOnceItHoldsAnItemBeforeItIsSetUp() throws Exception
+	{
+		LocalClogCache cache = onDisk(temporaryFolder.newFolder());
+		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
+		Map<String, List<Integer>> categories = Map.of("hats", itemList(1, 2));
+		cache.cacheFirstPartyResult(clog("Tester", categories, obtainedItems("hats", 1)));
+		assertTrue(cache.ownLogReady("Tester"));
+		cache.startOverOnReset("Tester", 5_000_000, true);
+		assertTrue(cache.startOverOnReset("Tester", 1_154, false));
+		assertFalse("a fresh run's log, not set up and empty, waits", cache.ownLogReady("Tester"));
+		assertTrue(cache.mergeObtainedItem("Tester", 2, List.of("hats"), categories, 0, null));
+		assertFalse(cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertTrue("its first item is enough to sync", cache.ownLogReady("Tester"));
+	}
+
+	@Test
 	public void aHardcoreResetAcrossARelogIsStillSeen() throws Exception
 	{
 		File dir = temporaryFolder.newFolder();
@@ -866,9 +882,10 @@ public class LocalClogCacheTest
 			"2026-08-01 00:00:00", AccountType.REGULAR));
 		assertTrue("an empty walk completes setup", cache.hasCompletedFirstPartySetupFor("Zezima"));
 		assertFalse("but carries nothing", cache.hasFirstPartyDataFor("Zezima"));
+		assertTrue("and syncs as it is", cache.ownLogReadyForActive());
 		cache.mergeObtainedItem("Zezima", 3, itemListAsStrings("zulrah"), categoryItems("zulrah", 1, 2, 3), 0, null);
 		assertTrue(cache.hasFirstPartyDataFor("Zezima"));
-		assertTrue(cache.hasFirstPartyDataForActive());
+		assertTrue(cache.ownLogReadyForActive());
 	}
 
 	@Test
