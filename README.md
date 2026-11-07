@@ -64,7 +64,7 @@ Your clan comes from the game. Other players' clans come from their Kill Clog sy
 
 Hover your Collection Log total to see your log, and click it to pin and browse every tab and page.
 
-Some counts appear only on the game's own Collection Log pages, like Revenant kills, Hunter Guild rumours and the raids' Entry completions. Open a page once and its card shows the count from then on, here and on killclog.com, updated each time you open it.
+Some counts appear only on the game's own Collection Log pages, like Revenant kills, Hunter Guild rumours and the raids' Entry completions. Open a page and its card shows the count from then on, here and on killclog.com, updated when you next open the page after it changes.
 
 Shift-click anything that opens a card, or right-click it and choose **Copy**, and the card opens and is copied to your clipboard as a picture, ready to paste into Discord.
 
