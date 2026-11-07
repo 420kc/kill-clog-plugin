@@ -157,14 +157,20 @@ final class TestViews
 	/** Each game tile's top-left corner in reading order: where its black frame starts a box the tile's size. */
 	static java.util.List<java.awt.Point> tiles(java.awt.image.BufferedImage image)
 	{
+		return tiles(image, GameTile.WIDTH, GameTile.HEIGHT);
+	}
+
+	/** The same for tiles of another size, as a tab's pages are. */
+	static java.util.List<java.awt.Point> tiles(java.awt.image.BufferedImage image, int width, int height)
+	{
 		int edge = new java.awt.Color(14, 12, 10).getRGB();
 		java.util.List<java.awt.Point> found = new java.util.ArrayList<>();
-		for (int y = 1; y + GameTile.HEIGHT <= image.getHeight(); y++)
+		for (int y = 1; y + height <= image.getHeight(); y++)
 		{
-			for (int x = 1; x + GameTile.WIDTH <= image.getWidth(); x++)
+			for (int x = 1; x + width <= image.getWidth(); x++)
 			{
 				if (image.getRGB(x, y) == edge && image.getRGB(x - 1, y) != edge && image.getRGB(x, y - 1) != edge
-					&& image.getRGB(x + GameTile.WIDTH - 1, y) == edge && image.getRGB(x, y + GameTile.HEIGHT - 1) == edge)
+					&& image.getRGB(x + width - 1, y) == edge && image.getRGB(x, y + height - 1) == edge)
 				{
 					found.add(new java.awt.Point(x, y));
 				}

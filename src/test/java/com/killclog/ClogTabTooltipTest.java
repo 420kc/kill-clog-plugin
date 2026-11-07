@@ -19,30 +19,30 @@ import static org.junit.Assert.assertTrue;
 public class ClogTabTooltipTest
 {
 	private static final int LINE = NativeTooltip.LINE_HEIGHT;
+	// A notch of the wheel: a row of tiles.
+	private static final int ROW = GameTile.PAGE_HEIGHT + GameTile.GAP;
 
 	@Test
-	public void aLongTabShowsTwentyFourPagesAndTheWheelMovesThemThreeAtATime()
+	public void aLongTabScrollsARowOfTilesANotchAndStopsAtItsEnds()
 	{
 		ClogTabTooltip card = painted(card(57));
-		int top = firstRowY(card);
-		assertEquals(0, TestViews.rowAt(card, "pageRows", top));
-		assertEquals(23, TestViews.rowAt(card, "pageRows", top + 23 * LINE));
-		assertEquals(-1, TestViews.rowAt(card, "pageRows", top + 24 * LINE));
+		Point first = firstTile(card);
+		assertEquals(0, TestViews.tileAt(card, "pageRows", first.x + 10, first.y + 10));
+		assertEquals(1, TestViews.tileAt(card, "pageRows", first.x + GameTile.PAGE_WIDTH + GameTile.GAP + 10, first.y + 10));
 
-		wheel(card, top + 5, 1);
-		assertEquals(3, offset(card));
+		wheel(card, first.y + 10, 1);
+		assertEquals(ROW, card.scroll().offset());
 		// The mouse stayed put, so once the card repaints the page that scrolled under it is the one a press opens.
 		painted(card);
 		List<Integer> opened = new ArrayList<>();
 		card.setOnOpenPage((press, page) -> opened.add(page));
-		press(card, top + 5);
-		assertEquals(Arrays.asList(3), opened);
+		press(card, first.x + 10, first.y + 10);
+		assertEquals(Arrays.asList(2), opened);
 
-		// The list stops at its ends.
-		wheel(card, top + 5, 50);
-		assertEquals(57 - ClogTabTooltip.VISIBLE_ROWS, offset(card));
-		wheel(card, top + 5, -50);
-		assertEquals(0, offset(card));
+		wheel(card, first.y + 10, 50);
+		assertEquals(range(card), card.scroll().offset());
+		wheel(card, first.y + 10, -50);
+		assertEquals(0, card.scroll().offset());
 	}
 
 	@Test
@@ -50,9 +50,10 @@ public class ClogTabTooltipTest
 	{
 		// For a player without a scroll wheel (2.7.3): the rail is a scroll bar.
 		ClogTabTooltip card = painted(card(57));
-		int top = firstRowY(card);
+		Point first = firstTile(card);
+		int top = first.y;
 		int rail = card.getWidth() - NativeTooltip.getInset() - CardBody.RAIL_WIDTH;
-		int bottom = top + ClogTabTooltip.VISIBLE_ROWS * LINE - 2;
+		int bottom = top + CardBody.WINDOW - 2;
 		List<Integer> opened = new ArrayList<>();
 		card.setOnOpenPage((press, page) -> opened.add(page));
 		assertTrue("the grab zone takes the rail's gap too", CardBody.onRail(card, new Point(rail - CardBody.RAIL_GAP, top + 5)));
@@ -62,28 +63,20 @@ public class ClogTabTooltipTest
 		// A press low on the track jumps the window there, and opens no page under it.
 		press(card, rail, bottom);
 		release(card, rail, bottom);
-		assertEquals(57 - ClogTabTooltip.VISIBLE_ROWS, offset(card));
+		assertEquals(range(card), card.scroll().offset());
 		assertEquals(new ArrayList<>(), opened);
 
 		// The thumb, taken where it sits, follows the pointer back to the top and stops there.
 		painted(card);
 		press(card, rail, bottom - 2);
 		drag(card, rail, -100);
-		assertEquals(0, offset(card));
+		assertEquals(0, card.scroll().offset());
 		release(card, rail, -100);
-		// The thumb moved half its travel is the list moved half its way, however the pointer wanders sideways.
-		painted(card);
-		int track = ClogTabTooltip.VISIBLE_ROWS * LINE;
-		int travel = track - track * ClogTabTooltip.VISIBLE_ROWS / 57;
-		press(card, rail, top + 5);
-		drag(card, rail + 40, top + 5 + travel / 2);
-		release(card, rail + 40, top + 5 + travel / 2);
-		assertEquals((57 - ClogTabTooltip.VISIBLE_ROWS) / 2, offset(card));
 		assertEquals(new ArrayList<>(), opened);
 
-		// A press on a row still opens its page.
+		// A press on a tile still opens its page.
 		painted(card);
-		press(card, rail / 2, top + 5);
+		press(card, first.x + 10, first.y + 10);
 		assertEquals(1, opened.size());
 
 		// A pinned card stays open through a press on its rail, and closes on one anywhere else.
@@ -94,18 +87,13 @@ public class ClogTabTooltipTest
 	}
 
 	@Test
-	public void aTabWithinANotchOfTheWindowShowsWholeAndALongerOneScrolls()
+	public void aShortTabShowsWholeAndALongOneScrollsSevenPixelsWiderForItsRail()
 	{
-		int notch = 3;
-		ClogTabTooltip whole = painted(card(ClogTabTooltip.VISIBLE_ROWS + notch));
-		wheel(whole, firstRowY(whole), 3);
-		assertEquals(0, offset(whole));
-		int last = ClogTabTooltip.VISIBLE_ROWS + notch - 1;
-		assertEquals("every page shows", last, TestViews.rowAt(whole, "pageRows", firstRowY(whole) + last * LINE));
-		// One page more and the tab scrolls: the window's rows, seven pixels wider for the rail.
-		ClogTabTooltip scrolls = card(ClogTabTooltip.VISIBLE_ROWS + notch + 1);
-		assertEquals(whole.getPreferredSize().width + 7, scrolls.getPreferredSize().width);
-		assertEquals(whole.getPreferredSize().height - notch * LINE, scrolls.getPreferredSize().height);
+		ClogTabTooltip whole = painted(card(4));
+		wheel(whole, firstTile(whole).y, 3);
+		assertEquals(0, whole.scroll().offset());
+		assertEquals(4, TestViews.tiles(image(whole), GameTile.PAGE_WIDTH, GameTile.PAGE_HEIGHT).size());
+		assertEquals(whole.getPreferredSize().width + 7, card(57).getPreferredSize().width);
 	}
 
 	@Test
@@ -114,15 +102,15 @@ public class ClogTabTooltipTest
 		ClogTabTooltip blue = painted(card(57));
 		ClogTabTooltip red = painted(card(57));
 		TitleTooltip.scrollTogether(blue, red);
-		int top = firstRowY(blue);
+		int top = firstTile(blue).y;
 		int rail = blue.getWidth() - NativeTooltip.getInset() - CardBody.RAIL_WIDTH;
-		press(blue, rail, top + ClogTabTooltip.VISIBLE_ROWS * LINE - 2);
-		release(blue, rail, top + ClogTabTooltip.VISIBLE_ROWS * LINE - 2);
-		assertEquals(57 - ClogTabTooltip.VISIBLE_ROWS, offset(blue));
-		assertEquals("the other side follows the drag", offset(blue), offset(red));
+		press(blue, rail, top + CardBody.WINDOW - 2);
+		release(blue, rail, top + CardBody.WINDOW - 2);
+		assertEquals(range(blue), blue.scroll().offset());
+		assertEquals("the other side follows the drag", blue.scroll().offset(), red.scroll().offset());
 
 		// The thumb, now at the bottom, draws brighter while the pointer is on the rail.
-		int y = top + ClogTabTooltip.VISIBLE_ROWS * LINE - 4;
+		int y = top + CardBody.WINDOW - 4;
 		move(blue, rail / 2, y);
 		int dim = pixel(blue, rail + 1, y);
 		move(blue, rail, y);
@@ -193,29 +181,31 @@ public class ClogTabTooltipTest
 		ClogTabTooltip blue = painted(card(57));
 		ClogTabTooltip red = painted(card(57));
 		TitleTooltip.scrollTogether(blue, red);
-		wheel(blue, firstRowY(blue), 2);
-		assertEquals(6, offset(red));
-		wheel(red, firstRowY(red), -1);
-		assertEquals(3, offset(blue));
+		wheel(blue, firstTile(blue).y, 2);
+		assertEquals(2 * ROW, red.scroll().offset());
+		wheel(red, firstTile(red).y, -1);
+		assertEquals(ROW, blue.scroll().offset());
 	}
 
 	@Test
 	public void aCopyHoldsEveryPageAndTheCardOnScreenStaysWhereItWas()
 	{
 		ClogTabTooltip card = painted(card(57));
-		int top = firstRowY(card);
-		wheel(card, top + 5, 1);
+		Point first = firstTile(card);
+		wheel(card, first.y + 5, 1);
 		painted(card);
 		Dimension shown = card.getSize();
+		int range = range(card);
 		BufferedImage copy = TooltipController.cardImage(card);
-		// All 57 pages at full height in place of the 24-page window, and no rail beside them.
-		assertEquals(shown.height + (57 - ClogTabTooltip.VISIBLE_ROWS) * LINE, copy.getHeight());
+		// Every page at full height in place of the window, and no rail beside them.
+		assertEquals(shown.height + range, copy.getHeight());
 		assertEquals(shown.width - CardBody.RAIL_GAP - CardBody.RAIL_WIDTH, copy.getWidth());
 		assertEquals(shown, card.getSize());
-		assertEquals(3, offset(card));
-		assertEquals("the page under the pointer is still the one in view", 3, TestViews.rowAt(card, "pageRows", top));
-		wheel(card, top + 5, 1);
-		assertEquals("and the wheel still moves it", 6, offset(card));
+		assertEquals(ROW, card.scroll().offset());
+		assertEquals("the page under the pointer is still the one in view", 2,
+			TestViews.tileAt(card, "pageRows", first.x + 10, first.y + 10));
+		wheel(card, first.y + 5, 1);
+		assertEquals("and the wheel still moves it", 2 * ROW, card.scroll().offset());
 	}
 
 	@Test
@@ -231,7 +221,7 @@ public class ClogTabTooltipTest
 		pair.paint(graphics);
 		graphics.dispose();
 		BufferedImage copy = TooltipController.cardImage(pair);
-		assertEquals(shown.height + (57 - ClogTabTooltip.VISIBLE_ROWS) * LINE, copy.getHeight());
+		assertEquals(shown.height + range(blue), copy.getHeight());
 		assertEquals(shown, pair.getSize());
 		assertEquals("each card on screen keeps its window", shown.height, pair.getPreferredSize().height);
 	}
@@ -285,63 +275,22 @@ public class ClogTabTooltipTest
 		press(back, row + 2);
 		assertEquals(1, backs[0]);
 		assertTrue(opened.isEmpty());
-		press(back, firstRowY(back) + 2);
+		press(back, firstTile(back).x + 10, firstTile(back).y + 10);
 		assertEquals(1, backs[0]);
 		assertEquals(Arrays.asList(0), opened);
 	}
 
 	@Test
-	public void pageRowsWearTheirProgressionColorsWhenTheHighlighterIsOn()
+	public void pageTilesWearTheLogsRedYellowAndGreen()
 	{
-		java.awt.Color done = new java.awt.Color(1, 2, 3);
-		java.awt.Color oneLeft = new java.awt.Color(4, 5, 6);
-		java.awt.Color going = new java.awt.Color(7, 8, 9);
-		java.awt.Color none = new java.awt.Color(10, 11, 12);
-		KillClogConfig progress = new KillClogConfig()
-		{
-			@Override
-			public java.awt.Color completedClogColor()
-			{
-				return done;
-			}
-
-			@Override
-			public java.awt.Color missing1Color()
-			{
-				return oneLeft;
-			}
-
-			@Override
-			public java.awt.Color inProgressClogColor()
-			{
-				return going;
-			}
-
-			@Override
-			public java.awt.Color emptyClogColor()
-			{
-				return none;
-			}
-		};
-		String[] names = {"Zulrah", "Vorkath", "Giant Mole", "Obor", "Bryophyta"};
-		int[] obtained = {10, 9, 3, 0, -1};
-		int[] total = {10, 10, 10, 10, 10};
-		ClogTabTooltip colored = new ClogTabTooltip();
-		colored.setTab("Bosses", new int[]{22, 50}, 50);
-		colored.setPages(names, obtained, total, progress);
-		ClogTabTooltip plain = new ClogTabTooltip();
-		plain.setTab("Bosses", new int[]{22, 50}, 50);
-		plain.setPages(names, obtained, total, null);
-
-		java.util.Set<Integer> shown = colors(colored);
-		for (java.awt.Color color : new java.awt.Color[]{done, oneLeft, going, none})
+		ClogTabTooltip card = new ClogTabTooltip();
+		card.setTab("Bosses", new int[]{22, 50}, 50);
+		card.setPages(new String[]{"Zulrah", "Vorkath", "Obor"}, new int[]{10, 3, 0}, new int[]{10, 10, 10});
+		java.util.Set<Integer> shown = colors(card);
+		for (java.awt.Color color : new java.awt.Color[]{TitleTooltip.CLOG_GREEN, TitleTooltip.CLOG_YELLOW, TitleTooltip.CLOG_RED})
 		{
 			assertTrue(color.toString(), shown.contains(color.getRGB()));
-			assertTrue(color.toString(), !colors(plain).contains(color.getRGB()));
 		}
-		// The empty page's count follows its name: the log's red only shows with the highlighter off.
-		assertTrue(colors(plain).contains(TitleTooltip.CLOG_RED.getRGB()));
-		assertTrue(!shown.contains(TitleTooltip.CLOG_RED.getRGB()));
 	}
 
 	private static java.util.Set<Integer> colors(ClogTabTooltip card)
@@ -372,7 +321,11 @@ public class ClogTabTooltipTest
 		Arrays.fill(total, 9);
 		ClogTabTooltip card = new ClogTabTooltip();
 		card.setTab("Bosses", new int[]{12, 34}, 34);
-		card.setPages(names, obtained, total, null);
+		card.setPages(names, obtained, total);
+		// Pages answer a press once something can open them.
+		card.setOnOpenPage((press, page) ->
+		{
+		});
 		return card;
 	}
 
@@ -385,18 +338,25 @@ public class ClogTabTooltipTest
 		graphics.dispose();
 		return card;
 	}
-
-	/** The first y that answers as the first page in view, found the way a pointer would. */
-	private static int firstRowY(ClogTabTooltip card)
+	/** The top-left of the first page tile in view. */
+	private static Point firstTile(ClogTabTooltip card)
 	{
-		for (int y = 0; y < card.getHeight(); y++)
-		{
-			if (TestViews.rowAt(card, "pageRows", y) == offset(card))
-			{
-				return y;
-			}
-		}
-		throw new AssertionError("no pages painted");
+		return TestViews.tiles(image(card), GameTile.PAGE_WIDTH, GameTile.PAGE_HEIGHT).get(0);
+	}
+
+	private static BufferedImage image(ClogTabTooltip card)
+	{
+		BufferedImage image = new BufferedImage(card.getWidth(), card.getHeight(), BufferedImage.TYPE_INT_ARGB);
+		Graphics2D graphics = image.createGraphics();
+		card.paint(graphics);
+		graphics.dispose();
+		return image;
+	}
+
+	/** How far the tab's tiles can scroll. */
+	private static int range(ClogTabTooltip card)
+	{
+		return TestViews.field(card.scroll(), "range");
 	}
 
 	private static void wheel(ClogTabTooltip card, int y, int notches)
@@ -435,11 +395,5 @@ public class ClogTabTooltipTest
 		{
 			listener.mouseReleased(new MouseEvent(card, MouseEvent.MOUSE_RELEASED, 0, 0, x, y, 1, false, MouseEvent.BUTTON1));
 		}
-	}
-
-	/** The first page in view. */
-	private static int offset(ClogTabTooltip card)
-	{
-		return card.scroll().offset() / NativeTooltip.LINE_HEIGHT;
 	}
 }

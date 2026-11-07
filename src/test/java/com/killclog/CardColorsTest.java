@@ -79,7 +79,7 @@ public class CardColorsTest
 	{
 		ClogTabTooltip card = new ClogTabTooltip();
 		card.setTab("Bosses", new int[]{12, 34}, 34);
-		card.setPages(new String[]{"Vorkath"}, new int[]{3}, new int[]{9}, null);
+		card.setPages(new String[]{"Vorkath"}, new int[]{3}, new int[]{9});
 		return card;
 	}
 

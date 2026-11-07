@@ -466,7 +466,7 @@ public class SkillClogSectionTest
 	{
 		SkillTooltip fits = card(10);
 		SkillTooltip dense = card(90);
-		int window = ClogTabTooltip.VISIBLE_ROWS * NativeTooltip.LINE_HEIGHT;
+		int window = CardBody.WINDOW;
 		// Ninety items at full size run far past the window; the card stops at it.
 		assertTrue(dense.getPreferredSize().height - fits.getPreferredSize().height < window);
 		paint(dense);

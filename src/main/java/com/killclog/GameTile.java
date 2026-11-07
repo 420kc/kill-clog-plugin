@@ -12,7 +12,8 @@ import net.runelite.client.util.ImageUtil;
 /**
  * The game's own tile, as its Combat Achievements screen draws a boss (Dylan, 2026-11-07): a framed box with a
  * bracket in each corner, its name, a sprite, its count in the Collection Log's red, yellow and green, and a bar in
- * four parts. Cards lay them out three across, and a tile opens what it names.
+ * four parts. Cards lay them out three across; a tab's pages, two across, wider and without a sprite, their names on
+ * up to two lines. A tile opens what it names.
  */
 final class GameTile
 {
@@ -20,6 +21,10 @@ final class GameTile
 	static final int HEIGHT = 78;
 	static final int GAP = 4;
 	static final int COLS = 3;
+	static final int PAGE_WIDTH = (COLS * WIDTH - GAP) / 2;
+	static final int PAGE_HEIGHT = 58;
+	private static final int PAGE_COUNT_TOP = 31;
+	private static final int NAME_LINE = 13;
 	// The frame keeps its corners, brackets and all, and stretches between them; a hovered tile's is a shade lighter.
 	private static final int FRAME_EDGE = 7;
 	private static final BufferedImage FRAME = ImageUtil.loadImageResource(GameTile.class, "game-tile.png");
@@ -51,16 +56,26 @@ final class GameTile
 	/** The tiles three across, centered; one under the mouse lightens, and a press opens its key. */
 	static CardBody.Part grid(CardBody.ClickRows clicks, List<Tile> tiles)
 	{
-		int cols = Math.min(tiles.size(), COLS);
-		int rows = (tiles.size() + COLS - 1) / COLS;
-		int width = cols * (WIDTH + GAP) - GAP;
-		return CardBody.part(c -> width, c -> rows * (HEIGHT + GAP) - GAP, (c, y) ->
+		return grid(clicks, tiles, COLS, WIDTH, HEIGHT);
+	}
+
+	/** A tab's pages, two across, as the game's Combat Achievements tiles its bosses. */
+	static CardBody.Part pages(CardBody.ClickRows clicks, List<Tile> tiles)
+	{
+		return grid(clicks, tiles, 2, PAGE_WIDTH, PAGE_HEIGHT);
+	}
+
+	private static CardBody.Part grid(CardBody.ClickRows clicks, List<Tile> tiles, int cols, int w, int h)
+	{
+		int rows = (tiles.size() + cols - 1) / cols;
+		int width = Math.min(tiles.size(), cols) * (w + GAP) - GAP;
+		return CardBody.part(c -> width, c -> rows * (h + GAP) - GAP, (c, y) ->
 		{
 			int left = (c.w - width) / 2;
 			for (int i = 0; i < tiles.size(); i++)
 			{
 				Tile tile = tiles.get(i);
-				Rectangle box = new Rectangle(left + i % COLS * (WIDTH + GAP), y + i / COLS * (HEIGHT + GAP), WIDTH, HEIGHT);
+				Rectangle box = new Rectangle(left + i % cols * (w + GAP), y + i / cols * (h + GAP), w, h);
 				paint(c, box, tile, tile.key >= 0 && clicks.boxShown(c, box, tile.key));
 			}
 		});
@@ -73,12 +88,21 @@ final class GameTile
 		boolean known = tile.obtained >= 0;
 		boolean complete = known && tile.obtained >= tile.total;
 		Color color = known ? TitleTooltip.completionColor(tile.obtained, tile.total) : TitleTooltip.MUTED_GRAY;
-		int center = box.x + WIDTH / 2;
+		int center = box.x + box.width / 2;
+		boolean page = box.height == PAGE_HEIGHT;
 		Font font = g.getFont();
 
-		g.setFont(c.bfm.getFont());
+		// The name in bold where it fits, else the regular font, broken at a space onto two lines where it must be.
+		FontMetrics nfm = c.bfm.stringWidth(tile.name) <= box.width - 2 * BAR_PAD ? c.bfm : g.getFontMetrics(COUNT_FONT);
+		String[] lines = nfm.stringWidth(tile.name) <= box.width - 2 * BAR_PAD ? new String[]{tile.name} : split(tile.name, nfm);
+		g.setFont(nfm.getFont());
 		g.setColor(complete ? color : NativeTooltip.labelColor);
-		g.drawString(tile.name, center - c.bfm.stringWidth(tile.name) / 2, box.y + NAME_TOP + c.bfm.getAscent());
+		int nameY = box.y + NAME_TOP + nfm.getAscent() + (page && lines.length == 1 ? NAME_LINE / 2 : 0);
+		for (String line : lines)
+		{
+			g.drawString(line, center - nfm.stringWidth(line) / 2, nameY);
+			nameY += NAME_LINE;
+		}
 		if (tile.sprite != null)
 		{
 			g.drawImage(tile.sprite, center - tile.sprite.getWidth(null) / 2, box.y + SPRITE_TOP, null);
@@ -88,12 +112,12 @@ final class GameTile
 		String count = tile.total <= 0 ? "" : known ? TitleTooltip.progressCountText(tile.obtained, tile.total)
 			: TitleTooltip.progressPlaceholderText(tile.total);
 		g.setColor(color);
-		g.drawString(count, center - fm.stringWidth(count) / 2, box.y + COUNT_TOP + fm.getAscent());
+		g.drawString(count, center - fm.stringWidth(count) / 2, box.y + (page ? PAGE_COUNT_TOP : COUNT_TOP) + fm.getAscent());
 		g.setFont(font);
 
 		int x = box.x + BAR_PAD;
-		int barY = box.y + HEIGHT - BAR_PAD - BAR_HEIGHT;
-		int width = WIDTH - 2 * BAR_PAD;
+		int barY = box.y + box.height - BAR_PAD - BAR_HEIGHT;
+		int width = box.width - 2 * BAR_PAD;
 		int lit = known && tile.total > 0 ? width * Math.min(tile.obtained, tile.total) / tile.total : 0;
 		for (int part = 0; part < BAR_PARTS; part++)
 		{
@@ -110,6 +134,24 @@ final class GameTile
 				g.fillRect(from + 1, barY + 1, filled, BAR_HEIGHT - 2);
 			}
 		}
+	}
+
+	/** A name broken at the space that leaves its longer half shortest. */
+	private static String[] split(String name, FontMetrics fm)
+	{
+		String[] best = {name};
+		int widest = Integer.MAX_VALUE;
+		for (int at = name.indexOf(' '); at > 0; at = name.indexOf(' ', at + 1))
+		{
+			String[] halves = {name.substring(0, at), name.substring(at + 1)};
+			int width = Math.max(fm.stringWidth(halves[0]), fm.stringWidth(halves[1]));
+			if (width < widest)
+			{
+				widest = width;
+				best = halves;
+			}
+		}
+		return best;
 	}
 
 	/** The frame at the box's size: its corners as drawn, its edges and middle stretched between them. */
