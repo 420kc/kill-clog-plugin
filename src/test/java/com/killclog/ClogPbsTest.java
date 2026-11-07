@@ -26,13 +26,15 @@ public class ClogPbsTest
 	private ConfigManager configManager;
 	private ClogPbs pbs;
 	private final java.util.List<String> counts = new java.util.ArrayList<>();
+	// The player's own counts, as their log holds them.
+	private final java.util.Map<String, Integer> held = new java.util.HashMap<>();
 
 	@Before
 	public void setUp()
 	{
 		client = mock(Client.class);
 		configManager = mock(ConfigManager.class);
-		pbs = new ClogPbs(configManager, (label, count) -> counts.add(label + "=" + count));
+		pbs = new ClogPbs(configManager, (label, count) -> counts.add(label + "=" + count), held::get);
 		when(client.getLocalPlayer()).thenReturn(mock(Player.class));
 	}
 
@@ -392,5 +394,41 @@ public class ClogPbsTest
 		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 151);
 		draws(1);
 		assertEquals(java.util.List.of("Rumours Completed=151"), counts);
+	}
+
+	@Test
+	public void aCountIsNeverThePageBeforesNumber()
+	{
+		// QA 11/7: the Abyssal Sire drawn at 1,204 kills, then Tormented Demons, with 1,204 landing just before it drew.
+		page("Abyssal Sire", "Obtained: <col=ffff00>6/9</col>", "Abyssal Sire kills: <col=ffffff>1,204</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 1204);
+		draws(1);
+		page("Tormented Demons", "Obtained: <col=ffff00>1/4</col>", "Tormented Demon kills: <col=ffffff>1,204</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 1204);
+		draws(1);
+		assertTrue(counts.toString(), counts.isEmpty());
+
+		// The Theatre's Entry count as the log holds it, its page drawn before that count came: the Tombs never take it.
+		held.put("Theatre of Blood (Entry) completions", 6);
+		page("Theatre of Blood", "Obtained: <col=ffff00>5/17</col>",
+			"Theatre of Blood (Entry) completions: <col=ffffff>0</col>");
+		draws(1);
+		page("Tombs of Amascut", "Obtained: <col=ffff00>3/20</col>",
+			"Tombs of Amascut (Entry) completions: <col=ffffff>6</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT2, 6);
+		draws(1);
+		assertTrue(counts.toString(), counts.isEmpty());
+
+		// A number of the page's own is read as ever.
+		page("Theatre of Blood", "Obtained: <col=ffff00>5/17</col>",
+			"Theatre of Blood (Entry) completions: <col=ffffff>7</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT2, 7);
+		draws(1);
+		page("Tombs of Amascut", "Obtained: <col=ffff00>3/20</col>",
+			"Tombs of Amascut (Entry) completions: <col=ffffff>19</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT2, 19);
+		draws(1);
+		assertEquals(java.util.List.of("Theatre of Blood (Entry) completions=7",
+			"Tombs of Amascut (Entry) completions=19"), counts);
 	}
 }

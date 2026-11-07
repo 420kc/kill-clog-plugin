@@ -2,6 +2,7 @@ package com.killclog;
 
 import java.util.*;
 import java.util.function.BiConsumer;
+import java.util.function.Function;
 import javax.annotation.*;
 import net.runelite.api.Client;
 import net.runelite.api.gameval.*;
@@ -30,6 +31,9 @@ import net.runelite.client.util.Text;
  * same time read the second on a later visit, from another page. It looks one page back, at times already held: a
  * page that holds nothing in between, or a page never held at all, still leaves the timing as the only guard.
  *
+ * A page count (PageCounts) is guarded the same way: a page never takes the number its count line stood at when the
+ * page before it drew, or the page before's own count in that line as the player's log holds it.
+ *
  * Times read this way are kept under their own keys ("pagepb."): the ones 2.6.3 and earlier kept ("clogpb.") may be
  * another page's, so they are never read or sent again, and each account's are cleared the first time it reads a
  * page. A page shows its time again when it is next opened.
@@ -53,15 +57,20 @@ final class ClogPbs
 	private final ConfigManager configManager;
 	// Hands a page count read off the player's own page (label, count) to their log.
 	private final BiConsumer<String, Integer> countRead;
+	// The player's own count for a label, as their log holds it; null for none.
+	private final Function<String, Integer> heldCount;
 	private String shownPage;
 	// The client cycle each line's varp last changed, until a draw uses it; -1 when no draw may.
 	private final int[] arrived = {-1, -1, -1, -1, -1};
+	// Each count line's varp as the page shown last stood when it drew; null before any page.
+	private final Integer[] drawnCounts = new Integer[VARPS.length - COUNTS];
 	private final java.util.Set<String> cleared = new java.util.HashSet<>();
 
-	ClogPbs(ConfigManager configManager, BiConsumer<String, Integer> countRead)
+	ClogPbs(ConfigManager configManager, BiConsumer<String, Integer> countRead, Function<String, Integer> heldCount)
 	{
 		this.configManager = configManager;
 		this.countRead = countRead;
+		this.heldCount = heldCount;
 	}
 
 	/** The log redrew a page's header (script 2731); client thread. */
@@ -83,7 +92,16 @@ final class ClogPbs
 		boolean newPage = !page.equals(shownPage);
 		String before = shownPage;
 		shownPage = page;
-		if (!newPage || UNSETTLED.contains(page.toLowerCase(Locale.ROOT)))
+		if (!newPage)
+		{
+			return;
+		}
+		Integer[] drawnBefore = drawnCounts.clone();
+		for (int slot = 0; slot < drawnCounts.length; slot++)
+		{
+			drawnCounts[slot] = client.getVarpValue(VARPS[COUNTS + slot]);
+		}
+		if (UNSETTLED.contains(page.toLowerCase(Locale.ROOT)))
 		{
 			return;
 		}
@@ -94,7 +112,11 @@ final class ClogPbs
 			PageCounts.Line count = PageCounts.line(key, text);
 			if (count != null && sent[COUNTS + count.slot])
 			{
-				countRead.accept(count.label, client.getVarpValue(VARPS[COUNTS + count.slot]));
+				int value = client.getVarpValue(VARPS[COUNTS + count.slot]);
+				if (!countBefore(before, count.slot, value, drawnBefore))
+				{
+					countRead.accept(count.label, value);
+				}
 			}
 			else if (text.startsWith("Personal Best Corrupted:") && sent[1])
 			{
@@ -122,6 +144,27 @@ final class ClogPbs
 		{
 			Double held = configManager.getRSProfileConfiguration(AdvLogPbs.CONFIG_GROUP, prefix + key, double.class);
 			if (held != null && PbRecord.sameRecord(held, seconds))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Whether a count is the page shown before's, as the PB guard asks of a time: the number that line's varp stood at
+	 * when that page drew, or that page's own count in the same line as the player's log holds it.
+	 */
+	private boolean countBefore(@Nullable String before, int slot, int value, Integer[] drawnBefore)
+	{
+		if (drawnBefore[slot] != null && drawnBefore[slot] == value)
+		{
+			return true;
+		}
+		String key = before != null ? ClogService.bossToCategory(before) : null;
+		for (PageCounts.Line line : PageCounts.LINES)
+		{
+			if (line.page.equals(key) && line.slot == slot && Objects.equals(heldCount.apply(line.label), value))
 			{
 				return true;
 			}

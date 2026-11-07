@@ -232,7 +232,7 @@ public class KillClogPlugin extends Plugin
 			sessions.addListener(this::sessionChanged);
 		}
 		syncSettings = new SyncSettings(config, configManager);
-		clogPbs = new ClogPbs(configManager, this::pageCountRead);
+		clogPbs = new ClogPbs(configManager, this::pageCountRead, this::heldPageCount);
 		killLog = new KillLog(configManager);
 		syncSettings.enforce();
 		panel.setKillclogSyncHandler(publication::manualSync);
@@ -384,6 +384,13 @@ public class KillClogPlugin extends Plugin
 			localClogCache.setPageCount(name, label, count);
 			SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(name));
 		}
+	}
+
+	/** The player's own count for a label, as their main log holds it; null for none. */
+	private Integer heldPageCount(String label)
+	{
+		String name = sessions.current().getName();
+		return name != null ? localClogCache.pageCount(name, label) : null;
 	}
 
 	// Run before Fashionscape (0) and Weapon/Gear/Anim Replacer (1).

@@ -7,9 +7,11 @@ import javax.annotation.Nullable;
  * The game's counts that only a Collection Log page shows and no hiscore has: Revenant, Tormented Demon and Demonic
  * Gorilla kills, the Hunter Guild's rumours and the raids' Entry completions (Dylan, 11/6; the lines are
  * page-counts.tsv, so another is a row). {@link ClogPbs} reads them off the page as it opens, by its timing rule,
- * and each reading replaces the last: the game's count only grows, but a reading can be another page's, and the
- * page's next reading mends it where keeping the highest never could. The player's sync carries them and
- * killclog.com serves them, as with {@link HighGambles}.
+ * guarded against the page before's number as a PB is, and each reading replaces the last: the game's count only
+ * grows, but a reading can still be another page's, and the page's next reading of a new number replaces it where
+ * keeping the highest never could (the game sends a count only when it changes, so that can wait for the count to
+ * move). The player's sync carries the counts read since killclog.com last took one, and killclog.com serves them,
+ * as with {@link HighGambles}.
  */
 final class PageCounts
 {
