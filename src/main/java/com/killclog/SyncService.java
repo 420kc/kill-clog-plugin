@@ -352,6 +352,13 @@ class SyncService
 			activities.addProperty(HighGambles.ACTIVITY, clog.getHighGambles());
 			root.add("activities", activities);
 		}
+		// The counts only the game's pages show (PageCounts): killclog.com keeps the newest it was sent.
+		if (!clog.getPageCounts().isEmpty())
+		{
+			JsonObject counts = new JsonObject();
+			clog.getPageCounts().forEach(counts::addProperty);
+			root.add(PageCounts.FIELD, counts);
+		}
 		// PBs are the sync's defining cargo: RuneLite records them locally per
 		// profile and no public provider serves them. Raw seconds; the site
 		// owns formatting.

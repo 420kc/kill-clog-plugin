@@ -1,6 +1,7 @@
 package com.killclog;
 
 import java.util.*;
+import java.util.function.BiConsumer;
 import javax.annotation.*;
 import net.runelite.api.Client;
 import net.runelite.api.gameval.*;
@@ -40,21 +41,27 @@ final class ClogPbs
 
 	// Pages whose one line doesn't yet say which encounter it times (the Nightmare's or Phosani's; which delve).
 	private static final Set<String> UNSETTLED = Set.of("the nightmare", "doom of mokhaiotl");
-	// The page's own line, and the Gauntlet page's second one for the Corrupted Gauntlet.
+	// The page's own line, and the Gauntlet page's second one for the Corrupted Gauntlet; then the page's three count
+	// lines, which PageCounts reads by the same timing rule.
 	private static final int[] VARPS = {VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT,
-		VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT_2};
+		VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT_2, VarPlayerID.COLLECTION_CATEGORY_COUNT,
+		VarPlayerID.COLLECTION_CATEGORY_COUNT2, VarPlayerID.COLLECTION_CATEGORY_COUNT3};
+	private static final int COUNTS = 2;
 	// How many client cycles a page's time can land before its draw: one in every logged click.
 	/* package */ static final int ARRIVAL_CYCLES = 5;
 
 	private final ConfigManager configManager;
+	// Hands a page count read off the player's own page (label, count) to their log.
+	private final BiConsumer<String, Integer> countRead;
 	private String shownPage;
 	// The client cycle each line's varp last changed, until a draw uses it; -1 when no draw may.
-	private final int[] arrived = {-1, -1};
+	private final int[] arrived = {-1, -1, -1, -1, -1};
 	private final java.util.Set<String> cleared = new java.util.HashSet<>();
 
-	ClogPbs(ConfigManager configManager)
+	ClogPbs(ConfigManager configManager, BiConsumer<String, Integer> countRead)
 	{
 		this.configManager = configManager;
+		this.countRead = countRead;
 	}
 
 	/** The log redrew a page's header (script 2731); client thread. */
@@ -80,10 +87,16 @@ final class ClogPbs
 		{
 			return;
 		}
+		String key = ClogService.bossToCategory(page);
 		for (Widget line : client.getWidget(InterfaceID.Collection.HEADER_TEXT).getDynamicChildren())
 		{
 			String text = Text.removeTags(line.getText());
-			if (text.startsWith("Personal Best Corrupted:") && sent[1])
+			PageCounts.Line count = PageCounts.line(key, text);
+			if (count != null && sent[COUNTS + count.slot])
+			{
+				countRead.accept(count.label, client.getVarpValue(VARPS[COUNTS + count.slot]));
+			}
+			else if (text.startsWith("Personal Best Corrupted:") && sent[1])
 			{
 				record(AdvLogPbs.canonicalSection("The Corrupted Gauntlet"), client.getVarpValue(VARPS[1]), before);
 			}

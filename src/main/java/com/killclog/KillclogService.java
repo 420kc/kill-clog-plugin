@@ -473,6 +473,21 @@ public class KillclogService
 			{
 				result.setHighGambles(HighGambles.plausible(intField(root, HighGambles.FIELD)));
 			}
+			JsonObject counts = root.has(PageCounts.FIELD) && root.get(PageCounts.FIELD).isJsonObject()
+				? root.getAsJsonObject(PageCounts.FIELD) : new JsonObject();
+			// Only the lines Kill Clog reads, so a reply can't fill a log with names it never shows; a value that isn't
+			// a count is skipped, never the whole lookup.
+			for (PageCounts.Line line : PageCounts.LINES)
+			{
+				JsonElement value = counts.get(line.label);
+				double number = value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isNumber()
+					? value.getAsDouble() : -1;
+				int count = HighGambles.plausible(number > Integer.MAX_VALUE ? -1 : (int) number);
+				if (count >= 0)
+				{
+					result.getPageCounts().put(line.label, count);
+				}
+			}
 			// This footer describes collection-log provenance, not merely account
 			// presence on killclog.com. PB-only proof views intentionally parse
 			// and cache as healthy empty results, but do not earn a clog source.

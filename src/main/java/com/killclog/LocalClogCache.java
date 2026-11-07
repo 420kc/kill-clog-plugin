@@ -530,6 +530,10 @@ public class LocalClogCache
 		}
 		// The game only ever counts gambles up, so a log that doesn't carry the count keeps the one held.
 		data.highGambles = Math.max(data.highGambles, result.getHighGambles());
+		// A page count's newest reading wins (PageCounts), so a log that doesn't carry one keeps the one held.
+		Map<String, Integer> counts = data.pageCounts != null ? new HashMap<>(data.pageCounts) : new HashMap<>();
+		counts.putAll(result.getPageCounts());
+		data.pageCounts = counts;
 		// Upward-only, like the totals above: a provider snapshot must not
 		// drag the last-updated notice behind a live merge stamped moments ago.
 		bumpLastChanged(data, result.getLastChanged());
@@ -943,6 +947,23 @@ public class LocalClogCache
 		return true;
 	}
 
+	/**
+	 * A page count read off the player's own log page (PageCounts): the newest reading replaces the last, as the page's
+	 * next reading mends one that was another page's, and a change syncs.
+	 */
+	public synchronized void setPageCount(String playerName, String label, int count)
+	{
+		PlayerClogData data = ownLog(playerName);
+		if (data == null || data.pageCounts != null && Objects.equals(data.pageCounts.get(label), count))
+		{
+			return;
+		}
+		data.pageCounts = data.pageCounts != null ? new HashMap<>(data.pageCounts) : new HashMap<>();
+		data.pageCounts.put(label, count);
+		submitSave(activeHashKey, true, data);
+		notifyFirstPartyChanged();
+	}
+
 	public synchronized boolean hasDataFor(String playerName)
 	{
 		return record(playerName) != null;
@@ -1003,6 +1024,10 @@ public class LocalClogCache
 		result.setRunStartedAt(data.runStartedAt);
 		result.setRunStartXp(data.runStartXp);
 		result.setHighGambles(data.highGambles);
+		if (data.pageCounts != null)
+		{
+			result.setPageCounts(new HashMap<>(data.pageCounts));
+		}
 		return result;
 	}
 
@@ -1224,6 +1249,7 @@ public class LocalClogCache
 		copy.uniqueObtained = src.uniqueObtained;
 		copy.uniqueTotal = src.uniqueTotal;
 		copy.highGambles = src.highGambles;
+		copy.pageCounts = src.pageCounts != null ? new HashMap<>(src.pageCounts) : null;
 		copy.categories = new HashMap<>(src.categories);
 		copy.obtained = new HashMap<>(src.obtained);
 		copy.firstPartySetupComplete = src.firstPartySetupComplete;

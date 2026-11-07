@@ -40,6 +40,10 @@ public class ClogResult
 	@Getter
 	@Setter
 	private int highGambles = -1;
+	/** The counts only the game's own pages show (PageCounts), label to count, from the player's client or sync */
+	@Getter
+	@Setter
+	private Map<String, Integer> pageCounts = new HashMap<>();
 	/** TempleOSRS's EHP and EHC for the account's own flavour, or -1 when Temple gave none */
 	@Getter
 	@Setter
@@ -128,6 +132,7 @@ public class ClogResult
 		this.uniqueObtained = source.uniqueObtained;
 		this.uniqueTotal = source.uniqueTotal;
 		this.highGambles = source.highGambles;
+		this.pageCounts = new HashMap<>(source.pageCounts);
 		this.fromLocal = source.fromLocal;
 		this.templeEhp = source.templeEhp;
 		this.templeEhc = source.templeEhc;
@@ -252,14 +257,16 @@ public class ClogResult
 	}
 
 	/**
-	 * Keeps TempleOSRS's figures, the synced clan and the gamble count when the other side of a combine carried them
-	 * and this didn't: only the player's own sync knows the count, so a provider's fuller log mustn't drop it.
+	 * Keeps TempleOSRS's figures, the synced clan, the gamble count and the page counts when the other side of a
+	 * combine carried them and this didn't: only the player's own sync knows the counts, so a provider's fuller log
+	 * mustn't drop them.
 	 */
 	private ClogResult carryFrom(ClogResult other)
 	{
 		if (other != null)
 		{
 			highGambles = Math.max(highGambles, other.highGambles);
+			other.pageCounts.forEach(pageCounts::putIfAbsent);
 		}
 		if (other != null && templeEhp < 0 && templeEhc < 0)
 		{

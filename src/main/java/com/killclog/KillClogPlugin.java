@@ -232,7 +232,7 @@ public class KillClogPlugin extends Plugin
 			sessions.addListener(this::sessionChanged);
 		}
 		syncSettings = new SyncSettings(config, configManager);
-		clogPbs = new ClogPbs(configManager);
+		clogPbs = new ClogPbs(configManager, this::pageCountRead);
 		killLog = new KillLog(configManager);
 		syncSettings.enforce();
 		panel.setKillclogSyncHandler(publication::manualSync);
@@ -371,6 +371,17 @@ public class KillClogPlugin extends Plugin
 		boolean gamblesRose = localClogCache.updateHighGamblesUpward(name, gambles);
 		if (totalsRose || gamblesRose)
 		{
+			SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(name));
+		}
+	}
+
+	/** A count read off the player's own log page (PageCounts), kept on their main log; the change syncs. */
+	private void pageCountRead(String label, int count)
+	{
+		String name = sessions.current().getName();
+		if (world.mainSettled() && name != null)
+		{
+			localClogCache.setPageCount(name, label, count);
 			SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(name));
 		}
 	}

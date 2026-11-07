@@ -1,0 +1,12 @@
+# The game's counts that only a Collection Log page shows, read as the page opens: page<TAB>slot<TAB>label<TAB>card.
+# page is the page's key (its name as ClogService.bossToCategory keys it). slot is the varp that carries the line:
+# 1 COLLECTION_CATEGORY_COUNT, 2 COLLECTION_CATEGORY_COUNT2, 3 COLLECTION_CATEGORY_COUNT3, as the game's page script
+# writes it ([proc,collection_category_count], osrs-dumps 11/3). label is the line as the game writes it, up to its
+# colon; it is also the count's name in the sync. card is a raid card's label for its own line under the raid's,
+# else -: the count leads the page's card, as the game's page does. The choice of lines is Dylan's (11/6).
+revenants	1	Revenant kills	-
+tormented_demons	1	Tormented Demon kills	-
+gloughs_experiments	2	Demonic Gorilla kills	-
+hunter_guild	1	Rumours Completed	-
+theatre_of_blood	2	Theatre of Blood (Entry) completions	Entry
+tombs_of_amascut	2	Tombs of Amascut (Entry) completions	Entry

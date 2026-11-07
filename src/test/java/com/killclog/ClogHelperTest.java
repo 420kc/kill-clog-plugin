@@ -307,6 +307,19 @@ public class ClogHelperTest
 		assertEquals(NativeTooltip.LINE_HEIGHT, both.getHeaderHeight() - plain.getHeaderHeight());
 		Cells.addHardModeLine(plain, raid, false, false);
 		assertEquals(both.getHeaderHeight() - NativeTooltip.LINE_HEIGHT, plain.getHeaderHeight());
+
+		// A raid's Entry count from the player's log is one more line under the hard mode's, with the KC setting.
+		TooltipData entry = raid.toBuilder().entryLabel("Entry").entryKc(12).build();
+		ImgTooltip three = new ImgTooltip(5);
+		three.setTitle("Chambers of Xeric");
+		three.setInfoLine("KC: ", "730", java.awt.Color.WHITE);
+		Cells.addHardModeLine(three, entry, true, true);
+		assertEquals(NativeTooltip.LINE_HEIGHT, three.getHeaderHeight() - both.getHeaderHeight());
+		ImgTooltip hidden = new ImgTooltip(5);
+		hidden.setTitle("Chambers of Xeric");
+		hidden.setInfoLine("KC: ", "730", java.awt.Color.WHITE);
+		Cells.addHardModeLine(hidden, entry, false, false);
+		assertEquals(plain.getHeaderHeight(), hidden.getHeaderHeight());
 	}
 
 	@Test

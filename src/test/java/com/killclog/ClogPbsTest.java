@@ -9,6 +9,8 @@ import net.runelite.api.widgets.Widget;
 import net.runelite.client.config.ConfigManager;
 import org.junit.Before;
 import org.junit.Test;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -23,13 +25,14 @@ public class ClogPbsTest
 	private Client client;
 	private ConfigManager configManager;
 	private ClogPbs pbs;
+	private final java.util.List<String> counts = new java.util.ArrayList<>();
 
 	@Before
 	public void setUp()
 	{
 		client = mock(Client.class);
 		configManager = mock(ConfigManager.class);
-		pbs = new ClogPbs(configManager);
+		pbs = new ClogPbs(configManager, (label, count) -> counts.add(label + "=" + count));
 		when(client.getLocalPlayer()).thenReturn(mock(Player.class));
 	}
 
@@ -332,5 +335,62 @@ public class ClogPbsTest
 		verify(configManager, times(1)).unsetConfiguration("killclog", "rsprofile.abc", "clogpb.alchemical hydra");
 		verify(configManager, times(1)).unsetConfiguration("killclog", "rsprofile.abc", "clogpb.amoxliatl");
 		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.zulrah", 55.8);
+	}
+	@Test
+	public void aPagesCountIsReadAsItsPageOpensFromTheLineItsVarpCarries()
+	{
+		page("Revenants", "Obtained: <col=ffff00>4/14</col>", "Revenant kills: <col=ffffff>1,204</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 1204);
+		draws(3);
+		// The raid's own count is the hiscores', its hard mode's too: only the Entry line, from the second varp.
+		page("Theatre of Blood", "Obtained: <col=ffff00>5/17</col>",
+			"Theatre of Blood (Hard) completions: <col=ffffff>3</col>",
+			"Theatre of Blood (Entry) completions: <col=ffffff>12</col>", "Theatre of Blood completions: <col=ffffff>40</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 40);
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT2, 12);
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT3, 3);
+		draws(1);
+		// Demonic Gorillas, never the Tortured ones on the same page.
+		page("Glough's Experiments", "Obtained: <col=ffff00>2/5</col>", "Tortured Gorilla kills: <col=ffffff>9</col>",
+			"Demonic Gorilla kills: <col=ffffff>310</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 9);
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT2, 310);
+		draws(1);
+		assertEquals(java.util.List.of("Revenant kills=1204", "Theatre of Blood (Entry) completions=12",
+			"Demonic Gorilla kills=310"), counts);
+		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
+	}
+
+	@Test
+	public void aCountTheServerDidntSendJustBeforeItsPageDrewIsNobodys()
+	{
+		// The page before's count still in the varp: none sent for this page, so nothing is read.
+		page("Abyssal Sire", "Obtained: <col=ffff00>6/9</col>", "Abyssal Sire kills: <col=ffffff>420</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 420);
+		draws(3);
+		page("Revenants", "Obtained: <col=ffff00>0/14</col>", "Revenant kills: <col=ffffff>420</col>");
+		draws(3);
+		// One that lands while a page is on screen, or long before it drew.
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 3);
+		draws(1);
+		page("Tormented Demons", "Obtained: <col=ffff00>1/4</col>", "Tormented Demon kills: <col=ffffff>88</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 88);
+		cycle += ClogPbs.ARRIVAL_CYCLES;
+		draws(1);
+		// A host's log in their house.
+		page("Hunter Guild", "Obtained: <col=ffff00>3/13</col>", "Rumours Completed: <col=ffffff>150</col>");
+		when(client.getVarbitValue(VarbitID.COLLECTION_POH_HOST_BOOK_OPEN)).thenReturn(1);
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 150);
+		draws(1);
+		assertTrue(counts.toString(), counts.isEmpty());
+
+		// The player's own, sent just before it drew.
+		when(client.getVarbitValue(VarbitID.COLLECTION_POH_HOST_BOOK_OPEN)).thenReturn(0);
+		page("Revenants", "Obtained: <col=ffff00>0/14</col>", "Revenant kills: <col=ffffff>420</col>");
+		draws(1);
+		page("Hunter Guild", "Obtained: <col=ffff00>3/13</col>", "Rumours Completed: <col=ffffff>151</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 151);
+		draws(1);
+		assertEquals(java.util.List.of("Rumours Completed=151"), counts);
 	}
 }

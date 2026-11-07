@@ -330,8 +330,9 @@ public class Cells
 			HiscoreSkill card = PanelData.card(skill);
 			String bossName = card.getName();
 			String hiscoreName = PanelData.hiscoreName(bossName);
-			TooltipData data = TooltipDataBuilder.withHardMode(buildPrimaryBossData(bossName, hiscoreName, selfNoCache, pbs),
-				card, lookupSession.getHiscoreResult(), pbs);
+			TooltipData data = PageCounts.onCard(ClogService.bossToCategory(bossName), TooltipDataBuilder.withHardMode(
+				buildPrimaryBossData(bossName, hiscoreName, selfNoCache, pbs), card, lookupSession.getHiscoreResult(), pbs),
+				lookupSession.getClogResult());
 			if (data != null)
 			{
 				tooltipDataMap.put(skill, data);
@@ -770,14 +771,13 @@ public class Cells
 		return true;
 	}
 
-	/** A raid's hard mode on the line under the raid's own KC and PB, by the name the Combat Summary pairs it by. */
+	/**
+	 * A raid's hard mode on the line under the raid's own KC and PB, by the name the Combat Summary pairs it by, and
+	 * its Entry mode's count under that.
+	 */
 	static void addHardModeLine(TitleTooltip tip, TooltipData data, boolean showKc, boolean showPb)
 	{
-		if (data.hardLabel == null)
-		{
-			return;
-		}
-		if (data.hardKc >= 0 && showKc)
+		if (data.hardLabel != null && data.hardKc >= 0 && showKc)
 		{
 			tip.addInfoLine(data.hardLabel + ": ", TitleTooltip.grouped(data.hardKc), NativeTooltip.valueColor);
 			if (data.hardPb != null && showPb)
@@ -785,9 +785,13 @@ public class Cells
 				tip.setInfoLinePair(pbLabel(data.hardPb), pbTime(data.hardPb), NativeTooltip.valueColor);
 			}
 		}
-		else if (data.hardPb != null && showPb)
+		else if (data.hardLabel != null && data.hardPb != null && showPb)
 		{
 			tip.addInfoLine(data.hardLabel + " " + pbLabel(data.hardPb), pbTime(data.hardPb), NativeTooltip.valueColor);
+		}
+		if (data.entryKc >= 0 && showKc)
+		{
+			tip.addInfoLine(data.entryLabel + ": ", TitleTooltip.grouped(data.entryKc), NativeTooltip.valueColor);
 		}
 	}
 

@@ -1052,6 +1052,25 @@ public class PluginPublicationCharacterizationTest
 		assertEquals("the login's catch-up push", 1, syncs.size());
 	}
 
+	/** A count read off the player's own log page goes to their main log, once the world has settled, and no League's. */
+	@Test
+	public void aPageCountIsKeptOnlyOnASettledMainWorld() throws Exception
+	{
+		java.lang.reflect.Method read = KillClogPlugin.class.getDeclaredMethod("pageCountRead", String.class, int.class);
+		read.setAccessible(true);
+		ticks(9);
+		read.invoke(plugin, "Revenant kills", 57);
+		verify(localClogCache, never()).setPageCount(any(), any(), anyInt());
+		ticks(1);
+		read.invoke(plugin, "Revenant kills", 57);
+		verify(localClogCache).setPageCount(RSN, "Revenant kills", 57);
+		LocalClogCache league = announceLeague();
+		ticks(10);
+		read.invoke(plugin, "Revenant kills", 60);
+		verify(localClogCache, never()).setPageCount(RSN, "Revenant kills", 60);
+		verify(league, never()).setPageCount(any(), any(), anyInt());
+	}
+
 	private void unlockMessage() throws Exception
 	{
 		net.runelite.api.events.ChatMessage unlock = new net.runelite.api.events.ChatMessage();
