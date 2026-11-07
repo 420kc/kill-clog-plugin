@@ -68,6 +68,8 @@ Some counts appear only on the game's own Collection Log pages, like Revenant ki
 
 Shift-click anything that opens a card, or right-click it and choose **Copy**, and the card opens and is copied to your clipboard as a picture, ready to paste into Discord.
 
+![A Shift+click on IronBone11's Combat Summary cell copies the whole card, PvP section included, ready to paste into Discord](screenshots/copy-as-picture.png)
+
 ![From the Collection Log card to a tab to a page: Minigames to Castle Wars, and Other to Elder Chaos Druids](screenshots/collection-log-tab-and-page.png)
 
 ![Vorkath's card naming the item under the cursor: green when you have it, red when you don't](screenshots/item-name-hover.png)
@@ -99,6 +101,8 @@ Turn on **Show Leaderboard Selector** under **Lookup** to switch between the his
 ![Leaderboard selector](screenshots/leaderboard-selector.png)
 
 A Hardcore who died keeps their stats from the moment of death on the Hardcore tab, marked with a skull on the helm. A de-ironed account's old Ironman stats get a crossed-out helm. Comparisons and new lookups always use each player's own leaderboard.
+
+![The Player Summary's helm for an Ironman, a Hardcore Ironman, a Hardcore who died, and a de-ironed account](screenshots/leaderboard-helms.png)
 
 ## Chat Commands
 
