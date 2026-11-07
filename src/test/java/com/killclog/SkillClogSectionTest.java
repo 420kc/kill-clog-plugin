@@ -140,11 +140,11 @@ public class SkillClogSectionTest
 		ClogResult catalog = mappedCatalog();
 
 		assertHeadings(catalog, Skill.ATTACK, "Stab Weapons|Slash Weapons|Crush Weapons|Equipment");
-		assertHeadings(catalog, Skill.HITPOINTS, "Void Knight|Zenyte & Upgrades");
+		assertHeadings(catalog, Skill.HITPOINTS, "Zenyte & Upgrades|Pest Control");
 		assertHeadings(catalog, Skill.DEFENCE, "Armour|Shields|Boots, Gloves & Rings|Defenders");
 		assertHeadings(catalog, Skill.STRENGTH, "Slash Weapons|Crush Weapons|Armour");
 		assertEquals(VOID_KNIGHT_IDS, SkillClogSection.forSkill(
-			Skill.HITPOINTS, null, null, catalog).get(0).itemIds());
+			Skill.HITPOINTS, null, null, catalog).get(1).itemIds());
 		// The Defenders are their own list since 2.8.0 (B338), the Avernic defender hilt after the dragon defender.
 		assertEquals(concat(DEFENDER_IDS, Arrays.asList(22477)), SkillClogSection.forSkill(
 			Skill.DEFENCE, null, null, catalog).get(3).itemIds());
@@ -226,8 +226,8 @@ public class SkillClogSectionTest
 			Skill.HITPOINTS, player, null, null);
 
 		assertEquals(2, sections.size());
-		assertEquals(9, sections.get(0).primary().obtainedCount());
-		assertEquals(3, sections.get(1).primary().obtainedCount());
+		assertEquals(3, sections.get(0).primary().obtainedCount());
+		assertEquals(9, sections.get(1).primary().obtainedCount());
 		SkillClogSection.Progress progress = SkillClogSection.combinedProgress(
 			sections);
 		assertEquals(12, progress.obtained());
