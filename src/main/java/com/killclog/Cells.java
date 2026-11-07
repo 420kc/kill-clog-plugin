@@ -57,8 +57,6 @@ public class Cells
 	private final BufferedImage[] clueIcons = new BufferedImage[8];
 	@Getter
 	private final BufferedImage[] pvpActivityIcons = new BufferedImage[5];
-	@Getter
-	private final BufferedImage[] rareIcons = new BufferedImage[PanelData.RARE_ROWS.size()];
 
 	// Cell labels
 	private final Map<HiscoreSkill, JLabel> bossLabels = new LinkedHashMap<>();
@@ -573,7 +571,7 @@ public class Cells
 		@Nullable ClogResult clog, boolean rival)
 	{
 		ClueSummaryTooltip tip = new ClueSummaryTooltip();
-		tip.setRareIcons(rareIcons);
+		tip.setRareSprites(itemManager);
 		for (int i = 0; i < PanelData.CLUE_TIERS.length; i++)
 		{
 			tip.setProgress(i + 1, ClogHelper.clogCounts(

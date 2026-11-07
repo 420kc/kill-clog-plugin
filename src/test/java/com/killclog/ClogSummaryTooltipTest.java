@@ -155,14 +155,14 @@ public class ClogSummaryTooltipTest
 	public void theTotalLeadsTheTilesThreeAcrossEachBarItsOwnShare()
 	{
 		ClogSummaryTooltip tip = card(1150, 1700);
-		assertEquals(1, tiles(paint(tip)).size());
+		assertEquals(1, TestViews.tiles(paint(tip)).size());
 		Map<String, int[]> tabs = new LinkedHashMap<>();
 		tabs.put("Bosses", new int[]{1, 2});
 		tabs.put("Raids", new int[]{0, 79});
 		tabs.put("Clues", new int[]{470, 470});
 		tip.setTabs(tabs, null);
 		BufferedImage image = paint(tip);
-		List<Point> tiles = tiles(image);
+		List<Point> tiles = TestViews.tiles(image);
 
 		// The Total, Bosses and Raids, then Clues under the Total.
 		assertEquals(4, tiles.size());
@@ -192,7 +192,7 @@ public class ClogSummaryTooltipTest
 		tabs.put("Minigames", new int[]{120, 120});
 		tabs.put("Other", new int[]{1, 530});
 		assertEquals(oneRow + GameTile.HEIGHT + GameTile.GAP, tip.getPreferredSize().height);
-		assertEquals(6, tiles(paint(tip)).size());
+		assertEquals(6, TestViews.tiles(paint(tip)).size());
 	}
 
 	@Test
@@ -212,7 +212,7 @@ public class ClogSummaryTooltipTest
 	{
 		ClogSummaryTooltip tip = new ClogSummaryTooltip();
 		tip.setTitle("Collection Log");
-		assertTrue(tiles(paint(tip)).isEmpty());
+		assertTrue(TestViews.tiles(paint(tip)).isEmpty());
 		move(tip, tip.getWidth() / 2, tip.getHeight() - 4);
 		assertNull(tip.getHeaderHoverLineText());
 	}
@@ -226,7 +226,7 @@ public class ClogSummaryTooltipTest
 		ClogSummaryTooltip tip = card(1, 5);
 		tip.setTabs(tabs, null);
 		Dimension reading = tip.getPreferredSize();
-		List<Point> tiles = tiles(paint(tip));
+		List<Point> tiles = TestViews.tiles(paint(tip));
 		Point raids = tiles.get(2);
 		for (Point tile : tiles)
 		{
@@ -274,25 +274,6 @@ public class ClogSummaryTooltipTest
 		tip.paint(graphics);
 		graphics.dispose();
 		return image;
-	}
-
-	/** Each tile's top-left corner in reading order: where its black frame starts a box the tile's size. */
-	private static List<Point> tiles(BufferedImage image)
-	{
-		int edge = new Color(14, 12, 10).getRGB();
-		List<Point> found = new ArrayList<>();
-		for (int y = 1; y + GameTile.HEIGHT <= image.getHeight(); y++)
-		{
-			for (int x = 1; x + GameTile.WIDTH <= image.getWidth(); x++)
-			{
-				if (image.getRGB(x, y) == edge && image.getRGB(x - 1, y) != edge && image.getRGB(x, y - 1) != edge
-					&& image.getRGB(x + GameTile.WIDTH - 1, y) == edge && image.getRGB(x, y + GameTile.HEIGHT - 1) == edge)
-				{
-					found.add(new Point(x, y));
-				}
-			}
-		}
-		return found;
 	}
 
 	/** How many pixels of a tile's bar, across its middle row, wear a colour. */

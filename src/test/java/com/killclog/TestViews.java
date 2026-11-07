@@ -154,6 +154,25 @@ final class TestViews
 		return tileAt(card, rows, ((java.awt.Component) card).getWidth() / 2, y);
 	}
 
+	/** Each game tile's top-left corner in reading order: where its black frame starts a box the tile's size. */
+	static java.util.List<java.awt.Point> tiles(java.awt.image.BufferedImage image)
+	{
+		int edge = new java.awt.Color(14, 12, 10).getRGB();
+		java.util.List<java.awt.Point> found = new java.util.ArrayList<>();
+		for (int y = 1; y + GameTile.HEIGHT <= image.getHeight(); y++)
+		{
+			for (int x = 1; x + GameTile.WIDTH <= image.getWidth(); x++)
+			{
+				if (image.getRGB(x, y) == edge && image.getRGB(x - 1, y) != edge && image.getRGB(x, y - 1) != edge
+					&& image.getRGB(x + GameTile.WIDTH - 1, y) == edge && image.getRGB(x, y + GameTile.HEIGHT - 1) == edge)
+				{
+					found.add(new java.awt.Point(x, y));
+				}
+			}
+		}
+		return found;
+	}
+
 	static int tileAt(Object card, String rows, int x, int y)
 	{
 		return call(field(card, rows), "at", new java.awt.Point(x, y));

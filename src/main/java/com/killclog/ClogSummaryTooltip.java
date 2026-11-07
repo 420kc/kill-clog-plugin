@@ -9,7 +9,6 @@ import java.util.function.*;
 import javax.annotation.Nullable;
 import lombok.*;
 import net.runelite.client.game.ItemManager;
-import net.runelite.client.util.AsyncBufferedImage;
 import org.apache.commons.lang3.StringUtils;
 
 /**
@@ -134,7 +133,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 		this.totalSlots = totalSlots;
 
 		tier = ClogHelper.tierIndex(obtained, totalSlots);
-		tierSprite = tier >= 0 ? sprite(ClogHelper.CLOG_TIER_ITEM_IDS[tier], itemManager) : null;
+		tierSprite = tier >= 0 ? itemSprite(ClogHelper.CLOG_TIER_ITEM_IDS[tier], itemManager) : null;
 	}
 
 	/** Progress per collection-log tab, in the game's tab order, each with its tile's item. */
@@ -142,20 +141,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 	{
 		this.tabs = tabs;
 		tabSprites.clear();
-		tabs.keySet().forEach(tab -> tabSprites.put(tab, sprite(TAB_SPRITES.getOrDefault(tab, -1), itemManager)));
-	}
-
-	/** An item's image at its own size, which stays crisp; it fills in once loaded. */
-	@Nullable
-	private AsyncBufferedImage sprite(int itemId, @Nullable ItemManager itemManager)
-	{
-		if (itemId < 0 || itemManager == null)
-		{
-			return null;
-		}
-		AsyncBufferedImage sprite = itemManager.getImage(itemId);
-		TooltipItemSprites.whenLoaded(sprite, this, this::repaint);
-		return sprite;
+		tabs.keySet().forEach(tab -> tabSprites.put(tab, itemSprite(TAB_SPRITES.getOrDefault(tab, -1), itemManager)));
 	}
 
 	/** Called with the tab's name when the player presses its row; without it the rows only read. */

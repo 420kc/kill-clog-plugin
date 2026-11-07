@@ -3,16 +3,19 @@ package com.killclog;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
 import java.util.function.ObjIntConsumer;
 import javax.annotation.Nullable;
 import lombok.Setter;
+import net.runelite.client.game.ItemManager;
 import net.runelite.client.hiscore.HiscoreSkill;
 
 /**
  * Clue Summary on the Clues cell. Eight lines, All through Mimic, each with its
  * score and rank and, for the six tiers and Mimic, collection progress. Below
- * them the rare collections, each a row that opens its own modal. The six tiers
+ * them the rare collections as the game's tiles, each opening its own modal. The six tiers
  * and Mimic open theirs the same way (Dylan, 2026-10-17: every clue reached from
  * the summary as from its own cell, and nothing passed over without answering).
  */
@@ -47,8 +50,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 
 	@Setter
 	private BufferedImage[] icons;
-	@Setter
-	private BufferedImage[] rareIcons;
+	private final Image[] rareSprites = new Image[RARE_LABELS.length];
 	@Nullable
 	private ObjIntConsumer<MouseEvent> onOpenRare;
 	private final CardBody.ClickRows rareRows = new CardBody.ClickRows(this, (e, row) ->
@@ -109,7 +111,16 @@ public class ClueSummaryTooltip extends TitleTooltip
 		total[line] = counts != null ? counts[1] : 0;
 	}
 
-	/** One rare collection row; null counts show the row without progress. */
+	/** Each rare collection's item, for its tile. */
+	void setRareSprites(@Nullable ItemManager itemManager)
+	{
+		for (int i = 0; i < rareSprites.length; i++)
+		{
+			rareSprites[i] = itemSprite(PanelData.RARE_ROWS.get(i).getIconItemId(), itemManager);
+		}
+	}
+
+	/** One rare collection; null counts show its tile without progress. */
 	void setRare(int row, @Nullable int[] counts)
 	{
 		rareObtained[row] = counts != null ? counts[0] : -1;
@@ -141,61 +152,12 @@ public class ClueSummaryTooltip extends TitleTooltip
 			.add(CardBody.table(icons, LABELS, scores, obtained, total, shownRanks, ICON_SIZE, ICON_GAP, COL_GAP,
 				lineRows, line -> line > 0))
 			.titled("Rare Collections");
+		List<GameTile.Tile> rares = new ArrayList<>();
 		for (int i = 0; i < RARE_LABELS.length; i++)
 		{
-			body.add(rareRow(i));
+			rares.add(new GameTile.Tile(RARE_LABELS[i], rareSprites[i], rareObtained[i], rareTotal[i],
+				onOpenRare != null ? i : -1));
 		}
-		return body;
-	}
-
-	/** One rare collection; the row opens its own modal, its progress right-aligned. */
-	private CardBody.Part rareRow(int row)
-	{
-		return CardBody.clickRow(rareRows, row, c -> ICON_SIZE + ICON_GAP + widest(c.fm, RARE_LABELS)
-			+ progressWidth(c.fm, rareObtained, rareTotal), (c, y, hovered) ->
-		{
-			int textY = y + c.fm.getAscent();
-			paintIcon(c.g, rareIcons, row, c.inset(), y);
-			// No pointer cursor in this UI: the hovered row answers in white instead.
-			c.g.setColor(hovered ? NativeTooltip.valueColor : labelColor);
-			c.g.drawString(RARE_LABELS[row], c.inset() + ICON_SIZE + ICON_GAP, textY);
-			if (rareObtained[row] >= 0)
-			{
-				int width = wrappedProgressCountWidth(c.fm, rareObtained[row], rareTotal[row]);
-				paintWrappedProgressCount(c.g, c.fm, c.w - c.inset() - width, textY, rareObtained[row], rareTotal[row]);
-			}
-		});
-	}
-
-	private static void paintIcon(Graphics2D g2, @Nullable BufferedImage[] set, int index, int x, int y)
-	{
-		BufferedImage icon = set != null && index < set.length ? set[index] : null;
-		if (icon != null)
-		{
-			g2.drawImage(icon, x, y + (LINE_HEIGHT - ICON_SIZE) / 2, null);
-		}
-	}
-
-	private static int progressWidth(FontMetrics fm, int[] obtained, int[] total)
-	{
-		int width = 0;
-		for (int i = 0; i < obtained.length; i++)
-		{
-			if (obtained[i] >= 0)
-			{
-				width = Math.max(width, wrappedProgressCountWidth(fm, obtained[i], total[i]));
-			}
-		}
-		return width;
-	}
-
-	private static int widest(FontMetrics fm, String[] labels)
-	{
-		int width = 0;
-		for (String label : labels)
-		{
-			width = Math.max(width, fm.stringWidth(label));
-		}
-		return width;
+		return body.add(GameTile.grid(rareRows, rares));
 	}
 }

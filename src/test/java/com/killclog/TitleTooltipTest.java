@@ -263,7 +263,8 @@ public class TitleTooltipTest
 		ClueSummaryTooltip ranked = new ClueSummaryTooltip();
 		ranked.setData(clueHiscore(ranks), true);
 
-		assertTrue(unranked.getPreferredSize().width < ranked.getPreferredSize().width);
+		// A rank widens the card only past what the rare tiles already hold it to; it never narrows it.
+		assertTrue(unranked.getPreferredSize().width <= ranked.getPreferredSize().width);
 	}
 
 	@Test

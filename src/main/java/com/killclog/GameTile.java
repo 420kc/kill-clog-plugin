@@ -85,7 +85,7 @@ final class GameTile
 		}
 		g.setFont(COUNT_FONT);
 		FontMetrics fm = g.getFontMetrics();
-		String count = known ? TitleTooltip.progressCountText(tile.obtained, tile.total)
+		String count = tile.total <= 0 ? "" : known ? TitleTooltip.progressCountText(tile.obtained, tile.total)
 			: TitleTooltip.progressPlaceholderText(tile.total);
 		g.setColor(color);
 		g.drawString(count, center - fm.stringWidth(count) / 2, box.y + COUNT_TOP + fm.getAscent());

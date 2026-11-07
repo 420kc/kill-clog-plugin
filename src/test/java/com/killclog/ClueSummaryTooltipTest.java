@@ -1,8 +1,8 @@
 package com.killclog;
 
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
@@ -16,65 +16,29 @@ import static org.junit.Assert.assertTrue;
 public class ClueSummaryTooltipTest
 {
 	@Test
-	public void rareRowsAreHitTestedOnlyWhereTheyWerePainted()
-	{
-		ClueSummaryTooltip tip = painted(card());
-		// Nothing above the rare section answers, and nothing below its five rows.
-		assertEquals(-1, TestViews.rowAt(tip, "rareRows", 0));
-		int top = firstRareY(tip);
-		assertEquals(-1, TestViews.rowAt(tip, "rareRows", top - 1));
-		for (int row = 0; row < ClueSummaryTooltip.RARE_LABELS.length; row++)
-		{
-			assertEquals(row, TestViews.rowAt(tip, "rareRows", top + row * NativeTooltip.LINE_HEIGHT));
-			assertEquals(row, TestViews.rowAt(tip, "rareRows", top + row * NativeTooltip.LINE_HEIGHT + NativeTooltip.LINE_HEIGHT - 1));
-		}
-		assertEquals(-1, TestViews.rowAt(tip, "rareRows", top + ClueSummaryTooltip.RARE_LABELS.length * NativeTooltip.LINE_HEIGHT));
-	}
-
-	@Test
-	public void aRareRowAnswersExactlyWhereItsIconWasPainted()
+	public void rareTilesAnswerOnlyWhereTheyWerePainted()
 	{
 		ClueSummaryTooltip tip = card();
-		BufferedImage[] icons = new BufferedImage[ClueSummaryTooltip.RARE_LABELS.length];
-		for (int row = 0; row < icons.length; row++)
+		tip.setOnOpenRare((press, row) ->
 		{
-			icons[row] = new BufferedImage(13, 13, BufferedImage.TYPE_INT_ARGB);
-			Graphics2D g = icons[row].createGraphics();
-			g.setColor(new Color(255, 0, 255 - row));
-			g.fillRect(0, 0, 13, 13);
-			g.dispose();
-		}
-		tip.setRareIcons(icons);
-		Dimension size = tip.getPreferredSize();
-		tip.setSize(size);
-		BufferedImage image = new BufferedImage(size.width, size.height, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D graphics = image.createGraphics();
-		tip.paint(graphics);
-		graphics.dispose();
-
-		int x = NativeTooltip.getInset() + 6;
-		int found = 0;
-		for (int y = 0; y < size.height; y++)
+		});
+		List<Point> tiles = TestViews.tiles(paint(tip));
+		// The five rare collections, three across.
+		assertEquals(ClueSummaryTooltip.RARE_LABELS.length, tiles.size());
+		assertEquals(tiles.get(0).x, tiles.get(3).x);
+		for (int row = 0; row < tiles.size(); row++)
 		{
-			int rgb = image.getRGB(x, y);
-			for (int row = 0; row < icons.length; row++)
-			{
-				if (rgb == new Color(255, 0, 255 - row).getRGB())
-				{
-					// Every painted pixel of a row's icon belongs to that row and no other.
-					assertEquals(row, TestViews.rowAt(tip, "rareRows", y));
-					found++;
-				}
-			}
+			Point tile = tiles.get(row);
+			assertEquals(row, TestViews.tileAt(tip, "rareRows", tile.x, tile.y));
+			assertEquals(row, TestViews.tileAt(tip, "rareRows", tile.x + GameTile.WIDTH - 1, tile.y + GameTile.HEIGHT - 1));
 		}
-		assertEquals(13 * icons.length, found);
-		// The last row ends inside the card.
-		assertTrue(firstRareY(tip) + icons.length * NativeTooltip.LINE_HEIGHT
-			<= size.height - NativeTooltip.getInset());
+		// Not above the section, and not in the gap between two tiles.
+		assertEquals(-1, TestViews.tileAt(tip, "rareRows", tiles.get(0).x, tiles.get(0).y - 1));
+		assertEquals(-1, TestViews.tileAt(tip, "rareRows", tiles.get(0).x + GameTile.WIDTH + 1, tiles.get(0).y + 10));
 	}
 
 	@Test
-	public void pressingARareRowOpensThatCollectionAndNothingElseDoes()
+	public void pressingARareTileOpensThatCollectionAndNothingElseDoes()
 	{
 		ClueSummaryTooltip tip = card();
 		List<Integer> opened = new ArrayList<>();
@@ -84,21 +48,31 @@ public class ClueSummaryTooltipTest
 		press(tip, 5, 200, MouseEvent.BUTTON1);
 		assertTrue(opened.isEmpty());
 
-		painted(tip);
-		int top = firstRareY(tip);
-		press(tip, 5, top + 2 * NativeTooltip.LINE_HEIGHT + 3, MouseEvent.BUTTON1);
+		List<Point> tiles = TestViews.tiles(paint(tip));
+		Point hardRare = tiles.get(2);
+		press(tip, hardRare.x + 10, hardRare.y + 10, MouseEvent.BUTTON1);
 		assertEquals(List.of(2), opened);
 
-		// A tier line opens its own card, not a rare one, and a right click on a rare row opens nothing.
-		press(tip, 5, top - 40, MouseEvent.BUTTON1);
-		press(tip, 5, top + 3, MouseEvent.BUTTON3);
+		// A tier line opens its own card, not a rare one; a right click and the gap between tiles open nothing.
+		press(tip, 5, hardRare.y - 40, MouseEvent.BUTTON1);
+		press(tip, hardRare.x + 10, hardRare.y + 10, MouseEvent.BUTTON3);
+		press(tip, hardRare.x - 2, hardRare.y + 10, MouseEvent.BUTTON1);
 		assertEquals(List.of(2), opened);
+	}
+
+	@Test
+	public void rareTilesOpenNothingUntilSomethingCanOpenThem()
+	{
+		ClueSummaryTooltip tip = card();
+		List<Point> tiles = TestViews.tiles(paint(tip));
+		assertEquals(-1, TestViews.tileAt(tip, "rareRows", tiles.get(0).x + 10, tiles.get(0).y + 10));
 	}
 
 	@Test
 	public void everyTierAndMimicOpensItsCardFromTheSummaryButAllDoesNot()
 	{
-		ClueSummaryTooltip tip = painted(card());
+		ClueSummaryTooltip tip = card();
+		paint(tip);
 		List<Integer> opened = new ArrayList<>();
 		tip.setOnOpenLine((press, line) -> opened.add(line));
 		int beginner = lineY(tip, 1);
@@ -109,8 +83,6 @@ public class ClueSummaryTooltipTest
 		assertEquals(List.of(1, 2, 3, 4, 5, 6, 7), opened);
 		// All sums the tiers: there's no one log for it to open.
 		assertEquals(-1, TestViews.rowAt(tip, "lineRows", beginner - NativeTooltip.LINE_HEIGHT + 3));
-		press(tip, 5, firstRareY(tip) + 3, MouseEvent.BUTTON1);
-		assertEquals(7, opened.size());
 	}
 
 	private static int lineY(ClueSummaryTooltip tip, int line)
@@ -126,31 +98,34 @@ public class ClueSummaryTooltipTest
 	}
 
 	@Test
-	public void theHoveredRareRowIsTrackedAndClearedOnExit()
+	public void theHoveredRareTileIsTrackedAndClearedOnExit()
 	{
-		ClueSummaryTooltip tip = painted(card());
-		int top = firstRareY(tip);
-		move(tip, 5, top + NativeTooltip.LINE_HEIGHT + 2);
+		ClueSummaryTooltip tip = card();
+		tip.setOnOpenRare((press, row) ->
+		{
+		});
+		Point raids = TestViews.tiles(paint(tip)).get(1);
+		move(tip, raids.x + 10, raids.y + 10);
 		assertEquals(1, TestViews.hoveredRow(tip, "rareRows"));
 		move(tip, 5, 2);
 		assertEquals(-1, TestViews.hoveredRow(tip, "rareRows"));
-		move(tip, 5, top + 2);
+		move(tip, raids.x + 10, raids.y + 10);
 		for (MouseListener listener : tip.getMouseListeners())
 		{
-			listener.mouseExited(event(tip, MouseEvent.MOUSE_EXITED, 5, top + 2, MouseEvent.NOBUTTON));
+			listener.mouseExited(event(tip, MouseEvent.MOUSE_EXITED, 5, 2, MouseEvent.NOBUTTON));
 		}
 		assertEquals(-1, TestViews.hoveredRow(tip, "rareRows"));
 	}
 
 	@Test
-	public void progressWidensTheCardAndItsAbsenceLeavesItBare()
+	public void progressNeverChangesTheCardsHeight()
 	{
 		ClueSummaryTooltip bare = new ClueSummaryTooltip();
 		bare.setData(null, false);
 		ClueSummaryTooltip withProgress = card();
-		// Same rows either way, so a comparison pair never staggers.
+		// Same rows and tiles either way, so a comparison pair never staggers.
 		assertEquals(bare.getPreferredSize().height, withProgress.getPreferredSize().height);
-		assertTrue(bare.getPreferredSize().width < withProgress.getPreferredSize().width);
+		assertTrue(bare.getPreferredSize().width <= withProgress.getPreferredSize().width);
 
 		// Counts cleared again (an unsynced player): back to the bare width.
 		for (int line = 1; line <= 7; line++)
@@ -161,7 +136,7 @@ public class ClueSummaryTooltipTest
 		{
 			withProgress.setRare(row, null);
 		}
-		assertEquals(bare.getPreferredSize().width, withProgress.getPreferredSize().width);
+		assertEquals(bare.getPreferredSize(), withProgress.getPreferredSize());
 	}
 
 	private static ClueSummaryTooltip card()
@@ -180,28 +155,15 @@ public class ClueSummaryTooltipTest
 		return tip;
 	}
 
-	private static ClueSummaryTooltip painted(ClueSummaryTooltip tip)
+	private static BufferedImage paint(ClueSummaryTooltip tip)
 	{
 		Dimension size = tip.getPreferredSize();
 		tip.setSize(size);
-		Graphics2D graphics = new BufferedImage(
-			size.width, size.height, BufferedImage.TYPE_INT_ARGB).createGraphics();
+		BufferedImage image = new BufferedImage(size.width, size.height, BufferedImage.TYPE_INT_ARGB);
+		Graphics2D graphics = image.createGraphics();
 		tip.paint(graphics);
 		graphics.dispose();
-		return tip;
-	}
-
-	/** The first y that answers as rare row 0, found the way a pointer would. */
-	private static int firstRareY(ClueSummaryTooltip tip)
-	{
-		for (int y = 0; y < tip.getHeight(); y++)
-		{
-			if (TestViews.rowAt(tip, "rareRows", y) == 0)
-			{
-				return y;
-			}
-		}
-		throw new AssertionError("no rare section painted");
+		return image;
 	}
 
 	private static void press(ClueSummaryTooltip tip, int x, int y, int button)

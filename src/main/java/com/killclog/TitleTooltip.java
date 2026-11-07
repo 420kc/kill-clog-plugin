@@ -9,7 +9,9 @@ import java.util.function.*;
 import javax.annotation.Nullable;
 import javax.swing.JToolTip;
 import lombok.*;
+import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
+import net.runelite.client.util.AsyncBufferedImage;
 import net.runelite.client.util.ImageUtil;
 
 /**
@@ -148,6 +150,19 @@ public abstract class TitleTooltip extends NativeTooltip
 				c.g.setFont(font);
 			}
 		});
+	}
+
+	/** An item's image at its own size, which stays crisp; the card repaints once it loads. */
+	@Nullable
+	AsyncBufferedImage itemSprite(int itemId, @Nullable ItemManager itemManager)
+	{
+		if (itemId < 0 || itemManager == null)
+		{
+			return null;
+		}
+		AsyncBufferedImage sprite = itemManager.getImage(itemId);
+		TooltipItemSprites.whenLoaded(sprite, this, this::repaint);
+		return sprite;
 	}
 
 	private int titleIconWidth()
