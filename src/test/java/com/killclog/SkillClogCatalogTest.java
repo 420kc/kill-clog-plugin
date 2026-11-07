@@ -19,19 +19,25 @@ public class SkillClogCatalogTest
 	public void taxonomyMatchesGoldenTable()
 	{
 		assertEquals(Arrays.asList(
-			"items|Weapon Unlocks|4151,13265,13274,13275,13276,11824,22324,26219,25859,24417,22486,34027,34717,22966,29580,28319,28321,28323,28325,13576,21003,13652,29574,11810,11812,11814,11816,26370,27684,27681,27687",
-			"category|Barbarian Assault|barbarian_assault"),
+			"items|Stab Weapons|11902,30957,22963,21009,1249,6523,13265,4726,11824,22966,22324,26219",
+			"items|Slash Weapons|11037,29084,29574,27021,7158,6739,13652,6525,20727,4151,4207,11838,12004,26370,11810,11818,11820,11822,11812,34027,11814,27684,27687,27681,11816,29580,25859",
+			"items|Crush Weapons|25641,20756,29889,23528,4755,21015,24417,34717",
+			"items|Equipment|22983"),
 			TestViews.specSignature(Skill.ATTACK));
 		assertEquals(Arrays.asList(
-			"items|Equipment Unlocks|24422,19529,29799,31109,33634",
-			"category|Pest Control|pest_control"),
+			"items|Void Knight|8839,8840,8842,8841,11663,11665,11664,13072,13073",
+			"items|Zenyte & Upgrades|19529,33634,29799,31109"),
 			TestViews.specSignature(Skill.HITPOINTS));
 		assertEquals(Arrays.asList(
-			"items|Equipment Unlocks|10551,4716,4720,4722,4724,4728,4730,4745,4749,4751,4753,4757,4759,29028,29022,29025,11832,11834,11836,24419,24420,24421,22326,22327,22328,30750,30753,30756,26376,26378,26380,34719",
+			"items|Armour|10551,10555,10548,10547,10550,10549,11335,3140,22103,21298,21301,21304,11832,11834,23956,4716,4720,4722,4724,4728,4730,24268,4745,4749,4751,4753,4757,4759,22326,22327,22328,12927,30750,30765,30756,30753,26376,26378,26380",
+			"items|Shields|22100,2366,11931,11932,11933,11928,11929,11930,6524,4207,11286,34719",
+			"items|Boots, Gloves & Rings|10553,4131,10552,21643,21739,11840,11836",
 			"items|Defenders|8844,8845,8846,8847,8848,8849,8850,12954,22477"),
 			TestViews.specSignature(Skill.DEFENCE));
 		assertEquals(Arrays.asList(
-			"items|Weapon Unlocks|4153,21646,21742,29000,13576,6528,4718,4747,28997,21003,33631,22486,34027,34717"),
+			"items|Slash Weapons|21646,4718,28319,28321,28325,28323,22486",
+			"items|Crush Weapons|21742,4153,13576,6528,13276,13275,13274,4747,28997,21003,33631",
+			"items|Armour|10589,10564,6809,21736,24419,24420,24421,29028,29022,29025,13231"),
 			TestViews.specSignature(Skill.STRENGTH));
 		assertEquals(Arrays.asList(
 			"items|Pets|13321,23760",
@@ -67,8 +73,11 @@ public class SkillClogCatalogTest
 			"category|Tempoross|tempoross"),
 			TestViews.specSignature(Skill.FISHING));
 		assertEquals(Arrays.asList(
-			"items|Equipment Unlocks|4734,21918,11785,26372,21012,31572,12922,34681,34669,23956,25859,20997,29580,27614,29000,4732,4736,4738,29010,29004,29007,11826,11828,11830,27226,27229,27232",
-			"category|Chompy Bird Hunting|chompy_bird_hunting"),
+			"items|Light Weapons|22804,6522,20849,31572,28919,12922",
+			"items|Standard Weapons|6724,11235,4207,29000,29580,25859,27614,20997",
+			"items|Heavy Weapons|21918,19586,11785,21012,4734,19592,19601,19589,19610,34681,26372",
+			"items|Armour|11826,11828,11830,4732,4736,4738,29010,29004,29007,27226,27229,27232,26235",
+			"items|Accessories|22006,28947,13229,21000,34669"),
 			TestViews.specSignature(Skill.RANGED));
 		assertEquals(Arrays.asList(
 			"items|Pets|20663",
@@ -83,7 +92,8 @@ public class SkillClogCatalogTest
 			TestViews.specSignature(Skill.COOKING));
 		assertEquals(Arrays.asList(
 			"items|Prayer Unlocks|21047,21034,21079,30626,30627,34679",
-			"category|Shades of Mort'ton|shades_of_mortton"),
+			"items|Armour|28933,28936,28939",
+			"items|Shields & Accessories|31081,12829,12833,22960,12827,22111,25346,12823,12819,25985"),
 			TestViews.specSignature(Skill.PRAYER));
 		assertEquals(Arrays.asList(
 			"items|Rarities|34024,19707"),
@@ -94,9 +104,10 @@ public class SkillClogCatalogTest
 			"category|Wintertodt|wintertodt"),
 			TestViews.specSignature(Skill.FIREMAKING));
 		assertEquals(Arrays.asList(
-			"items|Equipment Unlocks|28583,11905,12932,22481,31115,27277,34727,27627,28268,28270,28272,28274,21043,24422,24511,24514,24517,30070,29580,30759,34404,34410,34416,34422,4708,4712,4714,29019,29013,29016,26241,26243,26245,21018,21021,21024",
-			"items|Spell Upgrades|34671,34673,34675,34677",
-			"category|Magic Training Arena|magic_training_arena"),
+			"items|Staves & Wands|20736,20730,6562,11998,11787,6908,6910,6914,6912,6526,28583,30070,4710,27627,24517,24511,24422,24514,28268,28270,28272,28274,28988,11791,11905,11908,29580,12932,21043,30759,22481,31115,27277,34727",
+			"items|Robes|20595,20517,20520,4099,23047,4109,4101,23050,4111,4103,23053,4113,6918,6916,6924,6922,6920,4708,4712,4714,24288,24291,24294,21018,21021,21024,29019,29013,29016,26241,26243,26245",
+			"items|Accessories|25474,34404,34416,34422,34410,25476,6889,21637,12002,13227,31088",
+			"items|Spell Upgrades|34671,34673,34675,34677"),
 			TestViews.specSignature(Skill.MAGIC));
 		assertEquals(Arrays.asList(
 			"category|Vale Totems|vale_totems"),

@@ -23,11 +23,12 @@ public class SkillClogSectionTest
 	private static final List<Integer> DEFENDER_IDS = Arrays.asList(
 		8844, 8845, 8846, 8847, 8848, 8849, 8850, 12954);
 	private static final List<Integer> HITPOINTS_EQUIPMENT_IDS = Arrays.asList(
-		24422, 19529, 29799, 31109, 33634);
+		19529, 33634, 29799, 31109);
+	private static final List<Integer> VOID_KNIGHT_IDS = Arrays.asList(
+		8839, 8840, 8842, 8841, 11663, 11665, 11664, 13072,
+		13073);
 	private static final List<Integer> STRENGTH_WEAPON_IDS = Arrays.asList(
-		4153, 21646, 21742, 29000,
-		13576, 6528, 4718, 4747,
-		28997, 21003, 33631, 22486, 34027, 34717);
+		21646, 4718, 28319, 28321, 28325, 28323, 22486);
 	private static final List<Integer> CRAFTING_RARITY_IDS = Arrays.asList(
 		34024, 19707);
 	private static final List<Integer> PEST_CONTROL_IDS = Arrays.asList(
@@ -138,15 +139,15 @@ public class SkillClogSectionTest
 	{
 		ClogResult catalog = mappedCatalog();
 
-		assertHeadings(catalog, Skill.ATTACK, "Weapon Unlocks|Barbarian Assault");
-		assertHeadings(catalog, Skill.HITPOINTS, "Equipment Unlocks|Pest Control");
-		assertHeadings(catalog, Skill.DEFENCE, "Equipment Unlocks|Defenders");
-		assertHeadings(catalog, Skill.STRENGTH, "Weapon Unlocks");
-		assertEquals(HITPOINTS_EQUIPMENT_IDS, SkillClogSection.forSkill(
+		assertHeadings(catalog, Skill.ATTACK, "Stab Weapons|Slash Weapons|Crush Weapons|Equipment");
+		assertHeadings(catalog, Skill.HITPOINTS, "Void Knight|Zenyte & Upgrades");
+		assertHeadings(catalog, Skill.DEFENCE, "Armour|Shields|Boots, Gloves & Rings|Defenders");
+		assertHeadings(catalog, Skill.STRENGTH, "Slash Weapons|Crush Weapons|Armour");
+		assertEquals(VOID_KNIGHT_IDS, SkillClogSection.forSkill(
 			Skill.HITPOINTS, null, null, catalog).get(0).itemIds());
 		// The Defenders are their own list since 2.8.0 (B338), the Avernic defender hilt after the dragon defender.
 		assertEquals(concat(DEFENDER_IDS, Arrays.asList(22477)), SkillClogSection.forSkill(
-			Skill.DEFENCE, null, null, catalog).get(1).itemIds());
+			Skill.DEFENCE, null, null, catalog).get(3).itemIds());
 		assertEquals(STRENGTH_WEAPON_IDS, SkillClogSection.forSkill(
 			Skill.STRENGTH, null, null, catalog).get(0).itemIds());
 		assertHeadings(catalog, Skill.MINING,
@@ -159,18 +160,18 @@ public class SkillClogSectionTest
 		assertHeadings(catalog, Skill.FISHING,
 			"Pets|Aerial Fishing|Big Fish|Deep Sea Trawling|Fishing Trawler"
 				+ "|Lantern Harpooning|Tempoross");
-		assertHeadings(catalog, Skill.RANGED, "Equipment Unlocks|Chompy Bird Hunting");
+		assertHeadings(catalog, Skill.RANGED, "Light Weapons|Standard Weapons|Heavy Weapons|Armour|Accessories");
 		assertHeadings(catalog, Skill.THIEVING,
 			"Pets|Pickpocketing|Pyramid Plunder|Rogues' Den|Underwater");
 		assertEquals(Arrays.asList(23959, 24777), SkillClogSection.forSkill(
 			Skill.THIEVING, null, null, catalog).get(1).itemIds());
 		assertHeadings(catalog, Skill.COOKING, "Gnome Restaurant|Trouble Brewing");
-		assertHeadings(catalog, Skill.PRAYER, "Prayer Unlocks|Shades of Mort'ton");
+		assertHeadings(catalog, Skill.PRAYER, "Prayer Unlocks|Armour|Shields & Accessories");
 		assertHeadings(catalog, Skill.CRAFTING, "Rarities");
 		assertEquals(CRAFTING_RARITY_IDS, SkillClogSection.forSkill(
 			Skill.CRAFTING, null, null, catalog).get(0).itemIds());
 		assertHeadings(catalog, Skill.FIREMAKING, "Pets|Shades of Mort'ton|Wintertodt");
-		assertHeadings(catalog, Skill.MAGIC, "Equipment Unlocks|Spell Upgrades|Magic Training Arena");
+		assertHeadings(catalog, Skill.MAGIC, "Staves & Wands|Robes|Accessories|Spell Upgrades");
 		assertHeadings(catalog, Skill.FLETCHING, "Vale Totems");
 		assertHeadings(catalog, Skill.WOODCUTTING, "Pets|Evil Chicken Outfit|Forestry");
 		assertHeadings(catalog, Skill.RUNECRAFT, "Pets|Guardians of the Rift");
@@ -210,10 +211,11 @@ public class SkillClogSectionTest
 	public void hitpointsProgressUsesLoggedEquipmentUnlocks()
 	{
 		Map<String, List<ClogResult.ClogItem>> obtained = new HashMap<>();
-		obtained.put("pest_control", PEST_CONTROL_IDS.stream()
+		// Void Knight gear needs every combat skill, Hitpoints included (2.8.0's Combat Clogs): its own list now.
+		obtained.put("pest_control", VOID_KNIGHT_IDS.stream()
 			.map(id -> new ClogResult.ClogItem(id, 1, null))
 			.collect(Collectors.toList()));
-		obtained.put("equipment_sources", HITPOINTS_EQUIPMENT_IDS.subList(0, 4).stream()
+		obtained.put("equipment_sources", HITPOINTS_EQUIPMENT_IDS.subList(0, 3).stream()
 			.map(id -> new ClogResult.ClogItem(id, 1, null))
 			.collect(Collectors.toList()));
 		ClogResult player = new ClogResult("420 kc", obtained,
@@ -224,12 +226,12 @@ public class SkillClogSectionTest
 			Skill.HITPOINTS, player, null, null);
 
 		assertEquals(2, sections.size());
-		assertEquals(4, sections.get(0).primary().obtainedCount());
-		assertEquals(10, sections.get(1).primary().obtainedCount());
+		assertEquals(9, sections.get(0).primary().obtainedCount());
+		assertEquals(3, sections.get(1).primary().obtainedCount());
 		SkillClogSection.Progress progress = SkillClogSection.combinedProgress(
 			sections);
-		assertEquals(14, progress.obtained());
-		assertEquals(15, progress.total());
+		assertEquals(12, progress.obtained());
+		assertEquals(13, progress.total());
 	}
 
 	@Test
@@ -256,9 +258,9 @@ public class SkillClogSectionTest
 			Collections.singletonMap("shades_of_mortton", playerItems),
 			Collections.singletonMap(12854, "Flamtaer bag"), null, null);
 
-		// Shades of Mort'ton follows Prayer Unlocks (B338).
+		// Shades of Mort'ton is Firemaking's alone since 2.8.0's Combat Clogs (Prayer's card holds gear).
 		SkillClogSection prayer = SkillClogSection.forSkill(
-			Skill.PRAYER, player, null, catalog).get(1);
+			Skill.FIREMAKING, player, null, catalog).get(1);
 		assertEquals(14, prayer.itemIds().size());
 		assertTrue(prayer.itemIds().contains(25630));
 		assertFalse(prayer.itemIds().contains(12854));
@@ -306,7 +308,7 @@ public class SkillClogSectionTest
 		SkillClogSection mixology = assertSection(
 			player, catalog, Skill.HERBLORE, "Mastering Mixology", 7);
 		assertEquals("Alchemist's amulet", mixology.itemNames().get(29992));
-		assertSection(player, catalog, Skill.PRAYER, "Shades of Mort'ton", 1);
+		assertSection(player, catalog, Skill.FIREMAKING, "Shades of Mort'ton", 1);
 		assertSection(player, catalog, Skill.CONSTRUCTION, "Mahogany Homes", 1);
 	}
 
@@ -315,22 +317,22 @@ public class SkillClogSectionTest
 	{
 		ClogResult catalog = mappedCatalog();
 
-		assertTotal(catalog, Skill.ATTACK, 42);
-		assertTotal(catalog, Skill.HITPOINTS, 15);
-		assertTotal(catalog, Skill.DEFENCE, 41);
-		assertTotal(catalog, Skill.STRENGTH, 14);
+		assertTotal(catalog, Skill.ATTACK, 48);
+		assertTotal(catalog, Skill.HITPOINTS, 13);
+		assertTotal(catalog, Skill.DEFENCE, 67);
+		assertTotal(catalog, Skill.STRENGTH, 29);
 		assertTotal(catalog, Skill.MINING, 30);
 		assertTotal(catalog, Skill.AGILITY, 48);
 		assertTotal(catalog, Skill.SMITHING, 9);
 		assertTotal(catalog, Skill.HERBLORE, 7);
 		assertTotal(catalog, Skill.FISHING, 32);
-		assertTotal(catalog, Skill.RANGED, 46);
+		assertTotal(catalog, Skill.RANGED, 43);
 		assertTotal(catalog, Skill.THIEVING, 10);
 		assertTotal(catalog, Skill.COOKING, 34);
-		assertTotal(catalog, Skill.PRAYER, 20);
+		assertTotal(catalog, Skill.PRAYER, 19);
 		assertTotal(catalog, Skill.CRAFTING, 2);
 		assertTotal(catalog, Skill.FIREMAKING, 24);
-		assertTotal(catalog, Skill.MAGIC, 51);
+		assertTotal(catalog, Skill.MAGIC, 81);
 		assertTotal(catalog, Skill.FLETCHING, 4);
 		assertTotal(catalog, Skill.WOODCUTTING, 28);
 		assertTotal(catalog, Skill.RUNECRAFT, 18);
@@ -398,7 +400,8 @@ public class SkillClogSectionTest
 			assertEquals(SkillClogSection.combinedProgress(blue).total(),
 				SkillClogSection.combinedProgress(red).total());
 		}
-		assertTrue(SkillClogSection.forSkill(Skill.RANGED, null, null, catalog).stream()
+		// Chompy Bird Hunting is Hunter's alone since 2.8.0's Combat Clogs (Ranged's card holds gear).
+		assertFalse(SkillClogSection.forSkill(Skill.RANGED, null, null, catalog).stream()
 			.anyMatch(section -> section.isCategory("chompy_bird_hunting")));
 	}
 

@@ -193,12 +193,6 @@ final class SkillCellGrid
 		{
 			solo.setSectionCount(PanelData.GOTR_CATEGORY, SkillTooltip.RIFTS_CLOSED_LABEL, riftsClosed(result));
 		}
-		// Rifts Closed is the hiscores' and every player has it; the gambles come only from the player's own sync, like
-		// a PB, so the line shows once their log carries the count (Dylan 11/5).
-		else if (skill == Skill.ATTACK && HighGambles.of(clog) >= 0)
-		{
-			solo.setSectionCount(HighGambles.CATEGORY, HighGambles.LABEL, HighGambles.of(clog));
-		}
 		// The Hunter Guild's rumours the same way, from the player's own sync (PageCounts, Dylan 11/7).
 		else if (skill == Skill.HUNTER)
 		{

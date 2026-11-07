@@ -282,41 +282,6 @@ public class SkillCellGridTest
 	}
 
 	@Test
-	public void attackTooltipCarriesTheGambleCountInBarbarianAssault()
-	{
-		SkillCellGrid cells = grid();
-		HiscoreResult blue = hiscores(Map.of(Skill.ATTACK, 99));
-		HiscoreResult red = hiscores(Map.of(Skill.ATTACK, 90));
-		String baName = "Granite helm";
-		ClogResult gambled = new ClogResult("8lD", Collections.emptyMap(),
-			Collections.singletonMap(HighGambles.CATEGORY, Collections.singletonList(1)), Map.of(1, baName), null, null);
-		gambled.setHighGambles(1_057);
-		ClogResult unsaid = new ClogResult("420 kc", Collections.emptyMap(),
-			Collections.singletonMap(HighGambles.CATEGORY, Collections.singletonList(1)), Map.of(1, baName), null, null);
-
-		cells.render(blue, null, false, gambled, null, gambled);
-		SkillTooltip attack = (SkillTooltip) cells.labels().get(Skill.ATTACK).createToolTip();
-		assertEquals(HighGambles.LABEL, attack.countLabel());
-		assertEquals("1,057", attack.countText());
-		// The line belongs to Barbarian Assault's section, after the Weapon Unlocks (B338), never to the weapons'.
-		java.util.List<SkillClogSection> sections = TestViews.sections(attack);
-		assertFalse(attack.countsSection(sections.get(0)));
-		assertTrue(attack.countsSection(sections.get(sections.size() - 1)));
-
-		cells.render(blue, red, false, gambled, unsaid, gambled);
-		SideBySideTooltip comparison = (SideBySideTooltip) cells.labels().get(Skill.ATTACK).createToolTip();
-		assertEquals("1,057", ((SkillTooltip) comparison.sides()[0]).countText());
-		assertNull("a log whose sync never sent it has no line: the count is the sync's, like a PB, not the hiscores'",
-			((SkillTooltip) comparison.sides()[1]).countLabel());
-		cells.render(blue, null, false, unsaid, null, unsaid);
-		assertNull(((SkillTooltip) cells.labels().get(Skill.ATTACK).createToolTip()).countLabel());
-		gambled.setHighGambles(0);
-		cells.render(blue, null, false, gambled, null, gambled);
-		assertEquals("a counted 0 is a count, as the game's page shows it",
-			"0", ((SkillTooltip) cells.labels().get(Skill.ATTACK).createToolTip()).countText());
-	}
-
-	@Test
 	public void hunterTooltipCarriesTheRumoursInTheHunterGuild()
 	{
 		// Dylan 11/7: the Hunter Guild's own count rides its section in the Hunter Skill Clog, as the gambles ride Attack's.
@@ -380,20 +345,20 @@ public class SkillCellGridTest
 	public void sparseSkillClogsNameTheHoveredItem()
 	{
 		SkillCellGrid cells = grid();
-		HiscoreResult result = hiscores(Map.of(Skill.ATTACK, 99));
-		String itemName = "Fighter torso";
+		HiscoreResult result = hiscores(Map.of(Skill.SMITHING, 99));
+		String itemName = "Smiths tunic";
 		ClogResult clog = new ClogResult("Tester",
-			Collections.singletonMap("barbarian_assault",
+			Collections.singletonMap("giants_foundry",
 				Collections.singletonList(new ClogResult.ClogItem(2, 4, null))),
-			Collections.singletonMap("barbarian_assault",
+			Collections.singletonMap("giants_foundry",
 				Collections.singletonList(2)),
 			Collections.singletonMap(2, itemName), null, null);
 		cells.render(result, null, false, clog, null, clog);
 
-		SkillTooltip attack = (SkillTooltip) cells.labels().get(Skill.ATTACK).createToolTip();
-		paint(attack);
-		assertTrue(hoverItem(attack, itemName));
-		assertEquals(itemName, attack.getHeaderHoverLineText());
+		SkillTooltip smithing = (SkillTooltip) cells.labels().get(Skill.SMITHING).createToolTip();
+		paint(smithing);
+		assertTrue(hoverItem(smithing, itemName));
+		assertEquals(itemName, smithing.getHeaderHoverLineText());
 	}
 
 	@Test
