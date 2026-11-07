@@ -1069,6 +1069,11 @@ public class PluginPublicationCharacterizationTest
 		{
 		});
 		verify(panel).onBulkCaptureComplete(RSN);
+		// The page guard reads the count the main log holds (ClogPbs, the page before's own).
+		java.lang.reflect.Method held = KillClogPlugin.class.getDeclaredMethod("heldPageCount", String.class);
+		held.setAccessible(true);
+		when(localClogCache.pageCount(RSN, "Revenant kills")).thenReturn(57);
+		assertEquals(57, held.invoke(plugin, "Revenant kills"));
 		LocalClogCache league = announceLeague();
 		ticks(10);
 		read.invoke(plugin, "Revenant kills", 60);

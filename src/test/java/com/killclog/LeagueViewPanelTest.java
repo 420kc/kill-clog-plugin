@@ -953,4 +953,33 @@ public class LeagueViewPanelTest
 			throw new AssertionError(e);
 		}
 	}
+
+	@Test
+	public void aRaidCellsCardShowsTheEntryCountTheLogCarries() throws Exception
+	{
+		// QA 11/7: the panel's own boss cells build their card with the looked-up player's log.
+		ClogIndex index = new ClogIndex();
+		index.publishForTest(Map.of("tombs_of_amascut", java.util.List.of(1, 2, 3)), Map.of());
+		Cells cells = field(panel, "cells", Cells.class);
+		Map<?, ?> tooltips = field(cells, "tooltipDataMap", Map.class);
+		java.util.Map<String, Integer> kills = new java.util.HashMap<>();
+		kills.put("Tombs of Amascut", 34);
+		HiscoreResult row = TestViews.hiscore(AccountType.REGULAR, kills, new java.util.HashMap<>(), new java.util.HashMap<>(),
+			new java.util.HashMap<>(), new java.util.HashMap<>(), 100, 1000L, 30, 1);
+		ClogResult log = new ClogResult("Someone", Map.of("tombs_of_amascut",
+			java.util.List.of(new ClogResult.ClogItem(1, 1, null))), Map.of("tombs_of_amascut", java.util.List.of(1, 2, 3)),
+			Map.of(), null, null);
+		log.getPageCounts().put("Tombs of Amascut (Entry) completions", 19);
+		SwingUtilities.invokeAndWait(() ->
+		{
+			panel.setClogIndex(index);
+			panel.setLoggedInPlayer("Me", AccountType.REGULAR);
+			session.adoptState(row, log, null, "Someone");
+			cells.rebuildPrimaryTooltips();
+			TooltipData toa = (TooltipData) tooltips.get(net.runelite.client.hiscore.HiscoreSkill.TOMBS_OF_AMASCUT);
+			assertNotNull(toa);
+			assertEquals("Entry", toa.entryLabel);
+			assertEquals(19, toa.entryKc);
+		});
+	}
 }

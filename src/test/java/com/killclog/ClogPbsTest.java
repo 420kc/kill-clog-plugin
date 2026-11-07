@@ -431,4 +431,33 @@ public class ClogPbsTest
 		assertEquals(java.util.List.of("Theatre of Blood (Entry) completions=7",
 			"Tombs of Amascut (Entry) completions=19"), counts);
 	}
+
+	@Test
+	public void anUnsettledPageStillCountsAsThePageBefore()
+	{
+		// QA 11/7: the Nightmare's page reads nothing of its own, but its count line is still what the next page compares.
+		page("Revenants", "Obtained: <col=ffff00>4/14</col>", "Revenant kills: <col=ffffff>50</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 50);
+		draws(1);
+		page("The Nightmare", "Obtained: <col=ffff00>2/9</col>", "The Nightmare kills: <col=ffffff>1,204</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 1204);
+		draws(1);
+		page("Tormented Demons", "Obtained: <col=ffff00>1/4</col>", "Tormented Demon kills: <col=ffffff>1,204</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 1204);
+		draws(1);
+		assertEquals(java.util.List.of("Revenant kills=50"), counts);
+	}
+
+	@Test
+	public void thePageBeforesHeldCountGuardsOnlyItsOwnLine()
+	{
+		// The Revenants' kills ride the first count line; Demonic Gorilla kills the second, so 57 there is the page's own.
+		held.put("Revenant kills", 57);
+		page("Revenants", "Obtained: <col=ffff00>4/14</col>", "Revenant kills: <col=ffffff>57</col>");
+		draws(1);
+		page("Glough's Experiments", "Obtained: <col=ffff00>2/5</col>", "Demonic Gorilla kills: <col=ffffff>57</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT2, 57);
+		draws(1);
+		assertEquals(java.util.List.of("Demonic Gorilla kills=57"), counts);
+	}
 }
