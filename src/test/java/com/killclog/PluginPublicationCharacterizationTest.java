@@ -1062,8 +1062,13 @@ public class PluginPublicationCharacterizationTest
 		read.invoke(plugin, "Revenant kills", 57);
 		verify(localClogCache, never()).setPageCount(any(), any(), anyInt());
 		ticks(1);
+		org.mockito.Mockito.clearInvocations(panel);
 		read.invoke(plugin, "Revenant kills", 57);
 		verify(localClogCache).setPageCount(RSN, "Revenant kills", 57);
+		SwingUtilities.invokeAndWait(() ->
+		{
+		});
+		verify(panel).onBulkCaptureComplete(RSN);
 		LocalClogCache league = announceLeague();
 		ticks(10);
 		read.invoke(plugin, "Revenant kills", 60);

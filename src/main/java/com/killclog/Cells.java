@@ -330,9 +330,8 @@ public class Cells
 			HiscoreSkill card = PanelData.card(skill);
 			String bossName = card.getName();
 			String hiscoreName = PanelData.hiscoreName(bossName);
-			TooltipData data = PageCounts.onCard(ClogService.bossToCategory(bossName), TooltipDataBuilder.withHardMode(
-				buildPrimaryBossData(bossName, hiscoreName, selfNoCache, pbs), card, lookupSession.getHiscoreResult(), pbs),
-				lookupSession.getClogResult());
+			TooltipData data = TooltipDataBuilder.bossCellCard(buildPrimaryBossData(bossName, hiscoreName, selfNoCache, pbs),
+				card, lookupSession.getHiscoreResult(), pbs, lookupSession.getClogResult());
 			if (data != null)
 			{
 				tooltipDataMap.put(skill, data);

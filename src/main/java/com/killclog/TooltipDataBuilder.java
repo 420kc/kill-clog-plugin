@@ -79,6 +79,17 @@ final class TooltipDataBuilder
 			.itemNames(itemNamesFor(items, clogResult));
 	}
 
+	/**
+	 * A boss cell's card on either side: a raid's with its hard mode's KC and PB, the PB looked up by the hard mode's
+	 * name, and any count only the game's page shows (PageCounts, a raid's Entry line) from that player's log.
+	 */
+	@Nullable
+	static TooltipData bossCellCard(@Nullable TooltipData data, HiscoreSkill card, @Nullable HiscoreResult result,
+		UnaryOperator<String> pb, @Nullable ClogResult clog)
+	{
+		return PageCounts.onCard(ClogService.bossToCategory(card.getName()), withHardMode(data, card, result, pb), clog);
+	}
+
 	/** A raid's card with its hard mode's KC and PB, the PB looked up by the hard mode's name; others as they are. */
 	@Nullable
 	static TooltipData withHardMode(@Nullable TooltipData data, HiscoreSkill raid, @Nullable HiscoreResult result,

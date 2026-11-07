@@ -101,6 +101,26 @@ public class PageCountsTest
 	}
 
 	@Test
+	public void aBossCellsCardAndAPagesOwnCardTakeTheirCountsFromThatPlayersLog()
+	{
+		// QA 11/7: the boss cells (both sides) and the page cards (both sides) each build through one of these.
+		ClogResult log = new ClogResult("420 kc", Map.of(), Map.of(), Map.of(), null, null);
+		log.getPageCounts().put(TOB_ENTRY, 12);
+		log.getPageCounts().put(REVS, 57);
+		log.setHighGambles(1_057);
+		TooltipData tob = TooltipData.builder().name("Theatre of Blood").kc(40).build();
+		TooltipData cell = TooltipDataBuilder.bossCellCard(tob,
+			net.runelite.client.hiscore.HiscoreSkill.THEATRE_OF_BLOOD, null, name -> null, log);
+		assertNotNull("the raid's hard mode", cell.hardLabel);
+		assertEquals(12, cell.entryKc);
+		assertEquals("no log, no count", -1, TooltipDataBuilder.bossCellCard(tob,
+			net.runelite.client.hiscore.HiscoreSkill.THEATRE_OF_BLOOD, null, name -> null, null).entryKc);
+		assertEquals(57, PageCounts.pageCard("revenants", TooltipData.builder().name("Revenants").build(), log).kc);
+		assertEquals(1_057, PageCounts.pageCard(HighGambles.CATEGORY,
+			TooltipData.builder().name("Barbarian Assault").build(), log).kc);
+	}
+
+	@Test
 	public void aPagesCardLeadsWithItsCountAndARaidsTakesItsOwnLine()
 	{
 		ClogResult log = new ClogResult("420 kc", Map.of(), Map.of(), Map.of(), null, null);

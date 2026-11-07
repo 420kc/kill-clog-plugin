@@ -115,10 +115,9 @@ final class ClogPages
 		List<Integer> items = items(key);
 		ClogResult blueLog = lookupSession.getClogResult();
 		ClogResult redLog = comparison.getCompareClogResult();
-		TooltipData blue = PageCounts.onCard(key,
-			HighGambles.onPage(key, tooltipDataBuilder.buildPageData(name, items, blueLog), blueLog), blueLog);
-		TooltipData red = comparison.isComparisonMode() ? PageCounts.onCard(key,
-			HighGambles.onPage(key, tooltipDataBuilder.buildPageData(name, items, redLog), redLog), redLog) : null;
+		TooltipData blue = PageCounts.pageCard(key, tooltipDataBuilder.buildPageData(name, items, blueLog), blueLog);
+		TooltipData red = comparison.isComparisonMode()
+			? PageCounts.pageCard(key, tooltipDataBuilder.buildPageData(name, items, redLog), redLog) : null;
 		for (TooltipData data : new TooltipData[]{blue, red})
 		{
 			if (data != null)

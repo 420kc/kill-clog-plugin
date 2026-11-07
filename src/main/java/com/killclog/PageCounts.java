@@ -88,4 +88,14 @@ final class PageCounts
 		}
 		return data;
 	}
+
+	/**
+	 * A Collection Log page's own card on either side, leading with the count the game's page shows: the gambles'
+	 * (HighGambles) or one of these, from that player's log.
+	 */
+	@Nullable
+	static TooltipData pageCard(String page, @Nullable TooltipData data, @Nullable ClogResult clog)
+	{
+		return onCard(page, HighGambles.onPage(page, data, clog), clog);
+	}
 }

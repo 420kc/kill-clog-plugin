@@ -246,9 +246,8 @@ public class ComparisonController
 				String bossName = card.getName();
 				String hiscoreName = PanelData.hiscoreName(bossName);
 				// No red PB source exists, for a hard mode either.
-				TooltipData data = PageCounts.onCard(ClogService.bossToCategory(bossName), TooltipDataBuilder.withHardMode(
-					buildCompareBossData(bossName, hiscoreName), card, getCompareHiscoreResult(), name -> null),
-					getCompareClogResult());
+				TooltipData data = TooltipDataBuilder.bossCellCard(buildCompareBossData(bossName, hiscoreName), card,
+					getCompareHiscoreResult(), name -> null, getCompareClogResult());
 				if (data != null)
 				{
 					compareTooltipDataMap.put(boss, data);
