@@ -160,12 +160,14 @@ public class ClogSummaryTooltipTest
 		tabs.put("Bosses", new int[]{1, 2});
 		tabs.put("Raids", new int[]{0, 79});
 		tabs.put("Clues", new int[]{470, 470});
+		tabs.put("Minigames", new int[]{1, 261});
+		tabs.put("Other", new int[]{1, 530});
 		tip.setTabs(tabs, null);
 		BufferedImage image = paint(tip);
 		List<Point> tiles = TestViews.tiles(image);
 
-		// The Total, Bosses and Raids, then Clues under the Total.
-		assertEquals(4, tiles.size());
+		// The Total, Bosses and Raids, then Clues, Minigames and Other under them.
+		assertEquals(6, tiles.size());
 		assertEquals(tiles.get(0).y, tiles.get(2).y);
 		assertEquals(tiles.get(0).x, tiles.get(3).x);
 		assertEquals(GameTile.HEIGHT + GameTile.GAP, tiles.get(3).y - tiles.get(0).y);

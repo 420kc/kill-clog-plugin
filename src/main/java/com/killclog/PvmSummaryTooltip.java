@@ -3,6 +3,8 @@ package com.killclog;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.BiConsumer;
 import javax.annotation.Nullable;
 import lombok.Setter;
@@ -45,30 +47,26 @@ public class PvmSummaryTooltip extends TitleTooltip
 	@Setter
 	private double ehb = -1;
 
-	@Nullable
-	private TooltipItemSprites weaponSprites;
 	private final int[] weaponCounts = new int[4];
 	@Nullable
 	private TooltipItemSprites superiorSprites;
 	private final int[] superiorCounts = new int[2];
 
-	// CoX, ToB and ToA: normal and hard-mode kills as pairs, like a boss popup's KC and PB, then the raid's log. The
-	// Fractured Archive has no hard mode, so its row is its kills and its log.
-	private static final String[] RAID_LABELS = {"CoX: ", "ToB: ", "ToA: ", "TFA: "};
-	private static final int PAIR_GAP = 8;
+	// CoX, ToB and ToA, then The Fractured Archive, as the game's tiles (Dylan, 2026-11-07): each its megarare, faint
+	// until held, and its log. Their kills are on each raid's own card.
+	private static final String[] RAID_NAMES = {"CoX", "ToB", "ToA", "TFA"};
 	private static final String[] RAID_CATEGORIES = {PanelData.COX_CATEGORY, PanelData.TOB_CATEGORY,
 		PanelData.TOA_CATEGORY, PanelData.TFA_CATEGORY};
-	private final int[] raidKc = new int[RAID_LABELS.length];
-	private final int[] hardKc = new int[RAID_LABELS.length];
 	private final int[] raidObtained = {-1, -1, -1, -1};
-	private final int[] raidTotal = new int[RAID_LABELS.length];
+	private final int[] raidTotal = new int[RAID_NAMES.length];
+	private final Image[] megarares = new Image[RAID_NAMES.length];
 	// The Fractured Archive's row waits for its hiscore row (Dylan, 2026-10-14): drawn from the lookup that carries it.
 	private boolean tfaOut;
 	@Nullable
 	private BiConsumer<MouseEvent, HiscoreSkill> onOpenRaid;
 	private final CardBody.ClickRows raidRows = new CardBody.ClickRows(this, (e, row) ->
 	{
-		// Each row opens its raid's own popup, once the client knows the raid.
+		// Each tile opens its raid's own popup, once the client knows the raid.
 		if (onOpenRaid != null && raid(row) != null)
 		{
 			onOpenRaid.accept(e, raid(row));
@@ -130,8 +128,10 @@ public class PvmSummaryTooltip extends TitleTooltip
 		weaponCounts[2] = shadowCount;
 		weaponCounts[3] = obligatorCount;
 
-		weaponSprites = TooltipItemSprites.load(TooltipData.itemList(PanelData.MEGARARE_ITEM_IDS), null, itemManager,
-			id -> 1, this);
+		for (int i = 0; i < megarares.length; i++)
+		{
+			megarares[i] = itemSprite(PanelData.MEGARARE_ITEM_IDS[i], itemManager);
+		}
 	}
 
 	public void setSuperiors(int imbuedHeartCount, int eternalGemCount,
@@ -163,10 +163,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 	public void setRaids(HiscoreResult hiscoreResult, ClogResult clogResult)
 	{
 		tfaOut = hiscoreResult.hasBossRow(PanelData.TFA_HISCORE);
-		for (int i = 0; i < RAID_LABELS.length; i++)
+		for (int i = 0; i < RAID_NAMES.length; i++)
 		{
-			raidKc[i] = Math.max(0, hiscoreResult.getKc(hasHardMode(i) ? PanelData.RAIDS[i].getName() : PanelData.TFA_HISCORE));
-			hardKc[i] = hasHardMode(i) ? Math.max(0, hiscoreResult.getKc(PanelData.RAID_HARD_MODES[i].getName())) : 0;
 			int[] counts = clogResult != null ? ClogHelper.clogCounts(RAID_CATEGORIES[i], clogResult) : null;
 			if (counts != null)
 			{
@@ -176,7 +174,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		}
 	}
 
-	/** Called with the raid when the player presses its row. */
+	/** Called with the raid when the player presses its tile. */
 	void setOnOpenRaid(@Nullable BiConsumer<MouseEvent, HiscoreSkill> onOpenRaid)
 	{
 		this.onOpenRaid = onOpenRaid;
@@ -221,15 +219,14 @@ public class PvmSummaryTooltip extends TitleTooltip
 				.add(CardBody.text("Most Killed:", labelColor, false))
 				.add(CardBody.text(mostKilled + " (" + grouped(mostKilledKc) + ")", NativeTooltip.valueColor, true));
 		}
-		// Raids lead the sections under the band, their megarares under the rows.
-		CardBody body = new CardBody().titled("Raids");
+		// Raids lead the sections under the band.
+		List<GameTile.Tile> raids = new ArrayList<>();
 		for (int i = 0; i < raidRowCount(); i++)
 		{
-			body.add(raidRow(i));
+			raids.add(new GameTile.Tile(RAID_NAMES[i], megarares[i], raidObtained[i], raidTotal[i],
+				onOpenRaid != null && raid(i) != null ? i : -1).faint(weaponCounts[i] <= 0));
 		}
-		body.add(CardBody.gap(WEAPON_PAD))
-			.add(CardBody.sprites(1, weaponSprites, PanelData.MEGARARE_ITEM_IDS, PanelData.MEGARARE_ITEM_NAMES,
-				weaponCounts, WEAPON_PAD));
+		CardBody body = new CardBody().titled("Raids").add(GameTile.grid(raidRows, raids));
 		// Slayer: XP and Rank from the hiscores, then clog progress when a synced log is known.
 		body.titled("Slayer")
 			.add(CardBody.line("XP: ", slayerXpText(slayerXp)))
@@ -247,16 +244,10 @@ public class PvmSummaryTooltip extends TitleTooltip
 		return card.add(CardBody.hoverBand()).add(CardBody.scroll(scroll, body.asPart()));
 	}
 
-	/** Progress rides alongside a real kc in either mode; a raid never run stays dash-only. */
-	private boolean raidLog(int row)
-	{
-		return raidKc[row] + hardKc[row] > 0 && raidObtained[row] >= 0;
-	}
-
-	/** The rows drawn: CoX, ToB and ToA, then The Fractured Archive once the hiscores carry its row. */
+	/** The tiles drawn: CoX, ToB and ToA, then The Fractured Archive once the hiscores carry its row. */
 	private int raidRowCount()
 	{
-		return tfaOut ? RAID_LABELS.length : PanelData.RAID_HARD_MODES.length;
+		return tfaOut ? RAID_NAMES.length : PanelData.RAID_HARD_MODES.length;
 	}
 
 	/** CoX, ToB and ToA pair a hard mode; The Fractured Archive, the row after them, has none. */
@@ -270,72 +261,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private static HiscoreSkill raid(int row)
 	{
 		return hasHardMode(row) ? PanelData.RAIDS[row] : PanelData.listed(PanelData.TFA);
-	}
-
-	/**
-	 * The raid rows' columns (Dylan, 2026-10-13): each label starts its own column and each value ends its own, so
-	 * the labels line up on their left and the kills and logs on their right. Offsets from the row's start: the
-	 * kills' right edge, the hard mode's label, its kills' right edge and the log's right edge.
-	 */
-	private int[] raidColumns(FontMetrics fm)
-	{
-		int label = 0;
-		int kills = 0;
-		int hardLabel = 0;
-		int hard = 0;
-		int log = 0;
-		for (int row = 0; row < raidRowCount(); row++)
-		{
-			label = Math.max(label, fm.stringWidth(RAID_LABELS[row]));
-			kills = Math.max(kills, fm.stringWidth(scoreText(raidKc[row])));
-			if (hasHardMode(row))
-			{
-				hardLabel = Math.max(hardLabel, fm.stringWidth(PanelData.RAID_HARD_LABELS[row] + ": "));
-				hard = Math.max(hard, fm.stringWidth(scoreText(hardKc[row])));
-			}
-			if (raidLog(row))
-			{
-				log = Math.max(log, fm.stringWidth(raidLogText(row)));
-			}
-		}
-		int hardLabelX = label + kills + PAIR_GAP;
-		int hardEnd = hardLabelX + hardLabel + hard;
-		return new int[]{label + kills, hardLabelX, hardEnd, log > 0 ? hardEnd + PAIR_GAP + log : hardEnd};
-	}
-
-	private String raidLogText(int row)
-	{
-		return "(" + progressCountText(raidObtained[row], raidTotal[row]) + ")";
-	}
-
-	/** A raid's normal and hard-mode kills, then its log, in the rows' columns; the row opens the raid's own popup. */
-	private CardBody.Part raidRow(int row)
-	{
-		return CardBody.clickRow(raidRows, row, c -> raidColumns(c.fm)[3], (c, y, hovered) ->
-		{
-			int textY = y + c.fm.getAscent();
-			int[] at = raidColumns(c.fm);
-			int x = c.inset();
-			// No pointer cursor in this UI: the hovered row answers in white instead, and a row that opens
-			// nothing yet doesn't answer.
-			c.g.setColor(hovered && raid(row) != null ? NativeTooltip.valueColor : labelColor);
-			c.g.drawString(RAID_LABELS[row], x, textY);
-			if (hasHardMode(row))
-			{
-				c.g.drawString(PanelData.RAID_HARD_LABELS[row] + ": ", x + at[1], textY);
-			}
-			c.g.setColor(NativeTooltip.valueColor);
-			drawRightAligned(c.g, c.fm, scoreText(raidKc[row]), x + at[0], textY);
-			if (hasHardMode(row))
-			{
-				drawRightAligned(c.g, c.fm, scoreText(hardKc[row]), x + at[2], textY);
-			}
-			if (raidLog(row))
-			{
-				c.g.setColor(completionColor(raidObtained[row], raidTotal[row]));
-				drawRightAligned(c.g, c.fm, raidLogText(row), x + at[3], textY);
-			}
-		});
 	}
 
 	/** The exact amount, never rounded: max slayer xp is 200,000,000 and the summary has the width for it. */

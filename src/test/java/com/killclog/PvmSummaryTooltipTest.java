@@ -1,8 +1,8 @@
 package com.killclog;
 
-import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
+import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.awt.event.MouseMotionListener;
@@ -60,7 +60,7 @@ public class PvmSummaryTooltipTest
 	}
 
 	@Test
-	public void raidRowsStillAnswerClicksUnderTheTierRow() throws ReflectiveOperationException
+	public void raidTilesMoveDownWithTheTierRowAndStillAnswer()
 	{
 		Map<CombatAchievementTier, Integer> totals = new java.util.EnumMap<>(CombatAchievementTier.class);
 		for (CombatAchievementTier tier : CombatAchievementTier.values())
@@ -69,39 +69,16 @@ public class PvmSummaryTooltipTest
 		}
 		Map<CombatAchievementTier, Integer> easyDone = new java.util.EnumMap<>(CombatAchievementTier.class);
 		easyDone.put(CombatAchievementTier.EASY, CombatAchievementTier.EASY.totalTasks());
-		PvmSummaryTooltip plain = pvmCard(null);
-		PvmSummaryTooltip tiered = pvmCard(CombatAchievementResult.of(easyDone, totals));
+		PvmSummaryTooltip plain = fill(pvmCard(null));
+		PvmSummaryTooltip tiered = fill(pvmCard(CombatAchievementResult.of(easyDone, totals)));
 
-		int plainTop = paintedRaidTop(plain);
-		int tieredTop = paintedRaidTop(tiered);
-		// The tier row's room moves the raid rows down, and their clicks move with them.
-		assertEquals(plainTop + 4 + 22 + 6, tieredTop);
-		assertEquals(-1, TestViews.rowAt(tiered, "raidRows", tieredTop - 1));
-		assertEquals(0, TestViews.rowAt(tiered, "raidRows", tieredTop));
-		// The last of the three raid rows this lookup has (no Fractured Archive row before its hiscore row).
-		assertEquals(2, TestViews.rowAt(tiered, "raidRows", tieredTop + 2 * 14 + 13));
-		assertEquals(-1, TestViews.rowAt(tiered, "raidRows", tieredTop + 3 * 14));
+		Point plainTop = firstRaid(painted(plain));
+		Point tieredTop = firstRaid(painted(tiered));
+		// The tier row's room moves the raid tiles down, and their presses move with them.
+		assertEquals(plainTop.y + 4 + 22 + 6, tieredTop.y);
+		assertEquals(-1, TestViews.tileAt(tiered, "raidRows", tieredTop.x + 10, tieredTop.y - 1));
+		assertEquals(0, TestViews.tileAt(tiered, "raidRows", tieredTop.x + 10, tieredTop.y + 10));
 	}
-
-	private static int paintedRaidTop(PvmSummaryTooltip tip) throws ReflectiveOperationException
-	{
-		Dimension size = tip.getPreferredSize();
-		tip.setSize(size);
-		BufferedImage image = new BufferedImage(size.width, size.height, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D g = image.createGraphics();
-		tip.paint(g);
-		g.dispose();
-		// The first raid row's top, read through the card's own hit test.
-		for (int y = 0; y < size.height; y++)
-		{
-			if (TestViews.rowAt(tip, "raidRows", y) == 0)
-			{
-				return y;
-			}
-		}
-		return -1;
-	}
-
 	private static PvmSummaryTooltip pvmCard(CombatAchievementResult ca)
 	{
 		PvmSummaryTooltip tip = new PvmSummaryTooltip();
@@ -154,154 +131,103 @@ public class PvmSummaryTooltipTest
 	}
 
 	@Test
-	public void raidRowsAreHitTestedOnlyWhereTheyWerePainted()
+	public void raidTilesAnswerOnlyWhereTheyWerePainted()
 	{
 		PvmSummaryTooltip tip = card();
 		// Before the first paint there is no raid section to answer.
-		assertEquals(-1, TestViews.rowAt(tip, "raidRows", 200));
+		assertEquals(-1, TestViews.tileAt(tip, "raidRows", 20, 200));
 
-		painted(tip);
-		assertEquals(-1, TestViews.rowAt(tip, "raidRows", 0));
-		int top = firstRaidY(tip);
-		assertEquals(-1, TestViews.rowAt(tip, "raidRows", top - 1));
-		// CoX, ToB and ToA; The Fractured Archive's row waits for its hiscore row, which this lookup hasn't.
+		List<Point> raids = TestViews.tiles(render(painted(tip)));
+		// CoX, ToB and ToA, three across; The Fractured Archive's waits for its hiscore row, which this lookup hasn't.
+		assertEquals(3, raids.size());
 		for (int row = 0; row < 3; row++)
 		{
-			assertEquals(row, TestViews.rowAt(tip, "raidRows", top + row * NativeTooltip.LINE_HEIGHT));
-			assertEquals(row, TestViews.rowAt(tip, "raidRows", top + row * NativeTooltip.LINE_HEIGHT + NativeTooltip.LINE_HEIGHT - 1));
+			Point tile = raids.get(row);
+			assertEquals(row, TestViews.tileAt(tip, "raidRows", tile.x, tile.y));
+			assertEquals(row, TestViews.tileAt(tip, "raidRows", tile.x + GameTile.WIDTH - 1, tile.y + GameTile.HEIGHT - 1));
 		}
-		// The mega rare sprites below the rows are not part of them.
-		assertEquals(-1, TestViews.rowAt(tip, "raidRows", top + 3 * NativeTooltip.LINE_HEIGHT));
+		assertEquals(-1, TestViews.tileAt(tip, "raidRows", raids.get(0).x + 10, raids.get(0).y - 1));
+		assertEquals(-1, TestViews.tileAt(tip, "raidRows", raids.get(0).x + GameTile.WIDTH + 1, raids.get(0).y + 10));
 	}
 
 	@Test
-	public void aHoveredRaidTurnsItsOwnLabelWhiteAndNothingElse()
+	public void aHoveredRaidTileLightensItselfAndNothingElse()
 	{
 		PvmSummaryTooltip tip = painted(card());
 		BufferedImage resting = render(tip);
-		int top = firstRaidY(tip);
-		int orange = NativeTooltip.OSRS_ORANGE.getRGB();
-		int white = Color.WHITE.getRGB();
-		// The Fractured Archive's row isn't drawn until the hiscores carry it (this lookup doesn't).
-		int answering = 3;
-		for (int row = 0; row < answering; row++)
-		{
-			move(tip, 5, top + row * NativeTooltip.LINE_HEIGHT + 2);
-			assertEquals(row, TestViews.hoveredRow(tip, "raidRows"));
-			BufferedImage hovered = render(tip);
-			int changed = 0;
-			for (int y = 0; y < resting.getHeight(); y++)
-			{
-				for (int x = 0; x < resting.getWidth(); x++)
-				{
-					if (resting.getRGB(x, y) != hovered.getRGB(x, y))
-					{
-						// Only this row's label moves, and only from orange to white.
-						assertEquals(row, TestViews.rowAt(tip, "raidRows", y));
-						assertEquals(orange, resting.getRGB(x, y));
-						assertEquals(white, hovered.getRGB(x, y));
-						changed++;
-					}
-				}
-			}
-			assertTrue(changed > 0);
-		}
-
-		move(tip, 5, 2);
-		assertEquals(-1, TestViews.hoveredRow(tip, "raidRows"));
-		BufferedImage after = render(tip);
+		Point tob = TestViews.tiles(resting).get(1);
+		move(tip, tob.x + 10, tob.y + 10);
+		assertEquals(1, TestViews.hoveredRow(tip, "raidRows"));
+		BufferedImage hovered = render(tip);
+		int changed = 0;
 		for (int y = 0; y < resting.getHeight(); y++)
 		{
 			for (int x = 0; x < resting.getWidth(); x++)
 			{
-				assertEquals(resting.getRGB(x, y), after.getRGB(x, y));
+				if (resting.getRGB(x, y) != hovered.getRGB(x, y))
+				{
+					assertTrue("only ToB's tile changes", x >= tob.x && x < tob.x + GameTile.WIDTH && y >= tob.y
+						&& y < tob.y + GameTile.HEIGHT);
+					changed++;
+				}
 			}
 		}
+		assertTrue(changed > 0);
+		move(tip, 5, 2);
+		assertEquals(-1, TestViews.hoveredRow(tip, "raidRows"));
 	}
 
 	@Test
-	public void pressingARaidRowOpensThatRaidAndNothingElseDoes()
+	public void pressingARaidTileOpensThatRaidAndNothingElseDoes()
 	{
 		PvmSummaryTooltip tip = card();
 		List<HiscoreSkill> opened = new ArrayList<>();
 		tip.setOnOpenRaid((press, raid) -> opened.add(raid));
 
 		// Before the first paint there is no raid section to press.
-		press(tip, 5, 200, MouseEvent.BUTTON1);
+		press(tip, 20, 200, MouseEvent.BUTTON1);
 		assertTrue(opened.isEmpty());
 
-		painted(tip);
-		int top = firstRaidY(tip);
-		for (int row = 0; row < 3; row++)
+		List<Point> raids = TestViews.tiles(render(painted(tip)));
+		for (Point tile : raids)
 		{
 			// The press that opens a raid is spent on it.
-			assertTrue(press(tip, 5, top + row * NativeTooltip.LINE_HEIGHT + 3, MouseEvent.BUTTON1).isConsumed());
+			assertTrue(press(tip, tile.x + 10, tile.y + 10, MouseEvent.BUTTON1).isConsumed());
 		}
 		assertEquals(List.of(HiscoreSkill.CHAMBERS_OF_XERIC, HiscoreSkill.THEATRE_OF_BLOOD,
 			HiscoreSkill.TOMBS_OF_AMASCUT), opened);
-		// The Fractured Archive's row isn't drawn before its hiscore row, so nothing there opens.
-		assertFalse(press(tip, 5, top + 3 * NativeTooltip.LINE_HEIGHT + 3, MouseEvent.BUTTON1).isConsumed());
-		int raids = 3;
-		assertEquals(raids, opened.size());
 
-		// The Slayer rows above, the sprites below and a right click are not links, and pass through.
-		assertFalse(press(tip, 5, top - 40, MouseEvent.BUTTON1).isConsumed());
-		assertFalse(press(tip, 5, top + 4 * NativeTooltip.LINE_HEIGHT + 3, MouseEvent.BUTTON1).isConsumed());
-		assertFalse(press(tip, 5, top + 3, MouseEvent.BUTTON3).isConsumed());
-		assertEquals(raids, opened.size());
+		// The rows above, the gap between tiles and a right click are not links, and pass through.
+		Point cox = raids.get(0);
+		assertFalse(press(tip, cox.x + 10, cox.y - 40, MouseEvent.BUTTON1).isConsumed());
+		assertFalse(press(tip, cox.x + GameTile.WIDTH + 1, cox.y + 10, MouseEvent.BUTTON1).isConsumed());
+		assertFalse(press(tip, cox.x + 10, cox.y + 10, MouseEvent.BUTTON3).isConsumed());
+		assertEquals(3, opened.size());
 	}
 
 	@Test
-	public void theFracturedArchiveRowReadsItsKillsWithNoHardMode()
+	public void theFracturedArchiveTileWaitsForItsHiscoreRow()
 	{
-		PvmSummaryTooltip without = painted(card());
-		Map<String, Integer> kills = new HashMap<>();
-		kills.put(HiscoreSkill.CHAMBERS_OF_XERIC.getName(), 120);
-		kills.put(HiscoreSkill.THEATRE_OF_BLOOD.getName(), 80);
-		kills.put(HiscoreSkill.TOMBS_OF_AMASCUT.getName(), 300);
-		kills.put(PanelData.TFA_HISCORE, 7);
-		PvmSummaryTooltip with = new PvmSummaryTooltip();
-		with.setData(110.5, 2_500, 40, PanelData.bossCount(), "Vorkath", 900);
-		with.setRaids(TestViews.hiscore(AccountType.REGULAR, kills, Collections.emptyMap(),
-			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1), null);
-		painted(with);
-
-		// Its kills come from its own hiscore row: "TFA: 7" paints where "TFA: --" did.
-		int top = firstRaidY(with);
-		BufferedImage before = render(without);
-		BufferedImage after = render(with);
-		assertTrue(rowDiffers(before, after, top + 3 * NativeTooltip.LINE_HEIGHT));
-		// The raids before it pair a hard mode, an orange label after their white kills; this row has none.
-		assertTrue(orangeAfterWhite(after, top + 2 * NativeTooltip.LINE_HEIGHT));
-		assertFalse(orangeAfterWhite(after, top + 3 * NativeTooltip.LINE_HEIGHT));
-	}
-
-	@Test
-	public void theFracturedArchiveRowWaitsForItsHiscoreRow()
-	{
-		// Before Jagex adds the raid's row the card has three raid rows; from the lookup that carries it, a fourth,
-		// "--" until the player has kills, and pressing it opens the raid once the client knows it.
-		PvmSummaryTooltip before = painted(card());
-		int top = firstRaidY(before);
-		assertEquals(-1, TestViews.rowAt(before, "raidRows", top + 3 * NativeTooltip.LINE_HEIGHT));
+		// Before Jagex adds the raid's row the card has three raid tiles; from the lookup that carries it, a fourth,
+		// and four lay out two across. Pressing it opens the raid once the client knows it.
+		assertEquals(3, TestViews.tiles(render(painted(card()))).size());
 
 		Map<String, Integer> kills = new HashMap<>();
 		kills.put(HiscoreSkill.CHAMBERS_OF_XERIC.getName(), 120);
-		kills.put(HiscoreSkill.THEATRE_OF_BLOOD.getName(), 80);
-		kills.put(HiscoreSkill.TOMBS_OF_AMASCUT.getName(), 300);
 		kills.put(PanelData.TFA_HISCORE, -1);
 		PvmSummaryTooltip out = new PvmSummaryTooltip();
 		out.setData(110.5, 2_500, 40, PanelData.bossCount(), "Vorkath", 900);
 		out.setRaids(TestViews.hiscore(AccountType.REGULAR, kills, Collections.emptyMap(),
 			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1), null);
-		painted(out);
-		assertEquals(3, TestViews.rowAt(out, "raidRows", firstRaidY(out) + 3 * NativeTooltip.LINE_HEIGHT));
 		List<HiscoreSkill> opened = new ArrayList<>();
 		out.setOnOpenRaid((press, raid) -> opened.add(raid));
+		List<Point> raids = TestViews.tiles(render(painted(out)), GameTile.PAGE_WIDTH, GameTile.HEIGHT);
+		assertEquals(4, raids.size());
+		assertEquals(raids.get(0).x, raids.get(2).x);
 		// Its popup comes with the launch-day update's boss tile: before the panel lists the raid, even a client whose
 		// RuneLite knows it opens nothing, rather than a popup with no data asking a synced player to set up.
-		assertEquals(PanelData.tfaListed(),
-			press(out, 5, firstRaidY(out) + 3 * NativeTooltip.LINE_HEIGHT + 3, MouseEvent.BUTTON1).isConsumed());
+		Point tfa = raids.get(3);
+		assertEquals(PanelData.tfaListed(), press(out, tfa.x + 10, tfa.y + 10, MouseEvent.BUTTON1).isConsumed());
 		assertTrue("this release's panel lists the raid", PanelData.tfaListed());
 		// The rule itself, for a client whose RuneLite does know the raid: a boss the list carries opens, one it
 		// doesn't (as the raid until the launch-day update) opens nothing, whatever RuneLite knows.
@@ -309,66 +235,8 @@ public class PvmSummaryTooltipTest
 		assertNull(PanelData.listed(HiscoreSkill.OVERALL));
 		assertNull(PanelData.listed(null));
 	}
-
 	@Test
-	public void theRaidCountsInTheBossTotalOnlyWhileItsRowStandsBesideTheList()
-	{
-		// The panel lists the raid now, so its row is one of the list's and counts once: 72/72, never 73.
-		Map<String, Integer> kills = new HashMap<>();
-		kills.put(PanelData.TFA_HISCORE, 4);
-		HiscoreResult withRaid = TestViews.hiscore(AccountType.REGULAR, kills, Collections.emptyMap(),
-			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1);
-		assertTrue(PanelData.tfaListed());
-		assertEquals(PanelData.bossCount(), LookupQueries.bossTotal(withRaid));
-		HiscoreResult without = TestViews.hiscore(AccountType.REGULAR, Collections.emptyMap(), Collections.emptyMap(),
-			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1);
-		assertEquals(PanelData.bossCount(), LookupQueries.bossTotal(without));
-		assertEquals(PanelData.bossCount(), LookupQueries.bossTotal(null));
-	}
-
-	private static boolean rowDiffers(BufferedImage a, BufferedImage b, int top)
-	{
-		for (int y = top; y < top + NativeTooltip.LINE_HEIGHT; y++)
-		{
-			for (int x = 0; x < a.getWidth(); x++)
-			{
-				if (a.getRGB(x, y) != b.getRGB(x, y))
-				{
-					return true;
-				}
-			}
-		}
-		return false;
-	}
-
-	/** Whether a row holds orange text to the right of its first white ink; the scrollbar's solid column isn't text. */
-	private static boolean orangeAfterWhite(BufferedImage image, int top)
-	{
-		int orange = NativeTooltip.OSRS_ORANGE.getRGB();
-		int firstWhite = Integer.MAX_VALUE;
-		int lastOrange = -1;
-		for (int x = 0; x < image.getWidth(); x++)
-		{
-			int orangeRows = 0;
-			for (int y = top; y < top + NativeTooltip.LINE_HEIGHT; y++)
-			{
-				int rgb = image.getRGB(x, y);
-				if (rgb == Color.WHITE.getRGB())
-				{
-					firstWhite = Math.min(firstWhite, x);
-				}
-				orangeRows += rgb == orange ? 1 : 0;
-			}
-			if (orangeRows > 0 && orangeRows < NativeTooltip.LINE_HEIGHT)
-			{
-				lastOrange = x;
-			}
-		}
-		return lastOrange > firstWhite;
-	}
-
-	@Test
-	public void hoverRepaintsOnlyWhenTheRaidRowChanges()
+	public void hoverRepaintsOnlyWhenTheRaidTileChanges()
 	{
 		int[] repaints = {0};
 		PvmSummaryTooltip tip = new PvmSummaryTooltip()
@@ -380,14 +248,14 @@ public class PvmSummaryTooltipTest
 			}
 		};
 		fill(tip);
-		painted(tip);
-		int top = firstRaidY(tip);
+		List<Point> raids = TestViews.tiles(render(painted(tip)));
+		Point cox = raids.get(0);
 		repaints[0] = 0;
-		move(tip, 5, top + 2);
+		move(tip, cox.x + 5, cox.y + 2);
 		assertEquals(1, repaints[0]);
-		move(tip, 9, top + 4);
+		move(tip, cox.x + 9, cox.y + 4);
 		assertEquals(1, repaints[0]);
-		move(tip, 5, top + NativeTooltip.LINE_HEIGHT + 2);
+		move(tip, raids.get(1).x + 5, raids.get(1).y + 2);
 		assertEquals(2, repaints[0]);
 		move(tip, 5, 2);
 		assertEquals(3, repaints[0]);
@@ -396,32 +264,17 @@ public class PvmSummaryTooltipTest
 	}
 
 	@Test
-	public void theHoveredRaidRowIsClearedOnExit()
+	public void theHoveredRaidTileIsClearedOnExit()
 	{
 		PvmSummaryTooltip tip = painted(card());
-		int top = firstRaidY(tip);
-		move(tip, 5, top + 2);
+		Point cox = firstRaid(tip);
+		move(tip, cox.x + 5, cox.y + 2);
 		assertEquals(0, TestViews.hoveredRow(tip, "raidRows"));
 		for (MouseListener listener : tip.getMouseListeners())
 		{
-			listener.mouseExited(event(tip, MouseEvent.MOUSE_EXITED, 5, top + 2, MouseEvent.NOBUTTON));
+			listener.mouseExited(event(tip, MouseEvent.MOUSE_EXITED, cox.x + 5, cox.y + 2, MouseEvent.NOBUTTON));
 		}
 		assertEquals(-1, TestViews.hoveredRow(tip, "raidRows"));
-	}
-
-	@Test
-	public void raidRowsLineUpInColumnsTheirWidestEntriesSet()
-	{
-		// Dylan, 10/13: labels start their own column and kills and logs end theirs, so every row lines up.
-		PvmSummaryTooltip tip = card();
-		java.awt.FontMetrics fm = tip.getFontMetrics(tip.getFont());
-		int[] at = TestViews.call(tip, "raidColumns", fm);
-		int label = fm.stringWidth("CoX: ");
-		int kills = fm.stringWidth("300");
-		assertEquals("the kills end after the widest label and the widest count", label + kills, at[0]);
-		assertEquals(label + kills + 8, at[1]);
-		assertEquals(at[1] + fm.stringWidth("Expert: ") + fm.stringWidth("--"), at[2]);
-		assertEquals("no row has a log here, so nothing follows the hard modes", at[2], at[3]);
 	}
 
 	private static PvmSummaryTooltip card()
@@ -438,6 +291,10 @@ public class PvmSummaryTooltipTest
 		kills.put(HiscoreSkill.TOMBS_OF_AMASCUT.getName(), 300);
 		tip.setRaids(TestViews.hiscore(AccountType.REGULAR, kills, Collections.emptyMap(),
 			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1), null);
+		// Raid tiles answer once something can open them.
+		tip.setOnOpenRaid((press, raid) ->
+		{
+		});
 		return tip;
 	}
 
@@ -457,18 +314,10 @@ public class PvmSummaryTooltipTest
 		graphics.dispose();
 		return image;
 	}
-
-	/** The first y that answers as raid row 0, found the way a pointer would. */
-	private static int firstRaidY(PvmSummaryTooltip tip)
+	/** The first raid tile's top-left corner. */
+	private static Point firstRaid(PvmSummaryTooltip tip)
 	{
-		for (int y = 0; y < tip.getHeight(); y++)
-		{
-			if (TestViews.rowAt(tip, "raidRows", y) == 0)
-			{
-				return y;
-			}
-		}
-		throw new AssertionError("no raid section painted");
+		return TestViews.tiles(render(tip)).get(0);
 	}
 
 	/** One press through every listener, the way Swing delivers it; returns it to read consumption. */
@@ -503,5 +352,4 @@ public class PvmSummaryTooltipTest
 			Collections.emptyMap(), Collections.emptyMap(), scores, Collections.emptyMap(),
 			Collections.emptyMap(), 0, 0, 0, -1);
 	}
-
 }

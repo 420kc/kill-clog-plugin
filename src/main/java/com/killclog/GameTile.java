@@ -51,12 +51,20 @@ final class GameTile
 		final int obtained;
 		final int total;
 		final int key;
+		// The sprite drawn faint, as an item not yet held is.
+		boolean faint;
+
+		Tile faint(boolean faint)
+		{
+			this.faint = faint;
+			return this;
+		}
 	}
 
-	/** The tiles three across, centered; one under the mouse lightens, and a press opens its key. */
+	/** The tiles three across, or four two across and wider so none sits alone; a press opens a tile's key. */
 	static CardBody.Part grid(CardBody.ClickRows clicks, List<Tile> tiles)
 	{
-		return grid(clicks, tiles, COLS, WIDTH, HEIGHT);
+		return tiles.size() == 4 ? grid(clicks, tiles, 2, PAGE_WIDTH, HEIGHT) : grid(clicks, tiles, COLS, WIDTH, HEIGHT);
 	}
 
 	/** A tab's pages, two across, as the game's Combat Achievements tiles its bosses. */
@@ -112,7 +120,10 @@ final class GameTile
 		}
 		if (tile.sprite != null)
 		{
+			Composite solid = g.getComposite();
+			g.setComposite(tile.faint ? AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f) : solid);
 			g.drawImage(tile.sprite, center - tile.sprite.getWidth(null) / 2, box.y + SPRITE_TOP, null);
+			g.setComposite(solid);
 		}
 		g.setFont(COUNT_FONT);
 		FontMetrics fm = g.getFontMetrics();

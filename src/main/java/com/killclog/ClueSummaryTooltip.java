@@ -11,8 +11,8 @@ import net.runelite.client.game.ItemManager;
 import net.runelite.client.hiscore.HiscoreSkill;
 
 /**
- * Clue Summary on the Clues cell, as the game's tiles (Dylan, 2026-11-07): the six tiers and Mimic, each its scroll
- * and its log, then the rare collections, each its item and its log. Every tile opens its own card, as from its own
+ * Clue Summary on the Clues cell, as the game's tiles (Dylan, 2026-11-07): the six tiers, each its scroll and its
+ * log, then the rare collections and Mimic, each its item and its log. Every tile opens its own card, as from its own
  * cell (Dylan, 2026-10-17: every clue reached from the summary, and nothing passed over without answering). The clues
  * done are on the panel's cells and on each tier's card.
  */
@@ -39,11 +39,13 @@ public class ClueSummaryTooltip extends TitleTooltip
 
 	@Nullable
 	private ObjIntConsumer<MouseEvent> onOpenRare;
+	// The rare collections' tiles, the Mimic's last among them: its log is a rare, its card a clue line's.
 	private final CardBody.ClickRows rareRows = new CardBody.ClickRows(this, (e, row) ->
 	{
-		if (onOpenRare != null)
+		ObjIntConsumer<MouseEvent> open = row == RARE_LABELS.length ? this.onOpenLine : onOpenRare;
+		if (open != null)
 		{
-			onOpenRare.accept(e, row);
+			open.accept(e, row == RARE_LABELS.length ? MIMIC : row);
 			e.consume();
 		}
 	});
@@ -117,7 +119,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 	protected CardBody body()
 	{
 		List<GameTile.Tile> lines = new ArrayList<>();
-		for (int line = 1; line < LABELS.length; line++)
+		for (int line = 1; line < MIMIC; line++)
 		{
 			lines.add(new GameTile.Tile(LABELS[line], lineSprites[line], obtained[line], total[line],
 				onOpenLine != null ? line : -1));
@@ -128,6 +130,8 @@ public class ClueSummaryTooltip extends TitleTooltip
 			rares.add(new GameTile.Tile(RARE_LABELS[i], rareSprites[i], rareObtained[i], rareTotal[i],
 				onOpenRare != null ? i : -1));
 		}
+		rares.add(new GameTile.Tile(LABELS[MIMIC], lineSprites[MIMIC], obtained[MIMIC], total[MIMIC],
+			onOpenLine != null ? RARE_LABELS.length : -1));
 		return new CardBody().add(GameTile.grid(lineRows, lines)).titled("Rare Collections")
 			.add(GameTile.grid(rareRows, rares));
 	}
