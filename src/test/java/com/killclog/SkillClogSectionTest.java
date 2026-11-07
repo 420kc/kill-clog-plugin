@@ -337,7 +337,7 @@ public class SkillClogSectionTest
 	{
 		ClogResult catalog = mappedCatalog();
 
-		assertTotal(catalog, Skill.ATTACK, 48);
+		assertTotal(catalog, Skill.ATTACK, 50);
 		assertTotal(catalog, Skill.HITPOINTS, 13);
 		assertTotal(catalog, Skill.DEFENCE, 67);
 		assertTotal(catalog, Skill.STRENGTH, 29);
@@ -346,13 +346,13 @@ public class SkillClogSectionTest
 		assertTotal(catalog, Skill.SMITHING, 9);
 		assertTotal(catalog, Skill.HERBLORE, 7);
 		assertTotal(catalog, Skill.FISHING, 32);
-		assertTotal(catalog, Skill.RANGED, 43);
+		assertTotal(catalog, Skill.RANGED, 45);
 		assertTotal(catalog, Skill.THIEVING, 10);
 		assertTotal(catalog, Skill.COOKING, 34);
 		assertTotal(catalog, Skill.PRAYER, 19);
 		assertTotal(catalog, Skill.CRAFTING, 2);
 		assertTotal(catalog, Skill.FIREMAKING, 24);
-		assertTotal(catalog, Skill.MAGIC, 81);
+		assertTotal(catalog, Skill.MAGIC, 86);
 		assertTotal(catalog, Skill.FLETCHING, 4);
 		assertTotal(catalog, Skill.WOODCUTTING, 30);
 		assertTotal(catalog, Skill.RUNECRAFT, 18);
