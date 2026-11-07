@@ -51,13 +51,15 @@ final class SkillClogSection
 		}
 
 		List<SkillClogSection> sections = new ArrayList<>();
+		Set<Integer> shown = new HashSet<>();
 		for (Spec spec : specs)
 		{
 			SkillClogSection section = fromSpec(spec, primary, compared, catalog,
-				clogIndex);
+				clogIndex, shown);
 			if (section != null)
 			{
 				sections.add(section);
+				shown.addAll(section.itemIds());
 			}
 		}
 		return Collections.unmodifiableList(sections);
@@ -67,7 +69,7 @@ final class SkillClogSection
 	private static SkillClogSection fromSpec(Spec spec,
 		@Nullable ClogResult primary, @Nullable ClogResult compared,
 		@Nullable ClogResult catalog,
-		@Nullable ClogIndex clogIndex)
+		@Nullable ClogIndex clogIndex, Set<Integer> shown)
 	{
 		LinkedHashSet<Integer> distinctIds = new LinkedHashSet<>();
 		if (spec.category != null)
@@ -75,6 +77,10 @@ final class SkillClogSection
 			addCategoryItems(distinctIds, catalog, spec.category, clogIndex);
 			addCategoryItems(distinctIds, primary, spec.category, clogIndex);
 			addCategoryItems(distinctIds, compared, spec.category, clogIndex);
+			if (spec.rest)
+			{
+				distinctIds.removeAll(shown);
+			}
 		}
 		else
 		{
@@ -194,9 +200,10 @@ final class SkillClogSection
 		{
 			String heading = row[2].isEmpty() ? null : row[2];
 			Spec spec;
-			if ("category".equals(row[1]))
+			// A rest row is its category without what the card's earlier sections show (Slayer under its Superiors).
+			if ("category".equals(row[1]) || "rest".equals(row[1]))
 			{
-				spec = new Spec(heading, row[3], Collections.emptyList());
+				spec = new Spec(heading, row[3], Collections.emptyList(), "rest".equals(row[1]));
 			}
 			else
 			{
@@ -205,7 +212,7 @@ final class SkillClogSection
 				{
 					itemIds.add(Integer.parseInt(itemId.trim()));
 				}
-				spec = new Spec(heading, null, itemIds);
+				spec = new Spec(heading, null, itemIds, false);
 			}
 			Skill skill;
 			try
@@ -329,12 +336,14 @@ final class SkillClogSection
 		@Nullable
 		private final String category;
 		private final List<Integer> itemIds;
+		private final boolean rest;
 
 		private Spec(@Nullable String heading, @Nullable String category,
-			List<Integer> itemIds)
+			List<Integer> itemIds, boolean rest)
 		{
 			this.heading = heading;
 			this.category = category;
+			this.rest = rest;
 			this.itemIds = Collections.unmodifiableList(new ArrayList<>(itemIds));
 		}
 	}

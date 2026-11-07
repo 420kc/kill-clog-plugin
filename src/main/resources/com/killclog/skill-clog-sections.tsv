@@ -1,6 +1,7 @@
 # Curated Skill Clog taxonomy: skill<TAB>kind<TAB>heading<TAB>value.
 # kind=category reads that live provider category; kind=items pins fixed item ids
 # (comma separated, in presentation order). Empty heading renders headingless.
+# kind=rest reads that category without the items the skill's earlier rows show.
 # Rows are presentation order per skill: pets first, then activities alphabetically.
 # Presentation-only view; never feeds canonical collection-log totals.
 ATTACK	items	Stab Weapons	11902,30957,22963,21009,1249,6523,13265,4726,11824,22966,22324,26219
@@ -70,7 +71,8 @@ WOODCUTTING	items	Evil Chicken Outfit	20439,20436,20442,20433
 WOODCUTTING	category	Forestry	forestry
 RUNECRAFT	items	Pets	20665,26901
 RUNECRAFT	category	Guardians of the Rift	guardians_of_the_rift
-SLAYER	category		slayer
+SLAYER	items	Superiors	20724,21270,20736,20730
+SLAYER	rest		slayer
 FARMING	items	Pets	20661
 FARMING	category	Hespori	hespori
 FARMING	category	Tithe Farm	tithe_farm

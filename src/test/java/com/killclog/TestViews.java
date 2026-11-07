@@ -174,7 +174,8 @@ final class TestViews
 			String heading = field(spec, "heading");
 			String category = field(spec, "category");
 			List<Integer> itemIds = field(spec, "itemIds");
-			StringBuilder line = new StringBuilder(category != null ? "category" : "items");
+			boolean rest = field(spec, "rest");
+			StringBuilder line = new StringBuilder(category == null ? "items" : rest ? "rest" : "category");
 			line.append('|').append(heading != null ? heading : "").append('|');
 			if (category != null)
 			{

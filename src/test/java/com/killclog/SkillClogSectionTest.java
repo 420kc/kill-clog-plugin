@@ -58,8 +58,10 @@ public class SkillClogSectionTest
 		List<SkillClogSection> sections = SkillClogSection.forSkill(
 			Skill.SLAYER, clog, null, null);
 
-		assertEquals(1, sections.size());
-		SkillClogSection section = sections.get(0);
+		// Superiors lead (2.8.0), then the rest of the Slayer page.
+		assertEquals(2, sections.size());
+		assertEquals("Superiors", sections.get(0).heading());
+		SkillClogSection section = sections.get(1);
 		assertNull(section.heading());
 		assertFalse(section.hasHeading());
 		assertEquals(90, section.itemIds().size());
@@ -73,6 +75,24 @@ public class SkillClogSectionTest
 		assertEquals(totalsBefore[1], ClogHelper.sumClogTotals(clog)[1]);
 	}
 
+	// Dylan 11/7: Slayer stays its one page, with its superiors' drops split out at the top; a rest row leaves out
+	// what the card already shows, so a superior drop shows and counts once.
+	@Test
+	public void slayersSuperiorsLeadAndLeaveTheRestOfThePage()
+	{
+		ClogResult catalog = clog(Arrays.asList(1, 20724, 2, 21270), Collections.emptyList());
+		ClogResult player = clog(Arrays.asList(1, 20724, 2, 21270), Collections.singletonList(
+			new ClogResult.ClogItem(20724, 1, null)));
+		List<SkillClogSection> sections = SkillClogSection.forSkill(Skill.SLAYER, player, null, catalog);
+		assertEquals("Superiors", sections.get(0).heading());
+		assertEquals(Arrays.asList(20724, 21270, 20736, 20730), sections.get(0).itemIds());
+		assertEquals(Arrays.asList(1, 2), sections.get(1).itemIds());
+		assertEquals(1, sections.get(0).primary().obtainedCount());
+		assertEquals(0, sections.get(1).primary().obtainedCount());
+		assertEquals(1, SkillClogSection.combinedProgress(sections).obtained());
+		assertEquals(6, SkillClogSection.combinedProgress(sections).total());
+	}
+
 	@Test
 	public void catalogOrderLeadsAndBothPlayersRemainIndependent()
 	{
@@ -84,10 +104,10 @@ public class SkillClogSectionTest
 			new ClogResult.ClogItem(3, 9, null)));
 
 		SkillClogSection section = SkillClogSection.forSkill(
-			Skill.SLAYER, blue, red, catalog).get(0);
+			Skill.SLAYER, blue, red, catalog).get(1);
 
 		SkillClogSection redSection = SkillClogSection.forSkill(
-			Skill.SLAYER, red, blue, catalog).get(0);
+			Skill.SLAYER, red, blue, catalog).get(1);
 
 		assertEquals(section.itemIds(), redSection.itemIds());
 		assertEquals(Arrays.asList(3, 1, 2, 4), section.itemIds());
@@ -175,7 +195,7 @@ public class SkillClogSectionTest
 		assertHeadings(catalog, Skill.FLETCHING, "Vale Totems");
 		assertHeadings(catalog, Skill.WOODCUTTING, "Pets|Tools|Evil Chicken Outfit|Forestry");
 		assertHeadings(catalog, Skill.RUNECRAFT, "Pets|Guardians of the Rift");
-		assertHeadings(catalog, Skill.SLAYER, "");
+		assertHeadings(catalog, Skill.SLAYER, "Superiors|");
 		assertHeadings(catalog, Skill.FARMING, "Pets|Hespori|Tithe Farm");
 		assertHeadings(catalog, Skill.CONSTRUCTION, "Mahogany Homes");
 		assertHeadings(catalog, Skill.HUNTER,
@@ -602,7 +622,8 @@ public class SkillClogSectionTest
 		categories.put("sea_treasures", ids(126_000, 17));
 		categories.put("shades_of_mortton", ids(127_000, 14));
 		categories.put("shooting_stars", ids(128_000, 2));
-		categories.put("slayer", ids(129_000, 95));
+		// The game's Slayer page holds its superiors' drops among its 95 slots.
+		categories.put("slayer", concat(Arrays.asList(20724, 21270, 20736, 20730), ids(129_000, 91)));
 		categories.put("tempoross", concat(Arrays.asList(25602), ids(130_000, 11)));
 		categories.put("tithe_farm", ids(131_000, 7));
 		categories.put("trouble_brewing", ids(132_000, 30));

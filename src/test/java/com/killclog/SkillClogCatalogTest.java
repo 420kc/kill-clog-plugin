@@ -124,7 +124,8 @@ public class SkillClogCatalogTest
 			"category|Guardians of the Rift|" + PanelData.GOTR_CATEGORY),
 			TestViews.specSignature(Skill.RUNECRAFT));
 		assertEquals(Arrays.asList(
-			"category||" + PanelData.SLAYER_CATEGORY),
+			"items|Superiors|20724,21270,20736,20730",
+			"rest||" + PanelData.SLAYER_CATEGORY),
 			TestViews.specSignature(Skill.SLAYER));
 		assertEquals(Arrays.asList(
 			"items|Pets|20661",

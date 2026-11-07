@@ -325,11 +325,13 @@ public class SkillCellGridTest
 		SkillTooltip slayer = (SkillTooltip) cells.labels().get(Skill.SLAYER).createToolTip();
 		SkillTooltip smithing = (SkillTooltip) cells.labels().get(Skill.SMITHING).createToolTip();
 
-		assertEquals(1, TestViews.sections(slayer).size());
-		assertEquals(30, TestViews.sections(slayer).get(0).itemIds().size());
-		assertFalse(TestViews.sections(slayer).get(0).hasHeading());
+		// Superiors lead (2.8.0), then the rest of the Slayer page, headingless.
+		assertEquals(2, TestViews.sections(slayer).size());
+		assertEquals("Superiors", TestViews.sections(slayer).get(0).heading());
+		assertEquals(30, TestViews.sections(slayer).get(1).itemIds().size());
+		assertFalse(TestViews.sections(slayer).get(1).hasHeading());
 		assertEquals("Slayer", slayer.getTitle());
-		assertEquals(" (1/30)", slayer.getTitleSuffix());
+		assertEquals(" (1/34)", slayer.getTitleSuffix()); // the page's 30 and the four superiors' drops it lacks
 		assertEquals(TitleTooltip.CLOG_YELLOW, slayer.getTitleSuffixColor());
 		assertEquals(smithing.getHeaderHeight(),
 			slayer.getHeaderHeight());
