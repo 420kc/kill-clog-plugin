@@ -1388,7 +1388,7 @@ public class KillClogPanel extends PluginPanel
 			String sync = LookupQueries.syncLine(lastChanged, stale);
 			if (sync != null) tip.setSyncData(sync, stale);
 			tip.setRareItems(ClogHelper.rareItems(clog), clog, itemManager);
-			tip.setRecentItems(LookupQueries.getRecentItems(clog, 4,
+			tip.setRecentItems(LookupQueries.getRecentItems(clog, ClogSummaryTooltip.RECENT_SHOWN,
 				clogIndex != null ? clogIndex::canonicalItemId : IntUnaryOperator.identity()), clog, itemManager);
 		}
 		else
