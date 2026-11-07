@@ -151,7 +151,7 @@ public class SkillClogSectionTest
 		assertEquals(STRENGTH_WEAPON_IDS, SkillClogSection.forSkill(
 			Skill.STRENGTH, null, null, catalog).get(0).itemIds());
 		assertHeadings(catalog, Skill.MINING,
-			"Pets|Camdozaal|Mining Guild|Motherlode Mine|Shooting Stars|Volcanic Mine|Zalcano");
+			"Pets|Tools|Camdozaal|Mining Guild|Motherlode Mine|Shooting Stars|Volcanic Mine|Zalcano");
 		assertHeadings(catalog, Skill.AGILITY,
 			"Pets|Brimhaven Agility Arena|Colossal Wyrm Agility Course|Hallowed Sepulchre"
 				+ "|Monkey Backpacks|Rooftop Agility|Underwater");
@@ -173,7 +173,7 @@ public class SkillClogSectionTest
 		assertHeadings(catalog, Skill.FIREMAKING, "Pets|Shades of Mort'ton|Wintertodt");
 		assertHeadings(catalog, Skill.MAGIC, "Staves & Wands|Robes|Accessories|Spell Upgrades");
 		assertHeadings(catalog, Skill.FLETCHING, "Vale Totems");
-		assertHeadings(catalog, Skill.WOODCUTTING, "Pets|Evil Chicken Outfit|Forestry");
+		assertHeadings(catalog, Skill.WOODCUTTING, "Pets|Tools|Evil Chicken Outfit|Forestry");
 		assertHeadings(catalog, Skill.RUNECRAFT, "Pets|Guardians of the Rift");
 		assertHeadings(catalog, Skill.SLAYER, "");
 		assertHeadings(catalog, Skill.FARMING, "Pets|Hespori|Tithe Farm");
@@ -321,7 +321,7 @@ public class SkillClogSectionTest
 		assertTotal(catalog, Skill.HITPOINTS, 13);
 		assertTotal(catalog, Skill.DEFENCE, 67);
 		assertTotal(catalog, Skill.STRENGTH, 29);
-		assertTotal(catalog, Skill.MINING, 30);
+		assertTotal(catalog, Skill.MINING, 31);
 		assertTotal(catalog, Skill.AGILITY, 48);
 		assertTotal(catalog, Skill.SMITHING, 9);
 		assertTotal(catalog, Skill.HERBLORE, 7);
@@ -334,7 +334,7 @@ public class SkillClogSectionTest
 		assertTotal(catalog, Skill.FIREMAKING, 24);
 		assertTotal(catalog, Skill.MAGIC, 81);
 		assertTotal(catalog, Skill.FLETCHING, 4);
-		assertTotal(catalog, Skill.WOODCUTTING, 28);
+		assertTotal(catalog, Skill.WOODCUTTING, 30);
 		assertTotal(catalog, Skill.RUNECRAFT, 18);
 		assertTotal(catalog, Skill.SLAYER, 95);
 		assertTotal(catalog, Skill.FARMING, 12);
@@ -501,8 +501,8 @@ public class SkillClogSectionTest
 		SkillClogSection.Progress progress = SkillClogSection.combinedProgress(
 			sections);
 
-		// Eight unique category items, plus two pets and three Mining Guild slots.
-		assertEquals(13, progress.total());
+		// Eight unique category items, plus two pets, the Dragon pickaxe and three Mining Guild slots.
+		assertEquals(14, progress.total());
 		assertEquals(3, progress.obtained());
 	}
 

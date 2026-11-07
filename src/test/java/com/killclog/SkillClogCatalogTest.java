@@ -41,6 +41,7 @@ public class SkillClogCatalogTest
 			TestViews.specSignature(Skill.STRENGTH));
 		assertEquals(Arrays.asList(
 			"items|Pets|13321,23760",
+			"items|Tools|11920",
 			"category|Camdozaal|camdozaal",
 			"items|Mining Guild|21343,21345,21392",
 			"category|Motherlode Mine|motherlode_mine",
@@ -114,6 +115,7 @@ public class SkillClogCatalogTest
 			TestViews.specSignature(Skill.FLETCHING));
 		assertEquals(Arrays.asList(
 			"items|Pets|13322",
+			"items|Tools|6739,23953",
 			"items|Evil Chicken Outfit|20439,20436,20442,20433",
 			"category|Forestry|forestry"),
 			TestViews.specSignature(Skill.WOODCUTTING));
