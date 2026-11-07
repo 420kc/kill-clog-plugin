@@ -473,7 +473,13 @@ public class LocalClogCache
 	 */
 	public synchronized void cacheResult(ClogResult result)
 	{
-		cacheResult(result, false);
+		cacheResult(result, Collections.emptySet());
+	}
+
+	/** A TempleOSRS lookup: a record kept from before 2.8.0 never refills its stamps (ClogDates.checkStamps). */
+	public synchronized void cacheResult(ClogResult result, Set<String> checkStamps)
+	{
+		cacheResult(result, false, checkStamps);
 	}
 
 	/**
@@ -483,10 +489,10 @@ public class LocalClogCache
 	 */
 	public synchronized void cacheFirstPartyResult(ClogResult result)
 	{
-		cacheResult(result, true);
+		cacheResult(result, true, Collections.emptySet());
 	}
 
-	private synchronized void cacheResult(ClogResult result, boolean firstParty)
+	private synchronized void cacheResult(ClogResult result, boolean firstParty, Set<String> checkStamps)
 	{
 		if (result == null || result.getPlayerName() == null || !ready)
 		{
@@ -551,7 +557,7 @@ public class LocalClogCache
 		{
 			String cat = entry.getKey();
 			data.obtained.put(cat, preserveItemMetadata(entry.getValue(),
-				existing != null ? existing.obtained.get(cat) : null));
+				existing != null ? existing.obtained.get(cat) : null, checkStamps));
 		}
 		// Page lists are the catalog's, shared and never changed in place.
 		data.categories.putAll(result.getCategoryItems());
@@ -627,7 +633,7 @@ public class LocalClogCache
 	 * a drop its provenance. Incoming values win whenever present.
 	 */
 	private static List<ClogResult.ClogItem> preserveItemMetadata(
-		List<ClogResult.ClogItem> incoming, List<ClogResult.ClogItem> existing)
+		List<ClogResult.ClogItem> incoming, List<ClogResult.ClogItem> existing, Set<String> checkStamps)
 	{
 		if (incoming == null)
 		{
@@ -645,7 +651,9 @@ public class LocalClogCache
 		List<ClogResult.ClogItem> merged = new ArrayList<>(incoming.size());
 		for (ClogResult.ClogItem item : incoming)
 		{
-			merged.add(item.filledFrom(priorById.get(item.getId())));
+			ClogResult.ClogItem prior = priorById.get(item.getId());
+			merged.add(item.filledFrom(prior != null && ClogDates.isCheckStamp(prior.getDate(), checkStamps)
+				? prior.withDate(null) : prior));
 		}
 		return merged;
 	}

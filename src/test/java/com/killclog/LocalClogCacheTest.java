@@ -648,6 +648,29 @@ public class LocalClogCacheTest
 		assertEquals("a real dated reading still fills a gap", "2026-10-01 09:00:00", dates.get(3));
 	}
 
+	// QA 11/7: a lookup kept from before 2.8.0 held Temple's stamps, and the stripped answer took them back from it.
+	@Test
+	public void aLookupKeptWithStampsNeverRefillsThem() throws Exception
+	{
+		LocalClogCache cache = ready();
+		List<ClogResult.ClogItem> stamped = new java.util.ArrayList<>();
+		List<ClogResult.ClogItem> stripped = new java.util.ArrayList<>();
+		for (int id = 1; id <= ClogDates.CHECK_BATCH; id++)
+		{
+			stamped.add(new ClogResult.ClogItem(id, 1, "2025-07-03 22:28:14"));
+			stripped.add(new ClogResult.ClogItem(id, 1, null));
+		}
+		stamped.add(new ClogResult.ClogItem(6, 1, "2026-10-20 13:45:58"));
+		stripped.add(new ClogResult.ClogItem(6, 1, null));
+		cache.cacheResult(clog("Marni", Map.of("hats", itemList(1, 2, 3, 4, 5, 6)), Map.of("hats", stamped)));
+		cache.cacheResult(clog("Marni", Map.of("hats", itemList(1, 2, 3, 4, 5, 6)), Map.of("hats", stripped)),
+			Set.of("2025-07-03T22:28:14Z"));
+		Map<Integer, String> dates = new HashMap<>();
+		cache.toClogResult("Marni", null).getObtainedItems().get("hats").forEach(item -> dates.put(item.getId(), item.getDate()));
+		assertNull("a stamp stays off", dates.get(1));
+		assertEquals("a real date a later answer lacks still carries over", "2026-10-20 13:45:58", dates.get(6));
+	}
+
 	@Test
 	public void aHealedDateMovesTheLastUpdatedStamp() throws Exception
 	{

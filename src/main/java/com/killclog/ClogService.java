@@ -336,7 +336,7 @@ public class ClogService
 						).withSources(true, false, false);
 						double[] figures = templeFigures(playerData, stats);
 						setTempleFigures(result, figures);
-						localClogCache.cacheResult(result);
+						localClogCache.cacheResult(result, playerData.checkStamps);
 						note(normalizedName, t ->
 						{
 							t.held = t.fetched = System.currentTimeMillis();
