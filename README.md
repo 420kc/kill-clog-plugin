@@ -127,12 +127,11 @@ Full page names work, and shorthand such as `gotr`, `mixology`, `pets`, and `hyd
 ## Settings
 
 - **Kill Clog Web Sync:** Sync Collection Log, Automatic sync, Quiet automatic sync, Publish Character Model, and Share Clan (off, your sync says you are in no clan)
-- **Card Appearance:** card activation, cell hover feedback, card links (on a click, only on a shift-click, or off), the KC (or Glory), PB and rank lines, and colors for labels, values, dividers, backgrounds, borders and scroll bars
-- **Lookup:** automatic lookup on login, player comparison, the player-menu lookup and its label, the leaderboard selector, and Sidebar Priority (where the Kill Clog icon sits in the sidebar; lower is higher)
-- **Menu location:** which right-click menus show Kill Clog (players, friends, ignore, clan and guest clan lists, chat channels, public chat, private messages, Group Ironman)
-- **Skills:** location, virtual levels, level color, color mode (skill colors, 99+, or Skill Clog progress), and Skill Clogs on or off
-- **Chat:** plugin messages and custom emojis (`:killclog:` `:rune:` `:dragon:` `:gilded:` `:clog:` `:green:`)
-- **Progress Highlighter:** on or off, the summary bar's text color, and the Collection Log progress colors (completed, 1 away, in progress, empty)
+- **General:** automatic lookup on login, player comparison, the leaderboard selector, Sidebar Priority (where the Kill Clog icon sits in the sidebar; lower is higher), chat messages and custom emojis (`:killclog:` `:rune:` `:dragon:` `:gilded:` `:clog:` `:green:`)
+- **Card Settings:** card activation, cell hover feedback, card links (on a click, only on a shift-click, or off), the KC (or Glory), PB and rank lines, and colors for labels, values, dividers, backgrounds, borders and scroll bars
+- **Right-Click Menu:** the Kill Clog lookup option, its label, and which right-click menus show it (players, friends, ignore, clan and guest clan lists, chat channels, public chat, private messages, Group Ironman)
+- **Skills:** location, Skill Clogs on or off, virtual levels, color mode (Skill Clog progress, Level Progression, or one skill color), and the level color
+- **Progress Highlighter:** on or off, the summary bar's text color, and the progress colors (completed, 1 away, in progress, empty) for Collection Logs and for levels in Level Progression
 
 ## Data and privacy
 
