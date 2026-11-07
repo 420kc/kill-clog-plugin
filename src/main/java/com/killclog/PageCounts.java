@@ -17,6 +17,8 @@ final class PageCounts
 {
 	/** Their object in the sync and in killclog.com's reply, label to count. */
 	static final String FIELD = "page_counts";
+	/** The Hunter Guild's page, whose rumours the Hunter skill card shows too. */
+	static final String HUNTER_GUILD = "hunter_guild";
 
 	/** One count line: its page's key, the varp slot that carries it (0 to 2), its label, and a raid card's label. */
 	static final class Line
@@ -50,6 +52,20 @@ final class PageCounts
 			lines.add(new Line(row));
 		}
 		return Collections.unmodifiableList(lines);
+	}
+
+	/** A page's own count line, the one its card leads with (not a raid's Entry line), or null for none. */
+	@Nullable
+	static Line ownLine(String page)
+	{
+		for (Line line : LINES)
+		{
+			if (line.page.equals(page) && line.card == null)
+			{
+				return line;
+			}
+		}
+		return null;
 	}
 
 	/** The line a page's header text is, or null when it's none Kill Clog reads. */

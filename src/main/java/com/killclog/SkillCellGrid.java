@@ -199,6 +199,16 @@ final class SkillCellGrid
 		{
 			solo.setSectionCount(HighGambles.CATEGORY, HighGambles.LABEL, HighGambles.of(clog));
 		}
+		// The Hunter Guild's rumours the same way, from the player's own sync (PageCounts, Dylan 11/7).
+		else if (skill == Skill.HUNTER)
+		{
+			PageCounts.Line rumours = PageCounts.ownLine(PageCounts.HUNTER_GUILD);
+			Integer count = rumours != null && clog != null ? clog.getPageCounts().get(rumours.label) : null;
+			if (count != null)
+			{
+				solo.setSectionCount(rumours.page, rumours.label + ": ", count);
+			}
+		}
 		solo.setLinks(config.cardLinks());
 		return solo;
 	}

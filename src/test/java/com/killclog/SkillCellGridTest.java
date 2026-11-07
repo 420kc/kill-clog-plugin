@@ -318,6 +318,28 @@ public class SkillCellGridTest
 	}
 
 	@Test
+	public void hunterTooltipCarriesTheRumoursInTheHunterGuild()
+	{
+		// Dylan 11/7: the Hunter Guild's own count rides its section in the Hunter Skill Clog, as the gambles ride Attack's.
+		SkillCellGrid cells = grid();
+		HiscoreResult blue = hiscores(Map.of(Skill.HUNTER, 99));
+		ClogResult read = new ClogResult("420 kc", Collections.emptyMap(),
+			Collections.singletonMap(PageCounts.HUNTER_GUILD, Collections.singletonList(1)), Map.of(1, "Guild hunter headwear"),
+			null, null);
+		read.getPageCounts().put("Rumours Completed", 78);
+		cells.render(blue, null, false, read, null, read);
+		SkillTooltip hunter = (SkillTooltip) cells.labels().get(Skill.HUNTER).createToolTip();
+		assertEquals("Rumours Completed: ", hunter.countLabel());
+		assertEquals("78", hunter.countText());
+
+		ClogResult unread = new ClogResult("420 kc", Collections.emptyMap(),
+			Collections.singletonMap(PageCounts.HUNTER_GUILD, Collections.singletonList(1)), Map.of(1, "Guild hunter headwear"),
+			null, null);
+		cells.render(blue, null, false, unread, null, unread);
+		assertNull("never read: no line", ((SkillTooltip) cells.labels().get(Skill.HUNTER).createToolTip()).countLabel());
+	}
+
+	@Test
 	public void slayerCellAddsTheReusableClogSectionOnlyToSlayer()
 	{
 		SkillCellGrid cells = grid();
