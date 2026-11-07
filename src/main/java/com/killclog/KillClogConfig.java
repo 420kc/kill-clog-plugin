@@ -11,18 +11,18 @@ import net.runelite.client.config.*;
 public interface KillClogConfig extends Config
 {
 	@ConfigSection(
-		name = "Lookup",
-		description = "Automatic lookup and player-menu controls",
-		position = 2,
+		name = "General",
+		description = "Lookups, comparison, the sidebar icon and chat",
+		position = 1,
 		closedByDefault = true
 	)
-	String lookupSection = "lookup";
+	String generalSection = "general";
 
 	@ConfigItem(
 		keyName = "autoLookupOnLogin",
 		name = "Auto-Lookup on Login",
-		description = "Automatically look up your stats when you log in",
-		section = lookupSection,
+		description = "Look up your own account when you log in",
+		section = generalSection,
 		position = 0
 	)
 	default boolean autoLookupOnLogin()
@@ -33,8 +33,8 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "enableComparison",
 		name = "Enable Comparison",
-		description = "Show the comparison control beside the player search",
-		section = lookupSection,
+		description = "Show the comparison button beside the search bar, to load a second player",
+		section = generalSection,
 		position = 1
 	)
 	default boolean enableComparison()
@@ -45,9 +45,9 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "playerMenuLookup",
 		name = "Player Menu Lookup",
-		description = "Add a lookup option to right-click menus",
-		section = lookupSection,
-		position = 2
+		description = "Add a Kill Clog lookup to right-click menus on player names",
+		section = menuLocationsSection,
+		position = 0
 	)
 	default boolean playerMenuLookup()
 	{
@@ -57,10 +57,10 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "menuLabel",
 		name = "Menu Label",
-		description = "Text shown on the right-click lookup option. For Lookup, first turn off the Hiscore plugin's"
-			+ " Player option and Menu option, which use the same text",
-		section = lookupSection,
-		position = 3
+		description = "The option's text. To use Lookup, first turn off the HiScore plugin's Player option and Menu"
+			+ " option, which use the same text",
+		section = menuLocationsSection,
+		position = 1
 	)
 	default MenuLabel menuLabel()
 	{
@@ -70,9 +70,10 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "showLeaderboardSelector",
 		name = "Show Leaderboard Selector",
-		description = "Show hiscores leaderboard icons below the panel. Shows that leaderboard's stats and ranks; account detection stays automatic",
-		section = lookupSection,
-		position = 4
+		description = "Show the hiscore leaderboard icons under the grid, to see a player's stats and ranks on each "
+			+ "board they're on",
+		section = generalSection,
+		position = 2
 	)
 	default boolean showLeaderboardSelector()
 	{
@@ -82,10 +83,9 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "sidebarPriority",
 		name = "Sidebar Priority",
-		description = "Where the Kill Clog icon sits in RuneLite's sidebar: a lower number sits higher, among other "
-			+ "plugins' own numbers",
-		section = lookupSection,
-		position = 5
+		description = "Where the Kill Clog icon sits in RuneLite's sidebar. Lower numbers sit higher",
+		section = generalSection,
+		position = 3
 	)
 	default int sidebarPriority()
 	{
@@ -93,8 +93,8 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigSection(
-		name = "Menu location",
-		description = "Which right-click menus show the lookup option",
+		name = "Right-Click Menu",
+		description = "The Kill Clog lookup option and where it shows",
 		position = 3,
 		closedByDefault = true
 	)
@@ -102,7 +102,7 @@ public interface KillClogConfig extends Config
 
 	@ConfigItem(keyName = "menuOnPlayers", name = "Players",
 		description = "Show on in-game player right-click menus",
-		section = menuLocationsSection, position = 0)
+		section = menuLocationsSection, position = 2)
 	default boolean menuOnPlayers()
 	{
 		return true;
@@ -110,7 +110,7 @@ public interface KillClogConfig extends Config
 
 	@ConfigItem(keyName = "menuOnFriendsList", name = "Friends List",
 		description = "Show on names in the Friends list",
-		section = menuLocationsSection, position = 1)
+		section = menuLocationsSection, position = 3)
 	default boolean menuOnFriendsList()
 	{
 		return true;
@@ -118,7 +118,7 @@ public interface KillClogConfig extends Config
 
 	@ConfigItem(keyName = "menuOnIgnoreList", name = "Ignore List",
 		description = "Show on names in the Ignore list",
-		section = menuLocationsSection, position = 2)
+		section = menuLocationsSection, position = 4)
 	default boolean menuOnIgnoreList()
 	{
 		return true;
@@ -126,7 +126,7 @@ public interface KillClogConfig extends Config
 
 	@ConfigItem(keyName = "menuOnClanList", name = "Clan List",
 		description = "Show on names in your clan member list",
-		section = menuLocationsSection, position = 3)
+		section = menuLocationsSection, position = 5)
 	default boolean menuOnClanList()
 	{
 		return true;
@@ -134,7 +134,7 @@ public interface KillClogConfig extends Config
 
 	@ConfigItem(keyName = "menuOnGuestClanList", name = "Guest Clan List",
 		description = "Show on names in guest clan member lists",
-		section = menuLocationsSection, position = 4)
+		section = menuLocationsSection, position = 6)
 	default boolean menuOnGuestClanList()
 	{
 		return true;
@@ -142,7 +142,7 @@ public interface KillClogConfig extends Config
 
 	@ConfigItem(keyName = "menuOnChatChannels", name = "Chat Channels",
 		description = "Show on names in friends chat and clan chat channels",
-		section = menuLocationsSection, position = 5)
+		section = menuLocationsSection, position = 7)
 	default boolean menuOnChatChannels()
 	{
 		return true;
@@ -150,7 +150,7 @@ public interface KillClogConfig extends Config
 
 	@ConfigItem(keyName = "menuOnChat", name = "Public Chat",
 		description = "Show on names in the public chatbox",
-		section = menuLocationsSection, position = 6)
+		section = menuLocationsSection, position = 8)
 	default boolean menuOnChat()
 	{
 		return true;
@@ -158,7 +158,7 @@ public interface KillClogConfig extends Config
 
 	@ConfigItem(keyName = "menuOnPrivateMessages", name = "Private Messages",
 		description = "Show on names in private messages",
-		section = menuLocationsSection, position = 7)
+		section = menuLocationsSection, position = 9)
 	default boolean menuOnPrivateMessages()
 	{
 		return true;
@@ -166,7 +166,7 @@ public interface KillClogConfig extends Config
 
 	@ConfigItem(keyName = "menuOnGroupIronman", name = "Group Ironman",
 		description = "Show on names in the Group Ironman panel",
-		section = menuLocationsSection, position = 8)
+		section = menuLocationsSection, position = 10)
 	default boolean menuOnGroupIronman()
 	{
 		return true;
@@ -174,7 +174,7 @@ public interface KillClogConfig extends Config
 
 	@ConfigSection(
 		name = "Skills",
-		description = "Skill placement, virtual levels, and cell colors",
+		description = "Where skills sit, their Skill Clogs, and how levels are colored",
 		position = 4,
 		closedByDefault = true
 	)
@@ -183,7 +183,7 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "skillDisplay",
 		name = "Skill Location",
-		description = "Choose whether the skill cells appear in the main grid or the activity tray",
+		description = "Show skills in the main grid or in the activity tray",
 		section = skillsSection,
 		position = 0
 	)
@@ -195,9 +195,9 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "virtualLevels",
 		name = "Display Virtual Levels",
-		description = "Show XP-derived levels above 99 on skills",
+		description = "Show levels above 99 from XP, up to 126. Level Progression then colors by them",
 		section = skillsSection,
-		position = 1
+		position = 2
 	)
 	default boolean virtualLevels()
 	{
@@ -207,9 +207,9 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "skillLevelColor",
 		name = "Skill Level Color",
-		description = "Default color for ranked skill levels shown in cells",
+		description = "Every level's color in Skill Color mode, and in Clog Progression for a skill with no Skill Clog",
 		section = skillsSection,
-		position = 2
+		position = 4
 	)
 	default Color skillLevelColor()
 	{
@@ -219,7 +219,8 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "skillColorMode",
 		name = "Skill Color Mode",
-		description = "Use Skill Color, color each level by how far it has come, or show overall Skill Clog progress. Clog Progression reads as Level Progression while Skill Clogs are off",
+		description = "How skill levels are colored: by Skill Clog progress, by level with the highlighter's colors, "
+			+ "or in one Skill Level Color. Clog Progression uses Level Progression while Skill Clogs are off",
 		section = skillsSection,
 		position = 3
 	)
@@ -234,7 +235,7 @@ public interface KillClogConfig extends Config
 		name = "Enable Skill Clogs",
 		description = "Show Skill Clog items in skill cards. When off, skills show level, XP, rank, and XP to level only",
 		section = skillsSection,
-		position = 4
+		position = 1
 	)
 	default boolean enableSkillClogs()
 	{
@@ -242,10 +243,9 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigSection(
-		name = "Card Appearance",
-		description = "Appearance and interaction for cards: collection logs, "
-			+ "skill summaries, PvM and PvP summaries, and combat achievements",
-		position = 1,
+		name = "Card Settings",
+		description = "How cards open, what they show, and their colors",
+		position = 2,
 		closedByDefault = true
 	)
 	String modalAppearanceSection = "tooltips";
@@ -253,7 +253,7 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "tooltipMode",
 		name = "Card Activation",
-		description = "Hover to preview and click to pin, or use click-to-reveal",
+		description = "Hover to preview and click to pin, or click to open",
 		section = modalAppearanceSection,
 		position = 0
 	)
@@ -265,7 +265,8 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "hoverStyle",
 		name = "Cell Hover",
-		description = "Visual feedback when hovering a cell. Outline uses the highlighter color, Tint subtly brightens the background.",
+		description = "How a cell reacts under the mouse: Outline draws the highlighter color around it, Tint brightens it, "
+			+ "None leaves it",
 		section = modalAppearanceSection,
 		position = 1
 	)
@@ -277,7 +278,7 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "cardLinks",
 		name = "Card Links",
-		description = "Open the OSRS Wiki, TempleOSRS, RuneProfile and killclog.com from names and sprites on cards:"
+		description = "Open the OSRS Wiki, TempleOSRS, RuneProfile or killclog.com from names and items on cards:"
 			+ " on a click, only on a shift-click, or never",
 		section = modalAppearanceSection,
 		position = 2
@@ -288,7 +289,7 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(keyName = "showTooltipKc", name = "Show KC / Glory",
-		description = "Kill count on boss collection logs; Sol Heredit shows Colosseum Glory instead",
+		description = "Show the kill count on boss cards (Colosseum Glory on Sol Heredit's)",
 		section = modalAppearanceSection, position = 3)
 	default boolean showTooltipKc()
 	{
@@ -296,7 +297,7 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(keyName = "showTooltipPb", name = "Show PB",
-		description = "Personal best beside the kc, where your client has one recorded",
+		description = "Show the personal best beside the kill count, when one is recorded",
 		section = modalAppearanceSection, position = 4)
 	default boolean showTooltipPb()
 	{
@@ -304,7 +305,7 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(keyName = "showTooltipRank", name = "Show Rank",
-		description = "Hiscore rank line on boss, clue, and rare Collection Log cards",
+		description = "Show the hiscore rank on boss, clue and rare item cards",
 		section = modalAppearanceSection, position = 5)
 	default boolean showTooltipRank()
 	{
@@ -312,7 +313,7 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(keyName = "cardLabelColor", name = "Labels",
-		description = "Card titles and labels, so any theme can recolor them; the game's orange by default",
+		description = "Card titles and labels. The game's orange by default",
 		section = modalAppearanceSection, position = 6)
 	default Color cardLabelColor()
 	{
@@ -320,7 +321,7 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(keyName = "cardValueColor", name = "Values",
-		description = "Card values, and a label under the mouse; white by default",
+		description = "Card values, and the label under the mouse. White by default",
 		section = modalAppearanceSection, position = 7)
 	default Color cardValueColor()
 	{
@@ -336,8 +337,8 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(keyName = "cardBackgroundColor", name = "Background",
-		description = "Card backgrounds in one flat color; at its default, the parchment, or your resource pack's. "
-			+ "Right-click the name to Reset it",
+		description = "One flat color for card backgrounds. At its default, the parchment or your Resource Pack's. "
+			+ "Right-click the name to reset it",
 		section = modalAppearanceSection, position = 9)
 	default Color cardBackgroundColor()
 	{
@@ -345,8 +346,8 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(keyName = "cardBorderColor", name = "Border",
-		description = "Card borders in one flat color; at its default, the iron rivets, or your resource pack's. "
-			+ "Right-click the name to Reset it",
+		description = "One flat color for card borders. At its default, the iron rivets or your Resource Pack's. "
+			+ "Right-click the name to reset it",
 		section = modalAppearanceSection, position = 10)
 	default Color cardBorderColor()
 	{
@@ -354,29 +355,21 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(keyName = "cardScrollbarColor", name = "Scroll Bars",
-		description = "Card scroll bars in one color, their track a darker shade of it; at its default, your resource "
-			+ "pack's or the game's orange. Right-click the name to Reset it",
+		description = "One color for card scroll bars, their track a darker shade. At its default, your Resource "
+			+ "Pack's or the game's orange. Right-click the name to reset it",
 		section = modalAppearanceSection, position = 11)
 	default Color cardScrollbarColor()
 	{
 		return NativeTooltip.OSRS_ORANGE;
 	}
 
-	@ConfigSection(
-		name = "Chat",
-		description = "Kill Clog messages and emoji rendering",
-		position = 5,
-		closedByDefault = true
-	)
-	String chatSection = "chat";
-
 	// keyName is the legacy name; renaming it would reset users' saved setting.
 	@ConfigItem(
 		keyName = "chatNewClogMessages",
-		name = "Kill Clog chat messages",
-		description = "New items added to Kill Clog, sync results and failures, and other notices. Setup guidance always shows.",
-		section = chatSection,
-		position = 0
+		name = "Chat Messages",
+		description = "Kill Clog's chat lines: new items, sync results and other notices. Setup steps always show",
+		section = generalSection,
+		position = 4
 	)
 	default boolean autosyncChatMessages()
 	{
@@ -385,10 +378,10 @@ public interface KillClogConfig extends Config
 
 	@ConfigItem(
 		keyName = "showChatEmojis",
-		name = "Show emojis in chat",
-		description = "Show Kill Clog's custom emojis in chat: :killclog:, :rune:, :dragon:, :gilded:, :clog:, and :green:",
-		section = chatSection,
-		position = 1
+		name = "Show Chat Emojis",
+		description = "Show Kill Clog's emojis in chat: :killclog: :rune: :dragon: :gilded: :clog: :green:",
+		section = generalSection,
+		position = 5
 	)
 	default boolean showChatEmojis()
 	{
@@ -397,8 +390,9 @@ public interface KillClogConfig extends Config
 
 	@ConfigSection(
 		name = "Progress Highlighter",
-		description = "Color collection-log progress",
-		position = 6,
+		description = "Colors for Collection Log progress on bosses, activities, clues and skills, and for levels in "
+			+ "Level Progression",
+		position = 5,
 		closedByDefault = true
 	)
 	String completionistSection = "completionist";
@@ -406,7 +400,8 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "completionistHighlighter",
 		name = "Enable Highlighter",
-		description = "Color boss KC by collection-log progression",
+		description = "Color boss, activity and clue counts by Collection Log progress, and the summary bar's text. Skills "
+			+ "follow Skill Color Mode",
 		section = completionistSection,
 		position = 0
 	)
@@ -418,7 +413,7 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "infoBarColor",
 		name = "Summary Bar Text",
-		description = "Colors summary-bar text (RSN, clog count, PvM, total level, and PvP)",
+		description = "The summary bar's text: name, log count, PvM, total level and PvP",
 		section = completionistSection,
 		position = 2
 	)
@@ -430,7 +425,7 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "completedClogColor",
 		name = "Completed",
-		description = "Color for complete bosses and optional skill completion at 99 or higher",
+		description = "Complete logs, and level 99 (126 with virtual levels) in Level Progression",
 		section = completionistSection,
 		position = 3
 	)
@@ -442,7 +437,7 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "missing1Color",
 		name = "1 Away",
-		description = "Color for bosses missing one item",
+		description = "Logs one item from complete, and levels 92 to 98 (120 to 125)",
 		section = completionistSection,
 		position = 4
 	)
@@ -454,7 +449,7 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "inProgressClogColor",
 		name = "In Progress",
-		description = "Color for bosses with some items",
+		description = "Logs with some items, and levels 2 to 91 (92 to 119)",
 		section = completionistSection,
 		position = 5
 	)
@@ -466,7 +461,7 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "emptyClogColor",
 		name = "Empty",
-		description = "Color for empty bosses",
+		description = "Empty logs, and level 1 (up to 91)",
 		section = completionistSection,
 		position = 6
 	)
@@ -539,7 +534,7 @@ public interface KillClogConfig extends Config
 		description = "Hides the panel's progress and success flash for automatic syncs. "
 			+ "Failures still show on the chalice; chat has its own setting.",
 		section = killclogSection,
-		position = 3
+		position = 2
 	)
 	default boolean silentAutomaticSync()
 	{
@@ -552,7 +547,7 @@ public interface KillClogConfig extends Config
 		description = "Needs Sync Collection Log. Adds a button beside the chalice that publishes "
 			+ "your current look and follower when you click it. Main game only.",
 		section = killclogSection,
-		position = 2
+		position = 3
 	)
 	default boolean characterModel()
 	{

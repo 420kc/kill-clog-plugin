@@ -17,18 +17,18 @@ public abstract class NativeTooltip extends JToolTip
 	static final int LINE_HEIGHT = 14;
 	static final Color OSRS_ORANGE = new Color(255, 152, 31);
 	static final Color DIVIDER = new Color(80, 70, 50);
-	// Every card's labels, values and dividers, as Card Appearance's colors set them (Dylan, 2026-10-17); the
+	// Every card's labels, values and dividers, as Card Settings's colors set them (Dylan, 2026-10-17); the
 	// defaults are the game's.
 	static Color labelColor = OSRS_ORANGE;
 	static Color valueColor = Color.WHITE;
 	static Color dividerColor = DIVIDER;
-	// Card Appearance's background and border (2.7.3): one flat color each in place of the parchment or the iron
+	// Card Settings's background and border (2.7.3): one flat color each in place of the parchment or the iron
 	// rivets, else null, the sprites (a resource pack's when one replaces them).
 	@Nullable
 	private static Color flatBackground;
 	@Nullable
 	private static Color flatBorder;
-	// Card Appearance's scroll bar (2.7.3): the thumb's one shade, else null, the pack's thumb or the game's orange.
+	// Card Settings's scroll bar (2.7.3): the thumb's one shade, else null, the pack's thumb or the game's orange.
 	@Nullable
 	private static Color flatScroll;
 	static final Color NOTICE_COLOR = new Color(160, 160, 160);
@@ -41,7 +41,7 @@ public abstract class NativeTooltip extends JToolTip
 	static final Color FALLBACK_BG = new Color(60, 50, 35);
 
 	/**
-	 * Card Appearance's label, value, divider, background and border colors; one left unset is the game's. A
+	 * Card Settings's label, value, divider, background and border colors; one left unset is the game's. A
 	 * background or border at its default keeps the sprites, so a resource pack still dresses the cards.
 	 */
 	static void cardColors(Color label, Color value, Color divider, Color background, Color border, Color scroll)
@@ -54,7 +54,7 @@ public abstract class NativeTooltip extends JToolTip
 		flatBorder = border == null || border.equals(BORDER_MID) ? null : border;
 	}
 
-	/** The rail's thumb: Card Appearance's scroll bar, else the pack's, else the card's orange. */
+	/** The rail's thumb: Card Settings's scroll bar, else the pack's, else the card's orange. */
 	static Color railThumb()
 	{
 		Color thumb = flatScroll != null ? flatScroll : CardSprites.packThumb;

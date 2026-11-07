@@ -67,7 +67,7 @@ public class KillClogConfigStructureTest
 		assertEquals(KillClogConfig.killclogSection,
 			KillClogConfig.class.getDeclaredMethod("silentAutomaticSync")
 				.getAnnotation(ConfigItem.class).section());
-		assertEquals(Arrays.asList("killclogSync", "automaticSync", "characterModel", "silentAutomaticSync", "shareClan"),
+		assertEquals(Arrays.asList("killclogSync", "automaticSync", "silentAutomaticSync", "characterModel", "shareClan"),
 			keysInSection(KillClogConfig.killclogSection));
 		assertTrue("your clan is shared until you turn it off", defaults.shareClan());
 	}
@@ -89,7 +89,7 @@ public class KillClogConfigStructureTest
 	}
 
 	@Test
-	public void comparisonSettingIsDefaultOnUnderLookup() throws Exception
+	public void comparisonSettingIsDefaultOnUnderGeneral() throws Exception
 	{
 		KillClogConfig defaults = new KillClogConfig()
 		{
@@ -97,30 +97,30 @@ public class KillClogConfigStructureTest
 		assertTrue(defaults.enableComparison());
 		ConfigItem item = KillClogConfig.class.getDeclaredMethod("enableComparison")
 			.getAnnotation(ConfigItem.class);
-		assertEquals(KillClogConfig.lookupSection, item.section());
+		assertEquals(KillClogConfig.generalSection, item.section());
 	}
 
 	@Test
-	public void leaderboardSelectorIsOptionalAndUnderLookup() throws Exception
+	public void leaderboardSelectorIsOptionalAndUnderGeneral() throws Exception
 	{
 		assertFalse(new KillClogConfig()
 		{
 		}.showLeaderboardSelector());
 		ConfigItem item = KillClogConfig.class.getDeclaredMethod("showLeaderboardSelector")
 			.getAnnotation(ConfigItem.class);
-		assertEquals(KillClogConfig.lookupSection, item.section());
+		assertEquals(KillClogConfig.generalSection, item.section());
 		assertEquals("Show Leaderboard Selector", item.name());
 	}
 
 	@Test
-	public void sidebarPriorityKeepsTodaysPlaceUnderLookup() throws Exception
+	public void sidebarPriorityKeepsTodaysPlaceUnderGeneral() throws Exception
 	{
 		assertEquals("the priority Kill Clog always had, so nobody's sidebar moves", 6, new KillClogConfig()
 		{
 		}.sidebarPriority());
 		ConfigItem item = KillClogConfig.class.getDeclaredMethod("sidebarPriority")
 			.getAnnotation(ConfigItem.class);
-		assertEquals(KillClogConfig.lookupSection, item.section());
+		assertEquals(KillClogConfig.generalSection, item.section());
 		assertEquals("Sidebar Priority", item.name());
 	}
 
@@ -129,8 +129,9 @@ public class KillClogConfigStructureTest
 	{
 		ConfigItem item = KillClogConfig.class.getDeclaredMethod("showChatEmojis")
 			.getAnnotation(ConfigItem.class);
-		assertEquals("Show Kill Clog's custom emojis in chat: :killclog:, :rune:, "
-			+ ":dragon:, :gilded:, :clog:, and :green:", item.description());
+		assertEquals("Show Kill Clog's emojis in chat: :killclog: :rune: :dragon: :gilded: :clog: :green:",
+			item.description());
+		assertEquals(KillClogConfig.generalSection, item.section());
 	}
 
 	@Test
@@ -157,8 +158,8 @@ public class KillClogConfigStructureTest
 			.map(ConfigSection::name)
 			.collect(Collectors.toList());
 
-		assertEquals(Arrays.asList("Kill Clog Web Sync", "Card Appearance", "Lookup",
-			"Menu location", "Skills", "Chat", "Progress Highlighter"), sectionNames);
+		assertEquals(Arrays.asList("Kill Clog Web Sync", "General", "Card Settings",
+			"Right-Click Menu", "Skills", "Progress Highlighter"), sectionNames);
 	}
 
 	@Test
@@ -211,15 +212,15 @@ public class KillClogConfigStructureTest
 	}
 
 	@Test
-	public void skillClogsToggleIsDefaultOnAndLastInSkills() throws Exception
+	public void skillClogsToggleIsDefaultOnAndAboveWhatDependsOnIt() throws Exception
 	{
 		ConfigItem item = KillClogConfig.class.getDeclaredMethod("enableSkillClogs")
 			.getAnnotation(ConfigItem.class);
 		assertEquals("Enable Skill Clogs", item.name());
 		assertEquals("Show Skill Clog items in skill cards. When off, skills show "
 			+ "level, XP, rank, and XP to level only", item.description());
-		assertEquals(Arrays.asList("skillDisplay", "virtualLevels", "skillLevelColor",
-			"skillColorMode", "enableSkillClogs"), keysInSection(KillClogConfig.skillsSection));
+		assertEquals(Arrays.asList("skillDisplay", "enableSkillClogs", "virtualLevels",
+			"skillColorMode", "skillLevelColor"), keysInSection(KillClogConfig.skillsSection));
 		assertTrue(new KillClogConfig()
 		{
 		}.enableSkillClogs());
