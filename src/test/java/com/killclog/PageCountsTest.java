@@ -101,6 +101,18 @@ public class PageCountsTest
 	}
 
 	@Test
+	public void aLookupKeepsTheCountsKillclogServedIt() throws Exception
+	{
+		// QA 11/7: a looked-up player's counts, from killclog.com, survive the cache and reach their cards.
+		LocalClogCache cache = LocalClogCacheTest.onDisk(temporaryFolder.newFolder());
+		ClogResult served = new ClogResult("8lD", Map.of("revenants", List.of(new ClogResult.ClogItem(21804, 1, null))),
+			Map.of("revenants", List.of(21804)), Map.of(), null, null);
+		served.getPageCounts().put(REVS, 57);
+		cache.cacheResult(served);
+		assertEquals(Map.of(REVS, 57), cache.toClogResult("8lD", null).getPageCounts());
+	}
+
+	@Test
 	public void aBossCellsCardAndAPagesOwnCardTakeTheirCountsFromThatPlayersLog()
 	{
 		// QA 11/7: the boss cells (both sides) and the page cards (both sides) each build through one of these.
