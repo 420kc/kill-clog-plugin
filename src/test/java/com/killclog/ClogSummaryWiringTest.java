@@ -25,7 +25,6 @@ import org.junit.Test;
 import org.mockito.ArgumentMatchers;
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
@@ -108,7 +107,8 @@ public class ClogSummaryWiringTest
 		assertEquals(Arrays.asList("Bosses", "Other"), new ArrayList<>(shown.keySet()));
 		assertArrayEquals(new int[]{75, 80}, shown.get("Bosses"));
 		assertArrayEquals(new int[]{35, 40}, shown.get("Other"));
-		assertTrue(tip[0].completionText().startsWith("91."));
+		assertEquals(110, (int) TestViews.field(tip[0], "obtained"));
+		assertEquals(120, (int) TestViews.field(tip[0], "totalSlots"));
 		// The same items under an account that has counted far more are a partial
 		// sync: every tab stays to browse, its count unknown rather than contradicting the total.
 		ClogResult partial = new ClogResult("Probe", obtained, categories, Collections.emptyMap(), null, null);
@@ -129,7 +129,8 @@ public class ClogSummaryWiringTest
 		Map<String, int[]> browsed = (Map<String, int[]>) field.get(tip[0]);
 		assertArrayEquals(new int[]{-1, 80}, browsed.get("Bosses"));
 		assertArrayEquals(new int[]{-1, 40}, browsed.get("Other"));
-		assertTrue(tip[0].completionText().startsWith("76."));
+		assertEquals(1189, (int) TestViews.field(tip[0], "obtained"));
+		assertEquals(1561, (int) TestViews.field(tip[0], "totalSlots"));
 
 		// Which tier that is belongs to the tooltip's own tests; here it only has to be asked for.
 		verify(items).getImage(ClogHelper.CLOG_TIER_ITEM_IDS[ClogHelper.tierIndex(110, 120)]);

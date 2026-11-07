@@ -151,7 +151,12 @@ final class TestViews
 	/** A card's clickable row under a y coordinate, or -1 ({@code rows}: raidRows, rareRows, pageRows, tabRows). */
 	static int rowAt(Object card, String rows, int y)
 	{
-		return call(field(card, rows), "at", y);
+		return tileAt(card, rows, ((java.awt.Component) card).getWidth() / 2, y);
+	}
+
+	static int tileAt(Object card, String rows, int x, int y)
+	{
+		return call(field(card, rows), "at", new java.awt.Point(x, y));
 	}
 
 	static int hoveredRow(Object card, String rows)

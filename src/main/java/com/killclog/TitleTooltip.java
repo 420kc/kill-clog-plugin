@@ -35,6 +35,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	protected static final Color STALE_RED = new Color(255, 60, 60);
 	protected static final Color CLOG_YELLOW = new Color(255, 255, 0);
 	protected static final Color MUTED_GRAY = new Color(148, 148, 148);
+	private static final int HEADER_WORD_GAP = 8;
 
 	@Getter(AccessLevel.PROTECTED)
 	@Setter
@@ -128,6 +129,23 @@ public abstract class TitleTooltip extends NativeTooltip
 			if (name != null)
 			{
 				c.hits.add(new TooltipItemHover.HitBox(TooltipItemHover.HEADER_SECTION, 0, name, new Rectangle(x, top, image.getWidth(), image.getHeight()), true));
+			}
+		});
+	}
+
+	/** A word at the header's right on the title's line, in the value color, as the Collection Log names its tier. */
+	CardBody.Part headerWord(@Nullable String word)
+	{
+		FontMetrics fm = getFontMetrics(FontManager.getRunescapeFont());
+		return CardBody.row(0, c -> word != null ? headerTextWidth() + HEADER_WORD_GAP + fm.stringWidth(word) : 0, (c, y) ->
+		{
+			if (word != null)
+			{
+				Font font = c.g.getFont();
+				c.g.setFont(fm.getFont());
+				c.g.setColor(NativeTooltip.valueColor);
+				c.g.drawString(word, c.w - c.inset() - fm.stringWidth(word), c.inset() + getFontMetrics(getTitleFont()).getAscent());
+				c.g.setFont(font);
 			}
 		});
 	}

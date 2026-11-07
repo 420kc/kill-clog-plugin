@@ -678,15 +678,15 @@ final class CardBody
 	}
 
 	/**
-	 * Rows a card opens things from. Each paint lays the rows' spans down again; a hovered row repaints
-	 * white, and a left press hands its key to the card.
+	 * Rows and tiles a card opens things from. Each paint lays their boxes down again (a row's runs the card's
+	 * width); a hovered one repaints, and a left press hands its key to the card.
 	 */
 	static final class ClickRows
 	{
 		private final JComponent card;
-		private final List<int[]> spans = new ArrayList<>();
+		private final Map<Integer, Rectangle> boxes = new LinkedHashMap<>();
 		private int hovered = -1;
-		private int lastY = -1;
+		private Point pointer;
 
 		ClickRows(JComponent card, ObjIntConsumer<MouseEvent> onPress)
 		{
@@ -696,14 +696,14 @@ final class CardBody
 				@Override
 				public void mouseMoved(MouseEvent e)
 				{
-					lastY = e.getY();
-					hover(at(lastY));
+					pointer = e.getPoint();
+					hover(at(pointer));
 				}
 
 				@Override
 				public void mousePressed(MouseEvent e)
 				{
-					int key = at(e.getY());
+					int key = at(e.getPoint());
 					if (key >= 0 && e.getButton() == MouseEvent.BUTTON1 && !onRail(card, e.getPoint()))
 					{
 						onPress.accept(e, key);
@@ -713,7 +713,7 @@ final class CardBody
 				@Override
 				public void mouseExited(MouseEvent e)
 				{
-					lastY = -1;
+					pointer = null;
 					hover(-1);
 				}
 			};
@@ -728,8 +728,7 @@ final class CardBody
 
 		void span(int top, int height, int key)
 		{
-			spans.removeIf(s -> s[1] == key);
-			spans.add(new int[]{top, key, height});
+			boxes.put(key, new Rectangle(0, top, Integer.MAX_VALUE, height));
 		}
 
 		/**
@@ -738,32 +737,37 @@ final class CardBody
 		 */
 		boolean spanShown(Ctx c, int y, int height, int key)
 		{
-			int top = c.window != null ? Math.max(y, c.window.y) : y;
-			int bottom = c.window != null ? Math.min(y + height, c.window.y + c.window.height) : y + height;
-			span(top, bottom - top, key);
-			return lastY >= top && lastY < bottom;
+			return boxShown(c, new Rectangle(0, y, Integer.MAX_VALUE, height), key);
+		}
+
+		/** A tile's box, clipped to what shows of a scrolled part as a row is; whether the still mouse is on it. */
+		boolean boxShown(Ctx c, Rectangle box, int key)
+		{
+			Rectangle shown = c.window != null ? box.intersection(c.window) : box;
+			boxes.put(key, shown);
+			return pointer != null && shown.contains(pointer);
 		}
 
 		/** Forgets every row: a scrolled list lays down only the rows it shows. */
 		void clear()
 		{
-			spans.clear();
+			boxes.clear();
 		}
 
 		/** Hovers whatever row now sits under the still mouse, as after a list scrolls beneath it. */
 		void rehover()
 		{
-			hover(at(lastY));
+			hover(at(pointer));
 		}
 
-		/** The row under a y coordinate, or -1. Rows are full width. */
-		int at(int y)
+		/** The row or tile under a point, or -1. */
+		int at(@Nullable Point point)
 		{
-			for (int[] s : spans)
+			for (Map.Entry<Integer, Rectangle> box : boxes.entrySet())
 			{
-				if (y >= s[0] && y < s[0] + s[2])
+				if (point != null && box.getValue().contains(point))
 				{
-					return s[1];
+					return box.getKey();
 				}
 			}
 			return -1;

@@ -9,13 +9,13 @@ import java.util.function.*;
 import javax.annotation.Nullable;
 import lombok.*;
 import net.runelite.client.game.ItemManager;
-import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.AsyncBufferedImage;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * Clog summary tooltip on the summary-bar clog cell.
- * The log's total with its completion, the tier ladder, progress per
- * collection-log tab, then the Rare shelf, recent items and sources.
+ * The tier in the header; the log's total and each collection-log tab as the game's tiles, then the tier ladder, the
+ * Rare shelf, recent items and sources.
  */
 public class ClogSummaryTooltip extends TitleTooltip
 {
@@ -35,13 +35,16 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private static final int TIER_SECTION = 2;
 	private static final int SOURCE_SECTION = 3;
 	private static final String TITLE = "Collection Log";
-	// The tab rows read a size up from the card's text, their counts at the right, each tab apart from the next.
-	private static final Font TAB_FONT = FontManager.getRunescapeFont();
-	private static final int TAB_GAP = 4;
-	private static final int TAB_VALUE_GAP = 8;
-	private static final int BAR_HEIGHT = 3;
-	private static final int BAR_GAP = 3;
+	// The bars' empty track, as the game's Combat Achievements draw it.
 	static final Color BAR_TRACK = new Color(40, 35, 28);
+	// Each tab's tile shows an item of its own (clog-tab-sprites.tsv); the Total's is the tier's trophy.
+	private static final Map<String, Integer> TAB_SPRITES = new HashMap<>();
+	static
+	{
+		CatalogTsv.rows(ClogSummaryTooltip.class, "clog-tab-sprites.tsv", 2)
+			.forEach(row -> TAB_SPRITES.put(row[0], Integer.parseInt(row[1])));
+	}
+	private final Map<String, Image> tabSprites = new HashMap<>();
 	private static final String SOURCE_LABEL = "Sources";
 	private static final String[] MONTHS = {
 		"Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -64,7 +67,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private boolean syncStale;
 
 	private Map<String, BufferedImage> tierIcons;
-	// The current tier, large, in the header's corner. Empty below bronze.
+	// The current tier's trophy on the Total's tile; none below bronze.
 	private BufferedImage tierSprite;
 	private String notice;
 	private boolean firstTimeSetup;
@@ -126,25 +129,33 @@ public class ClogSummaryTooltip extends TitleTooltip
 		ItemManager itemManager)
 	{
 		setTitle(TITLE);
-		setObtained(obtained, totalSlots);
 		this.tierIcons = tierIcons;
 		this.obtained = obtained;
 		this.totalSlots = totalSlots;
 
 		tier = ClogHelper.tierIndex(obtained, totalSlots);
-		if (tier >= 0 && itemManager != null)
-		{
-			// The item image at its own size, which stays crisp; it fills in once loaded.
-			AsyncBufferedImage sprite = itemManager.getImage(ClogHelper.CLOG_TIER_ITEM_IDS[tier]);
-			TooltipItemSprites.whenLoaded(sprite, this, this::repaint);
-			tierSprite = sprite;
-		}
+		tierSprite = tier >= 0 ? sprite(ClogHelper.CLOG_TIER_ITEM_IDS[tier], itemManager) : null;
 	}
 
-	/** Progress per collection-log tab, in the game's tab order. */
-	void setTabs(Map<String, int[]> tabs)
+	/** Progress per collection-log tab, in the game's tab order, each with its tile's item. */
+	void setTabs(Map<String, int[]> tabs, @Nullable ItemManager itemManager)
 	{
 		this.tabs = tabs;
+		tabSprites.clear();
+		tabs.keySet().forEach(tab -> tabSprites.put(tab, sprite(TAB_SPRITES.getOrDefault(tab, -1), itemManager)));
+	}
+
+	/** An item's image at its own size, which stays crisp; it fills in once loaded. */
+	@Nullable
+	private AsyncBufferedImage sprite(int itemId, @Nullable ItemManager itemManager)
+	{
+		if (itemId < 0 || itemManager == null)
+		{
+			return null;
+		}
+		AsyncBufferedImage sprite = itemManager.getImage(itemId);
+		TooltipItemSprites.whenLoaded(sprite, this, this::repaint);
+		return sprite;
 	}
 
 	/** Called with the tab's name when the player presses its row; without it the rows only read. */
@@ -153,20 +164,16 @@ public class ClogSummaryTooltip extends TitleTooltip
 		this.onOpenTab = onOpenTab;
 	}
 
-	@Override
-	protected String obtainedLabel()
-	{
-		return "Total: ";
-	}
-
 	private boolean hasTotals()
 	{
 		return obtained >= 0 && totalSlots > 0;
 	}
 
-	String completionText()
+	/** The tier the log has reached, as the header names it; null below bronze. */
+	@Nullable
+	String tierName()
 	{
-		return String.format(Locale.US, "%.1f%%", Math.min(obtained, totalSlots) * 100.0 / totalSlots);
+		return hasTotals() && tier >= 0 ? StringUtils.capitalize(ClogHelper.CLOG_TIERS[tier]) : null;
 	}
 
 	private static int legendWidth()
@@ -310,39 +317,30 @@ public class ClogSummaryTooltip extends TitleTooltip
 			return body.add(CardBody.text(notice, NOTICE_COLOR, true));
 		}
 
-		// The current tier sits large in the header's corner. Completion, the tier ladder and the tabs stand under the
-		// header; any tier's, item's or source's name shows in the band under the progress bars, and the shelves and
-		// footer scroll below it.
-		CardBody card = new CardBody().add(headerCorner(hasTotals(), hasTotals() ? tierSprite : null, null));
+		// The tier's name at the header's right. The Total and each tab stand under the header as the game's tiles,
+		// three across, the Total first; a tab's tile opens its pages. The tier ladder follows; any tier's, item's or
+		// source's name shows in the band under it, and the shelves and footer scroll below.
+		CardBody card = new CardBody().add(headerWord(tierName()));
+		List<GameTile.Tile> tiles = new ArrayList<>();
 		if (hasTotals())
 		{
-			// The completion heads the tab rows, read the same way: a row that opens nothing.
-			card.add(tabRow(-1, "Completion", completionText(), NativeTooltip.valueColor))
-				.add(bar(obtained, totalSlots))
-				.add(tierLadder());
+			tiles.add(new GameTile.Tile("Total", tierSprite, obtained, totalSlots, -1));
 		}
-
-		if (!tabs.isEmpty())
+		int key = 0;
+		for (Map.Entry<String, int[]> tab : tabs.entrySet())
 		{
-			// The tabs need no heading of their own: the card is the Collection Log. A divider parts them from
-			// the completion above it.
-			if (hasTotals())
-			{
-				card.add(CardBody.separator(SEPARATOR_PAD));
-			}
-			int row = 0;
-			for (Map.Entry<String, int[]> tab : tabs.entrySet())
-			{
-				int[] count = tab.getValue();
-				if (row > 0)
-				{
-					card.add(CardBody.gap(TAB_GAP));
-				}
-				card.add(tabRow(row, tab.getKey(), count[0] < 0 ? progressPlaceholderText(count[1])
-					: progressCountText(count[0], count[1]), count[0] < 0 ? MUTED_GRAY : completionColor(count[0], count[1])))
-					.add(bar(count[0], count[1]));
-				row++;
-			}
+			int[] count = tab.getValue();
+			tiles.add(new GameTile.Tile(tab.getKey(), tabSprites.get(tab.getKey()), count[0], count[1],
+				onOpenTab != null ? key : -1));
+			key++;
+		}
+		if (!tiles.isEmpty())
+		{
+			card.add(GameTile.grid(tabRows, tiles)).add(CardBody.gap(GameTile.GAP));
+		}
+		if (hasTotals())
+		{
+			card.add(tierLadder());
 		}
 		card.add(hasTotals() || !tabs.isEmpty() ? CardBody.hoverBand() : CardBody.headerHoverBand());
 
@@ -370,45 +368,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 	CardBody.Scroll scroll()
 	{
 		return scroll;
-	}
-
-	/**
-	 * A tab's row, a size up from the card's text, its count at the right like the PvP rows': it opens the tab's
-	 * pages, answering hover in white like the Clue Summary's rares.
-	 */
-	private CardBody.Part tabRow(int row, String label, String value, Color color)
-	{
-		FontMetrics fm = getFontMetrics(TAB_FONT);
-		ToIntFunction<CardBody.Ctx> width = c -> fm.stringWidth(label) + TAB_VALUE_GAP + fm.stringWidth(value);
-		CardBody.RowPainter painter = (c, y, hovered) ->
-		{
-			Font font = c.g.getFont();
-			c.g.setFont(TAB_FONT);
-			int baseline = y + fm.getAscent();
-			c.g.setColor(hovered ? NativeTooltip.valueColor : labelColor);
-			c.g.drawString(label, c.inset(), baseline);
-			c.g.setColor(color);
-			c.g.drawString(value, c.w - c.inset() - fm.stringWidth(value), baseline);
-			c.g.setFont(font);
-		};
-		return row < 0 || onOpenTab == null ? CardBody.row(fm.getHeight(), width, (c, y) -> painter.paint(c, y, false))
-			: CardBody.clickRow(tabRows, row, fm.getHeight(), width, painter);
-	}
-
-	/** A thin rail under a count: the share at a glance, the number still primary. */
-	private static CardBody.Part bar(int obtained, int total)
-	{
-		return CardBody.row(BAR_HEIGHT + BAR_GAP, c -> 0, (c, y) ->
-		{
-			int width = c.w - 2 * c.inset();
-			c.g.setColor(NativeTooltip.railTrack(BAR_TRACK));
-			c.g.fillRect(c.inset(), y, width, BAR_HEIGHT);
-			if (obtained > 0 && total > 0)
-			{
-				c.g.setColor(completionColor(obtained, total));
-				c.g.fillRect(c.inset(), y, Math.max(1, width * Math.min(obtained, total) / total), BAR_HEIGHT);
-			}
-		});
 	}
 
 	/** Every tier's icon, dimmed until reached; hovering one reads its range below. */

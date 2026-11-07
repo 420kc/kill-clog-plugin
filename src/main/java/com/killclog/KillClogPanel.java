@@ -1379,7 +1379,7 @@ public class KillClogPanel extends PluginPanel
 			tip.setTierData(totals[0], totals[1], iconCache.clogTierImages(), itemManager);
 			if (clogIndex != null)
 			{
-				tip.setTabs(clogIndex.tabProgress(clog, totals));
+				tip.setTabs(clogIndex.tabProgress(clog, totals), itemManager);
 				tip.setOnOpenTab((press, tab) -> clogPages.openTab(owner, press, tab));
 			}
 			tip.setClogSources(clog, clogService.onTemple(playerRsn), runeProfileService.hasProfile(playerRsn),
