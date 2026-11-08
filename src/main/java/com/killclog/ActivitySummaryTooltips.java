@@ -74,9 +74,8 @@ final class ActivitySummaryTooltips
 		tip.setSlayer(hiscore, clog);
 		if (clog != null)
 		{
-			tip.setCompletion(
-				LookupQueries.countBossesCompleted(tooltipData, cells.getBossLabels().keySet()),
-				LookupQueries.countBossesWithClog(tooltipData, cells.getBossLabels().keySet()));
+			int[] logs = LookupQueries.bossLogs(tooltipData, cells.getBossLabels().keySet());
+			tip.setCompletion(logs[0], logs[1]);
 		}
 		tip.setMegarares(
 			LookupQueries.getClogItemCount(clog, PanelData.COX_CATEGORY, PanelData.TWISTED_BOW_ITEM_ID),

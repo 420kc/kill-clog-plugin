@@ -77,29 +77,20 @@ final class LookupQueries
 		return best;
 	}
 
-	static int countBossesCompleted(Map<HiscoreSkill, TooltipData> tooltipDataMap, Set<HiscoreSkill> bossKeys)
+	/** The bosses whose log is complete, and those with a log at all. */
+	static int[] bossLogs(Map<HiscoreSkill, TooltipData> tooltipDataMap, Set<HiscoreSkill> bossKeys)
 	{
-		int count = 0;
+		int[] logs = new int[2];
 		for (HiscoreSkill skill : bossKeys)
 		{
 			TooltipData data = tooltipDataMap.get(skill);
-			if (data != null && data.totalItems > 0 && data.obtainedCount >= data.totalItems)
+			if (data != null && data.totalItems > 0)
 			{
-				count++;
+				logs[0] += data.obtainedCount >= data.totalItems ? 1 : 0;
+				logs[1]++;
 			}
 		}
-		return count;
-	}
-
-	static int countBossesWithClog(Map<HiscoreSkill, TooltipData> tooltipDataMap, Set<HiscoreSkill> bossKeys)
-	{
-		int count = 0;
-		for (HiscoreSkill skill : bossKeys)
-		{
-			TooltipData data = tooltipDataMap.get(skill);
-			if (data != null && data.totalItems > 0) count++;
-		}
-		return count;
+		return logs;
 	}
 
 	static List<ClogResult.ClogItem> getRecentItems(ClogResult result, int limit)
