@@ -2244,10 +2244,31 @@ public class PluginPublicationCharacterizationTest
 		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
 		settle();
 		assertEquals("the League once", java.util.Collections.singletonList("demonic-pacts"), sentModes());
+		// The hop back: the main store serves this login again and its own catch-up carries the main capture.
+		when(localClogCache.serve(any())).thenReturn(true);
+		when(localClogCache.ownLogReady(any())).thenReturn(true);
+		world(net.runelite.api.WorldType.MEMBERS);
+		hop();
+		ticks(10);
+		settle();
+		assertEquals(java.util.Arrays.asList("demonic-pacts", "main"), sentModes());
+	}
+
+	@Test
+	public void aMainCaptureOwedGoesWhenTheLeaguesSyncEndsOnAMainWorld() throws Exception
+	{
+		// The League's sync carried a main capture as owed, and the player is back on a main world when it ends: the
+		// main game's own push goes then.
+		PublicationCoordinator publication = (PublicationCoordinator) field("publication");
+		publication.scheduleAutomaticSync();
+		announceLeague();
+		ticks(10);
+		publication.scheduleAutomaticSync();
+		settle();
+		assertEquals(java.util.Collections.singletonList("demonic-pacts"), sentModes());
 		world(net.runelite.api.WorldType.MEMBERS);
 		ticks(10);
-		// The main world's own catch-up carries the main capture.
-		publication.scheduleAutomaticSync();
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
 		settle();
 		assertEquals(java.util.Arrays.asList("demonic-pacts", "main"), sentModes());
 	}
