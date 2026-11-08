@@ -191,6 +191,25 @@ public class PvmSummaryTooltipTest
 	}
 
 	@Test
+	public void withNoLogARaidTileShowsItsKillsInWhite()
+	{
+		// A lookup with no synced log (Dylan, 2026-11-07): each raid tile reads its kills, both modes together.
+		PvmSummaryTooltip scored = painted(card());
+		List<Point> raids = TestViews.tiles(render(scored));
+		assertTrue(hasWhite(render(scored), raids.get(0), GameTile.WIDTH, GameTile.HEIGHT));
+		PvmSummaryTooltip bare = new PvmSummaryTooltip();
+		bare.setData(110.5, 2_500, 40, PanelData.bossCount(), "Vorkath", 900);
+		bare.setRaids(TestViews.hiscore(AccountType.REGULAR, Collections.emptyMap(), Collections.emptyMap(),
+			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1), null);
+		bare.setOnOpenRaid((press, raid) ->
+		{
+		});
+		painted(bare);
+		assertFalse("no kills, no number", hasWhite(render(bare), TestViews.tiles(render(bare)).get(0), GameTile.WIDTH,
+			GameTile.HEIGHT));
+	}
+
+	@Test
 	public void aRaidTileNamesItsMegarareInTheHoverBandGreenWhenHeld()
 	{
 		// As the megarare row did before the tiles: the band names the raid's megarare, green held and red not.
@@ -338,6 +357,23 @@ public class PvmSummaryTooltipTest
 		tip.setSize(tip.getPreferredSize());
 		render(tip);
 		return tip;
+	}
+
+	/** Whether any pixel of a tile at this top-left is the cards' white, the color a hiscores count is written in. */
+	private static boolean hasWhite(BufferedImage image, Point tile, int width, int height)
+	{
+		int white = NativeTooltip.valueColor.getRGB();
+		for (int y = tile.y; y < tile.y + height; y++)
+		{
+			for (int x = tile.x; x < tile.x + width; x++)
+			{
+				if (image.getRGB(x, y) == white)
+				{
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	private static BufferedImage render(PvmSummaryTooltip tip)

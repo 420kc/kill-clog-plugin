@@ -11,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class ClueSummaryTooltipTest
@@ -112,6 +113,34 @@ public class ClueSummaryTooltipTest
 	}
 
 	@Test
+	public void withNoLogATierTileShowsItsCompletionsInWhite()
+	{
+		// A lookup with no synced log (Dylan, 2026-11-07): the tiles read the hiscores' counts, as 2.7.8's rows did.
+		java.util.Map<String, Integer> scores = new java.util.HashMap<>();
+		scores.put(net.runelite.client.hiscore.HiscoreSkill.CLUE_SCROLL_HARD.getName(), 300);
+		ClueSummaryTooltip scored = new ClueSummaryTooltip();
+		scored.setData(TestViews.hiscore(AccountType.REGULAR, java.util.Collections.singletonMap("Mimic", 7),
+			java.util.Collections.emptyMap(), scores, java.util.Collections.emptyMap(), java.util.Collections.emptyMap(),
+			0, 0, 0, -1), false);
+		ClueSummaryTooltip bare = new ClueSummaryTooltip();
+		bare.setData(null, false);
+		BufferedImage withScores = paint(scored);
+		BufferedImage without = paint(bare);
+		List<Point> tiles = TestViews.tiles(withScores);
+		// Beginner to Master, then the five rare collections, then Mimic.
+		Point hard = tiles.get(3);
+		Point easy = tiles.get(1);
+		Point mimic = tiles.get(tiles.size() - 1);
+		assertTrue("Hard reads its 300", hasWhite(withScores, hard, GameTile.WIDTH, GameTile.HEIGHT));
+		assertTrue("Mimic reads its 7", hasWhite(withScores, mimic, GameTile.WIDTH, GameTile.HEIGHT));
+		assertFalse("a tier the hiscores don't rank reads nothing", hasWhite(withScores, easy, GameTile.WIDTH, GameTile.HEIGHT));
+		assertFalse(hasWhite(without, hard, GameTile.WIDTH, GameTile.HEIGHT));
+		// Once the log is known, the tile reads its log progress instead.
+		scored.setProgress(4, new int[]{10, 140});
+		assertFalse(hasWhite(paint(scored), hard, GameTile.WIDTH, GameTile.HEIGHT));
+	}
+
+	@Test
 	public void progressNeverChangesTheCardsHeight()
 	{
 		ClueSummaryTooltip bare = new ClueSummaryTooltip();
@@ -147,6 +176,23 @@ public class ClueSummaryTooltipTest
 			tip.setRare(row, new int[]{row, 38});
 		}
 		return tip;
+	}
+
+	/** Whether any pixel of a tile at this top-left is the cards' white, the color a hiscores count is written in. */
+	private static boolean hasWhite(BufferedImage image, Point tile, int width, int height)
+	{
+		int white = NativeTooltip.valueColor.getRGB();
+		for (int y = tile.y; y < tile.y + height; y++)
+		{
+			for (int x = tile.x; x < tile.x + width; x++)
+			{
+				if (image.getRGB(x, y) == white)
+				{
+					return true;
+				}
+			}
+		}
+		return false;
 	}
 
 	private static BufferedImage paint(ClueSummaryTooltip tip)

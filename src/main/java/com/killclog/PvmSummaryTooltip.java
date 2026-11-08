@@ -59,6 +59,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 		PanelData.TOA_CATEGORY, PanelData.TFA_CATEGORY};
 	private final int[] raidObtained = {-1, -1, -1, -1};
 	private final int[] raidTotal = new int[RAID_NAMES.length];
+	// Each raid's kills, both modes together, which its tile shows while its log progress is unknown.
+	private final int[] raidKills = new int[RAID_NAMES.length];
 	private final Image[] megarares = new Image[RAID_NAMES.length];
 	// The Fractured Archive's row waits for its hiscore row (Dylan, 2026-10-14): drawn from the lookup that carries it.
 	private boolean tfaOut;
@@ -165,6 +167,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 		tfaOut = hiscoreResult.hasBossRow(PanelData.TFA_HISCORE);
 		for (int i = 0; i < RAID_NAMES.length; i++)
 		{
+			raidKills[i] = Math.max(0, hiscoreResult.getKc(hasHardMode(i) ? PanelData.RAIDS[i].getName() : PanelData.TFA_HISCORE))
+				+ (hasHardMode(i) ? Math.max(0, hiscoreResult.getKc(PanelData.RAID_HARD_MODES[i].getName())) : 0);
 			int[] counts = clogResult != null ? ClogHelper.clogCounts(RAID_CATEGORIES[i], clogResult) : null;
 			if (counts != null)
 			{
@@ -225,7 +229,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		{
 			raids.add(new GameTile.Tile(RAID_NAMES[i], megarares[i], raidObtained[i], raidTotal[i],
 				onOpenRaid != null && raid(i) != null ? i : -1).faint(weaponCounts[i] <= 0)
-				.item(PanelData.MEGARARE_ITEM_IDS[i], PanelData.MEGARARE_ITEM_NAMES[i]));
+				.item(PanelData.MEGARARE_ITEM_IDS[i], PanelData.MEGARARE_ITEM_NAMES[i]).score(raidKills[i]));
 		}
 		CardBody body = new CardBody().titled("Raids").add(GameTile.grid(raidRows, raids));
 		// Slayer: XP and Rank from the hiscores, then clog progress when a synced log is known.

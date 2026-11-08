@@ -67,9 +67,19 @@ final class GameTile
 			return this;
 		}
 
+		// The hiscores' count for what the tile stands for (completions, kills), shown in white while its log
+		// progress is unknown, so a lookup with no synced log still reads (Dylan, 2026-11-07); 0 or less, none.
+		int score;
+
 		Tile wear(@Nullable Color wear)
 		{
 			this.wear = wear;
+			return this;
+		}
+
+		Tile score(int score)
+		{
+			this.score = score;
 			return this;
 		}
 
@@ -153,9 +163,10 @@ final class GameTile
 		}
 		g.setFont(COUNT_FONT);
 		FontMetrics fm = g.getFontMetrics();
-		String count = tile.total <= 0 ? "" : known ? TitleTooltip.progressCountText(tile.obtained, tile.total)
-			: TitleTooltip.progressPlaceholderText(tile.total);
-		g.setColor(color);
+		boolean scored = !known && tile.score > 0;
+		String count = scored ? TitleTooltip.grouped(tile.score) : tile.total <= 0 ? ""
+			: known ? TitleTooltip.progressCountText(tile.obtained, tile.total) : TitleTooltip.progressPlaceholderText(tile.total);
+		g.setColor(scored ? NativeTooltip.valueColor : color);
 		g.drawString(count, center - fm.stringWidth(count) / 2, box.y + (page ? PAGE_COUNT_TOP : COUNT_TOP) + fm.getAscent());
 		g.setFont(font);
 

@@ -31,6 +31,8 @@ public class ClueSummaryTooltip extends TitleTooltip
 	// Collection progress per line, 1 to 6 the tiers and 7 Mimic; -1 obtained is unknown.
 	private final int[] obtained = new int[LABELS.length];
 	private final int[] total = new int[LABELS.length];
+	// The hiscores' completions per tier and Mimic's kills, which a tile shows while its log progress is unknown.
+	private final int[] scores = new int[LABELS.length];
 	private final int[] rareObtained = new int[RARE_LABELS.length];
 	private final int[] rareTotal = new int[RARE_LABELS.length];
 	private final Image[] lineSprites = new Image[LABELS.length];
@@ -62,13 +64,22 @@ public class ClueSummaryTooltip extends TitleTooltip
 	public ClueSummaryTooltip()
 	{
 		Arrays.fill(obtained, -1);
+		Arrays.fill(scores, -1);
 		Arrays.fill(rareObtained, -1);
 	}
 
-	/** The header's rank, the all-clues one; a null result is the empty state. */
+	/** The header's rank, the all-clues one, and each tier's completions; a null result is the empty state. */
 	public void setData(HiscoreResult hiscoreResult, boolean showRank)
 	{
 		setTitle("Clue Summary");
+		if (hiscoreResult != null)
+		{
+			for (int line = 1; line < MIMIC; line++)
+			{
+				scores[line] = hiscoreResult.getActivityScore(PanelData.CLUE_TIERS[line - 1].getName());
+			}
+			scores[MIMIC] = hiscoreResult.getKc("Mimic");
+		}
 		if (hiscoreResult != null && showRank && hiscoreResult.isRankDataAvailable())
 		{
 			setRank(hiscoreResult.getActivityRank(HiscoreSkill.CLUE_SCROLL_ALL.getName()));
@@ -121,7 +132,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 		for (int line = 1; line < MIMIC; line++)
 		{
 			lines.add(new GameTile.Tile(LABELS[line], lineSprites[line], obtained[line], total[line],
-				onOpenLine != null ? line : -1));
+				onOpenLine != null ? line : -1).score(scores[line]));
 		}
 		List<GameTile.Tile> rares = new ArrayList<>();
 		for (int i = 0; i < RARE_LABELS.length; i++)
@@ -130,7 +141,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 				onOpenRare != null ? i : -1));
 		}
 		rares.add(new GameTile.Tile(LABELS[MIMIC], lineSprites[MIMIC], obtained[MIMIC], total[MIMIC],
-			onOpenLine != null ? RARE_LABELS.length : -1));
+			onOpenLine != null ? RARE_LABELS.length : -1).score(scores[MIMIC]));
 		return new CardBody().add(GameTile.grid(lineRows, lines)).titled("Rare Collections")
 			.add(GameTile.grid(rareRows, rares));
 	}
