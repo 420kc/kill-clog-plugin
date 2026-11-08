@@ -131,7 +131,7 @@ public class BossListSearchTest
 	@Test
 	public void aSearchReachesEveryCollectionLogPageWithItsCountInTheListsColors()
 	{
-		// Dylan 10/24 (B237): 'mix' lists Mastering Mixology, a page with no hiscore row, its count where a kill count goes.
+		// Dylan 10/24: 'mix' lists Mastering Mixology, a page with no hiscore row, its count where a kill count goes.
 		ClogPages pages = mock(ClogPages.class);
 		when(pages.searchPages()).thenReturn(List.of("mastering_mixology", "barbarian_assault"));
 		when(pages.name("mastering_mixology")).thenReturn("Mastering Mixology");

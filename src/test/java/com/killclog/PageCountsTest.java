@@ -103,7 +103,7 @@ public class PageCountsTest
 	@Test
 	public void aLookupKeepsTheCountsKillclogServedIt() throws Exception
 	{
-		// QA 11/7: a looked-up player's counts, from killclog.com, survive the cache and reach their cards.
+		// A looked-up player's counts, from killclog.com, survive the cache and reach their cards.
 		LocalClogCache cache = LocalClogCacheTest.onDisk(temporaryFolder.newFolder());
 		ClogResult served = new ClogResult("8lD", Map.of("revenants", List.of(new ClogResult.ClogItem(21804, 1, null))),
 			Map.of("revenants", List.of(21804)), Map.of(), null, null);
@@ -115,7 +115,7 @@ public class PageCountsTest
 	@Test
 	public void aBossCellsCardAndAPagesOwnCardTakeTheirCountsFromThatPlayersLog()
 	{
-		// QA 11/7: the boss cells (both sides) and the page cards (both sides) each build through one of these.
+		// The boss cells (both sides) and the page cards (both sides) each build through one of these.
 		ClogResult log = new ClogResult("420 kc", Map.of(), Map.of(), Map.of(), null, null);
 		log.getPageCounts().put(TOB_ENTRY, 12);
 		log.getPageCounts().put(REVS, 57);
@@ -159,7 +159,7 @@ public class PageCountsTest
 	@Test
 	public void aSyncCarriesOnlyTheCountsReadSinceKillclogTookOne() throws Exception
 	{
-		// QA 11/7: a count another PC read since, newer on killclog.com, is never replaced by this PC's older one.
+		// A count another PC read since, newer on killclog.com, is never replaced by this PC's older one.
 		File dir = temporaryFolder.newFolder();
 		LocalClogCache cache = LocalClogCacheTest.onDisk(dir);
 		assertTrue(StoreLogin.activate(cache, "Tester", 77L));

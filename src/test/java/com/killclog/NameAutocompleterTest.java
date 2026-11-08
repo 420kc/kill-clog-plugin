@@ -107,7 +107,7 @@ public class NameAutocompleterTest
 	@Test
 	public void aNameTypedOverARecallKeepsRightForTheAutofill() throws Exception
 	{
-		// QA 11/5: after a recall, typing the same name's first letter autofills it, and Right must accept that, not
+		// After a recall, typing the same name's first letter autofills it, and Right must accept that, not
 		// swap in another search because the text matches the one recalled.
 		JTextField box = new JTextField();
 		NameAutocompleter autocompleter = recalledLynxTitan(box);
@@ -124,7 +124,7 @@ public class NameAutocompleterTest
 	@Test
 	public void aSearchedRecallKeepsItsRightArrow()
 	{
-		// QA 11/5: Enter on a recalled name looks it up and the panel writes it back; Right then moves the cursor.
+		// Enter on a recalled name looks it up and the panel writes it back; Right then moves the cursor.
 		JTextField box = new JTextField();
 		NameAutocompleter autocompleter = recalledLynxTitan(box);
 		press(autocompleter, box, KeyEvent.VK_ENTER);
@@ -137,7 +137,7 @@ public class NameAutocompleterTest
 	@Test
 	public void enterOnTheNewestRecallEndsIt()
 	{
-		// QA 11/5: Enter on the newest search, which stays the newest, still hands Right back to the box.
+		// Enter on the newest search, which stays the newest, still hands Right back to the box.
 		JTextField box = new JTextField();
 		NameAutocompleter autocompleter = new NameAutocompleter(null);
 		autocompleter.addToSearchHistory("Zezima");
@@ -154,7 +154,7 @@ public class NameAutocompleterTest
 	@Test
 	public void aClickIntoARecallOrALookupWrittenInKeepsRightForTheCursor()
 	{
-		// QA 11/5: no key ends these, so the recall holds only while the box shows just what it put there, cursor at
+		// No key ends these, so the recall holds only while the box shows just what it put there, cursor at
 		// its end, where Right has nothing to move.
 		JTextField box = new JTextField();
 		NameAutocompleter autocompleter = recalledLynxTitan(box);
@@ -179,7 +179,7 @@ public class NameAutocompleterTest
 	@Test
 	public void aSelectionRunningToTheEndKeepsRightForTheBox()
 	{
-		// QA 11/5: an autofill's tail is selected to the box's end; with no key between, only the selection's start
+		// An autofill's tail is selected to the box's end; with no key between, only the selection's start
 		// tells it from a recall, and Right accepts it.
 		JTextField box = new JTextField();
 		NameAutocompleter autocompleter = recalledLynxTitan(box);

@@ -43,7 +43,7 @@ public class PublicationPushTest
 	@Test
 	public void theGameThatDoesNotLeadIsOwedItsOwnPushInAnyOrderAndGrouping()
 	{
-		// B217: a main click over a League's push leads, and the League is owed its own push, never dropped.
+		// A main click over a League's push leads, and the League is owed its own push, never dropped.
 		PublicationCoordinator.Push league = automatic("demonic-pacts");
 		PublicationCoordinator.Push follows = automatic(null);
 		PublicationCoordinator.Push main = click("main");

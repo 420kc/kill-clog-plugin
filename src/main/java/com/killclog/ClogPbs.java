@@ -20,11 +20,11 @@ import net.runelite.client.util.Text;
  * So a page takes the time only when it is newly on screen and the varp changed just before it drew: a page that got
  * no value, a redraw of the page on screen, and a value that lands at any other moment take nothing. 2.7.1 let a
  * page with no record wait for a value, so the next page's, landing a cycle before that page drew, was filed under it
- * (tribrd's Gauntlet 13:27.6 as their Sol Heredit, the page before), and a redraw took the varp as it stood. Missing a
+ * (a Gauntlet's 13:27.6 filed as the Sol Heredit page before it), and a redraw took the varp as it stood. Missing a
  * reading costs nothing (the kills still say the record); two pages with the same time, or a page opened again, read
  * nothing on that visit.
  *
- * The timing alone still let Amoxliatl's time through to the page above or below it (Xinical's and im ladyrin's
+ * The timing alone still let Amoxliatl's time through to the page above or below it (two players'
  * Alchemical Hydra 0:28.80 on 2.7.2 and 2.7.4, Medium CoX's Araxxor on 2.7.7), so a page also never takes the time
  * the page shown before it holds, read from its page, its kills or the Adventure Log. Two neighbours with truly the
  * same time read the second on a later visit, from another page. It looks one page back, at times already held: a

@@ -807,7 +807,7 @@ public class LocalClogCache
 		}
 
 		// A Hardcore Worlds run's log takes no date from before its reset: the provider may still hold the ended run's,
-		// in an answer asked before the reset too (Sol 10/27).
+		// in an answer asked before the reset too.
 		String runStart = ClogDates.iso(data.runStartedAt);
 		Map<Integer, String> providerDates = new HashMap<>();
 		for (List<ClogResult.ClogItem> items : providerItems.values())
@@ -1124,7 +1124,7 @@ public class LocalClogCache
 		long before = data.overallXp;
 		data.overallXp = overallXp;
 		// Saved on a reset, once a login on the settle tick when the XP rose, and for the first reading a log gets: a
-		// log set up after its world settled kept 0 on disk, so a reset across the next relog went unseen (Sol 10/27).
+		// log set up after its world settled kept 0 on disk, so a reset across the next relog went unseen.
 		if (reset || overallXp > before && (save || before == 0))
 		{
 			submitSave(activeHashKey, true, data);

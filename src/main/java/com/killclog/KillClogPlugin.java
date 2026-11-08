@@ -666,7 +666,7 @@ public class KillClogPlugin extends Plugin
 		{
 			panel.setFirstParty(PanelStatusRow.FirstParty.READY);
 			// A first capture makes the log the settle tick's counter reads found missing: read them now, ahead of the
-			// debounced push, so a new setup's first sync carries its gambles (Sol, 11/5).
+			// debounced push, so a new setup's first sync carries its gambles.
 			clientThread.invokeLater(this::reconcileClogTotalsFromVarps);
 			publication.scheduleAutomaticSync();
 		}

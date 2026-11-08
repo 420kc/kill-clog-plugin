@@ -443,7 +443,7 @@ public class PluginPublicationCharacterizationTest
 		assertEquals(1, syncs.size());
 	}
 
-	// Sol 10/27 (P1): the Hardcore Worlds reading is each push's own, taken as it gathers, so a login on another world
+	// The Hardcore Worlds reading is each push's own, taken as it gathers, so a login on another world
 	// never sends the last login's "world": "hardcore" or its XP.
 	@Test
 	public void aPushReadsHardcoreWorldsForItsOwnLoginOnly() throws Exception
@@ -2192,7 +2192,7 @@ public class PluginPublicationCharacterizationTest
 	@Test
 	public void aMainCaptureOverALeaguesWaitingSyncSendsBothGames() throws Exception
 	{
-		// One game's waiting push never stands in for another's (B217): a League capture waits on its quiet time, the
+		// One game's waiting push never stands in for another's: a League capture waits on its quiet time, the
 		// player hops to a main world and captures there before it goes, and both games sync, each once.
 		LocalClogCache league = announceLeague();
 		PublicationCoordinator publication = (PublicationCoordinator) field("publication");

@@ -127,7 +127,7 @@ public class ClogPbsTest
 	@Test
 	public void aPageTheServerSentNoTimeForTakesNone()
 	{
-		// tribrd, 10/22: the Gauntlet, then Fortis Colosseum, where they have no record, so the server sends nothing
+		// A player's path, 10/22: the Gauntlet, then Fortis Colosseum, where they have no record, so the server sends nothing
 		// and the varp still holds the Gauntlet's time through all three of the Colosseum's draws.
 		page("The Gauntlet", "Obtained: <col=ffff00>3/9</col>", "Personal Best: <col=ffffff>13:27.60</col>");
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 1346);
@@ -141,7 +141,7 @@ public class ClogPbsTest
 	@Test
 	public void aPageWaitingWithNoRecordNeverTakesTheNextPagesTime()
 	{
-		// tribrd's path, 10/22: Fortis Colosseum, no record, so nothing comes; a tick later the Gauntlet, whose time
+		// The same player's path, 10/22: Fortis Colosseum, no record, so nothing comes; a tick later the Gauntlet, whose time
 		// lands a cycle before its page draws, while the Colosseum is still on screen. 2.7.1 filed it as Sol Heredit.
 		page("Fortis Colosseum", "Obtained: <col=ffff00>0/8</col>", "Personal Best: <col=ffffff>0:56.40</col>");
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 94);
@@ -216,7 +216,7 @@ public class ClogPbsTest
 		draws(1);
 		verify(configManager, never()).setRSProfileConfiguration(eq("killclog"), eq("pagepb.araxxor"), any());
 
-		// Xinical's way, 10/26 on 2.7.2: up to the Alchemical Hydra, the time the page before holds from its kills.
+		// Another player's way, 10/26 on 2.7.2: up to the Alchemical Hydra, the time the page before holds from its kills.
 		when(configManager.getRSProfileConfiguration("killclog", "pagepb.amoxliatl", double.class)).thenReturn(null);
 		when(configManager.getRSProfileConfiguration("killclog", "livepb.amoxliatl", double.class)).thenReturn(28.8);
 		page("Amoxliatl", "Obtained: <col=ffff00>2/5</col>", "Personal Best: <col=ffffff>0:28.80</col>");
@@ -399,7 +399,7 @@ public class ClogPbsTest
 	@Test
 	public void aCountIsNeverThePageBeforesNumber()
 	{
-		// QA 11/7: the Abyssal Sire drawn at 1,204 kills, then Tormented Demons, with 1,204 landing just before it drew.
+		// The Abyssal Sire drawn at 1,204 kills, then Tormented Demons, with 1,204 landing just before it drew.
 		page("Abyssal Sire", "Obtained: <col=ffff00>6/9</col>", "Abyssal Sire kills: <col=ffffff>1,204</col>");
 		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 1204);
 		draws(1);
@@ -435,7 +435,7 @@ public class ClogPbsTest
 	@Test
 	public void anUnsettledPageStillCountsAsThePageBefore()
 	{
-		// QA 11/7: the Nightmare's page reads nothing of its own, but its count line is still what the next page compares.
+		// The Nightmare's page reads nothing of its own, but its count line is still what the next page compares.
 		page("Revenants", "Obtained: <col=ffff00>4/14</col>", "Revenant kills: <col=ffffff>50</col>");
 		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 50);
 		draws(1);

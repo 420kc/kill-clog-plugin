@@ -242,7 +242,7 @@ public class TempleLateAnswerTest
 		assertFalse("its answer, that it has none, is an answer", service.templeUnanswered("Marni"));
 	}
 
-	// The lane's own writes, through a real lookup (QA 10/26, B251: held, figures and failed were proven only by moments
+	// The lane's own writes, through a real lookup (10/26: held, figures and failed were proven only by moments
 	// set by hand).
 	@Test
 	public void theLaneHoldsFetchesAndKeepsFiguresThroughARealLookup() throws Exception

@@ -560,7 +560,7 @@ public class LocalClogCacheTest
 		assertTrue(relogged.toFirstPartySyncResult("Tester").getObtainedItems().isEmpty());
 	}
 
-	// Sol 10/27: a log set up after its world settled has no settle tick left to save its XP, so its first reading
+	// A log set up after its world settled has no settle tick left to save its XP, so its first reading
 	// is saved at once, or a reset across the next relog compared with 0 and went unseen.
 	@Test
 	public void aLogSetUpAfterItsWorldSettledStillSeesAResetAcrossARelog() throws Exception
@@ -578,7 +578,7 @@ public class LocalClogCacheTest
 		assertTrue(relogged.toFirstPartySyncResult("Tester").getObtainedItems().isEmpty());
 	}
 
-	// Sol 10/27: a new run's log takes no provider date from before its reset, the ended run's included.
+	// A new run's log takes no provider date from before its reset, the ended run's included.
 	@Test
 	public void aNewRunTakesNoDateFromBeforeItsReset() throws Exception
 	{
@@ -648,7 +648,7 @@ public class LocalClogCacheTest
 		assertEquals("a real dated reading still fills a gap", "2026-10-01 09:00:00", dates.get(3));
 	}
 
-	// QA 11/7: a lookup kept from before 2.8.0 held Temple's stamps, and the stripped answer took them back from it.
+	// A lookup kept from before 2.8.0 held Temple's stamps, and the stripped answer took them back from it.
 	@Test
 	public void aLookupKeptWithStampsNeverRefillsThem() throws Exception
 	{

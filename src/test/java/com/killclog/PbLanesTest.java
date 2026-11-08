@@ -93,7 +93,7 @@ public class PbLanesTest
 		assertEquals(PbRecord.Source.LIVE, out.get(KEY).source);
 		assertEquals(Integer.valueOf(412), out.get(KEY).kc);
 		assertEquals("kill", out.get(KEY).timer);
-		// The kill seen before the adventure log's tenths keeps its labels too (QA, 10/23).
+		// The kill seen before the adventure log's tenths keeps its labels too (10/23).
 		PbRecord first = pb(79.0, "live");
 		first.kc = 412;
 		first.timer = "kill";

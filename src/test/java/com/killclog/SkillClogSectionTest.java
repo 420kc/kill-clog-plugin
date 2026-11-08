@@ -165,7 +165,7 @@ public class SkillClogSectionTest
 		assertHeadings(catalog, Skill.STRENGTH, "Slash Weapons|Crush Weapons|Armour");
 		assertEquals(VOID_KNIGHT_IDS, SkillClogSection.forSkill(
 			Skill.HITPOINTS, null, null, catalog).get(1).itemIds());
-		// The Defenders are their own list since 2.8.0 (B338), the Avernic defender hilt after the dragon defender.
+		// The Defenders are their own list since 2.8.0, the Avernic defender hilt after the dragon defender.
 		assertEquals(concat(DEFENDER_IDS, Arrays.asList(22477)), SkillClogSection.forSkill(
 			Skill.DEFENCE, null, null, catalog).get(3).itemIds());
 		assertEquals(STRENGTH_WEAPON_IDS, SkillClogSection.forSkill(

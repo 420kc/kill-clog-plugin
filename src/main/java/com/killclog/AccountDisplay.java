@@ -47,7 +47,7 @@ final class AccountDisplay
 	 * This account as a board's row shows it. Only a recorded frozen row wears the mode left, and
 	 * only when the lookup's own answers agree: a dead Hardcore is an Ironman now, a de-ironed
 	 * account isn't. A de-ironed account who died as a Hardcore first wears the Dead Hardcore badge
-	 * on the Hardcore board (My Specialty, Dylan 2026-10-13). A board still loading, unanswered, or
+	 * on the Hardcore board (Dylan 2026-10-13). A board still loading, unanswered, or
 	 * without this player, or a lookup whose regular or Ironman board didn't answer, keeps the
 	 * account's own badge.
 	 */

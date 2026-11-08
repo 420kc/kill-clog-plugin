@@ -1,4 +1,4 @@
-# A player's Combat Achievement tier from their completed tasks per tier (Dylan, 2026-10-27, B274 step 6).
+# A player's Combat Achievement tier from their completed tasks per tier (Dylan, 2026-10-27).
 # One copy of the rule's answers: the plugin's CaTierCasesTest, killclog-api's and the site's tests run these rows.
 # Easy through Master unlock by points (a task is worth 1 to 6 by its tier, wherever it was done); each tier's line is
 # every task in it and below, times their points, against the game's current task counts. Grandmaster is every task

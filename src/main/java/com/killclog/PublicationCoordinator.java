@@ -61,7 +61,7 @@ final class PublicationCoordinator
 	// no mode means nothing is sent.
 	private final Supplier<String> mode;
 	// On the client thread: the world's Hardcore Worlds reading (total XP, 0 before it settles, -1 off it), taken with
-	// the game each push gathers for, so a push never carries another login's (Sol 10/27).
+	// the game each push gathers for, so a push never carries another login's.
 	private final LongSupplier hardcoreXp;
 	private final Function<String, LocalClogCache> modeCache;
 	private final Function<String, String> leagueProfileType;
@@ -126,7 +126,7 @@ final class PublicationCoordinator
 		final int automaticEra;
 		final boolean holdsWait;
 		// Other games' pushes it took in when they met, each owed its own push once this one's attempt ends: one game's
-		// waiting push never stands in for another's (a main capture over a League's, B217).
+		// waiting push never stands in for another's (a main capture over a League's).
 		final Set<String> owed;
 
 		/** A push asked for now, with the eras it was asked in. */

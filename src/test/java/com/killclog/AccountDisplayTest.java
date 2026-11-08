@@ -140,7 +140,7 @@ public class AccountDisplayTest
 	@Test
 	public void aDeIronedAccountThatDiedAsAHardcoreWearsTheDeadHardcoreBadgeOnTheHardcoreBoard()
 	{
-		// My Specialty, 10/13: Hardcore 243M XP (stopped at the death), Ironman 471M (played on), regular 527M (now).
+		// A real account, 10/13: Hardcore 243M XP (stopped at the death), Ironman 471M (played on), regular 527M (now).
 		AccountDisplay main = AccountDisplay.of(AccountType.REGULAR, HiscoreTable.STANDARD);
 		HiscoreResult today = row(AccountType.REGULAR, 2_278, 526_533_458L, false);
 		today.setDiedAsHardcore(true);

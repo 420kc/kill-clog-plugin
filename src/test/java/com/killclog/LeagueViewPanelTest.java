@@ -957,7 +957,7 @@ public class LeagueViewPanelTest
 	@Test
 	public void aRaidCellsCardShowsTheEntryCountTheLogCarries() throws Exception
 	{
-		// QA 11/7: the panel's own boss cells build their card with the looked-up player's log.
+		// The panel's own boss cells build their card with the looked-up player's log.
 		ClogIndex index = new ClogIndex();
 		TestViews.publish(index, Map.of("tombs_of_amascut", java.util.List.of(1, 2, 3)), Map.of());
 		Cells cells = field(panel, "cells", Cells.class);

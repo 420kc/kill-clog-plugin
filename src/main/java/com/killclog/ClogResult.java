@@ -185,7 +185,7 @@ public class ClogResult
 	 * neither shows. Pages the game doesn't have (Kill Clog's own 3rd Age, Gilded and Mimic, a provider's old page
 	 * name) keep what the source sent, and a page the source never knew, no key and none of its items anywhere, stays
 	 * unknown rather than empty, though its slots still count in the total: a log counts against every slot the game
-	 * has, so one a source sent before the game grew a page isn't shown out of the old number (Sol, 10/28: 1,717 of a
+	 * has, so one a source sent before the game grew a page isn't shown out of the old number (10/28: 1,717 of a
 	 * 1,734-slot log). With no pages read yet it is this log as sent.
 	 */
 	ClogResult onPages(Map<String, List<Integer>> pages, IntUnaryOperator canonical)

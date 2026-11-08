@@ -68,7 +68,7 @@ public class SyncServiceModeTest
 		ClogResult clog = new ClogResult("Tester", Map.of("boss", List.of(new ClogResult.ClogItem(1, 1, null))),
 			Map.of("boss", List.of(1)), Map.of(), null, null);
 		SyncService service = new SyncService(new OkHttpClient(), new Gson());
-		// Each push carries its own reading, taken as it gathered for its login (Sol 10/27): -1 off Hardcore Worlds.
+		// Each push carries its own reading, taken as it gathered for its login: -1 off Hardcore Worlds.
 		String main = service.requestBody(42L, null, clog, Map.of(), Map.of(), "main", -1);
 		assertFalse(main.contains("\"world\""));
 		assertEquals("a main-game push is sent as built", main, service.withOverallXp(main, -1));

@@ -115,7 +115,7 @@ public class ClogLookupMenuTest
 	@Test
 	public void aSlotFreedAfterTheWarningStillTakesTheOption()
 	{
-		// QA 11/5: the full-menu warning fires once a session, but the next login's check still runs, so a slot freed
+		// The full-menu warning fires once a session, but the next login's check still runs, so a slot freed
 		// since puts the option back without Kill Clog being turned off and on.
 		ClogLookupMenu menu = new ClogLookupMenu();
 		Client client = mock(Client.class);
