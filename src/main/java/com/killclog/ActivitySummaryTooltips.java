@@ -57,6 +57,18 @@ final class ActivitySummaryTooltips
 			LookupQueries.getMostKilledBoss(hiscore),
 			LookupQueries.getMostKilledKc(hiscore)
 		);
+		// The most killed boss's tile: its cell's icon, and its log as its card counts it.
+		String mostKilled = LookupQueries.getMostKilledBoss(hiscore);
+		for (Map.Entry<HiscoreSkill, JLabel> boss : cells.getBossLabels().entrySet())
+		{
+			if (boss.getKey().getName().equals(mostKilled))
+			{
+				TooltipData data = clog != null ? tooltipData.get(boss.getKey()) : null;
+				tip.setMostKilled(boss.getKey(), boss.getValue().getIcon() instanceof ImageIcon
+						? ((ImageIcon) boss.getValue().getIcon()).getImage() : null,
+					data != null ? data.obtainedCount : -1, data != null ? data.totalItems : 0);
+			}
+		}
 		tip.setPvp(hiscore, clog, cells.getPvpActivityIcons());
 		tip.setEhb(LookupQueries.ehb(hiscore, clog));
 		tip.setSlayer(hiscore, clog);

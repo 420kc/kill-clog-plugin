@@ -321,7 +321,7 @@ public class TitleTooltipTest
 	}
 
 	@Test
-	public void pvmSummaryWidthGrowsWithLargeTotalKills()
+	public void pvmSummaryWidthHoldsWhateverTheCountsAndTheMostKilledName()
 	{
 		PvmSummaryTooltip small = new PvmSummaryTooltip();
 		small.setData(126, 999, 50, 60, null, 0);
@@ -332,7 +332,8 @@ public class TitleTooltipTest
 		PvmSummaryTooltip large = new PvmSummaryTooltip();
 		large.setData(126, 1_234_567_890, 50, 60, "Thermonuclear Smoke Devil".repeat(2), 1_234_567);
 
-		assertTrue(small.getPreferredSize().width < large.getPreferredSize().width);
+		// 2.8.0: the tiles set the width and Most Killed's name rides the band, so neither moves the card.
+		assertEquals(small.getPreferredSize().width, large.getPreferredSize().width);
 		PvmSummaryTooltip largestTotal = new PvmSummaryTooltip();
 		largestTotal.setData(126, Integer.MAX_VALUE, 50, 60, null, 0);
 		assertTrue(small.getPreferredSize().width <= largestTotal.getPreferredSize().width);
@@ -353,7 +354,9 @@ public class TitleTooltipTest
 		redLarge.setData(126, 999, 50, 60, null, 0);
 		SideBySideTooltip large = new SideBySideTooltip("Blue", blueLarge, "Red", redLarge);
 
-		assertTrue(small.getPreferredSize().width < large.getPreferredSize().width);
+		// The pair is its two cards plus the same chrome, whatever each card holds.
+		assertEquals(small.getPreferredSize().width - blueSmall.getPreferredSize().width - redSmall.getPreferredSize().width,
+			large.getPreferredSize().width - blueLarge.getPreferredSize().width - redLarge.getPreferredSize().width);
 		// Doublewide by construction: both children plus card chrome.
 		assertTrue(small.getPreferredSize().width
 			> blueSmall.getPreferredSize().width + redSmall.getPreferredSize().width);

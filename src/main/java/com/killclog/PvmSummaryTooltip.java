@@ -84,6 +84,24 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private Image combatIcon;
 	private CombatAchievementResult caResult;
 	private BufferedImage caRewardSprite;
+	// The PvM tiles' own: the Bosses tab's sprite, the Collection Log, and the most killed boss's icon and log.
+	private Image bossesSprite;
+	private Image logsSprite;
+	@Nullable
+	private HiscoreSkill mostKilledBoss;
+	@Nullable
+	private Image mostKilledIcon;
+	private int mostKilledObtained = -1;
+	private int mostKilledTotal;
+	private static final int MOST_KILLED = 0;
+	private final CardBody.ClickRows pvmRows = new CardBody.ClickRows(this, (e, key) ->
+	{
+		if (onOpenRaid != null && mostKilledBoss != null)
+		{
+			onOpenRaid.accept(e, mostKilledBoss);
+			e.consume();
+		}
+	});
 	private final PvpSummaryRows pvpRows = new PvpSummaryRows();
 
 	public void setData(double combatLevel, int totalKills, int bossesWithKc, int totalBosses,
@@ -106,6 +124,15 @@ public class PvmSummaryTooltip extends TitleTooltip
 		pvpRows.setData(hiscore, clog);
 	}
 
+	/** The most killed boss as its tile shows it: its icon, and its log when one is known (-1, unknown). */
+	void setMostKilled(@Nullable HiscoreSkill boss, @Nullable Image icon, int obtained, int total)
+	{
+		mostKilledBoss = boss;
+		mostKilledIcon = icon;
+		mostKilledObtained = obtained;
+		mostKilledTotal = total;
+	}
+
 	public void setCompletion(int completed, int total)
 	{
 		this.bossesCompleted = completed;
@@ -125,6 +152,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 	public void setMegarares(int tbowCount, int scytheCount,
 		int shadowCount, int obligatorCount, ItemManager itemManager)
 	{
+		bossesSprite = itemSprite(ClogSummaryTooltip.TAB_SPRITES.getOrDefault("Bosses", -1), itemManager);
+		logsSprite = itemSprite(PanelData.COLLECTION_LOG_ITEM_ID, itemManager);
 		weaponCounts[0] = tbowCount;
 		weaponCounts[1] = scytheCount;
 		weaponCounts[2] = shadowCount;
@@ -200,29 +229,28 @@ public class PvmSummaryTooltip extends TitleTooltip
 			.add(leadRow(combatIcon, combatText(combatLevel)))
 			.add(CardBody.gap(LEVEL_GAP_BELOW))
 			.add(CardBody.section(PVM_HEADER));
-		// The CA tier leads the PvM rows, built like the combat level row above it, once one is held.
+		card.add(CardBody.line("Total Kills: ", scoreText(totalKills)))
+			.add(CardBody.line("EHB: ", ehbText(ehb)));
+		// Then the PvM tiles (Dylan, 2026-11-07): the CA tier once one is held, the bosses killed, their logs done
+		// once a log is known, and the most killed boss, its name in the band and its log on the bar.
+		List<GameTile.Tile> pvm = new ArrayList<>();
 		if (hasTierRow())
 		{
-			card.add(CardBody.gap(LEVEL_GAP_ABOVE))
-				.add(leadRow(caRewardSprite, tierDisplayName(caResult)))
-				.add(CardBody.gap(LEVEL_GAP_BELOW));
+			pvm.add(new GameTile.Tile(tierDisplayName(caResult), caRewardSprite, -1, 0, -1)
+				.count(grouped(caResult.getTotalPoints()) + " pts"));
 		}
-		card.add(CardBody.line("Total Kills: ", scoreText(totalKills)))
-			.add(CardBody.line("EHB: ", ehbText(ehb)))
-			.add(CardBody.line("Bosses Killed: ", bossesWithKc + "/" + totalBosses,
-				completionColor(bossesWithKc, totalBosses)));
+		pvm.add(new GameTile.Tile("Bosses", bossesSprite, bossesWithKc, totalBosses, -1));
 		if (bossesCompleted >= 0)
 		{
-			card.add(CardBody.line("Logs Completed: ", bossesCompleted + "/" + bossesWithClog,
-				completionColor(bossesCompleted, bossesWithClog)));
+			pvm.add(new GameTile.Tile("Boss Logs", logsSprite, bossesCompleted, bossesWithClog, -1));
 		}
-		// Most Killed closes the PvM rows.
 		if (mostKilled != null)
 		{
-			card.add(CardBody.gap(SECTION_GAP))
-				.add(CardBody.text("Most Killed:", labelColor, false))
-				.add(CardBody.text(mostKilled + " (" + grouped(mostKilledKc) + ")", NativeTooltip.valueColor, true));
+			pvm.add(new GameTile.Tile("Most Killed", mostKilledIcon, mostKilledObtained, mostKilledTotal,
+				onOpenRaid != null && mostKilledBoss != null ? MOST_KILLED : -1)
+				.count(grouped(mostKilledKc) + " kc").item(-1, mostKilled));
 		}
+		card.add(CardBody.gap(SECTION_GAP)).add(GameTile.grid(pvmRows, pvm));
 		// Raids lead the sections under the band.
 		List<GameTile.Tile> raids = new ArrayList<>();
 		for (int i = 0; i < raidRowCount(); i++)
@@ -298,17 +326,16 @@ public class PvmSummaryTooltip extends TitleTooltip
 		});
 	}
 
-	/** The tier row waits for a tier: a player still short of Easy has nothing to lead with. */
+	/** The CA tile waits for a tier: a player still short of Easy has nothing to show there. */
 	private boolean hasTierRow()
 	{
 		return caResult != null && caResult.getTier() != null;
 	}
 
-	/** The icon column the lead rows share: as wide as the wider icon, then the gap. */
+	/** The combat level row's icon column: its icon, then the gap. */
 	private int iconColumnWidth()
 	{
-		int width = Math.max(combatIcon != null ? combatIcon.getWidth(null) : 0,
-			hasTierRow() && caRewardSprite != null ? caRewardSprite.getWidth() : 0);
+		int width = combatIcon != null ? combatIcon.getWidth(null) : 0;
 		return width > 0 ? width + LEVEL_ICON_GAP : 0;
 	}
 

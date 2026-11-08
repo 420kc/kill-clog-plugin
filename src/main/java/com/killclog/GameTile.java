@@ -70,6 +70,9 @@ final class GameTile
 		// The hiscores' count for what the tile stands for (completions, kills), shown in white while its log
 		// progress is unknown, so a lookup with no synced log still reads (Dylan, 2026-11-07); 0 or less, none.
 		int score;
+		// Its own count line in white, the bar still the log's: Most Killed's kills over that boss's log.
+		@Nullable
+		String countText;
 
 		Tile wear(@Nullable Color wear)
 		{
@@ -80,6 +83,12 @@ final class GameTile
 		Tile score(int score)
 		{
 			this.score = score;
+			return this;
+		}
+
+		Tile count(String text)
+		{
+			countText = text;
 			return this;
 		}
 
@@ -115,7 +124,7 @@ final class GameTile
 				Tile tile = tiles.get(i);
 				Rectangle box = new Rectangle(left + i % cols * (w + GAP), y + i / cols * (h + GAP), w, h);
 				paint(c, box, tile, tile.key >= 0 && clicks.boxShown(c, box, tile.key));
-				if (tile.itemId >= 0)
+				if (tile.itemName != null)
 				{
 					// Green while held, red while faint, as the card's other items read in the band.
 					c.hits.add(new TooltipItemHover.HitBox(1, tile.itemId, tile.itemName, box, !tile.faint));
@@ -163,9 +172,10 @@ final class GameTile
 		}
 		g.setFont(COUNT_FONT);
 		FontMetrics fm = g.getFontMetrics();
-		boolean scored = !known && tile.score > 0;
-		String count = scored ? TitleTooltip.grouped(tile.score) : tile.total <= 0 ? ""
-			: known ? TitleTooltip.progressCountText(tile.obtained, tile.total) : TitleTooltip.progressPlaceholderText(tile.total);
+		boolean scored = tile.countText != null || !known && tile.score > 0;
+		String count = tile.countText != null ? tile.countText : scored ? TitleTooltip.grouped(tile.score)
+			: tile.total <= 0 ? "" : known ? TitleTooltip.progressCountText(tile.obtained, tile.total)
+			: TitleTooltip.progressPlaceholderText(tile.total);
 		g.setColor(scored ? NativeTooltip.valueColor : color);
 		g.drawString(count, center - fm.stringWidth(count) / 2, box.y + (page ? PAGE_COUNT_TOP : COUNT_TOP) + fm.getAscent());
 		g.setFont(font);
