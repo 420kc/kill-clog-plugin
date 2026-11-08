@@ -1270,16 +1270,41 @@ public class LocalClogCache
 	}
 
 	/** Genuinely atomic where the filesystem allows it; plain replace as the
-	 *  documented fallback (some filesystems refuse ATOMIC_MOVE). */
+	 *  documented fallback (some filesystems refuse ATOMIC_MOVE). Windows refuses to replace a file another program
+	 *  has open (a second client reading it, a virus scanner), so the disk thread waits and tries again for up to two
+	 *  seconds rather than drop the save. */
 	static void atomicMove(Filepath from, Filepath to) throws IOException
 	{
-		try
+		for (int tries = 1; ; tries++)
 		{
-			from.moveTo(to, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-		}
-		catch (AtomicMoveNotSupportedException e)
-		{
-			from.moveTo(to, StandardCopyOption.REPLACE_EXISTING);
+			try
+			{
+				try
+				{
+					from.moveTo(to, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+				}
+				catch (AtomicMoveNotSupportedException e)
+				{
+					from.moveTo(to, StandardCopyOption.REPLACE_EXISTING);
+				}
+				return;
+			}
+			catch (AccessDeniedException e)
+			{
+				if (tries == 20)
+				{
+					throw e;
+				}
+				try
+				{
+					Thread.sleep(100);
+				}
+				catch (InterruptedException stop)
+				{
+					Thread.currentThread().interrupt();
+					throw e;
+				}
+			}
 		}
 	}
 

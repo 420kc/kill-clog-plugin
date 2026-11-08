@@ -2,6 +2,8 @@ package com.killclog;
 
 import com.google.gson.Gson;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.time.Instant;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -1225,6 +1227,33 @@ public class LocalClogCacheTest
 		{
 			played.shutdown();
 			other.shutdown();
+		}
+	}
+
+	@Test
+	public void aSaveLandsWhileAnotherProgramReadsTheLog() throws Exception
+	{
+		// Windows refuses to replace a file another program has open (a second client reading it at login, a virus
+		// scanner); the save waits for it instead of being dropped until the next capture.
+		File dir = temporaryFolder.newFolder();
+		LocalClogCache store = new LocalClogCache(new Gson());
+		store.open(() -> TestFolders.folder(dir));
+		try
+		{
+			assertTrue(StoreLogin.activate(store, "Tester", HASH));
+			store.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 2978, 2991), obtainedItems("hats", 2978)));
+			String first = awaitSaved(dir, null);
+			try (InputStream reading = new FileInputStream(ownFile(dir, HASH)))
+			{
+				store.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 2978, 2991), obtainedItems("hats", 2978, 2991)));
+				// Past the save's debounce, still reading.
+				Thread.sleep(1000);
+			}
+			assertTrue(awaitSaved(dir, first).contains("2991"));
+		}
+		finally
+		{
+			store.shutdown();
 		}
 	}
 
