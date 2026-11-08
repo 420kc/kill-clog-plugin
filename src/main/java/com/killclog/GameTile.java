@@ -53,10 +53,20 @@ final class GameTile
 		final int key;
 		// The sprite drawn faint, as an item not yet held is.
 		boolean faint;
+		// The item the sprite is, which the card's hover band names while the tile is under the pointer (-1, none).
+		int itemId = -1;
+		String itemName;
 
 		Tile faint(boolean faint)
 		{
 			this.faint = faint;
+			return this;
+		}
+
+		Tile item(int id, String name)
+		{
+			itemId = id;
+			itemName = name;
 			return this;
 		}
 	}
@@ -85,6 +95,11 @@ final class GameTile
 				Tile tile = tiles.get(i);
 				Rectangle box = new Rectangle(left + i % cols * (w + GAP), y + i / cols * (h + GAP), w, h);
 				paint(c, box, tile, tile.key >= 0 && clicks.boxShown(c, box, tile.key));
+				if (tile.itemId >= 0)
+				{
+					// Green while held, red while faint, as the card's other items read in the band.
+					c.hits.add(new TooltipItemHover.HitBox(1, tile.itemId, tile.itemName, box, !tile.faint));
+				}
 			}
 		});
 	}

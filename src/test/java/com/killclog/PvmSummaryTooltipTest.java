@@ -1,5 +1,6 @@
 package com.killclog;
 
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Point;
@@ -160,21 +161,51 @@ public class PvmSummaryTooltipTest
 		assertEquals(1, TestViews.hoveredRow(tip, "raidRows"));
 		BufferedImage hovered = render(tip);
 		int changed = 0;
+		int bandTop = Integer.MAX_VALUE;
+		int bandBottom = -1;
 		for (int y = 0; y < resting.getHeight(); y++)
 		{
 			for (int x = 0; x < resting.getWidth(); x++)
 			{
 				if (resting.getRGB(x, y) != hovered.getRGB(x, y))
 				{
-					assertTrue("only ToB's tile changes", x >= tob.x && x < tob.x + GameTile.WIDTH && y >= tob.y
-						&& y < tob.y + GameTile.HEIGHT);
-					changed++;
+					if (x >= tob.x && x < tob.x + GameTile.WIDTH && y >= tob.y && y < tob.y + GameTile.HEIGHT)
+					{
+						changed++;
+					}
+					else
+					{
+						bandTop = Math.min(bandTop, y);
+						bandBottom = Math.max(bandBottom, y);
+					}
 				}
 			}
 		}
 		assertTrue(changed > 0);
+		// Outside ToB's tile only the hover band changes: one line of text, above the cards' rows.
+		assertTrue("the band names the Scythe", bandBottom >= 0);
+		assertTrue("only one line outside the tile changes", bandBottom - bandTop < NativeTooltip.LINE_HEIGHT + 4);
+		assertTrue("the band sits above the tiles", bandBottom < tob.y);
 		move(tip, 5, 2);
 		assertEquals(-1, TestViews.hoveredRow(tip, "raidRows"));
+	}
+
+	@Test
+	public void aRaidTileNamesItsMegarareInTheHoverBandGreenWhenHeld()
+	{
+		// As the megarare row did before the tiles: the band names the raid's megarare, green held and red not.
+		PvmSummaryTooltip tip = card();
+		tip.setMegarares(1, 0, 0, 0, null);
+		List<Point> raids = TestViews.tiles(render(painted(tip)));
+		move(tip, raids.get(0).x + 10, raids.get(0).y + 10);
+		assertEquals("Twisted Bow", tip.getHeaderHoverLineText());
+		assertEquals(new Color(0, 255, 0), tip.getHeaderHoverLineColor());
+		move(tip, raids.get(1).x + 10, raids.get(1).y + 10);
+		assertEquals("Scythe of Vitur", tip.getHeaderHoverLineText());
+		assertEquals(new Color(255, 0, 0), tip.getHeaderHoverLineColor());
+		// Off the tiles, the band is empty again.
+		move(tip, 5, 2);
+		assertNull(tip.getHeaderHoverLineText());
 	}
 
 	@Test
@@ -250,17 +281,21 @@ public class PvmSummaryTooltipTest
 		fill(tip);
 		List<Point> raids = TestViews.tiles(render(painted(tip)));
 		Point cox = raids.get(0);
+		// A change of tile repaints (the tile, and the band naming its megarare); a move that changes nothing doesn't.
 		repaints[0] = 0;
 		move(tip, cox.x + 5, cox.y + 2);
-		assertEquals(1, repaints[0]);
+		int onCox = repaints[0];
+		assertTrue(onCox > 0);
 		move(tip, cox.x + 9, cox.y + 4);
-		assertEquals(1, repaints[0]);
+		assertEquals(onCox, repaints[0]);
 		move(tip, raids.get(1).x + 5, raids.get(1).y + 2);
-		assertEquals(2, repaints[0]);
+		int onTob = repaints[0];
+		assertTrue(onTob > onCox);
 		move(tip, 5, 2);
-		assertEquals(3, repaints[0]);
+		int off = repaints[0];
+		assertTrue(off > onTob);
 		move(tip, 5, 4);
-		assertEquals(3, repaints[0]);
+		assertEquals(off, repaints[0]);
 	}
 
 	@Test

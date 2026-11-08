@@ -224,7 +224,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 		for (int i = 0; i < raidRowCount(); i++)
 		{
 			raids.add(new GameTile.Tile(RAID_NAMES[i], megarares[i], raidObtained[i], raidTotal[i],
-				onOpenRaid != null && raid(i) != null ? i : -1).faint(weaponCounts[i] <= 0));
+				onOpenRaid != null && raid(i) != null ? i : -1).faint(weaponCounts[i] <= 0)
+				.item(PanelData.MEGARARE_ITEM_IDS[i], PanelData.MEGARARE_ITEM_NAMES[i]));
 		}
 		CardBody body = new CardBody().titled("Raids").add(GameTile.grid(raidRows, raids));
 		// Slayer: XP and Rank from the hiscores, then clog progress when a synced log is known.

@@ -198,10 +198,10 @@ final class PanelData
 	static final int OBLIGATOR_ITEM_ID = 34717; // uncharged, the raid's log slot
 	static final int[] MEGARARE_ITEM_IDS = {TWISTED_BOW_ITEM_ID, SCYTHE_ITEM_ID, SHADOW_ITEM_ID, OBLIGATOR_ITEM_ID};
 
-	// Hover names for the fixed pvm-summary sprites. Static because the pvm
-	// summary renders these rows with or without a synced clog result; display
-	// names use their full display form; TitleTooltip ellipsizes them when a
-	// narrow summary cannot fit the whole hover title.
+	// Hover names for the PvM Summary's raid tiles' megarares. Static because the
+	// card draws its tiles with or without a synced clog result; display names use
+	// their full display form; TitleTooltip ellipsizes them when a narrow summary
+	// cannot fit the whole hover title.
 	static final String[] MEGARARE_ITEM_NAMES = {
 		"Twisted Bow", "Scythe of Vitur", "Tumeken's Shadow", "Obligator",
 	};
