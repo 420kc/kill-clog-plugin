@@ -14,15 +14,15 @@ import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.QuantityFormatter;
 
 /**
- * Combat Summary tooltip on the combat level cell.
- * Stats at top, then Slayer/Superiors, Raids/Mega Rares and the PvP rows.
+ * Combat Summary tooltip on the combat level cell: the combat level under the title, the band, then a scroll of PvM
+ * (its rows and tiles), the raids' tiles, Slayer and its superiors, and PvP.
  */
 public class PvmSummaryTooltip extends TitleTooltip
 {
 	private static final int WEAPON_PAD = 6;
 	private static final int SECTION_GAP = 4;
-	// The combat level leads the card beside the combat cell's own icon, with room around it; the
-	// CA tier leads the PvM rows the same way, its reward at the combat icon's size.
+	// The combat level leads the card beside the combat cell's own icon, with room around it; the CA tier's reward is
+	// drawn at the same size, for its tile.
 	static final int ICON_SIZE = 20;
 	private static final String PVM_HEADER = "PvM";
 	private static final String PVP_HEADER = "PvP";
@@ -53,7 +53,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private final int[] superiorCounts = new int[2];
 
 	// CoX, ToB and ToA, then The Fractured Archive, as the game's tiles (Dylan, 2026-11-07): each its megarare, faint
-	// until held, and its log. Their kills are on each raid's own card.
+	// until held, and its log; with no log, its kills in both modes.
 	private static final String[] RAID_NAMES = {"CoX", "ToB", "ToA", "TFA"};
 	private static final String[] RAID_CATEGORIES = {PanelData.COX_CATEGORY, PanelData.TOB_CATEGORY,
 		PanelData.TOA_CATEGORY, PanelData.TFA_CATEGORY};
@@ -76,8 +76,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		}
 	});
 
-	// Everything under the anchored band scrolls, three lines a notch, in a window that keeps the whole card a long
-	// tab's height: the level and PvM rows above the band already take a third of it (Dylan, 2026-10-08).
+	// Everything under the band scrolls, three lines a notch, in the window every long card shows (Dylan, 2026-11-07).
 	private final CardBody.Scroll scroll = new CardBody.Scroll(this, CardBody.WINDOW, 3 * LINE_HEIGHT);
 
 	@Setter
@@ -310,10 +309,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		return scoreText(xp);
 	}
 
-	/**
-	 * A lead row like the panel's combat cell: an icon centered in the icon column, then its text in
-	 * bold white. The combat level and the CA tier share the column, so their text lines up.
-	 */
+	/** The combat level's row like the panel's combat cell: its icon centered in the icon column, then the level in bold white. */
 	private CardBody.Part leadRow(@Nullable Image icon, String text)
 	{
 		return CardBody.row(LEVEL_ROW_HEIGHT, c -> iconColumnWidth() + c.bfm.stringWidth(text), (c, y) ->

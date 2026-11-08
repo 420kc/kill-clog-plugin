@@ -484,4 +484,83 @@ public class PvmSummaryTooltipTest
 			Collections.emptyMap(), Collections.emptyMap(), scores, Collections.emptyMap(),
 			Collections.emptyMap(), 0, 0, 0, -1);
 	}
+
+	@Test
+	public void aTilesFillIsTheStoneOrThePacksTintFortyAtRestSeventyFiveUnderThePointer()
+	{
+		java.awt.Color stone = NativeTooltip.tileFill(false);
+		assertEquals(new java.awt.Color(73, 63, 52), stone);
+		assertEquals(new java.awt.Color(86, 75, 61), NativeTooltip.tileFill(true));
+		java.awt.Color ground = new java.awt.Color(10, 20, 30);
+		java.awt.Color rim = new java.awt.Color(210, 120, 30);
+		try
+		{
+			NativeTooltip.cardColors(null, null, null, ground, rim, null);
+			assertEquals(net.runelite.client.util.ColorUtil.colorLerp(ground, rim, 0.4), NativeTooltip.tileFill(false));
+			assertEquals(net.runelite.client.util.ColorUtil.colorLerp(ground, rim, 0.75), NativeTooltip.tileFill(true));
+		}
+		finally
+		{
+			NativeTooltip.cardColors(null, null, null, null, null, null);
+		}
+	}
+
+	@Test
+	public void aRaidsKillsCountItsHardModeToo()
+	{
+		Map<String, Integer> kills = new HashMap<>();
+		kills.put(HiscoreSkill.CHAMBERS_OF_XERIC.getName(), 183);
+		kills.put(HiscoreSkill.CHAMBERS_OF_XERIC_CHALLENGE_MODE.getName(), 6);
+		kills.put(HiscoreSkill.THEATRE_OF_BLOOD_HARD_MODE.getName(), 2);
+		PvmSummaryTooltip tip = new PvmSummaryTooltip();
+		tip.setRaids(TestViews.hiscore(AccountType.REGULAR, kills, Collections.emptyMap(), Collections.emptyMap(),
+			Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1), null);
+		int[] raidKills = TestViews.field(tip, "raidKills");
+		assertEquals(189, raidKills[0]);
+		assertEquals(2, raidKills[1]);
+	}
+
+	@Test
+	public void theBossesTileDrawsItsLogsLineAndASmallIconSitsInTheMiddleOfItsSlot()
+	{
+		// The Logs line is drawn where a tile's bar sits: with a log it adds pixels there, without one it doesn't.
+		PvmSummaryTooltip without = card();
+		PvmSummaryTooltip with = card();
+		with.setCompletion(16, 72);
+		BufferedImage a = render(painted(without));
+		BufferedImage b = render(painted(with));
+		int row = TestViews.tiles(a).get(0).y;
+		List<Point> wide = TestViews.tiles(a, GameTile.PAGE_WIDTH, GameTile.HEIGHT);
+		Point bosses = wide.stream().filter(tile -> tile.y == row).reduce((first, second) -> second).get();
+		int changed = 0;
+		for (int y = bosses.y + GameTile.HEIGHT - 16; y < bosses.y + GameTile.HEIGHT - 3; y++)
+		{
+			for (int x = bosses.x; x < bosses.x + GameTile.PAGE_WIDTH; x++)
+			{
+				changed += a.getRGB(x, y) != b.getRGB(x, y) ? 1 : 0;
+			}
+		}
+		assertTrue("the Logs line draws", changed > 0);
+
+		// A 20 px icon's top sits 6 px into the 32 px slot that starts 17 px down the tile.
+		PvmSummaryTooltip icon = card();
+		BufferedImage red = new BufferedImage(20, 20, BufferedImage.TYPE_INT_ARGB);
+		java.awt.Graphics2D g = red.createGraphics();
+		g.setColor(java.awt.Color.RED);
+		g.fillRect(0, 0, 20, 20);
+		g.dispose();
+		icon.setMostKilled(HiscoreSkill.VORKATH, red, 12, 12);
+		BufferedImage c = render(painted(icon));
+		Point most = TestViews.tiles(c, GameTile.PAGE_WIDTH, GameTile.HEIGHT).stream().filter(tile -> tile.y == row)
+			.findFirst().get();
+		int top = -1;
+		for (int y = most.y; y < most.y + GameTile.HEIGHT && top < 0; y++)
+		{
+			if (c.getRGB(most.x + GameTile.PAGE_WIDTH / 2, y) == java.awt.Color.RED.getRGB())
+			{
+				top = y - most.y;
+			}
+		}
+		assertEquals(17 + 6, top);
+	}
 }
