@@ -85,12 +85,6 @@ final class KillclogSyncGate<P>
 		return live(attempt) ? commit.get() : null;
 	}
 
-	/** Whether an attempt holds the slot. */
-	synchronized boolean busy()
-	{
-		return inFlight != 0;
-	}
-
 	/**
 	 * The attempt's round trip is over, or it never went: its slot frees, if it is still the one holding it. True when
 	 * it was live (its outcome may be acted on and said).

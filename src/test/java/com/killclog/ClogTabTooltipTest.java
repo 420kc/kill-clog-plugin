@@ -32,7 +32,7 @@ public class ClogTabTooltipTest
 		assertEquals(1, TestViews.tileAt(card, "pageRows", first.x + GameTile.PAGE_WIDTH + GameTile.GAP + 10, first.y + 10));
 
 		wheel(card, first.y + 10, 1);
-		assertEquals(ROW, card.scroll().offset());
+		assertEquals(ROW, TestViews.offset(card.scroll()));
 		// The mouse stayed put, so once the card repaints the page that scrolled under it is the one a press opens.
 		painted(card);
 		List<Integer> opened = new ArrayList<>();
@@ -41,9 +41,9 @@ public class ClogTabTooltipTest
 		assertEquals(Arrays.asList(2), opened);
 
 		wheel(card, first.y + 10, 50);
-		assertEquals(range(card), card.scroll().offset());
+		assertEquals(range(card), TestViews.offset(card.scroll()));
 		wheel(card, first.y + 10, -50);
-		assertEquals(0, card.scroll().offset());
+		assertEquals(0, TestViews.offset(card.scroll()));
 	}
 
 	@Test
@@ -64,14 +64,14 @@ public class ClogTabTooltipTest
 		// A press low on the track jumps the window there, and opens no page under it.
 		press(card, rail, bottom);
 		release(card, rail, bottom);
-		assertEquals(range(card), card.scroll().offset());
+		assertEquals(range(card), TestViews.offset(card.scroll()));
 		assertEquals(new ArrayList<>(), opened);
 
 		// The thumb, taken where it sits, follows the pointer back to the top and stops there.
 		painted(card);
 		press(card, rail, bottom - 2);
 		drag(card, rail, -100);
-		assertEquals(0, card.scroll().offset());
+		assertEquals(0, TestViews.offset(card.scroll()));
 		release(card, rail, -100);
 		assertEquals(new ArrayList<>(), opened);
 
@@ -92,7 +92,7 @@ public class ClogTabTooltipTest
 	{
 		ClogTabTooltip whole = painted(card(4));
 		wheel(whole, firstTile(whole).y, 3);
-		assertEquals(0, whole.scroll().offset());
+		assertEquals(0, TestViews.offset(whole.scroll()));
 		assertEquals(4, TestViews.tiles(image(whole), GameTile.PAGE_WIDTH, GameTile.PAGE_HEIGHT).size());
 		assertEquals(whole.getPreferredSize().width + 7, card(57).getPreferredSize().width);
 	}
@@ -107,8 +107,8 @@ public class ClogTabTooltipTest
 		int rail = blue.getWidth() - NativeTooltip.getInset() - CardBody.RAIL_WIDTH;
 		press(blue, rail, top + CardBody.WINDOW - 2);
 		release(blue, rail, top + CardBody.WINDOW - 2);
-		assertEquals(range(blue), blue.scroll().offset());
-		assertEquals("the other side follows the drag", blue.scroll().offset(), red.scroll().offset());
+		assertEquals(range(blue), TestViews.offset(blue.scroll()));
+		assertEquals("the other side follows the drag", TestViews.offset(blue.scroll()), TestViews.offset(red.scroll()));
 
 		// The thumb, now at the bottom, draws brighter while the pointer is on the rail.
 		int y = top + CardBody.WINDOW - 4;
@@ -183,9 +183,9 @@ public class ClogTabTooltipTest
 		ClogTabTooltip red = painted(card(57));
 		TitleTooltip.scrollTogether(blue, red);
 		wheel(blue, firstTile(blue).y, 2);
-		assertEquals(2 * ROW, red.scroll().offset());
+		assertEquals(2 * ROW, TestViews.offset(red.scroll()));
 		wheel(red, firstTile(red).y, -1);
-		assertEquals(ROW, blue.scroll().offset());
+		assertEquals(ROW, TestViews.offset(blue.scroll()));
 	}
 
 	@Test
@@ -202,11 +202,11 @@ public class ClogTabTooltipTest
 		assertEquals(shown.height + range, copy.getHeight());
 		assertEquals(shown.width - CardBody.RAIL_GAP - CardBody.RAIL_WIDTH, copy.getWidth());
 		assertEquals(shown, card.getSize());
-		assertEquals(ROW, card.scroll().offset());
+		assertEquals(ROW, TestViews.offset(card.scroll()));
 		assertEquals("the page under the pointer is still the one in view", 2,
 			TestViews.tileAt(card, "pageRows", first.x + 10, first.y + 10));
 		wheel(card, first.y + 5, 1);
-		assertEquals("and the wheel still moves it", 2 * ROW, card.scroll().offset());
+		assertEquals("and the wheel still moves it", 2 * ROW, TestViews.offset(card.scroll()));
 	}
 
 	@Test

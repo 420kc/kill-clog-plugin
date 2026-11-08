@@ -74,6 +74,12 @@ final class TestViews
 		return ((LookupFanout) field(session, "fanout")).isInFlight();
 	}
 
+	/** Where a scrolled card's window sits. */
+	static int offset(CardBody.Scroll scroll)
+	{
+		return field(scroll, "offset");
+	}
+
 	private TestViews()
 	{
 	}
@@ -216,7 +222,7 @@ final class TestViews
 
 	static int hoveredRow(Object card, String rows)
 	{
-		return call(field(card, rows), "hovered");
+		return field(field(card, rows), "hovered");
 	}
 
 	/** The Skill Clog catalog as kind|heading|category-or-ids, one line per section. */

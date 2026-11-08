@@ -475,12 +475,12 @@ public class SkillClogSectionTest
 		field.setAccessible(true);
 		CardBody.Scroll scroll = (CardBody.Scroll) field.get(dense);
 		wheel(dense, 2);
-		assertEquals("two notches, two sprite rows", 2 * SkillClogSectionRenderer.CELL_SIZE, scroll.offset());
+		assertEquals("two notches, two sprite rows", 2 * SkillClogSectionRenderer.CELL_SIZE, TestViews.offset(scroll));
 		wheel(dense, -9);
-		assertEquals(0, scroll.offset());
+		assertEquals(0, TestViews.offset(scroll));
 		CardBody.Scroll still = (CardBody.Scroll) field.get(fits);
 		wheel(fits, 3);
-		assertEquals("a log that fits never moves", 0, still.offset());
+		assertEquals("a log that fits never moves", 0, TestViews.offset(still));
 	}
 
 	private static SkillTooltip card(int items)

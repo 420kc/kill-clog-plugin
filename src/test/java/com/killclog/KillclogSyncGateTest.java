@@ -246,7 +246,7 @@ public class KillclogSyncGateTest
 		int asked = gate.era();
 		gate.cancel();
 		assertEquals(KillclogSyncGate.STALE, gate.begin(new Ask(true, null), asked, KillclogSyncGate.DELIBERATE));
-		assertFalse(gate.busy());
+		assertFalse(((int) TestViews.field(gate, "inFlight") != 0));
 		assertNull("nor waits for it", gate.takeQueued());
 	}
 
@@ -258,7 +258,7 @@ public class KillclogSyncGateTest
 		gate.release(old);
 		int newer = gate.begin(new Ask(true, null), gate.era(), KillclogSyncGate.DELIBERATE);
 		assertFalse(gate.release(old));
-		assertTrue("the newer attempt still holds the slot", gate.busy());
+		assertTrue("the newer attempt still holds the slot", ((int) TestViews.field(gate, "inFlight") != 0));
 		assertTrue(gate.live(newer));
 	}
 }

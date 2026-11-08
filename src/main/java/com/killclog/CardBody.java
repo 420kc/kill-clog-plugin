@@ -484,11 +484,6 @@ final class CardBody
 			other.partner = this;
 		}
 
-		int offset()
-		{
-			return offset;
-		}
-
 		/** Only a part that would move at least a notch scrolls; one that overflows by less shows whole. */
 		boolean scrolls(int height)
 		{
@@ -733,10 +728,6 @@ final class CardBody
 			return -1;
 		}
 
-		int hovered()
-		{
-			return hovered;
-		}
 
 		private void hover(int key)
 		{
