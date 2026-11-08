@@ -66,17 +66,6 @@ final class LookupQueries
 		return best;
 	}
 
-	static int getMostKilledKc(HiscoreResult result)
-	{
-		if (result == null) return 0;
-		int best = 0;
-		for (int kc : result.getBossKills().values())
-		{
-			if (kc > best) best = kc;
-		}
-		return best;
-	}
-
 	/** The bosses whose log is complete, and those with a log at all. */
 	static int[] bossLogs(Map<HiscoreSkill, TooltipData> tooltipDataMap, Set<HiscoreSkill> bossKeys)
 	{

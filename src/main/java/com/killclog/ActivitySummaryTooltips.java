@@ -57,7 +57,7 @@ final class ActivitySummaryTooltips
 			LookupQueries.countBossesWithKc(hiscore),
 			LookupQueries.bossTotal(hiscore),
 			mostKilled,
-			LookupQueries.getMostKilledKc(hiscore)
+			mostKilled != null ? hiscore.getKc(mostKilled) : 0
 		);
 		// The most killed boss's tile: its cell's icon, and its log as its card counts it.
 		for (HiscoreSkill boss : cells.getBossLabels().keySet())
