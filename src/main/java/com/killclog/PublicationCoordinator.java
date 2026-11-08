@@ -165,8 +165,9 @@ final class PublicationCoordinator
 			owes.add(game(waiting.mode));
 			owes.addAll(waiting.owed);
 			owes.remove(game(mode));
-			return new Push(session, era, mode, manual, forCharacter, asked, retried, line, retryOfAsk, automaticEra,
-				holdsWait, Collections.unmodifiableSet(owes));
+			// The later Automatic sync era stands, as a merge keeps it, so a push owed here is never refused for an older one.
+			return new Push(session, era, mode, manual, forCharacter, asked, retried, line, retryOfAsk,
+				Math.max(automaticEra, waiting.automaticEra), holdsWait, Collections.unmodifiableSet(owes));
 		}
 
 		/** Whether its one advised retry is spent for its game: it never retries again. */

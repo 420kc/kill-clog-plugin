@@ -72,6 +72,8 @@ public class PublicationPushTest
 			retry.owing(automatic(null)).owed);
 		assertSame("another login's owes it nothing", retry,
 			retry.owing(PublicationCoordinator.Push.ask(NEXT, 0, 0, "demonic-pacts", false, NONE)));
+		// Automatic sync turned off and on during the flight: the waiting push's later era stands, as a merge keeps it.
+		assertEquals(1, retry.owing(PublicationCoordinator.Push.ask(LOGIN, 0, 1, "demonic-pacts", false, NONE)).automaticEra);
 	}
 
 	@Test
