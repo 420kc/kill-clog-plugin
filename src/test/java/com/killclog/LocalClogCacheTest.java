@@ -1228,6 +1228,28 @@ public class LocalClogCacheTest
 		}
 	}
 
+	@Test
+	public void aLeagueStoreOpenedBeforeTheMainFolderWaitsForIt() throws Exception
+	{
+		// A League world can log in while the main store is still loading: its store waits for the main folder and
+		// opens its own under it, rather than staying in memory all session with its captures never written.
+		File dir = temporaryFolder.newFolder();
+		java.util.concurrent.CompletableFuture<net.runelite.client.util.Filepath> main = new java.util.concurrent.CompletableFuture<>();
+		LocalClogCache league = LocalClogCache.league(new Gson(), main, "league-x");
+		try
+		{
+			Thread.sleep(200);
+			assertFalse(league.folder().isDone());
+			main.complete(TestFolders.folder(dir));
+			assertNotNull(league.folder().get(5, TimeUnit.SECONDS));
+			assertTrue(new File(dir, "leagues/league-x").isDirectory());
+		}
+		finally
+		{
+			league.shutdown();
+		}
+	}
+
 	/**
 	 * Waits for the debounced save on the store's own thread to write the account's file anew; its contents. Generous:
 	 * a loaded gate (compile, checkstyle and every test at once) once kept a 0.5 s debounce past 5 s.

@@ -142,10 +142,7 @@ public class KillClogPlugin extends Plugin
 	private Gson gson;
 	// Opens a League's own store; a test seam.
 	private java.util.function.Function<String, LocalClogCache> leagueCacheFactory = id ->
-	{
-		Filepath folder = localClogCache.folder().getNow(null);
-		return new LocalClogCache(gson, folder == null ? null : folder.join("leagues", id));
-	};
+		LocalClogCache.league(gson, localClogCache.folder(), id);
 	// The store the collection log walk started with; a different one means start over.
 	private LocalClogCache walkCache;
 	private final WorldSession world = new WorldSession(
