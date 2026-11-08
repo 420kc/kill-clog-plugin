@@ -18,7 +18,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
-import net.runelite.client.util.Filepath;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -1259,30 +1258,60 @@ public class LocalClogCacheTest
 	}
 
 	@Test
-	public void aSaveLandsWhileAnotherProgramReadsItsNewFile() throws Exception
+	public void aNewerSaveTakesThePlaceOfOneWaitingOutALock() throws Exception
 	{
-		// A virus scanner opens a file the moment it's written, so it may hold the fresh temp file rather than the log;
-		// Windows then refuses the move as "in use" (not access denied), and the save waits for that too.
+		// A save refused while another program reads the log is tried again on the disk thread's schedule; a newer
+		// capture meanwhile is the one that lands, once the reader lets go.
 		File dir = temporaryFolder.newFolder();
-		File fresh = new File(dir, "log.json.tmp");
-		Files.writeString(fresh.toPath(), "saved");
-		Filepath folder = TestFolders.folder(dir);
-		InputStream scanning = new FileInputStream(fresh);
-		Thread done = new Thread(() ->
+		LocalClogCache store = new LocalClogCache(new Gson());
+		store.open(() -> TestFolders.folder(dir));
+		try
 		{
-			try
+			assertTrue(StoreLogin.activate(store, "Tester", HASH));
+			store.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 2978, 2991, 2993), obtainedItems("hats", 2978)));
+			String first = awaitSaved(dir, null);
+			try (InputStream reading = new FileInputStream(ownFile(dir, HASH)))
 			{
-				Thread.sleep(500);
-				scanning.close();
+				store.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 2978, 2991, 2993),
+					obtainedItems("hats", 2978, 2991)));
+				Thread.sleep(800);
+				store.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 2978, 2991, 2993),
+					obtainedItems("hats", 2978, 2991, 2993)));
+				Thread.sleep(800);
 			}
-			catch (Exception ignored)
+			assertTrue(awaitSaved(dir, first).contains("2993"));
+		}
+		finally
+		{
+			store.shutdown();
+		}
+	}
+
+	@Test
+	public void aSaveGivesUpAfterTwoSecondsOfLock() throws Exception
+	{
+		// Bounded: a reader that never lets go costs one save its two seconds of tries, then it is dropped (logged), and
+		// the next capture saves again; nothing keeps trying in the background.
+		File dir = temporaryFolder.newFolder();
+		LocalClogCache store = new LocalClogCache(new Gson());
+		store.open(() -> TestFolders.folder(dir));
+		try
+		{
+			assertTrue(StoreLogin.activate(store, "Tester", HASH));
+			store.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 2978, 2991), obtainedItems("hats", 2978)));
+			String first = awaitSaved(dir, null);
+			try (InputStream reading = new FileInputStream(ownFile(dir, HASH)))
 			{
+				store.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 2978, 2991), obtainedItems("hats", 2978, 2991)));
+				Thread.sleep(3500);
 			}
-		});
-		done.start();
-		LocalClogCache.atomicMove(folder.join("log.json.tmp"), folder.join("log.json"));
-		done.join();
-		assertEquals("saved", Files.readString(new File(dir, "log.json").toPath()));
+			Thread.sleep(1000);
+			assertEquals("given up, not still trying", first, Files.readString(ownFile(dir, HASH).toPath()));
+		}
+		finally
+		{
+			store.shutdown();
+		}
 	}
 
 	/**

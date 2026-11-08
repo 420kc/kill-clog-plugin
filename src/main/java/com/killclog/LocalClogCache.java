@@ -1170,20 +1170,49 @@ public class LocalClogCache
 		{
 			return;
 		}
-		Filepath dest = folder.join(file);
-		submitDiskWrite(file, () ->
+		submitDiskWrite(file, () -> save(folder, file, snapshot, 1));
+	}
+
+	/**
+	 * One try at a save, on the disk thread. Windows refuses the move while another program has either file open (a
+	 * second client reading the log, a virus scanner reading the fresh one), so a refused save is scheduled again in
+	 * 100 ms, up to two seconds, rather than dropped; a newer save for the file takes its place. A missing file fails
+	 * at once.
+	 */
+	private void save(Filepath folder, String file, PlayerClogData snapshot, int attempt)
+	{
+		try
 		{
-			try
+			Filepath dest = folder.join(file);
+			dest.getParent().createDirectories();
+			StoreFiles.write(gson, folder, dest, snapshot);
+			saved(file, snapshot);
+		}
+		catch (FileSystemException e)
+		{
+			if (attempt < 20 && !(e instanceof NoSuchFileException) && unsaved(file, snapshot))
 			{
-				dest.getParent().createDirectories();
-				StoreFiles.write(gson, folder, dest, snapshot);
-				saved(file, snapshot);
+				diskWriter.schedule(() ->
+				{
+					if (unsaved(file, snapshot))
+					{
+						save(folder, file, snapshot, attempt + 1);
+					}
+				}, 100, TimeUnit.MILLISECONDS);
+				return;
 			}
-			catch (IOException | RuntimeException e)
-			{
-				log.warn("Kill Clog could not save '{}': {}", file, e.getMessage());
-			}
-		});
+			log.warn("Kill Clog could not save '{}': {}", file, e.getMessage());
+		}
+		catch (IOException | RuntimeException e)
+		{
+			log.warn("Kill Clog could not save '{}': {}", file, e.getMessage());
+		}
+	}
+
+	/** Whether this snapshot is still the file's latest unsaved one: a newer save has not taken its place. */
+	private synchronized boolean unsaved(String file, PlayerClogData snapshot)
+	{
+		return unsavedFiles.get(file) == snapshot && !pendingByFile.containsKey(file);
 	}
 
 	/** A written snapshot is saved; an older write must not clear a newer one still pending. */
@@ -1270,41 +1299,16 @@ public class LocalClogCache
 	}
 
 	/** Genuinely atomic where the filesystem allows it; plain replace as the
-	 *  documented fallback (some filesystems refuse ATOMIC_MOVE). Windows refuses the move while another program has
-	 *  either file open (a second client reading the log, a virus scanner reading the fresh one), so the disk thread
-	 *  waits and tries again for up to two seconds rather than drop the save. A missing file fails at once. */
+	 *  documented fallback (some filesystems refuse ATOMIC_MOVE). A save refused here is tried again (save). */
 	static void atomicMove(Filepath from, Filepath to) throws IOException
 	{
-		for (int tries = 1; ; tries++)
+		try
 		{
-			try
-			{
-				try
-				{
-					from.moveTo(to, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-				}
-				catch (AtomicMoveNotSupportedException e)
-				{
-					from.moveTo(to, StandardCopyOption.REPLACE_EXISTING);
-				}
-				return;
-			}
-			catch (FileSystemException e)
-			{
-				if (tries == 20 || e instanceof NoSuchFileException)
-				{
-					throw e;
-				}
-				try
-				{
-					Thread.sleep(100);
-				}
-				catch (InterruptedException stop)
-				{
-					Thread.currentThread().interrupt();
-					throw e;
-				}
-			}
+			from.moveTo(to, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+		}
+		catch (AtomicMoveNotSupportedException e)
+		{
+			from.moveTo(to, StandardCopyOption.REPLACE_EXISTING);
 		}
 	}
 
