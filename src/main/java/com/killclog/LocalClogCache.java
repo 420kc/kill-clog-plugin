@@ -95,17 +95,13 @@ public class LocalClogCache
 
 	/**
 	 * A League's own store, in its folder under the main store's. A League world can log in while the main store is
-	 * still loading, so the folder is waited for on this store's own disk thread, not read early: read early, it was
-	 * null and the League's captures stayed in memory all session.
+	 * still loading, so it opens once the main folder is known, never reading it early (read early, it was null and
+	 * the League's captures stayed in memory all session) and never blocking a thread for it.
 	 */
 	static LocalClogCache league(Gson gson, CompletableFuture<Filepath> main, String id)
 	{
 		LocalClogCache store = new LocalClogCache(gson, newDiskWriter());
-		store.open(() ->
-		{
-			Filepath folder = main.get(30, TimeUnit.SECONDS);
-			return folder == null ? null : folder.join("leagues", id);
-		});
+		main.whenComplete((folder, error) -> store.open(() -> folder == null ? null : folder.join("leagues", id)));
 		return store;
 	}
 
