@@ -60,14 +60,13 @@ final class ActivitySummaryTooltips
 		);
 		// The most killed boss's tile: its cell's icon, and its log as its card counts it.
 		String mostKilled = LookupQueries.getMostKilledBoss(hiscore);
-		for (Map.Entry<HiscoreSkill, JLabel> boss : cells.getBossLabels().entrySet())
+		for (HiscoreSkill boss : cells.getBossLabels().keySet())
 		{
-			if (boss.getKey().getName().equals(mostKilled))
+			if (PanelData.hiscoreName(boss.getName()).equals(mostKilled))
 			{
-				TooltipData data = clog != null ? tooltipData.get(boss.getKey()) : null;
-				tip.setMostKilled(boss.getKey(), boss.getValue().getIcon() instanceof ImageIcon
-						? ((ImageIcon) boss.getValue().getIcon()).getImage() : null,
-					data != null ? data.obtainedCount : -1, data != null ? data.totalItems : 0);
+				TooltipData data = clog != null ? tooltipData.get(boss) : null;
+				tip.setMostKilled(boss, cells.bossIcon(boss), data != null ? data.obtainedCount : -1,
+					data != null ? data.totalItems : 0);
 			}
 		}
 		tip.setPvp(hiscore, clog, cells.getPvpActivityIcons());
@@ -98,8 +97,7 @@ final class ActivitySummaryTooltips
 			tip.setRaids(hiscore, clog);
 		}
 		// The Bosses tile opens the Collection Log's Bosses tab where the summary was.
-		tip.setOnOpenBosses(press ->
-			tooltipController.openInPlace(owner, press, clogPages.tabCard(owner, "Bosses"), "< Combat Summary"));
+		tip.setOnOpenBosses(press -> clogPages.openTab(owner, press, "Bosses", "< Combat Summary"));
 		// A raid row opens that raid's popup where the summary was, like the Clue Summary's rares.
 		tip.setOnOpenRaid((press, raid) ->
 			tooltipController.openInPlace(owner, press, cells.buildCellTooltipFor(owner, raid), "< Combat Summary"));

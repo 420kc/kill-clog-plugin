@@ -1380,7 +1380,7 @@ public class KillClogPanel extends PluginPanel
 			if (clogIndex != null)
 			{
 				tip.setTabs(clogIndex.tabProgress(clog, totals), itemManager);
-				tip.setOnOpenTab((press, tab) -> clogPages.openTab(owner, press, tab));
+				tip.setOnOpenTab((press, tab) -> clogPages.openTab(owner, press, tab, "< Collection Log"));
 			}
 			tip.setClogSources(clog, clogService.onTemple(playerRsn), runeProfileService.hasProfile(playerRsn),
 				lookupSession.onKillclog(playerRsn));

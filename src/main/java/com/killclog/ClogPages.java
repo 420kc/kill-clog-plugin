@@ -40,26 +40,30 @@ final class ClogPages
 	@Nullable
 	private ClogIndex clogIndex;
 
-	/** A tab row's press: the tab's pages replace the Collection Log card it came from. */
-	void openTab(JComponent owner, MouseEvent press, String tab)
+	/**
+	 * A tab's press: the tab's pages replace the card it came from (the Collection Log, or the Combat Summary's
+	 * Bosses tile), and its way back, under {@code home}, the back row's name for that card, reopens it; a page
+	 * opened from the tab keeps the same way home.
+	 */
+	void openTab(JComponent owner, MouseEvent press, String tab, String home)
 	{
-		pin(owner, press, tabCard(owner, tab));
+		pin(owner, press, tabCard(owner, tab, home));
 	}
 
-	JToolTip tabCard(JComponent owner, String tab)
+	private JToolTip tabCard(JComponent owner, String tab, String home)
 	{
-		ClogTabTooltip blue = side(owner, tab, lookupSession.getClogResult(), false);
+		ClogTabTooltip blue = side(owner, tab, lookupSession.getClogResult(), false, home);
 		if (!comparison.isComparisonMode())
 		{
 			return blue;
 		}
-		return comparison.wrapSideBySide(owner, blue, side(owner, tab, comparison.getCompareClogResult(), true));
+		return comparison.wrapSideBySide(owner, blue, side(owner, tab, comparison.getCompareClogResult(), true, home));
 	}
 
-	/** A page's popup, as its row opens it, leading back to its tab. */
-	JToolTip pageCard(JComponent owner, String tab, String key)
+	/** A page's popup, as its tile opens it, leading back to its tab. */
+	private JToolTip pageCard(JComponent owner, String tab, String key, String home)
 	{
-		return TitleTooltip.withBack(page(owner, key), "< " + tab, press -> pin(owner, press, tabCard(owner, tab)));
+		return TitleTooltip.withBack(page(owner, key), "< " + tab, press -> pin(owner, press, tabCard(owner, tab, home)));
 	}
 
 	/** The pages the boss list's search reaches beyond its own rows: every page no panel boss stands for, in the game's order. */
@@ -129,7 +133,7 @@ final class ClogPages
 	}
 
 	/** One player's side of a tab: each page's count from the popup its row opens. */
-	private ClogTabTooltip side(JComponent owner, String tab, @Nullable ClogResult clog, boolean red)
+	private ClogTabTooltip side(JComponent owner, String tab, @Nullable ClogResult clog, boolean red, String home)
 	{
 		ClogIndex index = clogIndex;
 		List<String> keys = index != null ? index.tabPages().getOrDefault(tab, Collections.emptyList())
@@ -156,8 +160,8 @@ final class ClogPages
 		card.setTab(tab, progress.get(tab), slots.size());
 		// Page tiles wear the panel's progression colors when its highlighter is on, as the boss list does.
 		card.setPages(names, obtained, total, config.completionistHighlighter() ? config : null);
-		card.setBack("< Collection Log", press -> pin(owner, press, owner.createToolTip()));
-		card.setOnOpenPage((press, page) -> pin(owner, press, pageCard(owner, tab, keys.get(page))));
+		card.setBack(home, press -> pin(owner, press, owner.createToolTip()));
+		card.setOnOpenPage((press, page) -> pin(owner, press, pageCard(owner, tab, keys.get(page), home)));
 		return card;
 	}
 

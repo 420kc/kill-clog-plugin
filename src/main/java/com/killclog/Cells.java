@@ -528,6 +528,14 @@ public class Cells
 		return tip;
 	}
 
+	/** A boss's icon as its cell shows it with kills, never the dimmed one: a rival's Most Killed tile wears it. */
+	@Nullable
+	Image bossIcon(HiscoreSkill boss)
+	{
+		ImageIcon icon = originalIcons.get(boss);
+		return icon != null ? icon.getImage() : null;
+	}
+
 	/** Write one boss cell's KC text, color, and icon dim state from the name-keyed hiscore map. */
 	private void renderBossValue(HiscoreSkill boss, JLabel label, HiscoreResult result)
 	{

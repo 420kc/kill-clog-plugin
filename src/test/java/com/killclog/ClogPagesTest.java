@@ -12,6 +12,7 @@ import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.*;
 
 public class ClogPagesTest
 {
@@ -53,5 +54,56 @@ public class ClogPagesTest
 			String key = ClogService.bossToCategory(PanelData.hiscoreName(boss.getName()));
 			assertTrue(boss.getName() + " has no page " + key, pages.contains(key));
 		}
+	}
+
+	@Test
+	public void aTabOpenedFromTheCombatSummaryLeadsBackToItThroughItsPages()
+	{
+		// The Bosses tile's tab says "< Combat Summary", and so does the tab a page's "< Bosses" rebuilds (2.8.0 review).
+		TooltipController controller = mock(TooltipController.class);
+		Cells cells = mock(Cells.class);
+		when(cells.buildPageTooltip(any(), any(), any(), any())).thenAnswer(i -> new ClogTabTooltip());
+		ClogPages pages = new ClogPages(controller, cells, mock(ComparisonController.class), mock(LookupSession.class),
+			mock(TooltipDataBuilder.class), new KillClogConfig()
+			{
+			});
+		ClogIndex index = new ClogIndex();
+		java.util.Map<String, java.util.List<Integer>> categories = new java.util.LinkedHashMap<>();
+		categories.put("zulrah", java.util.Arrays.asList(1, 2, 3));
+		java.util.Map<String, java.util.List<String>> tabs = new java.util.LinkedHashMap<>();
+		tabs.put("Bosses", java.util.Collections.singletonList("zulrah"));
+		index.publishForTest(categories, java.util.Collections.emptyMap(), tabs, java.util.Collections.emptyMap());
+		pages.setClogIndex(index);
+		javax.swing.JLabel combat = new javax.swing.JLabel()
+		{
+			@Override
+			public javax.swing.JToolTip createToolTip()
+			{
+				return new PvmSummaryTooltip();
+			}
+		};
+		new javax.swing.JPanel().add(combat);
+		java.awt.event.MouseEvent press = new java.awt.event.MouseEvent(combat, java.awt.event.MouseEvent.MOUSE_PRESSED,
+			0, 0, 1, 1, 1, false, java.awt.event.MouseEvent.BUTTON1);
+		org.mockito.ArgumentCaptor<javax.swing.JToolTip> pinned = org.mockito.ArgumentCaptor.forClass(javax.swing.JToolTip.class);
+
+		pages.openTab(combat, press, "Bosses", "< Combat Summary");
+		verify(controller).pinTooltipFromPress(any(), any(), any(), pinned.capture());
+		javax.swing.JToolTip tab = pinned.getValue();
+		assertEquals("< Combat Summary", TestViews.field(tab, "backLabel"));
+		java.util.function.ObjIntConsumer<java.awt.event.MouseEvent> open = TestViews.field(tab, "onOpenPage");
+		open.accept(press, 0);
+		verify(controller, times(2)).pinTooltipFromPress(any(), any(), any(), pinned.capture());
+		javax.swing.JToolTip page = pinned.getValue();
+		assertEquals("< Bosses", TestViews.field(page, "backLabel"));
+		java.util.function.Consumer<java.awt.event.MouseEvent> back = TestViews.field(page, "onBack");
+		back.accept(press);
+		verify(controller, times(3)).pinTooltipFromPress(any(), any(), any(), pinned.capture());
+		javax.swing.JToolTip again = pinned.getValue();
+		assertEquals("< Combat Summary", TestViews.field(again, "backLabel"));
+		java.util.function.Consumer<java.awt.event.MouseEvent> home = TestViews.field(again, "onBack");
+		home.accept(press);
+		verify(controller, times(4)).pinTooltipFromPress(any(), any(), any(), pinned.capture());
+		assertTrue(pinned.getValue() instanceof PvmSummaryTooltip);
 	}
 }
