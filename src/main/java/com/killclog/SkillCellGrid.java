@@ -184,8 +184,11 @@ final class SkillCellGrid
 		@Nullable ClogResult clog, @Nullable ClogResult otherClog)
 	{
 		SkillTooltip solo = new SkillTooltip();
-		// With Skill Clogs off the modal is the stats rows alone.
+		// With Skill Clogs off the modal is the stats rows alone, and so it is for a player looked up with no log from any
+		// source, most strangers (Dylan, 2026-11-07): a dormant list says nothing of them. A comparison keeps the sections
+		// while either side has a log, so the two cards line up row for row; before any lookup they preview the catalog.
 		solo.setData(skill, result, virtualLevels, config.enableSkillClogs()
+			&& (result == null || clog != null || otherClog != null)
 			? SkillClogSection.forSkill(skill, clog, otherClog, catalog, clogIndex)
 			: Collections.emptyList(), itemManager);
 		// A section's own count rides under its Obtained line, as the game's page for it shows.

@@ -87,6 +87,28 @@ public class SkillCellGridTest
 	}
 
 	@Test
+	public void aPlayerLookedUpWithNoLogGetsThePlainSkillCardUnlessTheComparisonHasOne()
+	{
+		// Most strangers have no log from any source (Dylan, 2026-11-07): their skill card is the stats rows alone,
+		// not a dormant list. Beside a player with a log, both keep the sections so the two cards line up.
+		SkillCellGrid cells = grid();
+		ClogResult catalog = new ClogResult("Catalog", Collections.emptyMap(),
+			Collections.singletonMap("giants_foundry", java.util.List.of(1, 2)),
+			Map.of(1, "Smiths tunic", 2, "Smiths trousers"), null, null);
+		HiscoreResult stranger = hiscores(Map.of(Skill.SMITHING, 70));
+		cells.render(stranger, null, false, null, null, catalog);
+		SkillTooltip plain = (SkillTooltip) cells.labels().get(Skill.SMITHING).createToolTip();
+		assertTrue(TestViews.sections(plain).isEmpty());
+
+		ClogResult synced = emptyClog();
+		cells.render(stranger, hiscores(Map.of(Skill.SMITHING, 80)), false, null, synced, catalog);
+		SideBySideTooltip pair = (SideBySideTooltip) cells.labels().get(Skill.SMITHING).createToolTip();
+		assertEquals(TestViews.sections((SkillTooltip) pair.sides()[1]).size(),
+			TestViews.sections((SkillTooltip) pair.sides()[0]).size());
+		assertFalse(TestViews.sections((SkillTooltip) pair.sides()[0]).isEmpty());
+	}
+
+	@Test
 	public void soloCellsUseSkillColorsAndNativeTooltips()
 	{
 		SkillCellGrid cells = grid();
