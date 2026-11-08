@@ -72,7 +72,7 @@ public class ClogPagesTest
 		categories.put("zulrah", java.util.Arrays.asList(1, 2, 3));
 		java.util.Map<String, java.util.List<String>> tabs = new java.util.LinkedHashMap<>();
 		tabs.put("Bosses", java.util.Collections.singletonList("zulrah"));
-		index.publishForTest(categories, java.util.Collections.emptyMap(), tabs, java.util.Collections.emptyMap());
+		TestViews.publish(index, categories, java.util.Collections.emptyMap(), tabs, java.util.Collections.emptyMap());
 		pages.setClogIndex(index);
 		javax.swing.JLabel combat = new javax.swing.JLabel()
 		{

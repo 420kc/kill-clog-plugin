@@ -105,7 +105,7 @@ public class ManualClogSyncTest
 		cache = reload();
 		pluginField("clogIndex").set(plugin, new ClogIndex());
 		index = (ClogIndex) pluginField("clogIndex").get(plugin);
-		index.publishForTest(Map.of("zulrah", List.of(1, 2, 3)), Map.of());
+		TestViews.publish(index, Map.of("zulrah", List.of(1, 2, 3)), Map.of());
 		pluginField("client").set(plugin, client);
 		pluginField("localClogCache").set(plugin, cache);
 		pluginField("chatNotifier").set(plugin, notifier);
@@ -491,7 +491,7 @@ public class ManualClogSyncTest
 	@Test
 	public void automaticCaptureStoresOneCanonicalSlotForMultipleForms() throws Exception
 	{
-		index.publishForTest(Map.of("zulrah", List.of(10000)), Map.of(), Map.of(), Map.of(10001, 10000));
+		TestViews.publish(index, Map.of("zulrah", List.of(10000)), Map.of(), Map.of(), Map.of(10001, 10000));
 		openCollectionLog();
 		tick(101);
 		itemScript(10001, 2, 102);
@@ -510,7 +510,7 @@ public class ManualClogSyncTest
 	@Test
 	public void variantFormsCannotStandInForAMissingLogicalSlot() throws Exception
 	{
-		index.publishForTest(Map.of("zulrah", List.of(10000, 10002)), Map.of(), Map.of(), Map.of(10001, 10000));
+		TestViews.publish(index, Map.of("zulrah", List.of(10000, 10002)), Map.of(), Map.of(), Map.of(10001, 10000));
 		obtained = 2;
 		openCollectionLog();
 		tick(101);

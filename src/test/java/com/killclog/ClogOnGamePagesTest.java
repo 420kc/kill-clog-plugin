@@ -144,7 +144,7 @@ public class ClogOnGamePagesTest
 	public void theGamesIndexLaysALogOnItsPages()
 	{
 		ClogIndex index = new ClogIndex();
-		index.publishForTest(gamePages(), Collections.emptyMap());
+		TestViews.publish(index, gamePages(), Collections.emptyMap());
 
 		ClogResult laid = index.laid(templeLog());
 

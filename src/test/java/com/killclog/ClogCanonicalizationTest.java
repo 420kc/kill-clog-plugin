@@ -37,7 +37,7 @@ public class ClogCanonicalizationTest
 	public void onlyDeclaredAliasesCollapse()
 	{
 		ClogIndex index = new ClogIndex();
-		index.publishForTest(Collections.emptyMap(), Collections.emptyMap(),
+		TestViews.publish(index, Collections.emptyMap(), Collections.emptyMap(),
 			Collections.emptyMap(), Collections.singletonMap(90_001, 90_000));
 		assertEquals(90_000, index.canonicalItemId(90_001));
 		assertEquals(10420, index.canonicalItemId(10420));
@@ -57,7 +57,7 @@ public class ClogCanonicalizationTest
 		Map<String, List<String>> tabs = new LinkedHashMap<>();
 		tabs.put("Minigames", Collections.singletonList("tithe_farm"));
 		ClogIndex index = new ClogIndex();
-		index.publishForTest(categories, Collections.emptyMap(), tabs, Collections.emptyMap());
+		TestViews.publish(index, categories, Collections.emptyMap(), tabs, Collections.emptyMap());
 
 		SkillClogSection tithe = SkillClogSection.forSkill(
 			Skill.FARMING, result, null, result, index).stream()
@@ -93,7 +93,7 @@ public class ClogCanonicalizationTest
 		tabs.put("Minigames", Collections.singletonList("tithe_farm"));
 		tabs.put("Other", Collections.emptyList());
 		ClogIndex index = new ClogIndex();
-		index.publishForTest(categories, Collections.emptyMap(), tabs, Collections.emptyMap());
+		TestViews.publish(index, categories, Collections.emptyMap(), tabs, Collections.emptyMap());
 
 		Map<String, List<ClogResult.ClogItem>> obtained = new LinkedHashMap<>();
 		obtained.put("tithe_farm", FEMALE_TITHE_OBTAINED);
@@ -129,7 +129,7 @@ public class ClogCanonicalizationTest
 			Arrays.asList(8844, 13226, 13639, 20661, 25539, 25582, 26376,
 				26850, 27226, 28140, 28583, 29996));
 		ClogIndex index = new ClogIndex();
-		index.publishForTest(categories, Collections.emptyMap());
+		TestViews.publish(index, categories, Collections.emptyMap());
 
 		int[][] pairs = {
 			{20449, 8844}, {24478, 13226}, {24482, 13639}, {24555, 20661},
@@ -150,7 +150,7 @@ public class ClogCanonicalizationTest
 		Map<String, List<Integer>> categories = Collections.singletonMap("variants",
 			Arrays.asList(28140, 28142));
 		ClogIndex index = new ClogIndex();
-		index.publishForTest(categories, Collections.emptyMap());
+		TestViews.publish(index, categories, Collections.emptyMap());
 
 		assertEquals(28140, index.canonicalItemId(28140));
 		assertEquals(28142, index.canonicalItemId(28142));
@@ -162,7 +162,7 @@ public class ClogCanonicalizationTest
 		Map<String, List<Integer>> categories = Collections.singletonMap("variants",
 			Collections.singletonList(13226));
 		ClogIndex index = new ClogIndex();
-		index.publishForTest(categories, Collections.emptyMap());
+		TestViews.publish(index, categories, Collections.emptyMap());
 
 		List<ClogResult.ClogItem> normalized = index.canonicalizeItems(Arrays.asList(
 			new ClogResult.ClogItem(24478, 1, "2026-01-01"),

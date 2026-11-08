@@ -54,7 +54,7 @@ public class ClogStructureTest
 			tabs.put(tab.getAsJsonObject().get("name").getAsString(), keys);
 		}
 		ClogIndex index = new ClogIndex();
-		index.publishForTest(items, new HashMap<>(), tabs, new HashMap<>(), names);
+		TestViews.publish(index, items, new HashMap<>(), tabs, new HashMap<>(), names);
 		return index;
 	}
 

@@ -2377,7 +2377,7 @@ public class PluginPublicationCharacterizationTest
 	public void aLogoutDropsTheCollectionLogsStructureAndReadsItAgainAtOnce() throws Exception
 	{
 		ClogIndex index = (ClogIndex) field("clogIndex");
-		index.publishForTest(java.util.Collections.emptyMap(), java.util.Collections.emptyMap());
+		TestViews.publish(index, java.util.Collections.emptyMap(), java.util.Collections.emptyMap());
 		clearInvocations(client);
 		gameState = GameState.LOGIN_SCREEN;
 		logout();

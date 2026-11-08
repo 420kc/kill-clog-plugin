@@ -88,7 +88,7 @@ public class ClogCatalogFlightTest
 		http.body = successBody("fetchCategories");
 		ClogService service = service(http);
 		ClogIndex index = new ClogIndex();
-		index.publishForTest(Map.of("zulrah", List.of(12921)), Map.of(12921, "Pet snakeling"));
+		TestViews.publish(index, Map.of("zulrah", List.of(12921)), Map.of(12921, "Pet snakeling"));
 		TestViews.inject(service, index);
 		fetch(service, "fetchCategories").join();
 		assertEquals("Pet snakeling", service.getCatalogResult("Anyone").getItemName(12921));

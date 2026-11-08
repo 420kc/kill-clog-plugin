@@ -44,6 +44,24 @@ final class TestViews
 		throw new AssertionError("no catalog field in " + target.getClass().getSimpleName());
 	}
 
+	/** ClogIndex's test seam in its short forms: a catalog with its pages and names, with its tabs and remaps, and all. */
+	static void publish(ClogIndex index, Map<String, List<Integer>> pages, Map<Integer, String> names)
+	{
+		publish(index, pages, names, Collections.emptyMap(), Collections.emptyMap());
+	}
+
+	static void publish(ClogIndex index, Map<String, List<Integer>> pages, Map<Integer, String> names,
+		Map<String, List<String>> tabs, Map<Integer, Integer> remaps)
+	{
+		index.publishForTest(pages, names, tabs, remaps, Collections.emptyMap());
+	}
+
+	static void publish(ClogIndex index, Map<String, List<Integer>> pages, Map<Integer, String> names,
+		Map<String, List<String>> tabs, Map<Integer, Integer> remaps, Map<String, String> pageNames)
+	{
+		index.publishForTest(pages, names, tabs, remaps, pageNames);
+	}
+
 	private TestViews()
 	{
 	}

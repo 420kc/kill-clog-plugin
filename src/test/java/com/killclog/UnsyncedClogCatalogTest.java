@@ -15,7 +15,7 @@ public class UnsyncedClogCatalogTest
 		// The catalog must serve categories and item names from one parse:
 		// a reparse between two reads once paired pieces of two generations.
 		ClogIndex index = new ClogIndex();
-		index.publishForTest(
+		TestViews.publish(index,
 			Collections.singletonMap("vorkath", java.util.Arrays.asList(1, 2)),
 			twoNames());
 
@@ -32,7 +32,7 @@ public class UnsyncedClogCatalogTest
 		assertSame(first, catalog.result());
 
 		// A reparse moves the generation; the catalog rebuilds coherently.
-		index.publishForTest(
+		TestViews.publish(index,
 			Collections.singletonMap("zulrah", Collections.singletonList(3)),
 			Collections.singletonMap(3, "Tanzanite fang"));
 		ClogResult rebuilt = catalog.result();
@@ -48,7 +48,7 @@ public class UnsyncedClogCatalogTest
 		ClogIndex index = new ClogIndex();
 		Map<String, List<Integer>> cats = new HashMap<>();
 		cats.put("vorkath", java.util.Arrays.asList(1, 2));
-		index.publishForTest(cats, twoNames());
+		TestViews.publish(index, cats, twoNames());
 
 		ClogIndex.CatalogCopy copy = index.copyCatalog();
 		assertNotNull(copy);

@@ -335,21 +335,6 @@ final class ClogIndex
 		return new CatalogCopy(s, ClogResult.copyPages(s.categoryItems), new HashMap<>(s.itemNames));
 	}
 
-	/** Test seam: publish a parse with the given categories and item names. */
-	/* package */ void publishForTest(Map<String, List<Integer>> categoryItems,
-		Map<Integer, String> itemNames)
-	{
-		publishForTest(categoryItems, itemNames, Collections.emptyMap(), Collections.emptyMap());
-	}
-
-	/** Test seam for the Jagex tab taxonomy and runtime-provided duplicate item remaps. */
-	/* package */ void publishForTest(Map<String, List<Integer>> categoryItems,
-		Map<Integer, String> itemNames, Map<String, List<String>> tabCategoryKeys,
-		Map<Integer, Integer> canonicalItemIds)
-	{
-		publishForTest(categoryItems, itemNames, tabCategoryKeys, canonicalItemIds, Collections.emptyMap());
-	}
-
 	/** Test seam with the pages' own names, for the structure the sync shares. */
 	/* package */ void publishForTest(Map<String, List<Integer>> categoryItems,
 		Map<Integer, String> itemNames, Map<String, List<String>> tabCategoryKeys,

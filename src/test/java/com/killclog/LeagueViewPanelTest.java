@@ -283,7 +283,7 @@ public class LeagueViewPanelTest
 	public void yourTooltipsInALeagueFromAnotherWorldShowItsEmptyLog() throws Exception
 	{
 		ClogIndex index = new ClogIndex();
-		index.publishForTest(Map.of("zulrah", java.util.List.of(1, 2, 3)), Map.of());
+		TestViews.publish(index, Map.of("zulrah", java.util.List.of(1, 2, 3)), Map.of());
 		Cells cells = field(panel, "cells", Cells.class);
 		Map<?, ?> tooltips = field(cells, "tooltipDataMap", Map.class);
 		java.util.Map<String, Integer> kills = new java.util.HashMap<>();
@@ -308,7 +308,7 @@ public class LeagueViewPanelTest
 	{
 		// RuneLite lists every saved profile each time your PBs are asked for, so the grid asks once for all bosses.
 		ClogIndex index = new ClogIndex();
-		index.publishForTest(Map.of("zulrah", java.util.List.of(1, 2, 3), "vorkath", java.util.List.of(4)), Map.of());
+		TestViews.publish(index, Map.of("zulrah", java.util.List.of(1, 2, 3), "vorkath", java.util.List.of(4)), Map.of());
 		Cells cells = field(panel, "cells", Cells.class);
 		Map<?, ?> bossCells = field(cells, "bossLabels", Map.class);
 		java.util.concurrent.atomic.AtomicInteger asks = new java.util.concurrent.atomic.AtomicInteger();
@@ -959,7 +959,7 @@ public class LeagueViewPanelTest
 	{
 		// QA 11/7: the panel's own boss cells build their card with the looked-up player's log.
 		ClogIndex index = new ClogIndex();
-		index.publishForTest(Map.of("tombs_of_amascut", java.util.List.of(1, 2, 3)), Map.of());
+		TestViews.publish(index, Map.of("tombs_of_amascut", java.util.List.of(1, 2, 3)), Map.of());
 		Cells cells = field(panel, "cells", Cells.class);
 		Map<?, ?> tooltips = field(cells, "tooltipDataMap", Map.class);
 		java.util.Map<String, Integer> kills = new java.util.HashMap<>();

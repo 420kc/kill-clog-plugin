@@ -228,7 +228,7 @@ public class ChatCommandDispatchTest
 		{
 			this.result = result;
 			ClogIndex index = new ClogIndex();
-			index.publishForTest(result.getCategoryItems(), Map.of());
+			TestViews.publish(index, result.getCategoryItems(), Map.of());
 			TestViews.inject(command, index);
 			set(command, "localClogCache", new LocalClogCache(null, new NoopScheduledExecutorService())
 			{

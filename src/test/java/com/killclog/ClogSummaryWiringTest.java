@@ -76,7 +76,7 @@ public class ClogSummaryWiringTest
 		tabs.put("Bosses", Collections.singletonList("zulrah"));
 		tabs.put("Other", Collections.singletonList("slayer"));
 		ClogIndex index = new ClogIndex();
-		index.publishForTest(categories, Collections.emptyMap(), tabs, Collections.emptyMap());
+		TestViews.publish(index, categories, Collections.emptyMap(), tabs, Collections.emptyMap());
 
 		Map<String, List<ClogResult.ClogItem>> obtained = new LinkedHashMap<>();
 		obtained.put("zulrah", owned(bosses.subList(0, 75)));
