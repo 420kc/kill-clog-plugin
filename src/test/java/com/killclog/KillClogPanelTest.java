@@ -197,7 +197,7 @@ public class KillClogPanelTest
 			.anyMatch(id -> id == PanelData.THIRD_AGE_RING_ITEM_ID));
 		assertEquals(23, PanelData.THIRD_AGE_ITEMS.length);
 		// The game's Master rare page leaves the ring out too: it is the Mimic's alone.
-		assertFalse(Arrays.stream(PanelData.MASTER_RARE_ITEMS)
+		assertFalse(Arrays.stream(PanelData.RARE_ROWS.get(4).getItems())
 			.anyMatch(id -> id == PanelData.THIRD_AGE_RING_ITEM_ID));
 	}
 
@@ -230,7 +230,7 @@ public class KillClogPanelTest
 	{
 		Map<String, List<ClogResult.ClogItem>> obtained = new HashMap<>();
 		obtained.put("hard_treasure_trails", Collections.singletonList(
-			new ClogResult.ClogItem(PanelData.THIRD_AGE_ITEM_ID, 1, null)));
+			new ClogResult.ClogItem(10348, 1, null)));
 		ClogResult result = new ClogResult(
 			"TestPlayer",
 			obtained,
@@ -244,7 +244,7 @@ public class KillClogPanelTest
 		TooltipData thirdAge = builder.buildClueRareData("3rd Age", PanelData.CLOG_THIRD_AGE, result);
 		assertNotNull(thirdAge);
 		assertEquals(1, thirdAge.obtainedCount);
-		assertTrue(thirdAge.obtainedIds.contains(PanelData.THIRD_AGE_ITEM_ID));
+		assertTrue(thirdAge.obtainedIds.contains(10348));
 	}
 
 	@Test

@@ -200,7 +200,7 @@ public class PanelCellResetCharacterizationTest
 			activities, Collections.emptyMap(), Collections.emptyMap(), 0, 0L, 0, 0);
 		Map<String, List<ClogResult.ClogItem>> obtained = new HashMap<>();
 		obtained.put("hard_treasure_trails", Collections.singletonList(
-			new ClogResult.ClogItem(PanelData.THIRD_AGE_ITEM_ID, 1, null)));
+			new ClogResult.ClogItem(10348, 1, null)));
 		ClogResult clog = new ClogResult("Seeded", obtained, Collections.emptyMap(), new HashMap<>(), null, null);
 
 		cells.renderHiscore(hiscore);

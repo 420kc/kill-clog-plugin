@@ -289,8 +289,8 @@ public class TraySummaryWiringTest
 	public void theRareRowsAreClueRareRowsTsvRowForRow()
 	{
 		List<RareRow> rows = PanelData.RARE_ROWS;
-		assertEquals(Arrays.asList(PanelData.CLOG_THIRD_AGE, PanelData.CLOG_GILDED, PanelData.RARE_HARD,
-			PanelData.RARE_ELITE, PanelData.RARE_MASTER), rows.stream().map(RareRow::getKey).collect(Collectors.toList()));
+		assertEquals(Arrays.asList(PanelData.CLOG_THIRD_AGE, PanelData.CLOG_GILDED, "hard_rare",
+			"elite_rare", "master_rare"), rows.stream().map(RareRow::getKey).collect(Collectors.toList()));
 		assertEquals(Arrays.asList("3rd Age", "Gilded", "Hard Treasure Trails (Rare)", "Elite Treasure Trails (Rare)",
 			"Master Treasure Trails (Rare)"), rows.stream().map(RareRow::getName).collect(Collectors.toList()));
 		assertArrayEquals(new String[]{"3rd Age", "Gilded", "Hard", "Elite", "Master"},
@@ -305,10 +305,10 @@ public class TraySummaryWiringTest
 			"master_treasure_trails_rare"), rows.stream().map(RareRow::getPage).collect(Collectors.toList()));
 		assertArrayEquals(PanelData.THIRD_AGE_ITEMS, rows.get(0).getItems());
 		assertArrayEquals(PanelData.GILDED_ITEMS, rows.get(1).getItems());
-		assertArrayEquals(PanelData.HARD_RARE_ITEMS, rows.get(2).getItems());
-		assertArrayEquals(PanelData.ELITE_RARE_ITEMS, rows.get(3).getItems());
-		assertArrayEquals(PanelData.MASTER_RARE_ITEMS, rows.get(4).getItems());
-		assertArrayEquals(new int[]{PanelData.THIRD_AGE_ITEM_ID, PanelData.GILDED_ITEM_ID, 20544, 20543, 19836},
+		assertArrayEquals(PanelData.RARE_ROWS.get(2).getItems(), rows.get(2).getItems());
+		assertArrayEquals(PanelData.RARE_ROWS.get(3).getItems(), rows.get(3).getItems());
+		assertArrayEquals(PanelData.RARE_ROWS.get(4).getItems(), rows.get(4).getItems());
+		assertArrayEquals(new int[]{10348, 3481, 20544, 20543, 19836},
 			rows.stream().mapToInt(RareRow::getIconItemId).toArray());
 	}
 

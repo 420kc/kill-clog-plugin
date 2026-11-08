@@ -65,24 +65,12 @@ final class PanelData
 	static final String CLOG_THIRD_AGE = "third_age";
 	static final String CLOG_GILDED = "gilded";
 	static final int[] CLUE_TIER_ITEM_IDS = itemIds("clue_tier_items");
-	static final int THIRD_AGE_ITEM_ID = 10348;
-	static final int GILDED_ITEM_ID = 3481;
 	static final int THIRD_AGE_RING_ITEM_ID = 23185;
 	static final int[] THIRD_AGE_ITEMS = itemIds("third_age_items");
 	static final int[] GILDED_ITEMS = itemIds("gilded_items");
 	// The log items the game counts past 250, up to 65,535; every other item stops at 250.
 	static final int[] COUNTS_PAST_250_ITEMS = itemIds("counts_past_250_items");
 
-	// Native clog rare categories. Public provider APIs do not provide these.
-	static final String RARE_HARD = "hard_rare";
-	static final String RARE_ELITE = "elite_rare";
-	static final String RARE_MASTER = "master_rare";
-
-	static final int[] HARD_RARE_ITEMS = itemIds("hard_rare_items");
-
-	static final int[] ELITE_RARE_ITEMS = itemIds("elite_rare_items");
-
-	static final int[] MASTER_RARE_ITEMS = itemIds("master_rare_items");
 
 	// The Clue Summary's rare rows in its order, one per collection (clue-rare-rows.tsv).
 	static final List<RareRow> RARE_ROWS = rareRows(CatalogTsv.rows(PanelData.class, "clue-rare-rows.tsv", 8));
