@@ -112,8 +112,13 @@ public class NameAutocompleterTest
 		JTextField box = new JTextField();
 		NameAutocompleter autocompleter = recalledLynxTitan(box);
 		box.setText("");
-		autocompleter.keyTyped(new KeyEvent(box, KeyEvent.KEY_TYPED, 0, 0, KeyEvent.VK_UNDEFINED, 'L'));
-		box.setText("L");                                              // the field takes the letter
+		// The key, then the field taking its letter, in one turn of the Swing thread as Swing types it: typed from the
+		// test's thread, the autofill could run before the letter landed and find nothing to finish (a slow CI runner).
+		javax.swing.SwingUtilities.invokeAndWait(() ->
+		{
+			autocompleter.keyTyped(new KeyEvent(box, KeyEvent.KEY_TYPED, 0, 0, KeyEvent.VK_UNDEFINED, 'L'));
+			box.setText("L");
+		});
 		javax.swing.SwingUtilities.invokeAndWait(Thread::yield);      // and the autofill lands after it
 		assertEquals("the autofill offers the rest", "Lynx Titan", box.getText());
 		assertEquals(1, box.getSelectionStart());
