@@ -58,34 +58,62 @@ public class PvmSummaryTooltipTest
 		CombatAchievementResult grandmaster = CombatAchievementResult.of(totals, totals);
 		assertEquals(grandmaster.getTotalPoints(), grandmaster.nextTierPoints());
 
-		// No tier, no tile: Most Killed stands alone; with a tier the two lay out two across, wider.
+		// No tier: Most Killed and Bosses, two across and wider; with a tier, three across.
 		BufferedImage noTier = render(painted(fill(pvmCard(CombatAchievementResult.of(Collections.emptyMap(), totals)))));
 		BufferedImage tiered = render(painted(fill(pvmCard(easy))));
-		int plainRow = TestViews.tiles(noTier).get(0).y;
-		assertEquals(1, TestViews.tiles(noTier).stream().filter(tile -> tile.y == plainRow).count());
-		List<Point> wide = TestViews.tiles(tiered, GameTile.PAGE_WIDTH, GameTile.HEIGHT);
-		int tieredRow = wide.get(0).y;
-		assertEquals(plainRow, tieredRow);
-		assertEquals(GameTile.PAGE_WIDTH + GameTile.GAP, wide.get(1).x - wide.get(0).x);
-		assertEquals(tieredRow, wide.get(1).y);
+		int row = TestViews.tiles(noTier).get(0).y;
+		assertTrue(rowHas(noTier, row, GameTile.PAGE_WIDTH, 2));
+		assertTrue(rowHas(tiered, row, GameTile.WIDTH, 3));
 		// The PvM row is a tile tall either way, so the raids stay put.
 		assertEquals(raidTiles(noTier), raidTiles(tiered));
 	}
 
-	@Test
-	public void theMostKilledTileNamesItsBossInTheBandAndOpensItsCard()
+	/** Whether a row holds n tiles of this width side by side, a gap apart. */
+	private static boolean rowHas(BufferedImage image, int row, int width, int n)
 	{
+		List<Point> tiles = TestViews.tiles(image, width, GameTile.HEIGHT);
+		Point first = tiles.stream().filter(tile -> tile.y == row).findFirst().orElse(null);
+		for (int i = 0; first != null && i < n; i++)
+		{
+			Point want = new Point(first.x + i * (width + GameTile.GAP), row);
+			if (!tiles.contains(want))
+			{
+				return false;
+			}
+		}
+		return first != null;
+	}
+
+	@Test
+	public void theMostKilledAndBossesTilesOpenTheirCardsAndNameOnlyInTheBand()
+	{
+		assertTrue("tests run headless, so no link can reach a browser", java.awt.GraphicsEnvironment.isHeadless());
 		PvmSummaryTooltip tip = card();
 		tip.setMostKilled(HiscoreSkill.VORKATH, null, 12, 12);
-		List<HiscoreSkill> opened = new ArrayList<>();
-		tip.setOnOpenRaid((press, boss) -> opened.add(boss));
-		List<Point> tiles = TestViews.tiles(render(painted(tip)));
-		// Most Killed leads the tiles, the raids after it.
-		Point most = tiles.get(0);
+		List<String> opened = new ArrayList<>();
+		tip.setOnOpenRaid((press, boss) -> opened.add(boss.getName()));
+		tip.setOnOpenBosses(press -> opened.add("Bosses tab"));
+		BufferedImage image = render(painted(tip));
+		int row = TestViews.tiles(image).get(0).y;
+		List<Point> wide = TestViews.tiles(image, GameTile.PAGE_WIDTH, GameTile.HEIGHT);
+		Point most = wide.stream().filter(tile -> tile.y == row).findFirst().get();
+		Point bosses = new Point(most.x + GameTile.PAGE_WIDTH + GameTile.GAP, row);
 		move(tip, most.x + 10, most.y + 10);
 		assertEquals("Vorkath", tip.getHeaderHoverLineText());
 		assertTrue(press(tip, most.x + 10, most.y + 10, MouseEvent.BUTTON1).isConsumed());
-		assertEquals(List.of(HiscoreSkill.VORKATH), opened);
+		assertTrue(press(tip, bosses.x + 10, bosses.y + 10, MouseEvent.BUTTON1).isConsumed());
+		assertEquals(List.of("Vorkath", "Bosses tab"), opened);
+	}
+
+	@Test
+	public void aTilesHoverNameIsNeverAWikiLink()
+	{
+		// A press on a tile opens its card; the megarare it names must not open its wiki page as well (11/7).
+		PvmSummaryTooltip tip = painted(card());
+		Point cox = firstRaid(tip);
+		move(tip, cox.x + 10, cox.y + 10);
+		assertEquals("Twisted Bow", tip.getHeaderHoverLineText());
+		assertEquals(-1, (int) TestViews.field(tip.itemHover, "hoveredItemId"));
 	}
 
 	/** How many tiles the PvM row holds: those level with the card's first tile. */

@@ -226,7 +226,7 @@ public class KillClogPanel extends PluginPanel
 		this.clogPages = new ClogPages(tooltipController, cells, comparison, lookupSession, tooltipDataBuilder, config);
 		this.activityTooltips = new ActivitySummaryTooltips(
 			lookupSession, comparison, cells, tooltipController, itemManager,
-			caRewardSprites, config::cardLinks);
+			caRewardSprites, config::cardLinks, clogPages);
 		this.itemNameResolver = new TooltipItemNameResolver(clientThread, itemManager,
 			this::onTooltipItemNamesResolved);
 		this.unsyncedCatalog.setResolver(itemNameResolver::resolve);

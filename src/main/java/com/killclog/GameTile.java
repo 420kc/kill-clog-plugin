@@ -33,6 +33,7 @@ final class GameTile
 	private static final int NAME_TOP = 4;
 	private static final int SPRITE_TOP = 17;
 	private static final int COUNT_TOP = 50;
+	private static final int SPRITE_SLOT = 32;
 	private static final int BAR_PARTS = 4;
 	private static final int BAR_HEIGHT = 8;
 	private static final int BAR_PAD = 5;
@@ -74,6 +75,10 @@ final class GameTile
 		// Its own count line in white, the bar still the log's: Most Killed's kills over that boss's log.
 		@Nullable
 		String countText;
+		// Two lines in place of the count and bar, each its own color: the Bosses tile's killed and logs.
+		@Nullable
+		String[] lines;
+		Color[] lineColors;
 
 		Tile wear(@Nullable Color wear)
 		{
@@ -96,6 +101,13 @@ final class GameTile
 		Tile named(String name)
 		{
 			itemName = name;
+			return this;
+		}
+
+		Tile lines(String[] text, Color[] colors)
+		{
+			lines = text;
+			lineColors = colors;
 			return this;
 		}
 	}
@@ -168,11 +180,27 @@ final class GameTile
 		{
 			Composite solid = g.getComposite();
 			g.setComposite(tile.faint ? AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f) : solid);
-			g.drawImage(tile.sprite, center - tile.sprite.getWidth(null) / 2, box.y + SPRITE_TOP, null);
+			// A small icon (a CA tier's, a boss's) sits in the middle of the item sprites' slot.
+			g.drawImage(tile.sprite, center - tile.sprite.getWidth(null) / 2,
+				box.y + SPRITE_TOP + Math.max(0, SPRITE_SLOT - tile.sprite.getHeight(null)) / 2, null);
 			g.setComposite(solid);
 		}
 		g.setFont(COUNT_FONT);
 		FontMetrics fm = g.getFontMetrics();
+		if (tile.lines != null)
+		{
+			// The first level with the other tiles' counts, the second where their bars sit, in the smaller font.
+			FontMetrics small = g.getFontMetrics(FontManager.getRunescapeSmallFont());
+			int[] baselines = {box.y + COUNT_TOP + g.getFontMetrics(COUNT_FONT).getAscent(), box.y + box.height - BAR_PAD};
+			g.setFont(small.getFont());
+			for (int i = 0; i < tile.lines.length; i++)
+			{
+				g.setColor(tile.lineColors[i]);
+				g.drawString(tile.lines[i], center - small.stringWidth(tile.lines[i]) / 2, baselines[i]);
+			}
+			g.setFont(font);
+			return;
+		}
 		boolean scored = tile.countText != null || !known && tile.score > 0;
 		String count = tile.countText != null ? tile.countText : scored ? TitleTooltip.grouped(tile.score)
 			: tile.total <= 0 ? "" : known ? TitleTooltip.progressCountText(tile.obtained, tile.total)
@@ -181,6 +209,11 @@ final class GameTile
 		g.drawString(count, center - fm.stringWidth(count) / 2, box.y + (page ? PAGE_COUNT_TOP : COUNT_TOP) + fm.getAscent());
 		g.setFont(font);
 
+		// No bar while the log is unknown (Dylan, 2026-11-07): an empty one would read as nothing held.
+		if (!known)
+		{
+			return;
+		}
 		int x = box.x + BAR_PAD;
 		int barY = box.y + box.height - BAR_PAD - BAR_HEIGHT;
 		int width = box.width - 2 * BAR_PAD;

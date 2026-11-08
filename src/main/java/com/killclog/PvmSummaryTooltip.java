@@ -5,7 +5,7 @@ import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.*;
 import java.util.List;
-import java.util.function.BiConsumer;
+import java.util.function.*;
 import javax.annotation.Nullable;
 import lombok.Setter;
 import net.runelite.client.game.ItemManager;
@@ -84,6 +84,12 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private Image combatIcon;
 	private CombatAchievementResult caResult;
 	private BufferedImage caRewardSprite;
+	// The Bosses tile's sprite, the Collection Log's Bosses tab's, and what a press on it opens.
+	private Image bossesSprite;
+	@Setter
+	@Nullable
+	private Consumer<MouseEvent> onOpenBosses;
+	private static final int BOSSES = 1;
 	// The most killed boss's tile: the boss, its icon and its log.
 	@Nullable
 	private HiscoreSkill mostKilledBoss;
@@ -94,7 +100,12 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private static final int MOST_KILLED = 0;
 	private final CardBody.ClickRows pvmRows = new CardBody.ClickRows(this, (e, key) ->
 	{
-		if (onOpenRaid != null && mostKilledBoss != null)
+		if (key == BOSSES && onOpenBosses != null)
+		{
+			onOpenBosses.accept(e);
+			e.consume();
+		}
+		else if (key == MOST_KILLED && onOpenRaid != null && mostKilledBoss != null)
 		{
 			onOpenRaid.accept(e, mostKilledBoss);
 			e.consume();
@@ -150,6 +161,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 	public void setMegarares(int tbowCount, int scytheCount,
 		int shadowCount, int obligatorCount, ItemManager itemManager)
 	{
+		bossesSprite = itemSprite(ClogSummaryTooltip.TAB_SPRITES.getOrDefault("Bosses", -1), itemManager);
 		weaponCounts[0] = tbowCount;
 		weaponCounts[1] = scytheCount;
 		weaponCounts[2] = shadowCount;
@@ -226,16 +238,10 @@ public class PvmSummaryTooltip extends TitleTooltip
 			.add(CardBody.gap(LEVEL_GAP_BELOW));
 		CardBody body = new CardBody().titled(PVM_HEADER)
 			.add(CardBody.line("Total Kills: ", scoreText(totalKills)))
-			.add(CardBody.line("EHB: ", ehbText(ehb)))
-			.add(CardBody.line("Bosses Killed: ", bossesWithKc + "/" + totalBosses,
-				completionColor(bossesWithKc, totalBosses)));
-		if (bossesCompleted >= 0)
-		{
-			body.add(CardBody.line("Logs Completed: ", bossesCompleted + "/" + bossesWithClog,
-				completionColor(bossesCompleted, bossesWithClog)));
-		}
+			.add(CardBody.line("EHB: ", ehbText(ehb)));
 		// The PvM tiles: the CA tier once one is held, its points toward the next tier (a Grandmaster's bar full and
-		// green), and the most killed boss, its kills over its log, its name in the band, opening its card.
+		// green); the most killed boss, its kills over its log, its name in the band, opening its card; and Bosses, the
+		// bosses killed and their logs done, opening the Collection Log's Bosses tab.
 		List<GameTile.Tile> pvm = new ArrayList<>();
 		if (hasTierRow())
 		{
@@ -248,10 +254,11 @@ public class PvmSummaryTooltip extends TitleTooltip
 				onOpenRaid != null && mostKilledBoss != null ? MOST_KILLED : -1)
 				.count(grouped(mostKilledKc) + " kc").named(mostKilled));
 		}
-		if (!pvm.isEmpty())
-		{
-			body.add(CardBody.gap(SECTION_GAP)).add(GameTile.grid(pvmRows, pvm));
-		}
+		String killed = "Killed: " + bossesWithKc + "/" + totalBosses;
+		pvm.add(new GameTile.Tile("Bosses", bossesSprite, -1, 0, onOpenBosses != null ? BOSSES : -1).lines(
+			bossesCompleted >= 0 ? new String[]{killed, "Logs: " + bossesCompleted + "/" + bossesWithClog} : new String[]{killed},
+			new Color[]{completionColor(bossesWithKc, totalBosses), completionColor(bossesCompleted, bossesWithClog)}));
+		body.add(CardBody.gap(SECTION_GAP)).add(GameTile.grid(pvmRows, pvm));
 		// Raids lead the sections under the band.
 		List<GameTile.Tile> raids = new ArrayList<>();
 		for (int i = 0; i < raidRowCount(); i++)

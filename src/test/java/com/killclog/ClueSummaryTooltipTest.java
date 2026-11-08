@@ -141,6 +141,35 @@ public class ClueSummaryTooltipTest
 	}
 
 	@Test
+	public void aTileWithNoLogDrawsNoBar()
+	{
+		// Dylan, 2026-11-07: with no log a tile shows no bar at all, rather than an empty one.
+		int track = NativeTooltip.railTrack(ClogSummaryTooltip.BAR_TRACK).getRGB();
+		ClueSummaryTooltip bare = new ClueSummaryTooltip();
+		bare.setData(null, false);
+		BufferedImage without = paint(bare);
+		Point beginner = TestViews.tiles(without).get(0);
+		assertFalse(has(without, beginner, track));
+		BufferedImage with = paint(card());
+		assertTrue(has(with, TestViews.tiles(with).get(0), track));
+	}
+
+	private static boolean has(BufferedImage image, Point tile, int rgb)
+	{
+		for (int y = tile.y; y < tile.y + GameTile.HEIGHT; y++)
+		{
+			for (int x = tile.x; x < tile.x + GameTile.WIDTH; x++)
+			{
+				if (image.getRGB(x, y) == rgb)
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	@Test
 	public void progressNeverChangesTheCardsHeight()
 	{
 		ClueSummaryTooltip bare = new ClueSummaryTooltip();

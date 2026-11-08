@@ -20,7 +20,7 @@ public class ActivitySummaryTooltipsTest
 	private final ComparisonController comparison = mock(ComparisonController.class);
 	private final TooltipController tooltips = mock(TooltipController.class);
 	private final ActivitySummaryTooltips cards = new ActivitySummaryTooltips(mock(LookupSession.class), comparison,
-		mock(Cells.class), tooltips, mock(ItemManager.class), mock(CaRewardSprites.class), () -> null);
+		mock(Cells.class), tooltips, mock(ItemManager.class), mock(CaRewardSprites.class), () -> null, mock(ClogPages.class));
 
 	@Test
 	public void aloneTheSkillsCardShowsByItselfAndStaysOpenOverItsCell()
