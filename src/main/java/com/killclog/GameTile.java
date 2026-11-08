@@ -4,8 +4,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.util.List;
 import javax.annotation.Nullable;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.ImageUtil;
 

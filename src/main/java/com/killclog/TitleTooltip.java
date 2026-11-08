@@ -11,8 +11,7 @@ import javax.swing.JToolTip;
 import lombok.*;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.ui.FontManager;
-import net.runelite.client.util.AsyncBufferedImage;
-import net.runelite.client.util.ImageUtil;
+import net.runelite.client.util.*;
 
 /**
  * Intermediate tooltip with a titled header zone: bold title line,

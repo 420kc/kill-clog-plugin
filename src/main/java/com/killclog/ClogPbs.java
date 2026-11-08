@@ -1,8 +1,7 @@
 package com.killclog;
 
 import java.util.*;
-import java.util.function.BiConsumer;
-import java.util.function.Function;
+import java.util.function.*;
 import javax.annotation.*;
 import net.runelite.api.Client;
 import net.runelite.api.gameval.*;

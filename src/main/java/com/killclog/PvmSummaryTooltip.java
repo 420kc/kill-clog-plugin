@@ -3,7 +3,7 @@ package com.killclog;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.List;
 import java.util.function.BiConsumer;
 import javax.annotation.Nullable;
