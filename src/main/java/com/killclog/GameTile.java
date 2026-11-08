@@ -20,12 +20,12 @@ final class GameTile
 	static final int HEIGHT = 78;
 	static final int GAP = 4;
 	static final int COLS = 3;
-	static final int PAGE_WIDTH = (COLS * WIDTH - GAP) / 2;
+	static final int PAGE_WIDTH = (COLS * WIDTH + (COLS - 1) * GAP - GAP) / 2;
 	static final int PAGE_HEIGHT = 62;
 	private static final int PAGE_COUNT_TOP = 34;
 	private static final int NAME_LINE = 13;
 	private static final int NAME_PAD = 4;
-	// The frame keeps its corners, brackets and all, and stretches between them; a hovered tile's is a shade lighter.
+	// The frame keeps its corners, brackets and all, and stretches between them; a hovered tile's fill is a shade lighter.
 	private static final int FRAME_EDGE = 7;
 	// The game's tile frame, clear where its fill goes: the fill is painted under it (NativeTooltip.tileFill).
 	private static final BufferedImage FRAME = ImageUtil.loadImageResource(GameTile.class, "game-tile-edge.png");
