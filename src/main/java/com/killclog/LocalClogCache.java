@@ -1270,9 +1270,9 @@ public class LocalClogCache
 	}
 
 	/** Genuinely atomic where the filesystem allows it; plain replace as the
-	 *  documented fallback (some filesystems refuse ATOMIC_MOVE). Windows refuses to replace a file another program
-	 *  has open (a second client reading it, a virus scanner), so the disk thread waits and tries again for up to two
-	 *  seconds rather than drop the save. */
+	 *  documented fallback (some filesystems refuse ATOMIC_MOVE). Windows refuses the move while another program has
+	 *  either file open (a second client reading the log, a virus scanner reading the fresh one), so the disk thread
+	 *  waits and tries again for up to two seconds rather than drop the save. A missing file fails at once. */
 	static void atomicMove(Filepath from, Filepath to) throws IOException
 	{
 		for (int tries = 1; ; tries++)
@@ -1289,9 +1289,9 @@ public class LocalClogCache
 				}
 				return;
 			}
-			catch (AccessDeniedException e)
+			catch (FileSystemException e)
 			{
-				if (tries == 20)
+				if (tries == 20 || e instanceof NoSuchFileException)
 				{
 					throw e;
 				}

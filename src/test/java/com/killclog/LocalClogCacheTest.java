@@ -18,6 +18,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import net.runelite.client.util.Filepath;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
@@ -1255,6 +1256,33 @@ public class LocalClogCacheTest
 		{
 			store.shutdown();
 		}
+	}
+
+	@Test
+	public void aSaveLandsWhileAnotherProgramReadsItsNewFile() throws Exception
+	{
+		// A virus scanner opens a file the moment it's written, so it may hold the fresh temp file rather than the log;
+		// Windows then refuses the move as "in use" (not access denied), and the save waits for that too.
+		File dir = temporaryFolder.newFolder();
+		File fresh = new File(dir, "log.json.tmp");
+		Files.writeString(fresh.toPath(), "saved");
+		Filepath folder = TestFolders.folder(dir);
+		InputStream scanning = new FileInputStream(fresh);
+		Thread done = new Thread(() ->
+		{
+			try
+			{
+				Thread.sleep(500);
+				scanning.close();
+			}
+			catch (Exception ignored)
+			{
+			}
+		});
+		done.start();
+		LocalClogCache.atomicMove(folder.join("log.json.tmp"), folder.join("log.json"));
+		done.join();
+		assertEquals("saved", Files.readString(new File(dir, "log.json").toPath()));
 	}
 
 	/**
