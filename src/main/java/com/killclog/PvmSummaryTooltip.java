@@ -242,7 +242,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		// green); the most killed boss, its kills over its log, its name in the band, opening its card; and Bosses, the
 		// bosses killed and their logs done, opening the Collection Log's Bosses tab.
 		List<GameTile.Tile> pvm = new ArrayList<>();
-		if (hasTierRow())
+		if (caResult != null && caResult.getTier() != null)
 		{
 			pvm.add(new GameTile.Tile(tierDisplayName(caResult), caRewardSprite, caResult.getTotalPoints(),
 				caResult.nextTierPoints(), -1));
@@ -269,7 +269,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		body.titled("Raids").add(GameTile.grid(raidRows, raids));
 		// Slayer: XP and Rank from the hiscores, then clog progress when a synced log is known.
 		body.titled("Slayer")
-			.add(CardBody.line("XP: ", slayerXpText(slayerXp)))
+			.add(CardBody.line("XP: ", scoreText(slayerXp)))
 			.add(CardBody.line("Rank: ", scoreText(slayerRank)));
 		if (slayerObtained >= 0)
 		{
@@ -303,44 +303,24 @@ public class PvmSummaryTooltip extends TitleTooltip
 		return hasHardMode(row) ? PanelData.RAIDS[row] : PanelData.listed(PanelData.TFA);
 	}
 
-	/** The exact amount, never rounded: max slayer xp is 200,000,000 and the summary has the width for it. */
-	/* package */ static String slayerXpText(long xp)
-	{
-		return scoreText(xp);
-	}
-
 	/** The combat level's row like the panel's combat cell: its icon centered in the icon column, then the level in bold white. */
 	private CardBody.Part leadRow(@Nullable Image icon, String text)
 	{
-		return CardBody.row(LEVEL_ROW_HEIGHT, c -> iconColumnWidth() + c.bfm.stringWidth(text), (c, y) ->
+		int column = icon != null ? icon.getWidth(null) + LEVEL_ICON_GAP : 0;
+		return CardBody.row(LEVEL_ROW_HEIGHT, c -> column + c.bfm.stringWidth(text), (c, y) ->
 		{
 			Graphics2D g2 = c.g;
 			if (icon != null)
 			{
-				int column = iconColumnWidth() - LEVEL_ICON_GAP;
-				g2.drawImage(icon, c.inset() + (column - icon.getWidth(null)) / 2,
-					y + (LEVEL_ROW_HEIGHT - icon.getHeight(null)) / 2, null);
+				g2.drawImage(icon, c.inset(), y + (LEVEL_ROW_HEIGHT - icon.getHeight(null)) / 2, null);
 			}
 			g2.setFont(FontManager.getRunescapeBoldFont());
 			FontMetrics bfm = g2.getFontMetrics();
 			g2.setColor(NativeTooltip.valueColor);
-			g2.drawString(text, c.inset() + iconColumnWidth(),
+			g2.drawString(text, c.inset() + column,
 				y + (LEVEL_ROW_HEIGHT + bfm.getAscent() - bfm.getDescent()) / 2);
 			g2.setFont(FontManager.getRunescapeSmallFont());
 		});
-	}
-
-	/** The CA tile waits for a tier: a player still short of Easy has nothing to show there. */
-	private boolean hasTierRow()
-	{
-		return caResult != null && caResult.getTier() != null;
-	}
-
-	/** The combat level row's icon column: its icon, then the gap. */
-	private int iconColumnWidth()
-	{
-		int width = combatIcon != null ? combatIcon.getWidth(null) : 0;
-		return width > 0 ? width + LEVEL_ICON_GAP : 0;
 	}
 
 	/** Vanilla's hiscore formatter: up to three decimals, trailing zeros dropped. */
