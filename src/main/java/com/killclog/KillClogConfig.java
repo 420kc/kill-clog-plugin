@@ -57,8 +57,7 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "menuLabel",
 		name = "Menu Label",
-		description = "The option's text. To use Lookup, first turn off the HiScore plugin's Player option and Menu"
-			+ " option, which use the same text",
+		description = "To use \"Lookup\", first turn off RuneLite's default HiScore plugin",
 		section = menuLocationsSection,
 		position = 1
 	)
