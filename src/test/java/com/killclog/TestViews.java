@@ -62,6 +62,18 @@ final class TestViews
 		index.publishForTest(pages, names, tabs, remaps, pageNames);
 	}
 
+	/** The status line's text. */
+	static String statusText(PanelStatusRow row)
+	{
+		return ((javax.swing.JLabel) field(row, "searchStatus")).getText();
+	}
+
+	/** Whether a session's lookup is still out. */
+	static boolean inFlight(LookupSession session)
+	{
+		return ((LookupFanout) field(session, "fanout")).isInFlight();
+	}
+
 	private TestViews()
 	{
 	}

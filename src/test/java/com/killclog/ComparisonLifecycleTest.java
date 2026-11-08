@@ -67,7 +67,7 @@ public class ComparisonLifecycleTest
 		fixture.hiscores.get("Green").complete(hiscore(3));
 		edt(() ->
 		{
-			assertFalse(fixture.primary.isLookupInFlight());
+			assertFalse(TestViews.inFlight(fixture.primary));
 			fixture.primary.cancelInFlight();
 		});
 		fixture.cas.get("Green").complete(ca(3));

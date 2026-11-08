@@ -113,11 +113,6 @@ final class PanelStatusRow
 		return row;
 	}
 
-	String statusText()
-	{
-		return searchStatus.getText();
-	}
-
 	/**
 	 * Lookup text from the panel. The panel manages lookup lifetimes itself:
 	 * text holds the row until the panel replaces it, and blank hands the row

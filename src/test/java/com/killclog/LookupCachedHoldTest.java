@@ -91,13 +91,13 @@ public class LookupCachedHoldTest
 		LookupSession session = session();
 		cachedClogs.put("Red", clog("Red"));
 		edt(() -> session.start("Red", "Blue", AccountType.REGULAR));
-		edt(() -> assertTrue("in flight until the cached reveal", session.isLookupInFlight()));
+		edt(() -> assertTrue("in flight until the cached reveal", TestViews.inFlight(session)));
 		awaitCachedReveal();
 		edt(() ->
 		{
 			assertEquals(5, session.getHiscoreResult().getTotalLevel());
 			assertEquals("Red", session.getClogResult().getPlayerName());
-			assertFalse(session.isLookupInFlight());
+			assertFalse(TestViews.inFlight(session));
 			assertNull(LookupHoldTest.holdTimer(session));
 		});
 		assertEquals(Arrays.asList("onLookupStart", "onCachedResult"), order);
@@ -113,7 +113,7 @@ public class LookupCachedHoldTest
 		edt(() ->
 		{
 			assertNull("held, not shown", session.getHiscoreResult());
-			assertFalse("the hold must not block a new search", session.isLookupInFlight());
+			assertFalse("the hold must not block a new search", TestViews.inFlight(session));
 			assertNotNull(LookupHoldTest.holdTimer(session));
 		});
 		assertEquals(Arrays.asList("onLookupStart"), order);

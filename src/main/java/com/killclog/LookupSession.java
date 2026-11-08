@@ -435,8 +435,4 @@ public class LookupSession
 		return fanout.version();
 	}
 
-	public boolean isLookupInFlight()
-	{
-		return fanout.isInFlight();
-	}
 }

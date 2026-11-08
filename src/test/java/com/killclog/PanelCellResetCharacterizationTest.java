@@ -184,7 +184,7 @@ public class PanelCellResetCharacterizationTest
 			assertSame(TestViews.originalIcons(cells).get(HiscoreSkill.VORKATH), cells.getBossLabel(HiscoreSkill.VORKATH).getIcon());
 			// Rare cells are rebuilt as catalog previews right after this reset; see rebuildPrimaryTooltips.
 			assertEquals(" ", panel.playerName().getText());
-			assertEquals("Lookup failed", field("statusRow", PanelStatusRow.class).statusText());
+			assertEquals("Lookup failed", TestViews.statusText(field("statusRow", PanelStatusRow.class)));
 		});
 	}
 

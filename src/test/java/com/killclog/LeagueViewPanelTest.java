@@ -477,15 +477,15 @@ public class LeagueViewPanelTest
 		{
 			assertEquals(5000, session.getHiscoreResult().getTotalXp());
 			assertNull(session.getClogResult());
-			assertEquals("Hardcore collection log not recorded", status.statusText());
+			assertEquals("Hardcore collection log not recorded", TestViews.statusText(status));
 			ranks.select(RankLeaderboard.ULTIMATE);
 			assertEquals(-1, session.getHiscoreResult().getKc("Zulrah"));
 			assertNull(session.getClogResult());
-			assertEquals("Not on this leaderboard", status.statusText());
+			assertEquals("Not on this leaderboard", TestViews.statusText(status));
 			assertEquals("--", totalLevel.getText().trim());
 			ranks.select(RankLeaderboard.IRONMAN);
 			assertSame(log, session.getClogResult());
-			assertEquals(" ", status.statusText());
+			assertEquals(" ", TestViews.statusText(status));
 			assertEquals("2277", totalLevel.getText().trim());
 		});
 	}
@@ -519,7 +519,7 @@ public class LeagueViewPanelTest
 			assertFalse(ranks.isVisible());
 			assertSame(buck, session.getHiscoreResult());
 			assertSame(exo, comparison.getCompareHiscoreResult());
-			assertEquals(" ", status.statusText());
+			assertEquals(" ", TestViews.statusText(status));
 			setField(comparison, "comparisonMode", false);
 			panel.onComparisonExit();
 			assertTrue(ranks.isVisible());

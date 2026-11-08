@@ -170,7 +170,7 @@ public class LookupSessionTest
 		{
 			// Held, not shown: but a new search is never blocked by the hold.
 			assertNull(fixture.primary.getHiscoreResult());
-			assertFalse(fixture.primary.isLookupInFlight());
+			assertFalse(TestViews.inFlight(fixture.primary));
 		});
 		assertEquals(0, fixture.events("onHiscoreResult"));
 
@@ -383,7 +383,7 @@ public class LookupSessionTest
 
 	private static void assertDormant(LookupSession session)
 	{
-		assertFalse(session.isLookupInFlight());
+		assertFalse(TestViews.inFlight(session));
 		assertNull(session.getCurrentLookupRsn());
 		assertNull(session.getHiscoreResult());
 		assertNull(session.getClogResult());
