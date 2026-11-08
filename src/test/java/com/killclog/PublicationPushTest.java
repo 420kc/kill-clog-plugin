@@ -62,6 +62,19 @@ public class PublicationPushTest
 	}
 
 	@Test
+	public void aRetryOwesAnotherGamesWaitingPushItsOwnAndItsOwnGameNothing()
+	{
+		PublicationCoordinator.Push retry = automatic("main").retriedIn("main", 1);
+		assertEquals(java.util.Collections.singleton("demonic-pacts"), retry.owing(automatic("demonic-pacts")).owed);
+		assertEquals("its own game's waiting push it carries", java.util.Collections.emptySet(),
+			retry.owing(automatic("main")).owed);
+		assertEquals("a push following the world is the main game's", java.util.Collections.emptySet(),
+			retry.owing(automatic(null)).owed);
+		assertSame("another login's owes it nothing", retry,
+			retry.owing(PublicationCoordinator.Push.ask(NEXT, 0, 0, "demonic-pacts", false, NONE)));
+	}
+
+	@Test
 	public void theNewerCharacterRequestAndOneRetryAreKept()
 	{
 		PublicationCoordinator.Push first = PublicationCoordinator.Push.ask(LOGIN, 0, 0, "main", true, 1);

@@ -151,6 +151,24 @@ final class PublicationCoordinator
 				owed);
 		}
 
+		/**
+		 * This push, owing a waiting one's game its own push once this one's attempt ends. Its own game adds nothing: this
+		 * push carries that game's store as it stands when it goes. Another login's or era's waiting push owes nothing.
+		 */
+		Push owing(Push waiting)
+		{
+			if (waiting.session.getNumber() != session.getNumber() || waiting.era != era)
+			{
+				return this;
+			}
+			Set<String> owes = new HashSet<>(owed);
+			owes.add(game(waiting.mode));
+			owes.addAll(waiting.owed);
+			owes.remove(game(mode));
+			return new Push(session, era, mode, manual, forCharacter, asked, retried, line, retryOfAsk, automaticEra,
+				holdsWait, Collections.unmodifiableSet(owes));
+		}
+
 		/** Whether its one advised retry is spent for its game: it never retries again. */
 		boolean retry()
 		{
@@ -712,13 +730,31 @@ final class PublicationCoordinator
 		pushOwed(push);
 	}
 
-	/** Each other game a finished attempt carried gets its own push now, on the same terms as any push. */
+	/**
+	 * Each other game a finished attempt carried gets its own push now, an automatic one: a click was for its own game.
+	 * The main game's goes only from a main world, since a main push follows the world it gathers on; off one, the main
+	 * store's own catch-up on the next main world carries it. The world is read on the client thread.
+	 */
 	private void pushOwed(Push push)
 	{
-		for (String game : push.owed)
+		if (push.owed.isEmpty())
 		{
-			schedule(0, Push.ask(push.session, push.era, push.automaticEra, game, push.manual, NONE));
+			return;
 		}
+		clientThread.invoke(() ->
+		{
+			boolean onMain = GameMode.MAIN.equals(mode.get());
+			owner.execute(() ->
+			{
+				for (String game : push.owed)
+				{
+					if (onMain || !GameMode.MAIN.equals(game))
+					{
+						schedule(0, Push.ask(push.session, push.era, push.automaticEra, game, false, NONE));
+					}
+				}
+			});
+		});
 	}
 
 	/**
@@ -735,8 +771,10 @@ final class PublicationCoordinator
 			return;
 		}
 		int delay = Math.max(retryAfterSeconds, 2);
-		// A click or a character's sync asked meanwhile rides this retry; an automatic push waiting gives way to it.
-		Push next = pendingPush != null && pendingPush.deliberate() ? Push.merge(retry, pendingPush) : retry;
+		// A click or a character's sync asked meanwhile rides this retry; an automatic push waiting gives way to it, and
+		// another game's is owed its own push after it, never dropped.
+		Push next = pendingPush == null ? retry
+			: pendingPush.deliberate() ? Push.merge(retry, pendingPush) : retry.owing(pendingPush);
 		dropPending();
 		schedule(retry.deliberate() ? delay : delay * 2, next);
 		if (retry.forCharacter != NONE)

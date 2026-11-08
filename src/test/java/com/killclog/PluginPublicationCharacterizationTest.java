@@ -2213,6 +2213,66 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void aMainRetryKeepsALeaguesWaitingSyncOwedItsOwn() throws Exception
+	{
+		// The server asks a main sync to retry while, after a hop, a League capture waits on its quiet time: the retry
+		// never drops it, and the League syncs once the retry's attempt ends.
+		PublicationCoordinator publication = (PublicationCoordinator) field("publication");
+		publication.scheduleAutomaticSync();
+		settle();
+		assertEquals(java.util.Collections.singletonList("main"), sentModes());
+		announceLeague();
+		ticks(10);
+		publication.scheduleAutomaticSync();
+		syncs.get(0).complete(busy());
+		settle();
+		assertEquals(java.util.Arrays.asList("main", "demonic-pacts"), sentModes());
+	}
+
+	@Test
+	public void aMainCaptureOwedOnALeagueWorldWaitsForAMainWorld() throws Exception
+	{
+		// A main capture waits, the player hops to a League and captures there: the League syncs once, and the main
+		// game's owed push waits for a main world instead of following this one into a second League sync.
+		PublicationCoordinator publication = (PublicationCoordinator) field("publication");
+		publication.scheduleAutomaticSync();
+		announceLeague();
+		ticks(10);
+		publication.scheduleAutomaticSync();
+		settle();
+		assertEquals(java.util.Collections.singletonList("demonic-pacts"), sentModes());
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
+		settle();
+		assertEquals("the League once", java.util.Collections.singletonList("demonic-pacts"), sentModes());
+		world(net.runelite.api.WorldType.MEMBERS);
+		ticks(10);
+		// The main world's own catch-up carries the main capture.
+		publication.scheduleAutomaticSync();
+		settle();
+		assertEquals(java.util.Arrays.asList("demonic-pacts", "main"), sentModes());
+	}
+
+	@Test
+	public void aLeaguesPushOwedAfterAMainClickGoesQuietly() throws Exception
+	{
+		// A click is for its own game: the League capture it carried goes after it as the automatic push it was, so the
+		// chat says "Syncing" once, for the click.
+		announceLeague();
+		((PublicationCoordinator) field("publication")).scheduleAutomaticSync();
+		world(net.runelite.api.WorldType.MEMBERS);
+		ticks(10);
+		syncHandler.run();
+		// The click reads its game on the client thread before the League's quiet time is up.
+		runClient();
+		settle();
+		assertEquals(java.util.Collections.singletonList("main"), sentModes());
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
+		settle();
+		assertEquals(java.util.Arrays.asList("main", "demonic-pacts"), sentModes());
+		verify(chatNotifier, times(1)).send(ChatNotice.SYNC_RESULT, "Syncing collection log...");
+	}
+
+	@Test
 	public void aLeaguesRetryAfterAHopStaysWithThatLeague() throws Exception
 	{
 		LocalClogCache league = announceLeague();
