@@ -38,7 +38,7 @@ Each button flashes green when your click goes through.
 
 Every skill has its own Collection Log-style progression. Skill cards combine relevant activities, equipment, and unlocks with the skill's level, XP, rank, and XP to next level.
 
-Attack, Strength, Defence, Ranged and Magic list the Collection Log gear that needs them, and an item that needs several skills shows on each of their cards.
+Attack, Strength, Defence, Ranged, Magic, Prayer and Hitpoints cards list the gear each skill unlocks, grouped the way the game does and ordered by level.
 
 ![Enable Skill Clogs on](screenshots/skill-clogs-setting-on.png)
 
