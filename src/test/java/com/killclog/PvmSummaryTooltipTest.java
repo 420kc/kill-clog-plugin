@@ -40,7 +40,7 @@ public class PvmSummaryTooltipTest
 	}
 
 	@Test
-	public void theCaTileWaitsForATierAndTheRaidTilesStayPut()
+	public void theCaTileWaitsForATierAndFillsTowardTheNextOne()
 	{
 		Map<CombatAchievementTier, Integer> totals = new java.util.EnumMap<>(CombatAchievementTier.class);
 		for (CombatAchievementTier tier : CombatAchievementTier.values())
@@ -49,20 +49,27 @@ public class PvmSummaryTooltipTest
 		}
 		Map<CombatAchievementTier, Integer> easyDone = new java.util.EnumMap<>(CombatAchievementTier.class);
 		easyDone.put(CombatAchievementTier.EASY, CombatAchievementTier.EASY.totalTasks());
+		CombatAchievementResult easy = CombatAchievementResult.of(easyDone, totals);
+		// Easy's points, toward Medium's threshold: every Easy and Medium task's points.
+		assertEquals(CombatAchievementTier.EASY.totalTasks(), easy.getTotalPoints());
+		assertEquals(CombatAchievementTier.EASY.totalTasks() + 2 * CombatAchievementTier.MEDIUM.totalTasks(),
+			easy.nextTierPoints());
+		// Every task done: the bar's end is the points held, so it fills.
+		CombatAchievementResult grandmaster = CombatAchievementResult.of(totals, totals);
+		assertEquals(grandmaster.getTotalPoints(), grandmaster.nextTierPoints());
 
-		// Bosses and Most Killed, then the CA tier's tile once one is held, in the same row.
-		int noData = pvmRow(painted(pvmCard(null)));
-		int noTier = pvmRow(painted(pvmCard(CombatAchievementResult.of(Collections.emptyMap(), totals))));
-		assertEquals(2, noData);
-		assertEquals(2, noTier);
-		PvmSummaryTooltip plain = painted(fill(pvmCard(null)));
-		PvmSummaryTooltip tiered = painted(fill(pvmCard(CombatAchievementResult.of(easyDone, totals))));
-		assertEquals(3, pvmRow(tiered));
-		// The row was already there, so the raid tiles and their presses stay put.
-		Point plainTop = firstRaid(plain);
-		Point tieredTop = firstRaid(tiered);
-		assertEquals(plainTop.y, tieredTop.y);
-		assertEquals(0, TestViews.tileAt(tiered, "raidRows", tieredTop.x + 10, tieredTop.y + 10));
+		// No tier, no tile: Most Killed stands alone; with a tier the two lay out two across, wider.
+		BufferedImage noTier = render(painted(fill(pvmCard(CombatAchievementResult.of(Collections.emptyMap(), totals)))));
+		BufferedImage tiered = render(painted(fill(pvmCard(easy))));
+		int plainRow = TestViews.tiles(noTier).get(0).y;
+		assertEquals(1, TestViews.tiles(noTier).stream().filter(tile -> tile.y == plainRow).count());
+		List<Point> wide = TestViews.tiles(tiered, GameTile.PAGE_WIDTH, GameTile.HEIGHT);
+		int tieredRow = wide.get(0).y;
+		assertEquals(plainRow, tieredRow);
+		assertEquals(GameTile.PAGE_WIDTH + GameTile.GAP, wide.get(1).x - wide.get(0).x);
+		assertEquals(tieredRow, wide.get(1).y);
+		// The PvM row is a tile tall either way, so the raids stay put.
+		assertEquals(raidTiles(noTier), raidTiles(tiered));
 	}
 
 	@Test
@@ -73,14 +80,12 @@ public class PvmSummaryTooltipTest
 		List<HiscoreSkill> opened = new ArrayList<>();
 		tip.setOnOpenRaid((press, boss) -> opened.add(boss));
 		List<Point> tiles = TestViews.tiles(render(painted(tip)));
-		// Bosses, then Most Killed.
-		Point most = tiles.get(1);
+		// Most Killed leads the tiles, the raids after it.
+		Point most = tiles.get(0);
 		move(tip, most.x + 10, most.y + 10);
 		assertEquals("Vorkath", tip.getHeaderHoverLineText());
 		assertTrue(press(tip, most.x + 10, most.y + 10, MouseEvent.BUTTON1).isConsumed());
 		assertEquals(List.of(HiscoreSkill.VORKATH), opened);
-		// The Bosses tile opens nothing.
-		assertFalse(press(tip, tiles.get(0).x + 10, tiles.get(0).y + 10, MouseEvent.BUTTON1).isConsumed());
 	}
 
 	/** How many tiles the PvM row holds: those level with the card's first tile. */
@@ -277,21 +282,13 @@ public class PvmSummaryTooltipTest
 		kills.put(HiscoreSkill.CHAMBERS_OF_XERIC.getName(), 120);
 		kills.put(PanelData.TFA_HISCORE, -1);
 		PvmSummaryTooltip out = new PvmSummaryTooltip();
-		out.setData(110.5, 2_500, 40, PanelData.bossCount(), "Vorkath", 900);
+		out.setData(110.5, 2_500, 40, PanelData.bossCount(), null, 0);
 		out.setRaids(TestViews.hiscore(AccountType.REGULAR, kills, Collections.emptyMap(),
 			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1), null);
 		List<HiscoreSkill> opened = new ArrayList<>();
 		out.setOnOpenRaid((press, raid) -> opened.add(raid));
-		BufferedImage image = render(painted(out));
-		int pvmRow = TestViews.tiles(image).get(0).y;
-		List<Point> raids = new ArrayList<>();
-		for (Point tile : TestViews.tiles(image, GameTile.PAGE_WIDTH, GameTile.HEIGHT))
-		{
-			if (tile.y > pvmRow)
-			{
-				raids.add(tile);
-			}
-		}
+		// No most killed boss and no CA tier: no PvM tiles, so every wide tile is a raid's.
+		List<Point> raids = TestViews.tiles(render(painted(out)), GameTile.PAGE_WIDTH, GameTile.HEIGHT);
 		assertEquals(4, raids.size());
 		assertEquals(raids.get(0).x, raids.get(2).x);
 		// Its popup comes with the launch-day update's boss tile: before the panel lists the raid, even a client whose

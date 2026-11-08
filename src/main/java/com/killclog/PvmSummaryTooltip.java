@@ -78,15 +78,13 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 	// Everything under the anchored band scrolls, three lines a notch, in a window that keeps the whole card a long
 	// tab's height: the level and PvM rows above the band already take a third of it (Dylan, 2026-10-08).
-	private final CardBody.Scroll scroll = new CardBody.Scroll(this, 16 * LINE_HEIGHT, 3 * LINE_HEIGHT);
+	private final CardBody.Scroll scroll = new CardBody.Scroll(this, CardBody.WINDOW, 3 * LINE_HEIGHT);
 
 	@Setter
 	private Image combatIcon;
 	private CombatAchievementResult caResult;
 	private BufferedImage caRewardSprite;
-	// The PvM tiles' own: the Bosses tab's sprite, the Collection Log, and the most killed boss's icon and log.
-	private Image bossesSprite;
-	private Image logsSprite;
+	// The most killed boss's tile: the boss, its icon and its log.
 	@Nullable
 	private HiscoreSkill mostKilledBoss;
 	@Nullable
@@ -152,8 +150,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 	public void setMegarares(int tbowCount, int scytheCount,
 		int shadowCount, int obligatorCount, ItemManager itemManager)
 	{
-		bossesSprite = itemSprite(ClogSummaryTooltip.TAB_SPRITES.getOrDefault("Bosses", -1), itemManager);
-		logsSprite = itemSprite(PanelData.COLLECTION_LOG_ITEM_ID, itemManager);
 		weaponCounts[0] = tbowCount;
 		weaponCounts[1] = scytheCount;
 		weaponCounts[2] = shadowCount;
@@ -222,27 +218,29 @@ public class PvmSummaryTooltip extends TitleTooltip
 	@Override
 	protected CardBody body()
 	{
-		// The combat level leads the card; PvM and PvP each follow under their own subheader. A sprite's name shows
-		// in the band over Raids, the first section with sprites, and everything from there scrolls.
+		// The title, the combat level and the band stay put (Dylan, 2026-11-07); PvM, Raids, Slayer and PvP scroll
+		// under them, a long tab's height like the other cards.
 		CardBody card = new CardBody()
 			.add(CardBody.gap(LEVEL_GAP_ABOVE))
 			.add(leadRow(combatIcon, combatText(combatLevel)))
-			.add(CardBody.gap(LEVEL_GAP_BELOW))
-			.add(CardBody.section(PVM_HEADER));
-		card.add(CardBody.line("Total Kills: ", scoreText(totalKills)))
-			.add(CardBody.line("EHB: ", ehbText(ehb)));
-		// Then the PvM tiles (Dylan, 2026-11-07): the CA tier once one is held, the bosses killed, their logs done
-		// once a log is known, and the most killed boss, its name in the band and its log on the bar.
+			.add(CardBody.gap(LEVEL_GAP_BELOW));
+		CardBody body = new CardBody().titled(PVM_HEADER)
+			.add(CardBody.line("Total Kills: ", scoreText(totalKills)))
+			.add(CardBody.line("EHB: ", ehbText(ehb)))
+			.add(CardBody.line("Bosses Killed: ", bossesWithKc + "/" + totalBosses,
+				completionColor(bossesWithKc, totalBosses)));
+		if (bossesCompleted >= 0)
+		{
+			body.add(CardBody.line("Logs Completed: ", bossesCompleted + "/" + bossesWithClog,
+				completionColor(bossesCompleted, bossesWithClog)));
+		}
+		// The PvM tiles: the CA tier once one is held, its points toward the next tier (a Grandmaster's bar full and
+		// green), and the most killed boss, its kills over its log, its name in the band, opening its card.
 		List<GameTile.Tile> pvm = new ArrayList<>();
 		if (hasTierRow())
 		{
-			pvm.add(new GameTile.Tile(tierDisplayName(caResult), caRewardSprite, -1, 0, -1)
-				.count(grouped(caResult.getTotalPoints()) + " pts"));
-		}
-		pvm.add(new GameTile.Tile("Bosses", bossesSprite, bossesWithKc, totalBosses, -1));
-		if (bossesCompleted >= 0)
-		{
-			pvm.add(new GameTile.Tile("Boss Logs", logsSprite, bossesCompleted, bossesWithClog, -1));
+			pvm.add(new GameTile.Tile(tierDisplayName(caResult), caRewardSprite, caResult.getTotalPoints(),
+				caResult.nextTierPoints(), -1));
 		}
 		if (mostKilled != null)
 		{
@@ -250,7 +248,10 @@ public class PvmSummaryTooltip extends TitleTooltip
 				onOpenRaid != null && mostKilledBoss != null ? MOST_KILLED : -1)
 				.count(grouped(mostKilledKc) + " kc").item(-1, mostKilled));
 		}
-		card.add(CardBody.gap(SECTION_GAP)).add(GameTile.grid(pvmRows, pvm));
+		if (!pvm.isEmpty())
+		{
+			body.add(CardBody.gap(SECTION_GAP)).add(GameTile.grid(pvmRows, pvm));
+		}
 		// Raids lead the sections under the band.
 		List<GameTile.Tile> raids = new ArrayList<>();
 		for (int i = 0; i < raidRowCount(); i++)
@@ -259,7 +260,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 				onOpenRaid != null && raid(i) != null ? i : -1).faint(weaponCounts[i] <= 0)
 				.item(PanelData.MEGARARE_ITEM_IDS[i], PanelData.MEGARARE_ITEM_NAMES[i]).score(raidKills[i]));
 		}
-		CardBody body = new CardBody().titled("Raids").add(GameTile.grid(raidRows, raids));
+		body.titled("Raids").add(GameTile.grid(raidRows, raids));
 		// Slayer: XP and Rank from the hiscores, then clog progress when a synced log is known.
 		body.titled("Slayer")
 			.add(CardBody.line("XP: ", slayerXpText(slayerXp)))

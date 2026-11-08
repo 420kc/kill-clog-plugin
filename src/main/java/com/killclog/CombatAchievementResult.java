@@ -52,6 +52,24 @@ final class CombatAchievementResult
 			: CombatAchievementTier.highestForPoints(points, currentTotals);
 	}
 
+	/**
+	 * The points the next tier asks for, which the CA tile's bar fills toward: each tier's threshold is every task's
+	 * points in it and below, Grandmaster's every point, so a player with every task done stands at the end.
+	 */
+	int nextTierPoints()
+	{
+		int threshold = 0;
+		for (CombatAchievementTier loopTier : CombatAchievementTier.values())
+		{
+			threshold += currentTotals.getOrDefault(loopTier, loopTier.totalTasks()) * loopTier.pointsPerTask();
+			if (threshold > totalPoints)
+			{
+				return threshold;
+			}
+		}
+		return threshold;
+	}
+
 	/** True when every task in every tier is completed against the current catalog. */
 	boolean isAllComplete()
 	{

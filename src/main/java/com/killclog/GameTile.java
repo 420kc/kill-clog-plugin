@@ -100,10 +100,11 @@ final class GameTile
 		}
 	}
 
-	/** The tiles three across, or four two across and wider so none sits alone; a press opens a tile's key. */
+	/** The tiles three across, or two or four two across and wider so none sits alone; a press opens a tile's key. */
 	static CardBody.Part grid(CardBody.ClickRows clicks, List<Tile> tiles)
 	{
-		return tiles.size() == 4 ? grid(clicks, tiles, 2, PAGE_WIDTH, HEIGHT) : grid(clicks, tiles, COLS, WIDTH, HEIGHT);
+		return tiles.size() == 2 || tiles.size() == 4 ? grid(clicks, tiles, 2, PAGE_WIDTH, HEIGHT)
+			: grid(clicks, tiles, COLS, WIDTH, HEIGHT);
 	}
 
 	/** A tab's pages, two across, as the game's Combat Achievements tiles its bosses. */
