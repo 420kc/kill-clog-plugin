@@ -300,6 +300,17 @@ public class PvmSummaryTooltipTest
 	}
 
 	@Test
+	public void theDormantCardShowsAllFourRaids()
+	{
+		// No lookup yet: the panel lists The Fractured Archive, so its tile stands with the other three.
+		PvmSummaryTooltip dormant = new PvmSummaryTooltip();
+		dormant.setData(0, 0, 0, PanelData.bossCount(), null, 0);
+		assertTrue(PanelData.tfaListed());
+		painted(dormant);
+		assertEquals(4, (int) TestViews.call(dormant, "raidRowCount"));
+	}
+
+	@Test
 	public void theFracturedArchiveTileWaitsForItsHiscoreRow()
 	{
 		// Before Jagex adds the raid's row the card has three raid tiles; from the lookup that carries it, a fourth,

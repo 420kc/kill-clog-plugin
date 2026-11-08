@@ -63,7 +63,9 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private final int[] raidKills = new int[RAID_NAMES.length];
 	private final Image[] megarares = new Image[RAID_NAMES.length];
 	// The Fractured Archive's row waits for its hiscore row (Dylan, 2026-10-14): drawn from the lookup that carries it.
-	private boolean tfaOut;
+	// Whether the hiscores carry The Fractured Archive's row; before any lookup (the dormant panel), whether the
+	// panel lists the raid, so the card shows all four (Dylan, 2026-11-08).
+	private boolean tfaOut = PanelData.tfaListed();
 	@Nullable
 	private BiConsumer<MouseEvent, HiscoreSkill> onOpenRaid;
 	private final CardBody.ClickRows raidRows = new CardBody.ClickRows(this, (e, row) ->
