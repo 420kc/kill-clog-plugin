@@ -716,7 +716,18 @@ final class CardBody
 		{
 			Rectangle shown = c.window != null ? box.intersection(c.window) : box;
 			boxes.put(key, shown);
-			return pointer != null && shown.contains(pointer);
+			// What paints lit is what's hovered: a scroll that slides another tile under the still mouse moves the
+			// hover with it, so the next move repaints against what shows.
+			boolean on = pointer != null && shown.contains(pointer);
+			if (on)
+			{
+				hovered = key;
+			}
+			else if (hovered == key)
+			{
+				hovered = -1;
+			}
+			return on;
 		}
 
 		/** Forgets every row: a scrolled list lays down only the rows it shows. */

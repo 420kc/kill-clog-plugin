@@ -341,6 +341,57 @@ public class ClogTabTooltipTest
 		assertFalse(shown.contains(TitleTooltip.CLOG_YELLOW.getRGB()));
 	}
 
+	@Test
+	public void afterAScrollTheTileUnderTheStillMouseIsTheHoveredOne()
+	{
+		// Hover a tile, scroll a row under the still mouse: the tile that slid under it is the one lit and hovered,
+		// so moving onto the first tile's new place repaints it rather than leaving the other lit.
+		int[] repaints = {0};
+		ClogTabTooltip card = new ClogTabTooltip()
+		{
+			@Override
+			public void repaint(long tm, int x, int y, int width, int height)
+			{
+				repaints[0]++;
+			}
+		};
+		String[] names = new String[20];
+		Arrays.fill(names, "Vorkath");
+		int[] total = new int[20];
+		Arrays.fill(total, 9);
+		card.setTab("Bosses", new int[]{0, 180}, 180);
+		card.setPages(names, new int[20], total, null);
+		card.setOnOpenPage((press, page) ->
+		{
+		});
+		painted(card);
+		Point first = firstTile(card);
+		Point under = new Point(first.x + 10, first.y + ROW + 10);
+		move(card, under.x, under.y);
+		assertEquals(2, TestViews.hoveredRow(card, "pageRows"));
+		wheel(card, under.y, 1);
+		painted(card);
+		assertEquals("page 4 slid under the mouse", 4, TestViews.hoveredRow(card, "pageRows"));
+		repaints[0] = 0;
+		move(card, under.x, under.y - ROW);
+		assertEquals(2, TestViews.hoveredRow(card, "pageRows"));
+		assertTrue("moving onto page 2's new place repaints", repaints[0] > 0);
+	}
+
+	@Test
+	public void aTileScrolledOutOfViewNeverOpens()
+	{
+		ClogTabTooltip card = painted(card(57));
+		List<Integer> opened = new ArrayList<>();
+		card.setOnOpenPage((press, page) -> opened.add(page));
+		Point first = firstTile(card);
+		wheel(card, first.y + 10, 1);
+		painted(card);
+		// Page 0 scrolled up above the window; the card's rows above the window are where it would be.
+		press(card, first.x + 10, first.y - ROW + 10);
+		assertFalse(opened.contains(0));
+	}
+
 	private static java.util.Set<Integer> colors(ClogTabTooltip card)
 	{
 		Dimension size = card.getPreferredSize();
