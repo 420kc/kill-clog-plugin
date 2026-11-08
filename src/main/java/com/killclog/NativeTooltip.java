@@ -4,6 +4,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import javax.annotation.Nullable;
 import javax.swing.JToolTip;
+import net.runelite.client.util.ColorUtil;
 
 /**
  * Base tooltip styled to match native OSRS interface elements.
@@ -37,6 +38,8 @@ public abstract class NativeTooltip extends JToolTip
 	private static final int BORDER_THICKNESS = 3;
 	private static final Color BORDER_OUTER = new Color(26, 26, 26);
 	static final Color BORDER_MID = new Color(61, 51, 34);
+	private static final Color TILE_STONE = new Color(73, 63, 52);
+	private static final Color TILE_STONE_LIT = new Color(86, 75, 61);
 	private static final Color BORDER_INNER = new Color(84, 72, 53);
 	static final Color FALLBACK_BG = new Color(60, 50, 35);
 
@@ -52,6 +55,23 @@ public abstract class NativeTooltip extends JToolTip
 		dividerColor = divider != null ? divider : DIVIDER;
 		flatBackground = background == null || background.equals(FALLBACK_BG) ? null : background;
 		flatBorder = border == null || border.equals(BORDER_MID) ? null : border;
+	}
+
+	/**
+	 * A tile's fill: the game's stone, lighter under the pointer; with a pack's or Card Settings's colors, the card's
+	 * background with its border mixed in, 40% at rest and 75% under the pointer, as the site tints its tiles
+	 * (Dylan, 2026-11-08).
+	 */
+	static Color tileFill(boolean hovered)
+	{
+		Color ground = flatBackground != null ? flatBackground : CardSprites.packBackground;
+		Color rim = flatBorder != null ? flatBorder : CardSprites.packBorder;
+		if (ground == null && rim == null)
+		{
+			return hovered ? TILE_STONE_LIT : TILE_STONE;
+		}
+		return ColorUtil.colorLerp(ground != null ? ground : FALLBACK_BG, rim != null ? rim : BORDER_MID,
+			hovered ? 0.75 : 0.4);
 	}
 
 	/** The rail's thumb: Card Settings's scroll bar, else the pack's, else the card's orange. */

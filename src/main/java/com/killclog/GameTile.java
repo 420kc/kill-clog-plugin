@@ -27,8 +27,8 @@ final class GameTile
 	private static final int NAME_PAD = 4;
 	// The frame keeps its corners, brackets and all, and stretches between them; a hovered tile's is a shade lighter.
 	private static final int FRAME_EDGE = 7;
-	private static final BufferedImage FRAME = ImageUtil.loadImageResource(GameTile.class, "game-tile.png");
-	private static final BufferedImage HOVERED = ImageUtil.loadImageResource(GameTile.class, "game-tile-hover.png");
+	// The game's tile frame, clear where its fill goes: the fill is painted under it (NativeTooltip.tileFill).
+	private static final BufferedImage FRAME = ImageUtil.loadImageResource(GameTile.class, "game-tile-edge.png");
 	private static final Font COUNT_FONT = FontManager.getRunescapeFont();
 	private static final int NAME_TOP = 4;
 	private static final int SPRITE_TOP = 17;
@@ -149,7 +149,9 @@ final class GameTile
 	private static void paint(CardBody.Ctx c, Rectangle box, Tile tile, boolean hovered)
 	{
 		Graphics2D g = c.g;
-		frame(g, hovered ? HOVERED : FRAME, box);
+		g.setColor(NativeTooltip.tileFill(hovered));
+		g.fillRect(box.x, box.y, box.width, box.height);
+		frame(g, FRAME, box);
 		boolean known = tile.obtained >= 0;
 		boolean complete = known && tile.obtained >= tile.total;
 		Color color = !known ? TitleTooltip.MUTED_GRAY

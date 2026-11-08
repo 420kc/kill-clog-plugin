@@ -43,6 +43,11 @@ final class CardSprites
 	static volatile Color packThumb;
 	@Nullable
 	static volatile Color packTrack;
+	// A pack's own card background and border, which the tiles tint from (null, the game's).
+	@Nullable
+	static volatile Color packBackground;
+	@Nullable
+	static volatile Color packBorder;
 
 	// Every sprite a card wears, and the status row's character icon: what a pack or theme replacing one changes.
 	private static final int[] WORN = {SPRITE_PARCHMENT, SPRITE_CORNER_TL, SPRITE_CORNER_TR, SPRITE_CORNER_BL,
@@ -84,6 +89,8 @@ final class CardSprites
 	{
 		packThumb = thumbColor(getOverrideSprite(client, SPRITE_SCROLL_THUMB));
 		packTrack = bodyColor(getOverrideSprite(client, SPRITE_SCROLL_TRACK));
+		packBackground = bodyColor(getOverrideSprite(client, SPRITE_PARCHMENT));
+		packBorder = bodyColor(getOverrideSprite(client, SPRITE_EDGE_HORIZ));
 		loadSprite(client, spriteManager, SPRITE_PARCHMENT, img -> parchmentBg = img);
 		loadSprite(client, spriteManager, SPRITE_CORNER_TL, img ->
 		{
