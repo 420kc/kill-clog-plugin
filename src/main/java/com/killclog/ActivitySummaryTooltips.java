@@ -50,16 +50,16 @@ final class ActivitySummaryTooltips
 			tip.setCombatIcon(((ImageIcon) owner.getIcon()).getImage());
 		}
 		tip.setLinks(links.get());
+		String mostKilled = LookupQueries.getMostKilledBoss(hiscore);
 		tip.setData(
 			hiscore != null ? hiscore.getCombatLevelExact() : 0,
 			LookupQueries.sumBossKills(hiscore),
 			LookupQueries.countBossesWithKc(hiscore),
 			LookupQueries.bossTotal(hiscore),
-			LookupQueries.getMostKilledBoss(hiscore),
+			mostKilled,
 			LookupQueries.getMostKilledKc(hiscore)
 		);
 		// The most killed boss's tile: its cell's icon, and its log as its card counts it.
-		String mostKilled = LookupQueries.getMostKilledBoss(hiscore);
 		for (HiscoreSkill boss : cells.getBossLabels().keySet())
 		{
 			if (PanelData.hiscoreName(boss.getName()).equals(mostKilled))
