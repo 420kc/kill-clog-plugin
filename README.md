@@ -40,6 +40,8 @@ Every skill has its own Collection Log-style progression. Skill cards combine re
 
 Attack, Strength, Defence, Ranged, Magic, Prayer and Hitpoints cards list the gear each skill unlocks, grouped the way the game does and ordered by level.
 
+![The seven combat Skill Clogs, Attack to Hitpoints, each with its whole log](screenshots/combat-clogs.png)
+
 ![Enable Skill Clogs on](screenshots/skill-clogs-setting-on.png)
 
 ![A Fletching skill card with its Vale Totems skill clog](screenshots/skill-clog-on.png)
@@ -65,6 +67,8 @@ HiScores load for any valid RSN, including Collection Log totals and ranks when 
 Your clan comes from the game. Other players' clans come from their Kill Clog sync, or from RuneProfile when they have a profile there.
 
 Hover your Collection Log total to see your log, and click it to pin it. Click a tab's tile to open the tab, and a page's tile to open the page.
+
+![The Collection Log card, its Minigames tab, the Clue Summary and the Combat Summary, their tabs, pages and raids as the game's tiles](screenshots/tile-cards.png)
 
 Some counts appear only on the game's own Collection Log pages, like Revenant kills, Hunter Guild rumours and the raids' Entry completions. Open a page and its card shows the count from then on, here and on killclog.com, updated when you next open the page after it changes.
 
