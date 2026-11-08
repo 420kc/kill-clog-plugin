@@ -83,6 +83,33 @@ public class ActivitySummaryTooltipsTest
 	}
 
 	@Test
+	public void eachRaidTileGetsItsOwnMegarareCount()
+	{
+		// The tiles read the counts in raids.tsv's order: here two Scythes on ToB's page and an Obligator on TFA's.
+		LookupSession session = mock(LookupSession.class);
+		when(session.getHiscoreResult()).thenReturn(TestViews.hiscore(AccountType.REGULAR, java.util.Collections.emptyMap(),
+			java.util.Collections.emptyMap(), java.util.Collections.emptyMap(), java.util.Collections.emptyMap(),
+			java.util.Collections.emptyMap(), 0, 0, 0, -1));
+		java.util.Map<String, java.util.List<ClogResult.ClogItem>> obtained = new java.util.LinkedHashMap<>();
+		obtained.put("theatre_of_blood", java.util.Collections.singletonList(new ClogResult.ClogItem(22486, 2, null)));
+		obtained.put("the_fractured_archive", java.util.Collections.singletonList(new ClogResult.ClogItem(34717, 1, null)));
+		java.util.Map<String, java.util.List<Integer>> pages = new java.util.LinkedHashMap<>();
+		pages.put("theatre_of_blood", java.util.Collections.singletonList(22486));
+		pages.put("the_fractured_archive", java.util.Collections.singletonList(34717));
+		when(session.getClogResult()).thenReturn(new ClogResult("Probe", obtained, pages, java.util.Collections.emptyMap(),
+			null, null));
+		Cells cells = mock(Cells.class);
+		when(cells.getBossLabels()).thenReturn(java.util.Collections.emptyMap());
+		when(cells.getPvpActivityIcons()).thenReturn(new java.awt.image.BufferedImage[5]);
+		ActivitySummaryTooltips built = new ActivitySummaryTooltips(session, comparison, cells, tooltips,
+			mock(ItemManager.class), mock(CaRewardSprites.class), () -> CardLinks.ON, mock(ClogPages.class));
+		JLabel owner = new JLabel();
+		new JPanel().add(owner);
+		PvmSummaryTooltip tip = (PvmSummaryTooltip) built.buildPvm(owner, (JPanel) owner.getParent());
+		org.junit.Assert.assertArrayEquals(new int[]{0, 2, 0, 1}, TestViews.field(tip, "weaponCounts"));
+	}
+
+	@Test
 	public void theMostKilledTileCarriesItsBossesLog()
 	{
 		LookupSession session = mock(LookupSession.class);
