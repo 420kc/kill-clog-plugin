@@ -95,13 +95,14 @@ final class TooltipDataBuilder
 	static TooltipData withHardMode(@Nullable TooltipData data, HiscoreSkill raid, @Nullable HiscoreResult result,
 		UnaryOperator<String> pb)
 	{
-		HiscoreSkill hard = PanelData.hardMode(raid);
+		Raid r = PanelData.raid(raid);
+		HiscoreSkill hard = r != null ? r.getHard() : null;
 		if (data == null || hard == null)
 		{
 			return data;
 		}
 		return data.toBuilder()
-			.hardLabel(PanelData.hardLabel(raid))
+			.hardLabel(r.getHardLabel())
 			.hardKc(result != null ? result.getKc(hard.getName()) : -1)
 			.hardRank(result != null ? result.getRank(hard.getName()) : -1)
 			.hardPb(pb.apply(hard.getName()))

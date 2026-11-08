@@ -47,25 +47,21 @@ public class PvmSummaryTooltip extends TitleTooltip
 	@Setter
 	private double ehb = -1;
 
-	private final int[] weaponCounts = new int[4];
+	private int[] weaponCounts = new int[PanelData.RAIDS.size()];
 	@Nullable
 	private TooltipItemSprites superiorSprites;
 	private final int[] superiorCounts = new int[2];
 
-	// CoX, ToB and ToA, then The Fractured Archive, as the game's tiles (Dylan, 2026-11-07): each its megarare, faint
-	// until held, and its log; with no log, its kills in both modes.
-	private static final String[] RAID_NAMES = {"CoX", "ToB", "ToA", "TFA"};
-	private static final String[] RAID_CATEGORIES = {PanelData.COX_CATEGORY, PanelData.TOB_CATEGORY,
-		PanelData.TOA_CATEGORY, PanelData.TFA_CATEGORY};
-	private final int[] raidObtained = {-1, -1, -1, -1};
-	private final int[] raidTotal = new int[RAID_NAMES.length];
+	// The raids as the game's tiles, in raids.tsv's order (Dylan, 2026-11-07): each its megarare, faint until held, and
+	// its log; with no log, its kills in both modes.
+	private final int[] raidObtained = PanelData.RAIDS.stream().mapToInt(raid -> -1).toArray();
+	private final int[] raidTotal = new int[PanelData.RAIDS.size()];
 	// Each raid's kills, both modes together, which its tile shows while its log progress is unknown.
-	private final int[] raidKills = new int[RAID_NAMES.length];
-	private final Image[] megarares = new Image[RAID_NAMES.length];
-	// The Fractured Archive's row waits for its hiscore row (Dylan, 2026-10-14): drawn from the lookup that carries it.
-	// Whether the hiscores carry The Fractured Archive's row; before any lookup (the dormant panel), whether the
-	// panel lists the raid, so the card shows all four (Dylan, 2026-11-08).
-	private boolean tfaOut = PanelData.tfaListed();
+	private final int[] raidKills = new int[PanelData.RAIDS.size()];
+	private final Image[] megarares = new Image[PanelData.RAIDS.size()];
+	// Which tiles show: a raid that waits for its hiscore row (The Fractured Archive's, Dylan 2026-10-14) once the lookup
+	// carries it, and before any lookup (the dormant panel) once the panel lists the raid (Dylan, 2026-11-08).
+	private boolean[] raidOut = raidsOut(null);
 	@Nullable
 	private BiConsumer<MouseEvent, HiscoreSkill> onOpenRaid;
 	private final CardBody.ClickRows raidRows = new CardBody.ClickRows(this, (e, row) ->
@@ -159,15 +155,11 @@ public class PvmSummaryTooltip extends TitleTooltip
 		this.caRewardSprite = rewardSprite;
 	}
 
-	public void setMegarares(int tbowCount, int scytheCount,
-		int shadowCount, int obligatorCount, ItemManager itemManager)
+	/** Each raid's megarare held, in raids.tsv's order. */
+	public void setMegarares(int[] counts, ItemManager itemManager)
 	{
 		bossesSprite = itemSprite(ClogSummaryTooltip.TAB_SPRITES.getOrDefault("Bosses", -1), itemManager);
-		weaponCounts[0] = tbowCount;
-		weaponCounts[1] = scytheCount;
-		weaponCounts[2] = shadowCount;
-		weaponCounts[3] = obligatorCount;
-
+		weaponCounts = counts;
 		for (int i = 0; i < megarares.length; i++)
 		{
 			megarares[i] = itemSprite(PanelData.MEGARARE_ITEM_IDS[i], itemManager);
@@ -202,12 +194,13 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 	public void setRaids(HiscoreResult hiscoreResult, ClogResult clogResult)
 	{
-		tfaOut = hiscoreResult.hasBossRow(PanelData.TFA_HISCORE);
-		for (int i = 0; i < RAID_NAMES.length; i++)
+		raidOut = raidsOut(hiscoreResult);
+		for (int i = 0; i < raidKills.length; i++)
 		{
-			raidKills[i] = Math.max(0, hiscoreResult.getKc(hasHardMode(i) ? PanelData.RAIDS[i].getName() : PanelData.TFA_HISCORE))
-				+ (hasHardMode(i) ? Math.max(0, hiscoreResult.getKc(PanelData.RAID_HARD_MODES[i].getName())) : 0);
-			int[] counts = clogResult != null ? ClogHelper.clogCounts(RAID_CATEGORIES[i], clogResult) : null;
+			Raid raid = PanelData.RAIDS.get(i);
+			raidKills[i] = Math.max(0, hiscoreResult.getKc(raid.getRow()))
+				+ (raid.getHard() != null ? Math.max(0, hiscoreResult.getKc(raid.getHard().getName())) : 0);
+			int[] counts = clogResult != null ? ClogHelper.clogCounts(raid.getPage(), clogResult) : null;
 			if (counts != null)
 			{
 				raidObtained[i] = counts[0];
@@ -262,11 +255,14 @@ public class PvmSummaryTooltip extends TitleTooltip
 		body.add(CardBody.gap(SECTION_GAP)).add(GameTile.grid(pvmRows, pvm));
 		// Raids lead the sections under the band.
 		List<GameTile.Tile> raids = new ArrayList<>();
-		for (int i = 0; i < raidRowCount(); i++)
+		for (int i = 0; i < raidOut.length; i++)
 		{
-			raids.add(new GameTile.Tile(RAID_NAMES[i], megarares[i], raidObtained[i], raidTotal[i],
-				onOpenRaid != null && raid(i) != null ? i : -1).faint(weaponCounts[i] <= 0)
-				.named(PanelData.MEGARARE_ITEM_NAMES[i]).score(raidKills[i]));
+			if (raidOut[i])
+			{
+				raids.add(new GameTile.Tile(PanelData.RAIDS.get(i).getTile(), megarares[i], raidObtained[i], raidTotal[i],
+					onOpenRaid != null && raid(i) != null ? i : -1).faint(weaponCounts[i] <= 0)
+					.named(PanelData.RAIDS.get(i).getMegarareName()).score(raidKills[i]));
+			}
 		}
 		body.titled("Raids").add(GameTile.grid(raidRows, raids));
 		// Slayer: XP and Rank from the hiscores, then clog progress when a synced log is known.
@@ -286,23 +282,23 @@ public class PvmSummaryTooltip extends TitleTooltip
 		return card.add(CardBody.hoverBand()).add(CardBody.scroll(scroll, body.asPart()));
 	}
 
-	/** The tiles drawn: CoX, ToB and ToA, then The Fractured Archive once the hiscores carry its row. */
-	private int raidRowCount()
+	/** Whether each raid's tile shows, from a lookup's hiscores, or before any (null) from the panel's list. */
+	private static boolean[] raidsOut(@Nullable HiscoreResult hiscores)
 	{
-		return tfaOut ? RAID_NAMES.length : PanelData.RAID_HARD_MODES.length;
-	}
-
-	/** CoX, ToB and ToA pair a hard mode; The Fractured Archive, the row after them, has none. */
-	private static boolean hasHardMode(int row)
-	{
-		return row < PanelData.RAID_HARD_MODES.length;
+		boolean[] out = new boolean[PanelData.RAIDS.size()];
+		for (int i = 0; i < out.length; i++)
+		{
+			Raid raid = PanelData.RAIDS.get(i);
+			out[i] = !raid.isWaits() || (hiscores != null ? hiscores.hasBossRow(raid.getRow()) : raid(i) != null);
+		}
+		return out;
 	}
 
 	/** The raid a row opens, null for one the panel has no popup for yet. */
 	@Nullable
 	private static HiscoreSkill raid(int row)
 	{
-		return hasHardMode(row) ? PanelData.RAIDS[row] : PanelData.listed(PanelData.TFA);
+		return PanelData.listed(PanelData.RAIDS.get(row).getSkill());
 	}
 
 	/** The combat level's row like the panel's combat cell: its icon centered in the icon column, then the level in bold white. */

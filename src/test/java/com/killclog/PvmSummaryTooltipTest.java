@@ -20,10 +20,26 @@ import static org.junit.Assert.*;
 public class PvmSummaryTooltipTest
 {
 	@Test
-	public void megaRareHoverNamesUseFullDisplayNames()
+	public void theRaidsTableHoldsEveryRaid()
 	{
-		assertArrayEquals(new String[]{"Twisted Bow", "Scythe of Vitur", "Tumeken's Shadow", "Obligator"},
-			PanelData.MEGARARE_ITEM_NAMES);
+		// raids.tsv, golden: the tiles in order, their megarares by full name, the hard modes and their short names.
+		List<String> rows = new ArrayList<>();
+		for (Raid raid : PanelData.RAIDS)
+		{
+			rows.add(raid.getTile() + " " + raid.getSkill() + " " + raid.getHard() + " " + raid.getHardLabel() + " "
+				+ raid.isWaits() + " " + raid.getPage() + " " + raid.getMegarare() + " " + raid.getMegarareName());
+			// The hiscore row a tile reads its kills from is RuneLite's own name for the raid.
+			assertEquals(raid.getSkill().getName(), raid.getRow());
+		}
+		assertEquals(java.util.Arrays.asList(
+			"CoX CHAMBERS_OF_XERIC CHAMBERS_OF_XERIC_CHALLENGE_MODE CM false chambers_of_xeric 20997 Twisted Bow",
+			"ToB THEATRE_OF_BLOOD THEATRE_OF_BLOOD_HARD_MODE HM false theatre_of_blood 22486 Scythe of Vitur",
+			"ToA TOMBS_OF_AMASCUT TOMBS_OF_AMASCUT_EXPERT Expert false tombs_of_amascut 27277 Tumeken's Shadow",
+			"TFA THE_FRACTURED_ARCHIVE null - true the_fractured_archive 34717 Obligator"), rows);
+		assertArrayEquals(new int[]{20997, 22486, 27277, 34717}, PanelData.MEGARARE_ITEM_IDS);
+		// A hard mode's cell opens its raid's card; anything else opens its own.
+		assertSame(HiscoreSkill.TOMBS_OF_AMASCUT, PanelData.card(HiscoreSkill.TOMBS_OF_AMASCUT_EXPERT));
+		assertSame(HiscoreSkill.ZULRAH, PanelData.card(HiscoreSkill.ZULRAH));
 	}
 
 	@Test
@@ -287,7 +303,7 @@ public class PvmSummaryTooltipTest
 	{
 		// As the megarare row did before the tiles: the band names the raid's megarare, green held and red not.
 		PvmSummaryTooltip tip = card();
-		tip.setMegarares(1, 0, 0, 0, null);
+		tip.setMegarares(new int[]{1, 0, 0, 0}, null);
 		List<Point> raids = raidTiles(render(painted(tip)));
 		move(tip, raids.get(0).x + 10, raids.get(0).y + 10);
 		assertEquals("Twisted Bow", tip.getHeaderHoverLineText());
@@ -335,8 +351,7 @@ public class PvmSummaryTooltipTest
 		PvmSummaryTooltip dormant = new PvmSummaryTooltip();
 		dormant.setData(0, 0, 0, PanelData.bossCount(), null, 0);
 		assertTrue(PanelData.tfaListed());
-		painted(dormant);
-		assertEquals(4, (int) TestViews.call(dormant, "raidRowCount"));
+		assertEquals(4, raidTiles(render(painted(dormant))).size());
 	}
 
 	@Test

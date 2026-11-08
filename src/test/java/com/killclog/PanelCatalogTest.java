@@ -56,7 +56,7 @@ public class PanelCatalogTest
 	public void theFracturedArchiveHasItsTileUnderRuneLitesCurrentName()
 	{
 		// RuneLite 1.13.6 renamed FRACTURED_ARCHIVE to THE_FRACTURED_ARCHIVE; asking for the old name alone lost the
-		// raid's tile (11/3). A client from before the rename finds it under the old one.
+		// raid's tile (11/3). Every client that can run now has the new name, and a name a client lacks is null.
 		assertSame(HiscoreSkill.THE_FRACTURED_ARCHIVE, PanelData.TFA);
 		assertTrue(PanelData.tfaListed());
 		assertSame(HiscoreSkill.THE_FRACTURED_ARCHIVE, PanelData.skillNamed("THE_FRACTURED_ARCHIVE"));

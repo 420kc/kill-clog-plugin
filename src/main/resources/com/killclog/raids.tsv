@@ -1,0 +1,11 @@
+# The raids, one row each, in the Combat Summary's order: everything the plugin knows about a raid, so the next one is a
+# row here (Dylan, 2026-11-08). A hard mode shares its raid's log, so it reads on the raid's own card: its cell opens
+# that card, where its KC and PB are a second row under the short name the Combat Summary pairs it by.
+# Columns: tile name<TAB>RuneLite's HiscoreSkill name<TAB>the hiscore row's name<TAB>the hard mode's HiscoreSkill name
+# ("-": none)<TAB>its short name<TAB>whether the tile waits for the hiscores to carry the raid's row ("wait": a raid
+# whose launch-day hiscores may not have it yet; "-": always shown)<TAB>the game's Collection Log page<TAB>the megarare
+# that headlines its tile and the Mega Rares row (its log slot's item id)<TAB>that item's name.
+CoX	CHAMBERS_OF_XERIC	Chambers of Xeric	CHAMBERS_OF_XERIC_CHALLENGE_MODE	CM	-	chambers_of_xeric	20997	Twisted Bow
+ToB	THEATRE_OF_BLOOD	Theatre of Blood	THEATRE_OF_BLOOD_HARD_MODE	HM	-	theatre_of_blood	22486	Scythe of Vitur
+ToA	TOMBS_OF_AMASCUT	Tombs of Amascut	TOMBS_OF_AMASCUT_EXPERT	Expert	-	tombs_of_amascut	27277	Tumeken's Shadow
+TFA	THE_FRACTURED_ARCHIVE	The Fractured Archive	-	-	wait	the_fractured_archive	34717	Obligator

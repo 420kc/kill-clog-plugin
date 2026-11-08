@@ -77,13 +77,8 @@ final class ActivitySummaryTooltips
 			int[] logs = LookupQueries.bossLogs(tooltipData, cells.getBossLabels().keySet());
 			tip.setCompletion(logs[0], logs[1]);
 		}
-		tip.setMegarares(
-			LookupQueries.getClogItemCount(clog, PanelData.COX_CATEGORY, PanelData.TWISTED_BOW_ITEM_ID),
-			LookupQueries.getClogItemCount(clog, PanelData.TOB_CATEGORY, PanelData.SCYTHE_ITEM_ID),
-			LookupQueries.getClogItemCount(clog, PanelData.TOA_CATEGORY, PanelData.SHADOW_ITEM_ID),
-			LookupQueries.getClogItemCount(clog, PanelData.TFA_CATEGORY, PanelData.OBLIGATOR_ITEM_ID),
-			itemManager
-		);
+		tip.setMegarares(PanelData.RAIDS.stream()
+			.mapToInt(raid -> LookupQueries.getClogItemCount(clog, raid.getPage(), raid.getMegarare())).toArray(), itemManager);
 		tip.setSuperiors(
 			LookupQueries.getClogItemCount(clog,
 				PanelData.SLAYER_CATEGORY, PanelData.IMBUED_HEART_ITEM_ID),

@@ -113,17 +113,12 @@ final class PanelData
 	static final int ETERNAL_GEM_ITEM_ID = 21270;
 	static final int[] SUPERIOR_ITEMS = {IMBUED_HEART_ITEM_ID, ETERNAL_GEM_ITEM_ID};
 
-	// The raids and their hard modes. A hard mode shares its raid's log, so it reads on the raid's own card:
-	// its cell opens that card, where its KC and PB are a second row under the name the Combat Summary pairs it by.
-	static final HiscoreSkill[] RAIDS = {HiscoreSkill.CHAMBERS_OF_XERIC, HiscoreSkill.THEATRE_OF_BLOOD,
-		HiscoreSkill.TOMBS_OF_AMASCUT};
-	static final HiscoreSkill[] RAID_HARD_MODES = {HiscoreSkill.CHAMBERS_OF_XERIC_CHALLENGE_MODE,
-		HiscoreSkill.THEATRE_OF_BLOOD_HARD_MODE, HiscoreSkill.TOMBS_OF_AMASCUT_EXPERT};
-	static final String[] RAID_HARD_LABELS = {"CM", "HM", "Expert"};
+	/** The raids, in the Combat Summary's order (raids.tsv). */
+	static final List<Raid> RAIDS = raids(CatalogTsv.rows(PanelData.class, "raids.tsv", 9));
+	static final int[] MEGARARE_ITEM_IDS = RAIDS.stream().mapToInt(Raid::getMegarare).toArray();
 
-	// The Fractured Archive (Raids 4, 2026-10-20) is the fourth raid row, with no hard mode.
+	// The Fractured Archive (Raids 4, 2026-10-20): its hiscore row before the catalog listed it, and its popup.
 	static final String TFA_HISCORE = "The Fractured Archive"; // the live hiscore name
-	static final String TFA_CATEGORY = "the_fractured_archive"; // the game's log page key
 	/** The raid's popup once the running client's enum carries it; null before, and its row opens nothing. */
 	@Nullable
 	static final HiscoreSkill TFA = skillNamed("THE_FRACTURED_ARCHIVE"); // RuneLite's enum name (HiscoreSkill, 1.13.6)
@@ -157,42 +152,35 @@ final class PanelData
 	/** The card a boss cell opens: its own, or for a raid's hard mode, the raid's. */
 	static HiscoreSkill card(HiscoreSkill boss)
 	{
-		int i = Arrays.asList(RAID_HARD_MODES).indexOf(boss);
-		return i >= 0 ? RAIDS[i] : boss;
+		for (Raid raid : RAIDS)
+		{
+			if (boss != null && boss == raid.getHard())
+			{
+				return raid.getSkill();
+			}
+		}
+		return boss;
 	}
 
-	/** A raid's hard mode, null for anything else. */
+	/** The raid a boss is, null for anything else. */
 	@Nullable
-	static HiscoreSkill hardMode(HiscoreSkill raid)
+	static Raid raid(HiscoreSkill boss)
 	{
-		int i = Arrays.asList(RAIDS).indexOf(raid);
-		return i >= 0 ? RAID_HARD_MODES[i] : null;
+		return RAIDS.stream().filter(raid -> boss != null && boss == raid.getSkill()).findFirst().orElse(null);
 	}
 
-	/** The name a raid's hard mode goes by beside the raid: CM, HM or Expert. */
-	static String hardLabel(HiscoreSkill raid)
+	/** raids.tsv's rows as Raids. */
+	static List<Raid> raids(List<String[]> table)
 	{
-		return RAID_HARD_LABELS[Arrays.asList(RAIDS).indexOf(raid)];
+		List<Raid> raids = new ArrayList<>();
+		for (String[] f : table)
+		{
+			raids.add(new Raid(f[0], skillNamed(f[1]), f[2], f[3].equals("-") ? null : skillNamed(f[3]), f[4],
+				f[5].equals("wait"), f[6], Integer.parseInt(f[7]), f[8]));
+		}
+		return Collections.unmodifiableList(raids);
 	}
 
-	// Each raid's log and the megarare drop that headlines the Mega Rares row.
-	static final String COX_CATEGORY = "chambers_of_xeric";
-	static final int TWISTED_BOW_ITEM_ID = 20997;
-	static final String TOB_CATEGORY = "theatre_of_blood";
-	static final int SCYTHE_ITEM_ID = 22486;
-	static final String TOA_CATEGORY = "tombs_of_amascut";
-	static final int SHADOW_ITEM_ID = 27277;
-
-	static final int OBLIGATOR_ITEM_ID = 34717; // uncharged, the raid's log slot
-	static final int[] MEGARARE_ITEM_IDS = {TWISTED_BOW_ITEM_ID, SCYTHE_ITEM_ID, SHADOW_ITEM_ID, OBLIGATOR_ITEM_ID};
-
-	// Hover names for the PvM Summary's raid tiles' megarares. Static because the
-	// card draws its tiles with or without a synced clog result; display names use
-	// their full display form; TitleTooltip ellipsizes them when a narrow summary
-	// cannot fit the whole hover title.
-	static final String[] MEGARARE_ITEM_NAMES = {
-		"Twisted Bow", "Scythe of Vitur", "Tumeken's Shadow", "Obligator",
-	};
 	static final String[] SUPERIOR_ITEM_NAMES = {"Imbued heart", "Eternal gem"};
 
 	// Clog-summary trophy items, first on the Rare shelf when obtained. An unobtained
@@ -232,27 +220,15 @@ final class PanelData
 	@Nullable
 	static HiscoreSkill skillNamed(String name)
 	{
-		for (String known : new String[]{name, formerName(name)})
+		try
 		{
-			try
-			{
-				return HiscoreSkill.valueOf(known);
-			}
-			catch (IllegalArgumentException e)
-			{
-				// Not in this client build under this name.
-			}
+			return HiscoreSkill.valueOf(name);
 		}
-		return null;
-	}
-
-	/**
-	 * A constant's name before RuneLite renamed it, so a client from before the rename still finds it: 1.13.6 renamed
-	 * FRACTURED_ARCHIVE to THE_FRACTURED_ARCHIVE, and Kill Clog asking for the old name lost the raid's tile (11/3).
-	 */
-	private static String formerName(String name)
-	{
-		return name.equals("THE_FRACTURED_ARCHIVE") ? "FRACTURED_ARCHIVE" : name;
+		catch (IllegalArgumentException e)
+		{
+			// Not in this client build: a later RuneLite renamed or dropped it, and its one row goes, not the panel.
+			return null;
+		}
 	}
 
 	/** clue-rare-rows.tsv's rows as RareRows. */

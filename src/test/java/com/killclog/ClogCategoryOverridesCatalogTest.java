@@ -30,9 +30,9 @@ public class ClogCategoryOverridesCatalogTest
 		assertEquals("dagannoth_kings", overrides.get("Dagannoth Supreme"));
 		assertEquals("kree_arra", overrides.get("Kree'Arra"));
 		assertEquals("kril_tsutsaroth", overrides.get("K'ril Tsutsaroth"));
-		assertEquals(PanelData.COX_CATEGORY, overrides.get(HiscoreSkill.CHAMBERS_OF_XERIC_CHALLENGE_MODE.getName()));
-		assertEquals(PanelData.TOB_CATEGORY, overrides.get(HiscoreSkill.THEATRE_OF_BLOOD_HARD_MODE.getName()));
-		assertEquals(PanelData.TOA_CATEGORY, overrides.get(HiscoreSkill.TOMBS_OF_AMASCUT_EXPERT.getName()));
+		assertEquals(PanelData.RAIDS.get(0).getPage(), overrides.get(HiscoreSkill.CHAMBERS_OF_XERIC_CHALLENGE_MODE.getName()));
+		assertEquals(PanelData.RAIDS.get(1).getPage(), overrides.get(HiscoreSkill.THEATRE_OF_BLOOD_HARD_MODE.getName()));
+		assertEquals(PanelData.RAIDS.get(2).getPage(), overrides.get(HiscoreSkill.TOMBS_OF_AMASCUT_EXPERT.getName()));
 		assertEquals("the_fight_caves", overrides.get("TzTok-Jad"));
 		assertEquals("the_inferno", overrides.get("TzKal-Zuk"));
 		assertEquals("fortis_colosseum", overrides.get("Sol Heredit"));
