@@ -2273,6 +2273,35 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void thePluginOpensALeaguesStoreFromTheMainFoldersFuture() throws Exception
+	{
+		// The plugin's own opener, which every other test replaces: a League store asked for while the main store is
+		// still loading waits for the main folder and opens its own under it, so a League's captures reach disk.
+		java.util.concurrent.CompletableFuture<net.runelite.client.util.Filepath> mainFolder =
+			new java.util.concurrent.CompletableFuture<>();
+		when(localClogCache.folder()).thenReturn(mainFolder);
+		@SuppressWarnings("unchecked")
+		java.util.function.Function<String, LocalClogCache> opener =
+			(java.util.function.Function<String, LocalClogCache>) field("leagueCacheFactory");
+		LocalClogCache league = opener.apply("demonic-pacts");
+		org.junit.rules.TemporaryFolder folders = new org.junit.rules.TemporaryFolder();
+		folders.create();
+		try
+		{
+			assertFalse("nothing to open under yet", league.folder().isDone());
+			java.io.File dir = folders.newFolder();
+			mainFolder.complete(TestFolders.folder(dir));
+			org.junit.Assert.assertNotNull(league.folder().get(5, java.util.concurrent.TimeUnit.SECONDS));
+			assertTrue(new java.io.File(dir, "leagues/demonic-pacts").isDirectory());
+		}
+		finally
+		{
+			league.shutdown();
+			folders.delete();
+		}
+	}
+
+	@Test
 	public void aLeaguesRetryAfterAHopStaysWithThatLeague() throws Exception
 	{
 		LocalClogCache league = announceLeague();
