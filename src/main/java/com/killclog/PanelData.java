@@ -226,7 +226,8 @@ final class PanelData
 		}
 		catch (IllegalArgumentException e)
 		{
-			// Not in this client build: a later RuneLite renamed or dropped it, and its one row goes, not the panel.
+			// Not in this client build: a later RuneLite renamed or dropped it, and only its own row pays (a boss or rare
+			// row goes; a raid's tile stays and opens nothing), never the panel.
 			return null;
 		}
 	}
