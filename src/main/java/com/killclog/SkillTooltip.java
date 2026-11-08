@@ -20,7 +20,7 @@ public class SkillTooltip extends TitleTooltip
 	private Stats stats = Stats.empty();
 	private List<SkillClogSection> sections = Collections.emptyList();
 	// One clog section's own count, as the game shows it for that activity: Runecraft's Rifts Closed in Guardians of
-	// the Rift, Attack's High-level Gambles in Barbarian Assault. No category, no count.
+	// the Rift. No category, no count.
 	private String countCategory;
 	private String countLabel;
 	int count = -1;
