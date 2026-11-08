@@ -337,9 +337,9 @@ public class SkillClogSectionTest
 	{
 		ClogResult catalog = mappedCatalog();
 
-		assertTotal(catalog, Skill.ATTACK, 49);
+		assertTotal(catalog, Skill.ATTACK, 50);
 		assertTotal(catalog, Skill.HITPOINTS, 13);
-		assertTotal(catalog, Skill.DEFENCE, 69);
+		assertTotal(catalog, Skill.DEFENCE, 78);
 		assertTotal(catalog, Skill.STRENGTH, 30);
 		assertTotal(catalog, Skill.MINING, 31);
 		assertTotal(catalog, Skill.AGILITY, 48);
