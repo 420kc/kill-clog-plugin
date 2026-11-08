@@ -53,8 +53,9 @@ final class GameTile
 		final int key;
 		// The sprite drawn faint, as an item not yet held is.
 		boolean faint;
-		// The item the sprite is, which the card's hover band names while the tile is under the pointer (-1, none).
-		int itemId = -1;
+		// What the sprite is, named in the card's hover band while the tile is under the pointer: a name only, never a
+		// wiki link, since a press on a tile opens its card (Dylan, 2026-11-07).
+		@Nullable
 		String itemName;
 		// A known count's color in place of the log's red, yellow and green, its name wearing it too: a page's
 		// progression color while the highlighter is on, as the boss list's rows do (null, the log's).
@@ -92,9 +93,8 @@ final class GameTile
 			return this;
 		}
 
-		Tile item(int id, String name)
+		Tile named(String name)
 		{
-			itemId = id;
 			itemName = name;
 			return this;
 		}
@@ -128,7 +128,7 @@ final class GameTile
 				if (tile.itemName != null)
 				{
 					// Green while held, red while faint, as the card's other items read in the band.
-					c.hits.add(new TooltipItemHover.HitBox(1, tile.itemId, tile.itemName, box, !tile.faint));
+					c.hits.add(new TooltipItemHover.HitBox(1, -1, tile.itemName, box, !tile.faint));
 				}
 			}
 		});

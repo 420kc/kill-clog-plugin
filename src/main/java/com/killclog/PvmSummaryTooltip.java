@@ -246,7 +246,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		{
 			pvm.add(new GameTile.Tile("Most Killed", mostKilledIcon, mostKilledObtained, mostKilledTotal,
 				onOpenRaid != null && mostKilledBoss != null ? MOST_KILLED : -1)
-				.count(grouped(mostKilledKc) + " kc").item(-1, mostKilled));
+				.count(grouped(mostKilledKc) + " kc").named(mostKilled));
 		}
 		if (!pvm.isEmpty())
 		{
@@ -258,7 +258,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		{
 			raids.add(new GameTile.Tile(RAID_NAMES[i], megarares[i], raidObtained[i], raidTotal[i],
 				onOpenRaid != null && raid(i) != null ? i : -1).faint(weaponCounts[i] <= 0)
-				.item(PanelData.MEGARARE_ITEM_IDS[i], PanelData.MEGARARE_ITEM_NAMES[i]).score(raidKills[i]));
+				.named(PanelData.MEGARARE_ITEM_NAMES[i]).score(raidKills[i]));
 		}
 		body.titled("Raids").add(GameTile.grid(raidRows, raids));
 		// Slayer: XP and Rank from the hiscores, then clog progress when a synced log is known.
