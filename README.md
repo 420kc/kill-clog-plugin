@@ -4,7 +4,7 @@
 
 HiScores, Collection Logs, Personal Bests, and player comparison in one RuneLite panel.
 
-![Kill Clog's panel for 420 kc, with a card from each kind of cell, items hovered and the mouse controls](screenshots/hero-2.7.2.png)
+![Kill Clog's panel for 420 kc: the Collection Log card opening its Minigames tab and the Castle Wars page, a card from each kind of cell, items hovered and the mouse controls](screenshots/hero-2.7.2.png)
 
 ## Setup
 
@@ -26,7 +26,7 @@ Optional and off by default.
 
 **Publish Character Model** needs Sync Collection Log and turns on with it. It adds the **publish character** button beside the chalice, which publishes your character and follower in your real appearance. Anyone who looks you up in Kill Clog sees them in your Player Summary. Hold shift on the button and it reads **delete character model**: a shift-click removes your character from killclog.com, and nothing else changes.
 
-![Kill Clog Web Sync settings with Sync Collection Log, Automatic sync and Publish Character Model on](screenshots/web-sync-settings.png)
+![Kill Clog Web Sync settings with Sync Collection Log, Automatic sync, Quiet automatic sync, Publish Character Model and Share Clan on](screenshots/web-sync-settings.png)
 
 ![The publish character button beside the chalice at the top of the panel](screenshots/web-sync-publish-character.png)
 
@@ -34,9 +34,11 @@ Optional and off by default.
 
 Each button flashes green when your click goes through.
 
-## Skill Clogs
+## Combat & Skill Clogs
 
 Every skill has its own Collection Log-style progression. Skill cards combine relevant activities, equipment, and unlocks with the skill's level, XP, rank, and XP to next level.
+
+Attack, Strength, Defence, Ranged and Magic list the Collection Log gear that needs them, and an item that needs several skills shows on each of their cards.
 
 ![Enable Skill Clogs on](screenshots/skill-clogs-setting-on.png)
 
@@ -62,15 +64,13 @@ HiScores load for any valid RSN, including Collection Log totals and ranks when 
 
 Your clan comes from the game. Other players' clans come from their Kill Clog sync, or from RuneProfile when they have a profile there.
 
-Hover your Collection Log total to see your log, and click it to pin and browse every tab and page.
+Hover your Collection Log total to see your log, and click it to pin it. Click a tab's tile to open the tab, and a page's tile to open the page.
 
 Some counts appear only on the game's own Collection Log pages, like Revenant kills, Hunter Guild rumours and the raids' Entry completions. Open a page and its card shows the count from then on, here and on killclog.com, updated when you next open the page after it changes.
 
 Shift-click anything that opens a card, or right-click it and choose **Copy**, and the card opens and is copied to your clipboard as a picture, ready to paste into Discord.
 
 ![A Shift+click on IronBone11's Combat Summary cell copies the whole card, PvP section included, ready to paste into Discord](screenshots/copy-as-picture.png)
-
-![From the Collection Log card to a tab to a page: Minigames to Castle Wars, and Other to Elder Chaos Druids](screenshots/collection-log-tab-and-page.png)
 
 ![Vorkath's card naming the item under the cursor: green when you have it, red when you don't](screenshots/item-name-hover.png)
 
@@ -96,7 +96,7 @@ In List view, the search row at the top finds bosses by name, or by count when y
 
 ## Leaderboard selector
 
-Turn on **Show Leaderboard Selector** under **Lookup** to switch between the hiscores a player is on, using the icons below the grid.
+Turn on **Show Leaderboard Selector** under **General** to switch between the hiscores a player is on, using the icons below the grid.
 
 ![Leaderboard selector](screenshots/leaderboard-selector.png)
 
