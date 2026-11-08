@@ -2190,6 +2190,29 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void aMainCaptureOverALeaguesWaitingSyncSendsBothGames() throws Exception
+	{
+		// One game's waiting push never stands in for another's (B217): a League capture waits on its quiet time, the
+		// player hops to a main world and captures there before it goes, and both games sync, each once.
+		LocalClogCache league = announceLeague();
+		PublicationCoordinator publication = (PublicationCoordinator) field("publication");
+		publication.scheduleAutomaticSync();
+		world(net.runelite.api.WorldType.MEMBERS);
+		ticks(10);
+		publication.scheduleAutomaticSync();
+		settle();
+		assertEquals(java.util.Collections.singletonList("main"), sentModes());
+		syncs.get(0).complete(new SyncService.SyncResult(true, false, "Synced"));
+		settle();
+		assertEquals(java.util.Arrays.asList("main", "demonic-pacts"), sentModes());
+		verify(syncService).syncCollectionLog(you(),  org.mockito.ArgumentMatchers.isNull(),  any(),  any(),  any(),
+			anyInt(),  eq(league),  eq("demonic-pacts"),  anyLong(),  anyBoolean(),  any());
+		syncs.get(1).complete(new SyncService.SyncResult(true, false, "Synced"));
+		settle();
+		assertEquals("nothing more", 2, syncs.size());
+	}
+
+	@Test
 	public void aLeaguesRetryAfterAHopStaysWithThatLeague() throws Exception
 	{
 		LocalClogCache league = announceLeague();

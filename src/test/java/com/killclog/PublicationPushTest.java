@@ -41,6 +41,27 @@ public class PublicationPushTest
 	}
 
 	@Test
+	public void theGameThatDoesNotLeadIsOwedItsOwnPushInAnyOrderAndGrouping()
+	{
+		// B217: a main click over a League's push leads, and the League is owed its own push, never dropped.
+		PublicationCoordinator.Push league = automatic("demonic-pacts");
+		PublicationCoordinator.Push follows = automatic(null);
+		PublicationCoordinator.Push main = click("main");
+		java.util.Set<String> owed = java.util.Collections.singleton("demonic-pacts");
+		assertEquals(owed, merge(league, main).owed);
+		assertEquals(owed, merge(main, league).owed);
+		assertEquals(owed, merge(merge(league, follows), main).owed);
+		assertEquals(owed, merge(league, merge(follows, main)).owed);
+		// A push following the world is the main game's: it owes the main game nothing.
+		assertEquals(java.util.Collections.emptySet(), merge(follows, main).owed);
+		// The League leading owes the main game.
+		assertEquals(java.util.Collections.singleton("main"), merge(main, click("demonic-pacts")).owed);
+		// A push and its own retry are one ask: the game the retry resolved owes nothing.
+		PublicationCoordinator.Push asked = click("main");
+		assertEquals(java.util.Collections.emptySet(), merge(asked, asked.retriedIn("demonic-pacts", 1)).owed);
+	}
+
+	@Test
 	public void theNewerCharacterRequestAndOneRetryAreKept()
 	{
 		PublicationCoordinator.Push first = PublicationCoordinator.Push.ask(LOGIN, 0, 0, "main", true, 1);

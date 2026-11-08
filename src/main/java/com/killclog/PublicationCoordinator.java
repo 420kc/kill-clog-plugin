@@ -125,12 +125,15 @@ final class PublicationCoordinator
 		// Automatic sync's era it was asked in, and whether it carries a server-advised wait (kept through merging).
 		final int automaticEra;
 		final boolean holdsWait;
+		// Other games' pushes it took in when they met, each owed its own push once this one's attempt ends: one game's
+		// waiting push never stands in for another's (a main capture over a League's, B217).
+		final Set<String> owed;
 
 		/** A push asked for now, with the eras it was asked in. */
 		static Push ask(Session session, int era, int automaticEra, String mode, boolean manual, int forCharacter)
 		{
 			return new Push(session, era, mode, manual, forCharacter, ASKED.incrementAndGet(), Collections.emptySet(), 0,
-				false, automaticEra, false);
+				false, automaticEra, false, Collections.emptySet());
 		}
 
 		/** The server's one retry, for the game its attempt resolved, its line kept by that attempt, and its wait. */
@@ -139,12 +142,13 @@ final class PublicationCoordinator
 			Set<String> spent = new HashSet<>(retried);
 			spent.add(game);
 			return new Push(session, era, game, manual, forCharacter, asked, Collections.unmodifiableSet(spent), attempt,
-				true, automaticEra, true);
+				true, automaticEra, true, owed);
 		}
 
 		Push withoutCharacter()
 		{
-			return new Push(session, era, mode, manual, NONE, asked, retried, line, retryOfAsk, automaticEra, holdsWait);
+			return new Push(session, era, mode, manual, NONE, asked, retried, line, retryOfAsk, automaticEra, holdsWait,
+				owed);
 		}
 
 		/** Whether its one advised retry is spent for its game: it never retries again. */
@@ -176,8 +180,9 @@ final class PublicationCoordinator
 		/**
 		 * Two pushes go as one, the same in whatever order and grouping they meet: pushes of two logins, or of two eras
 		 * of one, never mix (the newer stands whole; both only grow); within one, the lead's game and age, a click if
-		 * either was, the newer character request (generations only grow), the retries spent by either, and any
-		 * server-advised wait either carries.
+		 * either was, the newer character request (generations only grow), the retries spent by either, any
+		 * server-advised wait either carries, and every other game either was asked for, owed (a push and its own retry
+		 * are one ask, so the game its retry resolved owes nothing).
 		 */
 		static Push merge(Push one, Push other)
 		{
@@ -190,12 +195,26 @@ final class PublicationCoordinator
 				return one.era > other.era ? one : other;
 			}
 			Push lead = leads(other, one) ? other : one;
+			Push led = lead == one ? other : one;
 			Set<String> spent = new HashSet<>(one.retried);
 			spent.addAll(other.retried);
+			Set<String> owed = new HashSet<>(one.owed);
+			owed.addAll(other.owed);
+			if (led.asked != lead.asked)
+			{
+				owed.add(game(led.mode));
+			}
+			owed.remove(game(lead.mode));
 			return new Push(lead.session, lead.era, lead.mode, one.manual || other.manual,
 				Math.max(one.forCharacter, other.forCharacter), lead.asked, Collections.unmodifiableSet(spent),
 				Math.max(one.line, other.line), lead.retryOfAsk, Math.max(one.automaticEra, other.automaticEra),
-				one.holdsWait || other.holdsWait);
+				one.holdsWait || other.holdsWait, Collections.unmodifiableSet(owed));
+		}
+
+		/** The game a push is for: a push that follows the world is the main game's. */
+		private static String game(String mode)
+		{
+			return mode == null ? GameMode.MAIN : mode;
 		}
 	}
 
@@ -424,11 +443,10 @@ final class PublicationCoordinator
 		{
 			if (!push.deliberate())
 			{
+				// Merged either way, so another game's waiting push is never dropped for this one.
 				long left = quietSince + SYNC_MAX_WAIT_MS - now;
-				if (pendingAutomatic && !push.retry() && left > 0)
-				{
-					startTimer(Math.min(delayMs, left), push);
-				}
+				startTimer(pendingAutomatic && !push.retry() && left > 0 ? Math.min(delayMs, left)
+					: pendingTimer.getDelay(TimeUnit.MILLISECONDS), Push.merge(pendingPush, push));
 				return;
 			}
 			if (pendingPush.holdsWait && pendingTimer != null)
@@ -593,6 +611,7 @@ final class PublicationCoordinator
 		syncGate.release(attempt);
 		abandon(push, attempt);
 		launchQueued();
+		pushOwed(push);
 		if (scheduleCatchUp)
 		{
 			// The catch-up follows the world, so a world still unknown when it fires gets no more.
@@ -690,6 +709,16 @@ final class PublicationCoordinator
 			abandon(push, attempt);
 		}
 		launchQueued();
+		pushOwed(push);
+	}
+
+	/** Each other game a finished attempt carried gets its own push now, on the same terms as any push. */
+	private void pushOwed(Push push)
+	{
+		for (String game : push.owed)
+		{
+			schedule(0, Push.ask(push.session, push.era, push.automaticEra, game, push.manual, NONE));
+		}
 	}
 
 	/**
@@ -738,6 +767,7 @@ final class PublicationCoordinator
 			chatFor(push.session, SYNC_FAILED);
 		}
 		launchQueued();
+		pushOwed(push);
 	}
 
 	/**
