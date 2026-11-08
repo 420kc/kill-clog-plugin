@@ -692,16 +692,6 @@ final class CardBody
 			card.addMouseListener(mouse);
 		}
 
-		void span(int top, int key)
-		{
-			span(top, NativeTooltip.LINE_HEIGHT, key);
-		}
-
-		void span(int top, int height, int key)
-		{
-			boxes.put(key, new Rectangle(0, top, Integer.MAX_VALUE, height));
-		}
-
 		/**
 		 * Lays down only what shows of a row, so one scrolled out of view can't be pressed; whether the still
 		 * mouse is on it.
@@ -728,18 +718,6 @@ final class CardBody
 				hovered = -1;
 			}
 			return on;
-		}
-
-		/** Forgets every row: a scrolled list lays down only the rows it shows. */
-		void clear()
-		{
-			boxes.clear();
-		}
-
-		/** Hovers whatever row now sits under the still mouse, as after a list scrolls beneath it. */
-		void rehover()
-		{
-			hover(at(pointer));
 		}
 
 		/** The row or tile under a point, or -1. */
