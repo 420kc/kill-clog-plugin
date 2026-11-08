@@ -244,8 +244,20 @@ public class ClogSummaryTooltipTest
 		assertEquals(-1, TestViews.tileAt(tip, "tabRows", tiles.get(0).x + 10, tiles.get(0).y + 10));
 		assertEquals(1, TestViews.tileAt(tip, "tabRows", raids.x + 10, raids.y + 10));
 		int idle = paint(tip).getRGB(raids.x + 10, raids.y + 40);
+		Point total = tiles.get(0);
+		int totalIdle = paint(tip).getRGB(total.x + 10, total.y + 40);
+		move(tip, total.x + 10, total.y + 10);
+		assertEquals("the Total opens nothing, so it never answers the hover", totalIdle,
+			paint(tip).getRGB(total.x + 10, total.y + 40));
 		move(tip, raids.x + 10, raids.y + 10);
 		assertNotEquals(idle, paint(tip).getRGB(raids.x + 10, raids.y + 40));
+		for (java.awt.event.MouseListener listener : tip.getMouseListeners())
+		{
+			listener.mouseExited(new MouseEvent(tip, MouseEvent.MOUSE_EXITED, 0, 0, raids.x + 10, raids.y + 10, 0, false));
+		}
+		assertEquals("off the card, a repaint (a sprite loading late) lights nothing", idle,
+			paint(tip).getRGB(raids.x + 10, raids.y + 40));
+		move(tip, raids.x + 10, raids.y + 10);
 		for (java.awt.event.MouseListener listener : tip.getMouseListeners())
 		{
 			listener.mousePressed(new MouseEvent(tip, MouseEvent.MOUSE_PRESSED, 0, 0, raids.x + 10, raids.y + 10, 1,

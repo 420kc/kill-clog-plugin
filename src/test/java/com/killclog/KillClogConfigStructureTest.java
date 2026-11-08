@@ -189,6 +189,14 @@ public class KillClogConfigStructureTest
 		assertEquals(NativeTooltip.BORDER_MID, defaults.cardBorderColor());
 	}
 
+	@Test
+	public void theLookupOptionAndItsLabelLeadTheRightClickMenu()
+	{
+		// 2.8.0: the lookup option joined the menus it appears in.
+		assertEquals(Arrays.asList("playerMenuLookup", "menuLabel"),
+			keysInSection(KillClogConfig.menuLocationsSection).subList(0, 2));
+	}
+
 	private static List<String> keysInSection(String section)
 	{
 		return Arrays.stream(KillClogConfig.class.getDeclaredMethods())
