@@ -219,7 +219,7 @@ final class GameTile
 		int x = box.x + BAR_PAD;
 		int barY = box.y + box.height - BAR_PAD - BAR_HEIGHT;
 		int width = box.width - 2 * BAR_PAD;
-		int lit = known && tile.total > 0 ? width * Math.min(tile.obtained, tile.total) / tile.total : 0;
+		int lit = tile.total > 0 ? width * Math.min(tile.obtained, tile.total) / tile.total : 0;
 		for (int part = 0; part < BAR_PARTS; part++)
 		{
 			int from = x + width * part / BAR_PARTS;
