@@ -165,9 +165,10 @@ public class LocalClogCache
 					PlayerClogData data = readRecord(file);
 					if (data == null || !file.getFileName().equals(ownFile(data.ownerHash)))
 					{
-						// Damaged bytes are kept aside, never overwritten by the next save. A second client starting
-						// on this folder may move them first; either way the rest still loads, so no account's log is
-						// left unread and then saved over.
+						// Damaged bytes are kept aside, so the next save doesn't overwrite them (unless another program
+						// holds the file open just then, and the one move is refused). A second client starting on this
+						// folder may move them first; either way the rest still loads, so no account's log is left unread
+						// and then saved over.
 						setAside(folder, file);
 						continue;
 					}
@@ -1190,16 +1191,28 @@ public class LocalClogCache
 		}
 		catch (FileSystemException e)
 		{
-			if (attempt < 20 && !(e instanceof NoSuchFileException) && unsaved(file, snapshot))
+			if (!unsaved(file, snapshot))
 			{
-				diskWriter.schedule(() ->
-				{
-					if (unsaved(file, snapshot))
-					{
-						save(folder, file, snapshot, attempt + 1);
-					}
-				}, 100, TimeUnit.MILLISECONDS);
+				// A newer save for the file is queued and will land in this one's place.
 				return;
+			}
+			if (attempt < 20 && !(e instanceof NoSuchFileException))
+			{
+				try
+				{
+					diskWriter.schedule(() ->
+					{
+						if (unsaved(file, snapshot))
+						{
+							save(folder, file, snapshot, attempt + 1);
+						}
+					}, 100, TimeUnit.MILLISECONDS);
+					return;
+				}
+				catch (RejectedExecutionException closed)
+				{
+					// The store closed (a League switch, shutdown) with this save refused: it is dropped, and says so.
+				}
 			}
 			log.warn("Kill Clog could not save '{}': {}", file, e.getMessage());
 		}
