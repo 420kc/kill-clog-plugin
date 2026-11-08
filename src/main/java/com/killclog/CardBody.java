@@ -610,7 +610,7 @@ final class CardBody
 			{
 				if (obtained[i] >= 0)
 				{
-					width = Math.max(width, TitleTooltip.wrappedProgressCountWidth(fm, obtained[i], total[i]));
+					width = Math.max(width, fm.stringWidth(" (" + TitleTooltip.progressCountText(obtained[i], total[i]) + ")"));
 				}
 			}
 			return width;
@@ -636,7 +636,8 @@ final class CardBody
 					TitleTooltip.drawRightAligned(g, fm, TitleTooltip.scoreText(scores[i]), right, textY);
 					if (obtained[i] >= 0)
 					{
-						TitleTooltip.paintWrappedProgressCount(g, fm, right, textY, obtained[i], total[i]);
+						g.setColor(TitleTooltip.completionColor(obtained[i], total[i]));
+						g.drawString(" (" + TitleTooltip.progressCountText(obtained[i], total[i]) + ")", right, textY);
 					}
 					y += NativeTooltip.LINE_HEIGHT;
 				}

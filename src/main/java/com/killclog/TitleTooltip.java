@@ -269,25 +269,6 @@ public abstract class TitleTooltip extends NativeTooltip
 			+ "/" + (total < 0 ? "?" : String.valueOf(total));
 	}
 
-	protected static String wrappedProgressCountText(int obtained, int total)
-	{
-		return " (" + progressCountText(obtained, total) + ")";
-	}
-
-	protected static int wrappedProgressCountWidth(FontMetrics fm, int obtained, int total)
-	{
-		return fm.stringWidth(wrappedProgressCountText(obtained, total));
-	}
-
-	protected static int paintWrappedProgressCount(Graphics2D g2, FontMetrics fm, int x, int y,
-		int obtained, int total)
-	{
-		String progress = wrappedProgressCountText(obtained, total);
-		g2.setColor(completionColor(obtained, total));
-		g2.drawString(progress, x, y);
-		return x + fm.stringWidth(progress);
-	}
-
 	/** A thousands-grouped count, the game's way: 1,234,567. */
 	static String grouped(long value)
 	{
