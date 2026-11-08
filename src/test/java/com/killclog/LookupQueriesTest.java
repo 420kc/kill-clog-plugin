@@ -169,4 +169,21 @@ public class LookupQueriesTest
 			java.util.TimeZone.setDefault(before);
 		}
 	}
+
+	@Test
+	public void theBossTotalCountsTheFracturedArchiveOnceWhetherOrNotItsRowIsOut()
+	{
+		// The panel lists the raid, so its hiscore row is one of the list's and counts once: 72/72, never 73. (Moved
+		// here from the PvM Summary's tests when its raid rows became tiles; the total never depended on them.)
+		java.util.Map<String, Integer> kills = new HashMap<>();
+		kills.put(PanelData.TFA_HISCORE, 4);
+		HiscoreResult withRaid = TestViews.hiscore(AccountType.REGULAR, kills, Collections.emptyMap(),
+			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1);
+		assertTrue(PanelData.tfaListed());
+		assertEquals(PanelData.bossCount(), LookupQueries.bossTotal(withRaid));
+		HiscoreResult without = TestViews.hiscore(AccountType.REGULAR, Collections.emptyMap(), Collections.emptyMap(),
+			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1);
+		assertEquals(PanelData.bossCount(), LookupQueries.bossTotal(without));
+		assertEquals(PanelData.bossCount(), LookupQueries.bossTotal(null));
+	}
 }
