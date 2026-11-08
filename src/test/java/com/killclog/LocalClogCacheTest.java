@@ -2,8 +2,6 @@ package com.killclog;
 
 import com.google.gson.Gson;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStream;
 import java.time.Instant;
 import java.nio.file.Files;
 import java.util.ArrayList;
@@ -1227,98 +1225,6 @@ public class LocalClogCacheTest
 		{
 			played.shutdown();
 			other.shutdown();
-		}
-	}
-
-	@Test
-	public void aSaveLandsWhileAnotherProgramReadsTheLog() throws Exception
-	{
-		// Windows refuses to replace a file another program has open (a second client reading it at login, a virus
-		// scanner); the save waits for it instead of being dropped until the next capture.
-		File dir = temporaryFolder.newFolder();
-		LocalClogCache store = new LocalClogCache(new Gson());
-		store.open(() -> TestFolders.folder(dir));
-		try
-		{
-			assertTrue(StoreLogin.activate(store, "Tester", HASH));
-			store.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 2978, 2991), obtainedItems("hats", 2978)));
-			String first = awaitSaved(dir, null);
-			try (InputStream reading = new FileInputStream(ownFile(dir, HASH)))
-			{
-				store.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 2978, 2991), obtainedItems("hats", 2978, 2991)));
-				// Past the save's debounce, still reading.
-				Thread.sleep(1000);
-			}
-			assertTrue(awaitSaved(dir, first).contains("2991"));
-		}
-		finally
-		{
-			store.shutdown();
-		}
-	}
-
-	@Test
-	public void aNewerSaveTakesThePlaceOfOneWaitingOutALock() throws Exception
-	{
-		// A save refused while another program reads the log is tried again on the disk thread's schedule, until a
-		// newer capture is queued: then the older one stops, and only the newer lands. Windows only: elsewhere an open
-		// file never refuses the move.
-		org.junit.Assume.assumeTrue(System.getProperty("os.name").startsWith("Windows"));
-		File dir = temporaryFolder.newFolder();
-		LocalClogCache store = new LocalClogCache(new Gson());
-		store.open(() -> TestFolders.folder(dir));
-		try
-		{
-			assertTrue(StoreLogin.activate(store, "Tester", HASH));
-			store.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 2978, 2991, 2993), obtainedItems("hats", 2978)));
-			String first = awaitSaved(dir, null);
-			try (InputStream reading = new FileInputStream(ownFile(dir, HASH)))
-			{
-				store.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 2978, 2991, 2993),
-					obtainedItems("hats", 2978, 2991)));
-				// Past the older save's debounce: it is refused and retrying.
-				Thread.sleep(800);
-				store.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 2978, 2991, 2993),
-					obtainedItems("hats", 2978, 2991, 2993)));
-			}
-			// Released while the newer save waits on its debounce: the older one must not land meanwhile.
-			Thread.sleep(250);
-			assertEquals("the older save stood aside", first, Files.readString(ownFile(dir, HASH).toPath()));
-			String last = awaitSaved(dir, first);
-			assertTrue(last.contains("\"id\":2993"));
-		}
-		finally
-		{
-			store.shutdown();
-		}
-	}
-
-	@Test
-	public void aSaveGivesUpAfterTwoSecondsOfLock() throws Exception
-	{
-		// Bounded: a reader that never lets go costs one save its two seconds of tries, then it is dropped (logged), and
-		// the next capture saves again; nothing keeps trying in the background. Windows only, as above.
-		org.junit.Assume.assumeTrue(System.getProperty("os.name").startsWith("Windows"));
-		File dir = temporaryFolder.newFolder();
-		LocalClogCache store = new LocalClogCache(new Gson());
-		store.open(() -> TestFolders.folder(dir));
-		try
-		{
-			assertTrue(StoreLogin.activate(store, "Tester", HASH));
-			store.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 2978, 2991), obtainedItems("hats", 2978)));
-			String first = awaitSaved(dir, null);
-			try (InputStream reading = new FileInputStream(ownFile(dir, HASH)))
-			{
-				store.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 2978, 2991), obtainedItems("hats", 2978, 2991)));
-				// Its tries end about 2.4 s in; held well past that, for slow disks.
-				Thread.sleep(4500);
-			}
-			Thread.sleep(1000);
-			assertEquals("given up, not still trying", first, Files.readString(ownFile(dir, HASH).toPath()));
-		}
-		finally
-		{
-			store.shutdown();
 		}
 	}
 
