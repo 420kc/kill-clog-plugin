@@ -136,6 +136,39 @@ public class ClogSummaryWiringTest
 		verify(items).getImage(ClogHelper.CLOG_TIER_ITEM_IDS[ClogHelper.tierIndex(110, 120)]);
 	}
 
+	@Test
+	public void recentShowsTheSixNewest() throws Exception
+	{
+		// Eight items, each logged on its own day: the card's Recent holds the six newest, newest first.
+		List<Integer> slayer = ids(2000, 8);
+		Map<String, List<Integer>> categories = Collections.singletonMap("slayer", slayer);
+		List<ClogResult.ClogItem> dated = new ArrayList<>();
+		for (int i = 0; i < slayer.size(); i++)
+		{
+			dated.add(new ClogResult.ClogItem(slayer.get(i), 1,
+				ClogDates.local(java.time.Instant.parse("2026-10-0" + (i + 1) + "T12:00:00Z").toString())));
+		}
+		ClogResult clog = new ClogResult("Probe", Collections.singletonMap("slayer", dated), categories,
+			Collections.emptyMap(), null, null);
+		Method build = KillClogPanel.class.getDeclaredMethod("buildClogSummaryTooltip",
+			JComponent.class, HiscoreResult.class, ClogResult.class, String.class, String.class);
+		build.setAccessible(true);
+		ClogSummaryTooltip[] tip = new ClogSummaryTooltip[1];
+		SwingUtilities.invokeAndWait(() ->
+		{
+			try
+			{
+				tip[0] = (ClogSummaryTooltip) build.invoke(panel, new JLabel(), null, clog, "Probe", null);
+			}
+			catch (ReflectiveOperationException e)
+			{
+				throw new AssertionError(e);
+			}
+		});
+		ClogSummaryTooltip.Shelf recent = TestViews.field(tip[0], "recent");
+		assertArrayEquals(new int[]{2007, 2006, 2005, 2004, 2003, 2002}, recent.ids);
+	}
+
 	private static List<Integer> ids(int from, int count)
 	{
 		List<Integer> ids = new ArrayList<>();

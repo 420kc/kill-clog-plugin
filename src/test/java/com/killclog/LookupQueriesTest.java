@@ -16,6 +16,17 @@ public class LookupQueriesTest
 	}
 
 	@Test
+	public void aBossLogCountsAsDoneOnlyWithEveryItem()
+	{
+		// The Bosses tile's Logs line: Zulrah's log full, Vorkath's one short, Scorpia's unknown (no log to count).
+		java.util.Map<net.runelite.client.hiscore.HiscoreSkill, TooltipData> logs = new HashMap<>();
+		logs.put(net.runelite.client.hiscore.HiscoreSkill.ZULRAH, TooltipData.builder().name("Zulrah").obtainedCount(9).totalItems(9).build());
+		logs.put(net.runelite.client.hiscore.HiscoreSkill.VORKATH, TooltipData.builder().name("Vorkath").obtainedCount(5).totalItems(6).build());
+		logs.put(net.runelite.client.hiscore.HiscoreSkill.SCORPIA, TooltipData.builder().name("Scorpia").totalItems(0).build());
+		assertArrayEquals(new int[]{1, 2}, LookupQueries.bossLogs(logs, logs.keySet()));
+	}
+
+	@Test
 	public void testProviderAccountMetadataWinsTooltipLabel()
 	{
 		HiscoreResult regularHiscore = hiscore(AccountType.REGULAR);
