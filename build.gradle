@@ -47,6 +47,8 @@ tasks.withType(JavaCompile) {
 test {
     // RuneLite resolves .runelite from user.home as it loads: tests get their own, never the player's.
     systemProperty 'user.home', "${buildDir}/test-home"
+    // Headless, so no test can open a link in the player's browser: the raid tiles' wiki links did, once per run (11/7).
+    systemProperty 'java.awt.headless', 'true'
 }
 
 task run(type: JavaExec) {
