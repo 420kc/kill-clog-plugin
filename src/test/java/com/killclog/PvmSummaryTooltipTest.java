@@ -40,6 +40,29 @@ public class PvmSummaryTooltipTest
 	}
 
 	@Test
+	public void grandmasterStaysInsideItsTile()
+	{
+		// "Grandmaster" in bold is as wide as the tile itself: it takes the regular font rather than run over the frame.
+		Map<CombatAchievementTier, Integer> totals = new java.util.EnumMap<>(CombatAchievementTier.class);
+		for (CombatAchievementTier tier : CombatAchievementTier.values())
+		{
+			totals.put(tier, tier.totalTasks());
+		}
+		BufferedImage image = render(painted(fill(pvmCard(CombatAchievementResult.of(totals, totals)))));
+		Point tile = TestViews.tiles(image).get(0);
+		int greenInMargin = 0;
+		for (int y = tile.y; y < tile.y + 20; y++)
+		{
+			for (int dx : new int[]{0, 1, 2, 3, GameTile.WIDTH - 4, GameTile.WIDTH - 3, GameTile.WIDTH - 2, GameTile.WIDTH - 1})
+			{
+				Color px = new Color(image.getRGB(tile.x + dx, y), true);
+				greenInMargin += px.getGreen() > 180 && px.getRed() < 120 && px.getBlue() < 120 ? 1 : 0;
+			}
+		}
+		assertEquals(0, greenInMargin);
+	}
+
+	@Test
 	public void theCaTileWaitsForATierAndFillsTowardTheNextOne()
 	{
 		Map<CombatAchievementTier, Integer> totals = new java.util.EnumMap<>(CombatAchievementTier.class);

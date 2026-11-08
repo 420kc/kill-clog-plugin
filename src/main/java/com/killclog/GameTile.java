@@ -160,15 +160,15 @@ final class GameTile
 		boolean page = box.height == PAGE_HEIGHT;
 		Font font = g.getFont();
 
-		// The name in bold. A page's, with no sprite under it, breaks at a space onto two lines where it must, and takes
-		// the regular font only where even that won't fit; a sprite's tile keeps its short name on one line.
+		// The name in bold. A page's, with no sprite under it, breaks at a space onto two lines where it must; a sprite's
+		// tile keeps its short name on one line. Either takes the regular font where bold still won't fit (Grandmaster).
 		int room = box.width - 2 * NAME_PAD;
 		FontMetrics nfm = c.bfm;
 		String[] lines = !page || nfm.stringWidth(tile.name) <= room ? new String[]{tile.name} : split(tile.name, nfm);
-		if (page && Math.max(nfm.stringWidth(lines[0]), nfm.stringWidth(lines[lines.length - 1])) > room)
+		if (Math.max(nfm.stringWidth(lines[0]), nfm.stringWidth(lines[lines.length - 1])) > room)
 		{
 			nfm = g.getFontMetrics(COUNT_FONT);
-			lines = split(tile.name, nfm);
+			lines = page ? split(tile.name, nfm) : lines;
 		}
 		g.setFont(nfm.getFont());
 		g.setColor(complete || known && tile.wear != null ? color : NativeTooltip.labelColor);
