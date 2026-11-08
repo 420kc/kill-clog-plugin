@@ -154,7 +154,8 @@ final class ClogPages
 		ClogTabTooltip card = new ClogTabTooltip();
 		card.setComponent(owner);
 		card.setTab(tab, progress.get(tab), slots.size());
-		card.setPages(names, obtained, total);
+		// Page tiles wear the panel's progression colors when its highlighter is on, as the boss list does.
+		card.setPages(names, obtained, total, config.completionistHighlighter() ? config : null);
 		card.setBack("< Collection Log", press -> pin(owner, press, owner.createToolTip()));
 		card.setOnOpenPage((press, page) -> pin(owner, press, pageCard(owner, tab, keys.get(page))));
 		return card;

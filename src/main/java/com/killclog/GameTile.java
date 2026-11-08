@@ -56,10 +56,20 @@ final class GameTile
 		// The item the sprite is, which the card's hover band names while the tile is under the pointer (-1, none).
 		int itemId = -1;
 		String itemName;
+		// A known count's color in place of the log's red, yellow and green, its name wearing it too: a page's
+		// progression color while the highlighter is on, as the boss list's rows do (null, the log's).
+		@Nullable
+		Color wear;
 
 		Tile faint(boolean faint)
 		{
 			this.faint = faint;
+			return this;
+		}
+
+		Tile wear(@Nullable Color wear)
+		{
+			this.wear = wear;
 			return this;
 		}
 
@@ -110,7 +120,8 @@ final class GameTile
 		frame(g, hovered ? HOVERED : FRAME, box);
 		boolean known = tile.obtained >= 0;
 		boolean complete = known && tile.obtained >= tile.total;
-		Color color = known ? TitleTooltip.completionColor(tile.obtained, tile.total) : TitleTooltip.MUTED_GRAY;
+		Color color = !known ? TitleTooltip.MUTED_GRAY
+			: tile.wear != null ? tile.wear : TitleTooltip.completionColor(tile.obtained, tile.total);
 		int center = box.x + box.width / 2;
 		boolean page = box.height == PAGE_HEIGHT;
 		Font font = g.getFont();
@@ -126,7 +137,7 @@ final class GameTile
 			lines = split(tile.name, nfm);
 		}
 		g.setFont(nfm.getFont());
-		g.setColor(complete ? color : NativeTooltip.labelColor);
+		g.setColor(complete || known && tile.wear != null ? color : NativeTooltip.labelColor);
 		int nameY = box.y + NAME_TOP + nfm.getAscent() + (page && lines.length == 1 ? NAME_LINE / 2 : 0);
 		for (String line : lines)
 		{

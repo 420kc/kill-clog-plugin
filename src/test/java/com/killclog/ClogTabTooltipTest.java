@@ -14,6 +14,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 public class ClogTabTooltipTest
@@ -285,12 +286,59 @@ public class ClogTabTooltipTest
 	{
 		ClogTabTooltip card = new ClogTabTooltip();
 		card.setTab("Bosses", new int[]{22, 50}, 50);
-		card.setPages(new String[]{"Zulrah", "Vorkath", "Obor"}, new int[]{10, 3, 0}, new int[]{10, 10, 10});
+		card.setPages(new String[]{"Zulrah", "Vorkath", "Obor"}, new int[]{10, 3, 0}, new int[]{10, 10, 10}, null);
 		java.util.Set<Integer> shown = colors(card);
 		for (java.awt.Color color : new java.awt.Color[]{TitleTooltip.CLOG_GREEN, TitleTooltip.CLOG_YELLOW, TitleTooltip.CLOG_RED})
 		{
 			assertTrue(color.toString(), shown.contains(color.getRGB()));
 		}
+	}
+
+	@Test
+	public void pageTilesWearTheirProgressionColorsWhenTheHighlighterIsOn()
+	{
+		// Back from 2.7.8's page rows (the shop's two color ladders): a page is one log page, so with the highlighter
+		// on its tile wears the player's progression color; off, the log's red, yellow and green.
+		java.awt.Color done = new java.awt.Color(1, 2, 3);
+		java.awt.Color oneLeft = new java.awt.Color(4, 5, 6);
+		java.awt.Color going = new java.awt.Color(7, 8, 9);
+		java.awt.Color none = new java.awt.Color(10, 11, 12);
+		KillClogConfig progress = new KillClogConfig()
+		{
+			@Override
+			public java.awt.Color completedClogColor()
+			{
+				return done;
+			}
+
+			@Override
+			public java.awt.Color missing1Color()
+			{
+				return oneLeft;
+			}
+
+			@Override
+			public java.awt.Color inProgressClogColor()
+			{
+				return going;
+			}
+
+			@Override
+			public java.awt.Color emptyClogColor()
+			{
+				return none;
+			}
+		};
+		ClogTabTooltip card = new ClogTabTooltip();
+		card.setTab("Bosses", null, 40);
+		card.setPages(new String[]{"Zulrah", "Vorkath", "Obor", "Bryophyta"}, new int[]{10, 9, 3, 0},
+			new int[]{10, 10, 10, 10}, progress);
+		java.util.Set<Integer> shown = colors(card);
+		for (java.awt.Color color : new java.awt.Color[]{done, oneLeft, going, none})
+		{
+			assertTrue(color.toString(), shown.contains(color.getRGB()));
+		}
+		assertFalse(shown.contains(TitleTooltip.CLOG_YELLOW.getRGB()));
 	}
 
 	private static java.util.Set<Integer> colors(ClogTabTooltip card)
@@ -321,7 +369,7 @@ public class ClogTabTooltipTest
 		Arrays.fill(total, 9);
 		ClogTabTooltip card = new ClogTabTooltip();
 		card.setTab("Bosses", new int[]{12, 34}, 34);
-		card.setPages(names, obtained, total);
+		card.setPages(names, obtained, total, null);
 		// Pages answer a press once something can open them.
 		card.setOnOpenPage((press, page) ->
 		{
