@@ -462,6 +462,20 @@ final class ClogIndex
 		return Collections.unmodifiableMap(remaps);
 	}
 
+	/** Each item's name by {@link #itemNameOrAlias}'s rule, into {@code names}; no log, or no name, adds nothing. */
+	static void putItemNames(Map<Integer, String> names, List<Integer> itemIds, @Nullable ClogResult result,
+		@Nullable ClogIndex index)
+	{
+		for (int itemId : result != null ? itemIds : Collections.<Integer>emptyList())
+		{
+			String name = itemNameOrAlias(index, result, itemId);
+			if (name != null)
+			{
+				names.put(itemId, name);
+			}
+		}
+	}
+
 	/** The other ids whose names stand in for a counted item's own when it has none, in order (item-aliases.tsv). */
 	/**
 	 * An item's name on any card, by one rule: the player's log names it, or the game's own Collection Log, or else

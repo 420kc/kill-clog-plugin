@@ -99,9 +99,9 @@ final class SkillClogSection
 
 		List<Integer> itemIds = new ArrayList<>(distinctIds);
 		Map<Integer, String> itemNames = new LinkedHashMap<>();
-		addItemNames(itemNames, itemIds, catalog, clogIndex);
-		addItemNames(itemNames, itemIds, compared, clogIndex);
-		addItemNames(itemNames, itemIds, primary, clogIndex);
+		ClogIndex.putItemNames(itemNames, itemIds, catalog, clogIndex);
+		ClogIndex.putItemNames(itemNames, itemIds, compared, clogIndex);
+		ClogIndex.putItemNames(itemNames, itemIds, primary, clogIndex);
 		// A set's first id is never an alias or a repeat in its section (SkillClogCatalogTest), so it stands as read.
 		return new SkillClogSection(spec.heading, spec.category, itemIds, spec.rowStarts, itemNames,
 			PlayerItems.from(primary, spec, distinctIds, clogIndex));
@@ -124,22 +124,6 @@ final class SkillClogSection
 		}
 	}
 
-	private static void addItemNames(Map<Integer, String> destination,
-		List<Integer> itemIds, @Nullable ClogResult result, @Nullable ClogIndex clogIndex)
-	{
-		if (result == null)
-		{
-			return;
-		}
-		for (int itemId : itemIds)
-		{
-			String name = ClogIndex.itemNameOrAlias(clogIndex, result, itemId);
-			if (name != null)
-			{
-				destination.put(itemId, name);
-			}
-		}
-	}
 
 	private static int canonicalItemId(int itemId, @Nullable ClogIndex clogIndex)
 	{
