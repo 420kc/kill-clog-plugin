@@ -117,10 +117,7 @@ class KillClogChatCommand
 
 		// Community shorthand rides the bundled catalog; the parity test pins
 		// its complete contents against the shipped table.
-		for (String[] row : CatalogTsv.rows(KillClogChatCommand.class, "chat-boss-aliases.tsv", 2))
-		{
-			m.put(normalize(row[0]), row[1]);
-		}
+		CatalogTsv.map(KillClogChatCommand.class, "chat-boss-aliases.tsv").forEach((alias, boss) -> m.put(normalize(alias), boss));
 		return m;
 	}
 
@@ -147,10 +144,7 @@ class KillClogChatCommand
 	private static Map<String, String> buildPageAliases()
 	{
 		Map<String, String> aliases = new HashMap<>();
-		for (String[] row : CatalogTsv.rows(KillClogChatCommand.class, "chat-page-aliases.tsv", 2))
-		{
-			aliases.put(normalize(row[0]), row[1]);
-		}
+		CatalogTsv.map(KillClogChatCommand.class, "chat-page-aliases.tsv").forEach((alias, page) -> aliases.put(normalize(alias), page));
 		return Collections.unmodifiableMap(aliases);
 	}
 

@@ -21,15 +21,7 @@ final class PersonalBests
 	private static final Pattern VARIANT = Pattern.compile("^(.+?)( (?:solo|\\d+(?:\\+|-\\d+)? players?))?$");
 	private static final Pattern DIGITS = Pattern.compile("\\d+");
 	// Spellings that differ beyond case, a mode's colon and a leading "The", each to the name every lane reaches.
-	private static final Map<String, String> ALIASES = new HashMap<>();
-
-	static
-	{
-		for (String[] row : CatalogTsv.rows(PersonalBests.class, "pb-names.tsv", 2))
-		{
-			ALIASES.put(row[0], row[1]);
-		}
-	}
+	private static final Map<String, String> ALIASES = CatalogTsv.map(PersonalBests.class, "pb-names.tsv");
 
 	/** Where each lane keeps its times, and what the sync calls the lane. */
 	private enum Lane

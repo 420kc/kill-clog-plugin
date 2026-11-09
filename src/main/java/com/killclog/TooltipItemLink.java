@@ -19,10 +19,7 @@ final class TooltipItemLink
 
 	static
 	{
-		for (String[] row : CatalogTsv.rows(TooltipItemLink.class, "chompy-hats.tsv", 2))
-		{
-			CHOMPY_HATS.put(Integer.parseInt(row[0]), row[1]);
-		}
+		CatalogTsv.map(TooltipItemLink.class, "chompy-hats.tsv").forEach((id, hat) -> CHOMPY_HATS.put(Integer.parseInt(id), hat));
 	}
 
 	static String displayName(int itemId, String name)

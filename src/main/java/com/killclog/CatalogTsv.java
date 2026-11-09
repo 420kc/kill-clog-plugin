@@ -34,6 +34,17 @@ final class CatalogTsv
 			key -> readRows(owner, resource, columns));
 	}
 
+	/** A two-column table as a map, column 0 to column 1; a later row wins a repeated key. */
+	static Map<String, String> map(Class<?> owner, String resource)
+	{
+		Map<String, String> map = new LinkedHashMap<>();
+		for (String[] row : rows(owner, resource, 2))
+		{
+			map.put(row[0], row[1]);
+		}
+		return map;
+	}
+
 	/** Column 1 of the rows whose column 0 equals {@code kind}, in file order. */
 	static List<String> values(Class<?> owner, String resource, String kind)
 	{

@@ -35,10 +35,7 @@ public class ClogService
 	private static final Map<String, String> BOSS_CATEGORY_OVERRIDES = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
 	static
 	{
-		for (String[] row : CatalogTsv.rows(ClogService.class, "clog-category-overrides.tsv", 2))
-		{
-			BOSS_CATEGORY_OVERRIDES.put(row[0], row[1]);
-		}
+		BOSS_CATEGORY_OVERRIDES.putAll(CatalogTsv.map(ClogService.class, "clog-category-overrides.tsv"));
 	}
 
 	private final OkHttpClient httpClient;

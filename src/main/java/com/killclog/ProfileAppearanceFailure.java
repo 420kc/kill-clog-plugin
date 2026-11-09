@@ -12,15 +12,7 @@ final class ProfileAppearanceFailure
 	final String message;
 
 	// Each known code's plain message, from appearance-failures.tsv; its parity test pins them.
-	private static final Map<String, String> MESSAGES = new HashMap<>();
-
-	static
-	{
-		for (String[] row : CatalogTsv.rows(ProfileAppearanceFailure.class, "appearance-failures.tsv", 2))
-		{
-			MESSAGES.put(row[0], row[1]);
-		}
-	}
+	private static final Map<String, String> MESSAGES = CatalogTsv.map(ProfileAppearanceFailure.class, "appearance-failures.tsv");
 
 	private ProfileAppearanceFailure(String reason, String reference, String message)
 	{
