@@ -189,14 +189,27 @@ public class KillClogChatEmojiTest
 	}
 
 	@Test
-	public void testGreenIconKeepsAlpha()
+	public void theGreenLogIsTheBookOfBalanceAsTheGameDrawsIt()
 	{
-		BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
-		image.setRGB(0, 0, 0x80402010);
+		KillClogChatEmoji emoji = new KillClogChatEmoji();
+		ItemManager items = mock(ItemManager.class);
+		AsyncBufferedImage book = new AsyncBufferedImage(null, 36, 32, BufferedImage.TYPE_INT_ARGB);
+		// Item 3844, the OSRS Wiki's Book of Balance.
+		when(items.getImage(3844, 1, false)).thenReturn(book);
+		ChatIconManager chatIcons = mock(ChatIconManager.class);
+		when(chatIcons.reserveChatIcon()).thenReturn(5);
+		when(chatIcons.chatIconIndex(5)).thenReturn(58);
+		TestViews.set(emoji, "client", withIcons());
+		TestViews.set(emoji, "itemManager", items);
+		TestViews.set(emoji, "chatIconManager", chatIcons);
+		MessageNode node = mock(MessageNode.class);
+		when(node.getValue()).thenReturn("gz :green:");
 
-		BufferedImage green = KillClogChatEmoji.greenIcon(image);
+		emoji.rewrite(new ChatMessage(node, ChatMessageType.PUBLICCHAT, "Other player", "gz :green:", "", 0));
 
-		assertEquals(0x80, (green.getRGB(0, 0) >>> 24) & 0xFF);
-		assertTrue(((green.getRGB(0, 0) >>> 8) & 0xFF) > ((green.getRGB(0, 0) >>> 16) & 0xFF));
+		verify(node).setValue("gz <img=58>");
+		verify(items, never()).getImage(PanelData.COLLECTION_LOG_ITEM_ID, 1, false);
+		book.loaded();
+		verify(chatIcons).updateChatIcon(eq(5), argThat(icon -> icon.getHeight() == 14));
 	}
 }

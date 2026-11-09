@@ -142,9 +142,8 @@ class KillClogChatEmoji
 			}
 			else
 			{
-				boolean green = GREEN_TRIGGER.equals(trigger);
 				AsyncBufferedImage image = itemManager.getImage(itemId, 1, false);
-				image.onLoaded(() -> show(reserved, resizeInlineIcon(green ? greenIcon(image) : image)));
+				image.onLoaded(() -> show(reserved, resizeInlineIcon(image)));
 			}
 		}
 		return chatIconManager.chatIconIndex(iconId);
@@ -156,8 +155,10 @@ class KillClogChatEmoji
 		{
 			case KILLCLOG_TRIGGER:
 			case CLOG_TRIGGER:
-			case GREEN_TRIGGER:
 				return PanelData.COLLECTION_LOG_ITEM_ID;
+			case GREEN_TRIGGER:
+				// The green log: the Book of Balance, already green in the game (Dylan 11/9).
+				return net.runelite.api.gameval.ItemID.GUTHIXBOOK_COMPLETE;
 			case RUNE_TRIGGER:
 				return tierItemId("rune");
 			case DRAGON_TRIGGER:
@@ -186,15 +187,6 @@ class KillClogChatEmoji
 			}
 		}
 		return -1;
-	}
-
-	static BufferedImage greenIcon(BufferedImage image)
-	{
-		return KillClogIcons.recolor(image, argb ->
-		{
-			int shade = Math.max(70, ((argb >>> 16 & 0xFF) + (argb >>> 8 & 0xFF) + (argb & 0xFF)) / 3);
-			return argb & 0xFF000000 | shade / 8 << 16 | Math.min(255, shade + 90) << 8 | shade / 8;
-		});
 	}
 
 	static BufferedImage resizeInlineIcon(BufferedImage image)
