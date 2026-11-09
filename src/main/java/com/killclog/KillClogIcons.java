@@ -62,18 +62,47 @@ final class KillClogIcons
 		float scale = Math.min(size / (float) image.getWidth(), size / (float) image.getHeight());
 		int width = Math.max(1, Math.round(image.getWidth() * scale));
 		int height = Math.max(1, Math.round(image.getHeight() * scale));
-		BufferedImage scaled = ImageUtil.resizeImage(image, width, height);
+		return centered(ImageUtil.resizeImage(image, width, height), size);
+	}
+
+	/** The image this tall, its width kept in proportion. */
+	static BufferedImage toHeight(BufferedImage image, int height)
+	{
+		return ImageUtil.resizeImage(image, Math.max(1, Math.round(image.getWidth() * height / (float) image.getHeight())), height);
+	}
+
+	/** The image in the middle of a clear square this size. */
+	static BufferedImage centered(BufferedImage image, int size)
+	{
 		BufferedImage canvas = new BufferedImage(size, size, BufferedImage.TYPE_INT_ARGB);
 		Graphics2D g2 = canvas.createGraphics();
 		try
 		{
-			g2.drawImage(scaled, (size - width) / 2, (size - height) / 2, null);
+			g2.drawImage(image, (size - image.getWidth()) / 2, (size - image.getHeight()) / 2, null);
 		}
 		finally
 		{
 			g2.dispose();
 		}
 		return canvas;
+	}
+
+	/** Each pixel that shows, recolored from its ARGB; clear pixels stay clear. */
+	static BufferedImage recolor(BufferedImage image, java.util.function.IntUnaryOperator argb)
+	{
+		BufferedImage out = new BufferedImage(image.getWidth(), image.getHeight(), BufferedImage.TYPE_INT_ARGB);
+		for (int y = 0; y < image.getHeight(); y++)
+		{
+			for (int x = 0; x < image.getWidth(); x++)
+			{
+				int pixel = image.getRGB(x, y);
+				if (pixel >>> 24 != 0)
+				{
+					out.setRGB(x, y, argb.applyAsInt(pixel));
+				}
+			}
+		}
+		return out;
 	}
 
 	private static BufferedImage loadImageResource(String resource)

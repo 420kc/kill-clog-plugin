@@ -427,34 +427,22 @@ final class PanelStatusRow
 
 	private static ImageIcon imageTinted(BufferedImage base, float alpha, Color tint)
 	{
-		BufferedImage out = new BufferedImage(
-			base.getWidth(), base.getHeight(), BufferedImage.TYPE_INT_ARGB);
-		for (int y = 0; y < base.getHeight(); y++)
+		return new ImageIcon(KillClogIcons.recolor(base, argb ->
 		{
-			for (int x = 0; x < base.getWidth(); x++)
+			int r = (argb >> 16) & 0xFF;
+			int gch = (argb >> 8) & 0xFF;
+			int b = argb & 0xFF;
+			if (tint != null)
 			{
-				int argb = base.getRGB(x, y);
-				int a = (argb >>> 24);
-				if (a == 0)
-				{
-					continue;
-				}
-				int r = (argb >> 16) & 0xFF;
-				int gch = (argb >> 8) & 0xFF;
-				int b = argb & 0xFF;
-				if (tint != null)
-				{
-					// Luminance drives the tint so the source keeps its shading.
-					int lum = Math.min(255, (int) (0.299 * r + 0.587 * gch + 0.114 * b) + 90);
-					r = tint.getRed() * lum / 255;
-					gch = tint.getGreen() * lum / 255;
-					b = tint.getBlue() * lum / 255;
-				}
-				int na = Math.min(255, Math.round(a * alpha));
-				out.setRGB(x, y, (na << 24) | (r << 16) | (gch << 8) | b);
+				// Luminance drives the tint so the source keeps its shading.
+				int lum = Math.min(255, (int) (0.299 * r + 0.587 * gch + 0.114 * b) + 90);
+				r = tint.getRed() * lum / 255;
+				gch = tint.getGreen() * lum / 255;
+				b = tint.getBlue() * lum / 255;
 			}
-		}
-		return new ImageIcon(out);
+			int na = Math.min(255, Math.round((argb >>> 24) * alpha));
+			return (na << 24) | (r << 16) | (gch << 8) | b;
+		}));
 	}
 
 	private void refreshSyncChalice(boolean hovered)

@@ -1,6 +1,5 @@
 package com.killclog;
 
-import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.util.*;
 import javax.inject.*;
@@ -191,53 +190,21 @@ class KillClogChatEmoji
 
 	static BufferedImage greenIcon(BufferedImage image)
 	{
-		BufferedImage out = new BufferedImage(image.getWidth(), image.getHeight(),
-			BufferedImage.TYPE_INT_ARGB);
-		for (int y = 0; y < image.getHeight(); y++)
+		return KillClogIcons.recolor(image, argb ->
 		{
-			for (int x = 0; x < image.getWidth(); x++)
-			{
-				int argb = image.getRGB(x, y);
-				int alpha = (argb >>> 24) & 0xFF;
-				if (alpha == 0)
-				{
-					continue;
-				}
-				int red = (argb >>> 16) & 0xFF;
-				int green = (argb >>> 8) & 0xFF;
-				int blue = argb & 0xFF;
-				int shade = Math.max(70, (red + green + blue) / 3);
-				int nextGreen = Math.min(255, shade + 90);
-				int next = (alpha << 24) | (shade / 8 << 16) | (nextGreen << 8) | (shade / 8);
-				out.setRGB(x, y, next);
-			}
-		}
-		return out;
+			int shade = Math.max(70, ((argb >>> 16 & 0xFF) + (argb >>> 8 & 0xFF) + (argb & 0xFF)) / 3);
+			return argb & 0xFF000000 | shade / 8 << 16 | Math.min(255, shade + 90) << 8 | shade / 8;
+		});
 	}
 
 	static BufferedImage resizeInlineIcon(BufferedImage image)
 	{
-		int width = Math.max(1, Math.round(image.getWidth() * INLINE_ICON_H / (float) image.getHeight()));
-		return ImageUtil.resizeImage(image, width, INLINE_ICON_H);
+		return KillClogIcons.toHeight(image, INLINE_ICON_H);
 	}
 
 	static BufferedImage resizeKillClogIcon(BufferedImage image)
 	{
-		BufferedImage scaled = ImageUtil.resizeImage(image,
-			Math.max(1, Math.round(image.getWidth() * KILLCLOG_ICON_H / (float) image.getHeight())),
-			KILLCLOG_ICON_H);
-		BufferedImage canvas = new BufferedImage(INLINE_ICON_H, INLINE_ICON_H, BufferedImage.TYPE_INT_ARGB);
-		Graphics2D g2 = canvas.createGraphics();
-		try
-		{
-			g2.drawImage(scaled, (INLINE_ICON_H - scaled.getWidth()) / 2,
-				(INLINE_ICON_H - scaled.getHeight()) / 2, null);
-		}
-		finally
-		{
-			g2.dispose();
-		}
-		return canvas;
+		return KillClogIcons.centered(KillClogIcons.toHeight(image, KILLCLOG_ICON_H), INLINE_ICON_H);
 	}
 
 }
