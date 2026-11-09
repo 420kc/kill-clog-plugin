@@ -439,15 +439,7 @@ public class HiscoreService
 	/** The Overall row's rank, -1 when Jagex ranks it nowhere or the body doesn't read. */
 	private long overallRank(String body)
 	{
-		try
-		{
-			JsonObject overall = overallRow(body);
-			return overall != null ? overall.get("rank").getAsLong() : -1;
-		}
-		catch (Exception e)
-		{
-			return -1;
-		}
+		return overall(body, "rank");
 	}
 
 	private HiscoreResult hardcoreMain(String body)
@@ -522,22 +514,25 @@ public class HiscoreService
 		return AccountType.REGULAR;
 	}
 
+	/** Account-type detection compares this value across the four endpoint variants. */
 	/* package */ long extractTotalXp(String body)
 	{
-		if (body == null || body.isEmpty())
-		{
-			return -1;
-		}
+		return overall(body, "xp");
+	}
+
+	/**
+	 * A figure of the Overall row, -1 when the row lacks it or the body doesn't read: a body that doesn't read has no
+	 * total, so account-type detection never picks its table.
+	 */
+	private long overall(@Nullable String body, String field)
+	{
 		try
 		{
-			// Account-type detection compares this value across the four
-			// endpoint variants.
-			JsonObject overall = overallRow(body);
-			return overall != null ? overall.get("xp").getAsLong() : -1;
+			JsonObject overall = body != null && !body.isEmpty() ? overallRow(body) : null;
+			return overall != null ? overall.get(field).getAsLong() : -1;
 		}
 		catch (Exception e)
 		{
-			// A body that does not read has no total, so account-type detection never picks this table from it.
 			return -1;
 		}
 	}
