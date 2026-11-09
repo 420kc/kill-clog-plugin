@@ -394,16 +394,21 @@ public class ClogResult
 		return copy;
 	}
 
+	/** Every item the log holds, page by page: an item listed on two pages comes twice. */
+	List<ClogItem> allObtained()
+	{
+		List<ClogItem> all = new ArrayList<>();
+		obtainedItems.values().forEach(all::addAll);
+		return all;
+	}
+
 	/** Distinct itemized coverage, deliberately ignoring the varp counter. */
 	static int coverageCount(ClogResult result)
 	{
-		java.util.Set<Integer> distinct = new java.util.HashSet<>();
-		for (List<ClogItem> items : result.obtainedItems.values())
+		Set<Integer> distinct = new HashSet<>();
+		for (ClogItem item : result.allObtained())
 		{
-			for (ClogItem item : items)
-			{
-				distinct.add(item.getId());
-			}
+			distinct.add(item.getId());
 		}
 		return distinct.size();
 	}

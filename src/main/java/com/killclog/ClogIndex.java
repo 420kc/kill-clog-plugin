@@ -279,12 +279,9 @@ final class ClogIndex
 			return progress;
 		}
 		Set<Integer> obtained = new HashSet<>();
-		for (List<ClogResult.ClogItem> items : clog.getObtainedItems().values())
+		for (ClogResult.ClogItem item : clog.allObtained())
 		{
-			for (ClogResult.ClogItem item : items)
-			{
-				obtained.add(s.canonicalizer.canonicalItemId(item.getId()));
-			}
+			obtained.add(s.canonicalizer.canonicalItemId(item.getId()));
 		}
 		boolean partial = totals[1] <= 0 || obtained.size() * 10L < totals[0] * 9L;
 		for (Map.Entry<String, List<String>> tab : s.tabCategoryKeys.entrySet())

@@ -97,14 +97,11 @@ final class LookupQueries
 		}
 		// Recent reads the log with the newest dated item, which needn't be the one that won the grid (the website's
 		// rule, 2026-10-27).
-		for (List<ClogResult.ClogItem> items : result.recentItemsSource().getObtainedItems().values())
+		for (ClogResult.ClogItem item : result.recentItemsSource().allObtained())
 		{
-			for (ClogResult.ClogItem item : items)
+			if (item.getDate() != null)
 			{
-				if (item.getDate() != null)
-				{
-					all.add(item);
-				}
+				all.add(item);
 			}
 		}
 		all.sort((a, b) -> b.getDate().compareTo(a.getDate()));

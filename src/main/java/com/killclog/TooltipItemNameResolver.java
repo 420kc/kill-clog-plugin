@@ -26,12 +26,9 @@ final class TooltipItemNameResolver
 	void resolve(ClogResult result)
 	{
 		Set<Integer> allIds = new HashSet<>();
-		for (List<ClogResult.ClogItem> items : result.getObtainedItems().values())
+		for (ClogResult.ClogItem item : result.allObtained())
 		{
-			for (ClogResult.ClogItem item : items)
-			{
-				allIds.add(item.getId());
-			}
+			allIds.add(item.getId());
 		}
 		for (List<Integer> ids : result.getCategoryItems().values())
 		{

@@ -256,12 +256,9 @@ final class TooltipDataBuilder
 	{
 		if (clogResult == null) return null;
 		Map<Integer, Integer> held = new HashMap<>();
-		for (List<ClogResult.ClogItem> catObtained : clogResult.getObtainedItems().values())
+		for (ClogResult.ClogItem item : clogResult.allObtained())
 		{
-			for (ClogResult.ClogItem item : catObtained)
-			{
-				held.merge(canonicalItemId(item.getId()), item.getCount(), Integer::max);
-			}
+			held.merge(canonicalItemId(item.getId()), item.getCount(), Integer::max);
 		}
 
 		List<Integer> allItemsList = canonicalItemIds(itemIds);
