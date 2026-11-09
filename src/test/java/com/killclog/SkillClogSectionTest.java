@@ -501,6 +501,35 @@ public class SkillClogSectionTest
 	}
 
 	@Test
+	public void aSetTheCatalogGivesItsOwnRowStartsOnAFreshLineAndALongRowWraps()
+	{
+		// Three sets: three items, two, then four (Dylan 11/8, the Combat Clogs as a progression chart).
+		SkillClogSection sets = section(Arrays.asList(1, 2, 3, 4, 5, 6, 7, 8, 9), new HashSet<>(Arrays.asList(4, 6)));
+		assertEquals("[0, 1, 2, 5, 6, 10, 11, 12, 13]", Arrays.toString(sets.slots(5)));
+		// A grid narrower than a set wraps it, and the next set still starts a line of its own.
+		assertEquals("[0, 1, 2, 3, 4, 6, 7, 8, 9]", Arrays.toString(sets.slots(3)));
+		// A set that ends a line needs no gap before the next.
+		SkillClogSection even = section(Arrays.asList(1, 2, 3, 4, 5, 6), new HashSet<>(Arrays.asList(6)));
+		assertEquals("[0, 1, 2, 3, 4, 5]", Arrays.toString(even.slots(5)));
+		// A section without sets, a category's, fills its grid one item after another as before.
+		SkillClogSection slayer = SkillClogSection.forSkill(Skill.SLAYER, null, null,
+			clog(ids(1, 12), Collections.emptyList())).get(1);
+		assertEquals(12, slayer.slots(5).length);
+		assertEquals(11, slayer.slots(5)[11]);
+	}
+
+	/** A section from a catalog row of fixed items, a ';' before each id in {@code rowStarts}. */
+	private static SkillClogSection section(List<Integer> ids, java.util.Set<Integer> rowStarts)
+	{
+		StringBuilder value = new StringBuilder();
+		for (int id : ids)
+		{
+			value.append(value.length() == 0 ? "" : rowStarts.contains(id) ? ";" : ",").append(id);
+		}
+		return TestViews.skillSection("Sets", value.toString());
+	}
+
+	@Test
 	public void combinedProgressDeduplicatesItemsSharedByActivities()
 	{
 		Map<String, List<Integer>> categories = new HashMap<>();

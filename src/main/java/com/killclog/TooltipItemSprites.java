@@ -117,12 +117,21 @@ final class TooltipItemSprites
 		Map<Integer, String> names, int section, List<Integer> ids, Set<Integer> obtainedIds,
 		Map<Integer, Integer> counts, int startX, int startY, int cols, int size, int cellSize)
 	{
+		return paintGrid(g2, sprites, names, section, ids, obtainedIds, counts, startX, startY, cols, size, cellSize, null);
+	}
+
+	/** As above, each item in its own cell of the grid ({@code slots}), or one after another without them. */
+	static List<TooltipItemHover.HitBox> paintGrid(Graphics2D g2, TooltipItemSprites sprites,
+		Map<Integer, String> names, int section, List<Integer> ids, Set<Integer> obtainedIds,
+		Map<Integer, Integer> counts, int startX, int startY, int cols, int size, int cellSize, int[] slots)
+	{
 		List<TooltipItemHover.HitBox> hitBoxes = new ArrayList<>(ids.size());
 		int ascent = g2.getFontMetrics().getAscent();
 		for (int i = 0; i < ids.size(); i++)
 		{
-			int x = startX + (i % cols) * cellSize;
-			int y = startY + (i / cols) * cellSize;
+			int slot = slots != null ? slots[i] : i;
+			int x = startX + (slot % cols) * cellSize;
+			int y = startY + (slot / cols) * cellSize;
 			int itemId = ids.get(i);
 			boolean obtained = obtainedIds.contains(itemId);
 			int count = obtained ? counts.getOrDefault(itemId, 1) : 1;

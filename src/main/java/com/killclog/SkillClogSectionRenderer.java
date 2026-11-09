@@ -92,7 +92,7 @@ final class SkillClogSectionRenderer
 			{
 				height += detailMetrics.getHeight() + HEADER_GAP;
 			}
-			height += gridHeight(entry.section.itemIds().size(), cols);
+			height += gridHeight(entry.section, cols);
 		}
 		height += CardBody.SECTION_SPACE * Math.max(0, entries.size() - 1);
 		return height;
@@ -146,8 +146,8 @@ final class SkillClogSectionRenderer
 		g2.setFont(DETAIL_FONT);
 		hitBoxes.addAll(TooltipItemSprites.paintGrid(g2, entry.sprites, entry.section.itemNames(), sectionIndex,
 			itemIds, playerItems.obtainedIds(), playerItems.obtainedCounts(), startX, y, cols, SPRITE_SIZE,
-			CELL_SIZE));
-		return y + gridHeight(itemIds.size(), cols);
+			CELL_SIZE, entry.section.slots(cols)));
+		return y + gridHeight(entry.section, cols);
 	}
 
 	static String progressText(SkillClogSection.PlayerItems items, int total)
@@ -181,9 +181,10 @@ final class SkillClogSectionRenderer
 		return cols * CELL_SIZE - PADDING;
 	}
 
-	private static int gridHeight(int itemCount, int cols)
+	private static int gridHeight(SkillClogSection section, int cols)
 	{
-		int rows = (Math.max(itemCount, 1) + cols - 1) / cols;
+		int[] slots = section.slots(cols);
+		int rows = slots.length == 0 ? 1 : slots[slots.length - 1] / cols + 1;
 		return rows * CELL_SIZE - PADDING;
 	}
 

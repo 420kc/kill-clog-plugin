@@ -225,7 +225,42 @@ final class TestViews
 		return field(field(card, rows), "hovered");
 	}
 
-	/** The Skill Clog catalog as kind|heading|category-or-ids, one line per section. */
+	/** A Skill Clog section of fixed items, built as the catalog builds one from a row whose ';' starts each set's row. */
+	static SkillClogSection skillSection(String heading, String value)
+	{
+		List<Integer> ids = new ArrayList<>();
+		java.util.Set<Integer> rowStarts = new java.util.HashSet<>();
+		for (String set : value.split(";"))
+		{
+			String[] parts = set.split(",");
+			if (!ids.isEmpty())
+			{
+				rowStarts.add(Integer.parseInt(parts[0]));
+			}
+			for (String id : parts)
+			{
+				ids.add(Integer.parseInt(id));
+			}
+		}
+		try
+		{
+			Class<?> specType = Class.forName("com.killclog.SkillClogSection$Spec");
+			java.lang.reflect.Constructor<?> make = specType.getDeclaredConstructor(String.class, String.class, List.class,
+				java.util.Set.class, boolean.class);
+			make.setAccessible(true);
+			Method from = SkillClogSection.class.getDeclaredMethod("fromSpec", specType, ClogResult.class, ClogResult.class,
+				ClogResult.class, ClogIndex.class, java.util.Set.class);
+			from.setAccessible(true);
+			return (SkillClogSection) from.invoke(null, make.newInstance(heading, null, ids, rowStarts, false),
+				null, null, null, null, new java.util.HashSet<Integer>());
+		}
+		catch (ReflectiveOperationException e)
+		{
+			throw new AssertionError(e);
+		}
+	}
+
+	/** The Skill Clog catalog as kind|heading|category-or-ids, one line per section, a ';' before each set's own row. */
 	static List<String> specSignature(Skill skill)
 	{
 		Map<Skill, List<Object>> specs = field(SkillClogSection.class, "SPECS");
@@ -240,6 +275,7 @@ final class TestViews
 			String heading = field(spec, "heading");
 			String category = field(spec, "category");
 			List<Integer> itemIds = field(spec, "itemIds");
+			java.util.Set<Integer> rowStarts = field(spec, "rowStarts");
 			boolean rest = field(spec, "rest");
 			StringBuilder line = new StringBuilder(category == null ? "items" : rest ? "rest" : "category");
 			line.append('|').append(heading != null ? heading : "").append('|');
@@ -251,7 +287,7 @@ final class TestViews
 			{
 				for (int i = 0; i < itemIds.size(); i++)
 				{
-					line.append(i > 0 ? "," : "").append(itemIds.get(i));
+					line.append(i == 0 ? "" : rowStarts.contains(itemIds.get(i)) ? ";" : ",").append(itemIds.get(i));
 				}
 			}
 			signature.add(line.toString());

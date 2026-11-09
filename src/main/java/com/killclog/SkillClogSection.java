@@ -19,16 +19,19 @@ final class SkillClogSection
 	@Nullable
 	private final String category;
 	private final List<Integer> itemIds;
+	// The items that start a row of their own: each set after the first in a catalog row (a ';' before it).
+	private final Set<Integer> rowStarts;
 	private final Map<Integer, String> itemNames;
 	private final PlayerItems primary;
 
 	private SkillClogSection(@Nullable String heading, @Nullable String category,
-		List<Integer> itemIds,
+		List<Integer> itemIds, Set<Integer> rowStarts,
 		Map<Integer, String> itemNames, PlayerItems primary)
 	{
 		this.heading = heading;
 		this.category = category;
 		this.itemIds = Collections.unmodifiableList(itemIds);
+		this.rowStarts = Collections.unmodifiableSet(rowStarts);
 		this.itemNames = Collections.unmodifiableMap(itemNames);
 		this.primary = primary;
 	}
@@ -95,11 +98,16 @@ final class SkillClogSection
 		}
 
 		List<Integer> itemIds = new ArrayList<>(distinctIds);
+		Set<Integer> rowStarts = new HashSet<>();
+		for (int itemId : spec.rowStarts)
+		{
+			rowStarts.add(canonicalItemId(itemId, clogIndex));
+		}
 		Map<Integer, String> itemNames = new LinkedHashMap<>();
 		addItemNames(itemNames, itemIds, catalog, clogIndex);
 		addItemNames(itemNames, itemIds, compared, clogIndex);
 		addItemNames(itemNames, itemIds, primary, clogIndex);
-		return new SkillClogSection(spec.heading, spec.category, itemIds, itemNames,
+		return new SkillClogSection(spec.heading, spec.category, itemIds, rowStarts, itemNames,
 			PlayerItems.from(primary, spec, distinctIds, clogIndex));
 	}
 
@@ -179,6 +187,25 @@ final class SkillClogSection
 		return itemIds;
 	}
 
+	/**
+	 * Each item's cell in a grid {@code cols} wide, in order: a set the catalog gives a row of its own starts on a
+	 * fresh line, and a row longer than the grid wraps onto the next.
+	 */
+	int[] slots(int cols)
+	{
+		int[] slots = new int[itemIds.size()];
+		int cell = 0;
+		for (int i = 0; i < itemIds.size(); i++)
+		{
+			if (i > 0 && cell % cols != 0 && rowStarts.contains(itemIds.get(i)))
+			{
+				cell += cols - cell % cols;
+			}
+			slots[i] = cell++;
+		}
+		return slots;
+	}
+
 	Map<Integer, String> itemNames()
 	{
 		return itemNames;
@@ -203,16 +230,26 @@ final class SkillClogSection
 			// A rest row is its category without what the card's earlier sections show (Slayer under its Superiors).
 			if ("category".equals(row[1]) || "rest".equals(row[1]))
 			{
-				spec = new Spec(heading, row[3], Collections.emptyList(), "rest".equals(row[1]));
+				spec = new Spec(heading, row[3], Collections.emptyList(), Collections.emptySet(), "rest".equals(row[1]));
 			}
 			else
 			{
+				// A ';' starts a set's own row (Dylan 11/8: a progression chart, one set to a row).
 				List<Integer> itemIds = new ArrayList<>();
-				for (String itemId : row[3].split(","))
+				Set<Integer> rowStarts = new HashSet<>();
+				for (String set : row[3].split(";"))
 				{
-					itemIds.add(Integer.parseInt(itemId.trim()));
+					String[] ids = set.split(",");
+					if (!itemIds.isEmpty())
+					{
+						rowStarts.add(Integer.parseInt(ids[0].trim()));
+					}
+					for (String itemId : ids)
+					{
+						itemIds.add(Integer.parseInt(itemId.trim()));
+					}
 				}
-				spec = new Spec(heading, null, itemIds, false);
+				spec = new Spec(heading, null, itemIds, rowStarts, false);
 			}
 			Skill skill;
 			try
@@ -336,15 +373,17 @@ final class SkillClogSection
 		@Nullable
 		private final String category;
 		private final List<Integer> itemIds;
+		private final Set<Integer> rowStarts;
 		private final boolean rest;
 
 		private Spec(@Nullable String heading, @Nullable String category,
-			List<Integer> itemIds, boolean rest)
+			List<Integer> itemIds, Set<Integer> rowStarts, boolean rest)
 		{
 			this.heading = heading;
 			this.category = category;
 			this.rest = rest;
 			this.itemIds = Collections.unmodifiableList(new ArrayList<>(itemIds));
+			this.rowStarts = Collections.unmodifiableSet(new HashSet<>(rowStarts));
 		}
 	}
 }
