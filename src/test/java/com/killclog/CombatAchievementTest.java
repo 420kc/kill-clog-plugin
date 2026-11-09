@@ -36,6 +36,28 @@ public class CombatAchievementTest
 	}
 
 	@Test
+	public void eachTierReadsItsOwnVarbits()
+	{
+		// The game's ids, written out here once more so a slipped row in the enum shows.
+		int[][] ids = {
+			{net.runelite.api.gameval.VarbitID.CA_THRESHOLD_EASY, net.runelite.api.gameval.VarbitID.CA_TOTAL_TASKS_COMPLETED_EASY},
+			{net.runelite.api.gameval.VarbitID.CA_THRESHOLD_MEDIUM, net.runelite.api.gameval.VarbitID.CA_TOTAL_TASKS_COMPLETED_MEDIUM},
+			{net.runelite.api.gameval.VarbitID.CA_THRESHOLD_HARD, net.runelite.api.gameval.VarbitID.CA_TOTAL_TASKS_COMPLETED_HARD},
+			{net.runelite.api.gameval.VarbitID.CA_THRESHOLD_ELITE, net.runelite.api.gameval.VarbitID.CA_TOTAL_TASKS_COMPLETED_ELITE},
+			{net.runelite.api.gameval.VarbitID.CA_THRESHOLD_MASTER, net.runelite.api.gameval.VarbitID.CA_TOTAL_TASKS_COMPLETED_MASTER},
+			{net.runelite.api.gameval.VarbitID.CA_THRESHOLD_GRANDMASTER,
+				net.runelite.api.gameval.VarbitID.CA_TOTAL_TASKS_COMPLETED_GRANDMASTER},
+		};
+		for (CombatAchievementTier tier : CombatAchievementTier.values())
+		{
+			assertEquals(tier.name(), ids[tier.ordinal()][0], tier.thresholdVarbit);
+			assertEquals(tier.name(), ids[tier.ordinal()][1], tier.completedVarbit);
+			assertTrue(CombatAchievementTier.isCaVarbit(tier.thresholdVarbit));
+			assertTrue(CombatAchievementTier.isCaVarbit(tier.completedVarbit));
+		}
+	}
+
+	@Test
 	public void testFromName()
 	{
 		assertEquals(CombatAchievementTier.EASY, CombatAchievementTier.fromName("Easy"));

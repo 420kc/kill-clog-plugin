@@ -88,6 +88,6 @@ public class PluginFolderTest
 		ca.cacheResult("Tester", 77L, Map.of(CombatAchievementTier.EASY, 1));
 		assertEquals(afterFirst, tasks[0]);
 		assertEquals(1, ca.getCached("Tester").getTotalPoints());
-		assertFalse("a plain varp change is not a CA total", new LocalCaReader().isCaVarbit(-1));
+		assertFalse("a plain varp change is not a CA total", CombatAchievementTier.isCaVarbit(-1));
 	}
 }

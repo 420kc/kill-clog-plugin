@@ -606,8 +606,7 @@ public class KillClogPlugin extends Plugin
 	@Subscribe
 	public void onVarbitChanged(VarbitChanged event)
 	{
-		if (localCaReader.isCaVarbit(event.getVarbitId())
-			|| CaCatalog.isThresholdVarbit(event.getVarbitId()))
+		if (CombatAchievementTier.isCaVarbit(event.getVarbitId()))
 		{
 			sessionState.requestCaRead();
 		}

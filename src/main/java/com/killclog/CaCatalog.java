@@ -3,7 +3,6 @@ package com.killclog;
 import java.util.*;
 import javax.inject.Singleton;
 import net.runelite.api.Client;
-import net.runelite.api.gameval.VarbitID;
 
 /**
  * Live Combat Achievement catalog, read from the game's own tier-threshold
@@ -24,17 +23,6 @@ final class CaCatalog
 {
 	private volatile Map<CombatAchievementTier, Integer> totals;
 
-	/** True for the tier-threshold varbits this catalog is derived from. */
-	static boolean isThresholdVarbit(int id)
-	{
-		return id == VarbitID.CA_THRESHOLD_EASY
-			|| id == VarbitID.CA_THRESHOLD_MEDIUM
-			|| id == VarbitID.CA_THRESHOLD_HARD
-			|| id == VarbitID.CA_THRESHOLD_ELITE
-			|| id == VarbitID.CA_THRESHOLD_MASTER
-			|| id == VarbitID.CA_THRESHOLD_GRANDMASTER;
-	}
-
 	/**
 	 * Read the six threshold varbits and derive per-tier task totals. Keeps the
 	 * previous capture when the read is invalid (pre-login zeros or a
@@ -43,12 +31,10 @@ final class CaCatalog
 	boolean capture(Client client)
 	{
 		Map<CombatAchievementTier, Integer> thresholds = new EnumMap<>(CombatAchievementTier.class);
-		thresholds.put(CombatAchievementTier.EASY, client.getVarbitValue(VarbitID.CA_THRESHOLD_EASY));
-		thresholds.put(CombatAchievementTier.MEDIUM, client.getVarbitValue(VarbitID.CA_THRESHOLD_MEDIUM));
-		thresholds.put(CombatAchievementTier.HARD, client.getVarbitValue(VarbitID.CA_THRESHOLD_HARD));
-		thresholds.put(CombatAchievementTier.ELITE, client.getVarbitValue(VarbitID.CA_THRESHOLD_ELITE));
-		thresholds.put(CombatAchievementTier.MASTER, client.getVarbitValue(VarbitID.CA_THRESHOLD_MASTER));
-		thresholds.put(CombatAchievementTier.GRANDMASTER, client.getVarbitValue(VarbitID.CA_THRESHOLD_GRANDMASTER));
+		for (CombatAchievementTier tier : CombatAchievementTier.values())
+		{
+			thresholds.put(tier, client.getVarbitValue(tier.thresholdVarbit));
+		}
 
 		Map<CombatAchievementTier, Integer> derived = deriveTotals(thresholds);
 		if (derived == null)
