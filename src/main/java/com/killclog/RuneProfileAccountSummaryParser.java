@@ -17,12 +17,11 @@ final class RuneProfileAccountSummaryParser
 	@Nullable
 	static AccountType parseAccountType(JsonObject root)
 	{
-		if (!root.has("accountType") || root.get("accountType").isJsonNull()
-			|| !root.get("accountType").isJsonObject())
+		JsonObject accountType = Json.object(root, "accountType");
+		if (accountType == null)
 		{
 			return null;
 		}
-		JsonObject accountType = root.getAsJsonObject("accountType");
 		AccountType parsed = parseValue(accountType, "key");
 		if (parsed == null)
 		{
@@ -32,8 +31,7 @@ final class RuneProfileAccountSummaryParser
 		{
 			return parsed;
 		}
-		return accountType.has("id") && !accountType.get("id").isJsonNull()
-			? AccountType.fromProviderId(accountType.get("id").getAsInt()) : null;
+		return Json.present(accountType, "id") ? AccountType.fromProviderId(accountType.get("id").getAsInt()) : null;
 	}
 
 	/** The clan's name, as RuneProfile's summary carries it; null without one. */
@@ -56,15 +54,12 @@ final class RuneProfileAccountSummaryParser
 	@Nullable
 	private static JsonElement clanField(JsonObject root, String field)
 	{
-		JsonElement clan = root.get("clan");
-		JsonElement value = clan != null && clan.isJsonObject() ? clan.getAsJsonObject().get(field) : null;
-		return value != null && value.isJsonPrimitive() ? value : null;
+		return Json.primitive(Json.get(Json.object(root, "clan"), field));
 	}
 
 	@Nullable
 	private static AccountType parseValue(JsonObject accountType, String field)
 	{
-		return accountType.has(field) && !accountType.get(field).isJsonNull()
-			? AccountType.fromProviderValue(accountType.get(field).getAsString()) : null;
+		return Json.present(accountType, field) ? AccountType.fromProviderValue(accountType.get(field).getAsString()) : null;
 	}
 }

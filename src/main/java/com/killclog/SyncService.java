@@ -290,9 +290,10 @@ class SyncService
 		try
 		{
 			JsonObject obj = body != null ? gson.fromJson(body, JsonObject.class) : null;
-			if (obj != null && obj.has("clog_structure_hash") && obj.get("clog_structure_hash").isJsonPrimitive())
+			String hash = Json.stringField(obj, "clog_structure_hash");
+			if (hash != null)
 			{
-				serverStructureHash = obj.get("clog_structure_hash").getAsString();
+				serverStructureHash = hash;
 			}
 		}
 		catch (RuntimeException e)

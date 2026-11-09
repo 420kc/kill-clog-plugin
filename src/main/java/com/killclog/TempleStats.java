@@ -19,13 +19,11 @@ final class TempleStats
 
 	TempleStats(JsonObject data)
 	{
-		JsonElement infoElement = data.get("info");
-		JsonObject info = infoElement != null && infoElement.isJsonObject()
-			? infoElement.getAsJsonObject() : new JsonObject();
-		AccountType mode = AccountType.fromTempleGameMode(text(info, "Game mode"));
+		JsonObject info = Json.object(data, "info");
+		AccountType mode = AccountType.fromTempleGameMode(Json.stringField(info, "Game mode"));
 		accountType = mode != null && mode != AccountType.REGULAR ? mode
 			: number(info, "GIM") > 0 ? AccountType.GROUP_IRONMAN : null;
-		canonicalName = text(info, "player_name_with_capitalization");
+		canonicalName = Json.stringField(info, "player_name_with_capitalization");
 		ehp = number(data, "Overall_ehp");
 	}
 
@@ -35,18 +33,12 @@ final class TempleStats
 		return number(clogData, type != null && type != AccountType.REGULAR ? "ehc_im" : "ehc");
 	}
 
-	@Nullable
-	private static String text(JsonObject object, String key)
-	{
-		JsonElement value = object.get(key);
-		return value != null && value.isJsonPrimitive() ? value.getAsString() : null;
-	}
-
-	private static double number(JsonObject object, String key)
+	/** Temple sends its figures as text or numbers alike. */
+	private static double number(@Nullable JsonObject object, String key)
 	{
 		try
 		{
-			return Math.max(-1, Double.parseDouble(text(object, key)));
+			return Math.max(-1, Double.parseDouble(Json.stringField(object, key)));
 		}
 		catch (NumberFormatException | NullPointerException e)
 		{

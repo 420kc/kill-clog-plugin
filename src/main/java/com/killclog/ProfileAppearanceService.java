@@ -143,7 +143,7 @@ final class ProfileAppearanceService
 			? completed(Outcome.CANCELLED)
 			: attempt.post("appearance/delete", "{}", (response, json) ->
 			{
-				if (response.code == 200 && json != null && json.has("deleted") && json.get("deleted").getAsBoolean())
+				if (response.code == 200 && flag(json, "deleted"))
 				{
 					return completed(Outcome.DELETED);
 				}
@@ -371,8 +371,7 @@ final class ProfileAppearanceService
 
 	private static boolean isDryRun(HttpUtil.HttpResult response, @Nullable JsonObject json)
 	{
-		return response.code >= 200 && response.code < 300
-			&& json != null && json.has("dry_run") && json.get("dry_run").getAsBoolean();
+		return response.code >= 200 && response.code < 300 && flag(json, "dry_run");
 	}
 
 	private static boolean hasError(@Nullable JsonObject json, String error)
@@ -389,12 +388,20 @@ final class ProfileAppearanceService
 
 	static boolean isRenderedPublishResponse(int responseCode, @Nullable JsonObject json)
 	{
+		return publishAnswered(responseCode, json, 200, "published", "ready");
+	}
+
+	static boolean isAcceptedPendingPublishResponse(int responseCode, @Nullable JsonObject json)
+	{
+		return publishAnswered(responseCode, json, 202, "accepted", "pending_renderer");
+	}
+
+	/** A publish reply with this code, its flag set and this render status. */
+	private static boolean publishAnswered(int responseCode, @Nullable JsonObject json, int code, String flag, String status)
+	{
 		try
 		{
-			return responseCode == 200
-				&& json != null && json.has("published")
-				&& json.get("published").getAsBoolean()
-				&& "ready".equals(stringValue(json, "render_status"));
+			return responseCode == code && flag(json, flag) && status.equals(stringValue(json, "render_status"));
 		}
 		catch (RuntimeException e)
 		{
@@ -403,21 +410,9 @@ final class ProfileAppearanceService
 		}
 	}
 
-	static boolean isAcceptedPendingPublishResponse(int responseCode,
-		@Nullable JsonObject json)
+	private static boolean flag(@Nullable JsonObject json, String key)
 	{
-		try
-		{
-			return responseCode == 202
-				&& json != null && json.has("accepted")
-				&& json.get("accepted").getAsBoolean()
-				&& "pending_renderer".equals(stringValue(json, "render_status"));
-		}
-		catch (RuntimeException e)
-		{
-			// A field of the wrong type is no success.
-			return false;
-		}
+		return json != null && json.has(key) && json.get(key).getAsBoolean();
 	}
 
 	@Nullable

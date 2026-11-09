@@ -51,8 +51,7 @@ final class ProfileAppearanceFailure
 
 	private static String field(@Nullable JsonObject body, String key)
 	{
-		JsonElement value = body != null ? body.get(key) : null;
-		return value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isString()
-			? value.getAsString() : "";
+		JsonPrimitive value = Json.primitive(Json.get(body, key));
+		return value != null && value.isString() ? value.getAsString() : "";
 	}
 }

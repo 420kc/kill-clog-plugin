@@ -220,25 +220,9 @@ public class RuneProfileService
 		try
 		{
 			JsonObject root = gson.fromJson(json, JsonObject.class);
-			if (root == null)
-			{
-				return null;
-			}
-			JsonArray data = null;
-			if (root.has("data") && root.get("data").isJsonArray())
-			{
-				data = root.getAsJsonArray("data");
-			}
-			else if (root.has("combatAchievements") && root.get("combatAchievements").isJsonArray())
-			{
-				data = root.getAsJsonArray("combatAchievements");
-			}
-
-			if (data == null)
-			{
-				return null;
-			}
-			return parseCombatAchievementRows(data);
+			JsonArray data = Json.array(root, "data");
+			data = data != null ? data : Json.array(root, "combatAchievements");
+			return data != null ? parseCombatAchievementRows(data) : null;
 		}
 		catch (Exception e)
 		{
@@ -252,13 +236,8 @@ public class RuneProfileService
 		Map<CombatAchievementTier, Integer> completed = new EnumMap<>(CombatAchievementTier.class);
 		Map<CombatAchievementTier, Integer> total = new EnumMap<>(CombatAchievementTier.class);
 
-		for (JsonElement element : data)
+		for (JsonObject row : Json.objects(data))
 		{
-			if (!element.isJsonObject())
-			{
-				continue;
-			}
-			JsonObject row = element.getAsJsonObject();
 			if (!row.has("name"))
 			{
 				continue;
@@ -309,9 +288,11 @@ public class RuneProfileService
 		}
 	}
 
+	// Strict where Json.intField is lenient: a value of the wrong shape fails the whole answer rather than reading 0,
+	// so a garbled item id can't become item 0.
 	private static int intField(JsonObject obj, String field)
 	{
-		return obj.has(field) && !obj.get(field).isJsonNull() ? obj.get(field).getAsInt() : 0;
+		return Json.present(obj, field) ? obj.get(field).getAsInt() : 0;
 	}
 
 	// Collection log provider lane.
@@ -384,79 +365,48 @@ public class RuneProfileService
 		try
 		{
 			JsonObject root = gson.fromJson(json, JsonObject.class);
-			if (root == null || !root.has("tabs")
-				|| !root.has("obtained") || root.get("obtained").isJsonNull()
-				|| !root.has("total") || root.get("total").isJsonNull())
+			JsonArray tabs = Json.array(root, "tabs");
+			if (tabs == null || !Json.present(root, "obtained") || !Json.present(root, "total"))
 			{
 				return ClogParseOutcome.invalid();
 			}
 
 			int rootObtained = intField(root, "obtained");
 			int rootTotal = intField(root, "total");
-
-			if (!root.get("tabs").isJsonArray())
-			{
-				return ClogParseOutcome.invalid();
-			}
-			JsonArray tabs = root.getAsJsonArray("tabs");
 			Map<String, List<ClogResult.ClogItem>> obtainedItems = new HashMap<>();
 			Map<String, List<Integer>> categoryItems = new HashMap<>();
 			Map<Integer, String> itemNames = new HashMap<>();
 			int parsedItemCount = 0;
 
-			for (JsonElement tabEl : tabs)
+			for (JsonObject tab : Json.objects(tabs))
 			{
-				if (!tabEl.isJsonObject())
+				for (JsonObject page : Json.objects(tab.get("pages")))
 				{
-					continue;
-				}
-				JsonObject tab = tabEl.getAsJsonObject();
-				if (!tab.has("pages") || !tab.get("pages").isJsonArray())
-				{
-					continue;
-				}
-
-				JsonArray pages = tab.getAsJsonArray("pages");
-				for (JsonElement pageEl : pages)
-				{
-					if (!pageEl.isJsonObject())
-					{
-						continue;
-					}
-					JsonObject page = pageEl.getAsJsonObject();
-					if (!page.has("name") || page.get("name").isJsonNull())
+					if (!Json.present(page, "name"))
 					{
 						continue;
 					}
 					String pageName = page.get("name").getAsString();
-					if (!page.has("items") || !page.get("items").isJsonArray())
+					JsonArray items = Json.array(page, "items");
+					if (items == null)
 					{
 						continue;
 					}
 
 					String categoryKey = normalizePageKey(pageName);
-					JsonArray items = page.getAsJsonArray("items");
-
 					List<ClogResult.ClogItem> obtained = new ArrayList<>();
 					List<Integer> allIds = new ArrayList<>();
 
-					for (JsonElement itemEl : items)
+					for (JsonObject item : Json.objects(items))
 					{
-						if (!itemEl.isJsonObject())
-						{
-							continue;
-						}
-						JsonObject item = itemEl.getAsJsonObject();
-						if (!item.has("id") || item.get("id").isJsonNull()
-							|| !item.has("quantity") || item.get("quantity").isJsonNull())
+						if (!Json.present(item, "id") || !Json.present(item, "quantity"))
 						{
 							continue;
 						}
 						parsedItemCount++;
 						int id = intField(item, "id");
 						int qty = intField(item, "quantity");
-						String name = item.has("name") && !item.get("name").isJsonNull()
-							? item.get("name").getAsString() : null;
+						String name = Json.present(item, "name") ? item.get("name").getAsString() : null;
 
 						allIds.add(id);
 						if (name != null)

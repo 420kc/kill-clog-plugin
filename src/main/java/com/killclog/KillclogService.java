@@ -274,23 +274,23 @@ public class KillclogService
 		try
 		{
 			JsonObject root = gson.fromJson(json, JsonObject.class);
-			if (root == null || !root.has("names") || !root.get("names").isJsonArray())
+			JsonArray list = Json.array(root, "names");
+			if (list == null)
 			{
 				return null;
 			}
 			Set<String> names = ConcurrentHashMap.newKeySet();
-			for (JsonElement el : root.getAsJsonArray("names"))
+			for (JsonElement el : list)
 			{
-				if (el.isJsonPrimitive() && el.getAsJsonPrimitive().isString())
+				JsonPrimitive name = Json.primitive(el);
+				if (name != null && name.isString())
 				{
-					names.add(RsnInputPolicy.key(el.getAsString()));
+					names.add(RsnInputPolicy.key(name.getAsString()));
 				}
 			}
-			JsonElement league = root.get("active_league");
-			JsonElement profile = root.get("active_league_profile");
-			String id = league != null && league.isJsonPrimitive() ? league.getAsString() : "";
+			String id = Objects.toString(Json.stringField(root, "active_league"), "");
 			activeLeague = id.length() <= 40 && LEAGUE_ID.matcher(id).matches() && !GameMode.MAIN.equals(id)
-				? new String[]{id, profile != null && profile.isJsonPrimitive() ? profile.getAsString() : null} : new String[2];
+				? new String[]{id, Json.stringField(root, "active_league_profile")} : new String[2];
 			return names;
 		}
 		catch (Exception e)
@@ -357,35 +357,22 @@ public class KillclogService
 		try
 		{
 			JsonObject root = gson.fromJson(json, JsonObject.class);
-			if (root == null || !root.has("clog") || !root.get("clog").isJsonObject())
-			{
-				return null;
-			}
-			JsonObject clog = root.getAsJsonObject("clog");
-			if (!clog.has("items_by_category") || !clog.get("items_by_category").isJsonObject())
+			JsonObject clog = Json.object(root, "clog");
+			JsonObject byCategory = Json.object(clog, "items_by_category");
+			if (byCategory == null)
 			{
 				return null;
 			}
 
 			Map<String, List<ClogResult.ClogItem>> obtainedItems = new HashMap<>();
 			Map<String, List<Integer>> categoryItems = new HashMap<>();
-			JsonObject byCategory = clog.getAsJsonObject("items_by_category");
 			for (Map.Entry<String, JsonElement> entry : byCategory.entrySet())
 			{
-				if (!entry.getValue().isJsonArray())
-				{
-					continue;
-				}
 				List<ClogResult.ClogItem> obtained = new ArrayList<>();
-				for (JsonElement itemEl : entry.getValue().getAsJsonArray())
+				for (JsonObject item : Json.objects(entry.getValue()))
 				{
-					if (!itemEl.isJsonObject())
-					{
-						continue;
-					}
-					JsonObject item = itemEl.getAsJsonObject();
-					int id = intField(item, "item_id");
-					int qty = intField(item, "quantity");
+					int id = Json.intField(item, "item_id");
+					int qty = Json.intField(item, "quantity");
 					if (id <= 0 || qty < 1)
 					{
 						// A missing or invalid id must not fabricate item 0,
@@ -394,7 +381,7 @@ public class KillclogService
 						continue;
 					}
 					obtained.add(new ClogResult.ClogItem(id, qty,
-						ClogDates.local(stringField(item, "obtained_at"))));
+						ClogDates.local(Json.stringField(item, "obtained_at"))));
 				}
 				if (obtained.isEmpty())
 				{
@@ -440,26 +427,26 @@ public class KillclogService
 				}
 			}
 
-			String displayName = stringField(root, "rsn");
+			String displayName = Json.stringField(root, "rsn");
 			if (displayName == null)
 			{
-				displayName = stringField(clog, "capitalized_name");
+				displayName = Json.stringField(clog, "capitalized_name");
 			}
 			ClogResult result = new ClogResult(
 				displayName != null ? displayName : playerName,
 				obtainedItems,
 				categoryItems,
 				null,   // item names resolve client-side through ItemManager
-				ClogDates.local(stringField(root, "last_changed")),
-				AccountType.fromProviderValue(stringField(root, "account_type"))
+				ClogDates.local(Json.stringField(root, "last_changed")),
+				AccountType.fromProviderValue(Json.stringField(root, "account_type"))
 			);
 			// The obtained counter decides coverage races, so it needs the
 			// full plausibility chain: a valid total under the ceiling AND
 			// obtained within it. Obtained without a credible total is
 			// dropped and coverage falls back to counting distinct parsed
 			// items; a lone plausible total still serves as a denominator.
-			int uniqueObtained = intField(root, "unique_obtained");
-			int uniqueTotal = intField(root, "unique_total");
+			int uniqueObtained = Json.intField(root, "unique_obtained");
+			int uniqueTotal = Json.intField(root, "unique_total");
 			boolean totalPlausible = uniqueTotal > 0 && uniqueTotal <= MAX_PLAUSIBLE_UNIQUE;
 			if (totalPlausible)
 			{
@@ -471,17 +458,14 @@ public class KillclogService
 			}
 			if (root.has(HighGambles.FIELD))
 			{
-				result.setHighGambles(HighGambles.plausible(intField(root, HighGambles.FIELD)));
+				result.setHighGambles(HighGambles.plausible(Json.intField(root, HighGambles.FIELD)));
 			}
-			JsonObject counts = root.has(PageCounts.FIELD) && root.get(PageCounts.FIELD).isJsonObject()
-				? root.getAsJsonObject(PageCounts.FIELD) : new JsonObject();
+			JsonObject counts = Json.object(root, PageCounts.FIELD);
 			// Only the lines Kill Clog reads, so a reply can't fill a log with names it never shows; a value that isn't
 			// a count is skipped, never the whole lookup.
 			for (PageCounts.Line line : PageCounts.LINES)
 			{
-				JsonElement value = counts.get(line.label);
-				double number = value != null && value.isJsonPrimitive() && value.getAsJsonPrimitive().isNumber()
-					? value.getAsDouble() : -1;
+				double number = Json.number(Json.get(counts, line.label));
 				int count = HighGambles.plausible(number > Integer.MAX_VALUE ? -1 : (int) number);
 				if (count >= 0)
 				{
@@ -498,12 +482,12 @@ public class KillclogService
 			// The clan the player's own sync named (2.6.3), or null for none: once present, the Player Summary reads it
 			// instead of RuneProfile's. Absent until their sync has said.
 			result.setSyncedClanKnown(root.has("clan"));
-			JsonObject clan = root.has("clan") && root.get("clan").isJsonObject() ? root.getAsJsonObject("clan") : null;
-			if (clan != null && stringField(clan, "name") != null)
+			JsonObject clan = Json.object(root, "clan");
+			if (Json.stringField(clan, "name") != null)
 			{
-				result.setSyncedClan(stringField(clan, "name"));
-				result.setSyncedClanTitle(clan.get("title_id") != null && clan.get("title_id").isJsonPrimitive()
-					? new ClanTitle(intField(clan, "title_id"), stringField(clan, "title")) : null);
+				result.setSyncedClan(Json.stringField(clan, "name"));
+				result.setSyncedClanTitle(Json.primitive(clan.get("title_id")) != null
+					? new ClanTitle(Json.intField(clan, "title_id"), Json.stringField(clan, "title")) : null);
 			}
 
 			pbCache.put(key, parsePbs(root));
@@ -518,47 +502,29 @@ public class KillclogService
 
 	private static Map<String, Double> parsePbs(JsonObject root)
 	{
-		if (!root.has("pbs") || !root.get("pbs").isJsonObject())
+		if (Json.object(root, "pbs") == null)
 		{
 			return Collections.emptyMap();
 		}
 		Map<String, Double> pbs = new HashMap<>();
-		for (Map.Entry<String, JsonElement> entry : root.getAsJsonObject("pbs").entrySet())
+		for (Map.Entry<String, JsonElement> entry : Json.entries(root.get("pbs")))
 		{
-			JsonElement value = entry.getValue();
-			if (value.isJsonPrimitive() && value.getAsJsonPrimitive().isNumber())
-			{
-				double seconds = value.getAsDouble();
-				if (seconds > 0)
-				{
-					pbs.put(entry.getKey(), seconds);
-				}
-			}
+			putTime(pbs, entry.getKey(), entry.getValue());
 		}
 		// A group encounter's times come only by team size, under the game's store keys beside the names above.
-		JsonElement detailed = root.get("pbs_detailed");
-		for (Map.Entry<String, JsonElement> entry : detailed != null && detailed.isJsonObject()
-			? detailed.getAsJsonObject().entrySet() : Collections.<Map.Entry<String, JsonElement>>emptySet())
+		for (Map.Entry<String, JsonElement> entry : Json.entries(root.get("pbs_detailed")))
 		{
-			JsonElement seconds = entry.getValue().isJsonObject() ? entry.getValue().getAsJsonObject().get("seconds") : null;
-			if (seconds != null && seconds.isJsonPrimitive() && seconds.getAsJsonPrimitive().isNumber() && seconds.getAsDouble() > 0)
-			{
-				pbs.put(entry.getKey(), seconds.getAsDouble());
-			}
+			putTime(pbs, entry.getKey(), Json.get(Json.object(entry.getValue()), "seconds"));
 		}
 		return pbs;
 	}
 
-	private static int intField(JsonObject obj, String field)
+	private static void putTime(Map<String, Double> pbs, String name, @Nullable JsonElement value)
 	{
-		return obj.has(field) && !obj.get(field).isJsonNull() && obj.get(field).isJsonPrimitive()
-			? obj.get(field).getAsInt() : 0;
-	}
-
-	@Nullable
-	private static String stringField(JsonObject obj, String field)
-	{
-		return obj.has(field) && !obj.get(field).isJsonNull() && obj.get(field).isJsonPrimitive()
-			? obj.get(field).getAsString() : null;
+		double seconds = Json.number(value);
+		if (seconds > 0)
+		{
+			pbs.put(name, seconds);
+		}
 	}
 }
