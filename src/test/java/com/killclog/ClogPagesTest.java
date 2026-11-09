@@ -32,6 +32,29 @@ public class ClogPagesTest
 	}
 
 	@Test
+	public void anItemsNameFindsEveryPageThatHoldsIt()
+	{
+		ClogPages pages = new ClogPages(mock(TooltipController.class), mock(Cells.class), mock(ComparisonController.class),
+			mock(LookupSession.class), mock(TooltipDataBuilder.class), new KillClogConfig()
+			{
+			});
+		ClogIndex index = mock(ClogIndex.class);
+		when(index.itemNames()).thenReturn(java.util.Map.of(20997, "Twisted bow", 11920, "Dragon pickaxe", 22981, "Ferocious gloves"));
+		when(index.categoryKeysForItem(20997)).thenReturn(java.util.List.of("chambers_of_xeric"));
+		when(index.categoryKeysForItem(11920)).thenReturn(java.util.List.of("king_black_dragon", "kalphite_queen"));
+		when(index.categoryKeysForItem(22981)).thenReturn(java.util.List.of("alchemical_hydra"));
+		pages.setClogIndex(index);
+
+		assertEquals(Set.of("chambers_of_xeric"), pages.pagesWithItem("twisted bow"));
+		assertEquals(Set.of("king_black_dragon", "kalphite_queen"), pages.pagesWithItem("pickaxe"));
+		assertTrue("two letters find nothing", pages.pagesWithItem("bo").isEmpty());
+		assertTrue(pages.pagesWithItem("zzz").isEmpty());
+		assertTrue(ClogPages.bossOn(HiscoreSkill.CHAMBERS_OF_XERIC, pages.pagesWithItem("twisted")));
+		assertTrue(ClogPages.bossOn(HiscoreSkill.KALPHITE_QUEEN, pages.pagesWithItem("dragon pick")));
+		assertTrue(!ClogPages.bossOn(HiscoreSkill.ZULRAH, pages.pagesWithItem("twisted")));
+	}
+
+	@Test
 	public void everyPanelBossHasAPageInTheGamesLog()
 	{
 		JsonObject seed = new Gson().fromJson(new InputStreamReader(

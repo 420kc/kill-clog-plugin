@@ -87,6 +87,31 @@ final class ClogPages
 		return keys;
 	}
 
+	/**
+	 * The pages holding a log item whose name holds the text (searched as the boss list searches, three letters or more),
+	 * by the game's own item names: the boss list finds a boss or a page by what it drops (Dylan 11/9).
+	 */
+	Set<String> pagesWithItem(String query)
+	{
+		Set<String> keys = new HashSet<>();
+		ClogIndex index = clogIndex;
+		if (index != null && query.length() >= 3)
+		{
+			index.itemNames().forEach((id, name) ->
+			{
+				List<String> on = KillClogChatCommand.normalize(name).contains(query) ? index.categoryKeysForItem(id) : null;
+				keys.addAll(on != null ? on : Collections.emptyList());
+			});
+		}
+		return keys;
+	}
+
+	/** Whether one of these pages is this panel boss's. */
+	static boolean bossOn(HiscoreSkill boss, Set<String> keys)
+	{
+		return keys.stream().anyMatch(key -> PAGE_BOSSES.getOrDefault(key, Collections.emptyList()).contains(boss));
+	}
+
 	/** A page's first item, which its search row shows as its icon (Better Collection Log's way), or -1 for none. */
 	int firstItem(String key)
 	{

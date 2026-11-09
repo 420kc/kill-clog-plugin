@@ -332,8 +332,9 @@ public class BossListView
 	}
 
 	/**
-	 * Shows the bosses whose name holds the text, or whose chat shorthand starts with it (cox, tob, cg). A raid's
-	 * hard mode shows with its raid: cox brings Challenge Mode too, while cm is Challenge Mode alone.
+	 * Shows the bosses whose name holds the text, or whose chat shorthand starts with it (cox, tob, cg), and the
+	 * bosses and pages whose log holds an item by that name (twisted bow: Chambers of Xeric). A raid's hard mode shows
+	 * with its raid: cox brings Challenge Mode too, while cm is Challenge Mode alone.
 	 */
 	void filter(String text)
 	{
@@ -350,8 +351,10 @@ public class BossListView
 			}
 		});
 		filterHeight = query.isEmpty() ? 0 : filterHeight > 0 ? filterHeight : root.getHeight();
+		// A boss or page also shows when its log page holds an item by that name.
+		Set<String> itemPages = pages.pagesWithItem(query);
 		rows.forEach((boss, row) -> row.panel.setVisible(query.isEmpty() || matches(boss, query, named)
-			|| matches(PanelData.card(boss), query, named)
+			|| matches(PanelData.card(boss), query, named) || ClogPages.bossOn(boss, itemPages)
 			|| byCount && row.kc.getText().toLowerCase(Locale.ROOT).contains(typed)));
 		if (!query.isEmpty() && pageRows.isEmpty())
 		{
@@ -360,10 +363,11 @@ public class BossListView
 				pageRows.put(key, buildPageRow(key));
 			}
 		}
-		// A page row is found by its name alone.
+		// A page row is found by its name, or by an item it holds.
 		pageRows.forEach((key, row) ->
 		{
-			boolean found = !query.isEmpty() && KillClogChatCommand.normalize(row.name.getText()).contains(query);
+			boolean found = !query.isEmpty() && (KillClogChatCommand.normalize(row.name.getText()).contains(query)
+				|| itemPages.contains(key));
 			if (found)
 			{
 				showCount(row, pages.count(key));

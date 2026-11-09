@@ -176,6 +176,24 @@ public class BossListSearchTest
 		return names;
 	}
 
+	// Dylan 11/9: a boss is found by what it drops.
+	@Test
+	public void anItemsNameFindsTheBossesWhoseLogHoldsIt()
+	{
+		Cells cells = mock(Cells.class);
+		for (HiscoreSkill boss : PanelData.BOSSES)
+		{
+			when(cells.getBossLabel(boss)).thenReturn(new JLabel("--"));
+		}
+		ClogPages pages = mock(ClogPages.class);
+		when(pages.pagesWithItem("twisted bow")).thenReturn(java.util.Set.of("chambers_of_xeric"));
+		BossListView list = new BossListView(mock(TooltipController.class), cells, pages, mock(KillClogConfig.class), () -> true);
+		list.resyncAll();
+
+		list.filter("Twisted bow");
+		assertEquals(List.of("Chambers of Xeric", "Chambers of Xeric: Challenge Mode"), shown(list));
+	}
+
 	private static List<String> shown(BossListView list)
 	{
 		List<String> names = new ArrayList<>();
