@@ -476,7 +476,6 @@ final class ClogIndex
 		}
 	}
 
-	/** The other ids whose names stand in for a counted item's own when it has none, in order (item-aliases.tsv). */
 	/**
 	 * An item's name on any card, by one rule: the player's log names it, or the game's own Collection Log, or else
 	 * one of the item's alias forms does (a log can hold an item only by its alias, the skill pages' shards).
@@ -500,6 +499,7 @@ final class ClogIndex
 		return null;
 	}
 
+	/** The other ids whose names stand in for a counted item's own when it has none, in order (item-aliases.tsv). */
 	static List<Integer> nameAliases(int canonicalItemId)
 	{
 		List<String[]> rows = new ArrayList<>();

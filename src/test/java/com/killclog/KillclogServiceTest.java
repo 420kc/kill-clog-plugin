@@ -180,6 +180,20 @@ public class KillclogServiceTest
 	}
 
 	@Test
+	public void aBadTeamSizeTimeNeverReplacesAGoodOneAndNeedsThePlainTimes()
+	{
+		String clog = "\"clog\":{\"items_by_category\":{}}";
+		assertNotNull(service.parseProofView("a", "{\"pbs\":{\"Zulrah\":58.2,\"Vorkath\":\"slow\"},"
+			+ "\"pbs_detailed\":{\"Zulrah\":{\"seconds\":\"x\"},\"Vorkath\":[1],\"Kraken\":{\"seconds\":-3}}," + clog + "}", "a"));
+		assertEquals("0:58.20", service.pbText("a", "Zulrah"));
+		assertNull(service.pbText("a", "Vorkath"));
+		assertNull(service.pbText("a", "Kraken"));
+		// Without the plain times, the team-size ones aren't read at all.
+		assertNotNull(service.parseProofView("b", "{\"pbs_detailed\":{\"Zulrah\":{\"seconds\":58.2}}," + clog + "}", "b"));
+		assertNull(service.pbText("b", "Zulrah"));
+	}
+
+	@Test
 	public void testParseProofViewRejectsMalformed()
 	{
 		assertNull(service.parseProofView("x", "{\"exists\":false}", "x"));

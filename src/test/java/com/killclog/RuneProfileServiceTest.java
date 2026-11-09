@@ -306,6 +306,14 @@ public class RuneProfileServiceTest
 	}
 
 	@Test
+	public void aGarbledItemIdFailsTheWholeLogRatherThanReadingAsItemZero()
+	{
+		String json = "{\"obtained\":1,\"total\":5,\"tabs\":[{\"name\":\"Bosses\",\"pages\":[{\"name\":\"Zilyana\",\"items\":["
+			+ "{\"id\":{},\"name\":\"A\",\"quantity\":1},{\"id\":2,\"name\":\"B\",\"quantity\":1}]}]}]}";
+		assertNull(service.parseCollectionLogOutcome("garbled", json, null).result);
+	}
+
+	@Test
 	public void testParseClogPositiveRootWithoutPositiveItemsIsInvalid()
 	{
 		String json = "{\"obtained\":1,\"total\":50,\"tabs\":["

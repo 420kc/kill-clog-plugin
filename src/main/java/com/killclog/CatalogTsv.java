@@ -34,7 +34,7 @@ final class CatalogTsv
 			key -> readRows(owner, resource, columns));
 	}
 
-	/** A two-column table as a map, column 0 to column 1; a later row wins a repeated key. */
+	/** A two-column table as a map, column 0 to column 1; a repeated key takes the later row's value in the first's place. */
 	static Map<String, String> map(Class<?> owner, String resource)
 	{
 		Map<String, String> map = new LinkedHashMap<>();

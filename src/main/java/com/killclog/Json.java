@@ -6,7 +6,8 @@ import javax.annotation.Nullable;
 
 /**
  * Reading a site's JSON where any field can be missing, JSON null or the wrong shape: each reads as absent (null, 0,
- * -1 or nothing to loop over) instead of throwing, so one odd field never costs the whole answer.
+ * -1 or nothing to loop over) instead of throwing, so one odd field never costs the whole answer. One exception:
+ * {@link #intField} on text that isn't a number throws, as Gson does, so callers read inside their parse's catch.
  */
 final class Json
 {
