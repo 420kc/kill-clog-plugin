@@ -596,8 +596,17 @@ public class SkillClogSectionTest
 			Math.max(1, soloSize.width + TitleTooltip.getInset() * 2),
 			Math.max(1, soloSize.height), BufferedImage.TYPE_INT_ARGB);
 		Graphics2D graphics = image.createGraphics();
-		assertEquals(skill.getName() + " solo measured height",
-			soloSize.height, solo.paintSolo(graphics, image.getWidth(), 0, new ArrayList<>()));
+		List<TooltipItemHover.HitBox> boxes = new ArrayList<>();
+		int painted = solo.paintSolo(graphics, image.getWidth(), 0, boxes);
+		assertEquals(skill.getName() + " solo measured height", soloSize.height, painted);
+		// The lowest sprite ends where the sections end: the height measures what paints, a set's own rows included.
+		int lowest = 0;
+		for (TooltipItemHover.HitBox box : boxes)
+		{
+			java.awt.Rectangle bounds = TestViews.field(box, "bounds");
+			lowest = Math.max(lowest, bounds.y + bounds.height);
+		}
+		assertEquals(skill.getName() + " lowest sprite", painted, lowest);
 
 		graphics.dispose();
 	}

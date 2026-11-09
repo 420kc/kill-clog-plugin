@@ -284,7 +284,7 @@ final class CardBody
 		int width = ids.length * (GRID_SPRITE + pad) - pad;
 		return row(GRID_SPRITE, c -> width, (c, y) -> c.hits.addAll(TooltipItemSprites.paintGrid(c.g, sprites, named,
 			section, TooltipData.itemList(ids), obtained, held, c.inset(), y,
-			ids.length, GRID_SPRITE, GRID_SPRITE + pad)));
+			ids.length, GRID_SPRITE, GRID_SPRITE + pad, null)));
 	}
 
 	/** One row that opens something: it answers hover in white and a left press with its key. */
@@ -569,7 +569,7 @@ final class CardBody
 				int cols = gridColumns(minCols, count, c.available);
 				int width = cols * GRID_CELL - GRID_GAP;
 				c.hits.addAll(TooltipItemSprites.paintGrid(c.g, sprites, names, 0, ids, obtained, counts,
-					c.inset() + (c.w - 2 * c.inset() - width) / 2, y, cols, GRID_SPRITE, GRID_CELL));
+					c.inset() + (c.w - 2 * c.inset() - width) / 2, y, cols, GRID_SPRITE, GRID_CELL, null));
 			});
 	}
 

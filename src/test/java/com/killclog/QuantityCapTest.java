@@ -42,7 +42,7 @@ public class QuantityCapTest
 		Graphics2D g = image.createGraphics();
 		g.setFont(net.runelite.client.ui.FontManager.getRunescapeSmallFont());
 		TooltipItemSprites.paintGrid(g, null, null, 0, List.of(itemId), Set.of(itemId), Map.of(itemId, count),
-			0, 0, 1, 32, 36);
+			0, 0, 1, 32, 36, null);
 		g.dispose();
 		for (int y = 0; y < 40; y++)
 		{

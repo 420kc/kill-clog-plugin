@@ -15,6 +15,43 @@ import static org.junit.Assert.assertEquals;
  */
 public class SkillClogCatalogTest
 {
+	/**
+	 * A section of sets (a ';' in its row) keeps every set to the card's five columns, never repeats an id, and starts no
+	 * set on an id the log folds into another: SkillClogSection keys each set's row by its first id as read.
+	 */
+	@Test
+	public void everySetFitsARowAndStartsOnAnIdOfItsOwn()
+	{
+		int sets = 0;
+		for (Skill skill : Skill.values())
+		{
+			for (String line : TestViews.specSignature(skill))
+			{
+				String[] parts = line.split("\\|", -1);
+				if (!"items".equals(parts[0]) || !parts[2].contains(";"))
+				{
+					continue;
+				}
+				java.util.Set<Integer> seen = new java.util.HashSet<>();
+				for (String set : parts[2].split(";"))
+				{
+					String[] ids = set.split(",");
+					String where = skill + " / " + parts[1] + " at " + ids[0];
+					org.junit.Assert.assertTrue(where + ": a set of " + ids.length, ids.length >= 1 && ids.length <= 5);
+					int first = Integer.parseInt(ids[0]);
+					assertEquals(where + ": the log folds it into another id", first, ClogIndex.fallbackCanonicalItemId(first));
+					for (String id : ids)
+					{
+						org.junit.Assert.assertTrue(where + ": repeats " + id, seen.add(Integer.parseInt(id)));
+					}
+					sets++;
+				}
+			}
+		}
+		// The combat cards' 94 rows, less the two sections that are one row (Attack's and Ranged's Equipment).
+		assertEquals("the sets in sections of more than one", 92, sets);
+	}
+
 	@Test
 	public void taxonomyMatchesGoldenTable()
 	{

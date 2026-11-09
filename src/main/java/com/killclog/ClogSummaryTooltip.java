@@ -409,7 +409,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 				// Shelves start at the left, as killclog.com's do.
 				int startX = c.inset();
 				c.hits.addAll(TooltipItemSprites.paintGrid(c.g, shelf.sprites, named, section, ids, new HashSet<>(ids),
-					held, startX + (cellWidth - size) / 2, y, cols, size, cellWidth + RECENT_PAD));
+					held, startX + (cellWidth - size) / 2, y, cols, size, cellWidth + RECENT_PAD, null));
 				for (int i = 0; i < count; i++)
 				{
 					String date = shelf.dates != null ? shelf.dates[i] : null;

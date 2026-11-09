@@ -115,16 +115,9 @@ final class TooltipItemSprites
 	 */
 	static List<TooltipItemHover.HitBox> paintGrid(Graphics2D g2, TooltipItemSprites sprites,
 		Map<Integer, String> names, int section, List<Integer> ids, Set<Integer> obtainedIds,
-		Map<Integer, Integer> counts, int startX, int startY, int cols, int size, int cellSize)
-	{
-		return paintGrid(g2, sprites, names, section, ids, obtainedIds, counts, startX, startY, cols, size, cellSize, null);
-	}
-
-	/** As above, each item in its own cell of the grid ({@code slots}), or one after another without them. */
-	static List<TooltipItemHover.HitBox> paintGrid(Graphics2D g2, TooltipItemSprites sprites,
-		Map<Integer, String> names, int section, List<Integer> ids, Set<Integer> obtainedIds,
 		Map<Integer, Integer> counts, int startX, int startY, int cols, int size, int cellSize, int[] slots)
 	{
+		// Each item takes the next cell, or its own cell of the grid when slots are given (a Skill Clog's set rows).
 		List<TooltipItemHover.HitBox> hitBoxes = new ArrayList<>(ids.size());
 		int ascent = g2.getFontMetrics().getAscent();
 		for (int i = 0; i < ids.size(); i++)

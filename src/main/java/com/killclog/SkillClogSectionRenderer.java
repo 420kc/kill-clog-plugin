@@ -183,9 +183,9 @@ final class SkillClogSectionRenderer
 
 	private static int gridHeight(SkillClogSection section, int cols)
 	{
+		// A section always holds an item: the last one's cell gives its rows.
 		int[] slots = section.slots(cols);
-		int rows = slots.length == 0 ? 1 : slots[slots.length - 1] / cols + 1;
-		return rows * CELL_SIZE - PADDING;
+		return (slots[slots.length - 1] / cols + 1) * CELL_SIZE - PADDING;
 	}
 
 	@RequiredArgsConstructor(access = AccessLevel.PRIVATE)

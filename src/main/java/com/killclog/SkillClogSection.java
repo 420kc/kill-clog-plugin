@@ -31,7 +31,7 @@ final class SkillClogSection
 		this.heading = heading;
 		this.category = category;
 		this.itemIds = Collections.unmodifiableList(itemIds);
-		this.rowStarts = Collections.unmodifiableSet(rowStarts);
+		this.rowStarts = rowStarts;
 		this.itemNames = Collections.unmodifiableMap(itemNames);
 		this.primary = primary;
 	}
@@ -98,16 +98,12 @@ final class SkillClogSection
 		}
 
 		List<Integer> itemIds = new ArrayList<>(distinctIds);
-		Set<Integer> rowStarts = new HashSet<>();
-		for (int itemId : spec.rowStarts)
-		{
-			rowStarts.add(canonicalItemId(itemId, clogIndex));
-		}
 		Map<Integer, String> itemNames = new LinkedHashMap<>();
 		addItemNames(itemNames, itemIds, catalog, clogIndex);
 		addItemNames(itemNames, itemIds, compared, clogIndex);
 		addItemNames(itemNames, itemIds, primary, clogIndex);
-		return new SkillClogSection(spec.heading, spec.category, itemIds, rowStarts, itemNames,
+		// A set's first id is never an alias or a repeat in its section (SkillClogCatalogTest), so it stands as read.
+		return new SkillClogSection(spec.heading, spec.category, itemIds, spec.rowStarts, itemNames,
 			PlayerItems.from(primary, spec, distinctIds, clogIndex));
 	}
 
@@ -189,19 +185,18 @@ final class SkillClogSection
 
 	/**
 	 * Each item's cell in a grid {@code cols} wide, in order: a set the catalog gives a row of its own starts on a
-	 * fresh line, and a row longer than the grid wraps onto the next.
+	 * fresh line (its cell rounded up to a line's start), and a row longer than the grid wraps onto the next.
 	 */
 	int[] slots(int cols)
 	{
 		int[] slots = new int[itemIds.size()];
-		int cell = 0;
-		for (int i = 0; i < itemIds.size(); i++)
+		for (int i = 0, cell = 0; i < slots.length; i++, cell++)
 		{
-			if (i > 0 && cell % cols != 0 && rowStarts.contains(itemIds.get(i)))
+			if (rowStarts.contains(itemIds.get(i)))
 			{
-				cell += cols - cell % cols;
+				cell = (cell + cols - 1) / cols * cols;
 			}
-			slots[i] = cell++;
+			slots[i] = cell;
 		}
 		return slots;
 	}
@@ -234,19 +229,16 @@ final class SkillClogSection
 			}
 			else
 			{
-				// A ';' starts a set's own row (Dylan 11/8: a progression chart, one set to a row).
+				// A ';' starts the next set on a row of its own (Dylan 11/8: the Combat Clogs as a progression chart).
 				List<Integer> itemIds = new ArrayList<>();
 				Set<Integer> rowStarts = new HashSet<>();
-				for (String set : row[3].split(";"))
+				for (String itemId : row[3].replace(";", ",;").split(","))
 				{
-					String[] ids = set.split(",");
-					if (!itemIds.isEmpty())
+					int id = Integer.parseInt(itemId.replace(";", "").trim());
+					itemIds.add(id);
+					if (itemId.startsWith(";"))
 					{
-						rowStarts.add(Integer.parseInt(ids[0].trim()));
-					}
-					for (String itemId : ids)
-					{
-						itemIds.add(Integer.parseInt(itemId.trim()));
+						rowStarts.add(id);
 					}
 				}
 				spec = new Spec(heading, null, itemIds, rowStarts, false);
@@ -383,7 +375,7 @@ final class SkillClogSection
 			this.category = category;
 			this.rest = rest;
 			this.itemIds = Collections.unmodifiableList(new ArrayList<>(itemIds));
-			this.rowStarts = Collections.unmodifiableSet(new HashSet<>(rowStarts));
+			this.rowStarts = rowStarts;
 		}
 	}
 }
