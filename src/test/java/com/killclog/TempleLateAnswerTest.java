@@ -184,6 +184,47 @@ public class TempleLateAnswerTest
 		assertEquals(count, fixture.events("onClogResult"));
 	}
 
+	// Dylan 11/9: a search shows the log another source has without waiting on TempleOSRS, whose answer follows.
+	@Test
+	public void aSearchWithAnotherSourcesLogNeverWaitsForTemple() throws Exception
+	{
+		CompletableFuture<ClogResult> temple = new CompletableFuture<>();
+		long start = System.currentTimeMillis();
+		ClogProviderFanout.Answers answers = ClogProviderFanout.answers(false, () -> temple,
+			() -> CompletableFuture.completedFuture(result("From RuneProfile", 800)),
+			() -> CompletableFuture.completedFuture(null));
+		assertEquals("From RuneProfile", answers.first.get(5, TimeUnit.SECONDS).getPlayerName());
+		assertTrue("not TempleOSRS's 7 seconds", System.currentTimeMillis() - start < 2000);
+		temple.complete(result("From Temple", 1200));
+		assertEquals("From Temple", answers.late.get(5, TimeUnit.SECONDS).getPlayerName());
+	}
+
+	@Test
+	public void aSearchWithNoOtherLogStillWaitsForTemple() throws Exception
+	{
+		CompletableFuture<ClogResult> temple = new CompletableFuture<>();
+		ClogProviderFanout.Answers answers = ClogProviderFanout.answers(false, () -> temple,
+			() -> CompletableFuture.completedFuture(null), () -> CompletableFuture.completedFuture(null));
+		Thread.sleep(300);
+		assertFalse("never hiscores alone, then a log", answers.first.isDone());
+		temple.complete(result("Marni", 1200));
+		assertEquals("Marni", answers.first.get(5, TimeUnit.SECONDS).getPlayerName());
+		assertNull(answers.late.get(5, TimeUnit.SECONDS));
+	}
+
+	@Test
+	public void aChatReplyWaitsForEverySource() throws Exception
+	{
+		CompletableFuture<ClogResult> temple = new CompletableFuture<>();
+		CompletableFuture<ClogResult> reply = ClogProviderFanout.lookup(false, () -> temple,
+			() -> CompletableFuture.completedFuture(result("From RuneProfile", 800)),
+			() -> CompletableFuture.completedFuture(null));
+		Thread.sleep(300);
+		assertFalse("a reply can't redraw, so it waits for the fullest", reply.isDone());
+		temple.complete(result("From Temple", 1200));
+		assertEquals("From Temple", reply.get(5, TimeUnit.SECONDS).getPlayerName());
+	}
+
 	@Test
 	public void templeInTimeHasNothingLate() throws Exception
 	{

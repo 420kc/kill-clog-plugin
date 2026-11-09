@@ -7,7 +7,9 @@ import java.util.function.Supplier;
  * Chooses a player's log across the three sources, for the panel and chat alike: TempleOSRS, RuneProfile and
  * killclog.com asked at once with 7 seconds each, the fuller of TempleOSRS's and RuneProfile's first, then
  * killclog.com's sync on coverage (the rules the site shares in cases/log-choice.tsv). Your own log never takes a
- * remote one in place of what you captured.
+ * remote one in place of what you captured. The panel waits for TempleOSRS, the slowest, only while no other source
+ * has the log, so a search never shows hiscores alone and then fills in, and never waits on TempleOSRS for a log it
+ * already has; TempleOSRS's answer folds in when it lands (Dylan 11/9). A chat reply can't redraw, so it waits for all.
  */
 final class ClogProviderFanout
 {
@@ -24,7 +26,7 @@ final class ClogProviderFanout
 		Supplier<CompletableFuture<ClogResult>> runeProfile,
 		Supplier<CompletableFuture<ClogResult>> killclog)
 	{
-		return answers(isSelf, temple, runeProfile, killclog).first;
+		return answers(isSelf, temple, runeProfile, killclog, true).first;
 	}
 
 	/** A lookup's log as the wait ends, and again if TempleOSRS answers only after it. */
@@ -50,11 +52,26 @@ final class ClogProviderFanout
 		Supplier<CompletableFuture<ClogResult>> runeProfile,
 		Supplier<CompletableFuture<ClogResult>> killclog)
 	{
+		return answers(isSelf, temple, runeProfile, killclog, false);
+	}
+
+	private static Answers answers(boolean isSelf,
+		Supplier<CompletableFuture<ClogResult>> temple,
+		Supplier<CompletableFuture<ClogResult>> runeProfile,
+		Supplier<CompletableFuture<ClogResult>> killclog,
+		boolean waitForTemple)
+	{
 		CompletableFuture<ClogResult> templeAnswer = fetch(temple);
-		// What the wait saw of TempleOSRS, so an answer landing as the wait ends is late, not lost.
-		CompletableFuture<ClogResult> templeInTime = bounded(templeAnswer);
+		// What the wait saw of TempleOSRS, so an answer landing as the wait ends is late, not lost: its own wait, begun
+		// as it's asked, while no other source has the log, else whatever it has said by the time they have.
+		CompletableFuture<ClogResult> templeWait = bounded(templeAnswer);
 		CompletableFuture<ClogResult> rp = bounded(isSelf ? CompletableFuture.completedFuture(null) : fetch(runeProfile));
 		CompletableFuture<ClogResult> kc = bounded(isSelf ? CompletableFuture.completedFuture(null) : fetch(killclog));
+		CompletableFuture<ClogResult> templeInTime = waitForTemple ? templeWait
+			: rp.thenCombine(kc, (r, k) -> r != null || k != null).thenCompose(others -> others
+				? CompletableFuture.completedFuture(templeAnswer.isDone() && !templeAnswer.isCompletedExceptionally()
+					? templeAnswer.join() : null)
+				: templeWait);
 		CompletableFuture<ClogResult> first = chooseFullest(templeInTime, rp, kc);
 		CompletableFuture<ClogResult> late = first.thenCompose(shown -> templeInTime.join() != null
 			? CompletableFuture.completedFuture(null)
