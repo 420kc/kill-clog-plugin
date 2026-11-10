@@ -51,6 +51,7 @@ public class KillClogPanel extends PluginPanel
 	// The Player Summary's clan and its title icon; set by the plugin at startup.
 	private PlayerClans clans;
 	private final PlayerPortraits portraits;
+	private String portraitCheck;
 	private final KillClogConfig config;
 	private final ConfigManager configManager;
 	private final SpriteManager spriteManager;
@@ -913,8 +914,15 @@ public class KillClogPanel extends PluginPanel
 	 */
 	private void renderClogResult(ClogResult result)
 	{
-		// Each lookup re-checks a syncer's character, so a withdrawn one is gone from this lookup on.
-		portraits.lookedUp(result);
+		// Each lookup re-checks a syncer's character, so a withdrawn one is gone from this lookup on; once a lookup,
+		// so TempleOSRS's late answer keeps the character the first confirmed (checked again, the cape showed till
+		// the server answered).
+		String check = lookupSession.getLookupVersion() + ":" + result.getPlayerName() + result.isFromKillclog();
+		if (!check.equals(portraitCheck))
+		{
+			portraitCheck = check;
+			portraits.lookedUp(result);
+		}
 		adoptName(result.getPlayerName());
 		AccountType providerType = result.getProviderAccountType();
 		if (providerType != null && providerType.isGroupIronman())

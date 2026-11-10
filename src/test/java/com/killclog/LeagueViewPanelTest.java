@@ -748,6 +748,33 @@ public class LeagueViewPanelTest
 		return AccountBadgeResolver.label(field(panel, "rivalIdentity", AccountDisplay.class));
 	}
 
+	// TempleOSRS's late answer for the same search mustn't withhold the character its first answer
+	// confirmed (asked again, the card drew the cape until the server answered); a new search asks again.
+	@Test
+	public void aSecondAnswerForOneSearchKeepsTheCharacterTheFirstConfirmed() throws Exception
+	{
+		PlayerPortraits portraits = field(panel, "portraits", PlayerPortraits.class);
+		HiscoreResult row = RankSelectorTest.result(AccountType.REGULAR, HiscoreTable.STANDARD, 10, 10000);
+		ClogResult first = new ClogResult("Friend", Map.of(), Map.of(), Map.of(), null, null);
+		ClogResult late = new ClogResult("Friend", Map.of(), Map.of(), Map.of(), null, null);
+		SwingUtilities.invokeAndWait(() ->
+		{
+			show(row, "Friend", null);
+			session.adoptState(row, first, null, "Friend");
+			panel.onClogResult("Friend", first, false, session.getLookupVersion());
+			panel.onClogResult("Friend", late, false, session.getLookupVersion());
+		});
+		verify(portraits, org.mockito.Mockito.times(1)).lookedUp(any());
+		SwingUtilities.invokeAndWait(() ->
+		{
+			// A new search of the same name (its sources stay pending; the log is handed in as they'd deliver it).
+			session.start("Friend", null, null);
+			session.adoptState(row, late, null, "Friend");
+			panel.onClogResult("Friend", late, false, session.getLookupVersion());
+		});
+		verify(portraits, org.mockito.Mockito.times(2)).lookedUp(any());
+	}
+
 	@Test
 	public void yourHardcoreGroupBadgeOutlivesALogThatSaysGroupIronman() throws Exception
 	{
