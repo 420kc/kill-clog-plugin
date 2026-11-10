@@ -94,7 +94,7 @@ Kill Clog draws its cards with the game's own interface frames, so they wear whi
 
 Toggle between the default Grid view and List view with the **Menu** button under the search bar. Comparison uses Grid view.
 
-List view has its own search bar above the bosses. Search by boss, activity, kill count or item name. An item finds every boss and Collection Log page that drops it, like Chambers of Xeric for a twisted bow. Activities with no boss row, like Mastering Mixology, show their count and open their own card.
+List view has its own search bar above the bosses. Search by boss, activity, kill count or item name. An item finds every boss and Collection Log page that holds it, like Chambers of Xeric for a twisted bow, once you're logged in. Activities with no boss row, like Mastering Mixology, show their count and open their own card.
 
 ![Searching List view by boss, activity, kill count and item name](screenshots/boss-list-search.png)
 
