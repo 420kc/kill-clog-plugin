@@ -163,7 +163,8 @@ public class SkillClogSectionTest
 		assertHeadings(catalog, Skill.HITPOINTS, "Equipment|Pest Control");
 		assertHeadings(catalog, Skill.DEFENCE, "Armour|Shields|Equipment|Defenders");
 		assertHeadings(catalog, Skill.STRENGTH, "Slash Weapons|Crush Weapons|Armour");
-		assertEquals(VOID_KNIGHT_IDS, SkillClogSection.forSkill(
+		// Pest Control is the game's page as it is (Dylan 11/9): every item, in the game's order.
+		assertEquals(PEST_CONTROL_IDS, SkillClogSection.forSkill(
 			Skill.HITPOINTS, null, null, catalog).get(1).itemIds());
 		// The Defenders are their own list since 2.8.0, the Avernic defender hilt after the dragon defender.
 		assertEquals(concat(DEFENDER_IDS, Arrays.asList(22477)), SkillClogSection.forSkill(
@@ -231,7 +232,8 @@ public class SkillClogSectionTest
 	public void hitpointsProgressUsesLoggedEquipmentUnlocks()
 	{
 		Map<String, List<ClogResult.ClogItem>> obtained = new HashMap<>();
-		// Void Knight gear needs every combat skill, Hitpoints included (2.8.0's Combat Clogs): its own list now.
+		// Void Knight gear needs every combat skill, Hitpoints included (2.8.0's Combat Clogs); the card shows the whole
+		// Pest Control page, and this player has all of it but the seal.
 		obtained.put("pest_control", VOID_KNIGHT_IDS.stream()
 			.map(id -> new ClogResult.ClogItem(id, 1, null))
 			.collect(Collectors.toList()));
@@ -251,7 +253,7 @@ public class SkillClogSectionTest
 		SkillClogSection.Progress progress = SkillClogSection.combinedProgress(
 			sections);
 		assertEquals(12, progress.obtained());
-		assertEquals(13, progress.total());
+		assertEquals(14, progress.total());
 	}
 
 	@Test
@@ -338,7 +340,7 @@ public class SkillClogSectionTest
 		ClogResult catalog = mappedCatalog();
 
 		assertTotal(catalog, Skill.ATTACK, 50);
-		assertTotal(catalog, Skill.HITPOINTS, 13);
+		assertTotal(catalog, Skill.HITPOINTS, 14);
 		assertTotal(catalog, Skill.DEFENCE, 78);
 		assertTotal(catalog, Skill.STRENGTH, 30);
 		assertTotal(catalog, Skill.MINING, 31);

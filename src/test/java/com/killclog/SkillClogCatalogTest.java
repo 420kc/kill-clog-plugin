@@ -48,8 +48,9 @@ public class SkillClogCatalogTest
 				}
 			}
 		}
-		// The combat cards' 94 rows, less the two sections that are one row (Attack's and Ranged's Equipment).
-		assertEquals("the sets in sections of more than one", 92, sets);
+		// The combat cards' 91 rows, less the two sections that are one row (Attack's and Ranged's Equipment); Hitpoints'
+		// Pest Control is the game's page (Dylan 11/9), laid as the game lays it, with no sets of its own.
+		assertEquals("the sets in sections of more than one", 89, sets);
 	}
 
 	@Test
@@ -63,7 +64,7 @@ public class SkillClogCatalogTest
 			TestViews.specSignature(Skill.ATTACK));
 		assertEquals(Arrays.asList(
 			"items|Equipment|19529,29799,31109,33634",
-			"items|Pest Control|8839,8840,8842,8841;11663,11665,11664;13072,13073"),
+			"category|Pest Control|pest_control"),
 			TestViews.specSignature(Skill.HITPOINTS));
 		assertEquals(Arrays.asList(
 			"items|Armour|10548,10551,10555;10550,10549,10547;21298,21301,21304;11335,3140,22103;4716,4720,4722;4724,4728,4730;4745,4749,4751;4753,4757,4759;11832,11834;24268,23956,12927;22326,22327,22328;30750,30753,30756,30765;26376,26378,26380",
