@@ -775,6 +775,27 @@ public class LeagueViewPanelTest
 		verify(portraits, org.mockito.Mockito.times(2)).lookedUp(any());
 	}
 
+	// The same for a comparison's rival: TempleOSRS's late answer keeps the rival's character; a new comparison asks again.
+	@Test
+	public void aSecondAnswerForOneComparisonKeepsTheRivalsCharacter() throws Exception
+	{
+		PlayerPortraits portraits = field(panel, "portraits", PlayerPortraits.class);
+		ComparisonController comparison = field(panel, "comparison", ComparisonController.class);
+		Constructor<?> compared = Class.forName("com.killclog.ComparisonController$ComparedPlayer").getDeclaredConstructors()[0];
+		compared.setAccessible(true);
+		ClogResult rival = new ClogResult("Rival", Map.of(), Map.of(), Map.of(), null, null);
+		setField(comparison, "compared", compared.newInstance(1, null, rival, null, "Rival", null));
+		SwingUtilities.invokeAndWait(() ->
+		{
+			panel.preloadClogItemNames(rival);
+			panel.preloadClogItemNames(new ClogResult("Rival", Map.of(), Map.of(), Map.of(), null, null));
+		});
+		verify(portraits, org.mockito.Mockito.times(1)).lookedUp(any());
+		setField(comparison, "compared", compared.newInstance(2, null, rival, null, "Rival", null));
+		SwingUtilities.invokeAndWait(() -> panel.preloadClogItemNames(rival));
+		verify(portraits, org.mockito.Mockito.times(2)).lookedUp(any());
+	}
+
 	@Test
 	public void yourHardcoreGroupBadgeOutlivesALogThatSaysGroupIronman() throws Exception
 	{

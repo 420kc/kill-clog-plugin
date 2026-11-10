@@ -393,6 +393,12 @@ public class ComparisonController
 		publish(new ComparedPlayer(pending.generation, hiscore, clog, pending.ca, name, pending.selfType));
 	}
 
+	/** Which comparison the rival on screen came from: each new comparison has its own. */
+	int comparedGeneration()
+	{
+		return compared.generation;
+	}
+
 	private void publish(ComparedPlayer player)
 	{
 		// TempleOSRS's late answer for the comparison on screen redraws it without entering again, which would clear

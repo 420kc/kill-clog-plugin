@@ -52,6 +52,7 @@ public class KillClogPanel extends PluginPanel
 	private PlayerClans clans;
 	private final PlayerPortraits portraits;
 	private String portraitCheck;
+	private String rivalPortraitCheck;
 	private final KillClogConfig config;
 	private final ConfigManager configManager;
 	private final SpriteManager spriteManager;
@@ -914,15 +915,7 @@ public class KillClogPanel extends PluginPanel
 	 */
 	private void renderClogResult(ClogResult result)
 	{
-		// Each lookup re-checks a syncer's character, so a withdrawn one is gone from this lookup on; once a lookup,
-		// so TempleOSRS's late answer keeps the character the first confirmed (checked again, the cape showed till
-		// the server answered).
-		String check = lookupSession.getLookupVersion() + ":" + result.getPlayerName() + result.isFromKillclog();
-		if (!check.equals(portraitCheck))
-		{
-			portraitCheck = check;
-			portraits.lookedUp(result);
-		}
+		portraitCheck = checkPortrait(portraitCheck, String.valueOf(lookupSession.getLookupVersion()), result);
 		adoptName(result.getPlayerName());
 		AccountType providerType = result.getProviderAccountType();
 		if (providerType != null && providerType.isGroupIronman())
@@ -1677,7 +1670,22 @@ public class KillClogPanel extends PluginPanel
 	public void preloadClogItemNames(ClogResult clog)
 	{
 		itemNameResolver.resolve(clog);
-		portraits.lookedUp(clog);
+		rivalPortraitCheck = checkPortrait(rivalPortraitCheck, "vs" + comparison.comparedGeneration(), clog);
+	}
+
+	/**
+	 * Re-checks a syncer's character, so a withdrawn one is gone from this search on; once a search, so TempleOSRS's
+	 * late answer keeps the character the first confirmed (checked again, the cape showed till the server answered).
+	 * Returns the search's check, for the next answer to compare.
+	 */
+	private String checkPortrait(String last, String search, ClogResult clog)
+	{
+		String check = search + ":" + clog.getPlayerName() + clog.isFromKillclog();
+		if (!check.equals(last))
+		{
+			portraits.lookedUp(clog);
+		}
+		return check;
 	}
 
 	@Override
