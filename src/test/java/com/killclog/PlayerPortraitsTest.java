@@ -35,6 +35,13 @@ public class PlayerPortraitsTest
 			null, null).withSources(!killclog, false, killclog);
 	}
 
+	/** A lookup RuneProfile answered for, with no Kill Clog sync. */
+	private static ClogResult runeProfile(String name)
+	{
+		return new ClogResult(name, Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(),
+			null, null).withSources(false, true, false);
+	}
+
 	private static OkHttpClient client()
 	{
 		OkHttpClient client = mock(OkHttpClient.class);
@@ -76,21 +83,45 @@ public class PlayerPortraitsTest
 	}
 
 	@Test
-	public void onlyAKillClogSyncerIsAskedAbout()
+	public void aSyncerOrAPlayerRuneProfileKnowsIsAskedAbout()
 	{
+		// A name with no Kill Clog character can have its RuneProfile one (B349), so a lookup RuneProfile answered asks
+		// too; a player only TempleOSRS knows costs no request, and a lookup with no log has no name to ask with.
 		OkHttpClient client = client();
 		PlayerPortraits portraits = new PlayerPortraits(client);
-		portraits.lookedUp(clog("Lynx Titan", false));
 		portraits.lookedUp(null);
-		assertNull(portraits.forSummary(clog("Lynx Titan", false)));
+		portraits.lookedUp(clog("Zezima", false));
+		assertNull(portraits.forSummary(clog("Zezima", false)));
 		verify(client, never()).newCall(any(Request.class));
 
-		portraits.lookedUp(clog("420 kc", true));
-		portraits.lookedUp(clog("420_KC", true));
+		portraits.lookedUp(runeProfile("Lynx Titan"));
+		portraits.lookedUp(runeProfile("lynx_titan"));
 		Request request = requests(client, 1).get(0);
-		assertEquals("https://killclog.com/api/player/420%20kc/portrait/large", request.url().toString());
+		assertEquals("https://killclog.com/api/player/Lynx%20Titan/portrait/large", request.url().toString());
 		assertEquals(HttpUtil.USER_AGENT, request.header("User-Agent"));
 		assertNull("nothing held yet, so nothing to re-check", request.header("If-None-Match"));
+	}
+
+	@Test
+	public void aRuneProfileCharacterIsKnownByTheServersTag() throws IOException
+	{
+		// The server tags a RuneProfile character "rp-…" (routes/player-appearance.js); a Kill Clog one is never so.
+		PlayerPortraits portraits = new PlayerPortraits(client());
+		ClogResult pgn = runeProfile("pgn");
+		portraits.lookedUp(pgn);
+		assertTrue("nothing shown yet", !portraits.fromRuneProfile(pgn));
+		answer(portraits, "pgn", 200, png(120, 200), "\"rp-abc\"");
+		assertNotNull(portraits.forSummary(pgn));
+		assertTrue(portraits.fromRuneProfile(pgn));
+
+		ClogResult syncer = clog("420 kc", true);
+		portraits.lookedUp(syncer);
+		answer(portraits, "420 kc", 200, png(120, 200), "\"abc\"");
+		assertNotNull(portraits.forSummary(syncer));
+		assertTrue("a Kill Clog character", !portraits.fromRuneProfile(syncer));
+
+		assertTrue(PlayerPortraits.runeProfileTag("W/\"rp-abc\""));
+		assertTrue(!PlayerPortraits.runeProfileTag(null));
 	}
 
 	@Test

@@ -1346,6 +1346,10 @@ public class KillClogPanel extends PluginPanel
 		if (character != null)
 		{
 			tip.setCape(iconCache.capeFor(hiscore));
+			if (portraits.fromRuneProfile(clog))
+			{
+				tip.setRuneProfilePage(TooltipItemLink.runeProfileUrl(clog.getPlayerName().trim()));
+			}
 		}
 		if (clans != null)
 		{
@@ -1674,13 +1678,14 @@ public class KillClogPanel extends PluginPanel
 	}
 
 	/**
-	 * Re-checks a syncer's character, so a withdrawn one is gone from this search on; once a search, so TempleOSRS's
-	 * late answer keeps the character the first confirmed (checked again, the cape showed till the server answered).
-	 * Returns the search's check, for the next answer to compare.
+	 * Re-checks a player's character, so a withdrawn one is gone from this search on; once a search, so TempleOSRS's
+	 * late answer keeps the character the first confirmed (checked again, the cape showed till the server answered),
+	 * and again only when a later answer makes the player one to ask about (PlayerPortraits.portraitName). Returns the
+	 * search's check, for the next answer to compare.
 	 */
 	private String checkPortrait(String last, String search, ClogResult clog)
 	{
-		String check = search + ":" + clog.getPlayerName() + clog.isFromKillclog();
+		String check = search + ":" + PlayerPortraits.portraitName(clog);
 		if (!check.equals(last))
 		{
 			portraits.lookedUp(clog);

@@ -35,6 +35,15 @@ public class SummaryTooltip extends TitleTooltip
 	// With a character standing in, the prestige cape sits small in the header's corner and names its prestige.
 	@Nullable
 	private BufferedImage cape;
+	// A RuneProfile character's page: its icon sits dim in the figure's top corner, lit while hovered (Dylan, 2026-11-09).
+	@Nullable
+	private String runeProfilePage;
+	static final String RUNEPROFILE_LINK = "View on RuneProfile";
+	private static final int SOURCE_ICON = 13;
+	private static final int SOURCE_HIT_PAD = 2;
+	private static final float SOURCE_DIM = 0.45f;
+	@Nullable
+	private BufferedImage runeProfileIcon;
 
 	// Pet data only includes obtained pets: the gallery shows what you have,
 	// not the empty slots.
@@ -94,6 +103,12 @@ public class SummaryTooltip extends TitleTooltip
 	void setCape(@Nullable BufferedImage cape)
 	{
 		this.cape = cape;
+	}
+
+	/** The figure is the player's RuneProfile character, from this page; null when it isn't. */
+	void setRuneProfilePage(@Nullable String page)
+	{
+		runeProfilePage = page;
 	}
 
 	/** The player's name reads white, like the name it is, not an orange card label. */
@@ -184,8 +199,14 @@ public class SummaryTooltip extends TitleTooltip
 		}
 		if (figure != null)
 		{
-			card.add(CardBody.row(figure.getHeight() + FIGURE_GAP, c -> figure.getWidth(),
-				(c, y) -> c.g.drawImage(figure, (c.w - figure.getWidth()) / 2, y, null)));
+			card.add(CardBody.row(figure.getHeight() + FIGURE_GAP, c -> figure.getWidth(), (c, y) ->
+			{
+				c.g.drawImage(figure, (c.w - figure.getWidth()) / 2, y, null);
+				if (runeProfilePage != null)
+				{
+					drawSourceIcon(c, y);
+				}
+			}));
 		}
 		// Prestige centered under the figure, when the figure is the cape.
 		if (prestige != null && !capeInHeader)
@@ -206,11 +227,38 @@ public class SummaryTooltip extends TitleTooltip
 			card.add(hasBodyAbovePets() ? CardBody.hoverBand() : CardBody.headerHoverBand())
 				.add(CardBody.scroll(scroll, pets.asPart()));
 		}
-		else if (capeInHeader)
+		else if (capeInHeader || runeProfilePage != null)
 		{
+			// Somewhere for a hovered corner image to name itself, pets or none.
 			card.add(CardBody.hoverBand());
 		}
 		return card;
+	}
+
+	/**
+	 * RuneProfile's icon at the figure's top right, under the header's prestige cape: dim, so it doesn't pull the eye
+	 * from the character, and lit while hovered, when the band names its page and a click opens it.
+	 */
+	private void drawSourceIcon(CardBody.Ctx c, int y)
+	{
+		if (runeProfileIcon == null)
+		{
+			runeProfileIcon = KillClogIcons.runeProfileSourceIcon(SOURCE_ICON);
+		}
+		BufferedImage icon = runeProfileIcon;
+		if (icon == null)
+		{
+			return;
+		}
+		int x = c.w - c.inset() - SOURCE_ICON;
+		boolean lit = RUNEPROFILE_LINK.equals(itemHover.hoveredItemName());
+		Composite before = c.g.getComposite();
+		c.g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, lit ? 1f : SOURCE_DIM));
+		c.g.drawImage(icon, x, y, null);
+		c.g.setComposite(before);
+		c.hits.add(new TooltipItemHover.HitBox(TooltipItemHover.HEADER_SECTION, 0, RUNEPROFILE_LINK,
+			new Rectangle(x - SOURCE_HIT_PAD, y - SOURCE_HIT_PAD, SOURCE_ICON + SOURCE_HIT_PAD * 2,
+				SOURCE_ICON + SOURCE_HIT_PAD * 2), true, runeProfilePage));
 	}
 
 	private static CardBody.Part centered(String label, String value)

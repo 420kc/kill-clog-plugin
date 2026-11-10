@@ -1,6 +1,7 @@
 package com.killclog;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
@@ -159,6 +160,65 @@ public class SummaryTooltipTest
 				System.currentTimeMillis(), 0, left + 18, top + 16, 0, false, java.awt.event.MouseEvent.NOBUTTON));
 		}
 		assertEquals("Maxed Infernal", tip.getHeaderHoverLineText());
+	}
+
+	@Test
+	public void aRuneProfileCharacterWearsItsIconDimUntilHovered()
+	{
+		BufferedImage character = new BufferedImage(120, 160, BufferedImage.TYPE_INT_ARGB);
+		character.setRGB(60, 0, 0xff302020);
+		BufferedImage cape = new BufferedImage(9, 20, BufferedImage.TYPE_INT_ARGB);
+		SummaryTooltip plain = new SummaryTooltip();
+		plain.setData("pgn", 4964, character, null, "Ironman", "Maxed Infernal");
+		plain.setCape(cape);
+		SummaryTooltip tip = new SummaryTooltip();
+		tip.setData("pgn", 4964, character, null, "Ironman", "Maxed Infernal");
+		tip.setCape(cape);
+		tip.setRuneProfilePage(TooltipItemLink.runeProfileUrl("pgn"));
+		BufferedImage before = paint(plain);
+		BufferedImage dim = paint(tip);
+		assertEquals("the icon takes no room", before.getHeight(), dim.getHeight());
+
+		// The icon's pixels: the right of the card, just under the header.
+		java.awt.Rectangle icon = null;
+		for (int y = 0; y < dim.getHeight(); y++)
+		{
+			for (int x = dim.getWidth() / 2; x < dim.getWidth(); x++)
+			{
+				if (dim.getRGB(x, y) != before.getRGB(x, y))
+				{
+					icon = icon == null ? new java.awt.Rectangle(x, y, 1, 1) : icon.union(new java.awt.Rectangle(x, y, 1, 1));
+				}
+			}
+		}
+		assertNotNull(icon);
+		assertTrue("under the divider", icon.y >= tip.getHeaderHeight());
+
+		for (java.awt.event.MouseMotionListener listener : tip.getMouseMotionListeners())
+		{
+			listener.mouseMoved(new java.awt.event.MouseEvent(tip, java.awt.event.MouseEvent.MOUSE_MOVED,
+				System.currentTimeMillis(), 0, (int) icon.getCenterX(), (int) icon.getCenterY(), 0, false,
+				java.awt.event.MouseEvent.NOBUTTON));
+		}
+		assertEquals(SummaryTooltip.RUNEPROFILE_LINK, tip.getHeaderHoverLineText());
+		BufferedImage lit = paint(tip);
+		int litDistance = 0;
+		int dimDistance = 0;
+		for (int y = icon.y; y < icon.y + icon.height; y++)
+		{
+			for (int x = icon.x; x < icon.x + icon.width; x++)
+			{
+				dimDistance += distance(dim.getRGB(x, y), before.getRGB(x, y));
+				litDistance += distance(lit.getRGB(x, y), before.getRGB(x, y));
+			}
+		}
+		assertTrue("hovered, the icon is at full strength", litDistance > dimDistance * 3 / 2);
+	}
+
+	private static int distance(int a, int b)
+	{
+		return Math.abs((a >> 16 & 255) - (b >> 16 & 255)) + Math.abs((a >> 8 & 255) - (b >> 8 & 255))
+			+ Math.abs((a & 255) - (b & 255));
 	}
 
 	private static void petTotal(SummaryTooltip tip, int total) throws ReflectiveOperationException

@@ -13,10 +13,12 @@ import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 
 /**
- * Kill Clog syncers' characters for the Player Summary. When a player publishes their character,
- * killclog.com draws it in the game's own style, with their follower beside them, and serves it at
- * {@code /api/player/{rsn}/portrait/large}. Only lookups that came back from the player's own Kill Clog
- * sync (or the local player's own log) ask for one, so nobody else costs a request.
+ * Players' characters for the Player Summary. When a player publishes their character, killclog.com
+ * draws it in the game's own style, with their follower beside them, and serves it at
+ * {@code /api/player/{rsn}/portrait/large}; a player with no Kill Clog character who uploaded one to
+ * RuneProfile gets that one (B349). Only lookups that came back from the player's own Kill Clog sync,
+ * the local player's own log or RuneProfile ask for one ({@link #portraitName}), so nobody else costs
+ * a request.
  *
  * <p>Every lookup re-checks the portrait (an unchanged one answers 304 with no body), and a portrait
  * shows only once the server has confirmed it for that lookup: a player who withdraws or deletes
@@ -60,7 +62,7 @@ class PlayerPortraits
 	/** A lookup landed: withhold this player's portrait until the server confirms it again. */
 	synchronized void lookedUp(@Nullable ClogResult clog)
 	{
-		String name = syncedName(clog);
+		String name = portraitName(clog);
 		if (name != null)
 		{
 			String key = key(name);
@@ -94,7 +96,7 @@ class PlayerPortraits
 	@Nullable
 	BufferedImage forSummary(@Nullable ClogResult clog)
 	{
-		String name = syncedName(clog);
+		String name = portraitName(clog);
 		if (name == null)
 		{
 			return null;
@@ -109,11 +111,31 @@ class PlayerPortraits
 		return null;
 	}
 
-	/** The player's name when their log came from their own Kill Clog sync or the local player's own log. */
-	@Nullable
-	private static String syncedName(@Nullable ClogResult clog)
+	/**
+	 * Whether the portrait {@link #forSummary} shows for this lookup is the player's RuneProfile character, which the
+	 * server tags {@code "rp-…"} (killclog-api, routes/player-appearance.js).
+	 */
+	boolean fromRuneProfile(@Nullable ClogResult clog)
 	{
-		if (clog == null || !(clog.isFromKillclog() || clog.isFromLocal()))
+		String name = portraitName(clog);
+		Portrait held = name != null ? lane.values.get(key(name)) : null;
+		return held != null && confirmed.contains(key(name)) && runeProfileTag(held.etag);
+	}
+
+	static boolean runeProfileTag(@Nullable String etag)
+	{
+		return etag != null && (etag.startsWith("\"rp-") || etag.startsWith("W/\"rp-"));
+	}
+
+	/**
+	 * The name to ask a portrait for: a Kill Clog syncer's, the local player's, or a player RuneProfile answered for,
+	 * whose RuneProfile character killclog.com draws when they have no Kill Clog one (B349, Dylan 11/9). A player
+	 * only TempleOSRS knows costs no request, and their name never reaches killclog.com.
+	 */
+	@Nullable
+	static String portraitName(@Nullable ClogResult clog)
+	{
+		if (clog == null || !(clog.isFromKillclog() || clog.isFromLocal() || clog.isFromRuneProfile()))
 		{
 			return null;
 		}
