@@ -775,6 +775,27 @@ public class LeagueViewPanelTest
 		verify(portraits, org.mockito.Mockito.times(2)).lookedUp(any());
 	}
 
+	// RuneProfile's answer carries the name as typed and TempleOSRS's late one its own spelling: still one player, so
+	// still one check (the review of 11/10 caught "zezima" then "Zezima" re-checking and showing the cape).
+	@Test
+	public void aLateAnswerSpellingTheNameItsOwnWayIsStillOneCheck() throws Exception
+	{
+		PlayerPortraits portraits = field(panel, "portraits", PlayerPortraits.class);
+		HiscoreResult row = RankSelectorTest.result(AccountType.REGULAR, HiscoreTable.STANDARD, 10, 10000);
+		ClogResult typed = new ClogResult("friend_one", Map.of(), Map.of(), Map.of(), null, null)
+			.withSources(false, true, false);
+		ClogResult temple = new ClogResult("Friend One", Map.of(), Map.of(), Map.of(), null, null)
+			.withSources(true, true, false);
+		SwingUtilities.invokeAndWait(() ->
+		{
+			show(row, "friend_one", null);
+			session.adoptState(row, typed, null, "friend_one");
+			panel.onClogResult("friend_one", typed, false, session.getLookupVersion());
+			panel.onClogResult("friend_one", temple, false, session.getLookupVersion());
+		});
+		verify(portraits, org.mockito.Mockito.times(1)).lookedUp(any());
+	}
+
 	// The same for a comparison's rival: TempleOSRS's late answer keeps the rival's character; a new comparison asks again.
 	@Test
 	public void aSecondAnswerForOneComparisonKeepsTheRivalsCharacter() throws Exception

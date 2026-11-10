@@ -1685,7 +1685,10 @@ public class KillClogPanel extends PluginPanel
 	 */
 	private String checkPortrait(String last, String search, ClogResult clog)
 	{
-		String check = search + ":" + PlayerPortraits.portraitName(clog);
+		// By the name's key, not its spelling: RuneProfile's answer carries the name as typed and TempleOSRS's its own
+		// (the review of 11/10: "zezima" then "Zezima" re-checked and showed the cape).
+		String name = PlayerPortraits.portraitName(clog);
+		String check = search + ":" + (name != null ? PlayerPortraits.key(name) : null);
 		if (!check.equals(last))
 		{
 			portraits.lookedUp(clog);
