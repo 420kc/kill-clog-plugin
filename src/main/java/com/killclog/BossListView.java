@@ -351,8 +351,10 @@ public class BossListView
 			}
 		});
 		filterHeight = query.isEmpty() ? 0 : filterHeight > 0 ? filterHeight : root.getHeight();
-		// A boss or page also shows when its log page holds an item by that name.
-		Set<String> itemPages = pages.pagesWithItem(query);
+		// A boss or page also shows when its log page holds an item by that name; a number is a count, never an item
+		// (the review of 11/10: "100" brought Last Man Standing's row, its own count holding no 100).
+		Set<String> itemPages = typed.chars().anyMatch(Character::isLetter) ? pages.pagesWithItem(query)
+			: Collections.emptySet();
 		rows.forEach((boss, row) -> row.panel.setVisible(query.isEmpty() || matches(boss, query, named)
 			|| matches(PanelData.card(boss), query, named) || ClogPages.bossOn(boss, itemPages)
 			|| byCount && row.kc.getText().toLowerCase(Locale.ROOT).contains(typed)));

@@ -192,6 +192,11 @@ public class BossListSearchTest
 
 		list.filter("Twisted bow");
 		assertEquals(List.of("Chambers of Xeric", "Chambers of Xeric: Challenge Mode"), shown(list));
+
+		// A number is a count, never an item's name (the review of 11/10: "100" brought Last Man Standing's row).
+		org.mockito.Mockito.clearInvocations(pages);
+		list.filter("100");
+		org.mockito.Mockito.verify(pages, org.mockito.Mockito.never()).pagesWithItem(org.mockito.ArgumentMatchers.anyString());
 	}
 
 	private static List<String> shown(BossListView list)
