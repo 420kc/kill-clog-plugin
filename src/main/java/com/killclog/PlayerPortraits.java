@@ -16,7 +16,7 @@ import okhttp3.OkHttpClient;
  * Players' characters for the Player Summary. When a player publishes their character, killclog.com
  * draws it in the game's own style, with their follower beside them, and serves it at
  * {@code /api/player/{rsn}/portrait/large}; a player with no Kill Clog character who uploaded one to
- * RuneProfile gets that one (B349). Only lookups that came back from the player's own Kill Clog sync,
+ * RuneProfile gets that one. Only lookups that came back from the player's own Kill Clog sync,
  * the local player's own log or RuneProfile ask for one ({@link #portraitName}), so nobody else costs
  * a request.
  *
@@ -129,7 +129,7 @@ class PlayerPortraits
 
 	/**
 	 * The name to ask a portrait for: a Kill Clog syncer's, the local player's, or a player RuneProfile answered for,
-	 * whose RuneProfile character killclog.com draws when they have no Kill Clog one (B349, Dylan 11/9). A player
+	 * whose RuneProfile character killclog.com draws when they have no Kill Clog one. A player
 	 * only TempleOSRS knows costs no request, and their name never reaches killclog.com.
 	 */
 	@Nullable

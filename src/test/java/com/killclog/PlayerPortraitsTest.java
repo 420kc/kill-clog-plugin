@@ -85,7 +85,7 @@ public class PlayerPortraitsTest
 	@Test
 	public void aSyncerOrAPlayerRuneProfileKnowsIsAskedAbout()
 	{
-		// A name with no Kill Clog character can have its RuneProfile one (B349), so a lookup RuneProfile answered asks
+		// A name with no Kill Clog character can have its RuneProfile one, so a lookup RuneProfile answered asks
 		// too; a player only TempleOSRS knows costs no request, and a lookup with no log has no name to ask with.
 		OkHttpClient client = client();
 		PlayerPortraits portraits = new PlayerPortraits(client);
