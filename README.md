@@ -24,7 +24,7 @@ Optional and off by default.
 
 **Automatic sync** turns on with Sync Collection Log: your profile updates at login, after new items, and when you open your Collection Log. Turn it off to sync only when you click the chalice.
 
-**Publish Character Model** needs Sync Collection Log and turns on with it. It adds the **publish character** button beside the chalice, which publishes your character and follower in your real appearance. Anyone who looks you up in Kill Clog sees them in your Player Summary. Hold shift on the button and it reads **delete character model**: a shift-click removes your character from killclog.com, and nothing else changes. A player with no Kill Clog character who uploaded one to [RuneProfile](https://runeprofile.com) shows that one instead, with RuneProfile's icon in its corner opening their RuneProfile page.
+**Publish Character Model** needs Sync Collection Log and turns on with it. It adds the **publish character** button beside the chalice, which publishes your character and follower in your real appearance. Anyone who looks you up in Kill Clog sees them in your Player Summary. Hold shift on the button and it reads **delete character model**: a shift-click removes your character from killclog.com, and nothing else changes. A player with no Kill Clog character who uploaded one to [RuneProfile](https://runeprofile.com) shows that one instead, with RuneProfile's icon in its corner, which opens their RuneProfile page with card links on.
 
 ![Kill Clog Web Sync settings with Sync Collection Log, Automatic sync, Quiet automatic sync, Publish Character Model and Share Clan on](screenshots/web-sync-settings.png)
 
