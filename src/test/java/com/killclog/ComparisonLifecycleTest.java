@@ -77,6 +77,33 @@ public class ComparisonLifecycleTest
 		assertEquals(0, fixture.events("onClogResult"));
 	}
 
+	// TempleOSRS's late answer for the comparison on screen redraws it without entering comparison again,
+	// which cleared the search bar the next rival's name was being typed into.
+	@Test
+	public void templesLateAnswerRedrawsTheComparisonWithoutEnteringAgain() throws Exception
+	{
+		LookupTestFixture fixture = new LookupTestFixture();
+		fixture.runeProfileClog = () -> java.util.concurrent.CompletableFuture.completedFuture(clog("Red"));
+		edt(() -> fixture.comparison.doCompareLookup("Red", "Blue", null));
+		fixture.hiscores.get("Red").complete(hiscore(2));
+		await(fixture, "onComparisonEnter");
+		fixture.clogs.get("Red").complete(clog("Red"));
+		await(fixture, "onCompareClogReady");
+		edt(() -> assertTrue(fixture.comparison.isComparisonMode()));
+		assertEquals(1, fixture.events("onComparisonEnter"));
+	}
+
+	private static void await(LookupTestFixture fixture, String event) throws Exception
+	{
+		long until = System.currentTimeMillis() + 5000;
+		while (fixture.events(event) < 1 && System.currentTimeMillis() < until)
+		{
+			Thread.sleep(20);
+			edt(() -> fixture.events("flush"));
+		}
+		assertEquals(1, fixture.events(event));
+	}
+
 	@Test
 	public void failedComparisonFencesLateCa() throws Exception
 	{

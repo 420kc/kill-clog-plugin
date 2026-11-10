@@ -675,8 +675,14 @@ public class KillClogPanel extends PluginPanel
 	public void onComparisonEnter(String redRsn)
 	{
 		statusRow.clearSearchStatus();
-		updateRankPlayers();
 		searchRowController.onComparisonEnter();
+		onCompareClogReady();
+	}
+
+	@Override
+	public void onCompareClogReady()
+	{
+		updateRankPlayers();
 		applyBossViewStyle();
 		updateClogTotalsBar();
 		cells.rebuildPrimaryTooltips();

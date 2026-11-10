@@ -44,6 +44,9 @@ public class ComparisonController
 		/** Red-side data arrived. Panel should trigger a cell + summary-bar re-render via the controller's render hooks. */
 		void onCompareDataReady();
 
+		/** The comparison on screen took a later log for its rival: redraw it as on entry, leaving the search bar be. */
+		void onCompareClogReady();
+
 		/** Transient comparison lookup flavor text changed. Panel should show it in the normal search status line. */
 		void onCompareStatus(String msg, Color color);
 
@@ -392,13 +395,24 @@ public class ComparisonController
 
 	private void publish(ComparedPlayer player)
 	{
+		// TempleOSRS's late answer for the comparison on screen redraws it without entering again, which would clear
+		// the search bar the next name may already be typed into.
+		boolean late = comparisonMode && compared.generation == player.generation;
 		compared = player;
 		if (renderTarget != null)
 		{
 			if (player.clog != null) renderTarget.preloadClogItemNames(player.clog);
 			renderTarget.preloadCaReward(player.ca);
 		}
-		enter();
+		if (late)
+		{
+			rebuildTooltipData();
+			listener.onCompareClogReady();
+		}
+		else
+		{
+			enter();
+		}
 	}
 
 	private void setCompareStatus(String[] pool, Color color, String singleArg, String secondArg)
