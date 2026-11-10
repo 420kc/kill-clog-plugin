@@ -199,6 +199,45 @@ public class TempleLateAnswerTest
 		assertEquals("From Temple", answers.late.get(5, TimeUnit.SECONDS).getPlayerName());
 	}
 
+	// A fresh install's few synced items, with the account's whole count beside them, aren't the log: the
+	// search waits for TempleOSRS's whole one rather than show six items and then the rest.
+	@Test
+	public void aFewSyncedItemsStillWaitForTemple() throws Exception
+	{
+		CompletableFuture<ClogResult> temple = new CompletableFuture<>();
+		ClogProviderFanout.Answers answers = ClogProviderFanout.answers(false, () -> temple,
+			() -> CompletableFuture.completedFuture(null),
+			() -> CompletableFuture.completedFuture(itemized("Fresh install", 6, 1200)));
+		Thread.sleep(300);
+		assertFalse("never six items, then the log", answers.first.isDone());
+		temple.complete(itemized("From Temple", 1200, 1200));
+		assertEquals(1200, ClogResult.coverageCount(answers.first.get(5, TimeUnit.SECONDS)));
+		assertNull(answers.late.get(5, TimeUnit.SECONDS));
+	}
+
+	@Test
+	public void aWholeSyncNeverWaitsForTemple() throws Exception
+	{
+		CompletableFuture<ClogResult> temple = new CompletableFuture<>();
+		ClogProviderFanout.Answers answers = ClogProviderFanout.answers(false, () -> temple,
+			() -> CompletableFuture.completedFuture(null),
+			() -> CompletableFuture.completedFuture(itemized("Synced", 1100, 1200)));
+		assertEquals("Synced", answers.first.get(2, TimeUnit.SECONDS).getPlayerName());
+	}
+
+	// TempleOSRS answering before the others have: its log is in the first answer, nothing comes late.
+	@Test
+	public void templeAlreadyAnsweredJoinsTheFirstAnswer() throws Exception
+	{
+		CompletableFuture<ClogResult> runeProfile = new CompletableFuture<>();
+		ClogProviderFanout.Answers answers = ClogProviderFanout.answers(false,
+			() -> CompletableFuture.completedFuture(itemized("From Temple", 1200, 1200)), () -> runeProfile,
+			() -> CompletableFuture.completedFuture(null));
+		runeProfile.complete(itemized("From RuneProfile", 800, 800));
+		assertEquals("From Temple", answers.first.get(5, TimeUnit.SECONDS).getPlayerName());
+		assertNull(answers.late.get(5, TimeUnit.SECONDS));
+	}
+
 	@Test
 	public void aSearchWithNoOtherLogStillWaitsForTemple() throws Exception
 	{
@@ -383,6 +422,20 @@ public class TempleLateAnswerTest
 			})
 			.build();
 		return new ClogService(client, new Gson(), LocalClogCacheTest.ready());
+	}
+
+	/** A log listing its first {@code items} item ids, counting {@code uniqueObtained}. */
+	private static ClogResult itemized(String name, int items, int uniqueObtained)
+	{
+		java.util.List<ClogResult.ClogItem> page = new java.util.ArrayList<>();
+		for (int id = 1; id <= items; id++)
+		{
+			page.add(new ClogResult.ClogItem(id, 1, null));
+		}
+		ClogResult result = new ClogResult(name, Map.of("page", page), Collections.emptyMap(), Collections.emptyMap(),
+			null, null);
+		result.setUniqueObtained(uniqueObtained);
+		return result;
 	}
 
 	private static ClogResult result(String name, int uniqueObtained)

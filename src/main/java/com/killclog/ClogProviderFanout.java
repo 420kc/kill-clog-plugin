@@ -8,8 +8,9 @@ import java.util.function.Supplier;
  * killclog.com asked at once with 7 seconds each, the fuller of TempleOSRS's and RuneProfile's first, then
  * killclog.com's sync on coverage (the rules the site shares in cases/log-choice.tsv). Your own log never takes a
  * remote one in place of what you captured. The panel waits for TempleOSRS, the slowest, only while no other source
- * has the log, so a search never shows hiscores alone and then fills in, and never waits on TempleOSRS for a log it
- * already has; TempleOSRS's answer folds in when it lands (Dylan 11/9). A chat reply can't redraw, so it waits for all.
+ * has the whole log (RuneProfile's, or a killclog.com sync that isn't a fresh install's few items), so it never waits
+ * on TempleOSRS for a log it already has, nor shows a few items before TempleOSRS's whole log; TempleOSRS's answer
+ * folds in when it lands (Dylan 11/9). A chat reply can't redraw, so it waits for all.
  */
 final class ClogProviderFanout
 {
@@ -68,7 +69,7 @@ final class ClogProviderFanout
 		CompletableFuture<ClogResult> rp = bounded(isSelf ? CompletableFuture.completedFuture(null) : fetch(runeProfile));
 		CompletableFuture<ClogResult> kc = bounded(isSelf ? CompletableFuture.completedFuture(null) : fetch(killclog));
 		CompletableFuture<ClogResult> templeInTime = waitForTemple ? templeWait
-			: rp.thenCombine(kc, (r, k) -> r != null || k != null).thenCompose(others -> others
+			: rp.thenCombine(kc, (r, k) -> r != null || ClogResult.isWholeLog(k)).thenCompose(others -> others
 				? CompletableFuture.completedFuture(templeAnswer.isDone() && !templeAnswer.isCompletedExceptionally()
 					? templeAnswer.join() : null)
 				: templeWait);

@@ -402,6 +402,15 @@ public class ClogResult
 		return all;
 	}
 
+	/**
+	 * A log that itemizes at least nine in ten of the items it counts, as {@link ClogIndex} reads a whole one: a
+	 * fresh install's sync of a few items, with the account's full count beside them, isn't the log yet.
+	 */
+	static boolean isWholeLog(ClogResult result)
+	{
+		return result != null && coverageCount(result) * 10L >= result.uniqueObtained * 9L;
+	}
+
 	/** Distinct itemized coverage, deliberately ignoring the varp counter. */
 	static int coverageCount(ClogResult result)
 	{
