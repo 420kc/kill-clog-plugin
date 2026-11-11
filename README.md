@@ -131,7 +131,7 @@ Full page names work, and shorthand such as `gotr`, `mixology`, `pets`, and `hyd
 ## Settings
 
 - **Kill Clog Web Sync:** Sync Collection Log, Automatic sync, Quiet automatic sync, Publish Character Model, and Share Clan (off, your sync says you are in no clan)
-- **General:** automatic lookup on login, player comparison, the leaderboard selector, Sidebar Priority (where the Kill Clog icon sits in the sidebar; lower is higher), chat messages and custom emojis (`:killclog:` `:rune:` `:dragon:` `:gilded:` `:clog:` `:green:`)
+- **General:** automatic lookup on login, player comparison, the leaderboard selector, Sidebar Priority (where the Kill Clog icon sits in the sidebar; lower is higher), the Discord link at the top of the panel, chat messages and custom emojis (`:killclog:` `:rune:` `:dragon:` `:gilded:` `:clog:` `:green:`)
 - **Card Settings:** card activation, cell hover feedback, card links (on a click, only on a shift-click, or off), the KC (or Glory), PB and rank lines, and colors for labels, values, dividers, backgrounds, borders and scroll bars
 - **Right-Click Menu:** the Kill Clog lookup option, its label, and which right-click menus show it (players, friends, ignore, clan and guest clan lists, chat channels, public chat, private messages, Group Ironman)
 - **Skills:** location, Skill Clogs on or off, virtual levels, color mode (Skill Clog progress, Level Progression, or one skill color), and the level color
@@ -139,7 +139,7 @@ Full page names work, and shorthand such as `gotr`, `mixology`, `pets`, and `hyd
 
 ## Data and privacy
 
-Kill Clog contacts secure.runescape.com (Jagex HiScores), templeosrs.com ([TempleOSRS](https://templeosrs.com)), api.runeprofile.com ([RuneProfile](https://runeprofile.com), which also names other players' clans), and killclog.com. With card links on, clicking an item, a card's title or a source opens it in your browser: oldschool.runescape.wiki, templeosrs.com, runeprofile.com or killclog.com. A developer-only setting sends sync to staging.killclog.com instead. Each request shows your IP address to the host it contacts, which is why RuneLite shows a third-party warning on install.
+Kill Clog contacts secure.runescape.com (Jagex HiScores), templeosrs.com ([TempleOSRS](https://templeosrs.com)), api.runeprofile.com ([RuneProfile](https://runeprofile.com), which also names other players' clans), and killclog.com. With card links on, clicking an item, a card's title or a source opens it in your browser: oldschool.runescape.wiki, templeosrs.com, runeprofile.com or killclog.com. The Discord icon opens killclog.com/discord, which forwards to the Kill Clog Discord. A developer-only setting sends sync to staging.killclog.com instead. Each request shows your IP address to the host it contacts, which is why RuneLite shows a third-party warning on install.
 
 Web publication is opt-in. Nothing from your local Collection Log is published until you enable **Sync Collection Log**. Disable that setting to stop all web publication, or **Publish Character Model** to stop character updates. A shift-click on the publish character button removes your character at any time. Other published data remains until you request deletion through the [opt-out page](https://killclog.com/p/opt-out.html).
 
@@ -165,4 +165,4 @@ The release jar is written to `build/libs/`.
 
 ## Support
 
-If setup, a total, an item mapping, or a card looks wrong, open an [issue](https://github.com/420kc/kill-clog-plugin/issues) with your Kill Clog version, the RSN, and a screenshot.
+If setup, a total, an item mapping, or a card looks wrong, post in the [Kill Clog Discord](https://killclog.com/discord) with your Kill Clog version, the RSN, and a screenshot. Updates are announced there too.
