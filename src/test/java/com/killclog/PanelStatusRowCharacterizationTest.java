@@ -182,6 +182,29 @@ public class PanelStatusRowCharacterizationTest
 	}
 
 	@Test
+	public void theDiscordIconIsOffByDefaultAndParksWithTheControlsDuringASearch() throws Exception
+	{
+		JLabel discord = field("discord", JLabel.class);
+		enableControls();
+		edt(() ->
+		{
+			assertFalse("Show Discord Link is off by default", discord.isVisible());
+			statusRow.showDiscord(true);
+			assertTrue(discord.isVisible());
+			panel.onCompareStatus("Looking up player", Color.RED);
+			assertControls(false, false);
+			assertFalse("a search's progress parks it with the chalice and the character", discord.isVisible());
+			statusRow.setSearchStatus(" ", Color.RED);
+			assertControls(true, true);
+			assertTrue(discord.isVisible());
+			panel.setFirstParty(PanelStatusRow.FirstParty.HIDDEN);
+			assertTrue("it needs nobody logged in", discord.isVisible());
+			statusRow.showDiscord(false);
+			assertFalse(discord.isVisible());
+		});
+	}
+
+	@Test
 	public void activeSyncAndPublishDoNotReplaceEachOther() throws Exception
 	{
 		enableControls();

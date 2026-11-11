@@ -77,6 +77,7 @@ final class PanelStatusRow
 	@Setter(AccessLevel.PACKAGE)
 	private Runnable lockedHandler;
 	private boolean characterPublishEnabled;
+	private boolean discordEnabled;
 	@Setter(AccessLevel.PACKAGE)
 	private Runnable killclogSyncHandler;
 	@Setter(AccessLevel.PACKAGE)
@@ -510,14 +511,18 @@ final class PanelStatusRow
 	/** The Discord icon, while the setting has it and the client has the icon. */
 	void showDiscord(boolean shown)
 	{
-		discord.setVisible(shown && discord.getIcon() != null);
+		discordEnabled = shown;
+		refreshFirstPartyVisibility();
 	}
 
+	// The row's controls show only while it's free, so a search's progress parks them all; the Discord icon also shows
+	// with nobody logged in.
 	private void refreshFirstPartyVisibility()
 	{
 		boolean visible = firstParty != FirstParty.HIDDEN && free();
 		syncArrow.setVisible(syncArrowEnabled && visible);
 		characterPublish.setVisible(characterPublishEnabled && characterBase != null && visible);
+		discord.setVisible(discordEnabled && discord.getIcon() != null && free());
 	}
 
 	private static String characterTooltipText(String detail)
