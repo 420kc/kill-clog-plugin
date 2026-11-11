@@ -12,6 +12,7 @@ import net.runelite.api.gameval.SpriteID;
 import net.runelite.client.game.SpriteManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.util.ImageUtil;
+import net.runelite.client.util.LinkBrowser;
 
 /**
  * The status line above the search bar and the killclog.com one-click
@@ -47,6 +48,7 @@ final class PanelStatusRow
 	private final JLabel searchStatus = new JLabel(" ");
 	private final JLabel syncArrow = new JLabel();
 	private final JLabel characterPublish = new JLabel();
+	private final JLabel discord = new JLabel();
 	private final Color textDim;
 	private final SpriteManager spriteManager;
 	private final TooltipController tooltipController;
@@ -376,6 +378,25 @@ final class PanelStatusRow
 				: syncFeedback.hoverText(SYNC_HOVER_TEXT, SYNC_FAILURE_HOVER_TEXT),
 			() -> firstParty == FirstParty.LOCKED ? lockedHandler : killclogSyncHandler));
 
+		// The Kill Clog Discord, through killclog.com so its invite can change without a release: RuneLite's own icon (its
+		// Info panel's), white dimmed at rest and lit on hover as the chalice is (Discord's rules: the logo in white, never
+		// recolored), shown while Show Discord Link is on. Gone if the client ever stops shipping that icon.
+		try
+		{
+			BufferedImage icon = ImageUtil.resizeImage(ImageUtil.loadImageResource(PanelStatusRow.class,
+				"/net/runelite/client/plugins/info/discord_icon.png"), 13, 13);
+			ImageIcon dim = new ImageIcon(ImageUtil.alphaOffset(icon, 0.45f));
+			discord.setIcon(dim);
+			discord.setBorder(BorderFactory.createEmptyBorder(0, 3, 6, 2));
+			discord.addMouseListener(controlMouse(discord, Owner.DISCORD,
+				hovered -> discord.setIcon(hovered ? new ImageIcon(icon) : dim), () -> null,
+				() -> "Join the Kill Clog Discord", () -> () -> LinkBrowser.browse("https://killclog.com/discord")));
+		}
+		catch (RuntimeException e)
+		{
+			discord.setVisible(false);
+		}
+
 		JPanel row = new JPanel(new BorderLayout());
 		row.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		// The parent column is BoxLayout: children must agree on alignment or
@@ -386,6 +407,7 @@ final class PanelStatusRow
 		JPanel actions = new JPanel();
 		actions.setLayout(new BoxLayout(actions, BoxLayout.X_AXIS));
 		actions.setOpaque(false);
+		actions.add(discord);
 		actions.add(characterPublish);
 		actions.add(syncArrow);
 		row.add(actions, BorderLayout.EAST);
@@ -483,6 +505,12 @@ final class PanelStatusRow
 		characterPublish.setIcon(imageTinted(characterBase,
 			locked ? 0.35f : characterGlow.lit() || hovered ? 1f : 0.45f,
 			locked ? LOCKED_GREY : characterGlow.lit() ? SYNC_K1 : null));
+	}
+
+	/** The Discord icon, while the setting has it and the client has the icon. */
+	void showDiscord(boolean shown)
+	{
+		discord.setVisible(shown && discord.getIcon() != null);
 	}
 
 	private void refreshFirstPartyVisibility()

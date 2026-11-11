@@ -14,7 +14,7 @@ final class StatusMessage
 {
 	enum Owner
 	{
-		LOOKUP, BOARD, SYNC, CHARACTER
+		LOOKUP, BOARD, SYNC, CHARACTER, DISCORD
 	}
 
 	enum Kind
