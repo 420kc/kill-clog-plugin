@@ -2,7 +2,8 @@
 
 [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fkillclog.com%2Fapi%2Fhub%2Fversion&query=%24.version&label=version&color=551919)](https://runelite.net/plugin-hub/show/kill-clog)
 
-HiScores, Collection Logs, Personal Bests, and player comparison in one RuneLite panel.
+HiScores, Collection Logs, Personal Bests, and player comparison in one RuneLite panel, every card drawn the way the game draws its own.
+
 
 ![Kill Clog's panel for 420 kc: the Collection Log card opening its Minigames tab and the Castle Wars page, a card from each kind of cell, items hovered and the mouse controls](screenshots/hero-2.7.2.png)
 
@@ -10,103 +11,71 @@ HiScores, Collection Logs, Personal Bests, and player comparison in one RuneLite
 
 Install **Kill Clog** from the RuneLite Plugin Hub and open its panel while logged in. Your account loads automatically.
 
-Open your Collection Log and leave it open until setup confirms completion in chat. Setup runs automatically. An empty log (a new account, or a Hardcore Worlds character after a death) sets itself up at login, with nothing to open.
+Open your Collection Log and leave it open until setup confirms completion in chat. An empty log (a new account, or a Hardcore Worlds character after a death) sets itself up at login, with nothing to open.
 
-Your log is saved locally and updates with new unlocks as you play. Open the Collection Log any time to catch items you got on mobile or another device.
-
-To retry an update, reopen the log or choose **Search** at the top. If it says **RuneProfile**, right-click it and choose **Search**. Interrupted updates keep your saved log.
-
-## Kill Clog Web Sync
-
-Optional and off by default.
-
-**Sync Collection Log** keeps your killclog.com profile up to date with your Collection Log, unlock dates, personal bests and clan. The chalice button (**sync collection log**) syncs right away. Open the in-game log first so it's current.
-
-**Automatic sync** turns on with Sync Collection Log: your profile updates at login, after new items, and when you open your Collection Log. Turn it off to sync only when you click the chalice.
-
-**Publish Character Model** needs Sync Collection Log and turns on with it. It adds the **publish character** button beside the chalice, which publishes your character and follower in your real appearance. Anyone who looks you up in Kill Clog sees them in your Player Summary. Hold shift on the button and it reads **delete character model**: a shift-click removes your character from killclog.com, and nothing else changes. A player with no Kill Clog character who uploaded one to [RuneProfile](https://runeprofile.com) shows that one instead, with RuneProfile's icon in its corner, which opens their RuneProfile page with card links on.
-
-![Kill Clog Web Sync settings with Sync Collection Log, Automatic sync, Quiet automatic sync, Publish Character Model and Share Clan on](screenshots/web-sync-settings.png)
-
-![The publish character button beside the chalice at the top of the panel](screenshots/web-sync-publish-character.png)
-
-![based batt's published character and follower on killclog.com and in Kill Clog's Player Summary](screenshots/web-sync-profile-and-summary.png)
-
-Each button flashes green when your click goes through.
-
-## Combat & Skill Clogs
-
-Every skill has its own Collection Log-style progression. Skill cards combine relevant activities, equipment, and unlocks with the skill's level, XP, rank, and XP to next level.
-
-Attack, Strength, Defence, Ranged, Magic, Prayer and Hitpoints cards list the gear each skill unlocks, grouped the way the game does and ordered by level.
-
-![The seven combat Skill Clogs, Attack to Hitpoints, each with its whole log](screenshots/combat-clogs.png)
-
-![Enable Skill Clogs on](screenshots/skill-clogs-setting-on.png)
-
-![A Fletching skill card with its Vale Totems skill clog](screenshots/skill-clog-on.png)
-
-![Enable Skill Clogs off](screenshots/skill-clogs-setting-off.png)
-
-![The same Fletching card with Skill Clogs off](screenshots/skill-clog-off.png)
+Your log is saved locally and updates with new unlocks as you play. Open the Collection Log any time to catch items you got on mobile or another device. To retry an update, reopen the log or choose **Search** at the top (if it says **RuneProfile**, right-click it and choose **Search**). Interrupted updates keep your saved log.
 
 ## Player Lookup
 
 Enter an RSN in the search bar, or right-click a supported player or name and choose **Kill Clog**.
 
+HiScores load for any valid RSN, Collection Log totals and ranks included. Item-by-item Collection Logs appear when a player has data through TempleOSRS, RuneProfile, or Kill Clog. Your clan comes from the game; other players' clans from their Kill Clog sync, or RuneProfile.
+
 While a League runs, a **Leagues** switch beside the search bar flips the panel between League and main game stats.
 
-**Recommended for a full HiScore replacement:** Turn off RuneLite's **HiScore** plugin and set **Menu Label** to **Lookup** in Kill Clog's settings.
+**For a full HiScore replacement:** turn off RuneLite's **HiScore** plugin and set **Menu Label** to **Lookup**.
 
 ![Turn off RuneLite's HiScore plugin](screenshots/setup-disable-hiscore.png)
 
 ![Set Kill Clog's Menu Label to Lookup](screenshots/setup-menu-label-lookup.png)
 
-HiScores load for any valid RSN, including Collection Log totals and ranks when listed. Item-by-item Collection Log details appear when that player has data available through TempleOSRS, RuneProfile, or Kill Clog.
+## Cards
 
-Your clan comes from the game. Other players' clans come from their Kill Clog sync, or from RuneProfile when they have a profile there.
-
-Hover your Collection Log total to see your log, and click it to pin it. Click a tab's tile to open the tab, and a page's tile to open the page.
+Hover your Collection Log total to see your log and click to pin it; a tab's tile opens the tab, a page's tile the page.
 
 ![The Collection Log card, its Minigames tab, the Clue Summary and the Combat Summary, their tabs, pages, PvM and raids as the game's tiles](screenshots/tile-cards.png)
 
-Some counts appear only on the game's own Collection Log pages, like Revenant kills, Hunter Guild rumours and the raids' Entry completions. Open a page and its card shows the count from then on, here and on killclog.com, updated when you next open the page after it changes.
-
-Shift-click anything that opens a card, or right-click it and choose **Copy**, and the card opens and is copied to your clipboard as a picture, ready to paste into Discord.
-
-![A Shift+click on IronBone11's Combat Summary cell copies the whole card, PvP section included, ready to paste into Discord](screenshots/copy-as-picture.png)
+Hover an item to name it, green when you have it and red when you don't.
 
 ![Vorkath's card naming the item under the cursor: green when you have it, red when you don't](screenshots/item-name-hover.png)
 
-## Comparison
+Shift-click anything that opens a card, or right-click it and choose **Copy**, and the card is copied to your clipboard as a picture, ready to paste into Discord.
 
-Use the comparison button beside the search bar to load a second player. Every number and card compares the two side by side, the first player in blue and the second in red.
+![A Shift+click on IronBone11's Combat Summary cell copies the whole card, PvP section included, ready to paste into Discord](screenshots/copy-as-picture.png)
 
-![420 kc and CBC compared on killclog.com and in Kill Clog's Player Summary](screenshots/comparison-site-and-summary.png)
-
-## Resource Pack Themes
-
-Kill Clog draws its cards with the game's own interface frames, so they wear whichever Resource Pack you use.
-
-![Six players' Player Summaries, each in a different Resource Pack under its Resource Packs hub picture: Kill Clog & Olives, 07 Zuvelox, KuromiLite, Dark Cherry, Dank Mode Teal and DeadScape](screenshots/player-summary-showcase.png)
+Some counts appear only on the game's own Collection Log pages, like Revenant kills, Hunter Guild rumours and the raids' Entry completions. Open a page and its card shows the count from then on, here and on killclog.com, updated when you next open the page after it changes.
 
 ## Grid and List views
 
-Toggle between the default Grid view and List view with the **Menu** button under the search bar. Comparison uses Grid view.
-
-List view has its own search bar above the bosses. Search by boss, activity, kill count or item name. An item finds every boss and Collection Log page that holds it, like Chambers of Xeric for a twisted bow, once you're logged in. Activities with no boss row, like Mastering Mixology, show their count and open their own card.
+The **Menu** button under the search bar switches between Grid and List. List view has its own search: by boss, activity, kill count or item name. An item finds every boss and Collection Log page that holds it, like Chambers of Xeric for a twisted bow, once you're logged in.
 
 ![Searching List view by boss, activity, kill count and item name](screenshots/boss-list-search.png)
 
+Activities with no boss row, like Mastering Mixology, show their count and open their own card. Comparison uses Grid view.
+
+## Combat & Skill Clogs
+
+Every skill has its own Collection Log-style progression. Attack, Strength, Defence, Ranged, Magic, Prayer and Hitpoints list the gear each skill unlocks, grouped the way the game does and ordered by level.
+
+![The seven combat Skill Clogs, Attack to Hitpoints, each with its whole log](screenshots/combat-clogs.png)
+
+Skill cards combine the skill's activities, equipment and unlocks with its level, XP, rank, and XP to next level. With **Enable Skill Clogs** off, a skill card shows the skill alone.
+
+![Enable Skill Clogs on, and a Fletching card with its Vale Totems skill clog; off, and the same card without it](screenshots/skill-clogs-on-off.png)
+
+## Comparison
+
+The comparison button beside the search bar loads a second player. Every number and card compares the two side by side, the first player in blue and the second in red.
+
+![420 kc and CBC compared on killclog.com and in Kill Clog's Player Summary](screenshots/comparison-site-and-summary.png)
+
 ## Leaderboard selector
 
-Turn on **Show Leaderboard Selector** under **General** to switch between the hiscores a player is on, using the icons below the grid.
+Turn on **Show Leaderboard Selector** under **General** to switch between the hiscores a player is on, with the icons below the grid. The Player Summary wears the player's badge.
 
-![Leaderboard selector](screenshots/leaderboard-selector.png)
+![Every leaderboard the selector switches between, Normal to Hardcore Main, and every badge the Player Summary wears, the Group Ironman, Hardcore Main, dead Hardcore and de-ironed badges among them](screenshots/leaderboards-and-badges.png)
 
 A Hardcore who died keeps their stats from the moment of death on the Hardcore tab, marked with a skull on the helm. A de-ironed account's old Ironman stats get a crossed-out helm. Comparisons and new lookups always use each player's own leaderboard.
-
-![The Player Summary's helm for an Ironman, a Hardcore Ironman, a Hardcore who died, and a de-ironed account](screenshots/leaderboard-helms.png)
 
 ## Chat Commands
 
@@ -120,13 +89,31 @@ A Hardcore who died keeps their stats from the moment of death on the Hardcore t
 | `!gilded` | Gilded progress |
 | `!kc [item name]` | KC when the item was obtained, if recorded locally |
 
-Use any Collection Log page, including pages outside the panel. Try `!kclog pets`, `!kclog mixology`, `!kclog random events`, or `!missing medium clues`. Pet totals count unique pets; quantities beside sprites show dupes.
+Any Collection Log page works, including pages outside the panel, by full name or shorthand (`gotr`, `hydra`): `!kclog pets`, `!kclog mixology`, `!kclog random events`, `!missing medium clues`. Pet totals count unique pets; quantities beside sprites show dupes. The [full page and shortcut chart](docs/chat-commands.md#page-names-and-shorthand) lists every alias. Skill Clog aggregates are not separate chat pages.
 
-**Keep RuneLite's Chat Commands enabled** for `!pets`, `!clues medium`, `!kc [boss]`, and `!pb [boss]`. It is separate from the HiScore plugin.
+**Keep RuneLite's Chat Commands enabled** for `!pets`, `!clues medium`, `!kc [boss]`, and `!pb [boss]`; it is separate from the HiScore plugin. RuneProfile handles `!log` while enabled. With RuneProfile off, Kill Clog handles `!log [page]` and `!log missing [page]`.
 
-RuneProfile handles `!log` while enabled. With RuneProfile off, Kill Clog handles `!log [page]` and `!log missing [page]`.
+## Resource Pack Themes
 
-Full page names work, and shorthand such as `gotr`, `mixology`, `pets`, and `hydra` works too. See the [full page and shortcut chart](docs/chat-commands.md#page-names-and-shorthand) for every supported alias, command ownership, and examples. Skill Clog aggregates are not separate chat pages.
+Kill Clog draws its cards with the game's own interface frames, so they wear whichever Resource Pack you use.
+
+![Six players' Player Summaries, each in a different Resource Pack under its Resource Packs hub picture: Kill Clog & Olives, 07 Zuvelox, KuromiLite, Dark Cherry, Dank Mode Teal and DeadScape](screenshots/player-summary-showcase.png)
+
+## Kill Clog Web Sync
+
+Optional and off by default. Your synced log and character show on [killclog.com](https://killclog.com) and in Kill Clog lookups.
+
+![based batt's published character and follower on killclog.com and in Kill Clog's Player Summary](screenshots/web-sync-profile-and-summary.png)
+
+**Sync Collection Log** keeps your killclog.com profile up to date with your Collection Log, unlock dates, personal bests and clan. The chalice (**sync collection log**) syncs right away; open the in-game log first so it's current. **Automatic sync** turns on with it: your profile updates at login, after new items, and when you open your Collection Log. Turn it off to sync only when you click the chalice.
+
+![Kill Clog Web Sync settings with Sync Collection Log, Automatic sync, Quiet automatic sync, Publish Character Model and Share Clan on](screenshots/web-sync-settings.png)
+
+**Publish Character Model** needs Sync Collection Log and turns on with it. Its **publish character** button beside the chalice publishes your character and follower in your real appearance, and anyone who looks you up sees them in your Player Summary. Hold shift and it reads **delete character model**: a shift-click removes your character from killclog.com, and nothing else changes. Each button flashes green when your click goes through.
+
+![The publish character button beside the chalice at the top of the panel](screenshots/web-sync-publish-character.png)
+
+A player with no Kill Clog character who uploaded one to [RuneProfile](https://runeprofile.com) shows that one instead, with RuneProfile's icon in its corner, which opens their RuneProfile page with card links on.
 
 ## Settings
 
@@ -136,6 +123,12 @@ Full page names work, and shorthand such as `gotr`, `mixology`, `pets`, and `hyd
 - **Right-Click Menu:** the Kill Clog lookup option, its label, and which right-click menus show it (players, friends, ignore, clan and guest clan lists, chat channels, public chat, private messages, Group Ironman)
 - **Skills:** location, Skill Clogs on or off, virtual levels, color mode (Skill Clog progress, Level Progression, or one skill color), and the level color
 - **Progress Highlighter:** on or off, the summary bar's text color, and the progress colors (completed, 1 away, in progress, empty) for Collection Logs and for levels in Level Progression
+
+## Support
+
+The Discord icon at the top of the panel opens the [Kill Clog Discord](https://killclog.com/discord), where updates are announced. If setup, a total, an item mapping, or a card looks wrong, post there with your Kill Clog version, the RSN, and a screenshot.
+
+![The Discord icon beside the publish character button and the chalice at the top of the panel](screenshots/discord-top-strip.png)
 
 ## Data and privacy
 
@@ -162,7 +155,3 @@ Launch the development client with:
 ```
 
 The release jar is written to `build/libs/`.
-
-## Support
-
-If setup, a total, an item mapping, or a card looks wrong, post in the [Kill Clog Discord](https://killclog.com/discord) with your Kill Clog version, the RSN, and a screenshot. Updates are announced there too.
