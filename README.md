@@ -2,7 +2,7 @@
 
 [![version](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fkillclog.com%2Fapi%2Fhub%2Fversion&query=%24.version&label=version&color=551919)](https://runelite.net/plugin-hub/show/kill-clog)
 
-HiScores, Collection Logs, Personal Bests, and player comparison in one RuneLite panel, every card drawn the way the game draws its own.
+HiScores, Collection Logs, Personal Bests, and player comparison in one RuneLite panel.
 
 
 ![Kill Clog's panel for 420 kc: the Collection Log card opening its Minigames tab and the Castle Wars page, a card from each kind of cell, items hovered and the mouse controls](screenshots/hero-2.7.2.png)
@@ -30,8 +30,6 @@ While a League runs, a **Leagues** switch beside the search bar flips the panel 
 ![Set Kill Clog's Menu Label to Lookup](screenshots/setup-menu-label-lookup.png)
 
 ## Cards
-
-Hover your Collection Log total to see your log and click to pin it; a tab's tile opens the tab, a page's tile the page.
 
 ![The Collection Log card, its Minigames tab, the Clue Summary and the Combat Summary, their tabs, pages, PvM and raids as the game's tiles](screenshots/tile-cards.png)
 
