@@ -116,7 +116,7 @@ A player with no Kill Clog character who uploaded one to [RuneProfile](https://r
 ## Settings
 
 - **Kill Clog Web Sync:** Sync Collection Log, Automatic sync, Quiet automatic sync, Publish Character Model, and Share Clan (off, your sync says you are in no clan)
-- **General:** automatic lookup on login, player comparison, the leaderboard selector, Sidebar Priority (where the Kill Clog icon sits in the sidebar; lower is higher), the Discord link at the top of the panel, chat messages and custom emojis (`:killclog:` `:rune:` `:dragon:` `:gilded:` `:clog:` `:green:`)
+- **General:** automatic lookup on login, player comparison, the leaderboard selector, Sidebar Priority (where the Kill Clog icon sits in the sidebar; lower is higher), the Discord link at the top of the panel (off by default), chat messages and custom emojis (`:killclog:` `:rune:` `:dragon:` `:gilded:` `:clog:` `:green:`)
 - **Card Settings:** card activation, cell hover feedback, card links (on a click, only on a shift-click, or off), the KC (or Glory), PB and rank lines, and colors for labels, values, dividers, backgrounds, borders and scroll bars
 - **Right-Click Menu:** the Kill Clog lookup option, its label, and which right-click menus show it (players, friends, ignore, clan and guest clan lists, chat channels, public chat, private messages, Group Ironman)
 - **Skills:** location, Skill Clogs on or off, virtual levels, color mode (Skill Clog progress, Level Progression, or one skill color), and the level color
@@ -124,9 +124,7 @@ A player with no Kill Clog character who uploaded one to [RuneProfile](https://r
 
 ## Support
 
-The Discord icon at the top of the panel opens the [Kill Clog Discord](https://killclog.com/discord), where updates are announced. If setup, a total, an item mapping, or a card looks wrong, post there with your Kill Clog version, the RSN, and a screenshot.
-
-![The Discord icon beside the publish character button and the chalice at the top of the panel](screenshots/discord-top-strip.png)
+Help and updates are in the [Kill Clog Discord](https://killclog.com/discord). If setup, a total, an item mapping, or a card looks wrong, post there with your Kill Clog version, the RSN, and a screenshot. **Show Discord Link** in the General settings puts its icon at the top of the panel.
 
 ## Data and privacy
 

@@ -88,7 +88,7 @@ public interface KillClogConfig extends Config
 	)
 	default boolean showDiscordLink()
 	{
-		return true;
+		return false;
 	}
 
 	@ConfigItem(
