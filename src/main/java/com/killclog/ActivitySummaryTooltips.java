@@ -54,7 +54,8 @@ final class ActivitySummaryTooltips
 		tip.setData(
 			hiscore != null ? hiscore.getCombatLevelExact() : 0,
 			LookupQueries.sumBossKills(hiscore),
-			LookupQueries.countBossesWithKc(hiscore),
+			// No hiscores (the dormant panel): no count to show, not a count of none.
+			hiscore != null ? LookupQueries.countBossesWithKc(hiscore) : -1,
 			LookupQueries.bossTotal(hiscore),
 			mostKilled,
 			mostKilled != null ? hiscore.getKc(mostKilled) : 0

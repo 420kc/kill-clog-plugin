@@ -43,6 +43,16 @@ public class PvmSummaryTooltipTest
 	}
 
 	@Test
+	public void beforeAnyLookupTheBossesTileReadsAGreyDashNotARedNone()
+	{
+		assertEquals("Killed: --/72", PvmSummaryTooltip.killedText(-1, 72));
+		assertEquals(net.runelite.client.ui.ColorScheme.LIGHT_GRAY_COLOR, PvmSummaryTooltip.killedColor(-1, 72));
+		// A looked-up player with no boss kills is a real none, and keeps its color.
+		assertEquals("Killed: 0/72", PvmSummaryTooltip.killedText(0, 72));
+		assertEquals(TitleTooltip.completionColor(0, 72), PvmSummaryTooltip.killedColor(0, 72));
+	}
+
+	@Test
 	public void testSlayerXpAlwaysReadsFullAmount()
 	{
 		// Solo PvM summary: exact digits at every magnitude, never rounded.

@@ -10,6 +10,7 @@ import javax.annotation.Nullable;
 import lombok.Setter;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.hiscore.HiscoreSkill;
+import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.QuantityFormatter;
 
@@ -209,6 +210,18 @@ public class PvmSummaryTooltip extends TitleTooltip
 		}
 	}
 
+	// The Bosses tile's count. Before any lookup (a count under 0) it's the panel's resting grey "--", never a red
+	// none (Dylan 11/11).
+	static String killedText(int withKc, int total)
+	{
+		return "Killed: " + (withKc >= 0 ? String.valueOf(withKc) : "--") + "/" + total;
+	}
+
+	static Color killedColor(int withKc, int total)
+	{
+		return withKc >= 0 ? completionColor(withKc, total) : ColorScheme.LIGHT_GRAY_COLOR;
+	}
+
 	/** Called with the raid when the player presses its tile. */
 	void setOnOpenRaid(@Nullable BiConsumer<MouseEvent, HiscoreSkill> onOpenRaid)
 	{
@@ -248,10 +261,10 @@ public class PvmSummaryTooltip extends TitleTooltip
 				onOpenRaid != null && mostKilledBoss != null ? MOST_KILLED : -1)
 				.count(grouped(mostKilledKc) + " kc").named(mostKilled));
 		}
-		String killed = "Killed: " + bossesWithKc + "/" + totalBosses;
+		String killed = killedText(bossesWithKc, totalBosses);
 		pvm.add(new GameTile.Tile("Bosses", bossesSprite, -1, 0, onOpenBosses != null ? BOSSES : -1).lines(
 			bossesCompleted >= 0 ? new String[]{killed, "Logs: " + bossesCompleted + "/" + bossesWithClog} : new String[]{killed},
-			new Color[]{completionColor(bossesWithKc, totalBosses), completionColor(bossesCompleted, bossesWithClog)}));
+			new Color[]{killedColor(bossesWithKc, totalBosses), completionColor(bossesCompleted, bossesWithClog)}));
 		body.add(CardBody.gap(SECTION_GAP)).add(GameTile.grid(pvmRows, pvm));
 		// Raids lead the sections under the band.
 		List<GameTile.Tile> raids = new ArrayList<>();
