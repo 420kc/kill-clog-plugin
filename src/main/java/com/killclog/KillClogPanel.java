@@ -210,7 +210,6 @@ public class KillClogPanel extends PluginPanel
 		this.accountTypes = new PanelAccountTypes(runeProfileService);
 		this.tooltipController = new TooltipController(config);
 		this.statusRow = new PanelStatusRow(config, spriteManager, tooltipController, KillClogColors.TEXT_DIM);
-		statusRow.showDiscord(config.showDiscordLink());
 		tooltipController.setCardCopied(statusRow::flashCardCopy);
 		this.unsyncedCatalog = new UnsyncedClogCatalog(clogService);
 		this.lookupSession = new LookupSession(hiscoreService, clogService, runeProfileService,
@@ -745,6 +744,12 @@ public class KillClogPanel extends PluginPanel
 		statusRow.setSyncArrowEnabled(enabled);
 	}
 
+	/** Swing thread: whether the game is logged out, which is when the Discord logo shows. */
+	void setLoggedOut(boolean loggedOut)
+	{
+		statusRow.setLoggedOut(loggedOut);
+	}
+
 	void setFirstParty(PanelStatusRow.FirstParty state)
 	{
 		statusRow.setFirstParty(state);
@@ -1165,9 +1170,6 @@ public class KillClogPanel extends PluginPanel
 			case "showLeaderboardSelector":
 				updateRankPlayers();
 				getWrappedPanel().revalidate();
-				break;
-			case "showDiscordLink":
-				statusRow.showDiscord(config.showDiscordLink());
 				break;
 			case "enableComparison":
 				searchRowController.setComparisonEnabled(config.enableComparison());

@@ -45,7 +45,6 @@ public class KillClogConfigStructureTest
 		expected.add("silentAutomaticSync");
 		expected.add("automaticSync");
 		expected.add("showLeaderboardSelector");
-		expected.add("showDiscordLink");
 		expected.add("cardLabelColor");
 		expected.add("cardValueColor");
 		expected.add("cardDividerColor");

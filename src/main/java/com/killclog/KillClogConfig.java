@@ -80,18 +80,6 @@ public interface KillClogConfig extends Config
 	}
 
 	@ConfigItem(
-		keyName = "showDiscordLink",
-		name = "Show Discord Link",
-		description = "The Kill Clog Discord's icon at the top of the panel",
-		section = generalSection,
-		position = 4
-	)
-	default boolean showDiscordLink()
-	{
-		return false;
-	}
-
-	@ConfigItem(
 		keyName = "sidebarPriority",
 		name = "Sidebar Priority",
 		description = "Where the Kill Clog icon sits in RuneLite's sidebar. Lower numbers sit higher",

@@ -12,6 +12,7 @@ import java.util.function.Consumer;
 import javax.swing.JLabel;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
+import net.runelite.api.GameState;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.ItemManager;
@@ -182,26 +183,34 @@ public class PanelStatusRowCharacterizationTest
 	}
 
 	@Test
-	public void theDiscordIconIsOffByDefaultAndParksWithTheControlsDuringASearch() throws Exception
+	public void theDiscordLogoShowsOnlyWhileLoggedOutAndParksDuringASearch() throws Exception
 	{
 		JLabel discord = field("discord", JLabel.class);
-		enableControls();
 		edt(() ->
 		{
-			assertFalse("Show Discord Link is off by default", discord.isVisible());
-			statusRow.showDiscord(true);
-			assertTrue(discord.isVisible());
+			assertFalse("hidden until the plugin says the game is logged out", discord.isVisible());
+			statusRow.setLoggedOut(true);
+			assertTrue("logged out: the logo in the chalice's corner", discord.isVisible());
+			assertEquals("the chalice's own size and inset", 13, discord.getIcon().getIconHeight());
 			panel.onCompareStatus("Looking up player", Color.RED);
-			assertControls(false, false);
-			assertFalse("a search's progress parks it with the chalice and the character", discord.isVisible());
+			assertFalse("a search's progress parks it as it parks the chalice", discord.isVisible());
 			statusRow.setSearchStatus(" ", Color.RED);
-			assertControls(true, true);
 			assertTrue(discord.isVisible());
-			panel.setFirstParty(PanelStatusRow.FirstParty.HIDDEN);
-			assertTrue("it needs nobody logged in", discord.isVisible());
-			statusRow.showDiscord(false);
-			assertFalse(discord.isVisible());
+			statusRow.setLoggedOut(false);
+			assertFalse("never while you play", discord.isVisible());
 		});
+	}
+
+	@Test
+	public void onlyTheLoginScreenAndBeforeCountAsLoggedOut()
+	{
+		for (GameState state : GameState.values())
+		{
+			boolean out = state == GameState.UNKNOWN || state == GameState.STARTING || state == GameState.LOGIN_SCREEN
+				|| state == GameState.LOGIN_SCREEN_AUTHENTICATOR;
+			assertEquals(state.name(), out, PanelStatusRow.loggedOut(state));
+		}
+		assertFalse("no state yet: hidden", PanelStatusRow.loggedOut(null));
 	}
 
 	@Test
