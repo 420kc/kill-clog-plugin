@@ -19,7 +19,7 @@ public class PageCountsTest
 	private static final String TOB_ENTRY = "Theatre of Blood (Entry) completions";
 
 	@Test
-	public void theLinesAreDylansSix()
+	public void theLinesAreDylansFourteen()
 	{
 		List<String> rows = new ArrayList<>();
 		for (PageCounts.Line line : PageCounts.LINES)
@@ -29,12 +29,23 @@ public class PageCountsTest
 		assertEquals(List.of("revenants|1|Revenant kills|null", "tormented_demons|1|Tormented Demon kills|null",
 			"gloughs_experiments|2|Demonic Gorilla kills|null", "hunter_guild|1|Rumours Completed|null",
 			"theatre_of_blood|2|Theatre of Blood (Entry) completions|Entry",
-			"tombs_of_amascut|2|Tombs of Amascut (Entry) completions|Entry"), rows);
+			"tombs_of_amascut|2|Tombs of Amascut (Entry) completions|Entry",
+			"mastering_mixology|1|Orders fulfilled|null", "giants_foundry|1|Swords created|null",
+			"hallowed_sepulchre|1|Grand Hallowed Coffins opened|null",
+			"soul_wars|1|Spoils of war opened|null",
+			"wintertodt|2|Rewards claimed|Rewards claimed", "tempoross|2|Reward permits claimed|Reward permits claimed",
+			"guardians_of_the_rift|2|Rifts searches|Rifts searches", "doom_of_mokhaiotl|3|Deepest delve|Deepest delve"),
+			rows);
+		Set<String> pages = new HashSet<>();
 		for (PageCounts.Line line : PageCounts.LINES)
 		{
 			assertEquals("each page key is the one the log's index gives its page",
 				line.page, ClogService.bossToCategory(pageName(line.page)));
+			assertTrue("one row per page: a card shows only its page's first", pages.add(line.page));
 		}
+		assertNull("Gnome Restaurant's deliveries come from varbits of their own, so they aren't read",
+			PageCounts.line("gnome_restaurant", "Gnome restaurant hard deliveries: 9"));
+		assertNull("only Doom's deepest delve is read", PageCounts.line("doom_of_mokhaiotl", "Total delves: 40"));
 		assertNull("Tortured Gorillas aren't read", PageCounts.line("gloughs_experiments", "Tortured Gorilla kills: 5"));
 		assertNull("the raid's own count is the hiscores'", PageCounts.line("theatre_of_blood",
 			"Theatre of Blood completions: 40"));
@@ -51,6 +62,14 @@ public class PageCountsTest
 			case "hunter_guild": return "Hunter Guild";
 			case "theatre_of_blood": return "Theatre of Blood";
 			case "tombs_of_amascut": return "Tombs of Amascut";
+			case "mastering_mixology": return "Mastering Mixology";
+			case "giants_foundry": return "Giants' Foundry";
+			case "hallowed_sepulchre": return "Hallowed Sepulchre";
+			case "soul_wars": return "Soul Wars";
+			case "wintertodt": return "Wintertodt";
+			case "tempoross": return "Tempoross";
+			case "guardians_of_the_rift": return "Guardians of the Rift";
+			case "doom_of_mokhaiotl": return "Doom of Mokhaiotl";
 			default: return "Revenants";
 		}
 	}
@@ -153,6 +172,29 @@ public class PageCountsTest
 		assertEquals("Entry", raid.entryLabel);
 		assertEquals(12, raid.entryKc);
 		assertNull(PageCounts.onCard("revenants", null, log));
+
+		// 11/13: a page whose lead is the hiscores' count takes its own line under it, as a raid's Entry does, both on
+		// its boss cell's card and on a page with no cell; a page with no lead count leads with its own.
+		log.getPageCounts().put("Rewards claimed", 310);
+		log.getPageCounts().put("Deepest delve", 9);
+		log.getPageCounts().put("Rifts searches", 1_402);
+		log.getPageCounts().put("Orders fulfilled", 2_501);
+		TooltipData todt = PageCounts.onCard("wintertodt", TooltipData.builder().name("Wintertodt").kc(500).build(), log);
+		assertEquals("the hiscores' kills still lead", 500, todt.kc);
+		assertEquals("Rewards claimed", todt.entryLabel);
+		assertEquals(310, todt.entryKc);
+		TooltipData doom = TooltipDataBuilder.bossCellCard(TooltipData.builder().name("Doom of Mokhaiotl").kc(40).build(),
+			net.runelite.client.hiscore.HiscoreSkill.DOOM_OF_MOKHAIOTL, null, name -> null, log);
+		assertEquals("Deepest delve", doom.entryLabel);
+		assertEquals(9, doom.entryKc);
+		TooltipData gotr = PageCounts.pageCard("guardians_of_the_rift",
+			TooltipData.builder().name("Guardians of the Rift").build(), log);
+		assertEquals("Rifts searches", gotr.entryLabel);
+		assertEquals(1_402, gotr.entryKc);
+		TooltipData mixology = PageCounts.pageCard("mastering_mixology",
+			TooltipData.builder().name("Mastering Mixology").build(), log);
+		assertEquals("Orders fulfilled: ", mixology.kcLabel);
+		assertEquals(2_501, mixology.kc);
 		assertSame(revs, PageCounts.onCard("revenants", revs, null));
 	}
 

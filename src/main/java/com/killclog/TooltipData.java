@@ -38,7 +38,8 @@ final class TooltipData
 	final String hardPb;
 	@Builder.Default
 	final int hardRank = -1;
-	/** A raid's Entry mode on the raid's card, its own line under the raid's, from the player's log (PageCounts). */
+	/** A page count on its own line under the card's lead (a raid's Entry, Wintertodt's rewards), from the player's
+	 *  log (PageCounts). */
 	final String entryLabel;
 	@Builder.Default
 	final int entryKc = -1;

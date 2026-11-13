@@ -433,6 +433,57 @@ public class ClogPbsTest
 	}
 
 	@Test
+	public void twoPointEightPointTwosCountsAreReadOffTheirPagesThroughTheReader()
+	{
+		// Each of 11/13's rows from the line its varp carries, one page after another as a player browses them.
+		page("Mastering Mixology", "Obtained: <col=ffff00>3/7</col>", "Orders fulfilled: <col=ffffff>2,501</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 2501);
+		draws(2);
+		page("Giants' Foundry", "Obtained: <col=ffff00>1/6</col>", "Swords created: <col=ffffff>0</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 0);
+		draws(1);
+		page("Hallowed Sepulchre", "Obtained: <col=ffff00>2/11</col>",
+			"Grand Hallowed Coffins opened: <col=ffffff>77</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 77);
+		draws(1);
+		page("Soul Wars", "Obtained: <col=ffff00>4/12</col>", "Spoils of war opened: <col=ffffff>40</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 40);
+		draws(1);
+		page("Wintertodt", "Obtained: <col=ffff00>8/13</col>", "Wintertodt kills: <col=ffffff>500</col>",
+			"Rewards claimed: <col=ffffff>310</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 500);
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT2, 310);
+		draws(1);
+		page("Tempoross", "Obtained: <col=ffff00>5/8</col>", "Tempoross kills: <col=ffffff>420</col>",
+			"Reward permits claimed: <col=ffffff>900</col>", "Personal Best: <col=ffffff>3:10.20</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 420);
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT2, 900);
+		draws(1);
+		page("Guardians of the Rift", "Obtained: <col=ffff00>6/12</col>", "Rifts closed: <col=ffffff>1,800</col>",
+			"Rifts searches: <col=ffffff>1,402</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 1800);
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT2, 1402);
+		draws(1);
+		// Doom's page reads its deepest delve, but never its Personal Best, which doesn't say which delve it times.
+		page("Doom of Mokhaiotl", "Obtained: <col=ffff00>2/7</col>", "Total delves: <col=ffffff>40</col>",
+			"Deep delves: <col=ffffff>12</col>", "Deepest delve: <col=ffffff>9</col>",
+			"Personal Best: <col=ffffff>2:01.80</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 203);
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 40);
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT2, 12);
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT3, 9);
+		draws(1);
+		// Gnome Restaurant's deliveries aren't on these varps, so whatever lands there is never theirs.
+		page("Gnome Restaurant", "Obtained: <col=ffff00>3/9</col>", "Gnome restaurant hard deliveries: <col=ffffff>31</col>");
+		sends(VarPlayerID.COLLECTION_CATEGORY_COUNT, 0);
+		draws(1);
+		assertEquals(java.util.List.of("Orders fulfilled=2501", "Swords created=0", "Grand Hallowed Coffins opened=77",
+			"Spoils of war opened=40", "Rewards claimed=310", "Reward permits claimed=900", "Rifts searches=1402",
+			"Deepest delve=9"), counts);
+		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
+	}
+
+	@Test
 	public void anUnsettledPageStillCountsAsThePageBefore()
 	{
 		// The Nightmare's page reads nothing of its own, but its count line is still what the next page compares.

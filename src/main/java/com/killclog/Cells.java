@@ -775,7 +775,7 @@ public class Cells
 
 	/**
 	 * A raid's hard mode on the line under the raid's own KC and PB, by the name the Combat Summary pairs it by, and
-	 * its Entry mode's count under that.
+	 * under that a page count on its own line (a raid's Entry, Wintertodt's rewards; PageCounts).
 	 */
 	static void addHardModeLine(TitleTooltip tip, TooltipData data, boolean showKc, boolean showPb)
 	{

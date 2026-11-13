@@ -42,7 +42,8 @@ final class ClogPbs
 	/* package */ static final String KEY_PREFIX = "pagepb.";
 	/* package */ static final String OLD_PREFIX = "clogpb.";
 
-	// Pages whose one line doesn't yet say which encounter it times (the Nightmare's or Phosani's; which delve).
+	// Pages whose Personal Best line doesn't yet say which encounter it times (the Nightmare's or Phosani's; which
+	// delve): their times are never read, their counts are.
 	private static final Set<String> UNSETTLED = Set.of("the nightmare", "doom of mokhaiotl");
 	// The page's own line, and the Gauntlet page's second one for the Corrupted Gauntlet; then the page's three count
 	// lines, which PageCounts reads by the same timing rule.
@@ -100,10 +101,7 @@ final class ClogPbs
 		{
 			drawnCounts[slot] = client.getVarpValue(VARPS[COUNTS + slot]);
 		}
-		if (UNSETTLED.contains(page.toLowerCase(Locale.ROOT)))
-		{
-			return;
-		}
+		boolean timed = !UNSETTLED.contains(page.toLowerCase(Locale.ROOT));
 		String key = ClogService.bossToCategory(page);
 		for (Widget line : client.getWidget(InterfaceID.Collection.HEADER_TEXT).getDynamicChildren())
 		{
@@ -117,11 +115,11 @@ final class ClogPbs
 					countRead.accept(count.label, value);
 				}
 			}
-			else if (text.startsWith("Personal Best Corrupted:") && sent[1])
+			else if (timed && text.startsWith("Personal Best Corrupted:") && sent[1])
 			{
 				record(AdvLogPbs.canonicalSection("The Corrupted Gauntlet"), client.getVarpValue(VARPS[1]), before);
 			}
-			else if (text.startsWith("Personal Best:") && sent[0])
+			else if (timed && text.startsWith("Personal Best:") && sent[0])
 			{
 				record(AdvLogPbs.canonicalSection(page), client.getVarpValue(VARPS[0]), before);
 			}

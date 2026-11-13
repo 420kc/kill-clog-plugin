@@ -2,11 +2,22 @@
 # page is the page's key (its name as ClogService.bossToCategory keys it). slot is the varp that carries the line:
 # 1 COLLECTION_CATEGORY_COUNT, 2 COLLECTION_CATEGORY_COUNT2, 3 COLLECTION_CATEGORY_COUNT3, as the game's page script
 # writes it ([proc,collection_category_count], osrs-dumps 11/3). label is the line as the game writes it, up to its
-# colon; it is also the count's name in the sync. card is a raid card's label for its own line under the raid's,
-# else -: the count leads the page's card, as the game's page does. The choice of lines is Dylan's (11/6).
+# colon; it is also the count's name in the sync. card is the label of the count's own line under the card's lead
+# (a raid's Entry, a page whose lead is the hiscores' count), else -: the count leads the page's card, as the game's
+# page does. One row per page: a card shows the first row for its page. Only lines the page script draws from these
+# three varps can be rows: Gnome Restaurant's deliveries come from varbits of their own, so they aren't read.
+# The choice of lines is Dylan's (11/6, 11/13).
 revenants	1	Revenant kills	-
 tormented_demons	1	Tormented Demon kills	-
 gloughs_experiments	2	Demonic Gorilla kills	-
 hunter_guild	1	Rumours Completed	-
 theatre_of_blood	2	Theatre of Blood (Entry) completions	Entry
 tombs_of_amascut	2	Tombs of Amascut (Entry) completions	Entry
+mastering_mixology	1	Orders fulfilled	-
+giants_foundry	1	Swords created	-
+hallowed_sepulchre	1	Grand Hallowed Coffins opened	-
+soul_wars	1	Spoils of war opened	-
+wintertodt	2	Rewards claimed	Rewards claimed
+tempoross	2	Reward permits claimed	Reward permits claimed
+guardians_of_the_rift	2	Rifts searches	Rifts searches
+doom_of_mokhaiotl	3	Deepest delve	Deepest delve
