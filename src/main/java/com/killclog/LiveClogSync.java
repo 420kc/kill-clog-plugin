@@ -20,9 +20,10 @@ final class LiveClogSync
 	// as its cause; beyond it the unlock stays provenance-less rather than
 	// guessing (skilling clogs, chest opens, and pet drops have no kc).
 	private static final int KILL_CONTEXT_MAX_TICKS = 5;
-	// Up to this many for an item on the killed boss's own page: a boss's loot can land seconds after its kill
-	// message (Dylan 11/14: Maggot King's Elder venator fang 3 s after kill 603, its other drops up to 27 s).
-	private static final int OWN_PAGE_MAX_TICKS = 50;
+	// Up to this many (five minutes of play) for an item on the killed boss's own page, the page being the real guard:
+	// some loot waits on the player, and Maggot King's comes when its corpse is searched (Dylan 11/14: the Elder
+	// venator fang 3 s after kill 603; across 183 kills in his logs, loot came up to 259 s after the kill message).
+	private static final int OWN_PAGE_MAX_TICKS = 500;
 
 	private boolean needsFirstSyncWarned;
 	private ClogUnlockParser.KillContext lastKill;
@@ -78,7 +79,7 @@ final class LiveClogSync
 		for (int itemId : missingItemIds)
 		{
 			List<String> pages = clogIndex.categoryKeysForItem(itemId);
-			ClogUnlockParser.KillContext kill = ticks <= KILL_CONTEXT_MAX_TICKS || (ticks >= 0 && ticks <= OWN_PAGE_MAX_TICKS
+			ClogUnlockParser.KillContext kill = ticks <= KILL_CONTEXT_MAX_TICKS || (ticks <= OWN_PAGE_MAX_TICKS
 				&& pages != null && pages.stream().anyMatch(key -> lastKill.boss.equalsIgnoreCase(clogIndex.pageName(key))))
 				? lastKill : null;
 			changed |= localClogCache.mergeObtainedItem(playerName, itemId, pages, clogIndex.categoryItems(),

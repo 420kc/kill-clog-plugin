@@ -483,6 +483,8 @@ public class KillClogPlugin extends Plugin
 			panel.setFirstParty(PanelStatusRow.FirstParty.HIDDEN);
 			panel.resetSyncFeedback();
 			manualClogSync.reset();
+			// The last kill was the account that just ended: the next account's unlocks never take it.
+			liveClogSync.rememberKill(null, -1);
 			// Read the game's own structure again at once, for lookups made before the next login.
 			clogIndex.clear();
 			clogIndex.ensureParsed(client, itemManager);
