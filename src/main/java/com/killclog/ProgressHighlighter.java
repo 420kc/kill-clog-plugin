@@ -48,48 +48,33 @@ final class ProgressHighlighter
 
 		// Clue All aggregates across all six tier categories.
 		JLabel clueAllLabel = activityLabels.get(HiscoreSkill.CLUE_SCROLL_ALL);
-		if (clueAllLabel != null)
+		int[] all = new int[2];
+		for (String cat : PanelData.CLUE_CATEGORIES.values())
 		{
-			int totalItems = 0;
-			int totalObtained = 0;
-			for (String cat : PanelData.CLUE_CATEGORIES.values())
+			int[] counts = ClogHelper.clogCounts(cat, clogResult);
+			if (counts != null)
 			{
-				List<Integer> items = clogResult.getCategoryItems().get(cat);
-				if (items != null)
-				{
-					totalItems += items.size();
-					totalObtained += ClogHelper.countObtained(items, ClogHelper.getObtainedIds(cat, clogResult));
-				}
+				all[0] += counts[0];
+				all[1] += counts[1];
 			}
-			if (totalItems > 0)
-			{
-				clueAllLabel.setForeground(ClogHelper.clogColor(totalObtained, totalItems, config));
-			}
+		}
+		if (clueAllLabel != null && all[1] > 0)
+		{
+			clueAllLabel.setForeground(ClogHelper.clogColor(all[0], all[1], config));
 		}
 	}
 
 	/** Recolor "--" cells to emptyClogColor when highlighter is active. */
 	void colorEmptyCells()
 	{
-		for (JLabel label : bossLabels.values())
+		for (Map<HiscoreSkill, JLabel> labels : Arrays.asList(bossLabels, activityLabels, clueTierLabels))
 		{
-			if (ColorScheme.LIGHT_GRAY_COLOR.equals(label.getForeground()))
+			for (JLabel label : labels.values())
 			{
-				label.setForeground(config.emptyClogColor());
-			}
-		}
-		for (JLabel label : activityLabels.values())
-		{
-			if (ColorScheme.LIGHT_GRAY_COLOR.equals(label.getForeground()))
-			{
-				label.setForeground(config.emptyClogColor());
-			}
-		}
-		for (JLabel label : clueTierLabels.values())
-		{
-			if (ColorScheme.LIGHT_GRAY_COLOR.equals(label.getForeground()))
-			{
-				label.setForeground(config.emptyClogColor());
+				if (ColorScheme.LIGHT_GRAY_COLOR.equals(label.getForeground()))
+				{
+					label.setForeground(config.emptyClogColor());
+				}
 			}
 		}
 	}
@@ -124,16 +109,8 @@ final class ProgressHighlighter
 
 	private void colorByCompletion(JLabel label, String category, ClogResult clogResult)
 	{
-		List<Integer> allItems = clogResult.getCategoryItems().get(category);
-		if (allItems == null || allItems.isEmpty())
-		{
-			// KC exists but no clog data was found for this category.
-			label.setForeground(config.emptyClogColor());
-			return;
-		}
-
-		label.setForeground(ClogHelper.clogColor(
-			ClogHelper.countObtained(allItems, ClogHelper.getObtainedIds(category, clogResult)),
-			allItems.size(), config));
+		// KC exists but no clog data was found for this category: the empty colour.
+		int[] counts = ClogHelper.clogCounts(category, clogResult);
+		label.setForeground(counts == null ? config.emptyClogColor() : ClogHelper.clogColor(counts[0], counts[1], config));
 	}
 }
