@@ -18,6 +18,7 @@ import net.runelite.client.util.AsyncBufferedImage;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
@@ -82,6 +83,30 @@ public class ClogSummaryTooltipTest
 		assertEquals(Color.MAGENTA.getRGB(), image.getRGB(ladderX(tip, 6) + 6, y));
 		assertNotEquals(Color.MAGENTA.getRGB(), image.getRGB(ladderX(tip, 7) + 6, y));
 		assertNotEquals(Color.MAGENTA.getRGB(), image.getRGB(ladderX(tip, 8) + 6, y));
+	}
+
+	// Dylan 11/14: the tier's own icon beside its name, at the header's right.
+	@Test
+	public void theTiersIconStandsBesideItsNameInTheHeader()
+	{
+		Map<String, BufferedImage> icons = new LinkedHashMap<>();
+		for (String tier : ClogHelper.CLOG_TIERS)
+		{
+			icons.put(tier, tile(ICON, ICON, tier.equals("rune") ? Color.CYAN : Color.MAGENTA));
+		}
+		ClogSummaryTooltip tip = new ClogSummaryTooltip();
+		tip.setTierData(1150, 1700, icons, null);
+		BufferedImage image = paint(tip);
+		Point icon = null;
+		for (int y = 0; y < NativeTooltip.getInset() + tip.getHeaderHeight() && icon == null; y++)
+		{
+			for (int x = 0; x < image.getWidth() && icon == null; x++)
+			{
+				icon = image.getRGB(x, y) == Color.CYAN.getRGB() ? new Point(x, y) : null;
+			}
+		}
+		assertNotNull("rune's icon in the header", icon);
+		assertTrue("at the header's right, with the tier's name", icon.x > image.getWidth() / 2);
 	}
 
 	@Test

@@ -176,6 +176,27 @@ public class SummaryTooltipTest
 		}
 	}
 
+	@Test
+	public void theSitesStillNameThemselvesWithNoPetsToShow()
+	{
+		SummaryTooltip bare = new SummaryTooltip();
+		bare.setData("pgn", 4964, null, null, "Ironman", null);
+		SummaryTooltip tip = new SummaryTooltip();
+		tip.setData("pgn", 4964, null, null, "Ironman", null);
+		tip.setSources(CardSources.of(true, false, false, false, "pgn", SummaryTooltip.SOURCE_PREFIX));
+		assertTrue("a band under the top bar to name them in", tip.getPreferredSize().height > bare.getPreferredSize().height);
+
+		paint(tip);
+		int x = tip.getWidth() - NativeTooltip.getInset() - CardSources.width(1) + CardSources.ICON / 2;
+		int y = NativeTooltip.getInset() + tip.getHeaderHeight() / 2;
+		for (java.awt.event.MouseMotionListener listener : tip.getMouseMotionListeners())
+		{
+			listener.mouseMoved(new java.awt.event.MouseEvent(tip, java.awt.event.MouseEvent.MOUSE_MOVED,
+				System.currentTimeMillis(), 0, x, y, 0, false, java.awt.event.MouseEvent.NOBUTTON));
+		}
+		assertEquals("View on TempleOSRS", tip.getHeaderHoverLineText());
+	}
+
 	private static void petTotal(SummaryTooltip tip, int total) throws ReflectiveOperationException
 	{
 		Field field = SummaryTooltip.class.getDeclaredField("totalPetCount");

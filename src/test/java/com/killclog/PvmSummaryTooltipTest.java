@@ -184,6 +184,16 @@ public class PvmSummaryTooltipTest
 		assertEquals("Dizana's quiver", tip.getHeaderHoverLineText());
 	}
 
+	@Test
+	public void theLevelRowGrowsToItsGearsHeight()
+	{
+		PvmSummaryTooltip plain = card();
+		PvmSummaryTooltip geared = card();
+		geared.addGear(solid(36, 32, 0xffff00ff), "Maxed Infernal");
+		// The 22 px row stands as tall as the 32 px item sprites.
+		assertEquals(32 - 22, geared.getPreferredSize().height - plain.getPreferredSize().height);
+	}
+
 	private static BufferedImage solid(int width, int height, int argb)
 	{
 		BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
