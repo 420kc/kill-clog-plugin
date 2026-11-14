@@ -1333,7 +1333,8 @@ public class KillClogPanel extends PluginPanel
 	{
 		SummaryTooltip tip = new SummaryTooltip();
 		tip.setComponent(owner);
-		// A Kill Clog syncer who published their character stands where the prestige cape would.
+		// A Kill Clog syncer who published their character stands where the prestige cape would; the cape and its
+		// prestige then show on the Combat Summary's level row instead.
 		BufferedImage character = portraits.forSummary(clog);
 		tip.setData(
 			shownName.isEmpty() ? "Player" : shownName,
@@ -1341,23 +1342,12 @@ public class KillClogPanel extends PluginPanel
 			character != null ? character : iconCache.capeFor(hiscore),
 			AccountBadgeResolver.badge(display),
 			AccountBadgeResolver.label(display),
-			LookupQueries.getPrestige(hiscore)
+			character != null ? null : LookupQueries.getPrestige(hiscore)
 		);
-		if (character != null)
+		if (clog != null)
 		{
-			tip.setCape(iconCache.capeFor(hiscore));
-			// The corner names the character's site: RuneProfile's, or the player's own Kill Clog character.
-			String name = clog.getPlayerName().trim();
-			if (portraits.fromRuneProfile(clog))
-			{
-				tip.setFigureSource(KillClogIcons::runeProfileSourceIcon, SummaryTooltip.RUNEPROFILE_LINK,
-					TooltipItemLink.runeProfileUrl(name));
-			}
-			else
-			{
-				tip.setFigureSource(KillClogIcons::killClogSourceIcon, SummaryTooltip.KILLCLOG_LINK,
-					TooltipItemLink.killclogUrl(name));
-			}
+			tip.setSources(CardSources.of(clog, clogService.onTemple(shownName), runeProfileService.hasProfile(shownName),
+				lookupSession.onKillclog(shownName), SummaryTooltip.SOURCE_PREFIX));
 		}
 		if (clans != null)
 		{

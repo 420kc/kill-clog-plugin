@@ -120,144 +120,60 @@ public class SummaryTooltipTest
 		assertEquals(unranked.getHeaderHeight() + NativeTooltip.LINE_HEIGHT, tip.getHeaderHeight());
 	}
 
+	// Dylan 11/14: the Collection Log card's Sources, in the Player Summary's top bar, each a link to the player's page.
 	@Test
-	public void aPublishedCharactersCapeNamesItsPrestigeFromTheHeader()
-	{
-		BufferedImage character = new BufferedImage(60, 120, BufferedImage.TYPE_INT_ARGB);
-		BufferedImage cape = new BufferedImage(36, 32, BufferedImage.TYPE_INT_ARGB);
-		for (int y = 0; y < 32; y++)
-		{
-			for (int x = 0; x < 36; x++)
-			{
-				cape.setRGB(x, y, 0xffff00ff);
-			}
-		}
-		SummaryTooltip tip = new SummaryTooltip();
-		tip.setData("Fixture", 12345, character, null, "Ironman", "Maxed Infernal");
-		tip.setCape(cape);
-		BufferedImage painted = paint(tip);
-
-		int left = -1;
-		int top = -1;
-		for (int y = 0; y < painted.getHeight() && top < 0; y++)
-		{
-			for (int x = 0; x < painted.getWidth(); x++)
-			{
-				if (painted.getRGB(x, y) == 0xffff00ff)
-				{
-					left = x;
-					top = y;
-					break;
-				}
-			}
-		}
-		// In the header's right corner, above the title's divider.
-		assertTrue(top >= 0 && top < tip.getHeaderHeight() + NativeTooltip.getInset());
-		assertTrue(left > painted.getWidth() / 2);
-		for (java.awt.event.MouseMotionListener listener : tip.getMouseMotionListeners())
-		{
-			listener.mouseMoved(new java.awt.event.MouseEvent(tip, java.awt.event.MouseEvent.MOUSE_MOVED,
-				System.currentTimeMillis(), 0, left + 18, top + 16, 0, false, java.awt.event.MouseEvent.NOBUTTON));
-		}
-		assertEquals("Maxed Infernal", tip.getHeaderHoverLineText());
-	}
-
-	@Test
-	public void aRuneProfileCharacterWearsItsIconDimUntilHovered()
-	{
-		cornerIcon(KillClogIcons::runeProfileSourceIcon, SummaryTooltip.RUNEPROFILE_LINK, TooltipItemLink.runeProfileUrl("pgn"));
-	}
-
-	// Dylan 11/14: a Kill Clog character names its site the same way, with the chalice, and opens the player's profile.
-	@Test
-	public void aKillClogCharacterWearsTheChaliceDimUntilHovered()
-	{
-		BufferedImage chalice = cornerIcon(KillClogIcons::killClogSourceIcon, SummaryTooltip.KILLCLOG_LINK,
-			"https://killclog.com/p/pgn");
-		BufferedImage runeProfile = cornerIcon(KillClogIcons::runeProfileSourceIcon, SummaryTooltip.RUNEPROFILE_LINK,
-			TooltipItemLink.runeProfileUrl("pgn"));
-		boolean differs = false;
-		for (int y = 0; y < chalice.getHeight() && !differs; y++)
-		{
-			for (int x = 0; x < chalice.getWidth() && !differs; x++)
-			{
-				differs = chalice.getRGB(x, y) != runeProfile.getRGB(x, y);
-			}
-		}
-		assertTrue("the chalice, not RuneProfile's icon", differs);
-	}
-
-	/** A character with a site's icon in its corner: dim, in no room of its own, lit and named while hovered. */
-	private static BufferedImage cornerIcon(java.util.function.IntFunction<BufferedImage> iconAt, String link, String page)
+	public void theLogsSitesSitInTheTopBarEachOpeningItsPage()
 	{
 		BufferedImage character = new BufferedImage(120, 160, BufferedImage.TYPE_INT_ARGB);
 		character.setRGB(60, 0, 0xff302020);
-		BufferedImage cape = new BufferedImage(9, 20, BufferedImage.TYPE_INT_ARGB);
 		SummaryTooltip plain = new SummaryTooltip();
-		plain.setData("pgn", 4964, character, null, "Ironman", "Maxed Infernal");
-		plain.setCape(cape);
+		plain.setData("pgn", 4964, character, null, "Ironman", null);
 		SummaryTooltip tip = new SummaryTooltip();
-		tip.setData("pgn", 4964, character, null, "Ironman", "Maxed Infernal");
-		tip.setCape(cape);
-		tip.setFigureSource(iconAt, link, page);
+		tip.setData("pgn", 4964, character, null, "Ironman", null);
+		tip.setSources(CardSources.of(true, true, true, false, "pgn", SummaryTooltip.SOURCE_PREFIX));
 		BufferedImage before = paint(plain);
-		BufferedImage dim = paint(tip);
-		assertEquals("the icon takes no room", before.getHeight(), dim.getHeight());
+		BufferedImage after = paint(tip);
 
-		// The icon's pixels: the right of the card, just under the header.
-		java.awt.Rectangle icon = null;
-		for (int y = 0; y < dim.getHeight(); y++)
+		// The icons' pixels: the top bar's right, above the title's divider (under it, a band to name them in).
+		java.awt.Rectangle icons = null;
+		for (int y = 0; y < tip.getHeaderHeight() + NativeTooltip.getInset(); y++)
 		{
-			for (int x = dim.getWidth() / 2; x < dim.getWidth(); x++)
+			for (int x = 0; x < Math.min(before.getWidth(), after.getWidth()); x++)
 			{
-				if (dim.getRGB(x, y) != before.getRGB(x, y))
+				if (after.getRGB(x, y) != before.getRGB(x, y))
 				{
-					icon = icon == null ? new java.awt.Rectangle(x, y, 1, 1) : icon.union(new java.awt.Rectangle(x, y, 1, 1));
+					icons = icons == null ? new java.awt.Rectangle(x, y, 1, 1) : icons.union(new java.awt.Rectangle(x, y, 1, 1));
 				}
 			}
 		}
-		assertNotNull(icon);
-		assertTrue("under the divider", icon.y >= tip.getHeaderHeight());
+		assertNotNull("drawn in the top bar", icons);
+		assertTrue("at its right", icons.x > after.getWidth() / 2);
 
-		for (java.awt.event.MouseMotionListener listener : tip.getMouseMotionListeners())
+		String[] names = {"View on Kill Clog", "View on TempleOSRS", "View on RuneProfile"};
+		String[] pages = {"https://killclog.com/p/pgn", TooltipItemLink.templeUrl("pgn"), TooltipItemLink.runeProfileUrl("pgn")};
+		int left = tip.getWidth() - NativeTooltip.getInset() - CardSources.width(3);
+		int middle = NativeTooltip.getInset() + (tip.getHeaderHeight()) / 2;
+		for (int i = 0; i < 3; i++)
 		{
-			listener.mouseMoved(new java.awt.event.MouseEvent(tip, java.awt.event.MouseEvent.MOUSE_MOVED,
-				System.currentTimeMillis(), 0, (int) icon.getCenterX(), (int) icon.getCenterY(), 0, false,
-				java.awt.event.MouseEvent.NOBUTTON));
-		}
-		assertEquals(link, tip.getHeaderHoverLineText());
-		BufferedImage lit = paint(tip);
-		int litDistance = 0;
-		int dimDistance = 0;
-		for (int y = icon.y; y < icon.y + icon.height; y++)
-		{
-			for (int x = icon.x; x < icon.x + icon.width; x++)
+			int x = left + i * (CardSources.ICON + CardSources.GAP) + CardSources.ICON / 2;
+			for (java.awt.event.MouseMotionListener listener : tip.getMouseMotionListeners())
 			{
-				dimDistance += distance(dim.getRGB(x, y), before.getRGB(x, y));
-				litDistance += distance(lit.getRGB(x, y), before.getRGB(x, y));
+				listener.mouseMoved(new java.awt.event.MouseEvent(tip, java.awt.event.MouseEvent.MOUSE_MOVED,
+					System.currentTimeMillis(), 0, x, middle, 0, false, java.awt.event.MouseEvent.NOBUTTON));
+			}
+			assertEquals(names[i], tip.getHeaderHoverLineText());
+			try (org.mockito.MockedStatic<net.runelite.client.util.LinkBrowser> browser =
+				org.mockito.Mockito.mockStatic(net.runelite.client.util.LinkBrowser.class))
+			{
+				for (java.awt.event.MouseListener listener : tip.getMouseListeners())
+				{
+					listener.mousePressed(new java.awt.event.MouseEvent(tip, java.awt.event.MouseEvent.MOUSE_PRESSED,
+						System.currentTimeMillis(), 0, x, middle, 1, false, java.awt.event.MouseEvent.BUTTON1));
+				}
+				int page = i;
+				browser.verify(() -> net.runelite.client.util.LinkBrowser.browse(pages[page]));
 			}
 		}
-		assertTrue("hovered, the icon is at full strength", litDistance > dimDistance * 3 / 2);
-
-		// A click opens the character's page on its site.
-		try (org.mockito.MockedStatic<net.runelite.client.util.LinkBrowser> browser =
-			org.mockito.Mockito.mockStatic(net.runelite.client.util.LinkBrowser.class))
-		{
-			for (java.awt.event.MouseListener listener : tip.getMouseListeners())
-			{
-				listener.mousePressed(new java.awt.event.MouseEvent(tip, java.awt.event.MouseEvent.MOUSE_PRESSED,
-					System.currentTimeMillis(), 0, (int) icon.getCenterX(), (int) icon.getCenterY(), 1, false,
-					java.awt.event.MouseEvent.BUTTON1));
-			}
-			browser.verify(() -> net.runelite.client.util.LinkBrowser.browse(page));
-		}
-		return dim;
-	}
-
-	private static int distance(int a, int b)
-	{
-		return Math.abs((a >> 16 & 255) - (b >> 16 & 255)) + Math.abs((a >> 8 & 255) - (b >> 8 & 255))
-			+ Math.abs((a & 255) - (b & 255));
 	}
 
 	private static void petTotal(SummaryTooltip tip, int total) throws ReflectiveOperationException
@@ -464,7 +380,7 @@ public class SummaryTooltipTest
 	}
 
 	@Test
-	public void theHeadersCapeKeepsClearOfALongRankLine()
+	public void theTopBarsSitesKeepClearOfALongRankLine()
 	{
 		// A clan name as long as the game allows (12), after a six-digit rank.
 		SummaryTooltip without = new SummaryTooltip();
@@ -473,9 +389,9 @@ public class SummaryTooltipTest
 		SummaryTooltip with = new SummaryTooltip();
 		with.setData("Al", 123456, null, null, "Hardcore Group Ironman", "Maxed Infernal");
 		with.setClan("MMMMMMMMMMMM", null);
-		with.setCape(new BufferedImage(36, 32, BufferedImage.TYPE_INT_ARGB));
+		with.setSources(CardSources.of(true, true, true, false, "Al", SummaryTooltip.SOURCE_PREFIX));
 
-		// The rank line under a short name is the widest header line: the cape's room sits beside it.
-		assertEquals(40, with.getPreferredSize().width - without.getPreferredSize().width);
+		// The rank line under a short name is the widest header line: the three icons' room sits beside it.
+		assertEquals(8 + CardSources.width(3), with.getPreferredSize().width - without.getPreferredSize().width);
 	}
 }

@@ -92,7 +92,12 @@ class PlayerPortraits
 		}
 	}
 
-	/** The portrait to draw for this lookup's player: one the server confirmed since the lookup, or null. */
+	/**
+	 * The portrait to draw for this lookup's player: one the server confirmed since the lookup, or null. Never a
+	 * RuneProfile character, which the server tags {@code "rp-…"} (killclog-api, routes/player-appearance.js): its file
+	 * is the model the game drew, other plugins' recolours and transforms included, so it can show items the player
+	 * doesn't have (Dylan, 2026-11-14). A Kill Clog character is drawn from the items the player wears.
+	 */
 	@Nullable
 	BufferedImage forSummary(@Nullable ClogResult clog)
 	{
@@ -105,21 +110,10 @@ class PlayerPortraits
 		Portrait held = lane.values.get(key);
 		if (held != null && confirmed.contains(key))
 		{
-			return held.image;
+			return runeProfileTag(held.etag) ? null : held.image;
 		}
 		ask(name);
 		return null;
-	}
-
-	/**
-	 * Whether the portrait {@link #forSummary} shows for this lookup is the player's RuneProfile character, which the
-	 * server tags {@code "rp-…"} (killclog-api, routes/player-appearance.js).
-	 */
-	boolean fromRuneProfile(@Nullable ClogResult clog)
-	{
-		String name = portraitName(clog);
-		Portrait held = name != null ? lane.values.get(key(name)) : null;
-		return held != null && confirmed.contains(key(name)) && runeProfileTag(held.etag);
 	}
 
 	static boolean runeProfileTag(@Nullable String etag)
@@ -128,14 +122,13 @@ class PlayerPortraits
 	}
 
 	/**
-	 * The name to ask a portrait for: a Kill Clog syncer's, the local player's, or a player RuneProfile answered for,
-	 * whose RuneProfile character killclog.com draws when they have no Kill Clog one. A player
-	 * only TempleOSRS knows costs no request, and their name never reaches killclog.com.
+	 * The name to ask a portrait for: a Kill Clog syncer's or the local player's. A player only TempleOSRS or
+	 * RuneProfile knows costs no request, and their name never reaches killclog.com.
 	 */
 	@Nullable
 	static String portraitName(@Nullable ClogResult clog)
 	{
-		if (clog == null || !(clog.isFromKillclog() || clog.isFromLocal() || clog.isFromRuneProfile()))
+		if (clog == null || !(clog.isFromKillclog() || clog.isFromLocal()))
 		{
 			return null;
 		}

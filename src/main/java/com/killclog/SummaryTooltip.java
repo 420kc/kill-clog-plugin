@@ -32,24 +32,11 @@ public class SummaryTooltip extends TitleTooltip
 	@Nullable
 	private BufferedImage clanIcon;
 	private String prestige;
-	// With a character standing in, the prestige cape sits small in the header's corner and names its prestige.
-	@Nullable
-	private BufferedImage cape;
-	// Where a character came from: its site's icon sits dim in the figure's top corner, lit while hovered, and opens the
-	// player's page there (RuneProfile's, Dylan 2026-11-09; Kill Clog's, 2026-11-14).
-	@Nullable
-	private String sourcePage;
-	@Nullable
-	private String sourceLink;
-	@Nullable
-	private IntFunction<BufferedImage> sourceIconAt;
-	static final String RUNEPROFILE_LINK = "View on RuneProfile";
-	static final String KILLCLOG_LINK = "View on Kill Clog";
-	private static final int SOURCE_ICON = 13;
-	private static final int SOURCE_HIT_PAD = 2;
-	private static final float SOURCE_DIM = 0.45f;
-	@Nullable
-	private BufferedImage sourceIcon;
+	// The sites holding the player's log, the Collection Log card's Sources, in the top bar's right corner as links to
+	// the player's pages there (Dylan, 2026-11-14).
+	private List<CardSources.Source> sources = Collections.emptyList();
+	static final String SOURCE_PREFIX = "View on ";
+	private static final int SOURCES_GAP = 8;
 
 	// Pet data only includes obtained pets: the gallery shows what you have,
 	// not the empty slots.
@@ -105,19 +92,10 @@ public class SummaryTooltip extends TitleTooltip
 		}
 	}
 
-	/** A published character's prestige cape, drawn small in the header; null when the cape is the figure. */
-	void setCape(@Nullable BufferedImage cape)
+	/** The sites holding the player's log ({@link CardSources#of}, named "View on ..."), in the top bar. */
+	void setSources(List<CardSources.Source> sources)
 	{
-		this.cape = cape;
-	}
-
-	/** The figure is the player's character from a site: its icon at a size, the band's words while hovered, its page. */
-	void setFigureSource(IntFunction<BufferedImage> iconAt, String link, String page)
-	{
-		sourceIconAt = iconAt;
-		sourceLink = link;
-		sourcePage = page;
-		sourceIcon = null;
+		this.sources = sources;
 	}
 
 	/** The player's name reads white, like the name it is, not an orange card label. */
@@ -183,9 +161,8 @@ public class SummaryTooltip extends TitleTooltip
 	@Override
 	protected CardBody body()
 	{
-		// The cape or character stands centered under the name; with a character, the cape names its prestige from
-		// the header's corner instead of a line under the figure.
-		boolean capeInHeader = cape != null && prestige != null;
+		// The cape or character stands centered under the name, the cape's prestige under it; the log's sites sit at the
+		// top bar's right.
 		CardBody card = new CardBody().add(CardBody.minWidth(c -> getFontMetrics(getTitleFont()).stringWidth(FORMER_TITLE)));
 		if (accountLabel != null)
 		{
@@ -202,23 +179,19 @@ public class SummaryTooltip extends TitleTooltip
 				}
 			}));
 		}
-		if (capeInHeader)
+		if (!sources.isEmpty())
 		{
-			card.add(headerCorner(true, cape, prestige));
+			int width = CardSources.width(sources.size());
+			card.add(CardBody.row(0, c -> headerTextWidth() + SOURCES_GAP + width, (c, y) -> CardSources.draw(c, sources,
+				c.w - c.inset() - width, c.inset() + (getHeaderHeight() - CardSources.ICON) / 2, TooltipItemHover.HEADER_SECTION)));
 		}
 		if (figure != null)
 		{
-			card.add(CardBody.row(figure.getHeight() + FIGURE_GAP, c -> figure.getWidth(), (c, y) ->
-			{
-				c.g.drawImage(figure, (c.w - figure.getWidth()) / 2, y, null);
-				if (sourcePage != null)
-				{
-					drawSourceIcon(c, y);
-				}
-			}));
+			card.add(CardBody.row(figure.getHeight() + FIGURE_GAP, c -> figure.getWidth(),
+				(c, y) -> c.g.drawImage(figure, (c.w - figure.getWidth()) / 2, y, null)));
 		}
 		// Prestige centered under the figure, when the figure is the cape.
-		if (prestige != null && !capeInHeader)
+		if (prestige != null)
 		{
 			card.add(centered(PRESTIGE_LABEL, prestige));
 		}
@@ -236,38 +209,12 @@ public class SummaryTooltip extends TitleTooltip
 			card.add(hasBodyAbovePets() ? CardBody.hoverBand() : CardBody.headerHoverBand())
 				.add(CardBody.scroll(scroll, pets.asPart()));
 		}
-		else if (capeInHeader || sourcePage != null)
+		else if (!sources.isEmpty())
 		{
-			// Somewhere for a hovered corner image to name itself, pets or none.
+			// Somewhere for a hovered site to name itself, pets or none.
 			card.add(CardBody.hoverBand());
 		}
 		return card;
-	}
-
-	/**
-	 * The character's site's icon at the figure's top right, under the header's prestige cape: dim, so it doesn't pull
-	 * the eye from the character, and lit while hovered, when the band names its page and a click opens it.
-	 */
-	private void drawSourceIcon(CardBody.Ctx c, int y)
-	{
-		if (sourceIcon == null)
-		{
-			sourceIcon = sourceIconAt.apply(SOURCE_ICON);
-		}
-		BufferedImage icon = sourceIcon;
-		if (icon == null)
-		{
-			return;
-		}
-		int x = c.w - c.inset() - SOURCE_ICON;
-		boolean lit = sourceLink.equals(itemHover.hoveredItemName());
-		Composite before = c.g.getComposite();
-		c.g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, lit ? 1f : SOURCE_DIM));
-		c.g.drawImage(icon, x, y, null);
-		c.g.setComposite(before);
-		c.hits.add(new TooltipItemHover.HitBox(TooltipItemHover.HEADER_SECTION, 0, sourceLink,
-			new Rectangle(x - SOURCE_HIT_PAD, y - SOURCE_HIT_PAD, SOURCE_ICON + SOURCE_HIT_PAD * 2,
-				SOURCE_ICON + SOURCE_HIT_PAD * 2), true, sourcePage));
 	}
 
 	private static CardBody.Part centered(String label, String value)

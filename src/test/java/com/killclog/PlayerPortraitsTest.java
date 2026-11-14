@@ -83,19 +83,21 @@ public class PlayerPortraitsTest
 	}
 
 	@Test
-	public void aSyncerOrAPlayerRuneProfileKnowsIsAskedAbout()
+	public void onlyASyncerIsAskedAbout()
 	{
-		// A name with no Kill Clog character can have its RuneProfile one, so a lookup RuneProfile answered asks
-		// too; a player only TempleOSRS knows costs no request, and a lookup with no log has no name to ask with.
+		// Dylan 11/14: RuneProfile characters no longer show, so a player only RuneProfile or TempleOSRS knows costs no
+		// request and their name never reaches killclog.com; a lookup with no log has no name to ask with.
 		OkHttpClient client = client();
 		PlayerPortraits portraits = new PlayerPortraits(client);
 		portraits.lookedUp(null);
 		portraits.lookedUp(clog("Zezima", false));
 		assertNull(portraits.forSummary(clog("Zezima", false)));
+		portraits.lookedUp(runeProfile("Lynx Titan"));
+		assertNull(portraits.forSummary(runeProfile("Lynx Titan")));
 		verify(client, never()).newCall(any(Request.class));
 
-		portraits.lookedUp(runeProfile("Lynx Titan"));
-		portraits.lookedUp(runeProfile("lynx_titan"));
+		portraits.lookedUp(clog("Lynx Titan", true));
+		portraits.lookedUp(clog("lynx_titan", true));
 		Request request = requests(client, 1).get(0);
 		assertEquals("https://killclog.com/api/player/Lynx%20Titan/portrait/large", request.url().toString());
 		assertEquals(HttpUtil.USER_AGENT, request.header("User-Agent"));
@@ -103,22 +105,20 @@ public class PlayerPortraitsTest
 	}
 
 	@Test
-	public void aRuneProfileCharacterIsKnownByTheServersTag() throws IOException
+	public void aRuneProfileCharacterIsNeverShown() throws IOException
 	{
-		// The server tags a RuneProfile character "rp-…" (routes/player-appearance.js); a Kill Clog one is never so.
+		// The server tags a RuneProfile character "rp-…" (routes/player-appearance.js), and serves one for a syncer
+		// with no Kill Clog character: its file can show items the player doesn't have (Dylan 11/14), so the cape shows.
 		PlayerPortraits portraits = new PlayerPortraits(client());
-		ClogResult pgn = runeProfile("pgn");
-		portraits.lookedUp(pgn);
-		assertTrue("nothing shown yet", !portraits.fromRuneProfile(pgn));
+		ClogResult unpublished = clog("pgn", true);
+		portraits.lookedUp(unpublished);
 		answer(portraits, "pgn", 200, png(120, 200), "\"rp-abc\"");
-		assertNotNull(portraits.forSummary(pgn));
-		assertTrue(portraits.fromRuneProfile(pgn));
+		assertNull(portraits.forSummary(unpublished));
 
 		ClogResult syncer = clog("420 kc", true);
 		portraits.lookedUp(syncer);
 		answer(portraits, "420 kc", 200, png(120, 200), "\"abc\"");
-		assertNotNull(portraits.forSummary(syncer));
-		assertTrue("a Kill Clog character", !portraits.fromRuneProfile(syncer));
+		assertNotNull("a Kill Clog character", portraits.forSummary(syncer));
 
 		assertTrue(PlayerPortraits.runeProfileTag("W/\"rp-abc\""));
 		assertTrue(!PlayerPortraits.runeProfileTag(null));
