@@ -10,26 +10,20 @@ import javax.annotation.Nullable;
 import lombok.Setter;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.hiscore.HiscoreSkill;
-import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.QuantityFormatter;
 
 /**
- * Combat Summary tooltip on the combat level cell: the combat level under the title, the band, then a scroll of PvM
- * (its rows and tiles), the raids' tiles, Slayer and its superiors, and PvP.
+ * Combat Summary tooltip on the combat level cell: the combat level at the title's right, the prestige cape and Dizana's
+ * gear under it, the band, then a scroll of PvM (its rows and tiles), the raids' tiles, Slayer and its superiors, and PvP.
  */
 public class PvmSummaryTooltip extends TitleTooltip
 {
 	private static final int WEAPON_PAD = 6;
 	private static final int SECTION_GAP = 4;
-	// The combat level leads the card beside the combat cell's own icon, with room around it; the CA tier's reward is
-	// drawn at the same size, for its tile.
+	// The CA tier's reward is drawn at the combat cell's icon size, for its tile.
 	static final int ICON_SIZE = 20;
 	private static final String PVM_HEADER = "PvM";
 	private static final String PVP_HEADER = "PvP";
-	private static final int LEVEL_ROW_HEIGHT = 22;
-	private static final int LEVEL_GAP_ABOVE = 4;
-	private static final int LEVEL_GAP_BELOW = 6;
-	private static final int LEVEL_ICON_GAP = 4;
 
 	private double combatLevel;
 	private int totalKills;
@@ -79,8 +73,11 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 	@Setter
 	private Image combatIcon;
-	private final List<Image> gear = new ArrayList<>();
+	// The prestige cape and Dizana's gear under the title, as items (Dylan, 2026-11-14).
+	private final List<Integer> gear = new ArrayList<>();
 	private final List<String> gearNames = new ArrayList<>();
+	@Nullable
+	private TooltipItemSprites gearSprites;
 	private CombatAchievementResult caResult;
 	private BufferedImage caRewardSprite;
 	// The Bosses tile's sprite, the Collection Log's Bosses tab's, and what a press on it opens.
@@ -243,12 +240,15 @@ public class PvmSummaryTooltip extends TitleTooltip
 	@Override
 	protected CardBody body()
 	{
-		// The title, the combat level and the band stay put (Dylan, 2026-11-07); PvM, Raids, Slayer and PvP scroll
-		// under them, a long tab's height like the other cards.
-		CardBody card = new CardBody()
-			.add(CardBody.gap(LEVEL_GAP_ABOVE))
-			.add(leadRow(combatIcon, combatText(combatLevel)))
-			.add(CardBody.gap(LEVEL_GAP_BELOW));
+		// The title with the combat level at its right, the gear under it and the band stay put (Dylan, 2026-11-07 and
+		// 11/14); PvM, Raids, Slayer and PvP scroll under them, a long tab's height like the other cards.
+		CardBody card = new CardBody().add(headerWord(combatText(combatLevel), combatIcon));
+		if (!gear.isEmpty())
+		{
+			card.add(CardBody.gap(SECTION_GAP)).add(CardBody.sprites(TooltipItemHover.HEADER_SECTION, gearSprites,
+				gear.stream().mapToInt(Integer::intValue).toArray(), gearNames.toArray(new String[0]),
+				gear.stream().mapToInt(id -> 1).toArray(), WEAPON_PAD));
+		}
 		CardBody body = new CardBody().titled(PVM_HEADER)
 			.add(CardBody.line("Total Kills: ", scoreText(totalKills)))
 			.add(CardBody.line("EHB: ", ehbText(ehb)));
@@ -321,48 +321,12 @@ public class PvmSummaryTooltip extends TitleTooltip
 		return PanelData.listed(PanelData.RAIDS.get(row).getSkill());
 	}
 
-	/** The prestige cape or Dizana's quiver at the level row's right, named while hovered (Dylan, 2026-11-14). */
-	void addGear(@Nullable Image image, String name)
+	/** The prestige cape, or Dizana's quiver or max cape: an item under the title, named while hovered (Dylan, 2026-11-14). */
+	void addGear(int itemId, String name, ItemManager itemManager)
 	{
-		if (image != null)
-		{
-			gear.add(image);
-			gearNames.add(name);
-		}
-	}
-
-	/** The combat level's row like the panel's combat cell: its icon centered in the icon column, then the level in bold white. */
-	private CardBody.Part leadRow(@Nullable Image icon, String text)
-	{
-		int column = icon != null ? icon.getWidth(null) + LEVEL_ICON_GAP : 0;
-		int gearWidth = gear.stream().mapToInt(image -> image.getWidth(null) + LEVEL_ICON_GAP).sum();
-		int height = gear.stream().mapToInt(image -> image.getHeight(null)).reduce(LEVEL_ROW_HEIGHT, Math::max);
-		return CardBody.row(height, c -> column + c.bfm.stringWidth(text) + gearWidth, (c, y) ->
-		{
-			Graphics2D g2 = c.g;
-			int x = c.w - c.inset();
-			for (int i = gear.size() - 1; i >= 0; i--)
-			{
-				Image image = gear.get(i);
-				x -= image.getWidth(null);
-				int top = y + (height - image.getHeight(null)) / 2;
-				g2.drawImage(image, x, top, null);
-				c.hits.add(new TooltipItemHover.HitBox(TooltipItemHover.HEADER_SECTION, 0, gearNames.get(i),
-					new Rectangle(x, top, image.getWidth(null), image.getHeight(null)), true));
-				x -= LEVEL_ICON_GAP;
-			}
-			y += (height - LEVEL_ROW_HEIGHT) / 2;
-			if (icon != null)
-			{
-				g2.drawImage(icon, c.inset(), y + (LEVEL_ROW_HEIGHT - icon.getHeight(null)) / 2, null);
-			}
-			g2.setFont(FontManager.getRunescapeBoldFont());
-			FontMetrics bfm = g2.getFontMetrics();
-			g2.setColor(NativeTooltip.valueColor);
-			g2.drawString(text, c.inset() + column,
-				y + (LEVEL_ROW_HEIGHT + bfm.getAscent() - bfm.getDescent()) / 2);
-			g2.setFont(FontManager.getRunescapeSmallFont());
-		});
+		gear.add(itemId);
+		gearNames.add(name);
+		gearSprites = TooltipItemSprites.load(gear, null, itemManager, id -> 1, this);
 	}
 
 	/** Vanilla's hiscore formatter: up to three decimals, trailing zeros dropped. */

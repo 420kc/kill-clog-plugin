@@ -23,7 +23,6 @@ final class ActivitySummaryTooltips
 	private final CaRewardSprites caRewardSprites;
 	private final Supplier<CardLinks> links;
 	private final ClogPages clogPages;
-	private final PanelIconCache iconCache;
 
 	JToolTip buildPvm(JLabel owner, JPanel parentCell)
 	{
@@ -55,13 +54,14 @@ final class ActivitySummaryTooltips
 		// cape, both show.
 		int quiver = LookupQueries.quiverItemId(hiscore, clog);
 		boolean maxCape = quiver == PanelData.DIZANAS_MAX_CAPE_ITEM_ID;
-		if (!maxCape || LookupQueries.infernal(hiscore))
+		int cape = LookupQueries.capeItemId(hiscore);
+		if (cape >= 0 && (!maxCape || LookupQueries.infernal(hiscore)))
 		{
-			tip.addGear(iconCache.capeFor(hiscore), LookupQueries.getPrestige(hiscore));
+			tip.addGear(cape, LookupQueries.getPrestige(hiscore), itemManager);
 		}
 		if (quiver >= 0)
 		{
-			tip.addGear(tip.itemSprite(quiver, itemManager), maxCape ? "Dizana's max cape" : "Dizana's quiver");
+			tip.addGear(quiver, maxCape ? "Dizana's max cape" : "Dizana's quiver", itemManager);
 		}
 		String mostKilled = LookupQueries.getMostKilledBoss(hiscore);
 		tip.setData(

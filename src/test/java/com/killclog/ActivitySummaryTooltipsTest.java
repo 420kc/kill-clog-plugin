@@ -20,7 +20,7 @@ public class ActivitySummaryTooltipsTest
 	private final ComparisonController comparison = mock(ComparisonController.class);
 	private final TooltipController tooltips = mock(TooltipController.class);
 	private final ActivitySummaryTooltips cards = new ActivitySummaryTooltips(mock(LookupSession.class), comparison,
-		mock(Cells.class), tooltips, mock(ItemManager.class), mock(CaRewardSprites.class), () -> null, mock(ClogPages.class), mock(PanelIconCache.class));
+		mock(Cells.class), tooltips, mock(ItemManager.class), mock(CaRewardSprites.class), () -> null, mock(ClogPages.class));
 
 	@Test
 	public void aloneTheSkillsCardShowsByItselfAndStaysOpenOverItsCell()
@@ -68,7 +68,7 @@ public class ActivitySummaryTooltipsTest
 			when(cells.getPvpActivityIcons()).thenReturn(new java.awt.image.BufferedImage[5]);
 			ClogPages pages = mock(ClogPages.class);
 			ActivitySummaryTooltips built = new ActivitySummaryTooltips(session, comparison, cells, tooltips,
-				mock(ItemManager.class), mock(CaRewardSprites.class), () -> CardLinks.ON, pages, mock(PanelIconCache.class));
+				mock(ItemManager.class), mock(CaRewardSprites.class), () -> CardLinks.ON, pages);
 			JLabel owner = new JLabel();
 			new JPanel().add(owner);
 			PvmSummaryTooltip tip = (PvmSummaryTooltip) built.buildPvm(owner, (JPanel) owner.getParent());
@@ -102,7 +102,7 @@ public class ActivitySummaryTooltipsTest
 		when(cells.getBossLabels()).thenReturn(java.util.Collections.emptyMap());
 		when(cells.getPvpActivityIcons()).thenReturn(new java.awt.image.BufferedImage[5]);
 		ActivitySummaryTooltips built = new ActivitySummaryTooltips(session, comparison, cells, tooltips,
-			mock(ItemManager.class), mock(CaRewardSprites.class), () -> CardLinks.ON, mock(ClogPages.class), mock(PanelIconCache.class));
+			mock(ItemManager.class), mock(CaRewardSprites.class), () -> CardLinks.ON, mock(ClogPages.class));
 		JLabel owner = new JLabel();
 		new JPanel().add(owner);
 		PvmSummaryTooltip tip = (PvmSummaryTooltip) built.buildPvm(owner, (JPanel) owner.getParent());
@@ -130,7 +130,7 @@ public class ActivitySummaryTooltipsTest
 			.totalItems(7).build());
 		when(cells.getTooltipDataMap()).thenReturn(data);
 		ActivitySummaryTooltips built = new ActivitySummaryTooltips(session, comparison, cells, tooltips,
-			mock(ItemManager.class), mock(CaRewardSprites.class), () -> CardLinks.ON, mock(ClogPages.class), mock(PanelIconCache.class));
+			mock(ItemManager.class), mock(CaRewardSprites.class), () -> CardLinks.ON, mock(ClogPages.class));
 		JLabel owner = new JLabel();
 		new JPanel().add(owner);
 		PvmSummaryTooltip tip = (PvmSummaryTooltip) built.buildPvm(owner, (JPanel) owner.getParent());

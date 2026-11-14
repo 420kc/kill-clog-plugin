@@ -180,38 +180,60 @@ public class PvmSummaryTooltipTest
 		assertEquals(List.of("Vorkath", "Bosses tab"), opened);
 	}
 
-	// Dylan 11/14: the prestige cape moves from the Player Summary to the level row's right, Dizana's quiver beside it,
-	// each named in the band while hovered.
+	// Dylan 11/14: the combat level moves to the title's right, and the prestige cape and Dizana's quiver stand under the
+	// title as items, each named in the band while hovered.
 	@Test
-	public void theCapeAndQuiverStandAtTheLevelRowsRightNamedWhileHovered()
+	public void theCapeAndQuiverStandUnderTheTitleAsItemsNamedWhileHovered()
 	{
+		net.runelite.client.game.ItemManager items = gearItems();
 		PvmSummaryTooltip tip = card();
-		tip.addGear(solid(36, 32, 0xffff00ff), "Maxed Infernal");
-		tip.addGear(solid(36, 32, 0xff00ffff), "Dizana's quiver");
-		tip.addGear(null, "nothing held");
+		tip.addGear(PanelData.INFERNAL_MAX_CAPE_ITEM_ID, "Maxed Infernal", items);
+		tip.addGear(PanelData.DIZANAS_QUIVER_ITEM_ID, "Dizana's quiver", items);
 		BufferedImage image = render(painted(tip));
 		Point cape = find(image, 0xffff00ff);
 		Point quiver = find(image, 0xff00ffff);
 		assertNotNull(cape);
 		assertNotNull(quiver);
-		assertTrue("the cape, then the quiver at the right", cape.x < quiver.x);
-		assertEquals("flush with the card's right inset", image.getWidth() - NativeTooltip.getInset() - 36, quiver.x);
+		assertTrue("the cape, then the quiver", cape.x < quiver.x);
+		assertTrue("from the card's left", cape.x < image.getWidth() / 2);
 		assertEquals("one row", cape.y, quiver.y);
 		assertTrue("above the tiles", quiver.y + 32 <= TestViews.tiles(image).get(0).y);
-		move(tip, cape.x + 18, cape.y + 16);
+		move(tip, cape.x + 16, cape.y + 16);
 		assertEquals("Maxed Infernal", tip.getHeaderHoverLineText());
-		move(tip, quiver.x + 18, quiver.y + 16);
+		move(tip, quiver.x + 16, quiver.y + 16);
 		assertEquals("Dizana's quiver", tip.getHeaderHoverLineText());
 	}
 
 	@Test
-	public void theLevelRowGrowsToItsGearsHeight()
+	public void theGearRowShowsOnlyWithGear()
 	{
 		PvmSummaryTooltip plain = card();
 		PvmSummaryTooltip geared = card();
-		geared.addGear(solid(36, 32, 0xffff00ff), "Maxed Infernal");
-		// The 22 px row stands as tall as the 32 px item sprites.
-		assertEquals(32 - 22, geared.getPreferredSize().height - plain.getPreferredSize().height);
+		geared.addGear(PanelData.MAX_CAPE_ITEM_ID, "Maxed", gearItems());
+		// A gap, then the item sprites' row.
+		assertEquals(4 + CardBody.GRID_SPRITE, geared.getPreferredSize().height - plain.getPreferredSize().height);
+	}
+
+	/** Items as the client draws them, each its own colour: Dizana's quiver cyan, any cape magenta. */
+	private static net.runelite.client.game.ItemManager gearItems()
+	{
+		net.runelite.client.game.ItemManager items = org.mockito.Mockito.mock(net.runelite.client.game.ItemManager.class);
+		org.mockito.Mockito.when(items.getImage(org.mockito.ArgumentMatchers.anyInt(), org.mockito.ArgumentMatchers.anyInt(),
+			org.mockito.ArgumentMatchers.anyBoolean())).thenAnswer(invocation ->
+		{
+			net.runelite.client.util.AsyncBufferedImage image = new net.runelite.client.util.AsyncBufferedImage(
+				org.mockito.Mockito.mock(net.runelite.client.callback.ClientThread.class), 32, 32, BufferedImage.TYPE_INT_ARGB);
+			int argb = (int) invocation.getArgument(0) == PanelData.DIZANAS_QUIVER_ITEM_ID ? 0xff00ffff : 0xffff00ff;
+			for (int y = 0; y < 32; y++)
+			{
+				for (int x = 0; x < 32; x++)
+				{
+					image.setRGB(x, y, argb);
+				}
+			}
+			return image;
+		});
+		return items;
 	}
 
 	private static BufferedImage solid(int width, int height, int argb)

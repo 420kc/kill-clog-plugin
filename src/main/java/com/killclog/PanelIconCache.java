@@ -45,25 +45,9 @@ final class PanelIconCache
 
 	BufferedImage capeFor(@Nullable HiscoreResult result)
 	{
-		if (result == null)
-		{
-			return null;
-		}
-		boolean maxed = LookupQueries.maxed(result);
-		boolean infernal = LookupQueries.infernal(result);
-		if (maxed && infernal)
-		{
-			return infernalMaxCapeTip;
-		}
-		if (maxed)
-		{
-			return maxCapeTip;
-		}
-		if (infernal)
-		{
-			return infernalCapeTip;
-		}
-		return null;
+		int cape = LookupQueries.capeItemId(result);
+		return cape == PanelData.INFERNAL_MAX_CAPE_ITEM_ID ? infernalMaxCapeTip : cape == PanelData.MAX_CAPE_ITEM_ID
+			? maxCapeTip : cape == PanelData.INFERNAL_CAPE_ITEM_ID ? infernalCapeTip : null;
 	}
 
 	void loadRuntimeIcons(Cells cells, CaRewardSprites caRewardSprites)

@@ -228,7 +228,7 @@ public class KillClogPanel extends PluginPanel
 		this.clogPages = new ClogPages(tooltipController, cells, comparison, lookupSession, tooltipDataBuilder, config);
 		this.activityTooltips = new ActivitySummaryTooltips(
 			lookupSession, comparison, cells, tooltipController, itemManager,
-			caRewardSprites, config::cardLinks, clogPages, iconCache);
+			caRewardSprites, config::cardLinks, clogPages);
 		this.itemNameResolver = new TooltipItemNameResolver(clientThread, itemManager,
 			this::onTooltipItemNamesResolved);
 		this.unsyncedCatalog.setResolver(itemNameResolver::resolve);
@@ -1334,7 +1334,7 @@ public class KillClogPanel extends PluginPanel
 		SummaryTooltip tip = new SummaryTooltip();
 		tip.setComponent(owner);
 		// A Kill Clog syncer who published their character stands where the prestige cape would; the cape and its
-		// prestige then show on the Combat Summary's level row instead.
+		// prestige then show under the Combat Summary's title instead.
 		BufferedImage character = portraits.forSummary(clog);
 		tip.setData(
 			shownName.isEmpty() ? "Player" : shownName,

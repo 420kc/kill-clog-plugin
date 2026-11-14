@@ -150,6 +150,15 @@ final class LookupQueries
 		return result.getTotalLevel() >= PanelData.MAX_TOTAL_LEVEL;
 	}
 
+	/** The prestige cape: the infernal max cape, the max cape or the infernal cape, -1 for none. */
+	static int capeItemId(@Nullable HiscoreResult result)
+	{
+		boolean maxed = result != null && maxed(result);
+		boolean infernal = result != null && infernal(result);
+		return maxed && infernal ? PanelData.INFERNAL_MAX_CAPE_ITEM_ID : maxed ? PanelData.MAX_CAPE_ITEM_ID
+			: infernal ? PanelData.INFERNAL_CAPE_ITEM_ID : -1;
+	}
+
 	/** An infernal cape: a TzKal-Zuk kill. */
 	static boolean infernal(HiscoreResult result)
 	{
