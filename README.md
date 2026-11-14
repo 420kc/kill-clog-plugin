@@ -124,7 +124,7 @@ A player with no Kill Clog character who uploaded one to [RuneProfile](https://r
 
 ## Support
 
-Help and updates are in the [Kill Clog Discord](https://killclog.com/discord). If setup, a total, an item mapping, or a card looks wrong, post there with your Kill Clog version, the RSN, and a screenshot. Its logo sits in the panel's top corner while you're logged out.
+Help and updates are in the [Kill Clog Discord](https://killclog.com/discord). If setup, a total, an item mapping, or a card looks wrong, post there with your Kill Clog version, the RSN, and a screenshot.
 
 ## Data and privacy
 

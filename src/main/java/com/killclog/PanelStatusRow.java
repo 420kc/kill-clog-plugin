@@ -8,12 +8,10 @@ import java.awt.image.BufferedImage;
 import java.util.function.*;
 import javax.swing.*;
 import lombok.*;
-import net.runelite.api.GameState;
 import net.runelite.api.gameval.SpriteID;
 import net.runelite.client.game.SpriteManager;
 import net.runelite.client.ui.ColorScheme;
 import net.runelite.client.util.ImageUtil;
-import net.runelite.client.util.LinkBrowser;
 
 /**
  * The status line above the search bar and the killclog.com one-click
@@ -44,16 +42,11 @@ final class PanelStatusRow
 	// Locked: grey and fainter than at rest, and hovering never lights it.
 	private static final Color LOCKED_GREY = new Color(150, 150, 150);
 	private static final ImageIcon SYNC_CHALICE_LOCKED = chaliceTinted(0.35f, LOCKED_GREY);
-	private static final BufferedImage DISCORD_LOGO = chaliceHeight(ImageUtil.loadImageResource(PanelStatusRow.class,
-		"/com/killclog/discord.png"));
-	private static final ImageIcon DISCORD_DIM = imageTinted(DISCORD_LOGO, 0.45f, null);
-	private static final ImageIcon DISCORD_LIT = imageTinted(DISCORD_LOGO, 1f, null);
 
 	private final JPanel row;
 	private final JLabel searchStatus = new JLabel(" ");
 	private final JLabel syncArrow = new JLabel();
 	private final JLabel characterPublish = new JLabel();
-	private final JLabel discord = new JLabel();
 	private final Color textDim;
 	private final SpriteManager spriteManager;
 	private final TooltipController tooltipController;
@@ -82,8 +75,6 @@ final class PanelStatusRow
 	@Setter(AccessLevel.PACKAGE)
 	private Runnable lockedHandler;
 	private boolean characterPublishEnabled;
-	// Logged out: the Discord logo's time. Off until the plugin says, so it never flashes up during a login.
-	private boolean loggedOut;
 	@Setter(AccessLevel.PACKAGE)
 	private Runnable killclogSyncHandler;
 	@Setter(AccessLevel.PACKAGE)
@@ -385,17 +376,6 @@ final class PanelStatusRow
 				: syncFeedback.hoverText(SYNC_HOVER_TEXT, SYNC_FAILURE_HOVER_TEXT),
 			() -> firstParty == FirstParty.LOCKED ? lockedHandler : killclogSyncHandler));
 
-		// The Kill Clog Discord, through killclog.com so its invite can change without a release: killclog.com's logo in
-		// the chalice's red metal, at the chalice's size, dim at rest and lit on hover as the chalice is. It takes the
-		// chalice's corner while logged out, when the chalice is away, and never shows while you play (Dylan 11/11).
-		discord.setIcon(DISCORD_DIM);
-		discord.setBorder(syncArrow.getBorder());
-		discord.setVerticalAlignment(JLabel.CENTER);
-		discord.setVisible(false);
-		discord.addMouseListener(controlMouse(discord, Owner.DISCORD,
-			hovered -> discord.setIcon(hovered ? DISCORD_LIT : DISCORD_DIM), () -> null,
-			() -> "Join the Kill Clog Discord", () -> () -> LinkBrowser.browse("https://killclog.com/discord")));
-
 		JPanel row = new JPanel(new BorderLayout());
 		row.setBackground(ColorScheme.DARK_GRAY_COLOR);
 		// The parent column is BoxLayout: children must agree on alignment or
@@ -406,7 +386,6 @@ final class PanelStatusRow
 		JPanel actions = new JPanel();
 		actions.setLayout(new BoxLayout(actions, BoxLayout.X_AXIS));
 		actions.setOpaque(false);
-		actions.add(discord);
 		actions.add(characterPublish);
 		actions.add(syncArrow);
 		row.add(actions, BorderLayout.EAST);
@@ -429,12 +408,7 @@ final class PanelStatusRow
 	 */
 	private static BufferedImage chaliceBase()
 	{
-		return chaliceHeight(KillClogIcons.pluginIcon());
-	}
-
-	/** An icon at the chalice's height, scaled as the chalice is. */
-	private static BufferedImage chaliceHeight(BufferedImage src)
-	{
+		BufferedImage src = KillClogIcons.pluginIcon();
 		int h = 13;
 		int w = Math.max(1, src.getWidth() * h / src.getHeight());
 		BufferedImage out = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
@@ -511,27 +485,11 @@ final class PanelStatusRow
 			locked ? LOCKED_GREY : characterGlow.lit() ? SYNC_K1 : null));
 	}
 
-	/** Whether the game is logged out: the Discord logo shows then, and only then. */
-	void setLoggedOut(boolean loggedOut)
-	{
-		this.loggedOut = loggedOut;
-		refreshFirstPartyVisibility();
-	}
-
-	/** Logged out: the login screen and before it. A login, a load, a world hop and an unknown state count as playing. */
-	static boolean loggedOut(GameState state)
-	{
-		return state != null && state.getState() < GameState.LOGGING_IN.getState();
-	}
-
-	// The row's controls show only while it's free, so a search's progress parks them all; the Discord logo shows only
-	// while logged out, in the chalice's corner.
 	private void refreshFirstPartyVisibility()
 	{
 		boolean visible = firstParty != FirstParty.HIDDEN && free();
 		syncArrow.setVisible(syncArrowEnabled && visible);
 		characterPublish.setVisible(characterPublishEnabled && characterBase != null && visible);
-		discord.setVisible(loggedOut && free());
 	}
 
 	private static String characterTooltipText(String detail)

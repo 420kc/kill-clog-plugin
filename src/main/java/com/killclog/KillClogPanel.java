@@ -744,12 +744,6 @@ public class KillClogPanel extends PluginPanel
 		statusRow.setSyncArrowEnabled(enabled);
 	}
 
-	/** Swing thread: whether the game is logged out, which is when the Discord logo shows. */
-	void setLoggedOut(boolean loggedOut)
-	{
-		statusRow.setLoggedOut(loggedOut);
-	}
-
 	void setFirstParty(PanelStatusRow.FirstParty state)
 	{
 		statusRow.setFirstParty(state);

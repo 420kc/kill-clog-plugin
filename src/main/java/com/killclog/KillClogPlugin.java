@@ -243,7 +243,6 @@ public class KillClogPlugin extends Plugin
 		world.showAgain();
 		panel.setSyncArrowEnabled(config.killclogSync());
 		panel.setCharacterPublishEnabled(publication.characterPublishingEnabled());
-		panel.setLoggedOut(PanelStatusRow.loggedOut(client.getGameState()));
 		// The sync trigger lives at the data seam: any path that lands a
 		// first-party observation (bulk page capture, Collection Log Search,
 		// live unlock) schedules a debounced push.
@@ -455,8 +454,6 @@ public class KillClogPlugin extends Plugin
 	public void onGameStateChanged(GameStateChanged event)
 	{
 		sessions.update(client);
-		boolean loggedOut = PanelStatusRow.loggedOut(event.getGameState());
-		SwingUtilities.invokeLater(() -> panel.setLoggedOut(loggedOut));
 		if (event.getGameState() == GameState.LOGIN_SCREEN
 			|| event.getGameState() == GameState.HOPPING
 			|| event.getGameState() == GameState.CONNECTION_LOST)
