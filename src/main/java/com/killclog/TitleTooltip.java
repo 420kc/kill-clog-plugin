@@ -418,7 +418,7 @@ public abstract class TitleTooltip extends NativeTooltip
 		return itemHover.hoveredItemObtained() ? CLOG_GREEN : CLOG_RED;
 	}
 
-	private static String fitHeaderText(FontMetrics fm, String text, int maxWidth)
+	static String fitHeaderText(FontMetrics fm, String text, int maxWidth)
 	{
 		if (fm.stringWidth(text) <= maxWidth)
 		{

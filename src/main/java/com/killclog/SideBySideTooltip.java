@@ -112,16 +112,7 @@ public class SideBySideTooltip extends NativeTooltip
 		// A name wider than its card trims to fit rather than bleeding into
 		// the neighbor card's lane or the iron border.
 		int badgeWidth = badge != null ? badge.getIconWidth() + 3 : 0;
-		int textWidth = Math.max(0, cardWidth - badgeWidth);
-		String shown = name;
-		if (fm.stringWidth(shown) > textWidth)
-		{
-			while (!shown.isEmpty() && fm.stringWidth(shown + "..") > textWidth)
-			{
-				shown = shown.substring(0, shown.length() - 1);
-			}
-			shown = fm.stringWidth(shown + "..") <= textWidth ? shown + ".." : "";
-		}
+		String shown = TitleTooltip.fitHeaderText(fm, name, cardWidth - badgeWidth);
 		int x = cardX + Math.max(0, (cardWidth - badgeWidth - fm.stringWidth(shown)) / 2);
 		if (badge != null)
 		{
