@@ -194,9 +194,9 @@ final class CardBody
 		return line(label, value, NativeTooltip.valueColor);
 	}
 
-	static Part text(String text, Color color, boolean measured)
+	static Part text(String text, Color color)
 	{
-		return row(NativeTooltip.LINE_HEIGHT, c -> measured ? c.fm.stringWidth(text) : 0, (c, y) ->
+		return row(NativeTooltip.LINE_HEIGHT, c -> c.fm.stringWidth(text), (c, y) ->
 		{
 			c.g.setColor(color);
 			c.g.drawString(text, c.inset(), y + c.fm.getAscent());
@@ -290,15 +290,9 @@ final class CardBody
 	/** One row that opens something: it answers hover in white and a left press with its key. */
 	static Part clickRow(ClickRows rows, int key, ToIntFunction<Ctx> width, RowPainter painter)
 	{
-		return clickRow(rows, key, NativeTooltip.LINE_HEIGHT, width, painter);
-	}
-
-	/** The same row at its own height, for text a size up. */
-	static Part clickRow(ClickRows rows, int key, int height, ToIntFunction<Ctx> width, RowPainter painter)
-	{
-		return row(height, width, (c, y) ->
+		return row(NativeTooltip.LINE_HEIGHT, width, (c, y) ->
 		{
-			painter.paint(c, y, rows.spanShown(c, y, height, key));
+			painter.paint(c, y, rows.spanShown(c, y, NativeTooltip.LINE_HEIGHT, key));
 		});
 	}
 

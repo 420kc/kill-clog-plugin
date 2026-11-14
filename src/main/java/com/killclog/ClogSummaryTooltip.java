@@ -43,10 +43,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 			.forEach(row -> TAB_SPRITES.put(row[0], Integer.parseInt(row[1])));
 	}
 	private final Map<String, Image> tabSprites = new HashMap<>();
-	private static final String[] MONTHS = {
-		"Jan", "Feb", "Mar", "Apr", "May", "Jun",
-		"Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
-	};
+	private static final java.time.format.DateTimeFormatter SHORT_DATE =
+		java.time.format.DateTimeFormatter.ofPattern("MMM d", Locale.ENGLISH);
 	private static final String SETUP_OPEN_LINE = "1. Open your Collection Log.";
 	private static final String SETUP_SEARCH_LINE = "2. Wait for setup to finish.";
 	private static final String SETUP_CHAT_LINE = "Chat will confirm when setup is complete.";
@@ -246,7 +244,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 	static String shortDate(String date)
 	{
 		java.time.LocalDateTime day = ClogDates.here(date);
-		return day == null ? null : MONTHS[day.getMonthValue() - 1] + " " + day.getDayOfMonth();
+		return day == null ? null : SHORT_DATE.format(day);
 	}
 
 	@Override
@@ -255,13 +253,13 @@ public class ClogSummaryTooltip extends TitleTooltip
 		CardBody body = new CardBody();
 		if (firstTimeSetup)
 		{
-			return body.add(CardBody.text(SETUP_OPEN_LINE, NOTICE_COLOR, true))
-				.add(CardBody.text(SETUP_SEARCH_LINE, NOTICE_COLOR, true))
-				.add(CardBody.text(SETUP_CHAT_LINE, NOTICE_COLOR, true));
+			return body.add(CardBody.text(SETUP_OPEN_LINE, NOTICE_COLOR))
+				.add(CardBody.text(SETUP_SEARCH_LINE, NOTICE_COLOR))
+				.add(CardBody.text(SETUP_CHAT_LINE, NOTICE_COLOR));
 		}
 		if (notice != null)
 		{
-			return body.add(CardBody.text(notice, NOTICE_COLOR, true));
+			return body.add(CardBody.text(notice, NOTICE_COLOR));
 		}
 
 		// The tier's name at the header's right. The Total and each tab stand under the header as the game's tiles,

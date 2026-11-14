@@ -16,8 +16,7 @@ import net.runelite.client.util.*;
 /**
  * Intermediate tooltip with a titled header zone: bold title line,
  * optional subtitle (label: value), optional rank line, then separator.
- * Subclasses provide content below the separator via
- * {@link #getContentSize(int)} and {@link #paintBody(Graphics2D, int, int, int)}.
+ * Subclasses list their content below the separator as parts ({@link #body()}).
  */
 public abstract class TitleTooltip extends NativeTooltip
 {
@@ -110,29 +109,6 @@ public abstract class TitleTooltip extends NativeTooltip
 			icon = ImageUtil.resizeImage(icon, width, TITLE_ICON_MAX);
 		}
 		titleIcon = icon;
-	}
-
-	/**
-	 * An image in the header's right corner, every header line kept clear of it: the Collection Log's current tier, a
-	 * published character's prestige cape. The room is kept whether or not the image has loaded yet, so the card
-	 * never changes size when it arrives. With a name, hovering it shows the name in the card's band.
-	 */
-	CardBody.Part headerCorner(boolean keepRoom, @Nullable BufferedImage image, @Nullable String name)
-	{
-		return CardBody.row(0, c -> keepRoom ? headerTextWidth() + 40 : 0, (c, y) ->
-		{
-			if (image == null)
-			{
-				return;
-			}
-			int x = c.w - c.inset() - image.getWidth();
-			int top = c.inset() + (getHeaderHeight() - image.getHeight()) / 2;
-			c.g.drawImage(image, x, top, null);
-			if (name != null)
-			{
-				c.hits.add(new TooltipItemHover.HitBox(TooltipItemHover.HEADER_SECTION, 0, name, new Rectangle(x, top, image.getWidth(), image.getHeight()), true));
-			}
-		});
 	}
 
 	/**
@@ -237,13 +213,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	 */
 	public void setObtained(int obtained, int total)
 	{
-		setSubtitle(obtainedLabel(), progressCountText(obtained, total), completionColor(obtained, total));
-	}
-
-	/** The count's label; the Collection Log card counts the whole log, not one page. */
-	protected String obtainedLabel()
-	{
-		return "Obtained: ";
+		setSubtitle("Obtained: ", progressCountText(obtained, total), completionColor(obtained, total));
 	}
 
 	/**
@@ -252,7 +222,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	 */
 	public void setObtainedPlaceholder(int total)
 	{
-		setSubtitle(obtainedLabel(), progressPlaceholderText(total), MUTED_GRAY);
+		setSubtitle("Obtained: ", progressPlaceholderText(total), MUTED_GRAY);
 	}
 
 	protected static String progressPlaceholderText(int total)
@@ -515,15 +485,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		return NAME_LINE_HEIGHT + (headerLines().size() + (onBack != null ? 1 : 0)) * LINE_HEIGHT;
 	}
 
-	/**
-	 * Total header zone height including separator line and gaps.
-	 * Content starts at inset + this value.
-	 */
-	protected int getHeaderZoneHeight()
-	{
-		return getHeaderHeight() + SEPARATOR_GAP + 1 + SEPARATOR_GAP;
-	}
-
 	/** The scroll window of a card that has one. */
 	@Nullable
 	CardBody.Scroll scroll()
@@ -548,41 +509,16 @@ public abstract class TitleTooltip extends NativeTooltip
 		return new CardBody();
 	}
 
-	/**
-	 * Return the content dimensions given the available width.
-	 * The availableWidth accounts for the header-driven minimum width, so subclasses
-	 * can wrap content to fill the space.
-	 */
-	protected Dimension getContentSize(int availableWidth)
-	{
-		return body().size(this, availableWidth);
-	}
-
-	/**
-	 * Paint the body content starting at the given Y coordinate (below separator).
-	 */
-	protected void paintBody(Graphics2D g2, int w, int h, int startY)
-	{
-		itemHover.setHitBoxes(body().paint(this, g2, w, startY));
-	}
-
 	@Override
 	public Dimension getPreferredSize()
 	{
 		int inset = getInset();
-
-		// Header text widths drive minimum tooltip width.
-		// The full header width flows to getContentSize so grids can fill the space.
-		int headerMinWidth = headerTextWidth();
-
-		Dimension contentSize = getContentSize(Math.max(headerMinWidth, 1));
-
-		int contentWidth = Math.max(headerMinWidth, contentSize.width);
-		// The body paints at the card's final width, where a grid may take another column: measured there too.
-		int totalHeight = inset + getHeaderZoneHeight() + getContentSize(contentWidth).height + inset;
-		int totalWidth = contentWidth + inset * 2;
-
-		return new Dimension(totalWidth, totalHeight);
+		// The header's widest line is the least width and the body may ask for more; the body is measured again at the
+		// width it paints at, where a grid may take another column.
+		int header = headerTextWidth();
+		int width = Math.max(header, body().size(this, Math.max(header, 1)).width);
+		return new Dimension(width + inset * 2,
+			inset + getHeaderHeight() + separatorHeight(SEPARATOR_GAP) + body().size(this, width).height + inset);
 	}
 
 	/** The widest header line: the card is never narrower, and a corner image keeps clear of every line. */
@@ -610,8 +546,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	@Override
 	protected void paintContent(Graphics2D g2, int w, int h)
 	{
-		int startY = paintHeader(g2, w);
-		paintBody(g2, w, h, startY);
+		itemHover.setHitBoxes(body().paint(this, g2, w, paintHeader(g2, w)));
 	}
 
 	/**
