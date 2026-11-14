@@ -25,10 +25,12 @@ final class GameTile
 	private static final int PAGE_COUNT_TOP = 34;
 	private static final int NAME_LINE = 13;
 	private static final int NAME_PAD = 4;
-	// The frame keeps its corners, brackets and all, and stretches between them; a hovered tile's fill is a shade lighter.
-	private static final int FRAME_EDGE = 7;
-	// The game's tile frame, clear where its fill goes: the fill is painted under it (NativeTooltip.tileFill).
-	private static final BufferedImage FRAME = ImageUtil.loadImageResource(GameTile.class, "game-tile-edge.png");
+	// The game's tile frame at each size a tile comes in, its corners and brackets as drawn and its edges stretched
+	// between them, clear where the fill goes: the fill is painted under it (NativeTooltip.tileFill), a hovered tile's a
+	// shade lighter.
+	private static final BufferedImage FRAME = ImageUtil.loadImageResource(GameTile.class, "game-tile-frame.png");
+	private static final BufferedImage WIDE_FRAME = ImageUtil.loadImageResource(GameTile.class, "game-tile-frame-wide.png");
+	private static final BufferedImage PAGE_FRAME = ImageUtil.loadImageResource(GameTile.class, "game-tile-frame-page.png");
 	private static final Font COUNT_FONT = FontManager.getRunescapeFont();
 	private static final int NAME_TOP = 4;
 	private static final int SPRITE_TOP = 17;
@@ -140,7 +142,7 @@ final class GameTile
 		Graphics2D g = c.g;
 		g.setColor(NativeTooltip.tileFill(hovered));
 		g.fillRect(box.x, box.y, box.width, box.height);
-		frame(g, FRAME, box);
+		g.drawImage(box.height == PAGE_HEIGHT ? PAGE_FRAME : box.width == WIDTH ? FRAME : WIDE_FRAME, box.x, box.y, null);
 		boolean known = tile.obtained >= 0;
 		boolean complete = known && tile.obtained >= tile.total;
 		Color color = !known ? TitleTooltip.MUTED_GRAY
@@ -228,20 +230,5 @@ final class GameTile
 			}
 		}
 		return best;
-	}
-
-	/** The frame at the box's size: its corners as drawn, its edges and middle stretched between them. */
-	private static void frame(Graphics2D g, BufferedImage image, Rectangle box)
-	{
-		int[] dx = {box.x, box.x + FRAME_EDGE, box.x + box.width - FRAME_EDGE, box.x + box.width};
-		int[] dy = {box.y, box.y + FRAME_EDGE, box.y + box.height - FRAME_EDGE, box.y + box.height};
-		int[] sx = {0, FRAME_EDGE, image.getWidth() - FRAME_EDGE, image.getWidth()};
-		int[] sy = {0, FRAME_EDGE, image.getHeight() - FRAME_EDGE, image.getHeight()};
-		for (int i = 0; i < 9; i++)
-		{
-			int col = i % 3;
-			int row = i / 3;
-			g.drawImage(image, dx[col], dy[row], dx[col + 1], dy[row + 1], sx[col], sy[row], sx[col + 1], sy[row + 1], null);
-		}
 	}
 }
