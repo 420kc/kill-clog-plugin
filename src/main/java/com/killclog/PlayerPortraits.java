@@ -15,10 +15,11 @@ import okhttp3.OkHttpClient;
 /**
  * Players' characters for the Player Summary. When a player publishes their character, killclog.com
  * draws it in the game's own style, with their follower beside them, and serves it at
- * {@code /api/player/{rsn}/portrait/large}; a player with no Kill Clog character who uploaded one to
- * RuneProfile gets that one. Only lookups that came back from the player's own Kill Clog sync,
- * the local player's own log or RuneProfile ask for one ({@link #portraitName}), so nobody else costs
- * a request.
+ * {@code /api/player/{rsn}/portrait/large}. Only lookups that came back from the player's own Kill Clog
+ * sync or the local player's own log ask for one ({@link #portraitName}), so nobody else costs a
+ * request. A character the server drew from RuneProfile's (its ETag's {@code rp-} tag) is never shown:
+ * that file is whatever model the game drew, other plugins' recolours included, so it can wear items the
+ * player doesn't have (Dylan, 2026-11-14).
  *
  * <p>Every lookup re-checks the portrait (an unchanged one answers 304 with no body), and a portrait
  * shows only once the server has confirmed it for that lookup: a player who withdraws or deletes

@@ -316,7 +316,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 		return PanelData.listed(PanelData.RAIDS.get(row).getSkill());
 	}
 
-	/** The combat level's row like the panel's combat cell: its icon centered in the icon column, then the level in bold white. */
 	/** The prestige cape or Dizana's quiver at the level row's right, named while hovered (Dylan, 2026-11-14). */
 	void addGear(@Nullable Image image, String name)
 	{
@@ -327,6 +326,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		}
 	}
 
+	/** The combat level's row like the panel's combat cell: its icon centered in the icon column, then the level in bold white. */
 	private CardBody.Part leadRow(@Nullable Image icon, String text)
 	{
 		int column = icon != null ? icon.getWidth(null) + LEVEL_ICON_GAP : 0;
