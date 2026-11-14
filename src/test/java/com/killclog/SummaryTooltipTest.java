@@ -173,7 +173,7 @@ public class SummaryTooltipTest
 	public void aKillClogCharacterWearsTheChaliceDimUntilHovered()
 	{
 		BufferedImage chalice = cornerIcon(KillClogIcons::killClogSourceIcon, SummaryTooltip.KILLCLOG_LINK,
-			TooltipItemLink.killclogUrl("pgn"));
+			"https://killclog.com/p/pgn");
 		BufferedImage runeProfile = cornerIcon(KillClogIcons::runeProfileSourceIcon, SummaryTooltip.RUNEPROFILE_LINK,
 			TooltipItemLink.runeProfileUrl("pgn"));
 		boolean differs = false;
@@ -185,7 +185,6 @@ public class SummaryTooltipTest
 			}
 		}
 		assertTrue("the chalice, not RuneProfile's icon", differs);
-		assertEquals("https://killclog.com/p/pgn", TooltipItemLink.killclogUrl("pgn"));
 	}
 
 	/** A character with a site's icon in its corner: dim, in no room of its own, lit and named while hovered. */
@@ -239,6 +238,19 @@ public class SummaryTooltipTest
 			}
 		}
 		assertTrue("hovered, the icon is at full strength", litDistance > dimDistance * 3 / 2);
+
+		// A click opens the character's page on its site.
+		try (org.mockito.MockedStatic<net.runelite.client.util.LinkBrowser> browser =
+			org.mockito.Mockito.mockStatic(net.runelite.client.util.LinkBrowser.class))
+		{
+			for (java.awt.event.MouseListener listener : tip.getMouseListeners())
+			{
+				listener.mousePressed(new java.awt.event.MouseEvent(tip, java.awt.event.MouseEvent.MOUSE_PRESSED,
+					System.currentTimeMillis(), 0, (int) icon.getCenterX(), (int) icon.getCenterY(), 1, false,
+					java.awt.event.MouseEvent.BUTTON1));
+			}
+			browser.verify(() -> net.runelite.client.util.LinkBrowser.browse(page));
+		}
 		return dim;
 	}
 
