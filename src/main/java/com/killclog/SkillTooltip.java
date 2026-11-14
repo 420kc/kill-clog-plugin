@@ -3,6 +3,7 @@ package com.killclog;
 import java.awt.*;
 import java.util.*;
 import java.util.List;
+import java.util.function.ToIntFunction;
 import javax.annotation.Nullable;
 import lombok.*;
 import net.runelite.api.*;
@@ -16,6 +17,7 @@ public class SkillTooltip extends TitleTooltip
 	static final String RANK_LABEL = "Rank: ";
 	static final String XP_TO_LEVEL_LABEL = "XP to Level: ";
 	static final String RIFTS_CLOSED_LABEL = "Rifts Closed: ";
+	private static final int MIN_COLS = 5;
 
 	private Stats stats = Stats.empty();
 	private List<SkillClogSection> sections = Collections.emptyList();
@@ -24,34 +26,39 @@ public class SkillTooltip extends TitleTooltip
 	private String countCategory;
 	private String countLabel;
 	int count = -1;
-	private final SkillClogSectionRenderer sectionRenderer = new SkillClogSectionRenderer(this);
+	private final List<TooltipItemSprites> sprites = new ArrayList<>();
 	// A skill's log scrolls at full size past the height of a long Collection Log tab, a sprite row a notch.
-	private final CardBody.Scroll scroll = new CardBody.Scroll(this,
-		CardBody.WINDOW, SkillClogSectionRenderer.CELL_SIZE);
+	private final CardBody.Scroll scroll = new CardBody.Scroll(this, CardBody.WINDOW, CardBody.GRID_CELL);
 
 	public void setData(Skill skill, @Nullable HiscoreResult result, boolean virtualLevels,
 		List<SkillClogSection> sections, @Nullable ItemManager itemManager)
 	{
 		itemHover.clear();
 		setTitle(skill.getName());
-		clearTitleSuffix();
 		clearSubtitle();
 		stats = Stats.from(skill, result, virtualLevels);
 		this.sections = sections != null ? sections : Collections.emptyList();
 		countCategory = null;
 		countLabel = null;
 		count = -1;
-		sectionRenderer.setSections(this.sections, itemManager);
+		sprites.clear();
+		for (SkillClogSection section : this.sections)
+		{
+			sprites.add(itemManager != null
+				? TooltipItemSprites.load(section.itemIds(), section.itemNames(), itemManager, id -> 1, this) : null);
+		}
+		// The log's progress is its Obtained line under the title, as on every other log card (Dylan, 2026-11-14).
 		if (!this.sections.isEmpty())
 		{
-			SkillClogSection.Progress progress = SkillClogSection.combinedProgress(
-				this.sections);
-			String progressText = progress.obtained() >= 0
-				? progressCountText(progress.obtained(), progress.total())
-				: progressPlaceholderText(progress.total());
-			setTitleSuffix(" (" + progressText + ")",
-				progress.obtained() >= 0
-					? completionColor(progress.obtained(), progress.total()) : MUTED_GRAY);
+			SkillClogSection.Progress progress = SkillClogSection.combinedProgress(this.sections);
+			if (progress.obtained() >= 0)
+			{
+				setObtained(progress.obtained(), progress.total());
+			}
+			else
+			{
+				setObtainedPlaceholder(progress.total());
+			}
 		}
 	}
 
@@ -75,44 +82,55 @@ public class SkillTooltip extends TitleTooltip
 		{
 			return body;
 		}
-		// The skill's clog sections fill the card's width under the band their hovered item is named in.
-		return body.add(CardBody.hoverBand())
-			.add(CardBody.scroll(scroll, CardBody.part(c -> sectionRenderer.soloSize(Math.max(statsWidth(c.fm), c.available)).width,
-				c -> sectionRenderer.soloSize(Math.max(statsWidth(c.fm), c.available)).height,
-				(c, y) -> sectionRenderer.paintSolo(c.g, c.w, y, c.hits))));
+		// The skill's clog sections fill the card's width under the band their hovered item is named in, each titled as a
+		// card's section is.
+		CardBody log = new CardBody();
+		for (int i = 0; i < sections.size(); i++)
+		{
+			SkillClogSection section = sections.get(i);
+			SkillClogSection.PlayerItems items = section.primary();
+			int total = section.itemIds().size();
+			log.add(CardBody.gap(i > 0 ? CardBody.SECTION_SPACE : 0));
+			if (section.hasHeading())
+			{
+				log.add(CardBody.section(section.heading()));
+			}
+			log.add(CardBody.line("Obtained: ", progressText(items, total),
+				items.synced() ? completionColor(items.obtainedCount(), total) : MUTED_GRAY));
+			if (countCategory != null && section.isCategory(countCategory))
+			{
+				log.add(CardBody.line(countLabel, count >= 0 ? grouped(count) : "--",
+					count >= 0 ? NativeTooltip.valueColor : MUTED_GRAY));
+			}
+			log.add(grid(i, section, sprites.get(i)));
+		}
+		return body.add(CardBody.hoverBand()).add(CardBody.scroll(scroll, log.asPart()));
 	}
 
-	private int statsWidth(FontMetrics fm)
+	/** A section's items from the left in as many columns as the card holds, five at least, a set the catalog rows alone. */
+	private static CardBody.Part grid(int index, SkillClogSection section, @Nullable TooltipItemSprites sprites)
 	{
-		int width = Math.max(rowWidth(fm, LEVEL_LABEL, stats.levelText()), rowWidth(fm, XP_LABEL, stats.xpText()));
-		width = Math.max(width, rowWidth(fm, RANK_LABEL, stats.rankText()));
-		return Math.max(width, rowWidth(fm, XP_TO_LEVEL_LABEL, stats.xpToLevelText()));
+		List<Integer> ids = section.itemIds();
+		ToIntFunction<CardBody.Ctx> cols = c -> Math.min(Math.max(MIN_COLS, (c.available + CardBody.GRID_GAP) / CardBody.GRID_CELL),
+			ids.size());
+		return CardBody.part(c -> cols.applyAsInt(c) * CardBody.GRID_CELL - CardBody.GRID_GAP, c ->
+		{
+			int[] slots = section.slots(cols.applyAsInt(c));
+			return (slots[slots.length - 1] / cols.applyAsInt(c) + 1) * CardBody.GRID_CELL - CardBody.GRID_GAP;
+		}, (c, y) -> c.hits.addAll(TooltipItemSprites.paintGrid(c.g, sprites, section.itemNames(), index, ids,
+			section.primary().obtainedIds(), section.primary().obtainedCounts(), c.inset(), y, cols.applyAsInt(c),
+			CardBody.GRID_SPRITE, CardBody.GRID_CELL, section.slots(cols.applyAsInt(c)))));
+	}
+
+	static String progressText(SkillClogSection.PlayerItems items, int total)
+	{
+		return items.synced() ? progressCountText(items.obtainedCount(), total) : progressPlaceholderText(total);
 	}
 
 	@Override
 	CardBody.Scroll scroll()
 	{
 		return scroll;
-	}
-
-	boolean countsSection(SkillClogSection section)
-	{
-		return countCategory != null && section.isCategory(countCategory);
-	}
-
-	String countLabel()
-	{
-		return countLabel;
-	}
-
-	String countText()
-	{
-		return count >= 0 ? grouped(count) : "--";
-	}
-
-	private static int rowWidth(FontMetrics fm, String label, String value)
-	{
-		return fm.stringWidth(label) + fm.stringWidth(value);
 	}
 
 	@RequiredArgsConstructor(access = AccessLevel.PRIVATE)

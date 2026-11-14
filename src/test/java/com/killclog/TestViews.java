@@ -109,6 +109,18 @@ final class TestViews
 		throw new IllegalArgumentException("no field " + name + " on " + type);
 	}
 
+	/** A card's line under its title: the Obtained count's value (null with no line), or its colour. */
+	static String subtitle(TitleTooltip tip)
+	{
+		Object line = field(tip, "subtitle");
+		return line != null ? field(line, "value") : null;
+	}
+
+	static java.awt.Color subtitleColor(TitleTooltip tip)
+	{
+		return field(field(tip, "subtitle"), "color");
+	}
+
 	static void set(Object owner, String name, Object value)
 	{
 		for (Class<?> c = owner.getClass(); c != null; c = c.getSuperclass())

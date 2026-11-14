@@ -78,10 +78,10 @@ public class SkillCellGridTest
 		cells.clear(catalog);
 
 		SkillTooltip smithing = (SkillTooltip) cells.labels().get(Skill.SMITHING).createToolTip();
-		assertEquals(" (--/2)", smithing.getTitleSuffix());
+		assertEquals("--/2", TestViews.subtitle(smithing));
 		assertEquals(1, TestViews.sections(smithing).size());
 		SkillClogSection section = TestViews.sections(smithing).get(0);
-		assertEquals("--/2", SkillClogSectionRenderer.progressText(
+		assertEquals("--/2", SkillTooltip.progressText(
 			section.primary(), section.itemIds().size()));
 		assertTrue(section.primary().obtainedIds().isEmpty());
 	}
@@ -185,7 +185,7 @@ public class SkillCellGridTest
 		assertEquals(progressionConfig.missing1Color(),
 			cells.labels().get(Skill.SMITHING).getForeground());
 		SkillTooltip tooltip = (SkillTooltip) cells.labels().get(Skill.SMITHING).createToolTip();
-		assertEquals(" (3/4)", tooltip.getTitleSuffix());
+		assertEquals("3/4", TestViews.subtitle(tooltip));
 	}
 
 	@Test
@@ -229,7 +229,7 @@ public class SkillCellGridTest
 			SkillTooltip plain = new SkillTooltip();
 			plain.setData(skill, hiscore, false, Collections.emptyList(), null);
 			assertTrue(TestViews.sections(modal).isEmpty());
-			assertEquals(plain.getTitleSuffix(), modal.getTitleSuffix());
+			assertEquals(TestViews.subtitle(plain), TestViews.subtitle(modal));
 			assertEquals(plain.getPreferredSize(), modal.getPreferredSize());
 		}
 
@@ -282,10 +282,10 @@ public class SkillCellGridTest
 		cells.render(blue, null, false, clog, null, clog);
 		SkillTooltip runecraft = (SkillTooltip) cells.labels().get(Skill.RUNECRAFT).createToolTip();
 		SkillTooltip herblore = (SkillTooltip) cells.labels().get(Skill.HERBLORE).createToolTip();
-		assertEquals(SkillTooltip.RIFTS_CLOSED_LABEL, runecraft.countLabel());
-		assertEquals("34", runecraft.countText());
-		assertEquals(" (0/3)", runecraft.getTitleSuffix());
-		assertNull(herblore.countLabel());
+		assertEquals(SkillTooltip.RIFTS_CLOSED_LABEL, TestViews.field(runecraft, "countLabel"));
+		assertEquals(34, runecraft.count);
+		assertEquals("0/3", TestViews.subtitle(runecraft));
+		assertNull(TestViews.field(herblore, "countLabel"));
 		SkillTooltip withoutRifts = new SkillTooltip();
 		withoutRifts.setData(Skill.RUNECRAFT, blue, false, TestViews.sections(runecraft), null);
 		paint(withoutRifts);
@@ -298,9 +298,9 @@ public class SkillCellGridTest
 			.get(Skill.RUNECRAFT).createToolTip();
 		SkillTooltip blueSide = (SkillTooltip) comparison.sides()[0];
 		SkillTooltip redSide = (SkillTooltip) comparison.sides()[1];
-		assertEquals(SkillTooltip.RIFTS_CLOSED_LABEL, blueSide.countLabel());
-		assertEquals("34", blueSide.countText());
-		assertEquals("1,234", redSide.countText());
+		assertEquals(SkillTooltip.RIFTS_CLOSED_LABEL, TestViews.field(blueSide, "countLabel"));
+		assertEquals(34, blueSide.count);
+		assertEquals(1234, redSide.count);
 	}
 
 	@Test
@@ -315,14 +315,14 @@ public class SkillCellGridTest
 		read.getPageCounts().put("Rumours Completed", 78);
 		cells.render(blue, null, false, read, null, read);
 		SkillTooltip hunter = (SkillTooltip) cells.labels().get(Skill.HUNTER).createToolTip();
-		assertEquals("Rumours Completed: ", hunter.countLabel());
-		assertEquals("78", hunter.countText());
+		assertEquals("Rumours Completed: ", TestViews.field(hunter, "countLabel"));
+		assertEquals(78, hunter.count);
 
 		ClogResult unread = new ClogResult("420 kc", Collections.emptyMap(),
 			Collections.singletonMap(PageCounts.HUNTER_GUILD, Collections.singletonList(1)), Map.of(1, "Guild hunter headwear"),
 			null, null);
 		cells.render(blue, null, false, unread, null, unread);
-		assertNull("never read: no line", ((SkillTooltip) cells.labels().get(Skill.HUNTER).createToolTip()).countLabel());
+		assertNull("never read: no line", TestViews.field(cells.labels().get(Skill.HUNTER).createToolTip(), "countLabel"));
 	}
 
 	@Test
@@ -353,9 +353,10 @@ public class SkillCellGridTest
 		assertEquals(30, TestViews.sections(slayer).get(1).itemIds().size());
 		assertFalse(TestViews.sections(slayer).get(1).hasHeading());
 		assertEquals("Slayer", slayer.getTitle());
-		assertEquals(" (1/34)", slayer.getTitleSuffix()); // the page's 30 and the four superiors' drops it lacks
-		assertEquals(TitleTooltip.CLOG_YELLOW, slayer.getTitleSuffixColor());
-		assertEquals(smithing.getHeaderHeight(),
+		assertEquals("1/34", TestViews.subtitle(slayer)); // the page's 30 and the four superiors' drops it lacks
+		assertEquals(TitleTooltip.CLOG_YELLOW, TestViews.subtitleColor(slayer));
+		// Its log's Obtained line reads under the title, a line Smithing, with no log, doesn't have (Dylan 11/14).
+		assertEquals(smithing.getHeaderHeight() + NativeTooltip.LINE_HEIGHT,
 			slayer.getHeaderHeight());
 		assertFalse(TestViews.sections(smithing).iterator().hasNext());
 		assertTrue(slayer.getPreferredSize().height > smithing.getPreferredSize().height);

@@ -41,10 +41,6 @@ public abstract class TitleTooltip extends NativeTooltip
 	@Getter(AccessLevel.PROTECTED)
 	@Setter
 	private String title; // the bold orange title line (always required)
-	@Getter(AccessLevel.PROTECTED)
-	private String titleSuffix;
-	@Getter(AccessLevel.PROTECTED)
-	private Color titleSuffixColor;
 	// The line under the title: the Obtained count, or the Player Summary's own line.
 	@Nullable
 	private InfoLine subtitle;
@@ -82,19 +78,6 @@ public abstract class TitleTooltip extends NativeTooltip
 	{
 		installTitleLinkHandlers();
 		itemHover = new TooltipItemHover(this);
-	}
-
-	/** Optional colored text painted immediately after the main title. */
-	protected void setTitleSuffix(String titleSuffix, Color color)
-	{
-		this.titleSuffix = titleSuffix;
-		this.titleSuffixColor = color;
-	}
-
-	protected void clearTitleSuffix()
-	{
-		titleSuffix = null;
-		titleSuffixColor = null;
 	}
 
 	/**
@@ -506,12 +489,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	{
 		FontMetrics nfm = getFontMetrics(getTitleFont());
 		FontMetrics sfm = getFontMetrics(FontManager.getRunescapeSmallFont());
-		int titleTextWidth = title != null ? titleIconWidth() + nfm.stringWidth(title) : 0;
-		if (titleSuffix != null)
-		{
-			titleTextWidth += nfm.stringWidth(titleSuffix);
-		}
-		int maxTextWidth = titleTextWidth;
+		int maxTextWidth = title != null ? titleIconWidth() + nfm.stringWidth(title) : 0;
 		for (InfoLine line : headerLines())
 		{
 			maxTextWidth = Math.max(maxTextWidth, lineWidth(sfm, line));
@@ -552,30 +530,19 @@ public abstract class TitleTooltip extends NativeTooltip
 			top += LINE_HEIGHT;
 		}
 		// Modal titles remain stable while body labels change.
-		String headerTitle = title;
-		Color headerColor = titleColor();
-		boolean showTitleSuffix = titleSuffix != null;
 		g2.setFont(getTitleFont());
 		FontMetrics nfm = g2.getFontMetrics();
 		int lineY = top + nfm.getAscent();
 		int titleBaseline = lineY;
-		g2.setColor(headerColor);
-		// Long reveal texts (recent-item names) ellipsize instead of clipping.
-		int suffixWidth = showTitleSuffix ? nfm.stringWidth(titleSuffix) : 0;
+		g2.setColor(titleColor());
 		int titleX = inset + titleIconWidth();
 		if (titleIcon != null)
 		{
 			// Centered on the title's line, lifted a pixel to sit level with the letters.
 			g2.drawImage(titleIcon, inset, top + (NAME_LINE_HEIGHT - titleIcon.getHeight()) / 2 - 1, null);
 		}
-		headerTitle = fitHeaderText(nfm, headerTitle,
-			w - inset - titleX - suffixWidth);
-		g2.drawString(headerTitle, titleX, lineY);
-		if (showTitleSuffix)
-		{
-			g2.setColor(titleSuffixColor != null ? titleSuffixColor : labelColor);
-			g2.drawString(titleSuffix, titleX + nfm.stringWidth(headerTitle), lineY);
-		}
+		// A title wider than its card ends in an ellipsis instead of clipping.
+		g2.drawString(fitHeaderText(nfm, title, w - inset - titleX), titleX, lineY);
 
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		FontMetrics fm = g2.getFontMetrics();

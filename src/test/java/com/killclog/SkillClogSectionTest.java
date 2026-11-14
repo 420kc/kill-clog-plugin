@@ -142,12 +142,11 @@ public class SkillClogSectionTest
 			tooltip.setData(skill, null, false, sections, null);
 
 			assertTrue(skill.getName(), progress.total() > 0);
-			assertEquals(skill.getName(), " (--/" + progress.total() + ")",
-				tooltip.getTitleSuffix());
+			assertEquals(skill.getName(), "--/" + progress.total(), TestViews.subtitle(tooltip));
 			for (SkillClogSection section : sections)
 			{
 				assertEquals(skill.getName(), "--/" + section.itemIds().size(),
-					SkillClogSectionRenderer.progressText(
+					SkillTooltip.progressText(
 						section.primary(), section.itemIds().size()));
 				assertTrue(skill.getName(), section.primary().obtainedIds().isEmpty());
 			}
@@ -459,7 +458,6 @@ public class SkillClogSectionTest
 			comparison.setSize(compareSize);
 			comparison.doLayout();
 			paint(comparison);
-			assertMeasuredSectionHeightMatchesPaint(skill, sections);
 		}
 	}
 
@@ -477,7 +475,7 @@ public class SkillClogSectionTest
 		field.setAccessible(true);
 		CardBody.Scroll scroll = (CardBody.Scroll) field.get(dense);
 		wheel(dense, 2);
-		assertEquals("two notches, two sprite rows", 2 * SkillClogSectionRenderer.CELL_SIZE, TestViews.offset(scroll));
+		assertEquals("two notches, two sprite rows", 2 * CardBody.GRID_CELL, TestViews.offset(scroll));
 		wheel(dense, -9);
 		assertEquals(0, TestViews.offset(scroll));
 		CardBody.Scroll still = (CardBody.Scroll) field.get(fits);
@@ -580,37 +578,6 @@ public class SkillClogSectionTest
 			itemIds.addAll(section.itemIds());
 		}
 		return itemIds.size();
-	}
-
-	private static void assertMeasuredSectionHeightMatchesPaint(Skill skill,
-		List<SkillClogSection> sections)
-	{
-		SkillTooltip target = new SkillTooltip();
-		SkillClogSectionRenderer solo = new SkillClogSectionRenderer(target);
-		solo.setSections(sections, null);
-		boolean runecraft = skill == Skill.RUNECRAFT;
-		if (runecraft)
-		{
-			target.setSectionCount(PanelData.GOTR_CATEGORY, SkillTooltip.RIFTS_CLOSED_LABEL, 34);
-		}
-		Dimension soloSize = solo.soloSize(100);
-		BufferedImage image = new BufferedImage(
-			Math.max(1, soloSize.width + TitleTooltip.getInset() * 2),
-			Math.max(1, soloSize.height), BufferedImage.TYPE_INT_ARGB);
-		Graphics2D graphics = image.createGraphics();
-		List<TooltipItemHover.HitBox> boxes = new ArrayList<>();
-		int painted = solo.paintSolo(graphics, image.getWidth(), 0, boxes);
-		assertEquals(skill.getName() + " solo measured height", soloSize.height, painted);
-		// The lowest sprite ends where the sections end: the height measures what paints, a set's own rows included.
-		int lowest = 0;
-		for (TooltipItemHover.HitBox box : boxes)
-		{
-			java.awt.Rectangle bounds = TestViews.field(box, "bounds");
-			lowest = Math.max(lowest, bounds.y + bounds.height);
-		}
-		assertEquals(skill.getName() + " lowest sprite", painted, lowest);
-
-		graphics.dispose();
 	}
 
 	private static SkillClogSection assertSection(ClogResult player, ClogResult catalog,
