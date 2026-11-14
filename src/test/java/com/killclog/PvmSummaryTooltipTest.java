@@ -45,11 +45,31 @@ public class PvmSummaryTooltipTest
 	@Test
 	public void beforeAnyLookupTheBossesTileReadsAGreyDashNotARedNone()
 	{
-		assertEquals("Killed: --/72", PvmSummaryTooltip.killedText(-1, 72));
-		assertEquals(net.runelite.client.ui.ColorScheme.LIGHT_GRAY_COLOR, PvmSummaryTooltip.killedColor(-1, 72));
-		// A looked-up player with no boss kills is a real none, and keeps its color.
-		assertEquals("Killed: 0/72", PvmSummaryTooltip.killedText(0, 72));
-		assertEquals(TitleTooltip.completionColor(0, 72), PvmSummaryTooltip.killedColor(0, 72));
+		// At rest the tile reads the raids' resting "--/72" in grey; a looked-up player with no boss kills reads a real
+		// "Killed: 0/72", in white like Most Killed's kills.
+		PvmSummaryTooltip rest = new PvmSummaryTooltip();
+		rest.setData(0, -1, -1, 72, null, 0);
+		PvmSummaryTooltip none = new PvmSummaryTooltip();
+		none.setData(126.1, 0, 0, 72, null, 0);
+		assertTrue(bossesCount(rest, TitleTooltip.MUTED_GRAY) > 0);
+		assertEquals(0, bossesCount(none, TitleTooltip.MUTED_GRAY));
+		assertTrue(bossesCount(none, NativeTooltip.valueColor) > 0);
+	}
+
+	/** How many pixels of a colour the Bosses tile's count line holds, the tile alone in the PvM row. */
+	private static int bossesCount(PvmSummaryTooltip tip, java.awt.Color color)
+	{
+		BufferedImage image = render(painted(tip));
+		Point bosses = TestViews.tiles(image).get(0);
+		int count = 0;
+		for (int y = bosses.y + 48; y < bosses.y + 66; y++)
+		{
+			for (int x = bosses.x; x < bosses.x + GameTile.WIDTH; x++)
+			{
+				count += image.getRGB(x, y) == color.getRGB() ? 1 : 0;
+			}
+		}
+		return count;
 	}
 
 	@Test
@@ -651,7 +671,7 @@ public class PvmSummaryTooltipTest
 	@Test
 	public void theBossesTileDrawsItsLogsLineAndASmallIconSitsInTheMiddleOfItsSlot()
 	{
-		// The Logs line is drawn where a tile's bar sits: with a log it adds pixels there, without one it doesn't.
+		// The logs' bar is drawn where a tile's bar sits: with a log it adds pixels there, without one it doesn't.
 		PvmSummaryTooltip without = card();
 		PvmSummaryTooltip with = card();
 		with.setCompletion(16, 72);
@@ -668,7 +688,7 @@ public class PvmSummaryTooltipTest
 				changed += a.getRGB(x, y) != b.getRGB(x, y) ? 1 : 0;
 			}
 		}
-		assertTrue("the Logs line draws", changed > 0);
+		assertTrue("the logs' bar draws", changed > 0);
 
 		// A 20 px icon's top sits 6 px into the 32 px slot that starts 17 px down the tile.
 		PvmSummaryTooltip icon = card();

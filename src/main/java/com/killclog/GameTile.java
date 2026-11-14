@@ -75,10 +75,6 @@ final class GameTile
 		// Its own count line in white, the bar still the log's: Most Killed's kills over that boss's log.
 		@Nullable
 		String countText;
-		// Two lines in place of the count and bar, each its own color: the Bosses tile's killed and logs.
-		@Nullable
-		String[] lines;
-		Color[] lineColors;
 
 		Tile wear(@Nullable Color wear)
 		{
@@ -101,13 +97,6 @@ final class GameTile
 		Tile named(String name)
 		{
 			itemName = name;
-			return this;
-		}
-
-		Tile lines(String[] text, Color[] colors)
-		{
-			lines = text;
-			lineColors = colors;
 			return this;
 		}
 	}
@@ -189,20 +178,6 @@ final class GameTile
 		}
 		g.setFont(COUNT_FONT);
 		FontMetrics fm = g.getFontMetrics();
-		if (tile.lines != null)
-		{
-			// The first level with the other tiles' counts, the second where their bars sit, in the smaller font.
-			FontMetrics small = g.getFontMetrics(FontManager.getRunescapeSmallFont());
-			int[] baselines = {box.y + COUNT_TOP + g.getFontMetrics(COUNT_FONT).getAscent(), box.y + box.height - BAR_PAD};
-			g.setFont(small.getFont());
-			for (int i = 0; i < tile.lines.length; i++)
-			{
-				g.setColor(tile.lineColors[i]);
-				g.drawString(tile.lines[i], center - small.stringWidth(tile.lines[i]) / 2, baselines[i]);
-			}
-			g.setFont(font);
-			return;
-		}
 		boolean scored = tile.countText != null || !known && tile.score > 0;
 		String count = tile.countText != null ? tile.countText : scored ? TitleTooltip.grouped(tile.score)
 			: tile.total <= 0 ? "" : known ? TitleTooltip.progressCountText(tile.obtained, tile.total)
