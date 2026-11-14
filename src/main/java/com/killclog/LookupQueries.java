@@ -156,6 +156,13 @@ final class LookupQueries
 		return result.getKc("TzKal-Zuk") > 0;
 	}
 
+	/** Dizana's quiver: in the player's log, or, for a log Kill Clog hasn't seen, a Sol Heredit kill, which gives it. */
+	static boolean hasQuiver(@Nullable HiscoreResult hiscore, @Nullable ClogResult clog)
+	{
+		return getClogItemCount(clog, "fortis_colosseum", PanelData.DIZANAS_QUIVER_ITEM_ID) > 0
+			|| hiscore != null && hiscore.getKc(ColosseumGlory.BOSS_NAME) > 0;
+	}
+
 	static String getPrestige(HiscoreResult result)
 	{
 		if (result == null) return null;

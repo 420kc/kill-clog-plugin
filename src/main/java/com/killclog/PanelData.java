@@ -193,6 +193,8 @@ final class PanelData
 	static final int MAX_CAPE_ITEM_ID = 13280;
 	static final int INFERNAL_CAPE_ITEM_ID = 21295;
 	static final int INFERNAL_MAX_CAPE_ITEM_ID = 21284;
+	// Dizana's quiver as the Collection Log holds it, on Fortis Colosseum's page.
+	static final int DIZANAS_QUIVER_ITEM_ID = 28947;
 	/** Bundled panel-catalog rows of this kind; the parity test pins contents. */
 	private static List<String> catalogValues(String kind)
 	{

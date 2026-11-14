@@ -23,6 +23,7 @@ final class ActivitySummaryTooltips
 	private final CaRewardSprites caRewardSprites;
 	private final Supplier<CardLinks> links;
 	private final ClogPages clogPages;
+	private final PanelIconCache iconCache;
 
 	JToolTip buildPvm(JLabel owner, JPanel parentCell)
 	{
@@ -50,6 +51,11 @@ final class ActivitySummaryTooltips
 			tip.setCombatIcon(((ImageIcon) owner.getIcon()).getImage());
 		}
 		tip.setLinks(links.get());
+		tip.addGear(iconCache.capeFor(hiscore), LookupQueries.getPrestige(hiscore));
+		if (LookupQueries.hasQuiver(hiscore, clog))
+		{
+			tip.addGear(tip.itemSprite(PanelData.DIZANAS_QUIVER_ITEM_ID, itemManager), "Dizana's quiver");
+		}
 		String mostKilled = LookupQueries.getMostKilledBoss(hiscore);
 		tip.setData(
 			hiscore != null ? hiscore.getCombatLevelExact() : 0,

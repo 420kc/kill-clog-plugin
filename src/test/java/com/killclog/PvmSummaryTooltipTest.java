@@ -160,6 +160,59 @@ public class PvmSummaryTooltipTest
 		assertEquals(List.of("Vorkath", "Bosses tab"), opened);
 	}
 
+	// Dylan 11/14: the prestige cape moves from the Player Summary to the level row's right, Dizana's quiver beside it,
+	// each named in the band while hovered.
+	@Test
+	public void theCapeAndQuiverStandAtTheLevelRowsRightNamedWhileHovered()
+	{
+		PvmSummaryTooltip tip = card();
+		tip.addGear(solid(36, 32, 0xffff00ff), "Maxed Infernal");
+		tip.addGear(solid(36, 32, 0xff00ffff), "Dizana's quiver");
+		tip.addGear(null, "nothing held");
+		BufferedImage image = render(painted(tip));
+		Point cape = find(image, 0xffff00ff);
+		Point quiver = find(image, 0xff00ffff);
+		assertNotNull(cape);
+		assertNotNull(quiver);
+		assertTrue("the cape, then the quiver at the right", cape.x < quiver.x);
+		assertEquals("flush with the card's right inset", image.getWidth() - NativeTooltip.getInset() - 36, quiver.x);
+		assertEquals("one row", cape.y, quiver.y);
+		assertTrue("above the tiles", quiver.y + 32 <= TestViews.tiles(image).get(0).y);
+		move(tip, cape.x + 18, cape.y + 16);
+		assertEquals("Maxed Infernal", tip.getHeaderHoverLineText());
+		move(tip, quiver.x + 18, quiver.y + 16);
+		assertEquals("Dizana's quiver", tip.getHeaderHoverLineText());
+	}
+
+	private static BufferedImage solid(int width, int height, int argb)
+	{
+		BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+		for (int y = 0; y < height; y++)
+		{
+			for (int x = 0; x < width; x++)
+			{
+				image.setRGB(x, y, argb);
+			}
+		}
+		return image;
+	}
+
+	/** The top-left of the first pixel of this colour, or null. */
+	private static Point find(BufferedImage image, int argb)
+	{
+		for (int y = 0; y < image.getHeight(); y++)
+		{
+			for (int x = 0; x < image.getWidth(); x++)
+			{
+				if (image.getRGB(x, y) == argb)
+				{
+					return new Point(x, y);
+				}
+			}
+		}
+		return null;
+	}
+
 	@Test
 	public void aTilesHoverNameIsNeverAWikiLink()
 	{

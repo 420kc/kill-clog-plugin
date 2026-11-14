@@ -15,6 +15,29 @@ public class LookupQueriesTest
 		GimBadgeLoader.setGimBadges(null, null, null);
 	}
 
+	// Dylan 11/14: Dizana's quiver shows on the Combat Summary when the log holds it, or, for a log Kill Clog hasn't
+	// seen, when the hiscores show a Sol Heredit kill.
+	@Test
+	public void dizanasQuiverIsHeldByTheLogOrASolHereditKill()
+	{
+		java.util.Map<String, java.util.List<ClogResult.ClogItem>> held = new HashMap<>();
+		held.put("fortis_colosseum", Collections.singletonList(new ClogResult.ClogItem(PanelData.DIZANAS_QUIVER_ITEM_ID, 1, null)));
+		ClogResult withQuiver = new ClogResult("test", held, Collections.emptyMap(), new HashMap<>(), null, null);
+		HiscoreResult noKills = kills(0);
+		assertTrue(LookupQueries.hasQuiver(noKills, withQuiver));
+		assertTrue("an unsynced account's Sol Heredit kill", LookupQueries.hasQuiver(kills(3), null));
+		assertFalse(LookupQueries.hasQuiver(noKills, clog(null)));
+		assertFalse(LookupQueries.hasQuiver(null, null));
+	}
+
+	private static HiscoreResult kills(int solHeredit)
+	{
+		java.util.Map<String, Integer> kcs = new HashMap<>();
+		kcs.put(ColosseumGlory.BOSS_NAME, solHeredit);
+		return TestViews.hiscore(AccountType.REGULAR, kcs, new HashMap<>(), new HashMap<>(), new HashMap<>(),
+			new HashMap<>(), 0, 0, 0, -1);
+	}
+
 	@Test
 	public void aBossLogCountsAsDoneOnlyWithEveryItem()
 	{

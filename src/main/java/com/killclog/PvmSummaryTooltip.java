@@ -80,6 +80,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 	@Setter
 	private Image combatIcon;
+	private final List<Image> gear = new ArrayList<>();
+	private final List<String> gearNames = new ArrayList<>();
 	private CombatAchievementResult caResult;
 	private BufferedImage caRewardSprite;
 	// The Bosses tile's sprite, the Collection Log's Bosses tab's, and what a press on it opens.
@@ -315,12 +317,36 @@ public class PvmSummaryTooltip extends TitleTooltip
 	}
 
 	/** The combat level's row like the panel's combat cell: its icon centered in the icon column, then the level in bold white. */
+	/** The prestige cape or Dizana's quiver at the level row's right, named while hovered (Dylan, 2026-11-14). */
+	void addGear(@Nullable Image image, String name)
+	{
+		if (image != null)
+		{
+			gear.add(image);
+			gearNames.add(name);
+		}
+	}
+
 	private CardBody.Part leadRow(@Nullable Image icon, String text)
 	{
 		int column = icon != null ? icon.getWidth(null) + LEVEL_ICON_GAP : 0;
-		return CardBody.row(LEVEL_ROW_HEIGHT, c -> column + c.bfm.stringWidth(text), (c, y) ->
+		int gearWidth = gear.stream().mapToInt(image -> image.getWidth(null) + LEVEL_ICON_GAP).sum();
+		int height = gear.stream().mapToInt(image -> image.getHeight(null)).reduce(LEVEL_ROW_HEIGHT, Math::max);
+		return CardBody.row(height, c -> column + c.bfm.stringWidth(text) + gearWidth, (c, y) ->
 		{
 			Graphics2D g2 = c.g;
+			int x = c.w - c.inset();
+			for (int i = gear.size() - 1; i >= 0; i--)
+			{
+				Image image = gear.get(i);
+				x -= image.getWidth(null);
+				int top = y + (height - image.getHeight(null)) / 2;
+				g2.drawImage(image, x, top, null);
+				c.hits.add(new TooltipItemHover.HitBox(TooltipItemHover.HEADER_SECTION, 0, gearNames.get(i),
+					new Rectangle(x, top, image.getWidth(null), image.getHeight(null)), true));
+				x -= LEVEL_ICON_GAP;
+			}
+			y += (height - LEVEL_ROW_HEIGHT) / 2;
 			if (icon != null)
 			{
 				g2.drawImage(icon, c.inset(), y + (LEVEL_ROW_HEIGHT - icon.getHeight(null)) / 2, null);
