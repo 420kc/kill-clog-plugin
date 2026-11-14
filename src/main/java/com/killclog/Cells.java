@@ -584,8 +584,8 @@ public class Cells
 				PanelData.CLUE_CATEGORIES.get(PanelData.CLUE_TIERS[i]), clog));
 		}
 		// The Mimic's one log slot is the 3rd age ring.
-		tip.setProgress(7, clog == null ? null : counts(tooltipDataBuilder.buildCustomRareData(
-			"Mimic", new int[]{PanelData.THIRD_AGE_RING_ITEM_ID}, clog)));
+		tip.setProgress(7, clog == null ? null : counts(tooltipDataBuilder.buildPageData(
+			"Mimic", Collections.singletonList(PanelData.THIRD_AGE_RING_ITEM_ID), clog)));
 		for (int i = 0; i < PanelData.RARE_ROWS.size(); i++)
 		{
 			tip.setRare(i, counts(rareData(i, rival)));

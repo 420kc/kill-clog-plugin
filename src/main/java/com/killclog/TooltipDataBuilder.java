@@ -175,24 +175,8 @@ final class TooltipDataBuilder
 		{
 			allItems = canonicalItemIds(staticClueRareItems(clogCategory));
 		}
-		if (allItems.isEmpty())
-		{
-			return null;
-		}
-
-		List<ClogResult.ClogItem> obtained = clogResult.getObtainedItems().get(clogCategory);
-		if (obtained == null || obtained.isEmpty())
-		{
-			// A log without the page's own items still holds them wherever else it lists them.
-			return buildPageData(name, allItems, clogResult);
-		}
-		Map<Integer, Integer> obtainedCounts = obtainedCounts(obtained);
-		Set<Integer> obtainedIds = new HashSet<>(obtainedCounts.keySet());
-
-		int obtainedCount = ClogHelper.countObtained(allItems, obtainedIds);
-		return itemData(name, obtainedCount, allItems.size(), allItems, obtainedIds, obtainedCounts, clogResult)
-			.rankTracked(false)
-			.build();
+		// What the player holds of each, anywhere in the log, as every page reads.
+		return allItems.isEmpty() ? null : buildPageData(name, allItems, clogResult);
 	}
 
 	/** Each obtained item's highest count, keyed by canonical id. */
@@ -234,18 +218,12 @@ final class TooltipDataBuilder
 		String name = rare.getName();
 		TooltipData data = clog == null ? null : row < 2
 			? buildClueRareData(name, rare.getKey(), clog)
-			: buildCustomRareData(name, rare.getItems(), clog);
+			: buildPageData(name, TooltipData.itemList(rare.getItems()), clog);
 		if (data == null)
 		{
 			data = buildUnsyncedTooltipData(name, rare.getKey(), -1, null, -1, catalog);
 		}
-		return data != null ? data : buildUnsyncedItemData(name, rare.getItems(), catalog);
-	}
-
-	/** A custom rare collection (Hard, Elite and Master Rare), held from anywhere in the log. */
-	TooltipData buildCustomRareData(String name, int[] itemIds, ClogResult clogResult)
-	{
-		return buildPageData(name, TooltipData.itemList(itemIds), clogResult);
+		return data != null ? data : buildUnsyncedItemData(name, TooltipData.itemList(rare.getItems()), catalog);
 	}
 
 	/**
@@ -276,11 +254,6 @@ final class TooltipDataBuilder
 
 		return itemData(name, obtainedIds.size(), allItemsList.size(), allItemsList, obtainedIds, obtainedCounts,
 			clogResult).rankTracked(false).build();
-	}
-
-	TooltipData buildUnsyncedItemData(String name, int[] itemIds, ClogResult catalog)
-	{
-		return buildUnsyncedItemData(name, TooltipData.itemList(itemIds), catalog);
 	}
 
 	TooltipData buildUnsyncedItemData(String name, List<Integer> itemIds, ClogResult catalog)

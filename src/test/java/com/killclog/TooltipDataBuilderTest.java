@@ -98,8 +98,8 @@ public class TooltipDataBuilderTest
 		obtained.put("vorkath", Collections.singletonList(new ClogResult.ClogItem(995, 3, null)));
 		obtained.put("zulrah", Collections.singletonList(new ClogResult.ClogItem(995, 7, null)));
 
-		TooltipData data = builder.buildCustomRareData("Hard Rare",
-			new int[]{995, 4151}, clogWith(categories, obtained));
+		TooltipData data = builder.buildPageData("Hard Rare",
+			Arrays.asList(995, 4151), clogWith(categories, obtained));
 
 		assertNotNull(data);
 		assertEquals(1, data.obtainedCount);
@@ -135,7 +135,7 @@ public class TooltipDataBuilderTest
 		ClogResult catalog = clogWith(new HashMap<>(), new HashMap<>());
 
 		TooltipData data = builder.buildUnsyncedItemData("3rd Age",
-			PanelData.THIRD_AGE_ITEMS, catalog);
+			TooltipData.itemList(PanelData.THIRD_AGE_ITEMS), catalog);
 
 		assertNotNull(data);
 		assertEquals(-1, data.obtainedCount);
