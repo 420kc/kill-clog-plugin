@@ -556,9 +556,10 @@ public class KillClogPlugin extends Plugin
 
 		killLog.chat(client, event.getType(), event.getMessage(), client.getTickCount());
 
-		// Kill-count messages land the same tick as the clog unlock they
-		// caused; remembering the freshest one lets the unlock carry its
-		// "obtained at N kc" provenance. SPAM covers filtered game messages.
+		// A kill-count message lands just before the clog unlock it caused
+		// (a few seconds for some bosses' loot); remembering the freshest one
+		// lets the unlock carry its "obtained at N kc" provenance. SPAM covers
+		// filtered game messages.
 		if (event.getType() == ChatMessageType.GAMEMESSAGE || event.getType() == ChatMessageType.SPAM)
 		{
 			ClogUnlockParser.KillContext kill = ClogUnlockParser.parseKillCount(event.getMessage());

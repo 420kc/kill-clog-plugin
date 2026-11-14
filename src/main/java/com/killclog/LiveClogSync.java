@@ -20,6 +20,9 @@ final class LiveClogSync
 	// as its cause; beyond it the unlock stays provenance-less rather than
 	// guessing (skilling clogs, chest opens, and pet drops have no kc).
 	private static final int KILL_CONTEXT_MAX_TICKS = 5;
+	// Up to this many for an item on the killed boss's own page: a boss's loot can land seconds after its kill
+	// message (Dylan 11/14: Maggot King's Elder venator fang 3 s after kill 603, its other drops up to 27 s).
+	private static final int OWN_PAGE_MAX_TICKS = 50;
 
 	private boolean needsFirstSyncWarned;
 	private ClogUnlockParser.KillContext lastKill;
@@ -69,19 +72,16 @@ final class LiveClogSync
 			return;
 		}
 
-		// Attach the causing kill when one landed just before the unlock.
-		ClogUnlockParser.KillContext kill = null;
-		if (lastKill != null && lastKillTick >= 0
-			&& client.getTickCount() - lastKillTick <= KILL_CONTEXT_MAX_TICKS)
-		{
-			kill = lastKill;
-		}
-
+		// Attach the causing kill when one landed just before the unlock, or a little longer before it on its own page.
+		int ticks = lastKill != null && lastKillTick >= 0 ? client.getTickCount() - lastKillTick : Integer.MAX_VALUE;
 		boolean changed = false;
 		for (int itemId : missingItemIds)
 		{
-			changed |= localClogCache.mergeObtainedItem(playerName, itemId,
-				clogIndex.categoryKeysForItem(itemId), clogIndex.categoryItems(),
+			List<String> pages = clogIndex.categoryKeysForItem(itemId);
+			ClogUnlockParser.KillContext kill = ticks <= KILL_CONTEXT_MAX_TICKS || (ticks >= 0 && ticks <= OWN_PAGE_MAX_TICKS
+				&& pages != null && pages.stream().anyMatch(key -> lastKill.boss.equalsIgnoreCase(clogIndex.pageName(key))))
+				? lastKill : null;
+			changed |= localClogCache.mergeObtainedItem(playerName, itemId, pages, clogIndex.categoryItems(),
 				kill != null ? kill.kc : 0, kill != null ? kill.boss : null);
 		}
 
