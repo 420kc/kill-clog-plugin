@@ -163,6 +163,16 @@ final class LookupQueries
 			|| hiscore != null && hiscore.getKc(ColosseumGlory.BOSS_NAME) > 0;
 	}
 
+	/**
+	 * Dizana's quiver as the Combat Summary shows it, -1 without one: maxed, it joins the max cape as the infernal cape
+	 * does, Dizana's max cape (Dylan, 2026-11-14).
+	 */
+	static int quiverItemId(@Nullable HiscoreResult hiscore, @Nullable ClogResult clog)
+	{
+		if (!hasQuiver(hiscore, clog)) return -1;
+		return hiscore != null && maxed(hiscore) ? PanelData.DIZANAS_MAX_CAPE_ITEM_ID : PanelData.DIZANAS_QUIVER_ITEM_ID;
+	}
+
 	static String getPrestige(HiscoreResult result)
 	{
 		if (result == null) return null;

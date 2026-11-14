@@ -28,14 +28,25 @@ public class LookupQueriesTest
 		assertTrue("an unsynced account's Sol Heredit kill", LookupQueries.hasQuiver(kills(3), null));
 		assertFalse(LookupQueries.hasQuiver(noKills, clog(null)));
 		assertFalse(LookupQueries.hasQuiver(null, null));
+
+		// Maxed, the quiver joins the max cape as the infernal cape does: Dizana's max cape.
+		assertEquals(PanelData.DIZANAS_QUIVER_ITEM_ID, LookupQueries.quiverItemId(kills(3), null));
+		assertEquals(PanelData.DIZANAS_MAX_CAPE_ITEM_ID, LookupQueries.quiverItemId(kills(3, PanelData.MAX_TOTAL_LEVEL), null));
+		assertEquals(PanelData.DIZANAS_MAX_CAPE_ITEM_ID, LookupQueries.quiverItemId(kills(0, PanelData.MAX_TOTAL_LEVEL), withQuiver));
+		assertEquals(-1, LookupQueries.quiverItemId(kills(0, PanelData.MAX_TOTAL_LEVEL), null));
 	}
 
 	private static HiscoreResult kills(int solHeredit)
 	{
+		return kills(solHeredit, 0);
+	}
+
+	private static HiscoreResult kills(int solHeredit, int totalLevel)
+	{
 		java.util.Map<String, Integer> kcs = new HashMap<>();
 		kcs.put(ColosseumGlory.BOSS_NAME, solHeredit);
 		return TestViews.hiscore(AccountType.REGULAR, kcs, new HashMap<>(), new HashMap<>(), new HashMap<>(),
-			new HashMap<>(), 0, 0, 0, -1);
+			new HashMap<>(), totalLevel, 0, 0, -1);
 	}
 
 	@Test

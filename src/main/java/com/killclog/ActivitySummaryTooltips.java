@@ -51,10 +51,17 @@ final class ActivitySummaryTooltips
 			tip.setCombatIcon(((ImageIcon) owner.getIcon()).getImage());
 		}
 		tip.setLinks(links.get());
-		tip.addGear(iconCache.capeFor(hiscore), LookupQueries.getPrestige(hiscore));
-		if (LookupQueries.hasQuiver(hiscore, clog))
+		// Dizana's max cape takes the plain max cape's place, as the infernal max cape does; beside an infernal max
+		// cape, both show.
+		int quiver = LookupQueries.quiverItemId(hiscore, clog);
+		boolean maxCape = quiver == PanelData.DIZANAS_MAX_CAPE_ITEM_ID;
+		if (!maxCape || LookupQueries.infernal(hiscore))
 		{
-			tip.addGear(tip.itemSprite(PanelData.DIZANAS_QUIVER_ITEM_ID, itemManager), "Dizana's quiver");
+			tip.addGear(iconCache.capeFor(hiscore), LookupQueries.getPrestige(hiscore));
+		}
+		if (quiver >= 0)
+		{
+			tip.addGear(tip.itemSprite(quiver, itemManager), maxCape ? "Dizana's max cape" : "Dizana's quiver");
 		}
 		String mostKilled = LookupQueries.getMostKilledBoss(hiscore);
 		tip.setData(
