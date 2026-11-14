@@ -190,7 +190,7 @@ public class Cells
 				continue;
 			}
 			final int idx = i;
-			PanelIconCache.cellSprite(spriteManager, spriteId, 13, icon -> pvpActivityIcons[idx] = icon);
+			PanelIconCache.cellSprite(spriteManager, spriteId, 20, icon -> pvpActivityIcons[idx] = icon);
 		}
 	}
 

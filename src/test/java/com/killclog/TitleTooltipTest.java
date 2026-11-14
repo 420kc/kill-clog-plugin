@@ -244,27 +244,6 @@ public class TitleTooltipTest
 	}
 
 	@Test
-	public void pvpRowsWidthGrowsWithLargeScore()
-	{
-		PvpSummaryRows small = new PvpSummaryRows();
-		small.setData(pvpHiscore("Soul Wars Zeal", 42), null);
-		PvpSummaryRows large = new PvpSummaryRows();
-		large.setData(pvpHiscore("Soul Wars Zeal", 1_234_567), null);
-
-		assertTrue(size(small).width < size(large).width);
-		// Five rows whatever the data, so a comparison pair never staggers.
-		PvpSummaryRows empty = new PvpSummaryRows();
-		empty.setData(null, null);
-		assertEquals(5 * NativeTooltip.LINE_HEIGHT, size(empty).height);
-		assertEquals(size(empty).height, size(large).height);
-	}
-
-	private static java.awt.Dimension size(PvpSummaryRows rows)
-	{
-		return new CardBody().add(rows.part()).size(new PvmSummaryTooltip(), 0);
-	}
-
-	@Test
 	public void combatSummaryCarriesThePvpSectionUnderItsOwnTitle()
 	{
 		PvmSummaryTooltip withoutPvp = new PvmSummaryTooltip();
@@ -301,19 +280,21 @@ public class TitleTooltipTest
 		card.paint(graphics);
 		graphics.dispose();
 
-		// All five rows are painted, and the last one ends inside the card.
-		int x = NativeTooltip.getInset() + 6;
+		// All five tiles carry their icon whole, and the last one ends inside the card.
 		int painted = 0;
 		int last = 0;
 		for (int y = 0; y < size.height; y++)
 		{
-			if (image.getRGB(x, y) == Color.MAGENTA.getRGB())
+			for (int x = 0; x < size.width; x++)
 			{
-				painted++;
-				last = y;
+				if (image.getRGB(x, y) == Color.MAGENTA.getRGB())
+				{
+					painted++;
+					last = y;
+				}
 			}
 		}
-		assertEquals(13 * icons.length, painted);
+		assertEquals(13 * 13 * icons.length, painted);
 		assertTrue(last < size.height - NativeTooltip.getInset());
 	}
 

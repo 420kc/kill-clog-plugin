@@ -111,7 +111,15 @@ public class PvmSummaryTooltip extends TitleTooltip
 			e.consume();
 		}
 	});
-	private final PvpSummaryRows pvpRows = new PvpSummaryRows();
+	// The PvP activities' short names, in PanelData.PVP_ACTIVITIES' order; the first two have a log page.
+	private static final String[] PVP_LABELS = {"LMS", "Soul Wars", "PvP Arena", "BH Hunter", "BH Rogue"};
+	private static final String[] PVP_PAGES = {"last_man_standing", "soul_wars"};
+	private final List<GameTile.Tile> pvp = new ArrayList<>();
+
+	{
+		// Before any lookup the section is there too, five "--" tiles, so a comparison pair never staggers.
+		setPvp(null, null, null);
+	}
 
 	public void setData(double combatLevel, int totalKills, int bossesWithKc, int totalBosses,
 						String mostKilled, int mostKilledKc)
@@ -126,11 +134,20 @@ public class PvmSummaryTooltip extends TitleTooltip
 		this.mostKilledKc = mostKilledKc;
 	}
 
-	/** The five PvP activities close out the card under their own subheader. */
-	void setPvp(HiscoreResult hiscore, ClogResult clog, BufferedImage[] icons)
+	/**
+	 * The five PvP activities close out the card as tiles, each its score over its log's bar where it has one; a "--"
+	 * tile stays bar-less. With no hiscores all five read "--": the empty state.
+	 */
+	void setPvp(@Nullable HiscoreResult hiscore, @Nullable ClogResult clog, @Nullable BufferedImage[] icons)
 	{
-		pvpRows.setIcons(icons);
-		pvpRows.setData(hiscore, clog);
+		pvp.clear();
+		for (int i = 0; i < PVP_LABELS.length; i++)
+		{
+			int score = hiscore != null ? hiscore.getActivityScore(PanelData.PVP_ACTIVITIES[i].getName()) : 0;
+			int[] log = score > 0 && clog != null && i < PVP_PAGES.length ? ClogHelper.clogCounts(PVP_PAGES[i], clog) : null;
+			pvp.add(new GameTile.Tile(PVP_LABELS[i], icons != null ? icons[i] : null, log != null ? log[0] : -1,
+				log != null ? log[1] : 0, -1).count(scoreText(score)));
+		}
 	}
 
 	/** The most killed boss as its tile shows it: its icon, and its log when one is known (-1, unknown). */
@@ -293,7 +310,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 			.add(CardBody.sprites(0, superiorSprites, PanelData.SUPERIOR_ITEMS, PanelData.SUPERIOR_ITEM_NAMES,
 				superiorCounts, WEAPON_PAD))
 			.titled(PVP_HEADER)
-			.add(pvpRows.part());
+			.add(GameTile.grid(pvmRows, pvp));
 		return card.add(CardBody.hoverBand()).add(CardBody.scroll(scroll, body.asPart()));
 	}
 

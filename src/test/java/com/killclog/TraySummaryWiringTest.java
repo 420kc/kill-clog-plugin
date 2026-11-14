@@ -252,8 +252,9 @@ public class TraySummaryWiringTest
 		{
 			seedSelf(clog("Seeded", 1, false));
 			PvmSummaryTooltip tip = (PvmSummaryTooltip) panel.combatCell().createToolTip();
-			PvpSummaryRows rows = field(tip, "pvpRows", PvpSummaryRows.class);
-			assertArrayEquals(new int[]{-1, 1_234_567, -1, 42, -1}, field(rows, "scores", int[].class));
+			List<?> pvp = field(tip, "pvp", List.class);
+			assertEquals(Arrays.asList("--", "1,234,567", "--", "42", "--"),
+				pvp.stream().map(tile -> ((GameTile.Tile) tile).countText).collect(Collectors.toList()));
 		});
 	}
 

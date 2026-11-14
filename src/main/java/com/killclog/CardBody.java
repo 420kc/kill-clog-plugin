@@ -2,7 +2,6 @@ package com.killclog;
 
 import java.awt.*;
 import java.awt.event.*;
-import java.awt.image.BufferedImage;
 import java.util.*;
 import java.util.List;
 import java.util.function.*;
@@ -579,63 +578,6 @@ final class CardBody
 		int cols = gridColumns(minCols, count);
 		int fit = (available + GRID_GAP) / GRID_CELL;
 		return available > 0 && fit > cols ? Math.min(fit, count) : cols;
-	}
-
-	/**
-	 * A table of icon, label, a right-aligned score column, then a progress column as wide as its widest entry.
-	 * Progress shows only where the caller gives it.
-	 */
-	static Part table(BufferedImage[] icons, String[] labels, int[] scores, int[] obtained, int[] total,
-		int iconSize, int iconGap, int colGap)
-	{
-		ToIntFunction<FontMetrics> scoreRight = fm ->
-		{
-			int labelCol = 0;
-			for (String label : labels)
-			{
-				labelCol = Math.max(labelCol, fm.stringWidth(label));
-			}
-			return iconSize + iconGap + labelCol + colGap + TitleTooltip.widestValue(fm, scores, TitleTooltip::scoreText);
-		};
-		ToIntFunction<FontMetrics> progressCol = fm ->
-		{
-			int width = 0;
-			for (int i = 0; i < labels.length; i++)
-			{
-				if (obtained[i] >= 0)
-				{
-					width = Math.max(width, fm.stringWidth(" (" + TitleTooltip.progressCountText(obtained[i], total[i]) + ")"));
-				}
-			}
-			return width;
-		};
-		return part(c -> scoreRight.applyAsInt(c.fm) + progressCol.applyAsInt(c.fm),
-			c -> NativeTooltip.LINE_HEIGHT * labels.length, (c, y) ->
-			{
-				Graphics2D g = c.g;
-				FontMetrics fm = c.fm;
-				int x = c.inset();
-				int right = x + scoreRight.applyAsInt(fm);
-				for (int i = 0; i < labels.length; i++)
-				{
-					int textY = y + fm.getAscent();
-					BufferedImage icon = icons != null && i < icons.length ? icons[i] : null;
-					if (icon != null)
-					{
-						g.drawImage(icon, x, y + (NativeTooltip.LINE_HEIGHT - iconSize) / 2, null);
-					}
-					g.setColor(NativeTooltip.labelColor);
-					g.drawString(labels[i], x + iconSize + iconGap, textY);
-					g.setColor(NativeTooltip.valueColor);
-					TitleTooltip.drawRightAligned(g, fm, TitleTooltip.scoreText(scores[i]), right, textY);
-					if (obtained[i] >= 0)
-					{
-						g.setColor(TitleTooltip.completionColor(obtained[i], total[i]));
-						g.drawString(" (" + TitleTooltip.progressCountText(obtained[i], total[i]) + ")", right, textY);
-					}
-					y += NativeTooltip.LINE_HEIGHT;
-				}
-			});
 	}
 
 	/**

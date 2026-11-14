@@ -268,26 +268,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		return hours >= 0 ? String.format(Locale.US, "%,.1f", hours) : "--";
 	}
 
-	/**
-	 * Widest rendered width across actual values under the given formatter.
-	 * Sizing measures the strings it will paint, never a placeholder.
-	 */
-	protected static int widestValue(FontMetrics fm, int[] values, IntFunction<String> fmt)
-	{
-		int width = 0;
-		for (int value : values)
-		{
-			width = Math.max(width, fm.stringWidth(fmt.apply(value)));
-		}
-		return width;
-	}
-
-	/** Draw text so its right edge lands at rightX (right-aligned value column). */
-	protected static void drawRightAligned(Graphics2D g2, FontMetrics fm, String text, int rightX, int y)
-	{
-		g2.drawString(text, rightX - fm.stringWidth(text), y);
-	}
-
 	protected static String tierDisplayName(CombatAchievementResult ca)
 	{
 		CombatAchievementTier tier = ca != null ? ca.getTier() : null;
