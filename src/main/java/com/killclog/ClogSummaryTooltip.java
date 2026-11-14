@@ -100,9 +100,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 	}
 
 	private List<CardSources.Source> clogSources = Collections.emptyList();
-	// Whose log the sources hold, for their pages.
-	@Nullable
-	private String sourcesPlayer;
 	@Nullable
 	private BiConsumer<MouseEvent, String> onOpenTab;
 	// Everything under the anchored band scrolls once the card grows past a long tab's height, three lines a notch.
@@ -169,17 +166,10 @@ public class ClogSummaryTooltip extends TitleTooltip
 	/** Every site that holds this player's log ({@link CardSources#of}), in the footer. */
 	void setClogSources(ClogResult result, boolean onTemple, boolean onRuneProfile, boolean onKillclog)
 	{
-		sourcesPlayer = result.getPlayerName();
 		showSources(CardSources.of(result, onTemple, onRuneProfile, onKillclog, ""));
 	}
 
-	/** Record contributing sources, including Kill Clog's local game capture. */
-	void setClogSources(boolean temple, boolean runeProfile, boolean killclog, boolean local)
-	{
-		showSources(CardSources.of(temple, runeProfile, killclog, local, sourcesPlayer, ""));
-	}
-
-	private void showSources(List<CardSources.Source> sources)
+	void showSources(List<CardSources.Source> sources)
 	{
 		clogSources = sources;
 		itemHover.clear();

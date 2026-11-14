@@ -87,13 +87,13 @@ public class TitleTooltipTest
 	{
 		ClogSummaryTooltip tooltip = new ClogSummaryTooltip();
 		tooltip.setTitle("Clog Summary");
-		tooltip.setClogSources(true, true, true, false);
+		tooltip.showSources(CardSources.of(true, true, true, false, null, ""));
 		assertEquals(Arrays.asList("Kill Clog", "TempleOSRS", "RuneProfile"),
 			TestViews.sourceNames(tooltip));
 
-		tooltip.setClogSources(false, true, false, false);
+		tooltip.showSources(CardSources.of(false, true, false, false, null, ""));
 		assertEquals(Collections.singletonList("RuneProfile"), TestViews.sourceNames(tooltip));
-		tooltip.setClogSources(false, false, false, false);
+		tooltip.showSources(CardSources.of(false, false, false, false, null, ""));
 		assertTrue(TestViews.sourceNames(tooltip).isEmpty());
 	}
 
@@ -143,7 +143,7 @@ public class TitleTooltipTest
 	{
 		ClogSummaryTooltip tooltip = new ClogSummaryTooltip();
 		tooltip.setTitle("Clog Summary");
-		tooltip.setClogSources(true, true, true, false);
+		tooltip.showSources(CardSources.of(true, true, true, false, null, ""));
 		Dimension idle = tooltip.getPreferredSize();
 		tooltip.setSize(idle);
 
@@ -170,9 +170,9 @@ public class TitleTooltipTest
 		tooltip.setTitle("Clog Summary");
 		Dimension withoutSources = tooltip.getPreferredSize();
 
-		tooltip.setClogSources(true, false, false, false);
+		tooltip.showSources(CardSources.of(true, false, false, false, null, ""));
 		assertTrue(tooltip.getPreferredSize().height > withoutSources.height);
-		tooltip.setClogSources(false, false, false, false);
+		tooltip.showSources(CardSources.of(false, false, false, false, null, ""));
 		assertEquals(withoutSources, tooltip.getPreferredSize());
 	}
 
@@ -181,10 +181,10 @@ public class TitleTooltipTest
 	{
 		ClogSummaryTooltip blue = new ClogSummaryTooltip();
 		blue.setTitle("Clog Summary");
-		blue.setClogSources(true, false, false, false);
+		blue.showSources(CardSources.of(true, false, false, false, null, ""));
 		ClogSummaryTooltip red = new ClogSummaryTooltip();
 		red.setTitle("Clog Summary");
-		red.setClogSources(false, true, false, false);
+		red.showSources(CardSources.of(false, true, false, false, null, ""));
 		SideBySideTooltip pair = new SideBySideTooltip("Blue", blue, "Red", red);
 		Dimension size = pair.getPreferredSize();
 		pair.setSize(size);

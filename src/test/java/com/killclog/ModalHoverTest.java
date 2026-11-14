@@ -75,7 +75,7 @@ public class ModalHoverTest
 		pvm.setData(126, 12345, 20, 60, "Zulrah", 5000);
 		ClogSummaryTooltip clog = new ClogSummaryTooltip();
 		clog.setTierData(125, 1600, null, null);
-		clog.setClogSources(true, true, true, false);
+		clog.showSources(CardSources.of(true, true, true, false, null, ""));
 		set(clog, "rare", new ClogSummaryTooltip.Shelf(null, new int[]{13342},
 			new String[]{"A very long collection log trophy name"}, new int[]{1}, null));
 		set(clog, "recent", new ClogSummaryTooltip.Shelf(null, new int[]{4151},
