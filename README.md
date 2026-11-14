@@ -41,6 +41,8 @@ Shift-click anything that opens a card, or right-click it and choose **Copy**, a
 
 ![A Shift+click on IronBone11's Combat Summary cell copies the whole card, PvP section included, ready to paste into Discord](screenshots/copy-as-picture.png)
 
+The Player Summary's top bar links to the player's Kill Clog, TempleOSRS and RuneProfile pages. The Combat Summary shows their prestige cape beside their combat level, and Dizana's quiver, or Dizana's max cape once they're maxed.
+
 Some counts appear only on the game's own Collection Log pages, like Revenant kills, Hunter Guild rumours and the raids' Entry completions. Open a page and its card shows the count from then on, here and on killclog.com, updated when you next open the page after it changes.
 
 ## Grid and List views
@@ -107,11 +109,9 @@ Optional and off by default. Your synced log and character show on [killclog.com
 
 ![Kill Clog Web Sync settings with Sync Collection Log, Automatic sync, Quiet automatic sync, Publish Character Model and Share Clan on](screenshots/web-sync-settings.png)
 
-**Publish Character Model** needs Sync Collection Log and turns on with it. Its **publish character** button beside the chalice publishes your character and follower in your real appearance, and anyone who looks you up sees them in your Player Summary, with the chalice in its corner, which opens your killclog.com profile with card links on. Hold shift and it reads **delete character model**: a shift-click removes your character from killclog.com, and nothing else changes. Each button flashes green when your click goes through.
+**Publish Character Model** needs Sync Collection Log and turns on with it. Its **publish character** button beside the chalice publishes your character and follower in your real appearance, and anyone who looks you up sees them in your Player Summary. Hold shift and it reads **delete character model**: a shift-click removes your character from killclog.com, and nothing else changes. Each button flashes green when your click goes through.
 
 ![The publish character button beside the chalice at the top of the panel](screenshots/web-sync-publish-character.png)
-
-A player with no Kill Clog character who uploaded one to [RuneProfile](https://runeprofile.com) shows that one instead, with RuneProfile's icon in its corner, which opens their RuneProfile page with card links on.
 
 ## Settings
 
