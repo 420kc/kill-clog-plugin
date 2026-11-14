@@ -168,28 +168,13 @@ public abstract class NativeTooltip extends JToolTip
 
 	private static void paintBackground(Graphics2D g2, int w, int h)
 	{
-		if (flatBackground != null)
+		if (flatBackground == null && CardSprites.parchmentBg != null)
 		{
-			g2.setColor(flatBackground);
-			g2.fillRect(0, 0, w, h);
+			tile(g2, CardSprites.parchmentBg, 0, 0, w, h);
+			return;
 		}
-		else if (CardSprites.parchmentBg != null)
-		{
-			int tw = CardSprites.parchmentBg.getWidth();
-			int th = CardSprites.parchmentBg.getHeight();
-			for (int y = 0; y < h; y += th)
-			{
-				for (int x = 0; x < w; x += tw)
-				{
-					g2.drawImage(CardSprites.parchmentBg, x, y, null);
-				}
-			}
-		}
-		else
-		{
-			g2.setColor(FALLBACK_BG);
-			g2.fillRect(0, 0, w, h);
-		}
+		g2.setColor(flatBackground != null ? flatBackground : FALLBACK_BG);
+		g2.fillRect(0, 0, w, h);
 	}
 
 	private static void paintBorder(Graphics2D g2, int w, int h)
@@ -217,28 +202,20 @@ public abstract class NativeTooltip extends JToolTip
 		g2.drawImage(CardSprites.cornerBR, w - CardSprites.cornerBR.getWidth(), h - CardSprites.cornerBR.getHeight(), null);
 
 		// Edges between the corners: top, bottom, left, right.
-		tileEdge(g2, CardSprites.edgeTop, 0, 0, cw, w - cw, true);
-		tileEdge(g2, CardSprites.edgeBottom, 0, h - CardSprites.edgeBottom.getHeight(), cw, w - cw, true);
-		tileEdge(g2, CardSprites.edgeLeft, 0, 0, ch, h - ch, false);
-		tileEdge(g2, CardSprites.edgeRight, w - CardSprites.edgeRight.getWidth(), 0, ch, h - ch, false);
+		BufferedImage bottom = CardSprites.edgeBottom;
+		BufferedImage right = CardSprites.edgeRight;
+		tile(g2, CardSprites.edgeTop, cw, 0, w - 2 * cw, CardSprites.edgeTop.getHeight());
+		tile(g2, bottom, cw, h - bottom.getHeight(), w - 2 * cw, bottom.getHeight());
+		tile(g2, CardSprites.edgeLeft, 0, ch, CardSprites.edgeLeft.getWidth(), h - 2 * ch);
+		tile(g2, right, w - right.getWidth(), ch, right.getWidth(), h - 2 * ch);
 	}
 
-	/** Tile an edge piece along one side from one corner to the other, cropping the last tile. */
-	private static void tileEdge(Graphics2D g2, BufferedImage edge, int x, int y, int from, int to, boolean across)
+	/** An image repeated over a box from its top left, the last row and column cropped; the paint is put back. */
+	private static void tile(Graphics2D g2, BufferedImage image, int x, int y, int w, int h)
 	{
-		int ew = edge.getWidth();
-		int eh = edge.getHeight();
-		for (int at = from; at < to; at += across ? ew : eh)
-		{
-			int len = Math.min(across ? ew : eh, to - at);
-			if (across)
-			{
-				g2.drawImage(edge, at, y, at + len, y + eh, 0, 0, len, eh, null);
-			}
-			else
-			{
-				g2.drawImage(edge, x, at, x + ew, at + len, 0, 0, ew, len, null);
-			}
-		}
+		Paint paint = g2.getPaint();
+		g2.setPaint(new TexturePaint(image, new Rectangle(x, y, image.getWidth(), image.getHeight())));
+		g2.fillRect(x, y, w, h);
+		g2.setPaint(paint);
 	}
 }
