@@ -25,10 +25,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 	// Recent fills the tiles' width: six items, their dates under them.
 	static final int RECENT_SHOWN = 6;
 	private static final int DATE_GAP = 1;
-	private static final int SOURCE_ICON_SIZE = 13;
-	private static final int SOURCE_ICON_GAP = 5;
-	private static final int SOURCE_HIT_PAD = 2;
-	private static final int SOURCE_LABEL_GAP = 3;
+	private static final int SOURCES_GAP = 3;
 	// Hover sections: the shelves, the tier ladder and the sources. A reached tier reads green and an unreached one
 	// red, as held and missing items do.
 	private static final int RARE_SECTION = 0;
@@ -46,15 +43,10 @@ public class ClogSummaryTooltip extends TitleTooltip
 			.forEach(row -> TAB_SPRITES.put(row[0], Integer.parseInt(row[1])));
 	}
 	private final Map<String, Image> tabSprites = new HashMap<>();
-	private static final String SOURCE_LABEL = "Sources";
 	private static final String[] MONTHS = {
 		"Jan", "Feb", "Mar", "Apr", "May", "Jun",
 		"Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
 	};
-	private static final String TEMPLE_SOURCE = "TempleOSRS";
-	private static final String RUNEPROFILE_SOURCE = "RuneProfile";
-	private static final String KILLCLOG_SOURCE = "Kill Clog";
-	private static final String LOCAL_SOURCE = "Local Collection Log";
 	private static final String SETUP_OPEN_LINE = "1. Open your Collection Log.";
 	private static final String SETUP_SEARCH_LINE = "2. Wait for setup to finish.";
 	private static final String SETUP_CHAT_LINE = "Chat will confirm when setup is complete.";
@@ -109,7 +101,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 		}
 	}
 
-	private final List<ClogSource> clogSources = new ArrayList<>(3);
+	private List<CardSources.Source> clogSources = Collections.emptyList();
 	// Whose log the sources hold, for their pages.
 	@Nullable
 	private String sourcesPlayer;
@@ -176,49 +168,26 @@ public class ClogSummaryTooltip extends TitleTooltip
 		this.syncStale = stale;
 	}
 
-	/**
-	 * Every site that holds this player's log, whichever one's log the card shows (Dylan, 2026-10-12): one this lookup
-	 * heard from, or one known to hold them by RuneProfile's profile, Temple's last answer or Kill Clog's sync list, since
-	 * a request can be skipped (your own log) or time out. Your own log read from the game is Kill Clog's when you sync.
-	 */
+	/** Every site that holds this player's log ({@link CardSources#of}), in the footer. */
 	void setClogSources(ClogResult result, boolean onTemple, boolean onRuneProfile, boolean onKillclog)
 	{
-		boolean killclog = result.isFromKillclog() || onKillclog;
 		sourcesPlayer = result.getPlayerName();
-		setClogSources(result.isFromTemple() || onTemple, result.isFromRuneProfile() || onRuneProfile,
-			killclog, result.isFromLocal() && !killclog);
+		showSources(CardSources.of(result, onTemple, onRuneProfile, onKillclog, ""));
 	}
 
 	/** Record contributing sources, including Kill Clog's local game capture. */
 	void setClogSources(boolean temple, boolean runeProfile, boolean killclog, boolean local)
 	{
-		clogSources.clear();
-		if (killclog || local)
-		{
-			clogSources.add(new ClogSource(
-				local ? LOCAL_SOURCE : KILLCLOG_SOURCE,
-				KillClogIcons.killClogSourceIcon(SOURCE_ICON_SIZE), local ? null : link(TooltipItemLink::killclogUrl)));
-		}
-		if (temple)
-		{
-			clogSources.add(new ClogSource(
-				TEMPLE_SOURCE, KillClogIcons.templeSourceIcon(SOURCE_ICON_SIZE), link(TooltipItemLink::templeUrl)));
-		}
-		if (runeProfile)
-		{
-			clogSources.add(new ClogSource(
-				RUNEPROFILE_SOURCE, KillClogIcons.runeProfileSourceIcon(SOURCE_ICON_SIZE), link(TooltipItemLink::runeProfileUrl)));
-		}
+		showSources(CardSources.of(temple, runeProfile, killclog, local, sourcesPlayer, ""));
+	}
+
+	private void showSources(List<CardSources.Source> sources)
+	{
+		clogSources = sources;
 		itemHover.clear();
 		itemHover.setHitBoxes(Collections.emptyList());
 		revalidate();
 		repaint();
-	}
-
-	@Nullable
-	private String link(java.util.function.UnaryOperator<String> page)
-	{
-		return sourcesPlayer != null && !sourcesPlayer.isEmpty() ? page.apply(sourcesPlayer) : null;
 	}
 
 	public void setNotice(String notice)
@@ -280,16 +249,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 		return day == null ? null : MONTHS[day.getMonthValue() - 1] + " " + day.getDayOfMonth();
 	}
 
-	static int sourceRowWidth(int count)
-	{
-		return count > 0 ? count * SOURCE_ICON_SIZE + (count - 1) * SOURCE_ICON_GAP : 0;
-	}
-
-	static int sourceRowStartX(int tooltipWidth, int count)
-	{
-		return (tooltipWidth - sourceRowWidth(count)) / 2;
-	}
-
 	@Override
 	protected CardBody body()
 	{
@@ -308,7 +267,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 		// The tier's name at the header's right. The Total and each tab stand under the header as the game's tiles,
 		// three across, the Total first; a tab's tile opens its pages. The tier ladder follows; any tier's, item's or
 		// source's name shows in the band under it, and the shelves and footer scroll below.
-		CardBody card = new CardBody().add(headerWord(tierName()));
+		CardBody card = new CardBody().add(headerWord(tierName(),
+			tierName() != null && tierIcons != null ? tierIcons.get(ClogHelper.CLOG_TIERS[tier]) : null));
 		List<GameTile.Tile> tiles = new ArrayList<>();
 		if (hasTotals())
 		{
@@ -424,44 +384,10 @@ public class ClogSummaryTooltip extends TitleTooltip
 			}));
 	}
 
-	/** Who supplied the log: each source's icon, its name on hover. */
+	/** Who supplied the log: each source's icon under the last update, from the left, its name on hover (Dylan 11/14). */
 	private CardBody.Part sources()
 	{
-		return CardBody.part(c ->
-		{
-			int width = Math.max(c.fm.stringWidth(SOURCE_LABEL), sourceRowWidth(clogSources.size()));
-			for (ClogSource source : clogSources)
-			{
-				width = Math.max(width, c.fm.stringWidth(source.name));
-			}
-			return width;
-		}, c -> c.fm.getHeight() + SOURCE_LABEL_GAP + SOURCE_ICON_SIZE, (c, y) ->
-		{
-			c.g.setColor(MUTED_GRAY);
-			c.g.drawString(SOURCE_LABEL, (c.w - c.fm.stringWidth(SOURCE_LABEL)) / 2, y + c.fm.getAscent());
-			y += c.fm.getHeight() + SOURCE_LABEL_GAP;
-			int sourceX = sourceRowStartX(c.w, clogSources.size());
-			for (int i = 0; i < clogSources.size(); i++)
-			{
-				ClogSource source = clogSources.get(i);
-				int iconX = sourceX + i * (SOURCE_ICON_SIZE + SOURCE_ICON_GAP);
-				if (source.icon != null)
-				{
-					c.g.drawImage(source.icon, iconX, y, null);
-				}
-				c.hits.add(new TooltipItemHover.HitBox(SOURCE_SECTION, 0, source.name,
-					new Rectangle(iconX - SOURCE_HIT_PAD, y - SOURCE_HIT_PAD,
-						SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2, SOURCE_ICON_SIZE + SOURCE_HIT_PAD * 2), true, source.url));
-			}
-		});
-	}
-
-	@RequiredArgsConstructor(access = AccessLevel.PRIVATE)
-	private static final class ClogSource
-	{
-		private final String name;
-		private final BufferedImage icon;
-		@Nullable
-		private final String url;
+		return CardBody.row(SOURCES_GAP + CardSources.ICON, c -> CardSources.width(clogSources.size()),
+			(c, y) -> CardSources.draw(c, clogSources, c.inset(), y + SOURCES_GAP, SOURCE_SECTION));
 	}
 }

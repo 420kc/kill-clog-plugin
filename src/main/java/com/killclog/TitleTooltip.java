@@ -37,6 +37,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	protected static final Color CLOG_YELLOW = new Color(255, 255, 0);
 	protected static final Color MUTED_GRAY = new Color(148, 148, 148);
 	private static final int HEADER_WORD_GAP = 8;
+	private static final int HEADER_ICON_GAP = 3;
 
 	@Getter(AccessLevel.PROTECTED)
 	@Setter
@@ -134,18 +135,28 @@ public abstract class TitleTooltip extends NativeTooltip
 		});
 	}
 
-	/** A word at the header's right on the title's line, in the value color, as the Collection Log names its tier. */
-	CardBody.Part headerWord(@Nullable String word)
+	/**
+	 * A word at the header's right on the title's line, in the value color, with its icon before it: the Collection Log
+	 * names its tier beside the tier's icon (Dylan, 2026-11-14).
+	 */
+	CardBody.Part headerWord(@Nullable String word, @Nullable Image icon)
 	{
 		FontMetrics fm = getFontMetrics(FontManager.getRunescapeFont());
-		return CardBody.row(0, c -> word != null ? headerTextWidth() + HEADER_WORD_GAP + fm.stringWidth(word) : 0, (c, y) ->
+		int iconWidth = icon != null ? icon.getWidth(null) + HEADER_ICON_GAP : 0;
+		return CardBody.row(0, c -> word != null ? headerTextWidth() + HEADER_WORD_GAP + iconWidth + fm.stringWidth(word) : 0, (c, y) ->
 		{
 			if (word != null)
 			{
+				int ascent = getFontMetrics(getTitleFont()).getAscent();
+				int x = c.w - c.inset() - fm.stringWidth(word);
+				if (icon != null)
+				{
+					c.g.drawImage(icon, x - iconWidth, c.inset() + (ascent - icon.getHeight(null)) / 2, null);
+				}
 				Font font = c.g.getFont();
 				c.g.setFont(fm.getFont());
 				c.g.setColor(NativeTooltip.valueColor);
-				c.g.drawString(word, c.w - c.inset() - fm.stringWidth(word), c.inset() + getFontMetrics(getTitleFont()).getAscent());
+				c.g.drawString(word, x, c.inset() + ascent);
 				c.g.setFont(font);
 			}
 		});
@@ -575,7 +586,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	}
 
 	/** The widest header line: the card is never narrower, and a corner image keeps clear of every line. */
-	private int headerTextWidth()
+	int headerTextWidth()
 	{
 		FontMetrics nfm = getFontMetrics(getTitleFont());
 		FontMetrics sfm = getFontMetrics(FontManager.getRunescapeSmallFont());

@@ -130,15 +130,12 @@ public class TitleTooltipTest
 	}
 
 	@Test
-	public void clogSummaryProvenanceRowsAreCenteredForOneTwoAndThreeSources()
+	public void clogSummarySourcesRowWidthCountsEachIconAndTheGapsBetween()
 	{
-		int width = 101;
-		for (int count = 1; count <= 3; count++)
-		{
-			int rowWidth = ClogSummaryTooltip.sourceRowWidth(count);
-			int startX = ClogSummaryTooltip.sourceRowStartX(width, count);
-			assertTrue(Math.abs(width - (startX * 2 + rowWidth)) <= 1);
-		}
+		// Left-aligned under the last update, with no Sources line (Dylan 11/14).
+		assertEquals(0, CardSources.width(0));
+		assertEquals(13, CardSources.width(1));
+		assertEquals(13 * 3 + 5 * 2, CardSources.width(3));
 	}
 
 	@Test
@@ -156,7 +153,7 @@ public class TitleTooltipTest
 		graphics.dispose();
 
 		int iconY = idle.height - NativeTooltip.getInset() - 13;
-		int startX = ClogSummaryTooltip.sourceRowStartX(idle.width, 3);
+		int startX = NativeTooltip.getInset();
 		List<String> names = Arrays.asList("Kill Clog", "TempleOSRS", "RuneProfile");
 		for (int i = 0; i < names.size(); i++)
 		{
@@ -197,12 +194,12 @@ public class TitleTooltipTest
 		pair.paint(graphics);
 		graphics.dispose();
 
-		moveMouse(blue, ClogSummaryTooltip.sourceRowStartX(blue.getWidth(), 1) + 6,
+		moveMouse(blue, NativeTooltip.getInset() + 6,
 			blue.getHeight() - NativeTooltip.getInset() - 7);
 		assertEquals("TempleOSRS", blue.getHeaderHoverLineText());
 		assertNull(red.getHeaderHoverLineText());
 
-		moveMouse(red, ClogSummaryTooltip.sourceRowStartX(red.getWidth(), 1) + 6,
+		moveMouse(red, NativeTooltip.getInset() + 6,
 			red.getHeight() - NativeTooltip.getInset() - 7);
 		assertEquals("RuneProfile", red.getHeaderHoverLineText());
 	}
