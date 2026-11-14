@@ -35,15 +35,21 @@ public class SummaryTooltip extends TitleTooltip
 	// With a character standing in, the prestige cape sits small in the header's corner and names its prestige.
 	@Nullable
 	private BufferedImage cape;
-	// A RuneProfile character's page: its icon sits dim in the figure's top corner, lit while hovered (Dylan, 2026-11-09).
+	// Where a character came from: its site's icon sits dim in the figure's top corner, lit while hovered, and opens the
+	// player's page there (RuneProfile's, Dylan 2026-11-09; Kill Clog's, 2026-11-14).
 	@Nullable
-	private String runeProfilePage;
+	private String sourcePage;
+	@Nullable
+	private String sourceLink;
+	@Nullable
+	private IntFunction<BufferedImage> sourceIconAt;
 	static final String RUNEPROFILE_LINK = "View on RuneProfile";
+	static final String KILLCLOG_LINK = "View on Kill Clog";
 	private static final int SOURCE_ICON = 13;
 	private static final int SOURCE_HIT_PAD = 2;
 	private static final float SOURCE_DIM = 0.45f;
 	@Nullable
-	private BufferedImage runeProfileIcon;
+	private BufferedImage sourceIcon;
 
 	// Pet data only includes obtained pets: the gallery shows what you have,
 	// not the empty slots.
@@ -105,10 +111,13 @@ public class SummaryTooltip extends TitleTooltip
 		this.cape = cape;
 	}
 
-	/** The figure is the player's RuneProfile character, from this page; null when it isn't. */
-	void setRuneProfilePage(@Nullable String page)
+	/** The figure is the player's character from a site: its icon at a size, the band's words while hovered, its page. */
+	void setFigureSource(IntFunction<BufferedImage> iconAt, String link, String page)
 	{
-		runeProfilePage = page;
+		sourceIconAt = iconAt;
+		sourceLink = link;
+		sourcePage = page;
+		sourceIcon = null;
 	}
 
 	/** The player's name reads white, like the name it is, not an orange card label. */
@@ -202,7 +211,7 @@ public class SummaryTooltip extends TitleTooltip
 			card.add(CardBody.row(figure.getHeight() + FIGURE_GAP, c -> figure.getWidth(), (c, y) ->
 			{
 				c.g.drawImage(figure, (c.w - figure.getWidth()) / 2, y, null);
-				if (runeProfilePage != null)
+				if (sourcePage != null)
 				{
 					drawSourceIcon(c, y);
 				}
@@ -227,7 +236,7 @@ public class SummaryTooltip extends TitleTooltip
 			card.add(hasBodyAbovePets() ? CardBody.hoverBand() : CardBody.headerHoverBand())
 				.add(CardBody.scroll(scroll, pets.asPart()));
 		}
-		else if (capeInHeader || runeProfilePage != null)
+		else if (capeInHeader || sourcePage != null)
 		{
 			// Somewhere for a hovered corner image to name itself, pets or none.
 			card.add(CardBody.hoverBand());
@@ -236,29 +245,29 @@ public class SummaryTooltip extends TitleTooltip
 	}
 
 	/**
-	 * RuneProfile's icon at the figure's top right, under the header's prestige cape: dim, so it doesn't pull the eye
-	 * from the character, and lit while hovered, when the band names its page and a click opens it.
+	 * The character's site's icon at the figure's top right, under the header's prestige cape: dim, so it doesn't pull
+	 * the eye from the character, and lit while hovered, when the band names its page and a click opens it.
 	 */
 	private void drawSourceIcon(CardBody.Ctx c, int y)
 	{
-		if (runeProfileIcon == null)
+		if (sourceIcon == null)
 		{
-			runeProfileIcon = KillClogIcons.runeProfileSourceIcon(SOURCE_ICON);
+			sourceIcon = sourceIconAt.apply(SOURCE_ICON);
 		}
-		BufferedImage icon = runeProfileIcon;
+		BufferedImage icon = sourceIcon;
 		if (icon == null)
 		{
 			return;
 		}
 		int x = c.w - c.inset() - SOURCE_ICON;
-		boolean lit = RUNEPROFILE_LINK.equals(itemHover.hoveredItemName());
+		boolean lit = sourceLink.equals(itemHover.hoveredItemName());
 		Composite before = c.g.getComposite();
 		c.g.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, lit ? 1f : SOURCE_DIM));
 		c.g.drawImage(icon, x, y, null);
 		c.g.setComposite(before);
-		c.hits.add(new TooltipItemHover.HitBox(TooltipItemHover.HEADER_SECTION, 0, RUNEPROFILE_LINK,
+		c.hits.add(new TooltipItemHover.HitBox(TooltipItemHover.HEADER_SECTION, 0, sourceLink,
 			new Rectangle(x - SOURCE_HIT_PAD, y - SOURCE_HIT_PAD, SOURCE_ICON + SOURCE_HIT_PAD * 2,
-				SOURCE_ICON + SOURCE_HIT_PAD * 2), true, runeProfilePage));
+				SOURCE_ICON + SOURCE_HIT_PAD * 2), true, sourcePage));
 	}
 
 	private static CardBody.Part centered(String label, String value)

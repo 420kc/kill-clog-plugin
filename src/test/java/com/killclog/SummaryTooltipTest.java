@@ -165,6 +165,32 @@ public class SummaryTooltipTest
 	@Test
 	public void aRuneProfileCharacterWearsItsIconDimUntilHovered()
 	{
+		cornerIcon(KillClogIcons::runeProfileSourceIcon, SummaryTooltip.RUNEPROFILE_LINK, TooltipItemLink.runeProfileUrl("pgn"));
+	}
+
+	// Dylan 11/14: a Kill Clog character names its site the same way, with the chalice, and opens the player's profile.
+	@Test
+	public void aKillClogCharacterWearsTheChaliceDimUntilHovered()
+	{
+		BufferedImage chalice = cornerIcon(KillClogIcons::killClogSourceIcon, SummaryTooltip.KILLCLOG_LINK,
+			TooltipItemLink.killclogUrl("pgn"));
+		BufferedImage runeProfile = cornerIcon(KillClogIcons::runeProfileSourceIcon, SummaryTooltip.RUNEPROFILE_LINK,
+			TooltipItemLink.runeProfileUrl("pgn"));
+		boolean differs = false;
+		for (int y = 0; y < chalice.getHeight() && !differs; y++)
+		{
+			for (int x = 0; x < chalice.getWidth() && !differs; x++)
+			{
+				differs = chalice.getRGB(x, y) != runeProfile.getRGB(x, y);
+			}
+		}
+		assertTrue("the chalice, not RuneProfile's icon", differs);
+		assertEquals("https://killclog.com/p/pgn", TooltipItemLink.killclogUrl("pgn"));
+	}
+
+	/** A character with a site's icon in its corner: dim, in no room of its own, lit and named while hovered. */
+	private static BufferedImage cornerIcon(java.util.function.IntFunction<BufferedImage> iconAt, String link, String page)
+	{
 		BufferedImage character = new BufferedImage(120, 160, BufferedImage.TYPE_INT_ARGB);
 		character.setRGB(60, 0, 0xff302020);
 		BufferedImage cape = new BufferedImage(9, 20, BufferedImage.TYPE_INT_ARGB);
@@ -174,7 +200,7 @@ public class SummaryTooltipTest
 		SummaryTooltip tip = new SummaryTooltip();
 		tip.setData("pgn", 4964, character, null, "Ironman", "Maxed Infernal");
 		tip.setCape(cape);
-		tip.setRuneProfilePage(TooltipItemLink.runeProfileUrl("pgn"));
+		tip.setFigureSource(iconAt, link, page);
 		BufferedImage before = paint(plain);
 		BufferedImage dim = paint(tip);
 		assertEquals("the icon takes no room", before.getHeight(), dim.getHeight());
@@ -200,7 +226,7 @@ public class SummaryTooltipTest
 				System.currentTimeMillis(), 0, (int) icon.getCenterX(), (int) icon.getCenterY(), 0, false,
 				java.awt.event.MouseEvent.NOBUTTON));
 		}
-		assertEquals(SummaryTooltip.RUNEPROFILE_LINK, tip.getHeaderHoverLineText());
+		assertEquals(link, tip.getHeaderHoverLineText());
 		BufferedImage lit = paint(tip);
 		int litDistance = 0;
 		int dimDistance = 0;
@@ -213,6 +239,7 @@ public class SummaryTooltipTest
 			}
 		}
 		assertTrue("hovered, the icon is at full strength", litDistance > dimDistance * 3 / 2);
+		return dim;
 	}
 
 	private static int distance(int a, int b)

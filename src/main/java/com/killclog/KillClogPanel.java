@@ -1346,9 +1346,17 @@ public class KillClogPanel extends PluginPanel
 		if (character != null)
 		{
 			tip.setCape(iconCache.capeFor(hiscore));
+			// The corner names the character's site: RuneProfile's, or the player's own Kill Clog character.
+			String name = clog.getPlayerName().trim();
 			if (portraits.fromRuneProfile(clog))
 			{
-				tip.setRuneProfilePage(TooltipItemLink.runeProfileUrl(clog.getPlayerName().trim()));
+				tip.setFigureSource(KillClogIcons::runeProfileSourceIcon, SummaryTooltip.RUNEPROFILE_LINK,
+					TooltipItemLink.runeProfileUrl(name));
+			}
+			else
+			{
+				tip.setFigureSource(KillClogIcons::killClogSourceIcon, SummaryTooltip.KILLCLOG_LINK,
+					TooltipItemLink.killclogUrl(name));
 			}
 		}
 		if (clans != null)
