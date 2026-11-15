@@ -134,9 +134,7 @@ final class TooltipItemSprites
 			BufferedImage sprite = sprites != null ? sprites.spriteAt(i) : null;
 			if (sprite != null)
 			{
-				g2.setComposite(obtained
-					? AlphaComposite.SrcOver
-					: AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
+				g2.setComposite(obtained ? AlphaComposite.SrcOver : KillClogColors.DIM);
 				g2.drawImage(sprite, x + (size - sprite.getWidth()) / 2, y + (size - sprite.getHeight()) / 2, null);
 				g2.setComposite(AlphaComposite.SrcOver);
 			}

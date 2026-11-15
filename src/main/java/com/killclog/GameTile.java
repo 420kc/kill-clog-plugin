@@ -176,7 +176,7 @@ final class GameTile
 		if (tile.sprite != null)
 		{
 			Composite solid = g.getComposite();
-			g.setComposite(tile.faint ? AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f) : solid);
+			g.setComposite(tile.faint ? KillClogColors.DIM : solid);
 			// A small icon (a CA tier's, a boss's) sits in the middle of the item sprites' slot; with no count or bar
 			// under it (a raid before any lookup), in the middle of all the tile under its name (Dylan, 2026-11-14).
 			int slot = count.isEmpty() && !known ? box.height - SPRITE_TOP : SPRITE_SLOT;

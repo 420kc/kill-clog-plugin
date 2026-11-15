@@ -131,7 +131,7 @@ final class PanelIconCache
 		BufferedImage dimmed = new BufferedImage(
 			original.getWidth(), original.getHeight(), BufferedImage.TYPE_INT_ARGB);
 		Graphics2D g2 = dimmed.createGraphics();
-		g2.setComposite(AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
+		g2.setComposite(KillClogColors.DIM);
 		g2.drawImage(original, 0, 0, null);
 		g2.dispose();
 		return dimmed;

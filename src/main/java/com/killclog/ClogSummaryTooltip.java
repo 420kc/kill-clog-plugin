@@ -302,7 +302,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 				BufferedImage icon = tierIcons != null ? tierIcons.get(ClogHelper.CLOG_TIERS[i]) : null;
 				if (icon != null)
 				{
-					c.g.setComposite(reached ? solid : AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f));
+					c.g.setComposite(reached ? solid : KillClogColors.DIM);
 					c.g.drawImage(icon, x, y, null);
 				}
 				c.hits.add(new TooltipItemHover.HitBox(TIER_SECTION, 0, labels[i],
