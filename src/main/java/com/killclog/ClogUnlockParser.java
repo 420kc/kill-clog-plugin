@@ -25,9 +25,8 @@ final class ClogUnlockParser
 
 	// Vanilla kill-count message, RuneLite's canonical shape: covers kill,
 	// harvest, lap, completion, success, and subdued variants with their
-	// color tags. Lands just before a clog unlock from that kill (some loot
-	// waits on the player), so a recent match supplies the "obtained at N kc"
-	// provenance.
+	// color tags. Each boss's latest one supplies the "obtained at N kc"
+	// provenance (LiveClogSync).
 	private static final Pattern KILLCOUNT_MESSAGE = Pattern.compile(
 		"Your (?<pre>completion count for |subdued |completed )?(?:<col=[0-9a-f]{6}>)?(?<boss>.+?)(?:</col>)? "
 			+ "(?<post>(?:(?:kill|harvest|lap|completion|success|Total Ticket) )?(?:count )?)is: ?"

@@ -2,7 +2,9 @@ package com.killclog;
 
 import java.util.*;
 import java.util.function.Consumer;
+import javax.annotation.Nullable;
 import javax.swing.SwingUtilities;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import net.runelite.api.*;
 import net.runelite.api.gameval.VarPlayerID;
@@ -12,27 +14,58 @@ import net.runelite.client.game.ItemManager;
  * Live unlocks between walks: a "New item added" line, or the clan broadcast, adds that one item to your own log,
  * dated, with the kill that caused it; a name that matches two missing items is remembered for the next walk to
  * settle; totals only rise. Client thread.
+ *
+ * The kill is the game's word where it gives one, never a clock (Dylan, 2026-11-15). The server credits each loot to
+ * the NPC that gave it as you receive it (RuneLite's ServerNpcLoot, the only source its own Loot Tracker reads NPC loot
+ * from), so an item takes that NPC's latest kill however long the loot waited on its corpse, and none when the NPC has
+ * no kill (a plain smoke devil's Occult necklace, on Thermy's page too). A pet, a chest or a reward screen is credited to
+ * nobody, and a Collection Log item comes only from its own content: it takes the latest kill of the boss whose page
+ * holds it, else the count message it arrived with (the Barrows chest's, whose name isn't its page's).
  */
 @Slf4j
 final class LiveClogSync
 {
-	// A kill message within this many ticks of the unlock message is treated
-	// as its cause; beyond it the unlock stays provenance-less rather than
-	// guessing (skilling clogs, chest opens, and pet drops have no kc).
-	private static final int KILL_CONTEXT_MAX_TICKS = 5;
-	// Up to this many (five minutes of play) for an item on the killed boss's own page, the page being the real guard:
-	// some loot waits on the player, and Maggot King's comes when its corpse is searched (Dylan 11/14: the Elder
-	// venator fang 3 s after kill 603; across 183 kills in his logs, loot came up to 259 s after the kill message).
-	private static final int OWN_PAGE_MAX_TICKS = 500;
+	// A count message this many ticks or fewer before lands with its loot: a chest's reward, or loot credited to an NPC
+	// named apart from its kill message (Grotesque Guardians' Dusk). Never a wait.
+	private static final int WITH_THE_KILL = 5;
+	private static final Kill NO_KILL = new Kill(null, -1);
 
 	private boolean needsFirstSyncWarned;
-	private ClogUnlockParser.KillContext lastKill;
-	private int lastKillTick = -1;
+	// Each boss's latest kill this login by name, the latest of all, and each credited item's kill until it unlocks.
+	private final Map<String, Kill> kills = new HashMap<>();
+	@Nullable
+	private Kill last;
+	private final Map<String, Kill> credits = new HashMap<>();
+
+	@RequiredArgsConstructor
+	private static final class Kill
+	{
+		@Nullable
+		final ClogUnlockParser.KillContext context;
+		final int tick;
+	}
 
 	void rememberKill(ClogUnlockParser.KillContext kill, int tick)
 	{
-		lastKill = kill;
-		lastKillTick = tick;
+		last = new Kill(kill, tick);
+		kills.put(name(kill.boss), last);
+	}
+
+	/**
+	 * The game credited loot to an NPC: each item keeps that NPC's latest kill, or the kill the credit landed with when
+	 * the two are named apart, until the item unlocks; none when neither (a plain monster).
+	 */
+	void credit(String npc, Collection<String> items, int tick)
+	{
+		Kill kill = kills.get(name(npc));
+		if (kill == null && last != null && tick - last.tick <= WITH_THE_KILL)
+		{
+			kill = last;
+		}
+		for (String item : items)
+		{
+			credits.put(ClogUnlockParser.normalizeItemName(item), kill != null ? kill : NO_KILL);
+		}
 	}
 
 	void handleUnlock(String itemName, int broadcastObtained, int broadcastTotal,
@@ -73,15 +106,14 @@ final class LiveClogSync
 			return;
 		}
 
-		// Attach the causing kill when one landed just before the unlock, or a little longer before it on its own page.
-		int ticks = lastKill != null && lastKillTick >= 0 ? client.getTickCount() - lastKillTick : Integer.MAX_VALUE;
+		// The kill the game credited the item to, else its own page's (the class note).
+		Kill credited = credits.remove(ClogUnlockParser.normalizeItemName(itemName));
 		boolean changed = false;
 		for (int itemId : missingItemIds)
 		{
 			List<String> pages = clogIndex.categoryKeysForItem(itemId);
-			ClogUnlockParser.KillContext kill = ticks <= KILL_CONTEXT_MAX_TICKS || (ticks <= OWN_PAGE_MAX_TICKS
-				&& pages != null && pages.stream().anyMatch(key -> lastKill.boss.equalsIgnoreCase(clogIndex.pageName(key))))
-				? lastKill : null;
+			ClogUnlockParser.KillContext kill = credited != null ? credited.context
+				: uncreditedKill(pages, clogIndex, client.getTickCount());
 			changed |= localClogCache.mergeObtainedItem(playerName, itemId, pages, clogIndex.categoryItems(),
 				kill != null ? kill.kc : 0, kill != null ? kill.boss : null);
 		}
@@ -109,13 +141,39 @@ final class LiveClogSync
 	}
 
 	/**
-	 * The account that just ended, or the plugin stopping (RuneLite keeps the instance for a re-enable): its last kill
-	 * and its first-sync warning go, so the next account's unlocks never take that kill.
+	 * The account that just ended, or the plugin stopping (RuneLite keeps the instance for a re-enable): its kills, its
+	 * credits and its first-sync warning go, so the next account's unlocks never take them.
 	 */
 	void reset()
 	{
-		rememberKill(null, -1);
+		kills.clear();
+		credits.clear();
+		last = null;
 		resetFirstSyncWarning();
+	}
+
+	/** An item credited to nobody: the latest kill of a boss whose page holds it, else the count message it came with. */
+	@Nullable
+	private ClogUnlockParser.KillContext uncreditedKill(@Nullable List<String> pages, ClogIndex clogIndex, int tick)
+	{
+		Kill cause = null;
+		for (String page : pages != null ? pages : Collections.<String>emptyList())
+		{
+			Kill kill = kills.get(name(clogIndex.pageName(page)));
+			cause = kill != null && (cause == null || kill.tick > cause.tick) ? kill : cause;
+		}
+		if (cause == null && last != null && tick - last.tick <= WITH_THE_KILL)
+		{
+			cause = last;
+		}
+		return cause != null ? cause.context : null;
+	}
+
+	/** A boss's name as its kill message, its page and the game's credit write it, case and a leading "the" aside. */
+	private static String name(@Nullable String name)
+	{
+		String key = name == null ? "" : name.replace((char) 160, ' ').trim().toLowerCase(Locale.ROOT);
+		return key.startsWith("the ") ? key.substring(4) : key;
 	}
 
 	private void warnFirstSync(KillClogChatNotifier chatNotifier)

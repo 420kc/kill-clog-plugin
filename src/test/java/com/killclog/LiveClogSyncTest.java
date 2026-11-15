@@ -21,6 +21,7 @@ public class LiveClogSyncTest
 	private static final int PET = 30000;
 	private static final int DEVIL_ITEM = 30001;
 	private static final int UNPAGED = 30002;
+	private static final int GAUNTLET_ITEM = 30003;
 
 	@Test
 	public void theGameCountersWaitForASettledWorld()
@@ -59,19 +60,67 @@ public class LiveClogSyncTest
 		verify(cache).mergeObtainedItem(eq("Tester"), eq(FANG), any(), any(), eq(603), eq("Maggot King"));
 	}
 
-	// Maggot King's loot comes when its corpse is searched: across 183 kills in his logs, up to 259 s after the kill.
+	// Maggot King's loot comes when its corpse is searched, as long after the kill as the player likes (up to 259 s in
+	// his logs): an item from a boss's own page that the game credited to nobody takes the boss's latest kill, no clock.
 	@Test
-	public void aDropFromItsOwnPageWaitsUpToFiveMinutesOfPlay()
+	public void aDropFromItsOwnPageTakesTheBossesLatestKillHoweverLongAfter()
 	{
-		verify(unlockAfter("Maggot King", 500, FANG)).mergeObtainedItem(eq("Tester"), eq(FANG), any(), any(), eq(603),
+		verify(unlockAfter("Maggot King", 50_000, FANG)).mergeObtainedItem(eq("Tester"), eq(FANG), any(), any(), eq(603),
 			eq("Maggot King"));
-		verify(unlockAfter("Maggot King", 501, FANG)).mergeObtainedItem(eq("Tester"), eq(FANG), any(), any(), eq(0),
-			isNull());
 	}
 
-	// A casket or a skilling unlock right after a kill is no drop of that boss's: past the five ticks, it stays bare.
+	// Dylan 11/15: the game credits each loot to the NPC that gave it as you receive it (11/14's fang: credited to Maggot
+	// King the second it unlocked); the item takes that NPC's latest kill, however long the loot waited.
 	@Test
-	public void anItemFromAnotherPageNeverTakesTheKillPastFiveTicks()
+	public void lootTheGameCreditsTakesItsNpcsLatestKillHoweverLongItWaited()
+	{
+		LiveClogSync sync = new LiveClogSync();
+		sync.rememberKill(new ClogUnlockParser.KillContext("Maggot King", 603), 1000);
+		sync.rememberKill(new ClogUnlockParser.KillContext("Zulrah", 50), 1100);
+		sync.credit("Maggot King", List.of("Elder venator fang"), 60_000);
+		// An item no page names yet, so only the credit can give it Maggot King's kill, not Zulrah's after it.
+		verify(unlock(sync, clientAt(60_000), UNPAGED)).mergeObtainedItem(eq("Tester"), eq(UNPAGED), any(), any(), eq(603),
+			eq("Maggot King"));
+	}
+
+	// A plain smoke devil drops the Occult necklace too, and it sits on Thermy's page: credited to the smoke devil, which
+	// has no kill count, it takes none, Thermy's kill a moment before notwithstanding.
+	@Test
+	public void lootCreditedToAPlainMonsterTakesNoKillThoughItsPageIsABosses()
+	{
+		LiveClogSync sync = new LiveClogSync();
+		sync.rememberKill(new ClogUnlockParser.KillContext("Thermonuclear smoke devil", 603), 1000);
+		sync.credit("Smoke devil", List.of("Elder venator fang"), 1100);
+		verify(unlock(sync, clientAt(1110), DEVIL_ITEM)).mergeObtainedItem(eq("Tester"), eq(DEVIL_ITEM), any(), any(),
+			eq(0), isNull());
+	}
+
+	// Loot credited to an NPC named apart from its kill message (Grotesque Guardians fight Dusk) lands with that kill.
+	@Test
+	public void lootCreditedWithAKillNamedApartTakesIt()
+	{
+		LiveClogSync sync = new LiveClogSync();
+		sync.rememberKill(new ClogUnlockParser.KillContext("Grotesque Guardians", 603), 1000);
+		sync.credit("Dusk", List.of("Elder venator fang"), 1002);
+		verify(unlock(sync, clientAt(9000), UNPAGED)).mergeObtainedItem(eq("Tester"), eq(UNPAGED), any(), any(), eq(603),
+			eq("Grotesque Guardians"));
+	}
+
+	// A page's name and its kill message's can differ by a leading "the": The Gauntlet's page, "Your Gauntlet completion
+	// count".
+	@Test
+	public void aPageAndItsKillMatchWithOrWithoutTheir()
+	{
+		LiveClogSync sync = new LiveClogSync();
+		sync.rememberKill(new ClogUnlockParser.KillContext("Gauntlet", 12), 1000);
+		verify(unlock(sync, clientAt(5000), GAUNTLET_ITEM)).mergeObtainedItem(eq("Tester"), eq(GAUNTLET_ITEM), any(),
+			any(), eq(12), eq("Gauntlet"));
+	}
+
+	// An unlock credited to nobody and off any boss's page with a kill (a casket after a kill) takes only the count
+	// message it arrived with: within five ticks, as a chest's reward does; past them, bare.
+	@Test
+	public void anItemFromAnotherPageTakesOnlyTheKillItArrivedWith()
 	{
 		verify(unlockAfter("Maggot King", 6, CLUE_ITEM)).mergeObtainedItem(eq("Tester"), eq(CLUE_ITEM), any(), any(),
 			eq(0), isNull());
@@ -119,16 +168,23 @@ public class LiveClogSyncTest
 		verify(cache).mergeObtainedItem(eq("Tester"), eq(FANG), any(), any(), eq(0), isNull());
 	}
 
-	// The plugin forgets the kill at the login screen (KillClogPlugin), so another account's unlock never takes it.
+	// The plugin forgets its kills and credits at the login screen and on shutdown (KillClogPlugin), so another
+	// account's unlock never takes them.
 	@Test
-	public void aForgottenKillIsNoKill()
+	public void aResetForgetsKillsAndCredits()
 	{
-		Client client = mock(Client.class);
 		LiveClogSync sync = new LiveClogSync();
 		sync.rememberKill(new ClogUnlockParser.KillContext("Maggot King", 603), 1000);
-		sync.rememberKill(null, -1);
-		when(client.getTickCount()).thenReturn(1001);
-		verify(unlock(sync, client, FANG)).mergeObtainedItem(eq("Tester"), eq(FANG), any(), any(), eq(0), isNull());
+		sync.credit("Maggot King", List.of("Elder venator fang"), 1000);
+		sync.reset();
+		verify(unlock(sync, clientAt(1001), FANG)).mergeObtainedItem(eq("Tester"), eq(FANG), any(), any(), eq(0), isNull());
+	}
+
+	private static Client clientAt(int tick)
+	{
+		Client client = mock(Client.class);
+		when(client.getTickCount()).thenReturn(tick);
+		return client;
 	}
 
 	/** Kill 603 of `boss`, then the item's unlock `ticks` later. */
@@ -154,6 +210,8 @@ public class LiveClogSyncTest
 		when(index.categoryKeysForItem(PET)).thenReturn(List.of("all_pets", "maggot_king"));
 		when(index.categoryKeysForItem(DEVIL_ITEM)).thenReturn(List.of("thermonuclear_smoke_devil"));
 		when(index.categoryKeysForItem(UNPAGED)).thenReturn(null);
+		when(index.categoryKeysForItem(GAUNTLET_ITEM)).thenReturn(List.of("the_gauntlet"));
+		when(index.pageName("the_gauntlet")).thenReturn("The Gauntlet");
 		when(index.pageName("maggot_king")).thenReturn("Maggot King");
 		when(index.pageName("all_pets")).thenReturn("All Pets");
 		when(index.pageName("beginner_treasure_trails")).thenReturn("Beginner Treasure Trails");

@@ -898,20 +898,46 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void theGamesLootCreditReachesTheUnlocksKill() throws Exception
+	{
+		// The game names the NPC behind each loot (RuneLite's ServerNpcLoot): the plugin hands it on with the items' names.
+		net.runelite.api.NPCComposition maggotKing = mock(net.runelite.api.NPCComposition.class);
+		when(maggotKing.getName()).thenReturn("Maggot King");
+		net.runelite.api.ItemComposition fang = mock(net.runelite.api.ItemComposition.class);
+		when(fang.getName()).thenReturn("Elder venator fang");
+		when(((net.runelite.client.game.ItemManager) field("itemManager")).getItemComposition(33634)).thenReturn(fang);
+		LiveClogSync sync = (LiveClogSync) field("liveClogSync");
+		sync.rememberKill(new ClogUnlockParser.KillContext("Maggot King", 603), 1000);
+		plugin.onServerNpcLoot(new net.runelite.client.events.ServerNpcLoot(maggotKing,
+			List.of(new net.runelite.client.game.ItemStack(33634, 1))));
+		java.util.Map<String, ?> credits = TestViews.field(sync, "credits");
+		org.junit.Assert.assertTrue(credits.toString(), credits.containsKey("elder venator fang"));
+	}
+
+	@Test
 	public void theLastKillEndsWithItsAccountAndWithThePlugin() throws Exception
 	{
 		// 11/15 reviews: the login screen forgets the kill, so the next account's unlocks never take it, and so does a
 		// disable: RuneLite re-enables the same instance, maybe on another account.
 		LiveClogSync sync = (LiveClogSync) field("liveClogSync");
 		sync.rememberKill(new ClogUnlockParser.KillContext("Maggot King", 603), 1000);
+		sync.credit("Maggot King", List.of("Elder venator fang"), 1000);
 		logout();
-		org.junit.Assert.assertNull(TestViews.field(sync, "lastKill"));
+		assertForgotten(sync);
 
 		sync.rememberKill(new ClogUnlockParser.KillContext("Maggot King", 604), 1100);
+		sync.credit("Maggot King", List.of("Elder venator fang"), 1100);
 		plugin.shutDown();
 		drainEdt();
-		org.junit.Assert.assertNull(TestViews.field(sync, "lastKill"));
+		assertForgotten(sync);
 		plugin.startUp();
+	}
+
+	private static void assertForgotten(LiveClogSync sync)
+	{
+		org.junit.Assert.assertNull(TestViews.field(sync, "last"));
+		org.junit.Assert.assertTrue(TestViews.<java.util.Map<?, ?>>field(sync, "kills").isEmpty());
+		org.junit.Assert.assertTrue(TestViews.<java.util.Map<?, ?>>field(sync, "credits").isEmpty());
 	}
 
 	@Test

@@ -3,6 +3,7 @@ package com.killclog;
 import com.google.gson.Gson;
 import com.google.inject.Provides;
 import java.awt.image.BufferedImage;
+import java.util.*;
 import java.util.concurrent.ScheduledExecutorService;
 import javax.inject.*;
 import javax.swing.SwingUtilities;
@@ -15,7 +16,7 @@ import net.runelite.client.callback.ClientThread;
 import net.runelite.client.chat.ChatCommandManager;
 import net.runelite.client.config.*;
 import net.runelite.client.eventbus.Subscribe;
-import net.runelite.client.events.ConfigChanged;
+import net.runelite.client.events.*;
 import net.runelite.client.game.*;
 import net.runelite.client.menus.MenuManager;
 import net.runelite.client.plugins.*;
@@ -553,10 +554,8 @@ public class KillClogPlugin extends Plugin
 
 		killLog.chat(client, event.getType(), event.getMessage(), client.getTickCount());
 
-		// A kill-count message lands just before the clog unlock it caused
-		// (a few seconds for some bosses' loot); remembering the freshest one
-		// lets the unlock carry its "obtained at N kc" provenance. SPAM covers
-		// filtered game messages.
+		// Each boss's latest kill-count message gives an unlock its "obtained at N kc": the kill of the NPC the game
+		// credits its loot to, or of the boss whose page holds it (LiveClogSync). SPAM covers filtered game messages.
 		if (event.getType() == ChatMessageType.GAMEMESSAGE || event.getType() == ChatMessageType.SPAM)
 		{
 			ClogUnlockParser.KillContext kill = ClogUnlockParser.parseKillCount(event.getMessage());
@@ -588,6 +587,19 @@ public class KillClogPlugin extends Plugin
 					broadcast.itemName, broadcast.obtained, broadcast.total));
 			}
 		}
+	}
+
+	// The game names the NPC each loot came from as you receive it: an unlock of one of its items takes that NPC's
+	// kill, however long the loot waited on its corpse (LiveClogSync).
+	@Subscribe
+	public void onServerNpcLoot(ServerNpcLoot event)
+	{
+		List<String> items = new ArrayList<>(event.getItems().size());
+		for (ItemStack item : event.getItems())
+		{
+			items.add(itemManager.getItemComposition(item.getId()).getName());
+		}
+		liveClogSync.credit(Text.removeTags(event.getComposition().getName()), items, client.getTickCount());
 	}
 
 	private void handleCollectionLogUnlock(String itemName, int broadcastObtained, int broadcastTotal)
