@@ -1167,6 +1167,40 @@ public class PluginPublicationCharacterizationTest
 		ticks(1);
 		settle();
 		verify(live).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), any(), any(), any(), anyBoolean());
+
+		// Nor when the plugin stops: RuneLite starts the same instance again, maybe on another account. One heard after
+		// the start still runs.
+		plugin.onChatMessage(unlock);
+		plugin.shutDown();
+		drainEdt();
+		plugin.startUp();
+		ticks(1);
+		settle();
+		verify(live).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), any(), any(), any(), anyBoolean());
+		plugin.onChatMessage(unlock);
+		ticks(1);
+		settle();
+		verify(live, times(2)).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), any(), any(), any(),
+			anyBoolean());
+	}
+
+	@Test
+	public void everyUnlockHeardInATickRunsAtItsEndTheClanBroadcastsToo() throws Exception
+	{
+		// 11/15 review: the clan broadcast is the only unlock line for players with popup-only notifications, so it
+		// waits for the tick's loot credit as the game's own line does, and a tick that hears two runs both.
+		LiveClogSync live = mock(LiveClogSync.class);
+		replace("liveClogSync", live);
+		net.runelite.api.events.ChatMessage broadcast = new net.runelite.api.events.ChatMessage();
+		broadcast.setType(net.runelite.api.ChatMessageType.CLAN_MESSAGE);
+		broadcast.setMessage(RSN + " received a new collection log item: Elder maul (12/1600)");
+		plugin.onChatMessage(broadcast);
+		unlockMessage();
+		verify(live, never()).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), any(), any(), any(), anyBoolean());
+		tickAndRunUnlocks();
+		verify(live).handleUnlock(eq("Elder maul"), eq(12), eq(1600), any(), any(), any(), any(), any(), any(),
+			anyBoolean());
+		verify(live).handleUnlock(eq("Twisted bow"), eq(-1), eq(-1), any(), any(), any(), any(), any(), any(), anyBoolean());
 	}
 
 	@Test
