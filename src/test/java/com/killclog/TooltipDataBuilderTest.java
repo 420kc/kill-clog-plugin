@@ -116,17 +116,17 @@ public class TooltipDataBuilderTest
 		ClogResult catalog = clogWith(categories, new HashMap<>());
 
 		TooltipData data = builder.buildUnsyncedTooltipData(
-			"Vorkath", "vorkath", 42, "Kills: ", 1483, catalog);
+			"Vorkath", "vorkath", 42, null, 1483, catalog);
 
 		assertNotNull(data);
 		assertEquals(-1, data.obtainedCount);
 		assertEquals(2, data.totalItems);
 		assertTrue(data.obtainedIds.isEmpty());
 		assertTrue(data.rankTracked);
-		assertEquals("Kills: ", data.statLabel);
-		assertEquals(1483, data.statValue);
-		assertNull(builder.buildUnsyncedTooltipData("Zulrah", "zulrah", 1, "Kills: ", 1, catalog));
-		assertNull(builder.buildUnsyncedTooltipData("Vorkath", "vorkath", 1, "Kills: ", 1, null));
+		assertNull("its kills read KC, as a synced card's", data.kcLabel);
+		assertEquals(1483, data.kc);
+		assertNull(builder.buildUnsyncedTooltipData("Zulrah", "zulrah", 1, null, 1, catalog));
+		assertNull(builder.buildUnsyncedTooltipData("Vorkath", "vorkath", 1, null, 1, null));
 	}
 
 	@Test
@@ -141,6 +141,6 @@ public class TooltipDataBuilderTest
 		assertEquals(-1, data.obtainedCount);
 		assertEquals(PanelData.THIRD_AGE_ITEMS.length, data.totalItems);
 		assertFalse(data.rankTracked);
-		assertNull(data.statLabel);
+		assertEquals(-1, data.kc);
 	}
 }

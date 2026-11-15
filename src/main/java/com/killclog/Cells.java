@@ -430,20 +430,7 @@ public class Cells
 		{
 			tip.setTitle(data.name);
 			tip.setObtained(data.obtainedCount, data.totalItems);
-			if (data.kc >= 0 && config.showTooltipKc())
-			{
-				tip.setInfoLine(data.kcLabel != null ? data.kcLabel : "KC: ", TitleTooltip.grouped(data.kc),
-					NativeTooltip.valueColor);
-				if (data.pb != null && config.showTooltipPb())
-				{
-					tip.setInfoLinePair(pbLabel(data.pb), pbTime(data.pb), NativeTooltip.valueColor);
-				}
-			}
-			else if (data.pb != null && config.showTooltipPb())
-			{
-				tip.setInfoLine(pbLabel(data.pb), pbTime(data.pb), NativeTooltip.valueColor);
-			}
-			addHardModeLine(tip, data, config.showTooltipKc(), config.showTooltipPb());
+			addCountLines(tip, data, config.showTooltipKc(), config.showTooltipPb());
 			if (data.allItemIds != null)
 			{
 				tip.setItems(data.totalItems, data.allItemIds, data.obtainedIds,
@@ -702,9 +689,9 @@ public class Cells
 	}
 
 	/**
-	 * Configure an ImgTooltip for a player who has not synced any collection log: the muted "Obtained: --/Y" first, as
-	 * a synced card's Obtained leads, then the hiscore rows when the player has any signal (kc or rank) (Dylan,
-	 * 2026-11-14: the card has the room for both). Every category item draws dimmed so wiki links remain explorable.
+	 * Configure an ImgTooltip for a player who has not synced any collection log: the muted "Obtained: --/Y", then its
+	 * counts as a synced card's read (Dylan, 2026-11-14: the card has the room for both, and its KC reads "KC:"). Every
+	 * category item draws dimmed so wiki links remain explorable.
 	 */
 	static boolean configureNotSynced(ImgTooltip tip, TooltipData data, ItemManager itemManager,
 		boolean showKc)
@@ -715,26 +702,32 @@ public class Cells
 		}
 		tip.setTitle(data.name);
 		tip.setObtainedPlaceholder(data.allItemIds.size());
-		// A raid's hard mode is the player's signal too: a raider of Expert alone keeps that line and rank.
-		if (data.statValue >= 0 || data.rank > 0 || data.hardKc >= 0 || data.hardRank > 0)
-		{
-			if (data.statLabel != null && showKc)
-			{
-				tip.setInfoLine(data.statLabel, ClogHelper.cardCountText(data.statValue), NativeTooltip.valueColor);
-			}
-			addHardModeLine(tip, data, showKc, false);
-		}
+		addCountLines(tip, data, showKc, false);
 		tip.setItems(data.totalItems, data.allItemIds, Collections.emptySet(),
 			Collections.emptyMap(), data.itemNames, itemManager);
 		return true;
 	}
 
 	/**
-	 * A raid's hard mode on the line under the raid's own KC and PB, by the name the Combat Summary pairs it by, and
-	 * under that a page count on its own line (a raid's Entry, Wintertodt's rewards; PageCounts).
+	 * A card's counts under its Obtained line, synced log or not: its lead (KC, or the count its page leads with) with
+	 * the PB beside it, else the PB alone; a raid's hard mode under that, by the name the Combat Summary pairs it by; then
+	 * a page count on its own line (a raid's Entry, Wintertodt's rewards; PageCounts).
 	 */
-	static void addHardModeLine(TitleTooltip tip, TooltipData data, boolean showKc, boolean showPb)
+	static void addCountLines(TitleTooltip tip, TooltipData data, boolean showKc, boolean showPb)
 	{
+		if (data.kc >= 0 && showKc)
+		{
+			tip.setInfoLine(data.kcLabel != null ? data.kcLabel : "KC: ", TitleTooltip.grouped(data.kc),
+				NativeTooltip.valueColor);
+			if (data.pb != null && showPb)
+			{
+				tip.setInfoLinePair(pbLabel(data.pb), pbTime(data.pb), NativeTooltip.valueColor);
+			}
+		}
+		else if (data.pb != null && showPb)
+		{
+			tip.setInfoLine(pbLabel(data.pb), pbTime(data.pb), NativeTooltip.valueColor);
+		}
 		if (data.hardLabel != null && data.hardKc >= 0 && showKc)
 		{
 			tip.addInfoLine(data.hardLabel + ": ", TitleTooltip.grouped(data.hardKc), NativeTooltip.valueColor);
@@ -769,7 +762,7 @@ public class Cells
 	{
 		if (showRank && result != null && result.isRankDataAvailable()
 			&& data != null && data.rankTracked
-			&& (data.obtainedCount >= 0 || data.statValue >= 0 || data.rank > 0 || data.hardKc >= 0 || data.hardRank > 0))
+			&& (data.obtainedCount >= 0 || data.kc >= 0 || data.rank > 0 || data.hardKc >= 0 || data.hardRank > 0))
 		{
 			tip.setRank(data.rank);
 			if (data.hardLabel != null)

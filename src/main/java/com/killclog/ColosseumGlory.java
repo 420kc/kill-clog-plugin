@@ -25,6 +25,6 @@ final class ColosseumGlory
 	{
 		int glory = result != null ? result.getActivityScore(ACTIVITY_NAME) : -1;
 		return data == null || glory <= 0 || !BOSS_NAME.equals(boss) ? data
-			: data.toBuilder().kcLabel(LABEL).kc(glory).statLabel(LABEL).statValue(glory).build();
+			: data.toBuilder().kcLabel(LABEL).kc(glory).build();
 	}
 }

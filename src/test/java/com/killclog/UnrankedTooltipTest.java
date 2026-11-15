@@ -51,10 +51,10 @@ public class UnrankedTooltipTest
 	@Test
 	public void unsyncedKeepsItsPlayerSignalAndCatalogOnlyRules() throws Exception
 	{
-		TooltipData knownKills = TooltipData.builder().rank(-1).statLabel("Kills: ").statValue(42).build();
+		TooltipData knownKills = TooltipData.builder().rank(-1).kc(42).build();
 		assertEquals("Unranked", rankText(tooltip(knownKills, result(-1), true)));
 		assertNull(rankText(tooltip(knownKills, result(1).withRanks(null), true)));
-		assertNull(rankText(tooltip(knownKills.toBuilder().statValue(-1).build(), result(-1), true)));
+		assertNull(rankText(tooltip(knownKills.toBuilder().kc(-1).build(), result(-1), true)));
 	}
 
 	@Test

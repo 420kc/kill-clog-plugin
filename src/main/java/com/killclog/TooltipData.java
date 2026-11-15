@@ -16,15 +16,12 @@ final class TooltipData
 	final int totalItems;
 	@Builder.Default
 	final boolean rankTracked = true;
-	final String statLabel;
-	@Builder.Default
-	final int statValue = -1;
 	final List<Integer> allItemIds;
 	final Set<Integer> obtainedIds;
 	final Map<Integer, Integer> obtainedCounts;
 	@Builder.Default
 	final Map<Integer, String> itemNames = Collections.emptyMap();
-	/** Boss kill count for the KC/PB header line, -1 when unknown. */
+	/** The card's lead count for its KC/PB line, synced log or not (a boss's kills), -1 when unknown. */
 	@Builder.Default
 	final int kc = -1;
 	/** That line's label where it is not "KC: ", as a clue card's "Master clues completed: ". */

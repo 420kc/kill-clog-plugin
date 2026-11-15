@@ -303,9 +303,9 @@ public class ClogHelperTest
 		ImgTooltip both = new ImgTooltip(5);
 		both.setTitle("Chambers of Xeric");
 		both.setInfoLine("KC: ", "730", java.awt.Color.WHITE);
-		Cells.addHardModeLine(both, raid, true, true);
+		Cells.addCountLines(both, raid, true, true);
 		assertEquals(NativeTooltip.LINE_HEIGHT, both.getHeaderHeight() - plain.getHeaderHeight());
-		Cells.addHardModeLine(plain, raid, false, false);
+		Cells.addCountLines(plain, raid, false, false);
 		assertEquals(both.getHeaderHeight() - NativeTooltip.LINE_HEIGHT, plain.getHeaderHeight());
 
 		// A raid's Entry count from the player's log is one more line under the hard mode's, with the KC setting.
@@ -313,12 +313,12 @@ public class ClogHelperTest
 		ImgTooltip three = new ImgTooltip(5);
 		three.setTitle("Chambers of Xeric");
 		three.setInfoLine("KC: ", "730", java.awt.Color.WHITE);
-		Cells.addHardModeLine(three, entry, true, true);
+		Cells.addCountLines(three, entry, true, true);
 		assertEquals(NativeTooltip.LINE_HEIGHT, three.getHeaderHeight() - both.getHeaderHeight());
 		ImgTooltip hidden = new ImgTooltip(5);
 		hidden.setTitle("Chambers of Xeric");
 		hidden.setInfoLine("KC: ", "730", java.awt.Color.WHITE);
-		Cells.addHardModeLine(hidden, entry, false, false);
+		Cells.addCountLines(hidden, entry, false, false);
 		assertEquals(plain.getHeaderHeight(), hidden.getHeaderHeight());
 	}
 
@@ -354,7 +354,7 @@ public class ClogHelperTest
 	{
 		// Never ran normal ToA (no KC, unranked), but 100 Expert raids ranked 42.
 		TooltipData data = TooltipData.builder().name("Tombs of Amascut").totalItems(1)
-			.allItemIds(Collections.singletonList(27277)).statLabel("Kills: ").statValue(-1).rank(-1)
+			.allItemIds(Collections.singletonList(27277)).rank(-1)
 			.hardLabel("Expert").hardKc(100).hardRank(42).build();
 		ImgTooltip bare = new ImgTooltip(5);
 		bare.setTitle("Tombs of Amascut");
@@ -363,8 +363,8 @@ public class ClogHelperTest
 		HiscoreResult result = TestViews.hiscore(AccountType.REGULAR, Collections.emptyMap(), Collections.emptyMap(),
 			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1);
 		Cells.configureRank(card, data, result, true);
-		// The muted Obtained line, then the Kills line, the Expert line and the rank line under it (Dylan 11/14).
-		assertEquals(bare.getHeaderHeight() + 4 * NativeTooltip.LINE_HEIGHT, card.getHeaderHeight());
+		// The muted Obtained line, then the Expert line and the rank line under it, as its synced card reads (Dylan 11/14).
+		assertEquals(bare.getHeaderHeight() + 3 * NativeTooltip.LINE_HEIGHT, card.getHeaderHeight());
 		assertEquals("--/1", TestViews.subtitle(card));
 	}
 
@@ -373,14 +373,11 @@ public class ClogHelperTest
 	{
 		// cubeee, issue 21: past 10k the grid's cell shortens a count to fit ("12k"); the card has the room to show it.
 		assertEquals("12k", ClogHelper.countText(12_345));
-		assertEquals("12,345", ClogHelper.cardCountText(12_345));
-		assertEquals("a count under 10k is grouped too, as the card's rank and Glory are", "3,420",
-			ClogHelper.cardCountText(3420));
-		assertEquals("999", ClogHelper.cardCountText(999));
-		assertEquals("--", ClogHelper.cardCountText(0));
+		assertEquals("12,345", TitleTooltip.grouped(12_345));
+		assertEquals("a count under 10k is grouped too, as the card's rank and Glory are", "3,420", TitleTooltip.grouped(3420));
 
 		TooltipData data = TooltipData.builder().name("Tombs of Amascut").totalItems(1)
-			.allItemIds(Collections.singletonList(27277)).statLabel("Kills: ").statValue(12_345).rank(-1)
+			.allItemIds(Collections.singletonList(27277)).kc(12_345).rank(-1)
 			.hardLabel("Expert").hardKc(43_210).build();
 		ImgTooltip card = new ImgTooltip(5);
 		assertTrue(Cells.configureNotSynced(card, data, null, true));

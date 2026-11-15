@@ -99,7 +99,7 @@ final class TooltipDataBuilder
 		{
 			preloadItemImages(data);
 		}
-		return bossCellCard(data != null ? data : buildUnsyncedTooltipData(name, category, rank, "Kills: ", kc, catalog),
+		return bossCellCard(data != null ? data : buildUnsyncedTooltipData(name, category, rank, null, kc, catalog),
 			card, result, pb, clog);
 	}
 
@@ -160,7 +160,7 @@ final class TooltipDataBuilder
 	}
 
 	TooltipData buildUnsyncedTooltipData(String displayName, String category, int rank,
-		String statLabel, int statValue, ClogResult catalog)
+		String kcLabel, int kc, ClogResult catalog)
 	{
 		if (catalog == null) return null;
 		List<Integer> allItems = canonicalItemIds(catalog.getCategoryItems().get(category));
@@ -168,7 +168,7 @@ final class TooltipDataBuilder
 		{
 			return null;
 		}
-		return buildUnsyncedTooltipData(displayName, allItems, rank, statLabel, statValue, true, catalog);
+		return buildUnsyncedTooltipData(displayName, allItems, rank, kcLabel, kc, true, catalog);
 	}
 
 	/**
@@ -275,7 +275,7 @@ final class TooltipDataBuilder
 	}
 
 	private TooltipData buildUnsyncedTooltipData(String displayName, List<Integer> itemIds,
-		int rank, String statLabel, int statValue, boolean rankTracked, ClogResult catalog)
+		int rank, String kcLabel, int kc, boolean rankTracked, ClogResult catalog)
 	{
 		List<Integer> canonicalItems = canonicalItemIds(itemIds);
 		return TooltipData.builder()
@@ -287,8 +287,8 @@ final class TooltipDataBuilder
 			.obtainedCounts(new LinkedHashMap<>())
 			.itemNames(itemNamesFor(canonicalItems, catalog))
 			.rankTracked(rankTracked)
-			.statLabel(statLabel)
-			.statValue(statValue)
+			.kcLabel(kcLabel)
+			.kc(kc)
 			.build();
 	}
 

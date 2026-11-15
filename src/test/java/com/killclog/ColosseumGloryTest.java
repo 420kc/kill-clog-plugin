@@ -22,13 +22,11 @@ public class ColosseumGloryTest
 	@Test
 	public void solHereditLeadsWithGloryOnceThePlayerHasIt()
 	{
-		TooltipData sol = TooltipData.builder().name("Sol Heredit").kc(17).statLabel("Kills: ").statValue(17).build();
+		TooltipData sol = TooltipData.builder().name("Sol Heredit").kc(17).build();
 		TooltipData card = ColosseumGlory.onCard("Sol Heredit", sol, withGlory(18_420));
-		// Where a synced card's lead line reads, and where a card with no log reads.
+		// Where every card's lead line reads, synced log or not.
 		assertEquals("Glory: ", card.kcLabel);
 		assertEquals(18_420, card.kc);
-		assertEquals("Glory: ", card.statLabel);
-		assertEquals(18_420, card.statValue);
 		assertEquals("in full, as every card's count", "18,420", TitleTooltip.grouped(card.kc));
 		assertSame("no Glory yet: the card keeps its kills", sol, ColosseumGlory.onCard("Sol Heredit", sol, withGlory(-1)));
 		assertSame("a Glory of 0 is none", sol, ColosseumGlory.onCard("Sol Heredit", sol, withGlory(0)));
