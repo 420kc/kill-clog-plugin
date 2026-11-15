@@ -83,16 +83,15 @@ public class ClogSummaryWiringTest
 		obtained.put("slayer", owned(other.subList(0, 35)));
 		ClogResult clog = new ClogResult("Probe", obtained, categories, Collections.emptyMap(), null, null);
 
-		Method build = KillClogPanel.class.getDeclaredMethod("buildClogSummaryTooltip",
+		Method build = SummaryCards.class.getDeclaredMethod("clogCard",
 			JComponent.class, HiscoreResult.class, ClogResult.class, String.class, String.class);
-		build.setAccessible(true);
 		ClogSummaryTooltip[] tip = new ClogSummaryTooltip[1];
 		SwingUtilities.invokeAndWait(() ->
 		{
 			try
 			{
 				panel.setClogIndex(index);
-				tip[0] = (ClogSummaryTooltip) build.invoke(panel, new JLabel(), null, clog, "Probe", null);
+				tip[0] = (ClogSummaryTooltip) build.invoke(TestViews.field(panel, "summaryCards"), new JLabel(), null, clog, "Probe", null);
 			}
 			catch (ReflectiveOperationException e)
 			{
@@ -118,7 +117,7 @@ public class ClogSummaryWiringTest
 		{
 			try
 			{
-				tip[0] = (ClogSummaryTooltip) build.invoke(panel, new JLabel(), null, partial, "Probe", null);
+				tip[0] = (ClogSummaryTooltip) build.invoke(TestViews.field(panel, "summaryCards"), new JLabel(), null, partial, "Probe", null);
 			}
 			catch (ReflectiveOperationException e)
 			{
@@ -150,15 +149,14 @@ public class ClogSummaryWiringTest
 		}
 		ClogResult clog = new ClogResult("Probe", Collections.singletonMap("slayer", dated), categories,
 			Collections.emptyMap(), null, null);
-		Method build = KillClogPanel.class.getDeclaredMethod("buildClogSummaryTooltip",
+		Method build = SummaryCards.class.getDeclaredMethod("clogCard",
 			JComponent.class, HiscoreResult.class, ClogResult.class, String.class, String.class);
-		build.setAccessible(true);
 		ClogSummaryTooltip[] tip = new ClogSummaryTooltip[1];
 		SwingUtilities.invokeAndWait(() ->
 		{
 			try
 			{
-				tip[0] = (ClogSummaryTooltip) build.invoke(panel, new JLabel(), null, clog, "Probe", null);
+				tip[0] = (ClogSummaryTooltip) build.invoke(TestViews.field(panel, "summaryCards"), new JLabel(), null, clog, "Probe", null);
 			}
 			catch (ReflectiveOperationException e)
 			{

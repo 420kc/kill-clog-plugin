@@ -3,9 +3,7 @@ package com.killclog;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.image.BufferedImage;
-import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.function.IntUnaryOperator;
 import javax.annotation.Nullable;
 import javax.inject.Inject;
 import javax.swing.*;
@@ -13,7 +11,6 @@ import javax.swing.border.EmptyBorder;
 import net.runelite.client.callback.ClientThread;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.game.*;
-import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.ui.*;
 import net.runelite.client.ui.components.*;
 import net.runelite.client.util.ImageUtil;
@@ -48,8 +45,6 @@ public class KillClogPanel extends PluginPanel
 
 	private final ClogService clogService;
 	private final RuneProfileService runeProfileService;
-	// The Player Summary's clan and its title icon; set by the plugin at startup.
-	private PlayerClans clans;
 	private final PlayerPortraits portraits;
 	private String portraitCheck;
 	private String rivalPortraitCheck;
@@ -62,9 +57,8 @@ public class KillClogPanel extends PluginPanel
 	private final CaRewardSprites caRewardSprites;
 	private final TooltipItemNameResolver itemNameResolver;
 	private final PanelIconCache iconCache;
-	private ClogIndex clogIndex;
 	private final PanelAccountTypes accountTypes;
-	private final ActivitySummaryTooltips activityTooltips;
+	private final SummaryCards summaryCards;
 	private final SkillCellGrid skillCellGrid;
 	private ProgressHighlighter highlighter;
 	private JPanel infoRow;
@@ -76,21 +70,7 @@ public class KillClogPanel extends PluginPanel
 		@Override
 		public JToolTip createToolTip()
 		{
-			if (comparison.showsPair())
-			{
-				return buildComparePlayerSummary(this);
-			}
-			// Single player: standard player summary
-			SummaryTooltip tip = buildPlayerSummaryTooltip(this,
-				lookupSession.getHiscoreResult(), lookupSession.getClogResult(),
-				playerName.getText().trim(), rowIdentity);
-			// Without this the tooltip dies when the mouse leaves the name
-			// label, and the pet gallery can never be hovered at all.
-			if (this.getParent() instanceof JPanel)
-			{
-				tooltipController.keepTooltipOnHover(tip, (JPanel) this.getParent());
-			}
-			return tip;
+			return summaryCards.buildPlayer(this, playerName.getText().trim(), rowIdentity, rivalIdentity);
 		}
 
 	};
@@ -100,14 +80,8 @@ public class KillClogPanel extends PluginPanel
 		public JToolTip createToolTip()
 		{
 			// Comparison mode: this label is the red RSN.
-			if (comparison.showsPair())
-			{
-				return buildComparePlayerSummary(this);
-			}
-
-			// Single player: standard clog summary
-			return buildClogSummaryTooltip(this, lookupSession.getHiscoreResult(),
-				lookupSession.getClogResult(), rsn, lookupSession.getClogLastChanged());
+			return comparison.showsPair() ? summaryCards.buildPlayer(this, rsn, rowIdentity, rivalIdentity)
+				: summaryCards.buildClog(this, rsn);
 		}
 
 	};
@@ -226,9 +200,9 @@ public class KillClogPanel extends PluginPanel
 		this.cells = new Cells(spriteManager, itemManager, tooltipController, comparison, tooltipDataBuilder, lookupSession, unsyncedCatalog, killclogService, league -> selfPbs.apply(league), config,
 			rankSelector, () -> localRsn);
 		this.clogPages = new ClogPages(tooltipController, cells, comparison, lookupSession, tooltipDataBuilder, config);
-		this.activityTooltips = new ActivitySummaryTooltips(
-			lookupSession, comparison, cells, tooltipController, itemManager,
-			caRewardSprites, config::cardLinks, clogPages);
+		this.summaryCards = new SummaryCards(lookupSession, comparison, cells, tooltipController, itemManager,
+			caRewardSprites, config::cardLinks, clogPages, clogService, runeProfileService, portraits, iconCache, unsyncedCatalog,
+			() -> localRsn, this::comparisonBlueName);
 		this.itemNameResolver = new TooltipItemNameResolver(clientThread, itemManager,
 			this::onTooltipItemNamesResolved);
 		this.unsyncedCatalog.setResolver(itemNameResolver::resolve);
@@ -408,7 +382,7 @@ public class KillClogPanel extends PluginPanel
 		compareClogTotals = new CompareClogTotalsBar(
 			comparison::isComparisonMode,
 			tooltipController,
-			this::buildCompareClogSummary);
+			summaryCards::buildClogPair);
 		panel.add(compareClogTotals.component());
 
 		panel.add(searchRow);
@@ -513,7 +487,7 @@ public class KillClogPanel extends PluginPanel
 			public JToolTip createToolTip()
 			{
 				JPanel parentCell = (JPanel) this.getParent();
-				return activityTooltips.buildPvm(this, parentCell);
+				return summaryCards.buildPvm(this, parentCell);
 			}
 		};
 		Cells.styleLabel(combatCell, "Combat");
@@ -525,7 +499,7 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public JToolTip createToolTip()
 			{
-				return activityTooltips.buildSkills(this);
+				return summaryCards.buildSkills(this);
 			}
 		};
 		Cells.styleLabel(totalLvlCell, "Total");
@@ -1115,9 +1089,10 @@ public class KillClogPanel extends PluginPanel
 		lookupSession.refreshLocalClog(name, localRsn);
 	}
 
+	/** The Player Summary's clan and its title icon; set by the plugin at startup. */
 	void setClans(PlayerClans clans)
 	{
-		this.clans = clans;
+		summaryCards.setClans(clans);
 	}
 
 	public void setNameAutocompleter(NameAutocompleter autocompleter)
@@ -1148,7 +1123,7 @@ public class KillClogPanel extends PluginPanel
 
 	public void setClogIndex(ClogIndex clogIndex)
 	{
-		this.clogIndex = clogIndex;
+		summaryCards.setClogIndex(clogIndex);
 		unsyncedCatalog.setClogIndex(clogIndex);
 		clogPages.setClogIndex(clogIndex);
 		comparison.setClogIndex(clogIndex);
@@ -1252,12 +1227,6 @@ public class KillClogPanel extends PluginPanel
 		onDeactivate();
 	}
 
-	/** A log's obtained and total counts, counted on the game's own items once the game's log has been read. */
-	private int[] totals(ClogResult log)
-	{
-		return clogIndex != null ? ClogHelper.sumClogTotals(log, clogIndex::canonicalItemId) : ClogHelper.sumClogTotals(log);
-	}
-
 	@Override
 	public void removeNotify()
 	{
@@ -1307,134 +1276,6 @@ public class KillClogPanel extends PluginPanel
 		return lookupSession.getHiscoreResult() != null
 			&& text != null
 			&& !text.trim().isEmpty();
-	}
-
-	/** Side-by-side player summary for comparison mode (used by both name labels). */
-	private JToolTip buildComparePlayerSummary(JLabel owner)
-	{
-		String blueName = comparisonBlueName();
-		String redName = comparison.getCompareRsn() != null ? comparison.getCompareRsn() : "--";
-		JToolTip tip = comparison.wrapSideBySide(owner,
-			buildPlayerSummaryTooltip(owner, lookupSession.getHiscoreResult(),
-				lookupSession.getClogResult(), blueName, rowIdentity),
-			buildPlayerSummaryTooltip(owner, comparison.getCompareHiscoreResult(),
-				comparison.getCompareClogResult(), redName, rivalIdentity));
-		if (owner.getParent() instanceof JPanel)
-		{
-			tooltipController.keepTooltipOnHover(tip, (JPanel) owner.getParent());
-		}
-		return tip;
-	}
-
-	/** One player's summary card: solo mode shows it alone, comparison pairs two. */
-	private SummaryTooltip buildPlayerSummaryTooltip(JComponent owner,
-		@Nullable HiscoreResult hiscore, @Nullable ClogResult clog,
-		String shownName, @Nullable AccountDisplay display)
-	{
-		SummaryTooltip tip = new SummaryTooltip();
-		tip.setComponent(owner);
-		// A Kill Clog syncer who published their character stands where the prestige cape would; the cape and its
-		// prestige then show under the Combat Summary's title instead.
-		BufferedImage character = portraits.forSummary(clog);
-		tip.setData(
-			shownName.isEmpty() ? "Player" : shownName,
-			hiscore != null ? hiscore.getOverallRank() : -1,
-			character != null ? character : iconCache.capeFor(hiscore),
-			AccountBadgeResolver.badge(display),
-			AccountBadgeResolver.label(display),
-			character != null ? null : LookupQueries.getPrestige(hiscore)
-		);
-		if (clog != null)
-		{
-			tip.setSources(CardSources.of(clog, clogService.onTemple(shownName), runeProfileService.hasProfile(shownName),
-				lookupSession.onKillclog(shownName), SummaryTooltip.SOURCE_PREFIX));
-		}
-		if (clans != null)
-		{
-			tip.setClan(clans.name(shownName, clog), clans.icon(shownName, clog));
-		}
-		tip.setLinks(config.cardLinks());
-		if (clog != null)
-		{
-			List<Integer> allPets = clog.getCategoryItems().get("all_pets");
-			tip.setPets(allPets, LookupQueries.getObtainedPetCounts(clog), itemManager, clog::getItemName);
-		}
-		return tip;
-	}
-
-	private JToolTip buildCompareClogSummary(JComponent owner)
-	{
-		ClogResult redClog = comparison.getCompareClogResult();
-		return comparison.wrapSideBySide(owner,
-			buildClogSummaryTooltip(owner, lookupSession.getHiscoreResult(),
-				lookupSession.getClogResult(), comparisonBlueName(),
-				lookupSession.getClogLastChanged()),
-			buildClogSummaryTooltip(owner, comparison.getCompareHiscoreResult(),
-				redClog, comparison.getCompareRsn(),
-				redClog != null ? redClog.getLastChanged() : null));
-	}
-
-	/** One player's clog summary card: solo mode shows it alone, comparison pairs two. */
-	private ClogSummaryTooltip buildClogSummaryTooltip(JComponent owner,
-		@Nullable HiscoreResult hiscore, @Nullable ClogResult clog,
-		@Nullable String playerRsn, @Nullable String lastChanged)
-	{
-		ClogSummaryTooltip tip = new ClogSummaryTooltip();
-		tip.setComponent(owner);
-		tip.setLinks(config.cardLinks());
-		if (clog != null)
-		{
-			int[] totals = totals(clog);
-			tip.setTierData(totals[0], totals[1], iconCache.clogTierImages(), itemManager);
-			if (clogIndex != null)
-			{
-				tip.setTabs(clogIndex.tabProgress(clog, totals), itemManager);
-				tip.setOnOpenTab((press, tab) -> clogPages.openTab(owner, press, tab, "< Collection Log"));
-			}
-			tip.setClogSources(clog, clogService.onTemple(playerRsn), runeProfileService.hasProfile(playerRsn),
-				lookupSession.onKillclog(playerRsn));
-			boolean stale = LookupQueries.isSyncStale(lastChanged, 90);
-			String sync = LookupQueries.syncLine(lastChanged, stale);
-			if (sync != null) tip.setSyncData(sync, stale);
-			tip.setRareItems(ClogHelper.rareItems(clog), clog, itemManager);
-			tip.setRecentItems(LookupQueries.getRecentItems(clog, ClogSummaryTooltip.RECENT_SHOWN,
-				clogIndex != null ? clogIndex::canonicalItemId : IntUnaryOperator.identity()), clog, itemManager);
-		}
-		else
-		{
-			if (lookupSession.offersSetup(localRsn, playerRsn))
-			{
-				tip.setFirstTimeSetup();
-			}
-			else if (hiscore != null)
-			{
-				tip.setNotice(cells.noClogNotice(playerRsn, hiscore));
-			}
-			else
-			{
-				// No player yet: preview the log's shape from the catalog.
-				ClogResult catalog = unsyncedCatalog.result();
-				if (catalog != null)
-				{
-					tip.setTitle("Collection Log");
-					tip.setObtained(-1, totals(catalog)[1]);
-				}
-				else
-				{
-					tip.setNotice("Loading catalog...");
-				}
-			}
-		}
-		if (clog == null && hiscore != null)
-		{
-			int[] totals = ClogHelper.summaryTotals(null, hiscore, unsyncedCatalog.result());
-			if (totals[0] >= 0) tip.setObtained(totals[0], totals[1]);
-		}
-		if (hiscore != null && hiscore.isRankDataAvailable())
-		{
-			tip.setRank(hiscore.getActivityRank(HiscoreSkill.COLLECTIONS_LOGGED.getName()));
-		}
-		return tip;
 	}
 
 	private AccountDisplay currentInfoAccountDisplay()

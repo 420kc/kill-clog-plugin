@@ -15,12 +15,18 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-public class ActivitySummaryTooltipsTest
+public class SummaryCardsTest
 {
 	private final ComparisonController comparison = mock(ComparisonController.class);
 	private final TooltipController tooltips = mock(TooltipController.class);
-	private final ActivitySummaryTooltips cards = new ActivitySummaryTooltips(mock(LookupSession.class), comparison,
-		mock(Cells.class), tooltips, mock(ItemManager.class), mock(CaRewardSprites.class), () -> null, mock(ClogPages.class));
+	private final SummaryCards cards = cards(mock(LookupSession.class), mock(Cells.class), mock(ClogPages.class));
+
+	private SummaryCards cards(LookupSession session, Cells cells, ClogPages pages)
+	{
+		return new SummaryCards(session, comparison, cells, tooltips, mock(ItemManager.class), mock(CaRewardSprites.class),
+			() -> CardLinks.ON, pages, mock(ClogService.class), mock(RuneProfileService.class), mock(PlayerPortraits.class),
+			mock(PanelIconCache.class), mock(UnsyncedClogCatalog.class), () -> null, () -> "--");
+	}
 
 	@Test
 	public void aloneTheSkillsCardShowsByItselfAndStaysOpenOverItsCell()
@@ -67,8 +73,7 @@ public class ActivitySummaryTooltipsTest
 			when(cells.bossIcon(boss)).thenReturn(new java.awt.image.BufferedImage(20, 20, java.awt.image.BufferedImage.TYPE_INT_ARGB));
 			when(cells.getPvpActivityIcons()).thenReturn(new java.awt.image.BufferedImage[5]);
 			ClogPages pages = mock(ClogPages.class);
-			ActivitySummaryTooltips built = new ActivitySummaryTooltips(session, comparison, cells, tooltips,
-				mock(ItemManager.class), mock(CaRewardSprites.class), () -> CardLinks.ON, pages);
+			SummaryCards built = cards(session, cells, pages);
 			JLabel owner = new JLabel();
 			new JPanel().add(owner);
 			PvmSummaryTooltip tip = (PvmSummaryTooltip) built.buildPvm(owner, (JPanel) owner.getParent());
@@ -101,8 +106,7 @@ public class ActivitySummaryTooltipsTest
 		Cells cells = mock(Cells.class);
 		when(cells.getBossLabels()).thenReturn(java.util.Collections.emptyMap());
 		when(cells.getPvpActivityIcons()).thenReturn(new java.awt.image.BufferedImage[5]);
-		ActivitySummaryTooltips built = new ActivitySummaryTooltips(session, comparison, cells, tooltips,
-			mock(ItemManager.class), mock(CaRewardSprites.class), () -> CardLinks.ON, mock(ClogPages.class));
+		SummaryCards built = cards(session, cells, mock(ClogPages.class));
 		JLabel owner = new JLabel();
 		new JPanel().add(owner);
 		PvmSummaryTooltip tip = (PvmSummaryTooltip) built.buildPvm(owner, (JPanel) owner.getParent());
@@ -129,8 +133,7 @@ public class ActivitySummaryTooltipsTest
 		data.put(net.runelite.client.hiscore.HiscoreSkill.VORKATH, TooltipData.builder().name("Vorkath").obtainedCount(3)
 			.totalItems(7).build());
 		when(cells.getTooltipDataMap()).thenReturn(data);
-		ActivitySummaryTooltips built = new ActivitySummaryTooltips(session, comparison, cells, tooltips,
-			mock(ItemManager.class), mock(CaRewardSprites.class), () -> CardLinks.ON, mock(ClogPages.class));
+		SummaryCards built = cards(session, cells, mock(ClogPages.class));
 		JLabel owner = new JLabel();
 		new JPanel().add(owner);
 		PvmSummaryTooltip tip = (PvmSummaryTooltip) built.buildPvm(owner, (JPanel) owner.getParent());

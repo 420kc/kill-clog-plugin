@@ -340,7 +340,7 @@ public class LeagueViewPanelTest
 	{
 		// Logged out, a lookup of your name reads every site like anyone's, so it can show your character and clan;
 		// the search icon's double-click still looks you up.
-		Method summary = KillClogPanel.class.getDeclaredMethod("buildClogSummaryTooltip",
+		Method summary = SummaryCards.class.getDeclaredMethod("clogCard",
 			javax.swing.JComponent.class, HiscoreResult.class, ClogResult.class, String.class, String.class);
 		summary.setAccessible(true);
 		HiscoreResult row = TestViews.hiscore(AccountType.REGULAR, new java.util.HashMap<>(), new java.util.HashMap<>(),
@@ -354,7 +354,7 @@ public class LeagueViewPanelTest
 				panel.setLoggedInPlayer("Me", AccountType.REGULAR);
 				panel.setLoggedInPlayer(null, null);
 				assertFalse("your log offers setup only while you're logged in",
-					field(summary.invoke(panel, owner, row, null, "Me", null), "firstTimeSetup", Boolean.class));
+					field(summary.invoke(field(panel, "summaryCards", SummaryCards.class), owner, row, null, "Me", null), "firstTimeSetup", Boolean.class));
 				assertEquals(null, field(panel, "localRsn", String.class));
 				assertEquals("Me", field(panel, "lastLocalRsn", String.class));
 			}
@@ -368,7 +368,7 @@ public class LeagueViewPanelTest
 	@Test
 	public void yourHoverCardsOfferSetupOnlyForALogThisClientKeeps() throws Exception
 	{
-		Method summary = KillClogPanel.class.getDeclaredMethod("buildClogSummaryTooltip",
+		Method summary = SummaryCards.class.getDeclaredMethod("clogCard",
 			javax.swing.JComponent.class, HiscoreResult.class, ClogResult.class, String.class, String.class);
 		summary.setAccessible(true);
 		Cells cell = field(panel, "cells", Cells.class);
@@ -382,11 +382,11 @@ public class LeagueViewPanelTest
 			{
 				panel.setLoggedInPlayer("Me", AccountType.REGULAR);
 				assertTrue("your main log offers setup",
-					field(summary.invoke(panel, owner, row, null, "Me", null), "firstTimeSetup", Boolean.class));
+					field(summary.invoke(field(panel, "summaryCards", SummaryCards.class), owner, row, null, "Me", null), "firstTimeSetup", Boolean.class));
 				String mainNotice = field(cell.cellCard(owner, null, 4, "Zulrah", row, "Me"), "notice", String.class);
 				session.readLeague("demonic-pacts", null);
 				assertFalse("a League read from another world never does",
-					field(summary.invoke(panel, owner, row, null, "Me", null), "firstTimeSetup", Boolean.class));
+					field(summary.invoke(field(panel, "summaryCards", SummaryCards.class), owner, row, null, "Me", null), "firstTimeSetup", Boolean.class));
 				String leagueNotice = field(cell.cellCard(owner, null, 4, "Zulrah", row, "Me"), "notice", String.class);
 				assertTrue(mainNotice, mainNotice.contains("setup"));
 				assertFalse(leagueNotice, leagueNotice.contains("setup"));
@@ -401,7 +401,7 @@ public class LeagueViewPanelTest
 	@Test
 	public void yourNameTypedAnotherWayStillOffersSetup() throws Exception
 	{
-		Method summary = KillClogPanel.class.getDeclaredMethod("buildClogSummaryTooltip",
+		Method summary = SummaryCards.class.getDeclaredMethod("clogCard",
 			javax.swing.JComponent.class, HiscoreResult.class, ClogResult.class, String.class, String.class);
 		summary.setAccessible(true);
 		Cells cell = field(panel, "cells", Cells.class);
@@ -415,7 +415,7 @@ public class LeagueViewPanelTest
 			{
 				// The game spells the name with a non-breaking space; the lookup box with an underscore.
 				panel.setLoggedInPlayer("My\u00A0Name", AccountType.REGULAR);
-				assertTrue(field(summary.invoke(panel, owner, row, null, "my_name", null), "firstTimeSetup", Boolean.class));
+				assertTrue(field(summary.invoke(field(panel, "summaryCards", SummaryCards.class), owner, row, null, "my_name", null), "firstTimeSetup", Boolean.class));
 				String notice = field(cell.cellCard(owner, null, 4, "Zulrah", row, "My-Name"), "notice", String.class);
 				assertTrue(notice, notice.contains("setup"));
 			}
