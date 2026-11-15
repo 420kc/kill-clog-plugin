@@ -108,6 +108,16 @@ final class LiveClogSync
 		needsFirstSyncWarned = false;
 	}
 
+	/**
+	 * The account that just ended, or the plugin stopping (RuneLite keeps the instance for a re-enable): its last kill
+	 * and its first-sync warning go, so the next account's unlocks never take that kill.
+	 */
+	void reset()
+	{
+		rememberKill(null, -1);
+		resetFirstSyncWarning();
+	}
+
 	private void warnFirstSync(KillClogChatNotifier chatNotifier)
 	{
 		if (!needsFirstSyncWarned)

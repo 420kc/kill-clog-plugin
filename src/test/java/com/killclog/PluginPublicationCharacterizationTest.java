@@ -898,6 +898,23 @@ public class PluginPublicationCharacterizationTest
 	}
 
 	@Test
+	public void theLastKillEndsWithItsAccountAndWithThePlugin() throws Exception
+	{
+		// 11/15 reviews: the login screen forgets the kill, so the next account's unlocks never take it, and so does a
+		// disable: RuneLite re-enables the same instance, maybe on another account.
+		LiveClogSync sync = (LiveClogSync) field("liveClogSync");
+		sync.rememberKill(new ClogUnlockParser.KillContext("Maggot King", 603), 1000);
+		logout();
+		org.junit.Assert.assertNull(TestViews.field(sync, "lastKill"));
+
+		sync.rememberKill(new ClogUnlockParser.KillContext("Maggot King", 604), 1100);
+		plugin.shutDown();
+		drainEdt();
+		org.junit.Assert.assertNull(TestViews.field(sync, "lastKill"));
+		plugin.startUp();
+	}
+
+	@Test
 	public void aReEnableKeepsTheRealAppearanceTheGameLastSent() throws Exception
 	{
 		plugin.shutDown();

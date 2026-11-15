@@ -292,7 +292,7 @@ public class KillClogPlugin extends Plugin
 		clogIndex.clear();
 		caCatalog.clear();
 		sessionState.reset();
-		liveClogSync.resetFirstSyncWarning();
+		liveClogSync.reset();
 		nameAutocompleter.clearClientSnapshot();
 		localClogCache.setFirstPartyChangedListener(null);
 		publication.cancelCharacterPublish();
@@ -480,13 +480,11 @@ public class KillClogPlugin extends Plugin
 			panel.setFirstParty(PanelStatusRow.FirstParty.HIDDEN);
 			panel.resetSyncFeedback();
 			manualClogSync.reset();
-			// The last kill was the account that just ended: the next account's unlocks never take it.
-			liveClogSync.rememberKill(null, -1);
+			liveClogSync.reset();
 			// Read the game's own structure again at once, for lookups made before the next login.
 			clogIndex.clear();
 			clogIndex.ensureParsed(client, itemManager);
 			sessionState.resetAutoLookupSession();
-			liveClogSync.resetFirstSyncWarning();
 			nameAutocompleter.clearClientSnapshot();
 			playerClans.clearClientSnapshot();
 			killLog.reset();
