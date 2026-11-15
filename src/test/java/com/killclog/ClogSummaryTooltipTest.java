@@ -371,6 +371,51 @@ public class ClogSummaryTooltipTest
 		return (tip.getWidth() - width) / 2 + tier * ICON_STEP;
 	}
 
+	/** Where a source's icon answers the mouse, from its hover box. */
+	private static java.awt.Rectangle sourceBox(ClogSummaryTooltip tip, String name) throws Exception
+	{
+		java.lang.reflect.Field hits = TooltipItemHover.class.getDeclaredField("hitBoxes");
+		hits.setAccessible(true);
+		for (Object hit : (List<?>) hits.get(tip.itemHover))
+		{
+			if (name.equals(TestViews.field(hit, "itemName")))
+			{
+				return TestViews.field(hit, "bounds");
+			}
+		}
+		throw new AssertionError("no " + name);
+	}
+
+	private static boolean differs(BufferedImage a, BufferedImage b, java.awt.Rectangle box)
+	{
+		for (int y = box.y; y < box.y + box.height; y++)
+		{
+			for (int x = box.x; x < box.x + box.width; x++)
+			{
+				if (a.getRGB(x, y) != b.getRGB(x, y))
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	@Test
+	public void aSourceIconIsDimUntilHovered() throws Exception
+	{
+		// Dylan 11/14: the sites that hold the log sit dim until the mouse is on one, which lights alone.
+		ClogSummaryTooltip tip = card(1150, 1700);
+		tip.showSources(CardSources.of(true, true, true, false, "Probe", ""));
+		BufferedImage rest = paint(tip);
+		java.awt.Rectangle killClog = sourceBox(tip, "Kill Clog");
+		java.awt.Rectangle temple = sourceBox(tip, "TempleOSRS");
+		move(tip, (int) killClog.getCenterX(), (int) killClog.getCenterY());
+		BufferedImage lit = paint(tip);
+		assertTrue("the hovered icon lights", differs(rest, lit, killClog));
+		assertTrue("the others stay dim", !differs(rest, lit, temple));
+	}
+
 	private static void move(ClogSummaryTooltip tip, int x, int y)
 	{
 		for (MouseMotionListener listener : tip.getMouseMotionListeners())

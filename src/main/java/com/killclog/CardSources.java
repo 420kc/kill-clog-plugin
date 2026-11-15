@@ -83,16 +83,22 @@ final class CardSources
 		return count > 0 ? count * ICON + (count - 1) * GAP : 0;
 	}
 
-	/** The icons in a row from {@code x}, each naming itself in {@code section} while hovered and opening its page. */
+	/**
+	 * The icons in a row from {@code x}, dim until hovered (Dylan, 2026-11-14), each naming itself in {@code section}
+	 * while hovered and opening its page.
+	 */
 	static void draw(CardBody.Ctx c, List<Source> sources, int x, int y, int section)
 	{
+		Composite solid = c.g.getComposite();
 		for (int i = 0; i < sources.size(); i++)
 		{
 			Source source = sources.get(i);
 			int iconX = x + i * (ICON + GAP);
 			if (source.icon != null)
 			{
+				c.g.setComposite(c.card.itemHover.hovers(section, source.name) ? solid : KillClogColors.DIM);
 				c.g.drawImage(source.icon, iconX, y, null);
+				c.g.setComposite(solid);
 			}
 			c.hits.add(new TooltipItemHover.HitBox(section, 0, source.name,
 				new Rectangle(iconX - HIT_PAD, y - HIT_PAD, ICON + HIT_PAD * 2, ICON + HIT_PAD * 2), true, source.url));

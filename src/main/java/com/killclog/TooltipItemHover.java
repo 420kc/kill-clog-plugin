@@ -66,6 +66,12 @@ final class TooltipItemHover
 		return hoveredItemName;
 	}
 
+	/** Whether the mouse is on the named box of this section, as a source's icon lights while hovered. */
+	boolean hovers(int section, String name)
+	{
+		return hoveredSection == section && name.equals(hoveredItemName);
+	}
+
 	/** Whether the hovered thing is held: an item the player has, a tier reached, a source that supplied the log. */
 	boolean hoveredItemObtained()
 	{
