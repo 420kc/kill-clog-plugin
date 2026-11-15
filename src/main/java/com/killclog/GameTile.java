@@ -27,7 +27,7 @@ final class GameTile
 	private static final int NAME_PAD = 4;
 	// The game's tile frame at each size a tile comes in, its corners and brackets as drawn and its edges stretched
 	// between them, clear where the fill goes: the fill is painted under it (NativeTooltip.tileFill), a hovered tile's a
-	// shade lighter.
+	// shade lighter. Each is baked from the one edge killclog.com stretches too (GameTileFramesTest).
 	private static final BufferedImage FRAME = ImageUtil.loadImageResource(GameTile.class, "game-tile-frame.png");
 	private static final BufferedImage WIDE_FRAME = ImageUtil.loadImageResource(GameTile.class, "game-tile-frame-wide.png");
 	private static final BufferedImage PAGE_FRAME = ImageUtil.loadImageResource(GameTile.class, "game-tile-frame-page.png");
