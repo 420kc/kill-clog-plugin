@@ -715,34 +715,32 @@ public class Cells
 	 */
 	static void addCountLines(TitleTooltip tip, TooltipData data, boolean showKc, boolean showPb)
 	{
-		if (data.kc >= 0 && showKc)
+		countLine(tip, data.kcLabel != null ? data.kcLabel : "KC: ", "", data.kc, data.pb, showKc, showPb);
+		if (data.hardLabel != null)
 		{
-			tip.setInfoLine(data.kcLabel != null ? data.kcLabel : "KC: ", TitleTooltip.grouped(data.kc),
-				NativeTooltip.valueColor);
-			if (data.pb != null && showPb)
-			{
-				tip.setInfoLinePair(pbLabel(data.pb), pbTime(data.pb), NativeTooltip.valueColor);
-			}
-		}
-		else if (data.pb != null && showPb)
-		{
-			tip.setInfoLine(pbLabel(data.pb), pbTime(data.pb), NativeTooltip.valueColor);
-		}
-		if (data.hardLabel != null && data.hardKc >= 0 && showKc)
-		{
-			tip.addInfoLine(data.hardLabel + ": ", TitleTooltip.grouped(data.hardKc), NativeTooltip.valueColor);
-			if (data.hardPb != null && showPb)
-			{
-				tip.setInfoLinePair(pbLabel(data.hardPb), pbTime(data.hardPb), NativeTooltip.valueColor);
-			}
-		}
-		else if (data.hardLabel != null && data.hardPb != null && showPb)
-		{
-			tip.addInfoLine(data.hardLabel + " " + pbLabel(data.hardPb), pbTime(data.hardPb), NativeTooltip.valueColor);
+			countLine(tip, data.hardLabel + ": ", data.hardLabel + " ", data.hardKc, data.hardPb, showKc, showPb);
 		}
 		if (data.entryKc >= 0 && showKc)
 		{
 			tip.addInfoLine(data.entryLabel + ": ", TitleTooltip.grouped(data.entryKc), NativeTooltip.valueColor);
+		}
+	}
+
+	/** A count with its PB beside it, else the PB alone under the count's own name. */
+	private static void countLine(TitleTooltip tip, String label, String pbName, int count, @Nullable String pb,
+		boolean showKc, boolean showPb)
+	{
+		if (count >= 0 && showKc)
+		{
+			tip.addInfoLine(label, TitleTooltip.grouped(count), NativeTooltip.valueColor);
+			if (pb != null && showPb)
+			{
+				tip.setInfoLinePair(pbLabel(pb), pbTime(pb), NativeTooltip.valueColor);
+			}
+		}
+		else if (pb != null && showPb)
+		{
+			tip.addInfoLine(pbName + pbLabel(pb), pbTime(pb), NativeTooltip.valueColor);
 		}
 	}
 

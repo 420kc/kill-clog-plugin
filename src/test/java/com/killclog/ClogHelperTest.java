@@ -296,30 +296,29 @@ public class ClogHelperTest
 		assertEquals(1204, raid.hardRank);
 		assertSame(data, TooltipDataBuilder.withHardMode(data, HiscoreSkill.ZULRAH, result, name -> "1:00"));
 
-		// The hard mode is one more line under the raid's own KC and PB.
+		// The hard mode is one more line under the raid's own KC and PB, and both follow the KC and PB settings.
 		ImgTooltip plain = new ImgTooltip(5);
 		plain.setTitle("Chambers of Xeric");
-		plain.setInfoLine("KC: ", "730", java.awt.Color.WHITE);
+		Cells.addCountLines(plain, data, true, true);
 		ImgTooltip both = new ImgTooltip(5);
 		both.setTitle("Chambers of Xeric");
-		both.setInfoLine("KC: ", "730", java.awt.Color.WHITE);
 		Cells.addCountLines(both, raid, true, true);
 		assertEquals(NativeTooltip.LINE_HEIGHT, both.getHeaderHeight() - plain.getHeaderHeight());
-		Cells.addCountLines(plain, raid, false, false);
-		assertEquals(both.getHeaderHeight() - NativeTooltip.LINE_HEIGHT, plain.getHeaderHeight());
+		ImgTooltip hidden = new ImgTooltip(5);
+		hidden.setTitle("Chambers of Xeric");
+		Cells.addCountLines(hidden, raid, false, false);
+		assertEquals(plain.getHeaderHeight() - NativeTooltip.LINE_HEIGHT, hidden.getHeaderHeight());
 
 		// A raid's Entry count from the player's log is one more line under the hard mode's, with the KC setting.
 		TooltipData entry = raid.toBuilder().entryLabel("Entry").entryKc(12).build();
 		ImgTooltip three = new ImgTooltip(5);
 		three.setTitle("Chambers of Xeric");
-		three.setInfoLine("KC: ", "730", java.awt.Color.WHITE);
 		Cells.addCountLines(three, entry, true, true);
 		assertEquals(NativeTooltip.LINE_HEIGHT, three.getHeaderHeight() - both.getHeaderHeight());
-		ImgTooltip hidden = new ImgTooltip(5);
-		hidden.setTitle("Chambers of Xeric");
-		hidden.setInfoLine("KC: ", "730", java.awt.Color.WHITE);
-		Cells.addCountLines(hidden, entry, false, false);
-		assertEquals(plain.getHeaderHeight(), hidden.getHeaderHeight());
+		ImgTooltip none = new ImgTooltip(5);
+		none.setTitle("Chambers of Xeric");
+		Cells.addCountLines(none, entry, false, false);
+		assertEquals(hidden.getHeaderHeight(), none.getHeaderHeight());
 	}
 
 	@Test
