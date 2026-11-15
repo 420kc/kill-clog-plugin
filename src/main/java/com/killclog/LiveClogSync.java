@@ -1,6 +1,7 @@
 package com.killclog;
 
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
 import javax.swing.SwingUtilities;
@@ -19,8 +20,9 @@ import net.runelite.client.game.ItemManager;
  * the NPC that gave it as you receive it (RuneLite's ServerNpcLoot, the only source its own Loot Tracker reads NPC loot
  * from), so an item takes that NPC's latest kill however long the loot waited on its corpse, and none when the NPC has
  * no kill (a plain smoke devil's Occult necklace, on Thermy's page too). A pet, a chest or a reward screen is credited to
- * nobody, and a Collection Log item comes only from its own content: it takes the latest kill of the boss whose page
- * holds it, else the count message it arrived with (the Barrows chest's, whose name isn't its page's).
+ * nobody, and a Collection Log item comes only from its own content: it takes the latest kill of its page's content,
+ * the page's own name or a count message naming it in whole words (a raid's modes, the Corrupted Gauntlet, Phosani's
+ * Nightmare, Callisto on Callisto and Artio's page), else the count message it arrived with (the Lunar Chest's).
  */
 @Slf4j
 final class LiveClogSync
@@ -31,11 +33,12 @@ final class LiveClogSync
 	private static final Kill NO_KILL = new Kill(null, -1);
 
 	private boolean needsFirstSyncWarned;
-	// Each boss's latest kill this login by name, the latest of all, and each credited item's kill until it unlocks.
-	private final Map<String, Kill> kills = new HashMap<>();
+	// Each boss's latest kill this login by name, the latest of all, and each credited item's kill until it unlocks. The
+	// plugin stopping clears them from the Swing thread while the client thread may be writing.
+	private final Map<String, Kill> kills = new ConcurrentHashMap<>();
 	@Nullable
-	private Kill last;
-	private final Map<String, Kill> credits = new HashMap<>();
+	private volatile Kill last;
+	private final Map<String, Kill> credits = new ConcurrentHashMap<>();
 
 	@RequiredArgsConstructor
 	private static final class Kill
@@ -57,10 +60,12 @@ final class LiveClogSync
 	 */
 	void credit(String npc, Collection<String> items, int tick)
 	{
+		// By its exact name: a plain "Smoke devil" never takes the Thermonuclear smoke devil's kill.
 		Kill kill = kills.get(name(npc));
-		if (kill == null && last != null && tick - last.tick <= WITH_THE_KILL)
+		Kill latest = last;
+		if (kill == null && latest != null && tick - latest.tick <= WITH_THE_KILL)
 		{
-			kill = last;
+			kill = latest;
 		}
 		for (String item : items)
 		{
@@ -152,27 +157,42 @@ final class LiveClogSync
 		resetFirstSyncWarning();
 	}
 
-	/** An item credited to nobody: the latest kill of a boss whose page holds it, else the count message it came with. */
+	/**
+	 * An item credited to nobody: the latest kill of its page's content (a count message naming the page in whole
+	 * words, or named by it), else the count message it came with.
+	 */
 	@Nullable
 	private ClogUnlockParser.KillContext uncreditedKill(@Nullable List<String> pages, ClogIndex clogIndex, int tick)
 	{
 		Kill cause = null;
 		for (String page : pages != null ? pages : Collections.<String>emptyList())
 		{
-			Kill kill = kills.get(name(clogIndex.pageName(page)));
-			cause = kill != null && (cause == null || kill.tick > cause.tick) ? kill : cause;
+			String content = " " + name(clogIndex.pageName(page)) + " ";
+			for (Map.Entry<String, Kill> kill : kills.entrySet())
+			{
+				String boss = " " + kill.getKey() + " ";
+				if (content.trim().length() > 0 && (boss.contains(content) || content.contains(boss))
+					&& (cause == null || kill.getValue().tick > cause.tick))
+				{
+					cause = kill.getValue();
+				}
+			}
 		}
-		if (cause == null && last != null && tick - last.tick <= WITH_THE_KILL)
+		Kill latest = last;
+		if (cause == null && latest != null && tick - latest.tick <= WITH_THE_KILL)
 		{
-			cause = last;
+			cause = latest;
 		}
 		return cause != null ? cause.context : null;
 	}
 
-	/** A boss's name as its kill message, its page and the game's credit write it, case and a leading "the" aside. */
+	/**
+	 * A boss's name as its kill message, its page and the game's credit write it: words alone, case, punctuation and a
+	 * leading "the" aside ("Tombs of Amascut: Expert Mode" holds "tombs of amascut").
+	 */
 	private static String name(@Nullable String name)
 	{
-		String key = name == null ? "" : name.replace((char) 160, ' ').trim().toLowerCase(Locale.ROOT);
+		String key = name == null ? "" : name.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", " ").trim();
 		return key.startsWith("the ") ? key.substring(4) : key;
 	}
 

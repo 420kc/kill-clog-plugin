@@ -1133,6 +1133,42 @@ public class PluginPublicationCharacterizationTest
 		settle();
 	}
 
+	/** The tick an unlock heard before it runs after (onGameTick hands it to the client thread). */
+	private void tickAndRunUnlocks() throws Exception
+	{
+		ticks(1);
+		settle();
+	}
+
+	@Test
+	public void anUnlockRunsAtTheTicksEndAfterTheGamesLootCredit() throws Exception
+	{
+		// 11/15 review: a chat line can be handled a client cycle before the tick's credit is posted, and an unlock read
+		// before its credit would take its page's boss kill for a plain monster's drop.
+		LiveClogSync live = mock(LiveClogSync.class);
+		replace("liveClogSync", live);
+		net.runelite.api.events.ChatMessage unlock = new net.runelite.api.events.ChatMessage();
+		unlock.setType(net.runelite.api.ChatMessageType.GAMEMESSAGE);
+		unlock.setMessage("New item added to your collection log: Twisted bow");
+		plugin.onChatMessage(unlock);
+		settle();
+		verify(live, never()).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), any(), any(), any(), anyBoolean());
+		// The game tick hands it to the client thread, which runs it after every subscriber to the tick, LootManager's
+		// credit among them (Hooks.tick).
+		ticks(1);
+		verify(live, never()).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), any(), any(), any(), anyBoolean());
+		settle();
+		verify(live).handleUnlock(eq("Twisted bow"), eq(-1), eq(-1), any(), any(), any(), any(), any(), any(), anyBoolean());
+
+		// An unlock not yet run when the account ends never runs for the next.
+		plugin.onChatMessage(unlock);
+		logout();
+		gameState = net.runelite.api.GameState.LOGGED_IN;
+		ticks(1);
+		settle();
+		verify(live).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), any(), any(), any(), anyBoolean());
+	}
+
 	@Test
 	public void yourOwnChatNeverRerunsYourLookup() throws Exception
 	{
@@ -1153,6 +1189,7 @@ public class PluginPublicationCharacterizationTest
 		verify(panel, never()).doLookup();
 		// A new collection log item still updates the panel, through the unlock.
 		unlockMessage();
+		tickAndRunUnlocks();
 		verify(live).handleUnlock(eq("Twisted bow"), eq(-1), eq(-1), any(), any(), any(), eq(localClogCache), any(), any(),
 			anyBoolean());
 		verify(panel, never()).doLookup();
@@ -1165,12 +1202,15 @@ public class PluginPublicationCharacterizationTest
 		replace("liveClogSync", live);
 		world(net.runelite.api.WorldType.SEASONAL);
 		unlockMessage();
+		tickAndRunUnlocks();
 		verify(live, never()).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), any(), any(), any(), anyBoolean());
 		world(net.runelite.api.WorldType.MEMBERS);
 		unlockMessage();
+		tickAndRunUnlocks();
 		verify(live).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), eq(localClogCache), any(), any(), eq(false));
 		ticks(10);
 		unlockMessage();
+		tickAndRunUnlocks();
 		verify(live).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), eq(localClogCache), any(), any(), eq(true));
 	}
 
@@ -2758,7 +2798,7 @@ public class PluginPublicationCharacterizationTest
 		replace("manualClogSync", walk);
 		LocalClogCache league = announceLeague();
 		unlockMessage();
-		ticks(1);
+		tickAndRunUnlocks();
 		searchClick();
 		verify(live).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), eq(league), any(), any(), anyBoolean());
 		verify(walk).onGameTick(any(), any(), eq(league), any(), any(), any(), anyBoolean());
@@ -2768,7 +2808,7 @@ public class PluginPublicationCharacterizationTest
 		verify(walk, never()).onCollectionLogSearch(any(), any(), eq(localClogCache), any());
 		world(net.runelite.api.WorldType.MEMBERS);
 		unlockMessage();
-		ticks(1);
+		tickAndRunUnlocks();
 		searchClick();
 		verify(live).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), eq(localClogCache), any(), any(), anyBoolean());
 		verify(walk).onGameTick(any(), any(), eq(localClogCache), any(), any(), any(), anyBoolean());
@@ -2783,12 +2823,15 @@ public class PluginPublicationCharacterizationTest
 		ManualClogSync walk = mock(ManualClogSync.class);
 		replace("manualClogSync", walk);
 		LocalClogCache league = announceLeague();
-		ticks(9);
+		// An unlock runs after the tick following it (onGameTick): heard after eight ticks, it runs on the ninth, before
+		// the world settles on the tenth, and reads no counters.
+		ticks(8);
 		unlockMessage();
+		tickAndRunUnlocks();
 		verify(live).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), eq(league), any(), any(), eq(false));
 		verify(walk, never()).onGameTick(any(), any(), any(), any(), any(), any(), eq(true));
-		ticks(1);
 		unlockMessage();
+		tickAndRunUnlocks();
 		verify(live).handleUnlock(any(), anyInt(), anyInt(), any(), any(), any(), eq(league), any(), any(), eq(true));
 		verify(walk).onGameTick(any(), any(), eq(league), any(), any(), any(), eq(true));
 	}

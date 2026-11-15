@@ -4,7 +4,7 @@ import com.google.gson.Gson;
 import com.google.inject.Provides;
 import java.awt.image.BufferedImage;
 import java.util.*;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.*;
 import javax.inject.*;
 import javax.swing.SwingUtilities;
 import lombok.extern.slf4j.Slf4j;
@@ -169,6 +169,8 @@ public class KillClogPlugin extends Plugin
 	@Inject
 	private ClogIndex clogIndex;
 	private final LiveClogSync liveClogSync = new LiveClogSync();
+	// Collection Log unlocks heard this tick, run after its subscribers (onGameTick); cleared with the account.
+	private final Queue<Runnable> unlocks = new ConcurrentLinkedQueue<>();
 	private final ManualClogSync manualClogSync = new ManualClogSync();
 	private final LocalCaReader localCaReader = new LocalCaReader();
 	@Inject
@@ -294,6 +296,7 @@ public class KillClogPlugin extends Plugin
 		caCatalog.clear();
 		sessionState.reset();
 		liveClogSync.reset();
+		unlocks.clear();
 		nameAutocompleter.clearClientSnapshot();
 		localClogCache.setFirstPartyChangedListener(null);
 		publication.cancelCharacterPublish();
@@ -482,6 +485,7 @@ public class KillClogPlugin extends Plugin
 			panel.resetSyncFeedback();
 			manualClogSync.reset();
 			liveClogSync.reset();
+			unlocks.clear();
 			// Read the game's own structure again at once, for lookups made before the next login.
 			clogIndex.clear();
 			clogIndex.ensureParsed(client, itemManager);
@@ -570,7 +574,7 @@ public class KillClogPlugin extends Plugin
 			String unlockName = ClogUnlockParser.parseItemName(event.getMessage());
 			if (unlockName != null)
 			{
-				clientThread.invokeLater(() -> handleCollectionLogUnlock(unlockName, -1, -1));
+				unlocks.add(() -> handleCollectionLogUnlock(unlockName, -1, -1));
 			}
 		}
 
@@ -583,9 +587,16 @@ public class KillClogPlugin extends Plugin
 				ClogUnlockParser.parseClanBroadcast(event.getMessage());
 			if (broadcast != null && RsnInputPolicy.sameName(broadcast.playerName, sessions.current().getName()))
 			{
-				clientThread.invokeLater(() -> handleCollectionLogUnlock(
-					broadcast.itemName, broadcast.obtained, broadcast.total));
+				unlocks.add(() -> handleCollectionLogUnlock(broadcast.itemName, broadcast.obtained, broadcast.total));
 			}
+		}
+	}
+
+	private void runUnlocks()
+	{
+		for (Runnable unlock; (unlock = unlocks.poll()) != null; )
+		{
+			unlock.run();
 		}
 	}
 
@@ -717,6 +728,14 @@ public class KillClogPlugin extends Plugin
 	@Subscribe
 	public void onGameTick(GameTick event)
 	{
+		// Unlocks heard since the last tick run after every subscriber to this one, RuneLite's LootManager among them,
+		// which posts the game's loot credit for it: Hooks.tick posts the game tick, then runs what was invoked later. A
+		// chat line can arrive a client cycle before its tick, and an unlock read before its credit would take a plain
+		// monster's drop for its page's boss.
+		if (!unlocks.isEmpty())
+		{
+			clientThread.invokeLater(this::runUnlocks);
+		}
 		// The names only feed the search box's autofill, so a refresh every three seconds is fresh enough.
 		if (client.getTickCount() % 5 == 0)
 		{

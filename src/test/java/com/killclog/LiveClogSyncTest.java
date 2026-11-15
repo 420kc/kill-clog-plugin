@@ -22,6 +22,8 @@ public class LiveClogSyncTest
 	private static final int DEVIL_ITEM = 30001;
 	private static final int UNPAGED = 30002;
 	private static final int GAUNTLET_ITEM = 30003;
+	private static final int PAGE_ITEM = 30004;
+	private static final int TWO_PAGES = 30005;
 
 	@Test
 	public void theGameCountersWaitForASettledWorld()
@@ -117,6 +119,88 @@ public class LiveClogSyncTest
 			any(), eq(12), eq("Gauntlet"));
 	}
 
+	// 11/15 review: a raid's hard mode, the Corrupted Gauntlet and Phosani's Nightmare count under their own names on the
+	// page of their plain mode; an uncredited reward takes the latest kill of the page's content, never an older mode's.
+	@Test
+	public void anUncreditedRewardTakesTheLatestKillOfItsPagesContentAnyMode()
+	{
+		String[][] modes = {
+			{"Tombs of Amascut", "Tombs of Amascut: Expert Mode", "Tombs of Amascut"},
+			{"Chambers of Xeric", "Chambers of Xeric Challenge Mode", "Chambers of Xeric"},
+			{"Gauntlet", "Corrupted Gauntlet", "The Gauntlet"},
+			{"Nightmare", "Phosani's Nightmare", "The Nightmare"},
+			{"Artio", "Callisto", "Callisto and Artio"}};
+		for (String[] mode : modes)
+		{
+			for (int after : new int[]{2, 60})
+			{
+				LiveClogSync sync = new LiveClogSync();
+				sync.rememberKill(new ClogUnlockParser.KillContext(mode[0], 12), 1000);
+				sync.rememberKill(new ClogUnlockParser.KillContext(mode[1], 87), 2000);
+				verify(unlock(sync, clientAt(2000 + after), PAGE_ITEM, mode[2]), org.mockito.Mockito.description(
+					mode[1] + ", " + after + " ticks")).mergeObtainedItem(eq("Tester"), eq(PAGE_ITEM), any(), any(), eq(87),
+					eq(mode[1]));
+			}
+		}
+	}
+
+	// A page's name inside another word is no match: "Nex" is not in "Annex".
+	@Test
+	public void aPageMatchesItsContentInWholeWordsOnly()
+	{
+		LiveClogSync sync = new LiveClogSync();
+		sync.rememberKill(new ClogUnlockParser.KillContext("Annex", 5), 1000);
+		verify(unlock(sync, clientAt(5000), PAGE_ITEM, "Nex")).mergeObtainedItem(eq("Tester"), eq(PAGE_ITEM), any(), any(),
+			eq(0), isNull());
+	}
+
+	// Of an item's pages, the one with the latest kill gives it.
+	@Test
+	public void anItemOnTwoPagesTakesTheLaterKill()
+	{
+		LiveClogSync sync = new LiveClogSync();
+		sync.rememberKill(new ClogUnlockParser.KillContext("Maggot King", 603), 2000);
+		sync.rememberKill(new ClogUnlockParser.KillContext("Thermonuclear smoke devil", 250), 1000);
+		verify(unlock(sync, clientAt(9000), TWO_PAGES)).mergeObtainedItem(eq("Tester"), eq(TWO_PAGES), any(), any(), eq(603),
+			eq("Maggot King"));
+	}
+
+	// A credit is the one loot's: used by its unlock, it never answers another unlock of the name.
+	@Test
+	public void aCreditIsUsedOnce()
+	{
+		LiveClogSync sync = new LiveClogSync();
+		sync.rememberKill(new ClogUnlockParser.KillContext("Maggot King", 603), 1000);
+		sync.credit("Maggot King", List.of("Elder venator fang"), 1000);
+		verify(unlock(sync, clientAt(1000), UNPAGED)).mergeObtainedItem(eq("Tester"), eq(UNPAGED), any(), any(), eq(603),
+			eq("Maggot King"));
+		verify(unlock(sync, clientAt(50_000), UNPAGED)).mergeObtainedItem(eq("Tester"), eq(UNPAGED), any(), any(), eq(0),
+			isNull());
+	}
+
+	// An NPC and its kill message can differ by a leading "the" (The Nightmare's loot, "Your Nightmare kill count").
+	@Test
+	public void aCreditMatchesItsKillWithOrWithoutThe()
+	{
+		LiveClogSync sync = new LiveClogSync();
+		sync.rememberKill(new ClogUnlockParser.KillContext("Nightmare", 41), 1000);
+		sync.credit("The Nightmare", List.of("Elder venator fang"), 9000);
+		verify(unlock(sync, clientAt(9000), UNPAGED)).mergeObtainedItem(eq("Tester"), eq(UNPAGED), any(), any(), eq(41),
+			eq("Nightmare"));
+	}
+
+	// A credit's own NPC's kill wins over another kill it landed beside.
+	@Test
+	public void aCreditTakesItsOwnNpcsKillOverTheOneItLandedWith()
+	{
+		LiveClogSync sync = new LiveClogSync();
+		sync.rememberKill(new ClogUnlockParser.KillContext("Maggot King", 603), 1000);
+		sync.rememberKill(new ClogUnlockParser.KillContext("Zulrah", 50), 1003);
+		sync.credit("Maggot King", List.of("Elder venator fang"), 1004);
+		verify(unlock(sync, clientAt(1004), UNPAGED)).mergeObtainedItem(eq("Tester"), eq(UNPAGED), any(), any(), eq(603),
+			eq("Maggot King"));
+	}
+
 	// An unlock credited to nobody and off any boss's page with a kill (a casket after a kill) takes only the count
 	// message it arrived with: within five ticks, as a chest's reward does; past them, bare.
 	@Test
@@ -199,6 +283,12 @@ public class LiveClogSyncTest
 
 	private static LocalClogCache unlock(LiveClogSync sync, Client client, int itemId)
 	{
+		return unlock(sync, client, itemId, "Probe page");
+	}
+
+	/** The unlock of `itemId`, PAGE_ITEM sitting on one page named `pageName`. */
+	private static LocalClogCache unlock(LiveClogSync sync, Client client, int itemId, String pageName)
+	{
 		Player local = mock(Player.class);
 		when(local.getName()).thenReturn("Tester");
 		when(client.getLocalPlayer()).thenReturn(local);
@@ -212,6 +302,9 @@ public class LiveClogSyncTest
 		when(index.categoryKeysForItem(UNPAGED)).thenReturn(null);
 		when(index.categoryKeysForItem(GAUNTLET_ITEM)).thenReturn(List.of("the_gauntlet"));
 		when(index.pageName("the_gauntlet")).thenReturn("The Gauntlet");
+		when(index.categoryKeysForItem(PAGE_ITEM)).thenReturn(List.of("probe_page"));
+		when(index.pageName("probe_page")).thenReturn(pageName);
+		when(index.categoryKeysForItem(TWO_PAGES)).thenReturn(List.of("thermonuclear_smoke_devil", "maggot_king"));
 		when(index.pageName("maggot_king")).thenReturn("Maggot King");
 		when(index.pageName("all_pets")).thenReturn("All Pets");
 		when(index.pageName("beginner_treasure_trails")).thenReturn("Beginner Treasure Trails");
