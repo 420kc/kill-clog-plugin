@@ -900,18 +900,23 @@ public class PluginPublicationCharacterizationTest
 	@Test
 	public void theGamesLootCreditReachesTheUnlocksKill() throws Exception
 	{
-		// The game names the NPC behind each loot (RuneLite's ServerNpcLoot): the plugin hands it on with the items' names.
+		// The game names the NPC behind each loot (RuneLite's ServerNpcLoot): the plugin hands it on with the items' names,
+		// its name's colour tags gone (as RuneLite's Loot Tracker reads it), so it reaches that NPC's own kill and not the
+		// one it landed beside.
 		net.runelite.api.NPCComposition maggotKing = mock(net.runelite.api.NPCComposition.class);
-		when(maggotKing.getName()).thenReturn("Maggot King");
+		when(maggotKing.getName()).thenReturn("<col=ffff00>Maggot King</col>");
 		net.runelite.api.ItemComposition fang = mock(net.runelite.api.ItemComposition.class);
 		when(fang.getName()).thenReturn("Elder venator fang");
 		when(((net.runelite.client.game.ItemManager) field("itemManager")).getItemComposition(33634)).thenReturn(fang);
 		LiveClogSync sync = (LiveClogSync) field("liveClogSync");
 		sync.rememberKill(new ClogUnlockParser.KillContext("Maggot King", 603), 1000);
+		sync.rememberKill(new ClogUnlockParser.KillContext("Zulrah", 50), client.getTickCount());
 		plugin.onServerNpcLoot(new net.runelite.client.events.ServerNpcLoot(maggotKing,
 			List.of(new net.runelite.client.game.ItemStack(33634, 1))));
 		java.util.Map<String, ?> credits = TestViews.field(sync, "credits");
 		org.junit.Assert.assertTrue(credits.toString(), credits.containsKey("elder venator fang"));
+		ClogUnlockParser.KillContext kill = TestViews.field(credits.get("elder venator fang"), "context");
+		assertEquals("Maggot King", kill.boss);
 	}
 
 	@Test
