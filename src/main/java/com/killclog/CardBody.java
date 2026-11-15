@@ -590,6 +590,8 @@ final class CardBody
 		private final Map<Integer, Rectangle> boxes = new LinkedHashMap<>();
 		private int hovered = -1;
 		private Point pointer;
+		// Whether shift was down at the pointer's last move, for a link that opens on a shift-click only.
+		boolean shift;
 
 		ClickRows(JComponent card, ObjIntConsumer<MouseEvent> onPress)
 		{
@@ -600,6 +602,7 @@ final class CardBody
 				public void mouseMoved(MouseEvent e)
 				{
 					pointer = e.getPoint();
+					shift = e.isShiftDown();
 					hover(at(pointer));
 				}
 
@@ -636,7 +639,12 @@ final class CardBody
 		/** A tile's box, clipped to what shows of a scrolled part as a row is; whether the still mouse is on it. */
 		boolean boxShown(Ctx c, Rectangle box, int key)
 		{
-			Rectangle shown = c.window != null ? box.intersection(c.window) : box;
+			return lit(c.window != null ? box.intersection(c.window) : box, key);
+		}
+
+		/** Lays down a box that never scrolls, as the header's are; whether the still mouse is on it. */
+		boolean lit(Rectangle shown, int key)
+		{
 			boxes.put(key, shown);
 			// What paints lit is what's hovered: a scroll that slides another tile under the still mouse moves the
 			// hover with it, so the next move repaints against what shows.

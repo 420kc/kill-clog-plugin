@@ -267,14 +267,10 @@ public class ClogTabTooltipTest
 		painted(back);
 		List<Integer> opened = new ArrayList<>();
 		back.setOnOpenPage((press, page) -> opened.add(page));
-		int row = -1;
-		for (int y = 0; y < back.getHeight() && row < 0; y++)
-		{
-			row = back.onBackRow(y) ? y : -1;
-		}
-		assertEquals("the way back is the card's first line", NativeTooltip.getInset(), row);
-		press(back, row + 2);
-		assertEquals(1, backs[0]);
+		press(back, NativeTooltip.getInset() - 1);
+		assertEquals("nothing above the card's first line", 0, backs[0]);
+		press(back, NativeTooltip.getInset() + 2);
+		assertEquals("the way back is the card's first line", 1, backs[0]);
 		assertTrue(opened.isEmpty());
 		press(back, firstTile(back).x + 10, firstTile(back).y + 10);
 		assertEquals(1, backs[0]);

@@ -24,6 +24,8 @@ public abstract class TitleTooltip extends NativeTooltip
 	// The hiscore badges are 18 px art, the title line's own height.
 	private static final int TITLE_ICON_MAX = 18;
 	private static final int TITLE_ICON_GAP = 4;
+	private static final int BACK = 0;
+	private static final int TITLE = 1;
 	static final int SEPARATOR_GAP = 6;
 	private static final int INFO_PAIR_GAP = 8;
 	private static final String ELLIPSIS = "...";
@@ -61,24 +63,29 @@ public abstract class TitleTooltip extends NativeTooltip
 	@Nullable
 	private BufferedImage titleIcon;
 	private CardLinks links = CardLinks.ON;
-	// Whether shift was down at the pointer's last move or press, for a link that opens on a shift-click only.
-	private boolean shiftDown;
-	private boolean titleHovered;
 	// The way back to the card this one opened from: the card's first line, above its title, white while hovered.
 	private String backLabel;
 	@Nullable
 	private Consumer<MouseEvent> onBack;
-	private boolean backHovered;
-	private int backTop = -1;
+	// The way back and the title's wiki link answer the pointer as a body's rows do: lit while hovered, a press opens.
+	private final CardBody.ClickRows headerRows = new CardBody.ClickRows(this, (e, key) ->
+	{
+		if (key == BACK)
+		{
+			onBack.accept(e);
+			e.consume();
+		}
+		else if (linkOpens(e))
+		{
+			TooltipItemLink.openWikiPage(titleWikiPage);
+			NativeTooltip.hideTooltipTree(this);
+			e.consume();
+		}
+	});
+	private boolean titleLit;
 	// Item sprites on the card: hover names and wiki links. Installed after the
 	// title's own listeners, as the cards' own copies were.
-	final TooltipItemHover itemHover;
-
-	protected TitleTooltip()
-	{
-		installTitleLinkHandlers();
-		itemHover = new TooltipItemHover(this);
-	}
+	final TooltipItemHover itemHover = new TooltipItemHover(this);
 
 	/**
 	 * Optional badge before the title, drawn at its own size: art no taller than the title's line
@@ -163,18 +170,12 @@ public abstract class TitleTooltip extends NativeTooltip
 	public void setTitleWikiPage(String titleWikiPage)
 	{
 		this.titleWikiPage = titleWikiPage;
-		titleHovered = false;
 	}
 
 	public void setLinks(CardLinks links)
 	{
 		this.links = links;
 		itemHover.setLinks(links);
-		if (links == CardLinks.OFF && titleHovered)
-		{
-			titleHovered = false;
-			repaint();
-		}
 	}
 
 	/**
@@ -524,11 +525,14 @@ public abstract class TitleTooltip extends NativeTooltip
 		if (onBack != null)
 		{
 			g2.setFont(FontManager.getRunescapeSmallFont());
-			g2.setColor(backHovered ? NativeTooltip.valueColor : labelColor);
+			// The back line answers across the card's whole width, a row like the others.
+			g2.setColor(headerRows.lit(new Rectangle(0, inset, Integer.MAX_VALUE, LINE_HEIGHT), BACK)
+				? NativeTooltip.valueColor : labelColor);
 			g2.drawString(backLabel, inset, inset + g2.getFontMetrics().getAscent());
-			backTop = inset;
 			top += LINE_HEIGHT;
 		}
+		titleLit = titleWikiPage != null && !titleWikiPage.trim().isEmpty() && headerRows.lit(titleBounds(), TITLE)
+			&& links.opens(headerRows.shift);
 		// Modal titles remain stable while body labels change.
 		g2.setFont(getTitleFont());
 		FontMetrics nfm = g2.getFontMetrics();
@@ -592,84 +596,15 @@ public abstract class TitleTooltip extends NativeTooltip
 		}
 	}
 
-	private void installTitleLinkHandlers()
-	{
-		addMouseMotionListener(new MouseMotionAdapter()
-		{
-			@Override
-			public void mouseMoved(MouseEvent e)
-			{
-				shiftDown = e.isShiftDown();
-				updateHeaderHover(e.getX(), e.getY());
-			}
-		});
-		addMouseListener(new MouseAdapter()
-		{
-			@Override
-			public void mousePressed(MouseEvent e)
-			{
-				shiftDown = e.isShiftDown();
-				if (e.getButton() == MouseEvent.BUTTON1 && onBack != null && onBackRow(e.getY()))
-				{
-					onBack.accept(e);
-					e.consume();
-					return;
-				}
-				if (e.getButton() == MouseEvent.BUTTON1 && titleLinkActive()
-					&& titleBounds().contains(e.getX(), e.getY()))
-				{
-					TooltipItemLink.openWikiPage(titleWikiPage);
-					titleHovered = false;
-					NativeTooltip.hideTooltipTree(TitleTooltip.this);
-					e.consume();
-				}
-			}
-
-			@Override
-			public void mouseExited(MouseEvent e)
-			{
-				if (titleHovered || backHovered)
-				{
-					titleHovered = false;
-					backHovered = false;
-					repaint();
-				}
-			}
-		});
-	}
-
-	private void updateHeaderHover(int x, int y)
-	{
-		boolean nextTitle = titleLinkActive() && titleBounds().contains(x, y);
-		boolean nextBack = onBack != null && onBackRow(y);
-		if (nextTitle != titleHovered || nextBack != backHovered)
-		{
-			titleHovered = nextTitle;
-			backHovered = nextBack;
-			repaint();
-		}
-	}
-
-	/** The back line answers across the card's whole width, a row like the others. */
-	boolean onBackRow(int y)
-	{
-		return backTop >= 0 && y >= backTop && y < backTop + LINE_HEIGHT;
-	}
-
 	/** Whether this press opens a link on the card ({@link CardLinks}). */
 	protected boolean linkOpens(MouseEvent press)
 	{
 		return links.opens(press);
 	}
 
-	private boolean titleLinkActive()
-	{
-		return links.opens(shiftDown) && titleWikiPage != null && !titleWikiPage.trim().isEmpty();
-	}
-
 	protected Color titleColor()
 	{
-		return titleHovered && titleLinkActive() ? NativeTooltip.valueColor : labelColor;
+		return titleLit ? NativeTooltip.valueColor : labelColor;
 	}
 
 	void setSubtitleIcon(@Nullable BufferedImage icon)

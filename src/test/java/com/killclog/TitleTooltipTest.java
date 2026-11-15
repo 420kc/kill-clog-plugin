@@ -66,12 +66,25 @@ public class TitleTooltipTest
 		tooltip.setTitle("Abyssal Sire");
 		tooltip.setTitleWikiPage("Abyssal Sire");
 
+		// The title answers where it was last painted, and the move's repaint lights it.
+		paint(tooltip);
 		moveMouse(tooltip, NativeTooltip.getInset() + 1, NativeTooltip.getInset() + 1);
+		paint(tooltip);
 		assertEquals(Color.WHITE, tooltip.titleColor());
 
 		tooltip.setLinks(CardLinks.OFF);
 		moveMouse(tooltip, NativeTooltip.getInset() + 1, NativeTooltip.getInset() + 1);
+		paint(tooltip);
 		assertEquals(NativeTooltip.OSRS_ORANGE, tooltip.titleColor());
+	}
+
+	private static void paint(JComponent card)
+	{
+		card.setSize(card.getPreferredSize());
+		java.awt.Graphics2D g = new java.awt.image.BufferedImage(card.getWidth(), card.getHeight(),
+			java.awt.image.BufferedImage.TYPE_INT_ARGB).createGraphics();
+		card.paint(g);
+		g.dispose();
 	}
 
 	@Test
