@@ -740,10 +740,9 @@ public class Cells
 	}
 
 	/**
-	 * Configure an ImgTooltip for a player who has not synced any collection log.
-	 * Keeps native hiscore rows when the player has any signal (kc or rank);
-	 * otherwise shows the muted "Obtained: --/Y" preview. Every category item
-	 * draws dimmed either way so wiki links remain explorable.
+	 * Configure an ImgTooltip for a player who has not synced any collection log: the muted "Obtained: --/Y" first, as
+	 * a synced card's Obtained leads, then the hiscore rows when the player has any signal (kc or rank) (Dylan,
+	 * 2026-11-14: the card has the room for both). Every category item draws dimmed so wiki links remain explorable.
 	 */
 	static boolean configureNotSynced(ImgTooltip tip, TooltipData data, ItemManager itemManager,
 		boolean showKc)
@@ -753,6 +752,7 @@ public class Cells
 			return false;
 		}
 		tip.setTitle(data.name);
+		tip.setObtainedPlaceholder(data.allItemIds.size());
 		// A raid's hard mode is the player's signal too: a raider of Expert alone keeps that line and rank.
 		if (data.statValue >= 0 || data.rank > 0 || data.hardKc >= 0 || data.hardRank > 0)
 		{
@@ -761,12 +761,6 @@ public class Cells
 				tip.setInfoLine(data.statLabel, ClogHelper.cardCountText(data.statValue), NativeTooltip.valueColor);
 			}
 			addHardModeLine(tip, data, showKc, false);
-		}
-		else
-		{
-			// No player signal behind this grid: preview the shape and count
-			// the slots instead of painting dashes for stats nobody has.
-			tip.setObtainedPlaceholder(data.allItemIds.size());
 		}
 		tip.setItems(data.totalItems, data.allItemIds, Collections.emptySet(),
 			Collections.emptyMap(), data.itemNames, itemManager);

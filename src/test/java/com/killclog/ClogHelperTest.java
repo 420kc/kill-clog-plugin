@@ -363,8 +363,9 @@ public class ClogHelperTest
 		HiscoreResult result = TestViews.hiscore(AccountType.REGULAR, Collections.emptyMap(), Collections.emptyMap(),
 			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1);
 		Cells.configureRank(card, data, result, true);
-		// The Kills line, the Expert line and the rank line, not a bare title over a placeholder.
-		assertEquals(bare.getHeaderHeight() + 3 * NativeTooltip.LINE_HEIGHT, card.getHeaderHeight());
+		// The muted Obtained line, then the Kills line, the Expert line and the rank line under it (Dylan 11/14).
+		assertEquals(bare.getHeaderHeight() + 4 * NativeTooltip.LINE_HEIGHT, card.getHeaderHeight());
+		assertEquals("--/1", TestViews.subtitle(card));
 	}
 
 	@Test
