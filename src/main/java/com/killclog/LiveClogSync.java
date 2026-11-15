@@ -50,8 +50,10 @@ final class LiveClogSync
 
 	void rememberKill(ClogUnlockParser.KillContext kill, int tick)
 	{
-		last = new Kill(kill, tick);
-		kills.put(name(kill.boss), last);
+		// Never read back: a stop may clear it in between, and the map takes no null.
+		Kill remembered = new Kill(kill, tick);
+		last = remembered;
+		kills.put(name(kill.boss), remembered);
 	}
 
 	/**
