@@ -483,6 +483,28 @@ public class SkillClogSectionTest
 		assertEquals("a log that fits never moves", 0, TestViews.offset(still));
 	}
 
+	@Test
+	public void aLogEndsAtItsLastRowOfItems() throws Exception
+	{
+		// 11/15 review: the test that a log's measured height matches its paint went with SkillClogSectionRenderer; a grid
+		// one row taller than its items passed every test and would leave an empty row on every skill card.
+		for (int items : new int[]{4, 5, 6, 11})
+		{
+			SkillTooltip card = card(items);
+			paint(card);
+			java.lang.reflect.Field hits = TooltipItemHover.class.getDeclaredField("hitBoxes");
+			hits.setAccessible(true);
+			int bottom = 0;
+			for (Object hit : (java.util.List<?>) hits.get(card.itemHover))
+			{
+				java.awt.Rectangle box = TestViews.field(hit, "bounds");
+				bottom = Math.max(bottom, box.y + box.height);
+			}
+			assertTrue(items + " items: no empty row under them (" + (card.getHeight() - bottom) + " px)",
+				card.getHeight() - bottom < CardBody.GRID_CELL);
+		}
+	}
+
 	private static SkillTooltip card(int items)
 	{
 		SkillTooltip card = new SkillTooltip();

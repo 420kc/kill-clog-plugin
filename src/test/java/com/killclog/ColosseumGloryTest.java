@@ -34,4 +34,16 @@ public class ColosseumGloryTest
 		assertSame("every other boss leads with kills", sol, ColosseumGlory.onCard("Zulrah", sol, withGlory(18_420)));
 		assertNull("no card, nothing to lead", ColosseumGlory.onCard("Sol Heredit", null, withGlory(18_420)));
 	}
+
+	@Test
+	public void theCellCardsOneBuilderLeadsSolHereditWithGlory()
+	{
+		// 11/15 review: leaving Glory out of the one boss card builder, which both sides of a comparison take, passed
+		// every test.
+		TooltipData sol = TooltipData.builder().name("Sol Heredit").kc(17).build();
+		TooltipData card = TooltipDataBuilder.bossCellCard(sol, net.runelite.client.hiscore.HiscoreSkill.SOL_HEREDIT,
+			withGlory(18_420), name -> null, null);
+		assertEquals("Glory: ", card.kcLabel);
+		assertEquals(18_420, card.kc);
+	}
 }

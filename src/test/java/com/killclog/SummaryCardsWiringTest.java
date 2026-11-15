@@ -42,6 +42,7 @@ public class SummaryCardsWiringTest
 	private static final String PLAYER = "Seeded Name";
 	private final ClogService clogs = mock(ClogService.class);
 	private final RuneProfileService runeProfile = mock(RuneProfileService.class);
+	private final KillclogService killclog = mock(KillclogService.class);
 	private final PlayerPortraits portraits = mock(PlayerPortraits.class);
 	private KillClogPanel panel;
 
@@ -64,7 +65,7 @@ public class SummaryCardsWiringTest
 			new AsyncBufferedImage(clientThread, 36, 32, BufferedImage.TYPE_INT_ARGB));
 		SwingUtilities.invokeAndWait(() ->
 		{
-			panel = new KillClogPanel(mock(HiscoreService.class), clogs, runeProfile, mock(KillclogService.class),
+			panel = new KillClogPanel(mock(HiscoreService.class), clogs, runeProfile, killclog,
 				new KillClogConfig()
 				{
 				}, mock(ConfigManager.class), sprites, items, clientThread, new SkillIconManager(), portraits);
@@ -127,6 +128,61 @@ public class SummaryCardsWiringTest
 		// A lookup with no log has no sites to link.
 		when(portraits.forSummary(any())).thenReturn(null);
 		assertEquals(List.of(), sites(player(hiscore, null)));
+	}
+
+	@Test
+	public void eachSiteIsAskedAboutThisPlayerAndLinksThisPlayersPage() throws Exception
+	{
+		// 11/15 reviews: TempleOSRS's and RuneProfile's answers swapped, the sync list asked about another name, or every
+		// link pointed at another player each passed every test.
+		HiscoreResult hiscore = hiscore(false, false, 0);
+		when(clogs.onTemple(PLAYER)).thenReturn(true);
+		SummaryTooltip temple = player(hiscore, pets(PLAYER));
+		assertEquals(List.of("View on TempleOSRS"), sites(temple));
+		assertEquals(List.of(TooltipItemLink.templeUrl(PLAYER)), urls(temple));
+
+		when(clogs.onTemple(PLAYER)).thenReturn(false);
+		when(runeProfile.hasProfile(PLAYER)).thenReturn(true);
+		SummaryTooltip runeProfileCard = player(hiscore, pets(PLAYER));
+		assertEquals(List.of("View on RuneProfile"), sites(runeProfileCard));
+		assertEquals(List.of(TooltipItemLink.runeProfileUrl(PLAYER)), urls(runeProfileCard));
+
+		// The other side of a comparison is asked about by its own name, and links its own pages.
+		when(runeProfile.hasProfile(PLAYER)).thenReturn(false);
+		when(killclog.isSynced("Red Rival")).thenReturn(true);
+		SummaryTooltip[] red = new SummaryTooltip[1];
+		SwingUtilities.invokeAndWait(() ->
+		{
+			seed(hiscore, pets(PLAYER));
+			SummaryCards cards = TestViews.field(panel, "summaryCards");
+			red[0] = cards.playerCard(new JLabel(), hiscore, pets("Red Rival"), "Red Rival", null);
+		});
+		assertEquals(List.of("View on Kill Clog"), sites(red[0]));
+		assertEquals(List.of(TooltipItemLink.killclogUrl("Red Rival")), urls(red[0]));
+	}
+
+	@Test
+	public void aPageWithNoLogPreviewsItsItemsFromTheGamesCatalog() throws Exception
+	{
+		// 11/15 review: Cells.pageData returning no preview, 2.8.1's notice, passed every test (ClogPagesTest mocks Cells).
+		ClogIndex index = new ClogIndex();
+		TestViews.publish(index, Map.of("castle_wars", Arrays.asList(4509, 4510)), Collections.emptyMap(),
+			Map.of("Minigames", List.of("castle_wars")), Collections.emptyMap(), Map.of("castle_wars", "Castle Wars"));
+		TooltipData[] preview = new TooltipData[1];
+		SwingUtilities.invokeAndWait(() ->
+		{
+			panel.setClogIndex(index);
+			Cells cells = TestViews.field(panel, "cells");
+			preview[0] = cells.pageData("Castle Wars", Arrays.asList(4509, 4510), null);
+		});
+		assertEquals(Arrays.asList(4509, 4510), preview[0].allItemIds);
+		assertEquals("no log, so no count: the muted --/2", -1, preview[0].obtainedCount);
+	}
+
+	private static List<String> urls(SummaryTooltip card)
+	{
+		List<CardSources.Source> sources = TestViews.field(card, "sources");
+		return sources.stream().map(source -> source.url).collect(Collectors.toList());
 	}
 
 	private List<String> gear(boolean maxed, boolean infernal, int completions, boolean logQuiver) throws Exception

@@ -482,6 +482,67 @@ public class TitleTooltipTest
 	}
 
 	@Test
+	public void aCardWithNoSyncedLogShowsItsKillsButNoPb() throws Exception
+	{
+		// The PB is the synced log's (Cells.configure); 11/15 review: dropping that guard passed every test.
+		ImgTooltip tip = new ImgTooltip(5);
+		TooltipData data = TooltipData.builder().name("Zulrah").obtainedCount(-1).totalItems(2)
+			.allItemIds(Arrays.asList(12921, 12922)).obtainedIds(new java.util.HashSet<>())
+			.obtainedCounts(new HashMap<>()).kc(420).pb("1:09").build();
+		assertTrue(Cells.configure(tip, data, org.mockito.Mockito.mock(net.runelite.client.game.ItemManager.class), true, true));
+		java.lang.reflect.Method lines = TitleTooltip.class.getDeclaredMethod("headerLines");
+		lines.setAccessible(true);
+		StringBuilder header = new StringBuilder();
+		for (Object line : (List<?>) lines.invoke(tip))
+		{
+			header.append(TestViews.<String>field(line, "label")).append(TestViews.<String>field(line, "value")).append('|');
+			Object pair = TestViews.field(line, "pair");
+			if (pair != null)
+			{
+				header.append(TestViews.<String>field(pair, "label")).append(TestViews.<String>field(pair, "value")).append('|');
+			}
+		}
+		assertTrue(header.toString(), header.toString().contains("KC: 420"));
+		assertFalse(header.toString(), header.toString().contains("PB"));
+	}
+
+	@Test
+	public void aTitlePressOpensItsPageOnlyWhenCardLinksDo() throws Exception
+	{
+		// 11/15 review: a press on the title opening its page whatever Card Links said passed every test. The browser is
+		// stubbed: a test never opens a real page.
+		try (org.mockito.MockedStatic<net.runelite.client.util.LinkBrowser> browser =
+			org.mockito.Mockito.mockStatic(net.runelite.client.util.LinkBrowser.class))
+		{
+			ImgTooltip tooltip = spriteTooltip(2);
+			tooltip.setTitle("Abyssal Sire");
+			tooltip.setTitleWikiPage("Abyssal Sire");
+			tooltip.setLinks(CardLinks.OFF);
+			paint(tooltip);
+			int x = NativeTooltip.getInset() + 1;
+			int y = NativeTooltip.getInset() + 1;
+			assertFalse("Card Links off: the press is the card's, not a link's", press(tooltip, x, y).isConsumed());
+			browser.verifyNoInteractions();
+
+			tooltip.setLinks(CardLinks.ON);
+			paint(tooltip);
+			assertTrue(press(tooltip, x, y).isConsumed());
+			browser.verify(() -> net.runelite.client.util.LinkBrowser.browse(TooltipItemLink.wikiPageUrl("Abyssal Sire")));
+		}
+	}
+
+	private static MouseEvent press(JComponent card, int x, int y)
+	{
+		MouseEvent event = new MouseEvent(card, MouseEvent.MOUSE_PRESSED, System.currentTimeMillis(), 0, x, y, 1, false,
+			MouseEvent.BUTTON1);
+		for (java.awt.event.MouseListener listener : card.getMouseListeners())
+		{
+			listener.mousePressed(event);
+		}
+		return event;
+	}
+
+	@Test
 	public void aSourceInAScrolledPartKeepsItsPage() throws Exception
 	{
 		// 11/15 review: a box cut to a scrolled window lost its link, so a Collection Log card long enough to scroll
