@@ -108,7 +108,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		}
 	});
 	// The PvP activities' short names, in PanelData.PVP_ACTIVITIES' order; the first two have a log page.
-	private static final String[] PVP_LABELS = {"LMS", "Soul Wars", "PvP Arena", "BH Hunter", "BH Rogue"};
+	private static final String[] PVP_LABELS = {"LMS", "Soul Wars", "PvP Arena", "BH", "BH Rogue"};
 	private static final String[] PVP_PAGES = {"last_man_standing", "soul_wars"};
 	private final List<GameTile.Tile> pvp = new ArrayList<>();
 
