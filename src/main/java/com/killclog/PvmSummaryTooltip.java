@@ -248,7 +248,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		{
 			card.add(CardBody.gap(SECTION_GAP)).add(CardBody.sprites(TooltipItemHover.HEADER_SECTION, gearSprites,
 				gear.stream().mapToInt(Integer::intValue).toArray(), gearNames.toArray(new String[0]),
-				gear.stream().mapToInt(id -> 1).toArray(), WEAPON_PAD));
+				gear.stream().mapToInt(id -> 1).toArray(), WEAPON_PAD, Integer.MAX_VALUE, null));
 		}
 		CardBody body = new CardBody().titled(PVM_HEADER)
 			.add(CardBody.line("Total Kills: ", scoreText(totalKills)))
@@ -297,7 +297,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		}
 		body.add(CardBody.gap(WEAPON_PAD))
 			.add(CardBody.sprites(0, superiorSprites, PanelData.SUPERIOR_ITEMS, PanelData.SUPERIOR_ITEM_NAMES,
-				superiorCounts, WEAPON_PAD))
+				superiorCounts, WEAPON_PAD, Integer.MAX_VALUE, null))
 			.titled(PVP_HEADER)
 			.add(GameTile.grid(pvmRows, pvp));
 		return card.add(CardBody.hoverBand()).add(CardBody.scroll(scroll, body.asPart()));

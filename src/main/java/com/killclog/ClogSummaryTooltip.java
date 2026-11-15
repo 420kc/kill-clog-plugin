@@ -24,7 +24,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private static final int RECENT_PAD = 6;
 	// Recent fills the tiles' width: six items, their dates under them.
 	static final int RECENT_SHOWN = 6;
-	private static final int DATE_GAP = 1;
 	private static final int SOURCES_GAP = 3;
 	// Hover sections: the shelves, the tier ladder and the sources. A reached tier reads green and an unreached one
 	// red, as held and missing items do.
@@ -78,25 +77,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 		final String[] names;
 		final int[] counts;
 		final String[] dates;
-
-		boolean dated()
-		{
-			return dates != null && java.util.Arrays.stream(dates).anyMatch(java.util.Objects::nonNull);
-		}
-
-		/** Cells widen past the sprite when a date caption needs the room. */
-		int cellWidth(FontMetrics fm)
-		{
-			int w = CardBody.GRID_SPRITE;
-			for (String date : dates != null ? dates : new String[0])
-			{
-				if (date != null)
-				{
-					w = Math.max(w, fm.stringWidth(date));
-				}
-			}
-			return w;
-		}
 	}
 
 	private List<CardSources.Source> clogSources = Collections.emptyList();
@@ -220,7 +200,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 			ClogResult.ClogItem item = items.get(i);
 			ids[i] = item.getId();
 			names[i] = clog != null ? clog.getItemName(item.getId()) : null;
-			counts[i] = item.getCount();
+			// Every shelved item is held, a log that sent no count included.
+			counts[i] = Math.max(1, item.getCount());
 			if (dated)
 			{
 				dates[i] = shortDate(item.getDate());
@@ -333,44 +314,16 @@ public class ClogSummaryTooltip extends TitleTooltip
 	}
 
 	/**
-	 * A shelf under its subheader: sprites from the left in rows of at most this many, dates below, then its hover
-	 * line. Recent is one row; the Rare shelf wraps.
+	 * A shelf under its subheader, from the left as killclog.com's: sprites in rows of at most this many, each recent
+	 * one over its date. Recent is one row; the Rare shelf wraps.
 	 */
-	private void shelf(CardBody body, int section, String title, Shelf shelf, int perRow)
+	private static void shelf(CardBody body, int section, String title, @Nullable Shelf shelf, int perRow)
 	{
-		if (shelf == null)
+		if (shelf != null)
 		{
-			return;
+			body.titled(title).add(CardBody.sprites(section, shelf.sprites, shelf.ids, shelf.names, shelf.counts,
+				RECENT_PAD, perRow, shelf.dates));
 		}
-		int count = shelf.ids.length;
-		int cols = Math.min(count, perRow);
-		int rows = (count + cols - 1) / cols;
-		int size = CardBody.GRID_SPRITE;
-		Map<Integer, String> named = CardBody.byId(shelf.ids, i -> shelf.names[i]);
-		Map<Integer, Integer> held = CardBody.byId(shelf.ids, i -> shelf.counts[i]);
-		List<Integer> ids = TooltipData.itemList(shelf.ids);
-		body.titled(title).add(CardBody.part(
-			c -> cols * shelf.cellWidth(c.fm) + (cols - 1) * RECENT_PAD,
-			c -> rows * size + (rows - 1) * RECENT_PAD + (shelf.dated() ? DATE_GAP + c.fm.getHeight() : 0), (c, y) ->
-			{
-				// Every shelved item is held: the grids' painter draws them, each centered over its date.
-				int cellWidth = shelf.cellWidth(c.fm);
-				// Shelves start at the left, as killclog.com's do.
-				int startX = c.inset();
-				c.hits.addAll(TooltipItemSprites.paintGrid(c.g, shelf.sprites, named, section, ids, new HashSet<>(ids),
-					held, startX + (cellWidth - size) / 2, y, cols, size, cellWidth + RECENT_PAD, null));
-				for (int i = 0; i < count; i++)
-				{
-					String date = shelf.dates != null ? shelf.dates[i] : null;
-					if (date != null)
-					{
-						int cellX = startX + i * (cellWidth + RECENT_PAD);
-						c.g.setColor(MUTED_GRAY);
-						c.g.drawString(date, cellX + (cellWidth - c.fm.stringWidth(date)) / 2,
-							y + size + DATE_GAP + c.fm.getAscent());
-					}
-				}
-			}));
 	}
 
 	/** Who supplied the log: each source's icon under the last update, from the left, its name on hover (Dylan 11/14). */

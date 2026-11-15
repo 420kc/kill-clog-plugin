@@ -264,11 +264,12 @@ final class CardBody
 	}
 
 	/**
-	 * A row of full-size item sprites from the left edge, a grid one row high: unobtained ones dimmed,
-	 * quantities in the corner, each hover-naming and wiki-linking like the grids do.
+	 * Full-size item sprites from the left edge in rows of at most {@code perRow}: unobtained ones dimmed, quantities in
+	 * the corner, each hover-naming and wiki-linking like the grids do. Captions (a shelf's dates, one row) sit under
+	 * their sprites in muted grey, every cell as wide as the widest, its sprite centered over it.
 	 */
 	static Part sprites(int section, @Nullable TooltipItemSprites sprites, int[] ids, String[] names, int[] counts,
-		int pad)
+		int pad, int perRow, @Nullable String[] captions)
 	{
 		Map<Integer, String> named = byId(ids, i -> names[i]);
 		Map<Integer, Integer> held = byId(ids, i -> counts[i]);
@@ -280,10 +281,27 @@ final class CardBody
 				obtained.add(ids[i]);
 			}
 		}
-		int width = ids.length * (GRID_SPRITE + pad) - pad;
-		return row(GRID_SPRITE, c -> width, (c, y) -> c.hits.addAll(TooltipItemSprites.paintGrid(c.g, sprites, named,
-			section, TooltipData.itemList(ids), obtained, held, c.inset(), y,
-			ids.length, GRID_SPRITE, GRID_SPRITE + pad, null)));
+		int cols = Math.min(ids.length, perRow);
+		int rows = (ids.length + cols - 1) / cols;
+		List<String> shown = new ArrayList<>(captions != null ? Arrays.asList(captions) : Collections.emptyList());
+		shown.removeIf(Objects::isNull);
+		ToIntFunction<Ctx> cell = c -> shown.stream().mapToInt(c.fm::stringWidth).reduce(GRID_SPRITE, Math::max);
+		return part(c -> cols * (cell.applyAsInt(c) + pad) - pad,
+			c -> rows * (GRID_SPRITE + pad) - pad + (shown.isEmpty() ? 0 : CAPTION_GAP + c.fm.getHeight()), (c, y) ->
+			{
+				int w = cell.applyAsInt(c);
+				c.hits.addAll(TooltipItemSprites.paintGrid(c.g, sprites, named, section, TooltipData.itemList(ids), obtained,
+					held, c.inset() + (w - GRID_SPRITE) / 2, y, cols, GRID_SPRITE, w + pad, null));
+				for (int i = 0; !shown.isEmpty() && i < captions.length; i++)
+				{
+					if (captions[i] != null)
+					{
+						c.g.setColor(TitleTooltip.MUTED_GRAY);
+						c.g.drawString(captions[i], c.inset() + i * (w + pad) + (w - c.fm.stringWidth(captions[i])) / 2,
+							y + GRID_SPRITE + CAPTION_GAP + c.fm.getAscent());
+					}
+				}
+			});
 	}
 
 	/** One row that opens something: it answers hover in white and a left press with its key. */
@@ -543,6 +561,7 @@ final class CardBody
 
 	// Full-size item sprites a gap apart; a scrolled grid's window holds whole rows of them.
 	static final int GRID_SPRITE = 32;
+	private static final int CAPTION_GAP = 1;
 	static final int GRID_GAP = 4;
 	static final int GRID_CELL = GRID_SPRITE + GRID_GAP;
 	static final int GRID_WINDOW = WINDOW / GRID_CELL * GRID_CELL - GRID_GAP;
