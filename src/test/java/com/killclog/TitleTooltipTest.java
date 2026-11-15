@@ -543,6 +543,37 @@ public class TitleTooltipTest
 	}
 
 	@Test
+	public void aSourceRepaintsWhenShiftGoesDownOrUpOverIt()
+	{
+		// 11/15 fix-round review: with links on a shift-click only, a source's icon lights with shift held, so a shift
+		// pressed or let go over it must repaint; a test that paints after every move can't see a missing repaint.
+		java.util.concurrent.atomic.AtomicInteger repaints = new java.util.concurrent.atomic.AtomicInteger();
+		JPanel card = new JPanel()
+		{
+			@Override
+			public void repaint()
+			{
+				repaints.incrementAndGet();
+			}
+		};
+		TooltipItemHover hover = new TooltipItemHover(card);
+		String page = TooltipItemLink.killclogUrl("Probe");
+		hover.setHitBoxes(Collections.singletonList(new TooltipItemHover.HitBox(1, 0, "Kill Clog",
+			new Rectangle(5, 5, 13, 13), true, page)));
+		hover.setLinks(CardLinks.SHIFT);
+		moveMouse(card, 6, 6);
+		assertFalse("a plain hover on shift-click only opens nothing", hover.opens(1, "Kill Clog", page));
+		int before = repaints.get();
+		moveMouse(card, 7, 6, java.awt.event.InputEvent.SHIFT_DOWN_MASK);
+		assertTrue("shift down over the source repaints it", repaints.get() > before);
+		assertTrue(hover.opens(1, "Kill Clog", page));
+		before = repaints.get();
+		moveMouse(card, 8, 6);
+		assertTrue("shift up over it repaints it", repaints.get() > before);
+		assertFalse(hover.opens(1, "Kill Clog", page));
+	}
+
+	@Test
 	public void aSourceInAScrolledPartKeepsItsPage() throws Exception
 	{
 		// 11/15 review: a box cut to a scrolled window lost its link, so a Collection Log card long enough to scroll
