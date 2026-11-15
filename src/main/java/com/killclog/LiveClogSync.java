@@ -22,10 +22,10 @@ import net.runelite.client.game.ItemManager;
  * Echo kill is its boss's, and an encounter's NPC named apart from its count message is pb-names.tsv's (Dusk's loot is
  * the Grotesque Guardians', a Royal Titan's the Royal Titans'). An NPC with no kill gives none unless a kill lands with
  * its loot (a plain smoke devil's Occult necklace, on Thermy's page too). A pet, a chest or a reward screen is credited
- * to nobody, and a Collection Log item comes only from its own content: it takes the latest kill of its page's
- * content, the page's own name or a count message naming it in whole words (a raid's modes, the Corrupted Gauntlet,
- * Phosani's Nightmare, Callisto on Callisto and Artio's page), else the count message it arrived with (the Lunar
- * Chest's).
+ * to nobody, and a Collection Log item comes only from its own content: on a boss's or a raid's page it takes the
+ * latest kill of the page's content, the page's own name or a count message naming it in whole words (a raid's modes,
+ * the Corrupted Gauntlet, Phosani's Nightmare, Callisto on Callisto and Artio's page), else, as on every other page,
+ * the count message it arrived with (the Lunar Chest's).
  */
 @Slf4j
 final class LiveClogSync
@@ -163,15 +163,21 @@ final class LiveClogSync
 	}
 
 	/**
-	 * An item credited to nobody: the latest kill of its page's content (a count message naming the page in whole
-	 * words, or named by it), else the count message it came with.
+	 * An item credited to nobody: on a boss's or a raid's page, the latest kill of the page's content (a count message
+	 * naming the page in whole words, or named by it), else the count message it came with. Another tab's counts are
+	 * laps and challenges, never what a shop's reward was bought at (TzHaar's page names TzHaar-Ket-Rak's challenges).
 	 */
 	@Nullable
 	private ClogUnlockParser.KillContext uncreditedKill(@Nullable List<String> pages, ClogIndex clogIndex, int tick)
 	{
 		Kill cause = null;
+		Map<String, List<String>> tabs = clogIndex.tabPages();
 		for (String page : pages != null ? pages : Collections.<String>emptyList())
 		{
+			if (!tabs.getOrDefault("Bosses", List.of()).contains(page) && !tabs.getOrDefault("Raids", List.of()).contains(page))
+			{
+				continue;
+			}
 			String content = " " + name(clogIndex.pageName(page)) + " ";
 			for (Map.Entry<String, Kill> kill : kills.entrySet())
 			{

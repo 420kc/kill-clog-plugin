@@ -24,6 +24,7 @@ public class LiveClogSyncTest
 	private static final int GAUNTLET_ITEM = 30003;
 	private static final int PAGE_ITEM = 30004;
 	private static final int TWO_PAGES = 30005;
+	private static final int OTHER_ITEM = 30006;
 
 	@Test
 	public void theGameCountersWaitForASettledWorld()
@@ -142,6 +143,25 @@ public class LiveClogSyncTest
 		sync.credit("Dusk (Echo)", List.of("Elder venator fang"), 6100);
 		verify(unlock(sync, clientAt(6100), UNPAGED)).mergeObtainedItem(eq("Tester"), eq(UNPAGED), any(), any(), eq(4),
 			eq("Grotesque Guardians (Echo)"));
+	}
+
+	// 11/15 review: a skill's or a minigame's page counts laps and challenges, never what a shop's reward was bought at:
+	// TzHaar's page holds TzHaar-Ket-Rak's challenges in whole words, Colossal Wyrm Agility its courses' laps. The same
+	// count on a boss's page is its content.
+	@Test
+	public void onlyABossOrRaidPageTakesItsContentsLatestCount()
+	{
+		String[][] pages = {
+			{"TzHaar", "TzHaar-Ket-Rak's First Challenge"}, {"Colossal Wyrm Agility", "Colossal Wyrm Agility Course (Basic)"}};
+		for (String[] page : pages)
+		{
+			LiveClogSync sync = new LiveClogSync();
+			sync.rememberKill(new ClogUnlockParser.KillContext(page[1], 120), 1000);
+			verify(unlock(sync, clientAt(2000), OTHER_ITEM, page[0]), org.mockito.Mockito.description(page[0]))
+				.mergeObtainedItem(eq("Tester"), eq(OTHER_ITEM), any(), any(), eq(0), isNull());
+			verify(unlock(sync, clientAt(2000), PAGE_ITEM, page[0]), org.mockito.Mockito.description(page[0] + " as a boss's"))
+				.mergeObtainedItem(eq("Tester"), eq(PAGE_ITEM), any(), any(), eq(120), eq(page[1]));
+		}
 	}
 
 	// A page pb-names.tsv renames is its kill's: The Inferno's is TzKal-Zuk's, Fortis Colosseum's Sol Heredit's.
@@ -355,6 +375,11 @@ public class LiveClogSyncTest
 		when(index.categoryKeysForItem(PAGE_ITEM)).thenReturn(List.of("probe_page"));
 		when(index.pageName("probe_page")).thenReturn(pageName);
 		when(index.categoryKeysForItem(TWO_PAGES)).thenReturn(List.of("thermonuclear_smoke_devil", "maggot_king"));
+		when(index.categoryKeysForItem(OTHER_ITEM)).thenReturn(List.of("other_page"));
+		when(index.pageName("other_page")).thenReturn(pageName);
+		when(index.tabPages()).thenReturn(java.util.Map.of(
+			"Bosses", List.of("maggot_king", "thermonuclear_smoke_devil", "the_gauntlet", "probe_page"),
+			"Clues", List.of("beginner_treasure_trails"), "Other", List.of("all_pets", "other_page")));
 		when(index.pageName("maggot_king")).thenReturn("Maggot King");
 		when(index.pageName("all_pets")).thenReturn("All Pets");
 		when(index.pageName("beginner_treasure_trails")).thenReturn("Beginner Treasure Trails");
