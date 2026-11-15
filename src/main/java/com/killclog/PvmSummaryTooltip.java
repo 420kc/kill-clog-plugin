@@ -243,7 +243,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		// The title with the combat level at its right, the gear under it and the band stay put (Dylan, 2026-11-07 and
 		// 11/14); PvM, Raids, Slayer and PvP scroll under them, a long tab's height like the other cards.
 		// The level wears the title's own bold, in white (Dylan, 2026-11-14).
-		CardBody card = new CardBody().add(headerWord(combatText(combatLevel), combatIcon, getTitleFont()));
+		CardBody card = new CardBody().add(headerWord(combatText(combatLevel), combatIcon, getTitleFont(), valueColor));
 		if (!gear.isEmpty())
 		{
 			card.add(CardBody.gap(SECTION_GAP)).add(CardBody.sprites(TooltipItemHover.HEADER_SECTION, gearSprites,

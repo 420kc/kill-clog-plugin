@@ -201,11 +201,7 @@ final class SummaryCards
 	{
 		PvmSummaryTooltip tip = new PvmSummaryTooltip();
 		tip.setComponent(owner);
-		// The combat cell's own icon, so the card repeats exactly what the panel shows.
-		if (owner.getIcon() instanceof ImageIcon)
-		{
-			tip.setCombatIcon(((ImageIcon) owner.getIcon()).getImage());
-		}
+		tip.setCombatIcon(Cells.icon(owner));
 		tip.setLinks(links.get());
 		// Dizana's max cape takes the plain max cape's place, as the infernal max cape does; beside an infernal max
 		// cape, both show.

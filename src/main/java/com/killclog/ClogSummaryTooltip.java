@@ -238,7 +238,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 		// source's name shows in the band under it, and the shelves and footer scroll below.
 		CardBody card = new CardBody().add(headerWord(tierName(),
 			tierName() != null && tierIcons != null ? tierIcons.get(ClogHelper.CLOG_TIERS[tier]) : null,
-			net.runelite.client.ui.FontManager.getRunescapeFont()));
+			net.runelite.client.ui.FontManager.getRunescapeFont(), valueColor));
 		List<GameTile.Tile> tiles = new ArrayList<>();
 		if (hasTotals())
 		{

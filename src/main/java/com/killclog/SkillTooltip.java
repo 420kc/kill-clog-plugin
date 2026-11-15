@@ -9,10 +9,12 @@ import lombok.*;
 import net.runelite.api.*;
 import net.runelite.client.game.ItemManager;
 
-/** Compact Kill Clog-native stat tooltip for one skill cell. */
+/**
+ * One skill's card: its level at the title's right after the skill's icon, the hiscores' Rank and XP and the XP to the
+ * next level under the title, then the skill's log while Skill Clogs is on.
+ */
 public class SkillTooltip extends TitleTooltip
 {
-	static final String LEVEL_LABEL = "Level: ";
 	static final String XP_LABEL = "XP: ";
 	static final String RANK_LABEL = "Rank: ";
 	static final String XP_TO_LEVEL_LABEL = "XP to Level: ";
@@ -29,6 +31,13 @@ public class SkillTooltip extends TitleTooltip
 	private final List<TooltipItemSprites> sprites = new ArrayList<>();
 	// A skill's log scrolls at full size past the height of a long Collection Log tab, a sprite row a notch.
 	private final CardBody.Scroll scroll = new CardBody.Scroll(this, CardBody.WINDOW, CardBody.GRID_CELL);
+	// The level at the header's right, as the Combat Summary shows its combat level: in the title's bold, after the
+	// skill's icon from its cell, wearing the cell's color under the player's skill color setting (Dylan, 2026-11-14).
+	@Setter
+	@Nullable
+	private Image skillIcon;
+	@Setter
+	private Color levelColor = NativeTooltip.valueColor;
 
 	public void setData(Skill skill, @Nullable HiscoreResult result, boolean virtualLevels,
 		List<SkillClogSection> sections, @Nullable ItemManager itemManager)
@@ -66,10 +75,9 @@ public class SkillTooltip extends TitleTooltip
 	@Override
 	protected CardBody body()
 	{
-		CardBody body = new CardBody()
-			.add(CardBody.line(LEVEL_LABEL, stats.levelText(), stats.levelColor()))
-			.add(CardBody.line(XP_LABEL, stats.xpText(), stats.xpColor()))
+		CardBody body = new CardBody().add(headerWord(stats.levelText(), skillIcon, getTitleFont(), levelColor))
 			.add(CardBody.line(RANK_LABEL, stats.rankText(), stats.rankColor()))
+			.add(CardBody.line(XP_LABEL, stats.xpText(), stats.xpColor()))
 			.add(CardBody.line(XP_TO_LEVEL_LABEL, stats.xpToLevelText(), stats.xpToLevelColor()));
 		if (sections.isEmpty())
 		{
@@ -182,11 +190,6 @@ public class SkillTooltip extends TitleTooltip
 				return "Maxed";
 			}
 			return xpToLevel >= 0 ? grouped(xpToLevel) : "--";
-		}
-
-		private Color levelColor()
-		{
-			return level > 0 ? NativeTooltip.valueColor : KillClogColors.UNRANKED_COLOR;
 		}
 
 		private Color xpColor()

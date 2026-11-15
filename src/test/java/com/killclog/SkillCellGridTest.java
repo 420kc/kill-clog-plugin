@@ -65,6 +65,10 @@ public class SkillCellGridTest
 			assertEquals(ColorScheme.LIGHT_GRAY_COLOR, label.getForeground());
 			assertEquals(JLabel.LEADING, label.getHorizontalAlignment());
 		}
+		// Before any lookup a card's level reads "--" in its cell's grey.
+		SkillTooltip card = (SkillTooltip) cells.labels().get(Skill.ATTACK).createToolTip();
+		assertEquals("--", TestViews.stats(card).levelText());
+		assertEquals(ColorScheme.LIGHT_GRAY_COLOR, TestViews.field(card, "levelColor"));
 	}
 
 	@Test
@@ -133,6 +137,10 @@ public class SkillCellGridTest
 			cells.labels().get(Skill.DEFENCE).getForeground());
 
 		SkillTooltip attack = (SkillTooltip) cells.labels().get(Skill.ATTACK).createToolTip();
+		// Dylan 11/14: the card's level at its header's right repeats its cell, the cell's icon and its color.
+		assertEquals(config().inProgressClogColor(), TestViews.field(attack, "levelColor"));
+		Object icon = TestViews.field(attack, "skillIcon");
+		assertTrue(icon != null && icon == Cells.icon(cells.labels().get(Skill.ATTACK)));
 		long attackXp = Experience.getXpForLevel(49) + 10L;
 		assertEquals("49", TestViews.stats(attack).levelText());
 		assertEquals(format(attackXp), TestViews.stats(attack).xpText());
@@ -230,6 +238,7 @@ public class SkillCellGridTest
 			SkillTooltip modal = (SkillTooltip) cells.labels().get(skill).createToolTip();
 			SkillTooltip plain = new SkillTooltip();
 			plain.setData(skill, hiscore, false, Collections.emptyList(), null);
+			plain.setSkillIcon(Cells.icon(cells.labels().get(skill)));
 			assertTrue(TestViews.sections(modal).isEmpty());
 			assertEquals(TestViews.subtitle(plain), TestViews.subtitle(modal));
 			assertEquals(plain.getPreferredSize(), modal.getPreferredSize());
@@ -262,6 +271,9 @@ public class SkillCellGridTest
 		SkillTooltip redSide = (SkillTooltip) tooltip.sides()[1];
 		assertEquals("99", TestViews.stats(blueSide).levelText());
 		assertEquals("98", TestViews.stats(redSide).levelText());
+		// Each side's level wears its own player's skill color, never the comparison's blue or red; neither has a log.
+		assertEquals(KillClogColors.KC_COLOR, TestViews.field(blueSide, "levelColor"));
+		assertEquals(KillClogColors.KC_COLOR, TestViews.field(redSide, "levelColor"));
 		assertEquals("Maxed", TestViews.stats(blueSide).xpToLevelText());
 		assertEquals(format(Experience.getXpForLevel(99)
 			- Experience.getXpForLevel(98) - 10L), TestViews.stats(redSide).xpToLevelText());

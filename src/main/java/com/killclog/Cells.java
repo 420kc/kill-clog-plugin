@@ -631,6 +631,13 @@ public class Cells
 		return cell;
 	}
 
+	/** A cell's own icon, for a card that repeats what the panel shows (a skill's, the combat level's); null with none. */
+	@Nullable
+	static Image icon(JLabel cell)
+	{
+		return cell.getIcon() instanceof ImageIcon ? ((ImageIcon) cell.getIcon()).getImage() : null;
+	}
+
 	/** An item's sprite in a label at cell size, swapped in again once a still-loading image arrives. */
 	void setItemIcon(JLabel label, int itemId)
 	{

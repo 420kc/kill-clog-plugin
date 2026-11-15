@@ -100,10 +100,10 @@ public abstract class TitleTooltip extends NativeTooltip
 	}
 
 	/**
-	 * A word at the header's right on the title's line, in the value color, with its icon before it: the Collection Log
-	 * names its tier beside the tier's icon (Dylan, 2026-11-14).
+	 * A word at the header's right on the title's line, with its icon before it: the Collection Log names its tier beside
+	 * the tier's icon, the Combat Summary its combat level and a skill's card its level (Dylan, 2026-11-14).
 	 */
-	CardBody.Part headerWord(@Nullable String word, @Nullable Image icon, Font wordFont)
+	CardBody.Part headerWord(@Nullable String word, @Nullable Image icon, Font wordFont, Color color)
 	{
 		FontMetrics fm = getFontMetrics(wordFont);
 		int iconWidth = icon != null ? icon.getWidth(null) + HEADER_ICON_GAP : 0;
@@ -119,7 +119,7 @@ public abstract class TitleTooltip extends NativeTooltip
 				}
 				Font font = c.g.getFont();
 				c.g.setFont(fm.getFont());
-				c.g.setColor(NativeTooltip.valueColor);
+				c.g.setColor(color);
 				c.g.drawString(word, x, c.inset() + ascent);
 				c.g.setFont(font);
 			}

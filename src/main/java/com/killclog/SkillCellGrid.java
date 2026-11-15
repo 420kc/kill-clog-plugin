@@ -189,6 +189,9 @@ final class SkillCellGrid
 		solo.setData(skill, result, virtualLevels, config.enableSkillClogs()
 			? SkillClogSection.forSkill(skill, clog, otherClog, catalog, clogIndex)
 			: Collections.emptyList(), itemManager);
+		// The card's level beside the cell's own icon, in the color that player's cell wears (Dylan, 2026-11-14).
+		solo.setSkillIcon(Cells.icon(labels.get(skill)));
+		solo.setLevelColor(levelColor(skill, result != null ? level(result, skill, virtualLevels) : -1, clog));
 		// A section's own count rides under its Obtained line, as the game's page for it shows.
 		if (skill == Skill.RUNECRAFT)
 		{
@@ -218,9 +221,7 @@ final class SkillCellGrid
 	{
 		comparison.clearCompareCell(label);
 		label.setText(ClogHelper.pad(levelText(level)));
-		label.setForeground(level > 0
-			? cellColor(skill, level, primaryClog)
-			: ColorScheme.LIGHT_GRAY_COLOR);
+		label.setForeground(levelColor(skill, level, primaryClog));
 		label.setHorizontalAlignment(JLabel.LEADING);
 	}
 
@@ -257,6 +258,12 @@ final class SkillCellGrid
 			total = progress.total();
 		}
 		return SkillLevelColor.forCell(level, virtualLevels, clog != null, obtained, total, config);
+	}
+
+	/** One player's level as their cell shows it alone, and their skill's card too: its color, or grey with none. */
+	private Color levelColor(Skill skill, int level, @Nullable ClogResult clog)
+	{
+		return level > 0 ? cellColor(skill, level, clog) : ColorScheme.LIGHT_GRAY_COLOR;
 	}
 
 	private static int level(HiscoreResult result, Skill skill, boolean virtualLevels)
