@@ -317,20 +317,17 @@ public class Cells
 		ClogResult catalog = lookupSession.getClogResult() == null && !selfNoCache
 			? unsyncedCatalog.result() : null;
 
-		// Boss cells
+		// Boss cells, none for the sync-prompt self-lookup. Vanilla records pbs on the local profile only; for looked-up
+		// players the killclog.com sync is the one source that serves them, cached by the same fetch that raced the clog
+		// providers.
 		UnaryOperator<String> pbs = pbs(self);
 		for (Map.Entry<HiscoreSkill, JLabel> entry : bossLabels.entrySet())
 		{
-			HiscoreSkill skill = entry.getKey();
-			// A raid's hard mode holds its raid's card, so its cell opens, colors and counts as the raid.
-			HiscoreSkill card = PanelData.card(skill);
-			String bossName = card.getName();
-			String hiscoreName = PanelData.hiscoreName(bossName);
-			TooltipData data = TooltipDataBuilder.bossCellCard(buildPrimaryBossData(bossName, hiscoreName, selfNoCache, pbs),
-				card, lookupSession.getHiscoreResult(), pbs, lookupSession.getClogResult());
+			TooltipData data = selfNoCache ? null : tooltipDataBuilder.bossCard(entry.getKey(),
+				lookupSession.getHiscoreResult(), lookupSession.getClogResult(), pbs, unsyncedCatalog.result());
 			if (data != null)
 			{
-				tooltipDataMap.put(skill, data);
+				tooltipDataMap.put(entry.getKey(), data);
 			}
 			tooltipController.setTooltipText(entry.getValue(), " ");
 		}
@@ -427,20 +424,15 @@ public class Cells
 		ImgTooltip tip = new ImgTooltip(gridCols);
 		tip.setComponent(owner);
 		tip.setLinks(config.cardLinks());
-		boolean isSolHeredit = ColosseumGlory.replacesKc(name);
-		int glory = ColosseumGlory.score(result);
 
 		// Synced clog data with real item counts.
 		if (data != null && data.obtainedCount >= 0)
 		{
 			tip.setTitle(data.name);
 			tip.setObtained(data.obtainedCount, data.totalItems);
-			boolean hasHeaderScore = isSolHeredit
-				? ColosseumGlory.hasHeaderScore(glory, data.kc) : data.kc >= 0;
-			if (hasHeaderScore && config.showTooltipKc())
+			if (data.kc >= 0 && config.showTooltipKc())
 			{
-				tip.setInfoLine(isSolHeredit ? ColosseumGlory.headerLabel(glory) : data.kcLabel != null ? data.kcLabel : "KC: ",
-					isSolHeredit ? ColosseumGlory.headerValue(glory, data.kc) : TitleTooltip.grouped(data.kc),
+				tip.setInfoLine(data.kcLabel != null ? data.kcLabel : "KC: ", TitleTooltip.grouped(data.kc),
 					NativeTooltip.valueColor);
 				if (data.pb != null && config.showTooltipPb())
 				{
@@ -478,11 +470,6 @@ public class Cells
 			}
 		}
 		configureRank(tip, data, result, config.showTooltipRank());
-		if (isSolHeredit && ColosseumGlory.isVisible(glory)
-			&& config.showTooltipKc() && (data == null || data.obtainedCount < 0))
-		{
-			tip.setInfoLine(ColosseumGlory.LABEL, ColosseumGlory.format(glory), NativeTooltip.valueColor);
-		}
 
 		tooltipController.keepTooltipOnHover(tip, parentCell);
 		return tip;
@@ -546,31 +533,6 @@ public class Cells
 		{
 			label.setIcon(kc > 0 ? orig : dimmedIcons.get(boss));
 		}
-	}
-
-	/**
-	 * Build one boss cell's primary-side TooltipData: synced clog data when
-	 * available, otherwise the unsynced catalog preview (skipped for the
-	 * sync-prompt self-lookup).
-	 */
-	@Nullable
-	private TooltipData buildPrimaryBossData(String displayName, String hiscoreName, boolean selfNoCache,
-		UnaryOperator<String> pbs)
-	{
-		if (selfNoCache)
-		{
-			return null;
-		}
-		String category = ClogService.bossToCategory(hiscoreName);
-		HiscoreResult hiscore = lookupSession.getHiscoreResult();
-		int rank = hiscore != null ? hiscore.getRank(hiscoreName) : -1;
-		int kc = hiscore != null ? hiscore.getKc(hiscoreName) : -1;
-		boolean showGlory = ColosseumGlory.leadsCard(displayName, hiscore);
-		// Vanilla records pbs on the local profile only; for looked-up players
-		// the killclog.com sync is the one source that serves them, cached by
-		// the same fetch that raced the clog providers.
-		return tooltipDataBuilder.buildBossCard(displayName, category, rank, kc, pbs.apply(displayName),
-			lookupSession.getClogResult(), showGlory ? null : "Kills: ", showGlory ? -1 : kc, unsyncedCatalog.result());
 	}
 
 	private ClueSummaryTooltip clueSummaryTooltip(JLabel owner, @Nullable HiscoreResult result,

@@ -378,8 +378,6 @@ public class ClogHelperTest
 			ClogHelper.cardCountText(3420));
 		assertEquals("999", ClogHelper.cardCountText(999));
 		assertEquals("--", ClogHelper.cardCountText(0));
-		assertEquals("Sol Heredit before any Glory reads its kills in full", "12,345",
-			ColosseumGlory.headerValue(-1, 12_345));
 
 		TooltipData data = TooltipData.builder().name("Tombs of Amascut").totalItems(1)
 			.allItemIds(Collections.singletonList(27277)).statLabel("Kills: ").statValue(12_345).rank(-1)

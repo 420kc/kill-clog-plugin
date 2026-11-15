@@ -307,35 +307,6 @@ public class PvmSummaryTooltipTest
 	}
 
 	@Test
-	public void solHereditReplacesKcWithExactPositiveGlory()
-	{
-		assertTrue(ColosseumGlory.replacesKc("Sol Heredit"));
-		assertFalse(ColosseumGlory.replacesKc("Fortis Colosseum"));
-		assertEquals(33_333, ColosseumGlory.score(hiscoreWithGlory(33_333)));
-		assertEquals("33,333", ColosseumGlory.format(33_333));
-	}
-
-	@Test
-	public void absentGloryFollowsTheShibuiOmissionRule()
-	{
-		assertFalse(ColosseumGlory.isVisible(-1));
-		assertFalse(ColosseumGlory.isVisible(0));
-		assertTrue(ColosseumGlory.isVisible(1));
-		assertEquals("--", ColosseumGlory.format(0));
-		assertEquals(-1, ColosseumGlory.score(null));
-	}
-
-	@Test
-	public void absentGloryFallsBackToKnownSolKc()
-	{
-		assertTrue(ColosseumGlory.hasHeaderScore(0, 17));
-		assertEquals("KC: ", ColosseumGlory.headerLabel(0));
-		assertEquals("17", ColosseumGlory.headerValue(0, 17));
-		assertEquals(ColosseumGlory.LABEL, ColosseumGlory.headerLabel(33_333));
-		assertEquals("33,333", ColosseumGlory.headerValue(33_333, 17));
-	}
-
-	@Test
 	public void raidTilesAnswerOnlyWhereTheyWerePainted()
 	{
 		PvmSummaryTooltip tip = card();
@@ -644,15 +615,6 @@ public class PvmSummaryTooltipTest
 	private static MouseEvent event(PvmSummaryTooltip tip, int id, int x, int y, int button)
 	{
 		return new MouseEvent(tip, id, System.currentTimeMillis(), 0, x, y, 1, false, button);
-	}
-
-	private static HiscoreResult hiscoreWithGlory(int glory)
-	{
-		Map<String, Integer> scores = new HashMap<>();
-		scores.put(ColosseumGlory.ACTIVITY_NAME, glory);
-		return TestViews.hiscore(AccountType.REGULAR,
-			Collections.emptyMap(), Collections.emptyMap(), scores, Collections.emptyMap(),
-			Collections.emptyMap(), 0, 0, 0, -1);
 	}
 
 	@Test

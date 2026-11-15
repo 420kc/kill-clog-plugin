@@ -245,32 +245,16 @@ public class ComparisonController
 		{
 			for (HiscoreSkill boss : PanelData.BOSSES)
 			{
-				HiscoreSkill card = PanelData.card(boss);
-				String bossName = card.getName();
-				String hiscoreName = PanelData.hiscoreName(bossName);
-				// No red PB source exists, for a hard mode either.
-				TooltipData data = TooltipDataBuilder.bossCellCard(buildCompareBossData(bossName, hiscoreName), card,
-					getCompareHiscoreResult(), name -> null, getCompareClogResult());
+				// The red card is an ordinary solo card, built as the blue one is. No red PB source exists, for a hard
+				// mode either.
+				TooltipData data = tooltipDataBuilder.bossCard(boss, getCompareHiscoreResult(), getCompareClogResult(),
+					name -> null, unsyncedCatalog.result());
 				if (data != null)
 				{
 					compareTooltipDataMap.put(boss, data);
 				}
 			}
 		}
-	}
-
-	/** Build one boss cell's red-side TooltipData: synced clog data, else the unsynced catalog preview. */
-	@Nullable
-	private TooltipData buildCompareBossData(String displayName, String hiscoreName)
-	{
-		HiscoreResult view = getCompareHiscoreResult();
-		int kc = view.getKc(hiscoreName);
-		// The red card is an ordinary solo card, so it carries the compared player's KC, or Glory on Sol Heredit,
-		// the same way the blue one does. No red PB source exists.
-		boolean showGlory = ColosseumGlory.leadsCard(displayName, view);
-		return tooltipDataBuilder.buildBossCard(displayName, ClogService.bossToCategory(hiscoreName),
-			view.getRank(hiscoreName), kc, null, getCompareClogResult(),
-			showGlory ? null : "Kills: ", showGlory ? -1 : kc, unsyncedCatalog.result());
 	}
 
 	/**

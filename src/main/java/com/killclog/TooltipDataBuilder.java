@@ -80,14 +80,40 @@ final class TooltipDataBuilder
 	}
 
 	/**
-	 * A boss cell's card on either side: a raid's with its hard mode's KC and PB, the PB looked up by the hard mode's
-	 * name, and any count only the game's page shows (PageCounts, a raid's Entry line) from that player's log.
+	 * A boss cell's card on either side, from that player's hiscores and log: the log's, else the catalog preview with
+	 * their kills; null when neither holds the boss. A raid's hard mode holds its raid's card, so its cell opens, colors
+	 * and counts as the raid.
+	 */
+	@Nullable
+	TooltipData bossCard(HiscoreSkill boss, @Nullable HiscoreResult result, @Nullable ClogResult clog,
+		UnaryOperator<String> pb, @Nullable ClogResult catalog)
+	{
+		HiscoreSkill card = PanelData.card(boss);
+		String name = card.getName();
+		String hiscoreName = PanelData.hiscoreName(name);
+		String category = ClogService.bossToCategory(hiscoreName);
+		int rank = result != null ? result.getRank(hiscoreName) : -1;
+		int kc = result != null ? result.getKc(hiscoreName) : -1;
+		TooltipData data = buildTooltipData(name, category, rank, kc, pb.apply(name), clog);
+		if (data != null)
+		{
+			preloadItemImages(data);
+		}
+		return bossCellCard(data != null ? data : buildUnsyncedTooltipData(name, category, rank, "Kills: ", kc, catalog),
+			card, result, pb, clog);
+	}
+
+	/**
+	 * What a boss card wears over its log: Sol Heredit's Glory where its kills lead, a raid's hard mode's KC and PB, the
+	 * PB looked up by the hard mode's name, and any count only the game's page shows (PageCounts, a raid's Entry line)
+	 * from that player's log.
 	 */
 	@Nullable
 	static TooltipData bossCellCard(@Nullable TooltipData data, HiscoreSkill card, @Nullable HiscoreResult result,
 		UnaryOperator<String> pb, @Nullable ClogResult clog)
 	{
-		return PageCounts.onCard(ClogService.bossToCategory(card.getName()), withHardMode(data, card, result, pb), clog);
+		return PageCounts.onCard(ClogService.bossToCategory(card.getName()),
+			withHardMode(ColosseumGlory.onCard(card.getName(), data, result), card, result, pb), clog);
 	}
 
 	/** A raid's card with its hard mode's KC and PB, the PB looked up by the hard mode's name; others as they are. */
@@ -107,23 +133,6 @@ final class TooltipDataBuilder
 			.hardRank(result != null ? result.getRank(hard.getName()) : -1)
 			.hardPb(pb.apply(hard.getName()))
 			.build();
-	}
-
-	/**
-	 * A boss card on either side: the synced log's, else the catalog preview carrying the caller's
-	 * stat line. Null when neither holds the boss.
-	 */
-	@Nullable
-	TooltipData buildBossCard(String displayName, String category, int rank, int kc, @Nullable String pb,
-		@Nullable ClogResult clog, @Nullable String statLabel, int statValue, @Nullable ClogResult catalog)
-	{
-		TooltipData data = buildTooltipData(displayName, category, rank, kc, pb, clog);
-		if (data == null)
-		{
-			return buildUnsyncedTooltipData(displayName, category, rank, statLabel, statValue, catalog);
-		}
-		preloadItemImages(data);
-		return data;
 	}
 
 	/**
