@@ -545,8 +545,9 @@ public abstract class TitleTooltip extends NativeTooltip
 			// Centered on the title's line, lifted a pixel to sit level with the letters.
 			g2.drawImage(titleIcon, inset, top + (NAME_LINE_HEIGHT - titleIcon.getHeight()) / 2 - 1, null);
 		}
-		// A title wider than its card ends in an ellipsis instead of clipping.
-		g2.drawString(fitHeaderText(nfm, title, w - inset - titleX), titleX, lineY);
+		// A title wider than its card ends in an ellipsis instead of clipping, measured as the card was sized: painting's
+		// antialiased bold runs up to 3 px wider, which the margin holds.
+		g2.drawString(fitHeaderText(getFontMetrics(nfm.getFont()), title, w - inset - titleX), titleX, lineY);
 
 		g2.setFont(FontManager.getRunescapeSmallFont());
 		FontMetrics fm = g2.getFontMetrics();

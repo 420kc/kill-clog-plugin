@@ -88,6 +88,44 @@ public class TitleTooltipTest
 	}
 
 	@Test
+	public void aCardSizedForItsTitleDrawsItWhole()
+	{
+		// 11/14: painting's antialiased bold ran 1 to 3 px wider than the card measured it, which cut "Collection Log" and
+		// "Experience & Efficiency" to an ellipsis on their own cards. Drawn at its own size, a title matches the same
+		// card drawn wider.
+		SkillsTooltip xp = new SkillsTooltip();
+		xp.setData(null, null, false);
+		ClogSummaryTooltip clog = new ClogSummaryTooltip();
+		clog.setTitle("Collection Log");
+		clog.setObtainedPlaceholder(1734);
+		int inset = NativeTooltip.getInset();
+		for (TitleTooltip card : new TitleTooltip[]{xp, clog})
+		{
+			java.awt.Dimension size = card.getPreferredSize();
+			java.awt.image.BufferedImage own = draw(card, size.width, size.height);
+			java.awt.image.BufferedImage wide = draw(card, size.width + 40, size.height);
+			for (int y = inset; y < inset + 20; y++)
+			{
+				for (int x = inset; x < size.width - inset; x++)
+				{
+					assertEquals(card.getClass().getSimpleName() + " at " + x + "," + y, wide.getRGB(x, y), own.getRGB(x, y));
+				}
+			}
+		}
+	}
+
+	private static java.awt.image.BufferedImage draw(JComponent card, int width, int height)
+	{
+		card.setSize(width, height);
+		java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(width, height,
+			java.awt.image.BufferedImage.TYPE_INT_ARGB);
+		java.awt.Graphics2D g = image.createGraphics();
+		card.paint(g);
+		g.dispose();
+		return image;
+	}
+
+	@Test
 	public void bossWikiPageUsesCanonicalOverrides()
 	{
 		assertEquals("Barrows", PanelData.bossWikiPage(net.runelite.client.hiscore.HiscoreSkill.BARROWS_CHESTS));
