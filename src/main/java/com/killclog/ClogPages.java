@@ -144,9 +144,9 @@ final class ClogPages
 		List<Integer> items = items(key);
 		ClogResult blueLog = lookupSession.getClogResult();
 		ClogResult redLog = comparison.getCompareClogResult();
-		TooltipData blue = PageCounts.pageCard(key, tooltipDataBuilder.buildPageData(name, items, blueLog), blueLog);
+		TooltipData blue = PageCounts.pageCard(key, cells.pageData(name, items, blueLog), blueLog);
 		TooltipData red = comparison.isComparisonMode()
-			? PageCounts.pageCard(key, tooltipDataBuilder.buildPageData(name, items, redLog), redLog) : null;
+			? PageCounts.pageCard(key, cells.pageData(name, items, redLog), redLog) : null;
 		for (TooltipData data : new TooltipData[]{blue, red})
 		{
 			if (data != null)
@@ -196,7 +196,7 @@ final class ClogPages
 	{
 		HiscoreSkill cell = cell(key, name);
 		int rare = rare(key);
-		return cell == null && rare < 0 ? tooltipDataBuilder.buildPageData(name, items(key), clog)
+		return cell == null && rare < 0 ? cells.pageData(name, items(key), clog)
 			: rare >= 0 ? cells.rareData(rare, red)
 			: !red ? cells.getTooltipDataMap().get(cell)
 			: PanelData.CLUE_CATEGORIES.containsKey(cell) ? comparison.buildCompareClueTierData(cell)

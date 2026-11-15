@@ -80,6 +80,32 @@ public class ClogPagesTest
 	}
 
 	@Test
+	public void aPageWithNoSyncedLogPreviewsItsItemsAsABossPageDoes()
+	{
+		// 11/14: a page reads the player's log, else the catalog's dimmed preview (Cells.pageData), as a boss's page does,
+		// never a notice; before any lookup it never sits on "Loading catalog..." for good.
+		Cells cells = mock(Cells.class);
+		TooltipData preview = TooltipData.builder().name("Castle Wars").totalItems(3).build();
+		when(cells.pageData(eq("Castle Wars"), eq(java.util.Arrays.asList(1, 2, 3)), isNull())).thenReturn(preview);
+		ClogPages pages = new ClogPages(mock(TooltipController.class), cells, mock(ComparisonController.class),
+			mock(LookupSession.class), mock(TooltipDataBuilder.class), new KillClogConfig()
+			{
+			});
+		ClogIndex index = new ClogIndex();
+		TestViews.publish(index, java.util.Map.of("castle_wars", java.util.Arrays.asList(1, 2, 3)),
+			java.util.Collections.emptyMap(), java.util.Map.of("Minigames", java.util.List.of("castle_wars")),
+			java.util.Collections.emptyMap(), java.util.Map.of("castle_wars", "Castle Wars"));
+		pages.setClogIndex(index);
+		javax.swing.JLabel owner = new javax.swing.JLabel();
+		new javax.swing.JPanel().add(owner);
+
+		pages.page(owner, "castle_wars");
+		verify(cells).buildPageTooltip(any(), eq("Castle Wars"), same(preview), isNull());
+		assertEquals("its tile counts what its card does", -1, pages.count("castle_wars")[0]);
+		assertEquals(3, pages.count("castle_wars")[1]);
+	}
+
+	@Test
 	public void aTabOpenedFromTheCombatSummaryLeadsBackToItThroughItsPages()
 	{
 		// The Bosses tile's tab says "< Combat Summary", and so does the tab a page's "< Bosses" rebuilds (2.8.0 review).

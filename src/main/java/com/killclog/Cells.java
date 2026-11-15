@@ -595,6 +595,14 @@ public class Cells
 		return rival ? rivalRare(row) : rareTooltips.get(PanelData.RARE_ROWS.get(row).getKey());
 	}
 
+	/** A Collection Log page's card data: its log's, else the catalog's dimmed preview, as a boss's page (Dylan 11/14). */
+	@Nullable
+	TooltipData pageData(String name, java.util.List<Integer> items, @Nullable ClogResult clog)
+	{
+		return clog != null ? tooltipDataBuilder.buildPageData(name, items, clog)
+			: tooltipDataBuilder.buildUnsyncedItemData(name, items, unsyncedCatalog.result());
+	}
+
 	/** A Clue Summary rare row's card, for the Collection Log page it stands for. */
 	JToolTip buildRareTooltipFor(JLabel owner, int row)
 	{
