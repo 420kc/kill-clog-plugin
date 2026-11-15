@@ -26,6 +26,8 @@ final class TooltipItemHover
 	private boolean rehover;
 	@Setter(AccessLevel.PACKAGE)
 	private CardLinks links = CardLinks.ON;
+	// Whether shift was down at the mouse's last move, for a link that opens on a shift-click only.
+	private boolean shift;
 
 	TooltipItemHover(JComponent component)
 	{
@@ -66,10 +68,19 @@ final class TooltipItemHover
 		return hoveredItemName;
 	}
 
-	/** Whether the mouse is on the named box of this section, as a source's icon lights while hovered. */
+	/** Whether the mouse is on the named box of this section. */
 	boolean hovers(int section, String name)
 	{
 		return hoveredSection == section && name.equals(hoveredItemName);
+	}
+
+	/**
+	 * Whether the mouse is on the named box of this section and a press there opens {@code url}, as a source's icon
+	 * lights: never one with no page, nor with Card Links off, nor without shift when links open on a shift-click.
+	 */
+	boolean opens(int section, String name, @Nullable String url)
+	{
+		return url != null && hovers(section, name) && links.opens(shift);
 	}
 
 	/** Whether the hovered thing is held: an item the player has, a tier reached, a source that supplied the log. */
@@ -85,6 +96,12 @@ final class TooltipItemHover
 			@Override
 			public void mouseMoved(MouseEvent e)
 			{
+				// Shift pressed or let go repaints: a link that opens on a shift-click only lights while it's held.
+				if (shift != e.isShiftDown())
+				{
+					shift = e.isShiftDown();
+					component.repaint();
+				}
 				updateHoveredItem(e.getX(), e.getY());
 			}
 		});

@@ -85,7 +85,8 @@ final class CardSources
 
 	/**
 	 * The icons in a row from {@code x}, dim until hovered (Dylan, 2026-11-14), each naming itself in {@code section}
-	 * while hovered and opening its page.
+	 * while hovered and opening its page. One lights only where a press opens its page: everything clickable answers
+	 * the hover, and nothing else does.
 	 */
 	static void draw(CardBody.Ctx c, List<Source> sources, int x, int y, int section)
 	{
@@ -96,7 +97,7 @@ final class CardSources
 			int iconX = x + i * (ICON + GAP);
 			if (source.icon != null)
 			{
-				c.g.setComposite(c.card.itemHover.hovers(section, source.name) ? solid : KillClogColors.DIM);
+				c.g.setComposite(c.card.itemHover.opens(section, source.name, source.url) ? solid : KillClogColors.DIM);
 				c.g.drawImage(source.icon, iconX, y, null);
 				c.g.setComposite(solid);
 			}

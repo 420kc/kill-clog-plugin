@@ -4,6 +4,7 @@ import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.Graphics2D;
 import java.awt.Point;
+import java.awt.event.InputEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionListener;
 import java.awt.image.BufferedImage;
@@ -17,6 +18,7 @@ import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.AsyncBufferedImage;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
@@ -416,12 +418,47 @@ public class ClogSummaryTooltipTest
 		assertTrue("the others stay dim", !differs(rest, lit, temple));
 	}
 
+	@Test
+	public void aSourceIconLightsOnlyWhereAPressOpensItsPage() throws Exception
+	{
+		// Shop rule: everything clickable answers the hover, and nothing else does (both 11/15 reviews).
+		ClogSummaryTooltip off = card(1150, 1700);
+		off.showSources(CardSources.of(false, false, true, false, "Probe", ""));
+		off.setLinks(CardLinks.OFF);
+		assertFalse("Card Links off: a hovered site opens nothing, so it stays dim", lightsWhenHovered(off, "Kill Clog", 0));
+
+		ClogSummaryTooltip local = card(1150, 1700);
+		local.showSources(CardSources.of(false, false, false, true, "Probe", ""));
+		assertFalse("your own log read from the game has no page", lightsWhenHovered(local, "Local Collection Log", 0));
+
+		ClogSummaryTooltip shift = card(1150, 1700);
+		shift.showSources(CardSources.of(false, false, true, false, "Probe", ""));
+		shift.setLinks(CardLinks.SHIFT);
+		assertFalse("shift-click only: a plain hover stays dim", lightsWhenHovered(shift, "Kill Clog", 0));
+		assertTrue("shift held over it: it lights", lightsWhenHovered(shift, "Kill Clog", InputEvent.SHIFT_DOWN_MASK));
+	}
+
+	/** Whether the named source's icon draws differently once the mouse moves onto it with these modifiers. */
+	private static boolean lightsWhenHovered(ClogSummaryTooltip tip, String source, int modifiers) throws Exception
+	{
+		move(tip, 0, 0, 0);
+		BufferedImage rest = paint(tip);
+		java.awt.Rectangle box = sourceBox(tip, source);
+		move(tip, (int) box.getCenterX(), (int) box.getCenterY(), modifiers);
+		return differs(rest, paint(tip), box);
+	}
+
 	private static void move(ClogSummaryTooltip tip, int x, int y)
+	{
+		move(tip, x, y, 0);
+	}
+
+	private static void move(ClogSummaryTooltip tip, int x, int y, int modifiers)
 	{
 		for (MouseMotionListener listener : tip.getMouseMotionListeners())
 		{
 			listener.mouseMoved(new MouseEvent(tip, MouseEvent.MOUSE_MOVED,
-				System.currentTimeMillis(), 0, x, y, 0, false, MouseEvent.NOBUTTON));
+				System.currentTimeMillis(), modifiers, x, y, 0, false, MouseEvent.NOBUTTON));
 		}
 	}
 
