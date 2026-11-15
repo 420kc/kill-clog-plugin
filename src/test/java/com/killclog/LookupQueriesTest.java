@@ -36,6 +36,22 @@ public class LookupQueriesTest
 		assertEquals(-1, LookupQueries.quiverItemId(kills(0, PanelData.MAX_TOTAL_LEVEL), null));
 	}
 
+	@Test
+	public void eachPrestigeCapeIsTheItemItselfSoItsWikiLinkOpensItsPage()
+	{
+		// 11/15 review: the infernal max cape was 21284, its animation dummy, whose wiki lookup lands on the animation
+		// item's page; the Combat Summary links each cape to the wiki now.
+		assertEquals(net.runelite.api.gameval.ItemID.SKILLCAPE_MAX_INFERNALCAPE, PanelData.INFERNAL_MAX_CAPE_ITEM_ID);
+		assertEquals(net.runelite.api.gameval.ItemID.SKILLCAPE_MAX, PanelData.MAX_CAPE_ITEM_ID);
+		assertEquals(net.runelite.api.gameval.ItemID.INFERNAL_CAPE, PanelData.INFERNAL_CAPE_ITEM_ID);
+		assertEquals(net.runelite.api.gameval.ItemID.SKILLCAPE_MAX_DIZANAS, PanelData.DIZANAS_MAX_CAPE_ITEM_ID);
+		assertEquals(net.runelite.api.gameval.ItemID.DIZANAS_QUIVER_UNCHARGED, PanelData.DIZANAS_QUIVER_ITEM_ID);
+		java.util.Map<String, Integer> zuk = new HashMap<>();
+		zuk.put("TzKal-Zuk", 1);
+		assertEquals(PanelData.INFERNAL_MAX_CAPE_ITEM_ID, LookupQueries.capeItemId(TestViews.hiscore(AccountType.REGULAR, zuk,
+			new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>(), PanelData.MAX_TOTAL_LEVEL, 0, 0, -1)));
+	}
+
 	private static HiscoreResult kills(int solHeredit)
 	{
 		return kills(solHeredit, 0);

@@ -189,10 +189,11 @@ final class PanelData
 	static final int HELMET_OF_THE_MOON_ITEM_ID = 30111;
 	static final int[] SPECIAL_ITEM_IDS = {STALE_BAGUETTE_ITEM_ID, HELMET_OF_THE_MOON_ITEM_ID};
 
-	// Prestige capes shown beside the player summary account line.
+	// Prestige capes: the Player Summary's figure without a character, and items under the Combat Summary's title, each
+	// the item itself so its wiki link opens its page (21284 is the infernal max cape's animation dummy).
 	static final int MAX_CAPE_ITEM_ID = 13280;
 	static final int INFERNAL_CAPE_ITEM_ID = 21295;
-	static final int INFERNAL_MAX_CAPE_ITEM_ID = 21284;
+	static final int INFERNAL_MAX_CAPE_ITEM_ID = 21285;
 	// Dizana's quiver as the Collection Log holds it, on Fortis Colosseum's page.
 	static final int DIZANAS_QUIVER_ITEM_ID = 28947;
 	static final int DIZANAS_MAX_CAPE_ITEM_ID = 28902;
