@@ -209,12 +209,12 @@ final class TooltipItemHover
 			this.url = url;
 		}
 
-		/** The part of this box a window shows, or null when it shows none of it. */
+		/** The part of this box a window shows, or null when it shows none of it; a source keeps its page. */
 		@Nullable
 		HitBox within(Rectangle window)
 		{
 			Rectangle shown = bounds.intersection(window);
-			return shown.isEmpty() ? null : new HitBox(section, itemId, itemName, shown, obtained);
+			return shown.isEmpty() ? null : new HitBox(section, itemId, itemName, shown, obtained, url);
 		}
 	}
 }

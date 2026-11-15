@@ -481,6 +481,20 @@ public class TitleTooltipTest
 		assertFalse(hover.hoveredItemObtained());
 	}
 
+	@Test
+	public void aSourceInAScrolledPartKeepsItsPage() throws Exception
+	{
+		// 11/15 review: a box cut to a scrolled window lost its link, so a Collection Log card long enough to scroll
+		// had sources that named themselves but opened nothing.
+		String temple = TooltipItemLink.templeUrl("Probe");
+		TooltipItemHover.HitBox source = new TooltipItemHover.HitBox(1, 0, "TempleOSRS", new Rectangle(0, 0, 13, 13),
+			true, temple);
+		TooltipItemHover.HitBox shown = source.within(new Rectangle(0, 6, 100, 100));
+		assertEquals(new Rectangle(0, 6, 13, 7), TestViews.field(shown, "bounds"));
+		assertEquals(temple, TestViews.field(shown, "url"));
+		assertNull("scrolled out of view, nothing to press", source.within(new Rectangle(0, 20, 100, 100)));
+	}
+
 	private static HiscoreResult pvpHiscore(String activity, int score)
 	{
 		Map<String, Integer> scores = new HashMap<>();
