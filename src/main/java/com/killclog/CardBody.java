@@ -621,8 +621,14 @@ final class CardBody
 				public void mouseMoved(MouseEvent e)
 				{
 					pointer = e.getPoint();
+					int key = at(pointer);
+					// Shift pressed or let go over a row repaints it: a link that opens on a shift-click only lights with it.
+					if (shift != e.isShiftDown() && key >= 0)
+					{
+						hovered = -1;
+					}
 					shift = e.isShiftDown();
-					hover(at(pointer));
+					hover(key);
 				}
 
 				@Override

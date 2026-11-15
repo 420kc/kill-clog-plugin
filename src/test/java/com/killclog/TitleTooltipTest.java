@@ -78,6 +78,62 @@ public class TitleTooltipTest
 		assertEquals(NativeTooltip.OSRS_ORANGE, tooltip.titleColor());
 	}
 
+	@Test
+	public void aShiftClickOnlyTitleLightsWhileShiftIsHeldOverIt()
+	{
+		ImgTooltip tooltip = spriteTooltip(2);
+		tooltip.setTitle("Abyssal Sire");
+		tooltip.setTitleWikiPage("Abyssal Sire");
+		tooltip.setLinks(CardLinks.SHIFT);
+		int x = NativeTooltip.getInset() + 1;
+		int y = NativeTooltip.getInset() + 1;
+		paint(tooltip);
+		moveMouse(tooltip, x, y);
+		paint(tooltip);
+		assertEquals("a plain hover: shift-click only opens nothing", NativeTooltip.OSRS_ORANGE, tooltip.titleColor());
+		moveMouse(tooltip, x + 1, y, java.awt.event.InputEvent.SHIFT_DOWN_MASK);
+		paint(tooltip);
+		assertEquals("shift held over it: it lights", Color.WHITE, tooltip.titleColor());
+		moveMouse(tooltip, x + 2, y);
+		paint(tooltip);
+		assertEquals("shift let go: unlit again", NativeTooltip.OSRS_ORANGE, tooltip.titleColor());
+	}
+
+	@Test
+	public void aRowRepaintsWhenShiftGoesDownOrUpOverIt()
+	{
+		// 11/15 review: rows repainted only when the hovered row changed, so shift pressed over a shift-click-only title
+		// left it unlit until the mouse left it, and let go left it lit though a plain click opens nothing.
+		java.util.concurrent.atomic.AtomicInteger repaints = new java.util.concurrent.atomic.AtomicInteger();
+		JPanel card = new JPanel()
+		{
+			@Override
+			public void repaint()
+			{
+				repaints.incrementAndGet();
+			}
+		};
+		CardBody.ClickRows rows = new CardBody.ClickRows(card, (e, key) ->
+		{
+		});
+		rows.lit(new Rectangle(0, 0, 50, 10), 1);
+		moveMouse(card, 5, 5);
+		int before = repaints.get();
+		moveMouse(card, 6, 5, java.awt.event.InputEvent.SHIFT_DOWN_MASK);
+		assertTrue("shift down over the row repaints it", repaints.get() > before);
+		assertTrue(rows.shift);
+		before = repaints.get();
+		moveMouse(card, 7, 5);
+		assertTrue("shift up over the row repaints it", repaints.get() > before);
+		before = repaints.get();
+		moveMouse(card, 8, 5);
+		assertEquals("a plain move along the row doesn't", before, repaints.get());
+		moveMouse(card, 60, 5, java.awt.event.InputEvent.SHIFT_DOWN_MASK);
+		before = repaints.get();
+		moveMouse(card, 61, 5);
+		assertEquals("shift off any row repaints nothing", before, repaints.get());
+	}
+
 	private static void paint(JComponent card)
 	{
 		card.setSize(card.getPreferredSize());
@@ -447,8 +503,13 @@ public class TitleTooltipTest
 
 	private static void moveMouse(JComponent tooltip, int x, int y)
 	{
+		moveMouse(tooltip, x, y, 0);
+	}
+
+	private static void moveMouse(JComponent tooltip, int x, int y, int modifiers)
+	{
 		MouseEvent event = new MouseEvent(tooltip, MouseEvent.MOUSE_MOVED,
-			System.currentTimeMillis(), 0, x, y, 0, false);
+			System.currentTimeMillis(), modifiers, x, y, 0, false);
 		for (MouseMotionListener listener : tooltip.getMouseMotionListeners())
 		{
 			listener.mouseMoved(event);
