@@ -147,7 +147,7 @@ public class LiveClogSyncTest
 
 	// 11/15 review: a skill's or a minigame's page counts laps and challenges, never what a shop's reward was bought at:
 	// TzHaar's page holds TzHaar-Ket-Rak's challenges in whole words, Colossal Wyrm Agility its courses' laps. The same
-	// count on a boss's page is its content.
+	// count on a raid's page is its content.
 	@Test
 	public void onlyABossOrRaidPageTakesItsContentsLatestCount()
 	{
@@ -159,7 +159,7 @@ public class LiveClogSyncTest
 			sync.rememberKill(new ClogUnlockParser.KillContext(page[1], 120), 1000);
 			verify(unlock(sync, clientAt(2000), OTHER_ITEM, page[0]), org.mockito.Mockito.description(page[0]))
 				.mergeObtainedItem(eq("Tester"), eq(OTHER_ITEM), any(), any(), eq(0), isNull());
-			verify(unlock(sync, clientAt(2000), PAGE_ITEM, page[0]), org.mockito.Mockito.description(page[0] + " as a boss's"))
+			verify(unlock(sync, clientAt(2000), PAGE_ITEM, page[0]), org.mockito.Mockito.description(page[0] + " as a raid's"))
 				.mergeObtainedItem(eq("Tester"), eq(PAGE_ITEM), any(), any(), eq(120), eq(page[1]));
 		}
 	}
@@ -377,8 +377,9 @@ public class LiveClogSyncTest
 		when(index.categoryKeysForItem(TWO_PAGES)).thenReturn(List.of("thermonuclear_smoke_devil", "maggot_king"));
 		when(index.categoryKeysForItem(OTHER_ITEM)).thenReturn(List.of("other_page"));
 		when(index.pageName("other_page")).thenReturn(pageName);
+		// The probe page stands for a raid's (Tombs of Amascut's, Chambers of Xeric's), so both tabs that lend a count are read.
 		when(index.tabPages()).thenReturn(java.util.Map.of(
-			"Bosses", List.of("maggot_king", "thermonuclear_smoke_devil", "the_gauntlet", "probe_page"),
+			"Bosses", List.of("maggot_king", "thermonuclear_smoke_devil", "the_gauntlet"), "Raids", List.of("probe_page"),
 			"Clues", List.of("beginner_treasure_trails"), "Other", List.of("all_pets", "other_page")));
 		when(index.pageName("maggot_king")).thenReturn("Maggot King");
 		when(index.pageName("all_pets")).thenReturn("All Pets");
