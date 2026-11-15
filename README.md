@@ -41,7 +41,7 @@ Shift-click anything that opens a card, or right-click it and choose **Copy**, a
 
 ![A Shift+click on IronBone11's Combat Summary cell copies the whole card, PvP section included, ready to paste into Discord](screenshots/copy-as-picture.png)
 
-The Player Summary's top bar links to the player's Kill Clog, TempleOSRS and RuneProfile pages. The Combat Summary shows their prestige cape and Dizana's quiver. Once they're maxed, Dizana's max cape stands in for the max cape.
+The Player Summary's top bar links to the player's Kill Clog, TempleOSRS and RuneProfile pages. The Combat Summary shows their prestige cape and Dizana's quiver, which becomes Dizana's max cape in the max cape's place once they're maxed.
 
 Some counts appear only on the game's own Collection Log pages, like Revenant kills, Hunter Guild rumours and the raids' Entry completions. Open a page and its card shows the count from then on, here and on killclog.com, updated when you next open the page after it changes.
 
