@@ -88,6 +88,21 @@ public class TitleTooltipTest
 	}
 
 	@Test
+	public void everyCardLeadsWithItsObtainedLine() throws Exception
+	{
+		// 11/14: the Collection Log for a player with no synced log read its rank first; every card leads with Obtained.
+		ClogSummaryTooltip clog = new ClogSummaryTooltip();
+		clog.setTitle("Collection Log");
+		clog.setRank(1878);
+		clog.setObtained(1231, 1734);
+		java.lang.reflect.Method lines = TitleTooltip.class.getDeclaredMethod("headerLines");
+		lines.setAccessible(true);
+		List<?> header = (List<?>) lines.invoke(clog);
+		assertEquals("Obtained: ", TestViews.field(header.get(0), "label"));
+		assertEquals("Rank: ", TestViews.field(header.get(1), "label"));
+	}
+
+	@Test
 	public void aCardSizedForItsTitleDrawsItWhole()
 	{
 		// 11/14: painting's antialiased bold ran 1 to 3 px wider than the card measured it, which cut "Collection Log" and

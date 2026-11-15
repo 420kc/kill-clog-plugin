@@ -46,8 +46,6 @@ public abstract class TitleTooltip extends NativeTooltip
 	// The line under the title: the Obtained count, or the Player Summary's own line.
 	@Nullable
 	private InfoLine subtitle;
-	// A card for a Collection Log page reads as the game's own page does: Obtained first, then its stats.
-	private boolean obtainedFirst;
 	// An icon after the line under the title (the Player Summary's clan), and where it was last drawn.
 	@Nullable
 	private BufferedImage subtitleIcon;
@@ -355,12 +353,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		}
 	}
 
-	/** Leads the header with the Obtained line, as the game's Collection Log pages do. */
-	void setObtainedFirst(boolean obtainedFirst)
-	{
-		this.obtainedFirst = obtainedFirst;
-	}
-
 	/** Set the rank line. 0 = "Unranked". */
 	public void setRank(int rank)
 	{
@@ -378,19 +370,15 @@ public abstract class TitleTooltip extends NativeTooltip
 	private List<InfoLine> headerLines()
 	{
 		List<InfoLine> lines = new ArrayList<>();
-		if (obtainedFirst && subtitle != null)
+		// Obtained leads, as the game's Collection Log pages do, then the stats: KC and PB, then rank.
+		if (subtitle != null)
 		{
 			lines.add(subtitle);
 		}
-		// Stats read first (KC/PB info lines, then rank), clog progress last.
 		lines.addAll(infoLines);
 		if (rank != null)
 		{
 			lines.add(rank);
-		}
-		if (!obtainedFirst && subtitle != null)
-		{
-			lines.add(subtitle);
 		}
 		return lines;
 	}
