@@ -358,7 +358,7 @@ public class ClogHelperTest
 		ImgTooltip bare = new ImgTooltip(5);
 		bare.setTitle("Tombs of Amascut");
 		ImgTooltip card = new ImgTooltip(5);
-		assertTrue(Cells.configureNotSynced(card, data, null, true));
+		assertTrue(Cells.configure(card, data, null, true, true));
 		HiscoreResult result = TestViews.hiscore(AccountType.REGULAR, Collections.emptyMap(), Collections.emptyMap(),
 			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1);
 		Cells.configureRank(card, data, result, true);
@@ -379,7 +379,7 @@ public class ClogHelperTest
 			.allItemIds(Collections.singletonList(27277)).kc(12_345).rank(-1)
 			.hardLabel("Expert").hardKc(43_210).build();
 		ImgTooltip card = new ImgTooltip(5);
-		assertTrue(Cells.configureNotSynced(card, data, null, true));
+		assertTrue(Cells.configure(card, data, null, true, true));
 		java.lang.reflect.Field linesField = TitleTooltip.class.getDeclaredField("infoLines");
 		linesField.setAccessible(true);
 		List<String> values = new java.util.ArrayList<>();

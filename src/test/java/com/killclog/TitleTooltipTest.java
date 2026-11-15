@@ -112,7 +112,7 @@ public class TitleTooltipTest
 		xp.setData(null, null, false);
 		ClogSummaryTooltip clog = new ClogSummaryTooltip();
 		clog.setTitle("Collection Log");
-		clog.setObtainedPlaceholder(1734);
+		clog.setObtained(-1, 1734);
 		int inset = NativeTooltip.getInset();
 		for (TitleTooltip card : new TitleTooltip[]{xp, clog})
 		{

@@ -51,14 +51,7 @@ public class SkillTooltip extends TitleTooltip
 		if (!this.sections.isEmpty())
 		{
 			SkillClogSection.Progress progress = SkillClogSection.combinedProgress(this.sections);
-			if (progress.obtained() >= 0)
-			{
-				setObtained(progress.obtained(), progress.total());
-			}
-			else
-			{
-				setObtainedPlaceholder(progress.total());
-			}
+			setObtained(progress.obtained(), progress.total());
 		}
 	}
 

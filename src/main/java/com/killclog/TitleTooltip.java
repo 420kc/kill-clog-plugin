@@ -190,21 +190,13 @@ public abstract class TitleTooltip extends NativeTooltip
 	}
 
 	/**
-	 * Set the obtained subtitle line. Pass -1 for unknown ("?/Y").
-	 * Color follows native OSRS stoplight progress: red, yellow, green.
+	 * The Obtained line in native OSRS stoplight progress, red, yellow and green; -1 while the count is unknown, the
+	 * data's shape with no player in it ("--/Y"), muted so it never reads as a score.
 	 */
 	public void setObtained(int obtained, int total)
 	{
-		setSubtitle("Obtained: ", progressCountText(obtained, total), completionColor(obtained, total));
-	}
-
-	/**
-	 * Empty-state obtained line: the shape of the data with no player in it.
-	 * Muted gray so the preview never reads as a score.
-	 */
-	public void setObtainedPlaceholder(int total)
-	{
-		setSubtitle("Obtained: ", progressPlaceholderText(total), MUTED_GRAY);
+		setSubtitle("Obtained: ", obtained >= 0 ? progressCountText(obtained, total) : progressPlaceholderText(total),
+			obtained >= 0 ? completionColor(obtained, total) : MUTED_GRAY);
 	}
 
 	protected static String progressPlaceholderText(int total)

@@ -425,19 +425,7 @@ public class Cells
 		tip.setComponent(owner);
 		tip.setLinks(config.cardLinks());
 
-		// Synced clog data with real item counts.
-		if (data != null && data.obtainedCount >= 0)
-		{
-			tip.setTitle(data.name);
-			tip.setObtained(data.obtainedCount, data.totalItems);
-			addCountLines(tip, data, config.showTooltipKc(), config.showTooltipPb());
-			if (data.allItemIds != null)
-			{
-				tip.setItems(data.totalItems, data.allItemIds, data.obtainedIds,
-					data.obtainedCounts, data.itemNames, itemManager);
-			}
-		}
-		else if (!configureNotSynced(tip, data, itemManager, config.showTooltipKc()))
+		if (!configure(tip, data, itemManager, config.showTooltipKc(), config.showTooltipPb()))
 		{
 			tip.setTitle(data != null ? data.name : name);
 			boolean isSelfNoCache = result != null && lookupSession.offersSetup(localRsn.get(), rsn);
@@ -697,22 +685,24 @@ public class Cells
 	}
 
 	/**
-	 * Configure an ImgTooltip for a player who has not synced any collection log: the muted "Obtained: --/Y", then its
-	 * counts as a synced card's read (Dylan, 2026-11-14: the card has the room for both, and its KC reads "KC:"). Every
-	 * category item draws dimmed so wiki links remain explorable.
+	 * A card from its data, synced log or not: its Obtained line ("--/Y" with no synced log, Dylan 2026-11-14: the card
+	 * has the room for its counts too), its counts and its items, those not held dimmed so wiki links remain explorable;
+	 * a PB with a synced log only. False when the data holds neither a log nor the catalog's preview.
 	 */
-	static boolean configureNotSynced(ImgTooltip tip, TooltipData data, ItemManager itemManager,
-		boolean showKc)
+	static boolean configure(ImgTooltip tip, @Nullable TooltipData data, ItemManager itemManager, boolean showKc,
+		boolean showPb)
 	{
-		if (data == null || data.allItemIds == null || data.allItemIds.isEmpty())
+		if (data == null || data.obtainedCount < 0 && (data.allItemIds == null || data.allItemIds.isEmpty()))
 		{
 			return false;
 		}
 		tip.setTitle(data.name);
-		tip.setObtainedPlaceholder(data.allItemIds.size());
-		addCountLines(tip, data, showKc, false);
-		tip.setItems(data.totalItems, data.allItemIds, Collections.emptySet(),
-			Collections.emptyMap(), data.itemNames, itemManager);
+		tip.setObtained(data.obtainedCount, data.totalItems);
+		addCountLines(tip, data, showKc, showPb && data.obtainedCount >= 0);
+		if (data.allItemIds != null)
+		{
+			tip.setItems(data.totalItems, data.allItemIds, data.obtainedIds, data.obtainedCounts, data.itemNames, itemManager);
+		}
 		return true;
 	}
 

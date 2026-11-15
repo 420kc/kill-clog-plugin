@@ -1417,7 +1417,7 @@ public class KillClogPanel extends PluginPanel
 				if (catalog != null)
 				{
 					tip.setTitle("Collection Log");
-					tip.setObtainedPlaceholder(totals(catalog)[1]);
+					tip.setObtained(-1, totals(catalog)[1]);
 				}
 				else
 				{
