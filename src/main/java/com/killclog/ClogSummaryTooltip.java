@@ -256,7 +256,8 @@ public class ClogSummaryTooltip extends TitleTooltip
 		// three across, the Total first; a tab's tile opens its pages. The tier ladder follows; any tier's, item's or
 		// source's name shows in the band under it, and the shelves and footer scroll below.
 		CardBody card = new CardBody().add(headerWord(tierName(),
-			tierName() != null && tierIcons != null ? tierIcons.get(ClogHelper.CLOG_TIERS[tier]) : null));
+			tierName() != null && tierIcons != null ? tierIcons.get(ClogHelper.CLOG_TIERS[tier]) : null,
+			net.runelite.client.ui.FontManager.getRunescapeFont()));
 		List<GameTile.Tile> tiles = new ArrayList<>();
 		if (hasTotals())
 		{

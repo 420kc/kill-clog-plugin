@@ -98,9 +98,9 @@ public abstract class TitleTooltip extends NativeTooltip
 	 * A word at the header's right on the title's line, in the value color, with its icon before it: the Collection Log
 	 * names its tier beside the tier's icon (Dylan, 2026-11-14).
 	 */
-	CardBody.Part headerWord(@Nullable String word, @Nullable Image icon)
+	CardBody.Part headerWord(@Nullable String word, @Nullable Image icon, Font wordFont)
 	{
-		FontMetrics fm = getFontMetrics(FontManager.getRunescapeFont());
+		FontMetrics fm = getFontMetrics(wordFont);
 		int iconWidth = icon != null ? icon.getWidth(null) + HEADER_ICON_GAP : 0;
 		return CardBody.row(0, c -> word != null ? headerTextWidth() + HEADER_WORD_GAP + iconWidth + fm.stringWidth(word) : 0, (c, y) ->
 		{

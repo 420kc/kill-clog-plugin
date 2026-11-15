@@ -169,21 +169,23 @@ final class GameTile
 			g.drawString(line, center - nfm.stringWidth(line) / 2, nameY);
 			nameY += NAME_LINE;
 		}
-		if (tile.sprite != null)
-		{
-			Composite solid = g.getComposite();
-			g.setComposite(tile.faint ? AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f) : solid);
-			// A small icon (a CA tier's, a boss's) sits in the middle of the item sprites' slot.
-			g.drawImage(tile.sprite, center - tile.sprite.getWidth(null) / 2,
-				box.y + SPRITE_TOP + Math.max(0, SPRITE_SLOT - tile.sprite.getHeight(null)) / 2, null);
-			g.setComposite(solid);
-		}
-		g.setFont(COUNT_FONT);
-		FontMetrics fm = g.getFontMetrics();
 		boolean scored = tile.countText != null || !known && tile.score > 0;
 		String count = tile.countText != null ? tile.countText : scored ? TitleTooltip.grouped(tile.score)
 			: tile.total <= 0 ? "" : known ? TitleTooltip.progressCountText(tile.obtained, tile.total)
 			: TitleTooltip.progressPlaceholderText(tile.total);
+		if (tile.sprite != null)
+		{
+			Composite solid = g.getComposite();
+			g.setComposite(tile.faint ? AlphaComposite.getInstance(AlphaComposite.SRC_OVER, 0.3f) : solid);
+			// A small icon (a CA tier's, a boss's) sits in the middle of the item sprites' slot; with no count or bar
+			// under it (a raid before any lookup), in the middle of all the tile under its name (Dylan, 2026-11-14).
+			int slot = count.isEmpty() && !known ? box.height - SPRITE_TOP : SPRITE_SLOT;
+			g.drawImage(tile.sprite, center - tile.sprite.getWidth(null) / 2,
+				box.y + SPRITE_TOP + Math.max(0, slot - tile.sprite.getHeight(null)) / 2, null);
+			g.setComposite(solid);
+		}
+		g.setFont(COUNT_FONT);
+		FontMetrics fm = g.getFontMetrics();
 		g.setColor(scored ? NativeTooltip.valueColor : color);
 		g.drawString(count, center - fm.stringWidth(count) / 2, box.y + (page ? PAGE_COUNT_TOP : COUNT_TOP) + fm.getAscent());
 		g.setFont(font);
