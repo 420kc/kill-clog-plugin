@@ -144,7 +144,8 @@ final class ClogPages
 		List<Integer> items = items(key);
 		ClogResult blueLog = lookupSession.getClogResult();
 		ClogResult redLog = comparison.getCompareClogResult();
-		TooltipData blue = PageCounts.pageCard(key, cells.pageData(name, items, blueLog), blueLog);
+		TooltipData blue = cells.awaitsOwnSetup() ? null
+			: PageCounts.pageCard(key, cells.pageData(name, items, blueLog), blueLog);
 		TooltipData red = comparison.isComparisonMode()
 			? PageCounts.pageCard(key, cells.pageData(name, items, redLog), redLog) : null;
 		for (TooltipData data : new TooltipData[]{blue, red})

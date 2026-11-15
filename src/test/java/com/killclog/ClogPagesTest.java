@@ -106,6 +106,31 @@ public class ClogPagesTest
 	}
 
 	@Test
+	public void yourOwnPageBeforeSetupSaysHowToSetUpAsItsCellDoes()
+	{
+		// 11/15 review: before setup your boss cell said "Open your Collection Log to start setup automatically" while
+		// the same page opened from the Combat Summary's tile previewed the catalog; the page has no data, so its card
+		// carries the cell's notice.
+		Cells cells = mock(Cells.class);
+		when(cells.awaitsOwnSetup()).thenReturn(true);
+		when(cells.pageData(any(), any(), isNull())).thenReturn(TooltipData.builder().name("Castle Wars").totalItems(3).build());
+		ClogPages pages = new ClogPages(mock(TooltipController.class), cells, mock(ComparisonController.class),
+			mock(LookupSession.class), mock(TooltipDataBuilder.class), new KillClogConfig()
+			{
+			});
+		ClogIndex index = new ClogIndex();
+		TestViews.publish(index, java.util.Map.of("castle_wars", java.util.Arrays.asList(1, 2, 3)),
+			java.util.Collections.emptyMap(), java.util.Map.of("Minigames", java.util.List.of("castle_wars")),
+			java.util.Collections.emptyMap(), java.util.Map.of("castle_wars", "Castle Wars"));
+		pages.setClogIndex(index);
+		javax.swing.JLabel owner = new javax.swing.JLabel();
+		new javax.swing.JPanel().add(owner);
+
+		pages.page(owner, "castle_wars");
+		verify(cells).buildPageTooltip(any(), eq("Castle Wars"), isNull(), isNull());
+	}
+
+	@Test
 	public void aTabOpenedFromTheCombatSummaryLeadsBackToItThroughItsPages()
 	{
 		// The Bosses tile's tab says "< Combat Summary", and so does the tab a page's "< Bosses" rebuilds (2.8.0 review).

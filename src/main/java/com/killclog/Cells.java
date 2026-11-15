@@ -310,10 +310,8 @@ public class Cells
 		{
 			rareTooltips.clear();
 		}
-		String you = localRsn.get();
-		boolean self = RsnInputPolicy.sameName(you, lookupSession.getCurrentLookupRsn());
-		boolean selfNoCache = lookupSession.getClogResult() == null
-			&& lookupSession.offersSetup(you, lookupSession.getCurrentLookupRsn());
+		boolean self = RsnInputPolicy.sameName(localRsn.get(), lookupSession.getCurrentLookupRsn());
+		boolean selfNoCache = awaitsOwnSetup();
 		ClogResult catalog = lookupSession.getClogResult() == null && !selfNoCache
 			? unsyncedCatalog.result() : null;
 
@@ -581,6 +579,16 @@ public class Cells
 	TooltipData rareData(int row, boolean rival)
 	{
 		return rival ? rivalRare(row) : rareTooltips.get(PanelData.RARE_ROWS.get(row).getKey());
+	}
+
+	/**
+	 * Your own account before its log is set up: its cards say how to set it up, a page's opened from a tile too, never
+	 * the catalog's preview.
+	 */
+	boolean awaitsOwnSetup()
+	{
+		return lookupSession.getClogResult() == null
+			&& lookupSession.offersSetup(localRsn.get(), lookupSession.getCurrentLookupRsn());
 	}
 
 	/** A Collection Log page's card data: its log's, else the catalog's dimmed preview, as a boss's page (Dylan 11/14). */
