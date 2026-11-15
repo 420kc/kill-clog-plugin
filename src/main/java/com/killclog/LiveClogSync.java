@@ -18,17 +18,20 @@ import net.runelite.client.game.ItemManager;
  *
  * The kill is the game's word where it gives one, never a clock (Dylan, 2026-11-15). The server credits each loot to
  * the NPC that gave it as you receive it (RuneLite's ServerNpcLoot, the only source its own Loot Tracker reads NPC loot
- * from), so an item takes that NPC's latest kill however long the loot waited on its corpse, and none when the NPC has
- * no kill (a plain smoke devil's Occult necklace, on Thermy's page too). A pet, a chest or a reward screen is credited to
- * nobody, and a Collection Log item comes only from its own content: it takes the latest kill of its page's content,
- * the page's own name or a count message naming it in whole words (a raid's modes, the Corrupted Gauntlet, Phosani's
- * Nightmare, Callisto on Callisto and Artio's page), else the count message it arrived with (the Lunar Chest's).
+ * from), so an item takes that NPC's latest kill however long the loot waited on its corpse: an awakened or a League's
+ * Echo kill is its boss's, and an encounter's NPC named apart from its count message is pb-names.tsv's (Dusk's loot is
+ * the Grotesque Guardians', a Royal Titan's the Royal Titans'). An NPC with no kill gives none unless a kill lands with
+ * its loot (a plain smoke devil's Occult necklace, on Thermy's page too). A pet, a chest or a reward screen is credited
+ * to nobody, and a Collection Log item comes only from its own content: it takes the latest kill of its page's
+ * content, the page's own name or a count message naming it in whole words (a raid's modes, the Corrupted Gauntlet,
+ * Phosani's Nightmare, Callisto on Callisto and Artio's page), else the count message it arrived with (the Lunar
+ * Chest's).
  */
 @Slf4j
 final class LiveClogSync
 {
 	// A count message this many ticks or fewer before lands with its loot: a chest's reward, or loot credited to an NPC
-	// named apart from its kill message (Grotesque Guardians' Dusk). Never a wait.
+	// named apart from its kill message that pb-names.tsv doesn't name. Never a wait.
 	private static final int WITH_THE_KILL = 5;
 	private static final Kill NO_KILL = new Kill(null, -1);
 
@@ -62,7 +65,7 @@ final class LiveClogSync
 	 */
 	void credit(String npc, Collection<String> items, int tick)
 	{
-		// By its exact name: a plain "Smoke devil" never takes the Thermonuclear smoke devil's kill.
+		// By its encounter's one name: a plain "Smoke devil" never takes the Thermonuclear smoke devil's kill.
 		Kill kill = kills.get(name(npc));
 		Kill latest = last;
 		if (kill == null && latest != null && tick - latest.tick <= WITH_THE_KILL)
@@ -189,13 +192,15 @@ final class LiveClogSync
 	}
 
 	/**
-	 * A boss's name as its kill message, its page and the game's credit write it: words alone, case, punctuation and a
-	 * leading "the" aside ("Tombs of Amascut: Expert Mode" holds "tombs of amascut").
+	 * The one name a boss's kill message, its page and the game's credit share: a variant's brackets dropped (an
+	 * awakened or an Echo kill is its boss's), the name every lane's spelling reaches (PersonalBests.encounter: case, a
+	 * leading "the" and pb-names.tsv's renames aside), then words alone ("Tombs of Amascut: Expert Mode" holds "tombs of
+	 * amascut").
 	 */
 	private static String name(@Nullable String name)
 	{
-		String key = name == null ? "" : name.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", " ").trim();
-		return key.startsWith("the ") ? key.substring(4) : key;
+		return name == null ? ""
+			: PersonalBests.encounter(name.replaceFirst(" \\([^()]*\\)$", "")).replaceAll("[^a-z0-9]+", " ").trim();
 	}
 
 	private void warnFirstSync(KillClogChatNotifier chatNotifier)

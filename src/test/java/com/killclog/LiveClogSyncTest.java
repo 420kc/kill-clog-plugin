@@ -97,15 +97,65 @@ public class LiveClogSyncTest
 			eq(0), isNull());
 	}
 
-	// Loot credited to an NPC named apart from its kill message (Grotesque Guardians fight Dusk) lands with that kill.
+	// Loot credited to an NPC named apart from its kill message that pb-names.tsv doesn't name lands with that kill.
 	@Test
 	public void lootCreditedWithAKillNamedApartTakesIt()
 	{
 		LiveClogSync sync = new LiveClogSync();
 		sync.rememberKill(new ClogUnlockParser.KillContext("Grotesque Guardians", 603), 1000);
-		sync.credit("Dusk", List.of("Elder venator fang"), 1002);
+		sync.credit("Dawn", List.of("Elder venator fang"), 1002);
 		verify(unlock(sync, clientAt(9000), UNPAGED)).mergeObtainedItem(eq("Tester"), eq(UNPAGED), any(), any(), eq(603),
 			eq("Grotesque Guardians"));
+	}
+
+	// 11/15 review: pb-names.tsv names the NPC an encounter's loot is credited to, so its kill comes however long the
+	// loot waits: Dusk for the Grotesque Guardians (his loot tracker), the Royal Titan whose body the player loots.
+	@Test
+	public void anEncountersNpcNamedApartTakesItsKillHoweverLongTheLootWaits()
+	{
+		String[][] encounters = {
+			{"Dusk", "Grotesque Guardians"}, {"Branda the Fire Queen", "Royal Titans"}, {"Eldric the Ice King", "The Royal Titans"}};
+		for (String[] encounter : encounters)
+		{
+			LiveClogSync sync = new LiveClogSync();
+			sync.rememberKill(new ClogUnlockParser.KillContext(encounter[1], 40), 1000);
+			sync.rememberKill(new ClogUnlockParser.KillContext("Zulrah", 50), 1100);
+			sync.credit(encounter[0], List.of("Elder venator fang"), 1300);
+			verify(unlock(sync, clientAt(1300), UNPAGED), org.mockito.Mockito.description(encounter[0])).mergeObtainedItem(
+				eq("Tester"), eq(UNPAGED), any(), any(), eq(40), eq(encounter[1]));
+		}
+	}
+
+	// 11/15 review: the game credits an awakened boss's loot to its plain NPC (his Vardorvis and The Whisperer loot under
+	// "Vardorvis (awakened)" kills) and a League's Echo boss's to "<boss> (Echo)" (his Dusk (Echo)): either is the boss's
+	// latest kill, whichever variant it was, never an older plain kill.
+	@Test
+	public void anAwakenedOrEchoKillIsItsBossesLatest()
+	{
+		LiveClogSync sync = new LiveClogSync();
+		sync.rememberKill(new ClogUnlockParser.KillContext("Vardorvis", 300), 1000);
+		sync.rememberKill(new ClogUnlockParser.KillContext("Vardorvis (awakened)", 7), 5000);
+		sync.credit("Vardorvis", List.of("Elder venator fang"), 5100);
+		verify(unlock(sync, clientAt(5100), UNPAGED)).mergeObtainedItem(eq("Tester"), eq(UNPAGED), any(), any(), eq(7),
+			eq("Vardorvis (awakened)"));
+		sync.rememberKill(new ClogUnlockParser.KillContext("Grotesque Guardians (Echo)", 4), 6000);
+		sync.credit("Dusk (Echo)", List.of("Elder venator fang"), 6100);
+		verify(unlock(sync, clientAt(6100), UNPAGED)).mergeObtainedItem(eq("Tester"), eq(UNPAGED), any(), any(), eq(4),
+			eq("Grotesque Guardians (Echo)"));
+	}
+
+	// A page pb-names.tsv renames is its kill's: The Inferno's is TzKal-Zuk's, Fortis Colosseum's Sol Heredit's.
+	@Test
+	public void aPageRenamedInPbNamesTakesItsKill()
+	{
+		String[][] pages = {{"The Inferno", "TzKal-Zuk"}, {"Fortis Colosseum", "Sol Heredit"}};
+		for (String[] page : pages)
+		{
+			LiveClogSync sync = new LiveClogSync();
+			sync.rememberKill(new ClogUnlockParser.KillContext(page[1], 3), 1000);
+			verify(unlock(sync, clientAt(3000), PAGE_ITEM, page[0]), org.mockito.Mockito.description(page[0]))
+				.mergeObtainedItem(eq("Tester"), eq(PAGE_ITEM), any(), any(), eq(3), eq(page[1]));
+		}
 	}
 
 	// A page's name and its kill message's can differ by a leading "the": The Gauntlet's page, "Your Gauntlet completion

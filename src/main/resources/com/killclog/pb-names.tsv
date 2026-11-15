@@ -1,6 +1,7 @@
 # Boss names that differ beyond case, a mode's colon and a leading "The": a spelling one lane meets<TAB>
 # the name RuneLite's store uses, which every lane reaches (PersonalBests.encounter). The adventure log's
-# section titles, and the panel's Lunar Chests, which RuneLite files as "lunar chest".
+# section titles, the panel's Lunar Chests, which RuneLite files as "lunar chest", and the NPC the game
+# credits an encounter's loot to (LiveClogSync): Dusk (his loot tracker), the Royal Titan the player loots.
 tzhaar fight cave	tztok-jad
 inferno	tzkal-zuk
 fortis colosseum	sol heredit
@@ -12,3 +13,6 @@ theatre of blood - entry mode	theatre of blood entry mode
 theatre of blood - story mode	theatre of blood entry mode
 tombs of amascut - entry	tombs of amascut entry mode
 tombs of amascut - expert	tombs of amascut expert mode
+dusk	grotesque guardians
+branda the fire queen	royal titans
+eldric the ice king	royal titans

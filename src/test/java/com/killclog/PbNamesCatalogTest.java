@@ -6,7 +6,10 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import org.junit.Test;
 
-/** pb-names.tsv holds exactly the spellings that reach another boss name: the scroll sections and Lunar Chests. */
+/**
+ * pb-names.tsv holds exactly the spellings that reach another boss name: the scroll sections, Lunar Chests and the NPCs
+ * an encounter's loot is credited to.
+ */
 public class PbNamesCatalogTest
 {
 	@Test
@@ -24,6 +27,9 @@ public class PbNamesCatalogTest
 		golden.put("theatre of blood - story mode", "theatre of blood entry mode");
 		golden.put("tombs of amascut - entry", "tombs of amascut entry mode");
 		golden.put("tombs of amascut - expert", "tombs of amascut expert mode");
+		golden.put("dusk", "grotesque guardians");
+		golden.put("branda the fire queen", "royal titans");
+		golden.put("eldric the ice king", "royal titans");
 
 		Map<String, String> catalog = new LinkedHashMap<>();
 		for (String[] row : CatalogTsv.rows(PersonalBests.class, "pb-names.tsv", 2))
