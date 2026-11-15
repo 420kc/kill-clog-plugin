@@ -1,10 +1,8 @@
 package com.killclog;
 
 import java.awt.image.BufferedImage;
-import java.util.List;
-import java.util.Map;
-import java.util.function.IntUnaryOperator;
-import java.util.function.Supplier;
+import java.util.*;
+import java.util.function.*;
 import javax.annotation.Nullable;
 import javax.swing.*;
 import lombok.*;

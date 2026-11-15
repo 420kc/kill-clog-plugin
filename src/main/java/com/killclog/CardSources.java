@@ -2,12 +2,11 @@ package com.killclog;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.util.ArrayList;
+import java.util.*;
 import java.util.List;
 import java.util.function.UnaryOperator;
 import javax.annotation.Nullable;
-import lombok.AccessLevel;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
 
 /**
  * The sites that hold a player's log, as icons: the Collection Log card's footer names them, and the Player Summary's

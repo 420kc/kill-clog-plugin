@@ -1,7 +1,6 @@
 package com.killclog;
 
-import java.awt.AlphaComposite;
-import java.awt.Color;
+import java.awt.*;
 
 /** The fixed colors, and the dim, more than one class draws with; a color only one class draws stays in that class. */
 final class KillClogColors
