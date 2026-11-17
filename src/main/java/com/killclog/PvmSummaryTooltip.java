@@ -13,15 +13,14 @@ import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.util.QuantityFormatter;
 
 /**
- * Combat Summary tooltip on the combat level cell: the combat level at the title's right, the prestige cape and Dizana's
- * gear under it, the band, then a scroll of PvM (its rows and tiles), the raids' tiles, Slayer and its superiors, and PvP.
+ * Combat Summary tooltip on the combat level cell: the combat level at the title's right, the prestige cape, Dizana's
+ * gear and the Combat Achievements reward under it, the band, then a scroll of PvM (its rows, Combat Achievements and
+ * tiles), the raids' tiles, Slayer and its superiors, and PvP.
  */
 public class PvmSummaryTooltip extends TitleTooltip
 {
 	private static final int WEAPON_PAD = 6;
 	private static final int SECTION_GAP = 4;
-	// The CA tier's reward is drawn at the combat cell's icon size, for its tile.
-	static final int ICON_SIZE = 20;
 	private static final String PVM_HEADER = "PvM";
 	private static final String PVP_HEADER = "PvP";
 
@@ -73,13 +72,19 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 	@Setter
 	private Image combatIcon;
-	// The prestige cape and Dizana's gear under the title, as items (Dylan, 2026-11-14).
+	// The prestige cape and Dizana's gear under the title, as items (Dylan, 2026-11-14), then the Combat Achievements
+	// tier's reward (11/17).
 	private final List<Integer> gear = new ArrayList<>();
 	private final List<String> gearNames = new ArrayList<>();
 	@Nullable
 	private TooltipItemSprites gearSprites;
+	// Combat Achievements as PvM lines, not a tile: a tile opens what it names, and its tile opened nothing (Dylan,
+	// 2026-11-17).
+	@Nullable
 	private CombatAchievementResult caResult;
-	private BufferedImage caRewardSprite;
+	// The gear row and the Combat Achievements lines, kept on a comparison's side that has none (lineUp).
+	private boolean gearRow;
+	private boolean caRows;
 	// The Bosses tile's sprite, the Collection Log's Bosses tab's, and what a press on it opens.
 	private Image bossesSprite;
 	@Setter
@@ -175,14 +180,30 @@ public class PvmSummaryTooltip extends TitleTooltip
 		this.bossesWithClog = total;
 	}
 
-	/**
-	 * Combat Achievement tier for the CA section, with a pre-sized tier reward sprite.
-	 * A null result omits the section entirely.
-	 */
-	public void setCombatAchievements(CombatAchievementResult ca, BufferedImage rewardSprite)
+	/** Combat Achievements' lines once known; a held tier's reward joins the gear, named for its tier while hovered. */
+	void setCombatAchievements(@Nullable CombatAchievementResult ca, ItemManager itemManager)
 	{
-		this.caResult = ca;
-		this.caRewardSprite = rewardSprite;
+		caResult = ca;
+		caRows = ca != null;
+		if (ca != null && ca.getTier() != null)
+		{
+			addGear(ca.getTier().reward(), tierDisplayName(ca) + " Combat Achievements", itemManager);
+		}
+	}
+
+	/**
+	 * A comparison's two cards line up: each keeps the gear row and the Combat Achievements lines when either has them,
+	 * the side without an empty row and "--".
+	 */
+	static void lineUp(PvmSummaryTooltip blue, PvmSummaryTooltip red)
+	{
+		boolean gear = !blue.gear.isEmpty() || !red.gear.isEmpty();
+		boolean ca = blue.caRows || red.caRows;
+		for (PvmSummaryTooltip side : new PvmSummaryTooltip[]{blue, red})
+		{
+			side.gearRow = gear;
+			side.caRows = ca;
+		}
 	}
 
 	/** Each raid's megarare held, in raids.tsv's order. */
@@ -264,18 +285,27 @@ public class PvmSummaryTooltip extends TitleTooltip
 				gear.stream().mapToInt(Integer::intValue).toArray(), gearNames.toArray(new String[0]),
 				gear.stream().mapToInt(id -> 1).toArray(), WEAPON_PAD, Integer.MAX_VALUE, null));
 		}
+		else if (gearRow)
+		{
+			card.add(CardBody.gap(SECTION_GAP + CardBody.GRID_SPRITE));
+		}
 		CardBody body = new CardBody().titled(PVM_HEADER)
 			.add(CardBody.line("Total Kills: ", scoreText(totalKills)))
 			.add(CardBody.line("EHB: ", ehbText(ehb)));
-		// The PvM tiles: the CA tier once one is held, its points toward the next tier (a Grandmaster's bar full and
-		// green); the most killed boss, its kills over its log, its name in the band, opening its card; and Bosses, the
-		// bosses killed and their logs done, opening the Collection Log's Bosses tab.
-		List<GameTile.Tile> pvm = new ArrayList<>();
-		if (caResult != null && caResult.getTier() != null)
+		if (caRows)
 		{
-			pvm.add(new GameTile.Tile(tierDisplayName(caResult), caRewardSprite, caResult.getTotalPoints(),
-				caResult.nextTierPoints(), -1));
+			// The tier, then its points over the next tier's, the bar under them filling toward it (a Grandmaster's full and
+			// green).
+			int points = caResult != null ? caResult.getTotalPoints() : -1;
+			int next = caResult != null ? caResult.nextTierPoints() : 0;
+			Color color = points >= 0 ? completionColor(points, next) : valueColor;
+			body.add(CardBody.line("Combat Achievements: ", caResult != null ? tierDisplayName(caResult) : "--"))
+				.add(CardBody.line("Points: ", points >= 0 ? progressCountText(points, next) : "--", color))
+				.add(CardBody.bar(points >= 0 ? (double) points / next : 0, color));
 		}
+		// The PvM tiles: the most killed boss, its kills over its log, its name in the band, opening its card; and Bosses,
+		// the bosses killed and their logs done, opening the Collection Log's Bosses tab.
+		List<GameTile.Tile> pvm = new ArrayList<>();
 		if (mostKilled != null)
 		{
 			pvm.add(new GameTile.Tile("Most Killed", mostKilledIcon, mostKilledObtained, mostKilledTotal,

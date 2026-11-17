@@ -27,12 +27,13 @@ public class CombatAchievementTest
 	@Test
 	public void testRewardMapping()
 	{
-		assertEquals(CombatAchievementReward.EASY, CombatAchievementTier.EASY.reward());
-		assertEquals(CombatAchievementReward.MEDIUM, CombatAchievementTier.MEDIUM.reward());
-		assertEquals(CombatAchievementReward.HARD, CombatAchievementTier.HARD.reward());
-		assertEquals(CombatAchievementReward.ELITE, CombatAchievementTier.ELITE.reward());
-		assertEquals(CombatAchievementReward.MASTER, CombatAchievementTier.MASTER.reward());
-		assertEquals(CombatAchievementReward.GRANDMASTER, CombatAchievementTier.GRANDMASTER.reward());
+		// Ghommal's hilt 1 to 3, then the Tztok, Vampyric and Tzkal slayer helmets.
+		assertEquals(25926, CombatAchievementTier.EASY.reward());
+		assertEquals(25928, CombatAchievementTier.MEDIUM.reward());
+		assertEquals(25930, CombatAchievementTier.HARD.reward());
+		assertEquals(25898, CombatAchievementTier.ELITE.reward());
+		assertEquals(25904, CombatAchievementTier.MASTER.reward());
+		assertEquals(25910, CombatAchievementTier.GRANDMASTER.reward());
 	}
 
 	@Test
@@ -76,7 +77,6 @@ public class CombatAchievementTest
 		CombatAchievementResult r = CombatAchievementResult.of(completed, null);
 		assertEquals(169, r.getTotalPoints());
 		assertEquals(CombatAchievementTier.MEDIUM, r.getTier());
-		assertEquals(CombatAchievementReward.MEDIUM, r.getReward());
 	}
 
 	@Test
@@ -92,7 +92,6 @@ public class CombatAchievementTest
 		CombatAchievementResult r = CombatAchievementResult.of(completed, total);
 		assertTrue(r.getTotalPoints() > 1965);
 		assertEquals(CombatAchievementTier.MASTER, r.getTier());
-		assertEquals(CombatAchievementReward.MASTER, r.getReward());
 		assertFalse(r.isAllComplete());
 	}
 
@@ -123,7 +122,6 @@ public class CombatAchievementTest
 		}
 		CombatAchievementResult r = CombatAchievementResult.of(completed, total);
 		assertEquals(CombatAchievementTier.GRANDMASTER, r.getTier());
-		assertEquals(CombatAchievementReward.GRANDMASTER, r.getReward());
 		assertTrue(r.isAllComplete());
 	}
 
@@ -140,7 +138,6 @@ public class CombatAchievementTest
 		CombatAchievementResult r = CombatAchievementResult.of(completed, total);
 		assertEquals(2697, r.getTotalPoints());
 		assertEquals(CombatAchievementTier.GRANDMASTER, r.getTier());
-		assertEquals(CombatAchievementReward.GRANDMASTER, r.getReward());
 	}
 
 	@Test
@@ -267,7 +264,6 @@ public class CombatAchievementTest
 		CombatAchievementResult r = CombatAchievementResult.of(null, null);
 		assertEquals(0, r.getTotalPoints());
 		assertNull(r.getTier());
-		assertNull(r.getReward());
 		assertFalse(r.isAllComplete());
 	}
 

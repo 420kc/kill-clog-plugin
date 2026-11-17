@@ -54,7 +54,6 @@ public class KillClogPanel extends PluginPanel
 	private final ItemManager itemManager;
 	private final ClientThread clientThread;
 	private final TooltipDataBuilder tooltipDataBuilder;
-	private final CaRewardSprites caRewardSprites;
 	private final TooltipItemNameResolver itemNameResolver;
 	private final PanelIconCache iconCache;
 	private final PanelAccountTypes accountTypes;
@@ -179,7 +178,6 @@ public class KillClogPanel extends PluginPanel
 		this.itemManager = itemManager;
 		this.clientThread = clientThread;
 		this.tooltipDataBuilder = new TooltipDataBuilder(itemManager);
-		this.caRewardSprites = new CaRewardSprites(itemManager, clientThread, this::repaint);
 		this.iconCache = new PanelIconCache(itemManager, clientThread, spriteManager);
 		this.accountTypes = new PanelAccountTypes(runeProfileService);
 		this.tooltipController = new TooltipController(config);
@@ -201,7 +199,7 @@ public class KillClogPanel extends PluginPanel
 			rankSelector, () -> localRsn);
 		this.clogPages = new ClogPages(tooltipController, cells, comparison, lookupSession, tooltipDataBuilder, config);
 		this.summaryCards = new SummaryCards(lookupSession, comparison, cells, tooltipController, itemManager,
-			caRewardSprites, config::cardLinks, clogPages, clogService, runeProfileService, portraits, iconCache, unsyncedCatalog,
+			config::cardLinks, clogPages, clogService, runeProfileService, portraits, iconCache, unsyncedCatalog,
 			() -> localRsn, this::comparisonBlueName);
 		this.itemNameResolver = new TooltipItemNameResolver(clientThread, itemManager,
 			this::onTooltipItemNamesResolved);
@@ -396,7 +394,7 @@ public class KillClogPanel extends PluginPanel
 			this::toggleBossViewStyle);
 		panel.add(infoRow);
 
-		iconCache.loadRuntimeIcons(cells, caRewardSprites);
+		iconCache.loadRuntimeIcons(cells);
 		return panel;
 	}
 
@@ -1248,15 +1246,6 @@ public class KillClogPanel extends PluginPanel
 			? keptIdentity.shownOn(lookupSession.getHiscoreResult(), rankSelector.active()) : null);
 	}
 
-	@Override
-	public void preloadCaReward(@Nullable CombatAchievementResult ca)
-	{
-		if (ca != null)
-		{
-			caRewardSprites.request(ca.getReward());
-		}
-	}
-
 	private void updateDisplayedInfoIcon()
 	{
 		updateDisplayedInfoIcon(currentInfoAccountDisplay());
@@ -1376,7 +1365,6 @@ public class KillClogPanel extends PluginPanel
 	{
 		if (lookupVersionAtFire == lookupSession.getLookupVersion())
 		{
-			preloadCaReward(ca);
 			// Late evidence, like RuneProfile's group type, renews the kept identity in either view.
 			if (comparison.isComparisonMode() && isIdentityRowShowing())
 			{

@@ -23,7 +23,7 @@ public class SummaryCardsTest
 
 	private SummaryCards cards(LookupSession session, Cells cells, ClogPages pages)
 	{
-		return new SummaryCards(session, comparison, cells, tooltips, mock(ItemManager.class), mock(CaRewardSprites.class),
+		return new SummaryCards(session, comparison, cells, tooltips, mock(ItemManager.class),
 			() -> CardLinks.ON, pages, mock(ClogService.class), mock(RuneProfileService.class), mock(PlayerPortraits.class),
 			mock(PanelIconCache.class), mock(UnsyncedClogCatalog.class), () -> null, () -> "--");
 	}
@@ -84,6 +84,37 @@ public class SummaryCardsTest
 				0, 0, 1, 1, 1, false, java.awt.event.MouseEvent.BUTTON1);
 			bosses.accept(press);
 			verify(pages).openTab(eq(owner), eq(press), eq("Bosses"), eq("< Combat Summary"));
+		}
+	}
+
+	@Test
+	public void comparingLinesUpTheCombatSummariesWhenOnlyTheRivalHasCombatAchievements()
+	{
+		// The rival's tier puts its reward under the title and its lines in PvM; the blue side, with neither, keeps the
+		// same row and lines, so the pair's tiles sit level.
+		Cells cells = mock(Cells.class);
+		when(cells.getBossLabels()).thenReturn(java.util.Collections.emptyMap());
+		when(cells.getPvpActivityIcons()).thenReturn(new java.awt.image.BufferedImage[5]);
+		when(comparison.isComparisonMode()).thenReturn(true);
+		when(comparison.showsPair()).thenReturn(true);
+		java.util.Map<CombatAchievementTier, Integer> done = new java.util.EnumMap<>(CombatAchievementTier.class);
+		done.put(CombatAchievementTier.EASY, CombatAchievementTier.EASY.totalTasks());
+		when(comparison.getCompareCaResult()).thenReturn(CombatAchievementResult.of(done, null));
+		java.util.List<JToolTip> sides = new java.util.ArrayList<>();
+		when(comparison.wrapSideBySide(any(), any(), any())).thenAnswer(call ->
+		{
+			sides.add(call.getArgument(1));
+			sides.add(call.getArgument(2));
+			return new JToolTip();
+		});
+		JLabel owner = new JLabel();
+		new JPanel().add(owner);
+		cards(mock(LookupSession.class), cells, mock(ClogPages.class)).buildPvm(owner, (JPanel) owner.getParent());
+		assertSame(2, sides.size());
+		for (JToolTip side : sides)
+		{
+			assertTrue("the gear row", TestViews.<Boolean>field(side, "gearRow"));
+			assertTrue("the Combat Achievements lines", TestViews.<Boolean>field(side, "caRows"));
 		}
 	}
 

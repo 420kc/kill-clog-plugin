@@ -85,62 +85,92 @@ public class PvmSummaryTooltipTest
 		assertEquals("--", TitleTooltip.scoreText(-1L));
 	}
 
+	// Dylan 11/17: a tile opens what it names, and the Combat Achievements tile opened nothing. The tier and its points read
+	// as PvM lines over the skill cards' bar, and the tier's reward stands under the title at full size, with the gear.
 	@Test
-	public void grandmasterStaysInsideItsTile()
+	public void combatAchievementsReadAsLinesOverABarAndTheTiersRewardJoinsTheGear()
 	{
-		// "Grandmaster" in bold is as wide as the tile itself: it takes the regular font rather than run over the frame.
-		Map<CombatAchievementTier, Integer> totals = new java.util.EnumMap<>(CombatAchievementTier.class);
-		for (CombatAchievementTier tier : CombatAchievementTier.values())
-		{
-			totals.put(tier, tier.totalTasks());
-		}
-		BufferedImage image = render(painted(fill(pvmCard(CombatAchievementResult.of(totals, totals)))));
-		Point tile = TestViews.tiles(image).get(0);
-		int greenInMargin = 0;
-		int greenInside = 0;
-		for (int y = tile.y; y < tile.y + 20; y++)
-		{
-			for (int dx = 0; dx < GameTile.WIDTH; dx++)
-			{
-				Color px = new Color(image.getRGB(tile.x + dx, y), true);
-				boolean green = px.getGreen() > 180 && px.getRed() < 120 && px.getBlue() < 120;
-				boolean margin = dx < 4 || dx >= GameTile.WIDTH - 4;
-				greenInMargin += green && margin ? 1 : 0;
-				greenInside += green && !margin ? 1 : 0;
-			}
-		}
-		assertEquals(0, greenInMargin);
-		// And the name is there, in its tier's green.
-		assertTrue(greenInside > 50);
-	}
-
-	@Test
-	public void theCaTileWaitsForATierAndFillsTowardTheNextOne()
-	{
-		Map<CombatAchievementTier, Integer> totals = new java.util.EnumMap<>(CombatAchievementTier.class);
-		for (CombatAchievementTier tier : CombatAchievementTier.values())
-		{
-			totals.put(tier, tier.totalTasks());
-		}
-		Map<CombatAchievementTier, Integer> easyDone = new java.util.EnumMap<>(CombatAchievementTier.class);
-		easyDone.put(CombatAchievementTier.EASY, CombatAchievementTier.EASY.totalTasks());
-		CombatAchievementResult easy = CombatAchievementResult.of(easyDone, totals);
+		CombatAchievementResult easy = easy();
 		// Easy's points, toward Medium's threshold: every Easy and Medium task's points.
 		assertEquals(CombatAchievementTier.EASY.totalTasks(), easy.getTotalPoints());
 		assertEquals(CombatAchievementTier.EASY.totalTasks() + 2 * CombatAchievementTier.MEDIUM.totalTasks(),
 			easy.nextTierPoints());
 		// Every task done: the bar's end is the points held, so it fills.
-		CombatAchievementResult grandmaster = CombatAchievementResult.of(totals, totals);
+		CombatAchievementResult grandmaster = CombatAchievementResult.of(caTotals(), caTotals());
 		assertEquals(grandmaster.getTotalPoints(), grandmaster.nextTierPoints());
 
-		// No tier: Most Killed and Bosses, two across and wider; with a tier, three across.
-		BufferedImage noTier = render(painted(fill(pvmCard(CombatAchievementResult.of(Collections.emptyMap(), totals)))));
+		// Most Killed and Bosses, two across and wider, with a tier or without: no tile stands for the tier.
+		BufferedImage none = render(painted(fill(pvmCard(null))));
 		BufferedImage tiered = render(painted(fill(pvmCard(easy))));
-		int row = TestViews.tiles(noTier).get(0).y;
-		assertTrue(rowHas(noTier, row, GameTile.PAGE_WIDTH, 2));
-		assertTrue(rowHas(tiered, row, GameTile.WIDTH, 3));
-		// The PvM row is a tile tall either way, so the raids stay put.
-		assertEquals(raidTiles(noTier), raidTiles(tiered));
+		for (BufferedImage card : new BufferedImage[]{none, tiered})
+		{
+			assertTrue(rowHas(card, TestViews.tiles(card).get(0).y, GameTile.PAGE_WIDTH, 2));
+		}
+		// A Grandmaster's bar is green and spans the track, the card less its scroll rail; Easy's is the game's yellow,
+		// filled to its share of the way to Medium.
+		BufferedImage gm = render(painted(fill(pvmCard(grandmaster))));
+		int track = gm.getWidth() - CardBody.RAIL_GAP - CardBody.RAIL_WIDTH - 2 * NativeTooltip.getInset();
+		int[] full = TestViews.longestRun(gm, TitleTooltip.CLOG_GREEN);
+		int[] partial = TestViews.longestRun(tiered, TitleTooltip.CLOG_YELLOW);
+		assertEquals(NativeTooltip.getInset(), full[0]);
+		assertEquals(track, full[2]);
+		assertEquals(CardBody.BAR_HEIGHT, full[3]);
+		assertEquals(NativeTooltip.getInset(), partial[0]);
+		assertEquals(track * (double) easy.getTotalPoints() / easy.nextTierPoints(), partial[2], 1);
+		assertEquals(CardBody.BAR_HEIGHT, partial[3]);
+		assertEquals("no Combat Achievements, no bar", 0, TestViews.longestRun(none, TitleTooltip.CLOG_YELLOW)[2]);
+
+		// The reward under the title, named for its tier while hovered.
+		PvmSummaryTooltip tip = painted(fill(pvmCard(easy)));
+		Point reward = find(render(tip), 0xffff00ff);
+		assertNotNull(reward);
+		assertTrue("above the tiles", reward.y + 32 <= TestViews.tiles(render(tip)).get(0).y);
+		move(tip, reward.x + 16, reward.y + 16);
+		assertEquals("Easy Combat Achievements", tip.getHeaderHoverLineText());
+		assertNull("no tier, no reward", find(none, 0xffff00ff));
+	}
+
+	@Test
+	public void aComparisonPairKeepsTheGearRowAndCombatAchievementsLinesOnBothSides()
+	{
+		// One side with a tier's reward and its Combat Achievements, the other with neither: once lined up, each keeps
+		// both, so the pair's tiles sit level.
+		PvmSummaryTooltip blue = fill(pvmCard(easy()));
+		PvmSummaryTooltip red = fill(pvmCard(null));
+		assertNotEquals(firstTileY(blue), firstTileY(red));
+		PvmSummaryTooltip.lineUp(blue, red);
+		assertEquals(blue.getPreferredSize().height, red.getPreferredSize().height);
+		assertEquals(firstTileY(blue), firstTileY(red));
+		// A card without Combat Achievements shows no lines for them, and a pair of two such cards gains no row.
+		int bare = firstTileY(card());
+		PvmSummaryTooltip plain = fill(pvmCard(null));
+		assertEquals(bare, firstTileY(plain));
+		PvmSummaryTooltip.lineUp(plain, fill(pvmCard(null)));
+		assertEquals(bare, firstTileY(plain));
+		assertEquals(card().getPreferredSize().height, plain.getPreferredSize().height);
+	}
+
+	private static int firstTileY(PvmSummaryTooltip tip)
+	{
+		return TestViews.tiles(render(painted(tip))).get(0).y;
+	}
+
+	private static Map<CombatAchievementTier, Integer> caTotals()
+	{
+		Map<CombatAchievementTier, Integer> totals = new java.util.EnumMap<>(CombatAchievementTier.class);
+		for (CombatAchievementTier tier : CombatAchievementTier.values())
+		{
+			totals.put(tier, tier.totalTasks());
+		}
+		return totals;
+	}
+
+	/** Every Easy task done, and nothing else. */
+	private static CombatAchievementResult easy()
+	{
+		Map<CombatAchievementTier, Integer> easyDone = new java.util.EnumMap<>(CombatAchievementTier.class);
+		easyDone.put(CombatAchievementTier.EASY, CombatAchievementTier.EASY.totalTasks());
+		return CombatAchievementResult.of(easyDone, caTotals());
 	}
 
 	/** Whether a row holds n tiles of this width side by side, a gap apart. */
@@ -317,22 +347,11 @@ public class PvmSummaryTooltipTest
 		assertEquals(-1, (int) TestViews.field(tip.itemHover, "hoveredItemId"));
 	}
 
-	/** How many tiles the PvM row holds: those level with the card's first tile. */
-	private static int pvmRow(PvmSummaryTooltip tip)
-	{
-		List<Point> tiles = TestViews.tiles(render(tip));
-		int row = tiles.get(0).y;
-		return (int) tiles.stream().filter(tile -> tile.y == row).count();
-	}
-
 	private static PvmSummaryTooltip pvmCard(CombatAchievementResult ca)
 	{
 		PvmSummaryTooltip tip = new PvmSummaryTooltip();
 		tip.setData(126, 12345, 20, 60, "Zulrah", 5000);
-		if (ca != null)
-		{
-			tip.setCombatAchievements(ca, null);
-		}
+		tip.setCombatAchievements(ca, gearItems());
 		return tip;
 	}
 

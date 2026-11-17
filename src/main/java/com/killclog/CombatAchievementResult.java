@@ -132,10 +132,4 @@ final class CombatAchievementResult
 		}
 		return new CombatAchievementResult(completed, providerTotal, liveTotals);
 	}
-
-	/** The Combat Summary tier row's reward sprite for the held tier, or null when no tier is held. */
-	CombatAchievementReward getReward()
-	{
-		return tier == null ? null : tier.reward();
-	}
 }

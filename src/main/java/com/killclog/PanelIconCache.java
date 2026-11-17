@@ -50,17 +50,15 @@ final class PanelIconCache
 			? maxCapeTip : cape == PanelData.INFERNAL_CAPE_ITEM_ID ? infernalCapeTip : null;
 	}
 
-	void loadRuntimeIcons(Cells cells, CaRewardSprites caRewardSprites)
+	void loadRuntimeIcons(Cells cells)
 	{
-		// Cape, CA reward, and clog tier icons via ItemManager.
+		// Cape and clog tier icons via ItemManager.
 		clientThread.invokeLater(() ->
 		{
 			// Tooltip cape icons - native aspect ratio, taller.
 			loadItemImage(itemManager, PanelData.MAX_CAPE_ITEM_ID, img -> maxCapeTip = img);
 			loadItemImage(itemManager, PanelData.INFERNAL_CAPE_ITEM_ID, img -> infernalCapeTip = img);
 			loadItemImage(itemManager, PanelData.INFERNAL_MAX_CAPE_ITEM_ID, img -> infernalMaxCapeTip = img);
-
-			caRewardSprites.preloadAll();
 
 			for (int i = 0; i < ClogHelper.CLOG_TIERS.length; i++)
 			{

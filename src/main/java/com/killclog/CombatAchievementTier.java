@@ -5,7 +5,7 @@ import lombok.*;
 import net.runelite.api.gameval.VarbitID;
 
 /**
- * Combat Achievement tiers and their Combat Summary reward sprites.
+ * Combat Achievement tiers and the reward item the Combat Summary shows for each.
  *
  * <p>Easy through Master unlock by points. Grandmaster requires every task in
  * every tier to be complete. Thresholds are never stored: each tier's
@@ -18,14 +18,14 @@ import net.runelite.api.gameval.VarbitID;
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 enum CombatAchievementTier
 {
-	// The game's counts on 2026-10-28 (the OSRS Wiki's tier table, 655 tasks; RuneProfile's live totals agree).
-	EASY(1, 41, VarbitID.CA_THRESHOLD_EASY, VarbitID.CA_TOTAL_TASKS_COMPLETED_EASY, CombatAchievementReward.EASY),
-	MEDIUM(2, 64, VarbitID.CA_THRESHOLD_MEDIUM, VarbitID.CA_TOTAL_TASKS_COMPLETED_MEDIUM, CombatAchievementReward.MEDIUM),
-	HARD(3, 89, VarbitID.CA_THRESHOLD_HARD, VarbitID.CA_TOTAL_TASKS_COMPLETED_HARD, CombatAchievementReward.HARD),
-	ELITE(4, 166, VarbitID.CA_THRESHOLD_ELITE, VarbitID.CA_TOTAL_TASKS_COMPLETED_ELITE, CombatAchievementReward.ELITE),
-	MASTER(5, 173, VarbitID.CA_THRESHOLD_MASTER, VarbitID.CA_TOTAL_TASKS_COMPLETED_MASTER, CombatAchievementReward.MASTER),
-	GRANDMASTER(6, 122, VarbitID.CA_THRESHOLD_GRANDMASTER, VarbitID.CA_TOTAL_TASKS_COMPLETED_GRANDMASTER,
-		CombatAchievementReward.GRANDMASTER);
+	// The game's counts on 2026-10-28 (the OSRS Wiki's tier table, 655 tasks; RuneProfile's live totals agree). Last, the
+	// reward's item: Ghommal's hilt 1 to 3, then the Tztok, Vampyric and Tzkal slayer helmets (RuneLite's ItemID names).
+	EASY(1, 41, VarbitID.CA_THRESHOLD_EASY, VarbitID.CA_TOTAL_TASKS_COMPLETED_EASY, 25926),
+	MEDIUM(2, 64, VarbitID.CA_THRESHOLD_MEDIUM, VarbitID.CA_TOTAL_TASKS_COMPLETED_MEDIUM, 25928),
+	HARD(3, 89, VarbitID.CA_THRESHOLD_HARD, VarbitID.CA_TOTAL_TASKS_COMPLETED_HARD, 25930),
+	ELITE(4, 166, VarbitID.CA_THRESHOLD_ELITE, VarbitID.CA_TOTAL_TASKS_COMPLETED_ELITE, 25898),
+	MASTER(5, 173, VarbitID.CA_THRESHOLD_MASTER, VarbitID.CA_TOTAL_TASKS_COMPLETED_MASTER, 25904),
+	GRANDMASTER(6, 122, VarbitID.CA_THRESHOLD_GRANDMASTER, VarbitID.CA_TOTAL_TASKS_COMPLETED_GRANDMASTER, 25910);
 
 	private final int pointsPerTask;
 	private final int totalTasks;
@@ -33,7 +33,7 @@ enum CombatAchievementTier
 	// completed in it (LocalCaReader).
 	final int thresholdVarbit;
 	final int completedVarbit;
-	private final CombatAchievementReward reward;
+	private final int reward;
 
 	/** A varbit that moves a tier's threshold or your completed count: either means Combat Achievements read again. */
 	static boolean isCaVarbit(int id)
@@ -58,8 +58,8 @@ enum CombatAchievementTier
 		return totalTasks;
 	}
 
-	/** The Combat Summary reward sprite for this tier. */
-	CombatAchievementReward reward()
+	/** The item the Combat Summary shows for this tier, under its title with the player's other gear. */
+	int reward()
 	{
 		return reward;
 	}

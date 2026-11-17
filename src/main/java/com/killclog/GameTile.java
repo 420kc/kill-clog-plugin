@@ -152,7 +152,7 @@ final class GameTile
 		Font font = g.getFont();
 
 		// The name in bold. A page's, with no sprite under it, breaks at a space onto two lines where it must; a sprite's
-		// tile keeps its short name on one line. Either takes the regular font where bold still won't fit (Grandmaster).
+		// tile keeps its short name on one line. Either takes the regular font where bold still won't fit.
 		int room = box.width - 2 * NAME_PAD;
 		FontMetrics nfm = c.bfm;
 		String[] lines = !page || nfm.stringWidth(tile.name) <= room ? new String[]{tile.name} : split(tile.name, nfm);
@@ -177,7 +177,7 @@ final class GameTile
 		{
 			Composite solid = g.getComposite();
 			g.setComposite(tile.faint ? KillClogColors.DIM : solid);
-			// A small icon (a CA tier's, a boss's) sits in the middle of the item sprites' slot; with no count or bar
+			// A small icon (a boss's) sits in the middle of the item sprites' slot; with no count or bar
 			// under it (a raid before any lookup), in the middle of all the tile under its name (Dylan, 2026-11-14).
 			int slot = count.isEmpty() && !known ? box.height - SPRITE_TOP : SPRITE_SLOT;
 			g.drawImage(tile.sprite, center - tile.sprite.getWidth(null) / 2,

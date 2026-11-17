@@ -22,7 +22,6 @@ final class SummaryCards
 	private final Cells cells;
 	private final TooltipController tooltipController;
 	private final ItemManager itemManager;
-	private final CaRewardSprites caRewardSprites;
 	private final Supplier<CardLinks> links;
 	private final ClogPages clogPages;
 	private final ClogService clogService;
@@ -181,13 +180,15 @@ final class SummaryCards
 
 	JToolTip buildPvm(JLabel owner, JPanel parentCell)
 	{
-		JToolTip tip = soloOrPair(owner,
-			pvmTooltip(owner, lookupSession.getHiscoreResult(),
-				lookupSession.getClogResult(), lookupSession.getCaResult(),
-				cells.getTooltipDataMap()),
-			() -> pvmTooltip(owner, comparison.getCompareHiscoreResult(),
-				comparison.getCompareClogResult(), comparison.getCompareCaResult(),
-				comparison.getCompareTooltipDataMap()));
+		PvmSummaryTooltip blue = pvmTooltip(owner, lookupSession.getHiscoreResult(), lookupSession.getClogResult(),
+			lookupSession.getCaResult(), cells.getTooltipDataMap());
+		JToolTip tip = soloOrPair(owner, blue, () ->
+		{
+			PvmSummaryTooltip red = pvmTooltip(owner, comparison.getCompareHiscoreResult(),
+				comparison.getCompareClogResult(), comparison.getCompareCaResult(), comparison.getCompareTooltipDataMap());
+			PvmSummaryTooltip.lineUp(blue, red);
+			return red;
+		});
 		tooltipController.keepTooltipOnHover(tip, parentCell);
 		return tip;
 	}
@@ -263,10 +264,7 @@ final class SummaryCards
 		// LMS's and Soul Wars' tiles open their log pages there too.
 		tip.setOnOpenPage((press, page) ->
 			tooltipController.openInPlace(owner, press, clogPages.page(owner, page), "< Combat Summary"));
-		if (ca != null)
-		{
-			tip.setCombatAchievements(ca, caRewardSprites.sprite(ca.getReward(), PvmSummaryTooltip.ICON_SIZE));
-		}
+		tip.setCombatAchievements(ca, itemManager);
 		return tip;
 	}
 

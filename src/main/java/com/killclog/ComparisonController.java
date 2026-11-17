@@ -81,9 +81,6 @@ public class ComparisonController
 		@Nullable
 		AccountDisplay primaryIdentity();
 
-		/** Preload the Combat Summary reward sprite for a CA result. */
-		void preloadCaReward(@Nullable CombatAchievementResult ca);
-
 		/** Restore the clog info cell to single-player display. */
 		void restoreClogCellForCompare(@Nullable ClogResult clog);
 	}
@@ -343,7 +340,6 @@ public class ComparisonController
 			{
 				compared = new ComparedPlayer(thisLookup, compared.hiscore, compared.clog, ca, compared.rsn,
 					compared.selfType);
-				if (renderTarget != null) renderTarget.preloadCaReward(ca);
 				listener.onCompareDataReady();
 			}
 		});
@@ -389,10 +385,9 @@ public class ComparisonController
 		// the search bar the next name may already be typed into.
 		boolean late = comparisonMode && compared.generation == player.generation;
 		compared = player;
-		if (renderTarget != null)
+		if (renderTarget != null && player.clog != null)
 		{
-			if (player.clog != null) renderTarget.preloadClogItemNames(player.clog);
-			renderTarget.preloadCaReward(player.ca);
+			renderTarget.preloadClogItemNames(player.clog);
 		}
 		if (late)
 		{

@@ -152,7 +152,6 @@ public class RuneProfileServiceTest
 		assertNotNull(r);
 		assertEquals(169, r.getTotalPoints());
 		assertEquals(CombatAchievementTier.MEDIUM, r.getTier());
-		assertEquals(CombatAchievementReward.MEDIUM, r.getReward());
 		assertEquals(41, TestViews.completed(r, CombatAchievementTier.EASY));
 		assertEquals(64, TestViews.total(r, CombatAchievementTier.MEDIUM));
 	}
@@ -171,7 +170,6 @@ public class RuneProfileServiceTest
 		CombatAchievementResult r = service.parseCombatAchievements(json);
 		assertNotNull(r);
 		assertEquals(CombatAchievementTier.GRANDMASTER, r.getTier());
-		assertEquals(CombatAchievementReward.GRANDMASTER, r.getReward());
 		assertTrue(r.isAllComplete());
 	}
 
