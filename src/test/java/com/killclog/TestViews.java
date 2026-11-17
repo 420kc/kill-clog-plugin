@@ -387,6 +387,77 @@ final class TestViews
 		return field(tip, "stats");
 	}
 
+	/** A card painted at its preferred size, as the client shows it. */
+	static java.awt.image.BufferedImage paint(javax.swing.JComponent card)
+	{
+		java.awt.Dimension size = card.getPreferredSize();
+		card.setSize(size);
+		java.awt.image.BufferedImage image = new java.awt.image.BufferedImage(size.width, size.height,
+			java.awt.image.BufferedImage.TYPE_INT_ARGB);
+		java.awt.Graphics2D graphics = image.createGraphics();
+		card.paint(graphics);
+		graphics.dispose();
+		return image;
+	}
+
+	/**
+	 * The longest straight run of one colour in a painted card, a bar's fill: {x, y, length, rows}, rows being how many
+	 * rows from y the whole run spans. All zero when the colour never runs.
+	 */
+	static int[] longestRun(java.awt.image.BufferedImage image, java.awt.Color color)
+	{
+		int argb = color.getRGB();
+		int[] best = {0, 0, 0, 0};
+		for (int y = 0; y < image.getHeight(); y++)
+		{
+			int start = -1;
+			for (int x = 0; x <= image.getWidth(); x++)
+			{
+				boolean on = x < image.getWidth() && image.getRGB(x, y) == argb;
+				if (on && start < 0)
+				{
+					start = x;
+				}
+				else if (!on && start >= 0)
+				{
+					if (x - start > best[2])
+					{
+						best = new int[]{start, y, x - start, 0};
+					}
+					start = -1;
+				}
+			}
+		}
+		for (int y = best[1]; best[2] > 0 && y < image.getHeight(); y++)
+		{
+			for (int x = best[0]; x < best[0] + best[2]; x++)
+			{
+				if (image.getRGB(x, y) != argb)
+				{
+					return best;
+				}
+			}
+			best[3]++;
+		}
+		return best;
+	}
+
+	/** The lowest row above {@code below} holding any pixel of this colour, or -1. */
+	static int lowestRowAbove(java.awt.image.BufferedImage image, java.awt.Color color, int below)
+	{
+		for (int y = below - 1; y >= 0; y--)
+		{
+			for (int x = 0; x < image.getWidth(); x++)
+			{
+				if (image.getRGB(x, y) == color.getRGB())
+				{
+					return y;
+				}
+			}
+		}
+		return -1;
+	}
+
 	static List<SkillClogSection> sections(SkillTooltip tip)
 	{
 		return field(tip, "sections");

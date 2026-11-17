@@ -5,9 +5,10 @@ import net.runelite.api.Experience;
 import net.runelite.client.util.LinkBrowser;
 
 /**
- * Experience &amp; Efficiency on the total level cell: total XP, overall rank and the XP left to max, then Efficient
- * Hours (Dylan, 2026-10-15): Played and Clogged, TempleOSRS's EHP and EHC, when Temple tracks the player, and Bossed,
- * the Combat Summary's EHB, for anyone. Each skill's own numbers live in its cell, in the grid or the activity tray.
+ * Experience &amp; Efficiency on the total level cell: total XP, overall rank and the XP left to max with a bar of the
+ * way there, then Efficient Hours (Dylan, 2026-10-15): Played and Clogged, TempleOSRS's EHP and EHC, when Temple
+ * tracks the player, and Bossed, the Combat Summary's EHB, for anyone. Each skill's own numbers live in its cell, in
+ * the grid or the activity tray.
  */
 public class SkillsTooltip extends TitleTooltip
 {
@@ -58,7 +59,8 @@ public class SkillsTooltip extends TitleTooltip
 				result != null && result.getTotalXp() >= 0 ? NativeTooltip.valueColor : KillClogColors.UNRANKED_COLOR))
 			.add(CardBody.line("Rank: ", scoreText(displayedRank()), displayedRank() > 0 ? NativeTooltip.valueColor : KillClogColors.UNRANKED_COLOR))
 			.add(CardBody.line("To max: ", toMax == 0 ? "Maxed" : toMax > 0 ? grouped(toMax) : "--",
-				toMax == 0 ? CLOG_GREEN : NativeTooltip.valueColor));
+				toMax == 0 ? CLOG_GREEN : NativeTooltip.valueColor))
+			.add(CardBody.bar(maxShare(toMax), toMax == 0 ? CLOG_GREEN : CLOG_YELLOW));
 		card.titled("Efficient Hours");
 		if (templeRows)
 		{
@@ -93,6 +95,15 @@ public class SkillsTooltip extends TitleTooltip
 			left += Math.max(0, MAX_SKILL_XP - xp);
 		}
 		return left;
+	}
+
+	/**
+	 * The share of max's XP held, each skill counted to 99 as To max counts it, never by total level (Dylan 11/17): a
+	 * 2114 total can be 89% of the levels and 54% of the XP. None while To max is unknown.
+	 */
+	static double maxShare(long toMax)
+	{
+		return toMax < 0 ? 0 : 1 - (double) toMax / (HiscoreService.skillNames().length * MAX_SKILL_XP);
 	}
 
 	String displayedXpText()

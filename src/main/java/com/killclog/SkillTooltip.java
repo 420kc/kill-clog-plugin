@@ -11,7 +11,7 @@ import net.runelite.client.game.ItemManager;
 
 /**
  * One skill's card: its level at the title's right after the skill's icon, the hiscores' Rank and XP and the XP to the
- * next level under the title, then the skill's log while Skill Clogs is on.
+ * next level under the title with a bar of the way there, then the skill's log while Skill Clogs is on.
  */
 public class SkillTooltip extends TitleTooltip
 {
@@ -78,7 +78,9 @@ public class SkillTooltip extends TitleTooltip
 		CardBody body = new CardBody().add(headerWord(stats.levelText(), skillIcon, getTitleFont(), levelColor))
 			.add(CardBody.line(RANK_LABEL, stats.rankText(), stats.rankColor()))
 			.add(CardBody.line(XP_LABEL, stats.xpText(), stats.xpColor()))
-			.add(CardBody.line(XP_TO_LEVEL_LABEL, stats.xpToLevelText(), stats.xpToLevelColor()));
+			.add(CardBody.line(XP_TO_LEVEL_LABEL, stats.xpToLevelText(), stats.xpToLevelColor()))
+			// The way through the level, in the game's yellow, then its green once Maxed, as the line above turns.
+			.add(CardBody.bar(stats.toNext(), stats.maxed ? CLOG_GREEN : CLOG_YELLOW));
 		if (sections.isEmpty())
 		{
 			return body;
@@ -181,6 +183,17 @@ public class SkillTooltip extends TitleTooltip
 		String rankText()
 		{
 			return rank > 0 ? grouped(rank) : rankAvailable ? "Unranked" : "--";
+		}
+
+		/** The way from this level's XP to the next level's, 0 to 1: all of it once maxed, none while unknown. */
+		double toNext()
+		{
+			if (maxed || level <= 0 || xp < 0)
+			{
+				return maxed ? 1 : 0;
+			}
+			long from = Experience.getXpForLevel(level);
+			return (double) (xp - from) / (Experience.getXpForLevel(level + 1) - from);
 		}
 
 		String xpToLevelText()

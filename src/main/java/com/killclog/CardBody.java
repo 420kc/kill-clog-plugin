@@ -193,6 +193,27 @@ final class CardBody
 		return line(label, value, NativeTooltip.valueColor);
 	}
 
+	// A bar's height and the room above it; its track is the card's ground darkened, whatever its color.
+	static final int BAR_HEIGHT = 3;
+	private static final int BAR_ABOVE = 2;
+	private static final Color BAR_TRACK = new Color(0, 0, 0, 140);
+
+	/**
+	 * A thin bar across the card under the line it pictures, filled to {@code share} (0 to 1) over a dark track: a
+	 * skill's way to its next level, Experience &amp; Efficiency's way to max (Dylan 11/17). It never widens the card.
+	 */
+	static Part bar(double share, Color fill)
+	{
+		return row(BAR_ABOVE + BAR_HEIGHT + 1, c -> 0, (c, y) ->
+		{
+			int width = c.w - 2 * c.inset();
+			c.g.setColor(BAR_TRACK);
+			c.g.fillRect(c.inset(), y + BAR_ABOVE, width, BAR_HEIGHT);
+			c.g.setColor(fill);
+			c.g.fillRect(c.inset(), y + BAR_ABOVE, (int) Math.round(width * Math.max(0, Math.min(1, share))), BAR_HEIGHT);
+		});
+	}
+
 	static Part text(String text, Color color)
 	{
 		return row(NativeTooltip.LINE_HEIGHT, c -> c.fm.stringWidth(text), (c, y) ->
