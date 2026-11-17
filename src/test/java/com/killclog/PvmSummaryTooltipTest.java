@@ -180,6 +180,47 @@ public class PvmSummaryTooltipTest
 		assertEquals(List.of("Vorkath", "Bosses tab"), opened);
 	}
 
+	// Dylan 11/16: a press on 2.8.2's Soul Wars tile closed the Combat Summary instead of opening its log page. LMS and
+	// Soul Wars open their pages once something can open them, as a raid's tile opens its popup; PvP Arena and Bounty
+	// Hunter have no log page, so a press there is the card's own.
+	@Test
+	public void theLmsAndSoulWarsTilesOpenTheirLogPagesAndTheOtherPvpTilesOpenNothing()
+	{
+		PvmSummaryTooltip bare = painted(card());
+		List<Point> unwired = pvpTiles(bare);
+		for (Point tile : unwired)
+		{
+			assertEquals("nothing can open a page yet", -1, TestViews.tileAt(bare, "pvmRows", tile.x + 10, tile.y + 10));
+		}
+
+		PvmSummaryTooltip tip = card();
+		List<String> opened = new ArrayList<>();
+		tip.setOnOpenPage((press, page) -> opened.add(page));
+		painted(tip);
+		List<Point> pvp = pvpTiles(tip);
+		assertEquals(5, pvp.size());
+		int[] keys = pvp.stream().mapToInt(tile -> TestViews.tileAt(tip, "pvmRows", tile.x + 10, tile.y + 10)).toArray();
+		assertArrayEquals(new int[]{2, 3, -1, -1, -1}, keys);
+		assertTrue(press(tip, pvp.get(0).x + 10, pvp.get(0).y + 10, MouseEvent.BUTTON1).isConsumed());
+		assertTrue(press(tip, pvp.get(1).x + 10, pvp.get(1).y + 10, MouseEvent.BUTTON1).isConsumed());
+		assertFalse(press(tip, pvp.get(2).x + 10, pvp.get(2).y + 10, MouseEvent.BUTTON1).isConsumed());
+		assertFalse(press(tip, pvp.get(1).x + 10, pvp.get(1).y + 10, MouseEvent.BUTTON3).isConsumed());
+		assertEquals(List.of("last_man_standing", "soul_wars"), opened);
+	}
+
+	/** The PvP tiles, the card's last five: wheeled to the scroll's end as a player does, then painted where they show. */
+	private static List<Point> pvpTiles(PvmSummaryTooltip tip)
+	{
+		Point raid = firstRaid(tip);
+		for (java.awt.event.MouseWheelListener listener : tip.getMouseWheelListeners())
+		{
+			listener.mouseWheelMoved(new java.awt.event.MouseWheelEvent(tip, MouseEvent.MOUSE_WHEEL, 0, 0,
+				raid.x + 10, raid.y + 10, 0, false, java.awt.event.MouseWheelEvent.WHEEL_UNIT_SCROLL, 3, 50));
+		}
+		List<Point> tiles = TestViews.tiles(render(tip));
+		return tiles.subList(Math.max(0, tiles.size() - 5), tiles.size());
+	}
+
 	// Dylan 11/14: the combat level moves to the title's right, and the prestige cape and Dizana's quiver stand under the
 	// title as items, each named in the band while hovered.
 	@Test

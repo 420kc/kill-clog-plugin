@@ -252,9 +252,31 @@ public class TraySummaryWiringTest
 		{
 			seedSelf(clog("Seeded", 1, false));
 			PvmSummaryTooltip tip = (PvmSummaryTooltip) panel.combatCell().createToolTip();
-			List<?> pvp = field(tip, "pvp", List.class);
-			assertEquals(Arrays.asList("--", "1,234,567", "--", "42", "--"),
-				pvp.stream().map(tile -> ((GameTile.Tile) tile).countText).collect(Collectors.toList()));
+			// An unranked activity's -1 reads "--" on its tile.
+			assertArrayEquals(new int[]{-1, 1_234_567, -1, 42, -1}, field(tip, "pvpScores", int[].class));
+		});
+	}
+
+	// Dylan 11/16: 2.8.2's Soul Wars tile closed the Combat Summary, as the panel never gave the card a way to open a
+	// page. Its LMS and Soul Wars tiles open their log pages where the summary was.
+	@Test
+	@SuppressWarnings("unchecked")
+	public void theCombatSummarysPvpTilesOpenTheirLogPagesInPlace() throws Exception
+	{
+		edt(() ->
+		{
+			seedSelf(clog("Seeded", 1, false));
+			// The panel's cards pin through the same stand-in as the cells.
+			set(field(panel, "summaryCards", SummaryCards.class), "tooltipController",
+				field(cells, "tooltipController", TooltipController.class));
+			JLabel combat = panel.combatCell();
+			PvmSummaryTooltip tip = (PvmSummaryTooltip) combat.createToolTip();
+			java.util.function.BiConsumer<MouseEvent, String> open =
+				field(tip, "onOpenPage", java.util.function.BiConsumer.class);
+			assertTrue("the panel gives the card a way to open a page", open != null);
+			open.accept(new MouseEvent(tip, MouseEvent.MOUSE_PRESSED, 0L, 0, 5, 5, 1, false, MouseEvent.BUTTON1), "soul_wars");
+			assertEquals(1, pinned.size());
+			assertSame(combat, pinnedOn.get(0));
 		});
 	}
 

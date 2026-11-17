@@ -94,6 +94,12 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private int mostKilledObtained = -1;
 	private int mostKilledTotal;
 	private static final int MOST_KILLED = 0;
+	// A PvP tile with a log page opens that page where the summary was, as a raid's tile opens its popup (Dylan,
+	// 2026-11-16: a press on Soul Wars closed the card). Its key follows the PvM tiles', which share the clicks.
+	@Setter
+	@Nullable
+	private BiConsumer<MouseEvent, String> onOpenPage;
+	private static final int PVP_PAGE = 2;
 	private final CardBody.ClickRows pvmRows = new CardBody.ClickRows(this, (e, key) ->
 	{
 		if (key == BOSSES && onOpenBosses != null)
@@ -106,11 +112,20 @@ public class PvmSummaryTooltip extends TitleTooltip
 			onOpenRaid.accept(e, mostKilledBoss);
 			e.consume();
 		}
+		else if (key >= PVP_PAGE && onOpenPage != null)
+		{
+			onOpenPage.accept(e, PVP_PAGES[key - PVP_PAGE]);
+			e.consume();
+		}
 	});
 	// The PvP activities' short names, in PanelData.PVP_ACTIVITIES' order; the first two have a log page.
 	private static final String[] PVP_LABELS = {"LMS", "Soul Wars", "PvP Arena", "BH", "BH Rogue"};
 	private static final String[] PVP_PAGES = {"last_man_standing", "soul_wars"};
-	private final List<GameTile.Tile> pvp = new ArrayList<>();
+	// Each activity's hiscores score, and its log's obtained and total where it has a page and a score (else null).
+	private final int[] pvpScores = new int[PVP_LABELS.length];
+	private final int[][] pvpLogs = new int[PVP_LABELS.length][];
+	@Nullable
+	private BufferedImage[] pvpIcons;
 
 	{
 		// Before any lookup the section is there too, five "--" tiles, so a comparison pair never staggers.
@@ -136,13 +151,12 @@ public class PvmSummaryTooltip extends TitleTooltip
 	 */
 	void setPvp(@Nullable HiscoreResult hiscore, @Nullable ClogResult clog, @Nullable BufferedImage[] icons)
 	{
-		pvp.clear();
+		pvpIcons = icons;
 		for (int i = 0; i < PVP_LABELS.length; i++)
 		{
-			int score = hiscore != null ? hiscore.getActivityScore(PanelData.PVP_ACTIVITIES[i].getName()) : 0;
-			int[] log = score > 0 && clog != null && i < PVP_PAGES.length ? ClogHelper.clogCounts(PVP_PAGES[i], clog) : null;
-			pvp.add(new GameTile.Tile(PVP_LABELS[i], icons != null ? icons[i] : null, log != null ? log[0] : -1,
-				log != null ? log[1] : 0, -1).count(scoreText(score)));
+			pvpScores[i] = hiscore != null ? hiscore.getActivityScore(PanelData.PVP_ACTIVITIES[i].getName()) : 0;
+			pvpLogs[i] = pvpScores[i] > 0 && clog != null && i < PVP_PAGES.length
+				? ClogHelper.clogCounts(PVP_PAGES[i], clog) : null;
 		}
 	}
 
@@ -298,8 +312,17 @@ public class PvmSummaryTooltip extends TitleTooltip
 		body.add(CardBody.gap(WEAPON_PAD))
 			.add(CardBody.sprites(0, superiorSprites, PanelData.SUPERIOR_ITEMS, PanelData.SUPERIOR_ITEM_NAMES,
 				superiorCounts, WEAPON_PAD, Integer.MAX_VALUE, null))
-			.titled(PVP_HEADER)
-			.add(GameTile.grid(pvmRows, pvp));
+			.titled(PVP_HEADER);
+		// The PvP tiles: LMS and Soul Wars open their log pages once something can open them; the rest have none.
+		List<GameTile.Tile> pvp = new ArrayList<>();
+		for (int i = 0; i < PVP_LABELS.length; i++)
+		{
+			int[] log = pvpLogs[i];
+			pvp.add(new GameTile.Tile(PVP_LABELS[i], pvpIcons != null ? pvpIcons[i] : null, log != null ? log[0] : -1,
+				log != null ? log[1] : 0, onOpenPage != null && i < PVP_PAGES.length ? PVP_PAGE + i : -1)
+				.count(scoreText(pvpScores[i])));
+		}
+		body.add(GameTile.grid(pvmRows, pvp));
 		return card.add(CardBody.hoverBand()).add(CardBody.scroll(scroll, body.asPart()));
 	}
 

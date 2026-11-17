@@ -260,6 +260,9 @@ final class SummaryCards
 		// A raid row opens that raid's popup where the summary was, like the Clue Summary's rares.
 		tip.setOnOpenRaid((press, raid) ->
 			tooltipController.openInPlace(owner, press, cells.buildCellTooltipFor(owner, raid), "< Combat Summary"));
+		// LMS's and Soul Wars' tiles open their log pages there too.
+		tip.setOnOpenPage((press, page) ->
+			tooltipController.openInPlace(owner, press, clogPages.page(owner, page), "< Combat Summary"));
 		if (ca != null)
 		{
 			tip.setCombatAchievements(ca, caRewardSprites.sprite(ca.getReward(), PvmSummaryTooltip.ICON_SIZE));
