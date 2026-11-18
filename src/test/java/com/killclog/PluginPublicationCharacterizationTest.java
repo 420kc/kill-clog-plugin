@@ -1050,6 +1050,33 @@ public class PluginPublicationCharacterizationTest
 		verify(caCache).cacheResult(eq(RSN), anyLong(), any());
 	}
 
+	/** A League world's Combat Achievements are the League character's: they're never read as your own (2.8.3). */
+	@Test
+	public void aLeagueWorldsCombatAchievementsAreNeverRead() throws Exception
+	{
+		LocalCaCache caCache = (LocalCaCache) field("localCaCache");
+		world(net.runelite.api.WorldType.SEASONAL, net.runelite.api.WorldType.MEMBERS);
+		ticks(20);
+		// A task done there moves the game's counts, which asks for a read.
+		net.runelite.api.events.VarbitChanged done = new net.runelite.api.events.VarbitChanged();
+		done.setVarbitId(CombatAchievementTier.EASY.completedVarbit);
+		plugin.onVarbitChanged(done);
+		ticks(1);
+		verify(caCache, never()).cacheResult(any(), anyLong(), any());
+	}
+
+	/** Your Combat Achievements reading is the login's that read it: each login, and each logout, hands the cache its session. */
+	@Test
+	public void eachLoginHandsTheCombatAchievementsItsSession() throws Exception
+	{
+		LocalCaCache caCache = (LocalCaCache) field("localCaCache");
+		verify(caCache).serve(org.mockito.ArgumentMatchers.argThat(session -> session.loggedIn()
+			&& RSN.equals(session.getName()) && session.getAccountHash() == HASH));
+		gameState = GameState.LOGIN_SCREEN;
+		((SessionTracker) field("sessions")).update(client);
+		verify(caCache).serve(org.mockito.ArgumentMatchers.argThat(session -> !session.loggedIn()));
+	}
+
 	/**
 	 * The game tick's order, written down: the world settles (the counters and CA tiers it held back), the account
 	 * takes up its own log, that log's name-change line, the CA read, and last the automatic lookup, which reads what
