@@ -119,6 +119,37 @@ public class SummaryCardsTest
 	}
 
 	@Test
+	public void aLookedUpPlayersCombatSummaryShowsTheFullerOfTheirSyncAndRuneProfile()
+	{
+		Cells cells = mock(Cells.class);
+		when(cells.getBossLabels()).thenReturn(java.util.Collections.emptyMap());
+		when(cells.getPvpActivityIcons()).thenReturn(new java.awt.image.BufferedImage[5]);
+		LookupSession session = mock(LookupSession.class);
+		java.util.Map<CombatAchievementTier, Integer> easyDone = new java.util.EnumMap<>(CombatAchievementTier.class);
+		easyDone.put(CombatAchievementTier.EASY, CombatAchievementTier.EASY.totalTasks());
+		java.util.Map<CombatAchievementTier, Integer> mediumDone = new java.util.EnumMap<>(easyDone);
+		mediumDone.put(CombatAchievementTier.MEDIUM, CombatAchievementTier.MEDIUM.totalTasks());
+		CombatAchievementResult easy = CombatAchievementResult.of(easyDone, null);
+		CombatAchievementResult medium = CombatAchievementResult.of(mediumDone, null);
+		ClogResult clog = new ClogResult("Tester", java.util.Collections.emptyMap(), java.util.Collections.emptyMap(),
+			java.util.Collections.emptyMap(), null, null);
+		when(session.getClogResult()).thenReturn(clog);
+		JLabel owner = new JLabel();
+		new JPanel().add(owner);
+		SummaryCards cards = cards(session, cells, mock(ClogPages.class));
+
+		when(session.getCaResult()).thenReturn(easy);
+		clog.setSyncedCa(medium);
+		assertSame("the Medium their sync sent, not RuneProfile's Easy", medium,
+			TestViews.field(cards.buildPvm(owner, (JPanel) owner.getParent()), "caResult"));
+
+		when(session.getCaResult()).thenReturn(medium);
+		clog.setSyncedCa(easy);
+		assertSame("RuneProfile's Medium, not the Easy of a sync they stopped", medium,
+			TestViews.field(cards.buildPvm(owner, (JPanel) owner.getParent()), "caResult"));
+	}
+
+	@Test
 	public void eachRaidTileGetsItsOwnMegarareCount()
 	{
 		// The tiles read the counts in raids.tsv's order: here two Scythes on ToB's page and an Obligator on TFA's.

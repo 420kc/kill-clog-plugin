@@ -19,7 +19,7 @@ Your log is saved locally and updates with new unlocks as you play. Open the Col
 
 Enter an RSN in the search bar, or right-click a supported player or name and choose **Kill Clog**.
 
-HiScores load for any valid RSN, Collection Log totals and ranks included. Item-by-item Collection Logs appear when a player has data through TempleOSRS, RuneProfile, or Kill Clog. Your clan comes from the game; other players' clans from their Kill Clog sync, or RuneProfile.
+HiScores load for any valid RSN, Collection Log totals and ranks included. Item-by-item Collection Logs appear when a player has data through TempleOSRS, RuneProfile, or Kill Clog. Your clan and Combat Achievements come from the game; other players' from their Kill Clog sync, or RuneProfile.
 
 While a League runs, a **Leagues** switch beside the search bar flips the panel between League and main game stats.
 
@@ -105,7 +105,7 @@ Optional and off by default. Your synced log and character show on [killclog.com
 
 ![based batt's published character and follower on killclog.com and in Kill Clog's Player Summary](screenshots/web-sync-profile-and-summary.png)
 
-**Sync Collection Log** keeps your killclog.com profile up to date with your Collection Log, unlock dates, personal bests and clan. The chalice (**sync collection log**) syncs right away; open the in-game log first so it's current. **Automatic sync** turns on with it: your profile updates at login, after new items, and when you open your Collection Log. Turn it off to sync only when you click the chalice.
+**Sync Collection Log** keeps your killclog.com profile up to date with your Collection Log, unlock dates, personal bests, Combat Achievements and clan. The chalice (**sync collection log**) syncs right away; open the in-game log first so it's current. **Automatic sync** turns on with it: your profile updates at login, after new items, and when you open your Collection Log. Turn it off to sync only when you click the chalice.
 
 ![Kill Clog Web Sync settings with Sync Collection Log, Automatic sync, Quiet automatic sync, Publish Character Model and Share Clan on](screenshots/web-sync-settings.png)
 

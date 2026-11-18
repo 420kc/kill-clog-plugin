@@ -1,6 +1,8 @@
 package com.killclog;
 
+import com.google.gson.*;
 import java.util.*;
+import javax.annotation.Nullable;
 import lombok.*;
 
 /**
@@ -19,6 +21,8 @@ final class CombatAchievementResult
 	private final Map<CombatAchievementTier, Integer> providerTotal;
 	private final Map<CombatAchievementTier, Integer> currentTotals;
 	private final boolean liveCatalog;
+	// Read from this client's game for the logged-in player (LocalCaCache), which no other source replaces.
+	private final boolean fromGame;
 	@Getter(AccessLevel.PACKAGE)
 	private final int totalPoints;
 	// Highest unlocked tier, or null if below Easy.
@@ -27,11 +31,12 @@ final class CombatAchievementResult
 
 	private CombatAchievementResult(Map<CombatAchievementTier, Integer> completed,
 									Map<CombatAchievementTier, Integer> providerTotal,
-									Map<CombatAchievementTier, Integer> liveTotals)
+									Map<CombatAchievementTier, Integer> liveTotals, boolean fromGame)
 	{
 		this.completed = completed;
 		this.providerTotal = providerTotal;
 		this.liveCatalog = liveTotals != null && !liveTotals.isEmpty();
+		this.fromGame = fromGame;
 
 		Map<CombatAchievementTier, Integer> totals = new EnumMap<>(CombatAchievementTier.class);
 		for (CombatAchievementTier loopTier : CombatAchievementTier.values())
@@ -101,6 +106,19 @@ final class CombatAchievementResult
 									Map<CombatAchievementTier, Integer> total,
 									Map<CombatAchievementTier, Integer> liveTotals)
 	{
+		return build(completed, total, liveTotals, false);
+	}
+
+	/** Your own game's counts for the logged-in player, which no other source replaces (LocalCaCache). */
+	static CombatAchievementResult fromGame(Map<CombatAchievementTier, Integer> completed,
+		Map<CombatAchievementTier, Integer> total, Map<CombatAchievementTier, Integer> liveTotals)
+	{
+		return build(completed, total, liveTotals, true);
+	}
+
+	private static CombatAchievementResult build(Map<CombatAchievementTier, Integer> completed,
+		Map<CombatAchievementTier, Integer> total, Map<CombatAchievementTier, Integer> liveTotals, boolean fromGame)
+	{
 		Map<CombatAchievementTier, Integer> c = new EnumMap<>(CombatAchievementTier.class);
 		Map<CombatAchievementTier, Integer> t = new EnumMap<>(CombatAchievementTier.class);
 		if (completed != null)
@@ -111,7 +129,57 @@ final class CombatAchievementResult
 		{
 			t.putAll(total);
 		}
-		return new CombatAchievementResult(c, t, liveTotals);
+		return new CombatAchievementResult(c, t, liveTotals, fromGame);
+	}
+
+	/**
+	 * Tier rows as RuneProfile sends them and killclog.com serves a player's sync (2.8.3): each a tier's name, its
+	 * completed tasks and the game's count. Null when no row names a tier; a count of the wrong shape throws, so a
+	 * garbled answer never reads as none done.
+	 */
+	@Nullable
+	static CombatAchievementResult fromRows(JsonArray rows, @Nullable Map<CombatAchievementTier, Integer> liveTotals)
+	{
+		Map<CombatAchievementTier, Integer> completed = new EnumMap<>(CombatAchievementTier.class);
+		Map<CombatAchievementTier, Integer> total = new EnumMap<>(CombatAchievementTier.class);
+		for (JsonObject row : Json.objects(rows))
+		{
+			CombatAchievementTier tier = row.has("name") ? CombatAchievementTier.fromName(row.get("name").getAsString()) : null;
+			if (tier != null)
+			{
+				completed.put(tier, Json.strictInt(row, "completed"));
+				total.put(tier, Json.strictInt(row, "total"));
+			}
+		}
+		return completed.isEmpty() ? null : of(completed, total, liveTotals);
+	}
+
+	/** The rows your sync sends (2.8.3): every tier's tasks done and the game's count for it. */
+	JsonArray toRows()
+	{
+		JsonArray rows = new JsonArray();
+		for (CombatAchievementTier loopTier : CombatAchievementTier.values())
+		{
+			JsonObject row = new JsonObject();
+			row.addProperty("name", loopTier.name().toLowerCase(Locale.ROOT));
+			row.addProperty("completed", completed.getOrDefault(loopTier, 0));
+			row.addProperty("total", currentTotals.get(loopTier));
+			rows.add(row);
+		}
+		return rows;
+	}
+
+	/**
+	 * The tiers a card shows: yours from your own game; anyone else's from the fuller of their own Kill Clog sync and
+	 * RuneProfile, by points, ties going to their sync, as the fullest log leads, so a sync they stopped never stands
+	 * over RuneProfile's later answer. A character's tasks only grow while it plays, so the fuller is the newer; a
+	 * Hardcore Worlds reset or a retired task can leave RuneProfile's older reading the fuller until it updates.
+	 */
+	@Nullable
+	static CombatAchievementResult shown(@Nullable CombatAchievementResult fetched, @Nullable CombatAchievementResult synced)
+	{
+		return fetched != null && (fetched.fromGame || synced == null || fetched.totalPoints > synced.totalPoints)
+			? fetched : synced;
 	}
 
 	/**
@@ -130,6 +198,6 @@ final class CombatAchievementResult
 		{
 			return this;
 		}
-		return new CombatAchievementResult(completed, providerTotal, liveTotals);
+		return new CombatAchievementResult(completed, providerTotal, liveTotals, fromGame);
 	}
 }

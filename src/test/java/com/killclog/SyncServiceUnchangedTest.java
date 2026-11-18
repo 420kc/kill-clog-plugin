@@ -15,6 +15,7 @@ import okhttp3.ResponseBody;
 import org.junit.Before;
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -66,9 +67,15 @@ public class SyncServiceUnchangedTest
 	private SyncService.SyncResult push(Map<String, Double> pbs, AccountType type, String mode, boolean always)
 		throws Exception
 	{
+		return push(TESTER, pbs, type, mode, always);
+	}
+
+	private SyncService.SyncResult push(Session login, Map<String, Double> pbs, AccountType type, String mode,
+		boolean always) throws Exception
+	{
 		KillclogSyncGate<Object> gate = new KillclogSyncGate<>((waiting, later) -> later);
 		int generation = gate.begin(null, gate.era(), KillclogSyncGate.DELIBERATE);
-		SyncService.SyncResult result = service.syncCollectionLog(TESTER, type, pbs, Map.of(), gate,
+		SyncService.SyncResult result = service.syncCollectionLog(login, type, pbs, Map.of(), gate,
 			generation, cache, mode, -1, always, () -> sending++).get();
 		gate.release(generation);
 		return result;
@@ -140,6 +147,38 @@ public class SyncServiceUnchangedTest
 		push();
 
 		assertEquals(2, sent.size());
+	}
+
+	@Test
+	public void aCombatAchievementDoneSinceSendsThePushWithThisLoginsTiers() throws Exception
+	{
+		LocalCaCache tiers = new LocalCaCache(new Gson(), new InlineScheduledExecutorService());
+		tiers.open(null);
+		tiers.serve(TESTER);
+		tiers.cacheResult("Tester", 42L, Map.of(CombatAchievementTier.EASY, 1));
+		Field held = SyncService.class.getDeclaredField("localCaCache");
+		held.setAccessible(true);
+		held.set(service, tiers);
+		push();
+		push();
+		tiers.cacheResult("Tester", 42L, Map.of(CombatAchievementTier.EASY, 2));
+		push();
+
+		assertEquals("an unchanged reading stays home, a new one goes", 2, sent.size());
+		assertTrue(body(1).contains("{\"name\":\"easy\",\"completed\":2,\"total\":41}"));
+
+		// The next login sends none until it has read the game itself: never the last login's.
+		Session later = new Session(4, "Tester", 42L);
+		tiers.serve(later);
+		push(later, Map.of(), null, "main", true);
+		assertFalse(body(2).contains("combat_achievements"));
+	}
+
+	private String body(int push) throws java.io.IOException
+	{
+		okio.Buffer body = new okio.Buffer();
+		sent.get(push).body().writeTo(body);
+		return body.readUtf8();
 	}
 
 	@Test

@@ -503,9 +503,9 @@ public interface KillClogConfig extends Config
 	@ConfigItem(
 		keyName = "killclogSync",
 		name = "Sync Collection Log",
-		description = "Keeps your killclog.com profile up to date with your Collection Log and "
-			+ "personal bests. The chalice syncs right away. Nothing is sent until you turn "
-			+ "this on, and the opt-out page removes everything.",
+		description = "Keeps your killclog.com profile up to date with your Collection Log, "
+			+ "personal bests and Combat Achievements. The chalice syncs right away. Nothing is "
+			+ "sent until you turn this on, and the opt-out page removes everything.",
 		section = killclogSection,
 		position = 0
 	)

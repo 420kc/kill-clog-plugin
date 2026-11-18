@@ -36,6 +36,9 @@ class SyncService
 	// The game's Collection Log as this client reads it, shared when killclog.com holds another.
 	@Inject
 	private ClogIndex clogIndex;
+	// Your Combat Achievements as this login read them from the game (2.8.3).
+	@Inject
+	private LocalCaCache localCaCache;
 	// Your clan as the game shows it, for each sync (2.6.3).
 	@Setter
 	@Nullable
@@ -127,7 +130,8 @@ class SyncService
 				"Open your Collection Log to set up Kill Clog automatically."));
 		}
 
-		String body = requestBody(accountHash, accountType, clog, personalBests, detailedPersonalBests, mode, hardcoreXp);
+		String body = requestBody(accountHash, accountType, clog, personalBests, detailedPersonalBests, mode, hardcoreXp,
+			localCaCache != null ? localCaCache.thisLogin(session) : null);
 		final int observedCount = ClogResult.coverageCount(clog);
 		String url = KillClogEndpoint.apiBaseUrl() + "/player/" + HttpUtil.pathSegment(rsn) + "/sync/" + mode;
 		String push = url + body;
@@ -180,15 +184,24 @@ class SyncService
 		return wire(gson, root);
 	}
 
-	/** The text a push sends: the body, and the game's structure on a main-game sync that should carry it. */
+	/**
+	 * The text a push sends: the body, and on a main-game sync the game's structure when it should carry it and your
+	 * Combat Achievements as this login read them, so a lookup needs no other site for them (2.8.3).
+	 */
 	String requestBody(long accountHash, @Nullable AccountType accountType, ClogResult clog,
-		Map<String, Double> personalBests, Map<String, PbRecord> detailedPersonalBests, String mode, long hardcoreXp)
+		Map<String, Double> personalBests, Map<String, PbRecord> detailedPersonalBests, String mode, long hardcoreXp,
+		@Nullable CombatAchievementResult ca)
 	{
 		JsonObject root = buildBody(accountHash, accountType, clog, personalBests, detailedPersonalBests, hardcoreXp);
-		JsonObject structure = GameMode.MAIN.equals(mode) ? structureToShare() : null;
+		boolean main = GameMode.MAIN.equals(mode);
+		JsonObject structure = main ? structureToShare() : null;
 		if (structure != null)
 		{
 			root.add("clog_structure", structure);
+		}
+		if (main && ca != null)
+		{
+			root.add("combat_achievements", ca.toRows());
 		}
 		return wire(gson, root);
 	}

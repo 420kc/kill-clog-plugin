@@ -18,8 +18,9 @@ import net.runelite.client.util.Filepath;
  * <p>Self CA is read straight from the game (per-tier completed counts via
  * varbits) and kept per account in {@code ca/<hash>.json}. It is the
  * authoritative source for the logged-in player and needs no RuneProfile;
- * other players come from {@link RuneProfileService}'s API. The folder loads
- * whole on this cache's disk thread when it opens.
+ * your sync sends this login's (2.8.3), and other players come from their own
+ * sync, or {@link RuneProfileService}'s API. The folder loads whole on this
+ * cache's disk thread when it opens.
  *
  * <p>One guard, as {@link LocalClogCache} has: what it holds in memory is read and
  * changed only under its monitor, and the disk thread hands its results back under it.
@@ -38,6 +39,9 @@ public class LocalCaCache
 	private String activePlayer;
 	// The logged-in account's file, known from its first capture this session.
 	private String activeFile;
+	// The login served now, and the one the last capture was read in: a sync sends only its own login's (thisLogin).
+	private Session served;
+	private Session capturedIn;
 	private final ExecutorService diskWriter;
 
 	// The game's live task counts, empty until the game answers and after shutdown.
@@ -104,6 +108,8 @@ public class LocalCaCache
 	{
 		activePlayer = null;
 		activeFile = null;
+		served = null;
+		capturedIn = null;
 	}
 
 	/** The login whose tiers this store serves, from the session tracker. */
@@ -115,6 +121,7 @@ public class LocalCaCache
 			activeFile = null;
 		}
 		activePlayer = name;
+		served = session;
 	}
 
 	public synchronized boolean isActivePlayer(String name)
@@ -142,6 +149,8 @@ public class LocalCaCache
 		}
 		String file = StoreFiles.ownFileName(Long.toString(accountHash));
 		activeFile = file;
+		capturedIn = served != null && served.getAccountHash() == accountHash && RsnInputPolicy.sameName(served.getName(), name)
+			? served : null;
 		Map<String, Integer> completedByTier = new LinkedHashMap<>();
 		for (Map.Entry<CombatAchievementTier, Integer> entry : completed.entrySet())
 		{
@@ -230,8 +239,15 @@ public class LocalCaCache
 		{
 			totals.put(tier, tier.totalTasks());
 		}
-		return CombatAchievementResult.of(completed, totals,
+		return CombatAchievementResult.fromGame(completed, totals,
 			caCatalog != null ? caCatalog.totals() : null);
+	}
+
+	/** The tiers this login read from the game, for its sync; null before it has read them, so none from before go. */
+	@Nullable
+	synchronized CombatAchievementResult thisLogin(Session session)
+	{
+		return session.equals(served) && session.equals(capturedIn) ? getCached(session.getName()) : null;
 	}
 
 	static class CaData

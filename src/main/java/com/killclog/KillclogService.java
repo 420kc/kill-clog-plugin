@@ -78,6 +78,9 @@ public class KillclogService
 	// The game's own pages once the client has read the log; the provider catalog stands in before then.
 	@Inject
 	private ClogIndex clogIndex;
+	// The game's task counts, which a sync's Combat Achievements count against as RuneProfile's do.
+	@Inject
+	private CaCatalog caCatalog;
 
 	// Membership index: normalized names of players with first-party proof.
 	// Null until the first successful fetch; a null index degrades to "skip the
@@ -344,6 +347,7 @@ public class KillclogService
 	 * <pre>{@code
 	 * { exists, rsn, updated_at, last_changed, unique_obtained, unique_total,
 	 *   pbs: { "Boss Name": seconds },
+	 *   combat_achievements: [{ name, completed, total }],
 	 *   clog: { items_by_category: { cat: [{ item_id, quantity, last_seen_at }] },
 	 *           total_obtained, capitalized_name } }
 	 * }</pre>
@@ -489,6 +493,8 @@ public class KillclogService
 				result.setSyncedClanTitle(Json.primitive(clan.get("title_id")) != null
 					? new ClanTitle(Json.intField(clan, "title_id"), Json.stringField(clan, "title")) : null);
 			}
+			// The Combat Achievements their sync sent (2.8.3): the Combat Summary shows the fuller of them and RuneProfile's.
+			result.setSyncedCa(syncedCa(root));
 
 			pbCache.put(key, parsePbs(root));
 			return result;
@@ -496,6 +502,22 @@ public class KillclogService
 		catch (Exception e)
 		{
 			log.debug("Failed to parse killclog proof view: {}", e.getMessage());
+			return null;
+		}
+	}
+
+	/** A sync's tiers, or null for none or a garbled reading, which never costs the log. */
+	@Nullable
+	private CombatAchievementResult syncedCa(JsonObject root)
+	{
+		JsonArray rows = Json.array(root, "combat_achievements");
+		CaCatalog catalog = caCatalog;
+		try
+		{
+			return rows != null ? CombatAchievementResult.fromRows(rows, catalog != null ? catalog.totals() : null) : null;
+		}
+		catch (RuntimeException e)
+		{
 			return null;
 		}
 	}

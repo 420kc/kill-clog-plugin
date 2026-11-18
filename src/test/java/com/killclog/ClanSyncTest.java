@@ -114,7 +114,7 @@ public class ClanSyncTest
 		assertTrue("and it says none", sent.get("clan").isJsonNull());
 		// As a push sends it, too: Gson's default leaves a null field out, so the server never heard "none".
 		String text = service.requestBody(1L, null, new ClogResult("420 kc", Map.of(), Map.of(), Map.of(), null, null),
-			Map.of(), Map.of(), GameMode.MAIN, -1);
+			Map.of(), Map.of(), GameMode.MAIN, -1, null);
 		assertTrue(text.contains("\"clan\":null"));
 	}
 

@@ -264,7 +264,7 @@ final class SummaryCards
 		// LMS's and Soul Wars' tiles open their log pages there too.
 		tip.setOnOpenPage((press, page) ->
 			tooltipController.openInPlace(owner, press, clogPages.page(owner, page), "< Combat Summary"));
-		tip.setCombatAchievements(ca, itemManager);
+		tip.setCombatAchievements(CombatAchievementResult.shown(ca, clog != null ? clog.getSyncedCa() : null), itemManager);
 		return tip;
 	}
 

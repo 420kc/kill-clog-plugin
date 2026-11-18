@@ -6,8 +6,9 @@ import javax.annotation.Nullable;
 
 /**
  * Reading a site's JSON where any field can be missing, JSON null or the wrong shape: each reads as absent (null, 0,
- * -1 or nothing to loop over) instead of throwing, so one odd field never costs the whole answer. One exception:
- * {@link #intField} on text that isn't a number throws, as Gson does, so callers read inside their parse's catch.
+ * -1 or nothing to loop over) instead of throwing, so one odd field never costs the whole answer. The exceptions:
+ * {@link #intField} on text that isn't a number throws, as Gson does, and {@link #strictInt} on any wrong shape, so
+ * callers read inside their parse's catch.
  */
 final class Json
 {
@@ -85,6 +86,12 @@ final class Json
 	{
 		JsonPrimitive value = primitive(get(object, field));
 		return value != null ? value.getAsInt() : 0;
+	}
+
+	/** Strict where {@link #intField} is lenient: a field of the wrong shape throws, so a garbled id can't read as 0. */
+	static int strictInt(@Nullable JsonObject object, String field)
+	{
+		return present(object, field) ? object.get(field).getAsInt() : 0;
 	}
 
 	@Nullable

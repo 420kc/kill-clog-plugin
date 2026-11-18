@@ -69,15 +69,15 @@ public class SyncServiceModeTest
 			Map.of("boss", List.of(1)), Map.of(), null, null);
 		SyncService service = new SyncService(new OkHttpClient(), new Gson());
 		// Each push carries its own reading, taken as it gathered for its login: -1 off Hardcore Worlds.
-		String main = service.requestBody(42L, null, clog, Map.of(), Map.of(), "main", -1);
+		String main = service.requestBody(42L, null, clog, Map.of(), Map.of(), "main", -1, null);
 		assertFalse(main.contains("\"world\""));
 		assertEquals("a main-game push is sent as built", main, service.withOverallXp(main, -1));
 
-		String unsettled = service.requestBody(42L, null, clog, Map.of(), Map.of(), "main", 0);
+		String unsettled = service.requestBody(42L, null, clog, Map.of(), Map.of(), "main", 0, null);
 		assertTrue("the world says so before its XP is read", unsettled.contains("\"world\":\"hardcore\""));
 		assertEquals("no XP until it's read", unsettled, service.withOverallXp(unsettled, 0));
 
-		String built = service.requestBody(42L, null, clog, Map.of(), Map.of(), "main", 5_000L);
+		String built = service.requestBody(42L, null, clog, Map.of(), Map.of(), "main", 5_000L, null);
 		assertFalse("the XP never makes a push new", built.contains("overall_xp"));
 		assertEquals(5_000L, new Gson().fromJson(service.withOverallXp(built, 5_000L), JsonObject.class).get("overall_xp")
 			.getAsLong());
@@ -87,7 +87,7 @@ public class SyncServiceModeTest
 		assertFalse("the first run names no reset XP", first.has("run_start_xp"));
 		clog.setRunStartedAt("2026-11-04T12:00:00Z");
 		clog.setRunStartXp(1_154);
-		JsonObject reset = new Gson().fromJson(service.requestBody(42L, null, clog, Map.of(), Map.of(), "main", 5_000L),
+		JsonObject reset = new Gson().fromJson(service.requestBody(42L, null, clog, Map.of(), Map.of(), "main", 5_000L, null),
 			JsonObject.class);
 		assertEquals("2026-11-04T12:00:00Z", reset.get("run_started_at").getAsString());
 		assertEquals(1_154, reset.get("run_start_xp").getAsLong());

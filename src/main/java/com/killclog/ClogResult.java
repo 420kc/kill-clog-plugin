@@ -55,6 +55,10 @@ public class ClogResult
 	@Getter
 	@Setter
 	private String syncedClan;
+	/** The Combat Achievements the player's own Kill Clog sync last sent (2.8.3), or null */
+	@Getter
+	@Setter
+	private CombatAchievementResult syncedCa;
 
 	// Hardcore Worlds: when a reset started this log over, and at what XP, for the sync.
 	@Getter
@@ -137,6 +141,7 @@ public class ClogResult
 		this.templeEhp = source.templeEhp;
 		this.templeEhc = source.templeEhc;
 		this.syncedClan = source.syncedClan;
+		this.syncedCa = source.syncedCa;
 		this.runStartedAt = source.runStartedAt;
 		this.runStartXp = source.runStartXp;
 		this.syncedClanKnown = source.syncedClanKnown;
@@ -257,9 +262,9 @@ public class ClogResult
 	}
 
 	/**
-	 * Keeps TempleOSRS's figures, the synced clan, the gamble count and the page counts when the other side of a
-	 * combine carried them and this didn't: only the player's own sync knows the counts, so a provider's fuller log
-	 * mustn't drop them.
+	 * Keeps TempleOSRS's figures, the synced clan and Combat Achievements, the gamble count and the page counts when
+	 * the other side of a combine carried them and this didn't: only the player's own sync knows the counts, so a
+	 * provider's fuller log mustn't drop them.
 	 */
 	private ClogResult carryFrom(ClogResult other)
 	{
@@ -267,6 +272,7 @@ public class ClogResult
 		{
 			highGambles = Math.max(highGambles, other.highGambles);
 			other.pageCounts.forEach(pageCounts::putIfAbsent);
+			syncedCa = syncedCa != null ? syncedCa : other.syncedCa;
 		}
 		if (other != null && templeEhp < 0 && templeEhc < 0)
 		{

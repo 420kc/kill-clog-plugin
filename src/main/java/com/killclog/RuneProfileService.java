@@ -222,42 +222,14 @@ public class RuneProfileService
 			JsonObject root = gson.fromJson(json, JsonObject.class);
 			JsonArray data = Json.array(root, "data");
 			data = data != null ? data : Json.array(root, "combatAchievements");
-			return data != null ? parseCombatAchievementRows(data) : null;
+			CaCatalog catalog = caCatalog;
+			return data != null ? CombatAchievementResult.fromRows(data, catalog != null ? catalog.totals() : null) : null;
 		}
 		catch (Exception e)
 		{
 			log.debug("Failed to parse combat achievements: {}", e.getMessage());
 			return null;
 		}
-	}
-
-	private CombatAchievementResult parseCombatAchievementRows(JsonArray data)
-	{
-		Map<CombatAchievementTier, Integer> completed = new EnumMap<>(CombatAchievementTier.class);
-		Map<CombatAchievementTier, Integer> total = new EnumMap<>(CombatAchievementTier.class);
-
-		for (JsonObject row : Json.objects(data))
-		{
-			if (!row.has("name"))
-			{
-				continue;
-			}
-			CombatAchievementTier tier = CombatAchievementTier.fromName(row.get("name").getAsString());
-			if (tier == null)
-			{
-				continue;
-			}
-			completed.put(tier, intField(row, "completed"));
-			total.put(tier, intField(row, "total"));
-		}
-
-		if (completed.isEmpty())
-		{
-			return null;
-		}
-		CaCatalog catalog = caCatalog;
-		return CombatAchievementResult.of(completed, total,
-			catalog != null ? catalog.totals() : null);
 	}
 
 	@Nullable
@@ -286,13 +258,6 @@ public class RuneProfileService
 			log.debug("Failed to parse RuneProfile account summary: {}", e.getMessage());
 			return null;
 		}
-	}
-
-	// Strict where Json.intField is lenient: a value of the wrong shape fails the whole answer rather than reading 0,
-	// so a garbled item id can't become item 0.
-	private static int intField(JsonObject obj, String field)
-	{
-		return Json.present(obj, field) ? obj.get(field).getAsInt() : 0;
 	}
 
 	// Collection log provider lane.
@@ -371,8 +336,8 @@ public class RuneProfileService
 				return ClogParseOutcome.invalid();
 			}
 
-			int rootObtained = intField(root, "obtained");
-			int rootTotal = intField(root, "total");
+			int rootObtained = Json.strictInt(root, "obtained");
+			int rootTotal = Json.strictInt(root, "total");
 			Map<String, List<ClogResult.ClogItem>> obtainedItems = new HashMap<>();
 			Map<String, List<Integer>> categoryItems = new HashMap<>();
 			Map<Integer, String> itemNames = new HashMap<>();
@@ -404,8 +369,8 @@ public class RuneProfileService
 							continue;
 						}
 						parsedItemCount++;
-						int id = intField(item, "id");
-						int qty = intField(item, "quantity");
+						int id = Json.strictInt(item, "id");
+						int qty = Json.strictInt(item, "quantity");
 						String name = Json.present(item, "name") ? item.get("name").getAsString() : null;
 
 						allIds.add(id);
