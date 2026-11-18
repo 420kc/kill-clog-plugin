@@ -17,9 +17,7 @@ import okhttp3.OkHttpClient;
  * draws it in the game's own style, with their follower beside them, and serves it at
  * {@code /api/player/{rsn}/portrait/large}. Only lookups that came back from the player's own Kill Clog
  * sync or the local player's own log ask for one ({@link #portraitName}), so nobody else costs a
- * request. A character the server drew from RuneProfile's (its ETag's {@code rp-} tag) is never shown:
- * that file is whatever model the game drew, other plugins' recolours included, so it can wear items the
- * player doesn't have (Dylan, 2026-11-14).
+ * request.
  *
  * <p>Every lookup re-checks the portrait (an unchanged one answers 304 with no body), and a portrait
  * shows only once the server has confirmed it for that lookup: a player who withdraws or deletes
@@ -93,12 +91,7 @@ class PlayerPortraits
 		}
 	}
 
-	/**
-	 * The portrait to draw for this lookup's player: one the server confirmed since the lookup, or null. Never a
-	 * RuneProfile character, which the server tags {@code "rp-…"} (killclog-api, routes/player-appearance.js): its file
-	 * is the model the game drew, other plugins' recolours and transforms included, so it can show items the player
-	 * doesn't have (Dylan, 2026-11-14). A Kill Clog character is drawn from the items the player wears.
-	 */
+	/** The portrait to draw for this lookup's player: one the server confirmed since the lookup, or null. */
 	@Nullable
 	BufferedImage forSummary(@Nullable ClogResult clog)
 	{
@@ -111,15 +104,10 @@ class PlayerPortraits
 		Portrait held = lane.values.get(key);
 		if (held != null && confirmed.contains(key))
 		{
-			return runeProfileTag(held.etag) ? null : held.image;
+			return held.image;
 		}
 		ask(name);
 		return null;
-	}
-
-	static boolean runeProfileTag(@Nullable String etag)
-	{
-		return etag != null && (etag.startsWith("\"rp-") || etag.startsWith("W/\"rp-"));
 	}
 
 	/**

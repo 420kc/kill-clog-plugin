@@ -105,26 +105,6 @@ public class PlayerPortraitsTest
 	}
 
 	@Test
-	public void aRuneProfileCharacterIsNeverShown() throws IOException
-	{
-		// The server tags a RuneProfile character "rp-…" (routes/player-appearance.js), and serves one for a syncer
-		// with no Kill Clog character: its file can show items the player doesn't have (Dylan 11/14), so the cape shows.
-		PlayerPortraits portraits = new PlayerPortraits(client());
-		ClogResult unpublished = clog("pgn", true);
-		portraits.lookedUp(unpublished);
-		answer(portraits, "pgn", 200, png(120, 200), "\"rp-abc\"");
-		assertNull(portraits.forSummary(unpublished));
-
-		ClogResult syncer = clog("420 kc", true);
-		portraits.lookedUp(syncer);
-		answer(portraits, "420 kc", 200, png(120, 200), "\"abc\"");
-		assertNotNull("a Kill Clog character", portraits.forSummary(syncer));
-
-		assertTrue(PlayerPortraits.runeProfileTag("W/\"rp-abc\""));
-		assertTrue(!PlayerPortraits.runeProfileTag(null));
-	}
-
-	@Test
 	public void theLocalPlayersOwnLogAsksToo()
 	{
 		OkHttpClient client = client();
