@@ -298,13 +298,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		return labelWidth + fm.stringWidth(value);
 	}
 
-	/** Set the info line under the title, in place of any before it. Label in orange, value in given color. */
-	public void setInfoLine(String label, String value, Color valueColor)
-	{
-		infoLines.clear();
-		addInfoLine(label, value, valueColor);
-	}
-
 	/** One more info line under the last. */
 	void addInfoLine(String label, String value, Color valueColor)
 	{

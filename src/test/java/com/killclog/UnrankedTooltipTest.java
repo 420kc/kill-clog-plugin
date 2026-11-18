@@ -86,8 +86,8 @@ public class UnrankedTooltipTest
 		TooltipData data = TooltipData.builder().obtainedCount(3).totalItems(11).build();
 		TitleTooltip blue = tooltip(data, result(-1), true);
 		TitleTooltip red = tooltip(data.toBuilder().rank(12345).build(), result(12345), true);
-		blue.setInfoLine("KC: ", "1420", java.awt.Color.WHITE);
-		red.setInfoLine("KC: ", "1420", java.awt.Color.WHITE);
+		blue.addInfoLine("KC: ", "1420", java.awt.Color.WHITE);
+		red.addInfoLine("KC: ", "1420", java.awt.Color.WHITE);
 		SideBySideTooltip pair = new SideBySideTooltip("Unranked", blue, "Ranked", red);
 		assertEquals("Unranked", rankText(blue));
 		assertEquals("12,345", rankText(red));
