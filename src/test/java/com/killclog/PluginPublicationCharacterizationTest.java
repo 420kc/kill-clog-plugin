@@ -1055,8 +1055,11 @@ public class PluginPublicationCharacterizationTest
 	public void aLeagueWorldsCombatAchievementsAreNeverRead() throws Exception
 	{
 		LocalCaCache caCache = (LocalCaCache) field("localCaCache");
-		world(net.runelite.api.WorldType.SEASONAL, net.runelite.api.WorldType.MEMBERS);
+		// On the League the server announced, the world settles as the League's, so only the main game's check stands
+		// between its counts and your own.
+		announceLeague();
 		ticks(20);
+		assertTrue(((WorldSession) field("world")).settled());
 		// A task done there moves the game's counts, which asks for a read.
 		net.runelite.api.events.VarbitChanged done = new net.runelite.api.events.VarbitChanged();
 		done.setVarbitId(CombatAchievementTier.EASY.completedVarbit);
