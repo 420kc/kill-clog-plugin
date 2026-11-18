@@ -1037,6 +1037,10 @@ public class PluginPublicationCharacterizationTest
 		when(client.getVarpValue(VarPlayerID.COLLECTION_COUNT)).thenReturn(5);
 		when(client.getVarpValue(VarPlayerID.COLLECTION_COUNT_MAX)).thenReturn(10);
 		varp(VarPlayerID.COLLECTION_COUNT);
+		// A task done before the world settles asks for a read, which still waits.
+		net.runelite.api.events.VarbitChanged done = new net.runelite.api.events.VarbitChanged();
+		done.setVarbitId(CombatAchievementTier.EASY.completedVarbit);
+		plugin.onVarbitChanged(done);
 		ticks(9);
 		verify(localClogCache, never()).updateTotalsUpward(any(), anyInt(), anyInt());
 		verify(caCache, never()).cacheResult(any(), anyLong(), any());
