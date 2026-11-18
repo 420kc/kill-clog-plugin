@@ -180,14 +180,17 @@ public class PvmSummaryTooltip extends TitleTooltip
 		this.bossesWithClog = total;
 	}
 
-	/** Combat Achievements' lines once known; a held tier's reward joins the gear, named for its tier while hovered. */
+	/**
+	 * Combat Achievements' lines once known; a held tier's reward joins the gear, named for its tier while hovered. No
+	 * task done reads as unknown, not None: RuneProfile sends every tier at 0 for an account it holds none for.
+	 */
 	void setCombatAchievements(@Nullable CombatAchievementResult ca, ItemManager itemManager)
 	{
-		caResult = ca;
-		caRows = ca != null;
-		if (ca != null && ca.getTier() != null)
+		caResult = ca != null && ca.getTotalPoints() > 0 ? ca : null;
+		caRows = caResult != null;
+		if (caRows && caResult.getTier() != null)
 		{
-			addGear(ca.getTier().reward(), tierDisplayName(ca) + " Combat Achievements", itemManager);
+			addGear(caResult.getTier().reward(), tierDisplayName(caResult) + " Combat Achievements", itemManager);
 		}
 	}
 

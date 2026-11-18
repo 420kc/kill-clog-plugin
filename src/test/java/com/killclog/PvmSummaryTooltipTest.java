@@ -150,6 +150,35 @@ public class PvmSummaryTooltipTest
 		assertEquals(card().getPreferredSize().height, plain.getPreferredSize().height);
 	}
 
+	/**
+	 * No task done reads as unknown, not None: RuneProfile sends every tier at 0 for an account it holds none for. Below
+	 * Easy with tasks done, the lines show, the bar part filled toward Easy.
+	 */
+	@Test
+	public void noTaskDoneShowsNoCombatAchievementsLinesWhileBelowEasyWithSomeDoes()
+	{
+		Map<CombatAchievementTier, Integer> zero = new java.util.EnumMap<>(CombatAchievementTier.class);
+		for (CombatAchievementTier tier : CombatAchievementTier.values())
+		{
+			zero.put(tier, 0);
+		}
+		int bare = firstTileY(fill(pvmCard(null)));
+		PvmSummaryTooltip unknown = fill(pvmCard(CombatAchievementResult.of(zero, caTotals())));
+		assertEquals("no lines", bare, firstTileY(unknown));
+		assertEquals("no bar", 0, TestViews.longestRun(render(painted(unknown)), TitleTooltip.CLOG_YELLOW)[2]);
+		// Beside a side with a reading, it keeps "--" lines, as a side with none does, so the pair still lines up.
+		PvmSummaryTooltip blue = fill(pvmCard(easy()));
+		PvmSummaryTooltip red = fill(pvmCard(CombatAchievementResult.of(zero, caTotals())));
+		PvmSummaryTooltip.lineUp(blue, red);
+		assertEquals(firstTileY(blue), firstTileY(red));
+
+		Map<CombatAchievementTier, Integer> some = new java.util.EnumMap<>(zero);
+		some.put(CombatAchievementTier.EASY, 20);
+		PvmSummaryTooltip below = fill(pvmCard(CombatAchievementResult.of(some, caTotals())));
+		assertTrue("the lines show", firstTileY(below) > bare);
+		assertTrue("its bar toward Easy", TestViews.longestRun(render(painted(below)), TitleTooltip.CLOG_YELLOW)[2] > 0);
+	}
+
 	private static int firstTileY(PvmSummaryTooltip tip)
 	{
 		return TestViews.tiles(render(painted(tip))).get(0).y;
