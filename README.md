@@ -27,7 +27,7 @@ While a League runs, a **Leagues** switch beside the search bar flips the panel 
 
 ![Turn off RuneLite's HiScore plugin](screenshots/setup-disable-hiscore.png)
 
-![Set Kill Clog's Menu Label to Lookup](screenshots/setup-menu-label-lookup.png)
+![Set Kill Clog's Menu Label to Lookup](screenshots/setup-menu-label-lookup.png) To use "Lookup", first turn off RuneLite's default HiScore plugin
 
 ## Cards
 
