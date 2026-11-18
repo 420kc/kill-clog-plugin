@@ -491,6 +491,83 @@ public class PvmSummaryTooltipTest
 	}
 
 	@Test
+	public void aRaidTileBeforeAnyLookupSpacesItsNameAndSpriteEvenly()
+	{
+		// Nothing under its sprite: the name's ink starts 12 px down where a looked-up tile's starts at 6, and the
+		// sprite's middle sits at 50, as killclog.com draws its dormant raid tiles (Dylan, 2026-11-17).
+		PvmSummaryTooltip dormant = new PvmSummaryTooltip();
+		dormant.setData(0, 0, 0, PanelData.bossCount(), null, 0);
+		dormant.setMegarares(new int[4], squareSprites());
+		BufferedImage image = render(painted(dormant));
+		Point cox = raidTiles(image).get(0);
+		assertEquals(12, firstRow(image, cox, rgb -> rgb == NativeTooltip.labelColor.getRGB()) - cox.y);
+		int top = firstRow(image, cox, PvmSummaryTooltipTest::magenta);
+		int bottom = top;
+		while (rowHas(image, cox, bottom + 1, PvmSummaryTooltipTest::magenta))
+		{
+			bottom++;
+		}
+		assertEquals("the sprite's middle", 50, (top + bottom + 1) / 2 - cox.y);
+
+		BufferedImage looked = render(painted(card()));
+		Point scored = raidTiles(looked).get(0);
+		assertEquals("a looked-up tile's name keeps its place", 6,
+			firstRow(looked, scored, rgb -> rgb == NativeTooltip.labelColor.getRGB()) - scored.y);
+	}
+
+	/** Every item a square of magenta, 32 px a side, as the client hands item sprites over. */
+	private static net.runelite.client.game.ItemManager squareSprites()
+	{
+		net.runelite.client.game.ItemManager items = org.mockito.Mockito.mock(net.runelite.client.game.ItemManager.class);
+		org.mockito.Mockito.when(items.getImage(org.mockito.ArgumentMatchers.anyInt())).thenAnswer(invocation ->
+		{
+			net.runelite.client.util.AsyncBufferedImage image = new net.runelite.client.util.AsyncBufferedImage(
+				org.mockito.Mockito.mock(net.runelite.client.callback.ClientThread.class), 32, 32, BufferedImage.TYPE_INT_ARGB);
+			for (int y = 0; y < 32; y++)
+			{
+				for (int x = 0; x < 32; x++)
+				{
+					image.setRGB(x, y, 0xffff00ff);
+				}
+			}
+			return image;
+		});
+		return items;
+	}
+
+	/** Magenta, faint or not: red and blue well over green, unlike the fill, the frame and the orange names. */
+	private static boolean magenta(int rgb)
+	{
+		Color c = new Color(rgb);
+		return c.getRed() > c.getGreen() + 30 && c.getBlue() > c.getGreen() + 30;
+	}
+
+	/** The first row of a tile, from its top, holding a pixel that matches; -1 for none. */
+	private static int firstRow(BufferedImage image, Point tile, java.util.function.IntPredicate match)
+	{
+		for (int y = tile.y; y < tile.y + GameTile.HEIGHT; y++)
+		{
+			if (rowHas(image, tile, y, match))
+			{
+				return y;
+			}
+		}
+		return -1;
+	}
+
+	private static boolean rowHas(BufferedImage image, Point tile, int y, java.util.function.IntPredicate match)
+	{
+		for (int x = tile.x; x < tile.x + GameTile.WIDTH && y < image.getHeight(); x++)
+		{
+			if (match.test(image.getRGB(x, y)))
+			{
+				return true;
+			}
+		}
+		return false;
+	}
+
+	@Test
 	public void theDormantCardShowsAllFourRaids()
 	{
 		// No lookup yet: the panel lists The Fractured Archive, so its tile stands with the other three.

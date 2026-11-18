@@ -33,6 +33,11 @@ final class GameTile
 	private static final BufferedImage PAGE_FRAME = ImageUtil.loadImageResource(GameTile.class, "game-tile-frame-page.png");
 	private static final Font COUNT_FONT = FontManager.getRunescapeFont();
 	private static final int NAME_TOP = 4;
+	// A tile with no count or bar under its sprite (a raid before any lookup) spaces evenly, as much room above its name
+	// as between the name and the sprite: the name this far down and the sprite's middle at BARE_MIDDLE (Dylan,
+	// 2026-11-17, matching killclog.com's).
+	private static final int BARE_NAME_TOP = 10;
+	private static final int BARE_MIDDLE = 50;
 	private static final int SPRITE_TOP = 17;
 	private static final int COUNT_TOP = 50;
 	private static final int SPRITE_SLOT = 32;
@@ -150,6 +155,11 @@ final class GameTile
 		int center = box.x + box.width / 2;
 		boolean page = box.height == PAGE_HEIGHT;
 		Font font = g.getFont();
+		boolean scored = tile.countText != null || !known && tile.score > 0;
+		String count = tile.countText != null ? tile.countText : scored ? TitleTooltip.grouped(tile.score)
+			: tile.total <= 0 ? "" : known ? TitleTooltip.progressCountText(tile.obtained, tile.total)
+			: TitleTooltip.progressPlaceholderText(tile.total);
+		boolean bare = count.isEmpty() && !known;
 
 		// The name in bold. A page's, with no sprite under it, breaks at a space onto two lines where it must; a sprite's
 		// tile keeps its short name on one line. Either takes the regular font where bold still won't fit.
@@ -163,25 +173,21 @@ final class GameTile
 		}
 		g.setFont(nfm.getFont());
 		g.setColor(complete || known && tile.wear != null ? color : NativeTooltip.labelColor);
-		int nameY = box.y + NAME_TOP + nfm.getAscent() + (page && lines.length == 1 ? NAME_LINE / 2 : 0);
+		int nameY = box.y + (bare ? BARE_NAME_TOP : NAME_TOP) + nfm.getAscent()
+			+ (page && lines.length == 1 ? NAME_LINE / 2 : 0);
 		for (String line : lines)
 		{
 			g.drawString(line, center - nfm.stringWidth(line) / 2, nameY);
 			nameY += NAME_LINE;
 		}
-		boolean scored = tile.countText != null || !known && tile.score > 0;
-		String count = tile.countText != null ? tile.countText : scored ? TitleTooltip.grouped(tile.score)
-			: tile.total <= 0 ? "" : known ? TitleTooltip.progressCountText(tile.obtained, tile.total)
-			: TitleTooltip.progressPlaceholderText(tile.total);
 		if (tile.sprite != null)
 		{
 			Composite solid = g.getComposite();
 			g.setComposite(tile.faint ? KillClogColors.DIM : solid);
-			// A small icon (a boss's) sits in the middle of the item sprites' slot; with no count or bar
-			// under it (a raid before any lookup), in the middle of all the tile under its name (Dylan, 2026-11-14).
-			int slot = count.isEmpty() && !known ? box.height - SPRITE_TOP : SPRITE_SLOT;
+			// A small icon (a boss's) sits in the middle of the item sprites' slot, a bare tile's sprite at its middle.
+			int height = tile.sprite.getHeight(null);
 			g.drawImage(tile.sprite, center - tile.sprite.getWidth(null) / 2,
-				box.y + SPRITE_TOP + Math.max(0, slot - tile.sprite.getHeight(null)) / 2, null);
+				box.y + (bare ? BARE_MIDDLE - height / 2 : SPRITE_TOP + Math.max(0, SPRITE_SLOT - height) / 2), null);
 			g.setComposite(solid);
 		}
 		g.setFont(COUNT_FONT);
