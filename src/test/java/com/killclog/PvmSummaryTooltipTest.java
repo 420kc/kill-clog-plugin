@@ -14,6 +14,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import net.runelite.client.hiscore.HiscoreSkill;
+import net.runelite.client.ui.FontManager;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
@@ -310,8 +311,43 @@ public class PvmSummaryTooltipTest
 		PvmSummaryTooltip plain = card();
 		PvmSummaryTooltip geared = card();
 		geared.addGear(PanelData.MAX_CAPE_ITEM_ID, "Maxed", gearItems());
-		// A gap, then the item sprites' row.
-		assertEquals(4 + CardBody.GRID_SPRITE, geared.getPreferredSize().height - plain.getPreferredSize().height);
+		// A gap and the item sprites' row, then 11 px more: the band's own top divider and the room above it, which a card
+		// with no gear row leaves out, sharing the title's divider.
+		assertEquals(4 + CardBody.GRID_SPRITE + 11, geared.getPreferredSize().height - plain.getPreferredSize().height);
+	}
+
+	@Test
+	public void withNoGearRowTheBandTakesTheTitlesDividerForItsTop()
+	{
+		// Before any lookup, or for a player with no cape, quiver or tier reward, nothing stands between the title and
+		// the band: the title's line, the band's name line, then the band's own line, as the Collection Log card draws it
+		// (Dylan, 2026-11-18: 2.8.2 drew a second line 11 px under the title's).
+		PvmSummaryTooltip tip = painted(card());
+		List<Integer> rules = rules(render(tip));
+		int band = TitleTooltip.hoverRowHeight(tip.getFontMetrics(FontManager.getRunescapeSmallFont()));
+		assertTrue("the title's line, then the band's: " + rules, rules.size() >= 2);
+		assertEquals("one name line between them: " + rules, band + 1, rules.get(1) - rules.get(0));
+	}
+
+	/** The rows a divider runs across the card in, top down. */
+	private static List<Integer> rules(BufferedImage image)
+	{
+		int divider = NativeTooltip.dividerColor.getRGB();
+		int inset = NativeTooltip.getInset();
+		List<Integer> rows = new ArrayList<>();
+		for (int y = 0; y < image.getHeight(); y++)
+		{
+			int run = 0;
+			for (int x = inset; x < image.getWidth() - inset; x++)
+			{
+				run += image.getRGB(x, y) == divider ? 1 : 0;
+			}
+			if (run >= (image.getWidth() - 2 * inset) * 9 / 10)
+			{
+				rows.add(y);
+			}
+		}
+		return rows;
 	}
 
 	/** Items as the client draws them, each its own colour: Dizana's quiver cyan, any cape magenta. */

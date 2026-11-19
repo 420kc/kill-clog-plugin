@@ -356,7 +356,10 @@ public class PvmSummaryTooltip extends TitleTooltip
 				.count(scoreText(pvpScores[i])));
 		}
 		body.add(GameTile.grid(pvmRows, pvp));
-		return card.add(CardBody.hoverBand()).add(CardBody.scroll(scroll, body.asPart()));
+		// With no gear row between them, the band takes the title's divider for its top, as the Player Summary's and the
+		// Collection Log's do: its own drew a second line 11 px under the title's (Dylan, 2026-11-18).
+		return card.add(gear.isEmpty() && !gearRow ? CardBody.headerHoverBand() : CardBody.hoverBand())
+			.add(CardBody.scroll(scroll, body.asPart()));
 	}
 
 	/** Whether each raid's tile shows, from a lookup's hiscores, or before any (null) from the panel's list. */
