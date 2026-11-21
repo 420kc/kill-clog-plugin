@@ -29,7 +29,7 @@ public enum AccountType
 	static AccountType displayType(@Nullable AccountType hiscoreType, @Nullable AccountType providerType)
 	{
 		// The first argument may already carry a higher-trust runtime or
-		// first-party GIM subtype. Do not let a later provider cache replace it.
+		// synced GIM subtype. Do not let a later provider cache replace it.
 		if (hiscoreType != null && hiscoreType.isGroupIronman())
 		{
 			return hiscoreType;

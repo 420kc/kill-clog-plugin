@@ -51,17 +51,17 @@ public class LocalClogCacheAtomicTest
 		LocalClogCache cache = new LocalClogCache(gson, new InlineScheduledExecutorService());
 		cache.open(() -> TestFolders.folder(directory));
 		assertTrue(StoreLogin.activate(cache, "Tester", 77L));
-		cache.cacheFirstPartyResult(result(1));
+		cache.cacheOwnLog(result(1));
 		File file = LocalClogCacheTest.ownFile(directory, 77L);
 		byte[] valid = Files.readAllBytes(file.toPath());
 		fail.set(true);
-		cache.cacheFirstPartyResult(result(2));
+		cache.cacheOwnLog(result(2));
 		assertArrayEquals(valid, Files.readAllBytes(file.toPath()));
 		assertEquals(1, reload(directory).getId());
 		fail.set(false);
 		int[] changes = {0};
-		cache.setFirstPartyChangedListener(() -> changes[0]++);
-		cache.cacheFirstPartyResult(result(2));
+		cache.setOwnLogChangedListener(() -> changes[0]++);
+		cache.cacheOwnLog(result(2));
 		assertEquals(2, reload(directory).getId());
 		assertEquals(0, changes[0]);
 		assertEquals("no temporary file outlives its write", 0,

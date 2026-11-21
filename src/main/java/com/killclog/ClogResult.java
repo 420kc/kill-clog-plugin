@@ -336,7 +336,7 @@ public class ClogResult
 	/**
 	 * Combine the provider winner with the player's own killclog.com sync.
 	 * The rule is the website's, as {@link #pickFullerProvider}'s is:
-	 * the fullest result leads, and ties prefer first-party. A partial sync
+	 * the fullest result leads, and ties go to the player's own sync. A partial sync
 	 * (six items from a fresh install) must never shrink a profile below
 	 * what providers prove; a complete sync must never lose to a stale
 	 * provider snapshot.
@@ -374,9 +374,9 @@ public class ClogResult
 				provider.providerAccountType).withLocalSource(either(provider, killclog, ClogResult::isFromLocal)).carryFrom(provider)
 				.withDatedHistory(provider, killclog);
 		}
-		AccountType firstPartyType = killclog.providerAccountType;
-		AccountType accountType = firstPartyType != null && firstPartyType.isGroupIronman()
-			? firstPartyType : provider.providerAccountType;
+		AccountType syncedType = killclog.providerAccountType;
+		AccountType accountType = syncedType != null && syncedType.isGroupIronman()
+			? syncedType : provider.providerAccountType;
 		return provider.copyWithProvenanceAndAccountType(
 			templeSource, runeProfileSource, killclogSource, accountType)
 			.withLocalSource(either(provider, killclog, ClogResult::isFromLocal)).carryFrom(killclog)

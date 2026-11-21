@@ -28,6 +28,7 @@ class PlayerClogData
 	/**
 	 * Whether this client completed the full Collection Log Search walk. False (and a missing or null field in an
 	 * older file) keeps provider-only and live-unlock-only stores in setup.
+	 * The name is the one every saved log carries, so it stays as it is.
 	 */
 	boolean firstPartySetupComplete;
 	// Hardcore Worlds: the character's total XP as last seen there, and when a reset started this log over and at

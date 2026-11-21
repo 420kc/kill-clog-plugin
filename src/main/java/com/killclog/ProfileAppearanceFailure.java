@@ -29,7 +29,7 @@ final class ProfileAppearanceFailure
 		{
 			reference = "";
 		}
-		String message = "update_required".equals(code) ? FirstPartyFeedback.UPDATE_REQUIRED : MESSAGES.get(code);
+		String message = "update_required".equals(code) ? ControlFeedback.UPDATE_REQUIRED : MESSAGES.get(code);
 		if (message == null)
 		{
 			code = status < 0 ? "network_failure" : "request_failed";

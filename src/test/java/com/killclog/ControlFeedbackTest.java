@@ -5,7 +5,7 @@ import java.util.List;
 import org.junit.Test;
 import static org.junit.Assert.*;
 
-public class FirstPartyFeedbackTest
+public class ControlFeedbackTest
 {
 	private static final class Settings implements KillClogConfig
 	{
@@ -21,11 +21,11 @@ public class FirstPartyFeedbackTest
 	private final Settings config = new Settings();
 	private final List<String> events = new ArrayList<>();
 	private final List<StatusMessage.Kind> kinds = new ArrayList<>();
-	private final FirstPartyFeedback feedback = feedback("sync failed");
+	private final ControlFeedback feedback = feedback("sync failed");
 
-	private FirstPartyFeedback feedback(String failureText)
+	private ControlFeedback feedback(String failureText)
 	{
-		return new FirstPartyFeedback(config,
+		return new ControlFeedback(config,
 			(kind, text, autoClear) ->
 			{
 				events.add(text);
@@ -36,7 +36,7 @@ public class FirstPartyFeedbackTest
 	@Test
 	public void aRefusedVersionSaysUpdateNeededNotFailed()
 	{
-		feedback.complete(true, false, FirstPartyFeedback.UPDATE_REQUIRED + " Reference: 0123456789abcdef.");
+		feedback.complete(true, false, ControlFeedback.UPDATE_REQUIRED + " Reference: 0123456789abcdef.");
 		assertEquals(java.util.Arrays.asList("update needed"), events);
 		assertEquals("update needed - restart RuneLite", feedback.hoverText("publish collection log", "publish failed"));
 		feedback.complete(true, false, "Server unavailable");
@@ -97,7 +97,7 @@ public class FirstPartyFeedbackTest
 	@Test
 	public void characterUploadAlwaysShowsManualFeedbackAndKeepsItsOwnFailure()
 	{
-		FirstPartyFeedback character = feedback("Publish failed");
+		ControlFeedback character = feedback("Publish failed");
 		character.progress(true, "rendering...", false);
 		character.complete(true, false, "Character upload failed");
 		assertEquals(java.util.Arrays.asList("rendering...", "Publish failed"), events);

@@ -162,7 +162,7 @@ final class LookupFanout
 	/**
 	 * All clog sources in parallel: the public provider pair races on
 	 * recency, then the player's own killclog.com sync joins on coverage
-	 * (fullest leads, ties prefer first-party). Self lookups skip both
+	 * (fullest leads, ties go to the player's own sync). Self lookups skip both
 	 * remote-self legs because local widget data is authoritative.
 	 * {@code onError} runs on the EDT behind the guard when present; null
 	 * means log-and-drop. The primary path uses it to release a held hiscore.

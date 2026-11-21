@@ -4,7 +4,7 @@ import javax.annotation.Nullable;
 import okhttp3.Request;
 
 /**
- * Production-safe endpoint selection for first-party Kill Clog requests.
+ * Production-safe endpoint selection for Kill Clog's own requests.
  *
  * <p>The release jar always defaults to production. A developer may select
  * the one allowlisted staging endpoint at JVM launch time; arbitrary origins

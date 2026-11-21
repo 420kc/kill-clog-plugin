@@ -52,7 +52,7 @@ public class SyncServiceUnchangedTest
 		}).build();
 		cache = mock(LocalClogCache.class);
 		when(cache.servesAccount(any())).thenReturn(true);
-		when(cache.toFirstPartySyncResult(anyString())).thenAnswer(call -> log);
+		when(cache.ownLogForSync(anyString())).thenAnswer(call -> log);
 		when(cache.commitIfSessionCurrent(any(), any())).thenAnswer(call -> ((Supplier<Object>) call.getArgument(1)).get());
 		service = new SyncService(http, new Gson());
 		log = clog(1);

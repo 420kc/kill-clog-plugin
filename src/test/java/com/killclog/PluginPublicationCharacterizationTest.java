@@ -187,7 +187,7 @@ public class PluginPublicationCharacterizationTest
 		verify(panel).setCharacterDeleteHandler(handler.capture());
 		deleteHandler = handler.getValue();
 		handler = ArgumentCaptor.forClass(Runnable.class);
-		verify(localClogCache).setFirstPartyChangedListener(handler.capture());
+		verify(localClogCache).setOwnLogChangedListener(handler.capture());
 		captureListener = handler.getValue();
 		@SuppressWarnings("unchecked")
 		ArgumentCaptor<java.util.function.Function<String, java.util.function.UnaryOperator<String>>> pbReader =
@@ -306,7 +306,7 @@ public class PluginPublicationCharacterizationTest
 		when(localClogCache.ownLogReadyForActive()).thenReturn(true);
 		captureListener.run();
 		captureListener.run();
-		verify(panel, times(2)).setFirstParty(PanelStatusRow.FirstParty.READY);
+		verify(panel, times(2)).setControls(PanelStatusRow.Controls.READY);
 		assertEquals(1, executor.live());
 		assertEquals(10_000L, executor.lastDelayMs());
 
@@ -400,7 +400,7 @@ public class PluginPublicationCharacterizationTest
 		settle();
 		assertTrue(syncs.isEmpty());
 		verify(panel, never()).showSyncProgress(anyBoolean(), any(), anyBoolean());
-		verify(panel).setFirstParty(PanelStatusRow.FirstParty.HIDDEN);
+		verify(panel).setControls(PanelStatusRow.Controls.HIDDEN);
 		verify(panel).resetSyncFeedback();
 	}
 
@@ -1102,7 +1102,7 @@ public class PluginPublicationCharacterizationTest
 		((ClogSessionState) field("sessionState")).requestAutoLookup(true);
 		ticks(9);
 		verify(localClogCache, never()).updateTotalsUpward(any(), anyInt(), anyInt());
-		verify(panel, never()).setFirstParty(any());
+		verify(panel, never()).setControls(any());
 
 		// The tick the world settles on is the one the account's log is ready on, and the name it wore before shows.
 		ready[0] = true;
@@ -1111,12 +1111,12 @@ public class PluginPublicationCharacterizationTest
 		ticks(1);
 		org.mockito.InOrder order = org.mockito.Mockito.inOrder(localClogCache, chatNotifier, caCache, panel);
 		order.verify(localClogCache).updateTotalsUpward(RSN, 5, 10);
-		order.verify(panel).setFirstParty(any());
+		order.verify(panel).setControls(any());
 		order.verify(localClogCache).consumeRenameNotice();
 		order.verify(chatNotifier).send(eq(ChatNotice.SYNC_RESULT), startsWith("Kill Clog followed your name change"));
 		order.verify(caCache).cacheResult(eq(RSN), anyLong(), any());
 		order.verify(localClogCache).serve(any());
-		order.verify(panel).setFirstParty(any());
+		order.verify(panel).setControls(any());
 	}
 
 	/** An empty log that's set up (a new account, a fresh Hardcore Worlds run) is ready at login and catches up. */
@@ -1125,11 +1125,11 @@ public class PluginPublicationCharacterizationTest
 	{
 		when(localClogCache.serve(any())).thenReturn(true);
 		when(localClogCache.ownLogReady(RSN)).thenReturn(true);
-		when(localClogCache.hasFirstPartyDataFor(RSN)).thenReturn(false);
+		when(localClogCache.ownLogHasItems(RSN)).thenReturn(false);
 		((ClogSessionState) field("sessionState")).requestAutoLookup(true);
 		ticks(10);
-		verify(panel, never()).setFirstParty(PanelStatusRow.FirstParty.LOCKED);
-		verify(panel, times(2)).setFirstParty(PanelStatusRow.FirstParty.READY);
+		verify(panel, never()).setControls(PanelStatusRow.Controls.LOCKED);
+		verify(panel, times(2)).setControls(PanelStatusRow.Controls.READY);
 		settle();
 		assertEquals("the login's catch-up push", 1, syncs.size());
 	}
@@ -2836,12 +2836,12 @@ public class PluginPublicationCharacterizationTest
 		LocalClogCache league = announceLeague();
 		ticks(1);
 		ArgumentCaptor<Runnable> listener = ArgumentCaptor.forClass(Runnable.class);
-		verify(league).setFirstPartyChangedListener(listener.capture());
+		verify(league).setOwnLogChangedListener(listener.capture());
 		listener.getValue().run();
 		assertEquals("an empty capture schedules nothing", 0, executor.live());
 		when(league.ownLogReadyForActive()).thenReturn(true);
 		listener.getValue().run();
-		verify(panel).setFirstParty(PanelStatusRow.FirstParty.READY);
+		verify(panel).setControls(PanelStatusRow.Controls.READY);
 		assertEquals(1, executor.live());
 		settle();
 		verify(syncService).syncCollectionLog(you(),  org.mockito.ArgumentMatchers.isNull(),  any(),  any(),  any(),  anyInt(),  eq(league),  eq("demonic-pacts"),  anyLong(),  anyBoolean(),  any());

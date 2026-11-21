@@ -239,7 +239,7 @@ public class ClogServiceProvenanceTest
 
 		LocalClogCache cache = LocalClogCacheTest.ready();
 		StoreLogin.activate(cache, player, 1L);
-		cache.cacheFirstPartyResult(new ClogResult(player, obtained, categories,
+		cache.cacheOwnLog(new ClogResult(player, obtained, categories,
 			Collections.emptyMap(), localDate, null));
 
 		OkHttpClient client = new OkHttpClient.Builder()

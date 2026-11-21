@@ -2,9 +2,9 @@ package com.killclog;
 
 import lombok.*;
 
-/** Panel feedback for one first-party control. All access stays on the EDT. */
+/** Panel feedback for one killclog.com control, the chalice or the character. All access stays on the EDT. */
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
-final class FirstPartyFeedback
+final class ControlFeedback
 {
 	/** Receives the messages this control is allowed to show. */
 	interface Status

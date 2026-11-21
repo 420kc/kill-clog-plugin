@@ -118,7 +118,7 @@ public class ClogWalkTest
 		cache.cacheResult(new ClogResult("Tester", Map.of("zulrah", List.of(
 			new ClogResult.ClogItem(3, 5, null))), Map.of("zulrah", List.of(1, 2, 3)),
 			Map.of(), null, null));
-		assertFalse(cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertFalse(cache.ownLogSetUp("Tester"));
 		openCollectionLog();
 		menu("Search", InterfaceID.COLLECTION << 16 | 76);
 		itemScript(1, 2, 101);
@@ -127,10 +127,10 @@ public class ClogWalkTest
 		tick(104);
 		assertEquals(1, completions);
 		assertEquals(1, refreshes);
-		assertTrue(cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertTrue(cache.ownLogSetUp("Tester"));
 		LocalClogCache reloaded = reload();
-		assertTrue(reloaded.hasCompletedFirstPartySetupFor("Tester"));
-		ClogResult payload = reloaded.toFirstPartySyncResult("Tester");
+		assertTrue(reloaded.ownLogSetUp("Tester"));
+		ClogResult payload = reloaded.ownLogForSync("Tester");
 		assertEquals(List.of(1), payload.getObtainedItems().get("zulrah").stream()
 			.map(ClogResult.ClogItem::getId).collect(java.util.stream.Collectors.toList()));
 	}
@@ -141,7 +141,7 @@ public class ClogWalkTest
 		obtained = 0;
 		total = 0;
 		tick(110);
-		assertFalse(cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertFalse(cache.ownLogSetUp("Tester"));
 		// Retain the menu route for clients that emit this event for Search.
 		menu("Search", InterfaceID.COLLECTION << 16 | 76);
 		assertTrue(notices.stream().anyMatch(text -> text.contains("is reading")));
@@ -149,11 +149,11 @@ public class ClogWalkTest
 		assertEquals(0, completions);
 		tick(120);
 		assertEquals(1, completions);
-		assertTrue(cache.hasCompletedFirstPartySetupFor("Tester"));
-		assertFalse(cache.hasFirstPartyDataFor("Tester"));
+		assertTrue(cache.ownLogSetUp("Tester"));
+		assertFalse(cache.ownLogHasItems("Tester"));
 		LocalClogCache reloaded = reload();
-		assertTrue(reloaded.hasCompletedFirstPartySetupFor("Tester"));
-		assertFalse(reloaded.hasFirstPartyDataFor("Tester"));
+		assertTrue(reloaded.ownLogSetUp("Tester"));
+		assertFalse(reloaded.ownLogHasItems("Tester"));
 		assertTrue(notices.stream().anyMatch(text -> text.contains("Setup complete")));
 	}
 
@@ -172,8 +172,8 @@ public class ClogWalkTest
 		assertEquals(1, completions);
 		assertTrue(notices.stream().anyMatch(text -> text.contains("is reading")));
 		LocalClogCache reloaded = reload();
-		assertTrue(reloaded.hasCompletedFirstPartySetupFor("Tester"));
-		assertFalse(reloaded.hasFirstPartyDataFor("Tester"));
+		assertTrue(reloaded.ownLogSetUp("Tester"));
+		assertFalse(reloaded.ownLogHasItems("Tester"));
 	}
 
 	@Test
@@ -192,12 +192,12 @@ public class ClogWalkTest
 		assertEquals(2, notices.size());
 		assertTrue(notices.get(1).contains("Setup complete - 0 items"));
 		LocalClogCache reloaded = reload();
-		assertTrue(reloaded.hasCompletedFirstPartySetupFor("Tester"));
-		assertFalse(reloaded.hasFirstPartyDataFor("Tester"));
+		assertTrue(reloaded.ownLogSetUp("Tester"));
+		assertFalse(reloaded.ownLogHasItems("Tester"));
 		reloaded.cacheResult(new ClogResult("Tester", Map.of("zulrah", List.of(
 			new ClogResult.ClogItem(3, 5, null))), Map.of("zulrah", List.of(1, 2, 3)),
 			Map.of(), null, null));
-		assertFalse(reloaded.hasFirstPartyDataFor("Tester"));
+		assertFalse(reloaded.ownLogHasItems("Tester"));
 		openCollectionLog();
 		tick(110);
 		assertEquals(2, automaticSearches);
@@ -221,8 +221,8 @@ public class ClogWalkTest
 		assertEquals(1, viewRestores);
 		assertEquals(1, completions);
 		LocalClogCache reloaded = reload();
-		assertTrue(reloaded.hasCompletedFirstPartySetupFor("Tester"));
-		assertEquals(List.of(1), reloaded.toFirstPartySyncResult("Tester")
+		assertTrue(reloaded.ownLogSetUp("Tester"));
+		assertEquals(List.of(1), reloaded.ownLogForSync("Tester")
 			.getObtainedItems().get("zulrah").stream().map(ClogResult.ClogItem::getId)
 			.collect(java.util.stream.Collectors.toList()));
 	}
@@ -267,7 +267,7 @@ public class ClogWalkTest
 		tick(104);
 		assertEquals(1, automaticSearches);
 		assertEquals(0, completions);
-		assertFalse(cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertFalse(cache.ownLogSetUp("Tester"));
 		assertTrue(notices.stream().anyMatch(text -> text.contains("interrupted")));
 	}
 
@@ -319,7 +319,7 @@ public class ClogWalkTest
 		menu("Search", InterfaceID.COLLECTION << 16 | 76);
 		tick(110);
 		assertEquals(0, completions);
-		assertFalse(cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertFalse(cache.ownLogSetUp("Tester"));
 		assertTrue(notices.isEmpty());
 		hostLog = false;
 		menu("Search", InterfaceID.COLLECTION << 16 | 76);
@@ -343,8 +343,8 @@ public class ClogWalkTest
 		tick(104);
 		assertEquals(1, completions);
 		LocalClogCache reloaded = reload();
-		assertTrue(reloaded.hasCompletedFirstPartySetupFor("Tester"));
-		assertEquals(List.of(1), reloaded.toFirstPartySyncResult("Tester")
+		assertTrue(reloaded.ownLogSetUp("Tester"));
+		assertEquals(List.of(1), reloaded.ownLogForSync("Tester")
 			.getObtainedItems().get("zulrah").stream().map(ClogResult.ClogItem::getId)
 			.collect(java.util.stream.Collectors.toList()));
 	}
@@ -385,7 +385,7 @@ public class ClogWalkTest
 		script(4084, source, 4084, 0);
 		tick(115);
 		assertEquals(0, completions);
-		assertFalse(cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertFalse(cache.ownLogSetUp("Tester"));
 		assertFalse(notices.stream().anyMatch(text -> text.contains("is reading")));
 	}
 
@@ -397,7 +397,7 @@ public class ClogWalkTest
 		itemScript(1, 1, 101);
 		tick(115);
 		assertEquals(0, completions);
-		assertFalse(cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertFalse(cache.ownLogSetUp("Tester"));
 		assertFalse(notices.stream().anyMatch(text -> text.contains("is reading")));
 	}
 
@@ -427,7 +427,7 @@ public class ClogWalkTest
 		sync.captureScriptArguments(client, 4100, new Object[]{4100, 2, 1}, 101);
 		tick(104);
 		assertEquals(0, completions);
-		assertFalse(cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertFalse(cache.ownLogSetUp("Tester"));
 		assertTrue(notices.stream().anyMatch(text -> text.contains("interrupted")));
 	}
 
@@ -443,7 +443,7 @@ public class ClogWalkTest
 		assertEquals(0, completions);
 		tick(201);
 		assertTrue(notices.stream().anyMatch(text -> text.contains("timed out")));
-		assertFalse(cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertFalse(cache.ownLogSetUp("Tester"));
 	}
 
 	@Test
@@ -454,7 +454,7 @@ public class ClogWalkTest
 		sync.captureScriptArguments(client, 4100, new Object[]{4100, 1, 1}, 101);
 		tick(104);
 		assertEquals(0, completions);
-		assertFalse(cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertFalse(cache.ownLogSetUp("Tester"));
 	}
 
 	@Test
@@ -468,7 +468,7 @@ public class ClogWalkTest
 		}
 		tick(104);
 		assertEquals(0, completions);
-		assertFalse(cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertFalse(cache.ownLogSetUp("Tester"));
 	}
 
 	@Test
@@ -484,7 +484,7 @@ public class ClogWalkTest
 		sync.captureScriptArguments(client, 4100, new Object[]{4100, 2, 1}, 106);
 		tick(109);
 		assertEquals(1, completions);
-		assertEquals(2, cache.toFirstPartySyncResult("Tester")
+		assertEquals(2, cache.ownLogForSync("Tester")
 			.getObtainedItems().get("zulrah").get(0).getId());
 	}
 
@@ -499,8 +499,8 @@ public class ClogWalkTest
 		tick(105);
 		assertEquals(1, completions);
 		LocalClogCache reloaded = reload();
-		assertTrue(reloaded.hasCompletedFirstPartySetupFor("Tester"));
-		List<ClogResult.ClogItem> items = reloaded.toFirstPartySyncResult("Tester")
+		assertTrue(reloaded.ownLogSetUp("Tester"));
+		List<ClogResult.ClogItem> items = reloaded.ownLogForSync("Tester")
 			.getObtainedItems().get("zulrah");
 		assertEquals(1, items.size());
 		assertEquals(10000, items.get(0).getId());
@@ -518,7 +518,7 @@ public class ClogWalkTest
 		itemScript(10000, 5, 102);
 		tick(105);
 		assertEquals(0, completions);
-		assertFalse(cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertFalse(cache.ownLogSetUp("Tester"));
 		assertTrue(notices.stream().anyMatch(text -> text.contains("interrupted")));
 	}
 
@@ -530,14 +530,14 @@ public class ClogWalkTest
 			Map.of("zulrah", List.of(1, 2, 3)), Map.of(), null, null);
 		seed.setUniqueObtained(99);
 		seed.setUniqueTotal(100);
-		cache.cacheFirstPartyResult(seed);
+		cache.cacheOwnLog(seed);
 		int[] changes = {0};
-		cache.setFirstPartyChangedListener(() -> changes[0]++);
+		cache.setOwnLogChangedListener(() -> changes[0]++);
 		automaticItems.add(1);
 		openCollectionLog();
 		tick(101);
 		tick(104);
-		ClogResult result = cache.toFirstPartySyncResult("Tester");
+		ClogResult result = cache.ownLogForSync("Tester");
 		ClogResult.ClogItem item = result.getObtainedItems().get("zulrah").get(0);
 		assertEquals(1, item.getCount());
 		assertEquals("2026-09-01", item.getDate());
@@ -558,7 +558,7 @@ public class ClogWalkTest
 		tick(109);
 		tick(112);
 		assertEquals(2, changes[0]);
-		assertEquals(2, cache.toFirstPartySyncResult("Tester").getUniqueObtained());
+		assertEquals(2, cache.ownLogForSync("Tester").getUniqueObtained());
 	}
 
 	@Test
@@ -573,7 +573,7 @@ public class ClogWalkTest
 		tick(105);
 		tick(108);
 		assertEquals(1, completions);
-		assertEquals(1, cache.toFirstPartySyncResult("Tester").getUniqueObtained());
+		assertEquals(1, cache.ownLogForSync("Tester").getUniqueObtained());
 		assertTrue(notices.stream().anyMatch(text -> text.contains("saved log is unchanged")));
 		automaticItems.add(2);
 		openCollectionLog();
@@ -583,7 +583,7 @@ public class ClogWalkTest
 		assertEquals(1, completions);
 		LocalClogCache reloaded = reload();
 		assertTrue(reloaded.hasDataFor("Tester"));
-		assertEquals(1, reloaded.toFirstPartySyncResult("Tester").getUniqueObtained());
+		assertEquals(1, reloaded.ownLogForSync("Tester").getUniqueObtained());
 	}
 
 	@Test
@@ -607,16 +607,16 @@ public class ClogWalkTest
 			Map.of(), null, null);
 		seed.setUniqueObtained(1);
 		seed.setUniqueTotal(100);
-		cache.cacheFirstPartyResult(seed);
+		cache.cacheOwnLog(seed);
 		obtained = 0;
 		openCollectionLog();
 		tick(101);
 		tick(104);
 		assertEquals(1, completions);
-		assertTrue(cache.hasCompletedFirstPartySetupFor("Tester"));
-		assertFalse(cache.hasFirstPartyDataFor("Tester"));
-		assertEquals(0, cache.toFirstPartySyncResult("Tester").getUniqueObtained());
-		assertFalse(cache.toFirstPartySyncResult("Tester").getCategoryItems().containsKey("retired"));
+		assertTrue(cache.ownLogSetUp("Tester"));
+		assertFalse(cache.ownLogHasItems("Tester"));
+		assertEquals(0, cache.ownLogForSync("Tester").getUniqueObtained());
+		assertFalse(cache.ownLogForSync("Tester").getCategoryItems().containsKey("retired"));
 	}
 
 	@Test
@@ -631,7 +631,7 @@ public class ClogWalkTest
 		tick(105);
 		tick(108);
 		assertEquals(2, completions);
-		assertEquals(3, cache.toFirstPartySyncResult("Tester").getUniqueTotal());
+		assertEquals(3, cache.ownLogForSync("Tester").getUniqueTotal());
 	}
 
 	@Test
@@ -644,11 +644,11 @@ public class ClogWalkTest
 		{
 			tick(t);
 		}
-		assertFalse("four ticks is not yet settled", cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertFalse("four ticks is not yet settled", cache.ownLogSetUp("Tester"));
 		tick(204);
-		assertTrue(cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertTrue(cache.ownLogSetUp("Tester"));
 		assertTrue("an empty set-up log can sync", cache.ownLogReady("Tester"));
-		assertFalse("and carries no items", cache.hasFirstPartyDataFor("Tester"));
+		assertFalse("and carries no items", cache.ownLogHasItems("Tester"));
 		assertEquals(1, completions);
 		assertEquals(1, refreshes);
 		assertTrue("it says nothing in chat", notices.isEmpty());
@@ -657,7 +657,7 @@ public class ClogWalkTest
 			tick(t);
 		}
 		assertEquals("once set up, never again", 1, completions);
-		assertTrue(reload().hasCompletedFirstPartySetupFor("Tester"));
+		assertTrue(reload().ownLogSetUp("Tester"));
 	}
 
 	@Test
@@ -669,14 +669,14 @@ public class ClogWalkTest
 		{
 			tick(t);
 		}
-		assertFalse("counters not in yet", cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertFalse("counters not in yet", cache.ownLogSetUp("Tester"));
 		obtained = 3;
 		total = 1717;
 		for (int t = 310; t < 320; t++)
 		{
 			tick(t);
 		}
-		assertFalse("items need the walk", cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertFalse("items need the walk", cache.ownLogSetUp("Tester"));
 		obtained = 0;
 		for (int t = 320; t < 324; t++)
 		{
@@ -689,9 +689,9 @@ public class ClogWalkTest
 		{
 			tick(t);
 		}
-		assertFalse("a zero that flickers starts its count again", cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertFalse("a zero that flickers starts its count again", cache.ownLogSetUp("Tester"));
 		tick(329);
-		assertTrue(cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertTrue(cache.ownLogSetUp("Tester"));
 		assertEquals(1, completions);
 	}
 
@@ -706,7 +706,7 @@ public class ClogWalkTest
 			tick(t);
 		}
 		assertFalse("before the world settles the counters may be the last world's",
-			cache.hasCompletedFirstPartySetupFor("Tester"));
+			cache.ownLogSetUp("Tester"));
 		settled = true;
 		for (int t = 420; t < 424; t++)
 		{
@@ -717,9 +717,9 @@ public class ClogWalkTest
 		{
 			tick(t);
 		}
-		assertFalse("after a hop the five-tick wait starts over", cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertFalse("after a hop the five-tick wait starts over", cache.ownLogSetUp("Tester"));
 		tick(428);
-		assertTrue(cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertTrue(cache.ownLogSetUp("Tester"));
 		assertEquals(1, completions);
 	}
 
@@ -742,13 +742,13 @@ public class ClogWalkTest
 		{
 			tick(t);
 		}
-		assertFalse("the log's pages not read yet", cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertFalse("the log's pages not read yet", cache.ownLogSetUp("Tester"));
 		index = parsed;
 		for (int t = 520; t < 525; t++)
 		{
 			tick(t);
 		}
-		assertTrue(cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertTrue(cache.ownLogSetUp("Tester"));
 		assertEquals(1, completions);
 	}
 

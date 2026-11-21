@@ -54,7 +54,7 @@ public class SyncOutcomeTest
 		SyncService.SyncResult result = outcome(426, "{\"error\":\"update_required\"}");
 		assertFalse(result.ok);
 		assertFalse("retrying cannot help", result.retryAdvised);
-		assertEquals(FirstPartyFeedback.UPDATE_REQUIRED, result.message);
+		assertEquals(ControlFeedback.UPDATE_REQUIRED, result.message);
 	}
 
 	@Test

@@ -60,7 +60,7 @@ public class ClogProviderFanoutTest
 	}
 
 	@Test
-	public void publicLookupCanUseRuneProfileWithoutTempleOrFirstParty()
+	public void publicLookupCanUseRuneProfileWithoutTempleOrTheSync()
 	{
 		ClogResult selected = ClogProviderFanout.lookup(false,
 			() -> CompletableFuture.completedFuture(null),

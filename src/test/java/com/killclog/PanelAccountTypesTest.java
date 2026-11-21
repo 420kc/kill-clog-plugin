@@ -61,19 +61,19 @@ public class PanelAccountTypesTest
 	}
 
 	@Test
-	public void testFirstPartyGimSurvivesConflictingRuneProfileCache()
+	public void testSyncedGimSurvivesConflictingRuneProfileCache()
 	{
 		HiscoreResult regular = hiscore(AccountType.REGULAR, HiscoreTable.STANDARD);
 		for (AccountType known : GROUP_TYPES)
 		{
-			ClogResult firstParty = clog(known).withSources(false, false, true);
+			ClogResult controls = clog(known).withSources(false, false, true);
 			CachedRuneProfile runeProfile = new CachedRuneProfile(null);
 			PanelAccountTypes resolver = new PanelAccountTypes(runeProfile);
-			assertAllDisplays(resolver, regular, firstParty, known, HiscoreTable.STANDARD, known.displayName());
+			assertAllDisplays(resolver, regular, controls, known, HiscoreTable.STANDARD, known.displayName());
 			for (AccountType provider : GROUP_TYPES)
 			{
 				runeProfile.accountType = provider;
-				assertAllDisplays(resolver, regular, firstParty, known, HiscoreTable.STANDARD, known.displayName());
+				assertAllDisplays(resolver, regular, controls, known, HiscoreTable.STANDARD, known.displayName());
 			}
 		}
 	}

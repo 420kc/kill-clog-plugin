@@ -11,7 +11,7 @@ import org.junit.Test;
 import static org.junit.Assert.*;
 
 /**
- * Parsing tests for the killclog.com first-party read leg: sync-index
+ * Parsing tests for the killclog.com read leg: sync-index
  * membership, proof-view responses, pb caching, and timestamp conversion.
  * Network behaviour is not exercised.
  */
@@ -308,7 +308,7 @@ public class KillclogServiceTest
 	}
 
 	@Test
-	public void testNotFoundAndOptOutEvictEveryFirstPartyTrace()
+	public void testNotFoundAndOptOutEvictEverySyncedTrace()
 	{
 		String json = "{\"rsn\":\"420 kc\",\"pbs\":{\"Zulrah\":58.2},"
 			+ "\"clog\":{\"items_by_category\":{\"zulrah\":[{\"item_id\":1,\"quantity\":1}]}}}";
@@ -344,7 +344,7 @@ public class KillclogServiceTest
 	}
 
 	@Test
-	public void testIndexMissEvictsStaleFirstPartyData() throws Exception
+	public void testIndexMissEvictsStaleSyncedData() throws Exception
 	{
 		String json = "{\"rsn\":\"420 kc\",\"pbs\":{\"Zulrah\":58.2},"
 			+ "\"clog\":{\"items_by_category\":{\"zulrah\":[{\"item_id\":1,\"quantity\":1}]}}}";

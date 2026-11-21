@@ -205,32 +205,32 @@ public class PageCountsTest
 		File dir = temporaryFolder.newFolder();
 		LocalClogCache cache = LocalClogCacheTest.onDisk(dir);
 		assertTrue(StoreLogin.activate(cache, "Tester", 77L));
-		cache.cacheFirstPartyResult(new ClogResult("Tester", Map.of("revenants", List.of(
+		cache.cacheOwnLog(new ClogResult("Tester", Map.of("revenants", List.of(
 			new ClogResult.ClogItem(21804, 1, null))), Map.of("revenants", List.of(21804)), Map.of(), null, null));
 		cache.setPageCount("Tester", REVS, 1204);
 		cache.setPageCount("Tester", TOB_ENTRY, 6);
-		assertEquals(Map.of(REVS, 1204, TOB_ENTRY, 6), cache.toFirstPartySyncResult("Tester").getPageCounts());
+		assertEquals(Map.of(REVS, 1204, TOB_ENTRY, 6), cache.ownLogForSync("Tester").getPageCounts());
 
 		// killclog.com took a sync with the Revenants' count, and the Theatre's was read again since, to another number.
 		cache.setPageCount("Tester", TOB_ENTRY, 7);
 		cache.pageCountsSent("Tester", Map.of(REVS, 1204, TOB_ENTRY, 6));
-		assertEquals(Map.of(TOB_ENTRY, 7), cache.toFirstPartySyncResult("Tester").getPageCounts());
+		assertEquals(Map.of(TOB_ENTRY, 7), cache.ownLogForSync("Tester").getPageCounts());
 		assertEquals("the cards still show every count", Map.of(REVS, 1204, TOB_ENTRY, 7),
 			cache.toClogResult("Tester", null).getPageCounts());
 		assertEquals(Integer.valueOf(1204), cache.pageCount("Tester", REVS));
 
 		// The same number read again is nothing new, so it stays home; a new one goes.
 		cache.setPageCount("Tester", REVS, 1204);
-		assertEquals(Map.of(TOB_ENTRY, 7), cache.toFirstPartySyncResult("Tester").getPageCounts());
+		assertEquals(Map.of(TOB_ENTRY, 7), cache.ownLogForSync("Tester").getPageCounts());
 		cache.setPageCount("Tester", REVS, 1300);
-		assertEquals(Map.of(REVS, 1300, TOB_ENTRY, 7), cache.toFirstPartySyncResult("Tester").getPageCounts());
+		assertEquals(Map.of(REVS, 1300, TOB_ENTRY, 7), cache.ownLogForSync("Tester").getPageCounts());
 
 		// Saved: a restart doesn't send what killclog.com already took.
 		cache.pageCountsSent("Tester", Map.of(REVS, 1300, TOB_ENTRY, 7));
 		StoreLogin.logout(cache);
 		LocalClogCache reloaded = LocalClogCacheTest.onDisk(dir);
 		assertTrue(StoreLogin.activate(reloaded, "Tester", 77L));
-		assertTrue(reloaded.toFirstPartySyncResult("Tester").getPageCounts().isEmpty());
+		assertTrue(reloaded.ownLogForSync("Tester").getPageCounts().isEmpty());
 		assertEquals(Integer.valueOf(1300), reloaded.pageCount("Tester", REVS));
 		assertNull("only the serving account's own", reloaded.pageCount("Someone", REVS));
 	}
@@ -242,34 +242,34 @@ public class PageCountsTest
 		LocalClogCache cache = LocalClogCacheTest.onDisk(dir);
 		assertTrue(StoreLogin.activate(cache, "Tester", 77L));
 		cache.setPageCount("Tester", REVS, 57);
-		assertNull("no log yet, as with the gambles: nothing to keep it on", cache.toFirstPartySyncResult("Tester"));
-		cache.cacheFirstPartyResult(new ClogResult("Tester", Map.of("revenants", List.of(
+		assertNull("no log yet, as with the gambles: nothing to keep it on", cache.ownLogForSync("Tester"));
+		cache.cacheOwnLog(new ClogResult("Tester", Map.of("revenants", List.of(
 			new ClogResult.ClogItem(21804, 1, null))), Map.of("revenants", List.of(21804)), Map.of(), null, null));
 		int[] changes = {0};
-		cache.setFirstPartyChangedListener(() -> changes[0]++);
+		cache.setOwnLogChangedListener(() -> changes[0]++);
 		cache.setPageCount("Tester", REVS, 57);
 		assertEquals(1, changes[0]);
 		cache.setPageCount("Tester", REVS, 57);
 		assertEquals("the same reading changes nothing", 1, changes[0]);
 		cache.setPageCount("Tester", REVS, 50);
 		assertEquals("a lower reading replaces it: a misread gives way to the page's next new number", 50,
-			(int) cache.toFirstPartySyncResult("Tester").getPageCounts().get(REVS));
+			(int) cache.ownLogForSync("Tester").getPageCounts().get(REVS));
 		cache.setPageCount("Someone", REVS, 9);
 		assertNull("only the serving account's own log", cache.toClogResult("Someone", null));
 
 		// A walk carries none, so the log keeps its counts through it.
-		cache.cacheFirstPartyResult(new ClogResult("Tester", Map.of("revenants", List.of(
+		cache.cacheOwnLog(new ClogResult("Tester", Map.of("revenants", List.of(
 			new ClogResult.ClogItem(21804, 1, null))), Map.of("revenants", List.of(21804)), Map.of(), null, null));
-		assertEquals(50, (int) cache.toFirstPartySyncResult("Tester").getPageCounts().get(REVS));
+		assertEquals(50, (int) cache.ownLogForSync("Tester").getPageCounts().get(REVS));
 		StoreLogin.logout(cache);
 		LocalClogCache reloaded = LocalClogCacheTest.onDisk(dir);
 		assertTrue(StoreLogin.activate(reloaded, "Tester", 77L));
-		assertEquals("saved", 50, (int) reloaded.toFirstPartySyncResult("Tester").getPageCounts().get(REVS));
+		assertEquals("saved", 50, (int) reloaded.ownLogForSync("Tester").getPageCounts().get(REVS));
 
 		// A Hardcore Worlds reset starts the counts over with the log.
 		reloaded.startOverOnReset("Tester", 5_000_000, true);
 		assertTrue(reloaded.startOverOnReset("Tester", 1_154, false));
-		assertTrue(reloaded.toFirstPartySyncResult("Tester").getPageCounts().isEmpty());
+		assertTrue(reloaded.ownLogForSync("Tester").getPageCounts().isEmpty());
 	}
 
 	private static JsonObject body(ClogResult log) throws Exception

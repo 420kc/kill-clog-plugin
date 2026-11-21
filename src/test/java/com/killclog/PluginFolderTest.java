@@ -55,9 +55,9 @@ public class PluginFolderTest
 		});
 		assertNull(cache.folder().join());
 		assertTrue(StoreLogin.activate(cache, "Tester", 77L));
-		cache.cacheFirstPartyResult(LocalClogCacheTest.clog("Tester", LocalClogCacheTest.categoryItems("hats", 1, 2),
+		cache.cacheOwnLog(LocalClogCacheTest.clog("Tester", LocalClogCacheTest.categoryItems("hats", 1, 2),
 			LocalClogCacheTest.obtainedItems("hats", 1)));
-		assertTrue(cache.hasFirstPartyDataFor("Tester"));
+		assertTrue(cache.ownLogHasItems("Tester"));
 		assertFalse("a lookup reads no disk", cache.hasDataFor("Someone Else"));
 
 		LocalCaCache ca = new LocalCaCache(new Gson(), new InlineScheduledExecutorService());

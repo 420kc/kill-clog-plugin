@@ -111,7 +111,7 @@ class SyncService
 		// first-hand, so a provider's answer (a lookup before login, a search of another character) can never pass as
 		// the player's own. The one thing a provider adds is TempleOSRS's date on an item held without one
 		// (ClogService.overlayProviderDates).
-		ClogResult clog = cache.toFirstPartySyncResult(rsn);
+		ClogResult clog = cache.ownLogForSync(rsn);
 		if (clog == null || clog.getObtainedItems().isEmpty() && !cache.ownLogReady(rsn))
 		{
 			// Never set up on this PC: say what to do. A set-up empty log syncs (a new Hardcore Worlds run shows at once).
@@ -251,7 +251,7 @@ class SyncService
 		// The server no longer takes this version's syncs (a League cutover): only an update helps.
 		if (r.code == 426)
 		{
-			return SyncResult.stopping(FirstPartyFeedback.UPDATE_REQUIRED);
+			return SyncResult.stopping(ControlFeedback.UPDATE_REQUIRED);
 		}
 		if (r.code == 451)
 		{

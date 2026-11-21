@@ -87,7 +87,7 @@ final class ClogWalk
 		Player local = client.getLocalPlayer();
 		String name = local != null ? local.getName() : null;
 		if (!countersSettled || walk.isActive() || name == null || !clogIndex.isParsed() || !localClogCache.serving(name)
-			|| localClogCache.hasCompletedFirstPartySetupFor(name)
+			|| localClogCache.ownLogSetUp(name)
 			|| client.getVarpValue(VarPlayerID.COLLECTION_COUNT) != 0
 			|| client.getVarpValue(VarPlayerID.COLLECTION_COUNT_MAX) <= 0)
 		{
@@ -107,7 +107,7 @@ final class ClogWalk
 		ClogResult result = new ClogResult(name, empty, clogIndex.copyCategoryItems(), new HashMap<>(), null, null);
 		result.setUniqueObtained(0);
 		result.setUniqueTotal(client.getVarpValue(VarPlayerID.COLLECTION_COUNT_MAX));
-		localClogCache.cacheFirstPartyResult(result);
+		localClogCache.cacheOwnLog(result);
 		walkComplete.run();
 		SwingUtilities.invokeLater(() -> panelRefresh.accept(name));
 	}
@@ -250,7 +250,7 @@ final class ClogWalk
 		}
 
 		// A completed cache can be refreshed by the same full-catalog walk.
-		firstWalk = !localClogCache.hasCompletedFirstPartySetupFor(local.getName());
+		firstWalk = !localClogCache.ownLogSetUp(local.getName());
 		walkPlayer = local.getName();
 		// A manual request or another plugin's Search supersedes the queued open.
 		openingPlayer = null;
@@ -347,7 +347,7 @@ final class ClogWalk
 		{
 			result.setUniqueTotal(reportedTotal);
 		}
-		localClogCache.cacheFirstPartyResult(result);
+		localClogCache.cacheOwnLog(result);
 		walkComplete.run();
 
 		// Prefer Jagex's logical-slot count; distinct item forms can share a slot.

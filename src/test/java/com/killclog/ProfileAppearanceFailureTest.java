@@ -11,7 +11,7 @@ public class ProfileAppearanceFailureTest
 	{
 		JsonObject body = new JsonObject();
 		body.addProperty("error", "update_required");
-		assertEquals(FirstPartyFeedback.UPDATE_REQUIRED, ProfileAppearanceFailure.fromResponse(426, body).message);
+		assertEquals(ControlFeedback.UPDATE_REQUIRED, ProfileAppearanceFailure.fromResponse(426, body).message);
 	}
 
 	@Test

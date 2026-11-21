@@ -152,7 +152,7 @@ public class KillClogPlugin extends Plugin
 		() -> killclogService.activeLeague(), () -> localClogCache, id -> leagueCacheFactory.apply(id),
 		store ->
 		{
-			store.setFirstPartyChangedListener(() -> firstPartyChanged(store));
+			store.setOwnLogChangedListener(() -> ownLogChanged(store));
 			store.serve(sessions.current());
 		});
 	private final AdvLogPbs.Watch advLog = new AdvLogPbs.Watch();
@@ -238,7 +238,7 @@ public class KillClogPlugin extends Plugin
 		panel.setKillclogSyncHandler(publication::manualSync);
 		panel.setCharacterPublishHandler(publication::publishCharacter);
 		panel.setCharacterDeleteHandler(publication::deleteCharacter);
-		panel.setFirstPartyLockedHandler(() -> clientThread.invokeLater(() -> chatNotifier.send(ChatNotice.SYNC_HELP,
+		panel.setControlsLockedHandler(() -> clientThread.invokeLater(() -> chatNotifier.send(ChatNotice.SYNC_HELP,
 			"Open your Collection Log once so Kill Clog can read it: the chalice and the character button unlock"
 				+ " when setup finishes.")));
 		panel.setSelfPbs(this::selfPbs);
@@ -248,7 +248,7 @@ public class KillClogPlugin extends Plugin
 		panel.setCharacterPublishEnabled(publication.characterPublishingEnabled());
 		// The sync trigger lives at the data seam: anything that lands in your own log (a walk, a live unlock)
 		// schedules a debounced push.
-		localClogCache.setFirstPartyChangedListener(() -> firstPartyChanged(localClogCache));
+		localClogCache.setOwnLogChangedListener(() -> ownLogChanged(localClogCache));
 
 		kclogCommand.commands().forEach(chatCommandManager::registerCommandAsync);
 
@@ -297,7 +297,7 @@ public class KillClogPlugin extends Plugin
 		liveClogSync.reset();
 		unlocks.clear();
 		nameAutocompleter.clearClientSnapshot();
-		localClogCache.setFirstPartyChangedListener(null);
+		localClogCache.setOwnLogChangedListener(null);
 		publication.cancelCharacterPublish();
 		publication.cancelSync();
 		SwingUtilities.invokeLater(() -> panel.shutdown());
@@ -332,7 +332,7 @@ public class KillClogPlugin extends Plugin
 			}
 			else
 			{
-				panel.setFirstParty(PanelStatusRow.FirstParty.HIDDEN);
+				panel.setControls(PanelStatusRow.Controls.HIDDEN);
 			}
 		}
 
@@ -409,7 +409,7 @@ public class KillClogPlugin extends Plugin
 	private void ownLogServing(LocalClogCache cache, String name)
 	{
 		boolean hasLocalClog = cache.ownLogReady(name);
-		panel.setFirstParty(firstParty(hasLocalClog));
+		panel.setControls(controls(hasLocalClog));
 		if (hasLocalClog)
 		{
 			// The log may have loaded after the settle tick's counter reads skipped it: read them for it now.
@@ -480,7 +480,7 @@ public class KillClogPlugin extends Plugin
 			SwingUtilities.invokeLater(() -> panel.setLoggedInPlayer(null, null));
 			// The sync affordance belongs to the account that just ended. Hiding
 			// it also fences a success callback queued during the logout handoff.
-			panel.setFirstParty(PanelStatusRow.FirstParty.HIDDEN);
+			panel.setControls(PanelStatusRow.Controls.HIDDEN);
 			panel.resetSyncFeedback();
 			clogWalk.reset();
 			liveClogSync.reset();
@@ -675,18 +675,18 @@ public class KillClogPlugin extends Plugin
 	}
 
 	/** A logged-in account whose own log has loaded: locked until it's set up, empty or not. */
-	private static PanelStatusRow.FirstParty firstParty(boolean hasLocalClog)
+	private static PanelStatusRow.Controls controls(boolean hasLocalClog)
 	{
-		return hasLocalClog ? PanelStatusRow.FirstParty.READY : PanelStatusRow.FirstParty.LOCKED;
+		return hasLocalClog ? PanelStatusRow.Controls.READY : PanelStatusRow.Controls.LOCKED;
 	}
 
-	private void firstPartyChanged(LocalClogCache cache)
+	private void ownLogChanged(LocalClogCache cache)
 	{
 		// A set-up log counts, an empty one too: a new account's or a fresh Hardcore Worlds run's empty log is its whole
 		// truth, and its profile shows from the first login rather than the first item.
 		if (cache.ownLogReadyForActive())
 		{
-			panel.setFirstParty(PanelStatusRow.FirstParty.READY);
+			panel.setControls(PanelStatusRow.Controls.READY);
 			// A first capture makes the log the settle tick's counter reads found missing: read them now, ahead of the
 			// debounced push, so a new setup's first sync carries its gambles.
 			clientThread.invokeLater(this::reconcileClogTotalsFromVarps);
@@ -833,7 +833,7 @@ public class KillClogPlugin extends Plugin
 					// The login transition often fires before the player's name is
 					// readable. This tick path waits for identity arbitration too,
 					// so a resident name-slot file can never become the self view.
-					panel.setFirstParty(firstParty(cache.ownLogReady(name)));
+					panel.setControls(controls(cache.ownLogReady(name)));
 					captureLocalCa();
 					AccountType acctType = getLocalAccountType();
 					SwingUtilities.invokeLater(() ->

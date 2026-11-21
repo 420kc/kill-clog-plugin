@@ -95,7 +95,7 @@ public class ClogResultTest
 		assertEquals("2026-05-31 12:00:00", tie.getLastChanged());
 	}
 
-	// pickFullest: the first-party combine. Fullest leads, ties prefer the
+	// pickFullest: the combine with the player's sync. Fullest leads, ties prefer the
 	// player's own sync -- and a partial sync must never shrink the profile
 	// below what providers prove.
 
@@ -127,7 +127,7 @@ public class ClogResultTest
 	}
 
 	@Test
-	public void testProviderWinnerKeepsFirstPartyGroupIdentity()
+	public void testProviderWinnerKeepsTheSyncsGroupIdentity()
 	{
 		ClogResult provider = result("Provider", 5, 10,
 			Collections.singletonMap("boss", Arrays.asList(
@@ -167,7 +167,7 @@ public class ClogResultTest
 	}
 
 	@Test
-	public void testTiePrefersFirstParty()
+	public void testTiePrefersTheSync()
 	{
 		ClogResult provider = result("Provider", 1189, 1561,
 			Collections.singletonMap("boss", Arrays.asList(new ClogResult.ClogItem(1, 1, null))),
@@ -246,7 +246,7 @@ public class ClogResultTest
 			Collections.singletonMap("boss", Arrays.asList(new ClogResult.ClogItem(2, 1, null))),
 			null, null).withSources(false, false, true);
 
-		// Combine A: killclog participates (equal coverage, first-party wins).
+		// Combine A: killclog participates (equal coverage, the sync wins).
 		ClogResult a = ClogResult.pickFullest(ClogResult.pickFullerProvider(temple, null), killclog);
 		assertNotSame(temple, a);
 		assertTrue(a.isFromKillclog());

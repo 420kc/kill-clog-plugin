@@ -85,7 +85,7 @@ public class LocalClogCache
 	private final Map<String, Runnable> pendingByFile = new HashMap<>();
 	private final Map<String, PlayerClogData> unsavedFiles = new HashMap<>();
 
-	private Runnable firstPartyChangedListener;
+	private Runnable ownLogChangedListener;
 
 	@Inject
 	public LocalClogCache(Gson gson)
@@ -395,10 +395,10 @@ public class LocalClogCache
 		return name;
 	}
 
-	/** Called on each capture landing; it only schedules (see {@link #notifyFirstPartyChanged}). */
-	public synchronized void setFirstPartyChangedListener(Runnable listener)
+	/** Called on each capture landing; it only schedules (see {@link #notifyOwnLogChanged}). */
+	public synchronized void setOwnLogChangedListener(Runnable listener)
 	{
-		firstPartyChangedListener = listener;
+		ownLogChangedListener = listener;
 	}
 
 	/** The sync pre-flight: this store still serves that login, with its account's own log. */
@@ -473,7 +473,7 @@ public class LocalClogCache
 
 	/**
 	 * Provider-lane write (Temple/RuneProfile snapshots for looked-up names).
-	 * Never marks first-party and never fires the sync trigger: provider data
+	 * Never marks the own log and never fires the sync trigger: provider data
 	 * lands in the display cache but can never ride a killclog.com push.
 	 */
 	public synchronized void cacheResult(ClogResult result)
@@ -488,16 +488,16 @@ public class LocalClogCache
 	}
 
 	/**
-	 * First-party bulk-capture landing (the Collection Log Search walk). Marks every
+	 * A walk landing in your own log (the Collection Log Search walk). Marks every
 	 * obtained item as client-observed and fires the sync trigger - the
 	 * largest payload of all must schedule a push like any other capture.
 	 */
-	public synchronized void cacheFirstPartyResult(ClogResult result)
+	public synchronized void cacheOwnLog(ClogResult result)
 	{
 		cacheResult(result, true, Collections.emptySet());
 	}
 
-	private synchronized void cacheResult(ClogResult result, boolean firstParty, Set<String> checkStamps)
+	private synchronized void cacheResult(ClogResult result, boolean ownLog, Set<String> checkStamps)
 	{
 		if (result == null || result.getPlayerName() == null || !ready)
 		{
@@ -505,15 +505,15 @@ public class LocalClogCache
 		}
 
 		String name = result.getPlayerName();
-		if (firstParty && !serving(name))
+		if (ownLog && !serving(name))
 		{
 			// Captures wait for the account's own log, as they always waited for its identity.
 			return;
 		}
 		// Only an account's own captures enter its own log; provider results, the
 		// logged-in player's included, stay lookups. That is the whole trust rule.
-		Map<String, PlayerClogData> store = firstParty ? own : lookups;
-		String slot = firstParty ? activeHashKey : cacheKey(name);
+		Map<String, PlayerClogData> store = ownLog ? own : lookups;
+		String slot = ownLog ? activeHashKey : cacheKey(name);
 
 		// Preserve varp-sourced totals if they are higher than public providers report.
 		PlayerClogData existing = store.get(slot);
@@ -523,12 +523,12 @@ public class LocalClogCache
 		data.lastUpdated = Instant.now().toString();
 		data.uniqueObtained = result.getUniqueObtained();
 		data.uniqueTotal = result.getUniqueTotal();
-		if (firstParty && data.uniqueTotal <= 0 && existing != null)
+		if (ownLog && data.uniqueTotal <= 0 && existing != null)
 		{
 			// Zero is not a settled catalog size; retain the last known total.
 			data.uniqueTotal = existing.uniqueTotal;
 		}
-		if (existing != null && !firstParty)
+		if (existing != null && !ownLog)
 		{
 			if (existing.uniqueObtained > data.uniqueObtained)
 			{
@@ -553,7 +553,7 @@ public class LocalClogCache
 			data.providerAccountType = result.getProviderAccountType();
 		}
 		// A provider result builds on what the lookup held; a capture replaces it whole.
-		boolean builds = !firstParty && existing != null;
+		boolean builds = !ownLog && existing != null;
 		data.obtained = builds ? new HashMap<>(data.obtained) : new HashMap<>();
 		data.categories = builds ? new HashMap<>(data.categories) : new HashMap<>();
 
@@ -567,14 +567,14 @@ public class LocalClogCache
 		// Page lists are the catalog's, shared and never changed in place.
 		data.categories.putAll(result.getCategoryItems());
 
-		if (firstParty)
+		if (ownLog)
 		{
 			data.firstPartySetupComplete = true;
 			data.pendingUnlocks = PendingClogUnlock.reconcile(data.pendingUnlocks, data.obtained, activeHashKey);
 			bumpLastChanged(data, newestObtainedDate(data.obtained));
 		}
 		// An unchanged full walk needs neither a disk write nor a web-sync signal.
-		if (firstParty && sameCapture(data, existing))
+		if (ownLog && sameCapture(data, existing))
 		{
 			if (unsavedFiles.containsKey(fileKey(slot, true, name)))
 			{
@@ -583,16 +583,16 @@ public class LocalClogCache
 			return;
 		}
 		store.put(slot, data);
-		if (firstParty && existing == null)
+		if (ownLog && existing == null)
 		{
 			data.ownerHash = slot;
 			index(name, slot);
 		}
-		submitSave(slot, firstParty, data);
+		submitSave(slot, ownLog, data);
 		log.debug("Cached clog data for '{}' ({} categories)", name, data.obtained.size());
-		if (firstParty)
+		if (ownLog)
 		{
-			notifyFirstPartyChanged();
+			notifyOwnLogChanged();
 		}
 	}
 
@@ -615,15 +615,15 @@ public class LocalClogCache
 
 
 
-	// Fires after any in-client observation lands (bulk page capture, live
+	// Fires after any in-client observation lands (a walk, a live
 	// unlock), whatever path delivered it - the killclog.com sync trigger
 	// lives here at the data seam so no capture route can be forgotten.
 	// The listener only schedules a debounced task: it runs under this cache's
 	// lock, so it stays cheap and never waits on another thread (a read back
 	// into this cache is fine, the lock is the same thread's).
-	private void notifyFirstPartyChanged()
+	private void notifyOwnLogChanged()
 	{
-		Runnable listener = firstPartyChangedListener;
+		Runnable listener = ownLogChangedListener;
 		if (listener != null)
 		{
 			listener.run();
@@ -744,7 +744,7 @@ public class LocalClogCache
 			data.lastUpdated = Instant.now().toString();
 			submitSave(activeHashKey, true, data);
 			log.debug("Merged live clog item {} for '{}'", itemId, playerName);
-			notifyFirstPartyChanged();
+			notifyOwnLogChanged();
 		}
 		return changed;
 	}
@@ -983,7 +983,7 @@ public class LocalClogCache
 		data.pageCountsUnsent = data.pageCountsUnsent != null ? new HashSet<>(data.pageCountsUnsent) : new HashSet<>();
 		data.pageCountsUnsent.add(label);
 		submitSave(activeHashKey, true, data);
-		notifyFirstPartyChanged();
+		notifyOwnLogChanged();
 	}
 
 	/** The serving account's own count for a label, or null when its log holds none. */
@@ -1033,7 +1033,7 @@ public class LocalClogCache
 	public synchronized boolean ownLogReady(String playerName)
 	{
 		// Setup is only ever set on an own log (a lookup never carries it), so either says this one can sync.
-		return hasFirstPartyDataFor(playerName) || hasCompletedFirstPartySetupFor(playerName);
+		return ownLogHasItems(playerName) || ownLogSetUp(playerName);
 	}
 
 	/** {@link #ownLogReady} for the logged-in player. */
@@ -1043,7 +1043,7 @@ public class LocalClogCache
 	}
 
 	/** Whether this player completed the full local Collection Log Search walk. */
-	public synchronized boolean hasCompletedFirstPartySetupFor(String playerName)
+	public synchronized boolean ownLogSetUp(String playerName)
 	{
 		PlayerClogData data = record(playerName);
 		return data != null && data.firstPartySetupComplete;
@@ -1136,7 +1136,7 @@ public class LocalClogCache
 	 * Whether this player's own log holds any item. Lookups and empty logs both answer false; whether the log can
 	 * sync (the chalice, the automatic sync) is {@link #ownLogReady}, which an empty set-up log also passes.
 	 */
-	public synchronized boolean hasFirstPartyDataFor(String playerName)
+	public synchronized boolean ownLogHasItems(String playerName)
 	{
 		PlayerClogData data = record(playerName);
 		return data != null && (isActivePlayer(playerName) || data != lookups.get(cacheKey(playerName)))
@@ -1147,7 +1147,7 @@ public class LocalClogCache
 	 * The sync payload: the serving account's own log, which by construction
 	 * holds only what this client captured.
 	 */
-	public synchronized ClogResult toFirstPartySyncResult(String playerName)
+	public synchronized ClogResult ownLogForSync(String playerName)
 	{
 		PlayerClogData data = ownLog(playerName);
 		return data != null ? result(data, new HashMap<>(), true) : null;

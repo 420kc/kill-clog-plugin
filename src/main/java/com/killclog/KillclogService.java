@@ -72,7 +72,7 @@ public class KillclogService
 	@Inject
 	private CaCatalog caCatalog;
 
-	// Membership index: normalized names of players with first-party proof.
+	// Membership index: normalized names of players who have synced.
 	// Null until the first successful fetch; a null index degrades to "skip the
 	// killclog leg entirely" so providers keep serving when killclog.com is down.
 	@Nullable private volatile Set<String> syncIndex;
@@ -118,12 +118,12 @@ public class KillclogService
 		return lookupClog(playerName, GameMode.MAIN);
 	}
 
-	/** One mode's first-party log: main, or a League from that League's own proof view. */
+	/** One mode's synced log: main, or a League from that League's own proof view. */
 	CompletableFuture<ClogResult> lookupClog(String playerName, String mode)
 	{
 		String key = modeKey(mode, playerName);
 		// The canonical catalog supplies category denominators; until it
-		// warms (a brief startup window), a fresh first-party result would
+		// warms (a brief startup window), a fresh synced result would
 		// render dishonest totals, so the leg waits it out. Providers keep
 		// serving, and nothing is recorded against the breaker.
 		if (clogs.hold(key) || clogService != null && !clogService.hasCatalog())
@@ -144,15 +144,15 @@ public class KillclogService
 			// bests go now, so a withdrawal holds within one index refresh, never for a cache's lifetime.
 			if (!index.contains(pbKey(playerName)))
 			{
-				evictFirstParty(key);
+				evictSynced(key);
 				return CompletableFuture.completedFuture(null);
 			}
 			return HttpUtil.singleFlightLookup(clogs.inFlight, key, () -> startProofViewLookup(playerName, key, mode));
 		});
 	}
 
-	/** Drop every first-party trace of a player: clog result, freshness, pbs. */
-	private void evictFirstParty(String key)
+	/** Drop everything cached of a player's sync: log, freshness, bests. */
+	private void evictSynced(String key)
 	{
 		clogs.values.remove(key);
 		clogs.fetched.remove(key);
@@ -308,7 +308,7 @@ public class KillclogService
 	{
 		if (code == 404 || code == 451)
 		{
-			evictFirstParty(key);
+			evictSynced(key);
 			clogs.missing(key);
 			return null;
 		}
@@ -389,9 +389,9 @@ public class KillclogService
 			// carried bests or counts but no items yet. It goes on to give every page its 0 of N and still keeps the
 			// bests below. Returning null would count a healthy answer against the breaker.
 
-			// Never-logged categories are absent from a first-party payload,
+			// Never-logged categories are absent from a sync's payload,
 			// but absence is data: the player owns none of that catalog. Seed
-			// them with catalog denominators so a first-party-won lookup
+			// them with catalog denominators so a lookup the sync wins
 			// renders every boss as 0-of-N with a dimmed grid instead of the
 			// generic unsynced shape.
 			if (clogService != null || clogIndex != null)

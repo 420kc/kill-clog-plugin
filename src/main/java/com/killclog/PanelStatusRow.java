@@ -50,8 +50,8 @@ final class PanelStatusRow
 	private final Color textDim;
 	private final SpriteManager spriteManager;
 	private final TooltipController tooltipController;
-	private final FirstPartyFeedback syncFeedback;
-	private final FirstPartyFeedback characterFeedback;
+	private final ControlFeedback syncFeedback;
+	private final ControlFeedback characterFeedback;
 	private String characterNoticeText;
 	private String characterNoticeDetail;
 	/** What the row shows now; null while blank. */
@@ -62,7 +62,7 @@ final class PanelStatusRow
 	 * the log is still loading, locked (grey, with a hover line and a chat explanation) until it's set up, ready
 	 * after, an empty log included.
 	 */
-	enum FirstParty
+	enum Controls
 	{
 		HIDDEN,
 		LOCKED,
@@ -70,7 +70,7 @@ final class PanelStatusRow
 	}
 
 	private boolean syncArrowEnabled;
-	private FirstParty firstParty = FirstParty.HIDDEN;
+	private Controls controls = Controls.HIDDEN;
 	// A click on either control while locked: the chat explains, nothing is sent.
 	@Setter(AccessLevel.PACKAGE)
 	private Runnable lockedHandler;
@@ -98,10 +98,10 @@ final class PanelStatusRow
 		this.spriteManager = spriteManager;
 		this.tooltipController = tooltipController;
 		this.textDim = textDim;
-		this.syncFeedback = new FirstPartyFeedback(config,
+		this.syncFeedback = new ControlFeedback(config,
 			(kind, text, autoClear) -> showFeedback(Owner.SYNC, kind, text, autoClear),
 			this::flashSyncSuccess, "sync failed");
-		this.characterFeedback = new FirstPartyFeedback(config,
+		this.characterFeedback = new ControlFeedback(config,
 			(kind, text, autoClear) -> showFeedback(Owner.CHARACTER, kind, text, autoClear),
 			this::flashCharacterSuccess, CharacterStatus.FAILED.text);
 		PanelSearchBox.configureStatus(searchStatus, textDim);
@@ -189,7 +189,7 @@ final class PanelStatusRow
 		current = message;
 		searchStatus.setText(message.text);
 		searchStatus.setForeground(message.color);
-		refreshFirstPartyVisibility();
+		refreshControlsVisibility();
 	}
 
 	private void clear()
@@ -201,7 +201,7 @@ final class PanelStatusRow
 		}
 		searchStatus.setText(" ");
 		searchStatus.setForeground(textDim);
-		refreshFirstPartyVisibility();
+		refreshControlsVisibility();
 	}
 
 	/** Blank, hover lines and notices leave the row free for the next writer. */
@@ -269,7 +269,7 @@ final class PanelStatusRow
 	/** What a click here does now: a failure is offered back only on the action that failed. */
 	private String characterHoverText()
 	{
-		if (firstParty == FirstParty.LOCKED)
+		if (controls == Controls.LOCKED)
 		{
 			return LOCKED_HOVER_TEXT;
 		}
@@ -286,7 +286,7 @@ final class PanelStatusRow
 	/** A control's hover line: k1 green for what a click does, the not-found red while it is locked. */
 	private Color hoverColor()
 	{
-		return firstParty == FirstParty.LOCKED ? KillClogColors.NOT_FOUND : SYNC_K1;
+		return controls == Controls.LOCKED ? KillClogColors.NOT_FOUND : SYNC_K1;
 	}
 
 	/** Shift held or let go on the character, as the pointer's last event there says: its hover line follows. */
@@ -355,9 +355,9 @@ final class PanelStatusRow
 		{
 			characterHovered = hovered;
 			refreshCharacterIcon(hovered);
-		}, () -> firstParty == FirstParty.LOCKED ? null : characterTooltipText(characterNoticeDetail != null
+		}, () -> controls == Controls.LOCKED ? null : characterTooltipText(characterNoticeDetail != null
 			? characterNoticeDetail : characterFeedback.lastFailure()), this::characterHoverText,
-			() -> firstParty == FirstParty.LOCKED ? lockedHandler
+			() -> controls == Controls.LOCKED ? lockedHandler
 				: characterShift ? characterDeleteHandler : characterPublishHandler));
 		requestCharacterIcon();
 
@@ -371,10 +371,10 @@ final class PanelStatusRow
 		{
 			syncChaliceHovered = hovered;
 			refreshSyncChalice(hovered);
-		}, () -> firstParty == FirstParty.LOCKED ? null : syncFeedback.lastFailure(),
-			() -> firstParty == FirstParty.LOCKED ? LOCKED_HOVER_TEXT
+		}, () -> controls == Controls.LOCKED ? null : syncFeedback.lastFailure(),
+			() -> controls == Controls.LOCKED ? LOCKED_HOVER_TEXT
 				: syncFeedback.hoverText(SYNC_HOVER_TEXT, SYNC_FAILURE_HOVER_TEXT),
-			() -> firstParty == FirstParty.LOCKED ? lockedHandler : killclogSyncHandler));
+			() -> controls == Controls.LOCKED ? lockedHandler : killclogSyncHandler));
 
 		JPanel row = new JPanel(new BorderLayout());
 		row.setBackground(ColorScheme.DARK_GRAY_COLOR);
@@ -447,7 +447,7 @@ final class PanelStatusRow
 
 	private void refreshSyncChalice(boolean hovered)
 	{
-		syncArrow.setIcon(firstParty == FirstParty.LOCKED ? SYNC_CHALICE_LOCKED : syncGlow.lit() ? SYNC_CHALICE_SYNCED
+		syncArrow.setIcon(controls == Controls.LOCKED ? SYNC_CHALICE_LOCKED : syncGlow.lit() ? SYNC_CHALICE_SYNCED
 			: hovered ? SYNC_CHALICE_LIT : SYNC_CHALICE_DIM);
 	}
 
@@ -467,7 +467,7 @@ final class PanelStatusRow
 			{
 				characterBase = resized;
 				refreshCharacterIcon(false);
-				refreshFirstPartyVisibility();
+				refreshControlsVisibility();
 			});
 		});
 	}
@@ -479,15 +479,15 @@ final class PanelStatusRow
 			characterPublish.setIcon(null);
 			return;
 		}
-		boolean locked = firstParty == FirstParty.LOCKED;
+		boolean locked = controls == Controls.LOCKED;
 		characterPublish.setIcon(imageTinted(characterBase,
 			locked ? 0.35f : characterGlow.lit() || hovered ? 1f : 0.45f,
 			locked ? LOCKED_GREY : characterGlow.lit() ? SYNC_K1 : null));
 	}
 
-	private void refreshFirstPartyVisibility()
+	private void refreshControlsVisibility()
 	{
-		boolean visible = firstParty != FirstParty.HIDDEN && free();
+		boolean visible = controls != Controls.HIDDEN && free();
 		syncArrow.setVisible(syncArrowEnabled && visible);
 		characterPublish.setVisible(characterPublishEnabled && characterBase != null && visible);
 	}
@@ -514,27 +514,27 @@ final class PanelStatusRow
 				tooltipController.setTooltipText(syncArrow, null);
 				syncGlow.clear();
 			}
-			refreshFirstPartyVisibility();
+			refreshControlsVisibility();
 		});
 	}
 
 	/**
 	 * The chalice and the character earn their use: locked until this player's local Collection Log holds at least
-	 * one first-party capture, so a fresh account sees why it cannot sync yet and can never send nothing.
+	 * one capture of their own, so a fresh account sees why it cannot sync yet and can never send nothing.
 	 */
-	void setFirstParty(FirstParty state)
+	void setControls(Controls state)
 	{
 		SwingUtilities.invokeLater(() ->
 		{
-			firstParty = state;
-			if (state != FirstParty.READY)
+			controls = state;
+			if (state != Controls.READY)
 			{
 				syncChaliceHovered = false;
 				syncGlow.clear();
 			}
 			refreshSyncChalice(syncChaliceHovered);
 			refreshCharacterIcon(characterHovered);
-			refreshFirstPartyVisibility();
+			refreshControlsVisibility();
 		});
 	}
 
@@ -548,7 +548,7 @@ final class PanelStatusRow
 				clearCharacterState();
 				tooltipController.setTooltipText(characterPublish, null);
 			}
-			refreshFirstPartyVisibility();
+			refreshControlsVisibility();
 		});
 	}
 
@@ -653,13 +653,13 @@ final class PanelStatusRow
 			current.cancelExpiry();
 		}
 		syncArrowEnabled = false;
-		firstParty = FirstParty.HIDDEN;
+		controls = Controls.HIDDEN;
 		syncChaliceHovered = false;
 		syncFeedback.reset();
 		characterShift = false;
 		clearCharacterState();
 		syncGlow.clear();
-		refreshFirstPartyVisibility();
+		refreshControlsVisibility();
 	}
 
 	// ── feedback internals ─────────────────────────────────────────────
@@ -718,7 +718,7 @@ final class PanelStatusRow
 	{
 		runFeedbackOnEdt(() ->
 		{
-			if (!syncArrowEnabled || firstParty != FirstParty.READY
+			if (!syncArrowEnabled || controls != Controls.READY
 				|| current != null && !ownedBy(Owner.SYNC))
 			{
 				return;
@@ -733,7 +733,7 @@ final class PanelStatusRow
 
 	private void flashCharacterSuccess()
 	{
-		if (!characterPublishEnabled || firstParty != FirstParty.READY
+		if (!characterPublishEnabled || controls != Controls.READY
 			|| !free() && !ownedBy(Owner.CHARACTER))
 		{
 			return;

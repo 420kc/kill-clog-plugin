@@ -100,7 +100,7 @@ public class PanelStatusRowCharacterizationTest
 		panel.setCharacterPublishEnabled(true);
 		drain();
 		edt(() -> assertControls(false, false));
-		panel.setFirstParty(PanelStatusRow.FirstParty.READY);
+		panel.setControls(PanelStatusRow.Controls.READY);
 		drain();
 		edt(() -> assertControls(true, true));
 		panel.setSyncArrowEnabled(false);
@@ -110,7 +110,7 @@ public class PanelStatusRowCharacterizationTest
 		panel.setCharacterPublishEnabled(false);
 		drain();
 		edt(() -> assertControls(true, false));
-		panel.setFirstParty(PanelStatusRow.FirstParty.HIDDEN);
+		panel.setControls(PanelStatusRow.Controls.HIDDEN);
 		drain();
 		edt(() -> assertControls(false, false));
 	}
@@ -120,7 +120,7 @@ public class PanelStatusRowCharacterizationTest
 	{
 		panel.setSyncArrowEnabled(true);
 		panel.setCharacterPublishEnabled(true);
-		panel.setFirstParty(PanelStatusRow.FirstParty.LOCKED);
+		panel.setControls(PanelStatusRow.Controls.LOCKED);
 		drain();
 		edt(() ->
 		{
@@ -132,7 +132,7 @@ public class PanelStatusRowCharacterizationTest
 			panel.setKillclogSyncHandler(syncs::incrementAndGet);
 			panel.setCharacterPublishHandler(publishes::incrementAndGet);
 			panel.setCharacterDeleteHandler(deletes::incrementAndGet);
-			panel.setFirstPartyLockedHandler(explained::incrementAndGet);
+			panel.setControlsLockedHandler(explained::incrementAndGet);
 			for (JLabel control : new JLabel[]{sync, character})
 			{
 				mouse(control, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
@@ -149,7 +149,7 @@ public class PanelStatusRowCharacterizationTest
 			assertEquals(0, syncs.get() + publishes.get() + deletes.get());
 		});
 		// Its first item unlocks both.
-		panel.setFirstParty(PanelStatusRow.FirstParty.READY);
+		panel.setControls(PanelStatusRow.Controls.READY);
 		drain();
 		edt(() ->
 		{
@@ -244,15 +244,15 @@ public class PanelStatusRowCharacterizationTest
 		enableControls();
 		edt(() ->
 		{
-			panel.showSyncResult(true, false, FirstPartyFeedback.UPDATE_REQUIRED);
+			panel.showSyncResult(true, false, ControlFeedback.UPDATE_REQUIRED);
 			assertEquals("update needed", status.getText());
 			fire(expiry());
 			mouse(sync, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
 			assertEquals("update needed - restart RuneLite", status.getText());
-			assertEquals(FirstPartyFeedback.UPDATE_REQUIRED, sync.getToolTipText());
+			assertEquals(ControlFeedback.UPDATE_REQUIRED, sync.getToolTipText());
 			mouse(sync, MouseEvent.MOUSE_EXITED, MouseEvent.NOBUTTON);
 
-			panel.showCharacterPublishStatus(CharacterStatus.FAILED, true, FirstPartyFeedback.UPDATE_REQUIRED);
+			panel.showCharacterPublishStatus(CharacterStatus.FAILED, true, ControlFeedback.UPDATE_REQUIRED);
 			assertEquals("update needed", status.getText());
 			fire(expiry());
 			mouse(character, MouseEvent.MOUSE_ENTERED, MouseEvent.NOBUTTON);
@@ -613,7 +613,7 @@ public class PanelStatusRowCharacterizationTest
 	private void enableControls() throws Exception
 	{
 		panel.setSyncArrowEnabled(true);
-		panel.setFirstParty(PanelStatusRow.FirstParty.READY);
+		panel.setControls(PanelStatusRow.Controls.READY);
 		panel.setCharacterPublishEnabled(true);
 		drain();
 	}

@@ -46,7 +46,7 @@ public class SyncServiceModeTest
 		LocalClogCache main = mock(LocalClogCache.class);
 		LocalClogCache league = mock(LocalClogCache.class);
 		when(league.servesAccount(TESTER)).thenReturn(true);
-		when(league.toFirstPartySyncResult("Tester")).thenReturn(new ClogResult("Tester",
+		when(league.ownLogForSync("Tester")).thenReturn(new ClogResult("Tester",
 			Map.of("boss", List.of(new ClogResult.ClogItem(1, 1, null))), Map.of("boss", List.of(1)), Map.of(), null, null));
 		when(league.commitIfSessionCurrent(eq(TESTER), any())).thenAnswer(call -> ((Supplier<Object>) call.getArgument(1)).get());
 		KillclogSyncGate<Object> gate = new KillclogSyncGate<>((waiting, later) -> later);
@@ -115,7 +115,7 @@ public class SyncServiceModeTest
 		assertEquals("Open your Collection Log to set up Kill Clog automatically.", unread.message);
 
 		// An empty log not yet set up is no log: what to do, nothing sent.
-		when(main.toFirstPartySyncResult("Tester")).thenReturn(new ClogResult("Tester", Map.of(), Map.of(), Map.of(),
+		when(main.ownLogForSync("Tester")).thenReturn(new ClogResult("Tester", Map.of(), Map.of(), Map.of(),
 			null, null));
 		SyncService.SyncResult notSetUp = service.syncCollectionLog(TESTER, null, Map.of(), Map.of(), gate,
 			gate.begin(null, gate.era(), KillclogSyncGate.DELIBERATE), main, "main", -1, false, NOTHING).get();

@@ -51,14 +51,14 @@ public class LocalClogCacheTest
 		LocalClogCache cache = new LocalClogCache(new Gson(), new InlineScheduledExecutorService());
 		cache.open(() -> null);
 		assertFalse(cache.serving("Tester"));
-		cache.cacheFirstPartyResult(clog("Tester", categoryItems("zulrah", 1, 2), obtainedItems("zulrah", 1)));
+		cache.cacheOwnLog(clog("Tester", categoryItems("zulrah", 1, 2), obtainedItems("zulrah", 1)));
 		assertFalse("a capture before activation waits, as it waited for identity", cache.hasDataFor("Tester"));
 		StoreLogin.logout(cache);
 		assertFalse("and it landed nowhere else either", cache.hasDataFor("Tester"));
 		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
 		assertTrue(cache.serving("Tester"));
-		cache.cacheFirstPartyResult(clog("Tester", categoryItems("zulrah", 1, 2), obtainedItems("zulrah", 1)));
-		assertTrue(cache.hasFirstPartyDataFor("Tester"));
+		cache.cacheOwnLog(clog("Tester", categoryItems("zulrah", 1, 2), obtainedItems("zulrah", 1)));
+		assertTrue(cache.ownLogHasItems("Tester"));
 		assertTrue(cache.ownLogReadyForActive());
 		assertFalse("another name is another account", cache.serving("Someone"));
 		assertFalse(StoreLogin.activate(cache, "Someone", -1L));
@@ -70,7 +70,7 @@ public class LocalClogCacheTest
 		File dir = temporaryFolder.newFolder();
 		LocalClogCache cache = onDisk(dir);
 		assertTrue(StoreLogin.activate(cache, "Old Name", HASH));
-		cache.cacheFirstPartyResult(clog("Old Name", categoryItems("hats", 1, 2), obtainedItems("hats", 1)));
+		cache.cacheOwnLog(clog("Old Name", categoryItems("hats", 1, 2), obtainedItems("hats", 1)));
 		File own = ownFile(dir, HASH);
 		assertTrue(own.exists());
 		PlayerClogData saved = new Gson().fromJson(Files.readString(own.toPath()), PlayerClogData.class);
@@ -81,14 +81,14 @@ public class LocalClogCacheTest
 		assertTrue(StoreLogin.activate(cache, "New Name", HASH));
 		assertEquals("Old Name", cache.consumeRenameNotice());
 		assertNull(cache.consumeRenameNotice());
-		assertTrue(cache.hasFirstPartyDataFor("New Name"));
+		assertTrue(cache.ownLogHasItems("New Name"));
 		assertEquals("New Name", new Gson().fromJson(Files.readString(own.toPath()), PlayerClogData.class).playerName);
 		assertEquals("one file, renamed inside", 1, dir.list((d, n) -> n.endsWith(".json")).length);
 
 		LocalClogCache restarted = onDisk(dir);
 		assertTrue(StoreLogin.activate(restarted, "New Name", HASH));
 		assertNull("no change, no notice", restarted.consumeRenameNotice());
-		assertTrue(restarted.hasFirstPartyDataFor("New Name"));
+		assertTrue(restarted.ownLogHasItems("New Name"));
 	}
 
 	@Test
@@ -128,7 +128,7 @@ public class LocalClogCacheTest
 		LocalClogCache cache = new LocalClogCache(new Gson(), writer);
 		cache.open(() -> TestFolders.folder(dir));
 		assertTrue(StoreLogin.activate(cache, "Shared", HASH));
-		cache.cacheFirstPartyResult(clog("Shared", categoryItems("hats", 1, 2), obtainedItems("hats", 1)));
+		cache.cacheOwnLog(clog("Shared", categoryItems("hats", 1, 2), obtainedItems("hats", 1)));
 		StoreLogin.logout(cache);
 		assertTrue(StoreLogin.activate(cache, "Shared", 78L));
 		writer.runQueued();
@@ -150,10 +150,10 @@ public class LocalClogCacheTest
 			File[] preserved = dir.listFiles((folder, name) -> name.startsWith(".unreadable-"));
 			assertEquals(1, preserved.length);
 			assertEquals(damaged, Files.readString(preserved[0].toPath()));
-			cache.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 1), obtainedItems("hats", 1)));
+			cache.cacheOwnLog(clog("Tester", categoryItems("hats", 1), obtainedItems("hats", 1)));
 			LocalClogCache restarted = onDisk(dir);
 			assertTrue(StoreLogin.activate(restarted, "Tester", HASH));
-			assertNotNull(restarted.toFirstPartySyncResult("Tester"));
+			assertNotNull(restarted.ownLogForSync("Tester"));
 		}
 	}
 
@@ -163,7 +163,7 @@ public class LocalClogCacheTest
 		File dir = temporaryFolder.newFolder();
 		LocalClogCache first = onDisk(dir);
 		assertTrue(StoreLogin.activate(first, "Tester", HASH));
-		first.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 1), obtainedItems("hats", 1)));
+		first.cacheOwnLog(clog("Tester", categoryItems("hats", 1), obtainedItems("hats", 1)));
 		// 2.4's name-keyed files and the old move's leftovers beside the own log, and an own-log name one folder down.
 		Map<String, String> left = new HashMap<>();
 		left.put("tester.json", "{\"playerName\":\"Tester\"}");
@@ -197,7 +197,7 @@ public class LocalClogCacheTest
 		File dir = temporaryFolder.newFolder();
 		LocalClogCache first = onDisk(dir);
 		assertTrue(StoreLogin.activate(first, "Other", 78L));
-		first.cacheFirstPartyResult(clog("Other", categoryItems("hats", 1), obtainedItems("hats", 1)));
+		first.cacheOwnLog(clog("Other", categoryItems("hats", 1), obtainedItems("hats", 1)));
 		Files.copy(ownFile(dir, 78L).toPath(), ownFile(dir, HASH).toPath());
 		LocalClogCache cache = onDisk(dir);
 		assertTrue(StoreLogin.activate(cache, "Other", 78L));
@@ -224,18 +224,18 @@ public class LocalClogCacheTest
 		File dir = temporaryFolder.newFolder();
 		LocalClogCache cache = onDisk(dir);
 		assertTrue(StoreLogin.activate(cache, "Alt", 78L));
-		cache.cacheFirstPartyResult(clog("Alt", categoryItems("hats", 1, 2), obtainedItems("hats", 1)));
+		cache.cacheOwnLog(clog("Alt", categoryItems("hats", 1, 2), obtainedItems("hats", 1)));
 		StoreLogin.logout(cache);
 		assertTrue(StoreLogin.activate(cache, "Main", HASH));
 
-		assertTrue("a local alt previews its own log", cache.hasFirstPartyDataFor("Alt"));
+		assertTrue("a local alt previews its own log", cache.ownLogHasItems("Alt"));
 		cache.cacheResult(clog("Alt", categoryItems("hats", 1, 2), obtainedItems("hats", 1, 2)));
 		assertEquals("a fresh lookup then serves", 2,
 			cache.toClogResult("Alt", Collections.emptyMap()).getObtainedItems().get("hats").size());
 		PlayerClogData alt = new Gson().fromJson(Files.readString(ownFile(dir, 78L).toPath()), PlayerClogData.class);
 		assertEquals("the alt's own log is untouched", 1, alt.obtained.get("hats").size());
 		assertTrue(new File(dir, "lookups/alt.json").exists());
-		assertNull("lookups never ship", cache.toFirstPartySyncResult("Alt"));
+		assertNull("lookups never ship", cache.ownLogForSync("Alt"));
 	}
 
 	@Test
@@ -246,14 +246,14 @@ public class LocalClogCacheTest
 		for (long hash : new long[]{78L, 79L})
 		{
 			assertTrue(StoreLogin.activate(cache, "Traded", hash));
-			cache.cacheFirstPartyResult(clog("Traded", categoryItems("hats", 1), obtainedItems("hats", 1)));
+			cache.cacheOwnLog(clog("Traded", categoryItems("hats", 1), obtainedItems("hats", 1)));
 			StoreLogin.logout(cache);
 		}
 		LocalClogCache restarted = onDisk(dir);
 		assertTrue(StoreLogin.activate(restarted, "Main", HASH));
 		assertFalse(restarted.hasDataFor("Traded"));
 		assertTrue("the account itself still gets its own", StoreLogin.activate(restarted, "Traded", 79L));
-		assertTrue(restarted.hasFirstPartyDataFor("Traded"));
+		assertTrue(restarted.ownLogHasItems("Traded"));
 	}
 
 	@Test
@@ -291,7 +291,7 @@ public class LocalClogCacheTest
 		LocalClogCache cache = onDisk(dir);
 		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
 		Map<String, List<Integer>> cats = categoryItems("hats", 2978, 2991, 2992);
-		cache.cacheFirstPartyResult(clog("Tester", cats, obtainedItems("hats", 2978)));
+		cache.cacheOwnLog(clog("Tester", cats, obtainedItems("hats", 2978)));
 		String date = ClogDates.local(java.time.Instant.now().minusSeconds(60).toString());
 		cache.rememberPendingUnlock("Tester", List.of(2991, 2992), date);
 		cache.rememberPendingUnlock("Tester", List.of(2992, 2991), date);
@@ -299,12 +299,12 @@ public class LocalClogCacheTest
 		assertEquals(1, saved.pendingUnlocks.size());
 		LocalClogCache restarted = onDisk(dir);
 		assertTrue(StoreLogin.activate(restarted, "Tester", HASH));
-		restarted.cacheFirstPartyResult(clog("Tester", cats, obtainedItems("hats", 2978, 2991)));
-		ClogResult result = restarted.toFirstPartySyncResult("Tester");
+		restarted.cacheOwnLog(clog("Tester", cats, obtainedItems("hats", 2978, 2991)));
+		ClogResult result = restarted.ownLogForSync("Tester");
 		assertEquals(date, LookupQueries.getRecentItems(result, 5).get(0).getDate());
 		assertEquals(2991, LookupQueries.getRecentItems(result, 5).get(0).getId());
-		restarted.cacheFirstPartyResult(clog("Tester", cats, obtainedItems("hats", 2978, 2991)));
-		assertEquals(date, LookupQueries.getRecentItems(restarted.toFirstPartySyncResult("Tester"), 5).get(0).getDate());
+		restarted.cacheOwnLog(clog("Tester", cats, obtainedItems("hats", 2978, 2991)));
+		assertEquals(date, LookupQueries.getRecentItems(restarted.ownLogForSync("Tester"), 5).get(0).getDate());
 		Map<String, List<ClogResult.ClogItem>> wrongOwner = obtainedItems("hats", 2991);
 		PendingClogUnlock.reconcile(saved.pendingUnlocks, wrongOwner, "other-owner");
 		assertNull(wrongOwner.get("hats").get(0).getDate());
@@ -321,7 +321,7 @@ public class LocalClogCacheTest
 		cache.cacheResult(clog("Tester", cats, obtainedItems("hats", 2978)));
 		cache.rememberPendingUnlock("Tester", List.of(2991, 2992));
 		assertFalse("a provider copy makes no own log to hold it", ownFile(dir, HASH).exists());
-		cache.cacheFirstPartyResult(clog("Tester", cats, obtainedItems("hats", 2978)));
+		cache.cacheOwnLog(clog("Tester", cats, obtainedItems("hats", 2978)));
 		cache.rememberPendingUnlock("Tester", List.of(2991, 2992));
 		PlayerClogData saved = gson.fromJson(Files.readString(ownFile(dir, HASH).toPath()), PlayerClogData.class);
 		assertEquals(1, saved.pendingUnlocks.size());
@@ -411,7 +411,7 @@ public class LocalClogCacheTest
 		Map<String, List<Integer>> categories = new HashMap<>();
 		categories.put("magus", itemList(1, 2, 3));
 		categories.put("all_pets", itemList(2, 4));
-		cache.cacheFirstPartyResult(clog("Fast 07", categories, obtainedItems("magus", 1)));
+		cache.cacheOwnLog(clog("Fast 07", categories, obtainedItems("magus", 1)));
 
 		boolean changed = cache.mergeObtainedItem("Fast 07", 2, itemListAsStrings("magus", "all_pets"), categories, 0, null);
 
@@ -427,7 +427,7 @@ public class LocalClogCacheTest
 	{
 		LocalClogCache cache = memory("Fast 07");
 		Map<String, List<Integer>> categories = categoryItems("magus", 1, 2, 3);
-		cache.cacheFirstPartyResult(clog("Fast 07", categories, obtainedItems("magus", 1, 2)));
+		cache.cacheOwnLog(clog("Fast 07", categories, obtainedItems("magus", 1, 2)));
 		assertFalse(cache.mergeObtainedItem("Fast 07", 2, itemListAsStrings("magus"), categories, 0, null));
 		assertEquals(2, cache.toClogResult("Fast 07", Collections.emptyMap()).getObtainedItems().get("magus").size());
 	}
@@ -448,14 +448,14 @@ public class LocalClogCacheTest
 		LocalClogCache cache = onDisk(temporaryFolder.newFolder());
 		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
 		Map<String, List<Integer>> categories = Map.of("hats", itemList(1, 2));
-		cache.cacheFirstPartyResult(clog("Tester", categories, obtainedItems("hats")));
+		cache.cacheOwnLog(clog("Tester", categories, obtainedItems("hats")));
 		assertFalse("another name never raises your totals", cache.updateTotalsUpward("Zezima", 99, 99));
 		assertFalse(cache.updateTotalsUpward(null, 99, 99));
 		assertFalse("another name never adds to your log",
 			cache.mergeObtainedItem("Zezima", 2, List.of("hats"), categories, 0, null));
-		assertNull("and never sends it", cache.toFirstPartySyncResult("Zezima"));
+		assertNull("and never sends it", cache.ownLogForSync("Zezima"));
 		assertTrue(cache.updateTotalsUpward("Tester", 99, 99));
-		assertEquals(99, cache.toFirstPartySyncResult("Tester").getUniqueObtained());
+		assertEquals(99, cache.ownLogForSync("Tester").getUniqueObtained());
 	}
 
 	@Test
@@ -465,19 +465,19 @@ public class LocalClogCacheTest
 		LocalClogCache cache = onDisk(dir);
 		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
 		Map<String, List<Integer>> categories = Map.of("hats", itemList(1, 2));
-		cache.cacheFirstPartyResult(clog("Tester", categories, obtainedItems("hats")));
-		assertEquals("unread until the varbit says", -1, cache.toFirstPartySyncResult("Tester").getHighGambles());
+		cache.cacheOwnLog(clog("Tester", categories, obtainedItems("hats")));
+		assertEquals("unread until the varbit says", -1, cache.ownLogForSync("Tester").getHighGambles());
 		assertFalse("another name never sets yours", cache.updateHighGamblesUpward("Zezima", 50));
 		assertTrue("a counted zero is a count, as the game's page shows it", cache.updateHighGamblesUpward("Tester", 0));
 		assertTrue(cache.updateHighGamblesUpward("Tester", 57));
 		assertFalse("a reading before the login's varbits arrive never lowers it", cache.updateHighGamblesUpward("Tester", 0));
-		cache.cacheFirstPartyResult(clog("Tester", categories, obtainedItems("hats", 1)));
+		cache.cacheOwnLog(clog("Tester", categories, obtainedItems("hats", 1)));
 		assertEquals("a Collection Log walk doesn't carry the count, so it keeps it",
-			57, cache.toFirstPartySyncResult("Tester").getHighGambles());
+			57, cache.ownLogForSync("Tester").getHighGambles());
 		assertEquals(57, cache.toClogResult("Tester", null).getHighGambles());
 		LocalClogCache restarted = onDisk(dir);
 		assertTrue(StoreLogin.activate(restarted, "Tester", HASH));
-		assertEquals(57, restarted.toFirstPartySyncResult("Tester").getHighGambles());
+		assertEquals(57, restarted.ownLogForSync("Tester").getHighGambles());
 	}
 
 	@Test
@@ -503,17 +503,17 @@ public class LocalClogCacheTest
 		LocalClogCache cache = onDisk(dir);
 		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
 		Map<String, List<Integer>> categories = Map.of("hats", itemList(1, 2));
-		cache.cacheFirstPartyResult(clog("Tester", categories, obtainedItems("hats", 1, 2)));
+		cache.cacheOwnLog(clog("Tester", categories, obtainedItems("hats", 1, 2)));
 		assertFalse("the first look", cache.startOverOnReset("Tester", 50_000, false));
 		assertFalse("XP that grows", cache.startOverOnReset("Tester", 60_000, false));
 		assertFalse("XP that stands", cache.startOverOnReset("Tester", 60_000, false));
 		assertFalse("no reading", cache.startOverOnReset("Tester", 0, false));
 		assertFalse("another name", cache.startOverOnReset("Zezima", 1_154, false));
-		assertEquals(2, cache.toFirstPartySyncResult("Tester").getObtainedItems().get("hats").size());
-		assertNull(cache.toFirstPartySyncResult("Tester").getRunStartedAt());
+		assertEquals(2, cache.ownLogForSync("Tester").getObtainedItems().get("hats").size());
+		assertNull(cache.ownLogForSync("Tester").getRunStartedAt());
 
 		assertTrue("XP that falls is a reset", cache.startOverOnReset("Tester", 1_154, false));
-		ClogResult run = cache.toFirstPartySyncResult("Tester");
+		ClogResult run = cache.ownLogForSync("Tester");
 		assertTrue(run.getObtainedItems().isEmpty());
 		assertNotNull(run.getRunStartedAt());
 		assertEquals("the XP it started at", 1_154, run.getRunStartXp());
@@ -523,9 +523,9 @@ public class LocalClogCacheTest
 		LocalClogCache restarted = onDisk(dir);
 		assertTrue(StoreLogin.activate(restarted, "Tester", HASH));
 		assertEquals("the new run is what's saved", run.getRunStartedAt(),
-			restarted.toFirstPartySyncResult("Tester").getRunStartedAt());
-		assertEquals(1_154, restarted.toFirstPartySyncResult("Tester").getRunStartXp());
-		assertTrue(restarted.toFirstPartySyncResult("Tester").getObtainedItems().isEmpty());
+			restarted.ownLogForSync("Tester").getRunStartedAt());
+		assertEquals(1_154, restarted.ownLogForSync("Tester").getRunStartXp());
+		assertTrue(restarted.ownLogForSync("Tester").getObtainedItems().isEmpty());
 	}
 
 	@Test
@@ -534,13 +534,13 @@ public class LocalClogCacheTest
 		LocalClogCache cache = onDisk(temporaryFolder.newFolder());
 		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
 		Map<String, List<Integer>> categories = Map.of("hats", itemList(1, 2));
-		cache.cacheFirstPartyResult(clog("Tester", categories, obtainedItems("hats", 1)));
+		cache.cacheOwnLog(clog("Tester", categories, obtainedItems("hats", 1)));
 		assertTrue(cache.ownLogReady("Tester"));
 		cache.startOverOnReset("Tester", 5_000_000, true);
 		assertTrue(cache.startOverOnReset("Tester", 1_154, false));
 		assertFalse("a fresh run's log, not set up and empty, waits", cache.ownLogReady("Tester"));
 		assertTrue(cache.mergeObtainedItem("Tester", 2, List.of("hats"), categories, 0, null));
-		assertFalse(cache.hasCompletedFirstPartySetupFor("Tester"));
+		assertFalse(cache.ownLogSetUp("Tester"));
 		assertTrue("its first item is enough to sync", cache.ownLogReady("Tester"));
 	}
 
@@ -550,14 +550,14 @@ public class LocalClogCacheTest
 		File dir = temporaryFolder.newFolder();
 		LocalClogCache cache = onDisk(dir);
 		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
-		cache.cacheFirstPartyResult(clog("Tester", Map.of("hats", itemList(1, 2)), obtainedItems("hats", 1, 2)));
+		cache.cacheOwnLog(clog("Tester", Map.of("hats", itemList(1, 2)), obtainedItems("hats", 1, 2)));
 		assertFalse("the settle tick keeps its reading", cache.startOverOnReset("Tester", 5_000_000, true));
 		StoreLogin.logout(cache);
 
 		LocalClogCache relogged = onDisk(dir);
 		assertTrue(StoreLogin.activate(relogged, "Tester", HASH));
 		assertTrue(relogged.startOverOnReset("Tester", 1_154, false));
-		assertTrue(relogged.toFirstPartySyncResult("Tester").getObtainedItems().isEmpty());
+		assertTrue(relogged.ownLogForSync("Tester").getObtainedItems().isEmpty());
 	}
 
 	// A log set up after its world settled has no settle tick left to save its XP, so its first reading
@@ -568,14 +568,14 @@ public class LocalClogCacheTest
 		File dir = temporaryFolder.newFolder();
 		LocalClogCache cache = onDisk(dir);
 		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
-		cache.cacheFirstPartyResult(clog("Tester", Map.of("hats", itemList(1, 2)), obtainedItems("hats", 1, 2)));
+		cache.cacheOwnLog(clog("Tester", Map.of("hats", itemList(1, 2)), obtainedItems("hats", 1, 2)));
 		assertFalse("a reading after the settle tick", cache.startOverOnReset("Tester", 5_000_000, false));
 		StoreLogin.logout(cache);
 
 		LocalClogCache relogged = onDisk(dir);
 		assertTrue(StoreLogin.activate(relogged, "Tester", HASH));
 		assertTrue(relogged.startOverOnReset("Tester", 1_154, false));
-		assertTrue(relogged.toFirstPartySyncResult("Tester").getObtainedItems().isEmpty());
+		assertTrue(relogged.ownLogForSync("Tester").getObtainedItems().isEmpty());
 	}
 
 	// A new run's log takes no provider date from before its reset, the ended run's included.
@@ -585,14 +585,14 @@ public class LocalClogCacheTest
 		LocalClogCache cache = onDisk(temporaryFolder.newFolder());
 		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
 		Map<String, List<Integer>> categories = Map.of("hats", itemList(1, 2));
-		cache.cacheFirstPartyResult(clog("Tester", categories, obtainedItems("hats", 1)));
+		cache.cacheOwnLog(clog("Tester", categories, obtainedItems("hats", 1)));
 		cache.startOverOnReset("Tester", 5_000_000, true);
 		assertTrue(cache.startOverOnReset("Tester", 1_154, false));
 		Map<String, List<ClogResult.ClogItem>> undated = new HashMap<>();
 		undated.put("hats", new java.util.ArrayList<>(List.of(new ClogResult.ClogItem(1, 1, null),
 			new ClogResult.ClogItem(2, 1, null))));
-		cache.cacheFirstPartyResult(clog("Tester", categories, undated));
-		assertNotNull("the walk keeps the run", cache.toFirstPartySyncResult("Tester").getRunStartedAt());
+		cache.cacheOwnLog(clog("Tester", categories, undated));
+		assertNotNull("the walk keeps the run", cache.ownLogForSync("Tester").getRunStartedAt());
 
 		String later = ClogDates.local(Instant.now().plusSeconds(60).toString());
 		Map<String, List<ClogResult.ClogItem>> provider = new HashMap<>();
@@ -600,7 +600,7 @@ public class LocalClogCacheTest
 			new ClogResult.ClogItem(2, 1, later)));
 		assertTrue(cache.mergeProviderDates("Tester", provider, Collections.emptySet()));
 		Map<Integer, String> dates = new HashMap<>();
-		for (ClogResult.ClogItem item : cache.toFirstPartySyncResult("Tester").getObtainedItems().get("hats"))
+		for (ClogResult.ClogItem item : cache.ownLogForSync("Tester").getObtainedItems().get("hats"))
 		{
 			dates.put(item.getId(), item.getDate());
 		}
@@ -634,12 +634,12 @@ public class LocalClogCacheTest
 		Map<String, List<ClogResult.ClogItem>> held = new HashMap<>();
 		held.put("hats", new java.util.ArrayList<>(List.of(new ClogResult.ClogItem(1, 1, "2026-11-07 05:52:16"),
 			new ClogResult.ClogItem(2, 1, "2026-11-05 20:41:34"), new ClogResult.ClogItem(3, 1, null))));
-		cache.cacheFirstPartyResult(clog("Tester", Map.of("hats", itemList(1, 2, 3)), held));
+		cache.cacheOwnLog(clog("Tester", Map.of("hats", itemList(1, 2, 3)), held));
 		Map<String, List<ClogResult.ClogItem>> provider = new HashMap<>();
 		provider.put("hats", List.of(new ClogResult.ClogItem(3, 1, "2026-10-01 09:00:00")));
 		assertTrue(cache.mergeProviderDates("Tester", provider, Set.of("2026-11-07T05:52:16Z")));
 		Map<Integer, String> dates = new HashMap<>();
-		for (ClogResult.ClogItem item : cache.toFirstPartySyncResult("Tester").getObtainedItems().get("hats"))
+		for (ClogResult.ClogItem item : cache.ownLogForSync("Tester").getObtainedItems().get("hats"))
 		{
 			dates.put(item.getId(), item.getDate());
 		}
@@ -679,7 +679,7 @@ public class LocalClogCacheTest
 		Map<String, List<ClogResult.ClogItem>> undated = new HashMap<>();
 		undated.put("hats", new java.util.ArrayList<>(List.of(new ClogResult.ClogItem(1, 1, null),
 			new ClogResult.ClogItem(2, 1, null))));
-		cache.cacheFirstPartyResult(clog("Tester", Map.of("hats", itemList(1, 2)), undated));
+		cache.cacheOwnLog(clog("Tester", Map.of("hats", itemList(1, 2)), undated));
 		assertNull(cache.toClogResult("Tester", Collections.emptyMap()).getLastChanged());
 		Map<String, List<ClogResult.ClogItem>> provider = new HashMap<>();
 		provider.put("hats", List.of(new ClogResult.ClogItem(1, 1, "2025-03-01 10:00:00"),
@@ -702,14 +702,14 @@ public class LocalClogCacheTest
 				Map<String, List<Integer>> categories = Map.of("hats", itemList(1, 2), "other", itemList(1));
 				ClogResult baseline = clog("Tester", categories, obtainedItems("hats"));
 				baseline.setUniqueObtained(initial);
-				cache.cacheFirstPartyResult(baseline);
+				cache.cacheOwnLog(baseline);
 				if (counterFirst) cache.updateTotalsUpward("Tester", initial + 1, 100);
 				cache.mergeObtainedItem("Tester", 1, List.of("hats", "other"), categories, 42, "Boss");
 				if (!counterFirst) cache.updateTotalsUpward("Tester", initial + 1, 100);
 				// A duplicate notification and a lagging counter cannot add another slot.
 				cache.mergeObtainedItem("Tester", 1, List.of("hats", "other"), categories, 0, null);
 				cache.updateTotalsUpward("Tester", initial, 100);
-				ClogResult payload = cache.toFirstPartySyncResult("Tester");
+				ClogResult payload = cache.ownLogForSync("Tester");
 				assertEquals(initial + 1, payload.getUniqueObtained());
 				assertNotNull(payload.getObtainedItems().get("hats").get(0).getDate());
 				assertEquals(42, payload.getObtainedItems().get("hats").get(0).getObtainedAtKc());
@@ -717,7 +717,7 @@ public class LocalClogCacheTest
 				cache.updateTotalsUpward("Tester", initial + 2, 100);
 				LocalClogCache restarted = onDisk(dir);
 				assertTrue(StoreLogin.activate(restarted, "Tester", HASH));
-				assertEquals(initial + 2, restarted.toFirstPartySyncResult("Tester").getUniqueObtained());
+				assertEquals(initial + 2, restarted.ownLogForSync("Tester").getUniqueObtained());
 			}
 		}
 	}
@@ -734,7 +734,7 @@ public class LocalClogCacheTest
 	{
 		LocalClogCache cache = memory("Fast 07");
 		Map<String, List<Integer>> categories = categoryItems("vorkath", 1, 2, 3);
-		cache.cacheFirstPartyResult(clog("Fast 07", categories, obtainedItems("vorkath", 1)));
+		cache.cacheOwnLog(clog("Fast 07", categories, obtainedItems("vorkath", 1)));
 		cache.mergeObtainedItem("Fast 07", 2, itemListAsStrings("vorkath"), categories, 421, "Vorkath");
 
 		// A later chalice capture rebuilds the log with bare items; the
@@ -743,7 +743,7 @@ public class LocalClogCacheTest
 		bare.put("vorkath", new ArrayList<>(List.of(
 			new ClogResult.ClogItem(1, 1, null),
 			new ClogResult.ClogItem(2, 1, null))));
-		cache.cacheFirstPartyResult(clog("Fast 07", categories, bare));
+		cache.cacheOwnLog(clog("Fast 07", categories, bare));
 
 		ClogResult.ClogItem survived = obtainedItem(cache, "Fast 07", "vorkath", 2);
 		assertEquals(421, survived.getObtainedAtKc());
@@ -756,7 +756,7 @@ public class LocalClogCacheTest
 	{
 		LocalClogCache cache = memory("Fast 07");
 		Map<String, List<Integer>> categories = categoryItems("vorkath", 1, 2, 3);
-		cache.cacheFirstPartyResult(clog("Fast 07", categories, obtainedItems("vorkath", 1)));
+		cache.cacheOwnLog(clog("Fast 07", categories, obtainedItems("vorkath", 1)));
 		cache.mergeObtainedItem("Fast 07", 2, itemListAsStrings("vorkath"), categories, 421, "Vorkath");
 
 		Map<String, List<ClogResult.ClogItem>> providerObtained = new HashMap<>();
@@ -797,7 +797,7 @@ public class LocalClogCacheTest
 				dated.add(new ClogResult.ClogItem(i, 1, "2026-07-19 10:00:00"));
 			}
 			seeded.put("vorkath", seedItems);
-			cache.cacheFirstPartyResult(clog("Fast 07", categories, seeded));
+			cache.cacheOwnLog(clog("Fast 07", categories, seeded));
 			Map<String, List<ClogResult.ClogItem>> providerDates = new HashMap<>();
 			providerDates.put("vorkath", dated);
 
@@ -841,28 +841,28 @@ public class LocalClogCacheTest
 		assertNull(LocalClogCache.newestObtainedDate(Collections.singletonMap("brutus", bare)));
 	}
 
-	// First-party marking: the sync payload's provenance boundary.
+	// Own-log marking: the sync payload's provenance boundary.
 
 	@Test
 	public void providerResultsNeverEnterTheLoggedInPlayersOwnLog() throws Exception
 	{
 		LocalClogCache cache = memory("Zezima");
 		final int[] notified = {0};
-		cache.setFirstPartyChangedListener(() -> notified[0]++);
+		cache.setOwnLogChangedListener(() -> notified[0]++);
 		cache.cacheResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3), obtainedItems("zulrah", 1, 2)));
 		assertEquals("provider writes never fire the sync trigger", 0, notified[0]);
 		assertFalse("they make no own log", cache.hasDataFor("Zezima"));
-		assertNull(cache.toFirstPartySyncResult("Zezima"));
+		assertNull(cache.ownLogForSync("Zezima"));
 		assertFalse("and a live unlock needs the account's own log", cache.mergeObtainedItem("Zezima", 3,
 			itemListAsStrings("zulrah"), categoryItems("zulrah", 1, 2, 3), 0, null));
 
-		cache.cacheFirstPartyResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3), obtainedItems("zulrah", 1)));
+		cache.cacheOwnLog(clog("Zezima", categoryItems("zulrah", 1, 2, 3), obtainedItems("zulrah", 1)));
 		cache.cacheResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3), obtainedItems("zulrah", 1, 2)));
 		assertEquals("a later provider copy changes nothing", 1,
-			cache.toFirstPartySyncResult("Zezima").getObtainedItems().get("zulrah").size());
+			cache.ownLogForSync("Zezima").getObtainedItems().get("zulrah").size());
 		cache.mergeObtainedItem("Zezima", 3, itemListAsStrings("zulrah"), categoryItems("zulrah", 1, 2, 3), 0, null);
 		assertEquals(2, notified[0]);
-		assertEquals(2, cache.toFirstPartySyncResult("Zezima").getObtainedItems().get("zulrah").size());
+		assertEquals(2, cache.ownLogForSync("Zezima").getObtainedItems().get("zulrah").size());
 		assertEquals(2, cache.toClogResult("Zezima", Collections.emptyMap()).getObtainedItems().get("zulrah").size());
 	}
 
@@ -871,17 +871,17 @@ public class LocalClogCacheTest
 	{
 		LocalClogCache cache = memory("Zezima");
 		final int[] notified = {0};
-		cache.setFirstPartyChangedListener(() -> notified[0]++);
-		cache.cacheFirstPartyResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3), obtainedItems("zulrah", 1, 2)));
+		cache.setOwnLogChangedListener(() -> notified[0]++);
+		cache.cacheOwnLog(clog("Zezima", categoryItems("zulrah", 1, 2, 3), obtainedItems("zulrah", 1, 2)));
 		assertEquals("the chalice walk schedules a push like any capture", 1, notified[0]);
-		assertEquals(2, cache.toFirstPartySyncResult("Zezima").getObtainedItems().get("zulrah").size());
+		assertEquals(2, cache.ownLogForSync("Zezima").getObtainedItems().get("zulrah").size());
 	}
 
 	@Test
 	public void providerRefreshesCannotTouchACapturedRecord() throws Exception
 	{
 		LocalClogCache cache = memory("Zezima");
-		cache.cacheFirstPartyResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3), new HashMap<>()));
+		cache.cacheOwnLog(clog("Zezima", categoryItems("zulrah", 1, 2, 3), new HashMap<>()));
 		cache.mergeObtainedItem("Zezima", 1, itemListAsStrings("zulrah"), categoryItems("zulrah", 1, 2, 3), 420, "Zulrah");
 
 		Map<String, List<ClogResult.ClogItem>> providerObtained = new HashMap<>();
@@ -893,7 +893,7 @@ public class LocalClogCacheTest
 		staleObtained.put("zulrah", new ArrayList<>(List.of(new ClogResult.ClogItem(2, 1, "2026-01-01 00:00:00"))));
 		cache.cacheResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3), staleObtained));
 
-		ClogResult payload = cache.toFirstPartySyncResult("Zezima");
+		ClogResult payload = cache.ownLogForSync("Zezima");
 		assertEquals(1, payload.getObtainedItems().get("zulrah").size());
 		ClogResult.ClogItem kept = payload.getObtainedItems().get("zulrah").get(0);
 		assertEquals(1, kept.getId());
@@ -913,10 +913,10 @@ public class LocalClogCacheTest
 		Map<String, List<ClogResult.ClogItem>> providerObtained = new HashMap<>();
 		providerObtained.put("clue_b", new ArrayList<>(List.of(new ClogResult.ClogItem(1, 99, "2026-01-01 00:00:00"))));
 		cache.cacheResult(clog("Zezima", categories, providerObtained));
-		cache.cacheFirstPartyResult(clog("Zezima", categories, new HashMap<>()));
+		cache.cacheOwnLog(clog("Zezima", categories, new HashMap<>()));
 		cache.mergeObtainedItem("Zezima", 1, itemListAsStrings("boss_a"), categories, 420, "Boss A");
 
-		ClogResult payload = cache.toFirstPartySyncResult("Zezima");
+		ClogResult payload = cache.ownLogForSync("Zezima");
 		assertNull("the provider-only category ships nothing", payload.getObtainedItems().get("clue_b"));
 		assertEquals(1, payload.getObtainedItems().get("boss_a").get(0).getCount());
 	}
@@ -925,30 +925,30 @@ public class LocalClogCacheTest
 	public void testEmptyFirstCaptureShipsNoProviderItems() throws Exception
 	{
 		LocalClogCache cache = memory("Newbie");
-		cache.cacheFirstPartyResult(clog("Newbie", categoryItems("zulrah", 1, 2, 3), new HashMap<>()));
+		cache.cacheOwnLog(clog("Newbie", categoryItems("zulrah", 1, 2, 3), new HashMap<>()));
 		cache.cacheResult(clog("Newbie", categoryItems("zulrah", 1, 2, 3), obtainedItems("zulrah", 1, 2)));
-		ClogResult payload = cache.toFirstPartySyncResult("Newbie");
+		ClogResult payload = cache.ownLogForSync("Newbie");
 		assertNotNull(payload);
 		assertTrue("provider items cannot ride a zero-capture log", payload.getObtainedItems().isEmpty());
-		assertFalse(cache.hasFirstPartyDataFor("Newbie"));
+		assertFalse(cache.ownLogHasItems("Newbie"));
 	}
 
 	@Test
-	public void testFirstPartyPresenceIsPayloadAware() throws Exception
+	public void testOwnLogPresenceIsPayloadAware() throws Exception
 	{
 		LocalClogCache cache = memory("Zezima");
 		cache.cacheResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3), obtainedItems("zulrah", 1, 2),
 			"2026-08-01 00:00:00", AccountType.REGULAR));
-		assertFalse(cache.hasFirstPartyDataFor("Zezima"));
-		assertFalse(cache.hasCompletedFirstPartySetupFor("Zezima"));
+		assertFalse(cache.ownLogHasItems("Zezima"));
+		assertFalse(cache.ownLogSetUp("Zezima"));
 
-		cache.cacheFirstPartyResult(clog("Zezima", categoryItems("zulrah", 1, 2, 3), new HashMap<>(),
+		cache.cacheOwnLog(clog("Zezima", categoryItems("zulrah", 1, 2, 3), new HashMap<>(),
 			"2026-08-01 00:00:00", AccountType.REGULAR));
-		assertTrue("an empty walk completes setup", cache.hasCompletedFirstPartySetupFor("Zezima"));
-		assertFalse("but carries nothing", cache.hasFirstPartyDataFor("Zezima"));
+		assertTrue("an empty walk completes setup", cache.ownLogSetUp("Zezima"));
+		assertFalse("but carries nothing", cache.ownLogHasItems("Zezima"));
 		assertTrue("and syncs as it is", cache.ownLogReadyForActive());
 		cache.mergeObtainedItem("Zezima", 3, itemListAsStrings("zulrah"), categoryItems("zulrah", 1, 2, 3), 0, null);
-		assertTrue(cache.hasFirstPartyDataFor("Zezima"));
+		assertTrue(cache.ownLogHasItems("Zezima"));
 		assertTrue(cache.ownLogReadyForActive());
 	}
 
@@ -956,12 +956,12 @@ public class LocalClogCacheTest
 	public void testEmptyFirstCaptureIsNotAPayload() throws Exception
 	{
 		LocalClogCache cache = memory("Fresh Acct");
-		cache.cacheFirstPartyResult(clog("Fresh Acct", new HashMap<>(), new HashMap<>(),
+		cache.cacheOwnLog(clog("Fresh Acct", new HashMap<>(), new HashMap<>(),
 			"2026-08-01 00:00:00", AccountType.REGULAR));
 		assertTrue("an empty first walk still completes local setup", cache.hasDataFor("Fresh Acct"));
-		assertTrue(cache.hasCompletedFirstPartySetupFor("Fresh Acct"));
+		assertTrue(cache.ownLogSetUp("Fresh Acct"));
 		assertNotNull(cache.toClogResult("Fresh Acct", new HashMap<>()));
-		assertFalse("an empty first walk must not read as a sendable payload", cache.hasFirstPartyDataFor("Fresh Acct"));
+		assertFalse("an empty first walk must not read as a sendable payload", cache.ownLogHasItems("Fresh Acct"));
 	}
 
 	@Test
@@ -1033,7 +1033,7 @@ public class LocalClogCacheTest
 		Map<String, List<Integer>> categories = Map.of("hats", itemList(1, 2));
 		LocalClogCache first = onDisk(dir);
 		assertTrue(StoreLogin.activate(first, "Tester", HASH));
-		first.cacheFirstPartyResult(clog("Tester", categories, obtainedItems("hats")));
+		first.cacheOwnLog(clog("Tester", categories, obtainedItems("hats")));
 		// A second client starts for an alt and loads the folder as it is now.
 		LocalClogCache second = onDisk(dir);
 		// The first plays on: a drop, dated, at its kill count.
@@ -1041,7 +1041,7 @@ public class LocalClogCacheTest
 		StoreLogin.logout(first);
 		// The account logs into the second client, whose next capture rewrites the log.
 		assertTrue(StoreLogin.activate(second, "Tester", HASH));
-		second.cacheFirstPartyResult(clog("Tester", categories, obtainedItems("hats", 1)));
+		second.cacheOwnLog(clog("Tester", categories, obtainedItems("hats", 1)));
 		ClogResult.ClogItem drop = obtainedItem(onDisk(dir), "Tester", "hats", 1);
 		assertEquals("the drop's kill count, which a page capture can't recover", 42, drop.getObtainedAtKc());
 		assertNotNull(drop.getDate());
@@ -1072,7 +1072,7 @@ public class LocalClogCacheTest
 		Map<String, List<Integer>> categories = Map.of("hats", itemList(1, 2));
 		LocalClogCache before = onDisk(dir);
 		assertTrue(StoreLogin.activate(before, "Tester", HASH));
-		before.cacheFirstPartyResult(clog("Tester", categories, obtainedItems("hats", 1)));
+		before.cacheOwnLog(clog("Tester", categories, obtainedItems("hats", 1)));
 		CapturingScheduledDebounceService writer = new CapturingScheduledDebounceService();
 		LocalClogCache cache = new LocalClogCache(new Gson(), writer);
 		cache.open(() -> TestFolders.folder(dir));
@@ -1165,13 +1165,13 @@ public class LocalClogCacheTest
 		File dir = temporaryFolder.newFolder();
 		LocalClogCache cache = onDisk(dir);
 		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
-		cache.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 2978), obtainedItems("hats", 2978)));
+		cache.cacheOwnLog(clog("Tester", categoryItems("hats", 2978), obtainedItems("hats", 2978)));
 		StoreLogin.logout(cache);
 		Files.writeString(ownFile(dir, HASH).toPath(), "{broken");
 		assertTrue(StoreLogin.activate(cache, "Tester", HASH));
 		String[] aside = dir.list((folder, name) -> name.startsWith(".unreadable-"));
 		assertEquals("the damaged bytes are kept aside", 1, aside.length);
-		assertTrue("and the copy in memory still serves", cache.hasFirstPartyDataFor("Tester"));
+		assertTrue("and the copy in memory still serves", cache.ownLogHasItems("Tester"));
 	}
 
 	@Test
@@ -1180,7 +1180,7 @@ public class LocalClogCacheTest
 		File dir = temporaryFolder.newFolder();
 		LocalClogCache a = onDisk(dir);
 		assertTrue(StoreLogin.activate(a, "Old Name", HASH));
-		a.cacheFirstPartyResult(clog("Old Name", categoryItems("hats", 2978), obtainedItems("hats", 2978)));
+		a.cacheOwnLog(clog("Old Name", categoryItems("hats", 2978), obtainedItems("hats", 2978)));
 		StoreLogin.logout(a);
 		LocalClogCache b = onDisk(dir);
 		assertTrue(StoreLogin.activate(b, "Main", 79L));
@@ -1206,7 +1206,7 @@ public class LocalClogCacheTest
 		try
 		{
 			assertTrue(StoreLogin.activate(played, "Tester", HASH));
-			played.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 2978, 2991), obtainedItems("hats", 2978)));
+			played.cacheOwnLog(clog("Tester", categoryItems("hats", 2978, 2991), obtainedItems("hats", 2978)));
 			StoreLogin.logout(played);
 			String first = awaitSaved(dir, null);
 			assertTrue("the other client takes up the account", StoreLogin.activate(other, "Tester", HASH));
@@ -1215,7 +1215,7 @@ public class LocalClogCacheTest
 
 			// Played again on the first client: the next login on the other reads it fresh, not its earlier copy.
 			assertTrue(StoreLogin.activate(played, "Tester", HASH));
-			played.cacheFirstPartyResult(clog("Tester", categoryItems("hats", 2978, 2991), obtainedItems("hats", 2978, 2991)));
+			played.cacheOwnLog(clog("Tester", categoryItems("hats", 2978, 2991), obtainedItems("hats", 2978, 2991)));
 			StoreLogin.logout(played);
 			awaitSaved(dir, first);
 			assertTrue(StoreLogin.activate(other, "Tester", HASH));
