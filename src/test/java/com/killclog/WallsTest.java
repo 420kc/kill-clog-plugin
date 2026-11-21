@@ -40,7 +40,7 @@ public class WallsTest
 	private static final Set<String> READERS = new TreeSet<>(Arrays.asList(
 		"AdvLogPbs", "CaCatalog", "CardSprites", "ClogIndex", "ClogLookupMenu", "ClogPbs", "GimBadgeLoader",
 		"KillClogChatCommand", "KillClogChatEmoji", "KillClogPlugin", "KillLog",
-		"LiveClogSync", "LocalCaReader", "ManualClogSync", "NameAutocompleter", "PlayerClans",
+		"LiveClogSync", "LocalCaReader", "ClogWalk", "NameAutocompleter", "PlayerClans",
 		"ProfileAppearanceService", "RsnInputPolicy", "SessionTracker"));
 
 	@Test

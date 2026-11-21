@@ -592,7 +592,7 @@ public class LocalClogCacheTest
 		undated.put("hats", new java.util.ArrayList<>(List.of(new ClogResult.ClogItem(1, 1, null),
 			new ClogResult.ClogItem(2, 1, null))));
 		cache.cacheFirstPartyResult(clog("Tester", categories, undated));
-		assertNotNull("the bulk capture keeps the run", cache.toFirstPartySyncResult("Tester").getRunStartedAt());
+		assertNotNull("the walk keeps the run", cache.toFirstPartySyncResult("Tester").getRunStartedAt());
 
 		String later = ClogDates.local(Instant.now().plusSeconds(60).toString());
 		Map<String, List<ClogResult.ClogItem>> provider = new HashMap<>();
@@ -867,7 +867,7 @@ public class LocalClogCacheTest
 	}
 
 	@Test
-	public void testBulkCaptureMarksEverythingAndFiresTheTrigger() throws Exception
+	public void testAWalkMarksEverythingAndFiresTheTrigger() throws Exception
 	{
 		LocalClogCache cache = memory("Zezima");
 		final int[] notified = {0};

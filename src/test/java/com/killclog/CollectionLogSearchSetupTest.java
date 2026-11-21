@@ -25,7 +25,7 @@ public class CollectionLogSearchSetupTest
 	@Test
 	public void searchStreamFinalizesAfterThreeQuietTicksWithoutBackAction()
 	{
-		BulkCaptureState capture = new BulkCaptureState();
+		WalkProgress capture = new WalkProgress();
 		capture.arm(100, 1, 1_500);
 		capture.captureScriptArguments(new Object[]{4100, 995, 42}, 101);
 
@@ -36,7 +36,7 @@ public class CollectionLogSearchSetupTest
 	@Test
 	public void emptySearchSchedulesFinalizationWithoutItemScripts()
 	{
-		BulkCaptureState capture = new BulkCaptureState();
+		WalkProgress capture = new WalkProgress();
 		capture.arm(200, 0, 0);
 		capture.scheduleEmptySearchFinalization(200);
 
@@ -47,7 +47,7 @@ public class CollectionLogSearchSetupTest
 	@Test
 	public void itemStreamExtendsAnInitiallyEmptySearchDeadline()
 	{
-		BulkCaptureState capture = new BulkCaptureState();
+		WalkProgress capture = new WalkProgress();
 		capture.arm(300, 0, 0);
 		capture.scheduleEmptySearchFinalization(300);
 		capture.captureScriptArguments(new Object[]{4100, 995, 42}, 302);
@@ -60,7 +60,7 @@ public class CollectionLogSearchSetupTest
 	@Test
 	public void reportedItemsCancelEmptyDeadlineUntilScriptsArrive()
 	{
-		BulkCaptureState capture = new BulkCaptureState();
+		WalkProgress capture = new WalkProgress();
 		capture.arm(400, 0, 0);
 		capture.scheduleEmptySearchFinalization(400);
 		capture.deferEmptyFinalizationIfItemsReported(5);

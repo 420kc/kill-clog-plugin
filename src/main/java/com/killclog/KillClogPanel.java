@@ -1072,7 +1072,7 @@ public class KillClogPanel extends PluginPanel
 		return typed != null && !typed.trim().isEmpty() ? typed.trim() : "--";
 	}
 
-	public void onBulkCaptureComplete(String name)
+	public void onWalkComplete(String name)
 	{
 		if (!RsnInputPolicy.sameName(localRsn, name)) return;
 		if (lookupSession.getCurrentLookupRsn() == null)

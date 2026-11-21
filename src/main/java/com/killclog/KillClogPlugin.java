@@ -171,7 +171,7 @@ public class KillClogPlugin extends Plugin
 	private final LiveClogSync liveClogSync = new LiveClogSync();
 	// Collection Log unlocks heard this tick, run after its subscribers (onGameTick); cleared with the account.
 	private final Queue<Runnable> unlocks = new ConcurrentLinkedQueue<>();
-	private final ManualClogSync manualClogSync = new ManualClogSync();
+	private final ClogWalk clogWalk = new ClogWalk();
 	private final LocalCaReader localCaReader = new LocalCaReader();
 	@Inject
 	private CaCatalog caCatalog;
@@ -246,9 +246,8 @@ public class KillClogPlugin extends Plugin
 		world.showAgain();
 		panel.setSyncArrowEnabled(config.killclogSync());
 		panel.setCharacterPublishEnabled(publication.characterPublishingEnabled());
-		// The sync trigger lives at the data seam: any path that lands a
-		// first-party observation (bulk page capture, Collection Log Search,
-		// live unlock) schedules a debounced push.
+		// The sync trigger lives at the data seam: anything that lands in your own log (a walk, a live unlock)
+		// schedules a debounced push.
 		localClogCache.setFirstPartyChangedListener(() -> firstPartyChanged(localClogCache));
 
 		kclogCommand.commands().forEach(chatCommandManager::registerCommandAsync);
@@ -291,7 +290,7 @@ public class KillClogPlugin extends Plugin
 		localClogCache.shutdown();
 		world.close();
 		localCaCache.shutdown();
-		manualClogSync.reset();
+		clogWalk.reset();
 		clogIndex.clear();
 		caCatalog.clear();
 		sessionState.reset();
@@ -372,7 +371,7 @@ public class KillClogPlugin extends Plugin
 		boolean gamblesRose = localClogCache.updateHighGamblesUpward(name, gambles);
 		if (totalsRose || gamblesRose)
 		{
-			SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(name));
+			SwingUtilities.invokeLater(() -> panel.onWalkComplete(name));
 		}
 	}
 
@@ -383,7 +382,7 @@ public class KillClogPlugin extends Plugin
 		if (world.mainSettled() && name != null)
 		{
 			localClogCache.setPageCount(name, label, count);
-			SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(name));
+			SwingUtilities.invokeLater(() -> panel.onWalkComplete(name));
 		}
 	}
 
@@ -483,7 +482,7 @@ public class KillClogPlugin extends Plugin
 			// it also fences a success callback queued during the logout handoff.
 			panel.setFirstParty(PanelStatusRow.FirstParty.HIDDEN);
 			panel.resetSyncFeedback();
-			manualClogSync.reset();
+			clogWalk.reset();
 			liveClogSync.reset();
 			unlocks.clear();
 			// Read the game's own structure again at once, for lookups made before the next login.
@@ -500,7 +499,7 @@ public class KillClogPlugin extends Plugin
 		{
 			markLocalHiscoresDirty();
 			// A walk never spans two worlds: the next one may be a different game.
-			manualClogSync.reset();
+			clogWalk.reset();
 		}
 		// A region load stays on the same world; everything else may change it.
 		if (event.getGameState() != GameState.LOGGED_IN && event.getGameState() != GameState.LOADING)
@@ -622,7 +621,7 @@ public class KillClogPlugin extends Plugin
 		}
 		liveClogSync.handleUnlock(itemName, broadcastObtained, broadcastTotal, client,
 			itemManager, clogIndex, cache, chatNotifier,
-			panel::onBulkCaptureComplete, world.settled());
+			panel::onWalkComplete, world.settled());
 	}
 
 	// Keep local CA current when a task completes mid-session, and the live
@@ -788,7 +787,7 @@ public class KillClogPlugin extends Plugin
 			// This tick's counter reads went to the run that ended: the fresh log takes the new run's, gambles too.
 			reconcileClogTotalsFromVarps();
 			ownLogServing(localClogCache, hardcoreName);
-			SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(hardcoreName));
+			SwingUtilities.invokeLater(() -> panel.onWalkComplete(hardcoreName));
 		}
 		String previousName = localClogCache.consumeRenameNotice();
 		if (previousName != null)
@@ -799,7 +798,7 @@ public class KillClogPlugin extends Plugin
 			String renameName = session.getName();
 			if (renameName != null)
 			{
-				SwingUtilities.invokeLater(() -> panel.onBulkCaptureComplete(renameName));
+				SwingUtilities.invokeLater(() -> panel.onWalkComplete(renameName));
 			}
 		}
 	}
@@ -863,14 +862,14 @@ public class KillClogPlugin extends Plugin
 		LocalClogCache cache = world.captureCache();
 		if (cache != walkCache)
 		{
-			manualClogSync.reset();
+			clogWalk.reset();
 			walkCache = cache;
 		}
 		if (cache != null)
 		{
-			manualClogSync.onGameTick(client, clogIndex, cache,
+			clogWalk.onGameTick(client, clogIndex, cache,
 				chatNotifier, liveClogSync::resetFirstSyncWarning,
-				panel::onBulkCaptureComplete, world.settled());
+				panel::onWalkComplete, world.settled());
 		}
 	}
 
@@ -881,7 +880,7 @@ public class KillClogPlugin extends Plugin
 		{
 			// Request a full Search walk after the player's log has initialized.
 			// Ordinary visible-category scripts cannot establish a full capture.
-			manualClogSync.onCollectionLogOpened(client);
+			clogWalk.onCollectionLogOpened(client);
 		}
 
 		advLog.onWidgetLoaded(event.getGroupId());
@@ -903,7 +902,7 @@ public class KillClogPlugin extends Plugin
 			onCollectionLogSearch();
 		}
 
-		manualClogSync.captureScriptArguments(client, event.getScriptId(),
+		clogWalk.captureScriptArguments(client, event.getScriptId(),
 			script.getArguments(), client.getTickCount());
 	}
 
@@ -1085,7 +1084,7 @@ public class KillClogPlugin extends Plugin
 		LocalClogCache cache = world.captureCache();
 		if (cache != null)
 		{
-			manualClogSync.onCollectionLogSearch(client, clogIndex, cache, chatNotifier);
+			clogWalk.onCollectionLogSearch(client, clogIndex, cache, chatNotifier);
 		}
 	}
 

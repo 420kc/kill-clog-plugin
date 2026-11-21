@@ -606,7 +606,7 @@ class KillClogChatCommand
 
 	/**
 	 * Total-slot list for a category: the cached or provider list when it has
-	 * entries, else the parsed in-game catalog's. A cache bulk-synced before a
+	 * entries, else the parsed in-game catalog's. A log walked before a
 	 * category existed simply lacks it, and providers lag new pages the same
 	 * way, but the running game build always knows the page. Obtained counts
 	 * are untouched: they stay whatever was captured.

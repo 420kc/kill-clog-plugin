@@ -24,12 +24,12 @@ import org.junit.Test;
 import org.junit.rules.TemporaryFolder;
 import static org.junit.Assert.*;
 
-public class ManualClogSyncTest
+public class ClogWalkTest
 {
 	@Rule
 	public TemporaryFolder temporaryFolder = new TemporaryFolder();
 	private final KillClogPlugin plugin = new KillClogPlugin();
-	private ManualClogSync sync;
+	private ClogWalk sync;
 	private final List<String> notices = new ArrayList<>();
 	private int tick = 100;
 	private int obtained = 1;
@@ -54,7 +54,7 @@ public class ManualClogSyncTest
 	@Before
 	public void setUp() throws Exception
 	{
-		sync = (ManualClogSync) pluginField("manualClogSync").get(plugin);
+		sync = (ClogWalk) pluginField("clogWalk").get(plugin);
 		Player player = (Player) Proxy.newProxyInstance(Player.class.getClassLoader(),
 			new Class<?>[]{Player.class}, (proxy, method, args) ->
 			{

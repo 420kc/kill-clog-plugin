@@ -432,7 +432,7 @@ public class LeagueViewPanelTest
 		SwingUtilities.invokeAndWait(() ->
 		{
 			panel.setLoggedInPlayer("My\u00A0Name", AccountType.REGULAR);
-			panel.onBulkCaptureComplete("My Name");
+			panel.onWalkComplete("My Name");
 		});
 		verify(hiscores).lookup(eq("My Name"), any());
 	}

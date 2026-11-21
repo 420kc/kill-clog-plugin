@@ -7,7 +7,7 @@ import lombok.*;
  * One walk's progress: when it was armed, the game's counts then, the entries streamed so far, and when it may finish
  * (an empty log streams nothing, so it waits out delayed scripts first).
  */
-final class BulkCaptureState
+final class WalkProgress
 {
 	@Getter(AccessLevel.PACKAGE)
 	private boolean active;

@@ -178,7 +178,7 @@ final class ClogPbs
 	{
 		Widget header = client.getWidget(InterfaceID.Collection.HEADER_TEXT);
 		Widget[] lines = header != null ? header.getDynamicChildren() : null;
-		if (lines == null || lines.length < 2 || client.getLocalPlayer() == null || ManualClogSync.isHostLog(client))
+		if (lines == null || lines.length < 2 || client.getLocalPlayer() == null || ClogWalk.isHostLog(client))
 		{
 			return null;
 		}

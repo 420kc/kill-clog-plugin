@@ -139,7 +139,7 @@ public class KillClogChatCommandTest
 	@Test
 	public void testTotalsFallBackToCatalogForUnknownCategories()
 	{
-		// A cache bulk-synced before a page existed has no entry for it, so
+		// A log walked before a page existed has no entry for it, so
 		// the command used to answer "no clog items found" for real content.
 		// The in-game catalog fills the total; captured entries always win.
 		Map<String, List<Integer>> catalog = new HashMap<>();

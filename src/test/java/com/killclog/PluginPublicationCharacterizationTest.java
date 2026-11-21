@@ -1150,7 +1150,7 @@ public class PluginPublicationCharacterizationTest
 		SwingUtilities.invokeAndWait(() ->
 		{
 		});
-		verify(panel).onBulkCaptureComplete(RSN);
+		verify(panel).onWalkComplete(RSN);
 		// The page guard reads the count the main log holds (ClogPbs, the page before's own).
 		java.lang.reflect.Method held = KillClogPlugin.class.getDeclaredMethod("heldPageCount", String.class);
 		held.setAccessible(true);
@@ -2866,9 +2866,9 @@ public class PluginPublicationCharacterizationTest
 	public void unlocksWalksAndSearchesLandInTheWorldsOwnLog() throws Exception
 	{
 		LiveClogSync live = mock(LiveClogSync.class);
-		ManualClogSync walk = mock(ManualClogSync.class);
+		ClogWalk walk = mock(ClogWalk.class);
 		replace("liveClogSync", live);
-		replace("manualClogSync", walk);
+		replace("clogWalk", walk);
 		LocalClogCache league = announceLeague();
 		unlockMessage();
 		tickAndRunUnlocks();
@@ -2893,8 +2893,8 @@ public class PluginPublicationCharacterizationTest
 	{
 		LiveClogSync live = mock(LiveClogSync.class);
 		replace("liveClogSync", live);
-		ManualClogSync walk = mock(ManualClogSync.class);
-		replace("manualClogSync", walk);
+		ClogWalk walk = mock(ClogWalk.class);
+		replace("clogWalk", walk);
 		LocalClogCache league = announceLeague();
 		// An unlock runs after the tick following it (onGameTick): heard after eight ticks, it runs on the ninth, before
 		// the world settles on the tenth, and reads no counters.
@@ -2912,8 +2912,8 @@ public class PluginPublicationCharacterizationTest
 	@Test
 	public void aNewLeagueOpensItsOwnStoreAndClosesTheLast() throws Exception
 	{
-		ManualClogSync walk = mock(ManualClogSync.class);
-		replace("manualClogSync", walk);
+		ClogWalk walk = mock(ClogWalk.class);
+		replace("clogWalk", walk);
 		KillclogService service = (KillclogService) field("killclogService");
 		java.util.Map<String, LocalClogCache> stores = new java.util.HashMap<>();
 		TestViews.leagueCacheFactory(plugin, id -> stores.computeIfAbsent(id, key -> mock(LocalClogCache.class)));
