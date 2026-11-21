@@ -10,32 +10,24 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.util.Text;
 
 /**
- * The Collection Log's Personal Best line, the game's own record, read as the player browses their log. The server
- * sends each page's PB to a varp in game ticks, exact whatever the player's timing setting, and the page header
- * shows it. Only the player's own log is read, only when the page has the line, and the time replaces whatever was
- * kept for it: it is the game's current record. The sync sends it as source "clog".
+ * The Collection Log's Personal Best line: the game's own record, read as the player browses their own log and sent
+ * with a sync as source "clog". The page header shows it. The value comes from a varp in game ticks, exact whatever
+ * the player's timing setting, and replaces whatever was kept for that page.
  *
- * The server sends a page's time to the varp just before it draws the page, a client cycle ahead, and 0 for a page
- * with no record; a value the varp already holds isn't sent again (10/22, logged click by click).
- * So a page takes the time only when it is newly on screen and the varp changed just before it drew: a page that got
- * no value, a redraw of the page on screen, and a value that lands at any other moment take nothing. 2.7.1 let a
- * page with no record wait for a value, so the next page's, landing a cycle before that page drew, was filed under it
- * (a Gauntlet's 13:27.6 filed as the Sol Heredit page before it), and a redraw took the varp as it stood. Missing a
- * reading costs nothing (the kills still say the record); two pages with the same time, or a page opened again, read
- * nothing on that visit.
+ * The game sends a page's time just before it draws the page, and sends nothing for a page with no record or for a
+ * value the varp already holds. So a page takes a time only when it is newly on screen and the varp changed just
+ * before the draw. A page that got no value, a redraw, and a value that lands at any other moment take nothing:
+ * otherwise the next page's time is filed under the page before it.
  *
- * The timing alone still let Amoxliatl's time through to the page above or below it (two players'
- * Alchemical Hydra 0:28.80 on 2.7.2 and 2.7.4, Medium CoX's Araxxor on 2.7.7), so a page also never takes the time
- * the page shown before it holds, read from its page, its kills or the Adventure Log. Two neighbours with truly the
- * same time read the second on a later visit, from another page. It looks one page back, at times already held: a
- * page that holds nothing in between, or a page never held at all, still leaves the timing as the only guard.
+ * Timing alone still lets a neighbour's time through now and then, so a page also never takes the time the page
+ * shown before it holds, read from its page, its kills or the Adventure Log. It looks one page back, at times
+ * already held. Two neighbours with truly the same time read the second on a later visit. A missed reading costs
+ * nothing: the kills still say the record.
  *
- * A page count (PageCounts) is guarded the same way: a page never takes the number its count line stood at when the
- * page before it drew, or the page before's own count in that line as the player's log holds it.
+ * A page count (PageCounts) is read by the same two guards.
  *
- * Times read this way are kept under their own keys ("pagepb."): the ones 2.6.3 and earlier kept ("clogpb.") may be
- * another page's, so they are never read or sent again, and each account's are cleared the first time it reads a
- * page. A page shows its time again when it is next opened.
+ * Times are kept under "pagepb.". The older "clogpb." keys could hold another page's time, so they are never read or
+ * sent, and each account's are cleared the first time it reads a page.
  */
 final class ClogPbs
 {
@@ -51,7 +43,7 @@ final class ClogPbs
 		VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT_2, VarPlayerID.COLLECTION_CATEGORY_COUNT,
 		VarPlayerID.COLLECTION_CATEGORY_COUNT2, VarPlayerID.COLLECTION_CATEGORY_COUNT3};
 	private static final int COUNTS = 2;
-	// How many client cycles a page's time can land before its draw: one in every logged click.
+	// How many client cycles a page's time can land before its draw. One is what the game does; the rest is margin.
 	/* package */ static final int ARRIVAL_CYCLES = 5;
 
 	private final ConfigManager configManager;

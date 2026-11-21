@@ -9,7 +9,7 @@ import net.runelite.client.ui.FontManager;
 import net.runelite.client.util.ImageUtil;
 
 /**
- * The game's own tile, as its Combat Achievements screen draws a boss (Dylan, 2026-11-07): a framed box with a
+ * The game's own tile, as its Combat Achievements screen draws a boss: a framed box with a
  * bracket in each corner, its name, a sprite, its count in the Collection Log's red, yellow and green, and a bar in
  * four parts. Cards lay them out three across; a tab's pages, two across, wider and without a sprite, their names on
  * up to two lines. A tile opens what it names.
@@ -34,8 +34,8 @@ final class GameTile
 	private static final Font COUNT_FONT = FontManager.getRunescapeFont();
 	private static final int NAME_TOP = 4;
 	// A tile with no count or bar under its sprite (a raid before any lookup) spaces evenly, as much room above its name
-	// as between the name and the sprite: the name this far down and the sprite's middle at BARE_MIDDLE (Dylan,
-	// 2026-11-17, matching killclog.com's).
+	// as between the name and the sprite: the name this far down and the sprite's middle at BARE_MIDDLE, as
+	// killclog.com spaces it.
 	private static final int BARE_NAME_TOP = 10;
 	private static final int BARE_MIDDLE = 50;
 	private static final int SPRITE_TOP = 17;
@@ -62,7 +62,7 @@ final class GameTile
 		// The sprite drawn faint, as an item not yet held is.
 		boolean faint;
 		// What the sprite is, named in the card's hover band while the tile is under the pointer: a name only, never a
-		// wiki link, since a press on a tile opens its card (Dylan, 2026-11-07).
+		// wiki link, since a press on a tile opens its card.
 		@Nullable
 		String itemName;
 		// A known count's color in place of the log's red, yellow and green, its name wearing it too: a page's
@@ -77,7 +77,7 @@ final class GameTile
 		}
 
 		// The hiscores' count for what the tile stands for (completions, kills), shown in white while its log
-		// progress is unknown, so a lookup with no synced log still reads (Dylan, 2026-11-07); 0 or less, none.
+		// progress is unknown, so a lookup with no synced log still reads; 0 or less, none.
 		int score;
 		// Its own count line in white, the bar still the log's: Most Killed's kills over that boss's log.
 		@Nullable
@@ -196,7 +196,7 @@ final class GameTile
 		g.drawString(count, center - fm.stringWidth(count) / 2, box.y + (page ? PAGE_COUNT_TOP : COUNT_TOP) + fm.getAscent());
 		g.setFont(font);
 
-		// No bar while the log is unknown (Dylan, 2026-11-07): an empty one would read as nothing held.
+		// No bar while the log is unknown: an empty one would read as nothing held.
 		if (!known)
 		{
 			return;
