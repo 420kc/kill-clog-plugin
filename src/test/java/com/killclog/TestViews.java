@@ -196,7 +196,7 @@ final class TestViews
 			totalLevel, totalXp, combatLevel, overallRank);
 	}
 
-	/** A card's clickable row under a y coordinate, or -1 ({@code rows}: raidRows, rareRows, pageRows, tabRows). */
+	/** A card's clickable row under a y coordinate, or -1 ({@code rows}: tiles, hourRows). */
 	static int rowAt(Object card, String rows, int y)
 	{
 		return tileAt(card, rows, ((java.awt.Component) card).getWidth() / 2, y);

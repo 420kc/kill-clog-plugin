@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
-import java.util.function.ObjIntConsumer;
+import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -339,7 +339,7 @@ public class TraySummaryWiringTest
 	private static void openRare(ClueSummaryTooltip tip, int row)
 	{
 		MouseEvent press = new MouseEvent(tip, MouseEvent.MOUSE_PRESSED, 0L, 0, 5, 5, 1, false, MouseEvent.BUTTON1);
-		((ObjIntConsumer<MouseEvent>) field(tip, "onOpenRare", ObjIntConsumer.class)).accept(press, row);
+		((BiConsumer<MouseEvent, Integer>) field(tip, "onOpenRare", BiConsumer.class)).accept(press, row);
 	}
 
 	private void seedSelf(ClogResult clog)

@@ -622,20 +622,28 @@ final class CardBody
 
 	/**
 	 * Rows and tiles a card opens things from. Each paint lays their boxes down again (a row's runs the card's
-	 * width); a hovered one repaints, and a left press hands its key to the card.
+	 * width); a hovered one repaints, and a left press hands its key to the card. A card's tiles each bring what a
+	 * press does in place of a key ({@link #opens}), so every paint starts them over.
 	 */
 	static final class ClickRows
 	{
 		private final JComponent card;
 		private final Map<Integer, Rectangle> boxes = new LinkedHashMap<>();
+		private final List<Consumer<MouseEvent>> actions = new ArrayList<>();
 		private int hovered = -1;
 		private Point pointer;
 		// Whether shift was down at the pointer's last move, for a link that opens on a shift-click only.
 		boolean shift;
 
-		ClickRows(JComponent card, ObjIntConsumer<MouseEvent> onPress)
+		ClickRows(JComponent card)
+		{
+			this(card, null);
+		}
+
+		ClickRows(JComponent card, @Nullable ObjIntConsumer<MouseEvent> onPress)
 		{
 			this.card = card;
+			ObjIntConsumer<MouseEvent> press = onPress != null ? onPress : (e, key) -> actions.get(key).accept(e);
 			MouseAdapter mouse = new MouseAdapter()
 			{
 				@Override
@@ -658,7 +666,7 @@ final class CardBody
 					int key = at(e.getPoint());
 					if (key >= 0 && e.getButton() == MouseEvent.BUTTON1 && !onRail(card, e.getPoint()))
 					{
-						onPress.accept(e, key);
+						press.accept(e, key);
 					}
 				}
 
@@ -680,6 +688,20 @@ final class CardBody
 		boolean spanShown(Ctx c, int y, int height, int key)
 		{
 			return boxShown(c, new Rectangle(0, y, Integer.MAX_VALUE, height), key);
+		}
+
+		/** Lays down a tile with what a press on it does; whether the still mouse is on it. */
+		boolean opens(Ctx c, Rectangle box, Consumer<MouseEvent> action)
+		{
+			actions.add(action);
+			return boxShown(c, box, actions.size() - 1);
+		}
+
+		/** Before a paint lays the tiles down again. */
+		void restart()
+		{
+			actions.clear();
+			boxes.clear();
 		}
 
 		/** A tile's box, clipped to what shows of a scrolled part as a row is; whether the still mouse is on it. */

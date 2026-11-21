@@ -250,7 +250,7 @@ public class PvmSummaryTooltipTest
 		List<Point> unwired = pvpTiles(bare);
 		for (Point tile : unwired)
 		{
-			assertEquals("nothing can open a page yet", -1, TestViews.tileAt(bare, "pvmRows", tile.x + 10, tile.y + 10));
+			assertEquals("nothing can open a page yet", -1, TestViews.tileAt(bare, "tiles", tile.x + 10, tile.y + 10));
 		}
 
 		PvmSummaryTooltip tip = card();
@@ -259,8 +259,10 @@ public class PvmSummaryTooltipTest
 		painted(tip);
 		List<Point> pvp = pvpTiles(tip);
 		assertEquals(5, pvp.size());
-		int[] keys = pvp.stream().mapToInt(tile -> TestViews.tileAt(tip, "pvmRows", tile.x + 10, tile.y + 10)).toArray();
-		assertArrayEquals(new int[]{2, 3, -1, -1, -1}, keys);
+		int[] keys = pvp.stream().mapToInt(tile -> TestViews.tileAt(tip, "tiles", tile.x + 10, tile.y + 10)).toArray();
+		// The first two answer, each its own tile; the rest have nothing under the pointer.
+		assertTrue(keys[0] >= 0 && keys[1] > keys[0]);
+		assertArrayEquals(new int[]{-1, -1, -1}, java.util.Arrays.copyOfRange(keys, 2, keys.length));
 		assertTrue(press(tip, pvp.get(0).x + 10, pvp.get(0).y + 10, MouseEvent.BUTTON1).isConsumed());
 		assertTrue(press(tip, pvp.get(1).x + 10, pvp.get(1).y + 10, MouseEvent.BUTTON1).isConsumed());
 		assertFalse(press(tip, pvp.get(2).x + 10, pvp.get(2).y + 10, MouseEvent.BUTTON1).isConsumed());
@@ -436,7 +438,7 @@ public class PvmSummaryTooltipTest
 	{
 		PvmSummaryTooltip tip = card();
 		// Before the first paint there is no raid section to answer.
-		assertEquals(-1, TestViews.tileAt(tip, "raidRows", 20, 200));
+		assertEquals(-1, TestViews.tileAt(tip, "tiles", 20, 200));
 
 		List<Point> raids = raidTiles(render(painted(tip)));
 		// CoX, ToB and ToA, three across; The Fractured Archive's waits for its hiscore row, which this lookup hasn't.
@@ -444,11 +446,11 @@ public class PvmSummaryTooltipTest
 		for (int row = 0; row < 3; row++)
 		{
 			Point tile = raids.get(row);
-			assertEquals(row, TestViews.tileAt(tip, "raidRows", tile.x, tile.y));
-			assertEquals(row, TestViews.tileAt(tip, "raidRows", tile.x + GameTile.WIDTH - 1, tile.y + GameTile.HEIGHT - 1));
+			assertEquals(row, TestViews.tileAt(tip, "tiles", tile.x, tile.y));
+			assertEquals(row, TestViews.tileAt(tip, "tiles", tile.x + GameTile.WIDTH - 1, tile.y + GameTile.HEIGHT - 1));
 		}
-		assertEquals(-1, TestViews.tileAt(tip, "raidRows", raids.get(0).x + 10, raids.get(0).y - 1));
-		assertEquals(-1, TestViews.tileAt(tip, "raidRows", raids.get(0).x + GameTile.WIDTH + 1, raids.get(0).y + 10));
+		assertEquals(-1, TestViews.tileAt(tip, "tiles", raids.get(0).x + 10, raids.get(0).y - 1));
+		assertEquals(-1, TestViews.tileAt(tip, "tiles", raids.get(0).x + GameTile.WIDTH + 1, raids.get(0).y + 10));
 	}
 
 	@Test
@@ -458,7 +460,7 @@ public class PvmSummaryTooltipTest
 		BufferedImage resting = render(tip);
 		Point tob = raidTiles(resting).get(1);
 		move(tip, tob.x + 10, tob.y + 10);
-		assertEquals(1, TestViews.hoveredRow(tip, "raidRows"));
+		assertEquals(1, TestViews.hoveredRow(tip, "tiles"));
 		BufferedImage hovered = render(tip);
 		int changed = 0;
 		int bandTop = Integer.MAX_VALUE;
@@ -487,7 +489,7 @@ public class PvmSummaryTooltipTest
 		assertTrue("only one line outside the tile changes", bandBottom - bandTop < NativeTooltip.LINE_HEIGHT + 4);
 		assertTrue("the band sits above the tiles", bandBottom < tob.y);
 		move(tip, 5, 2);
-		assertEquals(-1, TestViews.hoveredRow(tip, "raidRows"));
+		assertEquals(-1, TestViews.hoveredRow(tip, "tiles"));
 	}
 
 	@Test
@@ -711,12 +713,12 @@ public class PvmSummaryTooltipTest
 		PvmSummaryTooltip tip = painted(card());
 		Point cox = firstRaid(tip);
 		move(tip, cox.x + 5, cox.y + 2);
-		assertEquals(0, TestViews.hoveredRow(tip, "raidRows"));
+		assertEquals(0, TestViews.hoveredRow(tip, "tiles"));
 		for (MouseListener listener : tip.getMouseListeners())
 		{
 			listener.mouseExited(event(tip, MouseEvent.MOUSE_EXITED, cox.x + 5, cox.y + 2, MouseEvent.NOBUTTON));
 		}
-		assertEquals(-1, TestViews.hoveredRow(tip, "raidRows"));
+		assertEquals(-1, TestViews.hoveredRow(tip, "tiles"));
 	}
 
 	private static PvmSummaryTooltip card()

@@ -31,12 +31,12 @@ public class ClueSummaryTooltipTest
 		for (int row = 0; row < tiles.size(); row++)
 		{
 			Point tile = tiles.get(row);
-			assertEquals(row, TestViews.tileAt(tip, "rareRows", tile.x, tile.y));
-			assertEquals(row, TestViews.tileAt(tip, "rareRows", tile.x + GameTile.WIDTH - 1, tile.y + GameTile.HEIGHT - 1));
+			assertEquals(row, TestViews.tileAt(tip, "tiles", tile.x, tile.y));
+			assertEquals(row, TestViews.tileAt(tip, "tiles", tile.x + GameTile.WIDTH - 1, tile.y + GameTile.HEIGHT - 1));
 		}
 		// Not above the section, and not in the gap between two tiles.
-		assertEquals(-1, TestViews.tileAt(tip, "rareRows", tiles.get(0).x, tiles.get(0).y - 1));
-		assertEquals(-1, TestViews.tileAt(tip, "rareRows", tiles.get(0).x + GameTile.WIDTH + 1, tiles.get(0).y + 10));
+		assertEquals(-1, TestViews.tileAt(tip, "tiles", tiles.get(0).x, tiles.get(0).y - 1));
+		assertEquals(-1, TestViews.tileAt(tip, "tiles", tiles.get(0).x + GameTile.WIDTH + 1, tiles.get(0).y + 10));
 	}
 
 	@Test
@@ -67,7 +67,7 @@ public class ClueSummaryTooltipTest
 		ClueSummaryTooltip tip = card();
 		List<Point> tiles = TestViews.tiles(paint(tip));
 		Point rare = tiles.get(ClueSummaryTooltip.MIMIC - 1);
-		assertEquals(-1, TestViews.tileAt(tip, "rareRows", rare.x + 10, rare.y + 10));
+		assertEquals(-1, TestViews.tileAt(tip, "tiles", rare.x + 10, rare.y + 10));
 	}
 
 	@Test
@@ -101,15 +101,15 @@ public class ClueSummaryTooltipTest
 		});
 		Point raids = TestViews.tiles(paint(tip)).get(ClueSummaryTooltip.MIMIC - 1 + 1);
 		move(tip, raids.x + 10, raids.y + 10);
-		assertEquals(1, TestViews.hoveredRow(tip, "rareRows"));
+		assertEquals(1, TestViews.hoveredRow(tip, "tiles"));
 		move(tip, 5, 2);
-		assertEquals(-1, TestViews.hoveredRow(tip, "rareRows"));
+		assertEquals(-1, TestViews.hoveredRow(tip, "tiles"));
 		move(tip, raids.x + 10, raids.y + 10);
 		for (MouseListener listener : tip.getMouseListeners())
 		{
 			listener.mouseExited(event(tip, MouseEvent.MOUSE_EXITED, 5, 2, MouseEvent.NOBUTTON));
 		}
-		assertEquals(-1, TestViews.hoveredRow(tip, "rareRows"));
+		assertEquals(-1, TestViews.hoveredRow(tip, "tiles"));
 	}
 
 	@Test

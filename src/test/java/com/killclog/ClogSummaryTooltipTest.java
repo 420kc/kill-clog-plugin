@@ -259,7 +259,7 @@ public class ClogSummaryTooltipTest
 		Point raids = tiles.get(2);
 		for (Point tile : tiles)
 		{
-			assertEquals(-1, TestViews.tileAt(tip, "tabRows", tile.x + 10, tile.y + 10));
+			assertEquals(-1, TestViews.tileAt(tip, "tiles", tile.x + 10, tile.y + 10));
 		}
 
 		List<String> opened = new ArrayList<>();
@@ -268,8 +268,8 @@ public class ClogSummaryTooltipTest
 		assertEquals(reading, tip.getPreferredSize());
 		painted(tip);
 		// The Total opens nothing; a tab's tile opens its pages, and lightens under the mouse.
-		assertEquals(-1, TestViews.tileAt(tip, "tabRows", tiles.get(0).x + 10, tiles.get(0).y + 10));
-		assertEquals(1, TestViews.tileAt(tip, "tabRows", raids.x + 10, raids.y + 10));
+		assertEquals(-1, TestViews.tileAt(tip, "tiles", tiles.get(0).x + 10, tiles.get(0).y + 10));
+		assertEquals(1, TestViews.tileAt(tip, "tiles", raids.x + 10, raids.y + 10));
 		int idle = paint(tip).getRGB(raids.x + 10, raids.y + 40);
 		Point total = tiles.get(0);
 		int totalIdle = paint(tip).getRGB(total.x + 10, total.y + 40);

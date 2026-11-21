@@ -4,7 +4,7 @@ import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.util.*;
 import java.util.List;
-import java.util.function.ObjIntConsumer;
+import java.util.function.BiConsumer;
 import javax.annotation.Nullable;
 import net.runelite.client.game.ItemManager;
 import net.runelite.client.hiscore.HiscoreSkill;
@@ -38,27 +38,9 @@ public class ClueSummaryTooltip extends TitleTooltip
 	private final Image[] rareSprites = new Image[RARE_LABELS.length];
 
 	@Nullable
-	private ObjIntConsumer<MouseEvent> onOpenRare;
-	// The rare collections' tiles, the Mimic's last among them: its log is a rare, its card a clue line's.
-	private final CardBody.ClickRows rareRows = new CardBody.ClickRows(this, (e, row) ->
-	{
-		ObjIntConsumer<MouseEvent> open = row == RARE_LABELS.length ? this.onOpenLine : onOpenRare;
-		if (open != null)
-		{
-			open.accept(e, row == RARE_LABELS.length ? MIMIC : row);
-			e.consume();
-		}
-	});
+	private BiConsumer<MouseEvent, Integer> onOpenRare;
 	@Nullable
-	private ObjIntConsumer<MouseEvent> onOpenLine;
-	private final CardBody.ClickRows lineRows = new CardBody.ClickRows(this, (e, line) ->
-	{
-		if (onOpenLine != null)
-		{
-			onOpenLine.accept(e, line);
-			e.consume();
-		}
-	});
+	private BiConsumer<MouseEvent, Integer> onOpenLine;
 
 	public ClueSummaryTooltip()
 	{
@@ -113,13 +95,13 @@ public class ClueSummaryTooltip extends TitleTooltip
 	}
 
 	/** Called with the line (1 to 6 the tiers, 7 Mimic) when the player presses one. */
-	void setOnOpenLine(@Nullable ObjIntConsumer<MouseEvent> onOpenLine)
+	void setOnOpenLine(@Nullable BiConsumer<MouseEvent, Integer> onOpenLine)
 	{
 		this.onOpenLine = onOpenLine;
 	}
 
 	/** Called with the rare row index when the player presses one. */
-	void setOnOpenRare(@Nullable ObjIntConsumer<MouseEvent> onOpenRare)
+	void setOnOpenRare(@Nullable BiConsumer<MouseEvent, Integer> onOpenRare)
 	{
 		this.onOpenRare = onOpenRare;
 	}
@@ -130,18 +112,18 @@ public class ClueSummaryTooltip extends TitleTooltip
 		List<GameTile.Tile> lines = new ArrayList<>();
 		for (int line = 1; line < MIMIC; line++)
 		{
-			lines.add(new GameTile.Tile(LABELS[line], lineSprites[line], obtained[line], total[line],
-				onOpenLine != null ? line : -1).score(scores[line]));
+			lines.add(new GameTile.Tile(LABELS[line], lineSprites[line], obtained[line], total[line])
+				.opens(onOpenLine, line).score(scores[line]));
 		}
 		List<GameTile.Tile> rares = new ArrayList<>();
 		for (int i = 0; i < RARE_LABELS.length; i++)
 		{
-			rares.add(new GameTile.Tile(RARE_LABELS[i], rareSprites[i], rareObtained[i], rareTotal[i],
-				onOpenRare != null ? i : -1));
+			rares.add(new GameTile.Tile(RARE_LABELS[i], rareSprites[i], rareObtained[i], rareTotal[i]).opens(onOpenRare, i));
 		}
-		rares.add(new GameTile.Tile(LABELS[MIMIC], lineSprites[MIMIC], obtained[MIMIC], total[MIMIC],
-			onOpenLine != null ? RARE_LABELS.length : -1).score(scores[MIMIC]));
-		return new CardBody().add(GameTile.grid(lineRows, lines)).titled("Rare Collections")
-			.add(GameTile.grid(rareRows, rares));
+		// The Mimic's tile sits last among the rares: its log is a rare, its card a clue line's.
+		rares.add(new GameTile.Tile(LABELS[MIMIC], lineSprites[MIMIC], obtained[MIMIC], total[MIMIC])
+			.opens(onOpenLine, MIMIC).score(scores[MIMIC]));
+		return new CardBody().add(GameTile.grid(lines)).titled("Rare Collections")
+			.add(GameTile.grid(rares));
 	}
 }

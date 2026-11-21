@@ -57,15 +57,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private boolean[] raidOut = raidsOut(null);
 	@Nullable
 	private BiConsumer<MouseEvent, HiscoreSkill> onOpenRaid;
-	private final CardBody.ClickRows raidRows = new CardBody.ClickRows(this, (e, row) ->
-	{
-		// Each tile opens its raid's own popup, once the client knows the raid.
-		if (onOpenRaid != null && raid(row) != null)
-		{
-			onOpenRaid.accept(e, raid(row));
-			e.consume();
-		}
-	});
 
 	// Everything under the band scrolls, three lines a notch, in the window every long card shows.
 	private final CardBody.Scroll scroll = new CardBody.Scroll(this, CardBody.WINDOW, 3 * LINE_HEIGHT);
@@ -89,7 +80,6 @@ public class PvmSummaryTooltip extends TitleTooltip
 	@Setter
 	@Nullable
 	private Consumer<MouseEvent> onOpenBosses;
-	private static final int BOSSES = 1;
 	// The most killed boss's tile: the boss, its icon and its log.
 	@Nullable
 	private HiscoreSkill mostKilledBoss;
@@ -97,31 +87,10 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private Image mostKilledIcon;
 	private int mostKilledObtained = -1;
 	private int mostKilledTotal;
-	private static final int MOST_KILLED = 0;
-	// A PvP tile with a log page opens that page where the summary was, as a raid's tile opens its popup. Its key
-	// follows the PvM tiles', which share the clicks.
+	// A PvP tile with a log page opens that page where the summary was, as a raid's tile opens its popup.
 	@Setter
 	@Nullable
 	private BiConsumer<MouseEvent, String> onOpenPage;
-	private static final int PVP_PAGE = 2;
-	private final CardBody.ClickRows pvmRows = new CardBody.ClickRows(this, (e, key) ->
-	{
-		if (key == BOSSES && onOpenBosses != null)
-		{
-			onOpenBosses.accept(e);
-			e.consume();
-		}
-		else if (key == MOST_KILLED && onOpenRaid != null && mostKilledBoss != null)
-		{
-			onOpenRaid.accept(e, mostKilledBoss);
-			e.consume();
-		}
-		else if (key >= PVP_PAGE && onOpenPage != null)
-		{
-			onOpenPage.accept(e, PVP_PAGES[key - PVP_PAGE]);
-			e.consume();
-		}
-	});
 	// The PvP activities' short names, in PanelData.PVP_ACTIVITIES' order; the first two have a log page.
 	private static final String[] PVP_LABELS = {"LMS", "Soul Wars", "PvP Arena", "BH", "BH Rogue"};
 	private static final String[] PVP_PAGES = {"last_man_standing", "soul_wars"};
@@ -310,28 +279,27 @@ public class PvmSummaryTooltip extends TitleTooltip
 		List<GameTile.Tile> pvm = new ArrayList<>();
 		if (mostKilled != null)
 		{
-			pvm.add(new GameTile.Tile("Most Killed", mostKilledIcon, mostKilledObtained, mostKilledTotal,
-				onOpenRaid != null && mostKilledBoss != null ? MOST_KILLED : -1)
-				.count(grouped(mostKilledKc) + " kc").named(mostKilled));
+			pvm.add(new GameTile.Tile("Most Killed", mostKilledIcon, mostKilledObtained, mostKilledTotal)
+				.opens(onOpenRaid, mostKilledBoss).count(grouped(mostKilledKc) + " kc").named(mostKilled));
 		}
 		// Bosses reads as Most Killed does, the bosses killed in white over the logs' bar; before any
 		// lookup, the raids' resting grey "--".
 		GameTile.Tile bosses = new GameTile.Tile("Bosses", bossesSprite, bossesCompleted,
-			bossesWithKc >= 0 ? bossesWithClog : totalBosses, onOpenBosses != null ? BOSSES : -1);
+			bossesWithKc >= 0 ? bossesWithClog : totalBosses).opens(onOpenBosses);
 		pvm.add(bossesWithKc >= 0 ? bosses.count("Killed: " + bossesWithKc + "/" + totalBosses) : bosses);
-		body.add(CardBody.gap(SECTION_GAP)).add(GameTile.grid(pvmRows, pvm));
-		// Raids lead the sections under the band.
+		body.add(CardBody.gap(SECTION_GAP)).add(GameTile.grid(pvm));
+		// Raids lead the sections under the band, each tile opening its raid's own popup once the client knows the raid.
 		List<GameTile.Tile> raids = new ArrayList<>();
 		for (int i = 0; i < raidOut.length; i++)
 		{
 			if (raidOut[i])
 			{
-				raids.add(new GameTile.Tile(PanelData.RAIDS.get(i).getTile(), megarares[i], raidObtained[i], raidTotal[i],
-					onOpenRaid != null && raid(i) != null ? i : -1).faint(weaponCounts[i] <= 0)
+				raids.add(new GameTile.Tile(PanelData.RAIDS.get(i).getTile(), megarares[i], raidObtained[i], raidTotal[i])
+					.opens(onOpenRaid, raid(i)).faint(weaponCounts[i] <= 0)
 					.named(PanelData.RAIDS.get(i).getMegarareName()).score(raidKills[i]));
 			}
 		}
-		body.titled("Raids").add(GameTile.grid(raidRows, raids));
+		body.titled("Raids").add(GameTile.grid(raids));
 		// Slayer: XP and Rank from the hiscores, then clog progress when a synced log is known.
 		body.titled("Slayer")
 			.add(CardBody.line("XP: ", scoreText(slayerXp)))
@@ -351,10 +319,10 @@ public class PvmSummaryTooltip extends TitleTooltip
 		{
 			int[] log = pvpLogs[i];
 			pvp.add(new GameTile.Tile(PVP_LABELS[i], pvpIcons != null ? pvpIcons[i] : null, log != null ? log[0] : -1,
-				log != null ? log[1] : 0, onOpenPage != null && i < PVP_PAGES.length ? PVP_PAGE + i : -1)
+				log != null ? log[1] : 0).opens(onOpenPage, i < PVP_PAGES.length ? PVP_PAGES[i] : null)
 				.count(scoreText(pvpScores[i])));
 		}
-		body.add(GameTile.grid(pvmRows, pvp));
+		body.add(GameTile.grid(pvp));
 		// With no gear row between them, the band takes the title's divider for its top, as the Player Summary's and the
 		// Collection Log's do: its own drew a second line 11 px under the title's.
 		return card.add(gear.isEmpty() && !gearRow ? CardBody.headerHoverBand() : CardBody.hoverBand())

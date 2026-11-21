@@ -84,6 +84,8 @@ public abstract class TitleTooltip extends NativeTooltip
 	// Item sprites on the card: hover names and wiki links. Installed after the
 	// title's own listeners, as the cards' own copies were.
 	final TooltipItemHover itemHover = new TooltipItemHover(this);
+	// The body's tiles, each bringing what a press on it does.
+	final CardBody.ClickRows tiles = new CardBody.ClickRows(this);
 
 	/**
 	 * Optional badge before the title, drawn at its own size: art no taller than the title's line
@@ -478,6 +480,7 @@ public abstract class TitleTooltip extends NativeTooltip
 	@Override
 	protected void paintContent(Graphics2D g2, int w, int h)
 	{
+		tiles.restart();
 		itemHover.setHitBoxes(body().paint(this, g2, w, paintHeader(g2, w)));
 	}
 

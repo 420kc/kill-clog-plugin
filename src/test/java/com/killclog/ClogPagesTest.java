@@ -165,7 +165,7 @@ public class ClogPagesTest
 		verify(controller).pinTooltipFromPress(any(), any(), any(), pinned.capture());
 		javax.swing.JToolTip tab = pinned.getValue();
 		assertEquals("< Combat Summary", TestViews.field(tab, "backLabel"));
-		java.util.function.ObjIntConsumer<java.awt.event.MouseEvent> open = TestViews.field(tab, "onOpenPage");
+		java.util.function.BiConsumer<java.awt.event.MouseEvent, Integer> open = TestViews.field(tab, "onOpenPage");
 		open.accept(press, 0);
 		verify(controller, times(2)).pinTooltipFromPress(any(), any(), any(), pinned.capture());
 		javax.swing.JToolTip page = pinned.getValue();

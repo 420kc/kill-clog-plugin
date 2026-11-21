@@ -1,8 +1,10 @@
 package com.killclog;
 
 import java.awt.*;
+import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
 import java.util.List;
+import java.util.function.*;
 import javax.annotation.Nullable;
 import lombok.*;
 import net.runelite.client.ui.FontManager;
@@ -49,7 +51,7 @@ final class GameTile
 	{
 	}
 
-	/** One tile: its name, sprite and count (a negative count is unknown), and what a press opens (-1, nothing). */
+	/** One tile: its name, sprite and count (a negative count is unknown), and what a press on it does. */
 	@RequiredArgsConstructor(access = AccessLevel.PACKAGE)
 	static final class Tile
 	{
@@ -58,7 +60,9 @@ final class GameTile
 		final Image sprite;
 		final int obtained;
 		final int total;
-		final int key;
+		// What a press does (null, nothing).
+		@Nullable
+		Consumer<MouseEvent> opens;
 		// The sprite drawn faint, as an item not yet held is.
 		boolean faint;
 		// What the sprite is, named in the card's hover band while the tile is under the pointer: a name only, never a
@@ -106,22 +110,38 @@ final class GameTile
 			itemName = name;
 			return this;
 		}
+
+		Tile opens(@Nullable Consumer<MouseEvent> open)
+		{
+			opens = open == null ? null : e ->
+			{
+				open.accept(e);
+				e.consume();
+			};
+			return this;
+		}
+
+		/** A press hands {@code what} to the card's handler; with either missing the tile only reads. */
+		<T> Tile opens(@Nullable BiConsumer<MouseEvent, T> to, @Nullable T what)
+		{
+			return opens(to == null || what == null ? null : e -> to.accept(e, what));
+		}
 	}
 
-	/** The tiles three across, or two or four two across and wider so none sits alone; a press opens a tile's key. */
-	static CardBody.Part grid(CardBody.ClickRows clicks, List<Tile> tiles)
+	/** The tiles three across, or two or four two across and wider so none sits alone. */
+	static CardBody.Part grid(List<Tile> tiles)
 	{
-		return tiles.size() == 2 || tiles.size() == 4 ? grid(clicks, tiles, 2, PAGE_WIDTH, HEIGHT)
-			: grid(clicks, tiles, COLS, WIDTH, HEIGHT);
+		return tiles.size() == 2 || tiles.size() == 4 ? grid(tiles, 2, PAGE_WIDTH, HEIGHT)
+			: grid(tiles, COLS, WIDTH, HEIGHT);
 	}
 
 	/** A tab's pages, two across, as the game's Combat Achievements tiles its bosses. */
-	static CardBody.Part pages(CardBody.ClickRows clicks, List<Tile> tiles)
+	static CardBody.Part pages(List<Tile> tiles)
 	{
-		return grid(clicks, tiles, 2, PAGE_WIDTH, PAGE_HEIGHT);
+		return grid(tiles, 2, PAGE_WIDTH, PAGE_HEIGHT);
 	}
 
-	private static CardBody.Part grid(CardBody.ClickRows clicks, List<Tile> tiles, int cols, int w, int h)
+	private static CardBody.Part grid(List<Tile> tiles, int cols, int w, int h)
 	{
 		int rows = (tiles.size() + cols - 1) / cols;
 		int width = Math.min(tiles.size(), cols) * (w + GAP) - GAP;
@@ -132,7 +152,7 @@ final class GameTile
 			{
 				Tile tile = tiles.get(i);
 				Rectangle box = new Rectangle(left + i % cols * (w + GAP), y + i / cols * (h + GAP), w, h);
-				paint(c, box, tile, tile.key >= 0 && clicks.boxShown(c, box, tile.key));
+				paint(c, box, tile, tile.opens != null && c.card.tiles.opens(c, box, tile.opens));
 				if (tile.itemName != null)
 				{
 					// Green while held, red while faint, as the card's other items read in the band.

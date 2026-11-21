@@ -28,15 +28,15 @@ public class ClogTabTooltipTest
 	{
 		ClogTabTooltip card = painted(card(57));
 		Point first = firstTile(card);
-		assertEquals(0, TestViews.tileAt(card, "pageRows", first.x + 10, first.y + 10));
-		assertEquals(1, TestViews.tileAt(card, "pageRows", first.x + GameTile.PAGE_WIDTH + GameTile.GAP + 10, first.y + 10));
+		assertEquals(0, TestViews.tileAt(card, "tiles", first.x + 10, first.y + 10));
+		assertEquals(1, TestViews.tileAt(card, "tiles", first.x + GameTile.PAGE_WIDTH + GameTile.GAP + 10, first.y + 10));
 
 		wheel(card, first.y + 10, 1);
 		assertEquals(ROW, TestViews.offset(card.scroll()));
 		// The mouse stayed put, so once the card repaints the page that scrolled under it is the one a press opens.
-		painted(card);
 		List<Integer> opened = new ArrayList<>();
 		card.setOnOpenPage((press, page) -> opened.add(page));
+		painted(card);
 		press(card, first.x + 10, first.y + 10);
 		assertEquals(Arrays.asList(2), opened);
 
@@ -204,7 +204,7 @@ public class ClogTabTooltipTest
 		assertEquals(shown, card.getSize());
 		assertEquals(ROW, TestViews.offset(card.scroll()));
 		assertEquals("the page under the pointer is still the one in view", 2,
-			TestViews.tileAt(card, "pageRows", first.x + 10, first.y + 10));
+			TestViews.tileAt(card, "tiles", first.x + 10, first.y + 10));
 		wheel(card, first.y + 5, 1);
 		assertEquals("and the wheel still moves it", 2 * ROW, TestViews.offset(card.scroll()));
 	}
@@ -364,13 +364,13 @@ public class ClogTabTooltipTest
 		Point first = firstTile(card);
 		Point under = new Point(first.x + 10, first.y + ROW + 10);
 		move(card, under.x, under.y);
-		assertEquals(2, TestViews.hoveredRow(card, "pageRows"));
+		assertEquals(2, TestViews.hoveredRow(card, "tiles"));
 		wheel(card, under.y, 1);
 		painted(card);
-		assertEquals("page 4 slid under the mouse", 4, TestViews.hoveredRow(card, "pageRows"));
+		assertEquals("page 4 slid under the mouse", 4, TestViews.hoveredRow(card, "tiles"));
 		repaints[0] = 0;
 		move(card, under.x, under.y - ROW);
-		assertEquals(2, TestViews.hoveredRow(card, "pageRows"));
+		assertEquals(2, TestViews.hoveredRow(card, "tiles"));
 		assertTrue("moving onto page 2's new place repaints", repaints[0] > 0);
 	}
 

@@ -2,7 +2,7 @@ package com.killclog;
 
 import java.awt.event.MouseEvent;
 import java.util.*;
-import java.util.function.ObjIntConsumer;
+import java.util.function.BiConsumer;
 import javax.annotation.Nullable;
 
 /**
@@ -20,15 +20,7 @@ public class ClogTabTooltip extends TitleTooltip
 	private KillClogConfig progress;
 	private final CardBody.Scroll scroll = new CardBody.Scroll(this, CardBody.WINDOW, GameTile.PAGE_HEIGHT + GameTile.GAP);
 	@Nullable
-	private ObjIntConsumer<MouseEvent> onOpenPage;
-	private final CardBody.ClickRows pageRows = new CardBody.ClickRows(this, (e, page) ->
-	{
-		if (onOpenPage != null)
-		{
-			onOpenPage.accept(e, page);
-			e.consume();
-		}
-	});
+	private BiConsumer<MouseEvent, Integer> onOpenPage;
 
 	/** The tab and the player's progress through it; null progress shows the tab's size alone. */
 	void setTab(String tab, @Nullable int[] progress, int tabTotal)
@@ -51,7 +43,7 @@ public class ClogTabTooltip extends TitleTooltip
 	}
 
 	/** Called with the page's index when the player presses its tile. */
-	void setOnOpenPage(@Nullable ObjIntConsumer<MouseEvent> onOpenPage)
+	void setOnOpenPage(@Nullable BiConsumer<MouseEvent, Integer> onOpenPage)
 	{
 		this.onOpenPage = onOpenPage;
 	}
@@ -68,9 +60,9 @@ public class ClogTabTooltip extends TitleTooltip
 		List<GameTile.Tile> pages = new ArrayList<>();
 		for (int i = 0; i < names.length; i++)
 		{
-			pages.add(new GameTile.Tile(names[i], null, obtained[i], total[i], onOpenPage != null ? i : -1)
+			pages.add(new GameTile.Tile(names[i], null, obtained[i], total[i]).opens(onOpenPage, i)
 				.wear(progress != null && obtained[i] >= 0 ? ClogHelper.clogColor(obtained[i], total[i], progress) : null));
 		}
-		return new CardBody().add(CardBody.scroll(scroll, GameTile.pages(pageRows, pages)));
+		return new CardBody().add(CardBody.scroll(scroll, GameTile.pages(pages)));
 	}
 }

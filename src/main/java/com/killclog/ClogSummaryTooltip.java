@@ -84,14 +84,6 @@ public class ClogSummaryTooltip extends TitleTooltip
 	private BiConsumer<MouseEvent, String> onOpenTab;
 	// Everything under the anchored band scrolls once the card grows past a long tab's height, three lines a notch.
 	private final CardBody.Scroll scroll = new CardBody.Scroll(this, CardBody.WINDOW, 3 * LINE_HEIGHT);
-	private final CardBody.ClickRows tabRows = new CardBody.ClickRows(this, (e, row) ->
-	{
-		if (onOpenTab != null)
-		{
-			onOpenTab.accept(e, new ArrayList<>(tabs.keySet()).get(row));
-			e.consume();
-		}
-	});
 
 	public void setTierData(int obtained, int totalSlots, Map<String, BufferedImage> tierIcons,
 		ItemManager itemManager)
@@ -242,19 +234,17 @@ public class ClogSummaryTooltip extends TitleTooltip
 		List<GameTile.Tile> tiles = new ArrayList<>();
 		if (hasTotals())
 		{
-			tiles.add(new GameTile.Tile("Total", tierSprite, obtained, totalSlots, -1));
+			tiles.add(new GameTile.Tile("Total", tierSprite, obtained, totalSlots));
 		}
-		int key = 0;
 		for (Map.Entry<String, int[]> tab : tabs.entrySet())
 		{
 			int[] count = tab.getValue();
-			tiles.add(new GameTile.Tile(tab.getKey(), tabSprites.get(tab.getKey()), count[0], count[1],
-				onOpenTab != null ? key : -1));
-			key++;
+			tiles.add(new GameTile.Tile(tab.getKey(), tabSprites.get(tab.getKey()), count[0], count[1])
+				.opens(onOpenTab, tab.getKey()));
 		}
 		if (!tiles.isEmpty())
 		{
-			card.add(GameTile.grid(tabRows, tiles)).add(CardBody.gap(GameTile.GAP));
+			card.add(GameTile.grid(tiles)).add(CardBody.gap(GameTile.GAP));
 		}
 		if (hasTotals())
 		{
