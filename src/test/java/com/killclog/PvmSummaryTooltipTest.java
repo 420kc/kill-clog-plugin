@@ -326,7 +326,7 @@ public class PvmSummaryTooltipTest
 		// (Dylan, 2026-11-18: 2.8.2 drew a second line 11 px under the title's).
 		PvmSummaryTooltip tip = painted(card());
 		List<Integer> rules = rules(render(tip));
-		int band = TitleTooltip.hoverRowHeight(tip.getFontMetrics(FontManager.getRunescapeSmallFont()));
+		int band = tip.getFontMetrics(FontManager.getRunescapeSmallFont()).getHeight() + 4;
 		assertTrue("the title's line, then the band's: " + rules, rules.size() >= 2);
 		assertEquals("one name line between them: " + rules, band + 1, rules.get(1) - rules.get(0));
 	}

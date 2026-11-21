@@ -228,14 +228,18 @@ final class CardBody
 	static final int SECTION_SPACE = 8;
 	static final int SECTION_RULE = 3;
 	static final int SECTION_AFTER = 4;
+	private static final int SECTION_TITLE = 16;
 
-	/** A section's bold title with its rule under it. */
+	/** A section's bold title with its rule under it, the small font handed back after. */
 	static Part section(String title)
 	{
-		return row(TitleTooltip.SUBHEADER_HEIGHT + SECTION_RULE + SECTION_AFTER, c -> c.bfm.stringWidth(title), (c, y) ->
+		return row(SECTION_TITLE + SECTION_RULE + SECTION_AFTER, c -> c.bfm.stringWidth(title), (c, y) ->
 		{
-			c.card.paintSubheader(c.g, y, title);
-			divider(c.g, y + TitleTooltip.SUBHEADER_HEIGHT + 1, c.inset(), c.w);
+			c.g.setFont(FontManager.getRunescapeBoldFont());
+			c.g.setColor(NativeTooltip.labelColor);
+			c.g.drawString(title, c.inset(), y + c.bfm.getAscent());
+			c.g.setFont(FontManager.getRunescapeSmallFont());
+			divider(c.g, y + SECTION_TITLE + 1, c.inset(), c.w);
 		});
 	}
 
@@ -271,17 +275,28 @@ final class CardBody
 	/** A band whose top divider sits {@code above} the part's top; a negative one is the divider already there. */
 	private static Part band(int above)
 	{
-		return part(c -> 0, c -> above + 1 + TitleTooltip.hoverRowHeight(c.fm) + 1 + BAND_PAD, (c, y) ->
+		return part(c -> 0, c -> above + 1 + bandLine(c) + 1 + BAND_PAD, (c, y) ->
 		{
 			int top = y + above;
-			int height = TitleTooltip.hoverRowHeight(c.fm);
 			if (above >= 0)
 			{
 				divider(c.g, top, c.inset(), c.w);
 			}
-			divider(c.g, top + height + 1, c.inset(), c.w);
-			c.card.paintHeaderHoverLine(c.g, c.fm, c.w, top + 1 + c.fm.getAscent());
+			divider(c.g, top + bandLine(c) + 1, c.inset(), c.w);
+			String name = c.card.getHeaderHoverLineText();
+			if (name != null && !name.isEmpty())
+			{
+				c.g.setColor(c.card.getHeaderHoverLineColor());
+				c.g.drawString(TitleTooltip.fitHeaderText(c.fm, name, c.w - 2 * c.inset()), c.inset(),
+					top + 3 + c.fm.getAscent());
+			}
 		});
+	}
+
+	/** The band's name line: the name with room above and below it. */
+	private static int bandLine(Ctx c)
+	{
+		return c.fm.getHeight() + 4;
 	}
 
 	/**

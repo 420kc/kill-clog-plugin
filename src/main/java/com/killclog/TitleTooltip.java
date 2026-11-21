@@ -263,18 +263,6 @@ public abstract class TitleTooltip extends NativeTooltip
 		return y + 1 + pad;
 	}
 
-	static final int SUBHEADER_HEIGHT = 16;
-
-	/** A bold orange subheader, the small font handed back after; returns the Y under it. */
-	int paintSubheader(Graphics2D g2, int y, String text)
-	{
-		g2.setFont(FontManager.getRunescapeBoldFont());
-		g2.setColor(labelColor);
-		g2.drawString(text, getInset(), y + g2.getFontMetrics().getAscent());
-		g2.setFont(FontManager.getRunescapeSmallFont());
-		return y + SUBHEADER_HEIGHT;
-	}
-
 	static int drawLabelValue(Graphics2D g2, FontMetrics fm, int x, int y,
 		String label, String value)
 	{
@@ -555,22 +543,6 @@ public abstract class TitleTooltip extends NativeTooltip
 	private static int nextLine(int lineY, int titleBaseline)
 	{
 		return lineY + (lineY == titleBaseline ? NAME_LINE_HEIGHT : LINE_HEIGHT);
-	}
-
-	/** Room above and below the label, shared by sprite-section readouts. */
-	static int hoverRowHeight(FontMetrics fm)
-	{
-		return fm.getHeight() + 4;
-	}
-
-	protected final void paintHeaderHoverLine(Graphics2D g2, FontMetrics fm, int w, int baseline)
-	{
-		String itemName = getHeaderHoverLineText();
-		if (itemName != null && !itemName.isEmpty())
-		{
-			g2.setColor(getHeaderHoverLineColor());
-			g2.drawString(fitHeaderText(fm, itemName, w - getInset() * 2), getInset(), baseline + 2);
-		}
 	}
 
 	/** Whether this press opens a link on the card ({@link CardLinks}). */
