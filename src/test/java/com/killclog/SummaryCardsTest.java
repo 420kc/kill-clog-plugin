@@ -53,9 +53,14 @@ public class SummaryCardsTest
 		when(comparison.showsPair()).thenReturn(true);
 		JToolTip pair = new JToolTip();
 		when(comparison.wrapSideBySide(any(), any(), any())).thenReturn(pair);
+		JPanel cell = new JPanel();
 		JLabel owner = new JLabel();
+		cell.add(owner);
 		assertSame(pair, cards.buildSkills(owner));
 		verify(comparison).wrapSideBySide(eq(owner), any(SkillsTooltip.class), any(SkillsTooltip.class));
+		// The pair is what stays open over the cell; its two cards are its children and ride on its hold.
+		verify(tooltips).keepTooltipOnHover(pair, cell);
+		verify(tooltips, org.mockito.Mockito.times(1)).keepTooltipOnHover(any(), any());
 	}
 
 	@Test

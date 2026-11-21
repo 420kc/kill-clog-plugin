@@ -50,13 +50,15 @@ public class ClogTabTooltipTest
 	public void theRailScrollsTheTabOnAPressOrADragAndOpensNoPage()
 	{
 		// For a player without a scroll wheel (2.7.3): the rail is a scroll bar.
-		ClogTabTooltip card = painted(card(57));
+		// A tile opens what its card held when it was painted, so the pages are given their way to open first.
+		List<Integer> opened = new ArrayList<>();
+		ClogTabTooltip card = card(57);
+		card.setOnOpenPage((press, page) -> opened.add(page));
+		painted(card);
 		Point first = firstTile(card);
 		int top = first.y;
 		int rail = card.getWidth() - NativeTooltip.getInset() - CardBody.RAIL_WIDTH;
 		int bottom = top + CardBody.WINDOW - 2;
-		List<Integer> opened = new ArrayList<>();
-		card.setOnOpenPage((press, page) -> opened.add(page));
 		assertTrue("the grab zone takes the rail's gap too", CardBody.onRail(card, new Point(rail - CardBody.RAIL_GAP, top + 5)));
 		assertTrue("and stops there", !CardBody.onRail(card, new Point(rail - CardBody.RAIL_GAP - 1, top + 5)));
 		assertTrue(!CardBody.onRail(card, new Point(rail / 2, top + 5)));
@@ -264,9 +266,9 @@ public class ClogTabTooltipTest
 		// One line more, and nothing else.
 		assertEquals(bare.getPreferredSize().height + LINE, back.getPreferredSize().height);
 
-		painted(back);
 		List<Integer> opened = new ArrayList<>();
 		back.setOnOpenPage((press, page) -> opened.add(page));
+		painted(back);
 		press(back, NativeTooltip.getInset() - 1);
 		assertEquals("nothing above the card's first line", 0, backs[0]);
 		press(back, NativeTooltip.getInset() + 2);
