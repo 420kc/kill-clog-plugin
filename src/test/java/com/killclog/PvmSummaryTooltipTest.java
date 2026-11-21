@@ -331,6 +331,42 @@ public class PvmSummaryTooltipTest
 		assertEquals("one name line between them: " + rules, band + 1, rules.get(1) - rules.get(0));
 	}
 
+	// Where the band writes its hovered name was pinned by nothing: 7 px lower, across the band's bottom line, every
+	// test passed.
+	@Test
+	public void theBandsHoveredNameSitsBetweenItsTwoLines()
+	{
+		PvmSummaryTooltip geared = card();
+		geared.addGear(PanelData.MAX_CAPE_ITEM_ID, "Maxed", gearItems());
+		for (PvmSummaryTooltip tip : new PvmSummaryTooltip[]{card(), geared})
+		{
+			painted(tip);
+			Point cox = firstRaid(tip);
+			move(tip, cox.x + 10, cox.y + 10);
+			assertEquals("Twisted Bow", tip.getHeaderHoverLineText());
+			BufferedImage image = render(tip);
+			List<Integer> rules = rules(image);
+			// With gear the band has its own top line under the title's; without, the title's line is its top.
+			int top = rules.get(tip == geared ? 1 : 0);
+			int bottom = rules.get(tip == geared ? 2 : 1);
+			int name = tip.getHeaderHoverLineColor().getRGB();
+			List<Integer> rows = new ArrayList<>();
+			for (int y = 0; y < bottom + NativeTooltip.LINE_HEIGHT; y++)
+			{
+				for (int x = 0; x < image.getWidth() && !rows.contains(y); x++)
+				{
+					if (image.getRGB(x, y) == name)
+					{
+						rows.add(y);
+					}
+				}
+			}
+			assertFalse("the name is drawn", rows.isEmpty());
+			assertTrue("between the band's lines at " + top + " and " + bottom + ": " + rows,
+				rows.get(0) > top && rows.get(rows.size() - 1) < bottom);
+		}
+	}
+
 	/** The rows a divider runs across the card in, top down. */
 	private static List<Integer> rules(BufferedImage image)
 	{
