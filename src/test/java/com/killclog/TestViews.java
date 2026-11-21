@@ -485,6 +485,128 @@ final class TestViews
 		return gate.takeQueued() != null;
 	}
 
+	/**
+	 * Where a picture holds this text in this font and color: the point it was drawn from, its left edge and its
+	 * baseline, or null when it isn't there. It reads the pixels of exactly that color, and wants the text's own shape
+	 * with nothing else of the color inside its box, so "1/5" is never found in "5/1" or in a bar of the same color.
+	 */
+	static java.awt.Point textAt(java.awt.image.BufferedImage image, String text, java.awt.Font font, java.awt.Color color)
+	{
+		java.awt.FontMetrics fm = new java.awt.Canvas().getFontMetrics(font);
+		int pad = 2;
+		java.awt.image.BufferedImage ink = new java.awt.image.BufferedImage(fm.stringWidth(text) + 2 * pad,
+			fm.getHeight() + 2 * pad, java.awt.image.BufferedImage.TYPE_INT_ARGB);
+		java.awt.Graphics2D g = ink.createGraphics();
+		g.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING, java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
+		g.setFont(font);
+		g.setColor(color);
+		g.drawString(text, pad, pad + fm.getAscent());
+		g.dispose();
+		int rgb = color.getRGB();
+		int left = ink.getWidth();
+		int top = ink.getHeight();
+		int right = -1;
+		int bottom = -1;
+		for (int y = 0; y < ink.getHeight(); y++)
+		{
+			for (int x = 0; x < ink.getWidth(); x++)
+			{
+				if (ink.getRGB(x, y) == rgb)
+				{
+					left = Math.min(left, x);
+					right = Math.max(right, x);
+					top = Math.min(top, y);
+					bottom = Math.max(bottom, y);
+				}
+			}
+		}
+		if (right < 0)
+		{
+			throw new IllegalArgumentException("the font draws nothing solid for: " + text);
+		}
+		for (int y = 0; y + bottom - top < image.getHeight(); y++)
+		{
+			for (int x = 0; x + right - left < image.getWidth(); x++)
+			{
+				boolean same = true;
+				for (int dy = 0; same && dy <= bottom - top; dy++)
+				{
+					for (int dx = 0; same && dx <= right - left; dx++)
+					{
+						same = (image.getRGB(x + dx, y + dy) == rgb) == (ink.getRGB(left + dx, top + dy) == rgb);
+					}
+				}
+				if (same)
+				{
+					return new java.awt.Point(x - left + pad, y - top + pad + fm.getAscent());
+				}
+			}
+		}
+		return null;
+	}
+
+	/** Whether a tile at this top-left holds a pixel of this color. */
+	static boolean tileHas(java.awt.image.BufferedImage image, java.awt.Point tile, java.awt.Color color)
+	{
+		for (int y = tile.y; y < tile.y + GameTile.HEIGHT; y++)
+		{
+			for (int x = tile.x; x < tile.x + GameTile.WIDTH; x++)
+			{
+				if (image.getRGB(x, y) == color.getRGB())
+				{
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	/** The rows a divider runs across a card in, top down. */
+	static java.util.List<Integer> rules(java.awt.image.BufferedImage image)
+	{
+		int divider = NativeTooltip.dividerColor.getRGB();
+		int inset = NativeTooltip.getInset();
+		java.util.List<Integer> rows = new java.util.ArrayList<>();
+		for (int y = 0; y < image.getHeight(); y++)
+		{
+			int run = 0;
+			for (int x = inset; x < image.getWidth() - inset; x++)
+			{
+				run += image.getRGB(x, y) == divider ? 1 : 0;
+			}
+			if (run >= (image.getWidth() - 2 * inset) * 9 / 10)
+			{
+				rows.add(y);
+			}
+		}
+		return rows;
+	}
+
+	/** A log of pages, each its item ids, the player holding the first {@code held} of each. */
+	static ClogResult log(String name, Map<String, Integer> pages, Map<String, Integer> held)
+	{
+		Map<String, List<Integer>> items = new java.util.LinkedHashMap<>();
+		Map<String, List<ClogResult.ClogItem>> obtained = new java.util.LinkedHashMap<>();
+		int next = 40000;
+		for (Map.Entry<String, Integer> page : pages.entrySet())
+		{
+			List<Integer> ids = new ArrayList<>();
+			List<ClogResult.ClogItem> owned = new ArrayList<>();
+			for (int i = 0; i < page.getValue(); i++)
+			{
+				ids.add(next);
+				if (i < held.getOrDefault(page.getKey(), 0))
+				{
+					owned.add(new ClogResult.ClogItem(next, 1, null));
+				}
+				next++;
+			}
+			items.put(page.getKey(), ids);
+			obtained.put(page.getKey(), owned);
+		}
+		return new ClogResult(name, obtained, items, Collections.emptyMap(), null, null);
+	}
+
 	/** A card header's line ("subtitle" or "rank"), its part ("label" or "value"), or null without the line. */
 	static String headerLine(TitleTooltip tip, String line, String part) throws ReflectiveOperationException
 	{

@@ -154,6 +154,44 @@ public class ClueSummaryTooltipTest
 		assertTrue(has(with, TestViews.tiles(with).get(0), track));
 	}
 
+	@Test
+	public void eachRareTileDrawsItsOwnLog()
+	{
+		// The lines hold 10 to 60 of 140; the rare collections 0 to 4 of 38. A rare's tile reads the rare's.
+		BufferedImage image = paint(card());
+		List<Point> tiles = TestViews.tiles(image);
+		java.awt.Font count = net.runelite.client.ui.FontManager.getRunescapeFont();
+		Point first = TestViews.textAt(image, "0/38", count, new java.awt.Color(255, 0, 0));
+		assertTrue("the first rare collection reads 0/38 in red", first != null);
+		Point tile = tiles.get(ClueSummaryTooltip.MIMIC - 1);
+		assertTrue("on its own tile", first.x > tile.x && first.x < tile.x + GameTile.WIDTH
+			&& first.y > tile.y && first.y < tile.y + GameTile.HEIGHT);
+		for (int row = 1; row < ClueSummaryTooltip.RARE_LABELS.length; row++)
+		{
+			assertTrue("rare " + row, TestViews.textAt(image, row + "/38", count, new java.awt.Color(255, 255, 0)) != null);
+		}
+		assertTrue("and the first tier its own", TestViews.textAt(image, "10/140", count, new java.awt.Color(255, 255, 0)) != null);
+	}
+
+	@Test
+	public void aSectionsTitleSitsOverItsRuleAndItsTilesUnderIt()
+	{
+		BufferedImage image = paint(card());
+		java.awt.Font bold = net.runelite.client.ui.FontManager.getRunescapeBoldFont();
+		Point title = TestViews.textAt(image, "Rare Collections", bold, NativeTooltip.labelColor);
+		assertTrue("the section's title, bold in the cards' label color", title != null);
+		assertEquals("from the card's own edge", NativeTooltip.getInset(), title.x);
+		int rule = -1;
+		for (int row : TestViews.rules(image))
+		{
+			rule = rule < 0 && row > title.y ? row : rule;
+		}
+		// A 16 px title line with its rule a pixel under it, as killclog.com's parity check holds the site to.
+		assertEquals(16 + 1 - new java.awt.Canvas().getFontMetrics(bold).getAscent(), rule - title.y);
+		Point firstRare = TestViews.tiles(image).get(ClueSummaryTooltip.MIMIC - 1);
+		assertEquals("then the room under the rule", CardBody.SECTION_RULE + CardBody.SECTION_AFTER - 1, firstRare.y - rule);
+	}
+
 	private static boolean has(BufferedImage image, Point tile, int rgb)
 	{
 		for (int y = tile.y; y < tile.y + GameTile.HEIGHT; y++)

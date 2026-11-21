@@ -243,6 +243,37 @@ public class TraySummaryWiringTest
 	}
 
 	@Test
+	public void aPairedCellCardsRivalSideIsTheRivalsOwn() throws Exception
+	{
+		edt(() ->
+		{
+			seedSelf(clog("Seeded", 1, false));
+			seedRival(clog("Rival", 3, true));
+			// The blue player's hiscores are gone; the rival's are in.
+			set(field(panel, "lookupSession", LookupSession.class), "hiscoreResult", null);
+			JPanel cell = new JPanel();
+			JLabel owner = new JLabel();
+			cell.add(owner);
+			List<ImgTooltip> sides = new ArrayList<>();
+			for (Component child : cells.buildCellTooltipFor(owner, HiscoreSkill.ZULRAH).getComponents())
+			{
+				if (child instanceof ImgTooltip)
+				{
+					sides.add((ImgTooltip) child);
+				}
+			}
+			assertEquals(2, sides.size());
+			// Neither log has Zulrah's page: each side's notice goes by its own player's hiscores.
+			assertEquals("Rival hasn't synced a collection log", field(sides.get(1), "notice", String.class));
+			assertEquals("Loading catalog...", field(sides.get(0), "notice", String.class));
+			// And both titles open the boss's wiki page.
+			String wiki = PanelData.bossWikiPage(HiscoreSkill.ZULRAH);
+			assertEquals(wiki, field(sides.get(0), "titleWikiPage", String.class));
+			assertEquals(wiki, field(sides.get(1), "titleWikiPage", String.class));
+		});
+	}
+
+	@Test
 	public void theCombatSummaryCarriesThePlayersPvpScores() throws Exception
 	{
 		edt(() ->

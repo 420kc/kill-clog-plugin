@@ -367,25 +367,127 @@ public class PvmSummaryTooltipTest
 		}
 	}
 
+	@Test
+	public void theBandsNameStartsAtTheCardsEdgeAndIsCutToItsWidth()
+	{
+		PvmSummaryTooltip tip = painted(card());
+		Point cox = firstRaid(tip);
+		move(tip, cox.x + 10, cox.y + 10);
+		BufferedImage image = render(tip);
+		Point name = TestViews.textAt(image, "Twisted Bow", FontManager.getRunescapeSmallFont(), tip.getHeaderHoverLineColor());
+		assertNotNull("the band names the hovered megarare", name);
+		assertEquals("from the card's own edge", NativeTooltip.getInset(), name.x);
+
+		// A name longer than the card is cut to fit between its edges, never run past them.
+		PvmSummaryTooltip longNamed = new PvmSummaryTooltip();
+		fill(longNamed);
+		longNamed.setData(110.5, 2_500, 40, PanelData.bossCount(), "Vorkath the long named dragon of Ungael who goes on and on", 900);
+		painted(longNamed);
+		Point mostKilled = TestViews.tiles(render(longNamed)).get(0);
+		move(longNamed, mostKilled.x + 10, mostKilled.y + 10);
+		assertTrue(longNamed.getHeaderHoverLineText().startsWith("Vorkath the long"));
+		BufferedImage wide = render(longNamed);
+		List<Integer> rules = rules(wide);
+		int ink = longNamed.getHeaderHoverLineColor().getRGB();
+		int inked = 0;
+		for (int y = rules.get(0) + 1; y < rules.get(1); y++)
+		{
+			for (int x = 0; x < wide.getWidth(); x++)
+			{
+				if (wide.getRGB(x, y) == ink)
+				{
+					inked++;
+					assertTrue("inside the card's edges, at " + x, x >= NativeTooltip.getInset()
+						&& x < wide.getWidth() - NativeTooltip.getInset());
+				}
+			}
+		}
+		assertTrue("and still drawn", inked > 0);
+	}
+
+	// The card read a log's counts in three places no test drew: a raid's tile, the Slayer section's Obtained line and
+	// a PvP tile with a log page.
+	@Test
+	public void aRaidsTileAndTheSlayerLineReadTheirOwnLogs()
+	{
+		Map<String, Integer> pages = new java.util.LinkedHashMap<>();
+		Map<String, Integer> held = new HashMap<>();
+		for (int i = 0; i < 3; i++)
+		{
+			pages.put(PanelData.RAIDS.get(i).getPage(), 4);
+		}
+		// Chambers complete, Theatre untouched, Tombs part way; one of Slayer's five.
+		held.put(PanelData.RAIDS.get(0).getPage(), 4);
+		held.put(PanelData.RAIDS.get(2).getPage(), 2);
+		pages.put(PanelData.SLAYER_CATEGORY, 5);
+		held.put(PanelData.SLAYER_CATEGORY, 1);
+		ClogResult log = TestViews.log("Probe", pages, held);
+		Map<String, Integer> kills = new HashMap<>();
+		kills.put(HiscoreSkill.CHAMBERS_OF_XERIC.getName(), 120);
+		HiscoreResult hiscore = TestViews.hiscore(AccountType.REGULAR, kills, Collections.emptyMap(),
+			Collections.emptyMap(), Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1);
+		PvmSummaryTooltip tip = new PvmSummaryTooltip();
+		tip.setData(110.5, 2_500, 40, PanelData.bossCount(), "Vorkath", 900);
+		tip.setRaids(hiscore, log);
+		tip.setSlayer(hiscore, log);
+		BufferedImage image = render(painted(tip));
+		List<Point> raids = raidTiles(image);
+		java.awt.Font count = FontManager.getRunescapeFont();
+		assertNotNull("Chambers reads 4/4 in green", TestViews.textAt(image, "4/4", count, new Color(0, 255, 0)));
+		assertTrue(TestViews.tileHas(image, raids.get(0), new Color(0, 255, 0)));
+		assertNotNull("Theatre reads 0/4 in red", TestViews.textAt(image, "0/4", count, new Color(255, 0, 0)));
+		assertTrue(TestViews.tileHas(image, raids.get(1), new Color(255, 0, 0)));
+		assertNotNull("Tombs reads 2/4 in yellow", TestViews.textAt(image, "2/4", count, new Color(255, 255, 0)));
+		assertTrue(TestViews.tileHas(image, raids.get(2), new Color(255, 255, 0)));
+
+		// The Slayer section's own line, in the card's small font under the section's bold title, wherever it scrolls to.
+		Point obtained = TestViews.textAt(image, "1/5", FontManager.getRunescapeSmallFont(), new Color(255, 255, 0));
+		if (obtained == null)
+		{
+			pvpTiles(tip);
+			obtained = TestViews.textAt(render(tip), "1/5", FontManager.getRunescapeSmallFont(), new Color(255, 255, 0));
+		}
+		assertNotNull("Slayer's Obtained line reads 1/5 in yellow", obtained);
+
+		// With no log there is no such line, and the card is a line shorter for it.
+		PvmSummaryTooltip bare = new PvmSummaryTooltip();
+		bare.setData(110.5, 2_500, 40, PanelData.bossCount(), "Vorkath", 900);
+		bare.setRaids(hiscore, null);
+		bare.setSlayer(hiscore, null);
+		assertNull(TestViews.textAt(render(painted(bare)), "1/5", FontManager.getRunescapeSmallFont(), new Color(255, 255, 0)));
+	}
+
+	@Test
+	public void aPvpTileWithALogPageWearsThatLogsBar()
+	{
+		Map<String, Integer> pages = new java.util.LinkedHashMap<>();
+		pages.put("last_man_standing", 4);
+		pages.put("soul_wars", 3);
+		Map<String, Integer> held = new HashMap<>();
+		held.put("last_man_standing", 2);
+		Map<String, Integer> scores = new HashMap<>();
+		for (HiscoreSkill activity : PanelData.PVP_ACTIVITIES)
+		{
+			scores.put(activity.getName(), 500);
+		}
+		PvmSummaryTooltip tip = card();
+		tip.setPvp(TestViews.hiscore(AccountType.REGULAR, Collections.emptyMap(), Collections.emptyMap(), scores,
+			Collections.emptyMap(), Collections.emptyMap(), 0, 0, 0, -1), TestViews.log("Probe", pages, held), null);
+		painted(tip);
+		List<Point> pvp = pvpTiles(tip);
+		BufferedImage image = render(tip);
+		Color track = NativeTooltip.railTrack(ClogSummaryTooltip.BAR_TRACK);
+		assertTrue("LMS wears its log's bar", TestViews.tileHas(image, pvp.get(0), track));
+		assertTrue("half full, in yellow", TestViews.tileHas(image, pvp.get(0), new Color(255, 255, 0)));
+		assertTrue("Soul Wars wears its own, empty", TestViews.tileHas(image, pvp.get(1), track));
+		assertFalse(TestViews.tileHas(image, pvp.get(1), new Color(255, 255, 0)));
+		assertFalse("PvP Arena has no log page, so no bar", TestViews.tileHas(image, pvp.get(2), track));
+	}
+
 	/** The rows a divider runs across the card in, top down. */
 	private static List<Integer> rules(BufferedImage image)
 	{
-		int divider = NativeTooltip.dividerColor.getRGB();
-		int inset = NativeTooltip.getInset();
-		List<Integer> rows = new ArrayList<>();
-		for (int y = 0; y < image.getHeight(); y++)
-		{
-			int run = 0;
-			for (int x = inset; x < image.getWidth() - inset; x++)
-			{
-				run += image.getRGB(x, y) == divider ? 1 : 0;
-			}
-			if (run >= (image.getWidth() - 2 * inset) * 9 / 10)
-			{
-				rows.add(y);
-			}
-		}
-		return rows;
+		return TestViews.rules(image);
 	}
 
 	/** Items as the client draws them, each its own colour: Dizana's quiver cyan, any cape magenta. */
