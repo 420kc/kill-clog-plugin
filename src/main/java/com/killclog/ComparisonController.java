@@ -466,6 +466,20 @@ public class ComparisonController
 	// Pure helpers
 
 	/**
+	 * A card alone, or beside the rival's while comparing, held open over the cell it opened from so what is on it
+	 * can be hovered. The comparison is on only once the rival's hiscores are in, so the pair always has both.
+	 */
+	JToolTip held(JLabel owner, JToolTip solo, Supplier<JToolTip> rival)
+	{
+		JToolTip tip = showsPair() ? wrapSideBySide(owner, solo, rival.get()) : solo;
+		if (owner.getParent() instanceof JPanel)
+		{
+			tooltipController.keepTooltipOnHover(tip, (JPanel) owner.getParent());
+		}
+		return tip;
+	}
+
+	/**
 	 * Wrap the two players' single tooltips into one side-by-side comparison
 	 * card, named and colored per player.
 	 */

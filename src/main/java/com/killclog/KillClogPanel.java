@@ -483,8 +483,7 @@ public class KillClogPanel extends PluginPanel
 			@Override
 			public JToolTip createToolTip()
 			{
-				JPanel parentCell = (JPanel) this.getParent();
-				return summaryCards.buildPvm(this, parentCell);
+				return summaryCards.buildPvm(this);
 			}
 		};
 		Cells.styleLabel(combatCell, "Combat");

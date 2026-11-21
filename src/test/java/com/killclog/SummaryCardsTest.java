@@ -19,6 +19,12 @@ public class SummaryCardsTest
 {
 	private final ComparisonController comparison = mock(ComparisonController.class);
 	private final TooltipController tooltips = mock(TooltipController.class);
+
+	{
+		// The comparison pairs and holds the cards for real, over its stand-in answers.
+		TestViews.set(comparison, "tooltipController", tooltips);
+		when(comparison.held(any(), any(), any())).thenCallRealMethod();
+	}
 	private final SummaryCards cards = cards(mock(LookupSession.class), mock(Cells.class), mock(ClogPages.class));
 
 	private SummaryCards cards(LookupSession session, Cells cells, ClogPages pages)
@@ -76,7 +82,7 @@ public class SummaryCardsTest
 			SummaryCards built = cards(session, cells, pages);
 			JLabel owner = new JLabel();
 			new JPanel().add(owner);
-			PvmSummaryTooltip tip = (PvmSummaryTooltip) built.buildPvm(owner, (JPanel) owner.getParent());
+			PvmSummaryTooltip tip = (PvmSummaryTooltip) built.buildPvm(owner);
 			assertSame(boss, TestViews.field(tip, "mostKilledBoss"));
 			assertTrue(TestViews.field(tip, "mostKilledIcon") != null);
 			java.util.function.Consumer<java.awt.event.MouseEvent> bosses = TestViews.field(tip, "onOpenBosses");
@@ -109,7 +115,7 @@ public class SummaryCardsTest
 		});
 		JLabel owner = new JLabel();
 		new JPanel().add(owner);
-		cards(mock(LookupSession.class), cells, mock(ClogPages.class)).buildPvm(owner, (JPanel) owner.getParent());
+		cards(mock(LookupSession.class), cells, mock(ClogPages.class)).buildPvm(owner);
 		assertSame(2, sides.size());
 		for (JToolTip side : sides)
 		{
@@ -141,12 +147,12 @@ public class SummaryCardsTest
 		when(session.getCaResult()).thenReturn(easy);
 		clog.setSyncedCa(medium);
 		assertSame("the Medium their sync sent, not RuneProfile's Easy", medium,
-			TestViews.field(cards.buildPvm(owner, (JPanel) owner.getParent()), "caResult"));
+			TestViews.field(cards.buildPvm(owner), "caResult"));
 
 		when(session.getCaResult()).thenReturn(medium);
 		clog.setSyncedCa(easy);
 		assertSame("RuneProfile's Medium, not the Easy of a sync they stopped", medium,
-			TestViews.field(cards.buildPvm(owner, (JPanel) owner.getParent()), "caResult"));
+			TestViews.field(cards.buildPvm(owner), "caResult"));
 	}
 
 	@Test
@@ -171,7 +177,7 @@ public class SummaryCardsTest
 		SummaryCards built = cards(session, cells, mock(ClogPages.class));
 		JLabel owner = new JLabel();
 		new JPanel().add(owner);
-		PvmSummaryTooltip tip = (PvmSummaryTooltip) built.buildPvm(owner, (JPanel) owner.getParent());
+		PvmSummaryTooltip tip = (PvmSummaryTooltip) built.buildPvm(owner);
 		org.junit.Assert.assertArrayEquals(new int[]{0, 2, 0, 1}, TestViews.field(tip, "weaponCounts"));
 	}
 
@@ -198,7 +204,7 @@ public class SummaryCardsTest
 		SummaryCards built = cards(session, cells, mock(ClogPages.class));
 		JLabel owner = new JLabel();
 		new JPanel().add(owner);
-		PvmSummaryTooltip tip = (PvmSummaryTooltip) built.buildPvm(owner, (JPanel) owner.getParent());
+		PvmSummaryTooltip tip = (PvmSummaryTooltip) built.buildPvm(owner);
 		assertSame(3, (int) TestViews.field(tip, "mostKilledObtained"));
 		assertSame(7, (int) TestViews.field(tip, "mostKilledTotal"));
 	}

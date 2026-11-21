@@ -156,18 +156,10 @@ public class Cells
 			@Override
 			public JToolTip createToolTip()
 			{
-				if (comparison.showsPair())
-				{
-					return wrapSideBySide(this,
-						clueSummaryTooltip(this, lookupSession.getHiscoreResult(),
-							lookupSession.getClogResult(), false),
-						clueSummaryTooltip(this, comparison.getCompareHiscoreResult(),
-							comparison.getCompareClogResult(), true));
-				}
-				ClueSummaryTooltip tip = clueSummaryTooltip(this, lookupSession.getHiscoreResult(),
-					lookupSession.getClogResult(), false);
-				tooltipController.keepTooltipOnHover(tip, (JPanel) this.getParent());
-				return tip;
+				return comparison.held(this,
+					clueSummaryTooltip(this, lookupSession.getHiscoreResult(), lookupSession.getClogResult(), false),
+					() -> clueSummaryTooltip(this, comparison.getCompareHiscoreResult(),
+						comparison.getCompareClogResult(), true));
 			}
 		};
 		styleLabel(label, activity.getName());
@@ -418,7 +410,6 @@ public class Cells
 	JToolTip cellCard(JLabel owner, TooltipData data, int gridCols,
 		String name, @Nullable HiscoreResult result, @Nullable String rsn)
 	{
-		JPanel parentCell = (JPanel) owner.getParent();
 		ImgTooltip tip = new ImgTooltip(gridCols);
 		tip.setComponent(owner);
 		tip.setLinks(config.cardLinks());
@@ -443,8 +434,6 @@ public class Cells
 			}
 		}
 		configureRank(tip, data, result, config.showTooltipRank());
-
-		tooltipController.keepTooltipOnHover(tip, parentCell);
 		return tip;
 	}
 
@@ -464,13 +453,13 @@ public class Cells
 	{
 		JToolTip tip = cellCard(owner, blue, 5, name, lookupSession.getHiscoreResult(), lookupSession.getCurrentLookupRsn());
 		linkTitle(tip, wikiPage);
-		if (!comparison.isComparisonMode())
+		return comparison.held(owner, tip, () ->
 		{
-			return tip;
-		}
-		JToolTip rival = cellCard(owner, red.get(), 5, name, comparison.getCompareHiscoreResult(), comparison.getCompareRsn());
-		linkTitle(rival, wikiPage);
-		return wrapSideBySide(owner, tip, rival);
+			JToolTip rival = cellCard(owner, red.get(), 5, name, comparison.getCompareHiscoreResult(),
+				comparison.getCompareRsn());
+			linkTitle(rival, wikiPage);
+			return rival;
+		});
 	}
 
 	private static void linkTitle(JToolTip tip, @Nullable String wikiPage)
@@ -479,13 +468,6 @@ public class Cells
 		{
 			((TitleTooltip) tip).setTitleWikiPage(wikiPage);
 		}
-	}
-
-	private JToolTip wrapSideBySide(JLabel owner, JToolTip blue, JToolTip red)
-	{
-		JToolTip tip = comparison.wrapSideBySide(owner, blue, red);
-		tooltipController.keepTooltipOnHover(tip, (JPanel) owner.getParent());
-		return tip;
 	}
 
 	/** A boss's icon as its cell shows it with kills, never the dimmed one: a rival's Most Killed tile wears it. */

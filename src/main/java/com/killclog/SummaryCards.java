@@ -46,15 +46,10 @@ final class SummaryCards
 	 */
 	JToolTip buildPlayer(JLabel owner, String soloName, @Nullable AccountDisplay blue, @Nullable AccountDisplay red)
 	{
-		JToolTip tip = soloOrPair(owner, playerCard(owner, lookupSession.getHiscoreResult(), lookupSession.getClogResult(),
+		return comparison.held(owner, playerCard(owner, lookupSession.getHiscoreResult(), lookupSession.getClogResult(),
 			comparison.showsPair() ? blueName.get() : soloName, blue),
 			() -> playerCard(owner, comparison.getCompareHiscoreResult(), comparison.getCompareClogResult(),
 				comparison.getCompareRsn() != null ? comparison.getCompareRsn() : "--", red));
-		if (owner.getParent() instanceof JPanel)
-		{
-			tooltipController.keepTooltipOnHover(tip, (JPanel) owner.getParent());
-		}
-		return tip;
 	}
 
 	/** One player's Player Summary card. */
@@ -178,19 +173,17 @@ final class SummaryCards
 		return clogIndex != null ? ClogHelper.sumClogTotals(log, clogIndex::canonicalItemId) : ClogHelper.sumClogTotals(log);
 	}
 
-	JToolTip buildPvm(JLabel owner, JPanel parentCell)
+	JToolTip buildPvm(JLabel owner)
 	{
 		PvmSummaryTooltip blue = pvmTooltip(owner, lookupSession.getHiscoreResult(), lookupSession.getClogResult(),
 			lookupSession.getCaResult(), cells.getTooltipDataMap());
-		JToolTip tip = soloOrPair(owner, blue, () ->
+		return comparison.held(owner, blue, () ->
 		{
 			PvmSummaryTooltip red = pvmTooltip(owner, comparison.getCompareHiscoreResult(),
 				comparison.getCompareClogResult(), comparison.getCompareCaResult(), comparison.getCompareTooltipDataMap());
 			PvmSummaryTooltip.lineUp(blue, red);
 			return red;
 		});
-		tooltipController.keepTooltipOnHover(tip, parentCell);
-		return tip;
 	}
 
 	/** One player's Combat Summary card: solo mode shows it alone, comparison pairs two. */
@@ -274,20 +267,8 @@ final class SummaryCards
 		ClogResult red = comparison.isComparisonMode() ? comparison.getCompareClogResult() : null;
 		// Both sides show TempleOSRS's rows when either player has them, so a pair's cards line up.
 		boolean temple = SkillsTooltip.onTemple(blue) || SkillsTooltip.onTemple(red);
-		JToolTip tip = soloOrPair(owner, skillsTooltip(owner, lookupSession.getHiscoreResult(), blue, temple),
+		return comparison.held(owner, skillsTooltip(owner, lookupSession.getHiscoreResult(), blue, temple),
 			() -> skillsTooltip(owner, comparison.getCompareHiscoreResult(), red, temple));
-		if (owner.getParent() instanceof JPanel)
-		{
-			tooltipController.keepTooltipOnHover(tip, (JPanel) owner.getParent());
-		}
-		return tip;
-	}
-
-	/** The card alone, or beside the rival's while comparing. */
-	private JToolTip soloOrPair(JLabel owner, JToolTip solo, Supplier<JToolTip> rival)
-	{
-		return comparison.showsPair()
-			? comparison.wrapSideBySide(owner, solo, rival.get()) : solo;
 	}
 
 	/** One player's skills summary card: solo mode shows it alone, comparison pairs two. */
