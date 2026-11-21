@@ -22,7 +22,7 @@ public class ItemAliasesCatalogTest
 		int[][] pairs = {{764, 25627}, {12019, 25627}, {24480, 25627}, {766, 25628}, {12020, 25628},
 			{24481, 25628}, {29472, 12013}, {29474, 12014}, {29476, 12015}, {29478, 12016}, {12854, 25630},
 			{24882, 25629}, {29988, 29992}, {29990, 29992}, {13641, 13640}, {13643, 13642}, {13645, 13644},
-			{13647, 13646}};
+			{13647, 13646}, {30803, 30805}};
 		for (int[] pair : pairs)
 		{
 			golden.put(pair[0], pair[1]);
@@ -52,6 +52,8 @@ public class ItemAliasesCatalogTest
 		// The Abyssal Sire's unsired forms count as one item but never lend a name.
 		List<Integer> none = Collections.emptyList();
 		assertEquals(none, ClogIndex.nameAliases(13640));
+		// The Dossier's slot has its own name; the item it is handed over as never lends one.
+		assertEquals(none, ClogIndex.nameAliases(30805));
 		assertEquals(none, ClogIndex.nameAliases(4151));
 	}
 }
