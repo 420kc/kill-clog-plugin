@@ -157,20 +157,17 @@ public class TraySummaryWiringTest
 		{
 			seedSelf(clog("Seeded", 1, true));
 			ClueSummaryTooltip tip = (ClueSummaryTooltip) clues.createToolTip();
-			int[] obtained = field(tip, "obtained", int[].class);
-			int[] total = field(tip, "total", int[].class);
+			int[][] counts = field(tip, "counts", int[][].class);
 			// Only the hard page is in this log: line 4, and nothing on its neighbours.
-			assertEquals(2, obtained[4]);
-			assertEquals(PanelData.THIRD_AGE_ITEMS.length + 1, total[4]);
-			assertEquals(-1, obtained[3]);
-			assertEquals(-1, obtained[5]);
+			assertArrayEquals(new int[]{2, PanelData.THIRD_AGE_ITEMS.length + 1}, counts[4]);
+			assertEquals(null, counts[3]);
+			assertEquals(null, counts[5]);
 			// The Mimic's one slot is the 3rd age ring, which this player has.
-			assertEquals(1, obtained[7]);
-			assertEquals(1, total[7]);
+			assertArrayEquals(new int[]{1, 1}, counts[7]);
 
 			seedSelf(clog("Seeded", 1, false));
 			tip = (ClueSummaryTooltip) clues.createToolTip();
-			assertEquals(0, field(tip, "obtained", int[].class)[7]);
+			assertEquals(0, field(tip, "counts", int[][].class)[7][0]);
 		});
 	}
 
@@ -231,13 +228,13 @@ public class TraySummaryWiringTest
 			assertEquals(2, cards.size());
 			ClueSummaryTooltip blue = cards.get(0);
 			ClueSummaryTooltip red = cards.get(1);
-			assertEquals(1, field(blue, "obtained", int[].class)[4]);
-			assertEquals(4, field(red, "obtained", int[].class)[4]);
-			assertEquals(0, field(blue, "obtained", int[].class)[7]);
-			assertEquals(1, field(red, "obtained", int[].class)[7]);
+			assertEquals(1, field(blue, "counts", int[][].class)[4][0]);
+			assertEquals(4, field(red, "counts", int[][].class)[4][0]);
+			assertEquals(0, field(blue, "counts", int[][].class)[7][0]);
+			assertEquals(1, field(red, "counts", int[][].class)[7][0]);
 			// 3rd Age is the first rare row, and the Mimic's ring is not part of that set.
-			assertEquals(1, field(blue, "rareObtained", int[].class)[0]);
-			assertEquals(3, field(red, "rareObtained", int[].class)[0]);
+			assertEquals(1, field(blue, "rareCounts", int[][].class)[0][0]);
+			assertEquals(3, field(red, "rareCounts", int[][].class)[0][0]);
 
 			// Either side's row opens the pair, not one player's modal.
 			openRare(red, 0);

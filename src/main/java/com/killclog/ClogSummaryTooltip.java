@@ -238,8 +238,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 		}
 		for (Map.Entry<String, int[]> tab : tabs.entrySet())
 		{
-			int[] count = tab.getValue();
-			tiles.add(new GameTile.Tile(tab.getKey(), tabSprites.get(tab.getKey()), count[0], count[1])
+			tiles.add(new GameTile.Tile(tab.getKey(), tabSprites.get(tab.getKey()), tab.getValue())
 				.opens(onOpenTab, tab.getKey()));
 		}
 		if (!tiles.isEmpty())

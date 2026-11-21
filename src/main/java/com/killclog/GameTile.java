@@ -74,6 +74,12 @@ final class GameTile
 		@Nullable
 		Color wear;
 
+		/** A tile over a log's obtained and total, as the log gives them; none, unknown. */
+		Tile(String name, @Nullable Image sprite, @Nullable int[] counts)
+		{
+			this(name, sprite, counts != null ? counts[0] : -1, counts != null ? counts[1] : 0);
+		}
+
 		Tile faint(boolean faint)
 		{
 			this.faint = faint;

@@ -27,13 +27,11 @@ public class ClueSummaryTooltip extends TitleTooltip
 
 	static final String[] RARE_LABELS = PanelData.RARE_ROWS.stream().map(RareRow::getLabel).toArray(String[]::new);
 
-	// Collection progress per line, 1 to 6 the tiers and 7 Mimic; -1 obtained is unknown.
-	private final int[] obtained = new int[LABELS.length];
-	private final int[] total = new int[LABELS.length];
+	// Each line's log, obtained and total, 1 to 6 the tiers and 7 Mimic; null is unknown.
+	private final int[][] counts = new int[LABELS.length][];
 	// The hiscores' completions per tier and Mimic's kills, which a tile shows while its log progress is unknown.
 	private final int[] scores = new int[LABELS.length];
-	private final int[] rareObtained = new int[RARE_LABELS.length];
-	private final int[] rareTotal = new int[RARE_LABELS.length];
+	private final int[][] rareCounts = new int[RARE_LABELS.length][];
 	private final Image[] lineSprites = new Image[LABELS.length];
 	private final Image[] rareSprites = new Image[RARE_LABELS.length];
 
@@ -44,9 +42,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 
 	public ClueSummaryTooltip()
 	{
-		Arrays.fill(obtained, -1);
 		Arrays.fill(scores, -1);
-		Arrays.fill(rareObtained, -1);
 	}
 
 	/** The header's rank, the all-clues one, and each tier's completions; a null result is the empty state. */
@@ -70,8 +66,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 	/** Collection progress for a line (1 to 6 the tiers, 7 Mimic); null counts leave it bare. */
 	void setProgress(int line, @Nullable int[] counts)
 	{
-		obtained[line] = counts != null ? counts[0] : -1;
-		total[line] = counts != null ? counts[1] : 0;
+		this.counts[line] = counts;
 	}
 
 	/** Each tile's item: a tier's scroll, the Mimic's casket, a rare collection's own. */
@@ -90,8 +85,7 @@ public class ClueSummaryTooltip extends TitleTooltip
 	/** One rare collection; null counts show its tile without progress. */
 	void setRare(int row, @Nullable int[] counts)
 	{
-		rareObtained[row] = counts != null ? counts[0] : -1;
-		rareTotal[row] = counts != null ? counts[1] : 0;
+		rareCounts[row] = counts;
 	}
 
 	/** Called with the line (1 to 6 the tiers, 7 Mimic) when the player presses one. */
@@ -112,16 +106,15 @@ public class ClueSummaryTooltip extends TitleTooltip
 		List<GameTile.Tile> lines = new ArrayList<>();
 		for (int line = 1; line < MIMIC; line++)
 		{
-			lines.add(new GameTile.Tile(LABELS[line], lineSprites[line], obtained[line], total[line])
-				.opens(onOpenLine, line).score(scores[line]));
+			lines.add(new GameTile.Tile(LABELS[line], lineSprites[line], counts[line]).opens(onOpenLine, line).score(scores[line]));
 		}
 		List<GameTile.Tile> rares = new ArrayList<>();
 		for (int i = 0; i < RARE_LABELS.length; i++)
 		{
-			rares.add(new GameTile.Tile(RARE_LABELS[i], rareSprites[i], rareObtained[i], rareTotal[i]).opens(onOpenRare, i));
+			rares.add(new GameTile.Tile(RARE_LABELS[i], rareSprites[i], rareCounts[i]).opens(onOpenRare, i));
 		}
 		// The Mimic's tile sits last among the rares: its log is a rare, its card a clue line's.
-		rares.add(new GameTile.Tile(LABELS[MIMIC], lineSprites[MIMIC], obtained[MIMIC], total[MIMIC])
+		rares.add(new GameTile.Tile(LABELS[MIMIC], lineSprites[MIMIC], counts[MIMIC])
 			.opens(onOpenLine, MIMIC).score(scores[MIMIC]));
 		return new CardBody().add(GameTile.grid(lines)).titled("Rare Collections")
 			.add(GameTile.grid(rares));

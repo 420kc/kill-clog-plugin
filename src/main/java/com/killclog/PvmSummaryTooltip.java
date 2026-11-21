@@ -30,8 +30,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private int totalBosses;
 	private long slayerXp = -1;
 	private int slayerRank = -1;
-	private int slayerObtained = -1;
-	private int slayerTotal;
+	@Nullable
+	private int[] slayerLog;
 	private String mostKilled;
 	private int mostKilledKc;
 
@@ -47,8 +47,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 
 	// The raids as the game's tiles, in raids.tsv's order: each its megarare, faint until held, and
 	// its log; with no log, its kills in both modes.
-	private final int[] raidObtained = PanelData.RAIDS.stream().mapToInt(raid -> -1).toArray();
-	private final int[] raidTotal = new int[PanelData.RAIDS.size()];
+	private final int[][] raidCounts = new int[PanelData.RAIDS.size()][];
 	// Each raid's kills, both modes together, which its tile shows while its log progress is unknown.
 	private final int[] raidKills = new int[PanelData.RAIDS.size()];
 	private final Image[] megarares = new Image[PanelData.RAIDS.size()];
@@ -204,14 +203,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 			? hiscoreResult.getSkillXp(PanelData.SLAYER_CATEGORY) : -1;
 		slayerRank = hiscoreResult != null
 			? hiscoreResult.getSkillRank(PanelData.SLAYER_CATEGORY) : -1;
-		slayerObtained = -1;
-		slayerTotal = 0;
-		int[] slayer = ClogHelper.clogCounts(PanelData.SLAYER_CATEGORY, clogResult);
-		if (slayer != null)
-		{
-			slayerObtained = slayer[0];
-			slayerTotal = slayer[1];
-		}
+		slayerLog = ClogHelper.clogCounts(PanelData.SLAYER_CATEGORY, clogResult);
 	}
 
 	public void setRaids(HiscoreResult hiscoreResult, ClogResult clogResult)
@@ -222,12 +214,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 			Raid raid = PanelData.RAIDS.get(i);
 			raidKills[i] = Math.max(0, hiscoreResult.getKc(raid.getRow()))
 				+ (raid.getHard() != null ? Math.max(0, hiscoreResult.getKc(raid.getHard().getName())) : 0);
-			int[] counts = clogResult != null ? ClogHelper.clogCounts(raid.getPage(), clogResult) : null;
-			if (counts != null)
-			{
-				raidObtained[i] = counts[0];
-				raidTotal[i] = counts[1];
-			}
+			raidCounts[i] = ClogHelper.clogCounts(raid.getPage(), clogResult);
 		}
 	}
 
@@ -294,7 +281,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		{
 			if (raidOut[i])
 			{
-				raids.add(new GameTile.Tile(PanelData.RAIDS.get(i).getTile(), megarares[i], raidObtained[i], raidTotal[i])
+				raids.add(new GameTile.Tile(PanelData.RAIDS.get(i).getTile(), megarares[i], raidCounts[i])
 					.opens(onOpenRaid, raid(i)).faint(weaponCounts[i] <= 0)
 					.named(PanelData.RAIDS.get(i).getMegarareName()).score(raidKills[i]));
 			}
@@ -304,10 +291,10 @@ public class PvmSummaryTooltip extends TitleTooltip
 		body.titled("Slayer")
 			.add(CardBody.line("XP: ", scoreText(slayerXp)))
 			.add(CardBody.line("Rank: ", scoreText(slayerRank)));
-		if (slayerObtained >= 0)
+		if (slayerLog != null)
 		{
-			body.add(CardBody.line("Obtained: ", progressCountText(slayerObtained, slayerTotal),
-				completionColor(slayerObtained, slayerTotal)));
+			body.add(CardBody.line("Obtained: ", progressCountText(slayerLog[0], slayerLog[1]),
+				completionColor(slayerLog[0], slayerLog[1])));
 		}
 		body.add(CardBody.gap(WEAPON_PAD))
 			.add(CardBody.sprites(0, superiorSprites, PanelData.SUPERIOR_ITEMS, PanelData.SUPERIOR_ITEM_NAMES,
@@ -317,9 +304,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 		List<GameTile.Tile> pvp = new ArrayList<>();
 		for (int i = 0; i < PVP_LABELS.length; i++)
 		{
-			int[] log = pvpLogs[i];
-			pvp.add(new GameTile.Tile(PVP_LABELS[i], pvpIcons != null ? pvpIcons[i] : null, log != null ? log[0] : -1,
-				log != null ? log[1] : 0).opens(onOpenPage, i < PVP_PAGES.length ? PVP_PAGES[i] : null)
+			pvp.add(new GameTile.Tile(PVP_LABELS[i], pvpIcons != null ? pvpIcons[i] : null, pvpLogs[i])
+				.opens(onOpenPage, i < PVP_PAGES.length ? PVP_PAGES[i] : null)
 				.count(scoreText(pvpScores[i])));
 		}
 		body.add(GameTile.grid(pvp));
