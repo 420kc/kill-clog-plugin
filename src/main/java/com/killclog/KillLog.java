@@ -11,10 +11,9 @@ import net.runelite.client.util.Text;
 /**
  * Kill Clog's own record of the kills it sees. A kill-count message and its time pair only within two ticks of each
  * other (the Grotesque Guardians' time waits up to ten for its count), so a time can never land on a later kill as
- * RuneLite's leftover one can. What it keeps is the PB the game
- * states at the kill, keyed by the team size the game gives (the raids, the Nightmare) or the players in the instance
- * (Royal Titans, Yama, The Fractured Archive), with the timer and, from a kill that set a new PB, the raid level and kill count. The sync
- * sends it as source "live".
+ * RuneLite's leftover one can. It keeps the PB the game states at the kill, keyed by the team size the game gives
+ * (the raids, the Nightmare) or the players in the instance (Royal Titans, Yama, The Fractured Archive), with the
+ * timer and, from a kill that set a new PB, the raid level and kill count. The sync sends it as source "live".
  */
 final class KillLog
 {
@@ -22,8 +21,8 @@ final class KillLog
 	/* package */ static final String TAG_PREFIX = "livepbtag.";
 	// RuneLite's window: a kill count and its time arrive on the same tick, now and then a tick or two apart.
 	private static final int PAIR_TICKS = 2;
-	// The Grotesque Guardians' kill count waits out Dusk's death animation, seconds after the time (none of 362 stored
-	// Guardians times came from a kill, 10/22), so their time waits up to ten ticks for it, as Dink's pairing does.
+	// The Grotesque Guardians' kill count waits out Dusk's death animation, seconds after the time, so their time
+	// waits up to ten ticks for it, as Dink's pairing does.
 	private static final int LATE_COUNT_TICKS = 10;
 	private static final String LATE_COUNT_BOSS = "grotesque guardians";
 	// No half of a kill seen: outside every window, so nothing pairs with it.
@@ -165,7 +164,7 @@ final class KillLog
 	 * from it is older (a PB set since, or set while the page was closed, on another client or in a release that kept
 	 * no such rule), so it gives way until the page is next opened; it would otherwise win over this kill
 	 * (PbRecord.pick). The same record shown without its tenths is the same record. A team size's kill states only
-	 * that size's record, while the page shows the fastest of any size (a raid's, Dylan 10/21), so only a faster one
+	 * that size's record, while the page shows the fastest of any size (a raid's), so only a faster one
 	 * makes the page's older.
 	 */
 	private void retirePageReading(boolean teamSized)

@@ -591,7 +591,7 @@ public class Cells
 			&& lookupSession.offersSetup(localRsn.get(), lookupSession.getCurrentLookupRsn());
 	}
 
-	/** A Collection Log page's card data: its log's, else the catalog's dimmed preview, as a boss's page (Dylan 11/14). */
+	/** A Collection Log page's card data: its log's, else the catalog's dimmed preview, as a boss's page. */
 	@Nullable
 	TooltipData pageData(String name, java.util.List<Integer> items, @Nullable ClogResult clog)
 	{

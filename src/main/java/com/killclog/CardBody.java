@@ -200,7 +200,7 @@ final class CardBody
 
 	/**
 	 * A thin bar across the card under the line it pictures, filled to {@code share} (0 to 1) over a dark track: a
-	 * skill's way to its next level, Experience &amp; Efficiency's way to max (Dylan 11/17). It never widens the card.
+	 * skill's way to its next level, Experience &amp; Efficiency's way to max. It never widens the card.
 	 */
 	static Part bar(double share, Color fill)
 	{
@@ -413,7 +413,7 @@ final class CardBody
 		@Nullable
 		private Scroll partner;
 		// Where the rail and its thumb last drew, in the card's pixels; a press on either drags the window, for a
-		// player without a scroll wheel (2.7.3).
+		// player without a scroll wheel.
 		@Nullable
 		private Rectangle rail;
 		@Nullable
@@ -523,8 +523,8 @@ final class CardBody
 		}
 
 		/**
-		 * Draws the card with every row showing, however tall, the way a copy holds it (Dylan 10/25: a copy cut a long
-		 * card off at its window), then puts the window back where it sat.
+		 * Draws the card with every row showing, however tall, the way a copy holds it, so a copy is never cut off at
+		 * the window; then puts the window back where it sat.
 		 */
 		<T> T unrolled(Supplier<T> draw)
 		{

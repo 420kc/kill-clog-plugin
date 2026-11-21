@@ -22,8 +22,8 @@ final class KillClogChatNotifier
 			return;
 		}
 
-		// Queued from any thread and shown in order from the client's main loop. A plugin's line, not the game's: the
-		// game-message readers (RuneLite's Loot Tracker threw on one of Kill Clog's at login, 10/28) leave it alone.
+		// Queued from any thread and shown in order from the client's main loop. A plugin's line, not the game's, so
+		// plugins that read game messages (RuneLite's Loot Tracker among them) leave it alone.
 		chatMessageManager.queue(QueuedMessage.builder()
 			.type(ChatMessageType.CONSOLE)
 			.runeLiteFormattedMessage("<col=4caf6e>Kill Clog:</col> " + message)

@@ -326,7 +326,7 @@ public class ClogSummaryTooltip extends TitleTooltip
 		}
 	}
 
-	/** Who supplied the log: each source's icon under the last update, from the left, its name on hover (Dylan 11/14). */
+	/** Who supplied the log: each source's icon under the last update, from the left, its name on hover. */
 	private CardBody.Part sources()
 	{
 		return CardBody.row(SOURCES_GAP + CardSources.ICON, c -> CardSources.width(clogSources.size()),

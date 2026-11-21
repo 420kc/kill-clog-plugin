@@ -9,7 +9,7 @@ import java.util.*;
  */
 final class SkillLevelColor
 {
-	// Level Progression's four tiers, empty to completed: the level each starts at, standard then virtual (Dylan 11/7).
+	// Level Progression's four tiers, empty to completed: the level each starts at, standard then virtual.
 	private static final List<String[]> TIERS = CatalogTsv.rows(SkillLevelColor.class, "level-tiers.tsv", 3);
 
 	private SkillLevelColor()

@@ -82,7 +82,7 @@ public class ActivitiesTray
 		clip.setVisible(expanded);
 
 		// The separator is the tray's only toggle (the hamburger switches boss
-		// views now), so it stays visible in BOTH states: hidden-when-collapsed
+		// views now), so it stays visible in both states: hidden-when-collapsed
 		// would make one collapse unrecoverable for the whole session.
 		this.separator = new JPanel();
 		separator.setBackground(ColorScheme.DARK_GRAY_COLOR);

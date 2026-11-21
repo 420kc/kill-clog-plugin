@@ -32,7 +32,7 @@ public class SkillTooltip extends TitleTooltip
 	// A skill's log scrolls at full size past the height of a long Collection Log tab, a sprite row a notch.
 	private final CardBody.Scroll scroll = new CardBody.Scroll(this, CardBody.WINDOW, CardBody.GRID_CELL);
 	// The level at the header's right, as the Combat Summary shows its combat level: in the title's bold, after the
-	// skill's icon from its cell, wearing the cell's color under the player's skill color setting (Dylan, 2026-11-14).
+	// skill's icon from its cell, wearing the cell's color under the player's skill color setting.
 	@Setter
 	@Nullable
 	private Image skillIcon;
@@ -56,7 +56,7 @@ public class SkillTooltip extends TitleTooltip
 			sprites.add(itemManager != null
 				? TooltipItemSprites.load(section.itemIds(), section.itemNames(), itemManager, id -> 1, this) : null);
 		}
-		// The log's progress is its Obtained line under the title, as on every other log card (Dylan, 2026-11-14).
+		// The log's progress is its Obtained line under the title, as on every other log card.
 		if (!this.sections.isEmpty())
 		{
 			SkillClogSection.Progress progress = SkillClogSection.combinedProgress(this.sections);

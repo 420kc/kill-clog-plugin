@@ -59,7 +59,7 @@ class TooltipController
 	private final Set<JComponent> tooltipComponents =
 		Collections.newSetFromMap(new WeakHashMap<>());
 
-	// A shift-press opens a card and copies it as a picture, ready to paste (Dylan, 2026-10-20): where it goes, and
+	// A shift-press opens a card and copies it as a picture, ready to paste: where it goes, and
 	// who says whether it went.
 	@Setter(AccessLevel.PACKAGE)
 	private Predicate<BufferedImage> clipboard = TooltipController::toClipboard;
@@ -195,7 +195,7 @@ class TooltipController
 			@Override
 			public void mouseExited(MouseEvent e)
 			{
-				// Guard against the WHOLE tooltip: a child card's exit while
+				// Guard against the whole tooltip: a child card's exit while
 				// crossing into its sibling must not read as leaving.
 				if (((JToolTip) NativeTooltip.tooltipRoot(tip)).getMousePosition(true) != null)
 				{
@@ -499,8 +499,8 @@ class TooltipController
 
 	/**
 	 * The room a card has on the monitor holding its anchor: the monitor less the taskbar, or a Mac's menu bar and Dock,
-	 * as Swing's hover cards keep clear of them. The window's own record of its monitor can be stale (10/27: a client
-	 * started during a remote desktop session pulled every card onto the other monitor).
+	 * as Swing's hover cards keep clear of them. The window's own record of its monitor can be stale (a client started
+	 * during a remote desktop session), which would pull every card onto the other monitor.
 	 */
 	private static Rectangle screenAt(Point at, Component fallback)
 	{

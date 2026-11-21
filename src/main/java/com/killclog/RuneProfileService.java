@@ -12,23 +12,18 @@ import net.runelite.client.util.Text;
 import okhttp3.OkHttpClient;
 
 /**
- * Fetches player data from RuneProfile. Two lanes:
- * <ol>
- *   <li><strong>Account summary</strong> ({@link #lookup}) -- public CA source for other
- *       players, plus account-type metadata. One GET per player against {@code /accounts/{rsn}}.
- *       The local player is asked for too, only so Sources can list RuneProfile.</li>
- *   <li><strong>Collection log provider</strong> ({@link #lookupClog}) -- one GET against
- *       {@code /collection-log}, parsed into a {@link ClogResult}. LookupSession and
- *       ComparisonController combine this with TempleOSRS and keep the freshest result.</li>
- * </ol>
+ * Fetches player data from RuneProfile, in two requests.
  *
- * <p>Both lanes share the same freshness model: success TTL, not-synced (404) TTL, transient
- * failure cooldown, and in-flight dedup. Caches are independent per lane so a CA 404 does not
- * suppress a clog request (or vice versa).
+ * The account summary ({@link #lookup}) is one GET of {@code /accounts/{rsn}}: another player's Combat Achievements
+ * and their account type. The local player is asked for too, only so Sources can list RuneProfile.
  *
- * <p>A 404 on either lane means the player has not synced to RuneProfile; held longer than a
- * transient failure since it rarely flips quickly. A previous success is still returned while
- * cached, so a provider-side 404 cannot blank known-good data mid-session.
+ * The Collection Log ({@link #lookupClog}) is one GET of {@code /collection-log}, read into a {@link ClogResult}.
+ * LookupSession and ComparisonController combine it with TempleOSRS's and keep the fuller log.
+ *
+ * Each keeps its answers apart, so a 404 on one never stops the other being asked: a success, a not-synced (404) and
+ * a failure each for their own time, and one request per name at once. A 404 means the player hasn't synced to
+ * RuneProfile and is held longer than a failure, since it rarely changes quickly. A last good answer is served while
+ * cached, so a later 404 can't blank it mid-session.
  */
 @Slf4j
 @Singleton
@@ -128,9 +123,9 @@ public class RuneProfileService
 
 	/**
 	 * The profile RuneProfile last answered with for this name, whatever its age: a card shows what its own lookup
-	 * brought, and the next lookup asks again once it's stale (a card hovered five minutes on lost its clan, 2.6.2).
-	 * Matched as Jagex names, because the panel asks with a provider's canonical spelling while the cache is keyed by
-	 * what was typed.
+	 * brought, and the next lookup asks again once it's stale, so a card held open never loses its clan. Matched as
+	 * Jagex names, because the panel asks with a provider's canonical spelling while the cache is keyed by what was
+	 * typed.
 	 */
 	@Nullable
 	private RuneProfileSummary held(String playerName)

@@ -11,7 +11,7 @@ import net.runelite.client.util.Text;
 
 /**
  * A player's clan for the Player Summary: its name, and the icon their title in it wears in clan chat. Your own comes
- * from the game, anyone else's from their Kill Clog sync, else RuneProfile's summary. Your sync carries yours (2.6.3).
+ * from the game, anyone else's from their Kill Clog sync, else RuneProfile's summary. Your sync carries yours.
  */
 @RequiredArgsConstructor
 class PlayerClans
@@ -23,7 +23,7 @@ class PlayerClans
 	// client's clan state must not be read, so it reads this instead.
 	// Whether this main-game world has settled since login or a hop: until then the game hasn't said you're in no clan.
 	private final BooleanSupplier settled;
-	// Share Clan (2.7.3, a player's ask): off, your sync says you're in no clan, so no Kill Clog surface names it.
+	// Share Clan: off, your sync says you're in no clan, so no Kill Clog surface names it.
 	private final BooleanSupplier shared;
 	private volatile Yours yours = Yours.NONE;
 

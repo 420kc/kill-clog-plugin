@@ -33,7 +33,7 @@ public class SummaryTooltip extends TitleTooltip
 	private BufferedImage clanIcon;
 	private String prestige;
 	// The sites holding the player's log, the Collection Log card's Sources, in the top bar's right corner as links to
-	// the player's pages there (Dylan, 2026-11-14).
+	// the player's pages there.
 	private List<CardSources.Source> sources = Collections.emptyList();
 	static final String SOURCE_PREFIX = "View on ";
 	private static final int SOURCES_GAP = 8;
@@ -65,7 +65,7 @@ public class SummaryTooltip extends TitleTooltip
 
 	/**
 	 * The player's clan, after the rank under the name: the icon their title wears in clan chat, the clan's name in the
-	 * band while it's hovered (Dylan, 2026-10-09). Without the icon, the name itself follows the rank.
+	 * band while it's hovered. Without the icon, the name itself follows the rank.
 	 */
 	void setClan(@Nullable String clan, @Nullable BufferedImage icon)
 	{

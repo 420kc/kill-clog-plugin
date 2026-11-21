@@ -68,10 +68,9 @@ final class PbRecord
 	 * exactly, so it wins whenever this client has read it: an older, faster time elsewhere can't outlast a record
 	 * the game has since changed. RuneLite's file fills only what nothing has, the profile RuneLite chose first. A
 	 * game record replaces the file's even when slower. Between game records, faster wins and the later takes a tie.
-	 * A whole second the game stated and a time with tenths it rounds from are one record told two ways (Dylan,
-	 * 2026-10-23): it keeps the tenths and goes as the game's, so a kill or the adventure log with precise timing off
-	 * still confirms the file's exact time; told by a kill and the adventure log, it goes as the kill, with its labels,
-	 * whichever came first.
+	 * A whole second the game stated and a time with tenths it rounds from are one record told two ways: it keeps the
+	 * tenths and goes as the game's, so a kill or the adventure log with precise timing off still confirms the file's
+	 * exact time; told by a kill and the adventure log, it goes as the kill, with its labels, whichever came first.
 	 */
 	static PbRecord pick(@Nullable PbRecord kept, PbRecord seen)
 	{

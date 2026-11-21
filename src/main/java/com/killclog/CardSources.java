@@ -10,7 +10,7 @@ import lombok.*;
 
 /**
  * The sites that hold a player's log, as icons: the Collection Log card's footer names them, and the Player Summary's
- * top bar repeats them as links to the player's pages (Dylan, 2026-11-14). Kill Clog's chalice first (your own log
+ * top bar repeats them as links to the player's pages. Kill Clog's chalice first (your own log
  * read from the game when you don't sync), then TempleOSRS and RuneProfile; each names itself while hovered and opens
  * the player's page there.
  */
@@ -38,7 +38,7 @@ final class CardSources
 	}
 
 	/**
-	 * Every site that holds this player's log, whichever one's log the card shows (Dylan, 2026-10-12): one this lookup
+	 * Every site that holds this player's log, whichever one's log the card shows: one this lookup
 	 * heard from, or one known to hold them by RuneProfile's profile, Temple's last answer or Kill Clog's sync list, since
 	 * a request can be skipped (your own log) or time out. Your own log read from the game is Kill Clog's when you sync.
 	 * Each site's name follows {@code prefix}, as "View on Kill Clog".
@@ -83,7 +83,7 @@ final class CardSources
 	}
 
 	/**
-	 * The icons in a row from {@code x}, dim until hovered (Dylan, 2026-11-14), each naming itself in {@code section}
+	 * The icons in a row from {@code x}, dim until hovered, each naming itself in {@code section}
 	 * while hovered and opening its page. One lights only where a press opens its page: everything clickable answers
 	 * the hover, and nothing else does.
 	 */

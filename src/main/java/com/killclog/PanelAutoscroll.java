@@ -8,7 +8,7 @@ import javax.swing.*;
 import javax.swing.text.JTextComponent;
 
 /**
- * Middle-button autoscroll over the panel, as browsers do (Dylan, 2026-10-20): hold it down and move away from where
+ * Middle-button autoscroll over the panel, as browsers do: hold it down and move away from where
  * it went down to scroll, faster the farther, so a flick reaches the top or the bottom; let go to stop. A marker
  * shows the anchor; cards and the hover tint wait until it ends.
  */
@@ -81,7 +81,7 @@ final class PanelAutoscroll implements AWTEventListener
 	/**
 	 * Over the panel's own content, where it can scroll; a text field keeps its middle button (Linux pastes there).
 	 * The press reaches the nearest component listening for the mouse, the client's window itself over a plain label
-	 * or a gap (10/25: Hive Ops never scrolled), so what counts is what's drawn under the pointer.
+	 * or a gap, so what counts is what's drawn under the pointer.
 	 */
 	private boolean startsHere(MouseEvent e)
 	{
@@ -169,8 +169,8 @@ final class PanelAutoscroll implements AWTEventListener
 	}
 
 	/**
-	 * The anchor: a small dot, and a caret the way it scrolls, black in a white outline so it reads on any card
-	 * (Dylan, 10/24: no ring). Held still, the dot alone.
+	 * The anchor: a small dot, and a caret the way it scrolls, black in a white outline so it reads on any card, with
+	 * no ring. Held still, the dot alone.
 	 */
 	private static final class Marker extends JComponent
 	{

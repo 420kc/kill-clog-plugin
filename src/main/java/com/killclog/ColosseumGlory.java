@@ -4,7 +4,7 @@ import javax.annotation.Nullable;
 
 /**
  * Sol Heredit's card leads with the player's Colosseum Glory, as the game's hiscores show it, once they have any;
- * kills otherwise. Nothing on them should send a player back there (Dylan, 2026-10-12).
+ * kills otherwise. Nothing on them should send a player back there.
  */
 final class ColosseumGlory
 {

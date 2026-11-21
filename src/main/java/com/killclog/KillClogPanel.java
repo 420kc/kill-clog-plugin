@@ -27,7 +27,7 @@ public class KillClogPanel extends PluginPanel
 	ComparisonController.CellRenderTarget, PublicationCoordinator.Feedback
 {
 
-	/** Info bar text color - only applies when highlighter is active AND clog data exists. */
+	/** Info bar text color; only while the highlighter is on and the log is known. */
 	@Override
 	public Color getInfoColor()
 	{
@@ -240,7 +240,7 @@ public class KillClogPanel extends PluginPanel
 		clogNotice.setBorder(new EmptyBorder(0, 0, 5, 0));
 		clogNotice.setAlignmentX(Component.LEFT_ALIGNMENT);
 
-		// The top stays on screen down the whole boss list (Dylan, 2026-10-20): the scroll pane's column header, which
+		// The top stays on screen down the whole boss list: the scroll pane's column header, which
 		// lays it out as wide as the content and passes the wheel on. Its 5 under the info bar is the gap the boss list
 		// always started below.
 		anchoredTop.setLayout(new BoxLayout(anchoredTop, BoxLayout.Y_AXIS));
@@ -399,9 +399,9 @@ public class KillClogPanel extends PluginPanel
 	}
 
 	/**
-	 * A closed tray's toggle lives in the pinned top under the info bar, so it never scrolls out of reach (Dylan,
-	 * 2026-10-20); an open tray's lives under the tray. Closed, it is the content's first line anyway, so at the top
-	 * of the scroll nothing moves.
+	 * A closed tray's toggle lives in the pinned top under the info bar, so it never scrolls out of reach; an open
+	 * tray's lives under the tray. Closed, it is the content's first line anyway, so at the top of the scroll nothing
+	 * moves.
 	 */
 	private void placeTrayToggle(boolean expanded)
 	{
@@ -422,10 +422,9 @@ public class KillClogPanel extends PluginPanel
 	// Boss view style (grid / list).
 
 	/**
-	 * The single rule for when the list may show: never during comparison -
-	 * it is a single-player hiscores surface. applyBossViewStyle, the
-	 * hamburger guard, and the row mirror's pause all consult THIS method,
-	 * so if the rule ever relaxes, all three move together.
+	 * The one rule for when the list may show: never during comparison, since it shows one player's hiscores.
+	 * applyBossViewStyle, the hamburger guard and the row mirror's pause all ask this method, so if the rule ever
+	 * relaxes, all three move together.
 	 */
 	private boolean bossListAvailable()
 	{
@@ -607,9 +606,8 @@ public class KillClogPanel extends PluginPanel
 			showInvalidName();
 			return;
 		}
-		// Spinner must go up BEFORE the lookup: a same-player compare resolves
-		// synchronously and fires onComparisonEnter, which resets the active icon.
-		// Setting LOADING afterward would strand the spinner with no callback to clear it.
+		// The spinner goes up before the lookup: a same-player compare resolves at once and fires onComparisonEnter,
+		// which resets the active icon. Set afterward, the spinner would be stranded with no callback to clear it.
 		searchBar.setIcon(IconTextField.Icon.LOADING_DARKER);
 		comparison.doCompareLookup(player, localRsn, localAccountType);
 	}
@@ -1101,11 +1099,9 @@ public class KillClogPanel extends PluginPanel
 			if (c instanceof FlatTextField)
 			{
 				JTextField textField = ((FlatTextField) c).getTextField();
-				// Idempotent: strip any prior NameAutocompleter before attaching.
-				// Plugin reload (toggle off/on, hub auto-update) re-runs startUp on the
-				// same panel singleton; without this, listeners stack and each keystroke
-				// fires the autocomplete twice - suggestion gets inserted as both
-				// highlighted suggestion AND committed text.
+				// Any NameAutocompleter already attached comes off first. A plugin reload (toggled off and on, a Hub
+				// update) runs startUp again on the same panel, and stacked listeners would fire the autocomplete twice
+				// a keystroke, inserting a suggestion both as the highlighted suggestion and as typed text.
 				for (KeyListener kl : textField.getKeyListeners())
 				{
 					if (kl instanceof NameAutocompleter)
@@ -1512,8 +1508,8 @@ public class KillClogPanel extends PluginPanel
 	 */
 	private String checkPortrait(String last, String search, ClogResult clog)
 	{
-		// By the name's key, not its spelling: RuneProfile's answer carries the name as typed and TempleOSRS's its own
-		// (the review of 11/10: "zezima" then "Zezima" re-checked and showed the cape).
+		// By the name's key, not its spelling: RuneProfile's answer carries the name as typed and TempleOSRS's its own.
+		// Checked by spelling, a second spelling of one name was checked again and showed the cape meanwhile.
 		String name = PlayerPortraits.portraitName(clog);
 		String check = search + ":" + (name != null ? PlayerPortraits.key(name) : null);
 		if (!check.equals(last))

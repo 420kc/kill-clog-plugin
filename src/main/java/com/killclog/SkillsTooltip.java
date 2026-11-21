@@ -6,7 +6,7 @@ import net.runelite.client.util.LinkBrowser;
 
 /**
  * Experience &amp; Efficiency on the total level cell: total XP, overall rank and the XP left to max with a bar of the
- * way there, then Efficient Hours (Dylan, 2026-10-15): Played and Clogged, TempleOSRS's EHP and EHC, when Temple
+ * way there, then Efficient Hours: Played and Clogged, TempleOSRS's EHP and EHC, when Temple
  * tracks the player, and Bossed, the Combat Summary's EHB, for anyone. Each skill's own numbers live in its cell, in
  * the grid or the activity tray.
  */
@@ -98,7 +98,7 @@ public class SkillsTooltip extends TitleTooltip
 	}
 
 	/**
-	 * The share of max's XP held, each skill counted to 99 as To max counts it, never by total level (Dylan 11/17): a
+	 * The share of max's XP held, each skill counted to 99 as To max counts it, never by total level: a
 	 * 2114 total can be 89% of the levels and 54% of the XP. None while To max is unknown.
 	 */
 	static double maxShare(long toMax)

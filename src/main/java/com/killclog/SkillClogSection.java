@@ -213,7 +213,7 @@ final class SkillClogSection
 			}
 			else
 			{
-				// A ';' starts the next set on a row of its own (Dylan 11/8: the Combat Clogs as a progression chart).
+				// A ';' starts the next set on a row of its own, so the Combat Clogs read as a progression chart.
 				List<Integer> itemIds = new ArrayList<>();
 				Set<Integer> rowStarts = new HashSet<>();
 				for (String itemId : row[3].replace(";", ",;").split(","))

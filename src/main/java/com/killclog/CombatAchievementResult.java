@@ -133,7 +133,7 @@ final class CombatAchievementResult
 	}
 
 	/**
-	 * Tier rows as RuneProfile sends them and killclog.com serves a player's sync (2.8.3): each a tier's name, its
+	 * Tier rows as RuneProfile sends them and killclog.com serves a player's sync: each a tier's name, its
 	 * completed tasks and the game's count. Null when no row names a tier; a count of the wrong shape throws, so a
 	 * garbled answer never reads as none done.
 	 */
@@ -154,7 +154,7 @@ final class CombatAchievementResult
 		return completed.isEmpty() ? null : of(completed, total, liveTotals);
 	}
 
-	/** The rows your sync sends (2.8.3): every tier's tasks done and the game's count for it. */
+	/** The rows your sync sends: every tier's tasks done and the game's count for it. */
 	JsonArray toRows()
 	{
 		JsonArray rows = new JsonArray();

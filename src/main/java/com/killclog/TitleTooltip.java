@@ -101,7 +101,7 @@ public abstract class TitleTooltip extends NativeTooltip
 
 	/**
 	 * A word at the header's right on the title's line, with its icon before it: the Collection Log names its tier beside
-	 * the tier's icon, the Combat Summary its combat level and a skill's card its level (Dylan, 2026-11-14).
+	 * the tier's icon, the Combat Summary its combat level and a skill's card its level.
 	 */
 	CardBody.Part headerWord(@Nullable String word, @Nullable Image icon, Font wordFont, Color color)
 	{
@@ -538,7 +538,7 @@ public abstract class TitleTooltip extends NativeTooltip
 			}
 			if (line == subtitle && subtitleIcon != null)
 			{
-				// After the text, level with its figures (Dylan, 2026-10-09: never lower than the digits).
+				// After the text, level with its figures, never lower than the digits.
 				subtitleIconBounds = new Rectangle(inset + width + (width > 0 ? TITLE_ICON_GAP : 0),
 					lineY - 7 - subtitleIcon.getHeight() / 2, subtitleIcon.getWidth(), subtitleIcon.getHeight());
 				g2.drawImage(subtitleIcon, subtitleIconBounds.x, subtitleIconBounds.y, null);

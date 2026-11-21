@@ -50,9 +50,8 @@ final class TooltipDataBuilder
 		Map<Integer, Integer> obtainedCounts = obtainedCounts(obtained);
 		Set<Integer> obtainedIds = new HashSet<>(obtainedCounts.keySet());
 
-		// No catalog for the category means the denominator is UNKNOWN (-1,
-		// rendered as "X/?"), never obtainedIds.size() -- that would claim
-		// every category complete for sources that only report obtained items.
+		// No catalog for the category means the total is unknown (-1, shown as "X/?"), never obtainedIds.size(): that
+		// would call every category complete for a source that reports only obtained items.
 		int totalItems = allItems != null ? allItems.size() : -1;
 		int obtainedCount = allItems != null
 			? ClogHelper.countObtained(allItems, obtainedIds) : obtainedIds.size();

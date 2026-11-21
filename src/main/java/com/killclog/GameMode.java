@@ -9,7 +9,8 @@ final class GameMode
 {
 	static final String MAIN = "main";
 	// World flags that do not create a separate character. A Hardcore Worlds character is a main account on the main
-	// game's save, its own name from Tutorial Island, and a transfer takes it to the main game as it is (Jagex 10/22).
+	// game's save, its own name from Tutorial Island, and a transfer takes it to the main game as it is, by Jagex's
+	// own description.
 	private static final Set<WorldType> MAIN_FLAGS = EnumSet.of(WorldType.MEMBERS, WorldType.PVP,
 		WorldType.BOUNTY, WorldType.SKILL_TOTAL, WorldType.HIGH_RISK, WorldType.LAST_MAN_STANDING,
 		WorldType.HARDCORE_MAIN);

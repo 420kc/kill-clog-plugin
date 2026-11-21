@@ -11,19 +11,14 @@ import net.runelite.client.config.ConfigManager;
 import net.runelite.client.util.Text;
 
 /**
- * Harvests personal bests from the POH Adventure Log's Counters scroll.
+ * Reads personal bests from the POH Adventure Log's Counters scroll.
  *
- * <p>The log opens in one of TWO menu interfaces and the player's in-game
- * interface-style setting decides which: the original ({@code MENU}) or the
- * newer ({@code MENU_NEW}). Vanilla's own harvest watches only the original,
- * so it works for players on that style and silently does nothing for
- * everyone on the newer one - which is why those players see no pbs beyond
- * what live kill-timer messages recorded since install. This reads both, so
- * the scroll backfills regardless of the setting.
+ * The log opens in one of two menu interfaces, and the player's interface-style setting decides which: the original
+ * ({@code MENU}) or the newer ({@code MENU_NEW}). RuneLite's own reader watches only the original, so a player on the
+ * newer style has no bests beyond what kill messages recorded since install. This reads both.
  *
- * <p>Times land in Kill Clog's OWN rs-profile store - never vanilla's
- * "personalbest" namespace, which stays vanilla's to write - and the sync
- * payload tags them "advlog".
+ * Times go to Kill Clog's own profile store, never RuneLite's "personalbest" keys, which stay RuneLite's to write,
+ * and the sync sends them as source "advlog".
  */
 @Slf4j
 @RequiredArgsConstructor(access = AccessLevel.PACKAGE)
@@ -101,19 +96,9 @@ final class AdvLogPbs
 	private final ConfigManager configManager;
 
 	/**
-	 * The Adventure Log owner, or null when the loaded menu is not an
-	 * Adventure Log.
-	 *
-	 * <p>The game ships TWO menu interfaces and the player's interface-style
-	 * setting decides which one opens: the original ({@code MENU}, what
-	 * vanilla's chat-commands harvest watches) and the newer
-	 * ({@code MENU_NEW}). Watching only one silently harvests nothing for
-	 * every player on the other style, so both are read here. Cost of the
-	 * unused lookup is one null widget.
-	 *
-	 * <p>The title text sits at a different child index in each, and is
-	 * surrounded by null and non-text children, so both are scanned for the
-	 * first matching line rather than indexed.
+	 * The Adventure Log's owner, or null when the loaded menu isn't an Adventure Log. Both menu interfaces are read (the
+	 * class note); the unused one costs a null widget. The title sits at a different child index in each, among null
+	 * and non-text children, so both are scanned for the first matching line.
 	 */
 	static String readOwner(Client client)
 	{

@@ -18,22 +18,16 @@ import net.runelite.client.hiscore.HiscoreSkill;
 import net.runelite.client.ui.*;
 
 /**
- * List-style rendering of the boss cells. Rows MIRROR the grid labels rather
- * than re-deriving values: the grid is always rendered (even while hidden),
- * and each row listens to its grid label's text / foreground / icon property
- * changes. Every writer - the search-start reset, results landing, the
- * completionist highlighter, whatever comes next - propagates into
- * the list with no per-call-site wiring, which is what keeps the two views
- * incapable of disagreeing.
+ * The boss cells as a list. Rows mirror the grid's labels instead of working the values out again: the grid is always
+ * built, even while hidden, and each row listens to its grid label's text, color and icon. So whatever writes a label
+ * (a search starting, results landing, the completionist highlighter) reaches the list with no wiring of its own, and
+ * the two views can't disagree.
  *
- * <p>The one deliberate pause: while comparison holds the grid on screen the
- * mirror skips text and foreground, so compare's per-hover HTML rewrites
- * never reach the hidden rows; the exit path rewrites both, which resyncs
- * them. Icons keep mirroring straight through - comparison never writes
- * icons, and an async sprite landing mid-compare would otherwise be lost
- * for good (reapplying the same ImageIcon later fires no change event).
- * {@link #resyncAll()} backstops the whole contract whenever the list is
- * about to show.
+ * One pause, on purpose: while comparison holds the grid on screen the mirror skips text and color, so comparison's
+ * rewrites on each hover never reach the hidden rows; leaving comparison rewrites both, which brings them back in
+ * step. Icons keep mirroring throughout: comparison never writes icons, and a sprite that loads mid-comparison would
+ * otherwise be lost for good (setting the same ImageIcon later fires no change). {@link #resyncAll()} backs all of it
+ * up whenever the list is about to show.
  */
 public class BossListView
 {
@@ -202,7 +196,7 @@ public class BossListView
 	{
 		Row row = new Row();
 
-		// All three labels carry the boss tooltip so the WHOLE row pops the
+		// All three labels carry the boss tooltip so the whole row pops the
 		// clog popup in hover mode - icon and kc included, no dead zones.
 		// The icon itself arrives via the mirror when the grid's loads.
 		row.icon = bossTooltipLabel(boss, cells);
@@ -351,8 +345,8 @@ public class BossListView
 			}
 		});
 		filterHeight = query.isEmpty() ? 0 : filterHeight > 0 ? filterHeight : root.getHeight();
-		// A boss or page also shows when its log page holds an item by that name; a number is a count, never an item
-		// (the review of 11/10: "100" brought Last Man Standing's row, its own count holding no 100).
+		// A boss or page also shows when its log page holds an item by that name. A number is a count, never an item,
+		// so a typed number never searches item names.
 		Set<String> itemPages = typed.chars().anyMatch(Character::isLetter) ? pages.pagesWithItem(query)
 			: Collections.emptySet();
 		rows.forEach((boss, row) -> row.panel.setVisible(query.isEmpty() || matches(boss, query, named)

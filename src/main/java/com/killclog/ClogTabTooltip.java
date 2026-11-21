@@ -7,7 +7,7 @@ import javax.annotation.Nullable;
 
 /**
  * One Collection Log tab, opened from the Collection Log card where it was: the tab's progress and the way back,
- * then every page in the game's order as the game's tiles, two across, each its count and bar (Dylan, 2026-11-07). A
+ * then every page in the game's order as the game's tiles, two across, each its count and bar. A
  * page opens its own popup. A tab past the card's window scrolls with the mouse wheel, a row of tiles a notch, a thin
  * rail showing where.
  */

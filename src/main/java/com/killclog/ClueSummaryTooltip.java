@@ -10,10 +10,9 @@ import net.runelite.client.game.ItemManager;
 import net.runelite.client.hiscore.HiscoreSkill;
 
 /**
- * Clue Summary on the Clues cell, as the game's tiles (Dylan, 2026-11-07): the six tiers, each its scroll and its
- * log, then the rare collections and Mimic, each its item and its log. Every tile opens its own card, as from its own
- * cell (Dylan, 2026-10-17: every clue reached from the summary, and nothing passed over without answering). The clues
- * done are on the panel's cells and on each tier's card.
+ * Clue Summary on the Clues cell, as the game's tiles: the six tiers, each its scroll and its log, then the rare
+ * collections and Mimic, each its item and its log. Every tile opens its own card, as from its own cell, so every
+ * clue is reached from the summary. The clues done are on the panel's cells and on each tier's card.
  */
 public class ClueSummaryTooltip extends TitleTooltip
 {

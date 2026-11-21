@@ -45,15 +45,15 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private TooltipItemSprites superiorSprites;
 	private final int[] superiorCounts = new int[2];
 
-	// The raids as the game's tiles, in raids.tsv's order (Dylan, 2026-11-07): each its megarare, faint until held, and
+	// The raids as the game's tiles, in raids.tsv's order: each its megarare, faint until held, and
 	// its log; with no log, its kills in both modes.
 	private final int[] raidObtained = PanelData.RAIDS.stream().mapToInt(raid -> -1).toArray();
 	private final int[] raidTotal = new int[PanelData.RAIDS.size()];
 	// Each raid's kills, both modes together, which its tile shows while its log progress is unknown.
 	private final int[] raidKills = new int[PanelData.RAIDS.size()];
 	private final Image[] megarares = new Image[PanelData.RAIDS.size()];
-	// Which tiles show: a raid that waits for its hiscore row (The Fractured Archive's, Dylan 2026-10-14) once the lookup
-	// carries it, and before any lookup (the dormant panel) once the panel lists the raid (Dylan, 2026-11-08).
+	// Which tiles show: a raid that waits for its hiscore row (The Fractured Archive's) once the lookup
+	// carries it, and before any lookup (the dormant panel) once the panel lists the raid.
 	private boolean[] raidOut = raidsOut(null);
 	@Nullable
 	private BiConsumer<MouseEvent, HiscoreSkill> onOpenRaid;
@@ -67,19 +67,18 @@ public class PvmSummaryTooltip extends TitleTooltip
 		}
 	});
 
-	// Everything under the band scrolls, three lines a notch, in the window every long card shows (Dylan, 2026-11-07).
+	// Everything under the band scrolls, three lines a notch, in the window every long card shows.
 	private final CardBody.Scroll scroll = new CardBody.Scroll(this, CardBody.WINDOW, 3 * LINE_HEIGHT);
 
 	@Setter
 	private Image combatIcon;
-	// The prestige cape and Dizana's gear under the title, as items (Dylan, 2026-11-14), then the Combat Achievements
-	// tier's reward (11/17).
+	// The prestige cape and Dizana's gear under the title, as items, then the Combat Achievements
+	// tier's reward.
 	private final List<Integer> gear = new ArrayList<>();
 	private final List<String> gearNames = new ArrayList<>();
 	@Nullable
 	private TooltipItemSprites gearSprites;
-	// Combat Achievements as PvM lines, not a tile: a tile opens what it names, and its tile opened nothing (Dylan,
-	// 2026-11-17).
+	// Combat Achievements as PvM lines, not a tile: a tile opens what it names, and theirs would open nothing.
 	@Nullable
 	private CombatAchievementResult caResult;
 	// The gear row and the Combat Achievements lines, kept on a comparison's side that has none (lineUp).
@@ -99,8 +98,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 	private int mostKilledObtained = -1;
 	private int mostKilledTotal;
 	private static final int MOST_KILLED = 0;
-	// A PvP tile with a log page opens that page where the summary was, as a raid's tile opens its popup (Dylan,
-	// 2026-11-16: a press on Soul Wars closed the card). Its key follows the PvM tiles', which share the clicks.
+	// A PvP tile with a log page opens that page where the summary was, as a raid's tile opens its popup. Its key
+	// follows the PvM tiles', which share the clicks.
 	@Setter
 	@Nullable
 	private BiConsumer<MouseEvent, String> onOpenPage;
@@ -278,9 +277,9 @@ public class PvmSummaryTooltip extends TitleTooltip
 	@Override
 	protected CardBody body()
 	{
-		// The title with the combat level at its right, the gear under it and the band stay put (Dylan, 2026-11-07 and
-		// 11/14); PvM, Raids, Slayer and PvP scroll under them, a long tab's height like the other cards.
-		// The level wears the title's own bold, in white (Dylan, 2026-11-14).
+		// The title with the combat level at its right, the gear under it and the band stay put; PvM, Raids, Slayer and
+		// PvP scroll under them, a long tab's height like the other cards. The level wears the title's own bold, in
+		// white.
 		CardBody card = new CardBody().add(headerWord(combatText(combatLevel), combatIcon, getTitleFont(), valueColor));
 		if (!gear.isEmpty())
 		{
@@ -315,8 +314,8 @@ public class PvmSummaryTooltip extends TitleTooltip
 				onOpenRaid != null && mostKilledBoss != null ? MOST_KILLED : -1)
 				.count(grouped(mostKilledKc) + " kc").named(mostKilled));
 		}
-		// Bosses reads as Most Killed does, the bosses killed in white over the logs' bar (Dylan, 2026-11-14); before any
-		// lookup, the raids' resting grey "--" (Dylan 11/11).
+		// Bosses reads as Most Killed does, the bosses killed in white over the logs' bar; before any
+		// lookup, the raids' resting grey "--".
 		GameTile.Tile bosses = new GameTile.Tile("Bosses", bossesSprite, bossesCompleted,
 			bossesWithKc >= 0 ? bossesWithClog : totalBosses, onOpenBosses != null ? BOSSES : -1);
 		pvm.add(bossesWithKc >= 0 ? bosses.count("Killed: " + bossesWithKc + "/" + totalBosses) : bosses);
@@ -357,7 +356,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		}
 		body.add(GameTile.grid(pvmRows, pvp));
 		// With no gear row between them, the band takes the title's divider for its top, as the Player Summary's and the
-		// Collection Log's do: its own drew a second line 11 px under the title's (Dylan, 2026-11-18).
+		// Collection Log's do: its own drew a second line 11 px under the title's.
 		return card.add(gear.isEmpty() && !gearRow ? CardBody.headerHoverBand() : CardBody.hoverBand())
 			.add(CardBody.scroll(scroll, body.asPart()));
 	}
@@ -381,7 +380,7 @@ public class PvmSummaryTooltip extends TitleTooltip
 		return PanelData.listed(PanelData.RAIDS.get(row).getSkill());
 	}
 
-	/** The prestige cape, or Dizana's quiver or max cape: an item under the title, named while hovered (Dylan, 2026-11-14). */
+	/** The prestige cape, or Dizana's quiver or max cape: an item under the title, named while hovered. */
 	void addGear(int itemId, String name, ItemManager itemManager)
 	{
 		gear.add(itemId);

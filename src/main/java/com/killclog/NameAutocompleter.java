@@ -41,7 +41,7 @@ public class NameAutocompleter implements KeyListener
 
 	/**
 	 * With the box empty, or still showing just what Right last brought back with the cursor at its end, Right steps
-	 * back through this session's searches, from the newest round to it again (Dylan 11/4). At the end of the box Right
+	 * back through this session's searches, from the newest round to it again. At the end of the box Right
 	 * has nothing to move, so it never takes a cursor move; a click elsewhere in the name, a selection (an autofill's),
 	 * a name written in by a lookup, or any other key, typed or pressed, leaves Right as the box's own. With Shift, Ctrl
 	 * or Alt held it is always the box's own.

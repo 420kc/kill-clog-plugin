@@ -185,11 +185,11 @@ final class SkillCellGrid
 	{
 		SkillTooltip solo = new SkillTooltip();
 		// With Skill Clogs off the modal is the stats rows alone; on, every skill card shows its log, dimmed under its
-		// Obtained line where none is synced, as a boss card shows a stranger theirs (Dylan, 2026-11-14).
+		// Obtained line where none is synced, as a boss card shows a stranger theirs.
 		solo.setData(skill, result, virtualLevels, config.enableSkillClogs()
 			? SkillClogSection.forSkill(skill, clog, otherClog, catalog, clogIndex)
 			: Collections.emptyList(), itemManager);
-		// The card's level beside the cell's own icon, in the color that player's cell wears (Dylan, 2026-11-14).
+		// The card's level beside the cell's own icon, in the color that player's cell wears.
 		solo.setSkillIcon(Cells.icon(labels.get(skill)));
 		solo.setLevelColor(levelColor(skill, result != null ? level(result, skill, virtualLevels) : -1, clog));
 		// A section's own count rides under its Obtained line, as the game's page for it shows.
@@ -197,7 +197,7 @@ final class SkillCellGrid
 		{
 			solo.setSectionCount(PanelData.GOTR_CATEGORY, SkillTooltip.RIFTS_CLOSED_LABEL, riftsClosed(result));
 		}
-		// The Hunter Guild's rumours the same way, from the player's own sync (PageCounts, Dylan 11/7).
+		// The Hunter Guild's rumours the same way, from the player's own sync (PageCounts).
 		else if (skill == Skill.HUNTER)
 		{
 			PageCounts.Line rumours = PageCounts.ownLine(PageCounts.HUNTER_GUILD);
@@ -317,7 +317,7 @@ final class SkillCellGrid
 	}
 
 	/**
-	 * True when the Virtual Levels plugin is on AND its "virtual total level"
+	 * True when the Virtual Levels plugin is on and its "virtual total level"
 	 * sub-setting is too (their default: on). Mirrors the vanilla skill tab's
 	 * total exactly.
 	 */

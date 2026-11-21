@@ -18,18 +18,18 @@ public abstract class NativeTooltip extends JToolTip
 	static final int LINE_HEIGHT = 14;
 	static final Color OSRS_ORANGE = new Color(255, 152, 31);
 	static final Color DIVIDER = new Color(80, 70, 50);
-	// Every card's labels, values and dividers, as Card Settings's colors set them (Dylan, 2026-10-17); the
+	// Every card's labels, values and dividers, as Card Settings's colors set them; the
 	// defaults are the game's.
 	static Color labelColor = OSRS_ORANGE;
 	static Color valueColor = Color.WHITE;
 	static Color dividerColor = DIVIDER;
-	// Card Settings's background and border (2.7.3): one flat color each in place of the parchment or the iron
+	// Card Settings's background and border: one flat color each in place of the parchment or the iron
 	// rivets, else null, the sprites (a resource pack's when one replaces them).
 	@Nullable
 	private static Color flatBackground;
 	@Nullable
 	private static Color flatBorder;
-	// Card Settings's scroll bar (2.7.3): the thumb's one shade, else null, the pack's thumb or the game's orange.
+	// Card Settings's scroll bar: the thumb's one shade, else null, the pack's thumb or the game's orange.
 	@Nullable
 	private static Color flatScroll;
 	static final Color NOTICE_COLOR = new Color(160, 160, 160);
@@ -60,7 +60,7 @@ public abstract class NativeTooltip extends JToolTip
 	/**
 	 * A tile's fill: the game's stone, lighter under the pointer; with a pack's or Card Settings's colors, the card's
 	 * background with its border mixed in, 40% at rest and 75% under the pointer, as the site tints its tiles
-	 * (Dylan, 2026-11-08).
+	 *.
 	 */
 	static Color tileFill(boolean hovered)
 	{
@@ -83,8 +83,7 @@ public abstract class NativeTooltip extends JToolTip
 
 	/**
 	 * The rail's track: the pack's when its thumb is the pack's, else a darker shade of the thumb, so the two never
-	 * meet in one colour whatever the dividers are (Dylan 10/24: orange dividers put an orange track under the orange
-	 * thumb).
+	 * meet in one colour whatever the dividers are.
 	 */
 	static Color railTrackFor(Color thumb)
 	{

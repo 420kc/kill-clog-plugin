@@ -95,8 +95,8 @@ final class LookupQueries
 		{
 			return all;
 		}
-		// Recent reads the log with the newest dated item, which needn't be the one that won the grid (the website's
-		// rule, 2026-10-27).
+		// Recent reads the log with the newest dated item, which needn't be the one that won the grid, as on
+		// killclog.com.
 		for (ClogResult.ClogItem item : result.recentItemsSource().allObtained())
 		{
 			if (item.getDate() != null)
@@ -174,7 +174,7 @@ final class LookupQueries
 
 	/**
 	 * Dizana's quiver as the Combat Summary shows it, -1 without one: maxed, it joins the max cape as the infernal cape
-	 * does, Dizana's max cape (Dylan, 2026-11-14).
+	 * does, Dizana's max cape.
 	 */
 	static int quiverItemId(@Nullable HiscoreResult hiscore, @Nullable ClogResult clog)
 	{

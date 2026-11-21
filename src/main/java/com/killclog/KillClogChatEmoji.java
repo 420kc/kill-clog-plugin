@@ -157,7 +157,7 @@ class KillClogChatEmoji
 			case CLOG_TRIGGER:
 				return PanelData.COLLECTION_LOG_ITEM_ID;
 			case GREEN_TRIGGER:
-				// The green log: the Book of Balance, already green in the game (Dylan 11/9).
+				// The green log: the Book of Balance, already green in the game.
 				return net.runelite.api.gameval.ItemID.GUTHIXBOOK_COMPLETE;
 			case RUNE_TRIGGER:
 				return tierItemId("rune");

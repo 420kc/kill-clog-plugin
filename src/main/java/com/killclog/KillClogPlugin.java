@@ -423,7 +423,7 @@ public class KillClogPlugin extends Plugin
 	 * The main store serves this login once it has been on the main game, and while its world's game is still unknown;
 	 * a League world, even one learned a few ticks after the login (the running League arrives with the sync index),
 	 * leaves it serving no one until a hop reaches the main game. So looking yourself up in Main game stats there reads
-	 * the providers until your own main log is here, and a hop from the main game to a League keeps it, as 2.6.6 does.
+	 * the providers until your own main log is here, and a hop from the main game to a League keeps it.
 	 * Asked again whenever the login or its world's game changes.
 	 */
 	private void serveMainStore()
@@ -647,7 +647,7 @@ public class KillClogPlugin extends Plugin
 		}
 	}
 
-	/** Until the world settles again the game hasn't said your clan, so a sync leaves it out (2.6.3). */
+	/** Until the world settles again the game hasn't said your clan, so a sync leaves it out. */
 	private void unsettleWorld()
 	{
 		world.unsettle();

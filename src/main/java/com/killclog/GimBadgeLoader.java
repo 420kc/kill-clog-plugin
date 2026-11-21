@@ -16,7 +16,7 @@ final class GimBadgeLoader
 	private static final int MODICON_GIM = IconID.GROUP_IRONMAN.getIndex();
 	private static final int MODICON_HCGIM = IconID.HARDCORE_GROUP_IRONMAN.getIndex();
 	private static final int MODICON_UNRANKED_GIM = IconID.UNRANKED_GROUP_IRONMAN.getIndex();
-	// Hardcore Worlds' chat badge, the skull on a tombstone the game draws by their names (11/4), until RuneLite's
+	// Hardcore Worlds' chat badge, the skull on a tombstone the game draws by their names, until RuneLite's
 	// IconID names it.
 	private static final int MODICON_HARDCORE_MAIN = 56;
 

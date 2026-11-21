@@ -89,7 +89,7 @@ final class ClogPages
 
 	/**
 	 * The pages holding a log item whose name holds the text (searched as the boss list searches, three letters or more),
-	 * by the game's own item names: the boss list finds a boss or a page by what it drops (Dylan 11/9).
+	 * by the game's own item names: the boss list finds a boss or a page by what it drops.
 	 */
 	Set<String> pagesWithItem(String query)
 	{
