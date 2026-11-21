@@ -51,11 +51,11 @@ public class ClogResult
 	@Getter
 	@Setter
 	private double templeEhc = -1;
-	/** The clan and title the player's own Kill Clog sync last named (2.6.3), or null */
+	/** The clan and title the player's own Kill Clog sync last named, or null */
 	@Getter
 	@Setter
 	private String syncedClan;
-	/** The Combat Achievements the player's own Kill Clog sync last sent (2.8.3), or null */
+	/** The Combat Achievements the player's own Kill Clog sync last sent, or null */
 	@Getter
 	@Setter
 	private CombatAchievementResult syncedCa;
@@ -87,9 +87,9 @@ public class ClogResult
 	@Getter
 	private boolean fromLocal;
 	/**
-	 * The log whose dated items fill Recent, whichever log won the grid: the one with the newest dated item (the
-	 * website's rule, Dylan 2026-10-27), so a RuneProfile log that wins the grid by a few items keeps TempleOSRS's
-	 * dates. Null means this log's own. Always a single provider's log, never a combine.
+	 * The log whose dated items fill Recent, whichever log won the grid: the one with the newest dated item, as on
+	 * killclog.com, so a RuneProfile log that wins the grid by a few items keeps TempleOSRS's dates. Null means this
+	 * log's own. Always a single provider's log, never a combine.
 	 */
 	private ClogResult datedHistory;
 
@@ -152,8 +152,8 @@ public class ClogResult
 	/**
 	 * Combine result carrying this data with per-combine provenance. Cached
 	 * provider/killclog instances are shared across overlapping lookups whose
-	 * legs can resolve differently (timeouts, cancellations), so combines
-	 * must NEVER mutate them -- every combine returns its own copy.
+	 * legs can resolve differently (timeouts, cancellations), so a combine
+	 * never changes them: every combine returns its own copy.
 	 */
 	private ClogResult copyWithProvenance(boolean temple, boolean runeProfile, boolean killclog,
 		AccountType fallbackType)
@@ -190,8 +190,8 @@ public class ClogResult
 	 * neither shows. Pages the game doesn't have (Kill Clog's own 3rd Age, Gilded and Mimic, a provider's old page
 	 * name) keep what the source sent, and a page the source never knew, no key and none of its items anywhere, stays
 	 * unknown rather than empty, though its slots still count in the total: a log counts against every slot the game
-	 * has, so one a source sent before the game grew a page isn't shown out of the old number (10/28: 1,717 of a
-	 * 1,734-slot log). With no pages read yet it is this log as sent.
+	 * has, so one a source sent before the game grew a page isn't shown out of the old number. With no pages read yet
+	 * it is this log as sent.
 	 */
 	ClogResult onPages(Map<String, List<Integer>> pages, IntUnaryOperator canonical)
 	{
@@ -313,9 +313,8 @@ public class ClogResult
 	}
 
 	/**
-	 * The fuller of TempleOSRS's and RuneProfile's logs, TempleOSRS on a tie (Dylan, 2026-10-27: the fuller log wins,
-	 * as on the website; until 2.7.5 TempleOSRS also won by up to five items, to keep its dates, which
-	 * {@link #datedHistory} now keeps whichever log wins).
+	 * The fuller of TempleOSRS's and RuneProfile's logs, TempleOSRS on a tie, as on killclog.com. Recent's dates don't
+	 * depend on the winner: {@link #datedHistory} keeps them whichever log wins.
 	 */
 	public static ClogResult pickFullerProvider(ClogResult temple, ClogResult rp)
 	{
@@ -337,7 +336,7 @@ public class ClogResult
 	/**
 	 * Combine the provider winner with the player's own killclog.com sync.
 	 * The rule is the website's, as {@link #pickFullerProvider}'s is:
-	 * the FULLEST result leads, and ties prefer first-party. A partial sync
+	 * the fullest result leads, and ties prefer first-party. A partial sync
 	 * (six items from a fresh install) must never shrink a profile below
 	 * what providers prove; a complete sync must never lose to a stale
 	 * provider snapshot.
@@ -365,11 +364,9 @@ public class ClogResult
 		boolean templeSource = either(provider, killclog, ClogResult::isFromTemple);
 		boolean runeProfileSource = either(provider, killclog, ClogResult::isFromRuneProfile);
 		boolean killclogSource = either(provider, killclog, ClogResult::isFromKillclog);
-		// The coverage race compares the same metric on both sides: distinct
-		// itemized coverage. The varp counter describes the ACCOUNT, not the
-		// payload - a six-item partial sync still carries the account's full
-		// unique count, and letting it race on that number replays the shrink
-		// bug against a complete provider log.
+		// Both sides race on the same measure: distinct itemized coverage. The game's counter describes the account,
+		// not the payload: a six-item partial sync still carries the account's full count, and racing on that number
+		// would let it shrink a complete provider log.
 		if (coverageCount(killclog) >= coverageCount(provider))
 		{
 			return killclog.copyWithProvenance(

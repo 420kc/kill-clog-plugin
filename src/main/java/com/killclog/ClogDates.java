@@ -29,9 +29,8 @@ final class ClogDates
 	}
 
 	// TempleOSRS dates an item when it first hears of it, so everything its first import or a catch-up brings (its
-	// plugin off for a while, then on) shares that one second, never when any of them came (Dylan 11/7: 1,143 of 420
-	// kc's items carry Temple's first import, and turning its plugin back on dated 12 at once, two of which then led
-	// his Recent as today's). Five or more items sharing a second is that shape.
+	// plugin off for a while, then on) shares that one second, never when any of them came. Five or more items sharing
+	// a second is that shape.
 	static final int CHECK_BATCH = 5;
 
 	/** The moments (UTC ISO) a provider gave five or more different items: imports and catch-ups, not acquisitions. */

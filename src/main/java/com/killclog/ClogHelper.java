@@ -89,7 +89,7 @@ final class ClogHelper
 
 	/**
 	 * The Collection Log card's Rare shelf, filled as killclog.com's profile card fills it: every trophy, then every
-	 * 3rd age piece in the game's order, then every megarare (2.7.2: six at most hid most of a big 3rd age log).
+	 * 3rd age piece in the game's order, then every megarare.
 	 */
 	static List<ClogResult.ClogItem> rareItems(ClogResult clog)
 	{
@@ -154,7 +154,7 @@ final class ClogHelper
 			? result.getUniqueObtained() : allObtained.size();
 		// The largest total known: the game's slots once the log is on the game's pages (ClogResult.onPages), else the
 		// pages the log was sent with, unless the sync knew more. A sync carries the game's total at that moment, so a
-		// player who hasn't synced since the log grew kept the old one (1717 against 1734 on 10/27).
+		// player who hasn't synced since the log grew would otherwise keep the old one.
 		int total = Math.max(result.getUniqueTotal(), allItems.size());
 		return new int[]{obtained, total};
 	}

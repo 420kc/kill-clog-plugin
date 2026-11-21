@@ -10,18 +10,12 @@ import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 
 /**
- * Pushes the active player's locally captured collection log to the
- * killclog.com first-party ingest endpoint
- * ({@code POST https://killclog.com/api/player/<rsn>/sync}).
+ * Sends the logged-in player's own Collection Log to killclog.com
+ * ({@code POST https://killclog.com/api/player/<rsn>/sync}). Off until the player turns the sync on
+ * ({@link KillClogConfig#killclogSync()}).
  *
- * <p>Gated behind a default-off config toggle
- * ({@link KillClogConfig#killclogSync()}); nothing is pushed until the
- * player opts in.
- *
- * <p>Scope: only the logged-in account can push, and only its own local
- * store - the log this client has accumulated across its own captures and
- * live unlocks. Publishing your own account's truth is what the opt-in
- * means; other players' data has no path here.
+ * Only the logged-in account can send, and only its own log: what this client captured and unlocked live. Another
+ * player's data has no path here.
  */
 @Slf4j
 @Singleton
@@ -36,10 +30,10 @@ class SyncService
 	// The game's Collection Log as this client reads it, shared when killclog.com holds another.
 	@Inject
 	private ClogIndex clogIndex;
-	// Your Combat Achievements as this login read them from the game (2.8.3).
+	// Your Combat Achievements as this login read them from the game.
 	@Inject
 	private LocalCaCache localCaCache;
-	// Your clan as the game shows it, for each sync (2.6.3).
+	// Your clan as the game shows it, for each sync.
 	@Setter
 	@Nullable
 	private volatile PlayerClans clans;
@@ -113,15 +107,10 @@ class SyncService
 				"Still checking this account. Try again in a moment."));
 		}
 
-		// The player's own accumulated local store is the payload: months of
-		// their in-client captures and live unlocks, published as their own
-		// truth - requiring a full re-walk to seed the sync would be needless
-		// friction. Only the logged-in account can
-		// ever push, and only its own file - filtered to items this client
-		// observed first-hand, so provider-cached data (pre-login lookups,
-		// cross-character searches) can never launder into first-party proof.
-		// The one thing a provider adds is TempleOSRS's date on an item you
-		// hold without one (ClogService.overlayProviderDates).
+		// The payload is the player's own local log: their captures and live unlocks, only items this client saw
+		// first-hand, so a provider's answer (a lookup before login, a search of another character) can never pass as
+		// the player's own. The one thing a provider adds is TempleOSRS's date on an item held without one
+		// (ClogService.overlayProviderDates).
 		ClogResult clog = cache.toFirstPartySyncResult(rsn);
 		if (clog == null || clog.getObtainedItems().isEmpty() && !cache.ownLogReady(rsn))
 		{
@@ -186,7 +175,7 @@ class SyncService
 
 	/**
 	 * The text a push sends: the body, and on a main-game sync the game's structure when it should carry it and your
-	 * Combat Achievements as this login read them, so a lookup needs no other site for them (2.8.3).
+	 * Combat Achievements as this login read them, so a lookup needs no other site for them.
 	 */
 	String requestBody(long accountHash, @Nullable AccountType accountType, ClogResult clog,
 		Map<String, Double> personalBests, Map<String, PbRecord> detailedPersonalBests, String mode, long hardcoreXp,
@@ -208,7 +197,7 @@ class SyncService
 
 	/**
 	 * The body as sent. Gson leaves a null field out by default, and "clan": null is how a sync says you're in no
-	 * clan (or Share Clan is off): left out, killclog.com kept the clan it held, since 2.6.3.
+	 * clan (or Share Clan is off): left out, killclog.com keeps the clan it holds.
 	 */
 	static String wire(Gson gson, JsonObject root)
 	{
@@ -248,8 +237,7 @@ class SyncService
 				"Another sync for this account is in flight. Try again in a moment.",
 				true, parseRetryAfterSeconds(r.body));
 		}
-		// The server's identity arbitration answers (2026-08-16 wire
-		// contract): each gets plain words instead of a bare HTTP code.
+		// The server's answers about who holds a name: each gets plain words instead of a bare HTTP code.
 		if (r.code == 409 && r.body != null && r.body.contains("name_active_with_another_account"))
 		{
 			return SyncResult.stopping(
@@ -349,9 +337,7 @@ class SyncService
 		{
 			root.addProperty("account_type", accountType.name().toLowerCase(Locale.ROOT));
 		}
-		// The game's own unique counters (varp-sourced) ride along so the
-		// site can show the true "obtained out of how many" fraction instead
-		// of approximating the denominator from catalogs.
+		// The game's own counts ride along, so the site shows obtained out of the game's total, never a catalog's guess.
 		if (clog.getUniqueObtained() > 0)
 		{
 			root.addProperty("unique_obtained", clog.getUniqueObtained());
@@ -375,9 +361,8 @@ class SyncService
 			clog.getPageCounts().forEach(counts::addProperty);
 			root.add(PageCounts.FIELD, counts);
 		}
-		// PBs are the sync's defining cargo: RuneLite records them locally per
-		// profile and no public provider serves them. Raw seconds; the site
-		// owns formatting.
+		// Personal bests: RuneLite keeps them locally per profile and no other site serves them. Raw seconds; the site
+		// formats them.
 		if (personalBests != null && !personalBests.isEmpty())
 		{
 			JsonObject pbs = new JsonObject();
@@ -388,13 +373,10 @@ class SyncService
 			root.add("pbs", pbs);
 		}
 
-		// Ladder cargo: the same bests keyed by vanilla's variant key with
-		// team sizes SPLIT ("chambers of xeric solo" vs "... 5 players").
-		// The collapsed map above stays for display compatibility; ladders
-		// need the split because solo and team runs rank separately. Each
-		// entry carries where this client observed it: "store" from
-		// RuneLite's own pb store, "advlog" from the Counters scroll harvest,
-		// "clog" from the collection log's line, "live" from a kill seen.
+		// The same bests under vanilla's variant key with team sizes kept apart ("chambers of xeric solo" and
+		// "... 5 players"), since solo and team runs rank separately; the collapsed map above stays for display. Each
+		// carries where this client saw it: "store" from RuneLite's own pb store, "advlog" from the Adventure Log's
+		// Counters scroll, "clog" from the Collection Log's line, "live" from a kill seen.
 		if (detailedPersonalBests != null && !detailedPersonalBests.isEmpty())
 		{
 			JsonObject detailed = new JsonObject();

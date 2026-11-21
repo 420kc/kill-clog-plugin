@@ -13,19 +13,16 @@ import net.runelite.client.game.ItemManager;
 
 /**
  * Live unlocks between walks: a "New item added" line, or the clan broadcast, adds that one item to your own log,
- * dated, with the kill that caused it; a name that matches two missing items is remembered for the next walk to
- * settle; totals only rise. Client thread.
+ * dated, with the kill that caused it. A name that matches two missing items is remembered for the next walk to
+ * settle, and totals only rise. Client thread.
  *
- * The kill is the game's word where it gives one, never a clock (Dylan, 2026-11-15). The server credits each loot to
- * the NPC that gave it as you receive it (RuneLite's ServerNpcLoot, the only source its own Loot Tracker reads NPC loot
- * from), so an item takes that NPC's latest kill however long the loot waited on its corpse: an awakened or a League's
- * Echo kill is its boss's, and an encounter's NPC named apart from its count message is pb-names.tsv's (Dusk's loot is
- * the Grotesque Guardians', a Royal Titan's the Royal Titans'). An NPC with no kill gives none unless a kill lands with
- * its loot (a plain smoke devil's Occult necklace, on Thermy's page too). A pet, a chest or a reward screen is credited
- * to nobody, and a Collection Log item comes only from its own content: on a boss's or a raid's page it takes the
- * latest kill of the page's content, the page's own name or a count message naming it in whole words (a raid's modes,
- * the Corrupted Gauntlet, Phosani's Nightmare, Callisto on Callisto and Artio's page), else, as on every other page,
- * the count message it arrived with (the Lunar Chest's).
+ * The kill is the game's word where it gives one, never a clock. The game credits each loot to the NPC that gave it
+ * as you receive it (RuneLite's ServerNpcLoot), so an item takes that NPC's latest kill however long the loot waited
+ * on its corpse. A variant's kill is its boss's, and an NPC named apart from its count message goes by pb-names.tsv
+ * (Dusk's loot is the Grotesque Guardians'). An NPC with no kill gives none unless a kill lands with its loot.
+ *
+ * A pet, a chest or a reward screen is credited to nobody. Such an item on a boss's or a raid's page takes the latest
+ * kill of that page's content; on any other page, the count message it arrived with.
  */
 @Slf4j
 final class LiveClogSync
@@ -128,10 +125,9 @@ final class LiveClogSync
 				kill != null ? kill.kc : 0, kill != null ? kill.boss : null);
 		}
 
-		// Game counters own the scalar; unlock messages only add item history.
-		// A lagging varp must not undo a newer broadcast count, and right after a
-		// hop the varps may still hold the last world's. Full log refresh remains
-		// the downward authority.
+		// The game's counters own the count; an unlock message only adds the item. A lagging counter must not undo a
+		// newer broadcast count, and right after a hop the counters may still hold the last world's. Only a full walk
+		// lowers it.
 		int liveObtained = Math.max(countersSettled ? client.getVarpValue(VarPlayerID.COLLECTION_COUNT) : 0, broadcastObtained);
 		int liveTotal = Math.max(countersSettled ? client.getVarpValue(VarPlayerID.COLLECTION_COUNT_MAX) : 0, broadcastTotal);
 		localClogCache.updateTotalsUpward(playerName, liveObtained, liveTotal);

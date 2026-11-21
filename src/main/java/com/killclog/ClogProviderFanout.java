@@ -10,7 +10,7 @@ import java.util.function.Supplier;
  * remote one in place of what you captured. The panel waits for TempleOSRS, the slowest, only while no other source
  * has the whole log (RuneProfile's, or a killclog.com sync that isn't a fresh install's few items), so it never waits
  * on TempleOSRS for a log it already has, nor shows a few items before TempleOSRS's whole log; TempleOSRS's answer
- * folds in when it lands (Dylan 11/9). A chat reply can't redraw, so it waits for all.
+ * folds in when it lands. A chat reply can't redraw, so it waits for all.
  */
 final class ClogProviderFanout
 {
@@ -35,9 +35,9 @@ final class ClogProviderFanout
 	{
 		final CompletableFuture<ClogResult> first;
 		/**
-		 * TempleOSRS's answer folded in with the others', when it came after the wait (10/24: a log that missed the
-		 * wait only reached the cache, so the open lookup showed none until a second search); null when it came in
-		 * time. One that loses to a fuller log still redraws: it can bring TempleOSRS's EHP and EHC.
+		 * TempleOSRS's answer folded in with the others', when it came after the wait, so the open lookup shows it
+		 * without a second search; null when it came in time. One that loses to a fuller log still redraws: it can
+		 * bring TempleOSRS's EHP and EHC.
 		 */
 		final CompletableFuture<ClogResult> late;
 

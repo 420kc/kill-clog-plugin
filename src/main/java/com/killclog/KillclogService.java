@@ -11,27 +11,17 @@ import lombok.extern.slf4j.Slf4j;
 import okhttp3.OkHttpClient;
 
 /**
- * First-party collection log provider: reads back what players published
- * through their own Kill Clog sync. Two requests, both against killclog.com:
- * <ol>
- *   <li><strong>Sync index</strong> -- the membership list of synced players,
- *       fetched once per interval. A lookup of a never-synced name is answered
- *       from this in-memory set and costs ZERO extra HTTP.</li>
- *   <li><strong>Proof view</strong> ({@link #lookupClog}) -- one GET against
- *       {@code /api/player/{rsn}/proof-view}, parsed into a {@link ClogResult}.
- *       The response is first-party cargo only (the player's own pushed log,
- *       personal bests, and game counters); provider data never rides it.</li>
- * </ol>
+ * Reads back what players published through their own Kill Clog sync, in two requests to killclog.com.
  *
- * <p>Freshness model mirrors {@link RuneProfileService}: success TTL, not-found
- * TTL, transient failure cooldown, in-flight dedup, and a circuit breaker.
- * A previous success is still returned while cached, so a server-side blip
- * cannot blank known-good data mid-session.
+ * The sync index is the list of synced players, fetched once per interval. A name that never synced is answered from
+ * it with no request of its own.
  *
- * <p>Personal bests are the read leg's defining cargo: no public provider
- * serves them. Each successful proof-view fetch caches the player's pb map
- * (keyed by panel boss name, exactly as the sync payload publishes them) so
- * boss tooltips can show PB lines for looked-up synced players.
+ * The proof view ({@link #lookupClog}) is one GET of {@code /api/player/{rsn}/proof-view} for a player: their own
+ * log, personal bests and game counts, never a provider's data. Its bests are kept by panel boss name, so a looked-up
+ * player's boss cards can show them. No other source serves personal bests.
+ *
+ * Answers are kept the way {@link RuneProfileService}'s are: a success, a not-found and a failure each for their own
+ * time, one request per name at once, and a last good answer served through a failed one.
  */
 @Slf4j
 @Singleton
@@ -60,9 +50,9 @@ public class KillclogService
 		return clogService != null ? clogService.getCatalogCategoryKeys() : Collections.emptySet();
 	}
 
-	private static final long INDEX_TTL_MS = 10 * 60 * 1000;      // 10 min -- membership list
+	private static final long INDEX_TTL_MS = 10 * 60 * 1000;      // 10 min: the list of synced players
 	// A name the list doesn't hold may have synced since it was fetched: a lookup that misses asks again once the
-	// list is a minute old, so a player's first sync shows within a minute, not ten (10/23).
+	// list is a minute old, so a player's first sync shows within a minute, not ten.
 	private static final long MISS_RECHECK_MS = 60 * 1000;
 
 	private final CircuitBreaker breaker = new CircuitBreaker("killclog.com");
@@ -93,10 +83,9 @@ public class KillclogService
 	// Proof-view cache, keyed by lowercase rsn. Same TTL trio as the providers.
 	private final HttpUtil.Lane<ClogResult> clogs = new HttpUtil.Lane<>(breaker);
 
-	// Personal bests per player, filled by every successful proof-view fetch
-	// regardless of which provider wins the clog pick. Keys are panel boss
-	// names -- the sync payload publishes them that way (gatherPersonalBests
-	// keys by HiscoreSkill name), so lookups need no key translation.
+	// Personal bests per player, filled by every successful proof-view fetch whichever source wins the log. Keys are
+	// panel boss names, as the sync sends them (gatherPersonalBests keys by HiscoreSkill name), so a lookup needs no
+	// translation.
 	private final Map<String, Map<String, Double>> pbCache = new ConcurrentHashMap<>();
 
 	/** A player's PB-cache and sync-index key: the shared name key (RsnInputPolicy.key), every spelling Jagex accepts. */
@@ -120,10 +109,9 @@ public class KillclogService
 	}
 
 	/**
-	 * Look up first-party collection log data. Resolves to null when the player
-	 * has never synced (index miss -- zero HTTP), when killclog.com is
-	 * unreachable with nothing cached, or on opt-out. LookupFanout combines
-	 * this with the providers; fullest result leads, ties prefer first-party.
+	 * A player's own synced log. Null when the player has never synced (the index answers, with no request), when
+	 * killclog.com can't be reached with nothing cached, or on opt-out. LookupFanout combines this with the providers:
+	 * the fullest result leads, and ties go to the player's own sync.
 	 */
 	public CompletableFuture<ClogResult> lookupClog(String playerName)
 	{
@@ -152,10 +140,8 @@ public class KillclogService
 			{
 				return CompletableFuture.completedFuture(clogs.values.get(key));
 			}
-			// A real index miss is authoritative absence: never synced, or
-			// synced-then-withdrawn (opt-out purge, unbind). Cached data and
-			// pbs are evicted so withdrawal is honored within one index
-			// refresh, never held for a cache TTL.
+			// A name the index lacks never synced, or synced and withdrew (an opt-out, an unbind). Its cached log and
+			// bests go now, so a withdrawal holds within one index refresh, never for a cache's lifetime.
 			if (!index.contains(pbKey(playerName)))
 			{
 				evictFirstParty(key);
@@ -174,9 +160,8 @@ public class KillclogService
 	}
 
 	/**
-	 * Formatted personal best for a looked-up synced player, or null when none
-	 * is cached. Synchronous cache read -- safe from the EDT at tooltip-build
-	 * time; the map fills during the same fetch that produced the clog result.
+	 * A looked-up synced player's personal best as text, or null when none is cached. A plain cache read, safe from the
+	 * Swing thread as a card builds: the map fills in the same fetch that brought the log.
 	 */
 	@Nullable
 	public String pbText(@Nullable String playerName, String panelBossName)
@@ -311,15 +296,12 @@ public class KillclogService
 	}
 
 	/**
-	 * Cache-state transition for a proof-view response; package-private so
-	 * tests can drive the eviction paths without HTTP.
+	 * What a proof-view answer does to the cache; package-private so tests can drive it without HTTP.
 	 *
-	 * <p>404 (never synced / purged) and 451 (opted out) are authoritative
-	 * absence: every cached first-party trace is EVICTED, not merely aged --
-	 * withdrawal must not be served for a cache TTL. Transient failures keep
-	 * stale data, because a server blip should not blank known-good results.
-	 * One response at a time, so a player's PBs and clog result are stored
-	 * and trimmed together.
+	 * 404 (never synced, or purged) and 451 (opted out) mean the player isn't there: everything cached of theirs goes
+	 * at once, since a withdrawal must not be served for a cache's lifetime. A passing failure keeps what is held, so a
+	 * server blip never blanks a good result. One answer at a time, so a player's bests and log are stored and trimmed
+	 * together.
 	 */
 	@Nullable
 	synchronized ClogResult onProofViewResponse(int code, @Nullable String body, String playerName, String key)
@@ -403,13 +385,9 @@ public class KillclogService
 					categoryItems.put(entry.getKey(), catalogIds);
 				}
 			}
-			// An empty log is DATA, not damage: the server serves a valid
-			// empty shape for players whose sync carried pbs or counters but
-			// no itemized clog yet. Malformed bodies were rejected above;
-			// flowing through here seeds full catalog denominators (every
-			// category 0-of-N) and still caches the pbs below. Returning
-			// null would book a healthy response as a server fault and
-			// charge the breaker.
+			// An empty log is an answer, not a fault: the server serves a valid empty shape for a player whose sync
+			// carried bests or counts but no items yet. It goes on to give every page its 0 of N and still keeps the
+			// bests below. Returning null would count a healthy answer against the breaker.
 
 			// Never-logged categories are absent from a first-party payload,
 			// but absence is data: the player owns none of that catalog. Seed
@@ -444,11 +422,9 @@ public class KillclogService
 				ClogDates.local(Json.stringField(root, "last_changed")),
 				AccountType.fromProviderValue(Json.stringField(root, "account_type"))
 			);
-			// The obtained counter decides coverage races, so it needs the
-			// full plausibility chain: a valid total under the ceiling AND
-			// obtained within it. Obtained without a credible total is
-			// dropped and coverage falls back to counting distinct parsed
-			// items; a lone plausible total still serves as a denominator.
+			// The obtained count decides which log leads, so it must be believable: a total under the ceiling and a
+			// count within it. A count without a credible total is dropped, and coverage falls back to the distinct items
+			// read; a believable total alone still serves as the denominator.
 			int uniqueObtained = Json.intField(root, "unique_obtained");
 			int uniqueTotal = Json.intField(root, "unique_total");
 			boolean totalPlausible = uniqueTotal > 0 && uniqueTotal <= MAX_PLAUSIBLE_UNIQUE;
@@ -483,7 +459,7 @@ public class KillclogService
 			{
 				result = result.withSources(false, false, true);
 			}
-			// The clan the player's own sync named (2.6.3), or null for none: once present, the Player Summary reads it
+			// The clan the player's own sync named, or null for none: once present, the Player Summary reads it
 			// instead of RuneProfile's. Absent until their sync has said.
 			result.setSyncedClanKnown(root.has("clan"));
 			JsonObject clan = Json.object(root, "clan");
@@ -493,7 +469,7 @@ public class KillclogService
 				result.setSyncedClanTitle(Json.primitive(clan.get("title_id")) != null
 					? new ClanTitle(Json.intField(clan, "title_id"), Json.stringField(clan, "title")) : null);
 			}
-			// The Combat Achievements their sync sent (2.8.3): the Combat Summary shows the fuller of them and RuneProfile's.
+			// The Combat Achievements their sync sent: the Combat Summary shows the fuller of them and RuneProfile's.
 			result.setSyncedCa(syncedCa(root));
 
 			pbCache.put(key, parsePbs(root));

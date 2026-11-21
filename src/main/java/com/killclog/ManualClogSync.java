@@ -79,7 +79,7 @@ final class ManualClogSync
 	 * last world's or not in yet, the rule every counter read keeps), when the game's own count has read 0 obtained,
 	 * with its total in, for {@link #EMPTY_TICKS} ticks in a row, a log not yet set up is set up as it is:
 	 * empty and complete, stored as a finished walk is, so it syncs. A new account, and a Hardcore Worlds character
-	 * after each death, otherwise stayed off killclog.com until they opened their Collection Log (Dylan, 11/6).
+	 * after each death, would otherwise stay off killclog.com until they open their Collection Log.
 	 */
 	private void setUpEmptyLog(Client client, ClogIndex clogIndex, LocalClogCache localClogCache,
 		Runnable captureComplete, Consumer<String> panelRefresh, boolean countersSettled)
