@@ -700,9 +700,9 @@ public class Cells
 	}
 
 	/**
-	 * A card from its data, synced log or not: its Obtained line ("--/Y" with no synced log, Dylan 2026-11-14: the card
-	 * has the room for its counts too), its counts and its items, those not held dimmed so wiki links remain explorable;
-	 * a PB with a synced log only. False when the data holds neither a log nor the catalog's preview.
+	 * A card from its data, synced log or not: its Obtained line ("--/Y" with no synced log, since the card has the
+	 * room for its counts too), its counts and its items, those not held dimmed so wiki links remain explorable; a PB
+	 * with a synced log only. False when the data holds neither a log nor the catalog's preview.
 	 */
 	static boolean configure(ImgTooltip tip, @Nullable TooltipData data, ItemManager itemManager, boolean showKc,
 		boolean showPb)
