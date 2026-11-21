@@ -116,6 +116,9 @@ public class LeagueViewPanelTest
 			assertSame(row, session.getHiscoreResult());
 			assertNull("no provider named the player", field(panel, "rsn", String.class));
 			assertEquals("Friend", panel.getDisplayedRsn());
+			// Their Collection Log card names them as every other card does, by the name looked up.
+			assertEquals("Friend hasn't synced a collection log",
+				field(panel.clogInfoLabel().createToolTip(), "notice", String.class));
 		});
 	}
 

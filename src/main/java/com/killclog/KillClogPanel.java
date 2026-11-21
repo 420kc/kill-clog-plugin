@@ -80,7 +80,7 @@ public class KillClogPanel extends PluginPanel
 		{
 			// Comparison mode: this label is the red RSN.
 			return comparison.showsPair() ? summaryCards.buildPlayer(this, rsn, rowIdentity, rivalIdentity)
-				: summaryCards.buildClog(this, rsn);
+				: summaryCards.buildClog(this, getDisplayedRsn());
 		}
 
 	};
