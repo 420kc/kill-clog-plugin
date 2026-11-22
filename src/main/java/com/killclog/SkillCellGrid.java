@@ -327,7 +327,7 @@ final class SkillCellGrid
 
 	/**
 	 * The total level shown: the hiscores' normally, or the sum of the virtual levels XP gives when Virtual Levels'
-	 * virtual total setting is on. A skill the hiscores hide (unranked) adds nothing to that sum, and the total is
+	 * virtual total setting is on. A skill the hiscores don't rank counts at its hiscores' level, and the total is
 	 * never less than the hiscores' own, so an account ranked in only some skills never shows a virtual total below its
 	 * real one. Never used to tell a maxed account: that goes by real levels.
 	 */
