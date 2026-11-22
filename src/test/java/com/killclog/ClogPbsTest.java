@@ -357,6 +357,21 @@ public class ClogPbsTest
 		when(configManager.getRSProfileKey()).thenReturn("rsprofile.league");
 		ticks();
 		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
+
+		// The same when the first thing heard on the new world is a page drawing there: the old world's time is
+		// dropped, and the new page's own goes to the new profile.
+		when(configManager.getRSProfileKey()).thenReturn("rsprofile.main");
+		page("Zulrah", "Obtained: <col=ffff00>4/9</col>", "Personal Best: <col=ffffff>0:55.80</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 93);
+		drawsNow(1);
+		when(configManager.getRSProfileKey()).thenReturn("rsprofile.league");
+		cycle += 10;
+		page("Vorkath", "Obtained: <col=ffff00>1/6</col>", "Personal Best: <col=ffffff>2:00.00</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 200);
+		drawsNow(1);
+		ticks();
+		verify(configManager, never()).setRSProfileConfiguration(eq("killclog"), eq("pagepb.zulrah"), any());
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.vorkath", 120.0);
 	}
 
 	@Test
@@ -387,13 +402,20 @@ public class ClogPbsTest
 		drawsNow(1);
 		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.vorkath", 62.4);
 
-		// The second log's Callisto and Artio then Cerberus, 28 cycles apart: each reads. Then a pair, and a third page
-		// four cycles behind the pair's second: the quiet cycles count from the last page drawn, so it reads nothing.
-		cycle += 28;
+		// Two pages drawn 28 cycles apart, the nearest pair in either log that shared no answer: each reads.
+		ticks();
+		page("Kraken", "Obtained: <col=ffff00>4/4</col>", "Personal Best: <col=ffffff>0:55.80</col>");
+		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 93);
+		drawsNow(1);
+		cycle += 27;
 		page("Cerberus", "Obtained: <col=ffff00>5/7</col>", "Personal Best: <col=ffffff>1:00.00</col>");
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 100);
-		draws(1);
+		drawsNow(1);
+		ticks();
+		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.kraken", 55.8);
 		verify(configManager).setRSProfileConfiguration("killclog", "pagepb.cerberus", 60.0);
+		// Then a pair, and a third page four cycles behind the pair's second: the quiet cycles count from the last page
+		// drawn, so it reads nothing.
 		page("Araxxor", "Obtained: <col=ffff00>2/9</col>", "Personal Best: <col=ffffff>1:40.80</col>");
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 168);
 		drawsNow(1);
@@ -406,7 +428,7 @@ public class ClogPbsTest
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 169);
 		drawsNow(1);
 		ticks();
-		verify(configManager, times(2)).setRSProfileConfiguration(anyString(), anyString(), any());
+		verify(configManager, times(3)).setRSProfileConfiguration(anyString(), anyString(), any());
 	}
 
 	@Test
@@ -427,6 +449,7 @@ public class ClogPbsTest
 		page("Vorkath", "Obtained: <col=ffff00>5/6</col>", "Personal Best: <col=ffffff>1:02.40</col>");
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 104);
 		drawsNow(1);
+		landing = true;
 		sends(VarPlayerID.COLLECTION_PERSONAL_BEST_TRANSMIT, 105);
 		ticks();
 		verify(configManager, never()).setRSProfileConfiguration(anyString(), anyString(), any());
