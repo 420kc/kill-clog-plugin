@@ -119,6 +119,9 @@ public class LeagueViewPanelTest
 			// Their Collection Log card names them as every other card does, by the name looked up.
 			assertEquals("Friend hasn't synced a collection log",
 				field(panel.clogInfoLabel().createToolTip(), "notice", String.class));
+			// Were that name your own, the same card would offer setup, by the name looked up.
+			panel.setLoggedInPlayer("Friend", AccountType.REGULAR);
+			assertTrue(field(panel.clogInfoLabel().createToolTip(), "firstTimeSetup", Boolean.class));
 		});
 	}
 
@@ -387,6 +390,8 @@ public class LeagueViewPanelTest
 				assertTrue("your main log offers setup",
 					field(summary.invoke(field(panel, "summaryCards", SummaryCards.class), owner, row, null, "Me", null), "firstTimeSetup", Boolean.class));
 				String mainNotice = field(cell.cellCard(owner, null, 4, "Zulrah", row, "Me"), "notice", String.class);
+				assertFalse("not before the hiscores answer: every card waits for them",
+					field(summary.invoke(field(panel, "summaryCards", SummaryCards.class), owner, null, null, "Me", null), "firstTimeSetup", Boolean.class));
 				session.readLeague("demonic-pacts", null);
 				assertFalse("a League read from another world never does",
 					field(summary.invoke(field(panel, "summaryCards", SummaryCards.class), owner, row, null, "Me", null), "firstTimeSetup", Boolean.class));

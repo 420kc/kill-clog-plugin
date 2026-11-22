@@ -132,7 +132,7 @@ final class SummaryCards
 		}
 		else
 		{
-			if (lookupSession.offersSetup(localRsn.get(), playerRsn))
+			if (hiscore != null && lookupSession.offersSetup(localRsn.get(), playerRsn))
 			{
 				tip.setFirstTimeSetup();
 			}
