@@ -14,9 +14,9 @@ import net.runelite.client.ui.ColorScheme;
  */
 final class RankSelector extends JPanel
 {
-	/** The row a board without this player shows: nothing. */
+	/** The row a board without this player shows: nothing, its XP unknown like every stat on it. */
 	private static final HiscoreResult NOTHING = new HiscoreResult(null, null, null, null, null, null, null, null, null,
-		0, 0, 0, -1);
+		0, -1, 0, -1);
 	/** The same row while a board is loading or couldn't be read: its ranks not known, so nothing reads Unranked. */
 	private static final HiscoreResult UNANSWERED = NOTHING.withRanks(null);
 

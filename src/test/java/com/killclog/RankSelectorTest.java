@@ -133,6 +133,10 @@ public class RankSelectorTest
 			assertEquals("Loading...", selector.blankNotice(selector.view(blue)));
 			assertFalse("a board still loading has not answered, so no card reads it as Unranked",
 				selector.view(blue).isRankDataAvailable());
+			SkillsTooltip loading = new SkillsTooltip();
+			loading.setData(selector.view(blue), null, false);
+			assertEquals("nor as 0 XP", "--", loading.displayedXpText());
+			assertEquals("and no hours bossed", -1, LookupQueries.ehb(selector.view(blue), null), 0);
 			selector.select(RankLeaderboard.HARDCORE);
 			requests.get("Blue" + RankLeaderboard.NORMAL).complete(result(AccountType.REGULAR, HiscoreTable.STANDARD, 100, 10000));
 			requests.get("Blue" + RankLeaderboard.HARDCORE).complete(result(AccountType.REGULAR, HiscoreTable.STANDARD, 7, 10000));
@@ -221,11 +225,19 @@ public class RankSelectorTest
 			assertTrue("today's log hides like a frozen row's", ultimate.isFrozen());
 			assertEquals("Not on this leaderboard", selector.blankNotice(ultimate));
 			assertTrue("that board answered: the player is not on it", ultimate.isRankDataAvailable());
+			SkillsTooltip absent = new SkillsTooltip();
+			absent.setData(ultimate, null, false);
+			assertEquals("no row there, so no XP there", "--", absent.displayedXpText());
+			assertEquals("and no hours bossed", -1, LookupQueries.ehb(ultimate, null), 0);
 
 			selector.select(RankLeaderboard.PURE);
 			assertEquals(-1, selector.view(base).getKc("Zulrah"));
 			assertEquals("Unavailable; click to retry", selector.blankNotice(selector.view(base)));
 			assertFalse("a board that could not be read has not answered either", selector.view(base).isRankDataAvailable());
+			SkillsTooltip unread = new SkillsTooltip();
+			unread.setData(selector.view(base), null, false);
+			assertEquals("an unread board shows no XP", "--", unread.displayedXpText());
+			assertEquals("and no hours bossed", -1, LookupQueries.ehb(selector.view(base), null), 0);
 			assertTrue(((JButton) selector.getComponent(5)).getToolTipText().contains("Unavailable"));
 		});
 	}

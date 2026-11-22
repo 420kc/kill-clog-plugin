@@ -135,6 +135,13 @@ public class EhbRatesTest
 	}
 
 	@Test
+	public void aRowWithNoBossesAtAllHasNoHours()
+	{
+		// A leaderboard that has no row for the player, or has not answered: nothing to rate, which is not 0 hours.
+		assertEquals(-1, EhbRates.compute(result(AccountType.REGULAR, new HashMap<>()), null), 1e-9);
+	}
+
+	@Test
 	public void testNullResultIsAbsent()
 	{
 		assertEquals(-1, EhbRates.compute(null, null), 1e-9);

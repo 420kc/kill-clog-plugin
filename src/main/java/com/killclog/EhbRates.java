@@ -21,13 +21,13 @@ final class EhbRates
 	}
 
 	/**
-	 * The sum of kill count over rate for every rated boss, or -1 with no hiscore. A Group Ironman is listed on the
-	 * regular board only, so the account type the lookup settled on stands over the board's; every ironman mode uses
-	 * the ironman rates.
+	 * The sum of kill count over rate for every rated boss, or -1 with no hiscore or no boss on it (a board's stand-in
+	 * row). A Group Ironman is listed on the regular board only, so the account type the lookup settled on stands over
+	 * the board's; every ironman mode uses the ironman rates.
 	 */
 	static double compute(HiscoreResult result, AccountType resolvedType)
 	{
-		if (result == null)
+		if (result == null || result.getBossKills().isEmpty())
 		{
 			return -1;
 		}
