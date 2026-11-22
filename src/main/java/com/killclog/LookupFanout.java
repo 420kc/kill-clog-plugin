@@ -114,7 +114,7 @@ final class LookupFanout
 
 	/**
 	 * Combat Achievements, from RuneProfile or your own from the game; a League has none. A failure or a timeout is
-	 * logged and answers nothing, so the cards show none.
+	 * logged and answers nothing; a card then shows the tiers the player's Kill Clog sync carries, or none.
 	 */
 	void fetchCa(String player, int stamp, Consumer<CombatAchievementResult> onResult)
 	{

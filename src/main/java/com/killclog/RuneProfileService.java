@@ -140,8 +140,8 @@ public class RuneProfileService
 	}
 
 	/**
-	 * A player's Combat Achievements. Null when they have none (never synced, or RuneProfile didn't answer and nothing
-	 * is cached), and the cards then show none.
+	 * A player's Combat Achievements. Null when RuneProfile has none (never synced, or it didn't answer and nothing is
+	 * cached); a card then shows the tiers the player's Kill Clog sync carries, or none.
 	 */
 	public CompletableFuture<CombatAchievementResult> lookup(String playerName)
 	{

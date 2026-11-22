@@ -274,8 +274,8 @@ class KillClogChatCommand
 	}
 
 	/**
-	 * !log, RuneProfile's command, answered as !kclog is. The command itself is never registered, since it is
-	 * RuneProfile's.
+	 * !log, RuneProfile's command, answered as !kclog is, and "!log missing" with a page as !missing is. The command
+	 * itself is never registered, since it is RuneProfile's.
 	 */
 	void handleLogCompatibility(ChatMessage chatMessage, String message)
 	{

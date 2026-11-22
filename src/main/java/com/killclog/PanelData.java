@@ -15,8 +15,7 @@ final class PanelData
 
 	// The bosses in the order RuneLite's Hiscore panel shows them, its enum's own. The same bosses as
 	// HiscoreService.bossNames(); where the two orders differ, lookups go by name. A new boss is a row in
-	// panel-catalog.tsv, in the enum's order, once RuneLite has it: the comment on BOSS_NAMES in HiscoreService has
-	// every step.
+	// panel-catalog.tsv, in the enum's order, once RuneLite has it.
 	static final HiscoreSkill[] BOSSES = bosses();
 
 	static int bossCount()

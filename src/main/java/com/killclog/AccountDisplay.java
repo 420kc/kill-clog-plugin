@@ -5,8 +5,8 @@ import lombok.*;
 
 /**
  * An account as the panel shows it: its mode ({@link AccountType}), the board its ranks came from ({@link
- * HiscoreTable}, which for a regular account can be the pures' or the skillers'), and the mode it left, when it left
- * one.
+ * HiscoreTable}: the standard one, or the pures', the skillers' or the Hardcore Mains'), and the mode it left, when it
+ * left one.
  */
 @EqualsAndHashCode
 final class AccountDisplay

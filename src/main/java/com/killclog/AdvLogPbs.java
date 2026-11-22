@@ -159,8 +159,8 @@ final class AdvLogPbs
 	}
 
 	/**
-	 * Whether the log is the local player's, by their names as names compare everywhere here; Chat Commands compares
-	 * the raw text, tags and non-breaking spaces included.
+	 * Whether the log is the local player's: the two names with tags stripped, either kind of space alike and case
+	 * aside (Text.standardize). Chat Commands compares them as written, non-breaking spaces and case included.
 	 */
 	static boolean sameName(String localName, String owner)
 	{

@@ -43,7 +43,8 @@ public class LookupSession
 
 		/**
 		 * The Combat Achievements arrived, whenever the others do, from your own game or RuneProfile. {@code ca} is
-		 * null when the player has none (never synced, or RuneProfile didn't answer), and the cards then show none.
+		 * null when neither has any (never synced to RuneProfile, or it didn't answer); a card then shows the tiers the
+		 * player's Kill Clog sync carries, or none.
 		 */
 		void onCaResult(String player, @Nullable CombatAchievementResult ca, boolean isSelf, int lookupVersion);
 
@@ -362,10 +363,7 @@ public class LookupSession
 		listener.onClogResult(player, local, true, fanout.version());
 	}
 
-	/**
-	 * Abandon any lookup in flight so the next {@link #start} is accepted: its stamp goes stale, so whatever it still
-	 * has in the air draws nothing.
-	 */
+	/** Abandon any lookup in flight: its stamp goes stale, so whatever it still has in the air draws nothing. */
 	public void cancelInFlight()
 	{
 		clearHold();

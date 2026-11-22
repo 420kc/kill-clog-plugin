@@ -122,9 +122,9 @@ public class KillclogService
 	CompletableFuture<ClogResult> lookupClog(String playerName, String mode)
 	{
 		String key = modeKey(mode, playerName);
-		// The game's catalog gives each page its total; until it has loaded (a moment at startup), a synced log just
-		// fetched would show wrong totals, so this waits for it. The other sites keep answering, and nothing counts
-		// against the breaker.
+		// Until TempleOSRS's page list has loaded (a moment at startup), a synced log just fetched could show wrong
+		// totals, so killclog.com isn't asked yet and what is cached answers. The other sites keep answering, and
+		// nothing counts against the breaker.
 		if (clogs.hold(key) || clogService != null && !clogService.hasCatalog())
 		{
 			return CompletableFuture.completedFuture(clogs.values.get(key));
